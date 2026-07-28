@@ -438,7 +438,14 @@ function listarStatusOficios(filtros, tokenSessao) {
     itens = MON_OFICIOS_aplicarFiltrosStatus_(itens, filtros);
     itens.sort(MON_OFICIOS_ordenarStatus_);
 
-    return { erro: false, itens: itens, resumo: resumo };
+    // Paginação opcional (achado #9) — resumo continua batendo com o total
+    // real (calculado acima, antes de filtrar/paginar); só a lista de itens
+    // é fatiada, e só se filtros.porPagina for enviado.
+    var pag = paginarItens_(itens, filtros);
+    return {
+      erro: false, itens: pag.itens, resumo: resumo,
+      total: pag.total, pagina: pag.pagina, porPagina: pag.porPagina, totalPaginas: pag.totalPaginas
+    };
 
   } catch (e) {
     Logger.log("❌ Erro em listarStatusOficios: " + e.message);
