@@ -49,7 +49,12 @@ function diasEntre_(dataStr) {
   }
 }
 
-function getHeaderMap_(aba) {
+// Renomeada para não colidir com getHeaderMap_ (Utils.gs), definição global
+// duplicada — o Apps Script roda todo o projeto em um único escopo, então as
+// duas funções de mesmo nome disputavam qual "vencia" dependendo da ordem de
+// carregamento dos arquivos. Sem chamadores neste arquivo (confirmado por
+// busca), renomear é seguro.
+function getHeaderMapMensalidade_(aba) {
   var headers = aba.getRange(1, 1, 1, aba.getLastColumn()).getValues()[0];
   var map = {};
   headers.forEach(function(h, i) { if (h) map[String(h).trim()] = i + 1; });

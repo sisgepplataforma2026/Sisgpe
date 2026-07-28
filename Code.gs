@@ -114,6 +114,14 @@ if (p.portal === "associado") {
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
 
+    // ── Rota pública: validação de autenticidade de ofício (link/QR impresso no PDF) ──
+    // Precisa vir ANTES da checagem de sessão: quem valida é a escola/associado
+    // que recebeu o documento, sem login no SISGEP.
+    if (p.codigo) {
+      Logger.log("[VALIDACAO] Validando código público de ofício.");
+      return validarPublico(p.codigo);
+    }
+
     // ── Checa sessão — token vem explicitamente da URL (?sessao=token) ──
     var tokenSessao = String(p.sessao || "").trim();
     Logger.log("[DIAGNOSTICO doGet] sessão recebida: " + (tokenSessao ? "sim" : "não"));

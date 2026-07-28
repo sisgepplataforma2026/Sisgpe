@@ -552,8 +552,13 @@ function gerarOficioWeb(dados, tokenSessao) {
       });
     }
 
-    var qtdFichas    = proc.isLivre ? 0 : dados.fichas.length;
-    var htmlBody     = montarEmailHTML(tituloEmail, proc.numero, assuntoTipo, qtdFichas, dados.textoPrincipal || dados.corpo || "");
+    var qtdFichas          = proc.isLivre ? 0 : dados.fichas.length;
+    // Texto digitado pelo atendente (Ofício Livre) — escapado antes de entrar no
+    // e-mail para não permitir injeção de HTML. Os textos padrão dos demais tipos
+    // (Filiação/Desfiliação/Taxas) são montados internamente por montarEmailHTML e
+    // usam <strong> de propósito, por isso o escaping é feito aqui, não lá dentro.
+    var textoPrincipalEmail = escapeHtml_(dados.textoPrincipal || dados.corpo || "");
+    var htmlBody     = montarEmailHTML(tituloEmail, proc.numero, assuntoTipo, qtdFichas, textoPrincipalEmail);
     var assuntoEmail = tituloEmail + " Nº " + proc.numero;
 
     var retornoFila = criarFilaEnvioOficio_({

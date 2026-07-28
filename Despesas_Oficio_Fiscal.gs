@@ -4,40 +4,16 @@
 // =============================================================================
 
 /* ─────────────────────────────────────────────────────────────
-   HELPER: Numeração segura — lê da aba Controle (mesma sequência dos ofícios)
+   HELPER: Numeração segura — mesma sequência e mesmo lock dos demais ofícios
+   (Oficios.gs / gerarProximoNumeroSeguro). Antes esta função lia só a última
+   linha não vazia da coluna B da aba Controle, o que podia colidir com um
+   número já usado se essa linha não fosse a de maior número (reordenação,
+   exclusão manual fora de ordem). Agora reaproveita a mesma função que já
+   varre todas as linhas do ano e usa lock — mantém o nome e a assinatura
+   para não exigir mudança no chamador (linha ~479 deste arquivo).
    ───────────────────────────────────────────────────────────── */
 function gerarProximoNumeroOficioFiscal_() {
-  var lock = LockService.getScriptLock();
-  if (!lock.tryLock(30000)) throw new Error("Não foi possível gerar número do ofício. Tente novamente.");
-
-  try {
-    var ss      = SpreadsheetApp.openById(PLANILHA_ID);
-    var aba     = ss.getSheetByName("Controle");
-    if (!aba) throw new Error("Aba Controle não encontrada.");
-
-    var anoAtual  = new Date().getFullYear().toString();
-    var lastRow   = aba.getLastRow();
-    var ultimoNum = 0;
-
-    if (lastRow >= 2) {
-      var dados = aba.getRange(2, 2, lastRow - 1, 1).getValues();
-      for (var i = dados.length - 1; i >= 0; i--) {
-        var val = String(dados[i][0] || "").trim();
-        if (!val) continue;
-        var partes = val.split("/");
-        if (partes.length === 2 && partes[1].trim() === anoAtual) {
-          var num = parseInt(partes[0].trim(), 10);
-          if (!isNaN(num) && num > ultimoNum) ultimoNum = num;
-        }
-        break;
-      }
-    }
-
-    return String(ultimoNum + 1).padStart(3, "0") + "/" + anoAtual;
-
-  } finally {
-    lock.releaseLock();
-  }
+  return gerarProximoNumeroSeguro();
 }
 
 /* ─────────────────────────────────────────────────────────────
