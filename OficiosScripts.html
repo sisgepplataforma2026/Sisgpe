@@ -898,8 +898,28 @@ function atualizarContadorFichas() {
     function aoSucesso(res){ clearInterval(timer); if(btn){btn.disabled=false;btn.innerText="✅ Emitir Documento;"} if(res&&res.erro) return toast(res.mensagem||"Erro ao emitir.","err"); finalizarPosEmissao(res.dados || {}); }
     function aoErro(err){ clearInterval(timer); if(btn){btn.disabled=false;btn.innerText="✅ Emitir Documento";} toast("Erro: "+((err&&err.message)||err),"err"); }
 
+    // Envia gerarOficioWeb; se o servidor avisar de uma possível duplicata
+    // (achado #4), pergunta ao atendente e, se confirmado, reenvia o mesmo
+    // payload com confirmarDuplicata:true (sem re-processar fichas já lidas).
+    function enviarGerarOficio(payload){
+      google.script.run.withSuccessHandler(function(res){
+        if (res && res.duplicataDetectada) {
+          var msg = (res.mensagem || "Possível ofício duplicado detectado.") + "\n\nDeseja gerar mesmo assim?";
+          if (window.confirm(msg)) {
+            payload.confirmarDuplicata = true;
+            enviarGerarOficio(payload);
+          } else {
+            clearInterval(timer); if(btn){btn.disabled=false;btn.innerText="✅ Emitir Documento";}
+            toast("Emissão cancelada — ofício não gerado.","warn");
+          }
+          return;
+        }
+        aoSucesso(res);
+      }).withFailureHandler(aoErro).gerarOficioWeb(payload, SISGEP_TOKEN_SESSAO);
+    }
+
     if(d.tipo==="Ofício Livre"){
-      google.script.run.withSuccessHandler(aoSucesso).withFailureHandler(aoErro).gerarOficioWeb({ tipo:d.tipo, para:$("para")&&$("para").value, cargo:$("cargo")&&$("cargo").value, assunto:$("assunto")&&$("assunto").value, corpo:$("corpo")&&$("corpo").value, email:$("emailLivreAux")&&$("emailLivreAux").value }, SISGEP_TOKEN_SESSAO);
+      enviarGerarOficio({ tipo:d.tipo, para:$("para")&&$("para").value, cargo:$("cargo")&&$("cargo").value, assunto:$("assunto")&&$("assunto").value, corpo:$("corpo")&&$("corpo").value, email:$("emailLivreAux")&&$("emailLivreAux").value });
       return;
     }
 
@@ -935,10 +955,10 @@ function atualizarContadorFichas() {
         reader.readAsDataURL(f);
       });
     })).then(function(fichasBase64) {
-      google.script.run.withSuccessHandler(aoSucesso).withFailureHandler(aoErro).gerarOficioWeb({
+      enviarGerarOficio({
         tipo:d.tipo, escola:d.escola.nome, cnpj:d.escola.cnpj, email:d.escola.email, endereco:d.escola.endereco,
         colaboradores:d.beneficiarios.map(function(b){return b.nome;}), fichas:fichasBase64
-      }, SISGEP_TOKEN_SESSAO);
+      });
     }).catch(function(err){ aoErro(err); });
   }
 

@@ -277,7 +277,12 @@ function aprovarEEncaminharFicha(idFicha, escola, aprovadoPor) {
       fichas: [anexoFicha],
       observacoes: 'Matrícula ' + aprovacao.matricula +
         ' · Ficha ' + atualizada.ID_FICHA +
-        (atualizada.ID_VISITA ? ' · Visita ' + atualizada.ID_VISITA : '')
+        (atualizada.ID_VISITA ? ' · Visita ' + atualizada.ID_VISITA : ''),
+      // Vários trabalhadores da mesma escola sendo aprovados no mesmo dia geram,
+      // legitimamente, mais de um ofício de Filiação para a mesma escola em 24h.
+      // Este fluxo não tem interface para perguntar ao usuário, então já confirma
+      // — o aviso de duplicata (achado #4) vale para o formulário manual.
+      confirmarDuplicata: true
     });
   } catch (eOf) {
     Logger.log('gerarOficioWeb falhou: ' + eOf.message);
@@ -356,7 +361,11 @@ function reemitirOficioFicha(idFicha, escola, usuario) {
     colaboradores: [String(f.NOME_COMPLETO || '').trim()],
     cpfs: [sindOf_digitos_(f.CPF)],
     fichas: [anexo],
-    observacoes: 'Reemissão · Matrícula ' + f.MATRICULA + ' · Ficha ' + f.ID_FICHA
+    observacoes: 'Reemissão · Matrícula ' + f.MATRICULA + ' · Ficha ' + f.ID_FICHA,
+    // Reemissão de um ofício já matriculado — não é o cenário que a prevenção de
+    // duplicidade (achado #4) deve barrar, e este fluxo não tem interface para
+    // perguntar ao usuário.
+    confirmarDuplicata: true
   });
 
   if (!retorno || retorno.erro) {

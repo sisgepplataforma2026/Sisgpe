@@ -497,6 +497,27 @@ function gerarOficioWeb(dados, tokenSessao) {
       if (!dados.email)  throw new Error("E-mail é obrigatório.");
     }
 
+    // Prevenção de duplicidade (achado #4): avisa e deixa o atendente confirmar,
+    // não bloqueia — a mesma escola pode legitimamente receber dois ofícios do
+    // mesmo tipo no mesmo dia (ex.: desfiliação seguida de nova filiação).
+    // Só se aplica aos tipos institucionais (não ao Ofício Livre, que não usa
+    // escola/CNPJ). dados.confirmarDuplicata vem true quando o atendente já
+    // confirmou o aviso no passo anterior.
+    if (!isLivre && !dados.confirmarDuplicata) {
+      var duplicata = verificarDuplicata({ escola: dados.escola, cnpj: dados.cnpj, tipo: assuntoTipo });
+      if (duplicata && duplicata.duplicata) {
+        return {
+          erro: false,
+          duplicataDetectada: true,
+          duplicata: duplicata,
+          mensagem: "Já existe um ofício de " + assuntoTipo + " para " + (duplicata.escola || dados.escola) +
+            (duplicata.numeroExistente ? " (nº " + duplicata.numeroExistente + ")" : "") +
+            (duplicata.dataExistente ? ", gerado em " + duplicata.dataExistente : "") +
+            " nas últimas 24h. Confirme se deseja gerar mesmo assim."
+        };
+      }
+    }
+
     var validacaoEmails = validarListaEmails_(dados.email || "");
     if (!validacaoEmails.ok) {
       if (!validacaoEmails.emails.length) throw new Error("Informe pelo menos um e-mail válido.");
