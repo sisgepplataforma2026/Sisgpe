@@ -1,5 +1,5 @@
 // ============================================================================
-// ARQUIVO: DiagnosticoOficios.gs
+// ARQUIVO: OficiosDiagnostico.gs
 // SISGEP · Diagnóstico do Módulo de Ofícios
 // ============================================================================
 
