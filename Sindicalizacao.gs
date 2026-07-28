@@ -23,6 +23,7 @@
 
 var SINDICALIZACAO_ABA = 'SISGEP_Sindicalizacao';
 var SINDICALIZACAO_OTP_VALIDADE_SEG = 600; // 10 minutos
+var SINDICALIZACAO_OTP_MAX_TENTATIVAS = 5; // achado #4: sem isso, o código de 6 dígitos podia ser forçado por script dentro da janela de validade
 
 var SINDICALIZACAO_COLUNAS = [
   'ID_FICHA', 'TIPO', 'MATRICULA',
@@ -269,6 +270,7 @@ function validarOTPEAssinarFicha(idFicha, otpInformado, ipCliente) {
       return { sucesso: false, mensagem: 'Ficha não está aguardando assinatura.' };
     }
     var cache = CacheService.getScriptCache();
+    var chaveTentativas = 'SIND_OTP_TENTATIVAS_' + idFicha;
     var otpArmazenado = cache.get('SIND_OTP_' + idFicha);
     if (!otpArmazenado) {
       return {
@@ -277,9 +279,20 @@ function validarOTPEAssinarFicha(idFicha, otpInformado, ipCliente) {
       };
     }
     if (String(otpInformado).trim() !== otpArmazenado) {
+      var tentativas = (parseInt(cache.get(chaveTentativas), 10) || 0) + 1;
+      if (tentativas >= SINDICALIZACAO_OTP_MAX_TENTATIVAS) {
+        cache.remove('SIND_OTP_' + idFicha);
+        cache.remove(chaveTentativas);
+        return {
+          sucesso: false, expirado: true,
+          mensagem: 'Muitas tentativas incorretas. Por segurança, solicite um novo código.'
+        };
+      }
+      cache.put(chaveTentativas, String(tentativas), SINDICALIZACAO_OTP_VALIDADE_SEG);
       return { sucesso: false, mensagem: 'Código incorreto. Confira e tente novamente.' };
     }
     cache.remove('SIND_OTP_' + idFicha);
+    cache.remove(chaveTentativas);
 
     registro.STATUS = SINDICALIZACAO_STATUS.ASSINADA;
     registro.DATA_HORA_ASSINATURA = new Date();

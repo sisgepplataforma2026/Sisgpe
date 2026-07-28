@@ -883,6 +883,12 @@
         btn.textContent = 'Assinar ficha';
         erro(5, 'Falha de comunicação: ' + e.message);
       })
+      // LIMITAÇÃO CONHECIDA (achado #3, não corrigida): o terceiro argumento
+      // (IP do assinante) vai sempre vazio — o navegador não expõe o IP
+      // público via JS, e o Apps Script não o disponibiliza em doGet/doPost.
+      // Captar de verdade exigiria uma chamada a um serviço externo de IP
+      // (ex.: ipify) antes deste envio. O PDF da ficha menciona "IP" no rodapé
+      // da assinatura mesmo assim — o campo IP_ASSINATURA fica em branco.
       .validarOTPEAssinarFicha(CONTEXTO.idFicha, codigo, '');
   }
 </script>
