@@ -404,6 +404,11 @@ function _diagOficiosChecarFuncoes_(itens) {
 }
 
 function _diagOficiosChecarIncludes_(itens) {
+  // NOTA: este check só confirma que o ARQUIVO existe no projeto — não que ele
+  // está de fato incluído em index.html (a tela real, servida por Code.gs).
+  // "DashboardOficiosDashboardOficiosUI" é um caso confirmado disso: passa
+  // aqui como "ok" mas não é referenciado por nenhum include() em index.html
+  // nem em nenhuma rota — nunca chega a ser mostrado a um usuário.
   [
     "OficiosStyles",
     "OficiosFormulario",
