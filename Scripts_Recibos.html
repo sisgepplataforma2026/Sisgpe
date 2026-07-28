@@ -1,0 +1,3803 @@
+<script>
+console.log("RECIBOS SCRIPT CARREGOU");
+
+/* =====================================================
+  SISGEP - Scripts_Recibos.html
+  ✅ Operacional de recibos
+  ✅ E-mail e WhatsApp
+  ✅ Preview individual
+  ✅ Emissão individual
+  ✅ Conferência automática
+  ✅ Sem histórico dentro do módulo
+===================================================== */
+
+/* ─────────────────────────────
+   HELPERS BÁSICOS
+───────────────────────────── */
+
+function escapeHtml(str){
+
+  if(str === null || str === undefined){
+    return "";
+  }
+
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+function liberarCampoValorRecibo_(){
+  var rv = document.getElementById("recValor");
+  if(rv){
+    rv.readOnly            = false;
+    rv.disabled            = false;
+    rv.style.background    = "#fff";
+    rv.style.pointerEvents = "auto";
+    rv.style.cursor        = "text";
+  }
+}
+function limparReciboStatus(){
+
+  var box = document.getElementById("recStatus");
+
+  if(!box) return;
+
+  box.style.display = "none";
+  box.innerHTML = "";
+}
+
+function setReciboStatus(msg, tipo){
+
+  var box = document.getElementById("recStatus");
+
+  if(!box) return;
+
+  box.style.display = "block";
+
+  var bg = "#e8f7ee";
+  var borda = "#2e7d32";
+  var cor = "#1b5e20";
+
+  if(tipo === "warn"){
+    bg = "#fff3cd";
+    borda = "#f59e0b";
+    cor = "#7c4a03";
+  }
+
+  if(tipo === "err"){
+    bg = "#f8d7da";
+    borda = "#c62828";
+    cor = "#7f1d1d";
+  }
+
+  if(tipo === "info"){
+    bg = "#eef4ff";
+    borda = "#3b82f6";
+    cor = "#1d4ed8";
+  }
+
+  box.innerHTML =
+    '<div style="padding:12px;border-radius:10px;background:' +
+    bg +
+    ';border:1px solid ' +
+    borda +
+    ';color:' +
+    cor +
+    ';">' +
+    msg +
+    '</div>';
+}
+
+function limparCamposProcessoRecibo(){
+
+  var select  = document.getElementById("recProcessoSelect");
+  var procEl  = document.getElementById("recProcesso");
+  var empEl   = document.getElementById("recEmpresa");
+  var valorEl = document.getElementById("recValor");
+  var emailEl = document.getElementById("recEmail");
+
+  if(select)  select.value = "";
+  if(procEl)  procEl.value = "";
+  if(empEl)   empEl.value = "";
+  if(valorEl) valorEl.value = "";
+  if(emailEl) emailEl.value = "";
+
+  atualizarConferenciaRecibo();
+}
+
+function atualizarContadorBeneficiariosRecibo_(){
+
+  var lista = document.getElementById("listaTrabalhadoresRecibo");
+  var benefEmpty = document.getElementById("benefEmpty");
+  var benefCont = document.getElementById("benefContador");
+  var benefNum = document.getElementById("benefContadorNum");
+
+  if(!lista) return;
+
+  var total = lista.querySelectorAll(
+    ".linha-trabalhador-recibo"
+  ).length;
+
+  if(benefEmpty){
+    benefEmpty.style.display =
+      total > 0 ? "none" : "block";
+  }
+
+  if(benefCont){
+    benefCont.style.display =
+      total > 0 ? "block" : "none";
+  }
+
+  if(benefNum){
+    benefNum.textContent = total;
+  }
+}
+
+function travarCamposProcessoRecibo_(travado){
+  var recProcesso = document.getElementById("recProcesso");
+  var recEmpresa  = document.getElementById("recEmpresa");
+
+  if(recProcesso){
+    recProcesso.readOnly = !!travado;
+    recProcesso.style.background = travado ? "#f8fafc" : "#fff";
+  }
+
+  if(recEmpresa){
+    recEmpresa.readOnly = !!travado;
+    recEmpresa.style.background = travado ? "#f8fafc" : "#fff";
+  }
+}
+/* ─────────────────────────────
+   ABAS DO MÓDULO
+───────────────────────────── */
+
+window.abrirAbaRecibo = function(){
+
+  var btnNovoTab =
+    document.getElementById("abaReciboNovo");
+
+  var blocoNovo =
+    document.getElementById("blocoReciboNovo");
+
+  if(btnNovoTab){
+    btnNovoTab.classList.add("active");
+  }
+
+  if(blocoNovo){
+    blocoNovo.style.display = "";
+  }
+
+  try{
+
+    localStorage.setItem(
+      "sisgep_aba_recibos",
+      "novo"
+    );
+
+  }catch(e){
+
+    console.warn(
+      "Não foi possível salvar aba:",
+      e
+    );
+  }
+};
+
+/* ─────────────────────────────
+   CONFIG
+───────────────────────────── */
+
+function carregarConfigRecibo(force){
+
+  if(!force && window.__CFG_RECIBO__){
+    return window.__CFG_RECIBO__;
+  }
+
+  google.script.run
+
+    .withSuccessHandler(function(cfg){
+
+      if(!cfg){
+
+        window.__CFG_RECIBO__ = {
+          processo:"",
+          empresa:"",
+          pix:""
+        };
+
+        return;
+      }
+
+      window.__CFG_RECIBO__ = {
+        processo: String(cfg.processo || "").trim(),
+        empresa:  String(cfg.empresa || "").trim(),
+        pix:      String(cfg.pix || "").trim()
+      };
+    })
+
+    .withFailureHandler(function(err){
+
+      console.error(
+        "Erro ao carregar CONFIG do recibo:",
+        err
+      );
+
+      window.__CFG_RECIBO__ = {
+        processo:"",
+        empresa:"",
+        pix:""
+      };
+    })
+
+    .buscarConfigRecibo(SISGEP_TOKEN_SESSAO);
+}
+
+/* ─────────────────────────────
+   MÁSCARAS E VALIDAÇÕES
+───────────────────────────── */
+
+function aplicarMascaraTelefoneRecibo(input){
+
+  if(!input) return;
+
+  var v = String(input.value || "")
+    .replace(/\D/g, "")
+    .substring(0, 11);
+
+  if(v.length > 10){
+
+    v = v.replace(
+      /^(\d{2})(\d{5})(\d{4})$/,
+      "($1) $2-$3"
+    );
+
+  }else if(v.length > 6){
+
+    v = v.replace(
+      /^(\d{2})(\d{4})(\d+)$/,
+      "($1) $2-$3"
+    );
+
+  }else if(v.length > 2){
+
+    v = v.replace(
+      /^(\d{2})(\d+)$/,
+      "($1) $2"
+    );
+  }
+
+  input.value = v;
+}
+
+function isEmailValido(email){
+
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    .test(
+      String(email || "").trim()
+    );
+}
+
+function validarEmailInline(input){
+
+  if(!input) return true;
+
+  var v = String(input.value || "").trim();
+
+  if(!v){
+
+    input.style.borderColor = "#e2e8f0";
+
+    return true;
+  }
+
+  var ok = isEmailValido(v);
+
+  input.style.borderColor =
+    ok ? "#059669" : "#dc2626";
+
+  return ok;
+}
+
+/* ─────────────────────────────
+   CONFERÊNCIA
+───────────────────────────── */
+
+function parseValorRecibo_(valor){
+
+  if(valor === null || valor === undefined || valor === ""){
+    return 0;
+  }
+
+  var texto = String(valor)
+    .trim()
+    .replace(/\s/g, "")
+    .replace(/^R\$/i, "");
+
+  if(
+    texto.indexOf(",") > -1 &&
+    texto.indexOf(".") > -1
+  ){
+
+    texto = texto
+      .replace(/\./g, "")
+      .replace(",", ".");
+
+  }else if(texto.indexOf(",") > -1){
+
+    texto = texto.replace(",", ".");
+  }
+
+  var n = parseFloat(texto);
+
+  return isNaN(n) ? 0 : n;
+}
+
+function formatarValorReciboBR_(numero){
+
+  return Number(numero || 0)
+    .toLocaleString("pt-BR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+}
+
+function atualizarConferenciaRecibo(){
+
+  var painel   = document.getElementById("painelConferenciaRecibo");
+  var qtdEl    = document.getElementById("confRecQtd");
+  var somaEl   = document.getElementById("confRecSoma");
+  var totalEl  = document.getElementById("confRecTotal");
+  var difEl    = document.getElementById("confRecDif");
+  var statusEl = document.getElementById("confRecStatus");
+
+  var campoTotal =
+    document.getElementById("recValor");
+
+  var linhas = document.querySelectorAll(
+    ".linha-trabalhador-recibo"
+  );
+
+  var qtd  = 0;
+  var soma = 0;
+
+  linhas.forEach(function(linha){
+
+    var nome = String(
+      (linha.querySelector(".rec-nome") || {}).value || ""
+    ).trim();
+
+    var valor = String(
+      (linha.querySelector(".rec-valor") || {}).value || ""
+    ).trim();
+
+    if(!nome && !valor){
+      return;
+    }
+
+    qtd++;
+
+    soma += parseValorRecibo_(valor);
+  });
+
+  var total = campoTotal
+    ? parseValorRecibo_(campoTotal.value)
+    : 0;
+
+  var diferenca = Math.abs(soma - total);
+
+  if(painel){
+    painel.style.display =
+      (qtd > 0 || total > 0)
+        ? "block"
+        : "none";
+  }
+
+  if(qtdEl){
+    qtdEl.textContent = String(qtd);
+  }
+
+  if(somaEl){
+    somaEl.textContent =
+      "R$ " + formatarValorReciboBR_(soma);
+  }
+
+  if(totalEl){
+    totalEl.textContent =
+      "R$ " + formatarValorReciboBR_(total);
+  }
+
+  if(difEl){
+    difEl.textContent =
+      "R$ " + formatarValorReciboBR_(diferenca);
+  }
+
+  if(statusEl){
+
+    if(total <= 0 && qtd > 0){
+
+      statusEl.textContent =
+        "⚠️ Informe o valor total do processo/alvará para validar o lote.";
+
+      statusEl.style.color = "#b45309";
+
+    }else if(qtd === 0){
+
+      statusEl.textContent =
+        "ℹ️ Adicione beneficiários para iniciar a conferência.";
+
+      statusEl.style.color = "#1d4ed8";
+
+    }else if(diferenca <= 0.009){
+
+      statusEl.textContent =
+        "✅ Valores conferem.";
+
+      statusEl.style.color = "#065f46";
+
+    }else{
+
+      statusEl.textContent =
+        "⚠️ Diferença detectada entre a soma dos beneficiários e o valor total do processo.";
+
+      statusEl.style.color = "#b91c1c";
+    }
+  }
+}
+function atualizarDashboardFinanceiroProcesso(){
+  var painel = document.getElementById("painelFinanceiroProcesso");
+  var select = document.getElementById("recProcessoSelect");
+
+  var totalEl = document.getElementById("dashProcTotal");
+  var pagoEl = document.getElementById("dashProcPago");
+  var saldoEl = document.getElementById("dashProcSaldo");
+  var percEl = document.getElementById("dashProcPercentual");
+  var barraEl = document.getElementById("dashProcBarra");
+  var msgEl = document.getElementById("dashProcMensagem");
+
+  if(!painel) return;
+
+  if(!select || !select.value){
+    painel.style.display = "none";
+    return;
+  }
+
+  painel.style.display = "block";
+
+  if(totalEl) totalEl.innerText = "R$ 0,00";
+  if(pagoEl) pagoEl.innerText = "R$ 0,00";
+  if(saldoEl) saldoEl.innerText = "R$ 0,00";
+  if(percEl) percEl.innerText = "0%";
+  if(barraEl) barraEl.style.width = "0%";
+  if(msgEl) msgEl.innerText = "Carregando resumo financeiro...";
+
+  google.script.run
+    .withSuccessHandler(function(res){
+      if(!res || res.erro){
+        if(msgEl) msgEl.innerText = (res && res.mensagem) || "Não foi possível carregar o resumo financeiro.";
+        return;
+      }
+
+      var total = Number(res.totalProcesso || 0);
+      var pago = Number(res.totalPago || 0);
+      var saldo = Number(res.saldo || 0);
+      var percentual = Number(res.percentualPago || 0);
+
+      if(percentual < 0) percentual = 0;
+      if(percentual > 100) percentual = 100;
+
+      if(totalEl) totalEl.innerText = "R$ " + formatarValorReciboBR_(total);
+      if(pagoEl) pagoEl.innerText = "R$ " + formatarValorReciboBR_(pago);
+      if(saldoEl) saldoEl.innerText = "R$ " + formatarValorReciboBR_(saldo);
+      if(percEl) percEl.innerText = formatarValorReciboBR_(percentual).replace(",0", "") + "%";
+      if(barraEl) barraEl.style.width = percentual + "%";
+
+      if(msgEl){
+        if(total <= 0){
+          msgEl.innerText = "Informe o valor total do processo para acompanhar o saldo.";
+        }else if(saldo <= 0){
+          msgEl.innerText = "Processo totalmente quitado.";
+        }else{
+          msgEl.innerText = "Saldo restante: R$ " + formatarValorReciboBR_(saldo) + ".";
+        }
+      }
+    })
+    .withFailureHandler(function(err){
+      if(msgEl){
+        msgEl.innerText = "Erro ao carregar resumo financeiro: " + ((err && err.message) || err || "");
+      }
+    })
+    .obterResumoFinanceiroProcesso(select.value, SISGEP_TOKEN_SESSAO);
+}
+
+/* ─────────────────────────────
+   CADASTRO ANTERIOR
+───────────────────────────── */
+function preencherLinhaComCadastroAnteriorRecibo_(linha, cadastro){
+  if(!linha || !cadastro || !cadastro.ok) return;
+
+  var pixEl   = linha.querySelector(".rec-pix");
+  var emailEl = linha.querySelector(".rec-email");
+  var whatsEl = linha.querySelector(".rec-whatsapp");
+  var obsEl   = linha.querySelector(".rec-obs");
+
+  if(pixEl && !String(pixEl.value || "").trim() && cadastro.pix){
+    pixEl.value = cadastro.pix;
+  }
+
+  if(emailEl && !String(emailEl.value || "").trim() && cadastro.email){
+    emailEl.value = cadastro.email;
+    validarEmailInline(emailEl);
+  }
+
+  if(whatsEl && !String(whatsEl.value || "").trim() && cadastro.whatsapp){
+    whatsEl.value = cadastro.whatsapp;
+    aplicarMascaraTelefoneRecibo(whatsEl);
+  }
+
+  if(obsEl && !String(obsEl.value || "").trim() && cadastro.observacao){
+    obsEl.value = cadastro.observacao;
+  }
+}
+
+function buscarCadastroLinhaRecibo_(linha){
+  if(!linha) return;
+
+  var nomeEl = linha.querySelector(".rec-nome");
+  var cpfEl  = linha.querySelector(".rec-cpf");
+
+  var nome = String((nomeEl || {}).value || "").trim();
+  var cpf  = String((cpfEl || {}).value || "").trim();
+
+  if(!nome && !cpf) return;
+
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp || !resp.ok) return;
+      preencherLinhaComCadastroAnteriorRecibo_(linha, resp);
+    })
+    .withFailureHandler(function(err){
+      console.error("Erro ao buscar cadastro anterior:", err);
+    })
+    .buscarCadastroBeneficiarioRecibo({
+      nome: nome,
+      cpf: cpf
+    }, SISGEP_TOKEN_SESSAO);
+}
+
+/* ─────────────────────────────
+   CLIPBOARD / WHATSAPP
+───────────────────────────── */
+function copiarParaClipboard_(texto, btnEl, labelOriginal){
+  try{
+    navigator.clipboard.writeText(texto).then(function(){
+      if(btnEl){
+        btnEl.textContent = "✓ Copiado!";
+        btnEl.style.background = "#059669";
+
+        setTimeout(function(){
+          btnEl.textContent = labelOriginal;
+          btnEl.style.background = "";
+        }, 2000);
+      }
+    });
+  }catch(_){
+    var ta = document.createElement("textarea");
+    ta.value = texto;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+
+    if(btnEl){
+      btnEl.textContent = "✓ Copiado!";
+      btnEl.style.background = "#059669";
+
+      setTimeout(function(){
+        btnEl.textContent = labelOriginal;
+        btnEl.style.background = "";
+      }, 2000);
+    }
+  }
+}
+
+function copiarWhatsAppRecibo_(btnId, msgEncoded){
+  var btn = document.getElementById(btnId);
+  var msg = decodeURIComponent(String(msgEncoded || ""));
+
+  copiarParaClipboard_(
+    msg,
+    btn,
+    "📋 Copiar link"
+  );
+}
+
+function gerarMensagemWhatsRecibo(arq, processo, empresa){
+  return (
+    "Olá, " + (arq.nome || "BENEFICIÁRIO(A)") + "! Tudo bem?\n\n" +
+    "Estamos enviando o seu recibo referente ao processo nº " + (processo || "") +
+    " (" + (empresa || "") + ").\n\n" +
+    "📄 Recibo: " + (arq.numero || "") + "\n\n" +
+    "🔗 Acesse aqui:\n" + (arq.url || "") + "\n\n" +
+    "📌 Para finalizar:\n" +
+    "1. Abra o recibo\n" +
+    "2. Imprima\n" +
+    "3. Assine\n" +
+    "4. Tire uma foto ou escaneie\n" +
+    "5. Envie para nós por este WhatsApp\n\n" +
+    "✍️ Você também pode assinar digitalmente.\n\n" +
+    "⚠️ O recibo só será válido após o envio assinado.\n\n" +
+    "Qualquer dúvida, estamos à disposição.\n\n" +
+    "Atenciosamente,\n" +
+    "SINDEDUCAÇÃO-ES"
+  );
+}
+
+function abrirWhatsAppRecibo_(numeroRecibo, telefone, nome, processo, empresa, urlPdf){
+  var arq = {
+    numero: numeroRecibo || "",
+    nome: nome || "",
+    url: urlPdf || ""
+  };
+
+  var msg = gerarMensagemWhatsRecibo(
+    arq,
+    processo || "",
+    empresa || ""
+  );
+
+  var numeroLimpo = String(telefone || "").replace(/\D/g, "");
+
+  if(numeroLimpo.length === 11 && !numeroLimpo.startsWith("55")){
+    numeroLimpo = "55" + numeroLimpo;
+  }
+
+  if(!numeroLimpo){
+    alert("WhatsApp não informado.");
+    return;
+  }
+
+  var link = "https://wa.me/" + numeroLimpo + "?text=" + encodeURIComponent(msg);
+
+  google.script.run
+    .withSuccessHandler(function(){})
+    .withFailureHandler(function(err){
+      console.error("Erro ao atualizar status do WhatsApp:", err);
+    })
+    .atualizarStatusWhatsappRecibo(numeroRecibo, "WHATSAPP_ABERTO", SISGEP_TOKEN_SESSAO);
+
+  window.open(link, "_blank");
+}
+
+function abrirVisualizacaoReciboGerado_(url, titulo, downloadUrl){
+  if(!url && !downloadUrl){
+    alert("Arquivo não disponível.");
+    return;
+  }
+
+  var urlVisualizar = url || downloadUrl;
+  var urlDownload = downloadUrl || url;
+
+  var modal = document.createElement("div");
+
+  modal.style.cssText = `
+    position:fixed;
+    inset:0;
+    background:rgba(15,23,42,.72);
+    backdrop-filter:blur(8px);
+    z-index:99999;
+    display:flex;
+    flex-direction:column;
+  `;
+
+  modal.innerHTML = `
+    <div style="
+      background:linear-gradient(135deg,#001f4d,#003b82);
+      color:#fff;
+      padding:12px 16px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      font-weight:700;
+      box-shadow:0 4px 18px rgba(0,0,0,.22);
+      border-bottom:3px solid #C9A84C;
+    ">
+      <span>${titulo || "Recibo"}</span>
+
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button id="btnVisualizarRecibo" style="
+          background:rgba(255,255,255,.12);
+          border:1px solid rgba(255,255,255,.24);
+          color:#fff;
+          padding:7px 12px;
+          border-radius:8px;
+          cursor:pointer;
+          font-weight:700;
+        ">👁 Visualizar</button>
+
+        <button id="btnImprimirRecibo" style="
+          background:#C9A84C;
+          border:none;
+          color:#001f4d;
+          padding:7px 12px;
+          border-radius:8px;
+          cursor:pointer;
+          font-weight:800;
+        ">🖨 Imprimir</button>
+
+        <button id="btnDownloadRecibo" style="
+          background:#2563eb;
+          border:none;
+          color:#fff;
+          padding:7px 12px;
+          border-radius:8px;
+          cursor:pointer;
+          font-weight:700;
+        ">⬇ Baixar</button>
+
+        <button id="btnFecharRecibo" style="
+          background:#dc2626;
+          border:none;
+          color:#fff;
+          padding:7px 12px;
+          border-radius:8px;
+          cursor:pointer;
+          font-weight:700;
+        ">✖ Fechar</button>
+      </div>
+    </div>
+
+    <iframe id="iframeReciboGerado" src="${urlVisualizar}" style="
+      flex:1;
+      border:none;
+      background:#fff;
+    "></iframe>
+  `;
+
+  document.body.appendChild(modal);
+
+  modal.querySelector("#btnFecharRecibo").onclick = function(){
+    modal.remove();
+  };
+
+  modal.querySelector("#btnDownloadRecibo").onclick = function(){
+    window.open(urlDownload, "_blank");
+  };
+
+  modal.querySelector("#btnVisualizarRecibo").onclick = function(){
+    window.open(urlVisualizar, "_blank");
+  };
+
+  modal.querySelector("#btnImprimirRecibo").onclick = function(){
+    var iframe = modal.querySelector("#iframeReciboGerado");
+
+    try{
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+    }catch(e){
+      window.open(urlVisualizar, "_blank");
+    }
+  };
+}
+/* ─────────────────────────────
+   E-MAIL
+───────────────────────────── */
+function gerarAssuntoEmailRecibo_(numero, processo){
+  return "Envio de Recibo – Processo nº " + (processo || "");
+}
+
+function gerarCorpoEmailReciboHTML_(nome, numero, processo, empresa, urlPdf){
+  return (
+    '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.7;color:#1e293b;">' +
+      '<p>Prezado(a) <strong>' + escapeHtml(nome || "BENEFICIÁRIO(A)") + '</strong>,</p>' +
+      '<p>Esperamos que esteja bem.</p>' +
+      '<p>' +
+        'Encaminhamos, por meio deste, o link para acesso ao seu recibo referente ao processo nº ' +
+        '<strong>' + escapeHtml(processo || "") + '</strong>, em face de ' +
+        '<strong>' + escapeHtml(empresa || "") + '</strong>.' +
+      '</p>' +
+      '<p><strong>📄 Recibo:</strong> ' + escapeHtml(numero || "") + '</p>' +
+      '<p><strong>🔗 Acesse o documento pelo link abaixo:</strong><br>' +
+        '<a href="' + escapeHtml(urlPdf || "") + '" target="_blank">' + escapeHtml(urlPdf || "") + '</a>' +
+      '</p>' +
+      '<hr style="border:none;border-top:1px solid #e2e8f0;margin:18px 0;">' +
+      '<p><strong>📌 Procedimentos para validação do recibo:</strong></p>' +
+      '<ol style="padding-left:18px;margin:0 0 16px 0;">' +
+        '<li>Acessar o recibo pelo link acima;</li>' +
+        '<li>Imprimir o documento;</li>' +
+        '<li>Assinar o recibo;</li>' +
+        '<li>Digitalizar ou fotografar o documento assinado;</li>' +
+        '<li>Encaminhar para este e-mail ou via WhatsApp.</li>' +
+      '</ol>' +
+      '<p><strong>✍️ Caso prefira, o recibo também poderá ser assinado digitalmente.</strong></p>' +
+      '<p><strong>⚠️ Importante:</strong> o recibo somente será considerado válido após o recebimento do documento devidamente assinado.</p>' +
+      '<p>Em caso de dúvidas, permanecemos à disposição.</p>' +
+      '<p><strong>Atenciosamente,</strong><br><strong>SINDEDUCAÇÃO-ES</strong></p>' +
+    '</div>'
+  );
+}
+
+function enviarEmailReciboIndividual_(urlPdf, email, nome, numero, valor, processo, empresa, cardId){
+  if(!email || !urlPdf){
+    alert("Dados insuficientes para envio.");
+    return;
+  }
+
+  var btnEl = document.getElementById(cardId + "_btnEmail");
+
+  if(btnEl && btnEl.dataset.enviado === "1"){
+    alert("Este recibo já foi enviado.");
+    return;
+  }
+
+  if(!confirm("Enviar o recibo " + numero + " para " + email + "?")) return;
+
+  if(btnEl){
+    btnEl.disabled = true;
+    btnEl.textContent = "Enviando...";
+  }
+
+  var assunto = gerarAssuntoEmailRecibo_(numero, processo);
+
+  var corpoHtml = gerarCorpoEmailReciboHTML_(
+    nome,
+    numero,
+    processo,
+    empresa,
+    urlPdf
+  );
+
+  loader(true);
+
+  google.script.run
+    .withSuccessHandler(function(ret){
+      loader(false);
+
+      if(ret && ret.erro){
+        if(btnEl){
+          btnEl.disabled = false;
+          btnEl.textContent = "📧 E-mail";
+        }
+
+        alert("Erro ao enviar: " + (ret.mensagem || ""));
+        return;
+      }
+
+      var badge = document.getElementById(cardId + "_badge");
+      if(badge) badge.style.display = "block";
+
+      if(btnEl){
+        btnEl.textContent = "✓ Enviado";
+        btnEl.style.background = "#059669";
+        btnEl.disabled = true;
+        btnEl.dataset.enviado = "1";
+      }
+
+      alert("✅ E-mail enviado com sucesso para " + email + "!");
+    })
+    .withFailureHandler(function(err){
+      loader(false);
+
+      if(btnEl){
+        btnEl.disabled = false;
+        btnEl.textContent = "📧 E-mail";
+      }
+
+      alert("Falha ao enviar: " + ((err && err.message) || err || ""));
+    })
+    .enviarReciboManualPorEmail({
+      destino: email,
+      assunto: assunto,
+      corpoHtml: corpoHtml,
+      empresa: empresa,
+      processo: processo,
+      valorTotal: valor,
+      arquivos: [{
+        url: urlPdf,
+        numero: numero,
+        nome: nome
+      }]
+    }, SISGEP_TOKEN_SESSAO);
+}
+
+/* ─────────────────────────────
+   RESULTADO / LISTA DE ARQUIVOS
+───────────────────────────── */
+function renderizarListaArquivosRecibo(res){
+  var box = document.getElementById("recListaArquivosGerados");
+  var conteudo = document.getElementById("recListaArquivosConteudo");
+
+  if(!box || !conteudo) return;
+
+  if(!res || !res.arquivos || !res.arquivos.length){
+    box.style.display = "none";
+    return;
+  }
+
+  var processo = res.processo || "";
+  var empresa  = res.empresa || "";
+  var html = '<div style="display:grid;gap:12px;">';
+
+  res.arquivos.forEach(function(arq, idx){
+    var temEmail = !!(arq.email && arq.email.length > 0);
+    var temWhats = !!(arq.whatsapp && arq.whatsapp.length > 0);
+    var msgWhats = gerarMensagemWhatsRecibo(arq, processo, empresa);
+    var cardId = "recCard_" + idx;
+
+    html +=
+      '<div id="'+cardId+'" style="border:1.5px solid #e2e8f0;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 1px 4px rgba(0,20,60,.07);">'+
+        '<div style="background:linear-gradient(135deg,#001f4d,#002f6c);padding:12px 16px;display:flex;align-items:center;gap:10px;">'+
+          '<div style="width:32px;height:32px;border-radius:8px;background:rgba(201,168,76,.2);display:flex;align-items:center;justify-content:center;font-size:16px;">📄</div>'+
+          '<div style="flex:1;min-width:0;">'+
+            '<div style="font-weight:800;color:#fff;font-size:13px;">'+escapeHtml(arq.nome || ("Beneficiário " + (idx + 1)))+'</div>'+
+            '<div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:2px;">'+escapeHtml(arq.numero || "")+(arq.cpf ? " · CPF: " + escapeHtml(arq.cpf) : "")+'</div>'+
+          '</div>'+
+          '<div id="'+cardId+'_badge" style="display:none;background:#059669;color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;">✓ E-mail enviado</div>'+
+          '<div style="font-size:13px;font-weight:700;color:#C9A84C;">R$ '+escapeHtml(arq.valor || "0,00")+'</div>'+
+        '</div>'+
+
+        '<div style="padding:12px 16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">'+
+          '<a href="'+(arq.url || "#")+'" target="_blank" style="display:inline-flex;align-items:center;gap:5px;height:34px;padding:0 14px;border-radius:999px;background:#001f4d;color:#fff;text-decoration:none;font-size:12px;font-weight:700;">📄 Abrir PDF</a>'+
+          '<a href="'+(arq.download || arq.url || "#")+'" target="_blank" download style="display:inline-flex;align-items:center;gap:5px;height:34px;padding:0 14px;border-radius:999px;background:#fff;color:#001f4d;border:1.5px solid #e2e8f0;text-decoration:none;font-size:12px;font-weight:700;">⬇ Download</a>'+
+
+          (temWhats
+            ? '<button type="button" onclick="abrirWhatsAppRecibo_(\'' + escapeHtml(arq.numero || "") + '\',\'' + escapeHtml(arq.whatsapp || "") + '\',\'' + escapeHtml(arq.nome || "") + '\',\'' + escapeHtml(processo) + '\',\'' + escapeHtml(empresa) + '\',\'' + escapeHtml(arq.url || "") + '\')" style="display:inline-flex;align-items:center;gap:5px;height:34px;padding:0 14px;border-radius:999px;background:#25d366;color:#fff;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;">💬 WhatsApp</button>'+
+              '<button type="button" id="'+cardId+'_btnCopyWhats" onclick="copiarWhatsAppRecibo_(\''+cardId+'_btnCopyWhats\', \''+encodeURIComponent(msgWhats)+'\')" style="display:inline-flex;align-items:center;gap:5px;height:34px;padding:0 12px;border-radius:999px;background:#fff;color:#475569;border:1.5px solid #e2e8f0;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;">📋 Copiar link</button>'
+            : '<span style="display:inline-flex;align-items:center;height:34px;padding:0 12px;border-radius:999px;background:#f1f5f9;color:#94a3b8;font-size:12px;font-weight:600;">💬 Sem WhatsApp</span>'
+          )+
+
+          (temEmail
+            ? '<button type="button" id="'+cardId+'_btnEmail" onclick="enviarEmailReciboIndividual_(\''+escapeHtml(arq.url || "")+'\',\''+escapeHtml(arq.email || "")+'\',\''+escapeHtml(arq.nome || "")+'\',\''+escapeHtml(arq.numero || "")+'\',\''+escapeHtml(arq.valor || "")+'\',\''+escapeHtml(processo)+'\',\''+escapeHtml(empresa)+'\',\''+cardId+'\')" style="display:inline-flex;align-items:center;gap:5px;height:34px;padding:0 14px;border-radius:999px;background:#2563eb;color:#fff;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;">📧 E-mail</button>'
+            : '<span style="display:inline-flex;align-items:center;height:34px;padding:0 12px;border-radius:999px;background:#f1f5f9;color:#94a3b8;font-size:12px;font-weight:600;">📧 Sem e-mail</span>'
+          )+
+        '</div>'+
+      '</div>';
+  });
+
+  html += '</div>';
+
+  conteudo.innerHTML = html;
+  box.style.display = "block";
+}
+
+function modoReciboPosGeracao(res){
+  window.__ULTIMO_RESULTADO_RECIBO__ = res || null;
+
+  var btnGerar = document.getElementById("btnGerarRecibo");
+  var btnNovo  = document.getElementById("btnNovoRecibo");
+  var resEl    = document.getElementById("recResultado");
+
+  if(btnGerar) btnGerar.style.display = "none";
+  if(btnNovo) btnNovo.style.display = "inline-block";
+
+  if(resEl){
+    resEl.style.display = "block";
+
+    var totalGeradoEl = document.getElementById("recTotalGerado");
+    var valorTotalEl  = document.getElementById("recValorTotal");
+    var processoResEl = document.getElementById("recProcessoRes");
+
+    if(totalGeradoEl) totalGeradoEl.textContent = (res.totalGerado || 0) + " recibo(s)";
+    if(valorTotalEl) valorTotalEl.textContent = "R$ " + (res.valorTotal || "0,00");
+    if(processoResEl) processoResEl.textContent = (res.processo || "") + " · " + (res.empresa || "");
+  }
+
+  var btnEmail = document.getElementById("btnEnviarEmailRecibo");
+
+  if(btnEmail){
+    btnEmail.onclick = function(){
+      var emailEl = document.getElementById("recEmail");
+      var destino = emailEl ? String(emailEl.value || "").trim() : "";
+
+      if(!destino){
+        alert("Informe o e-mail no campo do processo.");
+        if(emailEl) emailEl.focus();
+        return;
+      }
+
+      var resultado = window.__ULTIMO_RESULTADO_RECIBO__;
+
+      if(!resultado || !resultado.arquivos || !resultado.arquivos.length){
+        alert("Nenhum recibo disponível para envio.");
+        return;
+      }
+
+      var primeiro = resultado.arquivos[0] || {};
+
+      var assunto = gerarAssuntoEmailRecibo_(
+        primeiro.numero || "",
+        resultado.processo || ""
+      );
+
+      var corpoHtml = gerarCorpoEmailReciboHTML_(
+        primeiro.nome || "BENEFICIÁRIO(A)",
+        primeiro.numero || "",
+        resultado.processo || "",
+        resultado.empresa || "",
+        primeiro.url || ""
+      );
+
+      loader(true);
+
+      google.script.run
+        .withSuccessHandler(function(ret){
+          loader(false);
+
+          if(ret && ret.erro){
+            alert(ret.mensagem || "Erro ao enviar e-mail.");
+            return;
+          }
+
+          alert((ret && ret.mensagem) || "E-mail enviado com sucesso!");
+        })
+        .withFailureHandler(function(err){
+          loader(false);
+          alert("Erro ao enviar e-mail: " + ((err && err.message) || err || ""));
+        })
+        .enviarReciboManualPorEmail({
+          destino: destino,
+          assunto: assunto,
+          corpoHtml: corpoHtml,
+          empresa: resultado.empresa || "",
+          processo: resultado.processo || "",
+          valorTotal: resultado.valorTotal || "",
+          arquivos: resultado.arquivos || []
+        }, SISGEP_TOKEN_SESSAO);
+    };
+  }
+
+  var btnWhats = document.getElementById("btnEnviarWhatsRecibo");
+
+  if(btnWhats){
+    btnWhats.onclick = function(){
+      var resultado = window.__ULTIMO_RESULTADO_RECIBO__;
+
+      if(!resultado || !resultado.arquivos || !resultado.arquivos.length){
+        alert("Nenhum recibo disponível.");
+        return;
+      }
+
+      var arq = resultado.arquivos[0];
+      var msg = gerarMensagemWhatsRecibo(
+        arq,
+        resultado.processo || "",
+        resultado.empresa || ""
+      );
+
+      window.open(
+        "https://wa.me/?text=" + encodeURIComponent(msg),
+        "_blank"
+      );
+    };
+  }
+
+  renderizarListaArquivosRecibo(res);
+
+  try{
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
+  }catch(_){}
+}
+/* ─────────────────────────────
+   RESET
+───────────────────────────── */
+function resetarRecibo(){
+  var recProcesso = document.getElementById("recProcesso");
+  var recEmpresa  = document.getElementById("recEmpresa");
+  var recValor    = document.getElementById("recValor");
+  var recEmail    = document.getElementById("recEmail");
+
+  if(recProcesso) recProcesso.value = "";
+  if(recEmpresa)  recEmpresa.value  = "";
+  if(recValor)    recValor.value    = "";
+  if(recEmail)    recEmail.value    = "";
+
+  var lista = document.getElementById("listaTrabalhadoresRecibo");
+  if(lista) lista.innerHTML = "";
+
+  limparReciboStatus();
+  atualizarConferenciaRecibo();
+  atualizarContadorBeneficiariosRecibo_();
+
+  var btnGerar = document.getElementById("btnGerarRecibo");
+  var btnNovo  = document.getElementById("btnNovoRecibo");
+  var resEl    = document.getElementById("recResultado");
+  var listaArquivos = document.getElementById("recListaArquivosGerados");
+
+  if(btnGerar) btnGerar.style.display = "inline-block";
+  if(btnNovo)  btnNovo.style.display  = "none";
+  if(resEl)    resEl.style.display    = "none";
+  if(listaArquivos) listaArquivos.style.display = "none";
+
+  window.__ULTIMO_RESULTADO_RECIBO__ = null;
+}
+
+function montarLinhaBeneficiarioRecibo(dados){
+  dados = dados || {};
+
+  var div = document.createElement("div");
+  div.className = "linha-trabalhador-recibo";
+  div.style.cssText =
+    "padding:18px;border:1px solid #dbe5f0;border-radius:18px;background:#fff;margin-bottom:14px;position:relative;box-shadow:0 2px 10px rgba(0,20,60,.05);";
+
+  div.innerHTML = `
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #eef2f7;">
+    <div class="benef-avatar" style="
+      width:46px;height:46px;border-radius:14px;flex-shrink:0;
+      background:linear-gradient(135deg,#001f4d,#1565C0);
+      display:flex;align-items:center;justify-content:center;
+      font-size:16px;font-weight:900;color:#fff;letter-spacing:-.5px;
+      box-shadow:0 4px 12px rgba(0,31,77,.25);
+    ">?</div>
+
+    <div style="flex:1;min-width:0;">
+      <div class="benef-nome-label" style="font-size:14px;font-weight:900;color:#0f172a;">Novo beneficiário</div>
+      <div class="benef-cpf-label" style="font-size:11.5px;color:#64748b;margin-top:2px;font-weight:600;">CPF não informado</div>
+    </div>
+
+    <div class="badge-recibo-individual" style="display:none;background:linear-gradient(135deg,#059669,#047857);color:#fff;font-size:11px;font-weight:800;padding:6px 12px;border-radius:999px;">
+      ✅ Emitido
+    </div>
+
+    <button type="button"
+      title="Remover beneficiário"
+      style="width:32px;height:32px;border:none;background:#fee2e2;color:#dc2626;border-radius:10px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;"
+      onclick="this.closest('.linha-trabalhador-recibo').remove(); atualizarContadorBeneficiariosRecibo_(); atualizarConferenciaRecibo();">
+      ×
+    </button>
+  </div>
+
+  <div style="font-size:11px;font-weight:900;color:#001f4d;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">
+    Dados do beneficiário
+  </div>
+
+  <div style="display:grid;grid-template-columns:2fr 1.2fr 1fr;gap:10px;margin-bottom:14px;">
+    <div>
+      <label style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:5px;">Nome completo *</label>
+      <input class="rec-nome" type="text" value="${dados.nome || ""}" placeholder="Nome completo do beneficiário"
+        style="width:100%;height:42px;border:1.5px solid #e2e8f0;border-radius:11px;padding:0 12px;font-size:13px;font-weight:600;">
+    </div>
+
+    <div>
+      <label style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:5px;">CPF *</label>
+      <input class="rec-cpf" type="text" maxlength="14" value="${dados.cpf || ""}" placeholder="000.000.000-00"
+        style="width:100%;height:42px;border:1.5px solid #e2e8f0;border-radius:11px;padding:0 12px;font-size:13px;font-weight:700;">
+    </div>
+
+    <div>
+      <label style="font-size:10px;font-weight:900;color:#C9A84C;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:5px;">💰 Valor *</label>
+      <input class="rec-valor" type="text" value="${dados.valor || ""}" placeholder="0,00"
+        style="width:100%;height:42px;border:1.5px solid #fde68a;border-radius:11px;padding:0 12px;font-size:15px;font-weight:900;background:#fffbeb;">
+    </div>
+  </div>
+
+  <div style="font-size:11px;font-weight:900;color:#001f4d;text-transform:uppercase;letter-spacing:.08em;margin:8px 0 10px;">
+    Pagamento
+  </div>
+
+  <div style="display:grid;grid-template-columns:160px 1fr;gap:10px;margin-bottom:14px;">
+    <div>
+      <label style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:5px;">Forma</label>
+      <select class="rec-forma"
+        style="width:100%;height:42px;border:1.5px solid #e2e8f0;border-radius:11px;padding:0 12px;font-size:13px;font-weight:700;">
+        <option value="PIX">⚡ PIX</option>
+        <option value="CHEQUE">🏦 Cheque</option>
+      </select>
+    </div>
+
+    <div class="campo-pix">
+      <label style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:5px;">
+        Chave PIX
+      </label>
+
+      <div style="display:grid;grid-template-columns:150px 1fr;gap:8px;">
+        <select class="rec-tipo-pix"
+          style="height:42px;border:1.5px solid #e2e8f0;border-radius:11px;padding:0 10px;font-size:12px;font-weight:800;">
+          <option value="CPF">CPF</option>
+          <option value="TELEFONE">Telefone</option>
+          <option value="EMAIL">E-mail</option>
+          <option value="ALEATORIA">Aleatória</option>
+        </select>
+
+        <input class="rec-pix" type="text" value="${dados.pix || ""}" placeholder="Informe a chave PIX"
+          style="width:100%;height:42px;border:1.5px solid #e2e8f0;border-radius:11px;padding:0 12px;font-size:13px;">
+      </div>
+    </div>
+  </div>
+
+  <div class="campo-cheque" style="display:none;margin-bottom:14px;">
+    <div style="display:grid;grid-template-columns:1fr 120px 100px 1.2fr 150px;gap:10px;">
+      <div>
+        <label style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:5px;">Banco</label>
+        <input class="rec-cheque-banco" type="text" value="${dados.chequeBanco || "Sicoob"}"
+          style="width:100%;height:42px;border:1.5px solid #e2e8f0;border-radius:11px;padding:0 12px;font-size:13px;font-weight:700;">
+      </div>
+
+      <div>
+        <label style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:5px;">Agência</label>
+        <input class="rec-cheque-agencia" type="text" value="${dados.chequeAgencia || "3010"}"
+          style="width:100%;height:42px;border:1.5px solid #e2e8f0;border-radius:11px;padding:0 12px;font-size:13px;font-weight:700;">
+      </div>
+
+      <div>
+        <label style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:5px;">Série</label>
+        <input class="rec-cheque-serie" type="text" value="${dados.chequeSerie || "001"}"
+          style="width:100%;height:42px;border:1.5px solid #e2e8f0;border-radius:11px;padding:0 12px;font-size:13px;font-weight:700;">
+      </div>
+
+      <div>
+        <label style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:5px;">Nº Cheque</label>
+        <input class="rec-cheque-numero" type="text" value="${dados.chequeNumero || ""}" placeholder="Número do cheque"
+          style="width:100%;height:42px;border:1.5px solid #e2e8f0;border-radius:11px;padding:0 12px;font-size:13px;">
+      </div>
+
+      <div>
+        <label style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:5px;">Data Cheque</label>
+        <input class="rec-cheque-data" type="date" value="${dados.chequeData || ""}"
+          style="width:100%;height:42px;border:1.5px solid #e2e8f0;border-radius:11px;padding:0 12px;font-size:13px;">
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
+    <div>
+      <label style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:5px;">📧 E-mail</label>
+      <input class="rec-email" type="email" value="${dados.email || ""}" placeholder="email@exemplo.com"
+        style="width:100%;height:42px;border:1.5px solid #e2e8f0;border-radius:11px;padding:0 12px;font-size:13px;">
+    </div>
+
+    <div>
+      <label style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:5px;">💬 WhatsApp</label>
+      <input class="rec-whatsapp" type="text" maxlength="15" value="${dados.whatsapp || ""}" placeholder="(27) 99999-9999"
+        style="width:100%;height:42px;border:1.5px solid #e2e8f0;border-radius:11px;padding:0 12px;font-size:13px;">
+    </div>
+
+    <div>
+      <label style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:5px;">📝 Observação</label>
+      <input class="rec-obs" type="text" value="${dados.observacao || dados.observacoes || ""}" placeholder="Opcional"
+        style="width:100%;height:42px;border:1.5px solid #e2e8f0;border-radius:11px;padding:0 12px;font-size:13px;">
+    </div>
+  </div>
+
+  <div style="display:flex;gap:7px;flex-wrap:wrap;padding-top:12px;border-top:1px solid #f1f5f9;align-items:center;">
+    <button type="button" class="btn-preview-individual"
+      style="height:34px;padding:0 14px;border:1.5px solid #e2e8f0;border-radius:999px;background:#fff;color:#475569;font-size:12px;font-weight:800;cursor:pointer;">
+      👁 Pré-visualizar
+    </button>
+
+    <button type="button" class="btn-emitir-individual"
+      style="height:34px;padding:0 16px;border:none;border-radius:999px;background:linear-gradient(135deg,#001f4d,#1565C0);color:#fff;font-size:12px;font-weight:800;cursor:pointer;">
+      📄 Emitir
+    </button>
+
+    <button type="button" class="btn-whats-individual"
+      style="height:34px;padding:0 16px;border:none;border-radius:999px;background:linear-gradient(135deg,#25d366,#128C7E);color:#fff;font-size:12px;font-weight:800;cursor:pointer;">
+      💬 WhatsApp
+    </button>
+
+    <button type="button" class="btn-email-individual"
+      style="height:34px;padding:0 16px;border:none;border-radius:999px;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;font-size:12px;font-weight:800;cursor:pointer;">
+      📧 E-mail
+    </button>
+  </div>
+`;
+
+  var nomeEl = div.querySelector(".rec-nome");
+  var cpfEl = div.querySelector(".rec-cpf");
+  var valorEl = div.querySelector(".rec-valor");
+  var formaEl = div.querySelector(".rec-forma");
+  var pixEl = div.querySelector(".rec-pix");
+  var tipoPixEl = div.querySelector(".rec-tipo-pix");
+  var emailEl = div.querySelector(".rec-email");
+  var whatsEl = div.querySelector(".rec-whatsapp");
+  var obsEl = div.querySelector(".rec-obs");
+
+  var chequeBancoEl = div.querySelector(".rec-cheque-banco");
+  var chequeAgenciaEl = div.querySelector(".rec-cheque-agencia");
+  var chequeSerieEl = div.querySelector(".rec-cheque-serie");
+  var chequeNumeroEl = div.querySelector(".rec-cheque-numero");
+  var chequeDataEl = div.querySelector(".rec-cheque-data");
+
+  var campoPix = div.querySelector(".campo-pix");
+  var campoCheque = div.querySelector(".campo-cheque");
+
+  var previewBt = div.querySelector(".btn-preview-individual");
+  var emitirBt = div.querySelector(".btn-emitir-individual");
+  var whatsBt = div.querySelector(".btn-whats-individual");
+  var emailBt = div.querySelector(".btn-email-individual");
+  var badgeEl = div.querySelector(".badge-recibo-individual");
+
+  var avatarEl  = div.querySelector(".benef-avatar");
+  var nomeLabel = div.querySelector(".benef-nome-label");
+  var cpfLabel  = div.querySelector(".benef-cpf-label");
+
+  function mascaraCPF_(valor){
+    var v = String(valor || "").replace(/\D/g, "").substring(0,11);
+    if(v.length > 9) return v.replace(/^(\d{3})(\d{3})(\d{3})(\d{0,2}).*/, "$1.$2.$3-$4");
+    if(v.length > 6) return v.replace(/^(\d{3})(\d{3})(\d{0,3}).*/, "$1.$2.$3");
+    if(v.length > 3) return v.replace(/^(\d{3})(\d{0,3}).*/, "$1.$2");
+    return v;
+  }
+
+  function mascaraTelefone_(valor){
+    var v = String(valor || "").replace(/\D/g, "").substring(0,11);
+    if(v.length > 10){
+      v = v.replace(/^(\d{2})(\d)/g, "($1) $2");
+      v = v.replace(/(\d{5})(\d)/, "$1-$2");
+    }else if(v.length > 5){
+      v = v.replace(/^(\d{2})(\d)/g, "($1) $2");
+      v = v.replace(/(\d{4})(\d)/, "$1-$2");
+    }else if(v.length > 2){
+      v = v.replace(/^(\d{2})(\d)/g, "($1) $2");
+    }
+    return v;
+  }
+
+  function mascaraValor_(valor){
+    var v = String(valor || "").replace(/\D/g, "");
+    if(!v) return "";
+    return (parseInt(v,10) / 100).toLocaleString("pt-BR", {
+      minimumFractionDigits:2,
+      maximumFractionDigits:2
+    });
+  }
+
+  function atualizarAvatar(){
+    var nome = String(nomeEl.value || "").trim();
+    var iniciais = nome
+      ? nome.split(" ").filter(Boolean).slice(0,2).map(function(p){ return p[0].toUpperCase(); }).join("")
+      : "?";
+
+    avatarEl.textContent = iniciais;
+    nomeLabel.textContent = nome || "Novo beneficiário";
+    cpfLabel.textContent = cpfEl.value || "CPF não informado";
+  }
+
+  function sincronizarPixAutomatico(){
+    if(!pixEl || !tipoPixEl) return;
+
+    if(tipoPixEl.value === "CPF"){
+      pixEl.value = mascaraCPF_(cpfEl.value);
+      pixEl.placeholder = "000.000.000-00";
+    }else if(tipoPixEl.value === "TELEFONE"){
+      pixEl.value = mascaraTelefone_(whatsEl.value);
+      pixEl.placeholder = "(27) 99999-9999";
+    }else if(tipoPixEl.value === "EMAIL"){
+      pixEl.value = String(emailEl.value || "").trim();
+      pixEl.placeholder = "email@exemplo.com";
+    }else{
+      pixEl.placeholder = "Chave aleatória";
+    }
+  }
+
+  function alternarForma(){
+    var isCheque = formaEl.value === "CHEQUE";
+    if(campoPix) campoPix.style.display = isCheque ? "none" : "";
+    if(campoCheque) campoCheque.style.display = isCheque ? "" : "none";
+    atualizarConferenciaRecibo();
+  }
+
+  function dadosLinha(){
+    var processoEl = document.getElementById("recProcesso");
+    var empresaEl = document.getElementById("recEmpresa");
+
+    return {
+      nome: String(nomeEl.value || "").trim(),
+      cpf: String(cpfEl.value || "").trim(),
+      valor: String(valorEl.value || "").trim(),
+      formaPagamento: String(formaEl.value || "PIX").trim().toUpperCase(),
+      pix: String(pixEl.value || "").trim(),
+      tipoPix: String(tipoPixEl.value || "").trim(),
+
+      chequeBanco: String(chequeBancoEl.value || "Sicoob").trim(),
+      chequeAgencia: String(chequeAgenciaEl.value || "3010").trim(),
+      chequeSerie: String(chequeSerieEl.value || "001").trim(),
+      chequeNumero: String(chequeNumeroEl.value || "").trim(),
+      chequeData: String(chequeDataEl.value || "").trim(),
+
+      email: String(emailEl.value || "").trim(),
+      whatsapp: String(whatsEl.value || "").trim(),
+      observacao: String(obsEl.value || "").trim(),
+
+      processo: processoEl ? String(processoEl.value || "").trim() : "",
+      empresa: empresaEl ? String(empresaEl.value || "").trim() : ""
+    };
+  }
+
+  function validarLinhaParaAcao(d, exigeRecibo){
+    if(!d.nome){ alert("Informe o nome do beneficiário."); nomeEl.focus(); return false; }
+    if(!d.cpf){ alert("Informe o CPF."); cpfEl.focus(); return false; }
+    if(String(d.cpf).replace(/\D/g,"").length !== 11){ alert("Informe um CPF válido."); cpfEl.focus(); return false; }
+    if(!d.valor || d.valor === "0,00"){ alert("Informe o valor."); valorEl.focus(); return false; }
+
+    if(d.formaPagamento === "PIX" && !d.pix){
+      alert("Informe a chave PIX.");
+      pixEl.focus();
+      return false;
+    }
+
+    if(d.formaPagamento === "CHEQUE"){
+      if(!d.chequeBanco){ alert("Informe o banco."); chequeBancoEl.focus(); return false; }
+      if(!d.chequeAgencia){ alert("Informe a agência."); chequeAgenciaEl.focus(); return false; }
+      if(!d.chequeSerie){ alert("Informe a série."); chequeSerieEl.focus(); return false; }
+      if(!d.chequeNumero){ alert("Informe o número do cheque."); chequeNumeroEl.focus(); return false; }
+      if(!d.chequeData){ alert("Informe a data do cheque."); chequeDataEl.focus(); return false; }
+    }
+
+    if(!d.processo){ alert("Informe ou selecione o processo."); return false; }
+    if(!d.empresa){ alert("Informe a empresa."); return false; }
+
+    if(exigeRecibo && (!div.dataset.numeroRecibo || !div.dataset.urlRecibo)){
+      alert("Emita o recibo individual antes desta ação.");
+      return false;
+    }
+
+    return true;
+  }
+
+  function acionarBotaoBeneficiarioRecibo_(acao, botao){
+    var d = dadosLinha();
+
+    if(acao === "preview"){
+      if(!validarLinhaParaAcao(d, false)) return;
+
+      var novaAba = window.open("", "_blank");
+      if(!novaAba){
+        alert("O navegador bloqueou a pré-visualização.");
+        return;
+      }
+
+      loader(true);
+
+      google.script.run
+        .withSuccessHandler(function(html){
+          loader(false);
+
+          if(!html){
+            try{ novaAba.close(); }catch(_){}
+            alert("Não foi possível gerar a pré-visualização.");
+            return;
+          }
+
+          novaAba.document.open();
+          novaAba.document.write(html);
+          novaAba.document.close();
+        })
+        .withFailureHandler(function(err){
+          loader(false);
+          try{ novaAba.close(); }catch(_){}
+          alert("Erro ao gerar pré-visualização: " + ((err && err.message) || err || ""));
+        })
+        .previewReciboWeb({
+          nome: d.nome,
+          cpf: d.cpf,
+          valor: d.valor,
+          processo: d.processo,
+          empresa: d.empresa,
+          formaPagamento: d.formaPagamento,
+          pix: d.formaPagamento === "PIX" ? d.pix : "",
+          tipoPix: d.tipoPix,
+
+          chequeBanco: d.chequeBanco,
+          chequeAgencia: d.chequeAgencia,
+          chequeSerie: d.chequeSerie,
+          chequeNumero: d.formaPagamento === "CHEQUE" ? d.chequeNumero : "",
+          chequeData: d.formaPagamento === "CHEQUE" ? d.chequeData : "",
+
+          observacao: d.observacao
+        }, SISGEP_TOKEN_SESSAO);
+
+      return;
+    }
+
+    if(acao === "emitir"){
+      if(!validarLinhaParaAcao(d, false)) return;
+
+      if(botao){
+        botao.disabled = true;
+        botao.textContent = "Emitindo...";
+      }
+
+      loader(true);
+
+      google.script.run
+        .withSuccessHandler(function(res){
+          loader(false);
+
+          if(botao){
+            botao.disabled = false;
+          }
+
+          if(!res || res.erro || !res.arquivos || !res.arquivos.length){
+            if(botao) botao.textContent = "📄 Emitir";
+            alert((res && res.mensagem) || "Erro ao emitir recibo individual.");
+            return;
+          }
+
+          var arq = res.arquivos[0] || {};
+
+          div.dataset.numeroRecibo = arq.numero || "";
+          div.dataset.urlRecibo = arq.url || "";
+          div.dataset.downloadRecibo = arq.download || arq.url || "";
+
+          if(badgeEl) badgeEl.style.display = "inline-flex";
+          if(botao) botao.textContent = "🔄 Reemitir";
+
+          if(arq.url){
+            abrirVisualizacaoReciboGerado_(
+              arq.url,
+              "Recibo " + (arq.numero || ""),
+              arq.download || arq.url
+            );
+          }
+        })
+        .withFailureHandler(function(err){
+          loader(false);
+
+          if(botao){
+            botao.disabled = false;
+            botao.textContent = "📄 Emitir";
+          }
+
+          alert("Erro ao emitir recibo individual: " + ((err && err.message) || err || ""));
+        })
+        .gerarReciboWeb({
+          idProcesso: document.getElementById("recProcessoSelect")
+            ? document.getElementById("recProcessoSelect").value.trim()
+            : "",
+
+          trabalhadores: [{
+            nome: d.nome,
+            cpf: d.cpf,
+            valor: d.valor,
+            formaPagamento: d.formaPagamento,
+
+            pix: d.formaPagamento === "PIX" ? d.pix : "",
+            tipoPix: d.tipoPix,
+
+            chequeBanco: d.chequeBanco,
+            chequeAgencia: d.chequeAgencia,
+            chequeSerie: d.chequeSerie,
+            chequeNumero: d.formaPagamento === "CHEQUE" ? d.chequeNumero : "",
+            chequeData: d.formaPagamento === "CHEQUE" ? d.chequeData : "",
+
+            email: d.email,
+            whatsapp: d.whatsapp,
+            observacao: d.observacao
+          }],
+
+          processo: d.processo,
+          empresa: d.empresa,
+          valorTotal: d.valor
+        }, SISGEP_TOKEN_SESSAO);
+
+      return;
+    }
+
+    if(acao === "whatsapp"){
+      if(!validarLinhaParaAcao(d, true)) return;
+
+      if(!d.whatsapp){
+        alert("Informe o WhatsApp do beneficiário.");
+        whatsEl.focus();
+        return;
+      }
+
+      abrirWhatsAppRecibo_(
+        div.dataset.numeroRecibo,
+        d.whatsapp,
+        d.nome,
+        d.processo,
+        d.empresa,
+        div.dataset.urlRecibo
+      );
+
+      return;
+    }
+
+    if(acao === "email"){
+      if(!validarLinhaParaAcao(d, true)) return;
+
+      if(!d.email){
+        alert("Informe o e-mail do beneficiário.");
+        emailEl.focus();
+        return;
+      }
+
+      if(!isEmailValido(d.email)){
+        alert("O e-mail informado é inválido.");
+        emailEl.focus();
+        return;
+      }
+
+      enviarEmailReciboIndividual_(
+        div.dataset.urlRecibo,
+        d.email,
+        d.nome,
+        div.dataset.numeroRecibo,
+        d.valor,
+        d.processo,
+        d.empresa,
+        "linha_" + Date.now()
+      );
+
+      return;
+    }
+  }
+
+  nomeEl.addEventListener("input", atualizarAvatar);
+
+  cpfEl.addEventListener("input", function(){
+    this.value = mascaraCPF_(this.value);
+    atualizarAvatar();
+
+    if(tipoPixEl.value === "CPF"){
+      pixEl.value = mascaraCPF_(this.value);
+    }
+
+    clearTimeout(window._timerBuscaBenef);
+    window._timerBuscaBenef = setTimeout(function(){
+      var cpf = cpfEl.value.replace(/\D/g,"");
+      if(cpf.length === 11) buscarCadastroLinhaRecibo_(div);
+    }, 700);
+  });
+
+  whatsEl.addEventListener("input", function(){
+    this.value = mascaraTelefone_(this.value);
+
+    if(tipoPixEl.value === "TELEFONE"){
+      pixEl.value = mascaraTelefone_(this.value);
+    }
+  });
+
+  emailEl.addEventListener("input", function(){
+    if(tipoPixEl.value === "EMAIL"){
+      pixEl.value = String(this.value || "").trim();
+    }
+  });
+
+  valorEl.addEventListener("input", function(){
+    this.value = mascaraValor_(this.value);
+    atualizarConferenciaRecibo();
+  });
+
+  formaEl.addEventListener("change", alternarForma);
+
+  tipoPixEl.addEventListener("change", function(){
+    pixEl.value = "";
+    sincronizarPixAutomatico();
+    atualizarConferenciaRecibo();
+  });
+
+  pixEl.addEventListener("input", function(){
+    if(tipoPixEl.value === "CPF"){
+      this.value = mascaraCPF_(this.value);
+    }
+
+    if(tipoPixEl.value === "TELEFONE"){
+      this.value = mascaraTelefone_(this.value);
+    }
+  });
+
+  previewBt.addEventListener("click", function(){
+    acionarBotaoBeneficiarioRecibo_("preview", previewBt);
+  });
+
+  emitirBt.addEventListener("click", function(){
+    acionarBotaoBeneficiarioRecibo_("emitir", emitirBt);
+  });
+
+  whatsBt.addEventListener("click", function(){
+    acionarBotaoBeneficiarioRecibo_("whatsapp", whatsBt);
+  });
+
+  emailBt.addEventListener("click", function(){
+    acionarBotaoBeneficiarioRecibo_("email", emailBt);
+  });
+
+  div.querySelectorAll("input, select").forEach(function(el){
+    el.addEventListener("input", atualizarConferenciaRecibo);
+    el.addEventListener("change", atualizarConferenciaRecibo);
+  });
+
+  if(dados.formaPagamento){
+    formaEl.value = String(dados.formaPagamento).toUpperCase() === "CHEQUE" ? "CHEQUE" : "PIX";
+  }
+
+  if(dados.tipoPix && tipoPixEl){
+    tipoPixEl.value = String(dados.tipoPix).toUpperCase();
+  }
+
+  cpfEl.value = mascaraCPF_(cpfEl.value);
+  whatsEl.value = mascaraTelefone_(whatsEl.value);
+  valorEl.value = mascaraValor_(valorEl.value);
+
+  sincronizarPixAutomatico();
+  atualizarAvatar();
+  alternarForma();
+
+  return div;
+}
+function coletarBeneficiariosRecibo(){
+  var linhas = document.querySelectorAll(".linha-trabalhador-recibo");
+  var trabalhadores = [];
+  var erros = [];
+
+  linhas.forEach(function(linha, idx){
+    var n = idx + 1;
+
+    var nome = String((linha.querySelector(".rec-nome") || {}).value || "").trim();
+    var cpf = String((linha.querySelector(".rec-cpf") || {}).value || "").trim();
+    var valor = String((linha.querySelector(".rec-valor") || {}).value || "").trim();
+    var formaPagamento = String((linha.querySelector(".rec-forma") || {}).value || "PIX").trim().toUpperCase();
+
+    var tipoPix = String((linha.querySelector(".rec-tipo-pix") || {}).value || "").trim();
+    var pix = String((linha.querySelector(".rec-pix") || {}).value || "").trim();
+
+    var chequeBanco = String((linha.querySelector(".rec-cheque-banco") || {}).value || "Sicoob").trim();
+    var chequeAgencia = String((linha.querySelector(".rec-cheque-agencia") || {}).value || "3010").trim();
+    var chequeSerie = String((linha.querySelector(".rec-cheque-serie") || {}).value || "001").trim();
+    var chequeNumero = String((linha.querySelector(".rec-cheque-numero") || {}).value || "").trim();
+    var chequeData = String((linha.querySelector(".rec-cheque-data") || {}).value || "").trim();
+
+    var email = String((linha.querySelector(".rec-email") || {}).value || "").trim();
+    var whatsapp = String((linha.querySelector(".rec-whatsapp") || {}).value || "").trim();
+    var observacao = String((linha.querySelector(".rec-obs") || {}).value || "").trim();
+
+    if(!nome && !cpf && !valor && !pix && !email && !whatsapp && !observacao && !chequeNumero){
+      return;
+    }
+
+    if(formaPagamento !== "CHEQUE"){
+      formaPagamento = "PIX";
+    }
+
+    if(!nome) erros.push("Linha " + n + ": nome não informado");
+    if(!cpf) erros.push("Linha " + n + ": CPF não informado");
+    if(!valor || valor === "R$ 0,00" || valor === "0,00") erros.push("Linha " + n + ": valor não informado");
+
+    if(formaPagamento === "PIX" && !pix){
+      erros.push("Linha " + n + ": PIX não informado");
+    }
+
+    if(formaPagamento === "CHEQUE"){
+      if(!chequeBanco) erros.push("Linha " + n + ": banco do cheque não informado");
+      if(!chequeAgencia) erros.push("Linha " + n + ": agência do cheque não informada");
+      if(!chequeSerie) erros.push("Linha " + n + ": série do cheque não informada");
+      if(!chequeNumero) erros.push("Linha " + n + ": número do cheque não informado");
+      if(!chequeData) erros.push("Linha " + n + ": data do cheque não informada");
+    }
+
+    if(email && !isEmailValido(email)){
+      erros.push("Linha " + n + ": e-mail inválido");
+    }
+
+    trabalhadores.push({
+      nome: nome,
+      cpf: cpf,
+      valor: valor,
+      formaPagamento: formaPagamento,
+
+      tipoPix: formaPagamento === "PIX" ? tipoPix : "",
+      pix: formaPagamento === "PIX" ? pix : "",
+
+      chequeBanco: formaPagamento === "CHEQUE" ? chequeBanco : "",
+      chequeAgencia: formaPagamento === "CHEQUE" ? chequeAgencia : "",
+      chequeSerie: formaPagamento === "CHEQUE" ? chequeSerie : "",
+      chequeNumero: formaPagamento === "CHEQUE" ? chequeNumero : "",
+      chequeData: formaPagamento === "CHEQUE" ? chequeData : "",
+
+      email: email,
+      whatsapp: whatsapp,
+      observacao: observacao
+    });
+  });
+
+  return {
+    trabalhadores: trabalhadores,
+    erros: erros
+  };
+}
+
+function executarGeracaoRecibo_(dados, btn){
+  if(btn){
+    btn.disabled = true;
+    btn.innerText = "Preparando...";
+  }
+
+  var total = (dados.trabalhadores || []).length;
+
+  _mostrarProgressoRecibo_(
+    0,
+    total,
+    "Iniciando geração..."
+  );
+
+  var _polling = null;
+
+  _polling = setInterval(function(){
+    google.script.run
+      .withSuccessHandler(function(prog){
+        if(!prog) return;
+
+        var msg = prog.status === "iniciando"
+          ? "Iniciando geração do lote..."
+          : prog.ultimo
+            ? "Gerando recibo de " + prog.ultimo.split(" ")[0] + "..."
+            : "Gerando documentos...";
+
+        _mostrarProgressoRecibo_(
+          prog.atual || 0,
+          prog.total || total,
+          msg
+        );
+      })
+      .withFailureHandler(function(){})
+      .obterProgressoGeracao(SISGEP_TOKEN_SESSAO);
+  }, 1500);
+
+  google.script.run
+    .withSuccessHandler(function(res){
+      clearInterval(_polling);
+
+      if(res && res.precisaConfirmarDivergencia){
+        _fecharProgressoRecibo_();
+
+        if(btn){
+          btn.disabled = false;
+          btn.innerText = "✅ Emitir Recibos";
+        }
+
+        var seguir = confirm(
+          (res.mensagem || "Foi encontrada diferença no demonstrativo.") +
+          "\n\nDeseja continuar e gerar os recibos mesmo assim?"
+        );
+
+        if(!seguir){
+          setReciboStatus(
+            "Geração cancelada. Revise os valores antes de emitir.",
+            "warn"
+          );
+          return;
+        }
+
+        dados.confirmarDivergencia = true;
+
+        setReciboStatus(
+          "Confirmação recebida. Gerando recibos...",
+          "warn"
+        );
+
+        executarGeracaoRecibo_(dados, btn);
+        return;
+      }
+
+      _fecharProgressoRecibo_();
+
+      if(btn){
+        btn.disabled = false;
+        btn.innerText = "✅ Emitir Recibos";
+      }
+
+      if(res && res.erro){
+        setReciboStatus(
+          "Erro no servidor: " + (res.mensagem || ""),
+          "err"
+        );
+        return;
+      }
+
+      if(!res || !res.arquivos || !res.arquivos.length){
+        setReciboStatus(
+          "Nenhum arquivo retornado.",
+          "warn"
+        );
+        return;
+      }
+
+      var msg = res.totalGerado + " recibo(s) gerado(s) com sucesso.";
+
+      if(res.totalErros > 0){
+        msg += " " + res.totalErros + " com falha.";
+      }
+
+      if(res.divergenciaDemonstrativo){
+        msg += " " + res.mensagemDivergencia;
+      }
+
+      setReciboStatus(msg, "ok");
+      modoReciboPosGeracao(res);
+    })
+    .withFailureHandler(function(err){
+      clearInterval(_polling);
+      _fecharProgressoRecibo_();
+
+      if(btn){
+        btn.disabled = false;
+        btn.innerText = "✅ Emitir Recibos";
+      }
+
+      setReciboStatus(
+        "Falha crítica: " + ((err && err.message) || err),
+        "err"
+      );
+    })
+    .gerarReciboWeb(dados, SISGEP_TOKEN_SESSAO);
+}
+function _mostrarProgressoRecibo_(atual, total, msg){
+  var modal = document.getElementById("modalProgressoGeracao");
+  if(!modal) return;
+  modal.style.display = "flex";
+  var pct = total > 0 ? Math.round((atual / total) * 100) : 0;
+  var barra = document.getElementById("progressoBarraRecibo");
+  var texto = document.getElementById("progressoTextoRecibo");
+  var cont  = document.getElementById("progressoContadorRecibo");
+  if(barra) barra.style.width = pct + "%";
+  if(texto) texto.textContent = msg || "Processando...";
+  if(cont)  cont.textContent  = atual + " / " + total;
+}
+
+function _fecharProgressoRecibo_(){
+  var modal = document.getElementById("modalProgressoGeracao");
+  if(modal) modal.style.display = "none";
+}
+/* ─────────────────────────────
+   OBJETO PRINCIPAL - RECIBO
+───────────────────────────── */
+window.Recibo = {
+
+  adicionarTrabalhador: function(){
+    var lista = document.getElementById("listaTrabalhadoresRecibo");
+    if(!lista) return;
+
+    var limite = 25;
+
+    try{
+      if(typeof CONFIG !== "undefined" && CONFIG && CONFIG.LIMITE_TRABALHADORES){
+        limite = Number(CONFIG.LIMITE_TRABALHADORES) || 25;
+      }
+    }catch(_){
+      limite = 25;
+    }
+
+    var totalAtual = lista.querySelectorAll(".linha-trabalhador-recibo").length;
+
+    if(totalAtual >= limite){
+      setReciboStatus("Limite máximo de " + limite + " beneficiários atingido.", "warn");
+      return;
+    }
+
+    var empty = document.getElementById("benefEmpty");
+    if(empty) empty.style.display = "none";
+
+    var linha = montarLinhaBeneficiarioRecibo();
+    lista.appendChild(linha);
+
+    atualizarContadorBeneficiariosRecibo_();
+    atualizarConferenciaRecibo();
+  },
+
+  preview: function(){
+    limparReciboStatus();
+
+    var linhas = document.querySelectorAll(".linha-trabalhador-recibo");
+
+    if(!linhas.length){
+      setReciboStatus("Adicione ao menos 1 beneficiário.", "warn");
+      return;
+    }
+
+    var candidato = null;
+
+    for(var i = 0; i < linhas.length; i++){
+      var linha = linhas[i];
+
+      var nome  = String((linha.querySelector(".rec-nome") || {}).value || "").trim();
+      var cpf   = String((linha.querySelector(".rec-cpf") || {}).value || "").trim();
+      var valor = String((linha.querySelector(".rec-valor") || {}).value || "").trim();
+      var forma = String((linha.querySelector(".rec-forma") || {}).value || "PIX").trim().toUpperCase();
+      var pix   = String((linha.querySelector(".rec-pix") || {}).value || "").trim();
+
+      var chequeNumero = String((linha.querySelector(".rec-cheque-numero") || {}).value || "").trim();
+      var chequeData   = String((linha.querySelector(".rec-cheque-data") || {}).value || "").trim();
+
+      if(forma !== "CHEQUE") forma = "PIX";
+
+      if(nome && cpf && valor && valor !== "R$ 0,00"){
+        if(forma === "PIX" && !pix) continue;
+        if(forma === "CHEQUE" && !chequeNumero) continue;
+
+        candidato = {
+          nome: nome,
+          cpf: cpf,
+          valor: valor,
+          formaPagamento: forma,
+          pix: forma === "PIX" ? pix : "",
+          chequeNumero: forma === "CHEQUE" ? chequeNumero : "",
+          chequeData: forma === "CHEQUE" ? chequeData : ""
+        };
+
+        break;
+      }
+    }
+
+    if(!candidato){
+      setReciboStatus("Preencha ao menos 1 beneficiário completo para pré-visualizar.", "warn");
+      return;
+    }
+
+    var dados = {
+      nome: candidato.nome,
+      cpf: candidato.cpf,
+      valor: candidato.valor,
+      processo: document.getElementById("recProcesso") ? document.getElementById("recProcesso").value.trim() : "",
+      empresa: document.getElementById("recEmpresa") ? document.getElementById("recEmpresa").value.trim() : "",
+      formaPagamento: candidato.formaPagamento,
+      pix: candidato.pix,
+      chequeNumero: candidato.chequeNumero,
+      chequeData: candidato.chequeData
+    };
+
+    if(!dados.processo){
+      setReciboStatus("Selecione ou informe o processo antes da pré-visualização.", "warn");
+      return;
+    }
+
+    if(!dados.empresa){
+      setReciboStatus("Selecione ou informe a empresa antes da pré-visualização.", "warn");
+      return;
+    }
+
+    var novaAba = window.open("", "_blank");
+
+    if(!novaAba){
+      alert("O navegador bloqueou a pré-visualização.");
+      return;
+    }
+
+    loader(true);
+
+    google.script.run
+      .withSuccessHandler(function(html){
+        loader(false);
+
+        if(!html){
+          try{ novaAba.close(); }catch(_){}
+          setReciboStatus("Não foi possível gerar a pré-visualização.", "err");
+          return;
+        }
+
+        novaAba.document.open();
+        novaAba.document.write(html);
+        novaAba.document.close();
+      })
+      .withFailureHandler(function(err){
+        loader(false);
+
+        try{ novaAba.close(); }catch(_){}
+
+        setReciboStatus("Erro ao gerar pré-visualização: " + ((err && err.message) || err || ""), "err");
+      })
+      .previewReciboWeb(dados, SISGEP_TOKEN_SESSAO);
+  },
+
+    gerar: function(){
+    limparReciboStatus();
+
+    var emEl = document.getElementById("recEmail");
+    if(emEl) emEl.style.borderColor = "";
+
+    var btn = document.getElementById("btnGerarRecibo");
+    if(btn && btn.disabled) return;
+
+    var coleta = coletarBeneficiariosRecibo();
+
+    var dados = {
+      trabalhadores: coleta.trabalhadores,
+      processo: document.getElementById("recProcesso") ? document.getElementById("recProcesso").value.trim() : "",
+      empresa: document.getElementById("recEmpresa") ? document.getElementById("recEmpresa").value.trim() : "",
+      valorTotal: document.getElementById("recValor") ? document.getElementById("recValor").value.trim() : "",
+      recEmail: document.getElementById("recEmail") ? document.getElementById("recEmail").value.trim() : "",
+      idProcesso: document.getElementById("recProcessoSelect") ? document.getElementById("recProcessoSelect").value.trim() : ""
+    };
+
+    if(coleta.erros.length){
+      setReciboStatus("Dados inválidos: " + coleta.erros.join(" | "), "err");
+      return;
+    }
+
+    if(!coleta.trabalhadores.length){
+      setReciboStatus("Adicione pelo menos um beneficiário com dados válidos.", "warn");
+      return;
+    }
+
+    if(!dados.processo){
+      setReciboStatus("Informe o número do processo.", "warn");
+      return;
+    }
+
+    if(!dados.empresa){
+      setReciboStatus("Informe a empresa.", "warn");
+      return;
+    }
+
+    if(dados.recEmail && !isEmailValido(dados.recEmail)){
+      setReciboStatus("E-mail inválido.", "warn");
+
+      if(emEl){
+        emEl.style.borderColor = "#dc2626";
+        emEl.focus();
+      }
+
+      return;
+    }
+
+    if(dados.valorTotal){
+      setReciboStatus("Comunicando com o servidor e conferindo demonstrativo... Aguarde.", "warn");
+    }else{
+      setReciboStatus("Comunicando com o servidor... Aguarde.", "warn");
+    }
+
+    executarGeracaoRecibo_(dados, btn);
+  }
+};
+/* ─────────────────────────────
+   PROCESSOS / MODAL
+───────────────────────────── */
+window.ReciboUI = {
+
+  abrirModalProcesso: function(){
+    var m = document.getElementById("modalNovoProcessoRecibo");
+    if(m) m.style.display = "flex";
+  },
+
+  fecharModalProcesso: function(){
+    var m = document.getElementById("modalNovoProcessoRecibo");
+
+    if(m){
+      m.style.display = "none";
+      m.dataset.editando = "";
+    }
+
+    ["novoRecProcesso","novoRecEmpresa","novoRecObservacoes","novoRecValor"]
+      .forEach(function(id){
+        var el = document.getElementById(id);
+        if(el) el.value = "";
+      });
+  },
+
+  editarProcessoSelecionado: function(){
+    var select = document.getElementById("recProcessoSelect");
+    var modal  = document.getElementById("modalNovoProcessoRecibo");
+
+    if(!select || !select.value){
+      alert("Selecione um processo para editar.");
+      return;
+    }
+
+    var opt = select.options[select.selectedIndex];
+
+    document.getElementById("novoRecProcesso").value = opt.dataset.processo || "";
+    document.getElementById("novoRecEmpresa").value  = opt.dataset.empresa || "";
+    document.getElementById("novoRecObservacoes").value = opt.dataset.obs || "";
+    document.getElementById("novoRecValor").value = opt.dataset.valortotal || "";
+
+    if(modal){
+      modal.dataset.editando = opt.value;
+    }
+
+    this.abrirModalProcesso();
+  },
+
+  salvarNovoProcesso: function(){
+    var modal = document.getElementById("modalNovoProcessoRecibo");
+
+    var dados = {
+      idProcesso: modal ? (modal.dataset.editando || "") : "",
+      processo: document.getElementById("novoRecProcesso") ? document.getElementById("novoRecProcesso").value.trim() : "",
+      empresa: document.getElementById("novoRecEmpresa") ? document.getElementById("novoRecEmpresa").value.trim() : "",
+      observacoes: document.getElementById("novoRecObservacoes") ? document.getElementById("novoRecObservacoes").value.trim() : "",
+      valorTotal: document.getElementById("novoRecValor") ? document.getElementById("novoRecValor").value.trim() : ""
+    };
+
+    if(!dados.processo || !dados.empresa || !dados.valorTotal){
+      alert("Preencha todos os campos obrigatórios.");
+      return;
+    }
+
+    loader(true);
+
+    var metodo = dados.idProcesso ? "editarProcessoRecibo" : "cadastrarNovoProcessoRecibo";
+
+    google.script.run
+      .withSuccessHandler(function(res){
+        loader(false);
+
+        if(res && res.erro){
+          alert(res.mensagem || "Erro ao salvar processo.");
+          return;
+        }
+
+        ReciboUI.fecharModalProcesso();
+
+        alert(dados.idProcesso ? "✏️ Atualizado!" : "✅ Cadastrado!");
+
+        ReciboUI.carregarProcessos();
+      })
+      .withFailureHandler(function(err){
+        loader(false);
+        alert((err && err.message) || err || "Erro ao salvar processo.");
+      })[metodo](dados);
+  },
+
+  carregarProcessos: function(callback){
+    google.script.run
+      .withSuccessHandler(function(lista){
+        var select = document.getElementById("recProcessoSelect");
+        if(!select) return;
+
+        select.innerHTML = '<option value="">Selecione...</option>';
+
+        (lista || []).forEach(function(p){
+          var opt = document.createElement("option");
+
+          opt.value = p.idProcesso;
+          opt.textContent = p.processo + " — " + p.empresa;
+
+          opt.dataset.processo = p.processo || "";
+          opt.dataset.empresa = p.empresa || "";
+          opt.dataset.obs = p.observacoes || "";
+          opt.dataset.valortotal = p.valorTotal || "";
+
+          select.appendChild(opt);
+        });
+
+        if(callback) callback();
+      })
+      .withFailureHandler(function(err){
+        console.error("Erro ao carregar processos:", err);
+      })
+      .listarProcessosRecibo(SISGEP_TOKEN_SESSAO);
+  },
+
+aplicarProcessoSelecionado: function(){
+    var select = document.getElementById("recProcessoSelect");
+    if(!select) return;
+
+    var opt = select.options[select.selectedIndex];
+
+    var recProcesso = document.getElementById("recProcesso");
+    var recEmpresa  = document.getElementById("recEmpresa");
+    var recValor    = document.getElementById("recValor");
+
+    if(recProcesso) recProcesso.value = opt.dataset.processo || "";
+    if(recEmpresa)  recEmpresa.value  = opt.dataset.empresa || "";
+    if(recValor){
+      recValor.value            = opt.dataset.valortotal || "";
+      recValor.readOnly         = false;
+      recValor.style.background = "#fff";
+    }
+
+    travarCamposProcessoRecibo_(!!opt.value);
+    atualizarConferenciaRecibo();
+    setTimeout(liberarCampoValorRecibo_, 50);
+  },
+
+  excluirProcessoSelecionado: function(){
+    var select = document.getElementById("recProcessoSelect");
+
+    if(!select || !select.value){
+      alert("Selecione um processo.");
+      return;
+    }
+
+    if(!confirm("Excluir processo?")) return;
+
+    loader(true);
+
+    google.script.run
+      .withSuccessHandler(function(res){
+        loader(false);
+
+        if(res && res.erro){
+          alert(res.mensagem || "Erro ao excluir processo.");
+          return;
+        }
+
+        alert("Excluído!");
+
+        ReciboUI.carregarProcessos(function(){
+          limparCamposProcessoRecibo();
+          travarCamposProcessoRecibo_(false);
+        });
+      })
+      .withFailureHandler(function(err){
+        loader(false);
+        alert((err && err.message) || err || "Erro ao excluir processo.");
+      })
+      .excluirProcessoRecibo(select.value, SISGEP_TOKEN_SESSAO);
+  }
+};
+/* ─────────────────────────────
+   IMPORTAÇÃO ALVARÁ / PLANILHA
+───────────────────────────── */
+function limparStatusImportacaoAlvara(){
+  var box = document.getElementById("statusImportacaoAlvara");
+  if(!box) return;
+
+  box.style.display = "none";
+  box.innerHTML = "";
+}
+
+function setStatusImportacaoAlvara(msg, tipo){
+  var box = document.getElementById("statusImportacaoAlvara");
+  if(!box) return;
+
+  box.style.display = "block";
+
+  var bg = "#eef4ff";
+  var borda = "#3b82f6";
+  var cor = "#1d4ed8";
+
+  if(tipo === "ok"){
+    bg = "#e8f7ee";
+    borda = "#2e7d32";
+    cor = "#1b5e20";
+  }
+
+  if(tipo === "warn"){
+    bg = "#fff3cd";
+    borda = "#f59e0b";
+    cor = "#7c4a03";
+  }
+
+  if(tipo === "err"){
+    bg = "#f8d7da";
+    borda = "#c62828";
+    cor = "#7f1d1d";
+  }
+
+  box.innerHTML =
+    '<div style="padding:12px;border-radius:10px;background:'+
+    bg+
+    ';border:1px solid '+
+    borda+
+    ';color:'+
+    cor+
+    ';">'+
+    msg+
+    '</div>';
+}
+
+function limparImportacaoAlvaraUI(){
+  var input = document.getElementById("arquivoAlvaraPdf");
+  var resumoPainel = document.getElementById("painelResumoImportacaoAlvara");
+  var resumo = document.getElementById("resumoImportacaoAlvara");
+  var resultado = document.getElementById("resultadoImportacaoAlvara");
+  var lista = document.getElementById("listaBeneficiariosImportados");
+
+  if(input) input.value = "";
+
+  limparStatusImportacaoAlvara();
+
+  if(resumoPainel) resumoPainel.style.display = "none";
+  if(resumo) resumo.innerHTML = "";
+  if(resultado) resultado.style.display = "none";
+
+  if(lista){
+    lista.innerHTML =
+      '<div style="padding:12px;color:#64748b;">Nenhum beneficiário importado ainda.</div>';
+  }
+
+  window.__IMPORTACAO_ALVARA__ = null;
+}
+
+function importarPlanilhaReciboFrontend(){
+  limparReciboStatus();
+
+  var processo = document.getElementById("recProcesso")
+    ? document.getElementById("recProcesso").value.trim()
+    : "";
+
+  if(!processo){
+    setReciboStatus("Informe ou selecione o processo antes de importar pela planilha.", "warn");
+    return;
+  }
+
+  loader(true);
+  setReciboStatus("Importando beneficiários da aba IMPORTAR_RECIBOS...", "info");
+
+  google.script.run
+    .withSuccessHandler(function(res){
+      loader(false);
+
+      if(!res || res.erro){
+        setReciboStatus(
+          (res && res.mensagem) || "Erro ao importar da planilha.",
+          "err"
+        );
+        return;
+      }
+
+      var recProcesso = document.getElementById("recProcesso");
+      var recEmpresa = document.getElementById("recEmpresa");
+
+      if(recProcesso){
+        recProcesso.value = res.processo || processo;
+      }
+
+      if(recEmpresa && res.empresa){
+        recEmpresa.value = res.empresa || "";
+      }
+
+      carregarBeneficiariosImportadosDaPlanilhaNaTela(
+        res.beneficiarios || []
+      );
+
+      atualizarConferenciaRecibo();
+
+      setReciboStatus(
+        "✅ " +
+        (res.quantidadeBeneficiarios || 0) +
+        " beneficiário(s) importado(s) da aba IMPORTAR_RECIBOS.",
+        "ok"
+      );
+    })
+    .withFailureHandler(function(err){
+      loader(false);
+
+      setReciboStatus(
+        "Falha ao importar da planilha: " +
+        ((err && err.message) || err),
+        "err"
+      );
+    })
+    .importarBeneficiariosReciboDaAbaImportacao(processo, SISGEP_TOKEN_SESSAO);
+}
+
+function carregarBeneficiariosImportadosDaPlanilhaNaTela(lista){
+  var container = document.getElementById("listaTrabalhadoresRecibo");
+  if(!container) return;
+
+  if(!Array.isArray(lista) || !lista.length){
+    setReciboStatus(
+      "Nenhum beneficiário encontrado para este processo na aba IMPORTAR_RECIBOS.",
+      "warn"
+    );
+    return;
+  }
+
+  container.innerHTML = "";
+
+  lista.forEach(function(item){
+    var linha = montarLinhaBeneficiarioRecibo(item || {});
+
+    var nomeEl  = linha.querySelector(".rec-nome");
+    var cpfEl   = linha.querySelector(".rec-cpf");
+    var valorEl = linha.querySelector(".rec-valor");
+    var pixEl   = linha.querySelector(".rec-pix");
+    var emailEl = linha.querySelector(".rec-email");
+    var whatsEl = linha.querySelector(".rec-whatsapp");
+    var obsEl   = linha.querySelector(".rec-obs");
+
+    if(nomeEl) nomeEl.value = String(item.nome || "").trim();
+
+    if(cpfEl){
+      cpfEl.value = String(item.cpf || "").trim();
+
+      if(
+        typeof Utils !== "undefined" &&
+        typeof Utils.aplicarMascaraCPF === "function"
+      ){
+        Utils.aplicarMascaraCPF(cpfEl);
+      }
+    }
+
+    if(valorEl) valorEl.value = String(item.valor || "").trim();
+    if(pixEl) pixEl.value = String(item.pix || "").trim();
+
+    if(emailEl){
+      emailEl.value = String(item.email || "").trim();
+      validarEmailInline(emailEl);
+    }
+
+    if(whatsEl){
+      whatsEl.value = String(item.whatsapp || "").trim();
+
+      if(whatsEl.value){
+        aplicarMascaraTelefoneRecibo(whatsEl);
+      }
+    }
+
+    if(obsEl){
+      obsEl.value = String(item.observacao || item.observacoes || "").trim();
+    }
+
+    container.appendChild(linha);
+  });
+
+  atualizarContadorBeneficiariosRecibo_();
+  atualizarConferenciaRecibo();
+
+  setReciboStatus(
+    "Beneficiários importados para edição. Revise, ajuste o que quiser e depois clique em Emitir Recibos.",
+    "ok"
+  );
+}
+
+function importarAlvaraPDFFrontend(){
+  var input = document.getElementById("arquivoAlvaraPdf");
+
+  if(!input || !input.files || !input.files.length){
+    setStatusImportacaoAlvara("Selecione pelo menos um PDF.", "warn");
+    return;
+  }
+
+  var arquivos = Array.prototype.slice.call(input.files || []);
+
+  var pdfs = arquivos.filter(function(file){
+    return (file.type || "").toLowerCase() === "application/pdf";
+  });
+
+  if(!pdfs.length){
+    setStatusImportacaoAlvara("Somente PDFs são permitidos.", "warn");
+    return;
+  }
+
+  limparStatusImportacaoAlvara();
+
+  setStatusImportacaoAlvara(
+    "Processando " + pdfs.length + " arquivo(s)...",
+    "info"
+  );
+
+  loader(true);
+
+  var convertidos = [];
+  var lidos = 0;
+
+  pdfs.forEach(function(file){
+    var reader = new FileReader();
+
+    reader.onload = function(e){
+      try{
+        var dataUrl = e && e.target && e.target.result
+          ? e.target.result
+          : "";
+
+        var partes = String(dataUrl).split(",");
+
+        if(partes.length < 2){
+          throw new Error("Não foi possível converter " + file.name);
+        }
+
+        convertidos.push({
+          nomeArquivo: file.name,
+          mimeType: file.type,
+          base64: partes[1]
+        });
+      }catch(err){
+        console.error("Erro ao converter:", file.name, err);
+      }finally{
+        lidos++;
+
+        if(lidos === pdfs.length){
+          enviar();
+        }
+      }
+    };
+
+    reader.onerror = function(){
+      console.error("Falha ao ler:", file.name);
+
+      lidos++;
+
+      if(lidos === pdfs.length){
+        enviar();
+      }
+    };
+
+    reader.readAsDataURL(file);
+  });
+
+  function enviar(){
+    if(!convertidos.length){
+      loader(false);
+      setStatusImportacaoAlvara(
+        "Nenhum PDF válido pôde ser preparado para envio.",
+        "err"
+      );
+      return;
+    }
+
+    google.script.run
+      .withSuccessHandler(function(res){
+        loader(false);
+
+        if(!res || res.erro){
+          setStatusImportacaoAlvara(
+            (res && res.mensagem) || "Erro ao processar os PDFs.",
+            "err"
+          );
+          return;
+        }
+
+        window.__IMPORTACAO_ALVARA__ = res;
+
+        preencherCamposProcessoImportado({
+          numeroProcesso: res.processo || "",
+          empresa: res.empresa || "",
+          valorTotal: res.valorTotal || ""
+        });
+
+        renderizarResumoImportacaoAlvara({
+          nomeArquivo: (convertidos || [])
+            .map(function(a){ return a.nomeArquivo; })
+            .join(" | "),
+
+          processo: {
+            numeroProcesso: res.processo || "",
+            empresa: res.empresa || "",
+            valorTotal: res.valorTotal || ""
+          },
+
+          quantidadeBeneficiarios: res.totalBeneficiarios || 0,
+          beneficiarios: res.beneficiarios || []
+        });
+
+        renderizarBeneficiariosImportados(
+          res.beneficiarios || []
+        );
+
+        setStatusImportacaoAlvara(
+          "✅ Planilha gerada com sucesso! " +
+          (res.totalBeneficiarios || 0) +
+          " beneficiário(s) identificado(s).",
+          "ok"
+        );
+
+        if(res.url){
+          window.open(res.url, "_blank");
+        }
+      })
+      .withFailureHandler(function(err){
+        loader(false);
+
+        setStatusImportacaoAlvara(
+          "Erro ao processar PDFs: " +
+          ((err && err.message) || err || ""),
+          "err"
+        );
+      })
+      .importarDocumentosEGerarPlanilha({
+        arquivos: convertidos
+      }, SISGEP_TOKEN_SESSAO);
+  }
+}
+
+function tratarRetornoImportacaoAlvara(res){
+  if(!res){
+    setStatusImportacaoAlvara(
+      "O servidor não retornou dados da importação.",
+      "err"
+    );
+    return;
+  }
+
+  if(res.erro){
+    setStatusImportacaoAlvara(
+      res.mensagem || "Não foi possível importar o alvará.",
+      "err"
+    );
+    return;
+  }
+
+  var qtd = Number(
+    res.quantidadeBeneficiarios ||
+    ((res.beneficiarios || []).length || 0)
+  );
+
+  if(qtd > 30){
+    setStatusImportacaoAlvara(
+      res.mensagem ||
+      ("O PDF contém " + qtd + " beneficiários. Limite: 30 por lote."),
+      "warn"
+    );
+    return;
+  }
+
+  if(res.ok === false){
+    setStatusImportacaoAlvara(
+      res.mensagem || "Não foi possível concluir a importação.",
+      "warn"
+    );
+    return;
+  }
+
+  window.__IMPORTACAO_ALVARA__ = res;
+
+  preencherCamposProcessoImportado(res.processo || {});
+  renderizarResumoImportacaoAlvara(res);
+  renderizarBeneficiariosImportados(res.beneficiarios || []);
+
+  setStatusImportacaoAlvara(
+    "Importação concluída com sucesso. " +
+    qtd +
+    " beneficiário(s) identificado(s).",
+    "ok"
+  );
+}
+
+function preencherCamposProcessoImportado(processo){
+  if(!processo) return;
+
+  var procEl = document.getElementById("recProcesso");
+  var empEl  = document.getElementById("recEmpresa");
+  var valEl  = document.getElementById("recValor");
+
+  if(procEl && processo.numeroProcesso){
+    procEl.value = processo.numeroProcesso;
+  }
+
+  if(empEl && processo.empresa){
+    empEl.value = processo.empresa;
+  }
+
+  if(valEl && processo.valorTotal){
+    valEl.value = processo.valorTotal;
+  }
+
+  atualizarConferenciaRecibo();
+}
+
+function renderizarResumoImportacaoAlvara(res){
+  var painel = document.getElementById("painelResumoImportacaoAlvara");
+  var box = document.getElementById("resumoImportacaoAlvara");
+
+  if(!painel || !box) return;
+
+  var processo = res.processo || {};
+
+  var qtd = Number(
+    res.quantidadeBeneficiarios ||
+    ((res.beneficiarios || []).length || 0)
+  );
+
+  var html =
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">';
+
+  [
+    ["Arquivo", res.nomeArquivo || ""],
+    ["Processo", processo.numeroProcesso || ""],
+    ["Empresa", processo.empresa || ""],
+    ["Valor total", processo.valorTotal || ""],
+    ["Beneficiários encontrados", String(qtd)]
+  ].forEach(function(item){
+    if(!item[1]) return;
+
+    html +=
+      '<div style="padding:12px;border:1px solid #dbe5f0;border-radius:12px;background:#f8fbff;">' +
+        '<div style="font-size:12px;color:#64748b;margin-bottom:4px;">' +
+          escapeHtml(item[0]) +
+        '</div>' +
+        '<div style="font-weight:700;color:#123b6d;">' +
+          escapeHtml(item[1]) +
+        '</div>' +
+      '</div>';
+  });
+
+  html += '</div>';
+
+  box.innerHTML = html;
+  painel.style.display = "block";
+}
+
+function renderizarBeneficiariosImportados(lista){
+  var painel = document.getElementById("resultadoImportacaoAlvara");
+  var box = document.getElementById("listaBeneficiariosImportados");
+
+  if(!painel || !box) return;
+
+  if(!Array.isArray(lista) || !lista.length){
+    painel.style.display = "none";
+    box.innerHTML =
+      '<div style="padding:12px;color:#64748b;">Nenhum beneficiário identificado.</div>';
+    return;
+  }
+
+  var html =
+    '<div style="margin-bottom:14px;padding:14px;background:#f8fbff;border:1px solid #dbe5f0;border-radius:12px;">'+
+      '<div style="font-size:12px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">📤 Preencher para todos os beneficiários</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">'+
+        '<div><label style="font-size:11px;color:#64748b;">Forma de pagamento</label>'+
+          '<select id="importFormaPgtoLote" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;outline:none;">'+
+            '<option value="">Selecionar</option>'+
+            '<option value="PIX">PIX</option>'+
+            '<option value="CHEQUE">Cheque</option>'+
+          '</select>'+
+        '</div>'+
+        '<div><label style="font-size:11px;color:#64748b;">📧 E-mail (mesmo para todos)</label><input id="importEmailLote" type="email" placeholder="email@exemplo.com" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;outline:none;"></div>'+
+        '<div><label style="font-size:11px;color:#64748b;">💬 WhatsApp (mesmo para todos)</label><input id="importWhatsLote" type="text" placeholder="(27) 99999-9999" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;outline:none;"></div>'+
+      '</div>'+
+
+      '<div id="blocoPixLote" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:10px;">'+
+        '<div><label style="font-size:11px;color:#64748b;">Chave PIX (mesma para todos)</label><input id="importPixLote" type="text" placeholder="CPF, e-mail, telefone ou aleatória" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;outline:none;"></div>'+
+      '</div>'+
+
+      '<div id="blocoChequeLote" style="display:none;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:10px;">'+
+        '<div><label style="font-size:11px;color:#64748b;">Número do cheque</label><input id="importChequeNumeroLote" type="text" placeholder="Número" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;outline:none;"></div>'+
+        '<div><label style="font-size:11px;color:#64748b;">Banco</label><input id="importChequeBancoLote" type="text" placeholder="Banco" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;outline:none;"></div>'+
+        '<div><label style="font-size:11px;color:#64748b;">Agência</label><input id="importChequeAgenciaLote" type="text" placeholder="Agência" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;outline:none;"></div>'+
+        '<div><label style="font-size:11px;color:#64748b;">Conta</label><input id="importChequeContaLote" type="text" placeholder="Conta" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;outline:none;"></div>'+
+        '<div><label style="font-size:11px;color:#64748b;">Titular</label><input id="importChequeTitularLote" type="text" placeholder="Titular do cheque" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;outline:none;"></div>'+
+        '<div><label style="font-size:11px;color:#64748b;">CPF/CNPJ do titular</label><input id="importChequeCpfCnpjLote" type="text" placeholder="CPF ou CNPJ" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;outline:none;"></div>'+
+        '<div><label style="font-size:11px;color:#64748b;">Data do cheque</label><input id="importChequeDataLote" type="date" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;outline:none;"></div>'+
+      '</div>'+
+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">'+
+        '<button type="button" id="btnAplicarDadosImportadosTodos" style="height:34px;padding:0 12px;border:none;border-radius:999px;background:#001f4d;color:#fff;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;">Aplicar para todos</button>'+
+        '<button type="button" id="btnCarregarImportadosNaTela" style="height:34px;padding:0 12px;border:none;border-radius:999px;background:#059669;color:#fff;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;">Carregar na tela</button>'+
+      '</div>'+
+    '</div>'+
+
+    '<div class="tabela-wrapper"><table style="width:100%;border-collapse:collapse;">'+
+      '<thead><tr>'+
+        '<th style="text-align:left;padding:10px;border-bottom:1px solid #e2e8f0;font-size:11px;color:#475569;">Nome</th>'+
+        '<th style="text-align:left;padding:10px;border-bottom:1px solid #e2e8f0;font-size:11px;color:#475569;">CPF</th>'+
+        '<th style="text-align:left;padding:10px;border-bottom:1px solid #e2e8f0;font-size:11px;color:#475569;">Valor</th>'+
+        '<th style="text-align:left;padding:10px;border-bottom:1px solid #e2e8f0;font-size:11px;color:#475569;">Forma Pgto</th>'+
+        '<th style="text-align:left;padding:10px;border-bottom:1px solid #e2e8f0;font-size:11px;color:#475569;">PIX / Cheque</th>'+
+        '<th style="text-align:left;padding:10px;border-bottom:1px solid #e2e8f0;font-size:11px;color:#475569;">E-mail</th>'+
+        '<th style="text-align:left;padding:10px;border-bottom:1px solid #e2e8f0;font-size:11px;color:#475569;">WhatsApp</th>'+
+      '</tr></thead><tbody>';
+
+  lista.forEach(function(item, idx){
+    var formaPagamento = item.formaPagamento || (item.pix ? "PIX" : "PIX");
+
+    html += '<tr data-idx="'+idx+'">'+
+      '<td style="padding:10px;border-bottom:1px solid #f1f5f9;">'+escapeHtml(item.nome || "")+'</td>'+
+      '<td style="padding:10px;border-bottom:1px solid #f1f5f9;">'+escapeHtml(item.cpf || "")+'</td>'+
+      '<td style="padding:10px;border-bottom:1px solid #f1f5f9;">'+escapeHtml(item.valor || "")+'</td>'+
+      '<td style="padding:10px;border-bottom:1px solid #f1f5f9;">'+
+        '<select class="imp-forma" style="width:100%;padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;">'+
+          '<option value="PIX"'+(formaPagamento === "PIX" ? " selected" : "")+'>PIX</option>'+
+          '<option value="CHEQUE"'+(formaPagamento === "CHEQUE" ? " selected" : "")+'>Cheque</option>'+
+        '</select>'+
+      '</td>'+
+      '<td style="padding:10px;border-bottom:1px solid #f1f5f9;">'+
+        '<div class="imp-pix-wrap" style="'+(formaPagamento === "PIX" ? "" : "display:none;")+'">'+
+          '<input type="text" class="imp-pix" value="'+escapeHtml(item.pix || "")+'" placeholder="Chave PIX" style="width:100%;padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;">'+
+        '</div>'+
+        '<div class="imp-cheque-wrap" style="'+(formaPagamento === "CHEQUE" ? "" : "display:none;")+'">'+
+          '<input type="text" class="imp-cheque-numero" value="'+escapeHtml(item.chequeNumero || "")+'" placeholder="Número" style="width:100%;padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:6px;">'+
+          '<input type="text" class="imp-cheque-banco" value="'+escapeHtml(item.chequeBanco || "")+'" placeholder="Banco" style="width:100%;padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:6px;">'+
+          '<input type="text" class="imp-cheque-agencia" value="'+escapeHtml(item.chequeAgencia || "")+'" placeholder="Agência" style="width:100%;padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:6px;">'+
+          '<input type="text" class="imp-cheque-conta" value="'+escapeHtml(item.chequeConta || "")+'" placeholder="Conta" style="width:100%;padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:6px;">'+
+          '<input type="text" class="imp-cheque-titular" value="'+escapeHtml(item.chequeTitular || "")+'" placeholder="Titular" style="width:100%;padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:6px;">'+
+          '<input type="text" class="imp-cheque-cpfcnpj" value="'+escapeHtml(item.chequeCpfCnpj || "")+'" placeholder="CPF/CNPJ do titular" style="width:100%;padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:6px;">'+
+          '<input type="date" class="imp-cheque-data" value="'+escapeHtml(item.chequeData || "")+'" style="width:100%;padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;">'+
+        '</div>'+
+      '</td>'+
+      '<td style="padding:10px;border-bottom:1px solid #f1f5f9;"><input type="email" class="imp-email" value="'+escapeHtml(item.email || "")+'" style="width:100%;padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;"></td>'+
+      '<td style="padding:10px;border-bottom:1px solid #f1f5f9;"><input type="text" class="imp-whats" value="'+escapeHtml(item.whatsapp || "")+'" style="width:100%;padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;"></td>'+
+    '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+
+  box.innerHTML = html;
+  painel.style.display = "block";
+
+  var formaLote = document.getElementById("importFormaPgtoLote");
+  var blocoPixLote = document.getElementById("blocoPixLote");
+  var blocoChequeLote = document.getElementById("blocoChequeLote");
+
+  function alternarBlocosLote(){
+    var forma = formaLote ? String(formaLote.value || "") : "";
+
+    if(blocoPixLote){
+      blocoPixLote.style.display = (forma === "CHEQUE") ? "none" : "grid";
+    }
+
+    if(blocoChequeLote){
+      blocoChequeLote.style.display = (forma === "CHEQUE") ? "grid" : "none";
+    }
+  }
+
+  if(formaLote){
+    formaLote.onchange = alternarBlocosLote;
+    alternarBlocosLote();
+  }
+
+  box.querySelectorAll(".imp-forma").forEach(function(select){
+    select.onchange = function(){
+      var tr = this.closest("tr");
+      if(!tr) return;
+
+      var isCheque = this.value === "CHEQUE";
+      var pixWrap = tr.querySelector(".imp-pix-wrap");
+      var chequeWrap = tr.querySelector(".imp-cheque-wrap");
+
+      if(pixWrap) pixWrap.style.display = isCheque ? "none" : "";
+      if(chequeWrap) chequeWrap.style.display = isCheque ? "" : "none";
+    };
+  });
+
+  var btnAplicar = document.getElementById("btnAplicarDadosImportadosTodos");
+
+  if(btnAplicar){
+    btnAplicar.onclick = function(){
+      var email = document.getElementById("importEmailLote");
+      var whats = document.getElementById("importWhatsLote");
+      var forma = document.getElementById("importFormaPgtoLote");
+      var pix = document.getElementById("importPixLote");
+
+      var chequeNumero = document.getElementById("importChequeNumeroLote");
+      var chequeBanco = document.getElementById("importChequeBancoLote");
+      var chequeAgencia = document.getElementById("importChequeAgenciaLote");
+      var chequeConta = document.getElementById("importChequeContaLote");
+      var chequeTitular = document.getElementById("importChequeTitularLote");
+      var chequeCpfCnpj = document.getElementById("importChequeCpfCnpjLote");
+      var chequeData = document.getElementById("importChequeDataLote");
+
+      var emailVal = email ? String(email.value || "").trim() : "";
+      var whatsVal = whats ? String(whats.value || "").trim() : "";
+      var formaVal = forma ? String(forma.value || "").trim() : "";
+      var pixVal = pix ? String(pix.value || "").trim() : "";
+
+      box.querySelectorAll("tbody tr").forEach(function(tr){
+        var formaSel = tr.querySelector(".imp-forma");
+        var pixEl = tr.querySelector(".imp-pix");
+        var pixWrap = tr.querySelector(".imp-pix-wrap");
+        var chequeWrap = tr.querySelector(".imp-cheque-wrap");
+
+        if(formaSel && formaVal){
+          formaSel.value = formaVal;
+        }
+
+        var isCheque = formaSel && formaSel.value === "CHEQUE";
+
+        if(pixWrap) pixWrap.style.display = isCheque ? "none" : "";
+        if(chequeWrap) chequeWrap.style.display = isCheque ? "" : "none";
+
+        var emailEl = tr.querySelector(".imp-email");
+        var whatsEl = tr.querySelector(".imp-whats");
+
+        if(emailEl) emailEl.value = emailVal;
+        if(whatsEl) whatsEl.value = whatsVal;
+
+        if(!isCheque){
+          if(pixEl) pixEl.value = pixVal;
+        }else{
+          var elNumero = tr.querySelector(".imp-cheque-numero");
+          var elBanco = tr.querySelector(".imp-cheque-banco");
+          var elAgencia = tr.querySelector(".imp-cheque-agencia");
+          var elConta = tr.querySelector(".imp-cheque-conta");
+          var elTitular = tr.querySelector(".imp-cheque-titular");
+          var elCpfCnpj = tr.querySelector(".imp-cheque-cpfcnpj");
+          var elData = tr.querySelector(".imp-cheque-data");
+
+          if(elNumero) elNumero.value = chequeNumero ? String(chequeNumero.value || "").trim() : "";
+          if(elBanco) elBanco.value = chequeBanco ? String(chequeBanco.value || "").trim() : "";
+          if(elAgencia) elAgencia.value = chequeAgencia ? String(chequeAgencia.value || "").trim() : "";
+          if(elConta) elConta.value = chequeConta ? String(chequeConta.value || "").trim() : "";
+          if(elTitular) elTitular.value = chequeTitular ? String(chequeTitular.value || "").trim() : "";
+          if(elCpfCnpj) elCpfCnpj.value = chequeCpfCnpj ? String(chequeCpfCnpj.value || "").trim() : "";
+          if(elData) elData.value = chequeData ? String(chequeData.value || "").trim() : "";
+        }
+      });
+    };
+  }
+
+  var btnCarregar = document.getElementById("btnCarregarImportadosNaTela");
+
+  if(btnCarregar){
+    btnCarregar.onclick = function(){
+      var atualizados = [];
+      var rows = box.querySelectorAll("tbody tr");
+
+      rows.forEach(function(tr, idx){
+        var base = lista[idx] || {};
+        var forma = (tr.querySelector(".imp-forma") || {}).value || "PIX";
+
+        atualizados.push({
+          nome: base.nome || "",
+          cpf: base.cpf || "",
+          valor: base.valor || "",
+          formaPagamento: forma,
+          pix: forma === "PIX" ? (((tr.querySelector(".imp-pix") || {}).value || "").trim()) : "",
+          chequeNumero: forma === "CHEQUE" ? (((tr.querySelector(".imp-cheque-numero") || {}).value || "").trim()) : "",
+          chequeBanco: forma === "CHEQUE" ? (((tr.querySelector(".imp-cheque-banco") || {}).value || "").trim()) : "",
+          chequeAgencia: forma === "CHEQUE" ? (((tr.querySelector(".imp-cheque-agencia") || {}).value || "").trim()) : "",
+          chequeConta: forma === "CHEQUE" ? (((tr.querySelector(".imp-cheque-conta") || {}).value || "").trim()) : "",
+          chequeTitular: forma === "CHEQUE" ? (((tr.querySelector(".imp-cheque-titular") || {}).value || "").trim()) : "",
+          chequeCpfCnpj: forma === "CHEQUE" ? (((tr.querySelector(".imp-cheque-cpfcnpj") || {}).value || "").trim()) : "",
+          chequeData: forma === "CHEQUE" ? (((tr.querySelector(".imp-cheque-data") || {}).value || "").trim()) : "",
+          email: ((tr.querySelector(".imp-email") || {}).value || "").trim(),
+          whatsapp: ((tr.querySelector(".imp-whats") || {}).value || "").trim(),
+          observacao: base.observacao || base.observacoes || ""
+        });
+      });
+
+      carregarBeneficiariosImportadosDaPlanilhaNaTela(atualizados);
+    };
+  }
+}
+
+/* ─────────────────────────────
+   BUSCAR POR EMPRESA
+───────────────────────────── */
+function setStatusBuscarEmpresa(msg, tipo){
+  var box = document.getElementById("statusBuscarEmpresa");
+  if(!box) return;
+
+  var bg = "#eef4ff";
+  var borda = "#3b82f6";
+  var cor = "#1d4ed8";
+
+  if(tipo === "ok"){
+    bg = "#e8f7ee";
+    borda = "#2e7d32";
+    cor = "#1b5e20";
+  }
+
+  if(tipo === "warn"){
+    bg = "#fff3cd";
+    borda = "#f59e0b";
+    cor = "#7c4a03";
+  }
+
+  if(tipo === "err"){
+    bg = "#f8d7da";
+    borda = "#c62828";
+    cor = "#7f1d1d";
+  }
+
+  box.style.display = "block";
+  box.innerHTML =
+    '<div style="padding:12px;border-radius:10px;background:'+
+    bg+
+    ';border:1px solid '+
+    borda+
+    ';color:'+
+    cor+
+    ';">'+
+    msg+
+    '</div>';
+}
+
+function limparStatusBuscarEmpresa(){
+  var box = document.getElementById("statusBuscarEmpresa");
+  if(!box) return;
+
+  box.style.display = "none";
+  box.innerHTML = "";
+}
+
+function buscarBeneficiariosPorEmpresaFrontend(){
+  limparStatusBuscarEmpresa();
+
+  var input = document.getElementById("inputBuscarEmpresa");
+  var empresa = input ? String(input.value || "").trim() : "";
+
+  if(!empresa){
+    setStatusBuscarEmpresa("Informe o nome da empresa.", "warn");
+    if(input) input.focus();
+    return;
+  }
+
+  loader(true);
+  setStatusBuscarEmpresa("Buscando beneficiários da empresa informada...", "info");
+
+  google.script.run
+    .withSuccessHandler(function(res){
+      loader(false);
+
+      if(!res || res.erro){
+        setStatusBuscarEmpresa(
+          (res && res.mensagem) || "Nenhum beneficiário encontrado.",
+          "err"
+        );
+        return;
+      }
+
+      var recEmpresa = document.getElementById("recEmpresa");
+      var recProcesso = document.getElementById("recProcesso");
+      var modalEmpresa = document.getElementById("modalBuscarPorEmpresa");
+
+      if(recEmpresa && res.empresa){
+        recEmpresa.value = res.empresa;
+      }
+
+      if(recProcesso && res.processo){
+        recProcesso.value = res.processo;
+      }
+
+      carregarBeneficiariosImportadosDaPlanilhaNaTela(
+        res.beneficiarios || []
+      );
+
+      atualizarConferenciaRecibo();
+
+      if(modalEmpresa){
+        modalEmpresa.style.display = "none";
+      }
+
+      setReciboStatus(
+        "✅ " +
+        ((res.beneficiarios || []).length) +
+        " beneficiário(s) carregado(s) por empresa.",
+        "ok"
+      );
+    })
+    .withFailureHandler(function(err){
+      loader(false);
+
+      setStatusBuscarEmpresa(
+        "Erro ao buscar por empresa: " +
+        ((err && err.message) || err),
+        "err"
+      );
+    })
+    .buscarBeneficiariosReciboPorEmpresa(empresa, SISGEP_TOKEN_SESSAO);
+}
+/* ─────────────────────────────
+   SINCRONIZAÇÃO COM PROCESSO SELECIONADO
+───────────────────────────── */
+function carregarDadosDoProcessoReciboSelecionado(){
+  var select = document.getElementById("recProcessoSelect");
+  if(!select || select.dataset.boundBuscaProcessoRecibo) return;
+
+  select.dataset.boundBuscaProcessoRecibo = "1";
+
+  select.addEventListener("change", function(){
+    var selected = select.options[select.selectedIndex];
+
+    if(!selected || !selected.value){
+      limparCamposProcessoRecibo();
+      travarCamposProcessoRecibo_(false);
+
+      var lista = document.getElementById("listaTrabalhadoresRecibo");
+      if(lista){
+        lista.innerHTML =
+          '<div class="benef-empty" id="benefEmpty">' +
+            '👤 Nenhum beneficiário adicionado ainda.<br>' +
+            '<span style="font-size:12px;font-weight:400;">Clique em "+ Adicionar", importe um PDF ou use "Buscar por empresa".</span>' +
+          '</div>';
+      }
+
+      atualizarContadorBeneficiariosRecibo_();
+      atualizarConferenciaRecibo();
+
+      if(typeof atualizarResumoFinanceiroProcesso === "function"){
+        atualizarResumoFinanceiroProcesso();
+      }
+
+      if(typeof atualizarDashboardFinanceiroProcesso === "function"){
+        atualizarDashboardFinanceiroProcesso();
+      }
+
+      return;
+    }
+
+    var recProcesso = document.getElementById("recProcesso");
+    var recEmpresa  = document.getElementById("recEmpresa");
+    var recValor    = document.getElementById("recValor");
+    var recEmail    = document.getElementById("recEmail");
+
+    if(recProcesso) recProcesso.value = selected.dataset.processo || "";
+    if(recEmpresa)  recEmpresa.value  = selected.dataset.empresa || "";
+    if(recValor){
+      recValor.value            = selected.dataset.valortotal || "";
+      recValor.readOnly         = false;
+      recValor.style.background = "#fff";
+    }
+    if(recEmail) recEmail.value = "";
+
+    travarCamposProcessoRecibo_(true);
+
+    var lista = document.getElementById("listaTrabalhadoresRecibo");
+    if(lista){
+      lista.innerHTML =
+        '<div class="benef-empty" id="benefEmpty">' +
+          '👤 Nenhum beneficiário adicionado ainda.<br>' +
+          '<span style="font-size:12px;font-weight:400;">Clique em "+ Adicionar", importe um PDF ou use "Buscar por empresa".</span>' +
+        '</div>';
+    }
+
+    atualizarContadorBeneficiariosRecibo_();
+    atualizarConferenciaRecibo();
+
+    if(typeof atualizarResumoFinanceiroProcesso === "function"){
+      atualizarResumoFinanceiroProcesso();
+    }
+
+    if(typeof atualizarDashboardFinanceiroProcesso === "function"){
+      atualizarDashboardFinanceiroProcesso();
+    }
+
+    setTimeout(liberarCampoValorRecibo_, 50);
+  });
+}
+/* ─────────────────────────────
+   INIT
+───────────────────────────── */
+function initRecibos(){
+  var sec = document.querySelector(".rec-wrap");
+  if(!sec) return;
+
+  limparReciboStatus();
+  limparCamposProcessoRecibo();
+
+  ReciboUI.carregarProcessos(function(){
+    limparCamposProcessoRecibo();
+  });
+
+  var lista = document.getElementById("listaTrabalhadoresRecibo");
+  if(lista && lista.querySelectorAll(".linha-trabalhador-recibo").length === 0){
+    var empty = document.getElementById("benefEmpty");
+    if(empty) empty.style.display = "block";
+  }
+
+  var recValor = document.getElementById("recValor");
+  if(recValor && !recValor.dataset.maskedMoney){
+    recValor.addEventListener("input", function(){
+      if(typeof Utils !== "undefined" && typeof Utils.aplicarMascaraMoeda === "function"){
+        Utils.aplicarMascaraMoeda(this);
+      }
+      atualizarConferenciaRecibo();
+    });
+
+    recValor.addEventListener("change", function(){
+      atualizarDashboardFinanceiroProcesso();
+    });
+
+    recValor.dataset.maskedMoney = "1";
+  }
+
+var btnEditar = document.getElementById("btnEditarProcessoRecibo");
+if(btnEditar && !btnEditar.dataset.boundEditProc){
+  btnEditar.dataset.boundEditProc = "1";
+
+  btnEditar.addEventListener("click", function(e){
+    e.stopPropagation();
+    e.preventDefault();
+    ReciboUI.editarProcessoSelecionado();
+  });
+}
+
+  carregarDadosDoProcessoReciboSelecionado();
+
+  var btnNovoTab = document.getElementById("abaReciboNovo");
+  if(btnNovoTab && !btnNovoTab.dataset.boundTab){
+    btnNovoTab.dataset.boundTab = "1";
+
+    btnNovoTab.addEventListener("click", function(){
+      abrirAbaRecibo();
+    });
+  }
+
+  if(!window.__RECIBOS_DELEGATION__){
+    window.__RECIBOS_DELEGATION__ = true;
+
+    document.addEventListener("click", function(e){
+      var btn = e.target && e.target.closest ? e.target.closest("button") : null;
+      if(!btn) return;
+      if(!btn.closest(".rec-wrap")) return;
+
+      var mapa = {
+        btnAddTrabalhadorRecibo: function(){
+          Recibo.adicionarTrabalhador();
+        },
+
+    btnPreviewRecibo: function(){
+  ReciboSISGEP.preview();
+},
+
+btnGerarRecibo: function(){
+  ReciboSISGEP.gerar();
+},
+
+        btnNovoRecibo: function(){
+          resetarRecibo();
+        }
+      };
+
+      if(mapa[btn.id]){
+        e.preventDefault();
+        e.stopPropagation();
+        mapa[btn.id]();
+        return;
+      }
+
+      if(btn.id === "btnNovoProcessoRecibo"){
+        e.preventDefault();
+        e.stopPropagation();
+        ReciboUI.abrirModalProcesso();
+        return;
+      }
+
+      if(btn.id === "btnSalvarNovoProcessoRecibo"){
+        e.preventDefault();
+        e.stopPropagation();
+        ReciboUI.salvarNovoProcesso();
+        return;
+      }
+
+      if(
+        btn.id === "btnFecharModalNovoProcessoRecibo" ||
+        btn.id === "btnCancelarNovoProcessoRecibo"
+      ){
+        e.preventDefault();
+        e.stopPropagation();
+        ReciboUI.fecharModalProcesso();
+        return;
+      }
+
+      if(btn.id === "btnExcluirProcessoRecibo"){
+        e.preventDefault();
+        e.stopPropagation();
+        ReciboUI.excluirProcessoSelecionado();
+        return;
+      }
+
+      if(btn.id === "btnImportarAlvaraPdf"){
+        e.preventDefault();
+        e.stopPropagation();
+        importarAlvaraPDFFrontend();
+        return;
+      }
+
+      if(btn.id === "btnImportarPlanilhaRecibo"){
+        e.preventDefault();
+        e.stopPropagation();
+        importarPlanilhaReciboFrontend();
+        return;
+      }
+
+      if(btn.id === "btnLimparImportacaoAlvara"){
+        e.preventDefault();
+        e.stopPropagation();
+        limparImportacaoAlvaraUI();
+        return;
+      }
+
+      if(btn.id === "btnBuscarPorEmpresa"){
+        e.preventDefault();
+        e.stopPropagation();
+
+        var modalEmpresa = document.getElementById("modalBuscarPorEmpresa");
+        if(modalEmpresa){
+          modalEmpresa.style.display = "flex";
+        }
+
+        limparStatusBuscarEmpresa();
+
+        var inputEmpresa = document.getElementById("inputBuscarEmpresa");
+        if(inputEmpresa){
+          inputEmpresa.value = "";
+          setTimeout(function(){
+            inputEmpresa.focus();
+          }, 100);
+        }
+
+        return;
+      }
+
+      if(btn.id === "btnConfirmarBuscarEmpresa"){
+        e.preventDefault();
+        e.stopPropagation();
+        buscarBeneficiariosPorEmpresaFrontend();
+        return;
+      }
+
+      if(
+        btn.id === "btnCancelarBuscarEmpresa" ||
+        btn.id === "btnFecharModalEmpresa"
+      ){
+        e.preventDefault();
+        e.stopPropagation();
+
+        var modalEmpresaFechar = document.getElementById("modalBuscarPorEmpresa");
+        if(modalEmpresaFechar){
+          modalEmpresaFechar.style.display = "none";
+        }
+
+        limparStatusBuscarEmpresa();
+        return;
+      }
+    }, true);
+  }
+
+  window.RECIBO_INIT = window.RECIBO_INIT || false;
+
+  if(!window.RECIBO_INIT){
+    window.RECIBO_INIT = true;
+  }
+
+  abrirAbaRecibo();
+
+  atualizarContadorBeneficiariosRecibo_();
+  atualizarConferenciaRecibo();
+}
+
+/* ─────────────────────────────
+   RESUMO FINANCEIRO
+───────────────────────────── */
+function carregarResumoProcessos(){
+  google.script.run
+    .withSuccessHandler(function(res){
+      if(res && res.erro){
+        console.error(res.mensagem);
+        return;
+      }
+
+      var box = document.getElementById("resumoProcessos");
+      if(!box) return;
+
+      var html = '<table style="width:100%;border-collapse:collapse;">';
+
+      html +=
+        '<tr style="background:#f1f5f9;">' +
+          '<th>Processo</th>' +
+          '<th>Total</th>' +
+          '<th>Pago</th>' +
+          '<th>Saldo</th>' +
+          '<th>%</th>' +
+        '</tr>';
+
+      (res.dados || []).forEach(function(p){
+        html +=
+          '<tr>' +
+            '<td>' + escapeHtml(p.processo || "") + '</td>' +
+            '<td>R$ ' + Number(p.total || 0).toFixed(2) + '</td>' +
+            '<td style="color:green;">R$ ' + Number(p.pago || 0).toFixed(2) + '</td>' +
+            '<td style="color:red;">R$ ' + Number(p.saldo || 0).toFixed(2) + '</td>' +
+            '<td>' + escapeHtml(p.percentual || "0") + '%</td>' +
+          '</tr>';
+      });
+
+      html += '</table>';
+
+      box.innerHTML = html;
+    })
+    .withFailureHandler(function(err){
+      console.error("Erro ao carregar resumo de processos:", err);
+    })
+    .resumoFinanceiroPorProcesso(SISGEP_TOKEN_SESSAO);
+}
+
+function atualizarResumoFinanceiroProcesso(){
+  var select = document.getElementById("recProcessoSelect");
+  if(!select || !select.value) return;
+
+  var id = select.value;
+
+  google.script.run
+    .withSuccessHandler(function(res){
+      if(!res || res.erro) return;
+
+      var pagoEl = document.getElementById("confRecPago");
+      var saldoEl = document.getElementById("confRecSaldo");
+
+      if(pagoEl){
+        pagoEl.innerText = "R$ " + Number(res.pago || 0).toFixed(2);
+      }
+
+      if(saldoEl){
+        saldoEl.innerText = "R$ " + Number(res.saldo || 0).toFixed(2);
+      }
+    })
+    .withFailureHandler(function(err){
+      console.error("Erro ao atualizar resumo financeiro:", err);
+    })
+    .obterResumoFinanceiroProcesso(id, SISGEP_TOKEN_SESSAO);
+}
+(function(){
+  var _iniciado = false;
+
+  function iniciarSeVisivel(){
+    var sec = document.getElementById("secRecibos");
+    if(!sec) return;
+
+    if(sec.classList.contains("ativa") && !_iniciado){
+      _iniciado = true;
+      setTimeout(function(){
+        initRecibos();
+      }, 300);
+    }
+  }
+
+  function configurarObserver(){
+    var sec = document.getElementById("secRecibos");
+    if(!sec) return;
+
+    new MutationObserver(function(){
+      if(!_iniciado){
+        iniciarSeVisivel();
+      }
+    }).observe(sec, { attributes: true, attributeFilter: ["class"] });
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", function(){
+      iniciarSeVisivel();
+      configurarObserver();
+    });
+  } else {
+    iniciarSeVisivel();
+    configurarObserver();
+  }
+
+  // Fallback direto no botão do menu
+  document.addEventListener("click", function(e){
+    var btn = e.target && e.target.closest
+      ? e.target.closest("#btnRecibos")
+      : null;
+
+    if(!btn) return;
+
+    setTimeout(function(){
+      if(!_iniciado){
+        _iniciado = true;
+        initRecibos();
+      } else {
+        ReciboUI.carregarProcessos();
+      }
+    }, 350);
+  }, true);
+
+})();
+/* =====================================================
+   SISGEP · Seletor principal de Recibos
+   ✅ Processo Individual
+   ✅ Processo Lote
+   ✅ Diverso Individual
+   ✅ Diverso Lote
+   ✅ Não altera backend
+===================================================== */
+
+function abrirModalTipoReciboSISGEP(){
+  var modal = document.getElementById("modalTipoReciboSISGEP");
+  if(modal){
+    modal.style.display = "flex";
+  }
+}
+
+function fecharModalTipoReciboSISGEP(){
+  var modal = document.getElementById("modalTipoReciboSISGEP");
+  if(modal){
+    modal.style.display = "none";
+  }
+}
+function definirModoReciboSISGEP_(modo){
+  window.__MODO_RECIBO_SISGEP__ = modo;
+
+  var btnTopo = document.getElementById("btnNovoReciboSISGEP");
+  if(btnTopo){
+    btnTopo.dataset.modoAtual = modo || "";
+  }
+
+  var mapa = {
+    processo_individual: "🧾 Processo individual",
+    processo_lote: "👥 Processo em lote",
+    diverso_individual: "💰 Diverso individual",
+    diverso_lote: "📦 Diversos em lote"
+  };
+
+  console.log("Modo Recibo SISGEP:", mapa[modo] || modo);
+}
+
+function obterModoReciboSISGEP_(){
+  return window.__MODO_RECIBO_SISGEP__ || "processo_lote";
+}
+
+window.reciboMostrarHistorico = function(){
+  var wrapProcesso  = document.getElementById("reciboProcessoWrap");
+  var wrapDiverso   = document.getElementById("reciboDiversoWrap");
+  var wrapHistorico = document.getElementById("reciboHistoricoWrap");
+
+  if(wrapProcesso)  wrapProcesso.style.display  = "none";
+  if(wrapDiverso)   wrapDiverso.style.display   = "none";
+  if(wrapHistorico) wrapHistorico.style.display = "block";
+
+  if(typeof initHistoricoRecibos === "function"){
+    initHistoricoRecibos();
+  }
+};
+
+window.reciboVoltarParaEmissao = function(){
+  var wrapProcesso  = document.getElementById("reciboProcessoWrap");
+  var wrapHistorico = document.getElementById("reciboHistoricoWrap");
+
+  if(wrapHistorico) wrapHistorico.style.display = "none";
+  if(wrapProcesso)  wrapProcesso.style.display  = "block";
+};
+
+function abrirFluxoReciboSISGEP(tipo){
+  fecharModalTipoReciboSISGEP();
+  definirModoReciboSISGEP_(tipo);
+
+  var wrapProcesso = document.getElementById("reciboProcessoWrap");
+  var wrapDiverso  = document.getElementById("reciboDiversoWrap");
+
+  if(tipo === "diverso_individual" || tipo === "diverso_lote"){
+    if(wrapProcesso) wrapProcesso.style.display = "none";
+    if(wrapDiverso)  wrapDiverso.style.display  = "block";
+
+    if(typeof initReciboDiversos === "function"){
+      initReciboDiversos();
+    }
+
+    if(typeof limparReciboStatus === "function"){
+      limparReciboStatus();
+    }
+
+    return;
+  }
+
+  if(wrapDiverso)  wrapDiverso.style.display  = "none";
+  if(wrapProcesso) wrapProcesso.style.display = "block";
+
+  if(tipo === "processo_individual" || tipo === "processo_lote"){
+    if(typeof abrirAbaRecibo === "function"){
+      abrirAbaRecibo();
+    }
+
+    if(typeof limparReciboStatus === "function"){
+      limparReciboStatus();
+    }
+
+    var lista = document.getElementById("listaTrabalhadoresRecibo");
+
+    if(tipo === "processo_individual"){
+      if(lista && lista.querySelectorAll(".linha-trabalhador-recibo").length === 0){
+        var btnAdd = document.getElementById("btnAddTrabalhadorRecibo");
+        if(btnAdd) btnAdd.click();
+      }
+
+      if(typeof setReciboStatus === "function"){
+        setReciboStatus(
+          "🧾 Modo Processo Individual selecionado. Preencha o processo e os dados do beneficiário.",
+          "info"
+        );
+      }
+    }
+
+    if(tipo === "processo_lote"){
+      if(typeof setReciboStatus === "function"){
+        setReciboStatus(
+          "👥 Modo Processo em Lote selecionado. Informe o processo e adicione/importe os beneficiários.",
+          "info"
+        );
+      }
+    }
+
+    if(typeof atualizarConferenciaRecibo === "function"){
+      atualizarConferenciaRecibo();
+    }
+  }
+}
+(function inicializarSeletorReciboSISGEP(){
+  function bind(){
+    var btn = document.getElementById("btnNovoReciboSISGEP");
+    var fechar = document.getElementById("btnFecharTipoReciboSISGEP");
+    var modal = document.getElementById("modalTipoReciboSISGEP");
+
+    if(btn && !btn.dataset.boundNovoReciboSISGEP){
+      btn.dataset.boundNovoReciboSISGEP = "1";
+      btn.addEventListener("click", function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        abrirModalTipoReciboSISGEP();
+      });
+    }
+
+    if(fechar && !fechar.dataset.boundFecharTipoReciboSISGEP){
+      fechar.dataset.boundFecharTipoReciboSISGEP = "1";
+      fechar.addEventListener("click", function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        fecharModalTipoReciboSISGEP();
+      });
+    }
+
+    if(modal && !modal.dataset.boundOverlayReciboSISGEP){
+      modal.dataset.boundOverlayReciboSISGEP = "1";
+      modal.addEventListener("click", function(e){
+        if(e.target === modal){
+          fecharModalTipoReciboSISGEP();
+        }
+      });
+    }
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", bind);
+  }else{
+    bind();
+  }
+
+  setTimeout(bind, 500);
+})();
+/* =====================================================
+   SISGEP · Controle de Preview/Geração por modo
+   ✅ Processo Individual
+   ✅ Processo Lote
+   ✅ Mantém Recibo.preview() e Recibo.gerar()
+===================================================== */
+
+var ReciboSISGEP = ReciboSISGEP || {};
+
+ReciboSISGEP.preview = function(){
+  var modo = typeof obterModoReciboSISGEP_ === "function"
+    ? obterModoReciboSISGEP_()
+    : "processo_lote";
+
+  if(modo === "processo_individual"){
+    var primeiraLinha = document.querySelector(".linha-trabalhador-recibo");
+
+    if(!primeiraLinha){
+      var btnAdd = document.getElementById("btnAddTrabalhadorRecibo");
+      if(btnAdd) btnAdd.click();
+
+      setReciboStatus(
+        "🧾 Modo individual: preencha os dados do beneficiário antes de pré-visualizar.",
+        "info"
+      );
+
+      return;
+    }
+
+    var btnPreview = primeiraLinha.querySelector(".btn-preview-individual");
+
+    if(btnPreview){
+      btnPreview.click();
+      return;
+    }
+  }
+
+  if(typeof Recibo !== "undefined" && typeof Recibo.preview === "function"){
+    Recibo.preview();
+  }
+};
+
+ReciboSISGEP.gerar = function(){
+  var modo = typeof obterModoReciboSISGEP_ === "function"
+    ? obterModoReciboSISGEP_()
+    : "processo_lote";
+
+  if(modo === "processo_individual"){
+    var primeiraLinha = document.querySelector(".linha-trabalhador-recibo");
+
+    if(!primeiraLinha){
+      var btnAdd = document.getElementById("btnAddTrabalhadorRecibo");
+      if(btnAdd) btnAdd.click();
+
+      setReciboStatus(
+        "🧾 Modo individual: preencha os dados do beneficiário antes de emitir.",
+        "info"
+      );
+
+      return;
+    }
+
+    var btnEmitir = primeiraLinha.querySelector(".btn-emitir-individual");
+
+    if(btnEmitir){
+      btnEmitir.click();
+      return;
+    }
+  }
+
+  if(typeof Recibo !== "undefined" && typeof Recibo.gerar === "function"){
+    Recibo.gerar();
+  }
+};
+</script>

@@ -1,0 +1,316 @@
+<script>
+/* ═══════════════════════════════════════════════════════════
+   SISGEP · Scripts_Relatorios.html
+   Tela de Relatórios de Ofícios — integração com backend
+   Funções: carregar, exportar, filtrar, KPIs
+═══════════════════════════════════════════════════════════ */
+(function () {
+
+  /* ── helpers ── */
+  function el(id) { return document.getElementById(id); }
+  function esc(v) {
+    return String(v || "").replace(/&/g,"&amp;").replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+  function toast(msg, tipo, dur) {
+    if (typeof window.toast === "function") { window.toast(msg, tipo, dur); return; }
+    alert(msg);
+  }
+
+  /* ── estado ── */
+  var _dadosCarregados = [];
+
+  /* ── filtros ── */
+  function getFiltros() {
+    return {
+      dataInicio:     (el("relDataInicio") || {}).value || "",
+      dataFim:        (el("relDataFim")    || {}).value || "",
+      tipo:           (el("relTipo")       || {}).value || "",
+      status:         (el("relStatus")     || {}).value || "",
+      escola:         (el("relEscola")     || {}).value || "",
+      usuario:        (el("relUsuario")    || {}).value || ""
+    };
+  }
+
+  function limparFiltros() {
+    ["relDataInicio","relDataFim","relTipo","relStatus","relEscola","relUsuario"]
+      .forEach(function(id) { var e = el(id); if (e) e.value = ""; });
+    resetTabela();
+  }
+
+  function resetTabela() {
+    _dadosCarregados = [];
+    var tb = el("relTabela");
+    if (tb) tb.innerHTML = '<tr><td colspan="8"><div class="of-table-empty">Use os filtros acima e clique em <strong>Consultar</strong>.</div></td></tr>';
+    var kpis = el("relKpis");      if (kpis) kpis.style.display = "none";
+    var bar  = el("relExportBar"); if (bar)  bar.style.display  = "none";
+  }
+
+  /* ── carregar dados ── */
+  function carregar() {
+    var tb = el("relTabela");
+    if (!tb) return;
+    tb.innerHTML = '<tr><td colspan="8"><div class="of-table-empty">⏳ Consultando...</div></td></tr>';
+    var kpis = el("relKpis");      if (kpis) kpis.style.display = "none";
+    var bar  = el("relExportBar"); if (bar)  bar.style.display  = "none";
+
+    if (!window.google || !google.script || !google.script.run) {
+      // fora do GAS — exibe mensagem
+      tb.innerHTML = '<tr><td colspan="8"><div class="of-table-empty">Disponível apenas no ambiente Apps Script.</div></td></tr>';
+      return;
+    }
+
+    google.script.run
+.withSuccessHandler(function(resp) {
+        var lista = (resp && Array.isArray(resp.itens)) ? resp.itens : (Array.isArray(resp) ? resp : []);
+        _dadosCarregados = lista;
+        renderTabela(lista);
+        renderKpis(lista);
+        atualizarBarra(lista.length);
+      })
+      .withFailureHandler(function(err) {
+        tb.innerHTML = '<tr><td colspan="8"><div class="of-table-empty">Erro: ' + esc((err && err.message) || String(err)) + '</div></td></tr>';
+      })
+    .listarHistoricoOficios({}, SISGEP_TOKEN_SESSAO); // filtragem no frontend
+  }
+
+  /* ── renderização da tabela ── */
+  function renderTabela(lista) {
+    var tb = el("relTabela"); if (!tb) return;
+    var filtros = getFiltros();
+
+var dInicio = filtros.dataInicio ? new Date(filtros.dataInicio + "T00:00:00") : null;
+    var dFim    = filtros.dataFim    ? new Date(filtros.dataFim    + "T23:59:59") : null;
+
+    var filtrada = lista.filter(function(item) {
+      var status  = String(item.status  || "").toUpperCase();
+      var tipo    = String(item.tipo    || "").toLowerCase();
+      var escola  = String(item.escola  || "").toLowerCase();
+      var usuario = String(item.usuario || "").toLowerCase();
+
+      if (filtros.status  && status !== filtros.status.toUpperCase())              return false;
+      if (filtros.tipo    && tipo.indexOf(filtros.tipo.toLowerCase())    < 0)      return false;
+      if (filtros.escola  && escola.indexOf(filtros.escola.toLowerCase()) < 0)     return false;
+      if (filtros.usuario && usuario.indexOf(filtros.usuario.toLowerCase()) < 0)   return false;
+
+      if (dInicio || dFim) {
+        var dataStr = String(item.data || "");
+        // tenta parsear "DD/MM/AAAA HH:MM" ou "DD/MM/AAAA"
+        var partes = dataStr.split(/[\s\/\-:]/);
+        var dataItem = null;
+        if (partes.length >= 3) {
+          // assume DD/MM/AAAA
+          var dia = parseInt(partes[0], 10), mes = parseInt(partes[1], 10) - 1, ano = parseInt(partes[2], 10);
+          if (!isNaN(dia) && !isNaN(mes) && !isNaN(ano)) dataItem = new Date(ano, mes, dia);
+        }
+        if (dataItem) {
+          if (dInicio && dataItem < dInicio) return false;
+          if (dFim    && dataItem > dFim)    return false;
+        }
+      }
+
+      return true;
+    });
+
+    _dadosCarregados = filtrada;
+
+    if (!filtrada.length) {
+      tb.innerHTML = '<tr><td colspan="8"><div class="of-table-empty">Nenhum registro encontrado com os filtros aplicados.</div></td></tr>';
+      renderKpis([]);
+      atualizarBarra(0);
+      return;
+    }
+
+    tb.innerHTML = filtrada.map(function(item) {
+      var status = String(item.status || "").toUpperCase().trim();
+      var badgeClass = status === "CONFIRMADO" ? "hist-confirmado"
+                     : status === "ENVIADO"    ? "hist-enviado"
+                     : "hist-pendente";
+      var url = String(item.url || "").trim();
+      var pdfBtn = url
+        ? '<a href="' + esc(url) + '" target="_blank" class="btn btn-outline btn-sm">📥</a>'
+        : '<span style="font-size:11px;color:var(--g400);">—</span>';
+
+      return '<tr>'
+        + '<td style="font-weight:700;">' + esc(item.numero || "") + '</td>'
+        + '<td style="font-size:12px;">'  + esc(item.tipo   || "") + '</td>'
+        + '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(item.escola || "") + '">' + esc(item.escola || "") + '</td>'
+        + '<td style="font-size:12px;">'  + esc(item.data   || "") + '</td>'
+        + '<td><span class="hist-badge '  + badgeClass + '">' + status + '</span></td>'
+        + '<td style="font-size:11px;color:var(--g500);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(item.email   || "") + '</td>'
+        + '<td style="font-size:11px;color:var(--g500);">' + esc(item.usuario || "") + '</td>'
+        + '<td>' + pdfBtn + '</td>'
+        + '</tr>';
+    }).join("");
+
+    renderKpis(filtrada);
+    atualizarBarra(filtrada.length);
+  }
+
+  /* ── KPIs ── */
+  function renderKpis(lista) {
+    var kpis = el("relKpis"); if (!kpis) return;
+    var total = lista.length;
+    var env   = lista.filter(function(i){ return String(i.status||"").toUpperCase() === "ENVIADO";    }).length;
+    var conf  = lista.filter(function(i){ return String(i.status||"").toUpperCase() === "CONFIRMADO"; }).length;
+    var pend  = lista.filter(function(i){ return String(i.status||"").toUpperCase() === "PENDENTE";   }).length;
+    var erro  = lista.filter(function(i){ return ["ERRO","FALHA_ENTREGA"].indexOf(String(i.status||"").toUpperCase()) > -1; }).length;
+
+    function set(id, v) { var e = el(id); if (e) e.textContent = v; }
+    set("relKpiTotal",      total);
+    set("relKpiEnviado",    env);
+    set("relKpiConfirmado", conf);
+    set("relKpiPendente",   pend);
+    set("relKpiErro",       erro);
+    kpis.style.display = total > 0 ? "grid" : "none";
+  }
+
+  /* ── barra de exportação ── */
+  function atualizarBarra(qtd) {
+    var bar = el("relExportBar"); if (!bar) return;
+    var cnt = el("relContador"); if (cnt) cnt.textContent = qtd + " registro(s) encontrado(s)";
+    bar.style.display = qtd > 0 ? "flex" : "none";
+  }
+
+  /* ── exportações ── */
+  function exportar(tipoExportacao) {
+    var filtros = getFiltros();
+    filtros.tipoExportacao = tipoExportacao;
+
+    if (!window.google || !google.script || !google.script.run) {
+      toast("Exportação disponível apenas no Apps Script.", "warn"); return;
+    }
+
+    toast("Gerando " + tipoExportacao.toUpperCase() + "... aguarde.", "info", 5000);
+
+    google.script.run
+      .withSuccessHandler(function(r) {
+        if (r && r.erro) { toast(r.mensagem || "Erro ao exportar.", "err"); return; }
+        var link = r.link || r.url || "";
+        if (link) { window.open(link, "_blank"); }
+        toast("Relatório gerado com sucesso!", "ok", 5000);
+      })
+      .withFailureHandler(function(err) {
+        toast("Erro ao exportar: " + ((err && err.message) || err), "err", 6000);
+      })
+      .exportarRelatorio(filtros, SISGEP_TOKEN_SESSAO);
+  }
+
+  function exportarAuditoria() {
+    var filtros = getFiltros();
+    filtros.tipoExportacao = "excel";
+
+    if (!window.google || !google.script || !google.script.run) {
+      toast("Exportação disponível apenas no Apps Script.", "warn"); return;
+    }
+
+    toast("Gerando auditoria... aguarde.", "info", 5000);
+
+    google.script.run
+      .withSuccessHandler(function(r) {
+        if (r && r.erro) { toast(r.mensagem || "Erro ao exportar auditoria.", "err"); return; }
+        var link = r.link || r.url || "";
+        if (link) { window.open(link, "_blank"); }
+        toast("Auditoria gerada com sucesso!", "ok", 5000);
+      })
+      .withFailureHandler(function(err) {
+        toast("Erro: " + ((err && err.message) || err), "err", 6000);
+      })
+      .exportarAuditoriaLog(filtros, SISGEP_TOKEN_SESSAO);
+  }
+
+  /* ── navegação ── */
+  function mostrarRelatorios() {
+    // Esconde todos os blocos
+    ["blocoOficioNovo","blocoOficioHistorico","blocoTaxaAssistencial",
+     "blocoMonitoramento","blocoRelatorios"].forEach(function(id) {
+      var e = el(id); if (e) e.style.display = "none";
+    });
+    // Ativa aba relatórios na sidebar
+    document.querySelectorAll(".sb-nav").forEach(function(n) { n.classList.remove("active"); });
+    var sbRel = document.querySelector('.sb-nav[data-aba="relatorios"]');
+    if (sbRel) sbRel.classList.add("active");
+    // Exibe bloco
+var bloco = el("blocoRelatorios");
+    if (bloco) {
+      bloco.style.display = "block";
+      bloco.scrollIntoView({ behavior:"smooth", block:"start" });
+      setTimeout(bindEventos, 100);
+    } else {
+      toast("Bloco de relatórios não encontrado no HTML.", "warn");
+    }
+  }
+
+  /* ── bind de eventos ── */
+  function bindEventos() {
+    var btnCarregar = el("btnRelCarregar");
+    var btnLimpar   = el("btnRelLimpar");
+    var btnXLS      = el("btnRelExportXLS");
+    var btnCSV      = el("btnRelExportCSV");
+    var btnAudit    = el("btnRelExportAudit");
+    var btnVoltar   = el("btnVoltarEmissaoRel");
+
+    if (btnCarregar && !btnCarregar.dataset.bRel) { btnCarregar.dataset.bRel="1"; btnCarregar.addEventListener("click", carregar); }
+    if (btnLimpar   && !btnLimpar.dataset.bRel)   { btnLimpar.dataset.bRel="1";   btnLimpar.addEventListener("click",   limparFiltros); }
+    if (btnXLS      && !btnXLS.dataset.bRel)      { btnXLS.dataset.bRel="1";      btnXLS.addEventListener("click",      function(){ exportar("excel"); }); }
+    if (btnCSV      && !btnCSV.dataset.bRel)      { btnCSV.dataset.bRel="1";      btnCSV.addEventListener("click",      function(){ exportar("csv"); }); }
+    if (btnAudit    && !btnAudit.dataset.bRel)    { btnAudit.dataset.bRel="1";    btnAudit.addEventListener("click",    exportarAuditoria); }
+    if (btnVoltar   && !btnVoltar.dataset.bRel)   {
+      btnVoltar.dataset.bRel="1";
+      btnVoltar.addEventListener("click", function(){
+        if (typeof window.mostrarNovoOficio === "function") window.mostrarNovoOficio();
+      });
+    }
+
+    // Enter nos campos de texto
+    ["relEscola","relUsuario"].forEach(function(id) {
+      var e = el(id);
+      if (e && !e.dataset.bRel) { e.dataset.bRel="1"; e.addEventListener("keyup", function(ev){ if(ev.key==="Enter") carregar(); }); }
+    });
+
+    // Selects — filtra ao mudar
+    ["relTipo","relStatus"].forEach(function(id) {
+      var e = el(id);
+      if (e && !e.dataset.bRel) { e.dataset.bRel="1"; e.addEventListener("change", function(){ if(_dadosCarregados.length) renderTabela(_dadosCarregados); }); }
+    });
+  }
+
+  /* ── hook na sidebar ── */
+  function hookSidebar() {
+    // Intercepta o clique no item Relatórios da sidebar
+    var sbRel = document.querySelector('.sb-nav[data-aba="relatorios"]');
+    if (sbRel && !sbRel.dataset.bRelHook) {
+      sbRel.dataset.bRelHook = "1";
+      sbRel.addEventListener("click", function(ev) {
+        ev.stopImmediatePropagation();
+        mostrarRelatorios();
+        setTimeout(bindEventos, 100);
+      }, true); // capture — garante que roda antes do handler genérico da sidebar
+    }
+  }
+
+  /* ── init ── */
+  function init() {
+    hookSidebar();
+    bindEventos();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+    // retry para garantir que sidebar já foi renderizada pelo dashboard
+ setTimeout(hookSidebar, 800);
+  }
+
+  /* ── API pública ── */
+  window.Relatorios = {
+    carregar:           carregar,
+    exportar:           exportar,
+    exportarAuditoria:  exportarAuditoria,
+    mostrar:            mostrarRelatorios,
+    limpar:             limparFiltros
+  };
+
+})();
+</script>

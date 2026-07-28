@@ -1,0 +1,297 @@
+<!-- ================================================================
+  📄 ARQUIVO: ReciboDiversos.html
+  ✅ Módulo de Recibos Diversos — SISGEP · SindEducação-ES
+  ✅ Formulário unificado (1 a 25 beneficiários)
+  ✅ Envio automático ao emitir (WhatsApp + e-mail)
+  ✅ Histórico com controle de assinatura
+  ✅ Anexo: upload base64 ou link Drive
+  ✅ Envio para contabilidade com o assinado
+================================================================ -->
+
+<style>
+:root {
+  --navy:#001f4d; --navy2:#002f6c; --sky:#e8f0fb; --gold:#C9A84C; --gold2:#f0c843;
+  --white:#fff; --g50:#f8fafc; --g100:#f1f5f9; --g200:#e2e8f0;
+  --g400:#94a3b8; --g500:#64748b; --g600:#475569; --g800:#1e293b; --g900:#0f172a;
+  --green:#059669; --green-lt:#d1fae5; --green-dk:#065f46;
+  --amber:#d97706; --amber-lt:#fef3c7;
+  --red:#dc2626; --red-lt:#fee2e2; --blue:#1565C0;
+  --ss:0 1px 3px rgba(0,20,60,.07); --sm:0 4px 16px rgba(0,20,60,.10); --lg:0 8px 32px rgba(0,20,60,.14);
+  --r:14px; --rs:10px;
+}
+
+.rd-wrap * { box-sizing:border-box; font-family:'Plus Jakarta Sans',sans-serif; }
+
+/* ── HEADER ── */
+.rd-header {
+  background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 55%,#0a47a0 80%,#1565C0 100%);
+  border-radius:18px; padding:26px 32px; margin-bottom:22px;
+  display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px;
+  box-shadow:var(--lg); position:relative; overflow:hidden;
+}
+.rd-header::before {
+  content:''; position:absolute; inset:0;
+  background:radial-gradient(ellipse at 85% 0%,rgba(201,168,76,.16) 0%,transparent 55%);
+  pointer-events:none;
+}
+.rd-header h2 { font-size:21px; font-weight:900; color:#fff; letter-spacing:-.3px; margin-bottom:4px; }
+.rd-header p  { font-size:12px; color:rgba(255,255,255,.6); }
+.rd-badge {
+  background:rgba(201,168,76,.15); border:1px solid rgba(201,168,76,.4);
+  color:var(--gold); font-size:11px; font-weight:700; letter-spacing:.12em;
+  text-transform:uppercase; padding:6px 14px; border-radius:999px; flex-shrink:0;
+}
+
+/* ── TABS ── */
+.rd-tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:22px; }
+.rd-tab {
+  display:inline-flex; align-items:center; gap:7px;
+  padding:9px 18px; border-radius:999px;
+  border:1.5px solid var(--g200); background:var(--white);
+  color:var(--g600); font-size:13px; font-weight:700;
+  cursor:pointer; transition:all .17s;
+  font-family:'Plus Jakarta Sans',sans-serif; box-shadow:var(--ss);
+}
+.rd-tab:hover { border-color:var(--navy2); color:var(--navy); }
+.rd-tab.active { background:var(--navy); border-color:var(--navy); color:#fff; box-shadow:0 4px 12px rgba(0,30,100,.22); }
+
+/* ── CARDS ── */
+.rd-card {
+  background:var(--white); border-radius:var(--r);
+  border:1px solid rgba(0,0,0,.055);
+  box-shadow:var(--ss); margin-bottom:18px; overflow:hidden; transition:box-shadow .2s;
+}
+.rd-card:hover { box-shadow:var(--sm); }
+.rd-ch {
+  padding:16px 22px 13px; border-bottom:1px solid var(--g100);
+  display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+}
+.rd-ch-l { display:flex; align-items:center; gap:11px; }
+.rd-ico { width:36px; height:36px; border-radius:9px; background:var(--sky); display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0; }
+.rd-ct { font-size:14px; font-weight:800; color:var(--g900); }
+.rd-cs { font-size:11px; color:var(--g400); margin-top:2px; }
+.rd-cb { padding:18px 22px; }
+
+/* ── BOTÕES ── */
+.rd-btn-row { display:flex; gap:9px; flex-wrap:wrap; }
+.rd-btn {
+  display:inline-flex; align-items:center; gap:6px;
+  height:38px; padding:0 16px; border-radius:999px; border:none; cursor:pointer;
+  font-size:12.5px; font-weight:700; font-family:'Plus Jakarta Sans',sans-serif;
+  transition:all .17s; box-shadow:var(--ss);
+}
+.rd-btn:disabled { opacity:.4; cursor:not-allowed; transform:none!important; }
+.rd-btn-primary { background:var(--navy); color:#fff; }
+.rd-btn-primary:hover:not(:disabled) { background:var(--navy2); box-shadow:0 4px 12px rgba(0,30,100,.25); transform:translateY(-1px); }
+.rd-btn-outline { background:var(--white); color:var(--navy); border:1.5px solid var(--g200); }
+.rd-btn-outline:hover:not(:disabled) { border-color:var(--navy); background:var(--sky); transform:translateY(-1px); }
+.rd-btn-gold { background:linear-gradient(135deg,var(--gold),var(--gold2)); color:var(--navy); }
+.rd-btn-gold:hover:not(:disabled) { box-shadow:0 4px 12px rgba(201,168,76,.4); transform:translateY(-1px); }
+.rd-btn-green { background:linear-gradient(135deg,var(--green),#047857); color:#fff; }
+.rd-btn-green:hover:not(:disabled) { box-shadow:0 4px 12px rgba(5,150,105,.35); transform:translateY(-1px); }
+.rd-btn-sm { height:32px; padding:0 12px; font-size:11.5px; }
+
+/* ── STATUS ── */
+.rd-status {
+  display:none; border-radius:var(--rs); padding:11px 14px;
+  font-size:13px; font-weight:600; margin-top:13px;
+}
+.rd-status.info    { display:block; background:var(--sky); color:var(--navy2); border:1px solid #c3d9f5; }
+.rd-status.success { display:block; background:var(--green-lt); color:var(--green-dk); border:1px solid #bbf7d0; }
+.rd-status.error   { display:block; background:var(--red-lt); color:#991b1b; border:1px solid #fca5a5; }
+.rd-status.warn    { display:block; background:var(--amber-lt); color:#92400e; border:1px solid #fcd34d; }
+
+/* ── BADGE PF/PJ ── */
+.doc-tipo-badge {
+  display:inline-flex; align-items:center; gap:5px;
+  font-size:11px; font-weight:700; padding:3px 10px;
+  border-radius:999px; margin-top:4px; opacity:0; transition:opacity .2s;
+}
+.doc-tipo-badge.visivel { opacity:1; }
+.badge-pf { background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; }
+.badge-pj { background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; }
+
+/* ── VAZIO ── */
+.rd-vazio {
+  text-align:center; padding:32px; border:2px dashed #e2e8f0;
+  border-radius:12px; color:#94a3b8; font-size:13px; font-weight:600;
+  margin:16px 22px; line-height:1.8;
+}
+
+/* ── PAGINAÇÃO ── */
+.rd-paginacao { display:flex; align-items:center; justify-content:space-between; padding:12px 22px; flex-wrap:wrap; gap:10px; }
+.rd-pag-info { font-size:12px; color:#64748b; font-weight:600; }
+.rd-pag-btns { display:flex; gap:5px; }
+.rd-pag-btn { height:30px; min-width:30px; padding:0 8px; border:1.5px solid #e2e8f0; border-radius:7px; background:#fff; color:#475569; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; transition:all .15s; display:inline-flex; align-items:center; justify-content:center; }
+.rd-pag-btn:hover:not(:disabled) { border-color:#001f4d; color:#001f4d; }
+.rd-pag-btn.ativo { background:#001f4d; border-color:#001f4d; color:#fff; }
+.rd-pag-btn:disabled { opacity:.35; cursor:not-allowed; }
+
+/* ── TOTAL LOTE ── */
+.rd-total-row {
+  display:none; align-items:center; justify-content:flex-end;
+  gap:12px; padding:10px 4px 0; border-top:2px solid var(--g200); margin-top:8px;
+}
+.rd-total-label { font-size:12px; font-weight:800; color:var(--g600); text-transform:uppercase; letter-spacing:.06em; }
+.rd-total-valor { font-size:20px; font-weight:900; color:var(--navy2); }
+
+/* ── BANNER EMITIR ── */
+.rd-emit-banner {
+  background:linear-gradient(135deg,var(--navy),var(--navy2));
+  border-radius:var(--r); padding:20px 22px;
+  display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px;
+}
+.rd-emit-banner h3 { font-size:15px; font-weight:800; color:#fff; margin-bottom:3px; }
+.rd-emit-banner p  { font-size:12px; color:rgba(255,255,255,.6); }
+
+@keyframes rdModalIn { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
+
+@media(max-width:600px){
+  .rd-cb { padding:14px; }
+}
+</style>
+
+<div class="rd-wrap">
+
+  <!-- HEADER -->
+  <div class="rd-header">
+    <div style="position:relative;z-index:1;">
+      <h2>💰 Recibos Diversos</h2>
+      <p>Emissão de recibos para pagamentos realizados pelo SindEducação-ES</p>
+    </div>
+    <div class="rd-badge">SindEducação-ES</div>
+  </div>
+
+  <!-- TABS -->
+  <div class="rd-tabs">
+    <button type="button" class="rd-tab active" id="rdTabNovo">🧾 Novo Recibo</button>
+    <button type="button" class="rd-tab" id="rdTabHistorico">📋 Histórico</button>
+  </div>
+
+  <!-- ══ BLOCO NOVO RECIBO ══ -->
+  <div id="rdBlocoNovo">
+
+    <!-- Card: Beneficiários -->
+    <div class="rd-card">
+      <div class="rd-ch">
+        <div class="rd-ch-l">
+          <div class="rd-ico">👤</div>
+          <div>
+            <div class="rd-ct">Beneficiários</div>
+            <div class="rd-cs">Quem está recebendo o pagamento do SindEducação-ES · máximo 25</div>
+          </div>
+        </div>
+        <button type="button" id="rdBtnAdicionarBenef" class="rd-btn rd-btn-primary">+ Adicionar beneficiário</button>
+      </div>
+
+      <div class="rd-cb">
+        <div id="rdListaBeneficiarios"></div>
+
+        <!-- Total do lote -->
+        <div class="rd-total-row" id="rdTotalRow">
+          <span class="rd-total-label">Total do lote</span>
+          <span class="rd-total-valor" id="rdTotalLote">R$ 0,00</span>
+        </div>
+
+        <div id="rdStatusGlobal" class="rd-status" style="margin-top:14px;"></div>
+      </div>
+    </div>
+
+    <!-- Card: Emitir -->
+    <div class="rd-card">
+      <div class="rd-cb" style="padding:0;">
+        <div class="rd-emit-banner">
+          <div>
+            <h3>🚀 Emitir Recibo(s)</h3>
+            <p>WhatsApp e e-mail enviados automaticamente ao emitir, se informados</p>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button type="button" id="rdBtnPreview" class="rd-btn rd-btn-outline" style="border-color:rgba(255,255,255,.3);color:#fff;background:rgba(255,255,255,.1);">👁 Pré-visualizar</button>
+            <button type="button" id="rdBtnEmitir" class="rd-btn rd-btn-gold">✅ Emitir Recibos</button>
+          </div>
+        </div>
+
+        <!-- Resultado pós-emissão -->
+        <div id="rdResultadoEmissao" style="display:none;padding:18px 22px;"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══ BLOCO HISTÓRICO ══ -->
+  <div id="rdBlocoHistorico" style="display:none;">
+
+    <!-- Filtros -->
+    <div class="rd-card">
+      <div class="rd-cb">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:14px;">
+          <div>
+            <label style="font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px;">Nome do beneficiário</label>
+            <input type="text" id="rdFiltNome" placeholder="Nome completo"
+              style="width:100%;height:42px;border:1.5px solid var(--g200);border-radius:var(--rs);padding:0 12px;font-size:13px;font-family:inherit;outline:none;">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px;">Número do recibo</label>
+            <input type="text" id="rdFiltNumero" placeholder="RD-001/2026"
+              style="width:100%;height:42px;border:1.5px solid var(--g200);border-radius:var(--rs);padding:0 12px;font-size:13px;font-family:inherit;outline:none;">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px;">Status</label>
+            <select id="rdFiltStatus"
+              style="width:100%;height:42px;border:1.5px solid var(--g200);border-radius:var(--rs);padding:0 12px;font-size:13px;font-family:inherit;outline:none;background:#fff;">
+              <option value="">Todos</option>
+              <option value="ENVIADO">E-mail enviado</option>
+              <option value="FALHA">E-mail com falha</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px;">Data de</label>
+            <input type="date" id="rdFiltDataDe"
+              style="width:100%;height:42px;border:1.5px solid var(--g200);border-radius:var(--rs);padding:0 12px;font-size:13px;font-family:inherit;outline:none;">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px;">Data até</label>
+            <input type="date" id="rdFiltDataAte"
+              style="width:100%;height:42px;border:1.5px solid var(--g200);border-radius:var(--rs);padding:0 12px;font-size:13px;font-family:inherit;outline:none;">
+          </div>
+        </div>
+        <div class="rd-btn-row">
+          <button type="button" class="rd-btn rd-btn-primary" id="rdBtnBuscar">🔍 Buscar</button>
+          <button type="button" class="rd-btn rd-btn-outline" id="rdBtnLimparFilt">✕ Limpar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lista de recibos -->
+    <div class="rd-card">
+      <div class="rd-ch">
+        <div class="rd-ch-l">
+          <div class="rd-ico">📋</div>
+          <div>
+            <div class="rd-ct">Recibos emitidos</div>
+            <div class="rd-cs" id="rdHistSub">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Legenda de status -->
+      <div style="padding:10px 22px;border-bottom:1px solid var(--g100);display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        <span style="font-size:11px;color:var(--g500);font-weight:600;">Status:</span>
+        <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;">⏳ Aguardando assinatura</span>
+        <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;">✅ Assinado</span>
+        <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;background:#e0e7ff;color:#3730a3;border:1px solid #a5b4fc;">📤 Enviado contabilidade</span>
+      </div>
+
+      <div id="rdHistCorpo" style="padding:16px 22px;">
+        <div class="rd-vazio">🔍 Use os filtros acima e clique em Buscar.</div>
+      </div>
+
+      <div class="rd-paginacao" id="rdPaginacao" style="display:none;">
+        <div class="rd-pag-info" id="rdPagInfo"></div>
+        <div class="rd-pag-btns" id="rdPagBtns"></div>
+      </div>
+    </div>
+
+  </div>
+
+</div>

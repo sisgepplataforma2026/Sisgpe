@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Confirmação de Pagamento — SindEducação-ES</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:  #001f4d;
+    --navy2: #002f6c;
+    --gold:  #C9A84C;
+    --white: #ffffff;
+    --bg:    #f0f4f9;
+    --text:  #0f172a;
+    --muted: #475569;
+    --border:#cbd5e1;
+    --green: #059669;
+    --green2:#047857;
+    --red:   #dc2626;
+    --blue:  #1565C0;
+    --amber: #d97706;
+  }
+
+  html, body {
+    min-height: 100%;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 48px;
+  }
+
+  /* ── CARD ── */
+  .card {
+    width: 100%;
+    max-width: 540px;
+    background: var(--white);
+    border-radius: 20px;
+    box-shadow: 0 8px 40px rgba(0,20,60,.12);
+    overflow: hidden;
+  }
+
+  /* ── HEADER ── */
+  .card-header {
+    background: linear-gradient(135deg, var(--navy), var(--navy2));
+    padding: 28px 32px 22px;
+    border-bottom: 4px solid var(--gold);
+  }
+
+  .org-name { font-size: 20px; font-weight: 900; color: var(--white); }
+  .org-sub  { font-size: 11px; color: rgba(255,255,255,.6); margin-top: 4px; line-height: 1.4; }
+
+  /* ── BODY ── */
+  .card-body { padding: 28px 32px 32px; }
+
+  .page-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--navy);
+    margin-bottom: 6px;
+  }
+
+  .page-sub {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 24px;
+  }
+
+  /* ── INFO BOX ── */
+  .info-box {
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 24px;
+  }
+
+  .info-box.blue {
+    background: #f0f6ff;
+    border: 1px solid #bfdbfe;
+    border-left: 4px solid var(--blue);
+  }
+
+  .info-box.green {
+    background: #f0fdf4;
+    border: 1px solid #6ee7b7;
+    border-left: 4px solid var(--green);
+  }
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 13px;
+    padding: 4px 0;
+  }
+
+  .info-label { font-weight: 700; color: var(--navy); white-space: nowrap; min-width: 110px; }
+  .info-value { color: var(--text); text-align: right; font-weight: 500; }
+  .info-value.valor { font-size: 17px; font-weight: 800; color: var(--navy); }
+
+  /* ── DIVIDER ── */
+  .divider {
+    border: none;
+    border-top: 1px solid #e2e8f0;
+    margin: 20px 0;
+  }
+
+  .section-title {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--navy);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    margin-bottom: 16px;
+  }
+
+  /* ── FIELDS ── */
+  .field-group { margin-bottom: 16px; }
+
+  .field-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .field-required { color: var(--red); margin-left: 2px; }
+  .field-optional { font-weight: 400; color: var(--muted); font-size: 12px; margin-left: 4px; }
+
+  input[type="date"],
+  input[type="text"],
+  textarea {
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--text);
+    background: #fafbfc;
+    transition: border-color .2s, background .2s;
+  }
+
+  input[type="date"]:focus,
+  input[type="text"]:focus,
+  textarea:focus {
+    outline: none;
+    border-color: var(--green);
+    background: var(--white);
+  }
+
+  textarea { resize: vertical; min-height: 72px; }
+
+  /* ── BADGE STATUS ── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 999px;
+    margin-bottom: 20px;
+  }
+
+  .badge.aguardando { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+  .badge.pago       { background: #f0fdf4; color: var(--green2); border: 1px solid #a7f3d0; }
+
+  /* ── BOTÃO ── */
+  .btn-primary {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--green), var(--green2));
+    color: var(--white);
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 800;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: opacity .2s, transform .1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn-primary:hover   { opacity: .92; }
+  .btn-primary:active  { transform: scale(.99); }
+  .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* ── STATES ── */
+  .state-panel { display: none; }
+  .state-panel.active { display: block; }
+
+  .state-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 16px 0 8px;
+  }
+
+  .state-icon  { font-size: 52px; margin-bottom: 16px; line-height: 1; }
+  .state-title { font-size: 20px; font-weight: 800; margin-bottom: 8px; }
+  .state-msg   { font-size: 14px; color: var(--muted); line-height: 1.7; max-width: 400px; }
+
+  .spinner {
+    width: 44px;
+    height: 44px;
+    border: 4px solid #e2e8f0;
+    border-top-color: var(--green);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+    margin-bottom: 16px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── ALERT ── */
+  .alert {
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    display: none;
+    align-items: flex-start;
+    gap: 8px;
+    line-height: 1.5;
+  }
+
+  .alert.show  { display: flex; }
+  .alert.error { background: #fef2f2; border: 1px solid #fca5a5; color: var(--red); }
+
+  /* ── CONFIRMATION CARD (sucesso) ── */
+  .confirm-card {
+    background: #f0fdf4;
+    border: 1px solid #6ee7b7;
+    border-left: 4px solid var(--green);
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-top: 20px;
+    font-size: 13px;
+  }
+
+  .confirm-card p { margin-bottom: 4px; line-height: 1.6; }
+  .confirm-card strong { color: var(--navy); }
+
+  /* ── FOOTER ── */
+  .card-footer {
+    background: var(--navy);
+    padding: 14px 32px;
+    text-align: center;
+  }
+
+  .card-footer p { font-size: 11px; color: rgba(255,255,255,.45); }
+
+  @media (max-width: 480px) {
+    .card-body    { padding: 22px 20px 28px; }
+    .card-header  { padding: 22px 20px 18px; }
+    .card-footer  { padding: 12px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+
+  <!-- HEADER -->
+  <div class="card-header">
+    <div class="org-name">SINDEDUCAÇÃO-ES</div>
+    <div class="org-sub">Sindicato dos Educadores Técnico-Administrativos<br>em Estabelecimentos de Ensino Particular no ES</div>
+  </div>
+
+  <!-- ESTADO: Carregando -->
+  <div class="card-body state-panel active" id="state-loading">
+    <div class="state-center" style="padding:32px 0;">
+      <div class="spinner"></div>
+      <div class="state-msg">Carregando informações da despesa...</div>
+    </div>
+  </div>
+
+  <!-- ESTADO: Link inválido -->
+  <div class="card-body state-panel" id="state-invalid">
+    <div class="state-center" style="padding:24px 0;">
+      <div class="state-icon">⛔</div>
+      <div class="state-title" style="color:var(--red);">Link Inválido</div>
+      <div class="state-msg" id="msg-invalid">Este link é inválido ou expirou. Entre em contato com o financeiro do SindEducação-ES.</div>
+    </div>
+  </div>
+
+  <!-- ESTADO: Já confirmado -->
+  <div class="card-body state-panel" id="state-already">
+    <div class="state-center" style="padding:24px 0;">
+      <div class="state-icon">✅</div>
+      <div class="state-title" style="color:var(--green);">Pagamento Já Confirmado</div>
+      <div class="state-msg">Este pagamento já foi confirmado anteriormente. Nenhuma ação adicional é necessária.</div>
+    </div>
+  </div>
+
+  <!-- ESTADO: Formulário de confirmação -->
+  <div class="card-body state-panel" id="state-form">
+
+    <div class="page-title">✅ Confirmar Pagamento</div>
+    <div class="page-sub">Informe abaixo a data e os dados do pagamento realizado para registrar a baixa no sistema.</div>
+
+    <div class="badge aguardando" id="badge-status">⏳ Aguardando confirmação</div>
+
+    <!-- Info da despesa -->
+    <div class="info-box blue" id="info-box">
+      <!-- preenchido via JS -->
+    </div>
+
+    <hr class="divider">
+    <div class="section-title">Dados do Pagamento</div>
+
+    <!-- Alert de erro -->
+    <div class="alert error" id="alert-error"></div>
+
+    <!-- Data do pagamento -->
+    <div class="field-group">
+      <label class="field-label" for="data-pagamento">
+        Data do pagamento <span class="field-required">*</span>
+      </label>
+      <input type="date" id="data-pagamento">
+    </div>
+
+    <!-- Banco / Forma -->
+    <div class="field-group">
+      <label class="field-label" for="banco">
+        Banco / Forma de pagamento <span class="field-optional">(opcional)</span>
+      </label>
+      <input type="text" id="banco" placeholder="Ex: Sicoob — transferência, Bradesco — débito...">
+    </div>
+
+    <!-- Observações -->
+    <div class="field-group">
+      <label class="field-label" for="observacao">
+        Observações <span class="field-optional">(opcional)</span>
+      </label>
+      <textarea id="observacao" placeholder="Número do comprovante, referência ou qualquer informação adicional..."></textarea>
+    </div>
+
+    <button class="btn-primary" id="btn-confirmar" onclick="confirmarPagamento()">
+      <span>✅</span> Confirmar Pagamento
+    </button>
+
+  </div>
+
+  <!-- ESTADO: Enviando -->
+  <div class="card-body state-panel" id="state-sending">
+    <div class="state-center" style="padding:32px 0;">
+      <div class="spinner"></div>
+      <div class="state-title" style="color:var(--green);font-size:17px;">Registrando...</div>
+      <div class="state-msg">Aguarde enquanto salvamos a confirmação de pagamento.</div>
+    </div>
+  </div>
+
+  <!-- ESTADO: Sucesso -->
+  <div class="card-body state-panel" id="state-success">
+    <div class="state-center" style="padding:16px 0 4px;">
+      <div class="state-icon">🎉</div>
+      <div class="state-title" style="color:var(--green);">Pagamento Confirmado!</div>
+      <div class="state-msg">A baixa foi registrada automaticamente no SISGEP e o financeiro do SindEducação-ES foi notificado.</div>
+    </div>
+    <div class="confirm-card" id="confirm-card">
+      <!-- preenchido via JS -->
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="card-footer">
+    <p>SISGEP · SindEducação-ES · financeiro@sindeducacao.com · (27) 99813-5965</p>
+  </div>
+
+</div>
+
+<script>
+  // ── Variáveis globais ─────────────────────────────────────
+  var TOKEN      = "";
+  var dadosDesp  = null;
+
+  // ── Inicialização ──────────────────────────────────────────
+  document.addEventListener("DOMContentLoaded", function() {
+    TOKEN = new URLSearchParams(window.location.search).get("token") || "";
+
+    // Define data de hoje como padrão
+    var hoje = new Date();
+    var pad  = function(n) { return n < 10 ? "0" + n : n; };
+    document.getElementById("data-pagamento").value =
+      hoje.getFullYear() + "-" + pad(hoje.getMonth() + 1) + "-" + pad(hoje.getDate());
+
+    if (!TOKEN) {
+      mostrarEstado("invalid");
+      document.getElementById("msg-invalid").textContent =
+        "Nenhum token encontrado na URL. Verifique se o link recebido por e-mail está completo.";
+      return;
+    }
+
+    google.script.run
+      .withSuccessHandler(onDadosRecebidos)
+      .withFailureHandler(function(e) {
+        mostrarEstado("invalid");
+        document.getElementById("msg-invalid").textContent =
+          "Erro ao carregar: " + (e.message || String(e));
+      })
+      .obterDadosDespesaPorTokenContabilidade(TOKEN);
+  });
+
+  // ── Callback com dados do servidor ────────────────────────
+  function onDadosRecebidos(resp) {
+    if (!resp || !resp.ok) {
+      mostrarEstado("invalid");
+      document.getElementById("msg-invalid").textContent =
+        (resp && resp.mensagem) || "Link inválido ou expirado.";
+      return;
+    }
+
+    if (resp.jaConfirmado) {
+      mostrarEstado("already");
+      return;
+    }
+
+    dadosDesp = resp;
+
+    // Preenche info box
+    var html = "";
+    if (resp.numero)   html += infoRow("Nº Despesa",   resp.numero);
+    html += infoRow("Prestador",    resp.nome       || "—");
+    html += infoRow("Valor",        resp.valor      || "—", true);
+    html += infoRow("Vencimento",   resp.vencimento || "—");
+    if (resp.categoria)
+      html += infoRow("Categoria",  resp.categoria);
+    if (resp.descricao && resp.descricao !== resp.nome)
+      html += infoRow("Descrição",  resp.descricao);
+
+    document.getElementById("info-box").innerHTML = html;
+    mostrarEstado("form");
+  }
+
+  function infoRow(label, value, destaque) {
+    return '<div class="info-row">' +
+      '<span class="info-label">' + label + ':</span>' +
+      '<span class="info-value' + (destaque ? ' valor' : '') + '">' + escHtml(value) + '</span>' +
+      '</div>';
+  }
+
+  // ── Confirmar pagamento ────────────────────────────────────
+  function confirmarPagamento() {
+    var alertEl       = document.getElementById("alert-error");
+    alertEl.classList.remove("show");
+
+    var dataPagamento = document.getElementById("data-pagamento").value.trim();
+    var banco         = document.getElementById("banco").value.trim();
+    var observacao    = document.getElementById("observacao").value.trim();
+
+    if (!dataPagamento) {
+      alertEl.textContent = "Informe a data do pagamento antes de confirmar.";
+      alertEl.classList.add("show");
+      document.getElementById("data-pagamento").focus();
+      return;
+    }
+
+    // Converte data de yyyy-mm-dd para dd/MM/yyyy
+    var partes = dataPagamento.split("-");
+    var dataBR = partes[2] + "/" + partes[1] + "/" + partes[0];
+
+    mostrarEstado("sending");
+
+    google.script.run
+      .withSuccessHandler(function(resp) {
+        if (resp && resp.ok) {
+          preencherSucesso(resp, dataBR, banco, observacao);
+          mostrarEstado("success");
+        } else {
+          mostrarEstado("form");
+          var alertEl2 = document.getElementById("alert-error");
+          alertEl2.textContent = "Erro: " + ((resp && resp.mensagem) || "Falha ao confirmar.");
+          alertEl2.classList.add("show");
+        }
+      })
+      .withFailureHandler(function(e) {
+        mostrarEstado("form");
+        var alertEl2 = document.getElementById("alert-error");
+        alertEl2.textContent = "Erro técnico: " + (e.message || String(e));
+        alertEl2.classList.add("show");
+      })
+      .confirmarPagamentoDespesaPublico(TOKEN, {
+        dataPagamento: dataBR,
+        banco:         banco,
+        observacao:    observacao
+      });
+  }
+
+  function preencherSucesso(resp, dataBR, banco, observacao) {
+    var nome   = (dadosDesp && dadosDesp.nome)   || resp.nome   || "—";
+    var valor  = (dadosDesp && dadosDesp.valor)  || resp.valor  || "—";
+    var numero = (dadosDesp && dadosDesp.numero) || resp.numero || "";
+
+    var html =
+      '<p><strong>Prestador:</strong> ' + escHtml(nome) + '</p>' +
+      '<p><strong>Valor:</strong> ' + escHtml(valor) + '</p>' +
+      '<p><strong>Data do pagamento:</strong> ' + escHtml(dataBR) + '</p>' +
+      (banco ? '<p><strong>Banco/Forma:</strong> ' + escHtml(banco) + '</p>' : '') +
+      (observacao ? '<p><strong>Observação:</strong> ' + escHtml(observacao) + '</p>' : '') +
+      (numero ? '<p style="margin-top:8px;font-size:12px;color:var(--muted);">Nº Despesa: ' + escHtml(numero) + '</p>' : '');
+
+    document.getElementById("confirm-card").innerHTML = html;
+  }
+
+  // ── Utilitários ────────────────────────────────────────────
+  function mostrarEstado(nome) {
+    var ids = ["loading","invalid","already","form","sending","success"];
+    ids.forEach(function(id) {
+      var el = document.getElementById("state-" + id);
+      if (el) {
+        el.classList.toggle("active", id === nome);
+      }
+    });
+  }
+
+  function escHtml(str) {
+    return String(str || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+</script>
+</body>
+</html>

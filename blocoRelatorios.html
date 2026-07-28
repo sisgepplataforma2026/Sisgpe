@@ -1,0 +1,125 @@
+<!-- ═══════════════════════════════════════════════════════════
+     SISGEP · Módulo de Ofícios — Bloco de Relatórios
+     Arquivo: blocoRelatorios.html
+     Inserir logo após o bloco #blocoMonitoramento no Oficios.html
+═══════════════════════════════════════════════════════════ -->
+
+<!-- ═══ BLOCO: RELATÓRIOS ═══ -->
+<div id="blocoRelatorios" style="display:none;margin:-20px -24px 0;padding-bottom:24px;">
+
+  <div class="of-modulo-header">
+    <div>
+     <div class="of-modulo-header-title" style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:900;">📊 Relatórios de Ofícios</div>
+   <div class="of-modulo-header-sub" style="font-family:'Plus Jakarta Sans',sans-serif;">Filtre por período, tipo e escola — exporte em Excel ou CSV</div>
+    </div>
+    <div class="of-modulo-header-badge">SindEducação-ES</div>
+  </div>
+
+  <!-- Cabeçalho interno -->
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">📊</div>
+        <div>
+          <div class="of-card-title">Relatórios de Ofícios</div>
+          <div class="of-card-sub">Filtre por período, tipo e escola — exporte em Excel ou CSV</div>
+        </div>
+      </div>
+      <button type="button" id="btnVoltarEmissaoRel" class="btn btn-ghost btn-sm">← Voltar para emissão</button>
+    </div>
+
+    <div class="of-card-body">
+
+      <!-- ── Filtros ── -->
+      <div style="background:var(--blue-lt);border:1.5px solid #bfdbfe;border-radius:var(--rad);padding:16px 18px;margin-bottom:16px;">
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:#1e40af;margin-bottom:14px;">🔎 Filtros do relatório</div>
+        <div class="fg fg-4" style="margin-bottom:12px;">
+          <div class="fld">
+            <label for="relDataInicio">DATA INÍCIO</label>
+            <input type="date" id="relDataInicio">
+          </div>
+          <div class="fld">
+            <label for="relDataFim">DATA FIM</label>
+            <input type="date" id="relDataFim">
+          </div>
+          <div class="fld">
+            <label for="relTipo">TIPO</label>
+            <select id="relTipo">
+              <option value="">Todos</option>
+              <option value="Filiação">Filiação</option>
+              <option value="Desfiliação">Desfiliação</option>
+              <option value="Taxa Negocial">Taxa Negocial</option>
+              <option value="Taxa Assistencial">Taxa Assistencial</option>
+              <option value="Ofício Livre">Ofício Livre</option>
+            </select>
+          </div>
+          <div class="fld">
+            <label for="relStatus">STATUS</label>
+            <select id="relStatus">
+              <option value="">Todos</option>
+              <option value="ENVIADO">Enviado</option>
+              <option value="CONFIRMADO">Confirmado</option>
+              <option value="PENDENTE">Pendente</option>
+              <option value="ERRO">Erro</option>
+            </select>
+          </div>
+        </div>
+        <div class="fg fg-2" style="margin-bottom:12px;">
+          <div class="fld">
+            <label for="relEscola">ESCOLA</label>
+            <input type="text" id="relEscola" placeholder="Parte do nome da escola...">
+          </div>
+          <div class="fld">
+            <label for="relUsuario">USUÁRIO (auditoria)</label>
+            <input type="text" id="relUsuario" placeholder="Ex: financeiro@sindeducacao.com">
+          </div>
+        </div>
+        <div class="row-btns">
+          <button type="button" id="btnRelCarregar" class="btn btn-navy btn-sm">🔎 Consultar</button>
+          <button type="button" id="btnRelLimpar"   class="btn btn-ghost btn-sm">✕ Limpar filtros</button>
+        </div>
+      </div>
+
+      <!-- ── KPIs resumo ── -->
+      <div id="relKpis" style="display:none;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:16px;">
+        <div class="fila-card total"  ><div class="fila-num" id="relKpiTotal">0</div><div class="fila-lbl">Total</div></div>
+        <div class="fila-card enviado"><div class="fila-num" id="relKpiEnviado">0</div><div class="fila-lbl">Enviados</div></div>
+        <div class="fila-card enviado" style="border-color:#6ee7b7;background:var(--green-lt);"><div class="fila-num" id="relKpiConfirmado" style="color:var(--green);">0</div><div class="fila-lbl">Confirmados</div></div>
+        <div class="fila-card pendente"><div class="fila-num" id="relKpiPendente">0</div><div class="fila-lbl">Pendentes</div></div>
+        <div class="fila-card erro"  ><div class="fila-num" id="relKpiErro">0</div><div class="fila-lbl">Erros</div></div>
+      </div>
+
+      <!-- ── Barra de exportação ── -->
+      <div id="relExportBar" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;background:var(--g50);border:1.5px solid var(--g200);border-radius:var(--rad);margin-bottom:12px;">
+        <span style="font-size:12px;font-weight:700;color:var(--g700);flex:1;" id="relContador">0 registro(s)</span>
+        <button type="button" id="btnRelExportXLS"  class="btn-export">📊 Exportar Excel</button>
+        <button type="button" id="btnRelExportCSV"  class="btn-export">📄 Exportar CSV</button>
+        <button type="button" id="btnRelExportAudit" class="btn-export">📋 Exportar Auditoria</button>
+      </div>
+
+      <!-- ── Tabela de resultados ── -->
+      <div class="of-table-wrap">
+        <table class="of-table">
+          <thead>
+            <tr>
+              <th>Nº Ofício</th>
+              <th>Tipo</th>
+              <th>Escola</th>
+              <th>Data Envio</th>
+              <th>Status</th>
+              <th>E-mail</th>
+              <th>Usuário</th>
+              <th>PDF</th>
+            </tr>
+          </thead>
+          <tbody id="relTabela">
+            <tr><td colspan="8"><div class="of-table-empty">Use os filtros acima e clique em <strong>Consultar</strong>.</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+<!-- /blocoRelatorios -->

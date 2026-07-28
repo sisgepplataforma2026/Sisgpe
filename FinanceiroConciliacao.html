@@ -1,0 +1,140 @@
+<script>
+(function(){
+"use strict";
+
+var FIN_CONC_KEY="sisgep_conciliacao_bancaria_v1";
+
+function g(id){return document.getElementById(id);}
+function money(v){return Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});}
+function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]);});}
+function norm(s){return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();}
+function parseValor(s){
+  s=String(s||"").trim();
+  var neg=/^-|D\b|DEB|SAIDA|PAGAMENTO|TARIFA|PIX ENVIADO/i.test(s);
+  s=s.replace(/[^\d,.-]/g,"");
+  if(s.indexOf(",")>=0) s=s.replace(/\./g,"").replace(",",".");
+  var n=Number(s);
+  if(!isFinite(n)) return 0;
+  return neg ? -Math.abs(n) : n;
+}
+function parseData(s){
+  var m=String(s||"").match(/\b(\d{1,2})[\/.-](\d{1,2})(?:[\/.-](\d{2,4}))?\b/);
+  if(!m)return "";
+  var y=m[3]||String(new Date().getFullYear());
+  if(y.length===2)y="20"+y;
+  return String(m[1]).padStart(2,"0")+"/"+String(m[2]).padStart(2,"0")+"/"+y;
+}
+function parseLinhas(texto){
+  var linhas=String(texto||"").split(/\r?\n/).map(function(l){return l.trim();}).filter(Boolean);
+  var out=[];
+  linhas.forEach(function(linha,idx){
+    var valorMatch=linha.match(/(?:R\$\s*)?-?\d{1,3}(?:\.\d{3})*,\d{2}\b|-?\d+\.\d{2}\b/g);
+    if(!valorMatch||!valorMatch.length)return;
+    var rawValor=valorMatch[valorMatch.length-1];
+    var data=parseData(linha);
+    var valor=parseValor((/D\b|DEB|SAIDA|PAGAMENTO|TARIFA|PIX ENVIADO/i.test(linha) && rawValor.charAt(0)!=="-") ? "-"+rawValor : rawValor);
+    var desc=linha.replace(rawValor,"").replace(/\b\d{1,2}[\/.-]\d{1,2}(?:[\/.-]\d{2,4})?\b/,"").replace(/\s{2,}/g," ").trim();
+    if(!desc)desc="Movimento "+(idx+1);
+    out.push({id:String(Date.now())+"_"+idx,data:data,descricao:desc,valor:valor,tipo:valor>=0?"Entrada":"Saída",status:"Pendente",sugestao:"",score:0});
+  });
+  return out;
+}
+function despesas(){
+  return Array.isArray(window.todasDespesas) ? window.todasDespesas : [];
+}
+function valorDespesa(d){
+  var v=d.valorNumero||d.valor||d.valorTotal||d.valorFmt||"";
+  if(typeof v==="number")return v;
+  return Math.abs(parseValor(String(v)));
+}
+function sugerir(mov){
+  if(mov.valor>=0)return {texto:"Receita/entrada",score:35};
+  var val=Math.abs(mov.valor), nd=norm(mov.descricao), melhor=null;
+  despesas().forEach(function(d){
+    var dv=valorDespesa(d), diff=Math.abs(dv-val);
+    if(diff>0.02)return;
+    var nome=d.prestadorNome||d.nome||d.fornecedor||d.descricao||"Despesa";
+    var nn=norm(nome);
+    var score=70;
+    nn.split(/\s+/).filter(function(p){return p.length>3;}).forEach(function(p){if(nd.indexOf(p)>=0)score+=8;});
+    if(!melhor||score>melhor.score)melhor={texto:"Possível despesa: "+nome,score:Math.min(score,98)};
+  });
+  if(melhor)return melhor;
+  if(/tarifa|cesta|manutencao|banco/i.test(mov.descricao))return {texto:"Tarifa bancária",score:82};
+  if(/pix|ted|doc|transfer/i.test(mov.descricao))return {texto:"Transferência/Pix a classificar",score:56};
+  if(/salario|folha|inss|fgts/i.test(mov.descricao))return {texto:"RH/Folha de pagamento",score:76};
+  return {texto:"Saída não conciliada",score:25};
+}
+function salvar(lista){localStorage.setItem(FIN_CONC_KEY,JSON.stringify(lista||[]));}
+function carregar(){try{return JSON.parse(localStorage.getItem(FIN_CONC_KEY)||"[]");}catch(e){return[];}}
+function setText(id,v){var el=g(id);if(el)el.textContent=v;}
+function aviso(msg){var el=g("finConcAviso");if(!el)return;el.textContent=msg||"";el.style.display=msg?"block":"none";}
+
+window.finConciliacaoRender=function(lista){
+  lista=lista||carregar();
+  var entradas=0,saidas=0,matches=0;
+  lista.forEach(function(m){if(m.valor>=0)entradas+=m.valor;else saidas+=Math.abs(m.valor);if(m.score>=70)matches++;});
+  setText("finConcTotal",String(lista.length));
+  setText("finConcEntradas",money(entradas));
+  setText("finConcSaidas",money(saidas));
+  setText("finConcMatch",String(matches));
+  var tb=g("finConcTabela"); if(!tb)return;
+  if(!lista.length){tb.innerHTML='<tr><td colspan="6" style="padding:28px;text-align:center;color:#94a3b8;">Cole ou importe um extrato para começar.</td></tr>';return;}
+  tb.innerHTML=lista.map(function(m,i){
+    var cor=m.valor>=0?"#059669":"#dc2626";
+    var badge=m.status==="Conciliado"?"background:#dcfce7;color:#166534":"background:#fef3c7;color:#92400e";
+    return '<tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:11px 12px;font-size:12px;">'+esc(m.data||"-")+'</td><td style="padding:11px 12px;font-size:12px;"><strong>'+esc(m.descricao)+'</strong><div style="margin-top:4px;display:inline-flex;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:800;'+badge+'">'+esc(m.status)+'</div></td><td style="padding:11px 12px;font-size:12px;">'+esc(m.tipo)+'</td><td style="padding:11px 12px;font-size:12px;font-weight:900;color:'+cor+';">'+money(m.valor)+'</td><td style="padding:11px 12px;font-size:12px;">'+esc(m.sugestao||"-")+'<div style="font-size:10px;color:#94a3b8;margin-top:2px;">confiança '+(m.score||0)+'%</div></td><td style="padding:11px 12px;white-space:nowrap;"><button class="btn btn-outline btn-sm" onclick="finConciliacaoMarcar('+i+')">Conciliar</button> '+(m.valor<0?'<button class="btn btn-navy btn-sm" onclick="finConciliacaoCriarDespesa('+i+')">Gerar despesa</button>':"")+'</td></tr>';
+  }).join("");
+};
+
+window.finConciliacaoProcessar=function(){
+  aviso("");
+  var texto=(g("finConcTexto")||{}).value||"";
+  var lista=parseLinhas(texto).map(function(m){var s=sugerir(m);m.sugestao=s.texto;m.score=s.score;return m;});
+  if(!lista.length){aviso("Não encontrei lançamentos com data e valor. Se o arquivo for PDF escaneado, exporte o extrato em TXT/CSV ou cole o texto aqui.");}
+  salvar(lista); finConciliacaoRender(lista);
+};
+window.finConciliacaoExemplo=function(){
+  if(g("finConcTexto"))g("finConcTexto").value="01/07/2026 PIX RECEBIDO ESCOLA ACALANTO KIDS 1.250,00\n01/07/2026 TARIFA MANUTENCAO CONTA -69,90\n02/07/2026 PAGAMENTO ENERGIA EDP -485,30\n03/07/2026 PIX ENVIADO CONTABILIDADE SILVA -1.200,00";
+  finConciliacaoProcessar();
+};
+window.finConciliacaoLimpar=function(){if(g("finConcTexto"))g("finConcTexto").value="";salvar([]);aviso("");finConciliacaoRender([]);};
+window.finConciliacaoMarcar=function(i){var lista=carregar();if(lista[i])lista[i].status="Conciliado";salvar(lista);finConciliacaoRender(lista);};
+window.finConciliacaoConciliarAuto=function(){var lista=carregar();lista.forEach(function(m){if(m.score>=70)m.status="Conciliado";});salvar(lista);finConciliacaoRender(lista);};
+window.finConciliacaoCriarDespesa=function(i){
+  var m=carregar()[i]; if(!m)return;
+  if(typeof mudarTab==="function")mudarTab("nova");
+  setTimeout(function(){
+    if(g("r-avulso"))g("r-avulso").checked=true;
+    if(typeof atualizarTipoLanc==="function")atualizarTipoLanc();
+    if(g("n-nome-avulso"))g("n-nome-avulso").value=m.descricao;
+    if(g("n-valor"))g("n-valor").value=String(Math.abs(m.valor).toFixed(2)).replace(".",",");
+    if(g("n-desc"))g("n-desc").value="Despesa criada a partir da conciliação bancária: "+m.descricao;
+    if(g("n-obs"))g("n-obs").value="Origem: extrato bancário. Data do movimento: "+(m.data||"-");
+  },120);
+};
+window.finConciliacaoExportar=function(){
+  var lista=carregar();
+  var rows=[["Data","Descricao","Tipo","Valor","Sugestao","Confianca","Status"]].concat(lista.map(function(m){return[m.data,m.descricao,m.tipo,m.valor,m.sugestao,m.score,m.status];}));
+  var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c==null?"":c).replace(/"/g,'""')+'"';}).join(";");}).join("\n");
+  var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download="sisgep-conciliacao-bancaria.csv";a.click();
+};
+window.finConciliacaoInit=function(){
+  finConciliacaoRender();
+  var file=g("finConcArquivo");
+  if(file&&!file.dataset.conciliacaoBound){
+    file.dataset.conciliacaoBound="1";
+    file.addEventListener("change",function(){
+      var f=file.files&&file.files[0]; if(!f)return;
+      if(/\.pdf$/i.test(f.name)){aviso("PDF recebido. Se ele for escaneado, o navegador não consegue extrair texto sem OCR. Para conciliar agora, cole o texto ou exporte TXT/CSV do banco.");return;}
+      var r=new FileReader();
+      r.onload=function(){if(g("finConcTexto"))g("finConcTexto").value=String(r.result||"");finConciliacaoProcessar();};
+      r.readAsText(f,"utf-8");
+    });
+  }
+};
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",function(){setTimeout(finConciliacaoInit,120);});
+else setTimeout(finConciliacaoInit,120);
+
+})();
+</script>

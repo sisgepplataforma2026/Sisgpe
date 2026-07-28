@@ -1,0 +1,1179 @@
+<script>
+var AgendOftalmo = (function(){
+  'use strict';
+function mostrarLoaderSistema(texto) {
+  var overlay = document.getElementById('spLoadingOverlay');
+  var campoTexto = document.getElementById('spLoadingOverlayTexto');
+
+  if (campoTexto) {
+    campoTexto.textContent = texto || 'Processando...';
+  }
+
+  if (overlay) {
+    overlay.classList.add('spLoadingOverlay-ativo');
+  }
+}
+
+function ocultarLoaderSistema() {
+  var overlay = document.getElementById('spLoadingOverlay');
+
+  if (overlay) {
+    overlay.classList.remove('spLoadingOverlay-ativo');
+  }
+}
+  var _slotAtual = null;
+  var _dadosAtual = null;
+  var _slotsCache = [];
+  var _filtroAgenda = 'TODOS';
+  var _modoVisualizacao = 'TABELA';
+  var _modoSequencial = false;
+var _timerBuscaNome = null;
+var _associadosEncontrados = [];
+
+  function init() {
+  var hoje = new Date();
+
+  var dataInput = document.getElementById('oftalmoData');
+  if (dataInput && !dataInput.value) {
+    dataInput.value = hoje.toISOString().split('T')[0];
+  }
+
+  if (dataInput) {
+    carregarDia();
+  }
+
+  /* CPF DO TITULAR */
+  var cpfTit = document.getElementById('oftalmoCpfTitular');
+
+  if (cpfTit && !cpfTit.dataset.bndOft) {
+    cpfTit.dataset.bndOft = '1';
+
+    cpfTit.addEventListener('input', function () {
+      this.value = formatarCPFOftalmoInput(this.value);
+    });
+
+    cpfTit.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        validarCpf();
+      }
+    });
+
+    cpfTit.addEventListener('blur', function () {
+      this.value = formatarCPFOftalmoInput(this.value);
+    });
+  }
+
+  /* CPF DO DEPENDENTE */
+  var cpfDep = document.getElementById('oftalmoCpfDep');
+
+  if (cpfDep && !cpfDep.dataset.bndOft) {
+    cpfDep.dataset.bndOft = '1';
+
+    cpfDep.addEventListener('input', function () {
+      this.value = formatarCPFOftalmoInput(this.value);
+    });
+
+    cpfDep.addEventListener('blur', function () {
+      this.value = formatarCPFOftalmoInput(this.value);
+    });
+  }
+
+  /* TELEFONE */
+  var tel = document.getElementById('oftalmoTelefone');
+
+  if (tel && !tel.dataset.bndOft) {
+    tel.dataset.bndOft = '1';
+
+    tel.addEventListener('input', function () {
+      this.value = formatarTelefoneOftalmo(this.value);
+    });
+
+    tel.addEventListener('blur', function () {
+      this.value = formatarTelefoneOftalmo(this.value);
+    });
+  }
+
+  /* E-MAIL */
+  var email = document.getElementById('oftalmoEmail');
+
+  if (email && !email.dataset.bndOft) {
+    email.dataset.bndOft = '1';
+
+    email.addEventListener('input', function () {
+      this.value = String(this.value || '')
+        .replace(/\s/g, '')
+        .toLowerCase();
+    });
+
+    email.addEventListener('blur', function () {
+      validarEmailOftalmo(this);
+    });
+  }
+
+  /* AUTOCOMPLETE PELO NOME */
+  var nomeTitular = document.getElementById('oftalmoNomeTitular');
+
+  if (nomeTitular && !nomeTitular.dataset.autocompleteOftalmo) {
+    nomeTitular.dataset.autocompleteOftalmo = '1';
+    nomeTitular.setAttribute('autocomplete', 'off');
+
+    nomeTitular.addEventListener('input', function () {
+      buscarAssociadoPorNome(this.value);
+    });
+
+    nomeTitular.addEventListener('focus', function () {
+      if (
+        Array.isArray(_associadosEncontrados) &&
+        _associadosEncontrados.length &&
+        this.value.trim().length >= 2
+      ) {
+        renderizarSugestoesAssociados(
+          _associadosEncontrados
+        );
+      }
+    });
+  }
+
+  /* DATA DE NASCIMENTO DO DEPENDENTE */
+  var dataNasc = document.getElementById('oftalmoDataNascDep');
+
+  if (dataNasc && !dataNasc.dataset.bndOft) {
+    dataNasc.dataset.bndOft = '1';
+
+    dataNasc.addEventListener('change', function () {
+      calcularIdade(this.value);
+    });
+  }
+
+  /* FECHA O AUTOCOMPLETE AO CLICAR FORA */
+  if (!document.body.dataset.bndAutoOftalmo) {
+    document.body.dataset.bndAutoOftalmo = '1';
+
+    document.addEventListener('click', function (evento) {
+      var lista = document.getElementById(
+        'oftalmoAutocompleteNome'
+      );
+
+      var campoNome = document.getElementById(
+        'oftalmoNomeTitular'
+      );
+
+      if (
+        lista &&
+        !lista.contains(evento.target) &&
+        evento.target !== campoNome
+      ) {
+        lista.style.display = 'none';
+      }
+    });
+  }
+}
+  function isoParaBr(iso) {
+    if (!iso) return '';
+    var p = String(iso).split('-');
+    if (p.length !== 3) return iso;
+    return p[2] + '/' + p[1] + '/' + p[0];
+  }
+
+  function normalizarTexto(txt) {
+    return String(txt || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase()
+      .trim();
+  }
+
+  function carregarDia() {
+    var el = document.getElementById('oftalmoData');
+    if (!el || !el.value) { _toast('Selecione uma data.', 'aviso'); return; }
+
+    var dataBR = isoParaBr(el.value);
+    mostrarLoaderSistema('Carregando horários...');
+
+    google.script.run
+      .withSuccessHandler(function(r) {
+        ocultarLoaderSistema();
+        if (!r || !r.ok) { _toast((r && r.erro) || 'Erro ao carregar horários.', 'erro'); return; }
+        _slotsCache = Array.isArray(r.slots) ? r.slots : [];
+        _renderTudo();
+      })
+      .withFailureHandler(function(e) {
+        ocultarLoaderSistema();
+        _toast('Erro: ' + (e && e.message ? e.message : e), 'erro');
+      })
+      .listarHorariosOftalmo(dataBR);
+  }
+
+  function _renderTudo() {
+    var slots = _filtrarSlots(_slotsCache);
+    _renderSlots(slots);
+    _renderCards(slots);
+    _renderResumoDia(_slotsCache);
+    _atualizarStats(_slotsCache);
+  }
+
+  function _filtrarSlots(slots) {
+    var lista = Array.isArray(slots) ? slots.slice() : [];
+    var buscaEl = document.getElementById('oftalmoBuscaAgenda');
+    var busca = normalizarTexto(buscaEl ? buscaEl.value : '');
+
+    lista = lista.filter(function(s){
+      if (_filtroAgenda === 'LIVRE')      return !!s.livre || s.status === 'CANCELADO';
+      if (_filtroAgenda === 'RESERVADO')  return !s.livre && s.status !== 'CANCELADO' && !s.compareceu;
+      if (_filtroAgenda === 'COMPARECEU') return !!s.compareceu;
+      return true;
+    });
+
+    if (busca) {
+      lista = lista.filter(function(s){
+        var nome = obterNomeSlot(s);
+        var cpf  = obterCpfSlot(s);
+        var alvo = normalizarTexto([s.hora, s.status, s.tipo, nome, cpf, s.telefone, s.escola].join(' '));
+        return alvo.indexOf(busca) !== -1;
+      });
+    }
+
+    return lista;
+  }
+
+  function _renderSlots(slots) {
+    var tbody = document.getElementById('oftalmoTbody');
+    if (!tbody) return;
+
+    if (!slots || !slots.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="td-vazio">Nenhum horário encontrado para o filtro aplicado.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = slots.map(function(s){
+      var nome      = obterNomeSlot(s);
+      var cpf       = obterCpfSlot(s);
+      var tipoBadge = s.tipo
+        ? '<span class="badge ' + (s.tipo === 'DEPENDENTE' ? 'badge-violet' : 'badge-info') + '">' + escapeHtml(s.tipo) + '</span>'
+        : '';
+
+      return '<tr>' +
+        '<td><strong>' + escapeHtml(s.hora || '') + '</strong></td>' +
+        '<td>' + montarStatusHtml(s) + '</td>' +
+        '<td>' + tipoBadge + '</td>' +
+        '<td>' + escapeHtml(nome || '') + '</td>' +
+        '<td>' + escapeHtml(formatarCPFOftalmo(cpf)) + '</td>' +
+        '<td>' + escapeHtml(s.telefone || '') + '</td>' +
+        '<td>' + escapeHtml(s.escola   || '') + '</td>' +
+        '<td style="white-space:nowrap;">' + montarAcoesHtml(s) + '</td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  function _renderCards(slots) {
+    var wrap = document.getElementById('oftalmoCards');
+    if (!wrap) return;
+
+    if (!slots || !slots.length) {
+      wrap.innerHTML = '<div class="oftalmo-empty-card">Nenhum horário encontrado para o filtro aplicado.</div>';
+      return;
+    }
+
+    wrap.innerHTML = slots.map(function(s){
+      var nome   = obterNomeSlot(s);
+      var cpf    = obterCpfSlot(s);
+      var classe = 'livre';
+      if (s.status === 'CANCELADO') classe = 'cancelado';
+      else if (s.compareceu)        classe = 'compareceu';
+      else if (!s.livre)            classe = 'reservado';
+
+      return '<div class="oftalmo-card-slot ' + classe + '">' +
+        '<div class="oftalmo-card-top">' +
+          '<div class="oftalmo-card-hora">' + escapeHtml(s.hora || '') + '</div>' +
+          montarStatusHtml(s) +
+        '</div>' +
+        '<div class="oftalmo-card-nome">' + escapeHtml(nome || 'Horário livre') + '</div>' +
+        '<div class="oftalmo-card-info">' +
+          (s.livre || s.status === 'CANCELADO'
+            ? 'Disponível para reserva.'
+            : 'CPF: ' + escapeHtml(cpf || '-') + '<br>Escola: ' + escapeHtml(s.escola || '-')
+          ) +
+        '</div>' +
+        '<div class="oftalmo-card-acoes">' + montarAcoesHtml(s) + '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function _renderResumoDia(slots) {
+    var proxEl = document.getElementById('oftalmoProximos');
+    if (!proxEl) return;
+
+    var lista    = Array.isArray(slots) ? slots : [];
+    var proximos = lista.filter(function(s){ return !s.livre && s.status !== 'CANCELADO'; }).slice(0, 5);
+
+    proxEl.innerHTML = proximos.length
+      ? proximos.map(function(s){
+          var nome = obterNomeSlot(s);
+          return '<div class="oftalmo-proximo">' +
+            '<strong>' + escapeHtml(s.hora || '') + ' — ' + escapeHtml(nome || 'Paciente') + '</strong>' +
+            '<span>' + escapeHtml(s.escola || 'Escola não informada') + '</span>' +
+          '</div>';
+        }).join('')
+      : '<div class="oftalmo-proximo vazio">Nenhum atendimento reservado.</div>';
+
+    _set('oftalmoPendSemTelefone', lista.filter(function(s){ return !s.livre && s.status !== 'CANCELADO' && !String(s.telefone || '').trim(); }).length);
+    _set('oftalmoPendSemEmail',    lista.filter(function(s){ return !s.livre && s.status !== 'CANCELADO' && !String(s.email    || '').trim(); }).length);
+    _set('oftalmoPendCancelados',  lista.filter(function(s){ return s.status === 'CANCELADO'; }).length);
+  }
+
+  function montarStatusHtml(s) {
+    if (s.status === 'CANCELADO') return '<span class="slot-cancelado">● Cancelado</span>';
+    if (s.livre)                  return '<span class="slot-livre">● Livre</span>';
+    if (s.compareceu)             return '<span class="slot-compareceu">✔ Compareceu</span>';
+    return '<span class="slot-reservado">● Reservado</span>';
+  }
+
+  function montarAcoesHtml(s) {
+    var hora = escapeAttr(s.hora || '');
+    var id   = escapeAttr(s.id   || '');
+
+    if (s.livre || s.status === 'CANCELADO') {
+      return '<button type="button" class="btn-acao primary" onclick="AgendOftalmo.abrirModal(\'' + hora + '\', \'' + id + '\')">📅 Reservar</button>';
+    }
+
+    var slotJson = encodeURIComponent(JSON.stringify(s || {}));
+    var html = '';
+
+    if (s.compareceu) {
+      html += '<button type="button" class="btn-acao" onclick="AgendOftalmo.marcarCompareceu(\'' + id + '\', false)">↩ Desfazer</button> ';
+    }
+
+    html += '<button type="button" class="btn-acao whats" onclick="AgendOftalmo.abrirAcoesJSON(decodeURIComponent(\'' + slotJson + '\'))">📱</button> ';
+    html += '<button type="button" class="btn-acao danger" onclick="AgendOftalmo.cancelar(\'' + id + '\')">✕</button>';
+
+    return html;
+  }
+
+  function obterNomeSlot(s) {
+    if (!s) return '';
+    return s.tipo === 'DEPENDENTE'
+      ? (s.nomeBeneficiario || s.nomeTitular || '')
+      : (s.nomeTitular || s.nomeBeneficiario || '');
+  }
+
+  function obterCpfSlot(s) {
+    if (!s) return '';
+    return s.tipo === 'DEPENDENTE'
+      ? (s.cpfBeneficiario || s.cpfTitular || '')
+      : (s.cpfTitular || s.cpfBeneficiario || '');
+  }
+
+  function _atualizarStats(slots) {
+    slots = Array.isArray(slots) ? slots : [];
+    _set('oftalmoStatTotal',       slots.length);
+    _set('oftalmoStatReservados',  slots.filter(function(s){ return !s.livre && s.status !== 'CANCELADO'; }).length);
+    _set('oftalmoStatLivres',      slots.filter(function(s){ return !!s.livre || s.status === 'CANCELADO'; }).length);
+    _set('oftalmoStatCompareceram',slots.filter(function(s){ return !!s.compareceu; }).length);
+  }
+
+  function filtrarAgenda(filtro) {
+    _filtroAgenda = filtro || 'TODOS';
+    document.querySelectorAll('.oftalmo-chip').forEach(function(btn){
+      btn.classList.toggle('active', btn.dataset.filtro === _filtroAgenda);
+    });
+    _renderTudo();
+  }
+
+  function buscarNaAgenda() { _renderTudo(); }
+
+  function alternarVisualizacao() {
+    _modoVisualizacao = _modoVisualizacao === 'TABELA' ? 'CARDS' : 'TABELA';
+    var tabela = document.getElementById('oftalmoTabelaWrap');
+    var cards  = document.getElementById('oftalmoCardsWrap');
+    var btn    = document.getElementById('btnOftalmoModo');
+    if (tabela) tabela.style.display = _modoVisualizacao === 'TABELA' ? '' : 'none';
+    if (cards)  cards.style.display  = _modoVisualizacao === 'CARDS'  ? '' : 'none';
+    if (btn) btn.textContent = _modoVisualizacao === 'TABELA' ? '🧩 Cards' : '📋 Tabela';
+  }
+
+  function trocarTab(tab) {
+    var ag = document.getElementById('oftalmoTabAgenda');
+    var hi = document.getElementById('oftalmoTabHistorico');
+    var ta = document.getElementById('tabAgenda');
+    var th = document.getElementById('tabHistorico');
+    if (ag) ag.style.display = tab === 'agenda'    ? '' : 'none';
+    if (hi) hi.style.display = tab === 'historico' ? '' : 'none';
+    if (ta) ta.classList.toggle('active', tab === 'agenda');
+    if (th) th.classList.toggle('active', tab === 'historico');
+    if (tab === 'historico') carregarHistorico();
+  }
+
+  function abrirModal(hora, id) {
+    if (!hora) { _toast('Horário inválido. Recarregue a agenda.', 'erro'); return; }
+
+    _slotAtual = { hora: hora, id: id || '' };
+
+    var dataEl = document.getElementById('oftalmoData');
+    _set('oftalmoModalTitulo',   'Reservar Horário');
+    _set('oftalmoModalSubtitulo','📅 ' + isoParaBr(dataEl ? dataEl.value : '') + ' às ' + hora);
+    _set('resumoDataOftalmo',    isoParaBr(dataEl ? dataEl.value : ''));
+    _set('resumoHoraOftalmo',    hora);
+
+    document.querySelectorAll('input[name="oftalmoTipo"]').forEach(function(r){ r.checked = r.value === 'TRABALHADOR'; });
+    atualizarTipo();
+
+    ['oftalmoCpfTitular','oftalmoNomeTitular','oftalmoEscola','oftalmoTelefone','oftalmoEmail',
+     'oftalmoCpfDep','oftalmoNomeDep','oftalmoDataNascDep'].forEach(function(idCampo){
+      var el = document.getElementById(idCampo);
+      if (el) el.value = '';
+    });
+
+    var par = document.getElementById('oftalmoParentesco'); if (par) par.value = '';
+    var vEl = document.getElementById('oftalmoValidacaoCpf'); if (vEl) { vEl.textContent = ''; vEl.style.color = ''; }
+    var iEl = document.getElementById('oftalmoIdadeDep');    if (iEl) { iEl.textContent = ''; iEl.style.color = ''; }
+    var mEl = document.getElementById('oftalmoMsgModal');    if (mEl) mEl.style.display = 'none';
+
+    var modal = document.getElementById('modalOftalmo');
+    if (modal) { document.body.appendChild(modal); modal.style.display = 'flex'; }
+  }
+
+  function fecharModal() {
+    var modal = document.getElementById('modalOftalmo');
+    if (modal) modal.style.display = 'none';
+    _slotAtual = null;
+  }
+
+  function fecharModalAcoes() {
+    var modal = document.getElementById('modalOftalmoAcoes');
+    if (modal) modal.style.display = 'none';
+    _modoSequencial = false;
+    _dadosAtual = null;
+  }
+
+  function atualizarTipo() {
+    var r   = document.querySelector('input[name="oftalmoTipo"]:checked');
+    var sec = document.getElementById('oftalmoSecDependente');
+    if (sec) sec.style.display = (r && r.value === 'DEPENDENTE') ? '' : 'none';
+  }
+
+  function validarCpf() {
+    var cpfEl  = document.getElementById('oftalmoCpfTitular');
+    var valEl  = document.getElementById('oftalmoValidacaoCpf');
+    var nomeEl = document.getElementById('oftalmoNomeTitular');
+    if (!cpfEl || !valEl) return;
+
+    var cpf = cpfEl.value.replace(/\D/g, '');
+    if (cpf.length !== 11) { valEl.textContent = '⚠ CPF inválido.'; valEl.style.color = 'var(--red)'; return; }
+
+    valEl.textContent = '⏳ Validando...';
+    valEl.style.color = 'var(--g400)';
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        if (!r || !r.valido) { valEl.textContent = '✕ ' + ((r && r.erro) || 'CPF não encontrado.'); valEl.style.color = 'var(--red)'; return; }
+        var sit = String(r.situacao || '').toUpperCase();
+        if (sit === 'INADIMPLENTE' || sit === 'INATIVO') {
+          valEl.textContent = '⚠ Associado ' + sit.toLowerCase() + '. Confirme antes de agendar.';
+          valEl.style.color = 'var(--amber)';
+        } else {
+          valEl.textContent = '✔ Associado validado' + (r.aviso ? ' (' + r.aviso + ')' : '') + '.';
+          valEl.style.color = 'var(--green)';
+        }
+        if (r.nome && nomeEl && !nomeEl.value) nomeEl.value = r.nome;
+      })
+      .withFailureHandler(function(){ valEl.textContent = '⚠ Erro na validação.'; valEl.style.color = 'var(--amber)'; })
+      .validarAssociadoOftalmo(cpf);
+  }
+
+  function calcularIdade(dataNasc) {
+    var el = document.getElementById('oftalmoIdadeDep');
+    if (!el || !dataNasc) return;
+    var nasc  = new Date(dataNasc);
+    var hoje  = new Date();
+    var idade = hoje.getFullYear() - nasc.getFullYear();
+    var m     = hoje.getMonth() - nasc.getMonth();
+    if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--;
+    if (idade < 12) { el.textContent = '⚠ ' + idade + ' anos — mínimo 12 anos.'; el.style.color = 'var(--red)'; }
+    else            { el.textContent = '✔ ' + idade + ' anos.';                   el.style.color = 'var(--green)'; }
+  }
+
+  function salvarReserva() {
+    if (!_slotAtual || !_slotAtual.hora) { _msgModal('Horário não selecionado. Feche e selecione novamente.', 'erro'); return; }
+
+    var tipo    = document.querySelector('input[name="oftalmoTipo"]:checked');
+    var tipoVal = tipo ? tipo.value : 'TRABALHADOR';
+    var cpfTit  = _val('oftalmoCpfTitular').replace(/\D/g, '');
+    var nomeTit = _val('oftalmoNomeTitular');
+    var escola  = _val('oftalmoEscola');
+    var tel     = _val('oftalmoTelefone');
+    var email   = _val('oftalmoEmail');
+
+    function _err(msg) { _msgModal(msg, 'erro'); }
+
+    if (cpfTit.length !== 11) { _err('Informe o CPF do titular.'); return; }
+    if (!nomeTit)              { _err('Informe o nome do titular.'); return; }
+    if (!escola)               { _err('Informe a escola.'); return; }
+    if (!tel)                  { _err('Informe o telefone.'); return; }
+
+    var dataEl = document.getElementById('oftalmoData');
+    var dados  = {
+      idSlot: _slotAtual.id || '', data: isoParaBr(dataEl ? dataEl.value : ''),
+      hora: _slotAtual.hora, tipo: tipoVal,
+      cpfTitular: cpfTit, nomeTitular: nomeTit,
+      escola: escola, telefone: tel, email: email,
+      cpfBeneficiario: cpfTit, nomeBeneficiario: nomeTit,
+      dataNasc: '', parentesco: ''
+    };
+
+    if (tipoVal === 'DEPENDENTE') {
+      var nomeDep  = _val('oftalmoNomeDep');
+      var dataNasc = _val('oftalmoDataNascDep');
+      var paren    = _val('oftalmoParentesco');
+      var cpfDep   = _val('oftalmoCpfDep').replace(/\D/g, '');
+      if (!nomeDep)  { _err('Informe o nome do dependente.'); return; }
+      if (!dataNasc) { _err('Informe a data de nascimento.'); return; }
+      if (!paren)    { _err('Informe o grau de parentesco.'); return; }
+      var nasc  = new Date(dataNasc);
+      var hoje  = new Date();
+      var idade = hoje.getFullYear() - nasc.getFullYear();
+      var mes   = hoje.getMonth() - nasc.getMonth();
+      if (mes < 0 || (mes === 0 && hoje.getDate() < nasc.getDate())) idade--;
+      if (idade < 12) { _err('O dependente deve ter no mínimo 12 anos.'); return; }
+      dados.cpfBeneficiario  = cpfDep || cpfTit;
+      dados.nomeBeneficiario = nomeDep;
+      dados.dataNasc         = dataNasc;
+      dados.parentesco       = paren;
+    }
+
+    var btn = document.getElementById('btnSalvarOftalmo');
+    if (btn) btn.disabled = true;
+    _msgModal('', '');
+    mostrarLoaderSistema('Salvando agendamento...');
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        ocultarLoaderSistema();
+        if (btn) btn.disabled = false;
+        if (!r || !r.ok) { _msgModal((r && r.erro) || 'Erro ao salvar.', 'erro'); return; }
+        _dadosAtual = Object.assign({}, dados, { id: r.id || '' });
+        fecharModal();
+        carregarDia();
+        _abrirModalAcoes(_dadosAtual);
+      })
+      .withFailureHandler(function(e){
+        ocultarLoaderSistema();
+        if (btn) btn.disabled = false;
+        _msgModal('Erro: ' + (e && e.message ? e.message : e), 'erro');
+      })
+      .reservarHorarioOftalmo(dados);
+  }
+
+  function abrirAcoes(slot) { _dadosAtual = slot; _abrirModalAcoes(slot); }
+
+  function abrirAcoesJSON(json) {
+    try { abrirAcoes(JSON.parse(json || '{}')); }
+    catch(e) { _toast('Não foi possível abrir as ações deste agendamento.', 'erro'); }
+  }
+
+  function _abrirModalAcoes(d) {
+    if (!d) return;
+    var nome = d.tipo === 'DEPENDENTE' ? (d.nomeBeneficiario || d.nomeTitular) : (d.nomeTitular || d.nomeBeneficiario);
+    var el   = document.getElementById('oftalmoAcoesResumo');
+    if (el) {
+      el.innerHTML =
+        '<strong>Data:</strong> '     + escapeHtml(d.data     || '') + ' às ' + escapeHtml(d.hora || '') + '<br>' +
+        '<strong>Tipo:</strong> '     + escapeHtml(d.tipo     || 'TRABALHADOR') + '<br>' +
+        '<strong>Nome:</strong> '     + escapeHtml(nome       || '') + '<br>' +
+        '<strong>Telefone:</strong> ' + escapeHtml(d.telefone || '') + '<br>' +
+        '<strong>Escola:</strong> '   + escapeHtml(d.escola   || '');
+    }
+    var modal = document.getElementById('modalOftalmoAcoes');
+    if (modal) { document.body.appendChild(modal); modal.style.display = 'flex'; }
+  }
+
+  function agendarProximoDependente() {
+    if (!_dadosAtual) return;
+    var modal = document.getElementById('modalOftalmoAcoes');
+    if (modal) modal.style.display = 'none';
+
+    var proximoSlot = null;
+    var horaAtual   = _dadosAtual.hora;
+    var passou      = false;
+
+    for (var i = 0; i < _slotsCache.length; i++) {
+      var s = _slotsCache[i];
+      if (passou && (s.livre || s.status === 'CANCELADO')) { proximoSlot = s; break; }
+      if (s.hora === horaAtual) passou = true;
+    }
+
+    if (!proximoSlot) { _toast('Não há horários livres disponíveis após este.', 'aviso'); _dadosAtual = null; return; }
+
+    var dadosTitular = Object.assign({}, _dadosAtual);
+    _modoSequencial  = true;
+    abrirModal(proximoSlot.hora, proximoSlot.id);
+
+    setTimeout(function(){
+      var campos = {
+        'oftalmoCpfTitular':  dadosTitular.cpfTitular  || '',
+        'oftalmoNomeTitular': dadosTitular.nomeTitular || '',
+        'oftalmoEscola':      dadosTitular.escola      || '',
+        'oftalmoTelefone':    dadosTitular.telefone    || '',
+        'oftalmoEmail':       dadosTitular.email       || ''
+      };
+      Object.keys(campos).forEach(function(id){ var el = document.getElementById(id); if (el) el.value = campos[id]; });
+      document.querySelectorAll('input[name="oftalmoTipo"]').forEach(function(r){ r.checked = r.value === 'DEPENDENTE'; });
+      atualizarTipo();
+      var valEl = document.getElementById('oftalmoValidacaoCpf');
+      if (valEl) { valEl.textContent = '✔ Titular preenchido automaticamente.'; valEl.style.color = 'var(--green)'; }
+    }, 100);
+  }
+
+  function enviarWhatsApp() {
+  if (!_dadosAtual) return;
+
+  var d    = _dadosAtual;
+  var nome = d.tipo === 'DEPENDENTE'
+    ? (d.nomeBeneficiario || d.nomeTitular)
+    : (d.nomeTitular || d.nomeBeneficiario);
+
+  var dataExibir = d.data || '';
+  if (!dataExibir) {
+    var dataEl = document.getElementById('oftalmoData');
+    if (dataEl && dataEl.value) dataExibir = isoParaBr(dataEl.value);
+  }
+
+  var e = {
+    check:   String.fromCodePoint(10024),
+    data:    String.fromCodePoint(128197),
+    hora:    String.fromCodePoint(128336),
+    pessoa:  String.fromCodePoint(128100),
+    tipo:    String.fromCodePoint(128278),
+    tel:     String.fromCodePoint(128222),
+    escola:  String.fromCodePoint(127979),
+    local:   String.fromCodePoint(127973),
+    pin:     String.fromCodePoint(128205),
+    wpp:     String.fromCodePoint(128242),
+    lista:   String.fromCodePoint(128203),
+    coracao: String.fromCodePoint(128153),
+    sorriso: String.fromCodePoint(128522)
+  };
+
+  var msg =
+    e.check + ' *AGENDAMENTO CONFIRMADO* ' + e.check + '\n\n' +
+    'Ol\u00e1, ' + (nome || 'Associado(a)') + '!\n\n' +
+    'Seu atendimento de *Oftalmologia* foi confirmado com sucesso pelo *SindEduca\u00e7\u00e3o-ES*.\n\n' +
+    e.data   + ' *Data:* '             + dataExibir          + '\n' +
+    e.hora   + ' *Hor\u00e1rio:* '     + (d.hora     || '') + '\n' +
+    e.pessoa + ' *Benefici\u00e1rio:* '+ (nome       || '') + '\n' +
+    e.tipo   + ' *Tipo:* '             + (d.tipo     || 'TRABALHADOR') + '\n' +
+    e.tel    + ' *Telefone:* '         + (d.telefone || '') + '\n' +
+    e.escola + ' *Escola:* '           + (d.escola   || '') + '\n\n' +
+    '-----------------------------\n' +
+    e.local + ' *Local do Atendimento*\n' +
+    '-----------------------------\n' +
+    'Vila Medic \u2014 Medicina & Odontologia\n' +
+    e.pin + ' Av. Champagnat, 1033 \u2014 Centro\n' +
+    'Vila Velha/ES \u00b7 CEP 29100-011\n' +
+    e.tel + ' (27) 99973-3077 | (27) 3063-9090\n' +
+    e.wpp + ' WhatsApp: (27) 99854-0712\n\n' +
+    '-----------------------------\n' +
+    e.lista + ' *Orienta\u00e7\u00f5es importantes*\n' +
+    '-----------------------------\n' +
+    '\u2022 Compare\u00e7a com anteced\u00eancia;\n' +
+    '\u2022 Apresente documento oficial com foto e CPF;\n' +
+    '\u2022 Em caso de impossibilidade, informe previamente.\n\n' +
+    e.coracao + ' Este benef\u00edcio \u00e9 uma importante conquista do *SindEduca\u00e7\u00e3o-ES*, reafirmando o compromisso da entidade com a sa\u00fade e valoriza\u00e7\u00e3o dos trabalhadores da educa\u00e7\u00e3o.\n\n' +
+    'Desejamos um excelente atendimento! ' + e.sorriso + '\n\n' +
+    'Atenciosamente,\n' +
+    'SindEduca\u00e7\u00e3o-ES\n' +
+    'Somos Todos Educadores';
+
+  var fone = (typeof normalizarTelefoneFrontend === 'function')
+    ? normalizarTelefoneFrontend(d.telefone || '')
+    : String(d.telefone || '').replace(/\D/g, '');
+
+  if (!fone) { _toast('Telefone inv\u00e1lido para WhatsApp.', 'aviso'); return; }
+  window.open('https://wa.me/55' + fone + '?text=' + encodeURIComponent(msg), '_blank');
+}
+  function enviarEmail() {
+    if (!_dadosAtual) return;
+    if (!_dadosAtual.email) { _toast('E-mail não informado.', 'aviso'); return; }
+
+    mostrarLoaderSistema('Enviando e-mail...');
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        ocultarLoaderSistema();
+        if (r && r.ok) { _toast('E-mail enviado com sucesso!', 'ok'); fecharModalAcoes(); }
+        else { _toast((r && r.erro) || 'Erro ao enviar e-mail.', 'erro'); }
+      })
+      .withFailureHandler(function(e){
+        ocultarLoaderSistema();
+        _toast('Erro: ' + (e && e.message ? e.message : e), 'erro');
+      })
+      .enviarEmailConfirmacaoOftalmo(_dadosAtual);
+  }
+
+  function fecharAgendaDia() {
+    var dataEl = document.getElementById('oftalmoData');
+    if (!dataEl || !dataEl.value) { _toast('Selecione uma data primeiro.', 'aviso'); return; }
+
+    var data       = isoParaBr(dataEl.value);
+    var reservados = _slotsCache.filter(function(s){ return !s.livre && s.status !== 'CANCELADO'; });
+
+    if (!reservados.length) { _toast('Nenhum agendamento no dia para gerar relação.', 'aviso'); return; }
+
+    var total        = reservados.length;
+    var compareceram = reservados.filter(function(s){ return s.compareceu; }).length;
+    var faltaram     = total - compareceram;
+
+    var linhas = reservados.map(function(s){
+      var nome   = obterNomeSlot(s);
+      var tipo   = s.tipo === 'DEPENDENTE' ? 'Dependente' : 'Trabalhador';
+      var status = s.compareceu ? '✔ Compareceu' : '— Agendado';
+      return '<div style="padding:8px 0;border-bottom:1px solid #f1f5f9;">' +
+        '<strong>' + escapeHtml(s.hora) + '</strong> · ' +
+        escapeHtml(nome || '—') + ' · ' +
+        '<span style="color:#64748b;">' + tipo + '</span> · ' +
+        '<span style="color:' + (s.compareceu ? '#059669' : '#d97706') + ';">' + status + '</span>' +
+      '</div>';
+    }).join('');
+
+    var subEl    = document.getElementById('fecharAgendaSubtitulo');
+    var resumoEl = document.getElementById('fecharAgendaResumo');
+
+    if (subEl) subEl.textContent = '📅 ' + data + ' · ' + total + ' agendamento(s)';
+
+    if (resumoEl) {
+      resumoEl.innerHTML =
+        '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;">' +
+          '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px;text-align:center;">' +
+            '<div style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:4px;">TOTAL</div>' +
+            '<div style="font-size:24px;font-weight:900;color:#0f172a;">' + total + '</div>' +
+          '</div>' +
+          '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px;text-align:center;">' +
+            '<div style="font-size:11px;color:#059669;font-weight:700;margin-bottom:4px;">COMPARECERAM</div>' +
+            '<div style="font-size:24px;font-weight:900;color:#059669;">' + compareceram + '</div>' +
+          '</div>' +
+          '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px;text-align:center;">' +
+            '<div style="font-size:11px;color:#d97706;font-weight:700;margin-bottom:4px;">FALTARAM</div>' +
+            '<div style="font-size:24px;font-weight:900;color:#d97706;">' + faltaram + '</div>' +
+          '</div>' +
+        '</div>' + linhas;
+    }
+
+    var modal = document.getElementById('modalFecharAgenda');
+    if (modal) { document.body.appendChild(modal); modal.style.display = 'flex'; }
+  }
+
+  function fecharModalRelatorio() {
+    var modal = document.getElementById('modalFecharAgenda');
+    if (modal) modal.style.display = 'none';
+  }
+
+  function enviarRelatorioWhatsApp() {
+    var dataEl     = document.getElementById('oftalmoData');
+    var data       = isoParaBr(dataEl ? dataEl.value : '');
+    var reservados = _slotsCache.filter(function(s){
+      return !s.livre && s.status !== 'CANCELADO';
+    });
+
+    if (!reservados.length) { _toast('Nenhum agendamento para enviar.', 'aviso'); return; }
+
+    var linhas = reservados.map(function(s, i){
+      var nome    = obterNomeSlot(s);
+      var cpf     = s.tipo === 'DEPENDENTE' ? (s.cpfBeneficiario || s.cpfTitular) : s.cpfTitular;
+      var titular = s.nomeTitular || '';
+
+      var cpfFmt = String(cpf || '').replace(/\D/g,'').padStart(11,'0')
+        .replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+
+ var linha =
+  '*' + (i + 1) + '. ' + s.hora + ' — ' + (nome || '—') + '*\n' +
+  'CPF: ' + (cpfFmt || '—') + '\n' +
+  'Telefone: ' + (s.telefone || '—') + '\n' +
+  'Escola: ' + (s.escola || '—') + '\n' +
+  'Tipo: ' + (s.tipo === 'DEPENDENTE' ? 'Dependente' : 'Trabalhador');
+
+      if (s.tipo === 'DEPENDENTE') {
+        linha += '\nResponsável: ' + titular +
+          (s.parentesco ? ' (' + s.parentesco + ')' : '');
+      }
+
+      return linha;
+    }).join('\n\n');
+
+    var msg =
+      '*Sindicato dos Educadores Técnico-Administrativos em*\n' +
+      '*Estabelecimentos de Ensino Particular do Estado do ES*\n' +
+      '*SindEducação/ES*\n' +
+      '_Agendamento de Oftalmologia_\n' +
+      '📅 Data: ' + data + '\n\n' +
+      '━━━━━━━━━━━━━━━━━━━━━\n' +
+      '*RELAÇÃO DE PACIENTES*\n' +
+      '━━━━━━━━━━━━━━━━━━━━━\n\n' +
+      linhas + '\n\n' +
+      '━━━━━━━━━━━━━━━━━━━━━\n\n' +
+      'Atenciosamente,\n' +
+      '*Marcelha Aline Pinto Gomes*\n' +
+      '*Secretaria — SindEducação-ES*\n' +
+      'Av. Nossa Senhora dos Navegantes, 755\n' +
+      'Salas 707/708 — Enseada do Suá\n' +
+      'Vitória/ES — CEP 29.050-355\n' +
+      '📞 (27) 99735-8900 | (27) 3222-2706\n' +
+      '✉ secretaria@sindeducacao.com';
+
+    window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+  }
+
+  function enviarRelatorioEmail() {
+    var dataEl = document.getElementById('oftalmoData');
+    if (!dataEl || !dataEl.value) { _toast('Selecione uma data.', 'aviso'); return; }
+
+    var data       = isoParaBr(dataEl.value);
+    var reservados = _slotsCache.filter(function(s){ return !s.livre && s.status !== 'CANCELADO'; });
+
+    if (!reservados.length) { _toast('Nenhum agendamento para enviar.', 'aviso'); return; }
+
+    mostrarLoaderSistema('Enviando relatório por e-mail...');
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        ocultarLoaderSistema();
+        if (r && r.ok) { _toast('Relatório enviado com sucesso!', 'ok'); fecharModalRelatorio(); }
+        else { _toast((r && r.erro) || 'Erro ao enviar.', 'erro'); }
+      })
+      .withFailureHandler(function(e){
+        ocultarLoaderSistema();
+        _toast('Erro: ' + (e && e.message ? e.message : e), 'erro');
+      })
+      .enviarRelatorioAgendaOftalmo({ data: data, agendamentos: reservados });
+  }
+
+  function cancelar(id) {
+    if (!id) { _toast('ID do agendamento não encontrado.', 'erro'); return; }
+    if (!confirm('Cancelar este agendamento?')) return;
+    mostrarLoaderSistema('Cancelando...');
+    google.script.run
+      .withSuccessHandler(function(r){
+        ocultarLoaderSistema();
+        if (!r || !r.ok) { _toast((r && r.erro) || 'Erro ao cancelar.', 'erro'); return; }
+        _toast('Agendamento cancelado.', 'ok');
+        carregarDia();
+      })
+      .withFailureHandler(function(e){ ocultarLoaderSistema(); _toast('Erro: ' + (e && e.message ? e.message : e), 'erro'); })
+      .cancelarHorarioOftalmo(id);
+  }
+
+  function marcarCompareceu(id, compareceu) {
+    if (!id) { _toast('ID do agendamento não encontrado.', 'erro'); return; }
+    mostrarLoaderSistema(compareceu ? 'Marcando comparecimento...' : 'Desfazendo comparecimento...');
+    google.script.run
+      .withSuccessHandler(function(r){
+        ocultarLoaderSistema();
+        if (!r || !r.ok) { _toast((r && r.erro) || 'Erro ao atualizar.', 'erro'); return; }
+        carregarDia();
+      })
+      .withFailureHandler(function(e){ ocultarLoaderSistema(); _toast('Erro: ' + (e && e.message ? e.message : e), 'erro'); })
+      .marcarCompareceuOftalmo(id, compareceu);
+  }
+
+  function carregarHistorico() {
+    var filtros = {
+      dataInicio: isoParaBr(_val('oftalmoFiltroInicio')),
+      dataFim:    isoParaBr(_val('oftalmoFiltroFim')),
+      status:     _val('oftalmoFiltroStatus') || 'TODOS'
+    };
+    mostrarLoaderSistema('Carregando histórico...');
+    google.script.run
+      .withSuccessHandler(function(r){
+        ocultarLoaderSistema();
+        if (!r || !r.ok) { _toast((r && r.erro) || 'Erro ao carregar histórico.', 'erro'); return; }
+        _renderHistorico(r.agendamentos || []);
+      })
+      .withFailureHandler(function(e){ ocultarLoaderSistema(); _toast('Erro: ' + (e && e.message ? e.message : e), 'erro'); })
+      .buscarAgendamentosOftalmo(filtros);
+  }
+
+  function _renderHistorico(lista) {
+    var tbody = document.getElementById('oftalmoTbodyHist');
+    if (!tbody) return;
+
+    if (!lista || !lista.length) {
+      tbody.innerHTML = '<tr><td colspan="9" class="td-vazio">Nenhum registro encontrado.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = lista.map(function (ag) {
+      var nome = ag.tipo === 'DEPENDENTE'
+        ? (ag.nomeBeneficiario || ag.nomeTitular || '')
+        : (ag.nomeTitular || ag.nomeBeneficiario || '');
+
+      var cpf = ag.tipo === 'DEPENDENTE'
+        ? (ag.cpfBeneficiario || ag.cpfTitular || '')
+        : (ag.cpfTitular || ag.cpfBeneficiario || '');
+
+      var compareceuHtml = ag.compareceu
+        ? '<span class="oft-hist-badge oft-hist-compareceu">✔ Sim</span>'
+        : '<span class="oft-hist-badge oft-hist-nao">— Não</span>';
+
+      var statusNormalizado = String(ag.status || '').toUpperCase();
+      var statusHtml;
+
+      if (statusNormalizado === 'CANCELADO') {
+        statusHtml = '<span class="oft-hist-badge oft-hist-cancelado">Cancelado</span>';
+      } else if (statusNormalizado === 'COMPARECEU') {
+        statusHtml = '<span class="oft-hist-badge oft-hist-compareceu">Compareceu</span>';
+      } else {
+        statusHtml = '<span class="oft-hist-badge oft-hist-ativo">Ativo</span>';
+      }
+
+      var agJson = encodeURIComponent(JSON.stringify(ag || {}));
+
+      return (
+        '<tr>' +
+          '<td data-label="Data">' + escapeHtml(ag.data || '') + '</td>' +
+          '<td data-label="Hora"><strong>' + escapeHtml(ag.hora || '') + '</strong></td>' +
+          '<td data-label="Tipo"><span class="oft-hist-tipo">' + escapeHtml(ag.tipo === 'DEPENDENTE' ? 'Dependente' : 'Trabalhador') + '</span></td>' +
+          '<td data-label="Nome" class="oft-hist-nome" title="' + escapeAttr(nome) + '">' + escapeHtml(nome) + '</td>' +
+          '<td data-label="CPF">' + escapeHtml(formatarCPFOftalmo(cpf)) + '</td>' +
+          '<td data-label="Escola" class="oft-hist-escola" title="' + escapeAttr(ag.escola || '') + '">' + escapeHtml(ag.escola || '') + '</td>' +
+          '<td data-label="Compareceu">' + compareceuHtml + '</td>' +
+          '<td data-label="Status">' + statusHtml + '</td>' +
+          '<td data-label="Ações"><div class="oft-hist-acoes">' +
+            '<button type="button" class="oft-hist-btn oft-hist-btn-reenviar" title="Reenviar confirmação" onclick="AgendOftalmo.abrirAcoesJSON(decodeURIComponent(\'' + agJson + '\'))">📨 <span>Reenviar</span></button>' +
+            '<button type="button" class="oft-hist-btn oft-hist-btn-imprimir" title="Imprimir agendamento" onclick="AgendOftalmo.imprimirAgendamentoJSON(decodeURIComponent(\'' + agJson + '\'))">🖨️</button>' +
+            '<button type="button" class="oft-hist-btn oft-hist-btn-excluir" title="Excluir definitivamente" onclick="AgendOftalmo.excluirAgendamento(\'' + escapeAttr(ag.id || '') + '\')">🗑️</button>' +
+          '</div></td>' +
+        '</tr>'
+      );
+    }).join('');
+  }
+
+  function excluirAgendamento(id) {
+    id = String(id || '').trim();
+    if (!id) { _toast('ID do agendamento não encontrado.', 'erro'); return; }
+
+    var confirmarExclusao = confirm(
+      'Deseja excluir definitivamente este agendamento?\n\n' +
+      'Esta ação removerá o registro da planilha e não poderá ser desfeita.'
+    );
+    if (!confirmarExclusao) return;
+
+    mostrarLoaderSistema('Excluindo agendamento...');
+
+    google.script.run
+      .withSuccessHandler(function (resposta) {
+        ocultarLoaderSistema();
+
+        if (!resposta || resposta.ok !== true) {
+          _toast(resposta && resposta.erro ? resposta.erro : 'Não foi possível excluir o agendamento.', 'erro');
+          return;
+        }
+
+        _toast('Agendamento excluído com sucesso.', 'ok');
+        carregarHistorico();
+        carregarDia();
+      })
+      .withFailureHandler(function (erro) {
+        ocultarLoaderSistema();
+        _toast('Erro ao excluir: ' + (erro && erro.message ? erro.message : erro), 'erro');
+      })
+      .excluirAgendamentoOftalmo(id);
+  }
+
+  function imprimirAgendamentoJSON(json) {
+    try {
+      var agendamento = JSON.parse(json || '{}');
+      imprimirAgendamento(agendamento);
+    } catch (e) {
+      _toast('Não foi possível preparar a impressão.', 'erro');
+    }
+  }
+
+  function imprimirAgendamento(ag) {
+    if (!ag) return;
+
+    var nome = ag.tipo === 'DEPENDENTE'
+      ? (ag.nomeBeneficiario || ag.nomeTitular || '')
+      : (ag.nomeTitular || ag.nomeBeneficiario || '');
+
+    var cpf = ag.tipo === 'DEPENDENTE'
+      ? (ag.cpfBeneficiario || ag.cpfTitular || '')
+      : (ag.cpfTitular || ag.cpfBeneficiario || '');
+
+    var janela = window.open('', '_blank', 'width=850,height=720');
+
+    if (!janela) {
+      _toast('O navegador bloqueou a janela de impressão.', 'aviso');
+      return;
+    }
+
+    var html =
+      '<!DOCTYPE html>' +
+      '<html lang="pt-BR">' +
+      '<head>' +
+        '<meta charset="UTF-8">' +
+        '<title>Agendamento Oftalmológico</title>' +
+        '<style>' +
+          '@page{size:A4;margin:15mm;}' +
+          '*{box-sizing:border-box;}' +
+          'body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#0f172a;background:#fff;}' +
+          '.documento{max-width:760px;margin:0 auto;border:1px solid #cbd5e1;border-radius:14px;overflow:hidden;}' +
+          '.cabecalho{background:#002e6d;color:#fff;padding:24px 28px;border-bottom:5px solid #c9a84c;}' +
+          '.cabecalho h1{margin:0 0 6px;font-size:22px;}' +
+          '.cabecalho p{margin:0;font-size:12px;opacity:.82;}' +
+          '.conteudo{padding:26px 28px;}' +
+          '.titulo{margin:0 0 20px;color:#002e6d;font-size:18px;}' +
+          '.grade{display:grid;grid-template-columns:1fr 1fr;gap:12px;}' +
+          '.campo{padding:13px 15px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;}' +
+          '.campo.full{grid-column:1 / -1;}' +
+          '.campo small{display:block;margin-bottom:5px;color:#64748b;font-size:10px;font-weight:700;text-transform:uppercase;}' +
+          '.campo strong{font-size:14px;}' +
+          '.orientacoes{margin-top:22px;padding:16px 18px;border:1px solid #bfdbfe;border-radius:10px;background:#eff6ff;font-size:12px;line-height:1.7;}' +
+          '.rodape{padding:18px 28px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:11px;line-height:1.6;color:#475569;}' +
+          '.acoes{max-width:760px;margin:18px auto 0;text-align:right;}' +
+          '.acoes button{padding:10px 18px;border:0;border-radius:9px;background:#002e6d;color:#fff;font-weight:700;cursor:pointer;}' +
+          '@media print{.acoes{display:none;}}' +
+        '</style>' +
+      '</head>' +
+      '<body>' +
+        '<div class="documento">' +
+          '<div class="cabecalho">' +
+            '<h1>SindEducação-ES</h1>' +
+            '<p>Confirmação de Agendamento de Oftalmologia</p>' +
+          '</div>' +
+          '<div class="conteudo">' +
+            '<h2 class="titulo">Dados do Agendamento</h2>' +
+            '<div class="grade">' +
+              '<div class="campo"><small>Data</small><strong>' + escapeHtml(ag.data || '') + '</strong></div>' +
+              '<div class="campo"><small>Horário</small><strong>' + escapeHtml(ag.hora || '') + '</strong></div>' +
+              '<div class="campo full"><small>Beneficiário</small><strong>' + escapeHtml(nome) + '</strong></div>' +
+              '<div class="campo"><small>CPF</small><strong>' + escapeHtml(formatarCPFOftalmo(cpf)) + '</strong></div>' +
+              '<div class="campo"><small>Tipo</small><strong>' + escapeHtml(ag.tipo || 'TRABALHADOR') + '</strong></div>' +
+              '<div class="campo"><small>Telefone</small><strong>' + escapeHtml(ag.telefone || '') + '</strong></div>' +
+              '<div class="campo"><small>E-mail</small><strong>' + escapeHtml(ag.email || '') + '</strong></div>' +
+              '<div class="campo full"><small>Escola</small><strong>' + escapeHtml(ag.escola || '') + '</strong></div>' +
+            '</div>' +
+            '<div class="orientacoes">' +
+              '<strong>Local de atendimento</strong><br>' +
+              'Vila Medic — Medicina &amp; Odontologia<br>' +
+              'Av. Champagnat, 1033 — Centro, Vila Velha/ES.<br><br>' +
+              '<strong>Orientações:</strong><br>' +
+              '• Compareça com antecedência;<br>' +
+              '• Leve documento oficial com foto e CPF;<br>' +
+              '• Em caso de impossibilidade, comunique previamente.' +
+            '</div>' +
+          '</div>' +
+          '<div class="rodape">' +
+            '<strong>SindEducação-ES</strong><br>' +
+            'Av. Nossa Senhora dos Navegantes, 755 — Salas 707/708<br>' +
+            'Enseada do Suá — Vitória/ES<br>' +
+            '(27) 3222-2706 · secretaria@sindeducacao.com' +
+          '</div>' +
+        '</div>' +
+        '<div class="acoes"><button onclick="window.print()">🖨️ Imprimir</button></div>' +
+      '</body>' +
+      '</html>';
+
+    janela.document.open();
+    janela.document.write(html);
+    janela.document.close();
+    janela.focus();
+  }
+
+  function limparFiltros() {
+    ['oftalmoFiltroInicio','oftalmoFiltroFim'].forEach(function(id){ var el = document.getElementById(id); if (el) el.value = ''; });
+    var s = document.getElementById('oftalmoFiltroStatus'); if (s) s.value = 'TODOS';
+    var t = document.getElementById('oftalmoTbodyHist');
+    if (t) t.innerHTML = '<tr><td colspan="8" class="td-vazio">Aplique os filtros para carregar o histórico.</td></tr>';
+  }
+
+  function formatarTelefoneOftalmo(v) {
+    v = String(v || '').replace(/\D/g, '').slice(0, 11);
+    if (v.length <= 10) return v.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, function(_, a, b, c){ return c ? '(' + a + ') ' + b + '-' + c : '(' + a + ') ' + b; });
+    return v.replace(/^(\d{2})(\d{5})(\d{0,4}).*/, function(_, a, b, c){ return c ? '(' + a + ') ' + b + '-' + c : '(' + a + ') ' + b; });
+  }
+
+  function escapeHtml(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+
+  function escapeAttr(v) {
+    return String(v == null ? '' : v)
+      .replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+      .replace(/"/g, '&quot;').replace(/\n/g, ' ').replace(/\r/g, ' ');
+  }
+
+  function _val(id) { var el = document.getElementById(id); return el ? String(el.value || '').trim() : ''; }
+  function _set(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; }
+
+  function _toast(msg, tipo) {
+    console.log('[AgendOftalmo]', msg);
+    if (window.Swal) {
+      Swal.fire({ icon: tipo === 'erro' ? 'error' : tipo === 'ok' ? 'success' : 'info', title: msg, timer: 2200, showConfirmButton: false });
+    }
+  }
+
+function formatarCPFOftalmo(cpf) {
+  var v = String(cpf || '').replace(/\D/g, '');
+  if (!v) return '';
+  if (v.length !== 11) return v;
+  return v.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+}
+function formatarCPFOftalmoInput(valor) {
+  var cpf = String(valor || '').replace(/\D/g, '').slice(0, 11);
+  if (cpf.length <= 3) return cpf;
+  if (cpf.length <= 6) return cpf.replace(/^(\d{3})(\d+)/, '$1.$2');
+  if (cpf.length <= 9) return cpf.replace(/^(\d{3})(\d{3})(\d+)/, '$1.$2.$3');
+  return cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{1,2})$/, '$1.$2.$3-$4');
+}
+  function _msgModal(txt, tipo) {
+    var el = document.getElementById('oftalmoMsgModal');
+    if (!el) return;
+    if (!txt) { el.style.display = 'none'; return; }
+    el.textContent = txt;
+    el.className   = 'msg-status ativo ' + (tipo || 'info');
+    el.style.display = 'block';
+  }
+
+  return {
+    init:                     init,
+    carregarDia:              carregarDia,
+    trocarTab:                trocarTab,
+    abrirModal:               abrirModal,
+    fecharModal:              fecharModal,
+    fecharModalAcoes:         fecharModalAcoes,
+    atualizarTipo:            atualizarTipo,
+    validarCpf:               validarCpf,
+    salvarReserva:            salvarReserva,
+    cancelar:                 cancelar,
+    marcarCompareceu:         marcarCompareceu,
+    carregarHistorico:        carregarHistorico,
+    limparFiltros:            limparFiltros,
+    enviarWhatsApp:           enviarWhatsApp,
+    enviarEmail:              enviarEmail,
+    abrirAcoes:               abrirAcoes,
+    abrirAcoesJSON:           abrirAcoesJSON,
+    filtrarAgenda:            filtrarAgenda,
+    buscarNaAgenda:           buscarNaAgenda,
+    alternarVisualizacao:     alternarVisualizacao,
+    agendarProximoDependente: agendarProximoDependente,
+    fecharAgendaDia:          fecharAgendaDia,
+    fecharModalRelatorio:     fecharModalRelatorio,
+    enviarRelatorioWhatsApp:  enviarRelatorioWhatsApp,
+    enviarRelatorioEmail:     enviarRelatorioEmail,
+    excluirAgendamento:       excluirAgendamento,
+    imprimirAgendamentoJSON:  imprimirAgendamentoJSON
+  };
+})();
+
+window.AgendOftalmo = AgendOftalmo;
+
+function initAgendOftalmo() {
+  if (typeof window.AgendOftalmo === 'undefined' || !window.AgendOftalmo.init) {
+    console.warn('[AgendOftalmo] Módulo ainda não carregado, aguardando...');
+    setTimeout(initAgendOftalmo, 300);
+    return;
+  }
+  window.AgendOftalmo.init();
+}
+</script>

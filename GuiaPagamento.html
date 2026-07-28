@@ -1,0 +1,1758 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy:     #001f4d; --navy2: #002f6c; --blue: #1565C0;
+      --gold:     #C9A84C; --gold2: #f0c843;
+      --bg:       #f0f4f8; --g50: #f8fafc; --g100: #f1f5f9;
+      --g200:     #e2e8f0; --g300: #cbd5e1; --g400: #94a3b8;
+      --g500:     #64748b; --g600: #475569; --g700: #334155;
+      --g800:     #1e293b; --g900: #0f172a;
+      --green:    #059669; --green-lt: #d1fae5;
+      --amber:    #d97706; --amber-lt: #fef3c7;
+      --red:      #dc2626; --red-lt: #fee2e2;
+    }
+    html, body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--g800); min-height: 100%; }
+
+    .page-hero {
+      background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 40%, #0a47a0 70%, #1565C0 100%);
+      padding: 36px 32px 100px; position: relative; overflow: hidden;
+    }
+    .page-hero::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 80% 0%, rgba(201,168,76,.15) 0%, transparent 50%),
+                  radial-gradient(ellipse at 10% 100%, rgba(99,160,255,.12) 0%, transparent 50%);
+      pointer-events: none;
+    }
+    .page-hero::after {
+      content: 'GUIAS'; position: absolute; right: -10px; top: -20px;
+      font-size: 150px; font-weight: 900; color: transparent;
+      -webkit-text-stroke: 1px rgba(255,255,255,.04);
+      letter-spacing: -.05em; pointer-events: none; user-select: none;
+    }
+    .page-hero-inner { position: relative; z-index: 1; display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+    .hero-eyebrow { font-size: 11px; font-weight: 700; color: var(--gold); letter-spacing: .14em; text-transform: uppercase; margin-bottom: 10px; }
+    .page-hero h1 { font-size: 28px; font-weight: 900; color: #fff; letter-spacing: -.5px; line-height: 1.1; margin-bottom: 8px; }
+    .page-hero p  { font-size: 13px; color: rgba(255,255,255,.55); }
+
+    .metrics-wrapper { padding: 0 32px; margin-top: -68px; position: relative; z-index: 10; margin-bottom: 28px; }
+    .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .metric-card { background: #fff; border-radius: 16px; padding: 18px 16px; box-shadow: 0 8px 32px rgba(0,20,60,.14), 0 1px 2px rgba(0,20,60,.06); position: relative; overflow: hidden; transition: transform .18s, box-shadow .18s; }
+    .metric-card:hover { transform: translateY(-3px); box-shadow: 0 16px 48px rgba(0,20,60,.18); }
+    .metric-accent { position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 16px 16px 0 0; }
+    .ac-navy  { background: linear-gradient(90deg, var(--navy2), var(--blue)); }
+    .ac-green { background: linear-gradient(90deg, var(--green), #34d399); }
+    .ac-amber { background: linear-gradient(90deg, var(--amber), #fbbf24); }
+    .ac-red   { background: linear-gradient(90deg, var(--red), #f87171); }
+    .metric-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .metric-lbl { font-size: 11.5px; font-weight: 700; color: var(--g500); text-transform: uppercase; letter-spacing: .04em; }
+    .metric-ico { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+    .ico-navy  { background: #eef3fc; color: var(--navy2); }
+    .ico-green { background: var(--green-lt); color: var(--green); }
+    .ico-amber { background: var(--amber-lt); color: var(--amber); }
+    .ico-red   { background: var(--red-lt); color: var(--red); }
+    .metric-val { font-size: 28px; font-weight: 900; color: var(--g900); letter-spacing: -.5px; line-height: 1; margin-bottom: 5px; }
+    .metric-sub { font-size: 11px; color: var(--g400); font-weight: 500; }
+
+    .content-area { padding: 0 32px 40px; }
+    .tabs-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 22px; }
+    .btn-tab { height: 40px; padding: 0 18px; border-radius: 999px; border: 1.5px solid var(--g200); background: #fff; color: var(--g600); font-size: 13px; font-weight: 700; cursor: pointer; transition: all .15s; font-family: 'Plus Jakarta Sans', sans-serif; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-tab:hover { border-color: var(--blue); color: var(--blue); background: #eef5ff; }
+    .btn-tab.active { background: var(--navy2); color: #fff; border-color: var(--navy2); box-shadow: 0 4px 14px rgba(0,47,108,.25); }
+
+    .msg-box { border-radius: 12px; font-size: 13.5px; font-weight: 600; margin-bottom: 18px; line-height: 1.5; }
+    .msg-box:empty { display: none; }
+    .msg-box.ok   { background: var(--green-lt); border: 1px solid #6ee7b7; color: #065f46; padding: 13px 16px; }
+    .msg-box.erro { background: var(--red-lt);   border: 1px solid #fca5a5; color: #9f1239;  padding: 13px 16px; }
+    .msg-box.warn { background: var(--amber-lt); border: 1px solid #fcd34d; color: #92400e;  padding: 13px 16px; }
+    .msg-box.info { background: #eff6ff;          border: 1px solid #93c5fd; color: #1d4ed8;  padding: 13px 16px; }
+
+    .sub-bloco { display: none; animation: slideUp .2s ease; }
+    .sub-bloco.ativo { display: block; }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+    .recentes-titulo { font-size: 12px; font-weight: 800; color: var(--g500); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 12px; }
+    .prestadores-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 22px; }
+    .prestador-card { background: #fff; border: 1.5px solid var(--g200); border-radius: 14px; padding: 14px; cursor: pointer; transition: all .17s; }
+    .prestador-card:hover { border-color: var(--blue); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,40,120,.10); }
+    .prestador-nome { font-size: 13px; font-weight: 800; color: var(--g900); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .prestador-doc  { font-size: 11px; color: var(--g400); }
+    .prestador-info { font-size: 10px; color: var(--g400); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--g100); }
+
+    .card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,.055); box-shadow: 0 2px 12px rgba(0,20,60,.06); overflow: hidden; margin-bottom: 16px; transition: box-shadow .2s; }
+    .card:hover { box-shadow: 0 4px 24px rgba(0,20,60,.10); }
+    .card-head { padding: 18px 22px 14px; border-bottom: 1px solid var(--g100); display: flex; align-items: center; gap: 12px; }
+    .card-head-ico { width: 36px; height: 36px; border-radius: 9px; background: var(--g100); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+    .card-step { width: 26px; height: 26px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--navy2), var(--blue)); color: #fff; font-size: 12px; font-weight: 800; flex-shrink: 0; }
+    .card-title { font-size: 14px; font-weight: 800; color: var(--g900); }
+    .card-sub   { font-size: 11px; color: var(--g400); margin-top: 2px; }
+    .card-body  { padding: 20px 22px; }
+
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .col-full { grid-column: 1 / -1; }
+    .field { display: flex; flex-direction: column; gap: 7px; }
+    .field label { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--g500); }
+    .field input, .field select, .field textarea { width: 100%; min-height: 46px; border-radius: 12px; border: 1.5px solid var(--g300); background: #fff; color: var(--g800); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; padding: 0 14px; outline: none; transition: border-color .16s, box-shadow .16s; }
+    .field textarea { min-height: 110px; padding: 13px 14px; resize: vertical; line-height: 1.55; }
+    .field input::placeholder, .field textarea::placeholder { color: var(--g400); }
+    .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 4px rgba(21,101,192,.10); }
+    .field input[readonly] { background: var(--g100); color: var(--g600); cursor: default; border-color: var(--g200); }
+    .field input[type="file"] { padding: 10px 12px; }
+    .field input[type="file"]::file-selector-button { height: 30px; padding: 0 12px; margin-right: 10px; border: none; border-radius: 8px; background: linear-gradient(135deg, var(--navy2), var(--blue)); color: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; font-weight: 700; cursor: pointer; }
+    .field-help  { font-size: 11px; color: var(--g400); }
+    .field-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; background: #eef3fc; color: var(--navy2); border: 1px solid #c7d9f5; border-radius: 999px; padding: 3px 10px; width: fit-content; }
+    .field-badge.warn { background: var(--amber-lt); color: #92400e; border-color: #fcd34d; }
+    .field-badge.ok   { background: var(--green-lt); color: #065f46; border-color: #6ee7b7; }
+
+    /* ✅ Badge de número da guia exibido no formulário após salvar */
+    #guiaNumeroDisplay { display: none; margin-top: 10px; }
+    #guiaNumeroDisplay.visivel { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+    .email-preview { background: var(--g50); border: 1px solid var(--g200); border-radius: 12px; padding: 18px; font-size: 13px; line-height: 1.7; color: var(--g700); min-height: 120px; overflow: auto; }
+    .texto-guia { width: 100%; min-height: 220px; border-radius: 12px; border: 1.5px solid var(--g300); background: var(--g50); color: var(--g800); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13.5px; padding: 14px; resize: vertical; outline: none; line-height: 1.65; transition: border-color .16s, box-shadow .16s; }
+    .texto-guia:focus { border-color: var(--blue); box-shadow: 0 0 0 4px rgba(21,101,192,.10); }
+
+    .acoes { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+    .btn { display: inline-flex; align-items: center; gap: 7px; height: 42px; padding: 0 18px; border: none; border-radius: 999px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: all .18s; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+    .btn-primary   { background: linear-gradient(135deg, var(--navy2), var(--blue)); color: #fff; box-shadow: 0 4px 14px rgba(0,47,108,.25); }
+    .btn-primary:hover:not(:disabled)   { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,47,108,.35); }
+    .btn-secondary { background: #fff; color: var(--g700); border: 1.5px solid var(--g200); }
+    .btn-secondary:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); background: #eef5ff; }
+    .btn-gold  { background: linear-gradient(135deg, var(--gold), var(--gold2)); color: var(--navy); box-shadow: 0 4px 14px rgba(201,168,76,.35); }
+    .btn-gold:hover:not(:disabled)  { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(201,168,76,.5); }
+    .btn-green { background: linear-gradient(135deg, var(--green), #047857); color: #fff; box-shadow: 0 4px 14px rgba(5,150,105,.3); }
+    .btn-green:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(5,150,105,.4); }
+    .btn-sm { height: 34px; padding: 0 14px; font-size: 12px; }
+
+    /* ✅ Indicador visual de guia já enviada */
+    #guiaEnviadaBadge { display: none; }
+    #guiaEnviadaBadge.visivel { display: inline-flex; }
+
+    .tabela-wrap { background: #fff; border: 1px solid rgba(0,0,0,.055); border-radius: 16px; overflow-x: auto; box-shadow: 0 2px 12px rgba(0,20,60,.06); }
+    .tabela { width: 100%; min-width: 980px; border-collapse: collapse; }
+    .tabela thead { background: var(--g50); }
+    .tabela th { padding: 13px 14px; text-align: left; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--g500); border-bottom: 1px solid var(--g200); }
+    .tabela td { padding: 12px 14px; font-size: 13px; color: var(--g700); border-bottom: 1px solid var(--g100); }
+    .tabela tbody tr:hover { background: var(--g50); }
+    .tabela-vazia { text-align: center; padding: 44px 20px; color: var(--g400); font-size: 14px; font-weight: 500; }
+
+    .status-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: .02em; border: 1px solid transparent; }
+    .status-pendente  { background: #fff7ed; color: #9a3412; border-color: #fdba74; }
+    .status-pago      { background: #ecfdf5; color: #065f46; border-color: #6ee7b7; }
+    .status-enviado   { background: #eff6ff; color: #1d4ed8; border-color: #93c5fd; }
+    .status-cancelado { background: #f8fafc; color: #475569; border-color: #cbd5e1; }
+    .status-erro      { background: #fef2f2; color: #991b1b; border-color: #fca5a5; }
+
+    #guiaResultadoBuscaPrestador .prestadores-grid { margin-bottom: 0; }
+
+    .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.52); display: none; align-items: center; justify-content: center; padding: 18px; z-index: 9999; }
+    .modal-overlay.ativo { display: flex; animation: fadeModal .18s ease; }
+    @keyframes fadeModal { from { opacity: 0; } to { opacity: 1; } }
+    .modal-box { width: min(760px, 100%); background: #fff; border-radius: 20px; box-shadow: 0 30px 80px rgba(0,20,60,.28); border: 1px solid rgba(0,0,0,.06); overflow: hidden; animation: riseModal .18s ease; }
+    @keyframes riseModal { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
+    .modal-head { padding: 18px 22px; border-bottom: 1px solid var(--g100); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .modal-title { font-size: 16px; font-weight: 900; color: var(--g900); }
+    .modal-sub   { font-size: 11px; color: var(--g500); margin-top: 3px; }
+    .modal-body  { padding: 20px 22px; }
+    .modal-foot  { padding: 16px 22px 22px; display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+    .btn-close-modal { width: 38px; height: 38px; border-radius: 999px; border: 1.5px solid var(--g200); background: #fff; color: var(--g700); cursor: pointer; font-size: 18px; font-weight: 700; }
+    .btn-close-modal:hover { border-color: var(--red); color: var(--red); background: #fff5f5; }
+
+    @media (max-width: 980px) { .metrics-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 700px) {
+      .metrics-wrapper, .content-area { padding-left: 16px; padding-right: 16px; }
+      .page-hero { padding: 28px 16px 90px; }
+      .metrics-grid, .form-grid { grid-template-columns: 1fr; }
+      .acoes { flex-direction: column; }
+      .btn { width: 100%; justify-content: center; }
+      .modal-foot { flex-direction: column; }
+      .modal-foot .btn { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-hero">
+  <div class="page-hero-inner">
+    <div>
+      <div class="hero-eyebrow">SindEducação-ES · SISGEP</div>
+      <h1>Guias de Pagamento</h1>
+      <p>Registro, emissão e gestão de guias de pagamento</p>
+    </div>
+  </div>
+</div>
+
+<div class="metrics-wrapper">
+  <div id="guiaAutoSaveAviso" class="field-badge" style="margin:0 0 12px; display:none;">💾 Rascunho salvo automaticamente</div>
+  <div class="metrics-grid">
+    <div class="metric-card">
+      <div class="metric-accent ac-navy"></div>
+      <div class="metric-top"><span class="metric-lbl">Guias</span><div class="metric-ico ico-navy">📄</div></div>
+      <div class="metric-val" id="statGuiasMes">—</div>
+      <div class="metric-sub">Últimos 90 dias</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-accent ac-green"></div>
+      <div class="metric-top"><span class="metric-lbl">Valor Total</span><div class="metric-ico ico-green">💰</div></div>
+      <div class="metric-val" id="statValorTotal" style="font-size:20px;">—</div>
+      <div class="metric-sub">Soma dos valores</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-accent ac-amber"></div>
+      <div class="metric-top"><span class="metric-lbl">Urgentes</span><div class="metric-ico ico-amber">⏰</div></div>
+      <div class="metric-val" id="statVencHoje">—</div>
+      <div class="metric-sub">Próximas do vencimento</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-accent ac-red"></div>
+      <div class="metric-top"><span class="metric-lbl">Vencidas</span><div class="metric-ico ico-red">⚠️</div></div>
+      <div class="metric-val" id="statVencidas">—</div>
+      <div class="metric-sub">Guias vencidas</div>
+    </div>
+  </div>
+</div>
+<!-- CARD PENDÊNCIAS -->
+<div class="card" style="margin-bottom:20px;border-left:4px solid #dc2626;">
+  <div class="card-head">
+    <div class="card-head-ico">⚠️</div>
+    <div>
+      <div class="card-title">Pendências</div>
+      <div class="card-sub">NFs não recebidas e pagamentos não confirmados</div>
+    </div>
+    <button type="button" class="btn btn-secondary btn-sm"
+      onclick="carregarDashboardPendencias()" style="margin-left:auto;">
+      ↻ Atualizar
+    </button>
+  </div>
+  <div class="card-body">
+    <div id="dashPendencias">
+      <div style="color:#94a3b8;font-size:13px;">Carregando pendências...</div>
+    </div>
+  </div>
+</div>
+<div class="content-area">
+
+  <div class="card" style="margin-bottom:20px;">
+    <div class="card-head">
+      <div class="card-head-ico">🧭</div>
+      <div><div class="card-title">Resumo do Fluxo</div><div class="card-sub">Use esta sequência para evitar retrabalho e manter o processo organizado</div></div>
+    </div>
+    <div class="card-body">
+      <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+        <span class="field-badge">1️⃣ Preencha os dados do prestador</span>
+        <span class="field-badge">2️⃣ Informe valor, vencimento e tipo</span>
+        <span class="field-badge">3️⃣ Revise o conteúdo e o preview</span>
+        <span class="field-badge">4️⃣ Salve, gere o PDF e envie</span>
+        <span class="field-badge">5️⃣ Finalize marcando como pago ou cancelando</span>
+      </div>
+      <div class="field-help">Dica: sempre use <strong>Salvar</strong> antes de qualquer ação final. O botão <strong>Gerar PDF</strong> prepara a documentação, e <strong>Enviar pelo SISGEP</strong> conclui o fluxo de comunicação.</div>
+    </div>
+  </div>
+
+  <div class="tabs-bar">
+    <button type="button" id="abaGuiaNova" class="btn-tab active">📄 Nova Guia</button>
+    <button type="button" id="abaGuiaHistorico" class="btn-tab">📋 Histórico</button>
+  </div>
+
+  <div class="msg-box" id="msgBox"></div>
+
+  <!-- =================== NOVA GUIA =================== -->
+  <div id="blocoGuiaNova" class="sub-bloco ativo">
+
+    <div id="prestadoresRecentes" style="display:none; margin-bottom:22px;">
+      <div class="recentes-titulo">👥 Últimos Prestadores</div>
+      <div class="prestadores-grid" id="prestadoresGrid"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-step">1</div>
+        <div><div class="card-title">Dados do Prestador</div><div class="card-sub">Busque, selecione dos fixos ou cadastre um novo prestador</div></div>
+      </div>
+      <div class="card-body">
+        <div class="form-grid" style="margin-bottom:16px;">
+          <div class="field">
+            <label for="guiaBuscaPrestador">Buscar Prestador</label>
+            <input type="text" id="guiaBuscaPrestador" placeholder="Nome, CPF, CNPJ ou e-mail" autocomplete="off">
+          </div>
+          <div class="field">
+            <label>&nbsp;</label>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button type="button" class="btn btn-secondary" id="btnBuscarPrestadorGuia" style="border-radius:12px; height:46px;">🔍 Buscar</button>
+              <button type="button" class="btn btn-secondary" id="btnCarregarPrestadoresFixos" style="border-radius:12px; height:46px;">📌 Prestadores Fixos</button>
+              <button type="button" class="btn btn-primary" id="btnNovoPrestadorGuia" style="border-radius:12px; height:46px;">➕ Novo Prestador</button>
+            </div>
+          </div>
+        </div>
+        <div id="guiaResultadoBuscaPrestador"></div>
+        <div class="form-grid" style="margin-top:16px;">
+          <div class="field">
+            <label for="guiaNome">Nome / Razão Social</label>
+            <input type="text" id="guiaNome" placeholder="Nome completo ou razão social">
+          </div>
+          <div class="field">
+            <label for="guiaDocumento">CPF / CNPJ</label>
+            <input type="text" id="guiaDocumento" placeholder="000.000.000-00" maxlength="18">
+          </div>
+          <div class="field" id="blocoGuiaEmailPrestador">
+            <label for="guiaEmail">E-mail do Prestador</label>
+            <input type="email" id="guiaEmail" placeholder="prestador@email.com">
+          </div>
+          <div class="field">
+            <label for="guiaTelefone">WhatsApp</label>
+            <input type="text" id="guiaTelefone" placeholder="(27) 99999-9999" maxlength="20">
+          </div>
+          <div class="field" id="blocoGuiaEmailContabilidade" style="display:none;">
+            <label>E-mail da Contabilidade</label>
+            <input type="text" id="guiaEmailContabilidade" readonly>
+            <div class="field-badge">🔒 Endereço fixo — não editável</div>
+          </div>
+          <div class="field">
+            <label for="guiaStatusAtual">Status atual</label>
+            <input type="text" id="guiaStatusAtual" readonly value="PENDENTE">
+          </div>
+        </div>
+
+        <!-- ✅ Exibe número da guia no formulário após salvar/gerar PDF -->
+        <div id="guiaNumeroDisplay">
+          <span class="field-badge ok">🧾 Nº <strong id="guiaNumeroTexto">—</strong></span>
+          <span id="guiaEnviadaBadge" class="field-badge warn">⚠️ Esta guia já foi enviada — confirme antes de reenviar</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-step">2</div>
+        <div><div class="card-title">Dados da Guia</div><div class="card-sub">Valor, vencimento e tipo de envio</div></div>
+      </div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="field"><label for="guiaValor">Valor</label><input type="text" id="guiaValor" placeholder="R$ 0,00"></div>
+          <div class="field"><label for="guiaVencimento">Data de Vencimento</label><input type="date" id="guiaVencimento"></div>
+          <div class="field">
+            <label for="guiaTipoEnvio">Tipo de Envio</label>
+            <select id="guiaTipoEnvio">
+              <option value="solicitar_nf">Solicitar NF ao prestador</option>
+              <option value="enviar_contabilidade">Enviar à contabilidade</option>
+            </select>
+          </div>
+          <div class="field"><label for="guiaAssunto">Assunto</label><input type="text" id="guiaAssunto" placeholder="Assunto do e-mail"></div>
+          <div class="field col-full"><label for="guiaDescricao">Descrição / Observações</label><textarea id="guiaDescricao" placeholder="Informações adicionais sobre a guia"></textarea></div>
+          <div class="field col-full">
+            <label for="guiaAnexos">Anexos</label>
+            <input type="file" id="guiaAnexos" multiple>
+            <div id="guiaListaAnexos" class="field-help">Nenhum arquivo selecionado.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-step">3</div>
+        <div><div class="card-title">Conteúdo da Guia</div><div class="card-sub">Texto gerado automaticamente — edite se necessário</div></div>
+      </div>
+      <div class="card-body">
+        <textarea id="guiaTextoModelo" class="texto-guia" placeholder="O texto da guia será gerado automaticamente."></textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-step">4</div>
+        <div><div class="card-title">Pré-visualização do E-mail</div><div class="card-sub">Fiel ao e-mail que será enviado — confira antes de enviar</div></div>
+      </div>
+      <div class="card-body">
+        <!-- ✅ Preview usa HTML idêntico ao e-mail real -->
+        <div id="guiaPreviewEmail" class="email-preview">A pré-visualização do e-mail aparecerá aqui.</div>
+        <div id="resultadoGuiaPagamento" style="margin-top:14px;"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-step">5</div>
+        <div><div class="card-title">Ações da Guia</div><div class="card-sub">Siga a ordem recomendada para evitar erros</div></div>
+      </div>
+      <div class="card-body">
+        <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+          <span class="field-badge">1️⃣ Salvar</span>
+          <span class="field-badge">2️⃣ Gerar PDF</span>
+          <span class="field-badge">3️⃣ Enviar</span>
+        </div>
+        <div class="acoes">
+          <button class="btn btn-gold"    id="btnSalvarGuia"      type="button">🧾 Salvar Guia</button>
+          <button class="btn btn-primary" id="btnSalvarENovaGuia" type="button">🧾 Salvar e Nova</button>
+          <button class="btn btn-primary" id="btnGerarPdfGuia"    type="button">📄 Gerar PDF</button>
+          <button class="btn btn-green"   id="btnEnviarSISGEP"    type="button">📧 Enviar pelo SISGEP</button>
+        </div>
+        <div style="height:1px;background:#e5e7eb;margin:18px 0;"></div>
+        <div style="margin-bottom:10px;"><span class="field-badge">Ações auxiliares</span></div>
+        <div class="acoes">
+          <button class="btn btn-secondary" id="btnEnviarGuiaEmail"    type="button">✉️ Preparar E-mail</button>
+          <button class="btn btn-secondary" id="btnEnviarGuiaWhatsApp" type="button">📱 Enviar por WhatsApp</button>
+          <button class="btn btn-secondary" id="btnDuplicarGuia"       type="button">🧬 Duplicar Guia</button>
+          <button class="btn btn-secondary" id="btnLimparGuia"         type="button">🧹 Limpar</button>
+        </div>
+        <div style="height:1px;background:#e5e7eb;margin:18px 0;"></div>
+        <div style="margin-bottom:10px;"><span class="field-badge">Finalização</span></div>
+        <div class="acoes">
+          <button class="btn btn-secondary" id="btnMarcarPagoGuia" type="button">✅ Marcar como Pago</button>
+          <button class="btn btn-secondary" id="btnCancelarGuia"   type="button">🚫 Cancelar Guia</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- =================== HISTÓRICO =================== -->
+  <div id="blocoGuiaHistorico" class="sub-bloco">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-head-ico">📋</div>
+        <div><div class="card-title">Histórico de Guias</div><div class="card-sub">Consulte, filtre e acompanhe as movimentações registradas</div></div>
+      </div>
+      <div class="card-body">
+
+        <div class="card" style="margin-bottom:18px; box-shadow:none; border:1px solid var(--g200);">
+          <div class="card-head">
+            <div class="card-step">1</div>
+            <div><div class="card-title">Filtros</div><div class="card-sub">Refine os resultados por prestador, período, tipo e status</div></div>
+          </div>
+          <div class="card-body">
+            <div class="form-grid">
+              <div class="field"><label for="filtroGuiaPrestador">Prestador</label><input type="text" id="filtroGuiaPrestador" placeholder="Nome ou documento"></div>
+              <div class="field"><label for="filtroGuiaDocumento">Documento</label><input type="text" id="filtroGuiaDocumento" placeholder="CPF ou CNPJ"></div>
+              <div class="field">
+                <label for="filtroGuiaTipoEnvio">Tipo de Envio</label>
+                <select id="filtroGuiaTipoEnvio">
+                  <option value="">Todos</option>
+                  <option value="solicitar_nf">Solicitar NF</option>
+                  <option value="enviar_contabilidade">Enviar Contabilidade</option>
+                </select>
+              </div>
+              <div class="field"><label for="filtroGuiaStatus">Status</label><input type="text" id="filtroGuiaStatus" placeholder="Status"></div>
+              <div class="field"><label for="filtroGuiaDataInicio">Data Início</label><input type="date" id="filtroGuiaDataInicio"></div>
+              <div class="field"><label for="filtroGuiaDataFim">Data Fim</label><input type="date" id="filtroGuiaDataFim"></div>
+            </div>
+            <div class="acoes" style="margin-top:16px;">
+              <button type="button" class="btn btn-primary btn-sm" id="btnFiltrarHistoricoGuias">🔍 Filtrar</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btnLimparHistoricoGuias">🧹 Limpar</button>
+            </div>
+            <div style="height:1px;background:var(--g100);margin:16px 0;"></div>
+            <div style="margin-bottom:10px;"><span class="field-badge">Períodos rápidos</span></div>
+            <div class="acoes" style="margin-top:0;">
+              <button type="button" class="btn btn-secondary btn-sm" id="btnPeriodoHoje">Hoje</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btnPeriodo7dias">7 dias</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btnPeriodo30dias">30 dias</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btnPeriodoMesAtual">Este mês</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btnPeriodoMesAnterior">Mês anterior</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:18px; box-shadow:none; border:1px solid var(--g200);">
+          <div class="card-head">
+            <div class="card-step">2</div>
+            <div><div class="card-title">Resultados</div><div class="card-sub">Visualize as guias registradas e utilize as ações disponíveis</div></div>
+          </div>
+          <div class="card-body">
+            <div class="acoes" style="justify-content:space-between; align-items:center; margin-top:0; margin-bottom:14px;">
+              <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                <span class="field-badge">📄 Histórico detalhado</span>
+                <span class="field-badge">📤 Exportação rápida</span>
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm" id="btnExportarCsvGuias">📤 Exportar CSV</button>
+            </div>
+            <div class="tabela-wrap">
+              <table class="tabela" id="tabelaRelatorioGuias">
+                <thead>
+                  <tr>
+                    <th>Data/Hora</th><th>Prestador</th><th>Documento</th>
+                    <th>Valor</th><th>Vencimento</th><th>Tipo</th>
+                    <th>Status</th><th>Destino</th><th>Usuário</th><th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td colspan="10"><div class="tabela-vazia">Nenhum registro encontrado.</div></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="acoes" style="margin-top:16px; justify-content:space-between; align-items:center;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span class="field-badge">Navegação</span>
+                <div class="field-badge" id="guiaInfoPagina">Página 1</div>
+              </div>
+              <div class="acoes" style="margin-top:0;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btnPaginaAnteriorGuias">⬅️ Anterior</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="btnPaginaProximaGuias">Próxima ➡️</button>
+              </div>
+            </div>
+            <div id="guiaHistoricoResultado" style="margin-top:14px;"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- =================== MODAL NOVO PRESTADOR =================== -->
+<div id="modalNovoPrestadorGuia" class="modal-overlay" aria-hidden="true">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modalNovoPrestadorTitulo">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="modalNovoPrestadorTitulo">Cadastrar Novo Prestador</div>
+        <div class="modal-sub">Preencha os dados para cadastrar e já utilizar na guia</div>
+      </div>
+      <button type="button" class="btn-close-modal" id="btnFecharModalNovoPrestador" title="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field"><label for="novoPrestadorNome">Nome / Razão Social *</label><input type="text" id="novoPrestadorNome" placeholder="Nome completo ou razão social"></div>
+        <div class="field"><label for="novoPrestadorDocumento">CPF / CNPJ *</label><input type="text" id="novoPrestadorDocumento" placeholder="000.000.000-00 ou 00.000.000/0000-00" maxlength="18"></div>
+        <div class="field"><label for="novoPrestadorEmail">E-mail do Prestador</label><input type="email" id="novoPrestadorEmail" placeholder="prestador@email.com"></div>
+        <div class="field"><label for="novoPrestadorValor">Valor Padrão</label><input type="text" id="novoPrestadorValor" placeholder="R$ 0,00"></div>
+        <div class="field"><label for="novoPrestadorTelefone">WhatsApp</label><input type="text" id="novoPrestadorTelefone" placeholder="(27) 99999-9999" maxlength="20"></div>
+        <div class="field col-full"><label for="novoPrestadorVencimento">Data de Vencimento</label><input type="date" id="novoPrestadorVencimento"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-secondary" id="btnCancelarNovoPrestador">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="btnSalvarNovoPrestador">💾 Salvar Prestador</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* =====================================================================
+   CONSTANTES — fonte única de e-mails (espelha EMAILS_CONTABILIDADE_GS)
+   ===================================================================== */
+var EMAILS_CONTABILIDADE = [
+  "operacional02@impactocondominios.com",
+  "operacional03.impactocond@gmail.com"
+];
+var EMAILS_CONT_MAILTO  = EMAILS_CONTABILIDADE.join(",");
+var EMAILS_CONT_DISPLAY = EMAILS_CONTABILIDADE.join("; ");
+
+/* =====================================================================
+   UTILITÁRIOS
+   ===================================================================== */
+function g(id){ return document.getElementById(id); }
+
+function escapeHtml(t){
+  return String(t || "")
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+function onlyDigits(v){ return String(v || "").replace(/\D/g, ""); }
+function normalizarTexto(t){
+  return String(t || "").toLowerCase().normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();
+}
+function formatarDataISOBr(iso){
+  var txt = String(iso || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(txt)) return txt;
+  var p = txt.split("-"); return p[2]+"/"+p[1]+"/"+p[0];
+}
+
+/* =====================================================================
+   MAPA DE URLs DE PDF (evita encoding problemático em onclick)
+   ===================================================================== */
+var _pdfUrlMap = {}, _pdfCnt = 0;
+function registrarPdfUrl(url){ _pdfCnt++; var k="pdf_"+_pdfCnt; _pdfUrlMap[k]=url; return k; }
+function abrirPdfGuia(chave){
+  var url = _pdfUrlMap[chave] || chave;
+  if (!url){ msg("PDF não encontrado para esta guia.", "warn"); return; }
+  window.open(url, "_blank");
+}
+window.abrirPdfGuia = abrirPdfGuia;
+
+/* =====================================================================
+   ESTADO GLOBAL
+   ===================================================================== */
+var GUIA_PRESTADOR_FIXO_ATUAL = false;
+var GUIA_AUTOSAVE_KEY   = "sisgep_guia_pagamento_rascunho_v4";
+var GUIA_AUTOSAVE_TIMER = null;
+var BUSCA_DEBOUNCE_TIMER = null;
+
+var GUIA_HISTORICO_PAGINA = { limite:20, offset:0, total:0, temMais:false };
+
+var GUIA_ATUAL = { id:"", numeroGuia:"", urlPdf:"", fileIdPdf:"", status:"PENDENTE", enviada:false };
+
+function setPrestadorFixoAtual(v){ GUIA_PRESTADOR_FIXO_ATUAL = (v===true); }
+function isPrestadorFixoAtual(){   return GUIA_PRESTADOR_FIXO_ATUAL===true; }
+
+function resetGuiaAtual(){
+  GUIA_ATUAL = { id:"", numeroGuia:"", urlPdf:"", fileIdPdf:"", status:"PENDENTE", enviada:false };
+  atualizarStatusAtualUI();
+  atualizarNumeroGuiaUI();
+}
+
+function atualizarGuiaAtual(p){
+  p = p || {};
+  if (p.id         !== undefined) GUIA_ATUAL.id        = p.id        || GUIA_ATUAL.id;
+  if (p.numeroGuia !== undefined) GUIA_ATUAL.numeroGuia= p.numeroGuia|| GUIA_ATUAL.numeroGuia;
+  if (p.urlPdf     !== undefined) GUIA_ATUAL.urlPdf    = p.urlPdf    || GUIA_ATUAL.urlPdf;
+  if (p.fileId     !== undefined) GUIA_ATUAL.fileIdPdf = p.fileId    || GUIA_ATUAL.fileIdPdf;
+  if (p.fileIdPdf  !== undefined) GUIA_ATUAL.fileIdPdf = p.fileIdPdf || GUIA_ATUAL.fileIdPdf;
+  if (p.status     !== undefined) GUIA_ATUAL.status    = p.status    || GUIA_ATUAL.status;
+  if (p.enviada    !== undefined) GUIA_ATUAL.enviada   = !!p.enviada;
+  atualizarStatusAtualUI();
+  atualizarNumeroGuiaUI();
+}
+
+function atualizarStatusAtualUI(){
+  var campo = g("guiaStatusAtual");
+  if (campo) campo.value = GUIA_ATUAL.status || "PENDENTE";
+}
+
+/* ✅ Exibe número da guia no formulário + badge "já enviada" */
+function atualizarNumeroGuiaUI(){
+  var disp  = g("guiaNumeroDisplay");
+  var texto = g("guiaNumeroTexto");
+  var badge = g("guiaEnviadaBadge");
+  if (!disp) return;
+
+  if (GUIA_ATUAL.numeroGuia){
+    disp.classList.add("visivel");
+    if (texto) texto.textContent = GUIA_ATUAL.numeroGuia;
+  } else {
+    disp.classList.remove("visivel");
+  }
+
+  if (badge){
+    if (GUIA_ATUAL.enviada){
+      badge.classList.add("visivel");
+    } else {
+      badge.classList.remove("visivel");
+    }
+  }
+
+  // ✅ Indicador visual no botão enviar
+  var btnEnv = g("btnEnviarSISGEP");
+  if (btnEnv){
+    if (GUIA_ATUAL.enviada){
+      btnEnv.style.opacity = "0.75";
+      btnEnv.title = "Esta guia já foi enviada. Confirme para reenviar.";
+    } else {
+      btnEnv.style.opacity = "";
+      btnEnv.title = "";
+    }
+  }
+}
+
+/* =====================================================================
+   AUTOSAVE
+   ===================================================================== */
+function exibirAvisoAutoSave(){
+  var el = g("guiaAutoSaveAviso");
+  if (!el) return;
+  el.style.display = "inline-flex";
+  clearTimeout(el._t);
+  el._t = setTimeout(function(){ el.style.display="none"; }, 1800);
+}
+function obterPayloadRascunho(){
+  return {
+    guiaAtual: GUIA_ATUAL, prestadorFixo: GUIA_PRESTADOR_FIXO_ATUAL,
+    campos: {
+      guiaBuscaPrestador: g("guiaBuscaPrestador") ? g("guiaBuscaPrestador").value : "",
+      guiaNome:           g("guiaNome")    ? g("guiaNome").value    : "",
+      guiaDocumento:      g("guiaDocumento") ? g("guiaDocumento").value : "",
+      guiaEmail:          g("guiaEmail")   ? g("guiaEmail").value   : "",
+      guiaTelefone:       g("guiaTelefone") ? g("guiaTelefone").value : "",
+      guiaValor:          g("guiaValor")   ? g("guiaValor").value   : "",
+      guiaVencimento:     g("guiaVencimento") ? g("guiaVencimento").value : "",
+      guiaDescricao:      g("guiaDescricao") ? g("guiaDescricao").value : "",
+      guiaTipoEnvio:      g("guiaTipoEnvio") ? g("guiaTipoEnvio").value : "solicitar_nf",
+      guiaAssunto:        g("guiaAssunto") ? g("guiaAssunto").value : "",
+      guiaTextoModelo:    g("guiaTextoModelo") ? g("guiaTextoModelo").value : ""
+    }
+  };
+}
+function salvarRascunhoLocal(){
+  try { localStorage.setItem(GUIA_AUTOSAVE_KEY, JSON.stringify(obterPayloadRascunho())); exibirAvisoAutoSave(); } catch(e){}
+}
+function salvarRascunhoComDebounce(){
+  clearTimeout(GUIA_AUTOSAVE_TIMER);
+  GUIA_AUTOSAVE_TIMER = setTimeout(salvarRascunhoLocal, 500);
+}
+function restaurarRascunhoLocal(){
+  try {
+    var raw = localStorage.getItem(GUIA_AUTOSAVE_KEY);
+    if (!raw) return;
+    var payload = JSON.parse(raw);
+    if (!payload || !payload.campos) return;
+    Object.keys(payload.campos).forEach(function(id){
+      var el = g(id); if (el) el.value = payload.campos[id] || "";
+    });
+    GUIA_ATUAL = payload.guiaAtual || GUIA_ATUAL;
+    GUIA_PRESTADOR_FIXO_ATUAL = payload.prestadorFixo === true;
+    atualizarStatusAtualUI();
+    atualizarNumeroGuiaUI();
+    atualizarUIGuia();
+  } catch(e){}
+}
+function limparRascunhoLocal(){
+  try { localStorage.removeItem(GUIA_AUTOSAVE_KEY); } catch(e){}
+}
+
+/* =====================================================================
+   FEEDBACK / LOADING
+   ===================================================================== */
+function setBtnLoading(btn, texto){
+  if (!btn) return;
+  btn.disabled = true; btn._orig = btn.innerHTML;
+  btn.innerHTML = '<span style="opacity:.65;">⏳ '+(texto||"Aguarde...")+'</span>';
+}
+function resetBtn(btn){
+  if (!btn) return;
+  btn.disabled = false;
+  if (btn._orig !== undefined) btn.innerHTML = btn._orig;
+}
+function msg(texto, tipo){
+  var box = g("msgBox"); if (!box) return;
+  box.className = "msg-box "+(tipo||"info");
+  box.textContent = texto || "";
+}
+function limparMsg(){
+  var box = g("msgBox"); if (!box) return;
+  box.className = "msg-box"; box.textContent = "";
+}
+function atualizarResultadoGuia(html){
+  var box = g("resultadoGuiaPagamento"); if (box) box.innerHTML = html||"";
+}
+
+/* =====================================================================
+   PAGINAÇÃO
+   ===================================================================== */
+function atualizarControlesPaginacao(){
+  var btnAnt = g("btnPaginaAnteriorGuias");
+  var btnProx = g("btnPaginaProximaGuias");
+  var info   = g("guiaInfoPagina");
+  var offset = GUIA_HISTORICO_PAGINA.offset || 0;
+  var limite = GUIA_HISTORICO_PAGINA.limite || 20;
+  var total  = GUIA_HISTORICO_PAGINA.total  || 0;
+  var temMais = !!GUIA_HISTORICO_PAGINA.temMais;
+  var pag    = Math.floor(offset/limite)+1;
+  var totPag = total>0 ? Math.ceil(total/limite) : 1;
+  if (info)   info.textContent = "Página "+pag+" de "+totPag;
+  if (btnAnt) btnAnt.disabled  = (offset<=0);
+  if (btnProx) btnProx.disabled = !temMais;
+}
+
+/* =====================================================================
+   PERÍODOS RÁPIDOS
+   ===================================================================== */
+function aplicarPeriodoRapido(periodo){
+  var hoje = new Date(), inicio, fim;
+  if (periodo==="hoje"){
+    inicio = fim = hoje.toISOString().slice(0,10);
+  } else if (periodo==="7dias"){
+    var d7=new Date(hoje); d7.setDate(d7.getDate()-7);
+    inicio=d7.toISOString().slice(0,10); fim=hoje.toISOString().slice(0,10);
+  } else if (periodo==="30dias"){
+    var d30=new Date(hoje); d30.setDate(d30.getDate()-30);
+    inicio=d30.toISOString().slice(0,10); fim=hoje.toISOString().slice(0,10);
+  } else if (periodo==="mesAtual"){
+    inicio=new Date(hoje.getFullYear(),hoje.getMonth(),1).toISOString().slice(0,10);
+    fim=new Date(hoje.getFullYear(),hoje.getMonth()+1,0).toISOString().slice(0,10);
+  } else if (periodo==="mesAnterior"){
+    inicio=new Date(hoje.getFullYear(),hoje.getMonth()-1,1).toISOString().slice(0,10);
+    fim=new Date(hoje.getFullYear(),hoje.getMonth(),0).toISOString().slice(0,10);
+  }
+  if (g("filtroGuiaDataInicio")) g("filtroGuiaDataInicio").value = inicio||"";
+  if (g("filtroGuiaDataFim"))    g("filtroGuiaDataFim").value    = fim||"";
+  GUIA_HISTORICO_PAGINA.offset = 0;
+  carregarHistoricoGuiasCompat();
+}
+
+/* =====================================================================
+   DUPLICAR GUIA
+   ===================================================================== */
+function duplicarGuiaCompat(){
+  if (!g("guiaNome").value.trim() && !GUIA_ATUAL.id){
+    msg("Preencha os dados de uma guia antes de duplicar.", "warn"); return;
+  }
+  /* ✅ Preserva todos os campos preenchidos mas reseta o estado da guia */
+  var textoAtual = g("guiaTextoModelo") ? g("guiaTextoModelo").value : "";
+  GUIA_ATUAL = { id:"", numeroGuia:"", urlPdf:"", fileIdPdf:"", status:"PENDENTE", enviada:false };
+  atualizarStatusAtualUI();
+  atualizarNumeroGuiaUI();
+  /* ✅ Restaura o textoGuia (pode ter sido sobrescrito no reset) */
+  if (g("guiaTextoModelo")) g("guiaTextoModelo").value = textoAtual;
+  var res = g("resultadoGuiaPagamento"); if (res) res.innerHTML = "";
+  msg("Guia duplicada. Ajuste os dados necessários e salve como nova.", "info");
+  window.scrollTo({ top:0, behavior:"smooth" });
+}
+window.duplicarGuiaCompat = duplicarGuiaCompat;
+
+/* =====================================================================
+   NAVEGAÇÃO DE ABAS
+   ===================================================================== */
+function abrirTabGuiaCompat(nome){
+  var btnNova=g("abaGuiaNova"), btnHist=g("abaGuiaHistorico");
+  var blocoNova=g("blocoGuiaNova"), blocoHist=g("blocoGuiaHistorico");
+  if (nome==="historico"){
+    if(btnNova) btnNova.classList.remove("active");
+    if(btnHist) btnHist.classList.add("active");
+    if(blocoNova) blocoNova.classList.remove("ativo");
+    if(blocoHist) blocoHist.classList.add("ativo");
+    carregarHistoricoGuiasCompat();
+  } else {
+    if(btnHist) btnHist.classList.remove("active");
+    if(btnNova) btnNova.classList.add("active");
+    if(blocoHist) blocoHist.classList.remove("ativo");
+    if(blocoNova) blocoNova.classList.add("ativo");
+  }
+}
+
+/* =====================================================================
+   MÁSCARAS
+   ===================================================================== */
+function aplicarMascaraDocumentoGuia(el){
+  if(!el) return;
+  var v=onlyDigits(el.value);
+  if(v.length<=11){
+    v=v.replace(/^(\d{3})(\d)/,"$1.$2").replace(/^(\d{3})\.(\d{3})(\d)/,"$1.$2.$3").replace(/\.(\d{3})(\d)/,".$1-$2");
+  } else {
+    v=v.replace(/^(\d{2})(\d)/,"$1.$2").replace(/^(\d{2})\.(\d{3})(\d)/,"$1.$2.$3").replace(/\.(\d{3})(\d)/,".$1/$2").replace(/(\d{4})(\d)/,"$1-$2");
+  }
+  el.value=v;
+}
+function aplicarMascaraValorGuia(el){
+  if(!el) return;
+  var v=String(el.value||"").replace(/\D/g,"");
+  if(!v){el.value="";return;}
+  el.value="R$ "+(parseInt(v,10)/100).toFixed(2).replace(".",",");
+}
+function aplicarMascaraTelefoneGuia(el){
+  if(!el) return;
+  var v=onlyDigits(el.value).slice(0,13);
+  if(v.length<=10){
+    v=v.replace(/^(\d{0,2})(\d)/,function(_,a,b){return a?"("+a+") "+b:b;}).replace(/^(\(\d{2}\)\s)(\d{4})(\d)/,"$1$2-$3");
+  } else {
+    v=v.replace(/^(\d{0,2})(\d)/,function(_,a,b){return a?"("+a+") "+b:b;}).replace(/^(\(\d{2}\)\s)(\d{5})(\d)/,"$1$2-$3");
+  }
+  el.value=v;
+}
+
+/* =====================================================================
+   UI — ASSUNTO / CAMPOS / PREVIEW HTML (idêntico ao e-mail real)
+   ===================================================================== */
+function atualizarAssuntoGuiaPagamento(){
+  var tipo=g("guiaTipoEnvio")?g("guiaTipoEnvio").value:"";
+  var nome=g("guiaNome")?String(g("guiaNome").value||"").trim():"";
+  var assunto=g("guiaAssunto"); if(!assunto) return;
+  if(tipo==="enviar_contabilidade"){
+    assunto.value=nome?"Encaminhamento de nota fiscal para pagamento - "+nome:"Encaminhamento de nota fiscal para pagamento";
+  } else {
+    assunto.value=nome?"Solicitação de nota fiscal - "+nome:"Solicitação de nota fiscal";
+  }
+}
+
+function alternarCamposGuiaPagamento(){
+  var tipo=g("guiaTipoEnvio")?g("guiaTipoEnvio").value:"";
+  var bP=g("blocoGuiaEmailPrestador"), bC=g("blocoGuiaEmailContabilidade");
+  if(tipo==="enviar_contabilidade"){
+    if(bP) bP.style.display="none";
+    if(bC) bC.style.display="";
+  } else {
+    if(bP) bP.style.display="";
+    if(bC) bC.style.display="none";
+  }
+}
+
+function getDestinoAtual(){
+  var tipo=g("guiaTipoEnvio")?g("guiaTipoEnvio").value:"";
+  if(tipo==="enviar_contabilidade") return EMAILS_CONT_DISPLAY;
+  return g("guiaEmail")?String(g("guiaEmail").value||"").trim():"";
+}
+
+/* ✅ Preview HTML fiel ao que montarHtmlEmailGuia_ gera no backend */
+function atualizarPreviewEmailGuiaPagamento(){
+  var preview = g("guiaPreviewEmail"); if(!preview) return;
+
+  var nome    = g("guiaNome")       ? String(g("guiaNome").value       ||"").trim():"";
+  var doc     = g("guiaDocumento")  ? String(g("guiaDocumento").value  ||"").trim():"";
+  var val     = g("guiaValor")      ? String(g("guiaValor").value      ||"").trim():"";
+  var venc    = g("guiaVencimento") ? String(g("guiaVencimento").value ||"").trim():"";
+  var desc    = g("guiaDescricao")  ? String(g("guiaDescricao").value  ||"").trim():"";
+  var tipo    = g("guiaTipoEnvio")  ? String(g("guiaTipoEnvio").value  ||"").trim():"";
+  var assunto = g("guiaAssunto")    ? String(g("guiaAssunto").value    ||"").trim():"";
+  var destino = getDestinoAtual();
+  var vencBr  = formatarDataISOBr(venc);
+  var docExib = doc||"[não informado]";
+  var descExib = desc||"-";
+
+  var corpoHtml;
+  if(tipo==="enviar_contabilidade"){
+    corpoHtml =
+      "<h2 style='color:#003366;margin:0 0 6px 0;font-size:15px;'>Encaminhamento de Nota Fiscal</h2>"+
+      "<p style='margin:0 0 10px 0;'>Bom dia / Boa tarde! Tudo bem?</p>"+
+      "<p style='margin:0 0 10px 0;'>Encaminho, em anexo, a nota fiscal e a documentação referente ao prestador abaixo, para as providências necessárias quanto à programação do pagamento.</p>"+
+      "<div style='background:#f0f4f8;border-radius:8px;padding:12px 16px;margin-bottom:12px;'>"+
+        "<p style='margin:0 0 5px 0;'><strong>Prestador:</strong> "+escapeHtml(nome)+"</p>"+
+        "<p style='margin:0 0 5px 0;'><strong>CPF / CNPJ:</strong> "+escapeHtml(docExib)+"</p>"+
+        "<p style='margin:0 0 5px 0;'><strong>Valor:</strong> "+escapeHtml(val||"—")+"</p>"+
+        "<p style='margin:0 0 5px 0;'><strong>Vencimento:</strong> "+escapeHtml(vencBr||"—")+"</p>"+
+        "<p style='margin:0;'><strong>Descrição:</strong> "+escapeHtml(descExib)+"</p>"+
+      "</div>"+
+      "<p style='margin:0 0 10px 0;'><strong>Solicitamos, por gentileza, a confirmação do recebimento.</strong></p>"+
+      "<hr style='margin:14px 0;border:none;border-top:1px solid #e2e8f0;'>"+
+      "<p style='line-height:1.8;margin:0;'><strong>Financeiro &amp; Cobrança</strong><br>SindEducação-ES<br>(27) 99813-5965 | (27) 3222-2706<br>financeiro@sindeducacao.com</p>";
+  } else {
+    corpoHtml =
+      "<h2 style='color:#003366;margin:0 0 6px 0;font-size:15px;'>Solicitação de Nota Fiscal</h2>"+
+      "<p style='margin:0 0 10px 0;'>Olá"+(nome?" "+escapeHtml(nome):"")+", tudo bem?</p>"+
+      "<p style='margin:0 0 10px 0;'>Solicitamos o envio da nota fiscal referente ao serviço abaixo:</p>"+
+      "<div style='background:#f0f4f8;border-radius:8px;padding:12px 16px;margin-bottom:12px;'>"+
+        "<p style='margin:0 0 5px 0;'><strong>Valor:</strong> "+escapeHtml(val||"—")+"</p>"+
+        "<p style='margin:0 0 5px 0;'><strong>Vencimento:</strong> "+escapeHtml(vencBr||"—")+"</p>"+
+        "<p style='margin:0;'><strong>Descrição:</strong> "+escapeHtml(descExib)+"</p>"+
+      "</div>"+
+      "<p style='margin:0 0 10px 0;'><strong>Solicitamos, por gentileza, a confirmação do recebimento.</strong></p>"+
+      "<hr style='margin:14px 0;border:none;border-top:1px solid #e2e8f0;'>"+
+      "<p style='line-height:1.8;margin:0;'><strong>Financeiro &amp; Cobrança</strong><br>SindEducação-ES<br>(27) 99813-5965 | (27) 3222-2706<br>financeiro@sindeducacao.com</p>";
+  }
+
+  preview.innerHTML =
+    "<div style='font-size:11px;color:var(--g500);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--g200);'>"+
+      "<strong>Para:</strong> "+escapeHtml(destino||"—")+" &nbsp;|&nbsp; "+
+      "<strong>Assunto:</strong> "+escapeHtml(assunto||"—")+
+      (GUIA_ATUAL.numeroGuia?" &nbsp;|&nbsp; <strong>Guia:</strong> "+escapeHtml(GUIA_ATUAL.numeroGuia):"")+
+    "</div>"+
+    "<div style='font-family:Segoe UI,Arial,sans-serif;color:#0f172a;'>"+corpoHtml+"</div>";
+}
+
+function montarTextoGuiaPagamento(){
+  var nome=g("guiaNome")?g("guiaNome").value:"";
+  var doc=g("guiaDocumento")?g("guiaDocumento").value:"";
+  var val=g("guiaValor")?g("guiaValor").value:"";
+  var venc=g("guiaVencimento")?g("guiaVencimento").value:"";
+  var desc=g("guiaDescricao")?g("guiaDescricao").value:"";
+  var tipo=g("guiaTipoEnvio")?g("guiaTipoEnvio").value:"";
+  var tipoTxt=tipo==="solicitar_nf"?"Solicitar NF ao prestador":tipo==="enviar_contabilidade"?"Enviar à contabilidade":(tipo||"");
+  var numero=GUIA_ATUAL.numeroGuia||"${numeroGuia}";
+  var texto=
+    "GUIA DE PAGAMENTO Nº "+numero+"\n\n"+
+    "Data de Emissão: ${dataEmissao}\n\n"+
+    "Prestador: "+nome+"\n"+
+    "Documento: "+(doc||"[não informado]")+"\n\n"+
+    "Valor: "+val+"\n"+
+    "Vencimento: "+formatarDataISOBr(venc)+"\n"+
+    "Tipo de Envio: "+tipoTxt+"\n\n"+
+    "Descrição:\n"+(desc||"-")+"\n\n"+
+    "Responsável:\nSISGEP";
+  var campo=g("guiaTextoModelo"); if(campo) campo.value=texto;
+}
+
+function atualizarUIGuia(){
+  atualizarAssuntoGuiaPagamento();
+  alternarCamposGuiaPagamento();
+  atualizarPreviewEmailGuiaPagamento();
+  montarTextoGuiaPagamento();
+}
+
+/* =====================================================================
+   STATUS CHIP
+   ===================================================================== */
+function montarStatusChip(status){
+  var s=String(status||"").trim().toUpperCase();
+  var cls="status-pendente";
+  if(s==="PAGO") cls="status-pago";
+  else if(s.indexOf("ENVIADO")>-1||s==="PDF_GERADO") cls="status-enviado";
+  else if(s==="CANCELADO") cls="status-cancelado";
+  else if(s==="ERRO") cls="status-erro";
+  return '<span class="status-chip '+cls+'">'+escapeHtml(s||"—")+'</span>';
+}
+
+/* =====================================================================
+   LIMPAR FORMULÁRIO
+   ===================================================================== */
+function limparFormularioGuiaCompat(){
+  ["guiaBuscaPrestador","guiaNome","guiaDocumento","guiaEmail","guiaTelefone",
+   "guiaValor","guiaVencimento","guiaDescricao","guiaAssunto","guiaTextoModelo"].forEach(function(id){
+    var el=g(id); if(el) el.value="";
+  });
+  setPrestadorFixoAtual(false);
+  resetGuiaAtual();
+  var elCont=g("guiaEmailContabilidade"); if(elCont) elCont.value=EMAILS_CONT_DISPLAY;
+  var tipo=g("guiaTipoEnvio"); if(tipo) tipo.value="solicitar_nf";
+  var anx=g("guiaAnexos"); if(anx) anx.value="";
+  var lst=g("guiaListaAnexos"); if(lst) lst.innerHTML="Nenhum arquivo selecionado.";
+  var res=g("resultadoGuiaPagamento"); if(res) res.innerHTML="";
+  var bsc=g("guiaResultadoBuscaPrestador"); if(bsc) bsc.innerHTML="";
+  limparRascunhoLocal();
+  limparMsg();
+  atualizarUIGuia();
+}
+
+/* =====================================================================
+   COLETAR DADOS
+   ===================================================================== */
+function coletarDadosGuia(){
+  var tipo=g("guiaTipoEnvio")?String(g("guiaTipoEnvio").value||"").trim():"";
+  var destino=tipo==="enviar_contabilidade"?EMAILS_CONT_DISPLAY:(g("guiaEmail")?String(g("guiaEmail").value||"").trim():"");
+  return {
+    id:                 GUIA_ATUAL.id||"",
+    numeroGuia:         GUIA_ATUAL.numeroGuia||"",
+    urlPdf:             GUIA_ATUAL.urlPdf||"",
+    fileIdPdf:          GUIA_ATUAL.fileIdPdf||"",
+    nome:               g("guiaNome")       ?String(g("guiaNome").value       ||"").trim():"",
+    documento:          g("guiaDocumento")  ?String(g("guiaDocumento").value  ||"").trim():"",
+    emailPrestador:     g("guiaEmail")      ?String(g("guiaEmail").value      ||"").trim():"",
+    telefone:           g("guiaTelefone")   ?String(g("guiaTelefone").value   ||"").trim():"",
+    emailContabilidade: EMAILS_CONT_DISPLAY,
+    valor:              g("guiaValor")      ?String(g("guiaValor").value      ||"").trim():"",
+    vencimento:         g("guiaVencimento") ?String(g("guiaVencimento").value ||"").trim():"",
+    descricao:          g("guiaDescricao")  ?String(g("guiaDescricao").value  ||"").trim():"",
+    tipoEnvio:          tipo,
+    assunto:            g("guiaAssunto")    ?String(g("guiaAssunto").value    ||"").trim():"",
+    destino:            destino,
+    destinoFinal:       destino,
+    observacao:         "",
+    status:             GUIA_ATUAL.status||"REGISTRADO",
+    textoGuia:          g("guiaTextoModelo")?String(g("guiaTextoModelo").value||"").trim():"",
+    fixo:               isPrestadorFixoAtual()
+  };
+}
+
+function validarDadosGuia(d){
+  if(!d.nome)                                     return "Informe o nome do prestador.";
+  if(!d.documento && !d.fixo)                     return "Informe o CPF/CNPJ.";
+  if(!d.valor)                                    return "Informe o valor.";
+  if(!d.vencimento)                               return "Informe a data de vencimento.";
+  if(!d.tipoEnvio)                                return "Selecione o tipo de envio.";
+  if(d.tipoEnvio==="solicitar_nf"&&!d.destino&&!d.fixo) return "Informe o e-mail de destino.";
+  return "";
+}
+function validarAssunto(){
+  var a=g("guiaAssunto")?String(g("guiaAssunto").value||"").trim():"";
+  if(!a){ msg("Informe o assunto do e-mail antes de continuar.","erro"); if(g("guiaAssunto")) g("guiaAssunto").focus(); return false; }
+  return true;
+}
+
+/* =====================================================================
+   SALVAR GUIA
+   ===================================================================== */
+function salvarGuiaPagamentoCompat(limparDepois){
+  var dados=coletarDadosGuia(), erro=validarDadosGuia(dados);
+  if(erro){msg(erro,"erro");return;}
+  if(!validarAssunto()) return;
+
+  var btn=limparDepois?g("btnSalvarENovaGuia"):g("btnSalvarGuia");
+  setBtnLoading(btn,"Salvando...");
+  msg("Salvando guia...","info");
+
+  google.script.run
+    .withSuccessHandler(function(resp){
+      resetBtn(btn);
+      if(!resp||resp.ok!==true){msg((resp&&resp.mensagem)||"Erro ao salvar guia.","erro");return;}
+      atualizarGuiaAtual({id:resp.id||GUIA_ATUAL.id,status:"REGISTRADO"});
+      // ✅ Exibe aviso do histórico se houver, sem bloquear o fluxo
+      if(resp.avisoHistorico) msg("⚠️ "+resp.avisoHistorico,"warn");
+      else msg(resp.mensagem||"Guia registrada com sucesso.","ok");
+      atualizarResultadoGuia('<div class="msg-box ok" style="display:block;">✅ Guia registrada. ID: <strong>'+escapeHtml(resp.id||"—")+'</strong></div>');
+      atualizarDashboardGuiasCompat();
+      carregarUltimosPrestadoresCompat();
+      limparRascunhoLocal();
+      if(limparDepois) setTimeout(limparFormularioGuiaCompat,500);
+    })
+    .withFailureHandler(function(err){
+      resetBtn(btn);
+      msg("Erro no servidor ao salvar a guia: "+(err&&err.message?err.message:String(err||"")),"erro");
+    })
+    .salvarGuiaPagamento(dados);
+}
+
+/* =====================================================================
+   GERAR PDF
+   ===================================================================== */
+function gerarPdfGuiaCompat(){
+  var dados=coletarDadosGuia(), erro=validarDadosGuia(dados);
+  if(erro){msg(erro,"erro");return;}
+  if(!validarAssunto()) return;
+
+  var btn=g("btnGerarPdfGuia");
+  setBtnLoading(btn,"Gerando PDF...");
+
+  garantirGuiaSalvaAntesDoEnvio(function(){
+    var payload=coletarDadosGuia();
+    google.script.run
+      .withSuccessHandler(function(resp){
+        resetBtn(btn);
+        if(!resp||resp.ok!==true){msg((resp&&resp.mensagem)||"Erro ao gerar PDF.","erro");return;}
+        atualizarGuiaAtual({
+          id:resp.id||GUIA_ATUAL.id,
+          numeroGuia:resp.numeroGuia||GUIA_ATUAL.numeroGuia,
+          urlPdf:resp.urlPdf||GUIA_ATUAL.urlPdf,
+          fileId:resp.fileId||GUIA_ATUAL.fileIdPdf,
+          status:"PDF_GERADO"
+        });
+        atualizarUIGuia();
+        atualizarDashboardGuiasCompat();
+        carregarUltimosPrestadoresCompat();
+        msg(resp.mensagem||"PDF gerado com sucesso.","ok");
+        var urlF=resp.urlPdf||GUIA_ATUAL.urlPdf;
+        atualizarResultadoGuia(
+          '<div class="msg-box ok" style="display:block;">📄 PDF da guia <strong>'+
+          escapeHtml(resp.numeroGuia||GUIA_ATUAL.numeroGuia||"—")+'</strong> gerado com sucesso. '+
+          (urlF?'<a href="'+escapeHtml(urlF)+'" target="_blank" style="color:#065f46;">Abrir PDF</a>':'')+
+          '</div>'
+        );
+      })
+      .withFailureHandler(function(err){
+        resetBtn(btn);
+        msg("Erro no servidor ao gerar PDF: "+(err&&err.message?err.message:String(err||"")),"erro");
+      })
+      .salvarEGerarGuiaPagamento(payload);
+  }, function(e){ resetBtn(btn); msg(e||"Não foi possível salvar a guia antes de gerar o PDF.","erro"); });
+}
+
+/* =====================================================================
+   MARCAR PAGO / CANCELAR
+   ===================================================================== */
+function marcarGuiaComoPagaCompat(){
+  if(!GUIA_ATUAL.id){msg("Salve a guia antes de marcar como paga.","warn");return;}
+  var obs=prompt("Observação do pagamento (opcional):","") || "";
+  var btn=g("btnMarcarPagoGuia"); setBtnLoading(btn,"Marcando...");
+  google.script.run
+    .withSuccessHandler(function(resp){
+      resetBtn(btn);
+      if(!resp||resp.ok!==true){msg((resp&&resp.mensagem)||"Erro ao marcar como paga.","erro");return;}
+      atualizarGuiaAtual({status:"PAGO"});
+      atualizarDashboardGuiasCompat();
+      msg(resp.mensagem||"Guia marcada como paga.","ok");
+      atualizarResultadoGuia('<div class="msg-box ok" style="display:block;">✅ Guia marcada como paga com sucesso.</div>');
+    })
+    .withFailureHandler(function(err){resetBtn(btn);msg("Erro: "+(err&&err.message?err.message:String(err||"")),"erro");})
+    .marcarGuiaComoPaga({id:GUIA_ATUAL.id,observacao:obs});
+}
+
+function cancelarGuiaCompat(){
+  if(!GUIA_ATUAL.id){msg("Salve a guia antes de cancelar.","warn");return;}
+  if(!confirm("Deseja realmente cancelar esta guia?")) return;
+  var obs=prompt("Motivo do cancelamento (opcional):","") || "";
+  var btn=g("btnCancelarGuia"); setBtnLoading(btn,"Cancelando...");
+  google.script.run
+    .withSuccessHandler(function(resp){
+      resetBtn(btn);
+      if(!resp||resp.ok!==true){msg((resp&&resp.mensagem)||"Erro ao cancelar guia.","erro");return;}
+      atualizarGuiaAtual({status:"CANCELADO"});
+      atualizarDashboardGuiasCompat();
+      msg(resp.mensagem||"Guia cancelada com sucesso.","ok");
+      atualizarResultadoGuia('<div class="msg-box warn" style="display:block;">🚫 Guia cancelada com sucesso.</div>');
+    })
+    .withFailureHandler(function(err){resetBtn(btn);msg("Erro: "+(err&&err.message?err.message:String(err||"")),"erro");})
+    .cancelarGuiaPagamento({id:GUIA_ATUAL.id,observacao:obs});
+}
+
+/* =====================================================================
+   GARANTIR GUIA SALVA ANTES DO ENVIO
+   ===================================================================== */
+function garantirGuiaSalvaAntesDoEnvio(ok,erro){
+  if(GUIA_ATUAL.id){ok&&ok();return;}
+  var dados=coletarDadosGuia();
+  var e=validarDadosGuia(dados);
+  if(e){erro&&erro(e);return;}
+  if(!validarAssunto()){erro&&erro("Assunto inválido.");return;}
+  msg("Salvando guia antes do envio...","info");
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||resp.ok!==true){erro&&erro((resp&&resp.mensagem)||"Erro ao salvar guia antes do envio.");return;}
+      atualizarGuiaAtual({id:resp.id||"",status:"REGISTRADO"});
+      ok&&ok();
+    })
+    .withFailureHandler(function(e){erro&&erro("Erro no servidor: "+(e&&e.message?e.message:String(e||"")));})
+    .salvarGuiaPagamento(dados);
+}
+
+/* =====================================================================
+   ENVIAR PELO SISGEP  (✅ guarda com proteção de reenvio)
+   ===================================================================== */
+function enviarGuiaPeloSISGEP(){
+  var dados=coletarDadosGuia();
+  var e=validarDadosGuia(dados); if(e){msg(e,"erro");return;}
+  if(!validarAssunto()) return;
+
+  var tipo=dados.tipoEnvio;
+  var destinoLabel=tipo==="enviar_contabilidade"?"Contabilidade (endereço fixo)":(dados.emailPrestador||dados.destino||"");
+  if(!destinoLabel&&tipo!=="enviar_contabilidade"){msg("Informe o e-mail do prestador antes de enviar.","erro");if(g("guiaEmail"))g("guiaEmail").focus();return;}
+
+  // ✅ Alerta se guia já foi enviada antes
+  var confirmMsg="Confirma o envio da guia por e-mail para:\n"+destinoLabel+"?\n\nUm PDF será gerado e enviado automaticamente.";
+  if(GUIA_ATUAL.enviada) confirmMsg="⚠️ Esta guia já foi enviada anteriormente.\n\n"+confirmMsg;
+  if(!confirm(confirmMsg)) return;
+
+  var btn=g("btnEnviarSISGEP"); setBtnLoading(btn,"Enviando...");
+
+  garantirGuiaSalvaAntesDoEnvio(function(){
+    var dadosEnvio=coletarDadosGuia();
+    setBtnLoading(btn,"Gerando PDF e enviando...");
+    msg("Gerando PDF e enviando e-mail...","info");
+
+    google.script.run
+      .withSuccessHandler(function(resp){
+        resetBtn(btn);
+        if(!resp||resp.ok!==true){msg((resp&&resp.mensagem)||"Erro ao enviar guia.","erro");return;}
+        atualizarGuiaAtual({
+          numeroGuia:resp.numeroGuia||GUIA_ATUAL.numeroGuia,
+          urlPdf:resp.urlPdf||GUIA_ATUAL.urlPdf,
+          fileIdPdf:resp.fileId||GUIA_ATUAL.fileIdPdf,
+          status:dadosEnvio.tipoEnvio==="enviar_contabilidade"?"ENVIADO_CONTABILIDADE":"ENVIADO_PRESTADOR",
+          enviada:true   /* ✅ marca como enviada */
+        });
+        msg("✅ "+(resp.mensagem||"Guia enviada com sucesso!"),"ok");
+        var urlF=resp.urlPdf||GUIA_ATUAL.urlPdf;
+        atualizarResultadoGuia(
+          '<div class="msg-box ok" style="display:block;">✅ Guia <strong>'+
+          escapeHtml(resp.numeroGuia||GUIA_ATUAL.numeroGuia||"—")+
+          '</strong> enviada para <strong>'+escapeHtml(resp.destino||"—")+'</strong>.'+
+          (urlF?'&nbsp;<a href="'+escapeHtml(urlF)+'" target="_blank" style="color:#065f46;">📄 Abrir PDF</a>':'')+
+          '</div>'
+        );
+        atualizarUIGuia();
+        atualizarDashboardGuiasCompat();
+        carregarUltimosPrestadoresCompat();
+      })
+      .withFailureHandler(function(err){
+        resetBtn(btn);
+        msg("Erro no servidor: "+(err&&err.message?err.message:String(err||"")),"erro");
+      })
+      .enviarGuiaPorEmailSISGEP(dadosEnvio);
+  }, function(e){ resetBtn(btn); msg(e||"Não foi possível salvar a guia antes do envio.","erro"); });
+}
+
+/* =====================================================================
+   PREPARAR E-MAIL / WHATSAPP
+   ===================================================================== */
+function prepararEmailGuiaCompat(){
+  var dados=coletarDadosGuia();
+  var e=validarDadosGuia(dados); if(e){msg(e,"erro");return;}
+  if(!validarAssunto()) return;
+  var assunto=encodeURIComponent(dados.assunto||"Guia de pagamento");
+  var vencBr=formatarDataISOBr(dados.vencimento);
+  var docExib=dados.documento||"[não informado]";
+  var descExib=dados.descricao||"-";
+  var corpo;
+  if(dados.tipoEnvio==="enviar_contabilidade"){
+    corpo="Boa tarde!\n\nEncaminho, em anexo, a nota fiscal e a documentação referente ao prestador abaixo.\n\nPrestador: "+dados.nome+"\nCPF / CNPJ: "+docExib+"\nValor: "+dados.valor+"\nVencimento: "+vencBr+"\nDescrição: "+descExib+"\n\nAtenciosamente,";
+    window.location.href="mailto:"+EMAILS_CONT_MAILTO+"?subject="+assunto+"&body="+encodeURIComponent(corpo);
+  } else {
+    corpo="Olá "+dados.nome+",\n\nSolicitamos o envio da nota fiscal referente ao serviço abaixo:\n\nValor: "+dados.valor+"\nVencimento: "+vencBr+"\nDescrição: "+descExib+"\n\nAtenciosamente,";
+    window.location.href="mailto:"+encodeURIComponent(dados.destino)+"?subject="+assunto+"&body="+encodeURIComponent(corpo);
+  }
+}
+
+function enviarGuiaWhatsAppCompat(){
+  var nome=g("guiaNome")?String(g("guiaNome").value||"").trim():"";
+  var tel=g("guiaTelefone")?String(g("guiaTelefone").value||"").trim():"";
+  var valor=g("guiaValor")?String(g("guiaValor").value||"").trim():"";
+  var venc=g("guiaVencimento")?String(g("guiaVencimento").value||"").trim():"";
+  var desc=g("guiaDescricao")?String(g("guiaDescricao").value||"").trim():"";
+  var numero=onlyDigits(tel);
+  if(!numero){msg("Informe o WhatsApp do prestador.","erro");return;}
+  var texto="Olá"+(nome?" "+nome:"")+"!%0A%0ASolicitamos o envio da nota fiscal referente ao serviço abaixo:%0A%0A"+
+    "Valor: "+encodeURIComponent(valor||"-")+"%0A"+
+    "Vencimento: "+encodeURIComponent(formatarDataISOBr(venc)||"-")+"%0A"+
+    "Descrição: "+encodeURIComponent(desc||"-")+"%0A%0AAtenciosamente.";
+  window.open("https://wa.me/55"+numero+"?text="+texto,"_blank");
+}
+
+/* =====================================================================
+   VERIFICAR VENCIMENTO
+   ===================================================================== */
+function verificarVencimento(v){
+  if(!v) return false;
+  var data=new Date(v+"T12:00:00"); if(isNaN(data.getTime())) return false;
+  var hoje=new Date(); hoje.setHours(0,0,0,0); data.setHours(0,0,0,0);
+  var diff=Math.ceil((data-hoje)/(1000*60*60*24));
+  if(diff<0){msg("⚠️ Atenção: esta guia está com vencimento vencido.","erro");return true;}
+  if(diff<=3){msg("⚠️ Atenção: vencimento próximo.","warn");return true;}
+  return false;
+}
+
+/* =====================================================================
+   PREENCHER CAMPOS DE PRESTADOR
+   ===================================================================== */
+function preencherCamposPrestador(dados){
+  if(!dados) return;
+  setPrestadorFixoAtual(!!dados.fixo);
+  if(g("guiaBuscaPrestador")) g("guiaBuscaPrestador").value=dados.nome||dados.prestador||"";
+  if(g("guiaNome"))           g("guiaNome").value          =dados.nome||dados.prestador||"";
+  if(g("guiaDocumento"))      g("guiaDocumento").value     =dados.documento||"";
+  if(g("guiaEmail"))          g("guiaEmail").value         =dados.emailPrestador||"";
+  if(g("guiaTelefone"))       g("guiaTelefone").value      =dados.telefone||"";
+  if(g("guiaEmailContabilidade")) g("guiaEmailContabilidade").value=dados.emailContabilidade||EMAILS_CONT_DISPLAY;
+  if(g("guiaValor"))          g("guiaValor").value         =dados.valor||"";
+  if(g("guiaVencimento"))     g("guiaVencimento").value    =dados.vencimento||"";
+  if(g("guiaDescricao"))      g("guiaDescricao").value     =dados.descricao||"";
+  aplicarMascaraDocumentoGuia(g("guiaDocumento"));
+  aplicarMascaraTelefoneGuia(g("guiaTelefone"));
+  aplicarMascaraValorGuia(g("guiaValor"));
+  atualizarUIGuia();
+}
+
+window.preencherDePrestadorCompat = function(pStr){
+  try {
+    var p=JSON.parse(unescape(pStr));
+    setPrestadorFixoAtual(!!p.fixo);
+    if(g("guiaNome"))           g("guiaNome").value          =p.prestador||p.nome||"";
+    if(g("guiaBuscaPrestador")) g("guiaBuscaPrestador").value=p.prestador||p.nome||"";
+    if(g("guiaDocumento"))      g("guiaDocumento").value     =p.documento||"";
+    if(g("guiaEmail"))          g("guiaEmail").value         =p.emailPrestador||"";
+    if(g("guiaTelefone"))       g("guiaTelefone").value      =p.telefone||"";
+    if(g("guiaValor"))          g("guiaValor").value         =p.valor||"";
+    if(g("guiaDescricao"))      g("guiaDescricao").value     =p.descricao||"";
+    if(g("guiaAssunto"))        g("guiaAssunto").value       =p.assunto||"";
+    if(g("guiaEmailContabilidade")) g("guiaEmailContabilidade").value=p.emailContabilidade||EMAILS_CONT_DISPLAY;
+    if(g("guiaTipoEnvio"))      g("guiaTipoEnvio").value     =p.tipoEnvio||"enviar_contabilidade";
+    if(g("guiaVencimento")&&p.vencimento) g("guiaVencimento").value=p.vencimento;
+    aplicarMascaraDocumentoGuia(g("guiaDocumento"));
+    aplicarMascaraTelefoneGuia(g("guiaTelefone"));
+    aplicarMascaraValorGuia(g("guiaValor"));
+    atualizarUIGuia();
+    var alertou=verificarVencimento(p.vencimento);
+    if(!p.valor&&g("guiaValor")) g("guiaValor").focus();
+    else if(g("guiaDescricao"))  g("guiaDescricao").focus();
+    if(!alertou) msg(p.fixo?"Prestador fixo carregado: "+(p.nome||p.prestador||""):"Prestador carregado: "+(p.nome||p.prestador||""),"ok");
+  } catch(e){ msg("Erro ao carregar dados do prestador.","erro"); }
+};
+
+/* =====================================================================
+   RENDERIZAR BUSCAS (✅ ordenação alfabética no cliente)
+   ===================================================================== */
+function ordenarAlfabetica(lista){
+  return (lista||[]).slice().sort(function(a,b){
+    var nA=normalizarTexto(a.nome||a.prestador||"");
+    var nB=normalizarTexto(b.nome||b.prestador||"");
+    return nA<nB?-1:nA>nB?1:0;
+  });
+}
+
+function renderBuscaPrestador(lista){
+  var box=g("guiaResultadoBuscaPrestador"); if(!box) return;
+  if(!Array.isArray(lista)||!lista.length){
+    box.innerHTML='<div class="msg-box warn" style="display:block;">Nenhum prestador encontrado.</div>'; return;
+  }
+  var ordenados=ordenarAlfabetica(lista);
+  var html='<div class="prestadores-grid">';
+  ordenados.forEach(function(p){
+    var payload={nome:p.nome||p.prestador||"",prestador:p.prestador||p.nome||"",
+      documento:p.documento||"",emailPrestador:p.emailPrestador||"",emailContabilidade:p.emailContabilidade||"",
+      telefone:p.telefone||"",valor:p.valor||"",vencimento:p.vencimento||"",
+      descricao:p.descricao||"",assunto:p.assunto||"",tipoEnvio:p.tipoEnvio||"",fixo:!!p.fixo};
+    html+='<div class="prestador-card" onclick="preencherDePrestadorCompat(\''+escape(JSON.stringify(payload))+'\')">';
+    html+='<div class="prestador-nome">'+escapeHtml(payload.nome||"")+'</div>';
+    html+='<div class="prestador-doc">'+escapeHtml(payload.documento||"")+'</div>';
+    html+='<div class="prestador-info">'+escapeHtml(payload.emailPrestador||(payload.fixo?"Prestador fixo":""))+'</div>';
+    html+='</div>';
+  });
+  html+='</div>';
+  box.innerHTML=html;
+}
+
+/* =====================================================================
+   ÚLTIMOS PRESTADORES
+   ===================================================================== */
+function carregarUltimosPrestadoresCompat(){
+  if(typeof google==="undefined"||!google.script||!google.script.run) return;
+  google.script.run
+    .withSuccessHandler(function(lista){
+      var grid=g("prestadoresGrid"),box=g("prestadoresRecentes");
+      if(!grid||!box) return;
+      if(!Array.isArray(lista)||!lista.length){box.style.display="none";return;}
+      var html="";
+      lista.slice(0,6).forEach(function(p){
+        var payload={prestador:p.prestador||p.nome||"",nome:p.nome||p.prestador||"",
+          documento:p.documento||"",emailPrestador:p.emailPrestador||"",emailContabilidade:p.emailContabilidade||"",
+          telefone:p.telefone||"",valor:p.valor||"",vencimento:p.vencimento||"",
+          descricao:p.descricao||"",assunto:p.assunto||"",tipoEnvio:p.tipoEnvio||"",
+          textoGuia:p.textoGuia||"",fixo:!!p.fixo};
+        html+='<div class="prestador-card" onclick="preencherDePrestadorCompat(\''+escape(JSON.stringify(payload))+'\')">';
+        html+='<div class="prestador-nome">'+escapeHtml(payload.prestador||payload.nome||"")+'</div>';
+        html+='<div class="prestador-doc">'+escapeHtml(payload.documento||"")+'</div>';
+        html+='<div class="prestador-info">Última: '+escapeHtml(p.ultimaDataHora||"—")+'</div>';
+        html+='</div>';
+      });
+      grid.innerHTML=html; box.style.display="block";
+    })
+    .withFailureHandler(function(){})
+    .listarUltimosPrestadoresGuia(6);
+}
+
+/* =====================================================================
+   DASHBOARD
+   ===================================================================== */
+function atualizarDashboardGuiasCompat(){
+  if(typeof google==="undefined"||!google.script||!google.script.run) return;
+  google.script.run
+    .withSuccessHandler(function(resp){
+      var r=resp&&resp.ok&&resp.resumo?resp.resumo:null;
+      if(!r){
+        if(g("statGuiasMes")) g("statGuiasMes").textContent="0";
+        if(g("statValorTotal")) g("statValorTotal").textContent="R$ 0,00";
+        if(g("statVencHoje")) g("statVencHoje").textContent="0";
+        if(g("statVencidas")) g("statVencidas").textContent="0";
+        return;
+      }
+      if(g("statGuiasMes"))   g("statGuiasMes").textContent  =r.totalGuias ||0;
+      if(g("statValorTotal")) g("statValorTotal").textContent=r.totalValor ||"R$ 0,00";
+      if(g("statVencHoje"))   g("statVencHoje").textContent  =r.qtdUrgentes||0;
+      if(g("statVencidas"))   g("statVencidas").textContent  =r.qtdVencidas||0;
+    })
+    .withFailureHandler(function(){
+      if(g("statGuiasMes"))   g("statGuiasMes").textContent  ="0";
+      if(g("statValorTotal")) g("statValorTotal").textContent="R$ 0,00";
+      if(g("statVencHoje"))   g("statVencHoje").textContent  ="0";
+      if(g("statVencidas"))   g("statVencidas").textContent  ="0";
+    })
+    .obterResumoGuiasPagamento({});
+}
+
+/* =====================================================================
+   HISTÓRICO — TABELA
+   ===================================================================== */
+function carregarHistoricoGuiasCompat(){
+  var tbody=document.querySelector("#tabelaRelatorioGuias tbody"); if(!tbody) return;
+  tbody.innerHTML='<tr><td colspan="10"><div class="tabela-vazia">Carregando...</div></td></tr>';
+  var filtros={
+    prestador: g("filtroGuiaPrestador") ?g("filtroGuiaPrestador").value :"",
+    documento: g("filtroGuiaDocumento") ?g("filtroGuiaDocumento").value :"",
+    tipoEnvio: g("filtroGuiaTipoEnvio") ?g("filtroGuiaTipoEnvio").value :"",
+    status:    g("filtroGuiaStatus")    ?g("filtroGuiaStatus").value    :"",
+    dataInicio:g("filtroGuiaDataInicio")?g("filtroGuiaDataInicio").value:"",
+    dataFim:   g("filtroGuiaDataFim")   ?g("filtroGuiaDataFim").value   :"",
+    limite:GUIA_HISTORICO_PAGINA.limite||20,
+    offset:GUIA_HISTORICO_PAGINA.offset||0
+  };
+  google.script.run
+    .withSuccessHandler(function(resp){
+      var lista=[];
+      if(resp&&Array.isArray(resp.pagina)) lista=resp.pagina;
+      else if(Array.isArray(resp)) lista=resp;
+      GUIA_HISTORICO_PAGINA.total  =(resp&&typeof resp.total!=="undefined")?resp.total:lista.length;
+      GUIA_HISTORICO_PAGINA.temMais=!!(resp&&resp.temMais);
+      atualizarControlesPaginacao();
+      if(!lista.length){tbody.innerHTML='<tr><td colspan="10"><div class="tabela-vazia">Nenhum registro encontrado.</div></td></tr>';return;}
+      var html="";
+      lista.forEach(function(item){
+        var urlPdf=item.urlPdf||"";
+        var pdfKey=urlPdf?registrarPdfUrl(urlPdf):"";
+
+        // ✅ Badge de leitura do email
+        var leituraHtml = item.emailAberto
+          ? '<span style="font-size:10px;background:#d1fae5;color:#065f46;border-radius:999px;padding:2px 8px;font-weight:700;margin-left:6px;">👁 Lido</span>'
+          : '<span style="font-size:10px;background:#f1f5f9;color:#64748b;border-radius:999px;padding:2px 8px;font-weight:700;margin-left:6px;">Não lido</span>';
+
+        html+="<tr>";
+        html+="<td>"+escapeHtml(item.dataHora||"")+"</td>";
+        html+="<td>"+escapeHtml(item.prestador||"")+"</td>";
+        html+="<td>"+escapeHtml(item.documento||"")+"</td>";
+        html+="<td>"+escapeHtml(item.valor||"")+"</td>";
+        html+="<td>"+escapeHtml(item.vencimento||"")+"</td>";
+        html+="<td>"+escapeHtml(item.tipoEnvio||"")+"</td>";
+        html+="<td>"+montarStatusChip(item.status||"")+leituraHtml+"</td>";
+        html+="<td>"+escapeHtml(item.destinoFinal||item.destino||"")+"</td>";
+        html+="<td>"+escapeHtml(item.usuario||"")+"</td>";
+        html+="<td>"+(pdfKey?'<button type="button" class="btn btn-secondary btn-sm" onclick="abrirPdfGuia(\''+pdfKey+'\')">📄 PDF</button>':'<span style="color:#94a3b8;font-size:12px;">—</span>')+"</td>";
+        html+="</tr>";
+      });
+      tbody.innerHTML=html;
+      var resultado=g("guiaHistoricoResultado");
+      if(resultado) resultado.innerHTML='<div class="msg-box info" style="display:block;">📋 '+(GUIA_HISTORICO_PAGINA.total||lista.length)+' registro(s) encontrado(s).</div>';
+    })
+    .withFailureHandler(function(err){
+      tbody.innerHTML='<tr><td colspan="10"><div class="tabela-vazia">Erro ao carregar histórico.</div></td></tr>';
+      var r=g("guiaHistoricoResultado");
+      if(r) r.innerHTML='<div class="msg-box erro" style="display:block;">Erro: '+escapeHtml(err&&err.message?err.message:String(err||""))+'</div>';
+      GUIA_HISTORICO_PAGINA.temMais=false; atualizarControlesPaginacao();
+    })
+    .listarHistoricoGuias(filtros);
+}
+/* =====================================================================
+   EXPORTAR CSV
+   ===================================================================== */
+function exportarHistoricoCsv(){
+  var filtros={
+    prestador: g("filtroGuiaPrestador") ?g("filtroGuiaPrestador").value :"",
+    documento: g("filtroGuiaDocumento") ?g("filtroGuiaDocumento").value :"",
+    tipoEnvio: g("filtroGuiaTipoEnvio") ?g("filtroGuiaTipoEnvio").value :"",
+    status:    g("filtroGuiaStatus")    ?g("filtroGuiaStatus").value    :"",
+    dataInicio:g("filtroGuiaDataInicio")?g("filtroGuiaDataInicio").value:"",
+    dataFim:   g("filtroGuiaDataFim")   ?g("filtroGuiaDataFim").value   :"",
+    limite:5000, offset:0
+  };
+  google.script.run
+    .withSuccessHandler(function(resp){
+      var lista=[];
+      if(resp&&Array.isArray(resp.pagina)) lista=resp.pagina;
+      else if(Array.isArray(resp)) lista=resp;
+      if(!lista.length){msg("Nenhum registro para exportar.","warn");return;}
+      var headers=["Data/Hora","Prestador","Documento","Valor","Vencimento","Tipo","Status","Destino","Usuário"];
+      var rows=[headers].concat(lista.map(function(item){
+        return[item.dataHora||"",item.prestador||"",item.documento||"",
+          item.valor||"",item.vencimento||"",item.tipoEnvio||"",
+          item.status||"",item.destinoFinal||item.destino||"",item.usuario||""];
+      }));
+      var csv=rows.map(function(row){
+        return row.map(function(cell){ return'"'+String(cell==null?"":cell).replace(/"/g,'""')+'"'; }).join(";");
+      }).join("\n");
+      var blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement("a"); a.href=url; a.download="historico_guias_pagamento.csv";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+      msg("CSV exportado com sucesso.","ok");
+    })
+    .withFailureHandler(function(err){msg("Erro ao exportar CSV: "+(err&&err.message?err.message:String(err||"")),"erro");})
+    .listarHistoricoGuias(filtros);
+}
+
+/* =====================================================================
+   PRESTADORES FIXOS
+   ===================================================================== */
+function carregarPrestadoresFixos(){
+  if(typeof google==="undefined"||!google.script||!google.script.run){msg("Ambiente do Apps Script não disponível.","erro");return;}
+  var btn=g("btnCarregarPrestadoresFixos"); setBtnLoading(btn,"Carregando...");
+  google.script.run
+    .withSuccessHandler(function(lista){
+      resetBtn(btn);
+      if(!Array.isArray(lista)||!lista.length){msg("Nenhum prestador fixo encontrado.","warn");return;}
+      limparMsg(); renderPrestadoresFixos(lista);
+    })
+    .withFailureHandler(function(err){ resetBtn(btn); msg("Erro: "+(err&&err.message?err.message:String(err||"")),"erro"); })
+    .listarPrestadoresFixos();
+}
+
+function renderPrestadoresFixos(lista){
+  var box=g("guiaResultadoBuscaPrestador"); if(!box) return;
+  var ordenados=ordenarAlfabetica(lista);
+  var html='<div class="prestadores-grid">';
+  ordenados.forEach(function(p){
+    var payload={nome:p.nome||"",documento:p.documento||"",emailPrestador:p.emailPrestador||"",
+      emailContabilidade:p.emailContabilidade||"",telefone:p.telefone||"",
+      valor:p.valor||"",vencimento:p.vencimento||"",descricao:p.descricao||"",
+      assunto:p.assunto||"",tipoEnvio:p.tipoEnvio||"",fixo:true};
+    var badgeValor=p.valorVariavel===true
+      ?'<div class="field-badge" style="margin-top:8px;">💰 Valor variável</div>'
+      :(p.valor?'<div class="field-badge" style="margin-top:8px;">💰 '+escapeHtml(p.valor)+'</div>':"");
+    html+='<div class="prestador-card" onclick="preencherDePrestadorCompat(\''+escape(JSON.stringify(payload))+'\')">';
+    html+='<div class="prestador-nome">'+escapeHtml(p.nome||"")+'</div>';
+    html+='<div class="prestador-doc">Vencimento: '+escapeHtml(formatarDataISOBr(p.vencimento||""))+'</div>';
+    html+='<div class="prestador-info">📌 Prestador fixo</div>';
+    html+=badgeValor+'</div>';
+  });
+  html+='</div>'; box.innerHTML=html;
+}
+
+/* =====================================================================
+   BUSCAR PRESTADOR (✅ com debounce no Enter)
+   ===================================================================== */
+function buscarPrestadorGuiaCompat(){
+  if(typeof google==="undefined"||!google.script||!google.script.run){msg("Ambiente do Apps Script não disponível.","erro");return;}
+  var termo=g("guiaBuscaPrestador")?String(g("guiaBuscaPrestador").value||"").trim():"";
+  if(!termo){msg("Informe um nome, documento ou e-mail para buscar.","warn");return;}
+  var btn=g("btnBuscarPrestadorGuia"); setBtnLoading(btn,"Buscando..."); msg("Buscando prestador...","info");
+  google.script.run
+    .withSuccessHandler(function(resp){
+      resetBtn(btn);
+      if(!resp||resp.ok!==true){msg((resp&&resp.mensagem)||"Erro ao buscar prestador.","erro");return;}
+      limparMsg(); renderBuscaPrestador(resp.lista||[]);
+    })
+    .withFailureHandler(function(err){ resetBtn(btn); msg("Erro: "+(err&&err.message?err.message:String(err||"")),"erro"); })
+    .buscarPrestadorGuiaPagamento(termo);
+}
+
+/* =====================================================================
+   MODAL — NOVO PRESTADOR
+   ===================================================================== */
+function abrirModalNovoPrestador(){
+  if(g("novoPrestadorNome"))       g("novoPrestadorNome").value      =g("guiaNome")       ?String(g("guiaNome").value       ||"").trim():"";
+  if(g("novoPrestadorDocumento"))  g("novoPrestadorDocumento").value =g("guiaDocumento")  ?String(g("guiaDocumento").value  ||"").trim():"";
+  if(g("novoPrestadorEmail"))      g("novoPrestadorEmail").value     =g("guiaEmail")      ?String(g("guiaEmail").value      ||"").trim():"";
+  if(g("novoPrestadorTelefone"))   g("novoPrestadorTelefone").value  =g("guiaTelefone")   ?String(g("guiaTelefone").value   ||"").trim():"";
+  if(g("novoPrestadorValor"))      g("novoPrestadorValor").value     =g("guiaValor")      ?String(g("guiaValor").value      ||"").trim():"";
+  if(g("novoPrestadorVencimento")) g("novoPrestadorVencimento").value=g("guiaVencimento") ?String(g("guiaVencimento").value ||"").trim():"";
+  var modal=g("modalNovoPrestadorGuia");
+  if(modal){modal.classList.add("ativo");modal.setAttribute("aria-hidden","false");}
+  setTimeout(function(){if(g("novoPrestadorNome")) g("novoPrestadorNome").focus();},60);
+}
+function fecharModalNovoPrestador(){
+  var modal=g("modalNovoPrestadorGuia");
+  if(modal){modal.classList.remove("ativo");modal.setAttribute("aria-hidden","true");}
+}
+function salvarNovoPrestadorCompat(){
+  if(typeof google==="undefined"||!google.script||!google.script.run){msg("Ambiente do Apps Script não disponível.","erro");return;}
+  var dados={
+    nome:           g("novoPrestadorNome")       ?String(g("novoPrestadorNome").value       ||"").trim():"",
+    documento:      g("novoPrestadorDocumento")  ?String(g("novoPrestadorDocumento").value  ||"").trim():"",
+    emailPrestador: g("novoPrestadorEmail")      ?String(g("novoPrestadorEmail").value      ||"").trim():"",
+    telefone:       g("novoPrestadorTelefone")   ?String(g("novoPrestadorTelefone").value   ||"").trim():"",
+    valor:          g("novoPrestadorValor")      ?String(g("novoPrestadorValor").value      ||"").trim():"",
+    vencimento:     g("novoPrestadorVencimento") ?String(g("novoPrestadorVencimento").value ||"").trim():""
+  };
+  if(!dados.nome)     {msg("Informe o nome do prestador.","erro");return;}
+  if(!dados.documento){msg("Informe o CPF/CNPJ do prestador.","erro");return;}
+  var btn=g("btnSalvarNovoPrestador"); setBtnLoading(btn,"Salvando..."); msg("Cadastrando novo prestador...","info");
+  google.script.run
+    .withSuccessHandler(function(resp){
+      resetBtn(btn);
+      if(!resp||resp.ok!==true){msg((resp&&resp.mensagem)||"Erro ao cadastrar novo prestador.","erro");return;}
+      var pr=resp.prestador||{};
+      preencherCamposPrestador({
+        nome:pr.nome||dados.nome,prestador:pr.nome||dados.nome,
+        documento:pr.documento||dados.documento,emailPrestador:pr.emailPrestador||dados.emailPrestador,
+        telefone:pr.telefone||dados.telefone,valor:pr.valor||dados.valor,
+        vencimento:pr.vencimento||dados.vencimento,fixo:false
+      });
+      if(g("guiaValor")&&(pr.valor||dados.valor)){g("guiaValor").value=pr.valor||dados.valor;aplicarMascaraValorGuia(g("guiaValor"));}
+      if(g("guiaDocumento")) aplicarMascaraDocumentoGuia(g("guiaDocumento"));
+      if(g("guiaTelefone"))  aplicarMascaraTelefoneGuia(g("guiaTelefone"));
+      fecharModalNovoPrestador();
+      atualizarUIGuia();
+      carregarUltimosPrestadoresCompat();
+      msg(resp.mensagem||"Prestador cadastrado com sucesso.","ok");
+    })
+    .withFailureHandler(function(err){resetBtn(btn);msg("Erro: "+(err&&err.message?err.message:String(err||"")),"erro");})
+    .cadastrarNovoPrestador(dados);
+}
+
+/* =====================================================================
+   BINDING DE EVENTOS
+   ===================================================================== */
+function bindEventosGuia(){
+  function bind(id,fn){
+    var btn=g(id); if(btn&&!btn.dataset.b){btn.dataset.b="1";btn.addEventListener("click",fn);}
+  }
+
+  bind("abaGuiaNova",              function(){abrirTabGuiaCompat("nova");});
+  bind("abaGuiaHistorico",         function(){abrirTabGuiaCompat("historico");});
+  bind("btnSalvarGuia",            function(){salvarGuiaPagamentoCompat(false);});
+  bind("btnSalvarENovaGuia",       function(){salvarGuiaPagamentoCompat(true);});
+  bind("btnGerarPdfGuia",          gerarPdfGuiaCompat);
+  bind("btnEnviarSISGEP",          enviarGuiaPeloSISGEP);
+  bind("btnMarcarPagoGuia",        marcarGuiaComoPagaCompat);
+  bind("btnCancelarGuia",          cancelarGuiaCompat);
+  bind("btnDuplicarGuia",          duplicarGuiaCompat);
+  bind("btnExportarCsvGuias",      exportarHistoricoCsv);
+  bind("btnLimparGuia",            limparFormularioGuiaCompat);
+  bind("btnBuscarPrestadorGuia",   buscarPrestadorGuiaCompat);
+  bind("btnEnviarGuiaEmail",       prepararEmailGuiaCompat);
+  bind("btnEnviarGuiaWhatsApp",    enviarGuiaWhatsAppCompat);
+  bind("btnCarregarPrestadoresFixos", carregarPrestadoresFixos);
+  bind("btnNovoPrestadorGuia",     abrirModalNovoPrestador);
+  bind("btnFecharModalNovoPrestador", fecharModalNovoPrestador);
+  bind("btnCancelarNovoPrestador", fecharModalNovoPrestador);
+  bind("btnSalvarNovoPrestador",   salvarNovoPrestadorCompat);
+
+  bind("btnFiltrarHistoricoGuias", function(){GUIA_HISTORICO_PAGINA.offset=0;carregarHistoricoGuiasCompat();});
+  bind("btnLimparHistoricoGuias",  function(){
+    ["filtroGuiaPrestador","filtroGuiaDocumento","filtroGuiaTipoEnvio","filtroGuiaStatus","filtroGuiaDataInicio","filtroGuiaDataFim"]
+      .forEach(function(id){var el=g(id);if(el)el.value="";});
+    GUIA_HISTORICO_PAGINA.offset=0; carregarHistoricoGuiasCompat();
+  });
+
+  bind("btnPeriodoHoje",        function(){aplicarPeriodoRapido("hoje");});
+  bind("btnPeriodo7dias",       function(){aplicarPeriodoRapido("7dias");});
+  bind("btnPeriodo30dias",      function(){aplicarPeriodoRapido("30dias");});
+  bind("btnPeriodoMesAtual",    function(){aplicarPeriodoRapido("mesAtual");});
+  bind("btnPeriodoMesAnterior", function(){aplicarPeriodoRapido("mesAnterior");});
+
+  bind("btnPaginaAnteriorGuias", function(){
+    GUIA_HISTORICO_PAGINA.offset=Math.max(0,(GUIA_HISTORICO_PAGINA.offset||0)-(GUIA_HISTORICO_PAGINA.limite||20));
+    carregarHistoricoGuiasCompat();
+  });
+  bind("btnPaginaProximaGuias", function(){
+    if(!GUIA_HISTORICO_PAGINA.temMais) return;
+    GUIA_HISTORICO_PAGINA.offset=(GUIA_HISTORICO_PAGINA.offset||0)+(GUIA_HISTORICO_PAGINA.limite||20);
+    carregarHistoricoGuiasCompat();
+  });
+
+  /* campos com autosave */
+  ["guiaNome","guiaDocumento","guiaEmail","guiaTelefone","guiaValor",
+   "guiaVencimento","guiaDescricao","guiaTipoEnvio","guiaAssunto",
+   "guiaTextoModelo","guiaBuscaPrestador"].forEach(function(id){
+    var el=g(id); if(!el) return;
+    el.addEventListener("input",  function(){atualizarUIGuia();salvarRascunhoComDebounce();});
+    el.addEventListener("change", function(){atualizarUIGuia();salvarRascunhoComDebounce();});
+  });
+
+  /* máscaras */
+  if(g("guiaDocumento"))         g("guiaDocumento").addEventListener("input",        function(){aplicarMascaraDocumentoGuia(this);});
+  if(g("guiaTelefone"))          g("guiaTelefone").addEventListener("input",         function(){aplicarMascaraTelefoneGuia(this);});
+  if(g("guiaValor"))             g("guiaValor").addEventListener("input",            function(){aplicarMascaraValorGuia(this);});
+  if(g("novoPrestadorDocumento"))g("novoPrestadorDocumento").addEventListener("input",function(){aplicarMascaraDocumentoGuia(this);});
+  if(g("novoPrestadorTelefone")) g("novoPrestadorTelefone").addEventListener("input", function(){aplicarMascaraTelefoneGuia(this);});
+  if(g("novoPrestadorValor"))    g("novoPrestadorValor").addEventListener("input",    function(){aplicarMascaraValorGuia(this);});
+
+  /* ✅ Enter na busca com debounce de 300ms para evitar chamadas duplas */
+  if(g("guiaBuscaPrestador")){
+    g("guiaBuscaPrestador").addEventListener("keydown", function(e){
+      if(e.key==="Enter"){
+        e.preventDefault();
+        clearTimeout(BUSCA_DEBOUNCE_TIMER);
+        BUSCA_DEBOUNCE_TIMER = setTimeout(buscarPrestadorGuiaCompat, 300);
+      }
+    });
+  }
+
+  /* ✅ Filtros do histórico resetam offset automaticamente ao mudar */
+  ["filtroGuiaPrestador","filtroGuiaDocumento","filtroGuiaTipoEnvio","filtroGuiaStatus"].forEach(function(id){
+    var el=g(id); if(!el) return;
+    el.addEventListener("change", function(){ GUIA_HISTORICO_PAGINA.offset=0; });
+  });
+  ["filtroGuiaDataInicio","filtroGuiaDataFim"].forEach(function(id){
+    var el=g(id); if(!el) return;
+    el.addEventListener("change", function(){ GUIA_HISTORICO_PAGINA.offset=0; });
+  });
+
+  /* lista de anexos */
+  if(g("guiaAnexos")){
+    g("guiaAnexos").addEventListener("change",function(){
+      var lista=g("guiaListaAnexos"); if(!lista) return;
+      var files=Array.prototype.slice.call(this.files||[]);
+      lista.innerHTML=files.length?files.map(function(f){return"📎 "+escapeHtml(f.name);}).join("<br>"):"Nenhum arquivo selecionado.";
+    });
+  }
+
+  /* fechar modal ao clicar fora */
+  var modal=g("modalNovoPrestadorGuia");
+  if(modal) modal.addEventListener("click",function(e){if(e.target===modal) fecharModalNovoPrestador();});
+
+  /* e-mail da contabilidade preenchido automaticamente */
+  var elCont=g("guiaEmailContabilidade"); if(elCont) elCont.value=EMAILS_CONT_DISPLAY;
+}
+
+/* =====================================================================
+   INIT
+   ===================================================================== */
+function initGuiasPagamento(){
+  resetGuiaAtual();
+  atualizarControlesPaginacao();
+  bindEventosGuia();
+  restaurarRascunhoLocal();
+  atualizarUIGuia();
+  atualizarDashboardGuiasCompat();
+  carregarUltimosPrestadoresCompat();
+  carregarDashboardPendencias(); // ✅ novo
+}
+
+document.addEventListener("DOMContentLoaded", initGuiasPagamento);
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,188 @@
+<div style="max-width:900px;margin:0 auto;padding:24px;">
+  <div class="of-modulo-header">
+    <div>
+      <div class="of-modulo-header-title">✅ Aprovações do Portal</div>
+      <div class="of-modulo-header-sub">Atualizações cadastrais enviadas pelos associados pelo Portal Público</div>
+    </div>
+    <div class="of-modulo-header-badge">SindEducação-ES</div>
+  </div>
+
+  <div id="aprovLista" style="margin-top:20px;display:flex;flex-direction:column;gap:14px;"></div>
+<div id="aprovVazio" style="display:none;text-align:center;padding:60px 20px;color:#64748b;">
+    <div style="font-size:36px;margin-bottom:10px;">📭</div>
+    <p>Nenhuma solicitação pendente no momento.</p>
+  </div>
+
+  <div class="sind-secao-titulo">
+    <div>
+      <b>🖊️ Fichas de Sindicalização</b>
+      <small>Fichas assinadas eletronicamente aguardando aprovação e emissão de matrícula</small>
+    </div>
+    <span class="sind-badge" id="sindContador">0</span>
+  </div>
+
+  <div id="sindLista" style="margin-top:14px;display:flex;flex-direction:column;gap:14px;"></div>
+  <div id="sindVazio" style="display:none;text-align:center;padding:40px 20px;color:#64748b;">
+    <div style="font-size:32px;margin-bottom:8px;">🗂️</div>
+    <p>Nenhuma ficha assinada aguardando aprovação.</p>
+  </div>
+</div>
+
+<style>
+.aprov-card{background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;padding:18px 20px;display:grid;grid-template-columns:80px 1fr auto;gap:16px;align-items:center;font-family:'Plus Jakarta Sans',sans-serif;}
+.aprov-foto{width:70px;height:70px;border-radius:10px;object-fit:cover;background:#f1f5f9;border:1px solid #e2e8f0;}
+.aprov-foto-vazia{width:70px;height:70px;border-radius:10px;background:#f1f5f9;border:1px dashed #cbd5e1;display:flex;align-items:center;justify-content:center;font-size:22px;color:#94a3b8;}
+.aprov-info b{display:block;font-size:14px;color:#0f172a;}
+.aprov-info small{display:block;font-size:11.5px;color:#64748b;margin-top:2px;}
+.aprov-campo{font-size:11.5px;color:#334155;margin-top:6px;}
+.aprov-campo b{color:#0f172a;font-weight:700;}
+.aprov-acoes{display:flex;flex-direction:column;gap:8px;}
+.aprov-btn{border:none;border-radius:8px;padding:9px 16px;font-size:12px;font-weight:800;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;white-space:nowrap;}
+.aprov-btn-aprovar{background:#16a34a;color:#fff;}
+.aprov-btn-rejeitar{background:#fee2e2;color:#991b1b;}
+.sind-secao-titulo{margin-top:34px;padding-top:22px;border-top:2px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;font-family:'Plus Jakarta Sans',sans-serif;}
+.sind-secao-titulo b{display:block;font-size:15px;color:#002f6c;}
+.sind-secao-titulo small{display:block;font-size:11.5px;color:#64748b;margin-top:2px;}
+.sind-badge{background:#C9A84C;color:#002f6c;font-weight:800;font-size:12px;border-radius:20px;padding:4px 12px;font-family:'Plus Jakarta Sans',sans-serif;}
+.sind-tag{display:inline-block;font-size:10px;font-weight:800;border-radius:6px;padding:2px 8px;margin-left:6px;vertical-align:middle;}
+.sind-tag-qr{background:#dbeafe;color:#1d4ed8;}
+.sind-tag-portal{background:#f1f5f9;color:#475569;}
+.sind-link-pdf{font-size:11.5px;font-weight:700;color:#002f6c;text-decoration:underline;}
+</style>
+
+<script>
+function initAprovacaoCadastro(){
+  var lista=document.getElementById('aprovLista');
+  var vazio=document.getElementById('aprovVazio');
+  if(!lista) return;
+  lista.innerHTML='<p style="color:#94a3b8;font-size:12px;">Carregando solicitações...</p>';
+  vazio.style.display='none';
+
+  google.script.run.withSuccessHandler(function(itens){
+    lista.innerHTML='';
+    if(!itens || itens.length===0){
+      vazio.style.display='block';
+      return;
+    }
+
+    itens.forEach(function(it){
+      var card=document.createElement('div');
+      card.className='aprov-card';
+      card.innerHTML=
+        (it.fotoUrl ? '<img class="aprov-foto" src="'+it.fotoUrl+'">' : '<div class="aprov-foto-vazia">📷</div>') +
+        '<div class="aprov-info">' +
+          '<b>'+(it.nome||'—')+'</b>' +
+          '<small>CPF: '+(it.cpf||'—')+' · Enviado em '+(it.data||'—')+'</small>' +
+          '<div class="aprov-campo"><b>Endereço:</b> '+(it.logradouro||'—')+', '+(it.numero||'—')+' — '+(it.bairro||'—')+', '+(it.cidade||'—')+' · CEP '+(it.cep||'—')+'</div>' +
+          '<div class="aprov-campo"><b>Celular:</b> '+(it.celular||'—')+(it.celular2 ? ' / '+it.celular2 : '')+' · <b>E-mail:</b> '+(it.email||'—')+'</div>' +
+        '</div>' +
+        '<div class="aprov-acoes">' +
+          '<button class="aprov-btn aprov-btn-aprovar" onclick="aprovAprovar('+it.numeroLinha+')">✓ Aprovar</button>' +
+          '<button class="aprov-btn aprov-btn-rejeitar" onclick="aprovRejeitar('+it.numeroLinha+')">✕ Rejeitar</button>' +
+        '</div>';
+      lista.appendChild(card);
+    });
+}).withFailureHandler(function(erro){
+    lista.innerHTML='<p style="color:#dc2626;font-size:12px;">Erro ao carregar solicitações: '+erro+'</p>';
+  }).listarSolicitacoesPendentes();
+
+  initFichasSindicalizacao();
+}
+
+function aprovNomeUsuarioAtual_(){
+  var el=document.getElementById('spNm');
+  return el ? el.textContent : '';
+}
+
+function aprovAprovar(numeroLinha){
+  if(!confirm('Confirma a aprovação desta atualização cadastral? Os dados do associado serão atualizados imediatamente.')) return;
+  google.script.run.withSuccessHandler(function(r){
+    if(r.sucesso){ if(window.mostrarSucesso) mostrarSucesso(r.mensagem); initAprovacaoCadastro(); }
+    else { if(window.mostrarErro) mostrarErro(r.mensagem); else alert(r.mensagem); }
+  }).withFailureHandler(function(erro){
+    if(window.mostrarErro) mostrarErro('Erro: '+erro); else alert('Erro: '+erro);
+  }).aprovarSolicitacaoCadastro(numeroLinha, aprovNomeUsuarioAtual_());
+}
+
+function aprovRejeitar(numeroLinha){
+  var motivo=prompt('Motivo da rejeição (opcional):','');
+  if(motivo===null) return;
+  google.script.run.withSuccessHandler(function(r){
+    if(r.sucesso){ if(window.mostrarSucesso) mostrarSucesso(r.mensagem); initAprovacaoCadastro(); }
+    else { if(window.mostrarErro) mostrarErro(r.mensagem); else alert(r.mensagem); }
+}).withFailureHandler(function(erro){
+    if(window.mostrarErro) mostrarErro('Erro: '+erro); else alert('Erro: '+erro);
+  }).rejeitarSolicitacaoCadastro(numeroLinha, motivo);
+}
+
+function initFichasSindicalizacao(){
+  var lista=document.getElementById('sindLista');
+  var vazio=document.getElementById('sindVazio');
+  var contador=document.getElementById('sindContador');
+  if(!lista) return;
+  lista.innerHTML='<p style="color:#94a3b8;font-size:12px;">Carregando fichas...</p>';
+  vazio.style.display='none';
+
+  google.script.run.withSuccessHandler(function(r){
+    lista.innerHTML='';
+    var fichas=(r && r.sucesso && r.fichas) ? r.fichas : [];
+    if(contador) contador.textContent=fichas.length;
+    if(fichas.length===0){ vazio.style.display='block'; return; }
+
+    fichas.forEach(function(f){
+      var tagOrigem = f.ORIGEM==='QR_VISITA'
+        ? '<span class="sind-tag sind-tag-qr">QR VISITA</span>'
+        : '<span class="sind-tag sind-tag-portal">PORTAL</span>';
+      var card=document.createElement('div');
+      card.className='aprov-card';
+      card.innerHTML=
+        '<div class="aprov-foto-vazia">🖊️</div>' +
+        '<div class="aprov-info">' +
+          '<b>'+(f.NOME_COMPLETO||'—')+' '+tagOrigem+'</b>' +
+          '<small>CPF: '+(f.CPF||'—')+' · Assinada em '+(f.DATA_HORA_ASSINATURA||'—')+
+            (f.DIRETOR_BASE ? ' · Diretor: '+f.DIRETOR_BASE : '')+'</small>' +
+          '<div class="aprov-campo"><b>Escola:</b> '+(f.ESCOLA||'—')+' · <b>Cargo:</b> '+(f.CARGO||'—')+'</div>' +
+          '<div class="aprov-campo"><b>Contato:</b> '+(f.CELULAR||'—')+' · '+(f.EMAIL||'—')+
+            (f.LINK_PDF ? ' · <a class="sind-link-pdf" href="'+f.LINK_PDF+'" target="_blank">Ver ficha PDF</a>' : '')+'</div>' +
+        '</div>' +
+        '<div class="aprov-acoes">' +
+          '<button class="aprov-btn aprov-btn-aprovar" onclick="sindAprovar(\''+f.ID_FICHA+'\',\''+(f.NOME_COMPLETO||'').replace(/'/g,'')+'\')">✓ Aprovar e matricular</button>' +
+          '<button class="aprov-btn aprov-btn-rejeitar" onclick="sindRejeitar(\''+f.ID_FICHA+'\')">✕ Rejeitar</button>' +
+        '</div>';
+      lista.appendChild(card);
+    });
+  }).withFailureHandler(function(erro){
+    lista.innerHTML='<p style="color:#dc2626;font-size:12px;">Erro ao carregar fichas: '+erro+'</p>';
+  }).listarFichasSindicalizacao({status:'ASSINADA'});
+}
+
+function sindAprovar(idFicha, nome){
+  if(!confirm('Aprovar a sindicalização de '+nome+'? A matrícula sequencial será emitida e o trabalhador notificado por e-mail.')) return;
+  google.script.run.withSuccessHandler(function(r){
+    if(r.sucesso){
+      if(window.mostrarSucesso) mostrarSucesso(r.mensagem); else alert(r.mensagem);
+      initFichasSindicalizacao();
+    } else {
+      if(window.mostrarErro) mostrarErro(r.mensagem); else alert(r.mensagem);
+    }
+  }).withFailureHandler(function(erro){
+    if(window.mostrarErro) mostrarErro('Erro: '+erro); else alert('Erro: '+erro);
+  }).aprovarFichaSindicalizacao(idFicha, aprovNomeUsuarioAtual_());
+}
+
+function sindRejeitar(idFicha){
+  var motivo=prompt('Motivo da rejeição (obrigatório — será enviado ao trabalhador):','');
+  if(motivo===null) return;
+  if(!motivo.trim()){ alert('O motivo é obrigatório para rejeitar uma ficha.'); return; }
+  google.script.run.withSuccessHandler(function(r){
+    if(r.sucesso){
+      if(window.mostrarSucesso) mostrarSucesso(r.mensagem); else alert(r.mensagem);
+      initFichasSindicalizacao();
+    } else {
+      if(window.mostrarErro) mostrarErro(r.mensagem); else alert(r.mensagem);
+    }
+  }).withFailureHandler(function(erro){
+    if(window.mostrarErro) mostrarErro('Erro: '+erro); else alert('Erro: '+erro);
+  }).rejeitarFichaSindicalizacao(idFicha, motivo, aprovNomeUsuarioAtual_());
+}
+</script>

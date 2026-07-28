@@ -1,0 +1,683 @@
+<!-- ================================================================
+  📄 ARQUIVO: Recibos.html
+  ✅ Módulo operacional de Recibos
+  ✅ Histórico removido para ser migrado ao módulo Relatórios
+  ✅ Mantidos: emissão, importação, beneficiários, dashboard e modais
+================================================================ -->
+
+<style>
+:root {
+  --navy:#001f4d; --navy2:#002f6c; --sky:#e8f0fb; --gold:#C9A84C; --gold2:#f0c843;
+  --white:#fff; --g50:#f8fafc; --g100:#f1f5f9; --g200:#e2e8f0;
+  --g400:#94a3b8; --g500:#64748b; --g600:#475569; --g800:#1e293b; --g900:#0f172a;
+  --green:#059669; --green-lt:#d1fae5; --green-dk:#065f46;
+  --amber:#d97706; --amber-lt:#fef3c7;
+  --red:#dc2626; --red-lt:#fee2e2;
+  --ss:0 1px 3px rgba(0,20,60,.07); --sm:0 4px 16px rgba(0,20,60,.10); --lg:0 8px 32px rgba(0,20,60,.14);
+  --r:14px; --rs:10px;
+}
+
+.rec-wrap * { box-sizing:border-box; font-family:'Plus Jakarta Sans',sans-serif; }
+
+.rec-header {
+  background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 55%,#0a47a0 80%,#1565C0 100%);
+  border-radius:18px; padding:26px 32px; margin-bottom:22px;
+  display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px;
+  box-shadow:var(--lg); position:relative; overflow:hidden;
+}
+.rec-header::before {
+  content:''; position:absolute; inset:0;
+  background:radial-gradient(ellipse at 85% 0%,rgba(201,168,76,.16) 0%,transparent 55%);
+  pointer-events:none;
+}
+.rec-header h2 { font-size:21px; font-weight:900; color:#fff; letter-spacing:-.3px; margin-bottom:4px; }
+.rec-header p  { font-size:12px; color:rgba(255,255,255,.6); }
+.rec-badge {
+  background:rgba(201,168,76,.15); border:1px solid rgba(201,168,76,.4);
+  color:var(--gold); font-size:11px; font-weight:700; letter-spacing:.12em;
+  text-transform:uppercase; padding:6px 14px; border-radius:999px; flex-shrink:0;
+}
+
+.rec-tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:22px; }
+.rec-tab {
+  display:inline-flex; align-items:center; gap:7px;
+  padding:9px 18px; border-radius:999px;
+  border:1.5px solid var(--g200); background:var(--white);
+  color:var(--g600); font-size:13px; font-weight:700;
+  cursor:pointer; transition:all .17s;
+  font-family:'Plus Jakarta Sans',sans-serif; box-shadow:var(--ss);
+}
+.rec-tab:hover { border-color:var(--navy2); color:var(--navy); }
+.rec-tab.active { background:var(--navy); border-color:var(--navy); color:#fff; box-shadow:0 4px 12px rgba(0,30,100,.22); }
+
+.rec-card {
+  background:var(--white); border-radius:var(--r);
+  border:1px solid rgba(0,0,0,.055);
+  box-shadow:var(--ss); margin-bottom:18px; overflow:hidden; transition:box-shadow .2s;
+}
+.rec-card:hover { box-shadow:var(--sm); }
+.rec-ch {
+  padding:16px 22px 13px; border-bottom:1px solid var(--g100);
+  display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+}
+.rec-ch-l { display:flex; align-items:center; gap:11px; }
+.rec-ico {
+  width:36px; height:36px; border-radius:9px; background:var(--sky);
+  display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0;
+}
+.rec-ct { font-size:14px; font-weight:800; color:var(--g900); }
+.rec-cs { font-size:11px; color:var(--g400); margin-top:2px; }
+.rec-cb { padding:18px 22px; }
+
+.rec-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; }
+.rec-field { display:flex; flex-direction:column; gap:5px; }
+.rec-field.full { grid-column:1/-1; }
+.rec-lbl { font-size:11px; font-weight:700; color:var(--g600); letter-spacing:.05em; text-transform:uppercase; }
+.rec-input, .rec-select, .rec-textarea {
+  width:100%; height:44px; border:1.5px solid var(--g200); border-radius:var(--rs);
+  padding:0 13px; font-size:13.5px; font-weight:500; color:var(--g800);
+  background:var(--white); outline:none;
+  transition:border-color .15s, box-shadow .15s;
+  font-family:'Plus Jakarta Sans',sans-serif;
+}
+.rec-textarea { height:auto; padding:11px 13px; resize:vertical; line-height:1.6; }
+.rec-input:focus,.rec-select:focus,.rec-textarea:focus { border-color:var(--navy2); box-shadow:0 0 0 3px rgba(0,47,108,.09); }
+.rec-input::placeholder,.rec-textarea::placeholder { color:var(--g400); font-weight:400; }
+
+.rec-btn-row { display:flex; gap:9px; flex-wrap:wrap; }
+.rec-btn {
+  display:inline-flex; align-items:center; gap:6px;
+  height:38px; padding:0 16px; border-radius:999px; border:none; cursor:pointer;
+  font-size:12.5px; font-weight:700; font-family:'Plus Jakarta Sans',sans-serif;
+  transition:all .17s; box-shadow:var(--ss);
+}
+.rec-btn:disabled { opacity:.4; cursor:not-allowed; transform:none!important; }
+.rec-btn-primary { background:var(--navy); color:#fff; }
+.rec-btn-primary:hover:not(:disabled) { background:var(--navy2); box-shadow:0 4px 12px rgba(0,30,100,.25); transform:translateY(-1px); }
+.rec-btn-outline { background:var(--white); color:var(--navy); border:1.5px solid var(--g200); }
+.rec-btn-outline:hover:not(:disabled) { border-color:var(--navy); background:var(--sky); transform:translateY(-1px); }
+.rec-btn-gold { background:linear-gradient(135deg,var(--gold),var(--gold2)); color:var(--navy); }
+.rec-btn-gold:hover:not(:disabled) { box-shadow:0 4px 12px rgba(201,168,76,.4); transform:translateY(-1px); }
+.rec-btn-green { background:linear-gradient(135deg,var(--green),#047857); color:#fff; }
+.rec-btn-green:hover:not(:disabled) { box-shadow:0 4px 12px rgba(5,150,105,.35); transform:translateY(-1px); }
+
+.rec-status {
+  display:none; border-radius:var(--rs); padding:11px 14px;
+  font-size:13px; font-weight:600; margin-top:13px;
+}
+.rec-status.info    { background:var(--sky); color:var(--navy2); border:1px solid #c3d9f5; }
+.rec-status.success { background:var(--green-lt); color:var(--green-dk); border:1px solid #bbf7d0; }
+.rec-status.error   { background:var(--red-lt); color:#991b1b; border:1px solid #fca5a5; }
+.rec-status.loading { background:var(--sky); color:var(--navy2); border:1px solid #c3d9f5; }
+
+.benef-empty {
+  text-align:center; padding:20px;
+  border:2px dashed var(--g200); border-radius:var(--rs);
+  color:var(--g400); font-size:13px; font-weight:600; line-height:1.8;
+}
+
+.upload-compact { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.upload-compact input[type="file"] { display:none; }
+.upload-compact-btn {
+  display:inline-flex; align-items:center; gap:6px;
+  height:36px; padding:0 14px;
+  background:var(--white); border:1.5px solid var(--g200); border-radius:999px;
+  font-size:12px; font-weight:700; color:var(--navy2); cursor:pointer;
+  transition:all .15s; font-family:'Plus Jakarta Sans',sans-serif;
+}
+.upload-compact-btn:hover { border-color:var(--navy2); background:var(--sky); }
+
+.rec-emit-banner {
+  background:linear-gradient(135deg,var(--navy),var(--navy2));
+  border-radius:var(--r); padding:22px 24px;
+  display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;
+}
+.rec-emit-info h3 { font-size:16px; font-weight:800; color:#fff; margin-bottom:4px; }
+.rec-emit-info p  { font-size:12px; color:rgba(255,255,255,.6); }
+.rec-emit-btns { display:flex; gap:10px; flex-wrap:wrap; }
+.rec-btn-emit {
+  display:inline-flex; align-items:center; gap:7px;
+  height:44px; padding:0 22px; border-radius:999px; border:none; cursor:pointer;
+  font-size:14px; font-weight:800; font-family:'Plus Jakarta Sans',sans-serif;
+  transition:all .18s;
+}
+.rec-btn-emit:disabled { opacity:.35; cursor:not-allowed; transform:none!important; }
+.rec-btn-preview { background:rgba(255,255,255,.12); color:#fff; border:1.5px solid rgba(255,255,255,.25); }
+.rec-btn-preview:hover:not(:disabled) { background:rgba(255,255,255,.22); }
+.rec-btn-go { background:linear-gradient(135deg,var(--gold),var(--gold2)); color:var(--navy); box-shadow:0 4px 16px rgba(201,168,76,.4); }
+.rec-btn-go:hover:not(:disabled) { box-shadow:0 6px 20px rgba(201,168,76,.55); transform:translateY(-2px); }
+
+.rec-resultado {
+  display:none; margin-top:14px;
+  background:linear-gradient(135deg,#f0fdf4,var(--green-lt));
+  border:1px solid #bbf7d0; border-radius:var(--r); padding:20px 22px;
+}
+.rec-resultado h4 { font-size:15px; font-weight:800; color:var(--green-dk); margin-bottom:12px; }
+.rec-res-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin-bottom:14px; }
+.rec-res-item { background:#fff; border-radius:var(--rs); padding:11px 14px; border:1px solid #bbf7d0; }
+.rec-res-lbl { font-size:10px; font-weight:700; color:var(--green); letter-spacing:.08em; text-transform:uppercase; margin-bottom:4px; }
+.rec-res-val { font-size:14px; font-weight:700; color:var(--g800); }
+
+.rec-modal-overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,15,50,.55); backdrop-filter:blur(4px);
+  z-index:99999; align-items:center; justify-content:center; padding:20px;
+}
+.rec-modal {
+  background:#fff; width:100%; max-width:680px;
+  border-radius:20px; padding:26px;
+  box-shadow:0 24px 64px rgba(0,10,40,.28);
+  max-height:90vh; overflow-y:auto;
+  animation:modalIn .22s ease;
+}
+@keyframes modalIn { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
+.rec-modal-header {
+  display:flex; justify-content:space-between; align-items:flex-start;
+  margin-bottom:20px; gap:12px;
+}
+.rec-modal-title { font-size:17px; font-weight:900; color:var(--navy); }
+.rec-modal-sub   { font-size:11px; color:var(--g400); margin-top:3px; }
+.rec-modal-close {
+  width:32px; height:32px; border-radius:50%;
+  background:var(--g100); color:var(--g600); border:none; cursor:pointer;
+  font-size:15px; display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; transition:background .15s;
+}
+.rec-modal-close:hover { background:var(--g200); }
+
+.rec-modal-empresa {
+  background:#fff; width:100%; max-width:520px;
+  border-radius:20px; padding:26px;
+  box-shadow:0 24px 64px rgba(0,10,40,.28);
+  animation:modalIn .22s ease;
+}
+
+@media(max-width:600px){
+  .rec-cb{padding:14px;}
+  .rec-emit-banner{padding:18px;}
+}
+</style>
+
+<div class="rec-wrap">
+
+  <div class="rec-header">
+    <div>
+      <h2>🧾 Módulo de Recibos</h2>
+      <p>Emissão em lote, importação de alvará, conferência e envio</p>
+    </div>
+    <div class="rec-badge">SindEducação-ES</div>
+  </div>
+
+  <div class="rec-tabs">
+    <button type="button" id="abaReciboNovo" class="rec-tab active">🧾 Novo Recibo</button>
+    <button type="button"
+        id="btnNovoReciboSISGEP"
+        class="rec-tab">
+  ➕ Novo Recibo
+</button>
+  </div>
+
+  <div id="blocoReciboNovo">
+
+    <div class="rec-card">
+      <div class="rec-ch">
+        <div class="rec-ch-l">
+          <div class="rec-ico">⚖️</div>
+          <div>
+            <div class="rec-ct">Dados do processo</div>
+            <div class="rec-cs">Selecione ou cadastre o processo base</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rec-cb">
+        <div class="rec-field full" style="margin-bottom:16px;">
+          <label class="rec-lbl">Processos cadastrados</label>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <select id="recProcessoSelect" class="rec-select" style="flex:1;min-width:240px;">
+              <option value="">Selecione um processo...</option>
+            </select>
+            <button type="button" id="btnNovoProcessoRecibo" class="rec-btn rec-btn-primary">+ Novo processo</button>
+            <button type="button" id="btnEditarProcessoRecibo" class="rec-btn rec-btn-outline">✏️ Editar</button>
+            <button type="button" id="btnExcluirProcessoRecibo" class="rec-btn rec-btn-outline">🗑 Excluir</button>
+            <button type="button" id="btnBuscarPorEmpresa" class="rec-btn rec-btn-gold" title="Carregar todos os beneficiários de uma empresa">
+              🏢 Buscar por empresa
+            </button>
+          </div>
+        </div>
+
+        <div class="rec-grid">
+          <div class="rec-field">
+            <label class="rec-lbl">Número do Processo</label>
+            <input type="text" id="recProcesso" class="rec-input" placeholder="Ex.: 0001234-56.2026.8.08.0001">
+          </div>
+          <div class="rec-field">
+            <label class="rec-lbl">Empresa</label>
+            <input type="text" id="recEmpresa" class="rec-input" placeholder="Nome da empresa">
+          </div>
+          <div class="rec-field">
+            <label class="rec-lbl">Valor total do processo / alvará</label>
+            <input type="text" id="recValor" class="rec-input" placeholder="R$ 0,00">
+          </div>
+          <div class="rec-field">
+            <label class="rec-lbl">E-mail para envio do lote</label>
+            <input type="email" id="recEmail" class="rec-input" placeholder="destino@exemplo.com">
+          </div>
+        </div>
+
+        <div id="recStatus" class="rec-status"></div>
+      </div>
+    </div>
+
+    <div class="rec-card" id="painelFinanceiroProcesso" style="display:none;">
+      <div class="rec-ch">
+        <div class="rec-ch-l">
+          <div class="rec-ico">📊</div>
+          <div>
+            <div class="rec-ct">Dashboard financeiro do processo</div>
+            <div class="rec-cs">Visão consolidada do total, pago, saldo e percentual</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rec-cb">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;">
+          <div style="padding:14px;border:1px solid #e2e8f0;border-radius:12px;background:#fff;">
+            <div style="font-size:11px;color:#64748b;margin-bottom:4px;">Valor total do processo</div>
+            <div id="dashProcTotal" style="font-size:18px;font-weight:900;color:#0f172a;">R$ 0,00</div>
+          </div>
+
+          <div style="padding:14px;border:1px solid #e2e8f0;border-radius:12px;background:#f0fdf4;">
+            <div style="font-size:11px;color:#64748b;margin-bottom:4px;">Total já pago</div>
+            <div id="dashProcPago" style="font-size:18px;font-weight:900;color:#065f46;">R$ 0,00</div>
+          </div>
+
+          <div style="padding:14px;border:1px solid #e2e8f0;border-radius:12px;background:#fff7ed;">
+            <div style="font-size:11px;color:#64748b;margin-bottom:4px;">Saldo restante</div>
+            <div id="dashProcSaldo" style="font-size:18px;font-weight:900;color:#c2410c;">R$ 0,00</div>
+          </div>
+
+          <div style="padding:14px;border:1px solid #e2e8f0;border-radius:12px;background:#eff6ff;">
+            <div style="font-size:11px;color:#64748b;margin-bottom:4px;">Percentual pago</div>
+            <div id="dashProcPercentual" style="font-size:18px;font-weight:900;color:#1d4ed8;">0%</div>
+          </div>
+        </div>
+
+        <div style="margin-top:14px;">
+          <div style="height:12px;background:#e2e8f0;border-radius:999px;overflow:hidden;">
+            <div id="dashProcBarra" style="height:12px;width:0%;background:linear-gradient(90deg,#059669,#10b981);border-radius:999px;transition:width .3s ease;"></div>
+          </div>
+        </div>
+
+        <div id="dashProcMensagem" style="margin-top:10px;font-size:12px;font-weight:800;color:#334155;">
+          Selecione um processo para visualizar o resumo financeiro.
+        </div>
+      </div>
+    </div>
+
+    <div class="rec-card">
+      <div class="rec-ch">
+        <div class="rec-ch-l">
+          <div class="rec-ico">📂</div>
+          <div>
+            <div class="rec-ct">Importação de Alvará / PJe-Calc PDF</div>
+            <div class="rec-cs">Preenche processo e beneficiários automaticamente</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rec-cb">
+        <div class="upload-compact">
+          <input type="file" id="arquivoAlvaraPdf" accept="application/pdf" multiple>
+          <label for="arquivoAlvaraPdf" class="upload-compact-btn">📎 Selecionar PDF(s)</label>
+          <button type="button" id="btnImportarAlvaraPdf" class="rec-btn rec-btn-primary">⬆ Importar PDF</button>
+          <button type="button" id="btnImportarPlanilhaRecibo" class="rec-btn rec-btn-outline">📊 Importar planilha</button>
+          <button type="button" id="btnLimparImportacaoAlvara" class="rec-btn rec-btn-outline">✕ Limpar</button>
+        </div>
+        <div id="statusImportacaoAlvara" class="rec-status"></div>
+      </div>
+    </div>
+
+    <div class="rec-card" id="painelResumoImportacaoAlvara" style="display:none;">
+      <div class="rec-ch">
+        <div class="rec-ch-l">
+          <div class="rec-ico">📋</div>
+          <div>
+            <div class="rec-ct">Resumo da importação</div>
+            <div class="rec-cs">Dados identificados no PDF</div>
+          </div>
+        </div>
+      </div>
+      <div class="rec-cb">
+        <div id="resumoImportacaoAlvara"></div>
+      </div>
+    </div>
+
+    <div class="rec-card" id="resultadoImportacaoAlvara" style="display:none;">
+      <div class="rec-ch">
+        <div class="rec-ch-l">
+          <div class="rec-ico">👥</div>
+          <div>
+            <div class="rec-ct">Beneficiários importados</div>
+            <div class="rec-cs">Revise os dados antes de carregar na tela</div>
+          </div>
+        </div>
+      </div>
+      <div class="rec-cb">
+        <div id="listaBeneficiariosImportados">
+          <div class="benef-empty">Nenhum beneficiário importado ainda.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rec-card">
+      <div class="rec-ch">
+        <div class="rec-ch-l">
+          <div class="rec-ico">👤</div>
+          <div>
+            <div class="rec-ct">Beneficiários do recibo</div>
+            <div class="rec-cs">Cadastre os beneficiários para emissão em lote</div>
+          </div>
+        </div>
+        <button type="button" id="btnAddTrabalhadorRecibo" class="rec-btn rec-btn-primary">+ Adicionar</button>
+      </div>
+
+      <div class="rec-cb">
+        <div id="listaTrabalhadoresRecibo">
+          <div class="benef-empty" id="benefEmpty">
+            👤 Nenhum beneficiário adicionado ainda.<br>
+            <span style="font-size:12px;font-weight:400;">Clique em "+ Adicionar", importe um PDF ou use "Buscar por empresa".</span>
+          </div>
+        </div>
+
+        <div id="benefContador" style="display:none;margin-top:10px;padding:8px 12px;background:var(--sky);border-radius:var(--rs);font-size:12px;font-weight:700;color:var(--navy2);">
+          👤 <span id="benefContadorNum">0</span> beneficiário(s) adicionado(s)
+        </div>
+      </div>
+    </div>
+
+    <div id="painelConferenciaRecibo" style="display:none;margin-top:12px;padding:12px 14px;background:#f8fbff;border:1px solid #dbe5f0;border-radius:12px;">
+      <div style="font-size:12px;font-weight:800;color:#123b6d;margin-bottom:10px;">📊 Conferência do lote</div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">
+        <div style="padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
+          <div style="font-size:11px;color:#64748b;">Beneficiários</div>
+          <div id="confRecQtd" style="font-size:15px;font-weight:800;color:#0f172a;">0</div>
+        </div>
+        <div style="padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
+          <div style="font-size:11px;color:#64748b;">Soma dos beneficiários</div>
+          <div id="confRecSoma" style="font-size:15px;font-weight:800;color:#0f172a;">R$ 0,00</div>
+        </div>
+        <div style="padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
+          <div style="font-size:11px;color:#64748b;">Valor total do processo</div>
+          <div id="confRecTotal" style="font-size:15px;font-weight:800;color:#0f172a;">R$ 0,00</div>
+        </div>
+        <div style="padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
+          <div style="font-size:11px;color:#64748b;">Diferença</div>
+          <div id="confRecDif" style="font-size:15px;font-weight:800;color:#0f172a;">R$ 0,00</div>
+        </div>
+      </div>
+
+      <div id="confRecStatus" style="margin-top:10px;font-size:12px;font-weight:800;color:#065f46;">✅ Valores conferem</div>
+    </div>
+
+    <div class="rec-card">
+      <div class="rec-cb" style="padding:0;">
+        <div class="rec-emit-banner">
+          <div class="rec-emit-info">
+            <h3>🚀 Emitir Recibos</h3>
+            <p>Verifique os dados e emita o lote completo de recibos</p>
+          </div>
+          <div class="rec-emit-btns">
+            <button type="button" id="btnPreviewRecibo" class="rec-btn-emit rec-btn-preview">👁 Pré-visualizar</button>
+            <button type="button" id="btnGerarRecibo" class="rec-btn-emit rec-btn-go">✅ Emitir Recibos</button>
+          </div>
+        </div>
+
+        <div style="padding:0 22px 18px;">
+          <div id="recResultado" class="rec-resultado">
+            <h4>✅ Recibos emitidos com sucesso!</h4>
+
+            <div class="rec-res-grid">
+              <div class="rec-res-item">
+                <div class="rec-res-lbl">Total gerado</div>
+                <div class="rec-res-val" id="recTotalGerado">—</div>
+              </div>
+              <div class="rec-res-item">
+                <div class="rec-res-lbl">Valor total</div>
+                <div class="rec-res-val" id="recValorTotal">—</div>
+              </div>
+              <div class="rec-res-item">
+                <div class="rec-res-lbl">Processo · Empresa</div>
+                <div class="rec-res-val" id="recProcessoRes" style="font-size:11px;">—</div>
+              </div>
+            </div>
+
+            <div class="rec-btn-row">
+              <button type="button" id="btnEnviarEmailRecibo" class="rec-btn rec-btn-outline">📧 Enviar e-mail</button>
+              <button type="button" id="btnEnviarWhatsRecibo" class="rec-btn rec-btn-outline">💬 WhatsApp</button>
+              <button type="button" id="btnNovoRecibo" class="rec-btn rec-btn-outline">🔄 Novo lote</button>
+
+            </div>
+          </div>
+
+          <div id="recAreaAcoesDocumento" style="display:none;"></div>
+          <button type="button" id="btnDownloadRecibo" style="display:none;"></button>
+          <button type="button" id="btnImprimirRecibo" style="display:none;"></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="rec-card" id="recListaArquivosGerados" style="display:none;">
+      <div class="rec-ch">
+        <div class="rec-ch-l">
+          <div class="rec-ico">📄</div>
+          <div>
+            <div class="rec-ct">Arquivos gerados</div>
+            <div class="rec-cs">Recibos emitidos no lote atual — abrir, baixar, enviar</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rec-cb">
+        <div id="recListaArquivosConteudo">
+          <div class="benef-empty">Nenhum recibo gerado ainda.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="modalNovoProcessoRecibo" class="rec-modal-overlay">
+  <div class="rec-modal">
+    <div class="rec-modal-header">
+      <div>
+        <div class="rec-modal-title">⚖️ Novo Processo</div>
+        <div class="rec-modal-sub">Cadastro rápido para o módulo de recibos</div>
+      </div>
+      <button type="button" id="btnFecharModalNovoProcessoRecibo" class="rec-modal-close">✕</button>
+    </div>
+
+    <div class="rec-grid">
+      <div class="rec-field">
+        <label class="rec-lbl">Número do Processo</label>
+        <input type="text" id="novoRecProcesso" class="rec-input" placeholder="Ex.: 0001234-56.2026.8.08.0001">
+      </div>
+
+      <div class="rec-field">
+        <label class="rec-lbl">Empresa</label>
+        <input type="text" id="novoRecEmpresa" class="rec-input" placeholder="Nome da empresa">
+      </div>
+
+      <div class="rec-field">
+        <label class="rec-lbl">Valor total do processo</label>
+        <input type="text" id="novoRecValor" class="rec-input" placeholder="R$ 0,00">
+      </div>
+
+      <div class="rec-field full">
+        <label class="rec-lbl">Observações</label>
+        <textarea id="novoRecObservacoes" class="rec-textarea" rows="4" placeholder="Observações opcionais..."></textarea>
+      </div>
+    </div>
+
+    <div id="statusNovoProcesso" class="rec-status"></div>
+
+    <div class="rec-btn-row" style="justify-content:flex-end;margin-top:18px;">
+      <button type="button" id="btnCancelarNovoProcessoRecibo" class="rec-btn rec-btn-outline">Cancelar</button>
+      <button type="button" id="btnSalvarNovoProcessoRecibo" class="rec-btn rec-btn-primary">💾 Salvar processo</button>
+    </div>
+  </div>
+</div>
+
+<div id="modalBuscarPorEmpresa" class="rec-modal-overlay">
+  <div class="rec-modal-empresa">
+    <div class="rec-modal-header">
+      <div>
+        <div class="rec-modal-title">🏢 Buscar por empresa</div>
+        <div class="rec-modal-sub">Carrega todos os beneficiários de uma empresa da planilha base</div>
+      </div>
+      <button type="button" id="btnFecharModalEmpresa" class="rec-modal-close">✕</button>
+    </div>
+
+    <div class="rec-field" style="margin-bottom:16px;">
+      <label class="rec-lbl">Nome da empresa</label>
+      <input type="text" id="inputBuscarEmpresa" class="rec-input" placeholder="Ex.: União Social Camiliana">
+    </div>
+
+    <p style="font-size:12px;color:var(--g500);margin-bottom:16px;">
+      💡 Use quando cada beneficiário tem um processo judicial individual, mas todos pertencem à mesma empresa.<br>
+      O sistema buscará todos os beneficiários da planilha base (IMPORTAR_RECIBOS) filtrando pela empresa informada.
+    </p>
+
+    <div id="statusBuscarEmpresa" class="rec-status"></div>
+
+    <div class="rec-btn-row" style="justify-content:flex-end;margin-top:18px;">
+      <button type="button" id="btnCancelarBuscarEmpresa" class="rec-btn rec-btn-outline">Cancelar</button>
+      <button type="button" id="btnConfirmarBuscarEmpresa" class="rec-btn rec-btn-primary">🔍 Buscar e carregar</button>
+    </div>
+  </div>
+</div>
+<div id="modalProgressoGeracao" style="display:none;position:fixed;inset:0;background:rgba(0,15,50,.72);backdrop-filter:blur(6px);z-index:99999;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;width:100%;max-width:440px;border-radius:20px;padding:32px;box-shadow:0 24px 64px rgba(0,10,40,.3);">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;">
+      <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#001f4d,#1565C0);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🧾</div>
+      <div>
+        <div style="font-size:16px;font-weight:800;color:#0f172a;">Emitindo Recibos</div>
+        <div style="font-size:12px;color:#64748b;margin-top:2px;">Aguarde, não feche esta janela</div>
+      </div>
+    </div>
+    <div style="height:10px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-bottom:10px;">
+      <div id="progressoBarraRecibo" style="height:10px;width:0%;background:linear-gradient(90deg,#001f4d,#1565C0);border-radius:999px;transition:width .4s ease;"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div id="progressoTextoRecibo" style="font-size:12px;color:#475569;font-weight:600;max-width:280px;">Iniciando...</div>
+      <div id="progressoContadorRecibo" style="font-size:13px;font-weight:900;color:#001f4d;flex-shrink:0;">0 / 0</div>
+    </div>
+    <div style="font-size:11px;color:#94a3b8;text-align:center;line-height:1.6;">
+      ⚡ Cada recibo é gerado individualmente e salvo no Drive.<br>O tempo varia conforme o número de beneficiários.
+    </div>
+  </div>
+  
+</div>
+<div id="modalTipoReciboSISGEP" class="rec-modal-overlay" style="display:none;">
+  <div class="rec-modal" style="max-width:760px;">
+    <div class="rec-modal-header">
+      <div>
+        <div class="rec-modal-title">🧾 Novo Recibo</div>
+        <div class="rec-modal-sub">Selecione o tipo de emissão no padrão SISGEP</div>
+      </div>
+
+      <button type="button"
+              id="btnFecharTipoReciboSISGEP"
+              class="rec-modal-close">
+        ✕
+      </button>
+    </div>
+
+    <div class="rec-grid">
+
+      <div class="rec-card"
+           style="cursor:pointer;"
+           onclick="abrirFluxoReciboSISGEP('processo_individual')">
+
+        <div class="rec-cb">
+          <div class="rec-ico">⚖️</div>
+
+          <h3>Recibo de Processo</h3>
+
+          <p>
+            Emitir 1 recibo para um beneficiário
+            vinculado a processo/alvará.
+          </p>
+
+          <button type="button"
+                  class="rec-btn rec-btn-primary">
+            Individual
+          </button>
+        </div>
+      </div>
+
+      <div class="rec-card"
+           style="cursor:pointer;"
+           onclick="abrirFluxoReciboSISGEP('processo_lote')">
+
+        <div class="rec-cb">
+          <div class="rec-ico">👥</div>
+
+          <h3>Recibos de Processo em Lote</h3>
+
+          <p>
+            Emitir vários recibos do mesmo processo.
+          </p>
+
+          <button type="button"
+                  class="rec-btn rec-btn-primary">
+            Lote
+          </button>
+        </div>
+      </div>
+
+      <div class="rec-card"
+           style="cursor:pointer;"
+           onclick="abrirFluxoReciboSISGEP('diverso_individual')">
+
+        <div class="rec-cb">
+          <div class="rec-ico">💰</div>
+
+          <h3>Recibo Diverso</h3>
+
+          <p>
+            Emitir 1 recibo avulso/diverso.
+          </p>
+
+          <button type="button"
+                  class="rec-btn rec-btn-gold">
+            Individual
+          </button>
+        </div>
+      </div>
+
+      <div class="rec-card"
+           style="cursor:pointer;"
+           onclick="abrirFluxoReciboSISGEP('diverso_lote')">
+
+        <div class="rec-cb">
+          <div class="rec-ico">📦</div>
+
+          <h3>Recibos Diversos em Lote</h3>
+
+          <p>
+            Emitir vários recibos diversos.
+          </p>
+
+          <button type="button"
+                  class="rec-btn rec-btn-gold">
+            Lote
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

@@ -1,0 +1,2019 @@
+<div id="blocoEscolas" style="display:block;min-height:100%;">
+<style>
+/* ═══════════════════════════════════════════════════════════
+   SISGEP · Cadastro de Escolas — Premium v3.0
+   Navy + Gold + Plus Jakarta Sans
+═══════════════════════════════════════════════════════════ */
+#blocoEscolas *, #blocoEscolas *::before, #blocoEscolas *::after { box-sizing:border-box; margin:0; padding:0; }
+#blocoEscolas {
+  --ce-navy:  #001f4d;
+  --ce-navy2: #002f6c;
+  --ce-blue:  #1565C0;
+  --ce-blue2: #0d52b5;
+  --ce-gold:  #C9A84C;
+  --ce-gold2: #f0c843;
+  --ce-g50:   #f8fafc;
+  --ce-g100:  #f1f5f9;
+  --ce-g200:  #e2e8f0;
+  --ce-g300:  #cbd5e1;
+  --ce-g400:  #94a3b8;
+  --ce-g500:  #64748b;
+  --ce-g600:  #475569;
+  --ce-g700:  #334155;
+  --ce-g800:  #1e293b;
+  --ce-g900:  #0f172a;
+  --ce-green: #059669;
+  --ce-green-lt:#d1fae5;
+  --ce-green-dk:#065f46;
+  --ce-amber: #d97706;
+  --ce-amber-lt:#fef3c7;
+  --ce-red:   #dc2626;
+  --ce-red-lt:#fee2e2;
+  --ce-teal:  #0d9488;
+  --ce-rad:   12px;
+  --ce-rad-lg:18px;
+  --ce-sh-sm: 0 2px 8px rgba(0,20,60,.07),0 1px 3px rgba(0,20,60,.05);
+  --ce-sh-md: 0 6px 24px rgba(0,20,60,.10),0 2px 8px rgba(0,20,60,.06);
+  --ce-sh-lg: 0 16px 48px rgba(0,20,60,.14),0 4px 16px rgba(0,20,60,.08);
+  font-family:'Plus Jakarta Sans',Arial,sans-serif;
+  color:var(--ce-g900);
+}
+
+/* ── Header ── */
+.ce-header {
+  margin:-32px -24px 0;
+  background: linear-gradient(135deg, #001f4d 0%, #002f6c 50%, #1565C0 100%);
+  padding:22px 24px 18px;
+  display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+}
+.ce-header-title { font-size:20px; font-weight:900; color:#fff; font-family:'Plus Jakarta Sans',sans-serif; }
+.ce-header-sub   { font-size:12px; color:rgba(255,255,255,.55); margin-top:3px; font-family:'Plus Jakarta Sans',sans-serif; }
+.ce-header-badge {
+  background:rgba(201,168,76,.2); border:1px solid rgba(201,168,76,.4);
+  color:var(--ce-gold); font-size:11px; font-weight:800; padding:5px 14px; border-radius:999px;
+  flex-shrink:0;
+}
+
+/* ── Métricas ── */
+.ce-metrics {
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:8px;
+  padding:10px 16px 8px;
+}
+
+.ce-metric {
+  background:#fff;
+  border-radius:12px;
+  padding:9px 10px 8px;
+  box-shadow:0 2px 8px rgba(0,20,60,.06);
+  border:1px solid #e2e8f0;
+  position:relative;
+  overflow:visible;
+  min-width:0;
+  min-height:96px;
+  display:flex;
+  flex-direction:column;
+  transition:box-shadow .18s, transform .18s;
+  cursor:default;
+}
+
+.ce-metric:hover {
+  box-shadow:0 6px 18px rgba(0,20,60,.10);
+  transform:translateY(-1px);
+}
+
+.ce-metric-bar {
+  position:absolute;
+  top:0;
+  left:0;
+  right:0;
+  height:3px;
+  border-radius:12px 12px 0 0;
+  z-index:1;
+  clip-path:inset(0 0 0 0 round 12px 12px 0 0);
+}
+
+.ce-bar-navy   { background:linear-gradient(90deg,var(--ce-navy2),var(--ce-blue)); }
+.ce-bar-green  { background:linear-gradient(90deg,var(--ce-green),#34d399); }
+.ce-bar-red    { background:linear-gradient(90deg,var(--ce-red),#f87171); }
+.ce-bar-amber  { background:linear-gradient(90deg,var(--ce-amber),#fbbf24); }
+.ce-bar-blue   { background:linear-gradient(90deg,#1565C0,#60a5fa); }
+.ce-bar-teal   { background:linear-gradient(90deg,var(--ce-teal),#2dd4bf); }
+
+.ce-metric-top {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:6px;
+  margin-bottom:5px;
+}
+
+.ce-metric-lbl {
+  font-size:8.5px;
+  font-weight:800;
+  color:var(--ce-g400);
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  min-width:0;
+}
+
+.ce-metric-ico {
+  width:22px;
+  height:22px;
+  border-radius:7px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:10px;
+  flex-shrink:0;
+  box-shadow:none;
+}
+
+.ce-ico-navy   { background:linear-gradient(135deg,#eef3fc,#dbeafe); }
+.ce-ico-green  { background:linear-gradient(135deg,var(--ce-green-lt),#a7f3d0); }
+.ce-ico-red    { background:linear-gradient(135deg,var(--ce-red-lt),#fecaca); }
+.ce-ico-amber  { background:linear-gradient(135deg,var(--ce-amber-lt),#fde68a); }
+.ce-ico-blue   { background:linear-gradient(135deg,#eff6ff,#bfdbfe); }
+.ce-ico-teal   { background:linear-gradient(135deg,#ccfbf1,#99f6e4); }
+
+.ce-metric-val {
+  font-size:18px;
+  font-weight:900;
+  color:var(--ce-g900);
+  line-height:1;
+  margin-bottom:2px;
+  transition:color .3s;
+  letter-spacing:-.4px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.ce-metric-val.red {
+  color:var(--ce-red);
+}
+
+.ce-metric-sub {
+  font-size:8.5px;
+  color:var(--ce-g400);
+  font-weight:600;
+  margin-top:auto;
+  line-height:1.25;
+}
+
+.ce-metric-val.animating {
+  animation:ceCountUp .5s ease;
+}
+
+@keyframes ceCountUp {
+  from{opacity:0;transform:translateY(6px)}
+  to{opacity:1;transform:none}
+}
+/* ── Abas internas ── */
+.ce-tabs {
+  display:flex; gap:4px; flex-wrap:wrap;
+  background:rgba(255,255,255,.88); border:1px solid var(--ce-g200);
+  border-radius:999px; padding:5px; margin:20px 24px 0; width:fit-content;
+  box-shadow:0 2px 8px rgba(0,20,60,.07),0 1px 3px rgba(0,20,60,.05);
+}
+.ce-tab {
+  height:40px; padding:0 20px; font-size:13px; font-weight:700; color:var(--ce-g500);
+  border:none; background:transparent; cursor:pointer; border-radius:999px;
+  transition:all .2s cubic-bezier(.4,0,.2,1); display:inline-flex; align-items:center; gap:7px;
+  font-family:'Plus Jakarta Sans',sans-serif; white-space:nowrap;
+}
+.ce-tab:hover { color:var(--ce-navy2); background:var(--ce-g100); }
+.ce-tab.ativo {
+  background:linear-gradient(135deg,var(--ce-navy2) 0%,#0d52b5 100%); color:#fff;
+  box-shadow:0 4px 16px rgba(0,47,108,.32), inset 0 1px 0 rgba(255,255,255,.12);
+  font-weight:700;
+}
+
+/* ── Painéis ── */
+.ce-painel { display:none; padding:24px 20px 48px; }
+.ce-painel.ativo { display:block; }
+
+/* ── Cards ── */
+.ce-card {
+  background:#fff; border-radius:var(--ce-rad-lg);
+  border:1px solid var(--ce-g200); box-shadow:var(--ce-sh-sm);
+  overflow:hidden; margin-bottom:14px; transition:box-shadow .2s;
+}
+.ce-card:hover { box-shadow:var(--ce-sh-md); }
+.ce-card-head {
+  padding:15px 20px 13px; border-bottom:1px solid var(--ce-g100);
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:space-between;
+  background:linear-gradient(180deg,#fafcff 0%,#fff 100%);
+}
+.ce-card-head-l { display:flex; align-items:center; gap:10px; }
+.ce-card-ico {
+  width:34px; height:34px; border-radius:10px; background:var(--ce-g100);
+  display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0;
+}
+.ce-card-step {
+  width:28px; height:28px; border-radius:999px; flex-shrink:0;
+  background:linear-gradient(135deg,var(--ce-navy2),var(--ce-blue));
+  color:#fff; font-size:12px; font-weight:900;
+  display:inline-flex; align-items:center; justify-content:center;
+  box-shadow:0 3px 10px rgba(0,47,108,.22);
+}
+.ce-card-title { font-size:14px; font-weight:800; color:var(--ce-g900); }
+.ce-card-sub   { font-size:11px; color:var(--ce-g400); margin-top:2px; }
+.ce-card-body  { padding:20px 22px 22px; }
+
+/* ── Seções do formulário ── */
+.ce-section {
+  border:1px solid var(--ce-g200); border-radius:14px; overflow:hidden; margin-bottom:14px;
+}
+.ce-section-head {
+  padding:12px 16px; background:linear-gradient(135deg,var(--ce-g50),#fff);
+  border-bottom:1px solid var(--ce-g200);
+  display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none;
+  transition:background .15s;
+}
+.ce-section-head:hover { background:linear-gradient(135deg,#eef5ff,var(--ce-g50)); }
+.ce-section-head-ico { font-size:16px; }
+.ce-section-head-title { font-size:13px; font-weight:800; color:var(--ce-navy2); flex:1; }
+.ce-section-head-badge {
+  font-size:10px; font-weight:700; background:var(--ce-blue); color:#fff;
+  padding:2px 8px; border-radius:999px; display:none;
+}
+.ce-section-head-badge.visible { display:inline-block; }
+.ce-section-arrow { font-size:12px; color:var(--ce-g400); transition:transform .2s; }
+.ce-section.collapsed .ce-section-arrow { transform:rotate(-90deg); }
+.ce-section-body { padding:16px; }
+.ce-section.collapsed .ce-section-body { display:none; }
+
+/* ── CNPJ lookup especial ── */
+.ce-cnpj-wrap {
+  background:linear-gradient(135deg,#eef5ff,#f8fbff);
+  border:1.5px solid #c7d9f5; border-radius:14px; padding:16px; margin-bottom:14px;
+}
+.ce-cnpj-row { display:grid; grid-template-columns:1fr auto auto; gap:10px; align-items:end; }
+.ce-cnpj-status {
+  margin-top:10px; padding:10px 14px; border-radius:10px; font-size:12.5px; font-weight:600;
+  display:none; animation:ceFadeIn .2s ease;
+}
+@keyframes ceFadeIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:none} }
+.ce-cnpj-status.ok   { background:var(--ce-green-lt); border:1px solid #6ee7b7; color:var(--ce-green-dk); }
+.ce-cnpj-status.err  { background:var(--ce-red-lt);   border:1px solid #fca5a5; color:#991b1b; }
+.ce-cnpj-status.info { background:#eff6ff; border:1px solid #93c5fd; color:#1d4ed8; }
+
+/* ── Grid do formulário ── */
+.ce-fg  { display:grid; gap:12px; }
+.ce-fg2 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.ce-fg3 { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.ce-fg4 { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.ce-full{ grid-column:1/-1; }
+
+.ce-field { display:flex; flex-direction:column; gap:6px; }
+.ce-field label {
+  font-size:10px; font-weight:800; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--ce-g500);
+}
+.ce-field input, .ce-field select, .ce-field textarea {
+  width:100%; min-height:46px; border:1.5px solid var(--ce-g200); border-radius:var(--ce-rad);
+  background:#fff; color:var(--ce-g900); font-family:'Plus Jakarta Sans',sans-serif;
+  font-size:13.5px; font-weight:500; padding:0 13px; outline:none;
+  transition:border-color .15s, box-shadow .15s, background .15s;
+}
+.ce-field textarea { min-height:80px; padding:12px 13px; resize:vertical; line-height:1.55; }
+.ce-field input::placeholder, .ce-field textarea::placeholder { color:var(--ce-g300); font-weight:400; }
+.ce-field input:focus, .ce-field select:focus, .ce-field textarea:focus {
+  border-color:var(--ce-blue); box-shadow:0 0 0 3.5px rgba(21,101,192,.10); background:#fff;
+}
+.ce-field input.ce-valid { border-color:var(--ce-green); background:#f0fdf4; }
+.ce-field input.ce-invalid { border-color:var(--ce-red); background:#fff5f5; }
+.ce-field-help { font-size:11px; color:var(--ce-g400); font-weight:500; }
+
+/* ── Botões ── */
+.ce-btn {
+  display:inline-flex; align-items:center; gap:6px;
+  height:42px; padding:0 18px; border:none; border-radius:var(--ce-rad);
+  font-family:'Plus Jakarta Sans',sans-serif; font-size:13px; font-weight:700;
+  cursor:pointer; transition:all .18s cubic-bezier(.4,0,.2,1); white-space:nowrap;
+}
+.ce-btn:hover   { transform:translateY(-1px); }
+.ce-btn:active  { transform:translateY(0) scale(.98); }
+.ce-btn:disabled{ opacity:.42; cursor:not-allowed; pointer-events:none; transform:none!important; }
+.ce-btn-navy {
+  background:linear-gradient(135deg,var(--ce-navy2) 0%,var(--ce-blue2) 100%);
+  color:#fff; box-shadow:0 4px 14px rgba(0,47,108,.24),inset 0 1px 0 rgba(255,255,255,.12);
+}
+.ce-btn-navy:hover { box-shadow:0 8px 24px rgba(0,47,108,.36); }
+.ce-btn-gold {
+  background:linear-gradient(135deg,#b8922e 0%,var(--ce-gold) 45%,var(--ce-gold2) 100%);
+  color:var(--ce-navy); font-weight:900;
+  box-shadow:0 4px 16px rgba(201,168,76,.30),inset 0 1px 0 rgba(255,255,255,.22);
+}
+.ce-btn-gold:hover { box-shadow:0 8px 26px rgba(201,168,76,.44); }
+.ce-btn-outline {
+  background:#fff; color:var(--ce-g700); border:1.5px solid var(--ce-g200);
+}
+.ce-btn-outline:hover { border-color:var(--ce-blue); color:var(--ce-blue); background:#eef5ff; }
+.ce-btn-ghost { background:var(--ce-g100); color:var(--ce-g700); border:1.5px solid var(--ce-g200); }
+.ce-btn-ghost:hover { background:var(--ce-g200); }
+.ce-btn-green { background:linear-gradient(135deg,var(--ce-green),#047857); color:#fff; box-shadow:0 4px 12px rgba(5,150,105,.22); }
+.ce-btn-green:hover { box-shadow:0 8px 22px rgba(5,150,105,.36); }
+.ce-btn-red { background:var(--ce-red); color:#fff; box-shadow:0 4px 12px rgba(220,38,38,.22); }
+.ce-btn-sm  { height:36px; padding:0 14px; font-size:12px; border-radius:10px; }
+.ce-btn-xs  { height:30px; padding:0 11px; font-size:11px; border-radius:8px; }
+.ce-acoes   { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+
+/* ── Badge situação ── */
+.ce-badge {
+  display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700;
+  padding:4px 12px; border-radius:999px; border:1.5px solid transparent;
+  font-family:'Plus Jakarta Sans',sans-serif; transition:all .2s;
+}
+.ce-badge-navy   { background:#eef3fc; color:var(--ce-navy2); border-color:#c7d9f5; }
+.ce-badge-ok     { background:var(--ce-green-lt); color:var(--ce-green-dk); border-color:#6ee7b7; }
+.ce-badge-warn   { background:var(--ce-amber-lt); color:#92400e; border-color:#fcd34d; }
+.ce-badge-err    { background:var(--ce-red-lt); color:#991b1b; border-color:#fca5a5; }
+.ce-badge-pulse  { animation:cePulse 1.8s ease-in-out infinite; }
+@keyframes cePulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+
+/* ── Toolbar de busca ── */
+.ce-toolbar {
+  display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+  margin-bottom:14px; padding:12px 14px;
+  background:linear-gradient(180deg,#fafcff,#f5f8fd);
+  border:1.5px solid var(--ce-g200); border-radius:var(--ce-rad);
+}
+.ce-toolbar-search {
+  flex:1 1 220px; min-width:220px; position:relative;
+}
+.ce-toolbar-search-ico {
+  position:absolute; left:12px; top:50%; transform:translateY(-50%);
+  font-size:14px; opacity:.45; pointer-events:none;
+}
+.ce-toolbar-search input {
+  width:100%; min-height:40px; border-radius:10px; border:1.5px solid var(--ce-g200);
+  background:#fff; color:var(--ce-g800); font-family:'Plus Jakarta Sans',sans-serif;
+  font-size:13px; padding:0 12px 0 36px; outline:none; transition:border-color .15s,box-shadow .15s;
+}
+.ce-toolbar-search input:focus { border-color:var(--ce-blue); box-shadow:0 0 0 3px rgba(21,101,192,.10); }
+.ce-toolbar select {
+  flex:0 0 auto; min-height:40px; border-radius:10px; border:1.5px solid var(--ce-g200);
+  background:#fff; color:var(--ce-g800); font-family:'Plus Jakarta Sans',sans-serif;
+  font-size:12.5px; padding:0 10px; outline:none; cursor:pointer; transition:border-color .15s;
+}
+.ce-toolbar select:focus { border-color:var(--ce-blue); }
+#btnCeLimparFiltros { flex:0 0 auto; }
+.ce-toolbar-info { flex:0 0 auto; font-size:12px; color:var(--ce-g500); font-weight:600; margin-left:auto; padding-left:6px; }
+
+/* ── Tabela ── */
+.ce-table-wrap { border:1.5px solid var(--ce-g200); border-radius:var(--ce-rad-lg); overflow:hidden; }
+.ce-table-scroll { max-height:460px; overflow:auto; }
+.ce-table { width:100%; border-collapse:collapse; table-layout:fixed; }
+.ce-table thead th {
+  position:sticky; top:0; z-index:2; padding:11px 13px;
+  text-align:left; font-size:10px; font-weight:800; text-transform:uppercase;
+  letter-spacing:.07em; color:var(--ce-g500); border-bottom:1.5px solid var(--ce-g200);
+  background:linear-gradient(180deg,#f8fbff,#f1f5f9); white-space:nowrap;
+  cursor:pointer; user-select:none; transition:color .15s;
+}
+.ce-table thead th:hover { color:var(--ce-navy2); }
+.ce-table thead th.sort-asc::after  { content:' ↑'; opacity:1; }
+.ce-table thead th.sort-desc::after { content:' ↓'; opacity:1; }
+.ce-table tbody td {
+  padding:11px 13px; font-size:12.5px; color:var(--ce-g700);
+  border-bottom:1px solid var(--ce-g100); white-space:nowrap;
+  max-width:200px; overflow:hidden; text-overflow:ellipsis; vertical-align:middle;
+}
+.ce-table tbody td.no-clip { white-space:nowrap; max-width:none; overflow:visible; }
+.ce-table tbody tr { cursor:pointer; transition:background .12s; }
+.ce-table tbody tr:hover { background:#f0f6ff; }
+.ce-table tbody tr.ce-row-selected { background:#eef5ff; }
+.ce-table tbody tr.ce-row-editing { background:#fffbeb; box-shadow:inset 3px 0 0 var(--ce-amber); }
+.ce-table-empty { text-align:center; padding:48px 20px; color:var(--ce-g400); font-size:13px; }
+
+/* ── Avatar inicial ── */
+.ce-avatar {
+  width:30px; height:30px; border-radius:9px; flex-shrink:0;
+  display:inline-flex; align-items:center; justify-content:center;
+  font-size:11px; font-weight:900; color:#fff; letter-spacing:-.5px;
+  background:linear-gradient(135deg,var(--ce-navy2),var(--ce-blue));
+}
+
+/* ── Chips situação ── */
+.ce-chip { display:inline-flex; align-items:center; padding:3px 10px; border-radius:999px; font-size:10.5px; font-weight:800; }
+.ce-chip-ativa    { background:#ecfdf5; color:var(--ce-green-dk); border:1px solid #6ee7b7; }
+.ce-chip-inativa  { background:var(--ce-red-lt); color:#991b1b; border:1px solid #fca5a5; }
+.ce-chip-pendente { background:var(--ce-amber-lt); color:#92400e; border:1px solid #fcd34d; }
+
+/* ── Paginação ── */
+.ce-paginacao {
+  display:flex; align-items:center; justify-content:space-between;
+  flex-wrap:wrap; gap:10px; margin-top:14px; padding:2px 4px 0;
+}
+.ce-paginacao-info { font-size:12px; color:var(--ce-g500); font-weight:600; }
+.ce-paginacao-btns { display:flex; gap:8px; flex-shrink:0; }
+
+/* ── Toast interno ── */
+.ce-msg {
+  border-radius:var(--ce-rad); font-size:13px; font-weight:600;
+  line-height:1.55; margin-top:12px; padding:0; display:none;
+  animation:ceFadeIn .2s ease;
+}
+.ce-msg.visible { display:block; padding:12px 15px; }
+.ce-msg.ok   { background:var(--ce-green-lt); border:1.5px solid #6ee7b7; color:var(--ce-green-dk); }
+.ce-msg.err  { background:var(--ce-red-lt);   border:1.5px solid #fca5a5; color:#9f1239; }
+.ce-msg.warn { background:var(--ce-amber-lt); border:1.5px solid #fcd34d; color:#92400e; }
+.ce-msg.info { background:#eff6ff; border:1.5px solid #93c5fd; color:#1d4ed8; }
+
+/* ── Pipeline receita ── */
+.ce-pipeline-steps {
+  display:grid; grid-template-columns:repeat(5,1fr); gap:0;
+  border:1.5px solid var(--ce-g200); border-radius:14px; overflow:hidden;
+  margin-bottom:16px;
+}
+.ce-pipeline-step {
+  padding:14px 12px; text-align:center; border-right:1px solid var(--ce-g200);
+  background:linear-gradient(180deg,#fafcff,#fff); position:relative;
+}
+.ce-pipeline-step:last-child { border-right:none; }
+.ce-pipeline-step-num {
+  width:26px; height:26px; border-radius:999px; margin:0 auto 8px;
+  background:var(--ce-g200); color:var(--ce-g600); font-size:12px; font-weight:900;
+  display:flex; align-items:center; justify-content:center; transition:all .3s;
+}
+.ce-pipeline-step.done .ce-pipeline-step-num { background:var(--ce-green); color:#fff; }
+.ce-pipeline-step.active .ce-pipeline-step-num { background:var(--ce-blue); color:#fff; animation:cePulse 1.5s infinite; }
+.ce-pipeline-step-lbl { font-size:11px; font-weight:700; color:var(--ce-g600); line-height:1.4; }
+.ce-pipeline-step.done .ce-pipeline-step-lbl { color:var(--ce-green-dk); }
+.ce-pipeline-step.active .ce-pipeline-step-lbl { color:var(--ce-blue); }
+.ce-pipeline-arrow {
+  position:absolute; right:-8px; top:50%; transform:translateY(-50%);
+  font-size:14px; color:var(--ce-g300); z-index:1;
+}
+
+/* ── Painel de comparação ── */
+.ce-comp-bar {
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  padding:12px 16px; background:var(--ce-g50);
+  border:1.5px solid var(--ce-g200); border-radius:var(--ce-rad); margin-bottom:12px;
+}
+.ce-comp-stat { text-align:center; flex:1; min-width:80px; }
+.ce-comp-stat-num { font-size:22px; font-weight:900; line-height:1; }
+.ce-comp-stat-lbl { font-size:10px; font-weight:700; color:var(--ce-g500); text-transform:uppercase; letter-spacing:.06em; margin-top:3px; }
+.ce-comp-stat.nova  .ce-comp-stat-num { color:var(--ce-green); }
+.ce-comp-stat.exist .ce-comp-stat-num { color:var(--ce-g500); }
+.ce-comp-stat.filt  .ce-comp-stat-num { color:var(--ce-amber); }
+.ce-comp-stat.err   .ce-comp-stat-num { color:var(--ce-red); }
+
+/* ── Sem e-mail spotlight ── */
+.ce-sem-email-btn {
+  display:inline-flex; align-items:center; gap:6px; cursor:pointer;
+  font-size:12px; font-weight:700; color:var(--ce-red);
+  background:var(--ce-red-lt); border:1.5px solid #fca5a5;
+  padding:5px 12px; border-radius:999px; transition:all .15s;
+}
+.ce-sem-email-btn:hover { background:#fee2e2; }
+
+/* ── Editando label ── */
+#ceEditandoLabel { display:none; }
+#ceEditandoLabel.vis { display:inline-flex; }
+
+/* ── Responsivo ── */
+@media(max-width:1300px) { .ce-metrics { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media(max-width:1000px) { .ce-metrics { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media(max-width:700px) {
+  .ce-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .ce-fg2,.ce-fg3,.ce-fg4 { grid-template-columns:1fr; }
+  .ce-full { grid-column:1; }
+  .ce-cnpj-row { grid-template-columns:1fr; }
+  .ce-pipeline-steps { grid-template-columns:1fr 1fr; }
+}
+</style>
+
+<!-- ═══ HEADER ═══ -->
+<div class="ce-header">
+  <div>
+    <div class="ce-header-title">🏫 Cadastro de Escolas</div>
+    <div class="ce-header-sub">Gestão centralizada das escolas e instituições vinculadas</div>
+  </div>
+  <div class="ce-header-badge">SindEducação-ES</div>
+</div>
+
+<!-- ═══ MÉTRICAS ═══ -->
+<div class="ce-metrics">
+  <div class="ce-metric">
+    <div class="ce-metric-bar ce-bar-navy"></div>
+    <div class="ce-metric-top"><span class="ce-metric-lbl">Total</span><div class="ce-metric-ico ce-ico-navy">🏫</div></div>
+    <div class="ce-metric-val" id="ceStatTotal">—</div>
+    <div class="ce-metric-sub">Escolas cadastradas</div>
+  </div>
+  <div class="ce-metric">
+    <div class="ce-metric-bar ce-bar-green"></div>
+    <div class="ce-metric-top"><span class="ce-metric-lbl">Ativas</span><div class="ce-metric-ico ce-ico-green">✅</div></div>
+    <div class="ce-metric-val" id="ceStatAtivas">—</div>
+    <div class="ce-metric-sub">Situação ativa</div>
+  </div>
+  <div class="ce-metric">
+    <div class="ce-metric-bar ce-bar-red"></div>
+    <div class="ce-metric-top"><span class="ce-metric-lbl">Inativas</span><div class="ce-metric-ico ce-ico-red">🚫</div></div>
+    <div class="ce-metric-val red" id="ceStatInativas">—</div>
+    <div class="ce-metric-sub">Situação inativa</div>
+  </div>
+  <div class="ce-metric">
+    <div class="ce-metric-bar ce-bar-amber"></div>
+    <div class="ce-metric-top"><span class="ce-metric-lbl">Com E-mail</span><div class="ce-metric-ico ce-ico-amber">📧</div></div>
+    <div class="ce-metric-val" id="ceStatComEmail">—</div>
+    <div class="ce-metric-sub">E-mail informado</div>
+  </div>
+  <div class="ce-metric">
+    <div class="ce-metric-bar ce-bar-red"></div>
+    <div class="ce-metric-top"><span class="ce-metric-lbl">Sem E-mail</span><div class="ce-metric-ico ce-ico-red">⚠️</div></div>
+    <div class="ce-metric-val red" id="ceStatSemEmail" style="cursor:pointer;" title="Clique para filtrar">—</div>
+    <div class="ce-metric-sub"><span class="ce-sem-email-btn" id="ceBtnFiltrarSemEmail">Ver escolas →</span></div>
+  </div>
+  <div class="ce-metric">
+    <div class="ce-metric-bar ce-bar-blue"></div>
+    <div class="ce-metric-top"><span class="ce-metric-lbl">Com CNPJ</span><div class="ce-metric-ico ce-ico-blue">🔢</div></div>
+    <div class="ce-metric-val" id="ceStatComCnpj">—</div>
+    <div class="ce-metric-sub">CNPJ preenchido</div>
+  </div>
+</div>
+
+<!-- ═══ ABAS ═══ -->
+<div class="ce-tabs">
+  <button type="button" class="ce-tab ativo" data-tab="ceTabBase">🏫 Base de Escolas</button>
+  <button type="button" class="ce-tab" data-tab="ceTabCadastro">✏️ Cadastrar / Editar</button>
+  <button type="button" class="ce-tab" data-tab="ceTabReceita">🏛️ Captação Receita</button>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAINEL: BASE DE ESCOLAS
+═══════════════════════════════════════════ -->
+<div id="ceTabBase" class="ce-painel ativo">
+  <div class="ce-card">
+    <div class="ce-card-head">
+      <div class="ce-card-head-l">
+        <div class="ce-card-ico">🏫</div>
+        <div>
+          <div class="ce-card-title">Base de Escolas</div>
+          <div class="ce-card-sub">Clique em uma linha para editar · <span id="ceContadorRegistros" style="font-weight:800;color:var(--ce-navy2);">—</span></div>
+        </div>
+      </div>
+      <div class="ce-acoes">
+        <button type="button" class="ce-btn ce-btn-outline ce-btn-sm" id="btnCeExportCsv">📤 CSV</button>
+        <button type="button" class="ce-btn ce-btn-outline ce-btn-sm" id="btnCeRecarregar">↺ Recarregar</button>
+        <button type="button" class="ce-btn ce-btn-navy ce-btn-sm" id="btnCeNovaEscola">+ Nova Escola</button>
+      </div>
+    </div>
+    <div class="ce-card-body">
+
+      <!-- Toolbar -->
+      <div class="ce-toolbar">
+        <div class="ce-toolbar-search">
+          <span class="ce-toolbar-search-ico">🔍</span>
+          <input type="text" id="ceBusca" placeholder="Buscar por nome, CNPJ, e-mail, cidade...">
+        </div>
+        <select id="ceFiltroSit">
+          <option value="">Todas as situações</option>
+          <option value="ATIVA">✅ Ativa</option>
+          <option value="INATIVA">🚫 Inativa</option>
+          <option value="PENDENTE">⏳ Pendente</option>
+        </select>
+        <select id="ceFiltroMun">
+          <option value="">Todos os municípios</option>
+        </select>
+        <button type="button" class="ce-btn ce-btn-ghost ce-btn-sm" id="btnCeLimparFiltros">✕ Limpar</button>
+        <span class="ce-toolbar-info" id="ceInfoFiltro"></span>
+      </div>
+
+      <!-- Barra de ações em massa -->
+      <div id="ceBarraAcoesMassa" style="display:none;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:var(--ce-rad);margin-bottom:10px;">
+        <span id="ceBarraAcoesLabel" style="font-size:13px;font-weight:700;color:#1e40af;">0 selecionada(s)</span>
+        <button type="button" class="ce-btn ce-btn-green ce-btn-sm" id="btnCeMassaAtivar">✅ Marcar Ativa</button>
+        <button type="button" class="ce-btn ce-btn-outline ce-btn-sm" id="btnCeMassaInativar">🚫 Marcar Inativa</button>
+        <button type="button" class="ce-btn ce-btn-outline ce-btn-sm" id="btnCeMassaEmail">📧 Enviar e-mail</button>
+        <button type="button" class="ce-btn ce-btn-red ce-btn-sm" id="btnCeMassaExcluir">🗑 Excluir selecionadas</button>
+        <button type="button" class="ce-btn ce-btn-ghost ce-btn-sm" id="btnCeMassaDesmarcar">✕ Desmarcar todas</button>
+      </div>
+
+      <!-- Tabela -->
+      <div class="ce-table-wrap">
+        <div class="ce-table-scroll">
+          <table class="ce-table" id="ceTabelaEscolas">
+            <colgroup>
+              <col style="width:36px">
+              <col style="width:32%">
+              <col style="width:17%">
+              <col style="width:31%">
+              <col style="width:140px">
+            </colgroup>
+            <thead>
+              <tr>
+                <th style="cursor:default;"><input type="checkbox" id="ceCheckTodos" title="Selecionar todos"></th>
+                <th data-col="escola">Escola</th>
+                <th data-col="cnpj">CNPJ</th>
+                <th data-col="email">E-mail</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="ceTabelaBody">
+              <tr><td colspan="5"><div class="ce-table-empty">⏳ Carregando escolas...</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Paginação -->
+      <div class="ce-paginacao">
+        <div class="ce-paginacao-info" id="cePagInfo">—</div>
+        <div class="ce-paginacao-btns">
+          <button type="button" class="ce-btn ce-btn-outline ce-btn-sm" id="btnCePagAnt">← Anterior</button>
+          <button type="button" class="ce-btn ce-btn-outline ce-btn-sm" id="btnCePagProx">Próximo →</button>
+        </div>
+      </div>
+
+      <div id="ceMsgTabela" class="ce-msg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAINEL: CADASTRAR / EDITAR
+═══════════════════════════════════════════ -->
+<div id="ceTabCadastro" class="ce-painel">
+  <div style="max-width:780px;">
+
+    <!-- Status de edição -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <span id="ceEditandoLabel" class="ce-badge ce-badge-warn ce-badge-pulse">✏️ Editando registro</span>
+      <span id="ceNovoCadLabel" class="ce-badge ce-badge-navy">➕ Novo cadastro</span>
+    </div>
+
+    <!-- CNPJ Lookup -->
+    <div class="ce-cnpj-wrap">
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--ce-navy2);margin-bottom:12px;">🔍 Consulta de CNPJ</div>
+      <div class="ce-cnpj-row">
+        <div class="ce-field">
+          <label for="ceCnpj">CNPJ</label>
+          <input type="text" id="ceCnpj" placeholder="00.000.000/0000-00" maxlength="18">
+        </div>
+        <button type="button" class="ce-btn ce-btn-navy" id="btnCeConsultarCnpj">🔍 Consultar</button>
+        <button type="button" class="ce-btn ce-btn-outline" id="btnCeSincronizarCnpj">🔄 Sincronizar</button>
+      </div>
+      <div id="ceCnpjStatus" class="ce-cnpj-status"></div>
+    </div>
+
+    <!-- Seção 1: Identificação -->
+    <div class="ce-section" id="ceSec1">
+      <div class="ce-section-head" onclick="ceToggleSection('ceSec1')">
+        <span class="ce-section-head-ico">🏫</span>
+        <span class="ce-section-head-title">Identificação</span>
+        <span class="ce-section-head-badge" id="ceBadge1">●</span>
+        <span class="ce-section-arrow">▾</span>
+      </div>
+      <div class="ce-section-body">
+        <div class="ce-fg ce-fg2" style="margin-bottom:12px;">
+          <div class="ce-field ce-full">
+            <label for="ceNomeEscola">Nome / Razão Social *</label>
+            <input type="text" id="ceNomeEscola" placeholder="Razão social ou nome da escola">
+          </div>
+          <div class="ce-field ce-full">
+            <label for="ceFantasia">Nome Fantasia</label>
+            <input type="text" id="ceFantasia" placeholder="Nome fantasia">
+          </div>
+          <div class="ce-field">
+            <label for="ceCodigoInterno">Código / Unidade</label>
+            <input type="text" id="ceCodigoInterno" placeholder="Código interno">
+          </div>
+          <div class="ce-field">
+            <label for="ceRede">Rede</label>
+            <input type="text" id="ceRede" placeholder="Municipal, privada...">
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <label style="font-size:11px;font-weight:700;color:var(--ce-g600);">Situação:</label>
+          <select id="ceSituacao" style="min-height:36px;border-radius:9px;border:1.5px solid var(--ce-g200);font-family:inherit;font-size:12.5px;padding:0 10px;outline:none;">
+            <option value="ATIVA">ATIVA</option>
+            <option value="INATIVA">INATIVA</option>
+            <option value="PENDENTE">PENDENTE</option>
+          </select>
+          <span class="ce-badge ce-badge-ok" id="ceSituacaoBadge">✅ Ativa</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Seção 2: Localização -->
+    <div class="ce-section" id="ceSec2">
+      <div class="ce-section-head" onclick="ceToggleSection('ceSec2')">
+        <span class="ce-section-head-ico">📍</span>
+        <span class="ce-section-head-title">Localização</span>
+        <span class="ce-section-head-badge" id="ceBadge2">●</span>
+        <span class="ce-section-arrow">▾</span>
+      </div>
+      <div class="ce-section-body">
+        <div class="ce-fg ce-fg3" style="margin-bottom:12px;">
+          <div class="ce-field">
+            <label for="ceCep">CEP</label>
+            <input type="text" id="ceCep" placeholder="00000-000" maxlength="9">
+            <div class="ce-field-help">Digite para buscar endereço automaticamente</div>
+          </div>
+          <div class="ce-field">
+            <label for="ceMunicipio">Município</label>
+            <input type="text" id="ceMunicipio" placeholder="Município">
+          </div>
+          <div class="ce-field">
+            <label for="ceUf">UF</label>
+            <input type="text" id="ceUf" placeholder="ES" maxlength="2">
+          </div>
+          <div class="ce-field ce-full">
+            <label for="ceEndereco">Logradouro</label>
+            <input type="text" id="ceEndereco" placeholder="Rua, Avenida...">
+          </div>
+          <div class="ce-field">
+            <label for="ceNumero">Número</label>
+            <input type="text" id="ceNumero" placeholder="Nº">
+          </div>
+          <div class="ce-field">
+            <label for="ceComplemento">Complemento</label>
+            <input type="text" id="ceComplemento" placeholder="Sala, bloco...">
+          </div>
+          <div class="ce-field ce-full">
+            <label for="ceBairro">Bairro</label>
+            <input type="text" id="ceBairro" placeholder="Bairro">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Seção 3: Contato -->
+    <div class="ce-section" id="ceSec3">
+      <div class="ce-section-head" onclick="ceToggleSection('ceSec3')">
+        <span class="ce-section-head-ico">📬</span>
+        <span class="ce-section-head-title">Contato</span>
+        <span class="ce-section-head-badge" id="ceBadge3">●</span>
+        <span class="ce-section-arrow">▾</span>
+      </div>
+      <div class="ce-section-body">
+        <div class="ce-fg ce-fg2">
+          <div class="ce-field">
+            <label for="ceTelefone">Telefone</label>
+            <input type="text" id="ceTelefone" placeholder="(27) 3333-3333" maxlength="20">
+          </div>
+          <div class="ce-field">
+            <label for="ceWhatsapp">WhatsApp</label>
+            <input type="text" id="ceWhatsapp" placeholder="(27) 99999-9999" maxlength="20">
+          </div>
+          <div class="ce-field ce-full">
+            <label for="ceEmail">E-mail Principal</label>
+            <input type="email" id="ceEmail" placeholder="escola@email.com.br">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Seção 4: Responsável -->
+    <div class="ce-section" id="ceSec4">
+      <div class="ce-section-head" onclick="ceToggleSection('ceSec4')">
+        <span class="ce-section-head-ico">👤</span>
+        <span class="ce-section-head-title">Responsável</span>
+        <span class="ce-section-head-badge" id="ceBadge4">●</span>
+        <span class="ce-section-arrow">▾</span>
+      </div>
+      <div class="ce-section-body">
+        <div class="ce-fg ce-fg2">
+          <div class="ce-field">
+            <label for="ceResponsavel">Nome do Responsável / Diretor</label>
+            <input type="text" id="ceResponsavel" placeholder="Nome completo">
+          </div>
+          <div class="ce-field">
+            <label for="ceCargoResponsavel">Cargo</label>
+            <input type="text" id="ceCargoResponsavel" placeholder="Diretor, Coordenador...">
+          </div>
+          <div class="ce-field ce-full">
+            <label for="ceObservacoes">Observações internas</label>
+            <textarea id="ceObservacoes" placeholder="Anotações sobre a escola..."></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  <!-- Seção 5: Inteligência SISGEP -->
+<div class="ce-section" id="ceSecIA">
+  <div class="ce-section-head" onclick="ceToggleSection('ceSecIA')">
+    <span class="ce-section-head-ico">🧠</span>
+    <span class="ce-section-head-title">Inteligência SISGEP</span>
+    <span class="ce-section-head-badge visible" id="ceBadgeIA">IA</span>
+    <span class="ce-section-arrow">▾</span>
+  </div>
+
+  <div class="ce-section-body">
+
+    <div style="
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-bottom:16px;
+    ">
+
+      <button
+        type="button"
+        class="ce-btn ce-btn-navy"
+        onclick="ceExecutarAnaliseIA()">
+        🤖 Analisar Escola
+      </button>
+
+      <button
+        type="button"
+        class="ce-btn ce-btn-outline"
+        onclick="ceGerarOficioIA()">
+        📄 Gerar Ofício IA
+      </button>
+
+      <button
+        type="button"
+        class="ce-btn ce-btn-outline"
+        onclick="ceResponderEmailIA()">
+        📧 Responder E-mail IA
+      </button>
+
+    </div>
+
+    <!-- Resultado IA -->
+    <div
+      id="ceIaResultado"
+      style="
+        min-height:180px;
+        border:1px solid #dbe4f0;
+        background:linear-gradient(180deg,#ffffff,#f8fafc);
+        border-radius:12px;
+        padding:18px;
+        font-size:13px;
+        line-height:1.8;
+        color:#0f172a;
+        overflow:auto;
+        box-shadow:inset 0 1px 3px rgba(0,0,0,.03);
+      ">
+
+      <div style="
+        display:flex;
+        align-items:center;
+        gap:8px;
+        margin-bottom:10px;
+        color:#001f4d;
+        font-weight:800;
+        font-size:14px;
+      ">
+        🧠 Inteligência SISGEP
+      </div>
+
+      <div style="color:#64748b;">
+        Clique em <strong>🤖 Analisar Escola</strong> para gerar um resumo inteligente da instituição.
+      </div>
+
+    </div>
+
+  </div>
+</div>
+    <!-- Ações principais -->
+    <div class="ce-acoes" style="margin-bottom:10px;">
+      <button type="button" class="ce-btn ce-btn-gold" id="btnCeSalvar">🏫 Salvar Escola</button>
+      <button type="button" class="ce-btn ce-btn-outline" id="btnCeLimparForm">🧹 Limpar</button>
+    </div>
+
+    <!-- Ações avançadas -->
+    <div class="ce-acoes" style="margin-bottom:4px;">
+      <button type="button" class="ce-btn ce-btn-ghost ce-btn-sm" id="btnCeImportar">☁️ Importar de Aba</button>
+      <button type="button" class="ce-btn ce-btn-ghost ce-btn-sm" id="btnCeAnalisarDup">🧪 Analisar Duplicadas</button>
+      <button type="button" class="ce-btn ce-btn-ghost ce-btn-sm" id="btnCeRemoverDup">🧹 Remover Duplicadas</button>
+    </div>
+
+    <div id="ceMsgBox" class="ce-msg"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAINEL: CAPTAÇÃO RECEITA
+═══════════════════════════════════════════ -->
+<div id="ceTabReceita" class="ce-painel">
+
+  <!-- Pipeline visual -->
+  <div class="ce-card" style="margin-bottom:14px;">
+    <div class="ce-card-head">
+      <div class="ce-card-head-l">
+        <div class="ce-card-ico">🏛️</div>
+        <div>
+          <div class="ce-card-title">Pipeline de Captação</div>
+          <div class="ce-card-sub">Consulta CNPJs na Receita Federal, filtra por ES/Educação e importa novas escolas</div>
+        </div>
+      </div>
+    </div>
+    <div class="ce-card-body">
+
+      <!-- Steps visuais -->
+      <div class="ce-pipeline-steps" id="cePipelineSteps">
+        <div class="ce-pipeline-step" id="ceStep1">
+          <span class="ce-pipeline-arrow">›</span>
+          <div class="ce-pipeline-step-num">1</div>
+          <div class="ce-pipeline-step-lbl">Criar Abas<br>Auxiliares</div>
+        </div>
+        <div class="ce-pipeline-step" id="ceStep2">
+          <span class="ce-pipeline-arrow">›</span>
+          <div class="ce-pipeline-step-num">2</div>
+          <div class="ce-pipeline-step-lbl">Colar CNPJs<br>na aba</div>
+        </div>
+        <div class="ce-pipeline-step" id="ceStep3">
+          <span class="ce-pipeline-arrow">›</span>
+          <div class="ce-pipeline-step-num">3</div>
+          <div class="ce-pipeline-step-lbl">Processar<br>Extração</div>
+        </div>
+        <div class="ce-pipeline-step" id="ceStep4">
+          <span class="ce-pipeline-arrow">›</span>
+          <div class="ce-pipeline-step-num">4</div>
+          <div class="ce-pipeline-step-lbl">Revisar aba<br>COMPARACAO</div>
+        </div>
+        <div class="ce-pipeline-step" id="ceStep5">
+          <div class="ce-pipeline-step-num">5</div>
+          <div class="ce-pipeline-step-lbl">Importar<br>Novas</div>
+        </div>
+      </div>
+
+      <!-- Resultado da última execução -->
+      <div id="ceCompBar" class="ce-comp-bar" style="display:none;">
+        <div class="ce-comp-stat nova"><div class="ce-comp-stat-num" id="ceCompNova">0</div><div class="ce-comp-stat-lbl">Novas</div></div>
+        <div class="ce-comp-stat exist"><div class="ce-comp-stat-num" id="ceCompExist">0</div><div class="ce-comp-stat-lbl">Existentes</div></div>
+        <div class="ce-comp-stat filt"><div class="ce-comp-stat-num" id="ceCompFilt">0</div><div class="ce-comp-stat-lbl">Filtradas</div></div>
+        <div class="ce-comp-stat err"><div class="ce-comp-stat-num" id="ceCompErr">0</div><div class="ce-comp-stat-lbl">Erros</div></div>
+      </div>
+
+      <!-- Botões principais -->
+      <div class="ce-acoes" style="margin-bottom:14px;">
+        <button type="button" class="ce-btn ce-btn-outline" id="btnCeCriarAbas">🗂️ Criar Abas</button>
+        <button type="button" class="ce-btn ce-btn-navy" id="btnCeProcessar">🏛️ Processar Extração</button>
+        <button type="button" class="ce-btn ce-btn-green" id="btnCeImportarRec">✅ Importar Novas</button>
+        <button type="button" class="ce-btn ce-btn-gold" id="btnCePipeline">🚀 Executar Tudo</button>
+      </div>
+
+      <!-- Instrução -->
+      <div style="background:linear-gradient(135deg,#f0f6ff,#f8fbff);border:1.5px solid #bfdbfe;border-radius:12px;padding:14px 16px;margin-bottom:12px;">
+        <div style="font-size:11.5px;font-weight:700;color:#1d4ed8;margin-bottom:6px;">📋 Como usar o pipeline</div>
+        <ol style="font-size:12px;color:var(--ce-g600);line-height:2;padding-left:18px;">
+          <li>Clique em <strong>Criar Abas</strong> para preparar as planilhas auxiliares</li>
+          <li>Abra a aba <code style="background:#e0f2fe;padding:1px 5px;border-radius:4px;">EXTRACAO_CNPJ_OFICIAL</code> e cole os CNPJs (um por linha)</li>
+          <li>Clique em <strong>Processar Extração</strong> — consulta a Receita Federal e filtra por ES + Educação</li>
+          <li>Revise os resultados na aba <code style="background:#e0f2fe;padding:1px 5px;border-radius:4px;">RECEITA_COMPARACAO</code></li>
+          <li>Clique em <strong>Importar Novas</strong> para cadastrar as escolas marcadas como NOVA</li>
+        </ol>
+      </div>
+
+      <!-- Ações avançadas -->
+      <div style="border-top:1px solid var(--ce-g200);padding-top:12px;">
+        <div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--ce-g400);margin-bottom:10px;">Ações individuais</div>
+        <div class="ce-acoes">
+          <button type="button" class="ce-btn ce-btn-ghost ce-btn-sm" id="btnCeCaptar">📥 Captar CNPJs</button>
+          <button type="button" class="ce-btn ce-btn-ghost ce-btn-sm" id="btnCeFiltrar">🎯 Filtrar Educação ES</button>
+          <button type="button" class="ce-btn ce-btn-ghost ce-btn-sm" id="btnCeComparar">🔎 Comparar com Base</button>
+          <button type="button" class="ce-btn ce-btn-ghost ce-btn-sm" id="btnCeCriarAbaExt">🏛️ Criar Aba Extração</button>
+        </div>
+      </div>
+
+      <div id="ceMsgReceita" class="ce-msg"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ═══════════════════════════════════
+   UTILITÁRIOS
+═══════════════════════════════════ */
+function g(id){ return document.getElementById(id); }
+function esc(t){ return String(t||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
+function digits(v){ return String(v||"").replace(/\D/g,""); }
+function norm(t){ return String(t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim(); }
+function valCampo(obj,chaves){ for(var i=0;i<chaves.length;i++){ var v=obj[chaves[i]]; if(v!==undefined&&v!==null&&String(v).trim()!=="")return String(v).trim(); } return ""; }
+
+function mascaraCnpj(v){ var d=digits(v).slice(0,14); return d.replace(/^(\d{2})(\d)/,"$1.$2").replace(/^(\d{2})\.(\d{3})(\d)/,"$1.$2.$3").replace(/\.(\d{3})(\d)/,".$1/$2").replace(/(\d{4})(\d)/,"$1-$2"); }
+function mascaraCep(v) { var d=digits(v).slice(0,8); return d.length>5?d.replace(/^(\d{5})(\d)/,"$1-$2"):d; }
+function mascaraTel(v) { var d=digits(v).slice(0,11); return d.length<=10?d.replace(/^(\d{2})(\d{4})(\d)/,"($1) $2-$3"):d.replace(/^(\d{2})(\d{5})(\d)/,"($1) $2-$3"); }
+
+function avatarIniciais(nome){
+  var p=String(nome||"").trim().split(/\s+/);
+  return (p[0]?p[0][0]:"?").toUpperCase()+(p[1]?p[1][0]:"").toUpperCase();
+}
+
+function btnLoad(btn,txt){ if(!btn)return; btn.disabled=true; btn._orig=btn.innerHTML; btn.innerHTML='<span style="opacity:.6">⏳ '+(txt||"Aguarde...")+'</span>'; }
+function btnReset(btn)   { if(!btn)return; btn.disabled=false; if(btn._orig!==undefined)btn.innerHTML=btn._orig; }
+
+function ceMsg(elId,texto,tipo){
+  var el=g(elId); if(!el)return;
+  el.className="ce-msg "+(tipo||"info")+" visible";
+  el.innerHTML=texto||"";
+}
+function ceMsgClear(elId){ var el=g(elId); if(!el)return; el.className="ce-msg"; el.innerHTML=""; }
+
+function ceCnpjStatus(texto,tipo){
+  var el=g("ceCnpjStatus"); if(!el)return;
+  el.style.display="block"; el.className="ce-cnpj-status "+(tipo||"info");
+  el.innerHTML=texto||"";
+}
+function ceCnpjStatusClear(){ var el=g("ceCnpjStatus"); if(!el)return; el.style.display="none"; el.className="ce-cnpj-status"; }
+
+/* ═══════════════════════════════════
+   ESTADO
+═══════════════════════════════════ */
+var CE_CACHE=[], CE_FILTRADA=[], CE_EDITANDO="";
+var CE_SELECIONADAS=[];
+var CE_PAG=1, CE_PAG_TAM=50;
+var CE_SORT_COL="escola", CE_SORT_DIR="asc";
+
+/* ═══════════════════════════════════
+   ABAS INTERNAS
+═══════════════════════════════════ */
+function initAbas(){
+  document.querySelectorAll("#blocoEscolas .ce-tab").forEach(function(btn){
+    btn.addEventListener("click",function(){
+      document.querySelectorAll("#blocoEscolas .ce-tab").forEach(function(b){ b.classList.remove("ativo"); });
+      document.querySelectorAll("#blocoEscolas .ce-painel").forEach(function(p){ p.classList.remove("ativo"); });
+      btn.classList.add("ativo");
+      var painel=g(btn.dataset.tab); if(painel) painel.classList.add("ativo");
+    });
+  });
+}
+
+/* ═══════════════════════════════════
+   SEÇÕES COLAPSÁVEIS
+═══════════════════════════════════ */
+window.ceToggleSection = function(id){
+  var sec=g(id); if(!sec)return;
+  sec.classList.toggle("collapsed");
+};
+
+function ceSectionBadge(secId, badgeId, campos){
+  var preench=campos.some(function(id){ return g(id)&&String(g(id).value||"").trim(); });
+  var badge=g(badgeId); if(!badge)return;
+  badge.classList.toggle("visible",preench);
+}
+
+/* ═══════════════════════════════════
+   BADGE SITUAÇÃO
+═══════════════════════════════════ */
+function atualizarBadgeSit(){
+  var sel=g("ceSituacao"); if(!sel)return;
+  var badge=g("ceSituacaoBadge"); if(!badge)return;
+  var v=String(sel.value||"").toUpperCase();
+  badge.className = v==="ATIVA" ? "ce-badge ce-badge-ok" : v==="INATIVA" ? "ce-badge ce-badge-err" : "ce-badge ce-badge-warn";
+  badge.textContent = v==="ATIVA" ? "✅ Ativa" : v==="INATIVA" ? "🚫 Inativa" : "⏳ Pendente";
+}
+
+/* ═══════════════════════════════════
+   MODO EDIÇÃO
+═══════════════════════════════════ */
+function entrarEdicao(cnpj){
+  CE_EDITANDO=cnpj||"";
+  var lbl=g("ceEditandoLabel"); if(lbl){ lbl.classList.toggle("vis",!!cnpj); }
+  var novo=g("ceNovoCadLabel"); if(novo){ novo.style.display=cnpj?"none":"inline-flex"; }
+  var btn=g("btnCeSalvar"); if(btn) btn.innerHTML=cnpj?"✏️ Atualizar Escola":"🏫 Salvar Escola";
+  // Ir para aba cadastro
+  document.querySelectorAll("#blocoEscolas .ce-tab").forEach(function(b){ b.classList.remove("ativo"); });
+  document.querySelectorAll("#blocoEscolas .ce-painel").forEach(function(p){ p.classList.remove("ativo"); });
+  var tabCad=document.querySelector('#blocoEscolas [data-tab="ceTabCadastro"]');
+  var painelCad=g("ceTabCadastro");
+  if(tabCad) tabCad.classList.add("ativo");
+  if(painelCad) painelCad.classList.add("ativo");
+}
+
+function sairEdicao(){
+  CE_EDITANDO="";
+  var lbl=g("ceEditandoLabel"); if(lbl) lbl.classList.remove("vis");
+  var novo=g("ceNovoCadLabel"); if(novo) novo.style.display="inline-flex";
+  var btn=g("btnCeSalvar"); if(btn) btn.innerHTML="🏫 Salvar Escola";
+}
+
+/* ═══════════════════════════════════
+   COLETAR FORMULÁRIO
+═══════════════════════════════════ */
+function coletar(){
+  function v(id){ return g(id)?String(g(id).value||"").trim():""; }
+  return {
+    nomeEscola:v("ceNomeEscola"), escola:v("ceNomeEscola"),
+    fantasia:v("ceFantasia"), cnpj:v("ceCnpj"),
+    codigoInterno:v("ceCodigoInterno"), rede:v("ceRede"),
+    municipio:v("ceMunicipio"), cidade:v("ceMunicipio"),
+    uf:v("ceUf").toUpperCase(), cep:v("ceCep"),
+    endereco:v("ceEndereco"), numero:v("ceNumero"),
+    complemento:v("ceComplemento"), bairro:v("ceBairro"),
+    telefone:v("ceTelefone"), whatsapp:v("ceWhatsapp"),
+    email:v("ceEmail"), responsavel:v("ceResponsavel"),
+    cargoResponsavel:v("ceCargoResponsavel"),
+    situacao:g("ceSituacao")?String(g("ceSituacao").value||"ATIVA"):"ATIVA",
+    observacoes:v("ceObservacoes")
+  };
+}
+
+function limparForm(){
+  ["ceCnpj","ceNomeEscola","ceFantasia","ceCodigoInterno","ceRede",
+   "ceMunicipio","ceUf","ceCep","ceEndereco","ceNumero","ceComplemento",
+   "ceBairro","ceTelefone","ceWhatsapp","ceEmail","ceResponsavel",
+   "ceCargoResponsavel","ceObservacoes"].forEach(function(id){ var el=g(id); if(el)el.value=""; });
+  var sit=g("ceSituacao"); if(sit)sit.value="ATIVA";
+  sairEdicao(); atualizarBadgeSit(); ceMsgClear("ceMsgBox"); ceCnpjStatusClear();
+}
+
+function preencherForm(item){
+  if(!item)return;
+  function set(id,chaves){ var el=g(id); if(!el)return; el.value=valCampo(item,Array.isArray(chaves)?chaves:[chaves])||""; }
+  set("ceNomeEscola",["NomeEscola","escola","Escola","razaoSocial","Escola (Razão Social)"]);
+  set("ceFantasia",  ["Fantasia","fantasia","nomeFantasia"]);
+  set("ceCnpj",      ["CNPJ","cnpj"]);
+  set("ceCodigoInterno",["CodigoInterno","codigoInterno","unidade"]);
+  set("ceRede",      ["Rede","rede"]);
+  set("ceMunicipio", ["Municipio","municipio","Cidade","cidade"]);
+  set("ceUf",        ["UF","uf"]);
+  set("ceCep",       ["CEP","cep"]);
+  set("ceEndereco",  ["Endereco","endereco","Endereço"]);
+  set("ceNumero",    ["Numero","numero","Número"]);
+  set("ceComplemento",["Complemento","complemento"]);
+  set("ceBairro",    ["Bairro","bairro"]);
+  set("ceTelefone",  ["Telefone","telefone","Telefone 1"]);
+  set("ceWhatsapp",  ["Whatsapp","whatsapp","WhatsApp","Telefone 2"]);
+  set("ceEmail",     ["Email","email","E-mail (principal)"]);
+  set("ceResponsavel",["Responsavel","responsavel"]);
+  set("ceCargoResponsavel",["CargoResponsavel","cargoResponsavel"]);
+  set("ceObservacoes",["Observacoes","observacoes"]);
+  var sit=g("ceSituacao");
+  if(sit){ var s=valCampo(item,["Situacao","situacao","SITUACAO_CADASTRAL"])||"ATIVA"; sit.value=s.toUpperCase()==="INATIVA"?"INATIVA":s.toUpperCase()==="PENDENTE"?"PENDENTE":"ATIVA"; }
+  if(g("ceCnpj"))g("ceCnpj").value=mascaraCnpj(g("ceCnpj").value);
+  if(g("ceCep"))g("ceCep").value=mascaraCep(g("ceCep").value);
+  atualizarBadgeSit();
+}
+
+/* ═══════════════════════════════════
+   MÉTRICAS
+═══════════════════════════════════ */
+function atualizarMetricas(lista){
+  var ativas=0,inativas=0,comEmail=0,semEmail=0,comCnpj=0;
+  (lista||CE_CACHE).forEach(function(item){
+    var sit=String(valCampo(item,["Situacao","situacao","SITUACAO_CADASTRAL"])||"ATIVA").toUpperCase();
+    if(sit==="ATIVA")ativas++; else if(sit==="INATIVA")inativas++;
+    if(valCampo(item,["Email","email","EmailsTodos","emailsTodos"]))comEmail++; else semEmail++;
+    if(valCampo(item,["CNPJ","cnpj"]))comCnpj++;
+  });
+  function set(id,v){ var el=g(id); if(!el)return; el.textContent=v; el.classList.add("animating"); setTimeout(function(){el.classList.remove("animating");},550); }
+  set("ceStatTotal",(lista||CE_CACHE).length);
+  set("ceStatAtivas",ativas);
+  set("ceStatInativas",inativas);
+  set("ceStatComEmail",comEmail);
+  set("ceStatSemEmail",semEmail);
+  set("ceStatComCnpj",comCnpj);
+}
+
+/* ═══════════════════════════════════
+   FILTROS
+═══════════════════════════════════ */
+function popularMunicipios(){
+  var sel=g("ceFiltroMun"); if(!sel)return;
+  var atual=sel.value, munis={};
+  CE_CACHE.forEach(function(item){ var m=valCampo(item,["Municipio","municipio","Cidade","cidade"]); if(m)munis[m]=true; });
+  sel.innerHTML='<option value="">Todos os municípios</option>';
+  Object.keys(munis).sort(function(a,b){ return a.localeCompare(b,"pt-BR"); }).forEach(function(m){
+    var opt=document.createElement("option"); opt.value=m; opt.textContent=m; if(m===atual)opt.selected=true; sel.appendChild(opt);
+  });
+}
+
+function aplicarFiltros(){
+  var termo=norm(g("ceBusca")?g("ceBusca").value:"");
+  var fSit=g("ceFiltroSit")?g("ceFiltroSit").value:"";
+  var fMun=g("ceFiltroMun")?g("ceFiltroMun").value:"";
+  CE_FILTRADA=CE_CACHE.filter(function(item){
+    if(fSit){ var sit=String(valCampo(item,["Situacao","situacao","SITUACAO_CADASTRAL"])||"ATIVA").toUpperCase(); if(sit!==fSit)return false; }
+    if(fMun){ var m=valCampo(item,["Municipio","municipio","Cidade","cidade"]); if(m!==fMun)return false; }
+    if(termo){
+      var txt=norm([valCampo(item,["NomeEscola","escola","Escola","razaoSocial"]),valCampo(item,["CNPJ","cnpj"]),valCampo(item,["Municipio","municipio","cidade"]),valCampo(item,["UF","uf"]),valCampo(item,["Email","email"]),valCampo(item,["Telefone","telefone"]),valCampo(item,["Bairro","bairro"]),valCampo(item,["Responsavel","responsavel"]),valCampo(item,["Fantasia","fantasia"]),valCampo(item,["Endereco","endereco"])].join(" "));
+      if(txt.indexOf(termo)<0)return false;
+    }
+    return true;
+  });
+  ordenar(); CE_PAG=1; renderTabela();
+}
+
+function ordenar(){
+  CE_FILTRADA.sort(function(a,b){
+    var va=norm(valCampo(a,[CE_SORT_COL])||"");
+    var vb=norm(valCampo(b,[CE_SORT_COL])||"");
+    var r=va.localeCompare(vb,"pt-BR");
+    return CE_SORT_DIR==="asc"?r:-r;
+  });
+}
+
+function limparFiltros(){
+  var b=g("ceBusca"); if(b)b.value="";
+  var s=g("ceFiltroSit"); if(s)s.value="";
+  var m=g("ceFiltroMun"); if(m)m.value="";
+  aplicarFiltros();
+}
+
+/* ═══════════════════════════════════
+   TABELA
+═══════════════════════════════════ */
+function chipSit(sit){
+  var s=String(sit||"ATIVA").toUpperCase();
+  var cls=s==="ATIVA"?"ce-chip-ativa":s==="INATIVA"?"ce-chip-inativa":"ce-chip-pendente";
+  var ico=s==="ATIVA"?"✅":s==="INATIVA"?"🚫":"⏳";
+  return '<span class="ce-chip '+cls+'">'+ico+' '+s+'</span>';
+}
+
+/* ═══════════════════════════════════
+   SELEÇÃO EM MASSA
+═══════════════════════════════════ */
+function atualizarBarraAcoesMassa(){
+  var barra=g("ceBarraAcoesMassa"); if(!barra)return;
+  var n=CE_SELECIONADAS.length;
+  barra.style.display=n>0?"flex":"none";
+  var lbl=g("ceBarraAcoesLabel"); if(lbl)lbl.textContent=n+" selecionada"+(n===1?"":"s");
+  var chkTodos=g("ceCheckTodos");
+  if(chkTodos){
+    var visiveis=Array.prototype.map.call(document.querySelectorAll("#ceTabelaBody .ce-row-check"),function(c){ return c.dataset.chave; });
+    var todasMarcadas=visiveis.length>0 && visiveis.every(function(ch){ return CE_SELECIONADAS.indexOf(ch)>=0; });
+    chkTodos.checked=todasMarcadas;
+    chkTodos.indeterminate=!todasMarcadas && visiveis.some(function(ch){ return CE_SELECIONADAS.indexOf(ch)>=0; });
+  }
+}
+
+function ceItensSelecionados(){
+  return CE_FILTRADA.filter(function(item){
+    var chave=valCampo(item,["CNPJ","cnpj"]);
+    return CE_SELECIONADAS.indexOf(chave)>=0;
+  });
+}
+
+function ceDesmarcarTodas(){
+  CE_SELECIONADAS=[];
+  document.querySelectorAll("#ceTabelaBody .ce-row-check").forEach(function(c){ c.checked=false; c.closest("tr").classList.remove("ce-row-selected"); });
+  atualizarBarraAcoesMassa();
+}
+
+function ceMassaAtualizarSituacao(novaSituacao){
+  var itens=ceItensSelecionados();
+  if(!itens.length)return;
+  var rotulo=novaSituacao==="ATIVA"?"ativar":"inativar";
+  if(!confirm("Confirma "+rotulo+" "+itens.length+" escola(s) selecionada(s)?"))return;
+  var cnpjs=itens.map(function(it){ return valCampo(it,["CNPJ","cnpj"]); }).filter(Boolean);
+  var btn=novaSituacao==="ATIVA"?g("btnCeMassaAtivar"):g("btnCeMassaInativar");
+  btnLoad(btn,"Atualizando...");
+  ceMsg("ceMsgTabela","Atualizando situação de "+cnpjs.length+" escola(s)...","info");
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btnReset(btn);
+      if(!resp||resp.ok!==true){ ceMsg("ceMsgTabela",(resp&&resp.mensagem)||"Erro ao atualizar em massa.","err"); return; }
+      ceMsg("ceMsgTabela","✅ "+(resp.atualizadas||cnpjs.length)+" escola(s) atualizada(s) para "+novaSituacao+".","ok");
+      ceDesmarcarTodas(); carregarLista();
+    })
+    .withFailureHandler(function(err){
+      btnReset(btn);
+      ceMsg("ceMsgTabela","Erro: "+esc((err&&err.message)||String(err||"")),"err");
+    })
+    .atualizarSituacaoEscolasEmLote(cnpjs,novaSituacao);
+}
+
+function ceMassaExcluir(){
+  var itens=ceItensSelecionados();
+  if(!itens.length)return;
+  if(!confirm("⚠️ Confirma EXCLUIR "+itens.length+" escola(s) selecionada(s)?\n\nEssa ação não pode ser desfeita."))return;
+  var cnpjs=itens.map(function(it){ return valCampo(it,["CNPJ","cnpj"]); }).filter(Boolean);
+  var btn=g("btnCeMassaExcluir"); btnLoad(btn,"Excluindo...");
+  ceMsg("ceMsgTabela","Excluindo "+cnpjs.length+" escola(s)...","info");
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btnReset(btn);
+      if(!resp||resp.ok!==true){ ceMsg("ceMsgTabela",(resp&&resp.mensagem)||"Erro ao excluir em massa.","err"); return; }
+      ceMsg("ceMsgTabela","✅ "+(resp.excluidas||cnpjs.length)+" escola(s) excluída(s).","ok");
+      ceDesmarcarTodas(); carregarLista();
+    })
+    .withFailureHandler(function(err){
+      btnReset(btn);
+      ceMsg("ceMsgTabela","Erro: "+esc((err&&err.message)||String(err||"")),"err");
+    })
+    .excluirEscolasEmLote(cnpjs);
+}
+
+function ceMassaEmail(){
+  var itens=ceItensSelecionados();
+  if(!itens.length)return;
+  var emails=itens.map(function(it){ return valCampo(it,["Email","email","E-mail (principal)"]); }).filter(Boolean);
+  if(!emails.length){ ceMsg("ceMsgTabela","Nenhuma das escolas selecionadas tem e-mail cadastrado.","warn"); return; }
+  var semEmail=itens.length-emails.length;
+  window.open("mailto:?bcc="+encodeURIComponent(emails.join(","))+"&subject="+encodeURIComponent("SindEducação-ES"),"_blank");
+  if(semEmail>0)ceMsg("ceMsgTabela","E-mail aberto com "+emails.length+" destinatário(s). "+semEmail+" escola(s) selecionada(s) sem e-mail foram ignoradas.","warn");
+}
+
+function renderTabela(){
+  var tbody=g("ceTabelaBody"); if(!tbody)return;
+  var total=CE_FILTRADA.length;
+  var totalPags=Math.max(1,Math.ceil(total/CE_PAG_TAM));
+  if(CE_PAG>totalPags)CE_PAG=totalPags;
+  var ini=(CE_PAG-1)*CE_PAG_TAM, fim=Math.min(ini+CE_PAG_TAM,total);
+  var pag=CE_FILTRADA.slice(ini,fim);
+
+  var cnt=g("ceContadorRegistros"); if(cnt)cnt.textContent=total+" registro(s)";
+  var info=g("cePagInfo"); if(info)info.textContent="Mostrando "+(total===0?0:ini+1)+"–"+fim+" de "+total;
+  var infoFilt=g("ceInfoFiltro");
+  if(infoFilt)infoFilt.textContent=(total<CE_CACHE.length?"Filtrado: "+total+" de "+CE_CACHE.length:"Total: "+total);
+  var bAnt=g("btnCePagAnt"); if(bAnt)bAnt.disabled=CE_PAG<=1;
+  var bProx=g("btnCePagProx"); if(bProx)bProx.disabled=CE_PAG>=totalPags;
+
+  if(!pag.length){
+    tbody.innerHTML='<tr><td colspan="5"><div class="ce-table-empty">📭 Nenhuma escola encontrada.<br><small>Tente limpar os filtros ou cadastrar uma nova escola.</small></div></td></tr>';
+    atualizarBarraAcoesMassa();
+    return;
+  }
+
+  var html="";
+  pag.forEach(function(item,i){
+    var idx=ini+i;
+    var nome=valCampo(item,["NomeEscola","escola","Escola","razaoSocial","Escola (Razão Social)"]);
+    var cnpj=valCampo(item,["CNPJ","cnpj"]);
+    var mun=valCampo(item,["Municipio","municipio","Cidade","cidade"]);
+    var uf=valCampo(item,["UF","uf"]);
+    var email=valCampo(item,["Email","email","E-mail (principal)"]);
+    var tel=valCampo(item,["Telefone","telefone","Telefone 1"]);
+    var sit=valCampo(item,["Situacao","situacao","SITUACAO_CADASTRAL"])||"ATIVA";
+    var munUf=mun+(uf?" / "+uf:"");
+    var av=avatarIniciais(nome);
+    var chave=cnpj||("idx:"+idx);
+    var marcado=CE_SELECIONADAS.indexOf(chave)>=0;
+    html+=
+      '<tr data-idx="'+idx+'"'+(marcado?' class="ce-row-selected"':'')+'>'
+      +'<td onclick="event.stopPropagation()"><input type="checkbox" class="ce-row-check" data-chave="'+esc(chave)+'" data-idx="'+idx+'"'+(marcado?' checked':'')+'></td>'
+      +'<td><div style="display:flex;align-items:center;gap:8px;min-width:0;">'
+        +'<div class="ce-avatar" style="flex-shrink:0;">'+esc(av)+'</div>'
+        +'<div style="min-width:0;">'
+          +'<strong style="display:block;font-size:12.5px;color:var(--ce-g900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(nome)+'</strong>'
+          +'<span style="font-size:10.5px;color:var(--ce-g500);">'+esc(munUf)+'</span>'
+        +'</div>'
+      +'</div></td>'
+      +'<td style="font-family:monospace;font-size:11.5px;white-space:nowrap;color:var(--ce-g600);">'+esc(cnpj)+'</td>'
+      +'<td>'+(email
+        ?'<a href="mailto:'+esc(email)+'" style="color:var(--ce-blue);text-decoration:none;font-size:12px;font-weight:600;" onclick="event.stopPropagation()">'+esc(email)+'</a>'
+        :'<span style="color:var(--ce-red);font-size:11px;font-weight:700;">⚠ Sem e-mail</span>')
+      +'</td>'
+      +'<td class="no-clip"><div style="display:flex;gap:5px;">'
+        +'<button class="ce-btn ce-btn-outline ce-btn-xs ce-btn-edit" data-idx="'+idx+'" title="Editar">✏️ Editar</button>'
+        +(email?'<button class="ce-btn ce-btn-outline ce-btn-xs ce-btn-mail" data-email="'+esc(email)+'" data-nome="'+esc(nome)+'" title="Enviar e-mail" onclick="event.stopPropagation()">📧</button>':'')
+      +'</div></td>'
+      +'</tr>';
+  });
+  tbody.innerHTML=html;
+  atualizarBarraAcoesMassa();
+
+  tbody.querySelectorAll(".ce-row-check").forEach(function(chk){
+    chk.addEventListener("change",function(){
+      var chave=this.dataset.chave;
+      var i=CE_SELECIONADAS.indexOf(chave);
+      if(this.checked){ if(i<0)CE_SELECIONADAS.push(chave); this.closest("tr").classList.add("ce-row-selected"); }
+      else { if(i>=0)CE_SELECIONADAS.splice(i,1); this.closest("tr").classList.remove("ce-row-selected"); }
+      atualizarBarraAcoesMassa();
+    });
+  });
+
+  tbody.querySelectorAll("tr[data-idx]").forEach(function(row){
+    row.addEventListener("click",function(e){
+      if(e.target.closest("button")||e.target.closest("a")||e.target.closest("input"))return;
+      var idx=parseInt(this.getAttribute("data-idx"),10);
+      var item=CE_FILTRADA[idx]; if(!item)return;
+      tbody.querySelectorAll("tr").forEach(function(r){ r.classList.remove("ce-row-editing"); });
+      this.classList.add("ce-row-editing");
+      preencherForm(item);
+      entrarEdicao(valCampo(item,["CNPJ","cnpj"]));
+      ceMsg("ceMsgBox","Editando: <strong>"+esc(valCampo(item,["NomeEscola","escola","Escola","razaoSocial"])||"—")+"</strong>","info");
+    });
+  });
+
+  tbody.querySelectorAll(".ce-btn-edit").forEach(function(btn){
+    btn.addEventListener("click",function(e){
+      e.stopPropagation();
+      var idx=parseInt(this.dataset.idx,10);
+      var item=CE_FILTRADA[idx]; if(!item)return;
+      preencherForm(item);
+      entrarEdicao(valCampo(item,["CNPJ","cnpj"]));
+      ceMsg("ceMsgBox","Editando: <strong>"+esc(valCampo(item,["NomeEscola","escola","Escola","razaoSocial"])||"—")+"</strong>","info");
+    });
+  });
+
+  tbody.querySelectorAll(".ce-btn-mail").forEach(function(btn){
+    btn.addEventListener("click",function(){
+      window.open("mailto:"+this.dataset.email+"?subject=SindEducação-ES - "+encodeURIComponent(this.dataset.nome),"_blank");
+    });
+  });
+}
+
+/* ═══════════════════════════════════
+   ORDENAÇÃO
+═══════════════════════════════════ */
+function initOrdenacao(){
+  document.querySelectorAll("#ceTabelaEscolas thead th[data-col]").forEach(function(th){
+    th.addEventListener("click",function(){
+      var col=this.dataset.col;
+      if(CE_SORT_COL===col){ CE_SORT_DIR=CE_SORT_DIR==="asc"?"desc":"asc"; }
+      else { CE_SORT_COL=col; CE_SORT_DIR="asc"; }
+      document.querySelectorAll("#ceTabelaEscolas thead th").forEach(function(h){ h.classList.remove("sort-asc","sort-desc"); });
+      this.classList.add("sort-"+CE_SORT_DIR);
+      ordenar(); renderTabela();
+    });
+  });
+}
+
+/* ═══════════════════════════════════
+   CARREGAR LISTA
+═══════════════════════════════════ */
+function carregarLista(){
+  var btn=g("btnCeRecarregar"); btnLoad(btn,"...");
+  if(typeof google==="undefined"||!google.script||!google.script.run){ btnReset(btn); return; }
+  google.script.run
+    .withSuccessHandler(function(lista){
+      btnReset(btn);
+    console.log("ESCOLAS RECEBIDAS:", lista ? lista.length : "null/undefined", Array.isArray(lista));
+      CE_CACHE=Array.isArray(lista)?lista:[];
+      CE_FILTRADA=CE_CACHE.slice();
+      ordenar(); renderTabela(); atualizarMetricas(); popularMunicipios();
+    })
+    .withFailureHandler(function(err){
+      btnReset(btn);
+      ceMsg("ceMsgTabela","Erro ao carregar: "+esc((err&&err.message)||String(err||"")),"err");
+    })
+ .listarEscolasParaModulo();
+}
+
+/* ═══════════════════════════════════
+   CONSULTAR CNPJ
+═══════════════════════════════════ */
+function consultarCnpj(){
+  var cnpj=g("ceCnpj")?g("ceCnpj").value:"";
+  if(digits(cnpj).length!==14){ ceCnpjStatus("Informe um CNPJ válido com 14 dígitos.","err"); return; }
+  var btn=g("btnCeConsultarCnpj"); btnLoad(btn,"Consultando...");
+  ceCnpjStatus("⏳ Consultando na Receita Federal...","info");
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btnReset(btn);
+      if(!resp||resp.erro){ ceCnpjStatus((resp&&resp.mensagem)||"CNPJ não encontrado.","err"); return; }
+      preencherForm({
+        razaoSocial:resp.razaoSocial||resp.nome||"",
+        NomeEscola:resp.razaoSocial||resp.nome||"",
+        Fantasia:resp.fantasia||resp.nomeFantasia||"",
+        Email:resp.email||"",
+        Endereco:resp.endereco||"", Numero:resp.numero||"",
+        Complemento:resp.complemento||"", Bairro:resp.bairro||"",
+        Municipio:resp.cidade||resp.municipio||"", UF:resp.uf||"",
+        CEP:resp.cep||"", Telefone:resp.telefone1||resp.tel1||"",
+        Situacao:"ATIVA"
+      });
+      ceCnpjStatus("✅ Dados preenchidos automaticamente pelo CNPJ.","ok");
+    })
+    .withFailureHandler(function(err){ btnReset(btn); ceCnpjStatus("Erro: "+esc((err&&err.message)||String(err||"")),"err"); })
+    .consultarCnpjEscola(cnpj);
+}
+
+function sincronizarCnpj(){
+  var cnpj=g("ceCnpj")?g("ceCnpj").value:"";
+  if(digits(cnpj).length!==14){ ceCnpjStatus("Informe um CNPJ válido.","err"); return; }
+  var btn=g("btnCeSincronizarCnpj"); btnLoad(btn,"Sincronizando...");
+  ceCnpjStatus("⏳ Sincronizando dados na base...","info");
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btnReset(btn);
+      if(!resp||resp.erro){ ceCnpjStatus((resp&&resp.mensagem)||"Não foi possível sincronizar.","err"); return; }
+      ceCnpjStatus("✅ Sincronização concluída. Status: "+(resp.status||"OK"),"ok");
+      carregarLista();
+    })
+    .withFailureHandler(function(err){ btnReset(btn); ceCnpjStatus("Erro: "+esc((err&&err.message)||String(err||"")),"err"); })
+    .sincronizarEscolaPorCnpj(cnpj,true);
+}
+
+/* ── CEP automático via ViaCEP ── */
+function buscarCep(cep){
+  var d=digits(cep);
+  if(d.length!==8)return;
+  fetch("https://viacep.com.br/ws/"+d+"/json/")
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if(j.erro)return;
+      var setVal=function(id,v){ var el=g(id); if(el&&!String(el.value||"").trim()) el.value=v||""; };
+      setVal("ceEndereco",j.logradouro);
+      setVal("ceBairro",j.bairro);
+      setVal("ceMunicipio",j.localidade);
+      setVal("ceUf",j.uf);
+    })
+    .catch(function(){});
+}
+
+/* ═══════════════════════════════════
+   SALVAR ESCOLA
+═══════════════════════════════════ */
+function salvarEscola(){
+  var dados=coletar();
+  if(!dados.nomeEscola){ ceMsg("ceMsgBox","Informe o nome da escola.","err"); if(g("ceNomeEscola"))g("ceNomeEscola").focus(); return; }
+  var btn=g("btnCeSalvar"); btnLoad(btn,"Salvando...");
+  ceMsg("ceMsgBox","Salvando cadastro...","info");
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btnReset(btn);
+      if(!resp||(resp.ok!==true&&resp.erro!==false&&!resp.mensagem)){ ceMsg("ceMsgBox",(resp&&resp.mensagem)||"Erro ao salvar.","err"); return; }
+      if(resp.ok===false){ ceMsg("ceMsgBox",resp.mensagem||"Erro ao salvar.","err"); return; }
+      ceMsg("ceMsgBox",resp.mensagem||(resp.atualizado?"✅ Escola atualizada com sucesso.":"✅ Escola cadastrada com sucesso."),"ok");
+      if(typeof toast==="function") toast(resp.mensagem||"Escola salva!","ok");
+      limparForm(); carregarLista();
+    })
+    .withFailureHandler(function(err){ btnReset(btn); ceMsg("ceMsgBox","Erro: "+esc((err&&err.message)||String(err||"")),"err"); })
+    .cadastrarEscola(dados);
+}
+
+/* ═══════════════════════════════════
+   AÇÕES AVANÇADAS
+═══════════════════════════════════ */
+function importarDeAba(){
+  var btn=g("btnCeImportar"); btnLoad(btn,"Importando...");
+  ceMsg("ceMsgBox","Importando escolas da aba IMPORTACAO_ESCOLAS...","info");
+  google.script.run
+    .withSuccessHandler(function(res){ btnReset(btn); res=res||{}; ceMsg("ceMsgBox","✅ Importação concluída! Importadas: <strong>"+(res.importadas||0)+"</strong> · Atualizadas: <strong>"+(res.atualizadas||0)+"</strong> · Puladas: <strong>"+(res.puladas||0)+"</strong>","ok"); carregarLista(); })
+    .withFailureHandler(function(err){ btnReset(btn); ceMsg("ceMsgBox","Erro ao importar: "+esc((err&&err.message)||String(err||"")),"err"); })
+    .importarEscolasDeAba();
+}
+
+function analisarDup(){
+  var btn=g("btnCeAnalisarDup"); btnLoad(btn,"Analisando...");
+  ceMsg("ceMsgBox","Analisando duplicadas...","info");
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btnReset(btn);
+      if(!resp||resp.ok!==true){ ceMsg("ceMsgBox",(resp&&resp.mensagem)||"Erro ao analisar.","err"); return; }
+      var html="🧪 Duplicadas: <strong>"+(resp.duplicadas||0)+"</strong> · Grupos: <strong>"+(resp.grupos||0)+"</strong>";
+      if(resp.detalhes&&resp.detalhes.length){ html+="<br><br>"; resp.detalhes.slice(0,5).forEach(function(gx){ html+="• <strong>"+esc(gx.manterNome||gx.chave||"")+"</strong> — "+gx.quantidade+" ocorrências<br>"; }); }
+      ceMsg("ceMsgBox",html,resp.duplicadas>0?"warn":"ok");
+    })
+    .withFailureHandler(function(err){ btnReset(btn); ceMsg("ceMsgBox","Erro: "+esc((err&&err.message)||String(err||"")),"err"); })
+    .analisarEscolasDuplicadas();
+}
+
+function removerDup(){
+  if(!confirm("Deseja remover as escolas duplicadas?\n\nSerá criado um backup automático antes."))return;
+  var btn=g("btnCeRemoverDup"); btnLoad(btn,"Limpando...");
+  ceMsg("ceMsgBox","Removendo duplicadas...","info");
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btnReset(btn);
+      if(!resp||resp.ok!==true){ ceMsg("ceMsgBox",(resp&&resp.mensagem)||"Erro.","err"); return; }
+      ceMsg("ceMsgBox","✅ Removidas: <strong>"+(resp.removidas||0)+"</strong> · Mantidas: <strong>"+(resp.mantidas||0)+"</strong> · Backup: <strong>"+esc(resp.backup||"—")+"</strong>","ok");
+      carregarLista();
+    })
+    .withFailureHandler(function(err){ btnReset(btn); ceMsg("ceMsgBox","Erro: "+esc((err&&err.message)||String(err||"")),"err"); })
+    .removerEscolasDuplicadas();
+}
+
+function exportarCsv(){
+  if(!CE_CACHE.length){ if(typeof toast==="function")toast("Nenhum dado para exportar.","warn"); return; }
+  var headers=["Nome","Fantasia","CNPJ","Município","UF","E-mail","Telefone","WhatsApp","Endereço","Bairro","CEP","Responsável","Situação"];
+  var rows=[headers].concat(CE_CACHE.map(function(item){
+    return [valCampo(item,["NomeEscola","escola","Escola","razaoSocial"]),valCampo(item,["Fantasia","fantasia"]),valCampo(item,["CNPJ","cnpj"]),valCampo(item,["Municipio","municipio","cidade"]),valCampo(item,["UF","uf"]),valCampo(item,["Email","email"]),valCampo(item,["Telefone","telefone"]),valCampo(item,["Whatsapp","whatsapp"]),valCampo(item,["Endereco","endereco"]),valCampo(item,["Bairro","bairro"]),valCampo(item,["CEP","cep"]),valCampo(item,["Responsavel","responsavel"]),valCampo(item,["Situacao","situacao"])||"ATIVA"];
+  }));
+  var csv=rows.map(function(row){ return row.map(function(c){ return '"'+String(c==null?"":c).replace(/"/g,'""')+'"'; }).join(";"); }).join("\n");
+  var blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"}), url=URL.createObjectURL(blob), a=document.createElement("a");
+  a.href=url; a.download="escolas_sisgep_"+new Date().toISOString().slice(0,10)+".csv"; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  if(typeof toast==="function")toast("CSV exportado com sucesso.","ok");
+}
+
+/* ═══════════════════════════════════
+   CAPTAÇÃO RECEITA
+═══════════════════════════════════ */
+function setPipelineStep(step){
+  for(var i=1;i<=5;i++){
+    var el=g("ceStep"+i);
+    if(!el)continue;
+    el.classList.remove("done","active");
+    if(i<step)el.classList.add("done");
+    else if(i===step)el.classList.add("active");
+  }
+}
+
+function runReceita(fnName,btnId,loadingTxt,stepAtivo,successFn){
+  var btn=g(btnId); btnLoad(btn,loadingTxt);
+  ceMsgClear("ceMsgReceita");
+  if(stepAtivo)setPipelineStep(stepAtivo);
+  google.script.run
+    .withSuccessHandler(function(resp){ btnReset(btn); successFn(resp); })
+    .withFailureHandler(function(err){ btnReset(btn); ceMsg("ceMsgReceita","Erro: "+esc((err&&err.message)||String(err||"")),"err"); setPipelineStep(1); })[fnName]();
+}
+
+function mostrarCompBar(r){
+  var bar=g("ceCompBar"); if(!bar)return;
+  bar.style.display="flex";
+  var cn=g("ceCompNova"); if(cn)cn.textContent=r.novas||0;
+  var ce=g("ceCompExist"); if(ce)ce.textContent=r.existentes||0;
+  var cf=g("ceCompFilt"); if(cf)cf.textContent=r.filtradas||0;
+  var cerr=g("ceCompErr"); if(cerr)cerr.textContent=r.erros||0;
+}
+
+function criarAbas(){ runReceita("criarAbasModuloReceita","btnCeCriarAbas","Criando...",1,function(r){ if(!r||r.ok!==true){ceMsg("ceMsgReceita",(r&&r.mensagem)||"Erro.","err");setPipelineStep(1);return;} ceMsg("ceMsgReceita","✅ "+esc(r.mensagem||"Abas criadas."),"ok"); setPipelineStep(2); }); }
+function processarExtracao(){ runReceita("processarExtracaoOficialReceita","btnCeProcessar","Processando...",3,function(r){ if(!r||r.ok!==true){ceMsg("ceMsgReceita",(r&&r.mensagem)||"Erro.","err");setPipelineStep(3);return;} mostrarCompBar(r); ceMsg("ceMsgReceita","✅ "+esc(r.mensagem||"Processado."),"ok"); setPipelineStep(4); }); }
+function importarReceita(){ runReceita("importarNovasEscolasReceita","btnCeImportarRec","Importando...",5,function(r){ if(!r||r.ok!==true){ceMsg("ceMsgReceita",(r&&r.mensagem)||"Erro.","err");return;} ceMsg("ceMsgReceita","✅ "+esc(r.mensagem||"Importado."),"ok"); setPipelineStep(5); carregarLista(); }); }
+
+function executarPipeline(){
+  var btn=g("btnCePipeline"); btnLoad(btn,"Executando pipeline...");
+  ceMsgClear("ceMsgReceita"); setPipelineStep(1);
+  google.script.run
+    .withSuccessHandler(function(r){
+      btnReset(btn);
+      if(!r||r.ok!==true){ ceMsg("ceMsgReceita",(r&&r.mensagem)||"Erro.","err"); return; }
+      mostrarCompBar(r.comparar||{});
+      ceMsg("ceMsgReceita","✅ Pipeline concluído! Captadas: <strong>"+((r.captar||{}).gravadas||0)+"</strong> · Novas: <strong>"+((r.comparar||{}).novas||0)+"</strong> · Existentes: <strong>"+((r.comparar||{}).existentes||0)+"</strong>","ok");
+      setPipelineStep(5); carregarLista();
+    })
+    .withFailureHandler(function(err){ btnReset(btn); ceMsg("ceMsgReceita","Erro: "+esc((err&&err.message)||String(err||"")),"err"); setPipelineStep(1); })
+    .executarPipelineReceita();
+}
+
+function captarCnpjs()   { runReceita("captarNovasEscolasReceita","btnCeCaptar","Captando...",3,function(r){ ceMsg("ceMsgReceita",r.ok?"✅ Captadas: <strong>"+(r.gravadas||0)+"</strong>":(r.mensagem||"Erro."),"ok"); }); }
+function filtrarEscolas(){ runReceita("filtrarEscolasNovas","btnCeFiltrar","Filtrando...",3,function(r){ ceMsg("ceMsgReceita",r.ok?"✅ Filtradas: <strong>"+(r.filtradas||0)+"</strong>":(r.mensagem||"Erro."),"ok"); }); }
+function compararBase()  { runReceita("compararComBaseEscolas","btnCeComparar","Comparando...",4,function(r){ ceMsg("ceMsgReceita",r.ok?"✅ Novas: <strong>"+(r.novas||0)+"</strong> · Existentes: <strong>"+(r.existentes||0)+"</strong>":(r.mensagem||"Erro."),"ok"); mostrarCompBar(r); }); }
+function criarAbaExt()   { runReceita("criarAbaExtracaoCnpjOficial","btnCeCriarAbaExt","Criando...",1,function(r){ ceMsg("ceMsgReceita",r.ok?"✅ "+esc(r.mensagem||"Aba criada."):(r.mensagem||"Erro."),"ok"); }); }
+
+/* ═══════════════════════════════════
+   BIND EVENTOS
+═══════════════════════════════════ */
+function bind(id,fn){ var el=g(id); if(el&&!el.dataset.ceBound){ el.dataset.ceBound="1"; el.addEventListener("click",fn); } }
+function mask(id,fn){ var el=g(id); if(el&&!el.dataset.ceMask){ el.dataset.ceMask="1"; el.addEventListener("input",function(){ this.value=fn(this.value); }); } }
+
+function bindEventos(){
+  // Tabela / busca
+  bind("btnCeRecarregar",carregarLista);
+  bind("btnCeExportCsv",exportarCsv);
+  bind("btnCeLimparFiltros",limparFiltros);
+  bind("btnCePagAnt",function(){ if(CE_PAG>1){CE_PAG--;renderTabela();} });
+  bind("btnCePagProx",function(){ var tp=Math.ceil(CE_FILTRADA.length/CE_PAG_TAM); if(CE_PAG<tp){CE_PAG++;renderTabela();} });
+
+  // Seleção em massa
+  bind("btnCeMassaAtivar",function(){ ceMassaAtualizarSituacao("ATIVA"); });
+  bind("btnCeMassaInativar",function(){ ceMassaAtualizarSituacao("INATIVA"); });
+  bind("btnCeMassaExcluir",ceMassaExcluir);
+  bind("btnCeMassaEmail",ceMassaEmail);
+  bind("btnCeMassaDesmarcar",ceDesmarcarTodas);
+  var chkTodos=g("ceCheckTodos");
+  if(chkTodos&&!chkTodos.dataset.ceBound){
+    chkTodos.dataset.ceBound="1";
+    chkTodos.addEventListener("change",function(){
+      var marcar=this.checked;
+      document.querySelectorAll("#ceTabelaBody .ce-row-check").forEach(function(c){
+        c.checked=marcar; c.closest("tr").classList.toggle("ce-row-selected",marcar);
+        var chave=c.dataset.chave, i=CE_SELECIONADAS.indexOf(chave);
+        if(marcar){ if(i<0)CE_SELECIONADAS.push(chave); }
+        else { if(i>=0)CE_SELECIONADAS.splice(i,1); }
+      });
+      atualizarBarraAcoesMassa();
+    });
+  }
+
+  bind("btnCeNovaEscola",function(){
+    limparForm();
+    document.querySelectorAll("#blocoEscolas .ce-tab").forEach(function(b){ b.classList.remove("ativo"); });
+    document.querySelectorAll("#blocoEscolas .ce-painel").forEach(function(p){ p.classList.remove("ativo"); });
+    var tabCad=document.querySelector('#blocoEscolas [data-tab="ceTabCadastro"]');
+    var painelCad=g("ceTabCadastro");
+    if(tabCad)tabCad.classList.add("ativo");
+    if(painelCad)painelCad.classList.add("ativo");
+  });
+  bind("ceBtnFiltrarSemEmail",function(){
+    var sel=g("ceFiltroSit"); if(sel)sel.value="";
+    var busca=g("ceBusca"); if(busca)busca.value="";
+    CE_FILTRADA=CE_CACHE.filter(function(item){ return !valCampo(item,["Email","email","EmailsTodos","emailsTodos"]); });
+    ordenar(); CE_PAG=1; renderTabela();
+    document.querySelectorAll("#blocoEscolas .ce-tab").forEach(function(b){ b.classList.remove("ativo"); });
+    document.querySelectorAll("#blocoEscolas .ce-painel").forEach(function(p){ p.classList.remove("ativo"); });
+    var tabBase=document.querySelector('#blocoEscolas [data-tab="ceTabBase"]');
+    var painelBase=g("ceTabBase");
+    if(tabBase)tabBase.classList.add("ativo");
+    if(painelBase)painelBase.classList.add("ativo");
+    if(typeof toast==="function") toast("Filtrando "+CE_FILTRADA.length+" escolas sem e-mail","warn");
+  });
+
+  // Busca com debounce
+  var busca=g("ceBusca");
+  if(busca&&!busca.dataset.ceBound){ busca.dataset.ceBound="1"; busca.addEventListener("input",function(){ clearTimeout(busca._t); busca._t=setTimeout(aplicarFiltros,280); }); }
+  var fSit=g("ceFiltroSit"); if(fSit&&!fSit.dataset.ceBound2){ fSit.dataset.ceBound2="1"; fSit.addEventListener("change",aplicarFiltros); }
+  var fMun=g("ceFiltroMun"); if(fMun&&!fMun.dataset.ceBound2){ fMun.dataset.ceBound2="1"; fMun.addEventListener("change",aplicarFiltros); }
+
+  // Formulário
+  bind("btnCeConsultarCnpj",consultarCnpj);
+  bind("btnCeSincronizarCnpj",sincronizarCnpj);
+  bind("btnCeSalvar",salvarEscola);
+  bind("btnCeLimparForm",limparForm);
+  bind("btnCeImportar",importarDeAba);
+  bind("btnCeAnalisarDup",analisarDup);
+  bind("btnCeRemoverDup",removerDup);
+
+  // Receita
+  bind("btnCeCriarAbas",criarAbas);
+  bind("btnCeProcessar",processarExtracao);
+  bind("btnCeImportarRec",importarReceita);
+  bind("btnCePipeline",executarPipeline);
+  bind("btnCeCaptar",captarCnpjs);
+  bind("btnCeFiltrar",filtrarEscolas);
+  bind("btnCeComparar",compararBase);
+  bind("btnCeCriarAbaExt",criarAbaExt);
+
+  // Máscaras
+  mask("ceCnpj",mascaraCnpj);
+  mask("ceCep",mascaraCep);
+  mask("ceTelefone",mascaraTel);
+  mask("ceWhatsapp",mascaraTel);
+
+  // CEP automático
+  var cepEl=g("ceCep");
+  if(cepEl&&!cepEl.dataset.ceVia){ cepEl.dataset.ceVia="1"; cepEl.addEventListener("blur",function(){ buscarCep(this.value); }); }
+
+  // Situação badge
+  var sit=g("ceSituacao"); if(sit&&!sit.dataset.ceSit){ sit.dataset.ceSit="1"; sit.addEventListener("change",atualizarBadgeSit); }
+
+  // CNPJ enter key
+  var cnpjEl=g("ceCnpj");
+  if(cnpjEl&&!cnpjEl.dataset.ceEnter){ cnpjEl.dataset.ceEnter="1"; cnpjEl.addEventListener("keydown",function(e){ if(e.key==="Enter") consultarCnpj(); }); }
+}
+// ================================================================
+// PATCH CIRÚRGICO — CadastroEscolas.html
+// Substituir APENAS a função ceExecutarAnaliseIA
+// PROBLEMA: template literals (backticks) não funcionam no GAS HTML
+// ================================================================
+
+// LOCALIZE no arquivo:
+//   function ceExecutarAnaliseIA() {
+// e substitua a função INTEIRA pelo código abaixo:
+
+function ceExecutarAnaliseIA() {
+  var cnpj = document.getElementById('ceCnpj') ? document.getElementById('ceCnpj').value : '';
+  var nome = document.getElementById('ceNomeEscola') ? document.getElementById('ceNomeEscola').value : '';
+  var chave = cnpj || nome;
+
+  if (!chave) {
+    alert('Selecione uma escola primeiro.');
+    return;
+  }
+
+  var box = document.getElementById('ceIaResultado');
+
+  if (!box) {
+    alert('Painel da IA não encontrado.');
+    return;
+  }
+
+  box.innerHTML =
+    '<div style="padding:10px;color:#1565C0;font-weight:600;">'
+    + '⏳ Analisando escola com Inteligência SISGEP...'
+    + '</div>';
+
+  google.script.run
+    .withSuccessHandler(function(retorno) {
+      if (!retorno) {
+        box.innerHTML = 'Nenhum retorno da IA.';
+        return;
+      }
+
+      box.innerHTML = String(retorno.resposta || retorno)
+        .replace(/\n/g, '<br>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    })
+    .withFailureHandler(function(erro) {
+      box.innerHTML =
+        '<div style="color:#b91c1c;font-weight:700;">'
+        + 'Erro ao consultar IA:<br><br>'
+        + String((erro && erro.message) || erro || 'Erro desconhecido')
+        + '</div>';
+    })
+    .analisarEscolaIA(chave);
+}
+// ================================================================
+// PATCH CIRÚRGICO — CadastroEscolas.html
+// Substituir as duas funções placeholder no final do <script>:
+//
+//   function ceGerarOficioIA() { alert('...'); }
+//   function ceResponderEmailIA() { alert('...'); }
+//
+// COLE ESTE BLOCO NO LUGAR DAS DUAS FUNÇÕES ACIMA
+// ================================================================
+
+function ceGerarOficioIA() {
+  // Coleta dados do formulário da escola atualmente em edição
+  function v(id) {
+    var el = document.getElementById(id);
+    return el ? String(el.value || "").trim() : "";
+  }
+
+  var dados = {
+    tipo:         "Ofício Livre",          // padrão; usuário pode alterar via instrucoes
+    escola:       v("ceNomeEscola"),
+    cnpj:         v("ceCnpj"),
+    email:        v("ceEmail"),
+    cidade:       v("ceMunicipio"),
+    uf:           v("ceUf"),
+    destinatario: v("ceResponsavel"),
+    cargo:        v("ceCargoResponsavel"),
+    assunto:      "",
+    instrucoes:   ""
+  };
+
+  if (!dados.escola) {
+    alert("Selecione ou preencha uma escola antes de gerar o ofício.");
+    return;
+  }
+
+  // Solicita tipo e assunto via prompt simples
+  var tipoSel = window.prompt(
+    "Qual o tipo do ofício?\n\nOpções: Filiação | Desfiliação | Taxa Negocial | Taxa Assistencial | Ofício Livre",
+    "Ofício Livre"
+  );
+  if (tipoSel === null) return; // cancelou
+  dados.tipo = tipoSel.trim() || "Ofício Livre";
+
+  var assuntoSel = window.prompt("Informe o assunto/referência do ofício (opcional):", "");
+  if (assuntoSel !== null) dados.assunto = assuntoSel.trim();
+
+  var instrSel = window.prompt("Instruções adicionais para a IA (opcional):", "");
+  if (instrSel !== null) dados.instrucoes = instrSel.trim();
+
+  // Exibe loading no painel IA
+  var box = document.getElementById("ceIaResultado");
+  if (box) {
+    box.innerHTML =
+      '<div style="padding:10px;color:#1565C0;font-weight:600;">⏳ Gerando texto do ofício com IA...</div>';
+  }
+
+  google.script.run
+    .withSuccessHandler(function(retorno) {
+      var texto = "";
+      if (retorno && retorno.texto) {
+        texto = retorno.texto;
+      } else if (typeof retorno === "string") {
+        texto = retorno;
+      }
+
+      if (!texto) {
+        if (box) box.innerHTML = '<div style="color:#b91c1c;font-weight:700;">A IA não retornou nenhum texto.</div>';
+        return;
+      }
+
+      if (box) {
+        box.innerHTML =
+          '<div style="margin-bottom:10px;font-size:12px;font-weight:700;color:#1565C0;">📄 Ofício gerado — copie o texto abaixo:</div>'
+          + '<textarea style="width:100%;min-height:220px;border:1.5px solid #bfdbfe;border-radius:10px;padding:12px;font-size:13px;line-height:1.7;resize:vertical;font-family:Plus Jakarta Sans,sans-serif;" id="ceIaOficioTexto">'
+          + text_escape_(texto)
+          + '</textarea>'
+          + '<div style="display:flex;gap:8px;margin-top:10px;">'
+          + '<button type="button" class="ce-btn ce-btn-navy ce-btn-sm" onclick="copiarTextoIA()">📋 Copiar texto</button>'
+          + '<button type="button" class="ce-btn ce-btn-outline ce-btn-sm" onclick="ceGerarOficioIA()">🔄 Regenerar</button>'
+          + '</div>';
+      }
+    })
+    .withFailureHandler(function(erro) {
+      if (box) {
+        box.innerHTML =
+          '<div style="color:#b91c1c;font-weight:700;">Erro ao gerar ofício:<br><br>'
+          + esc(String((erro && erro.message) || erro || "Erro desconhecido"))
+          + '</div>';
+      }
+    })
+    .gerarOficioIA(dados);
+}
+
+
+function ceResponderEmailIA() {
+  // Coleta contexto da escola
+  function v(id) {
+    var el = document.getElementById(id);
+    return el ? String(el.value || "").trim() : "";
+  }
+
+  var escola = v("ceNomeEscola");
+  var cnpj   = v("ceCnpj");
+
+  // Solicita o e-mail recebido via prompt
+  var emailRecebido = window.prompt(
+    "Cole aqui o conteúdo do e-mail recebido da escola:"
+  );
+  if (emailRecebido === null) return; // cancelou
+  emailRecebido = (emailRecebido || "").trim();
+
+  if (!emailRecebido) {
+    alert("Informe o conteúdo do e-mail para gerar uma sugestão de resposta.");
+    return;
+  }
+
+  var assunto = window.prompt("Assunto do e-mail recebido (opcional):", "") || "";
+  var remetente = window.prompt("Remetente (nome ou e-mail, opcional):", escola) || escola;
+  var contexto = window.prompt(
+    "Contexto adicional para a IA (ex: 'escola deve confirmar recebimento do ofício 234/2026') (opcional):",
+    ""
+  ) || "";
+
+  var dados = {
+    emailRecebido: emailRecebido,
+    assunto:       assunto.trim(),
+    remetente:     remetente.trim(),
+    escola:        escola,
+    cnpj:          cnpj,
+    contexto:      contexto.trim()
+  };
+
+  // Exibe loading no painel IA
+  var box = document.getElementById("ceIaResultado");
+  if (box) {
+    box.innerHTML =
+      '<div style="padding:10px;color:#1565C0;font-weight:600;">⏳ Gerando sugestão de resposta com IA...</div>';
+  }
+
+  google.script.run
+    .withSuccessHandler(function(retorno) {
+      var texto = "";
+      if (retorno && retorno.resposta) {
+        texto = retorno.resposta;
+      } else if (typeof retorno === "string") {
+        texto = retorno;
+      }
+
+      if (!texto) {
+        if (box) box.innerHTML = '<div style="color:#b91c1c;font-weight:700;">A IA não retornou nenhum texto.</div>';
+        return;
+      }
+
+      if (box) {
+        box.innerHTML =
+          '<div style="margin-bottom:10px;font-size:12px;font-weight:700;color:#1565C0;">📧 Resposta sugerida — revise e copie:</div>'
+          + '<textarea style="width:100%;min-height:200px;border:1.5px solid #bfdbfe;border-radius:10px;padding:12px;font-size:13px;line-height:1.7;resize:vertical;font-family:Plus Jakarta Sans,sans-serif;" id="ceIaRespostaTexto">'
+          + text_escape_(texto)
+          + '</textarea>'
+          + '<div style="display:flex;gap:8px;margin-top:10px;">'
+          + '<button type="button" class="ce-btn ce-btn-navy ce-btn-sm" onclick="copiarRespostaIA()">📋 Copiar resposta</button>'
+          + '<button type="button" class="ce-btn ce-btn-outline ce-btn-sm" onclick="ceResponderEmailIA()">🔄 Regenerar</button>'
+          + '</div>';
+      }
+    })
+    .withFailureHandler(function(erro) {
+      if (box) {
+        box.innerHTML =
+          '<div style="color:#b91c1c;font-weight:700;">Erro ao gerar resposta:<br><br>'
+          + esc(String((erro && erro.message) || erro || "Erro desconhecido"))
+          + '</div>';
+      }
+    })
+    .responderEmailIA(dados);
+}
+
+
+// ── Helpers usados pelas funções acima ──────────────────────────
+
+// Escapa texto para inserção em textarea (evita injeção de HTML)
+function text_escape_(txt) {
+  return String(txt || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+// Copia texto do textarea gerado pelo Ofício IA
+function copiarTextoIA() {
+  var el = document.getElementById("ceIaOficioTexto");
+  if (!el) return;
+  el.select();
+  try {
+    document.execCommand("copy");
+    if (typeof toast === "function") toast("Texto copiado!", "ok");
+  } catch (e) {
+    alert("Selecione o texto manualmente e copie com Ctrl+C.");
+  }
+}
+
+// Copia texto do textarea gerado pela Resposta IA
+function copiarRespostaIA() {
+  var el = document.getElementById("ceIaRespostaTexto");
+  if (!el) return;
+  el.select();
+  try {
+    document.execCommand("copy");
+    if (typeof toast === "function") toast("Resposta copiada!", "ok");
+  } catch (e) {
+    alert("Selecione o texto manualmente e copie com Ctrl+C.");
+  }
+}
+/* ═══════════════════════════════════
+   INIT
+═══════════════════════════════════ */
+window.initCadastroEscolas = function(){
+  initAbas();
+  initOrdenacao();
+  bindEventos();
+  atualizarBadgeSit();
+  carregarLista();
+};
+
+})();
+
+</script>
+</div>

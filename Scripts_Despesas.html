@@ -1,0 +1,1319 @@
+<script>
+// Scripts_Despesas.html — SISGEP · Módulo Despesas v3
+(function(){
+  "use strict";
+
+  var todasDespesas = [];
+  var despesasFiltradas = [];
+  var paginaAtual = 1;
+  var itensPorPagina = 15;
+  var despesasLote = [];
+  var _idModalAtivo = "";
+  var _fornecedores = [];
+  var _fornSelecionado = null;
+  var _uploadArquivos = [];
+  var _acItemFocado = -1;
+  var _bannerDismissed = false;
+
+  /* ═══ HELPERS ═══ */
+  function g(id){ return document.getElementById(id); }
+  function escHtml(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+  function normText(v){ return String(v||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim(); }
+  function val(id){ var el=g(id); return el?el.value.trim():""; }
+  function setText(id,v){ var el=g(id); if(el) el.textContent=v||"0"; }
+
+  function mascaraValor(el){
+    var v=String(el.value||"").replace(/\D/g,"");
+    if(!v){ el.value=""; return; }
+    v=(parseInt(v,10)/100).toFixed(2).replace(".",",").replace(/\B(?=(\d{3})+(?!\d))/g,".");
+    el.value="R$ "+v;
+  }
+
+  function showToast(msg, tipo){
+    var container = g("toast-inline");
+    if(!container){
+      container = document.createElement("div");
+      container.id = "toast-inline";
+      container.style.cssText = "margin:0 0 8px;";
+      var tabLista = g("tab-lista");
+      if(tabLista) tabLista.insertBefore(container, tabLista.firstChild);
+      else { var main = document.querySelector(".desp-main"); if(main) main.insertBefore(container, main.firstChild); }
+    }
+    var cfg = {
+      success: { bg:"#d1fae5", border:"#6ee7b7", color:"#065f46", ico:"✅" },
+      error:   { bg:"#fee2e2", border:"#fca5a5", color:"#9f1239", ico:"❌" },
+      "":      { bg:"#eff6ff", border:"#93c5fd", color:"#1d4ed8", ico:"ℹ️" }
+    };
+    var c = cfg[tipo||""] || cfg[""];
+    container.innerHTML =
+      '<div style="background:'+c.bg+';border:1px solid '+c.border+';color:'+c.color+';border-radius:10px;padding:12px 16px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
+      c.ico+' '+escHtml(msg)+
+      '<button onclick="this.parentElement.parentElement.innerHTML=\'\'" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:16px;opacity:.5;color:inherit;">✕</button>' +
+      '</div>';
+    container.scrollIntoView({behavior:"smooth", block:"nearest"});
+    setTimeout(function(){ if(container) container.innerHTML=""; }, 6000);
+  }
+
+  function definirDataHoje(id){
+    var hoje=new Date(); var pad=function(n){return n<10?"0"+n:n;};
+    var el=g(id); if(el) el.value=hoje.getFullYear()+"-"+pad(hoje.getMonth()+1)+"-"+pad(hoje.getDate());
+  }
+
+  function formatarTelefone(v){
+    var f=String(v||"").replace(/\D/g,"");
+    if(!f) return "";
+    if(f.length===11) return "("+f.slice(0,2)+") "+f.slice(2,7)+"-"+f.slice(7);
+    if(f.length===10) return "("+f.slice(0,2)+") "+f.slice(2,6)+"-"+f.slice(6);
+    return v;
+  }
+
+  /* ═══ TABS ═══ */
+  function mudarTab(nome){
+    document.querySelectorAll(".tab-btn").forEach(function(b){ b.classList.remove("active"); });
+    document.querySelectorAll(".tab-panel").forEach(function(p){ p.classList.remove("active"); });
+    var painel=g("tab-"+nome); if(painel) painel.classList.add("active");
+    document.querySelectorAll(".tab-btn[data-tab='"+nome+"']").forEach(function(b){ b.classList.add("active"); });
+    if(nome==="lista" && !todasDespesas.length) carregarLista();
+    if(nome==="lote") carregarLote();
+    if(nome==="dashboard"){
+      _bannerDismissed = false;
+      if(g("dashboard-content") && g("dashboard-content").style.display==="none") carregarDashboard();
+    }
+    if(nome==="nova") carregarFornecedoresCache();
+    if(nome==="conciliacao" && typeof window.finConciliacaoInit==="function") window.finConciliacaoInit();
+  }
+
+  /* ═══ DASHBOARD ═══ */
+  function carregarDashboard(){
+    var loader=g("dashboard-loader"); var content=g("dashboard-content");
+    if(loader) loader.style.display="flex";
+    if(content) content.style.display="none";
+    google.script.run
+      .withSuccessHandler(onDashboard)
+      .withFailureHandler(function(e){ if(loader) loader.style.display="none"; showToast("Erro: "+e.message,"error"); })
+      .obterResumoDespesas();
+  }
+
+  function onDashboard(resp){
+    var loader=g("dashboard-loader"); if(loader) loader.style.display="none";
+    if(!resp||!resp.ok){ showToast("Erro ao carregar resumo.","error"); return; }
+    var r=resp.resumo;
+    setText("s-total",r.total); setText("s-valor-total",r.valorTotalFmt);
+    setText("s-vencidas",r.totalVencidas); setText("s-urgentes",r.totalUrgentes);
+    setText("s-doc",r.totalDocRecebido); setText("s-contab",r.totalEnviadosContab);
+    setText("s-pagos",r.totalPagos); setText("s-valor-pago",r.valorPagoFmt);
+    var totalPend=(r.totalPendentes||0)+(r.totalAguardandoDoc||0)+(r.totalDocRecebido||0);
+    var bPend=g("badge-pendentes"); if(bPend){ bPend.textContent=totalPend; bPend.style.display=totalPend>0?"inline":"none"; }
+    var bLote=g("badge-lote"); if(bLote){ bLote.textContent=r.totalDocRecebido; bLote.style.display=r.totalDocRecebido>0?"inline":"none"; }
+    var tbody=g("tabela-categorias");
+    if(tbody){
+      tbody.innerHTML="";
+      var fmt=function(v){ return "R$ "+Number(v||0).toFixed(2).replace(".",","); };
+      var cats=r.porCategoria||{}; var keys=Object.keys(cats);
+      if(!keys.length) tbody.innerHTML='<tr><td colspan="3" style="text-align:center;color:#94a3b8;padding:24px;">Sem dados</td></tr>';
+      else keys.sort().forEach(function(cat){ var d=cats[cat]; tbody.innerHTML+='<tr><td style="font-weight:600;">'+escHtml(cat)+'</td><td>'+d.qtd+'</td><td>'+fmt(d.valor)+'</td></tr>'; });
+    }
+    var content=g("dashboard-content"); if(content) content.style.display="block";
+
+    var banner=g("banner-alerta-vencidas");
+    var cardVencidas=g("card-vencidas");
+    var qtdV=r.totalVencidas||0;
+    if(banner){
+      if(qtdV>0 && !_bannerDismissed){
+        banner.style.display="flex";
+        var bTxt=g("banner-alerta-txt");
+        if(bTxt) bTxt.textContent="Atenção: "+qtdV+" despesa(s) vencida(s) aguardando providência!";
+        if(cardVencidas) cardVencidas.classList.add("alerta-vencido");
+      } else {
+        banner.style.display="none";
+        if(cardVencidas) cardVencidas.classList.remove("alerta-vencido");
+      }
+    }
+
+    var cardContab=g("card-contab");
+    var subContab=g("s-contab-sub");
+    if(cardContab&&subContab){
+      var totalConfirm=r.totalConfirmadosContab||0;
+      var totalContab=r.totalEnviadosContab||0;
+      if(totalConfirm>0){
+        subContab.innerHTML='<span class="badge-confirmado">✅ '+totalConfirm+' confirmada(s) pela contabilidade</span>';
+        cardContab.style.borderColor="rgba(5,150,105,.3)";
+      } else if(totalContab>0){
+        subContab.innerHTML='<span class="badge-aguard-confirm">⏳ '+totalContab+' aguardando confirmação</span>';
+        cardContab.style.borderColor="";
+      } else {
+        subContab.textContent="Aguardando confirmação";
+        cardContab.style.borderColor="";
+      }
+    }
+  }
+
+  function dispensarBanner() {
+    _bannerDismissed = true;
+    var banner = g("banner-alerta-vencidas");
+    if(banner) banner.style.display = "none";
+  }
+
+  /* ═══ LISTA ═══ */
+  function carregarLista(){
+    var loader=g("lista-loader"); var content=g("lista-content"); var vazia=g("lista-vazia");
+    if(loader) loader.style.display="flex";
+    if(content) content.style.display="none";
+    if(vazia) vazia.style.display="none";
+    google.script.run
+      .withSuccessHandler(function(resp){
+        if(loader) loader.style.display="none";
+        if(!resp||!resp.ok){ showToast("Erro ao carregar.","error"); return; }
+        todasDespesas = resp.lista||[];
+        window.todasDespesas = todasDespesas;
+        paginaAtual=1; aplicarFiltros();
+      })
+      .withFailureHandler(function(e){ if(loader) loader.style.display="none"; showToast("Erro: "+e.message,"error"); })
+      .listarDespesas({});
+  }
+
+  function aplicarFiltros(){
+    var sc=g("f-status-chip"), vc=g("f-venc-chip");
+    var busca=normText(val("f-busca")),
+        status=sc?sc.value:val("f-status"),
+        categoria=val("f-categoria"),
+        tipo=val("f-tipo"),
+        venc=vc?vc.value:val("f-venc");
+    despesasFiltradas=todasDespesas.filter(function(d){
+      if(status && d.status!==status) return false;
+      if(categoria && normText(d.categoria)!==normText(categoria)) return false;
+      if(tipo && (d.tipoLancamento||"recorrente")!==tipo) return false;
+      if(venc && d.statusVencimento!==venc) return false;
+      if(busca){ var txt=normText([d.prestadorNome,d.descricao,d.numeroDespesa,d.categoria].join(" ")); if(txt.indexOf(busca)===-1) return false; }
+      return true;
+    });
+
+    var iniVal=val("f-data-ini");
+    var fimVal=val("f-data-fim");
+    if(iniVal||fimVal){
+      var _parseBR=function(br){
+        if(!br) return null;
+        var p=br.split("/");
+        if(p.length===3) return new Date(parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0]));
+        return null;
+      };
+      var _parseISO=function(s){
+        if(!s) return null;
+        var p=s.split("-");
+        return new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
+      };
+      var dtIni=_parseISO(iniVal);
+      var dtFim=_parseISO(fimVal);
+      if(dtFim) dtFim.setHours(23,59,59,999);
+      despesasFiltradas=despesasFiltradas.filter(function(d){
+        var dv=_parseBR(d.dataVencimentoBR);
+        if(!dv) return false;
+        if(dtIni&&dv<dtIni) return false;
+        if(dtFim&&dv>dtFim) return false;
+        return true;
+      });
+    }
+
+    paginaAtual=1; renderLista();
+    atualizarSummaryBar();
+  }
+
+  function limparFiltros(){
+    ["f-busca","f-status","f-categoria","f-tipo","f-venc","f-status-chip","f-venc-chip","f-data-ini","f-data-fim"].forEach(function(id){ var el=g(id); if(el) el.value=""; });
+    document.querySelectorAll("#chips-status .chip").forEach(function(c,i){ c.className="chip"+(i===0?" ativo":""); });
+    document.querySelectorAll("#chips-venc .chip").forEach(function(c,i){ c.className="chip"+(i===0?" ativo":""); });
+    document.querySelectorAll(".chip-periodo").forEach(function(c,i){ c.classList.toggle("ativo",i===0); });
+    var bl=g("btn-limpar-filtros"); if(bl) bl.style.display="none";
+    aplicarFiltros();
+  }
+
+  function renderLista(){
+    var tbody=g("tbody-lista"); if(!tbody) return;
+    if(!despesasFiltradas.length){
+      var c=g("lista-content"),v=g("lista-vazia"),p=g("paginacao");
+      if(c) c.style.display="none"; if(v) v.style.display="flex"; if(p) p.style.display="none"; return;
+    }
+    var vazia=g("lista-vazia"),content=g("lista-content");
+    if(vazia) vazia.style.display="none"; if(content) content.style.display="block";
+    var total=despesasFiltradas.length, totalPag=Math.ceil(total/itensPorPagina);
+    if(paginaAtual>totalPag) paginaAtual=totalPag;
+    var inicio=(paginaAtual-1)*itensPorPagina;
+    var pagina=despesasFiltradas.slice(inicio,inicio+itensPorPagina);
+    window._despPagina=pagina;
+
+    tbody.innerHTML=pagina.map(function(d,idx){
+      var badgeSt=badgeStatus(d.status);
+      var badgeVe=badgeVenc(d.statusVencimento,d.status);
+      var docLink=d.linkDocumento
+        ? '<a href="'+escHtml(d.linkDocumento)+'" target="_blank" style="font-size:11px;color:#1565C0;font-weight:700;">📄 Ver</a>'
+        : '<span style="font-size:11px;color:#94a3b8;">—</span>';
+      var tipoTag=d.tipoLancamento==="avulso"
+        ? '<span style="font-size:9.5px;background:#fef3c7;color:#92400e;border-radius:4px;padding:1px 5px;font-weight:700;margin-left:4px;">AVULSO</span>' : '';
+      var historicoNF="";
+      if(d.status==="AGUARDANDO_DOC" && d.dataAlertaD5){
+        historicoNF='<div class="nome-hist">📨 Enviado '+escHtml(d.dataAlertaD5)+'</div>';
+      }
+      var badgeConfirm="";
+      if(d.status==="ENVIADO_CONTABILIDADE"){
+        if(d.dataConfirmacaoContab){
+          badgeConfirm='<div style="margin-top:3px;"><span class="badge-confirmado" style="font-size:9.5px;">✅ Confirmado '+escHtml(d.dataConfirmacaoContab)+'</span></div>';
+        } else {
+          badgeConfirm='<div style="margin-top:3px;"><span class="badge-aguard-confirm" style="font-size:9.5px;">⏳ Aguard. confirmação</span></div>';
+        }
+      }
+      var vencPct=0, vencCls="ok";
+      if(d.statusVencimento==="VENCIDO"){ vencPct=100; vencCls="vencido"; }
+      else if(d.statusVencimento==="URGENTE"){ vencPct=80; vencCls="urgente"; }
+      else if(d.statusVencimento==="OK"){ vencPct=40; vencCls="ok"; }
+      var rowCls="desp-row";
+      if(d.status==="AGUARDANDO_DOC") rowCls+=" aguardando-nf";
+      if(d.statusVencimento==="VENCIDO"&&d.status!=="PAGO"&&d.status!=="CANCELADO") rowCls+=" vencido";
+      var acoes=montarAcoes(d,idx);
+      return '<div class="'+rowCls+'">'+
+        '<div><span class="num-pill">'+escHtml((d.numeroDespesa||"—").replace("/2026",""))+'</span></div>'+
+        '<div>'+
+          '<div class="nome-txt" title="'+escHtml(d.prestadorNome)+'">'+escHtml(d.prestadorNome)+tipoTag+'</div>'+
+          '<div class="nome-cat">'+escHtml(d.categoria||"")+'</div>'+
+          historicoNF+
+          badgeConfirm+
+        '</div>'+
+        '<div>'+(d.valor&&d.valor!=="variável"?'<span class="valor-txt">'+escHtml(d.valor)+'</span>':'<span class="valor-var">variável</span>')+'</div>'+
+        '<div class="venc-col">'+
+          '<div class="venc-data">'+escHtml(d.dataVencimentoBR||"—")+'</div>'+
+          '<div class="venc-bar"><div class="venc-fill '+vencCls+'" style="width:'+vencPct+'%"></div></div>'+
+          (badgeVe?'<div style="margin-top:2px">'+badgeVe+'</div>':'')+
+        '</div>'+
+        '<div>'+badgeSt+'</div>'+
+        '<div>'+docLink+'</div>'+
+        '<div><div class="acoes-cell">'+acoes+'</div></div>'+
+      '</div>';
+    }).join("");
+
+    bindAcoes();
+    renderPaginacao(total,totalPag);
+  }
+
+  function montarAcoes(d,idx){
+    var acoes="", st=d.status;
+    if(st==="PENDENTE"){
+      acoes+='<button class="ac-btn ac-primary" data-acao="solicitar-nf" data-idx="'+idx+'">📨 Solicitar NF</button>';
+    } else if(st==="AGUARDANDO_DOC"){
+      acoes+='<button class="ac-btn ac-reenviar" data-acao="solicitar-nf" data-idx="'+idx+'">🔁 Reenviar NF</button>';
+    }
+    if(st==="DOC_RECEBIDO"){
+      acoes+='<button class="ac-btn ac-amber" data-acao="anexar" data-idx="'+idx+'">📎 Ver Doc</button>';
+    } else if(st!=="PAGO"&&st!=="CANCELADO"&&st!=="ENVIADO_CONTABILIDADE"){
+      acoes+='<button class="ac-btn ac-amber" data-acao="anexar" data-idx="'+idx+'">📎 Anexar</button>';
+    }
+    if(st!=="PAGO"&&st!=="CANCELADO"&&st!=="ENVIADO_CONTABILIDADE"){
+      acoes+='<button class="ac-btn ac-edit" data-acao="editar" data-idx="'+idx+'">✏️</button>';
+    }
+    if(st!=="PAGO"&&st!=="CANCELADO"){
+      acoes+='<button class="ac-btn ac-green" data-acao="pago" data-idx="'+idx+'">✅ Pago</button>';
+    }
+    if(st==="PENDENTE"||st==="AGUARDANDO_DOC"||st==="CANCELADO"){
+      acoes+='<button class="ac-btn ac-red" data-acao="excluir" data-idx="'+idx+'">🗑️</button>';
+    } else if(st!=="PAGO"&&st!=="ENVIADO_CONTABILIDADE"){
+      acoes+='<button class="ac-btn ac-red" data-acao="cancelar" data-idx="'+idx+'">✕</button>';
+    }
+    if(st!=="CANCELADO"){
+      acoes+='<button class="ac-btn" data-acao="duplicar" data-idx="'+idx+'" style="height:26px;padding:0 9px;border-radius:7px;border:1.5px solid #a5b4fc;background:#f0f4ff;color:#4338ca;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:\'Plus Jakarta Sans\',sans-serif;transition:all .12s;display:inline-flex;align-items:center;gap:3px;" title="Duplicar despesa">⎘</button>';
+    }
+    acoes+='<button class="ac-btn ac-hist" data-acao="historico" data-idx="'+idx+'" title="Ver histórico de alterações">🕓</button>';
+    return acoes||'<span style="font-size:11px;color:#94a3b8;">—</span>';
+  }
+
+  function bindAcoes(){
+    var tbody=g("tbody-lista"); if(!tbody) return;
+    tbody.querySelectorAll("[data-acao]").forEach(function(btn){
+      btn.addEventListener("click",function(){
+        var acao=this.dataset.acao, idx=parseInt(this.dataset.idx,10), d=window._despPagina[idx];
+        if(!d) return;
+        if(acao==="solicitar-nf") abrirModalSolicitarNF(d);
+        if(acao==="anexar")       abrirModalUpload(d.idDespesa,d.prestadorNome,d.valor);
+        if(acao==="pago")         abrirModalPago(d.idDespesa,d.prestadorNome,d.valor);
+        if(acao==="cancelar")     abrirModalCancelar(d.idDespesa,d.prestadorNome);
+        if(acao==="editar")       abrirModalEditar(d);
+        if(acao==="excluir")      abrirModalExcluir(d.idDespesa,d.prestadorNome,d.status);
+        if(acao==="duplicar")     abrirModalDuplicar(d);
+        if(acao==="historico")    abrirHistorico(d.idDespesa, d.numeroDespesa+" — "+d.prestadorNome);
+      });
+    });
+  }
+
+  function renderPaginacao(total,totalPag){
+    var pag=g("paginacao"),info=g("paginacao-info"),btns=g("paginacao-btns");
+    if(!pag) return;
+    if(totalPag<=1){ pag.style.display="none"; return; }
+    pag.style.display="flex";
+    var ini=(paginaAtual-1)*itensPorPagina+1, fim=Math.min(paginaAtual*itensPorPagina,total);
+    if(info) info.textContent="Mostrando "+ini+"–"+fim+" de "+total;
+    var html='<button class="page-btn"'+(paginaAtual===1?' disabled':'')+' onclick="irPagina('+(paginaAtual-1)+')">← Ant.</button>';
+    var st=Math.max(1,paginaAtual-2), en=Math.min(totalPag,st+4);
+    for(var i=st;i<=en;i++) html+='<button class="page-btn'+(i===paginaAtual?' active':'')+'" onclick="irPagina('+i+')">'+i+'</button>';
+    html+='<button class="page-btn"'+(paginaAtual===totalPag?' disabled':'')+' onclick="irPagina('+(paginaAtual+1)+')">Próx. →</button>';
+    if(btns) btns.innerHTML=html;
+  }
+
+  function irPagina(pg){
+    var tp=Math.ceil(despesasFiltradas.length/itensPorPagina);
+    if(pg<1||pg>tp) return; paginaAtual=pg; renderLista();
+  }
+
+  /* ═══ SUMMARY BAR ═══ */
+  function atualizarSummaryBar(){
+    var lista = todasDespesas || [];
+    var pendentes=0,vencidos=0,urgentes=0,doc=0,valorPend=0;
+    lista.forEach(function(d){
+      if(d.status!=="PAGO"&&d.status!=="CANCELADO"){
+        if(d.status==="PENDENTE"||d.status==="AGUARDANDO_DOC") pendentes++;
+        if(d.statusVencimento==="VENCIDO") vencidos++;
+        if(d.statusVencimento==="URGENTE") urgentes++;
+        if(d.status==="DOC_RECEBIDO") doc++;
+        if(d.status!=="ENVIADO_CONTABILIDADE"){
+          var v=parseFloat(String(d.valor||"").replace(/[^\d,]/g,"").replace(",","."));
+          if(!isNaN(v)) valorPend+=v;
+        }
+      }
+    });
+    var se=function(id,v){ var el=g(id); if(el) el.textContent=v; };
+    se("sum-pendentes", pendentes);
+    se("sum-vencidos",  vencidos);
+    se("sum-urgentes",  urgentes);
+    se("sum-doc",       doc);
+    se("sum-valor",     "R$ "+valorPend.toFixed(2).replace(".",","));
+    var tb=g("topbar-total-badge");
+    if(tb) tb.textContent=lista.length+" despesas";
+  }
+
+  /* ═══ AUTOCOMPLETE ═══ */
+  function carregarFornecedoresCache(){
+    google.script.run
+      .withSuccessHandler(function(resp){ _fornecedores=(resp&&resp.ok&&resp.lista)?resp.lista:[]; })
+      .withFailureHandler(function(){ showToast("Erro ao carregar prestadores.","error"); })
+      .listarPrestadoresDesp({});
+  }
+
+  function buscarFornecedorPorNome(nome){
+    var n=normText(nome);
+    for(var i=0;i<_fornecedores.length;i++){ if(normText(_fornecedores[i].nome)===n) return _fornecedores[i]; }
+    for(var j=0;j<_fornecedores.length;j++){ if(normText(_fornecedores[j].nome).indexOf(n)>-1) return _fornecedores[j]; }
+    return null;
+  }
+
+  function onBuscaFornInput(){
+    var termo=normText(val("n-busca-forn")); _acItemFocado=-1;
+    if(!termo){ fecharDropdown(); return; }
+    var filtrados=_fornecedores.filter(function(f){ return normText(f.nome+" "+f.documento+" "+f.categoria).indexOf(termo)>-1; }).slice(0,8);
+    renderDropdown(filtrados);
+  }
+
+  function renderDropdown(lista){
+    var dd=g("autocomplete-dropdown"); if(!dd) return;
+    if(!lista.length){ dd.innerHTML='<div class="autocomplete-vazio">Nenhum prestador encontrado</div>'; dd.classList.add("aberto"); return; }
+    dd._lista=lista;
+    dd.innerHTML=lista.map(function(f,i){
+      var sub=[f.categoria,f.email||"",f.whatsapp||"",f.valor?f.valor:"",f.diaVenc?"Dia "+f.diaVenc:""].filter(Boolean).join(" · ");
+      return '<div class="autocomplete-item" data-idx="'+i+'"><div class="autocomplete-nome">'+escHtml(f.nome)+'</div>'+(sub?'<div class="autocomplete-sub">'+escHtml(sub)+'</div>':'')+' </div>';
+    }).join("");
+    dd.classList.add("aberto");
+    dd.querySelectorAll(".autocomplete-item").forEach(function(item){ item.addEventListener("click",function(){ selecionarFornecedor(parseInt(this.dataset.idx,10)); }); });
+  }
+
+  function fecharDropdown(){ var dd=g("autocomplete-dropdown"); if(dd){ dd.classList.remove("aberto"); dd.innerHTML=""; } }
+
+  function selecionarFornecedor(idx){
+    var dd=g("autocomplete-dropdown"), lista=dd?dd._lista:[], f=lista?lista[idx]:null; if(!f) return;
+    _fornSelecionado=f;
+    if(g("n-categoria")&&f.categoria) g("n-categoria").value=f.categoria;
+    if(g("n-tipodoc")&&f.tipoDoc) g("n-tipodoc").value=f.tipoDoc;
+    if(g("n-desc")) g("n-desc").value=f.descricao||"";
+    if(g("n-valor")){ var vB=String(f.valor||"").toLowerCase().trim(); var ehV=!vB||vB==="variável"||vB.indexOf("vari")>-1; g("n-valor").value=ehV?"":f.valor; }
+    if(g("n-vencimento")&&f.diaVenc){
+      var dn=parseInt(String(f.diaVenc).replace(/\D/g,""),10);
+      if(!isNaN(dn)){ var hj=new Date(),ul=new Date(hj.getFullYear(),hj.getMonth()+1,0).getDate(),dia=Math.min(dn,ul),dv=new Date(hj.getFullYear(),hj.getMonth(),dia),pad=function(n){return n<10?"0"+n:n;}; g("n-vencimento").value=dv.getFullYear()+"-"+pad(dv.getMonth()+1)+"-"+pad(dv.getDate()); }
+    }
+    var sub=[f.categoria,f.email||"",f.documento||""].filter(Boolean).join(" · ");
+    if(g("forn-nome-display")) g("forn-nome-display").textContent=f.nome;
+    if(g("forn-sub-display")) g("forn-sub-display").textContent=sub;
+    var card=g("forn-selecionado-card"); if(card) card.classList.add("visivel");
+    if(g("n-busca-forn")) g("n-busca-forn").value="";
+    fecharDropdown();
+  }
+
+  function limparFornecedor(){
+    _fornSelecionado=null;
+    if(g("n-busca-forn")) g("n-busca-forn").value="";
+    var card=g("forn-selecionado-card"); if(card) card.classList.remove("visivel");
+    ["n-valor","n-vencimento","n-desc"].forEach(function(id){ var el=g(id); if(el) el.value=""; });
+    setTimeout(function(){ if(g("n-busca-forn")) g("n-busca-forn").focus(); },50);
+  }
+
+  function onBuscaFornKeydown(e){
+    var dd=g("autocomplete-dropdown"); if(!dd||!dd.classList.contains("aberto")) return;
+    var items=dd.querySelectorAll(".autocomplete-item"); if(!items.length) return;
+    if(e.key==="ArrowDown"){ e.preventDefault(); _acItemFocado=Math.min(_acItemFocado+1,items.length-1); atualizarFoco(items); }
+    else if(e.key==="ArrowUp"){ e.preventDefault(); _acItemFocado=Math.max(_acItemFocado-1,0); atualizarFoco(items); }
+    else if(e.key==="Enter"){ e.preventDefault(); if(_acItemFocado>=0) items[_acItemFocado].click(); }
+    else if(e.key==="Escape"){ fecharDropdown(); }
+  }
+  function atualizarFoco(items){ items.forEach(function(it,i){ it.classList.toggle("selecionado",i===_acItemFocado); }); if(_acItemFocado>=0) items[_acItemFocado].scrollIntoView({block:"nearest"}); }
+
+  /* ═══ TIPO LANÇAMENTO ═══ */
+  function atualizarTipoLanc(){
+    var tipo=g("r-avulso")&&g("r-avulso").checked?"avulso":"recorrente";
+    var bR=g("bloco-recorrente"),bA=g("bloco-avulso"),lR=g("lbl-recorrente"),lA=g("lbl-avulso");
+    if(tipo==="avulso"){ if(bR) bR.style.display="none"; if(bA) bA.style.display=""; if(lA){ lR.style.borderColor="#e2e8f0"; lR.style.background="#fff"; lA.style.borderColor="#1565C0"; lA.style.background="#eff6ff"; } }
+    else { if(bR) bR.style.display=""; if(bA) bA.style.display="none"; if(lR){ lR.style.borderColor="#1565C0"; lR.style.background="#eff6ff"; lA.style.borderColor="#e2e8f0"; lA.style.background="#fff"; } limparFornecedor(); carregarFornecedoresCache(); }
+  }
+
+  /* ═══ NOVA DESPESA ═══ */
+  function salvarNovaDespesa(){
+    var err=g("nova-err"),ok=g("nova-ok");
+    if(err) err.classList.remove("show"); if(ok) ok.classList.remove("show");
+    var isAv=g("r-avulso")&&g("r-avulso").checked;
+    var nome=isAv?val("n-nome-avulso"):(_fornSelecionado?_fornSelecionado.nome:"");
+    var docF=isAv?val("n-doc-avulso"):(_fornSelecionado?_fornSelecionado.documento:"");
+    var emailF=isAv?val("n-email-avulso"):(_fornSelecionado?_fornSelecionado.email:"");
+    var whatsF=isAv?val("n-whats-avulso"):(_fornSelecionado?_fornSelecionado.whatsapp:"");
+    var categoria=val("n-categoria"),valor=val("n-valor"),venc=val("n-vencimento"),tipodoc=val("n-tipodoc"),quem=val("n-quem"),desc=val("n-desc"),obs=val("n-obs");
+    if(!nome){ if(err){ err.textContent="Informe o fornecedor."; err.classList.add("show"); } return; }
+    if(!categoria){ if(err){ err.textContent="Selecione a categoria."; err.classList.add("show"); } return; }
+    if(!valor){ if(err){ err.textContent="Informe o valor."; err.classList.add("show"); } return; }
+    if(!venc){ if(err){ err.textContent="Informe a data de vencimento."; err.classList.add("show"); } return; }
+    var p=venc.split("-"), vencBR=p[2]+"/"+p[1]+"/"+p[0];
+    var btn=g("btn-salvar-nova"); if(btn){ btn.disabled=true; btn.textContent="Salvando..."; }
+    google.script.run
+      .withSuccessHandler(function(resp){
+        if(btn){ btn.disabled=false; btn.innerHTML="💾 Salvar Despesa"; }
+        if(resp&&resp.ok){ if(ok){ ok.textContent="✅ "+(resp.mensagem||"Despesa salva!"); ok.classList.add("show"); } limparFormNova(); todasDespesas=[]; window.todasDespesas=[]; carregarDashboard(); showToast("Despesa "+(resp.numeroDespesa||"")+" registrada!","success"); }
+        else { if(err){ err.textContent="Erro: "+((resp&&resp.mensagem)||"Falha."); err.classList.add("show"); } }
+      })
+      .withFailureHandler(function(e){ if(btn){ btn.disabled=false; btn.innerHTML="💾 Salvar Despesa"; } if(err){ err.textContent="Erro: "+e.message; err.classList.add("show"); } })
+      .registrarLancamentoDespesa({ tipoLancamento:isAv?"avulso":"recorrente", categoria:categoria, prestadorNome:nome, prestadorDoc:docF, prestadorEmail:emailF, prestadorWhats:whatsF, descricao:desc, valor:valor, dataVencimento:vencBR, quemAgendou:quem, tipoDoc:tipodoc, observacoes:obs });
+  }
+
+  function limparFormNova(){
+    _fornSelecionado=null;
+    if(g("n-busca-forn")) g("n-busca-forn").value="";
+    var card=g("forn-selecionado-card"); if(card) card.classList.remove("visivel");
+    ["n-nome-avulso","n-doc-avulso","n-email-avulso","n-whats-avulso","n-valor","n-desc","n-obs"].forEach(function(id){ var el=g(id); if(el) el.value=""; });
+    if(g("n-categoria")) g("n-categoria").value="";
+    if(g("n-tipodoc")) g("n-tipodoc").value="NF";
+    if(g("n-quem")) g("n-quem").value=g("n-quem").options[0].value;
+    definirDataHoje("n-vencimento");
+    if(g("nova-err")) g("nova-err").classList.remove("show");
+    if(g("nova-ok")) g("nova-ok").classList.remove("show");
+    fecharDropdown();
+  }
+
+  /* ═══ LOTE ═══ */
+  function carregarLote(){
+    var loader=g("lote-loader"),content=g("lote-content"),vazia=g("lote-vazio"),err=g("lote-err"),ok=g("lote-ok");
+    if(loader) loader.style.display="flex"; if(content) content.style.display="none"; if(vazia) vazia.style.display="none";
+    if(err) err.classList.remove("show"); if(ok) ok.classList.remove("show");
+    google.script.run.withSuccessHandler(onLoteRecebido).withFailureHandler(function(e){ if(loader) loader.style.display="none"; showToast("Erro: "+e.message,"error"); }).listarDespesasParaEnvioContabilidade();
+  }
+
+  function onLoteRecebido(resp){
+    var loader=g("lote-loader"); if(loader) loader.style.display="none";
+    if(!resp||!resp.ok){ showToast("Erro ao carregar.","error"); return; }
+    despesasLote=resp.lista||[];
+    var vazia=g("lote-vazio"),content=g("lote-content");
+    if(!despesasLote.length){ if(vazia) vazia.style.display="flex"; return; }
+    if(vazia) vazia.style.display="none"; if(content) content.style.display="block";
+    renderLoteGrid();
+    atualizarSelecao();
+    var bLote=g("badge-lote");
+    if(bLote){ bLote.textContent=despesasLote.length; bLote.style.display=despesasLote.length>0?"inline":"none"; }
+  }
+
+  function renderLoteGrid(){
+    var grid=g("lote-grid"); if(!grid) return;
+    grid.innerHTML=despesasLote.map(function(d,i){
+      var temDoc = d.linkDocumento ? true : false;
+      var emailDisplay = d.prestadorEmail ? escHtml(d.prestadorEmail) : '<em style="color:#94a3b8;">Sem e-mail</em>';
+      return '<div class="lote-item" id="lote-item-'+i+'" onclick="toggleLoteItem('+i+')">'+
+        '<input type="checkbox" id="lote-cb-'+i+'" onclick="event.stopPropagation();atualizarSelecao()">'+
+        '<div style="flex:1;min-width:0;">'+
+          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'+
+            '<div class="lote-nome">'+escHtml(d.prestadorNome)+'</div>'+
+            (temDoc?'<a href="'+escHtml(d.linkDocumento)+'" target="_blank" onclick="event.stopPropagation()" style="font-size:10.5px;background:#eff6ff;color:#1565C0;border:1px solid #93c5fd;border-radius:5px;padding:2px 7px;font-weight:700;text-decoration:none;">📄 Doc</a>':'<span style="font-size:10.5px;background:#f1f5f9;color:#94a3b8;border-radius:5px;padding:2px 7px;">Sem doc</span>')+
+          '</div>'+
+          '<div class="lote-meta" style="margin-top:4px;">'+escHtml(d.numeroDespesa||"—")+' · '+escHtml(d.categoria||"—")+' · Venc: '+escHtml(d.dataVencimentoBR||"—")+'</div>'+
+          '<div id="lote-email-row-'+i+'" style="margin-top:5px;display:flex;align-items:center;gap:6px;">'+
+            '<span style="font-size:10.5px;color:#64748b;">📧 </span>'+
+            '<span id="lote-email-txt-'+i+'" style="font-size:11px;color:#475569;">'+emailDisplay+'</span>'+
+            '<button onclick="event.stopPropagation();editarEmailLote('+i+')" style="background:none;border:none;cursor:pointer;font-size:11px;color:#1565C0;font-weight:700;padding:1px 5px;border-radius:4px;border:1px solid #93c5fd;background:#eff6ff;" title="Editar e-mail">✏️</button>'+
+          '</div>'+
+          '<div id="lote-email-edit-'+i+'" style="display:none;margin-top:5px;display:none;">'+
+            '<input type="email" id="lote-email-input-'+i+'" value="'+escHtml(d.prestadorEmail||"")+'" placeholder="email@fornecedor.com" onclick="event.stopPropagation()" style="width:220px;height:30px;border-radius:7px;border:1.5px solid #93c5fd;padding:0 8px;font-size:12px;font-family:\'Plus Jakarta Sans\',sans-serif;outline:none;">'+
+            '<button onclick="event.stopPropagation();salvarEmailLote('+i+')" style="height:30px;padding:0 10px;background:#1565C0;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;margin-left:4px;">✓</button>'+
+            '<button onclick="event.stopPropagation();cancelarEmailLote('+i+')" style="height:30px;padding:0 8px;background:#f1f5f9;color:#64748b;border:1.5px solid #e2e8f0;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;margin-left:2px;">✕</button>'+
+          '</div>'+
+        '</div>'+
+        '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">'+
+          '<div class="lote-valor">'+escHtml(d.valor||"—")+'</div>'+
+          '<button onclick="event.stopPropagation();excluirDaListaLote('+i+')" style="height:26px;padding:0 8px;background:#fff5f5;color:#dc2626;border:1.5px solid #fca5a5;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;" title="Remover da lista">🗑️</button>'+
+        '</div>'+
+      '</div>';
+    }).join("");
+  }
+
+  function editarEmailLote(i){
+    var row=g("lote-email-row-"+i), edit=g("lote-email-edit-"+i);
+    if(row) row.style.display="none";
+    if(edit){ edit.style.display="flex"; edit.style.alignItems="center"; edit.style.gap="4px"; }
+    var inp=g("lote-email-input-"+i); if(inp) inp.focus();
+  }
+
+  function cancelarEmailLote(i){
+    var row=g("lote-email-row-"+i), edit=g("lote-email-edit-"+i);
+    if(row) row.style.display="flex";
+    if(edit) edit.style.display="none";
+  }
+
+  function salvarEmailLote(i){
+    var inp=g("lote-email-input-"+i); if(!inp) return;
+    var email=inp.value.trim();
+    if(!email){ showToast("Informe um e-mail válido.","error"); return; }
+    despesasLote[i].prestadorEmail=email;
+    var txt=g("lote-email-txt-"+i); if(txt) txt.innerHTML=escHtml(email);
+    cancelarEmailLote(i);
+    showToast("E-mail atualizado na lista.","");
+  }
+
+  function excluirDaListaLote(i){
+    var despesa = despesasLote[i];
+    if(!despesa) return;
+    var selecionados = [];
+    despesasLote.forEach(function(d, idx){
+      var cb = g("lote-cb-" + idx);
+      if(cb && cb.checked) selecionados.push(d.idDespesa);
+    });
+    despesasLote.splice(i, 1);
+    renderLoteGrid();
+    despesasLote.forEach(function(d, idx){
+      var cb = g("lote-cb-" + idx);
+      if(cb && selecionados.indexOf(d.idDespesa) > -1){
+        cb.checked = true;
+        var item = g("lote-item-" + idx);
+        if(item) item.classList.add("selected");
+      }
+    });
+    atualizarSelecao();
+    var bLote=g("badge-lote");
+    if(bLote){ bLote.textContent=despesasLote.length; bLote.style.display=despesasLote.length>0?"inline":"none"; }
+    if(!despesasLote.length){
+      var content = g("lote-content"), vazia = g("lote-vazio");
+      if(content) content.style.display = "none";
+      if(vazia)   vazia.style.display   = "flex";
+    }
+    google.script.run
+      .withSuccessHandler(function(resp){
+        if(resp && resp.ok){ showToast("Despesa devolvida para Pendente.", "success"); todasDespesas = []; window.todasDespesas = []; }
+        else { showToast("Erro: " + ((resp && resp.mensagem) || "Falha."), "error"); }
+      })
+      .withFailureHandler(function(e){ showToast("Erro: " + e.message, "error"); })
+      .cancelarEnvioDespesaLote(despesa.idDespesa);
+  }
+
+  function toggleLoteItem(i){ var cb=g("lote-cb-"+i); if(cb){ cb.checked=!cb.checked; atualizarSelecao(); } }
+
+  function selecionarTodos(checked){
+    despesasLote.forEach(function(_,i){ var cb=g("lote-cb-"+i),item=g("lote-item-"+i); if(cb) cb.checked=checked; if(item) item.classList.toggle("selected",checked); });
+    atualizarSelecao();
+  }
+
+  function atualizarSelecao(){
+    var sel=0, totalValSel=0;
+    despesasLote.forEach(function(d,i){
+      var cb=g("lote-cb-"+i),item=g("lote-item-"+i);
+      if(cb&&cb.checked){
+        sel++;
+        if(item) item.classList.add("selected");
+        var v=parseFloat(String(d.valor||"").replace(/[^\d,]/g,"").replace(",","."));
+        if(!isNaN(v)) totalValSel+=v;
+      } else {
+        if(item) item.classList.remove("selected");
+      }
+    });
+    var cnt=g("lote-contador");
+    if(cnt) cnt.innerHTML=sel+' selecionada(s) <strong style="color:#059669;margin-left:8px;">R$ '+totalValSel.toFixed(2).replace(".",",")+'</strong>';
+    var btn=g("btn-enviar-lote"); if(btn) btn.disabled=sel===0;
+    var btnP=g("btn-preview-oficio"); if(btnP) btnP.disabled=sel===0;
+  }
+
+  function getIdsSelecionados() {
+    var ids = [];
+    if (typeof despesasLote === "undefined") return ids;
+    despesasLote.forEach(function(d, i) {
+      var cb = document.getElementById("lote-cb-" + i);
+      if (cb && cb.checked) ids.push(d.idDespesa);
+    });
+    return ids;
+  }
+
+  function abrirPreviewOficio() {
+    var ids = getIdsSelecionados();
+    if (!ids.length) { showToast("Selecione ao menos uma despesa.", "error"); return; }
+    var btn = document.getElementById("btn-preview-oficio");
+    if (btn) { btn.disabled = true; btn.innerHTML = "⏳ Gerando prévia..."; }
+    google.script.run
+      .withSuccessHandler(function(resp) {
+        if (btn) { btn.disabled = false; btn.innerHTML = "👁 Prévia do Ofício"; }
+        if (!resp || !resp.ok) { showToast("Erro: " + (resp && resp.mensagem || "Falha."), "error"); return; }
+        var janela = window.open("", "_blank");
+        if (janela) { janela.document.open(); janela.document.write(resp.htmlPrevia); janela.document.close(); window._dadosPreview = resp; }
+        else { showToast("Permita pop-ups para visualizar a prévia.", "error"); }
+      })
+      .withFailureHandler(function(e) {
+        if (btn) { btn.disabled = false; btn.innerHTML = "👁 Prévia do Ofício"; }
+        showToast("Erro: " + e.message, "error");
+      })
+      .obterPreviewOficioFiscalDesp(ids);
+  }
+
+  function abrirModalConfirmacaoEnvio() {
+    var ids = getIdsSelecionados();
+    if (!ids.length) { showToast("Selecione ao menos uma despesa.", "error"); return; }
+    var btn = document.getElementById("btn-enviar-lote");
+    if (btn) { btn.disabled = true; btn.innerHTML = "⏳ Carregando..."; }
+    google.script.run
+      .withSuccessHandler(function(resp) {
+        if (btn) { btn.disabled = false; btn.innerHTML = "📤 Enviar Selecionadas à Contabilidade"; }
+        if (!resp || !resp.ok) { showToast("Erro: " + (resp && resp.mensagem || "Falha."), "error"); return; }
+        window._dadosPreview = resp;
+        renderizarModalEnvio(resp);
+        abrirModalEnvio();
+      })
+      .withFailureHandler(function(e) {
+        if (btn) { btn.disabled = false; btn.innerHTML = "📤 Enviar Selecionadas à Contabilidade"; }
+        showToast("Erro: " + e.message, "error");
+      })
+      .obterPreviewOficioFiscalDesp(ids);
+  }
+
+  function renderizarModalEnvio(resp) {
+    var emails=resp.emails||[], assunto=resp.assunto||"", fornecedores=resp.fornecedores||[];
+    var total=resp.total||0, totalValor=resp.totalValor||"", anexos=resp.anexos||[];
+    var htmlDestinatarios = emails.length
+      ? emails.map(function(e, i) {
+          var checked = e.padrao ? "checked" : "";
+          var label = e.nome !== e.email ? (e.nome + " &lt;" + e.email + "&gt;") : e.email;
+          return '<label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;'+(i%2===0?"background:#f8fafc;":"background:#fff;")+'">'
+            +'<input type="checkbox" class="chk-dest" data-email="'+e.email+'" data-tipo="'+e.tipo+'" '+checked+' style="width:15px;height:15px;accent-color:#1565C0;cursor:pointer;">'
+            +'<span style="font-size:12.5px;color:#334155;"><strong style="color:#001f4d;">'+(e.tipo==="CC"?'[CC] ':'')+' </strong>'+label+'</span></label>';
+        }).join("")
+      : '<div style="font-size:12px;color:#94a3b8;padding:8px;">Nenhum destinatário configurado.</div>';
+    var el=document.getElementById("modal-envio-assunto"); if(el) el.value=assunto;
+    var elDest=document.getElementById("modal-envio-destinatarios"); if(elDest) elDest.innerHTML=htmlDestinatarios;
+    var elResumo=document.getElementById("modal-envio-resumo");
+    if(elResumo){
+      var htmlForn=fornecedores.length<=3?fornecedores.join(", "):fornecedores.slice(0,3).join(", ")+" e outros "+(fornecedores.length-3);
+      elResumo.innerHTML='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;">'
+        +'<div style="background:#f0f4f8;border-radius:10px;padding:10px 12px;text-align:center;"><div style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:3px;">Despesas</div><div style="font-size:20px;font-weight:900;color:#001f4d;">'+total+'</div></div>'
+        +'<div style="background:#f0f4f8;border-radius:10px;padding:10px 12px;text-align:center;"><div style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:3px;">Fornecedores</div><div style="font-size:20px;font-weight:900;color:#001f4d;">'+(new Set(fornecedores)).size+'</div></div>'
+        +'<div style="background:#f0f4f8;border-radius:10px;padding:10px 12px;text-align:center;"><div style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:3px;">Valor Total</div><div style="font-size:14px;font-weight:900;color:#C9A84C;">'+totalValor+'</div></div>'
+        +'</div>'+(htmlForn?'<div style="font-size:12px;color:#475569;line-height:1.6;"><strong>Fornecedores:</strong> '+htmlForn+'</div>':"");
+    }
+    var elEmailPreview=document.getElementById("modal-envio-email-preview");
+    if(elEmailPreview&&resp.htmlEmail){
+      var iframe=elEmailPreview.querySelector("iframe");
+      if(!iframe){ iframe=document.createElement("iframe"); iframe.style.cssText="width:100%;height:340px;border:none;border-radius:8px;"; elEmailPreview.appendChild(iframe); }
+      iframe.srcdoc=resp.htmlEmail;
+    }
+    var elAnexos=document.getElementById("modal-envio-anexos");
+    if(elAnexos){
+      if(anexos.length){ elAnexos.innerHTML='<div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">📎 Documentos que serão anexados</div>'+anexos.map(function(a){ return '<div style="padding:5px 8px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;font-size:12px;font-weight:600;color:#0369a1;margin-bottom:4px;">📄 '+a.nome+'</div>'; }).join("")+'<div style="padding:5px 8px;background:#ede9fe;border:1px solid #c4b5fd;border-radius:6px;font-size:12px;font-weight:700;color:#5b21b6;margin-bottom:4px;">📄 Ofício de Documentação Fiscal (será gerado)</div>'; }
+      else { elAnexos.innerHTML='<div style="padding:5px 8px;background:#ede9fe;border:1px solid #c4b5fd;border-radius:6px;font-size:12px;font-weight:700;color:#5b21b6;">📄 Ofício de Documentação Fiscal (será gerado)</div>'; }
+    }
+  }
+
+  function abrirModalEnvio() {
+    var modal=document.getElementById("modal-envio-contabilidade");
+    if(modal){ modal.style.display="flex"; modal.scrollIntoView({behavior:"smooth",block:"start"}); }
+  }
+
+  function fecharModalEnvio() {
+    var modal=document.getElementById("modal-envio-contabilidade");
+    if(modal) modal.style.display="none";
+  }
+
+  function adicionarDestinatarioManual() {
+    var email=(document.getElementById("modal-add-email-input")||{}).value;
+    var tipo=(document.getElementById("modal-add-email-tipo")||{}).value||"PARA";
+    if(!email||email.indexOf("@")===-1){ showToast("Informe um e-mail válido.","error"); return; }
+    var elDest=document.getElementById("modal-envio-destinatarios"); if(!elDest) return;
+    var label=(tipo==="CC"?"[CC] ":"")+email;
+    var novaLabel=document.createElement("label");
+    novaLabel.style.cssText="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;background:#eff6ff;";
+    novaLabel.innerHTML='<input type="checkbox" class="chk-dest" data-email="'+email+'" data-tipo="'+tipo+'" checked style="width:15px;height:15px;accent-color:#1565C0;"><span style="font-size:12.5px;color:#334155;">'+label+'</span>';
+    elDest.appendChild(novaLabel);
+    var inp=document.getElementById("modal-add-email-input"); if(inp) inp.value="";
+    showToast("Destinatário adicionado.","");
+  }
+
+  function confirmarEnvioContabilidade() {
+    if(!window._dadosPreview){ showToast("Dados não encontrados. Tente novamente.","error"); return; }
+    var resp=window._dadosPreview;
+    var paraArr=[],ccArr=[];
+    document.querySelectorAll(".chk-dest:checked").forEach(function(chk){ if(chk.dataset.tipo==="CC") ccArr.push(chk.dataset.email); else paraArr.push(chk.dataset.email); });
+    if(!paraArr.length){ showToast("Selecione ao menos um destinatário em PARA.","error"); return; }
+    var assunto=(document.getElementById("modal-envio-assunto")||{}).value||resp.assunto;
+    var ids=getIdsSelecionados();
+    if(!ids.length){ showToast("Nenhuma despesa selecionada.","error"); return; }
+    var btnConfirmar=document.getElementById("btn-confirmar-envio-final");
+    if(btnConfirmar){ btnConfirmar.disabled=true; btnConfirmar.innerHTML="⏳ Enviando..."; }
+    var payload={ idsDespesas:ids, para:paraArr.join(","), cc:ccArr.join(","), assunto:assunto, lote:resp.lote||"", descricao:resp.descricao||"", dataHoje:resp.dataHoje||"" };
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(btnConfirmar){ btnConfirmar.disabled=false; btnConfirmar.innerHTML="📤 Confirmar Envio"; }
+        if(!r||!r.ok){ showToast("Erro: "+(r&&r.mensagem||"Falha."),"error"); return; }
+        fecharModalEnvio();
+        var mensagem=r.mensagem||"Enviado com sucesso!";
+        if(r.numeroOficio) mensagem+=" Ofício Nº "+r.numeroOficio;
+        showToast("✅ "+mensagem,"success");
+        exibirModalSucesso(r);
+        carregarLote(); carregarDashboard();
+        todasDespesas=[]; window.todasDespesas=[];
+      })
+      .withFailureHandler(function(e){
+        if(btnConfirmar){ btnConfirmar.disabled=false; btnConfirmar.innerHTML="📤 Confirmar Envio"; }
+        showToast("Erro: "+e.message,"error");
+      })
+      .enviarLoteDespesasComOficio(payload);
+  }
+
+  function exibirModalSucesso(r) {
+    var ms=document.getElementById("modal-sucesso-oficio"); if(!ms) return;
+    var html='<div style="text-align:center;padding:8px 0 16px;">'
+      +'<div style="font-size:48px;line-height:1;margin-bottom:12px;">✅</div>'
+      +'<div style="font-size:18px;font-weight:900;color:#059669;margin-bottom:6px;">Enviado com sucesso!</div>'
+      +'<div style="font-size:13px;color:#475569;line-height:1.6;margin-bottom:16px;">'+r.totalEnviadas+' despesa(s) enviada(s) · '+r.totalValor+(r.numeroOficio?'<br><strong style="color:#001f4d;">Ofício Nº '+r.numeroOficio+'</strong>':'')+'</div></div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">';
+    if(r.linkOficio) html+='<a href="'+r.linkOficio+'" target="_blank" style="height:36px;padding:0 14px;background:#001f4d;color:#fff;border:none;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:5px;">📄 Abrir Ofício</a>';
+    html+='<button onclick="window.print()" style="height:36px;padding:0 14px;background:#f1f5f9;color:#334155;border:1.5px solid #e2e8f0;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;">🖨 Imprimir</button>'
+      +'<button onclick="fecharModalSucesso()" style="height:36px;padding:0 14px;background:#059669;color:#fff;border:none;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;">✓ Fechar</button></div>';
+    document.getElementById("modal-sucesso-content").innerHTML=html;
+    ms.style.display="flex";
+  }
+
+  function fecharModalSucesso() {
+    var ms=document.getElementById("modal-sucesso-oficio");
+    if(ms) ms.style.display="none";
+  }
+
+  /* ═══ PAINÉIS ═══ */
+  function fecharPainel(id){ var el=g(id); if(el) el.classList.remove("open"); }
+  function fecharModal(id){ fecharPainel(id); }
+
+  function abrirModal(id){
+    ["painel-pago","painel-cancelar","painel-solicitar-nf","painel-upload","painel-editar","painel-excluir","painel-duplicar","painel-historico"].forEach(function(pid){
+      var p=g(pid); if(p) p.classList.remove("open");
+    });
+    var el=g(id); if(el){ el.classList.add("open"); el.scrollIntoView({behavior:"smooth",block:"start"}); }
+  }
+
+  function abrirModalPago(idDespesa,nome,valor){
+    _idModalAtivo=idDespesa;
+    var info=g("painel-pago-info");
+    if(info) info.innerHTML='Registrar pagamento de <strong>'+escHtml(nome)+'</strong> — <strong>'+escHtml(valor)+'</strong>';
+    if(g("painel-obs-pago")) g("painel-obs-pago").value="";
+    if(g("painel-banco-pago")) g("painel-banco-pago").value="";
+    definirDataHoje("painel-data-pago");
+    abrirModal("painel-pago");
+  }
+
+  function confirmarPagoModal(){
+    var data=val("painel-data-pago"); if(!data){ showToast("Informe a data do pagamento.","error"); return; }
+    var p=data.split("-"), dataBR=p[2]+"/"+p[1]+"/"+p[0], obs=val("painel-obs-pago"), banco=val("painel-banco-pago");
+    fecharPainel("painel-pago");
+    google.script.run
+      .withSuccessHandler(function(resp){
+        if(resp&&resp.ok){ showToast("✅ Pagamento registrado!","success"); todasDespesas=[]; window.todasDespesas=[]; carregarLista(); carregarDashboard(); }
+        else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
+      })
+      .withFailureHandler(function(e){ showToast("Erro: "+e.message,"error"); })
+      .marcarDespesaComoPaga({ idDespesa:_idModalAtivo, dataPagamento:dataBR, observacao:(banco?"Banco: "+banco+" | ":"")+obs });
+  }
+
+  function abrirModalCancelar(idDespesa,nome){
+    _idModalAtivo=idDespesa;
+    var info=g("painel-cancelar-info");
+    if(info) info.innerHTML='Cancelar a despesa de <strong>'+escHtml(nome)+'</strong>?';
+    if(g("painel-obs-cancelar")) g("painel-obs-cancelar").value="";
+    abrirModal("painel-cancelar");
+  }
+
+  function confirmarCancelarModal(){
+    var obs=val("painel-obs-cancelar"); fecharPainel("painel-cancelar");
+    google.script.run
+      .withSuccessHandler(function(resp){
+        if(resp&&resp.ok){ showToast("Despesa cancelada.","success"); todasDespesas=[]; window.todasDespesas=[]; carregarLista(); carregarDashboard(); }
+        else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
+      })
+      .withFailureHandler(function(e){ showToast("Erro: "+e.message,"error"); })
+      .cancelarDespesa({ idDespesa:_idModalAtivo, observacao:obs||"Cancelado manualmente." });
+  }
+
+  function abrirModalSolicitarNF(d){
+    _idModalAtivo = d.idDespesa;
+    var nome=d.prestadorNome, valor=d.valor;
+    var email=d.prestadorEmail||"", whats=d.prestadorWhats||"";
+    if(!email||!whats){ var forn=buscarFornecedorPorNome(nome); if(forn){ if(!email) email=forn.email||""; if(!whats) whats=forn.whatsapp||""; } }
+    var isReenvio=d.status==="AGUARDANDO_DOC";
+    var titulo=isReenvio?"🔁 Reenviar Solicitação de NF":"📨 Solicitar Documento Fiscal";
+    var cabecalho=g("painel-solicitar-nf")&&g("painel-solicitar-nf").querySelector(".painel-header-title");
+    if(cabecalho) cabecalho.textContent=titulo;
+    var info=g("painel-nf-info");
+    if(info){
+      var html=(isReenvio?"Reenviar":"Solicitar")+' documento fiscal de <strong>'+escHtml(nome)+'</strong> — <strong>'+escHtml(valor)+'</strong>';
+      if(isReenvio&&d.dataAlertaD5){ html+='<div style="margin-top:8px;font-size:11px;color:#92400e;background:#fef3c7;border-radius:6px;padding:6px 10px;">⏰ Último envio: '+escHtml(d.dataAlertaD5)+'</div>'; }
+      info.innerHTML=html;
+    }
+    if(g("painel-nf-email")) g("painel-nf-email").value=email;
+    if(g("painel-nf-whats")) g("painel-nf-whats").value=formatarTelefone(whats);
+    abrirModal("painel-solicitar-nf");
+  }
+
+  function confirmarSolicitarNF(){
+    var email=val("painel-nf-email"), whats=val("painel-nf-whats");
+    if(!email){ showToast("Informe o e-mail do fornecedor.","error"); return; }
+    var btn=g("painel-solicitar-nf")&&g("painel-solicitar-nf").querySelector(".btn-navy");
+    if(btn){ btn.disabled=true; btn.textContent="⏳ Enviando..."; }
+    google.script.run
+      .withSuccessHandler(function(resp){
+        if(btn){ btn.disabled=false; btn.innerHTML="📨 Enviar Solicitação"; }
+        if(resp&&resp.ok){ fecharPainel("painel-solicitar-nf"); showToast("📨 Solicitação enviada!","success"); todasDespesas=[]; window.todasDespesas=[]; carregarLista(); }
+        else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
+      })
+      .withFailureHandler(function(e){ if(btn){ btn.disabled=false; btn.innerHTML="📨 Enviar Solicitação"; } showToast("Erro: "+e.message,"error"); })
+      .solicitarNFDespesa({ idDespesa:_idModalAtivo, email:email, whatsapp:whats });
+  }
+
+  function abrirModalUpload(idDespesa,nome,valor){
+    _idModalAtivo=idDespesa; _uploadArquivos=[];
+    var info=g("painel-upload-info"); if(info) info.innerHTML='Anexar documento de <strong>'+escHtml(nome)+'</strong> — <strong>'+escHtml(valor)+'</strong>';
+    var list=g("upload-files-list"); if(list) list.innerHTML="";
+    if(g("painel-upload-obs")) g("painel-upload-obs").value="";
+    var pm=g("upload-progress-msg"); if(pm) pm.style.display="none";
+    var btn=g("btn-confirmar-upload"); if(btn) btn.disabled=true;
+    abrirModal("painel-upload");
+  }
+
+  function confirmarUploadManual(){
+    if(!_uploadArquivos.length){ showToast("Selecione ao menos um arquivo.","error"); return; }
+    var obs=val("painel-upload-obs");
+    var pm=g("upload-progress-msg"); if(pm) pm.style.display="";
+    var btn=g("btn-confirmar-upload"); if(btn){ btn.disabled=true; btn.textContent="⏳ Enviando..."; }
+    var total=_uploadArquivos.length, lidos=0, resultado=[];
+    _uploadArquivos.forEach(function(arq,i){
+      var reader=new FileReader();
+      reader.onload=function(e){
+        resultado[i]={ base64:e.target.result.split(",")[1], nome:arq.name, tipo:arq.type||"application/pdf" };
+        lidos++;
+        if(lidos<total) return;
+        google.script.run
+          .withSuccessHandler(function(resp){
+            if(pm) pm.style.display="none"; if(btn){ btn.disabled=false; btn.innerHTML="💾 Anexar Documento"; }
+            if(resp&&resp.ok){ fecharPainel("painel-upload"); showToast("✅ Documento(s) anexado(s)!","success"); todasDespesas=[]; window.todasDespesas=[]; carregarLista(); }
+            else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
+          })
+          .withFailureHandler(function(e){ if(pm) pm.style.display="none"; if(btn){ btn.disabled=false; btn.innerHTML="💾 Anexar Documento"; } showToast("Erro: "+e.message,"error"); })
+          .uploadDocumentoManual({ idDespesa:_idModalAtivo, arquivos:resultado, obs:obs });
+      };
+      reader.readAsDataURL(arq);
+    });
+  }
+
+  function renderUploadList(){
+    var list=g("upload-files-list"); if(!list) return;
+    list.innerHTML=_uploadArquivos.map(function(f,i){
+      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;font-size:12.5px;">'+'<span>📄</span><span style="flex:1;font-weight:600;color:#001f4d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(f.name)+'</span>'+'<span style="color:#94a3b8;font-size:11px;white-space:nowrap;">'+(f.size/1024/1024).toFixed(2)+' MB</span>'+'<button data-rm="'+i+'" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:15px;font-weight:700;padding:0 2px;">✕</button></div>';
+    }).join("");
+    list.querySelectorAll("[data-rm]").forEach(function(btn){ btn.addEventListener("click",function(){ _uploadArquivos.splice(parseInt(this.dataset.rm,10),1); renderUploadList(); }); });
+    var btn=g("btn-confirmar-upload"); if(btn) btn.disabled=_uploadArquivos.length===0;
+  }
+
+  function abrirModalEditar(d){
+    _idModalAtivo=d.idDespesa;
+    var info=g("painel-editar-info");
+    if(info) info.innerHTML='Editando <strong>'+escHtml(d.numeroDespesa||"")+'</strong> — '+escHtml(d.prestadorNome);
+    if(g("pe-nome"))      g("pe-nome").value      = d.prestadorNome  || "";
+    if(g("pe-email"))     g("pe-email").value     = d.prestadorEmail || "";
+    if(g("pe-whats"))     g("pe-whats").value     = d.prestadorWhats || "";
+    if(g("pe-desc"))      g("pe-desc").value      = d.descricao      || "";
+    if(g("pe-obs"))       g("pe-obs").value       = "";
+    if(g("pe-tipodoc"))   g("pe-tipodoc").value   = d.tipoDoc        || "NF";
+    if(g("pe-categoria")) g("pe-categoria").value = d.categoria      || "";
+    if(g("pe-quem"))      g("pe-quem").value      = d.quemAgendou    || "Automático";
+    if(g("pe-valor"))     g("pe-valor").value     = d.valor          || "";
+    if(g("pe-vencimento")&&d.dataVencimentoBR){
+      var p=d.dataVencimentoBR.split("/");
+      if(p.length===3) g("pe-vencimento").value=p[2]+"-"+p[1]+"-"+p[0];
+    }
+    abrirModal("painel-editar");
+  }
+
+  function confirmarEditarDespesa(){
+    var vencInput=val("pe-vencimento");
+    if(!vencInput){ showToast("Informe a data de vencimento.","error"); return; }
+    var p=vencInput.split("-"), vencBR=p[2]+"/"+p[1]+"/"+p[0];
+    var btn=g("btn-confirmar-editar");
+    if(btn){ btn.disabled=true; btn.textContent="⏳ Salvando..."; }
+    google.script.run
+      .withSuccessHandler(function(resp){
+        if(btn){ btn.disabled=false; btn.innerHTML="💾 Salvar Alterações"; }
+        if(resp&&resp.ok){ fecharPainel("painel-editar"); showToast("✅ Despesa atualizada!","success"); todasDespesas=[]; window.todasDespesas=[]; carregarLista(); }
+        else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
+      })
+      .withFailureHandler(function(e){ if(btn){ btn.disabled=false; btn.innerHTML="💾 Salvar Alterações"; } showToast("Erro: "+e.message,"error"); })
+      .editarDespesa({ idDespesa:_idModalAtivo, prestadorNome:val("pe-nome"), prestadorEmail:val("pe-email"), prestadorWhats:val("pe-whats"), categoria:val("pe-categoria"), tipoDoc:val("pe-tipodoc"), valor:val("pe-valor"), dataVencimento:vencBR, quemAgendou:val("pe-quem"), descricao:val("pe-desc"), observacoes:val("pe-obs") });
+  }
+
+  function abrirModalExcluir(idDespesa,nome){
+    _idModalAtivo=idDespesa;
+    var info=g("painel-excluir-info");
+    if(info) info.innerHTML='Excluir a despesa de <strong>'+escHtml(nome)+'</strong>?';
+    if(g("painel-obs-excluir")) g("painel-obs-excluir").value="";
+    abrirModal("painel-excluir");
+  }
+
+  function confirmarExcluirDespesa(){
+    var obs=val("painel-obs-excluir")||"Excluído manualmente.";
+    fecharPainel("painel-excluir");
+    google.script.run
+      .withSuccessHandler(function(resp){
+        if(resp&&resp.ok){ showToast("🗑️ Despesa excluída.","success"); todasDespesas=[]; window.todasDespesas=[]; carregarLista(); carregarDashboard(); }
+        else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
+      })
+      .withFailureHandler(function(e){ showToast("Erro: "+e.message,"error"); })
+      .cancelarDespesa({ idDespesa:_idModalAtivo, observacao:obs });
+  }
+
+  /* ═══ BADGES ═══ */
+  function badgeStatus(st){
+    var mapa={ "PENDENTE":["badge-pendente","⏸ Pendente"], "AGUARDANDO_DOC":["badge-aguardando","📨 Aguardando doc"], "DOC_RECEBIDO":["badge-doc","📋 Doc recebido"], "ENVIADO_CONTABILIDADE":["badge-enviado","📤 Contabilidade"], "PAGO":["badge-pago","✅ Pago"], "CANCELADO":["badge-cancelado","✕ Cancelado"] };
+    var info=mapa[st]||["badge-pendente",st||"—"];
+    return '<span class="badge '+info[0]+'">'+info[1]+'</span>';
+  }
+  function badgeVenc(sv,status){
+    if(status==="PAGO"||status==="CANCELADO") return "";
+    var mapa={"OK":["badge-venc-ok","✔ OK"],"URGENTE":["badge-venc-urgente","⏰ Urgente"],"VENCIDO":["badge-venc-vencido","⚠️ Vencido"]};
+    var info=mapa[sv]; if(!info) return "";
+    return '<span class="badge '+info[0]+'" style="font-size:10px;margin-top:3px;display:block;">'+info[1]+'</span>';
+  }
+
+  /* ═══ RELATÓRIOS ═══ */
+  var _relDados = [];
+
+  function gerarRelatorio() {
+    var loader=g("rel-loader"),content=g("rel-content"),vazio=g("rel-vazio");
+    if(loader) loader.style.display="flex"; if(content) content.style.display="none"; if(vazio) vazio.style.display="none";
+    var btnCsv=g("btn-rel-csv"); if(btnCsv) btnCsv.disabled=true;
+    var btnPdf=g("btn-rel-pdf"); if(btnPdf) btnPdf.disabled=true;
+    var cnt=g("rel-contador"); if(cnt) cnt.textContent="";
+    google.script.run
+      .withSuccessHandler(onRelatorioRecebido)
+      .withFailureHandler(function(e){ if(loader) loader.style.display="none"; showToast("Erro: "+e.message,"error"); })
+      .listarDespesas({});
+  }
+
+  function onRelatorioRecebido(resp) {
+    var loader=g("rel-loader"); if(loader) loader.style.display="none";
+    if(!resp||!resp.ok){ showToast("Erro ao carregar dados.","error"); return; }
+    var mes=val("rel-mes"),ano=val("rel-ano"),status=val("rel-status"),categoria=val("rel-categoria"),prestador=normText(val("rel-prestador"));
+    _relDados=(resp.lista||[]).filter(function(d){
+      if(mes||ano){
+        var partes=(d.dataVencimentoBR||"").split("/");
+        if(partes.length===3){ if(mes&&partes[1]!==mes) return false; if(ano&&partes[2]!==ano) return false; }
+        else { if(mes||ano) return false; }
+      }
+      if(status&&d.status!==status) return false;
+      if(categoria&&normText(d.categoria)!==normText(categoria)) return false;
+      if(prestador&&normText(d.prestadorNome).indexOf(prestador)===-1) return false;
+      return true;
+    });
+    var content=g("rel-content"),vazio=g("rel-vazio");
+    if(!_relDados.length){ if(vazio) vazio.style.display="flex"; return; }
+    if(content) content.style.display="block";
+    var totalValor=0,totalPago=0,totalPend=0;
+    _relDados.forEach(function(d){ var v=parseFloat(String(d.valor||"").replace(/[^\d,]/g,"").replace(",","."))||0; totalValor+=v; if(d.status==="PAGO") totalPago+=v; else if(d.status!=="CANCELADO") totalPend+=v; });
+    var fmt=function(v){ return "R$ "+v.toFixed(2).replace(".",","); };
+    var totais=g("rel-totais");
+    if(totais) totais.innerHTML='<div><span style="color:#64748b;">Total de registros:</span> <strong style="color:#001f4d;">'+_relDados.length+'</strong></div><div style="width:1px;background:#e2e8f0;"></div><div><span style="color:#64748b;">Valor total:</span> <strong style="color:#001f4d;">'+fmt(totalValor)+'</strong></div><div style="width:1px;background:#e2e8f0;"></div><div><span style="color:#64748b;">Total pago:</span> <strong style="color:#059669;">'+fmt(totalPago)+'</strong></div><div style="width:1px;background:#e2e8f0;"></div><div><span style="color:#64748b;">A pagar:</span> <strong style="color:#dc2626;">'+fmt(totalPend)+'</strong></div>';
+    var statusLabels={"PENDENTE":"⏸ Pendente","AGUARDANDO_DOC":"📨 Aguard. Doc","DOC_RECEBIDO":"📋 Doc Recebido","ENVIADO_CONTABILIDADE":"📤 Contabilidade","PAGO":"✅ Pago","CANCELADO":"✕ Cancelado"};
+    var tbody=g("rel-tbody");
+    if(tbody) tbody.innerHTML=_relDados.map(function(d,i){
+      var bg=i%2===0?"#fff":"#f8fafc";
+      return '<tr style="background:'+bg+';border-bottom:1px solid #f1f5f9;"><td style="padding:9px 12px;font-weight:700;white-space:nowrap;">'+escHtml(d.numeroDespesa||"—")+'</td><td style="padding:9px 12px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+escHtml(d.prestadorNome)+'">'+escHtml(d.prestadorNome||"—")+'</td><td style="padding:9px 12px;color:#64748b;white-space:nowrap;">'+escHtml(d.prestadorDoc||"—")+'</td><td style="padding:9px 12px;color:#64748b;">'+escHtml(d.categoria||"—")+'</td><td style="padding:9px 12px;color:#64748b;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+escHtml(d.descricao)+'">'+escHtml(d.descricao||"—")+'</td><td style="padding:9px 12px;font-weight:700;white-space:nowrap;">'+escHtml(d.valor||"—")+'</td><td style="padding:9px 12px;white-space:nowrap;">'+escHtml(d.dataVencimentoBR||"—")+'</td><td style="padding:9px 12px;white-space:nowrap;">'+escHtml(statusLabels[d.status]||d.status||"—")+'</td><td style="padding:9px 12px;color:#64748b;">'+escHtml(d.tipoDoc||"—")+'</td><td style="padding:9px 12px;white-space:nowrap;color:#64748b;">'+escHtml(d.dataPagamento||"—")+'</td></tr>';
+    }).join("");
+    var cnt=g("rel-contador"); if(cnt) cnt.textContent=_relDados.length+" registro(s)";
+    var btnCsv=g("btn-rel-csv"); if(btnCsv) btnCsv.disabled=false;
+    var btnPdf=g("btn-rel-pdf"); if(btnPdf) btnPdf.disabled=false;
+  }
+
+  function exportarRelatorioCSV() {
+    if(!_relDados.length) return;
+    var cab=["Nº Despesa","Prestador","CNPJ/CPF","Categoria","Descrição","Valor","Vencimento","Status","Tipo Doc","Dt. Pagamento"];
+    var linhas=[cab.join(";")];
+    _relDados.forEach(function(d){ var e=function(v){ return '"'+String(v||"").replace(/"/g,'""')+'"'; }; linhas.push([e(d.numeroDespesa),e(d.prestadorNome),e(d.prestadorDoc),e(d.categoria),e(d.descricao),e(d.valor),e(d.dataVencimentoBR),e(d.status),e(d.tipoDoc),e(d.dataPagamento)].join(";")); });
+    var csv="\uFEFF"+linhas.join("\n");
+    var blob=new Blob([csv],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),a=document.createElement("a");
+    a.href=url; a.download="despesas_"+(val("rel-mes")||"todos")+"_"+(val("rel-ano")||"todos")+".csv"; a.click(); URL.revokeObjectURL(url);
+    showToast("CSV exportado com sucesso!","success");
+  }
+
+  function exportarRelatorioPDF() {
+    if(!_relDados.length) return;
+    var mes=val("rel-mes")||"",ano=val("rel-ano")||"Todos";
+    var mesNomes={"01":"Janeiro","02":"Fevereiro","03":"Março","04":"Abril","05":"Maio","06":"Junho","07":"Julho","08":"Agosto","09":"Setembro","10":"Outubro","11":"Novembro","12":"Dezembro"};
+    var titulo="Relatório de Despesas — "+(mesNomes[mes]||"Todos os meses")+" / "+ano;
+    var totalValor=0,totalPago=0,totalPend=0;
+    _relDados.forEach(function(d){ var v=parseFloat(String(d.valor||"").replace(/[^\d,]/g,"").replace(",","."))||0; totalValor+=v; if(d.status==="PAGO") totalPago+=v; else if(d.status!=="CANCELADO") totalPend+=v; });
+    var fmt=function(v){ return "R$ "+v.toFixed(2).replace(".",","); };
+    var statusLabels={"PENDENTE":"Pendente","AGUARDANDO_DOC":"Aguard. Doc","DOC_RECEBIDO":"Doc Recebido","ENVIADO_CONTABILIDADE":"Contabilidade","PAGO":"Pago","CANCELADO":"Cancelado"};
+    var linhas=_relDados.map(function(d,i){ var bg=i%2===0?"#fff":"#f8fafc"; var esc=function(v){ return String(v||"—").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }; return '<tr style="background:'+bg+';border-bottom:1px solid #e2e8f0;"><td>'+esc(d.numeroDespesa)+'</td><td>'+esc(d.prestadorNome)+'</td><td style="color:#64748b;">'+esc(d.prestadorDoc)+'</td><td style="color:#64748b;">'+esc(d.categoria)+'</td><td style="color:#64748b;">'+esc(d.descricao)+'</td><td style="font-weight:700;">'+esc(d.valor)+'</td><td>'+esc(d.dataVencimentoBR)+'</td><td>'+esc(statusLabels[d.status]||d.status)+'</td><td style="color:#64748b;">'+esc(d.tipoDoc)+'</td><td style="color:#64748b;">'+esc(d.dataPagamento)+'</td></tr>'; }).join("");
+    var html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>'+titulo+'</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;color:#0f172a;padding:24px;font-size:12px}h1{font-size:17px;color:#001f4d;margin-bottom:4px}.sub{font-size:11px;color:#64748b;margin-bottom:16px}.totais{display:flex;gap:24px;background:#f0f4f8;border-radius:8px;padding:12px 16px;margin-bottom:16px;flex-wrap:wrap}.totais span{font-size:11px;color:#64748b;display:block}.totais strong{font-size:14px;display:block;margin-top:2px}table{width:100%;border-collapse:collapse}thead tr{background:#001f4d;color:#fff}th{padding:8px 10px;text-align:left;font-size:11px;font-weight:700}td{padding:7px 10px;font-size:11px;border-bottom:1px solid #e2e8f0}.btn-print{position:fixed;top:16px;right:16px;padding:8px 18px;background:#001f4d;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700}@media print{.btn-print{display:none}body{padding:12px}}</style></head><body><button class="btn-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button><h1>'+titulo+'</h1><div class="sub">SindEducação-ES · SISGEP · Gerado em '+new Date().toLocaleDateString("pt-BR")+' às '+new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})+'</div><div class="totais"><div><span>Registros</span><strong>'+_relDados.length+'</strong></div><div><span>Valor Total</span><strong>'+fmt(totalValor)+'</strong></div><div><span style="color:#059669;">Total Pago</span><strong style="color:#059669;">'+fmt(totalPago)+'</strong></div><div><span style="color:#dc2626;">A Pagar</span><strong style="color:#dc2626;">'+fmt(totalPend)+'</strong></div></div><table><thead><tr><th>Nº</th><th>Prestador</th><th>CNPJ/CPF</th><th>Categoria</th><th>Descrição</th><th>Valor</th><th>Vencimento</th><th>Status</th><th>Tipo Doc</th><th>Dt. Pag.</th></tr></thead><tbody>'+linhas+'</tbody></table></body></html>';
+    var janela=window.open("","_blank");
+    if(janela){ janela.document.write(html); janela.document.close(); }
+    else showToast("Permita pop-ups para exportar o PDF.","error");
+  }
+
+  /* ═══ PERÍODO RÁPIDO ═══ */
+  function selecionarPeriodo(btn, periodo) {
+    document.querySelectorAll(".chip-periodo").forEach(function(c){ c.classList.remove("ativo"); });
+    if(btn) btn.classList.add("ativo");
+    var hoje=new Date(); hoje.setHours(0,0,0,0);
+    var pad=function(n){ return n<10?"0"+n:n; };
+    var fmt=function(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); };
+    var ini=g("f-data-ini"), fim=g("f-data-fim");
+    if(!ini||!fim) return;
+    if(periodo==="")                 { ini.value=""; fim.value=""; }
+    else if(periodo==="hoje")        { ini.value=fmt(hoje); fim.value=fmt(hoje); }
+    else if(periodo==="semana")      { var fs=new Date(hoje); fs.setDate(hoje.getDate()+(6-hoje.getDay())); ini.value=fmt(hoje); fim.value=fmt(fs); }
+    else if(periodo==="mes")         { ini.value=fmt(new Date(hoje.getFullYear(),hoje.getMonth(),1)); fim.value=fmt(new Date(hoje.getFullYear(),hoje.getMonth()+1,0)); }
+    else if(periodo==="proximo-mes") { ini.value=fmt(new Date(hoje.getFullYear(),hoje.getMonth()+1,1)); fim.value=fmt(new Date(hoje.getFullYear(),hoje.getMonth()+2,0)); }
+    aplicarFiltros();
+  }
+
+  function limparPeriodo() {
+    var ini=g("f-data-ini"), fim=g("f-data-fim");
+    if(ini) ini.value=""; if(fim) fim.value="";
+    document.querySelectorAll(".chip-periodo").forEach(function(c,i){ c.classList.toggle("ativo",i===0); });
+    aplicarFiltros();
+  }
+
+  /* ═══ HISTÓRICO ═══ */
+  function abrirHistorico(idDespesa, titulo) {
+    var painel=g("painel-historico"),info=g("painel-historico-info"),tl=g("historico-timeline");
+    if(!painel) return;
+    ["painel-pago","painel-cancelar","painel-solicitar-nf","painel-upload","painel-editar","painel-excluir","painel-duplicar"].forEach(function(pid){ var p=g(pid); if(p) p.classList.remove("open"); });
+    if(info) info.innerHTML='Histórico de <strong>'+escHtml(titulo)+'</strong>';
+    if(tl) tl.innerHTML='<div style="text-align:center;color:#94a3b8;padding:24px;font-size:13px;"><div class="desp-spinner" style="margin:0 auto 10px;"></div>Carregando...</div>';
+    painel.classList.add("open");
+    painel.scrollIntoView({behavior:"smooth",block:"start"});
+    google.script.run
+      .withSuccessHandler(function(resp){
+        if(!tl) return;
+        if(!resp||!resp.ok||!resp.historico||!resp.historico.length){ tl.innerHTML='<div style="text-align:center;color:#94a3b8;padding:24px;font-size:13px;">Nenhum histórico registrado para esta despesa.</div>'; return; }
+        var icones={"CRIADO":{cls:"criado",ico:"✨"},"STATUS":{cls:"status",ico:"🔄"},"DOC":{cls:"doc",ico:"📄"},"ENVIADO":{cls:"enviado",ico:"📤"},"PAGO":{cls:"pago",ico:"✅"},"CANCELADO":{cls:"cancelado",ico:"✕"},"EDITADO":{cls:"editado",ico:"✏️"},"CONFIRMADO":{cls:"pago",ico:"🏦"}};
+        tl.innerHTML=resp.historico.map(function(h){ var cfg=icones[h.tipo]||{cls:"editado",ico:"•"}; return '<div class="historico-item"><div class="historico-dot '+cfg.cls+'">'+cfg.ico+'</div><div class="historico-linha"><div class="historico-titulo">'+escHtml(h.titulo||h.tipo||"Alteração")+'</div>'+(h.detalhe?'<div class="historico-detalhe">'+escHtml(h.detalhe)+'</div>':'')+(h.usuario?'<div class="historico-detalhe" style="font-size:10.5px;color:#94a3b8;">Por: '+escHtml(h.usuario)+'</div>':'')+'<div class="historico-data">'+(h.data||"")+'</div></div></div>'; }).join("");
+      })
+      .withFailureHandler(function(e){ if(tl) tl.innerHTML='<div style="color:#dc2626;padding:16px;font-size:12px;text-align:center;">Erro: '+escHtml(e.message)+'</div>'; })
+      .obterHistoricoDespesa(idDespesa);
+  }
+
+  /* ═══ CHIP POR VAL ═══ */
+  function selecionarChipPorVal(v, hiddenId) {
+    var grupoId=hiddenId==="f-venc-chip"?"#chips-venc":"#chips-status";
+    document.querySelectorAll(grupoId+" .chip").forEach(function(c){ c.className="chip"; if((c.dataset.val||"")===v) c.classList.add("ativo"); });
+    var hidden=g(hiddenId); if(hidden) hidden.value=v;
+    setTimeout(aplicarFiltros, 50);
+  }
+
+  /* ═══ DUPLICAR ═══ */
+  function abrirModalDuplicar(d){
+    _idModalAtivo=d.idDespesa;
+    var info=g("painel-duplicar-info");
+    if(info) info.innerHTML='Duplicar <strong>'+escHtml(d.numeroDespesa||"")+'</strong> — '+escHtml(d.prestadorNome)+' ('+escHtml(d.valor)+')';
+    var vencInput=g("painel-duplicar-vencimento");
+    if(vencInput&&d.dataVencimentoBR){
+      var partes=d.dataVencimentoBR.split("/");
+      if(partes.length===3){
+        var dia=parseInt(partes[0],10),mes=parseInt(partes[1],10),ano=parseInt(partes[2],10);
+        mes++;
+        if(mes>12){ mes=1; ano++; }
+        var ultimoDia=new Date(ano,mes,0).getDate(); dia=Math.min(dia,ultimoDia);
+        var pad=function(n){ return n<10?"0"+n:n; };
+        vencInput.value=ano+"-"+pad(mes)+"-"+pad(dia);
+      }
+    }
+    abrirModal("painel-duplicar");
+  }
+
+  function confirmarDuplicarDespesa(){
+    var vencInput=g("painel-duplicar-vencimento");
+    if(!vencInput||!vencInput.value){ showToast("Informe o novo vencimento.","error"); return; }
+    var partes=vencInput.value.split("-");
+    var vencBR=partes[2]+"/"+partes[1]+"/"+partes[0];
+    fecharPainel("painel-duplicar");
+    google.script.run
+      .withSuccessHandler(function(resp){
+        if(resp&&resp.ok){ showToast("⎘ Duplicada: "+(resp.numeroDespesa||""),"success"); todasDespesas=[]; window.todasDespesas=[]; carregarLista(); carregarDashboard(); }
+        else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
+      })
+      .withFailureHandler(function(e){ showToast("Erro: "+e.message,"error"); })
+      .duplicarDespesa({ idDespesa:_idModalAtivo, novoVencimento:vencBR });
+  }
+
+  /* ═══ GERAR LOTE ═══ */
+  function abrirGerarLote() {
+    var mes=(g("lote-mes")||{}).value||"",ano=(g("lote-ano")||{}).value||"";
+    if(!mes||!ano){ showToast("Selecione o mês e o ano.","error"); return; }
+    var mesesNome={"01":"Janeiro","02":"Fevereiro","03":"Março","04":"Abril","05":"Maio","06":"Junho","07":"Julho","08":"Agosto","09":"Setembro","10":"Outubro","11":"Novembro","12":"Dezembro"};
+    if(!window.confirm("Gerar despesas recorrentes de "+(mesesNome[mes]||mes)+"/"+ano+"?\n\nO sistema criará uma despesa para cada prestador ativo que ainda não tem lançamento nesse mês.\n\nPrestadores já gerados serão ignorados automaticamente.")) return;
+    var btn=g("btn-gerar-lote");
+    if(btn){ btn.disabled=true; btn.textContent="⏳ Gerando..."; }
+    var resultado=g("lote-resultado"),content=g("lote-resultado-content");
+    if(resultado) resultado.style.display="none";
+    google.script.run
+      .withSuccessHandler(function(resp){
+        if(btn){ btn.disabled=false; btn.textContent="⚡ Gerar Despesas"; }
+        if(resultado) resultado.style.display="";
+        var html="";
+        if(resp&&resp.ok){
+          html+='<div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:10px;padding:12px 14px;margin-bottom:10px;font-size:13px;font-weight:700;color:#065f46;">✅ '+escHtml(resp.mensagem)+'</div>';
+          if(resp.gerados&&resp.gerados.length){ html+='<div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Despesas geradas ('+resp.gerados.length+')</div><div style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;">'; resp.gerados.forEach(function(d){ html+='<div style="display:flex;align-items:center;justify-content:space-between;background:#f0fdf4;border:1px solid #6ee7b7;border-radius:8px;padding:8px 12px;font-size:12px;"><span style="font-weight:700;color:#065f46;">✅ '+escHtml(d.nome)+'</span><span style="color:#059669;font-weight:700;">'+escHtml(d.numero||"")+' · '+escHtml(d.vencimento||"")+'</span></div>'; }); html+='</div>'; }
+          if(resp.ignorados&&resp.ignorados.length){ html+='<details style="margin-top:10px;"><summary style="font-size:11px;font-weight:700;color:#94a3b8;cursor:pointer;">Ver ignorados ('+resp.ignorados.length+')</summary><div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;">'; resp.ignorados.forEach(function(d){ html+='<div style="font-size:11px;color:#64748b;padding:4px 8px;background:#f1f5f9;border-radius:6px;">· '+escHtml(d.nome||"?")+" — "+escHtml(d.motivo||"")+'</div>'; }); html+='</div></details>'; }
+          if(resp.erros&&resp.erros.length){ html+='<div style="margin-top:8px;">'; resp.erros.forEach(function(d){ html+='<div style="font-size:11px;color:#9f1239;padding:4px 8px;background:#fee2e2;border-radius:6px;margin-bottom:4px;">⚠️ '+escHtml(d.nome||"?")+" — "+escHtml(d.erro||"")+'</div>'; }); html+='</div>'; }
+          if(resp.gerados&&resp.gerados.length){ todasDespesas=[]; window.todasDespesas=[]; carregarDashboard(); }
+          showToast(resp.mensagem,"success");
+        } else {
+          html='<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:10px;padding:12px 14px;font-size:13px;font-weight:700;color:#9f1239;">❌ '+escHtml((resp&&resp.mensagem)||"Erro ao gerar.")+'</div>';
+          showToast((resp&&resp.mensagem)||"Erro ao gerar.","error");
+        }
+        if(content) content.innerHTML=html;
+      })
+      .withFailureHandler(function(e){ if(btn){ btn.disabled=false; btn.textContent="⚡ Gerar Despesas"; } showToast("Erro: "+e.message,"error"); })
+      .gerarDespesasEmLote({ mes:mes, ano:ano });
+  }
+
+  /* ═══ AJUSTE RECORRÊNCIA ═══ */
+  function ajustarRecorrenciaUI(rowIndex, novoValor, nomePrestador) {
+    if(!rowIndex||!novoValor) return;
+    var aplicar=window.confirm("Valor de \""+(nomePrestador||"prestador")+"\" alterado para "+novoValor+".\n\nDeseja aplicar este novo valor nas despesas PENDENTES e AGUARDANDO_DOC deste prestador?");
+    google.script.run
+      .withSuccessHandler(function(resp){
+        if(resp&&resp.ok){ var msg=resp.atualizadas>0?"✅ Valor atualizado. "+resp.atualizadas+" despesa(s) pendente(s) atualizada(s).":"✅ Cadastro atualizado. Nenhuma despesa pendente encontrada."; showToast(msg,"success"); if(resp.atualizadas>0){ todasDespesas=[]; window.todasDespesas=[]; } }
+        else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
+      })
+      .withFailureHandler(function(e){ showToast("Erro: "+e.message,"error"); })
+      .ajustarRecorrencia({ rowIndex:rowIndex, novoValor:novoValor, aplicarPendentes:aplicar });
+  }
+
+  /* ═══ CHIP SELECIONARR ═══ */
+  function selecionarChip(btn, hiddenId) {
+    var grupo = btn.closest(".chips-row");
+    if(grupo) grupo.querySelectorAll(".chip").forEach(function(c){ c.className="chip"; });
+    btn.classList.add("ativo");
+    var hidden = document.getElementById(hiddenId);
+    if(hidden) hidden.value = btn.dataset.val || "";
+    if(typeof aplicarFiltros === "function") aplicarFiltros();
+    var btnLimpar = document.getElementById("btn-limpar-filtros");
+    if(btnLimpar){
+      var busca=document.getElementById("f-busca"),cat=document.getElementById("f-categoria"),
+          tipo=document.getElementById("f-tipo"),sc=document.getElementById("f-status-chip"),
+          vc=document.getElementById("f-venc-chip");
+      var tem=(busca&&busca.value)||(cat&&cat.value)||(tipo&&tipo.value)||(sc&&sc.value)||(vc&&vc.value);
+      btnLimpar.style.display = tem ? "inline-flex" : "none";
+    }
+  }
+
+  /* ═══ INIT ═══ */
+  function initDespesasAdmin(){
+    if(!document.getElementById("secDespesas")) return;
+    definirDataHoje("n-vencimento"); definirDataHoje("painel-data-pago");
+    carregarDashboard(); carregarFornecedoresCache();
+    ["r-recorrente","r-avulso"].forEach(function(id){ var el=g(id); if(el) el.addEventListener("change",atualizarTipoLanc); });
+    atualizarTipoLanc();
+    var fileInput=g("painel-upload-file");
+    if(fileInput){ fileInput.addEventListener("change",function(){ Array.from(this.files||[]).forEach(function(f){ if(f.size>10*1024*1024){ showToast(f.name+": excede 10MB.","error"); return; } var dup=_uploadArquivos.some(function(e){ return e.name===f.name&&e.size===f.size; }); if(!dup) _uploadArquivos.push(f); }); renderUploadList(); this.value=""; }); }
+    var dz=g("upload-drop-zone");
+    if(dz){ dz.addEventListener("dragover",function(e){ e.preventDefault(); dz.style.borderColor="#1565C0"; }); dz.addEventListener("dragleave",function(){ dz.style.borderColor="#93c5fd"; }); dz.addEventListener("drop",function(e){ e.preventDefault(); dz.style.borderColor="#93c5fd"; Array.from(e.dataTransfer.files||[]).forEach(function(f){ if(f.size>10*1024*1024){ showToast(f.name+": excede 10MB.","error"); return; } var dup=_uploadArquivos.some(function(e2){ return e2.name===f.name&&e2.size===f.size; }); if(!dup) _uploadArquivos.push(f); }); renderUploadList(); }); }
+    document.addEventListener("click",function(e){ var dd=g("autocomplete-dropdown"),inp=g("n-busca-forn"); if(dd&&inp&&!dd.contains(e.target)&&e.target!==inp) fecharDropdown(); });
+    console.log("✅ Módulo Despesas v4 inicializado!");
+  }
+
+  // ═══ EXPÕE GLOBALMENTE — todas as funções necessárias ═══
+  window.initDespesasAdmin           = initDespesasAdmin;
+  window.carregarDashboard           = carregarDashboard;
+  window.carregarLista               = carregarLista;
+  window.aplicarFiltros              = aplicarFiltros;
+  window.limparFiltros               = limparFiltros;
+  window.carregarLote                = carregarLote;
+  window.mudarTab                    = mudarTab;
+  window.selecionarTodos             = selecionarTodos;
+  window.atualizarSelecao            = atualizarSelecao;
+  window.irPagina                    = irPagina;
+  window.toggleLoteItem              = toggleLoteItem;
+  window.confirmarPagoModal          = confirmarPagoModal;
+  window.confirmarCancelarModal      = confirmarCancelarModal;
+  window.confirmarSolicitarNF        = confirmarSolicitarNF;
+  window.confirmarUploadManual       = confirmarUploadManual;
+  window.fecharModal                 = fecharModal;
+  window.fecharPainel                = fecharPainel;
+  window.onBuscaFornInput            = onBuscaFornInput;
+  window.onBuscaFornKeydown          = onBuscaFornKeydown;
+  window.limparFornecedor            = limparFornecedor;
+  window.mascaraValor                = mascaraValor;
+  window.salvarNovaDespesa           = salvarNovaDespesa;
+  window.limparFormNova              = limparFormNova;
+  window.abrirModalPago              = abrirModalPago;
+  window.abrirModalCancelar          = abrirModalCancelar;
+  window.abrirModalSolicitarNF       = abrirModalSolicitarNF;
+  window.abrirModalUpload            = abrirModalUpload;
+  window.abrirModalEditar            = abrirModalEditar;
+  window.confirmarEditarDespesa      = confirmarEditarDespesa;
+  window.abrirModalExcluir           = abrirModalExcluir;
+  window.confirmarExcluirDespesa     = confirmarExcluirDespesa;
+  window.montarAcoes                 = montarAcoes;
+  window.bindAcoes                   = bindAcoes;
+  window.abrirModalDuplicar          = abrirModalDuplicar;
+  window.confirmarDuplicarDespesa    = confirmarDuplicarDespesa;
+  window.atualizarSummaryBar         = atualizarSummaryBar;
+  window.renderLoteGrid              = renderLoteGrid;
+  window.gerarRelatorio              = gerarRelatorio;
+  window.exportarRelatorioCSV        = exportarRelatorioCSV;
+  window.exportarRelatorioPDF        = exportarRelatorioPDF;
+  window.abrirPreviewOficio          = abrirPreviewOficio;
+  window.abrirModalConfirmacaoEnvio  = abrirModalConfirmacaoEnvio;
+  window.fecharModalEnvio            = fecharModalEnvio;
+  window.adicionarDestinatarioManual = adicionarDestinatarioManual;
+  window.confirmarEnvioContabilidade = confirmarEnvioContabilidade;
+  window.fecharModalSucesso          = fecharModalSucesso;
+  window.editarEmailLote             = editarEmailLote;
+  window.cancelarEmailLote           = cancelarEmailLote;
+  window.salvarEmailLote             = salvarEmailLote;
+  window.excluirDaListaLote          = excluirDaListaLote;
+  window.dispensarBanner             = dispensarBanner;
+  window.abrirGerarLote              = abrirGerarLote;
+  window.ajustarRecorrenciaUI        = ajustarRecorrenciaUI;
+  window.selecionarChip              = selecionarChip;
+  window.selecionarPeriodo           = selecionarPeriodo;
+  window.limparPeriodo               = limparPeriodo;
+  window.selecionarChipPorVal        = selecionarChipPorVal;
+  window.abrirHistorico              = abrirHistorico;
+
+  // Inicializa seletor de mês com o mês atual
+  (function(){
+    var selMes=document.getElementById("lote-mes");
+    if(selMes){ var mesAtual=String(new Date().getMonth()+1).padStart(2,"0"); selMes.value=mesAtual; }
+  })();
+
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",function(){ setTimeout(initDespesasAdmin,100); });
+  else setTimeout(initDespesasAdmin,100);
+
+})();
+</script>

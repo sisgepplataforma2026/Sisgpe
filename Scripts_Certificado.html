@@ -1,0 +1,716 @@
+<style>
+/* ── Certificado Admin — estilos isolados ── */
+#secCertificadoAdmin *,
+#secCertificadoAdmin *::before,
+#secCertificadoAdmin *::after { box-sizing: border-box; }
+
+#secCertificadoAdmin {
+  --navy:  #001f4d; --navy2: #002f6c; --blue: #1565C0;
+  --gold:  #C9A84C; --gold2: #f0c843;
+  --bg:    #f0f4f8; --g50: #f8fafc; --g100: #f1f5f9;
+  --g200:  #e2e8f0; --g300: #cbd5e1; --g400: #94a3b8;
+  --g500:  #64748b; --g600: #475569; --g700: #334155;
+  --g800:  #1e293b; --g900: #0f172a;
+  --green: #059669; --green-lt: #d1fae5;
+  --amber: #d97706; --amber-lt: #fef3c7;
+  --red:   #dc2626; --red-lt: #fee2e2;
+  --violet:#7c3aed; --violet-lt:#ede9fe;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+#secCertificadoAdmin .cert-hero {
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 40%, #0a47a0 70%, #1565C0 100%);
+  padding: 34px 32px 96px; position: relative; overflow: hidden;
+}
+#secCertificadoAdmin .cert-hero::after {
+  content: 'BOLSA'; position: absolute; right: -10px; top: -10px;
+  font-size: 140px; font-weight: 900; color: transparent;
+  -webkit-text-stroke: 1px rgba(255,255,255,.035);
+  letter-spacing: -.06em; pointer-events: none; user-select: none;
+}
+#secCertificadoAdmin .cert-hero-inner { position: relative; z-index: 1; display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+#secCertificadoAdmin .cert-eyebrow { font-size: 11px; font-weight: 800; color: var(--gold); letter-spacing: .16em; text-transform: uppercase; margin-bottom: 10px; }
+#secCertificadoAdmin .cert-hero h2 { font-size: 28px; font-weight: 900; color: #fff; letter-spacing: -.5px; line-height: 1.1; margin-bottom: 6px; }
+#secCertificadoAdmin .cert-hero p  { font-size: 13px; color: rgba(255,255,255,.58); }
+
+#secCertificadoAdmin .cert-metrics { padding: 0 32px; margin-top: -64px; position: relative; z-index: 10; margin-bottom: 28px; }
+#secCertificadoAdmin .cert-metrics-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+#secCertificadoAdmin .cert-mcard { background: #fff; border-radius: 16px; padding: 16px 15px; box-shadow: 0 8px 30px rgba(0,20,60,.13); position: relative; overflow: hidden; cursor: pointer; transition: transform .18s, box-shadow .18s; border: 2px solid transparent; }
+#secCertificadoAdmin .cert-mcard:hover { transform: translateY(-3px); box-shadow: 0 14px 40px rgba(0,20,60,.18); }
+#secCertificadoAdmin .cert-mcard.ativo { border-color: var(--blue); }
+#secCertificadoAdmin .cert-mac { position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 16px 16px 0 0; }
+#secCertificadoAdmin .mac-navy  { background: linear-gradient(90deg, var(--navy2), var(--blue)); }
+#secCertificadoAdmin .mac-amber { background: linear-gradient(90deg, var(--amber), #fbbf24); }
+#secCertificadoAdmin .mac-blue  { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+#secCertificadoAdmin .mac-green { background: linear-gradient(90deg, var(--green), #34d399); }
+#secCertificadoAdmin .mac-violet{ background: linear-gradient(90deg, var(--violet), #a78bfa); }
+#secCertificadoAdmin .cert-mcard-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+#secCertificadoAdmin .cert-mlbl { font-size: 10.5px; font-weight: 800; color: var(--g500); text-transform: uppercase; letter-spacing: .05em; }
+#secCertificadoAdmin .cert-mico { width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+#secCertificadoAdmin .mico-navy  { background: #eef3fc; }
+#secCertificadoAdmin .mico-amber { background: var(--amber-lt); }
+#secCertificadoAdmin .mico-blue  { background: #eff6ff; }
+#secCertificadoAdmin .mico-green { background: var(--green-lt); }
+#secCertificadoAdmin .mico-violet{ background: var(--violet-lt); }
+#secCertificadoAdmin .cert-mval { font-size: 30px; font-weight: 900; color: var(--g900); line-height: 1; margin-bottom: 4px; }
+#secCertificadoAdmin .cert-msub { font-size: 10.5px; color: var(--g400); font-weight: 600; }
+
+#secCertificadoAdmin .cert-content { padding: 0 32px 48px; }
+
+#secCertificadoAdmin .cert-msg { border-radius: 12px; font-size: 13.5px; font-weight: 600; margin-bottom: 16px; line-height: 1.5; }
+#secCertificadoAdmin .cert-msg:empty { display: none; }
+#secCertificadoAdmin .cert-msg.ok   { background: var(--green-lt); border: 1px solid #6ee7b7; color: #065f46; padding: 12px 16px; }
+#secCertificadoAdmin .cert-msg.erro { background: var(--red-lt);   border: 1px solid #fca5a5; color: #9f1239;  padding: 12px 16px; }
+#secCertificadoAdmin .cert-msg.warn { background: var(--amber-lt); border: 1px solid #fcd34d; color: #92400e;  padding: 12px 16px; }
+#secCertificadoAdmin .cert-msg.info { background: #eff6ff;         border: 1px solid #93c5fd; color: #1d4ed8;  padding: 12px 16px; }
+
+#secCertificadoAdmin .cert-card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,.055); box-shadow: 0 2px 12px rgba(0,20,60,.06); overflow: hidden; margin-bottom: 16px; }
+#secCertificadoAdmin .cert-card-head { padding: 16px 20px 13px; border-bottom: 1px solid var(--g100); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+#secCertificadoAdmin .cert-card-head-l { display: flex; align-items: center; gap: 10px; }
+#secCertificadoAdmin .cert-card-ico { width: 34px; height: 34px; border-radius: 9px; background: var(--g100); display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+#secCertificadoAdmin .cert-card-title { font-size: 13.5px; font-weight: 800; color: var(--g900); }
+#secCertificadoAdmin .cert-card-sub   { font-size: 11px; color: var(--g400); margin-top: 2px; }
+#secCertificadoAdmin .cert-card-body  { padding: 18px 20px; }
+
+#secCertificadoAdmin .cert-filtros { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+#secCertificadoAdmin .cert-input { height: 36px; border-radius: 999px; border: 1.5px solid var(--g200); padding: 0 16px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12.5px; outline: none; transition: border-color .16s; color: var(--g700); background: #fff; }
+#secCertificadoAdmin .cert-input:focus { border-color: var(--blue); }
+#secCertificadoAdmin .cert-select { height: 36px; border-radius: 999px; border: 1.5px solid var(--g200); padding: 0 14px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12.5px; font-weight: 600; color: var(--g700); background: #fff; outline: none; cursor: pointer; }
+#secCertificadoAdmin .cert-busca { width: 260px; }
+
+#secCertificadoAdmin .cert-tabela-wrap { overflow-x: auto; }
+#secCertificadoAdmin .cert-tabela { width: 100%; min-width: 1000px; border-collapse: collapse; }
+#secCertificadoAdmin .cert-tabela thead { background: var(--g50); }
+#secCertificadoAdmin .cert-tabela th { padding: 11px 13px; text-align: left; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--g500); border-bottom: 1px solid var(--g200); white-space: nowrap; }
+#secCertificadoAdmin .cert-tabela td { padding: 11px 13px; font-size: 12.5px; color: var(--g700); border-bottom: 1px solid var(--g100); vertical-align: middle; }
+#secCertificadoAdmin .cert-tabela tbody tr:hover td { background: var(--g50); }
+#secCertificadoAdmin .cert-tabela-vazia { text-align: center; padding: 44px 20px; color: var(--g400); font-size: 14px; }
+
+#secCertificadoAdmin .cert-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 800; border-radius: 999px; padding: 3px 9px; white-space: nowrap; text-transform: uppercase; letter-spacing: .04em; }
+#secCertificadoAdmin .badge-pendente  { background: var(--amber-lt); color: #92400e; border: 1px solid #fcd34d; }
+#secCertificadoAdmin .badge-analise   { background: #eff6ff; color: #1d4ed8; border: 1px solid #93c5fd; }
+#secCertificadoAdmin .badge-aprovado  { background: var(--green-lt); color: #065f46; border: 1px solid #6ee7b7; }
+#secCertificadoAdmin .badge-indeferido{ background: var(--red-lt); color: #9f1239; border: 1px solid #fca5a5; }
+#secCertificadoAdmin .badge-emitido   { background: var(--violet-lt); color: #5b21b6; border: 1px solid #c4b5fd; }
+
+#secCertificadoAdmin .cert-btn { display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 16px; border: none; border-radius: 999px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: all .17s; white-space: nowrap; }
+#secCertificadoAdmin .cert-btn:disabled { opacity: .45; cursor: not-allowed; }
+#secCertificadoAdmin .cert-btn-primary   { background: linear-gradient(135deg, var(--navy2), var(--blue)); color: #fff; box-shadow: 0 4px 14px rgba(0,47,108,.22); }
+#secCertificadoAdmin .cert-btn-primary:hover:not(:disabled) { transform: translateY(-2px); }
+#secCertificadoAdmin .cert-btn-secondary { background: #fff; color: var(--g700); border: 1.5px solid var(--g200); }
+#secCertificadoAdmin .cert-btn-secondary:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); background: #eef5ff; }
+#secCertificadoAdmin .cert-btn-success { background: linear-gradient(135deg, #059669, #10b981); color: #fff; }
+#secCertificadoAdmin .cert-btn-success:hover:not(:disabled) { transform: translateY(-2px); }
+#secCertificadoAdmin .cert-btn-danger  { background: linear-gradient(135deg, #dc2626, #ef4444); color: #fff; }
+#secCertificadoAdmin .cert-btn-danger:hover:not(:disabled)  { transform: translateY(-2px); }
+#secCertificadoAdmin .cert-btn-gold    { background: linear-gradient(135deg, var(--gold), var(--gold2)); color: var(--navy); }
+#secCertificadoAdmin .cert-btn-gold:hover:not(:disabled)    { transform: translateY(-2px); }
+#secCertificadoAdmin .cert-btn-violet  { background: linear-gradient(135deg, var(--violet), #a78bfa); color: #fff; }
+#secCertificadoAdmin .cert-btn-violet:hover:not(:disabled)  { transform: translateY(-2px); }
+#secCertificadoAdmin .cert-btn-sm { height: 30px; padding: 0 11px; font-size: 11.5px; }
+#secCertificadoAdmin .cert-btn-xs { height: 26px; padding: 0 9px; font-size: 11px; }
+
+#secCertificadoAdmin .cert-pag { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-top: 1px solid var(--g100); flex-wrap: wrap; gap: 8px; }
+#secCertificadoAdmin .cert-pag-info { font-size: 11.5px; color: var(--g500); font-weight: 600; }
+#secCertificadoAdmin .cert-pag-btns { display: flex; gap: 5px; }
+#secCertificadoAdmin .cert-pag-btn { height: 30px; min-width: 30px; padding: 0 9px; border-radius: 7px; border: 1.5px solid var(--g200); background: #fff; color: var(--g700); font-size: 11.5px; font-weight: 700; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; transition: all .14s; }
+#secCertificadoAdmin .cert-pag-btn:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); }
+#secCertificadoAdmin .cert-pag-btn.ativo { background: var(--navy); border-color: var(--navy); color: #fff; }
+#secCertificadoAdmin .cert-pag-btn:disabled { opacity: .35; cursor: not-allowed; }
+
+#certModalOverlay { position: fixed; inset: 0; background: rgba(15,23,42,.52); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 9999; backdrop-filter: blur(3px); }
+#certModalOverlay.ativo { display: flex; }
+#certModalBox { width: min(820px, 100%); background: #fff; border-radius: 20px; box-shadow: 0 30px 80px rgba(0,20,60,.28); overflow: hidden; max-height: 94vh; display: flex; flex-direction: column; font-family: 'Plus Jakarta Sans', sans-serif; }
+#certModalBox .cert-modal-head { padding: 18px 22px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
+#certModalBox .cert-modal-head-l { display: flex; align-items: center; gap: 12px; }
+#certModalBox .cert-modal-ico { width: 40px; height: 40px; border-radius: 11px; background: linear-gradient(135deg, #002f6c, #1565C0); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+#certModalBox .cert-modal-title { font-size: 15px; font-weight: 900; color: #0f172a; }
+#certModalBox .cert-modal-sub   { font-size: 11px; color: #64748b; margin-top: 2px; }
+#certModalBox .cert-modal-body  { padding: 20px 22px; overflow-y: auto; flex: 1; }
+#certModalBox .cert-modal-foot  { padding: 14px 22px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
+#certModalBox .cert-modal-close { width: 36px; height: 36px; border-radius: 999px; border: 1.5px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer; font-size: 17px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: all .14s; }
+#certModalBox .cert-modal-close:hover { background: #fee2e2; border-color: #dc2626; color: #dc2626; }
+#certModalBox .cert-info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
+#certModalBox .cert-info-item { display: flex; flex-direction: column; gap: 3px; }
+#certModalBox .cert-info-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
+#certModalBox .cert-info-val   { font-size: 13px; font-weight: 700; color: #1e293b; }
+#certModalBox .cert-section-title { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #94a3b8; border-bottom: 1px solid #f1f5f9; padding-bottom: 7px; margin-bottom: 12px; margin-top: 16px; }
+#certModalBox .cert-obs-area { width: 100%; min-height: 80px; border-radius: 11px; border: 1.5px solid #cbd5e1; background: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; padding: 11px 13px; outline: none; resize: vertical; line-height: 1.55; color: #1e293b; transition: border-color .16s; }
+#certModalBox .cert-obs-area:focus { border-color: #1565C0; box-shadow: 0 0 0 4px rgba(21,101,192,.09); }
+
+@media (max-width: 900px) {
+  #secCertificadoAdmin .cert-metrics-grid { grid-template-columns: repeat(3, 1fr); }
+  #secCertificadoAdmin .cert-metrics, #secCertificadoAdmin .cert-content { padding-left: 16px; padding-right: 16px; }
+}
+@media (max-width: 600px) {
+  #secCertificadoAdmin .cert-metrics-grid { grid-template-columns: repeat(2, 1fr); }
+  #secCertificadoAdmin .cert-hero { padding: 26px 16px 86px; }
+}
+</style>
+
+<div id="secCertificadoAdmin">
+  <div class="cert-hero">
+    <div class="cert-hero-inner">
+      <div>
+        <div class="cert-eyebrow">SindEducação-ES · SISGEP</div>
+        <h2>Gestão de Bolsas</h2>
+        <p>Solicitações, validação, aprovação e emissão de certificados</p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certBtnRecarregar">↻ Atualizar</button>
+        <button type="button" class="cert-btn cert-btn-gold cert-btn-sm" id="certBtnExportarCsv">📤 Exportar CSV</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="cert-metrics">
+    <div class="cert-metrics-grid">
+      <div class="cert-mcard" id="certMcardTodos" onclick="certFiltrarPorStatus('')">
+        <div class="cert-mac mac-navy"></div>
+        <div class="cert-mcard-top"><span class="cert-mlbl">Total</span><div class="cert-mico mico-navy">📋</div></div>
+        <div class="cert-mval" id="certStatTotal">—</div>
+        <div class="cert-msub">Todas as solicitações</div>
+      </div>
+      <div class="cert-mcard" id="certMcardPendente" onclick="certFiltrarPorStatus('PENDENTE')">
+        <div class="cert-mac mac-amber"></div>
+        <div class="cert-mcard-top"><span class="cert-mlbl">Pendentes</span><div class="cert-mico mico-amber">⏳</div></div>
+        <div class="cert-mval" id="certStatPendente">—</div>
+        <div class="cert-msub">Aguardando análise</div>
+      </div>
+      <div class="cert-mcard" id="certMcardAnalise" onclick="certFiltrarPorStatus('ANALISE')">
+        <div class="cert-mac mac-blue"></div>
+        <div class="cert-mcard-top"><span class="cert-mlbl">Em Análise</span><div class="cert-mico mico-blue">🔍</div></div>
+        <div class="cert-mval" id="certStatAnalise">—</div>
+        <div class="cert-msub">Complementação solicitada</div>
+      </div>
+      <div class="cert-mcard" id="certMcardAprovado" onclick="certFiltrarPorStatus('APROVADO')">
+        <div class="cert-mac mac-green"></div>
+        <div class="cert-mcard-top"><span class="cert-mlbl">Aprovadas</span><div class="cert-mico mico-green">✅</div></div>
+        <div class="cert-mval" id="certStatAprovado">—</div>
+        <div class="cert-msub">Prontas para emissão</div>
+      </div>
+      <div class="cert-mcard" id="certMcardEmitido" onclick="certFiltrarPorStatus('EMITIDO')">
+        <div class="cert-mac mac-violet"></div>
+        <div class="cert-mcard-top"><span class="cert-mlbl">Emitidas</span><div class="cert-mico mico-violet">📄</div></div>
+        <div class="cert-mval" id="certStatEmitido">—</div>
+        <div class="cert-msub">Certificados gerados</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cert-content">
+    <div class="cert-msg" id="certMsgBox"></div>
+
+    <div class="cert-card">
+      <div class="cert-card-head">
+        <div class="cert-card-head-l">
+          <div class="cert-card-ico">📋</div>
+          <div>
+            <div class="cert-card-title">Solicitações de Bolsa</div>
+            <div class="cert-card-sub" id="certTabelaSub">Carregando...</div>
+          </div>
+        </div>
+        <div class="cert-filtros">
+          <input type="text" class="cert-input cert-busca" id="certBusca" placeholder="🔍 Nome, CPF, protocolo...">
+          <select class="cert-select" id="certFiltroStatus">
+            <option value="">Todos os status</option>
+            <option value="PENDENTE">Pendente</option>
+            <option value="ANALISE">Em Análise</option>
+            <option value="APROVADO">Aprovado</option>
+            <option value="INDEFERIDO">Indeferido</option>
+            <option value="EMITIDO">Emitido</option>
+          </select>
+          <select class="cert-select" id="certFiltroModalidade">
+            <option value="">Todas as modalidades</option>
+            <option value="CRECHE">Creche</option>
+            <option value="EDUCACAO_INFANTIL">Ed. Infantil</option>
+            <option value="ENSINO_FUNDAMENTAL">Ens. Fundamental</option>
+            <option value="ENSINO_MEDIO">Ens. Médio</option>
+            <option value="TECNICO">Técnico</option>
+            <option value="GRADUACAO">Graduação</option>
+            <option value="POS_GRADUACAO">Pós-Graduação</option>
+          </select>
+        </div>
+      </div>
+      <div class="cert-tabela-wrap">
+        <table class="cert-tabela">
+          <thead>
+            <tr>
+              <th>Protocolo</th><th>Solicitante</th><th>Escola</th>
+              <th>Modalidade</th><th>Curso</th><th>Período</th>
+              <th>Status</th><th>Data</th><th style="text-align:center;">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="certTbody">
+            <tr><td colspan="9"><div class="cert-tabela-vazia">⏳ Carregando...</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="cert-pag" id="certPagWrap" style="display:none;">
+        <div class="cert-pag-info" id="certPagInfo"></div>
+        <div class="cert-pag-btns" id="certPagBtns"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div id="certModalOverlay">
+  <div id="certModalBox">
+    <div class="cert-modal-head">
+      <div class="cert-modal-head-l">
+        <div class="cert-modal-ico">📋</div>
+        <div>
+          <div class="cert-modal-title" id="certModalTitulo">Solicitação</div>
+          <div class="cert-modal-sub" id="certModalSub"></div>
+        </div>
+      </div>
+      <button class="cert-modal-close" id="certModalClose">✕</button>
+    </div>
+    <div class="cert-modal-body">
+
+      <div class="cert-section-title">👤 Solicitante</div>
+      <div class="cert-info-grid">
+        <div class="cert-info-item"><span class="cert-info-label">Nome</span><span class="cert-info-val" id="cmi-nome">—</span></div>
+        <div class="cert-info-item"><span class="cert-info-label">CPF</span><span class="cert-info-val" id="cmi-cpf">—</span></div>
+        <div class="cert-info-item"><span class="cert-info-label">E-mail</span><span class="cert-info-val" id="cmi-email">—</span></div>
+        <div class="cert-info-item"><span class="cert-info-label">Telefone</span><span class="cert-info-val" id="cmi-telefone">—</span></div>
+        <div class="cert-info-item"><span class="cert-info-label">Escola</span><span class="cert-info-val" id="cmi-escola">—</span></div>
+        <div class="cert-info-item"><span class="cert-info-label">Situação Sindical</span><span class="cert-info-val" id="cmi-sindical">—</span></div>
+      </div>
+
+      <div class="cert-section-title">📚 Solicitação</div>
+      <div class="cert-info-grid">
+        <div class="cert-info-item"><span class="cert-info-label">Protocolo</span><span class="cert-info-val" id="cmi-protocolo">—</span></div>
+        <div class="cert-info-item"><span class="cert-info-label">Status</span><span class="cert-info-val" id="cmi-status">—</span></div>
+        <div class="cert-info-item"><span class="cert-info-label">Beneficiário</span><span class="cert-info-val" id="cmi-beneficiario">—</span></div>
+        <div class="cert-info-item"><span class="cert-info-label">Nome Beneficiário</span><span class="cert-info-val" id="cmi-nomeBenef">—</span></div>
+        <div class="cert-info-item"><span class="cert-info-label">Modalidade</span><span class="cert-info-val" id="cmi-modalidade">—</span></div>
+        <div class="cert-info-item"><span class="cert-info-label">Curso</span><span class="cert-info-val" id="cmi-curso">—</span></div>
+        <div class="cert-info-item"><span class="cert-info-label">Período</span><span class="cert-info-val" id="cmi-periodo">—</span></div>
+        <div class="cert-info-item"><span class="cert-info-label">Data Solicitação</span><span class="cert-info-val" id="cmi-data">—</span></div>
+      </div>
+
+      <div class="cert-section-title">📎 Documentos Anexados</div>
+      <div id="cmi-docs" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:4px;">
+        <span style="font-size:13px;color:#94a3b8;">Nenhum anexo.</span>
+      </div>
+
+      <div class="cert-section-title">💬 Observação / Justificativa</div>
+      <textarea class="cert-obs-area" id="certModalObs" placeholder="Registre observações sobre a análise desta solicitação..."></textarea>
+
+      <!-- Campo RG — visível apenas para aprovadas/emitidas -->
+      <div id="certRgArea" style="display:none;margin-top:14px;">
+        <div class="cert-section-title">🪪 RG do Associado</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <input type="text" id="certModalRg" placeholder="Ex.: 1234567"
+            style="height:38px;border-radius:10px;border:1.5px solid #cbd5e1;padding:0 13px;
+                   font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;outline:none;width:200px;
+                   transition:border-color .16s;"
+            onfocus="this.style.borderColor='#1565C0'" onblur="this.style.borderColor='#cbd5e1'">
+          <span style="font-size:11px;color:#94a3b8;">Impresso no certificado. Deixe em branco para usar apenas o CPF.</span>
+        </div>
+      </div>
+
+      <!-- Ações de status -->
+      <div id="certModalAcoes" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid #f1f5f9;">
+        <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certBtnComplementar">📄 Solicitar Complementação</button>
+        <button type="button" class="cert-btn cert-btn-danger cert-btn-sm"   id="certBtnIndeferir">❌ Indeferir</button>
+        <button type="button" class="cert-btn cert-btn-success cert-btn-sm"  id="certBtnAprovar">✅ Aprovar</button>
+      </div>
+
+      <!-- Área de emissão -->
+      <div id="certModalEmissaoArea" style="display:none;margin-top:14px;padding:14px 16px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;">
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;margin-bottom:12px;">📄 Emissão de Documentos</div>
+
+        <!-- Percentual -->
+        <div style="margin-bottom:12px;">
+          <label style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:6px;">% Desconto</label>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input type="number" id="certModalPercentual" min="1" max="100" value="70"
+              style="height:34px;width:90px;border-radius:8px;border:1.5px solid #cbd5e1;padding:0 10px;
+                     font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:700;outline:none;"
+              onfocus="this.style.borderColor='#1565C0'" onblur="this.style.borderColor='#cbd5e1'">
+            <span style="font-size:12px;color:#64748b;">% — editável para este documento</span>
+          </div>
+        </div>
+
+        <!-- Documentos apresentados -->
+        <div style="margin-bottom:14px;">
+          <label style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#64748b;display:block;margin-bottom:8px;">Documentos apresentados</label>
+          <div id="certDocsCheckboxes" style="display:flex;flex-direction:column;gap:5px;">
+            <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:#334155;cursor:pointer;"><input type="checkbox" value="Carteira de Identidade" style="accent-color:#1565C0;"> Carteira de Identidade</label>
+            <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:#334155;cursor:pointer;"><input type="checkbox" value="Carteira de Trabalho" style="accent-color:#1565C0;"> Carteira de Trabalho</label>
+            <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:#334155;cursor:pointer;"><input type="checkbox" value="Contra - cheque" style="accent-color:#1565C0;" checked> Contra-cheque</label>
+            <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:#334155;cursor:pointer;"><input type="checkbox" value="Certidão de Casamento" style="accent-color:#1565C0;"> Certidão de Casamento</label>
+            <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:#334155;cursor:pointer;"><input type="checkbox" value="Certidão de Nascimento do dependente" style="accent-color:#1565C0;"> Certidão de Nascimento do dependente</label>
+            <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:#334155;cursor:pointer;"><input type="checkbox" value="Sentença Judicial de Guarda" style="accent-color:#1565C0;"> Sentença Judicial de Guarda</label>
+            <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:#334155;cursor:pointer;"><input type="checkbox" value="Declaração de IR (dependentes econômicos até 24 anos)" style="accent-color:#1565C0;"> Declaração de IR (dependentes até 24 anos)</label>
+            <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:#334155;cursor:pointer;"><input type="checkbox" value="Declaração do Vínculo Empregatício" style="accent-color:#1565C0;" checked> Declaração do Vínculo Empregatício</label>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button type="button" class="cert-btn cert-btn-gold cert-btn-sm"   id="certBtnGerarComprovante">📋 Gerar Comprovante</button>
+          <button type="button" class="cert-btn cert-btn-violet cert-btn-sm" id="certBtnGerarCertificado">🎓 Gerar Certificado</button>
+        </div>
+      </div>
+    </div>
+    <div class="cert-modal-foot">
+      <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certModalCancelar">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+var _lista       = [];
+var _filtrada    = [];
+var _paginaAtual = 1;
+var _porPagina   = 20;
+var _buscaTimer  = null;
+var _solAtual    = null;
+
+function g(id){ return document.getElementById(id); }
+function escHtml(t){ return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function normTxt(t){ return String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim(); }
+
+function msg(texto, tipo){
+  var box = g('certMsgBox'); if(!box) return;
+  box.className = 'cert-msg ' + (tipo||'info');
+  box.innerHTML = texto||'';
+  if(texto) box.scrollIntoView({behavior:'smooth',block:'nearest'});
+  if(tipo==='ok') setTimeout(function(){ box.innerHTML=''; box.className='cert-msg'; }, 14000);
+}
+function setBtnLoad(btn,texto){ if(!btn) return; btn.disabled=true; btn._orig=btn.innerHTML; btn.innerHTML='⏳ '+(texto||'Aguarde...'); }
+function resetBtn(btn){ if(!btn) return; btn.disabled=false; if(btn._orig!==undefined) btn.innerHTML=btn._orig; }
+
+// ── Métricas
+function atualizarMetricas(){
+  var t=0,p=0,a=0,ap=0,em=0;
+  _lista.forEach(function(s){
+    t++;
+    var st=String(s.status||'').toUpperCase();
+    if(st==='PENDENTE') p++;
+    if(st==='ANALISE')  a++;
+    if(st==='APROVADO') ap++;
+    if(st==='EMITIDO')  em++;
+  });
+  if(g('certStatTotal'))   g('certStatTotal').textContent   = t;
+  if(g('certStatPendente'))g('certStatPendente').textContent = p;
+  if(g('certStatAnalise')) g('certStatAnalise').textContent  = a;
+  if(g('certStatAprovado'))g('certStatAprovado').textContent = ap;
+  if(g('certStatEmitido')) g('certStatEmitido').textContent  = em;
+}
+
+// ── Filtros
+function aplicarFiltros(){
+  var busca  = normTxt(g('certBusca')           ? g('certBusca').value           : '');
+  var status = g('certFiltroStatus')             ? g('certFiltroStatus').value     : '';
+  var mod    = g('certFiltroModalidade')         ? g('certFiltroModalidade').value : '';
+  _filtrada = _lista.filter(function(s){
+    if(status && String(s.status||'').toUpperCase() !== status) return false;
+    if(mod    && String(s.nivel||s.modalidade||'').toUpperCase() !== mod) return false;
+    if(busca){
+      var txt = normTxt([s.nome,s.cpf,s.protocolo,s.escola,s.curso,s.periodoReferencia].join(' '));
+      if(txt.indexOf(busca)===-1) return false;
+    }
+    return true;
+  });
+  _paginaAtual=1; renderTabela();
+}
+
+window.certFiltrarPorStatus = function(status){
+  ['certMcardTodos','certMcardPendente','certMcardAnalise','certMcardAprovado','certMcardEmitido'].forEach(function(id){
+    var el=g(id); if(el) el.classList.remove('ativo');
+  });
+  var mapa={'':'certMcardTodos','PENDENTE':'certMcardPendente','ANALISE':'certMcardAnalise','APROVADO':'certMcardAprovado','EMITIDO':'certMcardEmitido'};
+  if(mapa[status]&&g(mapa[status])) g(mapa[status]).classList.add('ativo');
+  var sel=g('certFiltroStatus'); if(sel) sel.value=status;
+  aplicarFiltros();
+};
+
+// ── Badge
+function badgeStatus(s){
+  var cls={'PENDENTE':'badge-pendente','ANALISE':'badge-analise','APROVADO':'badge-aprovado','INDEFERIDO':'badge-indeferido','EMITIDO':'badge-emitido'};
+  var ico={'PENDENTE':'⏳','ANALISE':'🔍','APROVADO':'✅','INDEFERIDO':'❌','EMITIDO':'📄'};
+  var st=String(s||'').toUpperCase();
+  return '<span class="cert-badge '+(cls[st]||'badge-pendente')+'">'+(ico[st]||'•')+' '+escHtml(s||'—')+'</span>';
+}
+
+// ── Tabela
+function renderTabela(){
+  var tbody=g('certTbody'), sub=g('certTabelaSub');
+  if(!tbody) return;
+  if(!_filtrada.length){
+    if(sub) sub.textContent='Nenhuma solicitação encontrada';
+    tbody.innerHTML='<tr><td colspan="9"><div class="cert-tabela-vazia">📭 Nenhuma solicitação encontrada.</div></td></tr>';
+    if(g('certPagWrap')) g('certPagWrap').style.display='none';
+    return;
+  }
+  var total=_filtrada.length, totalPag=Math.ceil(total/_porPagina);
+  if(_paginaAtual>totalPag) _paginaAtual=totalPag;
+  var ini=(_paginaAtual-1)*_porPagina, pag=_filtrada.slice(ini,ini+_porPagina);
+  if(sub) sub.textContent=total+' solicitação(ões) encontrada(s)';
+  var icoEdit='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+  var html='';
+  pag.forEach(function(s){
+    var bs='width:28px;height:28px;border-radius:7px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;border:1px solid #e2e8f0;background:#fff;color:#475569;';
+    var podeEmitir=s.status==='APROVADO'||s.status==='EMITIDO';
+    html+='<tr>'
+      +'<td><strong style="font-size:12px;color:#002f6c;">'+escHtml(s.protocolo||'—')+'</strong></td>'
+      +'<td><div style="font-weight:700;font-size:12.5px;color:#0f172a;">'+escHtml(s.nome||'—')+'</div>'
+        +'<div style="font-size:11px;color:#94a3b8;">'+escHtml(s.cpf||'')+'</div></td>'
+      +'<td style="font-size:11.5px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(s.escola||'—')+'</td>'
+      +'<td style="font-size:11.5px;">'+escHtml(s.nivel||s.modalidade||'—')+'</td>'
+      +'<td style="font-size:11.5px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(s.curso||'—')+'</td>'
+      +'<td style="font-size:11.5px;">'+escHtml(s.periodoReferencia||s.periodo||'—')+'</td>'
+      +'<td>'+badgeStatus(s.status)+'</td>'
+      +'<td style="font-size:11px;color:#64748b;white-space:nowrap;">'+escHtml(s.data||'—')+'</td>'
+      +'<td style="text-align:center;"><div style="display:inline-flex;gap:5px;align-items:center;">'
+        +'<button type="button" class="cert-btn-abrir-modal" data-id="'+escHtml(s.id)+'" title="Ver / Ações" style="'+bs+'">'+icoEdit+'</button>'
+        +(podeEmitir?'<button type="button" class="cert-btn-emitir-rapido" data-id="'+escHtml(s.id)+'" title="Emitir certificado" style="'+bs+'background:#f5f0ff;border-color:#c4b5fd;color:#5b21b6;">🎓</button>':'')
+      +'</div></td>'
+      +'</tr>';
+  });
+  tbody.innerHTML=html;
+  tbody.querySelectorAll('.cert-btn-abrir-modal').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var s=_lista.find(function(x){return x.id===this.getAttribute('data-id');},this);
+      if(s) abrirModal(s);
+    });
+  });
+  tbody.querySelectorAll('.cert-btn-emitir-rapido').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var s=_lista.find(function(x){return x.id===this.getAttribute('data-id');},this);
+      if(s){_solAtual=s; gerarDocumento('CERTIFICADO');}
+    });
+  });
+  renderPaginacao(total,totalPag);
+}
+
+function renderPaginacao(total,totalPag){
+  var wrap=g('certPagWrap'),info=g('certPagInfo'),btns=g('certPagBtns');
+  if(!wrap) return;
+  if(totalPag<=1){wrap.style.display='none';return;}
+  wrap.style.display='flex';
+  var ini=(_paginaAtual-1)*_porPagina+1,fim=Math.min(_paginaAtual*_porPagina,total);
+  if(info) info.textContent='Mostrando '+ini+'–'+fim+' de '+total;
+  var html='<button class="cert-pag-btn"'+(_paginaAtual===1?' disabled':'')+' onclick="certIrPag('+(_paginaAtual-1)+')">← Ant.</button>';
+  var st=Math.max(1,_paginaAtual-2),en=Math.min(totalPag,st+4);
+  for(var i=st;i<=en;i++) html+='<button class="cert-pag-btn'+(i===_paginaAtual?' ativo':'')+'" onclick="certIrPag('+i+')">'+i+'</button>';
+  html+='<button class="cert-pag-btn"'+(_paginaAtual===totalPag?' disabled':'')+' onclick="certIrPag('+(_paginaAtual+1)+')">Próx. →</button>';
+  if(btns) btns.innerHTML=html;
+}
+
+window.certIrPag=function(pg){
+  var tp=Math.ceil(_filtrada.length/_porPagina);
+  if(pg<1||pg>tp) return;
+  _paginaAtual=pg; renderTabela();
+};
+
+// ── Modal
+function abrirModal(s){
+  _solAtual=s;
+  var st=String(s.status||'').toUpperCase();
+  if(g('certModalTitulo')) g('certModalTitulo').textContent='Solicitação de Bolsa';
+  if(g('certModalSub'))    g('certModalSub').textContent=s.protocolo||'';
+  function set(id,val){var el=g(id);if(el)el.textContent=val||'—';}
+  set('cmi-nome',        s.nome);
+  set('cmi-cpf',         s.cpf);
+  set('cmi-email',       s.email);
+  set('cmi-telefone',    s.telefone);
+  set('cmi-escola',      s.escola);
+  set('cmi-sindical',    s.situacaoSindicalDeclarada||s.sindical||'—');
+  set('cmi-protocolo',   s.protocolo);
+  set('cmi-status',      s.status);
+  set('cmi-beneficiario',s.tipoBeneficiario||s.beneficiario);
+  set('cmi-nomeBenef',   s.nomeBeneficiario||s.nomeFilho);
+  set('cmi-modalidade',  s.nivel||s.modalidade);
+  set('cmi-curso',       s.curso);
+  set('cmi-periodo',     s.periodoReferencia||s.periodo);
+  set('cmi-data',        s.data);
+  if(g('certModalObs')) g('certModalObs').value=s.observacao||'';
+  if(g('certModalRg'))  g('certModalRg').value=s.rg||'';
+
+  // Documentos
+  var docsEl=g('cmi-docs');
+  if(docsEl){
+    var dh='';
+    if(s.linkContracheque) dh+='<a href="'+escHtml(s.linkContracheque)+'" target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:7px;padding:4px 11px;text-decoration:none;">📄 Contracheque</a>';
+    if(s.linkDocPessoal)   dh+='<a href="'+escHtml(s.linkDocPessoal)+'"  target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:7px;padding:4px 11px;text-decoration:none;">🪪 Doc. Pessoal</a>';
+    if(!dh) dh='<span style="font-size:13px;color:#94a3b8;">Nenhum anexo.</span>';
+    docsEl.innerHTML=dh;
+  }
+
+  var podeEmitir=['APROVADO','EMITIDO'].includes(st);
+  var podeAcao  =['PENDENTE','ANALISE'].includes(st);
+
+  if(g('certModalAcoes'))      g('certModalAcoes').style.display      = podeAcao   ? 'flex' : 'none';
+  if(g('certModalEmissaoArea'))g('certModalEmissaoArea').style.display = podeEmitir ? ''     : 'none';
+  if(g('certRgArea'))          g('certRgArea').style.display           = podeEmitir ? ''     : 'none';
+
+  // Preenche percentual automaticamente baseado na modalidade
+  if(podeEmitir && g('certModalPercentual')){
+    var pctMap={
+      'CRECHE':100,'EDUCACAO_INFANTIL':100,'ENSINO_FUNDAMENTAL':100,
+      'ENSINO_MEDIO':100,'PRE_VESTIBULAR':100,'TECNICO':100,'POS_GRADUACAO':70
+    };
+    var modalUp=String(s.nivel||s.modalidade||'').toUpperCase();
+    var pct=pctMap[modalUp]||70;
+    g('certModalPercentual').value=pct;
+  }
+
+  var overlay=g('certModalOverlay');
+  if(overlay){overlay.style.display='flex';overlay.classList.add('ativo');}
+}
+
+function fecharModal(){
+  var overlay=g('certModalOverlay');
+  if(overlay){overlay.style.display='none';overlay.classList.remove('ativo');}
+  _solAtual=null;
+}
+
+// ── Ações
+function acao(funcaoGas,labelBtn,labelMsg){
+  if(!_solAtual){msg('Nenhuma solicitação selecionada.','warn');return;}
+  var obs=g('certModalObs')?String(g('certModalObs').value||'').trim():'';
+  var btn=g(labelBtn);
+  setBtnLoad(btn,'Salvando...');
+  google.script.run
+    .withSuccessHandler(function(resp){
+      resetBtn(btn);
+      if(!resp||!resp.ok){msg((resp&&resp.mensagem)||'Erro.','erro');return;}
+      msg('✅ '+(resp.mensagem||labelMsg+' com sucesso!'),'ok');
+      fecharModal(); carregarLista();
+    })
+    .withFailureHandler(function(err){resetBtn(btn);msg('Erro: '+((err&&err.message)||''),'erro');})
+    [funcaoGas](_solAtual.protocolo, obs);
+}
+
+function gerarDocumento(tipo){
+  if(!_solAtual){msg('Nenhuma solicitação selecionada.','warn');return;}
+  var btnId=tipo==='CERTIFICADO'?'certBtnGerarCertificado':'certBtnGerarComprovante';
+  var btn=g(btnId);
+  setBtnLoad(btn,'Gerando...');
+
+  var rg         = g('certModalRg')         ? String(g('certModalRg').value||'').trim()         : '';
+  var percentual = g('certModalPercentual') ? Number(g('certModalPercentual').value||70)         : 70;
+  var documentos = [];
+  var cbs=document.querySelectorAll('#certDocsCheckboxes input[type="checkbox"]');
+  cbs.forEach(function(cb){if(cb.checked) documentos.push(cb.value);});
+
+  google.script.run
+    .withSuccessHandler(function(resp){
+      resetBtn(btn);
+      if(!resp||!resp.ok){msg((resp&&resp.mensagem)||'Erro ao gerar documento.','erro');return;}
+      msg('✅ '+tipo+' gerado! Código: <strong>'+(resp.codigoValidacao||'—')+'</strong>'
+        +(resp.linkPdf?' · <a href="'+resp.linkPdf+'" target="_blank" style="color:#5b21b6;font-weight:700;">📄 Abrir documento</a>':''),
+        'ok');
+      carregarLista();
+      if(resp.html){
+        var janela=window.open('about:blank','_blank');
+        if(janela){janela.document.open();janela.document.write(resp.html);janela.document.close();}
+      }
+    })
+    .withFailureHandler(function(err){resetBtn(btn);msg('Erro: '+((err&&err.message)||''),'erro');})
+    .gerarDocumentoCertBolsaCompleto(_solAtual.protocolo, tipo, {
+      rg: rg, percentual: percentual, documentos: documentos
+    });
+}
+
+// ── Carregar
+function carregarLista(){
+  var tbody=g('certTbody');
+  if(tbody) tbody.innerHTML='<tr><td colspan="9"><div class="cert-tabela-vazia">⏳ Carregando...</div></td></tr>';
+  google.script.run
+    .withSuccessHandler(function(lista){
+      _lista=Array.isArray(lista)?lista:[];
+      _filtrada=_lista.slice();
+      atualizarMetricas(); aplicarFiltros();
+    })
+    .withFailureHandler(function(err){msg('Erro ao carregar: '+((err&&err.message)||''),'erro');})
+    .listarSolicitacoesCertBolsa();
+}
+
+function exportarCsv(){
+  if(!_filtrada.length){msg('Nenhum dado para exportar.','warn');return;}
+  var headers=['Protocolo','Nome','CPF','E-mail','Escola','Modalidade','Curso','Beneficiário','Período','Status','Data'];
+  var rows=[headers].concat(_filtrada.map(function(s){
+    return [s.protocolo||'',s.nome||'',s.cpf||'',s.email||'',s.escola||'',
+            s.nivel||s.modalidade||'',s.curso||'',s.tipoBeneficiario||s.beneficiario||'',
+            s.periodoReferencia||s.periodo||'',s.status||'',s.data||''];
+  }));
+  var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(';');}).join('\n');
+  var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url; a.download='bolsas_'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  msg('📤 CSV exportado.','ok');
+}
+
+// ── Init
+function init(){
+  if(g('certBusca'))           g('certBusca').addEventListener('input',function(){clearTimeout(_buscaTimer);_buscaTimer=setTimeout(aplicarFiltros,300);});
+  if(g('certFiltroStatus'))    g('certFiltroStatus').addEventListener('change',aplicarFiltros);
+  if(g('certFiltroModalidade'))g('certFiltroModalidade').addEventListener('change',aplicarFiltros);
+  if(g('certBtnRecarregar'))   g('certBtnRecarregar').addEventListener('click',carregarLista);
+  if(g('certBtnExportarCsv'))  g('certBtnExportarCsv').addEventListener('click',exportarCsv);
+  if(g('certModalClose'))      g('certModalClose').addEventListener('click',fecharModal);
+  if(g('certModalCancelar'))   g('certModalCancelar').addEventListener('click',fecharModal);
+  if(g('certModalOverlay'))    g('certModalOverlay').addEventListener('click',function(e){if(e.target===this)fecharModal();});
+
+  if(g('certBtnComplementar')) g('certBtnComplementar').addEventListener('click',function(){
+    acao('solicitarComplementacaoCertBolsa','certBtnComplementar','Complementação solicitada');
+  });
+
+  if(g('certBtnIndeferir')) g('certBtnIndeferir').addEventListener('click',function(){
+    var obs=g('certModalObs')?String(g('certModalObs').value||'').trim():'';
+    if(!obs){
+      msg('Informe a justificativa antes de indeferir.','warn');
+      return;
+    }
+    acao('indeferirSolicitacaoCertBolsa','certBtnIndeferir','Solicitação indeferida');
+  });
+
+  if(g('certBtnAprovar')) g('certBtnAprovar').addEventListener('click',function(){
+    acao(
+      'aprovarSolicitacaoCertBolsaComEmail',
+      'certBtnAprovar',
+      'Solicitação aprovada — e-mail enviado ao associado'
+    );
+  });
+
+  if(g('certBtnGerarComprovante')){
+    g('certBtnGerarComprovante').addEventListener('click',function(){
+      gerarDocumento('COMPROVANTE');
+    });
+  }
+
+  if(g('certBtnGerarCertificado')){
+    g('certBtnGerarCertificado').addEventListener('click',function(){
+      gerarDocumento('CERTIFICADO');
+    });
+  }
+
+  carregarLista();
+}
+
+window.initCertificadoAdmin = function(){
+  if(window._certAdminInit) return;
+  window._certAdminInit = true;
+  init();
+};
+
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', function(){
+    setTimeout(init,120);
+  });
+}else{
+  setTimeout(init,120);
+}
+
+})();
+</script>

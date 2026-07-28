@@ -1,0 +1,89 @@
+<script>
+/* ═══════════════════════════════════════════
+   Helpers.html — utilitários globais SISGEP
+   Ofícios
+═══════════════════════════════════════════ */
+
+var estado = {
+  arquivosSelecionados: [],
+  contadorTrabalhador:  0
+};
+
+var CONFIG = {
+  LIMITE_TRABALHADORES: 25
+};
+
+/* ── loader (stub — sem spinner visível neste módulo) ── */
+function loader(status) {
+  console.log("Loader:", status);
+}
+
+/* ── toast visual (não usa alert) ── */
+function toast(msg, tipo, dur) {
+  tipo = tipo || "info";
+  dur  = dur  || 4000;
+  var box = document.getElementById("sisgepToastBox");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "sisgepToastBox";
+    box.style.cssText = "position:fixed;top:20px;right:20px;z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none;";
+    document.body.appendChild(box);
+  }
+  var el  = document.createElement("div");
+  var cor = { info:"#3b82f6", ok:"#059669", warn:"#d97706", err:"#dc2626" }[tipo] || "#3b82f6";
+  el.style.cssText = "pointer-events:auto;background:#fff;border-left:4px solid " + cor + ";padding:12px 16px;border-radius:10px;box-shadow:0 6px 20px rgba(0,20,60,.18);font-size:13px;font-weight:600;color:#0f172a;max-width:380px;";
+  el.textContent = msg;
+  box.appendChild(el);
+  setTimeout(function() {
+    el.style.opacity = "0";
+    el.style.transform = "translateX(20px)";
+    setTimeout(function() { el.remove(); }, 200);
+  }, dur);
+}
+
+/* ── utilitários de string ── */
+function escapeHtml(texto) {
+  return String(texto || "")
+    .replace(/&/g,  "&amp;")
+    .replace(/</g,  "&lt;")
+    .replace(/>/g,  "&gt;")
+    .replace(/"/g,  "&quot;")
+    .replace(/'/g,  "&#039;");
+}
+
+function onlyDigits(valor) {
+  return String(valor || "").replace(/\D/g, "");
+}
+
+function formatarCNPJFrontend(valor) {
+  valor = onlyDigits(valor);
+  return valor.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2}).*/, "$1.$2.$3/$4-$5");
+}
+
+/* ── Utils (compatibilidade com código legado) ── */
+var Utils = {
+  aplicarMascaraCPF: function(input) {
+    if (!input) return;
+    var v = onlyDigits(input.value);
+    v = v.replace(/^(\d{3})(\d)/,           "$1.$2");
+    v = v.replace(/^(\d{3})\.(\d{3})(\d)/,  "$1.$2.$3");
+    v = v.replace(/\.(\d{3})(\d)/,           ".$1-$2");
+    input.value = v.substring(0, 14);
+  },
+
+  /* Validação completa com dígitos verificadores */
+  validarCPF: function(cpf) {
+    var dig = onlyDigits(cpf);
+    if (dig.length !== 11) return false;
+    if (/^(\d)\1{10}$/.test(dig)) return false;
+    var soma = 0;
+    for (var i = 0; i < 9; i++) soma += parseInt(dig[i]) * (10 - i);
+    var r1 = (soma * 10) % 11; if (r1 === 10 || r1 === 11) r1 = 0;
+    if (r1 !== parseInt(dig[9])) return false;
+    soma = 0;
+    for (var j = 0; j < 10; j++) soma += parseInt(dig[j]) * (11 - j);
+    var r2 = (soma * 10) % 11; if (r2 === 10 || r2 === 11) r2 = 0;
+    return r2 === parseInt(dig[10]);
+  }
+};
+</script>

@@ -1,0 +1,1422 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --navy:     #061525;
+      --blue-deep:#0a2540;
+      --blue-mid: #0f3d6e;
+      --blue-act: #1a6eb5;
+      --cyan:     #27a4f2;
+      --gold:     #c8a84b;
+      --gold-lt:  #e8c96a;
+      --white:    #ffffff;
+      --muted:    #8fa3bc;
+      --border:   rgba(255,255,255,.1);
+      --surface:  rgba(255,255,255,.04);
+      --surface-h:rgba(255,255,255,.07);
+      --err-bg:   #fff0f0;
+      --err-bdr:  #fca5a5;
+      --err-txt:  #991b1b;
+      --ok-bg:    #f0fdf4;
+      --ok-bdr:   #86efac;
+      --ok-txt:   #166534;
+      --warn-bg:  #fffbeb;
+      --warn-bdr: #fcd34d;
+      --warn-txt: #92400e;
+    }
+
+    [data-theme="light"] {
+      --navy:     #f8fafc;
+      --blue-deep:#ffffff;
+      --blue-mid: #e2e8f0;
+      --blue-act: #3b82f6;
+      --cyan:     #0ea5e9;
+      --gold:     #f59e0b;
+      --gold-lt:  #fbbf24;
+      --white:    #1e293b;
+      --muted:    #64748b;
+      --border:   rgba(0,0,0,.1);
+      --surface:  rgba(0,0,0,.02);
+      --surface-h:rgba(0,0,0,.05);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    @keyframes fadeUp   { from { opacity:0; transform:translateY(22px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes floatOrb { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-20px); } }
+    @keyframes spin     { to { transform:rotate(360deg); } }
+    @keyframes slideDown{ from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes pulse    { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+
+    html, body {
+      min-height: 100%;
+      font-family: 'DM Sans', sans-serif;
+      background: var(--navy);
+      color: var(--white);
+      transition: background .3s, color .3s;
+    }
+
+    body { padding: 32px 20px 64px; position: relative; overflow-x: hidden; }
+
+    .bg {
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 10% 10%, rgba(26,110,181,.22) 0%, transparent 55%),
+        radial-gradient(ellipse 60% 50% at 90% 80%, rgba(39,164,242,.1) 0%, transparent 50%),
+        linear-gradient(160deg, var(--navy) 0%, var(--blue-deep) 50%, var(--navy) 100%);
+      pointer-events: none;
+      transition: opacity .3s;
+    }
+
+    .bg-grid {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(39,164,242,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(39,164,242,.04) 1px, transparent 1px);
+      background-size: 52px 52px;
+    }
+
+    .orb { position: absolute; border-radius: 50%; filter: blur(72px); pointer-events: none; }
+    .orb-1 { width:380px; height:380px; top:-80px; left:-80px; background:radial-gradient(circle,rgba(26,110,181,.28),transparent 68%); animation:floatOrb 10s ease-in-out infinite; }
+    .orb-2 { width:260px; height:260px; bottom:-50px; right:-50px; background:radial-gradient(circle,rgba(39,164,242,.16),transparent 68%); animation:floatOrb 14s ease-in-out infinite reverse; }
+
+    .theme-toggle { position:fixed; top:20px; right:20px; z-index:100; width:48px; height:48px; border-radius:50%; background:var(--surface); border:1px solid var(--border); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:20px; transition:all .2s; backdrop-filter:blur(12px); }
+    .theme-toggle:hover { transform:scale(1.1); box-shadow:0 8px 24px rgba(0,0,0,.15); }
+
+    .progress-bar { position:fixed; top:0; left:0; right:0; height:4px; background:var(--surface); z-index:99; overflow:hidden; }
+    .progress-fill { height:100%; background:linear-gradient(90deg,var(--blue-act),var(--cyan)); width:0%; transition:width .3s ease; }
+    .progress-text { position:fixed; top:12px; left:20px; z-index:100; font-size:11px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--cyan); background:var(--surface); padding:6px 12px; border-radius:20px; border:1px solid var(--border); backdrop-filter:blur(12px); }
+
+    .autosave-indicator { position:fixed; bottom:20px; right:20px; z-index:100; font-size:12px; font-weight:500; color:var(--muted); background:var(--surface); padding:8px 14px; border-radius:20px; border:1px solid var(--border); backdrop-filter:blur(12px); display:none; align-items:center; gap:6px; }
+    .autosave-indicator.saving { display:flex; }
+    .autosave-indicator .dot { width:6px; height:6px; border-radius:50%; background:var(--cyan); animation:pulse 1.5s infinite; }
+
+    .wrap { position:relative; z-index:1; max-width:880px; margin:0 auto; animation:fadeUp .6s ease both; }
+
+    .portal-header { text-align:center; margin-bottom:36px; margin-top:40px; }
+    .portal-eyebrow { display:inline-flex; align-items:center; gap:8px; font-size:11px; font-weight:600; letter-spacing:.18em; text-transform:uppercase; color:var(--cyan); margin-bottom:14px; }
+    .portal-eyebrow::before, .portal-eyebrow::after { content:''; width:28px; height:1px; background:rgba(39,164,242,.4); }
+    .portal-title { font-family:'Cormorant Garamond',serif; font-size:clamp(28px,5vw,42px); font-weight:700; line-height:1.1; margin-bottom:10px; }
+    .gold-bar { width:42px; height:2px; background:linear-gradient(90deg,var(--gold),var(--gold-lt),transparent); border-radius:2px; margin:0 auto 14px; }
+    .portal-sub { font-size:14px; font-weight:300; color:var(--muted); line-height:1.7; }
+
+    .msg-box { border-radius:14px; font-size:14px; font-weight:500; line-height:1.6; margin-bottom:24px; overflow:hidden; }
+    .msg-box:empty { display:none; }
+    .msg-box.ok   { background:var(--ok-bg);   border:1px solid var(--ok-bdr);   color:var(--ok-txt);   padding:14px 18px; animation:slideDown .25s ease both; }
+    .msg-box.erro { background:var(--err-bg);  border:1px solid var(--err-bdr);  color:var(--err-txt);  padding:14px 18px; animation:slideDown .25s ease both; }
+    .msg-box.warn { background:var(--warn-bg); border:1px solid var(--warn-bdr); color:var(--warn-txt); padding:14px 18px; animation:slideDown .25s ease both; }
+    .msg-box.info { background:rgba(39,164,242,.08); border:1px solid rgba(39,164,242,.22); color:#7dd3fc; padding:14px 18px; animation:slideDown .25s ease both; }
+
+    .secao { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:28px 30px; margin-bottom:20px; backdrop-filter:blur(12px); box-shadow:0 8px 32px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.06); transition:background .3s,border-color .3s; }
+    .secao-header { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
+    .secao-num { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; background:linear-gradient(135deg,var(--blue-act),var(--cyan)); font-size:12px; font-weight:700; flex-shrink:0; box-shadow:0 4px 12px rgba(39,164,242,.25); }
+    .secao-title { font-family:'Cormorant Garamond',serif; font-size:20px; font-weight:700; color:var(--white); }
+
+    .grid2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:18px; }
+
+    .field { display:flex; flex-direction:column; gap:7px; }
+    .field.hidden { display:none; }
+    .field label { font-size:11px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+    .field.required label::after { content:' *'; color:#f87171; font-weight:700; margin-left:2px; }
+
+    .field input, .field select {
+      height:48px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12);
+      border-radius:11px; padding:0 14px; font-family:'DM Sans',sans-serif; font-size:14px;
+      color:var(--white); outline:none; transition:background .2s,border-color .2s,box-shadow .2s; appearance:none;
+    }
+    [data-theme="light"] .field input, [data-theme="light"] .field select { background:rgba(0,0,0,.03); border:1px solid rgba(0,0,0,.1); color:#1e293b; }
+    .field input.invalid, .field select.invalid { border-color:#f87171 !important; box-shadow:0 0 0 4px rgba(248,113,113,.1) !important; }
+    .field select { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238fa3bc' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; padding-right:36px; cursor:pointer; }
+    .field select option { background:#0a2540; color:var(--white); }
+    [data-theme="light"] .field select option { background:#ffffff; color:#1e293b; }
+    .field input::placeholder { color:rgba(255,255,255,.22); }
+    [data-theme="light"] .field input::placeholder { color:rgba(0,0,0,.3); }
+    .field input:focus, .field select:focus { background:rgba(255,255,255,.09); border-color:rgba(39,164,242,.55); box-shadow:0 0 0 4px rgba(39,164,242,.1); }
+    [data-theme="light"] .field input:focus, [data-theme="light"] .field select:focus { background:rgba(0,0,0,.05); }
+
+    /* ── Upload ── */
+    .upload-area {
+      border: 1.5px dashed rgba(255,255,255,.18);
+      border-radius: 11px;
+      padding: 16px 14px;
+      background: rgba(255,255,255,.03);
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      text-align: center;
+      position: relative;
+      min-height: 86px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+    .upload-area:hover { border-color:rgba(39,164,242,.45); background:rgba(39,164,242,.04); }
+    [data-theme="light"] .upload-area { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.12); }
+    [data-theme="light"] .upload-area:hover { background:rgba(59,130,246,.04); border-color:rgba(59,130,246,.3); }
+    .upload-area input[type="file"] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+    .upload-area input[type="file"]:focus { outline:none; }
+    .upload-ico  { font-size:20px; }
+    .upload-txt  { font-size:12px; font-weight:600; color:var(--muted); line-height:1.45; }
+    .upload-nome { font-size:12px; font-weight:600; color:#34d399; margin-top:2px; }
+    .field-help  { font-size:11px; color:var(--muted); font-weight:500; }
+
+    .acoes { display:flex; gap:14px; flex-wrap:wrap; margin-top:8px; }
+
+    .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; height:50px; padding:0 28px; border:none; border-radius:13px; font-family:'DM Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer; letter-spacing:.02em; transition:transform .15s,box-shadow .15s,opacity .15s; position:relative; overflow:hidden; }
+    .btn::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,.1) 0%,transparent 60%); pointer-events:none; }
+    .btn:disabled { opacity:.6; cursor:not-allowed; }
+    .btn-primary { background:linear-gradient(135deg,var(--blue-act),var(--cyan)); color:var(--white); box-shadow:0 10px 28px rgba(39,164,242,.22); }
+    .btn-primary:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 16px 36px rgba(39,164,242,.3); }
+    .btn-secondary { background:var(--surface-h); border:1px solid var(--border); color:var(--muted); }
+    .btn-secondary:hover:not(:disabled) { background:rgba(255,255,255,.1); color:var(--white); }
+
+    .spinner { width:16px; height:16px; border:2px solid rgba(255,255,255,.3); border-top-color:var(--white); border-radius:50%; animation:spin .7s linear infinite; display:none; flex-shrink:0; }
+
+    .protocolo-box { display:none; background:rgba(52,211,153,.08); border:1px solid rgba(52,211,153,.25); border-radius:16px; padding:22px 24px; margin-top:20px; animation:slideDown .3s ease both; }
+    .protocolo-box.visible { display:block; }
+    .protocolo-num { font-family:'Cormorant Garamond',serif; font-size:28px; font-weight:700; color:#34d399; letter-spacing:.04em; margin-bottom:6px; }
+    .protocolo-sub { font-size:13px; color:rgba(255,255,255,.55); line-height:1.6; margin-bottom:12px; }
+    .protocolo-acoes { display:flex; gap:10px; margin-top:12px; }
+    .protocolo-acoes .btn { flex:1; height:42px; font-size:13px; }
+    .protocolo-countdown { font-size:12px; font-weight:600; color:#fbbf24; text-align:center; margin-top:12px; padding:8px; background:rgba(251,191,36,.1); border-radius:8px; }
+
+    @media (max-width:640px) {
+      body { padding:20px 14px 48px; }
+      .secao { padding:22px 18px; }
+      .acoes { flex-direction:column; }
+      .btn { width:100%; }
+      .progress-text { display:none; }
+      .protocolo-acoes { flex-direction:column; }
+    }
+
+    @media print {
+      .bg,.theme-toggle,.progress-bar,.progress-text,.autosave-indicator,.secao,.acoes,.msg-box { display:none !important; }
+      .protocolo-box { border:2px solid #000; page-break-inside:avoid; }
+    }
+
+    /* ── Dependentes ── */
+    .dep-card {
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 14px;
+      position: relative;
+    }
+    .dep-card-titulo {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .btn-remove-dep {
+      background: rgba(239,68,68,.15);
+      border: 1px solid rgba(239,68,68,.3);
+      color: #f87171;
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: background .15s;
+    }
+    .btn-remove-dep:hover { background: rgba(239,68,68,.28); }
+    .btn-add-dep {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 44px;
+      padding: 0 20px;
+      border: 1.5px dashed rgba(39,164,242,.4);
+      border-radius: 11px;
+      background: rgba(39,164,242,.05);
+      color: var(--cyan);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+      width: 100%;
+      justify-content: center;
+      margin-top: 4px;
+    }
+    .btn-add-dep:hover { background: rgba(39,164,242,.12); border-color: rgba(39,164,242,.7); }
+    .btn-add-dep:disabled { opacity: .4; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+  <div class="bg">
+    <div class="bg-grid"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+  </div>
+
+  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  <div class="progress-text" id="progressText">0% preenchido</div>
+
+  <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Alternar tema">
+    <span id="themeIcon">🌙</span>
+  </button>
+
+  <div class="autosave-indicator" id="autosaveIndicator">
+    <div class="dot"></div>
+    <span>Salvando rascunho...</span>
+  </div>
+
+  <div class="wrap">
+    <div class="portal-header">
+      <div class="portal-eyebrow">SindEducação-ES · SISGEP</div>
+      <h1 class="portal-title">Portal de Solicitação<br>de Voucher</h1>
+      <div class="gold-bar"></div>
+      <p class="portal-sub">Cadastro, atualização e solicitação de voucher de bolsa</p>
+    </div>
+
+    <div class="msg-box" id="msgBox"></div>
+
+    <!-- SEÇÃO 1 — Identificação -->
+    <div class="secao">
+      <div class="secao-header">
+        <div class="secao-num">1</div>
+        <div class="secao-title">Identificação</div>
+      </div>
+      <div class="grid2">
+        <div class="field required">
+          <label for="cpf">CPF</label>
+          <input type="text" id="cpf" placeholder="000.000.000-00" maxlength="14" inputmode="numeric">
+        </div>
+        <div class="field required">
+          <label for="dataNascimento">Data de nascimento</label>
+          <input type="date" id="dataNascimento">
+        </div>
+      </div>
+      <div class="acoes" style="margin-top:20px;">
+        <button class="btn btn-primary" id="btnIdentificar" type="button">
+          <div class="spinner" id="spinnerIdent"></div>
+          <span id="labelIdent">Buscar cadastro</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- SEÇÃO 2 — Cadastro / Atualização -->
+    <div class="secao">
+      <div class="secao-header">
+        <div class="secao-num">2</div>
+        <div class="secao-title">Cadastro / Atualização</div>
+      </div>
+      <div class="grid2">
+        <div class="field required">
+          <label for="nome">Nome completo</label>
+          <input type="text" id="nome" placeholder="Nome completo">
+        </div>
+        <div class="field">
+          <label for="telefone">Telefone</label>
+          <input type="text" id="telefone" placeholder="(27) 99999-9999" maxlength="15" inputmode="numeric">
+        </div>
+        <div class="field">
+          <label for="email">E-mail</label>
+          <input type="email" id="email" placeholder="seu@email.com">
+        </div>
+        <div class="field">
+          <label for="cep">CEP</label>
+          <input type="text" id="cep" placeholder="00000-000" maxlength="9" inputmode="numeric">
+        </div>
+        <div class="field">
+          <label for="endereco">Endereço</label>
+          <input type="text" id="endereco" placeholder="Rua, número, bairro, cidade">
+        </div>
+      <div class="field required">
+  <label for="escolaAtual">Escola atual</label>
+  <select id="escolaAtual">
+    <option value="">Selecione...</option>
+  </select>
+</div>
+
+<div class="field hidden" id="boxOutraEscola">
+  <label for="outraEscola">Nome da escola</label>
+  <input
+    type="text"
+    id="outraEscola"
+    placeholder="Digite o nome completo da escola">
+</div>
+        <div class="field">
+          <label for="cargoFuncao">Cargo / Função</label>
+          <input type="text" id="cargoFuncao" placeholder="Ex.: Professor">
+        </div>
+        <div class="field">
+          <label for="situacaoVinculo">Situação do vínculo</label>
+          <input type="text" id="situacaoVinculo" placeholder="Ex.: ATIVO">
+        </div>
+        <div class="field required">
+          <label for="situacaoSindicalDeclarada">Situação sindical declarada</label>
+          <select id="situacaoSindicalDeclarada">
+            <option value="">Selecione...</option>
+            <option value="ASSOCIADO">Associado</option>
+            <option value="NAO_ASSOCIADO">Não associado</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEÇÃO 3 — Solicitação -->
+    <div class="secao">
+      <div class="secao-header">
+        <div class="secao-num">3</div>
+        <div class="secao-title">Solicitação</div>
+      </div>
+      <div class="grid2">
+        <div class="field required">
+          <label for="tipoBeneficiario">Tipo de beneficiário</label>
+          <select id="tipoBeneficiario"></select>
+        </div>
+
+        <div class="field" id="boxParentesco">
+          <label for="parentesco">Parentesco</label>
+          <select id="parentesco"></select>
+        </div>
+
+        <div class="field" id="boxNomeBeneficiario">
+          <label for="nomeBeneficiario">Nome do beneficiário</label>
+          <input type="text" id="nomeBeneficiario" placeholder="Nome completo do beneficiário">
+        </div>
+
+        <div class="field required">
+          <label for="dataNascimentoBeneficiario">Data de nascimento do beneficiário</label>
+          <input type="date" id="dataNascimentoBeneficiario">
+        </div>
+
+        <div class="field">
+          <label for="nomeTitularAssociado">Nome do titular associado</label>
+          <input type="text" id="nomeTitularAssociado" placeholder="Nome do titular">
+        </div>
+
+        <div class="field hidden" id="boxEnteado">
+          <label for="enteadoDeclaradoIR">Enteado declarado no IR?</label>
+          <select id="enteadoDeclaradoIR">
+            <option value="NAO">Não</option>
+            <option value="SIM">Sim</option>
+          </select>
+        </div>
+
+        <div class="field required">
+          <label for="modalidade">Modalidade</label>
+          <select id="modalidade"></select>
+        </div>
+
+        <div class="field required">
+          <label for="curso">Curso</label>
+          <input type="text" id="curso" placeholder="Nome do curso">
+        </div>
+
+        <div class="field hidden" id="boxAreaCurso">
+          <label for="areaCurso">Área do curso</label>
+          <select id="areaCurso"></select>
+        </div>
+
+        <div class="field hidden" id="boxOrdemFilho">
+          <label for="ordemFilho">Ordem do filho</label>
+          <select id="ordemFilho">
+            <option value="">Selecione...</option>
+            <option value="1">1º filho</option>
+            <option value="2">2º filho</option>
+            <option value="3">3º filho ou mais</option>
+          </select>
+        </div>
+
+        <div class="field required">
+          <label for="periodoReferencia">Período de referência</label>
+          <input type="text" id="periodoReferencia" placeholder="Ex.: 2026 ou 2026/1">
+        </div>
+      </div>
+    </div>
+
+    <!-- SEÇÃO 3b — Dependentes (até 3 filhos) -->
+    <div class="secao" id="secaoDependentes" style="display:none;">
+      <div class="secao-header">
+        <div class="secao-num">3b</div>
+        <div class="secao-title">Dependentes</div>
+      </div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.65;">
+        Informe os dados de cada filho(a) beneficiário. Você pode adicionar até <strong style="color:var(--white);">3 dependentes</strong>.<br>
+        Anexe a declaração de matrícula de cada um individualmente.
+      </p>
+
+      <div id="listaDependentes"></div>
+
+      <button type="button" class="btn-add-dep" id="btnAdicionarDependente">
+        ➕ Adicionar dependente
+      </button>
+    </div>
+
+    <!-- SEÇÃO 4 — Documentos -->
+    <div class="secao">
+      <div class="secao-header">
+        <div class="secao-num">4</div>
+        <div class="secao-title">Documentos Obrigatórios</div>
+      </div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.65;">
+        Anexe os documentos do <strong style="color:var(--white);">titular</strong> abaixo.<br>
+        Formatos aceitos: <strong style="color:var(--white);">PDF, JPG ou PNG</strong> — máx. 5MB por arquivo.
+      </p>
+      <div class="grid2">
+
+        <div class="field required">
+          <label>Comprovante de vínculo empregatício</label>
+          <div class="upload-area" id="areaContracheque">
+            <input type="file" id="contracheque" accept=".pdf,.jpg,.jpeg,.png">
+            <div class="upload-ico">📄</div>
+            <div class="upload-txt">Último contracheque<br><span style="font-weight:400;opacity:.7;">ou Declaração do RH (funcionário recém-contratado)</span></div>
+            <div class="upload-nome" id="nomeContracheque"></div>
+          </div>
+          <span class="field-help">Se não possuir contracheque, anexe declaração do RH informando a contratação recente</span>
+        </div>
+
+        <div class="field required">
+          <label>Documento pessoal</label>
+          <div class="upload-area" id="areaDocPessoal">
+            <input type="file" id="docPessoal" accept=".pdf,.jpg,.jpeg,.png">
+            <div class="upload-ico">🪪</div>
+            <div class="upload-txt">CNH ou documento oficial com foto</div>
+            <div class="upload-nome" id="nomeDocPessoal"></div>
+          </div>
+          <span class="field-help">CNH, RG, ou outro documento oficial com foto</span>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="acoes">
+      <button class="btn btn-primary" id="btnSalvar" type="button">
+        <div class="spinner" id="spinnerSalvar"></div>
+        <span id="labelSalvar">Salvar solicitação</span>
+      </button>
+      <button class="btn btn-secondary" id="btnLimpar" type="button">Limpar formulário</button>
+    </div>
+
+    <div class="protocolo-box" id="protocoloBox">
+      <div style="font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:8px;">Protocolo gerado</div>
+      <div class="protocolo-num" id="protocoloNum">—</div>
+      <div class="protocolo-sub" id="protocoloSub"></div>
+      <div class="protocolo-acoes">
+        <button class="btn btn-secondary" onclick="copiarProtocolo()"><span>📋 Copiar</span></button>
+        <button class="btn btn-secondary" onclick="imprimirProtocolo()"><span>🖨️ Imprimir</span></button>
+      </div>
+      <div class="protocolo-countdown" id="protocoloCountdown" style="display:none;"></div>
+    </div>
+  </div>
+
+  <script>
+    var INIT = { escolas: [], modalidades: [], areas: [], beneficiarios: [], parentescos: [] };
+    var autoSaveTimeout = null;
+
+    function getSafeLocalStorageItem(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+    function setSafeLocalStorageItem(key, value) { try { localStorage.setItem(key, value); } catch (e) {} }
+    function removeSafeLocalStorageItem(key) { try { localStorage.removeItem(key); } catch (e) {} }
+
+    function toggleTheme() {
+      var currentTheme = document.documentElement.getAttribute('data-theme');
+      var newTheme = currentTheme === 'light' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', newTheme);
+      document.getElementById('themeIcon').textContent = newTheme === 'light' ? '☀️' : '🌙';
+      setSafeLocalStorageItem('theme', newTheme);
+    }
+
+    function restaurarTema() {
+      var savedTheme = getSafeLocalStorageItem('theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+      document.getElementById('themeIcon').textContent = savedTheme === 'light' ? '☀️' : '🌙';
+    }
+
+    function showMsg(texto, tipo) {
+      var el = document.getElementById('msgBox');
+      el.className = 'msg-box' + (tipo ? ' ' + tipo : '');
+      el.innerHTML = texto || '';
+      if (texto) el.scrollIntoView({ behavior: 'smooth', block: tipo === 'erro' ? 'center' : 'nearest' });
+    }
+
+    function setLoading(btnId, spinnerId, labelId, on, labelOn, labelOff) {
+      var btn = document.getElementById(btnId);
+      var spinner = document.getElementById(spinnerId);
+      var label = document.getElementById(labelId);
+      if (btn) btn.disabled = on;
+      if (spinner) spinner.style.display = on ? 'block' : 'none';
+      if (label) label.textContent = on ? labelOn : labelOff;
+    }
+
+    function validarCPF(cpf) {
+      cpf = String(cpf || '').replace(/\D/g, '');
+      if (cpf.length !== 11) return false;
+      if (/^(\d)\1+$/.test(cpf)) return false;
+      var soma = 0, resto, i;
+      for (i = 1; i <= 9; i++) soma += parseInt(cpf.substring(i-1,i),10) * (11-i);
+      resto = (soma*10)%11; if (resto===10||resto===11) resto=0;
+      if (resto !== parseInt(cpf.substring(9,10),10)) return false;
+      soma = 0;
+      for (i = 1; i <= 10; i++) soma += parseInt(cpf.substring(i-1,i),10) * (12-i);
+      resto = (soma*10)%11; if (resto===10||resto===11) resto=0;
+      return resto === parseInt(cpf.substring(10,11),10);
+    }
+function atualizarProgresso() {
+  var camposObrigatorios = [
+    'cpf',
+    'dataNascimento',
+    'nome',
+    'escolaAtual',
+    'situacaoSindicalDeclarada',
+    'tipoBeneficiario',
+    'dataNascimentoBeneficiario',
+    'modalidade',
+    'curso',
+    'periodoReferencia'
+  ];
+
+  var preenchidos = 0;
+
+  camposObrigatorios.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+
+    var valor = String(el.value || '').trim();
+
+    if (id === 'escolaAtual' && valor === '__OUTRA_ESCOLA__') {
+      var outra = document.getElementById('outraEscola');
+      if (outra && String(outra.value || '').trim()) {
+        preenchidos++;
+      }
+      return;
+    }
+
+    if (valor) {
+      preenchidos++;
+    }
+  });
+
+  var percentual = Math.round((preenchidos / camposObrigatorios.length) * 100);
+
+  document.getElementById('progressFill').style.width = percentual + '%';
+  document.getElementById('progressText').textContent = percentual + '% preenchido';
+}
+
+    function autoSave() {
+      clearTimeout(autoSaveTimeout);
+      autoSaveTimeout = setTimeout(function() {
+        try {
+          var dados = {
+            cpf: document.getElementById('cpf').value,
+            dataNascimento: document.getElementById('dataNascimento').value,
+            nome: document.getElementById('nome').value,
+            telefone: document.getElementById('telefone').value,
+            email: document.getElementById('email').value,
+            cep: document.getElementById('cep').value,
+            endereco: document.getElementById('endereco').value,
+   escolaAtual:
+  document.getElementById('escolaAtual').value === '__OUTRA_ESCOLA__'
+    ? document.getElementById('outraEscola').value.trim()
+    : document.getElementById('escolaAtual').value,
+            cargoFuncao: document.getElementById('cargoFuncao').value,
+            situacaoVinculo: document.getElementById('situacaoVinculo').value,
+            situacaoSindicalDeclarada: document.getElementById('situacaoSindicalDeclarada').value,
+            tipoBeneficiario: document.getElementById('tipoBeneficiario').value,
+            parentesco: document.getElementById('parentesco').value,
+            nomeBeneficiario: document.getElementById('nomeBeneficiario').value,
+            dataNascimentoBeneficiario: document.getElementById('dataNascimentoBeneficiario').value,
+            nomeTitularAssociado: document.getElementById('nomeTitularAssociado').value,
+            enteadoDeclaradoIR: document.getElementById('enteadoDeclaradoIR').value,
+            modalidade: document.getElementById('modalidade').value,
+            curso: document.getElementById('curso').value,
+            areaCurso: document.getElementById('areaCurso').value,
+            ordemFilho: document.getElementById('ordemFilho').value,
+            periodoReferencia: document.getElementById('periodoReferencia').value
+          };
+          setSafeLocalStorageItem('voucher_rascunho', JSON.stringify(dados));
+          var indicator = document.getElementById('autosaveIndicator');
+          indicator.classList.add('saving');
+          setTimeout(function() { indicator.classList.remove('saving'); }, 1500);
+          atualizarProgresso();
+        } catch (e) { console.error('Erro no auto-save:', e); }
+      }, 1200);
+    }
+
+   function restaurarRascunho() {
+
+  var rascunho = getSafeLocalStorageItem('voucher_rascunho');
+  if (!rascunho) return;
+
+  try {
+
+    var dados = JSON.parse(rascunho);
+
+    if (confirm('🔄 Encontramos um rascunho salvo anteriormente.\n\nDeseja restaurar os dados salvos?')) {
+
+      Object.keys(dados).forEach(function(key) {
+
+        var el = document.getElementById(key);
+
+        if (
+          el &&
+          dados[key] !== undefined &&
+          dados[key] !== null
+        ) {
+          el.value = dados[key];
+        }
+
+      });
+
+      // Escola personalizada
+      if (
+        dados.escolaAtual &&
+        !Array.from(document.getElementById('escolaAtual').options)
+          .some(op => op.value === dados.escolaAtual)
+      ) {
+
+        document.getElementById('escolaAtual').value = '__OUTRA_ESCOLA__';
+        document.getElementById('outraEscola').value = dados.escolaAtual;
+        document.getElementById('boxOutraEscola').classList.remove('hidden');
+
+      }
+
+      ajustarCamposVoucher();
+      validarIdadeModalidade();
+      atualizarProgresso();
+
+      showMsg(
+        '✅ Rascunho restaurado com sucesso!',
+        'ok'
+      );
+
+    }
+
+  } catch (e) {
+
+    console.error(
+      'Erro ao restaurar rascunho:',
+      e
+    );
+
+  }
+
+}
+    function copiarProtocolo() {
+      var texto = document.getElementById('protocoloNum').textContent;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(texto).then(function() { showMsg('✅ Protocolo copiado: ' + texto, 'ok'); }).catch(function() { copiarTextoFallback(texto); });
+      } else { copiarTextoFallback(texto); }
+    }
+
+    function copiarTextoFallback(texto) {
+      var input = document.createElement('input');
+      input.value = texto;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+      showMsg('✅ Protocolo copiado: ' + texto, 'ok');
+    }
+
+    function imprimirProtocolo() { window.print(); }
+
+    function validarIdadeModalidade() {
+      var dataNascStr = document.getElementById('dataNascimentoBeneficiario').value;
+      var modalidade = document.getElementById('modalidade').value;
+      if (!dataNascStr || !modalidade) return true;
+      var partes = dataNascStr.split('-');
+      if (partes.length !== 3) return true;
+      var dataNasc = new Date(parseInt(partes[0],10), parseInt(partes[1],10)-1, parseInt(partes[2],10));
+      var hoje = new Date();
+      var idade = hoje.getFullYear() - dataNasc.getFullYear();
+      if (hoje.getMonth() < dataNasc.getMonth() || (hoje.getMonth() === dataNasc.getMonth() && hoje.getDate() < dataNasc.getDate())) idade--;
+      var limites = {
+        'CRECHE':{'min':0,'max':3,'nome':'Creche'},
+        'EDUCACAO_INFANTIL':{'min':4,'max':5,'nome':'Educação Infantil'},
+        'ENSINO_FUNDAMENTAL':{'min':6,'max':14,'nome':'Ensino Fundamental'},
+        'ENSINO_MEDIO':{'min':15,'max':17,'nome':'Ensino Médio'},
+        'TECNICO':{'min':15,'max':25,'nome':'Técnico'},
+        'GRADUACAO':{'min':17,'max':35,'nome':'Graduação'},
+        'POS_GRADUACAO':{'min':21,'max':50,'nome':'Pós-Graduação'}
+      };
+
+      // Regra especial: filho em Graduação/Pós — máximo 24 anos para iniciar
+      var tipoBenef = document.getElementById('tipoBeneficiario') ? String(document.getElementById('tipoBeneficiario').value||'').toUpperCase() : '';
+      var isFilho = tipoBenef && tipoBenef !== 'TITULAR' && tipoBenef !== 'CONJUGE' && tipoBenef !== 'ESPOSO' && tipoBenef !== 'ESPOSA';
+      if(isFilho && (modalidade === 'GRADUACAO' || modalidade === 'POS_GRADUACAO')){
+        if(idade > 24){
+          showMsg('⚠️ Filho com mais de 24 anos não é elegível para bolsa em Graduação ou Pós-graduação. Limite de idade para iniciar o curso: 24 anos.','erro');
+          document.getElementById('dataNascimentoBeneficiario').classList.add('invalid');
+          return false;
+        } else {
+          document.getElementById('dataNascimentoBeneficiario').classList.remove('invalid');
+          return true;
+        }
+      }
+      var limite = limites[modalidade];
+      if (limite) {
+        if (idade < limite.min || idade > limite.max) {
+          showMsg('⚠️ Idade incompatível! Para ' + limite.nome + ', a idade deve estar entre ' + limite.min + ' e ' + limite.max + ' anos. Idade atual: ' + idade + ' anos.', 'erro');
+          document.getElementById('dataNascimentoBeneficiario').classList.add('invalid');
+          return false;
+        } else { document.getElementById('dataNascimentoBeneficiario').classList.remove('invalid'); }
+      }
+      return true;
+    }
+
+    function preencherSelect(id, lista, labelKey, valueKey) {
+      labelKey = labelKey || 'label'; valueKey = valueKey || 'value';
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.innerHTML = '<option value="">Selecione...</option>';
+      (lista || []).forEach(function(item) {
+        var op = document.createElement('option');
+        op.value = item[valueKey]; op.textContent = item[labelKey];
+        el.appendChild(op);
+      });
+    }
+function preencherEscolas() {
+  var el = document.getElementById('escolaAtual');
+
+  el.innerHTML = '<option value="">Selecione...</option>';
+
+  (INIT.escolas || []).forEach(function(item) {
+    var op = document.createElement('option');
+    op.value = item.escola;
+    op.textContent = item.escola + (item.cidade ? ' — ' + item.cidade : '');
+    el.appendChild(op);
+  });
+
+  // Opção especial
+  var outra = document.createElement('option');
+  outra.value = '__OUTRA_ESCOLA__';
+  outra.textContent = '🏫 Outra escola não listada';
+  el.appendChild(outra);
+}
+function preencherEscolaAtual(valorEscola) {
+
+  var escola = String(valorEscola || '').trim();
+
+  var select = document.getElementById('escolaAtual');
+  var outra = document.getElementById('outraEscola');
+  var boxOutra = document.getElementById('boxOutraEscola');
+
+  if (!select) return;
+
+  if (!escola) {
+
+    select.value = '';
+
+    if (outra) {
+      outra.value = '';
+    }
+
+    if (boxOutra) {
+      boxOutra.classList.add('hidden');
+    }
+
+    return;
+  }
+
+  var existeNaLista = Array.from(select.options).some(function(op) {
+    return String(op.value || '').trim() === escola;
+  });
+
+  if (existeNaLista) {
+
+    select.value = escola;
+
+    if (outra) {
+      outra.value = '';
+    }
+
+    if (boxOutra) {
+      boxOutra.classList.add('hidden');
+    }
+
+  } else {
+
+    select.value = '__OUTRA_ESCOLA__';
+
+    if (outra) {
+      outra.value = escola;
+    }
+
+    if (boxOutra) {
+      boxOutra.classList.remove('hidden');
+    }
+
+  }
+
+}
+function ajustarCamposVoucher() {
+  var modalidade = document.getElementById('modalidade').value;
+  var tipoBeneficiario = document.getElementById('tipoBeneficiario').value;
+
+  var boxArea = document.getElementById('boxAreaCurso');
+  var boxOrdem = document.getElementById('boxOrdemFilho');
+  var boxEnteado = document.getElementById('boxEnteado');
+  var boxParentesco = document.getElementById('boxParentesco');
+
+  var nome = document.getElementById('nome');
+  var nomeBenef = document.getElementById('nomeBeneficiario');
+  var titular = document.getElementById('nomeTitularAssociado');
+  var parentesco = document.getElementById('parentesco');
+
+  boxArea.classList.toggle('hidden', modalidade !== 'GRADUACAO');
+
+  var modalidadesFilho = [
+    'EDUCACAO_INFANTIL',
+    'CRECHE',
+    'ENSINO_FUNDAMENTAL',
+    'ENSINO_MEDIO',
+    'TECNICO',
+    'GRADUACAO',
+    'POS_GRADUACAO'
+  ];
+
+  boxOrdem.classList.toggle('hidden', modalidadesFilho.indexOf(modalidade) === -1);
+
+  var tipo = String(tipoBeneficiario || '').toUpperCase();
+  var ehTitular = tipo === 'TITULAR';
+  var ehEnteado = tipo.indexOf('ENTEADO') > -1;
+
+  boxEnteado.classList.toggle('hidden', !ehEnteado);
+  boxParentesco.classList.toggle('hidden', ehTitular);
+
+  if (ehTitular) {
+    if (nomeBenef) {
+      nomeBenef.value = nome.value.trim();
+      nomeBenef.readOnly = true;
+    }
+
+    if (titular) {
+      titular.value = nome.value.trim();
+      titular.readOnly = true;
+    }
+
+    if (parentesco) {
+      parentesco.value = 'TITULAR';
+    }
+  } else {
+    if (nomeBenef) {
+      nomeBenef.readOnly = false;
+      if (nomeBenef.value === nome.value.trim()) {
+        nomeBenef.value = '';
+      }
+    }
+
+    if (titular) {
+      titular.value = nome.value.trim();
+      titular.readOnly = false;
+    }
+  }
+}
+
+    function obterNomeBeneficiarioFinal() {
+      var tipoBeneficiario = String(document.getElementById('tipoBeneficiario').value || '').toUpperCase();
+      var nomeSolicitante = document.getElementById('nome').value.trim();
+      var nomeBeneficiario = document.getElementById('nomeBeneficiario').value.trim();
+      if (tipoBeneficiario === 'TITULAR') return nomeSolicitante || nomeBeneficiario;
+      return nomeBeneficiario;
+    }
+
+    function obterParentescoFinal() {
+      var tipoBeneficiario = String(document.getElementById('tipoBeneficiario').value || '').toUpperCase();
+      var parentesco = document.getElementById('parentesco').value;
+      if (tipoBeneficiario === 'TITULAR') return 'TITULAR';
+      return parentesco || tipoBeneficiario;
+    }
+
+    function validarCamposCondicionais() {
+      var modalidade = String(document.getElementById('modalidade').value || '').toUpperCase();
+      var tipoBenef  = String(document.getElementById('tipoBeneficiario').value || '').toUpperCase();
+
+      if (['EDUCACAO_INFANTIL','CRECHE','ENSINO_FUNDAMENTAL','ENSINO_MEDIO','TECNICO','GRADUACAO','POS_GRADUACAO'].indexOf(modalidade) > -1 && !document.getElementById('ordemFilho').value) {
+        if(tipoBenef && tipoBenef !== 'TITULAR' && tipoBenef !== 'CONJUGE' && tipoBenef !== 'ESPOSO' && tipoBenef !== 'ESPOSA'){
+          showMsg('❌ Informe a ordem do filho para a modalidade selecionada.', 'erro');
+          document.getElementById('ordemFilho').classList.add('invalid');
+          return false;
+        }
+      }
+
+      if (modalidade === 'GRADUACAO' && !document.getElementById('areaCurso').value) {
+        showMsg('❌ Informe a área do curso para graduação.', 'erro');
+        document.getElementById('areaCurso').classList.add('invalid');
+        return false;
+      }
+
+      // Aviso: Graduação/Pós aceita somente 1 dependente filho por ano
+      if((modalidade === 'GRADUACAO' || modalidade === 'POS_GRADUACAO') && tipoBenef && tipoBenef !== 'TITULAR' && tipoBenef !== 'CONJUGE' && tipoBenef !== 'ESPOSO' && tipoBenef !== 'ESPOSA'){
+        showMsg('ℹ️ Para Graduação e Pós-graduação é permitido somente <strong>1 dependente filho por ano</strong>. Certifique-se de que não há outra solicitação ativa para este período.', 'warn');
+      }
+
+      return true;
+    }
+
+    // ── Ler arquivo em base64 ──
+    function lerArquivoBase64(inputEl, callback) {
+      if (!inputEl || !inputEl.files || !inputEl.files[0]) { callback(null); return; }
+      var file = inputEl.files[0];
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        callback({ nome: file.name, tipo: file.type, tamanho: file.size, base64: e.target.result.split(',')[1] });
+      };
+      reader.onerror = function() { callback(null); };
+      reader.readAsDataURL(file);
+    }
+function aplicarCadastroLocalizado(cadastro) {
+  cadastro = cadastro || {};
+
+  document.getElementById('nome').value = cadastro.nome || '';
+  document.getElementById('telefone').value = cadastro.telefone || '';
+  document.getElementById('email').value = cadastro.email || '';
+  document.getElementById('endereco').value = cadastro.endereco || '';
+  document.getElementById('cargoFuncao').value = cadastro.cargoFuncao || '';
+  document.getElementById('situacaoVinculo').value = cadastro.situacaoVinculo || '';
+
+  preencherEscolaAtual(cadastro.escolaAtual || '');
+
+  var situacao = String(cadastro.situacaoSindical || '').toUpperCase();
+  var campoSindical = document.getElementById('situacaoSindicalDeclarada');
+
+  if (situacao === 'ASSOCIADO' || situacao === 'NAO_ASSOCIADO') {
+    campoSindical.value = situacao;
+    campoSindical.disabled = true;
+  } else {
+    campoSindical.value = '';
+    campoSindical.disabled = false;
+  }
+
+  ajustarCamposVoucher();
+  atualizarProgresso();
+  autoSave();
+}
+    function identificar() {
+      var cpfVal = document.getElementById('cpf').value.replace(/\D/g, '');
+      var dataNasc = document.getElementById('dataNascimento').value;
+      if (!cpfVal || cpfVal.length !== 11) { showMsg('❌ Informe um CPF válido.', 'erro'); document.getElementById('cpf').classList.add('invalid'); return; }
+      if (!validarCPF(cpfVal)) { showMsg('❌ CPF inválido! Verifique os números digitados.', 'erro'); document.getElementById('cpf').classList.add('invalid'); return; }
+      if (!dataNasc) { showMsg('❌ Informe a data de nascimento.', 'erro'); document.getElementById('dataNascimento').classList.add('invalid'); return; }
+
+      setLoading('btnIdentificar', 'spinnerIdent', 'labelIdent', true, 'Buscando...', 'Buscar cadastro');
+      showMsg('🔍 Buscando cadastro...', 'info');
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          setLoading('btnIdentificar', 'spinnerIdent', 'labelIdent', false, 'Buscando...', 'Buscar cadastro');
+          if (!res || !res.encontrado) { showMsg('⚠️ Cadastro não localizado. Preencha os dados abaixo para realizar o primeiro cadastro.', 'warn'); return; }
+var c = res.cadastro || {};
+aplicarCadastroLocalizado(c);
+          showMsg('✅ Cadastro localizado! Confira e atualize os dados, se necessário.', 'ok');
+        })
+        .withFailureHandler(function(err) {
+          setLoading('btnIdentificar', 'spinnerIdent', 'labelIdent', false, 'Buscando...', 'Buscar cadastro');
+          showMsg('❌ Erro ao buscar cadastro: ' + ((err && err.message) || err), 'erro');
+        })
+        .identificarSolicitanteVoucher({ cpf: cpfVal, dataNascimento: dataNasc });
+    }
+
+    function salvarTudo() {
+      var cpfVal = document.getElementById('cpf').value.replace(/\D/g, '');
+      document.querySelectorAll('.invalid').forEach(function(el) { el.classList.remove('invalid'); });
+
+      if (!cpfVal || cpfVal.length !== 11) { showMsg('❌ Informe um CPF válido.', 'erro'); document.getElementById('cpf').classList.add('invalid'); return; }
+      if (!validarCPF(cpfVal)) { showMsg('❌ CPF inválido!', 'erro'); document.getElementById('cpf').classList.add('invalid'); return; }
+      if (!document.getElementById('dataNascimento').value) { showMsg('❌ Informe a data de nascimento.', 'erro'); document.getElementById('dataNascimento').classList.add('invalid'); return; }
+      if (!document.getElementById('nome').value.trim()) { showMsg('❌ Informe o nome completo.', 'erro'); document.getElementById('nome').classList.add('invalid'); return; }
+      if (!document.getElementById('escolaAtual').value) { showMsg('❌ Selecione a escola.', 'erro'); document.getElementById('escolaAtual').classList.add('invalid'); return; }
+      if (
+  document.getElementById('escolaAtual').value === '__OUTRA_ESCOLA__' &&
+  !document.getElementById('outraEscola').value.trim()
+) {
+  showMsg('❌ Informe o nome da escola.', 'erro');
+  document.getElementById('outraEscola').classList.add('invalid');
+  return;
+}
+      if (!document.getElementById('situacaoSindicalDeclarada').value) { showMsg('❌ Informe a situação sindical.', 'erro'); document.getElementById('situacaoSindicalDeclarada').classList.add('invalid'); return; }
+      if (!document.getElementById('tipoBeneficiario').value) { showMsg('❌ Selecione o tipo de beneficiário.', 'erro'); document.getElementById('tipoBeneficiario').classList.add('invalid'); return; }
+      if (!document.getElementById('dataNascimentoBeneficiario').value) { showMsg('❌ Informe a data de nascimento do beneficiário.', 'erro'); document.getElementById('dataNascimentoBeneficiario').classList.add('invalid'); return; }
+      if (!document.getElementById('modalidade').value) { showMsg('❌ Selecione a modalidade.', 'erro'); document.getElementById('modalidade').classList.add('invalid'); return; }
+      if (!document.getElementById('curso').value.trim()) { showMsg('❌ Informe o nome do curso.', 'erro'); document.getElementById('curso').classList.add('invalid'); return; }
+      if (!document.getElementById('periodoReferencia').value.trim()) { showMsg('❌ Informe o período de referência.', 'erro'); document.getElementById('periodoReferencia').classList.add('invalid'); return; }
+
+      var nomeBeneficiarioFinal = obterNomeBeneficiarioFinal();
+      if (!nomeBeneficiarioFinal) { showMsg('❌ Informe o nome do beneficiário.', 'erro'); document.getElementById('nomeBeneficiario').classList.add('invalid'); return; }
+      if (!validarCamposCondicionais()) return;
+      if (!validarIdadeModalidade()) return;
+
+      setLoading('btnSalvar', 'spinnerSalvar', 'labelSalvar', true, 'Enviando...', 'Salvar solicitação');
+      showMsg('💾 Registrando solicitação...', 'info');
+
+      // Lê os dois arquivos antes de enviar
+      lerArquivoBase64(document.getElementById('contracheque'), function(arqContracheque) {
+        lerArquivoBase64(document.getElementById('docPessoal'), function(arqDocPessoal) {
+
+          var payload = {
+            cpf: cpfVal,
+            dataNascimento: document.getElementById('dataNascimento').value,
+            nome: document.getElementById('nome').value.trim(),
+            telefone: document.getElementById('telefone').value.trim(),
+            email: document.getElementById('email').value.trim(),
+            cep: document.getElementById('cep').value.trim(),
+            endereco: document.getElementById('endereco').value.trim(),
+escolaAtual:
+  document.getElementById('escolaAtual').value === '__OUTRA_ESCOLA__'
+    ? document.getElementById('outraEscola').value.trim()
+    : document.getElementById('escolaAtual').value,
+            cargoFuncao: document.getElementById('cargoFuncao').value.trim(),
+            situacaoVinculo: document.getElementById('situacaoVinculo').value.trim(),
+            situacaoSindicalDeclarada: document.getElementById('situacaoSindicalDeclarada').value,
+            tipoBeneficiario: document.getElementById('tipoBeneficiario').value,
+            parentesco: obterParentescoFinal(),
+            nomeBeneficiario: nomeBeneficiarioFinal,
+            dataNascimentoBeneficiario: document.getElementById('dataNascimentoBeneficiario').value,
+            nomeTitularAssociado: document.getElementById('nomeTitularAssociado').value.trim() || document.getElementById('nome').value.trim(),
+            enteadoDeclaradoIR: document.getElementById('enteadoDeclaradoIR').value,
+            modalidade: document.getElementById('modalidade').value,
+            curso: document.getElementById('curso').value.trim(),
+            areaCurso: document.getElementById('areaCurso').value,
+            ordemFilho: document.getElementById('ordemFilho').value,
+            periodoReferencia: document.getElementById('periodoReferencia').value.trim(),
+            contracheque: arqContracheque,
+            docPessoal: arqDocPessoal
+          };
+
+          google.script.run
+           .withSuccessHandler(function(res) {
+              setLoading('btnSalvar', 'spinnerSalvar', 'labelSalvar', false, 'Enviando...', 'Salvar solicitação');
+
+              if (!res || !res.ok) {
+                showMsg('❌ ' + ((res && res.mensagem) || 'Erro ao registrar solicitação.'), 'erro');
+                return;
+              }
+
+              var numProtocolo = res.protocolo && res.protocolo.numeroProtocolo ? res.protocolo.numeroProtocolo : '';
+              var isSindicalizado = String(document.getElementById('situacaoSindicalDeclarada').value || '').toUpperCase() === 'ASSOCIADO';
+              var nomeSolicitante = document.getElementById('nome').value.trim();
+              var modalidadeVal   = document.getElementById('modalidade').value;
+              var cursoVal        = document.getElementById('curso').value.trim();
+              var periodoVal      = document.getElementById('periodoReferencia').value.trim();
+
+              var protBox = document.getElementById('protocoloBox');
+              var protNum = document.getElementById('protocoloNum');
+              var protSub = document.getElementById('protocoloSub');
+
+              protNum.textContent = numProtocolo || '—';
+
+              var subHtml =
+                '<div style="display:flex;flex-direction:column;gap:10px;margin-top:6px;">' +
+                  '<div style="display:flex;align-items:center;gap:8px;font-size:13px;">' +
+                    '<span style="font-size:16px;">👤</span>' +
+                    '<span style="color:rgba(255,255,255,.55);">Solicitante:</span>' +
+                    '<strong>' + nomeSolicitante + '</strong>' +
+                  '</div>' +
+                  '<div style="display:flex;align-items:center;gap:8px;font-size:13px;">' +
+                    '<span style="font-size:16px;">📚</span>' +
+                    '<span style="color:rgba(255,255,255,.55);">Curso:</span>' +
+                    '<strong>' + cursoVal + ' — ' + modalidadeVal + '</strong>' +
+                  '</div>' +
+                  '<div style="display:flex;align-items:center;gap:8px;font-size:13px;">' +
+                    '<span style="font-size:16px;">📅</span>' +
+                    '<span style="color:rgba(255,255,255,.55);">Período:</span>' +
+                    '<strong>' + periodoVal + '</strong>' +
+                  '</div>' +
+                  '<div style="margin-top:6px;padding:12px 14px;border-radius:10px;font-size:13px;line-height:1.6;' +
+                    (isSindicalizado
+                      ? 'background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);color:#6ee7b7;">' +
+                        '✅ Solicitação <strong>registrada com sucesso</strong>. Nossa equipe irá analisar seus documentos em até <strong>15 dias úteis</strong>. Você será notificado por e-mail.'
+                      : 'background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);color:#fcd34d;">' +
+                        '⚠️ Cadastro identificado como <strong>Não Associado</strong>. Guarde este protocolo e compareça à sede do sindicato em até <strong>15 dias úteis</strong> com sua documentação.') +
+                  '</div>' +
+                '</div>';
+
+              protSub.innerHTML = subHtml;
+
+              showMsg(
+                '✅ <strong>Solicitação registrada!</strong> Protocolo: <strong style="letter-spacing:.04em;">' + numProtocolo + '</strong>' +
+                (isSindicalizado ? ' — você receberá um e-mail de confirmação.' : ' — compareça à sede em até 15 dias úteis.'),
+                'ok'
+              );
+
+              protBox.classList.add('visible');
+              protBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              removeSafeLocalStorageItem('voucher_rascunho');
+
+              // Não some automaticamente — usuário decide quando limpar
+              document.getElementById('protocoloCountdown').style.display = 'none';
+            })
+            .withFailureHandler(function(err) {
+              setLoading('btnSalvar', 'spinnerSalvar', 'labelSalvar', false, 'Enviando...', 'Salvar solicitação');
+              showMsg('❌ Erro ao salvar solicitação: ' + ((err && err.message) || err), 'erro');
+            })
+            .salvarCadastroESolicitacaoVoucher(payload);
+        });
+      });
+    }
+
+function limparFormulario(confirmar) {
+
+  var temDados =
+    document.getElementById('cpf').value ||
+    document.getElementById('nome').value ||
+    document.getElementById('modalidade').value;
+
+  if (confirmar && temDados) {
+
+    if (!confirm(
+      '⚠️ Tem certeza que deseja limpar todos os campos preenchidos?\n\nTodos os dados serão perdidos.'
+    )) return;
+
+  }
+
+  var ids = [
+    'cpf',
+    'dataNascimento',
+    'nome',
+    'telefone',
+    'email',
+    'cep',
+    'endereco',
+    'cargoFuncao',
+    'situacaoVinculo',
+    'nomeBeneficiario',
+    'dataNascimentoBeneficiario',
+    'nomeTitularAssociado',
+    'curso',
+    'periodoReferencia',
+    'outraEscola'
+  ];
+
+  ids.forEach(function(id) {
+
+    var el = document.getElementById(id);
+
+    if (el) {
+      el.value = '';
+      el.classList.remove('invalid');
+    }
+
+  });
+
+  [
+    'escolaAtual',
+    'situacaoSindicalDeclarada',
+    'tipoBeneficiario',
+    'parentesco',
+    'enteadoDeclaradoIR',
+    'modalidade',
+    'areaCurso',
+    'ordemFilho'
+  ].forEach(function(id) {
+
+    var el = document.getElementById(id);
+
+    if (el) {
+      el.selectedIndex = 0;
+      el.classList.remove('invalid');
+    }
+
+  });
+
+  // Reabilita situação sindical
+  var campoSindical = document.getElementById('situacaoSindicalDeclarada');
+
+  if (campoSindical) {
+    campoSindical.disabled = false;
+  }
+
+  // Oculta campo de escola personalizada
+  var boxOutra = document.getElementById('boxOutraEscola');
+
+  if (boxOutra) {
+    boxOutra.classList.add('hidden');
+  }
+
+  // Limpa escola personalizada
+  var outraEscola = document.getElementById('outraEscola');
+
+  if (outraEscola) {
+    outraEscola.value = '';
+    outraEscola.classList.remove('invalid');
+  }
+
+  // Uploads
+  document.getElementById('contracheque').value = '';
+  document.getElementById('docPessoal').value = '';
+
+  document.getElementById('nomeContracheque').textContent = '';
+  document.getElementById('nomeDocPessoal').textContent = '';
+
+  showMsg('', '');
+
+  document.getElementById('protocoloBox').classList.remove('visible');
+  document.getElementById('protocoloCountdown').style.display = 'none';
+  document.getElementById('protocoloNum').textContent = '—';
+  document.getElementById('protocoloSub').innerHTML = '';
+
+  ajustarCamposVoucher();
+
+  removeSafeLocalStorageItem('voucher_rascunho');
+
+  atualizarProgresso();
+
+}
+    // ── Máscaras ──
+    document.getElementById('cpf').addEventListener('input', function() {
+      var v = this.value.replace(/\D/g,'').substring(0,11);
+      v = v.replace(/(\d{3})(\d)/,'$1.$2'); v = v.replace(/(\d{3})(\d)/,'$1.$2'); v = v.replace(/(\d{3})(\d{1,2})$/,'$1-$2');
+      this.value = v; autoSave();
+    });
+    document.getElementById('cpf').addEventListener('blur', function() {
+      var cpf = this.value.replace(/\D/g,'');
+      if (cpf.length === 11 && !validarCPF(cpf)) { this.classList.add('invalid'); showMsg('❌ CPF inválido! Verifique os números digitados.', 'erro'); }
+      else this.classList.remove('invalid');
+    });
+    document.getElementById('telefone').addEventListener('input', function() {
+      var v = this.value.replace(/\D/g,'').substring(0,11);
+      if (v.length <= 10) { v = v.replace(/(\d{2})(\d)/,'($1) $2'); v = v.replace(/(\d{4})(\d)/,'$1-$2'); }
+      else { v = v.replace(/(\d{2})(\d)/,'($1) $2'); v = v.replace(/(\d{5})(\d)/,'$1-$2'); }
+      this.value = v; autoSave();
+    });
+    document.getElementById('cep').addEventListener('input', function() {
+      var v = this.value.replace(/\D/g,'').substring(0,8);
+      v = v.replace(/(\d{5})(\d)/,'$1-$2');
+      this.value = v; autoSave();
+    });
+    document.getElementById('cep').addEventListener('blur', function() {
+      var cep = this.value.replace(/\D/g,'');
+      if (cep.length === 8) {
+        showMsg('🔍 Buscando endereço...', 'info');
+        fetch('https://viacep.com.br/ws/' + cep + '/json/')
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            if (!d.erro) {
+              document.getElementById('endereco').value = [d.logradouro,d.bairro,d.localidade,d.uf].filter(Boolean).join(', ');
+              showMsg('✅ Endereço encontrado!', 'ok'); autoSave();
+            } else { showMsg('❌ CEP não encontrado.', 'erro'); }
+          })
+          .catch(function() { showMsg('❌ Erro ao buscar CEP.', 'erro'); });
+      }
+    });
+
+    // ── Uploads — exibir nome ──
+    document.getElementById('contracheque').addEventListener('change', function() {
+      var f = this.files && this.files[0];
+      document.getElementById('nomeContracheque').textContent = f ? '✔ ' + f.name : '';
+    });
+    document.getElementById('docPessoal').addEventListener('change', function() {
+      var f = this.files && this.files[0];
+      document.getElementById('nomeDocPessoal').textContent = f ? '✔ ' + f.name : '';
+    });
+
+    document.getElementById('dataNascimentoBeneficiario').addEventListener('change', function() { validarIdadeModalidade(); autoSave(); atualizarProgresso(); });
+    document.getElementById('modalidade').addEventListener('change', function() { ajustarCamposVoucher(); validarIdadeModalidade(); autoSave(); atualizarProgresso(); });
+    document.getElementById('tipoBeneficiario').addEventListener('change', function() {
+      ajustarCamposVoucher();
+      if (String(this.value || '').toUpperCase() === 'TITULAR') {
+        document.getElementById('nomeBeneficiario').value = document.getElementById('nome').value.trim();
+        document.getElementById('nomeTitularAssociado').value = document.getElementById('nome').value.trim();
+      }
+      autoSave(); atualizarProgresso();
+    });
+    document.getElementById('nome').addEventListener('input', function() {
+      var tipo = String(document.getElementById('tipoBeneficiario').value || '').toUpperCase();
+      if (tipo === 'TITULAR') document.getElementById('nomeBeneficiario').value = this.value.trim();
+      autoSave(); atualizarProgresso();
+    });
+
+    var camposAutoSave = [
+  'cpf',
+  'dataNascimento',
+  'nome',
+  'telefone',
+  'email',
+  'cep',
+  'endereco',
+  'escolaAtual',
+  'outraEscola',
+  'cargoFuncao',
+  'situacaoVinculo',
+  'situacaoSindicalDeclarada',
+  'tipoBeneficiario',
+  'parentesco',
+  'nomeBeneficiario',
+  'dataNascimentoBeneficiario',
+  'nomeTitularAssociado',
+  'enteadoDeclaradoIR',
+  'modalidade',
+  'curso',
+  'areaCurso',
+  'ordemFilho',
+  'periodoReferencia'
+];
+
+camposAutoSave.forEach(function(id) {
+  var el = document.getElementById(id);
+
+  if (!el) return;
+
+  el.addEventListener('input', function() {
+    autoSave();
+    atualizarProgresso();
+  });
+
+  el.addEventListener('change', function() {
+    autoSave();
+    atualizarProgresso();
+  });
+});
+
+document.getElementById('escolaAtual').addEventListener('change', function() {
+  var boxOutra = document.getElementById('boxOutraEscola');
+  var outra = document.getElementById('outraEscola');
+
+  if (this.value === '__OUTRA_ESCOLA__') {
+    if (boxOutra) boxOutra.classList.remove('hidden');
+    if (outra) outra.focus();
+  } else {
+    if (boxOutra) boxOutra.classList.add('hidden');
+
+    if (outra) {
+      outra.value = '';
+      outra.classList.remove('invalid');
+    }
+  }
+
+  autoSave();
+  atualizarProgresso();
+});
+    document.getElementById('btnIdentificar').addEventListener('click', identificar);
+    document.getElementById('btnSalvar').addEventListener('click', salvarTudo);
+    document.getElementById('btnLimpar').addEventListener('click', function() { limparFormulario(true); });
+
+    restaurarTema();
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        INIT = res || INIT;
+        preencherEscolas();
+        preencherSelect('modalidade', INIT.modalidades || []);
+        preencherSelect('areaCurso', INIT.areas || []);
+        preencherSelect('tipoBeneficiario', INIT.beneficiarios || []);
+        preencherSelect('parentesco', INIT.parentescos || []);
+        ajustarCamposVoucher();
+        setTimeout(restaurarRascunho, 500);
+        atualizarProgresso();
+      })
+      .withFailureHandler(function(err) {
+        showMsg('❌ Erro ao carregar dados iniciais: ' + ((err && err.message) || err), 'erro');
+      })
+      .getPortalVoucherInitData();
+  </script>
+</body>
+</html>

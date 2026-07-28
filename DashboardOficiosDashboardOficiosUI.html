@@ -1,0 +1,1036 @@
+<div id="sisgepDashboardExecutivo" style="display:none;">
+<style>
+#sisgepDashboardExecutivo *, #sisgepDashboardExecutivo *::before, #sisgepDashboardExecutivo *::after { box-sizing:border-box; }
+#sisgepDashboardExecutivo {
+  font-family:'Plus Jakarta Sans',Arial,sans-serif;
+  color:#0f172a;
+  margin:-32px -24px -48px;
+  min-height:100vh;
+  background:#e8edf5;
+}
+
+.dex-hdr {
+  background:
+    radial-gradient(ellipse at 90% -10%,rgba(201,168,76,.26) 0%,transparent 40%),
+    linear-gradient(135deg,#001230 0%,#002f6c 55%,#0d52b5 100%);
+  padding:12px 20px 10px;
+  display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  position:sticky;
+  top:0;
+  z-index:50;
+  overflow:visible;
+}
+.dex-hdr::after { content:''; position:absolute; right:-40px; top:-50px; width:220px; height:220px; background:radial-gradient(circle,rgba(255,255,255,.05) 0%,transparent 68%); pointer-events:none; }
+.dex-hdr > * { position:relative; z-index:1; }
+.dex-hdr-title { font-size:20px; font-weight:900; color:#fff; letter-spacing:-.3px; margin-bottom:3px; font-family:'Plus Jakarta Sans',sans-serif; }
+.dex-hdr-sub { font-size:11px; color:rgba(255,255,255,.55); font-weight:500; }
+.dex-hdr-online { display:inline-flex; align-items:center; gap:5px; font-size:10.5px; color:rgba(255,255,255,.6); font-weight:600; margin-top:5px; }
+.dex-hdr-dot { width:6px; height:6px; border-radius:50%; background:#4ade80; animation:dexPulse 2s infinite; }
+@keyframes dexPulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.dex-badge { background:rgba(201,168,76,.18); border:1.5px solid rgba(201,168,76,.45); color:#f0c843; font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; padding:7px 16px; border-radius:999px; }
+.dex-btn-ref { background:rgba(255,255,255,.12); border:1.5px solid rgba(255,255,255,.22); color:#fff; font-family:'Plus Jakarta Sans',sans-serif; font-size:11px; font-weight:700; padding:6px 14px; border-radius:999px; cursor:pointer; transition:all .15s; }
+.dex-btn-ref:hover { background:rgba(255,255,255,.22); }
+
+.dex-body { padding:14px 16px 20px; }
+
+.dex-sep { font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.09em; color:#64748b; margin:0 0 10px; display:flex; align-items:center; gap:6px; }
+.dex-sep::after { content:''; flex:1; height:1px; background:#e2e8f0; }
+
+/* KPIs */
+.dex-kpis { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; margin-bottom:10px; }
+.dex-kpi { background:#fff; border-radius:10px; padding:8px 11px 7px; border:1px solid #e2e8f0; position:relative; overflow:hidden; }
+.dex-kpi-bar { position:absolute; top:0; left:0; right:0; height:3px; border-radius:12px 12px 0 0; }
+.dex-kpi-lbl { font-size:8.5px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.07em; margin-bottom:6px; }
+.dex-kpi-val { font-size:19px; font-weight:900; color:#0f172a; line-height:1; margin-bottom:1px; letter-spacing:-.3px; }
+.dex-kpi-val.g { color:#059669; } .dex-kpi-val.a { color:#d97706; } .dex-kpi-val.r { color:#dc2626; } .dex-kpi-val.p { color:#7c3aed; }
+.dex-kpi-sub { font-size:9.5px; color:#94a3b8; font-weight:500; }
+.dex-kpi-ico { position:absolute; top:11px; right:11px; width:26px; height:26px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:12px; }
+
+/* Grid principal */
+.dex-main { display:grid; grid-template-columns:1.8fr 0.9fr 1.1fr; gap:10px; margin-bottom:10px; }
+
+/* Cards */
+.dex-card { background:#fff; border-radius:14px; border:1px solid #e2e8f0; overflow:hidden; }
+.dex-card-h { padding:7px 12px 6px; border-bottom:1px solid #f1f5f9; display:flex; align-items:center; gap:8px; background:linear-gradient(180deg,#fafcff,#fff); }
+.dex-card-ico { width:28px; height:28px; border-radius:8px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; }
+.dex-card-title { font-size:12.5px; font-weight:800; color:#0f172a; }
+.dex-card-sub { font-size:10px; color:#94a3b8; margin-top:1px; }
+.dex-card-b { padding:12px 14px; }
+
+/* Tipos / barras */
+.dex-tipo-row { display:grid; grid-template-columns:110px 1fr 30px; align-items:center; gap:7px; margin-bottom:8px; }
+.dex-tipo-lbl { font-size:10.5px; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.dex-tipo-track { height:6px; border-radius:999px; background:#f1f5f9; overflow:hidden; }
+.dex-tipo-fill { height:100%; border-radius:999px; }
+.dex-tipo-num { font-size:10.5px; font-weight:800; color:#475569; text-align:right; }
+
+/* Donut */
+.dex-donut-wrap { display:flex; align-items:center; gap:14px; }
+.dex-donut-rel { position:relative; flex-shrink:0; }
+.dex-donut-center { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:none; }
+.dex-donut-pct { font-size:15px; font-weight:900; color:#002f6c; }
+.dex-donut-txt { font-size:8px; color:#94a3b8; }
+.dex-leg { display:flex; align-items:center; gap:6px; margin-bottom:9px; font-size:11px; color:#64748b; }
+.dex-leg-dot { width:9px; height:9px; border-radius:2px; flex-shrink:0; }
+.dex-leg-val { margin-left:auto; font-weight:900; color:#0f172a; font-size:13px; }
+
+/* Fluxo */
+.dex-fluxo { display:flex; align-items:center; gap:4px; margin-bottom:10px; }
+.dex-step { flex:1; background:#f8fafc; border:1px solid #e2e8f0; border-top:2.5px solid #002f6c; border-radius:8px; padding:8px 4px; text-align:center; }
+.dex-step.g { border-top-color:#059669; } .dex-step.a { border-top-color:#d97706; } .dex-step.r { border-top-color:#dc2626; }
+.dex-step-n { font-size:16px; font-weight:900; color:#0f172a; line-height:1; }
+.dex-step.g .dex-step-n { color:#059669; } .dex-step.a .dex-step-n { color:#d97706; } .dex-step.r .dex-step-n { color:#dc2626; }
+.dex-step-l { font-size:8px; color:#94a3b8; text-transform:uppercase; letter-spacing:.04em; margin-top:2px; }
+.dex-arr { color:#cbd5e1; font-size:14px; flex-shrink:0; }
+.dex-prog-t { height:5px; background:#f1f5f9; border-radius:999px; overflow:hidden; }
+.dex-prog-f { height:100%; border-radius:999px; background:linear-gradient(90deg,#002f6c,#C9A84C); transition:width .6s ease; }
+
+/* Escolas section */
+.dex-esc-section { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.dex-em{
+  min-height:68px !important;
+  height:auto !important;
+  padding:10px 12px !important;
+  align-items:center !important;
+}
+.dex-em { background:#fff; border-radius:12px; border:1px solid #e2e8f0; padding:11px 12px; display:flex; align-items:center; gap:9px; transition:box-shadow .15s, transform .15s, border-color .15s; }
+.dex-em[onclick]:hover { box-shadow:0 4px 16px rgba(0,47,108,.12); transform:translateY(-1px); border-color:#bfdbfe; cursor:pointer; }
+.dex-em-ico { width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; }
+.dex-em-lbl { font-size:9px; color:#94a3b8; font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin-bottom:2px; }
+.dex-em-val { font-size:18px; font-weight:900; color:#0f172a; line-height:1; }
+
+.dex-alerta { background:#fef3c7; border:1px solid #fcd34d; border-radius:10px; padding:9px 12px; display:flex; align-items:center; gap:8px; grid-column:1/-1; }
+.dex-alerta-txt { font-size:11px; font-weight:700; color:#92400e; flex:1; }
+.dex-alerta-num { font-size:18px; font-weight:900; color:#d97706; flex-shrink:0; }
+.dex-alerta-btn { font-size:10px; font-weight:700; color:#92400e; background:rgba(217,119,6,.12); border:1px solid rgba(217,119,6,.25); padding:3px 9px; border-radius:999px; cursor:pointer; white-space:nowrap; flex-shrink:0; }
+
+/* Atividades */
+.dex-ativ { display:flex; gap:6px; padding:4px 0; border-bottom:1px solid #f1f5f9; align-items:flex-start; }
+#dexAtividades { max-height:140px; overflow-y:auto; }
+.dex-ativ:last-child { border-bottom:none; }
+.dex-ativ-ico { width:24px; height:24px; border-radius:7px; background:#f8fafc; border:1px solid #e2e8f0; display:flex; align-items:center; justify-content:center; font-size:11px; flex-shrink:0; margin-top:1px; }
+.dex-ativ-txt { font-size:11px; font-weight:600; color:#1e293b; line-height:1.35; }
+.dex-ativ-time { font-size:9.5px; color:#94a3b8; margin-top:2px; }
+
+/* Skeleton */
+.dex-skel { background:linear-gradient(90deg,#f1f5f9 25%,#e8edf5 50%,#f1f5f9 75%); background-size:200% 100%; animation:dexSkel 1.4s infinite; border-radius:6px; display:inline-block; }
+@keyframes dexSkel { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+@media(max-width:1000px) {
+  .dex-main { grid-template-columns:1fr; }
+  .dex-kpis { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .dex-esc-section { grid-template-columns:1fr; }
+}
+/* ==========================================================
+   AJUSTE SISGEP — TELA CHEIA, MARGENS E RESPONSIVIDADE
+========================================================== */
+
+#sisgepDashboardExecutivo {
+  margin: 0 !important;
+  width: 100% !important;
+  min-height: 100vh;
+  background: #f4f7fb;
+  overflow-x: hidden;
+}
+
+.dex-hdr {
+  padding: 12px 20px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+.dex-hdr-title { font-size: 17px; }
+.dex-hdr-sub { font-size: 10px; }
+
+.dex-body {
+  padding: 12px 18px 14px !important;
+  max-width: 1480px;
+  margin: 0 auto;
+}
+
+.dex-kpis {
+  grid-template-columns: repeat(5, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.dex-main {
+  grid-template-columns: 1.6fr 0.9fr 1fr;
+}
+
+.dex-card,
+.dex-kpi,
+.dex-em {
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .06);
+}
+
+.dex-esc-section {
+  grid-template-columns: 1.05fr .95fr;
+  gap: 12px;
+}
+
+.dex-esc-metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.dex-card-b {
+  padding: 9px 12px;
+}
+
+.dex-tipo-row {
+  grid-template-columns: 150px 1fr 42px;
+}
+
+@media(max-width: 1200px) {
+  .dex-kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .dex-main {
+    grid-template-columns: 1fr;
+  }
+
+  .dex-esc-section {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media(max-width: 760px) {
+  .dex-body {
+    padding: 14px 12px 24px !important;
+  }
+
+  .dex-kpis,
+  .dex-esc-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .dex-hdr {
+    padding: 16px;
+  }
+}
+.sisgep-footer{
+  margin-top:24px;
+  padding:18px 0 12px;
+  text-align:center;
+  font-size:12px;
+  color:#64748b;
+  font-weight:500;
+  width:100%;
+}
+
+.sisgep-footer strong{
+  color:#002f6c;
+  font-weight:700;
+}
+/* ==================================================
+   DASHBOARD COMPACTO FULL HD
+================================================== */
+
+#sisgepDashboardExecutivo{
+  margin:0 !important;
+  width:100% !important;
+  min-height:auto !important;
+  background:#f4f7fb;
+}
+
+.dex-hdr{
+  padding:8px 14px !important;
+}
+
+.dex-hdr-title{
+  font-size:15px !important;
+  margin-bottom:1px !important;
+}
+
+.dex-hdr-sub{
+  font-size:9px !important;
+}
+
+.dex-hdr-online{
+  font-size:9px !important;
+}
+
+.dex-badge{
+  padding:5px 12px !important;
+  font-size:9px !important;
+}
+
+.dex-btn-ref{
+  padding:5px 10px !important;
+  font-size:10px !important;
+}
+
+.dex-body{
+  padding:6px 10px 8px !important;
+  max-width:100% !important;
+}
+
+.dex-sep{
+  margin:0 0 6px !important;
+  font-size:8px !important;
+}
+
+.dex-kpis{
+  gap:6px !important;
+  margin-bottom:6px !important;
+}
+
+.dex-kpi{
+  padding:6px 8px !important;
+}
+
+.dex-kpi-lbl{
+  font-size:8px !important;
+}
+
+.dex-kpi-val{
+  font-size:16px !important;
+}
+
+.dex-kpi-sub{
+  font-size:8px !important;
+}
+
+.dex-kpi-ico{
+  width:22px !important;
+  height:22px !important;
+  font-size:10px !important;
+}
+
+.dex-main{
+  gap:6px !important;
+  margin-bottom:6px !important;
+}
+
+.dex-card-h{
+  padding:5px 8px !important;
+}
+
+.dex-card-b{
+  padding:6px 8px !important;
+}
+
+.dex-card-title{
+  font-size:11px !important;
+}
+
+.dex-card-sub{
+  font-size:9px !important;
+}
+
+.dex-card-ico{
+  width:24px !important;
+  height:24px !important;
+  font-size:11px !important;
+}
+
+.dex-tipo-row{
+  margin-bottom:4px !important;
+}
+
+.dex-step{
+  padding:5px 2px !important;
+}
+
+.dex-step-n{
+  font-size:13px !important;
+}
+
+.dex-step-l{
+  font-size:7px !important;
+}
+
+.dex-esc-section{
+  gap:6px !important;
+}
+
+.dex-em{
+  padding:8px !important;
+}
+
+.dex-em-ico{
+  width:24px !important;
+  height:24px !important;
+  font-size:10px !important;
+}
+
+.dex-em-val{
+  font-size:15px !important;
+}
+
+#dexAtividades{
+  max-height:90px !important;
+}
+
+.dex-ativ{
+  padding:2px 0 !important;
+}
+
+.dex-ativ-txt{
+  font-size:10px !important;
+}
+
+.dex-ativ-time{
+  font-size:8px !important;
+}
+
+.sisgep-footer{
+  margin-top:4px !important;
+  padding:4px 0 !important;
+  font-size:9px !important;
+}
+#dexMonitoramentoRecebimento .dex-card{
+  margin-top:8px;
+  border:1px solid #e2e8f0;
+  box-shadow:none;
+}
+
+#dexMonitoramentoRecebimento .dex-card-b{
+  padding:10px;
+}
+
+#dexMonitoramentoRecebimento .dex-card-title{
+  font-size:13px;
+}
+
+#dexMonitoramentoRecebimento .dex-card-sub{
+  font-size:10px;
+}
+/* Ajuste compacto dos cards de Escolas no Dashboard */
+.dex-esc-metrics{
+  grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+  gap:8px !important;
+}
+
+.dex-em{
+  min-height:56px !important;
+  height:auto !important;
+  padding:6px 8px !important;
+  align-items:center !important;
+}
+
+.dex-em-ico{
+  width:24px !important;
+  height:24px !important;
+  font-size:10px !important;
+}
+
+.dex-em-lbl{
+  font-size:7px !important;
+  margin-bottom:1px !important;
+}
+
+.dex-em-val{
+  font-size:14px !important;
+  line-height:1 !important;
+}
+.dex-esc-section{
+  align-items:start !important;
+}
+</style>
+
+<!-- HEADER -->
+<div class="dex-hdr">
+  <div>
+    <div class="dex-hdr-title">📊 Dashboard Executivo</div>
+    <div class="dex-hdr-sub">Visão consolidada — Ofícios & Escolas</div>
+    <div class="dex-hdr-online"><span class="dex-hdr-dot"></span> Online · <span id="dexTs">—</span></div>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;position:relative;z-index:1;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div id="dexSaudeIndicador" style="display:none;align-items:center;gap:5px;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.18);border-radius:999px;padding:5px 12px;">
+        <span id="dexSaudeDot" style="width:7px;height:7px;border-radius:50%;display:inline-block;"></span>
+        <span id="dexSaudeTxt" style="font-size:10px;font-weight:800;color:#fff;letter-spacing:.06em;"></span>
+      </div>
+      <div class="dex-badge">SindEducação-ES</div>
+    </div>
+    <button class="dex-btn-ref" id="dexBtnAtualizar">↻ Atualizar</button>
+  </div>
+</div>
+
+<!-- BODY -->
+<div class="dex-body">
+
+  <!-- KPIs Ofícios -->
+  <div class="dex-sep" style="margin-top:4px;">📄 Ofícios</div>
+  <div class="dex-kpis" id="dexKpis">
+    <div class="dex-kpi"><div class="dex-kpi-bar" style="background:linear-gradient(90deg,#002f6c,#1565C0);"></div><div class="dex-kpi-ico" style="background:#eef3fc;">📄</div><div class="dex-kpi-lbl">Total emitidos</div><div class="dex-kpi-val dex-skel" style="height:24px;width:50px;margin-bottom:4px;"></div><div class="dex-kpi-sub">Todos os períodos</div></div>
+    <div class="dex-kpi"><div class="dex-kpi-bar" style="background:linear-gradient(90deg,#059669,#34d399);"></div><div class="dex-kpi-ico" style="background:#d1fae5;">✅</div><div class="dex-kpi-lbl">Confirmados</div><div class="dex-kpi-val dex-skel g" style="height:24px;width:50px;margin-bottom:4px;"></div><div class="dex-kpi-sub">—</div></div>
+    <div class="dex-kpi"><div class="dex-kpi-bar" style="background:linear-gradient(90deg,#d97706,#fbbf24);"></div><div class="dex-kpi-ico" style="background:#fef3c7;">🕐</div><div class="dex-kpi-lbl">Pendentes</div><div class="dex-kpi-val dex-skel a" style="height:24px;width:50px;margin-bottom:4px;"></div><div class="dex-kpi-sub">Aguardando</div></div>
+    <div class="dex-kpi"><div class="dex-kpi-bar" style="background:linear-gradient(90deg,#dc2626,#f87171);"></div><div class="dex-kpi-ico" style="background:#fee2e2;">⚠️</div><div class="dex-kpi-lbl">Falhas</div><div class="dex-kpi-val dex-skel r" style="height:24px;width:50px;margin-bottom:4px;"></div><div class="dex-kpi-sub">Erro / falha</div></div>
+    <div class="dex-kpi"><div class="dex-kpi-bar" style="background:linear-gradient(90deg,#7c3aed,#a78bfa);"></div><div class="dex-kpi-ico" style="background:#ede9fe;">🎯</div><div class="dex-kpi-lbl">Taxa sucesso</div><div class="dex-kpi-val dex-skel p" style="height:24px;width:50px;margin-bottom:4px;"></div><div class="dex-kpi-sub">Do ciclo atual</div></div>
+  </div>
+
+  <!-- Grid principal -->
+  <div class="dex-main">
+
+    <!-- Ofícios por área -->
+    <div class="dex-card">
+      <div class="dex-card-h">
+        <div class="dex-card-ico">📋</div>
+        <div><div class="dex-card-title">Ofícios por área</div><div class="dex-card-sub" id="dexTiposTag">Distribuição por tipo</div></div>
+      </div>
+      <div class="dex-card-b">
+        <div id="dexTiposBarras"></div>
+        <div style="position:relative;height:72px;margin-top:10px;">
+          <canvas id="dexBarChart" role="img" aria-label="Gráfico de ofícios por tipo de área">Carregando dados de ofícios por área.</canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status donut -->
+    <div class="dex-card">
+      <div class="dex-card-h">
+        <div class="dex-card-ico">📡</div>
+        <div><div class="dex-card-title">Status</div><div class="dex-card-sub">Distribuição</div></div>
+      </div>
+      <div class="dex-card-b">
+        <div class="dex-donut-wrap">
+          <div class="dex-donut-rel">
+            <canvas id="dexDonut" width="100" height="100" role="img" aria-label="Gráfico de status dos ofícios">Status dos ofícios.</canvas>
+            <div class="dex-donut-center">
+              <div class="dex-donut-pct" id="dexDonutPct">—</div>
+              <div class="dex-donut-txt">sucesso</div>
+            </div>
+          </div>
+          <div id="dexDonutLeg" style="flex:1;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fluxo -->
+    <div class="dex-card">
+      <div class="dex-card-h">
+        <div class="dex-card-ico">🔄</div>
+        <div><div class="dex-card-title">Fluxo de envio</div><div class="dex-card-sub" id="dexFluxoTag">Ciclo completo</div></div>
+      </div>
+      <div class="dex-card-b">
+        <div class="dex-fluxo" id="dexSteps">
+          <div class="dex-step"><div class="dex-step-n dex-skel" style="height:16px;width:28px;margin:0 auto 3px;"></div><div class="dex-step-l">Criados</div></div>
+          <div class="dex-arr">›</div>
+          <div class="dex-step a"><div class="dex-step-n dex-skel" style="height:16px;width:28px;margin:0 auto 3px;"></div><div class="dex-step-l">Na fila</div></div>
+          <div class="dex-arr">›</div>
+          <div class="dex-step"><div class="dex-step-n dex-skel" style="height:16px;width:28px;margin:0 auto 3px;"></div><div class="dex-step-l">Enviados</div></div>
+          <div class="dex-arr">›</div>
+          <div class="dex-step g"><div class="dex-step-n dex-skel" style="height:16px;width:28px;margin:0 auto 3px;"></div><div class="dex-step-l">Confirm.</div></div>
+          <div class="dex-arr">›</div>
+          <div class="dex-step r"><div class="dex-step-n dex-skel" style="height:16px;width:28px;margin:0 auto 3px;"></div><div class="dex-step-l">Falhas</div></div>
+        </div>
+        <div class="dex-prog-t"><div class="dex-prog-f" id="dexProgFill" style="width:0%;"></div></div>
+        <div style="display:flex;justify-content:space-between;margin-top:5px;">
+          <span style="font-size:10px;color:#64748b;">Progresso</span>
+          <span style="font-size:10px;font-weight:800;color:#059669;" id="dexProgVal">—</span>
+        </div>
+        <!-- Atalhos de ação rápida -->
+        <div id="dexAtalhos" style="display:none;gap:5px;flex-wrap:wrap;margin-top:10px;padding-top:9px;border-top:1px solid #f1f5f9;"></div>
+      </div>
+    </div>
+
+  </div>
+
+<!-- Escolas -->
+<div class="dex-sep">🏫 Escolas</div>
+<div class="dex-esc-section">
+
+  <div class="dex-esc-metrics" id="dexEscMetrics">
+    <div class="dex-em"><div class="dex-em-ico" style="background:linear-gradient(135deg,#eef3fc,#dbeafe);">🏫</div><div><div class="dex-em-lbl">Total</div><div class="dex-em-val dex-skel" style="height:18px;width:36px;"></div></div></div>
+    <div class="dex-em"><div class="dex-em-ico" style="background:linear-gradient(135deg,#d1fae5,#a7f3d0);">✅</div><div><div class="dex-em-lbl">Ativas</div><div class="dex-em-val dex-skel" style="height:18px;width:36px;"></div></div></div>
+    <div class="dex-em"><div class="dex-em-ico" style="background:linear-gradient(135deg,#fee2e2,#fecaca);">🚫</div><div><div class="dex-em-lbl">Inativas</div><div class="dex-em-val dex-skel" style="height:18px;width:36px;"></div></div></div>
+    <div class="dex-em"><div class="dex-em-ico" style="background:linear-gradient(135deg,#eff6ff,#bfdbfe);">🔢</div><div><div class="dex-em-lbl">Com CNPJ</div><div class="dex-em-val dex-skel" style="height:18px;width:36px;"></div></div></div>
+    <div class="dex-em"><div class="dex-em-ico" style="background:linear-gradient(135deg,#fef3c7,#fde68a);">📧</div><div><div class="dex-em-lbl">Com e-mail</div><div class="dex-em-val dex-skel" style="height:18px;width:36px;"></div></div></div>
+    <div class="dex-em"><div class="dex-em-ico" style="background:linear-gradient(135deg,#fee2e2,#fecaca);">⚠️</div><div><div class="dex-em-lbl">Sem e-mail</div><div class="dex-em-val dex-skel" style="height:18px;width:36px;"></div></div></div>
+
+    <div class="dex-alerta" id="dexAlertaSemEmail">
+      <span style="font-size:16px;">⚠️</span>
+      <span class="dex-alerta-txt">Escolas sem e-mail cadastrado</span>
+      <span class="dex-alerta-num" id="dexAlertaNum">—</span>
+      <button class="dex-alerta-btn" onclick="if(window.mostrarAbaOficio)mostrarAbaOficio('escolas')">
+        Ver escolas →
+      </button>
+    </div>
+  </div>
+
+  <div class="dex-card">
+    <div class="dex-card-h">
+      <div class="dex-card-ico">⚡</div>
+      <div>
+        <div class="dex-card-title">Atividade recente</div>
+        <div class="dex-card-sub">Últimas ações do sistema</div>
+      </div>
+    </div>
+
+    <div class="dex-card-b">
+      <div id="dexAtividades">
+        <div class="dex-ativ">
+          <div class="dex-ativ-ico">⏳</div>
+          <div>
+            <div class="dex-ativ-txt dex-skel" style="height:12px;width:160px;margin-bottom:4px;"></div>
+            <div class="dex-ativ-time dex-skel" style="height:9px;width:100px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="dexMonitoramentoRecebimento" style="margin-top:10px;"></div>
+    </div>
+  </div>
+
+</div>
+
+  <!-- RODAPÉ SISGEP -->
+<div class="sisgep-footer">
+  SISGEP - Sistema Integrado de Gestão de Processos • © 2026 SindEducação-ES • Produzido por <strong>Wanderson Nascimento Castelo</strong> • Versão 2.1
+</div>
+
+</div>
+<script>
+(function(){
+"use strict";
+if(window.__SISGEP_DASH_EXEC__) return;
+window.__SISGEP_DASH_EXEC__ = true;
+
+var _loading=false, _charts={}, _retries=0, _MAX=3;
+
+function g(id){ return document.getElementById(id); }
+function esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function num(v){ return Math.round(Number(v)||0); }
+function ts(){ return new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+
+/* KPIs */
+function renderKpis(resumo,fila,graficos){
+  resumo=resumo||{}; fila=fila||{}; graficos=graficos||{};
+  var s=graficos.status||{};
+
+  var total       = num(resumo.total||fila.total||0);
+  var confirmados = num(s.CONFIRMADO||s.confirmado||resumo.confirmados||0);
+  var enviados    = num(s.ENVIADO||s.enviado||fila.enviados||resumo.enviados||0);
+  var pendentes   = num(s.PENDENTE||s.pendente||fila.pendentes||resumo.pendentes||0);
+  var erros       = num(s.ERRO||s.erro||s.FALHA_ENTREGA||fila.erros||resumo.erros||0);
+  var falhas      = num(s.FALHA_ENTREGA||resumo.falhas||0);
+  var sucesso     = enviados + confirmados;
+  var taxaSuc     = resumo.taxaSucesso!=null ? Math.round(Number(resumo.taxaSucesso)) : (total>0 ? Math.round(sucesso/total*100) : 0);
+  // Verificação de consistência: total deve = soma de todos os status conhecidos
+  var somaStatus  = confirmados + enviados + pendentes + erros + falhas;
+  var outros      = Math.max(0, total - somaStatus); // status desconhecidos
+
+  var el=g("dexKpis");
+  if(!el) return;
+
+  el.innerHTML=
+    kpi("linear-gradient(90deg,#002f6c,#1565C0)","#eef3fc","📄","Total emitidos",total,
+        somaStatus<total ? somaStatus+" contabilizados" : "Todos os períodos","")
+   +kpi("linear-gradient(90deg,#059669,#34d399)","#d1fae5","✅","Enviados + Confirm.",sucesso,
+        confirmados+" confirm. · "+enviados+" enviados","g")
+   +kpi("linear-gradient(90deg,#d97706,#fbbf24)","#fef3c7","🕐","Pendentes",pendentes,"Aguardando envio","a")
+   +kpi("linear-gradient(90deg,#dc2626,#f87171)","#fee2e2","⚠️","Falhas",erros+falhas,"Erro / falha entrega","r")
+   +kpi("linear-gradient(90deg,#7c3aed,#a78bfa)","#ede9fe","🎯","Taxa sucesso",taxaSuc+"%","Do ciclo atual","p");
+
+  // Indicador de saúde no header
+  atualizarSaude(taxaSuc);
+}
+
+function atualizarSaude(taxa){
+  var ind=g("dexSaudeIndicador");
+  var dot=g("dexSaudeDot");
+  var txt=g("dexSaudeTxt");
+  if(!ind||!dot||!txt) return;
+  ind.style.display="flex";
+  if(taxa>=90){
+    dot.style.background="#4ade80";
+    txt.textContent="SAUDÁVEL "+taxa+"%";
+    ind.style.borderColor="rgba(74,222,128,.35)";
+  } else if(taxa>=70){
+    dot.style.background="#fbbf24";
+    txt.textContent="ATENÇÃO "+taxa+"%";
+    ind.style.borderColor="rgba(251,191,36,.35)";
+  } else {
+    dot.style.background="#f87171";
+    txt.textContent="CRÍTICO "+taxa+"%";
+    ind.style.borderColor="rgba(248,113,113,.35)";
+  }
+}
+
+function kpi(bar,icoBg,ico,lbl,val,sub,cls){
+  return '<div class="dex-kpi">'
+    +'<div class="dex-kpi-bar" style="background:'+bar+';"></div>'
+    +'<div class="dex-kpi-ico" style="background:'+icoBg+';">'+ico+'</div>'
+    +'<div class="dex-kpi-lbl">'+esc(lbl)+'</div>'
+    +'<div class="dex-kpi-val'+(cls?' '+cls:'')+'">'+val+'</div>'
+    +'<div class="dex-kpi-sub">'+esc(sub)+'</div>'
+    +'</div>';
+}
+
+/* Tipos por área */
+var TIPOS_ORDEM = ['Taxa Assistencial','Filiação','Desfiliação','Taxa Negocial','Ofício Livre'];
+var TIPOS_CORES = ['#002f6c','#1565C0','#C9A84C','#0d9488','#94a3b8'];
+
+function renderTipos(graficos){
+  graficos=graficos||{};
+  var tipos=graficos.tipos||{};
+  var arr=TIPOS_ORDEM.map(function(t){ return [t, num(tipos[t]||0)]; });
+  arr.sort(function(a,b){ return b[1]-a[1]; });
+  var el=g("dexTiposBarras"); if(!el) return;
+  var mx=Math.max.apply(null,arr.map(function(t){return t[1];}).concat([1]));
+  el.innerHTML=arr.map(function(t,i){
+    var w=Math.max(0,Math.round(t[1]/mx*100));
+    var cor=TIPOS_CORES[TIPOS_ORDEM.indexOf(t[0])]||'#94a3b8';
+    return '<div class="dex-tipo-row">'
+      +'<span class="dex-tipo-lbl">'+esc(t[0])+'</span>'
+      +'<div class="dex-tipo-track"><div class="dex-tipo-fill" style="width:'+w+'%;background:'+cor+';"></div></div>'
+      +'<span class="dex-tipo-num">'+t[1]+'</span>'
+      +'</div>';
+  }).join('');
+
+  var canvas=g("dexBarChart"); if(!canvas||typeof Chart==='undefined') return;
+  if(_charts.bar){try{_charts.bar.destroy();}catch(e){}}
+  var labels=arr.map(function(t){return t[0].replace('Taxa Assistencial','T.Assist.').replace('Taxa Negocial','T.Negoc.').replace('Ofício Livre','Livre').replace('Desfiliação','Desfil.');});
+  var cores=arr.map(function(t){ return TIPOS_CORES[TIPOS_ORDEM.indexOf(t[0])]||'#94a3b8'; });
+  _charts.bar=new Chart(canvas,{
+    type:'bar',
+    data:{labels:labels,datasets:[{data:arr.map(function(t){return t[1];}),backgroundColor:cores,borderRadius:3,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#94a3b8',font:{size:8},maxRotation:0}},y:{display:false}}}
+  });
+
+  var tt=g("dexTiposTag");
+  if(tt){
+    var total=arr.reduce(function(s,t){return s+t[1];},0);
+    tt.textContent=total+" ofícios · "+arr.filter(function(t){return t[1]>0;}).length+" tipos ativos";
+  }
+}
+
+/* Donut */
+function renderDonut(graficos,resumo){
+  graficos=graficos||{}; resumo=resumo||{};
+
+  var s=graficos.status||{};
+  var conf = num(s.CONFIRMADO||s.confirmado||resumo.confirmados||0);
+  var pend = num(s.PENDENTE||s.pendente||resumo.pendentes||0);
+  var env  = num(s.ENVIADO||s.enviado||resumo.enviados||0);
+  var falh = num(s.ERRO||s.erro||s.FALHA_ENTREGA||resumo.erros||0);
+
+  var legEl=g("dexDonutLeg"); 
+  if(!legEl) return;
+
+  if(conf+pend+env+falh===0){ 
+    legEl.innerHTML='<div style="font-size:11px;color:#94a3b8;">Sem dados.</div>'; 
+    var p=g("dexDonutPct"); 
+    if(p)p.textContent='—'; 
+    return; 
+  }
+
+  var canvas=g("dexDonut"); 
+  if(!canvas||typeof Chart==='undefined') return;
+
+  if(_charts.donut){
+    try{_charts.donut.destroy();}catch(e){}
+  }
+
+  _charts.donut=new Chart(canvas,{
+    type:'doughnut',
+    data:{
+      labels:['Confirmado','Enviado','Pendente','Falha'],
+      datasets:[{
+        data:[conf,env,pend,falh],
+        backgroundColor:['#059669','#1565C0','#C9A84C','#dc2626'],
+        borderWidth:0,
+        hoverOffset:2
+      }]
+    },
+    options:{
+      responsive:false,
+      cutout:'68%',
+      plugins:{legend:{display:false}}
+    }
+  });
+
+  var total=num(resumo.total)||(conf+env+pend+falh);
+  var sucesso=conf+env;
+
+  var pct=g("dexDonutPct"); 
+  if(pct) pct.textContent = resumo.taxaSucesso!=null ? Math.round(Number(resumo.taxaSucesso))+'%' : (total>0?Math.round(sucesso/total*100)+'%':'—');
+
+  legEl.innerHTML=[
+    ['#059669','Confirmado',conf],
+    ['#1565C0','Enviado',env],
+    ['#C9A84C','Pendente',pend],
+    ['#dc2626','Falha',falh]
+  ].map(function(it){
+    return '<div class="dex-leg"><span class="dex-leg-dot" style="background:'+it[0]+';"></span>'+esc(it[1])+'<span class="dex-leg-val">'+it[2]+'</span></div>';
+  }).join('');
+}
+
+/* Fluxo */
+function renderFluxo(resumo,fila,graficos){
+  resumo=resumo||{}; fila=fila||{}; graficos=graficos||{};
+  var s=graficos.status||{};
+
+  var criados     = num(resumo.total||fila.total||0);
+  var emFila      = num(fila.pendentes||resumo.pendentes||0);
+  var enviados    = num(s.ENVIADO||s.enviado||fila.enviados||resumo.enviados||0);
+  var confirmados = num(s.CONFIRMADO||s.confirmado||resumo.confirmados||0);
+  var falhas      = num(s.ERRO||s.erro||s.FALHA_ENTREGA||fila.erros||resumo.erros||0);
+  var sucesso     = enviados + confirmados;
+  var taxaSuc     = resumo.taxaSucesso!=null ? Math.round(Number(resumo.taxaSucesso)) : (criados>0 ? Math.round(sucesso/criados*100) : 0);
+
+  var el=g("dexSteps");
+  if(!el) return;
+
+  el.innerHTML=
+    step(criados,"Criados","")
+   +'<div class="dex-arr">›</div>'
+   +step(emFila,"Na fila","a")
+   +'<div class="dex-arr">›</div>'
+   +step(enviados,"Enviados","")
+   +'<div class="dex-arr">›</div>'
+   +step(confirmados,"Confirm.","g")
+   +'<div class="dex-arr">›</div>'
+   +step(falhas,"Falhas","r");
+
+  var pf=g("dexProgFill");
+  if(pf) pf.style.width=taxaSuc+"%";
+
+  var pv=g("dexProgVal");
+  if(pv){
+    pv.textContent=taxaSuc+"% sucesso";
+    pv.style.color=taxaSuc>=70?"#059669":taxaSuc>=40?"#d97706":"#dc2626";
+  }
+
+  var ft=g("dexFluxoTag");
+  if(ft) ft.textContent="Ciclo · "+new Date().toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+
+  // Atalhos de ação rápida — aparecem só quando há algo a fazer
+  var atalhos=g("dexAtalhos");
+  if(atalhos){
+    var btns=[];
+    if(falhas>0) btns.push(atalho("⚠️ Ver "+falhas+" falha"+(falhas>1?"s":""),"#dc2626","rgba(220,38,38,.08)","monitoramento"));
+    if(emFila>0) btns.push(atalho("🕐 "+emFila+" pendente"+(emFila>1?"s":"")+" na fila","#d97706","rgba(217,119,6,.08)","monitoramento"));
+    if(confirmados>0) btns.push(atalho("✅ Ver confirmados","#059669","rgba(5,150,105,.08)","historico"));
+    btns.push(atalho("📋 Histórico completo","#475569","rgba(71,85,105,.07)","historico"));
+    atalhos.style.display=btns.length?"flex":"none";
+    atalhos.innerHTML=btns.join('');
+  }
+}
+
+function atalho(txt,cor,bg,aba){
+  return '<button onclick="if(window.mostrarAbaOficio)mostrarAbaOficio(\''+aba+'\')" '
+    +'style="font-family:\'Plus Jakarta Sans\',sans-serif;font-size:10px;font-weight:700;'
+    +'color:'+cor+';background:'+bg+';border:1px solid '+cor+'28;padding:4px 10px;'
+    +'border-radius:999px;cursor:pointer;white-space:nowrap;transition:all .15s;" '
+    +'onmouseover="this.style.opacity=\'.8\'" onmouseout="this.style.opacity=\'1\'">'+txt+'</button>';
+}
+
+function step(val,lbl,cls){
+  return '<div class="dex-step'+(cls?' '+cls:'')+'"><div class="dex-step-n">'+val+'</div><div class="dex-step-l">'+esc(lbl)+'</div></div>';
+}
+
+/* Escolas métricas — com navegação cruzada clicável */
+function renderEscMetrics(stats){
+  stats=stats||{};
+  var total    = num(stats.total||0);
+  var ativas   = num(stats.ativas||0);
+  var inativas = num(stats.inativas||Math.max(0,total-ativas));
+  var comEmail = num(stats.comEmail||0);
+  var semEmail = num(stats.semEmail||Math.max(0,total-comEmail));
+  var comCnpj  = num(stats.comCnpj||0);
+  var el=g("dexEscMetrics"); if(!el) return;
+  el.innerHTML=
+    emClick("linear-gradient(135deg,#eef3fc,#dbeafe)","🏫","Total",total,"","escolas","")
+   +emClick("linear-gradient(135deg,#d1fae5,#a7f3d0)","✅","Ativas",ativas,"#059669","escolas","ATIVA")
+   +emClick("linear-gradient(135deg,#fee2e2,#fecaca)","🚫","Inativas",inativas,"#dc2626","escolas","INATIVA")
+   +emClick("linear-gradient(135deg,#eff6ff,#bfdbfe)","🔢","Com CNPJ",comCnpj,"","escolas","")
+   +emClick("linear-gradient(135deg,#fef3c7,#fde68a)","📧","Com e-mail",comEmail,"#d97706","escolas","")
+   +emClick("linear-gradient(135deg,#fee2e2,#fecaca)","⚠️","Sem e-mail",semEmail,"#dc2626","escolas","SEM_EMAIL")
+   +'<div class="dex-alerta" id="dexAlertaSemEmail"'+(semEmail===0?' style="display:none;"':'')+'>'
+   +'<span style="font-size:16px;">⚠️</span>'
+   +'<span class="dex-alerta-txt">Escolas sem e-mail cadastrado</span>'
+   +'<span class="dex-alerta-num" id="dexAlertaNum">'+semEmail+'</span>'
+   +(semEmail>0?'<button class="dex-alerta-btn" onclick="if(window.mostrarAbaOficio)mostrarAbaOficio(\'escolas\')">Ver escolas →</button>':'')
+   +'</div>';
+}
+
+function emClick(bg,ico,lbl,val,cor,aba,filtro){
+  var clickable=aba?true:false;
+  var onclick=clickable?(' onclick="if(window.mostrarAbaOficio)mostrarAbaOficio(\''+aba+'\''+(filtro?',{filtro:\''+filtro+'\'}'  :'')+'"'):'';
+  return '<div class="dex-em"'+(clickable?' style="cursor:pointer;" title="Abrir em '+aba+'"':'')
+    +onclick+'>'
+    +'<div class="dex-em-ico" style="background:'+bg+';">'+ico+'</div>'
+    +'<div><div class="dex-em-lbl">'+esc(lbl)+'</div>'
+    +'<div class="dex-em-val"'+(cor?' style="color:'+cor+';"':'')+'>'+val+'</div></div>'
+    +'</div>';
+}
+
+/* Timestamp relativo */
+function dexTempoRelativo(dataStr){
+  if(!dataStr||dataStr==='—') return dataStr||'—';
+  try{
+    // Formato esperado: "dd/MM/yyyy HH:mm" ou "dd/MM/yyyy HH:mm:ss"
+    var partes=String(dataStr).match(/^(\d{2})\/(\d{2})\/(\d{4})\s(\d{2}):(\d{2})/);
+    if(!partes) return dataStr;
+    var d=new Date(partes[3],partes[2]-1,partes[1],partes[4],partes[5]);
+    var diff=Math.floor((Date.now()-d.getTime())/1000);
+    if(diff<0)   return dataStr;
+    if(diff<60)  return 'agora mesmo';
+    if(diff<3600)return 'há '+Math.floor(diff/60)+'min';
+    if(diff<86400)return 'há '+Math.floor(diff/3600)+'h';
+    if(diff<604800)return 'há '+Math.floor(diff/86400)+'d';
+    return dataStr;
+  }catch(e){ return dataStr; }
+}
+
+/* Atividades — timestamps relativos, até 10 itens, ícones por tipo */
+function renderAtividades(lista){
+  var el=g("dexAtividades"); if(!el) return;
+  lista=lista||[];
+  if(!lista.length){ el.innerHTML='<div style="font-size:11px;color:#94a3b8;padding:8px 0;">Nenhuma atividade recente.</div>'; return; }
+  var icos={enviado:'📤',falha:'⚠️',confirmado:'✅',pendente:'🕐',erro:'❌',cancelado:'🚫'};
+  var cors={enviado:'#002f6c',falha:'#dc2626',confirmado:'#059669',pendente:'#d97706',erro:'#dc2626',cancelado:'#64748b'};
+  el.innerHTML=lista.slice(0,10).map(function(a){
+    var tipo=String(a.tipo||'').toLowerCase();
+    var ico=icos[tipo]||'📋';
+    var cor=cors[tipo]||'#64748b';
+    var tempo=dexTempoRelativo(a.tempo||a.data||'');
+    return '<div class="dex-ativ">'
+      +'<div class="dex-ativ-ico" style="border-color:'+cor+'22;background:'+cor+'0d;">'+ico+'</div>'
+      +'<div style="flex:1;min-width:0;">'
+      +'<div class="dex-ativ-txt">'+esc(a.texto||a.descricao||'—')+'</div>'
+      +'<div class="dex-ativ-time" title="'+esc(a.tempo||a.data||'')+'">'+esc(tempo)+'</div>'
+      +'</div></div>';
+  }).join('');
+
+  // Rodapé "ver todas" se houver mais de 10
+  if(lista.length>10){
+    el.innerHTML+='<div style="text-align:center;padding-top:6px;">'
+      +'<button onclick="if(window.mostrarAbaOficio)mostrarAbaOficio(\'historico\')" '
+      +'style="font-size:10px;font-weight:700;color:#002f6c;background:none;border:none;cursor:pointer;text-decoration:underline;">'
+      +'Ver todas as '+(lista.length)+' atividades →</button></div>';
+  }
+}
+
+/* Carregar dados */
+function carregar(){
+  if(_loading) return;
+  _loading = true;
+
+  var tsEl = g("dexTs");
+  if(tsEl) tsEl.textContent = ts();
+
+  if(!window.google || !google.script || !google.script.run){
+    _loading = false;
+    return;
+  }
+
+  google.script.run
+    .withSuccessHandler(function(d){
+      _loading = false;
+      _retries = 0;
+      d = d || {};
+
+      renderKpis(d.resumo, d.fila, d.graficos);
+      renderTipos(d.graficos);
+      renderDonut(d.graficos, d.resumo);
+      renderFluxo(d.resumo, d.fila, d.graficos);
+      renderAtividades(d.atividades);
+      renderMonitoramentoRecebimento(d);
+
+      var badge = document.getElementById("sbBadgeMon");
+      if(badge){
+        var bdg = num(d.badge) || (d.pendenciasCriticas || []).length;
+        badge.textContent = bdg > 0 ? bdg : "";
+        badge.style.display = bdg > 0 ? "inline" : "none";
+      }
+    })
+.withFailureHandler(function(erro){
+  _loading = false;
+  console.error("Falha ao carregar dashboard:", erro);
+})
+.getDashboardOficiosData({});
+
+  google.script.run
+    .withSuccessHandler(function(stats){
+      renderEscMetrics(stats || {});
+    })
+    .withFailureHandler(function(erro){
+      console.error("Falha ao carregar estatísticas de escolas:", erro);
+    })
+    .obterEstatisticasEscolas();
+}
+
+function renderMonitoramentoRecebimento(dados) {
+  dados = dados || {};
+  var mon = dados.monitoramento || {};
+
+  var box = document.getElementById("dexMonitoramentoRecebimento");
+  if (!box) return;
+
+  box.innerHTML =
+    "<div class='dex-card' style='margin-top:10px;'>"
+    + "<div class='dex-card-h'>"
+    + "<div class='dex-card-ico'>📬</div>"
+    + "<div style='flex:1;'>"
+    + "<div class='dex-card-title'>Monitoramento de recebimento</div>"
+    + "<div class='dex-card-sub'>Acompanhamento da fila de ofícios</div>"
+    + "</div>"
+  + "<button onclick=\"if(window.mostrarAbaOficio)mostrarAbaOficio('monitoramento',{filtro:'AGUARDANDO'})\" "
+    + "style='font-size:10px;font-weight:800;color:#002f6c;background:#eef3fc;border:1px solid #bfdbfe;padding:5px 10px;border-radius:999px;cursor:pointer;'>"
+    + "Ver completo →"
+    + "</button>"
+    + "</div>"
+
+    + "<div class='dex-card-b'>"
++ "<div style='display:grid;grid-template-columns:repeat(4,minmax(110px,1fr));gap:8px;'>"
+    + cardMon("📤", "Enviados", mon.enviados || 0, "#dbeafe", "#1e40af")
+    + cardMon("✅", "Confirmados", mon.confirmados || 0, "#dcfce7", "#166534")
+    + cardMon("👁️", "Visualizados", mon.visualizados || 0, "#eef2ff", "#3730a3")
+    + cardMon("⏳", "Aguardando", mon.aguardando || 0, "#fef3c7", "#92400e")
+    + "</div>"
+
+    + "<div style='height:7px;background:#f1f5f9;border-radius:999px;overflow:hidden;margin:10px 0 6px;'>"
+    + "<div style='height:100%;width:" + (mon.taxaConfirmacao || 0) + "%;background:linear-gradient(90deg,#059669,#34d399);border-radius:999px;'></div>"
+    + "</div>"
+
+    + "<div style='display:flex;justify-content:space-between;'>"
+    + "<span style='font-size:10px;color:#64748b;'>Taxa de confirmação</span>"
+    + "<strong style='font-size:10px;color:#059669;'>" + (mon.taxaConfirmacao || 0) + "%</strong>"
+    + "</div>"
+    + "</div>"
+    + "</div>";
+}
+function cardMon(ico, label, valor, bg, cor) {
+  return ""
+    + "<div style='background:" + bg + ";border:1px solid " + cor + "22;border-radius:10px;padding:9px;text-align:center;'>"
+    + "<div style='font-size:15px;'>" + ico + "</div>"
+    + "<div style='font-size:17px;font-weight:900;color:" + cor + ";line-height:1;margin-top:3px;'>" + valor + "</div>"
+    + "<div style='font-size:8px;font-weight:800;color:#64748b;text-transform:uppercase;margin-top:4px;'>" + label + "</div>"
+    + "</div>";
+}
+/* Bind */
+document.addEventListener("click",function(ev){
+  if(ev.target.closest("#dexBtnAtualizar")){ _loading=false; garantirChartJs(carregar); }
+});
+
+function garantirChartJs(cb){
+  if(typeof Chart!=='undefined'){ cb(); return; }
+  var s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js';
+  s.onload=cb; document.head.appendChild(s);
+}
+
+window.DashboardExecutivo = {
+  carregar: function(){
+    garantirChartJs(carregar);
+  },
+
+  renderizar: function(d){
+    d = d || {};
+
+    renderKpis(d.resumo, d.fila, d.graficos);
+    renderTipos(d.graficos);
+    renderDonut(d.graficos, d.resumo);
+    renderFluxo(d.resumo, d.fila, d.graficos);
+    renderAtividades(d.atividades);
+    renderMonitoramentoRecebimento(d);
+  }
+};
+
+})();
+</script>
+</div>

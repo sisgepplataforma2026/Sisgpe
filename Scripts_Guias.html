@@ -1,0 +1,180 @@
+<script>
+/* =====================================================
+  SISGEP - Scripts_Guias.html
+  GUIA DE PAGAMENTO
+===================================================== */
+
+function atualizarListaAnexosGuiaPagamento(){
+  var input=document.getElementById("guiaAnexos"),listaEl=document.getElementById("guiaListaAnexos"); if(!listaEl) return;
+  var arquivos=Array.from((input&&input.files)||[]);
+  if(!arquivos.length){listaEl.innerHTML="Nenhum arquivo selecionado.";return;}
+  var html='<div style="display:grid;gap:8px;">';
+  arquivos.forEach(function(arquivo,index){ var kb=arquivo.size?arquivo.size/1024:0,tamanho=kb<1024?kb.toFixed(1)+" KB":(kb/1024).toFixed(2)+" MB"; html+='<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid #dbe5f0;border-radius:10px;background:#f8fafc;"><div style="min-width:0;flex:1;"><div style="font-weight:600;color:#123b6d;">📎 '+escapeHtml(arquivo.name||("Arquivo "+(index+1)))+'</div><div style="font-size:12px;color:#64748b;margin-top:2px;">'+escapeHtml(arquivo.type||"Tipo não identificado")+' • '+escapeHtml(tamanho)+'</div></div></div>'; });
+  html+='</div>'; listaEl.innerHTML=html;
+}
+
+function resetarGuiaPagamento(){
+  ["guiaBuscaPrestador","guiaNome","guiaDocumento","guiaEmail","guiaEmailContabilidade","guiaValor","guiaVencimento","guiaDescricao","guiaAssunto"].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=""; });
+  var tipoEnvio=document.getElementById("guiaTipoEnvio"); if(tipoEnvio) tipoEnvio.value="solicitar_nf";
+  var anexos=document.getElementById("guiaAnexos"); if(anexos) anexos.value="";
+  var listaAnexos=document.getElementById("guiaListaAnexos"); if(listaAnexos) listaAnexos.innerHTML="Nenhum arquivo selecionado.";
+  var resultado=document.getElementById("resultadoGuiaPagamento"); if(resultado){resultado.style.display="none";resultado.innerHTML="";}
+  var buscaResultado=document.getElementById("guiaResultadoBuscaPrestador"); if(buscaResultado){buscaResultado.style.display="none";buscaResultado.innerHTML="";}
+  window.__GUIA_PRESTADORES_BUSCA__=[];
+  atualizarAssuntoGuiaPagamento(); alternarCamposGuiaPagamento(); atualizarPreviewEmailGuiaPagamento();
+}
+
+function atualizarAssuntoGuiaPagamento(){
+  var tipoEnvioEl=document.getElementById("guiaTipoEnvio"),assuntoEl=document.getElementById("guiaAssunto"); if(!tipoEnvioEl||!assuntoEl) return;
+  var tipo=String(tipoEnvioEl.value||"").trim();
+  if(tipo==="solicitar_nf") assuntoEl.value="Solicitação de Nota Fiscal - SindEducação-ES";
+  else if(tipo==="enviar_contabilidade") assuntoEl.value="Encaminhamento de nota fiscal para pagamento";
+}
+
+function alternarCamposGuiaPagamento(){
+  var tipoEnvioEl=document.getElementById("guiaTipoEnvio"),campoPrestador=document.getElementById("blocoGuiaEmailPrestador"),campoContabilidade=document.getElementById("blocoGuiaEmailContabilidade"); if(!tipoEnvioEl) return;
+  var tipo=String(tipoEnvioEl.value||"").trim();
+  if(campoPrestador) campoPrestador.style.display=tipo==="solicitar_nf"?"":"none";
+  if(campoContabilidade) campoContabilidade.style.display=tipo==="solicitar_nf"?"none":"";
+}
+
+function atualizarPreviewEmailGuiaPagamento(){
+  var g=function(id){return document.getElementById(id)?document.getElementById(id).value.trim():"";};
+  var nome=g("guiaNome"),documento=g("guiaDocumento"),emailPrestador=g("guiaEmail"),emailContabilidade=g("guiaEmailContabilidade"),valor=g("guiaValor");
+  var vencimento=document.getElementById("guiaVencimento")?document.getElementById("guiaVencimento").value:"",descricao=g("guiaDescricao");
+  var tipoEnvio=document.getElementById("guiaTipoEnvio")?document.getElementById("guiaTipoEnvio").value:"solicitar_nf";
+  var previewEl=document.getElementById("guiaPreviewEmail"); if(!previewEl) return;
+  var hora=new Date().getHours(),saudacao=hora<12?"Bom dia":hora<18?"Boa tarde":"Boa noite";
+  var docLimpo=String(documento||"").replace(/\D/g,""),tipoDoc=docLimpo.length===11?"CPF":docLimpo.length===14?"CNPJ":"CPF / CNPJ";
+  var vencFormatado=vencimento;
+  if(/^\d{4}-\d{2}-\d{2}$/.test(vencimento)){var p=vencimento.split("-");vencFormatado=p[2]+"/"+p[1]+"/"+p[0];}
+  var destino=tipoEnvio==="solicitar_nf"?(emailPrestador||"[e-mail do prestador não informado]"):(emailContabilidade||"[e-mail da contabilidade não informado]");
+  var assinatura="\n\nAtenciosamente,\n\nMarcelha Aline Pinto Gomes\nSecretaria\nSindEducação-ES\n(27) 99735-8900\nsecretaria@sindeducacao.com";
+  var campos="\n\nPrestador: "+(nome||"[não informado]")+"\n"+tipoDoc+": "+(documento||"[não informado]")+"\nValor: "+(valor||"[não informado]")+"\nVencimento: "+(vencFormatado||"[não informado]")+"\nDescrição: "+(descricao||"-");
+  var corpo=tipoEnvio==="solicitar_nf"?saudacao+"!\n\nSolicitamos, por gentileza, o encaminhamento da nota fiscal do serviço do mês."+campos+"\n\nApós o recebimento, faremos o encaminhamento interno para as providências necessárias."+assinatura:saudacao+"!\n\nEncaminho, em anexo, a nota fiscal e a documentação referente ao prestador abaixo, para as providências necessárias quanto à programação do pagamento."+campos+assinatura;
+  previewEl.innerHTML='<div style="margin-bottom:10px;"><strong>Destino previsto:</strong> '+escapeHtml(destino)+'</div><div style="padding-top:10px;border-top:1px solid #e2e8f0;">'+escapeHtml(corpo).replace(/\n/g,"<br>")+'</div>';
+}
+
+function obterDadosTelaGuiaPagamento(){
+  var g=function(id){return document.getElementById(id)?document.getElementById(id).value.trim():"";};
+  var tipoEnvio=document.getElementById("guiaTipoEnvio")?document.getElementById("guiaTipoEnvio").value:"solicitar_nf";
+  var emailPrestador=g("guiaEmail"),emailContabilidade=g("guiaEmailContabilidade"),documento=g("guiaDocumento");
+  return {nome:g("guiaNome"),documento,documentoLimpo:onlyDigits(documento),emailPrestador,emailContabilidade,valor:g("guiaValor"),vencimento:document.getElementById("guiaVencimento")?document.getElementById("guiaVencimento").value:"",descricao:g("guiaDescricao"),tipoEnvio,assunto:g("guiaAssunto"),destino:tipoEnvio==="solicitar_nf"?emailPrestador:emailContabilidade};
+}
+
+function preencherPrestadorGuiaPagamento(dados){
+  dados=dados||{};
+  var set=function(id,val){var el=document.getElementById(id);if(el&&val) el.value=val;};
+  set("guiaNome",dados.nome||dados.prestador||""); set("guiaDocumento",dados.documento||""); set("guiaEmail",dados.emailPrestador||""); set("guiaEmailContabilidade",dados.emailContabilidade||""); set("guiaValor",dados.valor||""); set("guiaDescricao",dados.descricao||"");
+  if(dados.tipoEnvio){var el=document.getElementById("guiaTipoEnvio");if(el) el.value=dados.tipoEnvio;}
+  if(dados.assunto){var el=document.getElementById("guiaAssunto");if(el) el.value=dados.assunto;}
+  var vencEl=document.getElementById("guiaVencimento");
+  if(vencEl&&dados.vencimento){ if(/^\d{4}-\d{2}-\d{2}$/.test(dados.vencimento)) vencEl.value=dados.vencimento; else if(/^\d{2}\/\d{2}\/\d{4}$/.test(dados.vencimento)){var p=dados.vencimento.split("/");vencEl.value=p[2]+"-"+p[1]+"-"+p[0];} }
+  var docEl=document.getElementById("guiaDocumento"); if(docEl) aplicarMascaraDocumentoGuia(docEl);
+  var valEl=document.getElementById("guiaValor"); if(valEl&&dados.valor) aplicarMascaraValorGuia(valEl);
+  atualizarAssuntoGuiaPagamento(); alternarCamposGuiaPagamento(); atualizarPreviewEmailGuiaPagamento();
+}
+
+function registrarGuiaPagamentoFrontend(status,observacao,callback){
+  var dados=obterDadosTelaGuiaPagamento();
+  google.script.run
+    .withSuccessHandler(function(res){if(typeof callback==="function") callback(res);})
+    .withFailureHandler(function(err){if(typeof callback==="function") callback({ok:false,erro:true,mensagem:((err&&err.message)||err||"Erro ao registrar guia.")});})
+    .registrarEnvioGuiaPagamento({nome:dados.nome,documento:dados.documento,emailPrestador:dados.emailPrestador,emailContabilidade:dados.emailContabilidade,valor:dados.valor,vencimento:dados.vencimento,descricao:dados.descricao,tipoEnvio:dados.tipoEnvio,assunto:dados.assunto,destino:dados.destino,status:status||"PREPARADO",observacao:observacao||""});
+}
+
+function enviarGuiaPagamentoEmail(){
+  var dados=obterDadosTelaGuiaPagamento();
+  var focar=function(id){var el=document.getElementById(id);if(el) el.focus();};
+  if(!dados.nome){alert("Informe o nome do prestador.");focar("guiaNome");return;}
+  if(!dados.documento){alert("Informe o CPF ou CNPJ.");focar("guiaDocumento");return;}
+  if(!dados.valor){alert("Informe o valor.");focar("guiaValor");return;}
+  if(!dados.vencimento){alert("Informe o vencimento.");focar("guiaVencimento");return;}
+  var docLimpo=dados.documentoLimpo,tipoDoc="CPF / CNPJ",valido=false;
+  if(docLimpo.length===11){tipoDoc="CPF";valido=Utils.validarCPF(docLimpo);}
+  else if(docLimpo.length===14){tipoDoc="CNPJ";valido=true;}
+  if(!valido){alert("Informe um CPF ou CNPJ válido.");focar("guiaDocumento");return;}
+  if(!dados.destino){alert(dados.tipoEnvio==="solicitar_nf"?"Informe o e-mail do prestador.":"Informe o e-mail da contabilidade.");return;}
+  var assunto=dados.assunto||(dados.tipoEnvio==="solicitar_nf"?"Solicitação de Nota Fiscal - SindEducação-ES":"Encaminhamento de documentação para pagamento");
+  var hora=new Date().getHours(),saudacao=hora<12?"Bom dia":hora<18?"Boa tarde":"Boa noite";
+  var vencFormatado=dados.vencimento; if(/^\d{4}-\d{2}-\d{2}$/.test(dados.vencimento)){var p=dados.vencimento.split("-");vencFormatado=p[2]+"/"+p[1]+"/"+p[0];}
+  var campos="\n\nPrestador: "+dados.nome+"\n"+tipoDoc+": "+dados.documento+"\nValor: "+dados.valor+"\nVencimento: "+vencFormatado+"\nDescrição: "+(dados.descricao||"-");
+  var assinatura="\n\nAtenciosamente,\n\nMarcelha Aline Pinto Gomes\nSecretaria\nSindEducação-ES\n(27) 99735-8900\nsecretaria@sindeducacao.com";
+  var corpo=dados.tipoEnvio==="solicitar_nf"?saudacao+"!\n\nSolicitamos, por gentileza, o encaminhamento da nota fiscal do serviço abaixo:"+campos+"\n\nApós o recebimento, faremos o encaminhamento interno."+assinatura:saudacao+"!\n\nEncaminho a documentação referente ao pagamento abaixo:"+campos+assinatura;
+  var destinos=String(dados.destino||"").split(/[;,]/).map(function(e){return e.trim();}).filter(Boolean);
+  if(!destinos.length){alert("Nenhum e-mail válido foi informado.");return;}
+  registrarGuiaPagamentoFrontend("PREPARADO","E-mail aberto via mailto",function(ret){
+    if(ret&&ret.erro){alert(ret.mensagem||"Erro ao registrar histórico da guia.");return;}
+    window.location.href="mailto:"+encodeURIComponent(destinos.join(","))+"?subject="+encodeURIComponent(assunto)+"&body="+encodeURIComponent(corpo);
+    setTimeout(function(){ resetarGuiaPagamento(); if(typeof carregarRelatorioGuiasFrontend==="function") carregarRelatorioGuiasFrontend(); },800);
+  });
+}
+
+function buscarPrestadorGuiaFrontend(){
+  var termoEl=document.getElementById("guiaBuscaPrestador"),listaEl=document.getElementById("guiaResultadoBuscaPrestador"); if(!termoEl||!listaEl) return;
+  var termo=String(termoEl.value||"").trim();
+  if(!termo){listaEl.style.display="block";listaEl.innerHTML='<div style="padding:12px;color:#7c4a03;">Digite o nome, CPF, CNPJ ou e-mail do prestador.</div>';return;}
+  listaEl.style.display="block";listaEl.innerHTML='<div style="padding:12px;color:#1d4ed8;">Buscando prestador...</div>';loader(true);
+  google.script.run
+    .withSuccessHandler(function(res){ loader(false); if(res&&res.erro){listaEl.innerHTML='<div style="padding:12px;color:#b91c1c;">'+escapeHtml(res.mensagem||"Erro ao buscar.")+'</div>';return;} var lista=(res&&res.lista)||[]; window.__GUIA_PRESTADORES_BUSCA__=lista; if(!lista.length){listaEl.innerHTML='<div style="padding:12px;color:#64748b;">Nenhum prestador encontrado.</div>';return;} var html='<div style="display:grid;gap:10px;">'; lista.forEach(function(item,idx){ html+='<div style="border:1px solid #dbe5f0;border-radius:12px;padding:12px;background:#f8fafc;"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;"><div style="flex:1;min-width:260px;"><div style="font-weight:700;color:#123b6d;">'+escapeHtml(item.nome||item.prestador||"")+'</div><div style="margin-top:4px;font-size:13px;color:#475569;">Documento: '+escapeHtml(item.documento||"-")+'</div><div style="margin-top:2px;font-size:13px;color:#475569;">E-mail prestador: '+escapeHtml(item.emailPrestador||"-")+'</div><div style="margin-top:2px;font-size:13px;color:#475569;">Valor: '+escapeHtml(item.valor||"-")+'</div></div><div><button type="button" class="btn-primary btn-secundario" onclick="selecionarPrestadorBuscaGuia('+idx+')">Usar este</button></div></div></div>'; }); html+='</div>'; listaEl.innerHTML=html; })
+    .withFailureHandler(function(err){loader(false);listaEl.innerHTML='<div style="padding:12px;color:#b91c1c;">Erro: '+escapeHtml(((err&&err.message)||err||""))+'</div>';})
+    .buscarPrestadorGuiaPagamento(termo);
+}
+
+function selecionarPrestadorBuscaGuia(indice){
+  var item=(window.__GUIA_PRESTADORES_BUSCA__||[])[indice]; if(!item){alert("Prestador não encontrado.");return;}
+  preencherPrestadorGuiaPagamento(item);
+  var listaEl=document.getElementById("guiaResultadoBuscaPrestador"); if(listaEl) listaEl.innerHTML='<div style="padding:12px;border-radius:10px;background:#e8f7ee;border:1px solid #2e7d32;color:#1b5e20;">Prestador carregado com sucesso: <strong>'+escapeHtml(item.nome||item.prestador||"")+'</strong></div>';
+}
+
+function carregarRelatorioGuiasFrontend(){
+  var g=function(id){return document.getElementById(id)?document.getElementById(id).value:"";};
+  var tbody=document.querySelector("#tabelaRelatorioGuias tbody"); if(!tbody) return;
+  tbody.innerHTML='<tr><td colspan="8">Carregando relatório...</td></tr>'; loader(true);
+  google.script.run
+    .withSuccessHandler(function(res){ loader(false); if(res&&res.erro){tbody.innerHTML='<tr><td colspan="8">Erro: '+escapeHtml(res.mensagem||"")+'</td></tr>';return;} renderizarRelatorioGuiasFrontend(Array.isArray(res)?res:(res&&Array.isArray(res.lista)?res.lista:[])); })
+    .withFailureHandler(function(err){loader(false);tbody.innerHTML='<tr><td colspan="8">Erro: '+escapeHtml(((err&&err.message)||err||""))+'</td></tr>';})
+    .listarRelatorioGuiasPagamento({prestador:g("filtroGuiaPrestador").trim(),documento:g("filtroGuiaDocumento").trim(),tipoEnvio:g("filtroGuiaTipoEnvio"),dataInicio:g("filtroGuiaDataInicio"),dataFim:g("filtroGuiaDataFim")});
+}
+
+function renderizarRelatorioGuiasFrontend(lista){
+  var tbody=document.querySelector("#tabelaRelatorioGuias tbody"); if(!tbody) return;
+  window.__RELATORIO_GUIAS_CACHE__=Array.isArray(lista)?lista:[];
+  if(!Array.isArray(lista)||!lista.length){tbody.innerHTML='<tr><td colspan="8">Nenhum registro encontrado.</td></tr>';return;}
+  var html="";
+  lista.forEach(function(item){ var tipoLabel=item.tipoEnvio==="solicitar_nf"?"Solicitar NF":item.tipoEnvio==="enviar_contabilidade"?"Enviar contabilidade":(item.tipoEnvio||"-"); var destino=item.destino||item.destinoFinal||item.emailPrestador||item.emailContabilidade||"-"; html+="<tr><td>"+escapeHtml(item.dataHora||item.data||"-")+"</td><td>"+escapeHtml(item.prestador||item.nome||"-")+"</td><td>"+escapeHtml(item.documento||"-")+"</td><td>"+escapeHtml(item.valor||"-")+"</td><td>"+escapeHtml(item.vencimento||"-")+"</td><td>"+escapeHtml(tipoLabel)+"</td><td>"+escapeHtml(destino)+"</td><td>"+escapeHtml(item.usuario||item.usuarioRegistro||"-")+"</td></tr>"; });
+  tbody.innerHTML=html;
+}
+
+function limparFiltrosRelatorioGuiasFrontend(){
+  ["filtroGuiaPrestador","filtroGuiaDocumento","filtroGuiaTipoEnvio","filtroGuiaDataInicio","filtroGuiaDataFim"].forEach(function(id){var el=document.getElementById(id);if(el) el.value="";});
+  carregarRelatorioGuiasFrontend();
+}
+
+function aplicarMascaraDocumentoGuia(input){
+  if(!input) return;
+  var v=String(input.value||"").replace(/\D/g,"");
+  if(v.length<=11){v=v.substring(0,11).replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d{1,2})$/,"$1-$2");}
+  else{v=v.substring(0,14).replace(/^(\d{2})(\d)/,"$1.$2").replace(/^(\d{2})\.(\d{3})(\d)/,"$1.$2.$3").replace(/\.(\d{3})(\d)/,".$1/$2").replace(/(\d{4})(\d)/,"$1-$2");}
+  input.value=v;
+}
+
+function aplicarMascaraValorGuia(input){
+  if(!input) return;
+  var v=String(input.value||"").replace(/\D/g,"");
+  if(!v){input.value="";return;}
+  v=(parseInt(v,10)/100).toFixed(2).replace(".",",").replace(/(\d)(?=(\d{3})+(?!\d))/g,"$1.");
+  input.value="R$ "+v;
+}
+function initAbasGuiaPagamento(){
+  alternarCamposGuiaPagamento();
+  atualizarAssuntoGuiaPagamento();
+  atualizarPreviewEmailGuiaPagamento();
+  atualizarListaAnexosGuiaPagamento();
+
+  if(typeof carregarRelatorioGuiasFrontend === "function"){
+    carregarRelatorioGuiasFrontend();
+  }
+}
+
+</script>

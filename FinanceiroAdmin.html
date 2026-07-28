@@ -1,0 +1,180 @@
+<div id="financeiroAdmin" style="position:relative;width:100%;min-height:100%;font-family:'Plus Jakarta Sans',sans-serif;">
+
+<!-- ═══════════════════════════════════════════
+     PAINEL IA FINANCEIRO — análise executiva
+══════════════════════════════════════════════ -->
+<div id="finIaPainel" style="display:none;position:fixed;bottom:88px;right:24px;width:420px;max-height:72vh;background:#fff;border:1.5px solid #bfdbfe;border-radius:18px;box-shadow:0 20px 60px rgba(0,20,60,.22);z-index:9999;overflow:hidden;flex-direction:column;font-family:'Plus Jakarta Sans',sans-serif;">
+
+  <div style="background:linear-gradient(135deg,#001f4d,#1565C0);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div style="width:26px;height:26px;background:linear-gradient(135deg,#f8d66d,#C9A84C);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#002f6c;">S</div>
+      <div>
+        <div style="font-size:13px;font-weight:800;color:#fff;line-height:1.1;">SOFIA — Financeiro</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.6);">Análise inteligente de despesas</div>
+      </div>
+    </div>
+    <button id="btnFecharFinIA" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:18px;cursor:pointer;padding:0 4px;line-height:1;">✕</button>
+  </div>
+
+  <div id="finIaConteudo" style="flex:1;overflow-y:auto;padding:16px;">
+    <div style="text-align:center;color:#94a3b8;font-size:13px;padding:24px 0;">
+      <div style="font-size:32px;margin-bottom:8px;">🧠</div>
+      Clique em <strong>Analisar com IA</strong> para gerar insights do período atual.
+    </div>
+  </div>
+
+  <div style="padding:10px 14px;border-top:1px solid #f1f5f9;flex-shrink:0;display:flex;gap:6px;">
+    <button id="btnFinAnalisarIA" style="flex:1;height:36px;background:linear-gradient(135deg,#001f4d,#1565C0);color:#fff;border:none;border-radius:999px;font-size:12px;font-weight:800;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .18s;">
+      🤖 Analisar com IA
+    </button>
+    <button id="btnFinChatSOFIA" style="height:36px;padding:0 14px;background:#fff;color:#001f4d;border:1.5px solid #bfdbfe;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .18s;">
+      💬 Chat
+    </button>
+  </div>
+</div>
+
+<!-- Botão flutuante para abrir o painel IA -->
+<button id="btnFinIaFloat" title="Analisar com SOFIA IA" style="position:fixed;right:24px;bottom:24px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#001f4d,#1565C0);color:#fff;border:none;font-size:22px;cursor:pointer;box-shadow:0 8px 24px rgba(0,47,108,.36);z-index:9998;transition:all .18s;display:flex;align-items:center;justify-content:center;">
+  🤖
+  <span style="position:absolute;top:-2px;right:-2px;width:12px;height:12px;border-radius:50%;background:#4ade80;border:2px solid #fff;animation:finIaPing 1.8s ease-in-out infinite;"></span>
+</button>
+
+<style>
+@keyframes finIaPing {
+  0%,100%{ box-shadow:0 0 0 0 rgba(74,222,128,.8); }
+  70%{     box-shadow:0 0 0 8px rgba(74,222,128,0); }
+}
+</style>
+
+<script>
+(function() {
+"use strict";
+
+/* ── INIT — chamado pelo index.html ao navegar para Financeiro ── */
+window.initFinanceiro = function() {
+  if (typeof window.carregarDashboard === "function") {
+    window.carregarDashboard();
+  }
+  if (typeof window.carregarLista === "function") {
+    setTimeout(function() { window.carregarLista(); }, 200);
+  }
+};
+
+/* ── Alias para compatibilidade ── */
+window.carregarFinanceiro = window.initFinanceiro;
+window.initDespesas       = window.initFinanceiro;
+
+/* ── Painel IA — toggle ── */
+var painel = document.getElementById("finIaPainel");
+var btnFloat = document.getElementById("btnFinIaFloat");
+var btnFechar = document.getElementById("btnFecharFinIA");
+
+if (btnFloat) {
+  btnFloat.addEventListener("click", function() {
+    if (!painel) return;
+    var aberto = painel.style.display === "flex";
+    painel.style.display = aberto ? "none" : "flex";
+    painel.style.flexDirection = "column";
+  });
+}
+
+if (btnFechar) {
+  btnFechar.addEventListener("click", function() {
+    if (painel) painel.style.display = "none";
+  });
+}
+
+/* ── Botão Analisar com IA ── */
+var btnAnalisar = document.getElementById("btnFinAnalisarIA");
+if (btnAnalisar) {
+  btnAnalisar.addEventListener("click", function() {
+    var conteudo = document.getElementById("finIaConteudo");
+    if (!conteudo) return;
+
+    conteudo.innerHTML =
+      '<div style="text-align:center;padding:24px;">'
+      + '<div style="width:32px;height:32px;border:3px solid #e2e8f0;border-top-color:#1565C0;border-radius:50%;animation:finIaSpin .8s linear infinite;margin:0 auto 12px;"></div>'
+      + '<div style="font-size:13px;font-weight:700;color:#001f4d;">Analisando despesas...</div>'
+      + '<div style="font-size:11px;color:#94a3b8;margin-top:4px;">Consultando dados e gerando insights</div>'
+      + '</div>'
+      + '<style>@keyframes finIaSpin{to{transform:rotate(360deg)}}</style>';
+
+    btnAnalisar.disabled = true;
+    btnAnalisar.textContent = "⏳ Analisando...";
+
+    google.script.run
+      .withSuccessHandler(function(resp) {
+        btnAnalisar.disabled = false;
+        btnAnalisar.innerHTML = "🤖 Analisar com IA";
+
+        if (!resp || !resp.ok) {
+          conteudo.innerHTML =
+            '<div style="padding:16px;background:#fee2e2;border:1px solid #fca5a5;border-radius:10px;font-size:12.5px;color:#9f1239;font-weight:600;">'
+            + "❌ " + ((resp && resp.mensagem) || "Erro ao gerar análise.")
+            + '</div>';
+          return;
+        }
+
+        var texto = String(resp.analise || "").trim();
+        var html  = texto
+          .replace(/\n{3,}/g, "\n\n")
+          .split(/\n\n+/)
+          .map(function(bloco) {
+            bloco = bloco.trim();
+            if (!bloco) return "";
+            // Título de seção (tudo em maiúsculas)
+            if (/^[A-ZÀÁÂÃÉÍÓÕÔÚÇ\s\d\.]+$/.test(bloco) && bloco.length < 60) {
+              return '<div style="font-size:10px;font-weight:800;color:#001f4d;text-transform:uppercase;letter-spacing:.08em;margin:14px 0 6px;padding-top:10px;border-top:1px solid #f1f5f9;">' + bloco + '</div>';
+            }
+            return '<p style="font-size:12.5px;color:#334155;line-height:1.7;margin:0 0 8px;">' + bloco.replace(/\n/g, "<br>") + '</p>';
+          })
+          .join("");
+
+        conteudo.innerHTML =
+          '<div style="margin-bottom:10px;padding:10px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;font-size:11px;font-weight:700;color:#1d4ed8;">🧠 Análise gerada pela SOFIA</div>'
+          + html;
+      })
+      .withFailureHandler(function(err) {
+        btnAnalisar.disabled = false;
+        btnAnalisar.innerHTML = "🤖 Analisar com IA";
+        conteudo.innerHTML =
+          '<div style="padding:16px;background:#fee2e2;border:1px solid #fca5a5;border-radius:10px;font-size:12.5px;color:#9f1239;font-weight:600;">'
+          + "❌ Erro: " + ((err && err.message) || err)
+          + '</div>';
+      })
+      .finGerarInsightsFinanceirosIA();
+  });
+}
+
+/* ── Botão Chat SOFIA — navega para o módulo sofia ── */
+var btnChat = document.getElementById("btnFinChatSOFIA");
+if (btnChat) {
+  btnChat.addEventListener("click", function() {
+    if (painel) painel.style.display = "none";
+    if (typeof spIr === "function") {
+      var navSofia = document.querySelector(".spN[data-mod='sofia']");
+      spIr("sofia", navSofia);
+      setTimeout(function() {
+        var ci = document.getElementById("chatInput");
+        if (ci) ci.focus();
+      }, 300);
+    }
+  });
+}
+
+/* ── Classificar despesa com IA (chamada do DespesasAdmin) ── */
+window.finClassificarDespesaComIA = function(dados, callback) {
+  google.script.run
+    .withSuccessHandler(function(resp) {
+      if (typeof callback === "function") callback(resp);
+    })
+    .withFailureHandler(function(err) {
+      if (typeof callback === "function") callback({ ok: false, mensagem: (err && err.message) || "Erro" });
+    })
+    .finClassificarHibridoIA(dados);
+};
+
+})();
+</script>
+
+</div>

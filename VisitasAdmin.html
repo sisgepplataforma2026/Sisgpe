@@ -1,0 +1,1085 @@
+<div class="vad-wrap">
+
+  <!-- INDICADORES -->
+  <div class="vad-kpis">
+    <div class="vad-kpi"><span>Escolas na base</span><strong id="vadKpiTotal">—</strong>
+      <small id="vadKpiEquipes">—</small></div>
+    <div class="vad-kpi vad-kpi-ok"><span>Visitadas</span><strong id="vadKpiVisitadas">—</strong>
+      <small id="vadKpiCobertura">—</small></div>
+    <div class="vad-kpi"><span>Pendentes</span><strong id="vadKpiPendentes">—</strong>
+      <small id="vadKpiNunca">—</small></div>
+    <div class="vad-kpi"><span>Agendadas</span><strong id="vadKpiAgendadas">—</strong>
+      <small id="vadKpiRetornar">—</small></div>
+    <div class="vad-kpi vad-kpi-gold"><span>Sindicalizações</span><strong id="vadKpiFichas">—</strong>
+      <small id="vadKpiFichasMes">—</small></div>
+    <div class="vad-kpi"><span>Visitas hoje</span><strong id="vadKpiHoje">—</strong>
+      <small id="vadKpiTempo">—</small></div>
+  </div>
+
+
+  <!-- ABAS -->
+  <div class="vad-abas">
+    <button class="vad-aba vad-aba-ativa" data-vad-aba="escolas" onclick="vadSelecionarAba('escolas')">Escolas e agendamento</button>
+    <button class="vad-aba" data-vad-aba="agenda" onclick="vadSelecionarAba('agenda')">Agenda do dia</button>
+    <button class="vad-aba" id="vadAbaBtnDesempenho" data-vad-aba="desempenho" onclick="vadSelecionarAba('desempenho')">Desempenho</button>
+  </div>
+
+  <div id="vadPainelEscolas" class="vad-painel">
+
+  <div class="vad-grid">
+
+    <!-- COLUNA PRINCIPAL -->
+    <div class="vad-principal">
+
+      <div class="vad-filtros">
+        <input type="text" id="vadBusca" class="vad-input" placeholder="Buscar escola, unidade, cidade ou CNPJ…" oninput="vadBuscaDigitou()">
+        <select id="vadEquipe" class="vad-select" onchange="vadFiltrar()">
+          <option value="">Todas as equipes</option>
+          <option value="A">Equipe A · Grande Vitória</option>
+          <option value="B">Equipe B · Interior</option>
+        </select>
+        <select id="vadMunicipio" class="vad-select" onchange="vadFiltrar()">
+          <option value="">Todos os municípios</option>
+        </select>
+        <select id="vadStatus" class="vad-select" onchange="vadFiltrar()">
+          <option value="">Todos os status</option>
+          <option value="PENDENTE">Pendente</option>
+          <option value="AGENDADA">Agendada</option>
+          <option value="VISITADA">Visitada</option>
+          <option value="RETORNAR">Retornar</option>
+          <option value="SEM_CONTATO">Sem contato</option>
+          <option value="MUDOU_ENDERECO">Mudou de endereço</option>
+        </select>
+        <label class="vad-check-filtro">
+          <input type="checkbox" id="vadSemVisita" onchange="vadFiltrar()">
+          <span>Só nunca visitadas</span>
+        </label>
+        <button class="vad-btn-sec" onclick="carregarPainelVisitas()">↻ Atualizar</button>
+      </div>
+
+      <!-- BARRA DE AGENDAMENTO EM LOTE -->
+      <div class="vad-lote" id="vadLote" style="display:none;">
+        <div class="vad-lote-info">
+          <b id="vadLoteQtd">0</b> escola(s) selecionada(s)
+          <button class="vad-link" onclick="vadLimparSelecao()">limpar seleção</button>
+        </div>
+        <div class="vad-lote-campos">
+          <div>
+            <label>Data</label>
+            <input type="date" id="vadLoteData" class="vad-input">
+          </div>
+          <div>
+            <label>Diretor de base</label>
+            <input type="text" id="vadLoteDiretor" class="vad-input" placeholder="Nome de quem vai visitar">
+          </div>
+          <div>
+            <label>Primeiro horário</label>
+            <input type="time" id="vadLoteHora" class="vad-input" value="08:30">
+          </div>
+          <div>
+            <label>Intervalo</label>
+            <select id="vadLoteIntervalo" class="vad-select">
+              <option value="45">45 min</option>
+              <option value="60" selected>1 hora</option>
+              <option value="90">1h30</option>
+              <option value="120">2 horas</option>
+            </select>
+          </div>
+          <button class="vad-btn-pri" id="vadBtnAgendar" onclick="vadAgendarLote()">Agendar rota</button>
+        </div>
+        <div class="vad-lote-aviso" id="vadLoteAviso"></div>
+      </div>
+
+      <div class="vad-tabela-caixa">
+        <div class="vad-tabela-rolagem">
+        <table class="vad-tabela">
+          <thead>
+            <tr>
+              <th style="width:34px;"><input type="checkbox" id="vadTodos" onchange="vadMarcarTodos(this)"></th>
+              <th>Escola</th>
+              <th style="width:130px;">Município</th>
+              <th style="width:56px;">Eq.</th>
+              <th style="width:120px;">Status</th>
+              <th style="width:92px;">Última</th>
+              <th style="width:62px;">Visitas</th>
+              <th style="width:62px;">Fichas</th>
+            </tr>
+          </thead>
+          <tbody id="vadCorpo"></tbody>
+        </table>
+        </div>
+        <div id="vadVazio" class="vad-vazio" style="display:none;">
+          Nenhuma escola encontrada com estes filtros.
+        </div>
+        <div class="vad-rodape-tabela">
+          <span id="vadContagem">—</span>
+          <div class="vad-paginacao">
+            <button class="vad-pag-btn" id="vadPagAnt" onclick="vadPagina(-1)" title="Página anterior">‹</button>
+            <span id="vadPagInfo">—</span>
+            <button class="vad-pag-btn" id="vadPagProx" onclick="vadPagina(1)" title="Próxima página">›</button>
+            <select id="vadPorPagina" class="vad-select vad-select-mini" onchange="vadMudarPorPagina()" title="Escolas por página">
+              <option value="25">25 / pág.</option>
+              <option value="50" selected>50 / pág.</option>
+              <option value="100">100 / pág.</option>
+              <option value="200">200 / pág.</option>
+              <option value="1000">Todas</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COLUNA LATERAL -->
+    <aside class="vad-lateral">
+      <div class="vad-card">
+        <div class="vad-card-titulo">Cobertura por município</div>
+        <div class="vad-card-sub">Ordenado pelo que falta visitar</div>
+        <div id="vadMunicipios" class="vad-municipios"></div>
+      </div>
+    </aside>
+  </div>
+  </div>
+
+  <!-- ABA: AGENDA DO DIA -->
+  <div id="vadPainelAgenda" class="vad-painel" style="display:none;">
+    <div class="vad-filtros">
+      <input type="date" id="vadAgendaData" class="vad-input" onchange="vadCarregarAgenda()">
+      <input type="text" id="vadAgendaDiretor" class="vad-input" placeholder="Filtrar por diretor de base (opcional)" onchange="vadCarregarAgenda()">
+      <button class="vad-btn-sec" onclick="vadCarregarAgenda()">Atualizar agenda</button>
+      <span id="vadAgendaResumo" class="vad-resumo">-</span>
+    </div>
+    <div class="vad-tabela-caixa">
+      <table class="vad-tabela">
+        <thead>
+          <tr>
+            <th style="width:62px;">Hora</th>
+            <th>Escola</th>
+            <th style="width:130px;">Municipio</th>
+            <th style="width:170px;">Diretor de base</th>
+            <th style="width:120px;">Status</th>
+            <th style="width:110px;">Chegada</th>
+            <th style="width:62px;">Fichas</th>
+          </tr>
+        </thead>
+        <tbody id="vadAgendaCorpo"></tbody>
+      </table>
+      <div id="vadAgendaVazio" class="vad-vazio" style="display:none;">
+        Nenhuma visita agendada para esta data.
+      </div>
+    </div>
+  </div>
+
+  <!-- ABA: DESEMPENHO -->
+  <div id="vadPainelDesempenho" class="vad-painel" style="display:none;">
+    <div class="vad-nota">
+      Conversao e a media de fichas de sindicalizacao por visita concluida.
+      Escolas e realidades diferentes produzem numeros diferentes — o dado
+      serve para apoiar a equipe, nao para ranquear pessoas.
+    </div>
+    <div class="vad-tabela-caixa">
+      <table class="vad-tabela">
+        <thead>
+          <tr>
+            <th>Diretor de base</th>
+            <th style="width:110px;">Concluidas</th>
+            <th style="width:100px;">Agendadas</th>
+            <th style="width:90px;">Fichas</th>
+            <th style="width:110px;">Conversao</th>
+            <th style="width:110px;">Tempo medio</th>
+          </tr>
+        </thead>
+        <tbody id="vadDesempenhoCorpo"></tbody>
+      </table>
+      <div id="vadDesempenhoVazio" class="vad-vazio" style="display:none;">
+        Nenhuma visita concluida ainda. Os numeros aparecem conforme a
+        operacao acontece.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL VISÃO 360 -->
+<div id="vadModal" class="vad-modal">
+  <div class="vad-modal-caixa">
+    <div class="vad-modal-topo">
+      <div>
+        <div class="vad-modal-titulo" id="vadModalEscola">—</div>
+        <div class="vad-modal-sub" id="vadModalSub">—</div>
+      </div>
+      <button class="vad-modal-fechar" onclick="vadFecharModal()">✕</button>
+    </div>
+    <div class="vad-modal-corpo" id="vadModalCorpo"></div>
+  </div>
+</div>
+
+<style>
+.vad-wrap{max-width:1560px;margin:0 auto;padding:20px 24px 32px;font-family:'Plus Jakarta Sans',sans-serif;}
+
+.vad-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:10px;margin:0;}
+.vad-kpi{background:#fff;border:1.5px solid #e2e8f0;border-radius:13px;padding:14px;}
+.vad-kpi span{display:block;color:#64748b;font-size:10px;text-transform:uppercase;font-weight:800;letter-spacing:.04em;}
+.vad-kpi strong{display:block;color:#002f6c;font-size:26px;margin-top:4px;line-height:1;font-variant-numeric:tabular-nums;}
+.vad-kpi small{display:block;color:#94a3b8;font-size:10.5px;margin-top:5px;}
+.vad-kpi-ok{border-color:#86efac;background:#f0fdf4;}
+.vad-kpi-ok strong{color:#166534;}
+.vad-kpi-gold{border-color:#C9A84C;background:#fffdf7;}
+.vad-kpi-gold strong{color:#92400e;}
+
+.vad-grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;margin-top:16px;align-items:start;}
+
+.vad-filtros{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+.vad-input,.vad-select{height:38px;border:1.5px solid #cbd5e1;border-radius:9px;padding:0 11px;font-size:13px;font-family:inherit;background:#fff;color:#0f172a;}
+.vad-input:focus,.vad-select:focus{outline:none;border-color:#002f6c;}
+#vadBusca{flex:1;min-width:230px;}
+.vad-check-filtro{display:flex;align-items:center;gap:7px;font-size:12.5px;color:#334155;cursor:pointer;white-space:nowrap;}
+.vad-check-filtro input{width:16px;height:16px;accent-color:#002f6c;}
+.vad-btn-sec{height:38px;border:none;border-radius:9px;padding:0 14px;background:#e2e8f0;color:#172033;font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit;}
+.vad-btn-pri{height:38px;border:none;border-radius:9px;padding:0 18px;background:#002f6c;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;align-self:flex-end;}
+.vad-btn-pri:disabled{opacity:.5;cursor:wait;}
+.vad-link{background:none;border:none;color:#002f6c;font-size:12px;font-weight:700;text-decoration:underline;cursor:pointer;font-family:inherit;padding:2px 4px;}
+
+.vad-lote{background:#f5f8ff;border:1.5px solid #002f6c;border-radius:12px;padding:14px 16px;margin-bottom:12px;}
+.vad-lote-info{font-size:13px;color:#002f6c;margin-bottom:10px;}
+.vad-lote-info b{font-size:15px;}
+.vad-lote-campos{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
+.vad-lote-campos label{display:block;font-size:10.5px;font-weight:800;color:#002f6c;text-transform:uppercase;letter-spacing:.03em;margin-bottom:3px;}
+.vad-lote-aviso{font-size:12px;color:#92400e;margin-top:9px;}
+
+.vad-tabela-caixa{background:#fff;border:1.5px solid #e2e8f0;border-radius:13px;overflow:hidden;}
+.vad-tabela-rolagem{max-height:calc(100vh - 318px);min-height:340px;overflow-y:auto;}
+.vad-tabela-rolagem::-webkit-scrollbar{width:9px;}
+.vad-tabela-rolagem::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:5px;}
+.vad-tabela-rolagem::-webkit-scrollbar-track{background:#f8fafc;}
+.vad-tabela{width:100%;border-collapse:collapse;font-size:12.5px;}
+.vad-tabela thead th{position:sticky;top:0;z-index:2;background:#f8fafc;box-shadow:inset 0 -1.5px 0 #e2e8f0;padding:10px 12px;text-align:left;font-size:10.5px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.04em;}
+.vad-tabela tbody td{border-bottom:1px solid #f1f5f9;padding:10px 12px;color:#334155;vertical-align:middle;}
+.vad-tabela tbody tr:nth-child(even){background:#fcfdfe;}
+.vad-tabela tbody tr:hover{background:#f1f5f9;}
+.vad-tabela tbody tr.vad-sel{background:#f5f8ff;}
+.vad-escola-nome{font-weight:700;color:#0f172a;cursor:pointer;}
+.vad-sublinha{font-size:11px;margin-top:2px;line-height:1.3;}
+.vad-escola-nome:hover{color:#002f6c;text-decoration:underline;}
+.vad-tabela input[type=checkbox]{width:16px;height:16px;accent-color:#002f6c;}
+.vad-num{text-align:center;font-weight:700;font-variant-numeric:tabular-nums;}
+
+.vad-tag{display:inline-block;font-size:9.5px;font-weight:800;border-radius:5px;padding:3px 8px;white-space:nowrap;}
+.vad-tag-pendente{background:#f1f5f9;color:#475569;}
+.vad-tag-agendada{background:#dbeafe;color:#1d4ed8;}
+.vad-tag-andamento{background:#fef3c7;color:#92400e;}
+.vad-tag-visitada{background:#dcfce7;color:#166534;}
+.vad-tag-retornar{background:#e0e7ff;color:#3730a3;}
+.vad-tag-semcontato{background:#fee2e2;color:#991b1b;}
+
+.vad-skel{height:11px;border-radius:5px;background:linear-gradient(90deg,#eef2f7 25%,#e2e8f0 37%,#eef2f7 63%);background-size:400% 100%;animation:vadSkel 1.3s ease infinite;}
+@keyframes vadSkel{0%{background-position:100% 50%;}100%{background-position:0 50%;}}
+@media(prefers-reduced-motion:reduce){.vad-skel{animation:none;}}
+.vad-paginacao{display:flex;align-items:center;gap:8px;}
+.vad-pag-btn{width:28px;height:28px;border:1.5px solid #cbd5e1;border-radius:8px;background:#fff;color:#002f6c;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;line-height:1;}
+.vad-pag-btn:hover:not(:disabled){border-color:#002f6c;background:#f5f8ff;}
+.vad-pag-btn:disabled{opacity:.35;cursor:default;}
+#vadPagInfo{font-size:12px;font-weight:700;color:#002f6c;min-width:112px;text-align:center;font-variant-numeric:tabular-nums;}
+.vad-select-mini{height:28px;font-size:11.5px;padding:0 6px;border-width:1.5px;}
+.vad-vazio{padding:44px 20px;text-align:center;color:#64748b;font-size:13.5px;}
+.vad-rodape-tabela{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 14px;background:#f8fafc;border-top:1.5px solid #e2e8f0;font-size:12px;color:#64748b;font-variant-numeric:tabular-nums;}
+
+.vad-card{background:#fff;border:1.5px solid #e2e8f0;border-radius:13px;padding:16px;position:sticky;top:16px;max-height:calc(100vh - 130px);display:flex;flex-direction:column;}
+.vad-card-titulo{font-size:14px;font-weight:800;color:#002f6c;}
+.vad-card-sub{font-size:11px;color:#94a3b8;margin-top:2px;margin-bottom:12px;}
+.vad-municipios{flex:1;min-height:0;overflow-y:auto;margin-right:-8px;padding-right:8px;}
+.vad-municipios::-webkit-scrollbar{width:8px;}
+.vad-municipios::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px;}
+.vad-municipios::-webkit-scrollbar-track{background:transparent;}
+.vad-mun{padding:9px 0;border-bottom:1px solid #f1f5f9;cursor:pointer;}
+.vad-mun:last-child{border-bottom:none;}
+.vad-mun:hover .vad-mun-nome{color:#002f6c;}
+.vad-mun-linha{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+.vad-mun-nome{font-size:12.5px;font-weight:700;color:#0f172a;}
+.vad-mun-num{font-size:11px;color:#64748b;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.vad-mun-num b{color:#002f6c;font-size:12.5px;}
+.vad-mun-pe{font-size:10px;color:#94a3b8;margin-top:3px;font-variant-numeric:tabular-nums;}
+.vad-mun-barra{height:5px;background:#e2e8f0;border-radius:3px;margin-top:5px;overflow:hidden;}
+.vad-mun-barra > div{height:100%;background:#C9A84C;}
+
+.vad-modal{display:none;position:fixed;inset:0;background:rgba(6,11,20,.65);z-index:940;padding:16px;overflow-y:auto;}
+.vad-modal.vad-aberto{display:block;}
+.vad-modal-caixa{background:#fff;border-radius:16px;max-width:800px;margin:16px auto 48px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.3);}
+.vad-modal-topo{background:#002f6c;color:#fff;padding:18px 22px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+.vad-modal-titulo{font-size:16px;font-weight:800;}
+.vad-modal-sub{font-size:12px;opacity:.82;margin-top:3px;}
+.vad-modal-fechar{background:rgba(255,255,255,.15);border:none;color:#fff;width:30px;height:30px;border-radius:8px;cursor:pointer;}
+.vad-modal-corpo{padding:22px;}
+.vad-secao-titulo{font-size:11px;font-weight:800;letter-spacing:.8px;color:#C9A84C;text-transform:uppercase;margin:0 0 10px;}
+.vad-bloco{margin-bottom:22px;}
+.vad-dados{display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;font-size:12.5px;color:#475569;}
+.vad-dados b{color:#0f172a;}
+.vad-hist{border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;}
+.vad-hist-item{padding:11px 13px;border-bottom:1px solid #f1f5f9;font-size:12.5px;}
+.vad-hist-item:last-child{border-bottom:none;}
+.vad-hist-item b{color:#0f172a;}
+.vad-hist-item small{display:block;color:#64748b;margin-top:3px;}
+.vad-sem-dados{padding:16px;text-align:center;color:#94a3b8;font-size:12.5px;}
+
+
+.vad-abas{display:flex;gap:6px;margin-top:16px;border-bottom:2px solid #e2e8f0;}
+.vad-aba{border:none;background:transparent;padding:11px 18px;font-size:13px;font-weight:800;color:#64748b;cursor:pointer;font-family:inherit;border-bottom:3px solid transparent;margin-bottom:-2px;}
+.vad-aba:hover{color:#002f6c;}
+.vad-aba-ativa,.vad-aba-ativa:hover{color:#002f6c;border-bottom-color:#C9A84C;}
+.vad-painel{animation:vadFade .18s ease;}
+@keyframes vadFade{from{opacity:0;transform:translateY(3px);}to{opacity:1;transform:none;}}
+.vad-resumo{font-size:12.5px;font-weight:700;color:#002f6c;align-self:center;}
+.vad-nota{background:#f8fafc;border-left:3px solid #C9A84C;border-radius:0 9px 9px 0;padding:12px 14px;font-size:12.5px;color:#475569;line-height:1.55;margin:16px 0 12px;}
+.vad-barra-mini{height:5px;background:#e2e8f0;border-radius:3px;overflow:hidden;margin-top:4px;width:120px;}
+.vad-barra-mini > div{height:100%;background:#C9A84C;}
+
+@media(max-width:1280px){
+  .vad-kpis{grid-template-columns:repeat(3,1fr);}
+  .vad-grid{grid-template-columns:1fr;}
+  .vad-card{position:static;max-height:none;}
+  .vad-municipios{max-height:300px;}
+  .vad-abas{overflow-x:auto;}
+}
+</style>
+
+<script>
+var VAD_ESCOLAS = [];
+var VAD_SELECAO = {};
+var VAD_MUNICIPIOS = [];
+var VAD_PAGINA = 1;
+var VAD_POR_PAGINA = 50;
+var VAD_BUSCA_TIMER = null;
+
+/* Placeholder com o formato da tabela final: a transicao para os dados
+   nao "pula", diferente de uma linha unica de texto. */
+function vadEsqueleto(colunas,linhas){
+  var celula='<td style="padding:12px;"><div class="vad-skel"></div></td>';
+  var tr='<tr>';
+  for(var c=0;c<colunas;c++) tr+=celula;
+  tr+='</tr>';
+  var html='';
+  for(var i=0;i<linhas;i++) html+=tr;
+  return html;
+}
+
+function vadEsc(v){
+  return String(v==null?'':v).replace(/[&<>"']/g,function(c){
+    return c==='&'?'&amp;':c==='<'?'&lt;':c==='>'?'&gt;':c==='"'?'&quot;':'&#39;';
+  });
+}
+
+function vadUsuario(){
+  var el=document.getElementById('spNm');
+  return el ? el.textContent.trim() : '';
+}
+
+function vadToken(){
+  return (typeof SISGEP_TOKEN_SESSAO!=='undefined') ? SISGEP_TOKEN_SESSAO : '';
+}
+
+/* O SISGEP tem duas convencoes de retorno convivendo: {ok:true} nos
+   modulos mais novos e {sucesso:true} nos mais antigos. Aceita as duas
+   para a tela nao descartar resposta valida do backend. */
+function vadOk(r){
+  return !!(r && (r.sucesso===true || r.ok===true));
+}
+
+function vadMsgErro(e){
+  if(!e) return 'Erro desconhecido.';
+  if(e.message) return e.message;
+  if(e.mensagem) return e.mensagem;
+  return String(e);
+}
+
+/* Entrada do modulo - chamada pelo initModulo do index. */
+window.carregarPainelVisitas=function(){
+  var corpo=document.getElementById('vadCorpo');
+  if(!corpo) return;
+
+  var btnDes=document.getElementById('vadAbaBtnDesempenho');
+  if(btnDes) btnDes.style.display = vadEhGestor() ? 'block' : 'none';
+  VAD_ABAS_CARREGADAS={};
+  corpo.innerHTML='<tr><td colspan="8" style="padding:20px;color:#94a3b8;">Carregando…</td></tr>';
+
+  google.script.run.withSuccessHandler(function(ind){
+    if(vadOk(ind)) vadRenderKPIs(ind);
+  }).withFailureHandler(function(e){
+    var el=document.getElementById('vadKpiTotal');
+    if(el) el.textContent='!';
+    if(window.mostrarErro) mostrarErro('Indicadores indisponiveis: '+vadMsgErro(e));
+  }).obterIndicadoresVisitas(vadToken());
+
+  google.script.run.withSuccessHandler(function(r){
+    if(!vadOk(r)){
+      var m=(r&&(r.mensagem||r.erro))||'Falha ao carregar as escolas.';
+      corpo.innerHTML='<tr><td colspan="8" style="padding:20px;color:#dc2626;">'+vadEsc(m)+'</td></tr>';
+      return;
+    }
+    VAD_ESCOLAS=r.escolas||[];
+    /* Indice estavel: chave unica de selecao. Resolve dois problemas -
+       nomes com apostrofo que quebravam o onclick, e CNPJ repetido entre
+       unidades da mesma rede, que fazia uma marcar todas as outras. */
+    VAD_ESCOLAS.forEach(function(e,i){ e.__idx=i; });
+    VAD_SELECAO={};
+    VAD_PAGINA=1;
+    var t=document.getElementById('vadTodos');
+    if(t) t.checked=false;
+    vadPreencherMunicipios();
+    vadRender();
+  }).withFailureHandler(function(e){
+    corpo.innerHTML='<tr><td colspan="8" style="padding:20px;color:#dc2626;">Erro: '+
+      vadEsc(vadMsgErro(e))+'</td></tr>';
+  }).listarEscolasVisitas({}, vadToken());
+
+  google.script.run.withSuccessHandler(function(r){
+    if(vadOk(r)) vadRenderMunicipios(r.municipios||[]);
+    else vadRenderMunicipios([]);
+  }).withFailureHandler(function(){
+    var box=document.getElementById('vadMunicipios');
+    if(box) box.innerHTML='<div class="vad-sem-dados">Cobertura indisponivel.</div>';
+  }).obterCoberturaPorMunicipio(vadToken());
+};
+
+function vadRenderKPIs(i){
+  var d=function(id,v){ var el=document.getElementById(id); if(el) el.textContent=v; };
+  d('vadKpiTotal', i.totalEscolas||0);
+  d('vadKpiEquipes','Equipe A '+(i.equipeA||0)+' · B '+(i.equipeB||0));
+  d('vadKpiVisitadas', i.visitadas||0);
+  d('vadKpiCobertura', (i.coberturaPct||0)+'% da base');
+  d('vadKpiPendentes', i.pendentes||0);
+  /* Legenda corrigida: "pendentes" e "nunca visitadas" sao coisas
+     diferentes - uma escola RETORNAR ja foi visitada e segue pendente. */
+  d('vadKpiNunca', (typeof i.nuncaVisitadas==='number')
+      ? (i.nuncaVisitadas+' nunca visitadas')
+      : 'aguardando visita');
+  d('vadKpiAgendadas', i.agendadas||0);
+  d('vadKpiRetornar','retornar: '+(i.retornar||0));
+  d('vadKpiFichas', i.sindicalizacoes||0);
+  d('vadKpiFichasMes','no mes: '+(i.sindicalizacoesMes||0));
+  d('vadKpiHoje', i.visitadasHoje||0);
+  d('vadKpiTempo','media '+(i.tempoMedioMin||0)+' min');
+}
+
+function vadPreencherMunicipios(){
+  var sel=document.getElementById('vadMunicipio');
+  if(!sel) return;
+  var anterior=sel.value||'';
+  var vistos={};
+  VAD_ESCOLAS.forEach(function(e){
+    var c=String(e.cidade||'').trim();
+    if(c) vistos[c]=true;
+  });
+  var lista=Object.keys(vistos).sort(function(a,b){ return a.localeCompare(b,'pt-BR'); });
+  sel.innerHTML='<option value="">Todos os municipios</option>'+
+    lista.map(function(c){ return '<option value="'+vadEsc(c)+'">'+vadEsc(c)+'</option>'; }).join('');
+  if(anterior && lista.indexOf(anterior)>=0) sel.value=anterior;
+}
+
+/* ================= Tabela ================= */
+
+/* Chamada pelo oninput da busca - evita refiltrar 669 registros a cada tecla. */
+function vadBuscaDigitou(){
+  if(VAD_BUSCA_TIMER) clearTimeout(VAD_BUSCA_TIMER);
+  VAD_BUSCA_TIMER=setTimeout(vadFiltrar,200);
+}
+
+/* Todo filtro volta para a primeira pagina: continuar na pagina 7 depois
+   de filtrar um municipio com 30 escolas mostraria tela vazia. */
+function vadFiltrar(){
+  VAD_PAGINA=1;
+  vadRender();
+}
+
+function vadPagina(delta){
+  VAD_PAGINA=Math.max(1,VAD_PAGINA+delta);
+  vadRender();
+  /* Volta ao topo da area rolavel da tabela — nao da pagina, que
+     tiraria os filtros e o rodape da vista. */
+  var area=document.querySelector('.vad-tabela-rolagem');
+  if(area) area.scrollTop=0;
+}
+
+function vadMudarPorPagina(){
+  VAD_POR_PAGINA=parseInt((document.getElementById('vadPorPagina')||{}).value,10)||100;
+  VAD_PAGINA=1;
+  vadRender();
+}
+
+function vadFiltradas(){
+  var busca=String((document.getElementById('vadBusca')||{}).value||'').trim().toUpperCase();
+  var equipe=(document.getElementById('vadEquipe')||{}).value||'';
+  var municipio=(document.getElementById('vadMunicipio')||{}).value||'';
+  var status=(document.getElementById('vadStatus')||{}).value||'';
+  var semVisita=(document.getElementById('vadSemVisita')||{}).checked;
+
+  return VAD_ESCOLAS.filter(function(e){
+    if(equipe && e.equipe!==equipe) return false;
+    if(municipio && e.cidade!==municipio) return false;
+    if(status && e.statusVisita!==status) return false;
+    if(semVisita && (e.totalVisitas||0)>0) return false;
+    if(busca){
+      var alvo=((e.nome||'')+' '+(e.cidade||'')+' '+(e.bairro||'')+' '+
+                (e.unidade||'')+' '+(e.cnpj||'')).toUpperCase();
+      if(alvo.indexOf(busca)<0) return false;
+    }
+    return true;
+  });
+}
+
+function vadTag(status){
+  var mapa={
+    PENDENTE:['vad-tag-pendente','Pendente'],
+    AGENDADA:['vad-tag-agendada','Agendada'],
+    EM_ANDAMENTO:['vad-tag-andamento','Em andamento'],
+    VISITADA:['vad-tag-visitada','Visitada'],
+    RETORNAR:['vad-tag-retornar','Retornar'],
+    SEM_CONTATO:['vad-tag-semcontato','Sem contato'],
+    MUDOU_ENDERECO:['vad-tag-semcontato','Mudou endereco']
+  };
+  var t=mapa[status]||mapa.PENDENTE;
+  return '<span class="vad-tag '+t[0]+'">'+t[1]+'</span>';
+}
+
+function vadRender(){
+  var corpo=document.getElementById('vadCorpo');
+  var vazio=document.getElementById('vadVazio');
+  var contagem=document.getElementById('vadContagem');
+  if(!corpo) return;
+
+  var lista=vadFiltradas();
+  var totalPaginas=Math.max(1, Math.ceil(lista.length/VAD_POR_PAGINA));
+  if(VAD_PAGINA>totalPaginas) VAD_PAGINA=totalPaginas;
+  var ini=(VAD_PAGINA-1)*VAD_POR_PAGINA;
+  var exibidas=lista.slice(ini, ini+VAD_POR_PAGINA);
+
+  if(contagem){
+    contagem.textContent = lista.length
+      ? ((ini+1)+'–'+(ini+exibidas.length)+' de '+lista.length+
+         (lista.length!==VAD_ESCOLAS.length ? ' filtradas ('+VAD_ESCOLAS.length+' na base)' : ' escolas'))
+      : '0 de '+VAD_ESCOLAS.length+' escolas';
+  }
+  vadRenderPaginacao(totalPaginas, lista.length);
+
+  if(!lista.length){
+    corpo.innerHTML='';
+    if(vazio) vazio.style.display='block';
+    vadAtualizarLote();
+    return;
+  }
+  if(vazio) vazio.style.display='none';
+
+  corpo.innerHTML=exibidas.map(function(e){
+    var i=e.__idx;
+    var marcado=VAD_SELECAO[i]?'checked':'';
+    return '<tr id="vadLinha'+i+'" class="'+(VAD_SELECAO[i]?'vad-sel':'')+'">'+
+      '<td><input type="checkbox" '+marcado+' onchange="vadSelecionar('+i+',this)"></td>'+
+      '<td><span class="vad-escola-nome" onclick="vadAbrir360('+i+')">'+vadEsc(e.nome)+'</span>'+
+        vadSublinha(e)+'</td>'+
+      '<td>'+vadEsc(e.cidade||'—')+'</td>'+
+      '<td class="vad-num">'+vadEsc(e.equipe||'—')+'</td>'+
+      '<td>'+vadTag(e.statusVisita)+'</td>'+
+      '<td>'+vadEsc(e.ultimaVisita||'—')+'</td>'+
+      '<td class="vad-num">'+(e.totalVisitas||0)+'</td>'+
+      '<td class="vad-num" style="color:'+(e.totalSindicalizacoes?'#166534':'#94a3b8')+';">'+
+        (e.totalSindicalizacoes||0)+'</td>'+
+    '</tr>';
+  }).join('');
+
+  vadAtualizarLote();
+}
+
+/* Bairro e unidade numa linha so. A unidade costuma ser um codigo de
+   importacao, entao vem depois do bairro e mais apagada. */
+function vadSublinha(e){
+  var partes=[];
+  if(e.bairro) partes.push('<span style="color:#64748b;">'+vadEsc(e.bairro)+'</span>');
+  if(e.unidade) partes.push('<span style="color:#cbd5e1;">'+vadEsc(e.unidade)+'</span>');
+  if(!partes.length) return '';
+  return '<div class="vad-sublinha">'+partes.join(' <span style="color:#e2e8f0;">·</span> ')+'</div>';
+}
+
+function vadRenderPaginacao(totalPaginas, totalFiltradas){
+  var info=document.getElementById('vadPagInfo');
+  var ant=document.getElementById('vadPagAnt');
+  var prox=document.getElementById('vadPagProx');
+  if(info) info.textContent = totalFiltradas
+      ? ('Página '+VAD_PAGINA+' de '+totalPaginas)
+      : 'sem resultados';
+  if(ant)  ant.disabled  = VAD_PAGINA<=1;
+  if(prox) prox.disabled = VAD_PAGINA>=totalPaginas;
+}
+
+/* ================= Selecao e agendamento ================= */
+
+/* Marca sem redesenhar a tabela inteira - com 669 escolas o render
+   completo a cada clique custava caro e recriava todos os checkboxes. */
+function vadSelecionar(idx, el){
+  if(el.checked) VAD_SELECAO[idx]=true;
+  else delete VAD_SELECAO[idx];
+  var tr=document.getElementById('vadLinha'+idx);
+  if(tr) tr.className = el.checked ? 'vad-sel' : '';
+  vadAtualizarLote();
+}
+
+function vadMarcarTodos(el){
+  var lista=vadFiltradas();
+  var ini=(VAD_PAGINA-1)*VAD_POR_PAGINA;
+  var visiveis=lista.slice(ini, ini+VAD_POR_PAGINA);
+
+  if(el.checked && lista.length>visiveis.length){
+    if(!confirm('O filtro atual tem '+lista.length+' escolas, mas esta pagina '+
+        'mostra '+visiveis.length+'.\n\nSerao marcadas apenas as '+visiveis.length+
+        ' desta pagina. A selecao das outras paginas e mantida — avance e '+
+        'marque de novo, ou aumente as escolas por pagina.\n\nContinuar?')){
+      el.checked=false;
+      return;
+    }
+  }
+
+  visiveis.forEach(function(e){
+    if(el.checked) VAD_SELECAO[e.__idx]=true;
+    else delete VAD_SELECAO[e.__idx];
+  });
+  vadRender();
+}
+
+function vadLimparSelecao(){
+  VAD_SELECAO={};
+  var t=document.getElementById('vadTodos');
+  if(t) t.checked=false;
+  vadRender();
+}
+
+function vadEscolasSelecionadas(){
+  return VAD_ESCOLAS.filter(function(e){ return VAD_SELECAO[e.__idx]; });
+}
+
+function vadAtualizarLote(){
+  var sel=vadEscolasSelecionadas();
+  var caixa=document.getElementById('vadLote');
+  var qtd=document.getElementById('vadLoteQtd');
+  var aviso=document.getElementById('vadLoteAviso');
+  if(!caixa) return;
+
+  caixa.style.display = sel.length ? 'block' : 'none';
+  if(qtd) qtd.textContent = sel.length;
+
+  /* Alerta quando a selecao passa da meta diaria da equipe:
+     8 a 10 na Grande Vitoria, 4 a 6 no Interior. */
+  var equipeA=0, equipeB=0;
+  sel.forEach(function(e){ if(e.equipe==='B') equipeB++; else equipeA++; });
+  var texto='';
+  if(equipeA>10) texto='Selecao acima da meta diaria da Equipe A (8 a 10 visitas). ';
+  if(equipeB>6) texto+='Selecao acima da meta diaria da Equipe B (4 a 6 visitas).';
+  if(equipeA && equipeB) texto+=' Atencao: ha escolas das duas equipes na selecao.';
+  if(aviso) aviso.textContent=texto;
+}
+
+/* Pula a faixa de almoco (12h-13h) na distribuicao dos horarios. */
+function vadAjustarAlmoco(min){
+  return (min>=720 && min<780) ? 780 : min;
+}
+
+function vadAgendarLote(){
+  var sel=vadEscolasSelecionadas();
+  if(!sel.length) return;
+
+  var data=(document.getElementById('vadLoteData')||{}).value||'';
+  var diretor=String((document.getElementById('vadLoteDiretor')||{}).value||'').trim();
+  var horaBase=(document.getElementById('vadLoteHora')||{}).value||'08:30';
+  var intervalo=parseInt((document.getElementById('vadLoteIntervalo')||{}).value,10)||60;
+
+  if(!data){ alert('Informe a data da rota.'); return; }
+  if(!diretor){ alert('Informe o diretor de base responsavel.'); return; }
+
+  var partes=String(horaBase).split(':');
+  var cursor=(parseInt(partes[0],10)*60)+parseInt(partes[1],10);
+
+  /* Monta os horarios pulando o almoco. Antes usava %24, o que fazia a
+     rota "virar" silenciosamente para 00:xx quando estourava o dia. */
+  var horarios=[];
+  for(var i=0;i<sel.length;i++){
+    cursor=vadAjustarAlmoco(cursor);
+    horarios.push(cursor);
+    cursor+=intervalo;
+  }
+
+  var ultimo=horarios[horarios.length-1];
+  if(ultimo>18*60){
+    var hhU=String(Math.floor(ultimo/60));
+    if(hhU.length<2) hhU='0'+hhU;
+    var mmU=String(ultimo%60);
+    if(mmU.length<2) mmU='0'+mmU;
+    alert('A ultima visita cairia as '+hhU+':'+mmU+', fora do horario de funcionamento das escolas.\n\n'+
+          'Reduza a selecao, adiante o primeiro horario ou diminua o intervalo.');
+    return;
+  }
+
+  var payload=sel.map(function(e,i){
+    var m=horarios[i];
+    var hh=String(Math.floor(m/60));
+    if(hh.length<2) hh='0'+hh;
+    var mm=String(m%60);
+    if(mm.length<2) mm='0'+mm;
+    return {
+      escola:e.nome, cnpj:e.cnpj, unidade:e.unidade,
+      cidade:e.cidade, equipe:e.equipe, horaAgendada:hh+':'+mm
+    };
+  });
+
+  var primeiro=payload[0].horaAgendada;
+  var fim=payload[payload.length-1].horaAgendada;
+  if(!confirm('Agendar '+sel.length+' visita(s) para '+diretor+' no dia '+
+      data.split('-').reverse().join('/')+'?\n\nRota de '+primeiro+' as '+fim+
+      ', a cada '+intervalo+' minutos (almoco preservado das 12h as 13h).')) return;
+
+  var btn=document.getElementById('vadBtnAgendar');
+  btn.disabled=true;
+  btn.textContent='Agendando…';
+
+  google.script.run.withSuccessHandler(function(r){
+    btn.disabled=false;
+    btn.textContent='Agendar rota';
+    if(vadOk(r)){
+      var m=r.mensagem||'Rota agendada.';
+      if(window.mostrarSucesso) mostrarSucesso(m); else alert(m);
+      if(r.falhas && r.falhas.length) alert('Falhas:\n'+r.falhas.join('\n'));
+      vadLimparSelecao();
+      carregarPainelVisitas();
+    } else {
+      var erro=(r&&(r.mensagem||r.erro))||'Nao foi possivel agendar.';
+      if(window.mostrarErro) mostrarErro(erro); else alert(erro);
+    }
+  }).withFailureHandler(function(e){
+    btn.disabled=false;
+    btn.textContent='Agendar rota';
+    var msg=vadMsgErro(e);
+    if(window.mostrarErro) mostrarErro('Erro: '+msg); else alert('Erro: '+msg);
+  }).agendarVisitasEmLote(payload, data, diretor, vadToken());
+}
+
+/* ================= Cobertura por municipio ================= */
+
+function vadRenderMunicipios(lista){
+  var box=document.getElementById('vadMunicipios');
+  if(!box) return;
+  if(!lista || !lista.length){
+    box.innerHTML='<div class="vad-sem-dados">Sem dados de cobertura.</div>';
+    VAD_MUNICIPIOS=[];
+    return;
+  }
+  lista.sort(function(a,b){
+    if(b.pendentes!==a.pendentes) return b.pendentes-a.pendentes;
+    return b.total-a.total;
+  });
+  VAD_MUNICIPIOS=lista;
+
+  /* Tambem por indice: nome de municipio com apostrofo quebraria o onclick. */
+  box.innerHTML=lista.map(function(m,i){
+    var falta=(typeof m.pendentes==='number') ? m.pendentes : ((m.total||0)-(m.visitadas||0));
+    return '<div class="vad-mun" onclick="vadFiltrarMunicipio('+i+')" title="Filtrar a tabela por este municipio">'+
+      '<div class="vad-mun-linha">'+
+        '<span class="vad-mun-nome">'+vadEsc(String(m.municipio||'').replace(/\s*-\s*ES$/,''))+'</span>'+
+        '<span class="vad-mun-num"><b>'+falta+'</b> a visitar</span>'+
+      '</div>'+
+      '<div class="vad-mun-barra"><div style="width:'+(m.coberturaPct||0)+'%;"></div></div>'+
+      '<div class="vad-mun-pe">'+(m.visitadas||0)+' de '+(m.total||0)+' · '+
+        Number(m.coberturaPct||0).toFixed(0)+'%</div>'+
+    '</div>';
+  }).join('');
+}
+
+function vadFiltrarMunicipio(idx){
+  var m=VAD_MUNICIPIOS[idx];
+  if(!m) return;
+  var sel=document.getElementById('vadMunicipio');
+  if(!sel) return;
+  var alvo=String(m.municipio||'').toUpperCase();
+  for(var i=0;i<sel.options.length;i++){
+    if(String(sel.options[i].value).toUpperCase()===alvo){
+      sel.value=sel.options[i].value;
+      VAD_PAGINA=1;
+      vadRender();
+      return;
+    }
+  }
+}
+
+/* ================= Visao 360 ================= */
+
+function vadAbrir360(idx){
+  var e=VAD_ESCOLAS[idx];
+  if(!e) return;
+
+  document.getElementById('vadModalEscola').textContent='Carregando…';
+  document.getElementById('vadModalSub').textContent='';
+  document.getElementById('vadModalCorpo').innerHTML=
+    '<p style="color:#94a3b8;font-size:12.5px;">Buscando historico…</p>';
+  document.getElementById('vadModal').classList.add('vad-aberto');
+
+  google.script.run.withSuccessHandler(function(r){
+    if(!vadOk(r)){
+      document.getElementById('vadModalCorpo').innerHTML=
+        '<p style="color:#dc2626;font-size:12.5px;">'+
+        vadEsc((r&&(r.mensagem||r.erro))||'Escola nao encontrada.')+'</p>';
+      document.getElementById('vadModalEscola').textContent=e.nome||'—';
+      return;
+    }
+    /* Blindagem: o backend pode responder sucesso sem trazer as listas. */
+    r.escola = r.escola || e;
+    r.visitas = r.visitas || [];
+    r.fichas = r.fichas || [];
+    r.totalVisitas = (typeof r.totalVisitas==='number') ? r.totalVisitas : r.visitas.length;
+    r.totalFichas = (typeof r.totalFichas==='number') ? r.totalFichas : r.fichas.length;
+    vadRender360(r);
+  }).withFailureHandler(function(err){
+    document.getElementById('vadModalEscola').textContent=e.nome||'—';
+    document.getElementById('vadModalCorpo').innerHTML=
+      '<p style="color:#dc2626;font-size:12.5px;">Erro: '+vadEsc(vadMsgErro(err))+'</p>';
+  }).obterEscola360(e.cnpj||e.nome, vadToken());
+}
+
+function vadRender360(r){
+  var e=r.escola||{};
+  document.getElementById('vadModalEscola').textContent=e.nome||'—';
+  document.getElementById('vadModalSub').textContent=
+    (e.cidade||'')+(e.equipe?' · Equipe '+e.equipe:'')+' · '+vadTagTexto(e.statusVisita);
+
+  var html=
+    '<div class="vad-bloco">'+
+      '<div class="vad-secao-titulo">Cadastro</div>'+
+      '<div class="vad-dados">'+
+        '<div><b>CNPJ:</b> '+vadEsc(e.cnpj||'—')+'</div>'+
+        '<div><b>Unidade:</b> '+vadEsc(e.unidade||'—')+'</div>'+
+        '<div><b>Endereco:</b> '+vadEsc(e.endereco||'—')+(e.numero?', '+vadEsc(e.numero):'')+'</div>'+
+        '<div><b>Bairro:</b> '+vadEsc(e.bairro||'—')+'</div>'+
+        '<div><b>Telefone:</b> '+vadEsc(e.telefone||'—')+'</div>'+
+        '<div><b>E-mail:</b> '+vadEsc(e.email||'—')+'</div>'+
+        '<div><b>Responsavel:</b> '+vadEsc(e.responsavel||'—')+'</div>'+
+        '<div><b>Diretor de base:</b> '+vadEsc(e.diretorResponsavel||'—')+'</div>'+
+      '</div>'+
+    '</div>'+
+
+    '<div class="vad-bloco">'+
+      '<div class="vad-secao-titulo">Relacionamento</div>'+
+      '<div class="vad-dados">'+
+        '<div><b>Total de visitas:</b> '+(e.totalVisitas||0)+'</div>'+
+        '<div><b>Sindicalizacoes geradas:</b> '+(e.totalSindicalizacoes||0)+'</div>'+
+        '<div><b>Ultima visita:</b> '+vadEsc(e.ultimaVisita||'nunca visitada')+'</div>'+
+        '<div><b>Proxima visita:</b> '+vadEsc(e.proximaVisita||'nao agendada')+'</div>'+
+      '</div>'+
+    '</div>'+
+
+    '<div class="vad-bloco">'+
+      '<div class="vad-secao-titulo">Historico de visitas ('+r.totalVisitas+')</div>';
+
+  if(!r.visitas.length){
+    html+='<div class="vad-hist"><div class="vad-sem-dados">Nenhuma visita registrada.</div></div>';
+  } else {
+    html+='<div class="vad-hist">'+r.visitas.map(function(v){
+      return '<div class="vad-hist-item">'+
+        '<b>'+vadEsc(v.DATA_AGENDADA||'—')+(v.HORA_AGENDADA?' as '+vadEsc(v.HORA_AGENDADA):'')+'</b> · '+
+        vadTag(v.STATUS)+
+        '<small>Diretor: '+vadEsc(v.DIRETOR_BASE||'—')+
+        (v.DURACAO_MIN?' · '+vadEsc(v.DURACAO_MIN)+' min':'')+
+        (v.FICHAS_GERADAS?' · '+vadEsc(v.FICHAS_GERADAS)+' ficha(s)':'')+
+        (v.RESPONSAVEL_ATENDEU?' · atendeu: '+vadEsc(v.RESPONSAVEL_ATENDEU):'')+
+        (v.OBSERVACOES?'<br>'+vadEsc(v.OBSERVACOES):'')+
+        '</small></div>';
+    }).join('')+'</div>';
+  }
+  html+='</div>';
+
+  html+='<div class="vad-bloco">'+
+    '<div class="vad-secao-titulo">Fichas de sindicalizacao ('+r.totalFichas+')</div>';
+  if(!r.fichas.length){
+    html+='<div class="vad-hist"><div class="vad-sem-dados">Nenhuma ficha originada nesta escola.</div></div>';
+  } else {
+    html+='<div class="vad-hist">'+r.fichas.map(function(f){
+      return '<div class="vad-hist-item">'+
+        '<b>'+vadEsc(f.NOME_COMPLETO)+'</b> · '+vadEsc(f.STATUS)+
+        '<small>CPF '+vadEsc(f.CPF)+' · '+vadEsc(f.CARGO||'—')+
+        (f.MATRICULA?' · matricula '+vadEsc(f.MATRICULA):'')+'</small></div>';
+    }).join('')+'</div>';
+  }
+  html+='</div>';
+
+  document.getElementById('vadModalCorpo').innerHTML=html;
+}
+
+function vadTagTexto(status){
+  var mapa={PENDENTE:'Pendente',AGENDADA:'Agendada',EM_ANDAMENTO:'Em andamento',
+    VISITADA:'Visitada',RETORNAR:'Retornar',SEM_CONTATO:'Sem contato',
+    MUDOU_ENDERECO:'Mudou de endereco'};
+  return mapa[status]||'Pendente';
+}
+
+function vadFecharModal(){
+  var m=document.getElementById('vadModal');
+  if(m) m.classList.remove('vad-aberto');
+}
+
+
+/* ================= Abas ================= */
+
+var VAD_ABAS_CARREGADAS = {};
+
+/* Perfis que enxergam desempenho individual. Cortesia de interface — o
+   bloqueio real esta em obterRankingDiretores, no backend. */
+function vadEhGestor(){
+  var el=document.getElementById('spPf');
+  var p=el ? el.textContent.trim().toUpperCase() : '';
+  return p==='ADMINISTRADOR' || p==='DIRETORIA' || p==='PRESIDENTE';
+}
+
+function vadSelecionarAba(nome){
+  var paineis={escolas:'vadPainelEscolas',agenda:'vadPainelAgenda',
+    desempenho:'vadPainelDesempenho'};
+  Object.keys(paineis).forEach(function(k){
+    var el=document.getElementById(paineis[k]);
+    if(el) el.style.display=(k===nome)?'block':'none';
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-vad-aba]'),function(b){
+    b.classList.toggle('vad-aba-ativa', b.getAttribute('data-vad-aba')===nome);
+  });
+
+  /* Carrega sob demanda: evita tres chamadas ao abrir o painel. */
+  if(nome==='agenda' && !VAD_ABAS_CARREGADAS.agenda){
+    VAD_ABAS_CARREGADAS.agenda=true;
+    var d=document.getElementById('vadAgendaData');
+    if(d && !d.value) d.value=vadHojeISO();
+    vadCarregarAgenda();
+  }
+  if(nome==='desempenho' && !VAD_ABAS_CARREGADAS.desempenho){
+    VAD_ABAS_CARREGADAS.desempenho=true;
+    vadCarregarDesempenho();
+  }
+}
+
+function vadHojeISO(){
+  var d=new Date();
+  var m=String(d.getMonth()+1); if(m.length<2) m='0'+m;
+  var dia=String(d.getDate());  if(dia.length<2) dia='0'+dia;
+  return d.getFullYear()+'-'+m+'-'+dia;
+}
+
+/* ================= Aba: agenda do dia ================= */
+
+function vadCarregarAgenda(){
+  var corpo=document.getElementById('vadAgendaCorpo');
+  var vazio=document.getElementById('vadAgendaVazio');
+  var resumo=document.getElementById('vadAgendaResumo');
+  if(!corpo) return;
+
+  var data=(document.getElementById('vadAgendaData')||{}).value||vadHojeISO();
+  var diretor=String((document.getElementById('vadAgendaDiretor')||{}).value||'').trim();
+
+  corpo.innerHTML=vadEsqueleto(7,4);
+  if(vazio) vazio.style.display='none';
+  if(resumo) resumo.textContent='';
+
+  google.script.run.withSuccessHandler(function(r){
+    if(!vadOk(r)){
+      var m=(r&&(r.mensagem||r.erro))||'Falha ao carregar a agenda.';
+      corpo.innerHTML='<tr><td colspan="7" style="padding:20px;color:#dc2626;">'+
+        vadEsc(m)+'</td></tr>';
+      return;
+    }
+    vadRenderAgenda(r);
+  }).withFailureHandler(function(e){
+    corpo.innerHTML='<tr><td colspan="7" style="padding:20px;color:#dc2626;">Erro: '+
+      vadEsc(vadMsgErro(e))+'</td></tr>';
+  }).obterAgendaDoDia(data, diretor, vadToken());
+}
+
+function vadRenderAgenda(r){
+  var corpo=document.getElementById('vadAgendaCorpo');
+  var vazio=document.getElementById('vadAgendaVazio');
+  var resumo=document.getElementById('vadAgendaResumo');
+  var visitas=r.visitas||[];
+
+  if(resumo){
+    resumo.textContent = visitas.length
+      ? (r.concluidas+' de '+r.total+' concluidas · '+r.pendentes+' em aberto')
+      : '';
+  }
+
+  if(!visitas.length){
+    corpo.innerHTML='';
+    if(vazio) vazio.style.display='block';
+    return;
+  }
+  if(vazio) vazio.style.display='none';
+
+  corpo.innerHTML=visitas.map(function(v){
+    return '<tr>'+
+      '<td class="vad-num">'+vadEsc(v.HORA_AGENDADA||'--:--')+'</td>'+
+      '<td><b>'+vadEsc(v.ESCOLA)+'</b></td>'+
+      '<td>'+vadEsc(v.CIDADE||'—')+'</td>'+
+      '<td>'+vadEsc(v.DIRETOR_BASE||'—')+'</td>'+
+      '<td>'+vadTag(v.STATUS)+'</td>'+
+      '<td>'+vadEsc(v.CHECKIN||'—')+'</td>'+
+      '<td class="vad-num" style="color:'+(v.FICHAS_GERADAS?'#166534':'#94a3b8')+';">'+
+        (v.FICHAS_GERADAS||0)+'</td>'+
+    '</tr>';
+  }).join('');
+}
+
+/* ================= Aba: desempenho ================= */
+
+function vadCarregarDesempenho(){
+  var corpo=document.getElementById('vadDesempenhoCorpo');
+  var vazio=document.getElementById('vadDesempenhoVazio');
+  if(!corpo) return;
+
+  corpo.innerHTML=vadEsqueleto(6,3);
+  if(vazio) vazio.style.display='none';
+
+  google.script.run.withSuccessHandler(function(r){
+    if(!vadOk(r)){
+      var m=(r&&(r.mensagem||r.erro))||'Dados de desempenho indisponiveis.';
+      corpo.innerHTML='<tr><td colspan="6" style="padding:20px;color:#dc2626;">'+
+        vadEsc(m)+'</td></tr>';
+      return;
+    }
+    vadRenderDesempenho(r.diretores||[]);
+  }).withFailureHandler(function(e){
+    corpo.innerHTML='<tr><td colspan="6" style="padding:20px;color:#dc2626;">Erro: '+
+      vadEsc(vadMsgErro(e))+'</td></tr>';
+  }).obterRankingDiretores(vadToken());
+}
+
+function vadRenderDesempenho(lista){
+  var corpo=document.getElementById('vadDesempenhoCorpo');
+  var vazio=document.getElementById('vadDesempenhoVazio');
+
+  if(!lista.length){
+    corpo.innerHTML='';
+    if(vazio) vazio.style.display='block';
+    return;
+  }
+  if(vazio) vazio.style.display='none';
+
+  /* Escala da barra pelo maior valor da lista, nao por meta fixa: sem
+     meta definida, barra cheia significaria alvo atingido. */
+  var maior=0;
+  lista.forEach(function(d){ if(d.conversao>maior) maior=d.conversao; });
+
+  corpo.innerHTML=lista.map(function(d){
+    var pct = maior ? Math.round(d.conversao*100/maior) : 0;
+    return '<tr>'+
+      '<td><b>'+vadEsc(d.diretor)+'</b></td>'+
+      '<td class="vad-num">'+(d.visitas||0)+'</td>'+
+      '<td class="vad-num" style="color:#64748b;">'+(d.agendadas||0)+'</td>'+
+      '<td class="vad-num" style="color:'+(d.fichas?'#166534':'#94a3b8')+';">'+
+        (d.fichas||0)+'</td>'+
+      '<td>'+Number(d.conversao||0).toFixed(2)+' por visita'+
+        '<div class="vad-barra-mini"><div style="width:'+pct+'%;"></div></div></td>'+
+      '<td class="vad-num" style="color:#64748b;">'+
+        (d.tempoMedio?d.tempoMedio+' min':'—')+'</td>'+
+    '</tr>';
+  }).join('');
+}
+
+document.addEventListener('keydown',function(ev){
+  if(ev.key==='Escape') vadFecharModal();
+});
+</script>

@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meu SindEducação · SOFIA</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg: #08101f;
+      --bg2: #0b1220;
+      --panel: rgba(15, 23, 42, 0.74);
+      --panel2: rgba(15, 23, 42, 0.54);
+      --line: rgba(148, 163, 184, 0.13);
+      --txt: #f8fafc;
+      --mut: #94a3b8;
+      --blue: #2563eb;
+      --cyan: #0ea5e9;
+      --pink: #ec4899;
+      --purple: #8b5cf6;
+      --green: #22c55e;
+      --amber: #f59e0b;
+      --red: #ef4444;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: radial-gradient(circle at 46% 18%, rgba(139, 92, 246, 0.16), transparent 34%),
+                  radial-gradient(circle at 72% 24%, rgba(14, 165, 233, 0.12), transparent 36%),
+                  linear-gradient(180deg, #081121, #07101f 56%, #060b14);
+      color: var(--txt);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    
+    /* Header */
+    .portal-header {
+      background: rgba(5, 10, 20, 0.75);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      padding: 20px;
+      text-align: center;
+    }
+    
+    .portal-logo {
+      font-size: 24px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    
+    .portal-subtitle {
+      font-size: 12px;
+      color: var(--mut);
+      margin-top: 4px;
+    }
+    
+    /* Container */
+    .portal-container {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 24px 20px 40px;
+    }
+    
+    /* Cards */
+    .portal-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 20px;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+    }
+    
+    /* Credencial Premium */
+    .credencial-card {
+      background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #60a5fa 100%);
+      border-radius: 24px;
+      padding: 32px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    
+    .credencial-card::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+      animation: shimmer 8s infinite linear;
+    }
+    
+    @keyframes shimmer {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .credencial-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 24px;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .credencial-titulo {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      opacity: 0.8;
+    }
+    
+    .credencial-status {
+      background: rgba(34, 197, 94, 0.9);
+      color: #fff;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    
+    .credencial-nome {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .credencial-escola {
+      font-size: 14px;
+      opacity: 0.9;
+      margin-bottom: 32px;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .credencial-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .credencial-validade {
+      font-size: 12px;
+      opacity: 0.8;
+    }
+    
+    .credencial-validade strong {
+      display: block;
+      font-size: 18px;
+      margin-top: 4px;
+    }
+    
+    .credencial-qrcode {
+      background: #fff;
+      padding: 12px;
+      border-radius: 12px;
+      width: 72px;
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    /* Indicador de Cadastro */
+    .cadastro-indicator {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    
+    .cadastro-title {
+      font-size: 14px;
+      font-weight: 800;
+    }
+    
+    .cadastro-percent {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--cyan);
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 10px;
+      background: rgba(148, 163, 184, 0.2);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(135deg, var(--blue), var(--purple));
+      border-radius: 999px;
+      transition: width 0.5s ease;
+    }
+    
+    .cadastro-itens {
+      list-style: none;
+      margin-bottom: 24px;
+    }
+    
+    .cadastro-itens li {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      font-size: 13px;
+      border-bottom: 1px solid var(--line);
+    }
+    
+    .cadastro-itens li:last-child {
+      border-bottom: none;
+    }
+    
+    .icon-check {
+      color: var(--green);
+      font-weight: 800;
+    }
+    
+    .icon-warning {
+      color: var(--amber);
+      font-weight: 800;
+    }
+    
+    .icon-error {
+      color: var(--red);
+      font-weight: 800;
+    }
+    
+    /* Botões */
+    .btn {
+      width: 100%;
+      padding: 16px 24px;
+      border: none;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, var(--blue), var(--purple));
+      color: #fff;
+      box-shadow: 0 12px 34px rgba(139, 92, 246, 0.4);
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 42px rgba(139, 92, 246, 0.55);
+    }
+    
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--txt);
+      border: 1px solid var(--line);
+    }
+    
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.12);
+    }
+    
+    /* Grid de Benefícios */
+    .benefits-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    
+    .benefit-card {
+      background: var(--panel2);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .benefit-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(139, 92, 246, 0.4);
+      box-shadow: 0 14px 32px rgba(0, 0, 0, 0.26);
+    }
+    
+    .benefit-icon {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+    
+    .benefit-label {
+      font-size: 12px;
+      font-weight: 700;
+    }
+    
+    /* SOFIA Box */
+    .sofia-box {
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(30, 18, 58, 0.8));
+      border: 1px solid rgba(139, 92, 246, 0.7);
+      border-radius: 18px;
+      padding: 24px;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 0 42px rgba(139, 92, 246, 0.2);
+    }
+    
+    .sofia-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    
+    .sofia-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--blue), var(--purple));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+    
+    .sofia-title {
+      font-size: 13px;
+      font-weight: 800;
+    }
+    
+    .sofia-text {
+      font-size: 13px;
+      line-height: 1.6;
+      color: rgba(255, 255, 255, 0.85);
+    }
+    
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 9999;
+    }
+    
+    .modal-overlay.active {
+      display: flex;
+    }
+    
+    .modal-content {
+      background: var(--panel);
+      border-radius: 24px;
+      max-width: 520px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      border: 1px solid var(--line);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+    }
+    
+    .modal-header {
+      background: linear-gradient(135deg, var(--blue), var(--purple));
+      padding: 28px;
+      border-radius: 24px 24px 0 0;
+    }
+    
+    .modal-title {
+      font-size: 20px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+    
+    .modal-subtitle {
+      font-size: 13px;
+      opacity: 0.9;
+    }
+    
+    .modal-body {
+      padding: 28px;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--txt);
+    }
+    
+    .form-input {
+      width: 100%;
+      padding: 14px 18px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--txt);
+      font-size: 14px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      transition: all 0.2s;
+    }
+    
+    .form-input:focus {
+      outline: none;
+      border-color: var(--purple);
+      box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+    }
+    
+    .form-input::placeholder {
+      color: var(--mut);
+    }
+    
+    .modal-footer {
+      padding: 20px 28px 28px;
+      display: flex;
+      gap: 12px;
+    }
+    
+    /* Animações */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .animate-fade-in {
+      animation: fadeIn 0.5s ease-out;
+    }
+    
+    /* Alertas */
+    .alert {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid var(--amber);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .alert-icon {
+      font-size: 24px;
+    }
+    
+    .alert-title {
+      font-weight: 700;
+      font-size: 13px;
+    }
+    
+    .alert-text {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+    
+    /* Footer */
+    .portal-footer {
+      text-align: center;
+      padding: 24px;
+      font-size: 11px;
+      color: var(--mut);
+      opacity: 0.7;
+    }
+    
+    /* Responsivo */
+    @media (max-width: 640px) {
+      .credencial-nome {
+        font-size: 22px;
+      }
+      
+      .benefits-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div style="background:#f59e0b;color:#08101f;text-align:center;padding:10px 16px;font-weight:800;font-size:13px;">MODO DE DEMONSTRAÇÃO — dados fictícios, nenhuma alteração será gravada</div>
+
+  <!-- Header -->
+  <header class="portal-header">
+    <div class="portal-logo">🏫 SindEducação-ES</div>
+    <div class="portal-subtitle">Meu SindEducação · Portal do Associado</div>
+  </header>
+
+  <div class="portal-container">
+    
+    <? if (precisaAtualizar) { ?>
+    <!-- Alerta de Atualização -->
+    <div class="alert animate-fade-in">
+      <div class="alert-icon">️</div>
+      <div>
+        <div class="alert-title">Atualização necessária</div>
+        <div class="alert-text">Sua credencial 2026/2027 precisa de renovação</div>
+      </div>
+    </div>
+    <? } ?>
+
+    <!-- Credencial Digital -->
+    <div class="credencial-card animate-fade-in">
+      <div class="credencial-header">
+        <div>
+          <div class="credencial-titulo">SindEducação-ES</div>
+          <div class="credencial-titulo">Credencial Digital 2026/2027</div>
+        </div>
+        <div class="credencial-status">
+          <?= filiado == 'S' ? '✓ ATIVO' : '⏳ PENDENTE' ?>
+        </div>
+      </div>
+      
+      <div class="credencial-nome"><?= nome ?></div>
+      <div class="credencial-escola"><?= nomeFantasia ?></div>
+      
+      <div class="credencial-footer">
+        <div>
+          <div class="credencial-validade">
+            Validade
+            <strong>28/02/2027</strong>
+          </div>
+          <div style="margin-top: 12px; font-size: 11px; opacity: 0.8;">
+            CPF: <?= cpf ?>
+          </div>
+        </div>
+        <div class="credencial-qrcode">
+          <div style="font-size: 10px; color: #1e3a8a; font-weight: 800;">QR<br>CODE</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Indicador de Cadastro -->
+    <div class="portal-card">
+      <div class="cadastro-indicator">
+        <div class="cadastro-title"> Meu Cadastro</div>
+        <div class="cadastro-percent">
+          <?= precisaAtualizar ? '60% completo' : '100% completo' ?>
+        </div>
+      </div>
+      
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: <?= precisaAtualizar ? '60%' : '100%' %>"></div>
+      </div>
+      
+      <ul class="cadastro-itens">
+        <li>
+          <span class="icon-check">✓</span>
+          <span>Nome e CPF</span>
+        </li>
+        <li>
+          <span class="icon-check">✓</span>
+          <span>Escola: <?= nomeFantasia ?></span>
+        </li>
+        <? if (precisaAtualizar) { ?>
+        <li>
+          <span class="icon-warning">⚠</span>
+          <span>Telefone e endereço (atualizar)</span>
+        </li>
+        <li>
+          <span class="icon-error">✕</span>
+          <span>Foto recente (obrigatório)</span>
+        </li>
+        <? } else { ?>
+        <li>
+          <span class="icon-check">✓</span>
+          <span>Telefone e endereço atualizados</span>
+        </li>
+        <? } ?>
+      </ul>
+      
+      <button class="btn btn-primary" onclick="iniciarAtualizacao()">
+        <?= precisaAtualizar ? '🔄 Atualizar Cadastro e Renovar' : '✏️ Atualizar Dados' ?>
+      </button>
+    </div>
+
+    <!-- Benefícios Rápidos -->
+    <div class="benefits-grid">
+      <div class="benefit-card" onclick="mostrarBeneficios()">
+        <div class="benefit-icon"></div>
+        <div class="benefit-label">Benefícios</div>
+      </div>
+      <div class="benefit-card" onclick="mostrarCCT()">
+        <div class="benefit-icon">📄</div>
+        <div class="benefit-label">CCT 2026/27</div>
+      </div>
+      <div class="benefit-card" onclick="mostrarVouchers()">
+        <div class="benefit-icon">🎫</div>
+        <div class="benefit-label">Vouchers</div>
+      </div>
+      <div class="benefit-card" onclick="mostrarOftalmo()">
+        <div class="benefit-icon">👁</div>
+        <div class="benefit-label">Oftalmo</div>
+      </div>
+    </div>
+
+    <!-- SOFIA Recomenda -->
+    <? if (precisaAtualizar) { ?>
+    <div class="sofia-box" style="margin-top: 20px;">
+      <div class="sofia-header">
+        <div class="sofia-avatar">🤖</div>
+        <div class="sofia-title">SOFIA recomenda</div>
+      </div>
+      <div class="sofia-text">
+        Olá, <?= split(nome, ' ')[0] ?>! Complete seu cadastro para garantir acesso a todos os benefícios do SindEducação.
+      </div>
+    </div>
+    <? } ?>
+
+  </div>
+
+  <!-- Footer -->
+  <footer class="portal-footer">
+    <div>SindEducação-ES © 2026</div>
+    <div style="margin-top: 4px;">Dúvidas? (27) 99813-5965</div>
+  </footer>
+
+  <!-- Modal de Atualização -->
+  <div id="modalAtualizacao" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">Atualizar Cadastro</div>
+        <div class="modal-subtitle">Etapa <span id="etapaAtual">1</span> de 5</div>
+      </div>
+      
+      <div class="modal-body">
+        <form id="formAtualizacao">
+          <!-- Etapa 1: Contato -->
+          <div id="etapa1" class="etapa-form">
+            <h3 style="margin-bottom: 20px; font-size: 15px;">📱 Dados de Contato</h3>
+            
+            <div class="form-group">
+              <label class="form-label">Celular/WhatsApp</label>
+              <input type="tel" id="novoCelular" class="form-input" 
+                     value="<?= celular ?>" placeholder="(27) 99999-9999">
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">E-mail</label>
+              <input type="email" id="novoEmail" class="form-input" 
+                     value="<?= email ?>" placeholder="seu@email.com">
+            </div>
+          </div>
+          
+          <!-- Etapa 2: Endereço -->
+          <div id="etapa2" class="etapa-form" style="display: none;">
+            <h3 style="margin-bottom: 20px; font-size: 15px;">📍 Endereço</h3>
+            
+            <div class="form-group">
+              <label class="form-label">CEP</label>
+              <input type="text" id="novoCEP" class="form-input" 
+                     value="<?= cep ?>" placeholder="29000-000">
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Logradouro</label>
+              <input type="text" id="novoLogradouro" class="form-input" 
+                     value="<?= logradouro ?>" placeholder="Rua, Avenida, etc.">
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group">
+                <label class="form-label">Número</label>
+                <input type="text" id="novoNumero" class="form-input" 
+                       value="<?= numero ?>">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Bairro</label>
+                <input type="text" id="novoBairro" class="form-input" 
+                       value="<?= bairro ?>">
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Cidade</label>
+              <input type="text" id="novaCidade" class="form-input" 
+                     value="<?= cidade ?>">
+            </div>
+          </div>
+          
+          <!-- Etapa 3: Foto -->
+          <div id="etapa3" class="etapa-form" style="display: none;">
+            <h3 style="margin-bottom: 20px; font-size: 15px;">📷 Sua Foto</h3>
+            <p style="font-size: 12px; color: var(--mut); margin-bottom: 20px;">
+              Envie uma foto recente (formato JPG ou PNG)
+            </p>
+            
+            <div style="border: 2px dashed var(--line); border-radius: 16px; padding: 40px; text-align: center;">
+              <input type="file" id="fotoInput" accept="image/*" style="display: none;" onchange="previewFoto(this)">
+              <button type="button" onclick="document.getElementById('fotoInput').click()"
+                      style="background: transparent; border: none; color: var(--cyan); font-weight: 700; cursor: pointer; font-size: 14px;">
+                📸 Clique para enviar foto
+              </button>
+              <div id="fotoPreview" style="display: none; margin-top: 20px;">
+                <img id="imgPreview" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid var(--blue);">
+                <p style="color: var(--green); font-size: 12px; margin-top: 8px; font-weight: 700;">✓ Foto selecionada</p>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Etapa 4: Revisão -->
+          <div id="etapa4" class="etapa-form" style="display: none;">
+            <h3 style="margin-bottom: 20px; font-size: 15px;">✅ Revisão dos Dados</h3>
+            <div style="background: rgba(148, 163, 184, 0.1); border-radius: 12px; padding: 20px; font-size: 13px;">
+              <p style="margin-bottom: 12px;"><strong>Nome:</strong> <?= nome ?></p>
+              <p style="margin-bottom: 12px;"><strong>CPF:</strong> <?= cpf ?></p>
+              <p style="margin-bottom: 12px;"><strong>Celular:</strong> <span id="revCelular"><?= celular ?></span></p>
+              <p style="margin-bottom: 12px;"><strong>Email:</strong> <span id="revEmail"><?= email ?></span></p>
+              <p style="margin-bottom: 12px;"><strong>Endereço:</strong> <span id="revEndereco"><?= logradouro ?>, <?= numero ?></span></p>
+              <p style="margin-bottom: 12px;"><strong>Bairro:</strong> <span id="revBairro"><?= bairro ?></span></p>
+              <p><strong>Cidade:</strong> <span id="revCidade"><?= cidade ?></span></p>
+            </div>
+          </div>
+          
+          <!-- Etapa 5: Confirmação -->
+          <div id="etapa5" class="etapa-form" style="display: none; text-align: center; padding: 40px 20px;">
+            <div style="font-size: 64px; margin-bottom: 20px;">🎉</div>
+            <h3 style="font-size: 20px; font-weight: 800; margin-bottom: 12px;">Solicitação Enviada!</h3>
+            <p style="color: var(--mut); line-height: 1.6;">
+              Sua atualização cadastral foi recebida. Após aprovação do SindEducação, sua nova credencial será liberada.
+            </p>
+          </div>
+        </form>
+      </div>
+      
+      <div class="modal-footer" id="modalFooter">
+        <button type="button" id="btnAnterior" class="btn btn-secondary" onclick="mudarEtapa(-1)" style="display: none;">
+          Anterior
+        </button>
+        <button type="button" id="btnProximo" class="btn btn-primary" onclick="mudarEtapa(1)">
+          Continuar
+        </button>
+        <button type="button" id="btnEnviar" class="btn btn-primary" onclick="enviarSolicitacao()" style="display: none;">
+          Enviar Solicitação
+        </button>
+      </div>
+      
+      <div style="padding: 0 28px 28px;">
+        <button type="button" onclick="fecharModal()" class="btn btn-secondary">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Variáveis
+    var etapaAtual = 1;
+    var totalEtapas = 4;
+    var dadosAssociado = {
+      cpf: "<?= cpf ?>",
+      nome: "<?= nome ?>",
+      linha: <?= linha ?>
+    };
+    
+    // Funções do Modal
+    function iniciarAtualizacao() {
+      document.getElementById('modalAtualizacao').classList.add('active');
+      etapaAtual = 1;
+      atualizarVisibilidadeEtapas();
+    }
+    
+    function fecharModal() {
+      document.getElementById('modalAtualizacao').classList.remove('active');
+    }
+    
+    function mudarEtapa(direcao) {
+      etapaAtual += direcao;
+      if (etapaAtual > totalEtapas) etapaAtual = totalEtapas;
+      if (etapaAtual < 1) etapaAtual = 1;
+      atualizarVisibilidadeEtapas();
+    }
+    
+    function atualizarVisibilidadeEtapas() {
+      for (var i = 1; i <= 4; i++) {
+        document.getElementById('etapa' + i).style.display = 'none';
+      }
+      document.getElementById('etapa' + etapaAtual).style.display = 'block';
+      document.getElementById('etapaAtual').textContent = etapaAtual;
+      
+      document.getElementById('btnAnterior').style.display = etapaAtual === 1 ? 'none' : 'block';
+      
+      if (etapaAtual === totalEtapas) {
+        document.getElementById('btnProximo').style.display = 'none';
+        document.getElementById('btnEnviar').style.display = 'block';
+      } else {
+        document.getElementById('btnProximo').style.display = 'block';
+        document.getElementById('btnEnviar').style.display = 'none';
+      }
+      
+      if (etapaAtual === 4) {
+        atualizarRevisao();
+      }
+    }
+    
+    function atualizarRevisao() {
+      document.getElementById('revCelular').textContent = document.getElementById('novoCelular').value;
+      document.getElementById('revEmail').textContent = document.getElementById('novoEmail').value;
+      document.getElementById('revEndereco').textContent = 
+        document.getElementById('novoLogradouro').value + ', ' + document.getElementById('novoNumero').value;
+      document.getElementById('revBairro').textContent = document.getElementById('novoBairro').value;
+      document.getElementById('revCidade').textContent = document.getElementById('novaCidade').value;
+    }
+    
+    function previewFoto(input) {
+      if (input.files && input.files[0]) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          document.getElementById('imgPreview').src = e.target.result;
+          document.getElementById('fotoPreview').style.display = 'block';
+        };
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+    
+    function enviarSolicitacao() {
+      var btn = document.getElementById('btnEnviar');
+      btn.disabled = true;
+      btn.textContent = 'Enviando...';
+      
+      var dados = {
+        cpf: dadosAssociado.cpf,
+        nome: dadosAssociado.nome,
+        linha: dadosAssociado.linha,
+        celular: document.getElementById('novoCelular').value,
+        email: document.getElementById('novoEmail').value,
+        cep: document.getElementById('novoCEP').value,
+        logradouro: document.getElementById('novoLogradouro').value,
+        numero: document.getElementById('novoNumero').value,
+        bairro: document.getElementById('novoBairro').value,
+        cidade: document.getElementById('novaCidade').value,
+        fotoUrl: ''
+      };
+      
+      google.script.run
+        .withSuccessHandler(function(resposta) {
+          if (resposta.sucesso) {
+            document.getElementById('etapa4').style.display = 'none';
+            document.getElementById('etapa5').style.display = 'block';
+            document.getElementById('modalFooter').style.display = 'none';
+            
+            setTimeout(function() {
+              fecharModal();
+              location.reload();
+            }, 3000);
+          } else {
+            alert('Erro: ' + resposta.mensagem);
+            btn.disabled = false;
+            btn.textContent = 'Enviar Solicitação';
+          }
+        })
+        .withFailureHandler(function(erro) {
+          alert('Erro ao enviar: ' + erro);
+          btn.disabled = false;
+          btn.textContent = 'Enviar Solicitação';
+        })
+        .salvarSolicitacaoAtualizacao(dados);
+    }
+    
+    function mostrarBeneficios() {
+      alert('Em breve: Benefícios Parque do China, Guriri Beach, Assefaz, etc.');
+    }
+    
+    function mostrarCCT() {
+      alert('Em breve: Texto completo da CCT 2026/2027');
+    }
+    
+    function mostrarVouchers() {
+      alert('Em breve: Vouchers disponíveis');
+    }
+    
+    function mostrarOftalmo() {
+      alert('Em breve: Agenda Oftalmológica');
+    }
+    
+    // Fechar modal ao clicar fora
+    document.getElementById('modalAtualizacao').addEventListener('click', function(e) {
+      if (e.target === this) {
+        fecharModal();
+      }
+    });
+  </script>
+</body>
+</html>

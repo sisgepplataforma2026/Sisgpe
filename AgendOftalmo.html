@@ -1,0 +1,1147 @@
+<div class="oftalmo-wrap">
+
+  <div class="oftalmo-header">
+    <div class="oftalmo-header-l">
+      <div class="oftalmo-header-icon">👁️</div>
+      <div>
+        <h2 class="oftalmo-title">Agendamento de Oftalmologia</h2>
+        <p class="oftalmo-subtitle">Trabalhador e Dependente acima de 12 anos</p>
+      </div>
+    </div>
+
+    <div class="oftalmo-header-r">
+      <input type="date" id="oftalmoData" class="campo-input oftalmo-data">
+      <button type="button" class="btn-primary oftalmo-btn-carregar" onclick="AgendOftalmo.carregarDia()">
+        📅 Carregar
+      </button>
+      <button type="button" class="btn-secundario" onclick="AgendOftalmo.fecharAgendaDia()" style="height:42px;border-radius:12px;">
+        📋 Fechar Agenda do Dia
+      </button>
+    </div>
+  </div>
+
+  <div class="oftalmo-stats">
+    <div class="oftalmo-stat">
+      <span>Total de horários</span>
+      <strong id="oftalmoStatTotal">0</strong>
+      <small>Capacidade diária</small>
+    </div>
+    <div class="oftalmo-stat oftalmo-stat-reservados">
+      <span>Reservados</span>
+      <strong id="oftalmoStatReservados">0</strong>
+      <small>Agendamentos confirmados</small>
+    </div>
+    <div class="oftalmo-stat oftalmo-stat-livres">
+      <span>Livres</span>
+      <strong id="oftalmoStatLivres">0</strong>
+      <small>Horários disponíveis</small>
+    </div>
+    <div class="oftalmo-stat oftalmo-stat-compareceram">
+      <span>Compareceram</span>
+      <strong id="oftalmoStatCompareceram">0</strong>
+      <small>Atendimentos realizados</small>
+    </div>
+  </div>
+
+  <div class="oftalmo-resumo-dia">
+    <div class="oftalmo-resumo-card">
+      <h3>⏰ Próximos Atendimentos</h3>
+      <div id="oftalmoProximos">
+        <div class="oftalmo-proximo vazio">Nenhum atendimento reservado.</div>
+      </div>
+    </div>
+    <div class="oftalmo-resumo-card">
+      <h3>⚠ Pendências</h3>
+      <div class="oftalmo-pend-item">
+        <span>Sem telefone</span>
+        <strong id="oftalmoPendSemTelefone">0</strong>
+      </div>
+      <div class="oftalmo-pend-item">
+        <span>Sem e-mail</span>
+        <strong id="oftalmoPendSemEmail">0</strong>
+      </div>
+      <div class="oftalmo-pend-item">
+        <span>Cancelados</span>
+        <strong id="oftalmoPendCancelados">0</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="oftalmo-tabs">
+    <button type="button" class="oftalmo-tab active" id="tabAgenda" onclick="AgendOftalmo.trocarTab('agenda')">
+      📅 Agenda do Dia
+    </button>
+    <button type="button" class="oftalmo-tab" id="tabHistorico" onclick="AgendOftalmo.trocarTab('historico')">
+      📋 Histórico
+    </button>
+  </div>
+
+  <div id="oftalmoTabAgenda" class="oftalmo-tab-content">
+
+    <div class="oftalmo-operacao">
+      <div class="oftalmo-filtro-status">
+        <button type="button" class="oftalmo-chip active" data-filtro="TODOS" onclick="AgendOftalmo.filtrarAgenda('TODOS')">Todos</button>
+        <button type="button" class="oftalmo-chip" data-filtro="LIVRE" onclick="AgendOftalmo.filtrarAgenda('LIVRE')">Livres</button>
+        <button type="button" class="oftalmo-chip" data-filtro="RESERVADO" onclick="AgendOftalmo.filtrarAgenda('RESERVADO')">Reservados</button>
+        <button type="button" class="oftalmo-chip" data-filtro="COMPARECEU" onclick="AgendOftalmo.filtrarAgenda('COMPARECEU')">Compareceram</button>
+      </div>
+      <div class="oftalmo-operacao-r">
+        <input type="text" id="oftalmoBuscaAgenda" class="campo-input oftalmo-busca"
+          placeholder="Buscar por nome, CPF, escola..."
+          oninput="AgendOftalmo.buscarNaAgenda()">
+        <button type="button" class="btn-secundario oftalmo-btn-modo" id="btnOftalmoModo" onclick="AgendOftalmo.alternarVisualizacao()">
+          🧩 Cards
+        </button>
+      </div>
+    </div>
+
+    <div class="tabela-wrapper oftalmo-table-card" id="oftalmoTabelaWrap">
+      <table class="tabela oftalmo-tabela">
+        <thead>
+          <tr>
+            <th>Hora</th>
+            <th>Status</th>
+            <th>Tipo</th>
+            <th>Nome</th>
+            <th>CPF</th>
+            <th>Telefone</th>
+            <th>Escola</th>
+                     <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="oftalmoTbody">
+          <tr>
+            <td colspan="9" class="td-vazio">Selecione uma data para carregar os horários.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="oftalmoCardsWrap" style="display:none;">
+      <div id="oftalmoCards" class="oftalmo-cards-grid"></div>
+    </div>
+
+  </div>
+
+  <div id="oftalmoTabHistorico" class="oftalmo-tab-content" style="display:none;">
+    <div class="form-section oftalmo-filtros">
+      <div class="form-grid">
+        <div class="field">
+          <label>Data início</label>
+          <input type="date" id="oftalmoFiltroInicio" class="campo-input">
+        </div>
+        <div class="field">
+          <label>Data fim</label>
+          <input type="date" id="oftalmoFiltroFim" class="campo-input">
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <select id="oftalmoFiltroStatus" class="campo-input">
+            <option value="TODOS">Todos</option>
+            <option value="ATIVO">Ativo</option>
+            <option value="CANCELADO">Cancelado</option>
+          </select>
+        </div>
+      </div>
+      <div class="oftalmo-filtros-actions">
+        <button type="button" class="btn-primary" onclick="AgendOftalmo.carregarHistorico()">🔍 Filtrar</button>
+        <button type="button" class="btn-secundario" onclick="AgendOftalmo.limparFiltros()">✕ Limpar</button>
+      </div>
+    </div>
+
+    <div class="tabela-wrapper oftalmo-table-card">
+      <table class="tabela oftalmo-tabela">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Hora</th>
+            <th>Tipo</th>
+            <th>Nome</th>
+            <th>CPF</th>
+            <th>Escola</th>
+            <th>Compareceu</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="oftalmoTbodyHist">
+          <tr>
+            <td colspan="9" class="td-vazio">Aplique os filtros para carregar o histórico.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL RESERVA PREMIUM -->
+<div id="modalOftalmo" class="oftalmo-modal" style="display:none;" onclick="if(event.target===this)AgendOftalmo.fecharModal()">
+  <div class="oftalmo-modal-box oftalmo-modal-premium">
+
+    <div class="oftalmo-modal-hero">
+      <div>
+        <span class="oftalmo-modal-kicker">Novo agendamento</span>
+        <h3 id="oftalmoModalTitulo">Reservar Horário</h3>
+        <p id="oftalmoModalSubtitulo" class="oftalmo-modal-subtitulo"></p>
+      </div>
+      <button type="button" class="oftalmo-modal-close" onclick="AgendOftalmo.fecharModal()">✕</button>
+    </div>
+
+    <div class="oftalmo-steps">
+      <div class="oftalmo-step active"><span>1</span><strong>CPF</strong></div>
+      <div class="oftalmo-step"><span>2</span><strong>Dados</strong></div>
+      <div class="oftalmo-step"><span>3</span><strong>Confirmação</strong></div>
+    </div>
+
+    <div class="oftalmo-resumo">
+      <div class="oftalmo-resumo-item">
+        <small>DATA</small>
+        <strong id="resumoDataOftalmo">--</strong>
+      </div>
+      <div class="oftalmo-resumo-item">
+        <small>HORÁRIO</small>
+        <strong id="resumoHoraOftalmo">--</strong>
+      </div>
+    </div>
+
+    <div class="oftalmo-modal-body">
+
+      <div class="field">
+        <label>Tipo de beneficiário</label>
+        <div class="oftalmo-radio-group">
+          <label class="oftalmo-radio">
+            <input type="radio" name="oftalmoTipo" value="TRABALHADOR" checked onchange="AgendOftalmo.atualizarTipo()">
+            <span>👷 Trabalhador</span>
+          </label>
+          <label class="oftalmo-radio">
+            <input type="radio" name="oftalmoTipo" value="DEPENDENTE" onchange="AgendOftalmo.atualizarTipo()">
+            <span>👨‍👩‍👧 Dependente</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="section-subtitle">Dados do Titular</div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label>CPF do Titular *</label>
+          <div class="oftalmo-cpf-row">
+            <input type="text" id="oftalmoCpfTitular" class="campo-input" placeholder="000.000.000-00" maxlength="14">
+            <button type="button" class="btn-oftalmo btn-reservar" onclick="AgendOftalmo.validarCpf()">🔎 Validar</button>
+          </div>
+          <span id="oftalmoValidacaoCpf" class="oftalmo-validacao"></span>
+        </div>
+        <div class="field">
+          <label>Nome do Titular *</label>
+          <input type="text" id="oftalmoNomeTitular" class="campo-input" placeholder="Nome completo">
+        </div>
+        <div class="field">
+          <label>Telefone *</label>
+          <input type="text" id="oftalmoTelefone" class="campo-input" placeholder="(27) 99999-9999">
+        </div>
+        <div class="field">
+          <label>E-mail</label>
+          <input type="email" id="oftalmoEmail" class="campo-input" placeholder="email@exemplo.com">
+        </div>
+        <div class="field form-col-full">
+          <label>Escola *</label>
+          <input type="text" id="oftalmoEscola" class="campo-input" placeholder="Nome da escola">
+        </div>
+      </div>
+
+      <div id="oftalmoSecDependente" style="display:none;">
+        <div class="section-subtitle">Dados do Dependente</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>Nome do Dependente *</label>
+            <input type="text" id="oftalmoNomeDep" class="campo-input" placeholder="Nome completo">
+          </div>
+          <div class="field">
+            <label>CPF do Dependente</label>
+            <input type="text" id="oftalmoCpfDep" class="campo-input" placeholder="000.000.000-00" maxlength="14">
+          </div>
+          <div class="field">
+            <label>Data de Nascimento *</label>
+            <input type="date" id="oftalmoDataNascDep" class="campo-input">
+            <span id="oftalmoIdadeDep" class="oftalmo-validacao"></span>
+          </div>
+          <div class="field">
+            <label>Grau de Parentesco *</label>
+            <select id="oftalmoParentesco" class="campo-input">
+              <option value="">Selecione...</option>
+              <option value="CÔNJUGE">Cônjuge</option>
+              <option value="FILHO(A)">Filho(a)</option>
+              <option value="ENTEADO(A)">Enteado(a)</option>
+              <option value="OUTRO">Outro</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div id="oftalmoMsgModal" class="msg-status" style="display:none;"></div>
+    </div>
+
+    <div class="oftalmo-modal-footer">
+      <button type="button" class="btn-secundario" onclick="AgendOftalmo.fecharModal()">Cancelar</button>
+      <button type="button" class="btn-oftalmo btn-reservar" id="btnSalvarOftalmo" onclick="AgendOftalmo.salvarReserva()">
+        💾 Confirmar Agendamento
+      </button>
+    </div>
+
+  </div>
+</div>
+<!-- MODAL AÇÕES -->
+<div id="modalOftalmoAcoes" class="oftalmo-modal" style="display:none;" onclick="if(event.target===this)AgendOftalmo.fecharModalAcoes()">
+  <div class="oftalmo-modal-box oftalmo-modal-acoes">
+    <div class="oftalmo-modal-hero">
+      <div>
+        <span class="oftalmo-modal-kicker">Agendamento confirmado</span>
+        <h3>✅ Notificar paciente</h3>
+      </div>
+      <button type="button" class="oftalmo-modal-close" onclick="AgendOftalmo.fecharModalAcoes()">✕</button>
+    </div>
+    <div class="oftalmo-modal-body">
+      <div id="oftalmoAcoesResumo" class="oftalmo-acoes-resumo"></div>
+      <p class="oftalmo-acoes-texto">Deseja enviar a confirmação ao paciente?</p>
+      <div class="oftalmo-acoes-botoes">
+        <button type="button" class="btn-oftalmo btn-whatsapp" onclick="AgendOftalmo.enviarWhatsApp()">📱 WhatsApp</button>
+        <button type="button" class="btn-secundario" onclick="AgendOftalmo.enviarEmail()">📧 E-mail</button>
+        <button type="button" class="btn-primary" style="background:linear-gradient(135deg,#059669,#047857);" onclick="AgendOftalmo.agendarProximoDependente()">➕ Adicionar Dependente</button>
+        <button type="button" class="btn-secundario" onclick="AgendOftalmo.fecharModalAcoes()">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL FECHAR AGENDA -->
+<div id="modalFecharAgenda" class="oftalmo-modal" style="display:none;" onclick="if(event.target===this)AgendOftalmo.fecharModalRelatorio()">
+  <div class="oftalmo-modal-box" style="max-width:600px;">
+    <div class="oftalmo-modal-hero">
+      <div>
+        <span class="oftalmo-modal-kicker">Encerramento do dia</span>
+        <h3>📋 Relatório da Agenda</h3>
+        <p id="fecharAgendaSubtitulo" class="oftalmo-modal-subtitulo"></p>
+      </div>
+      <button type="button" class="oftalmo-modal-close" onclick="AgendOftalmo.fecharModalRelatorio()">✕</button>
+    </div>
+    <div class="oftalmo-modal-body">
+      <div id="fecharAgendaResumo" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:16px;margin-bottom:16px;font-size:13px;line-height:1.9;"></div>
+      <p style="font-size:13px;color:#64748b;font-weight:600;margin-bottom:14px;">Enviar relação para a clínica:</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button type="button" class="btn-oftalmo btn-whatsapp" onclick="AgendOftalmo.enviarRelatorioWhatsApp()">📱 WhatsApp</button>
+        <button type="button" class="btn-secundario" onclick="AgendOftalmo.enviarRelatorioEmail()">📧 E-mail</button>
+        <button type="button" class="btn-secundario" onclick="AgendOftalmo.fecharModalRelatorio()">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+#modalOftalmo,
+#modalOftalmoAcoes,
+#modalFecharAgenda {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 999999 !important;
+}
+
+.oftalmo-wrap{ padding:20px; }
+
+.oftalmo-header{
+  display:flex; justify-content:space-between; align-items:center;
+  gap:20px; margin-bottom:24px; flex-wrap:wrap;
+}
+.oftalmo-header-l{ display:flex; align-items:center; gap:16px; }
+.oftalmo-header-icon{
+  width:52px; height:52px; border-radius:16px; background:#002e6d;
+  display:flex; align-items:center; justify-content:center;
+  color:#fff; font-size:22px; box-shadow:0 6px 18px rgba(0,0,0,.12);
+}
+.oftalmo-title{ font-size:18px; font-weight:800; color:#002e6d; margin:0; }
+.oftalmo-subtitle{ margin-top:4px; color:#6b7280; font-size:12px; }
+.oftalmo-header-r{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.oftalmo-data{ min-width:220px; }
+.oftalmo-btn-carregar{ height:42px; border-radius:12px; font-weight:700; }
+
+.oftalmo-stats{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:16px; margin-bottom:24px;
+}
+.oftalmo-stat{
+  background:#fff; border-radius:18px; padding:22px;
+  border:1px solid #e5e7eb; box-shadow:0 4px 16px rgba(0,0,0,.04); position:relative;
+}
+.oftalmo-stat::before{
+  content:''; position:absolute; left:0; top:0; width:100%; height:4px;
+  border-radius:18px 18px 0 0; background:#2563eb;
+}
+.oftalmo-stat-reservados::before{ background:#d97706; }
+.oftalmo-stat-livres::before{ background:#059669; }
+.oftalmo-stat-compareceram::before{ background:#1d4ed8; }
+.oftalmo-stat span{
+  display:block; font-size:11px; font-weight:800; color:#6b7280;
+  letter-spacing:.06em; margin-bottom:12px; text-transform:uppercase;
+}
+.oftalmo-stat strong{ display:block; font-size:40px; font-weight:900; color:#111827; line-height:1; }
+.oftalmo-stat small{ display:block; margin-top:8px; color:#9ca3af; font-size:12px; }
+
+.oftalmo-resumo-dia{
+  display:grid; grid-template-columns:2fr 1fr; gap:16px; margin-bottom:24px;
+}
+.oftalmo-resumo-card{
+  background:#fff; border-radius:18px; padding:20px;
+  border:1px solid #e5e7eb; box-shadow:0 4px 16px rgba(0,0,0,.035);
+}
+.oftalmo-resumo-card h3{ margin:0 0 14px; color:#002e6d; font-size:15px; }
+.oftalmo-proximo{ padding:10px 0; border-bottom:1px solid #f1f5f9; font-size:13px; }
+.oftalmo-proximo strong{ display:block; color:#0f172a; }
+.oftalmo-proximo span{ color:#64748b; font-size:12px; }
+.oftalmo-proximo.vazio{ color:#94a3b8; font-weight:600; }
+.oftalmo-pend-item{
+  display:flex; justify-content:space-between;
+  padding:10px 0; border-bottom:1px solid #f1f5f9; font-size:13px;
+}
+.oftalmo-pend-item strong{ color:#002e6d; }
+
+.oftalmo-tabs{ display:flex; gap:8px; margin-bottom:18px; }
+.oftalmo-tab{ border:none; background:#f3f4f6; padding:12px 16px; border-radius:12px; font-weight:700; cursor:pointer; }
+.oftalmo-tab.active{ background:#002e6d; color:#fff; }
+
+.oftalmo-operacao{
+  display:flex; justify-content:space-between; align-items:center;
+  gap:16px; flex-wrap:wrap; margin-bottom:18px;
+}
+.oftalmo-filtro-status{ display:flex; gap:8px; flex-wrap:wrap; }
+.oftalmo-chip{ border:none; background:#f3f4f6; padding:10px 14px; border-radius:999px; cursor:pointer; font-weight:700; }
+.oftalmo-chip.active{ background:#002e6d; color:#fff; }
+.oftalmo-operacao-r{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.oftalmo-busca{ min-width:280px; }
+.oftalmo-btn-modo{ border-radius:12px; font-weight:700; }
+
+.oftalmo-table-card{
+  background:#fff; border-radius:18px; border:1px solid #e5e7eb;
+  overflow-x:auto; overflow-y:visible;
+}
+
+.oftalmo-tabela{
+  width:100%; border-collapse:collapse; min-width:1000px; table-layout:fixed;
+}
+.oftalmo-tabela thead th{
+  background:#f8fafc; padding:12px 14px; font-size:11px; font-weight:800;
+  color:#64748b; text-transform:uppercase; letter-spacing:.06em;
+  border-bottom:1px solid #e5e7eb; white-space:nowrap;
+}
+.oftalmo-tabela tbody td{
+  padding:10px 14px !important; border-bottom:1px solid #f1f5f9;
+  font-size:13px; vertical-align:middle; white-space:nowrap;
+}
+.oftalmo-tabela tbody tr{ transition:.2s; }
+.oftalmo-tabela tbody tr:hover{ background:#f8fbff; }
+
+.oftalmo-tabela th:nth-child(1), .oftalmo-tabela td:nth-child(1){ width:65px; }
+.oftalmo-tabela th:nth-child(2), .oftalmo-tabela td:nth-child(2){ width:120px; }
+.oftalmo-tabela th:nth-child(3), .oftalmo-tabela td:nth-child(3){ width:120px; }
+.oftalmo-tabela th:nth-child(4), .oftalmo-tabela td:nth-child(4){ width:auto; }
+.oftalmo-tabela th:nth-child(5), .oftalmo-tabela td:nth-child(5){ width:130px; }
+.oftalmo-tabela th:nth-child(6), .oftalmo-tabela td:nth-child(6){ width:130px; }
+.oftalmo-tabela th:nth-child(7), .oftalmo-tabela td:nth-child(7){ width:80px; }
+.oftalmo-tabela th:nth-child(8), .oftalmo-tabela td:nth-child(8){ width:120px; white-space:nowrap; }
+
+.td-vazio{ text-align:center; color:#9ca3af; font-weight:600; padding:30px !important; }
+
+.oftalmo-cards-grid{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px;
+}
+.oftalmo-card-slot{
+  background:#fff; border-radius:18px; padding:18px;
+  border:1px solid #e5e7eb; box-shadow:0 4px 14px rgba(0,0,0,.04);
+}
+.oftalmo-card-slot.livre{ border-left:6px solid #16a34a; }
+.oftalmo-card-slot.reservado{ border-left:6px solid #ea580c; }
+.oftalmo-card-slot.compareceu{ border-left:6px solid #2563eb; }
+.oftalmo-card-slot.cancelado{ border-left:6px solid #dc2626; }
+.oftalmo-card-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+.oftalmo-card-hora{ font-size:24px; font-weight:900; color:#0f172a; }
+.oftalmo-card-nome{ font-size:15px; font-weight:700; margin-bottom:8px; }
+.oftalmo-card-info{ font-size:13px; color:#64748b; margin-bottom:14px; line-height:1.5; }
+.oftalmo-card-acoes{ display:flex; gap:8px; flex-wrap:wrap; }
+
+.slot-livre,.slot-reservado,.slot-compareceu,.slot-cancelado{
+  display:inline-flex; align-items:center; gap:6px; padding:6px 10px;
+  border-radius:999px; font-size:12px; font-weight:700;
+}
+.slot-livre{ background:#dcfce7; color:#166534; }
+.slot-reservado{ background:#ffedd5; color:#9a3412; }
+.slot-compareceu{ background:#dbeafe; color:#1d4ed8; }
+.slot-cancelado{ background:#fee2e2; color:#991b1b; }
+
+.btn-acao,.btn-oftalmo{
+  border:none; border-radius:10px; padding:8px 12px; font-size:12px; font-weight:700;
+  cursor:pointer; transition:.2s; display:inline-flex; align-items:center; gap:6px;
+}
+.btn-acao:hover,.btn-oftalmo:hover{ transform:translateY(-1px); }
+.btn-acao.primary,.btn-reservar{ background:#16a34a; color:#fff; }
+.btn-acao.primary:hover,.btn-reservar:hover{ background:#15803d; }
+.btn-compareceu{ background:#2563eb; color:#fff; }
+.btn-cancelar,.btn-acao.danger{ background:#dc2626; color:#fff; }
+.btn-whatsapp,.btn-acao.whats{ background:#22c55e; color:#fff; }
+
+.oftalmo-modal{
+  position:fixed; inset:0; background:rgba(15,23,42,.55);
+  backdrop-filter:blur(4px); z-index:99999;
+  display:flex; align-items:center; justify-content:center; padding:20px;
+}
+.oftalmo-modal-premium{
+  width:100%; max-width:620px; max-height:85vh; background:#fff;
+  border-radius:24px; box-shadow:0 30px 60px rgba(0,0,0,.2);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.oftalmo-modal-acoes{
+  width:100%; max-width:520px; max-height:90vh; overflow-y:auto;
+  background:#fff; border-radius:24px; box-shadow:0 30px 60px rgba(0,0,0,.2);
+}
+.oftalmo-modal-hero{
+  background:linear-gradient(135deg,#002e6d,#0047ab); color:#fff;
+  padding:18px 22px; display:flex; justify-content:space-between;
+  align-items:flex-start; flex-shrink:0;
+}
+.oftalmo-modal-kicker{
+  display:inline-block; background:rgba(255,255,255,.18); padding:6px 10px;
+  border-radius:999px; font-size:11px; font-weight:700; margin-bottom:10px;
+}
+.oftalmo-modal-subtitulo{ color:rgba(255,255,255,.82); margin:6px 0 0; }
+.oftalmo-modal-close{
+  border:none; background:rgba(255,255,255,.18); width:38px; height:38px;
+  border-radius:12px; color:#fff; cursor:pointer;
+}
+.oftalmo-steps{ display:flex; gap:8px; padding:14px 22px 0; flex-shrink:0; }
+.oftalmo-step{ flex:1; background:#f8fafc; border-radius:16px; padding:14px; text-align:center; }
+.oftalmo-step.active{ background:#dbeafe; }
+.oftalmo-step span{
+  width:28px; height:28px; border-radius:50%; background:#2563eb; color:#fff;
+  display:inline-flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:700; margin-bottom:8px;
+}
+.oftalmo-resumo{
+  display:grid; grid-template-columns:repeat(2,1fr); gap:10px; padding:14px 22px; flex-shrink:0;
+}
+.oftalmo-resumo-item{ background:#f8fafc; border-radius:16px; padding:16px; }
+.oftalmo-resumo-item small{
+  display:block; color:#64748b; font-size:11px; font-weight:700; margin-bottom:6px;
+}
+.oftalmo-resumo-item strong{ font-size:18px; color:#0f172a; }
+.oftalmo-modal-body{ padding:10px 22px 22px; overflow-y:auto; flex:1; min-height:0; }
+.oftalmo-modal-footer{
+  padding:16px 22px; border-top:1px solid #e5e7eb;
+  display:flex; justify-content:flex-end; gap:10px; flex-shrink:0;
+}
+.oftalmo-cpf-row{ display:flex; gap:10px; }
+.oftalmo-radio-group{ display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; }
+.oftalmo-radio{
+  display:flex; align-items:center; gap:8px; padding:11px 16px;
+  border:1px solid #e5e7eb; border-radius:12px; cursor:pointer;
+  font-size:13px; font-weight:700; background:#fff;
+}
+.oftalmo-radio:has(input:checked){ border-color:#002e6d; background:#eff6ff; color:#002e6d; }
+.oftalmo-radio input{ display:none; }
+.oftalmo-validacao{ display:block; margin-top:8px; font-size:12px; font-weight:700; }
+.oftalmo-acoes-resumo{
+  background:#f8fafc; border-radius:16px; padding:16px;
+  border:1px solid #e5e7eb; font-size:13px; line-height:1.8; margin-bottom:16px;
+}
+.oftalmo-acoes-texto{ color:#64748b; font-weight:600; }
+.oftalmo-acoes-botoes{ display:flex; gap:10px; flex-wrap:wrap; }
+.oftalmo-filtros-actions{ display:flex; gap:10px; margin-top:14px; }
+
+@media(max-width:768px){
+  .oftalmo-header{ flex-direction:column; align-items:flex-start; }
+  .oftalmo-header-r{ width:100%; }
+  .oftalmo-data,.oftalmo-btn-carregar,.oftalmo-busca{ width:100%; min-width:auto; }
+  .oftalmo-resumo-dia{ grid-template-columns:1fr; }
+  .oftalmo-modal-premium,.oftalmo-modal-acoes{ max-height:95vh; }
+  .oftalmo-cpf-row{ flex-direction:column; }
+  .oftalmo-resumo{ grid-template-columns:1fr; }
+  .oftalmo-modal-footer{ flex-direction:column-reverse; }
+  .oftalmo-modal-footer button{ width:100%; }
+}
+/* =========================================================
+   CORREÇÃO DE CORES DO MODAL OFTALMO
+========================================================= */
+
+#modalOftalmo .oftalmo-modal-box,
+#modalOftalmoAcoes .oftalmo-modal-box,
+#modalFecharAgenda .oftalmo-modal-box {
+  color: #0f172a !important;
+}
+
+/* Labels dos campos */
+#modalOftalmo .field label,
+#modalOftalmo .section-subtitle {
+  color: #334155 !important;
+}
+
+/* Campos de formulário */
+#modalOftalmo input,
+#modalOftalmo select,
+#modalOftalmo textarea {
+  color: #0f172a !important;
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+/* Placeholder */
+#modalOftalmo input::placeholder,
+#modalOftalmo textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Etapas */
+#modalOftalmo .oftalmo-step {
+  color: #475569 !important;
+  background: #f8fafc !important;
+}
+
+#modalOftalmo .oftalmo-step strong {
+  color: #475569 !important;
+}
+
+#modalOftalmo .oftalmo-step.active {
+  background: #dbeafe !important;
+}
+
+#modalOftalmo .oftalmo-step.active strong {
+  color: #1d4ed8 !important;
+}
+
+/* Tipo trabalhador/dependente */
+#modalOftalmo .oftalmo-radio {
+  color: #334155 !important;
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+#modalOftalmo .oftalmo-radio:has(input:checked) {
+  color: #002e6d !important;
+  background: #eff6ff !important;
+  border-color: #002e6d !important;
+}
+
+/* Resumo data e horário */
+#modalOftalmo .oftalmo-resumo-item small {
+  color: #64748b !important;
+}
+
+#modalOftalmo .oftalmo-resumo-item strong {
+  color: #0f172a !important;
+}
+
+/* Rodapé */
+#modalOftalmo .oftalmo-modal-footer {
+  background: #ffffff !important;
+}
+
+/* Botão cancelar */
+#modalOftalmo .btn-secundario {
+  color: #334155 !important;
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+/* Mensagem de validação */
+#modalOftalmo .oftalmo-validacao {
+  color: #475569;
+}
+#modalOftalmo .form-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 16px !important;
+}
+
+#modalOftalmo .field {
+  min-width: 0;
+}
+
+#modalOftalmo .field input,
+#modalOftalmo .field select {
+  width: 100% !important;
+  min-height: 42px;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+#modalOftalmo .form-col-full {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 650px) {
+  #modalOftalmo .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  #modalOftalmo .form-col-full {
+    grid-column: auto;
+  }
+}
+/* =========================================================
+   MODAL OFTALMO — ALINHAMENTO E ORGANIZAÇÃO DOS CAMPOS
+========================================================= */
+
+#modalOftalmo .oftalmo-modal-premium {
+  width: min(720px, 96vw) !important;
+  max-width: 720px !important;
+  max-height: 92vh !important;
+}
+
+/* Corpo do formulário */
+#modalOftalmo .oftalmo-modal-body {
+  padding: 18px 24px 24px !important;
+}
+
+/* Grade principal */
+#modalOftalmo .form-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 16px 18px !important;
+  align-items: start !important;
+}
+
+/* Cada campo */
+#modalOftalmo .field {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 7px !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+}
+
+/* Rótulos */
+#modalOftalmo .field > label {
+  display: block !important;
+  margin: 0 !important;
+  color: #334155 !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  line-height: 1.3 !important;
+}
+
+/* Inputs e selects */
+#modalOftalmo .campo-input,
+#modalOftalmo input[type="text"],
+#modalOftalmo input[type="email"],
+#modalOftalmo input[type="date"],
+#modalOftalmo select {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 44px !important;
+  padding: 0 12px !important;
+  margin: 0 !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 11px !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+}
+
+/* Foco dos campos */
+#modalOftalmo .campo-input:focus,
+#modalOftalmo input:focus,
+#modalOftalmo select:focus {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
+}
+
+/* Placeholder */
+#modalOftalmo input::placeholder {
+  color: #94a3b8 !important;
+  font-weight: 500 !important;
+}
+
+/* Campo que ocupa a linha inteira */
+#modalOftalmo .form-col-full {
+  grid-column: 1 / -1 !important;
+}
+
+/* Linha CPF + botão Validar */
+#modalOftalmo .oftalmo-cpf-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 110px !important;
+  gap: 10px !important;
+  align-items: center !important;
+  width: 100% !important;
+}
+
+#modalOftalmo .oftalmo-cpf-row input {
+  width: 100% !important;
+}
+
+#modalOftalmo .oftalmo-cpf-row button {
+  width: 110px !important;
+  height: 44px !important;
+  justify-content: center !important;
+  border-radius: 11px !important;
+  white-space: nowrap !important;
+}
+
+/* Tipo de beneficiário */
+#modalOftalmo .oftalmo-radio-group {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  width: 100% !important;
+  margin-top: 4px !important;
+}
+
+#modalOftalmo .oftalmo-radio {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  min-height: 44px !important;
+  margin: 0 !important;
+  padding: 10px 12px !important;
+  border-radius: 11px !important;
+  box-sizing: border-box !important;
+}
+
+/* Títulos das seções */
+#modalOftalmo .section-subtitle {
+  grid-column: 1 / -1 !important;
+  margin: 20px 0 4px !important;
+  padding-bottom: 8px !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  color: #002e6d !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+}
+
+/* Validação CPF e idade */
+#modalOftalmo .oftalmo-validacao {
+  display: block !important;
+  min-height: 16px !important;
+  margin: 1px 0 0 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+}
+
+/* Resumo da data e horário */
+#modalOftalmo .oftalmo-resumo {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+  padding: 14px 24px !important;
+}
+
+#modalOftalmo .oftalmo-resumo-item {
+  min-width: 0 !important;
+  padding: 14px 16px !important;
+}
+
+/* Rodapé */
+#modalOftalmo .oftalmo-modal-footer {
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 16px 24px !important;
+  background: #ffffff !important;
+}
+
+#modalOftalmo .oftalmo-modal-footer button {
+  min-height: 42px !important;
+  padding: 0 18px !important;
+  border-radius: 11px !important;
+  font-weight: 800 !important;
+}
+
+/* Dependente */
+#modalOftalmo #oftalmoSecDependente {
+  grid-column: 1 / -1 !important;
+  width: 100% !important;
+}
+
+#modalOftalmo #oftalmoSecDependente .form-grid {
+  margin-top: 12px !important;
+}
+
+/* Responsivo */
+@media (max-width: 680px) {
+  #modalOftalmo .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  #modalOftalmo .form-col-full,
+  #modalOftalmo #oftalmoSecDependente {
+    grid-column: auto !important;
+  }
+
+  #modalOftalmo .oftalmo-cpf-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  #modalOftalmo .oftalmo-cpf-row button {
+    width: 100% !important;
+  }
+
+  #modalOftalmo .oftalmo-radio-group {
+    grid-template-columns: 1fr !important;
+  }
+
+  #modalOftalmo .oftalmo-resumo {
+    grid-template-columns: 1fr !important;
+  }
+
+  #modalOftalmo .oftalmo-modal-footer {
+    flex-direction: column-reverse !important;
+  }
+
+  #modalOftalmo .oftalmo-modal-footer button {
+    width: 100% !important;
+  }
+}
+/* =========================================================
+   HISTÓRICO OFTALMO — REFINO FUNCIONAL
+========================================================= */
+
+#oftalmoTabHistorico {
+  width: 100%;
+  padding-bottom: 45px;
+}
+
+#oftalmoTabHistorico .oftalmo-filtros {
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid #dbe3ee;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+#oftalmoTabHistorico .oftalmo-filtros .form-grid {
+  display: grid;
+  grid-template-columns:
+    minmax(150px, 1fr)
+    minmax(150px, 1fr)
+    minmax(140px, 180px);
+  gap: 14px;
+  align-items: end;
+}
+
+#oftalmoTabHistorico .oftalmo-filtros .field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#oftalmoTabHistorico .oftalmo-filtros label {
+  color: #334155 !important;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+#oftalmoTabHistorico .oftalmo-filtros input,
+#oftalmoTabHistorico .oftalmo-filtros select {
+  width: 100%;
+  height: 40px;
+  padding: 0 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+#oftalmoTabHistorico .oftalmo-filtros-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* Tabela específica do histórico */
+#oftalmoTabHistorico .oftalmo-table-card {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  border: 1px solid #dbe3ee;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+#oftalmoTabHistorico .oftalmo-tabela {
+  width: 100%;
+  min-width: 1080px;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+#oftalmoTabHistorico .oftalmo-tabela thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 11px 10px;
+  background: #f8fafc;
+  color: #475569 !important;
+  font-size: 10px;
+  font-weight: 900;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+#oftalmoTabHistorico .oftalmo-tabela tbody td {
+  height: 54px;
+  padding: 9px 10px !important;
+  overflow: hidden;
+  border-bottom: 1px solid #eef2f7;
+  color: #1e293b !important;
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#oftalmoTabHistorico .oftalmo-tabela tbody tr:hover {
+  background: #f8fbff !important;
+}
+
+/* Largura das 9 colunas */
+#oftalmoTabHistorico .oftalmo-tabela th:nth-child(1),
+#oftalmoTabHistorico .oftalmo-tabela td:nth-child(1) {
+  width: 92px;
+}
+
+#oftalmoTabHistorico .oftalmo-tabela th:nth-child(2),
+#oftalmoTabHistorico .oftalmo-tabela td:nth-child(2) {
+  width: 65px;
+}
+
+#oftalmoTabHistorico .oftalmo-tabela th:nth-child(3),
+#oftalmoTabHistorico .oftalmo-tabela td:nth-child(3) {
+  width: 102px;
+}
+
+#oftalmoTabHistorico .oftalmo-tabela th:nth-child(4),
+#oftalmoTabHistorico .oftalmo-tabela td:nth-child(4) {
+  width: 220px;
+}
+
+#oftalmoTabHistorico .oftalmo-tabela th:nth-child(5),
+#oftalmoTabHistorico .oftalmo-tabela td:nth-child(5) {
+  width: 125px;
+}
+
+#oftalmoTabHistorico .oftalmo-tabela th:nth-child(6),
+#oftalmoTabHistorico .oftalmo-tabela td:nth-child(6) {
+  width: 145px;
+}
+
+#oftalmoTabHistorico .oftalmo-tabela th:nth-child(7),
+#oftalmoTabHistorico .oftalmo-tabela td:nth-child(7) {
+  width: 100px;
+}
+
+#oftalmoTabHistorico .oftalmo-tabela th:nth-child(8),
+#oftalmoTabHistorico .oftalmo-tabela td:nth-child(8) {
+  width: 95px;
+}
+
+#oftalmoTabHistorico .oftalmo-tabela th:nth-child(9),
+#oftalmoTabHistorico .oftalmo-tabela td:nth-child(9) {
+  width: 190px;
+}
+
+/* Badges */
+.oft-hist-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 65px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 900;
+}
+
+.oft-hist-ativo {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.oft-hist-cancelado {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.oft-hist-compareceu {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.oft-hist-nao {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.oft-hist-tipo {
+  color: #334155;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.oft-hist-nome {
+  font-weight: 700;
+}
+
+/* Ações */
+.oft-hist-acoes {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.oft-hist-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.oft-hist-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(.96);
+}
+
+.oft-hist-btn-reenviar {
+  background: #16a34a;
+}
+
+.oft-hist-btn-imprimir {
+  width: 34px;
+  padding: 0;
+  background: #2563eb;
+}
+
+.oft-hist-btn-excluir {
+  width: 34px;
+  padding: 0;
+  background: #dc2626;
+}
+
+@media (max-width: 900px) {
+  #oftalmoTabHistorico .oftalmo-filtros .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

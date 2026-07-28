@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{ --navy:#002f6c; --gold:#C9A84C; --ok:#16a34a; --erro:#dc2626; }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ font-family:'Plus Jakarta Sans',system-ui,sans-serif; color:#1a2233; padding:16px; background:#f4f6fa; }
+  h2{ color:var(--navy); font-size:18px; margin-bottom:2px; }
+  .sub{ color:#6b7280; font-size:12px; margin-bottom:12px; }
+  .vagas{ background:var(--navy); color:#fff; border-radius:12px; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+  .vagas .n{ font-size:22px; font-weight:800; }
+  .vagas .teste{ background:var(--gold); color:#1a2233; font-size:11px; font-weight:800; padding:3px 8px; border-radius:999px; }
+  .card{ background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:14px; margin-bottom:12px; }
+  .card h3{ font-size:13px; color:var(--navy); font-weight:800; margin-bottom:8px; text-transform:uppercase; letter-spacing:.4px; }
+  label{ font-size:12px; font-weight:700; color:#42505f; display:block; margin:8px 0 4px; }
+  input,select{ width:100%; padding:9px 10px; border:1.5px solid #d3dbe4; border-radius:9px; font-size:14px; font-family:inherit; }
+  input:focus,select:focus{ outline:none; border-color:var(--navy); }
+  .row{ display:flex; gap:10px; } .row>*{ flex:1; }
+  .busca-res{ border:1px solid #e2e8f0; border-radius:9px; margin-top:4px; max-height:160px; overflow:auto; display:none; }
+  .busca-res div{ padding:8px 10px; cursor:pointer; font-size:13px; border-bottom:1px solid #f1f5f9; }
+  .busca-res div:hover{ background:#f4f6fa; }
+  .badge{ font-size:10px; font-weight:800; padding:2px 7px; border-radius:999px; margin-left:6px; }
+  .bS{ background:#e6f4ea; color:#16733a; } .bN{ background:#fdecea; color:#b3261e; }
+  .btn{ padding:10px 14px; border:none; border-radius:9px; font-weight:800; font-family:inherit; font-size:14px; cursor:pointer; }
+  .btn.p{ background:var(--navy); color:#fff; width:100%; }
+  .btn.g{ background:#eef2f8; color:var(--navy); }
+  .btn.x{ background:transparent; color:var(--erro); padding:4px 8px; font-size:18px; }
+  .add-btns{ display:flex; gap:8px; margin:8px 0; }
+  .add-btns .btn{ flex:1; }
+  .item{ background:#fff; border:1px solid #e2e8f0; border-left:4px solid var(--navy); border-radius:9px; padding:10px; margin-bottom:8px; }
+  .item.conv{ border-left-color:#0ea5e9; } .item.acmp{ border-left-color:var(--gold); }
+  .item .top{ display:flex; justify-content:space-between; align-items:center; }
+  .tag{ font-size:10px; font-weight:800; padding:2px 8px; border-radius:999px; text-transform:uppercase; }
+  .tag.assoc{ background:#e6ecf7; color:var(--navy); } .tag.conv{ background:#e0f2fe; color:#075985; } .tag.acmp{ background:#faf3dd; color:#8a6d1a; }
+  .res{ margin-top:12px; }
+  .res .linha{ padding:8px 12px; border-radius:8px; margin-bottom:6px; font-size:13px; }
+  .res .ok{ background:#e6f4ea; color:#14532d; } .res .er{ background:#fdecea; color:#7f1d1d; }
+  .aviso{ font-size:12px; color:#6b7280; margin-top:4px; }
+</style>
+</head>
+<body>
+  <h2>Emissão de Ingressos</h2>
+  <div class="sub">Festa Compasso da Vida 2026</div>
+
+  <div class="vagas">
+    <div><div class="n" id="vRest">—</div><div style="font-size:11px;opacity:.8">vagas restantes de <span id="vLim">2000</span></div></div>
+    <div id="vTeste"></div>
+  </div>
+
+  <div class="card">
+    <h3>Titular (associado)</h3>
+    <label>Buscar por nome ou CPF</label>
+    <input id="busca" placeholder="Digite o nome ou CPF do associado…" autocomplete="off">
+    <div class="busca-res" id="buscaRes"></div>
+
+    <div id="titularForm" style="display:none;margin-top:10px">
+      <div class="row">
+        <div><label>Nome</label><input id="tNome"></div>
+        <div><label>CPF</label><input id="tCpf"></div>
+      </div>
+      <label>Escola (sugerida — pode editar)</label>
+      <input id="tEscola">
+      <div class="row">
+        <div><label>WhatsApp</label><input id="tWhats"></div>
+        <div><label>E-mail</label><input id="tEmail"></div>
+      </div>
+      <input type="hidden" id="tMatricula"><input type="hidden" id="tFiliado">
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Grupo</h3>
+    <div class="add-btns">
+      <button class="btn g" onclick="addExtra('convidado')">+ Convidado (grátis)</button>
+      <button class="btn g" onclick="addExtra('acompanhante')">+ Acompanhante (R$500)</button>
+    </div>
+    <div id="lista"></div>
+    <div class="aviso" id="listaVazia">Adicione o titular pela busca e, se quiser, convidados/acompanhantes.</div>
+  </div>
+
+  <div class="card">
+    <label>Operador (quem está emitindo)</label>
+    <input id="operador" value="Marcelha">
+    <button class="btn p" style="margin-top:12px" onclick="emitir()" id="btnEmitir">Emitir ingressos</button>
+    <div class="res" id="resultado"></div>
+  </div>
+
+<script>
+  var titular = null;
+  var extras = [];
+  var buscaTimer = null;
+
+  function money(v){ return 'R$ ' + v.toFixed(2).replace('.', ','); }
+
+  // ---- status de vagas ----
+  function carregarStatus(){
+    google.script.run.withSuccessHandler(function(s){
+      document.getElementById('vRest').textContent = s.restantes;
+      document.getElementById('vLim').textContent = s.limite;
+      document.getElementById('vTeste').innerHTML = s.modoTeste ? '<span class="teste">MODO TESTE</span>' : '';
+    }).painelEmissao_status();
+  }
+
+  // ---- busca de associado ----
+  document.getElementById('busca').addEventListener('input', function(){
+    var termo = this.value.trim();
+    clearTimeout(buscaTimer);
+    if(termo.length < 2){ document.getElementById('buscaRes').style.display='none'; return; }
+    buscaTimer = setTimeout(function(){
+      google.script.run.withSuccessHandler(mostrarBusca).painelEmissao_buscar(termo);
+    }, 300);
+  });
+
+  function mostrarBusca(lista){
+    var box = document.getElementById('buscaRes');
+    if(!lista || !lista.length){ box.style.display='none'; return; }
+    box.innerHTML = '';
+    lista.forEach(function(a){
+      var d = document.createElement('div');
+      var bcls = a.filiado === 'S' ? 'bS' : 'bN';
+      var btxt = a.filiado === 'S' ? 'Filiado' : 'Não filiado';
+      d.innerHTML = '<strong>'+a.nome+'</strong> <span class="badge '+bcls+'">'+btxt+'</span><br><span style="color:#6b7280">'+(a.cpf||'')+'</span>';
+      d.onclick = function(){ selecionarTitular(a); };
+      box.appendChild(d);
+    });
+    box.style.display='block';
+  }
+
+  function selecionarTitular(a){
+    titular = a;
+    document.getElementById('tNome').value = a.nome || '';
+    document.getElementById('tCpf').value = a.cpf || '';
+    document.getElementById('tEscola').value = a.escola || '';
+    document.getElementById('tWhats').value = a.whatsapp || '';
+    document.getElementById('tEmail').value = a.email || '';
+    document.getElementById('tMatricula').value = a.matricula || '';
+    document.getElementById('tFiliado').value = a.filiado || '';
+    document.getElementById('titularForm').style.display='block';
+    document.getElementById('buscaRes').style.display='none';
+    document.getElementById('busca').value = a.nome || '';
+  }
+
+  // ---- extras (convidado/acompanhante) ----
+  function addExtra(tipo){
+    extras.push({ tipo:tipo, nome:'', escola:'', pagamentoForma:'' });
+    render();
+  }
+  function removeExtra(i){ extras.splice(i,1); render(); }
+
+  function render(){
+    var lista = document.getElementById('lista');
+    lista.innerHTML = '';
+    document.getElementById('listaVazia').style.display = extras.length ? 'none' : 'block';
+    extras.forEach(function(ex, i){
+      var cls = ex.tipo === 'convidado' ? 'conv' : 'acmp';
+      var tag = ex.tipo === 'convidado' ? '<span class="tag conv">Convidado · grátis</span>' : '<span class="tag acmp">Acompanhante · '+money(500)+'</span>';
+      var div = document.createElement('div');
+      div.className = 'item ' + cls;
+      var pgHtml = '';
+      if(ex.tipo === 'acompanhante'){
+        pgHtml = '<label>Forma de pagamento (obrigatória)</label>'+
+          '<select onchange="extras['+i+'].pagamentoForma=this.value">'+
+          '<option value="">— selecione —</option>'+
+          '<option '+(ex.pagamentoForma==='Cartão'?'selected':'')+'>Cartão</option>'+
+          '<option '+(ex.pagamentoForma==='PicPay'?'selected':'')+'>PicPay</option>'+
+          '<option '+(ex.pagamentoForma==='Depósito'?'selected':'')+'>Depósito</option></select>';
+      }
+      div.innerHTML =
+        '<div class="top">'+tag+'<button class="btn x" onclick="removeExtra('+i+')">×</button></div>'+
+        '<label>Nome</label><input value="'+ex.nome+'" oninput="extras['+i+'].nome=this.value">'+
+        '<label>Escola (opcional)</label><input value="'+ex.escola+'" oninput="extras['+i+'].escola=this.value">'+
+        pgHtml;
+      lista.appendChild(div);
+    });
+  }
+
+  // ---- emitir ----
+  function emitir(){
+    var itens = [];
+    if(titular){
+      itens.push({
+        categoria:'associado',
+        nome: document.getElementById('tNome').value,
+        escola: document.getElementById('tEscola').value,
+        cpf: document.getElementById('tCpf').value,
+        email: document.getElementById('tEmail').value,
+        whatsapp: document.getElementById('tWhats').value,
+        matricula: document.getElementById('tMatricula').value,
+        filiado: document.getElementById('tFiliado').value
+      });
+    }
+    var titNome = titular ? document.getElementById('tNome').value : '';
+    var titCpf  = titular ? document.getElementById('tCpf').value : '';
+    for(var i=0;i<extras.length;i++){
+      var ex = extras[i];
+      if(!ex.nome.trim()){ alert('Preencha o nome de todos os convidados/acompanhantes.'); return; }
+      if(ex.tipo==='acompanhante' && !ex.pagamentoForma){ alert('Escolha a forma de pagamento de todos os acompanhantes.'); return; }
+      itens.push({ categoria:ex.tipo, nome:ex.nome, escola:ex.escola, pagamentoForma:ex.pagamentoForma, titularNome:titNome, titularCpf:titCpf });
+    }
+    if(!itens.length){ alert('Adicione ao menos o titular (busque um associado) ou um convidado/acompanhante.'); return; }
+
+    var btn = document.getElementById('btnEmitir');
+    btn.disabled = true; btn.textContent = 'Emitindo…';
+    google.script.run.withSuccessHandler(function(res){
+      mostrarResultado(res);
+      btn.disabled = false; btn.textContent = 'Emitir ingressos';
+      carregarStatus();
+    }).withFailureHandler(function(e){
+      btn.disabled = false; btn.textContent = 'Emitir ingressos';
+      alert('Erro: ' + e.message);
+    }).painelEmissao_emitirGrupo(itens, document.getElementById('operador').value);
+  }
+
+  function mostrarResultado(res){
+    var box = document.getElementById('resultado');
+    box.innerHTML = '<h3 style="color:#002f6c;font-size:13px;margin-bottom:6px">Resultado</h3>';
+    res.forEach(function(r){
+      var d = document.createElement('div');
+      if(r.ok){ d.className='linha ok'; d.textContent='✅ '+r.numero+' — '+r.nome+' ('+r.categoria+')'+(r.valor?(' · '+money(r.valor)):''); }
+      else{ d.className='linha er'; d.textContent='❌ '+(r.nome||'')+' — '+r.erro; }
+      box.appendChild(d);
+    });
+    // limpa pra próxima emissão
+    titular=null; extras=[];
+    document.getElementById('titularForm').style.display='none';
+    document.getElementById('busca').value='';
+    render();
+  }
+
+  carregarStatus();
+  render();
+</script>
+</body>
+</html>

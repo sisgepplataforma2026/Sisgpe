@@ -1,0 +1,1085 @@
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --navy: #001f4d; --navy2: #002f6c; --blue: #1565C0;
+    --gold: #C9A84C; --gold2: #f0c843;
+    --bg: #f0f4f8; --g50: #f8fafc; --g100: #f1f5f9;
+    --g200: #e2e8f0; --g300: #cbd5e1; --g400: #94a3b8;
+    --g500: #64748b; --g600: #475569; --g700: #334155;
+    --g800: #1e293b; --g900: #0f172a;
+    --green: #059669; --green-lt: #d1fae5;
+    --amber: #d97706; --amber-lt: #fef3c7;
+    --red: #dc2626; --red-lt: #fee2e2;
+    --purple: #7c3aed; --purple-lt: #ede9fe;
+  }
+
+  .page-hero {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 40%, #0a47a0 70%, #1565C0 100%);
+    padding: 36px 32px 100px; position: relative; overflow: hidden;
+  }
+  .page-hero::after {
+    content: 'PREST'; position: absolute; right: -10px; top: -20px;
+    font-size: 150px; font-weight: 900; color: transparent;
+    -webkit-text-stroke: 1px rgba(255,255,255,.04);
+    letter-spacing: -.05em; pointer-events: none; user-select: none;
+  }
+  .hero-eyebrow { font-size: 11px; font-weight: 700; color: var(--gold); letter-spacing: .14em; text-transform: uppercase; margin-bottom: 10px; }
+  .page-hero h1 { font-size: 28px; font-weight: 900; color: #fff; letter-spacing: -.5px; line-height: 1.1; margin-bottom: 8px; }
+  .page-hero p  { font-size: 13px; color: rgba(255,255,255,.55); }
+  .page-hero-inner { position: relative; z-index: 1; display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+
+  .metrics-wrapper { padding: 0 32px; margin-top: -68px; position: relative; z-index: 10; margin-bottom: 28px; }
+  .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .metric-card { background: #fff; border-radius: 16px; padding: 18px 16px; box-shadow: 0 8px 32px rgba(0,20,60,.14); position: relative; overflow: hidden; }
+  .metric-accent { position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 16px 16px 0 0; }
+  .ac-navy  { background: linear-gradient(90deg, var(--navy2), var(--blue)); }
+  .ac-green { background: linear-gradient(90deg, var(--green), #34d399); }
+  .ac-gold  { background: linear-gradient(90deg, var(--gold), var(--gold2)); }
+  .ac-amber { background: linear-gradient(90deg, var(--amber), #fbbf24); }
+  .metric-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .metric-lbl { font-size: 11.5px; font-weight: 700; color: var(--g500); text-transform: uppercase; letter-spacing: .04em; }
+  .metric-ico { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+  .ico-navy  { background: #eef3fc; }
+  .ico-green { background: var(--green-lt); }
+  .ico-gold  { background: #fefce8; }
+  .ico-amber { background: var(--amber-lt); }
+  .metric-val { font-size: 28px; font-weight: 900; color: var(--g900); line-height: 1; margin-bottom: 5px; }
+  .metric-sub { font-size: 11px; color: var(--g400); font-weight: 500; }
+
+  .content-area { padding: 0 32px 60px; }
+
+  .msg-box { border-radius: 12px; font-size: 13.5px; font-weight: 600; margin-bottom: 18px; line-height: 1.5; }
+  .msg-box:empty { display: none; }
+  .msg-box.ok   { background: var(--green-lt); border: 1px solid #6ee7b7; color: #065f46; padding: 13px 16px; }
+  .msg-box.erro { background: var(--red-lt);   border: 1px solid #fca5a5; color: #9f1239;  padding: 13px 16px; }
+  .msg-box.warn { background: var(--amber-lt); border: 1px solid #fcd34d; color: #92400e;  padding: 13px 16px; }
+  .msg-box.info { background: #eff6ff;          border: 1px solid #93c5fd; color: #1d4ed8;  padding: 13px 16px; }
+
+  .card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,.055); box-shadow: 0 2px 12px rgba(0,20,60,.06); overflow: hidden; margin-bottom: 16px; }
+  .card-head { padding: 18px 22px 14px; border-bottom: 1px solid var(--g100); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .card-head-l { display: flex; align-items: center; gap: 12px; }
+  .card-head-ico { width: 36px; height: 36px; border-radius: 9px; background: var(--g100); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .card-title { font-size: 14px; font-weight: 800; color: var(--g900); }
+  .card-sub   { font-size: 11px; color: var(--g400); margin-top: 2px; }
+  .card-body  { padding: 20px 22px; }
+
+  .filtro-select { height: 38px; border-radius: 999px; border: 1.5px solid var(--g200); padding: 0 14px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12.5px; font-weight: 600; color: var(--g700); background: #fff; outline: none; cursor: pointer; transition: border-color .16s; }
+  .filtro-select:focus { border-color: var(--blue); }
+  .filtro-busca { height: 38px; border-radius: 999px; border: 1.5px solid var(--g200); padding: 0 18px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; outline: none; width: 240px; transition: border-color .16s; }
+  .filtro-busca:focus { border-color: var(--blue); }
+
+  .tabela-wrap { overflow-x: auto; }
+  .tabela { width: 100%; min-width: 900px; border-collapse: collapse; }
+  .tabela thead { background: var(--g50); }
+  .tabela th { padding: 12px 14px; text-align: left; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--g500); border-bottom: 1px solid var(--g200); white-space: nowrap; }
+  .tabela td { padding: 12px 14px; font-size: 13px; color: var(--g700); border-bottom: 1px solid var(--g100); }
+  .tabela tbody tr:last-child td { border-bottom: none; }
+  .tabela tbody tr:hover { background: var(--g50); }
+  .tabela-vazia { text-align: center; padding: 52px 20px; color: var(--g400); font-size: 14px; }
+
+  .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700; border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+  .badge-cat-fixo     { background: #eff6ff; color: #1d4ed8; border: 1px solid #93c5fd; }
+  .badge-cat-mensal   { background: var(--green-lt); color: #065f46; border: 1px solid #6ee7b7; }
+  .badge-cat-aluguel  { background: var(--purple-lt); color: #5b21b6; border: 1px solid #c4b5fd; }
+  .badge-cat-variavel { background: var(--amber-lt); color: #92400e; border: 1px solid #fcd34d; }
+  .badge-cat-outra    { background: var(--g100); color: var(--g600); border: 1px solid var(--g200); }
+  .badge-sem-email    { background: var(--amber-lt); color: #92400e; border: 1px solid #fcd34d; }
+
+  .paginacao { display: flex; align-items: center; justify-content: space-between; padding: 14px 22px; border-top: 1px solid var(--g100); flex-wrap: wrap; gap: 10px; }
+  .paginacao-info { font-size: 12px; color: var(--g500); font-weight: 600; }
+  .paginacao-btns { display: flex; gap: 6px; }
+  .page-btn { height: 32px; min-width: 32px; padding: 0 10px; border-radius: 8px; border: 1.5px solid var(--g200); background: #fff; color: var(--g700); font-size: 12px; font-weight: 700; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; transition: all .15s; }
+  .page-btn:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); }
+  .page-btn.active { background: var(--navy); border-color: var(--navy); color: #fff; }
+  .page-btn:disabled { opacity: .35; cursor: not-allowed; }
+
+  .acoes { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .btn { display: inline-flex; align-items: center; gap: 7px; height: 42px; padding: 0 18px; border: none; border-radius: 999px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: all .18s; white-space: nowrap; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-primary   { background: linear-gradient(135deg, var(--navy2), var(--blue)); color: #fff; box-shadow: 0 4px 14px rgba(0,47,108,.25); }
+  .btn-primary:hover:not(:disabled) { transform: translateY(-2px); }
+  .btn-secondary { background: #fff; color: var(--g700); border: 1.5px solid var(--g200); }
+  .btn-secondary:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); background: #eef5ff; }
+  .btn-red   { background: #fff; color: var(--red); border: 1.5px solid #fca5a5; }
+  .btn-red:hover:not(:disabled) { background: var(--red-lt); border-color: var(--red); }
+  .btn-sm { height: 34px; padding: 0 14px; font-size: 12px; }
+  .btn-xs { height: 28px; padding: 0 10px; font-size: 11px; }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.52); display: none; align-items: center; justify-content: center; padding: 18px; z-index: 9999; backdrop-filter: blur(3px); }
+  .modal-overlay.ativo { display: flex; }
+  .modal-box { width: min(760px, 100%); background: #fff; border-radius: 20px; box-shadow: 0 30px 80px rgba(0,20,60,.28); overflow: hidden; max-height: 95vh; display: flex; flex-direction: column; }
+  .modal-head { padding: 20px 24px; border-bottom: 1px solid var(--g100); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
+  .modal-head-l { display: flex; align-items: center; gap: 12px; }
+  .modal-head-ico { width: 40px; height: 40px; border-radius: 11px; background: linear-gradient(135deg, var(--navy2), var(--blue)); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .modal-title { font-size: 16px; font-weight: 900; color: var(--g900); }
+  .modal-sub   { font-size: 11px; color: var(--g500); margin-top: 3px; }
+  .modal-body  { padding: 22px 24px; overflow-y: auto; flex: 1; }
+  .modal-foot  { padding: 16px 24px; border-top: 1px solid var(--g100); display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; flex-shrink: 0; }
+  .btn-close-modal { width: 38px; height: 38px; border-radius: 999px; border: 1.5px solid var(--g200); background: #fff; color: var(--g700); cursor: pointer; font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: all .15s; }
+  .btn-close-modal:hover { background: var(--red-lt); border-color: var(--red); color: var(--red); }
+
+  .form-section { margin-bottom: 20px; }
+  .form-section-title { font-size: 11px; font-weight: 800; letter-spacing: .10em; text-transform: uppercase; color: var(--g400); margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--g100); }
+  .form-grid   { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .form-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .col-full { grid-column: 1 / -1; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 11px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--g500); }
+  .field input, .field select, .field textarea { width: 100%; min-height: 44px; border-radius: 11px; border: 1.5px solid var(--g300); background: #fff; color: var(--g800); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13.5px; padding: 0 14px; outline: none; transition: border-color .16s, box-shadow .16s; }
+  .field textarea { min-height: 80px; padding: 12px 14px; resize: vertical; line-height: 1.55; }
+  .field input::placeholder { color: var(--g400); }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 4px rgba(21,101,192,.10); }
+  .field-help { font-size: 11px; color: var(--g400); line-height: 1.4; margin-top: 2px; }
+
+  .sem-email-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 12px; flex-wrap: wrap; }
+
+  @media (max-width: 980px) { .metrics-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 700px) {
+    .metrics-wrapper, .content-area { padding-left: 16px; padding-right: 16px; }
+    .page-hero { padding: 28px 16px 90px; }
+    .metrics-grid, .form-grid, .form-grid-3 { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="page-hero">
+  <div class="page-hero-inner">
+    <div>
+      <div class="hero-eyebrow">SindEducação-ES · SISGEP</div>
+      <h1>Cadastro de Prestadores</h1>
+      <p>Prestadores fixos e recorrentes vinculados à gestão de despesas</p>
+    </div>
+  </div>
+</div>
+
+<div class="metrics-wrapper">
+  <div class="metrics-grid">
+    <div class="metric-card">
+      <div class="metric-accent ac-navy"></div>
+      <div class="metric-top"><span class="metric-lbl">Total</span><div class="metric-ico ico-navy">👥</div></div>
+      <div class="metric-val" id="statTotal">—</div>
+      <div class="metric-sub">Prestadores cadastrados</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-accent ac-green"></div>
+      <div class="metric-top"><span class="metric-lbl">Com e-mail</span><div class="metric-ico ico-green">📧</div></div>
+      <div class="metric-val" id="statComEmail">—</div>
+      <div class="metric-sub">Receberão lembretes automáticos</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-accent ac-gold"></div>
+      <div class="metric-top"><span class="metric-lbl">Com WhatsApp</span><div class="metric-ico ico-gold">📱</div></div>
+      <div class="metric-val" id="statComWhats">—</div>
+      <div class="metric-sub">WhatsApp cadastrado</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-accent ac-amber"></div>
+      <div class="metric-top"><span class="metric-lbl">Sem e-mail</span><div class="metric-ico ico-amber">⚠️</div></div>
+      <div class="metric-val" id="statSemEmail">—</div>
+      <div class="metric-sub">Precisam de atenção</div>
+    </div>
+  </div>
+</div>
+
+<div class="content-area">
+  <div class="msg-box" id="msgBox"></div>
+
+  <div class="card" style="margin-bottom:20px;">
+    <div class="card-body" style="padding:16px 20px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+        <div class="acoes">
+          <button type="button" class="btn btn-primary" id="btnNovoPrestador">➕ Novo Prestador</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="btnExportarCsv">📤 Exportar CSV</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="btnVerSemEmail" style="border-color:var(--amber);color:var(--amber);">⚠️ Sem E-mail</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="btnSelecionarTodos">☑️ Selecionar todos</button>
+          <button type="button" class="btn btn-primary btn-sm" id="btnEnviarLote" disabled>📨 Enviar Lembretes</button>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <input type="text" id="campoBusca" placeholder="🔍 Buscar por nome ou documento..." class="filtro-busca">
+          <button type="button" class="btn btn-secondary btn-sm" id="btnRecarregar">↻ Recarregar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-head-l">
+        <div class="card-head-ico">👥</div>
+        <div>
+<div class="card-title">Lista de Prestadores</div>
+          <div class="card-sub" id="subTabelaInfo">Carregando...</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <select class="filtro-select" id="filtroCategoria">
+          <option value="">Todas as categorias</option>
+        </select>
+      </div>
+    </div>
+    <div class="tabela-wrap">
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th style="width:36px;text-align:center;"></th>
+            <th>Prestador</th>
+            <th>Categoria</th>
+            <th>Documento</th>
+            <th>E-mail / WhatsApp</th>
+            <th>Valor Padrão</th>
+            <th>Dia Venc.</th>
+            <th>Tipo de Doc</th>
+            <th style="text-align:center;">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="corpoTabela">
+          <tr><td colspan="9"><div class="tabela-vazia">⏳ Carregando...</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="paginacao" id="paginacaoWrap" style="display:none;">
+      <div class="paginacao-info" id="paginacaoInfo"></div>
+      <div class="paginacao-btns" id="paginacaoBtns"></div>
+    </div>
+  </div>
+
+  <div class="card" id="cardSemEmailWrapper" style="border-left:4px solid var(--amber);display:none;margin-top:8px;">
+    <div class="card-head">
+      <div class="card-head-l">
+        <div class="card-head-ico">⚠️</div>
+        <div>
+          <div class="card-title">Prestadores sem E-mail</div>
+          <div class="card-sub">Sem e-mail não receberão lembretes automáticos</div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="fecharCardSemEmail()">✕ Fechar</button>
+    </div>
+    <div class="card-body" id="cardSemEmailBody">
+      <div style="color:var(--g400);font-size:13px;text-align:center;padding:12px 0;">Carregando...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+var _listaTodos     = [];
+var _listaFiltrada  = [];
+var _buscarTimer    = null;
+var _paginaAtual    = 1;
+var _itensPorPagina = 15;
+var _selecionados   = {};
+var _root           = null;
+
+function g(id){
+  if(_root){ var el=_root.querySelector("#"+id); if(el) return el; }
+  return document.getElementById(id);
+}
+function dm(id){ return document.getElementById(id); }
+
+function confirmar(opcoes, callback){
+  var modal  = dm("modalConfirm");
+  var ico    = dm("modalConfirmIco");
+  var titulo = dm("modalConfirmTitulo");
+  var sub    = dm("modalConfirmSub");
+  var info   = dm("modalConfirmInfo");
+  var desc   = dm("modalConfirmDesc");
+  var btnOk  = dm("modalConfirmOk");
+  var btnCan = dm("modalConfirmCancelar");
+
+  ico.textContent          = opcoes.ico    || "❓";
+  ico.style.background     = opcoes.icoBg  || "linear-gradient(135deg,#002f6c,#1565C0)";
+  titulo.textContent       = opcoes.titulo || "Confirmar";
+  sub.textContent          = opcoes.sub    || "";
+  info.innerHTML           = opcoes.info   || "";
+  info.style.background    = opcoes.infoBg || "#eff6ff";
+  info.style.border        = opcoes.infoBorder || "1px solid #93c5fd";
+  desc.innerHTML           = opcoes.desc   || "";
+  btnOk.textContent        = opcoes.btnOk  || "Confirmar";
+  btnOk.style.background   = opcoes.btnBg  || "linear-gradient(135deg,#002f6c,#1565C0)";
+
+  modal.style.display = "flex";
+
+  function fechar(resultado){
+    modal.style.display = "none";
+    btnOk.removeEventListener("click",  onOk);
+    btnCan.removeEventListener("click", onCan);
+    callback(resultado);
+  }
+  function onOk(){  fechar(true);  }
+  function onCan(){ fechar(false); }
+
+  btnOk.addEventListener("click",  onOk);
+  btnCan.addEventListener("click", onCan);
+  modal.addEventListener("click", function(e){ if(e.target===modal) fechar(false); }, {once:true});
+}
+
+function escHtml(t){ return String(t||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function onlyDigits(v){ return String(v||"").replace(/\D/g,""); }
+function normText(t){ return String(t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim(); }
+
+function msg(texto, tipo){
+  var box=g("msgBox"); if(!box) return;
+  box.className="msg-box "+(tipo||"info");
+  box.innerHTML=texto||"";
+  if(texto) box.scrollIntoView({behavior:"smooth",block:"nearest"});
+  if(tipo==="ok") setTimeout(function(){ box.innerHTML=""; },10000);
+}
+function setBtnLoading(btn,texto){ if(!btn) return; btn.disabled=true; btn._orig=btn.innerHTML; btn.innerHTML="⏳ "+(texto||"Aguarde..."); }
+function resetBtn(btn){ if(!btn) return; btn.disabled=false; if(btn._orig!==undefined) btn.innerHTML=btn._orig; }
+
+function mascaraDoc(el){
+  if(!el) return;
+  var v=onlyDigits(el.value);
+  if(v.length<=11){
+    v=v.replace(/^(\d{3})(\d)/,"$1.$2").replace(/^(\d{3})\.(\d{3})(\d)/,"$1.$2.$3").replace(/\.(\d{3})(\d)/,".$1-$2");
+  } else {
+    v=v.replace(/^(\d{2})(\d)/,"$1.$2").replace(/^(\d{2})\.(\d{3})(\d)/,"$1.$2.$3").replace(/\.(\d{3})(\d)/,".$1/$2").replace(/(\d{4})(\d)/,"$1-$2");
+  }
+  el.value=v;
+}
+function mascaraValor(el){
+  if(!el) return;
+  var v=String(el.value||"").replace(/\D/g,"");
+  if(!v){ el.value=""; return; }
+  el.value="R$ "+(parseInt(v,10)/100).toFixed(2).replace(".",",");
+}
+function mascaraTelefone(el){
+  if(!el) return;
+  var v=onlyDigits(el.value).slice(0,11);
+  el.value=v.length<=10
+    ?v.replace(/^(\d{2})(\d)/,"($1) $2").replace(/(\d{4})(\d)/,"$1-$2")
+    :v.replace(/^(\d{2})(\d)/,"($1) $2").replace(/(\d{5})(\d)/,"$1-$2");
+}
+
+function badgeCategoria(cat){
+  var mapa={
+    "Mensalidade":      ["badge-cat-mensal",  "📋"],
+    "Contrato Mensal":  ["badge-cat-mensal",  "📋"],
+    "Aluguel":          ["badge-cat-aluguel", "🏠"],
+    "Variavel":         ["badge-cat-variavel","💸"],
+    "Taxas":            ["badge-cat-outra",   "📜"],
+    "Outro":            ["badge-cat-outra",   "📌"]
+  };
+  if(!cat) return '<span class="badge badge-cat-outra">📌 Sem categoria</span>';
+  var dados=mapa[cat]||["badge-cat-outra","📌"];
+  return '<span class="badge '+dados[0]+'">'+dados[1]+' '+escHtml(cat)+'</span>';
+}
+
+function atualizarMetricas(resp){
+  if(g("statTotal"))    g("statTotal").textContent    = resp.total||0;
+  if(g("statComEmail")) g("statComEmail").textContent = resp.comEmail||0;
+  if(g("statComWhats")) g("statComWhats").textContent = resp.comWhatsapp||0;
+  if(g("statSemEmail")) g("statSemEmail").textContent = (resp.total||0)-(resp.comEmail||0);
+
+  var cats = resp.categorias || [];
+  if(!cats.length) return;
+
+  var selFiltro = g("filtroCategoria");
+  if(selFiltro){
+    var atualFiltro = selFiltro.value;
+    selFiltro.innerHTML = '<option value="">Todas as categorias</option>';
+    cats.forEach(function(c){
+      var opt = document.createElement("option");
+      opt.value = c; opt.textContent = c;
+      if(c === atualFiltro) opt.selected = true;
+      selFiltro.appendChild(opt);
+    });
+  }
+
+  var selModal = document.getElementById("mpCategoria");
+  if(selModal){
+    var atualModal = selModal.value;
+    selModal.innerHTML = '<option value="">Selecione...</option>';
+    cats.forEach(function(c){
+      var opt = document.createElement("option");
+      opt.value = c; opt.textContent = c;
+      if(c === atualModal) opt.selected = true;
+      selModal.appendChild(opt);
+    });
+  }
+}
+function aplicarFiltros(){
+  var busca     = normText(g("campoBusca")?g("campoBusca").value:"");
+  var categoria = g("filtroCategoria")?g("filtroCategoria").value:"";
+  _listaFiltrada = _listaTodos.filter(function(p){
+    if(categoria && normText(p.categoria)!==normText(categoria)) return false;
+    if(busca){
+      var txt=normText([p.nome,p.documento,p.email,p.categoria].join(" "));
+      if(txt.indexOf(busca)===-1) return false;
+    }
+    return true;
+  });
+  _paginaAtual=1; renderTabela();
+}
+
+function atualizarBtnLote(){
+  var qtd=Object.keys(_selecionados).length;
+  var btn=g("btnEnviarLote");
+  if(btn){
+    btn.disabled=qtd===0;
+    btn.innerHTML=qtd>0?"📨 Enviar Lembrete ("+qtd+" selecionados)":"📨 Enviar Lembretes";
+  }
+}
+
+function renderTabela(){
+  var tbody=g("corpoTabela");
+  if(!tbody) return;
+  var info=g("subTabelaInfo");
+
+  if(!_listaFiltrada.length){
+    if(info) info.textContent="Nenhum prestador encontrado";
+    tbody.innerHTML='<tr><td colspan="9"><div class="tabela-vazia">📭 Nenhum prestador encontrado.</div></td></tr>';
+    if(g("paginacaoWrap")) g("paginacaoWrap").style.display="none";
+    return;
+  }
+
+  var total    = _listaFiltrada.length;
+  var totalPag = Math.ceil(total/_itensPorPagina);
+  if(_paginaAtual>totalPag) _paginaAtual=totalPag;
+
+  var inicio = (_paginaAtual-1)*_itensPorPagina;
+  var pagina = _listaFiltrada.slice(inicio, inicio+_itensPorPagina);
+  if(info) info.textContent=total+" prestador(es) encontrado(s)";
+
+  var icoEmail = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>';
+  var icoPhone = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.15 12 19.79 19.79 0 0 1 1.08 3.48 2 2 0 0 1 3 1.07h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16z"/></svg>';
+  var icoWarn  = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+  var icoSend  = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>';
+  var icoEdit  = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+  var icoTrash = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
+
+  var html="";
+  pagina.forEach(function(p){
+    var temEmail = !!p.email;
+    var temWhats = !!p.whatsapp;
+    var checked  = _selecionados[p.rowIndex]?" checked":"";
+
+    var foneWA = temWhats ? p.whatsapp.replace(/\D/g,"") : "";
+    if(foneWA.length===10||foneWA.length===11) foneWA="55"+foneWA;
+
+    var contatoHtml = "";
+    if(temEmail){
+      contatoHtml += '<a href="mailto:'+escHtml(p.email)+'" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:#0c447c;background:#e6f1fb;border:1px solid #85b7eb;border-radius:6px;padding:3px 8px;text-decoration:none;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+icoEmail+escHtml(p.email)+'</a>';
+    } else {
+      contatoHtml += '<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:#633806;background:#faeeda;border:1px solid #ef9f27;border-radius:6px;padding:3px 8px;">'+icoWarn+'Sem e-mail</span>';
+    }
+    if(temWhats){
+      contatoHtml += '<br><a href="https://wa.me/'+foneWA+'" target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:#085041;background:#e1f5ee;border:1px solid #5dcaa5;border-radius:6px;padding:3px 8px;text-decoration:none;margin-top:4px;">'+icoPhone+escHtml(p.whatsapp)+'</a>';
+    }
+
+    var ehVariavel = p.valor && (normText(p.valor).indexOf("vari")>-1||normText(p.valor).indexOf("cart")>-1);
+    var valorHtml = !p.valor
+      ?'<span style="color:#94a3b8;">—</span>'
+      :ehVariavel
+        ?'<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;background:#faeeda;color:#633806;border:1px solid #ef9f27;border-radius:6px;padding:2px 7px;">💸 Variável</span>'
+        :'<span style="font-weight:700;">'+escHtml(p.valor)+'</span>';
+
+    var btnStyle = "width:32px;height:32px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;";
+
+    var btnLembrete = temEmail
+      ?'<button type="button" class="btn-lembrete-individual" data-row="'+p.rowIndex+'" title="Enviar lembrete de NF" style="'+btnStyle+'border:1px solid #85b7eb;background:#e6f1fb;color:#0c447c;">'+icoSend+'</button>'
+      :'';
+
+    var btnWA = temWhats
+      ?'<a href="https://wa.me/'+foneWA+'" target="_blank" title="Abrir WhatsApp" style="'+btnStyle+'border:1px solid #5dcaa5;background:#e1f5ee;color:#085041;text-decoration:none;">'+icoPhone+'</a>'
+      :'';
+
+    var btnEditar  = '<button type="button" class="btn-editar-prestador" data-row="'+p.rowIndex+'" title="Editar" style="'+btnStyle+'border:1px solid #e2e8f0;background:#fff;color:#475569;">'+icoEdit+'</button>';
+    var btnExcluir = '<button type="button" class="btn-excluir-prestador" data-row="'+p.rowIndex+'" title="Remover" style="'+btnStyle+'border:1px solid #f09595;background:#fcebeb;color:#a32d2d;">'+icoTrash+'</button>';
+
+    html+="<tr>"
+      +"<td style='width:36px;text-align:center;'>"
+        +(temEmail
+          ?'<input type="checkbox" class="cb-prestador" data-row="'+p.rowIndex+'"'+checked+' style="width:16px;height:16px;accent-color:#1565C0;cursor:pointer;">'
+          :'<span title="Sem e-mail" style="font-size:13px;opacity:.4;">⚠️</span>')
+      +"</td>"
+      +"<td><div style='font-weight:800;font-size:13px;color:#0f172a;'>"+escHtml(p.nome)+"</div></td>"
+      +"<td>"+badgeCategoria(p.categoria)+"</td>"
+      +"<td style='font-size:12px;color:#475569;'>"+escHtml(p.documento||"—")+"</td>"
+      +"<td>"+contatoHtml+"</td>"
+      +"<td>"+valorHtml+"</td>"
+      +"<td style='font-size:12.5px;color:#475569;'>"+escHtml(p.diaVenc?"Dia "+p.diaVenc:"—")+"</td>"
+      +"<td style='font-size:12px;color:#64748b;'>"+escHtml(p.tipoDoc||"—")+"</td>"
+      +"<td style='text-align:center;'>"
+        +"<div style='display:inline-flex;align-items:center;gap:5px;'>"
+          +btnLembrete+btnWA+btnEditar+btnExcluir
+        +"</div>"
+      +"</td>"
+      +"</tr>";
+  });
+  tbody.innerHTML=html;
+
+  tbody.querySelectorAll(".cb-prestador").forEach(function(cb){
+    cb.addEventListener("change",function(){
+      var row=parseInt(this.getAttribute("data-row"),10);
+      if(this.checked) _selecionados[row]=true;
+      else delete _selecionados[row];
+      atualizarBtnLote();
+    });
+  });
+
+  tbody.querySelectorAll(".btn-lembrete-individual").forEach(function(btn){
+    btn.addEventListener("click",function(){
+      var row=parseInt(this.getAttribute("data-row"),10);
+      var p=_listaTodos.find(function(x){ return Number(x.rowIndex)===row; });
+      if(!p) return;
+      var self=this;
+      var temWhatsL=!!p.whatsapp;
+      confirmar({
+        ico:   "📨",
+        titulo:"Enviar Lembrete de NF",
+        sub:   p.nome,
+        info:  '<div style="display:flex;flex-direction:column;gap:6px;">'
+          +'<div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#1d4ed8;">📧 '+escHtml(p.email)+'</div>'
+          +(temWhatsL?'<div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#085041;">📱 '+escHtml(p.whatsapp)+'</div>'
+          :'<div style="font-size:12px;color:#92400e;">⚠️ Sem WhatsApp cadastrado</div>')
+          +'</div>',
+        desc:  'O prestador receberá um link seguro válido por <strong style="color:#334155;">30 dias</strong> para enviar a NF ou recibo diretamente ao sistema.',
+        btnOk: "📨 Enviar E-mail"+(temWhatsL?" + 📱 WhatsApp":"")
+      }, function(ok){
+        if(!ok) return;
+        self.disabled=true; self.innerHTML="⏳";
+        google.script.run
+          .withSuccessHandler(function(resp){
+            self.disabled=false; self.innerHTML=icoSend;
+            if(resp&&resp.ok){
+              var env=resp.enviados&&resp.enviados[0];
+              var htmlMsg='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
+                +'<span>✅ E-mail enviado para <strong>'+escHtml(p.nome)+'</strong></span>';
+              if(env&&env.linkWhatsapp){
+                htmlMsg+='<a href="'+env.linkWhatsapp+'" target="_blank" '
+                  +'style="display:inline-flex;align-items:center;gap:5px;'
+                  +'background:#e1f5ee;color:#085041;border:1px solid #5dcaa5;border-radius:6px;'
+                  +'padding:4px 12px;font-size:12px;font-weight:700;text-decoration:none;">'
+                  +'📱 Abrir WhatsApp</a>';
+              }
+              htmlMsg+='</div>';
+              msg(htmlMsg,"ok");
+            } else {
+              msg("Erro: "+((resp&&resp.mensagem)||"Falha."),"erro");
+            }
+          })
+          .withFailureHandler(function(err){
+            self.disabled=false; self.innerHTML=icoSend;
+            msg("Erro: "+((err&&err.message)||""),"erro");
+          })
+          .enviarLembretePrestadoresManual({ rowIndexes:[row] });
+      });
+    });
+  });
+
+  tbody.querySelectorAll(".btn-editar-prestador").forEach(function(btn){
+    btn.addEventListener("click",function(){
+      editarPrestador(parseInt(this.getAttribute("data-row"),10));
+    });
+  });
+
+  tbody.querySelectorAll(".btn-excluir-prestador").forEach(function(btn){
+    btn.addEventListener("click",function(){
+      var rowIndex=parseInt(this.getAttribute("data-row"),10);
+      var item=_listaTodos.find(function(x){ return Number(x.rowIndex)===Number(rowIndex); });
+      excluirPrestador(rowIndex,item?item.nome:"Prestador");
+    });
+  });
+
+  renderPaginacao(total,totalPag);
+}
+
+function renderPaginacao(total,totalPag){
+  var wrap=g("paginacaoWrap"); var info=g("paginacaoInfo"); var btns=g("paginacaoBtns");
+  if(!wrap) return;
+  if(totalPag<=1){ wrap.style.display="none"; return; }
+  wrap.style.display="flex";
+  var ini=(_paginaAtual-1)*_itensPorPagina+1;
+  var fim=Math.min(_paginaAtual*_itensPorPagina,total);
+  if(info) info.textContent="Mostrando "+ini+"–"+fim+" de "+total;
+  var html="";
+  html+='<button class="page-btn"'+(_paginaAtual===1?' disabled':'')+' onclick="irPaginaPrest('+(_paginaAtual-1)+')">← Ant.</button>';
+  var st=Math.max(1,_paginaAtual-2); var en=Math.min(totalPag,st+4);
+  for(var i=st;i<=en;i++) html+='<button class="page-btn'+(i===_paginaAtual?' active':'')+'" onclick="irPaginaPrest('+i+')">'+i+'</button>';
+  html+='<button class="page-btn"'+(_paginaAtual===totalPag?' disabled':'')+' onclick="irPaginaPrest('+(_paginaAtual+1)+')">Próx. →</button>';
+  if(btns) btns.innerHTML=html;
+}
+
+window.irPaginaPrest=function(pg){
+  var tp=Math.ceil(_listaFiltrada.length/_itensPorPagina);
+  if(pg<1||pg>tp) return; _paginaAtual=pg; renderTabela();
+};
+
+function carregarPrestadores(){
+  var tbody=g("corpoTabela");
+  if(tbody) tbody.innerHTML='<tr><td colspan="9"><div class="tabela-vazia">⏳ Carregando...</div></td></tr>';
+  _selecionados={};
+  atualizarBtnLote();
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ msg((resp&&resp.mensagem)||"Erro ao carregar prestadores.","erro"); return; }
+      _listaTodos=resp.lista||[];
+      atualizarMetricas(resp);
+      aplicarFiltros();
+    })
+    .withFailureHandler(function(err){
+      msg("Erro: "+((err&&err.message)||String(err||"")),"erro");
+    })
+    .listarPrestadoresDesp({});
+}
+
+function selecionarTodos(){
+  var cbs=(g("corpoTabela")||document).querySelectorAll(".cb-prestador");
+  var todosChecados=Array.from(cbs).every(function(cb){ return cb.checked; });
+  cbs.forEach(function(cb){
+    cb.checked=!todosChecados;
+    var row=parseInt(cb.getAttribute("data-row"),10);
+    if(!todosChecados) _selecionados[row]=true;
+    else delete _selecionados[row];
+  });
+  atualizarBtnLote();
+}
+
+function enviarLoteLembretes(){
+  var rows=Object.keys(_selecionados).map(Number);
+  if(!rows.length){ msg("Selecione ao menos um prestador.","warn"); return; }
+  var nomes=rows.map(function(r){
+    var p=_listaTodos.find(function(x){ return Number(x.rowIndex)===r; });
+    return p?p.nome:"?";
+  });
+  confirmar({
+    ico:    "📨",
+    titulo: "Enviar Lembretes em Lote",
+    sub:    rows.length+" prestador(es) selecionado(s)",
+    info:   '<div style="font-size:13px;font-weight:700;color:#1d4ed8;margin-bottom:4px;">'+nomes.slice(0,3).map(escHtml).join(", ")+(nomes.length>3?" e mais "+(nomes.length-3)+"...":"")+'</div><div style="font-size:12px;color:#3b82f6;">Um e-mail será enviado para cada prestador agora.</div>',
+    desc:   'Cada prestador receberá um link seguro válido por <strong style="color:#334155;">30 dias</strong> para enviar o documento fiscal.',
+    btnOk:  "📨 Enviar para todos"
+  }, function(ok){
+    if(!ok) return;
+    var btn=g("btnEnviarLote"); setBtnLoading(btn,"Enviando...");
+    google.script.run
+      .withSuccessHandler(function(resp){
+        resetBtn(btn); atualizarBtnLote();
+        if(resp&&resp.ok){
+          _selecionados={};
+          var cbs=(g("corpoTabela")||document).querySelectorAll(".cb-prestador");
+          cbs.forEach(function(cb){ cb.checked=false; });
+          atualizarBtnLote();
+          msg(resp.mensagem||"Lembretes enviados!","ok");
+        } else {
+          msg("Erro: "+((resp&&resp.mensagem)||"Falha."),"erro");
+        }
+      })
+      .withFailureHandler(function(err){
+        resetBtn(btn); atualizarBtnLote();
+        msg("Erro: "+((err&&err.message)||""),"erro");
+      })
+      .enviarLembretePrestadoresManual({ rowIndexes:rows });
+  });
+}
+
+function abrirModal(){
+  var modal=dm("modalPrestador");
+  if(modal){
+    modal.style.display="flex";
+    modal.classList.add("ativo");
+    modal.setAttribute("aria-hidden","false");
+  }
+  setTimeout(function(){ if(dm("mpNome")) dm("mpNome").focus(); },60);
+}
+
+function fecharModal(){
+  var modal=dm("modalPrestador");
+  if(modal){
+    modal.style.display="none";
+    modal.classList.remove("ativo");
+    modal.setAttribute("aria-hidden","true");
+  }
+  limparModal();
+}
+
+function limparModal(){
+  ["mpNome","mpDocumento","mpEmail","mpWhatsapp","mpValor","mpDiaVenc","mpDescricao"].forEach(function(id){
+    var el=dm(id); if(el) el.value="";
+  });
+  if(dm("mpCategoria"))   dm("mpCategoria").value="";
+  if(dm("mpTipoDoc"))     dm("mpTipoDoc").value="";
+  if(dm("mpQuemAgenda"))  dm("mpQuemAgenda").value="Automático";
+  if(dm("modalRowIndex")) dm("modalRowIndex").value="";
+  if(dm("modalTitulo"))   dm("modalTitulo").textContent="Novo Prestador";
+  if(dm("modalSub"))      dm("modalSub").textContent="Preencha os dados do prestador";
+}
+
+function editarPrestador(rowIndex){
+  var p=_listaTodos.find(function(x){ return x.rowIndex===rowIndex; });
+  if(!p){ msg("Prestador não encontrado.","erro"); return; }
+  limparModal();
+  if(dm("modalTitulo"))   dm("modalTitulo").textContent  = "Editar Prestador";
+  if(dm("modalSub"))      dm("modalSub").textContent     = "Atualize os dados de "+p.nome;
+  if(dm("modalRowIndex")) dm("modalRowIndex").value      = rowIndex;
+  if(dm("mpNome"))        dm("mpNome").value             = p.nome        ||"";
+  if(dm("mpDocumento"))   dm("mpDocumento").value        = p.documento   ||"";
+  if(dm("mpCategoria"))   dm("mpCategoria").value        = p.categoria   ||"";
+  if(dm("mpTipoDoc"))     dm("mpTipoDoc").value          = p.tipoDoc     ||"";
+  if(dm("mpEmail"))       dm("mpEmail").value            = p.email       ||"";
+  if(dm("mpWhatsapp"))    dm("mpWhatsapp").value         = p.whatsapp    ||"";
+  if(dm("mpValor"))       dm("mpValor").value            = p.valor       ||"";
+  if(dm("mpDiaVenc"))     dm("mpDiaVenc").value          = p.diaVenc     ||"";
+  if(dm("mpQuemAgenda"))  dm("mpQuemAgenda").value       = p.quemAgenda  ||"Automático";
+  if(dm("mpDescricao"))   dm("mpDescricao").value        = p.descricao   ||"";
+  abrirModal();
+}
+
+window.editarPrestador    = editarPrestador;
+window.fecharCardSemEmail = function(){ var w=g("cardSemEmailWrapper"); if(w) w.style.display="none"; };
+
+function salvarModal(){
+  var nome      = dm("mpNome")      ? String(dm("mpNome").value||"").trim()      : "";
+  var categoria = dm("mpCategoria") ? String(dm("mpCategoria").value||"").trim() : "";
+  if(!nome)      { msg("Informe o nome do prestador.","erro"); return; }
+  if(!categoria) { msg("Selecione a categoria.","erro");        return; }
+
+  var rowIndex = dm("modalRowIndex") ? parseInt(dm("modalRowIndex").value||"0",10) : 0;
+
+  var payload={
+    rowIndex:   rowIndex||null,
+    nome:       nome,
+    documento:  dm("mpDocumento")  ? String(dm("mpDocumento").value  ||"").trim() : "",
+    categoria:  categoria,
+    tipoDoc:    dm("mpTipoDoc")    ? String(dm("mpTipoDoc").value    ||"").trim() : "",
+    email:      dm("mpEmail")      ? String(dm("mpEmail").value      ||"").trim() : "",
+    whatsapp:   dm("mpWhatsapp")   ? String(dm("mpWhatsapp").value   ||"").trim() : "",
+    valor:      dm("mpValor")      ? String(dm("mpValor").value      ||"").trim() : "",
+    diaVenc:    dm("mpDiaVenc")    ? String(dm("mpDiaVenc").value    ||"").trim() : "",
+    quemAgenda: dm("mpQuemAgenda") ? String(dm("mpQuemAgenda").value ||"").trim() : "Automático",
+    descricao:  dm("mpDescricao")  ? String(dm("mpDescricao").value  ||"").trim() : ""
+  };
+
+  var btn=dm("btnSalvarModal"); setBtnLoading(btn,"Salvando...");
+  google.script.run
+.withSuccessHandler(function(resp){
+  resetBtn(btn);
+  if(!resp||!resp.ok){ msg((resp&&resp.mensagem)||"Erro ao salvar.","erro"); return; }
+  msg(resp.mensagem||"Prestador salvo com sucesso.","ok");
+  fecharModal();
+  carregarPrestadores();
+  // Notifica o módulo de Despesas para reajustar recorrência se o valor mudou
+  if(payload.rowIndex && typeof window.ajustarRecorrenciaUI === "function"){
+    window.ajustarRecorrenciaUI(payload.rowIndex);
+  }
+})
+    .withFailureHandler(function(err){ resetBtn(btn); msg("Erro: "+((err&&err.message)||""),"erro"); })
+    .salvarPrestadorDesp(payload);
+}
+
+window.excluirPrestador=function(rowIndex,nome){
+  confirmar({
+    ico:         "🗑",
+    icoBg:       "linear-gradient(135deg,#dc2626,#991b1b)",
+    titulo:      "Remover Prestador",
+    sub:         nome,
+    info:        '<div style="font-size:13px;font-weight:700;color:#9f1239;margin-bottom:4px;">⚠️ '+escHtml(nome)+'</div><div style="font-size:12px;color:#e11d48;">O prestador será marcado como inativo no sistema.</div>',
+    infoBg:      "#fee2e2",
+    infoBorder:  "1px solid #fca5a5",
+    desc:        'Esta ação pode ser desfeita editando o prestador e reativando-o diretamente na planilha.',
+    btnOk:       "🗑 Remover",
+    btnBg:       "linear-gradient(135deg,#dc2626,#991b1b)"
+  }, function(ok){
+    if(!ok) return;
+    google.script.run
+      .withSuccessHandler(function(resp){
+        if(!resp||!resp.ok){ msg((resp&&resp.mensagem)||"Erro ao remover.","erro"); return; }
+        msg(resp.mensagem||"Prestador removido.","ok");
+        carregarPrestadores();
+      })
+      .withFailureHandler(function(err){ msg("Erro: "+((err&&err.message)||""),"erro"); })
+      .excluirPrestadorDesp(rowIndex);
+  });
+};
+
+function exportarCsv(){
+  if(!_listaTodos.length){ msg("Nenhum prestador para exportar.","warn"); return; }
+  var headers=["Nome","Documento","Categoria","E-mail","WhatsApp","Valor","Dia Vencimento","Tipo Doc","Quem Agenda","Descrição"];
+  var rows=[headers].concat(_listaTodos.map(function(p){
+    return [p.nome||"",p.documento||"",p.categoria||"",p.email||"",p.whatsapp||"",
+      p.valor||"",p.diaVenc||"",p.tipoDoc||"",p.quemAgenda||"",p.descricao||""];
+  }));
+  var csv=rows.map(function(r){ return r.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(";"); }).join("\n");
+  var blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
+  var url=URL.createObjectURL(blob); var a=document.createElement("a");
+  a.href=url; a.download="prestadores.csv";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  msg("CSV exportado com sucesso.","ok");
+}
+
+function carregarSemEmail(){
+  var wrapper=g("cardSemEmailWrapper"); var body=g("cardSemEmailBody"); var btn=g("btnVerSemEmail");
+  if(wrapper&&wrapper.style.display!=="none"){ wrapper.style.display="none"; return; }
+  if(wrapper) wrapper.style.display="";
+  if(body) body.innerHTML='<div style="color:var(--g400);font-size:13px;text-align:center;padding:12px 0;">Carregando...</div>';
+  setBtnLoading(btn,"Verificando...");
+  google.script.run
+    .withSuccessHandler(function(resp){
+      resetBtn(btn);
+      if(!resp||!resp.ok){ msg(resp&&resp.mensagem||"Erro.","erro"); return; }
+      renderSemEmail(resp);
+      if(wrapper) wrapper.scrollIntoView({behavior:"smooth",block:"start"});
+    })
+    .withFailureHandler(function(err){ resetBtn(btn); msg("Erro: "+((err&&err.message)||""),"erro"); })
+    .listarPrestadoresSemEmailDesp();
+}
+
+function renderSemEmail(dados){
+  var body=g("cardSemEmailBody"); if(!body) return;
+  if(!dados.lista||!dados.lista.length){
+    body.innerHTML='<div style="text-align:center;padding:20px;color:var(--green);font-size:14px;font-weight:700;">✅ Todos os prestadores têm e-mail cadastrado!</div>';
+    return;
+  }
+  var html='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">'
+    +'<span style="font-size:12px;font-weight:700;color:#92400e;">⚠️ '+dados.total+' sem e-mail</span>'
+    +'<span style="font-size:12px;font-weight:700;color:#059669;">📱 '+(dados.comWhatsapp||0)+' com WhatsApp</span>'
+    +'</div><div style="display:flex;flex-direction:column;gap:10px;">';
+  dados.lista.forEach(function(p){
+    html+='<div id="itemSemEmail_'+p.rowIndex+'" class="sem-email-item">'
+      +'<div style="flex:1;min-width:160px;">'
+        +'<div style="font-size:13px;font-weight:800;color:var(--g900);">'+escHtml(p.nome)+'</div>'
+        +'<div style="font-size:11px;color:var(--g500);margin-top:2px;">'+escHtml(p.documento||"—")+(p.categoria?" · "+escHtml(p.categoria):"")+'</div>'
+      +'</div>'
+      +'<div style="display:flex;flex-direction:column;gap:4px;">'
+        +'<label style="font-size:10px;font-weight:800;color:#92400e;text-transform:uppercase;">📧 E-mail *</label>'
+        +'<input type="email" id="emailRapido_'+p.rowIndex+'" placeholder="email@exemplo.com"'
+        +' style="height:36px;border-radius:10px;border:1.5px solid #fcd34d;padding:0 12px;font-family:\'Plus Jakarta Sans\',sans-serif;font-size:13px;outline:none;width:220px;background:#fff;"'
+        +' onkeydown="if(event.key===\'Enter\')salvarContatoRapido('+p.rowIndex+')">'
+      +'</div>'
+      +'<div style="display:flex;flex-direction:column;gap:4px;">'
+        +'<label style="font-size:10px;font-weight:800;color:var(--g500);text-transform:uppercase;">📱 WhatsApp</label>'
+        +'<input type="text" id="whatsRapido_'+p.rowIndex+'" placeholder="(27) 99999-9999" maxlength="20"'
+        +' style="height:36px;border-radius:10px;border:1.5px solid var(--g300);padding:0 12px;font-family:\'Plus Jakarta Sans\',sans-serif;font-size:13px;outline:none;width:160px;background:#fff;"'
+        +' oninput="mascaraTelefoneInline(this)"'
+        +' onkeydown="if(event.key===\'Enter\')salvarContatoRapido('+p.rowIndex+')">'
+      +'</div>'
+      +'<button type="button" class="btn btn-primary btn-sm" style="flex-shrink:0;align-self:flex-end;"'
+        +' onclick="salvarContatoRapido('+p.rowIndex+')">💾 Salvar</button>'
+    +'</div>';
+  });
+  html+='</div>';
+  body.innerHTML=html;
+}
+
+window.salvarContatoRapido=function(rowIndex){
+  var inputEmail=document.getElementById("emailRapido_"+rowIndex);
+  var inputWhats=document.getElementById("whatsRapido_"+rowIndex);
+  if(!inputEmail) return;
+  var email   =String(inputEmail.value||"").trim();
+  var whatsapp=inputWhats?String(inputWhats.value||"").trim():"";
+  if(!email){ msg("Informe o e-mail.","warn"); inputEmail.focus(); return; }
+  inputEmail.disabled=true; if(inputWhats) inputWhats.disabled=true;
+  google.script.run
+    .withSuccessHandler(function(resp){
+      inputEmail.disabled=false; if(inputWhats) inputWhats.disabled=false;
+      if(!resp||!resp.ok){ msg(resp&&resp.mensagem||"Erro.","erro"); return; }
+      msg(resp.mensagem||"Contato salvo!","ok");
+      var item=document.getElementById("itemSemEmail_"+rowIndex);
+      if(item) item.remove();
+      carregarPrestadores();
+    })
+    .withFailureHandler(function(err){
+      inputEmail.disabled=false; if(inputWhats) inputWhats.disabled=false;
+      msg("Erro: "+((err&&err.message)||""),"erro");
+    })
+    .salvarContatoPrestadorRapido(rowIndex, email, whatsapp);
+};
+
+function mascaraTelefoneInline(el){
+  if(!el) return;
+  var v=String(el.value||"").replace(/\D/g,"").slice(0,11);
+  el.value=v.length<=10
+    ?v.replace(/^(\d{2})(\d)/,"($1) $2").replace(/(\d{4})(\d)/,"$1-$2")
+    :v.replace(/^(\d{2})(\d)/,"($1) $2").replace(/(\d{5})(\d)/,"$1-$2");
+}
+
+document.addEventListener("click", function(e){
+  var t = e.target;
+  if(!t) return;
+  for(var i=0; i<3; i++){
+    if(!t) break;
+    var id = t.id || "";
+    if(id==="btnSalvarModal")   { salvarModal(); return; }
+    if(id==="btnFecharModal" || id==="btnCancelarModal") { fecharModal(); return; }
+    if(id==="modalPrestador")   { fecharModal(); return; }
+    t = t.parentElement;
+  }
+});
+
+document.addEventListener("input", function(e){
+  var t = e.target; if(!t) return;
+  if(t.id==="mpDocumento") mascaraDoc(t);
+  if(t.id==="mpValor")     mascaraValor(t);
+  if(t.id==="mpWhatsapp")  mascaraTelefone(t);
+});
+
+function init(){
+  try {
+    _root = document.getElementById("secCadastroPrestadores") || null;
+    console.log("INIT _root:", _root);
+    console.log("INIT modalPrestador:", document.getElementById("modalPrestador"));
+    console.log("INIT btnNovoPrestador:", document.getElementById("btnNovoPrestador"));
+
+    carregarPrestadores();
+
+    var btnNovo = g("btnNovoPrestador");
+    console.log("INIT btnNovo via g():", btnNovo);
+
+    if(btnNovo) btnNovo.addEventListener("click", function(){
+      console.log("CLIQUE Novo Prestador");
+      console.log("modal no clique:", document.getElementById("modalPrestador"));
+      limparModal();
+      abrirModal();
+    });
+
+    if(g("btnExportarCsv"))    g("btnExportarCsv").addEventListener("click",    exportarCsv);
+    if(g("btnVerSemEmail"))    g("btnVerSemEmail").addEventListener("click",    carregarSemEmail);
+    if(g("btnRecarregar"))     g("btnRecarregar").addEventListener("click",     carregarPrestadores);
+    if(g("btnSelecionarTodos"))g("btnSelecionarTodos").addEventListener("click", selecionarTodos);
+    if(g("btnEnviarLote"))     g("btnEnviarLote").addEventListener("click",     enviarLoteLembretes);
+    if(g("campoBusca")){
+      g("campoBusca").addEventListener("input",function(){
+        clearTimeout(_buscarTimer); _buscarTimer=setTimeout(aplicarFiltros,300);
+      });
+    }
+    if(g("filtroCategoria")) g("filtroCategoria").addEventListener("change",aplicarFiltros);
+    console.log("INIT concluído");
+  } catch(e){ console.error("Erro ao inicializar CadastroPrestadores:",e); }
+}
+
+window.initCadastroPrestadores = function(){
+  if(window._prestadoresInitializado) return;
+  window._prestadoresInitializado = true;
+  init();
+};
+
+if(document.readyState==="loading"){
+  document.addEventListener("DOMContentLoaded",function(){ setTimeout(init,100); });
+} else {
+  setTimeout(init,100);
+}
+
+})();
+</script>
+
+<!-- MODAL PRESTADOR -->
+<div id="modalPrestador" class="modal-overlay" aria-hidden="true" style="position:fixed;inset:0;background:rgba(15,23,42,.52);display:none;align-items:center;justify-content:center;padding:18px;z-index:9999;backdrop-filter:blur(3px);">
+  <div style="width:min(760px,100%);background:#fff;border-radius:20px;box-shadow:0 30px 80px rgba(0,20,60,.28);overflow:hidden;max-height:95vh;display:flex;flex-direction:column;">
+    <div style="padding:20px 24px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,#002f6c,#1565C0);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">👥</div>
+        <div>
+          <div style="font-size:16px;font-weight:900;color:#0f172a;" id="modalTitulo">Novo Prestador</div>
+          <div style="font-size:11px;color:#64748b;margin-top:3px;" id="modalSub">Preencha os dados do prestador</div>
+        </div>
+      </div>
+      <button type="button" id="btnFecharModal" style="width:38px;height:38px;border-radius:999px;border:1.5px solid #e2e8f0;background:#fff;color:#475569;cursor:pointer;font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+    <div style="padding:22px 24px;overflow-y:auto;flex:1;">
+      <input type="hidden" id="modalRowIndex">
+      <div style="margin-bottom:20px;">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.10em;text-transform:uppercase;color:#94a3b8;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #f1f5f9;">👤 Identificação</div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;">
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <label style="font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#64748b;">Nome / Razão Social *</label>
+            <input type="text" id="mpNome" placeholder="Nome completo ou razão social" style="width:100%;min-height:44px;border-radius:11px;border:1.5px solid #cbd5e1;background:#fff;color:#1e293b;font-family:'Plus Jakarta Sans',sans-serif;font-size:13.5px;padding:0 14px;outline:none;">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <label style="font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#64748b;">CPF / CNPJ</label>
+            <input type="text" id="mpDocumento" placeholder="000.000.000-00" maxlength="18" style="width:100%;min-height:44px;border-radius:11px;border:1.5px solid #cbd5e1;background:#fff;color:#1e293b;font-family:'Plus Jakarta Sans',sans-serif;font-size:13.5px;padding:0 14px;outline:none;">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <label style="font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#64748b;">Categoria *</label>
+  <select id="mpCategoria" style="width:100%;min-height:44px;border-radius:11px;border:1.5px solid #cbd5e1;background:#fff;color:#1e293b;font-family:'Plus Jakarta Sans',sans-serif;font-size:13.5px;padding:0 14px;outline:none;">
+              <option value="">Selecione...</option>
+            </select>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <label style="font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#64748b;">Tipo de Documento</label>
+            <select id="mpTipoDoc" style="width:100%;min-height:44px;border-radius:11px;border:1.5px solid #cbd5e1;background:#fff;color:#1e293b;font-family:'Plus Jakarta Sans',sans-serif;font-size:13.5px;padding:0 14px;outline:none;">
+              <option value="">Selecione...</option>
+              <option value="NF">Nota Fiscal (NF)</option>
+              <option value="Cupom Fiscal / Recibo">Cupom Fiscal / Recibo</option>
+              <option value="Boleto">Boleto</option>
+              <option value="Debito Automatico">Débito Automático</option>
+              <option value="Comprovante de Pagamento">Comprovante de Pagamento</option>
+              <option value="Sem Documento">Sem Documento</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div style="margin-bottom:20px;">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.10em;text-transform:uppercase;color:#94a3b8;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #f1f5f9;">📞 Contato</div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;">
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <label style="font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#64748b;">E-mail</label>
+            <input type="email" id="mpEmail" placeholder="prestador@email.com" style="width:100%;min-height:44px;border-radius:11px;border:1.5px solid #cbd5e1;background:#fff;color:#1e293b;font-family:'Plus Jakarta Sans',sans-serif;font-size:13.5px;padding:0 14px;outline:none;">
+            <span style="font-size:11px;color:#94a3b8;">Usado para envio de lembretes de NF</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <label style="font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#64748b;">WhatsApp</label>
+            <input type="text" id="mpWhatsapp" placeholder="(27) 99999-9999" maxlength="20" style="width:100%;min-height:44px;border-radius:11px;border:1.5px solid #cbd5e1;background:#fff;color:#1e293b;font-family:'Plus Jakarta Sans',sans-serif;font-size:13.5px;padding:0 14px;outline:none;">
+          </div>
+        </div>
+      </div>
+      <div style="margin-bottom:20px;">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.10em;text-transform:uppercase;color:#94a3b8;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #f1f5f9;">💰 Informações Financeiras</div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;">
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <label style="font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#64748b;">Valor Padrão</label>
+            <input type="text" id="mpValor" placeholder="R$ 0,00" style="width:100%;min-height:44px;border-radius:11px;border:1.5px solid #cbd5e1;background:#fff;color:#1e293b;font-family:'Plus Jakarta Sans',sans-serif;font-size:13.5px;padding:0 14px;outline:none;">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <label style="font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#64748b;">Dia de Vencimento</label>
+            <input type="text" id="mpDiaVenc" placeholder="Ex: 10" maxlength="2" style="width:100%;min-height:44px;border-radius:11px;border:1.5px solid #cbd5e1;background:#fff;color:#1e293b;font-family:'Plus Jakarta Sans',sans-serif;font-size:13.5px;padding:0 14px;outline:none;">
+            <span style="font-size:11px;color:#94a3b8;">Dia do mês</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <label style="font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#64748b;">Quem agenda</label>
+            <select id="mpQuemAgenda" style="width:100%;min-height:44px;border-radius:11px;border:1.5px solid #cbd5e1;background:#fff;color:#1e293b;font-family:'Plus Jakarta Sans',sans-serif;font-size:13.5px;padding:0 14px;outline:none;">
+              <option value="Automático">Automático</option>
+              <option value="Marcelha - Gerente">Marcelha - Gerente</option>
+              <option value="Rogério - Diretor Financeiro">Rogério - Diretor Financeiro</option>
+              <option value="Contabilidade">Contabilidade</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div style="margin-bottom:20px;">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.10em;text-transform:uppercase;color:#94a3b8;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #f1f5f9;">📝 Descrição</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#64748b;">Descrição do Serviço</label>
+          <textarea id="mpDescricao" placeholder="Descreva o serviço ou produto prestado" style="width:100%;min-height:80px;border-radius:11px;border:1.5px solid #cbd5e1;background:#fff;color:#1e293b;font-family:'Plus Jakarta Sans',sans-serif;font-size:13.5px;padding:12px 14px;outline:none;resize:vertical;line-height:1.55;"></textarea>
+        </div>
+      </div>
+    </div>
+    <div style="padding:16px 24px;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;flex-shrink:0;">
+      <button type="button" id="btnCancelarModal" style="height:42px;padding:0 18px;border:1.5px solid #e2e8f0;border-radius:999px;background:#fff;color:#475569;font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Cancelar</button>
+      <button type="button" id="btnSalvarModal" style="height:42px;padding:0 18px;border:none;border-radius:999px;background:linear-gradient(135deg,#002f6c,#1565C0);color:#fff;font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,47,108,.25);">💾 Salvar Prestador</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMAÇÃO -->
+<div id="modalConfirm" style="position:fixed;inset:0;background:rgba(15,23,42,.52);display:none;align-items:center;justify-content:center;padding:18px;z-index:99999;backdrop-filter:blur(3px);">
+  <div style="background:#fff;border-radius:20px;width:min(480px,100%);overflow:hidden;font-family:'Plus Jakarta Sans',sans-serif;box-shadow:0 30px 80px rgba(0,20,60,.28);">
+    <div style="padding:20px 24px 16px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:12px;">
+      <div id="modalConfirmIco" style="width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📨</div>
+      <div>
+        <div id="modalConfirmTitulo" style="font-size:15px;font-weight:800;color:#0f172a;"></div>
+        <div id="modalConfirmSub" style="font-size:11px;color:#94a3b8;margin-top:2px;"></div>
+      </div>
+    </div>
+    <div style="padding:18px 24px;">
+      <div id="modalConfirmInfo" style="border-radius:10px;padding:13px 16px;margin-bottom:14px;"></div>
+      <div id="modalConfirmDesc" style="font-size:12.5px;color:#64748b;line-height:1.6;"></div>
+    </div>
+    <div style="padding:14px 24px 18px;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;gap:10px;">
+      <button id="modalConfirmCancelar" style="height:38px;padding:0 16px;border-radius:999px;border:1.5px solid #e2e8f0;background:#fff;color:#475569;font-size:12.5px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;">Cancelar</button>
+      <button id="modalConfirmOk" style="height:38px;padding:0 20px;border-radius:999px;border:none;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;"></button>
+    </div>
+  </div>
+</div>

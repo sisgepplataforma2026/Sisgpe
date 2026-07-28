@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Envio de Documento Fiscal — SindEducação-ES</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:   #001f4d;
+    --navy2:  #002f6c;
+    --gold:   #C9A84C;
+    --gold2:  #a8893c;
+    --white:  #ffffff;
+    --bg:     #f0f4f9;
+    --text:   #0f172a;
+    --muted:  #475569;
+    --border: #cbd5e1;
+    --green:  #059669;
+    --red:    #dc2626;
+    --blue:   #1565C0;
+  }
+
+  html, body {
+    min-height: 100%;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 48px;
+  }
+
+  /* ── CARD ── */
+  .card {
+    width: 100%;
+    max-width: 560px;
+    background: var(--white);
+    border-radius: 20px;
+    box-shadow: 0 8px 40px rgba(0,20,60,.12);
+    overflow: hidden;
+  }
+
+  /* ── HEADER ── */
+  .card-header {
+    background: linear-gradient(135deg, var(--navy), var(--navy2));
+    padding: 28px 32px 22px;
+    border-bottom: 4px solid var(--gold);
+  }
+
+  .org-name {
+    font-size: 20px;
+    font-weight: 900;
+    color: var(--white);
+    letter-spacing: .01em;
+  }
+
+  .org-sub {
+    font-size: 11px;
+    color: rgba(255,255,255,.6);
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+
+  /* ── BODY ── */
+  .card-body {
+    padding: 28px 32px 32px;
+  }
+
+  .page-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--navy);
+    margin-bottom: 6px;
+  }
+
+  .page-sub {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 24px;
+  }
+
+  /* ── INFO BOX ── */
+  .info-box {
+    background: #f0f6ff;
+    border: 1px solid #bfdbfe;
+    border-left: 4px solid var(--blue);
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 24px;
+  }
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 13px;
+    padding: 4px 0;
+  }
+
+  .info-label {
+    font-weight: 700;
+    color: var(--navy);
+    white-space: nowrap;
+    min-width: 100px;
+  }
+
+  .info-value {
+    color: var(--text);
+    text-align: right;
+    font-weight: 500;
+  }
+
+  .info-value.valor {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--navy);
+  }
+
+  /* ── CNPJ FIELD ── */
+  .cnpj-field {
+    margin-bottom: 20px;
+    display: none;
+  }
+
+  .cnpj-field.visivel { display: block; }
+
+  .cnpj-input-wrap {
+    position: relative;
+  }
+
+  .cnpj-input {
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--text);
+    background: #fafbfc;
+    transition: border-color .2s;
+    outline: none;
+  }
+
+  .cnpj-input:focus { border-color: var(--blue); background: var(--white); }
+  .cnpj-input.ok    { border-color: var(--green); background: #f0fdf4; }
+  .cnpj-input.erro  { border-color: var(--red);   background: #fff5f5; }
+
+  .cnpj-feedback {
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 6px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    display: none;
+  }
+
+  .cnpj-feedback.ok   { display: block; background: #d1fae5; color: #065f46; }
+  .cnpj-feedback.erro { display: block; background: #fee2e2; color: #9f1239; }
+
+  /* ── UPLOAD ZONE ── */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 14px;
+    padding: 32px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .2s;
+    margin-bottom: 16px;
+    background: #fafbfc;
+    position: relative;
+  }
+
+  .upload-zone:hover,
+  .upload-zone.drag-over {
+    border-color: var(--blue);
+    background: #eff6ff;
+  }
+
+  .upload-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .upload-icon {
+    font-size: 40px;
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  .upload-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 4px;
+  }
+
+  .upload-hint {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* ── FILES LIST ── */
+  .files-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .file-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+
+  .file-item .file-name {
+    flex: 1;
+    font-weight: 600;
+    color: var(--navy);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .file-item .file-size {
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .file-item .file-remove {
+    cursor: pointer;
+    color: var(--red);
+    font-size: 16px;
+    font-weight: 700;
+    background: none;
+    border: none;
+    line-height: 1;
+    padding: 2px 4px;
+    flex-shrink: 0;
+  }
+
+  /* ── OBS ── */
+  .field-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .field-optional {
+    font-weight: 400;
+    color: var(--muted);
+    font-size: 12px;
+    margin-left: 4px;
+  }
+
+  textarea {
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--text);
+    resize: vertical;
+    min-height: 80px;
+    transition: border-color .2s;
+    margin-bottom: 20px;
+    background: #fafbfc;
+  }
+
+  textarea:focus {
+    outline: none;
+    border-color: var(--blue);
+    background: var(--white);
+  }
+
+  /* ── BUTTON ── */
+  .btn-primary {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--blue), #003b82);
+    color: var(--white);
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 800;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: opacity .2s, transform .1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn-primary:hover  { opacity: .92; }
+  .btn-primary:active { transform: scale(.99); }
+  .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* ── STATES ── */
+  .state {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 8px 0 8px;
+  }
+
+  .state.active { display: flex; }
+
+  .state-icon {
+    font-size: 52px;
+    margin-bottom: 16px;
+    line-height: 1;
+  }
+
+  .state-title {
+    font-size: 20px;
+    font-weight: 800;
+    margin-bottom: 8px;
+  }
+
+  .state-msg {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.7;
+    max-width: 400px;
+  }
+
+  /* Loading spinner */
+  .spinner {
+    width: 44px;
+    height: 44px;
+    border: 4px solid #e2e8f0;
+    border-top-color: var(--blue);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+    margin-bottom: 16px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Progress bar */
+  .progress-wrap {
+    width: 100%;
+    max-width: 320px;
+    background: #e2e8f0;
+    border-radius: 999px;
+    height: 6px;
+    margin-top: 12px;
+    overflow: hidden;
+  }
+
+  .progress-bar {
+    height: 100%;
+    background: var(--blue);
+    border-radius: 999px;
+    transition: width .3s;
+    width: 0%;
+  }
+
+  /* ── FOOTER ── */
+  .card-footer {
+    background: var(--navy);
+    padding: 14px 32px;
+    text-align: center;
+  }
+
+  .card-footer p {
+    font-size: 11px;
+    color: rgba(255,255,255,.45);
+    line-height: 1.5;
+  }
+
+  /* ── ALERT ── */
+  .alert {
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    display: none;
+    align-items: flex-start;
+    gap: 8px;
+    line-height: 1.5;
+  }
+
+  .alert.show { display: flex; }
+  .alert.error { background: #fef2f2; border: 1px solid #fca5a5; color: var(--red); }
+  .alert.warn  { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+
+  @media (max-width: 480px) {
+    .card-body { padding: 22px 20px 28px; }
+    .card-header { padding: 22px 20px 18px; }
+    .card-footer { padding: 12px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+
+  <!-- HEADER -->
+  <div class="card-header">
+    <div class="org-name">SINDEDUCAÇÃO-ES</div>
+    <div class="org-sub">Sindicato dos Educadores Técnico-Administrativos<br>em Estabelecimentos de Ensino Particular no ES</div>
+  </div>
+
+  <!-- ESTADO: Carregando -->
+  <div class="card-body" id="state-loading">
+    <div class="state active" style="padding:32px 0;">
+      <div class="spinner"></div>
+      <div class="state-msg">Carregando informações da despesa...</div>
+    </div>
+  </div>
+
+  <!-- ESTADO: Erro de link -->
+  <div class="card-body" id="state-invalid" style="display:none;">
+    <div class="state active" style="padding:24px 0;">
+      <div class="state-icon">⛔</div>
+      <div class="state-title" style="color:var(--red);">Link Inválido</div>
+      <div class="state-msg" id="msg-invalid">Este link é inválido ou expirou. Entre em contato com o SindEducação-ES para receber um novo link.</div>
+    </div>
+  </div>
+
+  <!-- ESTADO: Já enviado -->
+  <div class="card-body" id="state-done" style="display:none;">
+    <div class="state active" style="padding:24px 0;">
+      <div class="state-icon">✅</div>
+      <div class="state-title" style="color:var(--green);">Documento Já Recebido</div>
+      <div class="state-msg">Já recebemos o documento fiscal desta despesa. Obrigado pela colaboração!</div>
+    </div>
+  </div>
+
+  <!-- ESTADO: Formulário de upload -->
+  <div class="card-body" id="state-form" style="display:none;">
+
+    <div class="page-title">📋 Envio de Documento Fiscal</div>
+    <div class="page-sub" id="form-subtitle">Por favor, envie o documento fiscal referente ao serviço abaixo.</div>
+
+    <!-- Info da despesa -->
+    <div class="info-box" id="info-box">
+      <!-- preenchido via JS -->
+    </div>
+
+    <!-- Alert de erro -->
+    <div class="alert error" id="alert-error"></div>
+    <div class="alert warn"  id="alert-warn">⚠️ Apenas PDF, JPG ou PNG são aceitos. Tamanho máximo: 10 MB por arquivo.</div>
+
+    <!-- Campo CNPJ/CPF (visível apenas quando prestador tem CNPJ cadastrado) -->
+    <div class="cnpj-field" id="cnpj-field">
+      <label class="field-label" for="cnpj-input">
+        CNPJ / CPF do emitente da nota <span style="color:var(--red);">*</span>
+      </label>
+      <div class="cnpj-input-wrap">
+        <input type="text" id="cnpj-input" class="cnpj-input"
+               placeholder="00.000.000/0001-00 ou 000.000.000-00"
+               maxlength="18" autocomplete="off"
+               oninput="onCnpjInput(this)"
+               onblur="validarCnpjInput()">
+      </div>
+      <div class="cnpj-feedback" id="cnpj-feedback"></div>
+    </div>
+
+    <!-- Zona de upload -->
+    <label class="field-label" for="file-input">
+      Documento(s) fiscal(is)
+    </label>
+
+    <div class="upload-zone" id="upload-zone">
+      <input type="file" id="file-input" multiple accept=".pdf,.jpg,.jpeg,.png">
+      <span class="upload-icon">📂</span>
+      <div class="upload-title">Clique ou arraste os arquivos aqui</div>
+      <div class="upload-hint">PDF, JPG ou PNG · Máx. 10 MB por arquivo</div>
+    </div>
+
+    <div class="files-list" id="files-list"></div>
+
+    <!-- Observação -->
+    <label class="field-label" for="obs-field">
+      Observações <span class="field-optional">(opcional)</span>
+    </label>
+    <textarea id="obs-field" placeholder="Informe qualquer observação relevante sobre o documento..."></textarea>
+
+    <button class="btn-primary" id="btn-enviar" onclick="enviarDocumentos()">
+      <span>📤</span> Enviar Documento Fiscal
+    </button>
+
+  </div>
+
+  <!-- ESTADO: Enviando -->
+  <div class="card-body" id="state-sending" style="display:none;">
+    <div class="state active" style="padding:32px 0;">
+      <div class="spinner"></div>
+      <div class="state-title" style="color:var(--blue);font-size:17px;">Enviando...</div>
+      <div class="state-msg">Aguarde enquanto fazemos o upload do(s) documento(s).</div>
+      <div class="progress-wrap">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ESTADO: Sucesso -->
+  <div class="card-body" id="state-success" style="display:none;">
+    <div class="state active" style="padding:24px 0;">
+      <div class="state-icon">✅</div>
+      <div class="state-title" style="color:var(--green);">Nota Fiscal Recebida!</div>
+      <div class="state-msg">Sua Nota Fiscal foi recebida com sucesso e está sendo processada pelo financeiro do SindEducação-ES.<br><br>Em caso de dúvidas, entre em contato com Marcelha pelo (27) 99735-8900.</div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="card-footer">
+    <p>SISGEP · SindEducação-ES · financeiro@sindeducacao.com · (27) 99813-5965</p>
+  </div>
+
+</div>
+
+<script>
+  // ── Variáveis globais ─────────────────────────────────────
+  var TOKEN         = "";
+  var arquivos      = [];  // { file, base64, nome, tipo }
+  var MAX_SIZE_MB   = 10;
+  var TIPOS_ACEITOS = ["application/pdf", "image/jpeg", "image/png"];
+  var EXT_ACEITAS   = [".pdf", ".jpg", ".jpeg", ".png"];
+
+  // Controle de validação CNPJ
+  var _cnpjCadastrado = "";   // CNPJ/CPF do prestador no SISGEP
+  var _cnpjIgnorar    = true; // true = prestador sem CNPJ cadastrado, não valida
+  var _cnpjValido     = true; // resultado da validação atual
+
+  // ── Inicialização ──────────────────────────────────────────
+  document.addEventListener("DOMContentLoaded", function() {
+
+    // No GAS o token é injetado server-side pelo template
+    TOKEN = "<?= token ?>";
+
+    // Fallback: tenta ler da URL caso o template não tenha injetado
+    if (!TOKEN || TOKEN === "") {
+      var match = window.location.href.match(/[?&]token=([^&]+)/);
+      if (match) TOKEN = decodeURIComponent(match[1]);
+    }
+
+    if (!TOKEN || TOKEN === "") {
+      mostrarEstado("invalid");
+      document.getElementById("msg-invalid").textContent =
+        "Nenhum token encontrado na URL. Verifique se o link está completo.";
+      return;
+    }
+
+    // Configura drag & drop
+    var zone = document.getElementById("upload-zone");
+    zone.addEventListener("dragover", function(e) { e.preventDefault(); zone.classList.add("drag-over"); });
+    zone.addEventListener("dragleave", function()  { zone.classList.remove("drag-over"); });
+    zone.addEventListener("drop", function(e) {
+      e.preventDefault();
+      zone.classList.remove("drag-over");
+      adicionarArquivos(e.dataTransfer.files);
+    });
+
+    document.getElementById("file-input").addEventListener("change", function() {
+      adicionarArquivos(this.files);
+      this.value = "";
+    });
+
+    // Chama o backend para buscar dados da despesa
+    google.script.run
+      .withSuccessHandler(onDadosRecebidos)
+      .withFailureHandler(function(e) {
+        mostrarEstado("invalid");
+        document.getElementById("msg-invalid").textContent =
+          "Erro ao carregar: " + (e.message || String(e));
+      })
+      .obterDadosDespesaPorTokenFornecedor(TOKEN);
+  });
+
+  // ── Callback com dados do servidor ────────────────────────
+  function onDadosRecebidos(resp) {
+    if (!resp || !resp.ok) {
+      if (resp && resp.jaEnviado) {
+        mostrarEstado("done");
+      } else {
+        mostrarEstado("invalid");
+        document.getElementById("msg-invalid").textContent =
+          (resp && resp.mensagem) || "Link inválido ou expirado.";
+      }
+      return;
+    }
+
+    // Preenche info box
+    var html = "";
+    if (resp.numero) html += infoRow("Nº Despesa",  resp.numero);
+    html += infoRow("Prestador",   resp.nome      || "—");
+    html += infoRow("Valor",       resp.valor     || "—", true);
+    html += infoRow("Vencimento",  resp.vencimento|| "—");
+    if (resp.descricao && resp.descricao !== resp.nome)
+      html += infoRow("Descrição", resp.descricao);
+    if (resp.tipoDoc)
+      html += infoRow("Tipo de doc", resp.tipoDoc);
+
+    document.getElementById("info-box").innerHTML = html;
+    document.getElementById("form-subtitle").textContent =
+      "Por favor, envie o documento fiscal referente ao serviço abaixo.";
+
+    mostrarEstado("form");
+
+    // Busca CNPJ cadastrado do prestador para validação
+    google.script.run
+      .withSuccessHandler(function(r) {
+        if (r && r.ok && !r.ignorar && r.cnpj) {
+          _cnpjCadastrado = r.cnpj;
+          _cnpjIgnorar    = false;
+          _cnpjValido     = false; // ainda não preenchido
+          var campo = document.getElementById("cnpj-field");
+          if (campo) campo.classList.add("visivel");
+        } else {
+          _cnpjIgnorar = true;
+          _cnpjValido  = true;
+        }
+      })
+      .withFailureHandler(function() {
+        _cnpjIgnorar = true;
+        _cnpjValido  = true;
+      })
+      .obterCnpjPrestadorDespesa(TOKEN);
+  }
+
+  function infoRow(label, value, destaque) {
+    return '<div class="info-row">' +
+      '<span class="info-label">' + label + ':</span>' +
+      '<span class="info-value' + (destaque ? ' valor' : '') + '">' + escHtml(value) + '</span>' +
+      '</div>';
+  }
+
+  // ── Validação CNPJ/CPF ─────────────────────────────────────
+  function apenasDigitos(v) { return String(v || "").replace(/\D/g, ""); }
+
+  function mascaraDoc(v) {
+    var d = apenasDigitos(v);
+    if (d.length <= 11) {
+      return d
+        .replace(/^(\d{3})(\d)/, "$1.$2")
+        .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+        .replace(/\.(\d{3})(\d)/, ".$1-$2");
+    } else {
+      d = d.slice(0, 14);
+      return d
+        .replace(/^(\d{2})(\d)/, "$1.$2")
+        .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+        .replace(/\.(\d{3})(\d)/, ".$1/$2")
+        .replace(/(\d{4})(\d)/, "$1-$2");
+    }
+  }
+
+  function validarCnpjFmt(cnpj) {
+    cnpj = apenasDigitos(cnpj);
+    if (cnpj.length !== 14) return false;
+    if (/^(\d)\1+$/.test(cnpj)) return false;
+    var calc = function(c, len) {
+      var sum = 0, pos = len - 7;
+      for (var i = len; i >= 1; i--) {
+        sum += parseInt(c.charAt(len - i)) * pos--;
+        if (pos < 2) pos = 9;
+      }
+      var r = sum % 11 < 2 ? 0 : 11 - sum % 11;
+      return r === parseInt(c.charAt(len));
+    };
+    return calc(cnpj, 12) && calc(cnpj, 13);
+  }
+
+  function validarCpfFmt(cpf) {
+    cpf = apenasDigitos(cpf);
+    if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+    var sum = 0;
+    for (var i = 0; i < 9; i++) sum += parseInt(cpf[i]) * (10 - i);
+    var r1 = (sum * 10) % 11; if (r1 === 10 || r1 === 11) r1 = 0;
+    if (r1 !== parseInt(cpf[9])) return false;
+    sum = 0;
+    for (var j = 0; j < 10; j++) sum += parseInt(cpf[j]) * (11 - j);
+    var r2 = (sum * 10) % 11; if (r2 === 10 || r2 === 11) r2 = 0;
+    return r2 === parseInt(cpf[10]);
+  }
+
+  function onCnpjInput(el) {
+    el.value = mascaraDoc(el.value);
+    validarCnpjInput();
+  }
+
+  function validarCnpjInput() {
+    if (_cnpjIgnorar) { _cnpjValido = true; return; }
+
+    var inp      = document.getElementById("cnpj-input");
+    var feedback = document.getElementById("cnpj-feedback");
+    if (!inp || !feedback) return;
+
+    var digitado = apenasDigitos(inp.value);
+
+    // Vazio
+    if (!digitado) {
+      inp.className      = "cnpj-input";
+      feedback.className = "cnpj-feedback";
+      feedback.textContent = "";
+      _cnpjValido = false;
+      return;
+    }
+
+    // Formato inválido
+    var fmtOk = (digitado.length === 11 && validarCpfFmt(digitado)) ||
+                (digitado.length === 14 && validarCnpjFmt(digitado));
+
+    if (!fmtOk) {
+      inp.className        = "cnpj-input erro";
+      feedback.className   = "cnpj-feedback erro";
+      feedback.textContent = "❌ CNPJ/CPF inválido. Verifique os dígitos.";
+      _cnpjValido = false;
+      return;
+    }
+
+    // Compara com cadastro
+    var cadastrado = apenasDigitos(_cnpjCadastrado);
+    if (cadastrado && digitado !== cadastrado) {
+      inp.className        = "cnpj-input erro";
+      feedback.className   = "cnpj-feedback erro";
+      feedback.textContent = "❌ Este CNPJ/CPF não corresponde ao prestador cadastrado. Dúvidas? (27) 99813-5965";
+      _cnpjValido = false;
+      return;
+    }
+
+    // OK
+    inp.className        = "cnpj-input ok";
+    feedback.className   = "cnpj-feedback ok";
+    feedback.textContent = "✅ CNPJ/CPF " + (cadastrado ? "confere com o cadastro." : "informado.");
+    _cnpjValido = true;
+  }
+
+  // ── Gerenciamento de arquivos ──────────────────────────────
+  function adicionarArquivos(fileList) {
+    var alertEl  = document.getElementById("alert-error");
+    var alertWrn = document.getElementById("alert-warn");
+    alertEl.classList.remove("show");
+    alertWrn.classList.remove("show");
+
+    var erros = [];
+
+    Array.from(fileList).forEach(function(file) {
+      var ext = file.name.split(".").pop().toLowerCase();
+      if (TIPOS_ACEITOS.indexOf(file.type) === -1 && EXT_ACEITAS.indexOf("." + ext) === -1) {
+        erros.push(file.name + ": tipo não aceito.");
+        return;
+      }
+      if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+        erros.push(file.name + ": tamanho excede " + MAX_SIZE_MB + " MB.");
+        return;
+      }
+      // Evita duplicata pelo nome+tamanho
+      var jaExiste = arquivos.some(function(a) {
+        return a.nome === file.name && a.size === file.size;
+      });
+      if (jaExiste) return;
+
+      arquivos.push({ file: file, nome: file.name, tipo: file.type, size: file.size, base64: null });
+    });
+
+    if (erros.length) {
+      alertEl.textContent = "⚠️ " + erros.join(" | ");
+      alertEl.classList.add("show");
+    }
+
+    renderFileList();
+  }
+
+  function removerArquivo(idx) {
+    arquivos.splice(idx, 1);
+    renderFileList();
+  }
+
+  function renderFileList() {
+    var list = document.getElementById("files-list");
+    list.innerHTML = "";
+
+    arquivos.forEach(function(arq, i) {
+      var sizeMB = (arq.size / 1048576).toFixed(2) + " MB";
+      var div = document.createElement("div");
+      div.className = "file-item";
+      div.innerHTML =
+        '<span>📄</span>' +
+        '<span class="file-name">' + escHtml(arq.nome) + '</span>' +
+        '<span class="file-size">' + sizeMB + '</span>' +
+        '<button class="file-remove" onclick="removerArquivo(' + i + ')" title="Remover">✕</button>';
+      list.appendChild(div);
+    });
+
+    document.getElementById("alert-warn").classList.toggle("show", arquivos.length === 0);
+  }
+
+  // ── Envio ──────────────────────────────────────────────────
+  function enviarDocumentos() {
+    var alertEl = document.getElementById("alert-error");
+    alertEl.classList.remove("show");
+
+    // Valida CNPJ antes de qualquer coisa
+    if (!_cnpjIgnorar) {
+      validarCnpjInput();
+      if (!_cnpjValido) {
+        alertEl.textContent = "Corrija o CNPJ/CPF antes de enviar.";
+        alertEl.classList.add("show");
+        var inp = document.getElementById("cnpj-input");
+        if (inp) inp.focus();
+        return;
+      }
+    }
+
+    if (!arquivos.length) {
+      document.getElementById("alert-warn").classList.add("show");
+      alertEl.textContent = "Selecione pelo menos um arquivo antes de enviar.";
+      alertEl.classList.add("show");
+      return;
+    }
+
+    mostrarEstado("sending");
+    animarProgress();
+
+    var obs   = document.getElementById("obs-field").value.trim();
+    var cnpjInformado = document.getElementById("cnpj-input")
+      ? document.getElementById("cnpj-input").value.trim()
+      : "";
+    var total = arquivos.length;
+    var lidos = 0;
+    var lista = [];
+
+    arquivos.forEach(function(arq, i) {
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var base64 = e.target.result.split(",")[1];
+        lista[i] = { base64: base64, nome: arq.nome, tipo: arq.tipo || "application/pdf" };
+        lidos++;
+        if (lidos === total) {
+          chamarBackend(lista, obs, cnpjInformado);
+        }
+      };
+      reader.readAsDataURL(arq.file);
+    });
+  }
+
+  function chamarBackend(lista, obs, cnpjInformado) {
+    google.script.run
+      .withSuccessHandler(function(resp) {
+        if (resp && resp.ok) {
+          mostrarEstado("success");
+        } else {
+          mostrarEstado("form");
+          var alertEl = document.getElementById("alert-error");
+          alertEl.textContent = "Erro: " + ((resp && resp.mensagem) || "Falha no envio.");
+          alertEl.classList.add("show");
+        }
+      })
+      .withFailureHandler(function(e) {
+        mostrarEstado("form");
+        var alertEl = document.getElementById("alert-error");
+        alertEl.textContent = "Erro técnico: " + (e.message || String(e));
+        alertEl.classList.add("show");
+      })
+      .receberUploadDocFornecedor(TOKEN, { arquivos: lista, obs: obs, cnpjInformado: cnpjInformado });
+  }
+
+  function animarProgress() {
+    var bar = document.getElementById("progress-bar");
+    var pct = 0;
+    var iv  = setInterval(function() {
+      pct = Math.min(pct + (pct < 70 ? 3 : 0.5), 90);
+      bar.style.width = pct + "%";
+    }, 120);
+    bar._iv = iv;
+  }
+
+  // ── Utilitários ────────────────────────────────────────────
+  function mostrarEstado(nome) {
+    var ids = ["loading","invalid","done","form","sending","success"];
+    ids.forEach(function(id) {
+      document.getElementById("state-" + id).style.display = id === nome ? "block" : "none";
+    });
+  }
+
+  function escHtml(str) {
+    return String(str || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+</script>
+</body>
+</html>

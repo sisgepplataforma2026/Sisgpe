@@ -1,0 +1,540 @@
+<div style="max-width:520px;margin:0 auto;padding:16px;font-family:'Plus Jakarta Sans',sans-serif;">
+
+  <div class="vc-topo">
+    <div>
+      <div class="vc-topo-titulo">Minhas visitas</div>
+      <div class="vc-topo-sub" id="vcDataHoje">—</div>
+    </div>
+    <button class="vc-btn-rota" onclick="vcAbrirRota()">
+      <span>&#128663;</span> Rota
+    </button>
+  </div>
+
+  <div class="vc-progresso">
+    <div class="vc-progresso-barra"><div id="vcProgressoFill"></div></div>
+    <div class="vc-progresso-texto" id="vcProgressoTexto">Carregando agenda…</div>
+  </div>
+
+  <div id="vcAgenda"></div>
+
+  <div id="vcVazio" style="display:none;text-align:center;padding:48px 16px;color:#6b7385;">
+    <div style="font-size:34px;margin-bottom:10px;">&#128197;</div>
+    <p style="font-size:14px;margin:0;">Nenhuma visita agendada para hoje.</p>
+  </div>
+</div>
+
+<div id="vcModal" class="vc-modal">
+  <div class="vc-modal-caixa">
+    <div class="vc-modal-topo">
+      <div>
+        <div class="vc-modal-escola" id="vcModalEscola">—</div>
+        <div class="vc-modal-sub" id="vcModalCidade">—</div>
+      </div>
+      <button class="vc-fechar" onclick="vcFecharModal()" aria-label="Fechar">&#10005;</button>
+    </div>
+
+    <div class="vc-modal-corpo" id="vcModalCorpo"></div>
+  </div>
+</div>
+
+<style>
+.vc-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;}
+.vc-topo-titulo{font-size:19px;font-weight:800;color:#002f6c;}
+.vc-topo-sub{font-size:12.5px;color:#6b7385;margin-top:2px;text-transform:capitalize;}
+.vc-btn-rota{border:none;border-radius:10px;padding:10px 14px;background:#002f6c;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap;}
+.vc-progresso{margin-bottom:18px;}
+.vc-progresso-barra{height:6px;background:#e2e8f0;border-radius:4px;overflow:hidden;}
+.vc-progresso-barra>div{height:100%;background:#C9A84C;width:0%;transition:width .3s;}
+.vc-progresso-texto{font-size:11.5px;color:#6b7385;margin-top:6px;font-weight:600;}
+
+.vc-card{background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;padding:14px 16px;margin-bottom:12px;display:flex;gap:12px;align-items:flex-start;cursor:pointer;transition:.15s;}
+.vc-card:active{transform:scale(.99);}
+.vc-card-hora{min-width:52px;text-align:center;}
+.vc-card-hora b{display:block;font-size:15px;font-weight:800;color:#002f6c;}
+.vc-card-hora small{display:block;font-size:9.5px;color:#94a3b8;font-weight:700;letter-spacing:.5px;}
+.vc-card-info{flex:1;min-width:0;}
+.vc-card-info b{display:block;font-size:14px;color:#0f172a;line-height:1.3;}
+.vc-card-info small{display:block;font-size:11.5px;color:#6b7385;margin-top:3px;}
+.vc-card-seta{color:#cbd5e1;font-size:18px;align-self:center;}
+.vc-card.vc-feita{background:#f8fafc;border-color:#dcfce7;}
+.vc-card.vc-feita .vc-card-info b{color:#64748b;}
+.vc-card.vc-andamento{border-color:#C9A84C;border-width:2px;background:#fffdf7;}
+
+.vc-tag{display:inline-block;font-size:9.5px;font-weight:800;border-radius:5px;padding:2px 7px;margin-top:5px;}
+.vc-tag-agendada{background:#e2e8f0;color:#475569;}
+.vc-tag-andamento{background:#fef3c7;color:#92400e;}
+.vc-tag-visitada{background:#dcfce7;color:#166534;}
+.vc-tag-retornar{background:#dbeafe;color:#1d4ed8;}
+.vc-tag-semcontato{background:#fee2e2;color:#991b1b;}
+
+.vc-modal{display:none;position:fixed;inset:0;background:rgba(6,11,20,.6);z-index:900;padding:12px;overflow-y:auto;}
+.vc-modal.vc-aberto{display:block;}
+.vc-modal-caixa{background:#fff;border-radius:16px;max-width:520px;margin:12px auto 40px;overflow:hidden;}
+.vc-modal-topo{background:#002f6c;color:#fff;padding:16px 18px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.vc-modal-escola{font-size:15px;font-weight:800;line-height:1.3;}
+.vc-modal-sub{font-size:11.5px;opacity:.8;margin-top:3px;}
+.vc-fechar{background:rgba(255,255,255,.15);border:none;color:#fff;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px;flex-shrink:0;}
+.vc-modal-corpo{padding:18px;}
+
+.vc-etapa-titulo{font-size:11px;font-weight:800;letter-spacing:.8px;color:#C9A84C;text-transform:uppercase;margin:0 0 10px;}
+.vc-bloco{margin-bottom:20px;}
+.vc-btn-grande{width:100%;border:none;border-radius:12px;padding:16px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;}
+.vc-btn-checkin{background:#16a34a;color:#fff;}
+.vc-btn-qr{background:#C9A84C;color:#002f6c;}
+.vc-btn-cadastro{background:#eef2f7;color:#002f6c;}
+.vc-btn-finalizar{background:#002f6c;color:#fff;}
+.vc-btn-grande:disabled{opacity:.5;cursor:wait;}
+.vc-btn-grande+.vc-btn-grande{margin-top:8px;}
+
+.vc-check{display:flex;align-items:center;gap:10px;padding:11px 12px;border:1.5px solid #e2e8f0;border-radius:10px;margin-bottom:7px;cursor:pointer;font-size:13.5px;color:#1d2433;}
+.vc-check input{width:20px;height:20px;accent-color:#002f6c;flex-shrink:0;}
+.vc-check.vc-marcado{background:#f5f8ff;border-color:#002f6c;}
+
+.vc-campo{margin-bottom:10px;}
+.vc-campo label{display:block;font-size:11.5px;font-weight:700;color:#002f6c;margin-bottom:4px;}
+.vc-campo input,.vc-campo textarea,.vc-campo select{width:100%;padding:10px 12px;font-size:14px;font-family:inherit;border:1.5px solid #cbd5e1;border-radius:9px;background:#fbfcfe;color:#1d2433;box-sizing:border-box;}
+.vc-campo textarea{min-height:64px;resize:vertical;}
+
+.vc-qr-caixa{text-align:center;padding:16px;background:#f8faff;border:2px solid #002f6c;border-radius:12px;}
+.vc-qr-caixa canvas,.vc-qr-caixa img{margin:0 auto;display:block;}
+.vc-qr-legenda{font-size:12px;color:#6b7385;margin-top:10px;line-height:1.45;}
+.vc-qr-contador{font-size:26px;font-weight:800;color:#16a34a;margin-top:8px;}
+
+.vc-rota-aviso{background:#fffdf7;border:1.5px solid #C9A84C;border-radius:12px;padding:13px;margin-bottom:12px;font-size:13px;color:#0f172a;line-height:1.5;}
+.vc-rota-aviso a{display:inline-block;margin-top:8px;font-weight:800;color:#002f6c;}
+.vc-status-info{background:#f8fafc;border-radius:10px;padding:11px 13px;font-size:12.5px;color:#475569;margin-bottom:14px;line-height:1.5;}
+.vc-status-info b{color:#0f172a;}
+.vc-msg{display:none;border-radius:9px;padding:10px 12px;font-size:13px;margin-top:12px;}
+.vc-msg.vc-erro{display:block;background:#fdecea;color:#c0392b;}
+.vc-msg.vc-ok{display:block;background:#e8f5ee;color:#1e8e5a;}
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+var VC_AGENDA = null;
+var VC_VISITA = null;
+
+function vcEsc(v){
+  return String(v==null?'':v).replace(/[&<>"']/g,function(c){
+    return c==='&'?'&amp;':c==='<'?'&lt;':c==='>'?'&gt;':c==='"'?'&quot;':'&#39;';
+  });
+}
+
+function vcUsuario(){
+  var el=document.getElementById('spNm');
+  return el ? el.textContent.trim() : '';
+}
+
+function vcToken(){
+  return (typeof SISGEP_TOKEN_SESSAO!=='undefined') ? SISGEP_TOKEN_SESSAO : '';
+}
+
+function vcOk(r){
+  return !!(r && (r.sucesso===true || r.ok===true));
+}
+
+function vcMsgErro(e){
+  if(!e) return 'Erro desconhecido.';
+  if(e.message) return e.message;
+  if(e.mensagem) return e.mensagem;
+  return String(e);
+}
+
+/* Entrada do módulo — chamada pelo initModulo do index. */
+window.carregarVisitasDoDia=function(){
+  var box=document.getElementById('vcAgenda');
+  var vazio=document.getElementById('vcVazio');
+  var txt=document.getElementById('vcProgressoTexto');
+  var fill=document.getElementById('vcProgressoFill');
+  if(!box) return;
+
+  box.innerHTML='<p style="color:#94a3b8;font-size:12.5px;">Carregando agenda…</p>';
+  if(vazio) vazio.style.display='none';
+  if(txt)  txt.textContent='Carregando agenda…';
+  if(fill) fill.style.width='0%';
+
+  var hoje=new Date();
+  var meses=['janeiro','fevereiro','março','abril','maio','junho','julho',
+             'agosto','setembro','outubro','novembro','dezembro'];
+  var elData=document.getElementById('vcDataHoje');
+  if(elData){
+    elData.textContent=hoje.getDate()+' de '+meses[hoje.getMonth()]+' de '+hoje.getFullYear();
+  }
+
+  google.script.run.withSuccessHandler(function(r){
+    if(!vcOk(r)){
+      var m=(r&&(r.mensagem||r.erro))||'Não foi possível carregar a agenda.';
+      box.innerHTML='<p style="color:#dc2626;font-size:12.5px;">'+vcEsc(m)+'</p>';
+      if(txt) txt.textContent='Não foi possível carregar a agenda.';
+      return;
+    }
+    VC_AGENDA=r;
+    vcRenderAgenda();
+  }).withFailureHandler(function(e){
+    box.innerHTML='<p style="color:#dc2626;font-size:12.5px;">Erro: '+
+      vcEsc(vcMsgErro(e))+'</p>';
+    if(txt) txt.textContent='Falha na conexão com o servidor.';
+  }).obterAgendaDoDia(null, null, vcToken());
+};
+
+function vcRenderAgenda(){
+  var box=document.getElementById('vcAgenda');
+  var vazio=document.getElementById('vcVazio');
+  var txt=document.getElementById('vcProgressoTexto');
+  var fill=document.getElementById('vcProgressoFill');
+  if(!box) return;
+
+  var dados=VC_AGENDA||{};
+  var visitas=(dados.visitas&&dados.visitas.length)?dados.visitas:[];
+  var CONCLUIDOS=['VISITADA','RETORNAR','SEM_CONTATO','MUDOU_ENDERECO'];
+
+  /* Se o backend nao mandar total/concluidas, calcula aqui. Antes, uma
+     resposta sem esses campos deixava o texto preso em "Carregando". */
+  var total=(typeof dados.total==='number')?dados.total:visitas.length;
+  var concluidas=(typeof dados.concluidas==='number')?dados.concluidas:
+    visitas.filter(function(v){ return CONCLUIDOS.indexOf(v.STATUS)>=0; }).length;
+
+  var pct=total?Math.round(concluidas*100/total):0;
+  if(fill) fill.style.width=pct+'%';
+  if(txt)  txt.textContent=total
+      ? (concluidas+' de '+total+' visitas concluídas')
+      : 'Nenhuma visita agendada para hoje';
+
+  box.innerHTML='';
+  if(!visitas.length){ if(vazio) vazio.style.display='block'; return; }
+  if(vazio) vazio.style.display='none';
+
+  visitas.forEach(function(v){
+    var classe='vc-card';
+    var tag='<span class="vc-tag vc-tag-agendada">AGENDADA</span>';
+    if(v.STATUS==='EM_ANDAMENTO'){
+      classe+=' vc-andamento';
+      tag='<span class="vc-tag vc-tag-andamento">EM ANDAMENTO</span>';
+    } else if(v.STATUS==='VISITADA'){
+      classe+=' vc-feita';
+      tag='<span class="vc-tag vc-tag-visitada">VISITADA</span>';
+    } else if(v.STATUS==='RETORNAR'){
+      classe+=' vc-feita';
+      tag='<span class="vc-tag vc-tag-retornar">RETORNAR</span>';
+    } else if(v.STATUS==='SEM_CONTATO'||v.STATUS==='MUDOU_ENDERECO'){
+      classe+=' vc-feita';
+      tag='<span class="vc-tag vc-tag-semcontato">'+vcEsc(String(v.STATUS).replace(/_/g,' '))+'</span>';
+    }
+
+    var card=document.createElement('div');
+    card.className=classe;
+    card.onclick=function(){ vcAbrirVisita(v.ID_VISITA); };
+    card.innerHTML=
+      '<div class="vc-card-hora"><b>'+vcEsc(v.HORA_AGENDADA||'--:--')+'</b>'+
+        '<small>'+(v.FICHAS_GERADAS?vcEsc(v.FICHAS_GERADAS)+' FICHAS':'')+'</small></div>'+
+      '<div class="vc-card-info">'+
+        '<b>'+vcEsc(v.ESCOLA)+'</b>'+
+        '<small>'+vcEsc(v.CIDADE||'')+'</small>'+
+        tag+
+      '</div>'+
+      '<div class="vc-card-seta">&#8250;</div>';
+    box.appendChild(card);
+  });
+}
+
+function vcAbrirRota(){
+  google.script.run.withSuccessHandler(function(r){
+    if(!vcOk(r)){
+      alert((r&&(r.mensagem||r.erro))||'Não foi possível montar a rota.');
+      return;
+    }
+    /* window.open fora do gesto de clique costuma ser bloqueado no
+       celular — foi o mesmo tipo de bloqueio que derrubou o login.
+       Se acontecer, mostra um link para o diretor tocar: em campo,
+       silêncio total seria pior que um toque a mais. */
+    var aba=null;
+    try{ aba=window.open(r.url,'_blank'); }catch(e){}
+    if(aba) return;
+
+    var alvo=document.getElementById('vcAgenda');
+    if(!alvo){ alert('Abra a rota por este endereço:\n\n'+r.url); return; }
+    var aviso=document.getElementById('vcRotaLink');
+    if(!aviso){
+      aviso=document.createElement('div');
+      aviso.id='vcRotaLink';
+      alvo.parentNode.insertBefore(aviso,alvo);
+    }
+    aviso.innerHTML='<div class="vc-rota-aviso">O navegador bloqueou a '+
+      'abertura automática.<br><a href="'+vcEsc(r.url)+'" target="_blank">'+
+      'Abrir a rota no Google Maps ('+(r.paradas||0)+' paradas)</a></div>';
+  }).withFailureHandler(function(e){
+    alert('Erro: '+vcMsgErro(e));
+  }).gerarLinkRotaDoDia(null, null, vcToken());
+}
+
+/* ================= Visita ================= */
+
+function vcAbrirVisita(idVisita){
+  var v=null;
+  var lista=(VC_AGENDA&&VC_AGENDA.visitas)?VC_AGENDA.visitas:[];
+  lista.forEach(function(x){ if(x.ID_VISITA===idVisita) v=x; });
+  if(!v) return;
+  VC_VISITA=v;
+
+  document.getElementById('vcModalEscola').textContent=v.ESCOLA;
+  document.getElementById('vcModalCidade').textContent=
+    (v.CIDADE||'')+(v.HORA_AGENDADA?' · '+v.HORA_AGENDADA:'');
+  document.getElementById('vcModal').classList.add('vc-aberto');
+  vcRenderCorpo();
+}
+
+function vcFecharModal(){
+  document.getElementById('vcModal').classList.remove('vc-aberto');
+  VC_VISITA=null;
+}
+
+function vcRenderCorpo(){
+  var v=VC_VISITA;
+  var box=document.getElementById('vcModalCorpo');
+  if(!v) return;
+
+  if(!v.CHECKIN){
+    box.innerHTML=
+      '<div class="vc-status-info">Ao chegar na escola, registre a sua chegada. '+
+      'O horário e a localização ficam guardados como comprovação da visita.</div>'+
+      '<button class="vc-btn-grande vc-btn-checkin" id="vcBtnCheckin" onclick="vcCheckin()">'+
+      '&#128205; Registrar chegada</button>'+
+      '<div class="vc-msg" id="vcMsg"></div>';
+    return;
+  }
+
+  var concluida=['VISITADA','RETORNAR','SEM_CONTATO','MUDOU_ENDERECO'].indexOf(v.STATUS)>=0;
+
+  var html=
+    '<div class="vc-status-info">Chegada registrada às <b>'+vcEsc(v.CHECKIN)+'</b>'+
+    (v.FICHAS_GERADAS?' · <b>'+vcEsc(v.FICHAS_GERADAS)+'</b> ficha(s) gerada(s)':'')+
+    '</div>';
+
+  if(!concluida){
+    html+=
+      '<div class="vc-bloco">'+
+        '<div class="vc-etapa-titulo">Captação</div>'+
+        '<button class="vc-btn-grande vc-btn-qr" onclick="vcMostrarQR()">'+
+        '&#128241; Mostrar QR Code da ficha</button>'+
+        '<button class="vc-btn-grande vc-btn-cadastro" onclick="vcCadastroRapido()">'+
+        '&#9997; Cadastro rápido</button>'+
+        '<div id="vcQRBox" style="margin-top:12px;"></div>'+
+      '</div>'+
+
+      '<div class="vc-bloco">'+
+        '<div class="vc-etapa-titulo">Checklist da visita</div>'+
+        vcChecklistHtml()+
+      '</div>'+
+
+      '<div class="vc-bloco">'+
+        '<div class="vc-etapa-titulo">Quem atendeu</div>'+
+        '<div class="vc-campo"><label>Nome</label>'+
+        '<input type="text" id="vcResponsavel" value="'+vcEsc(v.RESPONSAVEL_ATENDEU||'')+'"></div>'+
+        '<div class="vc-campo"><label>Cargo</label>'+
+        '<input type="text" id="vcCargo" placeholder="Diretor(a), RH, secretaria…"></div>'+
+        '<div class="vc-campo"><label>Telefone</label>'+
+        '<input type="tel" id="vcTelefone" inputmode="numeric" placeholder="(27) 90000-0000"></div>'+
+        '<div class="vc-campo"><label>Materiais entregues</label>'+
+        '<input type="text" id="vcMateriais" placeholder="Ex.: 15 agendas, 20 cartilhas"></div>'+
+        '<div class="vc-campo"><label>Observações</label>'+
+        '<textarea id="vcObs" placeholder="O que foi conversado, próximos passos…">'+
+        vcEsc(v.OBSERVACOES||'')+'</textarea></div>'+
+      '</div>'+
+
+      '<div class="vc-bloco">'+
+        '<div class="vc-etapa-titulo">Encerrar</div>'+
+        '<div class="vc-campo"><label>Resultado da visita</label>'+
+        '<select id="vcStatusFinal">'+
+          '<option value="VISITADA">Visitada — tudo certo</option>'+
+          '<option value="RETORNAR">Retornar depois</option>'+
+          '<option value="SEM_CONTATO">Sem contato</option>'+
+          '<option value="MUDOU_ENDERECO">Mudou de endereço</option>'+
+        '</select></div>'+
+        '<div class="vc-campo"><label>Próxima visita (opcional)</label>'+
+        '<input type="date" id="vcProxima"></div>'+
+        '<button class="vc-btn-grande vc-btn-finalizar" id="vcBtnFinalizar" onclick="vcFinalizar()">'+
+        '&#10003; Finalizar visita</button>'+
+      '</div>';
+  } else {
+    html+=
+      '<div class="vc-bloco">'+
+        '<div class="vc-etapa-titulo">Visita concluída</div>'+
+        '<div class="vc-status-info">Encerrada às <b>'+vcEsc(v.CHECKOUT||'—')+'</b>'+
+        (v.DURACAO_MIN?' · duração de <b>'+vcEsc(v.DURACAO_MIN)+' min</b>':'')+
+        '<br>Resultado: <b>'+vcEsc(v.STATUS)+'</b></div>'+
+      '</div>';
+  }
+
+  html+='<div class="vc-msg" id="vcMsg"></div>';
+  box.innerHTML=html;
+}
+
+function vcChecklistHtml(){
+  var itens=[
+    ['FALOU_DIRETOR','Falou com o diretor'],
+    ['FALOU_RH','Falou com o RH'],
+    ['ENTREGOU_MATERIAL','Entregou material'],
+    ['EXPLICOU_BENEFICIOS','Explicou os benefícios'],
+    ['ATUALIZOU_CADASTRO','Atualizou cadastro'],
+    ['COLETOU_FICHA','Coletou ficha'],
+    ['RECEBEU_DUVIDAS','Recebeu dúvidas'],
+    ['SOLICITOU_RETORNO','Solicitou retorno']
+  ];
+  return itens.map(function(it){
+    return '<label class="vc-check" id="lbl_'+it[0]+'">'+
+      '<input type="checkbox" id="chk_'+it[0]+'" onchange="vcMarcar(\''+it[0]+'\')">'+
+      '<span>'+it[1]+'</span></label>';
+  }).join('');
+}
+
+function vcMarcar(id){
+  var chk=document.getElementById('chk_'+id);
+  document.getElementById('lbl_'+id).classList.toggle('vc-marcado', chk.checked);
+}
+
+function vcMsg(texto, tipo){
+  var el=document.getElementById('vcMsg');
+  if(!el) return;
+  el.textContent=texto;
+  el.className='vc-msg '+(tipo==='ok'?'vc-ok':'vc-erro');
+}
+
+/* ================= Ações ================= */
+
+function vcCheckin(){
+  var btn=document.getElementById('vcBtnCheckin');
+  btn.disabled=true;
+  btn.textContent='Obtendo localização…';
+
+  function enviar(lat,lng){
+    btn.textContent='Registrando…';
+    google.script.run.withSuccessHandler(function(r){
+      btn.disabled=false;
+      if(r&&r.sucesso){
+        VC_VISITA.CHECKIN=r.horario;
+        VC_VISITA.STATUS='EM_ANDAMENTO';
+        vcRenderCorpo();
+        carregarVisitasDoDia();
+      } else {
+        btn.innerHTML='&#128205; Registrar chegada';
+        vcMsg((r&&r.mensagem)||'Não foi possível registrar.','erro');
+      }
+    }).withFailureHandler(function(e){
+      btn.disabled=false;
+      btn.textContent='Registrar chegada';
+      vcMsg('Erro: '+e,'erro');
+    }).registrarCheckin(VC_VISITA.ID_VISITA, lat, lng, vcToken());
+  }
+
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(function(pos){
+      enviar(pos.coords.latitude, pos.coords.longitude);
+    }, function(){
+      enviar('','');
+    }, {enableHighAccuracy:true, timeout:8000, maximumAge:60000});
+  } else {
+    enviar('','');
+  }
+}
+
+function vcMostrarQR(){
+  var box=document.getElementById('vcQRBox');
+  box.innerHTML='<p style="font-size:12.5px;color:#94a3b8;">Gerando QR Code…</p>';
+  google.script.run.withSuccessHandler(function(r){
+    if(!r||!r.sucesso){
+      box.innerHTML='<p style="font-size:12.5px;color:#dc2626;">'+
+        vcEsc((r&&r.mensagem)||'Falha ao gerar o link.')+'</p>';
+      return;
+    }
+    box.innerHTML='<div class="vc-qr-caixa"><div id="vcQR"></div>'+
+      '<div class="vc-qr-legenda">Peça para o trabalhador apontar a câmera do '+
+      'celular para este código.<br>A ficha já abre com a escola preenchida.</div></div>';
+    try{
+      new QRCode(document.getElementById('vcQR'), {
+        text:r.url, width:190, height:190,
+        colorDark:'#002f6c', colorLight:'#ffffff'
+      });
+    }catch(e){
+      document.getElementById('vcQR').innerHTML=
+        '<a href="'+vcEsc(r.url)+'" target="_blank" style="font-size:12px;color:#002f6c;">'+
+        'Abrir link da ficha</a>';
+    }
+  }).withFailureHandler(function(e){
+    box.innerHTML='<p style="font-size:12.5px;color:#dc2626;">Erro: '+vcEsc(e)+'</p>';
+  }).gerarLinkFichaDaVisita(VC_VISITA.ID_VISITA, vcToken());
+}
+
+function vcCadastroRapido(){
+  var nome=prompt('Nome completo do trabalhador:');
+  if(!nome||!nome.trim()) return;
+  var cpf=prompt('CPF (somente números):');
+  if(!cpf||!cpf.trim()) return;
+  var celular=prompt('Celular com DDD:')||'';
+  var email=prompt('E-mail (para enviar o link de conclusão):')||'';
+  var cargo=prompt('Cargo:')||'';
+
+  google.script.run.withSuccessHandler(function(r){
+    /* Antes dizia "Pré-cadastro enviado" mesmo quando o backend recusava:
+       o diretor saía da escola achando que tinha captado a ficha. */
+    if(vcOk(r)){
+      alert(r.mensagem||'Pré-cadastro enviado.');
+      carregarVisitasDoDia();
+    } else {
+      alert('NÃO enviado: '+((r&&(r.mensagem||r.erro))||'falha no cadastro.'));
+    }
+  }).withFailureHandler(function(e){
+    alert('Erro: '+vcMsgErro(e));
+  }).cadastroRapidoNaVisita(VC_VISITA.ID_VISITA, {
+    nome:nome, cpf:cpf, celular:celular, email:email, cargo:cargo
+  }, vcToken());
+}
+
+function vcFinalizar(){
+  var btn=document.getElementById('vcBtnFinalizar');
+  var checklist={};
+  ['FALOU_DIRETOR','FALOU_RH','ENTREGOU_MATERIAL','EXPLICOU_BENEFICIOS',
+   'ATUALIZOU_CADASTRO','COLETOU_FICHA','RECEBEU_DUVIDAS','SOLICITOU_RETORNO']
+   .forEach(function(k){
+     var el=document.getElementById('chk_'+k);
+     checklist[k]=el?el.checked:false;
+   });
+
+  var dados={
+    checklist:checklist,
+    responsavelAtendeu:(document.getElementById('vcResponsavel')||{}).value||'',
+    cargoResponsavel:(document.getElementById('vcCargo')||{}).value||'',
+    telefoneContato:(document.getElementById('vcTelefone')||{}).value||'',
+    materiaisEntregues:(document.getElementById('vcMateriais')||{}).value||'',
+    observacoes:(document.getElementById('vcObs')||{}).value||''
+  };
+  var statusFinal=(document.getElementById('vcStatusFinal')||{}).value||'VISITADA';
+  var proxima=(document.getElementById('vcProxima')||{}).value||'';
+
+  if(!confirm('Finalizar a visita a '+VC_VISITA.ESCOLA+'?')) return;
+  btn.disabled=true;
+  btn.textContent='Salvando…';
+
+  google.script.run.withSuccessHandler(function(){
+    google.script.run.withSuccessHandler(function(r){
+      btn.disabled=false;
+      btn.textContent='Finalizar visita';
+      if(r&&r.sucesso){
+        vcFecharModal();
+        carregarVisitasDoDia();
+        if(window.mostrarSucesso) mostrarSucesso(r.mensagem);
+        else alert(r.mensagem);
+      } else {
+        vcMsg((r&&r.mensagem)||'Não foi possível finalizar.','erro');
+      }
+    }).withFailureHandler(function(e){
+      btn.disabled=false;
+      btn.textContent='Finalizar visita';
+      vcMsg('Erro: '+e,'erro');
+    }).finalizarVisita(VC_VISITA.ID_VISITA, statusFinal, proxima, dados.observacoes, vcToken());
+  }).withFailureHandler(function(e){
+    btn.disabled=false;
+    btn.textContent='Finalizar visita';
+    vcMsg('Erro ao salvar os dados: '+e,'erro');
+  }).salvarDadosVisita(VC_VISITA.ID_VISITA, dados, vcToken());
+}
+</script>

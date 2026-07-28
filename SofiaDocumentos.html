@@ -1,0 +1,714 @@
+<!-- ═══════════════════════════════════════════════════════════
+     SOFIA IA — Módulo Documentos
+     Patch cirúrgico: adicionar ao final do OficiosFormulario.html
+     Sprint 2 — 2026-06-26
+═══════════════════════════════════════════════════════════ -->
+
+<style>
+/* ═══ SOFIA DOCUMENTOS — PAINEL IA ═══ */
+#sofiaDocPanel {
+  position: fixed;
+  right: 24px;
+  bottom: 100px;
+  width: 340px;
+  background: linear-gradient(135deg, #0a1428, #12183a, #0d1a3a);
+  border: 1px solid rgba(167,139,250,.35);
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.45), 0 0 0 1px rgba(167,139,250,.1);
+  z-index: 9990;
+  overflow: hidden;
+  display: none;
+  flex-direction: column;
+  max-height: 520px;
+  animation: sofiaSlideUp .3s cubic-bezier(.4,0,.2,1);
+}
+
+@keyframes sofiaSlideUp {
+  from { opacity:0; transform:translateY(20px) scale(.95); }
+  to   { opacity:1; transform:translateY(0) scale(1); }
+}
+
+.sofia-doc-head {
+  padding: 14px 16px 12px;
+  background: linear-gradient(135deg, rgba(99,102,241,.2), rgba(167,139,250,.1));
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.sofia-doc-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #a78bfa, #6366f1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(167,139,250,.35);
+}
+
+.sofia-doc-title {
+  flex: 1;
+}
+.sofia-doc-title strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+}
+.sofia-doc-title span {
+  display: block;
+  font-size: 10px;
+  color: rgba(255,255,255,.4);
+  margin-top: 1px;
+}
+
+.sofia-doc-close {
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: rgba(255,255,255,.08);
+  border-radius: 8px;
+  color: rgba(255,255,255,.5);
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s;
+}
+.sofia-doc-close:hover { background: rgba(255,255,255,.15); color: #fff; }
+
+.sofia-doc-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sofia-doc-body::-webkit-scrollbar { width: 4px; }
+.sofia-doc-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 20px; }
+
+/* Mensagem da SOFIA */
+.sofia-msg {
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 12px;
+  color: rgba(255,255,255,.82);
+  line-height: 1.65;
+  animation: sofiaSlideUp .2s ease;
+}
+
+.sofia-msg.loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255,255,255,.5);
+}
+
+.sofia-dot-anim {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.sofia-dot-anim span {
+  width: 6px;
+  height: 6px;
+  background: #a78bfa;
+  border-radius: 50%;
+  animation: sofiaDot 1.2s ease-in-out infinite;
+}
+.sofia-dot-anim span:nth-child(2) { animation-delay: .2s; }
+.sofia-dot-anim span:nth-child(3) { animation-delay: .4s; }
+@keyframes sofiaDot {
+  0%,100% { transform: scale(.7); opacity: .4; }
+  50%      { transform: scale(1);  opacity: 1;  }
+}
+
+/* Alertas rápidos */
+.sofia-alert {
+  padding: 9px 12px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.45;
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+}
+.sofia-alert.ok   { background: rgba(16,185,129,.12); border: 1px solid rgba(52,211,153,.2); color: #34d399; }
+.sofia-alert.warn { background: rgba(245,158,11,.12); border: 1px solid rgba(251,191,36,.2); color: #fbbf24; }
+.sofia-alert.err  { background: rgba(239,68,68,.12);  border: 1px solid rgba(252,165,165,.2);color: #f87171; }
+.sofia-alert.info { background: rgba(99,102,241,.12); border: 1px solid rgba(167,139,250,.2); color: #a78bfa; }
+
+/* Sugestão de texto */
+.sofia-texto-sug {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(167,139,250,.25);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.sofia-texto-sug-label {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: #a78bfa;
+  margin-bottom: 6px;
+}
+.sofia-texto-sug-content {
+  font-size: 11.5px;
+  color: rgba(255,255,255,.75);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.sofia-texto-sug-btns {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+.sofia-btn {
+  flex: 1;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .15s;
+}
+.sofia-btn-primary { background: #a78bfa; color: #fff; }
+.sofia-btn-primary:hover { background: #9061f9; }
+.sofia-btn-secondary { background: rgba(255,255,255,.08); color: rgba(255,255,255,.7); border: 1px solid rgba(255,255,255,.1); }
+.sofia-btn-secondary:hover { background: rgba(255,255,255,.14); color: #fff; }
+
+/* Footer chat input */
+.sofia-doc-footer {
+  padding: 10px 14px 12px;
+  border-top: 1px solid rgba(255,255,255,.06);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.sofia-doc-input {
+  flex: 1;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px;
+  padding: 7px 12px;
+  color: #fff;
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color .2s;
+}
+.sofia-doc-input::placeholder { color: rgba(255,255,255,.3); }
+.sofia-doc-input:focus { border-color: rgba(167,139,250,.5); }
+.sofia-doc-send {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 9px;
+  background: #a78bfa;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s;
+  flex-shrink: 0;
+}
+.sofia-doc-send:hover { background: #9061f9; }
+
+/* Botão flutuante SOFIA */
+#sofiaDocBtn {
+  position: fixed;
+  right: 24px;
+  bottom: 40px;
+  width: 52px;
+  height: 52px;
+  border: none;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #a78bfa, #6366f1);
+  color: #fff;
+  font-size: 22px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(99,102,241,.45);
+  z-index: 9989;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .2s;
+}
+#sofiaDocBtn:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(99,102,241,.55); }
+#sofiaDocBtn .sofia-pulse {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 14px;
+  height: 14px;
+  background: #4ade80;
+  border-radius: 50%;
+  border: 2px solid #0a0f1e;
+  animation: sofiaPulse 2s infinite;
+}
+@keyframes sofiaPulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(74,222,128,.6); }
+  50%      { box-shadow: 0 0 0 6px rgba(74,222,128,0); }
+}
+
+/* Badge de pendências no botão IA da action bar */
+#btnIAOficio {
+  position: relative;
+}
+#sofiaIaBadge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #ef4444;
+  color: #fff;
+  border-radius: 20px;
+  font-size: 9px;
+  font-weight: 900;
+  padding: 1px 5px;
+  min-width: 16px;
+  text-align: center;
+  display: none;
+}
+</style>
+
+<!-- Botão flutuante SOFIA -->
+<button id="sofiaDocBtn" onclick="sofiaDocToggle()" title="Assistente SOFIA">
+  🤖
+  <span class="sofia-pulse"></span>
+</button>
+
+<!-- Painel SOFIA -->
+<div id="sofiaDocPanel">
+  <div class="sofia-doc-head">
+    <div class="sofia-doc-avatar">🤖</div>
+    <div class="sofia-doc-title">
+      <strong>SOFIA</strong>
+      <span>Assistente de Documentos</span>
+    </div>
+    <button class="sofia-doc-close" onclick="sofiaDocFechar()">✕</button>
+  </div>
+
+  <div class="sofia-doc-body" id="sofiaDocBody">
+    <div class="sofia-msg">
+      Olá! Estou monitorando o preenchimento do documento. Vou te alertar sobre pendências e posso gerar o texto automaticamente. 🚀
+    </div>
+    <div class="sofia-alert info">
+      💡 Selecione o tipo de ofício para eu começar a análise.
+    </div>
+  </div>
+
+  <div class="sofia-doc-footer">
+    <input type="text" class="sofia-doc-input" id="sofiaDocChatInput" placeholder="Pergunte algo para a SOFIA...">
+    <button class="sofia-doc-send" id="sofiaDocSendBtn">➤</button>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   SOFIA DOCUMENTOS — Controller
+═══════════════════════════════════════════════════════════ */
+(function() {
+"use strict";
+
+var SD = {
+  aberto: false,
+  analisando: false,
+  ultimoTipo: "",
+  ultimaEscola: "",
+  pendencias: 0,
+  textoGerado: "",
+  debTimer: null
+};
+
+function g(id) { return document.getElementById(id); }
+function esc(t) { return String(t||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+/* ── Toggle painel ── */
+window.sofiaDocToggle = function() {
+  var panel = g("sofiaDocPanel");
+  if (!panel) return;
+  SD.aberto = !SD.aberto;
+  panel.style.display = SD.aberto ? "flex" : "none";
+  if (SD.aberto) sofiaDocAnalisar();
+};
+
+window.sofiaDocFechar = function() {
+  var panel = g("sofiaDocPanel");
+  if (panel) panel.style.display = "none";
+  SD.aberto = false;
+};
+
+/* ── Adiciona mensagem no painel ── */
+function sofiaMsg(html, tipo) {
+  var body = g("sofiaDocBody"); if (!body) return;
+  var el = document.createElement("div");
+  el.className = "sofia-msg";
+  el.innerHTML = html;
+  body.appendChild(el);
+  body.scrollTop = body.scrollHeight;
+}
+
+function sofiaAlerta(txt, tipo) {
+  var body = g("sofiaDocBody"); if (!body) return;
+  var el = document.createElement("div");
+  el.className = "sofia-alert " + (tipo || "info");
+  el.textContent = txt;
+  body.appendChild(el);
+  body.scrollTop = body.scrollHeight;
+}
+
+function sofiaLoading() {
+  var body = g("sofiaDocBody"); if (!body) return null;
+  var el = document.createElement("div");
+  el.className = "sofia-msg loading";
+  el.innerHTML = '<div class="sofia-dot-anim"><span></span><span></span><span></span></div><span>SOFIA analisando...</span>';
+  body.appendChild(el);
+  body.scrollTop = body.scrollHeight;
+  return el;
+}
+
+function sofiaClearBody() {
+  var body = g("sofiaDocBody"); if (!body) return;
+  body.innerHTML = "";
+}
+
+/* ── Analisa o formulário atual ── */
+window.sofiaDocAnalisar = function() {
+  if (SD.analisando) return;
+
+  var tipo    = (g("tipo") ? g("tipo").value : "") || "";
+  var escola  = (g("escolaProfileNome") ? g("escolaProfileNome").textContent : "").replace(/—/g,"").trim();
+  var email   = (g("email") ? g("email").value : "") || "";
+  var lista   = document.querySelectorAll("#listaTrabalhadores .trabalhador-card") || [];
+  var qtd     = lista.length;
+  var corpo   = (g("corpo") ? g("corpo").value : "") || "";
+
+  // Só reanalisa se algo mudou
+  var chave = tipo + escola + qtd;
+  if (chave === SD._lastChave && !SD.aberto) return;
+  SD._lastChave = chave;
+
+  sofiaClearBody();
+
+  var pendencias = 0;
+  var alertas = [];
+
+  // Saudação
+  sofiaMsg("Analisando o fluxo atual...");
+
+  // Tipo
+  if (!tipo) {
+    alertas.push({ txt: "Selecione o tipo de ofício para começar.", tipo: "warn" });
+    pendencias++;
+  } else {
+    alertas.push({ txt: "✓ Tipo definido: " + tipo, tipo: "ok" });
+  }
+
+  // Escola
+  if (tipo && tipo !== "Ofício Livre") {
+    if (!escola || escola === "—") {
+      alertas.push({ txt: "Selecione uma escola no campo de busca.", tipo: "warn" });
+      pendencias++;
+    } else {
+      alertas.push({ txt: "✓ Escola: " + escola, tipo: "ok" });
+      if (!email) {
+        alertas.push({ txt: "A escola não tem e-mail cadastrado. Adicione um antes de emitir.", tipo: "err" });
+        pendencias++;
+      }
+    }
+  }
+
+  // Trabalhadores
+  if (tipo && tipo !== "Ofício Livre" && tipo !== "Taxa Assistencial") {
+    if (qtd === 0) {
+      alertas.push({ txt: "Adicione pelo menos 1 trabalhador vinculado.", tipo: "warn" });
+      pendencias++;
+    } else {
+      // Verifica CPFs
+      var semCpf = 0;
+      lista.forEach(function(card) {
+        var cpf = card.querySelector(".input-cpf-trabalhador");
+        if (cpf && !String(cpf.value || "").replace(/\D/g, "")) semCpf++;
+      });
+      if (semCpf > 0) {
+        alertas.push({ txt: semCpf + " trabalhador(es) sem CPF preenchido.", tipo: "warn" });
+        pendencias++;
+      } else {
+        alertas.push({ txt: "✓ " + qtd + " trabalhador(es) com dados completos.", tipo: "ok" });
+      }
+    }
+  }
+
+  // Ofício Livre
+  if (tipo === "Ofício Livre") {
+    var para = g("para") ? g("para").value.trim() : "";
+    if (!para) { alertas.push({ txt: "Informe o destinatário do Ofício Livre.", tipo: "warn" }); pendencias++; }
+    if (!corpo) { alertas.push({ txt: "Use o botão IA para gerar o corpo do ofício.", tipo: "info" }); }
+  }
+
+  alertas.forEach(function(a) { sofiaAlerta(a.txt, a.tipo); });
+
+  // Atualiza badge
+  SD.pendencias = pendencias;
+  var badge = g("sofiaIaBadge");
+  if (badge) {
+    badge.style.display = pendencias > 0 ? "block" : "none";
+    badge.textContent = pendencias;
+  }
+
+  // Se tudo ok, sugere ação
+  if (pendencias === 0 && tipo) {
+    sofiaMsg("✅ Fluxo pronto para emissão! Clique em <strong>Emitir Documento</strong> ou peça para eu gerar o texto.", "ok");
+  }
+
+  // Se tem corpo gerado, mostra
+  if (SD.textoGerado) {
+    sofiaExibirTexto(SD.textoGerado);
+  }
+};
+
+/* ── Gerar texto com IA ── */
+window.sofiaDocGerarTexto = function() {
+  var tipo        = g("tipo")              ? g("tipo").value.trim()                         : "";
+  var escola      = g("escolaProfileNome") ? g("escolaProfileNome").textContent.replace(/—/g,"").trim() : "";
+  var cnpj        = g("escolaProfileCnpj") ? g("escolaProfileCnpj").textContent.replace(/—/g,"").trim() : "";
+  var destinat    = g("para")              ? g("para").value.trim()                         : "";
+  var cargo       = g("cargo")             ? g("cargo").value.trim()                        : "";
+  var instituicao = g("instituicao")       ? g("instituicao").value.trim()                  : "";
+  var assunto     = g("assunto")           ? g("assunto").value.trim()                      : "";
+  var corpoAtual  = g("corpo")             ? g("corpo").value.trim()                        : "";
+
+  if (!tipo) {
+    sofiaAlerta("Selecione o tipo de ofício antes de gerar o texto.", "warn");
+    return;
+  }
+
+  // Abre painel se fechado
+  var panel = g("sofiaDocPanel");
+  if (panel) panel.style.display = "flex";
+  SD.aberto = true;
+
+  sofiaClearBody();
+  var loader = sofiaLoading();
+
+  SD.analisando = true;
+
+  var prompt =
+    "Você é especialista em elaboração de ofícios sindicais do SindEducação-ES.\n\n"
+    + "Gere apenas o corpo textual do ofício, sem cabeçalho, sem número, sem data e sem assinatura.\n\n"
+    + "Dados disponíveis:\n"
+    + "Tipo do ofício: " + tipo + "\n"
+    + (escola ? "Escola: " + escola + "\n" : "")
+    + (cnpj   ? "CNPJ: " + cnpj + "\n" : "")
+    + (destinat ? "Destinatário: " + destinat + "\n" : "")
+    + (cargo    ? "Cargo/Função: " + cargo + "\n" : "")
+    + (instituicao ? "Instituição: " + instituicao + "\n" : "")
+    + (assunto  ? "Assunto/Referência: " + assunto + "\n" : "")
+    + (corpoAtual ? "Texto já digitado pelo usuário (usar como base): " + corpoAtual + "\n" : "")
+    + "\nRegras:\n"
+    + "- Responda em português do Brasil formal e sindical.\n"
+    + "- Não crie número de ofício, data ou assinatura.\n"
+    + "- Não use markdown, negrito ou separadores.\n"
+    + "- Não invente dados. Use exatamente os dados fornecidos.\n"
+    + "- Retorne apenas o corpo do ofício.\n"
+    + "- Para Filiação: mencione a Cláusula 56ª da CCT 2026/2027 (vigência 01/03/2026 a 28/02/2027). O desconto é de 2% sobre o salário-base, autorizado expressamente pelo associado via ficha de filiação. O repasse deve ocorrer até o 10º dia do mês subsequente.\n"
+    + "- Para Desfiliação: solicite cessação imediata dos descontos de mensalidade sindical (2%), conforme Cláusula 56ª da CCT 2026/2027.\n"
+    + "- Para Taxa Negocial: mencione a Cláusula 57ª da CCT 2026/2027. A taxa é de 6% paga em 3 parcelas mensais de 2%, com repasse até o 10º dia útil do mês subsequente ao desconto. Ficam isentos os filiados ao SindEducação-ES.\n"
+    + "- Para Taxa Assistencial: mencione a Cláusula 58ª da CCT 2026/2027. O valor é de 4% da folha salarial bruta dos educadores técnico-administrativos, em duas parcelas de 2%, com vencimentos em 15 de abril e 15 de maio de 2027.";
+
+  google.script.run
+    .withSuccessHandler(function(texto) {
+      SD.analisando = false;
+      if (loader && loader.parentNode) loader.remove();
+      texto = String(texto || "").trim();
+      if (!texto) {
+        sofiaAlerta("A IA não retornou nenhum texto. Tente novamente.", "err");
+        return;
+      }
+      SD.textoGerado = texto;
+      sofiaExibirTexto(texto);
+
+      // Preenche o campo automaticamente
+      var campo = g("corpo");
+      if (campo) {
+        campo.value = texto;
+        campo.dispatchEvent(new Event("input", { bubbles: true }));
+        var contador = g("contadorCorpo");
+        if (contador) contador.textContent = texto.length + " / 3000";
+      }
+    })
+    .withFailureHandler(function(err) {
+      SD.analisando = false;
+      if (loader && loader.parentNode) loader.remove();
+      sofiaAlerta("Erro ao gerar texto: " + ((err && err.message) || err), "err");
+    })
+    .iaAssistente(prompt);
+};
+
+function sofiaExibirTexto(texto) {
+  var body = g("sofiaDocBody"); if (!body) return;
+  var wrap = document.createElement("div");
+  wrap.className = "sofia-texto-sug";
+  wrap.innerHTML =
+    '<div class="sofia-texto-sug-label">✨ Texto gerado pela SOFIA</div>'
+    + '<div class="sofia-texto-sug-content">' + esc(texto) + '</div>'
+    + '<div class="sofia-texto-sug-btns">'
+    + '<button class="sofia-btn sofia-btn-primary" onclick="sofiaAplicarTexto()">✅ Aplicar no campo</button>'
+    + '<button class="sofia-btn sofia-btn-secondary" onclick="sofiaDocGerarTexto()">↻ Regenerar</button>'
+    + '</div>';
+  body.appendChild(wrap);
+  body.scrollTop = body.scrollHeight;
+}
+
+window.sofiaAplicarTexto = function() {
+  if (!SD.textoGerado) return;
+  var campo = g("corpo");
+  if (campo) {
+    campo.value = SD.textoGerado;
+    campo.dispatchEvent(new Event("input", { bubbles: true }));
+    var contador = g("contadorCorpo");
+    if (contador) contador.textContent = SD.textoGerado.length + " / 3000";
+    campo.focus();
+  }
+  sofiaAlerta("✓ Texto aplicado no campo do ofício!", "ok");
+};
+
+/* ── Chat livre com SOFIA ── */
+window.sofiaDocChat = function() {
+  var input = g("sofiaDocChatInput");
+  var txt = input ? input.value.trim() : "";
+  if (!txt) return;
+  if (input) input.value = "";
+
+  sofiaMsg('<strong>Você:</strong> ' + esc(txt));
+  var loader = sofiaLoading();
+
+  var tipo    = g("tipo")              ? g("tipo").value : "";
+  var escola  = g("escolaProfileNome") ? g("escolaProfileNome").textContent.replace(/—/g,"").trim() : "";
+
+  var prompt =
+    "Você é a SOFIA, assistente sindical do SindEducação-ES, especialista em ofícios sindicais, CCT, filiação, taxas e mensalidades.\n"
+    + "Contexto atual: o usuário está no módulo de Documentos.\n"
+    + (tipo ? "Tipo de ofício selecionado: " + tipo + ".\n" : "")
+    + (escola ? "Escola selecionada: " + escola + ".\n" : "")
+    + "Pergunta do usuário: " + txt + "\n\n"
+    + "Responda de forma objetiva, em português formal, em no máximo 3 parágrafos.";
+
+  google.script.run
+    .withSuccessHandler(function(resp) {
+      if (loader && loader.parentNode) loader.remove();
+      sofiaMsg('<strong>SOFIA:</strong> ' + esc(String(resp || "").trim()));
+    })
+    .withFailureHandler(function(err) {
+      if (loader && loader.parentNode) loader.remove();
+      sofiaAlerta("Erro: " + ((err && err.message) || err), "err");
+    })
+    .iaAssistente(prompt);
+};
+
+/* ── Monitoramento automático do formulário ── */
+function monitorarFormulario() {
+  var tipo   = g("tipo");
+  var busca  = g("escolaBusca");
+  var lista  = g("listaTrabalhadores");
+
+  if (tipo) {
+    tipo.addEventListener("change", function() {
+      clearTimeout(SD.debTimer);
+      SD.debTimer = setTimeout(sofiaDocAnalisar, 400);
+    });
+  }
+
+  if (busca) {
+    busca.addEventListener("input", function() {
+      clearTimeout(SD.debTimer);
+      SD.debTimer = setTimeout(sofiaDocAnalisar, 600);
+    });
+  }
+
+  if (lista) {
+    var obs = new MutationObserver(function() {
+      clearTimeout(SD.debTimer);
+      SD.debTimer = setTimeout(sofiaDocAnalisar, 500);
+    });
+    obs.observe(lista, { childList: true, subtree: true });
+  }
+}
+
+/* ── Sobrescreve o botão IA da action bar para usar SOFIA ── */
+function bindBotaoIA() {
+  var btn = g("btnIAOficio");
+  if (!btn || btn.dataset.sofiaBind) return;
+  btn.dataset.sofiaBind = "1";
+  btn.removeAttribute("onclick");
+  btn.onclick = null;
+
+  // Adiciona badge
+  if (!g("sofiaIaBadge")) {
+    var badge = document.createElement("span");
+    badge.id = "sofiaIaBadge";
+    btn.style.position = "relative";
+    btn.appendChild(badge);
+  }
+
+  btn.addEventListener("click", function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    sofiaDocGerarTexto();
+  }, true);
+}
+
+/* ── Bind botão send e Enter ── */
+function bindSend() {
+  var btn = g("sofiaDocSendBtn");
+  if (btn) btn.onclick = function() { sofiaDocChat(); };
+  var input = g("sofiaDocChatInput");
+  if (input) input.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") { e.preventDefault(); sofiaDocChat(); }
+  });
+}
+
+/* ── Init ── */
+function init() {
+  monitorarFormulario();
+  bindBotaoIA();
+  bindSend();
+  setTimeout(sofiaDocAnalisar, 800);
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
+}
+
+// Re-bind quando o módulo documentos for aberto (navegação SOFIA)
+document.addEventListener("sofiaModuloAberto", function(e) {
+  if (e.detail && e.detail.modulo === "documentos") {
+    setTimeout(function() {
+      bindBotaoIA();
+      sofiaDocAnalisar();
+    }, 500);
+  }
+});
+
+})();
+</script>

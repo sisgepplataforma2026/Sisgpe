@@ -1,0 +1,351 @@
+<script>
+/* =====================================================
+  SISGEP - Scripts_Dash.html (Versão Otimizada + Oftalmologia)
+  ✅ Usa apenas dashboardExecutivoGeral()
+  ✅ Remove dependências de funções que não existem
+  ✅ Mantém compatibilidade com o sistema
+  ✅ 👁️ Integra métricas de Oftalmologia
+===================================================== */
+
+var DASH_EXEC_CACHE = null;
+
+/* =====================
+  DASHBOARD EXECUTIVO (Principal)
+===================== */
+const DashboardExecutivo = {
+  carregar: function(force) {
+    if (DASH_EXEC_CACHE && !force) {
+      DashboardExecutivo.renderTudo(DASH_EXEC_CACHE);
+      return;
+    }
+
+    console.log('🔄 Dashboard: Carregando dados do servidor...');
+    
+    google.script.run
+      .withSuccessHandler(function(d) {
+        console.log('✅ Dashboard: Dados recebidos', d);
+        DASH_EXEC_CACHE = d || {};
+        DashboardExecutivo.renderTudo(DASH_EXEC_CACHE);
+      })
+      .withFailureHandler(function(err) {
+        console.error('❌ Erro ao carregar dashboard:', err);
+        DashboardExecutivo.renderTudo({
+          oficiosEmitidos: 0, guiasMes: 0, recibosEmitidos: 0,
+          escolasCadastradas: 0, pendenciasGerais: 0, alertasCriticos: 0,
+          oftalmoHoje: 0, oftalmoMes: 0, oftalmoCompareceram: 0,
+          oftalmoTaxaComparecimento: 0, oftalmoReservados: 0, oftalmoCancelados: 0
+        });
+      })
+      .dashboardExecutivoGeral();
+  },
+
+  renderTudo: function(d) {
+    d = d || {};
+    DashboardExecutivo.renderResumoExecutivo(d);
+    DashboardExecutivo.renderResumoModulos(d);
+    DashboardExecutivo.renderPendencias(d);
+    DashboardExecutivo.renderAlertas(d);
+    DashboardExecutivo.renderAtividade(d);
+  },
+
+  renderResumoExecutivo: function(d) {
+    var ids = {
+      dashExecOficios: "oficiosEmitidos",
+      dashExecGuias: "guiasMes",
+      dashExecRecibos: "recibosEmitidos",
+      dashExecEscolas: "escolasCadastradas",
+      dashExecPendencias: "pendenciasGerais",
+      dashExecAlertas: "alertasCriticos",
+      dashUltimoOficioResumo: "ultimoOficio",
+      dashProximoOficio: "proximoOficio"
+    };
+
+    Object.keys(ids).forEach(function(id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      var valor = d[ids[id]];
+      el.textContent = (valor === null || valor === undefined || valor === "") 
+        ? (id.indexOf("Oficio") > -1 ? "—" : 0) 
+        : valor;
+    });
+  },
+
+  renderResumoModulos: function(d) {
+    var el = document.getElementById("dashResumoModulos");
+    if (!el) return;
+    el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;">
+      ${cardModulo_("Ofícios", (d.oficiosEmitidos||0) + " emitidos", "Pendentes: " + (d.oficiosPendentes||0))}
+      ${cardModulo_("Guias", (d.guiasMes||0) + " no mês", "Vencidas: " + (d.guiasVencidas||0))}
+      ${cardModulo_("Escolas", (d.escolasCadastradas||0) + " cadastradas", "Ativas: " + (d.escolasAtivas||0))}
+      ${cardModulo_("Certificados", (d.certificadosTotal||0) + " solicitações", "Pendentes: " + (d.certificadosPendentes||0))}
+      ${cardModulo_("Parque China", (d.reservasTotal||0) + " reservas", "Pendentes: " + (d.reservasPendentes||0))}
+      ${cardModulo_("Recibos", (d.recibosEmitidos||0) + " emitidos", "No mês: " + (d.recibosMes||0))}
+      ${cardModuloOftalmo_(d)}
+    </div>`;
+  },
+
+  renderPendencias: function(d) {
+    var el = document.getElementById("dashPendenciasModulos");
+    if (!el) return;
+    el.innerHTML = 
+      rowResumo_("Ofícios pendentes", d.oficiosPendentes || 0) +
+      rowResumo_("Guias vencidas", d.guiasVencidas || 0) +
+      rowResumo_("Certificados pendentes", d.certificadosPendentes || 0) +
+      rowResumo_("Reservas pendentes", d.reservasPendentes || 0) +
+      rowResumo_("Escolas sem e-mail", d.escolasSemEmail || 0) +
+      rowResumo_("Escolas sem CNPJ", d.escolasSemCnpj || 0);
+  },
+
+  renderAlertas: function(d) {
+    var el = document.getElementById("dashAlertasCriticos");
+    if (!el) return;
+    var html = "";
+    if ((d.guiasVencidas || 0) > 0) html += alerta_("warn", "Guias vencidas", d.guiasVencidas + " guia(s) vencida(s).");
+    if ((d.certificadosPendentes || 0) > 0) html += alerta_("warn", "Certificados pendentes", d.certificadosPendentes + " solicitação(ões) pendente(s).");
+    if ((d.reservasPendentes || 0) > 0) html += alerta_("warn", "Reservas pendentes", d.reservasPendentes + " reserva(s) pendente(s).");
+    if ((d.escolasSemCnpj || 0) > 0) html += alerta_("warn", "Cadastro incompleto", d.escolasSemCnpj + " escola(s) sem CNPJ.");
+    if (!html) html = alerta_("ok", "Sistema estável", "Nenhum alerta crítico.");
+    el.innerHTML = html;
+  },
+
+  renderAtividade: function(d) {
+    var el = document.getElementById("dashAtividadeGeral");
+    if (!el) return;
+    el.innerHTML = 
+      atividade_("Último ofício", d.ultimoOficio || "Nenhum recente.") +
+      atividade_("Última guia", d.ultimaGuia || "Nenhuma recente.") +
+      atividade_("Último certificado", d.ultimoCertificado || "Nenhum recente.") +
+      atividade_("Última reserva", d.ultimaReserva || "Nenhuma recente.") +
+      atividade_("Última escola", d.ultimaEscola || "Nenhuma recente.");
+  },
+
+  atualizar: function() {
+    DASH_EXEC_CACHE = null;
+    this.carregar(true);
+  }
+};
+
+/* =====================
+  DASHBOARD (Legado - Simplificado)
+===================== */
+const Dashboard = {
+  carregar: function() {
+    DashboardExecutivo.carregar();
+    
+    if (typeof dashboardFilaEnvioResumo === 'function') {
+      google.script.run
+        .withSuccessHandler(function(f) { Dashboard.renderFilaResumo(f); })
+        .withFailureHandler(function(err) { console.warn('Fila resumo não disponível'); })
+        .dashboardFilaEnvioResumo();
+    }
+  },
+
+  renderFilaResumo: function(f) {
+    if (!f) return;
+    setText_('dashFilaTotal', f.total || 0);
+    setText_('dashFilaPendentes', f.pendentes || 0);
+    setText_('dashFilaProcessando', f.processando || 0);
+    setText_('dashFilaEnviados', f.enviados || 0);
+    setText_('dashFilaErros', f.erros || 0);
+    setText_('dashFilaTaxaSucesso', (f.taxaSucesso || 0) + '%');
+    setText_('dashFilaTaxaErro', (f.taxaErro || 0) + '%');
+  },
+
+  carregarErrosFila: function() {
+    var el = document.getElementById('dashFilaErrosRecentes');
+    if (el) el.innerHTML = '<div class="activity-item"><div class="activity-dot" style="background:#22c55e;"></div><div><div class="activity-title">Sem erros recentes</div><div class="activity-desc">Sistema operando normalmente.</div></div></div>';
+  }
+};
+
+/* =====================
+  HELPERS
+===================== */
+function setText_(id, valor) {
+  var el = document.getElementById(id);
+  if (el) el.textContent = valor;
+}
+
+function cardModulo_(titulo, principal, sub) {
+  return `<div style="background:#fff;border:1px solid #dbe5f0;border-radius:16px;padding:16px;box-shadow:0 4px 14px rgba(15,23,42,.04);">
+    <div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#64748b;margin-bottom:8px;">${titulo}</div>
+    <div style="font-size:20px;font-weight:800;color:#0f172a;margin-bottom:6px;">${principal}</div>
+    <div style="font-size:12px;color:#64748b;">${sub}</div>
+  </div>`;
+}
+
+function rowResumo_(label, valor) {
+  return `<div class="summary-row"><span class="sr-l">${label}</span><span class="sr-r">${valor}</span></div>`;
+}
+
+function alerta_(tipo, titulo, desc) {
+  var badge = tipo === 'ok' 
+    ? '<div class="alert-badge badge-ok">● Estável</div>' 
+    : '<div class="alert-badge badge-warn">● Atenção</div>';
+  return `<div class="alert-item ${tipo==='ok'?'ok':'warn'}">${badge}<div class="alert-title">${titulo}</div><div class="alert-desc">${desc}</div></div>`;
+}
+
+function atividade_(titulo, desc) {
+  return `<div class="activity-item"><div class="activity-dot"></div><div><div class="activity-title">${titulo}</div><div class="activity-desc">${desc}</div></div></div>`;
+}
+
+function cardModuloOftalmo_(d) {
+  var hoje = d.oftalmoHoje || 0;
+  var mes = d.oftalmoMes || 0;
+  var taxa = d.oftalmoTaxaComparecimento || 0;
+  var reservados = d.oftalmoReservados || 0;
+  var compareceram = d.oftalmoCompareceram || 0;
+  
+  return `<div style="background:linear-gradient(135deg,#002e6d,#1a6eb5);border-radius:16px;padding:18px;box-shadow:0 6px 20px rgba(0,46,109,.25);color:#fff;position:relative;overflow:hidden;">
+    <div style="position:absolute;top:-20px;right:-20px;width:100px;height:100px;background:rgba(255,255,255,.05);border-radius:50%;"></div>
+    <div style="position:relative;z-index:1;">
+      <div style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.9;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+        <span style="font-size:16px;">👁️</span>
+        <span>Oftalmologia</span>
+      </div>
+      
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+        <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:26px;font-weight:800;line-height:1;margin-bottom:4px;">${hoje}</div>
+          <div style="font-size:10px;opacity:.85;text-transform:uppercase;letter-spacing:.05em;">Hoje</div>
+        </div>
+        <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:26px;font-weight:800;line-height:1;margin-bottom:4px;">${mes}</div>
+          <div style="font-size:10px;opacity:.85;text-transform:uppercase;letter-spacing:.05em;">No Mês</div>
+        </div>
+      </div>
+      
+      <div style="background:rgba(255,255,255,.08);border-radius:8px;padding:10px 12px;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-size:11px;opacity:.8;">Reservados</span>
+          <span style="font-size:13px;font-weight:700;">${reservados}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:11px;opacity:.8;">Compareceram</span>
+          <span style="font-size:13px;font-weight:700;color:#34d399;">${compareceram}</span>
+        </div>
+      </div>
+      
+      <div style="background:rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:11px;">Taxa de Comparecimento</span>
+        <span style="font-size:16px;font-weight:800;">${taxa}%</span>
+      </div>
+    </div>
+  </div>`;
+}
+/* ═══════════════════════════════════════════════════════════════
+   DASHBOARD DE PENDÊNCIAS — GUIAS
+   ═══════════════════════════════════════════════════════════════ */
+function carregarDashboardPendencias() {
+  if (typeof google === "undefined" || !google.script || !google.script.run) return;
+
+  google.script.run
+    .withSuccessHandler(function(resp) {
+      if (!resp || !resp.ok) return;
+      renderDashboardPendencias(resp);
+    })
+    .withFailureHandler(function() {})
+    .obterDashboardPendencias();
+}
+
+function renderDashboardPendencias(dados) {
+  var container = document.getElementById("dashPendencias");
+  if (!container) return;
+
+  var resumo = dados.resumo || {};
+
+  if (!resumo.total) {
+    container.innerHTML =
+      '<div style="text-align:center;padding:24px;color:#64748b;font-size:14px;font-weight:600;">' +
+      '✅ Nenhuma pendência no momento!' +
+      '</div>';
+    return;
+  }
+
+  function corUrgencia(u) {
+    if (u === "vencida")  return { bg:"#fee2e2", borda:"#fca5a5", cor:"#991b1b", badge:"VENCIDA" };
+    if (u === "urgente")  return { bg:"#fff7ed", borda:"#fdba74", cor:"#9a3412", badge:"URGENTE" };
+    return                       { bg:"#eff6ff", borda:"#93c5fd", cor:"#1d4ed8", badge:"PENDENTE" };
+  }
+
+  function montarLinha(item, tipo) {
+    var c = corUrgencia(item.urgencia);
+    var dias = item.diffDias < 0
+      ? Math.abs(item.diffDias) + "d vencida"
+      : item.diffDias === 0
+        ? "vence hoje"
+        : "vence em " + item.diffDias + "d";
+
+    return '<div style="display:flex;align-items:center;justify-content:space-between;' +
+      'padding:12px 14px;border-radius:10px;background:' + c.bg + ';' +
+      'border:1px solid ' + c.borda + ';margin-bottom:8px;gap:10px;flex-wrap:wrap;">' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div style="font-size:13px;font-weight:800;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' +
+          item.nome +
+        '</div>' +
+        '<div style="font-size:11px;color:#475569;margin-top:2px;">' +
+          (item.numero ? item.numero + ' · ' : '') + item.vencimento + ' · ' + item.valor +
+        '</div>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">' +
+        '<span style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;' +
+          'background:' + c.borda + ';color:' + c.cor + ';">' + dias + '</span>' +
+        '<span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;' +
+          'background:' + c.cor + ';color:#fff;">' + c.badge + '</span>' +
+      '</div>' +
+    '</div>';
+  }
+
+  var htmlNF = dados.nfPendentes.length
+    ? dados.nfPendentes.map(function(i){ return montarLinha(i, "nf"); }).join("")
+    : '<div style="color:#64748b;font-size:13px;padding:10px 0;">Nenhuma NF pendente.</div>';
+
+  var htmlPag = dados.pagamentoPendente.length
+    ? dados.pagamentoPendente.map(function(i){ return montarLinha(i, "pag"); }).join("")
+    : '<div style="color:#64748b;font-size:13px;padding:10px 0;">Nenhum pagamento pendente.</div>';
+
+  container.innerHTML =
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">' +
+
+      '<div>' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
+          '<span style="font-size:12px;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:.08em;">📋 NF Pendentes</span>' +
+          '<span style="background:#fee2e2;color:#991b1b;font-size:12px;font-weight:800;' +
+            'padding:3px 10px;border-radius:999px;">' + dados.resumo.nf + '</span>' +
+        '</div>' +
+        htmlNF +
+      '</div>' +
+
+      '<div>' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
+          '<span style="font-size:12px;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:.08em;">💰 Pagamentos</span>' +
+          '<span style="background:#fee2e2;color:#991b1b;font-size:12px;font-weight:800;' +
+            'padding:3px 10px;border-radius:999px;">' + dados.resumo.pagamento + '</span>' +
+        '</div>' +
+        htmlPag +
+      '</div>' +
+
+    '</div>';
+}
+/* =====================
+  INICIALIZAÇÃO
+===================== */
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('🚀 Dashboard: Iniciando carregamento...');
+  
+  if (typeof DashboardExecutivo !== 'undefined') {
+    DashboardExecutivo.carregar();
+  }
+  
+  if (typeof Dashboard !== 'undefined') {
+    setTimeout(function() {
+      Dashboard.carregar();
+    }, 1000);
+  }
+  
+  setInterval(function() {
+    if (typeof DashboardExecutivo !== 'undefined') {
+      DashboardExecutivo.atualizar();
+    }
+  }, 300000);
+});
+</script>

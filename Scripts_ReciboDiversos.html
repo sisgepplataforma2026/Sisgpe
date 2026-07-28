@@ -1,0 +1,921 @@
+<script>
+/* ══════════════════════════════════════════════════════════
+   RECIBOS DIVERSOS — Scripts_ReciboDiversos.html
+   ✅ Formulário unificado (1 a 25 beneficiários)
+   ✅ Envio automático ao emitir (WhatsApp + e-mail)
+   ✅ Status: Aguardando → Assinado → Enviado contabilidade
+   ✅ Anexo do assinado: upload base64 ou colar link
+   ✅ Envio para contabilidade com o arquivo correto
+   ✅ Histórico com paginação
+══════════════════════════════════════════════════════════ */
+
+/* ─── ESTADO GLOBAL ─── */
+var _rdPagAtual      = 1;
+var _rdItensForm     = [];   // lista de beneficiários no formulário
+var _rdItemSeq       = 0;
+var _rdBotoesVinculados = false;
+var RD_MAX_LOTE      = 25;
+
+/* ─── HELPERS ─── */
+function rdG(id){ return document.getElementById(id); }
+
+function rdEsc(str){
+  if(!str) return "";
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function rdStatus(msg, tipo, elId){
+  var el = rdG(elId || "rdStatusGlobal");
+  if(!el) return;
+  if(!msg){ el.className = "rd-status"; el.style.display="none"; el.textContent = ""; return; }
+  el.className = "rd-status " + (tipo || "info");
+  el.style.display = "block";
+  el.textContent = msg;
+}
+
+function rdMascaraValor(input){
+  if(!input) return;
+  var valor = String(input.value || "").replace(/\D/g,'');
+  if(!valor){ input.value = ""; return; }
+  valor = (parseInt(valor,10) / 100).toFixed(2).replace(".", ",")
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  input.value = "R$ " + valor;
+}
+
+function rdMascaraTelefone(input){
+  if(!input) return;
+  var v = String(input.value || "").replace(/\D/g,"").substring(0,11);
+  if(v.length > 10) v = v.replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3");
+  else if(v.length > 6) v = v.replace(/^(\d{2})(\d{4,5})(\d{0,4})$/, "($1) $2-$3");
+  else if(v.length > 2) v = v.replace(/^(\d{2})(\d+)$/, "($1) $2");
+  input.value = v;
+}
+
+function rdMascaraCPF(input){
+  if(!input) return;
+  var v = String(input.value || "").replace(/\D/g,"").substring(0,11);
+  if(v.length > 9) v = v.replace(/^(\d{3})(\d{3})(\d{3})(\d{0,2})$/, "$1.$2.$3-$4");
+  else if(v.length > 6) v = v.replace(/^(\d{3})(\d{3})(\d{0,3})$/, "$1.$2.$3");
+  else if(v.length > 3) v = v.replace(/^(\d{3})(\d{0,3})$/, "$1.$2");
+  input.value = v;
+}
+
+function rdParseValor(v){
+  if(!v) return 0;
+  var txt = String(v).replace(/[^\d,]/g,'').replace(/\./g,'').replace(',','.');
+  var num = parseFloat(txt);
+  return isNaN(num) ? 0 : num;
+}
+
+function rdFormatarBR(n){
+  return Number(n||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+function rdDetectarTipoDoc(input, badgeId){
+  var d = String(input.value).replace(/\D/g,"");
+  var badge = rdG(badgeId || "rdMTipoBadge");
+  if(!badge) return;
+  if(d.length===11){ badge.className="doc-tipo-badge badge-pf visivel"; badge.textContent="👤 Pessoa Física (CPF)"; }
+  else if(d.length===14){ badge.className="doc-tipo-badge badge-pj visivel"; badge.textContent="🏢 Pessoa Jurídica (CNPJ)"; }
+  else { badge.className="doc-tipo-badge"; badge.textContent=""; }
+}
+
+/* ═══════════════════════════════════════
+   FORMULÁRIO — LISTA DE BENEFICIÁRIOS
+═══════════════════════════════════════ */
+function rdAdicionarBeneficiario(dados){
+  if(_rdItensForm.length >= RD_MAX_LOTE){
+    rdStatus("Limite máximo de " + RD_MAX_LOTE + " beneficiários atingido.","warn");
+    return;
+  }
+  _rdItemSeq++;
+  var id = "rdi_" + _rdItemSeq;
+  _rdItensForm.push({
+    id: id,
+    nome: (dados && dados.nome) || "",
+    cpf:  (dados && dados.cpf)  || "",
+    valor:(dados && dados.valor)|| "",
+    formaPgto: (dados && dados.formaPgto) || "PIX",
+    pixChave:  (dados && dados.pixChave)  || "",
+    chequeNum: (dados && dados.chequeNum) || "",
+    chequeBanco:   (dados && dados.chequeBanco)   || "Sicoob",
+    chequeAgencia: (dados && dados.chequeAgencia) || "3010",
+    chequeSerie:   (dados && dados.chequeSerie)   || "001",
+    chequeData:    (dados && dados.chequeData)    || "",
+    email:    (dados && dados.email)    || "",
+    whatsapp: (dados && dados.whatsapp) || "",
+    descricao:(dados && dados.descricao)|| ""
+  });
+  rdRenderFormulario();
+  // Foca no nome do item recém adicionado
+  setTimeout(function(){
+    var el = rdG("rdNome_" + id);
+    if(el) el.focus();
+  }, 80);
+}
+
+function rdRemoverBeneficiario(id){
+  _rdItensForm = _rdItensForm.filter(function(i){ return i.id !== id; });
+  rdRenderFormulario();
+  rdRecalcularTotal();
+}
+
+function rdAtualizarBenef(id, campo, valor){
+  var item = _rdItensForm.find(function(i){ return i.id === id; });
+  if(item) item[campo] = valor;
+  if(campo === "valor") rdRecalcularTotal();
+}
+
+function rdRecalcularTotal(){
+  var total = _rdItensForm.reduce(function(s,i){ return s + rdParseValor(i.valor); }, 0);
+  var el = rdG("rdTotalLote");
+  if(el) el.textContent = total > 0 ? "R$ " + rdFormatarBR(total) : "";
+  var row = rdG("rdTotalRow");
+  if(row) row.style.display = _rdItensForm.length > 1 ? "flex" : "none";
+}
+
+function rdAlternarFormaBenef(id){
+  var item = _rdItensForm.find(function(i){ return i.id === id; });
+  if(!item) return;
+  var sel = rdG("rdForma_" + id);
+  if(!sel) return;
+  item.formaPgto = sel.value;
+  var pixRow  = rdG("rdPixRow_"  + id);
+  var chqRow  = rdG("rdChqRow_"  + id);
+  var dinRow  = rdG("rdDinRow_"  + id);
+  if(pixRow) pixRow.style.display = item.formaPgto === "PIX"    ? "" : "none";
+  if(chqRow) chqRow.style.display = item.formaPgto === "CHEQUE" ? "grid" : "none";
+  if(dinRow) dinRow.style.display = (item.formaPgto === "DINHEIRO" || item.formaPgto === "TRANSFERENCIA") ? "" : "none";
+}
+
+function rdRenderFormulario(){
+  var container = rdG("rdListaBeneficiarios");
+  if(!container) return;
+
+  if(!_rdItensForm.length){
+    container.innerHTML =
+      '<div style="text-align:center;padding:28px;border:2px dashed var(--g200);border-radius:12px;color:var(--g400);font-size:13px;font-weight:600;">' +
+        '👤 Nenhum beneficiário adicionado.<br>' +
+        '<span style="font-size:12px;font-weight:400;">Clique em <strong>+ Adicionar beneficiário</strong> para começar.</span>' +
+      '</div>';
+    rdRecalcularTotal();
+    return;
+  }
+
+  var html = "";
+
+  _rdItensForm.forEach(function(item, idx){
+    var isCheque = item.formaPgto === "CHEQUE";
+    var isDin    = item.formaPgto === "DINHEIRO" || item.formaPgto === "TRANSFERENCIA";
+
+    html +=
+      '<div class="rdf-item" id="rdfitem_' + item.id + '" style="border:1.5px solid var(--g200);border-radius:14px;padding:16px;margin-bottom:12px;background:var(--g50);">' +
+
+        // Header do item
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">' +
+          '<span style="font-size:11px;font-weight:800;color:var(--navy2);background:#eef3fc;border-radius:999px;padding:3px 10px;">Beneficiário ' + (idx+1) + '</span>' +
+          '<button type="button" onclick="rdRemoverBeneficiario(\'' + item.id + '\')" style="height:28px;padding:0 10px;border:none;border-radius:7px;background:#fee2e2;color:#dc2626;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">✕ Remover</button>' +
+        '</div>' +
+
+        // Linha 1: Nome + CPF + Valor
+        '<div style="display:grid;grid-template-columns:2fr 1.2fr 140px;gap:10px;margin-bottom:10px;">' +
+          '<div>' +
+            '<div style="font-size:10px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Nome / Razão Social *</div>' +
+            '<input id="rdNome_' + item.id + '" type="text" value="' + rdEsc(item.nome) + '" placeholder="Nome completo" ' +
+            'style="width:100%;height:38px;border:1.5px solid var(--g200);border-radius:10px;padding:0 10px;font-size:13px;font-family:inherit;" ' +
+            'oninput="rdAtualizarBenef(\'' + item.id + '\',\'nome\',this.value)">' +
+          '</div>' +
+          '<div>' +
+            '<div style="font-size:10px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">CPF ou CNPJ *</div>' +
+            '<input type="text" value="' + rdEsc(item.cpf) + '" placeholder="000.000.000-00" maxlength="18" ' +
+            'style="width:100%;height:38px;border:1.5px solid var(--g200);border-radius:10px;padding:0 10px;font-size:13px;font-family:inherit;" ' +
+            'oninput="rdMascaraCPF(this);rdAtualizarBenef(\'' + item.id + '\',\'cpf\',this.value)">' +
+          '</div>' +
+          '<div>' +
+            '<div style="font-size:10px;font-weight:800;color:var(--amber);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Valor * <span style="background:#fef3c7;padding:1px 5px;border-radius:999px;">R$</span></div>' +
+            '<input type="text" value="' + rdEsc(item.valor) + '" placeholder="0,00" ' +
+            'style="width:100%;height:38px;border:1.5px solid #fde68a;border-radius:10px;padding:0 10px;font-size:14px;font-weight:900;background:#fffbeb;color:#78350f;font-family:inherit;" ' +
+            'oninput="rdMascaraValor(this);rdAtualizarBenef(\'' + item.id + '\',\'valor\',this.value)">' +
+          '</div>' +
+        '</div>' +
+
+        // Linha 2: Descrição
+        '<div style="margin-bottom:10px;">' +
+          '<div style="font-size:10px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Referente a *</div>' +
+          '<input type="text" value="' + rdEsc(item.descricao) + '" placeholder="Ex.: Serviço de som, Buffet, DJ, Honorários..." ' +
+          'style="width:100%;height:38px;border:1.5px solid var(--g200);border-radius:10px;padding:0 10px;font-size:13px;font-family:inherit;" ' +
+          'oninput="rdAtualizarBenef(\'' + item.id + '\',\'descricao\',this.value)">' +
+        '</div>' +
+
+        // Linha 3: Forma pgto + dados de pagamento
+        '<div style="display:grid;grid-template-columns:160px 1fr;gap:10px;margin-bottom:10px;">' +
+          '<div>' +
+            '<div style="font-size:10px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Forma de pagamento</div>' +
+            '<select id="rdForma_' + item.id + '" onchange="rdAlternarFormaBenef(\'' + item.id + '\')" ' +
+            'style="width:100%;height:38px;border:1.5px solid var(--g200);border-radius:10px;padding:0 10px;font-size:13px;font-family:inherit;">' +
+              '<option value="PIX"'         + (item.formaPgto==="PIX"?"          selected":"") + '>⚡ PIX</option>' +
+              '<option value="DINHEIRO"'    + (item.formaPgto==="DINHEIRO"?"    selected":"") + '>💵 Dinheiro</option>' +
+              '<option value="TRANSFERENCIA"'+(item.formaPgto==="TRANSFERENCIA"?" selected":"") + '>🏦 Transferência</option>' +
+              '<option value="CHEQUE"'      + (item.formaPgto==="CHEQUE"?"      selected":"") + '>📋 Cheque</option>' +
+            '</select>' +
+          '</div>' +
+
+          // Campo PIX
+          '<div id="rdPixRow_' + item.id + '" ' + (isCheque||isDin ? 'style="display:none;"' : '') + '>' +
+            '<div style="font-size:10px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Chave PIX</div>' +
+            '<input type="text" value="' + rdEsc(item.pixChave) + '" placeholder="CPF, e-mail, telefone ou chave aleatória" ' +
+            'style="width:100%;height:38px;border:1.5px solid var(--g200);border-radius:10px;padding:0 10px;font-size:13px;font-family:inherit;" ' +
+            'oninput="rdAtualizarBenef(\'' + item.id + '\',\'pixChave\',this.value)">' +
+          '</div>' +
+
+          // Campo Dinheiro/Transferência
+          '<div id="rdDinRow_' + item.id + '" ' + (!isDin ? 'style="display:none;"' : '') + '>' +
+            '<div style="font-size:12px;color:var(--g400);padding-top:12px;">Nenhum dado adicional necessário.</div>' +
+          '</div>' +
+        '</div>' +
+
+        // Linha Cheque
+        '<div id="rdChqRow_' + item.id + '" ' + (!isCheque ? 'style="display:none;"' : 'style="display:grid;"') + ' ' +
+        'style="grid-template-columns:1fr 100px 70px 1fr 150px;gap:8px;margin-bottom:10px;">' +
+          '<div>' +
+            '<div style="font-size:10px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Banco</div>' +
+            '<input type="text" value="' + rdEsc(item.chequeBanco||"Sicoob") + '" ' +
+            'style="width:100%;height:38px;border:1.5px solid var(--g200);border-radius:10px;padding:0 10px;font-size:13px;font-family:inherit;" ' +
+            'oninput="rdAtualizarBenef(\'' + item.id + '\',\'chequeBanco\',this.value)">' +
+          '</div>' +
+          '<div>' +
+            '<div style="font-size:10px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Agência</div>' +
+            '<input type="text" value="' + rdEsc(item.chequeAgencia||"3010") + '" ' +
+            'style="width:100%;height:38px;border:1.5px solid var(--g200);border-radius:10px;padding:0 10px;font-size:13px;font-family:inherit;" ' +
+            'oninput="rdAtualizarBenef(\'' + item.id + '\',\'chequeAgencia\',this.value)">' +
+          '</div>' +
+          '<div>' +
+            '<div style="font-size:10px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Série</div>' +
+            '<input type="text" value="' + rdEsc(item.chequeSerie||"001") + '" ' +
+            'style="width:100%;height:38px;border:1.5px solid var(--g200);border-radius:10px;padding:0 10px;font-size:13px;font-family:inherit;" ' +
+            'oninput="rdAtualizarBenef(\'' + item.id + '\',\'chequeSerie\',this.value)">' +
+          '</div>' +
+          '<div>' +
+            '<div style="font-size:10px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Nº Cheque *</div>' +
+            '<input type="text" value="' + rdEsc(item.chequeNum) + '" placeholder="000123" ' +
+            'style="width:100%;height:38px;border:1.5px solid var(--g200);border-radius:10px;padding:0 10px;font-size:13px;font-family:inherit;" ' +
+            'oninput="rdAtualizarBenef(\'' + item.id + '\',\'chequeNum\',this.value)">' +
+          '</div>' +
+          '<div>' +
+            '<div style="font-size:10px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Data</div>' +
+            '<input type="date" value="' + rdEsc(item.chequeData||"") + '" ' +
+            'style="width:100%;height:38px;border:1.5px solid var(--g200);border-radius:10px;padding:0 10px;font-size:13px;font-family:inherit;" ' +
+            'oninput="rdAtualizarBenef(\'' + item.id + '\',\'chequeData\',this.value)">' +
+          '</div>' +
+        '</div>' +
+
+        // Linha 4: E-mail + WhatsApp
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
+          '<div>' +
+            '<div style="font-size:10px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">' +
+              '📧 E-mail <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:10px;color:var(--g400);">· envio automático ao emitir</span>' +
+            '</div>' +
+            '<input type="email" value="' + rdEsc(item.email) + '" placeholder="email@exemplo.com" ' +
+            'style="width:100%;height:38px;border:1.5px solid var(--g200);border-radius:10px;padding:0 10px;font-size:13px;font-family:inherit;" ' +
+            'oninput="rdAtualizarBenef(\'' + item.id + '\',\'email\',this.value)">' +
+          '</div>' +
+          '<div>' +
+            '<div style="font-size:10px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">' +
+              '💬 WhatsApp <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:10px;color:var(--g400);">· envio automático ao emitir</span>' +
+            '</div>' +
+            '<input type="text" value="' + rdEsc(item.whatsapp) + '" placeholder="(27) 99999-9999" ' +
+            'style="width:100%;height:38px;border:1.5px solid var(--g200);border-radius:10px;padding:0 10px;font-size:13px;font-family:inherit;" ' +
+            'oninput="rdMascaraTelefone(this);rdAtualizarBenef(\'' + item.id + '\',\'whatsapp\',this.value)">' +
+          '</div>' +
+        '</div>' +
+
+      '</div>';
+  });
+
+  container.innerHTML = html;
+  rdRecalcularTotal();
+}
+
+/* ═══════════════════════════════════════
+   EMITIR — PREVIEW E GERAÇÃO
+═══════════════════════════════════════ */
+function rdPreviewFormulario(){
+  var candidato = _rdItensForm.find(function(i){ return i.nome && i.cpf && i.valor && i.descricao; });
+  if(!candidato){
+    rdStatus("Preencha ao menos 1 beneficiário completo para pré-visualizar.", "warn");
+    return;
+  }
+  rdStatus("Gerando prévia...","info");
+  loader(true);
+  google.script.run
+    .withSuccessHandler(function(html){
+      loader(false); rdStatus("","info");
+      if(!html){ rdStatus("Erro ao gerar prévia.", "error"); return; }
+      var novaAba = window.open("","_blank");
+      if(novaAba){ novaAba.document.open(); novaAba.document.write(html); novaAba.document.close(); }
+    })
+    .withFailureHandler(function(err){
+      loader(false); rdStatus("Erro: " + ((err&&err.message)||err), "error");
+    })
+    .previewReciboDiverso({
+      pagadorNome: candidato.nome,
+      pagadorDoc:  candidato.cpf,
+      valor:       candidato.valor,
+      descricao:   candidato.descricao,
+      formaPgto:   candidato.formaPgto || "PIX",
+      pixChave:    candidato.pixChave  || "",
+      chequeNum:   candidato.chequeNum || ""
+    }, SISGEP_TOKEN_SESSAO);
+}
+
+function rdEmitirRecibos(){
+  if(!_rdItensForm.length){
+    rdStatus("Adicione pelo menos 1 beneficiário.", "warn");
+    return;
+  }
+
+  // Validar todos
+  var erros = [];
+  _rdItensForm.forEach(function(item, idx){
+    var n = idx + 1;
+    if(!item.nome)      erros.push("Beneficiário " + n + ": nome não informado.");
+    if(!item.cpf)       erros.push("Beneficiário " + n + ": CPF/CNPJ não informado.");
+    if(!item.valor || item.valor === "R$ 0,00") erros.push("Beneficiário " + n + ": valor não informado.");
+    if(!item.descricao) erros.push("Beneficiário " + n + ": descrição não informada.");
+    if(item.formaPgto === "PIX" && !item.pixChave) erros.push("Beneficiário " + n + ": chave PIX não informada.");
+    if(item.formaPgto === "CHEQUE" && !item.chequeNum) erros.push("Beneficiário " + n + ": número do cheque não informado.");
+  });
+
+  if(erros.length){
+    rdStatus(erros[0], "error");
+    return;
+  }
+
+  var btnEmitir = rdG("rdBtnEmitir");
+  if(btnEmitir){ btnEmitir.disabled = true; btnEmitir.textContent = "⏳ Emitindo..."; }
+  rdStatus("Emitindo " + _rdItensForm.length + " recibo(s)...", "info");
+  loader(true);
+
+  var dadosLote = _rdItensForm.map(function(item){
+    return {
+      pagadorNome:    item.nome,
+      pagadorDoc:     item.cpf,
+      valor:          item.valor,
+      descricao:      item.descricao,
+      formaPgto:      item.formaPgto,
+      pixChave:       item.pixChave      || "",
+      chequeNum:      item.chequeNum     || "",
+      chequeBanco:    item.chequeBanco   || "Sicoob",
+      chequeAgencia:  item.chequeAgencia || "3010",
+      chequeSerie:    item.chequeSerie   || "001",
+      chequeData:     item.chequeData    || "",
+      email:          item.email         || "",
+      whatsapp:       item.whatsapp      || ""
+    };
+  });
+
+  // Individual ou lote
+  var funcao = dadosLote.length === 1 ? "gerarReciboDiverso" : "gerarLoteReciboDiversos";
+  var payload = dadosLote.length === 1 ? dadosLote[0] : dadosLote;
+
+  google.script.run
+    .withSuccessHandler(function(res){
+      loader(false);
+      if(btnEmitir){ btnEmitir.disabled = false; btnEmitir.textContent = "✅ Emitir Recibos"; }
+
+      // Normalizar resposta individual vs lote
+      var arquivos = [];
+      if(dadosLote.length === 1){
+        if(!res || !res.ok){ rdStatus("Erro: " + ((res&&res.mensagem)||"desconhecido"), "error"); return; }
+        arquivos = [{ numero: res.numero, url: res.url, download: res.download,
+          nome: dadosLote[0].pagadorNome, valor: dadosLote[0].valor,
+          descricao: dadosLote[0].descricao, email: dadosLote[0].email,
+          whatsapp: dadosLote[0].whatsapp, statusEmail: res.statusEmail }];
+      } else {
+        if(!res || res.erro){ rdStatus("Erro: " + ((res&&res.mensagem)||"desconhecido"), "error"); return; }
+        arquivos = res.arquivos || [];
+      }
+
+      if(!arquivos.length){ rdStatus("Nenhum recibo gerado.", "warn"); return; }
+
+      rdStatus("", "info");
+
+      // Envio automático de WhatsApp para cada beneficiário
+      arquivos.forEach(function(arq){
+        if(arq.whatsapp){
+          rdAbrirWhatsApp_(arq);
+        }
+      });
+
+      // Limpa o formulário e mostra resultado
+      _rdItensForm = [];
+      rdRenderFormulario();
+
+      // Renderiza os cards de resultado
+      rdRenderResultado(arquivos);
+
+      // Atualiza histórico se estiver visível
+      _rdCarregarHistoricoSilencioso();
+    })
+    .withFailureHandler(function(err){
+      loader(false);
+      if(btnEmitir){ btnEmitir.disabled = false; btnEmitir.textContent = "✅ Emitir Recibos"; }
+      rdStatus("Falha: " + ((err&&err.message)||err), "error");
+    })[funcao](payload);
+}
+
+/* ═══════════════════════════════════════
+   WHATSAPP
+═══════════════════════════════════════ */
+function rdAbrirWhatsApp_(arq){
+  var num = String(arq.whatsapp || "").replace(/\D/g,"");
+  if(!num) return;
+  if(num.length >= 10 && !num.startsWith("55")) num = "55" + num;
+
+  var hoje = new Date();
+  var data = String(hoje.getDate()).padStart(2,'0') + "/" +
+             String(hoje.getMonth()+1).padStart(2,'0') + "/" +
+             hoje.getFullYear();
+
+  var msg =
+    "💰 *Recibo Nº " + (arq.numero||"—") + "* — SindEducação-ES\n" +
+    "━━━━━━━━━━━━━━━━━━━━\n" +
+    "📅 *Data:* " + data + "\n" +
+    "👤 *Beneficiário:* " + (arq.nome||"—") + "\n" +
+    "💰 *Valor:* R$ " + (arq.valor||"—") + "\n" +
+    (arq.descricao ? "📝 *Referente a:* " + arq.descricao + "\n" : "") +
+    "━━━━━━━━━━━━━━━━━━━━\n" +
+    "📄 *Acesse seu recibo:*\n" + (arq.url||"") + "\n\n" +
+    "Após assinar (físico ou pelo Gov.br), por favor devolva o documento assinado.\n\n" +
+    "_SINDEDUCAÇÃO-ES_";
+
+  window.open("https://wa.me/" + num + "?text=" + encodeURIComponent(msg), "_blank");
+}
+
+/* ═══════════════════════════════════════
+   RESULTADO PÓS-EMISSÃO
+═══════════════════════════════════════ */
+function rdRenderResultado(arquivos){
+  var container = rdG("rdResultadoEmissao");
+  if(!container) return;
+
+  var total = arquivos.reduce(function(s,a){ return s + rdParseValor(a.valor); }, 0);
+
+  var html =
+    '<div style="background:var(--green-lt);border:1px solid #bbf7d0;border-radius:14px;padding:16px 20px;margin-bottom:14px;">' +
+      '<div style="font-size:15px;font-weight:900;color:var(--green-dk);margin-bottom:6px;">✅ ' + arquivos.length + ' recibo(s) emitido(s) — Total: R$ ' + rdFormatarBR(total) + '</div>' +
+      '<div style="font-size:12px;color:var(--green-dk);">WhatsApp aberto automaticamente para quem tinha número cadastrado. E-mails enviados automaticamente.</div>' +
+    '</div>' +
+    '<div style="display:grid;gap:10px;">';
+
+  arquivos.forEach(function(arq){
+    var temWhats = !!(arq.whatsapp);
+    html +=
+      '<div style="border:1.5px solid var(--g200);border-radius:12px;overflow:hidden;background:#fff;">' +
+        '<div style="background:linear-gradient(135deg,var(--navy),var(--navy2));padding:10px 14px;display:flex;align-items:center;gap:10px;">' +
+          '<div style="width:32px;height:32px;border-radius:8px;background:rgba(201,168,76,.2);display:flex;align-items:center;justify-content:center;font-size:15px;">💰</div>' +
+          '<div style="flex:1;min-width:0;">' +
+            '<div style="font-weight:800;color:#fff;font-size:13px;">' + rdEsc(arq.nome||"") + '</div>' +
+            '<div style="font-size:11px;color:rgba(255,255,255,.55);">' + rdEsc(arq.numero||"") + ' · R$ ' + rdEsc(arq.valor||"") + '</div>' +
+          '</div>' +
+          (arq.statusEmail === "ENVIADO" ? '<span style="font-size:10px;background:rgba(5,150,105,.3);color:#d1fae5;padding:2px 8px;border-radius:999px;">✓ E-mail</span>' : '') +
+        '</div>' +
+        '<div style="padding:10px 14px;display:flex;gap:7px;flex-wrap:wrap;align-items:center;">' +
+          '<a href="' + rdEsc(arq.url||"#") + '" target="_blank" style="display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 12px;border-radius:999px;background:var(--navy);color:#fff;text-decoration:none;font-size:11px;font-weight:700;">📄 Abrir PDF</a>' +
+          (temWhats ? '<button onclick="rdAbrirWhatsApp_(' + JSON.stringify(arq) + ')" style="height:30px;padding:0 12px;border-radius:999px;background:#25d366;color:#fff;border:none;cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;">💬 WhatsApp</button>' : '') +
+          '<span style="font-size:11px;color:var(--amber);background:#fef3c7;padding:3px 10px;border-radius:999px;font-weight:700;">⏳ Aguardando assinatura</span>' +
+        '</div>' +
+      '</div>';
+  });
+
+  html += '</div>';
+  container.innerHTML = html;
+  container.style.display = "block";
+
+  // Scroll para o resultado
+  setTimeout(function(){ container.scrollIntoView({ behavior: "smooth", block: "start" }); }, 100);
+}
+
+/* ═══════════════════════════════════════
+   HISTÓRICO — ASSINATURA E CONTABILIDADE
+═══════════════════════════════════════ */
+function rdMarcarAssinado(numero, tipo){
+  if(!confirm("Marcar o recibo " + numero + " como assinado via " + (tipo === "GOV_BR" ? "Gov.br" : tipo === "FOTO_SCAN" ? "foto/scan" : "físico") + "?")) return;
+
+  loader(true);
+  google.script.run
+    .withSuccessHandler(function(res){
+      loader(false);
+      if(!res || !res.ok){ alert("❌ " + (res&&res.mensagem||"Erro")); return; }
+      _rdCarregarHistorico();
+    })
+    .withFailureHandler(function(err){
+      loader(false); alert("Erro: " + ((err&&err.message)||err));
+    })
+    .marcarReciboDiversoAssinado({ numero: numero, tipo: tipo }, SISGEP_TOKEN_SESSAO);
+}
+
+function rdAbrirPainelAnexo(numero, linkAtual){
+  // Fecha qualquer painel aberto
+  document.querySelectorAll(".rd-painel-anexo").forEach(function(p){ p.remove(); });
+
+  var linha = document.querySelector("[data-numero='" + numero + "']");
+  if(!linha) return;
+
+  var painel = document.createElement("div");
+  painel.className = "rd-painel-anexo";
+  painel.style.cssText = "padding:14px 18px;background:#f0fdf4;border-top:1px solid #bbf7d0;";
+
+  painel.innerHTML =
+    '<div style="font-size:11px;font-weight:800;color:var(--green-dk);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">📎 Anexar recibo assinado</div>' +
+
+    // Se já tem arquivo anexado
+    (linkAtual ?
+      '<div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #bbf7d0;border-radius:8px;padding:8px 12px;margin-bottom:10px;">' +
+        '<span style="font-size:13px;">✅</span>' +
+        '<div style="flex:1;font-size:12px;color:var(--green-dk);font-weight:700;">Arquivo já anexado</div>' +
+        '<a href="' + rdEsc(linkAtual) + '" target="_blank" style="font-size:11px;color:var(--navy);font-weight:700;text-decoration:none;">👁 Ver</a>' +
+      '</div>'
+    : '') +
+
+    // Upload
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">' +
+      '<div>' +
+        '<div style="font-size:10px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">📤 Fazer upload</div>' +
+        '<label style="display:flex;align-items:center;gap:6px;height:36px;padding:0 14px;border:1.5px solid var(--g200);border-radius:999px;background:#fff;color:var(--navy);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">' +
+          '📎 Selecionar arquivo' +
+          '<input type="file" id="rdFileAnexo_' + rdEsc(numero) + '" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="rdUploadAnexo(\'' + rdEsc(numero) + '\')">' +
+        '</label>' +
+      '</div>' +
+      '<div>' +
+        '<div style="font-size:10px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">🔗 Ou colar link do Drive</div>' +
+        '<div style="display:flex;gap:6px;">' +
+          '<input id="rdLinkAnexo_' + rdEsc(numero) + '" type="text" placeholder="https://drive.google.com/..." ' +
+          'style="flex:1;height:36px;border:1.5px solid var(--g200);border-radius:10px;padding:0 10px;font-size:12px;font-family:inherit;">' +
+          '<button onclick="rdSalvarLink(\'' + rdEsc(numero) + '\')" style="height:36px;padding:0 12px;border:none;border-radius:999px;background:var(--navy);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">💾 Salvar</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+
+    '<div id="rdStatusAnexo_' + rdEsc(numero) + '" style="font-size:12px;color:var(--g500);"></div>' +
+
+    '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px;">' +
+      '<button onclick="this.closest(\'.rd-painel-anexo\').remove()" ' +
+      'style="height:32px;padding:0 14px;border:1.5px solid var(--g200);border-radius:999px;background:#fff;color:var(--g600);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Fechar</button>' +
+    '</div>';
+
+  linha.insertAdjacentElement("afterend", painel);
+}
+
+function rdUploadAnexo(numero){
+  var input = rdG("rdFileAnexo_" + numero);
+  var statusEl = rdG("rdStatusAnexo_" + numero);
+  if(!input || !input.files || !input.files[0]) return;
+
+  var file = input.files[0];
+  if(file.size > 10 * 1024 * 1024){
+    if(statusEl) statusEl.textContent = "❌ Arquivo muito grande. Máximo: 10MB.";
+    return;
+  }
+
+  if(statusEl) statusEl.textContent = "⏳ Enviando arquivo...";
+
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var base64 = e.target.result.split(",")[1];
+    loader(true);
+    google.script.run
+      .withSuccessHandler(function(res){
+        loader(false);
+        if(!res || !res.ok){
+          if(statusEl) statusEl.textContent = "❌ " + (res&&res.mensagem||"Erro ao enviar.");
+          return;
+        }
+        if(statusEl) statusEl.textContent = "✅ Arquivo salvo com sucesso!";
+        setTimeout(function(){ _rdCarregarHistorico(); }, 1000);
+      })
+      .withFailureHandler(function(err){
+        loader(false);
+        if(statusEl) statusEl.textContent = "❌ Erro: " + ((err&&err.message)||err);
+      })
+      .salvarAnexoAssinadoDiverso({
+        numero:   numero,
+        base64:   base64,
+        nomeArq:  file.name,
+        mimeType: file.type || "application/pdf"
+      }, SISGEP_TOKEN_SESSAO);
+  };
+  reader.readAsDataURL(file);
+}
+
+function rdSalvarLink(numero){
+  var input  = rdG("rdLinkAnexo_" + numero);
+  var statusEl = rdG("rdStatusAnexo_" + numero);
+  var link   = input ? String(input.value || "").trim() : "";
+
+  if(!link){
+    if(statusEl) statusEl.textContent = "❌ Cole o link do Drive.";
+    return;
+  }
+
+  if(statusEl) statusEl.textContent = "⏳ Salvando link...";
+  loader(true);
+
+  google.script.run
+    .withSuccessHandler(function(res){
+      loader(false);
+      if(!res || !res.ok){
+        if(statusEl) statusEl.textContent = "❌ " + (res&&res.mensagem||"Erro.");
+        return;
+      }
+      if(statusEl) statusEl.textContent = "✅ Link salvo com sucesso!";
+      setTimeout(function(){ _rdCarregarHistorico(); }, 1000);
+    })
+    .withFailureHandler(function(err){
+      loader(false);
+      if(statusEl) statusEl.textContent = "❌ Erro: " + ((err&&err.message)||err);
+    })
+    .salvarLinkAssinadoDiverso({ numero: numero, link: link }, SISGEP_TOKEN_SESSAO);
+}
+
+function rdEnviarContabilidade(r){
+  var emailTo = prompt("E-mail da contabilidade:", "contabilidade@sindeducacao.com");
+  if(!emailTo) return;
+
+  loader(true);
+  google.script.run
+    .withSuccessHandler(function(res){
+      loader(false);
+      alert(res.ok ? "✅ " + res.mensagem : "❌ " + res.mensagem);
+      if(res.ok) _rdCarregarHistorico();
+    })
+    .withFailureHandler(function(err){
+      loader(false); alert("Erro: " + ((err&&err.message)||err));
+    })
+    .enviarReciboDiversoContabilidade({
+      emailTo:      emailTo,
+      numero:       r.numero       || "",
+      nome:         r.pagadorNome  || "",
+      valor:        r.valor        || "",
+      descricao:    r.descricao    || "",
+      linkAssinado: r.linkAssinado || "",
+      linkPdf:      r.linkPdf      || "",
+      isLote:       false
+    }, SISGEP_TOKEN_SESSAO);
+}
+
+/* ═══════════════════════════════════════
+   HISTÓRICO — CARREGAR E RENDERIZAR
+═══════════════════════════════════════ */
+function _rdCarregarHistoricoSilencioso(){
+  var blocoHist = rdG("rdBlocoHistorico");
+  if(blocoHist && blocoHist.style.display !== "none") _rdCarregarHistorico();
+}
+
+function _rdCarregarHistorico(){
+  var filtros = {
+    nome:     (rdG("rdFiltNome")||{}).value   || "",
+    numero:   (rdG("rdFiltNumero")||{}).value || "",
+    status:   (rdG("rdFiltStatus")||{}).value || "",
+    dataDe:   (rdG("rdFiltDataDe")||{}).value || "",
+    dataAte:  (rdG("rdFiltDataAte")||{}).value|| "",
+    pagina:   _rdPagAtual,
+    porPagina:20
+  };
+
+  var corpo = rdG("rdHistCorpo");
+  if(corpo) corpo.innerHTML = '<div class="rd-vazio">⏳ Carregando...</div>';
+
+  var pag = rdG("rdPaginacao");
+  if(pag) pag.style.display = "none";
+
+  google.script.run
+    .withSuccessHandler(function(res){
+      if(!res || !res.ok){
+        if(corpo) corpo.innerHTML = '<div class="rd-vazio">❌ Erro ao carregar.</div>';
+        return;
+      }
+      var sub = rdG("rdHistSub");
+      if(sub) sub.textContent = res.total + " recibo(s) encontrado(s)";
+
+      if(!res.dados || !res.dados.length){
+        if(corpo) corpo.innerHTML = '<div class="rd-vazio">📭 Nenhum recibo encontrado.</div>';
+        return;
+      }
+      _rdRenderizarHistorico(res);
+    })
+    .withFailureHandler(function(err){
+      if(corpo) corpo.innerHTML = '<div class="rd-vazio">❌ Erro: ' + ((err&&err.message)||err) + '</div>';
+    })
+    .listarHistoricoReciboDiversos(filtros, SISGEP_TOKEN_SESSAO);
+}
+
+function _rdRenderizarHistorico(res){
+  var corpo = rdG("rdHistCorpo");
+  if(!corpo) return;
+
+  var html = '<div style="display:grid;gap:10px;">';
+
+  res.dados.forEach(function(r){
+
+    // Badge status assinatura
+    var badgeAss = "";
+    if(r.statusAssinatura === "ASSINADO"){
+      badgeAss = '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;">✅ Assinado' +
+        (r.tipoAssinatura ? ' · ' + (r.tipoAssinatura === "GOV_BR" ? "Gov.br" : r.tipoAssinatura === "FOTO_SCAN" ? "Foto/Scan" : "Físico") : '') +
+        '</span>';
+    } else {
+      badgeAss = '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;">⏳ Aguardando assinatura</span>';
+    }
+
+    // Badge status contabilidade
+    var badgeCont = "";
+    if(r.statusContabilidade === "ENVIADO"){
+      badgeCont = '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;background:#e0e7ff;color:#3730a3;border:1px solid #a5b4fc;">📤 Enviado contabilidade</span>';
+    }
+
+    // Badge tipo doc
+    var badgeDoc = r.tipo === "PJ"
+      ? '<span style="font-size:9px;background:#eff6ff;color:#1e40af;padding:1px 5px;border-radius:999px;font-weight:700;">PJ</span>'
+      : '<span style="font-size:9px;background:#f0fdf4;color:#166534;padding:1px 5px;border-radius:999px;font-weight:700;">PF</span>';
+
+    // Iniciais
+    var nomeUpper = String(r.pagadorNome||"").toUpperCase();
+    var iniciais = nomeUpper.split(" ").filter(function(p){ return p && p.length > 2; }).slice(0,2).map(function(p){ return p[0]; }).join("") || "?";
+
+    html +=
+      '<div style="border:1.5px solid var(--g200);border-radius:12px;overflow:hidden;background:#fff;" data-numero="' + rdEsc(r.numero) + '">' +
+
+        // Cabeçalho do card
+        '<div style="padding:12px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">' +
+          '<div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--navy),#1565C0);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff;flex-shrink:0;">' + rdEsc(iniciais) + '</div>' +
+          '<div style="flex:1;min-width:0;">' +
+            '<div style="font-size:13px;font-weight:800;color:var(--g900);">' + rdEsc(r.pagadorNome||"") + ' ' + badgeDoc + '</div>' +
+            '<div style="font-size:11px;color:var(--g400);">' + rdEsc(r.numero||"") + ' · ' + rdEsc(r.descricao||"") + ' · ' + rdEsc(r.data||"") + '</div>' +
+          '</div>' +
+          '<div style="font-size:14px;font-weight:900;color:var(--navy);flex-shrink:0;">R$ ' + rdEsc(r.valor||"") + '</div>' +
+        '</div>' +
+
+        // Status badges
+        '<div style="padding:0 16px 10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">' +
+          badgeAss + badgeCont +
+        '</div>' +
+
+        // Ações
+        '<div style="padding:10px 16px;border-top:1px solid var(--g100);display:flex;gap:6px;flex-wrap:wrap;align-items:center;">' +
+
+          // PDF original
+          (r.linkPdf ? '<a href="' + rdEsc(r.linkPdf) + '" target="_blank" style="height:28px;padding:0 10px;border-radius:7px;background:#e8f0fb;color:var(--navy);text-decoration:none;font-size:11px;font-weight:700;display:inline-flex;align-items:center;">📄 PDF</a>' : '') +
+
+          // WhatsApp
+          (r.whatsapp ? '<button onclick="_rdWhatsHistorico(' + JSON.stringify(r) + ')" style="height:28px;padding:0 10px;border:none;border-radius:7px;background:#dcfce7;color:#166534;cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;">💬</button>' : '') +
+
+          // E-mail
+          (r.email ? '<button onclick="_rdReenviarEmailRd(' + JSON.stringify(r) + ')" style="height:28px;padding:0 10px;border:none;border-radius:7px;background:#dbeafe;color:#1e40af;cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;">📧</button>' : '') +
+
+          // Ações por status de assinatura
+          (r.statusAssinatura !== "ASSINADO" ?
+            // Aguardando — botão marcar assinado
+            '<div style="margin-left:auto;display:flex;gap:5px;">' +
+              '<button onclick="rdMarcarAssinado(\'' + rdEsc(r.numero) + '\',\'FISICO\')" style="height:28px;padding:0 9px;border:none;border-radius:7px;background:#faf5ff;color:#6b21a8;cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;" title="Assinou fisicamente">📝 Físico</button>' +
+              '<button onclick="rdMarcarAssinado(\'' + rdEsc(r.numero) + '\',\'GOV_BR\')" style="height:28px;padding:0 9px;border:none;border-radius:7px;background:#eff6ff;color:#1d4ed8;cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;" title="Assinou pelo Gov.br">🏛 Gov.br</button>' +
+              '<button onclick="rdMarcarAssinado(\'' + rdEsc(r.numero) + '\',\'FOTO_SCAN\')" style="height:28px;padding:0 9px;border:none;border-radius:7px;background:#f0fdf4;color:#065f46;cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;" title="Foto ou scan recebido">📱 Foto/Scan</button>' +
+            '</div>'
+          :
+            // Assinado — anexar + enviar contabilidade
+            '<div style="margin-left:auto;display:flex;gap:5px;">' +
+              // Botão anexar
+              '<button onclick="rdAbrirPainelAnexo(\'' + rdEsc(r.numero) + '\',\'' + rdEsc(r.linkAssinado||"") + '\')" ' +
+              'style="height:28px;padding:0 10px;border:1.5px solid ' + (r.linkAssinado ? '#bbf7d0' : '#fcd34d') + ';border-radius:7px;background:' + (r.linkAssinado ? '#f0fdf4' : '#fffbeb') + ';color:' + (r.linkAssinado ? '#065f46' : '#92400e') + ';cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;">' +
+                (r.linkAssinado ? '📎 Ver assinado' : '📎 Anexar assinado') +
+              '</button>' +
+
+              // Enviar contabilidade — só ativo se tiver anexo
+              (r.statusContabilidade !== "ENVIADO" ?
+                '<button onclick="' + (r.linkAssinado ? 'rdEnviarContabilidade(' + JSON.stringify(r) + ')' : 'alert(\'Anexe o recibo assinado antes de enviar para a contabilidade.\')') + '" ' +
+                'style="height:28px;padding:0 10px;border:none;border-radius:7px;background:' + (r.linkAssinado ? 'var(--navy)' : 'var(--g200)') + ';color:' + (r.linkAssinado ? '#fff' : 'var(--g400)') + ';cursor:' + (r.linkAssinado ? 'pointer' : 'not-allowed') + ';font-size:11px;font-weight:700;font-family:inherit;">📤 Contabilidade</button>'
+              : '') +
+            '</div>'
+          ) +
+
+          // Excluir
+          '<button onclick="_rdExcluirRd(\'' + rdEsc(r.numero) + '\')" style="height:28px;padding:0 8px;border:none;border-radius:7px;background:#fee2e2;color:#991b1b;cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;">🗑</button>' +
+
+        '</div>' +
+      '</div>';
+  });
+
+  html += '</div>';
+  corpo.innerHTML = html;
+
+  // Paginação
+  var pag = rdG("rdPaginacao");
+  if(pag && res.paginas > 1){
+    pag.style.display = "flex";
+    var info = rdG("rdPagInfo");
+    if(info) info.textContent = "Página " + res.pagina + " de " + res.paginas + " (" + res.total + " registros)";
+    var btns = rdG("rdPagBtns");
+    if(btns){
+      var bh = '<button class="rd-pag-btn" ' + (res.pagina<=1?"disabled":"") + ' onclick="_rdPagAtual=' + (res.pagina-1) + ';_rdCarregarHistorico()">‹</button>';
+      var ini = Math.max(1, res.pagina-2), fim = Math.min(res.paginas, res.pagina+2);
+      for(var p=ini; p<=fim; p++) bh += '<button class="rd-pag-btn' + (p===res.pagina?" ativo":"") + '" onclick="_rdPagAtual=' + p + ';_rdCarregarHistorico()">' + p + '</button>';
+      bh += '<button class="rd-pag-btn" ' + (res.pagina>=res.paginas?"disabled":"") + ' onclick="_rdPagAtual=' + (res.pagina+1) + ';_rdCarregarHistorico()">›</button>';
+      btns.innerHTML = bh;
+    }
+  } else if(pag){ pag.style.display = "none"; }
+}
+
+/* ═══════════════════════════════════════
+   AÇÕES DO HISTÓRICO
+═══════════════════════════════════════ */
+function _rdReenviarEmailRd(r){
+  if(!confirm("Reenviar e-mail do recibo " + r.numero + " para " + r.email + "?")) return;
+  loader(true);
+  google.script.run
+    .withSuccessHandler(function(res){ loader(false); alert(res.ok?"✅ "+res.mensagem:"❌ "+res.mensagem); if(res.ok) _rdCarregarHistorico(); })
+    .withFailureHandler(function(err){ loader(false); alert("Erro: "+((err&&err.message)||err)); })
+    .reenviarEmailReciboDiverso({ email:r.email, linkPdf:r.linkPdf, numero:r.numero, nome:r.pagadorNome||r.nome, valor:r.valor, descricao:r.descricao }, SISGEP_TOKEN_SESSAO);
+}
+
+function _rdWhatsHistorico(r){
+  var num = String(r.whatsapp||"").replace(/\D/g,"");
+  if(num.length>=10 && !num.startsWith("55")) num = "55" + num;
+  var msg = "Olá, " + (r.pagadorNome||r.nome||"") + "!\n\nSegue o recibo nº " + r.numero + ".\n💰 Valor: R$ " + r.valor + "\n📋 " + r.descricao + "\n\n🔗 " + r.linkPdf + "\n\nApós assinar, devolva o documento assinado.\n\nAtenciosamente,\nSINDEDUCAÇÃO-ES";
+  window.open("https://wa.me/" + num + "?text=" + encodeURIComponent(msg), "_blank");
+}
+
+function _rdExcluirRd(numero){
+  if(!confirm("Excluir o recibo " + numero + " do histórico?\n\nO arquivo no Drive não será excluído.")) return;
+  loader(true);
+  google.script.run
+    .withSuccessHandler(function(res){ loader(false); alert(res.ok?"✅ "+res.mensagem:"❌ "+res.mensagem); if(res.ok) _rdCarregarHistorico(); })
+    .withFailureHandler(function(err){ loader(false); alert("Erro: "+((err&&err.message)||err)); })
+    .excluirReciboDiverso({ numero: numero }, SISGEP_TOKEN_SESSAO);
+}
+
+/* ═══════════════════════════════════════
+   TABS E BIND
+═══════════════════════════════════════ */
+function _rdBindTabs(){
+  var tabNovo = rdG("rdTabNovo");
+  var tabHist = rdG("rdTabHistorico");
+
+  if(tabNovo && !tabNovo.dataset.bound){
+    tabNovo.dataset.bound = "1";
+    tabNovo.addEventListener("click", function(){
+      tabNovo.classList.add("active"); tabHist.classList.remove("active");
+      rdG("rdBlocoNovo").style.display = ""; rdG("rdBlocoHistorico").style.display = "none";
+    });
+  }
+  if(tabHist && !tabHist.dataset.bound){
+    tabHist.dataset.bound = "1";
+    tabHist.addEventListener("click", function(){
+      tabHist.classList.add("active"); tabNovo.classList.remove("active");
+      rdG("rdBlocoNovo").style.display = "none"; rdG("rdBlocoHistorico").style.display = "";
+      _rdPagAtual = 1; _rdCarregarHistorico();
+    });
+  }
+}
+
+function _rdBindBotoes(){
+  document.addEventListener("click", function(e){
+    var btn = e.target && e.target.closest ? e.target.closest("button") : null;
+    if(!btn) return;
+
+    var id = btn.id;
+
+    if(id === "rdBtnAdicionarBenef"){ e.preventDefault(); rdAdicionarBeneficiario(null); return; }
+    if(id === "rdBtnPreview")       { e.preventDefault(); rdPreviewFormulario(); return; }
+    if(id === "rdBtnEmitir")        { e.preventDefault(); rdEmitirRecibos(); return; }
+    if(id === "rdBtnBuscar")        { e.preventDefault(); _rdPagAtual=1; _rdCarregarHistorico(); return; }
+    if(id === "rdBtnLimparFilt"){
+      e.preventDefault();
+      ["rdFiltNome","rdFiltNumero","rdFiltStatus","rdFiltDataDe","rdFiltDataAte"].forEach(function(fid){ var el=rdG(fid); if(el) el.value=""; });
+      _rdPagAtual=1; _rdCarregarHistorico(); return;
+    }
+  }, false);
+}
+
+/* ═══════════════════════════════════════
+   INIT
+═══════════════════════════════════════ */
+function initReciboDiversos(){
+  _rdBindTabs();
+  if(!_rdBotoesVinculados){
+    _rdBindBotoes();
+    _rdBotoesVinculados = true;
+  }
+  if(_rdItensForm.length === 0){
+    rdAdicionarBeneficiario(null); // começa com exatamente 1 item
+  }
+}
+
+window.initReciboDiversos     = initReciboDiversos;
+window.initReciboDiversosNovo = initReciboDiversos;
+
+if(document.readyState === "loading"){
+  document.addEventListener("DOMContentLoaded", initReciboDiversos);
+} else {
+  initReciboDiversos();
+}
+</script>

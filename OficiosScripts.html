@@ -1,0 +1,1736 @@
+<script>
+/* ═══════════════════════════════════════════════════════════
+   SISGEP · Oficios.html — v7.2 CORRIGIDO (Busca/Escola Restaurada)
+   ✅ renderDropdown populando HTML, exibindo lista e bind de clique
+   ✅ preview, gerar, reset, auto-save, toast, blindarBotao mantidos
+   🔒 Compatível 1:1 com backend e CSS existente
+═══════════════════════════════════════════════════════════ */
+(function(){
+  "use strict";
+
+  /* ─────────────────────────────────────────────
+     UTILITÁRIOS
+  ────────────────────────────────────────────── */
+  function txt(v) { return String(v || "").trim(); }
+  function normalizarBusca(v) { return txt(v).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); }
+  function ehOpcaoPlaceholder(v) {
+    var t = normalizarBusca(v).replace(/[^\w\s]/g, "").replace(/\s+/g, " ").trim();
+    return !t || t === "selecione" || t === "selecionar" || t === "escolha" || t === "escolha uma escola";
+  }
+  function escapeHtml(s) { return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+  function debounce(fn, ms) { var t; return function(){ clearTimeout(t); t=setTimeout(fn, ms||300); }; }
+  function $(id) { return document.getElementById(id); }
+
+  function toast(msg, tipo, duracao) {
+    tipo = tipo || "info"; duracao = duracao || 4000;
+    var box = $("sisgepToastBox");
+    if (!box) { box = document.createElement("div"); box.id = "sisgepToastBox"; box.style.cssText = "position:fixed;top:20px;right:20px;z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none;"; document.body.appendChild(box); }
+    var el = document.createElement("div");
+    var cores = {info:"#3b82f6",ok:"#059669",warn:"#d97706",err:"#dc2626"};
+    el.style.cssText = "pointer-events:auto;background:#fff;border-left:4px solid "+(cores[tipo]||cores.info)+";padding:12px 16px;border-radius:10px;box-shadow:0 6px 20px rgba(0,20,60,.18);font-size:13px;font-weight:600;color:#0f172a;max-width:380px;animation:slideIn .2s ease;";
+    el.textContent = msg; box.appendChild(el);
+    setTimeout(function(){ el.style.opacity="0"; el.style.transform="translateX(20px)"; setTimeout(function(){ el.remove(); },200); }, duracao);
+  }
+
+  /* ─────────────────────────────────────────────
+     STATE & AUTO-SAVE
+  ────────────────────────────────────────────── */
+  var DRAFT_KEY = "sisgep_oficio_draft_v7";
+  var autoSave = debounce(function(){
+    try {
+      var draft = {
+        tipo: $("tipo")&&$("tipo").value, escolaId: escolaSmartSelecionada&&escolaSmartSelecionada.id, email: emailSmartSelecionado,
+        corpo: $("corpo")&&$("corpo").value, taxaAssunto: $("taxaAssistencialAssunto")&&$("taxaAssistencialAssunto").value, taxaCorpo: $("taxaAssistencialCorpo")&&$("taxaAssistencialCorpo").value, ts: Date.now()
+      };
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      var badge = $("badgeRascunho"); if(badge) badge.style.display="inline-flex";
+    } catch(e){}
+  }, 500);
+
+  function restoreDraft() {
+    try {
+      var raw = localStorage.getItem(DRAFT_KEY); if(!raw) return;
+      var d = JSON.parse(raw);
+      if(d.tipo && $("tipo")) $("tipo").value=d.tipo;
+      if(d.corpo && $("corpo")) $("corpo").value=d.corpo;
+      if(d.taxaAssunto && $("taxaAssistencialAssunto")) $("taxaAssistencialAssunto").value=d.taxaAssunto;
+      if(d.taxaCorpo && $("taxaAssistencialCorpo")) $("taxaAssistencialCorpo").value=d.taxaCorpo;
+      if(d.escolaId && escolasSmartOficio.length) {
+        var esc = escolasSmartOficio.find(function(e){ return e.id === d.escolaId; });
+        if(esc) selecionarEscola(esc);
+      }
+      toast("Rascunho restaurado.","ok",2500);
+    } catch(e){}
+  }
+
+  /* ─────────────────────────────────────────────
+     ESCOLAS (BUSCA & SELEÇÃO CORRIGIDAS)
+  ────────────────────────────────────────────── */
+  var escolasSmartOficio = [], escolaSmartSelecionada = null, emailSmartSelecionado = "";
+  var buscaServidorTimer = null;
+  var buscaServidorSeq = 0;
+function renderizarListaAZ() {
+  var lista = document.getElementById("listaEscolasRecentesOficio");
+  if (!lista) return;
+  if (!escolasSmartOficio || !escolasSmartOficio.length) {
+    lista.innerHTML = '<div class="escola-recentes-empty">Nenhuma escola carregada.</div>';
+    return;
+  }
+  var html = escolasSmartOficio
+    .slice()
+    .sort(function(a, b) {
+      return String(a.escola || "").localeCompare(String(b.escola || ""), "pt-BR", { sensitivity: "base" });
+    })
+    .slice(0, 200)
+    .map(function(e) {
+      return '<button type="button" class="escola-recente-btn" data-id="' + escapeHtml(e.id || e.cnpj || e.escola || "") + '">'
+        + '<strong>' + escapeHtml(e.escola || "Sem nome") + '</strong>'
+        + '<span>' + escapeHtml([e.cnpj || "", [e.cidade || "", e.uf || ""].filter(Boolean).join("/")].filter(Boolean).join(" • ")) + '</span>'
+        + '</button>';
+    })
+    .join("");
+  lista.innerHTML = html;
+  Array.from(lista.querySelectorAll(".escola-recente-btn")).forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      var id = btn.dataset.id;
+      var escola = escolasSmartOficio.find(function(e) { return String(e.id || e.cnpj || e.escola || "") === String(id || ""); });
+      if (escola) selecionarEscola(escola);
+    });
+  });
+}
+
+function escolaDeOption(opt) {
+  var emails = [opt.dataset.email, opt.dataset.emailFinanceiro, opt.dataset.emailDp, opt.dataset.emailSecretaria]
+    .filter(Boolean).filter(function(v, i, arr) { return arr.indexOf(v) === i; });
+  return {
+    id: txt(opt.dataset.id || opt.value),
+    nome: txt(opt.textContent),
+    razao: opt.dataset.razao || "",
+    cnpj: opt.dataset.cnpj || "",
+    cidade: opt.dataset.cidade || "",
+    uf: opt.dataset.uf || "",
+    endereco: opt.dataset.endereco || "",
+    status: opt.dataset.status || "Ativa",
+    emails: emails,
+    emailPrincipal: opt.dataset.email || "",
+    oficios: Number(opt.dataset.oficios || 0),
+    confirmados: Number(opt.dataset.confirmados || 0),
+    ultimo: opt.dataset.ultimo || "—"
+  };
+}
+
+  function normalizarEscola(raw) {
+    raw = raw || {};
+    var emails = [].concat(raw.emails||[], raw.email?[raw.email]:[], raw.emailPrincipal?[raw.emailPrincipal]:[])
+      .filter(Boolean).filter(function(e,i,a){ return a.indexOf(e)===i; });
+    return { id:raw.id||raw.cnpj||raw.escola||raw.nome||raw.razaoSocial||"", nome:raw.nome||raw.escola||raw.razaoSocial||"Escola sem nome",
+      razao:raw.razaoSocial||raw.nome||"", cnpj:raw.cnpj||"", cidade:raw.cidade||"", uf:raw.uf||"",
+      endereco:raw.endereco||"", status:raw.status||"Ativa", emails:emails,
+      emailPrincipal:raw.emailPrincipal||raw.email||emails[0]||"",
+      oficios:Number(raw.oficios||0), confirmados:Number(raw.confirmados||0), ultimo:raw.ultimo||"—" };
+  }
+
+  function normalizarEscola(raw) {
+    raw = raw || {};
+    var emailsTodos = raw.emailsTodos || raw.emailTodos || "";
+    var emails = [].concat(raw.emails||[], raw.email?[raw.email]:[], raw.emailPrincipal?[raw.emailPrincipal]:[], emailsTodos ? String(emailsTodos).split(/[;,]+/) : [])
+      .map(function(e){ return txt(e); })
+      .filter(Boolean).filter(function(e,i,a){ return a.indexOf(e)===i; });
+    return { id:raw.id||raw.cnpj||raw.cnpjLimpo||raw.escola||raw.nome||raw.razaoSocial||"", nome:raw.nome||raw.escola||raw.razaoSocial||raw.fantasia||"Escola sem nome",
+      razao:raw.razaoSocial||raw.razao||raw.nome||"", cnpj:raw.cnpj||raw.cnpjLimpo||"", cidade:raw.cidade||raw.municipio||"", uf:raw.uf||"",
+      endereco:raw.enderecoCompleto||raw.endereco||"", status:raw.status||raw.situacao||"Ativa", emails:emails,
+      emailPrincipal:raw.emailPrincipal||raw.email||emails[0]||"",
+      oficios:Number(raw.oficios||0), confirmados:Number(raw.confirmados||0), ultimo:raw.ultimo||"â€”" };
+  }
+
+  function normalizarEscola(raw) {
+    raw = raw || {};
+    var emailsTodos = raw.emailsTodos || raw.EmailsTodos || raw.emailTodos || "";
+    var emails = [].concat(raw.emails||[], raw.email?[raw.email]:[], raw.Email?[raw.Email]:[], raw.emailPrincipal?[raw.emailPrincipal]:[], emailsTodos ? String(emailsTodos).split(/[;,]+/) : [])
+      .map(function(e){ return txt(e); })
+      .filter(Boolean).filter(function(e,i,a){ return a.indexOf(e)===i; });
+    var cidade = txt(raw.cidade || raw.municipio || raw.Municipio || raw["Município"] || raw.Cidade || "");
+    var uf = txt(raw.uf || raw.UF || raw.Estado || "");
+    var cidadeUf = txt(raw.cidadeUf || raw.CidadeUf || raw["Cidade / UF"] || raw["Cidade/UF"] || raw["Cidade - UF"] || [cidade, uf].filter(Boolean).join(" / "));
+    if (!cidade && cidadeUf) cidade = txt(cidadeUf.split(/[\/-]/)[0]);
+    if (!uf && cidadeUf && cidadeUf.indexOf("/") > -1) uf = txt(cidadeUf.split("/").pop());
+    return { id:raw.id||raw.cnpj||raw.CNPJ||raw.cnpjLimpo||raw.escola||raw.NomeEscola||raw.nome||raw.razaoSocial||"", nome:raw.nome||raw.escola||raw.NomeEscola||raw.razaoSocial||raw["Razão Social"]||raw.fantasia||raw.Fantasia||"Escola sem nome",
+      razao:raw.razaoSocial||raw.razao||raw["Razão Social"]||raw.nome||"", cnpj:raw.cnpj||raw.CNPJ||raw.cnpjLimpo||"", cidade:cidade, uf:uf, cidadeUf:cidadeUf,
+      endereco:raw.enderecoCompleto||raw.EnderecoCompleto||raw.endereco||raw.Endereco||"", status:raw.status||raw.situacao||raw.Situacao||"Ativa", emails:emails,
+      emailPrincipal:raw.emailPrincipal||raw.email||raw.Email||emails[0]||"",
+      oficios:Number(raw.oficios||0), confirmados:Number(raw.confirmados||0), ultimo:raw.ultimo||"â€”" };
+  }
+
+function syncFromSelect() {
+  var sel = $("escola"); if(!sel) return;
+  // ✅ Se já temos lista carregada do servidor, não sobrescreve
+  if (escolasSmartOficio.length > 0) return;
+  var listaSelect = Array.from(sel.options)
+    .filter(function(o){ return txt(o.value) && !ehOpcaoPlaceholder(o.textContent); })
+    .map(escolaDeOption).map(normalizarEscola)
+    .sort(function(a,b){ return normalizarBusca(a.nome).localeCompare(normalizarBusca(b.nome)); });
+  if (!listaSelect.length) return;
+  escolasSmartOficio = listaSelect;
+}
+
+function popularSelectEscolas(lista) {
+  var sel = $("escola");
+  if (!sel || !Array.isArray(lista)) return;
+  sel.innerHTML = "";
+  lista.map(normalizarEscola).filter(function(e) { return txt(e.nome) && !ehOpcaoPlaceholder(e.nome); })
+    .sort(function(a, b) { return normalizarBusca(a.nome).localeCompare(normalizarBusca(b.nome)); })
+    .forEach(function(e) {
+      var opt = document.createElement("option");
+      opt.value = e.id || e.cnpj || e.nome;
+      opt.textContent = e.nome;
+      opt.dataset.id = e.id || "";
+      opt.dataset.razao = e.razao || "";
+      opt.dataset.cnpj = e.cnpj || "";
+      opt.dataset.email = e.emailPrincipal || "";
+      opt.dataset.cidade = e.cidade || "";
+      opt.dataset.uf = e.uf || "";
+      opt.dataset.endereco = e.endereco || "";
+      opt.dataset.status = e.status || "Ativa";
+      opt.dataset.emailFinanceiro = e.emailFinanceiro || "";
+      opt.dataset.emailDp = e.emailDp || "";
+      opt.dataset.emailSecretaria = e.emailSecretaria || "";
+      opt.dataset.oficios = e.oficios || 0;
+      opt.dataset.confirmados = e.confirmados || 0;
+      opt.dataset.ultimo = e.ultimo || "—";
+      sel.appendChild(opt);
+    });
+  syncFromSelect();
+  renderRecentes();
+  limpar();
+}
+
+  function carregarEscolasDaPlanilha() {
+    if(!window.google||!window.google.script||!window.google.script.run){ syncFromSelect(); renderRecentes(); return; }
+    google.script.run.withSuccessHandler(popularSelectEscolas).withFailureHandler(function(err){ console.error("Erro ao carregar escolas:", err); toast("Erro ao carregar escolas: " + ((err && err.message) || err), "err", 6000); syncFromSelect(); renderRecentes(); }).listarEscolas();
+  }
+
+  function setInput(id, v) { var el=$(id); if(el) el.value=v||""; }
+  function setText(id, v) { var el=$(id); if(el) el.textContent=v||"—"; }
+
+  function preencherCompat(escola) {
+    setInput("cnpj",escola.cnpj); setInput("email",emailSmartSelecionado||escola.emailPrincipal);
+    setInput("enderecoEscola",escola.endereco); setInput("razaoSocialReceita",escola.razao);
+    setInput("emailReceita",emailSmartSelecionado||escola.emailPrincipal);
+    setInput("cidadeUfReceita",escola.cidadeUf||[escola.cidade,escola.uf].filter(Boolean).join(" / "));
+    var sel=$("escola"); if(sel&&escola.id) sel.value=escola.id;
+    ["cnpj","email","enderecoEscola","razaoSocialReceita","emailReceita","cidadeUfReceita"].forEach(function(id){ var el=$(id); if(el) el.dispatchEvent(new Event("change",{bubbles:true})); });
+  }
+
+  function renderEmails(escola) {
+    var wrap=$("escolaProfileEmails"); if(!wrap) return;
+    var emails=escola.emails.length?escola.emails:[escola.emailPrincipal].filter(Boolean);
+    if(!emails.length){ wrap.innerHTML='<span style="font-size:12px;color:var(--g400);">Nenhum e-mail cadastrado</span>'; return; }
+    wrap.innerHTML = emails.map(function(em,idx){
+      var princ=em===escola.emailPrincipal||idx===0, ativo=em===emailSmartSelecionado;
+      return '<button type="button" class="email-pill '+(princ?"principal ":"")+(ativo?"ativo":"")+'" data-email="'+em+'">'+(princ?"★ ":"")+em+'</button>';
+    }).join("");
+    wrap.querySelectorAll(".email-pill").forEach(function(btn){ btn.onclick=function(){ emailSmartSelecionado=btn.dataset.email; preencherCompat(escolaSmartSelecionada); renderEmails(escolaSmartSelecionada); autoSave(); }; });
+  }
+
+  function salvarRecente(escola) {
+    try { var r=JSON.parse(localStorage.getItem("sisgep_oficio_escolas_recentes")||"[]"); r=r.filter(function(i){return i.cnpj!==escola.cnpj;}); r.unshift(escola); r=r.slice(0,3); localStorage.setItem("sisgep_oficio_escolas_recentes",JSON.stringify(r)); renderRecentes(); } catch(e){}
+  }
+
+  function renderRecentes() {
+    var box=$("listaEscolasRecentesOficio"); if(!box) return;
+    syncFromSelect(); var termo=normalizarBusca($("escolaBusca")&&$("escolaBusca").value||"");
+    var lista=escolasSmartOficio.filter(function(e){
+      if(!termo) return true;
+      return normalizarBusca([e.nome,e.razao,e.cnpj,e.cidade,e.uf,e.cidadeUf,(e.emails||[]).join(" ")].join(" ")).indexOf(termo)>=0;
+    }).slice(0,8);
+    if(!lista.length){ box.innerHTML=termo?'<div class="escola-recentes-empty">Nenhuma escola encontrada.</div>':'<div class="escola-recentes-empty">A lista aparecerá após carregar a base.</div>'; return; }
+    box.innerHTML = lista.map(function(e,i){ return '<button type="button" class="escola-recente-btn" data-idx="'+i+'"><strong>'+escapeHtml(e.nome)+'</strong><span>'+[e.cnpj,e.cidade].filter(Boolean).join(" • ")+'</span></button>'; }).join("");
+    box.innerHTML = lista.map(function(e,i){ return '<button type="button" class="escola-recente-btn" data-idx="'+i+'"><strong>'+escapeHtml(e.nome)+'</strong><span>'+escapeHtml([e.cnpj,e.cidadeUf||e.cidade].filter(Boolean).join(" - "))+'</span></button>'; }).join("");
+    box.querySelectorAll(".escola-recente-btn").forEach(function(btn){ btn.onclick=function(){ selecionarEscola(lista[Number(btn.dataset.idx)]); }; });
+  }
+
+  function selecionarEscola(raw) {
+    var e=normalizarEscola(raw);
+    if(!txt(e.nome)||ehOpcaoPlaceholder(e.nome)){ limpar(); return; }
+    escolaSmartSelecionada=e; emailSmartSelecionado=e.emailPrincipal||e.emails[0]||"";
+    if($("escolaBusca")) $("escolaBusca").value=e.nome;
+    if($("cardEscolaOficioSelecionada")) $("cardEscolaOficioSelecionada").style.display="block";
+    if($("autocompleteEscolaSmart")) $("autocompleteEscolaSmart").style.display="none";
+    if($("escolaSmartEmpty")) $("escolaSmartEmpty").style.display="none";
+    var st=$("statusEscolaSelecionada"); if(st){ st.textContent="Escola selecionada"; st.classList.add("ok"); }
+    if($("secaoCnpjEmail")) $("secaoCnpjEmail").style.display="none";
+    setText("escolaProfileNome",e.nome); setText("escolaProfileRazao",e.razao); setText("escolaProfileCnpj",e.cnpj);
+    setText("escolaProfileCnpjLinha",e.cnpj?"CNPJ "+e.cnpj:"CNPJ não informado");
+    setText("escolaProfileEmailLinha",(emailSmartSelecionado||e.emailPrincipal)?"E-mail "+(emailSmartSelecionado||e.emailPrincipal):"E-mail não informado");
+    setText("escolaProfileCidadeUf",e.cidadeUf||[e.cidade,e.uf].filter(Boolean).join(" / ")); setText("escolaProfileEndereco",e.endereco);
+    setText("escolaProfileStatus",e.status); setText("escolaStatOficios",String(e.oficios||0));
+    setText("escolaStatConfirmados",String(e.confirmados||0)); setText("escolaStatUltimo",e.ultimo||"—");
+    renderEmails(e); preencherCompat(e); salvarRecente(e); atualizarRevisaoOficio(); autoSave();
+  }
+
+ function buscar(termo) {
+  termo = normalizarBusca(termo);
+  syncFromSelect();
+  if (!termo) return escolasSmartOficio.slice(0, 8);
+  return escolasSmartOficio.filter(function(e) {
+    var emails = Array.isArray(e.emails) ? e.emails.join(" ") : "";
+    var textoBusca = [e.nome || "", e.razao || "", e.cnpj || "", e.cidade || "", e.uf || "", e.cidadeUf || "", e.endereco || "", emails].join(" ");
+    return normalizarBusca(textoBusca).indexOf(termo) >= 0;
+  }).slice(0, 8);
+}
+
+function renderDropdown(lista) {
+
+  var dd = $("autocompleteEscolaSmart");
+  var empty = $("escolaSmartEmpty");
+
+  if (!dd) return;
+
+  if (!lista || !lista.length) {
+    dd.style.display = "none";
+
+    if (empty) {
+      empty.style.display = "flex";
+    }
+
+    return;
+  }
+
+  if (empty) {
+    empty.style.display = "none";
+  }
+
+  dd.innerHTML = lista.map(function(e) {
+    var cidadeLinha = e.cidadeUf || [e.cidade || '', e.uf || ''].filter(Boolean).join('/');
+
+    return '' +
+      '<button type="button" class="escola-smart-option" data-id="' + escapeHtml(e.id || e.cnpj || e.nome || '') + '">' +
+
+        '<div>' +
+          '<strong>' + escapeHtml(e.nome || 'Sem nome') + '</strong>' +
+
+          '<span>' +
+            escapeHtml(
+              [
+                e.cnpj || '',
+                cidadeLinha
+              ]
+              .filter(Boolean)
+              .join(' • ')
+            ) +
+          '</span>' +
+        '</div>' +
+
+        '<span class="escola-smart-badge">Selecionar</span>' +
+
+      '</button>';
+
+  }).join("");
+
+  dd.style.display = "block";
+
+  dd.querySelectorAll(".escola-smart-option").forEach(function(item) {
+
+    item.onclick = function() {
+
+      var esc = escolasSmartOficio.find(function(x) {
+
+        return String(x.id || x.cnpj || x.nome || '') ===
+               String(item.dataset.id || '');
+
+      });
+
+      if (esc) {
+        selecionarEscola(esc);
+      }
+
+    };
+
+  });
+
+}
+
+/* ✅ Expõe globalmente */
+function mesclarEscolasBuscaServidor(lista) {
+  if (!Array.isArray(lista) || !lista.length) return;
+  var porChave = {};
+  escolasSmartOficio.forEach(function(e) {
+    porChave[String(e.id || e.cnpj || e.nome || "").toLowerCase()] = e;
+  });
+  lista.map(normalizarEscola).forEach(function(e) {
+    if (!txt(e.nome) || ehOpcaoPlaceholder(e.nome)) return;
+    var chave = String(e.id || e.cnpj || e.nome || "").toLowerCase();
+    if (!porChave[chave]) {
+      escolasSmartOficio.push(e);
+      porChave[chave] = e;
+    } else {
+      Object.keys(e).forEach(function(k) {
+        if ((porChave[chave][k] === "" || porChave[chave][k] === null || porChave[chave][k] === undefined) && e[k]) {
+          porChave[chave][k] = e[k];
+        }
+      });
+    }
+  });
+}
+
+function buscarNoServidor(termo) {
+  termo = txt(termo);
+  if (termo.length < 2 || !window.google || !google.script || !google.script.run) return;
+  var seq = ++buscaServidorSeq;
+  var dd = $("autocompleteEscolaSmart");
+  if (dd && !dd.innerHTML) {
+    dd.innerHTML = '<div class="escola-smart-loading">Buscando...</div>';
+    dd.style.display = "block";
+  }
+  google.script.run
+    .withSuccessHandler(function(lista) {
+      if (seq !== buscaServidorSeq) return;
+      var normalizadas = (lista || []).map(normalizarEscola).filter(function(e) {
+        return txt(e.nome) && !ehOpcaoPlaceholder(e.nome);
+      });
+      mesclarEscolasBuscaServidor(normalizadas);
+      renderDropdown(normalizadas.length ? normalizadas.slice(0, 20) : buscar(termo));
+      renderRecentes();
+    })
+    .withFailureHandler(function(err) {
+      if (seq !== buscaServidorSeq) return;
+      var empty = $("escolaSmartEmpty");
+      if (empty) {
+        empty.style.display = "flex";
+        var msg = empty.querySelector("span");
+        if (msg) msg.textContent = "Erro ao buscar: " + ((err && err.message) || err);
+      }
+    })
+    .buscarEscolasOficioSmart(termo);
+}
+
+function acionarBuscaEscola(termo) {
+  var resultado = buscar(termo);
+  renderDropdown(resultado);
+  renderRecentes();
+  if (buscaServidorTimer) clearTimeout(buscaServidorTimer);
+  // ✅ Sempre consulta o servidor quando há termo digitado
+  if (txt(termo).length >= 2) {
+    buscaServidorTimer = setTimeout(function() { buscarNoServidor(termo); }, 180);
+  }
+}
+
+window.renderDropdown = renderDropdown;
+
+/* ✅ Compatibilidade antiga */
+window.renderDropdownEscolas = renderDropdown;
+
+
+  function limpar() {
+    escolaSmartSelecionada=null; emailSmartSelecionado="";
+    if($("escolaBusca")) $("escolaBusca").value="";
+    if($("cardEscolaOficioSelecionada")) $("cardEscolaOficioSelecionada").style.display="none";
+    if($("autocompleteEscolaSmart")) $("autocompleteEscolaSmart").style.display="none";
+    if($("escolaSmartEmpty")) $("escolaSmartEmpty").style.display="none";
+    var st=$("statusEscolaSelecionada"); if(st){ st.textContent="Nenhuma escola selecionada"; st.classList.remove("ok"); }
+    ["cnpj","email","enderecoEscola","razaoSocialReceita","emailReceita","cidadeUfReceita"].forEach(function(id){ setInput(id,""); });
+    atualizarRevisaoOficio(); autoSave();
+  }
+
+  function limparSelecaoPlaceholderSeExistir() {
+    var b=$("escolaBusca"), n=$("escolaProfileNome");
+    if((b&&ehOpcaoPlaceholder(b.value))||(n&&ehOpcaoPlaceholder(n.textContent))) limpar();
+  }
+
+  function editarEscolaSelecionada() {
+    if(!escolaSmartSelecionada) return;
+    escolaSmartSelecionada.cnpj=txt($("cnpj")&&$("cnpj").value); escolaSmartSelecionada.emailPrincipal=txt($("email")&&$("email").value);
+    escolaSmartSelecionada.endereco=txt($("enderecoEscola")&&$("enderecoEscola").value); escolaSmartSelecionada.razao=txt($("razaoSocialReceita")&&$("razaoSocialReceita").value);
+    var cu=txt($("cidadeUfReceita")&&$("cidadeUfReceita").value); if(cu){ var p=cu.split("/"); escolaSmartSelecionada.cidade=txt(p[0]); escolaSmartSelecionada.uf=txt(p[1]); }
+    if(escolaSmartSelecionada.emailPrincipal&&escolaSmartSelecionada.emails.indexOf(escolaSmartSelecionada.emailPrincipal)<0) escolaSmartSelecionada.emails.unshift(escolaSmartSelecionada.emailPrincipal);
+    selecionarEscola(escolaSmartSelecionada); autoSave();
+  }
+
+  function adicionarEmailEscola() {
+    if(!escolaSmartSelecionada){ toast("Selecione uma escola antes.","warn"); return; }
+    var inp=$("novoEmailEscolaOficio"), em=txt(inp&&inp.value);
+    if(!em||em.indexOf("@")<0){ toast("E-mail inválido.","err"); return; }
+    if(escolaSmartSelecionada.emails.indexOf(em)<0) escolaSmartSelecionada.emails.push(em);
+    emailSmartSelecionado=em; escolaSmartSelecionada.emailPrincipal=escolaSmartSelecionada.emailPrincipal||em;
+    if(inp) inp.value=""; preencherCompat(escolaSmartSelecionada); renderEmails(escolaSmartSelecionada);
+    setText("escolaProfileEmailLinha","E-mail "+emailSmartSelecionado); atualizarRevisaoOficio(); autoSave();
+  }
+
+  function salvarEscolaNaPlanilha() {
+    var dados=getEscolaPayload();
+    if(!dados.nome||dados.nome==="Selecione..."){ toast("Selecione uma escola.","warn"); return; }
+    if(!dados.cnpj){ toast("Informe o CNPJ.","warn"); return; }
+    if(!confirm("Atualizar cadastro oficial na planilha?")) return;
+    if(!window.google||!window.google.script||!window.google.script.run){ toast("Disponível apenas no Apps Script.","warn"); return; }
+    var st=$("statusConsultaCnpj"); if(st){ st.style.display="flex"; st.className="info-box blue"; st.textContent="Salvando..."; }
+    google.script.run.withSuccessHandler(function(resp){
+      if(st){ st.style.display="flex"; st.className="info-box green"; st.textContent=(resp&&resp.mensagem)||"Escola salva."; }
+      else toast((resp&&resp.mensagem)||"Escola salva.","ok"); carregarEscolasDaPlanilha();
+    }).withFailureHandler(function(err){
+      if(st){ st.style.display="flex"; st.className="info-box amber"; st.textContent="Erro: "+((err&&err.message)||err); }
+    }).salvarEscolaOficio(dados, SISGEP_TOKEN_SESSAO);
+  }
+
+  function bridgeClick(a,b){ var o=$(a),d=$(b); if(o&&d) o.onclick=function(){d.click();}; }
+
+  /* ─────────────────────────────────────────────
+     TRABALHADORES & FICHAS
+  ────────────────────────────────────────────── */
+  var MAX_TRABALHADORES = 25, contadorTrabalhadores = 0;
+
+  function atualizarResumoTrabalhadores() {
+    var lista = $("listaTrabalhadores"), st = $("statusSincronizacao"), btn = $("btnEmitir"), tipo = $("tipo");
+    var total = lista ? lista.querySelectorAll(".trabalhador-card").length : 0;
+    if (st) {
+      if (total === 0) { st.textContent = "ℹ Adicione pelo menos 1 trabalhador"; st.style.cssText = "background:var(--g50);border-color:var(--g200);color:var(--g500);"; }
+      else { st.textContent = "✅ " + total + " trabalhador(es) vinculado(s)"; st.style.cssText = "background:var(--green-lt);border-color:#6ee7b7;color:var(--green-dk);"; }
+    }
+    if (btn && tipo) btn.disabled = !(tipo.value === "Ofício Livre" || total > 0);
+    atualizarPayloadOficio(); autoSave();
+  }
+
+  function somenteDigitos(v) { return String(v || "").replace(/\D/g, ""); }
+  function mascaraCpf(v) { var d = somenteDigitos(v).slice(0, 11); if (d.length <= 3) return d; if (d.length <= 6) return d.replace(/(\d{3})(\d+)/, "$1.$2"); if (d.length <= 9) return d.replace(/(\d{3})(\d{3})(\d+)/, "$1.$2.$3"); return d.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, "$1.$2.$3-$4"); }
+  function slugArquivo(v) { return String(v || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 80) || "associado"; }
+
+function cpfValido(dig) {
+  var soma = 0;
+  for (var i = 0; i < 9; i++) soma += parseInt(dig[i]) * (10 - i);
+  var r1 = (soma * 10) % 11; if (r1 === 10 || r1 === 11) r1 = 0;
+  if (r1 !== parseInt(dig[9])) return false;
+  soma = 0;
+  for (var i = 0; i < 10; i++) soma += parseInt(dig[i]) * (11 - i);
+  var r2 = (soma * 10) % 11; if (r2 === 10 || r2 === 11) r2 = 0;
+  return r2 === parseInt(dig[10]);
+}
+
+function validarCpfComFeedback(cpf) {
+  var dig = String(cpf || "").replace(/\D/g, "");
+  if (!dig) return { valido: false, mensagem: "CPF não informado.", cpfFormatado: "" };
+  if (dig.length !== 11) return { valido: false, mensagem: "CPF inválido: deve ter 11 dígitos (informado: " + dig.length + ").", cpfFormatado: "" };
+  if (/^(\d)\1{10}$/.test(dig)) return { valido: false, mensagem: "CPF inválido: sequência repetida.", cpfFormatado: "" };
+  if (!cpfValido(dig)) return { valido: false, mensagem: "CPF inválido: dígitos verificadores incorretos.", cpfFormatado: "" };
+  return { valido: true, mensagem: "CPF válido.", cpfFormatado: dig.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4") };
+}
+function getTrabalhadoresPayload() {
+  var lista = $("listaTrabalhadores");
+  if (!lista) return [];
+
+  return Array.from(lista.querySelectorAll(".trabalhador-card")).map(function(card, i) {
+    var nomeInput = card.querySelector(".input-nome-trabalhador");
+    var cpfInput  = card.querySelector(".input-cpf-trabalhador");
+
+    var nome = nomeInput ? String(nomeInput.value || "").trim() : "";
+    var cpf  = cpfInput ? String(cpfInput.value || "").trim() : "";
+
+    return {
+      ordem: i + 1,
+      nome: nome,
+      cpf: cpf,
+      cpfNumerico: cpf.replace(/\D/g, "")
+    };
+  }).filter(function(t) {
+    return t.nome || t.cpf;
+  });
+}
+  function getEscolaPayload() {
+    var sel = $("escola"), selTxt = sel && sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].textContent : "";
+    return { id: sel ? sel.value : "", nome: ($("escolaBusca")&&$("escolaBusca").value) || selTxt || "", cnpj: $("cnpj")&&$("cnpj").value || "", email: $("email")&&$("email").value || "", endereco: $("enderecoEscola")&&$("enderecoEscola").value || "", razaoSocial: $("razaoSocialReceita")&&$("razaoSocialReceita").value || "", cidadeUf: $("cidadeUfReceita")&&$("cidadeUfReceita").value || "" };
+  }
+
+function atualizarPayloadOficio(num) {
+  var inp = $("payloadOficioGerado");
+
+  if (!inp) {
+    inp = document.createElement("input");
+    inp.type = "hidden";
+    inp.id = "payloadOficioGerado";
+    document.body.appendChild(inp);
+  }
+
+  var p = {
+    numeroOficio: num || "",
+    tipo: $("tipo")&&$("tipo").value || "",
+    escola: getEscolaPayload(),
+    beneficiarios: getTrabalhadoresPayload(),
+    fichas: getFichasPayload(),
+    atualizadoEm: new Date().toISOString()
+  };
+
+  inp.value = JSON.stringify(p);
+  window.SISGEP_OFICIO_PAYLOAD = p;
+
+  atualizarRevisaoOficio(p);
+
+  return p;
+}
+
+
+
+ function atualizarRevisaoOficio(p) {
+  var painel = $("painelRevisaoOficio");
+  if (!painel) return;
+
+  if (!p) {
+    p = {
+      tipo: $("tipo")&&$("tipo").value || "",
+      escola: getEscolaPayload(),
+      beneficiarios: getTrabalhadoresPayload(),
+      fichas: getFichasPayload()
+    };
+  }
+
+  var esc = p.escola&&p.escola.nome || "";
+  var em = p.escola&&p.escola.email || "";
+  var bens = p.beneficiarios || [];
+  var fichs = p.fichas || [];
+  var pend = [];
+
+  if (!p.tipo) pend.push("Selecione o tipo.");
+  if (!esc || esc === "Selecione...") pend.push("Selecione uma escola.");
+  if (!em) pend.push("Informe o e-mail.");
+  if (!bens.length && p.tipo !== "Ofício Livre") pend.push("Adicione trabalhadores.");
+  if (bens.some(function(b) { return !b.nome || !b.cpf; })) pend.push("Complete nome e CPF.");
+  if (p.tipo !== "Ofício Livre" && bens.length > 0 && fichs.length < bens.length) pend.push("Anexe pelo menos 1 ficha por trabalhador.");
+  if (fichs.length > 25) pend.push("Limite máximo de 25 fichas.");
+
+  if (!p.tipo && !esc && !bens.length && !fichs.length) {
+    painel.innerHTML = '<div class="revisao-empty">Preencha os dados para montar a revisão.</div>';
+    return;
+  }
+
+  painel.innerHTML =
+    '<div class="revisao-grid">' +
+      '<div class="revisao-item"><span>Tipo</span><strong>' + (p.tipo || "—") + '</strong></div>' +
+      '<div class="revisao-item"><span>Escola</span><strong>' + (esc || "—") + '</strong></div>' +
+      '<div class="revisao-item"><span>Beneficiários</span><strong>' + bens.length + '</strong></div>' +
+      '<div class="revisao-item"><span>Fichas</span><strong>' + fichs.length + '</strong></div>' +
+    '</div>' +
+    (
+      pend.length
+        ? '<div class="revisao-alerta">⚠ ' + pend.join(" ") + '</div>'
+        : '<div class="revisao-alerta" style="background:#f0fdf4;color:#166534;border-color:#6ee7b7;">✅ Dados prontos para emissão.</div>'
+    );
+}
+
+  function aplicarMascaraCpf(inp) { if (inp) inp.value = mascaraCpf(inp.value); }
+
+  function renumerarTrabalhadores() {
+    var lista = $("listaTrabalhadores"); if (!lista) return;
+    lista.querySelectorAll(".trabalhador-card").forEach(function(c, i) {
+      var n = i + 1, b = c.querySelector(".trabalhador-badge-numero"), t = c.querySelector(".trabalhador-titulo"), s = c.querySelector(".trabalhador-sub");
+      if (b) b.textContent = n; if (t) t.textContent = "Trabalhador " + n; if (s) s.textContent = "Dados para emissão do ofício";
+    });
+  }
+
+  function criarCardTrabalhador() {
+  contadorTrabalhadores += 1;
+  var c = document.createElement("div");
+  c.className = "trabalhador-card";
+  c.dataset.trabalhadorId = String(contadorTrabalhadores);
+
+  c.innerHTML =
+    '<div class="trabalhador-card-topo">'
+    + '<div class="trabalhador-topo-esquerda">'
+    + '<div class="trabalhador-badge-numero">' + contadorTrabalhadores + '</div>'
+    + '<div><div class="trabalhador-titulo">Trabalhador ' + contadorTrabalhadores + '</div>'
+    + '<div class="trabalhador-sub">Dados para emissão do ofício</div></div>'
+    + '</div>'
+    + '<button type="button" class="btn-remover-trabalhador-premium" title="Remover">✕</button>'
+    + '</div>'
+    + '<div class="trabalhador-grid">'
+    + '<div class="trabalhador-campo"><label>Nome completo</label>'
+    + '<input type="text" class="input-nome-trabalhador" placeholder="Nome do trabalhador"></div>'
+    + '<div class="trabalhador-campo"><label>CPF</label>'
+    + '<input type="text" class="input-cpf-trabalhador" placeholder="000.000.000-00" maxlength="14" inputmode="numeric"></div>'
+    + '</div>'
+    + '<div class="trabalhador-ficha-area" style="margin-top:10px;padding:10px 12px;background:var(--g50);border-radius:8px;border:1px dashed var(--g200);">'
+    + '<label style="font-size:11px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">Ficha do trabalhador</label>'
+    + '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
+    + '<input type="file" class="input-ficha-trabalhador" accept=".pdf,.jpg,.jpeg,.png" style="font-size:12px;">'
+    + '<span class="ficha-contador" style="font-size:11px;color:var(--g400);">Nenhuma ficha</span>'
+    + '</div>'
+    + '<div class="ficha-preview-individual" style="margin-top:8px;"></div>'
+    + '</div>';
+
+  var inputFicha   = c.querySelector(".input-ficha-trabalhador");
+  var contadorFich = c.querySelector(".ficha-contador");
+  var previewFich  = c.querySelector(".ficha-preview-individual");
+  var fichasCard   = new DataTransfer();
+
+  c.querySelector(".btn-remover-trabalhador-premium").onclick = function() {
+    c.remove(); restaurarVazio(); renumerarTrabalhadores(); atualizarResumoTrabalhadores(); sincronizarFichasGlobais();
+  };
+
+  c.querySelectorAll("input[type=text]").forEach(function(inp) {
+    inp.oninput = function() {
+      if (inp.classList.contains("input-cpf-trabalhador")) {
+        aplicarMascaraCpf(inp);
+        var cpfVal = somenteDigitos(inp.value);
+        var err = inp.parentNode.querySelector(".cpf-erro");
+        if (cpfVal.length === 11) {
+          var resultado = validarCpfComFeedback(inp.value);
+          if (resultado.valido) {
+            inp.style.borderColor = "#22c55e"; inp.style.background = "#f0fdf4"; if (err) err.remove();
+          } else {
+            inp.style.borderColor = "#ef4444"; inp.style.background = "#fef2f2";
+            if (!err) { err = document.createElement("span"); err.className = "cpf-erro"; err.style.cssText = "font-size:11px;color:#ef4444;margin-top:4px;display:block;"; inp.parentNode.appendChild(err); }
+            err.textContent = resultado.mensagem;
+          }
+        } else { inp.style.borderColor = ""; inp.style.background = ""; if (err) err.remove(); }
+      }
+      atualizarResumoTrabalhadores();
+      if (fichasCard && fichasCard.files && fichasCard.files.length) {
+        fichasCard = renomearFichasCard(c, fichasCard); inputFicha.files = fichasCard.files; renderizarPreviewFichaCard(previewFich, fichasCard);
+      }
+      sincronizarFichasGlobais();
+    };
+  });
+
+  inputFicha.onchange = function() {
+    Array.from(inputFicha.files).forEach(function(f) {
+      if (fichasCard.files.length >= 25) { toast("Limite de fichas atingido.", "warn"); return; }
+      var jaExiste = Array.from(fichasCard.files).some(function(e) { return e.name === f.name; });
+      if (!jaExiste) fichasCard.items.add(f);
+    });
+    fichasCard = renomearFichasCard(c, fichasCard);
+    inputFicha.files = fichasCard.files;
+    var total = fichasCard.files.length;
+    contadorFich.textContent = total ? total + (total === 1 ? " ficha" : " fichas") : "Nenhuma ficha";
+    renderizarPreviewFichaCard(previewFich, fichasCard);
+    sincronizarFichasGlobais();
+  };
+
+  return c;
+}
+
+function renomearFichasCard(card, dt) {
+  var nomeInp = card.querySelector(".input-nome-trabalhador");
+  var cpfInp  = card.querySelector(".input-cpf-trabalhador");
+  var escola  = ($("escolaBusca")&&$("escolaBusca").value || "").trim();
+  var tipo    = ($("tipo")&&$("tipo").value || "").trim();
+  var dataHoje = new Date().toLocaleDateString("pt-BR").replace(/\//g, "-");
+  var nome = nomeInp ? nomeInp.value.trim() : "";
+  var cpf  = cpfInp  ? somenteDigitos(cpfInp.value) : "";
+  var nomeSlug = nome ? slugArquivo(nome) : "associado";
+  var escolaSlug = escola ? slugArquivo(escola) : "escola";
+  var tipoSlug = tipo ? slugArquivo(tipo) : "oficio";
+  var nova = new DataTransfer();
+  Array.from(dt.files).forEach(function(f, i) {
+    var ext = f.name.includes(".") ? f.name.substring(f.name.lastIndexOf(".")) : "";
+    var novo = "Ficha_" + nomeSlug + (cpf ? "_" + cpf : "") + "_" + escolaSlug + "_" + tipoSlug + "_" + dataHoje + "_" + (i + 1) + ext;
+    try { nova.items.add(new File([f], novo, { type: f.type, lastModified: f.lastModified })); } catch(e) { nova.items.add(f); }
+  });
+  return nova;
+}
+
+function renderizarPreviewFichaCard(prev, dt) { if (prev) prev.innerHTML = ""; }
+
+function removerFichaCard(btn, idx) {
+  var card = btn.closest(".trabalhador-card");
+  var inputFicha = card.querySelector(".input-ficha-trabalhador");
+  var contador = card.querySelector(".ficha-contador");
+  var preview = card.querySelector(".ficha-preview-individual");
+  if (!inputFicha) return;
+  var nova = new DataTransfer();
+  Array.from(inputFicha.files).forEach(function(f, i) { if (i !== idx) nova.items.add(f); });
+  inputFicha.files = nova.files;
+  var total = nova.files.length;
+  contador.textContent = total ? total + (total === 1 ? " ficha" : " fichas") : "Nenhuma ficha";
+  renderizarPreviewFichaCard(preview, nova);
+  sincronizarFichasGlobais();
+}
+
+  function sincronizarFichasGlobais() {
+    var inputGlobal = $("fichas");
+    if (!inputGlobal || typeof DataTransfer === "undefined") return;
+    var dt = new DataTransfer();
+    document.querySelectorAll(".trabalhador-card").forEach(function(card) {
+      if (card._fichasDrive && card._fichasDrive.length) return;
+      var fichaInp = card.querySelector(".input-ficha-trabalhador");
+      if (fichaInp && fichaInp.files.length) {
+        Array.from(fichaInp.files).forEach(function(f) { if (dt.files.length >= 25) return; try { dt.items.add(f); } catch(e) {} });
+      }
+    });
+    inputGlobal.files = dt.files; window._fichasAcumuladas = dt; atualizarContadorFichas();
+  }
+
+  function restaurarVazio() { var l = $("listaTrabalhadores"); if (l && !l.querySelector(".trabalhador-card")) l.innerHTML = '<div class="worker-empty">👤 Nenhum trabalhador adicionado ainda.<br>Clique em <strong>"+ Adicionar"</strong> para começar.</div>'; }
+
+  function addTrabalhador() {
+    var l = $("listaTrabalhadores"); if (!l) return;
+    if (l.querySelectorAll(".trabalhador-card").length >= MAX_TRABALHADORES) { toast("Limite de 25 trabalhadores.", "warn"); return; }
+    var v = l.querySelector(".worker-empty"); if (v) v.remove();
+    l.appendChild(criarCardTrabalhador()); renumerarTrabalhadores(); atualizarResumoTrabalhadores();
+  }
+
+function atualizarContadorFichas() {
+  var cont = $("contadorFichas");
+  if (!cont) return;
+
+  var total = getFichasPayload().length;
+
+  cont.textContent = total + " / 25 fichas";
+  cont.style.display = total > 0 ? "flex" : "none";
+  cont.style.cssText =
+    "margin-top:12px;" +
+    "display:" + (total > 0 ? "flex" : "none") + ";" +
+    (
+      total > 25
+        ? "color:var(--red);border-color:#fca5a5;background:var(--red-lt);"
+        : "color:var(--g600);border-color:var(--g200);background:var(--g50);"
+    );
+
+  atualizarPreviewFichas();
+  atualizarPayloadOficio();
+
+  if (typeof autoSave === "function") autoSave();
+}
+
+
+ function getFichasPayload() {
+  var lista = $("listaTrabalhadores");
+  if (!lista) return [];
+
+  var cards = Array.from(lista.querySelectorAll(".trabalhador-card"));
+  var trabalhadores = getTrabalhadoresPayload();
+  var fichas = [];
+
+  cards.forEach(function(card, idxCard) {
+    var trab = trabalhadores[idxCard] || {};
+
+    var inputFicha = card.querySelector(".input-ficha-trabalhador");
+
+    if (inputFicha && inputFicha.files && inputFicha.files.length) {
+      Array.from(inputFicha.files).forEach(function(f) {
+        fichas.push({
+          ordem: fichas.length + 1,
+          arquivoOriginal: f.name,
+          arquivoSugerido: f.name,
+          beneficiario: trab.nome || "",
+          cpf: trab.cpf || "",
+          cpfNumerico: trab.cpfNumerico || "",
+          origem: "local",
+          tipo: f.type || "application/pdf"
+        });
+      });
+    }
+
+    if (card._fichasDrive && card._fichasDrive.length) {
+      card._fichasDrive.forEach(function(f) {
+        fichas.push({
+          ordem: fichas.length + 1,
+          arquivoOriginal: f.nome || "",
+          arquivoSugerido: f.nome || "",
+          beneficiario: trab.nome || "",
+          cpf: trab.cpf || "",
+          cpfNumerico: trab.cpfNumerico || "",
+          origem: "drive",
+          driveId: f.id || f.driveId || "",
+          tipo: f.tipo || "application/pdf"
+        });
+      });
+    }
+  });
+
+  return fichas;
+}
+
+  function renomearFichasNoInput() {
+    var inp = $("fichas"); if (!inp || !inp.files || !inp.files.length || typeof DataTransfer === "undefined") return;
+    var p = getFichasPayload(), dt = new DataTransfer();
+    Array.from(inp.files).forEach(function(f, i) {
+      var n = p[i] ? p[i].arquivoSugerido : f.name;
+      try { dt.items.add(new File([f], n, { type: f.type, lastModified: f.lastModified })); } catch(e) { dt.items.add(f); }
+    });
+    inp.files = dt.files;
+  }
+
+  function removerFicha(idx) {
+    var inp = $("fichas"); if (!inp || !inp.files) return;
+    if (!window._fichasAcumuladas) { window._fichasAcumuladas = new DataTransfer(); Array.from(inp.files).forEach(function(f) { window._fichasAcumuladas.items.add(f); }); }
+    var nova = new DataTransfer();
+    Array.from(window._fichasAcumuladas.files).forEach(function(f, i) { if (i !== idx) nova.items.add(f); });
+    window._fichasAcumuladas = nova; inp.files = window._fichasAcumuladas.files; atualizarContadorFichas();
+  }
+
+  function atualizarPreviewFichas() { var prev = $("previewFichas"); if (prev) prev.innerHTML = ""; }
+  function prepararFichasAntesDeEmitir() { sincronizarFichasGlobais(); renomearFichasNoInput(); atualizarPreviewFichas(); atualizarPayloadOficio(); }
+
+  /* ─────────────────────────────────────────────
+     PREVIEW, EMISSÃO, RESET
+  ────────────────────────────────────────────── */
+  function previewOficio(){
+    var d=atualizarPayloadOficio();
+    if(!d.tipo) return toast("Selecione o tipo do ofício.","warn");
+    if(d.tipo!=="Ofício Livre"&&(!d.escola.nome||ehOpcaoPlaceholder(d.escola.nome))) return toast("Selecione uma escola.","warn");
+    if(d.tipo!=="Ofício Livre"&&!d.beneficiarios.length) return toast("Adicione pelo menos um trabalhador.","warn");
+    var novaAba=window.open("","_blank");
+    if(!novaAba) return toast("Pop-up bloqueado pelo navegador.","warn");
+    var payload = d.tipo==="Ofício Livre"
+      ? {tipo:d.tipo, para:$("para")&&$("para").value, cargo:$("cargo")&&$("cargo").value, assunto:$("assunto")&&$("assunto").value, corpo:$("corpo")&&$("corpo").value, email:$("emailLivreAux")&&$("emailLivreAux").value}
+      : {tipo:d.tipo, escola:d.escola.nome, cnpj:d.escola.cnpj, email:d.escola.email, endereco:d.escola.endereco, colaboradores:d.beneficiarios.map(function(b){return b.nome;})};
+    google.script.run
+      .withSuccessHandler(function(html){ novaAba.document.open(); novaAba.document.write(html); novaAba.document.close(); })
+      .withFailureHandler(function(err){ try{novaAba.close();}catch(_){} toast("Erro ao gerar preview: "+((err&&err.message)||err),"err"); })
+      .previewOficioWeb(payload, SISGEP_TOKEN_SESSAO);
+  }
+
+  function gerarOficio(){
+    var d=atualizarPayloadOficio();
+    if(!d.tipo) return toast("Selecione o tipo.","warn");
+    if(d.tipo!=="Ofício Livre"){
+      if(!d.escola.nome||ehOpcaoPlaceholder(d.escola.nome)) return toast("Selecione uma escola.","warn");
+      if(!d.escola.cnpj||somenteDigitos(d.escola.cnpj).length!==14) return toast("CNPJ inválido.","warn");
+      if(!d.escola.email) return toast("Informe o e-mail.","warn");
+      if(!d.beneficiarios.length) return toast("Adicione trabalhadores.","warn");
+      if(d.beneficiarios.some(function(b){return !b.nome||!b.cpf;})) return toast("Complete nome e CPF.","warn");
+    } else {
+      if(!$("para")&&$("para").value) return toast("Informe o destinatário.","warn");
+      if(!$("emailLivreAux")&&$("emailLivreAux").value) return toast("Informe o e-mail.","warn");
+      if(!$("corpo")&&$("corpo").value) return toast("Informe o corpo.","warn");
+    }
+
+    var btn=$("btnEmitir"), etapas=["⏳ Iniciando...","📄 Gerando...","🖨 PDF...","📧 Enviando...","💾 Registrando..."];
+    var etapa=0, timer=setInterval(function(){etapa=Math.min(etapa+1,etapas.length-1);if(btn)btn.innerText=etapas[etapa];},8000);
+    if(btn){btn.disabled=true;btn.innerText=etapas[0];}
+
+    function aoSucesso(res){ clearInterval(timer); if(btn){btn.disabled=false;btn.innerText="✅ Emitir Documento;"} if(res&&res.erro) return toast(res.mensagem||"Erro ao emitir.","err"); finalizarPosEmissao(res.dados || {}); }
+    function aoErro(err){ clearInterval(timer); if(btn){btn.disabled=false;btn.innerText="✅ Emitir Documento";} toast("Erro: "+((err&&err.message)||err),"err"); }
+
+    if(d.tipo==="Ofício Livre"){
+      google.script.run.withSuccessHandler(aoSucesso).withFailureHandler(aoErro).gerarOficioWeb({ tipo:d.tipo, para:$("para")&&$("para").value, cargo:$("cargo")&&$("cargo").value, assunto:$("assunto")&&$("assunto").value, corpo:$("corpo")&&$("corpo").value, email:$("emailLivreAux")&&$("emailLivreAux").value }, SISGEP_TOKEN_SESSAO);
+      return;
+    }
+
+    var cards = document.querySelectorAll("#listaTrabalhadores .trabalhador-card");
+    for (var i = 0; i < d.beneficiarios.length; i++) {
+      var card = cards[i];
+      var temDrive = card && card._fichasDrive && card._fichasDrive.length > 0;
+      var fichaInpCheck = card && card.querySelector(".input-ficha-trabalhador");
+      var temLocal = fichaInpCheck && fichaInpCheck.files && fichaInpCheck.files.length > 0;
+      if (!temDrive && !temLocal) return aoErro(new Error('Trabalhador "' + d.beneficiarios[i].nome + '" sem ficha vinculada.'));
+    }
+
+    var todosArquivos = [];
+    document.querySelectorAll("#listaTrabalhadores .trabalhador-card").forEach(function(card) {
+      if (card._fichasDrive && card._fichasDrive.length) {
+        card._fichasDrive.forEach(function(f) { todosArquivos.push({ _isDrive: true, driveId: f.id, nome: f.nome, tipo: f.tipo }); });
+      } else {
+        var fichaInp = card.querySelector(".input-ficha-trabalhador");
+        if (fichaInp && fichaInp.files) Array.from(fichaInp.files).forEach(function(f) { todosArquivos.push(f); });
+      }
+    });
+
+    Promise.all(todosArquivos.map(function(f) {
+      if (f._isDrive) {
+        return new Promise(function(resolve, reject) {
+          google.script.run.withSuccessHandler(function(res) { resolve({ nome: res.nome, base64: res.base64, tipo: res.tipo, origem: "drive" }); }).withFailureHandler(function(err) { reject(err); }).obterArquivoDriveBase64(f.driveId);
+        });
+      }
+      return new Promise(function(resolve, reject) {
+        var reader = new FileReader();
+        reader.onload = function(e) { var base64 = e.target.result.split(",")[1]; resolve({ nome: f.name, base64: base64, tipo: f.type || "application/pdf" }); };
+        reader.onerror = function() { reject(new Error("Erro ao ler arquivo: " + f.name)); };
+        reader.readAsDataURL(f);
+      });
+    })).then(function(fichasBase64) {
+      google.script.run.withSuccessHandler(aoSucesso).withFailureHandler(aoErro).gerarOficioWeb({
+        tipo:d.tipo, escola:d.escola.nome, cnpj:d.escola.cnpj, email:d.escola.email, endereco:d.escola.endereco,
+        colaboradores:d.beneficiarios.map(function(b){return b.nome;}), fichas:fichasBase64
+      }, SISGEP_TOKEN_SESSAO);
+    }).catch(function(err){ aoErro(err); });
+  }
+
+  function finalizarPosEmissao(dadosGerados) {
+    dadosGerados = dadosGerados || {};
+    var urlPdf = typeof dadosGerados === "string" ? dadosGerados : (dadosGerados.url || "");
+    var numero = dadosGerados.numero || "";
+    if (!urlPdf) return;
+    var area=$("areaAcoesDocumento"), btnPrev=$("btnPreview"), btnEmit=$("btnEmitir"), btnNovo=$("btnNovoDocumento");
+    if(btnPrev) btnPrev.style.display="none"; if(btnEmit) btnEmit.style.display="none"; if(btnNovo) btnNovo.style.display="inline-flex";
+    if(area){
+      area.style.display="block";
+      area.innerHTML =
+        "<div style='background:#fff;border:1.5px solid var(--g200);border-radius:20px;padding:22px 24px;box-shadow:var(--sh-md);margin-bottom:14px;'>"
+        + "<div style='display:flex;align-items:center;gap:12px;margin-bottom:16px;'>"
+        + "<div style='width:46px;height:46px;border-radius:13px;background:var(--green-lt);border:1.5px solid #6ee7b7;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;'>✅</div>"
+        + "<div><div style='font-size:16px;font-weight:900;color:var(--g900);'>Ofício gerado com sucesso!</div>"
+        + "<div style='font-size:12px;color:var(--g500);margin-top:3px;font-weight:500;'>Nº " + (numero || "—") + " · PDF salvo no Drive · Registro incluído no Controle</div></div></div>"
+        + "<div class='row-btns' style='margin-bottom:14px;'>"
+        + "<button type='button' class='btn btn-outline' onclick=\"window.open('" + urlPdf + "', '_blank')\">📄 Abrir / Baixar PDF</button>"
+        + "<button type='button' class='btn btn-outline' onclick=\"imprimirPdfOficioGerado('" + urlPdf + "')\">🖨 Imprimir</button>"
+        + "<button type='button' class='btn btn-navy' onclick=\"enviarEmailOficioAgora('" + numero + "')\">📧 Enviar e-mail agora</button>"
+        + "<button type='button' class='btn btn-teal' onclick=\"enviarWhatsappOficio('" + urlPdf + "', '" + numero + "')\">💬 WhatsApp</button>"
+        + "</div>"
+        + "<div id='statusEnvioOficioGerado' style='display:flex;align-items:center;gap:8px;padding:11px 14px;background:var(--g50);border:1.5px solid var(--g200);border-radius:11px;font-size:12.5px;font-weight:600;color:var(--g500);'>"
+        + "<span>🕐</span><span>Aguardando confirmação de envio...</span></div>"
+        + "</div>";
+    }
+
+    if (!$("sisgepToastStyle")) { var st=document.createElement("style"); st.id="sisgepToastStyle"; st.textContent="@keyframes slideUp{from{opacity:0;transform:translateX(-50%) translateY(16px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}"; document.head.appendChild(st); }
+    var toastEl = document.createElement("div");
+    toastEl.id = "toastOficio";
+    toastEl.style.cssText = "position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:99999;background:#0f172a;color:#fff;font-family:Plus Jakarta Sans,sans-serif;font-size:13px;font-weight:600;padding:14px 20px;border-radius:16px;box-shadow:0 8px 32px rgba(0,20,60,.32);display:flex;align-items:center;gap:14px;min-width:340px;max-width:520px;animation:slideUp .25s ease;";
+    toastEl.innerHTML = "<div style='flex:1;'><div style='margin-bottom:4px;font-size:13.5px;'>✅ <strong>Ofício " + (numero || "") + " gerado!</strong></div><div style='font-size:11px;color:rgba(255,255,255,.65);line-height:1.4;'>PDF salvo no Drive. Use os botões abaixo para enviar ou baixar.</div></div>"
+      + "<button id='toastOficioFechar' style='background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.22);color:#fff;padding:6px 14px;border-radius:999px;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap;'>OK</button>";
+    document.body.appendChild(toastEl);
+    var btnFechar=$("toastOficioFechar"); if(btnFechar) btnFechar.onclick=function(){ if(toastEl.parentNode) toastEl.parentNode.removeChild(toastEl); };
+    setTimeout(function(){ if(toastEl&&toastEl.parentNode) toastEl.parentNode.removeChild(toastEl); }, 8000);
+    localStorage.removeItem(DRAFT_KEY);
+  }
+
+function imprimirPdfOficioGerado(urlPdf) {
+  if (!urlPdf) { alert("PDF não encontrado."); return; }
+  var w = window.open(urlPdf, "_blank");
+  if (!w) { toast("Pop-up bloqueado pelo navegador.", "warn"); return; }
+  setTimeout(function() { try { w.focus(); w.print(); } catch(e) {} }, 1200);
+}
+
+function enviarEmailOficioAgora(numero) {
+  if (!numero) { toast("Número do ofício não encontrado.", "err"); return; }
+  var payload = window.SISGEP_OFICIO_PAYLOAD || {};
+  var escola = payload.escola || {};
+  var tipo = payload.tipo || "";
+  var email = escola.email || "";
+  var nomeEscola = escola.nome || "";
+  var qtdFichas = Array.isArray(payload.fichas) ? payload.fichas.length : 0;
+  var descAnexos = qtdFichas > 0 ? "PDF do ofício + " + qtdFichas + " ficha(s)" : "PDF do ofício";
+  abrirModalEnvioOficioSISGEP({ numero: numero, tipo: tipo || "Ofício", escola: nomeEscola || "Não informado", email: email || "E-mail cadastrado na fila de envio", anexos: descAnexos }, function() {
+    var status = document.getElementById("statusEnvioOficioGerado");
+    var btn = document.getElementById("btnModalEnviarOficioAgora");
+    if (status) { status.textContent = "⏳ Enviando e-mail..."; status.style.color = "var(--g500)"; }
+    if (btn) { btn.disabled = true; btn.innerHTML = "⏳ Enviando..."; }
+    google.script.run
+      .withSuccessHandler(function(resp) {
+        fecharModalEnvioOficioSISGEP();
+        if (resp && resp.ok) {
+          if (status) { status.textContent = "✅ E-mail enviado com sucesso para " + (email || "o destinatário") + "."; status.style.color = "var(--green)"; }
+          toast(resp.mensagem || "E-mail enviado com sucesso!", "ok", 5000);
+        } else {
+          if (status) { status.textContent = "❌ Falha no envio: " + ((resp && resp.mensagem) || "Tente novamente."); status.style.color = "var(--red)"; }
+          if (btn) { btn.disabled = false; btn.innerHTML = "📨 Enviar agora"; }
+          toast((resp && resp.mensagem) || "Erro ao enviar e-mail.", "err", 6000);
+        }
+      })
+      .withFailureHandler(function(err) {
+        fecharModalEnvioOficioSISGEP();
+        if (status) { status.textContent = "❌ Erro técnico: " + (err.message || err); status.style.color = "var(--red)"; }
+        if (btn) { btn.disabled = false; btn.innerHTML = "📨 Enviar agora"; }
+        toast("Erro: " + (err.message || err), "err", 6000);
+      })
+      .enviarOficioDaFilaAgora(numero, SISGEP_TOKEN_SESSAO);
+  });
+}
+
+function enviarWhatsappOficio(urlPdf, numero) {
+  if (!urlPdf) { alert("PDF não encontrado."); return; }
+  var texto = encodeURIComponent("Segue o Ofício nº " + (numero || "") + " do SindEducação-ES:\n\n" + urlPdf);
+  window.open("https://wa.me/?text=" + texto, "_blank");
+}
+
+  function resetarFormulario(){
+    ["tipo","cnpj","email","escolaBusca","enderecoEscola","razaoSocialReceita","emailReceita","cidadeUfReceita","para","cargo","assunto","corpo","emailLivreAux","emailOficioLivreCompat"].forEach(function(id){var el=$(id);if(el)el.value="";});
+    var sel=$("escola"), lista=$("listaTrabalhadores");
+    if(sel) sel.value=""; if(lista){lista.innerHTML="";restaurarVazio();}
+    limpar(); contadorTrabalhadores=0;
+    var inpF=$("fichas"); if(inpF) inpF.value="";
+    atualizarPreviewFichas();
+    var area=$("areaAcoesDocumento"), btnPrev=$("btnPreview"), btnEmit=$("btnEmitir"), btnNovo=$("btnNovoDocumento"), btnDown=$("btnDownload"), btnPrint=$("btnImprimir");
+    if(area) area.style.display="none"; if(btnPrev) btnPrev.style.display="inline-flex";
+    if(btnEmit){btnEmit.style.display="inline-flex";btnEmit.disabled=true;btnEmit.innerText="✅ Emitir Documento";}
+    if(btnNovo) btnNovo.style.display="none"; if(btnDown){btnDown.style.display="none";btnDown.onclick=null;} if(btnPrint){btnPrint.style.display="none";btnPrint.onclick=null;}
+    atualizarResumoTrabalhadores(); autoSave();
+  }
+
+  /* ─────────────────────────────────────────────
+     EXPORTS & INIT
+  ────────────────────────────────────────────── */
+  window.getPayloadOficioGerado = atualizarPayloadOficio;
+  window.prepararFichasOficio = prepararFichasAntesDeEmitir;
+  window.registrarOficioGeradoFrontend = function(num){ var p=atualizarPayloadOficio(num); if(window.google&&window.google.script&&window.google.script.run&&window.google.script.run.registrarOficioGerado) google.script.run.registrarOficioGerado(p, SISGEP_TOKEN_SESSAO); return p; };
+
+  function bindFallback() {
+    window.Oficio = window.Oficio || {};
+    window.Oficio.addTrabalhador = window.Oficio.addTrabalhador || addTrabalhador;
+    window.Oficio.adicionarTrabalhador = window.Oficio.adicionarTrabalhador || addTrabalhador;
+    window.Oficio.atualizarResumoTrabalhadores = atualizarResumoTrabalhadores;
+    window.Oficio.consultarCnpj = function() { var st=$("statusConsultaCnpj"); if(st){st.style.display="flex";st.className="info-box amber";st.textContent="Consulta delegada ao backend.";} };
+    window.Oficio.sincronizarCnpj = function() { var st=$("statusConsultaCnpj"); if(st){st.style.display="flex";st.className="info-box blue";st.textContent="Sincronização delegada ao backend.";} };
+    window.Oficio.salvarEscola = salvarEscolaNaPlanilha;
+    window.Oficio.preview = previewOficio;
+    window.Oficio.emitir = gerarOficio;
+    window.Oficio.gerar = gerarOficio;
+    window.Oficio.finalizarPosEmissao = finalizarPosEmissao;
+    window.Oficio.resetarFormulario = resetarFormulario;
+    if (typeof globalThis !== "undefined") globalThis.Oficio = window.Oficio;
+
+    window.removerFicha = removerFicha;
+    window.removerFichaCard = removerFichaCard;
+    window.enviarEmailOficioAgora = enviarEmailOficioAgora;
+    window.imprimirPdfOficioGerado = imprimirPdfOficioGerado;
+    window.enviarWhatsappOficio = enviarWhatsappOficio;
+
+    function blindarBotao(id, handler) {
+      var btn=$(id); if(!btn||btn.dataset.botaoBlindado==="1") return;
+      btn.dataset.botaoBlindado="1"; btn.removeAttribute("onclick"); btn.onclick=null;
+      btn.addEventListener("click", function(ev){ ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation(); handler(); return false; }, true);
+    }
+
+    blindarBotao("btnAddTrabalhador", function(){ if(typeof Oficio !== "undefined" && typeof Oficio.adicionarTrabalhador === "function"){ Oficio.adicionarTrabalhador(); } else { addTrabalhador(); } });
+    blindarBotao("btnPreview", previewOficio);
+    blindarBotao("btnEmitir", gerarOficio);
+    blindarBotao("btnNovoDocumento", resetarFormulario);
+    blindarBotao("btnConsultarCnpj", function(){ if(window.Oficio.consultarCnpj) window.Oficio.consultarCnpj(); });
+    blindarBotao("btnSincronizarCnpj", function(){ if(window.Oficio.sincronizarCnpj) window.Oficio.sincronizarCnpj(); });
+    blindarBotao("btnSalvarEscola", salvarEscolaNaPlanilha);
+
+    var fichas = $("fichas");
+    if (fichas && !fichas.dataset.bound) {
+      fichas.dataset.bound = "1";
+      fichas.setAttribute("multiple", "true");
+      fichas.onchange = function() {
+        if (!window._fichasAcumuladas) window._fichasAcumuladas = new DataTransfer();
+        Array.from(fichas.files).forEach(function(f) {
+          if (window._fichasAcumuladas.files.length >= 25) { toast("Limite de 25 fichas atingido.", "warn"); return; }
+          var jaExiste = Array.from(window._fichasAcumuladas.files).some(function(e) { return e.name === f.name; });
+          if (!jaExiste) window._fichasAcumuladas.items.add(f);
+        });
+        fichas.files = window._fichasAcumuladas.files;
+        atualizarContadorFichas();
+      };
+    }
+
+    document.querySelectorAll(".input-cpf-trabalhador").forEach(function(inp) {
+      if (!inp.dataset.mask) {
+        inp.dataset.mask = "1";
+        inp.oninput = function() { aplicarMascaraCpf(inp); atualizarResumoTrabalhadores(); sincronizarFichasGlobais(); };
+        aplicarMascaraCpf(inp);
+      }
+    });
+
+    var tipo = $("tipo");
+    if (tipo && !tipo.dataset.bound) { tipo.dataset.bound = "1"; tipo.onchange = atualizarResumoTrabalhadores; }
+
+    atualizarResumoTrabalhadores();
+    atualizarContadorFichas();
+    atualizarPreviewFichas();
+  }
+
+  function iniciar(){
+    carregarEscolasDaPlanilha(); restoreDraft();
+    var busca=$("escolaBusca");
+    if(busca){
+      var onBusca = debounce(function(){ acionarBuscaEscola(busca.value); }, 150);
+      busca.addEventListener("input", onBusca);
+      busca.addEventListener("focus", function(){ acionarBuscaEscola(busca.value); });
+      busca.addEventListener("keydown", function(e) {
+        if (e.key !== "Enter") return;
+        var lista = buscar(busca.value);
+        if (lista.length === 1) {
+          e.preventDefault();
+          selecionarEscola(lista[0]);
+        } else {
+          acionarBuscaEscola(busca.value);
+        }
+      });
+    }
+    if($("btnLimparEscolaSelecionada")) $("btnLimparEscolaSelecionada").onclick=limpar;
+    if($("btnAdicionarEmailEscolaOficio")) $("btnAdicionarEmailEscolaOficio").onclick=adicionarEmailEscola;
+    if($("btnAplicarEdicaoEscolaOficio")) $("btnAplicarEdicaoEscolaOficio").onclick=editarEscolaSelecionada;
+    if($("btnToggleEdicaoEscola")) $("btnToggleEdicaoEscola").onclick=function(){ var p=$("secaoCnpjEmail"); if(p) p.style.display=p.style.display==="none"?"block":"none"; };
+    bridgeClick("btnConsultarCnpjSmart","btnConsultarCnpj"); bridgeClick("btnSincronizarCnpjSmart","btnSincronizarCnpj"); bridgeClick("btnSalvarEscolaSmart","btnSalvarEscola");
+    document.addEventListener("click",function(e){ var c=document.querySelector(".escola-smart-card"),d=$("autocompleteEscolaSmart"); if(c&&d&&!c.contains(e.target)) d.style.display="none"; });
+    setTimeout(limparSelecaoPlaceholderSeExistir,50); setTimeout(limparSelecaoPlaceholderSeExistir,500); setTimeout(limparSelecaoPlaceholderSeExistir,1500);
+  }
+
+  window.selecionarEscolaOficioSmart = selecionarEscola;
+  window.carregarEscolas = carregarEscolasDaPlanilha;
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", function () { iniciar(); bindFallback(); });
+  } else { iniciar(); bindFallback(); }
+
+  /* ─────────────────────────────────────────────
+     MONITORAMENTO
+  ────────────────────────────────────────────── */
+function carregarMonitoramento(filtros) {
+  filtros = filtros || {};
+  var painel = $("painelMonitoramento");
+  if (painel) painel.innerHTML = '<div style="text-align:center;padding:36px;color:var(--g400);font-size:13px;font-weight:500;">⏳ Carregando...</div>';
+  google.script.run
+    .withSuccessHandler(function(retorno) { if (retorno.erro) { toast(retorno.mensagem, "err"); return; } renderMonitoramento(retorno); })
+    .withFailureHandler(function(err) { toast("Erro ao carregar monitoramento: " + (err.message || err), "err"); })
+    .listarStatusOficios(filtros, SISGEP_TOKEN_SESSAO);
+}
+
+function renderMonitoramento(dados) {
+  var painel = $("painelMonitoramento"); if (!painel) return;
+  var resumo = dados.resumo || {}, itens = dados.itens || [];
+
+  // ── Estado do filtro ativo ──
+  if (!window._monFiltroAtivo) window._monFiltroAtivo = "";
+
+  var cards = [
+    { label:"Total",       valor: resumo.total,       cor:"var(--blue)",     bg:"var(--blue-lt)",  borda:"#bfdbfe", status:""               },
+    { label:"Confirmados", valor: resumo.confirmados, cor:"var(--green-dk)", bg:"var(--green-lt)", borda:"#6ee7b7", status:"CONFIRMADO"      },
+    { label:"Enviados",    valor: resumo.enviados,    cor:"#1e40af",         bg:"#dbeafe",         borda:"#93c5fd", status:"ENVIADO"         },
+    { label:"Pendentes",   valor: resumo.pendentes,   cor:"#92400e",         bg:"var(--amber-lt)", borda:"#fcd34d", status:"PENDENTE"        },
+    { label:"Falhas",      valor: resumo.falhas,      cor:"#991b1b",         bg:"var(--red-lt)",   borda:"#fca5a5", status:"FALHA_ENTREGA"   },
+    { label:"Erros",       valor: resumo.erros,       cor:"#7c3aed",         bg:"#ede9fe",         borda:"#c4b5fd", status:"ERRO"            }
+  ];
+
+  var htmlCards = cards.map(function(c) {
+    var ativo = window._monFiltroAtivo === c.status;
+    return '<div class="mon-card' + (ativo ? ' mon-card-ativo' : '') + '" data-status="' + c.status + '" title="' + (c.status ? 'Filtrar por ' + c.label : 'Mostrar todos') + '">'
+      + '<div class="mon-card-inner" style="background:' + c.bg + ';border:1.5px solid ' + (ativo ? '#C9A84C' : c.borda) + ';box-shadow:' + (ativo ? '0 0 0 3px rgba(201,168,76,.35)' : 'none') + ';">'
+      + '<div style="font-size:26px;font-weight:900;color:' + c.cor + ';">' + (c.valor || 0) + '</div>'
+      + '<div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--g500);margin-top:4px;">' + c.label + '</div>'
+    + (ativo && c.status ? '<div style="font-size:9px;font-weight:700;color:#C9A84C;margin-top:3px;">● FILTRANDO</div>' : '')
+      + '</div>'
+      + '</div>';
+  }).join("");
+
+  var htmlFiltros = '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center;">'
+    + '<select id="monFiltroStatus" style="padding:9px 13px;border-radius:10px;border:1.5px solid var(--g200);font-family:Plus Jakarta Sans,sans-serif;font-size:13px;font-weight:500;background:#fff;">'
+    + '<option value="">Todos os status</option>'
+    + '<option value="CONFIRMADO">✅ Confirmado</option>'
+    + '<option value="ENVIADO">📤 Enviado</option>'
+    + '<option value="PENDENTE">🕐 Pendente</option>'
+    + '<option value="FALHA_ENTREGA">❌ Falha de entrega</option>'
+    + '<option value="ERRO">⚠️ Erro</option>'
+    + '</select>'
+    + '<input id="monFiltroEscola" placeholder="Filtrar por escola..." style="padding:9px 13px;border-radius:10px;border:1.5px solid var(--g200);font-family:Plus Jakarta Sans,sans-serif;font-size:13px;font-weight:500;min-width:220px;">'
+    + '<button id="btnMonLimparFiltro" style="padding:9px 14px;border-radius:10px;border:1.5px solid var(--g200);background:#fff;font-family:Plus Jakarta Sans,sans-serif;font-size:12px;font-weight:700;color:var(--g600);cursor:pointer;">✕ Limpar</button>'
+    + '</div>';
+
+  var htmlLinhas = itens.length === 0
+    ? '<tr><td colspan="7"><div class="of-table-empty">Nenhum ofício encontrado.</div></td></tr>'
+    : itens.map(function(item) {
+        var badge = badgeStatusMon(item.status);
+        var alerta = item.status === "ENVIADO" && item.diasSemResposta > 7
+          ? ' <span style="font-size:10px;background:var(--amber-lt);color:#92400e;border-radius:999px;padding:2px 7px;font-weight:800;">+' + item.diasSemResposta + 'd</span>'
+          : '';
+        var acoes = '';
+        if (item.status === "ENVIADO" || item.status === "FALHA_ENTREGA" || item.status === "PENDENTE")
+          acoes += '<button onclick="marcarStatusMon(\'' + escapeHtml(item.numero) + '\',\'CONFIRMADO\')" title="Confirmar" style="padding:4px 9px;border-radius:7px;background:var(--green-lt);color:var(--green-dk);font-size:11px;font-weight:700;border:none;cursor:pointer;margin-right:4px;">✅</button>';
+        if (item.status !== "FALHA_ENTREGA")
+          acoes += '<button onclick="marcarStatusMon(\'' + escapeHtml(item.numero) + '\',\'FALHA_ENTREGA\')" title="Falha" style="padding:4px 9px;border-radius:7px;background:var(--red-lt);color:#991b1b;font-size:11px;font-weight:700;border:none;cursor:pointer;margin-right:4px;">❌</button>';
+        if (item.link)
+          acoes += '<a href="' + item.link + '" target="_blank" style="padding:4px 9px;border-radius:7px;background:var(--blue-lt);color:var(--blue);font-size:11px;font-weight:700;text-decoration:none;">📄</a>';
+        return '<tr>'
+          + '<td style="padding:12px 14px;font-weight:800;color:var(--navy);">' + escapeHtml(item.numero) + '</td>'
+          + '<td style="padding:12px 14px;font-size:12px;">' + escapeHtml(item.tipo) + '</td>'
+          + '<td style="padding:12px 14px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeHtml(item.escola) + '">' + escapeHtml(item.escola) + '</td>'
+          + '<td style="padding:12px 14px;font-size:11px;color:var(--g500);">' + escapeHtml(item.email) + '</td>'
+          + '<td style="padding:12px 14px;">' + badge + alerta + '</td>'
+          + '<td style="padding:12px 14px;font-size:11.5px;color:var(--g500);">' + (item.data || "—") + '</td>'
+          + '<td style="padding:12px 14px;">' + acoes + '</td>'
+          + '</tr>';
+      }).join("");
+
+  // ── CSS dos cards ──
+  if (!document.getElementById("monCardStyle")) {
+    var st = document.createElement("style");
+    st.id = "monCardStyle";
+    st.textContent =
+      '.mon-cards{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:20px;}'
+      + '.mon-card{cursor:pointer;border-radius:14px;transition:transform .15s,box-shadow .15s;user-select:none;}'
+      + '.mon-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,20,60,.12);}'
+      + '.mon-card:active{transform:translateY(0) scale(.97);}'
+      + '.mon-card-ativo{transform:translateY(-2px);}'
+      + '.mon-card-inner{border-radius:14px;padding:16px;text-align:center;transition:border .15s,box-shadow .15s;}';
+    document.head.appendChild(st);
+  }
+
+  painel.innerHTML =
+    '<div class="mon-cards" id="monCards">' + htmlCards + '</div>'
+    + htmlFiltros
+    + '<div class="of-table-wrap"><table class="of-table"><thead><tr>'
+    + '<th>Número</th><th>Tipo</th><th>Escola</th><th>E-mail</th><th>Status</th><th>Data</th><th>Ações</th>'
+    + '</tr></thead><tbody id="tabelaMonitoramentoBody">' + htmlLinhas + '</tbody></table></div>';
+
+  // ── Bind cards ──
+  painel.querySelectorAll(".mon-card").forEach(function(card) {
+    card.addEventListener("click", function() {
+      var status = card.dataset.status;
+      // Click duplo no mesmo card limpa o filtro
+      if (window._monFiltroAtivo === status) {
+        window._monFiltroAtivo = "";
+        status = "";
+      } else {
+        window._monFiltroAtivo = status;
+      }
+      var sel = document.getElementById("monFiltroStatus");
+      if (sel) sel.value = status;
+      aplicarFiltroMonitoramento();
+    });
+  });
+
+  // ── Bind filtros ──
+  var selStatus  = document.getElementById("monFiltroStatus");
+  var inpEscola  = document.getElementById("monFiltroEscola");
+  var btnLimpar  = document.getElementById("btnMonLimparFiltro");
+
+  if (selStatus) selStatus.onchange = function() {
+    window._monFiltroAtivo = this.value;
+    aplicarFiltroMonitoramento();
+  };
+  if (inpEscola) inpEscola.oninput = debounce(function() {
+    aplicarFiltroMonitoramento();
+  }, 300);
+  if (btnLimpar) btnLimpar.onclick = function() {
+    window._monFiltroAtivo = "";
+    if (selStatus) selStatus.value = "";
+    if (inpEscola) inpEscola.value = "";
+    aplicarFiltroMonitoramento();
+  };
+
+  // Restaura valor do select se havia filtro ativo
+  if (window._monFiltroAtivo && selStatus) {
+    selStatus.value = window._monFiltroAtivo;
+  }
+}
+function badgeStatusMon(status) {
+  var cfg = {
+    CONFIRMADO:    { bg:"var(--green-lt)", cor:"var(--green-dk)", emoji:"✅", label:"Confirmado" },
+    ENVIADO:       { bg:"#dbeafe", cor:"#1e40af", emoji:"📤", label:"Enviado" },
+    PENDENTE:      { bg:"var(--amber-lt)", cor:"#92400e", emoji:"🕐", label:"Pendente" },
+    FALHA_ENTREGA: { bg:"var(--red-lt)", cor:"#991b1b", emoji:"❌", label:"Falha de entrega" },
+    ERRO:          { bg:"#ede9fe", cor:"#7c3aed", emoji:"⚠️", label:"Erro" }
+  };
+  var c = cfg[status] || { bg:"var(--g100)", cor:"var(--g600)", emoji:"•", label: status };
+  return '<span style="background:' + c.bg + ';color:' + c.cor + ';padding:4px 11px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap;">' + c.emoji + ' ' + c.label + '</span>';
+}
+
+function aplicarFiltroMonitoramento() {
+  var status = ($("monFiltroStatus") || {}).value || "";
+  var escola = ($("monFiltroEscola") || {}).value || "";
+  carregarMonitoramento({ status: status, escola: escola });
+}
+
+function marcarStatusMon(numero, novoStatus) {
+  var obs = novoStatus === "CONFIRMADO" ? "Confirmado manualmente pelo operador." : "Marcado como falha manualmente pelo operador.";
+  google.script.run
+    .withSuccessHandler(function(r) { if (r.erro) { toast("Erro: " + r.mensagem, "err"); return; } toast(r.mensagem, "ok"); carregarMonitoramento(); })
+    .withFailureHandler(function(err) { toast("Erro: " + (err.message || err), "err"); })
+    .atualizarStatusOficio(numero, novoStatus, obs, SISGEP_TOKEN_SESSAO);
+}
+
+window.aplicarFiltroMonitoramento = aplicarFiltroMonitoramento;
+window.marcarStatusMon = marcarStatusMon;
+window.carregarMonitoramento = carregarMonitoramento;
+
+})();
+</script>
+
+<script>
+(function() {
+  function el(id) { return document.getElementById(id); }
+
+function esconderTodos() {
+    ["blocoOficioNovo","blocoOficioHistorico","blocoTaxaAssistencial","blocoMonitoramento","blocoMensalidades","blocoEscolas","centralEmailIA"].forEach(function(id){ if(el(id)) el(id).style.display="none"; });
+    ["abaOficioNovo","abaOficioHistorico","abaTaxaAssistencial","abaMonitoramento","abaMensalidades"].forEach(function(id){ if(el(id)) el(id).classList.remove("active"); });
+  }
+
+  function mostrarNovoOficio() { esconderTodos(); if(el("blocoOficioNovo")) el("blocoOficioNovo").style.display="block"; if(el("abaOficioNovo")) el("abaOficioNovo").classList.add("active"); }
+
+  function mostrarHistorico() {
+    esconderTodos();
+    if(el("blocoOficioHistorico")) el("blocoOficioHistorico").style.display="block";
+    if(el("abaOficioHistorico")) el("abaOficioHistorico").classList.add("active");
+    setTimeout(function() {
+      if (typeof Historico !== "undefined" && typeof Historico.carregar === "function") Historico.carregar();
+      else if (typeof window.carregarHistoricoOficios === "function") window.carregarHistoricoOficios();
+      else if (typeof initHistorico === "function") initHistorico();
+    }, 400);
+  }
+
+  function mostrarTaxaAssistencial() { esconderTodos(); if(el("blocoTaxaAssistencial")) el("blocoTaxaAssistencial").style.display="block"; if(el("abaTaxaAssistencial")) el("abaTaxaAssistencial").classList.add("active"); }
+
+function mostrarMonitoramento() {
+    esconderTodos();
+    if(el("blocoMonitoramento")) el("blocoMonitoramento").style.display="block";
+    if(el("abaMonitoramento")) el("abaMonitoramento").classList.add("active");
+    setTimeout(function() { if(typeof window.carregarMonitoramento === "function") window.carregarMonitoramento(); }, 300);
+  }
+
+  function mostrarMensalidades() {
+    esconderTodos();
+    if(el("blocoMensalidades")) el("blocoMensalidades").style.display="block";
+    if(el("abaMensalidades")) el("abaMensalidades").classList.add("active");
+    setTimeout(function() { if(typeof window.carregarMensalidades === "function") window.carregarMensalidades(); }, 300);
+  }
+
+  function iniciarAbasOficios() {
+    if(el("abaOficioNovo")) el("abaOficioNovo").onclick=mostrarNovoOficio;
+    if(el("abaOficioHistorico")) el("abaOficioHistorico").onclick=mostrarHistorico;
+    if(el("abaTaxaAssistencial")) el("abaTaxaAssistencial").onclick=mostrarTaxaAssistencial;
+ if(el("abaMonitoramento")) el("abaMonitoramento").onclick=mostrarMonitoramento;
+    if(el("abaMensalidades")) el("abaMensalidades").onclick=mostrarMensalidades;
+    if(el("btnVoltarEmissao")) el("btnVoltarEmissao").onclick=mostrarNovoOficio;
+    if(el("btnAplicarFiltroHist")) el("btnAplicarFiltroHist").onclick=function(){ if(typeof window.carregarHistoricoOficios==="function") window.carregarHistoricoOficios(); else if(typeof Historico!=="undefined") Historico.carregar(); };
+    if(el("btnAtualizarMonitoramento")) el("btnAtualizarMonitoramento").onclick=mostrarMonitoramento;
+    mostrarNovoOficio();
+  }
+
+ window.mostrarHistoricoOficio = mostrarHistorico;
+  window.mostrarNovoOficio = mostrarNovoOficio;
+  window.initAbasOficios = iniciarAbasOficios;
+window.mostrarAbaOficio = function(aba) {
+    if (aba === "novo")                  mostrarNovoOficio();
+    else if (aba === "historico")        mostrarHistorico();
+    else if (aba === "taxaAssistencial") mostrarTaxaAssistencial();
+    else if (aba === "monitoramento")    mostrarMonitoramento();
+    else if (aba === "mensalidades")     mostrarMensalidades();
+    else if (aba === "escolas") {
+      esconderTodos();
+      var blocoEsc = el("blocoEscolas");
+      if (blocoEsc) blocoEsc.style.display = "block";
+      if (typeof window.initCadastroEscolas === "function") window.initCadastroEscolas();
+    }
+    else if (aba === "centralIA") {
+      esconderTodos();
+      var central = el("centralEmailIA");
+      if (central) central.style.display = "block";
+      if (typeof window.carregarEmailsIA === "function") window.carregarEmailsIA();
+    }
+  };
+
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", iniciarAbasOficios);
+  else iniciarAbasOficios();
+
+  window.abrirModalEnvioOficioSISGEP = function(dados, aoConfirmar) {
+    dados = dados || {};
+    var modal = document.getElementById("modalEnvioOficioSISGEP");
+    var btn = document.getElementById("btnModalEnviarOficioAgora");
+    if (!modal || !btn) { if(typeof aoConfirmar==="function") aoConfirmar(); return; }
+    document.getElementById("modalEnvioNumero").textContent = dados.numero || "—";
+    document.getElementById("modalEnvioTipo").textContent = dados.tipo || "Ofício";
+    document.getElementById("modalEnvioEscola").textContent = dados.escola || "Não informado";
+    document.getElementById("modalEnvioEmail").textContent = dados.email || "E-mail cadastrado na fila de envio";
+    var anexosEl = document.getElementById("modalEnvioAnexos");
+    if (anexosEl) {
+      var partes = String(dados.anexos || "PDF do ofício").split("+").map(function(p){return p.trim();}).filter(Boolean);
+      anexosEl.innerHTML = partes.map(function(p){ return "<div style='display:inline-flex;align-items:center;gap:5px;background:var(--green-lt);border:1.5px solid #6ee7b7;color:var(--green-dk);font-size:12px;font-weight:700;padding:5px 12px;border-radius:8px;'>📎 " + p + "</div>"; }).join("");
+    }
+    btn.disabled = false; btn.innerHTML = "📨 Enviar agora";
+    btn.onclick = function() { btn.disabled = true; btn.innerHTML = "⏳ Enviando..."; if(typeof aoConfirmar==="function") aoConfirmar(); };
+    modal.classList.add("aberto");
+  };
+
+  window.fecharModalEnvioOficioSISGEP = function() {
+    var modal = document.getElementById("modalEnvioOficioSISGEP");
+    var btn = document.getElementById("btnModalEnviarOficioAgora");
+    if(btn){ btn.disabled=false; btn.innerHTML="📨 Enviar agora"; }
+    if(modal) modal.classList.remove("aberto");
+  };
+
+  function abrirBuscaFichaDriveCard(card, contadorEl, previewEl) {
+    var fichaArea = card.querySelector(".trabalhador-ficha-area");
+    if (!fichaArea || fichaArea.querySelector(".drive-search-wrap")) return;
+    var wrap = document.createElement("div"); wrap.className = "drive-search-wrap"; wrap.style.cssText = "margin-top:8px;position:relative;";
+    wrap.innerHTML = '<div style="position:relative;display:flex;align-items:center;">'
+      + '<span style="position:absolute;left:11px;font-size:14px;color:var(--g400);pointer-events:none;">🔎</span>'
+      + '<input type="text" class="drive-search-input" placeholder="Digite o nome da ficha..." style="width:100%;min-height:40px;border:1.5px solid var(--blue);border-radius:11px;padding:0 84px 0 34px;font-family:Plus Jakarta Sans,sans-serif;font-size:13px;font-weight:500;outline:none;background:#fff;box-sizing:border-box;" autocomplete="off">'
+      + '<span class="drive-search-contador" style="position:absolute;right:11px;font-size:11px;color:var(--g400);white-space:nowrap;"></span>'
+      + '</div>'
+      + '<div class="drive-search-results" style="display:none;border:1.5px solid var(--blue);border-top:none;border-radius:0 0 11px 11px;background:#fff;z-index:999;max-height:200px;overflow-y:auto;"></div>'
+      + '<button type="button" class="drive-search-fechar" style="margin-top:5px;font-size:11px;color:var(--g400);background:none;border:none;cursor:pointer;padding:0;font-weight:600;">✕ Fechar</button>';
+    fichaArea.appendChild(wrap);
+    var input = wrap.querySelector(".drive-search-input"), results = wrap.querySelector(".drive-search-results"), contador = wrap.querySelector(".drive-search-contador"), btnFch = wrap.querySelector(".drive-search-fechar"), timer = null;
+    input.focus();
+
+    function renderizarDrive(lista, termo) {
+      results.innerHTML = "";
+      if (!lista.length) { results.innerHTML = '<div style="padding:10px;font-size:12px;color:var(--g400);text-align:center;">Nenhuma ficha encontrada.</div>'; contador.textContent = ""; return; }
+      contador.textContent = lista.length + " resultado" + (lista.length !== 1 ? "s" : "");
+      lista.forEach(function(arq, i) {
+        var item = document.createElement("div"); item.style.cssText = "padding:9px 13px;cursor:pointer;border-bottom:1px solid var(--g100);display:flex;align-items:center;gap:8px;background:" + (i===0?"#eff6ff":"#fff") + ";font-size:13px;font-weight:500;";
+        var icone = /\.pdf$/i.test(arq.nome) ? "📄" : "🖼️";
+        var re = new RegExp("(" + termo.replace(/[.*+?^${}()|[\]\\]/g,"\\$&") + ")", "gi");
+        var nomeHtml = String(arq.nome||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(re,'<mark style="background:#fef08a;">$1</mark>');
+        item.innerHTML = '<span style="font-size:16px;flex-shrink:0;">' + icone + '</span><div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + nomeHtml + '</div>';
+        item.addEventListener("mousedown", function(e) {
+          e.preventDefault(); e.stopPropagation();
+          card._fichasDrive = [{ id: arq.id, nome: arq.nome, tipo: arq.tipo, url: arq.url }];
+          if (contadorEl) contadorEl.textContent = "1 ficha (☁️ Nuvem)";
+          if (previewEl) previewEl.innerHTML = '<div style="display:flex;align-items:center;gap:8px;padding:7px 11px;background:var(--green-lt);border-radius:9px;border:1.5px solid #6ee7b7;font-size:12px;font-weight:700;color:var(--green-dk);">'
+            + '<span>📄</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + String(arq.nome||"").replace(/&/g,"&amp;").replace(/</g,"&lt;") + '</span>'
+            + '<span style="font-size:10px;color:var(--g500);flex-shrink:0;">☁️ Nuvem</span>'
+            + '<button type="button" onclick="(function(btn){var c=btn.closest(\'.trabalhador-card\');c._fichasDrive=[];btn.closest(\'.ficha-preview-individual\').innerHTML=\'\';c.querySelector(\'.ficha-contador\').textContent=\'Nenhuma ficha\';})(this)" style="margin-left:6px;background:var(--red);color:#fff;border:none;padding:2px 8px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;">✕</button>'
+            + '</div>';
+          var nomeInp = card.querySelector(".input-nome-trabalhador");
+          if (nomeInp && !nomeInp.value.trim()) {
+            nomeInp.value = arq.nome.replace(/\.pdf$/i,"").replace(/\.jpe?g$/i,"").replace(/\.png$/i,"").replace(/^FICHA\s+SINDICALIZA[ÇC][ÃA]O\s+/i,"").replace(/^FICHA\s+/i,"").replace(/_\d{14,}.*$/,"").trim()
+              .replace(/\b\w+/g,function(p){ var m=["da","de","do","das","dos","e","em","na","no","nas","nos","a","o","as","os"]; return m.indexOf(p.toLowerCase())>-1?p.toLowerCase():p.charAt(0).toUpperCase()+p.slice(1).toLowerCase(); });
+            if(typeof atualizarResumoTrabalhadores==="function") atualizarResumoTrabalhadores();
+          }
+          if(typeof sincronizarFichasGlobais==="function") sincronizarFichasGlobais();
+          wrap.remove();
+        });
+        results.appendChild(item);
+      });
+    }
+
+    input.addEventListener("input", function() {
+      clearTimeout(timer); var termo = input.value.trim(); results.style.display="none"; contador.textContent="";
+      if (termo.length < 3) return;
+      results.style.display="block"; results.innerHTML='<div style="padding:10px;font-size:12px;color:var(--g400);">⏳ Buscando...</div>';
+      timer = setTimeout(function() {
+        google.script.run.withSuccessHandler(function(lista){ renderizarDrive(lista||[], termo); }).withFailureHandler(function(err){ results.innerHTML='<div style="padding:9px;font-size:12px;color:var(--red);">Erro: '+((err&&err.message)||err)+'</div>'; }).buscarFichasDrive(termo);
+      }, 400);
+    });
+    input.addEventListener("keydown", function(e){ if(e.key==="Escape") wrap.remove(); });
+    btnFch.addEventListener("click", function(){ wrap.remove(); });
+    setTimeout(function() {
+      document.addEventListener("mousedown", function fecharFora(e){ if(!wrap.contains(e.target)){ wrap.remove(); document.removeEventListener("mousedown",fecharFora); } });
+    }, 200);
+  }
+
+/* ─────────────────────────────────────────────
+     HISTÓRICO DE OFÍCIOS
+  ────────────────────────────────────────────── */
+  var Historico = {
+    selecionados: [],
+    _sort: { col: "data", dir: "desc" },
+    _dadosCache: [],
+
+    ordenar: function(lista) {
+      var col = Historico._sort.col;
+      var dir = Historico._sort.dir;
+      return lista.slice().sort(function(a, b) {
+        var va = String(a[col] || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        var vb = String(b[col] || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        if (col === "data") {
+          var pa = va.split(/[\/\s]/), pb = vb.split(/[\/\s]/);
+          if (pa.length >= 3 && pb.length >= 3) {
+            var da = new Date(pa[2], pa[1]-1, pa[0]);
+            var db = new Date(pb[2], pb[1]-1, pb[0]);
+            if (!isNaN(da) && !isNaN(db)) return dir === "asc" ? da - db : db - da;
+          }
+        }
+        if (col === "numero") {
+          var na = parseInt(va.split("/")[0]) || 0;
+          var nb = parseInt(vb.split("/")[0]) || 0;
+          return dir === "asc" ? na - nb : nb - na;
+        }
+        var r = va.localeCompare(vb, "pt-BR");
+        return dir === "asc" ? r : -r;
+      });
+    },
+
+    initOrdenacao: function() {
+      var _cabTextos = {};
+      document.querySelectorAll("#blocoOficioHistorico thead th[data-hist-col]").forEach(function(th) {
+        _cabTextos[th.dataset.histCol] = th.textContent.trim();
+        if (th._histSortBound) return;
+        th._histSortBound = true;
+        th.addEventListener("click", function() {
+          var col = this.dataset.histCol;
+          if (Historico._sort.col === col) {
+            Historico._sort.dir = Historico._sort.dir === "asc" ? "desc" : "asc";
+          } else {
+            Historico._sort.col = col;
+            Historico._sort.dir = col === "data" ? "desc" : "asc";
+          }
+          document.querySelectorAll("#blocoOficioHistorico thead th[data-hist-col]").forEach(function(h) {
+            h.textContent = _cabTextos[h.dataset.histCol] || h.textContent.replace(/ [↑↓]$/, "");
+          });
+          this.textContent = (_cabTextos[col] || col) + (Historico._sort.dir === "asc" ? " ↑" : " ↓");
+          if (Historico._dadosCache.length) Historico.renderLista(Historico._dadosCache);
+        });
+      });
+    },
+
+    renderLista: function(lista) {
+      var tbody = document.getElementById("corpoHistorico");
+      var contEl = document.getElementById("contadorResultados");
+      var fEscola = (document.getElementById("filtroEscola")||{}).value||"";
+      var fNumero = (document.getElementById("filtroNumero")||{}).value||"";
+      var fStatus = ((document.getElementById("filtroStatus")||{}).value||"").toUpperCase();
+      var fTipo   = ((document.getElementById("filtroTipo")||{}).value||"").toLowerCase();
+
+      var filtrada = lista.filter(function(item) {
+        var numero=String(item.numero||"").toLowerCase(), tipo=String(item.tipo||"").toLowerCase();
+        var escola=String(item.escola||"").toLowerCase(), status=String(item.status||"").toUpperCase();
+        if(fEscola&&escola.indexOf(fEscola.toLowerCase())<0) return false;
+        if(fNumero&&numero.indexOf(fNumero.toLowerCase())<0) return false;
+        if(fStatus&&status!==fStatus) return false;
+        if(fTipo&&tipo.indexOf(fTipo)<0) return false;
+        return true;
+      });
+
+      var ordenada = Historico.ordenar(filtrada);
+
+      if(contEl) contEl.textContent = ordenada.length + " registro(s) encontrado(s)";
+      if(!ordenada.length){
+        tbody.innerHTML = '<tr><td colspan="7"><div class="of-table-empty">Nenhum registro encontrado.</div></td></tr>';
+        Historico.bindFiltros();
+        return;
+      }
+
+      tbody.innerHTML = ordenada.map(function(item) {
+        var status=String(item.status||"").toUpperCase().trim();
+        var badgeClass=status==="CONFIRMADO"?"hist-confirmado":status==="ENVIADO"?"hist-enviado":"hist-pendente";
+        var url=String(item.url||item.linkPdf||"").trim();
+        var num=String(item.numero||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+        var abrirBtn=url?'<button type="button" class="btn btn-outline btn-sm" onclick="window.open(\''+url+'\',\'_blank\')">📥 PDF</button>':'<button type="button" class="btn btn-ghost btn-sm" disabled>Sem link</button>';
+        return '<tr data-numero="'+num+'" data-url="'+url+'">'
+          +'<td><input type="checkbox" class="hist-check" data-numero="'+num+'"></td>'
+          +'<td style="font-weight:700;">'+num+'</td>'
+          +'<td>'+String(item.tipo||"").replace(/</g,"&lt;")+'</td>'
+          +'<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+String(item.escola||"").replace(/"/g,"&quot;")+'">'+String(item.escola||"").replace(/</g,"&lt;")+'</td>'
+          +'<td>'+String(item.data||"")+'</td>'
+          +'<td><span class="hist-badge '+badgeClass+'">'+status+'</span></td>'
+          +'<td><div class="row-btns">'+abrirBtn
+          +'<button type="button" class="btn btn-outline btn-sm" onclick="Historico.editar(\''+num+'\')" title="Editar status">✏️</button>'
+          +'<button type="button" class="btn btn-teal btn-sm" onclick="Historico.reenviar(\''+num+'\')" title="Reenviar">📧</button>'
+          +'<button type="button" class="btn btn-red btn-sm" onclick="Historico.excluir(\''+num+'\')" title="Excluir">🗑</button>'
+          +'</div></td></tr>';
+      }).join("");
+
+      var checkTodos=document.getElementById("checkTodos");
+      if(checkTodos){ checkTodos.onchange=function(){ document.querySelectorAll(".hist-check").forEach(function(cb){cb.checked=checkTodos.checked;}); Historico.atualizarSelecionados(); }; }
+      document.querySelectorAll(".hist-check").forEach(function(cb){ cb.onchange=function(){Historico.atualizarSelecionados();}; });
+      Historico.bindFiltros();
+    },
+
+    carregar: function() {
+      var tbody = document.getElementById("corpoHistorico");
+      var contEl = document.getElementById("contadorResultados");
+      var fEscola = (document.getElementById("filtroEscola")||{}).value||"";
+      var fNumero = (document.getElementById("filtroNumero")||{}).value||"";
+      var fStatus = ((document.getElementById("filtroStatus")||{}).value||"").toUpperCase();
+      var fTipo   = ((document.getElementById("filtroTipo")||{}).value||"").toLowerCase();
+      if(!tbody) return;
+      tbody.innerHTML='<tr><td colspan="7"><div class="of-table-empty">⏳ Carregando...</div></td></tr>';
+      Historico.selecionados=[]; Historico.atualizarBarraAcoes();
+      Historico.initOrdenacao();
+
+      google.script.run
+        .withSuccessHandler(function(resp) {
+          var lista = (resp && Array.isArray(resp.itens)) ? resp.itens : (Array.isArray(resp) ? resp : []);
+          Historico._dadosCache = lista;
+          Historico.renderLista(lista);
+        })
+        .withFailureHandler(function(err) {
+          if(contEl) contEl.textContent="0 registro(s)";
+          tbody.innerHTML='<tr><td colspan="7"><div class="of-table-empty">Erro: '+((err&&err.message)||err||"")+'</div></td></tr>';
+        })
+        .listarHistoricoOficios({ escola: fEscola, numero: fNumero, status: fStatus, tipo: fTipo }, SISGEP_TOKEN_SESSAO);
+    },
+
+    bindFiltros: function() {
+      var btnAplicar=document.getElementById("btnAplicarFiltroHist"), btnLimpar=document.getElementById("btnLimparFiltros");
+      var fEscola=document.getElementById("filtroEscola"), fNumero=document.getElementById("filtroNumero"), fStatus=document.getElementById("filtroStatus"), fTipo=document.getElementById("filtroTipo");
+      if(btnAplicar&&!btnAplicar.dataset.bH){btnAplicar.dataset.bH="1";btnAplicar.addEventListener("click",Historico.carregar);}
+      if(btnLimpar&&!btnLimpar.dataset.bH){btnLimpar.dataset.bH="1";btnLimpar.addEventListener("click",function(){[fEscola,fNumero,fStatus,fTipo].forEach(function(el){if(el)el.value="";});Historico.carregar();});}
+      [fEscola,fNumero].forEach(function(el){if(el&&!el.dataset.bH){el.dataset.bH="1";el.addEventListener("keyup",function(e){if(e.key==="Enter")Historico.carregar();});}});
+      [fStatus,fTipo].forEach(function(el){if(el&&!el.dataset.bH){el.dataset.bH="1";el.addEventListener("change",function(){ Historico.renderLista(Historico._dadosCache); });}});
+    },
+
+    atualizarSelecionados: function() {
+      Historico.selecionados=[];
+      document.querySelectorAll(".hist-check:checked").forEach(function(cb){Historico.selecionados.push(cb.dataset.numero);});
+      Historico.atualizarBarraAcoes();
+    },
+
+    atualizarBarraAcoes: function() {
+      var barra=document.getElementById("histBarraAcoes"); if(!barra) return;
+      var qtd=Historico.selecionados.length;
+      if(qtd>0){barra.style.display="flex";var label=barra.querySelector(".hist-barra-label");if(label)label.textContent=qtd+" selecionado(s)";}
+      else{barra.style.display="none";}
+    },
+
+    reenviar: function(numero) {
+      if(!numero) return;
+      if(!window.confirm("Reenviar o ofício "+numero+" por e-mail?")) return;
+      var tr=document.querySelector("tr[data-numero='"+numero+"']");
+      var url=tr?(tr.dataset.url||""):"", cells=tr?tr.querySelectorAll("td"):[];
+      var tipo=cells[2]?cells[2].textContent.trim():"", escola=cells[3]?cells[3].textContent.trim():"";
+      google.script.run
+        .withSuccessHandler(function(r){ toast((r&&!r.erro)?(r.mensagem||"Reenviado."):(r&&r.mensagem)||"Erro.", (r&&!r.erro)?"ok":"err"); })
+        .withFailureHandler(function(err){ toast("Erro: "+((err&&err.message)||err), "err"); })
+        .reenviarOficio({numero:numero, url:url, escola:escola, tipo:tipo}, SISGEP_TOKEN_SESSAO);
+    },
+
+    excluir: function(numero) {
+      if(!numero) return;
+      if(!window.confirm("Excluir o registro do ofício "+numero+"?\n\nEsta ação não pode ser desfeita.")) return;
+      google.script.run
+        .withSuccessHandler(function(r){ toast((r&&r.ok)?(r.mensagem||"Excluído."):(r&&r.mensagem)||"Erro ao excluir.", (r&&r.ok)?"ok":"err"); if(r&&r.ok) Historico.carregar(); })
+        .withFailureHandler(function(err){ toast("Erro: "+((err&&err.message)||err), "err"); })
+        .excluirRegistroOficio(numero, SISGEP_TOKEN_SESSAO);
+    },
+
+    excluirSelecionados: function() {
+      if(!Historico.selecionados.length){ toast("Selecione ao menos um registro.", "warn"); return; }
+      if(!window.confirm("Excluir "+Historico.selecionados.length+" registro(s)?\n\nEsta ação não pode ser desfeita.")) return;
+      google.script.run
+        .withSuccessHandler(function(r){ toast((r&&r.ok)?(r.mensagem||"Excluídos."):(r&&r.mensagem)||"Erro.", (r&&r.ok)?"ok":"err"); if(r&&r.ok) Historico.carregar(); })
+        .withFailureHandler(function(err){ toast("Erro: "+((err&&err.message)||err), "err"); })
+        .excluirRegistrosOficio(Historico.selecionados, SISGEP_TOKEN_SESSAO);
+    },
+
+    editar: function(numero) {
+      var novoStatus=window.prompt("Ofício "+numero+"\n\nAlterar status para:\n1 - ENVIADO\n2 - CONFIRMADO\n3 - PENDENTE\n4 - FALHA_ENTREGA\n5 - ERRO\n\nDigite o número:");
+      var mapa={"1":"ENVIADO","2":"CONFIRMADO","3":"PENDENTE","4":"FALHA_ENTREGA","5":"ERRO"};
+      var status=mapa[String(novoStatus||"").trim()]; if(!status){ toast("Opção inválida.","warn"); return; }
+      var obs=window.prompt("Observação (opcional):")||"Alterado manualmente.";
+      google.script.run
+        .withSuccessHandler(function(r){ toast((r&&!r.erro)?(r.mensagem||"Atualizado."):(r&&r.mensagem)||"Erro.", (r&&!r.erro)?"ok":"err"); if(!r||!r.erro) Historico.carregar(); })
+        .withFailureHandler(function(err){ toast("Erro: "+((err&&err.message)||err),"err"); })
+        .atualizarStatusOficio(numero, status, obs, SISGEP_TOKEN_SESSAO);
+    }
+  };
+
+  window.Historico = Historico;
+  window.carregarHistoricoOficios = function(){ Historico.carregar(); };
+  window.abrirBuscaFichaDriveCard = abrirBuscaFichaDriveCard;
+})();
+</script>
+
+<script id="sisgep-sidebar-js">
+(function(){
+  function ativarAba(aba){
+ var mapa = {novo:'abaOficioNovo',historico:'abaOficioHistorico',monitoramento:'abaMonitoramento',taxa:'abaTaxaAssistencial',mensalidades:'abaMensalidades'};
+    var id = mapa[aba];
+    if(id){var b=document.getElementById(id);if(b)b.click();}
+  }
+  document.querySelectorAll('.sb-nav,.sb-sub').forEach(function(el){
+    el.addEventListener('click',function(){
+      document.querySelectorAll('.sb-nav').forEach(function(n){n.classList.remove('active');});
+      var navEl = el.classList.contains('sb-sub') ? (function(){var p=el.previousElementSibling;while(p&&!p.classList.contains('sb-nav'))p=p.previousElementSibling;return p;})() : el;
+      if(navEl) navEl.classList.add('active');
+      var aba = el.getAttribute('data-aba')||(navEl&&navEl.getAttribute('data-aba'));
+      ativarAba(aba);
+      var tipo = el.getAttribute('data-tipo');
+      if(tipo){
+        setTimeout(function(){
+          var sel = document.querySelector('select[id*="tipo"],select[id*="Tipo"]');
+          if(sel){
+            Array.from(sel.options).forEach(function(opt){
+              if(opt.value.toLowerCase().replace(/[-_]/g,'').includes(tipo.replace(/-/g,''))||opt.text.toLowerCase().replace(/[-_]/g,'').includes(tipo.replace(/-/g,''))){
+                sel.value=opt.value;
+                sel.dispatchEvent(new Event('change',{bubbles:true}));
+              }
+            });
+          }
+        },300);
+      }
+    });
+  });
+  // Sync sidebar when native tabs are clicked
+ var idMap = {abaOficioNovo:'novo',abaOficioHistorico:'historico',abaMonitoramento:'monitoramento',abaTaxaAssistencial:'novo',abaMensalidades:'mensalidades'};
+  Object.keys(idMap).forEach(function(id){
+    var btn = document.getElementById(id);
+    if(btn) btn.addEventListener('click',function(){
+      var aba = idMap[id];
+      document.querySelectorAll('.sb-nav').forEach(function(n){n.classList.remove('active');});
+      var match = document.querySelector('.sb-nav[data-aba="'+aba+'"]');
+      if(match) match.classList.add('active');
+    });
+  });
+})();
+</script>

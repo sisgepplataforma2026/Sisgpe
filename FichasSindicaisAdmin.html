@@ -1,0 +1,694 @@
+<script>
+/* SISGEP - FichasSindicaisAdmin
+   Painel administrativo de Fichas de Sindicalizacao.
+   Entrada: window.carregarFichasPendentes()
+   Backend: SindicalizacaoAdmin.gs + SindicalizacaoOficio.gs
+   Prefixo fsa* em tudo para nao colidir com outros modulos.
+
+   IMPORTANTE: nunca escrever scriptlets de template do GAS neste
+   arquivo - dentro de comentario eles sao executados assim mesmo
+   e causam auto-inclusao recursiva. */
+</script>
+
+<div style="max-width:1100px;margin:0 auto;padding:24px;">
+  <div class="of-modulo-header">
+    <div>
+      <div class="of-modulo-header-title">📝 Fichas Sindicais</div>
+      <div class="of-modulo-header-sub">Validação, matrícula, ofício de filiação e encaminhamento à escola</div>
+    </div>
+    <div class="of-modulo-header-badge">SindEducação-ES</div>
+  </div>
+
+  <div class="fsa-kpis">
+    <button class="fsa-kpi fsa-kpi-ativo" data-fsa-filtro="ASSINADA" onclick="fsaFiltrar('ASSINADA',this)">
+      <span>Aguardando aprovação</span><strong id="fsaKpiAssinadas">—</strong>
+    </button>
+    <button class="fsa-kpi" data-fsa-filtro="AGUARDANDO_ASSINATURA" onclick="fsaFiltrar('AGUARDANDO_ASSINATURA',this)">
+      <span>Aguardando assinatura</span><strong id="fsaKpiAguardando">—</strong>
+    </button>
+    <button class="fsa-kpi" data-fsa-filtro="PRE_CADASTRO" onclick="fsaFiltrar('PRE_CADASTRO',this)">
+      <span>Pré-cadastros</span><strong id="fsaKpiPreCadastro">—</strong>
+    </button>
+    <button class="fsa-kpi" data-fsa-filtro="MATRICULADA" onclick="fsaFiltrar('MATRICULADA',this)">
+      <span>Matriculadas</span><strong id="fsaKpiMatriculadas">—</strong>
+    </button>
+    <button class="fsa-kpi" data-fsa-filtro="__MES__" onclick="fsaFiltrar('MATRICULADA',this)">
+      <span>Matrículas no mês</span><strong id="fsaKpiMes">—</strong>
+    </button>
+    <button class="fsa-kpi" data-fsa-filtro="REJEITADA" onclick="fsaFiltrar('REJEITADA',this)">
+      <span>Rejeitadas</span><strong id="fsaKpiRejeitadas">—</strong>
+    </button>
+  </div>
+
+  <div class="fsa-barra">
+    <input id="fsaBusca" placeholder="Buscar por nome, CPF, matrícula ou escola…" oninput="fsaRender()">
+    <button class="fsa-btn-atualizar" onclick="carregarFichasPendentes()">↻ Atualizar</button>
+  </div>
+
+  <div id="fsaLista" style="margin-top:16px;display:flex;flex-direction:column;gap:14px;"></div>
+  <div id="fsaVazio" style="display:none;text-align:center;padding:60px 20px;color:#64748b;">
+    <div style="font-size:36px;margin-bottom:10px;">🗂️</div>
+    <p id="fsaVazioTexto">Nenhuma ficha encontrada com este filtro.</p>
+  </div>
+</div>
+
+<!-- ===================== MODAL APROVAR E ENCAMINHAR ===================== -->
+<div id="fsaModal" class="fsa-modal">
+  <div class="fsa-modal-caixa">
+
+    <div class="fsa-modal-topo">
+      <div>
+        <div class="fsa-modal-titulo">Aprovar e encaminhar</div>
+        <div class="fsa-modal-sub" id="fsaModalTrabalhador">—</div>
+      </div>
+      <button class="fsa-modal-fechar" onclick="fsaFecharModal()" aria-label="Fechar">✕</button>
+    </div>
+
+    <div class="fsa-passos">
+      <span class="fsa-passo fsa-passo-ativo" id="fsaPasso1">1 · Escola destinatária</span>
+      <span class="fsa-passo" id="fsaPasso2">2 · Prévia do ofício</span>
+      <span class="fsa-passo" id="fsaPasso3">3 · Concluído</span>
+    </div>
+
+    <div class="fsa-modal-corpo">
+
+      <!-- ETAPA 1 -->
+      <div id="fsaEtapa1" class="fsa-etapa fsa-etapa-ativa">
+        <div class="fsa-aviso">
+          O ofício de filiação será enviado à escola. Confirme para qual
+          estabelecimento — o CNPJ e o e-mail vêm do cadastro de Escolas.
+        </div>
+
+        <div id="fsaSugestao" class="fsa-sugestao" style="display:none;"></div>
+
+        <label class="fsa-label">Buscar escola no cadastro</label>
+        <input type="text" id="fsaBuscaEscola" class="fsa-input"
+               placeholder="Nome, cidade ou CNPJ…" oninput="fsaBuscarEscolas()">
+        <div id="fsaListaEscolas" class="fsa-lista-escolas"></div>
+
+        <div id="fsaEscolaSelecionada" class="fsa-selecionada" style="display:none;"></div>
+
+        <div class="fsa-modal-acoes">
+          <button class="fsa-btn-sec" onclick="fsaAprovarSemOficio()">Aprovar sem ofício</button>
+          <button class="fsa-btn-pri" id="fsaBtnPreview" onclick="fsaVerPreview()" disabled>
+            Ver prévia do ofício →
+          </button>
+        </div>
+      </div>
+
+      <!-- ETAPA 2 -->
+      <div id="fsaEtapa2" class="fsa-etapa">
+        <div class="fsa-resumo-envio" id="fsaResumoEnvio"></div>
+        <div class="fsa-preview-caixa">
+          <iframe id="fsaPreviewFrame" class="fsa-preview-frame"></iframe>
+        </div>
+        <div class="fsa-modal-acoes">
+          <button class="fsa-btn-sec" onclick="fsaVoltarEtapa1()">← Trocar escola</button>
+          <button class="fsa-btn-pri" id="fsaBtnConfirmar" onclick="fsaConfirmarEncaminhar()">
+            ✓ Aprovar, gerar ofício e enviar
+          </button>
+        </div>
+      </div>
+
+      <!-- ETAPA 3 -->
+      <div id="fsaEtapa3" class="fsa-etapa">
+        <div class="fsa-sucesso">
+          <div class="fsa-sucesso-selo">✓</div>
+          <h3 id="fsaSucessoTitulo">Concluído</h3>
+          <div id="fsaSucessoDados" class="fsa-sucesso-dados"></div>
+          <div id="fsaSucessoAvisos"></div>
+        </div>
+        <div class="fsa-modal-acoes fsa-acoes-final" id="fsaAcoesFinal"></div>
+      </div>
+
+      <div class="fsa-msg" id="fsaModalMsg"></div>
+    </div>
+  </div>
+</div>
+
+<style>
+.fsa-kpis{display:grid;grid-template-columns:repeat(6,minmax(140px,1fr));gap:10px;margin-top:20px;}
+.fsa-kpi{border:1.5px solid #e2e8f0;background:#fff;border-radius:13px;padding:14px;text-align:left;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:.15s;}
+.fsa-kpi:hover{border-color:#C9A84C;box-shadow:0 6px 16px rgba(0,20,60,.08);}
+.fsa-kpi.fsa-kpi-ativo{border-color:#002f6c;background:#f5f8ff;}
+.fsa-kpi span{display:block;color:#64748b;font-size:10px;text-transform:uppercase;font-weight:800;letter-spacing:.04em;}
+.fsa-kpi strong{display:block;color:#002f6c;font-size:24px;margin-top:5px;}
+.fsa-barra{display:flex;gap:10px;margin-top:14px;}
+.fsa-barra input{flex:1;height:42px;border:1.5px solid #cbd5e1;border-radius:10px;padding:0 14px;font-size:13px;font-family:'Plus Jakarta Sans',sans-serif;background:#fff;color:#0f172a;}
+.fsa-barra input:focus{outline:none;border-color:#002f6c;}
+.fsa-btn-atualizar{height:42px;border:none;border-radius:10px;padding:0 16px;font-weight:800;font-size:12.5px;cursor:pointer;background:#e2e8f0;color:#172033;font-family:'Plus Jakarta Sans',sans-serif;}
+.fsa-card{background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;padding:18px 20px;display:grid;grid-template-columns:56px 1fr auto;gap:16px;align-items:center;font-family:'Plus Jakarta Sans',sans-serif;}
+.fsa-icone{width:52px;height:52px;border-radius:12px;background:#f1f5f9;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;font-size:22px;}
+.fsa-info b{display:block;font-size:14px;color:#0f172a;}
+.fsa-info small{display:block;font-size:11.5px;color:#64748b;margin-top:2px;}
+.fsa-campo{font-size:11.5px;color:#334155;margin-top:6px;}
+.fsa-campo b{display:inline;color:#0f172a;font-weight:700;font-size:11.5px;}
+.fsa-acoes{display:flex;flex-direction:column;gap:8px;}
+.fsa-btn{border:none;border-radius:8px;padding:9px 16px;font-size:12px;font-weight:800;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;white-space:nowrap;}
+.fsa-btn-aprovar{background:#16a34a;color:#fff;}
+.fsa-btn-rejeitar{background:#fee2e2;color:#991b1b;}
+.fsa-btn-pdf{background:#eff6ff;color:#1d4ed8;}
+.fsa-tag{display:inline-block;font-size:10px;font-weight:800;border-radius:6px;padding:2px 8px;margin-left:6px;vertical-align:middle;}
+.fsa-tag-qr{background:#dbeafe;color:#1d4ed8;}
+.fsa-tag-portal{background:#f1f5f9;color:#475569;}
+.fsa-tag-visita{background:#ede9fe;color:#5b21b6;}
+.fsa-tag-matricula{background:#dcfce7;color:#166534;}
+.fsa-tag-rejeitada{background:#fee2e2;color:#991b1b;}
+.fsa-tag-aguardando{background:#fef9c3;color:#854d0e;}
+.fsa-tag-precadastro{background:#ffedd5;color:#9a3412;}
+
+/* Modal */
+.fsa-modal{display:none;position:absolute;inset:0;background:rgba(6,11,20,.65);z-index:950;padding:16px;overflow-y:auto;}
+.fsa-modal.fsa-aberto{display:block;}
+.fsa-modal-caixa{background:#fff;border-radius:16px;max-width:820px;margin:16px auto 48px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.32);}
+.fsa-modal-topo{background:#002f6c;color:#fff;padding:18px 22px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.fsa-modal-titulo{font-size:16px;font-weight:800;}
+.fsa-modal-sub{font-size:12px;opacity:.82;margin-top:3px;}
+.fsa-modal-fechar{background:rgba(255,255,255,.15);border:none;color:#fff;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px;flex-shrink:0;}
+.fsa-passos{display:flex;gap:0;background:#f8fafc;border-bottom:1px solid #e2e8f0;}
+.fsa-passo{flex:1;text-align:center;padding:11px 8px;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.03em;}
+.fsa-passo-ativo{color:#002f6c;box-shadow:inset 0 -3px 0 #C9A84C;}
+.fsa-modal-corpo{padding:22px;}
+.fsa-etapa{display:none;}
+.fsa-etapa-ativa{display:block;}
+
+.fsa-aviso{background:#f8faff;border-left:4px solid #002f6c;border-radius:8px;padding:12px 14px;font-size:12.5px;color:#334155;line-height:1.5;margin-bottom:16px;}
+.fsa-sugestao{background:#fffbeb;border:1.5px solid #fcd34d;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12.5px;color:#78350f;}
+.fsa-sugestao b{display:block;font-size:13px;margin-bottom:3px;}
+.fsa-sugestao button{margin-top:8px;border:none;border-radius:8px;padding:8px 14px;background:#002f6c;color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;}
+.fsa-label{display:block;font-size:11.5px;font-weight:700;color:#002f6c;margin-bottom:5px;}
+.fsa-input{width:100%;padding:11px 13px;font-size:14px;font-family:inherit;border:1.5px solid #cbd5e1;border-radius:9px;background:#fbfcfe;color:#1d2433;box-sizing:border-box;}
+.fsa-input:focus{outline:none;border-color:#002f6c;}
+.fsa-lista-escolas{max-height:230px;overflow-y:auto;margin-top:8px;border:1px solid #e2e8f0;border-radius:10px;display:none;}
+.fsa-lista-escolas.fsa-visivel{display:block;}
+.fsa-escola-item{width:100%;border:none;border-bottom:1px solid #f1f5f9;background:#fff;text-align:left;padding:11px 13px;cursor:pointer;font-family:inherit;}
+.fsa-escola-item:hover{background:#f8fafc;}
+.fsa-escola-item b{display:block;font-size:13px;color:#0f172a;}
+.fsa-escola-item small{display:block;font-size:11px;color:#64748b;margin-top:2px;}
+.fsa-selecionada{margin-top:12px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:13px 15px;font-size:12.5px;color:#166534;line-height:1.5;}
+.fsa-selecionada b{display:block;font-size:13.5px;color:#0f172a;margin-bottom:3px;}
+.fsa-selecionada .fsa-sem-email{color:#991b1b;font-weight:700;}
+.fsa-dica-email{font-size:11.5px;margin-top:4px;color:#64748b;}
+.fsa-dica-email.fsa-dica-ok{color:#166534;font-weight:700;}
+.fsa-dica-email.fsa-dica-erro{color:#c0392b;font-weight:700;}
+.fsa-salvar-email{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:#334155;cursor:pointer;}
+.fsa-salvar-email input{width:17px;height:17px;accent-color:#002f6c;}
+
+.fsa-resumo-envio{background:#f8fafc;border-radius:10px;padding:13px 15px;font-size:12.5px;color:#475569;margin-bottom:14px;line-height:1.6;}
+.fsa-resumo-envio b{color:#0f172a;}
+.fsa-preview-caixa{border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden;background:#eef2f7;}
+.fsa-preview-frame{width:100%;height:520px;border:none;display:block;background:#fff;}
+
+.fsa-modal-acoes{display:flex;gap:10px;margin-top:18px;justify-content:flex-end;flex-wrap:wrap;}
+.fsa-btn-pri{border:none;border-radius:10px;padding:13px 20px;background:#002f6c;color:#fff;font-size:13.5px;font-weight:800;cursor:pointer;font-family:inherit;}
+.fsa-btn-pri:disabled{opacity:.45;cursor:not-allowed;}
+.fsa-btn-sec{border:none;border-radius:10px;padding:13px 18px;background:#eef2f7;color:#002f6c;font-size:13.5px;font-weight:800;cursor:pointer;font-family:inherit;}
+.fsa-acoes-final{justify-content:center;}
+.fsa-btn-link{border:none;border-radius:10px;padding:13px 18px;background:#eff6ff;color:#1d4ed8;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;}
+
+.fsa-sucesso{text-align:center;padding:14px 4px 6px;}
+.fsa-sucesso-selo{width:62px;height:62px;border-radius:50%;background:#16a34a;color:#fff;font-size:30px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;}
+.fsa-sucesso h3{color:#002f6c;font-size:18px;margin:0 0 12px;}
+.fsa-sucesso-dados{display:inline-block;text-align:left;background:#f8fafc;border-radius:10px;padding:14px 18px;font-size:13px;color:#334155;line-height:1.9;}
+.fsa-sucesso-dados b{color:#0f172a;}
+
+.fsa-msg{display:none;border-radius:9px;padding:11px 13px;font-size:13px;margin-top:14px;}
+.fsa-msg.fsa-erro{display:block;background:#fdecea;color:#c0392b;}
+.fsa-msg.fsa-alerta{display:block;background:#fffbeb;color:#92400e;}
+
+@media(max-width:1100px){.fsa-kpis{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:900px){
+  .fsa-kpis{grid-template-columns:repeat(2,1fr);}
+  .fsa-card{grid-template-columns:1fr;}
+  .fsa-icone{display:none;}
+  .fsa-acoes{flex-direction:row;flex-wrap:wrap;}
+  .fsa-passos .fsa-passo{font-size:9.5px;}
+  .fsa-preview-frame{height:400px;}
+  .fsa-modal-acoes{flex-direction:column;}
+  .fsa-modal-acoes button{width:100%;}
+}
+</style>
+
+<script>
+var FSA_DADOS = null;
+var FSA_FILTRO_STATUS = 'ASSINADA';
+var FSA_SOMENTE_MES = false;
+var FSA_FICHA_ATUAL = null;
+var FSA_ESCOLA_ESCOLHIDA = null;
+var FSA_ESCOLAS_BUSCA = [];
+
+function fsaEsc(v){
+  return String(v==null?'':v).replace(/[&<>"']/g,function(c){
+    return c==='&'?'&amp;':c==='<'?'&lt;':c==='>'?'&gt;':c==='"'?'&quot;':'&#39;';
+  });
+}
+
+function fsaUsuarioAtual_(){
+  var el=document.getElementById('spNm');
+  return el ? el.textContent.trim() : '';
+}
+
+/* ===================== LISTAGEM ===================== */
+
+window.carregarFichasPendentes=function(){
+  var lista=document.getElementById('fsaLista');
+  var vazio=document.getElementById('fsaVazio');
+  if(!lista) return;
+  lista.innerHTML='<p style="color:#94a3b8;font-size:12px;">Carregando fichas…</p>';
+  vazio.style.display='none';
+
+  google.script.run.withSuccessHandler(function(r){
+    if(!r || !r.sucesso){
+      lista.innerHTML='<p style="color:#dc2626;font-size:12px;">Falha ao carregar: '+fsaEsc(r&&r.mensagem||'erro desconhecido')+'</p>';
+      return;
+    }
+    FSA_DADOS=r;
+    fsaAtualizarKPIs(r.kpis||{});
+    fsaRender();
+  }).withFailureHandler(function(erro){
+    lista.innerHTML='<p style="color:#dc2626;font-size:12px;">Erro de comunicação: '+fsaEsc(erro)+'</p>';
+  }).listarFichasSindicalizacao({});
+};
+
+function fsaAtualizarKPIs(k){
+  var mapa={
+    fsaKpiAssinadas:k.assinadas, fsaKpiAguardando:k.aguardandoAssinatura,
+    fsaKpiPreCadastro:k.preCadastro, fsaKpiMatriculadas:k.matriculadas,
+    fsaKpiMes:k.matriculadasNoMes, fsaKpiRejeitadas:k.rejeitadas
+  };
+  Object.keys(mapa).forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.textContent=(mapa[id]===undefined?0:mapa[id]);
+  });
+}
+
+function fsaFiltrar(status, btn){
+  FSA_FILTRO_STATUS=status;
+  FSA_SOMENTE_MES = !!(btn && btn.getAttribute('data-fsa-filtro')==='__MES__');
+  document.querySelectorAll('.fsa-kpi').forEach(function(b){
+    b.classList.toggle('fsa-kpi-ativo', b===btn);
+  });
+  fsaRender();
+}
+
+function fsaEhDoMesAtual(dataBr){
+  if(!dataBr) return false;
+  var p=String(dataBr).split(' ')[0].split('/');
+  if(p.length!==3) return false;
+  var agora=new Date();
+  return (parseInt(p[1],10)-1)===agora.getMonth() &&
+         parseInt(p[2],10)===agora.getFullYear();
+}
+
+function fsaRender(){
+  var lista=document.getElementById('fsaLista');
+  var vazio=document.getElementById('fsaVazio');
+  if(!lista || !FSA_DADOS) return;
+
+  var busca=String((document.getElementById('fsaBusca')||{}).value||'').trim().toUpperCase();
+  var fichas=(FSA_DADOS.fichas||[]).filter(function(f){
+    if(FSA_FILTRO_STATUS && f.STATUS!==FSA_FILTRO_STATUS) return false;
+    if(FSA_SOMENTE_MES && !fsaEhDoMesAtual(f.DATA_APROVACAO)) return false;
+    if(busca){
+      var alvo=[f.NOME_COMPLETO,f.CPF,f.MATRICULA,f.ESCOLA].join(' ').toUpperCase();
+      if(alvo.indexOf(busca)<0) return false;
+    }
+    return true;
+  });
+
+  lista.innerHTML='';
+  if(!fichas.length){
+    vazio.style.display='block';
+    document.getElementById('fsaVazioTexto').textContent =
+      FSA_FILTRO_STATUS==='ASSINADA'
+        ? 'Nenhuma ficha assinada aguardando aprovação. 🎉'
+        : 'Nenhuma ficha encontrada com este filtro.';
+    return;
+  }
+  vazio.style.display='none';
+
+  fichas.forEach(function(f){
+    var tagOrigem;
+    if(f.ORIGEM==='QR_VISITA') tagOrigem='<span class="fsa-tag fsa-tag-qr">QR VISITA</span>';
+    else if(f.ORIGEM==='CADASTRO_RAPIDO_VISITA') tagOrigem='<span class="fsa-tag fsa-tag-visita">CADASTRO NA VISITA</span>';
+    else tagOrigem='<span class="fsa-tag fsa-tag-portal">PORTAL</span>';
+
+    var tagStatus='';
+    if(f.STATUS==='MATRICULADA') tagStatus='<span class="fsa-tag fsa-tag-matricula">MATRÍCULA '+fsaEsc(f.MATRICULA||'')+'</span>';
+    else if(f.STATUS==='REJEITADA') tagStatus='<span class="fsa-tag fsa-tag-rejeitada">REJEITADA</span>';
+    else if(f.STATUS==='AGUARDANDO_ASSINATURA') tagStatus='<span class="fsa-tag fsa-tag-aguardando">AGUARDANDO ASSINATURA</span>';
+    else if(f.STATUS==='PRE_CADASTRO') tagStatus='<span class="fsa-tag fsa-tag-precadastro">PRÉ-CADASTRO</span>';
+
+    var nomeSeguro=String(f.NOME_COMPLETO||'').replace(/'/g,'');
+    var acoes='';
+    if(f.STATUS==='ASSINADA'){
+      acoes+='<button class="fsa-btn fsa-btn-aprovar" onclick="fsaAbrirModal(\''+fsaEsc(f.ID_FICHA)+'\')">✓ Aprovar e encaminhar</button>';
+      acoes+='<button class="fsa-btn fsa-btn-rejeitar" onclick="fsaRejeitar(\''+fsaEsc(f.ID_FICHA)+'\')">✕ Rejeitar</button>';
+    }
+    if(f.LINK_PDF){
+      acoes+='<button class="fsa-btn fsa-btn-pdf" onclick="window.open(\''+fsaEsc(f.LINK_PDF)+'\',\'_blank\')">📄 Ver ficha PDF</button>';
+    }
+
+    var dataInfo='';
+    if(f.STATUS==='MATRICULADA' && f.DATA_APROVACAO) dataInfo=' · Aprovada em '+fsaEsc(f.DATA_APROVACAO);
+    else if(f.DATA_HORA_ASSINATURA) dataInfo=' · Assinada em '+fsaEsc(f.DATA_HORA_ASSINATURA);
+    else if(f.DATA_CRIACAO) dataInfo=' · Iniciada em '+fsaEsc(f.DATA_CRIACAO);
+
+    var card=document.createElement('div');
+    card.className='fsa-card';
+    card.innerHTML=
+      '<div class="fsa-icone">🖊️</div>'+
+      '<div class="fsa-info">'+
+        '<b>'+fsaEsc(nomeSeguro||'—')+' '+tagOrigem+tagStatus+'</b>'+
+        '<small>CPF: '+fsaEsc(f.CPF||'—')+dataInfo+
+          (f.DIRETOR_BASE?' · Diretor: '+fsaEsc(f.DIRETOR_BASE):'')+'</small>'+
+        '<div class="fsa-campo"><b>Escola:</b> '+fsaEsc(f.ESCOLA||'—')+' · <b>Cargo:</b> '+fsaEsc(f.CARGO||'—')+'</div>'+
+        '<div class="fsa-campo"><b>Contato:</b> '+fsaEsc(f.CELULAR||'—')+' · '+fsaEsc(f.EMAIL||'—')+'</div>'+
+      '</div>'+
+      '<div class="fsa-acoes">'+acoes+'</div>';
+    lista.appendChild(card);
+  });
+}
+
+/* ===================== MODAL ===================== */
+
+function fsaAbrirModal(idFicha){
+  var f=null;
+  (FSA_DADOS.fichas||[]).forEach(function(x){ if(x.ID_FICHA===idFicha) f=x; });
+  if(!f) return;
+
+  FSA_FICHA_ATUAL=f;
+  FSA_ESCOLA_ESCOLHIDA=null;
+  FSA_ESCOLAS_BUSCA=[];
+
+  document.getElementById('fsaModalTrabalhador').textContent=
+    f.NOME_COMPLETO+' · CPF '+f.CPF;
+  document.getElementById('fsaBuscaEscola').value='';
+  document.getElementById('fsaListaEscolas').innerHTML='';
+  document.getElementById('fsaListaEscolas').classList.remove('fsa-visivel');
+  document.getElementById('fsaEscolaSelecionada').style.display='none';
+  document.getElementById('fsaSugestao').style.display='none';
+  document.getElementById('fsaBtnPreview').disabled=true;
+  fsaMsgModal('');
+  fsaIrEtapa(1);
+  document.getElementById('fsaModal').classList.add('fsa-aberto');
+
+  fsaBuscarEscolas();
+}
+
+function fsaFecharModal(){
+  document.getElementById('fsaModal').classList.remove('fsa-aberto');
+  FSA_FICHA_ATUAL=null;
+  FSA_ESCOLA_ESCOLHIDA=null;
+}
+
+function fsaIrEtapa(n){
+  [1,2,3].forEach(function(i){
+    var et=document.getElementById('fsaEtapa'+i);
+    var ps=document.getElementById('fsaPasso'+i);
+    if(et) et.classList.toggle('fsa-etapa-ativa', i===n);
+    if(ps) ps.classList.toggle('fsa-passo-ativo', i===n);
+  });
+}
+
+function fsaMsgModal(texto, tipo){
+  var el=document.getElementById('fsaModalMsg');
+  if(!el) return;
+  if(!texto){ el.className='fsa-msg'; el.textContent=''; return; }
+  el.textContent=texto;
+  el.className='fsa-msg '+(tipo==='alerta'?'fsa-alerta':'fsa-erro');
+}
+
+/* ---------- Etapa 1: escola ---------- */
+
+function fsaBuscarEscolas(){
+  if(!FSA_FICHA_ATUAL) return;
+  var termo=document.getElementById('fsaBuscaEscola').value;
+  var box=document.getElementById('fsaListaEscolas');
+  box.innerHTML='<div style="padding:12px;font-size:12px;color:#94a3b8;">Buscando…</div>';
+  box.classList.add('fsa-visivel');
+
+  google.script.run.withSuccessHandler(function(r){
+    if(!r || !r.sucesso){
+      box.innerHTML='<div style="padding:12px;font-size:12px;color:#dc2626;">Falha ao buscar escolas.</div>';
+      return;
+    }
+    FSA_ESCOLAS_BUSCA=r.escolas||[];
+
+    if(r.sugerida && !termo){
+      var s=r.sugerida;
+      var cx=document.getElementById('fsaSugestao');
+      cx.style.display='block';
+      cx.innerHTML='<b>Escola sugerida</b>'+
+        'Esta ficha veio como <i>'+fsaEsc(FSA_FICHA_ATUAL.ESCOLA)+'</i>, que já foi '+
+        'vinculada antes a <b>'+fsaEsc(s.nome)+'</b> (CNPJ '+fsaEsc(s.cnpjFormatado)+').'+
+        '<br><button onclick="fsaEscolherEscolaPorCnpj(\''+fsaEsc(s.cnpj)+'\')">Usar esta escola</button>';
+    }
+
+    if(!FSA_ESCOLAS_BUSCA.length){
+      box.innerHTML='<div style="padding:12px;font-size:12px;color:#64748b;">Nenhuma escola encontrada.</div>';
+      return;
+    }
+    box.innerHTML=FSA_ESCOLAS_BUSCA.map(function(e,i){
+      var semEmail=!e.emailPrincipal && !e.emailsTodos;
+      return '<button class="fsa-escola-item" onclick="fsaEscolherEscola('+i+')">'+
+        '<b>'+fsaEsc(e.nome)+'</b>'+
+        '<small>CNPJ '+fsaEsc(e.cnpjFormatado)+' · '+fsaEsc(e.cidade||'—')+
+        (semEmail?' · <span style="color:#991b1b;font-weight:700;">sem e-mail</span>'
+                 :' · '+fsaEsc(e.emailPrincipal))+'</small></button>';
+    }).join('');
+  }).withFailureHandler(function(err){
+    box.innerHTML='<div style="padding:12px;font-size:12px;color:#dc2626;">Erro: '+fsaEsc(err)+'</div>';
+  }).buscarEscolasParaOficio(termo, FSA_FICHA_ATUAL.ESCOLA);
+}
+
+function fsaEscolherEscola(indice){
+  var e=FSA_ESCOLAS_BUSCA[indice];
+  if(!e) return;
+  fsaAplicarEscola(e);
+}
+
+function fsaEscolherEscolaPorCnpj(cnpj){
+  for(var i=0;i<FSA_ESCOLAS_BUSCA.length;i++){
+    if(FSA_ESCOLAS_BUSCA[i].cnpj===cnpj){ fsaAplicarEscola(FSA_ESCOLAS_BUSCA[i]); return; }
+  }
+  document.getElementById('fsaBuscaEscola').value=cnpj;
+  fsaBuscarEscolas();
+}
+
+function fsaAplicarEscola(e){
+  FSA_ESCOLA_ESCOLHIDA=e;
+  var email=e.emailsTodos||e.emailPrincipal||'';
+  var cx=document.getElementById('fsaEscolaSelecionada');
+  cx.style.display='block';
+  cx.innerHTML=
+    '<b>'+fsaEsc(e.nome)+'</b>'+
+    'CNPJ '+fsaEsc(e.cnpjFormatado)+' · '+fsaEsc(e.cidade||'—')+
+    '<div style="margin-top:10px;">'+
+      '<label class="fsa-label">E-mail(s) de destino do ofício</label>'+
+      '<input type="text" id="fsaEmailEscola" class="fsa-input" '+
+        'value="'+fsaEsc(email)+'" placeholder="escola@dominio.com.br" '+
+        'oninput="fsaValidarEmails()">'+
+      '<div class="fsa-dica-email" id="fsaDicaEmail">Separe vários e-mails por vírgula.</div>'+
+      '<label class="fsa-salvar-email">'+
+        '<input type="checkbox" id="fsaSalvarEmail"> '+
+        '<span>Salvar no cadastro da escola</span>'+
+      '</label>'+
+    '</div>';
+  document.getElementById('fsaListaEscolas').classList.remove('fsa-visivel');
+  fsaValidarEmails();
+  if(!email) fsaMsgModal('Esta escola não tem e-mail válido cadastrado. Informe acima para encaminhar.','alerta');
+}
+
+/* Valida a lista de e-mails digitada e libera o avanço. */
+function fsaValidarEmails(){
+  var campo=document.getElementById('fsaEmailEscola');
+  var dica=document.getElementById('fsaDicaEmail');
+  var btn=document.getElementById('fsaBtnPreview');
+  if(!campo) return false;
+
+  var lista=String(campo.value||'').split(/[;,]/)
+    .map(function(x){ return x.trim(); }).filter(Boolean);
+  var regra=/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  var invalido=null;
+  lista.forEach(function(x){ if(!regra.test(x) && !invalido) invalido=x; });
+
+  var ok = lista.length>0 && !invalido;
+  if(!lista.length){
+    dica.textContent='Informe ao menos um e-mail para enviar o ofício.';
+    dica.className='fsa-dica-email fsa-dica-erro';
+  } else if(invalido){
+    dica.textContent='E-mail inválido: '+invalido;
+    dica.className='fsa-dica-email fsa-dica-erro';
+  } else {
+    dica.textContent=lista.length===1?'E-mail válido.':lista.length+' e-mails válidos.';
+    dica.className='fsa-dica-email fsa-dica-ok';
+  }
+  if(btn) btn.disabled=!ok;
+  return ok;
+}
+
+/* Devolve a escola com o e-mail que está no campo, salvando no cadastro
+   quando a secretaria marcar a caixa. */
+function fsaEscolaComEmail(){
+  var base=FSA_ESCOLA_ESCOLHIDA||{};
+  var campo=document.getElementById('fsaEmailEscola');
+  var emails=campo?String(campo.value||'').trim():'';
+  var lista=emails.split(/[;,]/).map(function(x){return x.trim();}).filter(Boolean);
+
+  var salvar=document.getElementById('fsaSalvarEmail');
+  if(salvar && salvar.checked && base.cnpj){
+    google.script.run
+      .withSuccessHandler(function(){ salvar.checked=false; })
+      .withFailureHandler(function(){})
+      .atualizarEmailEscola(base.cnpj, emails, fsaUsuarioAtual_());
+  }
+
+  return {
+    nome: base.nome, cnpj: base.cnpj, cnpjFormatado: base.cnpjFormatado,
+    unidade: base.unidade, cidade: base.cidade,
+    emailPrincipal: lista[0]||'', emailsTodos: lista.join(', ')
+  };
+}
+
+/* ---------- Etapa 2: prévia ---------- */
+
+function fsaVerPreview(){
+  if(!FSA_ESCOLA_ESCOLHIDA) return;
+  var btn=document.getElementById('fsaBtnPreview');
+  btn.disabled=true;
+  btn.textContent='Gerando prévia…';
+  fsaMsgModal('');
+
+  google.script.run.withSuccessHandler(function(r){
+    btn.disabled=false;
+    btn.textContent='Ver prévia do ofício →';
+    if(!r || !r.sucesso){
+      fsaMsgModal((r&&r.mensagem)||'Não foi possível gerar a prévia.','erro');
+      return;
+    }
+    document.getElementById('fsaResumoEnvio').innerHTML=
+      '<b>Trabalhador:</b> '+fsaEsc(r.trabalhador)+'<br>'+
+      '<b>Escola:</b> '+fsaEsc(r.escola)+'<br>'+
+      '<b>Ofício será nº:</b> '+fsaEsc(r.proximoNumero)+'<br>'+
+      '<b>Enviar para:</b> '+fsaEsc(r.emailDestino);
+    document.getElementById('fsaPreviewFrame').srcdoc=r.html;
+    fsaIrEtapa(2);
+  }).withFailureHandler(function(err){
+    btn.disabled=false;
+    btn.textContent='Ver prévia do ofício →';
+    fsaMsgModal('Erro: '+err,'erro');
+  }).previewOficioFiliacao(FSA_FICHA_ATUAL.ID_FICHA, fsaEscolaComEmail());
+}
+
+function fsaVoltarEtapa1(){ fsaMsgModal(''); fsaIrEtapa(1); }
+
+/* ---------- Confirmação ---------- */
+
+function fsaConfirmarEncaminhar(){
+  if(!FSA_FICHA_ATUAL || !FSA_ESCOLA_ESCOLHIDA) return;
+  if(!confirm('Confirmar? Será emitida a matrícula, o associado será cadastrado, '+
+              'o ofício de filiação gerado na numeração oficial e enviado à escola.')) return;
+
+  var btn=document.getElementById('fsaBtnConfirmar');
+  btn.disabled=true;
+  btn.textContent='Processando…';
+  fsaMsgModal('');
+
+  google.script.run.withSuccessHandler(function(r){
+    btn.disabled=false;
+    btn.textContent='✓ Aprovar, gerar ofício e enviar';
+    if(!r || !r.sucesso){
+      fsaMsgModal((r&&r.mensagem)||'Não foi possível concluir.','erro');
+      return;
+    }
+    fsaMostrarSucesso(r);
+    carregarFichasPendentes();
+  }).withFailureHandler(function(err){
+    btn.disabled=false;
+    btn.textContent='✓ Aprovar, gerar ofício e enviar';
+    fsaMsgModal('Erro: '+err,'erro');
+}).aprovarEEncaminharFicha(
+      FSA_FICHA_ATUAL.ID_FICHA, fsaEscolaComEmail(), fsaUsuarioAtual_());
+}
+
+function fsaAprovarSemOficio(){
+  if(!FSA_FICHA_ATUAL) return;
+  if(!confirm('Aprovar apenas a matrícula, sem gerar ofício? '+
+              'Você poderá emitir o ofício depois.')) return;
+
+  google.script.run.withSuccessHandler(function(r){
+    if(!r || !r.sucesso){
+      fsaMsgModal((r&&r.mensagem)||'Não foi possível aprovar.','erro');
+      return;
+    }
+    fsaMostrarSucesso({
+      matricula:r.matricula, avisos:r.avisos||[],
+      urlFicha:FSA_FICHA_ATUAL.LINK_PDF||'', semOficio:true
+    });
+    carregarFichasPendentes();
+  }).withFailureHandler(function(err){
+    fsaMsgModal('Erro: '+err,'erro');
+  }).aprovarFichaSindicalizacao(FSA_FICHA_ATUAL.ID_FICHA, fsaUsuarioAtual_());
+}
+
+function fsaMostrarSucesso(r){
+  document.getElementById('fsaSucessoTitulo').textContent =
+    r.parcial ? 'Concluído com pendência' :
+    (r.semOficio ? 'Matrícula emitida' : 'Aprovado e encaminhado');
+
+  var dados='<b>Matrícula:</b> '+fsaEsc(r.matricula||'—');
+  if(r.numeroOficio) dados+='<br><b>Ofício:</b> '+fsaEsc(r.numeroOficio);
+  if(r.codigoVerificacao) dados+='<br><b>Código de verificação:</b> '+fsaEsc(r.codigoVerificacao);
+  if(r.emailDestino) dados+='<br><b>Enviado para:</b> '+fsaEsc(r.emailDestino);
+  if(r.numeroOficio) dados+='<br><b>Status do envio:</b> na fila';
+  document.getElementById('fsaSucessoDados').innerHTML=dados;
+
+  var avisos='';
+  if(r.parcial && r.mensagem){
+    avisos='<div class="fsa-msg fsa-alerta" style="display:block;margin-top:14px;text-align:left;">'+
+      fsaEsc(r.mensagem)+'</div>';
+  }
+  if(r.avisos && r.avisos.length){
+    avisos+='<div class="fsa-msg fsa-alerta" style="display:block;margin-top:10px;text-align:left;">'+
+      fsaEsc(r.avisos.join(' ') )+'</div>';
+  }
+  document.getElementById('fsaSucessoAvisos').innerHTML=avisos;
+
+  var acoes='';
+  if(r.urlOficio) acoes+='<button class="fsa-btn-link" onclick="window.open(\''+fsaEsc(r.urlOficio)+'\',\'_blank\')">📄 Abrir ofício</button>';
+  if(r.urlFicha)  acoes+='<button class="fsa-btn-link" onclick="window.open(\''+fsaEsc(r.urlFicha)+'\',\'_blank\')">🖊️ Abrir ficha</button>';
+  if(r.urlOficio) acoes+='<button class="fsa-btn-sec" onclick="fsaImprimir(\''+fsaEsc(r.urlOficio)+'\')">🖨️ Imprimir</button>';
+  acoes+='<button class="fsa-btn-pri" onclick="fsaFecharModal()">Fechar</button>';
+  document.getElementById('fsaAcoesFinal').innerHTML=acoes;
+
+  fsaMsgModal('');
+  fsaIrEtapa(3);
+}
+
+function fsaImprimir(url){
+  var w=window.open(url,'_blank');
+  if(!w) alert('Permita pop-ups para abrir o ofício e imprimir.');
+}
+
+/* ===================== REJEIÇÃO ===================== */
+
+function fsaRejeitar(idFicha){
+  var motivo=prompt('Motivo da rejeição (obrigatório — será enviado ao trabalhador):','');
+  if(motivo===null) return;
+  if(!motivo.trim()){ alert('O motivo é obrigatório para rejeitar uma ficha.'); return; }
+  var idCarregando = window.mostrarCarregando ? mostrarCarregando('Rejeitando ficha…') : null;
+  google.script.run.withSuccessHandler(function(r){
+    if(idCarregando) esconderCarregando(idCarregando);
+    if(r.sucesso){
+      if(window.mostrarSucesso) mostrarSucesso(r.mensagem); else alert(r.mensagem);
+      carregarFichasPendentes();
+    } else {
+      if(window.mostrarErro) mostrarErro(r.mensagem); else alert(r.mensagem);
+    }
+  }).withFailureHandler(function(erro){
+    if(idCarregando) esconderCarregando(idCarregando);
+    if(window.mostrarErro) mostrarErro('Erro: '+erro); else alert('Erro: '+erro);
+  }).rejeitarFichaSindicalizacao(idFicha, motivo, fsaUsuarioAtual_());
+}
+</script>

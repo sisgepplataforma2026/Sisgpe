@@ -1,0 +1,396 @@
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+  .pca-wrap{font-family:'Plus Jakarta Sans',sans-serif;padding:22px;background:#f4f7fb}
+  .pca-header{
+    background:linear-gradient(135deg,#0b3b75,#114e96);
+    color:#fff;padding:22px;border-radius:20px;margin-bottom:18px;
+    display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;
+    box-shadow:0 10px 30px rgba(11,59,117,.18);
+  }
+  .pca-title{font-size:26px;font-weight:800;margin:0 0 4px}
+  .pca-sub{opacity:.9;font-size:13px}
+  .pca-filtro{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .pca-filtro select{
+    padding:10px 12px;border-radius:10px;border:none;font-weight:700;font-size:14px;
+  }
+  .pca-grid-resumo{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:14px;margin-bottom:18px;
+  }
+  .pca-card{
+    background:#fff;border-radius:16px;padding:16px;
+    box-shadow:0 8px 24px rgba(15,23,42,.08);border:1px solid #e8eef6;
+  }
+  .pca-label{font-size:11px;color:#5b6b7f;text-transform:uppercase;font-weight:700;letter-spacing:.04em}
+  .pca-value{font-size:26px;font-weight:800;color:#0f172a;margin-top:4px}
+
+  .pca-section{
+    background:#fff;border-radius:20px;padding:20px;margin-bottom:18px;
+    box-shadow:0 8px 24px rgba(15,23,42,.08);border:1px solid #e8eef6;
+  }
+  .pca-section h3{margin:0 0 14px;color:#0f172a;font-size:17px}
+
+  .pca-pendente-item{
+    border:1px solid #fde68a;background:#fffbeb;border-radius:14px;
+    padding:14px;margin-bottom:12px;
+  }
+  .pca-pendente-topo{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+  .pca-pendente-nome{font-weight:800;color:#0f172a}
+  .pca-pendente-id{font-size:12px;color:#92400e;font-weight:700}
+  .pca-pendente-detalhes{font-size:13px;color:#475569;line-height:1.7}
+  .pca-pendente-acoes{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+
+  .pca-btn{border:none;border-radius:10px;padding:9px 14px;font-weight:800;cursor:pointer;font-size:13px}
+  .pca-btn-aprovar{background:#166534;color:#fff}
+  .pca-btn-recusar{background:#991b1b;color:#fff}
+  .pca-btn-secundario{background:#eaf2fb;color:#0b3b75}
+
+  .pca-suite-bloco{margin-bottom:18px}
+  .pca-suite-titulo{
+    font-weight:800;color:#0b3b75;font-size:14px;margin-bottom:8px;
+    display:flex;align-items:center;gap:8px
+  }
+  .pca-suite-titulo span{
+    background:#0b3b75;color:#fff;border-radius:8px;padding:3px 10px;font-size:12px
+  }
+  .pca-reserva-linha{
+    display:grid;grid-template-columns:110px 1fr 110px 90px 100px;gap:10px;
+    padding:10px 12px;border-radius:10px;background:#f8fafc;margin-bottom:6px;
+    font-size:13px;align-items:center;
+  }
+  .pca-status-tag{
+    display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:800;
+  }
+  .status-APROVADA{background:#dcfce7;color:#166534}
+  .status-PENDENTE{background:#fef9c3;color:#854d0e}
+  .status-RECUSADA{background:#fee2e2;color:#991b1b}
+  .status-CANCELADA{background:#e2e8f0;color:#475569}
+
+  .pca-vazio{color:#94a3b8;font-size:13px;padding:8px 0}
+
+  .pca-modal-fundo{
+    display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);
+    z-index:999;align-items:center;justify-content:center;padding:16px;
+  }
+  .pca-modal{
+    background:#fff;border-radius:18px;padding:22px;max-width:440px;width:100%;
+  }
+  .pca-modal h4{margin:0 0 14px}
+  .pca-modal .pca-field{margin-bottom:12px}
+  .pca-modal label{display:block;font-size:13px;font-weight:700;color:#334155;margin-bottom:6px}
+  .pca-modal select,.pca-modal input,.pca-modal textarea{
+    width:100%;padding:10px 12px;border:1px solid #d7e0ea;border-radius:10px;font-size:14px;
+  }
+  .pca-modal-acoes{display:flex;gap:10px;margin-top:14px;justify-content:flex-end}
+
+  @media (max-width: 700px){
+    .pca-reserva-linha{grid-template-columns:1fr;gap:4px}
+  }
+</style>
+
+<div class="pca-wrap">
+  <div class="pca-header">
+    <div>
+      <div class="pca-title">Painel Administrativo · Parque do China</div>
+      <div class="pca-sub">Agenda mensal, aprovações e saldo</div>
+    </div>
+    <div class="pca-filtro">
+      <select id="pcaMes"></select>
+      <select id="pcaAno"></select>
+      <button class="pca-btn pca-btn-secundario" onclick="pcaCarregarTudo()">Atualizar</button>
+    </div>
+  </div>
+
+  <div class="pca-grid-resumo">
+    <div class="pca-card">
+      <div class="pca-label">Reservas Aprovadas (mês)</div>
+      <div class="pca-value" id="pcaTotalAprovadas">—</div>
+    </div>
+    <div class="pca-card">
+      <div class="pca-label">Gratuitas</div>
+      <div class="pca-value" id="pcaGratuitas">—</div>
+    </div>
+    <div class="pca-card">
+      <div class="pca-label">Pagas</div>
+      <div class="pca-value" id="pcaPagas">—</div>
+    </div>
+    <div class="pca-card">
+      <div class="pca-label">Saldo do Mês</div>
+      <div class="pca-value" id="pcaSaldo">—</div>
+    </div>
+  </div>
+
+  <div class="pca-section">
+    <h3>Solicitações Pendentes</h3>
+    <div id="pcaListaPendentes"><div class="pca-vazio">Carregando...</div></div>
+  </div>
+
+  <div class="pca-section">
+    <h3>Agenda do Mês por Suíte</h3>
+    <div id="pcaAgendaSuites"><div class="pca-vazio">Carregando...</div></div>
+  </div>
+</div>
+
+<div class="pca-modal-fundo" id="pcaModalAprovar">
+  <div class="pca-modal">
+    <h4>Aprovar Reserva</h4>
+    <div class="pca-field">
+      <label>Suíte definitiva</label>
+      <select id="pcaSuiteDefinida"></select>
+    </div>
+    <div class="pca-field">
+      <label>Gratuito ou pago?</label>
+      <select id="pcaGratuitoPago">
+        <option value="GRATUITO">Gratuito</option>
+        <option value="PAGO">Pago</option>
+      </select>
+    </div>
+    <div class="pca-field">
+      <label>Valor total final (R$)</label>
+      <input type="number" id="pcaValorFinal" step="0.01">
+    </div>
+    <div class="pca-field">
+      <label>Forma de pagamento</label>
+      <input type="text" id="pcaFormaPagamento" placeholder="Pix, PicPay, Sorteio, etc.">
+    </div>
+    <div class="pca-field">
+      <label>Observação (opcional)</label>
+      <textarea id="pcaObsAdmin" rows="2"></textarea>
+    </div>
+    <div class="pca-modal-acoes">
+      <button class="pca-btn pca-btn-secundario" onclick="pcaFecharModal()">Cancelar</button>
+      <button class="pca-btn pca-btn-aprovar" onclick="pcaConfirmarAprovacao()">Confirmar Aprovação</button>
+    </div>
+  </div>
+</div>
+
+<div class="pca-modal-fundo" id="pcaModalRecusar">
+  <div class="pca-modal">
+    <h4>Recusar Reserva</h4>
+    <div class="pca-field">
+      <label>Motivo</label>
+      <textarea id="pcaMotivoRecusa" rows="3" placeholder="Explique o motivo da recusa"></textarea>
+    </div>
+    <div class="pca-modal-acoes">
+      <button class="pca-btn pca-btn-secundario" onclick="pcaFecharModal()">Cancelar</button>
+      <button class="pca-btn pca-btn-recusar" onclick="pcaConfirmarRecusa()">Confirmar Recusa</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  var PCA_SUITES = ["501","502","503","504","505","506","507","508"];
+  var pcaIdSelecionado = null;
+
+  function pcaMoeda(v){
+    return Number(v || 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  }
+
+  function pcaMontarFiltros(){
+    var meses = [
+      "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+      "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"
+    ];
+    var selMes = document.getElementById('pcaMes');
+    var hoje = new Date();
+    for (var i = 0; i < meses.length; i++){
+      var opt = document.createElement('option');
+      opt.value = i + 1;
+      opt.textContent = meses[i];
+      if (i + 1 === hoje.getMonth() + 1) opt.selected = true;
+      selMes.appendChild(opt);
+    }
+
+    var selAno = document.getElementById('pcaAno');
+    var anoAtual = hoje.getFullYear();
+    for (var a = anoAtual - 1; a <= anoAtual + 1; a++){
+      var optAno = document.createElement('option');
+      optAno.value = a;
+      optAno.textContent = a;
+      if (a === anoAtual) optAno.selected = true;
+      selAno.appendChild(optAno);
+    }
+
+    var selSuite = document.getElementById('pcaSuiteDefinida');
+    PCA_SUITES.forEach(function(s){
+      var o = document.createElement('option');
+      o.value = s;
+      o.textContent = "Suíte " + s;
+      selSuite.appendChild(o);
+    });
+  }
+
+  function pcaCarregarTudo(){
+    pcaCarregarPendentes();
+    pcaCarregarAgenda();
+  }
+
+  function pcaCarregarPendentes(){
+    document.getElementById('pcaListaPendentes').innerHTML = '<div class="pca-vazio">Carregando...</div>';
+    google.script.run
+      .withSuccessHandler(pcaRenderizarPendentes)
+      .withFailureHandler(function(err){
+        document.getElementById('pcaListaPendentes').innerHTML =
+          '<div class="pca-vazio">Erro ao carregar: ' + (err && err.message ? err.message : err) + '</div>';
+      })
+      .listarReservasParqueChina({ status: 'PENDENTE' });
+  }
+
+  function pcaRenderizarPendentes(lista){
+    var container = document.getElementById('pcaListaPendentes');
+    if (!lista || lista.length === 0){
+      container.innerHTML = '<div class="pca-vazio">Nenhuma solicitação pendente.</div>';
+      return;
+    }
+
+    var html = '';
+    lista.forEach(function(r){
+      html += '<div class="pca-pendente-item">' +
+        '<div class="pca-pendente-topo">' +
+          '<span class="pca-pendente-nome">' + r.nomeSolicitante + '</span>' +
+          '<span class="pca-pendente-id">' + r.idReserva + '</span>' +
+        '</div>' +
+        '<div class="pca-pendente-detalhes">' +
+          'Suíte solicitada: <strong>' + r.suite + '</strong> · ' +
+          'Período: ' + pcaFormatarData(r.dataEntrada) + ' a ' + pcaFormatarData(r.dataSaida) + '<br>' +
+          'Tipo: ' + r.tipoReserva + ' · Pessoas: ' + r.quantidadePessoas + ' · Escola: ' + (r.escola || '-') + '<br>' +
+          'Telefone: ' + r.telefone + (r.email ? ' · ' + r.email : '') + '<br>' +
+          'Valor estimado: ' + pcaMoeda(r.valorTotal) +
+          (r.observacaoSolicitante ? ('<br>Obs: ' + r.observacaoSolicitante) : '') +
+        '</div>' +
+        '<div class="pca-pendente-acoes">' +
+          '<button class="pca-btn pca-btn-aprovar" onclick="pcaAbrirAprovar(\'' + r.idReserva + '\', \'' + r.suite + '\', ' + r.valorTotal + ')">Aprovar</button>' +
+          '<button class="pca-btn pca-btn-recusar" onclick="pcaAbrirRecusar(\'' + r.idReserva + '\')">Recusar</button>' +
+        '</div>' +
+      '</div>';
+    });
+    container.innerHTML = html;
+  }
+
+  function pcaFormatarData(valor){
+    if (!valor) return '-';
+    var d = new Date(valor);
+    if (isNaN(d.getTime())) return String(valor);
+    return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear();
+  }
+
+  function pcaCarregarAgenda(){
+    var mes = document.getElementById('pcaMes').value;
+    var ano = document.getElementById('pcaAno').value;
+    document.getElementById('pcaAgendaSuites').innerHTML = '<div class="pca-vazio">Carregando...</div>';
+
+    google.script.run
+      .withSuccessHandler(pcaRenderizarAgenda)
+      .withFailureHandler(function(err){
+        document.getElementById('pcaAgendaSuites').innerHTML =
+          '<div class="pca-vazio">Erro ao carregar: ' + (err && err.message ? err.message : err) + '</div>';
+      })
+      .obterAgendaMensalParqueChina(Number(mes), Number(ano));
+  }
+
+  function pcaRenderizarAgenda(agenda){
+    document.getElementById('pcaTotalAprovadas').textContent = agenda.totalReservasAprovadas;
+    document.getElementById('pcaGratuitas').textContent = agenda.totalGratuitas;
+    document.getElementById('pcaPagas').textContent = agenda.totalPagas;
+    document.getElementById('pcaSaldo').textContent = pcaMoeda(agenda.saldoMes);
+
+    var container = document.getElementById('pcaAgendaSuites');
+    var html = '';
+
+    PCA_SUITES.forEach(function(suite){
+      var reservas = agenda.suites[suite] || [];
+      html += '<div class="pca-suite-bloco">' +
+        '<div class="pca-suite-titulo">Suíte <span>' + suite + '</span></div>';
+
+      if (reservas.length === 0){
+        html += '<div class="pca-vazio">Sem reservas neste mês.</div>';
+      } else {
+        reservas.forEach(function(r){
+          html += '<div class="pca-reserva-linha">' +
+            '<span>' + pcaFormatarData(r.dataEntrada) + ' - ' + pcaFormatarData(r.dataSaida) + '</span>' +
+            '<span>' + r.nomeSolicitante + (r.escola ? (' · ' + r.escola) : '') + '</span>' +
+            '<span>' + pcaMoeda(r.valorTotal) + '</span>' +
+            '<span>' + (r.gratuitoPago || '-') + '</span>' +
+            '<span class="pca-status-tag status-' + r.status + '">' + r.status + '</span>' +
+          '</div>';
+        });
+      }
+      html += '</div>';
+    });
+
+    container.innerHTML = html;
+  }
+
+  function pcaAbrirAprovar(idReserva, suite, valorEstimado){
+    pcaIdSelecionado = idReserva;
+    document.getElementById('pcaSuiteDefinida').value = suite;
+    document.getElementById('pcaValorFinal').value = valorEstimado;
+    document.getElementById('pcaFormaPagamento').value = '';
+    document.getElementById('pcaObsAdmin').value = '';
+    document.getElementById('pcaModalAprovar').style.display = 'flex';
+  }
+
+  function pcaAbrirRecusar(idReserva){
+    pcaIdSelecionado = idReserva;
+    document.getElementById('pcaMotivoRecusa').value = '';
+    document.getElementById('pcaModalRecusar').style.display = 'flex';
+  }
+
+  function pcaFecharModal(){
+    document.getElementById('pcaModalAprovar').style.display = 'none';
+    document.getElementById('pcaModalRecusar').style.display = 'none';
+    pcaIdSelecionado = null;
+  }
+
+  function pcaConfirmarAprovacao(){
+    if (!pcaIdSelecionado) return;
+
+    var dadosAprovacao = {
+      suiteDefinida: document.getElementById('pcaSuiteDefinida').value,
+      gratuitoPago: document.getElementById('pcaGratuitoPago').value,
+      valorTotalFinal: Number(document.getElementById('pcaValorFinal').value || 0),
+      formaPagamento: document.getElementById('pcaFormaPagamento').value,
+      observacaoAdmin: document.getElementById('pcaObsAdmin').value
+    };
+
+    google.script.run
+      .withSuccessHandler(function(resp){
+        pcaFecharModal();
+        if (resp && resp.ok){
+          pcaCarregarTudo();
+        } else {
+          alert(resp && resp.mensagem ? resp.mensagem : 'Falha ao aprovar.');
+        }
+      })
+      .withFailureHandler(function(err){
+        alert('Erro: ' + (err && err.message ? err.message : err));
+      })
+      .aprovarReservaParqueChina(pcaIdSelecionado, dadosAprovacao);
+  }
+
+  function pcaConfirmarRecusa(){
+    if (!pcaIdSelecionado) return;
+    var motivo = document.getElementById('pcaMotivoRecusa').value;
+
+    google.script.run
+      .withSuccessHandler(function(resp){
+        pcaFecharModal();
+        if (resp && resp.ok){
+          pcaCarregarTudo();
+        } else {
+          alert(resp && resp.mensagem ? resp.mensagem : 'Falha ao recusar.');
+        }
+      })
+      .withFailureHandler(function(err){
+        alert('Erro: ' + (err && err.message ? err.message : err));
+      })
+      .recusarReservaParqueChina(pcaIdSelecionado, motivo);
+  }
+
+  document.getElementById('pcaMes').addEventListener('change', pcaCarregarAgenda);
+  document.getElementById('pcaAno').addEventListener('change', pcaCarregarAgenda);
+
+  pcaMontarFiltros();
+  pcaCarregarTudo();
+</script>

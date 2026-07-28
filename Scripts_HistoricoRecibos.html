@@ -1,0 +1,232 @@
+<script>
+/* ─────────────────────────────
+   HISTÓRICO DE RECIBOS
+───────────────────────────── */
+var _histPaginaAtual = 1;
+var _histFiltrosAtivos = {};
+
+function initHistoricoRecibos(){
+  if(document.getElementById("btnHistBuscar") && !document.getElementById("btnHistBuscar").dataset.bound){
+    document.getElementById("btnHistBuscar").dataset.bound = "1";
+    document.getElementById("btnHistBuscar").addEventListener("click", function(){
+      _histPaginaAtual = 1;
+      _histCarregar();
+    });
+  }
+
+  if(document.getElementById("btnHistLimpar") && !document.getElementById("btnHistLimpar").dataset.bound){
+    document.getElementById("btnHistLimpar").dataset.bound = "1";
+    document.getElementById("btnHistLimpar").addEventListener("click", function(){
+      ["filtHistNumero","filtHistNome","filtHistProcesso","filtHistEmpresa","filtHistStatus","filtHistDataDe","filtHistDataAte"].forEach(function(id){
+        var el = document.getElementById(id);
+        if(el) el.value = "";
+      });
+      _histPaginaAtual = 1;
+      _histCarregar();
+    });
+  }
+
+  _histCarregarResumo();
+  _histCarregar();
+}
+
+function _histCarregarResumo(){
+  google.script.run
+    .withSuccessHandler(function(res){
+      if(!res || !res.ok) return;
+      var e = function(id, val){ var el = document.getElementById(id); if(el) el.textContent = val; };
+      e("histTotalRecibos",   res.totalRecibos);
+      e("histTotalEnviados",  res.totalEnviados);
+      e("histValorTotal",     "R$ " + res.valorTotal);
+      e("histTotalProcessos", res.totalProcessos);
+    })
+    .withFailureHandler(function(){})
+    .obterResumoHistoricoRecibos(SISGEP_TOKEN_SESSAO);
+}
+
+function _histCarregar(pagina){
+  if(pagina) _histPaginaAtual = pagina;
+
+  var filtros = {
+    numero:    (document.getElementById("filtHistNumero")   || {}).value || "",
+    nome:      (document.getElementById("filtHistNome")     || {}).value || "",
+    processo:  (document.getElementById("filtHistProcesso") || {}).value || "",
+    empresa:   (document.getElementById("filtHistEmpresa")  || {}).value || "",
+    status:    (document.getElementById("filtHistStatus")   || {}).value || "",
+    dataDe:    (document.getElementById("filtHistDataDe")   || {}).value || "",
+    dataAte:   (document.getElementById("filtHistDataAte")  || {}).value || "",
+    pagina:    _histPaginaAtual,
+    porPagina: 20
+  };
+
+  var corpo = document.getElementById("histCorpo");
+  if(corpo) corpo.innerHTML = '<div class="hist-vazio">⏳ Carregando...</div>';
+
+  var pag = document.getElementById("histPaginacao");
+  if(pag) pag.style.display = "none";
+
+  google.script.run
+    .withSuccessHandler(function(res){
+      if(!res || !res.ok){
+        if(corpo) corpo.innerHTML = '<div class="hist-vazio">❌ Erro ao carregar: ' + (res && res.mensagem || "erro desconhecido") + '</div>';
+        return;
+      }
+
+      var sub = document.getElementById("histSubtitulo");
+      if(sub) sub.textContent = res.total + " recibo(s) encontrado(s)";
+
+      if(!res.dados || !res.dados.length){
+        if(corpo) corpo.innerHTML = '<div class="hist-vazio">📭 Nenhum recibo encontrado com os filtros informados.</div>';
+        return;
+      }
+
+      _histRenderizarTabela(res.dados, res);
+    })
+    .withFailureHandler(function(err){
+      if(corpo) corpo.innerHTML = '<div class="hist-vazio">❌ Erro: ' + ((err && err.message) || err) + '</div>';
+    })
+    .listarHistoricoRecibos(filtros, SISGEP_TOKEN_SESSAO);
+}
+
+function _histRenderizarTabela(dados, res){
+  var corpo = document.getElementById("histCorpo");
+  if(!corpo) return;
+
+  var html = '<div style="overflow-x:auto;">';
+  html += '<table class="hist-table">';
+  html += '<thead><tr>' +
+    '<th>Recibo</th><th>Beneficiário</th><th>Processo / Empresa</th>' +
+    '<th>Valor</th><th>Data</th><th>E-mail</th><th>Ações</th>' +
+    '</tr></thead><tbody>';
+
+  dados.forEach(function(r){
+    var stClass = "st-pendente";
+    var stLabel = r.statusEmail || "—";
+    if(r.statusEmail === "ENVIADO")   { stClass = "st-enviado";   stLabel = "✓ Enviado"; }
+    if(r.statusEmail === "REENVIADO") { stClass = "st-reenviado"; stLabel = "↩ Reenviado"; }
+    if(r.statusEmail === "FALHA")     { stClass = "st-falha";     stLabel = "✗ Falha"; }
+    if(r.statusEmail === "INVALIDO")  { stClass = "st-invalido";  stLabel = "⚠ Inválido"; }
+
+    var temPdf   = !!(r.linkPdf);
+    var temEmail = !!(r.email);
+    var temWhats = !!(r.whatsapp);
+
+    html +=
+      '<tr>' +
+      '<td><span style="font-weight:800;color:#001f4d;">' + _histEscape(r.numeroRecibo) + '</span>' +
+        (r.codigo ? '<br><span style="font-size:10px;color:#94a3b8;">Cód: ' + _histEscape(r.codigo) + '</span>' : '') +
+      '</td>' +
+      '<td>' +
+        '<span class="hist-nome">' + _histEscape(r.nome) + '</span>' +
+        '<span class="hist-cpf">CPF: ' + _histEscape(r.cpf) + '</span>' +
+      '</td>' +
+      '<td>' +
+        '<span style="font-size:11.5px;font-weight:700;color:#0f172a;display:block;">' + _histEscape(r.empresa) + '</span>' +
+        '<span style="font-size:10.5px;color:#94a3b8;">' + _histEscape(r.processo) + '</span>' +
+      '</td>' +
+      '<td style="font-weight:800;color:#0f172a;white-space:nowrap;">R$ ' + _histEscape(r.valor) + '</td>' +
+      '<td style="font-size:11.5px;color:#64748b;white-space:nowrap;">' + _histEscape(r.dataGeracao) + '</td>' +
+      '<td>' +
+        '<span class="hist-badge-status ' + stClass + '">' + stLabel + '</span>' +
+        (r.email ? '<br><span style="font-size:10px;color:#94a3b8;margin-top:3px;display:block;">' + _histEscape(r.email) + '</span>' : '') +
+      '</td>' +
+      '<td>' +
+        '<div class="hist-acoes">' +
+        (temPdf   ? '<button type="button" class="hist-acao ha-pdf"   onclick="window.open(\'' + _histEscape(r.linkPdf)  + '\',\'_blank\')">📄 PDF</button>' : '') +
+        (temEmail ? '<button type="button" class="hist-acao ha-email" onclick="_histReenviarEmail(' + JSON.stringify(r) + ')">📧 Email</button>' : '') +
+        (temWhats ? '<button type="button" class="hist-acao ha-whats" onclick="_histAbrirWhats(' + JSON.stringify(r) + ')">💬 WhatsApp</button>' : '') +
+        '<button type="button" class="hist-acao ha-del" onclick="_histExcluir(\'' + _histEscape(r.numeroRecibo) + '\')">🗑</button>' +
+        '</div>' +
+      '</td>' +
+      '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+  corpo.innerHTML = html;
+
+  // Paginação
+  var pag = document.getElementById("histPaginacao");
+  if(pag && res.paginas > 1){
+    pag.style.display = "flex";
+
+    var info = document.getElementById("histPagInfo");
+    if(info) info.textContent = "Página " + res.pagina + " de " + res.paginas + " (" + res.total + " registros)";
+
+    var btns = document.getElementById("histPagBtns");
+    if(btns){
+      var bHtml = "";
+      bHtml += '<button class="hist-pag-btn" ' + (res.pagina <= 1 ? "disabled" : "") + ' onclick="_histCarregar(' + (res.pagina - 1) + ')">‹</button>';
+
+      var inicio = Math.max(1, res.pagina - 2);
+      var fim    = Math.min(res.paginas, res.pagina + 2);
+      for(var p = inicio; p <= fim; p++){
+        bHtml += '<button class="hist-pag-btn' + (p === res.pagina ? " ativo" : "") + '" onclick="_histCarregar(' + p + ')">' + p + '</button>';
+      }
+
+      bHtml += '<button class="hist-pag-btn" ' + (res.pagina >= res.paginas ? "disabled" : "") + ' onclick="_histCarregar(' + (res.pagina + 1) + ')">›</button>';
+      btns.innerHTML = bHtml;
+    }
+  } else if(pag){
+    pag.style.display = "none";
+  }
+}
+
+function _histEscape(str){
+  if(!str) return "";
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function _histReenviarEmail(r){
+  if(!confirm("Reenviar e-mail do recibo " + r.numeroRecibo + " para " + r.email + "?")) return;
+
+  google.script.run
+    .withSuccessHandler(function(res){
+      alert(res.ok ? "✅ " + res.mensagem : "❌ " + res.mensagem);
+      if(res.ok) _histCarregar();
+    })
+    .withFailureHandler(function(err){
+      alert("Erro: " + ((err && err.message) || err));
+    })
+    .reenviarEmailRecibo({
+      email:   r.email,
+      linkPdf: r.linkPdf,
+      numero:  r.numeroRecibo,
+      nome:    r.nome,
+      processo:r.processo,
+      empresa: r.empresa,
+      valor:   r.valor
+    }, SISGEP_TOKEN_SESSAO);
+}
+
+function _histAbrirWhats(r){
+  var numero = String(r.whatsapp || "").replace(/\D/g,"");
+  if(numero.length >= 10 && !numero.startsWith("55")) numero = "55" + numero;
+
+  var msg =
+    "Olá, " + (r.nome || "BENEFICIÁRIO(A)") + "!\n\n" +
+    "Segue o link do seu recibo referente ao processo nº " + (r.processo || "") +
+    " (" + (r.empresa || "") + ").\n\n" +
+    "📄 Recibo: " + (r.numeroRecibo || "") + "\n" +
+    "🔗 " + (r.linkPdf || "") + "\n\n" +
+    "Atenciosamente,\nSINDEDUCAÇÃO-ES";
+
+  window.open("https://wa.me/" + numero + "?text=" + encodeURIComponent(msg), "_blank");
+}
+
+function _histExcluir(numeroRecibo){
+  if(!confirm("Excluir o recibo " + numeroRecibo + " do histórico?\n\nAtenção: esta ação não exclui o arquivo do Drive.")) return;
+
+  google.script.run
+    .withSuccessHandler(function(res){
+      alert(res.ok ? "✅ " + res.mensagem : "❌ " + res.mensagem);
+      if(res.ok){
+        _histCarregarResumo();
+        _histCarregar();
+      }
+    })
+    .withFailureHandler(function(err){
+      alert("Erro: " + ((err && err.message) || err));
+    })
+    .excluirReciboHistorico({ numeroRecibo: numeroRecibo }, SISGEP_TOKEN_SESSAO);
+}
+</script>

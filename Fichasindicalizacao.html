@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<base target="_top">
+<title>Ficha de Sindicalização — SindEducação-ES</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #002f6c;
+    --navy-escuro: #001f4a;
+    --gold: #C9A84C;
+    --fundo: #f4f6fa;
+    --branco: #ffffff;
+    --texto: #1d2433;
+    --cinza: #6b7385;
+    --borda: #d9dee8;
+    --erro: #c0392b;
+    --ok: #1e8e5a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Plus Jakarta Sans', Arial, sans-serif;
+    background: var(--fundo);
+    color: var(--texto);
+    min-height: 100vh;
+    padding-bottom: 48px;
+  }
+  .topo {
+    background: var(--navy);
+    color: #fff;
+    padding: 20px 16px 56px 16px;
+    text-align: center;
+  }
+  .marca-caixa {
+    background: #fff; border-radius: 10px; padding: 10px 16px;
+    display: inline-block; margin-bottom: 8px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .18);
+  }
+  .marca-caixa img { display: block; max-width: 210px; max-height: 46px; }
+  .marca-texto { font-weight: 800; font-size: 20px; letter-spacing: .3px; color: var(--navy); }
+  .marca-texto em { color: var(--gold); font-style: normal; }
+  .topo .sub { font-size: 11.5px; opacity: .85; margin-top: 4px; }
+  .cartao {
+    background: var(--branco);
+    max-width: 560px;
+    margin: -36px auto 0 auto;
+    border-radius: 14px;
+    box-shadow: 0 8px 28px rgba(0, 47, 108, .12);
+    padding: 22px 20px 26px 20px;
+  }
+  .titulo-ficha {
+    font-size: 17px; font-weight: 700; color: var(--navy);
+    text-align: center; margin-bottom: 2px;
+  }
+  .escola-destino {
+    text-align: center; font-size: 12.5px; color: var(--cinza);
+    margin-bottom: 14px;
+  }
+  .escola-destino b { color: var(--navy); }
+
+  /* Progresso */
+  .progresso { display: flex; gap: 6px; margin: 6px 0 20px 0; }
+  .progresso span {
+    flex: 1; height: 5px; border-radius: 3px; background: var(--borda);
+    transition: background .25s;
+  }
+  .progresso span.feita { background: var(--gold); }
+  .etapa-rotulo {
+    font-size: 12px; font-weight: 700; letter-spacing: .8px;
+    color: var(--gold); text-transform: uppercase; margin-bottom: 12px;
+  }
+
+  .etapa { display: none; }
+  .etapa.ativa { display: block; animation: surgir .22s ease; }
+  @keyframes surgir { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  label { display: block; font-size: 12px; font-weight: 600; color: var(--navy); margin: 12px 0 4px 0; }
+  label .opc { font-weight: 400; color: var(--cinza); }
+  input[type=text], input[type=email], input[type=tel], input[type=date], select {
+    width: 100%; padding: 11px 12px; font-size: 15px;
+    font-family: inherit; border: 1.5px solid var(--borda);
+    border-radius: 9px; background: #fbfcfe; color: var(--texto);
+  }
+  input:focus, select:focus {
+    outline: none; border-color: var(--navy);
+    box-shadow: 0 0 0 3px rgba(0, 47, 108, .12);
+  }
+  input.invalido, select.invalido { border-color: var(--erro); }
+  .linha2 { display: flex; gap: 10px; }
+  .linha2 > div { flex: 1; }
+  .linha3 { display: flex; gap: 10px; }
+  .linha3 > div { flex: 1; }
+  .radios { display: flex; gap: 14px; margin-top: 6px; }
+  .radios label {
+    display: flex; align-items: center; gap: 6px; margin: 0;
+    font-weight: 500; font-size: 14px; cursor: pointer;
+  }
+  .radios input { accent-color: var(--navy); width: 17px; height: 17px; }
+  .dica { font-size: 11.5px; color: var(--cinza); margin-top: 3px; }
+  .msg-erro {
+    display: none; background: #fdecea; color: var(--erro);
+    border-radius: 8px; padding: 10px 12px; font-size: 13px;
+    margin-top: 14px;
+  }
+  .msg-erro.visivel { display: block; }
+
+  .botoes { display: flex; gap: 10px; margin-top: 22px; }
+  button {
+    font-family: inherit; font-size: 15px; font-weight: 700;
+    border: none; border-radius: 10px; padding: 13px 18px;
+    cursor: pointer; transition: filter .15s, transform .05s;
+  }
+  button:active { transform: scale(.985); }
+  button:disabled { opacity: .55; cursor: wait; }
+  .btn-avancar { flex: 2; background: var(--navy); color: #fff; }
+  .btn-avancar:hover { filter: brightness(1.12); }
+  .btn-voltar { flex: 1; background: #eef1f7; color: var(--navy); }
+  .btn-gold { flex: 2; background: var(--gold); color: var(--navy-escuro); }
+
+  /* Autorização */
+  .caixa-autorizacao {
+    border: 2px solid var(--navy); border-radius: 10px;
+    padding: 14px; font-size: 13.5px; line-height: 1.55;
+    background: #f8faff; margin-top: 8px;
+  }
+  .caixa-autorizacao b { color: var(--navy); }
+  .aceite {
+    display: flex; align-items: flex-start; gap: 10px;
+    margin-top: 14px; font-size: 13.5px; cursor: pointer;
+  }
+  .aceite input { width: 20px; height: 20px; accent-color: var(--navy); margin-top: 1px; }
+
+  /* OTP */
+  .otp-caixa { text-align: center; margin-top: 8px; }
+  .otp-caixa input {
+    width: 100%; max-width: 240px; text-align: center;
+    font-size: 26px; letter-spacing: 10px; font-weight: 700;
+    padding: 12px; border: 2px solid var(--navy); border-radius: 10px;
+  }
+  .reenviar {
+    background: none; border: none; color: var(--navy);
+    font-size: 13px; font-weight: 600; text-decoration: underline;
+    margin-top: 12px; cursor: pointer; padding: 4px;
+  }
+
+  /* Sucesso */
+  .sucesso-final { text-align: center; padding: 12px 4px; }
+  .sucesso-final .selo {
+    width: 68px; height: 68px; border-radius: 50%;
+    background: var(--ok); color: #fff; font-size: 34px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 14px auto;
+  }
+  .sucesso-final h2 { color: var(--navy); font-size: 19px; margin-bottom: 8px; }
+  .sucesso-final p { font-size: 14px; color: var(--cinza); line-height: 1.55; }
+  .sucesso-final a {
+    display: inline-block; margin-top: 16px; color: var(--navy);
+    font-weight: 700; font-size: 14px;
+  }
+  .rodape {
+    text-align: center; font-size: 11px; color: var(--cinza);
+    margin-top: 22px; padding: 0 16px;
+  }
+</style>
+</head>
+<body>
+
+<div class="topo">
+  <div class="marca-caixa">
+    <img src="https://lh3.googleusercontent.com/d/1c-RHfb0W-wl_ZK1xlMjNRs9DS4ep2ov7"
+         alt="SindEducação-ES"
+         onerror="this.parentNode.innerHTML='<div class=\'marca-texto\'>Sind<em>Educação</em>/ES</div>'">
+  </div>
+  <div class="sub">Sindicato dos educadores técnico-administrativos em estabelecimentos de ensino particular no Estado do Espírito Santo - SindEducação-ES</div>
+</div>
+
+<div class="cartao">
+  <div class="titulo-ficha">Formulário de Sindicalização</div>
+  <div class="escola-destino" id="escolaDestino" style="display:none;">
+    Visita à escola: <b id="escolaDestinoNome"></b>
+  </div>
+
+  <div class="progresso" id="progresso">
+    <span class="feita"></span><span></span><span></span><span></span><span></span>
+  </div>
+
+  <!-- ETAPA 1 — Dados pessoais -->
+  <div class="etapa ativa" id="etapa1">
+    <div class="etapa-rotulo">Etapa 1 de 5 · Dados pessoais</div>
+
+    <label>Tipo de ficha</label>
+    <div class="radios">
+      <label><input type="radio" name="tipo" value="CADASTRAMENTO" checked> Cadastramento</label>
+      <label><input type="radio" name="tipo" value="RECADASTRAMENTO"> Recadastramento</label>
+    </div>
+
+    <label for="nome">Nome completo</label>
+    <input type="text" id="nome" autocomplete="name" placeholder="Como consta no documento">
+
+    <label>Sexo</label>
+    <div class="radios">
+      <label><input type="radio" name="sexo" value="F"> Feminino</label>
+      <label><input type="radio" name="sexo" value="M"> Masculino</label>
+    </div>
+
+    <div class="linha2">
+      <div>
+        <label for="cpf">CPF <span class="opc">(obrigatório)</span></label>
+        <input type="tel" id="cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00">
+      </div>
+      <div>
+        <label for="dataNascimento">Data de nascimento</label>
+        <input type="date" id="dataNascimento">
+      </div>
+    </div>
+
+    <div class="linha3">
+      <div style="flex:2;">
+        <label for="rg">RG <span class="opc">(obrigatório)</span></label>
+        <input type="tel" id="rg" inputmode="numeric" maxlength="14" placeholder="Somente números">
+      </div>
+      <div>
+        <label for="orgaoExpedidor">Órgão exped.</label>
+        <input type="text" id="orgaoExpedidor" maxlength="10" placeholder="SPTC">
+      </div>
+      <div>
+        <label for="ufRg">UF</label>
+        <input type="text" id="ufRg" maxlength="2" placeholder="ES" style="text-transform:uppercase;">
+      </div>
+    </div>
+
+    <div class="linha3">
+      <div style="flex:2;">
+        <label for="tituloEleitor">Título de eleitor(a) <span class="opc">(opcional)</span></label>
+        <input type="tel" id="tituloEleitor" inputmode="numeric" maxlength="12">
+      </div>
+      <div>
+        <label for="zona">Zona</label>
+        <input type="tel" id="zona" inputmode="numeric" maxlength="4">
+      </div>
+      <div>
+        <label for="secao">Seção</label>
+        <input type="tel" id="secao" inputmode="numeric" maxlength="4">
+      </div>
+    </div>
+
+    <label for="escolaridade">Grau de instrução / escolaridade</label>
+    <select id="escolaridade">
+      <option value="">Selecione…</option>
+      <option>Ensino Fundamental incompleto</option>
+      <option>Ensino Fundamental completo</option>
+      <option>Ensino Médio incompleto</option>
+      <option>Ensino Médio completo</option>
+      <option>Ensino Superior incompleto</option>
+      <option>Ensino Superior completo</option>
+      <option>Pós-graduação</option>
+    </select>
+
+    <div class="msg-erro" id="erro1"></div>
+    <div class="botoes">
+      <button class="btn-avancar" onclick="avancarEtapa(1)">Continuar</button>
+    </div>
+  </div>
+
+  <!-- ETAPA 2 — Contatos e endereço -->
+  <div class="etapa" id="etapa2">
+    <div class="etapa-rotulo">Etapa 2 de 5 · Contatos e endereço</div>
+
+    <label for="celular">Celular <span class="opc">(obrigatório)</span></label>
+    <input type="tel" id="celular" inputmode="numeric" maxlength="15" placeholder="(27) 90000-0000">
+
+    <div class="linha2">
+      <div>
+        <label for="telefone1">Telefone <span class="opc">(opcional)</span></label>
+        <input type="tel" id="telefone1" inputmode="numeric" maxlength="14">
+      </div>
+      <div>
+        <label for="telefone2">Telefone 2 <span class="opc">(opcional)</span></label>
+        <input type="tel" id="telefone2" inputmode="numeric" maxlength="14">
+      </div>
+    </div>
+
+    <label for="email">E-mail</label>
+    <input type="email" id="email" autocomplete="email" placeholder="voce@exemplo.com">
+    <div class="radios" style="margin-top:8px;">
+      <label><input type="radio" name="tipoEmail" value="PESSOAL" checked> Pessoal</label>
+      <label><input type="radio" name="tipoEmail" value="INSTITUCIONAL"> Institucional</label>
+    </div>
+    <div class="dica">O código de assinatura será enviado para este e-mail.</div>
+
+    <div class="linha2">
+      <div>
+        <label for="cepResidencial">CEP residencial</label>
+        <input type="tel" id="cepResidencial" inputmode="numeric" maxlength="9" placeholder="29000-000">
+      </div>
+      <div>
+        <label for="tipoLogradouro">Tipo</label>
+        <select id="tipoLogradouro">
+          <option value="RUA">Rua</option>
+          <option value="AVENIDA">Avenida</option>
+          <option value="PRACA">Praça</option>
+        </select>
+      </div>
+    </div>
+    <div class="dica" id="dicaCep">Digite o CEP para preencher o endereço automaticamente.</div>
+
+    <div class="linha2">
+      <div style="flex:3;">
+        <label for="endereco">Endereço residencial</label>
+        <input type="text" id="endereco">
+      </div>
+      <div>
+        <label for="numero">Nº</label>
+        <input type="text" id="numero" maxlength="8">
+      </div>
+    </div>
+
+    <div class="linha2">
+      <div>
+        <label for="complemento">Complemento <span class="opc">(opcional)</span></label>
+        <input type="text" id="complemento">
+      </div>
+      <div>
+        <label for="bairro">Bairro</label>
+        <input type="text" id="bairro">
+      </div>
+    </div>
+
+    <div class="linha2">
+      <div style="flex:3;">
+        <label for="cidade">Cidade</label>
+        <input type="text" id="cidade">
+      </div>
+      <div>
+        <label for="uf">UF</label>
+        <input type="text" id="uf" maxlength="2" value="ES" style="text-transform:uppercase;">
+      </div>
+    </div>
+
+    <div class="msg-erro" id="erro2"></div>
+    <div class="botoes">
+      <button class="btn-voltar" onclick="voltarEtapa(2)">Voltar</button>
+      <button class="btn-avancar" onclick="avancarEtapa(2)">Continuar</button>
+    </div>
+  </div>
+
+  <!-- ETAPA 3 — Dados do empregador -->
+  <div class="etapa" id="etapa3">
+    <div class="etapa-rotulo">Etapa 3 de 5 · Dados do empregador</div>
+
+    <label for="escolaSelect">Estabelecimento de ensino onde trabalha</label>
+    <select id="escolaSelect" onchange="escolaAoTrocar()">
+      <option value="">Carregando escolas…</option>
+    </select>
+    <div class="dica" id="dicaEscola" style="display:none;">
+      Pré-selecionada pela visita do sindicato. Corrija apenas se estiver errada.
+    </div>
+    <div id="escolaOutraBox" style="display:none;">
+      <label for="escolaOutra">Nome da sua escola</label>
+      <input type="text" id="escolaOutra" placeholder="Digite o nome completo da escola">
+      <div class="dica">Sua ficha passará por conferência do sindicato antes da aprovação.</div>
+    </div>
+
+    <div class="linha2">
+      <div>
+        <label for="cargo">Cargo</label>
+        <input type="text" id="cargo" placeholder="Ex.: Auxiliar de secretaria">
+      </div>
+      <div>
+        <label for="dataAdmissao">Data de admissão</label>
+        <input type="date" id="dataAdmissao">
+      </div>
+    </div>
+
+    <div class="linha2">
+      <div style="flex:3;">
+        <label for="cidadeEscola">Cidade da escola</label>
+        <input type="text" id="cidadeEscola">
+      </div>
+      <div>
+        <label for="cepEscola">CEP <span class="opc">(opcional)</span></label>
+        <input type="tel" id="cepEscola" inputmode="numeric" maxlength="9">
+      </div>
+    </div>
+
+    <div class="msg-erro" id="erro3"></div>
+    <div class="botoes">
+      <button class="btn-voltar" onclick="voltarEtapa(3)">Voltar</button>
+      <button class="btn-avancar" onclick="avancarEtapa(3)">Continuar</button>
+    </div>
+  </div>
+
+  <!-- ETAPA 4 — Autorização -->
+  <div class="etapa" id="etapa4">
+    <div class="etapa-rotulo">Etapa 4 de 5 · Autorização de desconto</div>
+
+<div class="caixa-autorizacao">
+      <b>AUTORIZAÇÃO PARA DESCONTO EM FOLHA DE PAGAMENTO</b><br><br>
+      Neste ato, e nos termos do <b>Art. 545 da CLT</b> e da <b>Cláusula 56 da
+      Convenção Coletiva de Trabalho 2026/2027</b>, autorizo expressamente o
+      desconto mensal em folha de pagamento do percentual de <b>2% (dois por
+      cento) sobre o meu salário-base</b>, em favor do Sindicato dos educadores
+      técnico-administrativos em estabelecimentos de ensino particular no Estado
+      do Espírito Santo — SindEducação-ES, conforme aprovado em Assembleia Geral
+      Extraordinária da categoria, convocada por Edital publicado no Jornal A
+      Tribuna, edição de 15 de novembro de 2025, autorizando o repasse pelo meu
+      empregador ao SindEducação-ES até o 10º (décimo) dia subsequente ao mês
+      vencido.
+    </div>
+
+    <label class="aceite">
+      <input type="checkbox" id="aceite">
+      <span>Li e concordo com a autorização acima. Entendo que, ao informar
+      o código enviado ao meu e-mail, estarei assinando eletronicamente
+      esta ficha.</span>
+    </label>
+
+    <div class="msg-erro" id="erro4"></div>
+    <div class="botoes">
+      <button class="btn-voltar" onclick="voltarEtapa(4)">Voltar</button>
+      <button class="btn-gold" id="btnEnviarFicha" onclick="enviarFicha()">Enviar ficha e receber código</button>
+    </div>
+  </div>
+
+  <!-- ETAPA 5 — Assinatura OTP -->
+  <div class="etapa" id="etapa5">
+    <div class="etapa-rotulo">Etapa 5 de 5 · Assinatura eletrônica</div>
+    <p style="font-size:14px;line-height:1.55;">
+      Enviamos um código de 6 dígitos para
+      <b id="emailAssinatura"></b>. Informe-o abaixo para assinar a ficha.
+    </p>
+    <div class="otp-caixa">
+      <label for="otp" style="text-align:center;">Código de assinatura</label>
+      <input type="tel" id="otp" inputmode="numeric" maxlength="6" placeholder="••••••">
+      <br>
+      <button class="reenviar" id="btnReenviar" onclick="reenviarOTP()">Reenviar código</button>
+    </div>
+    <div class="msg-erro" id="erro5"></div>
+    <div class="botoes">
+      <button class="btn-gold" id="btnAssinar" onclick="assinarFicha()">Assinar ficha</button>
+    </div>
+  </div>
+
+  <!-- SUCESSO -->
+  <div class="etapa" id="etapaSucesso">
+    <div class="sucesso-final">
+      <div class="selo">&#10003;</div>
+      <h2>Ficha assinada com sucesso!</h2>
+      <p>Sua Ficha de Sindicalização foi registrada e assinada
+      eletronicamente. A secretaria do SindEducação-ES fará a análise e
+      você receberá por e-mail a confirmação com o número da sua
+      matrícula.</p>
+      <a id="linkPdfFicha" href="#" target="_blank" style="display:none;">Ver minha ficha em PDF</a>
+    </div>
+  </div>
+
+  <div class="rodape">
+   SISGEP · SindEducação-ES · Seus dados são usados exclusivamente para
+    fins de sindicalização e gestão do vínculo associativo.
+  </div>
+</div>
+
+<script>
+  /* ==========================================================
+     Contexto da visita.
+     Lido da URL via google.script.url — NAO usa scriptlets de
+     template, o que torna este arquivo seguro para ser servido
+     tanto por createHtmlOutputFromFile quanto por
+     createTemplateFromFile.
+     Parametros aceitos: ?idVisita=...&diretorBase=...&escola=...
+     ========================================================== */
+  var CONTEXTO = { idVisita: '', diretorBase: '', escola: '', idFicha: '' };
+  var ESCOLA_OUTRA = '__OUTRA__';
+  var etapaAtual = 1;
+  var TOTAL_ETAPAS = 5;
+
+  document.addEventListener('DOMContentLoaded', function () {
+    aplicarMascaras();
+    lerParametrosDaURL();
+    carregarEscolas();
+  });
+
+  function lerParametrosDaURL() {
+    try {
+      if (window.google && google.script && google.script.url) {
+        google.script.url.getLocation(function (location) {
+          var p = (location && location.parameter) ? location.parameter : {};
+          CONTEXTO.idVisita = p.idVisita || '';
+          CONTEXTO.diretorBase = p.diretorBase || '';
+          CONTEXTO.escola = p.escola || '';
+          CONTEXTO.idFicha = p.idFicha || '';
+          if (CONTEXTO.escola) {
+            document.getElementById('escolaDestino').style.display = 'block';
+            document.getElementById('escolaDestinoNome').textContent = CONTEXTO.escola;
+            document.getElementById('dicaEscola').style.display = 'block';
+            aplicarEscolaDoContexto();
+          }
+        });
+      }
+    } catch (e) { /* acesso direto sem parametros: segue normal */ }
+  }
+
+  /* ================= Escolas ================= */
+
+  function carregarEscolas() {
+    var sel = document.getElementById('escolaSelect');
+    google.script.run
+      .withSuccessHandler(function (r) {
+        var lista = (r && r.escolas) ? r.escolas : [];
+        if (!lista.length) {
+          sel.innerHTML = '<option value="' + ESCOLA_OUTRA + '">Minha escola não está na lista</option>';
+          escolaAoTrocar();
+          return;
+        }
+        var html = '<option value="">Selecione a escola…</option>';
+        html += '<optgroup label="Mais frequentes">';
+        lista.slice(0, 15).forEach(function (e) {
+          html += '<option value="' + e.nome.replace(/"/g, '&quot;') + '">' + e.nome + '</option>';
+        });
+        html += '</optgroup><optgroup label="Todas as escolas (A-Z)">';
+        lista.slice().sort(function (a, b) {
+          return a.nome.localeCompare(b.nome, 'pt-BR');
+        }).forEach(function (e) {
+          html += '<option value="' + e.nome.replace(/"/g, '&quot;') + '">' + e.nome + '</option>';
+        });
+        html += '</optgroup>';
+        html += '<option value="' + ESCOLA_OUTRA + '">— Minha escola não está na lista —</option>';
+        sel.innerHTML = html;
+        aplicarEscolaDoContexto();
+      })
+      .withFailureHandler(function () {
+        sel.innerHTML = '<option value="' + ESCOLA_OUTRA + '">Minha escola não está na lista</option>';
+        escolaAoTrocar();
+      })
+      .listarEscolasParaFicha();
+  }
+
+  /* Ficha vinda de QR Code de visita: escola ja definida. */
+  function aplicarEscolaDoContexto() {
+    if (!CONTEXTO.escola) return;
+    var sel = document.getElementById('escolaSelect');
+    if (!sel || sel.options.length < 2) return;
+    sel.value = CONTEXTO.escola;
+    if (!sel.value) {
+      sel.value = ESCOLA_OUTRA;
+      document.getElementById('escolaOutra').value = CONTEXTO.escola;
+    }
+    escolaAoTrocar();
+  }
+
+  function escolaAoTrocar() {
+    var sel = document.getElementById('escolaSelect');
+    document.getElementById('escolaOutraBox').style.display =
+      sel.value === ESCOLA_OUTRA ? 'block' : 'none';
+  }
+
+  function valorEscola() {
+    var sel = document.getElementById('escolaSelect');
+    if (sel.value === ESCOLA_OUTRA) return v('escolaOutra');
+    return sel.value;
+  }
+
+  /* ================= Navegação ================= */
+
+  function mostrarEtapa(n) {
+    document.querySelectorAll('.etapa').forEach(function (e) {
+      e.classList.remove('ativa');
+    });
+    var alvo = n === 'sucesso' ?
+      document.getElementById('etapaSucesso') :
+      document.getElementById('etapa' + n);
+    alvo.classList.add('ativa');
+    var barras = document.querySelectorAll('#progresso span');
+    var feitas = n === 'sucesso' ? TOTAL_ETAPAS : n;
+    barras.forEach(function (b, i) {
+      b.classList.toggle('feita', i < feitas);
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function avancarEtapa(n) {
+    if (!validarEtapa(n)) return;
+    etapaAtual = n + 1;
+    mostrarEtapa(etapaAtual);
+  }
+
+  function voltarEtapa(n) {
+    etapaAtual = n - 1;
+    mostrarEtapa(etapaAtual);
+  }
+
+  /* ================= Validação ================= */
+
+  function erro(n, msg) {
+    var el = document.getElementById('erro' + n);
+    el.textContent = msg;
+    el.classList.add('visivel');
+  }
+  function limparErro(n) {
+    var el = document.getElementById('erro' + n);
+    el.textContent = '';
+    el.classList.remove('visivel');
+  }
+  function marcar(id, invalido) {
+    var el = document.getElementById(id);
+    if (el) el.classList.toggle('invalido', !!invalido);
+  }
+  function v(id) {
+    var el = document.getElementById(id);
+    return el ? el.value.trim() : '';
+  }
+  function radio(nome) {
+    var el = document.querySelector('input[name="' + nome + '"]:checked');
+    return el ? el.value : '';
+  }
+  function soDigitos(s) { return String(s || '').replace(/\D/g, ''); }
+
+  function validarCPFLocal(cpf) {
+    cpf = soDigitos(cpf);
+    if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+    var soma = 0, resto, i;
+    for (i = 1; i <= 9; i++) soma += parseInt(cpf.substring(i - 1, i), 10) * (11 - i);
+    resto = (soma * 10) % 11;
+    if (resto >= 10) resto = 0;
+    if (resto !== parseInt(cpf.substring(9, 10), 10)) return false;
+    soma = 0;
+    for (i = 1; i <= 10; i++) soma += parseInt(cpf.substring(i - 1, i), 10) * (12 - i);
+    resto = (soma * 10) % 11;
+    if (resto >= 10) resto = 0;
+    return resto === parseInt(cpf.substring(10, 11), 10);
+  }
+
+  function validarEtapa(n) {
+    limparErro(n);
+    if (n === 1) {
+      if (!v('nome')) { marcar('nome', true); erro(1, 'Informe o nome completo.'); return false; }
+      marcar('nome', false);
+      if (!validarCPFLocal(v('cpf'))) { marcar('cpf', true); erro(1, 'CPF inválido. Confira os dígitos.'); return false; }
+      marcar('cpf', false);
+      if (!v('rg')) { marcar('rg', true); erro(1, 'Informe o RG.'); return false; }
+      marcar('rg', false);
+      if (!v('dataNascimento')) { marcar('dataNascimento', true); erro(1, 'Informe a data de nascimento.'); return false; }
+      marcar('dataNascimento', false);
+      return true;
+    }
+    if (n === 2) {
+      if (soDigitos(v('celular')).length < 10) { marcar('celular', true); erro(2, 'Informe um celular válido com DDD.'); return false; }
+      marcar('celular', false);
+      var email = v('email');
+      if (!email || email.indexOf('@') < 1 || email.indexOf('.') < 0) {
+        marcar('email', true);
+        erro(2, 'Informe um e-mail válido — é por ele que chega o código de assinatura.');
+        return false;
+      }
+      marcar('email', false);
+      if (soDigitos(v('cepResidencial')).length !== 8) { marcar('cepResidencial', true); erro(2, 'CEP deve ter 8 dígitos.'); return false; }
+      marcar('cepResidencial', false);
+      if (!v('endereco')) { marcar('endereco', true); erro(2, 'Informe o endereço.'); return false; }
+      marcar('endereco', false);
+      if (!v('bairro')) { marcar('bairro', true); erro(2, 'Informe o bairro.'); return false; }
+      marcar('bairro', false);
+      if (!v('cidade')) { marcar('cidade', true); erro(2, 'Informe a cidade.'); return false; }
+      marcar('cidade', false);
+      if (v('uf').length !== 2) { marcar('uf', true); erro(2, 'Informe a UF.'); return false; }
+      marcar('uf', false);
+      return true;
+    }
+    if (n === 3) {
+      if (!valorEscola()) {
+        marcar('escolaSelect', true);
+        erro(3, 'Selecione a escola onde você trabalha. Se ela não estiver na lista, escolha a última opção e digite o nome.');
+        return false;
+      }
+      marcar('escolaSelect', false);
+      if (!v('cargo')) { marcar('cargo', true); erro(3, 'Informe o cargo.'); return false; }
+      marcar('cargo', false);
+      return true;
+    }
+    if (n === 4) {
+      if (!document.getElementById('aceite').checked) {
+        erro(4, 'É necessário concordar com a autorização para continuar.');
+        return false;
+      }
+      return true;
+    }
+    return true;
+  }
+
+  /* ================= Máscaras ================= */
+
+  function aplicarMascaras() {
+    mascara('cpf', function (d) {
+      d = d.substring(0, 11);
+      if (d.length > 9) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/, '$1.$2.$3-$4');
+      if (d.length > 6) return d.replace(/(\d{3})(\d{3})(\d{0,3})/, '$1.$2.$3');
+      if (d.length > 3) return d.replace(/(\d{3})(\d{0,3})/, '$1.$2');
+      return d;
+    });
+    ['celular', 'telefone1', 'telefone2'].forEach(function (id) {
+      mascara(id, function (d) {
+        d = d.substring(0, 11);
+        if (d.length > 10) return d.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
+        if (d.length > 6) return d.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
+        if (d.length > 2) return d.replace(/(\d{2})(\d{0,5})/, '($1) $2');
+        return d;
+      });
+    });
+    ['cepResidencial', 'cepEscola'].forEach(function (id) {
+      mascara(id, function (d) {
+        d = d.substring(0, 8);
+        if (d.length > 5) return d.replace(/(\d{5})(\d{0,3})/, '$1-$2');
+        return d;
+      });
+    });
+    document.getElementById('cepResidencial').addEventListener('blur', buscarCEP);
+  }
+
+  function mascara(id, fn) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input', function () {
+      el.value = fn(soDigitos(el.value));
+    });
+  }
+
+  function buscarCEP() {
+    var cep = soDigitos(v('cepResidencial'));
+    if (cep.length !== 8) return;
+    var dica = document.getElementById('dicaCep');
+    dica.textContent = 'Buscando endereço…';
+    google.script.run
+      .withSuccessHandler(function (r) {
+        if (r && r.sucesso) {
+          if (r.logradouro && !v('endereco')) {
+            var partes = r.logradouro.split(' ');
+            var tipo = partes[0].toUpperCase();
+            if (['RUA', 'AVENIDA', 'PRAÇA', 'PRACA'].indexOf(tipo) >= 0) {
+              document.getElementById('tipoLogradouro').value =
+                tipo.replace('PRAÇA', 'PRACA');
+              document.getElementById('endereco').value = partes.slice(1).join(' ');
+            } else {
+              document.getElementById('endereco').value = r.logradouro;
+            }
+          }
+          if (r.bairro && !v('bairro')) document.getElementById('bairro').value = r.bairro;
+          if (r.cidade) document.getElementById('cidade').value = r.cidade;
+          if (r.uf) document.getElementById('uf').value = r.uf;
+          dica.textContent = 'Endereço preenchido pelo CEP. Confira e complete o número.';
+        } else {
+          dica.textContent = 'CEP não encontrado — preencha o endereço manualmente.';
+        }
+      })
+      .withFailureHandler(function () {
+        dica.textContent = 'Não foi possível consultar o CEP — preencha manualmente.';
+      })
+      .buscarEnderecoPorCEP(cep);
+  }
+
+  /* ================= Envio e assinatura ================= */
+
+  function coletarDados() {
+    return {
+      tipo: radio('tipo'),
+      nome: v('nome'),
+      sexo: radio('sexo'),
+      cpf: v('cpf'),
+      rg: v('rg'),
+      orgaoExpedidor: v('orgaoExpedidor'),
+      ufRg: v('ufRg'),
+      tituloEleitor: v('tituloEleitor'),
+      zona: v('zona'),
+      secao: v('secao'),
+      telefone1: v('telefone1'),
+      telefone2: v('telefone2'),
+      celular: v('celular'),
+      email: v('email'),
+      tipoEmail: radio('tipoEmail'),
+      cepResidencial: v('cepResidencial'),
+      tipoLogradouro: v('tipoLogradouro'),
+      endereco: v('endereco'),
+      numero: v('numero'),
+      complemento: v('complemento'),
+      bairro: v('bairro'),
+      uf: v('uf').toUpperCase(),
+      cidade: v('cidade'),
+      dataNascimento: v('dataNascimento'),
+      escolaridade: v('escolaridade'),
+      escola: valorEscola(),
+      dataAdmissao: v('dataAdmissao'),
+      cargo: v('cargo'),
+      cidadeEscola: v('cidadeEscola'),
+      cepEscola: v('cepEscola'),
+      origem: CONTEXTO.idVisita ? 'QR_VISITA' : 'PORTAL',
+      idVisita: CONTEXTO.idVisita,
+      diretorBase: CONTEXTO.diretorBase
+    };
+  }
+
+  function enviarFicha() {
+    if (!validarEtapa(4)) return;
+    var btn = document.getElementById('btnEnviarFicha');
+    btn.disabled = true;
+    btn.textContent = 'Enviando…';
+    google.script.run
+      .withSuccessHandler(function (r) {
+        btn.disabled = false;
+        btn.textContent = 'Enviar ficha e receber código';
+        if (r && r.sucesso) {
+          CONTEXTO.idFicha = r.idFicha;
+          document.getElementById('emailAssinatura').textContent = v('email');
+          etapaAtual = 5;
+          mostrarEtapa(5);
+          if (!r.otpEnviado) {
+            erro(5, r.mensagem + ' Toque em "Reenviar código".');
+          }
+        } else {
+          erro(4, (r && r.mensagem) || 'Não foi possível registrar a ficha. Tente novamente.');
+        }
+      })
+      .withFailureHandler(function (e) {
+        btn.disabled = false;
+        btn.textContent = 'Enviar ficha e receber código';
+        erro(4, 'Falha de comunicação: ' + e.message + '. Tente novamente.');
+      })
+      .submeterFichaSindicalizacao(coletarDados());
+  }
+
+  function reenviarOTP() {
+    if (!CONTEXTO.idFicha) return;
+    limparErro(5);
+    var btn = document.getElementById('btnReenviar');
+    btn.disabled = true;
+    btn.textContent = 'Enviando…';
+    google.script.run
+      .withSuccessHandler(function (r) {
+        btn.disabled = false;
+        btn.textContent = 'Reenviar código';
+        if (!(r && r.sucesso)) {
+          erro(5, (r && r.mensagem) || 'Falha ao reenviar o código.');
+        }
+      })
+      .withFailureHandler(function (e) {
+        btn.disabled = false;
+        btn.textContent = 'Reenviar código';
+        erro(5, 'Falha de comunicação: ' + e.message);
+      })
+      .enviarOTPSindicalizacao(CONTEXTO.idFicha);
+  }
+
+  function assinarFicha() {
+    limparErro(5);
+    var codigo = soDigitos(v('otp'));
+    if (codigo.length !== 6) {
+      marcar('otp', true);
+      erro(5, 'Informe o código de 6 dígitos enviado ao seu e-mail.');
+      return;
+    }
+    marcar('otp', false);
+    var btn = document.getElementById('btnAssinar');
+    btn.disabled = true;
+    btn.textContent = 'Assinando…';
+    google.script.run
+      .withSuccessHandler(function (r) {
+        btn.disabled = false;
+        btn.textContent = 'Assinar ficha';
+        if (r && r.sucesso) {
+          if (r.linkPdf) {
+            var a = document.getElementById('linkPdfFicha');
+            a.href = r.linkPdf;
+            a.style.display = 'inline-block';
+          }
+          mostrarEtapa('sucesso');
+        } else if (r && r.expirado) {
+          erro(5, r.mensagem + ' Toque em "Reenviar código".');
+        } else {
+          erro(5, (r && r.mensagem) || 'Código incorreto.');
+        }
+      })
+      .withFailureHandler(function (e) {
+        btn.disabled = false;
+        btn.textContent = 'Assinar ficha';
+        erro(5, 'Falha de comunicação: ' + e.message);
+      })
+      .validarOTPEAssinarFicha(CONTEXTO.idFicha, codigo, '');
+  }
+</script>
+</body>
+</html>

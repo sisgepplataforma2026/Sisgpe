@@ -1,0 +1,859 @@
+<style>
+.rel-wrap * { box-sizing: border-box; }
+
+.rel-wrap {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: #0f172a;
+  line-height: 1.6;
+}
+
+.rel-panel {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 18px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.rel-panel-header {
+  margin-bottom: 20px;
+}
+
+.rel-panel-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #123b6d;
+  margin-bottom: 4px;
+}
+
+.rel-panel-subtitle {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.rel-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1a6eb5, #27a4f2);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(26, 110, 181, 0.2);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.rel-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(26, 110, 181, 0.3);
+}
+
+.rel-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.rel-btn-secondary {
+  background: #f8fbff !important;
+  color: #123b6d !important;
+  border: 1px solid #dbe7f3 !important;
+  box-shadow: none !important;
+}
+
+.rel-btn-excel {
+  background: linear-gradient(135deg, #16a34a, #22c55e) !important;
+}
+
+.rel-btn-pdf {
+  background: linear-gradient(135deg, #dc2626, #ef4444) !important;
+}
+
+.rel-wrap input[type="text"],
+.rel-wrap input[type="date"],
+.rel-wrap select {
+  width: 100%;
+  height: 44px;
+  border: 1px solid #dbe7f3;
+  border-radius: 12px;
+  padding: 0 12px;
+  font-size: 14px;
+  color: #0f172a;
+  transition: all 0.2s;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.rel-wrap input:focus,
+.rel-wrap select:focus {
+  outline: none;
+  border-color: #1a6eb5;
+  box-shadow: 0 0 0 3px rgba(26, 110, 181, 0.1);
+}
+
+.rel-wrap label {
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  margin-bottom: 6px;
+  color: #334155;
+}
+
+.rel-export-card {
+  padding: 18px;
+  border: 1px solid #dbe7f3;
+  border-radius: 18px;
+  background: #fbfdff;
+  transition: all 0.2s;
+}
+
+.rel-export-card:hover {
+  border-color: #1a6eb5;
+  box-shadow: 0 4px 12px rgba(26, 110, 181, 0.1);
+}
+
+.rel-export-card-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #123b6d;
+  margin-bottom: 6px;
+}
+
+.rel-export-card-desc {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.6;
+  margin-bottom: 14px;
+}
+
+.rel-result-success {
+  padding: 18px;
+  border: 1px solid #86efac;
+  border-radius: 12px;
+  background: #f0fdf4;
+  color: #166534;
+  margin-bottom: 12px;
+}
+
+.rel-result-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.rel-result-info {
+  font-size: 13px;
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+
+.rel-result-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: #ffffff;
+  border: 1px solid #86efac;
+  border-radius: 8px;
+  color: #166534;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+  transition: all 0.2s;
+}
+
+.rel-result-link:hover {
+  background: #dcfce7;
+}
+
+.rel-result-empty {
+  padding: 18px;
+  border: 1px dashed #c7d7e8;
+  border-radius: 16px;
+  background: #f8fbff;
+  color: #475569;
+  text-align: center;
+}
+
+.rel-msg-box {
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 18px;
+  padding: 14px 18px;
+  display: none;
+}
+
+.rel-msg-box.visible {
+  display: block;
+}
+
+.rel-msg-box.ok {
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  color: #166534;
+}
+
+.rel-msg-box.erro {
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #991b1b;
+}
+
+.rel-msg-box.info {
+  background: #eff6ff;
+  border: 1px solid #93c5fd;
+  color: #1e40af;
+}
+
+.rel-msg-box.warn {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+}
+
+.rel-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: relSpin 0.7s linear infinite;
+  display: none;
+}
+
+@keyframes relSpin {
+  to { transform: rotate(360deg); }
+}
+
+.rel-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.rel-stat-mini {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px;
+  text-align: center;
+}
+
+.rel-stat-mini-label {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+
+.rel-stat-mini-value {
+  font-size: 24px;
+  font-weight: 800;
+  color: #123b6d;
+}
+
+.rel-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.rel-badge.excel {
+  background: rgba(34,197,94,0.15);
+  color: #15803d;
+}
+
+.rel-badge.pdf {
+  background: rgba(239,68,68,0.15);
+  color: #dc2626;
+}
+
+.rel-historico-item {
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  background: #ffffff;
+  transition: all 0.2s;
+}
+
+.rel-historico-item:hover {
+  background: #f8fbff;
+  border-color: #1a6eb5;
+}
+
+.rel-historico-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.rel-historico-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #123b6d;
+}
+
+.rel-historico-time {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.rel-historico-info {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+  .rel-panel { padding: 18px; }
+}
+</style>
+
+<div class="rel-wrap">
+  <div class="rel-msg-box" id="relMsgBox"></div>
+
+  <div class="rel-stats-grid">
+    <div class="rel-stat-mini">
+      <div class="rel-stat-mini-label">Total Registros</div>
+      <div class="rel-stat-mini-value" id="relStatTotal">0</div>
+    </div>
+    <div class="rel-stat-mini">
+      <div class="rel-stat-mini-label">Filiações</div>
+      <div class="rel-stat-mini-value" id="relStatFiliacoes">0</div>
+    </div>
+    <div class="rel-stat-mini">
+      <div class="rel-stat-mini-label">Desfiliações</div>
+      <div class="rel-stat-mini-value" id="relStatDesfiliacoes">0</div>
+    </div>
+    <div class="rel-stat-mini">
+      <div class="rel-stat-mini-label">Exportações</div>
+      <div class="rel-stat-mini-value" id="relStatExportacoes">0</div>
+    </div>
+  </div>
+
+  <div class="rel-panel">
+    <div class="rel-panel-header">
+      <div>
+        <h2 class="rel-panel-title" style="font-size:22px;">Módulo de Relatórios</h2>
+        <div class="rel-panel-subtitle">Exportação de controle geral e auditoria/logs do sistema</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rel-panel">
+    <div class="rel-panel-header">
+      <div>
+        <h3 class="rel-panel-title">Filtros do Relatório</h3>
+        <div class="rel-panel-subtitle">Refine os dados antes de exportar</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;">
+      <div>
+        <label>Data Inicial</label>
+        <input type="date" id="relInicio">
+      </div>
+
+      <div>
+        <label>Data Final</label>
+        <input type="date" id="relFim">
+      </div>
+
+      <div>
+        <label>Tipo</label>
+        <select id="relTipo">
+          <option value="">Todos</option>
+          <option value="FILIAÇÃO">Filiação</option>
+          <option value="DESFILIAÇÃO">Desfiliação</option>
+          <option value="TAXA NEGOCIAL">Taxa Negocial</option>
+          <option value="OUTROS">Outros</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Escola</label>
+        <input type="text" id="relEscola" placeholder="Nome da escola">
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
+      <button type="button" class="rel-btn" onclick="aplicarFiltrosRelatorios()">🔍 Aplicar Filtros</button>
+      <button type="button" class="rel-btn rel-btn-secondary" onclick="limparFiltrosRelatorios()">🧹 Limpar Filtros</button>
+      <button type="button" class="rel-btn rel-btn-secondary" onclick="atualizarDadosRelatorios()">🔄 Atualizar Dados</button>
+    </div>
+  </div>
+
+  <div class="rel-panel">
+    <div class="rel-panel-header">
+      <div>
+        <h3 class="rel-panel-title">Exportações Disponíveis</h3>
+        <div class="rel-panel-subtitle">Escolha o tipo de relatório e o formato desejado</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;">
+      <div class="rel-export-card">
+        <div class="rel-export-card-title">📊 Controle Geral</div>
+        <div class="rel-export-card-desc">
+          Exporta os registros principais do sistema com base nos filtros informados.
+          Inclui os dados disponíveis na aba Controle.
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button type="button" class="rel-btn rel-btn-excel" onclick="exportarControleGeralRelatorios('excel')">
+            <div class="rel-spinner" id="relSpinnerControleExcel"></div>
+            <span id="relLabelControleExcel">📗 Excel</span>
+          </button>
+          <button type="button" class="rel-btn rel-btn-pdf" onclick="exportarControleGeralRelatorios('pdf')">
+            <div class="rel-spinner" id="relSpinnerControlePdf"></div>
+            <span id="relLabelControlePdf">📕 PDF</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="rel-export-card">
+        <div class="rel-export-card-title">🔍 Auditoria / Log</div>
+        <div class="rel-export-card-desc">
+          Exporta dados de auditoria e rastreabilidade registrados na sessão atual do sistema.
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button type="button" class="rel-btn rel-btn-excel" onclick="exportarAuditoriaRelatorios('excel')">
+            <div class="rel-spinner" id="relSpinnerAuditoriaExcel"></div>
+            <span id="relLabelAuditoriaExcel">📗 Excel</span>
+          </button>
+          <button type="button" class="rel-btn rel-btn-pdf" onclick="exportarAuditoriaRelatorios('pdf')">
+            <div class="rel-spinner" id="relSpinnerAuditoriaPdf"></div>
+            <span id="relLabelAuditoriaPdf">📕 PDF</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rel-panel">
+    <div class="rel-panel-header">
+      <div>
+        <h3 class="rel-panel-title">Resultado da Exportação</h3>
+        <div class="rel-panel-subtitle">O link do arquivo gerado aparecerá aqui</div>
+      </div>
+    </div>
+
+    <div id="relResultado" style="display:none;"></div>
+
+    <div id="relResultadoVazio" class="rel-result-empty">
+      📄 Nenhum relatório gerado ainda.<br>
+      Use os botões acima para exportar seus dados.
+    </div>
+  </div>
+
+  <div class="rel-panel">
+    <div class="rel-panel-header">
+      <div>
+        <h3 class="rel-panel-title">Histórico de Exportações</h3>
+        <div class="rel-panel-subtitle">Últimas exportações realizadas nesta sessão</div>
+      </div>
+    </div>
+
+    <div id="relHistoricoExportacoes">
+      <div class="rel-result-empty">
+        📊 Nenhuma exportação realizada ainda.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var relHistoricoExports = [];
+
+function showMsgRelatorios(texto, tipo) {
+  var el = document.getElementById("relMsgBox");
+  if (!el) return;
+
+  el.className = "rel-msg-box " + (tipo || "info") + " visible";
+  el.innerHTML = texto;
+
+  try {
+    el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  } catch (_) {}
+
+  setTimeout(function() {
+    el.classList.remove("visible");
+  }, 5000);
+}
+
+function setLoadingRelatorios(spinnerId, labelId, on, textOn, textOff) {
+  var spinner = document.getElementById(spinnerId);
+  var label = document.getElementById(labelId);
+
+  if (spinner) spinner.style.display = on ? "block" : "none";
+  if (label) label.textContent = on ? textOn : textOff;
+}
+
+function coletarFiltrosRelatorios() {
+  return {
+    dataInicio: document.getElementById("relInicio")
+      ? document.getElementById("relInicio").value
+      : "",
+
+    dataFim: document.getElementById("relFim")
+      ? document.getElementById("relFim").value
+      : "",
+
+    tipo: document.getElementById("relTipo")
+      ? document.getElementById("relTipo").value
+      : "",
+
+    escola: document.getElementById("relEscola")
+      ? document.getElementById("relEscola").value.trim()
+      : ""
+  };
+}
+
+function validarFiltrosRelatorios() {
+  var inicio = document.getElementById("relInicio").value;
+  var fim = document.getElementById("relFim").value;
+
+  if (inicio && fim && new Date(inicio) > new Date(fim)) {
+    showMsgRelatorios("❌ Data inicial não pode ser maior que data final!", "erro");
+    return false;
+  }
+
+  return true;
+}
+
+function aplicarFiltrosRelatorios() {
+  if (!validarFiltrosRelatorios()) return;
+
+  var filtros = coletarFiltrosRelatorios();
+  var lista = [];
+
+  if (filtros.dataInicio) lista.push("Data inicial: " + formatarDataRelatorios(filtros.dataInicio));
+  if (filtros.dataFim) lista.push("Data final: " + formatarDataRelatorios(filtros.dataFim));
+  if (filtros.tipo) lista.push("Tipo: " + filtros.tipo);
+  if (filtros.escola) lista.push("Escola: " + filtros.escola);
+
+  if (lista.length === 0) {
+    showMsgRelatorios("ℹ️ Nenhum filtro aplicado. Mostrando todos os dados.", "info");
+  } else {
+    showMsgRelatorios("✅ Filtros aplicados: " + lista.join(", "), "ok");
+  }
+
+  atualizarDadosRelatorios();
+}
+
+function limparFiltrosRelatorios() {
+  document.getElementById("relInicio").value = "";
+  document.getElementById("relFim").value = "";
+  document.getElementById("relTipo").value = "";
+  document.getElementById("relEscola").value = "";
+
+  showMsgRelatorios("🧹 Filtros limpos!", "info");
+  atualizarDadosRelatorios();
+}
+
+function atualizarDadosRelatorios() {
+  var filtros = coletarFiltrosRelatorios();
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (!res || res.erro || res.ok === false) {
+        showMsgRelatorios(
+          (res && res.mensagem) || "Não foi possível carregar o resumo.",
+          "erro"
+        );
+        return;
+      }
+
+      document.getElementById("relStatTotal").textContent = res.total || 0;
+      document.getElementById("relStatFiliacoes").textContent = res.filiacoes || 0;
+      document.getElementById("relStatDesfiliacoes").textContent = res.desfiliacoes || 0;
+      document.getElementById("relStatExportacoes").textContent = relHistoricoExports.length;
+    })
+    .withFailureHandler(function(err) {
+      showMsgRelatorios(
+        "Erro ao carregar resumo: " + ((err && err.message) || err || ""),
+        "erro"
+      );
+    })
+    .obterResumoRelatorios(filtros);
+}
+
+function exportarControleGeralRelatorios(formato) {
+  if (!validarFiltrosRelatorios()) return;
+
+  var filtros = coletarFiltrosRelatorios();
+  var tipo = formato.toUpperCase();
+
+  var spinnerId = "relSpinnerControle" + (formato === "excel" ? "Excel" : "Pdf");
+  var labelId = "relLabelControle" + (formato === "excel" ? "Excel" : "Pdf");
+
+  setLoadingRelatorios(
+    spinnerId,
+    labelId,
+    true,
+    "Gerando...",
+    tipo === "EXCEL" ? "📗 Excel" : "📕 PDF"
+  );
+
+  showMsgRelatorios(
+    "⏳ Gerando relatório de Controle Geral em " + tipo + "...",
+    "info"
+  );
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      setLoadingRelatorios(
+        spinnerId,
+        labelId,
+        false,
+        "Gerando...",
+        tipo === "EXCEL" ? "📗 Excel" : "📕 PDF"
+      );
+
+      if (!res || res.erro || res.ok === false) {
+        showMsgRelatorios(
+          (res && res.mensagem) || "Erro ao gerar relatório.",
+          "erro"
+        );
+        return;
+      }
+
+      exibirResultadoRelatorios(
+        "Controle Geral",
+        formato,
+        res.nomeArquivo || "Controle Geral",
+        res.url || "#",
+        res.registros || 0
+      );
+
+      adicionarHistoricoRelatorios(
+        "Controle Geral",
+        formato,
+        res.registros || 0
+      );
+
+      showMsgRelatorios(
+        "✅ Relatório de Controle Geral gerado com sucesso!",
+        "ok"
+      );
+
+      atualizarDadosRelatorios();
+    })
+    .withFailureHandler(function(err) {
+      setLoadingRelatorios(
+        spinnerId,
+        labelId,
+        false,
+        "Gerando...",
+        tipo === "EXCEL" ? "📗 Excel" : "📕 PDF"
+      );
+
+      showMsgRelatorios(
+        "Erro ao gerar relatório: " + ((err && err.message) || err || ""),
+        "erro"
+      );
+    })
+    .exportarControleGeralRelatorio(filtros, formato);
+}
+
+function exportarAuditoriaRelatorios(formato) {
+  if (!validarFiltrosRelatorios()) return;
+
+  var filtros = coletarFiltrosRelatorios();
+  var tipo = formato.toUpperCase();
+
+  var spinnerId = "relSpinnerAuditoria" + (formato === "excel" ? "Excel" : "Pdf");
+  var labelId = "relLabelAuditoria" + (formato === "excel" ? "Excel" : "Pdf");
+
+  setLoadingRelatorios(
+    spinnerId,
+    labelId,
+    true,
+    "Gerando...",
+    tipo === "EXCEL" ? "📗 Excel" : "📕 PDF"
+  );
+
+  showMsgRelatorios(
+    "⏳ Gerando relatório de Auditoria em " + tipo + "...",
+    "info"
+  );
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      setLoadingRelatorios(
+        spinnerId,
+        labelId,
+        false,
+        "Gerando...",
+        tipo === "EXCEL" ? "📗 Excel" : "📕 PDF"
+      );
+
+      if (!res || res.erro || res.ok === false) {
+        showMsgRelatorios(
+          (res && res.mensagem) || "Erro ao gerar auditoria.",
+          "erro"
+        );
+        return;
+      }
+
+      exibirResultadoRelatorios(
+        "Auditoria / Log",
+        formato,
+        res.nomeArquivo || "Auditoria",
+        res.url || "#",
+        res.registros || 0
+      );
+
+      adicionarHistoricoRelatorios(
+        "Auditoria / Log",
+        formato,
+        res.registros || 0
+      );
+
+      showMsgRelatorios(
+        "✅ Relatório de Auditoria gerado com sucesso!",
+        "ok"
+      );
+
+      atualizarDadosRelatorios();
+    })
+    .withFailureHandler(function(err) {
+      setLoadingRelatorios(
+        spinnerId,
+        labelId,
+        false,
+        "Gerando...",
+        tipo === "EXCEL" ? "📗 Excel" : "📕 PDF"
+      );
+
+      showMsgRelatorios(
+        "Erro ao gerar auditoria: " + ((err && err.message) || err || ""),
+        "erro"
+      );
+    })
+    .exportarAuditoriaRelatorio(filtros, formato);
+}
+
+function exibirResultadoRelatorios(tipoRelatorio, formato, nomeArquivo, url, registros) {
+  var formatoBadge = formato === "excel" ? "excel" : "pdf";
+  var icone = formato === "excel" ? "📗" : "📕";
+
+  var html = '<div class="rel-result-success">';
+  html += '<div class="rel-result-title">' + icone + ' ' + tipoRelatorio + ' - ' + formato.toUpperCase() + '</div>';
+  html += '<div class="rel-result-info">';
+  html += '<strong>Arquivo:</strong> ' + nomeArquivo + '<br>';
+  html += '<strong>Registros:</strong> ' + registros + '<br>';
+  html += '<strong>Formato:</strong> <span class="rel-badge ' + formatoBadge + '">' + formato.toUpperCase() + '</span><br>';
+  html += '<strong>Data:</strong> ' + formatarDataHoraRelatorios(new Date());
+  html += '</div>';
+  html += '<a href="' + url + '" target="_blank" class="rel-result-link">📥 Abrir Arquivo</a>';
+  html += '</div>';
+
+  document.getElementById("relResultado").innerHTML = html;
+  document.getElementById("relResultado").style.display = "block";
+  document.getElementById("relResultadoVazio").style.display = "none";
+}
+
+function adicionarHistoricoRelatorios(tipoRelatorio, formato, registros) {
+  relHistoricoExports.unshift({
+    tipo: tipoRelatorio,
+    formato: formato,
+    registros: registros,
+    data: new Date()
+  });
+
+  if (relHistoricoExports.length > 10) {
+    relHistoricoExports = relHistoricoExports.slice(0, 10);
+  }
+
+  renderizarHistoricoRelatorios();
+}
+
+function renderizarHistoricoRelatorios() {
+  var container = document.getElementById("relHistoricoExportacoes");
+
+  if (!container) return;
+
+  if (relHistoricoExports.length === 0) {
+    container.innerHTML = '<div class="rel-result-empty">📊 Nenhuma exportação realizada ainda.</div>';
+    return;
+  }
+
+  var html = "";
+
+  relHistoricoExports.forEach(function(item) {
+    var formatoBadge = item.formato === "excel" ? "excel" : "pdf";
+    var icone = item.formato === "excel" ? "📗" : "📕";
+
+    html += '<div class="rel-historico-item">';
+    html += '<div class="rel-historico-header">';
+    html += '<div class="rel-historico-title">' + icone + ' ' + item.tipo + '</div>';
+    html += '<div class="rel-historico-time">' + formatarDataHoraRelatorios(item.data) + '</div>';
+    html += '</div>';
+    html += '<div class="rel-historico-info">';
+    html += 'Formato: <span class="rel-badge ' + formatoBadge + '">' + item.formato.toUpperCase() + '</span> · ';
+    html += 'Registros: <strong>' + item.registros + '</strong>';
+    html += '</div>';
+    html += '</div>';
+  });
+
+  container.innerHTML = html;
+}
+
+function formatarDataRelatorios(data) {
+  if (!data) return "";
+
+  var d = new Date(data + "T00:00:00");
+  var dia = ("0" + d.getDate()).slice(-2);
+  var mes = ("0" + (d.getMonth() + 1)).slice(-2);
+  var ano = d.getFullYear();
+
+  return dia + "/" + mes + "/" + ano;
+}
+
+function formatarDataHoraRelatorios(data) {
+  var d = new Date(data);
+  var dia = ("0" + d.getDate()).slice(-2);
+  var mes = ("0" + (d.getMonth() + 1)).slice(-2);
+  var ano = d.getFullYear();
+  var hora = ("0" + d.getHours()).slice(-2);
+  var min = ("0" + d.getMinutes()).slice(-2);
+
+  return dia + "/" + mes + "/" + ano + " às " + hora + ":" + min;
+}
+
+function definirDatasPadraoRelatorios() {
+  var hoje = new Date();
+  var primeiroDia = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+
+  document.getElementById("relInicio").value = primeiroDia.toISOString().split("T")[0];
+  document.getElementById("relFim").value = hoje.toISOString().split("T")[0];
+}
+
+window.initRelatorios = function() {
+  definirDatasPadraoRelatorios();
+  atualizarDadosRelatorios();
+  renderizarHistoricoRelatorios();
+  showMsgRelatorios("ℹ️ Sistema de relatórios carregado. Filtros definidos para o mês atual.", "info");
+};
+
+document.addEventListener("DOMContentLoaded", function() {
+  if (typeof window.initRelatorios === "function") {
+    window.initRelatorios();
+  }
+});
+</script>

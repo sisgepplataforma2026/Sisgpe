@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enviar Nota Fiscal — SindEducação-ES</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: linear-gradient(135deg, #001f4d 0%, #002f6c 50%, #1565C0 100%);
+      min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px;
+    }
+    .card { background: #fff; border-radius: 20px; box-shadow: 0 32px 80px rgba(0,10,40,.35); width: 100%; max-width: 560px; overflow: hidden; }
+    .card-header { background: #001f4d; padding: 24px 28px; border-bottom: 4px solid #1565C0; }
+    .card-header-title { font-size: 18px; font-weight: 900; color: #fff; }
+    .card-header-sub   { font-size: 11px; color: rgba(255,255,255,.55); margin-top: 4px; }
+    .card-body  { padding: 28px; }
+    .card-footer { background: #f8fafc; padding: 14px 28px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 11px; color: #94a3b8; }
+
+    .info-box { background: #eff6ff; border: 1px solid #93c5fd; border-left: 4px solid #1565C0; border-radius: 10px; padding: 16px 18px; margin-bottom: 24px; }
+    .info-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; font-size: 14px; }
+    .info-label { color: #475569; font-weight: 600; }
+    .info-value { color: #0f172a; font-weight: 700; }
+    .info-valor { font-size: 18px; color: #1565C0; }
+
+    .field { display: flex; flex-direction: column; gap: 7px; margin-bottom: 20px; }
+    .field label { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #64748b; }
+    .field textarea {
+      width: 100%; min-height: 100px; border-radius: 12px; border: 1.5px solid #cbd5e1;
+      background: #fff; color: #1e293b; font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 14px; padding: 13px 14px; outline: none; resize: vertical; line-height: 1.6;
+      transition: border-color .16s, box-shadow .16s;
+    }
+    .field textarea:focus { border-color: #1565C0; box-shadow: 0 0 0 4px rgba(21,101,192,.10); }
+    .field textarea::placeholder { color: #94a3b8; }
+
+    .upload-area {
+      border: 2px dashed #93c5fd; border-radius: 14px; padding: 28px 20px;
+      text-align: center; cursor: pointer; transition: all .2s; background: #f8fafc; position: relative;
+    }
+    .upload-area:hover { border-color: #1565C0; background: #eff6ff; }
+    .upload-area input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .upload-icon  { font-size: 32px; margin-bottom: 8px; }
+    .upload-texto { font-size: 14px; font-weight: 700; color: #334155; margin-bottom: 4px; }
+    .upload-sub   { font-size: 12px; color: #94a3b8; }
+
+    .lista-arquivos { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .arquivo-item {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      background: #f0fdf4; border: 1px solid #6ee7b7; border-radius: 10px;
+      padding: 10px 14px; font-size: 13px; font-weight: 600; color: #065f46;
+    }
+    .arquivo-item-nome { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .arquivo-item-remover {
+      background: none; border: none; cursor: pointer; color: #dc2626;
+      font-size: 16px; font-weight: 900; padding: 0 4px; line-height: 1;
+    }
+    .arquivo-item-remover:hover { color: #991b1b; }
+
+    .contador-arquivos {
+      font-size: 12px; font-weight: 700; color: #475569;
+      background: #f1f5f9; border-radius: 8px; padding: 6px 12px;
+      margin-top: 8px; text-align: center;
+    }
+
+    .btn {
+      width: 100%; height: 52px; border: none; border-radius: 14px;
+      font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; font-weight: 800;
+      cursor: pointer; transition: all .18s;
+    }
+    .btn-enviar { background: linear-gradient(135deg, #1565C0, #003b82); color: #fff; box-shadow: 0 8px 24px rgba(21,101,192,.35); }
+    .btn-enviar:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(21,101,192,.45); }
+    .btn-enviar:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+
+    .progress-bar { height: 6px; background: #e2e8f0; border-radius: 999px; overflow: hidden; margin-bottom: 16px; display: none; }
+    .progress-bar-inner { height: 100%; background: linear-gradient(90deg, #1565C0, #3b82f6); border-radius: 999px; width: 0%; transition: width .4s ease; }
+
+    .msg { border-radius: 12px; padding: 14px 16px; font-size: 13px; font-weight: 600; margin-bottom: 18px; line-height: 1.5; }
+    .msg.erro { background: #fee2e2; border: 1px solid #fca5a5; color: #9f1239; }
+    .msg.ok   { background: #d1fae5; border: 1px solid #6ee7b7; color: #065f46; }
+    .msg.info { background: #eff6ff; border: 1px solid #93c5fd; color: #1d4ed8; }
+
+    .success-state { text-align: center; padding: 20px 0; }
+    .check-circle {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: linear-gradient(135deg, #1565C0, #003b82);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px; box-shadow: 0 12px 32px rgba(21,101,192,.35); font-size: 36px;
+    }
+    .success-title { font-size: 22px; font-weight: 900; color: #001f4d; margin-bottom: 10px; }
+    .success-sub   { font-size: 14px; color: #475569; line-height: 1.7; }
+
+    .skeleton { background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 8px; height: 20px; margin: 8px 0; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="card-header">
+    <div class="card-header-title">📋 Enviar Nota Fiscal</div>
+    <div class="card-header-sub">SindEducação-ES · SISGEP</div>
+  </div>
+
+  <div class="card-body">
+
+    <div id="estadoCarregando">
+      <div class="skeleton" style="width:60%;height:14px;"></div>
+      <div class="skeleton" style="width:100%;height:80px;margin-top:12px;"></div>
+      <div class="skeleton" style="width:80%;height:14px;margin-top:12px;"></div>
+    </div>
+
+    <div id="estadoFormulario" style="display:none;">
+      <div id="msgBox" class="msg" style="display:none;"></div>
+
+      <p style="color:#475569;margin-bottom:18px;font-size:14px;line-height:1.7;">
+        Olá! Por favor, envie sua(s) nota(s) fiscal(is) referente(s) ao serviço abaixo.
+        Após o envio, nossa equipe será notificada automaticamente.
+      </p>
+
+      <div class="info-box" id="infoGuia"></div>
+
+      <!-- Upload múltiplo -->
+      <div class="field">
+        <label>Notas Fiscais (PDF ou imagem)</label>
+        <div class="upload-area" id="uploadArea">
+          <input type="file" id="inputArquivo" accept=".pdf,.jpg,.jpeg,.png" multiple>
+          <div class="upload-icon">📎</div>
+          <div class="upload-texto">Clique aqui ou arraste os arquivos</div>
+          <div class="upload-sub">PDF, JPG ou PNG · máximo 10MB por arquivo · vários arquivos permitidos</div>
+        </div>
+        <div class="lista-arquivos" id="listaArquivos"></div>
+        <div class="contador-arquivos" id="contadorArquivos" style="display:none;"></div>
+      </div>
+
+      <!-- Campo de texto -->
+      <div class="field">
+        <label>Observações (opcional)</label>
+        <textarea id="campoTexto" placeholder="Informe aqui qualquer observação relevante sobre esta nota fiscal, como número da NF, competência, valor, etc."></textarea>
+      </div>
+
+      <!-- Barra de progresso -->
+      <div class="progress-bar" id="progressBar">
+        <div class="progress-bar-inner" id="progressBarInner"></div>
+      </div>
+
+      <button type="button" class="btn btn-enviar" id="btnEnviar" disabled>
+        📤 Enviar Nota(s) Fiscal(is)
+      </button>
+    </div>
+
+    <div id="estadoJaEnviado" style="display:none;">
+      <div class="msg ok">✅ A nota fiscal desta guia já foi enviada anteriormente.</div>
+      <p style="color:#475569;font-size:13px;">Se precisar de ajuda: <strong>financeiro@sindeducacao.com</strong></p>
+    </div>
+
+    <div id="estadoErro" style="display:none;">
+      <div class="msg erro">⚠️ <span id="textoErro">Link inválido ou expirado.</span></div>
+      <p style="color:#475569;font-size:13px;line-height:1.7;">
+        Entre em contato:<br>
+        <strong>financeiro@sindeducacao.com</strong> · (27) 99813-5965
+      </p>
+    </div>
+
+    <div id="estadoSucesso" style="display:none;" class="success-state">
+      <div class="check-circle">📋</div>
+      <div class="success-title">Nota(s) Fiscal(is) Enviada(s)!</div>
+      <p class="success-sub" id="textoSucesso">Arquivo(s) recebido(s) com sucesso.<br>Nossa equipe foi notificada automaticamente.</p>
+    </div>
+
+  </div>
+
+  <div class="card-footer">SindEducação-ES · SISGEP · Sistema de Gestão de Processos</div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var _arquivos = [];
+  var MAX_TAMANHO = 10 * 1024 * 1024;
+
+  function g(id){ return document.getElementById(id); }
+
+  function mostrarEstado(estado){
+    ["estadoCarregando","estadoFormulario","estadoJaEnviado","estadoErro","estadoSucesso"]
+      .forEach(function(id){ var el=g(id); if(el) el.style.display="none"; });
+    var el = g(estado); if(el) el.style.display="";
+  }
+
+  function getToken(){
+    try { return new URL(window.location.href).searchParams.get("token") || ""; }
+    catch(e){ var m=window.location.search.match(/[?&]token=([^&]+)/); return m?decodeURIComponent(m[1]):""; }
+  }
+
+  function msg(texto, tipo){
+    var box = g("msgBox"); if(!box) return;
+    box.textContent = texto || "";
+    box.className   = "msg " + (tipo||"info");
+    box.style.display = texto ? "" : "none";
+  }
+
+  function atualizarLista(){
+    var lista    = g("listaArquivos");
+    var contador = g("contadorArquivos");
+    var btn      = g("btnEnviar");
+    if(!lista) return;
+
+    if(!_arquivos.length){
+      lista.innerHTML = "";
+      if(contador) contador.style.display = "none";
+      if(btn) btn.disabled = true;
+      return;
+    }
+
+    lista.innerHTML = _arquivos.map(function(f, i){
+      return '<div class="arquivo-item">' +
+        '<span style="font-size:16px;">📄</span>' +
+        '<span class="arquivo-item-nome">' + f.name + ' (' + (f.size/1024).toFixed(0) + ' KB)</span>' +
+        '<button type="button" class="arquivo-item-remover" onclick="removerArquivo(' + i + ')">✕</button>' +
+      '</div>';
+    }).join("");
+
+    if(contador){
+      contador.style.display = "";
+      contador.textContent   = _arquivos.length + " arquivo(s) selecionado(s)";
+    }
+    if(btn) btn.disabled = false;
+  }
+
+  window.removerArquivo = function(i){
+    _arquivos.splice(i, 1);
+    atualizarLista();
+  };
+
+  function setProgresso(pct){
+    var bar  = g("progressBar");
+    var inner= g("progressBarInner");
+    if(!bar||!inner) return;
+    if(pct <= 0){ bar.style.display="none"; inner.style.width="0%"; return; }
+    bar.style.display = "";
+    inner.style.width = pct + "%";
+  }
+
+  var TOKEN = getToken();
+
+  if(!TOKEN){
+    mostrarEstado("estadoErro");
+    if(g("textoErro")) g("textoErro").textContent = "Token não encontrado na URL.";
+    return;
+  }
+
+  // Carrega dados da guia
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){
+        if(resp&&resp.jaEnviado){ mostrarEstado("estadoJaEnviado"); return; }
+        mostrarEstado("estadoErro");
+        if(g("textoErro")) g("textoErro").textContent=(resp&&resp.mensagem)||"Link inválido.";
+        return;
+      }
+      var infoHtml =
+        '<div class="info-row"><span class="info-label">Prestador</span><span class="info-value">'+(resp.nome||"—")+'</span></div>'+
+        '<div class="info-row"><span class="info-label">Valor</span><span class="info-value info-valor">'+(resp.valor||"—")+'</span></div>'+
+        '<div class="info-row"><span class="info-label">Vencimento</span><span class="info-value">'+(resp.vencimento||"—")+'</span></div>'+
+        (resp.numeroGuia?'<div class="info-row"><span class="info-label">Nº Guia</span><span class="info-value">'+resp.numeroGuia+'</span></div>':'')+
+        (resp.descricao?'<div class="info-row" style="margin-top:8px;padding-top:8px;border-top:1px solid #bfdbfe;"><span class="info-label">Descrição</span><span class="info-value" style="font-weight:500;text-align:right;max-width:280px;">'+resp.descricao+'</span></div>':'');
+      if(g("infoGuia")) g("infoGuia").innerHTML = infoHtml;
+      mostrarEstado("estadoFormulario");
+    })
+    .withFailureHandler(function(err){
+      mostrarEstado("estadoErro");
+      if(g("textoErro")) g("textoErro").textContent="Erro ao carregar: "+((err&&err.message)||"Tente novamente.");
+    })
+    .obterDadosGuiaPorTokenNF(TOKEN);
+
+  // Seleção de arquivos
+  var inputArq = g("inputArquivo");
+  if(inputArq){
+    inputArq.addEventListener("change", function(){
+      var novos = Array.from(this.files || []);
+      var erros = [];
+      novos.forEach(function(f){
+        if(f.size > MAX_TAMANHO){ erros.push(f.name + " excede 10MB."); return; }
+        var jaExiste = _arquivos.some(function(e){ return e.name===f.name && e.size===f.size; });
+        if(!jaExiste) _arquivos.push(f);
+      });
+      if(erros.length) msg(erros.join(" "), "erro");
+      else msg("","");
+      atualizarLista();
+      this.value = "";
+    });
+  }
+
+  // Enviar
+  var btnEnviar = g("btnEnviar");
+  if(btnEnviar){
+    btnEnviar.addEventListener("click", function(){
+      if(!_arquivos.length){ msg("Selecione pelo menos um arquivo.", "erro"); return; }
+
+      btnEnviar.disabled = true;
+      btnEnviar.textContent = "⏳ Preparando arquivos...";
+      msg("Processando arquivos...","info");
+      setProgresso(10);
+
+      var texto = g("campoTexto") ? String(g("campoTexto").value||"").trim() : "";
+
+      // Lê todos os arquivos em paralelo
+      var total    = _arquivos.length;
+      var lidos    = 0;
+      var resultado = [];
+
+      _arquivos.forEach(function(file, i){
+        var reader = new FileReader();
+        reader.onload = function(e){
+          resultado[i] = {
+            base64: e.target.result.split(",")[1],
+            nome:   file.name,
+            tipo:   file.type || "application/pdf"
+          };
+          lidos++;
+          setProgresso(10 + Math.floor((lidos/total) * 50));
+
+          if(lidos < total) return;
+
+          // Todos lidos — envia
+          btnEnviar.textContent = "⏳ Enviando...";
+          setProgresso(70);
+          msg("Enviando para o servidor...","info");
+
+          google.script.run
+            .withSuccessHandler(function(resp){
+              setProgresso(100);
+              setTimeout(function(){ setProgresso(0); }, 800);
+              if(!resp||!resp.ok){
+                btnEnviar.disabled = false;
+                btnEnviar.textContent = "📤 Enviar Nota(s) Fiscal(is)";
+                msg((resp&&resp.mensagem)||"Erro ao enviar.","erro");
+                return;
+              }
+              if(g("textoSucesso")){
+                g("textoSucesso").innerHTML =
+                  total + " arquivo(s) enviado(s) com sucesso.<br>Nossa equipe foi notificada automaticamente.";
+              }
+              mostrarEstado("estadoSucesso");
+            })
+            .withFailureHandler(function(err){
+              setProgresso(0);
+              btnEnviar.disabled = false;
+              btnEnviar.textContent = "📤 Enviar Nota(s) Fiscal(is)";
+              msg("Erro: "+((err&&err.message)||"Tente novamente."),"erro");
+            })
+            .receberUploadNF(TOKEN, { arquivos: resultado, texto: texto });
+        };
+        reader.onerror = function(){
+          msg("Erro ao ler o arquivo: " + file.name, "erro");
+          btnEnviar.disabled = false;
+          btnEnviar.textContent = "📤 Enviar Nota(s) Fiscal(is)";
+          setProgresso(0);
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+  }
+
+})();
+</script>
+</body>
+</html>
