@@ -1341,6 +1341,175 @@ window.aplicarFiltroMonitoramento = aplicarFiltroMonitoramento;
 window.marcarStatusMon = marcarStatusMon;
 window.carregarMonitoramento = carregarMonitoramento;
 
+/* ═══════════════════════════════════════════════════════
+   DESFILIAÇÃO VIA IA — leitura de carta escaneada/foto
+   Nada aqui grava ou envia nada sozinho: "Analisar carta" só sugere;
+   "Confirmar desfiliação" só age depois que o atendente revisar os campos.
+   ═══════════════════════════════════════════════════════ */
+var desfIA_estado = { arquivoBase64: "", arquivoTipo: "", escolas: [] };
+
+function desfIA_setModo(modo) {
+  var areaUpload = $("desfIA_areaUpload");
+  var secaoPadrao = $("secaoOficioPadrao");
+  var btnManual = $("btnModoManualDesf"), btnIA = $("btnModoIADesf");
+  if (modo === "ia") {
+    if (areaUpload) areaUpload.style.display = "block";
+    if (secaoPadrao) secaoPadrao.style.display = "none";
+  } else {
+    if (areaUpload) areaUpload.style.display = "none";
+    if (secaoPadrao) secaoPadrao.style.display = "";
+  }
+}
+
+function desfIA_atualizarVisibilidade() {
+  var tipo = $("tipo");
+  var bloco = $("blocoDesfiliacaoIA");
+  if (!tipo || !bloco) return;
+  var ehDesfiliacao = tipo.value === "Desfiliação";
+  bloco.style.display = ehDesfiliacao ? "block" : "none";
+  if (!ehDesfiliacao) desfIA_setModo("manual");
+}
+
+function desfIA_initListener() {
+  var tipo = $("tipo");
+  if (tipo && !tipo.dataset.iaDescBound) {
+    tipo.dataset.iaDescBound = "1";
+    tipo.addEventListener("change", desfIA_atualizarVisibilidade);
+  }
+}
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", desfIA_initListener);
+else desfIA_initListener();
+
+function desfIA_analisar() {
+  var input = $("desfIA_arquivo");
+  var status = $("desfIA_status");
+  var btn = $("desfIA_btnAnalisar");
+  if (!input || !input.files || !input.files.length) { toast("Selecione um arquivo primeiro.", "warn"); return; }
+
+  var arquivo = input.files[0];
+  if (btn) { btn.disabled = true; btn.textContent = "⏳ Lendo documento..."; }
+  if (status) status.textContent = "Fazendo OCR e extraindo dados — pode levar alguns segundos...";
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var base64 = e.target.result.split(",")[1];
+    desfIA_estado.arquivoBase64 = base64;
+    desfIA_estado.arquivoTipo = arquivo.type || "application/pdf";
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (btn) { btn.disabled = false; btn.textContent = "🔎 Analisar carta"; }
+        if (!res || !res.sucesso) {
+          if (status) status.textContent = "";
+          toast((res && res.mensagem) || "Não foi possível analisar o documento.", "err");
+          return;
+        }
+        desfIA_renderRevisao(res);
+      })
+      .withFailureHandler(function(err) {
+        if (btn) { btn.disabled = false; btn.textContent = "🔎 Analisar carta"; }
+        if (status) status.textContent = "";
+        toast("Erro ao analisar: " + ((err && err.message) || err), "err");
+      })
+      .analisarCartaDesfiliacaoIA(base64, arquivo.name, arquivo.type || "application/pdf", SISGEP_TOKEN_SESSAO);
+  };
+  reader.onerror = function() { if (btn) { btn.disabled = false; btn.textContent = "🔎 Analisar carta"; } toast("Erro ao ler o arquivo.", "err"); };
+  reader.readAsDataURL(arquivo);
+}
+
+function desfIA_renderRevisao(res) {
+  var status = $("desfIA_status");
+  if (status) status.textContent = "";
+
+  var d = res.dados || {};
+  desfIA_estado.escolas = res.sugestaoEscolas || [];
+
+  var nomeEl = $("desfIA_nome"), cpfEl = $("desfIA_cpf"), motivoEl = $("desfIA_motivo"), escolaSel = $("desfIA_escola");
+  if (nomeEl) nomeEl.value = d.nome || "";
+  if (cpfEl) cpfEl.value = d.cpfFormatado || d.cpf || "";
+  if (motivoEl) motivoEl.value = d.motivo || "";
+
+  if (escolaSel) {
+    escolaSel.innerHTML = "<option value=''>Selecione a escola...</option>" +
+      desfIA_estado.escolas.map(function(e, i) {
+        return "<option value='" + i + "'>" + (e.nome || "") + (e.cidade ? " — " + e.cidade : "") + "</option>";
+      }).join("");
+    if (!desfIA_estado.escolas.length && d.escolaTexto) {
+      escolaSel.innerHTML += "<option value='' disabled>Nenhuma correspondência para \"" + d.escolaTexto + "\" — busque manualmente</option>";
+    }
+  }
+
+  var alertasEl = $("desfIA_alertas");
+  if (alertasEl) {
+    var alertas = res.alertas || [];
+    alertasEl.innerHTML = alertas.length
+      ? alertas.map(function(a) {
+          return "<div style='background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:12px;color:#92400e;'>⚠ " + a + "</div>";
+        }).join("")
+      : "<div style='background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:8px 12px;font-size:12px;color:#166534;'>✅ Nenhuma pendência encontrada na conferência automática.</div>";
+
+    if (d.observacoesLeitura) {
+      var obsDiv = document.createElement("div");
+      obsDiv.style.cssText = "background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 12px;margin-top:6px;font-size:12px;color:#1e3a8a;";
+      obsDiv.textContent = "📝 Observações da leitura: " + d.observacoesLeitura;
+      alertasEl.appendChild(obsDiv);
+    }
+  }
+
+  var revisao = $("desfIA_revisao");
+  if (revisao) revisao.style.display = "block";
+}
+
+function desfIA_confirmar(confirmarDuplicata) {
+  var nomeEl = $("desfIA_nome"), cpfEl = $("desfIA_cpf"), motivoEl = $("desfIA_motivo"), escolaSel = $("desfIA_escola");
+  var idxEscola = escolaSel ? escolaSel.value : "";
+  if (idxEscola === "") { toast("Selecione a escola antes de confirmar.", "warn"); return; }
+  var escola = desfIA_estado.escolas[parseInt(idxEscola, 10)];
+  if (!escola) { toast("Escola inválida — selecione novamente.", "warn"); return; }
+
+  var payload = {
+    nome: nomeEl ? nomeEl.value : "",
+    cpf: cpfEl ? cpfEl.value : "",
+    motivo: motivoEl ? motivoEl.value : "",
+    escolaTexto: escola.nome,
+    escolaNome: escola.nome,
+    escolaCnpj: escola.cnpj,
+    escolaEmail: escola.emailPrincipal || escola.emailsTodos || "",
+    escolaUnidade: escola.unidade || "",
+    cartaBase64: desfIA_estado.arquivoBase64,
+    cartaTipo: desfIA_estado.arquivoTipo,
+    confirmarDuplicata: !!confirmarDuplicata
+  };
+
+  var btn = $("desfIA_btnConfirmar");
+  if (btn) { btn.disabled = true; btn.textContent = "⏳ Processando..."; }
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res && res.duplicataDetectada) {
+        var msg = (res.mensagem || "Possível ofício duplicado detectado.") + "\n\nDeseja gerar mesmo assim?";
+        if (window.confirm(msg)) { desfIA_confirmar(true); return; }
+        if (btn) { btn.disabled = false; btn.textContent = "✅ Confirmar e gerar ofício de desfiliação"; }
+        toast("Confirmação cancelada.", "warn");
+        return;
+      }
+      if (btn) { btn.disabled = false; btn.textContent = "✅ Confirmar e gerar ofício de desfiliação"; }
+      if (!res || !res.sucesso) { toast((res && res.mensagem) || "Falha ao confirmar.", "err"); return; }
+      toast(res.mensagem || "Desfiliação processada.", "ok");
+      if (res.avisos && res.avisos.length) res.avisos.forEach(function(a) { toast(a, "warn"); });
+      finalizarPosEmissao({ numero: res.numeroOficio, url: res.urlOficio });
+    })
+    .withFailureHandler(function(err) {
+      if (btn) { btn.disabled = false; btn.textContent = "✅ Confirmar e gerar ofício de desfiliação"; }
+      toast("Erro: " + ((err && err.message) || err), "err");
+    })
+    .confirmarDesfiliacaoIA(payload, SISGEP_TOKEN_SESSAO);
+}
+
+window.desfIA_setModo = desfIA_setModo;
+window.desfIA_analisar = desfIA_analisar;
+window.desfIA_confirmar = desfIA_confirmar;
+
 })();
 </script>
 

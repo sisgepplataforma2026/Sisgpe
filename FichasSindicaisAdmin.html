@@ -42,6 +42,7 @@
 
   <div class="fsa-barra">
     <input id="fsaBusca" placeholder="Buscar por nome, CPF, matrícula ou escola…" oninput="fsaRender()">
+    <button class="fsa-btn-atualizar" onclick="fsaPapelAbrirModal()">📎 Importar formulário em papel</button>
     <button class="fsa-btn-atualizar" onclick="carregarFichasPendentes()">↻ Atualizar</button>
   </div>
 
@@ -122,6 +123,104 @@
       </div>
 
       <div class="fsa-msg" id="fsaModalMsg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================ MODAL IMPORTAR FORMULÁRIO EM PAPEL (via IA) ================
+     Fluxo: anexa o formulário escaneado/foto → IA extrai os campos → atendente
+     revisa e corrige tudo → confirma. Nada é gravado antes da confirmação.
+     A ficha entra como ASSINADA (assinatura física, não OTP) e ainda precisa
+     ser aprovada normalmente (mesmo botão "Aprovar e encaminhar" de sempre). -->
+<div id="fsaPapelModal" class="fsa-modal">
+  <div class="fsa-modal-caixa">
+
+    <div class="fsa-modal-topo">
+      <div>
+        <div class="fsa-modal-titulo">Importar formulário em papel</div>
+        <div class="fsa-modal-sub">Leitura por IA do Formulário de Sindicalização escaneado</div>
+      </div>
+      <button class="fsa-modal-fechar" onclick="fsaPapelFecharModal()" aria-label="Fechar">✕</button>
+    </div>
+
+    <div class="fsa-passos">
+      <span class="fsa-passo fsa-passo-ativo" id="fsaPapelPasso1">1 · Anexar</span>
+      <span class="fsa-passo" id="fsaPapelPasso2">2 · Revisar dados</span>
+      <span class="fsa-passo" id="fsaPapelPasso3">3 · Concluído</span>
+    </div>
+
+    <div class="fsa-modal-corpo">
+
+      <!-- ETAPA 1 — UPLOAD -->
+      <div id="fsaPapelEtapa1" class="fsa-etapa fsa-etapa-ativa">
+        <div class="fsa-aviso">
+          Anexe o formulário de sindicalização impresso e preenchido (PDF escaneado ou foto).
+          A IA vai ler os campos, mas todos ficam abertos para você conferir e corrigir antes
+          de qualquer gravação.
+        </div>
+        <label class="fsa-label">Arquivo do formulário</label>
+        <input type="file" id="fsaPapelArquivo" class="fsa-input" accept=".pdf,.jpg,.jpeg,.png">
+        <div class="fsa-modal-acoes">
+          <button class="fsa-btn-pri" id="fsaPapelBtnAnalisar" onclick="fsaPapelAnalisar()">🔎 Analisar formulário</button>
+        </div>
+        <div id="fsaPapelStatus" style="margin-top:10px;font-size:12.5px;color:#64748b;"></div>
+      </div>
+
+      <!-- ETAPA 2 — REVISÃO -->
+      <div id="fsaPapelEtapa2" class="fsa-etapa">
+        <div id="fsaPapelAlertas" style="margin-bottom:12px;"></div>
+
+        <label class="fsa-label">Tipo</label>
+        <select id="fsaPapelTipo" class="fsa-input">
+          <option value="CADASTRAMENTO">Cadastramento</option>
+          <option value="RECADASTRAMENTO">Recadastramento</option>
+        </select>
+
+        <label class="fsa-label">Nome completo</label>
+        <input type="text" id="fsaPapelNome" class="fsa-input">
+
+        <label class="fsa-label">CPF</label>
+        <input type="text" id="fsaPapelCpf" class="fsa-input">
+
+        <label class="fsa-label">Escola (selecione a correspondência correta)</label>
+        <select id="fsaPapelEscola" class="fsa-input"></select>
+
+        <label class="fsa-label">Cargo</label>
+        <input type="text" id="fsaPapelCargo" class="fsa-input">
+
+        <label class="fsa-label">Celular / WhatsApp</label>
+        <input type="text" id="fsaPapelCelular" class="fsa-input">
+
+        <label class="fsa-label">E-mail</label>
+        <input type="text" id="fsaPapelEmail" class="fsa-input">
+
+        <label class="fsa-label">Endereço</label>
+        <input type="text" id="fsaPapelEndereco" class="fsa-input">
+
+        <label class="fsa-label" style="display:flex;align-items:center;gap:8px;margin-top:14px;">
+          <input type="checkbox" id="fsaPapelConfirmado" style="width:auto;">
+          Conferi os dados acima contra o documento original.
+        </label>
+
+        <div class="fsa-modal-acoes">
+          <button class="fsa-btn-sec" onclick="fsaPapelVoltarEtapa1()">← Anexar outro arquivo</button>
+          <button class="fsa-btn-pri" id="fsaPapelBtnConfirmar" onclick="fsaPapelConfirmar()">✓ Confirmar e registrar ficha</button>
+        </div>
+      </div>
+
+      <!-- ETAPA 3 — CONCLUÍDO -->
+      <div id="fsaPapelEtapa3" class="fsa-etapa">
+        <div class="fsa-sucesso">
+          <div class="fsa-sucesso-selo">✓</div>
+          <h3>Ficha registrada</h3>
+          <div id="fsaPapelSucessoDados" class="fsa-sucesso-dados"></div>
+        </div>
+        <div class="fsa-modal-acoes fsa-acoes-final">
+          <button class="fsa-btn-pri" onclick="fsaPapelFecharModal(); carregarFichasPendentes();">Ver na lista de fichas</button>
+        </div>
+      </div>
+
+      <div class="fsa-msg" id="fsaPapelModalMsg"></div>
     </div>
   </div>
 </div>
@@ -690,5 +789,164 @@ function fsaRejeitar(idFicha){
     if(idCarregando) esconderCarregando(idCarregando);
     if(window.mostrarErro) mostrarErro('Erro: '+erro); else alert('Erro: '+erro);
   }).rejeitarFichaSindicalizacao(idFicha, motivo, fsaUsuarioAtual_());
+}
+
+/* ===================== IMPORTAR FORMULÁRIO EM PAPEL (IA) =====================
+   Nada aqui grava nada sozinho: "Analisar formulário" só sugere; "Confirmar e
+   registrar ficha" só age depois que o atendente revisar os campos e marcar
+   a caixa de conferência. A ficha criada ainda precisa ser aprovada pelo
+   fluxo normal (fsaAbrirModal / aprovarFichaSindicalizacao). */
+
+var FSA_PAPEL_ARQUIVO = { base64: '', tipo: '', extensao: '' };
+var FSA_PAPEL_ESCOLAS = [];
+
+function fsaPapelAbrirModal(){
+  FSA_PAPEL_ARQUIVO = { base64: '', tipo: '', extensao: '' };
+  FSA_PAPEL_ESCOLAS = [];
+  var input = document.getElementById('fsaPapelArquivo'); if (input) input.value = '';
+  var status = document.getElementById('fsaPapelStatus'); if (status) status.textContent = '';
+  fsaPapelIrEtapa(1);
+  document.getElementById('fsaPapelModal').classList.add('fsa-aberto');
+}
+
+function fsaPapelFecharModal(){
+  document.getElementById('fsaPapelModal').classList.remove('fsa-aberto');
+}
+
+function fsaPapelIrEtapa(n){
+  [1,2,3].forEach(function(i){
+    var et=document.getElementById('fsaPapelEtapa'+i);
+    var ps=document.getElementById('fsaPapelPasso'+i);
+    if(et) et.classList.toggle('fsa-etapa-ativa', i===n);
+    if(ps) ps.classList.toggle('fsa-passo-ativo', i===n);
+  });
+}
+
+function fsaPapelVoltarEtapa1(){
+  document.getElementById('fsaPapelModalMsg').textContent='';
+  fsaPapelIrEtapa(1);
+}
+
+function fsaPapelAnalisar(){
+  var input = document.getElementById('fsaPapelArquivo');
+  var status = document.getElementById('fsaPapelStatus');
+  var btn = document.getElementById('fsaPapelBtnAnalisar');
+  if (!input || !input.files || !input.files.length) { alert('Selecione um arquivo primeiro.'); return; }
+
+  var arquivo = input.files[0];
+  var extensao = (arquivo.name.match(/\.[^.]+$/) || ['.pdf'])[0];
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Lendo documento...'; }
+  if (status) status.textContent = 'Fazendo OCR e extraindo dados — pode levar alguns segundos...';
+
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var base64 = e.target.result.split(',')[1];
+    FSA_PAPEL_ARQUIVO = { base64: base64, tipo: arquivo.type || 'application/pdf', extensao: extensao };
+
+    google.script.run
+      .withSuccessHandler(function(res){
+        if (btn) { btn.disabled = false; btn.textContent = '🔎 Analisar formulário'; }
+        if (!res || !res.sucesso) {
+          if (status) status.textContent = '';
+          alert((res && res.mensagem) || 'Não foi possível analisar o documento.');
+          return;
+        }
+        fsaPapelRenderRevisao(res);
+      })
+      .withFailureHandler(function(err){
+        if (btn) { btn.disabled = false; btn.textContent = '🔎 Analisar formulário'; }
+        if (status) status.textContent = '';
+        alert('Erro ao analisar: ' + ((err && err.message) || err));
+      })
+      .analisarFormularioFiliacaoIA(base64, arquivo.name, arquivo.type || 'application/pdf', SISGEP_TOKEN_SESSAO);
+  };
+  reader.onerror = function(){ if (btn) { btn.disabled = false; btn.textContent = '🔎 Analisar formulário'; } alert('Erro ao ler o arquivo.'); };
+  reader.readAsDataURL(arquivo);
+}
+
+function fsaPapelRenderRevisao(res){
+  var status = document.getElementById('fsaPapelStatus'); if (status) status.textContent = '';
+  var d = res.dados || {};
+  FSA_PAPEL_ESCOLAS = res.listaEscolas || [];
+
+  document.getElementById('fsaPapelTipo').value = d.tipo === 'RECADASTRAMENTO' ? 'RECADASTRAMENTO' : 'CADASTRAMENTO';
+  document.getElementById('fsaPapelNome').value = d.nome || '';
+  document.getElementById('fsaPapelCpf').value = d.cpf || res.cpfDigitos || '';
+  document.getElementById('fsaPapelCargo').value = d.cargo || '';
+  document.getElementById('fsaPapelCelular').value = d.celular || '';
+  document.getElementById('fsaPapelEmail').value = d.email || '';
+  document.getElementById('fsaPapelEndereco').value = [d.endereco, d.numero, d.bairro, d.cidade, d.uf]
+    .filter(Boolean).join(', ');
+  document.getElementById('fsaPapelConfirmado').checked = false;
+
+  var escolaSel = document.getElementById('fsaPapelEscola');
+  var opcoes = "<option value=''>Selecione a escola...</option>";
+  FSA_PAPEL_ESCOLAS.forEach(function(e, i){
+    var selecionada = res.escolaSugerida && e.nome === res.escolaSugerida ? ' selected' : '';
+    opcoes += "<option value='"+i+"'"+selecionada+">"+fsaEsc(e.nome)+" ("+(e.associados||0)+" associados)</option>";
+  });
+  escolaSel.innerHTML = opcoes;
+
+  var alertasEl = document.getElementById('fsaPapelAlertas');
+  var alertas = res.alertas || [];
+  var html = alertas.length
+    ? alertas.map(function(a){ return "<div class='fsa-aviso' style='background:#fef3c7;border-color:#fcd34d;color:#92400e;margin-bottom:6px;'>⚠ "+fsaEsc(a)+"</div>"; }).join('')
+    : "<div class='fsa-aviso' style='background:#dcfce7;border-color:#86efac;color:#166534;'>✅ Nenhuma pendência encontrada na conferência automática.</div>";
+  if (d.observacoesLeitura) {
+    html += "<div class='fsa-aviso' style='background:#eff6ff;border-color:#bfdbfe;color:#1e3a8a;'>📝 Observações da leitura: "+fsaEsc(d.observacoesLeitura)+"</div>";
+  }
+  alertasEl.innerHTML = html;
+
+  document.getElementById('fsaPapelModalMsg').textContent='';
+  fsaPapelIrEtapa(2);
+}
+
+function fsaPapelConfirmar(){
+  var confirmado = document.getElementById('fsaPapelConfirmado').checked;
+  if (!confirmado) { alert('Marque a caixa confirmando que conferiu os dados contra o documento original.'); return; }
+
+  var idxEscola = document.getElementById('fsaPapelEscola').value;
+  if (idxEscola === '') { alert('Selecione a escola antes de confirmar.'); return; }
+  var escola = FSA_PAPEL_ESCOLAS[parseInt(idxEscola,10)];
+  if (!escola) { alert('Escola inválida — selecione novamente.'); return; }
+
+  var enderecoPartes = String(document.getElementById('fsaPapelEndereco').value||'').split(',').map(function(s){return s.trim();});
+
+  var payload = {
+    tipo: document.getElementById('fsaPapelTipo').value,
+    nome: document.getElementById('fsaPapelNome').value,
+    cpf: document.getElementById('fsaPapelCpf').value,
+    escola: escola.nome,
+    cargo: document.getElementById('fsaPapelCargo').value,
+    celular: document.getElementById('fsaPapelCelular').value,
+    telefone1: document.getElementById('fsaPapelCelular').value,
+    email: document.getElementById('fsaPapelEmail').value,
+    endereco: enderecoPartes[0] || '',
+    bairro: enderecoPartes[2] || '',
+    cidade: enderecoPartes[3] || '',
+    uf: enderecoPartes[4] || '',
+    arquivoBase64: FSA_PAPEL_ARQUIVO.base64,
+    arquivoTipo: FSA_PAPEL_ARQUIVO.tipo,
+    arquivoExtensao: FSA_PAPEL_ARQUIVO.extensao,
+    confirmadoPeloAtendente: true
+  };
+
+  var btn = document.getElementById('fsaPapelBtnConfirmar');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Registrando...'; }
+
+  google.script.run
+    .withSuccessHandler(function(res){
+      if (btn) { btn.disabled = false; btn.textContent = '✓ Confirmar e registrar ficha'; }
+      if (!res || !res.sucesso) { alert((res && res.mensagem) || 'Falha ao registrar a ficha.'); return; }
+      document.getElementById('fsaPapelSucessoDados').innerHTML =
+        '<div class="fsa-campo"><b>Ficha:</b> '+fsaEsc(res.idFicha)+'</div>'+
+        '<div class="fsa-campo">'+fsaEsc(res.mensagem||'')+'</div>';
+      fsaPapelIrEtapa(3);
+    })
+    .withFailureHandler(function(err){
+      if (btn) { btn.disabled = false; btn.textContent = '✓ Confirmar e registrar ficha'; }
+      alert('Erro: ' + ((err && err.message) || err));
+    })
+    .confirmarFiliacaoPapelIA(payload, SISGEP_TOKEN_SESSAO);
 }
 </script>

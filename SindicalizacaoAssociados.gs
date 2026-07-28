@@ -263,6 +263,50 @@ function sindAss_montarLogradouro_(ficha) {
 }
 
 /**
+ * Marca o associado como NÃO filiado (Filiado = 'N') a partir do CPF.
+ * Usado pela Desfiliação via IA (confirmarDesfiliacaoIA, em
+ * IA_DocumentosSindicalizacao.gs) — só roda depois que o atendente já
+ * confirmou os dados na revisão humana. NÃO apaga a linha nem outros
+ * dados do associado, só atualiza o status de filiação e a data de
+ * atualização — mesmo padrão de "não apagar o que a ficha não traz" de
+ * sindAss_gravarDaFicha_.
+ *
+ * Retorna { encontrado, linha }
+ */
+function sindAss_desfiliar_(cpf, usuario) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var cpfDigitos = sindAss_digitos_(cpf);
+    if (cpfDigitos.length !== 11) throw new Error('CPF inválido.');
+
+    var aba = sindAss_aba_();
+    var mapa = sindAss_mapaCabecalho_(aba);
+    var idx = function (nome) {
+      var i = mapa[String(nome).toUpperCase()];
+      return (i === undefined ? SIND_ASS_COLUNAS.indexOf(nome) : i) + 1;
+    };
+
+    var ultima = aba.getLastRow();
+    if (ultima < 2) return { encontrado: false };
+
+    var cpfs = aba.getRange(2, idx('CPF'), ultima - 1, 1).getValues();
+    for (var i = 0; i < cpfs.length; i++) {
+      if (sindAss_digitos_(cpfs[i][0]) === cpfDigitos) {
+        var linha = i + 2;
+        aba.getRange(linha, idx('Filiado')).setValue('N');
+        aba.getRange(linha, idx('ULTIMA_ATUALIZACAO')).setValue(new Date());
+        Logger.log('sindAss_desfiliar_: CPF ' + cpfDigitos + ' desfiliado por ' + (usuario || '—'));
+        return { encontrado: true, linha: linha };
+      }
+    }
+    return { encontrado: false };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
  * Consulta rápida: verifica se um CPF já consta como associado e qual a
  * situação. Útil na ficha (avisar quem já é filiado) e no painel.
  * Retorna { existe, filiado, nome, matricula, escola, linha }
