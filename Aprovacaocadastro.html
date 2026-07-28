@@ -153,7 +153,7 @@ function initFichasSindicalizacao(){
     });
   }).withFailureHandler(function(erro){
     lista.innerHTML='<p style="color:#dc2626;font-size:12px;">Erro ao carregar fichas: '+erro+'</p>';
-  }).listarFichasSindicalizacao({status:'ASSINADA'});
+  }).listarFichasSindicalizacao({status:'ASSINADA'}, SISGEP_TOKEN_SESSAO);
 }
 
 function sindAprovar(idFicha, nome){
@@ -167,7 +167,7 @@ function sindAprovar(idFicha, nome){
     }
   }).withFailureHandler(function(erro){
     if(window.mostrarErro) mostrarErro('Erro: '+erro); else alert('Erro: '+erro);
-  }).aprovarFichaSindicalizacao(idFicha, aprovNomeUsuarioAtual_());
+  }).aprovarFichaSindicalizacao(idFicha, aprovNomeUsuarioAtual_(), SISGEP_TOKEN_SESSAO);
 }
 
 function sindRejeitar(idFicha){
@@ -183,6 +183,6 @@ function sindRejeitar(idFicha){
     }
   }).withFailureHandler(function(erro){
     if(window.mostrarErro) mostrarErro('Erro: '+erro); else alert('Erro: '+erro);
-  }).rejeitarFichaSindicalizacao(idFicha, motivo, aprovNomeUsuarioAtual_());
+  }).rejeitarFichaSindicalizacao(idFicha, motivo, aprovNomeUsuarioAtual_(), SISGEP_TOKEN_SESSAO);
 }
 </script>

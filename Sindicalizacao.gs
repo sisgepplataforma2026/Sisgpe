@@ -243,48 +243,13 @@ function submeterFichaSindicalizacao(dados) {
  * ASSINATURA (OTP)
  * ============================================================ */
 
-/**
- * Gera e envia o código OTP de 6 dígitos para assinatura da
- * ficha. Canal: e-mail informado na ficha. Validade: 10 min.
- * Pode ser chamado novamente para reenvio.
- */
-function enviarOTPSindicalizacao(idFicha) {
-  var registro = buscarFichaPorId_(idFicha);
-  if (!registro) {
-    return { sucesso: false, mensagem: 'Ficha não encontrada.' };
-  }
-  if (registro.STATUS !== SINDICALIZACAO_STATUS.AGUARDANDO_ASSINATURA) {
-    return { sucesso: false, mensagem: 'Ficha não está aguardando assinatura.' };
-  }
-  if (!registro.EMAIL) {
-    return {
-      sucesso: false,
-      mensagem: 'Ficha sem e-mail. Informe um e-mail para receber o código.'
-    };
-  }
-  var otp = String(Math.floor(100000 + Math.random() * 900000));
-  CacheService.getScriptCache().put(
-    'SIND_OTP_' + idFicha, otp, SINDICALIZACAO_OTP_VALIDADE_SEG);
-
-  var corpo =
-    'Olá, ' + registro.NOME_COMPLETO + '!\n\n' +
-    'Seu código para assinatura eletrônica da Ficha de Sindicalização ' +
-    'do SindEducação-ES é:\n\n' +
-    '        ' + otp + '\n\n' +
-    'O código vale por 10 minutos. Ao informá-lo no formulário, você ' +
-    'assina eletronicamente a ficha e a autorização de desconto em folha ' +
-    'de 2% sobre o salário-base, nos termos do Art. 545 da CLT.\n\n' +
-    'Se você não solicitou este código, ignore este e-mail.\n\n' +
-'SindEducação-ES — Sindicato dos educadores técnico-administrativos ' +
-    'em estabelecimentos de ensino particular no Estado do Espírito Santo';
-  try {
-    GmailApp.sendEmail(registro.EMAIL,
-      'Código de assinatura — Ficha de Sindicalização', corpo);
-    return { sucesso: true, canal: 'EMAIL', mensagem: 'Código enviado.' };
-  } catch (e) {
-    return { sucesso: false, mensagem: 'Falha ao enviar e-mail: ' + e.message };
-  }
-}
+// enviarOTPSindicalizacao(idFicha) — implementação real fica em
+// SindicalizacaoEmails.gs (versão com template HTML da marca). Havia uma
+// segunda definição aqui, mais antiga (texto puro) — GAS roda tudo em um
+// único escopo global, então as duas brigavam por qual "vencia", sem
+// nenhuma forma confiável de saber qual estava ativa. Removida por ser a
+// desatualizada; o próprio cabeçalho de SindicalizacaoEmails.gs já
+// instruía essa remoção e nunca tinha sido feita.
 
 /**
  * Valida o OTP e efetiva a assinatura eletrônica: grava data/

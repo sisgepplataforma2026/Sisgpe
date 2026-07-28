@@ -215,8 +215,10 @@ function previewOficioFiliacao(idFicha, escola) {
  * @param {string} idFicha
  * @param {Object} escola      { nome, cnpj, emailPrincipal, emailsTodos }
  * @param {string} aprovadoPor Nome do usuário do SISGEP
+ * @param {string} tokenSessao Token da sessão SISGEP do atendente que aprova
  */
-function aprovarEEncaminharFicha(idFicha, escola, aprovadoPor) {
+function aprovarEEncaminharFicha(idFicha, escola, aprovadoPor, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   if (!escola || !escola.cnpj || sindOf_digitos_(escola.cnpj).length !== 14) {
     return { sucesso: false, mensagem: 'Selecione uma escola com CNPJ válido.' };
   }
@@ -241,7 +243,7 @@ function aprovarEEncaminharFicha(idFicha, escola, aprovadoPor) {
   var nomeNaFicha = String(f.ESCOLA || '').trim();
 
   // 1. Aprovação (matrícula + associado + PDF + e-mail de boas-vindas)
-  var aprovacao = aprovarFichaSindicalizacao(idFicha, aprovadoPor);
+  var aprovacao = aprovarFichaSindicalizacao(idFicha, aprovadoPor, tokenSessao);
   if (!aprovacao.sucesso) return aprovacao;
 
   // 2. Anexo: o PDF da ficha assinada

@@ -366,7 +366,7 @@ window.carregarFichasPendentes=function(){
     fsaRender();
   }).withFailureHandler(function(erro){
     lista.innerHTML='<p style="color:#dc2626;font-size:12px;">Erro de comunicação: '+fsaEsc(erro)+'</p>';
-  }).listarFichasSindicalizacao({});
+  }).listarFichasSindicalizacao({}, SISGEP_TOKEN_SESSAO);
 };
 
 function fsaAtualizarKPIs(k){
@@ -708,7 +708,7 @@ function fsaConfirmarEncaminhar(){
     btn.textContent='✓ Aprovar, gerar ofício e enviar';
     fsaMsgModal('Erro: '+err,'erro');
 }).aprovarEEncaminharFicha(
-      FSA_FICHA_ATUAL.ID_FICHA, fsaEscolaComEmail(), fsaUsuarioAtual_());
+      FSA_FICHA_ATUAL.ID_FICHA, fsaEscolaComEmail(), fsaUsuarioAtual_(), SISGEP_TOKEN_SESSAO);
 }
 
 function fsaAprovarSemOficio(){
@@ -728,7 +728,7 @@ function fsaAprovarSemOficio(){
     carregarFichasPendentes();
   }).withFailureHandler(function(err){
     fsaMsgModal('Erro: '+err,'erro');
-  }).aprovarFichaSindicalizacao(FSA_FICHA_ATUAL.ID_FICHA, fsaUsuarioAtual_());
+  }).aprovarFichaSindicalizacao(FSA_FICHA_ATUAL.ID_FICHA, fsaUsuarioAtual_(), SISGEP_TOKEN_SESSAO);
 }
 
 function fsaMostrarSucesso(r){
@@ -788,7 +788,7 @@ function fsaRejeitar(idFicha){
   }).withFailureHandler(function(erro){
     if(idCarregando) esconderCarregando(idCarregando);
     if(window.mostrarErro) mostrarErro('Erro: '+erro); else alert('Erro: '+erro);
-  }).rejeitarFichaSindicalizacao(idFicha, motivo, fsaUsuarioAtual_());
+  }).rejeitarFichaSindicalizacao(idFicha, motivo, fsaUsuarioAtual_(), SISGEP_TOKEN_SESSAO);
 }
 
 /* ===================== IMPORTAR FORMULÁRIO EM PAPEL (IA) =====================
