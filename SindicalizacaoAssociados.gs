@@ -327,7 +327,7 @@ function sindAss_desfiliar_(cpf, usuario) {
  * suspenso ao lado de "Executar" e rode manualmente. Confira o resultado
  * em "Execuções" (View → Execution log).
  */
-function sindAss_gerarMatriculasEmLote_() {
+function gerarMatriculasEmLote() {
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
