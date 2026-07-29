@@ -102,6 +102,15 @@ if (p.portal === "associado") {
       return pixelTransparente_();
     }
 
+    // ── Rastreamento de abertura de e-mail (despesas / guias de NF) ──
+    // As duas funções só agem se o token pertencer ao seu próprio prefixo
+    // (PIXEL_DOC_ ou LEITURA_NF_), então é seguro chamar as duas aqui.
+    if (p.page === "pub-pixel-nf" && p.t) {
+      despesas_registrarLeituraEmail(p.t);
+      guiasPagamento_registrarLeituraEmail(p.t);
+      return pixelTransparente_();
+    }
+
     // ── Tela de redefinição de senha via link de recuperação ──
     var temTokenRecuperacao = p.recuperar;
 
