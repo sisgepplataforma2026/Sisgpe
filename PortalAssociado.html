@@ -775,6 +775,7 @@
       nome: "<?= nome ?>",
       linha: <?= linha ?>
     };
+    var SCRIPT_URL = "<?= scriptUrl ?>";
     
     // Funções do Modal
     function iniciarAtualizacao() {
@@ -889,7 +890,7 @@
     }
     
     function mostrarVouchers() {
-      alert('Em breve: Vouchers disponíveis');
+      window.top.location.href = SCRIPT_URL + '?portal=voucher';
     }
     
     function mostrarOftalmo() {

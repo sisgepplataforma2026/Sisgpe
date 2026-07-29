@@ -71,6 +71,17 @@ if (p.portal === "associado") {
       Logger.log("[PORTAL] Redirecionando para o Portal do Associado");
       return servirPortalAssociado(p);
     }
+
+    // ── Portal público de solicitação de Voucher (Bolsa de Estudo) ──
+    // Público, sem sessão — o próprio formulário pede CPF + data de nascimento.
+    if (p.portal === "voucher") {
+      Logger.log("[PORTAL] Redirecionando para o Portal de Voucher");
+      return HtmlService.createHtmlOutputFromFile("PortalVoucher")
+        .setTitle("SindEducação-ES — Solicitação de Voucher")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
 // ── Rota da tela de Emissão de Ingressos (Eventos) — protegida por sessão ──
     if (p.painel === "emissao") {
       var tokenEmissao = String(p.sessao || "").trim();
