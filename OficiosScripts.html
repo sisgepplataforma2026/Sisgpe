@@ -1342,6 +1342,190 @@ window.marcarStatusMon = marcarStatusMon;
 window.carregarMonitoramento = carregarMonitoramento;
 
 /* ═══════════════════════════════════════════════════════
+   FILIAÇÃO VIA IA — leitura de formulário de sindicalização escaneado/foto
+   Nada aqui grava ou envia nada sozinho: "Analisar formulário" só sugere;
+   "Confirmar" só registra a ficha (que ainda passa pela aprovação normal).
+   ═══════════════════════════════════════════════════════ */
+var filIA_estado = { arquivoBase64: "", arquivoTipo: "", arquivoExtensao: "", escolas: [] };
+
+function filIA_setModo(modo) {
+  var areaUpload = $("filIA_areaUpload");
+  var secaoPadrao = $("secaoOficioPadrao");
+  if (modo === "ia") {
+    if (areaUpload) areaUpload.style.display = "block";
+    if (secaoPadrao) secaoPadrao.style.display = "none";
+  } else {
+    if (areaUpload) areaUpload.style.display = "none";
+    if (secaoPadrao) secaoPadrao.style.display = "";
+  }
+}
+
+function filIA_atualizarVisibilidade() {
+  var tipo = $("tipo");
+  var bloco = $("blocoFiliacaoIA");
+  if (!tipo || !bloco) return;
+  var ehFiliacao = tipo.value === "Filiação";
+  bloco.style.display = ehFiliacao ? "block" : "none";
+  if (!ehFiliacao) filIA_setModo("manual");
+}
+
+function filIA_initListener() {
+  var tipo = $("tipo");
+  if (tipo && !tipo.dataset.iaFilBound) {
+    tipo.dataset.iaFilBound = "1";
+    tipo.addEventListener("change", filIA_atualizarVisibilidade);
+  }
+}
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", filIA_initListener);
+else filIA_initListener();
+
+function filIA_analisar() {
+  var input = $("filIA_arquivo");
+  var status = $("filIA_status");
+  var btn = $("filIA_btnAnalisar");
+  if (!input || !input.files || !input.files.length) { toast("Selecione um arquivo primeiro.", "warn"); return; }
+
+  var arquivo = input.files[0];
+  var extensao = (arquivo.name.match(/\.[^.]+$/) || [".pdf"])[0];
+  if (btn) { btn.disabled = true; btn.textContent = "⏳ Lendo documento..."; }
+  if (status) status.textContent = "Fazendo OCR e extraindo dados — pode levar alguns segundos...";
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var base64 = e.target.result.split(",")[1];
+    filIA_estado.arquivoBase64 = base64;
+    filIA_estado.arquivoTipo = arquivo.type || "application/pdf";
+    filIA_estado.arquivoExtensao = extensao;
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (btn) { btn.disabled = false; btn.textContent = "🔎 Analisar formulário"; }
+        if (!res || !res.sucesso) {
+          if (status) status.textContent = "";
+          toast((res && res.mensagem) || "Não foi possível analisar o documento.", "err");
+          return;
+        }
+        filIA_renderRevisao(res);
+      })
+      .withFailureHandler(function(err) {
+        if (btn) { btn.disabled = false; btn.textContent = "🔎 Analisar formulário"; }
+        if (status) status.textContent = "";
+        toast("Erro ao analisar: " + ((err && err.message) || err), "err");
+      })
+      .analisarFormularioFiliacaoIA(base64, arquivo.name, arquivo.type || "application/pdf", SISGEP_TOKEN_SESSAO);
+  };
+  reader.onerror = function() { if (btn) { btn.disabled = false; btn.textContent = "🔎 Analisar formulário"; } toast("Erro ao ler o arquivo.", "err"); };
+  reader.readAsDataURL(arquivo);
+}
+
+function filIA_renderRevisao(res) {
+  var status = $("filIA_status");
+  if (status) status.textContent = "";
+
+  var d = res.dados || {};
+  filIA_estado.escolas = res.listaEscolas || [];
+
+  var tipoEl = $("filIA_tipo"), nomeEl = $("filIA_nome"), cpfEl = $("filIA_cpf"),
+      cargoEl = $("filIA_cargo"), celularEl = $("filIA_celular"), emailEl = $("filIA_email"),
+      enderecoEl = $("filIA_endereco"), escolaSel = $("filIA_escola"), confirmadoEl = $("filIA_confirmado");
+
+  if (tipoEl) tipoEl.value = d.tipo === "RECADASTRAMENTO" ? "RECADASTRAMENTO" : "CADASTRAMENTO";
+  if (nomeEl) nomeEl.value = d.nome || "";
+  if (cpfEl) cpfEl.value = d.cpf || res.cpfDigitos || "";
+  if (cargoEl) cargoEl.value = d.cargo || "";
+  if (celularEl) celularEl.value = d.celular || "";
+  if (emailEl) emailEl.value = d.email || "";
+  if (enderecoEl) enderecoEl.value = [d.endereco, d.numero, d.bairro, d.cidade, d.uf].filter(Boolean).join(", ");
+  if (confirmadoEl) confirmadoEl.checked = false;
+
+  if (escolaSel) {
+    escolaSel.innerHTML = "<option value=''>Selecione a escola...</option>" +
+      filIA_estado.escolas.map(function(e, i) {
+        var selecionada = res.escolaSugerida && e.nome === res.escolaSugerida ? " selected" : "";
+        return "<option value='" + i + "'" + selecionada + ">" + (e.nome || "") + " (" + (e.associados || 0) + " associados)</option>";
+      }).join("");
+  }
+
+  var alertasEl = $("filIA_alertas");
+  if (alertasEl) {
+    var alertas = res.alertas || [];
+    alertasEl.innerHTML = alertas.length
+      ? alertas.map(function(a) {
+          return "<div style='background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:12px;color:#92400e;'>⚠ " + a + "</div>";
+        }).join("")
+      : "<div style='background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:8px 12px;font-size:12px;color:#166534;'>✅ Nenhuma pendência encontrada na conferência automática.</div>";
+
+    if (d.observacoesLeitura) {
+      var obsDiv = document.createElement("div");
+      obsDiv.style.cssText = "background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 12px;margin-top:6px;font-size:12px;color:#1e3a8a;";
+      obsDiv.textContent = "📝 Observações da leitura: " + d.observacoesLeitura;
+      alertasEl.appendChild(obsDiv);
+    }
+  }
+
+  var revisao = $("filIA_revisao");
+  if (revisao) revisao.style.display = "block";
+}
+
+function filIA_confirmar() {
+  var confirmadoEl = $("filIA_confirmado");
+  if (!confirmadoEl || !confirmadoEl.checked) { toast("Marque a caixa confirmando que conferiu os dados contra o documento original.", "warn"); return; }
+
+  var tipoEl = $("filIA_tipo"), nomeEl = $("filIA_nome"), cpfEl = $("filIA_cpf"),
+      cargoEl = $("filIA_cargo"), celularEl = $("filIA_celular"), emailEl = $("filIA_email"),
+      enderecoEl = $("filIA_endereco"), escolaSel = $("filIA_escola");
+
+  var idxEscola = escolaSel ? escolaSel.value : "";
+  if (idxEscola === "") { toast("Selecione a escola antes de confirmar.", "warn"); return; }
+  var escola = filIA_estado.escolas[parseInt(idxEscola, 10)];
+  if (!escola) { toast("Escola inválida — selecione novamente.", "warn"); return; }
+
+  var enderecoPartes = String(enderecoEl ? enderecoEl.value : "").split(",").map(function(s) { return s.trim(); });
+
+  var payload = {
+    tipo: tipoEl ? tipoEl.value : "CADASTRAMENTO",
+    nome: nomeEl ? nomeEl.value : "",
+    cpf: cpfEl ? cpfEl.value : "",
+    escola: escola.nome,
+    cargo: cargoEl ? cargoEl.value : "",
+    celular: celularEl ? celularEl.value : "",
+    telefone1: celularEl ? celularEl.value : "",
+    email: emailEl ? emailEl.value : "",
+    endereco: enderecoPartes[0] || "",
+    bairro: enderecoPartes[2] || "",
+    cidade: enderecoPartes[3] || "",
+    uf: enderecoPartes[4] || "",
+    arquivoBase64: filIA_estado.arquivoBase64,
+    arquivoTipo: filIA_estado.arquivoTipo,
+    arquivoExtensao: filIA_estado.arquivoExtensao,
+    confirmadoPeloAtendente: true
+  };
+
+  var btn = $("filIA_btnConfirmar");
+  if (btn) { btn.disabled = true; btn.textContent = "⏳ Registrando..."; }
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (btn) { btn.disabled = false; btn.textContent = "✅ Confirmar e registrar ficha"; }
+      if (!res || !res.sucesso) { toast((res && res.mensagem) || "Falha ao registrar a ficha.", "err"); return; }
+      toast(res.mensagem || "Ficha registrada.", "ok");
+      var revisao = $("filIA_revisao");
+      if (revisao) revisao.style.display = "none";
+      var status = $("filIA_status");
+      if (status) status.textContent = "✅ Ficha " + (res.idFicha || "") + " registrada — use o painel de Fichas Sindicais para aprovar.";
+    })
+    .withFailureHandler(function(err) {
+      if (btn) { btn.disabled = false; btn.textContent = "✅ Confirmar e registrar ficha"; }
+      toast("Erro: " + ((err && err.message) || err), "err");
+    })
+    .confirmarFiliacaoPapelIA(payload, SISGEP_TOKEN_SESSAO);
+}
+
+window.filIA_setModo = filIA_setModo;
+window.filIA_analisar = filIA_analisar;
+window.filIA_confirmar = filIA_confirmar;
+
+/* ═══════════════════════════════════════════════════════
    DESFILIAÇÃO VIA IA — leitura de carta escaneada/foto
    Nada aqui grava ou envia nada sozinho: "Analisar carta" só sugere;
    "Confirmar desfiliação" só age depois que o atendente revisar os campos.

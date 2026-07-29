@@ -46,6 +46,68 @@
           </div>
         </div>
 
+        <!-- ═══ FILIAÇÃO VIA IA — leitura de formulário de sindicalização escaneado/foto ═══
+             Só aparece quando TIPO DE OFÍCIO = Filiação. Nada aqui grava ou envia
+             nada sozinho: "Analisar formulário" só sugere; "Confirmar" só cria a
+             ficha (que ainda passa pela aprovação normal, como já acontece hoje
+             em Sindicalização > Fichas Sindicais > "Importar formulário em papel"). -->
+        <div id="blocoFiliacaoIA" style="display:none;margin-top:14px;border:1.5px dashed #C9A84C;border-radius:14px;padding:16px;background:#fffdf7;">
+          <div style="display:flex;gap:10px;margin-bottom:12px;">
+            <button type="button" id="btnModoManualFil" class="btn btn-outline" style="flex:1;" onclick="filIA_setModo('manual')">📝 Preencher manualmente</button>
+            <button type="button" id="btnModoIAFil" class="btn btn-outline" style="flex:1;" onclick="filIA_setModo('ia')">✨ Extrair de formulário (IA)</button>
+          </div>
+
+          <div id="filIA_areaUpload" style="display:none;">
+            <div class="fld" style="margin-bottom:10px;">
+              <label>ANEXAR FORMULÁRIO DE SINDICALIZAÇÃO (PDF ou foto)</label>
+              <input type="file" id="filIA_arquivo" accept=".pdf,.jpg,.jpeg,.png">
+            </div>
+            <button type="button" class="btn btn-navy" id="filIA_btnAnalisar" onclick="filIA_analisar()">🔎 Analisar formulário</button>
+            <div id="filIA_status" style="margin-top:10px;font-size:12.5px;color:var(--g500);"></div>
+
+            <div id="filIA_revisao" style="display:none;margin-top:16px;border-top:1px solid #eee;padding-top:14px;">
+              <div style="font-size:12px;font-weight:800;color:#92400e;margin-bottom:10px;">
+                ✨ Dados sugeridos pela IA — confira e corrija antes de confirmar
+              </div>
+              <div id="filIA_alertas" style="margin-bottom:12px;"></div>
+              <div class="fld">
+                <label>TIPO</label>
+                <select id="filIA_tipo">
+                  <option value="CADASTRAMENTO">Cadastramento</option>
+                  <option value="RECADASTRAMENTO">Recadastramento</option>
+                </select>
+              </div>
+              <div class="fg fg-2" style="margin-top:8px;">
+                <div class="fld"><label>NOME DO TRABALHADOR</label><input type="text" id="filIA_nome"></div>
+                <div class="fld"><label>CPF</label><input type="text" id="filIA_cpf"></div>
+              </div>
+              <div class="fld" style="margin-top:8px;">
+                <label>ESCOLA (selecione a correspondência correta)</label>
+                <select id="filIA_escola"></select>
+              </div>
+              <div class="fg fg-2" style="margin-top:8px;">
+                <div class="fld"><label>CARGO</label><input type="text" id="filIA_cargo"></div>
+                <div class="fld"><label>CELULAR</label><input type="text" id="filIA_celular"></div>
+              </div>
+              <div class="fld" style="margin-top:8px;">
+                <label>E-MAIL</label>
+                <input type="text" id="filIA_email">
+              </div>
+              <div class="fld" style="margin-top:8px;">
+                <label>ENDEREÇO (rua, número, bairro, cidade, UF)</label>
+                <input type="text" id="filIA_endereco">
+              </div>
+              <label style="display:flex;align-items:center;gap:8px;margin-top:14px;font-size:12.5px;">
+                <input type="checkbox" id="filIA_confirmado" style="width:auto;">
+                Conferi os dados acima contra o documento original.
+              </label>
+              <div style="margin-top:14px;">
+                <button type="button" class="btn btn-navy" id="filIA_btnConfirmar" onclick="filIA_confirmar()">✅ Confirmar e registrar ficha</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- ═══ DESFILIAÇÃO VIA IA — leitura de carta escaneada/foto ═══
              Só aparece quando TIPO DE OFÍCIO = Desfiliação. Nada aqui grava
              ou envia nada sozinho: "Analisar carta" só sugere; "Confirmar
