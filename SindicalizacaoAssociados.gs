@@ -307,6 +307,86 @@ function sindAss_desfiliar_(cpf, usuario) {
 }
 
 /**
+ * Preenche a coluna MATRICULA de todo associado que ainda não tem uma —
+ * usando o MESMO contador sequencial (SIND_ADM_PROP_MATRICULA, definido
+ * em Sindicalizacaoadmin.gs) que já é usado quando uma Ficha de
+ * Sindicalização é aprovada. Por isso não há risco de colisão: as
+ * matrículas geradas aqui continuam exatamente de onde o contador parou,
+ * e qualquer aprovação de ficha feita DEPOIS continua a partir daqui.
+ *
+ * Só preenche células vazias — nunca sobrescreve uma matrícula já
+ * existente (idempotente: rodar de novo não gera duplicata nem pula
+ * ninguém que já ficou sem matrícula por engano).
+ *
+ * Não chama sindAdm_gerarMatricula_() em loop (uma chamada por associado,
+ * ~8.000 vezes, cada uma lendo/gravando PropertiesService, estouraria o
+ * tempo de execução) — lê o contador uma vez, soma em memória, grava uma
+ * vez no fim.
+ *
+ * COMO RODAR: no editor do Apps Script, selecione esta função no menu
+ * suspenso ao lado de "Executar" e rode manualmente. Confira o resultado
+ * em "Execuções" (View → Execution log).
+ */
+function sindAss_gerarMatriculasEmLote_() {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var aba = sindAss_aba_();
+    var mapa = sindAss_mapaCabecalho_(aba);
+    var idx = function (nome) {
+      var i = mapa[String(nome).toUpperCase()];
+      return (i === undefined ? SIND_ASS_COLUNAS.indexOf(nome) : i) + 1;
+    };
+    var colMatricula = idx('MATRICULA');
+
+    var ultima = aba.getLastRow();
+    if (ultima < 2) {
+      var vazio = { totalAssociados: 0, matriculasGeradas: 0 };
+      Logger.log(JSON.stringify(vazio));
+      return vazio;
+    }
+
+    var range = aba.getRange(2, colMatricula, ultima - 1, 1);
+    var valores = range.getValues();
+
+    var props = PropertiesService.getScriptProperties();
+    var atual = props.getProperty(SIND_ADM_PROP_MATRICULA);
+    if (atual === null) {
+      var maior = 0;
+      sindAdm_lerTodas_().forEach(function (r) {
+        var n = parseInt(String(r.MATRICULA).replace(/\D/g, ''), 10);
+        if (!isNaN(n) && n > maior) maior = n;
+      });
+      atual = String(maior);
+    }
+    var proximo = parseInt(atual, 10);
+
+    var geradas = 0;
+    for (var i = 0; i < valores.length; i++) {
+      var jaTem = String(valores[i][0] || '').trim();
+      if (!jaTem) {
+        proximo++;
+        valores[i][0] = sindAdm_fmtMatricula_(proximo);
+        geradas++;
+      }
+    }
+
+    range.setValues(valores);
+    props.setProperty(SIND_ADM_PROP_MATRICULA, String(proximo));
+
+    var resultado = {
+      totalAssociados: valores.length,
+      matriculasGeradas: geradas,
+      ultimaMatricula: sindAdm_fmtMatricula_(proximo)
+    };
+    Logger.log(JSON.stringify(resultado));
+    return resultado;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
  * Consulta rápida: verifica se um CPF já consta como associado e qual a
  * situação. Útil na ficha (avisar quem já é filiado) e no painel.
  * Retorna { existe, filiado, nome, matricula, escola, linha }
