@@ -87,6 +87,48 @@
             </div>
           </div>
         </div>
+
+        <!-- ═══ OPOSIÇÃO À TAXA NEGOCIAL VIA IA — leitura de carta escaneada/foto ═══
+             Só aparece quando TIPO DE OFÍCIO = Taxa Negocial. Nada aqui grava
+             ou envia nada sozinho: "Analisar carta" só sugere; "Confirmar
+             oposição" só age depois que o atendente revisar os campos. -->
+        <div id="blocoOposicaoTaxaIA" style="display:none;margin-top:14px;border:1.5px dashed #C9A84C;border-radius:14px;padding:16px;background:#fffdf7;">
+          <div style="display:flex;gap:10px;margin-bottom:12px;">
+            <button type="button" id="btnModoManualOpos" class="btn btn-outline" style="flex:1;" onclick="oposIA_setModo('manual')">📝 Preencher manualmente</button>
+            <button type="button" id="btnModoIAOpos" class="btn btn-outline" style="flex:1;" onclick="oposIA_setModo('ia')">✨ Extrair de carta de oposição (IA)</button>
+          </div>
+
+          <div id="oposIA_areaUpload" style="display:none;">
+            <div class="fld" style="margin-bottom:10px;">
+              <label>ANEXAR CARTA DE OPOSIÇÃO À TAXA NEGOCIAL (PDF ou foto)</label>
+              <input type="file" id="oposIA_arquivo" accept=".pdf,.jpg,.jpeg,.png">
+            </div>
+            <button type="button" class="btn btn-navy" id="oposIA_btnAnalisar" onclick="oposIA_analisar()">🔎 Analisar carta</button>
+            <div id="oposIA_status" style="margin-top:10px;font-size:12.5px;color:var(--g500);"></div>
+
+            <div id="oposIA_revisao" style="display:none;margin-top:16px;border-top:1px solid #eee;padding-top:14px;">
+              <div style="font-size:12px;font-weight:800;color:#92400e;margin-bottom:10px;">
+                ✨ Dados sugeridos pela IA — confira e corrija antes de confirmar
+              </div>
+              <div id="oposIA_alertas" style="margin-bottom:12px;"></div>
+              <div class="fg fg-2">
+                <div class="fld"><label>NOME DO TRABALHADOR</label><input type="text" id="oposIA_nome"></div>
+                <div class="fld"><label>CPF</label><input type="text" id="oposIA_cpf"></div>
+              </div>
+              <div class="fld" style="margin-top:8px;">
+                <label>ESCOLA (selecione a correspondência correta)</label>
+                <select id="oposIA_escola"></select>
+              </div>
+              <div class="fld" style="margin-top:8px;">
+                <label>MOTIVO (informativo, não vai no ofício padrão)</label>
+                <input type="text" id="oposIA_motivo">
+              </div>
+              <div style="margin-top:14px;">
+                <button type="button" class="btn btn-navy" id="oposIA_btnConfirmar" onclick="oposIA_confirmar()">✅ Confirmar e gerar ofício de oposição à Taxa Negocial</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 

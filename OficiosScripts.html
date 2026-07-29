@@ -1510,6 +1510,174 @@ window.desfIA_setModo = desfIA_setModo;
 window.desfIA_analisar = desfIA_analisar;
 window.desfIA_confirmar = desfIA_confirmar;
 
+/* ═══════════════════════════════════════════════════════
+   OPOSIÇÃO À TAXA NEGOCIAL VIA IA — leitura de carta escaneada/foto
+   Nada aqui grava ou envia nada sozinho: "Analisar carta" só sugere;
+   "Confirmar oposição" só age depois que o atendente revisar os campos.
+   ═══════════════════════════════════════════════════════ */
+var oposIA_estado = { arquivoBase64: "", arquivoTipo: "", escolas: [] };
+
+function oposIA_setModo(modo) {
+  var areaUpload = $("oposIA_areaUpload");
+  var secaoPadrao = $("secaoOficioPadrao");
+  var btnManual = $("btnModoManualOpos"), btnIA = $("btnModoIAOpos");
+  if (modo === "ia") {
+    if (areaUpload) areaUpload.style.display = "block";
+    if (secaoPadrao) secaoPadrao.style.display = "none";
+  } else {
+    if (areaUpload) areaUpload.style.display = "none";
+    if (secaoPadrao) secaoPadrao.style.display = "";
+  }
+}
+
+function oposIA_atualizarVisibilidade() {
+  var tipo = $("tipo");
+  var bloco = $("blocoOposicaoTaxaIA");
+  if (!tipo || !bloco) return;
+  var ehTaxaNegocial = tipo.value === "Taxa Negocial";
+  bloco.style.display = ehTaxaNegocial ? "block" : "none";
+  if (!ehTaxaNegocial) oposIA_setModo("manual");
+}
+
+function oposIA_initListener() {
+  var tipo = $("tipo");
+  if (tipo && !tipo.dataset.iaOposBound) {
+    tipo.dataset.iaOposBound = "1";
+    tipo.addEventListener("change", oposIA_atualizarVisibilidade);
+  }
+}
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", oposIA_initListener);
+else oposIA_initListener();
+
+function oposIA_analisar() {
+  var input = $("oposIA_arquivo");
+  var status = $("oposIA_status");
+  var btn = $("oposIA_btnAnalisar");
+  if (!input || !input.files || !input.files.length) { toast("Selecione um arquivo primeiro.", "warn"); return; }
+
+  var arquivo = input.files[0];
+  if (btn) { btn.disabled = true; btn.textContent = "⏳ Lendo documento..."; }
+  if (status) status.textContent = "Fazendo OCR e extraindo dados — pode levar alguns segundos...";
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var base64 = e.target.result.split(",")[1];
+    oposIA_estado.arquivoBase64 = base64;
+    oposIA_estado.arquivoTipo = arquivo.type || "application/pdf";
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (btn) { btn.disabled = false; btn.textContent = "🔎 Analisar carta"; }
+        if (!res || !res.sucesso) {
+          if (status) status.textContent = "";
+          toast((res && res.mensagem) || "Não foi possível analisar o documento.", "err");
+          return;
+        }
+        oposIA_renderRevisao(res);
+      })
+      .withFailureHandler(function(err) {
+        if (btn) { btn.disabled = false; btn.textContent = "🔎 Analisar carta"; }
+        if (status) status.textContent = "";
+        toast("Erro ao analisar: " + ((err && err.message) || err), "err");
+      })
+      .analisarCartaOposicaoTaxaNegocialIA(base64, arquivo.name, arquivo.type || "application/pdf", SISGEP_TOKEN_SESSAO);
+  };
+  reader.onerror = function() { if (btn) { btn.disabled = false; btn.textContent = "🔎 Analisar carta"; } toast("Erro ao ler o arquivo.", "err"); };
+  reader.readAsDataURL(arquivo);
+}
+
+function oposIA_renderRevisao(res) {
+  var status = $("oposIA_status");
+  if (status) status.textContent = "";
+
+  var d = res.dados || {};
+  oposIA_estado.escolas = res.sugestaoEscolas || [];
+
+  var nomeEl = $("oposIA_nome"), cpfEl = $("oposIA_cpf"), motivoEl = $("oposIA_motivo"), escolaSel = $("oposIA_escola");
+  if (nomeEl) nomeEl.value = d.nome || "";
+  if (cpfEl) cpfEl.value = d.cpfFormatado || d.cpf || "";
+  if (motivoEl) motivoEl.value = d.motivo || "";
+
+  if (escolaSel) {
+    escolaSel.innerHTML = "<option value=''>Selecione a escola...</option>" +
+      oposIA_estado.escolas.map(function(e, i) {
+        return "<option value='" + i + "'>" + (e.nome || "") + (e.cidade ? " — " + e.cidade : "") + "</option>";
+      }).join("");
+    if (!oposIA_estado.escolas.length && d.escolaTexto) {
+      escolaSel.innerHTML += "<option value='' disabled>Nenhuma correspondência para \"" + d.escolaTexto + "\" — busque manualmente</option>";
+    }
+  }
+
+  var alertasEl = $("oposIA_alertas");
+  if (alertasEl) {
+    var alertas = res.alertas || [];
+    alertasEl.innerHTML = alertas.length
+      ? alertas.map(function(a) {
+          return "<div style='background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:12px;color:#92400e;'>⚠ " + a + "</div>";
+        }).join("")
+      : "<div style='background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:8px 12px;font-size:12px;color:#166534;'>✅ Nenhuma pendência encontrada na conferência automática.</div>";
+
+    if (d.observacoesLeitura) {
+      var obsDiv = document.createElement("div");
+      obsDiv.style.cssText = "background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 12px;margin-top:6px;font-size:12px;color:#1e3a8a;";
+      obsDiv.textContent = "📝 Observações da leitura: " + d.observacoesLeitura;
+      alertasEl.appendChild(obsDiv);
+    }
+  }
+
+  var revisao = $("oposIA_revisao");
+  if (revisao) revisao.style.display = "block";
+}
+
+function oposIA_confirmar(confirmarDuplicata) {
+  var nomeEl = $("oposIA_nome"), cpfEl = $("oposIA_cpf"), motivoEl = $("oposIA_motivo"), escolaSel = $("oposIA_escola");
+  var idxEscola = escolaSel ? escolaSel.value : "";
+  if (idxEscola === "") { toast("Selecione a escola antes de confirmar.", "warn"); return; }
+  var escola = oposIA_estado.escolas[parseInt(idxEscola, 10)];
+  if (!escola) { toast("Escola inválida — selecione novamente.", "warn"); return; }
+
+  var payload = {
+    nome: nomeEl ? nomeEl.value : "",
+    cpf: cpfEl ? cpfEl.value : "",
+    motivo: motivoEl ? motivoEl.value : "",
+    escolaTexto: escola.nome,
+    escolaNome: escola.nome,
+    escolaCnpj: escola.cnpj,
+    escolaEmail: escola.emailPrincipal || escola.emailsTodos || "",
+    escolaUnidade: escola.unidade || "",
+    cartaBase64: oposIA_estado.arquivoBase64,
+    cartaTipo: oposIA_estado.arquivoTipo,
+    confirmarDuplicata: !!confirmarDuplicata
+  };
+
+  var btn = $("oposIA_btnConfirmar");
+  if (btn) { btn.disabled = true; btn.textContent = "⏳ Processando..."; }
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res && res.duplicataDetectada) {
+        var msg = (res.mensagem || "Possível ofício duplicado detectado.") + "\n\nDeseja gerar mesmo assim?";
+        if (window.confirm(msg)) { oposIA_confirmar(true); return; }
+        if (btn) { btn.disabled = false; btn.textContent = "✅ Confirmar e gerar ofício de oposição à Taxa Negocial"; }
+        toast("Confirmação cancelada.", "warn");
+        return;
+      }
+      if (btn) { btn.disabled = false; btn.textContent = "✅ Confirmar e gerar ofício de oposição à Taxa Negocial"; }
+      if (!res || !res.sucesso) { toast((res && res.mensagem) || "Falha ao confirmar.", "err"); return; }
+      toast(res.mensagem || "Oposição processada.", "ok");
+      finalizarPosEmissao({ numero: res.numeroOficio, url: res.urlOficio });
+    })
+    .withFailureHandler(function(err) {
+      if (btn) { btn.disabled = false; btn.textContent = "✅ Confirmar e gerar ofício de oposição à Taxa Negocial"; }
+      toast("Erro: " + ((err && err.message) || err), "err");
+    })
+    .confirmarOposicaoTaxaNegocialIA(payload, SISGEP_TOKEN_SESSAO);
+}
+
+window.oposIA_setModo = oposIA_setModo;
+window.oposIA_analisar = oposIA_analisar;
+window.oposIA_confirmar = oposIA_confirmar;
+
 })();
 </script>
 

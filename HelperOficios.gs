@@ -34,6 +34,7 @@ function normalizarTipoOficio_(tipo) {
   if (t.indexOf("desfili") > -1)      return "DESFILIACAO";
   if (t.indexOf("fili") > -1)         return "FILIACAO";
   if (t.indexOf("assistencial") > -1) return "TAXA_ASSISTENCIAL";
+  if (t.indexOf("oposicao") > -1)     return "OPOSICAO_TAXA_NEGOCIAL";
   if (t.indexOf("negocial") > -1)     return "TAXA_NEGOCIAL";
   if (t.indexOf("livre") > -1)        return "OFICIO_LIVRE";
   return "DESCONHECIDO";
@@ -41,11 +42,12 @@ function normalizarTipoOficio_(tipo) {
 
 function obterLabelTipoOficio_(tipo) {
   const tipoNorm = normalizarTipoOficio_(tipo);
-  if (tipoNorm === "DESFILIACAO")       return "Desfiliação";
-  if (tipoNorm === "FILIACAO")          return "Filiação";
-  if (tipoNorm === "TAXA_NEGOCIAL")     return "Taxa Negocial";
-  if (tipoNorm === "TAXA_ASSISTENCIAL") return "Taxa Assistencial";
-  if (tipoNorm === "OFICIO_LIVRE")      return "Ofício Livre";
+  if (tipoNorm === "DESFILIACAO")             return "Desfiliação";
+  if (tipoNorm === "FILIACAO")                return "Filiação";
+  if (tipoNorm === "TAXA_NEGOCIAL")           return "Taxa Negocial";
+  if (tipoNorm === "OPOSICAO_TAXA_NEGOCIAL")  return "Oposição à Taxa Negocial";
+  if (tipoNorm === "TAXA_ASSISTENCIAL")       return "Taxa Assistencial";
+  if (tipoNorm === "OFICIO_LIVRE")            return "Ofício Livre";
   return String(tipo || "").trim() || "Desconhecido";
 }
 
@@ -56,6 +58,10 @@ function resolverConfigTipoOficio_(tipo) {
   if (tipoNorm === "DESFILIACAO")   return { templateId: TEMPLATE_DESFILIACAO_ID,    assuntoTipo: "Desfiliação",      tituloEmail: "Ofício de Desfiliação",      isLivre: false };
   if (tipoNorm === "FILIACAO")      return { templateId: TEMPLATE_FILIACAO_ID,        assuntoTipo: "Filiação",          tituloEmail: "Ofício de Filiação",          isLivre: false };
   if (tipoNorm === "TAXA_NEGOCIAL") return { templateId: TEMPLATE_TAXA_ID,            assuntoTipo: "Taxa Negocial",     tituloEmail: "Ofício de Taxa Negocial",     isLivre: false };
+  // Reaproveita o mesmo template visual (papel timbrado) da Taxa Negocial —
+  // só o corpo do texto muda (montarTextoOposicaoTaxaNegocial_). Não existe
+  // um template Google Docs próprio para este tipo ainda.
+  if (tipoNorm === "OPOSICAO_TAXA_NEGOCIAL") return { templateId: TEMPLATE_TAXA_ID, assuntoTipo: "Oposição à Taxa Negocial", tituloEmail: "Ofício de Oposição à Taxa Negocial", isLivre: false };
 
   if (tipoNorm === "TAXA_ASSISTENCIAL") {
     const templateId = (typeof TEMPLATE_TAXA_ASSISTENCIAL_ID !== "undefined" && String(TEMPLATE_TAXA_ASSISTENCIAL_ID || "").trim())
@@ -205,6 +211,27 @@ function montarTextoDesfiliacao_(dados, colaboradoresArr) {
     " desconto" + (qtd === 1 ? "" : "s") +
     " da contribuição sindical de 2% (dois por cento) sobre o salário-base, " +
     "em conformidade com a Cláusula 56ª da Convenção Coletiva de Trabalho 2025/2026.\n\n" +
+    "Colocamo-nos à disposição para quaisquer esclarecimentos que se façam necessários.\n\n" +
+    "Atenciosamente,"
+  );
+}
+
+function montarTextoOposicaoTaxaNegocial_(dados, colaboradoresArr) {
+  var qtd = colaboradoresArr.length;
+  return (
+    "Prezados(as) Senhores(as),\n\n" +
+    "Por meio deste, comunicamos que " +
+    (qtd === 1
+      ? "o(a) colaborador(a) acima identificado(a) exerceu, dentro do prazo legal, seu direito de oposição"
+      : "os(as) colaboradores(as) acima identificados(as) exerceram, dentro do prazo legal, seu direito de oposição") +
+    " ao desconto da Taxa Negocial, conforme carta" + (qtd === 1 ? "" : "s") + " em anexo.\n\n" +
+    "Solicitamos, portanto, que NÃO seja" + (qtd === 1 ? "" : "m") +
+    " efetuado" + (qtd === 1 ? "" : "s") + " o" + (qtd === 1 ? "" : "s") +
+    " desconto" + (qtd === 1 ? "" : "s") +
+    " referente" + (qtd === 1 ? "" : "s") + " à Taxa Negocial prevista na Cláusula 57ª da Convenção " +
+    "Coletiva de Trabalho 2025/2026, em relação ao" + (qtd === 1 ? "" : "s") + " colaborador" +
+    (qtd === 1 ? "" : "es") + " acima identificado" + (qtd === 1 ? "" : "s") + ".\n\n" +
+    "Solicitamos a confirmação de recebimento deste ofício, respondendo a este e-mail.\n\n" +
     "Colocamo-nos à disposição para quaisquer esclarecimentos que se façam necessários.\n\n" +
     "Atenciosamente,"
   );

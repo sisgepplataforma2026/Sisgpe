@@ -557,3 +557,207 @@ function confirmarFiliacaoPapelIA(dados, tokenSessao) {
     return { sucesso: false, mensagem: 'Erro: ' + e.message };
   }
 }
+
+/* ============================================================
+ * OPOSIÇÃO À TAXA NEGOCIAL — ANÁLISE (só leitura; nada é gravado aqui)
+ * ============================================================ */
+
+/**
+ * Lê uma carta de oposição à Taxa Negocial (foto ou PDF escaneado, o
+ * trabalhador exercendo seu direito de não ter a Taxa Negocial descontada),
+ * extrai os dados com IA e devolve tudo pronto para revisão humana. NENHUM
+ * dado é gravado e NENHUM ofício é gerado aqui — isso só acontece em
+ * confirmarOposicaoTaxaNegocialIA, depois que o atendente revisar/corrigir
+ * os campos na tela.
+ *
+ * @return {Object} { sucesso, dados, associado, sugestaoEscolas, alertas, textoOcr }
+ */
+function analisarCartaOposicaoTaxaNegocialIA(base64, nomeArquivo, mimeType, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
+  try {
+    var texto = docIA_ocrParaTexto_(base64, nomeArquivo, mimeType);
+    if (!texto.trim()) {
+      return { sucesso: false, mensagem: 'Não foi possível ler nenhum texto no documento. Tente uma foto mais nítida ou um PDF de melhor qualidade.' };
+    }
+
+    var prompt = [
+      'Você está lendo o texto (extraído por OCR, pode ter erros de leitura) de uma carta de',
+      'oposição à Taxa Negocial. É o trabalhador exercendo o direito de não ter a Taxa Negocial',
+      '(desconto sindical previsto em Convenção Coletiva) descontada do seu salário. A carta pode',
+      'ser manuscrita e informal, sem campos fixos.',
+      '',
+      'TEXTO EXTRAÍDO:',
+      '"""',
+      texto,
+      '"""',
+      '',
+      'Extraia os dados em um JSON com exatamente estas chaves (use "" quando não encontrar,',
+      'NUNCA invente um valor que não está no texto):',
+      '{',
+      '  "nome": "",',
+      '  "cpf": "",',
+      '  "escola": "",',
+      '  "motivo": "",',
+      '  "dataCarta": "",',
+      '  "telefone": "",',
+      '  "email": "",',
+      '  "temAssinatura": true,',
+      '  "observacoesLeitura": ""',
+      '}',
+      '',
+      'Regras:',
+      '- "cpf": só dígitos, sem pontuação.',
+      '- "dataCarta": formato dd/mm/aaaa se identificar.',
+      '- "escola": o nome do estabelecimento como está escrito no documento, sem tentar',
+      '  corrigir ou formalizar — a correspondência com o cadastro é feita depois.',
+      '- "temAssinatura": true se parecer haver uma assinatura manuscrita no documento.',
+      '- "observacoesLeitura": qualquer trecho que ficou ilegível ou ambíguo no OCR — isso é',
+      '  importante para o atendente saber o que conferir com atenção.',
+      '- Responda APENAS com o JSON, sem texto antes ou depois, sem markdown.'
+    ].join('\n');
+
+    var extraido = docIA_extrairJSON_(prompt);
+
+    var alertas = [];
+    var cpfDigitos = limparDigitos_(extraido.cpf || '');
+    if (!cpfDigitos) {
+      alertas.push('CPF não identificado na carta — preencha manualmente.');
+    } else if (!validarCPFSindicalizacao_(cpfDigitos)) {
+      alertas.push('CPF identificado (' + extraido.cpf + ') não é válido — confira os dígitos.');
+    }
+
+    var associado = null;
+    if (cpfDigitos.length === 11) {
+      associado = consultarAssociadoPorCPF(cpfDigitos);
+      if (associado && associado.existe && associado.filiado) {
+        alertas.push('Este CPF já consta como ASSOCIADO FILIADO na base — confirme se a oposição à Taxa Negocial se aplica mesmo assim antes de prosseguir.');
+      }
+    }
+
+    if (!extraido.temAssinatura) {
+      alertas.push('Não identifiquei assinatura no documento — confirme visualmente antes de prosseguir.');
+    }
+
+    var sugestaoEscolas = [];
+    try {
+      var resultadoEscolas = buscarEscolasParaOficio('', extraido.escola || '');
+      sugestaoEscolas = resultadoEscolas.escolas || [];
+      if (resultadoEscolas.sugerida) {
+        sugestaoEscolas = [resultadoEscolas.sugerida].concat(
+          sugestaoEscolas.filter(function (e) { return e.cnpj !== resultadoEscolas.sugerida.cnpj; })
+        );
+      }
+    } catch (eEsc) {
+      Logger.log('analisarCartaOposicaoTaxaNegocialIA — busca de escola falhou: ' + eEsc.message);
+    }
+    if (!sugestaoEscolas.length) {
+      alertas.push('Nenhuma escola sugerida automaticamente — busque manualmente pelo nome.');
+    }
+
+    return {
+      sucesso: true,
+      dados: {
+        nome: extraido.nome || (associado ? associado.nome : ''),
+        cpf: cpfDigitos,
+        cpfFormatado: formatarCPF_(cpfDigitos),
+        escolaTexto: extraido.escola || '',
+        motivo: extraido.motivo || '',
+        dataCarta: extraido.dataCarta || '',
+        telefone: extraido.telefone || '',
+        email: extraido.email || '',
+        observacoesLeitura: extraido.observacoesLeitura || ''
+      },
+      associado: associado,
+      sugestaoEscolas: sugestaoEscolas,
+      alertas: alertas,
+      textoOcr: texto
+    };
+
+  } catch (e) {
+    Logger.log('analisarCartaOposicaoTaxaNegocialIA erro: ' + e.message);
+    return { sucesso: false, mensagem: 'Erro ao analisar a carta: ' + e.message };
+  }
+}
+
+/* ============================================================
+ * OPOSIÇÃO À TAXA NEGOCIAL — CONFIRMAÇÃO (só executa após revisão humana)
+ * ============================================================ */
+
+/**
+ * Gera o ofício de oposição à Taxa Negocial DEPOIS que o atendente
+ * revisou/corrigiu os dados extraídos pela IA e escolheu a escola certa na
+ * busca. Usa o MESMO caminho de sempre (gerarOficioWeb — mesma numeração,
+ * mesma fila de envio, mesmo aviso de duplicidade) — só o texto do ofício é
+ * diferente (pede que NÃO seja descontado, em vez de pedir o desconto).
+ * Não altera nenhum cadastro — diferente da desfiliação, isso não tira o
+ * trabalhador de nenhuma base, só instrui a escola sobre este desconto
+ * específico.
+ *
+ * @param {Object} dados { nome, cpf, escolaTexto, escolaNome, escolaCnpj,
+ *   escolaEmail, escolaUnidade, motivo, cartaBase64, cartaTipo,
+ *   confirmarDuplicata }
+ */
+function confirmarOposicaoTaxaNegocialIA(dados, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
+  dados = dados || {};
+  try {
+    var nome = String(dados.nome || '').trim();
+    var cpfDigitos = limparDigitos_(dados.cpf || '');
+    var cnpj = limparDigitos_(dados.escolaCnpj || '');
+
+    if (!nome) return { sucesso: false, mensagem: 'Nome é obrigatório.' };
+    if (!validarCPFSindicalizacao_(cpfDigitos)) return { sucesso: false, mensagem: 'CPF inválido.' };
+    if (cnpj.length !== 14) return { sucesso: false, mensagem: 'Selecione uma escola válida (com CNPJ) antes de confirmar.' };
+    if (!dados.escolaEmail) return { sucesso: false, mensagem: 'A escola selecionada não tem e-mail cadastrado.' };
+
+    var anexoCarta = null;
+    if (dados.cartaBase64) {
+      anexoCarta = {
+        nome: 'Carta_Oposicao_TaxaNegocial_' + nome.replace(/[^A-Za-z0-9]+/g, '_') + '.pdf',
+        tipo: dados.cartaTipo || 'application/pdf',
+        base64: dados.cartaBase64
+      };
+    }
+
+    var retorno = gerarOficioWeb({
+      tipo: 'Oposição Taxa Negocial',
+      escola: dados.escolaNome || '',
+      cnpj: cnpj,
+      email: dados.escolaEmail,
+      unidade: dados.escolaUnidade || '',
+      colaboradores: [nome],
+      cpfs: [cpfDigitos],
+      fichas: anexoCarta ? [anexoCarta] : [],
+      observacoes: 'Oposição à Taxa Negocial processada com apoio de IA (leitura de carta) · ' + (dados.motivo || ''),
+      confirmarDuplicata: !!dados.confirmarDuplicata
+    });
+
+    if (retorno && retorno.duplicataDetectada) {
+      return retorno; // devolve pro cliente perguntar/confirmar, igual ao fluxo manual
+    }
+    if (!retorno || retorno.erro) {
+      return { sucesso: false, mensagem: (retorno && retorno.mensagem) || 'Falha ao gerar o ofício de oposição à Taxa Negocial.' };
+    }
+
+    try {
+      if (dados.escolaNome && cnpj) {
+        sindOf_registrarDePara_(dados.escolaTexto || dados.escolaNome, {
+          nome: dados.escolaNome, cnpj: cnpj, emailPrincipal: dados.escolaEmail
+        }, 'SISGEP');
+      }
+    } catch (eDepara) {
+      Logger.log('confirmarOposicaoTaxaNegocialIA — De-Para não registrado: ' + eDepara.message);
+    }
+
+    return {
+      sucesso: true,
+      numeroOficio: retorno.dados.numero,
+      urlOficio: retorno.dados.url,
+      mensagem: 'Ofício de oposição à Taxa Negocial ' + retorno.dados.numero + ' gerado com sucesso.'
+    };
+
+  } catch (e) {
+    Logger.log('confirmarOposicaoTaxaNegocialIA erro: ' + e.message);
+    return { sucesso: false, mensagem: 'Erro: ' + e.message };
+  }
+}

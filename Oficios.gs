@@ -17,11 +17,14 @@ var PASTA_OFICIOS_LIVRE_ID         = "1MToLVFg_TmRH5DfvnlKIVPwmbmUOYTYn";
 
 function obterPastaPorTipo_(tipoNorm) {
   var mapa = {
-    "FILIACAO":          PASTA_OFICIOS_FILIACAO_ID,
-    "DESFILIACAO":       PASTA_OFICIOS_DESFILIACAO_ID,
-    "TAXA_NEGOCIAL":     PASTA_OFICIOS_TAXA_NEGOCIAL_ID,
-    "TAXA_ASSISTENCIAL": PASTA_OFICIOS_TAXA_ASSIST_ID,
-    "OFICIO_LIVRE":      PASTA_OFICIOS_LIVRE_ID
+    "FILIACAO":                 PASTA_OFICIOS_FILIACAO_ID,
+    "DESFILIACAO":              PASTA_OFICIOS_DESFILIACAO_ID,
+    "TAXA_NEGOCIAL":            PASTA_OFICIOS_TAXA_NEGOCIAL_ID,
+    // Sem pasta própria ainda — reaproveita a pasta de Taxa Negocial,
+    // já que trata do mesmo assunto (Cláusula 57ª), só que em sentido oposto.
+    "OPOSICAO_TAXA_NEGOCIAL":   PASTA_OFICIOS_TAXA_NEGOCIAL_ID,
+    "TAXA_ASSISTENCIAL":        PASTA_OFICIOS_TAXA_ASSIST_ID,
+    "OFICIO_LIVRE":             PASTA_OFICIOS_LIVRE_ID
   };
   var id = mapa[String(tipoNorm || "").toUpperCase()] || PASTA_OFICIOS_ID;
   return obterOuCriarSubpastaAno(id);
@@ -420,6 +423,9 @@ function montarDadosOficio_(dados, modo) {
     case "TAXA_NEGOCIAL":
       if (typeof montarTextoTaxaNegocial_ !== "function") throw new Error("Função montarTextoTaxaNegocial_ não encontrada.");
       corpoTexto = montarTextoTaxaNegocial_(dados, colaboradoresArr); break;
+    case "OPOSICAO_TAXA_NEGOCIAL":
+      if (typeof montarTextoOposicaoTaxaNegocial_ !== "function") throw new Error("Função montarTextoOposicaoTaxaNegocial_ não encontrada.");
+      corpoTexto = montarTextoOposicaoTaxaNegocial_(dados, colaboradoresArr); break;
     case "TAXA_ASSISTENCIAL":
       if (typeof montarTextoTaxaAssistencial_ !== "function") throw new Error("Função montarTextoTaxaAssistencial_ não encontrada.");
       corpoTexto = montarTextoTaxaAssistencial_(dados, colaboradoresArr); break;
@@ -698,6 +704,7 @@ function gerarHtmlOficioCompleto_(p, isPreview) {
   if      (p.tipoNorm === "FILIACAO")          { badgeCor = "#d97706"; refTexto = "Comunicado de Filia\u00e7\u00e3o Sindical"; }
   else if (p.tipoNorm === "DESFILIACAO")       { badgeCor = "#b91c1c"; refTexto = "Comunicado de Desfilia\u00e7\u00e3o Sindical"; }
   else if (p.tipoNorm === "TAXA_NEGOCIAL")     { badgeCor = "#0369a1"; refTexto = "Cobran\u00e7a de Taxa Negocial"; }
+  else if (p.tipoNorm === "OPOSICAO_TAXA_NEGOCIAL") { badgeCor = "#7c3aed"; refTexto = "Oposi\u00e7\u00e3o \u00e0 Taxa Negocial"; }
   else if (p.tipoNorm === "TAXA_ASSISTENCIAL") { badgeCor = "#166534"; refTexto = "Repasse de Taxa Assistencial"; }
   else if (p.tipoNorm === "OFICIO_LIVRE")      { badgeCor = "#334155"; refTexto = p.assunto || "Of\u00edcio Sindical"; }
 
