@@ -139,11 +139,8 @@ function enviarOTPSindicalizacao(idFicha) {
     };
   }
   var otp = String(Math.floor(100000 + Math.random() * 900000));
-  var cacheOtp = CacheService.getScriptCache();
-  cacheOtp.put('SIND_OTP_' + idFicha, otp, SINDICALIZACAO_OTP_VALIDADE_SEG);
-  // Novo código = nova chance: zera o contador de tentativas erradas
-  // (achado #4) para não punir um reenvio legítimo com menos tentativas.
-  cacheOtp.remove('SIND_OTP_TENTATIVAS_' + idFicha);
+  CacheService.getScriptCache().put(
+    'SIND_OTP_' + idFicha, otp, SINDICALIZACAO_OTP_VALIDADE_SEG);
 
   var destaque =
     '<div style="margin:18px 0;text-align:center;background:#f8faff;' +

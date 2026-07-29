@@ -1535,7 +1535,7 @@ function emitirOficioAutorizacaoParqueChina(dados, tokenSessao) {
     else if(typeof obterPastaPorTipo_==="function")pasta=obterPastaPorTipo_("OFICIO_LIVRE");
     else throw new Error("Pasta de autorizações não configurada.");
     var nome="Oficio_"+numero.replace("/","_")+"_Autorizacao_China_Park";
-    var pdf=oficios_converterHtmlParaPdf_(html,nome,pasta),url="https://drive.google.com/file/d/"+pdf.getId()+"/view";
+    var pdf=converterHtmlParaPdf_(html,nome,pasta),url="https://drive.google.com/file/d/"+pdf.getId()+"/view";
     var fila=criarFilaEnvioOficio_({numeroOficio:numero,tipo:"AUTORIZAÇÃO CHINA PARK",escola:"China Park Eco Resort",cnpj:"",emailPrincipal:emailsParque[0],emailsTodos:destinos.todos.join(","),assunto:"Autorização de entrada — China Park — Ofício Nº "+numero,htmlBody:pcMontarEmailParque_(numero,reservas),anexos:[{nome:pdf.getName(),mimeType:MimeType.PDF,fileId:pdf.getId()}],usuario:responsavel,codigoVerificacao:codigo});
     pcAtualizarRegistroOficioAutorizacao_(numero,"PENDENTE",url,tipo+(dados.oficioOriginal?" · Ref. "+dados.oficioOriginal:""));pcAtualizarAutorizacao_(idAut,"PENDENTE",pdf.getId(),url,null);
     pcAtualizarDestinatariosAutorizacao_(numero,"PENDENTE","");pcAuditar_("","OFICIO_AUTORIZACAO_GERADO","","PENDENTE",responsavel,"",{numeroOficio:numero,reservas:reservas.map(function(r){return r.idReserva;}),filaId:fila&&fila.id||"",para:destinos.para,cc:destinos.cc,cco:destinos.cco});
@@ -1710,7 +1710,7 @@ function validarOperacaoParqueChina() {
 function validarIntegracaoAutorizacoesParqueChina() {
   try {
     var faltando=[];
-    ["gerarProximoNumeroSeguro","preverProximoNumeroOficio","gerarHtmlOficioCompleto_","oficios_converterHtmlParaPdf_","criarFilaEnvioOficio_","enviarOficioDaFilaAgora","appendRowByHeader_","getHeaderMap_"].forEach(function(nome){
+    ["gerarProximoNumeroSeguro","preverProximoNumeroOficio","gerarHtmlOficioCompleto_","converterHtmlParaPdf_","criarFilaEnvioOficio_","enviarOficioDaFilaAgora","appendRowByHeader_","getHeaderMap_"].forEach(function(nome){
       try { if (typeof globalThis[nome] !== "function") faltando.push(nome); }
       catch(e) { if (eval("typeof "+nome) !== "function") faltando.push(nome); }
     });

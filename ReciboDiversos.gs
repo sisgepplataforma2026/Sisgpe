@@ -365,7 +365,7 @@ function gerarReciboDiverso(dados) {
       .replace(/\s+/g, " ")
       .trim();
 
-    var pdfFile = recibo_converterHtmlParaPdf_(html, nomeArq, pastaAno);
+    var pdfFile = converterHtmlParaPdf_(html, nomeArq, pastaAno);
 
     try {
       pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
@@ -442,7 +442,7 @@ function gerarLoteReciboDiversos(lista) {
           .replace(/\s+/g, " ")
           .trim();
 
-        var pdfFile = recibo_converterHtmlParaPdf_(html, nomeArq, pastaAno);
+        var pdfFile = converterHtmlParaPdf_(html, nomeArq, pastaAno);
         try { pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch(e) {}
 
         var fileId      = pdfFile.getId();
@@ -1024,6 +1024,13 @@ function excluirReciboDiverso(dados, tokenSessao) {
   }
 }
 
+/* ═══════════════════════════════════════
+   ALIAS
+═══════════════════════════════════════ */
+function buscarBeneficiariosReciboPorEmpresa(empresaBusca, tokenSessao) {
+  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  return buscarBeneficiariosPorEmpresa(empresaBusca);
+}
 
 /* ═══════════════════════════════════════
    TESTES

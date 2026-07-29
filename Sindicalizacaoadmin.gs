@@ -54,8 +54,7 @@ var SIND_ADM_COLUNAS = [
  * Lista fichas para o painel, com filtros opcionais:
  * { status, escola, origem, diretorBase, texto }.
  */
-function listarFichasSindicalizacao(filtros, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+function listarFichasSindicalizacao(filtros) {
   filtros = filtros || {};
   var semFiltros = !filtros.status && !filtros.escola &&
     !filtros.origem && !filtros.diretorBase && !filtros.texto;
@@ -98,8 +97,7 @@ function listarFichasSindicalizacao(filtros, tokenSessao) {
 /**
  * Detalhe completo de uma ficha.
  */
-function obterFichaSindicalizacao(idFicha, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+function obterFichaSindicalizacao(idFicha) {
   var r = sindAdm_buscarPorId_(idFicha);
   if (!r) return { sucesso: false, mensagem: 'Ficha não encontrada.' };
   r.CPF_FORMATADO = sindAdm_cpfNormalizado_(r.CPF);
@@ -112,8 +110,7 @@ function obterFichaSindicalizacao(idFicha, tokenSessao) {
  * para Portal, Carteirinha, China Park e Vouchers), regenera o PDF com a
  * matrícula e envia o e-mail de boas-vindas.
  */
-function aprovarFichaSindicalizacao(idFicha, aprovadoPor, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+function aprovarFichaSindicalizacao(idFicha, aprovadoPor) {
   var usuario = String(aprovadoPor || '').trim() || 'SISGEP';
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -183,8 +180,7 @@ function aprovarFichaSindicalizacao(idFicha, aprovadoPor, tokenSessao) {
  * Rejeita ficha não finalizada, registrando motivo (obrigatório) e
  * notificando o trabalhador quando houver e-mail.
  */
-function rejeitarFichaSindicalizacao(idFicha, motivo, aprovadoPor, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+function rejeitarFichaSindicalizacao(idFicha, motivo, aprovadoPor) {
   if (!motivo || !String(motivo).trim()) {
     return { sucesso: false, mensagem: 'Informe o motivo da rejeição.' };
   }

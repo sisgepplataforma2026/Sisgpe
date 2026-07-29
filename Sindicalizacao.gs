@@ -23,7 +23,6 @@
 
 var SINDICALIZACAO_ABA = 'SISGEP_Sindicalizacao';
 var SINDICALIZACAO_OTP_VALIDADE_SEG = 600; // 10 minutos
-var SINDICALIZACAO_OTP_MAX_TENTATIVAS = 5; // achado #4: sem isso, o código de 6 dígitos podia ser forçado por script dentro da janela de validade
 
 var SINDICALIZACAO_COLUNAS = [
   'ID_FICHA', 'TIPO', 'MATRICULA',
@@ -244,13 +243,48 @@ function submeterFichaSindicalizacao(dados) {
  * ASSINATURA (OTP)
  * ============================================================ */
 
-// enviarOTPSindicalizacao(idFicha) — implementação real fica em
-// SindicalizacaoEmails.gs (versão com template HTML da marca). Havia uma
-// segunda definição aqui, mais antiga (texto puro) — GAS roda tudo em um
-// único escopo global, então as duas brigavam por qual "vencia", sem
-// nenhuma forma confiável de saber qual estava ativa. Removida por ser a
-// desatualizada; o próprio cabeçalho de SindicalizacaoEmails.gs já
-// instruía essa remoção e nunca tinha sido feita.
+/**
+ * Gera e envia o código OTP de 6 dígitos para assinatura da
+ * ficha. Canal: e-mail informado na ficha. Validade: 10 min.
+ * Pode ser chamado novamente para reenvio.
+ */
+function enviarOTPSindicalizacao(idFicha) {
+  var registro = buscarFichaPorId_(idFicha);
+  if (!registro) {
+    return { sucesso: false, mensagem: 'Ficha não encontrada.' };
+  }
+  if (registro.STATUS !== SINDICALIZACAO_STATUS.AGUARDANDO_ASSINATURA) {
+    return { sucesso: false, mensagem: 'Ficha não está aguardando assinatura.' };
+  }
+  if (!registro.EMAIL) {
+    return {
+      sucesso: false,
+      mensagem: 'Ficha sem e-mail. Informe um e-mail para receber o código.'
+    };
+  }
+  var otp = String(Math.floor(100000 + Math.random() * 900000));
+  CacheService.getScriptCache().put(
+    'SIND_OTP_' + idFicha, otp, SINDICALIZACAO_OTP_VALIDADE_SEG);
+
+  var corpo =
+    'Olá, ' + registro.NOME_COMPLETO + '!\n\n' +
+    'Seu código para assinatura eletrônica da Ficha de Sindicalização ' +
+    'do SindEducação-ES é:\n\n' +
+    '        ' + otp + '\n\n' +
+    'O código vale por 10 minutos. Ao informá-lo no formulário, você ' +
+    'assina eletronicamente a ficha e a autorização de desconto em folha ' +
+    'de 2% sobre o salário-base, nos termos do Art. 545 da CLT.\n\n' +
+    'Se você não solicitou este código, ignore este e-mail.\n\n' +
+'SindEducação-ES — Sindicato dos educadores técnico-administrativos ' +
+    'em estabelecimentos de ensino particular no Estado do Espírito Santo';
+  try {
+    GmailApp.sendEmail(registro.EMAIL,
+      'Código de assinatura — Ficha de Sindicalização', corpo);
+    return { sucesso: true, canal: 'EMAIL', mensagem: 'Código enviado.' };
+  } catch (e) {
+    return { sucesso: false, mensagem: 'Falha ao enviar e-mail: ' + e.message };
+  }
+}
 
 /**
  * Valida o OTP e efetiva a assinatura eletrônica: grava data/
@@ -270,7 +304,6 @@ function validarOTPEAssinarFicha(idFicha, otpInformado, ipCliente) {
       return { sucesso: false, mensagem: 'Ficha não está aguardando assinatura.' };
     }
     var cache = CacheService.getScriptCache();
-    var chaveTentativas = 'SIND_OTP_TENTATIVAS_' + idFicha;
     var otpArmazenado = cache.get('SIND_OTP_' + idFicha);
     if (!otpArmazenado) {
       return {
@@ -279,20 +312,9 @@ function validarOTPEAssinarFicha(idFicha, otpInformado, ipCliente) {
       };
     }
     if (String(otpInformado).trim() !== otpArmazenado) {
-      var tentativas = (parseInt(cache.get(chaveTentativas), 10) || 0) + 1;
-      if (tentativas >= SINDICALIZACAO_OTP_MAX_TENTATIVAS) {
-        cache.remove('SIND_OTP_' + idFicha);
-        cache.remove(chaveTentativas);
-        return {
-          sucesso: false, expirado: true,
-          mensagem: 'Muitas tentativas incorretas. Por segurança, solicite um novo código.'
-        };
-      }
-      cache.put(chaveTentativas, String(tentativas), SINDICALIZACAO_OTP_VALIDADE_SEG);
       return { sucesso: false, mensagem: 'Código incorreto. Confira e tente novamente.' };
     }
     cache.remove('SIND_OTP_' + idFicha);
-    cache.remove(chaveTentativas);
 
     registro.STATUS = SINDICALIZACAO_STATUS.ASSINADA;
     registro.DATA_HORA_ASSINATURA = new Date();

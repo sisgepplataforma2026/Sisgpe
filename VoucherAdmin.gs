@@ -69,8 +69,7 @@ function atualizarStatusProtocolo_(protocolo, status, responsavel, observacao) {
   }
 }
 
-function solicitarComplementacaoVoucher(protocolo, obs, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+function solicitarComplementacaoVoucher(protocolo, obs) {
   try {
     const item = buscarSolicitacaoPorProtocolo_(protocolo);
     if (!item) return { ok: false, mensagem: "Solicitação não encontrada." };
@@ -99,8 +98,7 @@ function solicitarComplementacaoVoucher(protocolo, obs, tokenSessao) {
   }
 }
 
-function confirmarAssociacaoVoucher(protocolo, obs, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+function confirmarAssociacaoVoucher(protocolo, obs) {
   try {
     const item = buscarSolicitacaoPorProtocolo_(protocolo);
     if (!item) return { ok: false, mensagem: "Solicitação não encontrada." };
@@ -138,8 +136,7 @@ function confirmarAssociacaoVoucher(protocolo, obs, tokenSessao) {
   }
 }
 
-function marcarNaoAssociadoVoucher(protocolo, obs, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+function marcarNaoAssociadoVoucher(protocolo, obs) {
   try {
     const item = buscarSolicitacaoPorProtocolo_(protocolo);
     if (!item) return { ok: false, mensagem: "Solicitação não encontrada." };
@@ -180,8 +177,7 @@ function marcarNaoAssociadoVoucher(protocolo, obs, tokenSessao) {
   }
 }
 
-function aprovarSolicitacaoVoucher(protocolo, obs, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+function aprovarSolicitacaoVoucher(protocolo, obs) {
   try {
     const item = buscarSolicitacaoPorProtocolo_(protocolo);
     if (!item) return { ok: false, mensagem: "Solicitação não encontrada." };
@@ -223,8 +219,7 @@ function aprovarSolicitacaoVoucher(protocolo, obs, tokenSessao) {
   }
 }
 
-function indeferirSolicitacaoVoucher(protocolo, obs, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+function indeferirSolicitacaoVoucher(protocolo, obs) {
   try {
     const item = buscarSolicitacaoPorProtocolo_(protocolo);
     if (!item) return { ok: false, mensagem: "Solicitação não encontrada." };
@@ -365,18 +360,18 @@ function enviarEmailIndeferimentoVoucher_(reg, protocolo, obs) {
 
 /* ================= ALIASES COMPATIBILIDADE ================= */
 
-function solicitarComplementacaoCertBolsa(protocolo, obs, tokenSessao) {
-  return solicitarComplementacaoVoucher(protocolo, obs, tokenSessao);
+function solicitarComplementacaoCertBolsa(protocolo, obs) {
+  return solicitarComplementacaoVoucher(protocolo, obs);
 }
 
-function aprovarSolicitacaoCertBolsa(protocolo, obs, tokenSessao) {
-  return aprovarSolicitacaoVoucher(protocolo, obs, tokenSessao);
+function aprovarSolicitacaoCertBolsa(protocolo, obs) {
+  return aprovarSolicitacaoVoucher(protocolo, obs);
 }
 
-function aprovarSolicitacaoCertBolsaComEmail(protocolo, obs, tokenSessao) {
-  return aprovarSolicitacaoVoucher(protocolo, obs, tokenSessao);
+function aprovarSolicitacaoCertBolsaComEmail(protocolo, obs) {
+  return aprovarSolicitacaoVoucher(protocolo, obs);
 }
 
-function indeferirSolicitacaoCertBolsa(protocolo, obs, tokenSessao) {
-  return indeferirSolicitacaoVoucher(protocolo, obs, tokenSessao);
+function indeferirSolicitacaoCertBolsa(protocolo, obs) {
+  return indeferirSolicitacaoVoucher(protocolo, obs);
 }

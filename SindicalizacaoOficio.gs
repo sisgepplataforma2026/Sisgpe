@@ -215,10 +215,8 @@ function previewOficioFiliacao(idFicha, escola) {
  * @param {string} idFicha
  * @param {Object} escola      { nome, cnpj, emailPrincipal, emailsTodos }
  * @param {string} aprovadoPor Nome do usuário do SISGEP
- * @param {string} tokenSessao Token da sessão SISGEP do atendente que aprova
  */
-function aprovarEEncaminharFicha(idFicha, escola, aprovadoPor, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+function aprovarEEncaminharFicha(idFicha, escola, aprovadoPor) {
   if (!escola || !escola.cnpj || sindOf_digitos_(escola.cnpj).length !== 14) {
     return { sucesso: false, mensagem: 'Selecione uma escola com CNPJ válido.' };
   }
@@ -243,7 +241,7 @@ function aprovarEEncaminharFicha(idFicha, escola, aprovadoPor, tokenSessao) {
   var nomeNaFicha = String(f.ESCOLA || '').trim();
 
   // 1. Aprovação (matrícula + associado + PDF + e-mail de boas-vindas)
-  var aprovacao = aprovarFichaSindicalizacao(idFicha, aprovadoPor, tokenSessao);
+  var aprovacao = aprovarFichaSindicalizacao(idFicha, aprovadoPor);
   if (!aprovacao.sucesso) return aprovacao;
 
   // 2. Anexo: o PDF da ficha assinada
@@ -279,12 +277,7 @@ function aprovarEEncaminharFicha(idFicha, escola, aprovadoPor, tokenSessao) {
       fichas: [anexoFicha],
       observacoes: 'Matrícula ' + aprovacao.matricula +
         ' · Ficha ' + atualizada.ID_FICHA +
-        (atualizada.ID_VISITA ? ' · Visita ' + atualizada.ID_VISITA : ''),
-      // Vários trabalhadores da mesma escola sendo aprovados no mesmo dia geram,
-      // legitimamente, mais de um ofício de Filiação para a mesma escola em 24h.
-      // Este fluxo não tem interface para perguntar ao usuário, então já confirma
-      // — o aviso de duplicata (achado #4) vale para o formulário manual.
-      confirmarDuplicata: true
+        (atualizada.ID_VISITA ? ' · Visita ' + atualizada.ID_VISITA : '')
     });
   } catch (eOf) {
     Logger.log('gerarOficioWeb falhou: ' + eOf.message);
@@ -363,11 +356,7 @@ function reemitirOficioFicha(idFicha, escola, usuario) {
     colaboradores: [String(f.NOME_COMPLETO || '').trim()],
     cpfs: [sindOf_digitos_(f.CPF)],
     fichas: [anexo],
-    observacoes: 'Reemissão · Matrícula ' + f.MATRICULA + ' · Ficha ' + f.ID_FICHA,
-    // Reemissão de um ofício já matriculado — não é o cenário que a prevenção de
-    // duplicidade (achado #4) deve barrar, e este fluxo não tem interface para
-    // perguntar ao usuário.
-    confirmarDuplicata: true
+    observacoes: 'Reemissão · Matrícula ' + f.MATRICULA + ' · Ficha ' + f.ID_FICHA
   });
 
   if (!retorno || retorno.erro) {

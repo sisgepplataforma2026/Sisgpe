@@ -65,7 +65,7 @@ function exportarRelatorio(filtros, tokenSessao) {
   aba.getRange(2, 1, linhas.length, linhas[0].length).setValues(linhas);
   aba.autoResizeColumns(1, cabecalho.length);
 
-  return relOficios_exportarPlanilhaTemporaria_(planilhaTemp, nomeArquivo, tipoExportacao);
+  return exportarPlanilhaTemporaria_(planilhaTemp, nomeArquivo, tipoExportacao);
 }
 
 /* ── Exportar Auditoria (LOG_SISTEMA) ── */
@@ -120,7 +120,7 @@ function exportarAuditoriaLog(filtros, tokenSessao) {
   aba.getRange(2, 1, linhas.length, linhas[0].length).setValues(linhas);
   aba.autoResizeColumns(1, cabecalho.length);
 
-  return relOficios_exportarPlanilhaTemporaria_(planilhaTemp, nomeArquivo, tipoExportacao);
+  return exportarPlanilhaTemporaria_(planilhaTemp, nomeArquivo, tipoExportacao);
 }
 
 /* ── listarEscolasOficios ── */
@@ -219,8 +219,8 @@ function salvarEscolaOficio(dados, tokenSessao) {
   };
 }
 
-/* ── relOficios_exportarPlanilhaTemporaria_ ── */
-function relOficios_exportarPlanilhaTemporaria_(planilhaTemp, nomeArquivo, tipoExportacao) {
+/* ── exportarPlanilhaTemporaria_ ── */
+function exportarPlanilhaTemporaria_(planilhaTemp, nomeArquivo, tipoExportacao) {
   try {
     var idTemp = planilhaTemp.getId();
     var formato = tipoExportacao === "csv" ? "csv" : "xlsx";

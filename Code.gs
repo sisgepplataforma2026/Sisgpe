@@ -71,17 +71,6 @@ if (p.portal === "associado") {
       Logger.log("[PORTAL] Redirecionando para o Portal do Associado");
       return servirPortalAssociado(p);
     }
-
-    // ── Portal público de solicitação de Voucher (Bolsa de Estudo) ──
-    // Público, sem sessão — o próprio formulário pede CPF + data de nascimento.
-    if (p.portal === "voucher") {
-      Logger.log("[PORTAL] Redirecionando para o Portal de Voucher");
-      return HtmlService.createHtmlOutputFromFile("PortalVoucher")
-        .setTitle("SindEducação-ES — Solicitação de Voucher")
-        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
-        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
-    }
 // ── Rota da tela de Emissão de Ingressos (Eventos) — protegida por sessão ──
     if (p.painel === "emissao") {
       var tokenEmissao = String(p.sessao || "").trim();
@@ -113,15 +102,6 @@ if (p.portal === "associado") {
       return pixelTransparente_();
     }
 
-    // ── Rastreamento de abertura de e-mail (despesas / guias de NF) ──
-    // As duas funções só agem se o token pertencer ao seu próprio prefixo
-    // (PIXEL_DOC_ ou LEITURA_NF_), então é seguro chamar as duas aqui.
-    if (p.page === "pub-pixel-nf" && p.t) {
-      despesas_registrarLeituraEmail(p.t);
-      guiasPagamento_registrarLeituraEmail(p.t);
-      return pixelTransparente_();
-    }
-
     // ── Tela de redefinição de senha via link de recuperação ──
     var temTokenRecuperacao = p.recuperar;
 
@@ -132,14 +112,6 @@ if (p.portal === "associado") {
         .setTitle("SISGEP — Recuperar senha")
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
-    }
-
-    // ── Rota pública: validação de autenticidade de ofício (link/QR impresso no PDF) ──
-    // Precisa vir ANTES da checagem de sessão: quem valida é a escola/associado
-    // que recebeu o documento, sem login no SISGEP.
-    if (p.codigo) {
-      Logger.log("[VALIDACAO] Validando código público de ofício.");
-      return validarPublico(p.codigo);
     }
 
     // ── Checa sessão — token vem explicitamente da URL (?sessao=token) ──

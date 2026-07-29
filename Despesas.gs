@@ -2474,7 +2474,7 @@ function montarHtmlConfirmacaoPrestador_(nome, valor, vencBr, numero, nomesArqs)
     '</div>'
   );
 }
-function despesas_registrarLeituraEmail(tokenPixel) {
+function registrarLeituraEmail(tokenPixel) {
   try {
     var raw = PropertiesService.getScriptProperties().getProperty("PIXEL_DOC_" + tokenPixel);
     if (!raw) return;

@@ -214,21 +214,6 @@ function processarFilaEnvioOficios() {
     return { ok: true, mensagem: "Fila vazia.", processados: 0, enviados: 0, erros: 0 };
   }
 
-  // Achado #10: sem checar a cota, um pico de envio esgotava a cota diária do
-  // Gmail no meio do lote e cada ofício restante virava "ERRO" genérico —
-  // indistinguível de e-mail inválido, consumindo tentativas à toa. Se a cota
-  // não cobre nem este lote, pausa sem tocar nas linhas (nenhuma tentativa é
-  // gasta) — a próxima execução do trigger (5 em 5 min) tenta de novo.
-  var quotaRestante = MailApp.getRemainingDailyQuota();
-  if (quotaRestante < LIMITE_POR_EXECUCAO) {
-    Logger.log("⚠ processarFilaEnvioOficios: cota diária de e-mail insuficiente (" + quotaRestante + " restante(s)). Execução pausada, sem marcar erro nas linhas.");
-    return {
-      ok: true,
-      mensagem: "Cota diária de e-mail quase esgotada (" + quotaRestante + " restante(s)). Processamento pausado nesta execução — retoma sozinho quando a cota renovar.",
-      processados: 0, enviados: 0, erros: 0, cotaInsuficiente: true
-    };
-  }
-
   var headerMap            = getHeaderMap_(sh);
   var colNumero            = headerMap["NUMERO_OFICIO"];
   var colTipo              = headerMap["TIPO"];

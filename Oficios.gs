@@ -29,7 +29,7 @@ function obterPastaPorTipo_(tipoNorm) {
 
 /* ================= CONVERTER HTML PARA PDF ================= */
 
-function oficios_converterHtmlParaPdf_(html, nomeArquivo, pastaDestino) {
+function converterHtmlParaPdf_(html, nomeArquivo, pastaDestino) {
   try {
 var bytes = Utilities.newBlob(html).getBytes();
 var blob  = Utilities.newBlob(bytes, "text/html; charset=utf-8", nomeArquivo + ".html");
@@ -497,27 +497,6 @@ function gerarOficioWeb(dados, tokenSessao) {
       if (!dados.email)  throw new Error("E-mail é obrigatório.");
     }
 
-    // Prevenção de duplicidade (achado #4): avisa e deixa o atendente confirmar,
-    // não bloqueia — a mesma escola pode legitimamente receber dois ofícios do
-    // mesmo tipo no mesmo dia (ex.: desfiliação seguida de nova filiação).
-    // Só se aplica aos tipos institucionais (não ao Ofício Livre, que não usa
-    // escola/CNPJ). dados.confirmarDuplicata vem true quando o atendente já
-    // confirmou o aviso no passo anterior.
-    if (!isLivre && !dados.confirmarDuplicata) {
-      var duplicata = verificarDuplicata({ escola: dados.escola, cnpj: dados.cnpj, tipo: assuntoTipo });
-      if (duplicata && duplicata.duplicata) {
-        return {
-          erro: false,
-          duplicataDetectada: true,
-          duplicata: duplicata,
-          mensagem: "Já existe um ofício de " + assuntoTipo + " para " + (duplicata.escola || dados.escola) +
-            (duplicata.numeroExistente ? " (nº " + duplicata.numeroExistente + ")" : "") +
-            (duplicata.dataExistente ? ", gerado em " + duplicata.dataExistente : "") +
-            " nas últimas 24h. Confirme se deseja gerar mesmo assim."
-        };
-      }
-    }
-
     var validacaoEmails = validarListaEmails_(dados.email || "");
     if (!validacaoEmails.ok) {
       if (!validacaoEmails.emails.length) throw new Error("Informe pelo menos um e-mail válido.");
@@ -556,7 +535,7 @@ function gerarOficioWeb(dados, tokenSessao) {
     var htmlOficio = gerarHtmlOficioCompleto_(p, false);
     var pastaAno   = obterPastaPorTipo_(proc.tipoNorm);
     var nomeBase   = montarNomeArquivoOficio_(proc.numero, dados.escola || dados.para || "", proc.colaboradoresArr, new Date()).replace(/\.pdf$/i, "");
-    var pdfFile    = oficios_converterHtmlParaPdf_(htmlOficio, nomeBase, pastaAno);
+    var pdfFile    = converterHtmlParaPdf_(htmlOficio, nomeBase, pastaAno);
 
     var anexosFila = [{ nome: pdfFile.getName(), mimeType: MimeType.PDF, fileId: pdfFile.getId() }];
 
@@ -573,13 +552,8 @@ function gerarOficioWeb(dados, tokenSessao) {
       });
     }
 
-    var qtdFichas          = proc.isLivre ? 0 : dados.fichas.length;
-    // Texto digitado pelo atendente (Ofício Livre) — escapado antes de entrar no
-    // e-mail para não permitir injeção de HTML. Os textos padrão dos demais tipos
-    // (Filiação/Desfiliação/Taxas) são montados internamente por montarEmailHTML e
-    // usam <strong> de propósito, por isso o escaping é feito aqui, não lá dentro.
-    var textoPrincipalEmail = escapeHtml_(dados.textoPrincipal || dados.corpo || "");
-    var htmlBody     = montarEmailHTML(tituloEmail, proc.numero, assuntoTipo, qtdFichas, textoPrincipalEmail);
+    var qtdFichas    = proc.isLivre ? 0 : dados.fichas.length;
+    var htmlBody     = montarEmailHTML(tituloEmail, proc.numero, assuntoTipo, qtdFichas, dados.textoPrincipal || dados.corpo || "");
     var assuntoEmail = tituloEmail + " Nº " + proc.numero;
 
     var retornoFila = criarFilaEnvioOficio_({

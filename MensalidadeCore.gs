@@ -49,12 +49,7 @@ function diasEntre_(dataStr) {
   }
 }
 
-// Renomeada para não colidir com getHeaderMap_ (Utils.gs), definição global
-// duplicada — o Apps Script roda todo o projeto em um único escopo, então as
-// duas funções de mesmo nome disputavam qual "vencia" dependendo da ordem de
-// carregamento dos arquivos. Sem chamadores neste arquivo (confirmado por
-// busca), renomear é seguro.
-function getHeaderMapMensalidade_(aba) {
+function getHeaderMap_(aba) {
   var headers = aba.getRange(1, 1, 1, aba.getLastColumn()).getValues()[0];
   var map = {};
   headers.forEach(function(h, i) { if (h) map[String(h).trim()] = i + 1; });
@@ -546,6 +541,178 @@ function importarHistoricoMensalidades() {
     return { ok: false, mensagem: 'Erro: ' + e.message };
   }
 }
+
+/* ═══════════════════════════════════════════════════════
+   PROCESSAR RELATÓRIO DE DESCONTO VIA API CLAUDE (IA)
+═══════════════════════════════════════════════════════ */
+function processarRelatorioMensalidade(payload) {
+  try {
+    var escolaNome  = String(payload.escolaNome  || "").trim();
+    var base64      = String(payload.base64      || "");
+    var mimeType    = String(payload.mimeType    || "application/pdf");
+    var nomeArquivo = String(payload.nomeArquivo || "relatorio");
+
+    if (!base64)     return { ok: false, mensagem: "Arquivo não recebido." };
+    if (!escolaNome) return { ok: false, mensagem: "Nome da escola não informado." };
+
+    // ── 1. Busca associados pendentes da escola ──
+    var aba = getAbaMensalidade_();
+    var ultimaLinha = aba.getLastRow();
+    if (ultimaLinha < 2) return { ok: false, mensagem: "Nenhum registro na planilha." };
+
+    var dados = aba.getRange(2, 1, ultimaLinha - 1, 9).getValues();
+    var associados = [];
+
+    for (var i = 0; i < dados.length; i++) {
+      var nomeEscolaLinha = String(dados[i][COL_M.ESCOLA  - 1] || "").trim().toLowerCase();
+      var statusAtual     = String(dados[i][COL_M.STATUS  - 1] || "").trim().toUpperCase();
+      var nomeLinha       = String(dados[i][COL_M.NOME    - 1] || "").trim();
+
+      if (!nomeLinha) continue;
+      if (nomeEscolaLinha.indexOf(escolaNome.toLowerCase()) < 0) continue;
+      if (statusAtual === "CONFIRMADO" || statusAtual === "REGULARIZADO") continue;
+
+      associados.push({
+        linha:  i + 2,
+        nome:   nomeLinha,
+        cpf:    String(dados[i][COL_M.CPF           - 1] || "").trim(),
+        oficio: String(dados[i][COL_M.NUMERO_OFICIO - 1] || "").trim()
+      });
+    }
+
+    if (!associados.length) {
+      return { ok: false, mensagem: "Nenhum associado pendente encontrado para esta escola." };
+    }
+
+    // ── 2. Monta lista para o prompt ──
+    var listaAssociados = associados.map(function(a, idx) {
+      return (idx + 1) + ". Nome: " + a.nome + (a.cpf ? " | CPF: " + a.cpf : "");
+    }).join("\n");
+
+    var prompt =
+      "Você receberá um documento (relatório/holerite/planilha) de uma escola/empresa.\n\n" +
+      "Sua tarefa é identificar quais dos associados abaixo constam no documento COM desconto " +
+      "de mensalidade sindical (pode aparecer como 'sindicato', 'contribuição sindical', " +
+      "'mensalidade sindical', 'sind.', 'SINDEDUCACAO', ou similar).\n\n" +
+      "ASSOCIADOS A VERIFICAR:\n" + listaAssociados + "\n\n" +
+      "INSTRUÇÕES:\n" +
+      "- Compare os nomes de forma flexível (ignore acentos, maiúsculas/minúsculas, abreviações)\n" +
+      "- Se encontrar um nome parcialmente (ex: 'MARIA SILVA' bate com 'MARIA DA SILVA'), considere como encontrado\n" +
+      "- Retorne SOMENTE um JSON válido, sem texto adicional, sem markdown, sem explicações\n" +
+      "- Formato exato: {\"encontrados\": [1, 3], \"nao_encontrados\": [2], \"observacao\": \"texto livre\"}\n" +
+      "- Os números são os índices da lista acima (começando em 1)\n" +
+      "- Se não encontrar nenhum desconto sindical no documento, retorne encontrados como lista vazia []";
+
+    // ── 3. Chama API do Claude ──
+    var apiKey = PropertiesService.getScriptProperties().getProperty("ANTHROPIC_API_KEY");
+    if (!apiKey) return { ok: false, mensagem: "Chave da API Anthropic não configurada no GAS." };
+
+    var mensagemContent = [];
+
+    // Adiciona o arquivo conforme tipo
+    if (mimeType === "application/pdf") {
+      mensagemContent.push({
+        type: "document",
+        source: { type: "base64", media_type: "application/pdf", data: base64 }
+      });
+    } else if (mimeType.indexOf("image") >= 0) {
+      mensagemContent.push({
+        type: "image",
+        source: { type: "base64", media_type: mimeType, data: base64 }
+      });
+    }
+    // Para Excel/CSV: o texto do prompt já orienta o modelo
+
+    mensagemContent.push({ type: "text", text: prompt });
+
+    var requestBody = {
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 1024,
+      messages: [{ role: "user", content: mensagemContent }]
+    };
+
+    var options = {
+      method: "post",
+      contentType: "application/json",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01"
+      },
+      payload: JSON.stringify(requestBody),
+      muteHttpExceptions: true
+    };
+
+    var response = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", options);
+    var respCode = response.getResponseCode();
+    var respText = response.getContentText();
+
+    if (respCode !== 200) {
+      Logger.log("Erro API Claude: " + respCode + " - " + respText);
+      return { ok: false, mensagem: "Erro na API Claude (código " + respCode + ")." };
+    }
+
+    var respJson = JSON.parse(respText);
+    var textoResposta = respJson.content && respJson.content[0] ? respJson.content[0].text : "";
+
+    // ── 4. Parseia resposta JSON do Claude ──
+    var resultado;
+    try {
+      var clean = textoResposta.replace(/```json|```/g, "").trim();
+      resultado = JSON.parse(clean);
+    } catch (e) {
+      Logger.log("Erro ao parsear resposta Claude: " + textoResposta);
+      return { ok: false, mensagem: "Erro ao interpretar resposta da IA. Resposta: " + textoResposta.slice(0, 200) };
+    }
+
+    var encontrados    = resultado.encontrados    || [];
+    var naoEncontrados = resultado.nao_encontrados || [];
+    var observacao     = resultado.observacao      || "";
+
+    // ── 5. Confirma automaticamente os encontrados ──
+    var confirmados = 0;
+    for (var j = 0; j < encontrados.length; j++) {
+      var idxAssoc = encontrados[j] - 1;
+      if (idxAssoc < 0 || idxAssoc >= associados.length) continue;
+      var assoc = associados[idxAssoc];
+      aba.getRange(assoc.linha, COL_M.STATUS).setValue("CONFIRMADO");
+      aba.getRange(assoc.linha, COL_M.OBSERVACOES).setValue(
+        "Confirmado via relatório '" + nomeArquivo + "' em " + hoje_() +
+        (observacao ? ". IA: " + observacao : "")
+      );
+      confirmados++;
+    }
+
+    // ── 6. Monta retorno com detalhes ──
+    var detalhes = associados.map(function(a, k) {
+      return {
+        nome:       a.nome,
+        cpf:        a.cpf,
+        oficio:     a.oficio,
+        encontrado: encontrados.indexOf(k + 1) >= 0
+      };
+    });
+
+    return {
+      ok:          true,
+      confirmados: confirmados,
+      total:       associados.length,
+      detalhes:    detalhes,
+      observacao:  observacao,
+      mensagem:    confirmados + " de " + associados.length + " associado(s) confirmado(s) via relatório da IA."
+    };
+
+  } catch (e) {
+    Logger.log("processarRelatorioMensalidade erro: " + e.message);
+    return { ok: false, mensagem: "Erro: " + e.message };
+  }
+}
+// ================================================================
+// PATCH 1: MensalidadeCore.gs
+// Adiciona: mesReferencia no processarRelatorioMensalidade
+//           registrarHistoricoRelatorio (nova função)
+//           processarEmailsMensalidade (trigger Gmail automático)
+// Cole este conteúdo SUBSTITUINDO as funções correspondentes
+// ================================================================
 
 /* ═══════════════════════════════════════════════════════
    ABA DE HISTÓRICO DE RELATÓRIOS

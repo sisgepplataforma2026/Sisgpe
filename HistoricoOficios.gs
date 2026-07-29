@@ -157,16 +157,7 @@ function listarHistoricoOficios(filtros, tokenSessao) {
   itens = aplicarFiltrosHistoricoOficios_(itens, filtros);
   itens.reverse();
 
-  // Paginação opcional (achado #9) — só ativa se o chamador enviar
-  // filtros.porPagina; sem isso, devolve a lista inteira como sempre.
-  var pag = paginarItens_(itens, filtros);
-  return {
-    total:        pag.total,
-    itens:        pag.itens,
-    pagina:       pag.pagina,
-    porPagina:    pag.porPagina,
-    totalPaginas: pag.totalPaginas
-  };
+  return { total: itens.length, itens: itens };
 }
 
 /* ── Registrar/atualizar por ID da fila ── */

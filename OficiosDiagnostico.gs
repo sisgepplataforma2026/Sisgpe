@@ -1,11 +1,11 @@
 // ============================================================================
-// ARQUIVO: OficiosDiagnostico.gs
+// ARQUIVO: DiagnosticoOficios.gs
 // SISGEP · Diagnóstico do Módulo de Ofícios
 // ============================================================================
 
 var VERSAO_DIAGNOSTICO_OFICIOS = "2026.06.23.1";
 
-function oficiosDiagnostico_diagnosticarModulo() {
+function diagnosticarModuloOficios() {
   var relatorio = {
     versao: VERSAO_DIAGNOSTICO_OFICIOS,
     dataHora: new Date(),

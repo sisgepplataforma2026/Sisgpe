@@ -225,7 +225,7 @@ function definirURLWebAppVisitas(url) {
  * filtros: { equipe, cidade, status, texto, semVisita }
  */
 function listarEscolasVisitas(filtros, tokenSessao) {
-  visitas_exigirSessao_(tokenSessao); // achado #8: era condicional (bypassável omitindo o argumento)
+  if (tokenSessao !== undefined) visitas_exigirSessao_(tokenSessao);
   return visitas_listarEscolas_(filtros);
 }
 
@@ -291,7 +291,7 @@ function visitas_listarEscolas_(filtros) {
  * sindicalizacoes originadas nela.
  */
 function obterEscola360(cnpjOuNome, tokenSessao) {
-  visitas_exigirSessao_(tokenSessao); // achado #8: era condicional (bypassável omitindo o argumento)
+  if (tokenSessao !== undefined) visitas_exigirSessao_(tokenSessao);
 
   var alvo = String(cnpjOuNome || '').trim();
   var alvoDigitos = alvo.replace(/\D/g, '');
@@ -757,7 +757,7 @@ function gerarLinkRotaDoDia(data, diretorBase, tokenSessao) {
  * O QR Code e desenhado no navegador a partir desta URL.
  */
 function gerarLinkFichaDaVisita(idVisita, tokenSessao) {
-  visitas_exigirSessao_(tokenSessao); // achado #8: era condicional (bypassável omitindo o argumento)
+  if (tokenSessao !== undefined) visitas_exigirSessao_(tokenSessao);
   var r = visitas_buscarPorId_(idVisita);
   if (!r) return { sucesso: false, mensagem: 'Visita nao encontrada.' };
   return visitas_linkFicha_(r);
@@ -811,7 +811,7 @@ function cadastroRapidoNaVisita(idVisita, dados, tokenSessao) {
  * Painel de indicadores do modulo (dashboard).
  */
 function obterIndicadoresVisitas(tokenSessao) {
-  visitas_exigirSessao_(tokenSessao); // achado #8: era condicional (bypassável omitindo o argumento)
+  if (tokenSessao !== undefined) visitas_exigirSessao_(tokenSessao);
   return visitas_indicadores_();
 }
 
@@ -913,7 +913,7 @@ function visitas_ranking_() {
  * de "VITÓRIA", que sao o mesmo municipio no cadastro.
  */
 function obterCoberturaPorMunicipio(tokenSessao) {
-  visitas_exigirSessao_(tokenSessao); // achado #8: era condicional (bypassável omitindo o argumento)
+  if (tokenSessao !== undefined) visitas_exigirSessao_(tokenSessao);
 
   var escolas = visitas_listarEscolas_({}).escolas;
   var por = {};
@@ -946,11 +946,9 @@ function obterCoberturaPorMunicipio(tokenSessao) {
  * Exige sessao valida do SISGEP e devolve a identidade de quem opera.
  * LANCA quando a sessao nao resolve - e o guard das funcoes publicas.
  *
- * NOTA (levantamento de 29/07/2026): este comentario mencionava antes uma
- * flag "BYPASS_LOGIN_TEMPORARIO" como suposta primeira camada de protecao.
- * Essa flag nao existe em nenhum arquivo do projeto hoje - confirmado que
- * o login do SISGEP ja funciona normalmente, sem bypass. Removida a
- * mencao para nao confundir quem ler este arquivo depois.
+ * ATENCAO: esta e a segunda camada de protecao. A primeira e o login do
+ * SISGEP. Enquanto BYPASS_LOGIN_TEMPORARIO estiver ligado, qualquer pessoa
+ * carrega a pagina e recebe um token valido.
  */
 function visitas_exigirSessao_(tokenSessao) {
   var token = String(tokenSessao || '').trim();

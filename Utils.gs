@@ -146,32 +146,6 @@ function setRowByHeader_(sheet, row, headerMap, obj) {
   limparCacheHeader_(sheet);
 }
 
-/* ================= PAGINAÇÃO (achado #9) ================= */
-// Fatia um array já filtrado/ordenado em página, só quando o chamador pede
-// (filtros.porPagina > 0). Sem porPagina, devolve tudo — comportamento
-// idêntico ao de hoje, para não quebrar telas que ainda não pedem página.
-// Uso: var pag = paginarItens_(itens, filtros); return Object.assign(pag, {...});
-function paginarItens_(itens, filtros) {
-  filtros = filtros || {};
-  var totalFiltrado = itens.length;
-  var porPagina = parseInt(filtros.porPagina, 10);
-  var pagina    = parseInt(filtros.pagina, 10);
-  var paginado  = !!porPagina && porPagina > 0;
-
-  if (!paginado) return { itens: itens, total: totalFiltrado };
-
-  if (!pagina || pagina < 1) pagina = 1;
-  var inicio = (pagina - 1) * porPagina;
-
-  return {
-    itens: itens.slice(inicio, inicio + porPagina),
-    total: totalFiltrado,
-    pagina: pagina,
-    porPagina: porPagina,
-    totalPaginas: Math.ceil(totalFiltrado / porPagina)
-  };
-}
-
 /* ================= MESCLAR E-MAILS ================= */
 function mesclarEmails_() {
   const unicos = [];
@@ -366,7 +340,7 @@ function buscarFichasDrive(termo) {
 }
 
 /* ================= DIAGNOSTICO DO MODULO DE OFICIOS ================= */
-function utils_diagnosticarModuloOficios() {
+function diagnosticarModuloOficios() {
   var itens = [];
   var inicio = new Date();
 
@@ -430,11 +404,6 @@ function _diagOficiosChecarFuncoes_(itens) {
 }
 
 function _diagOficiosChecarIncludes_(itens) {
-  // NOTA: este check só confirma que o ARQUIVO existe no projeto — não que ele
-  // está de fato incluído em index.html (a tela real, servida por Code.gs).
-  // "DashboardOficiosDashboardOficiosUI" é um caso confirmado disso: passa
-  // aqui como "ok" mas não é referenciado por nenhum include() em index.html
-  // nem em nenhuma rota — nunca chega a ser mostrado a um usuário.
   [
     "OficiosStyles",
     "OficiosFormulario",
