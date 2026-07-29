@@ -56,7 +56,7 @@
 </button>
 
 <div id="beneficiosSubMenuSidebar" class="docSubMenuSidebar" style="display:none;">
-  <button type="button" class="docSubMenuBtn beneficiosSubMenuBtn-ativo" data-benef-sub="parqueChina" onclick="spIr('beneficios',null,{sub:'parqueChina'})">🏨 China Park Eco Resort</button>
+  <button type="button" class="docSubMenuBtn docSubMenuBtn-ativo" data-benef-sub="parqueChina" onclick="spIr('beneficios',null,{sub:'parqueChina'})">🏨 China Park Eco Resort</button>
   <button type="button" class="docSubMenuBtn" data-benef-sub="carteirinhas" onclick="spIr('beneficios',null,{sub:'carteirinhas'})">🪪 Carteirinhas</button>
   <button type="button" class="docSubMenuBtn" data-benef-sub="vouchers" onclick="spIr('beneficios',null,{sub:'vouchers'})">🎫 Vouchers</button>
   <button type="button" class="docSubMenuBtn" data-benef-sub="agendaOftalmo" onclick="spIr('beneficios',null,{sub:'agendaOftalmo'})">👁 Exame oftalmológico</button>
@@ -1457,15 +1457,6 @@ function initModuloAssistido(mod,opts){
   }
 }
 
-window.benefMostrarSub=function(sub){
-  var nomes={inicio:'Inicio',parqueChina:'ParqueChina',carteirinhas:'Carteirinhas',vouchers:'Vouchers',agendaOftalmo:'AgendaOftalmo',guririBeach:'GuririBeach',assefaz:'Assefaz',historico:'Historico',relatorios:'Relatorios',configuracoes:'Configuracoes'};
-  var alvo=document.getElementById('benefSub'+(nomes[sub]||'Inicio'));
-  if(!alvo)return false;
-  Array.prototype.forEach.call(alvo.parentElement.children,function(el){if(el.classList&&el.classList.contains('docSubPanel'))el.style.display='none';});
-  alvo.style.display='block';
-  Array.prototype.forEach.call(document.querySelectorAll('[data-benef-sub]'),function(btn){btn.classList.toggle('beneficiosSubMenuBtn-ativo',btn.getAttribute('data-benef-sub')===sub);});
-  return true;
-};
 
 function initModulo(mod,opts){
   opts=opts||{};
