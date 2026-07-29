@@ -5,7 +5,7 @@
 
 var VERSAO_DIAGNOSTICO_OFICIOS = "2026.06.23.1";
 
-function diagnosticarModuloOficios() {
+function oficiosDiagnostico_diagnosticarModulo() {
   var relatorio = {
     versao: VERSAO_DIAGNOSTICO_OFICIOS,
     dataHora: new Date(),

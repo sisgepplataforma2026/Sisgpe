@@ -13,8 +13,8 @@ function moverArquivoParaPasta_(arquivoId, pastaDestinoId) {
   return f; 
 }
 
-function exportarPlanilhaTemporaria_(planilhaTemp, nomeArquivo, tipoExportacao) {
-  const pasta = obterPastaRelatorios_(); 
+function sistExportacao_exportarPlanilhaTemporaria_(planilhaTemp, nomeArquivo, tipoExportacao) {
+  const pasta = obterPastaRelatorios_();
   moverArquivoParaPasta_(planilhaTemp.getId(), pasta.getId());
   
   const token = ScriptApp.getOAuthToken(); 
@@ -94,7 +94,7 @@ function exportarAssociadosOficio(dados) {
   if (linhas.length) aba.getRange(2,1,linhas.length,cabecalho[0].length).setValues(linhas);
   aba.autoResizeColumns(1, cabecalho[0].length); 
   
-  return exportarPlanilhaTemporaria_(planilha, nomeArquivo, formato);
+  return sistExportacao_exportarPlanilhaTemporaria_(planilha, nomeArquivo, formato);
 }
 
 function exportarEscolaEAssociados(dados) {
@@ -118,5 +118,5 @@ function exportarEscolaEAssociados(dados) {
     criarAbaEscolaExportacao_(planilha, escola);
   }
   criarAbaAssociadosExportacao_(planilha, colaboradores, meta);
-  return exportarPlanilhaTemporaria_(planilha, nomeArquivo, formato);
+  return sistExportacao_exportarPlanilhaTemporaria_(planilha, nomeArquivo, formato);
 }

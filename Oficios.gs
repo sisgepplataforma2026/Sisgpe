@@ -29,7 +29,7 @@ function obterPastaPorTipo_(tipoNorm) {
 
 /* ================= CONVERTER HTML PARA PDF ================= */
 
-function converterHtmlParaPdf_(html, nomeArquivo, pastaDestino) {
+function oficios_converterHtmlParaPdf_(html, nomeArquivo, pastaDestino) {
   try {
 var bytes = Utilities.newBlob(html).getBytes();
 var blob  = Utilities.newBlob(bytes, "text/html; charset=utf-8", nomeArquivo + ".html");
@@ -556,7 +556,7 @@ function gerarOficioWeb(dados, tokenSessao) {
     var htmlOficio = gerarHtmlOficioCompleto_(p, false);
     var pastaAno   = obterPastaPorTipo_(proc.tipoNorm);
     var nomeBase   = montarNomeArquivoOficio_(proc.numero, dados.escola || dados.para || "", proc.colaboradoresArr, new Date()).replace(/\.pdf$/i, "");
-    var pdfFile    = converterHtmlParaPdf_(htmlOficio, nomeBase, pastaAno);
+    var pdfFile    = oficios_converterHtmlParaPdf_(htmlOficio, nomeBase, pastaAno);
 
     var anexosFila = [{ nome: pdfFile.getName(), mimeType: MimeType.PDF, fileId: pdfFile.getId() }];
 

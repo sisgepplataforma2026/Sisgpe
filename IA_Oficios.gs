@@ -7,7 +7,7 @@
 // - listarHistoricoOficios(filtros)
 // ============================================================================
 
-function analisarEscolaIA(cnpjOuNome) {
+function analisarEscolaIA_Oficios_(cnpjOuNome) {
   cnpjOuNome = String(cnpjOuNome || "").trim();
 
   if (!cnpjOuNome) {
@@ -87,7 +87,7 @@ function analisarEscolaIA(cnpjOuNome) {
   };
 }
 function analisarEscolaIA_HTML(cnpjOuNome) {
-  var r = analisarEscolaIA(cnpjOuNome);
+  var r = analisarEscolaIA_Oficios_(cnpjOuNome);
 
   if (r.erro) {
     return '<div style="color:#991b1b;font-weight:700;">' + r.mensagem + '</div>';

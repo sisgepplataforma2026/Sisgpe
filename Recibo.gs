@@ -541,7 +541,7 @@ const textoPgto = forma === "CHEQUE"
   .replace(/\s+/g, " ")
   .trim();
 
-  var pdfFile = converterHtmlParaPdf_(html, nomeArquivo, pastaAno);
+  var pdfFile = recibo_converterHtmlParaPdf_(html, nomeArquivo, pastaAno);
 
   try {
     pdfFile.setSharing(
@@ -3123,33 +3123,6 @@ function enviarReciboIndividual(dados) {
   }
 }
 
-/* ================= PARSE DE VALOR ================= */
-function parseValorTexto_(valor) {
-  if (!valor) return 0;
-
-  var txt = String(valor)
-    .replace(/\s/g, "")
-    .replace(/^R\$/i, "");
-
-  if (txt.indexOf(",") > -1) {
-    txt = txt.replace(/\./g, "").replace(",", ".");
-  } else {
-    var partes = txt.split(".");
-
-    if (partes.length > 1) {
-      var ultima = partes[partes.length - 1];
-
-      txt = /^\d{1,2}$/.test(ultima)
-        ? partes.slice(0, -1).join("") + "." + ultima
-        : partes.join("");
-    }
-  }
-
-  var n = parseFloat(txt);
-
-  return isNaN(n) ? 0 : n;
-}
-
 /* ================= PJe-CALC ================= */
 function interpretarTextoPjeCalcRecibo_(texto, nomeArquivo) {
   texto = String(texto || "").replace(/\r/g, "\n");
@@ -4365,7 +4338,7 @@ function carregarImagensRecibo_() {
 }
 
 // ─── UTILITÁRIO: converte HTML para PDF preservando layout ───
-function converterHtmlParaPdf_(html, titulo, pasta) {
+function recibo_converterHtmlParaPdf_(html, titulo, pasta) {
 
   titulo = titulo || "Documento";
 

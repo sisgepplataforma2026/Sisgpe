@@ -366,7 +366,7 @@ function buscarFichasDrive(termo) {
 }
 
 /* ================= DIAGNOSTICO DO MODULO DE OFICIOS ================= */
-function diagnosticarModuloOficios() {
+function utils_diagnosticarModuloOficios() {
   var itens = [];
   var inicio = new Date();
 
