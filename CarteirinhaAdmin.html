@@ -1,0 +1,258 @@
+<style>
+/* ── Carteirinha Admin — estilos isolados ── */
+#secCarteirinhaAdmin *,
+#secCarteirinhaAdmin *::before,
+#secCarteirinhaAdmin *::after { box-sizing: border-box; }
+
+#secCarteirinhaAdmin {
+  --navy: #071b38; --navy2: #0b3b75; --blue: #1565C0;
+  --gold: #C9A84C; --gold2: #f0c843;
+  --bg: #f0f4f8; --g50: #f8fafc; --g100: #f1f5f9;
+  --g200: #e2e8f0; --g300: #cbd5e1; --g400: #94a3b8;
+  --g500: #64748b; --g600: #475569; --g700: #334155;
+  --g800: #1e293b; --g900: #0f172a;
+  --green: #059669; --green-lt: #d1fae5;
+  --amber: #d97706; --amber-lt: #fef3c7;
+  --red: #dc2626; --red-lt: #fee2e2;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+#secCarteirinhaAdmin .cart-hero {
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 40%, var(--blue) 100%);
+  padding: 34px 32px 40px; border-radius: 20px 20px 0 0;
+}
+#secCarteirinhaAdmin .cart-eyebrow { font-size: 11px; font-weight: 800; color: var(--gold); letter-spacing: .16em; text-transform: uppercase; margin-bottom: 10px; }
+#secCarteirinhaAdmin .cart-hero h2 { font-size: 26px; font-weight: 900; color: #fff; letter-spacing: -.5px; margin-bottom: 4px; }
+#secCarteirinhaAdmin .cart-hero p { font-size: 13px; color: rgba(255,255,255,.6); }
+
+#secCarteirinhaAdmin .cart-content { padding: 20px 24px 40px; max-width: 1220px; margin: 0 auto; }
+
+#secCarteirinhaAdmin .cart-msg { border-radius: 12px; font-size: 13.5px; font-weight: 600; margin-bottom: 16px; line-height: 1.5; }
+#secCarteirinhaAdmin .cart-msg:empty { display: none; }
+#secCarteirinhaAdmin .cart-msg.ok { background: var(--green-lt); border: 1px solid #6ee7b7; color: #065f46; padding: 12px 16px; }
+#secCarteirinhaAdmin .cart-msg.erro { background: var(--red-lt); border: 1px solid #fca5a5; color: #9f1239; padding: 12px 16px; }
+#secCarteirinhaAdmin .cart-msg.warn { background: var(--amber-lt); border: 1px solid #fcd34d; color: #92400e; padding: 12px 16px; }
+
+#secCarteirinhaAdmin .cart-card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,.055); box-shadow: 0 2px 12px rgba(0,20,60,.06); overflow: hidden; margin-bottom: 16px; }
+#secCarteirinhaAdmin .cart-card-head { padding: 16px 20px; border-bottom: 1px solid var(--g100); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+#secCarteirinhaAdmin .cart-card-title { font-size: 14px; font-weight: 800; color: var(--g900); }
+#secCarteirinhaAdmin .cart-card-sub { font-size: 11px; color: var(--g400); margin-top: 2px; }
+
+#secCarteirinhaAdmin .cart-btn { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: none; border-radius: 999px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: all .17s; white-space: nowrap; }
+#secCarteirinhaAdmin .cart-btn:disabled { opacity: .45; cursor: not-allowed; }
+#secCarteirinhaAdmin .cart-btn-primary { background: linear-gradient(135deg, var(--navy2), var(--blue)); color: #fff; }
+#secCarteirinhaAdmin .cart-btn-primary:hover:not(:disabled) { transform: translateY(-2px); }
+#secCarteirinhaAdmin .cart-btn-secondary { background: #fff; color: var(--g700); border: 1.5px solid var(--g200); }
+#secCarteirinhaAdmin .cart-btn-danger { background: linear-gradient(135deg, #dc2626, #ef4444); color: #fff; }
+#secCarteirinhaAdmin .cart-btn-danger:hover:not(:disabled) { transform: translateY(-2px); }
+#secCarteirinhaAdmin .cart-btn-sm { height: 30px; padding: 0 11px; font-size: 11.5px; }
+
+#secCarteirinhaAdmin .cart-tabela-wrap { overflow-x: auto; }
+#secCarteirinhaAdmin .cart-tabela { width: 100%; min-width: 900px; border-collapse: collapse; }
+#secCarteirinhaAdmin .cart-tabela thead { background: var(--g50); }
+#secCarteirinhaAdmin .cart-tabela th { padding: 11px 13px; text-align: left; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--g500); border-bottom: 1px solid var(--g200); white-space: nowrap; }
+#secCarteirinhaAdmin .cart-tabela td { padding: 11px 13px; font-size: 12.5px; color: var(--g700); border-bottom: 1px solid var(--g100); vertical-align: middle; }
+#secCarteirinhaAdmin .cart-tabela tbody tr:hover td { background: var(--g50); }
+#secCarteirinhaAdmin .cart-tabela-vazia { text-align: center; padding: 44px 20px; color: var(--g400); font-size: 14px; }
+#secCarteirinhaAdmin .cart-foto { width: 34px; height: 34px; border-radius: 8px; object-fit: cover; background: var(--g100); }
+
+#secCarteirinhaAdmin .cart-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 800; border-radius: 999px; padding: 3px 9px; white-space: nowrap; text-transform: uppercase; letter-spacing: .04em; }
+#secCarteirinhaAdmin .badge-semEmissao { background: var(--amber-lt); color: #92400e; border: 1px solid #fcd34d; }
+#secCarteirinhaAdmin .badge-ativa { background: var(--green-lt); color: #065f46; border: 1px solid #6ee7b7; }
+#secCarteirinhaAdmin .badge-revogada { background: var(--red-lt); color: #9f1239; border: 1px solid #fca5a5; }
+
+#cartModalOverlay { position: fixed; inset: 0; background: rgba(15,23,42,.52); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 9999; backdrop-filter: blur(3px); }
+#cartModalOverlay.ativo { display: flex; }
+#cartModalBox { width: min(460px, 100%); background: #fff; border-radius: 20px; box-shadow: 0 30px 80px rgba(0,20,60,.28); overflow: hidden; font-family: 'Plus Jakarta Sans', sans-serif; }
+#cartModalBox .cart-modal-head { padding: 18px 22px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+#cartModalBox .cart-modal-title { font-size: 15px; font-weight: 900; color: #0f172a; }
+#cartModalBox .cart-modal-close { width: 32px; height: 32px; border-radius: 999px; border: 1.5px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer; font-size: 15px; }
+#cartModalBox .cart-modal-body { padding: 20px 22px; }
+#cartModalBox .cart-modal-foot { padding: 14px 22px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 8px; }
+#secCarteirinhaAdmin .cart-label { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--g500); display: block; margin-bottom: 6px; }
+#secCarteirinhaAdmin .cart-input { width: 100%; height: 40px; border-radius: 10px; border: 1.5px solid var(--g200); padding: 0 12px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; outline: none; margin-bottom: 14px; }
+#secCarteirinhaAdmin .cart-input:focus { border-color: var(--blue); }
+</style>
+
+<div id="secCarteirinhaAdmin">
+  <div class="cart-hero">
+    <div class="cart-eyebrow">SindEducação-ES · SISGEP</div>
+    <h2>🪪 Carteirinhas</h2>
+    <p>Emissão e gestão da credencial digital dos associados</p>
+  </div>
+
+  <div class="cart-content">
+    <div class="cart-msg" id="cartMsgBox"></div>
+
+    <div class="cart-card">
+      <div class="cart-card-head">
+        <div>
+          <div class="cart-card-title">Fotos aprovadas</div>
+          <div class="cart-card-sub">Enviadas pelo associado na atualização de cadastro — emita a carteirinha pra ativar o QR Code no Portal do Associado</div>
+        </div>
+        <button type="button" class="cart-btn cart-btn-secondary cart-btn-sm" onclick="cartCarregar()">↻ Atualizar</button>
+      </div>
+      <div class="cart-tabela-wrap">
+        <table class="cart-tabela">
+          <thead>
+            <tr>
+              <th>Foto</th><th>Nome</th><th>CPF</th><th>Aprovado em</th><th>Status</th><th>Validade</th><th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="cartTbody">
+            <tr><td colspan="7"><div class="cart-tabela-vazia">⏳ Carregando...</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="cartModalOverlay">
+  <div id="cartModalBox">
+    <div class="cart-modal-head">
+      <div class="cart-modal-title" id="cartModalTitulo">Emitir carteirinha</div>
+      <button type="button" class="cart-modal-close" onclick="cartFecharModal()">✕</button>
+    </div>
+    <div class="cart-modal-body">
+      <label class="cart-label">Associado</label>
+      <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:14px;" id="cartModalNome"></div>
+      <label class="cart-label">Validade (dd/mm/aaaa)</label>
+      <input type="text" class="cart-input" id="cartModalValidade" placeholder="28/02/2027">
+    </div>
+    <div class="cart-modal-foot">
+      <button type="button" class="cart-btn cart-btn-secondary" onclick="cartFecharModal()">Cancelar</button>
+      <button type="button" class="cart-btn cart-btn-primary" id="cartModalBtnConfirmar" onclick="cartConfirmarEmissao()">✓ Confirmar emissão</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+var _lista = [];
+var _cpfSelecionado = '';
+
+function g(id){ return document.getElementById(id); }
+function cartToken(){ return (typeof SISGEP_TOKEN_SESSAO!=='undefined') ? SISGEP_TOKEN_SESSAO : ''; }
+function esc(t){ return String(t||'').replace(/[&<>"']/g,function(c){return c==='&'?'&amp;':c==='<'?'&lt;':c==='>'?'&gt;':c==='"'?'&quot;':'&#39;';}); }
+
+function msg(texto, tipo){
+  var box = g('cartMsgBox'); if(!box) return;
+  box.className = 'cart-msg ' + (tipo||'info');
+  box.textContent = texto||'';
+}
+
+function formatarCpf(cpf){
+  cpf = String(cpf||'').replace(/\D/g,'');
+  if (cpf.length !== 11) return cpf;
+  return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+}
+
+function badgeStatus(item){
+  if (!item.emitida) return "<span class='cart-badge badge-semEmissao'>Sem emissão</span>";
+  if (item.emissaoStatus === 'ATIVA') return "<span class='cart-badge badge-ativa'>Ativa</span>";
+  if (item.emissaoStatus === 'REVOGADA') return "<span class='cart-badge badge-revogada'>Revogada</span>";
+  return "<span class='cart-badge badge-semEmissao'>" + esc(item.emissaoStatus) + "</span>";
+}
+
+function renderLinha(item){
+  var foto = item.urlFoto ? "<img class='cart-foto' src='" + esc(item.urlFoto) + "' alt=''>" : "<div class='cart-foto'></div>";
+  var acoes = '';
+  if (!item.emitida || item.emissaoStatus === 'REVOGADA') {
+    acoes += "<button type='button' class='cart-btn cart-btn-primary cart-btn-sm' onclick=\"cartAbrirModal('" + item.cpf + "','" + esc(item.nome).replace(/'/g,"&#39;") + "')\">Emitir</button>";
+  } else if (item.emissaoStatus === 'ATIVA') {
+    acoes += "<button type='button' class='cart-btn cart-btn-danger cart-btn-sm' onclick=\"cartRevogar('" + item.cpf + "')\">Revogar</button>";
+  }
+  return "<tr>" +
+    "<td>" + foto + "</td>" +
+    "<td>" + esc(item.nome) + "</td>" +
+    "<td>" + formatarCpf(item.cpf) + "</td>" +
+    "<td>" + esc(item.dataAprovacao) + "</td>" +
+    "<td>" + badgeStatus(item) + "</td>" +
+    "<td>" + esc(item.emissaoValidade || '—') + "</td>" +
+    "<td>" + acoes + "</td>" +
+  "</tr>";
+}
+
+function cartCarregar(){
+  var tbody = g('cartTbody');
+  if (tbody) tbody.innerHTML = "<tr><td colspan='7'><div class='cart-tabela-vazia'>⏳ Carregando...</div></td></tr>";
+  google.script.run
+    .withSuccessHandler(function(lista){
+      _lista = Array.isArray(lista) ? lista : [];
+      if (!tbody) return;
+      tbody.innerHTML = _lista.length
+        ? _lista.map(renderLinha).join('')
+        : "<tr><td colspan='7'><div class='cart-tabela-vazia'>Nenhuma foto aprovada ainda.</div></td></tr>";
+    })
+    .withFailureHandler(function(err){
+      msg('Erro ao carregar: ' + ((err && err.message) || err), 'erro');
+    })
+    .listarCarteirinhasParaEmissao(cartToken());
+}
+
+function cartAbrirModal(cpf, nome){
+  _cpfSelecionado = cpf;
+  g('cartModalNome').textContent = nome + ' — ' + formatarCpf(cpf);
+  g('cartModalValidade').value = '';
+  g('cartModalOverlay').classList.add('ativo');
+
+  google.script.run
+    .withSuccessHandler(function(sugestao){ if (sugestao) g('cartModalValidade').value = sugestao; })
+    .withFailureHandler(function(){})
+    .sugerirValidadeCarteirinha(cartToken());
+}
+
+function cartFecharModal(){
+  g('cartModalOverlay').classList.remove('ativo');
+  _cpfSelecionado = '';
+}
+
+function cartConfirmarEmissao(){
+  var validade = String(g('cartModalValidade').value||'').trim();
+  if (!validade) { msg('Informe a validade antes de confirmar.', 'warn'); return; }
+  if (!_cpfSelecionado) { msg('Nenhum associado selecionado.', 'warn'); return; }
+
+  var btn = g('cartModalBtnConfirmar');
+  btn.disabled = true; btn.textContent = 'Emitindo...';
+
+  google.script.run
+    .withSuccessHandler(function(res){
+      btn.disabled = false; btn.textContent = '✓ Confirmar emissão';
+      if (!res || !res.sucesso) { msg((res && res.mensagem) || 'Erro ao emitir.', 'erro'); return; }
+      msg('✅ ' + res.mensagem, 'ok');
+      cartFecharModal();
+      cartCarregar();
+    })
+    .withFailureHandler(function(err){
+      btn.disabled = false; btn.textContent = '✓ Confirmar emissão';
+      msg('Erro: ' + ((err && err.message) || err), 'erro');
+    })
+    .emitirCarteirinha(_cpfSelecionado, validade, cartToken());
+}
+
+function cartRevogar(cpf){
+  if (!confirm('Revogar a carteirinha deste associado? O QR Code para de validar imediatamente.')) return;
+
+  google.script.run
+    .withSuccessHandler(function(res){
+      if (!res || !res.sucesso) { msg((res && res.mensagem) || 'Erro ao revogar.', 'erro'); return; }
+      msg('✅ ' + res.mensagem, 'ok');
+      cartCarregar();
+    })
+    .withFailureHandler(function(err){
+      msg('Erro: ' + ((err && err.message) || err), 'erro');
+    })
+    .revogarCarteirinha(cpf, '', cartToken());
+}
+
+window.cartCarregar = cartCarregar;
+window.cartAbrirModal = cartAbrirModal;
+window.cartFecharModal = cartFecharModal;
+window.cartConfirmarEmissao = cartConfirmarEmissao;
+window.cartRevogar = cartRevogar;
+
+})();
+</script>

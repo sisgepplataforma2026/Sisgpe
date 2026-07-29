@@ -452,6 +452,7 @@ function benefAdminPesquisar(){var input=document.getElementById("benefAdminBusc
         </div>
 
         <div id="benefSubCarteirinhas" class="docSubPanel" style="display:none;">
+            <?!= include('CarteirinhaAdmin'); ?>
         </div>
 
         <div id="benefSubVouchers" class="docSubPanel" style="display:none;">
@@ -1485,6 +1486,10 @@ if(mod==="beneficios"){
 
     if(subBeneficio === "vouchers"){
       setTimeout(function(){ callFn("carregarLista"); },100);
+    }
+
+    if(subBeneficio === "carteirinhas"){
+      setTimeout(function(){ callFn("cartCarregar"); },100);
     }
 
     if(subBeneficio === "agendaOftalmo"){
