@@ -99,7 +99,7 @@ function initAprovacaoCadastro(){
     });
 }).withFailureHandler(function(erro){
     lista.innerHTML='<p style="color:#dc2626;font-size:12px;">Erro ao carregar solicitações: '+erro+'</p>';
-  }).listarSolicitacoesPendentes();
+  }).listarSolicitacoesPendentes(SISGEP_TOKEN_SESSAO);
 
   initFichasSindicalizacao();
 }
@@ -116,7 +116,7 @@ function aprovAprovar(numeroLinha){
     else { if(window.mostrarErro) mostrarErro(r.mensagem); else alert(r.mensagem); }
   }).withFailureHandler(function(erro){
     if(window.mostrarErro) mostrarErro('Erro: '+erro); else alert('Erro: '+erro);
-  }).aprovarSolicitacaoCadastro(numeroLinha, aprovNomeUsuarioAtual_());
+  }).aprovarSolicitacaoCadastro(numeroLinha, aprovNomeUsuarioAtual_(), SISGEP_TOKEN_SESSAO);
 }
 
 function aprovRejeitar(numeroLinha){
@@ -127,7 +127,7 @@ function aprovRejeitar(numeroLinha){
     else { if(window.mostrarErro) mostrarErro(r.mensagem); else alert(r.mensagem); }
 }).withFailureHandler(function(erro){
     if(window.mostrarErro) mostrarErro('Erro: '+erro); else alert('Erro: '+erro);
-  }).rejeitarSolicitacaoCadastro(numeroLinha, motivo);
+  }).rejeitarSolicitacaoCadastro(numeroLinha, motivo, SISGEP_TOKEN_SESSAO);
 }
 
 function initFichasSindicalizacao(){

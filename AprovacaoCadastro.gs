@@ -14,7 +14,8 @@ var APROV_ABA_CARTEIRINHAS = 'Carteirinhas';
  * O numeroLinha retornado é a linha real na planilha — usado depois
  * para aprovar ou rejeitar.
  */
-function listarSolicitacoesPendentes() {
+function listarSolicitacoesPendentes(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sh = ss.getSheetByName(APROV_ABA_SOLICITACOES);
@@ -62,7 +63,8 @@ function listarSolicitacoesPendentes() {
  * usado pelo Portal), marca a solicitação como aprovada e replica a
  * foto (se houver) para a aba Carteirinhas.
  */
-function aprovarSolicitacaoCadastro(numeroLinha, aprovadoPor) {
+function aprovarSolicitacaoCadastro(numeroLinha, aprovadoPor, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var shSolic = ss.getSheetByName(APROV_ABA_SOLICITACOES);
@@ -115,7 +117,8 @@ function aprovarSolicitacaoCadastro(numeroLinha, aprovadoPor) {
 /**
  * Rejeita uma solicitação, sem alterar a aba Associados.
  */
-function rejeitarSolicitacaoCadastro(numeroLinha, motivo) {
+function rejeitarSolicitacaoCadastro(numeroLinha, motivo, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var shSolic = ss.getSheetByName(APROV_ABA_SOLICITACOES);
