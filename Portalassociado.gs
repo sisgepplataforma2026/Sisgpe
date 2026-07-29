@@ -269,6 +269,7 @@ function servirPortalAssociado(params) {
   template.precisaAtualizar = precisaAtualizar;
   template.modoDemo = modoDemo;
   template.scriptUrl = ScriptApp.getService().getUrl();
+  template.qrCodeCredencial = gerarQRCodeParaCredencial(dados.cpf, dados.nome);
   template.bannerDemo = modoDemo ? '<div style="background:#f59e0b;color:#08101f;text-align:center;padding:10px 16px;font-weight:800;font-size:13px;">MODO DE DEMONSTRAÇÃO — dados fictícios, nenhuma alteração será gravada</div>' : "";
 
   return template.evaluate()
