@@ -5,7 +5,7 @@
 #secCertificadoAdmin *::after { box-sizing: border-box; }
 
 #secCertificadoAdmin {
-  --navy:  #001f4d; --navy2: #002f6c; --blue: #1565C0;
+  --navy:  #071b38; --navy2: #0b3b75; --blue: #1565C0;
   --gold:  #C9A84C; --gold2: #f0c843;
   --bg:    #f0f4f8; --g50: #f8fafc; --g100: #f1f5f9;
   --g200:  #e2e8f0; --g300: #cbd5e1; --g400: #94a3b8;
@@ -123,7 +123,7 @@
 #certModalBox { width: min(820px, 100%); background: #fff; border-radius: 20px; box-shadow: 0 30px 80px rgba(0,20,60,.28); overflow: hidden; max-height: 94vh; display: flex; flex-direction: column; font-family: 'Plus Jakarta Sans', sans-serif; }
 #certModalBox .cert-modal-head { padding: 18px 22px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
 #certModalBox .cert-modal-head-l { display: flex; align-items: center; gap: 12px; }
-#certModalBox .cert-modal-ico { width: 40px; height: 40px; border-radius: 11px; background: linear-gradient(135deg, #002f6c, #1565C0); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+#certModalBox .cert-modal-ico { width: 40px; height: 40px; border-radius: 11px; background: linear-gradient(135deg, #0b3b75, #1565C0); display: flex; align-items: center; justify-content: center; font-size: 18px; }
 #certModalBox .cert-modal-title { font-size: 15px; font-weight: 900; color: #0f172a; }
 #certModalBox .cert-modal-sub   { font-size: 11px; color: #64748b; margin-top: 2px; }
 #certModalBox .cert-modal-body  { padding: 20px 22px; overflow-y: auto; flex: 1; }
@@ -374,6 +374,7 @@ var _buscaTimer  = null;
 var _solAtual    = null;
 
 function g(id){ return document.getElementById(id); }
+function certToken(){ return (typeof SISGEP_TOKEN_SESSAO!=='undefined') ? SISGEP_TOKEN_SESSAO : ''; }
 function escHtml(t){ return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function normTxt(t){ return String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim(); }
 
@@ -587,7 +588,7 @@ function acao(funcaoGas,labelBtn,labelMsg){
       fecharModal(); carregarLista();
     })
     .withFailureHandler(function(err){resetBtn(btn);msg('Erro: '+((err&&err.message)||''),'erro');})
-    [funcaoGas](_solAtual.protocolo, obs);
+    [funcaoGas](_solAtual.protocolo, obs, certToken());
 }
 
 function gerarDocumento(tipo){
@@ -618,7 +619,7 @@ function gerarDocumento(tipo){
     .withFailureHandler(function(err){resetBtn(btn);msg('Erro: '+((err&&err.message)||''),'erro');})
     .gerarDocumentoCertBolsaCompleto(_solAtual.protocolo, tipo, {
       rg: rg, percentual: percentual, documentos: documentos
-    });
+    }, certToken());
 }
 
 // ── Carregar
@@ -632,7 +633,7 @@ function carregarLista(){
       atualizarMetricas(); aplicarFiltros();
     })
     .withFailureHandler(function(err){msg('Erro ao carregar: '+((err&&err.message)||''),'erro');})
-    .listarSolicitacoesCertBolsa();
+    .listarSolicitacoesCertBolsa(certToken());
 }
 
 function exportarCsv(){

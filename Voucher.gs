@@ -1142,7 +1142,8 @@ function listarSolicitacoesVoucher() {
   }
 }
 
-function listarSolicitacoesCertBolsa() {
+function listarSolicitacoesCertBolsa(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   return listarSolicitacoesVoucher();
 }
 

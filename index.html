@@ -455,6 +455,7 @@ function benefAdminPesquisar(){var input=document.getElementById("benefAdminBusc
         </div>
 
         <div id="benefSubVouchers" class="docSubPanel" style="display:none;">
+            <?!= include('Scripts_Certificado'); ?>
         </div>
 
 <div id="benefSubAgendaOftalmo" class="docSubPanel" style="display:none;">
@@ -1489,6 +1490,10 @@ if(mod==="beneficios"){
 
     if(subBeneficio === "parqueChina"){
       callFn("initBeneficios") || callFn("carregarBeneficios");
+    }
+
+    if(subBeneficio === "vouchers"){
+      setTimeout(function(){ callFn("carregarLista"); },100);
     }
 
     if(subBeneficio === "agendaOftalmo"){
