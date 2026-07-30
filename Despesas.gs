@@ -852,6 +852,75 @@ function localizarLinhaDespesaPorId_(idDespesa) {
   return null;
 }
 
+function parseDataFlexivelDesp_(valor) {
+  if (!valor) return null;
+  if (valor instanceof Date) return isNaN(valor.getTime()) ? null : valor;
+  var s = String(valor).trim();
+  if (!s) return null;
+  var m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}):(\d{2}))?/);
+  if (m) {
+    var d = new Date(parseInt(m[3],10), parseInt(m[2],10)-1, parseInt(m[1],10),
+      m[4]?parseInt(m[4],10):0, m[5]?parseInt(m[5],10):0, m[6]?parseInt(m[6],10):0);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  var d2 = new Date(s);
+  return isNaN(d2.getTime()) ? null : d2;
+}
+
+// Sintetiza o histórico de uma despesa a partir dos campos já gravados na
+// própria linha (não depende de uma tabela de log separada) — cobre criação,
+// anexo, envio à contabilidade, aprovação, pagamento/confirmação e estorno.
+function obterHistoricoDespesa(idDespesa, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
+  try {
+    idDespesa = String(idDespesa || "").trim();
+    if (!idDespesa) return { ok: false, mensagem: "ID da despesa não informado." };
+    var despInfo = localizarLinhaDespesaPorId_(idDespesa);
+    if (!despInfo) return { ok: false, mensagem: "Despesa não encontrada." };
+
+    var row = despInfo.row; var headerMap = despInfo.headerMap;
+    function get(col) { var i = (headerMap[col] || 0) - 1; return i > -1 ? row[i] : ""; }
+    function getStr(col) { return String(get(col) || "").trim(); }
+
+    var eventos = [];
+    function add(tipo, titulo, dataRaw, detalhe, usuario) {
+      var d = parseDataFlexivelDesp_(dataRaw);
+      if (!d) return;
+      eventos.push({ tipo: tipo, titulo: titulo, data: formatarDataHoraBRDesp_(d), detalhe: detalhe || "", usuario: usuario || "", _ts: d.getTime() });
+    }
+
+    add("CRIADO", "Lançamento criado", get("DATA_CADASTRO"), getStr("DESCRICAO"), getStr("CRIADO_POR"));
+
+    if (getStr("DATA_RECEBIMENTO_DOC")) {
+      add("DOC", "Documento anexado", get("DATA_RECEBIMENTO_DOC"), getStr("NOME_ARQUIVO"), "");
+    }
+    if (getStr("DATA_ENVIO_CONTABILIDADE")) {
+      add("ENVIADO", "Enviado à contabilidade", get("DATA_ENVIO_CONTABILIDADE"), "", "");
+    }
+    if (getStr("DATA_APROVACAO")) {
+      add("STATUS", "Aprovado para pagamento", get("DATA_APROVACAO"), "", getStr("APROVADO_POR"));
+    }
+    if (getStr("DATA_PAGAMENTO")) {
+      var obs = getStr("OBSERVACOES");
+      var viaContab = obs.indexOf("Confirmado pela contabilidade") > -1;
+      add(viaContab ? "CONFIRMADO" : "PAGO",
+        viaContab ? "Pagamento confirmado pela contabilidade" : "Marcado como pago",
+        get("DATA_PAGAMENTO"), viaContab ? obs : "", "");
+    }
+    if (getStr("DATA_ESTORNO")) {
+      add("CANCELADO", "Pagamento estornado", get("DATA_ESTORNO"), getStr("MOTIVO_ESTORNO"), getStr("ESTORNADO_POR"));
+    }
+    if (getStr("STATUS") === STATUS_DESPESA.CANCELADO) {
+      add("CANCELADO", "Despesa cancelada", get("ULTIMA_ATUALIZACAO"), getStr("OBSERVACOES"), "");
+    }
+
+    eventos.sort(function(a, b) { return b._ts - a._ts; });
+    eventos.forEach(function(e) { delete e._ts; });
+
+    return { ok: true, historico: eventos };
+  } catch (e) { return { ok: false, mensagem: e.message }; }
+}
+
 function atualizarCamposDespesa_(idDespesa, campos) {
   var info = localizarLinhaDespesaPorId_(idDespesa);
   if (!info) return { ok: false, mensagem: "Despesa não encontrada: " + idDespesa };

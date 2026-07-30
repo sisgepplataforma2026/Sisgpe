@@ -7,6 +7,18 @@
 .stat-card:hover { box-shadow:0 6px 20px rgba(0,20,60,.12); transform:translateY(-2px); }
 .stat-card::before { content:""; position:absolute; top:0; left:0; right:0; height:4px; background:#e2e8f0; border-radius:16px 16px 0 0; }
 .stat-card.red::before{background:#dc2626} .stat-card.amber::before{background:#d97706} .stat-card.blue::before{background:#1565C0} .stat-card.purple::before{background:#7c3aed} .stat-card.green::before{background:#059669}
+.stat-card.alerta-vencido{box-shadow:0 0 0 2px #dc2626,0 6px 20px rgba(220,38,38,.18);}
+.badge-confirmado{display:inline-block;font-size:10.5px;font-weight:800;background:#dcfce7;color:#166534;border-radius:6px;padding:2px 8px;}
+.badge-aguard-confirm{display:inline-block;font-size:10.5px;font-weight:800;background:#fef9c3;color:#854d0e;border-radius:6px;padding:2px 8px;}
+.historico-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #f1f5f9;}
+.historico-item:last-child{border-bottom:none;}
+.historico-dot{flex-shrink:0;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;background:#f1f5f9;}
+.historico-dot.criado{background:#eff6ff;} .historico-dot.status{background:#f5f3ff;} .historico-dot.doc{background:#eff6ff;}
+.historico-dot.enviado{background:#f3e8ff;} .historico-dot.pago{background:#f0fdf4;} .historico-dot.cancelado{background:#fef2f2;} .historico-dot.editado{background:#fffbeb;}
+.historico-linha{flex:1;min-width:0;}
+.historico-titulo{font-size:13px;font-weight:700;color:#0f172a;}
+.historico-detalhe{font-size:12px;color:#475569;margin-top:2px;}
+.historico-data{font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600;}
 .stat-label { font-size:11px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:.07em; margin-bottom:10px; }
 .stat-value { font-size:32px; font-weight:900; color:#0f172a; line-height:1; margin-bottom:5px; }
 .stat-sub { font-size:11px; color:#94a3b8; font-weight:500; }
@@ -227,12 +239,17 @@
     </div>
     <div id="dashboard-loader" class="desp-loader"><div class="desp-spinner"></div>Carregando...</div>
     <div id="dashboard-content" style="display:none;">
+      <div id="banner-alerta-vencidas" style="display:none;align-items:center;gap:10px;background:#fef2f2;border:1.5px solid #fca5a5;color:#991b1b;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;font-weight:700;">
+        <span style="font-size:18px;">⚠️</span>
+        <span id="banner-alerta-txt" style="flex:1;">Atenção: despesa(s) vencida(s) aguardando providência!</span>
+        <button onclick="dispensarBanner()" style="background:none;border:none;cursor:pointer;font-size:16px;color:inherit;opacity:.6;">✕</button>
+      </div>
       <div class="stats-grid">
         <div class="stat-card" onclick="irParaDespesasFiltradas('total')" style="cursor:pointer" title="Ver todas as despesas"><div class="stat-label">📋 Total</div><div class="stat-value" id="s-total">—</div><div class="stat-sub" id="s-valor-total">—</div></div>
-        <div class="stat-card red" onclick="irParaDespesasFiltradas('vencidas')" style="cursor:pointer" title="Ver despesas vencidas"><div class="stat-label">⚠️ Vencidas</div><div class="stat-value" id="s-vencidas" style="color:#dc2626">—</div><div class="stat-sub">Atenção imediata</div></div>
+        <div class="stat-card red" id="card-vencidas" onclick="irParaDespesasFiltradas('vencidas')" style="cursor:pointer" title="Ver despesas vencidas"><div class="stat-label">⚠️ Vencidas</div><div class="stat-value" id="s-vencidas" style="color:#dc2626">—</div><div class="stat-sub">Atenção imediata</div></div>
         <div class="stat-card amber" onclick="irParaDespesasFiltradas('urgentes')" style="cursor:pointer" title="Ver despesas urgentes"><div class="stat-label">⏰ Urgentes ≤5d</div><div class="stat-value" id="s-urgentes" style="color:#d97706">—</div><div class="stat-sub">Vencimento próximo</div></div>
         <div class="stat-card blue" onclick="irParaDespesasFiltradas('doc')" style="cursor:pointer" title="Ver despesas com doc recebido"><div class="stat-label">📋 Doc recebido</div><div class="stat-value" id="s-doc" style="color:#1565C0">—</div><div class="stat-sub">Prontos p/ contabilidade</div></div>
-        <div class="stat-card purple" onclick="irParaDespesasFiltradas('contab')" style="cursor:pointer" title="Ver despesas enviadas à contabilidade"><div class="stat-label">📤 Contabilidade</div><div class="stat-value" id="s-contab" style="color:#7c3aed">—</div><div class="stat-sub">Aguardando confirmação</div></div>
+        <div class="stat-card purple" id="card-contab" onclick="irParaDespesasFiltradas('contab')" style="cursor:pointer" title="Ver despesas enviadas à contabilidade"><div class="stat-label">📤 Contabilidade</div><div class="stat-value" id="s-contab" style="color:#7c3aed">—</div><div class="stat-sub" id="s-contab-sub">Aguardando confirmação</div></div>
         <div class="stat-card green" onclick="irParaDespesasFiltradas('pagos')" style="cursor:pointer" title="Ver despesas pagas"><div class="stat-label">✅ Pagos</div><div class="stat-value" id="s-pagos" style="color:#059669">—</div><div class="stat-sub" id="s-valor-pago">—</div></div>
       </div>
       <div class="card-desp" style="margin-bottom:14px;">
@@ -406,6 +423,14 @@
           <button class="btn btn-outline btn-sm" onclick="fecharPainel('painel-excluir')">Voltar</button>
           <button class="btn btn-red btn-sm" onclick="confirmarExcluirDespesa()">🗑️ Confirmar Exclusão</button>
         </div>
+      </div>
+    </div>
+
+    <div class="painel-inline" id="painel-historico">
+      <div class="painel-header" style="background:linear-gradient(135deg,#1e293b,#334155);"><span class="painel-header-title">🕓 Histórico</span><button class="painel-close" onclick="fecharPainel('painel-historico')">✕</button></div>
+      <div class="painel-body">
+        <div class="painel-info" id="painel-historico-info"></div>
+        <div id="historico-timeline"></div>
       </div>
     </div>
 

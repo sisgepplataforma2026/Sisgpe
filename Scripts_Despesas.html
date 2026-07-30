@@ -1188,7 +1188,7 @@
   function abrirHistorico(idDespesa, titulo) {
     var painel=g("painel-historico"),info=g("painel-historico-info"),tl=g("historico-timeline");
     if(!painel) return;
-    ["painel-pago","painel-cancelar","painel-solicitar-nf","painel-upload","painel-editar","painel-excluir","painel-duplicar"].forEach(function(pid){ var p=g(pid); if(p) p.classList.remove("open"); });
+    ["painel-pago","painel-cancelar","painel-estornar","painel-solicitar-nf","painel-upload","painel-editar","painel-excluir","painel-duplicar"].forEach(function(pid){ var p=g(pid); if(p) p.classList.remove("open"); });
     if(info) info.innerHTML='Histórico de <strong>'+escHtml(titulo)+'</strong>';
     if(tl) tl.innerHTML='<div style="text-align:center;color:#94a3b8;padding:24px;font-size:13px;"><div class="desp-spinner" style="margin:0 auto 10px;"></div>Carregando...</div>';
     painel.classList.add("open");
@@ -1201,7 +1201,7 @@
         tl.innerHTML=resp.historico.map(function(h){ var cfg=icones[h.tipo]||{cls:"editado",ico:"•"}; return '<div class="historico-item"><div class="historico-dot '+cfg.cls+'">'+cfg.ico+'</div><div class="historico-linha"><div class="historico-titulo">'+escHtml(h.titulo||h.tipo||"Alteração")+'</div>'+(h.detalhe?'<div class="historico-detalhe">'+escHtml(h.detalhe)+'</div>':'')+(h.usuario?'<div class="historico-detalhe" style="font-size:10.5px;color:#94a3b8;">Por: '+escHtml(h.usuario)+'</div>':'')+'<div class="historico-data">'+(h.data||"")+'</div></div></div>'; }).join("");
       })
       .withFailureHandler(function(e){ if(tl) tl.innerHTML='<div style="color:#dc2626;padding:16px;font-size:12px;text-align:center;">Erro: '+escHtml(e.message)+'</div>'; })
-      .obterHistoricoDespesa(idDespesa);
+      .obterHistoricoDespesa(idDespesa, SISGEP_TOKEN_SESSAO);
   }
 
   /* ═══ CHIP POR VAL ═══ */
