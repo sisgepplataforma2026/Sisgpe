@@ -3427,52 +3427,6 @@ btnGerarRecibo: function(){
   atualizarConferenciaRecibo();
 }
 
-/* ─────────────────────────────
-   RESUMO FINANCEIRO
-───────────────────────────── */
-function carregarResumoProcessos(){
-  google.script.run
-    .withSuccessHandler(function(res){
-      if(res && res.erro){
-        console.error(res.mensagem);
-        return;
-      }
-
-      var box = document.getElementById("resumoProcessos");
-      if(!box) return;
-
-      var html = '<table style="width:100%;border-collapse:collapse;">';
-
-      html +=
-        '<tr style="background:#f1f5f9;">' +
-          '<th>Processo</th>' +
-          '<th>Total</th>' +
-          '<th>Pago</th>' +
-          '<th>Saldo</th>' +
-          '<th>%</th>' +
-        '</tr>';
-
-      (res.dados || []).forEach(function(p){
-        html +=
-          '<tr>' +
-            '<td>' + escapeHtml(p.processo || "") + '</td>' +
-            '<td>R$ ' + Number(p.total || 0).toFixed(2) + '</td>' +
-            '<td style="color:green;">R$ ' + Number(p.pago || 0).toFixed(2) + '</td>' +
-            '<td style="color:red;">R$ ' + Number(p.saldo || 0).toFixed(2) + '</td>' +
-            '<td>' + escapeHtml(p.percentual || "0") + '%</td>' +
-          '</tr>';
-      });
-
-      html += '</table>';
-
-      box.innerHTML = html;
-    })
-    .withFailureHandler(function(err){
-      console.error("Erro ao carregar resumo de processos:", err);
-    })
-    .resumoFinanceiroPorProcesso(SISGEP_TOKEN_SESSAO);
-}
-
 function atualizarResumoFinanceiroProcesso(){
   var select = document.getElementById("recProcessoSelect");
   if(!select || !select.value) return;
