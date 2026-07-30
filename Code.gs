@@ -122,6 +122,18 @@ if (p.portal === "associado") {
       return pixelTransparente_();
     }
 
+    // ── Portal público do Fornecedor: envio de nota fiscal/recibo de despesa ──
+    // Mesmo problema da rota da contabilidade abaixo: o link já era enviado
+    // nos e-mails de D-5/D-3/D-1 pedindo a NF, mas essa rota nunca tinha
+    // sido cadastrada aqui — o link do fornecedor nunca abria nada.
+    if (p.page === "pub-nf-despesa" && p.token) {
+      return HtmlService.createHtmlOutputFromFile("UploadNFFornecedor")
+        .setTitle("Envio de Documento Fiscal — SindEducação-ES")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
+
     // ── Portal público da Contabilidade: confirmação de pagamento de despesa ──
     // Link enviado no e-mail de "Enviar à Contabilidade" — sem login, o
     // próprio token identifica a despesa. Rota nunca tinha sido cadastrada
