@@ -2432,13 +2432,19 @@ function removerAnexoDespesa(payload, tokenSessao) {
       return { ok: false, mensagem: "Não é possível remover o anexo de uma despesa já paga, enviada à contabilidade ou estornada." };
     }
     var obs = "Anexo removido por " + (sessao.email || sessao.usuario || "SISGEP") + " em " + agoraFormatadoDesp_() + ".";
+    // Volta ao zero também a aprovação: uma aprovação anterior não pode
+    // sobreviver a uma reversão para Pendente, senão a despesa pula direto
+    // para "Pago" sem passar pela aprovação de novo.
     atualizarCamposDespesa_(idDespesa, {
-      "STATUS":               STATUS_DESPESA.PENDENTE,
-      "LINK_DOCUMENTO":       "",
-      "FILE_ID_DOCUMENTO":    "",
-      "NOME_ARQUIVO":         "",
-      "DATA_RECEBIMENTO_DOC": "",
-      "OBSERVACOES":          obs
+      "STATUS":                    STATUS_DESPESA.PENDENTE,
+      "LINK_DOCUMENTO":            "",
+      "FILE_ID_DOCUMENTO":         "",
+      "NOME_ARQUIVO":              "",
+      "DATA_RECEBIMENTO_DOC":      "",
+      "APROVADO_PARA_PAGAMENTO":   "",
+      "APROVADO_POR":              "",
+      "DATA_APROVACAO":            "",
+      "OBSERVACOES":               obs
     });
     return { ok: true, mensagem: "Anexo removido. A despesa voltou para Pendente." };
   } catch (e) { return { ok: false, mensagem: e.message }; }
