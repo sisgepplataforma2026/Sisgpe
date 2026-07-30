@@ -1255,6 +1255,7 @@ function verificarEDispararAlertasD5() {
 
     gerarLancamentosAutomaticos_();
     recalcularStatusVencimentosDesp_();
+    dispararAlertaVencimentoPagamentoInterno_();
 
     var aba     = obterAbaDesp_();
     var lastRow = aba.getLastRow();
@@ -1306,6 +1307,101 @@ function verificarEDispararAlertasD5() {
     Logger.log("✅ verificarEDispararAlertasD5: enviados=" + enviados + " ignorados=" + ignorados);
   } catch (e) {
     Logger.log("❌ verificarEDispararAlertasD5: " + e.message);
+  }
+}
+
+/**
+ * Lembrete PROATIVO pra equipe financeira interna (não pro fornecedor —
+ * isso já existe acima, verificarEDispararAlertasD5, D-5/D-3/D-1 pedindo
+ * NF) de que uma despesa vence em 3 dias e ainda não foi paga. Um só
+ * e-mail-resumo por dia (não um por despesa), pra EMAILS_FINANCEIRO_DESPESAS.
+ * Achado 🟡 da auditoria: o vencimento próximo só aparecia passivamente
+ * no dashboard, sem nenhum aviso proativo.
+ */
+function dispararAlertaVencimentoPagamentoInterno_() {
+  try {
+    var aba = obterAbaDesp_();
+    if (aba.getLastRow() < 2) return;
+
+    var colAlerta = "DATA_ALERTA_VENCIMENTO_PAGTO";
+    var headers = aba.getRange(1, 1, 1, aba.getLastColumn()).getValues()[0].map(function(h) { return String(h || "").trim(); });
+    if (headers.indexOf(colAlerta) === -1) {
+      aba.getRange(1, aba.getLastColumn() + 1).setValue(colAlerta);
+    }
+
+    var dados     = aba.getDataRange().getValues();
+    var headerMap = getHeaderMap_(aba);
+    var hoje      = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    var pendentes = [];
+    var linhasParaMarcar = [];
+
+    for (var i = 1; i < dados.length; i++) {
+      var row    = dados[i];
+      var status = String(row[(headerMap["STATUS"] || 0) - 1] || "").trim();
+      if (status === STATUS_DESPESA.PAGO || status === STATUS_DESPESA.CANCELADO || status === STATUS_DESPESA.ESTORNADO) continue;
+
+      var venc = String(row[(headerMap["DATA_VENCIMENTO"] || 0) - 1] || "").trim();
+      var dataVenc = converterDataBRParaDateDesp_(venc);
+      if (!dataVenc) continue;
+      dataVenc.setHours(0, 0, 0, 0);
+
+      var diffDias = Math.floor((dataVenc - hoje) / 86400000);
+      if (diffDias !== 3) continue;
+
+      var jaAlertou = String(row[(headerMap[colAlerta] || 0) - 1] || "").trim();
+      if (jaAlertou) {
+        var dataUltimo = converterDataBRParaDateDesp_(jaAlertou) || (jaAlertou ? new Date(jaAlertou) : null);
+        if (dataUltimo) {
+          dataUltimo.setHours(0, 0, 0, 0);
+          if (dataUltimo.getTime() === hoje.getTime()) continue;
+        }
+      }
+
+      pendentes.push({
+        nome:   String(row[(headerMap["PRESTADOR_NOME"]  || 0) - 1] || ""),
+        numero: String(row[(headerMap["NUMERO_DESPESA"]  || 0) - 1] || ""),
+        valor:  String(row[(headerMap["VALOR"]           || 0) - 1] || ""),
+        venc:   venc,
+        categoria: String(row[(headerMap["CATEGORIA"]    || 0) - 1] || "")
+      });
+      linhasParaMarcar.push(i + 1);
+    }
+
+    if (!pendentes.length) return;
+
+    var linhas = pendentes.map(function(p) {
+      return '<tr><td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;">' + p.numero + '</td>' +
+        '<td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;">' + p.nome + '</td>' +
+        '<td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;">' + p.categoria + '</td>' +
+        '<td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;">' + p.valor + '</td>' +
+        '<td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;">' + p.venc + '</td></tr>';
+    }).join('');
+
+    var html = '<div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;">' +
+      '<h2 style="color:#001f4d;">📅 Despesas vencendo em 3 dias</h2>' +
+      '<p style="color:#475569;font-size:13px;">' + pendentes.length + ' despesa(s) ainda não paga(s) vencem em 3 dias:</p>' +
+      '<table style="width:100%;border-collapse:collapse;font-size:12.5px;">' +
+      '<tr style="background:#f1f5f9;text-align:left;"><th style="padding:8px 10px;">Nº</th><th style="padding:8px 10px;">Fornecedor</th><th style="padding:8px 10px;">Categoria</th><th style="padding:8px 10px;">Valor</th><th style="padding:8px 10px;">Vencimento</th></tr>' +
+      linhas + '</table></div>';
+
+    MailApp.sendEmail({
+      to: EMAILS_FINANCEIRO_DESPESAS.join(","),
+      subject: "📅 " + pendentes.length + " despesa(s) vencendo em 3 dias — SindEducação-ES",
+      htmlBody: html,
+      name: "SISGEP · SindEducação-ES"
+    });
+
+    var agora = agoraFormatadoDesp_();
+    var colIdx = headerMap[colAlerta] || aba.getLastColumn();
+    linhasParaMarcar.forEach(function(linha) {
+      aba.getRange(linha, colIdx).setValue(agora);
+    });
+
+    Logger.log("✅ dispararAlertaVencimentoPagamentoInterno_: " + pendentes.length + " despesa(s) no resumo.");
+  } catch (e) {
+    Logger.log("❌ dispararAlertaVencimentoPagamentoInterno_: " + e.message);
   }
 }
 
@@ -1945,6 +2041,47 @@ function obterDadosDespesaPorTokenFornecedor(token) {
       tipoDoc:    get2("TIPO_DOC") || "NF"
     };
 
+  } catch (e) {
+    return { ok: false, mensagem: e.message };
+  }
+}
+
+/**
+ * Dados da despesa pro Portal da Contabilidade (?page=pub-contabil-despesa)
+ * — link enviado no e-mail de "Enviar à Contabilidade". Achado: essa rota
+ * nunca tinha sido cadastrada no roteador (doGet, Code.gs) nem esta função
+ * de leitura existia — só a de confirmar (confirmarPagamentoDespesaPublico)
+ * já estava pronta, sem nenhuma tela pra chamá-la.
+ */
+function obterDadosDespesaPorTokenContabilidade(token) {
+  try {
+    var info = buscarTokenContabilidadeDespesa_(token);
+    if (!info) return { ok: false, mensagem: "Link inválido ou expirado. Peça um novo envio ao SindEducação-ES." };
+
+    var idDespesa = String(info.idDespesa || "").trim();
+    var despInfo  = localizarLinhaDespesaPorId_(idDespesa);
+    if (!despInfo) return { ok: false, mensagem: "Despesa não encontrada." };
+
+    var row = despInfo.row; var headerMap = despInfo.headerMap;
+    function get(col) { return String(row[(headerMap[col] || 0) - 1] || "").trim(); }
+
+    var status = get("STATUS");
+    if (status === STATUS_DESPESA.PAGO) {
+      return { ok: false, jaConfirmado: true, mensagem: "Este pagamento já foi confirmado anteriormente.", nome: get("PRESTADOR_NOME"), dataPagamento: get("DATA_PAGAMENTO") };
+    }
+    if (status === STATUS_DESPESA.CANCELADO || status === STATUS_DESPESA.ESTORNADO) {
+      return { ok: false, mensagem: "Esta despesa foi " + (status === STATUS_DESPESA.CANCELADO ? "cancelada" : "estornada") + " e não deve ser paga." };
+    }
+
+    return {
+      ok:         true,
+      nome:       get("PRESTADOR_NOME"),
+      valor:      get("VALOR"),
+      vencimento: formatarDataBRDesp_(get("DATA_VENCIMENTO")),
+      descricao:  get("DESCRICAO"),
+      numero:     get("NUMERO_DESPESA"),
+      categoria:  get("CATEGORIA")
+    };
   } catch (e) {
     return { ok: false, mensagem: e.message };
   }

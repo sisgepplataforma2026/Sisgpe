@@ -122,6 +122,18 @@ if (p.portal === "associado") {
       return pixelTransparente_();
     }
 
+    // ── Portal público da Contabilidade: confirmação de pagamento de despesa ──
+    // Link enviado no e-mail de "Enviar à Contabilidade" — sem login, o
+    // próprio token identifica a despesa. Rota nunca tinha sido cadastrada
+    // aqui, então o link enviado por e-mail nunca abria nada.
+    if (p.page === "pub-contabil-despesa" && p.token) {
+      return HtmlService.createHtmlOutputFromFile("ConfirmacaoContabilidadeDespesa")
+        .setTitle("Confirmação de Pagamento — SindEducação-ES")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
+
     // ── Tela de redefinição de senha via link de recuperação ──
     var temTokenRecuperacao = p.recuperar;
 
