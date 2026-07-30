@@ -3457,10 +3457,10 @@ function atualizarResumoFinanceiroProcesso(){
   var _iniciado = false;
 
   function iniciarSeVisivel(){
-    var sec = document.getElementById("secRecibos");
+    var sec = document.getElementById("docSubRecibos");
     if(!sec) return;
 
-    if(sec.classList.contains("ativa") && !_iniciado){
+    if(sec.style.display !== "none" && !_iniciado){
       _iniciado = true;
       setTimeout(function(){
         initRecibos();
@@ -3469,14 +3469,14 @@ function atualizarResumoFinanceiroProcesso(){
   }
 
   function configurarObserver(){
-    var sec = document.getElementById("secRecibos");
+    var sec = document.getElementById("docSubRecibos");
     if(!sec) return;
 
     new MutationObserver(function(){
       if(!_iniciado){
         iniciarSeVisivel();
       }
-    }).observe(sec, { attributes: true, attributeFilter: ["class"] });
+    }).observe(sec, { attributes: true, attributeFilter: ["style"] });
   }
 
   if(document.readyState === "loading"){
