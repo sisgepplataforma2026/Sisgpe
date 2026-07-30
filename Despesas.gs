@@ -806,14 +806,30 @@ function agoraFormatadoDesp_() {
 }
 
 function obterPastaDesp_() {
-  var pastaId = (PropertiesService.getScriptProperties().getProperty("PASTA_DESPESAS_ID") || "").trim();
-  if (!pastaId) { try { pastaId = PASTA_RECIBO_ID;  } catch(e) {} }
-  if (!pastaId) { try { pastaId = PASTA_OFICIOS_ID; } catch(e) {} }
-  if (!pastaId) throw new Error("PASTA_DESPESAS_ID não configurado. Execute configurarPastaDespesas().");
+  var props   = PropertiesService.getScriptProperties();
+  var pastaId = (props.getProperty("PASTA_DESPESAS_ID") || "").trim();
 
-  var pasta = obterOuCriarSubpastaAno(pastaId);
-  if (!pasta) throw new Error("Pasta de despesas não encontrada ou sem permissão. ID: " + pastaId);
-  return pasta;
+  if (pastaId) {
+    try {
+      return obterOuCriarSubpastaAno(pastaId);
+    } catch (e) {
+      Logger.log("obterPastaDesp_: PASTA_DESPESAS_ID configurado (" + pastaId + ") está inválido/inacessível — recriando. " + e.message);
+    }
+  }
+
+  // Sem pasta configurada, ou configuração quebrada (pasta apagada/sem permissão):
+  // cria (ou reaproveita) uma pasta "Despesas" dedicada dentro da pasta-mãe dos
+  // Ofícios e grava o ID nas Propriedades do Script para as próximas chamadas.
+  var parentId = "";
+  try { parentId = PASTA_OFICIOS_ID; } catch (e) {}
+  if (!parentId) throw new Error("Não foi possível determinar uma pasta-mãe para criar a pasta de Despesas.");
+
+  var parent          = DriveApp.getFolderById(parentId);
+  var pastasDespesas   = parent.getFoldersByName("Despesas");
+  var pastaDespesas    = pastasDespesas.hasNext() ? pastasDespesas.next() : parent.createFolder("Despesas");
+  props.setProperty("PASTA_DESPESAS_ID", pastaDespesas.getId());
+
+  return obterOuCriarSubpastaAno(pastaDespesas.getId());
 }
 
 /* ================= LOCALIZAR / ATUALIZAR LINHA ================= */
