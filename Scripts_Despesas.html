@@ -179,11 +179,18 @@
         categoria=val("f-categoria"),
         tipo=val("f-tipo"),
         venc=vc?vc.value:val("f-venc");
+    var mesSel=val("f-mes"), anoSel=val("f-ano");
     despesasFiltradas=todasDespesas.filter(function(d){
       if(status && d.status!==status) return false;
       if(categoria && normText(d.categoria)!==normText(categoria)) return false;
       if(tipo && (d.tipoLancamento||"recorrente")!==tipo) return false;
       if(venc && d.statusVencimento!==venc) return false;
+      if(mesSel||anoSel){
+        var p=(d.dataVencimentoBR||"").split("/");
+        if(p.length!==3) return false;
+        if(mesSel && p[1]!==mesSel) return false;
+        if(anoSel && p[2]!==anoSel) return false;
+      }
       if(busca){ var txt=normText([d.prestadorNome,d.descricao,d.numeroDespesa,d.categoria].join(" ")); if(txt.indexOf(busca)===-1) return false; }
       return true;
     });
@@ -219,7 +226,7 @@
   }
 
   function limparFiltros(){
-    ["f-busca","f-status","f-categoria","f-tipo","f-venc","f-status-chip","f-venc-chip","f-data-ini","f-data-fim"].forEach(function(id){ var el=g(id); if(el) el.value=""; });
+    ["f-busca","f-status","f-categoria","f-tipo","f-venc","f-status-chip","f-venc-chip","f-data-ini","f-data-fim","f-mes","f-ano"].forEach(function(id){ var el=g(id); if(el) el.value=""; });
     document.querySelectorAll("#chips-status .chip").forEach(function(c,i){ c.className="chip"+(i===0?" ativo":""); });
     document.querySelectorAll("#chips-venc .chip").forEach(function(c,i){ c.className="chip"+(i===0?" ativo":""); });
     document.querySelectorAll(".chip-periodo").forEach(function(c,i){ c.classList.toggle("ativo",i===0); });
@@ -1194,7 +1201,13 @@
           if(resp.gerados&&resp.gerados.length){ html+='<div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Despesas geradas ('+resp.gerados.length+')</div><div style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;">'; resp.gerados.forEach(function(d){ html+='<div style="display:flex;align-items:center;justify-content:space-between;background:#f0fdf4;border:1px solid #6ee7b7;border-radius:8px;padding:8px 12px;font-size:12px;"><span style="font-weight:700;color:#065f46;">✅ '+escHtml(d.nome)+'</span><span style="color:#059669;font-weight:700;">'+escHtml(d.numero||"")+' · '+escHtml(d.vencimento||"")+'</span></div>'; }); html+='</div>'; }
           if(resp.ignorados&&resp.ignorados.length){ html+='<details style="margin-top:10px;"><summary style="font-size:11px;font-weight:700;color:#94a3b8;cursor:pointer;">Ver ignorados ('+resp.ignorados.length+')</summary><div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;">'; resp.ignorados.forEach(function(d){ html+='<div style="font-size:11px;color:#64748b;padding:4px 8px;background:#f1f5f9;border-radius:6px;">· '+escHtml(d.nome||"?")+" — "+escHtml(d.motivo||"")+'</div>'; }); html+='</div></details>'; }
           if(resp.erros&&resp.erros.length){ html+='<div style="margin-top:8px;">'; resp.erros.forEach(function(d){ html+='<div style="font-size:11px;color:#9f1239;padding:4px 8px;background:#fee2e2;border-radius:6px;margin-bottom:4px;">⚠️ '+escHtml(d.nome||"?")+" — "+escHtml(d.erro||"")+'</div>'; }); html+='</div>'; }
-          if(resp.gerados&&resp.gerados.length){ todasDespesas=[]; window.todasDespesas=[]; carregarDashboard(); }
+          if(resp.gerados&&resp.gerados.length){
+            todasDespesas=[]; window.todasDespesas=[]; carregarDashboard();
+            if(g("f-mes")) g("f-mes").value=mes;
+            if(g("f-ano")) g("f-ano").value=ano;
+            var bl=g("btn-limpar-filtros"); if(bl) bl.style.display="";
+            carregarLista();
+          }
           showToast(resp.mensagem,"success");
         } else {
           html='<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:10px;padding:12px 14px;font-size:13px;font-weight:700;color:#9f1239;">❌ '+escHtml((resp&&resp.mensagem)||"Erro ao gerar.")+'</div>';
