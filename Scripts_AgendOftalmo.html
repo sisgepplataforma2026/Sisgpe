@@ -202,7 +202,7 @@ var _associadosEncontrados = [];
         ocultarLoaderSistema();
         _toast('Erro: ' + (e && e.message ? e.message : e), 'erro');
       })
-      .listarHorariosOftalmo(dataBR);
+      .listarHorariosOftalmo(dataBR, (typeof SISGEP_TOKEN_SESSAO !== "undefined" ? SISGEP_TOKEN_SESSAO : ""));
   }
 
   function _renderTudo() {
@@ -478,7 +478,7 @@ var _associadosEncontrados = [];
         if (r.nome && nomeEl && !nomeEl.value) nomeEl.value = r.nome;
       })
       .withFailureHandler(function(){ valEl.textContent = '⚠ Erro na validação.'; valEl.style.color = 'var(--amber)'; })
-      .validarAssociadoOftalmo(cpf);
+      .validarAssociadoOftalmo(cpf, (typeof SISGEP_TOKEN_SESSAO !== "undefined" ? SISGEP_TOKEN_SESSAO : ""));
   }
 
   function calcularIdade(dataNasc) {
@@ -561,7 +561,7 @@ var _associadosEncontrados = [];
         if (btn) btn.disabled = false;
         _msgModal('Erro: ' + (e && e.message ? e.message : e), 'erro');
       })
-      .reservarHorarioOftalmo(dados);
+      .reservarHorarioOftalmo(dados, (typeof SISGEP_TOKEN_SESSAO !== "undefined" ? SISGEP_TOKEN_SESSAO : ""));
   }
 
   function abrirAcoes(slot) { _dadosAtual = slot; _abrirModalAcoes(slot); }
@@ -707,7 +707,7 @@ var _associadosEncontrados = [];
         ocultarLoaderSistema();
         _toast('Erro: ' + (e && e.message ? e.message : e), 'erro');
       })
-      .enviarEmailConfirmacaoOftalmo(_dadosAtual);
+      .enviarEmailConfirmacaoOftalmo(_dadosAtual, (typeof SISGEP_TOKEN_SESSAO !== "undefined" ? SISGEP_TOKEN_SESSAO : ""));
   }
 
   function fecharAgendaDia() {
@@ -843,7 +843,7 @@ var _associadosEncontrados = [];
         ocultarLoaderSistema();
         _toast('Erro: ' + (e && e.message ? e.message : e), 'erro');
       })
-      .enviarRelatorioAgendaOftalmo({ data: data, agendamentos: reservados });
+      .enviarRelatorioAgendaOftalmo({ data: data, agendamentos: reservados }, (typeof SISGEP_TOKEN_SESSAO !== "undefined" ? SISGEP_TOKEN_SESSAO : ""));
   }
 
   function cancelar(id) {
@@ -858,7 +858,7 @@ var _associadosEncontrados = [];
         carregarDia();
       })
       .withFailureHandler(function(e){ ocultarLoaderSistema(); _toast('Erro: ' + (e && e.message ? e.message : e), 'erro'); })
-      .cancelarHorarioOftalmo(id);
+      .cancelarHorarioOftalmo(id, (typeof SISGEP_TOKEN_SESSAO !== "undefined" ? SISGEP_TOKEN_SESSAO : ""));
   }
 
   function marcarCompareceu(id, compareceu) {
@@ -871,7 +871,7 @@ var _associadosEncontrados = [];
         carregarDia();
       })
       .withFailureHandler(function(e){ ocultarLoaderSistema(); _toast('Erro: ' + (e && e.message ? e.message : e), 'erro'); })
-      .marcarCompareceuOftalmo(id, compareceu);
+      .marcarCompareceuOftalmo(id, compareceu, (typeof SISGEP_TOKEN_SESSAO !== "undefined" ? SISGEP_TOKEN_SESSAO : ""));
   }
 
   function carregarHistorico() {
@@ -888,7 +888,7 @@ var _associadosEncontrados = [];
         _renderHistorico(r.agendamentos || []);
       })
       .withFailureHandler(function(e){ ocultarLoaderSistema(); _toast('Erro: ' + (e && e.message ? e.message : e), 'erro'); })
-      .buscarAgendamentosOftalmo(filtros);
+      .buscarAgendamentosOftalmo(filtros, (typeof SISGEP_TOKEN_SESSAO !== "undefined" ? SISGEP_TOKEN_SESSAO : ""));
   }
 
   function _renderHistorico(lista) {
@@ -975,7 +975,7 @@ var _associadosEncontrados = [];
         ocultarLoaderSistema();
         _toast('Erro ao excluir: ' + (erro && erro.message ? erro.message : erro), 'erro');
       })
-      .excluirAgendamentoOftalmo(id);
+      .excluirAgendamentoOftalmo(id, (typeof SISGEP_TOKEN_SESSAO !== "undefined" ? SISGEP_TOKEN_SESSAO : ""));
   }
 
   function imprimirAgendamentoJSON(json) {
