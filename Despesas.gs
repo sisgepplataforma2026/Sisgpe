@@ -2685,6 +2685,7 @@ function gerarDespesasEmLote(payload, tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
   try {
     payload = payload || {};
+    var pad = function(n) { return n < 10 ? "0" + n : n; };
 
     var mes = parseInt(String(payload.mes || "").trim(), 10);
     var ano = parseInt(String(payload.ano || "").trim(), 10);
@@ -2721,7 +2722,6 @@ function gerarDespesasEmLote(payload, tokenSessao) {
         var ultimoDia = new Date(ano, mes, 0).getDate();
         var dia       = Math.min(diaNum, ultimoDia);
         var dataVencDate = new Date(ano, mes - 1, dia);
-        var pad = function(n) { return n < 10 ? "0" + n : n; };
         var dataVencStr = pad(dia) + "/" + pad(mes) + "/" + ano;
 
         if (jaExisteLancamentoMesDesp_(nome, dataVencStr)) {
