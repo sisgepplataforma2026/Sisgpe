@@ -892,6 +892,24 @@ function invalidarTokenDesp_(chaveCompleta) {
  */
 function registrarLancamentoDespesa(dados, tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
+  dados = dados || {};
+
+  // Duplicidade só é checada em lançamento manual/avulso — o recorrente
+  // automático já tem sua própria checagem (jaExisteLancamentoMesDesp_)
+  // antes de chegar aqui, e "duplicar despesa" existe justamente pra criar
+  // uma cópia de propósito, então não faz sentido bloquear ali.
+  var ehAvulso = String(dados.tipoLancamento || "").trim() === TIPO_LANCAMENTO_DESP.AVULSO;
+  if (ehAvulso && !dados.confirmarDuplicidade) {
+    var jaExiste = jaExisteLancamentoDuplicadoAvulsoDesp_(dados.prestadorNome, dados.dataVencimento, dados.valor);
+    if (jaExiste) {
+      return {
+        ok: false,
+        duplicado: true,
+        mensagem: "Já existe uma despesa com o mesmo fornecedor, valor e vencimento. Envie novamente para confirmar mesmo assim."
+      };
+    }
+  }
+
   return registrarLancamentoDespesa_(dados);
 }
 
@@ -1161,6 +1179,38 @@ function jaExisteLancamentoMesDesp_(prestadorNome, dataVencimento) {
       var vencNorm = formatarDataBRDesp_(String(dados[i][idxVenc] || "").trim());
       var dataAlvo = formatarDataBRDesp_(dataVencimento);
       if (nomeL === nomeNorm && vencNorm === dataAlvo) return true;
+    }
+    return false;
+  } catch (e) { return false; }
+}
+
+/**
+ * Duplicidade de lançamento MANUAL/avulso: mesmo fornecedor + mesmo
+ * vencimento + mesmo valor, numa despesa ainda não cancelada. Mais
+ * rígido que jaExisteLancamentoMesDesp_ (que não olha valor) de propósito
+ * — um mesmo fornecedor pode ter mais de uma despesa legítima no mês,
+ * só não a mesma despesa duas vezes.
+ */
+function jaExisteLancamentoDuplicadoAvulsoDesp_(prestadorNome, dataVencimento, valor) {
+  try {
+    var aba = obterAbaDesp_();
+    if (aba.getLastRow() < 2) return false;
+    var dados     = aba.getDataRange().getValues();
+    var headers   = dados[0].map(function(h) { return String(h || "").trim(); });
+    var idxNome   = headers.indexOf("PRESTADOR_NOME");
+    var idxVenc   = headers.indexOf("DATA_VENCIMENTO");
+    var idxValor  = headers.indexOf("VALOR");
+    var idxStatus = headers.indexOf("STATUS");
+    var nomeNorm  = normalizarTextoDesp_(prestadorNome);
+    var dataAlvo  = formatarDataBRDesp_(dataVencimento);
+    var valorAlvo = String(valor || "").trim();
+    for (var i = 1; i < dados.length; i++) {
+      var status = String(dados[i][idxStatus] || "").trim();
+      if (status === STATUS_DESPESA.CANCELADO) continue;
+      var nomeL    = normalizarTextoDesp_(dados[i][idxNome] || "");
+      var vencNorm = formatarDataBRDesp_(String(dados[i][idxVenc] || "").trim());
+      var valorL   = String(dados[i][idxValor] || "").trim();
+      if (nomeL === nomeNorm && vencNorm === dataAlvo && valorL === valorAlvo) return true;
     }
     return false;
   } catch (e) { return false; }
@@ -2043,13 +2093,15 @@ function cancelarDespesa(payload, tokenSessao) {
 }
 
 function editarDespesa(payload, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
   try {
     payload = payload || {};
     var idDespesa = String(payload.idDespesa || "").trim();
     if (!idDespesa) return { ok: false, mensagem: "ID não informado." };
     var despInfo = localizarLinhaDespesaPorId_(idDespesa);
     if (!despInfo) return { ok: false, mensagem: "Despesa não encontrada." };
+    var idxValor = (despInfo.headerMap["VALOR"] || 0) - 1;
+    var valorAnterior = idxValor > -1 ? String(despInfo.row[idxValor] || "").trim() : "";
     var campos = {};
     if (payload.tipoLancamento) campos["TIPO_LANCAMENTO"]  = String(payload.tipoLancamento).trim();
     if (payload.categoria)      campos["CATEGORIA"]        = String(payload.categoria).trim();
@@ -2067,6 +2119,10 @@ function editarDespesa(payload, tokenSessao) {
     if (payload.tipoDoc)     campos["TIPO_DOC"]     = String(payload.tipoDoc).trim();
     if (payload.observacoes) campos["OBSERVACOES"]  = String(payload.observacoes).trim();
     atualizarCamposDespesa_(idDespesa, campos);
+    if (campos["VALOR"]) {
+      finAudRegistrarAlteracaoValor_("DESPESAS", idDespesa, valorAnterior, campos["VALOR"],
+        sessao.email || sessao.usuario || "SISGEP", payload.motivoAlteracaoValor || "");
+    }
     return { ok: true, mensagem: "Despesa atualizada com sucesso." };
   } catch (e) { return { ok: false, mensagem: e.message }; }
 }

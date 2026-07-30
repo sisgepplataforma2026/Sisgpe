@@ -468,7 +468,7 @@
   }
 
   /* ═══ NOVA DESPESA ═══ */
-  function salvarNovaDespesa(){
+  function salvarNovaDespesa(confirmarDuplicidade){
     var err=g("nova-err"),ok=g("nova-ok");
     if(err) err.classList.remove("show"); if(ok) ok.classList.remove("show");
     var isAv=g("r-avulso")&&g("r-avulso").checked;
@@ -487,10 +487,14 @@
       .withSuccessHandler(function(resp){
         if(btn){ btn.disabled=false; btn.innerHTML="💾 Salvar Despesa"; }
         if(resp&&resp.ok){ if(ok){ ok.textContent="✅ "+(resp.mensagem||"Despesa salva!"); ok.classList.add("show"); } limparFormNova(); todasDespesas=[]; window.todasDespesas=[]; carregarDashboard(); showToast("Despesa "+(resp.numeroDespesa||"")+" registrada!","success"); }
+        else if(resp&&resp.duplicado){
+          if(confirm((resp.mensagem||"Possível despesa duplicada.")+"\n\nDeseja salvar mesmo assim?")) salvarNovaDespesa(true);
+          else if(err){ err.textContent=resp.mensagem; err.classList.add("show"); }
+        }
         else { if(err){ err.textContent="Erro: "+((resp&&resp.mensagem)||"Falha."); err.classList.add("show"); } }
       })
       .withFailureHandler(function(e){ if(btn){ btn.disabled=false; btn.innerHTML="💾 Salvar Despesa"; } if(err){ err.textContent="Erro: "+e.message; err.classList.add("show"); } })
-      .registrarLancamentoDespesa({ tipoLancamento:isAv?"avulso":"recorrente", categoria:categoria, prestadorNome:nome, prestadorDoc:docF, prestadorEmail:emailF, prestadorWhats:whatsF, descricao:desc, valor:valor, dataVencimento:vencBR, quemAgendou:quem, tipoDoc:tipodoc, observacoes:obs }, SISGEP_TOKEN_SESSAO);
+      .registrarLancamentoDespesa({ tipoLancamento:isAv?"avulso":"recorrente", categoria:categoria, prestadorNome:nome, prestadorDoc:docF, prestadorEmail:emailF, prestadorWhats:whatsF, descricao:desc, valor:valor, dataVencimento:vencBR, quemAgendou:quem, tipoDoc:tipodoc, observacoes:obs, confirmarDuplicidade:!!confirmarDuplicidade }, SISGEP_TOKEN_SESSAO);
   }
 
   function limparFormNova(){

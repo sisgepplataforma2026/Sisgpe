@@ -4098,7 +4098,7 @@ function obterResumoFinanceiroProcesso(idProcesso, tokenSessao) {
 
 /* ================= EDITAR PROCESSO ================= */
 function editarProcessoRecibo(dados, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoEdicao = exigirSessaoDocumentos_(tokenSessao, false);
   try {
     dados = dados || {};
 
@@ -4142,6 +4142,7 @@ function editarProcessoRecibo(dados, tokenSessao) {
       }
 
       var linhaAtual = sh.getRange(i + 1, 1, 1, cab.length).getValues()[0];
+      var valorAnteriorTotal = idxValorTotal > -1 ? String(linhaAtual[idxValorTotal] || "").trim() : "";
 
       linhaAtual[idxProcesso] = processo;
       linhaAtual[idxEmpresa]  = empresa;
@@ -4150,6 +4151,11 @@ function editarProcessoRecibo(dados, tokenSessao) {
       if (idxValorTotal > -1) linhaAtual[idxValorTotal]  = valorTotal;
 
       sh.getRange(i + 1, 1, 1, cab.length).setValues([linhaAtual]);
+
+      if (idxValorTotal > -1 && valorTotal) {
+        finAudRegistrarAlteracaoValor_("RECIBOS", idProcesso, valorAnteriorTotal, valorTotal,
+          (sessaoEdicao && (sessaoEdicao.email || sessaoEdicao.usuario)) || "SISGEP", dados.motivoAlteracaoValor || "");
+      }
 
       return {
         erro: false,
