@@ -494,7 +494,7 @@
         else { if(err){ err.textContent="Erro: "+((resp&&resp.mensagem)||"Falha."); err.classList.add("show"); } }
       })
       .withFailureHandler(function(e){ if(btn){ btn.disabled=false; btn.innerHTML="💾 Salvar Despesa"; } if(err){ err.textContent="Erro: "+e.message; err.classList.add("show"); } })
-      .registrarLancamentoDespesa({ tipoLancamento:isAv?"avulso":"recorrente", categoria:categoria, prestadorNome:nome, prestadorDoc:docF, prestadorEmail:emailF, prestadorWhats:whatsF, descricao:desc, valor:valor, dataVencimento:vencBR, quemAgendou:quem, tipoDoc:tipodoc, observacoes:obs, confirmarDuplicidade:!!confirmarDuplicidade }, SISGEP_TOKEN_SESSAO);
+      .registrarLancamentoDespesa({ tipoLancamento:isAv?"avulso":"recorrente", categoria:categoria, prestadorNome:nome, prestadorDoc:docF, prestadorEmail:emailF, prestadorWhats:whatsF, descricao:desc, valor:valor, dataVencimento:vencBR, quemAgendou:quem, tipoDoc:tipodoc, observacoes:obs, centroCusto:val("n-centro-custo"), projetoId:val("n-projeto"), confirmarDuplicidade:!!confirmarDuplicidade }, SISGEP_TOKEN_SESSAO);
   }
 
   function limparFormNova(){
@@ -953,6 +953,8 @@
     if(g("pe-categoria")) g("pe-categoria").value = d.categoria      || "";
     if(g("pe-quem"))      g("pe-quem").value      = d.quemAgendou    || "Automático";
     if(g("pe-valor"))     g("pe-valor").value     = d.valor          || "";
+    if(g("pe-centro-custo")) g("pe-centro-custo").value = d.centroCusto || "";
+    if(g("pe-projeto"))      g("pe-projeto").value      = d.projetoId   || "";
     if(g("pe-vencimento")&&d.dataVencimentoBR){
       var p=d.dataVencimentoBR.split("/");
       if(p.length===3) g("pe-vencimento").value=p[2]+"-"+p[1]+"-"+p[0];
@@ -973,7 +975,7 @@
         else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
       })
       .withFailureHandler(function(e){ if(btn){ btn.disabled=false; btn.innerHTML="💾 Salvar Alterações"; } showToast("Erro: "+e.message,"error"); })
-      .editarDespesa({ idDespesa:_idModalAtivo, prestadorNome:val("pe-nome"), prestadorEmail:val("pe-email"), prestadorWhats:val("pe-whats"), categoria:val("pe-categoria"), tipoDoc:val("pe-tipodoc"), valor:val("pe-valor"), dataVencimento:vencBR, quemAgendou:val("pe-quem"), descricao:val("pe-desc"), observacoes:val("pe-obs") }, SISGEP_TOKEN_SESSAO);
+      .editarDespesa({ idDespesa:_idModalAtivo, prestadorNome:val("pe-nome"), prestadorEmail:val("pe-email"), prestadorWhats:val("pe-whats"), categoria:val("pe-categoria"), tipoDoc:val("pe-tipodoc"), valor:val("pe-valor"), dataVencimento:vencBR, quemAgendou:val("pe-quem"), descricao:val("pe-desc"), observacoes:val("pe-obs"), centroCusto:val("pe-centro-custo"), projetoId:val("pe-projeto") }, SISGEP_TOKEN_SESSAO);
   }
 
   function abrirModalExcluir(idDespesa,nome){
@@ -1236,10 +1238,25 @@
   }
 
   /* ═══ INIT ═══ */
+  function carregarCentrosCustoEProjetos(){
+    google.script.run
+      .withSuccessHandler(function(resp){
+        if(!resp||!resp.ok) return;
+        var montarOpcoes=function(lista){ return (lista||[]).map(function(o){ return '<option value="'+escHtml(o.id)+'">'+escHtml(o.nome)+'</option>'; }).join(""); };
+        var optsCC=montarOpcoes(resp.centrosCusto), optsProj=montarOpcoes(resp.projetos);
+        if(g("n-centro-custo"))  g("n-centro-custo").innerHTML  = '<option value="">Sem centro de custo</option>'+optsCC;
+        if(g("pe-centro-custo")) g("pe-centro-custo").innerHTML = '<option value="">Sem centro de custo</option>'+optsCC;
+        if(g("n-projeto"))  g("n-projeto").innerHTML  = '<option value="">Sem projeto</option>'+optsProj;
+        if(g("pe-projeto")) g("pe-projeto").innerHTML = '<option value="">Sem projeto</option>'+optsProj;
+      })
+      .withFailureHandler(function(){})
+      .finListarCentrosCustoEProjetos(SISGEP_TOKEN_SESSAO);
+  }
+
   function initDespesasAdmin(){
     if(!document.getElementById("secDespesas")) return;
     definirDataHoje("n-vencimento"); definirDataHoje("painel-data-pago");
-    carregarDashboard(); carregarFornecedoresCache();
+    carregarDashboard(); carregarFornecedoresCache(); carregarCentrosCustoEProjetos();
     ["r-recorrente","r-avulso"].forEach(function(id){ var el=g(id); if(el) el.addEventListener("change",atualizarTipoLanc); });
     atualizarTipoLanc();
     var fileInput=g("painel-upload-file");

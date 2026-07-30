@@ -940,6 +940,8 @@ function registrarLancamentoDespesa_(dados) {
     var quemAgendou    = limpar(dados.quemAgendou);
     var tipoDoc        = limpar(dados.tipoDoc);
     var observacoes    = limpar(dados.observacoes);
+    var centroCusto    = limpar(dados.centroCusto);
+    var projetoId      = limpar(dados.projetoId);
 
     var tokenFornecedor    = gerarTokenFornecedorDespesa_(idDespesa);
     var tokenContabilidade = gerarTokenContabilidadeDespesa_(idDespesa);
@@ -947,6 +949,11 @@ function registrarLancamentoDespesa_(dados) {
 
     var linkFornecedor    = baseUrl + "?page=pub-nf-despesa&token="       + encodeURIComponent(tokenFornecedor);
     var linkContabilidade = baseUrl + "?page=pub-contabil-despesa&token=" + encodeURIComponent(tokenContabilidade);
+
+    // Garante que as colunas de Centro de Custo/Projeto existem na aba —
+    // essa estrutura já existia (CentralFinanceiraIA.gs) mas dependia de
+    // alguém rodar setupCentralFinanceiraIA() manualmente antes. Idempotente.
+    if (typeof finGarantirColunasDespesas_ === "function") finGarantirColunasDespesas_();
 
     var aba     = obterAbaDesp_();
     var headers = aba.getRange(1, 1, 1, aba.getLastColumn()).getValues()[0];
@@ -978,6 +985,8 @@ function registrarLancamentoDespesa_(dados) {
         case "CRIADO_POR":          novaLinha.push(Session.getActiveUser().getEmail()); break;
         case "OBSERVACOES":         novaLinha.push(observacoes);    break;
         case "ULTIMA_ATUALIZACAO":  novaLinha.push(agoraFormatadoDesp_()); break;
+        case "CENTRO_CUSTO":        novaLinha.push(centroCusto);    break;
+        case "PROJETO_ID":          novaLinha.push(projetoId);      break;
         default:                    novaLinha.push("");
       }
     });
@@ -2005,7 +2014,9 @@ function listarDespesas(filtros) {
         dataEnvioContab:    String(row[idx("DATA_ENVIO_CONTABILIDADE")] || ""),
         dataPagamento:      String(row[idx("DATA_PAGAMENTO")]          || ""),
         usuarioCadastro:    String(row[idx("CRIADO_POR")]              || ""),
-        observacoes:        String(row[idx("OBSERVACOES")]             || "")
+        observacoes:        String(row[idx("OBSERVACOES")]             || ""),
+        centroCusto:        String(row[idx("CENTRO_CUSTO")]            || ""),
+        projetoId:          String(row[idx("PROJETO_ID")]              || "")
       };
 
       if (filtros.status           && item.status !== filtros.status) continue;
@@ -2118,6 +2129,8 @@ function editarDespesa(payload, tokenSessao) {
     if (payload.quemAgendou) campos["QUEM_AGENDOU"] = String(payload.quemAgendou).trim();
     if (payload.tipoDoc)     campos["TIPO_DOC"]     = String(payload.tipoDoc).trim();
     if (payload.observacoes) campos["OBSERVACOES"]  = String(payload.observacoes).trim();
+    if (payload.centroCusto !== undefined) campos["CENTRO_CUSTO"] = String(payload.centroCusto).trim();
+    if (payload.projetoId   !== undefined) campos["PROJETO_ID"]   = String(payload.projetoId).trim();
     atualizarCamposDespesa_(idDespesa, campos);
     if (campos["VALOR"]) {
       finAudRegistrarAlteracaoValor_("DESPESAS", idDespesa, valorAnterior, campos["VALOR"],

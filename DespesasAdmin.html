@@ -212,7 +212,7 @@
   <button class="tab-btn" data-tab="nova" onclick="mudarTab('nova')">➕ Nova Despesa</button>
   <button class="tab-btn" data-tab="lote" onclick="mudarTab('lote')">📤 Enviar à Contabilidade <span class="tab-badge" id="badge-lote" style="display:none">0</span></button>
   <button class="tab-btn" data-tab="relatorios" onclick="mudarTab('relatorios')">📊 Relatórios</button>
-  <button class="tab-btn" data-tab="conciliacao" onclick="mudarTab('conciliacao')">🏦 Conciliação IA</button>
+  <button class="tab-btn" data-tab="conciliacao" onclick="mudarTab('conciliacao')">🏦 Conciliação Assistida</button>
 </div>
 
 <div class="desp-main">
@@ -361,6 +361,12 @@
           <div class="painel-field"><label>WhatsApp</label><input type="text" id="pe-whats" placeholder="(27) 99999-0000"></div>
           <div class="painel-field"><label>Quem agendou</label>
             <select id="pe-quem"><option>Automático</option><option>Marcelha - Gerente</option><option>Rogério - Diretor Financeiro</option><option>Contabilidade</option></select>
+          </div>
+          <div class="painel-field"><label>Centro de Custo</label>
+            <select id="pe-centro-custo"><option value="">Sem centro de custo</option></select>
+          </div>
+          <div class="painel-field"><label>Projeto</label>
+            <select id="pe-projeto"><option value="">Sem projeto</option></select>
           </div>
           <div class="painel-field pe-full"><label>Descrição</label><input type="text" id="pe-desc" placeholder="Descrição da despesa"></div>
           <div class="painel-field pe-full"><label>Observações</label><input type="text" id="pe-obs" placeholder="Observações adicionais"></div>
@@ -522,6 +528,12 @@
         <div class="form-group"><label class="form-label">Data de vencimento <span class="req">*</span></label><input type="date" id="n-vencimento"></div>
         <div class="form-group"><label class="form-label">Quem agendou</label>
           <select id="n-quem"><option>Automático</option><option>Marcelha - Gerente</option><option>Rogério - Diretor Financeiro</option><option>Contabilidade</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Centro de Custo <span class="opt">(opcional)</span></label>
+          <select id="n-centro-custo"><option value="">Sem centro de custo</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Projeto <span class="opt">(opcional)</span></label>
+          <select id="n-projeto"><option value="">Sem projeto</option></select>
         </div>
         <div class="form-group"><label class="form-label">Descrição <span class="opt">(opcional)</span></label><input type="text" id="n-desc"></div>
         <div class="form-group full"><label class="form-label">Observações <span class="opt">(opcional)</span></label><textarea id="n-obs"></textarea></div>
@@ -741,8 +753,8 @@
   <div class="tab-panel" id="tab-conciliacao">
     <div style="background:linear-gradient(135deg,#001f4d,#1565C0);border-radius:16px;padding:22px 24px;margin-bottom:14px;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
       <div>
-        <div style="font-size:18px;font-weight:900;">Conciliação Bancária IA</div>
-        <div style="font-size:12px;color:rgba(255,255,255,.68);margin-top:4px;">Transforme extratos em lançamentos conciliados, com leitura inteligente de entradas e saídas.</div>
+        <div style="font-size:18px;font-weight:900;">Conciliação Assistida</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.68);margin-top:4px;">Cole o extrato e o sistema sugere a correspondência com suas despesas por nome e valor. Sem IA — comparação por regras, revise antes de confirmar.</div>
       </div>
       <button class="btn-topbar gold" onclick="finConciliacaoExemplo()">Carregar exemplo</button>
     </div>
