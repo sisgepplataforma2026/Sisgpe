@@ -282,9 +282,32 @@ function cartAplicarFiltros(){
     : "<tr><td colspan='8'><div class='cart-tabela-vazia'>Nenhuma solicitação encontrada com esse filtro.</div></td></tr>";
 }
 
-function cartCarregar(){
+var _cartAutoTimer = null;
+
+/**
+ * Atualização automática: relê a lista a cada 30s, sem precisar clicar em
+ * "Atualizar". Silenciosa (não pisca "Carregando...") e se pausa sozinha
+ * quando o módulo não está na tela (usuário navegou pra outro menu) ou
+ * quando há um modal de aprovação/rejeição aberto, pra não atrapalhar
+ * quem está no meio de uma decisão.
+ */
+function cartIniciarAutoAtualizacao(){
+  if (_cartAutoTimer) return;
+  _cartAutoTimer = setInterval(function(){
+    var sec = document.getElementById('secCarteirinhaAdmin');
+    if (!sec || sec.offsetParent === null) return;
+    var modalAprovar = g('cartModalOverlay');
+    var modalRejeitar = g('cartRejModalOverlay');
+    var modalAberto = (modalAprovar && modalAprovar.classList.contains('ativo')) ||
+                       (modalRejeitar && modalRejeitar.classList.contains('ativo'));
+    if (modalAberto) return;
+    cartCarregar(true);
+  }, 30000);
+}
+
+function cartCarregar(silencioso){
   var tbody = g('cartTbody');
-  if (tbody) tbody.innerHTML = "<tr><td colspan='8'><div class='cart-tabela-vazia'>⏳ Carregando...</div></td></tr>";
+  if (tbody && !silencioso) tbody.innerHTML = "<tr><td colspan='8'><div class='cart-tabela-vazia'>⏳ Carregando...</div></td></tr>";
   google.script.run
     .withSuccessHandler(function(lista){
       _lista = Array.isArray(lista) ? lista : [];
@@ -297,9 +320,10 @@ function cartCarregar(){
       cartAplicarFiltros();
     })
     .withFailureHandler(function(err){
-      msg('Erro ao carregar: ' + ((err && err.message) || err), 'erro');
+      if (!silencioso) msg('Erro ao carregar: ' + ((err && err.message) || err), 'erro');
     })
     .listarCarteirinhasParaEmissao(cartToken());
+  cartIniciarAutoAtualizacao();
 }
 
 function cartAbrirModal(cpf, nome){
