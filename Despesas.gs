@@ -79,8 +79,7 @@ var STATUS_DESPESA = {
   ENVIADO_CONTABILIDADE:  "ENVIADO_CONTABILIDADE",
   PAGO:                   "PAGO",
   CANCELADO:              "CANCELADO",
-  ESTORNADO:              "ESTORNADO",
-  ERRO:                   "ERRO"
+  ESTORNADO:              "ESTORNADO"
 };
 
 var COLUNAS_APROVACAO_DESP = ["APROVADO_PARA_PAGAMENTO", "APROVADO_POR", "DATA_APROVACAO"];
@@ -597,10 +596,6 @@ function formatarValorDesp_(valor) {
   }
   return v;
 }
-// Alias mantido para HTML antigo que ainda chame listarFornecedoresDesp.
-function listarFornecedoresDesp(filtros) { return listarPrestadoresDesp(filtros); }
-
-
 /**
  * Inativa um prestador (soft delete).
  */
@@ -620,9 +615,6 @@ function excluirPrestadorDesp(rowIndex, tokenSessao) {
     return { ok: false, mensagem: e.message };
   }
 }
-
-// Alias mantido para HTML antigo que ainda chame excluirFornecedorDesp.
-function excluirFornecedorDesp(rowIndex) { return excluirPrestadorDesp(rowIndex); }
 
 /**
  * Salva e-mail e WhatsApp rapidamente (card "Sem E-mail").
@@ -654,11 +646,6 @@ function salvarContatoPrestadorRapido(rowIndex, email, whatsapp, tokenSessao) {
   }
 }
 
-// Alias mantido para HTML antigo que ainda chame salvarContatoFornecedorRapido.
-function salvarContatoFornecedorRapido(rowIndex, email, whatsapp) {
-  return salvarContatoPrestadorRapido(rowIndex, email, whatsapp);
-}
-
 /**
  * Lista prestadores sem e-mail cadastrado.
  */
@@ -678,9 +665,6 @@ function listarPrestadoresSemEmailDesp(tokenSessao) {
     return { ok: false, mensagem: e.message, lista: [] };
   }
 }
-
-// Alias mantido para HTML antigo que ainda chame listarFornecedoresSemEmailDesp.
-function listarFornecedoresSemEmailDesp() { return listarPrestadoresSemEmailDesp(); }
 
 /* ================= CACHE DE PRESTADORES ================= */
 
