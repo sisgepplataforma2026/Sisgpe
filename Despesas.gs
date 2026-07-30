@@ -2176,7 +2176,9 @@ function obterDadosDespesaPorTokenContabilidade(token) {
 }
 
 function confirmarPagamentoDespesaPublico(token, dados) {
+  var lock = LockService.getScriptLock();
   try {
+    if (!lock.tryLock(15000)) return { ok: false, mensagem: "Sistema ocupado, tente novamente em instantes." };
     var info = buscarTokenContabilidadeDespesa_(token);
     if (!info) return { ok: false, mensagem: "Link inválido ou expirado. Solicite novo envio." };
 
@@ -2203,15 +2205,26 @@ function confirmarPagamentoDespesaPublico(token, dados) {
     var obsCompleta = "✅ Confirmado pela contabilidade em " + dataPagamento +
       (banco ? " | Banco: " + banco : "") + (observacao ? " | Obs: " + observacao : "");
 
-    atualizarCamposDespesa_(idDespesa, { "STATUS": STATUS_DESPESA.PAGO, "DATA_PAGAMENTO": dataPagamento, "OBSERVACOES": obsCompleta });
-
+    var notificacaoFalhou = false;
     try {
       MailApp.sendEmail({ to: EMAILS_FINANCEIRO_DESPESAS.join(","), subject: "✅ Pagamento Confirmado — " + nome + (numero ? " (" + numero + ")" : ""), htmlBody: montarHtmlConfirmacaoPagamentoDesp_(nome, valor, dataPagamento, banco, observacao, numero), name: "SISGEP · SindEducação-ES" });
-    } catch (eEmail) { Logger.log("⚠ Erro ao notificar confirmação: " + eEmail.message); }
+    } catch (eEmail) {
+      notificacaoFalhou = true;
+      Logger.log("⚠ Erro ao notificar confirmação: " + eEmail.message);
+      obsCompleta += " | ⚠ Falha ao notificar financeiro por e-mail: " + eEmail.message;
+    }
+
+    atualizarCamposDespesa_(idDespesa, { "STATUS": STATUS_DESPESA.PAGO, "DATA_PAGAMENTO": dataPagamento, "OBSERVACOES": obsCompleta });
 
     invalidarTokenDesp_("TOKEN_CONT_DESP_" + token);
-    return { ok: true, nome: nome, valor: valor, numero: numero, mensagem: "Pagamento confirmado com sucesso! O financeiro do SindEducação-ES foi notificado. ✅" };
+    return {
+      ok: true, nome: nome, valor: valor, numero: numero,
+      mensagem: notificacaoFalhou
+        ? "Pagamento confirmado com sucesso! (o aviso por e-mail ao financeiro falhou — fica registrado no histórico da despesa)"
+        : "Pagamento confirmado com sucesso! O financeiro do SindEducação-ES foi notificado. ✅"
+    };
   } catch (e) { return { ok: false, mensagem: "Erro ao confirmar pagamento: " + e.message }; }
+  finally { try { lock.releaseLock(); } catch (eRel) {} }
 }
 
 /* ================= LISTAGEM E BUSCA ================= */
@@ -2331,7 +2344,9 @@ function listarDespesasPendentes() { return listarDespesas({ ocultarPagos: true,
 
 function marcarDespesaComoPaga(payload, tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
+  var lock = LockService.getScriptLock();
   try {
+    if (!lock.tryLock(15000)) return { ok: false, mensagem: "Sistema ocupado, tente novamente em instantes." };
     payload = payload || {};
     var idDespesa     = String(payload.idDespesa     || "").trim();
     var dataPagamento = String(payload.dataPagamento || "").trim() || agoraFormatadoDesp_();
@@ -2339,6 +2354,9 @@ function marcarDespesaComoPaga(payload, tokenSessao) {
     if (!idDespesa) return { ok: false, mensagem: "ID da despesa não informado." };
     var despInfo = localizarLinhaDespesaPorId_(idDespesa);
     if (!despInfo) return { ok: false, mensagem: "Despesa não encontrada." };
+    var idxStatusPg = (despInfo.headerMap["STATUS"] || 0) - 1;
+    var statusPg = idxStatusPg > -1 ? String(despInfo.row[idxStatusPg] || "").trim() : "";
+    if (statusPg === STATUS_DESPESA.PAGO) return { ok: false, mensagem: "Esta despesa já está marcada como paga." };
     var idxAprov = (despInfo.headerMap["APROVADO_PARA_PAGAMENTO"] || 0) - 1;
     var aprovado = idxAprov > -1 ? String(despInfo.row[idxAprov] || "").trim().toUpperCase() : "";
     if (aprovado !== "SIM") {
@@ -2347,6 +2365,7 @@ function marcarDespesaComoPaga(payload, tokenSessao) {
     atualizarCamposDespesa_(idDespesa, { "STATUS": STATUS_DESPESA.PAGO, "DATA_PAGAMENTO": dataPagamento, "OBSERVACOES": observacao });
     return { ok: true, mensagem: "Despesa marcada como paga com sucesso." };
   } catch (e) { return { ok: false, mensagem: e.message }; }
+  finally { try { lock.releaseLock(); } catch (eRel) {} }
 }
 
 /**
@@ -2380,7 +2399,9 @@ function aprovarDespesaParaPagamento(payload, tokenSessao) {
  */
 function estornarDespesa(payload, tokenSessao) {
   var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var lock = LockService.getScriptLock();
   try {
+    if (!lock.tryLock(15000)) return { ok: false, mensagem: "Sistema ocupado, tente novamente em instantes." };
     payload = payload || {};
     var idDespesa = String(payload.idDespesa || "").trim();
     var motivo    = String(payload.motivo    || "").trim();
@@ -2402,6 +2423,7 @@ function estornarDespesa(payload, tokenSessao) {
     });
     return { ok: true, mensagem: "Despesa estornada com sucesso." };
   } catch (e) { return { ok: false, mensagem: e.message }; }
+  finally { try { lock.releaseLock(); } catch (eRel) {} }
 }
 
 function cancelarDespesa(payload, tokenSessao) {
