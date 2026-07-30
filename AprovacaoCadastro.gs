@@ -104,7 +104,11 @@ function aprovarSolicitacaoCadastro(numeroLinha, aprovadoPor, tokenSessao) {
     shSolic.getRange(numeroLinha, 15).setValue(new Date());
 
     if (fotoUrl) {
-      aprovFotoParaCarteirinha_(cpf, String(linha[2] || ''), fotoUrl, aprovadoPor);
+      // Usa cpfNaLinha (lido agora da própria aba Associados, já validado
+      // acima) em vez de "cpf" (o que veio na solicitação) — a Carteirinhas
+      // precisa sempre do CPF confirmado no cadastro, não do que o
+      // associado digitou no formulário de atualização.
+      aprovFotoParaCarteirinha_(cpfNaLinha, String(linha[2] || ''), fotoUrl, aprovadoPor);
     }
 
     return {sucesso:true, mensagem:'Solicitação aprovada e cadastro atualizado com sucesso.'};
@@ -153,6 +157,9 @@ function aprovFotoParaCarteirinha_(cpf, nome, fotoUrl, aprovadoPor) {
     sh = ss.insertSheet(APROV_ABA_CARTEIRINHAS);
     sh.appendRow(['CPF', 'Nome', 'URL Foto', 'Status', 'Data Envio', 'Data Aprovação', 'Aprovado Por', 'Origem']);
   }
+  // Coluna CPF sempre como texto — sem isso, o Sheets pode interpretar o
+  // valor como número e apagar o zero à esquerda de CPFs que começam com 0.
+  sh.getRange('A:A').setNumberFormat('@');
 
   var dados = sh.getDataRange().getValues();
   var cpfLimpo = String(cpf).replace(/\D/g, '');
@@ -168,5 +175,5 @@ function aprovFotoParaCarteirinha_(cpf, nome, fotoUrl, aprovadoPor) {
     }
   }
 
-  sh.appendRow([cpf, nome, fotoUrl, 'Aprovada', new Date(), new Date(), aprovadoPor || '', 'portal-otp']);
+  sh.appendRow([cpfLimpo, nome, fotoUrl, 'Aprovada', new Date(), new Date(), aprovadoPor || '', 'portal-otp']);
 }
