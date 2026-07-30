@@ -546,7 +546,8 @@ function removerEscolasDuplicadas() {
 /* =============================================================== */
 /* ESTATÍSTICAS (usa nomes reais das colunas)                      */
 /* =============================================================== */
-function obterEstatisticasEscolas() {
+function obterEstatisticasEscolas(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     const ss  = SpreadsheetApp.openById(PLANILHA_ID);
     const sh  = ss.getSheetByName(ABA_ESCOLAS);

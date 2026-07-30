@@ -942,7 +942,7 @@ function carregar(){
   _loading = false;
   console.error("Falha ao carregar dashboard:", erro);
 })
-.getDashboardOficiosData({});
+.getDashboardOficiosData({}, SISGEP_TOKEN_SESSAO);
 
   google.script.run
     .withSuccessHandler(function(stats){
@@ -951,7 +951,7 @@ function carregar(){
     .withFailureHandler(function(erro){
       console.error("Falha ao carregar estatísticas de escolas:", erro);
     })
-    .obterEstatisticasEscolas();
+    .obterEstatisticasEscolas(SISGEP_TOKEN_SESSAO);
 }
 
 function renderMonitoramentoRecebimento(dados) {
