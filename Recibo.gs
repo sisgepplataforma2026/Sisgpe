@@ -893,7 +893,8 @@ function normalizarBeneficiarioEntradaRecibo_(b, idx, exigirPagamento) {
   };
 }
 /* ================= SALVAR / ABRIR LOTE ================= */
-function salvarLoteRecibo(dados) {
+function salvarLoteRecibo(dados, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     const emailUsuario = obterEmailUsuarioAtual_() || "usuario@sisgep.local";
 
@@ -3093,7 +3094,8 @@ function importarBeneficiariosReciboDaAbaImportacao(processoFiltro, tokenSessao)
   );
 }
 /* ================= E-MAIL INDIVIDUAL SIMPLES ================= */
-function enviarReciboIndividual(dados) {
+function enviarReciboIndividual(dados, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     dados = dados || {};
 
@@ -3720,7 +3722,8 @@ function importarDocumentosEGerarPlanilha(payload, tokenSessao) {
   }
 }
 
-function importarAlvaraPDF(payload) {
+function importarAlvaraPDF(payload, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     payload = payload || {};
 

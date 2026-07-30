@@ -62,7 +62,8 @@ function excluirReciboHistorico(dados, tokenSessao) {
 /* ─────────────────────────────────────────────────────────────
    MARCAR RECIBO COMO ASSINADO
 ───────────────────────────────────────────────────────────── */
-function marcarReciboComoAssinado(numeroRecibo, observacao) {
+function marcarReciboComoAssinado(numeroRecibo, observacao, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     garantirEstruturaModuloRecibos_();
 
@@ -103,14 +104,15 @@ function marcarReciboComoAssinado(numeroRecibo, observacao) {
 }
 
 /** Alias para compatibilidade */
-function marcarReciboAssinadoRecebido(numeroRecibo, observacao) {
-  return marcarReciboComoAssinado(numeroRecibo, observacao);
+function marcarReciboAssinadoRecebido(numeroRecibo, observacao, tokenSessao) {
+  return marcarReciboComoAssinado(numeroRecibo, observacao, tokenSessao);
 }
 
 /* ─────────────────────────────────────────────────────────────
    EDITAR BENEFICIÁRIO DO RECIBO
 ───────────────────────────────────────────────────────────── */
-function editarBeneficiarioRecibo(numeroRecibo, dadosAtualizados) {
+function editarBeneficiarioRecibo(numeroRecibo, dadosAtualizados, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     garantirEstruturaModuloRecibos_();
 

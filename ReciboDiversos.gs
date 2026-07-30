@@ -338,7 +338,8 @@ function previewReciboDiverso(dados, tokenSessao) {
 /* ═══════════════════════════════════════
    GERAR RECIBO DIVERSO INDIVIDUAL
 ═══════════════════════════════════════ */
-function gerarReciboDiverso(dados) {
+function gerarReciboDiverso(dados, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     dados = dados || {};
 
@@ -408,7 +409,8 @@ function gerarReciboDiverso(dados) {
 /* ═══════════════════════════════════════
    GERAR LOTE DE RECIBOS DIVERSOS
 ═══════════════════════════════════════ */
-function gerarLoteReciboDiversos(lista) {
+function gerarLoteReciboDiversos(lista, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     if (!Array.isArray(lista) || !lista.length) {
       return { erro: true, mensagem: "Lista de beneficiários vazia." };

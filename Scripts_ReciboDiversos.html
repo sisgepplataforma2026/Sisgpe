@@ -421,7 +421,7 @@ function rdEmitirRecibos(){
       loader(false);
       if(btnEmitir){ btnEmitir.disabled = false; btnEmitir.textContent = "✅ Emitir Recibos"; }
       rdStatus("Falha: " + ((err&&err.message)||err), "error");
-    })[funcao](payload);
+    })[funcao](payload, SISGEP_TOKEN_SESSAO);
 }
 
 /* ═══════════════════════════════════════

@@ -940,7 +940,15 @@ function excluirRegistroOficio(numero, tokenSessao) {
       }
     }
 
-    if (excluidos > 0) return { ok: true, mensagem: "Ofício " + numero + " excluído." };
+    if (excluidos > 0) {
+      registrarLogSistema({
+        usuario: sessaoDocumentos.email || sessaoDocumentos.usuario || "SISGEP",
+        numero:  numero + " (EXCLUSÃO)",
+        tipo:    "EXCLUSAO_OFICIO",
+        escola:  "", cnpj: "", email: "", codigo: ""
+      });
+      return { ok: true, mensagem: "Ofício " + numero + " excluído." };
+    }
     return { ok: false, mensagem: "Registro não encontrado." };
 
   } catch(e) {
@@ -986,6 +994,15 @@ function excluirRegistrosOficio(numeros, tokenSessao) {
           }
         }
       }
+    }
+
+    if (excluidos > 0) {
+      registrarLogSistema({
+        usuario: sessaoDocumentos.email || sessaoDocumentos.usuario || "SISGEP",
+        numero:  numeros.join(", ") + " (EXCLUSÃO EM LOTE)",
+        tipo:    "EXCLUSAO_OFICIO",
+        escola:  "", cnpj: "", email: "", codigo: ""
+      });
     }
 
     return { ok: true, mensagem: excluidos + " registro(s) excluído(s)." };
