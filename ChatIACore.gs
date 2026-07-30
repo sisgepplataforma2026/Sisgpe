@@ -16,8 +16,10 @@ var CHAT_MAX_TOKENS_ = 1500;
 /* ═══════════════════════════════════════════════════════
    ENTRADA PRINCIPAL
 ═══════════════════════════════════════════════════════ */
-function chatSISGEP(payload) {
+function chatSISGEP(payload, tokenSessao) {
+  var sessao = null;
   try {
+    sessao = exigirSessaoDocumentos_(tokenSessao, false);
     payload = payload || {};
     var mensagem = String(payload.mensagem || "").trim();
     var historico = Array.isArray(payload.historico) ? payload.historico : [];
@@ -70,6 +72,13 @@ function chatSISGEP(payload) {
     var respJson = JSON.parse(respText);
     var textoResposta = respJson.content && respJson.content[0] ? respJson.content[0].text : "";
 
+    if (!textoResposta) {
+      registrarAuditoriaSofia_(sessao, dominio, mensagem, "", false);
+      return { ok: false, resposta: "A IA não retornou nenhum conteúdo para esta pergunta. Tente reformular." };
+    }
+
+    registrarAuditoriaSofia_(sessao, dominio, mensagem, textoResposta, true);
+
     return {
       ok: true,
       resposta: textoResposta,
@@ -82,7 +91,30 @@ function chatSISGEP(payload) {
 
   } catch (e) {
     Logger.log("chatSISGEP erro: " + e.message);
+    registrarAuditoriaSofia_(sessao, (payload || {}).dominio, (payload || {}).mensagem, "ERRO: " + e.message, false);
     return { ok: false, resposta: "Erro interno: " + e.message };
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   AUDITORIA — registra cada interação com a Sofia
+═══════════════════════════════════════════════════════ */
+function registrarAuditoriaSofia_(sessao, dominio, mensagem, resposta, ok) {
+  try {
+    var ss = SpreadsheetApp.openById(PLANILHA_ID);
+    var aba = getOrCreateSheet_(ss, "Sofia_Auditoria");
+    ensureHeaders_(aba, ["Data/Hora", "Usuário", "E-mail", "Domínio", "Pergunta", "Resposta", "OK"]);
+    aba.appendRow([
+      Utilities.formatDate(new Date(), "America/Sao_Paulo", "dd/MM/yyyy HH:mm:ss"),
+      sessao ? (sessao.nome || sessao.usuario || "") : "",
+      sessao ? (sessao.email || "") : "",
+      String(dominio || "Geral"),
+      String(mensagem || "").substring(0, 500),
+      String(resposta || "").substring(0, 1000),
+      ok === true
+    ]);
+  } catch (eLog) {
+    Logger.log("registrarAuditoriaSofia_ erro: " + eLog.message);
   }
 }
 
@@ -124,6 +156,33 @@ function extrairConteudoAnexoIA_(anexo) {
     }
   }
   return resultado;
+}
+
+/* ═══════════════════════════════════════════════════════
+   ANEXO ENVIADO PELA HOME (SOFIA) — upload direto do usuário
+═══════════════════════════════════════════════════════ */
+function analisarAnexoSofiaHome_(base64, nome, tipo, tokenSessao) {
+  try {
+    exigirSessaoDocumentos_(tokenSessao, false);
+    if (!base64) return { ok: false, mensagem: "Nenhum arquivo recebido." };
+
+    var bytes = Utilities.base64Decode(base64);
+    if (bytes.length > 12 * 1024 * 1024) {
+      return { ok: false, mensagem: "Arquivo maior que 12 MB. Envie um arquivo menor." };
+    }
+
+    var blob = Utilities.newBlob(bytes, tipo || "application/octet-stream", nome || "anexo");
+    var resultado = extrairConteudoAnexoIA_(blob);
+
+    if (!resultado.lido) {
+      return { ok: false, mensagem: resultado.erro || "Não foi possível ler este tipo de arquivo. Tipos aceitos: PDF, Excel, CSV, TXT, JSON, XML." };
+    }
+
+    return { ok: true, nome: resultado.nome, conteudo: resultado.conteudo };
+  } catch (e) {
+    Logger.log("analisarAnexoSofiaHome_ erro: " + e.message);
+    return { ok: false, mensagem: "Erro ao processar o arquivo: " + e.message };
+  }
 }
 
 function buscarEmailsInstitucionaisRecentes_(termo, opcoes) {
@@ -712,17 +771,3 @@ var prompt =
   return prompt;
 }
 
-/* ═══════════════════════════════════════════════════════
-   SUGESTÕES PARA O FRONTEND
-═══════════════════════════════════════════════════════ */
-function chatSugestoes() {
-  return [
-    "Quem devo cobrar hoje?",
-    "Qual o resumo geral das mensalidades?",
-    "Quantos associados estão pendentes há mais de 30 dias?",
-    "Qual o status da FAESA?",
-    "Qual o prazo de repasse da mensalidade sindical?",
-    "Quais escolas estão sem email cadastrado?",
-    "O que diz a cláusula 56 da CCT?"
-  ];
-}

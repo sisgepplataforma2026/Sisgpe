@@ -217,9 +217,10 @@
             <div class="spAskBox">
               <label>O que você deseja que eu faça hoje?</label>
               <div class="spAskInputRow">
-                <button type="button" class="spIconBtn" title="Anexar documento"></button>
+                <input type="file" id="spAnexoInput" accept=".pdf,.csv,.txt,.json,.xml,.xlsx,.xls" style="display:none;" onchange="spAnexarArquivo(this)">
+                <button type="button" class="spIconBtn" id="spBtnAnexar" title="Anexar documento" onclick="document.getElementById('spAnexoInput').click()">📎</button>
                 <input id="spIn" type="text" placeholder='Digite ou fale comigo. Ex.: "Emitir um ofício de filiação para a Escola VCV"' onkeydown="if(event.key==='Enter')spCmd()">
-                <button type="button" class="spIconBtn" title="Falar com a SOFIA">🎙️</button>
+                <button type="button" class="spIconBtn" id="spBtnFalar" title="Falar com a SOFIA" onclick="spFalarComSofia()">🎙️</button>
                 <button type="button" class="spSend" onclick="spCmd()">➤</button>
               </div>
             </div>
@@ -1723,6 +1724,90 @@ window.spCmd=function(t){
   if(tl.match(/relatório|relatorio|dashboard|indicador/)) return spIr("relatorios");
 
   return spIr("sofia",null,{mensagem:txt});
+};
+
+// ══════════════════════════════════════
+// ANEXAR DOCUMENTO NA HOME → análise pela SOFIA
+// ══════════════════════════════════════
+window.spAnexarArquivo = function(input) {
+  var arquivo = input.files && input.files[0];
+  if (!arquivo) return;
+  var LIMITE = 12 * 1024 * 1024;
+  if (arquivo.size > LIMITE) {
+    if (typeof toast === "function") toast("Arquivo maior que 12 MB.", "erro"); else alert("Arquivo maior que 12 MB.");
+    input.value = "";
+    return;
+  }
+  var btn = document.getElementById("spBtnAnexar");
+  if (btn) { btn.disabled = true; btn.textContent = "⏳"; }
+  var leitor = new FileReader();
+  leitor.onload = function() {
+    var base64 = String(leitor.result || "").split(",")[1] || "";
+    google.script.run
+      .withSuccessHandler(function(resp) {
+        if (btn) { btn.disabled = false; btn.textContent = "📎"; }
+        input.value = "";
+        if (!resp || !resp.ok) {
+          var msg = (resp && resp.mensagem) ? resp.mensagem : "Não foi possível ler o arquivo.";
+          if (typeof toast === "function") toast(msg, "erro"); else alert(msg);
+          return;
+        }
+        window._sofiaAnexoPendente = { nome: resp.nome, conteudo: resp.conteudo };
+        spIr("sofia", null, { mensagem: "Analise o documento anexado (" + resp.nome + ")." });
+      })
+      .withFailureHandler(function(err) {
+        if (btn) { btn.disabled = false; btn.textContent = "📎"; }
+        input.value = "";
+        var msg = "Falha ao enviar o arquivo: " + (err && err.message ? err.message : err);
+        if (typeof toast === "function") toast(msg, "erro"); else alert(msg);
+      })
+      .analisarAnexoSofiaHome_(base64, arquivo.name, arquivo.type, (typeof SISGEP_TOKEN_SESSAO !== "undefined" ? SISGEP_TOKEN_SESSAO : ""));
+  };
+  leitor.onerror = function() {
+    if (btn) { btn.disabled = false; btn.textContent = "📎"; }
+    if (typeof toast === "function") toast("Não foi possível ler o arquivo selecionado.", "erro");
+  };
+  leitor.readAsDataURL(arquivo);
+};
+
+// ══════════════════════════════════════
+// FALAR COM A SOFIA (Web Speech API)
+// ══════════════════════════════════════
+window.spFalarComSofia = function() {
+  var Reconhecimento = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var btn = document.getElementById("spBtnFalar");
+  if (!Reconhecimento) {
+    var msgSemSuporte = "Reconhecimento de voz não é suportado neste navegador. Use o Chrome.";
+    if (typeof toast === "function") toast(msgSemSuporte, "erro"); else alert(msgSemSuporte);
+    return;
+  }
+  if (window._spReconhecimentoAtivo) return;
+
+  var rec = new Reconhecimento();
+  rec.lang = "pt-BR";
+  rec.interimResults = false;
+  rec.maxAlternatives = 1;
+  window._spReconhecimentoAtivo = true;
+  if (btn) { btn.textContent = "🔴"; btn.title = "Ouvindo... fale agora"; }
+
+  rec.onresult = function(e) {
+    var texto = (e.results && e.results[0] && e.results[0][0]) ? e.results[0][0].transcript : "";
+    var input = document.getElementById("spIn");
+    if (input && texto) { input.value = texto; input.focus(); }
+  };
+  rec.onerror = function(e) {
+    var msg = e.error === "not-allowed" ? "Permissão de microfone negada." : "Não foi possível entender. Tente novamente.";
+    if (typeof toast === "function") toast(msg, "erro"); else alert(msg);
+  };
+  rec.onend = function() {
+    window._spReconhecimentoAtivo = false;
+    if (btn) { btn.textContent = "🎙️"; btn.title = "Falar com a SOFIA"; }
+  };
+
+  try { rec.start(); } catch (eStart) {
+    window._spReconhecimentoAtivo = false;
+    if (btn) { btn.textContent = "🎙️"; btn.title = "Falar com a SOFIA"; }
+  }
 };
 
 // ══════════════════════════════════════
