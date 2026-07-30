@@ -189,6 +189,124 @@ function cartAd_garantirColunaMotivo_(sh) {
 }
 
 /**
+ * E-mail do associado pelo CPF, buscando na aba Associados (a aba
+ * Carteirinhas não guarda e-mail). Reaproveita os helpers já globais do
+ * módulo de Sindicalização (sindAss_aba_, sindAss_mapaCabecalho_,
+ * SIND_ASS_COLUNAS, sindAss_digitos_) em vez de duplicar a leitura.
+ */
+function cartAd_emailAssociado_(cpfLimpo) {
+  try {
+    var aba = sindAss_aba_();
+    var mapa = sindAss_mapaCabecalho_(aba);
+    var idx = function (nome) {
+      var i = mapa[String(nome).toUpperCase()];
+      return (i === undefined ? SIND_ASS_COLUNAS.indexOf(nome) : i) + 1;
+    };
+    var ultima = aba.getLastRow();
+    if (ultima < 2) return '';
+    var cpfs = aba.getRange(2, idx('CPF'), ultima - 1, 1).getValues();
+    for (var i = 0; i < cpfs.length; i++) {
+      if (sindAss_digitos_(cpfs[i][0]) === cpfLimpo) {
+        return String(aba.getRange(i + 2, idx('E-mail')).getValue() || '').trim();
+      }
+    }
+    return '';
+  } catch (e) {
+    Logger.log('cartAd_emailAssociado_: ' + e);
+    return '';
+  }
+}
+
+/**
+ * "Retorno para o associado": avisa por e-mail quando a carteirinha é
+ * aprovada/emitida ou quando a foto é rejeitada — mesmo padrão visual dos
+ * e-mails de Sindicalização (sind_emailHtml_/sind_opcoesEmail_), pra
+ * manter uma identidade única de comunicação em todo o SISGEP.
+ */
+function cartAd_enviarEmailAprovacao_(email, nome, validade) {
+  if (!email) return;
+  var corpo = '<p>Olá, <b>' + sindAdm_esc_(nome) + '</b>!</p>' +
+    '<p>Sua carteirinha digital foi <b>aprovada e emitida</b>. Já está disponível no Portal do Associado para você visualizar, baixar ou imprimir.</p>';
+  var destaque =
+    '<div style="margin:18px 0;text-align:center;background:#f0fdf4;border:2px solid #86efac;border-radius:10px;padding:16px;">' +
+      '<div style="font-size:10px;font-weight:bold;color:#6b7385;letter-spacing:1px;text-transform:uppercase;">Validade</div>' +
+      '<div style="font-size:22px;font-weight:bold;color:#166534;margin-top:6px;">' + sindAdm_esc_(validade) + '</div>' +
+    '</div>';
+  var textoSimples = 'Olá, ' + nome + '!\n\nSua carteirinha digital foi aprovada e emitida. Validade: ' + validade +
+    '.\n\nAcesse o Portal do Associado para visualizar, baixar ou imprimir.\n\n' + SIND_ENTIDADE_SIGLA;
+  try {
+    GmailApp.sendEmail(email, 'Sua carteirinha está pronta — ' + SIND_ENTIDADE_SIGLA, textoSimples,
+      sind_opcoesEmail_({ htmlBody: sind_emailHtml_('Carteirinha aprovada', corpo, destaque) }));
+  } catch (e) {
+    Logger.log('cartAd_enviarEmailAprovacao_: ' + e.message);
+  }
+}
+
+/**
+ * Envia por e-mail o link do Portal do Associado — pra quando o pedido
+ * chegou por WhatsApp/e-mail direto com a equipe, em vez de pelo portal.
+ * A URL fica numa Propriedade do Script (nunca fixa no código): configure
+ * uma vez em Propriedades do Projeto → Propriedades do Script →
+ * CARTAD_URL_PORTAL_PUBLICO = https://.../exec (a URL publicada do
+ * repositório sisgep-portal-publico).
+ */
+function cartAd_enviarLinkPortal(cpf, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
+  try {
+    var cpfLimpo = String(cpf || '').replace(/\D/g, '');
+    if (cpfLimpo.length !== 11) return { sucesso: false, mensagem: 'CPF inválido.' };
+
+    var urlPortal = PropertiesService.getScriptProperties().getProperty('CARTAD_URL_PORTAL_PUBLICO');
+    if (!urlPortal) {
+      return { sucesso: false, mensagem: 'Configure a URL do Portal Público em Propriedades do Script (CARTAD_URL_PORTAL_PUBLICO) antes de usar esta ação.' };
+    }
+
+    var email = cartAd_emailAssociado_(cpfLimpo);
+    if (!email) return { sucesso: false, mensagem: 'Este associado não tem e-mail cadastrado.' };
+
+    var associado = consultarAssociadoPorCPF(cpfLimpo);
+    var nome = (associado && associado.existe) ? associado.nome : '';
+
+    var corpo = '<p>Olá, <b>' + sindAdm_esc_(nome) + '</b>!</p>' +
+      '<p>Você pode acessar o Portal do Associado para atualizar seu cadastro, ver sua carteirinha digital, solicitar benefícios e muito mais.</p>' +
+      '<p style="text-align:center;margin:22px 0;">' +
+        '<a href="' + urlPortal + '" style="display:inline-block;background:#002f6c;color:#fff;padding:12px 26px;border-radius:8px;text-decoration:none;font-weight:bold;">Acessar o Portal do Associado</a>' +
+      '</p>' +
+      '<p style="font-size:12px;color:#6b7385;">Faça login com o seu CPF — você recebe um código de acesso por e-mail.</p>';
+    var textoSimples = 'Olá, ' + nome + '!\n\nAcesse o Portal do Associado: ' + urlPortal +
+      '\n\nFaça login com o seu CPF — você recebe um código de acesso por e-mail.\n\n' + SIND_ENTIDADE_SIGLA;
+
+    GmailApp.sendEmail(email, 'Acesse o Portal do Associado — ' + SIND_ENTIDADE_SIGLA, textoSimples,
+      sind_opcoesEmail_({ htmlBody: sind_emailHtml_('Portal do Associado', corpo) }));
+
+    return { sucesso: true, mensagem: 'Link enviado por e-mail para ' + email + '.' };
+  } catch (e) {
+    Logger.log('cartAd_enviarLinkPortal: ' + e);
+    return { sucesso: false, mensagem: 'Erro ao enviar: ' + e.message };
+  }
+}
+
+function cartAd_enviarEmailRejeicao_(email, nome, motivo) {
+  if (!email) return;
+  var corpo = '<p>Olá, <b>' + sindAdm_esc_(nome) + '</b>!</p>' +
+    '<p>Sua solicitação de carteirinha digital foi analisada e a foto enviada não pôde ser aprovada.</p>';
+  var destaque =
+    '<div style="margin:18px 0;background:#fff8f0;border-left:4px solid #C9A84C;border-radius:6px;padding:14px 16px;">' +
+      '<div style="font-size:10px;font-weight:bold;color:#6b7385;letter-spacing:1px;text-transform:uppercase;">Motivo</div>' +
+      '<div style="font-size:14px;color:#1d2433;margin-top:6px;line-height:1.5;">' + sindAdm_esc_(motivo) + '</div>' +
+    '</div>';
+  var extra = '<p style="font-size:12.5px;color:#6b7385;line-height:1.55;">Acesse o Portal do Associado e envie uma nova foto em "Minha Credencial".</p>';
+  var textoSimples = 'Olá, ' + nome + '!\n\nSua solicitação de carteirinha precisa de uma nova foto:\n\n' + motivo +
+    '\n\nAcesse o Portal do Associado e envie uma nova foto em "Minha Credencial".\n\n' + SIND_ENTIDADE_SIGLA;
+  try {
+    GmailApp.sendEmail(email, 'Sua carteirinha precisa de uma nova foto — ' + SIND_ENTIDADE_SIGLA, textoSimples,
+      sind_opcoesEmail_({ htmlBody: sind_emailHtml_('Foto não aprovada', corpo + extra, destaque) }));
+  } catch (e) {
+    Logger.log('cartAd_enviarEmailRejeicao_: ' + e.message);
+  }
+}
+
+/**
  * Aprova a foto de uma solicitação de carteirinha (feita pelo associado
  * no Portal Público, Status "Pendente" na aba "Carteirinhas") E já emite
  * a credencial no mesmo passo — antes eram duas ferramentas separadas,
@@ -206,13 +324,18 @@ function aprovarEEmitirCarteirinha(cpf, validade, tokenSessao) {
     var linha = cartAd_linhaPorCpf_(sh, cpfLimpo);
     if (!linha) return { sucesso: false, mensagem: 'Solicitação não encontrada.' };
 
+    var nomeAssociado = String(sh.getRange(linha, 2).getValue() || '');
     sh.getRange(linha, 4).setValue('Aprovada'); // Status
     sh.getRange(linha, 6).setValue(new Date()); // Data Aprovação
     sh.getRange(linha, 7).setValue(sessao.email || sessao.usuario || 'SISGEP'); // Aprovado Por
     cartAd_garantirColunaMotivo_(sh);
     sh.getRange(linha, 9).setValue(''); // limpa motivo de rejeição anterior, se houver
 
-    return emitirCarteirinha(cpfLimpo, validade, tokenSessao);
+    var resultado = emitirCarteirinha(cpfLimpo, validade, tokenSessao);
+    if (resultado && resultado.sucesso) {
+      cartAd_enviarEmailAprovacao_(cartAd_emailAssociado_(cpfLimpo), nomeAssociado, validade);
+    }
+    return resultado;
   } catch (e) {
     Logger.log('aprovarEEmitirCarteirinha: ' + e);
     return { sucesso: false, mensagem: 'Erro ao aprovar e emitir: ' + e.message };
@@ -235,13 +358,15 @@ function rejeitarSolicitacaoCarteirinha(cpf, motivo, tokenSessao) {
     var linha = cartAd_linhaPorCpf_(sh, cpfLimpo);
     if (!linha) return { sucesso: false, mensagem: 'Solicitação não encontrada.' };
 
+    var nomeAssociado = String(sh.getRange(linha, 2).getValue() || '');
     sh.getRange(linha, 4).setValue('Rejeitada'); // Status
     sh.getRange(linha, 6).setValue(new Date()); // Data Aprovação (aqui, data da decisão)
     sh.getRange(linha, 7).setValue(sessao.email || sessao.usuario || 'SISGEP'); // Aprovado Por
     cartAd_garantirColunaMotivo_(sh);
     sh.getRange(linha, 9).setValue(String(motivo).trim());
 
-    return { sucesso: true, mensagem: 'Solicitação rejeitada. O associado vai ver o motivo e pode enviar outra foto.' };
+    cartAd_enviarEmailRejeicao_(cartAd_emailAssociado_(cpfLimpo), nomeAssociado, String(motivo).trim());
+    return { sucesso: true, mensagem: 'Solicitação rejeitada. O associado vai receber um e-mail com o motivo e pode enviar outra foto.' };
   } catch (e) {
     Logger.log('rejeitarSolicitacaoCarteirinha: ' + e);
     return { sucesso: false, mensagem: 'Erro ao rejeitar: ' + e.message };

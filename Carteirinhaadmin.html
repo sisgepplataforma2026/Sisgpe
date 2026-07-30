@@ -74,6 +74,17 @@
 #secCarteirinhaAdmin .cart-input:focus { border-color: var(--blue); }
 #secCarteirinhaAdmin .cart-input.cart-textarea { height: auto; min-height: 74px; padding: 10px 12px; resize: vertical; }
 #secCarteirinhaAdmin .cart-foto-icone { width: 34px; height: 34px; border-radius: 8px; background: var(--g100); display: flex; align-items: center; justify-content: center; font-size: 15px; }
+#secCarteirinhaAdmin .cart-stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 16px; }
+#secCarteirinhaAdmin .cart-stat { background: #fff; border: 1px solid rgba(0,0,0,.055); border-radius: 14px; padding: 16px 18px; box-shadow: 0 2px 12px rgba(0,20,60,.05); }
+#secCarteirinhaAdmin .cart-stat span { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; color: var(--g400); }
+#secCarteirinhaAdmin .cart-stat b { display: block; margin-top: 8px; font-size: 24px; font-weight: 900; color: var(--g900); }
+#secCarteirinhaAdmin .cart-stat b.cor-amber { color: var(--amber); }
+#secCarteirinhaAdmin .cart-stat b.cor-green { color: var(--green); }
+#secCarteirinhaAdmin .cart-stat b.cor-red { color: var(--red); }
+#secCarteirinhaAdmin .cart-filtros { display: flex; gap: 10px; flex-wrap: wrap; padding: 14px 20px; border-bottom: 1px solid var(--g100); }
+#secCarteirinhaAdmin .cart-filtro-busca { flex: 1; min-width: 200px; height: 38px; border-radius: 10px; border: 1.5px solid var(--g200); padding: 0 12px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12.5px; outline: none; }
+#secCarteirinhaAdmin .cart-filtro-busca:focus { border-color: var(--blue); }
+#secCarteirinhaAdmin .cart-filtro-status { height: 38px; border-radius: 10px; border: 1.5px solid var(--g200); padding: 0 10px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12.5px; background: #fff; }
 #cartModalBox .cart-foto-preview { width: 100%; max-height: 260px; object-fit: contain; border-radius: 12px; background: var(--g100); margin-bottom: 14px; display: block; }
 #cartModalBox .cart-foto-preview-vazia { width: 100%; height: 120px; border-radius: 12px; background: var(--g100); margin-bottom: 14px; display: flex; align-items: center; justify-content: center; color: var(--g400); font-size: 12.5px; }
 </style>
@@ -88,6 +99,13 @@
   <div class="cart-content">
     <div class="cart-msg" id="cartMsgBox"></div>
 
+    <div class="cart-stat-row">
+      <div class="cart-stat"><span>Pendentes</span><b class="cor-amber" id="cartStatPendentes">0</b></div>
+      <div class="cart-stat"><span>Ativas</span><b class="cor-green" id="cartStatAtivas">0</b></div>
+      <div class="cart-stat"><span>Rejeitadas</span><b class="cor-red" id="cartStatRejeitadas">0</b></div>
+      <div class="cart-stat"><span>Total de solicitações</span><b id="cartStatTotal">0</b></div>
+    </div>
+
     <div class="cart-card">
       <div class="cart-card-head">
         <div>
@@ -95,6 +113,15 @@
           <div class="cart-card-sub">Pedidos feitos pelo associado no Portal Público — confira se é sindicalizado e se a foto está adequada antes de aprovar e emitir</div>
         </div>
         <button type="button" class="cart-btn cart-btn-secondary cart-btn-sm" onclick="cartCarregar()">↻ Atualizar</button>
+      </div>
+      <div class="cart-filtros">
+        <input type="text" class="cart-filtro-busca" id="cartFiltroBusca" placeholder="Buscar por nome ou CPF..." oninput="cartAplicarFiltros()">
+        <select class="cart-filtro-status" id="cartFiltroStatus" onchange="cartAplicarFiltros()">
+          <option value="">Todas as solicitações</option>
+          <option value="Pendente">Pendentes</option>
+          <option value="Aprovada">Aprovadas</option>
+          <option value="Rejeitada">Rejeitadas</option>
+        </select>
       </div>
       <div class="cart-tabela-wrap">
         <table class="cart-tabela">
@@ -206,6 +233,9 @@ function renderLinha(item){
       acoes += " <button type='button' class='cart-btn cart-btn-secondary cart-btn-sm' onclick=\"cartAbrirRejeitar('" + item.cpf + "','" + nomeEsc + "')\">Rejeitar</button>";
     }
   }
+  // Disponível sempre — útil quando o pedido chegou por WhatsApp/e-mail
+  // direto com a equipe, em vez de pelo próprio Portal do Associado.
+  acoes += " <button type='button' class='cart-btn cart-btn-secondary cart-btn-sm' onclick=\"cartEnviarLink('" + item.cpf + "')\">Enviar link do Portal</button>";
 
   return "<tr>" +
     "<td>" + foto + "</td>" +
@@ -219,16 +249,52 @@ function renderLinha(item){
   "</tr>";
 }
 
+function cartAtualizarEstatisticas(){
+  var pendentes = 0, ativas = 0, rejeitadas = 0;
+  _lista.forEach(function(item){
+    if (item.statusFoto === 'Pendente') pendentes++;
+    if (item.statusFoto === 'Rejeitada') rejeitadas++;
+    if (item.emitida && item.emissaoStatus === 'ATIVA') ativas++;
+  });
+  g('cartStatPendentes').textContent = pendentes;
+  g('cartStatAtivas').textContent = ativas;
+  g('cartStatRejeitadas').textContent = rejeitadas;
+  g('cartStatTotal').textContent = _lista.length;
+}
+
+function cartAplicarFiltros(){
+  var tbody = g('cartTbody');
+  if (!tbody) return;
+  var busca = String(g('cartFiltroBusca').value || '').trim().toLowerCase();
+  var buscaDigitos = busca.replace(/\D/g, '');
+  var status = g('cartFiltroStatus').value || '';
+
+  var filtrada = _lista.filter(function(item){
+    if (status && item.statusFoto !== status) return false;
+    if (!busca) return true;
+    var nomeBate = String(item.nome || '').toLowerCase().indexOf(busca) > -1;
+    var cpfBate = buscaDigitos && String(item.cpf || '').indexOf(buscaDigitos) > -1;
+    return nomeBate || cpfBate;
+  });
+
+  tbody.innerHTML = filtrada.length
+    ? filtrada.map(renderLinha).join('')
+    : "<tr><td colspan='8'><div class='cart-tabela-vazia'>Nenhuma solicitação encontrada com esse filtro.</div></td></tr>";
+}
+
 function cartCarregar(){
   var tbody = g('cartTbody');
   if (tbody) tbody.innerHTML = "<tr><td colspan='8'><div class='cart-tabela-vazia'>⏳ Carregando...</div></td></tr>";
   google.script.run
     .withSuccessHandler(function(lista){
       _lista = Array.isArray(lista) ? lista : [];
+      cartAtualizarEstatisticas();
       if (!tbody) return;
-      tbody.innerHTML = _lista.length
-        ? _lista.map(renderLinha).join('')
-        : "<tr><td colspan='8'><div class='cart-tabela-vazia'>Nenhuma solicitação ainda.</div></td></tr>";
+      if (!_lista.length) {
+        tbody.innerHTML = "<tr><td colspan='8'><div class='cart-tabela-vazia'>Nenhuma solicitação ainda.</div></td></tr>";
+        return;
+      }
+      cartAplicarFiltros();
     })
     .withFailureHandler(function(err){
       msg('Erro ao carregar: ' + ((err && err.message) || err), 'erro');
@@ -341,6 +407,18 @@ function cartRevogar(cpf){
     .revogarCarteirinha(cpf, '', cartToken());
 }
 
+function cartEnviarLink(cpf){
+  google.script.run
+    .withSuccessHandler(function(res){
+      if (!res || !res.sucesso) { msg((res && res.mensagem) || 'Erro ao enviar link.', 'erro'); return; }
+      msg('✅ ' + res.mensagem, 'ok');
+    })
+    .withFailureHandler(function(err){
+      msg('Erro: ' + ((err && err.message) || err), 'erro');
+    })
+    .cartAd_enviarLinkPortal(cpf, cartToken());
+}
+
 window.cartCarregar = cartCarregar;
 window.cartAbrirModal = cartAbrirModal;
 window.cartFecharModal = cartFecharModal;
@@ -349,6 +427,8 @@ window.cartAbrirRejeitar = cartAbrirRejeitar;
 window.cartFecharRejeitar = cartFecharRejeitar;
 window.cartConfirmarRejeicao = cartConfirmarRejeicao;
 window.cartRevogar = cartRevogar;
+window.cartEnviarLink = cartEnviarLink;
+window.cartAplicarFiltros = cartAplicarFiltros;
 
 })();
 </script>
