@@ -79,8 +79,30 @@ var STATUS_DESPESA = {
   ENVIADO_CONTABILIDADE:  "ENVIADO_CONTABILIDADE",
   PAGO:                   "PAGO",
   CANCELADO:              "CANCELADO",
+  ESTORNADO:              "ESTORNADO",
   ERRO:                   "ERRO"
 };
+
+var COLUNAS_APROVACAO_DESP = ["APROVADO_PARA_PAGAMENTO", "APROVADO_POR", "DATA_APROVACAO"];
+var COLUNAS_ESTORNO_DESP   = ["DATA_ESTORNO", "ESTORNADO_POR", "MOTIVO_ESTORNO"];
+
+/**
+ * Garante as colunas de aprovação/estorno na aba DESPESAS — mesmo padrão
+ * de finGarantirColunasDespesas_ (CentralFinanceiraIA.gs): só adiciona a
+ * coluna que ainda não existe, idempotente, sem exigir setup manual.
+ */
+function garantirColunasAprovacaoDesp_() {
+  var aba = obterAbaDesp_();
+  var lastCol = Math.max(aba.getLastColumn(), 1);
+  var headers = aba.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h) { return String(h || "").trim(); });
+  COLUNAS_APROVACAO_DESP.concat(COLUNAS_ESTORNO_DESP).forEach(function(col) {
+    if (headers.indexOf(col) === -1) {
+      var prox = aba.getLastColumn() + 1;
+      aba.getRange(1, prox).setValue(col);
+      headers.push(col);
+    }
+  });
+}
 
 // Tipos de lançamento
 var TIPO_LANCAMENTO_DESP = {
@@ -2016,7 +2038,13 @@ function listarDespesas(filtros) {
         usuarioCadastro:    String(row[idx("CRIADO_POR")]              || ""),
         observacoes:        String(row[idx("OBSERVACOES")]             || ""),
         centroCusto:        String(row[idx("CENTRO_CUSTO")]            || ""),
-        projetoId:          String(row[idx("PROJETO_ID")]              || "")
+        projetoId:          String(row[idx("PROJETO_ID")]              || ""),
+        aprovadoParaPagamento: String(row[idx("APROVADO_PARA_PAGAMENTO")] || "").trim().toUpperCase() === "SIM",
+        aprovadoPor:        String(row[idx("APROVADO_POR")]            || ""),
+        dataAprovacao:      String(row[idx("DATA_APROVACAO")]          || ""),
+        dataEstorno:        String(row[idx("DATA_ESTORNO")]            || ""),
+        estornadoPor:       String(row[idx("ESTORNADO_POR")]           || ""),
+        motivoEstorno:      String(row[idx("MOTIVO_ESTORNO")]          || "")
       };
 
       if (filtros.status           && item.status !== filtros.status) continue;
@@ -2084,8 +2112,68 @@ function marcarDespesaComoPaga(payload, tokenSessao) {
     if (!idDespesa) return { ok: false, mensagem: "ID da despesa não informado." };
     var despInfo = localizarLinhaDespesaPorId_(idDespesa);
     if (!despInfo) return { ok: false, mensagem: "Despesa não encontrada." };
+    var idxAprov = (despInfo.headerMap["APROVADO_PARA_PAGAMENTO"] || 0) - 1;
+    var aprovado = idxAprov > -1 ? String(despInfo.row[idxAprov] || "").trim().toUpperCase() : "";
+    if (aprovado !== "SIM") {
+      return { ok: false, precisaAprovacao: true, mensagem: "Esta despesa ainda não foi aprovada para pagamento. Aprove antes de marcar como paga." };
+    }
     atualizarCamposDespesa_(idDespesa, { "STATUS": STATUS_DESPESA.PAGO, "DATA_PAGAMENTO": dataPagamento, "OBSERVACOES": observacao });
     return { ok: true, mensagem: "Despesa marcada como paga com sucesso." };
+  } catch (e) { return { ok: false, mensagem: e.message }; }
+}
+
+/**
+ * Aprovação de pagamento — item 🟠 da auditoria: antes, uma despesa ia
+ * direto de Pendente pra Paga sem ninguém validar. Qualquer usuário com
+ * perfil admin pode aprovar (sem restrição de autoaprovação, por decisão
+ * explícita: 1 nível, qualquer admin).
+ */
+function aprovarDespesaParaPagamento(payload, tokenSessao) {
+  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  try {
+    payload = payload || {};
+    var idDespesa = String(payload.idDespesa || "").trim();
+    if (!idDespesa) return { ok: false, mensagem: "ID da despesa não informado." };
+    var despInfo = localizarLinhaDespesaPorId_(idDespesa);
+    if (!despInfo) return { ok: false, mensagem: "Despesa não encontrada." };
+    garantirColunasAprovacaoDesp_();
+    atualizarCamposDespesa_(idDespesa, {
+      "APROVADO_PARA_PAGAMENTO": "SIM",
+      "APROVADO_POR":            sessao.email || sessao.usuario || "SISGEP",
+      "DATA_APROVACAO":          agoraFormatadoDesp_()
+    });
+    return { ok: true, mensagem: "Despesa aprovada para pagamento." };
+  } catch (e) { return { ok: false, mensagem: e.message }; }
+}
+
+/**
+ * Estorno de uma despesa já PAGA — distinto de cancelar (que só existe
+ * antes do pagamento). Mantém o histórico de que foi paga e depois
+ * estornada, com motivo obrigatório.
+ */
+function estornarDespesa(payload, tokenSessao) {
+  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  try {
+    payload = payload || {};
+    var idDespesa = String(payload.idDespesa || "").trim();
+    var motivo    = String(payload.motivo    || "").trim();
+    if (!idDespesa) return { ok: false, mensagem: "ID da despesa não informado." };
+    if (!motivo)    return { ok: false, mensagem: "Informe o motivo do estorno." };
+    var despInfo = localizarLinhaDespesaPorId_(idDespesa);
+    if (!despInfo) return { ok: false, mensagem: "Despesa não encontrada." };
+    var idxStatus = (despInfo.headerMap["STATUS"] || 0) - 1;
+    var statusAtual = idxStatus > -1 ? String(despInfo.row[idxStatus] || "").trim() : "";
+    if (statusAtual !== STATUS_DESPESA.PAGO) {
+      return { ok: false, mensagem: "Só é possível estornar uma despesa que já está paga." };
+    }
+    garantirColunasAprovacaoDesp_();
+    atualizarCamposDespesa_(idDespesa, {
+      "STATUS":         STATUS_DESPESA.ESTORNADO,
+      "DATA_ESTORNO":   agoraFormatadoDesp_(),
+      "ESTORNADO_POR":  sessao.email || sessao.usuario || "SISGEP",
+      "MOTIVO_ESTORNO": motivo
+    });
+    return { ok: true, mensagem: "Despesa estornada com sucesso." };
   } catch (e) { return { ok: false, mensagem: e.message }; }
 }
 
@@ -2150,7 +2238,7 @@ function obterResumoDespesas() {
     var resumo = {
       total: lista.length, totalRecorrentes: 0, totalAvulsos: 0,
       totalPendentes: 0, totalAguardandoDoc: 0, totalDocRecebido: 0,
-      totalEnviadosContab: 0, totalPagos: 0, totalCancelados: 0,
+      totalEnviadosContab: 0, totalPagos: 0, totalCancelados: 0, totalEstornados: 0,
       totalVencidas: 0, totalUrgentes: 0,
       valorTotal: 0, valorPago: 0, valorPendente: 0,
       porCategoria: {}
@@ -2170,10 +2258,12 @@ function obterResumoDespesas() {
         case STATUS_DESPESA.ENVIADO_CONTABILIDADE: resumo.totalEnviadosContab++; resumo.valorPendente += val; break;
         case STATUS_DESPESA.PAGO:                  resumo.totalPagos++;          resumo.valorPago     += val; break;
         case STATUS_DESPESA.CANCELADO:             resumo.totalCancelados++;     break;
+        case STATUS_DESPESA.ESTORNADO:             resumo.totalEstornados++;     break;
       }
 
-      if (item.statusVencimento === "VENCIDO" && item.status !== STATUS_DESPESA.PAGO && item.status !== STATUS_DESPESA.CANCELADO) resumo.totalVencidas++;
-      if (item.statusVencimento === "URGENTE" && item.status !== STATUS_DESPESA.PAGO && item.status !== STATUS_DESPESA.CANCELADO) resumo.totalUrgentes++;
+      var statusFinalizado = item.status === STATUS_DESPESA.PAGO || item.status === STATUS_DESPESA.CANCELADO || item.status === STATUS_DESPESA.ESTORNADO;
+      if (item.statusVencimento === "VENCIDO" && !statusFinalizado) resumo.totalVencidas++;
+      if (item.statusVencimento === "URGENTE" && !statusFinalizado) resumo.totalUrgentes++;
 
       var cat = item.categoria || "Outra";
       if (!resumo.porCategoria[cat]) resumo.porCategoria[cat] = { qtd: 0, valor: 0 };

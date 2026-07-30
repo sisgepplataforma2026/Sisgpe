@@ -102,6 +102,8 @@
 .badge-enviado    { background:#ede9fe; color:#5b21b6; border:1px solid #c4b5fd; }
 .badge-pago       { background:#d1fae5; color:#065f46; border:1px solid #a7f3d0; }
 .badge-cancelado  { background:#fee2e2; color:#9f1239; border:1px solid #fca5a5; }
+.badge-estornado  { background:#ede9fe; color:#5b21b6; border:1px solid #c4b5fd; }
+.badge-nao-aprovado { background:#fef3c7; color:#92400e; border:1px solid #fde68a; }
 .badge-venc-ok{background:#f0fdf4;color:#059669;font-size:10px} .badge-venc-urgente{background:#fef3c7;color:#92400e;font-size:10px} .badge-venc-vencido{background:#fee2e2;color:#9f1239;font-size:10px}
 
 .acoes-cell { display:flex; gap:4px; flex-wrap:wrap; align-items:flex-start; padding-top:1px; }
@@ -309,6 +311,18 @@
       </div>
     </div>
 
+    <div class="painel-inline" id="painel-estornar">
+      <div class="painel-header" style="background:linear-gradient(135deg,#4c1d95,#7c3aed);"><span class="painel-header-title">Estornar Despesa</span><button class="painel-close" onclick="fecharPainel('painel-estornar')">✕</button></div>
+      <div class="painel-body">
+        <div class="painel-info" id="painel-estornar-info"></div>
+        <div class="painel-field"><label>Motivo do estorno <span class="req">*</span></label><input type="text" id="painel-obs-estornar" placeholder="Por que essa despesa paga está sendo estornada?"></div>
+        <div class="painel-actions">
+          <button class="btn btn-outline btn-sm" onclick="fecharPainel('painel-estornar')">Voltar</button>
+          <button class="btn" style="background:#7c3aed;color:#fff;" onclick="confirmarEstornarModal()">↩ Estornar despesa</button>
+        </div>
+      </div>
+    </div>
+
     <div class="painel-inline" id="painel-solicitar-nf">
       <div class="painel-header"><span class="painel-header-title" id="painel-nf-titulo">📨 Solicitar Documento Fiscal</span><button class="painel-close" onclick="fecharPainel('painel-solicitar-nf')">✕</button></div>
       <div class="painel-body">
@@ -410,6 +424,7 @@
             <button class="chip" data-val="ENVIADO_CONTABILIDADE" onclick="selecionarChip(this,'f-status-chip')">📤 Contabilidade</button>
             <button class="chip" data-val="PAGO" onclick="selecionarChip(this,'f-status-chip')">✅ Pago</button>
             <button class="chip" data-val="CANCELADO" onclick="selecionarChip(this,'f-status-chip')">✕ Cancelado</button>
+            <button class="chip" data-val="ESTORNADO" onclick="selecionarChip(this,'f-status-chip')">↩ Estornado</button>
           </div>
         </div>
         <div class="chips-group">

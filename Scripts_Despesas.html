@@ -315,12 +315,19 @@
     if(st!=="PAGO"&&st!=="CANCELADO"&&st!=="ENVIADO_CONTABILIDADE"){
       acoes+='<button class="ac-btn ac-edit" data-acao="editar" data-idx="'+idx+'">✏️</button>';
     }
-    if(st!=="PAGO"&&st!=="CANCELADO"){
-      acoes+='<button class="ac-btn ac-green" data-acao="pago" data-idx="'+idx+'">✅ Pago</button>';
+    if(st!=="PAGO"&&st!=="CANCELADO"&&st!=="ESTORNADO"){
+      if(d.aprovadoParaPagamento){
+        acoes+='<button class="ac-btn ac-green" data-acao="pago" data-idx="'+idx+'">✅ Pago</button>';
+      } else {
+        acoes+='<button class="ac-btn" data-acao="aprovar" data-idx="'+idx+'" style="height:26px;padding:0 9px;border-radius:7px;border:1.5px solid #fde68a;background:#fffbeb;color:#92400e;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:\'Plus Jakarta Sans\',sans-serif;" title="Aprovar para pagamento">🔓 Aprovar</button>';
+      }
+    }
+    if(st==="PAGO"){
+      acoes+='<button class="ac-btn" data-acao="estornar" data-idx="'+idx+'" style="height:26px;padding:0 9px;border-radius:7px;border:1.5px solid #c4b5fd;background:#f5f3ff;color:#5b21b6;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:\'Plus Jakarta Sans\',sans-serif;" title="Estornar pagamento">↩ Estornar</button>';
     }
     if(st==="PENDENTE"||st==="AGUARDANDO_DOC"||st==="CANCELADO"){
       acoes+='<button class="ac-btn ac-red" data-acao="excluir" data-idx="'+idx+'">🗑️</button>';
-    } else if(st!=="PAGO"&&st!=="ENVIADO_CONTABILIDADE"){
+    } else if(st!=="PAGO"&&st!=="ENVIADO_CONTABILIDADE"&&st!=="ESTORNADO"){
       acoes+='<button class="ac-btn ac-red" data-acao="cancelar" data-idx="'+idx+'">✕</button>';
     }
     if(st!=="CANCELADO"){
@@ -339,6 +346,8 @@
         if(acao==="solicitar-nf") abrirModalSolicitarNF(d);
         if(acao==="anexar")       abrirModalUpload(d.idDespesa,d.prestadorNome,d.valor);
         if(acao==="pago")         abrirModalPago(d.idDespesa,d.prestadorNome,d.valor);
+        if(acao==="aprovar")      aprovarDespesaUI(d.idDespesa,d.prestadorNome);
+        if(acao==="estornar")     abrirModalEstornar(d.idDespesa,d.prestadorNome);
         if(acao==="cancelar")     abrirModalCancelar(d.idDespesa,d.prestadorNome);
         if(acao==="editar")       abrirModalEditar(d);
         if(acao==="excluir")      abrirModalExcluir(d.idDespesa,d.prestadorNome,d.status);
@@ -820,7 +829,7 @@
   function fecharModal(id){ fecharPainel(id); }
 
   function abrirModal(id){
-    ["painel-pago","painel-cancelar","painel-solicitar-nf","painel-upload","painel-editar","painel-excluir","painel-duplicar","painel-historico"].forEach(function(pid){
+    ["painel-pago","painel-cancelar","painel-estornar","painel-solicitar-nf","painel-upload","painel-editar","painel-excluir","painel-duplicar","painel-historico"].forEach(function(pid){
       var p=g(pid); if(p) p.classList.remove("open");
     });
     var el=g(id); if(el){ el.classList.add("open"); el.scrollIntoView({behavior:"smooth",block:"start"}); }
@@ -866,6 +875,38 @@
       })
       .withFailureHandler(function(e){ showToast("Erro: "+e.message,"error"); })
       .cancelarDespesa({ idDespesa:_idModalAtivo, observacao:obs||"Cancelado manualmente." }, SISGEP_TOKEN_SESSAO);
+  }
+
+  function aprovarDespesaUI(idDespesa,nome){
+    if(!confirm('Aprovar a despesa de "'+nome+'" para pagamento?')) return;
+    google.script.run
+      .withSuccessHandler(function(resp){
+        if(resp&&resp.ok){ showToast("✅ Despesa aprovada para pagamento.","success"); todasDespesas=[]; window.todasDespesas=[]; carregarLista(); }
+        else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
+      })
+      .withFailureHandler(function(e){ showToast("Erro: "+e.message,"error"); })
+      .aprovarDespesaParaPagamento({ idDespesa:idDespesa }, SISGEP_TOKEN_SESSAO);
+  }
+
+  function abrirModalEstornar(idDespesa,nome){
+    _idModalAtivo=idDespesa;
+    var info=g("painel-estornar-info");
+    if(info) info.innerHTML='Estornar o pagamento de <strong>'+escHtml(nome)+'</strong>? A despesa volta a ficar registrada como estornada, mas mantém o histórico de que foi paga.';
+    if(g("painel-obs-estornar")) g("painel-obs-estornar").value="";
+    abrirModal("painel-estornar");
+  }
+
+  function confirmarEstornarModal(){
+    var motivo=val("painel-obs-estornar");
+    if(!motivo){ showToast("Informe o motivo do estorno.","error"); return; }
+    fecharPainel("painel-estornar");
+    google.script.run
+      .withSuccessHandler(function(resp){
+        if(resp&&resp.ok){ showToast("↩ Despesa estornada.","success"); todasDespesas=[]; window.todasDespesas=[]; carregarLista(); carregarDashboard(); }
+        else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
+      })
+      .withFailureHandler(function(e){ showToast("Erro: "+e.message,"error"); })
+      .estornarDespesa({ idDespesa:_idModalAtivo, motivo:motivo }, SISGEP_TOKEN_SESSAO);
   }
 
   function abrirModalSolicitarNF(d){
@@ -1007,12 +1048,12 @@
 
   /* ═══ BADGES ═══ */
   function badgeStatus(st){
-    var mapa={ "PENDENTE":["badge-pendente","⏸ Pendente"], "AGUARDANDO_DOC":["badge-aguardando","📨 Aguardando doc"], "DOC_RECEBIDO":["badge-doc","📋 Doc recebido"], "ENVIADO_CONTABILIDADE":["badge-enviado","📤 Contabilidade"], "PAGO":["badge-pago","✅ Pago"], "CANCELADO":["badge-cancelado","✕ Cancelado"] };
+    var mapa={ "PENDENTE":["badge-pendente","⏸ Pendente"], "AGUARDANDO_DOC":["badge-aguardando","📨 Aguardando doc"], "DOC_RECEBIDO":["badge-doc","📋 Doc recebido"], "ENVIADO_CONTABILIDADE":["badge-enviado","📤 Contabilidade"], "PAGO":["badge-pago","✅ Pago"], "CANCELADO":["badge-cancelado","✕ Cancelado"], "ESTORNADO":["badge-estornado","↩ Estornado"] };
     var info=mapa[st]||["badge-pendente",st||"—"];
     return '<span class="badge '+info[0]+'">'+info[1]+'</span>';
   }
   function badgeVenc(sv,status){
-    if(status==="PAGO"||status==="CANCELADO") return "";
+    if(status==="PAGO"||status==="CANCELADO"||status==="ESTORNADO") return "";
     var mapa={"OK":["badge-venc-ok","✔ OK"],"URGENTE":["badge-venc-urgente","⏰ Urgente"],"VENCIDO":["badge-venc-vencido","⚠️ Vencido"]};
     var info=mapa[sv]; if(!info) return "";
     return '<span class="badge '+info[0]+'" style="font-size:10px;margin-top:3px;display:block;">'+info[1]+'</span>';
