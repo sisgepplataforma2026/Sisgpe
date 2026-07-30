@@ -17,7 +17,7 @@ var CARTAD_ABA_EMITIDAS = 'Carteirinhas_Emitidas';
 var CARTAD_CABECALHO_EMITIDAS = ['CPF', 'Nome', 'Codigo_Validacao', 'Status', 'Validade', 'Data_Emissao', 'Emitido_Por'];
 
 function cartAd_obterAbaEmitidas_() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openById(PLANILHA_ID);
   var sh = ss.getSheetByName(CARTAD_ABA_EMITIDAS);
   if (!sh) {
     sh = ss.insertSheet(CARTAD_ABA_EMITIDAS);
@@ -71,7 +71,7 @@ function cartAd_mapaEmitidasPorCpf_() {
 function listarCarteirinhasParaEmissao(tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
   try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openById(PLANILHA_ID);
     var sh = ss.getSheetByName(CARTAD_ABA_CARTEIRINHAS);
     if (!sh || sh.getLastRow() < 2) return [];
 
@@ -129,7 +129,7 @@ function emitirCarteirinha(cpf, validade, tokenSessao) {
     if (cpfLimpo.length !== 11) return { sucesso: false, mensagem: 'CPF inválido.' };
     if (!validade || !String(validade).trim()) return { sucesso: false, mensagem: 'Informe a validade da carteirinha.' };
 
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openById(PLANILHA_ID);
     var shCarteirinhas = ss.getSheetByName(CARTAD_ABA_CARTEIRINHAS);
     var nome = '';
     if (shCarteirinhas && shCarteirinhas.getLastRow() > 1) {
@@ -319,7 +319,7 @@ function aprovarEEmitirCarteirinha(cpf, validade, tokenSessao) {
     var cpfLimpo = String(cpf || '').replace(/\D/g, '');
     if (cpfLimpo.length !== 11) return { sucesso: false, mensagem: 'CPF inválido.' };
 
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openById(PLANILHA_ID);
     var sh = ss.getSheetByName(CARTAD_ABA_CARTEIRINHAS);
     var linha = cartAd_linhaPorCpf_(sh, cpfLimpo);
     if (!linha) return { sucesso: false, mensagem: 'Solicitação não encontrada.' };
@@ -353,7 +353,7 @@ function rejeitarSolicitacaoCarteirinha(cpf, motivo, tokenSessao) {
     if (cpfLimpo.length !== 11) return { sucesso: false, mensagem: 'CPF inválido.' };
     if (!motivo || !String(motivo).trim()) return { sucesso: false, mensagem: 'Informe o motivo da rejeição.' };
 
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openById(PLANILHA_ID);
     var sh = ss.getSheetByName(CARTAD_ABA_CARTEIRINHAS);
     var linha = cartAd_linhaPorCpf_(sh, cpfLimpo);
     if (!linha) return { sucesso: false, mensagem: 'Solicitação não encontrada.' };
@@ -383,7 +383,7 @@ function obterFotoCarteirinhaParaRevisao(cpf, tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
   try {
     var cpfLimpo = String(cpf || '').replace(/\D/g, '');
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openById(PLANILHA_ID);
     var sh = ss.getSheetByName(CARTAD_ABA_CARTEIRINHAS);
     var linha = cartAd_linhaPorCpf_(sh, cpfLimpo);
     if (!linha) return { ok: false };
