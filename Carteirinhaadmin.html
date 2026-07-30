@@ -69,6 +69,9 @@
 .cart-modal-box .cart-modal-close { width: 32px; height: 32px; border-radius: 999px; border: 1.5px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer; font-size: 15px; }
 .cart-modal-box .cart-modal-body { padding: 20px 22px; }
 .cart-modal-box .cart-modal-foot { padding: 14px 22px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 8px; }
+.cart-modal-box .cart-modal-msg { border-radius: 10px; font-size: 12.5px; font-weight: 600; padding: 10px 14px; margin-top: 12px; line-height: 1.4; }
+.cart-modal-box .cart-modal-msg.erro { background: #fee2e2; border: 1px solid #fca5a5; color: #9f1239; }
+.cart-modal-box .cart-modal-msg.warn { background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; }
 #secCarteirinhaAdmin .cart-label { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--g500); display: block; margin-bottom: 6px; }
 #secCarteirinhaAdmin .cart-input { width: 100%; height: 40px; border-radius: 10px; border: 1.5px solid var(--g200); padding: 0 12px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; outline: none; margin-bottom: 14px; }
 #secCarteirinhaAdmin .cart-input:focus { border-color: var(--blue); }
@@ -152,6 +155,7 @@
       <div id="cartModalFotoWrap"><div class="cart-foto-preview-vazia">Carregando foto...</div></div>
       <label class="cart-label">Validade (dd/mm/aaaa)</label>
       <input type="text" class="cart-input" id="cartModalValidade" placeholder="28/02/2027">
+      <div id="cartModalErro" class="cart-modal-msg" style="display:none"></div>
     </div>
     <div class="cart-modal-foot">
       <button type="button" class="cart-btn cart-btn-secondary" onclick="cartFecharModal()">Cancelar</button>
@@ -171,6 +175,7 @@
       <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:14px;" id="cartRejNome"></div>
       <label class="cart-label">Motivo (o associado vai ver esse texto)</label>
       <textarea class="cart-input cart-textarea" id="cartRejMotivo" placeholder="Ex: foto cortada, tire uma foto de rosto inteira e com boa iluminação."></textarea>
+      <div id="cartRejModalErro" class="cart-modal-msg" style="display:none"></div>
     </div>
     <div class="cart-modal-foot">
       <button type="button" class="cart-btn cart-btn-secondary" onclick="cartFecharRejeitar()">Cancelar</button>
@@ -326,10 +331,19 @@ function cartCarregar(silencioso){
   cartIniciarAutoAtualizacao();
 }
 
+function modalMsg(id, texto, tipo){
+  var el = g(id); if (!el) return;
+  if (!texto) { el.style.display = 'none'; el.textContent = ''; return; }
+  el.className = 'cart-modal-msg ' + (tipo || 'erro');
+  el.textContent = texto;
+  el.style.display = 'block';
+}
+
 function cartAbrirModal(cpf, nome){
   _cpfSelecionado = cpf;
   g('cartModalNome').textContent = nome + ' — ' + formatarCpf(cpf);
   g('cartModalValidade').value = '';
+  modalMsg('cartModalErro', '');
   g('cartModalFotoWrap').innerHTML = "<div class='cart-foto-preview-vazia'>Carregando foto...</div>";
   g('cartModalOverlay').classList.add('ativo');
 
@@ -355,13 +369,15 @@ function cartAbrirModal(cpf, nome){
 
 function cartFecharModal(){
   g('cartModalOverlay').classList.remove('ativo');
+  modalMsg('cartModalErro', '');
   _cpfSelecionado = '';
 }
 
 function cartConfirmarEmissao(){
   var validade = String(g('cartModalValidade').value||'').trim();
-  if (!validade) { msg('Informe a validade antes de confirmar.', 'warn'); return; }
-  if (!_cpfSelecionado) { msg('Nenhum associado selecionado.', 'warn'); return; }
+  modalMsg('cartModalErro', '');
+  if (!validade) { modalMsg('cartModalErro', 'Informe a validade antes de confirmar.', 'warn'); return; }
+  if (!_cpfSelecionado) { modalMsg('cartModalErro', 'Nenhum associado selecionado.', 'erro'); return; }
 
   var btn = g('cartModalBtnConfirmar');
   btn.disabled = true; btn.textContent = 'Aprovando e emitindo...';
@@ -369,14 +385,14 @@ function cartConfirmarEmissao(){
   google.script.run
     .withSuccessHandler(function(res){
       btn.disabled = false; btn.textContent = '✓ Aprovar e emitir';
-      if (!res || !res.sucesso) { msg((res && res.mensagem) || 'Erro ao aprovar e emitir.', 'erro'); return; }
+      if (!res || !res.sucesso) { modalMsg('cartModalErro', (res && res.mensagem) || 'Erro ao aprovar e emitir.', 'erro'); return; }
       msg('✅ ' + res.mensagem, 'ok');
       cartFecharModal();
       cartCarregar();
     })
     .withFailureHandler(function(err){
       btn.disabled = false; btn.textContent = '✓ Aprovar e emitir';
-      msg('Erro: ' + ((err && err.message) || err), 'erro');
+      modalMsg('cartModalErro', 'Erro: ' + ((err && err.message) || err), 'erro');
     })
     .aprovarEEmitirCarteirinha(_cpfSelecionado, validade, cartToken());
 }
@@ -385,18 +401,21 @@ function cartAbrirRejeitar(cpf, nome){
   _cpfSelecionado = cpf;
   g('cartRejNome').textContent = nome + ' — ' + formatarCpf(cpf);
   g('cartRejMotivo').value = '';
+  modalMsg('cartRejModalErro', '');
   g('cartRejModalOverlay').classList.add('ativo');
 }
 
 function cartFecharRejeitar(){
   g('cartRejModalOverlay').classList.remove('ativo');
+  modalMsg('cartRejModalErro', '');
   _cpfSelecionado = '';
 }
 
 function cartConfirmarRejeicao(){
   var motivo = String(g('cartRejMotivo').value||'').trim();
-  if (!motivo) { msg('Informe o motivo da rejeição.', 'warn'); return; }
-  if (!_cpfSelecionado) { msg('Nenhum associado selecionado.', 'warn'); return; }
+  modalMsg('cartRejModalErro', '');
+  if (!motivo) { modalMsg('cartRejModalErro', 'Informe o motivo da rejeição.', 'warn'); return; }
+  if (!_cpfSelecionado) { modalMsg('cartRejModalErro', 'Nenhum associado selecionado.', 'erro'); return; }
 
   var btn = g('cartRejBtnConfirmar');
   btn.disabled = true; btn.textContent = 'Rejeitando...';
@@ -404,14 +423,14 @@ function cartConfirmarRejeicao(){
   google.script.run
     .withSuccessHandler(function(res){
       btn.disabled = false; btn.textContent = '✕ Rejeitar';
-      if (!res || !res.sucesso) { msg((res && res.mensagem) || 'Erro ao rejeitar.', 'erro'); return; }
+      if (!res || !res.sucesso) { modalMsg('cartRejModalErro', (res && res.mensagem) || 'Erro ao rejeitar.', 'erro'); return; }
       msg('✅ ' + res.mensagem, 'ok');
       cartFecharRejeitar();
       cartCarregar();
     })
     .withFailureHandler(function(err){
       btn.disabled = false; btn.textContent = '✕ Rejeitar';
-      msg('Erro: ' + ((err && err.message) || err), 'erro');
+      modalMsg('cartRejModalErro', 'Erro: ' + ((err && err.message) || err), 'erro');
     })
     .rejeitarSolicitacaoCarteirinha(_cpfSelecionado, motivo, cartToken());
 }
