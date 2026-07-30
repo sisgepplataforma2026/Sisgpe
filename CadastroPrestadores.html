@@ -565,7 +565,7 @@ function renderTabela(){
             self.disabled=false; self.innerHTML=icoSend;
             msg("Erro: "+((err&&err.message)||""),"erro");
           })
-          .enviarLembretePrestadoresManual({ rowIndexes:[row] });
+          .enviarLembretePrestadoresManual({ rowIndexes:[row] }, SISGEP_TOKEN_SESSAO);
       });
     });
   });
@@ -623,7 +623,7 @@ function carregarPrestadores(){
     .withFailureHandler(function(err){
       msg("Erro: "+((err&&err.message)||String(err||"")),"erro");
     })
-    .listarPrestadoresDesp({});
+    .listarPrestadoresDesp({}, SISGEP_TOKEN_SESSAO);
 }
 
 function selecionarTodos(){
@@ -672,7 +672,7 @@ function enviarLoteLembretes(){
         resetBtn(btn); atualizarBtnLote();
         msg("Erro: "+((err&&err.message)||""),"erro");
       })
-      .enviarLembretePrestadoresManual({ rowIndexes:rows });
+      .enviarLembretePrestadoresManual({ rowIndexes:rows }, SISGEP_TOKEN_SESSAO);
   });
 }
 
@@ -767,7 +767,7 @@ function salvarModal(){
   }
 })
     .withFailureHandler(function(err){ resetBtn(btn); msg("Erro: "+((err&&err.message)||""),"erro"); })
-    .salvarPrestadorDesp(payload);
+    .salvarPrestadorDesp(payload, SISGEP_TOKEN_SESSAO);
 }
 
 window.excluirPrestador=function(rowIndex,nome){
@@ -791,7 +791,7 @@ window.excluirPrestador=function(rowIndex,nome){
         carregarPrestadores();
       })
       .withFailureHandler(function(err){ msg("Erro: "+((err&&err.message)||""),"erro"); })
-      .excluirPrestadorDesp(rowIndex);
+      .excluirPrestadorDesp(rowIndex, SISGEP_TOKEN_SESSAO);
   });
 };
 
@@ -824,7 +824,7 @@ function carregarSemEmail(){
       if(wrapper) wrapper.scrollIntoView({behavior:"smooth",block:"start"});
     })
     .withFailureHandler(function(err){ resetBtn(btn); msg("Erro: "+((err&&err.message)||""),"erro"); })
-    .listarPrestadoresSemEmailDesp();
+    .listarPrestadoresSemEmailDesp(SISGEP_TOKEN_SESSAO);
 }
 
 function renderSemEmail(dados){
@@ -885,7 +885,7 @@ window.salvarContatoRapido=function(rowIndex){
       inputEmail.disabled=false; if(inputWhats) inputWhats.disabled=false;
       msg("Erro: "+((err&&err.message)||""),"erro");
     })
-    .salvarContatoPrestadorRapido(rowIndex, email, whatsapp);
+    .salvarContatoPrestadorRapido(rowIndex, email, whatsapp, SISGEP_TOKEN_SESSAO);
 };
 
 function mascaraTelefoneInline(el){

@@ -67,6 +67,9 @@
 <button class="spN" data-mod="financeiro" onclick="spIr('financeiro',this)">
         <span class="spNI">💵</span><div><strong>Financeiro</strong><small>Despesas, Lotes, Pagamentos</small></div>
       </button>
+      <button class="spN" data-mod="cadastroPrestadores" onclick="spIr('cadastroPrestadores',this)">
+        <span class="spNI">🧑‍🔧</span><div><strong>Prestadores</strong><small>Fornecedores e Prestadores de Serviço</small></div>
+      </button>
       <button class="spN" data-mod="escolas" onclick="spIr('escolas',this)">
         <span class="spNI">🏫</span><div><strong>Escolas</strong><small>Cadastros e Relacionamentos</small></div>
       </button>
@@ -490,6 +493,9 @@ function benefAdminPesquisar(){var input=document.getElementById("benefAdminBusc
         <?!= include('Scripts_Despesas'); ?>
         <?!= include('FinanceiroConciliacao'); ?>
         <?!= include('FinanceiroAdmin'); ?>
+      </div>
+      <div id="mCadastroPrestadores" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('CadastroPrestadores'); ?>
       </div>
       
       <div id="mRH" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
@@ -1166,6 +1172,7 @@ var MODS={
   aprovacoesPortal:["mAprovacoesPortal","Aprovações do Portal","Atualizações cadastrais enviadas pelo Portal do Associado"],
   fichas:["mFichasSindicais","Fichas Sindicais","Validação e Aprovação de Filiações"],
   financeiro:["mFinanceiro","Financeiro","Despesas, Lotes, Pagamentos"],
+  cadastroPrestadores:["mCadastroPrestadores","Prestadores","Fornecedores e Prestadores de Serviço"],
   escolas:["mEscolas","Escolas","Cadastros e Relacionamentos"],
   rh:["mRH","RH","Colaboradores, Documentos e Vencimentos"],
   juridico:["mJuridico","Jurídico","Processos e Documentos"],
@@ -1521,6 +1528,7 @@ if(mod==="beneficios"){
   if(mod==="rh") return callFn("initRH") || callFn("carregarRH");
   if(mod==="sofia") return initSofia(opts);
   if(mod==="financeiro") return initFinanceiro(opts);
+  if(mod==="cadastroPrestadores") return callFn("initCadastroPrestadores");
 
   if(mod==="juridico"){
     return callFn("initJuridico") ||

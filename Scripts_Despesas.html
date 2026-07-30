@@ -417,7 +417,7 @@
     google.script.run
       .withSuccessHandler(function(resp){ _fornecedores=(resp&&resp.ok&&resp.lista)?resp.lista:[]; })
       .withFailureHandler(function(){ showToast("Erro ao carregar prestadores.","error"); })
-      .listarPrestadoresDesp({});
+      .listarPrestadoresDesp({}, SISGEP_TOKEN_SESSAO);
   }
 
   function buscarFornecedorPorNome(nome){

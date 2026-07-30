@@ -305,7 +305,14 @@ function garantirAbaPrestadoresDesp_() {
 // Aliases mantidos para não quebrar chamadas antigas do módulo de despesas.
 function garantirAbaFornecedoresDesp_() { return garantirAbaPrestadoresDesp_(); }
 
-function listarPrestadoresDesp(filtros) {
+function listarPrestadoresDesp(filtros, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
+  return listarPrestadoresDesp_(filtros);
+}
+
+// Núcleo sem checagem de sessão — usado por automações internas
+// (ex.: geração mensal de lançamentos via trigger, sem usuário logado).
+function listarPrestadoresDesp_(filtros) {
   try {
     filtros = filtros || {};
 
@@ -501,7 +508,8 @@ function listarPrestadoresDesp(filtros) {
     };
   }
 }
-function salvarPrestadorDesp(payload) {
+function salvarPrestadorDesp(payload, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     payload = payload || {};
     var nome = String(payload.nome || "").trim();
@@ -596,7 +604,8 @@ function listarFornecedoresDesp(filtros) { return listarPrestadoresDesp(filtros)
 /**
  * Inativa um prestador (soft delete).
  */
-function excluirPrestadorDesp(rowIndex) {
+function excluirPrestadorDesp(rowIndex, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     if (!rowIndex || rowIndex < 2) return { ok: false, mensagem: "Linha inválida." };
     var aba     = garantirAbaPrestadoresDesp_();
@@ -618,7 +627,8 @@ function excluirFornecedorDesp(rowIndex) { return excluirPrestadorDesp(rowIndex)
 /**
  * Salva e-mail e WhatsApp rapidamente (card "Sem E-mail").
  */
-function salvarContatoPrestadorRapido(rowIndex, email, whatsapp) {
+function salvarContatoPrestadorRapido(rowIndex, email, whatsapp, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     if (!rowIndex || rowIndex < 2) return { ok: false, mensagem: "Linha inválida." };
     if (!email) return { ok: false, mensagem: "Informe o e-mail." };
@@ -652,9 +662,10 @@ function salvarContatoFornecedorRapido(rowIndex, email, whatsapp) {
 /**
  * Lista prestadores sem e-mail cadastrado.
  */
-function listarPrestadoresSemEmailDesp() {
+function listarPrestadoresSemEmailDesp(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
-    var resultado = listarPrestadoresDesp({});
+    var resultado = listarPrestadoresDesp({}, tokenSessao);
     var lista = (resultado.lista || []).filter(function(p) { return !p.email; });
     return {
       ok:          true,
@@ -692,7 +703,7 @@ function listarPrestadoresAtivosComCache_() {
         if (Array.isArray(parsed)) return parsed;
       } catch (eCache) {}
     }
-    var resultado = listarPrestadoresDesp({});
+    var resultado = listarPrestadoresDesp_({});
     var lista     = resultado.lista || [];
     try { cache.put(CACHE_KEY_PRESTADORES_DESP, JSON.stringify(lista), 300); } catch (ePut) {}
     return lista;
@@ -2774,7 +2785,8 @@ function testeDisparateAlertasD5() {
  * payload: { rowIndexes: [2, 5, 10], forcarReenvio: true }
  * Gera novo token a cada envio (substitui o anterior).
  */
-function enviarLembretePrestadoresManual(payload) {
+function enviarLembretePrestadoresManual(payload, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     payload = payload || {};
     var rowIndexes    = Array.isArray(payload.rowIndexes) ? payload.rowIndexes : [];
@@ -2782,7 +2794,7 @@ function enviarLembretePrestadoresManual(payload) {
 
     if (!rowIndexes.length) return { ok: false, mensagem: "Nenhum prestador selecionado." };
 
-    var resultado = listarPrestadoresDesp({});
+    var resultado = listarPrestadoresDesp({}, tokenSessao);
     var todos     = resultado.lista || [];
 
     var urlBase  = ScriptApp.getService().getUrl();
