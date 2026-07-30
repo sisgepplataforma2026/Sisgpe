@@ -1,0 +1,135 @@
+<style>
+/* ── Auditoria do Portal do Associado — estilos isolados ── */
+#secPortalAuditoriaAdmin *,
+#secPortalAuditoriaAdmin *::before,
+#secPortalAuditoriaAdmin *::after { box-sizing: border-box; }
+
+#secPortalAuditoriaAdmin {
+  --pa-g50: #f8fafc; --pa-g100: #f1f5f9; --pa-g200: #e2e8f0; --pa-g300: #cbd5e1;
+  --pa-g500: #64748b; --pa-g600: #475569; --pa-g700: #334155; --pa-g900: #0f172a;
+  --pa-navy: #071b38; --pa-gold: #C9A84C; --pa-blue: #1565C0;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  max-width: 1000px; margin: 24px auto 0;
+}
+#secPortalAuditoriaAdmin .pa-card { background: #fff; border: 1px solid var(--pa-g200); border-radius: 14px; padding: 20px 22px; }
+#secPortalAuditoriaAdmin .pa-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+#secPortalAuditoriaAdmin .pa-title { font-size: 15px; font-weight: 800; color: var(--pa-g900); }
+#secPortalAuditoriaAdmin .pa-sub { font-size: 12px; color: var(--pa-g500); margin-top: 2px; }
+#secPortalAuditoriaAdmin .pa-btn { height: 34px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--pa-g300); background: var(--pa-g50); color: var(--pa-g700); font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
+#secPortalAuditoriaAdmin .pa-btn:hover { background: var(--pa-g100); }
+#secPortalAuditoriaAdmin .pa-filtros { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+#secPortalAuditoriaAdmin .pa-busca { flex: 1; min-width: 200px; height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--pa-g300); font-size: 12.5px; font-family: inherit; }
+#secPortalAuditoriaAdmin .pa-select { height: 36px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--pa-g300); font-size: 12.5px; font-family: inherit; background: #fff; }
+#secPortalAuditoriaAdmin .pa-tabela-wrap { overflow-x: auto; border: 1px solid var(--pa-g200); border-radius: 10px; max-height: 520px; overflow-y: auto; }
+#secPortalAuditoriaAdmin table.pa-tabela { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+#secPortalAuditoriaAdmin table.pa-tabela thead th { position: sticky; top: 0; background: var(--pa-g50); text-align: left; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--pa-g500); font-weight: 700; padding: 10px 12px; border-bottom: 1px solid var(--pa-g200); }
+#secPortalAuditoriaAdmin table.pa-tabela td { padding: 9px 12px; border-bottom: 1px solid var(--pa-g100); color: var(--pa-g700); white-space: nowrap; }
+#secPortalAuditoriaAdmin table.pa-tabela td.pa-acao { white-space: normal; font-weight: 600; color: var(--pa-g900); }
+#secPortalAuditoriaAdmin .pa-vazia { text-align: center; padding: 40px 20px; color: var(--pa-g500); font-size: 13px; }
+#secPortalAuditoriaAdmin .pa-contagem { font-size: 11px; color: var(--pa-g500); margin-top: 10px; }
+</style>
+
+<div id="secPortalAuditoriaAdmin">
+  <div class="pa-card">
+    <div class="pa-head">
+      <div>
+        <div class="pa-title">🔍 Auditoria do Portal do Associado</div>
+        <div class="pa-sub">Últimos acessos e ações registrados pelo Portal Público — só leitura, mais recentes primeiro</div>
+      </div>
+      <button type="button" class="pa-btn" onclick="paudCarregar()">↻ Atualizar</button>
+    </div>
+    <div class="pa-filtros">
+      <input type="text" class="pa-busca" id="paudBusca" placeholder="Buscar por CPF (final) ou ação..." oninput="paudAplicarFiltros()">
+      <select class="pa-select" id="paudFiltroAcao" onchange="paudAplicarFiltros()">
+        <option value="">Todas as ações</option>
+      </select>
+    </div>
+    <div class="pa-tabela-wrap">
+      <table class="pa-tabela">
+        <thead><tr><th>Data/Hora</th><th>CPF (final)</th><th>Ação</th></tr></thead>
+        <tbody id="paudTbody"><tr><td colspan="3"><div class="pa-vazia">⏳ Carregando...</div></td></tr></tbody>
+      </table>
+    </div>
+    <div class="pa-contagem" id="paudContagem"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+var _paudLista = [];
+
+function g(id){ return document.getElementById(id); }
+function paudToken(){ return (typeof SISGEP_TOKEN_SESSAO!=='undefined') ? SISGEP_TOKEN_SESSAO : ''; }
+function esc(t){ return String(t||'').replace(/[&<>"']/g,function(c){return c==='&'?'&amp;':c==='<'?'&lt;':c==='>'?'&gt;':c==='"'?'&quot;':'&#39;';}); }
+
+function paudCarregar(){
+  g('paudTbody').innerHTML = "<tr><td colspan='3'><div class='pa-vazia'>⏳ Carregando...</div></td></tr>";
+  google.script.run
+    .withSuccessHandler(function(lista){
+      _paudLista = lista || [];
+      paudPopularFiltroAcao();
+      paudAplicarFiltros();
+    })
+    .withFailureHandler(function(){
+      g('paudTbody').innerHTML = "<tr><td colspan='3'><div class='pa-vazia'>Não foi possível carregar a auditoria.</div></td></tr>";
+    })
+    .listarPortalAuditoria(paudToken());
+}
+
+function paudPopularFiltroAcao(){
+  var sel = g('paudFiltroAcao');
+  var atual = sel.value;
+  var acoes = {};
+  _paudLista.forEach(function(item){
+    // Agrupa por prefixo antes de ":" (ex: SOLICITACAO_CRIADA:SOL-2026-000001 -> SOLICITACAO_CRIADA)
+    var chave = String(item.acao||'').split(':')[0];
+    if (chave) acoes[chave] = true;
+  });
+  var opcoes = Object.keys(acoes).sort();
+  sel.innerHTML = "<option value=''>Todas as ações</option>" + opcoes.map(function(a){
+    return "<option value='" + esc(a) + "'>" + esc(a) + "</option>";
+  }).join('');
+  sel.value = opcoes.indexOf(atual) > -1 ? atual : '';
+}
+
+function paudAplicarFiltros(){
+  var termo = (g('paudBusca').value||'').trim().toLowerCase();
+  var acaoFiltro = g('paudFiltroAcao').value;
+  var filtrada = _paudLista.filter(function(item){
+    if (acaoFiltro && String(item.acao||'').indexOf(acaoFiltro) !== 0) return false;
+    if (!termo) return true;
+    return String(item.cpfFinal||'').toLowerCase().indexOf(termo) > -1 ||
+           String(item.acao||'').toLowerCase().indexOf(termo) > -1;
+  });
+  paudRenderizar(filtrada);
+}
+
+function paudRenderizar(lista){
+  var tbody = g('paudTbody');
+  if (!lista.length) {
+    tbody.innerHTML = "<tr><td colspan='3'><div class='pa-vazia'>Nenhum registro encontrado.</div></td></tr>";
+  } else {
+    tbody.innerHTML = lista.map(function(item){
+      return "<tr><td>" + esc(item.data) + "</td><td>" + esc(item.cpfFinal) + "</td><td class='pa-acao'>" + esc(item.acao) + "</td></tr>";
+    }).join('');
+  }
+  g('paudContagem').textContent = lista.length + ' de ' + _paudLista.length + ' registros (últimos 500 no total)';
+}
+
+window.paudCarregar = paudCarregar;
+window.paudAplicarFiltros = paudAplicarFiltros;
+
+// Carrega automaticamente quando a aba Configurações é aberta pela primeira vez.
+var _paudCarregadoUmaVez = false;
+var _paudTimerVisibilidade = setInterval(function(){
+  var el = g('secPortalAuditoriaAdmin');
+  if (el && el.offsetParent !== null && !_paudCarregadoUmaVez) {
+    _paudCarregadoUmaVez = true;
+    clearInterval(_paudTimerVisibilidade);
+    paudCarregar();
+  }
+}, 800);
+})();
+</script>
