@@ -14,6 +14,7 @@
   var _uploadArquivos = [];
   var _acItemFocado = -1;
   var _bannerDismissed = false;
+  var _despesasListenersProntos = false;
 
   /* ═══ HELPERS ═══ */
   function g(id){ return document.getElementById(id); }
@@ -1326,9 +1327,11 @@
   }
 
   function initDespesasAdmin(){
-    if(!document.getElementById("secDespesas")) return;
+    if(!document.getElementById("dashboard-loader")) return;
     definirDataHoje("n-vencimento"); definirDataHoje("painel-data-pago");
     carregarDashboard(); carregarFornecedoresCache(); carregarCentrosCustoEProjetos();
+    if(_despesasListenersProntos) return;
+    _despesasListenersProntos = true;
     ["r-recorrente","r-avulso"].forEach(function(id){ var el=g(id); if(el) el.addEventListener("change",atualizarTipoLanc); });
     atualizarTipoLanc();
     var fileInput=g("painel-upload-file");
