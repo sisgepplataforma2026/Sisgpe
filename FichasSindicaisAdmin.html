@@ -154,12 +154,13 @@
       <!-- ETAPA 1 — UPLOAD -->
       <div id="fsaPapelEtapa1" class="fsa-etapa fsa-etapa-ativa">
         <div class="fsa-aviso">
-          Anexe o formulário de sindicalização impresso e preenchido (PDF escaneado ou foto).
-          A IA vai ler os campos, mas todos ficam abertos para você conferir e corrigir antes
-          de qualquer gravação.
+          Anexe um ou mais formulários de sindicalização impressos e preenchidos (PDF escaneado
+          ou foto). Você pode selecionar vários arquivos de uma vez — a IA lê os campos de cada
+          um, mas todos ficam abertos para você conferir e corrigir antes de qualquer gravação.
         </div>
-        <label class="fsa-label">Arquivo do formulário</label>
-        <input type="file" id="fsaPapelArquivo" class="fsa-input" accept=".pdf,.jpg,.jpeg,.png">
+        <label class="fsa-label">Arquivo(s) do formulário</label>
+        <input type="file" id="fsaPapelArquivo" class="fsa-input" accept=".pdf,.jpg,.jpeg,.png" multiple onchange="fsaPapelMontarFila()">
+        <div id="fsaPapelFila"></div>
         <div class="fsa-modal-acoes">
           <button class="fsa-btn-pri" id="fsaPapelBtnAnalisar" onclick="fsaPapelAnalisar()">🔎 Analisar formulário</button>
         </div>
@@ -168,6 +169,7 @@
 
       <!-- ETAPA 2 — REVISÃO -->
       <div id="fsaPapelEtapa2" class="fsa-etapa">
+        <div id="fsaPapelProgresso" style="display:none;margin-bottom:10px;font-size:12px;font-weight:800;color:#002f6c;"></div>
         <div id="fsaPapelAlertas" style="margin-bottom:12px;"></div>
 
         <label class="fsa-label">Tipo</label>
@@ -212,7 +214,7 @@
       <div id="fsaPapelEtapa3" class="fsa-etapa">
         <div class="fsa-sucesso">
           <div class="fsa-sucesso-selo">✓</div>
-          <h3>Ficha registrada</h3>
+          <h3>Ficha(s) registrada(s)</h3>
           <div id="fsaPapelSucessoDados" class="fsa-sucesso-dados"></div>
         </div>
         <div class="fsa-modal-acoes fsa-acoes-final">
@@ -278,6 +280,15 @@
 .fsa-label{display:block;font-size:11.5px;font-weight:700;color:#002f6c;margin-bottom:5px;}
 .fsa-input{width:100%;padding:11px 13px;font-size:14px;font-family:inherit;border:1.5px solid #cbd5e1;border-radius:9px;background:#fbfcfe;color:#1d2433;box-sizing:border-box;}
 .fsa-input:focus{outline:none;border-color:#002f6c;}
+.fsa-fila{margin-top:10px;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;}
+.fsa-fila-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #f1f5f9;font-size:12.5px;color:#334155;background:#fff;}
+.fsa-fila-item:last-child{border-bottom:none;}
+.fsa-fila-item.fsa-fila-excluido{opacity:.45;}
+.fsa-fila-item input[type=checkbox]{width:16px;height:16px;accent-color:#002f6c;flex-shrink:0;}
+.fsa-fila-item span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fsa-fila-item small{color:#94a3b8;flex-shrink:0;}
+.fsa-fila-remover{border:none;background:#fee2e2;color:#991b1b;border-radius:6px;width:24px;height:24px;font-size:12px;font-weight:800;cursor:pointer;flex-shrink:0;line-height:1;}
+.fsa-fila-status{display:block;font-size:11px;color:#64748b;padding:7px 12px;background:#f8fafc;}
 .fsa-lista-escolas{max-height:230px;overflow-y:auto;margin-top:8px;border:1px solid #e2e8f0;border-radius:10px;display:none;}
 .fsa-lista-escolas.fsa-visivel{display:block;}
 .fsa-escola-item{width:100%;border:none;border-bottom:1px solid #f1f5f9;background:#fff;text-align:left;padding:11px 13px;cursor:pointer;font-family:inherit;}
@@ -795,16 +806,28 @@ function fsaRejeitar(idFicha){
    Nada aqui grava nada sozinho: "Analisar formulário" só sugere; "Confirmar e
    registrar ficha" só age depois que o atendente revisar os campos e marcar
    a caixa de conferência. A ficha criada ainda precisa ser aprovada pelo
-   fluxo normal (fsaAbrirModal / aprovarFichaSindicalizacao). */
+   fluxo normal (fsaAbrirModal / aprovarFichaSindicalizacao).
+   Suporta selecionar vários arquivos de uma vez: a fila é revisada com um
+   checkbox por item (permite excluir da rodada antes de processar) e depois
+   cada arquivo incluído passa por OCR + revisão + confirmação, um de cada vez. */
 
 var FSA_PAPEL_ARQUIVO = { base64: '', tipo: '', extensao: '' };
 var FSA_PAPEL_ESCOLAS = [];
+var FSA_PAPEL_FILA = [];        // [{file, nome, incluido}] — tudo que foi selecionado no input
+var FSA_PAPEL_FILA_ATIVA = [];  // subconjunto marcado como incluído, congelado ao iniciar a análise
+var FSA_PAPEL_INDICE = 0;
+var FSA_PAPEL_RESULTADOS = [];
 
 function fsaPapelAbrirModal(){
   FSA_PAPEL_ARQUIVO = { base64: '', tipo: '', extensao: '' };
   FSA_PAPEL_ESCOLAS = [];
+  FSA_PAPEL_FILA = [];
+  FSA_PAPEL_FILA_ATIVA = [];
+  FSA_PAPEL_INDICE = 0;
+  FSA_PAPEL_RESULTADOS = [];
   var input = document.getElementById('fsaPapelArquivo'); if (input) input.value = '';
   var status = document.getElementById('fsaPapelStatus'); if (status) status.textContent = '';
+  fsaPapelRenderFila();
   fsaPapelIrEtapa(1);
   document.getElementById('fsaPapelModal').classList.add('fsa-aberto');
 }
@@ -824,19 +847,66 @@ function fsaPapelIrEtapa(n){
 
 function fsaPapelVoltarEtapa1(){
   document.getElementById('fsaPapelModalMsg').textContent='';
+  var restantes = FSA_PAPEL_FILA_ATIVA.length - (FSA_PAPEL_INDICE + 1);
+  if (restantes > 0) { FSA_PAPEL_INDICE++; fsaPapelProcessarProximo(); return; }
   fsaPapelIrEtapa(1);
 }
 
-function fsaPapelAnalisar(){
+function fsaPapelMontarFila(){
   var input = document.getElementById('fsaPapelArquivo');
+  var arquivos = input && input.files ? Array.prototype.slice.call(input.files) : [];
+  FSA_PAPEL_FILA = arquivos.map(function(f){ return { file: f, nome: f.name, incluido: true }; });
+  fsaPapelRenderFila();
+}
+
+function fsaPapelRenderFila(){
+  var caixa = document.getElementById('fsaPapelFila');
+  if (!caixa) return;
+  if (!FSA_PAPEL_FILA.length) { caixa.innerHTML = ''; return; }
+  var incluidos = FSA_PAPEL_FILA.filter(function(i){ return i.incluido; }).length;
+  var html = '<div class="fsa-fila">';
+  html += '<span class="fsa-fila-status">'+incluidos+' de '+FSA_PAPEL_FILA.length+' arquivo(s) serão analisados</span>';
+  FSA_PAPEL_FILA.forEach(function(item, i){
+    html += '<div class="fsa-fila-item'+(item.incluido ? '' : ' fsa-fila-excluido')+'">'
+      + '<input type="checkbox" '+(item.incluido ? 'checked' : '')+' onchange="fsaPapelAlternarItem('+i+')" title="Incluir/excluir este arquivo da análise">'
+      + '<span>'+fsaEsc(item.nome)+'</span>'
+      + '<button type="button" class="fsa-fila-remover" onclick="fsaPapelRemoverItem('+i+')" title="Remover da fila">✕</button>'
+      + '</div>';
+  });
+  html += '</div>';
+  caixa.innerHTML = html;
+}
+
+function fsaPapelAlternarItem(i){
+  if (!FSA_PAPEL_FILA[i]) return;
+  FSA_PAPEL_FILA[i].incluido = !FSA_PAPEL_FILA[i].incluido;
+  fsaPapelRenderFila();
+}
+
+function fsaPapelRemoverItem(i){
+  FSA_PAPEL_FILA.splice(i, 1);
+  fsaPapelRenderFila();
+}
+
+function fsaPapelAnalisar(){
+  var status = document.getElementById('fsaPapelStatus');
+  FSA_PAPEL_FILA_ATIVA = FSA_PAPEL_FILA.filter(function(i){ return i.incluido; });
+  if (!FSA_PAPEL_FILA_ATIVA.length) { alert('Selecione ao menos um arquivo (mantenha marcado na fila).'); return; }
+  FSA_PAPEL_INDICE = 0;
+  FSA_PAPEL_RESULTADOS = [];
+  if (status) status.textContent = '';
+  fsaPapelProcessarProximo();
+}
+
+function fsaPapelProcessarProximo(){
+  if (FSA_PAPEL_INDICE >= FSA_PAPEL_FILA_ATIVA.length) { fsaPapelMostrarConcluido(); return; }
+
+  var arquivo = FSA_PAPEL_FILA_ATIVA[FSA_PAPEL_INDICE].file;
   var status = document.getElementById('fsaPapelStatus');
   var btn = document.getElementById('fsaPapelBtnAnalisar');
-  if (!input || !input.files || !input.files.length) { alert('Selecione um arquivo primeiro.'); return; }
-
-  var arquivo = input.files[0];
   var extensao = (arquivo.name.match(/\.[^.]+$/) || ['.pdf'])[0];
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Lendo documento...'; }
-  if (status) status.textContent = 'Fazendo OCR e extraindo dados — pode levar alguns segundos...';
+  if (status) status.textContent = 'Analisando '+(FSA_PAPEL_INDICE+1)+' de '+FSA_PAPEL_FILA_ATIVA.length+': '+arquivo.name+' — pode levar alguns segundos...';
 
   var reader = new FileReader();
   reader.onload = function(e){
@@ -848,23 +918,32 @@ function fsaPapelAnalisar(){
         if (btn) { btn.disabled = false; btn.textContent = '🔎 Analisar formulário'; }
         if (!res || !res.sucesso) {
           if (status) status.textContent = '';
-          alert((res && res.mensagem) || 'Não foi possível analisar o documento.');
+          alert((res && res.mensagem) || ('Não foi possível analisar "'+arquivo.name+'".'));
+          FSA_PAPEL_INDICE++;
+          fsaPapelProcessarProximo();
           return;
         }
-        fsaPapelRenderRevisao(res);
+        fsaPapelRenderRevisao(res, arquivo.name);
       })
       .withFailureHandler(function(err){
         if (btn) { btn.disabled = false; btn.textContent = '🔎 Analisar formulário'; }
         if (status) status.textContent = '';
-        alert('Erro ao analisar: ' + ((err && err.message) || err));
+        alert('Erro ao analisar "'+arquivo.name+'": ' + ((err && err.message) || err));
+        FSA_PAPEL_INDICE++;
+        fsaPapelProcessarProximo();
       })
       .analisarFormularioFiliacaoIA(base64, arquivo.name, arquivo.type || 'application/pdf', SISGEP_TOKEN_SESSAO);
   };
-  reader.onerror = function(){ if (btn) { btn.disabled = false; btn.textContent = '🔎 Analisar formulário'; } alert('Erro ao ler o arquivo.'); };
+  reader.onerror = function(){
+    if (btn) { btn.disabled = false; btn.textContent = '🔎 Analisar formulário'; }
+    alert('Erro ao ler o arquivo "'+arquivo.name+'".');
+    FSA_PAPEL_INDICE++;
+    fsaPapelProcessarProximo();
+  };
   reader.readAsDataURL(arquivo);
 }
 
-function fsaPapelRenderRevisao(res){
+function fsaPapelRenderRevisao(res, nomeArquivo){
   var status = document.getElementById('fsaPapelStatus'); if (status) status.textContent = '';
   var d = res.dados || {};
   FSA_PAPEL_ESCOLAS = res.listaEscolas || [];
@@ -896,6 +975,23 @@ function fsaPapelRenderRevisao(res){
     html += "<div class='fsa-aviso' style='background:#eff6ff;border-color:#bfdbfe;color:#1e3a8a;'>📝 Observações da leitura: "+fsaEsc(d.observacoesLeitura)+"</div>";
   }
   alertasEl.innerHTML = html;
+
+  var progresso = document.getElementById('fsaPapelProgresso');
+  if (progresso) {
+    if (FSA_PAPEL_FILA_ATIVA.length > 1) {
+      progresso.style.display = 'block';
+      progresso.textContent = 'Arquivo '+(FSA_PAPEL_INDICE+1)+' de '+FSA_PAPEL_FILA_ATIVA.length+': '+nomeArquivo;
+    } else {
+      progresso.style.display = 'none';
+      progresso.textContent = '';
+    }
+  }
+
+  var btnVoltar = document.querySelector('#fsaPapelEtapa2 .fsa-btn-sec');
+  if (btnVoltar) {
+    var restantes = FSA_PAPEL_FILA_ATIVA.length - (FSA_PAPEL_INDICE + 1);
+    btnVoltar.textContent = restantes > 0 ? '⏭ Pular este arquivo' : '← Anexar outro arquivo';
+  }
 
   document.getElementById('fsaPapelModalMsg').textContent='';
   fsaPapelIrEtapa(2);
@@ -938,15 +1034,32 @@ function fsaPapelConfirmar(){
     .withSuccessHandler(function(res){
       if (btn) { btn.disabled = false; btn.textContent = '✓ Confirmar e registrar ficha'; }
       if (!res || !res.sucesso) { alert((res && res.mensagem) || 'Falha ao registrar a ficha.'); return; }
-      document.getElementById('fsaPapelSucessoDados').innerHTML =
-        '<div class="fsa-campo"><b>Ficha:</b> '+fsaEsc(res.idFicha)+'</div>'+
-        '<div class="fsa-campo">'+fsaEsc(res.mensagem||'')+'</div>';
-      fsaPapelIrEtapa(3);
+      FSA_PAPEL_RESULTADOS.push({ idFicha: res.idFicha, nome: payload.nome });
+      FSA_PAPEL_INDICE++;
+      fsaPapelProcessarProximo();
     })
     .withFailureHandler(function(err){
       if (btn) { btn.disabled = false; btn.textContent = '✓ Confirmar e registrar ficha'; }
       alert('Erro: ' + ((err && err.message) || err));
     })
     .confirmarFiliacaoPapelIA(payload, SISGEP_TOKEN_SESSAO);
+}
+
+function fsaPapelMostrarConcluido(){
+  var status = document.getElementById('fsaPapelStatus'); if (status) status.textContent = '';
+  var btn = document.getElementById('fsaPapelBtnAnalisar');
+  if (btn) { btn.disabled = false; btn.textContent = '🔎 Analisar formulário'; }
+  var progresso = document.getElementById('fsaPapelProgresso');
+  if (progresso) { progresso.style.display = 'none'; progresso.textContent = ''; }
+
+  var caixa = document.getElementById('fsaPapelSucessoDados');
+  if (!FSA_PAPEL_RESULTADOS.length) {
+    caixa.innerHTML = '<div class="fsa-campo">Nenhuma ficha foi registrada nesta rodada.</div>';
+  } else {
+    caixa.innerHTML = FSA_PAPEL_RESULTADOS.map(function(r){
+      return '<div class="fsa-campo"><b>'+fsaEsc(r.idFicha)+'</b> — '+fsaEsc(r.nome)+'</div>';
+    }).join('');
+  }
+  fsaPapelIrEtapa(3);
 }
 </script>
