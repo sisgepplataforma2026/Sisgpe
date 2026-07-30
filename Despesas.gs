@@ -2353,6 +2353,32 @@ function cancelarDespesa(payload, tokenSessao) {
   } catch (e) { return { ok: false, mensagem: e.message }; }
 }
 
+function removerAnexoDespesa(payload, tokenSessao) {
+  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  try {
+    payload = payload || {};
+    var idDespesa = String(payload.idDespesa || "").trim();
+    if (!idDespesa) return { ok: false, mensagem: "ID da despesa não informado." };
+    var despInfo = localizarLinhaDespesaPorId_(idDespesa);
+    if (!despInfo) return { ok: false, mensagem: "Despesa não encontrada." };
+    var idxStatus = (despInfo.headerMap["STATUS"] || 0) - 1;
+    var statusAtual = idxStatus > -1 ? String(despInfo.row[idxStatus] || "").trim() : "";
+    if (statusAtual === STATUS_DESPESA.PAGO || statusAtual === STATUS_DESPESA.ENVIADO_CONTABILIDADE || statusAtual === STATUS_DESPESA.ESTORNADO) {
+      return { ok: false, mensagem: "Não é possível remover o anexo de uma despesa já paga, enviada à contabilidade ou estornada." };
+    }
+    var obs = "Anexo removido por " + (sessao.email || sessao.usuario || "SISGEP") + " em " + agoraFormatadoDesp_() + ".";
+    atualizarCamposDespesa_(idDespesa, {
+      "STATUS":               STATUS_DESPESA.PENDENTE,
+      "LINK_DOCUMENTO":       "",
+      "FILE_ID_DOCUMENTO":    "",
+      "NOME_ARQUIVO":         "",
+      "DATA_RECEBIMENTO_DOC": "",
+      "OBSERVACOES":          obs
+    });
+    return { ok: true, mensagem: "Anexo removido. A despesa voltou para Pendente." };
+  } catch (e) { return { ok: false, mensagem: e.message }; }
+}
+
 function editarDespesa(payload, tokenSessao) {
   var sessao = exigirSessaoDocumentos_(tokenSessao, false);
   try {
