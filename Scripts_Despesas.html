@@ -311,13 +311,13 @@
     if(st==="DOC_RECEBIDO"){
       acoes+='<button class="ac-btn ac-amber" data-acao="anexar" data-idx="'+idx+'">📎 Ver Doc</button>';
       acoes+='<button class="ac-btn" data-acao="remover-anexo" data-idx="'+idx+'" style="height:26px;padding:0 9px;border-radius:7px;border:1.5px solid #fca5a5;background:#fef2f2;color:#991b1b;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:\'Plus Jakarta Sans\',sans-serif;" title="Remove o documento anexado e volta a despesa para Pendente">↩ Remover Anexo</button>';
-    } else if(st!=="PAGO"&&st!=="CANCELADO"&&st!=="ENVIADO_CONTABILIDADE"){
+    } else if(st!=="PAGO"&&st!=="CANCELADO"&&st!=="ENVIADO_CONTABILIDADE"&&st!=="ESTORNADO"){
       acoes+='<button class="ac-btn ac-amber" data-acao="anexar" data-idx="'+idx+'">📎 Anexar</button>';
     }
     if(st==="CANCELADO"){
       acoes+='<button class="ac-btn" data-acao="remover-anexo" data-idx="'+idx+'" style="height:26px;padding:0 9px;border-radius:7px;border:1.5px solid #86efac;background:#f0fdf4;color:#166534;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:\'Plus Jakarta Sans\',sans-serif;" title="Reativa a despesa e volta para Pendente">↺ Reativar</button>';
     }
-    if(st!=="PAGO"&&st!=="CANCELADO"&&st!=="ENVIADO_CONTABILIDADE"){
+    if(st!=="PAGO"&&st!=="CANCELADO"&&st!=="ENVIADO_CONTABILIDADE"&&st!=="ESTORNADO"){
       acoes+='<button class="ac-btn ac-edit" data-acao="editar" data-idx="'+idx+'">✏️</button>';
     }
     if(st!=="PAGO"&&st!=="CANCELADO"&&st!=="ESTORNADO"){
@@ -329,6 +329,9 @@
     }
     if(st==="PAGO"){
       acoes+='<button class="ac-btn" data-acao="estornar" data-idx="'+idx+'" style="height:26px;padding:0 9px;border-radius:7px;border:1.5px solid #c4b5fd;background:#f5f3ff;color:#5b21b6;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:\'Plus Jakarta Sans\',sans-serif;" title="Estornar pagamento">↩ Estornar</button>';
+    }
+    if(st==="ENVIADO_CONTABILIDADE"){
+      acoes+='<button class="ac-btn" data-acao="desfazer-envio" data-idx="'+idx+'" style="height:26px;padding:0 9px;border-radius:7px;border:1.5px solid #fca5a5;background:#fef2f2;color:#991b1b;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:\'Plus Jakarta Sans\',sans-serif;" title="Desfaz o envio à contabilidade e volta para Documento Recebido">↩ Desfazer Envio</button>';
     }
     if(st==="PENDENTE"||st==="AGUARDANDO_DOC"||st==="CANCELADO"){
       acoes+='<button class="ac-btn ac-red" data-acao="excluir" data-idx="'+idx+'">🗑️</button>';
@@ -355,6 +358,7 @@
         if(acao==="estornar")     abrirModalEstornar(d.idDespesa,d.prestadorNome);
         if(acao==="cancelar")     abrirModalCancelar(d.idDespesa,d.prestadorNome);
         if(acao==="remover-anexo") removerAnexoUI(d.idDespesa,d.prestadorNome,d.status);
+        if(acao==="desfazer-envio") desfazerEnvioContabilidadeUI(d.idDespesa,d.prestadorNome);
         if(acao==="editar")       abrirModalEditar(d);
         if(acao==="excluir")      abrirModalExcluir(d.idDespesa,d.prestadorNome,d.status);
         if(acao==="duplicar")     abrirModalDuplicar(d);
@@ -909,6 +913,17 @@
       })
       .withFailureHandler(function(e){ showToast("Erro: "+e.message,"error"); })
       .removerAnexoDespesa({ idDespesa:idDespesa }, SISGEP_TOKEN_SESSAO);
+  }
+
+  function desfazerEnvioContabilidadeUI(idDespesa,nome){
+    if(!confirm('Desfazer o envio à contabilidade de "'+nome+'"? Ela volta para Documento Recebido e o link já enviado deixa de funcionar.')) return;
+    google.script.run
+      .withSuccessHandler(function(resp){
+        if(resp&&resp.ok){ showToast("↩ "+resp.mensagem,"success"); todasDespesas=[]; window.todasDespesas=[]; carregarLista(); carregarDashboard(); }
+        else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
+      })
+      .withFailureHandler(function(e){ showToast("Erro: "+e.message,"error"); })
+      .cancelarEnvioContabilidadeDespesa({ idDespesa:idDespesa }, SISGEP_TOKEN_SESSAO);
   }
 
   function abrirModalEstornar(idDespesa,nome){

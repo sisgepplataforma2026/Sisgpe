@@ -1155,9 +1155,10 @@ function uploadDocumentoManual(dadosUpload) {
     var numero      = get("NUMERO_DESPESA");
     var statusAtual = get("STATUS");
 
-    // Não permite sobrescrever se já enviado à contabilidade ou pago
-    if (statusAtual === STATUS_DESPESA.ENVIADO_CONTABILIDADE || statusAtual === STATUS_DESPESA.PAGO) {
-      return { ok: false, mensagem: "Despesa já enviada à contabilidade ou paga. Não é possível substituir o documento." };
+    // Não permite anexar em despesa já enviada, paga, cancelada ou estornada
+    if (statusAtual === STATUS_DESPESA.ENVIADO_CONTABILIDADE || statusAtual === STATUS_DESPESA.PAGO ||
+        statusAtual === STATUS_DESPESA.CANCELADO || statusAtual === STATUS_DESPESA.ESTORNADO) {
+      return { ok: false, mensagem: "Não é possível anexar documento a uma despesa enviada à contabilidade, paga, cancelada ou estornada." };
     }
 
     var pasta      = obterPastaDesp_();
@@ -2448,6 +2449,38 @@ function removerAnexoDespesa(payload, tokenSessao) {
   } catch (e) { return { ok: false, mensagem: e.message }; }
 }
 
+// Desfaz o envio de uma despesa à contabilidade (ex.: enviada por engano,
+// fornecedor/valor errado). Invalida o token público já emitido e volta a
+// despesa para DOC_RECEBIDO, mantendo o documento anexado.
+function cancelarEnvioContabilidadeDespesa(payload, tokenSessao) {
+  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  try {
+    payload = payload || {};
+    var idDespesa = String(payload.idDespesa || "").trim();
+    if (!idDespesa) return { ok: false, mensagem: "ID da despesa não informado." };
+    var despInfo = localizarLinhaDespesaPorId_(idDespesa);
+    if (!despInfo) return { ok: false, mensagem: "Despesa não encontrada." };
+    var idxStatus = (despInfo.headerMap["STATUS"] || 0) - 1;
+    var statusAtual = idxStatus > -1 ? String(despInfo.row[idxStatus] || "").trim() : "";
+    if (statusAtual !== STATUS_DESPESA.ENVIADO_CONTABILIDADE) {
+      return { ok: false, mensagem: "Só é possível desfazer o envio de uma despesa que está com a contabilidade." };
+    }
+
+    var idxToken = (despInfo.headerMap["TOKEN_CONTABILIDADE"] || 0) - 1;
+    var tokenAtual = idxToken > -1 ? String(despInfo.row[idxToken] || "").trim() : "";
+    if (tokenAtual) invalidarTokenDesp_("TOKEN_CONT_DESP_" + tokenAtual);
+
+    var obs = "Envio à contabilidade desfeito por " + (sessao.email || sessao.usuario || "SISGEP") + " em " + agoraFormatadoDesp_() + ".";
+    atualizarCamposDespesa_(idDespesa, {
+      "STATUS":                   STATUS_DESPESA.DOC_RECEBIDO,
+      "TOKEN_CONTABILIDADE":      "",
+      "DATA_ENVIO_CONTABILIDADE": "",
+      "OBSERVACOES":              obs
+    });
+    return { ok: true, mensagem: "Envio à contabilidade desfeito. A despesa voltou para Documento Recebido." };
+  } catch (e) { return { ok: false, mensagem: e.message }; }
+}
+
 function editarDespesa(payload, tokenSessao) {
   var sessao = exigirSessaoDocumentos_(tokenSessao, false);
   try {
@@ -2457,6 +2490,12 @@ function editarDespesa(payload, tokenSessao) {
     if (!idDespesa) return { ok: false, mensagem: "ID não informado." };
     var despInfo = localizarLinhaDespesaPorId_(idDespesa);
     if (!despInfo) return { ok: false, mensagem: "Despesa não encontrada." };
+    var idxStatusEd = (despInfo.headerMap["STATUS"] || 0) - 1;
+    var statusAtualEd = idxStatusEd > -1 ? String(despInfo.row[idxStatusEd] || "").trim() : "";
+    if (statusAtualEd === STATUS_DESPESA.PAGO || statusAtualEd === STATUS_DESPESA.CANCELADO ||
+        statusAtualEd === STATUS_DESPESA.ENVIADO_CONTABILIDADE || statusAtualEd === STATUS_DESPESA.ESTORNADO) {
+      return { ok: false, mensagem: "Não é possível editar uma despesa paga, cancelada, enviada à contabilidade ou estornada." };
+    }
     var idxValor = (despInfo.headerMap["VALOR"] || 0) - 1;
     var valorAnterior = idxValor > -1 ? String(despInfo.row[idxValor] || "").trim() : "";
     var campos = {};
