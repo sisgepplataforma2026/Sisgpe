@@ -1,0 +1,300 @@
+<style>
+.brs-wrap{padding:24px;max-width:1220px;margin:0 auto;color:#172033;font-family:'Plus Jakarta Sans',sans-serif}
+.brs-header{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;flex-wrap:wrap;margin-bottom:18px}
+.brs-header h2{font-size:22px;font-weight:900;color:#0f172a;margin:0 0 6px}
+.brs-header p{font-size:13px;color:#64748b;margin:0}
+.brs-btn{height:38px;border:0;border-radius:10px;padding:0 14px;font-weight:800;cursor:pointer;background:#e2e8f0;color:#172033}
+.brs-btn.primary{background:#0b3b75;color:#fff}
+.brs-kpis{display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:10px;margin-bottom:14px}
+.brs-kpi{border:1px solid #e2e8f0;background:#fff;border-radius:13px;padding:14px}
+.brs-kpi span{display:block;color:#64748b;font-size:10px;text-transform:uppercase;font-weight:800}
+.brs-kpi strong{display:block;color:#0b3b75;font-size:24px;margin-top:5px}
+.brs-toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+.brs-toolbar input,.brs-toolbar select{height:38px;border:1px solid #cbd5e1;border-radius:9px;padding:0 12px;font-size:13px}
+.brs-table-wrap{background:#fff;border:1px solid #e2e8f0;border-radius:13px;overflow:auto}
+.brs-table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:820px}
+.brs-table th{text-align:left;padding:10px 12px;background:#eef3f9;color:#0b3b75;font-weight:800;white-space:nowrap;position:sticky;top:0}
+.brs-table td{padding:10px 12px;border-top:1px solid #eef2f7;color:#334155;vertical-align:top}
+.brs-badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:10.5px;font-weight:800}
+.brs-badge.PENDENTE{background:#fef3c7;color:#92400e}
+.brs-badge.APROVADA{background:#d1fae5;color:#065f46}
+.brs-badge.RECUSADA{background:#fee2e2;color:#991b1b}
+.brs-badge.CANCELADA{background:#e2e8f0;color:#475569}
+.brs-badge.FINALIZADA{background:#dbeafe;color:#1e3a8a}
+.brs-acoes{display:flex;gap:6px;flex-wrap:wrap}
+.brs-acoes button{border:0;border-radius:7px;padding:6px 9px;font-size:10.5px;font-weight:800;cursor:pointer;background:#eef2f7;color:#334155}
+.brs-acoes button.ok{background:#d1fae5;color:#065f46}
+.brs-acoes button.erro{background:#fee2e2;color:#991b1b}
+.brs-vazio{padding:28px;text-align:center;color:#64748b}
+.brs-modal-bg{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:9500;align-items:center;justify-content:center}
+.brs-modal-bg.show{display:flex}
+.brs-modal{background:#fff;border-radius:16px;padding:22px;width:min(520px,92vw);max-height:88vh;overflow:auto}
+.brs-modal h3{margin:0 0 14px;color:#0f172a;font-size:16px}
+.brs-field{margin-bottom:12px}
+.brs-field label{display:block;font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:4px}
+.brs-field input,.brs-field select,.brs-field textarea{width:100%;height:38px;border:1px solid #cbd5e1;border-radius:9px;padding:0 12px;font-size:13px;font-family:inherit;box-sizing:border-box}
+.brs-field textarea{height:64px;padding:8px 12px;resize:vertical}
+.brs-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.brs-disp-msg{font-size:11.5px;margin-top:6px;padding:7px 10px;border-radius:8px}
+.brs-disp-msg.ok{background:#d1fae5;color:#065f46}
+.brs-disp-msg.erro{background:#fee2e2;color:#991b1b}
+.brs-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.brs-check{display:flex;align-items:center;gap:8px;font-size:12.5px;color:#334155;margin-bottom:12px}
+</style>
+
+<script>
+var BRS_TIPOS_LABEL = { GURIRI_BEACH: "Guriri Beach Acqua Park", ASSEFAZ: "Pousada Club Assefaz" };
+var _brsEstado = {};
+
+function brsInicializarPainel(idContainer, tipo) {
+  var container = document.getElementById(idContainer);
+  if (!container) return;
+  var label = BRS_TIPOS_LABEL[tipo] || tipo;
+  var p = "brs_" + tipo + "_";
+  _brsEstado[tipo] = { dados: [] };
+
+  container.innerHTML =
+    '<div class="brs-wrap">' +
+      '<div class="brs-header"><div><h2>' + label + '</h2><p>Reservas por data, disponibilidade e aprovações.</p></div>' +
+        '<button type="button" class="brs-btn primary" onclick="brsAbrirModal(\'' + tipo + '\')">+ Nova reserva</button></div>' +
+      '<div class="brs-kpis">' +
+        '<div class="brs-kpi"><span>Total</span><strong id="' + p + 'kpiTotal">—</strong></div>' +
+        '<div class="brs-kpi"><span>Aprovadas</span><strong id="' + p + 'kpiAprovadas">—</strong></div>' +
+        '<div class="brs-kpi"><span>Aguardando</span><strong id="' + p + 'kpiPendentes">—</strong></div>' +
+        '<div class="brs-kpi"><span>Próximas</span><strong id="' + p + 'kpiProximas">—</strong></div>' +
+      '</div>' +
+      '<div class="brs-toolbar">' +
+        '<input type="text" id="' + p + 'busca" placeholder="Buscar por nome, CPF ou protocolo…" oninput="brsFiltrar(\'' + tipo + '\')" style="flex:1;min-width:220px;">' +
+        '<select id="' + p + 'filtroStatus" onchange="brsFiltrar(\'' + tipo + '\')">' +
+          '<option value="">Todos os status</option>' +
+          '<option value="PENDENTE">Aguardando aprovação</option>' +
+          '<option value="APROVADA">Aprovada</option>' +
+          '<option value="RECUSADA">Recusada</option>' +
+          '<option value="CANCELADA">Cancelada</option>' +
+        '</select>' +
+        '<button type="button" class="brs-btn" onclick="brsCarregar(\'' + tipo + '\')">↻ Atualizar</button>' +
+      '</div>' +
+      '<div class="brs-table-wrap"><table class="brs-table"><thead><tr>' +
+        '<th>Protocolo</th><th>Solicitante</th><th>CPF</th><th>Entrada</th><th>Saída</th><th>Pessoas</th><th>Status</th><th>Ações</th>' +
+      '</tr></thead><tbody id="' + p + 'tbody"><tr><td colspan="8"><div class="brs-vazio">Carregando…</div></td></tr></tbody></table></div>' +
+    '</div>' +
+
+    '<div class="brs-modal-bg" id="' + p + 'modalBg"><div class="brs-modal">' +
+      '<h3>Nova reserva — ' + label + '</h3>' +
+      '<div class="brs-grid2">' +
+        '<div class="brs-field"><label>Nome do associado</label><input type="text" id="' + p + 'fNome"></div>' +
+        '<div class="brs-field"><label>CPF</label><input type="text" id="' + p + 'fCpf"></div>' +
+      '</div>' +
+      '<div class="brs-grid2">' +
+        '<div class="brs-field"><label>Telefone</label><input type="text" id="' + p + 'fTelefone"></div>' +
+        '<div class="brs-field"><label>E-mail</label><input type="email" id="' + p + 'fEmail"></div>' +
+      '</div>' +
+      '<div class="brs-field"><label>Escola/Vínculo</label><input type="text" id="' + p + 'fEscola"></div>' +
+      '<div class="brs-grid2">' +
+        '<div class="brs-field"><label>Data de entrada</label><input type="date" id="' + p + 'fEntrada" onchange="brsChecarDisponibilidade(\'' + tipo + '\')"></div>' +
+        '<div class="brs-field"><label>Data de saída</label><input type="date" id="' + p + 'fSaida" onchange="brsChecarDisponibilidade(\'' + tipo + '\')"></div>' +
+      '</div>' +
+      '<div class="brs-field"><label>Quantidade de pessoas</label><input type="number" min="1" value="1" id="' + p + 'fPessoas"></div>' +
+      '<div class="brs-field"><label>Observação</label><textarea id="' + p + 'fObs"></textarea></div>' +
+      '<div id="' + p + 'dispMsg"></div>' +
+      '<label class="brs-check"><input type="checkbox" id="' + p + 'fJaConfirmada" checked> Já confirmada com o associado (aprovar direto)</label>' +
+      '<div class="brs-modal-actions">' +
+        '<button type="button" class="brs-btn" onclick="brsFecharModal(\'' + tipo + '\')">Cancelar</button>' +
+        '<button type="button" class="brs-btn primary" onclick="brsSalvarReserva(\'' + tipo + '\')">Salvar reserva</button>' +
+      '</div>' +
+    '</div></div>';
+
+  brsCarregar(tipo);
+}
+
+function brsToken_() { return (typeof SISGEP_TOKEN_SESSAO !== "undefined") ? SISGEP_TOKEN_SESSAO : ""; }
+function brsAvisar_(msg, tipoMsg) {
+  if (typeof toast === "function") toast(msg, tipoMsg === "erro" ? "erro" : "ok");
+  else alert(msg);
+}
+
+function brsCarregar(tipo) {
+  var p = "brs_" + tipo + "_";
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (!r || !r.ok) { brsAvisar_("Erro ao carregar: " + (r && r.mensagem), "erro"); return; }
+      _brsEstado[tipo].dados = r.itens || [];
+      brsFiltrar(tipo);
+    })
+    .withFailureHandler(function(e) { brsAvisar_("Erro ao carregar: " + (e && e.message ? e.message : e), "erro"); })
+    .listarReservasBeneficioSimples(tipo, {}, brsToken_());
+
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (!r || !r.ok) return;
+      var g = function(id) { return document.getElementById(id); };
+      if (g(p + "kpiTotal")) g(p + "kpiTotal").textContent = r.indicadores.total;
+      if (g(p + "kpiAprovadas")) g(p + "kpiAprovadas").textContent = r.indicadores.aprovadas;
+      if (g(p + "kpiPendentes")) g(p + "kpiPendentes").textContent = r.indicadores.pendentes;
+      if (g(p + "kpiProximas")) g(p + "kpiProximas").textContent = r.indicadores.proximas;
+    })
+    .withFailureHandler(function() {})
+    .getDashboardBeneficioSimples(tipo, brsToken_());
+}
+
+function brsFiltrar(tipo) {
+  var p = "brs_" + tipo + "_";
+  var busca = (document.getElementById(p + "busca").value || "").toLowerCase().trim();
+  var status = document.getElementById(p + "filtroStatus").value;
+  var itens = (_brsEstado[tipo].dados || []).filter(function(r) {
+    if (status && r.status !== status) return false;
+    if (!busca) return true;
+    return String(r.nomeSolicitante || "").toLowerCase().indexOf(busca) >= 0 ||
+      String(r.cpf || "").indexOf(busca.replace(/\D/g, "")) >= 0 ||
+      String(r.idReserva || "").toLowerCase().indexOf(busca) >= 0;
+  });
+  brsRenderTabela_(tipo, itens);
+}
+
+function brsEsc_(v) { return String(v == null ? "" : v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function brsFormatarData_(v) {
+  if (!v) return "—";
+  var partes = String(v).split("-");
+  return partes.length === 3 ? partes[2] + "/" + partes[1] + "/" + partes[0] : v;
+}
+
+function brsRenderTabela_(tipo, itens) {
+  var p = "brs_" + tipo + "_";
+  var tbody = document.getElementById(p + "tbody");
+  if (!tbody) return;
+  if (!itens.length) { tbody.innerHTML = '<tr><td colspan="8"><div class="brs-vazio">Nenhuma reserva encontrada.</div></td></tr>'; return; }
+
+  tbody.innerHTML = itens.map(function(r) {
+    var acoes = "";
+    if (r.status === "PENDENTE") {
+      acoes += '<button class="ok" onclick="brsAprovar(\'' + tipo + '\',\'' + r.idReserva + '\')">Aprovar</button>';
+      acoes += '<button class="erro" onclick="brsRecusar(\'' + tipo + '\',\'' + r.idReserva + '\')">Recusar</button>';
+    }
+    if (r.status === "APROVADA") {
+      acoes += '<button class="erro" onclick="brsCancelar(\'' + tipo + '\',\'' + r.idReserva + '\')">Cancelar</button>';
+    }
+    return '<tr>' +
+      '<td>' + brsEsc_(r.idReserva) + '</td>' +
+      '<td>' + brsEsc_(r.nomeSolicitante) + (r.escola ? '<br><small style="color:#94a3b8">' + brsEsc_(r.escola) + '</small>' : '') + '</td>' +
+      '<td>' + brsEsc_(r.cpf) + '</td>' +
+      '<td>' + brsFormatarData_(r.dataEntrada) + '</td>' +
+      '<td>' + brsFormatarData_(r.dataSaida) + '</td>' +
+      '<td>' + brsEsc_(r.qtdPessoas) + '</td>' +
+      '<td><span class="brs-badge ' + r.status + '">' + brsEsc_(r.status) + '</span>' +
+        (r.status === "RECUSADA" && r.motivoRecusa ? '<br><small style="color:#94a3b8">' + brsEsc_(r.motivoRecusa) + '</small>' : '') + '</td>' +
+      '<td><div class="brs-acoes">' + acoes + '</div></td>' +
+    '</tr>';
+  }).join("");
+}
+
+function brsAbrirModal(tipo) {
+  var p = "brs_" + tipo + "_";
+  ["fNome","fCpf","fTelefone","fEmail","fEscola","fEntrada","fSaida","fObs"].forEach(function(campo) {
+    var el = document.getElementById(p + campo); if (el) el.value = "";
+  });
+  document.getElementById(p + "fPessoas").value = 1;
+  document.getElementById(p + "fJaConfirmada").checked = true;
+  document.getElementById(p + "dispMsg").innerHTML = "";
+  document.getElementById(p + "modalBg").classList.add("show");
+}
+
+function brsFecharModal(tipo) {
+  document.getElementById("brs_" + tipo + "_modalBg").classList.remove("show");
+}
+
+function brsChecarDisponibilidade(tipo) {
+  var p = "brs_" + tipo + "_";
+  var entrada = document.getElementById(p + "fEntrada").value;
+  var saida = document.getElementById(p + "fSaida").value;
+  var msgEl = document.getElementById(p + "dispMsg");
+  if (!entrada || !saida) { msgEl.innerHTML = ""; return; }
+
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (!r) return;
+      if (r.disponivel) msgEl.innerHTML = '<div class="brs-disp-msg ok">✓ Disponível no período informado.</div>';
+      else msgEl.innerHTML = '<div class="brs-disp-msg erro">✗ ' + brsEsc_(r.mensagem) + '</div>';
+    })
+    .withFailureHandler(function() { msgEl.innerHTML = ""; })
+    .consultarDisponibilidadeBeneficioSimples(tipo, entrada, saida, brsToken_());
+}
+
+function brsSalvarReserva(tipo) {
+  var p = "brs_" + tipo + "_";
+  var g = function(id) { return document.getElementById(p + id); };
+  var dados = {
+    nomeSolicitante: g("fNome").value.trim(),
+    cpf: g("fCpf").value.trim(),
+    telefone: g("fTelefone").value.trim(),
+    email: g("fEmail").value.trim(),
+    escola: g("fEscola").value.trim(),
+    dataEntrada: g("fEntrada").value,
+    dataSaida: g("fSaida").value,
+    qtdPessoas: g("fPessoas").value,
+    observacaoSolicitante: g("fObs").value.trim(),
+    statusInicial: g("fJaConfirmada").checked ? "APROVADA" : "PENDENTE"
+  };
+  if (!dados.nomeSolicitante || !dados.cpf) { brsAvisar_("Preencha nome e CPF.", "erro"); return; }
+  if (!dados.dataEntrada || !dados.dataSaida) { brsAvisar_("Preencha as datas de entrada e saída.", "erro"); return; }
+
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (!r || !r.ok) { brsAvisar_(r ? r.mensagem : "Erro ao salvar.", "erro"); return; }
+      brsAvisar_("Reserva " + r.idReserva + " registrada.", "ok");
+      brsFecharModal(tipo);
+      brsCarregar(tipo);
+    })
+    .withFailureHandler(function(e) { brsAvisar_("Erro ao salvar: " + (e && e.message ? e.message : e), "erro"); })
+    .criarReservaBeneficioSimples(tipo, dados, brsToken_());
+}
+
+function brsAprovar(tipo, id) {
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (!r || !r.ok) { brsAvisar_(r ? r.mensagem : "Erro ao aprovar.", "erro"); return; }
+      brsAvisar_("Reserva aprovada.", "ok");
+      brsCarregar(tipo);
+    })
+    .withFailureHandler(function(e) { brsAvisar_("Erro: " + (e && e.message ? e.message : e), "erro"); })
+    .aprovarReservaBeneficioSimples(tipo, id, brsToken_());
+}
+
+function brsRecusar(tipo, id) {
+  var motivo = prompt("Motivo da recusa:", "");
+  if (motivo === null) return;
+  if (!motivo.trim()) { brsAvisar_("Informe o motivo.", "erro"); return; }
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (!r || !r.ok) { brsAvisar_(r ? r.mensagem : "Erro ao recusar.", "erro"); return; }
+      brsAvisar_("Solicitação recusada.", "ok");
+      brsCarregar(tipo);
+    })
+    .withFailureHandler(function(e) { brsAvisar_("Erro: " + (e && e.message ? e.message : e), "erro"); })
+    .recusarReservaBeneficioSimples(tipo, id, motivo, brsToken_());
+}
+
+function brsCancelar(tipo, id) {
+  var motivo = prompt("Motivo do cancelamento:", "");
+  if (motivo === null) return;
+  if (!motivo.trim()) { brsAvisar_("Informe o motivo.", "erro"); return; }
+  if (!confirm("Confirmar o cancelamento desta reserva?")) return;
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (!r || !r.ok) { brsAvisar_(r ? r.mensagem : "Erro ao cancelar.", "erro"); return; }
+      brsAvisar_("Reserva cancelada.", "ok");
+      brsCarregar(tipo);
+    })
+    .withFailureHandler(function(e) { brsAvisar_("Erro: " + (e && e.message ? e.message : e), "erro"); })
+    .cancelarReservaBeneficioSimples(tipo, id, motivo, brsToken_());
+}
+
+function brsIniciarAmbosPaineis_() {
+  brsInicializarPainel("benefSubGuririBeach", "GURIRI_BEACH");
+  brsInicializarPainel("benefSubAssefaz", "ASSEFAZ");
+}
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", brsIniciarAmbosPaineis_);
+} else {
+  brsIniciarAmbosPaineis_();
+}
+</script>
