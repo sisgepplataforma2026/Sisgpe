@@ -2233,7 +2233,7 @@ window.ReciboUI = {
       .withFailureHandler(function(err){
         loader(false);
         alert((err && err.message) || err || "Erro ao salvar processo.");
-      })[metodo](dados);
+      })[metodo](dados, SISGEP_TOKEN_SESSAO);
   },
 
   carregarProcessos: function(callback){

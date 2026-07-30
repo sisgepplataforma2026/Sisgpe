@@ -490,7 +490,7 @@
         else { if(err){ err.textContent="Erro: "+((resp&&resp.mensagem)||"Falha."); err.classList.add("show"); } }
       })
       .withFailureHandler(function(e){ if(btn){ btn.disabled=false; btn.innerHTML="💾 Salvar Despesa"; } if(err){ err.textContent="Erro: "+e.message; err.classList.add("show"); } })
-      .registrarLancamentoDespesa({ tipoLancamento:isAv?"avulso":"recorrente", categoria:categoria, prestadorNome:nome, prestadorDoc:docF, prestadorEmail:emailF, prestadorWhats:whatsF, descricao:desc, valor:valor, dataVencimento:vencBR, quemAgendou:quem, tipoDoc:tipodoc, observacoes:obs });
+      .registrarLancamentoDespesa({ tipoLancamento:isAv?"avulso":"recorrente", categoria:categoria, prestadorNome:nome, prestadorDoc:docF, prestadorEmail:emailF, prestadorWhats:whatsF, descricao:desc, valor:valor, dataVencimento:vencBR, quemAgendou:quem, tipoDoc:tipodoc, observacoes:obs }, SISGEP_TOKEN_SESSAO);
   }
 
   function limparFormNova(){
@@ -671,7 +671,7 @@
         if (btn) { btn.disabled = false; btn.innerHTML = "👁 Prévia do Ofício"; }
         showToast("Erro: " + e.message, "error");
       })
-      .obterPreviewOficioFiscalDesp(ids);
+      .obterPreviewOficioFiscalDesp(ids, SISGEP_TOKEN_SESSAO);
   }
 
   function abrirModalConfirmacaoEnvio() {
@@ -691,7 +691,7 @@
         if (btn) { btn.disabled = false; btn.innerHTML = "📤 Enviar Selecionadas à Contabilidade"; }
         showToast("Erro: " + e.message, "error");
       })
-      .obterPreviewOficioFiscalDesp(ids);
+      .obterPreviewOficioFiscalDesp(ids, SISGEP_TOKEN_SESSAO);
   }
 
   function renderizarModalEnvio(resp) {
@@ -782,7 +782,7 @@
         if(btnConfirmar){ btnConfirmar.disabled=false; btnConfirmar.innerHTML="📤 Confirmar Envio"; }
         showToast("Erro: "+e.message,"error");
       })
-      .enviarLoteDespesasComOficio(payload);
+      .enviarLoteDespesasComOficio(payload, SISGEP_TOKEN_SESSAO);
   }
 
   function exibirModalSucesso(r) {
@@ -835,7 +835,7 @@
         else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
       })
       .withFailureHandler(function(e){ showToast("Erro: "+e.message,"error"); })
-      .marcarDespesaComoPaga({ idDespesa:_idModalAtivo, dataPagamento:dataBR, observacao:(banco?"Banco: "+banco+" | ":"")+obs });
+      .marcarDespesaComoPaga({ idDespesa:_idModalAtivo, dataPagamento:dataBR, observacao:(banco?"Banco: "+banco+" | ":"")+obs }, SISGEP_TOKEN_SESSAO);
   }
 
   function abrirModalCancelar(idDespesa,nome){
@@ -854,7 +854,7 @@
         else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
       })
       .withFailureHandler(function(e){ showToast("Erro: "+e.message,"error"); })
-      .cancelarDespesa({ idDespesa:_idModalAtivo, observacao:obs||"Cancelado manualmente." });
+      .cancelarDespesa({ idDespesa:_idModalAtivo, observacao:obs||"Cancelado manualmente." }, SISGEP_TOKEN_SESSAO);
   }
 
   function abrirModalSolicitarNF(d){
@@ -969,7 +969,7 @@
         else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
       })
       .withFailureHandler(function(e){ if(btn){ btn.disabled=false; btn.innerHTML="💾 Salvar Alterações"; } showToast("Erro: "+e.message,"error"); })
-      .editarDespesa({ idDespesa:_idModalAtivo, prestadorNome:val("pe-nome"), prestadorEmail:val("pe-email"), prestadorWhats:val("pe-whats"), categoria:val("pe-categoria"), tipoDoc:val("pe-tipodoc"), valor:val("pe-valor"), dataVencimento:vencBR, quemAgendou:val("pe-quem"), descricao:val("pe-desc"), observacoes:val("pe-obs") });
+      .editarDespesa({ idDespesa:_idModalAtivo, prestadorNome:val("pe-nome"), prestadorEmail:val("pe-email"), prestadorWhats:val("pe-whats"), categoria:val("pe-categoria"), tipoDoc:val("pe-tipodoc"), valor:val("pe-valor"), dataVencimento:vencBR, quemAgendou:val("pe-quem"), descricao:val("pe-desc"), observacoes:val("pe-obs") }, SISGEP_TOKEN_SESSAO);
   }
 
   function abrirModalExcluir(idDespesa,nome){
@@ -989,7 +989,7 @@
         else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
       })
       .withFailureHandler(function(e){ showToast("Erro: "+e.message,"error"); })
-      .cancelarDespesa({ idDespesa:_idModalAtivo, observacao:obs });
+      .cancelarDespesa({ idDespesa:_idModalAtivo, observacao:obs }, SISGEP_TOKEN_SESSAO);
   }
 
   /* ═══ BADGES ═══ */
@@ -1165,7 +1165,7 @@
         else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
       })
       .withFailureHandler(function(e){ showToast("Erro: "+e.message,"error"); })
-      .duplicarDespesa({ idDespesa:_idModalAtivo, novoVencimento:vencBR });
+      .duplicarDespesa({ idDespesa:_idModalAtivo, novoVencimento:vencBR }, SISGEP_TOKEN_SESSAO);
   }
 
   /* ═══ GERAR LOTE ═══ */
@@ -1197,7 +1197,7 @@
         if(content) content.innerHTML=html;
       })
       .withFailureHandler(function(e){ if(btn){ btn.disabled=false; btn.textContent="⚡ Gerar Despesas"; } showToast("Erro: "+e.message,"error"); })
-      .gerarDespesasEmLote({ mes:mes, ano:ano });
+      .gerarDespesasEmLote({ mes:mes, ano:ano }, SISGEP_TOKEN_SESSAO);
   }
 
   /* ═══ AJUSTE RECORRÊNCIA ═══ */

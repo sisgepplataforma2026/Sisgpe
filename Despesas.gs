@@ -886,7 +886,23 @@ function invalidarTokenDesp_(chaveCompleta) {
  *
  * Para despesa AVULSA: prestadorNome é texto livre, sem vínculo com cadastro.
  */
-function registrarLancamentoDespesa(dados) {
+/**
+ * Ponto de entrada chamado pela tela (Scripts_Despesas.html) — exige sessão
+ * válida antes de gravar qualquer despesa manual/avulsa.
+ */
+function registrarLancamentoDespesa(dados, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
+  return registrarLancamentoDespesa_(dados);
+}
+
+/**
+ * Lógica interna de gravação — sem checagem de sessão própria, porque
+ * também é chamada por rotinas automáticas/em lote (gerarLancamentosAutomaticos_,
+ * gerarDespesasEmLote, duplicarDespesa) que já validam (ou não precisam
+ * validar, por serem disparadas por trigger) antes de chegar aqui. Nunca
+ * exponha esta função (com underscore) direto a uma tela.
+ */
+function registrarLancamentoDespesa_(dados) {
   try {
     dados = dados || {};
     function limpar(v) { return String(v || "").trim(); }
@@ -963,7 +979,7 @@ function registrarLancamentoDespesa(dados) {
     };
 
   } catch (erro) {
-    Logger.log("Erro registrarLancamentoDespesa: " + erro.message);
+    Logger.log("Erro registrarLancamentoDespesa_: " + erro.message);
     return { ok: false, mensagem: erro.message };
   }
 }
@@ -1102,7 +1118,7 @@ function gerarLancamentosAutomaticos_() {
       var ehVariavel = !valorBruto || valorBruto.indexOf("vari") > -1 || valorBruto.indexOf("cart") > -1;
       var valor      = ehVariavel ? "variável" : String(forn.valor || "").trim();
 
-      var resultado = registrarLancamentoDespesa({
+      var resultado = registrarLancamentoDespesa_({
         tipoLancamento: TIPO_LANCAMENTO_DESP.RECORRENTE,
         categoria:      forn.categoria || CATEGORIAS_DESPESA.FORNECEDOR_FIXO,
         prestadorNome:  nome,
@@ -1997,7 +2013,8 @@ function listarDespesasPendentes() { return listarDespesas({ ocultarPagos: true,
 
 /* ================= AÇÕES MANUAIS ================= */
 
-function marcarDespesaComoPaga(payload) {
+function marcarDespesaComoPaga(payload, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     payload = payload || {};
     var idDespesa     = String(payload.idDespesa     || "").trim();
@@ -2011,7 +2028,8 @@ function marcarDespesaComoPaga(payload) {
   } catch (e) { return { ok: false, mensagem: e.message }; }
 }
 
-function cancelarDespesa(payload) {
+function cancelarDespesa(payload, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     payload = payload || {};
     var idDespesa  = String(payload.idDespesa  || "").trim();
@@ -2024,7 +2042,8 @@ function cancelarDespesa(payload) {
   } catch (e) { return { ok: false, mensagem: e.message }; }
 }
 
-function editarDespesa(payload) {
+function editarDespesa(payload, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     payload = payload || {};
     var idDespesa = String(payload.idDespesa || "").trim();
@@ -2242,7 +2261,7 @@ function testeSetupModuloDespesas() {
 }
 
 function testeRegistrarLancamentoRecorrente() {
-  return registrarLancamentoDespesa({
+  return registrarLancamentoDespesa_({
     tipoLancamento: TIPO_LANCAMENTO_DESP.RECORRENTE,
     categoria:      CATEGORIAS_DESPESA.CONTA_MENSAL,
     prestadorNome:  "EDP - Sala Térreo",
@@ -2255,7 +2274,7 @@ function testeRegistrarLancamentoRecorrente() {
 }
 
 function testeRegistrarLancamentoAvulso() {
-  return registrarLancamentoDespesa({
+  return registrarLancamentoDespesa_({
     tipoLancamento: TIPO_LANCAMENTO_DESP.AVULSO,
     categoria:      CATEGORIAS_DESPESA.MATERIAL,
     prestadorNome:  "Mercado do Bairro",
@@ -2606,7 +2625,8 @@ function cancelarEnvioDespesaLote(idDespesa) {
    prestadores ativos. Pula quem já foi gerado naquele mês.
    payload: { mes: "06", ano: "2026" }  (strings)
    =============================================================== */
-function gerarDespesasEmLote(payload) {
+function gerarDespesasEmLote(payload, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     payload = payload || {};
 
@@ -2657,7 +2677,7 @@ function gerarDespesasEmLote(payload) {
         var ehVariavel = !valorBruto || valorBruto.indexOf("vari") > -1 || valorBruto.indexOf("cart") > -1;
         var valor      = ehVariavel ? "variável" : String(p.valor || "").trim();
 
-        var resultado = registrarLancamentoDespesa({
+        var resultado = registrarLancamentoDespesa_({
           tipoLancamento: TIPO_LANCAMENTO_DESP.RECORRENTE,
           categoria:      p.categoria   || CATEGORIAS_DESPESA.FORNECEDOR_FIXO,
           prestadorNome:  nome,
@@ -2706,7 +2726,8 @@ function gerarDespesasEmLote(payload) {
    Clona uma despesa existente com novo vencimento.
    payload: { idDespesa: "...", novoVencimento: "DD/MM/YYYY" }
    =============================================================== */
-function duplicarDespesa(payload) {
+function duplicarDespesa(payload, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     payload = payload || {};
     var idOrigem      = String(payload.idDespesa      || "").trim();
@@ -2721,7 +2742,7 @@ function duplicarDespesa(payload) {
     var row = despInfo.row; var headerMap = despInfo.headerMap;
     function get(col) { return String(row[(headerMap[col] || 0) - 1] || "").trim(); }
 
-    var resultado = registrarLancamentoDespesa({
+    var resultado = registrarLancamentoDespesa_({
       tipoLancamento: get("TIPO_LANCAMENTO") || TIPO_LANCAMENTO_DESP.RECORRENTE,
       categoria:      get("CATEGORIA"),
       prestadorNome:  get("PRESTADOR_NOME"),

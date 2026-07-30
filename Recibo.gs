@@ -1308,7 +1308,8 @@ function listarBeneficiariosPorProcessoRecibo(idProcesso) {
 }
 
 /* ================= CADASTRAR PROCESSO ================= */
-function cadastrarNovoProcessoRecibo(dados) {
+function cadastrarNovoProcessoRecibo(dados, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   const emailUsuario = obterEmailUsuarioAtual_();
 
   if (!emailUsuario) {
@@ -4096,7 +4097,8 @@ function obterResumoFinanceiroProcesso(idProcesso, tokenSessao) {
 }
 
 /* ================= EDITAR PROCESSO ================= */
-function editarProcessoRecibo(dados) {
+function editarProcessoRecibo(dados, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     dados = dados || {};
 
