@@ -1870,8 +1870,15 @@ window.oposIA_confirmar = oposIA_confirmar;
   function el(id) { return document.getElementById(id); }
 
 function esconderTodos() {
-    ["blocoOficioNovo","blocoOficioHistorico","blocoTaxaAssistencial","blocoMonitoramento","blocoMensalidades","blocoEscolas","centralEmailIA"].forEach(function(id){ if(el(id)) el(id).style.display="none"; });
+    ["blocoOficioNovo","blocoOficioHistorico","blocoTaxaAssistencial","blocoMonitoramento","blocoMensalidades","blocoEscolas","centralEmailIA","sisgepDashboardExecutivo"].forEach(function(id){ if(el(id)) el(id).style.display="none"; });
     ["abaOficioNovo","abaOficioHistorico","abaTaxaAssistencial","abaMonitoramento","abaMensalidades"].forEach(function(id){ if(el(id)) el(id).classList.remove("active"); });
+  }
+
+  function mostrarDashboardExecutivo() {
+    esconderTodos();
+    if(el("sisgepDashboardExecutivo")) el("sisgepDashboardExecutivo").style.display="block";
+    if(typeof window.DashboardExecutivo!=="object" || typeof window.DashboardExecutivo.carregar!=="function") return;
+    window.DashboardExecutivo.carregar();
   }
 
   function mostrarNovoOficio() { esconderTodos(); if(el("blocoOficioNovo")) el("blocoOficioNovo").style.display="block"; if(el("abaOficioNovo")) el("abaOficioNovo").classList.add("active"); }
@@ -1912,11 +1919,13 @@ function mostrarMonitoramento() {
     if(el("btnVoltarEmissao")) el("btnVoltarEmissao").onclick=mostrarNovoOficio;
     if(el("btnAplicarFiltroHist")) el("btnAplicarFiltroHist").onclick=function(){ if(typeof window.carregarHistoricoOficios==="function") window.carregarHistoricoOficios(); else if(typeof Historico!=="undefined") Historico.carregar(); };
     if(el("btnAtualizarMonitoramento")) el("btnAtualizarMonitoramento").onclick=mostrarMonitoramento;
+    if(el("btnAbrirDashboardExecutivo")) el("btnAbrirDashboardExecutivo").onclick=mostrarDashboardExecutivo;
     mostrarNovoOficio();
   }
 
  window.mostrarHistoricoOficio = mostrarHistorico;
   window.mostrarNovoOficio = mostrarNovoOficio;
+  window.mostrarDashboardExecutivo = mostrarDashboardExecutivo;
   window.initAbasOficios = iniciarAbasOficios;
 window.mostrarAbaOficio = function(aba) {
     if (aba === "novo")                  mostrarNovoOficio();
@@ -1924,6 +1933,7 @@ window.mostrarAbaOficio = function(aba) {
     else if (aba === "taxaAssistencial") mostrarTaxaAssistencial();
     else if (aba === "monitoramento")    mostrarMonitoramento();
     else if (aba === "mensalidades")     mostrarMensalidades();
+    else if (aba === "dashboard")        mostrarDashboardExecutivo();
     else if (aba === "escolas") {
       esconderTodos();
       var blocoEsc = el("blocoEscolas");
