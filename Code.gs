@@ -126,8 +126,11 @@ if (p.portal === "associado") {
     // Mesmo problema da rota da contabilidade abaixo: o link já era enviado
     // nos e-mails de D-5/D-3/D-1 pedindo a NF, mas essa rota nunca tinha
     // sido cadastrada aqui — o link do fornecedor nunca abria nada.
+    // PubNFDespesa.html injeta o token via template scriptlet (<?= token ?>).
     if (p.page === "pub-nf-despesa" && p.token) {
-      return HtmlService.createHtmlOutputFromFile("UploadNFFornecedor")
+      var templateNF = HtmlService.createTemplateFromFile("PubNFDespesa");
+      templateNF.token = p.token;
+      return templateNF.evaluate()
         .setTitle("Envio de Documento Fiscal — SindEducação-ES")
         .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
@@ -138,8 +141,9 @@ if (p.portal === "associado") {
     // Link enviado no e-mail de "Enviar à Contabilidade" — sem login, o
     // próprio token identifica a despesa. Rota nunca tinha sido cadastrada
     // aqui, então o link enviado por e-mail nunca abria nada.
+    // PubContabilDespesa.html lê o token da URL no próprio cliente.
     if (p.page === "pub-contabil-despesa" && p.token) {
-      return HtmlService.createHtmlOutputFromFile("ConfirmacaoContabilidadeDespesa")
+      return HtmlService.createHtmlOutputFromFile("PubContabilDespesa")
         .setTitle("Confirmação de Pagamento — SindEducação-ES")
         .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
