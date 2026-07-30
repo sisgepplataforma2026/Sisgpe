@@ -85,17 +85,19 @@ var STATUS_DESPESA = {
 
 var COLUNAS_APROVACAO_DESP = ["APROVADO_PARA_PAGAMENTO", "APROVADO_POR", "DATA_APROVACAO"];
 var COLUNAS_ESTORNO_DESP   = ["DATA_ESTORNO", "ESTORNADO_POR", "MOTIVO_ESTORNO"];
+var COLUNAS_PAGAMENTO_DESP = ["FORMA_PAGAMENTO", "NUMERO_NF"];
 
 /**
- * Garante as colunas de aprovação/estorno na aba DESPESAS — mesmo padrão
- * de finGarantirColunasDespesas_ (CentralFinanceiraIA.gs): só adiciona a
- * coluna que ainda não existe, idempotente, sem exigir setup manual.
+ * Garante as colunas de aprovação/estorno/forma de pagamento na aba
+ * DESPESAS — mesmo padrão de finGarantirColunasDespesas_
+ * (CentralFinanceiraIA.gs): só adiciona a coluna que ainda não existe,
+ * idempotente, sem exigir setup manual.
  */
 function garantirColunasAprovacaoDesp_() {
   var aba = obterAbaDesp_();
   var lastCol = Math.max(aba.getLastColumn(), 1);
   var headers = aba.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h) { return String(h || "").trim(); });
-  COLUNAS_APROVACAO_DESP.concat(COLUNAS_ESTORNO_DESP).forEach(function(col) {
+  COLUNAS_APROVACAO_DESP.concat(COLUNAS_ESTORNO_DESP).concat(COLUNAS_PAGAMENTO_DESP).forEach(function(col) {
     if (headers.indexOf(col) === -1) {
       var prox = aba.getLastColumn() + 1;
       aba.getRange(1, prox).setValue(col);
@@ -964,6 +966,8 @@ function registrarLancamentoDespesa_(dados) {
     var observacoes    = limpar(dados.observacoes);
     var centroCusto    = limpar(dados.centroCusto);
     var projetoId      = limpar(dados.projetoId);
+    var formaPagamento = limpar(dados.formaPagamento);
+    var numeroNf       = limpar(dados.numeroNf);
 
     var tokenFornecedor    = gerarTokenFornecedorDespesa_(idDespesa);
     var tokenContabilidade = gerarTokenContabilidadeDespesa_(idDespesa);
@@ -976,6 +980,7 @@ function registrarLancamentoDespesa_(dados) {
     // essa estrutura já existia (CentralFinanceiraIA.gs) mas dependia de
     // alguém rodar setupCentralFinanceiraIA() manualmente antes. Idempotente.
     if (typeof finGarantirColunasDespesas_ === "function") finGarantirColunasDespesas_();
+    garantirColunasAprovacaoDesp_();
 
     var aba     = obterAbaDesp_();
     var headers = aba.getRange(1, 1, 1, aba.getLastColumn()).getValues()[0];
@@ -1009,6 +1014,8 @@ function registrarLancamentoDespesa_(dados) {
         case "ULTIMA_ATUALIZACAO":  novaLinha.push(agoraFormatadoDesp_()); break;
         case "CENTRO_CUSTO":        novaLinha.push(centroCusto);    break;
         case "PROJETO_ID":          novaLinha.push(projetoId);      break;
+        case "FORMA_PAGAMENTO":     novaLinha.push(formaPagamento); break;
+        case "NUMERO_NF":           novaLinha.push(numeroNf);       break;
         default:                    novaLinha.push("");
       }
     });
@@ -2181,7 +2188,9 @@ function listarDespesas(filtros) {
         dataAprovacao:      String(row[idx("DATA_APROVACAO")]          || ""),
         dataEstorno:        String(row[idx("DATA_ESTORNO")]            || ""),
         estornadoPor:       String(row[idx("ESTORNADO_POR")]           || ""),
-        motivoEstorno:      String(row[idx("MOTIVO_ESTORNO")]          || "")
+        motivoEstorno:      String(row[idx("MOTIVO_ESTORNO")]          || ""),
+        formaPagamento:     String(row[idx("FORMA_PAGAMENTO")]         || ""),
+        numeroNf:           String(row[idx("NUMERO_NF")]               || "")
       };
 
       if (filtros.status           && item.status !== filtros.status) continue;
@@ -2332,6 +2341,7 @@ function editarDespesa(payload, tokenSessao) {
   var sessao = exigirSessaoDocumentos_(tokenSessao, false);
   try {
     payload = payload || {};
+    garantirColunasAprovacaoDesp_();
     var idDespesa = String(payload.idDespesa || "").trim();
     if (!idDespesa) return { ok: false, mensagem: "ID não informado." };
     var despInfo = localizarLinhaDespesaPorId_(idDespesa);
@@ -2356,6 +2366,8 @@ function editarDespesa(payload, tokenSessao) {
     if (payload.observacoes) campos["OBSERVACOES"]  = String(payload.observacoes).trim();
     if (payload.centroCusto !== undefined) campos["CENTRO_CUSTO"] = String(payload.centroCusto).trim();
     if (payload.projetoId   !== undefined) campos["PROJETO_ID"]   = String(payload.projetoId).trim();
+    if (payload.formaPagamento !== undefined) campos["FORMA_PAGAMENTO"] = String(payload.formaPagamento).trim();
+    if (payload.numeroNf       !== undefined) campos["NUMERO_NF"]       = String(payload.numeroNf).trim();
     atualizarCamposDespesa_(idDespesa, campos);
     if (campos["VALOR"]) {
       finAudRegistrarAlteracaoValor_("DESPESAS", idDespesa, valorAnterior, campos["VALOR"],

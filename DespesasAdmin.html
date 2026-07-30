@@ -228,12 +228,12 @@
     <div id="dashboard-loader" class="desp-loader"><div class="desp-spinner"></div>Carregando...</div>
     <div id="dashboard-content" style="display:none;">
       <div class="stats-grid">
-        <div class="stat-card"><div class="stat-label">📋 Total</div><div class="stat-value" id="s-total">—</div><div class="stat-sub" id="s-valor-total">—</div></div>
-        <div class="stat-card red"><div class="stat-label">⚠️ Vencidas</div><div class="stat-value" id="s-vencidas" style="color:#dc2626">—</div><div class="stat-sub">Atenção imediata</div></div>
-        <div class="stat-card amber"><div class="stat-label">⏰ Urgentes ≤5d</div><div class="stat-value" id="s-urgentes" style="color:#d97706">—</div><div class="stat-sub">Vencimento próximo</div></div>
-        <div class="stat-card blue"><div class="stat-label">📋 Doc recebido</div><div class="stat-value" id="s-doc" style="color:#1565C0">—</div><div class="stat-sub">Prontos p/ contabilidade</div></div>
-        <div class="stat-card purple"><div class="stat-label">📤 Contabilidade</div><div class="stat-value" id="s-contab" style="color:#7c3aed">—</div><div class="stat-sub">Aguardando confirmação</div></div>
-        <div class="stat-card green"><div class="stat-label">✅ Pagos</div><div class="stat-value" id="s-pagos" style="color:#059669">—</div><div class="stat-sub" id="s-valor-pago">—</div></div>
+        <div class="stat-card" onclick="irParaDespesasFiltradas('total')" style="cursor:pointer" title="Ver todas as despesas"><div class="stat-label">📋 Total</div><div class="stat-value" id="s-total">—</div><div class="stat-sub" id="s-valor-total">—</div></div>
+        <div class="stat-card red" onclick="irParaDespesasFiltradas('vencidas')" style="cursor:pointer" title="Ver despesas vencidas"><div class="stat-label">⚠️ Vencidas</div><div class="stat-value" id="s-vencidas" style="color:#dc2626">—</div><div class="stat-sub">Atenção imediata</div></div>
+        <div class="stat-card amber" onclick="irParaDespesasFiltradas('urgentes')" style="cursor:pointer" title="Ver despesas urgentes"><div class="stat-label">⏰ Urgentes ≤5d</div><div class="stat-value" id="s-urgentes" style="color:#d97706">—</div><div class="stat-sub">Vencimento próximo</div></div>
+        <div class="stat-card blue" onclick="irParaDespesasFiltradas('doc')" style="cursor:pointer" title="Ver despesas com doc recebido"><div class="stat-label">📋 Doc recebido</div><div class="stat-value" id="s-doc" style="color:#1565C0">—</div><div class="stat-sub">Prontos p/ contabilidade</div></div>
+        <div class="stat-card purple" onclick="irParaDespesasFiltradas('contab')" style="cursor:pointer" title="Ver despesas enviadas à contabilidade"><div class="stat-label">📤 Contabilidade</div><div class="stat-value" id="s-contab" style="color:#7c3aed">—</div><div class="stat-sub">Aguardando confirmação</div></div>
+        <div class="stat-card green" onclick="irParaDespesasFiltradas('pagos')" style="cursor:pointer" title="Ver despesas pagas"><div class="stat-label">✅ Pagos</div><div class="stat-value" id="s-pagos" style="color:#059669">—</div><div class="stat-sub" id="s-valor-pago">—</div></div>
       </div>
       <div class="card-desp" style="margin-bottom:14px;">
         <div class="card-desp-head">
@@ -382,6 +382,10 @@
           <div class="painel-field"><label>Projeto</label>
             <select id="pe-projeto"><option value="">Sem projeto</option></select>
           </div>
+          <div class="painel-field"><label>Forma de pagamento</label>
+            <select id="pe-forma-pagamento"><option value="">Não informado</option><option>PIX</option><option>TED</option><option>Boleto</option><option>Cartão</option><option>Dinheiro</option><option>Outro</option></select>
+          </div>
+          <div class="painel-field"><label>Número da NF</label><input type="text" id="pe-numero-nf" placeholder="Ex: 12345"></div>
           <div class="painel-field pe-full"><label>Descrição</label><input type="text" id="pe-desc" placeholder="Descrição da despesa"></div>
           <div class="painel-field pe-full"><label>Observações</label><input type="text" id="pe-obs" placeholder="Observações adicionais"></div>
         </div>
@@ -570,6 +574,10 @@
         <div class="form-group"><label class="form-label">Projeto <span class="opt">(opcional)</span></label>
           <select id="n-projeto"><option value="">Sem projeto</option></select>
         </div>
+        <div class="form-group"><label class="form-label">Forma de pagamento <span class="opt">(opcional)</span></label>
+          <select id="n-forma-pagamento"><option value="">Não informado</option><option>PIX</option><option>TED</option><option>Boleto</option><option>Cartão</option><option>Dinheiro</option><option>Outro</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Número da NF <span class="opt">(opcional)</span></label><input type="text" id="n-numero-nf" placeholder="Ex: 12345"></div>
         <div class="form-group"><label class="form-label">Descrição <span class="opt">(opcional)</span></label><input type="text" id="n-desc"></div>
         <div class="form-group full"><label class="form-label">Observações <span class="opt">(opcional)</span></label><textarea id="n-obs"></textarea></div>
       </div>

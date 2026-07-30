@@ -510,15 +510,18 @@
         else { if(err){ err.textContent="Erro: "+((resp&&resp.mensagem)||"Falha."); err.classList.add("show"); } }
       })
       .withFailureHandler(function(e){ if(btn){ btn.disabled=false; btn.innerHTML="💾 Salvar Despesa"; } if(err){ err.textContent="Erro: "+e.message; err.classList.add("show"); } })
-      .registrarLancamentoDespesa({ tipoLancamento:isAv?"avulso":"recorrente", categoria:categoria, prestadorNome:nome, prestadorDoc:docF, prestadorEmail:emailF, prestadorWhats:whatsF, descricao:desc, valor:valor, dataVencimento:vencBR, quemAgendou:quem, tipoDoc:tipodoc, observacoes:obs, centroCusto:val("n-centro-custo"), projetoId:val("n-projeto"), confirmarDuplicidade:!!confirmarDuplicidade }, SISGEP_TOKEN_SESSAO);
+      .registrarLancamentoDespesa({ tipoLancamento:isAv?"avulso":"recorrente", categoria:categoria, prestadorNome:nome, prestadorDoc:docF, prestadorEmail:emailF, prestadorWhats:whatsF, descricao:desc, valor:valor, dataVencimento:vencBR, quemAgendou:quem, tipoDoc:tipodoc, observacoes:obs, centroCusto:val("n-centro-custo"), projetoId:val("n-projeto"), formaPagamento:val("n-forma-pagamento"), numeroNf:val("n-numero-nf"), confirmarDuplicidade:!!confirmarDuplicidade }, SISGEP_TOKEN_SESSAO);
   }
 
   function limparFormNova(){
     _fornSelecionado=null;
     if(g("n-busca-forn")) g("n-busca-forn").value="";
     var card=g("forn-selecionado-card"); if(card) card.classList.remove("visivel");
-    ["n-nome-avulso","n-doc-avulso","n-email-avulso","n-whats-avulso","n-valor","n-desc","n-obs"].forEach(function(id){ var el=g(id); if(el) el.value=""; });
+    ["n-nome-avulso","n-doc-avulso","n-email-avulso","n-whats-avulso","n-valor","n-desc","n-obs","n-numero-nf"].forEach(function(id){ var el=g(id); if(el) el.value=""; });
     if(g("n-categoria")) g("n-categoria").value="";
+    if(g("n-forma-pagamento")) g("n-forma-pagamento").value="";
+    if(g("n-centro-custo")) g("n-centro-custo").value="";
+    if(g("n-projeto")) g("n-projeto").value="";
     if(g("n-tipodoc")) g("n-tipodoc").value="NF";
     if(g("n-quem")) g("n-quem").value=g("n-quem").options[0].value;
     definirDataHoje("n-vencimento");
@@ -1003,6 +1006,8 @@
     if(g("pe-valor"))     g("pe-valor").value     = d.valor          || "";
     if(g("pe-centro-custo")) g("pe-centro-custo").value = d.centroCusto || "";
     if(g("pe-projeto"))      g("pe-projeto").value      = d.projetoId   || "";
+    if(g("pe-forma-pagamento")) g("pe-forma-pagamento").value = d.formaPagamento || "";
+    if(g("pe-numero-nf"))       g("pe-numero-nf").value       = d.numeroNf       || "";
     if(g("pe-vencimento")&&d.dataVencimentoBR){
       var p=d.dataVencimentoBR.split("/");
       if(p.length===3) g("pe-vencimento").value=p[2]+"-"+p[1]+"-"+p[0];
@@ -1023,7 +1028,7 @@
         else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
       })
       .withFailureHandler(function(e){ if(btn){ btn.disabled=false; btn.innerHTML="💾 Salvar Alterações"; } showToast("Erro: "+e.message,"error"); })
-      .editarDespesa({ idDespesa:_idModalAtivo, prestadorNome:val("pe-nome"), prestadorEmail:val("pe-email"), prestadorWhats:val("pe-whats"), categoria:val("pe-categoria"), tipoDoc:val("pe-tipodoc"), valor:val("pe-valor"), dataVencimento:vencBR, quemAgendou:val("pe-quem"), descricao:val("pe-desc"), observacoes:val("pe-obs"), centroCusto:val("pe-centro-custo"), projetoId:val("pe-projeto") }, SISGEP_TOKEN_SESSAO);
+      .editarDespesa({ idDespesa:_idModalAtivo, prestadorNome:val("pe-nome"), prestadorEmail:val("pe-email"), prestadorWhats:val("pe-whats"), categoria:val("pe-categoria"), tipoDoc:val("pe-tipodoc"), valor:val("pe-valor"), dataVencimento:vencBR, quemAgendou:val("pe-quem"), descricao:val("pe-desc"), observacoes:val("pe-obs"), centroCusto:val("pe-centro-custo"), projetoId:val("pe-projeto"), formaPagamento:val("pe-forma-pagamento"), numeroNf:val("pe-numero-nf") }, SISGEP_TOKEN_SESSAO);
   }
 
   function abrirModalExcluir(idDespesa,nome){
@@ -1180,6 +1185,19 @@
   }
 
   /* ═══ CHIP POR VAL ═══ */
+  /* ═══ AÇÃO RÁPIDA NOS CARDS DO DASHBOARD ═══ */
+  function irParaDespesasFiltradas(tipo){
+    mudarTab("lista");
+    setTimeout(function(){
+      if(tipo==="total"){ limparFiltros(); return; }
+      if(tipo==="vencidas"){ selecionarChipPorVal("VENCIDO","f-venc-chip"); return; }
+      if(tipo==="urgentes"){ selecionarChipPorVal("URGENTE","f-venc-chip"); return; }
+      if(tipo==="doc"){ selecionarChipPorVal("DOC_RECEBIDO","f-status-chip"); return; }
+      if(tipo==="contab"){ selecionarChipPorVal("ENVIADO_CONTABILIDADE","f-status-chip"); return; }
+      if(tipo==="pagos"){ selecionarChipPorVal("PAGO","f-status-chip"); return; }
+    }, 120);
+  }
+
   function selecionarChipPorVal(v, hiddenId) {
     var grupoId=hiddenId==="f-venc-chip"?"#chips-venc":"#chips-status";
     document.querySelectorAll(grupoId+" .chip").forEach(function(c){ c.className="chip"; if((c.dataset.val||"")===v) c.classList.add("ativo"); });
