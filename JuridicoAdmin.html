@@ -66,6 +66,10 @@
       </div>
       <div class="jur-modal-body">
         <div class="jur-modal-grid full"><div class="mod-field"><label>Assunto</label><input id="jurFAssunto" placeholder="Ex.: Notificação escolar"></div></div>
+        <div class="jur-modal-grid" style="grid-template-columns:1fr 2fr">
+          <div class="mod-field"><label>Natureza</label><select id="jurFNatureza" onchange="jurAlternarNatureza()"><option>Individual</option><option>Coletivo</option></select></div>
+          <div class="mod-field" style="display:flex;align-items:flex-end"><span style="font-size:11.5px;color:#64748b;padding-bottom:9px">Coletivo = dissídio, convenção ou ação que atinge várias escolas ao mesmo tempo (não só um associado).</span></div>
+        </div>
         <div class="jur-modal-grid">
           <div class="mod-field"><label>Tipo</label><select id="jurFTipo"><option>Processo</option><option>Notificação</option><option>Contrato</option><option>Consulta</option></select></div>
           <div class="mod-field"><label>Área</label><select id="jurFArea"><option value="">—</option><option>Trabalhista</option><option>Cível</option><option>Administrativo</option><option>Tributário</option><option>Outro</option></select></div>
@@ -99,6 +103,15 @@
         <div class="jur-modal-grid" style="grid-template-columns:1fr 1fr">
           <div class="mod-field"><label>Valor da causa (R$)</label><input id="jurFValorCausa" placeholder="0,00" inputmode="decimal"></div>
           <div class="mod-field"><label>Resultado</label><select id="jurFResultado"><option>Em andamento</option><option>Favorável</option><option>Desfavorável</option><option>Parcial</option><option>Acordo</option></select></div>
+        </div>
+
+        <div id="jurBlocoColetivo" style="display:none">
+          <div class="jur-modal-section-title">Escolas afetadas (dissídio coletivo) — <span id="jurQtdEscolasColetivo">0</span> vinculada(s)</div>
+          <div id="jurFListaEscolasColetivo" class="jur-sublista"></div>
+          <div class="mod-field" style="position:relative;margin-bottom:8px">
+            <input id="jurFEscolaColetivoBusca" placeholder="Buscar escola por nome ou CNPJ pra vincular..." autocomplete="off" oninput="jurBuscarEscolaColetivoDigitada()">
+            <div id="jurFEscolaColetivoLista" class="jur-autocomplete"></div>
+          </div>
         </div>
 
         <div class="jur-modal-section-title">Prazos do processo</div>
@@ -162,7 +175,8 @@
     var edit="", cache=[], fichaId="";
     var fichaAssociado={cpf:"",nome:""}, fichaEscola={cnpj:"",nome:""};
     var vigiaBuscaAssociado=null, vigiaBuscaEscola=null;
-    var ultimaBuscaAssociados=[], ultimaBuscaEscolas=[];
+    var ultimaBuscaAssociados=[], ultimaBuscaEscolas=[], ultimaBuscaEscolasColetivo=[];
+    var vigiaBuscaEscolaColetivo=null;
     function g(i){return document.getElementById(i)}
     function token(){return typeof SISGEP_TOKEN_SESSAO!=="undefined"?SISGEP_TOKEN_SESSAO:""}
     function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])})}
@@ -331,6 +345,81 @@
         .jurGerarResumoExecutivoIA(token());
     };
 
+    // ---------------- Dissídio coletivo: escolas afetadas ----------------
+
+    window.jurAlternarNatureza=function(){
+      var coletivo=g("jurFNatureza").value==="Coletivo";
+      g("jurBlocoColetivo").style.display=coletivo?"block":"none";
+      if(coletivo && fichaId) jurCarregarEscolasColetivo();
+    };
+
+    window.jurCarregarEscolasColetivo=function(){
+      var lista=g("jurFListaEscolasColetivo");
+      lista.innerHTML="<div class='jur-vazio-sub'>Carregando...</div>";
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||!r.ok){ lista.innerHTML="<div class='jur-vazio-sub'>"+esc((r&&r.mensagem)||"Não foi possível carregar.")+"</div>"; return; }
+          var itens=r.itens||[];
+          g("jurQtdEscolasColetivo").textContent=itens.length;
+          lista.innerHTML=itens.length?itens.map(function(e){
+            return "<div class='jur-subitem'><div class='corpo'><b>"+esc(e.nome)+"</b><span>"+esc(e.cnpj||"")+"</span></div><div class='acoes'><button onclick=\"jurRemoverEscolaColetivoItem('"+e.id+"')\" title='Remover'>🗑️</button></div></div>";
+          }).join(""):"<div class='jur-vazio-sub'>Nenhuma escola vinculada ainda.</div>";
+        })
+        .withFailureHandler(function(e){ lista.innerHTML="<div class='jur-vazio-sub'>Erro: "+esc(e&&e.message?e.message:e)+"</div>"; })
+        .jurListarEscolasColetivo(fichaId, token());
+    };
+
+    window.jurBuscarEscolaColetivoDigitada=function(){
+      clearTimeout(vigiaBuscaEscolaColetivo);
+      var termo=g("jurFEscolaColetivoBusca").value;
+      var lista=g("jurFEscolaColetivoLista");
+      if(String(termo||"").trim().length<2){ lista.classList.remove("aberto"); return; }
+      vigiaBuscaEscolaColetivo=setTimeout(function(){
+        google.script.run
+          .withSuccessHandler(function(r){
+            if(!r||!r.ok){ lista.innerHTML="<div class='vazio'>"+esc((r&&r.mensagem)||"Erro na busca.")+"</div>"; lista.classList.add("aberto"); return; }
+            ultimaBuscaEscolasColetivo=(r.itens||[]).map(function(e){
+              return { nome:e.escola||e.nome||e.NomeEscola||"", cnpj:e.cnpjLimpo||e.cnpj||"", cidade:e.cidade||e.municipio||"" };
+            });
+            lista.innerHTML=ultimaBuscaEscolasColetivo.length?ultimaBuscaEscolasColetivo.map(function(e,i){
+              return "<div class='item' onclick='jurSelecionarEscolaColetivo("+i+")'><b>"+esc(e.nome)+"</b><span>"+esc(e.cnpj)+(e.cidade?" · "+esc(e.cidade):"")+"</span></div>";
+            }).join(""):"<div class='vazio'>Nenhuma escola encontrada.</div>";
+            lista.classList.add("aberto");
+          })
+          .withFailureHandler(function(e){ lista.innerHTML="<div class='vazio'>Erro: "+esc(e&&e.message?e.message:e)+"</div>"; lista.classList.add("aberto"); })
+          .jurBuscarEscolaVinculo(termo, token());
+      },300);
+    };
+
+    window.jurSelecionarEscolaColetivo=function(idx){
+      var e=ultimaBuscaEscolasColetivo[idx];
+      if(!e||!fichaId) return;
+      g("jurFEscolaColetivoBusca").value="";
+      g("jurFEscolaColetivoLista").classList.remove("aberto");
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||!r.ok){ alert("Erro: "+((r&&r.mensagem)||"não foi possível vincular.")); return; }
+          jurCarregarEscolasColetivo();
+        })
+        .withFailureHandler(function(err){ alert("Erro ao vincular escola: "+(err&&err.message?err.message:err)); })
+        .jurAdicionarEscolaColetivo({idProcesso:fichaId, escolaCnpj:e.cnpj, escolaNome:e.nome}, token());
+    };
+
+    window.jurRemoverEscolaColetivoItem=function(id){
+      if(!confirm("Remover esta escola do dissídio coletivo?")) return;
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||!r.ok){ alert("Erro: "+((r&&r.mensagem)||"não foi possível remover.")); return; }
+          jurCarregarEscolasColetivo();
+        })
+        .withFailureHandler(function(e){ alert("Erro: "+(e&&e.message?e.message:e)); })
+        .jurRemoverEscolaColetivo(id, token());
+    };
+
+    document.addEventListener("click",function(ev){
+      if(!ev.target.closest("#jurFEscolaColetivoBusca") && !ev.target.closest("#jurFEscolaColetivoLista")){ var l3=g("jurFEscolaColetivoLista"); if(l3) l3.classList.remove("aberto"); }
+    });
+
     // ---------------- Vínculos: Associado e Escola ----------------
 
     function renderAnexo(link, nome){
@@ -472,6 +561,8 @@
       g("jurFResponsavelEmail").value=x.responsavelEmail||"";
       g("jurFValorCausa").value=x.valorCausa?String(x.valorCausa).replace(".",","):"";
       g("jurFResultado").value=x.resultado||"Em andamento";
+      g("jurFNatureza").value=x.natureza||"Individual";
+      jurAlternarNatureza();
       fichaAssociado={cpf:x.associadoCpf||"",nome:x.associadoNome||""};
       fichaEscola={cnpj:x.escolaCnpj||"",nome:x.escolaNome||""};
       g("jurFAssociadoBusca").value="";
@@ -491,6 +582,7 @@
       g("jurFNovaAudienciaLocal").value="";
       jurCarregarPrazos();
       jurCarregarAudiencias();
+      g("jurFEscolaColetivoBusca").value="";
       g("jurModalOverlay").classList.add("aberto");
     };
 
@@ -618,7 +710,8 @@
         responsavelEmail:g("jurFResponsavelEmail").value,
         associadoCpf:fichaAssociado.cpf, associadoNome:fichaAssociado.nome,
         escolaCnpj:fichaEscola.cnpj, escolaNome:fichaEscola.nome,
-        valorCausa:g("jurFValorCausa").value, resultado:g("jurFResultado").value
+        valorCausa:g("jurFValorCausa").value, resultado:g("jurFResultado").value,
+        natureza:g("jurFNatureza").value
       };
       var btn=g("jurBtnSalvarFicha");
       if(btn){btn.disabled=true;btn.textContent="Salvando...";}

@@ -21,7 +21,7 @@ var JUR_CABECALHO = [
   "Número CNJ", "Área", "Responsável", "Autor", "Réu",
   "Link Documento", "File ID Documento", "Nome Arquivo",
   "Associado CPF", "Associado Nome", "Escola CNPJ", "Escola Nome", "Responsável E-mail",
-  "Valor da Causa", "Resultado"
+  "Valor da Causa", "Resultado", "Natureza"
 ];
 
 var JUR_COL = {
@@ -49,12 +49,14 @@ var JUR_COL = {
   ESCOLA_NOME: 22,
   RESPONSAVEL_EMAIL: 23,
   VALOR_CAUSA: 24,
-  RESULTADO: 25
+  RESULTADO: 25,
+  NATUREZA: 26
 };
 
 var JUR_TIPOS = ["Processo", "Notificação", "Contrato", "Consulta"];
 var JUR_STATUS = ["Ativo", "Atenção", "Concluído"];
 var JUR_AREAS = ["Trabalhista", "Cível", "Administrativo", "Tributário", "Outro"];
+var JUR_NATUREZAS = ["Individual", "Coletivo"];
 var JUR_RESULTADOS = ["Em andamento", "Favorável", "Desfavorável", "Parcial", "Acordo"];
 
 function jurObterAba_() {
@@ -127,7 +129,8 @@ function jurMapearLinha_(valores) {
     escolaNome: valores[JUR_COL.ESCOLA_NOME - 1] || "",
     responsavelEmail: valores[JUR_COL.RESPONSAVEL_EMAIL - 1] || "",
     valorCausa: valores[JUR_COL.VALOR_CAUSA - 1] || "",
-    resultado: valores[JUR_COL.RESULTADO - 1] || ""
+    resultado: valores[JUR_COL.RESULTADO - 1] || "",
+    natureza: valores[JUR_COL.NATUREZA - 1] || "Individual"
   };
 }
 
@@ -222,6 +225,7 @@ function jurSalvarProcesso(dados, tokenSessao) {
     var responsavelEmail = String(dados.responsavelEmail || "").trim();
     var valorCausa = Number(String(dados.valorCausa || "").replace(/\./g, "").replace(",", ".")) || 0;
     var resultado = JUR_RESULTADOS.indexOf(dados.resultado) > -1 ? dados.resultado : JUR_RESULTADOS[0];
+    var natureza = JUR_NATUREZAS.indexOf(dados.natureza) > -1 ? dados.natureza : JUR_NATUREZAS[0];
 
     return jurComLock_(function() {
       var aba = jurObterAba_();
@@ -247,6 +251,7 @@ function jurSalvarProcesso(dados, tokenSessao) {
         aba.getRange(encontrada.linha, JUR_COL.RESPONSAVEL_EMAIL).setValue(responsavelEmail);
         aba.getRange(encontrada.linha, JUR_COL.VALOR_CAUSA).setValue(valorCausa);
         aba.getRange(encontrada.linha, JUR_COL.RESULTADO).setValue(resultado);
+        aba.getRange(encontrada.linha, JUR_COL.NATUREZA).setValue(natureza);
         aba.getRange(encontrada.linha, JUR_COL.ATUALIZADO_EM).setValue(agora);
         aba.getRange(encontrada.linha, JUR_COL.ATUALIZADO_POR).setValue(responsavelSessao);
 
@@ -278,6 +283,7 @@ function jurSalvarProcesso(dados, tokenSessao) {
       linha[JUR_COL.RESPONSAVEL_EMAIL - 1] = responsavelEmail;
       linha[JUR_COL.VALOR_CAUSA - 1] = valorCausa;
       linha[JUR_COL.RESULTADO - 1] = resultado;
+      linha[JUR_COL.NATUREZA - 1] = natureza;
 
       aba.appendRow(linha);
       Logger.log("jurSalvarProcesso OK: criado " + id);
@@ -1210,5 +1216,107 @@ function jurGerarResumoExecutivoIA(tokenSessao) {
   } catch (e) {
     Logger.log("jurGerarResumoExecutivoIA ERRO: " + e.message + " | stack: " + e.stack);
     return { ok: false, mensagem: e.message || "Erro ao gerar resumo executivo." };
+  }
+}
+
+// ============================================================================
+// FASE 4b — Modo dissídio coletivo
+//
+// Um processo "Individual" continua vinculado a no máximo um associado e
+// uma escola (campos da aba principal, Fase 2a). Um processo "Coletivo"
+// (dissídio, convenção coletiva, ação que afeta a categoria inteira) pode
+// atingir VÁRIAS escolas ao mesmo tempo — por isso vira uma aba própria de
+// vínculo (N:N), em vez de forçar tudo no campo Escola de uma linha só.
+// O "relatório de impacto" é simplesmente a contagem de escolas vinculadas
+// — não tenta cruzar com associados individuais (o vocabulário de escola
+// em Associados diverge do cadastro por CNPJ, como já registrado na Fase 2a).
+// ============================================================================
+
+var JUR_ABA_ESCOLAS_COLETIVO = "Juridico_Escolas_Coletivo";
+var JUR_CABECALHO_ESCOLAS_COLETIVO = ["ID", "ID Processo", "Escola CNPJ", "Escola Nome", "Criado Em", "Criado Por"];
+var JUR_COLEC = { ID: 1, ID_PROCESSO: 2, ESCOLA_CNPJ: 3, ESCOLA_NOME: 4, CRIADO_EM: 5, CRIADO_POR: 6 };
+
+function jurObterAbaEscolasColetivo_() {
+  return jurObterAbaGenerica_(JUR_ABA_ESCOLAS_COLETIVO, JUR_CABECALHO_ESCOLAS_COLETIVO, []);
+}
+
+function jurListarEscolasColetivo(idProcesso, tokenSessao) {
+  try {
+    exigirSessaoDocumentos_(tokenSessao, false);
+    idProcesso = String(idProcesso || "").trim();
+    if (!idProcesso) return { ok: false, mensagem: "Processo não informado." };
+
+    var aba = jurObterAbaEscolasColetivo_();
+    var ultimaLinha = aba.getLastRow();
+    if (ultimaLinha < 2) return { ok: true, itens: [] };
+
+    var dados = aba.getRange(2, 1, ultimaLinha - 1, JUR_CABECALHO_ESCOLAS_COLETIVO.length).getValues();
+    var itens = dados
+      .filter(function(l) { return String(l[JUR_COLEC.ID_PROCESSO - 1]) === idProcesso; })
+      .map(function(l) { return { id: l[JUR_COLEC.ID - 1], cnpj: l[JUR_COLEC.ESCOLA_CNPJ - 1] || "", nome: l[JUR_COLEC.ESCOLA_NOME - 1] || "" }; });
+
+    return { ok: true, itens: itens };
+  } catch (e) {
+    Logger.log("jurListarEscolasColetivo ERRO: " + e.message + " | stack: " + e.stack);
+    return { ok: false, mensagem: e.message || "Erro ao listar escolas vinculadas." };
+  }
+}
+
+function jurAdicionarEscolaColetivo(dados, tokenSessao) {
+  try {
+    var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+    dados = dados || {};
+    var idProcesso = String(dados.idProcesso || "").trim();
+    var escolaCnpj = String(dados.escolaCnpj || "").trim();
+    var escolaNome = String(dados.escolaNome || "").trim();
+    var responsavel = sessao.nome || sessao.usuario || sessao.email;
+
+    if (!idProcesso) return { ok: false, mensagem: "Processo não informado." };
+    if (!escolaNome) return { ok: false, mensagem: "Escola não informada." };
+
+    return jurComLock_(function() {
+      var aba = jurObterAbaEscolasColetivo_();
+
+      // Evita duplicar a mesma escola no mesmo processo.
+      var ultimaLinha = aba.getLastRow();
+      if (ultimaLinha >= 2) {
+        var existentes = aba.getRange(2, 1, ultimaLinha - 1, JUR_CABECALHO_ESCOLAS_COLETIVO.length).getValues();
+        var jaTem = existentes.some(function(l) {
+          return String(l[JUR_COLEC.ID_PROCESSO - 1]) === idProcesso &&
+            (String(l[JUR_COLEC.ESCOLA_CNPJ - 1] || "") === escolaCnpj || String(l[JUR_COLEC.ESCOLA_NOME - 1] || "") === escolaNome);
+        });
+        if (jaTem) return { ok: false, mensagem: "Essa escola já está vinculada a este processo." };
+      }
+
+      var id = "COL-" + Utilities.getUuid().slice(0, 8).toUpperCase();
+      aba.appendRow([id, idProcesso, escolaCnpj, escolaNome, new Date(), responsavel]);
+      return { ok: true, id: id };
+    });
+  } catch (e) {
+    Logger.log("jurAdicionarEscolaColetivo ERRO: " + e.message + " | stack: " + e.stack);
+    var mensagem = e.message === "CONCORRENCIA" ? "Outra pessoa está salvando agora. Tente novamente." : (e.message || "Erro ao vincular escola.");
+    return { ok: false, mensagem: mensagem };
+  }
+}
+
+function jurRemoverEscolaColetivo(id, tokenSessao) {
+  try {
+    exigirSessaoDocumentos_(tokenSessao, false);
+    return jurComLock_(function() {
+      var aba = jurObterAbaEscolasColetivo_();
+      var ultimaLinha = aba.getLastRow();
+      if (ultimaLinha < 2) return { ok: false, mensagem: "Vínculo não encontrado." };
+      var dados = aba.getRange(2, 1, ultimaLinha - 1, 1).getValues();
+      for (var i = 0; i < dados.length; i++) {
+        if (String(dados[i][0]) === String(id)) {
+          aba.deleteRow(i + 2);
+          return { ok: true };
+        }
+      }
+      return { ok: false, mensagem: "Vínculo não encontrado." };
+    });
+  } catch (e) {
+    Logger.log("jurRemoverEscolaColetivo ERRO: " + e.message + " | stack: " + e.stack);
+    return { ok: false, mensagem: e.message || "Erro ao remover vínculo." };
   }
 }
