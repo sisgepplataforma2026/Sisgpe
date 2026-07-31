@@ -990,6 +990,7 @@ function jurAnalisarDocumentoIA(base64, nomeArquivo, mimeType, tokenSessao) {
       '  "numeroCnj": "",',
       '  "autor": "",',
       '  "reu": "",',
+      '  "reclamantes": [],',
       '  "prazoDescricao": "",',
       '  "prazoData": "",',
       '  "observacoesLeitura": ""',
@@ -1004,7 +1005,10 @@ function jurAnalisarDocumentoIA(base64, nomeArquivo, mimeType, tokenSessao) {
       '  "Administrativo", "Tributário", "Outro". Se não tiver certeza, deixe "".',
       '- "numeroCnj": o número do processo, só dígitos e os separadores originais (formato',
       '  NNNNNNN-DD.AAAA.J.TR.OOOO), se aparecer no texto.',
-      '- "autor" e "reu": nome das partes, como aparecem no documento.',
+      '- "autor" e "reu": nome das partes, como aparecem no documento. Se houver MAIS DE UM',
+      '  autor/reclamante na mesma ação (cumulação subjetiva, ação plúrima), coloque em "autor"',
+      '  um resumo (ex.: "Fulano de Tal e outros (5)") e liste o nome individual de CADA um em',
+      '  "reclamantes" (array de strings). Se houver só um autor, deixe "reclamantes" como [].',
       '- "prazoDescricao": o nome do prazo mais urgente/próximo mencionado no documento (ex.:',
       '  "Contestação", "Recurso", "Audiência de instrução"). Se houver mais de um prazo, escolha',
       '  o mais próximo/urgente.',
@@ -1034,6 +1038,7 @@ function jurAnalisarDocumentoIA(base64, nomeArquivo, mimeType, tokenSessao) {
         cnj: extraido.numeroCnj || "",
         autor: extraido.autor || "",
         reu: extraido.reu || "",
+        reclamantes: Array.isArray(extraido.reclamantes) ? extraido.reclamantes.filter(Boolean).map(String) : [],
         prazoDescricao: extraido.prazoDescricao || "",
         prazoData: extraido.prazoData || ""
       },
@@ -1318,5 +1323,103 @@ function jurRemoverEscolaColetivo(id, tokenSessao) {
   } catch (e) {
     Logger.log("jurRemoverEscolaColetivo ERRO: " + e.message + " | stack: " + e.stack);
     return { ok: false, mensagem: e.message || "Erro ao remover vínculo." };
+  }
+}
+
+// ============================================================================
+// RECLAMANTES (Fase 3a+) — ação trabalhista plúrima tem VÁRIOS autores na
+// mesma reclamação (cumulação subjetiva), não só o "Autor" único da aba
+// principal (que segue existindo como resumo, ex.: "Fulano e outros").
+// Mesmo padrão N:N de Escolas do dissídio coletivo: aba própria vinculada
+// por ID Processo, disponível só depois do processo já ter um ID (existente
+// ou recém-criado). Reaproveita a busca de Associado já existente pra não
+// duplicar cadastro de pessoa — mas aceita nome livre também, porque nem
+// todo reclamante de uma ação é sindicalizado.
+// ============================================================================
+
+var JUR_ABA_RECLAMANTES = "Juridico_Reclamantes";
+var JUR_CABECALHO_RECLAMANTES = ["ID", "ID Processo", "Nome", "Associado CPF", "Criado Em", "Criado Por"];
+var JUR_COLR = { ID: 1, ID_PROCESSO: 2, NOME: 3, ASSOCIADO_CPF: 4, CRIADO_EM: 5, CRIADO_POR: 6 };
+
+function jurObterAbaReclamantes_() {
+  return jurObterAbaGenerica_(JUR_ABA_RECLAMANTES, JUR_CABECALHO_RECLAMANTES, []);
+}
+
+function jurListarReclamantes(idProcesso, tokenSessao) {
+  try {
+    exigirSessaoDocumentos_(tokenSessao, false);
+    idProcesso = String(idProcesso || "").trim();
+    if (!idProcesso) return { ok: false, mensagem: "Processo não informado." };
+
+    var aba = jurObterAbaReclamantes_();
+    var ultimaLinha = aba.getLastRow();
+    if (ultimaLinha < 2) return { ok: true, itens: [] };
+
+    var dados = aba.getRange(2, 1, ultimaLinha - 1, JUR_CABECALHO_RECLAMANTES.length).getValues();
+    var itens = dados
+      .filter(function(l) { return String(l[JUR_COLR.ID_PROCESSO - 1]) === idProcesso; })
+      .map(function(l) { return { id: l[JUR_COLR.ID - 1], nome: l[JUR_COLR.NOME - 1] || "", associadoCpf: l[JUR_COLR.ASSOCIADO_CPF - 1] || "" }; });
+
+    return { ok: true, itens: itens };
+  } catch (e) {
+    Logger.log("jurListarReclamantes ERRO: " + e.message + " | stack: " + e.stack);
+    return { ok: false, mensagem: e.message || "Erro ao listar reclamantes." };
+  }
+}
+
+function jurAdicionarReclamante(dados, tokenSessao) {
+  try {
+    var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+    dados = dados || {};
+    var idProcesso = String(dados.idProcesso || "").trim();
+    var nome = String(dados.nome || "").trim();
+    var associadoCpf = String(dados.associadoCpf || "").trim();
+    var responsavel = sessao.nome || sessao.usuario || sessao.email;
+
+    if (!idProcesso) return { ok: false, mensagem: "Processo não informado." };
+    if (!nome) return { ok: false, mensagem: "Informe o nome do reclamante." };
+
+    return jurComLock_(function() {
+      var aba = jurObterAbaReclamantes_();
+
+      var ultimaLinha = aba.getLastRow();
+      if (ultimaLinha >= 2) {
+        var existentes = aba.getRange(2, 1, ultimaLinha - 1, JUR_CABECALHO_RECLAMANTES.length).getValues();
+        var jaTem = existentes.some(function(l) {
+          return String(l[JUR_COLR.ID_PROCESSO - 1]) === idProcesso && String(l[JUR_COLR.NOME - 1] || "") === nome;
+        });
+        if (jaTem) return { ok: false, mensagem: "Esse reclamante já está nesta lista." };
+      }
+
+      var id = "REC-" + Utilities.getUuid().slice(0, 8).toUpperCase();
+      aba.appendRow([id, idProcesso, nome, associadoCpf, new Date(), responsavel]);
+      return { ok: true, id: id };
+    });
+  } catch (e) {
+    Logger.log("jurAdicionarReclamante ERRO: " + e.message + " | stack: " + e.stack);
+    var mensagem = e.message === "CONCORRENCIA" ? "Outra pessoa está salvando agora. Tente novamente." : (e.message || "Erro ao adicionar reclamante.");
+    return { ok: false, mensagem: mensagem };
+  }
+}
+
+function jurRemoverReclamante(id, tokenSessao) {
+  try {
+    exigirSessaoDocumentos_(tokenSessao, false);
+    return jurComLock_(function() {
+      var aba = jurObterAbaReclamantes_();
+      var ultimaLinha = aba.getLastRow();
+      if (ultimaLinha < 2) return { ok: false, mensagem: "Reclamante não encontrado." };
+      var dados = aba.getRange(2, 1, ultimaLinha - 1, 1).getValues();
+      for (var i = 0; i < dados.length; i++) {
+        if (String(dados[i][0]) === String(id)) {
+          aba.deleteRow(i + 2);
+          return { ok: true };
+        }
+      }
+      return { ok: false, mensagem: "Reclamante não encontrado." };
+    });
+  } catch (e) {
+    Logger.log("jurRemoverReclamante ERRO: " + e.message + " | stack: " + e.stack);
+    return { ok: false, mensagem: e.message || "Erro ao remover reclamante." };
   }
 }

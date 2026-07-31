@@ -120,6 +120,16 @@
         </div>
 
         <div id="jurBlocoRequerSalvo">
+          <div class="jur-modal-section-title">Reclamantes — <span id="jurQtdReclamantes">0</span></div>
+          <div id="jurFListaReclamantes" class="jur-sublista"></div>
+          <div class="mod-field" style="position:relative;margin-bottom:6px">
+            <input id="jurFReclamanteBusca" placeholder="Buscar associado por nome/CPF, ou digitar um nome livre..." autocomplete="off" oninput="jurBuscarReclamanteDigitado()">
+            <div id="jurFReclamanteLista" class="jur-autocomplete"></div>
+          </div>
+          <div style="display:flex;gap:8px;margin:0 0 14px">
+            <button class="mod-btn" onclick="jurAdicionarReclamanteLivre()">+ Adicionar nome digitado</button>
+          </div>
+
           <div class="jur-modal-section-title">Prazos do processo</div>
           <div id="jurFListaPrazos" class="jur-sublista"></div>
           <div class="jur-subform">
@@ -138,7 +148,8 @@
             <button class="mod-btn" onclick="jurAdicionarAudiencia()">+ Adicionar</button>
           </div>
         </div>
-        <div id="jurAvisoNovoProcesso" style="display:none;font-size:12px;color:#94a3b8;margin:6px 0 14px">Prazos e audiências ficam disponíveis depois de salvar o processo pela primeira vez.</div>
+        <div id="jurAvisoNovoProcesso" style="display:none;font-size:12px;color:#94a3b8;margin:6px 0 4px">Reclamantes, prazos e audiências ficam disponíveis depois de salvar o processo pela primeira vez.</div>
+        <div id="jurAvisoReclamantesPendentes" style="display:none;font-size:12px;color:#166534;margin:0 0 14px"></div>
 
         <div class="jur-modal-section-title">Documento anexado</div>
         <div id="jurFAnexoAtual"></div>
@@ -184,8 +195,9 @@
     var edit="", cache=[], fichaId="";
     var fichaAssociado={cpf:"",nome:""}, fichaEscola={cnpj:"",nome:""};
     var vigiaBuscaAssociado=null, vigiaBuscaEscola=null;
-    var ultimaBuscaAssociados=[], ultimaBuscaEscolas=[], ultimaBuscaEscolasColetivo=[];
-    var vigiaBuscaEscolaColetivo=null;
+    var ultimaBuscaAssociados=[], ultimaBuscaEscolas=[], ultimaBuscaEscolasColetivo=[], ultimaBuscaReclamantes=[];
+    var vigiaBuscaEscolaColetivo=null, vigiaBuscaReclamante=null;
+    var reclamantesPendentes=[];
     function g(i){return document.getElementById(i)}
     function token(){return typeof SISGEP_TOKEN_SESSAO!=="undefined"?SISGEP_TOKEN_SESSAO:""}
     function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])})}
@@ -469,7 +481,101 @@
         .jurRemoverEscolaColetivo(id, token());
     };
 
+    // ---------------- Reclamantes (ação plúrima) ----------------
+    // Reaproveita a busca de Associado (jurBuscarAssociado) pra não duplicar
+    // cadastro de pessoa; quem não é associado entra por nome digitado livre.
+
+    window.jurCarregarReclamantes=function(){
+      var lista=g("jurFListaReclamantes");
+      lista.innerHTML="<div class='jur-vazio-sub'>Carregando...</div>";
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||!r.ok){ lista.innerHTML="<div class='jur-vazio-sub'>"+esc((r&&r.mensagem)||"Não foi possível carregar.")+"</div>"; return; }
+          var itens=r.itens||[];
+          g("jurQtdReclamantes").textContent=itens.length;
+          lista.innerHTML=itens.length?itens.map(function(p){
+            return "<div class='jur-subitem'><div class='corpo'><b>"+esc(p.nome)+"</b>"+(p.associadoCpf?"<span>Associado · "+esc(p.associadoCpf)+"</span>":"")+"</div><div class='acoes'><button onclick=\"jurRemoverReclamanteItem('"+p.id+"')\" title='Remover'>🗑️</button></div></div>";
+          }).join(""):"<div class='jur-vazio-sub'>Nenhum reclamante cadastrado ainda.</div>";
+        })
+        .withFailureHandler(function(e){ lista.innerHTML="<div class='jur-vazio-sub'>Erro: "+esc(e&&e.message?e.message:e)+"</div>"; })
+        .jurListarReclamantes(fichaId, token());
+    };
+
+    window.jurBuscarReclamanteDigitado=function(){
+      clearTimeout(vigiaBuscaReclamante);
+      var termo=g("jurFReclamanteBusca").value;
+      var lista=g("jurFReclamanteLista");
+      if(String(termo||"").trim().length<2){ lista.classList.remove("aberto"); return; }
+      vigiaBuscaReclamante=setTimeout(function(){
+        google.script.run
+          .withSuccessHandler(function(r){
+            if(!r||!r.ok){ lista.innerHTML="<div class='vazio'>"+esc((r&&r.mensagem)||"Erro na busca.")+"</div>"; lista.classList.add("aberto"); return; }
+            ultimaBuscaReclamantes=r.itens||[];
+            lista.innerHTML=ultimaBuscaReclamantes.length?ultimaBuscaReclamantes.map(function(a,i){
+              return "<div class='item' onclick='jurSelecionarReclamante("+i+")'><b>"+esc(a.nome)+"</b><span>"+esc(a.cpf||"")+(a.escola?" · "+esc(a.escola):"")+"</span></div>";
+            }).join(""):"<div class='vazio'>Nenhum associado encontrado — use \"Adicionar nome digitado\" abaixo.</div>";
+            lista.classList.add("aberto");
+          })
+          .withFailureHandler(function(e){ lista.innerHTML="<div class='vazio'>Erro: "+esc(e&&e.message?e.message:e)+"</div>"; lista.classList.add("aberto"); })
+          .jurBuscarAssociado(termo, token());
+      },300);
+    };
+
+    window.jurSelecionarReclamante=function(idx){
+      var a=ultimaBuscaReclamantes[idx];
+      if(!a||!fichaId) return;
+      g("jurFReclamanteBusca").value="";
+      g("jurFReclamanteLista").classList.remove("aberto");
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||!r.ok){ alert("Erro: "+((r&&r.mensagem)||"não foi possível adicionar.")); return; }
+          jurCarregarReclamantes();
+        })
+        .withFailureHandler(function(err){ alert("Erro ao adicionar reclamante: "+(err&&err.message?err.message:err)); })
+        .jurAdicionarReclamante({idProcesso:fichaId, nome:a.nome, associadoCpf:a.cpf||""}, token());
+    };
+
+    window.jurAdicionarReclamanteLivre=function(){
+      var nome=String(g("jurFReclamanteBusca").value||"").trim();
+      if(!nome) return alert("Digite o nome do reclamante.");
+      if(!fichaId) return alert("Salve o processo antes de adicionar reclamantes.");
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||!r.ok){ alert("Erro: "+((r&&r.mensagem)||"não foi possível adicionar.")); return; }
+          g("jurFReclamanteBusca").value="";
+          g("jurFReclamanteLista").classList.remove("aberto");
+          jurCarregarReclamantes();
+        })
+        .withFailureHandler(function(e){ alert("Erro ao adicionar reclamante: "+(e&&e.message?e.message:e)); })
+        .jurAdicionarReclamante({idProcesso:fichaId, nome:nome, associadoCpf:""}, token());
+    };
+
+    window.jurRemoverReclamanteItem=function(id){
+      if(!confirm("Remover este reclamante?")) return;
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||!r.ok){ alert("Erro: "+((r&&r.mensagem)||"não foi possível remover.")); return; }
+          jurCarregarReclamantes();
+        })
+        .withFailureHandler(function(e){ alert("Erro: "+(e&&e.message?e.message:e)); })
+        .jurRemoverReclamante(id, token());
+    };
+
+    // Adiciona em lote os reclamantes sugeridos pela leitura por IA depois
+    // que o processo NOVO ganha um ID (ficha de criação não tem ID ainda,
+    // então esses nomes ficam "pendentes" até o Salvar). Best-effort: segue
+    // em frente mesmo se um nome falhar, pra não travar o fluxo de salvar.
+    function jurAdicionarReclamantesEmLote_(idProcesso, nomes, callback){
+      if(!nomes.length){ callback(); return; }
+      var nome=nomes.shift();
+      google.script.run
+        .withSuccessHandler(function(){ jurAdicionarReclamantesEmLote_(idProcesso, nomes, callback); })
+        .withFailureHandler(function(){ jurAdicionarReclamantesEmLote_(idProcesso, nomes, callback); })
+        .jurAdicionarReclamante({idProcesso:idProcesso, nome:nome, associadoCpf:""}, token());
+    }
+
     document.addEventListener("click",function(ev){
+      if(!ev.target.closest("#jurFReclamanteBusca") && !ev.target.closest("#jurFReclamanteLista")){ var l4=g("jurFReclamanteLista"); if(l4) l4.classList.remove("aberto"); }
       if(!ev.target.closest("#jurFEscolaColetivoBusca") && !ev.target.closest("#jurFEscolaColetivoLista")){ var l3=g("jurFEscolaColetivoLista"); if(l3) l3.classList.remove("aberto"); }
     });
 
@@ -602,9 +708,11 @@
       var x=cache.find(function(a){return a.id===id});
       if(!x) return;
       fichaId=id;
+      reclamantesPendentes=[];
       g("jurFichaTitulo").textContent="Ficha do processo";
       g("jurBlocoRequerSalvo").style.display="block";
       g("jurAvisoNovoProcesso").style.display="none";
+      g("jurAvisoReclamantesPendentes").style.display="none";
       g("jurFAssunto").value=x.assunto||"";
       g("jurFTipo").value=x.tipo||"Processo";
       g("jurFArea").value=x.area||"";
@@ -635,8 +743,10 @@
       g("jurFNovaAudienciaHora").value="";
       g("jurFNovaAudienciaTipo").value="";
       g("jurFNovaAudienciaLocal").value="";
+      jurCarregarReclamantes();
       jurCarregarPrazos();
       jurCarregarAudiencias();
+      g("jurFReclamanteBusca").value="";
       g("jurFEscolaColetivoBusca").value="";
       g("jurModalOverlay").classList.add("aberto");
     };
@@ -650,9 +760,18 @@
     window.jurAbrirFichaNova=function(dadosIniciais, arquivo){
       dadosIniciais=dadosIniciais||{};
       fichaId="";
+      reclamantesPendentes=(dadosIniciais.reclamantes||[]).filter(Boolean);
       g("jurFichaTitulo").textContent="Novo processo — revise antes de salvar";
       g("jurBlocoRequerSalvo").style.display="none";
       g("jurAvisoNovoProcesso").style.display="block";
+      var avisoReclamantes=g("jurAvisoReclamantesPendentes");
+      if(reclamantesPendentes.length){
+        avisoReclamantes.style.display="block";
+        avisoReclamantes.innerHTML="👥 A IA identificou "+reclamantesPendentes.length+" reclamante(s) neste documento: "+esc(reclamantesPendentes.join(", "))+". Eles serão adicionados à lista de Reclamantes automaticamente quando o processo for salvo.";
+      } else {
+        avisoReclamantes.style.display="none";
+        avisoReclamantes.innerHTML="";
+      }
       g("jurFAssunto").value=dadosIniciais.assunto||"";
       g("jurFTipo").value=dadosIniciais.tipo||"Processo";
       g("jurFArea").value=dadosIniciais.area||"";
@@ -825,6 +944,15 @@
         .withSuccessHandler(function(r){
           if(btn){btn.disabled=false;btn.textContent="Salvar alterações";}
           if(!r||!r.ok){ alert("Erro: "+((r&&r.mensagem)||"não foi possível salvar.")); return; }
+          if(eraNovo&&r.id&&reclamantesPendentes.length){
+            var idNovo=r.id, nomes=reclamantesPendentes.slice();
+            reclamantesPendentes=[];
+            jurAdicionarReclamantesEmLote_(idNovo,nomes,function(){
+              if(arquivoPendente){ jurAnexarAposCriar_(idNovo, arquivoPendente); }
+              else { jurFecharFicha(); jurRender(); }
+            });
+            return;
+          }
           if(eraNovo&&r.id&&arquivoPendente){
             jurAnexarAposCriar_(r.id, arquivoPendente);
             return;
@@ -914,7 +1042,20 @@
             if(d.prazoDescricao) g("jurFNovoPrazoDescricao").value=d.prazoDescricao;
             if(d.prazoData) g("jurFNovoPrazoData").value=d.prazoData;
 
-            var msg="<strong>✦ Campos preenchidos pela IA — revise antes de salvar.</strong>";
+            var reclamantesNovos=(d.reclamantes||[]).filter(Boolean);
+            var msgReclamantes="";
+            if(reclamantesNovos.length&&fichaId){
+              jurAdicionarReclamantesEmLote_(fichaId, reclamantesNovos.slice(), jurCarregarReclamantes);
+              msgReclamantes="<br>"+reclamantesNovos.length+" reclamante(s) identificado(s) foram adicionados à lista de Reclamantes.";
+            } else if(reclamantesNovos.length){
+              reclamantesPendentes=reclamantesPendentes.concat(reclamantesNovos);
+              var avisoReclamantes=g("jurAvisoReclamantesPendentes");
+              avisoReclamantes.style.display="block";
+              avisoReclamantes.innerHTML="👥 A IA identificou "+reclamantesPendentes.length+" reclamante(s) neste documento: "+esc(reclamantesPendentes.join(", "))+". Eles serão adicionados à lista de Reclamantes automaticamente quando o processo for salvo.";
+              msgReclamantes="<br>"+reclamantesNovos.length+" reclamante(s) identificado(s) — serão adicionados quando o processo for salvo.";
+            }
+
+            var msg="<strong>✦ Campos preenchidos pela IA — revise antes de salvar.</strong>"+msgReclamantes;
             if(d.prazoDescricao||d.prazoData) msg+="<br>Prazo sugerido (\""+esc(d.prazoDescricao||"")+"\", "+esc(d.prazoData||"?")+") já está no formulário de Prazos do processo — clique em \"+ Adicionar\" lá embaixo se quiser confirmá-lo.";
             if((r.alertas||[]).length) msg+="<ul style='margin:8px 0 0;padding-left:18px'>"+r.alertas.map(function(a){return "<li>"+esc(a)+"</li>";}).join("")+"</ul>";
             resultado.style.display="block";
