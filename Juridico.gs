@@ -822,25 +822,52 @@ function jurEnviarEmailAlertaPrazo_(processo, descricaoPrazo, dataTexto, diffDia
   }
 }
 
+// Mesmo padrão visual usado em todos os e-mails automáticos do SISGEP
+// (ver montarHtmlAlertaD5Fornecedor_ em Despesas.gs): cabeçalho navy com
+// SINDEDUCAÇÃO-ES, barra colorida por urgência, tabela de dados, rodapé.
+// Só o conteúdo muda por módulo — o layout é sempre o mesmo, pra quem
+// recebe reconhecer de cara que é um alerta oficial do sistema.
 function jurMontarHtmlAlertaPrazo_(processo, descricaoPrazo, dataBr, diffDias) {
-  var corDestaque = diffDias <= 1 ? "#dc2626" : diffDias <= 5 ? "#d97706" : "#1565C0";
-  var linhaCnj = processo.cnj ? ("<p style='margin:4px 0;color:#475569;font-size:13px;'>Nº CNJ: <strong>" + processo.cnj + "</strong></p>") : "";
-  var linhaResp = processo.responsavel ? ("<p style='margin:4px 0;color:#475569;font-size:13px;'>Responsável: " + processo.responsavel + "</p>") : "";
+  var emoji, titulo, subtitulo, corBarra;
+  if (diffDias <= 1) {
+    emoji = "🔔"; corBarra = "#dc2626";
+    titulo = "AMANHÃ: Prazo Jurídico Vence";
+    subtitulo = "O prazo abaixo vence <strong>amanhã</strong> (" + dataBr + ").";
+  } else if (diffDias <= 5) {
+    emoji = "⏰"; corBarra = "#d97706";
+    titulo = "Prazo Jurídico Próximo";
+    subtitulo = "O prazo abaixo vence em <strong>" + diffDias + " dias</strong> (" + dataBr + ").";
+  } else {
+    emoji = "📋"; corBarra = "#1565C0";
+    titulo = "Lembrete de Prazo Jurídico";
+    subtitulo = "O prazo abaixo vence em <strong>" + diffDias + " dias</strong> (" + dataBr + ").";
+  }
+  var saudacao = processo.responsavel ? ("Olá, <strong>" + processo.responsavel + "</strong>! ") : "";
 
-  return "" +
-    "<div style='font-family:Arial,sans-serif;max-width:520px;margin:0 auto;'>" +
-    "<div style='background:linear-gradient(135deg,#001f4d,#1565C0);padding:18px 22px;border-radius:12px 12px 0 0;'>" +
-    "<span style='color:#fff;font-size:16px;font-weight:700;'>⚖ Prazo jurídico</span></div>" +
-    "<div style='border:1px solid #e2e8f0;border-top:none;padding:22px;border-radius:0 0 12px 12px;'>" +
-    "<p style='margin:0 0 12px;color:#0f172a;font-size:15px;'>O prazo abaixo vence <strong style='color:" + corDestaque + "'>" + (diffDias <= 1 ? "amanhã" : ("em " + diffDias + " dias")) + "</strong>:</p>" +
-    "<div style='background:#f8fafc;border-left:3px solid " + corDestaque + ";border-radius:8px;padding:14px 16px;margin-bottom:14px;'>" +
-    "<p style='margin:0 0 4px;font-size:15px;font-weight:700;color:#0f172a;'>" + descricaoPrazo + "</p>" +
-    "<p style='margin:0;color:#475569;font-size:13px;'>Vencimento: <strong>" + dataBr + "</strong></p>" +
-    "</div>" +
-    "<p style='margin:4px 0;color:#475569;font-size:13px;'>Processo: " + processo.assunto + "</p>" +
-    linhaCnj + linhaResp +
-    "<p style='margin:18px 0 0;color:#94a3b8;font-size:11.5px;'>SISGEP · Módulo Jurídico · SindEducação-ES</p>" +
-    "</div></div>";
+  return (
+    '<div style="font-family:Segoe UI,Arial,sans-serif;max-width:620px;margin:0 auto;color:#0f172a;">' +
+      '<div style="background:#001f4d;padding:20px 28px 16px;border-radius:12px 12px 0 0;border-bottom:4px solid ' + corBarra + ';">' +
+        '<div style="font-size:20px;font-weight:900;color:#fff;">SINDEDUCAÇÃO-ES</div>' +
+        '<div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:4px;">Sistema de Gestão de Processos — SISGEP</div>' +
+      '</div>' +
+      '<div style="background:#fff;border:1px solid #e2e8f0;border-top:none;padding:24px 28px;">' +
+        '<h2 style="color:#001f4d;margin:0 0 8px;">' + emoji + ' ' + titulo + '</h2>' +
+        '<p style="color:#475569;margin:0 0 20px;line-height:1.7;">' + saudacao + subtitulo + '</p>' +
+        '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid ' + corBarra + ';border-radius:10px;padding:16px 18px;margin-bottom:20px;">' +
+          '<table style="width:100%;border-collapse:collapse;font-size:14px;">' +
+            '<tr><td style="padding:5px 0;font-weight:700;width:130px;">Prazo:</td><td>' + descricaoPrazo + '</td></tr>' +
+            '<tr><td style="padding:5px 0;font-weight:700;">Vencimento:</td><td><strong style="font-size:16px;">' + dataBr + '</strong></td></tr>' +
+            '<tr><td style="padding:5px 0;font-weight:700;">Processo:</td><td>' + processo.assunto + '</td></tr>' +
+            (processo.cnj ? '<tr><td style="padding:5px 0;font-weight:700;">Nº CNJ:</td><td>' + processo.cnj + '</td></tr>' : '') +
+            (processo.responsavel ? '<tr><td style="padding:5px 0;font-weight:700;">Responsável:</td><td>' + processo.responsavel + '</td></tr>' : '') +
+          '</table>' +
+        '</div>' +
+      '</div>' +
+      '<div style="background:#001f4d;padding:14px 28px;border-radius:0 0 12px 12px;text-align:center;">' +
+        '<div style="font-size:11px;color:rgba(255,255,255,.5);">SISGEP · SindEducação-ES · Módulo Jurídico</div>' +
+      '</div>' +
+    '</div>'
+  );
 }
 
 function jurInstalarTriggerAlertasPrazo() {
