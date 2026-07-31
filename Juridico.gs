@@ -694,13 +694,62 @@ function jurListarAudiencias(idProcesso, tokenSessao) {
   }
 }
 
+// Visão "Agenda" de TODAS as audiências (todos os processos), pra dashboard
+// interno do módulo. Motivo de existir apesar do evento já ir pro Google
+// Agenda (Fase 3c): o deploy do Web App roda como "quem implantou"
+// (executeAs: USER_DEPLOYING) — o evento cai no Google Agenda dessa conta
+// específica, não na de quem está usando o sistema. Sem essa lista aqui
+// dentro, ninguém enxergava a audiência sem entrar na conta certa do
+// Google Agenda ou vasculhar o e-mail de convite.
+function jurListarTodasAudiencias(tokenSessao) {
+  try {
+    exigirSessaoDocumentos_(tokenSessao, false);
+
+    var abaProc = jurObterAba_();
+    var mapaProc = {};
+    var ultimaLinhaProc = abaProc.getLastRow();
+    if (ultimaLinhaProc >= 2) {
+      var dadosProc = abaProc.getRange(2, 1, ultimaLinhaProc - 1, JUR_CABECALHO.length).getValues();
+      dadosProc.forEach(function(l) {
+        mapaProc[l[JUR_COL.ID - 1]] = { assunto: l[JUR_COL.ASSUNTO - 1] || "", cnj: l[JUR_COL.NUMERO_CNJ - 1] || "" };
+      });
+    }
+
+    var aba = jurObterAbaAudiencias_();
+    var ultimaLinha = aba.getLastRow();
+    if (ultimaLinha < 2) return { ok: true, itens: [] };
+
+    var dados = aba.getRange(2, 1, ultimaLinha - 1, JUR_CABECALHO_AUDIENCIAS.length).getValues();
+    var itens = dados.map(function(l) {
+      var idProcesso = String(l[JUR_COLA.ID_PROCESSO - 1] || "");
+      var proc = mapaProc[idProcesso] || {};
+      return {
+        id: l[JUR_COLA.ID - 1],
+        idProcesso: idProcesso,
+        data: jurTextoSeguro_(l[JUR_COLA.DATA - 1]),
+        hora: jurTextoSeguro_(l[JUR_COLA.HORA - 1], "HH:mm") || "",
+        tipo: l[JUR_COLA.TIPO - 1] || "",
+        local: l[JUR_COLA.LOCAL - 1] || "",
+        observacao: l[JUR_COLA.OBSERVACAO - 1] || "",
+        agendaOk: !!String(l[JUR_COLA.EVENTO_AGENDA_ID - 1] || "").trim(),
+        processoAssunto: proc.assunto || "(processo não encontrado)",
+        processoCnj: proc.cnj || ""
+      };
+    });
+
+    itens.sort(function(a, b) { return new Date(a.data + "T" + (a.hora || "00:00")) - new Date(b.data + "T" + (b.hora || "00:00")); });
+    return { ok: true, itens: itens };
+  } catch (e) {
+    Logger.log("jurListarTodasAudiencias ERRO: " + e.message + " | stack: " + e.stack);
+    return { ok: false, mensagem: e.message || "Erro ao listar a agenda." };
+  }
+}
+
 // Fase 3c — cria o evento no Google Agenda (CalendarApp) e convida o
-// responsável por e-mail (se tiver e-mail cadastrado no processo). O
-// SISGEP não tem módulo de agenda interna — "Eventos" no projeto é outra
-// coisa (emissão de ingresso de festa) — então a integração de verdade é
-// mandar pra Agenda do Google mesmo, que já dá lembrete automático sem
-// precisar abrir o sistema. Nunca deixa a audiência de ser salva se a
-// Agenda falhar — só loga e segue sem o evento.
+// responsável por e-mail (se tiver e-mail cadastrado no processo). Além da
+// lista interna (jurListarTodasAudiencias), isso dá lembrete automático de
+// verdade (notificação do Google) sem precisar abrir o sistema. Nunca deixa
+// a audiência de ser salva se a Agenda falhar — só loga e segue sem o evento.
 function jurCriarEventoAgenda_(idProcesso, data, hora, tipo, local, observacao) {
   try {
     var processo = jurBuscarProcessoParaAlerta_(idProcesso);

@@ -1,8 +1,8 @@
 <div id="juridicoAdmin" style="min-height:100%;background:#f0f4f8;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#0f172a;">
   <style>
     #juridicoAdmin *{box-sizing:border-box}.mod-head{background:linear-gradient(135deg,#001f4d,#1565C0);color:#fff;padding:22px 24px;display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}.mod-title{font-size:21px;font-weight:900}.mod-sub{font-size:12px;color:rgba(255,255,255,.68);margin-top:4px}.mod-wrap{padding:18px 22px 34px}.mod-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}.mod-card,.mod-panel{background:#fff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 2px 10px rgba(0,20,60,.06)}.mod-card{padding:15px}.mod-card small{font-size:10px;font-weight:900;color:#64748b;text-transform:uppercase}.mod-card strong{display:block;font-size:28px;color:#001f4d;margin-top:7px}.mod-panel{overflow:hidden}.mod-bar{padding:14px 16px;border-bottom:1px solid #eef2f7;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.mod-form{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr auto;gap:10px;padding:14px 16px;background:#f8fafc;border-bottom:1px solid #eef2f7}.mod-field label{display:block;font-size:10px;font-weight:900;color:#64748b;text-transform:uppercase;margin-bottom:4px}.mod-field input,.mod-field select{width:100%;height:36px;border:1.5px solid #dbe4ef;border-radius:9px;padding:0 10px;font-family:inherit}.mod-btn{height:34px;border-radius:9px;border:1px solid #cbd5e1;background:#fff;color:#334155;font-size:12px;font-weight:800;padding:0 12px;cursor:pointer;font-family:inherit}.mod-btn.primary{background:linear-gradient(135deg,#001f4d,#1565C0);color:#fff;border-color:#1565C0}.mod-btn:disabled{opacity:.6;cursor:default}.mod-search{padding:12px 16px;display:flex;gap:8px}.mod-search input{flex:1;height:36px;border:1.5px solid #dbe4ef;border-radius:999px;padding:0 14px}.mod-table{width:100%;border-collapse:collapse;min-width:760px}.mod-table th{background:#f8fafc;color:#64748b;font-size:10px;text-transform:uppercase;text-align:left;padding:10px}.mod-table td{font-size:12.5px;padding:11px 10px;border-top:1px solid #f1f5f9}.pill{border-radius:999px;padding:3px 9px;font-size:10.5px;font-weight:900}.ok{background:#dcfce7;color:#166534}.warn{background:#fef3c7;color:#92400e}.off{background:#fee2e2;color:#991b1b}.jur-link-assunto{background:none;border:none;padding:0;font:inherit;color:#0f172a;font-weight:700;cursor:pointer;text-align:left}.jur-link-assunto:hover{color:#1565C0;text-decoration:underline}@media(max-width:1000px){.mod-grid{grid-template-columns:repeat(2,1fr)}.mod-form{grid-template-columns:1fr 1fr}}
-    #jurModalOverlay,#jurRelatorioOverlay{display:none;position:fixed;inset:0;background:rgba(6,21,37,.55);z-index:9999;align-items:center;justify-content:center;padding:20px}
-    #jurModalOverlay.aberto,#jurRelatorioOverlay.aberto{display:flex}
+    #jurModalOverlay,#jurRelatorioOverlay,#jurAgendaOverlay{display:none;position:fixed;inset:0;background:rgba(6,21,37,.55);z-index:9999;align-items:center;justify-content:center;padding:20px}
+    #jurModalOverlay.aberto,#jurRelatorioOverlay.aberto,#jurAgendaOverlay.aberto{display:flex}
     .jur-rel-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
     .jur-rel-card{background:#f8fafc;border:1px solid #eef2f7;border-radius:12px;padding:14px 16px}
     .jur-rel-card small{font-size:10px;font-weight:900;color:#64748b;text-transform:uppercase}
@@ -51,7 +51,7 @@
   <div class="mod-head"><div><div class="mod-title">Jurídico</div><div class="mod-sub">Processos, notificações, prazos e documentos</div></div><button class="mod-btn" onclick="spIr('sofia',null,{mensagem:'Preciso de apoio jurídico sindical.'})">Consultar SOFIA</button></div>
   <div class="mod-wrap">
     <div class="mod-grid"><div class="mod-card"><small>Ativos</small><strong id="jurAtivos">0</strong></div><div class="mod-card"><small>Prazos 15d</small><strong id="jurPrazos">0</strong></div><div class="mod-card"><small>Notificações</small><strong id="jurNotificacoes">0</strong></div><div class="mod-card"><small>Concluídos</small><strong id="jurConcluidos">0</strong></div></div>
-    <div class="mod-panel"><div class="mod-bar"><strong>Controle jurídico</strong><div><button class="mod-btn" onclick="jurAbrirRelatorio()">📊 Relatório executivo</button><button class="mod-btn" onclick="jurExportar()">Exportar CSV</button><button class="mod-btn" onclick="spIr('documentos',null,{aba:'novo'})">Gerar documento</button></div></div>
+    <div class="mod-panel"><div class="mod-bar"><strong>Controle jurídico</strong><div><button class="mod-btn" onclick="jurAbrirAgenda()">🗓️ Agenda</button><button class="mod-btn" onclick="jurAbrirRelatorio()">📊 Relatório executivo</button><button class="mod-btn" onclick="jurExportar()">Exportar CSV</button><button class="mod-btn" onclick="spIr('documentos',null,{aba:'novo'})">Gerar documento</button></div></div>
       <div style="padding:12px 16px;background:#eef4ff;border-bottom:1px solid #eef2f7;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <input id="jurNovoArquivo" type="file" accept=".pdf,.jpg,.jpeg,.png" style="flex:1;min-width:220px;height:36px;border:1.5px solid #bfdbfe;border-radius:9px;padding:6px 10px;background:#fff;font-family:inherit;font-size:12px">
         <button class="mod-btn" onclick="jurLerNovoComIA()" id="jurBtnNovoLerIA" style="background:linear-gradient(135deg,#001f4d,#1565C0);color:#fff;border-color:#1565C0">✦ Ler documento com IA e preencher o cadastro</button>
@@ -113,10 +113,11 @@
         <div id="jurBlocoColetivo" style="display:none">
           <div class="jur-modal-section-title">Escolas afetadas (dissídio coletivo) — <span id="jurQtdEscolasColetivo">0</span> vinculada(s)</div>
           <div id="jurFListaEscolasColetivo" class="jur-sublista"></div>
-          <div class="mod-field" style="position:relative;margin-bottom:8px">
+          <div id="jurFEscolaColetivoAddWrap" class="mod-field" style="position:relative;margin-bottom:8px">
             <input id="jurFEscolaColetivoBusca" placeholder="Buscar escola por nome ou CNPJ pra vincular..." autocomplete="off" oninput="jurBuscarEscolaColetivoDigitada()">
             <div id="jurFEscolaColetivoLista" class="jur-autocomplete"></div>
           </div>
+          <div id="jurAvisoColetivoRequerSalvo" style="display:none;font-size:12px;color:#94a3b8;margin:-2px 0 8px">Escolas afetadas ficam disponíveis depois de salvar o processo pela primeira vez.</div>
         </div>
 
         <div id="jurBlocoRequerSalvo">
@@ -180,6 +181,19 @@
       <div class="jur-modal-body" id="jurRelatorioCorpo">Carregando...</div>
       <div class="jur-modal-foot">
         <button class="mod-btn" onclick="jurFecharRelatorio()">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="jurAgendaOverlay" onclick="if(event.target===this) jurFecharAgenda()">
+    <div class="jur-modal" style="max-width:640px">
+      <div class="jur-modal-head">
+        <strong>Agenda — audiências</strong>
+        <button class="jur-modal-close" onclick="jurFecharAgenda()" title="Fechar">&times;</button>
+      </div>
+      <div class="jur-modal-body" id="jurAgendaCorpo">Carregando...</div>
+      <div class="jur-modal-foot">
+        <button class="mod-btn" onclick="jurFecharAgenda()">Fechar</button>
       </div>
     </div>
   </div>
@@ -388,6 +402,43 @@
       g("jurRelatorioOverlay").classList.remove("aberto");
     };
 
+    // Lista interna de TODAS as audiências (todos os processos), porque o
+    // evento no Google Agenda cai na conta de quem implantou o Web App
+    // (executeAs: USER_DEPLOYING) — nem sempre quem está usando o sistema
+    // enxerga esse evento na própria Agenda. Isso garante visibilidade
+    // dentro do próprio SISGEP, sem depender de qual conta Google recebeu
+    // o convite.
+    window.jurAbrirAgenda=function(){
+      var overlay=g("jurAgendaOverlay");
+      var corpo=g("jurAgendaCorpo");
+      corpo.innerHTML="Carregando...";
+      overlay.classList.add("aberto");
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||!r.ok){ corpo.innerHTML="<p style='color:#991b1b'>"+esc((r&&r.mensagem)||"Não foi possível carregar a agenda.")+"</p>"; return; }
+          var itens=r.itens||[];
+          if(!itens.length){ corpo.innerHTML="<p style='color:#94a3b8;font-size:13px'>Nenhuma audiência marcada ainda.</p>"; return; }
+          var hojeISO=new Date().toISOString().slice(0,10);
+          corpo.innerHTML="<div class='jur-sublista'>"+itens.map(function(a){
+            var passada=a.data&&a.data<hojeISO;
+            var linha2=[a.tipo,a.local].filter(Boolean).join(" · ");
+            var statusAgenda=a.agendaOk?"✓ no Google Agenda":"sem convite na Google Agenda";
+            return "<div class='jur-subitem'"+(passada?" style='opacity:.55'":"")+"><div class='corpo'><b>"+esc(jurFormatarDataBr_(a.data))+(a.hora?" às "+esc(a.hora):"")+" — "+esc(a.processoAssunto)+"</b><span>"+esc(linha2||"—")+(a.processoCnj?" · "+esc(a.processoCnj):"")+" · "+statusAgenda+"</span></div><div class='acoes'><button class='mod-btn' style='height:26px;padding:0 8px;font-size:10.5px' onclick=\"jurAbrirProcessoDaAgenda('"+a.idProcesso+"')\">Abrir</button></div></div>";
+          }).join("")+"</div>";
+        })
+        .withFailureHandler(function(e){ corpo.innerHTML="<p style='color:#991b1b'>Erro: "+esc(e&&e.message?e.message:e)+"</p>"; })
+        .jurListarTodasAudiencias(token());
+    };
+
+    window.jurFecharAgenda=function(){
+      g("jurAgendaOverlay").classList.remove("aberto");
+    };
+
+    window.jurAbrirProcessoDaAgenda=function(idProcesso){
+      jurFecharAgenda();
+      jurAbrirFicha(idProcesso);
+    };
+
     window.jurGerarResumoIA=function(){
       var container=g("jurResumoIA");
       var btn=g("jurBtnResumoIA");
@@ -415,6 +466,8 @@
     window.jurAlternarNatureza=function(){
       var coletivo=g("jurFNatureza").value==="Coletivo";
       g("jurBlocoColetivo").style.display=coletivo?"block":"none";
+      g("jurFEscolaColetivoAddWrap").style.display=fichaId?"block":"none";
+      g("jurAvisoColetivoRequerSalvo").style.display=fichaId?"none":"block";
       if(coletivo && fichaId) jurCarregarEscolasColetivo();
     };
 
