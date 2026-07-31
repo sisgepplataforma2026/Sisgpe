@@ -13,6 +13,7 @@
   </div>
   <script>
   (function(){
+    console.log("[JUR] script do Jurídico carregado. readyState=", document.readyState);
     var edit="", cache=[];
     function g(i){return document.getElementById(i)}
     function token(){return typeof SISGEP_TOKEN_SESSAO!=="undefined"?SISGEP_TOKEN_SESSAO:""}
@@ -33,13 +34,21 @@
     }
 
     window.jurRender=function(){
+      console.log("[JUR] jurRender chamado. token=", token()?"(presente, "+token().length+" chars)":"(VAZIO)", "g(jurTabela)=", !!g("jurTabela"));
+      if(typeof google==="undefined"||!google.script||!google.script.run){
+        console.error("[JUR] google.script.run indisponível neste contexto.");
+        if(g("jurTabela")) g("jurTabela").innerHTML="<tr><td colspan='5' style='text-align:center;color:#991b1b;padding:24px'>Erro interno: conexão com o servidor indisponível.</td></tr>";
+        return;
+      }
       google.script.run
         .withSuccessHandler(function(r){
+          console.log("[JUR] listarProcessosJuridicos respondeu:", r);
           if(!r||!r.ok){ g("jurTabela").innerHTML="<tr><td colspan='5' style='text-align:center;color:#991b1b;padding:24px'>"+esc((r&&r.mensagem)||"Não foi possível carregar.")+"</td></tr>"; return; }
           cache=r.itens||[];
           renderLista(cache);
         })
         .withFailureHandler(function(e){
+          console.error("[JUR] listarProcessosJuridicos falhou:", e);
           g("jurTabela").innerHTML="<tr><td colspan='5' style='text-align:center;color:#991b1b;padding:24px'>Erro ao carregar: "+esc(e&&e.message?e.message:e)+"</td></tr>";
         })
         .listarProcessosJuridicos(token());
@@ -111,7 +120,13 @@
     };
 
     window.initJuridico=jurRender;
-    if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",jurRender); else setTimeout(jurRender,80);
+    if(document.readyState==="loading"){
+      console.log("[JUR] aguardando DOMContentLoaded para chamar jurRender.");
+      document.addEventListener("DOMContentLoaded",jurRender);
+    } else {
+      console.log("[JUR] chamando jurRender via setTimeout(80ms).");
+      setTimeout(jurRender,80);
+    }
   })();
   </script>
 </div>
