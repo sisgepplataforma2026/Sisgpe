@@ -824,7 +824,7 @@ function jurEnviarEmailAlertaPrazo_(processo, descricaoPrazo, dataTexto, diffDia
 
 function jurMontarHtmlAlertaPrazo_(processo, descricaoPrazo, dataBr, diffDias) {
   var corDestaque = diffDias <= 1 ? "#dc2626" : diffDias <= 5 ? "#d97706" : "#1565C0";
-  var linhaCnj = processo.cnj ? ("<p style='margin:4px 0;color:#475569;font-size:13px;'>Processo: <strong>" + processo.cnj + "</strong></p>") : "";
+  var linhaCnj = processo.cnj ? ("<p style='margin:4px 0;color:#475569;font-size:13px;'>Nº CNJ: <strong>" + processo.cnj + "</strong></p>") : "";
   var linhaResp = processo.responsavel ? ("<p style='margin:4px 0;color:#475569;font-size:13px;'>Responsável: " + processo.responsavel + "</p>") : "";
 
   return "" +
