@@ -110,10 +110,12 @@
         <div class="jur-modal-section-title">Documento anexado</div>
         <div id="jurFAnexoAtual"></div>
         <div class="mod-field"><label>Anexar petição, sentença ou notificação (PDF, JPG ou PNG · até 10MB)</label><input id="jurFArquivo" type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="jurAtualizarBotaoCancelarArquivo()"></div>
-        <div style="display:flex;gap:8px;margin-top:8px">
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
           <button class="mod-btn" onclick="jurEnviarAnexo()" id="jurBtnAnexo">Enviar anexo</button>
           <button class="mod-btn" onclick="jurCancelarSelecaoArquivo()" id="jurBtnCancelarArquivo" style="display:none">Cancelar seleção</button>
+          <button class="mod-btn" onclick="jurLerComIA()" id="jurBtnLerIA" style="display:none;background:linear-gradient(135deg,#001f4d,#1565C0);color:#fff;border-color:#1565C0">✦ Ler com IA</button>
         </div>
+        <div id="jurIAResultado" style="display:none;margin-top:10px;padding:12px 14px;background:#eef4ff;border:1px solid #bfdbfe;border-radius:9px;font-size:12.5px;color:#1e3a8a"></div>
 
         <div class="jur-meta" id="jurFMeta"></div>
       </div>
@@ -379,6 +381,8 @@
       renderVinculosChips();
       g("jurFArquivo").value="";
       g("jurBtnCancelarArquivo").style.display="none";
+      g("jurBtnLerIA").style.display="none";
+      g("jurIAResultado").style.display="none";
       renderAnexo(x.linkDocumento, x.nomeArquivo);
       g("jurFMeta").innerHTML="Criado por "+esc(x.criadoPor||"—")+" em "+esc(x.criadoEm||"—")+"<br>Última atualização por "+esc(x.atualizadoPor||"—")+" em "+esc(x.atualizadoEm||"—");
       g("jurFNovoPrazoDescricao").value="";
@@ -536,6 +540,63 @@
       var input=g("jurFArquivo");
       var tem=input&&input.files&&input.files.length>0;
       g("jurBtnCancelarArquivo").style.display=tem?"inline-block":"none";
+      g("jurBtnLerIA").style.display=tem?"inline-block":"none";
+      g("jurIAResultado").style.display="none";
+    };
+
+    // Lê o arquivo escolhido com IA e pré-preenche os campos da ficha pra
+    // revisão — nunca salva sozinho. O usuário confere/edita e clica em
+    // "Salvar alterações" como sempre.
+    window.jurLerComIA=function(){
+      var input=g("jurFArquivo");
+      var arquivo=input&&input.files&&input.files[0];
+      if(!arquivo) return alert("Escolha um arquivo primeiro.");
+      if(arquivo.size>10*1024*1024) return alert("Arquivo maior que 10MB.");
+
+      var btn=g("jurBtnLerIA");
+      if(btn){btn.disabled=true;btn.textContent="Lendo com IA...";}
+      var resultado=g("jurIAResultado");
+      resultado.style.display="none";
+
+      var leitor=new FileReader();
+      leitor.onload=function(e){
+        var base64=String(e.target.result||"").split(",")[1]||"";
+        google.script.run
+          .withSuccessHandler(function(r){
+            if(btn){btn.disabled=false;btn.textContent="✦ Ler com IA";}
+            if(!r||!r.sucesso){
+              resultado.style.display="block";
+              resultado.innerHTML="<strong>Não foi possível ler o documento.</strong><br>"+esc((r&&r.mensagem)||"Erro desconhecido.");
+              return;
+            }
+            var d=r.dados;
+            if(d.assunto) g("jurFAssunto").value=d.assunto;
+            if(d.tipo) g("jurFTipo").value=d.tipo;
+            if(d.area) g("jurFArea").value=d.area;
+            if(d.cnj) g("jurFCnj").value=d.cnj;
+            if(d.autor) g("jurFAutor").value=d.autor;
+            if(d.reu) g("jurFReu").value=d.reu;
+            if(d.prazoDescricao) g("jurFNovoPrazoDescricao").value=d.prazoDescricao;
+            if(d.prazoData) g("jurFNovoPrazoData").value=d.prazoData;
+
+            var msg="<strong>✦ Campos preenchidos pela IA — revise antes de salvar.</strong>";
+            if(d.prazoDescricao||d.prazoData) msg+="<br>Prazo sugerido (\""+esc(d.prazoDescricao||"")+"\", "+esc(d.prazoData||"?")+") já está no formulário de Prazos do processo — clique em \"+ Adicionar\" lá embaixo se quiser confirmá-lo.";
+            if((r.alertas||[]).length) msg+="<ul style='margin:8px 0 0;padding-left:18px'>"+r.alertas.map(function(a){return "<li>"+esc(a)+"</li>";}).join("")+"</ul>";
+            resultado.style.display="block";
+            resultado.innerHTML=msg;
+          })
+          .withFailureHandler(function(err){
+            if(btn){btn.disabled=false;btn.textContent="✦ Ler com IA";}
+            resultado.style.display="block";
+            resultado.innerHTML="<strong>Erro ao ler o documento:</strong> "+esc(err&&err.message?err.message:err);
+          })
+          .jurAnalisarDocumentoIA(base64, arquivo.name, arquivo.type||"application/pdf", token());
+      };
+      leitor.onerror=function(){
+        if(btn){btn.disabled=false;btn.textContent="✦ Ler com IA";}
+        alert("Não foi possível ler o arquivo selecionado.");
+      };
+      leitor.readAsDataURL(arquivo);
     };
 
     window.jurCancelarSelecaoArquivo=function(){

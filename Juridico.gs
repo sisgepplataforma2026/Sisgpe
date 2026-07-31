@@ -885,3 +885,98 @@ function jurRemoverTriggerAlertasPrazo() {
   });
   return { ok: true, mensagem: "Trigger removido." };
 }
+
+// ============================================================================
+// FASE 3a — Leitura de intimação/petição por IA (Sofia)
+//
+// Mesmo padrão de IA_DocumentosSindicalizacao.gs: OCR do Drive
+// (docIA_ocrParaTexto_) + IA devolvendo JSON estruturado
+// (docIA_extrairJSON_). REGRA DE OURO igual lá: esta função só LÊ e
+// SUGERE — nada é gravado aqui. Quem confirma é o usuário, editando os
+// campos já pré-preenchidos na ficha e clicando em "Salvar alterações"
+// (o fluxo de salvar já existe, não precisa de uma função "confirmar"
+// separada — a revisão humana É a tela normal de edição).
+// ============================================================================
+
+function jurAnalisarDocumentoIA(base64, nomeArquivo, mimeType, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
+  try {
+    var texto = docIA_ocrParaTexto_(base64, nomeArquivo, mimeType);
+    if (!texto.trim()) {
+      return { sucesso: false, mensagem: "Não foi possível ler nenhum texto no documento. Tente um PDF ou foto de melhor qualidade." };
+    }
+
+    var prompt = [
+      "Você está lendo o texto (extraído por OCR, pode ter erros de leitura) de um documento",
+      "jurídico recebido por um sindicato de trabalhadores em educação: pode ser uma petição,",
+      "intimação, notificação judicial, sentença ou contrato.",
+      "",
+      "TEXTO EXTRAÍDO:",
+      '"""',
+      texto,
+      '"""',
+      "",
+      "Extraia os dados em um JSON com exatamente estas chaves (use \"\" quando não encontrar,",
+      "NUNCA invente um valor que não está no texto):",
+      "{",
+      '  "assunto": "",',
+      '  "tipo": "",',
+      '  "area": "",',
+      '  "numeroCnj": "",',
+      '  "autor": "",',
+      '  "reu": "",',
+      '  "prazoDescricao": "",',
+      '  "prazoData": "",',
+      '  "observacoesLeitura": ""',
+      "}",
+      "",
+      "Regras:",
+      '- "assunto": um resumo curto (até 80 caracteres) do que é o documento, ex.: "Notificação',
+      '  judicial - reclamação trabalhista Escola X".',
+      '- "tipo": escolha UM entre exatamente estas opções: "Processo", "Notificação", "Contrato",',
+      '  "Consulta". Se não tiver certeza, deixe "".',
+      '- "area": escolha UM entre exatamente estas opções: "Trabalhista", "Cível",',
+      '  "Administrativo", "Tributário", "Outro". Se não tiver certeza, deixe "".',
+      '- "numeroCnj": o número do processo, só dígitos e os separadores originais (formato',
+      '  NNNNNNN-DD.AAAA.J.TR.OOOO), se aparecer no texto.',
+      '- "autor" e "reu": nome das partes, como aparecem no documento.',
+      '- "prazoDescricao": o nome do prazo mais urgente/próximo mencionado no documento (ex.:',
+      '  "Contestação", "Recurso", "Audiência de instrução"). Se houver mais de um prazo, escolha',
+      '  o mais próximo/urgente.',
+      '- "prazoData": a data desse prazo, formato aaaa-mm-dd, se identificar.',
+      '- "observacoesLeitura": qualquer trecho ilegível, ambíguo, ou informação importante que',
+      "  não coube nos campos acima — isso é pro responsável conferir com atenção.",
+      "- Responda APENAS com o JSON, sem texto antes ou depois, sem markdown."
+    ].join("\n");
+
+    var extraido = docIA_extrairJSON_(prompt);
+
+    var alertas = [];
+    var tipo = JUR_TIPOS.indexOf(extraido.tipo) > -1 ? extraido.tipo : "";
+    if (!tipo) alertas.push("Não identifiquei o tipo do documento com segurança — confira o campo Tipo.");
+    var area = JUR_AREAS.indexOf(extraido.area) > -1 ? extraido.area : "";
+    if (!area) alertas.push("Não identifiquei a área com segurança — confira o campo Área.");
+    if (!extraido.numeroCnj) alertas.push("Número CNJ não encontrado no documento — confira manualmente.");
+    if (!extraido.prazoData) alertas.push("Não identifiquei uma data de prazo no documento.");
+    if (extraido.observacoesLeitura) alertas.push("IA: " + extraido.observacoesLeitura);
+
+    return {
+      sucesso: true,
+      dados: {
+        assunto: extraido.assunto || "",
+        tipo: tipo,
+        area: area,
+        cnj: extraido.numeroCnj || "",
+        autor: extraido.autor || "",
+        reu: extraido.reu || "",
+        prazoDescricao: extraido.prazoDescricao || "",
+        prazoData: extraido.prazoData || ""
+      },
+      alertas: alertas,
+      textoOcr: texto
+    };
+  } catch (e) {
+    Logger.log("jurAnalisarDocumentoIA erro: " + e.message);
+    return { sucesso: false, mensagem: "Erro ao analisar o documento: " + e.message };
+  }
+}
