@@ -479,8 +479,8 @@ function jurBuscarEscolaVinculo(termo, tokenSessao) {
 // ============================================================================
 
 var JUR_ABA_PRAZOS = "Juridico_Prazos";
-var JUR_CABECALHO_PRAZOS = ["ID", "ID Processo", "Descrição", "Data", "Cumprido", "Criado Em", "Criado Por"];
-var JUR_COLP = { ID: 1, ID_PROCESSO: 2, DESCRICAO: 3, DATA: 4, CUMPRIDO: 5, CRIADO_EM: 6, CRIADO_POR: 7 };
+var JUR_CABECALHO_PRAZOS = ["ID", "ID Processo", "Descrição", "Data", "Cumprido", "Criado Em", "Criado Por", "Data Último Alerta"];
+var JUR_COLP = { ID: 1, ID_PROCESSO: 2, DESCRICAO: 3, DATA: 4, CUMPRIDO: 5, CRIADO_EM: 6, CRIADO_POR: 7, DATA_ULTIMO_ALERTA: 8 };
 
 var JUR_ABA_AUDIENCIAS = "Juridico_Audiencias";
 var JUR_CABECALHO_AUDIENCIAS = ["ID", "ID Processo", "Data", "Hora", "Tipo", "Local", "Observação", "Criado Em", "Criado Por"];
@@ -498,6 +498,13 @@ function jurObterAbaGenerica_(nomeAba, cabecalho, colunasTexto) {
     aba.getRange(1, 1, 1, cabecalho.length).setValues([cabecalho]);
     aba.getRange(1, 1, 1, cabecalho.length).setFontWeight("bold").setBackground("#001f4d").setFontColor("#ffffff");
     aba.setFrozenRows(1);
+  } else if (aba.getLastColumn() < cabecalho.length) {
+    // Aba criada antes de alguma coluna nova existir — completa o
+    // cabeçalho sem mexer no que já tinha (mesmo padrão da aba principal).
+    var colunaInicial = aba.getLastColumn() + 1;
+    var faltantes = cabecalho.slice(aba.getLastColumn());
+    aba.getRange(1, colunaInicial, 1, faltantes.length).setValues([faltantes]);
+    aba.getRange(1, colunaInicial, 1, faltantes.length).setFontWeight("bold").setBackground("#001f4d").setFontColor("#ffffff");
   }
   (colunasTexto || []).forEach(function(col) {
     aba.getRange(2, col, Math.max(aba.getMaxRows() - 1, 1), 1).setNumberFormat("@");
@@ -506,7 +513,7 @@ function jurObterAbaGenerica_(nomeAba, cabecalho, colunasTexto) {
 }
 
 function jurObterAbaPrazos_() {
-  return jurObterAbaGenerica_(JUR_ABA_PRAZOS, JUR_CABECALHO_PRAZOS, [JUR_COLP.DATA]);
+  return jurObterAbaGenerica_(JUR_ABA_PRAZOS, JUR_CABECALHO_PRAZOS, [JUR_COLP.DATA, JUR_COLP.DATA_ULTIMO_ALERTA]);
 }
 
 function jurObterAbaAudiencias_() {
@@ -717,4 +724,137 @@ function jurExcluirAudiencia(id, tokenSessao) {
     Logger.log("jurExcluirAudiencia ERRO: " + e.message + " | stack: " + e.stack);
     return { ok: false, mensagem: e.message || "Erro ao excluir audiência." };
   }
+}
+
+// ============================================================================
+// FASE 2c — Notificação automática de prazo por e-mail (D-15/D-5/D-1)
+//
+// Mesmo padrão de verificarEDispararAlertasD5 (Despesas.gs): um gatilho
+// diário varre os prazos em aberto, dispara e-mail nos marcos [15,5,1] dias
+// antes do vencimento, e marca a data do último alerta pra nunca mandar
+// duas vezes no mesmo dia. O destinatário é o "Responsável E-mail"
+// cadastrado no processo (Fase 2a) — sem e-mail cadastrado, o prazo
+// continua aparecendo no dashboard, só não gera notificação.
+// ============================================================================
+
+function jurVerificarEDispararAlertasPrazo() {
+  try {
+    Logger.log("▶ jurVerificarEDispararAlertasPrazo iniciado.");
+
+    var abaPrazos = jurObterAbaPrazos_();
+    var ultimaLinha = abaPrazos.getLastRow();
+    if (ultimaLinha < 2) { Logger.log("jurVerificarEDispararAlertasPrazo: sem prazos cadastrados."); return; }
+
+    var dadosPrazos = abaPrazos.getRange(2, 1, ultimaLinha - 1, JUR_CABECALHO_PRAZOS.length).getValues();
+    var hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    var marcos = [15, 5, 1];
+    var enviados = 0, ignorados = 0;
+
+    for (var i = 0; i < dadosPrazos.length; i++) {
+      var linha = dadosPrazos[i];
+      var cumprido = String(linha[JUR_COLP.CUMPRIDO - 1] || "NAO") === "SIM";
+      if (cumprido) { ignorados++; continue; }
+
+      var dataTexto = jurTextoSeguro_(linha[JUR_COLP.DATA - 1]);
+      if (!dataTexto) { ignorados++; continue; }
+      var dataPrazo = new Date(dataTexto + "T00:00:00");
+      if (isNaN(dataPrazo.getTime())) { ignorados++; continue; }
+
+      var diffDias = Math.round((dataPrazo - hoje) / 86400000);
+      if (marcos.indexOf(diffDias) === -1) { ignorados++; continue; }
+
+      var ultimoAlerta = jurTextoSeguro_(linha[JUR_COLP.DATA_ULTIMO_ALERTA - 1]);
+      var hojeTexto = Utilities.formatDate(hoje, Session.getScriptTimeZone() || "America/Sao_Paulo", "yyyy-MM-dd");
+      if (ultimoAlerta === hojeTexto) { ignorados++; continue; }
+
+      var idProcesso = String(linha[JUR_COLP.ID_PROCESSO - 1] || "").trim();
+      var processo = jurBuscarProcessoParaAlerta_(idProcesso);
+      if (!processo || !processo.email) { ignorados++; continue; }
+
+      var enviouOk = jurEnviarEmailAlertaPrazo_(processo, String(linha[JUR_COLP.DESCRICAO - 1] || ""), dataTexto, diffDias);
+      if (enviouOk) {
+        abaPrazos.getRange(i + 2, JUR_COLP.DATA_ULTIMO_ALERTA).setValue(hojeTexto);
+        enviados++;
+      } else {
+        ignorados++;
+      }
+    }
+
+    Logger.log("✅ jurVerificarEDispararAlertasPrazo: enviados=" + enviados + " ignorados=" + ignorados);
+  } catch (e) {
+    Logger.log("❌ jurVerificarEDispararAlertasPrazo ERRO: " + e.message + " | stack: " + e.stack);
+  }
+}
+
+function jurBuscarProcessoParaAlerta_(idProcesso) {
+  if (!idProcesso) return null;
+  var aba = jurObterAba_();
+  var encontrada = jurBuscarLinhaPorId_(aba, idProcesso);
+  if (!encontrada) return null;
+  var v = encontrada.valores;
+  return {
+    assunto: v[JUR_COL.ASSUNTO - 1] || "",
+    cnj: v[JUR_COL.NUMERO_CNJ - 1] || "",
+    responsavel: v[JUR_COL.RESPONSAVEL - 1] || "",
+    email: String(v[JUR_COL.RESPONSAVEL_EMAIL - 1] || "").trim()
+  };
+}
+
+function jurEnviarEmailAlertaPrazo_(processo, descricaoPrazo, dataTexto, diffDias) {
+  try {
+    var partesData = dataTexto.split("-");
+    var dataBr = partesData.length === 3 ? (partesData[2] + "/" + partesData[1] + "/" + partesData[0]) : dataTexto;
+    var urgencia = diffDias <= 1 ? "AMANHÃ" : ("em " + diffDias + " dias");
+    var assunto = "⚖ Prazo jurídico vence " + urgencia + " — " + processo.assunto;
+
+    MailApp.sendEmail({
+      to: processo.email,
+      subject: assunto,
+      htmlBody: jurMontarHtmlAlertaPrazo_(processo, descricaoPrazo, dataBr, diffDias),
+      name: "SISGEP · Jurídico — SindEducação-ES"
+    });
+    return true;
+  } catch (e) {
+    Logger.log("jurEnviarEmailAlertaPrazo_ ERRO (" + processo.email + "): " + e.message);
+    return false;
+  }
+}
+
+function jurMontarHtmlAlertaPrazo_(processo, descricaoPrazo, dataBr, diffDias) {
+  var corDestaque = diffDias <= 1 ? "#dc2626" : diffDias <= 5 ? "#d97706" : "#1565C0";
+  var linhaCnj = processo.cnj ? ("<p style='margin:4px 0;color:#475569;font-size:13px;'>Processo: <strong>" + processo.cnj + "</strong></p>") : "";
+  var linhaResp = processo.responsavel ? ("<p style='margin:4px 0;color:#475569;font-size:13px;'>Responsável: " + processo.responsavel + "</p>") : "";
+
+  return "" +
+    "<div style='font-family:Arial,sans-serif;max-width:520px;margin:0 auto;'>" +
+    "<div style='background:linear-gradient(135deg,#001f4d,#1565C0);padding:18px 22px;border-radius:12px 12px 0 0;'>" +
+    "<span style='color:#fff;font-size:16px;font-weight:700;'>⚖ Prazo jurídico</span></div>" +
+    "<div style='border:1px solid #e2e8f0;border-top:none;padding:22px;border-radius:0 0 12px 12px;'>" +
+    "<p style='margin:0 0 12px;color:#0f172a;font-size:15px;'>O prazo abaixo vence <strong style='color:" + corDestaque + "'>" + (diffDias <= 1 ? "amanhã" : ("em " + diffDias + " dias")) + "</strong>:</p>" +
+    "<div style='background:#f8fafc;border-left:3px solid " + corDestaque + ";border-radius:8px;padding:14px 16px;margin-bottom:14px;'>" +
+    "<p style='margin:0 0 4px;font-size:15px;font-weight:700;color:#0f172a;'>" + descricaoPrazo + "</p>" +
+    "<p style='margin:0;color:#475569;font-size:13px;'>Vencimento: <strong>" + dataBr + "</strong></p>" +
+    "</div>" +
+    "<p style='margin:4px 0;color:#475569;font-size:13px;'>Processo: " + processo.assunto + "</p>" +
+    linhaCnj + linhaResp +
+    "<p style='margin:18px 0 0;color:#94a3b8;font-size:11.5px;'>SISGEP · Módulo Jurídico · SindEducação-ES</p>" +
+    "</div></div>";
+}
+
+function jurInstalarTriggerAlertasPrazo() {
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === "jurVerificarEDispararAlertasPrazo") ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger("jurVerificarEDispararAlertasPrazo").timeBased().everyDays(1).atHour(8).create();
+  Logger.log("✅ Trigger de alerta de prazo do Jurídico instalado — executa diariamente às 8h.");
+  return { ok: true, mensagem: "Trigger instalado com sucesso — executa diariamente às 8h." };
+}
+
+function jurRemoverTriggerAlertasPrazo() {
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === "jurVerificarEDispararAlertasPrazo") { ScriptApp.deleteTrigger(t); Logger.log("Trigger de alerta de prazo do Jurídico removido."); }
+  });
+  return { ok: true, mensagem: "Trigger removido." };
 }
