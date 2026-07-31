@@ -830,10 +830,15 @@
       document.getElementById('revCidade').textContent = document.getElementById('novaCidade').value;
     }
     
+    var fotoSelecionadaBase64 = '';
+    var fotoSelecionadaTipo = '';
+
     function previewFoto(input) {
       if (input.files && input.files[0]) {
+        fotoSelecionadaTipo = input.files[0].type || 'image/jpeg';
         var reader = new FileReader();
         reader.onload = function(e) {
+          fotoSelecionadaBase64 = e.target.result;
           document.getElementById('imgPreview').src = e.target.result;
           document.getElementById('fotoPreview').style.display = 'block';
         };
@@ -857,7 +862,8 @@
         numero: document.getElementById('novoNumero').value,
         bairro: document.getElementById('novoBairro').value,
         cidade: document.getElementById('novaCidade').value,
-        fotoUrl: ''
+        fotoBase64: fotoSelecionadaBase64,
+        fotoTipo: fotoSelecionadaTipo
       };
       
       google.script.run

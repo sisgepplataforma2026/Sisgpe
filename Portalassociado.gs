@@ -77,6 +77,53 @@ function verificarSePrecisaAtualizar_(dados) {
 }
 
 /**
+ * Pasta do Drive para as fotos de credencial enviadas pelos associados no
+ * Portal Público. Mesmo padrão de obterPastaDesp_ (Despesas.gs): lê o ID
+ * de uma Propriedade do Script; se não estiver configurada (ou a pasta
+ * salva foi apagada), cria uma pasta nova e grava o ID de volta, pra não
+ * depender de configuração manual prévia.
+ */
+function portalAss_obterPastaFotos_() {
+  var props = PropertiesService.getScriptProperties();
+  var pastaId = (props.getProperty('PASTA_FOTOS_CARTEIRINHA_ID') || '').trim();
+  if (pastaId) {
+    try { return DriveApp.getFolderById(pastaId); }
+    catch (e) { Logger.log('portalAss_obterPastaFotos_: pasta configurada inválida, recriando. ' + e.message); }
+  }
+  var pasta = DriveApp.createFolder('SISGEP — Fotos de Credencial');
+  props.setProperty('PASTA_FOTOS_CARTEIRINHA_ID', pasta.getId());
+  return pasta;
+}
+
+/**
+ * Salva no Drive a foto (base64, formato "data:image/...;base64,XXXX" ou
+ * só o base64 puro) enviada pelo associado na atualização cadastral, e
+ * devolve um link exibível diretamente em <img src="...">. Antes o
+ * upload nunca acontecia — fotoUrl chegava sempre vazio ao servidor
+ * (achado da auditoria de Carteirinhas), então nenhuma carteirinha
+ * conseguia sair do zero via Portal do Associado.
+ * Retorna "" se não houver foto ou se o upload falhar.
+ */
+function portalAss_salvarFotoCredencial_(cpf, base64, tipo) {
+  var b64 = String(base64 || '');
+  var virgula = b64.indexOf(',');
+  if (virgula > -1) b64 = b64.substring(virgula + 1);
+  if (!b64) return '';
+  try {
+    var mime = String(tipo || 'image/jpeg');
+    var extensao = mime.indexOf('png') > -1 ? 'png' : 'jpg';
+    var nomeArquivo = 'FOTO_' + String(cpf || '').replace(/\D/g, '') + '_' + Date.now() + '.' + extensao;
+    var blob = Utilities.newBlob(Utilities.base64Decode(b64), mime, nomeArquivo);
+    var arquivo = portalAss_obterPastaFotos_().createFile(blob);
+    arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    return 'https://drive.google.com/uc?export=view&id=' + arquivo.getId();
+  } catch (e) {
+    Logger.log('portalAss_salvarFotoCredencial_: ' + e);
+    return '';
+  }
+}
+
+/**
  * Salva solicitação de atualização cadastral
  * Cria registro na aba "Solicitacoes_Atualizacao" (crie esta aba!)
  */
@@ -112,6 +159,8 @@ function salvarSolicitacaoAtualizacao(dadosFormulario) {
       ]);
     }
     
+    var fotoUrl = portalAss_salvarFotoCredencial_(dadosFormulario.cpf, dadosFormulario.fotoBase64, dadosFormulario.fotoTipo);
+
     // Salva solicitação
     var novaLinha = [
       new Date(),
@@ -126,7 +175,7 @@ function salvarSolicitacaoAtualizacao(dadosFormulario) {
       dadosFormulario.celular,
       dadosFormulario.celular2,
       dadosFormulario.email,
-      dadosFormulario.fotoUrl || "",
+      fotoUrl,
       "Pendente",
       ""
     ];
