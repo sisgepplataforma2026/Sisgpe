@@ -16,6 +16,16 @@
     .jur-anexo-atual a{color:#166534;font-weight:700}
     .jur-meta{font-size:11.5px;color:#94a3b8;margin-top:16px;line-height:1.6}
     .jur-modal-foot{padding:16px 22px;border-top:1px solid #eef2f7;display:flex;justify-content:flex-end;gap:10px}
+    .jur-autocomplete{display:none;position:absolute;left:0;right:0;top:100%;z-index:20;background:#fff;border:1px solid #dbe4ef;border-radius:9px;box-shadow:0 12px 30px rgba(0,20,60,.15);max-height:220px;overflow:auto;margin-top:3px}
+    .jur-autocomplete.aberto{display:block}
+    .jur-autocomplete .item{padding:9px 12px;cursor:pointer;font-size:12.5px;border-bottom:1px solid #f1f5f9}
+    .jur-autocomplete .item:last-child{border-bottom:none}
+    .jur-autocomplete .item:hover{background:#f0f6ff}
+    .jur-autocomplete .item b{display:block;color:#0f172a}
+    .jur-autocomplete .item span{color:#64748b;font-size:11px}
+    .jur-autocomplete .vazio{padding:9px 12px;font-size:12px;color:#94a3b8}
+    .jur-chip{display:inline-flex;align-items:center;gap:6px;background:#eef2ff;color:#3730a3;border-radius:999px;padding:5px 10px 5px 12px;font-size:12px;font-weight:700}
+    .jur-chip button{background:none;border:none;color:#3730a3;cursor:pointer;font-size:14px;line-height:1;padding:0}
   </style>
   <div class="mod-head"><div><div class="mod-title">Jurídico</div><div class="mod-sub">Processos, notificações, prazos e documentos</div></div><button class="mod-btn" onclick="spIr('sofia',null,{mensagem:'Preciso de apoio jurídico sindical.'})">Consultar SOFIA</button></div>
   <div class="mod-wrap">
@@ -50,6 +60,22 @@
           <div class="mod-field"><label>Réu</label><input id="jurFReu" placeholder="Contra quem"></div>
         </div>
 
+        <div class="jur-modal-section-title">Vínculos</div>
+        <div class="jur-modal-grid" style="grid-template-columns:1fr 1fr">
+          <div class="mod-field" style="position:relative">
+            <label>Associado</label>
+            <input id="jurFAssociadoBusca" placeholder="Buscar por nome ou CPF..." autocomplete="off" oninput="jurBuscarAssociadoDigitado()">
+            <div id="jurFAssociadoLista" class="jur-autocomplete"></div>
+          </div>
+          <div class="mod-field" style="position:relative">
+            <label>Escola</label>
+            <input id="jurFEscolaBusca" placeholder="Buscar por nome ou CNPJ..." autocomplete="off" oninput="jurBuscarEscolaDigitada()">
+            <div id="jurFEscolaLista" class="jur-autocomplete"></div>
+          </div>
+        </div>
+        <div id="jurFVinculosSelecionados" style="display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 4px"></div>
+        <div class="jur-modal-grid full"><div class="mod-field"><label>E-mail do responsável (para alertas de prazo)</label><input id="jurFResponsavelEmail" type="email" placeholder="responsavel@sindeducacaoes.org.br"></div></div>
+
         <div class="jur-modal-section-title">Documento anexado</div>
         <div id="jurFAnexoAtual"></div>
         <div class="mod-field"><label>Anexar petição, sentença ou notificação (PDF, JPG ou PNG · até 10MB)</label><input id="jurFArquivo" type="file" accept=".pdf,.jpg,.jpeg,.png"></div>
@@ -73,6 +99,9 @@
     }
     window.__jurInicializado=true;
     var edit="", cache=[], fichaId="";
+    var fichaAssociado={cpf:"",nome:""}, fichaEscola={cnpj:"",nome:""};
+    var vigiaBuscaAssociado=null, vigiaBuscaEscola=null;
+    var ultimaBuscaAssociados=[], ultimaBuscaEscolas=[];
     function g(i){return document.getElementById(i)}
     function token(){return typeof SISGEP_TOKEN_SESSAO!=="undefined"?SISGEP_TOKEN_SESSAO:""}
     function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])})}
@@ -170,6 +199,90 @@
       a.click();
     };
 
+    // ---------------- Vínculos: Associado e Escola ----------------
+
+    function renderVinculosChips(){
+      var chips="";
+      if(fichaAssociado.cpf||fichaAssociado.nome){
+        chips+="<span class='jur-chip'>👤 "+esc(fichaAssociado.nome||fichaAssociado.cpf)+" <button onclick=\"jurLimparVinculo('associado')\" title='Remover'>&times;</button></span>";
+      }
+      if(fichaEscola.cnpj||fichaEscola.nome){
+        chips+="<span class='jur-chip'>🏫 "+esc(fichaEscola.nome||fichaEscola.cnpj)+" <button onclick=\"jurLimparVinculo('escola')\" title='Remover'>&times;</button></span>";
+      }
+      g("jurFVinculosSelecionados").innerHTML=chips;
+    }
+
+    window.jurLimparVinculo=function(tipo){
+      if(tipo==="associado"){ fichaAssociado={cpf:"",nome:""}; g("jurFAssociadoBusca").value=""; }
+      if(tipo==="escola"){ fichaEscola={cnpj:"",nome:""}; g("jurFEscolaBusca").value=""; }
+      renderVinculosChips();
+    };
+
+    window.jurBuscarAssociadoDigitado=function(){
+      clearTimeout(vigiaBuscaAssociado);
+      var termo=g("jurFAssociadoBusca").value;
+      var lista=g("jurFAssociadoLista");
+      if(String(termo||"").trim().length<2){ lista.classList.remove("aberto"); return; }
+      vigiaBuscaAssociado=setTimeout(function(){
+        google.script.run
+          .withSuccessHandler(function(r){
+            if(!r||!r.ok){ lista.innerHTML="<div class='vazio'>"+esc((r&&r.mensagem)||"Erro na busca.")+"</div>"; lista.classList.add("aberto"); return; }
+            ultimaBuscaAssociados=r.itens||[];
+            lista.innerHTML=ultimaBuscaAssociados.length?ultimaBuscaAssociados.map(function(a,i){
+              return "<div class='item' onclick='jurSelecionarAssociado("+i+")'><b>"+esc(a.nome)+"</b><span>"+esc(a.cpf||"")+(a.escola?" · "+esc(a.escola):"")+"</span></div>";
+            }).join(""):"<div class='vazio'>Nenhum associado encontrado.</div>";
+            lista.classList.add("aberto");
+          })
+          .withFailureHandler(function(e){ lista.innerHTML="<div class='vazio'>Erro: "+esc(e&&e.message?e.message:e)+"</div>"; lista.classList.add("aberto"); })
+          .jurBuscarAssociado(termo, token());
+      },300);
+    };
+
+    window.jurSelecionarAssociado=function(idx){
+      var a=ultimaBuscaAssociados[idx];
+      if(!a) return;
+      fichaAssociado={cpf:a.cpf||"",nome:a.nome||""};
+      g("jurFAssociadoBusca").value="";
+      g("jurFAssociadoLista").classList.remove("aberto");
+      renderVinculosChips();
+    };
+
+    window.jurBuscarEscolaDigitada=function(){
+      clearTimeout(vigiaBuscaEscola);
+      var termo=g("jurFEscolaBusca").value;
+      var lista=g("jurFEscolaLista");
+      if(String(termo||"").trim().length<2){ lista.classList.remove("aberto"); return; }
+      vigiaBuscaEscola=setTimeout(function(){
+        google.script.run
+          .withSuccessHandler(function(r){
+            if(!r||!r.ok){ lista.innerHTML="<div class='vazio'>"+esc((r&&r.mensagem)||"Erro na busca.")+"</div>"; lista.classList.add("aberto"); return; }
+            ultimaBuscaEscolas=(r.itens||[]).map(function(e){
+              return { nome:e.escola||e.nome||e.NomeEscola||"", cnpj:e.cnpjLimpo||e.cnpj||"", cidade:e.cidade||e.municipio||"" };
+            });
+            lista.innerHTML=ultimaBuscaEscolas.length?ultimaBuscaEscolas.map(function(e,i){
+              return "<div class='item' onclick='jurSelecionarEscola("+i+")'><b>"+esc(e.nome)+"</b><span>"+esc(e.cnpj)+(e.cidade?" · "+esc(e.cidade):"")+"</span></div>";
+            }).join(""):"<div class='vazio'>Nenhuma escola encontrada.</div>";
+            lista.classList.add("aberto");
+          })
+          .withFailureHandler(function(e){ lista.innerHTML="<div class='vazio'>Erro: "+esc(e&&e.message?e.message:e)+"</div>"; lista.classList.add("aberto"); })
+          .jurBuscarEscolaVinculo(termo, token());
+      },300);
+    };
+
+    window.jurSelecionarEscola=function(idx){
+      var e=ultimaBuscaEscolas[idx];
+      if(!e) return;
+      fichaEscola={cnpj:e.cnpj||"",nome:e.nome||""};
+      g("jurFEscolaBusca").value="";
+      g("jurFEscolaLista").classList.remove("aberto");
+      renderVinculosChips();
+    };
+
+    document.addEventListener("click",function(ev){
+      if(!ev.target.closest("#jurFAssociadoBusca") && !ev.target.closest("#jurFAssociadoLista")){ var l1=g("jurFAssociadoLista"); if(l1) l1.classList.remove("aberto"); }
+      if(!ev.target.closest("#jurFEscolaBusca") && !ev.target.closest("#jurFEscolaLista")){ var l2=g("jurFEscolaLista"); if(l2) l2.classList.remove("aberto"); }
+    });
+
     // ---------------- Ficha do processo ----------------
 
     window.jurAbrirFicha=function(id){
@@ -185,6 +298,12 @@
       g("jurFCnj").value=x.cnj||"";
       g("jurFAutor").value=x.autor||"";
       g("jurFReu").value=x.reu||"";
+      g("jurFResponsavelEmail").value=x.responsavelEmail||"";
+      fichaAssociado={cpf:x.associadoCpf||"",nome:x.associadoNome||""};
+      fichaEscola={cnpj:x.escolaCnpj||"",nome:x.escolaNome||""};
+      g("jurFAssociadoBusca").value="";
+      g("jurFEscolaBusca").value="";
+      renderVinculosChips();
       g("jurFArquivo").value="";
       g("jurFAnexoAtual").innerHTML=x.linkDocumento
         ? "<div class='jur-anexo-atual'>📎 <a href='"+esc(x.linkDocumento)+"' target='_blank' rel='noopener'>"+esc(x.nomeArquivo||"Documento anexado")+"</a></div>"
@@ -204,7 +323,10 @@
       var dados={
         id:fichaId, assunto:assunto, tipo:g("jurFTipo").value, status:g("jurFStatus").value,
         prazo:g("jurFPrazo").value, area:g("jurFArea").value, responsavel:g("jurFResponsavel").value,
-        cnj:g("jurFCnj").value, autor:g("jurFAutor").value, reu:g("jurFReu").value
+        cnj:g("jurFCnj").value, autor:g("jurFAutor").value, reu:g("jurFReu").value,
+        responsavelEmail:g("jurFResponsavelEmail").value,
+        associadoCpf:fichaAssociado.cpf, associadoNome:fichaAssociado.nome,
+        escolaCnpj:fichaEscola.cnpj, escolaNome:fichaEscola.nome
       };
       var btn=g("jurBtnSalvarFicha");
       if(btn){btn.disabled=true;btn.textContent="Salvando...";}

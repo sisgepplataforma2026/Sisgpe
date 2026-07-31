@@ -6,9 +6,11 @@
 // obrigatória, exclusão lógica (nunca apaga histórico de processo).
 //
 // Fase 1 da auditoria estratégica: campos jurídicos mínimos (CNJ, Área,
-// Responsável, Autor, Réu) e anexo de documento. Colunas novas foram
-// ACRESCENTADAS no fim do cabeçalho (não reordenadas) para não quebrar os
-// registros que já existiam na planilha antes desta mudança.
+// Responsável, Autor, Réu) e anexo de documento. Fase 2a: vínculo com
+// Associado e Escola (cadastros já existentes no sistema) e e-mail do
+// responsável (usado pela notificação automática da Fase 2c). Colunas
+// novas foram sempre ACRESCENTADAS no fim do cabeçalho (não reordenadas)
+// para não quebrar os registros que já existiam na planilha.
 // ============================================================================
 
 var JUR_ABA = "Juridico";
@@ -17,7 +19,8 @@ var JUR_CABECALHO = [
   "ID", "Assunto", "Tipo", "Prazo", "Status",
   "Criado Em", "Criado Por", "Atualizado Em", "Atualizado Por", "Ativo",
   "Número CNJ", "Área", "Responsável", "Autor", "Réu",
-  "Link Documento", "File ID Documento", "Nome Arquivo"
+  "Link Documento", "File ID Documento", "Nome Arquivo",
+  "Associado CPF", "Associado Nome", "Escola CNPJ", "Escola Nome", "Responsável E-mail"
 ];
 
 var JUR_COL = {
@@ -38,7 +41,12 @@ var JUR_COL = {
   REU: 15,
   LINK_DOCUMENTO: 16,
   FILE_ID_DOCUMENTO: 17,
-  NOME_ARQUIVO: 18
+  NOME_ARQUIVO: 18,
+  ASSOCIADO_CPF: 19,
+  ASSOCIADO_NOME: 20,
+  ESCOLA_CNPJ: 21,
+  ESCOLA_NOME: 22,
+  RESPONSAVEL_EMAIL: 23
 };
 
 var JUR_TIPOS = ["Processo", "Notificação", "Contrato", "Consulta"];
@@ -108,7 +116,12 @@ function jurMapearLinha_(valores) {
     autor: valores[JUR_COL.AUTOR - 1] || "",
     reu: valores[JUR_COL.REU - 1] || "",
     linkDocumento: valores[JUR_COL.LINK_DOCUMENTO - 1] || "",
-    nomeArquivo: valores[JUR_COL.NOME_ARQUIVO - 1] || ""
+    nomeArquivo: valores[JUR_COL.NOME_ARQUIVO - 1] || "",
+    associadoCpf: valores[JUR_COL.ASSOCIADO_CPF - 1] || "",
+    associadoNome: valores[JUR_COL.ASSOCIADO_NOME - 1] || "",
+    escolaCnpj: valores[JUR_COL.ESCOLA_CNPJ - 1] || "",
+    escolaNome: valores[JUR_COL.ESCOLA_NOME - 1] || "",
+    responsavelEmail: valores[JUR_COL.RESPONSAVEL_EMAIL - 1] || ""
   };
 }
 
@@ -196,6 +209,11 @@ function jurSalvarProcesso(dados, tokenSessao) {
     var responsavel = String(dados.responsavel || "").trim();
     var autor = String(dados.autor || "").trim();
     var reu = String(dados.reu || "").trim();
+    var associadoCpf = String(dados.associadoCpf || "").trim();
+    var associadoNome = String(dados.associadoNome || "").trim();
+    var escolaCnpj = String(dados.escolaCnpj || "").trim();
+    var escolaNome = String(dados.escolaNome || "").trim();
+    var responsavelEmail = String(dados.responsavelEmail || "").trim();
 
     return jurComLock_(function() {
       var aba = jurObterAba_();
@@ -214,6 +232,11 @@ function jurSalvarProcesso(dados, tokenSessao) {
         aba.getRange(encontrada.linha, JUR_COL.RESPONSAVEL).setValue(responsavel);
         aba.getRange(encontrada.linha, JUR_COL.AUTOR).setValue(autor);
         aba.getRange(encontrada.linha, JUR_COL.REU).setValue(reu);
+        aba.getRange(encontrada.linha, JUR_COL.ASSOCIADO_CPF).setValue(associadoCpf);
+        aba.getRange(encontrada.linha, JUR_COL.ASSOCIADO_NOME).setValue(associadoNome);
+        aba.getRange(encontrada.linha, JUR_COL.ESCOLA_CNPJ).setValue(escolaCnpj);
+        aba.getRange(encontrada.linha, JUR_COL.ESCOLA_NOME).setValue(escolaNome);
+        aba.getRange(encontrada.linha, JUR_COL.RESPONSAVEL_EMAIL).setValue(responsavelEmail);
         aba.getRange(encontrada.linha, JUR_COL.ATUALIZADO_EM).setValue(agora);
         aba.getRange(encontrada.linha, JUR_COL.ATUALIZADO_POR).setValue(responsavelSessao);
 
@@ -238,6 +261,11 @@ function jurSalvarProcesso(dados, tokenSessao) {
       linha[JUR_COL.RESPONSAVEL - 1] = responsavel;
       linha[JUR_COL.AUTOR - 1] = autor;
       linha[JUR_COL.REU - 1] = reu;
+      linha[JUR_COL.ASSOCIADO_CPF - 1] = associadoCpf;
+      linha[JUR_COL.ASSOCIADO_NOME - 1] = associadoNome;
+      linha[JUR_COL.ESCOLA_CNPJ - 1] = escolaCnpj;
+      linha[JUR_COL.ESCOLA_NOME - 1] = escolaNome;
+      linha[JUR_COL.RESPONSAVEL_EMAIL - 1] = responsavelEmail;
 
       aba.appendRow(linha);
       Logger.log("jurSalvarProcesso OK: criado " + id);
@@ -335,5 +363,71 @@ function jurUploadDocumento(dados, tokenSessao) {
       ? "Outra pessoa está salvando um registro agora. Tente novamente em instantes."
       : (e.message || "Erro desconhecido ao enviar o anexo.");
     return { ok: false, mensagem: mensagem };
+  }
+}
+
+// ----------------------------------------------------------------------------
+// FASE 2a — Vínculo com Associado e Escola
+//
+// Reaproveita a aba "Associados" já mantida por Sindicalizacao (mesma
+// planilha central) em vez de duplicar cadastro. Importante: a aba Escolas
+// (usada em Ofícios, por CNPJ) e a aba Associados (que guarda "Nome
+// fantasia" da instituição de ensino) usam vocabulários DIFERENTES — não dá
+// pra derivar um a partir do outro, por isso o Jurídico deixa buscar os
+// dois separadamente e vincula ambos quando fizer sentido (ex.: processo de
+// um associado específico x TAC com uma escola inteira).
+// ----------------------------------------------------------------------------
+
+function jurBuscarAssociado(termo, tokenSessao) {
+  try {
+    exigirSessaoDocumentos_(tokenSessao, false);
+    termo = String(termo || "").trim().toLowerCase();
+    if (termo.length < 2) return { ok: true, itens: [] };
+
+    var aba = sindAss_aba_();
+    var ultimaLinha = aba.getLastRow();
+    if (ultimaLinha < 2) return { ok: true, itens: [] };
+
+    var mapa = sindAss_mapaCabecalho_(aba);
+    var colNome = mapa["NOME"];
+    var colCpf = mapa["CPF"];
+    var colEscola = mapa["NOME FANTASIA"];
+    if (colNome === undefined || colCpf === undefined) {
+      throw new Error("Cabeçalho da aba Associados não tem as colunas Nome/CPF esperadas.");
+    }
+
+    var termoDigitos = termo.replace(/\D/g, "");
+    var dados = aba.getRange(2, 1, ultimaLinha - 1, aba.getLastColumn()).getValues();
+    var itens = [];
+    for (var i = 0; i < dados.length && itens.length < 15; i++) {
+      var nome = String(dados[i][colNome] || "");
+      var cpf = String(dados[i][colCpf] || "");
+      var bateNome = nome.toLowerCase().indexOf(termo) >= 0;
+      var bateCpf = termoDigitos.length >= 3 && cpf.replace(/\D/g, "").indexOf(termoDigitos) >= 0;
+      if (!bateNome && !bateCpf) continue;
+      itens.push({
+        nome: nome,
+        cpf: cpf,
+        escola: colEscola !== undefined ? String(dados[i][colEscola] || "") : ""
+      });
+    }
+
+    return { ok: true, itens: itens };
+  } catch (e) {
+    Logger.log("jurBuscarAssociado ERRO: " + e.message + " | stack: " + e.stack);
+    return { ok: false, mensagem: e.message || "Erro ao buscar associado." };
+  }
+}
+
+// Wrapper com sessão em cima de buscarEscola() (BuscaEscola.gs), que já é a
+// busca de escolas usada em Ofícios (por razão social/CNPJ/cidade).
+function jurBuscarEscolaVinculo(termo, tokenSessao) {
+  try {
+    exigirSessaoDocumentos_(tokenSessao, false);
+    var resultado = buscarEscola(termo) || [];
+    return { ok: true, itens: resultado };
+  } catch (e) {
+    Logger.log("jurBuscarEscolaVinculo ERRO: " + e.message + " | stack: " + e.stack);
+    return { ok: false, mensagem: e.message || "Erro ao buscar escola." };
   }
 }
