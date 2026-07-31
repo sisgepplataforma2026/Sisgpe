@@ -83,12 +83,17 @@
       <button class="spN" data-mod="juridico" onclick="spIr('juridico',this)">
         <span class="spNI">️</span><div><strong>Jurídico</strong><small>Processos e Documentos</small></div>
       </button>
-      <button class="spN" data-mod="comunicacao" onclick="spIr('comunicacao',this)">
-        <span class="spNI">✉️</span><div><strong>Comunicação</strong><small>E-mails e Mensagens</small></div>
+      <button class="spN" data-mod="comunicacao" onclick="toggleComunicacaoAccordion(this);spIr('comunicacao',this)">
+        <span class="spNI">✉️</span><div><strong>Central de Comunicação</strong><small>Painel do dia e caixa de e-mails</small></div>
       </button>
-      <button class="spN" data-mod="centralEmailIA" onclick="spIr('centralEmailIA',this)">
-        <span class="spNI">📬</span><div><strong>Central IA de E-mails</strong><small>Categorização e respostas automáticas</small></div>
-      </button>
+
+      <!-- Comunicação (Cockpit) e Central IA de E-mails são a mesma caixa
+           Gmail, com o Cockpit reaproveitando as ações da Central IA —
+           dois botões de menu lado a lado pra praticamente a mesma coisa
+           confundia navegação. Unificado num só, com as duas visões. -->
+      <div id="comunicacaoSubMenuSidebar" class="docSubMenuSidebar" style="display:none;">
+        <button type="button" class="docSubMenuBtn" data-com-sub="centralEmailIA" onclick="spIr('centralEmailIA',null)">📬 Caixa de E-mails</button>
+      </div>
       <button class="spN" data-mod="eventos" onclick="spIr('eventos',this)">
         <span class="spNI">📅</span><div><strong>Eventos</strong><small>Atividades e Programações</small></div>
       </button>
@@ -1183,8 +1188,8 @@ var MODS={
   rh:["mRH","RH","Colaboradores, Documentos e Vencimentos"],
   juridico:["mJuridico","Jurídico","Processos e Documentos"],
   patrimonio:["mPatrimonio","Patrimônio","Bens e Inventário"],
-  comunicacao:["mComunicacao","Comunicação","Central de E-mails Inteligente"],
-  centralEmailIA:["mCentralEmailIA","Central IA de E-mails","Categorização inteligente, contexto SISGEP e respostas automáticas"],
+  comunicacao:["mComunicacao","Painel do Dia","Central de Comunicação — resumo, prioridades e ações rápidas de e-mail"],
+  centralEmailIA:["mCentralEmailIA","Caixa de E-mails","Central de Comunicação — categorização inteligente, contexto SISGEP e respostas automáticas"],
   eventos:["mEventos","Eventos","Atividades e Programações"],
   relatorios:["mDocumentos","Relatórios","Indicadores e Análises"],
 config:["mConfig","Configurações","Sistema e Preferências"],
@@ -1268,6 +1273,11 @@ window.toggleSindAccordion=function(){
 };
 window.toggleFinanceiroAccordion=function(){
   var acc=document.getElementById("financeiroSubMenuSidebar");
+  if(!acc) return;
+  acc.style.display = (acc.style.display==="flex") ? "none" : "flex";
+};
+window.toggleComunicacaoAccordion=function(){
+  var acc=document.getElementById("comunicacaoSubMenuSidebar");
   if(!acc) return;
   acc.style.display = (acc.style.display==="flex") ? "none" : "flex";
 };
@@ -1630,9 +1640,14 @@ var SIND_SUBS={fichas:1,aprovacoesPortal:1,visitasAdmin:1};
      ativo financeiro), então viraram submenu em vez de item de 1º nível. */
   var FIN_SUBS={financeiro:1,cadastroPrestadores:1,patrimonio:1};
 
+  /* Central de Comunicação: Cockpit ("comunicacao") é a visão padrão,
+     Central IA de E-mails é a segunda visão do mesmo módulo unificado. */
+  var COM_SUBS={comunicacao:1,centralEmailIA:1};
+
   var n=navEl||document.querySelector(".spN[data-mod='"+mod+"']");
   if(!n && SIND_SUBS[mod]) n=document.querySelector(".spN[data-mod='sindicalizacao']");
   if(!n && FIN_SUBS[mod]) n=document.querySelector(".spN[data-mod='financeiro']");
+  if(!n && COM_SUBS[mod]) n=document.querySelector(".spN[data-mod='comunicacao']");
   if(n)n.classList.add("sp-ativo");
 
   var accordionDoc=document.getElementById("docSubMenuSidebar");
@@ -1644,6 +1659,9 @@ var SIND_SUBS={fichas:1,aprovacoesPortal:1,visitasAdmin:1};
   var accordionFin=document.getElementById("financeiroSubMenuSidebar");
   if(accordionFin) accordionFin.style.display=FIN_SUBS[mod]?"flex":"none";
 
+  var accordionCom=document.getElementById("comunicacaoSubMenuSidebar");
+  if(accordionCom) accordionCom.style.display=COM_SUBS[mod]?"flex":"none";
+
   /* Corrige comportamento antigo: o acordeão de Benefícios ficava aberto
      pendurado ao navegar para Financeiro, RH e os demais módulos. */
   var accordionBenef=document.getElementById("beneficiosSubMenuSidebar");
@@ -1654,6 +1672,9 @@ var SIND_SUBS={fichas:1,aprovacoesPortal:1,visitasAdmin:1};
   });
   Array.prototype.forEach.call(document.querySelectorAll("[data-fin-sub]"),function(b){
     b.classList.toggle("docSubMenuBtn-ativo", b.getAttribute("data-fin-sub")===mod);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-com-sub]"),function(b){
+    b.classList.toggle("docSubMenuBtn-ativo", b.getAttribute("data-com-sub")===mod);
   });
 
   var t=document.getElementById("spTit"),s=document.getElementById("spSub");
