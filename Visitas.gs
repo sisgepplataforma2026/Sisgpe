@@ -367,7 +367,7 @@ function visitas_agendar_(dados, usuario) {
       STATUS_VISITA: VIS_STATUS.AGENDADA,
       PROXIMA_VISITA: r.DATA_AGENDADA,
       DIRETOR_RESPONSAVEL: r.DIRETOR_BASE
-    });
+    }, r.CNPJ);
     visitas_limparCache_();
 
     return {
@@ -454,6 +454,7 @@ function agendarVisitasEmLote(escolas, dataAgendada, diretorBase, tokenSessao) {
       linhas.push(linha);
       criadas.push(r.ID_VISITA);
       atualizacoes[nome] = {
+        _CNPJ: r.CNPJ,
         STATUS_VISITA: VIS_STATUS.AGENDADA,
         PROXIMA_VISITA: r.DATA_AGENDADA,
         DIRETOR_RESPONSAVEL: r.DIRETOR_BASE
@@ -511,7 +512,7 @@ function registrarCheckin(idVisita, latitude, longitude, tokenSessao) {
     if (!String(r.DIRETOR_BASE || '').trim()) r.DIRETOR_BASE = sessao.nome;
     r.ATUALIZADA_EM = new Date();
     visitas_gravar_(r);
-    visitas_atualizarEscola_(r.ESCOLA, { STATUS_VISITA: VIS_STATUS.EM_ANDAMENTO });
+    visitas_atualizarEscola_(r.ESCOLA, { STATUS_VISITA: VIS_STATUS.EM_ANDAMENTO }, r.CNPJ);
     visitas_limparCache_();
 
     var link = '';
@@ -612,7 +613,7 @@ function finalizarVisita(idVisita, statusFinal, proximaVisita, observacoes, toke
       TOTAL_VISITAS: totais.visitas,
       TOTAL_SINDICALIZACOES: totais.fichas,
       DIRETOR_RESPONSAVEL: r.DIRETOR_BASE
-    });
+    }, r.CNPJ);
     visitas_limparCache_();
 
     return {
@@ -653,7 +654,7 @@ function cancelarVisita(idVisita, motivo, tokenSessao) {
     visitas_atualizarEscola_(r.ESCOLA, {
       STATUS_VISITA: totais.visitas > 0 ? VIS_STATUS.VISITADA : VIS_STATUS.PENDENTE,
       PROXIMA_VISITA: ''
-    });
+    }, r.CNPJ);
     visitas_limparCache_();
     return { sucesso: true, mensagem: 'Visita cancelada.' };
   } finally {
@@ -1089,26 +1090,45 @@ function visitas_gravar_(registro) {
   }
 }
 
-/** Atualiza campos de acompanhamento da escola, sem tocar no cadastro. */
-function visitas_atualizarEscola_(nomeEscola, campos) {
+/**
+ * Atualiza campos de acompanhamento da escola, sem tocar no cadastro.
+ *
+ * Casa por CNPJ primeiro (se informado) e só cai para nome normalizado
+ * como reserva — mesma ordem de obterEscola360. Antes casava só por
+ * nome, o que gravava na unidade errada quando duas escolas da mesma
+ * rede têm a mesma razão social em cidades diferentes.
+ */
+function visitas_atualizarEscola_(nomeEscola, campos, cnpj) {
   try {
     var abaE = visitas_abaEscolas_();
     var ultima = abaE.getLastRow();
     if (ultima < 2) return;
     var mapa = visitas_mapaCabecalho_(abaE);
     var colNome = visitas_idxCol_(mapa, 'ESCOLA (RAZÃO SOCIAL)', 2);
-    var nomes = abaE.getRange(2, colNome, ultima - 1, 1).getValues();
-    var alvo = visitas_normalizarTexto_(nomeEscola);
-    for (var i = 0; i < nomes.length; i++) {
-      if (visitas_normalizarTexto_(nomes[i][0]) === alvo) {
-        var linha = i + 2;
-        Object.keys(campos).forEach(function (k) {
-          var col = visitas_idxCol_(mapa, k, 0);
-          if (col) abaE.getRange(linha, col).setValue(campos[k]);
-        });
-        return;
+    var colCnpj = visitas_idxCol_(mapa, 'CNPJ', 3);
+    var n = ultima - 1;
+    var nomes = abaE.getRange(2, colNome, n, 1).getValues();
+    var cnpjs = colCnpj ? abaE.getRange(2, colCnpj, n, 1).getValues() : null;
+    var alvoNome = visitas_normalizarTexto_(nomeEscola);
+    var alvoCnpj = String(cnpj || '').replace(/\D/g, '');
+
+    var linha = -1;
+    if (alvoCnpj && cnpjs) {
+      for (var i = 0; i < n; i++) {
+        if (String(cnpjs[i][0] || '').replace(/\D/g, '') === alvoCnpj) { linha = i + 2; break; }
       }
     }
+    if (linha === -1) {
+      for (var j = 0; j < n; j++) {
+        if (visitas_normalizarTexto_(nomes[j][0]) === alvoNome) { linha = j + 2; break; }
+      }
+    }
+    if (linha === -1) return;
+
+    Object.keys(campos).forEach(function (k) {
+      var col = visitas_idxCol_(mapa, k, 0);
+      if (col) abaE.getRange(linha, col).setValue(campos[k]);
+    });
   } catch (e) {
     Logger.log('Atualizacao da escola falhou (' + nomeEscola + '): ' + e.message);
   }
@@ -1116,7 +1136,10 @@ function visitas_atualizarEscola_(nomeEscola, campos) {
 
 /**
  * Atualiza o acompanhamento de varias escolas numa so passada.
- * atualizacoes: { 'NOME DA ESCOLA': { COLUNA: valor, ... }, ... }
+ * atualizacoes: { 'NOME DA ESCOLA': { _CNPJ: '...', COLUNA: valor, ... }, ... }
+ * _CNPJ e opcional (usado só pra achar a linha certa, nunca é gravado
+ * como coluna) — quando informado, tem prioridade sobre o nome, mesma
+ * ordem de obterEscola360/visitas_atualizarEscola_.
  *
  * Le a aba Escolas uma vez e escreve uma vez por coluna afetada, em vez
  * de um setValue por campo por escola.
@@ -1132,21 +1155,27 @@ function visitas_atualizarEscolasEmLote_(atualizacoes) {
 
     var mapa = visitas_mapaCabecalho_(abaE);
     var colNome = visitas_idxCol_(mapa, 'ESCOLA (RAZÃO SOCIAL)', 2);
+    var colCnpj = visitas_idxCol_(mapa, 'CNPJ', 3);
     var n = ultima - 1;
     var nomes = abaE.getRange(2, colNome, n, 1).getValues();
+    var cnpjs = colCnpj ? abaE.getRange(2, colCnpj, n, 1).getValues() : null;
 
-    /* Indice normalizado nome -> primeira linha. Escolas com a mesma razao
-       social em unidades diferentes casam na primeira; e limitacao do
-       cadastro, nao deste laco. */
-    var indice = {};
+    /* Indice por CNPJ (prioridade) e por nome normalizado (reserva).
+       Escolas com a mesma razao social em unidades diferentes só ainda
+       casam na primeira se nenhuma das duas tiver CNPJ cadastrado. */
+    var indicePorCnpj = {}, indicePorNome = {};
     for (var i = 0; i < n; i++) {
-      var chave = visitas_normalizarTexto_(nomes[i][0]);
-      if (chave && indice[chave] === undefined) indice[chave] = i;
+      var chaveNome = visitas_normalizarTexto_(nomes[i][0]);
+      if (chaveNome && indicePorNome[chaveNome] === undefined) indicePorNome[chaveNome] = i;
+      if (cnpjs) {
+        var chaveCnpj = String(cnpjs[i][0] || '').replace(/\D/g, '');
+        if (chaveCnpj && indicePorCnpj[chaveCnpj] === undefined) indicePorCnpj[chaveCnpj] = i;
+      }
     }
 
     var colunas = {};
     nomesAlvo.forEach(function (nome) {
-      Object.keys(atualizacoes[nome]).forEach(function (c) { colunas[c] = true; });
+      Object.keys(atualizacoes[nome]).forEach(function (c) { if (c !== '_CNPJ') colunas[c] = true; });
     });
 
     Object.keys(colunas).forEach(function (nomeCol) {
@@ -1155,7 +1184,10 @@ function visitas_atualizarEscolasEmLote_(atualizacoes) {
       var valores = abaE.getRange(2, col, n, 1).getValues();
       var mexeu = false;
       nomesAlvo.forEach(function (nome) {
-        var idx = indice[visitas_normalizarTexto_(nome)];
+        var cnpjAlvo = String(atualizacoes[nome]._CNPJ || '').replace(/\D/g, '');
+        var idx = (cnpjAlvo && indicePorCnpj[cnpjAlvo] !== undefined)
+          ? indicePorCnpj[cnpjAlvo]
+          : indicePorNome[visitas_normalizarTexto_(nome)];
         if (idx === undefined) return;
         var novo = atualizacoes[nome][nomeCol];
         if (novo === undefined) return;
