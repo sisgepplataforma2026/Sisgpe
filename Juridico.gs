@@ -495,8 +495,8 @@ var JUR_CABECALHO_PRAZOS = ["ID", "ID Processo", "Descrição", "Data", "Cumprid
 var JUR_COLP = { ID: 1, ID_PROCESSO: 2, DESCRICAO: 3, DATA: 4, CUMPRIDO: 5, CRIADO_EM: 6, CRIADO_POR: 7, DATA_ULTIMO_ALERTA: 8 };
 
 var JUR_ABA_AUDIENCIAS = "Juridico_Audiencias";
-var JUR_CABECALHO_AUDIENCIAS = ["ID", "ID Processo", "Data", "Hora", "Tipo", "Local", "Observação", "Criado Em", "Criado Por"];
-var JUR_COLA = { ID: 1, ID_PROCESSO: 2, DATA: 3, HORA: 4, TIPO: 5, LOCAL: 6, OBSERVACAO: 7, CRIADO_EM: 8, CRIADO_POR: 9 };
+var JUR_CABECALHO_AUDIENCIAS = ["ID", "ID Processo", "Data", "Hora", "Tipo", "Local", "Observação", "Criado Em", "Criado Por", "Evento Agenda ID"];
+var JUR_COLA = { ID: 1, ID_PROCESSO: 2, DATA: 3, HORA: 4, TIPO: 5, LOCAL: 6, OBSERVACAO: 7, CRIADO_EM: 8, CRIADO_POR: 9, EVENTO_AGENDA_ID: 10 };
 
 // colunasTexto: lista de colunas (data/hora) que o Sheets NÃO pode converter
 // sozinho pro tipo dele — mesmo problema que já pegamos no campo Prazo
@@ -688,6 +688,45 @@ function jurListarAudiencias(idProcesso, tokenSessao) {
   }
 }
 
+// Fase 3c — cria o evento no Google Agenda (CalendarApp) e convida o
+// responsável por e-mail (se tiver e-mail cadastrado no processo). O
+// SISGEP não tem módulo de agenda interna — "Eventos" no projeto é outra
+// coisa (emissão de ingresso de festa) — então a integração de verdade é
+// mandar pra Agenda do Google mesmo, que já dá lembrete automático sem
+// precisar abrir o sistema. Nunca deixa a audiência de ser salva se a
+// Agenda falhar — só loga e segue sem o evento.
+function jurCriarEventoAgenda_(idProcesso, data, hora, tipo, local, observacao) {
+  try {
+    var processo = jurBuscarProcessoParaAlerta_(idProcesso);
+    var titulo = "⚖ Audiência" + (tipo ? " — " + tipo : "") + (processo ? " — " + processo.assunto : "");
+    var descricaoPartes = [];
+    if (processo && processo.cnj) descricaoPartes.push("Processo: " + processo.cnj);
+    if (processo && processo.assunto) descricaoPartes.push("Assunto: " + processo.assunto);
+    if (observacao) descricaoPartes.push("Observação: " + observacao);
+    descricaoPartes.push("Cadastrado pelo SISGEP · Módulo Jurídico");
+    var descricao = descricaoPartes.join("\n");
+
+    var opcoes = {};
+    if (processo && processo.email) { opcoes.guests = processo.email; opcoes.sendInvites = true; }
+    if (local) opcoes.location = local;
+    opcoes.description = descricao;
+
+    var calendario = CalendarApp.getDefaultCalendar();
+    var evento;
+    if (hora) {
+      var inicio = new Date(data + "T" + hora + ":00");
+      var fim = new Date(inicio.getTime() + 60 * 60 * 1000);
+      evento = calendario.createEvent(titulo, inicio, fim, opcoes);
+    } else {
+      evento = calendario.createAllDayEvent(titulo, new Date(data + "T00:00:00"), opcoes);
+    }
+    return evento.getId();
+  } catch (e) {
+    Logger.log("jurCriarEventoAgenda_ falhou (audiência segue salva mesmo assim): " + e.message);
+    return "";
+  }
+}
+
 function jurSalvarAudiencia(dados, tokenSessao) {
   try {
     var sessao = exigirSessaoDocumentos_(tokenSessao, false);
@@ -703,11 +742,13 @@ function jurSalvarAudiencia(dados, tokenSessao) {
     if (!idProcesso) return { ok: false, mensagem: "Processo não informado." };
     if (!data) return { ok: false, mensagem: "Informe a data da audiência." };
 
+    var eventoId = jurCriarEventoAgenda_(idProcesso, data, hora, tipo, local, observacao);
+
     return jurComLock_(function() {
       var aba = jurObterAbaAudiencias_();
       var id = "AUD-" + Utilities.getUuid().slice(0, 8).toUpperCase();
-      aba.appendRow([id, idProcesso, data, hora, tipo, local, observacao, new Date(), responsavel]);
-      return { ok: true, id: id };
+      aba.appendRow([id, idProcesso, data, hora, tipo, local, observacao, new Date(), responsavel, eventoId]);
+      return { ok: true, id: id, agendaOk: !!eventoId };
     });
   } catch (e) {
     Logger.log("jurSalvarAudiencia ERRO: " + e.message + " | stack: " + e.stack);
@@ -723,9 +764,15 @@ function jurExcluirAudiencia(id, tokenSessao) {
       var aba = jurObterAbaAudiencias_();
       var ultimaLinha = aba.getLastRow();
       if (ultimaLinha < 2) return { ok: false, mensagem: "Audiência não encontrada." };
-      var dados = aba.getRange(2, 1, ultimaLinha - 1, 1).getValues();
+      var dados = aba.getRange(2, 1, ultimaLinha - 1, JUR_CABECALHO_AUDIENCIAS.length).getValues();
       for (var i = 0; i < dados.length; i++) {
         if (String(dados[i][0]) === String(id)) {
+          var eventoId = String(dados[i][JUR_COLA.EVENTO_AGENDA_ID - 1] || "").trim();
+          if (eventoId) {
+            try { CalendarApp.getDefaultCalendar().getEventById(eventoId).deleteEvent(); } catch (eCal) {
+              Logger.log("jurExcluirAudiencia: não consegui remover o evento da Agenda (" + eventoId + "): " + eCal.message);
+            }
+          }
           aba.deleteRow(i + 2);
           return { ok: true };
         }

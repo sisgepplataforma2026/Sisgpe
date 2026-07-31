@@ -568,6 +568,7 @@
           g("jurFNovaAudienciaTipo").value="";
           g("jurFNovaAudienciaLocal").value="";
           jurCarregarAudiencias();
+          if(!r.agendaOk) alert("Audiência salva. Não foi possível criar o evento na Google Agenda — confira se o processo tem um e-mail de responsável cadastrado.");
         })
         .withFailureHandler(function(e){ alert("Erro ao salvar audiência: "+(e&&e.message?e.message:e)); })
         .jurSalvarAudiencia({idProcesso:fichaId, data:data, hora:hora, tipo:tipo, local:local}, token());
