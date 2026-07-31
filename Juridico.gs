@@ -81,10 +81,10 @@ function jurObterAba_() {
 // simples, seguro de serializar na resposta pro navegador. Nunca deixa um
 // Date passar puro — se vier inválido, cai pro texto original em vez de
 // quebrar a resposta inteira.
-function jurTextoSeguro_(valor) {
+function jurTextoSeguro_(valor, formato) {
   if (Object.prototype.toString.call(valor) === "[object Date]") {
     if (isNaN(valor.getTime())) return "";
-    return Utilities.formatDate(valor, Session.getScriptTimeZone() || "America/Sao_Paulo", "yyyy-MM-dd");
+    return Utilities.formatDate(valor, Session.getScriptTimeZone() || "America/Sao_Paulo", formato || "yyyy-MM-dd");
   }
   return valor;
 }
@@ -451,7 +451,11 @@ var JUR_ABA_AUDIENCIAS = "Juridico_Audiencias";
 var JUR_CABECALHO_AUDIENCIAS = ["ID", "ID Processo", "Data", "Hora", "Tipo", "Local", "Observação", "Criado Em", "Criado Por"];
 var JUR_COLA = { ID: 1, ID_PROCESSO: 2, DATA: 3, HORA: 4, TIPO: 5, LOCAL: 6, OBSERVACAO: 7, CRIADO_EM: 8, CRIADO_POR: 9 };
 
-function jurObterAbaGenerica_(nomeAba, cabecalho, colunaData) {
+// colunasTexto: lista de colunas (data/hora) que o Sheets NÃO pode converter
+// sozinho pro tipo dele — mesmo problema que já pegamos no campo Prazo
+// (BuscarAssociado/data/hora viravam valor de data/hora, às vezes inválido,
+// e quebravam a resposta inteira pro navegador sem erro nenhum).
+function jurObterAbaGenerica_(nomeAba, cabecalho, colunasTexto) {
   var planilha = SpreadsheetApp.openById(PLANILHA_ID);
   var aba = planilha.getSheetByName(nomeAba);
   if (!aba) {
@@ -460,18 +464,18 @@ function jurObterAbaGenerica_(nomeAba, cabecalho, colunaData) {
     aba.getRange(1, 1, 1, cabecalho.length).setFontWeight("bold").setBackground("#001f4d").setFontColor("#ffffff");
     aba.setFrozenRows(1);
   }
-  if (colunaData) {
-    aba.getRange(2, colunaData, Math.max(aba.getMaxRows() - 1, 1), 1).setNumberFormat("@");
-  }
+  (colunasTexto || []).forEach(function(col) {
+    aba.getRange(2, col, Math.max(aba.getMaxRows() - 1, 1), 1).setNumberFormat("@");
+  });
   return aba;
 }
 
 function jurObterAbaPrazos_() {
-  return jurObterAbaGenerica_(JUR_ABA_PRAZOS, JUR_CABECALHO_PRAZOS, JUR_COLP.DATA);
+  return jurObterAbaGenerica_(JUR_ABA_PRAZOS, JUR_CABECALHO_PRAZOS, [JUR_COLP.DATA]);
 }
 
 function jurObterAbaAudiencias_() {
-  return jurObterAbaGenerica_(JUR_ABA_AUDIENCIAS, JUR_CABECALHO_AUDIENCIAS, JUR_COLA.DATA);
+  return jurObterAbaGenerica_(JUR_ABA_AUDIENCIAS, JUR_CABECALHO_AUDIENCIAS, [JUR_COLA.DATA, JUR_COLA.HORA]);
 }
 
 function jurListarPrazos(idProcesso, tokenSessao) {
@@ -615,7 +619,7 @@ function jurListarAudiencias(idProcesso, tokenSessao) {
         return {
           id: l[JUR_COLA.ID - 1],
           data: jurTextoSeguro_(l[JUR_COLA.DATA - 1]),
-          hora: l[JUR_COLA.HORA - 1] || "",
+          hora: jurTextoSeguro_(l[JUR_COLA.HORA - 1], "HH:mm") || "",
           tipo: l[JUR_COLA.TIPO - 1] || "",
           local: l[JUR_COLA.LOCAL - 1] || "",
           observacao: l[JUR_COLA.OBSERVACAO - 1] || ""
