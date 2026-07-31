@@ -957,7 +957,9 @@ function atualizarContadorFichas() {
     })).then(function(fichasBase64) {
       enviarGerarOficio({
         tipo:d.tipo, escola:d.escola.nome, cnpj:d.escola.cnpj, email:d.escola.email, endereco:d.escola.endereco,
-        colaboradores:d.beneficiarios.map(function(b){return b.nome;}), fichas:fichasBase64
+        colaboradores:d.beneficiarios.map(function(b){return b.nome;}),
+        cpfs:d.beneficiarios.map(function(b){return b.cpf;}),
+        fichas:fichasBase64
       });
     }).catch(function(err){ aoErro(err); });
   }
@@ -967,6 +969,12 @@ function atualizarContadorFichas() {
     var urlPdf = typeof dadosGerados === "string" ? dadosGerados : (dadosGerados.url || "");
     var numero = dadosGerados.numero || "";
     if (!urlPdf) return;
+    // Desfiliação: o ofício saiu, mas o cadastro do associado pode não ter
+    // sido atualizado (CPF não encontrado, ou não informado) — avisa o
+    // atendente em vez de deixar isso passar em silêncio.
+    if (Array.isArray(dadosGerados.avisosDesfiliacao) && dadosGerados.avisosDesfiliacao.length) {
+      dadosGerados.avisosDesfiliacao.forEach(function(av){ toast(av, "warn"); });
+    }
     var area=$("areaAcoesDocumento"), btnPrev=$("btnPreview"), btnEmit=$("btnEmitir"), btnNovo=$("btnNovoDocumento");
     if(btnPrev) btnPrev.style.display="none"; if(btnEmit) btnEmit.style.display="none"; if(btnNovo) btnNovo.style.display="inline-flex";
     if(area){

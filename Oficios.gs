@@ -649,14 +649,46 @@ registrarLogSistema({
       }
     }
 
+    // ✅ Atualiza o cadastro do associado (Filiado=N) automaticamente se for
+    // Desfiliação — sem isso, o ofício sai certinho mas o cadastro continua
+    // "ativo" pra sempre (achado crítico da auditoria de Sindicalização: só
+    // o caminho de desfiliação via leitura de carta por IA fazia essa
+    // atualização, o caminho manual — o mais usado — nunca fazia).
+    // Vive aqui em vez de em cada chamador porque tanto o formulário manual
+    // quanto confirmarDesfiliacaoIA passam por gerarOficioWeb — um lugar só,
+    // os dois caminhos ganham a correção.
+    var avisosDesfiliacao = [];
+    if (proc.tipoNorm === "DESFILIACAO") {
+      var cpfsDesfiliar = Array.isArray(dados.cpfs) ? dados.cpfs : [];
+      if (!cpfsDesfiliar.length) {
+        avisosDesfiliacao.push("Ofício de desfiliação gerado sem CPF informado — o cadastro do(s) associado(s) NÃO foi atualizado automaticamente. Atualize manualmente em Sindicalização.");
+      } else if (typeof sindAss_desfiliar_ !== "function") {
+        avisosDesfiliacao.push("Ofício gerado, mas o módulo de Sindicalização não está disponível — atualize o cadastro manualmente.");
+      } else {
+        cpfsDesfiliar.forEach(function(cpfDesfiliar, idx) {
+          var rotulo = (proc.colaboradoresArr && proc.colaboradoresArr[idx]) || cpfDesfiliar;
+          try {
+            var resultadoDesfiliar = sindAss_desfiliar_(cpfDesfiliar, emailUsuario);
+            if (!resultadoDesfiliar || !resultadoDesfiliar.encontrado) {
+              avisosDesfiliacao.push('Nenhum associado com o CPF de "' + rotulo + '" foi encontrado na base — atualize manualmente se necessário.');
+            }
+          } catch (eDesf) {
+            Logger.log("gerarOficioWeb — sindAss_desfiliar_ falhou (" + cpfDesfiliar + "): " + eDesf.message);
+            avisosDesfiliacao.push('Não foi possível atualizar o cadastro de "' + rotulo + '": ' + eDesf.message);
+          }
+        });
+      }
+    }
+
     return {
       erro:  false,
       dados: {
-        numero:            proc.numero,
-        codigoVerificacao: proc.codigoVerificacao,
-        url:               urlView,
-        filaId:            retornoFila && retornoFila.id ? retornoFila.id : "",
-        statusFila:        "PENDENTE"
+        numero:             proc.numero,
+        codigoVerificacao:  proc.codigoVerificacao,
+        url:                urlView,
+        filaId:             retornoFila && retornoFila.id ? retornoFila.id : "",
+        statusFila:         "PENDENTE",
+        avisosDesfiliacao:  avisosDesfiliacao
       },
       mensagem: "Ofício gerado e adicionado à fila de envio com sucesso."
     };

@@ -277,16 +277,9 @@ function confirmarDesfiliacaoIA(dados, tokenSessao) {
       return { sucesso: false, mensagem: (retorno && retorno.mensagem) || 'Falha ao gerar o ofício de desfiliação.' };
     }
 
-    var avisos = [];
-    try {
-      var resultadoDesfiliar = sindAss_desfiliar_(cpfDigitos, sessao.email || sessao.usuario || 'SISGEP');
-      if (!resultadoDesfiliar.encontrado) {
-        avisos.push('Ofício gerado, mas nenhum associado com este CPF foi encontrado na base — atualize manualmente se necessário.');
-      }
-    } catch (eDesf) {
-      Logger.log('confirmarDesfiliacaoIA — sindAss_desfiliar_ falhou: ' + eDesf.message);
-      avisos.push('Ofício gerado, mas houve falha ao atualizar o cadastro do associado: ' + eDesf.message);
-    }
+    // gerarOficioWeb já atualiza o cadastro do associado (Filiado=N) quando
+    // recebe cpfs — não repete a chamada aqui, só herda os avisos dela.
+    var avisos = (retorno.dados && retorno.dados.avisosDesfiliacao) || [];
 
     try {
       if (dados.escolaNome && cnpj) {
