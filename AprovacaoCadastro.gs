@@ -58,6 +58,17 @@ function listarSolicitacoesPendentes(tokenSessao) {
 }
 
 /**
+ * Garante que a aba Solicitacoes_Atualizacao tem as colunas 16 e 17
+ * ("Processado Por" e "Motivo Rejeição") — abas criadas antes dessa
+ * função só tinham 15. Idempotente, mesmo padrão de
+ * cartAd_garantirColunaMotivo_ (CarteirinhaAdmin.gs).
+ */
+function aprov_garantirColunasExtras_(sh) {
+  if (sh.getLastColumn() < 16) sh.getRange(1, 16).setValue('Processado Por');
+  if (sh.getLastColumn() < 17) sh.getRange(1, 17).setValue('Motivo Rejeição');
+}
+
+/**
  * Aprova uma solicitação: grava os dados novos na aba Associados,
  * grava a data de última atualização (reinicia o contador de 90 dias
  * usado pelo Portal), marca a solicitação como aprovada e replica a
@@ -65,6 +76,8 @@ function listarSolicitacoesPendentes(tokenSessao) {
  */
 function aprovarSolicitacaoCadastro(numeroLinha, aprovadoPor, tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var shSolic = ss.getSheetByName(APROV_ABA_SOLICITACOES);
@@ -100,8 +113,10 @@ function aprovarSolicitacaoCadastro(numeroLinha, aprovadoPor, tokenSessao) {
     shAssoc.getRange(linhaAssociado, 12).setValue(linha[11]); // Email
     shAssoc.getRange(linhaAssociado, 13).setValue(new Date()); // Última atualização
 
+    aprov_garantirColunasExtras_(shSolic);
     shSolic.getRange(numeroLinha, 14).setValue('Aprovado');
     shSolic.getRange(numeroLinha, 15).setValue(new Date());
+    shSolic.getRange(numeroLinha, 16).setValue(aprovadoPor || '');
 
     if (fotoUrl) {
       // Usa cpfNaLinha (lido agora da própria aba Associados, já validado
@@ -115,14 +130,22 @@ function aprovarSolicitacaoCadastro(numeroLinha, aprovadoPor, tokenSessao) {
   } catch (e) {
     Logger.log('aprovarSolicitacaoCadastro: ' + e);
     return {sucesso:false, mensagem:'Erro ao aprovar: ' + e};
+  } finally {
+    lock.releaseLock();
   }
 }
 
 /**
- * Rejeita uma solicitação, sem alterar a aba Associados.
+ * Rejeita uma solicitação, sem alterar a aba Associados. O motivo vai
+ * pra uma coluna própria (Motivo Rejeição) em vez de ser concatenado no
+ * texto do Status — antes "Rejeitado — <motivo>" quebrava qualquer
+ * comparação futura com status==='Rejeitado' e não dava pra filtrar/
+ * exportar o motivo separadamente.
  */
-function rejeitarSolicitacaoCadastro(numeroLinha, motivo, tokenSessao) {
+function rejeitarSolicitacaoCadastro(numeroLinha, motivo, usuario, tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var shSolic = ss.getSheetByName(APROV_ABA_SOLICITACOES);
@@ -133,13 +156,18 @@ function rejeitarSolicitacaoCadastro(numeroLinha, motivo, tokenSessao) {
       return {sucesso:false, mensagem:'Esta solicitação já foi processada (status atual: ' + statusAtual + ').'};
     }
 
-    shSolic.getRange(numeroLinha, 14).setValue('Rejeitado' + (motivo ? ' — ' + motivo : ''));
+    aprov_garantirColunasExtras_(shSolic);
+    shSolic.getRange(numeroLinha, 14).setValue('Rejeitado');
     shSolic.getRange(numeroLinha, 15).setValue(new Date());
+    shSolic.getRange(numeroLinha, 16).setValue(usuario || '');
+    shSolic.getRange(numeroLinha, 17).setValue(motivo || '');
 
     return {sucesso:true, mensagem:'Solicitação rejeitada.'};
   } catch (e) {
     Logger.log('rejeitarSolicitacaoCadastro: ' + e);
     return {sucesso:false, mensagem:'Erro ao rejeitar: ' + e};
+  } finally {
+    lock.releaseLock();
   }
 }
 

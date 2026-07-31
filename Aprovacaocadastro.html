@@ -127,7 +127,7 @@ function aprovRejeitar(numeroLinha){
     else { if(window.mostrarErro) mostrarErro(r.mensagem); else alert(r.mensagem); }
 }).withFailureHandler(function(erro){
     if(window.mostrarErro) mostrarErro('Erro: '+erro); else alert('Erro: '+erro);
-  }).rejeitarSolicitacaoCadastro(numeroLinha, motivo, SISGEP_TOKEN_SESSAO);
+  }).rejeitarSolicitacaoCadastro(numeroLinha, motivo, aprovNomeUsuarioAtual_(), SISGEP_TOKEN_SESSAO);
 }
 
 function initFichasSindicalizacao(){
