@@ -273,7 +273,8 @@ function sindAss_montarLogradouro_(ficha) {
  *
  * Retorna { encontrado, linha }
  */
-function sindAss_desfiliar_(cpf, usuario) {
+function sindAss_desfiliar_(cpf, usuario, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {

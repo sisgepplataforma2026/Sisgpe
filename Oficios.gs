@@ -668,7 +668,7 @@ registrarLogSistema({
         cpfsDesfiliar.forEach(function(cpfDesfiliar, idx) {
           var rotulo = (proc.colaboradoresArr && proc.colaboradoresArr[idx]) || cpfDesfiliar;
           try {
-            var resultadoDesfiliar = sindAss_desfiliar_(cpfDesfiliar, emailUsuario);
+            var resultadoDesfiliar = sindAss_desfiliar_(cpfDesfiliar, emailUsuario, tokenSessao);
             if (!resultadoDesfiliar || !resultadoDesfiliar.encontrado) {
               avisosDesfiliacao.push('Nenhum associado com o CPF de "' + rotulo + '" foi encontrado na base — atualize manualmente se necessário.');
             }
