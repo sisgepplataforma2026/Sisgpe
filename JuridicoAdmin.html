@@ -12,6 +12,98 @@
     </div>
   </div>
   <script>
-  (function(){var KEY="sisgep_juridico_v1",edit="";function g(i){return document.getElementById(i)}function dados(){try{return JSON.parse(localStorage.getItem(KEY)||"[]")}catch(e){return[]}}function salvar(l){localStorage.setItem(KEY,JSON.stringify(l||[]))}function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])})}function dias(d){if(!d)return 999;var h=new Date();h.setHours(0,0,0,0);return Math.ceil((new Date(d+"T00:00:00")-h)/86400000)}function cls(s){return s==="Concluído"?"ok":s==="Atenção"?"warn":"off"}window.jurRender=function(){var l=dados(),b=String((g("jurBusca")||{}).value||"").toLowerCase(),f=l.filter(function(x){return !b||[x.assunto,x.tipo,x.status].join(" ").toLowerCase().indexOf(b)>=0});g("jurAtivos").textContent=l.filter(function(x){return x.status!=="Concluído"}).length;g("jurPrazos").textContent=l.filter(function(x){var d=dias(x.prazo);return d>=0&&d<=15&&x.status!=="Concluído"}).length;g("jurNotificacoes").textContent=l.filter(function(x){return x.tipo==="Notificação"}).length;g("jurConcluidos").textContent=l.filter(function(x){return x.status==="Concluído"}).length;g("jurTabela").innerHTML=f.length?f.map(function(x){return"<tr><td><strong>"+esc(x.assunto)+"</strong></td><td>"+esc(x.tipo)+"</td><td>"+esc(x.prazo||"-")+"</td><td><span class='pill "+cls(x.status)+"'>"+esc(x.status)+"</span></td><td><button class='mod-btn' onclick=\"jurEditar('"+x.id+"')\">Editar</button> <button class='mod-btn' onclick=\"jurExcluir('"+x.id+"')\">Excluir</button></td></tr>"}).join(""):"<tr><td colspan='5' style='text-align:center;color:#94a3b8;padding:24px'>Nenhum registro.</td></tr>"};window.jurSalvar=function(){var x={id:edit||String(Date.now()),assunto:g("jurAssunto").value,tipo:g("jurTipo").value,prazo:g("jurPrazo").value,status:g("jurStatus").value};if(!x.assunto)return alert("Informe o assunto.");var l=dados(),i=l.findIndex(function(a){return a.id===x.id});if(i>=0)l[i]=x;else l.push(x);salvar(l);jurLimpar();jurRender()};window.jurEditar=function(id){var x=dados().find(function(a){return a.id===id});if(!x)return;edit=id;g("jurAssunto").value=x.assunto;g("jurTipo").value=x.tipo;g("jurPrazo").value=x.prazo;g("jurStatus").value=x.status};window.jurExcluir=function(id){if(confirm("Excluir registro?")){salvar(dados().filter(function(x){return x.id!==id}));jurRender()}};window.jurLimpar=function(){edit="";["jurAssunto","jurPrazo"].forEach(function(i){g(i).value=""});g("jurTipo").value="Processo";g("jurStatus").value="Ativo"};window.jurExportar=function(){var rows=[["Assunto","Tipo","Prazo","Status"]].concat(dados().map(function(x){return[x.assunto,x.tipo,x.prazo,x.status]}));var csv=rows.map(function(r){return r.map(function(c){return'"'+String(c||"").replace(/"/g,'""')+'"'}).join(";")}).join("\n");var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download="sisgep-juridico.csv";a.click()};window.initJuridico=jurRender;if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",jurRender);else setTimeout(jurRender,80)})();
+  (function(){
+    var edit="", cache=[];
+    function g(i){return document.getElementById(i)}
+    function token(){return typeof SISGEP_TOKEN_SESSAO!=="undefined"?SISGEP_TOKEN_SESSAO:""}
+    function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])})}
+    function dias(d){if(!d)return 999;var h=new Date();h.setHours(0,0,0,0);return Math.ceil((new Date(d+"T00:00:00")-h)/86400000)}
+    function cls(s){return s==="Concluído"?"ok":s==="Atenção"?"warn":"off"}
+
+    function renderLista(l){
+      var b=String((g("jurBusca")||{}).value||"").toLowerCase();
+      var f=l.filter(function(x){return !b||[x.assunto,x.tipo,x.status].join(" ").toLowerCase().indexOf(b)>=0});
+      g("jurAtivos").textContent=l.filter(function(x){return x.status!=="Concluído"}).length;
+      g("jurPrazos").textContent=l.filter(function(x){var d=dias(x.prazo);return d>=0&&d<=15&&x.status!=="Concluído"}).length;
+      g("jurNotificacoes").textContent=l.filter(function(x){return x.tipo==="Notificação"}).length;
+      g("jurConcluidos").textContent=l.filter(function(x){return x.status==="Concluído"}).length;
+      g("jurTabela").innerHTML=f.length?f.map(function(x){
+        return "<tr><td><strong>"+esc(x.assunto)+"</strong></td><td>"+esc(x.tipo)+"</td><td>"+esc(x.prazo||"-")+"</td><td><span class='pill "+cls(x.status)+"'>"+esc(x.status)+"</span></td><td><button class='mod-btn' onclick=\"jurEditar('"+x.id+"')\">Editar</button> <button class='mod-btn' onclick=\"jurExcluir('"+x.id+"')\">Excluir</button></td></tr>";
+      }).join(""):"<tr><td colspan='5' style='text-align:center;color:#94a3b8;padding:24px'>Nenhum registro.</td></tr>";
+    }
+
+    window.jurRender=function(){
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||!r.ok){ g("jurTabela").innerHTML="<tr><td colspan='5' style='text-align:center;color:#991b1b;padding:24px'>"+esc((r&&r.mensagem)||"Não foi possível carregar.")+"</td></tr>"; return; }
+          cache=r.itens||[];
+          renderLista(cache);
+        })
+        .withFailureHandler(function(e){
+          g("jurTabela").innerHTML="<tr><td colspan='5' style='text-align:center;color:#991b1b;padding:24px'>Erro ao carregar: "+esc(e&&e.message?e.message:e)+"</td></tr>";
+        })
+        .listarProcessosJuridicos(token());
+    };
+
+    window.jurSalvar=function(){
+      var assunto=g("jurAssunto").value;
+      if(!String(assunto||"").trim()) return alert("Informe o assunto.");
+      var dados={id:edit||"", assunto:assunto, tipo:g("jurTipo").value, prazo:g("jurPrazo").value, status:g("jurStatus").value};
+      var btn=document.querySelector(".mod-btn.primary");
+      if(btn){btn.disabled=true;btn.textContent="Salvando...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="Salvar";}
+          if(!r||!r.ok){ alert("Erro: "+((r&&r.mensagem)||"não foi possível salvar.")); return; }
+          jurLimpar();
+          jurRender();
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="Salvar";}
+          alert("Erro ao salvar: "+(e&&e.message?e.message:e));
+        })
+        .salvarProcessoJuridico(dados, token());
+    };
+
+    window.jurEditar=function(id){
+      var x=cache.find(function(a){return a.id===id});
+      if(!x) return;
+      edit=id;
+      g("jurAssunto").value=x.assunto;
+      g("jurTipo").value=x.tipo;
+      g("jurPrazo").value=x.prazo;
+      g("jurStatus").value=x.status;
+    };
+
+    window.jurExcluir=function(id){
+      if(!confirm("Excluir registro?")) return;
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||!r.ok){ alert("Erro: "+((r&&r.mensagem)||"não foi possível excluir.")); return; }
+          jurRender();
+        })
+        .withFailureHandler(function(e){ alert("Erro ao excluir: "+(e&&e.message?e.message:e)); })
+        .excluirProcessoJuridico(id, token());
+    };
+
+    window.jurLimpar=function(){
+      edit="";
+      ["jurAssunto","jurPrazo"].forEach(function(i){g(i).value=""});
+      g("jurTipo").value="Processo";
+      g("jurStatus").value="Ativo";
+    };
+
+    window.jurExportar=function(){
+      var rows=[["Assunto","Tipo","Prazo","Status"]].concat(cache.map(function(x){return[x.assunto,x.tipo,x.prazo,x.status]}));
+      var csv=rows.map(function(r){return r.map(function(c){return'"'+String(c||"").replace(/"/g,'""')+'"'}).join(";")}).join("\n");
+      var a=document.createElement("a");
+      a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+      a.download="sisgep-juridico.csv";
+      a.click();
+    };
+
+    window.initJuridico=jurRender;
+    if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",jurRender); else setTimeout(jurRender,80);
+  })();
   </script>
 </div>
