@@ -81,9 +81,9 @@ function jurBuscarLinhaPorId_(aba, id) {
 // FUNÇÕES PÚBLICAS — chamadas pela tela
 // ----------------------------------------------------------------------------
 
-function listarProcessosJuridicos(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+function jurListarProcessos(tokenSessao) {
   try {
+    exigirSessaoDocumentos_(tokenSessao, false);
     var aba = jurObterAba_();
     var ultimaLinha = aba.getLastRow();
     if (ultimaLinha < 2) return { ok: true, itens: [] };
@@ -97,17 +97,17 @@ function listarProcessosJuridicos(tokenSessao) {
       return new Date(b.atualizadoEm || b.criadoEm) - new Date(a.atualizadoEm || a.criadoEm);
     });
 
-    Logger.log("listarProcessosJuridicos OK: " + itens.length + " itens");
+    Logger.log("jurListarProcessos OK: " + itens.length + " itens");
     return { ok: true, itens: itens };
   } catch (e) {
-    Logger.log("listarProcessosJuridicos ERRO: " + e.message + " | stack: " + e.stack);
+    Logger.log("jurListarProcessos ERRO: " + e.message + " | stack: " + e.stack);
     return { ok: false, mensagem: e.message || "Erro desconhecido ao listar." };
   }
 }
 
-function salvarProcessoJuridico(dados, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+function jurSalvarProcesso(dados, tokenSessao) {
   try {
+    var sessao = exigirSessaoDocumentos_(tokenSessao, false);
     dados = dados || {};
     var responsavel = sessao.nome || sessao.usuario || sessao.email;
 
@@ -150,11 +150,11 @@ function salvarProcessoJuridico(dados, tokenSessao) {
       linha[JUR_COL.ATIVO - 1] = "SIM";
 
       aba.appendRow(linha);
-      Logger.log("salvarProcessoJuridico OK: criado " + id);
+      Logger.log("jurSalvarProcesso OK: criado " + id);
       return { ok: true, id: id };
     });
   } catch (e) {
-    Logger.log("salvarProcessoJuridico ERRO: " + e.message + " | stack: " + e.stack);
+    Logger.log("jurSalvarProcesso ERRO: " + e.message + " | stack: " + e.stack);
     var mensagem = e.message === "CONCORRENCIA"
       ? "Outra pessoa está salvando um registro agora. Tente novamente em instantes."
       : (e.message || "Erro desconhecido ao salvar.");
@@ -165,9 +165,9 @@ function salvarProcessoJuridico(dados, tokenSessao) {
 // Exclusão lógica — nunca apaga a linha de verdade. Processo/notificação
 // jurídica é registro que precisa continuar existindo pra auditoria mesmo
 // depois de "removido" da lista.
-function excluirProcessoJuridico(id, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+function jurExcluirProcesso(id, tokenSessao) {
   try {
+    var sessao = exigirSessaoDocumentos_(tokenSessao, false);
     var responsavel = sessao.nome || sessao.usuario || sessao.email;
 
     return jurComLock_(function() {
@@ -179,11 +179,11 @@ function excluirProcessoJuridico(id, tokenSessao) {
       aba.getRange(encontrada.linha, JUR_COL.ATUALIZADO_EM).setValue(new Date());
       aba.getRange(encontrada.linha, JUR_COL.ATUALIZADO_POR).setValue(responsavel);
 
-      Logger.log("excluirProcessoJuridico OK: " + id);
+      Logger.log("jurExcluirProcesso OK: " + id);
       return { ok: true };
     });
   } catch (e) {
-    Logger.log("excluirProcessoJuridico ERRO: " + e.message + " | stack: " + e.stack);
+    Logger.log("jurExcluirProcesso ERRO: " + e.message + " | stack: " + e.stack);
     return { ok: false, mensagem: e.message || "Erro desconhecido ao excluir." };
   }
 }
