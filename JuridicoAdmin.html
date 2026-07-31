@@ -32,7 +32,7 @@
     <div class="mod-grid"><div class="mod-card"><small>Ativos</small><strong id="jurAtivos">0</strong></div><div class="mod-card"><small>Prazos 15d</small><strong id="jurPrazos">0</strong></div><div class="mod-card"><small>Notificações</small><strong id="jurNotificacoes">0</strong></div><div class="mod-card"><small>Concluídos</small><strong id="jurConcluidos">0</strong></div></div>
     <div class="mod-panel"><div class="mod-bar"><strong>Controle jurídico</strong><div><button class="mod-btn" onclick="jurExportar()">Exportar CSV</button><button class="mod-btn" onclick="spIr('documentos',null,{aba:'novo'})">Gerar documento</button></div></div>
       <div class="mod-form"><div class="mod-field"><label>Assunto</label><input id="jurAssunto" placeholder="Ex.: Notificação escolar"></div><div class="mod-field"><label>Tipo</label><select id="jurTipo"><option>Processo</option><option>Notificação</option><option>Contrato</option><option>Consulta</option></select></div><div class="mod-field"><label>Prazo</label><input id="jurPrazo" type="date"></div><div class="mod-field"><label>Status</label><select id="jurStatus"><option>Ativo</option><option>Atenção</option><option>Concluído</option></select></div><button class="mod-btn primary" onclick="jurSalvar()">Salvar</button></div>
-      <div class="mod-search"><input id="jurBusca" placeholder="Buscar assunto, tipo, CNJ, responsável..." oninput="jurRender()"><button class="mod-btn" onclick="jurLimpar()">Limpar</button></div>
+      <div class="mod-search"><input id="jurBusca" placeholder="Buscar assunto, tipo, CNJ, responsável, associado ou escola..." oninput="jurRender()"><button class="mod-btn" onclick="jurLimpar()">Limpar</button></div>
       <div style="overflow:auto"><table class="mod-table"><thead><tr><th>Assunto</th><th>Tipo</th><th>Prazo</th><th>Status</th><th>Ações</th></tr></thead><tbody id="jurTabela"></tbody></table></div>
     </div>
   </div>
@@ -110,7 +110,7 @@
 
     function renderLista(l){
       var b=String((g("jurBusca")||{}).value||"").toLowerCase();
-      var f=l.filter(function(x){return !b||[x.assunto,x.tipo,x.status,x.cnj,x.responsavel,x.area].join(" ").toLowerCase().indexOf(b)>=0});
+      var f=l.filter(function(x){return !b||[x.assunto,x.tipo,x.status,x.cnj,x.responsavel,x.area,x.associadoNome,x.escolaNome].join(" ").toLowerCase().indexOf(b)>=0});
       g("jurAtivos").textContent=l.filter(function(x){return x.status!=="Concluído"}).length;
       g("jurPrazos").textContent=l.filter(function(x){var d=dias(x.prazo);return d>=0&&d<=15&&x.status!=="Concluído"}).length;
       g("jurNotificacoes").textContent=l.filter(function(x){return x.tipo==="Notificação"}).length;
