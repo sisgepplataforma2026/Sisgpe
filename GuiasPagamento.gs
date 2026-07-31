@@ -1,5 +1,20 @@
 // =========================
 // ARQUIVO: GuiasPagamento.gs
+//
+// ⚠️ LEGADO — auditoria de arquitetura (achado confirmado por grep em todo o
+// projeto): este arquivo foi substituído por Despesas.gs/CadastroPrestadores.html
+// (comentário de Despesas.gs: "CRUD completo de prestadores integrado, migrado
+// de GuiasPagamento.gs"). Nenhum .html do sistema inclui GuiaPagamento.html ou
+// Scripts_Guias.html (removidos), e Code.gs não roteia nenhuma tela deste
+// módulo — a única exceção viva é guiasPagamento_registrarLeituraEmail(),
+// ainda chamada por Code.gs na rota ?page=pub-pixel-nf (pixel de rastreio de
+// e-mails antigos de guia de pagamento que ainda possam estar sem abrir).
+// NÃO usar cadastrarNovoPrestador/salvarPrestador/listarTodosPrestadores nem
+// nenhuma outra função deste arquivo em telas novas — a fonte de verdade de
+// prestadores é Despesas.gs. Grava na mesma aba Prestadores_Serviços com um
+// CABECALHO_PRESTADORES diferente do cabeçalho ativo (CABECALHO_PRESTADORES_DESP,
+// em Despesas.gs) — reativar qualquer CRUD daqui arrisca corromper a aba.
+//
 // ✅ EMAILS_CONTABILIDADE_GS centralizado — fonte única
 // ✅ Validação de IDs obrigatórios antes de gerar PDF
 // ✅ pdfBlob removido do retorno (não é serializável via google.script.run)
