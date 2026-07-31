@@ -219,6 +219,15 @@
   </div>
 </div>
 
+<!-- Mensalidade e Taxa Assistencial são cobrança (entrada), não pagamento a
+     prestador — ficam fisicamente em Documentos/Ofícios, mas o acesso faz
+     mais sentido por aqui, em Financeiro. -->
+<div style="background:#eef2ff;border-bottom:1px solid #c7d2fe;padding:10px 24px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12.5px;">
+  <b style="color:#1e293b;">Cobrança de associados:</b>
+  <button style="height:28px;padding:0 12px;border-radius:999px;border:1.5px solid #c7d2fe;background:#fff;color:#3730a3;font-size:12px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;" onclick="spIr('documentos',null,{aba:'mensalidades'})">💰 Mensalidades</button>
+  <button style="height:28px;padding:0 12px;border-radius:999px;border:1.5px solid #c7d2fe;background:#fff;color:#3730a3;font-size:12px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;" onclick="spIr('documentos',null,{aba:'taxaAssistencial'})">💰 Taxa Assistencial</button>
+</div>
+
 <!-- TABS -->
 <div class="desp-tabs-wrap">
   <button class="tab-btn active" data-tab="dashboard" onclick="mudarTab('dashboard')">📊 Dashboard</button>

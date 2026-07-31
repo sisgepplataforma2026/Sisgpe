@@ -1888,8 +1888,12 @@ var ini=String(nome).trim().split(/\s+/).map(function(p){return p.charAt(0).toUp
 /* Wrappers compatíveis com botões antigos dos módulos */
 window.mostrarAbaOficio=function(aba){
   if(aba==="escolas") return spIr("escolas",null,{focoBusca:true});
-  if(aba==="mensalidades") return spIr("financeiro");
 
+  /* "mensalidades" e "taxaAssistencial" são abas de Documentos (cobrança
+     ainda mora fisicamente em OficiosFormulario.html — ver auditoria de
+     arquitetura). Antes essa função desviava "mensalidades" pra
+     spIr("financeiro"), que não tem nenhum painel de mensalidade — os
+     botões do Cockpit (ckAcaoVerMensalidade etc.) caíam numa tela vazia. */
   spIr("documentos",null,{aba:aba||"novo"});
 };
 
