@@ -20,6 +20,16 @@
     </div>
   </div>
 
+  <div class="oftalmo-resumo-card" style="margin-bottom:16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+    <div style="flex:1;min-width:220px;">
+      <h3 style="margin:0 0 4px;">🌐 Data liberada para o Portal do Associado</h3>
+      <p id="oftalmoDataLiberadaTexto" style="margin:0;font-size:13px;color:#64748b;">Carregando...</p>
+    </div>
+    <input type="date" id="oftalmoDataLiberada" class="campo-input oftalmo-data">
+    <button type="button" class="btn-primary" onclick="AgendOftalmo.salvarDataLiberada()">Liberar esta data</button>
+    <button type="button" class="btn-secundario" onclick="AgendOftalmo.limparDataLiberada()">Fechar autoatendimento</button>
+  </div>
+
   <div class="oftalmo-stats">
     <div class="oftalmo-stat">
       <span>Total de horários</span>

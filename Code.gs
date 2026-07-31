@@ -95,6 +95,19 @@ if (p.portal === "associado") {
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
+
+    // ── Portal público de agendamento de Oftalmologia ──
+    // Público, sem sessão — só funciona quando a equipe libera uma data
+    // (AgendOftalmo.html, "Data liberada para o Portal"). Sem data liberada,
+    // a própria página avisa que não há atendimento no momento.
+    if (p.portal === "oftalmo") {
+      Logger.log("[PORTAL] Redirecionando para o Portal de Oftalmologia");
+      return HtmlService.createHtmlOutputFromFile("AgendaOftalmoPublica")
+        .setTitle("SindEducação-ES — Agendamento de Oftalmologia")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
 // ── Rota da tela de Emissão de Ingressos (Eventos) — protegida por sessão ──
     if (p.painel === "emissao") {
       var tokenEmissao = String(p.sessao || "").trim();

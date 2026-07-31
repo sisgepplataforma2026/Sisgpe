@@ -610,6 +610,185 @@ function reservarHorarioOftalmo(dados, tokenSessao) {
     try { lock.releaseLock(); } catch(err) {}
   }
 }
+
+/* =========================================================
+   AUTOATENDIMENTO PÚBLICO (Portal do Associado)
+   Sem sessão do SISGEP — a trava de acesso é a "data liberada":
+   só existe um dia aberto por vez (normalmente 1 por mês),
+   definido pela equipe em AgendOftalmo.html. Mesma aba, mesmo
+   LockService e mesmas regras de duplicidade que
+   reservarHorarioOftalmo já usa — o mesmo lock cobre os dois
+   caminhos (equipe pelo admin e associado pelo Portal), então
+   não existe brecha de concorrência entre eles.
+========================================================= */
+
+function obterDataLiberadaOftalmo() {
+  var data = String(
+    PropertiesService.getScriptProperties().getProperty('OFTALMO_DATA_LIBERADA') || ''
+  ).trim();
+  return { ok: true, data: data };
+}
+
+function definirDataLiberadaOftalmo(dataStr, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
+  dataStr = String(dataStr || '').trim();
+  if (dataStr && !/^\d{2}\/\d{2}\/\d{4}$/.test(dataStr)) {
+    return { ok: false, erro: 'Data inválida. Use o formato dd/mm/aaaa.' };
+  }
+  PropertiesService.getScriptProperties().setProperty('OFTALMO_DATA_LIBERADA', dataStr);
+  registrarLogOftalmo_('DATA_LIBERADA_DEFINIDA', '', { data: dataStr });
+  return { ok: true, data: dataStr };
+}
+
+// Mesmo formato de retorno de listarHorariosOftalmo, mas nunca expõe nome,
+// CPF, telefone ou e-mail de quem já reservou outros horários — só
+// hora + livre/ocupado, o suficiente para o associado escolher um horário.
+function listarHorariosOftalmoPublico(dataStr) {
+  try {
+    dataStr = String(dataStr || '').trim();
+    var liberada = String(
+      PropertiesService.getScriptProperties().getProperty('OFTALMO_DATA_LIBERADA') || ''
+    ).trim();
+    if (!liberada || !dataStr || dataStr !== liberada) {
+      return { ok: false, erro: 'Não há atendimento liberado nesta data.' };
+    }
+
+    var aba = obterAbaOftalmo_();
+    var slots = gerarSlotsOftalmo_();
+    var dados = aba.getDataRange().getValues();
+    var idx = obterIdxOftalmo_(dados[0]);
+    var ocupados = {};
+
+    for (var i = 1; i < dados.length; i++) {
+      var row = dados[i];
+      var status = String(row[idx['Status']] || '').trim();
+      if (status === STATUS_OFTALMO.CANCELADO) continue;
+      var dataRow = formatarDataOftalmo_(row[idx['Data']]);
+      if (dataRow !== dataStr) continue;
+      ocupados[formatarHoraOftalmo_(row[idx['Hora']])] = true;
+    }
+
+    var resultado = slots.map(function(hora) {
+      return { hora: hora, livre: !ocupados[hora] };
+    });
+
+    return {
+      ok: true,
+      data: dataStr,
+      slots: resultado,
+      livres: resultado.filter(function(s) { return s.livre; }).length
+    };
+  } catch (e) {
+    return { ok: false, erro: e.message || String(e) };
+  }
+}
+
+function reservarHorarioOftalmoPublico(dados) {
+  dados = dados || {};
+  var lock = LockService.getScriptLock();
+
+  try {
+    lock.waitLock(30000);
+
+    var liberada = String(
+      PropertiesService.getScriptProperties().getProperty('OFTALMO_DATA_LIBERADA') || ''
+    ).trim();
+    if (!liberada || dados.data !== liberada) {
+      return { ok: false, erro: 'Não há atendimento liberado nesta data.' };
+    }
+    if (gerarSlotsOftalmo_().indexOf(dados.hora) === -1) {
+      return { ok: false, erro: 'Horário inválido.' };
+    }
+    if (!validarCPF(dados.cpfTitular)) {
+      return { ok: false, erro: 'Informe um CPF válido do titular.' };
+    }
+    if (!String(dados.nomeTitular || '').trim()) {
+      return { ok: false, erro: 'Informe o nome do titular.' };
+    }
+    if (!String(dados.telefone || '').trim()) {
+      return { ok: false, erro: 'Informe um telefone de contato.' };
+    }
+    var tipo = dados.tipo === 'DEPENDENTE' ? 'DEPENDENTE' : 'TRABALHADOR';
+    if (tipo === 'DEPENDENTE') {
+      if (!String(dados.nomeBeneficiario || '').trim()) {
+        return { ok: false, erro: 'Informe o nome do dependente.' };
+      }
+      if (!String(dados.dataNasc || '').trim()) {
+        return { ok: false, erro: 'Informe a data de nascimento do dependente.' };
+      }
+    }
+
+    var aba = obterAbaOftalmo_();
+    var all = aba.getDataRange().getValues();
+    var idx = obterIdxOftalmo_(all[0]);
+
+    for (var i = 1; i < all.length; i++) {
+      var row = all[i];
+      var status = String(row[idx['Status']] || '').trim();
+      if (status === STATUS_OFTALMO.CANCELADO) continue;
+
+      var dataRow = formatarDataOftalmo_(row[idx['Data']]);
+      var horaRow = formatarHoraOftalmo_(row[idx['Hora']]);
+      var cpfRow  = normalizarCPF(row[idx['CPF_Titular']]);
+
+      if (dataRow === dados.data && horaRow === dados.hora) {
+        return { ok: false, erro: 'Este horário acabou de ser reservado por outra pessoa. Atualize a página e escolha outro.' };
+      }
+      if (cpfRow && cpfRow === normalizarCPF(dados.cpfTitular)) {
+        return { ok: false, erro: 'Este CPF já possui agendamento.' };
+      }
+    }
+
+    var id = Utilities.getUuid();
+    var cpfBeneficiario = tipo === 'DEPENDENTE' ? normalizarCPF(dados.cpfBeneficiario) : normalizarCPF(dados.cpfTitular);
+    var nomeBeneficiario = tipo === 'DEPENDENTE' ? String(dados.nomeBeneficiario || '').trim() : String(dados.nomeTitular || '').trim();
+
+    aba.appendRow([
+      id,
+      dados.data,
+      dados.hora,
+      tipo,
+      normalizarCPF(dados.cpfTitular),
+      String(dados.nomeTitular || '').trim(),
+      cpfBeneficiario,
+      nomeBeneficiario,
+      dados.dataNasc || '',
+      dados.parentesco || '',
+      dados.telefone || '',
+      dados.email || '',
+      dados.escola || '',
+      true,
+      false,
+      STATUS_OFTALMO.ATIVO,
+      new Date(),
+      'portal-associado',
+      ''
+    ]);
+
+    var ultimaLinha = aba.getLastRow();
+    var colunaHora  = idx['Hora'] + 1;
+    aba.getRange(ultimaLinha, colunaHora)
+       .setNumberFormat('@STRING@')
+       .setValue(dados.hora || '');
+
+    registrarLogOftalmo_('RESERVA_PORTAL', id, { data: dados.data, hora: dados.hora, tipo: tipo });
+
+    return {
+      ok: true,
+      id: id,
+      mensagem: 'Agendamento realizado com sucesso.'
+    };
+
+  } catch(e) {
+
+    return { ok: false, erro: e.message || String(e) };
+
+  } finally {
+
+    try { lock.releaseLock(); } catch(err) {}
+  }
+}
+
 /* =========================================================
    CANCELAR
 ========================================================= */

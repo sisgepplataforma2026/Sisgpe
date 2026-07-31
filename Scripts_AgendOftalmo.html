@@ -33,6 +33,8 @@ var _associadosEncontrados = [];
   function init() {
   var hoje = new Date();
 
+  carregarDataLiberada();
+
   var dataInput = document.getElementById('oftalmoData');
   if (dataInput && !dataInput.value) {
     dataInput.value = hoje.toISOString().split('T')[0];
@@ -174,6 +176,63 @@ var _associadosEncontrados = [];
     var p = String(iso).split('-');
     if (p.length !== 3) return iso;
     return p[2] + '/' + p[1] + '/' + p[0];
+  }
+
+  function carregarDataLiberada() {
+    google.script.run
+      .withSuccessHandler(function (r) {
+        var campo = document.getElementById('oftalmoDataLiberada');
+        var texto = document.getElementById('oftalmoDataLiberadaTexto');
+        if (!r || !r.ok) return;
+        if (r.data && campo) {
+          var p = r.data.split('/');
+          campo.value = p.length === 3 ? (p[2] + '-' + p[1] + '-' + p[0]) : '';
+        }
+        if (texto) {
+          texto.textContent = r.data
+            ? ('Liberado para o Portal: ' + r.data + ' — associados já podem marcar horário sozinhos nesse dia.')
+            : 'Nenhuma data liberada no momento — o Portal do Associado não mostra horários até você liberar uma.';
+        }
+      })
+      .withFailureHandler(function () {})
+      .obterDataLiberadaOftalmo();
+  }
+
+  function salvarDataLiberada() {
+    var campo = document.getElementById('oftalmoDataLiberada');
+    var dataBR = isoParaBr(campo ? campo.value : '');
+    if (!dataBR) { alert('Escolha uma data.'); return; }
+    google.script.run
+      .withSuccessHandler(function (r) {
+        if (r && r.ok) {
+          alert('Data ' + dataBR + ' liberada para o Portal do Associado.');
+          carregarDataLiberada();
+        } else {
+          alert('Erro: ' + (r && r.erro ? r.erro : 'não foi possível salvar.'));
+        }
+      })
+      .withFailureHandler(function (e) {
+        alert('Erro ao salvar: ' + (e && e.message ? e.message : e));
+      })
+      .definirDataLiberadaOftalmo(dataBR, (typeof SISGEP_TOKEN_SESSAO !== "undefined" ? SISGEP_TOKEN_SESSAO : ""));
+  }
+
+  function limparDataLiberada() {
+    if (!confirm('Fechar o autoatendimento? O Portal do Associado deixa de mostrar horários até você liberar uma data nova.')) return;
+    google.script.run
+      .withSuccessHandler(function (r) {
+        if (r && r.ok) {
+          var campo = document.getElementById('oftalmoDataLiberada');
+          if (campo) campo.value = '';
+          carregarDataLiberada();
+        } else {
+          alert('Erro: ' + (r && r.erro ? r.erro : 'não foi possível salvar.'));
+        }
+      })
+      .withFailureHandler(function (e) {
+        alert('Erro ao salvar: ' + (e && e.message ? e.message : e));
+      })
+      .definirDataLiberadaOftalmo('', (typeof SISGEP_TOKEN_SESSAO !== "undefined" ? SISGEP_TOKEN_SESSAO : ""));
   }
 
   function normalizarTexto(txt) {
@@ -1162,7 +1221,10 @@ function formatarCPFOftalmoInput(valor) {
     enviarRelatorioWhatsApp:  enviarRelatorioWhatsApp,
     enviarRelatorioEmail:     enviarRelatorioEmail,
     excluirAgendamento:       excluirAgendamento,
-    imprimirAgendamentoJSON:  imprimirAgendamentoJSON
+    imprimirAgendamentoJSON:  imprimirAgendamentoJSON,
+    carregarDataLiberada:     carregarDataLiberada,
+    salvarDataLiberada:       salvarDataLiberada,
+    limparDataLiberada:       limparDataLiberada
   };
 })();
 
