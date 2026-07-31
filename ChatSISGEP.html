@@ -24,6 +24,7 @@
         <div id="chatSugestoes" style="display:none;"></div>
         <div style="display:flex;gap:8px;align-items:flex-end;">
           <textarea id="chatInput" placeholder="Pergunte, peça uma análise ou diga o que precisa resolver..." rows="2" style="flex:1;border:1.5px solid #dbe3ef;border-radius:10px;padding:10px 14px;font-size:13px;font-family:inherit;resize:none;outline:none;line-height:1.5;max-height:110px;" onkeydown="chatKeyDown(event)" oninput="chatInputChange(this)" onfocus="this.style.borderColor='#002f6c'" onblur="this.style.borderColor='#dbe3ef'"></textarea>
+          <button id="chatBtnMic" type="button" title="Ditar por voz" onclick="chatAlternarDitado()" style="background:#eef3f9;color:#002f6c;border:0;border-radius:10px;padding:10px 14px;cursor:pointer;height:44px;font-size:16px;flex:0 0 auto;">🎤</button>
           <button id="chatBtnEnviar" onclick="enviarMensagemChat()" style="background:#002f6c;color:#fff;border:0;border-radius:10px;padding:10px 18px;font-weight:700;cursor:pointer;height:44px;">Enviar ➤</button>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
@@ -289,6 +290,54 @@
     el.style.height = Math.min(el.scrollHeight, 100) + "px";
     var sugestoes = document.getElementById("chatSugestoes");
     if (sugestoes) sugestoes.style.display = el.value.trim() ? "none" : "flex";
+  };
+
+  // Ditado por voz: preenche a caixa de texto pra revisão — nunca envia
+  // sozinho. Usa o reconhecimento de fala nativo do navegador (Chrome/Edge);
+  // não depende de nenhuma chamada ao servidor.
+  var _ditadoAtivo = null;
+  window.chatAlternarDitado = function() {
+    var btn = document.getElementById("chatBtnMic");
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      alert("Seu navegador não tem suporte a ditado por voz. Use o Google Chrome.");
+      return;
+    }
+    if (_ditadoAtivo) {
+      _ditadoAtivo.stop();
+      return;
+    }
+    var reconhecimento = new SR();
+    reconhecimento.lang = "pt-BR";
+    reconhecimento.continuous = false;
+    reconhecimento.interimResults = false;
+
+    reconhecimento.onstart = function() {
+      _ditadoAtivo = reconhecimento;
+      if (btn) { btn.style.background = "#dc2626"; btn.style.color = "#fff"; btn.title = "Ouvindo... clique para parar"; }
+    };
+    reconhecimento.onerror = function(e) {
+      _ditadoAtivo = null;
+      if (btn) { btn.style.background = "#eef3f9"; btn.style.color = "#002f6c"; btn.title = "Ditar por voz"; }
+      if (e.error !== "aborted" && e.error !== "no-speech") {
+        alert("Não consegui captar o áudio (" + e.error + "). Verifique a permissão de microfone do navegador.");
+      }
+    };
+    reconhecimento.onend = function() {
+      _ditadoAtivo = null;
+      if (btn) { btn.style.background = "#eef3f9"; btn.style.color = "#002f6c"; btn.title = "Ditar por voz"; }
+    };
+    reconhecimento.onresult = function(e) {
+      var texto = e.results[0][0].transcript;
+      var input = document.getElementById("chatInput");
+      if (!input) return;
+      var atual = input.value || "";
+      input.value = atual && !/\s$/.test(atual) ? (atual + " " + texto) : (atual + texto);
+      input.focus();
+      chatInputChange(input);
+    };
+
+    try { reconhecimento.start(); } catch (err) { alert("Não foi possível iniciar o microfone: " + err.message); }
   };
 
   window.enviarMensagemChat = function() {
