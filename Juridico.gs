@@ -20,7 +20,8 @@ var JUR_CABECALHO = [
   "Criado Em", "Criado Por", "Atualizado Em", "Atualizado Por", "Ativo",
   "Número CNJ", "Área", "Responsável", "Autor", "Réu",
   "Link Documento", "File ID Documento", "Nome Arquivo",
-  "Associado CPF", "Associado Nome", "Escola CNPJ", "Escola Nome", "Responsável E-mail"
+  "Associado CPF", "Associado Nome", "Escola CNPJ", "Escola Nome", "Responsável E-mail",
+  "Valor da Causa", "Resultado"
 ];
 
 var JUR_COL = {
@@ -46,12 +47,15 @@ var JUR_COL = {
   ASSOCIADO_NOME: 20,
   ESCOLA_CNPJ: 21,
   ESCOLA_NOME: 22,
-  RESPONSAVEL_EMAIL: 23
+  RESPONSAVEL_EMAIL: 23,
+  VALOR_CAUSA: 24,
+  RESULTADO: 25
 };
 
 var JUR_TIPOS = ["Processo", "Notificação", "Contrato", "Consulta"];
 var JUR_STATUS = ["Ativo", "Atenção", "Concluído"];
 var JUR_AREAS = ["Trabalhista", "Cível", "Administrativo", "Tributário", "Outro"];
+var JUR_RESULTADOS = ["Em andamento", "Favorável", "Desfavorável", "Parcial", "Acordo"];
 
 function jurObterAba_() {
   var planilha = SpreadsheetApp.openById(PLANILHA_ID);
@@ -121,7 +125,9 @@ function jurMapearLinha_(valores) {
     associadoNome: valores[JUR_COL.ASSOCIADO_NOME - 1] || "",
     escolaCnpj: valores[JUR_COL.ESCOLA_CNPJ - 1] || "",
     escolaNome: valores[JUR_COL.ESCOLA_NOME - 1] || "",
-    responsavelEmail: valores[JUR_COL.RESPONSAVEL_EMAIL - 1] || ""
+    responsavelEmail: valores[JUR_COL.RESPONSAVEL_EMAIL - 1] || "",
+    valorCausa: valores[JUR_COL.VALOR_CAUSA - 1] || "",
+    resultado: valores[JUR_COL.RESULTADO - 1] || ""
   };
 }
 
@@ -214,6 +220,8 @@ function jurSalvarProcesso(dados, tokenSessao) {
     var escolaCnpj = String(dados.escolaCnpj || "").trim();
     var escolaNome = String(dados.escolaNome || "").trim();
     var responsavelEmail = String(dados.responsavelEmail || "").trim();
+    var valorCausa = Number(String(dados.valorCausa || "").replace(/\./g, "").replace(",", ".")) || 0;
+    var resultado = JUR_RESULTADOS.indexOf(dados.resultado) > -1 ? dados.resultado : JUR_RESULTADOS[0];
 
     return jurComLock_(function() {
       var aba = jurObterAba_();
@@ -237,6 +245,8 @@ function jurSalvarProcesso(dados, tokenSessao) {
         aba.getRange(encontrada.linha, JUR_COL.ESCOLA_CNPJ).setValue(escolaCnpj);
         aba.getRange(encontrada.linha, JUR_COL.ESCOLA_NOME).setValue(escolaNome);
         aba.getRange(encontrada.linha, JUR_COL.RESPONSAVEL_EMAIL).setValue(responsavelEmail);
+        aba.getRange(encontrada.linha, JUR_COL.VALOR_CAUSA).setValue(valorCausa);
+        aba.getRange(encontrada.linha, JUR_COL.RESULTADO).setValue(resultado);
         aba.getRange(encontrada.linha, JUR_COL.ATUALIZADO_EM).setValue(agora);
         aba.getRange(encontrada.linha, JUR_COL.ATUALIZADO_POR).setValue(responsavelSessao);
 
@@ -266,6 +276,8 @@ function jurSalvarProcesso(dados, tokenSessao) {
       linha[JUR_COL.ESCOLA_CNPJ - 1] = escolaCnpj;
       linha[JUR_COL.ESCOLA_NOME - 1] = escolaNome;
       linha[JUR_COL.RESPONSAVEL_EMAIL - 1] = responsavelEmail;
+      linha[JUR_COL.VALOR_CAUSA - 1] = valorCausa;
+      linha[JUR_COL.RESULTADO - 1] = resultado;
 
       aba.appendRow(linha);
       Logger.log("jurSalvarProcesso OK: criado " + id);
@@ -978,5 +990,98 @@ function jurAnalisarDocumentoIA(base64, nomeArquivo, mimeType, tokenSessao) {
   } catch (e) {
     Logger.log("jurAnalisarDocumentoIA erro: " + e.message);
     return { sucesso: false, mensagem: "Erro ao analisar o documento: " + e.message };
+  }
+}
+
+// ============================================================================
+// FASE 3b — Relatório executivo
+//
+// Calculado sob demanda a partir das abas já existentes (Juridico e
+// Juridico_Prazos) — sem planilha auxiliar nova. "Exposição total" e "taxa
+// de êxito" só existem a partir de agora porque os campos Valor da Causa e
+// Resultado foram adicionados nesta mesma fase (antes não tinha como medir
+// nenhum dos dois, era só cadastro sem número).
+// ============================================================================
+
+function jurObterRelatorioExecutivo(tokenSessao) {
+  try {
+    exigirSessaoDocumentos_(tokenSessao, false);
+
+    var aba = jurObterAba_();
+    var ultimaLinha = aba.getLastRow();
+    var relatorio = {
+      totalProcessos: 0, totalAtivos: 0, totalConcluidos: 0,
+      exposicaoTotal: 0, tempoMedioTramitacaoDias: null, taxaExito: null,
+      porArea: {}, porEscola: {}, porStatus: {}, prazosVencendo30d: 0
+    };
+
+    if (ultimaLinha >= 2) {
+      var dados = aba.getRange(2, 1, ultimaLinha - 1, JUR_CABECALHO.length).getValues()
+        .filter(function(l) { return String(l[JUR_COL.ATIVO - 1] || "SIM") !== "NAO"; });
+
+      var somaTramitacaoDias = 0, qtdTramitacao = 0;
+      var qtdComResultado = 0, qtdExito = 0;
+
+      dados.forEach(function(l) {
+        relatorio.totalProcessos++;
+        var status = String(l[JUR_COL.STATUS - 1] || "");
+        relatorio.porStatus[status] = (relatorio.porStatus[status] || 0) + 1;
+        if (status === "Concluído") relatorio.totalConcluidos++; else relatorio.totalAtivos++;
+
+        var area = String(l[JUR_COL.AREA - 1] || "Não classificado");
+        relatorio.porArea[area] = (relatorio.porArea[area] || 0) + 1;
+
+        var escola = String(l[JUR_COL.ESCOLA_NOME - 1] || "").trim();
+        if (escola) relatorio.porEscola[escola] = (relatorio.porEscola[escola] || 0) + 1;
+
+        var valorCausa = Number(l[JUR_COL.VALOR_CAUSA - 1]) || 0;
+        if (status !== "Concluído") relatorio.exposicaoTotal += valorCausa;
+
+        if (status === "Concluído") {
+          var criado = l[JUR_COL.CRIADO_EM - 1], atualizado = l[JUR_COL.ATUALIZADO_EM - 1];
+          if (Object.prototype.toString.call(criado) === "[object Date]" && Object.prototype.toString.call(atualizado) === "[object Date]") {
+            var dias = Math.round((atualizado - criado) / 86400000);
+            if (dias >= 0) { somaTramitacaoDias += dias; qtdTramitacao++; }
+          }
+          var resultado = String(l[JUR_COL.RESULTADO - 1] || "");
+          if (resultado && resultado !== "Em andamento") {
+            qtdComResultado++;
+            if (resultado === "Favorável" || resultado === "Acordo") qtdExito++;
+          }
+        }
+      });
+
+      if (qtdTramitacao > 0) relatorio.tempoMedioTramitacaoDias = Math.round(somaTramitacaoDias / qtdTramitacao);
+      if (qtdComResultado > 0) relatorio.taxaExito = Math.round((qtdExito / qtdComResultado) * 100);
+    }
+
+    // Prazos vencendo nos próximos 30 dias (não cumpridos), somando todos
+    // os processos — dá o "quanto tem pra vencer agora" de verdade.
+    try {
+      var abaPrazos = jurObterAbaPrazos_();
+      var ultimaLinhaPrazos = abaPrazos.getLastRow();
+      if (ultimaLinhaPrazos >= 2) {
+        var hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        var dadosPrazos = abaPrazos.getRange(2, 1, ultimaLinhaPrazos - 1, JUR_CABECALHO_PRAZOS.length).getValues();
+        dadosPrazos.forEach(function(l) {
+          var cumprido = String(l[JUR_COLP.CUMPRIDO - 1] || "NAO") === "SIM";
+          if (cumprido) return;
+          var dataTexto = jurTextoSeguro_(l[JUR_COLP.DATA - 1]);
+          if (!dataTexto) return;
+          var dataPrazo = new Date(dataTexto + "T00:00:00");
+          if (isNaN(dataPrazo.getTime())) return;
+          var diffDias = Math.round((dataPrazo - hoje) / 86400000);
+          if (diffDias >= 0 && diffDias <= 30) relatorio.prazosVencendo30d++;
+        });
+      }
+    } catch (ePrazos) {
+      Logger.log("jurObterRelatorioExecutivo: falha ao contar prazos — " + ePrazos.message);
+    }
+
+    return { ok: true, relatorio: relatorio };
+  } catch (e) {
+    Logger.log("jurObterRelatorioExecutivo ERRO: " + e.message + " | stack: " + e.stack);
+    return { ok: false, mensagem: e.message || "Erro ao gerar relatório." };
   }
 }
