@@ -366,6 +366,41 @@ function jurUploadDocumento(dados, tokenSessao) {
   }
 }
 
+// Remove o anexo do processo: manda o arquivo pra lixeira do Drive (não
+// apaga de vez — dá pra restaurar se for engano) e limpa os campos de
+// link/nome na planilha.
+function jurExcluirAnexo(idProcesso, tokenSessao) {
+  try {
+    exigirSessaoDocumentos_(tokenSessao, false);
+    idProcesso = String(idProcesso || "").trim();
+    if (!idProcesso) return { ok: false, mensagem: "Processo não informado." };
+
+    return jurComLock_(function() {
+      var aba = jurObterAba_();
+      var encontrada = jurBuscarLinhaPorId_(aba, idProcesso);
+      if (!encontrada) return { ok: false, mensagem: "Processo não encontrado." };
+
+      var fileId = String(encontrada.valores[JUR_COL.FILE_ID_DOCUMENTO - 1] || "").trim();
+      if (fileId) {
+        try { DriveApp.getFileById(fileId).setTrashed(true); } catch (eTrash) {
+          Logger.log("jurExcluirAnexo: não consegui mover pra lixeira (" + fileId + "): " + eTrash.message);
+        }
+      }
+
+      aba.getRange(encontrada.linha, JUR_COL.LINK_DOCUMENTO).setValue("");
+      aba.getRange(encontrada.linha, JUR_COL.FILE_ID_DOCUMENTO).setValue("");
+      aba.getRange(encontrada.linha, JUR_COL.NOME_ARQUIVO).setValue("");
+      aba.getRange(encontrada.linha, JUR_COL.ATUALIZADO_EM).setValue(new Date());
+
+      Logger.log("jurExcluirAnexo OK: " + idProcesso);
+      return { ok: true };
+    });
+  } catch (e) {
+    Logger.log("jurExcluirAnexo ERRO: " + e.message + " | stack: " + e.stack);
+    return { ok: false, mensagem: e.message || "Erro ao excluir anexo." };
+  }
+}
+
 // ----------------------------------------------------------------------------
 // FASE 2a — Vínculo com Associado e Escola
 //

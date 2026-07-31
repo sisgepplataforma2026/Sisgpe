@@ -68,7 +68,7 @@
           <div class="mod-field"><label>Responsável interno</label><input id="jurFResponsavel" placeholder="Advogado/pessoa do caso"></div>
         </div>
         <div class="jur-modal-grid">
-          <div class="mod-field"><label>Número CNJ</label><input id="jurFCnj" placeholder="0000000-00.0000.0.00.0000"></div>
+          <div class="mod-field"><label>Número CNJ</label><input id="jurFCnj" placeholder="0000000-00.0000.0.00.0000" maxlength="25" oninput="jurMascararCnj(this)"></div>
           <div class="mod-field"><label>Autor</label><input id="jurFAutor" placeholder="Quem move a ação"></div>
           <div class="mod-field"><label>Réu</label><input id="jurFReu" placeholder="Contra quem"></div>
         </div>
@@ -232,6 +232,24 @@
 
     // ---------------- Vínculos: Associado e Escola ----------------
 
+    function renderAnexo(link, nome){
+      g("jurFAnexoAtual").innerHTML=link
+        ? "<div class='jur-anexo-atual'>📎 <a href='"+esc(link)+"' target='_blank' rel='noopener'>"+esc(nome||"Documento anexado")+"</a><button class='mod-btn' style='height:auto;padding:2px 8px;margin-left:auto' onclick='jurExcluirAnexoAtual()'>Excluir</button></div>"
+        : "<div style='font-size:12.5px;color:#94a3b8;margin-bottom:10px'>Nenhum documento anexado ainda.</div>";
+    }
+
+    window.jurExcluirAnexoAtual=function(){
+      if(!confirm("Excluir o documento anexado a este processo?")) return;
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||!r.ok){ alert("Erro: "+((r&&r.mensagem)||"não foi possível excluir o anexo.")); return; }
+          renderAnexo("","");
+          jurRender();
+        })
+        .withFailureHandler(function(e){ alert("Erro ao excluir anexo: "+(e&&e.message?e.message:e)); })
+        .jurExcluirAnexo(fichaId, token());
+    };
+
     function renderVinculosChips(){
       var chips="";
       if(fichaAssociado.cpf||fichaAssociado.nome){
@@ -242,6 +260,18 @@
       }
       g("jurFVinculosSelecionados").innerHTML=chips;
     }
+
+    // Máscara do número CNJ: NNNNNNN-NN.NNNN.N.NN.NNNN (padrão nacional).
+    window.jurMascararCnj=function(input){
+      var d=input.value.replace(/\D/g,"").slice(0,20);
+      var v=d.slice(0,7);
+      if(d.length>7) v+="-"+d.slice(7,9);
+      if(d.length>9) v+="."+d.slice(9,13);
+      if(d.length>13) v+="."+d.slice(13,14);
+      if(d.length>14) v+="."+d.slice(14,16);
+      if(d.length>16) v+="."+d.slice(16,20);
+      input.value=v;
+    };
 
     window.jurLimparVinculo=function(tipo){
       if(tipo==="associado"){ fichaAssociado={cpf:"",nome:""}; g("jurFAssociadoBusca").value=""; }
@@ -345,9 +375,7 @@
       g("jurFEscolaBusca").value="";
       renderVinculosChips();
       g("jurFArquivo").value="";
-      g("jurFAnexoAtual").innerHTML=x.linkDocumento
-        ? "<div class='jur-anexo-atual'>📎 <a href='"+esc(x.linkDocumento)+"' target='_blank' rel='noopener'>"+esc(x.nomeArquivo||"Documento anexado")+"</a></div>"
-        : "<div style='font-size:12.5px;color:#94a3b8;margin-bottom:10px'>Nenhum documento anexado ainda.</div>";
+      renderAnexo(x.linkDocumento, x.nomeArquivo);
       g("jurFMeta").innerHTML="Criado por "+esc(x.criadoPor||"—")+" em "+esc(x.criadoEm||"—")+"<br>Última atualização por "+esc(x.atualizadoPor||"—")+" em "+esc(x.atualizadoEm||"—");
       g("jurFNovoPrazoDescricao").value="";
       g("jurFNovoPrazoData").value="";
@@ -516,7 +544,7 @@
           .withSuccessHandler(function(r){
             if(btn){btn.disabled=false;btn.textContent="Enviar anexo";}
             if(!r||!r.ok){ alert("Erro: "+((r&&r.mensagem)||"não foi possível enviar o anexo.")); return; }
-            g("jurFAnexoAtual").innerHTML="<div class='jur-anexo-atual'>📎 <a href='"+esc(r.link)+"' target='_blank' rel='noopener'>"+esc(r.nome)+"</a></div>";
+            renderAnexo(r.link, r.nome);
             input.value="";
             jurRender();
           })
