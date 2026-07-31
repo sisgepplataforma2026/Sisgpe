@@ -38,7 +38,24 @@ function jurObterAba_() {
     aba.getRange(1, 1, 1, JUR_CABECALHO.length).setFontWeight("bold").setBackground("#001f4d").setFontColor("#ffffff");
     aba.setFrozenRows(1);
   }
+  // Coluna Prazo precisa ficar como texto puro (ex.: "2026-07-31"). Se o
+  // Sheets converter sozinho pra um valor de data, dependendo do idioma da
+  // planilha isso pode virar um valor inválido e quebrar a resposta inteira
+  // pro navegador (o front recebe null sem erro nenhum).
+  aba.getRange(2, JUR_COL.PRAZO, Math.max(aba.getMaxRows() - 1, 1), 1).setNumberFormat("@");
   return aba;
+}
+
+// Converte qualquer valor de data (Date real ou serial do Sheets) pra texto
+// simples, seguro de serializar na resposta pro navegador. Nunca deixa um
+// Date passar puro — se vier inválido, cai pro texto original em vez de
+// quebrar a resposta inteira.
+function jurTextoSeguro_(valor) {
+  if (Object.prototype.toString.call(valor) === "[object Date]") {
+    if (isNaN(valor.getTime())) return "";
+    return Utilities.formatDate(valor, Session.getScriptTimeZone() || "America/Sao_Paulo", "yyyy-MM-dd");
+  }
+  return valor;
 }
 
 function jurComLock_(callback) {
@@ -56,11 +73,11 @@ function jurMapearLinha_(valores) {
     id: valores[JUR_COL.ID - 1],
     assunto: valores[JUR_COL.ASSUNTO - 1],
     tipo: valores[JUR_COL.TIPO - 1],
-    prazo: valores[JUR_COL.PRAZO - 1],
+    prazo: jurTextoSeguro_(valores[JUR_COL.PRAZO - 1]),
     status: valores[JUR_COL.STATUS - 1],
-    criadoEm: valores[JUR_COL.CRIADO_EM - 1],
+    criadoEm: jurTextoSeguro_(valores[JUR_COL.CRIADO_EM - 1]),
     criadoPor: valores[JUR_COL.CRIADO_POR - 1],
-    atualizadoEm: valores[JUR_COL.ATUALIZADO_EM - 1],
+    atualizadoEm: jurTextoSeguro_(valores[JUR_COL.ATUALIZADO_EM - 1]),
     atualizadoPor: valores[JUR_COL.ATUALIZADO_POR - 1]
   };
 }
