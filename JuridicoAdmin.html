@@ -34,9 +34,10 @@
     .jur-subitem .corpo span{color:#64748b;text-decoration:inherit}
     .jur-subitem .acoes{display:flex;gap:6px;flex-shrink:0}
     .jur-subitem .acoes button{background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;line-height:1}
-    .jur-subform{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:14px}
-    .jur-subform input{height:34px;border:1.5px solid #dbe4ef;border-radius:8px;padding:0 10px;font-family:inherit;font-size:12.5px}
-    .jur-subform.audiencia{grid-template-columns:1fr 90px 1fr 1fr auto}
+    .jur-subform{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+    .jur-subform input{height:34px;border:1.5px solid #dbe4ef;border-radius:8px;padding:0 10px;font-family:inherit;font-size:12.5px;flex:1 1 140px;min-width:0}
+    .jur-subform button{flex:1 1 100%}
+    .jur-subform.audiencia input{flex:1 1 130px}
     .jur-vazio-sub{font-size:12px;color:#94a3b8;margin-bottom:10px}
   </style>
   <div class="mod-head"><div><div class="mod-title">Jurídico</div><div class="mod-sub">Processos, notificações, prazos e documentos</div></div><button class="mod-btn" onclick="spIr('sofia',null,{mensagem:'Preciso de apoio jurídico sindical.'})">Consultar SOFIA</button></div>
