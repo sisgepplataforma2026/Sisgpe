@@ -109,8 +109,11 @@
 
         <div class="jur-modal-section-title">Documento anexado</div>
         <div id="jurFAnexoAtual"></div>
-        <div class="mod-field"><label>Anexar petição, sentença ou notificação (PDF, JPG ou PNG · até 10MB)</label><input id="jurFArquivo" type="file" accept=".pdf,.jpg,.jpeg,.png"></div>
-        <button class="mod-btn" style="margin-top:8px" onclick="jurEnviarAnexo()" id="jurBtnAnexo">Enviar anexo</button>
+        <div class="mod-field"><label>Anexar petição, sentença ou notificação (PDF, JPG ou PNG · até 10MB)</label><input id="jurFArquivo" type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="jurAtualizarBotaoCancelarArquivo()"></div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="mod-btn" onclick="jurEnviarAnexo()" id="jurBtnAnexo">Enviar anexo</button>
+          <button class="mod-btn" onclick="jurCancelarSelecaoArquivo()" id="jurBtnCancelarArquivo" style="display:none">Cancelar seleção</button>
+        </div>
 
         <div class="jur-meta" id="jurFMeta"></div>
       </div>
@@ -375,6 +378,7 @@
       g("jurFEscolaBusca").value="";
       renderVinculosChips();
       g("jurFArquivo").value="";
+      g("jurBtnCancelarArquivo").style.display="none";
       renderAnexo(x.linkDocumento, x.nomeArquivo);
       g("jurFMeta").innerHTML="Criado por "+esc(x.criadoPor||"—")+" em "+esc(x.criadoEm||"—")+"<br>Última atualização por "+esc(x.atualizadoPor||"—")+" em "+esc(x.atualizadoEm||"—");
       g("jurFNovoPrazoDescricao").value="";
@@ -528,6 +532,17 @@
         .jurSalvarProcesso(dados, token());
     };
 
+    window.jurAtualizarBotaoCancelarArquivo=function(){
+      var input=g("jurFArquivo");
+      var tem=input&&input.files&&input.files.length>0;
+      g("jurBtnCancelarArquivo").style.display=tem?"inline-block":"none";
+    };
+
+    window.jurCancelarSelecaoArquivo=function(){
+      g("jurFArquivo").value="";
+      g("jurBtnCancelarArquivo").style.display="none";
+    };
+
     window.jurEnviarAnexo=function(){
       var input=g("jurFArquivo");
       var arquivo=input&&input.files&&input.files[0];
@@ -546,6 +561,7 @@
             if(!r||!r.ok){ alert("Erro: "+((r&&r.mensagem)||"não foi possível enviar o anexo.")); return; }
             renderAnexo(r.link, r.nome);
             input.value="";
+            g("jurBtnCancelarArquivo").style.display="none";
             jurRender();
           })
           .withFailureHandler(function(err){
