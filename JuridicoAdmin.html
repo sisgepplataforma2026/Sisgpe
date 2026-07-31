@@ -14,6 +14,11 @@
   <script>
   (function(){
     console.log("[JUR] script do Jurídico carregado. readyState=", document.readyState);
+    if(window.__jurInicializado){
+      console.warn("[JUR] script injetado de novo na mesma página — ignorando para não duplicar chamadas.");
+      return;
+    }
+    window.__jurInicializado=true;
     var edit="", cache=[];
     function g(i){return document.getElementById(i)}
     function token(){return typeof SISGEP_TOKEN_SESSAO!=="undefined"?SISGEP_TOKEN_SESSAO:""}
