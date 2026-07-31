@@ -801,7 +801,7 @@ function cadastroRapidoNaVisita(idVisita, dados, tokenSessao) {
   dados.diretorBase = r.DIRETOR_BASE;
   dados.escola = dados.escola || r.ESCOLA;
   dados.origem = 'CADASTRO_RAPIDO_VISITA';
-  return criarPreCadastroSindicalizacao(dados);
+  return criarPreCadastroSindicalizacao(dados, tokenSessao);
 }
 
 /* ==========================================================================

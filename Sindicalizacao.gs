@@ -97,8 +97,8 @@ function configurarAbaSindicalizacao() {
  * Dispara automaticamente o link de conclusão por e-mail
  * quando houver e-mail informado.
  */
-function criarPreCadastroSindicalizacao(dados) {
-  validarSessaoSindicalizacao_();
+function criarPreCadastroSindicalizacao(dados, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   var cpf = limparDigitos_(dados.cpf);
   if (!validarCPFSindicalizacao_(cpf)) {
     return { sucesso: false, mensagem: 'CPF inválido.' };
@@ -537,26 +537,6 @@ function limparCacheListaSindicalizacao_() {
     cache.remove('SIND_LISTA_COMPLETA');
     cache.remove('SIND_ADM_LISTA');
   } catch (e) { /* silencioso */ }
-}
-
-/**
- * Reaproveita a validação de sessão do módulo de Login quando
- * disponível; caso contrário retorna identificação genérica
- * sem bloquear.
- */
-function validarSessaoSindicalizacao_() {
-  if (typeof validarSessaoAtiva_ === 'function') {
-    var sessao = validarSessaoAtiva_();
-    if (!sessao || !sessao.valido) {
-      throw new Error('Sessão inválida ou expirada. Faça login novamente.');
-    }
-    return sessao.usuario || sessao.email || 'USUARIO_SISGEP';
-  }
-  try {
-    return Session.getActiveUser().getEmail() || 'PORTAL';
-  } catch (e) {
-    return 'PORTAL';
-  }
 }
 
 /* ============================================================
