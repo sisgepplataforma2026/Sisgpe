@@ -50,17 +50,25 @@
       if(!String(assunto||"").trim()) return alert("Informe o assunto.");
       var dados={id:edit||"", assunto:assunto, tipo:g("jurTipo").value, prazo:g("jurPrazo").value, status:g("jurStatus").value};
       var btn=document.querySelector(".mod-btn.primary");
+      var avisouDemora=false;
       if(btn){btn.disabled=true;btn.textContent="Salvando...";}
+      var vigia=setTimeout(function(){
+        avisouDemora=true;
+        if(btn){btn.disabled=false;btn.textContent="Salvar";}
+        alert("O servidor está demorando para responder. Se o registro salvar mesmo assim, a lista vai atualizar sozinha daqui a pouco. Evite clicar em Salvar de novo antes disso, pra não duplicar.");
+      },25000);
       google.script.run
         .withSuccessHandler(function(r){
+          clearTimeout(vigia);
           if(btn){btn.disabled=false;btn.textContent="Salvar";}
-          if(!r||!r.ok){ alert("Erro: "+((r&&r.mensagem)||"não foi possível salvar.")); return; }
+          if(!r||!r.ok){ if(!avisouDemora) alert("Erro: "+((r&&r.mensagem)||"não foi possível salvar.")); return; }
           jurLimpar();
           jurRender();
         })
         .withFailureHandler(function(e){
+          clearTimeout(vigia);
           if(btn){btn.disabled=false;btn.textContent="Salvar";}
-          alert("Erro ao salvar: "+(e&&e.message?e.message:e));
+          if(!avisouDemora) alert("Erro ao salvar: "+(e&&e.message?e.message:e));
         })
         .salvarProcessoJuridico(dados, token());
     };
