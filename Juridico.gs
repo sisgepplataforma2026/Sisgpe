@@ -431,3 +431,251 @@ function jurBuscarEscolaVinculo(termo, tokenSessao) {
     return { ok: false, mensagem: e.message || "Erro ao buscar escola." };
   }
 }
+
+// ============================================================================
+// FASE 2b — Múltiplos prazos e audiências por processo
+//
+// O campo "Prazo" da aba principal continua existindo (é o alerta rápido
+// que já alimenta os cards do dashboard) — ele passa a representar só o
+// PRÓXIMO prazo mais urgente. A vida real de um processo tem vários prazos
+// ao longo do tempo (contestação, recurso, embargos...) e pode ter várias
+// audiências marcadas — por isso viram abas próprias, ligadas por
+// ID_Processo, em vez de forçar tudo dentro de uma linha só.
+// ============================================================================
+
+var JUR_ABA_PRAZOS = "Juridico_Prazos";
+var JUR_CABECALHO_PRAZOS = ["ID", "ID Processo", "Descrição", "Data", "Cumprido", "Criado Em", "Criado Por"];
+var JUR_COLP = { ID: 1, ID_PROCESSO: 2, DESCRICAO: 3, DATA: 4, CUMPRIDO: 5, CRIADO_EM: 6, CRIADO_POR: 7 };
+
+var JUR_ABA_AUDIENCIAS = "Juridico_Audiencias";
+var JUR_CABECALHO_AUDIENCIAS = ["ID", "ID Processo", "Data", "Hora", "Tipo", "Local", "Observação", "Criado Em", "Criado Por"];
+var JUR_COLA = { ID: 1, ID_PROCESSO: 2, DATA: 3, HORA: 4, TIPO: 5, LOCAL: 6, OBSERVACAO: 7, CRIADO_EM: 8, CRIADO_POR: 9 };
+
+function jurObterAbaGenerica_(nomeAba, cabecalho, colunaData) {
+  var planilha = SpreadsheetApp.openById(PLANILHA_ID);
+  var aba = planilha.getSheetByName(nomeAba);
+  if (!aba) {
+    aba = planilha.insertSheet(nomeAba);
+    aba.getRange(1, 1, 1, cabecalho.length).setValues([cabecalho]);
+    aba.getRange(1, 1, 1, cabecalho.length).setFontWeight("bold").setBackground("#001f4d").setFontColor("#ffffff");
+    aba.setFrozenRows(1);
+  }
+  if (colunaData) {
+    aba.getRange(2, colunaData, Math.max(aba.getMaxRows() - 1, 1), 1).setNumberFormat("@");
+  }
+  return aba;
+}
+
+function jurObterAbaPrazos_() {
+  return jurObterAbaGenerica_(JUR_ABA_PRAZOS, JUR_CABECALHO_PRAZOS, JUR_COLP.DATA);
+}
+
+function jurObterAbaAudiencias_() {
+  return jurObterAbaGenerica_(JUR_ABA_AUDIENCIAS, JUR_CABECALHO_AUDIENCIAS, JUR_COLA.DATA);
+}
+
+function jurListarPrazos(idProcesso, tokenSessao) {
+  try {
+    exigirSessaoDocumentos_(tokenSessao, false);
+    idProcesso = String(idProcesso || "").trim();
+    if (!idProcesso) return { ok: false, mensagem: "Processo não informado." };
+
+    var aba = jurObterAbaPrazos_();
+    var ultimaLinha = aba.getLastRow();
+    if (ultimaLinha < 2) return { ok: true, itens: [] };
+
+    var dados = aba.getRange(2, 1, ultimaLinha - 1, JUR_CABECALHO_PRAZOS.length).getValues();
+    var itens = dados
+      .filter(function(l) { return String(l[JUR_COLP.ID_PROCESSO - 1]) === idProcesso; })
+      .map(function(l) {
+        return {
+          id: l[JUR_COLP.ID - 1],
+          descricao: l[JUR_COLP.DESCRICAO - 1],
+          data: jurTextoSeguro_(l[JUR_COLP.DATA - 1]),
+          cumprido: String(l[JUR_COLP.CUMPRIDO - 1] || "NAO") === "SIM"
+        };
+      });
+
+    itens.sort(function(a, b) { return new Date(a.data || "9999-12-31") - new Date(b.data || "9999-12-31"); });
+    return { ok: true, itens: itens };
+  } catch (e) {
+    Logger.log("jurListarPrazos ERRO: " + e.message + " | stack: " + e.stack);
+    return { ok: false, mensagem: e.message || "Erro ao listar prazos." };
+  }
+}
+
+function jurSalvarPrazo(dados, tokenSessao) {
+  try {
+    var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+    dados = dados || {};
+    var idProcesso = String(dados.idProcesso || "").trim();
+    var descricao = String(dados.descricao || "").trim();
+    var data = String(dados.data || "").trim();
+    var responsavel = sessao.nome || sessao.usuario || sessao.email;
+
+    if (!idProcesso) return { ok: false, mensagem: "Processo não informado." };
+    if (!descricao) return { ok: false, mensagem: "Informe a descrição do prazo." };
+    if (!data) return { ok: false, mensagem: "Informe a data do prazo." };
+
+    return jurComLock_(function() {
+      var aba = jurObterAbaPrazos_();
+
+      if (dados.id) {
+        var ultimaLinha = aba.getLastRow();
+        var linhaAlvo = -1;
+        if (ultimaLinha >= 2) {
+          var todos = aba.getRange(2, 1, ultimaLinha - 1, JUR_CABECALHO_PRAZOS.length).getValues();
+          for (var i = 0; i < todos.length; i++) {
+            if (String(todos[i][JUR_COLP.ID - 1]) === String(dados.id)) { linhaAlvo = i + 2; break; }
+          }
+        }
+        if (linhaAlvo === -1) return { ok: false, mensagem: "Prazo não encontrado." };
+
+        aba.getRange(linhaAlvo, JUR_COLP.DESCRICAO).setValue(descricao);
+        aba.getRange(linhaAlvo, JUR_COLP.DATA).setValue(data);
+        aba.getRange(linhaAlvo, JUR_COLP.CUMPRIDO).setValue(dados.cumprido ? "SIM" : "NAO");
+        return { ok: true, id: dados.id };
+      }
+
+      var id = "PRZ-" + Utilities.getUuid().slice(0, 8).toUpperCase();
+      aba.appendRow([id, idProcesso, descricao, data, "NAO", new Date(), responsavel]);
+      return { ok: true, id: id };
+    });
+  } catch (e) {
+    Logger.log("jurSalvarPrazo ERRO: " + e.message + " | stack: " + e.stack);
+    var mensagem = e.message === "CONCORRENCIA" ? "Outra pessoa está salvando agora. Tente novamente." : (e.message || "Erro ao salvar prazo.");
+    return { ok: false, mensagem: mensagem };
+  }
+}
+
+// Prazo é item auxiliar do processo (não o registro jurídico principal),
+// então aqui a exclusão é física mesmo — serve pra corrigir um lançamento
+// errado. O que marca o desfecho de verdade é o campo "Cumprido".
+function jurExcluirPrazo(id, tokenSessao) {
+  try {
+    exigirSessaoDocumentos_(tokenSessao, false);
+    return jurComLock_(function() {
+      var aba = jurObterAbaPrazos_();
+      var ultimaLinha = aba.getLastRow();
+      if (ultimaLinha < 2) return { ok: false, mensagem: "Prazo não encontrado." };
+      var dados = aba.getRange(2, 1, ultimaLinha - 1, 1).getValues();
+      for (var i = 0; i < dados.length; i++) {
+        if (String(dados[i][0]) === String(id)) {
+          aba.deleteRow(i + 2);
+          return { ok: true };
+        }
+      }
+      return { ok: false, mensagem: "Prazo não encontrado." };
+    });
+  } catch (e) {
+    Logger.log("jurExcluirPrazo ERRO: " + e.message + " | stack: " + e.stack);
+    return { ok: false, mensagem: e.message || "Erro ao excluir prazo." };
+  }
+}
+
+// Só alterna Cumprido, sem tocar em descrição/data — usado pelo checkbox
+// da lista de prazos (evita ter que reenviar o registro inteiro pra marcar
+// como feito).
+function jurMarcarPrazo(id, cumprido, tokenSessao) {
+  try {
+    exigirSessaoDocumentos_(tokenSessao, false);
+    return jurComLock_(function() {
+      var aba = jurObterAbaPrazos_();
+      var ultimaLinha = aba.getLastRow();
+      if (ultimaLinha < 2) return { ok: false, mensagem: "Prazo não encontrado." };
+      var dados = aba.getRange(2, 1, ultimaLinha - 1, 1).getValues();
+      for (var i = 0; i < dados.length; i++) {
+        if (String(dados[i][0]) === String(id)) {
+          aba.getRange(i + 2, JUR_COLP.CUMPRIDO).setValue(cumprido ? "SIM" : "NAO");
+          return { ok: true };
+        }
+      }
+      return { ok: false, mensagem: "Prazo não encontrado." };
+    });
+  } catch (e) {
+    Logger.log("jurMarcarPrazo ERRO: " + e.message + " | stack: " + e.stack);
+    return { ok: false, mensagem: e.message || "Erro ao atualizar prazo." };
+  }
+}
+
+function jurListarAudiencias(idProcesso, tokenSessao) {
+  try {
+    exigirSessaoDocumentos_(tokenSessao, false);
+    idProcesso = String(idProcesso || "").trim();
+    if (!idProcesso) return { ok: false, mensagem: "Processo não informado." };
+
+    var aba = jurObterAbaAudiencias_();
+    var ultimaLinha = aba.getLastRow();
+    if (ultimaLinha < 2) return { ok: true, itens: [] };
+
+    var dados = aba.getRange(2, 1, ultimaLinha - 1, JUR_CABECALHO_AUDIENCIAS.length).getValues();
+    var itens = dados
+      .filter(function(l) { return String(l[JUR_COLA.ID_PROCESSO - 1]) === idProcesso; })
+      .map(function(l) {
+        return {
+          id: l[JUR_COLA.ID - 1],
+          data: jurTextoSeguro_(l[JUR_COLA.DATA - 1]),
+          hora: l[JUR_COLA.HORA - 1] || "",
+          tipo: l[JUR_COLA.TIPO - 1] || "",
+          local: l[JUR_COLA.LOCAL - 1] || "",
+          observacao: l[JUR_COLA.OBSERVACAO - 1] || ""
+        };
+      });
+
+    itens.sort(function(a, b) { return new Date(a.data || "9999-12-31") - new Date(b.data || "9999-12-31"); });
+    return { ok: true, itens: itens };
+  } catch (e) {
+    Logger.log("jurListarAudiencias ERRO: " + e.message + " | stack: " + e.stack);
+    return { ok: false, mensagem: e.message || "Erro ao listar audiências." };
+  }
+}
+
+function jurSalvarAudiencia(dados, tokenSessao) {
+  try {
+    var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+    dados = dados || {};
+    var idProcesso = String(dados.idProcesso || "").trim();
+    var data = String(dados.data || "").trim();
+    var hora = String(dados.hora || "").trim();
+    var tipo = String(dados.tipo || "").trim();
+    var local = String(dados.local || "").trim();
+    var observacao = String(dados.observacao || "").trim();
+    var responsavel = sessao.nome || sessao.usuario || sessao.email;
+
+    if (!idProcesso) return { ok: false, mensagem: "Processo não informado." };
+    if (!data) return { ok: false, mensagem: "Informe a data da audiência." };
+
+    return jurComLock_(function() {
+      var aba = jurObterAbaAudiencias_();
+      var id = "AUD-" + Utilities.getUuid().slice(0, 8).toUpperCase();
+      aba.appendRow([id, idProcesso, data, hora, tipo, local, observacao, new Date(), responsavel]);
+      return { ok: true, id: id };
+    });
+  } catch (e) {
+    Logger.log("jurSalvarAudiencia ERRO: " + e.message + " | stack: " + e.stack);
+    var mensagem = e.message === "CONCORRENCIA" ? "Outra pessoa está salvando agora. Tente novamente." : (e.message || "Erro ao salvar audiência.");
+    return { ok: false, mensagem: mensagem };
+  }
+}
+
+function jurExcluirAudiencia(id, tokenSessao) {
+  try {
+    exigirSessaoDocumentos_(tokenSessao, false);
+    return jurComLock_(function() {
+      var aba = jurObterAbaAudiencias_();
+      var ultimaLinha = aba.getLastRow();
+      if (ultimaLinha < 2) return { ok: false, mensagem: "Audiência não encontrada." };
+      var dados = aba.getRange(2, 1, ultimaLinha - 1, 1).getValues();
+      for (var i = 0; i < dados.length; i++) {
+        if (String(dados[i][0]) === String(id)) {
+          aba.deleteRow(i + 2);
+          return { ok: true };
+        }
+      }
+      return { ok: false, mensagem: "Audiência não encontrada." };
+    });
+  } catch (e) {
+    Logger.log("jurExcluirAudiencia ERRO: " + e.message + " | stack: " + e.stack);
+    return { ok: false, mensagem: e.message || "Erro ao excluir audiência." };
+  }
+}

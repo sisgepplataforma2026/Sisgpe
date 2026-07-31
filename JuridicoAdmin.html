@@ -26,6 +26,18 @@
     .jur-autocomplete .vazio{padding:9px 12px;font-size:12px;color:#94a3b8}
     .jur-chip{display:inline-flex;align-items:center;gap:6px;background:#eef2ff;color:#3730a3;border-radius:999px;padding:5px 10px 5px 12px;font-size:12px;font-weight:700}
     .jur-chip button{background:none;border:none;color:#3730a3;cursor:pointer;font-size:14px;line-height:1;padding:0}
+    .jur-sublista{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+    .jur-subitem{display:flex;align-items:flex-start;gap:10px;padding:9px 11px;background:#f8fafc;border:1px solid #eef2f7;border-radius:9px;font-size:12.5px}
+    .jur-subitem.cumprido{opacity:.55;text-decoration:line-through}
+    .jur-subitem .corpo{flex:1;line-height:1.5}
+    .jur-subitem .corpo b{display:block;color:#0f172a;text-decoration:inherit}
+    .jur-subitem .corpo span{color:#64748b;text-decoration:inherit}
+    .jur-subitem .acoes{display:flex;gap:6px;flex-shrink:0}
+    .jur-subitem .acoes button{background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;line-height:1}
+    .jur-subform{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:14px}
+    .jur-subform input{height:34px;border:1.5px solid #dbe4ef;border-radius:8px;padding:0 10px;font-family:inherit;font-size:12.5px}
+    .jur-subform.audiencia{grid-template-columns:1fr 90px 1fr 1fr auto}
+    .jur-vazio-sub{font-size:12px;color:#94a3b8;margin-bottom:10px}
   </style>
   <div class="mod-head"><div><div class="mod-title">Jurídico</div><div class="mod-sub">Processos, notificações, prazos e documentos</div></div><button class="mod-btn" onclick="spIr('sofia',null,{mensagem:'Preciso de apoio jurídico sindical.'})">Consultar SOFIA</button></div>
   <div class="mod-wrap">
@@ -75,6 +87,24 @@
         </div>
         <div id="jurFVinculosSelecionados" style="display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 4px"></div>
         <div class="jur-modal-grid full"><div class="mod-field"><label>E-mail do responsável (para alertas de prazo)</label><input id="jurFResponsavelEmail" type="email" placeholder="responsavel@sindeducacaoes.org.br"></div></div>
+
+        <div class="jur-modal-section-title">Prazos do processo</div>
+        <div id="jurFListaPrazos" class="jur-sublista"></div>
+        <div class="jur-subform">
+          <input id="jurFNovoPrazoDescricao" placeholder="Ex.: Contestação, recurso...">
+          <input id="jurFNovoPrazoData" type="date">
+          <button class="mod-btn" onclick="jurAdicionarPrazo()">+ Adicionar</button>
+        </div>
+
+        <div class="jur-modal-section-title">Audiências</div>
+        <div id="jurFListaAudiencias" class="jur-sublista"></div>
+        <div class="jur-subform audiencia">
+          <input id="jurFNovaAudienciaData" type="date">
+          <input id="jurFNovaAudienciaHora" type="time">
+          <input id="jurFNovaAudienciaTipo" placeholder="Tipo (ex.: Instrução)">
+          <input id="jurFNovaAudienciaLocal" placeholder="Local/vara">
+          <button class="mod-btn" onclick="jurAdicionarAudiencia()">+ Adicionar</button>
+        </div>
 
         <div class="jur-modal-section-title">Documento anexado</div>
         <div id="jurFAnexoAtual"></div>
@@ -318,12 +348,128 @@
         ? "<div class='jur-anexo-atual'>📎 <a href='"+esc(x.linkDocumento)+"' target='_blank' rel='noopener'>"+esc(x.nomeArquivo||"Documento anexado")+"</a></div>"
         : "<div style='font-size:12.5px;color:#94a3b8;margin-bottom:10px'>Nenhum documento anexado ainda.</div>";
       g("jurFMeta").innerHTML="Criado por "+esc(x.criadoPor||"—")+" em "+esc(x.criadoEm||"—")+"<br>Última atualização por "+esc(x.atualizadoPor||"—")+" em "+esc(x.atualizadoEm||"—");
+      g("jurFNovoPrazoDescricao").value="";
+      g("jurFNovoPrazoData").value="";
+      g("jurFNovaAudienciaData").value="";
+      g("jurFNovaAudienciaHora").value="";
+      g("jurFNovaAudienciaTipo").value="";
+      g("jurFNovaAudienciaLocal").value="";
+      jurCarregarPrazos();
+      jurCarregarAudiencias();
       g("jurModalOverlay").classList.add("aberto");
     };
 
     window.jurFecharFicha=function(){
       g("jurModalOverlay").classList.remove("aberto");
       fichaId="";
+    };
+
+    // ---------------- Prazos do processo ----------------
+
+    function jurFormatarDataBr_(iso){
+      if(!iso) return "-";
+      var p=String(iso).split("-");
+      return p.length===3?(p[2]+"/"+p[1]+"/"+p[0]):iso;
+    }
+
+    window.jurCarregarPrazos=function(){
+      var lista=g("jurFListaPrazos");
+      lista.innerHTML="<div class='jur-vazio-sub'>Carregando...</div>";
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||!r.ok){ lista.innerHTML="<div class='jur-vazio-sub'>"+esc((r&&r.mensagem)||"Não foi possível carregar os prazos.")+"</div>"; return; }
+          var itens=r.itens||[];
+          lista.innerHTML=itens.length?itens.map(function(p){
+            return "<div class='jur-subitem"+(p.cumprido?" cumprido":"")+"'><input type='checkbox' "+(p.cumprido?"checked":"")+" onchange=\"jurAlternarPrazo('"+p.id+"',this.checked)\" style='margin-top:2px'><div class='corpo'><b>"+esc(p.descricao)+"</b><span>"+esc(jurFormatarDataBr_(p.data))+"</span></div><div class='acoes'><button onclick=\"jurRemoverPrazo('"+p.id+"')\" title='Excluir'>🗑️</button></div></div>";
+          }).join(""):"<div class='jur-vazio-sub'>Nenhum prazo cadastrado ainda.</div>";
+        })
+        .withFailureHandler(function(e){ lista.innerHTML="<div class='jur-vazio-sub'>Erro: "+esc(e&&e.message?e.message:e)+"</div>"; })
+        .jurListarPrazos(fichaId, token());
+    };
+
+    window.jurAdicionarPrazo=function(){
+      var descricao=g("jurFNovoPrazoDescricao").value;
+      var data=g("jurFNovoPrazoData").value;
+      if(!String(descricao||"").trim()) return alert("Descreva o prazo (ex.: Contestação).");
+      if(!data) return alert("Informe a data do prazo.");
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||!r.ok){ alert("Erro: "+((r&&r.mensagem)||"não foi possível salvar o prazo.")); return; }
+          g("jurFNovoPrazoDescricao").value="";
+          g("jurFNovoPrazoData").value="";
+          jurCarregarPrazos();
+        })
+        .withFailureHandler(function(e){ alert("Erro ao salvar prazo: "+(e&&e.message?e.message:e)); })
+        .jurSalvarPrazo({idProcesso:fichaId, descricao:descricao, data:data}, token());
+    };
+
+    window.jurAlternarPrazo=function(id, cumprido){
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||!r.ok){ alert("Erro: "+((r&&r.mensagem)||"não foi possível atualizar.")); jurCarregarPrazos(); return; }
+          jurCarregarPrazos();
+        })
+        .withFailureHandler(function(e){ alert("Erro: "+(e&&e.message?e.message:e)); jurCarregarPrazos(); })
+        .jurMarcarPrazo(id, cumprido, token());
+    };
+
+    window.jurRemoverPrazo=function(id){
+      if(!confirm("Excluir este prazo?")) return;
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||!r.ok){ alert("Erro: "+((r&&r.mensagem)||"não foi possível excluir.")); return; }
+          jurCarregarPrazos();
+        })
+        .withFailureHandler(function(e){ alert("Erro: "+(e&&e.message?e.message:e)); })
+        .jurExcluirPrazo(id, token());
+    };
+
+    // ---------------- Audiências ----------------
+
+    window.jurCarregarAudiencias=function(){
+      var lista=g("jurFListaAudiencias");
+      lista.innerHTML="<div class='jur-vazio-sub'>Carregando...</div>";
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||!r.ok){ lista.innerHTML="<div class='jur-vazio-sub'>"+esc((r&&r.mensagem)||"Não foi possível carregar as audiências.")+"</div>"; return; }
+          var itens=r.itens||[];
+          lista.innerHTML=itens.length?itens.map(function(a){
+            var linha2=[a.tipo,a.local].filter(Boolean).join(" · ");
+            return "<div class='jur-subitem'><div class='corpo'><b>"+esc(jurFormatarDataBr_(a.data))+(a.hora?" às "+esc(a.hora):"")+"</b><span>"+esc(linha2||"—")+(a.observacao?" · "+esc(a.observacao):"")+"</span></div><div class='acoes'><button onclick=\"jurRemoverAudiencia('"+a.id+"')\" title='Excluir'>🗑️</button></div></div>";
+          }).join(""):"<div class='jur-vazio-sub'>Nenhuma audiência marcada ainda.</div>";
+        })
+        .withFailureHandler(function(e){ lista.innerHTML="<div class='jur-vazio-sub'>Erro: "+esc(e&&e.message?e.message:e)+"</div>"; })
+        .jurListarAudiencias(fichaId, token());
+    };
+
+    window.jurAdicionarAudiencia=function(){
+      var data=g("jurFNovaAudienciaData").value;
+      var hora=g("jurFNovaAudienciaHora").value;
+      var tipo=g("jurFNovaAudienciaTipo").value;
+      var local=g("jurFNovaAudienciaLocal").value;
+      if(!data) return alert("Informe a data da audiência.");
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||!r.ok){ alert("Erro: "+((r&&r.mensagem)||"não foi possível salvar a audiência.")); return; }
+          g("jurFNovaAudienciaData").value="";
+          g("jurFNovaAudienciaHora").value="";
+          g("jurFNovaAudienciaTipo").value="";
+          g("jurFNovaAudienciaLocal").value="";
+          jurCarregarAudiencias();
+        })
+        .withFailureHandler(function(e){ alert("Erro ao salvar audiência: "+(e&&e.message?e.message:e)); })
+        .jurSalvarAudiencia({idProcesso:fichaId, data:data, hora:hora, tipo:tipo, local:local}, token());
+    };
+
+    window.jurRemoverAudiencia=function(id){
+      if(!confirm("Excluir esta audiência?")) return;
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||!r.ok){ alert("Erro: "+((r&&r.mensagem)||"não foi possível excluir.")); return; }
+          jurCarregarAudiencias();
+        })
+        .withFailureHandler(function(e){ alert("Erro: "+(e&&e.message?e.message:e)); })
+        .jurExcluirAudiencia(id, token());
     };
 
     window.jurSalvarFicha=function(){
