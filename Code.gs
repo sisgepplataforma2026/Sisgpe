@@ -48,7 +48,7 @@ function doPost(e) {
 
     return template
       .evaluate()
-      .setTitle("SISGEP — Ofícios")
+      .setTitle("Portal Administrativo — SindEducação-ES")
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .setSandboxMode(HtmlService.SandboxMode.IFRAME);
 
@@ -219,7 +219,7 @@ if (p.portal === "associado") {
 
     return template
       .evaluate()
-      .setTitle("SISGEP — Ofícios")
+      .setTitle("Portal Administrativo — SindEducação-ES")
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .setSandboxMode(HtmlService.SandboxMode.IFRAME);
 
