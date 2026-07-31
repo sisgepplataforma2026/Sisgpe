@@ -66,7 +66,7 @@
   <div id="jurModalOverlay" onclick="if(event.target===this) jurFecharFicha()">
     <div class="jur-modal">
       <div class="jur-modal-head">
-        <strong>Ficha do processo</strong>
+        <strong id="jurFichaTitulo">Ficha do processo</strong>
         <button class="jur-modal-close" onclick="jurFecharFicha()" title="Fechar">&times;</button>
       </div>
       <div class="jur-modal-body">
@@ -119,27 +119,31 @@
           </div>
         </div>
 
-        <div class="jur-modal-section-title">Prazos do processo</div>
-        <div id="jurFListaPrazos" class="jur-sublista"></div>
-        <div class="jur-subform">
-          <input id="jurFNovoPrazoDescricao" placeholder="Ex.: Contestação, recurso...">
-          <input id="jurFNovoPrazoData" type="date">
-          <button class="mod-btn" onclick="jurAdicionarPrazo()">+ Adicionar</button>
-        </div>
+        <div id="jurBlocoRequerSalvo">
+          <div class="jur-modal-section-title">Prazos do processo</div>
+          <div id="jurFListaPrazos" class="jur-sublista"></div>
+          <div class="jur-subform">
+            <input id="jurFNovoPrazoDescricao" placeholder="Ex.: Contestação, recurso...">
+            <input id="jurFNovoPrazoData" type="date">
+            <button class="mod-btn" onclick="jurAdicionarPrazo()">+ Adicionar</button>
+          </div>
 
-        <div class="jur-modal-section-title">Audiências</div>
-        <div id="jurFListaAudiencias" class="jur-sublista"></div>
-        <div class="jur-subform audiencia">
-          <input id="jurFNovaAudienciaData" type="date">
-          <input id="jurFNovaAudienciaHora" type="time">
-          <input id="jurFNovaAudienciaTipo" placeholder="Tipo (ex.: Instrução)">
-          <input id="jurFNovaAudienciaLocal" placeholder="Local/vara">
-          <button class="mod-btn" onclick="jurAdicionarAudiencia()">+ Adicionar</button>
+          <div class="jur-modal-section-title">Audiências</div>
+          <div id="jurFListaAudiencias" class="jur-sublista"></div>
+          <div class="jur-subform audiencia">
+            <input id="jurFNovaAudienciaData" type="date">
+            <input id="jurFNovaAudienciaHora" type="time">
+            <input id="jurFNovaAudienciaTipo" placeholder="Tipo (ex.: Instrução)">
+            <input id="jurFNovaAudienciaLocal" placeholder="Local/vara">
+            <button class="mod-btn" onclick="jurAdicionarAudiencia()">+ Adicionar</button>
+          </div>
         </div>
+        <div id="jurAvisoNovoProcesso" style="display:none;font-size:12px;color:#94a3b8;margin:6px 0 14px">Prazos e audiências ficam disponíveis depois de salvar o processo pela primeira vez.</div>
 
         <div class="jur-modal-section-title">Documento anexado</div>
         <div id="jurFAnexoAtual"></div>
         <div class="mod-field"><label>Anexar petição, sentença ou notificação (PDF, JPG ou PNG · até 10MB)</label><input id="jurFArquivo" type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="jurAtualizarBotaoCancelarArquivo()"></div>
+        <div id="jurAvisoAnexoAoSalvar" style="display:none;font-size:12px;color:#166534;margin-top:6px">📎 Esse arquivo será anexado automaticamente quando o processo for salvo.</div>
         <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
           <button class="mod-btn" onclick="jurEnviarAnexo()" id="jurBtnAnexo">Enviar anexo</button>
           <button class="mod-btn" onclick="jurCancelarSelecaoArquivo()" id="jurBtnCancelarArquivo" style="display:none">Cancelar seleção</button>
@@ -268,6 +272,50 @@
       ["jurAssunto","jurPrazo"].forEach(function(i){g(i).value=""});
       g("jurTipo").value="Processo";
       g("jurStatus").value="Ativo";
+    };
+
+    // Ponto de entrada da leitura por IA ANTES de criar o processo: usuário
+    // escolhe o documento aqui em cima, a IA lê e extrai os campos, e a
+    // ficha completa abre em modo "novo processo" já pré-preenchida pra
+    // revisão — nada é salvo até o usuário clicar em "Salvar alterações".
+    window.jurLerNovoComIA=function(){
+      var input=g("jurNovoArquivo");
+      var arquivo=input&&input.files&&input.files[0];
+      if(!arquivo) return alert("Escolha um arquivo primeiro.");
+      if(arquivo.size>10*1024*1024) return alert("Arquivo maior que 10MB.");
+
+      var btn=g("jurBtnNovoLerIA");
+      if(btn){btn.disabled=true;btn.textContent="Lendo com IA...";}
+      var resultado=g("jurNovoIAResultado");
+      resultado.style.display="none";
+
+      var leitor=new FileReader();
+      leitor.onload=function(e){
+        var base64=String(e.target.result||"").split(",")[1]||"";
+        google.script.run
+          .withSuccessHandler(function(r){
+            if(btn){btn.disabled=false;btn.textContent="✦ Ler documento com IA e preencher o cadastro";}
+            if(!r||!r.sucesso){
+              resultado.style.display="block";
+              resultado.innerHTML="<strong>Não foi possível ler o documento.</strong><br>"+esc((r&&r.mensagem)||"Erro desconhecido.");
+              return;
+            }
+            input.value="";
+            resultado.style.display="none";
+            jurAbrirFichaNova(r.dados, arquivo);
+          })
+          .withFailureHandler(function(err){
+            if(btn){btn.disabled=false;btn.textContent="✦ Ler documento com IA e preencher o cadastro";}
+            resultado.style.display="block";
+            resultado.innerHTML="<strong>Erro ao ler o documento:</strong> "+esc(err&&err.message?err.message:err);
+          })
+          .jurAnalisarDocumentoIA(base64, arquivo.name, arquivo.type||"application/pdf", token());
+      };
+      leitor.onerror=function(){
+        if(btn){btn.disabled=false;btn.textContent="✦ Ler documento com IA e preencher o cadastro";}
+        alert("Não foi possível ler o arquivo selecionado.");
+      };
+      leitor.readAsDataURL(arquivo);
     };
 
     window.jurExportar=function(){
@@ -554,6 +602,9 @@
       var x=cache.find(function(a){return a.id===id});
       if(!x) return;
       fichaId=id;
+      g("jurFichaTitulo").textContent="Ficha do processo";
+      g("jurBlocoRequerSalvo").style.display="block";
+      g("jurAvisoNovoProcesso").style.display="none";
       g("jurFAssunto").value=x.assunto||"";
       g("jurFTipo").value=x.tipo||"Processo";
       g("jurFArea").value=x.area||"";
@@ -574,8 +625,7 @@
       g("jurFEscolaBusca").value="";
       renderVinculosChips();
       g("jurFArquivo").value="";
-      g("jurBtnCancelarArquivo").style.display="none";
-      g("jurBtnLerIA").style.display="none";
+      jurAtualizarBotaoCancelarArquivo();
       g("jurIAResultado").style.display="none";
       renderAnexo(x.linkDocumento, x.nomeArquivo);
       g("jurFMeta").innerHTML="Criado por "+esc(x.criadoPor||"—")+" em "+esc(x.criadoEm||"—")+"<br>Última atualização por "+esc(x.atualizadoPor||"—")+" em "+esc(x.atualizadoEm||"—");
@@ -588,6 +638,54 @@
       jurCarregarPrazos();
       jurCarregarAudiencias();
       g("jurFEscolaColetivoBusca").value="";
+      g("jurModalOverlay").classList.add("aberto");
+    };
+
+    // Abre a ficha em modo "novo processo" — usada pela leitura por IA no
+    // cadastro rápido (jurLerNovoComIA), pra revisar TODOS os campos antes
+    // de criar o processo, não só os 4 do formulário rápido. Prazos e
+    // Audiências ficam escondidos (dependem de um ID que ainda não existe);
+    // o anexo, se houver, fica "pendente" e só é enviado de verdade depois
+    // que o Salvar cria o processo.
+    window.jurAbrirFichaNova=function(dadosIniciais, arquivo){
+      dadosIniciais=dadosIniciais||{};
+      fichaId="";
+      g("jurFichaTitulo").textContent="Novo processo — revise antes de salvar";
+      g("jurBlocoRequerSalvo").style.display="none";
+      g("jurAvisoNovoProcesso").style.display="block";
+      g("jurFAssunto").value=dadosIniciais.assunto||"";
+      g("jurFTipo").value=dadosIniciais.tipo||"Processo";
+      g("jurFArea").value=dadosIniciais.area||"";
+      g("jurFStatus").value="Ativo";
+      g("jurFPrazo").value=dadosIniciais.prazoData||"";
+      g("jurFResponsavel").value="";
+      g("jurFCnj").value=dadosIniciais.cnj||"";
+      g("jurFAutor").value=dadosIniciais.autor||"";
+      g("jurFReu").value=dadosIniciais.reu||"";
+      g("jurFResponsavelEmail").value="";
+      g("jurFValorCausa").value="";
+      g("jurFResultado").value="Em andamento";
+      g("jurFNatureza").value="Individual";
+      jurAlternarNatureza();
+      fichaAssociado={cpf:"",nome:""};
+      fichaEscola={cnpj:"",nome:""};
+      g("jurFAssociadoBusca").value="";
+      g("jurFEscolaBusca").value="";
+      renderVinculosChips();
+
+      if(arquivo){
+        try{
+          var dt=new DataTransfer();
+          dt.items.add(arquivo);
+          g("jurFArquivo").files=dt.files;
+        }catch(e){ console.warn("[JUR] não consegui transferir o arquivo pra ficha:",e); }
+      } else {
+        g("jurFArquivo").value="";
+      }
+      jurAtualizarBotaoCancelarArquivo();
+      g("jurIAResultado").style.display="none";
+      renderAnexo("","");
+      g("jurFMeta").innerHTML="Processo ainda não salvo.";
       g("jurModalOverlay").classList.add("aberto");
     };
 
@@ -718,12 +816,19 @@
         valorCausa:g("jurFValorCausa").value, resultado:g("jurFResultado").value,
         natureza:g("jurFNatureza").value
       };
+      var eraNovo=!dados.id;
+      var input=g("jurFArquivo");
+      var arquivoPendente=input&&input.files&&input.files[0];
       var btn=g("jurBtnSalvarFicha");
       if(btn){btn.disabled=true;btn.textContent="Salvando...";}
       google.script.run
         .withSuccessHandler(function(r){
           if(btn){btn.disabled=false;btn.textContent="Salvar alterações";}
           if(!r||!r.ok){ alert("Erro: "+((r&&r.mensagem)||"não foi possível salvar.")); return; }
+          if(eraNovo&&r.id&&arquivoPendente){
+            jurAnexarAposCriar_(r.id, arquivoPendente);
+            return;
+          }
           jurFecharFicha();
           jurRender();
         })
@@ -734,12 +839,44 @@
         .jurSalvarProcesso(dados, token());
     };
 
+    // Anexa automaticamente o arquivo que ficou "pendente" na criação de um
+    // processo novo (leitura por IA), assim que o Salvar gera o ID.
+    function jurAnexarAposCriar_(idNovo, arquivo){
+      if(arquivo.size>10*1024*1024){
+        alert("Processo salvo. O arquivo escolhido é maior que 10MB e não foi anexado — anexe manualmente na ficha.");
+        jurFecharFicha();
+        jurRender();
+        return;
+      }
+      var leitor=new FileReader();
+      leitor.onload=function(e){
+        var base64=String(e.target.result||"").split(",")[1]||"";
+        google.script.run
+          .withSuccessHandler(function(){ jurFecharFicha(); jurRender(); })
+          .withFailureHandler(function(err){
+            alert("Processo salvo, mas houve erro ao anexar o documento automaticamente: "+(err&&err.message?err.message:err)+"\nVocê pode anexar manualmente abrindo a ficha do processo.");
+            jurFecharFicha();
+            jurRender();
+          })
+          .jurUploadDocumento({idProcesso:idNovo, base64:base64, nome:arquivo.name, tipo:arquivo.type||"application/pdf"}, token());
+      };
+      leitor.onerror=function(){
+        alert("Processo salvo, mas não consegui ler o arquivo para anexar automaticamente.");
+        jurFecharFicha();
+        jurRender();
+      };
+      leitor.readAsDataURL(arquivo);
+    }
+
     window.jurAtualizarBotaoCancelarArquivo=function(){
       var input=g("jurFArquivo");
       var tem=input&&input.files&&input.files.length>0;
       g("jurBtnCancelarArquivo").style.display=tem?"inline-block":"none";
       g("jurBtnLerIA").style.display=tem?"inline-block":"none";
       g("jurIAResultado").style.display="none";
+      var modoNovo=!fichaId;
+      g("jurBtnAnexo").style.display=modoNovo?"none":"inline-block";
+      g("jurAvisoAnexoAoSalvar").style.display=(modoNovo&&tem)?"block":"none";
     };
 
     // Lê o arquivo escolhido com IA e pré-preenche os campos da ficha pra
