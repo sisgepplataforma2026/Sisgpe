@@ -298,6 +298,9 @@ function sindAss_desfiliar_(cpf, usuario, tokenSessao) {
         aba.getRange(linha, idx('Filiado')).setValue('N');
         aba.getRange(linha, idx('ULTIMA_ATUALIZACAO')).setValue(new Date());
         Logger.log('sindAss_desfiliar_: CPF ' + cpfDigitos + ' desfiliado por ' + (usuario || '—'));
+        if (typeof cartAd_revogarPorDesfiliacao_ === 'function') {
+          cartAd_revogarPorDesfiliacao_(cpfDigitos, usuario);
+        }
         return { encontrado: true, linha: linha };
       }
     }

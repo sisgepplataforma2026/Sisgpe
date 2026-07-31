@@ -196,6 +196,15 @@ if (p.portal === "associado") {
       return validarPublico(p.codigo);
     }
 
+    // ── Rota pública: validação da carteirinha digital (QR Code da credencial) ──
+    // Mesma ideia do ofício acima, mas para o Codigo_Validacao gravado em
+    // Carteirinhas_Emitidas — quem escaneia é qualquer pessoa com o celular,
+    // sem login no SISGEP.
+    if (p.credencial) {
+      Logger.log("[VALIDACAO] Validando código público de carteirinha.");
+      return validarCarteirinhaPublico(p.credencial);
+    }
+
     // ── Checa sessão — token vem explicitamente da URL (?sessao=token) ──
     var tokenSessao = String(p.sessao || "").trim();
     Logger.log("[DIAGNOSTICO doGet] sessão recebida: " + (tokenSessao ? "sim" : "não"));

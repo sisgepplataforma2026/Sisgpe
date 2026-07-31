@@ -204,20 +204,22 @@ function notificarSofiaNovaSolicitacao_(nomeAssociado) {
 }
 
 /**
- * Gera QR Code para credencial (usando API pública)
+ * Gera QR Code para credencial (usando API pública). O QR aponta para a
+ * rota pública ?credencial=<Codigo_Validacao> (Code.gs → CarteirinhaAdmin.gs),
+ * que consulta a aba Carteirinhas_Emitidas de verdade — antes o QR só
+ * codificava CPF/nome em base64, sem nenhuma validação real por trás:
+ * qualquer pessoa podia "forjar" um QR válido, e revogar a carteirinha
+ * (desfiliação, por exemplo) não tinha nenhum efeito sobre ele.
+ * Retorna "" se não houver carteirinha ATIVA emitida para o CPF.
  */
 function gerarQRCodeParaCredencial(cpf, nome) {
   try {
-    var dadosValidacao = Utilities.base64Encode(JSON.stringify({
-      cpf: cpf,
-      nome: nome,
-      data: new Date().toISOString(),
-      validador: "SindEducacao-ES"
-    }));
-    
-    var qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + encodeURIComponent(dadosValidacao);
-    
-    return qrCodeUrl;
+    var cpfLimpo = String(cpf || '').replace(/\D/g, '');
+    var emissao = (typeof cartAd_emissaoAtivaPorCpf_ === 'function') ? cartAd_emissaoAtivaPorCpf_(cpfLimpo) : null;
+    if (!emissao) return "";
+
+    var urlValidacao = ScriptApp.getService().getUrl() + "?credencial=" + encodeURIComponent(emissao.codigo);
+    return "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + encodeURIComponent(urlValidacao);
   } catch (e) {
     return "";
   }
@@ -270,6 +272,10 @@ function servirPortalAssociado(params) {
   template.modoDemo = modoDemo;
   template.scriptUrl = ScriptApp.getService().getUrl();
   template.qrCodeCredencial = gerarQRCodeParaCredencial(dados.cpf, dados.nome);
+  var emissaoAtiva = (typeof cartAd_emissaoAtivaPorCpf_ === 'function')
+    ? cartAd_emissaoAtivaPorCpf_(String(dados.cpf || '').replace(/\D/g, ''))
+    : null;
+  template.credencialValidade = emissaoAtiva ? emissaoAtiva.validade : '';
   template.bannerDemo = modoDemo ? '<div style="background:#f59e0b;color:#08101f;text-align:center;padding:10px 16px;font-weight:800;font-size:13px;">MODO DE DEMONSTRAÇÃO — dados fictícios, nenhuma alteração será gravada</div>' : "";
 
   return template.evaluate()

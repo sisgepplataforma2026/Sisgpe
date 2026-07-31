@@ -143,6 +143,14 @@ function emitirCarteirinha(cpf, validade, tokenSessao) {
     }
     if (!nome) return { sucesso: false, mensagem: 'CPF não encontrado na lista de fotos aprovadas.' };
 
+    var statusAssociado = consultarAssociadoPorCPF(cpfLimpo, tokenSessao);
+    if (!statusAssociado || !statusAssociado.existe) {
+      return { sucesso: false, mensagem: 'Este CPF não consta na base de associados — verifique antes de emitir.' };
+    }
+    if (!statusAssociado.filiado) {
+      return { sucesso: false, mensagem: 'Este associado consta como NÃO filiado na base — a carteirinha não pode ser emitida.' };
+    }
+
     var codigo = cartAd_gerarCodigoValidacao_();
     var sh = cartAd_obterAbaEmitidas_();
     sh.appendRow([
@@ -340,6 +348,111 @@ function aprovarEEmitirCarteirinha(cpf, validade, tokenSessao) {
     Logger.log('aprovarEEmitirCarteirinha: ' + e);
     return { sucesso: false, mensagem: 'Erro ao aprovar e emitir: ' + e.message };
   }
+}
+
+/**
+ * Emissão ATIVA mais recente de um CPF (código + validade), para uso no
+ * Portal do Associado — gerar o QR Code e mostrar a validade real, em vez
+ * de dados fixos. Retorna null se não houver emissão ativa.
+ */
+function cartAd_emissaoAtivaPorCpf_(cpfLimpo) {
+  var emissao = cartAd_mapaEmitidasPorCpf_()[cpfLimpo];
+  if (!emissao || String(emissao.status || '').toUpperCase() !== 'ATIVA' || !emissao.codigo) return null;
+  return emissao;
+}
+
+/**
+ * Revoga qualquer carteirinha ATIVA de um CPF. Chamada a partir da
+ * desfiliação (sindAss_desfiliar_) pra manter o QR Code coerente com o
+ * cadastro: uma vez desfiliado, a credencial para de validar no scanner
+ * público, em vez de continuar mostrando "válida" indefinidamente.
+ */
+function cartAd_revogarPorDesfiliacao_(cpfLimpo, usuario) {
+  try {
+    var sh = cartAd_obterAbaEmitidas_();
+    if (sh.getLastRow() < 2) return;
+    var dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+    for (var i = 0; i < dados.length; i++) {
+      if (String(dados[i][0] || '').replace(/\D/g, '') === cpfLimpo &&
+          String(dados[i][3] || '').toUpperCase() === 'ATIVA') {
+        sh.getRange(i + 2, 4).setValue('REVOGADA');
+        Logger.log('cartAd_revogarPorDesfiliacao_: carteirinha revogada para ' + cpfLimpo +
+          ' (desfiliação por ' + (usuario || '—') + ')');
+      }
+    }
+  } catch (e) {
+    Logger.log('cartAd_revogarPorDesfiliacao_: ' + e);
+  }
+}
+
+/**
+ * Consulta pública (sem sessão) de uma carteirinha pelo Codigo_Validacao
+ * do QR Code — usada pela rota ?credencial=... em Code.gs. Só devolve
+ * nome e validade, nunca CPF completo ou outro dado sensível.
+ */
+function cartAd_validarCodigoPublico_(codigo) {
+  var cod = String(codigo || '').trim().toUpperCase();
+  if (!cod) return { status: 'INVALIDO', mensagem: 'Código não informado.' };
+
+  var sh = cartAd_obterAbaEmitidas_();
+  if (sh.getLastRow() < 2) return { status: 'INVALIDO', mensagem: 'Código não encontrado.' };
+
+  var dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+  for (var i = dados.length - 1; i >= 0; i--) {
+    if (String(dados[i][2] || '').trim().toUpperCase() === cod) {
+      var status = String(dados[i][3] || '').toUpperCase();
+      var validade = String(dados[i][4] || '');
+
+      if (status === 'REVOGADA') {
+        return { status: 'INVALIDO', mensagem: 'Esta carteirinha foi revogada.' };
+      }
+      if (status !== 'ATIVA') {
+        return { status: 'INVALIDO', mensagem: 'Esta carteirinha não está ativa.' };
+      }
+
+      var partes = validade.split('/');
+      if (partes.length === 3) {
+        var venc = new Date(Number(partes[2]), Number(partes[1]) - 1, Number(partes[0]), 23, 59, 59);
+        if (!isNaN(venc.getTime()) && venc.getTime() < Date.now()) {
+          return { status: 'INVALIDO', mensagem: 'Carteirinha vencida em ' + validade + '.' };
+        }
+      }
+
+      return { status: 'VALIDO', nome: String(dados[i][1] || ''), validade: validade };
+    }
+  }
+  return { status: 'INVALIDO', mensagem: 'Código não encontrado.' };
+}
+
+/**
+ * Página pública servida pelo QR Code da credencial (rota ?credencial=
+ * em Code.gs) — mesmo padrão visual de validarPublico (Oficios.gs), pra
+ * manter uma única identidade de "página de validação" no SISGEP.
+ */
+function validarCarteirinhaPublico(codigo) {
+  var resultado = cartAd_validarCodigoPublico_(codigo) || {};
+  var esc = function (valor) { return escapeHtml_(String(valor == null ? '' : valor)); };
+
+  var html = "<!DOCTYPE html><html lang='pt-BR'><head><meta charset='UTF-8'><title>Validação de Carteirinha — SISGEP</title>"
+    + "<style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4fa;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}"
+    + ".card{max-width:420px;width:100%;background:#fff;border-radius:20px;padding:36px;box-shadow:0 10px 40px rgba(10,22,40,.1);text-align:center;}"
+    + ".icon{font-size:48px;margin-bottom:16px;}h2{font-size:22px;margin-bottom:16px;}"
+    + ".field{text-align:left;margin-bottom:12px;padding:12px 16px;background:#f8fafc;border-radius:10px;border:1px solid #dbe5f0;}"
+    + ".field-lbl{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#64748b;margin-bottom:4px;}"
+    + ".field-val{font-size:14px;font-weight:600;color:#0a1628;}"
+    + "</style></head><body><div class='card'>";
+
+  if (resultado.status === 'VALIDO') {
+    html += "<div class='icon'>&#x2705;</div><h2 style='color:#166534;'>Carteirinha Válida</h2>"
+      + "<div class='field'><div class='field-lbl'>Associado</div><div class='field-val'>" + esc(resultado.nome) + "</div></div>"
+      + "<div class='field'><div class='field-lbl'>Válida até</div><div class='field-val'>" + esc(resultado.validade) + "</div></div>";
+  } else {
+    html += "<div class='icon'>&#x274C;</div><h2 style='color:#991b1b;'>Carteirinha Inválida</h2>"
+      + "<p style='color:#64748b;font-size:14px;line-height:1.6;'>" + esc(resultado.mensagem || 'Código não encontrado.') + "</p>";
+  }
+
+  html += "</div></body></html>";
+  return HtmlService.createHtmlOutput(html);
 }
 
 /**
