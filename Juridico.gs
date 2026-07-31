@@ -179,10 +179,11 @@ function jurObterPastaAnexos_() {
 
 function jurListarProcessos(tokenSessao) {
   try {
-    exigirSessaoDocumentos_(tokenSessao, false);
+    var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+    var meuNome = sessao.nome || sessao.usuario || sessao.email || "";
     var aba = jurObterAba_();
     var ultimaLinha = aba.getLastRow();
-    if (ultimaLinha < 2) return { ok: true, itens: [] };
+    if (ultimaLinha < 2) return { ok: true, itens: [], meuNome: meuNome };
 
     var dados = aba.getRange(2, 1, ultimaLinha - 1, JUR_CABECALHO.length).getValues();
     var itens = dados
@@ -194,7 +195,7 @@ function jurListarProcessos(tokenSessao) {
     });
 
     Logger.log("jurListarProcessos OK: " + itens.length + " itens");
-    return { ok: true, itens: itens };
+    return { ok: true, itens: itens, meuNome: meuNome };
   } catch (e) {
     Logger.log("jurListarProcessos ERRO: " + e.message + " | stack: " + e.stack);
     return { ok: false, mensagem: e.message || "Erro desconhecido ao listar." };
@@ -419,6 +420,159 @@ function jurExcluirAnexo(idProcesso, tokenSessao) {
   }
 }
 
+// ============================================================================
+// MÚLTIPLOS DOCUMENTOS POR PROCESSO
+//
+// O anexo único da Fase 1 (jurUploadDocumento/jurExcluirAnexo, acima) fica
+// intacto — nunca sobrescrevemos/migramos dado existente. Mas um processo
+// real acumula dezenas de documentos ao longo de meses (petição inicial,
+// contestação, decisões, recursos, sentença...), e um campo único SOBRESCREVE
+// o anterior a cada novo upload, perdendo o vínculo com o arquivo antigo no
+// Drive. Esta é a solução de verdade: aba própria N:N (mesmo padrão de
+// Prazos/Audiências/Reclamantes). jurListarDocumentosProcesso devolve também
+// o anexo único legado (se existir) como primeiro item da lista, só pra não
+// "sumir" com o que já tinha sido anexado antes desta funcionalidade existir.
+// ============================================================================
+
+var JUR_ABA_DOCUMENTOS = "Juridico_Documentos";
+var JUR_CABECALHO_DOCUMENTOS = ["ID", "ID Processo", "Tipo", "Nome Arquivo", "Link", "File ID", "Data Upload", "Enviado Por"];
+var JUR_COLD = { ID: 1, ID_PROCESSO: 2, TIPO: 3, NOME_ARQUIVO: 4, LINK: 5, FILE_ID: 6, DATA_UPLOAD: 7, ENVIADO_POR: 8 };
+var JUR_TIPOS_DOCUMENTO = ["Petição inicial", "Contestação", "Decisão/Despacho", "Recurso", "Sentença", "Comprovante", "Procuração", "Outro"];
+
+function jurObterAbaDocumentos_() {
+  return jurObterAbaGenerica_(JUR_ABA_DOCUMENTOS, JUR_CABECALHO_DOCUMENTOS, [JUR_COLD.DATA_UPLOAD]);
+}
+
+function jurListarDocumentosProcesso(idProcesso, tokenSessao) {
+  try {
+    exigirSessaoDocumentos_(tokenSessao, false);
+    idProcesso = String(idProcesso || "").trim();
+    if (!idProcesso) return { ok: false, mensagem: "Processo não informado." };
+
+    var itens = [];
+
+    var abaProc = jurObterAba_();
+    var encontrada = jurBuscarLinhaPorId_(abaProc, idProcesso);
+    if (encontrada) {
+      var linkLegado = String(encontrada.valores[JUR_COL.LINK_DOCUMENTO - 1] || "").trim();
+      var nomeLegado = String(encontrada.valores[JUR_COL.NOME_ARQUIVO - 1] || "").trim();
+      if (linkLegado && nomeLegado) {
+        itens.push({ id: "", legado: true, tipo: "Documento (anexo original)", nome: nomeLegado, link: linkLegado, dataUpload: "", enviadoPor: "" });
+      }
+    }
+
+    var aba = jurObterAbaDocumentos_();
+    var ultimaLinha = aba.getLastRow();
+    if (ultimaLinha >= 2) {
+      var dados = aba.getRange(2, 1, ultimaLinha - 1, JUR_CABECALHO_DOCUMENTOS.length).getValues();
+      dados
+        .filter(function(l) { return String(l[JUR_COLD.ID_PROCESSO - 1]) === idProcesso; })
+        .forEach(function(l) {
+          itens.push({
+            id: l[JUR_COLD.ID - 1],
+            legado: false,
+            tipo: l[JUR_COLD.TIPO - 1] || "Outro",
+            nome: l[JUR_COLD.NOME_ARQUIVO - 1] || "",
+            link: l[JUR_COLD.LINK - 1] || "",
+            dataUpload: jurTextoSeguro_(l[JUR_COLD.DATA_UPLOAD - 1]),
+            enviadoPor: l[JUR_COLD.ENVIADO_POR - 1] || ""
+          });
+        });
+    }
+
+    itens.sort(function(a, b) { return new Date(b.dataUpload || "1900-01-01") - new Date(a.dataUpload || "1900-01-01"); });
+    return { ok: true, itens: itens };
+  } catch (e) {
+    Logger.log("jurListarDocumentosProcesso ERRO: " + e.message + " | stack: " + e.stack);
+    return { ok: false, mensagem: e.message || "Erro ao listar documentos." };
+  }
+}
+
+function jurAdicionarDocumento(dados, tokenSessao) {
+  try {
+    var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+    dados = dados || {};
+    var idProcesso = String(dados.idProcesso || "").trim();
+    var base64 = String(dados.base64 || "").trim();
+    var nomeArq = String(dados.nome || "documento.pdf").trim();
+    var tipoArq = String(dados.tipoArquivo || "application/pdf").trim();
+    var tipoDocumento = JUR_TIPOS_DOCUMENTO.indexOf(dados.tipoDocumento) > -1 ? dados.tipoDocumento : "Outro";
+
+    if (!idProcesso) return { ok: false, mensagem: "Processo não informado." };
+    if (!base64) return { ok: false, mensagem: "Nenhum arquivo recebido." };
+
+    var TIPOS_ACEITOS = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
+    if (TIPOS_ACEITOS.indexOf(tipoArq) === -1) {
+      return { ok: false, mensagem: "Tipo de arquivo não permitido. Use PDF, JPG ou PNG." };
+    }
+
+    var responsavel = sessao.nome || sessao.usuario || sessao.email;
+
+    return jurComLock_(function() {
+      var abaProc = jurObterAba_();
+      var encontrada = jurBuscarLinhaPorId_(abaProc, idProcesso);
+      if (!encontrada) return { ok: false, mensagem: "Processo não encontrado." };
+
+      var bytes = Utilities.base64Decode(base64);
+      if (bytes.length > 10 * 1024 * 1024) {
+        return { ok: false, mensagem: "Arquivo maior que 10MB." };
+      }
+
+      var nomeFinal = "JUR_" + idProcesso + "_" + nomeArq.replace(/[^a-zA-Z0-9._À-ÿ-]/g, "_");
+      var blob = Utilities.newBlob(bytes, tipoArq, nomeFinal);
+      var pasta = jurObterPastaAnexos_();
+      var arquivo = pasta.createFile(blob);
+      try { arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (eShare) {}
+
+      var link = "https://drive.google.com/file/d/" + arquivo.getId() + "/view";
+      var id = "DOC-" + Utilities.getUuid().slice(0, 8).toUpperCase();
+
+      var aba = jurObterAbaDocumentos_();
+      aba.appendRow([id, idProcesso, tipoDocumento, nomeArq, link, arquivo.getId(), new Date(), responsavel]);
+
+      abaProc.getRange(encontrada.linha, JUR_COL.ATUALIZADO_EM).setValue(new Date());
+      abaProc.getRange(encontrada.linha, JUR_COL.ATUALIZADO_POR).setValue(responsavel);
+
+      Logger.log("jurAdicionarDocumento OK: " + idProcesso + " -> " + arquivo.getId());
+      return { ok: true, id: id, link: link, nome: nomeArq };
+    });
+  } catch (e) {
+    Logger.log("jurAdicionarDocumento ERRO: " + e.message + " | stack: " + e.stack);
+    var mensagem = e.message === "CONCORRENCIA"
+      ? "Outra pessoa está salvando um registro agora. Tente novamente em instantes."
+      : (e.message || "Erro desconhecido ao enviar o documento.");
+    return { ok: false, mensagem: mensagem };
+  }
+}
+
+function jurExcluirDocumento(id, tokenSessao) {
+  try {
+    exigirSessaoDocumentos_(tokenSessao, false);
+    return jurComLock_(function() {
+      var aba = jurObterAbaDocumentos_();
+      var ultimaLinha = aba.getLastRow();
+      if (ultimaLinha < 2) return { ok: false, mensagem: "Documento não encontrado." };
+      var dados = aba.getRange(2, 1, ultimaLinha - 1, JUR_CABECALHO_DOCUMENTOS.length).getValues();
+      for (var i = 0; i < dados.length; i++) {
+        if (String(dados[i][JUR_COLD.ID - 1]) === String(id)) {
+          var fileId = String(dados[i][JUR_COLD.FILE_ID - 1] || "").trim();
+          if (fileId) {
+            try { DriveApp.getFileById(fileId).setTrashed(true); } catch (eTrash) {
+              Logger.log("jurExcluirDocumento: não consegui mover pra lixeira (" + fileId + "): " + eTrash.message);
+            }
+          }
+          aba.deleteRow(i + 2);
+          return { ok: true };
+        }
+      }
+      return { ok: false, mensagem: "Documento não encontrado." };
+    });
+  } catch (e) {
+    Logger.log("jurExcluirDocumento ERRO: " + e.message + " | stack: " + e.stack);
+    return { ok: false, mensagem: e.message || "Erro ao excluir documento." };
+  }
+}
+
 // ----------------------------------------------------------------------------
 // FASE 2a — Vínculo com Associado e Escola
 //
@@ -501,8 +655,8 @@ var JUR_CABECALHO_PRAZOS = ["ID", "ID Processo", "Descrição", "Data", "Cumprid
 var JUR_COLP = { ID: 1, ID_PROCESSO: 2, DESCRICAO: 3, DATA: 4, CUMPRIDO: 5, CRIADO_EM: 6, CRIADO_POR: 7, DATA_ULTIMO_ALERTA: 8 };
 
 var JUR_ABA_AUDIENCIAS = "Juridico_Audiencias";
-var JUR_CABECALHO_AUDIENCIAS = ["ID", "ID Processo", "Data", "Hora", "Tipo", "Local", "Observação", "Criado Em", "Criado Por", "Evento Agenda ID"];
-var JUR_COLA = { ID: 1, ID_PROCESSO: 2, DATA: 3, HORA: 4, TIPO: 5, LOCAL: 6, OBSERVACAO: 7, CRIADO_EM: 8, CRIADO_POR: 9, EVENTO_AGENDA_ID: 10 };
+var JUR_CABECALHO_AUDIENCIAS = ["ID", "ID Processo", "Data", "Hora", "Tipo", "Local", "Observação", "Criado Em", "Criado Por", "Evento Agenda ID", "Data Último Alerta"];
+var JUR_COLA = { ID: 1, ID_PROCESSO: 2, DATA: 3, HORA: 4, TIPO: 5, LOCAL: 6, OBSERVACAO: 7, CRIADO_EM: 8, CRIADO_POR: 9, EVENTO_AGENDA_ID: 10, DATA_ULTIMO_ALERTA: 11 };
 
 // colunasTexto: lista de colunas (data/hora) que o Sheets NÃO pode converter
 // sozinho pro tipo dele — mesmo problema que já pegamos no campo Prazo
@@ -535,7 +689,7 @@ function jurObterAbaPrazos_() {
 }
 
 function jurObterAbaAudiencias_() {
-  return jurObterAbaGenerica_(JUR_ABA_AUDIENCIAS, JUR_CABECALHO_AUDIENCIAS, [JUR_COLA.DATA, JUR_COLA.HORA]);
+  return jurObterAbaGenerica_(JUR_ABA_AUDIENCIAS, JUR_CABECALHO_AUDIENCIAS, [JUR_COLA.DATA, JUR_COLA.HORA, JUR_COLA.DATA_ULTIMO_ALERTA]);
 }
 
 function jurListarPrazos(idProcesso, tokenSessao) {
@@ -548,15 +702,22 @@ function jurListarPrazos(idProcesso, tokenSessao) {
     var ultimaLinha = aba.getLastRow();
     if (ultimaLinha < 2) return { ok: true, itens: [] };
 
+    var hojeISO = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || "America/Sao_Paulo", "yyyy-MM-dd");
     var dados = aba.getRange(2, 1, ultimaLinha - 1, JUR_CABECALHO_PRAZOS.length).getValues();
     var itens = dados
       .filter(function(l) { return String(l[JUR_COLP.ID_PROCESSO - 1]) === idProcesso; })
       .map(function(l) {
+        var cumprido = String(l[JUR_COLP.CUMPRIDO - 1] || "NAO") === "SIM";
+        var data = jurTextoSeguro_(l[JUR_COLP.DATA - 1]);
         return {
           id: l[JUR_COLP.ID - 1],
           descricao: l[JUR_COLP.DESCRICAO - 1],
-          data: jurTextoSeguro_(l[JUR_COLP.DATA - 1]),
-          cumprido: String(l[JUR_COLP.CUMPRIDO - 1] || "NAO") === "SIM"
+          data: data,
+          cumprido: cumprido,
+          // "Perdido" é derivado (não cumprido + data já passou), não um
+          // status gravado — evita migração de esquema e nunca desalinha
+          // do que o checkbox "Cumprido" realmente diz.
+          atrasado: !cumprido && !!data && data < hojeISO
         };
       });
 
@@ -900,6 +1061,134 @@ function jurVerificarEDispararAlertasPrazo() {
   } catch (e) {
     Logger.log("❌ jurVerificarEDispararAlertasPrazo ERRO: " + e.message + " | stack: " + e.stack);
   }
+
+  // Mesmo trigger diário cobre Audiências também — evita pedir pro usuário
+  // instalar um segundo gatilho manualmente pra uma função irmã desta.
+  jurVerificarEDispararAlertasAudiencia_();
+}
+
+// Igual ao alerta de Prazo (marcos [15,5,1]), mas com marcos mais próximos
+// ([7,3,1]) porque audiência é hora marcada — avisar com 15 dias de
+// antecedência é menos útil do que confirmar na semana. Convite do Google
+// Agenda (Fase 3c) já existe, mas cai na conta de quem implantou o Web App
+// (executeAs: USER_DEPLOYING) — este e-mail chega direto pro Responsável
+// E-mail do processo, sem depender de qual conta Google recebeu o evento.
+function jurVerificarEDispararAlertasAudiencia_() {
+  try {
+    Logger.log("▶ jurVerificarEDispararAlertasAudiencia_ iniciado.");
+
+    var aba = jurObterAbaAudiencias_();
+    var ultimaLinha = aba.getLastRow();
+    if (ultimaLinha < 2) { Logger.log("jurVerificarEDispararAlertasAudiencia_: sem audiências cadastradas."); return; }
+
+    var dadosAudiencias = aba.getRange(2, 1, ultimaLinha - 1, JUR_CABECALHO_AUDIENCIAS.length).getValues();
+    var hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    var marcos = [7, 3, 1];
+    var enviados = 0, ignorados = 0;
+
+    for (var i = 0; i < dadosAudiencias.length; i++) {
+      var linha = dadosAudiencias[i];
+      var dataTexto = jurTextoSeguro_(linha[JUR_COLA.DATA - 1]);
+      if (!dataTexto) { ignorados++; continue; }
+      var dataAudiencia = new Date(dataTexto + "T00:00:00");
+      if (isNaN(dataAudiencia.getTime())) { ignorados++; continue; }
+
+      var diffDias = Math.round((dataAudiencia - hoje) / 86400000);
+      if (marcos.indexOf(diffDias) === -1) { ignorados++; continue; }
+
+      var ultimoAlerta = jurTextoSeguro_(linha[JUR_COLA.DATA_ULTIMO_ALERTA - 1]);
+      var hojeTexto = Utilities.formatDate(hoje, Session.getScriptTimeZone() || "America/Sao_Paulo", "yyyy-MM-dd");
+      if (ultimoAlerta === hojeTexto) { ignorados++; continue; }
+
+      var idProcesso = String(linha[JUR_COLA.ID_PROCESSO - 1] || "").trim();
+      var processo = jurBuscarProcessoParaAlerta_(idProcesso);
+      if (!processo || !processo.email) { ignorados++; continue; }
+
+      var hora = jurTextoSeguro_(linha[JUR_COLA.HORA - 1], "HH:mm") || "";
+      var tipo = String(linha[JUR_COLA.TIPO - 1] || "");
+      var local = String(linha[JUR_COLA.LOCAL - 1] || "");
+
+      var enviouOk = jurEnviarEmailAlertaAudiencia_(processo, dataTexto, hora, tipo, local, diffDias);
+      if (enviouOk) {
+        aba.getRange(i + 2, JUR_COLA.DATA_ULTIMO_ALERTA).setValue(hojeTexto);
+        enviados++;
+      } else {
+        ignorados++;
+      }
+    }
+
+    Logger.log("✅ jurVerificarEDispararAlertasAudiencia_: enviados=" + enviados + " ignorados=" + ignorados);
+  } catch (e) {
+    Logger.log("❌ jurVerificarEDispararAlertasAudiencia_ ERRO: " + e.message + " | stack: " + e.stack);
+  }
+}
+
+function jurEnviarEmailAlertaAudiencia_(processo, dataTexto, hora, tipo, local, diffDias) {
+  try {
+    var partesData = dataTexto.split("-");
+    var dataBr = partesData.length === 3 ? (partesData[2] + "/" + partesData[1] + "/" + partesData[0]) : dataTexto;
+    var urgencia = diffDias <= 1 ? "AMANHÃ" : ("em " + diffDias + " dias");
+    var assunto = "⚖ Audiência " + urgencia + " — " + processo.assunto;
+
+    MailApp.sendEmail({
+      to: processo.email,
+      subject: assunto,
+      htmlBody: jurMontarHtmlAlertaAudiencia_(processo, dataBr, hora, tipo, local, diffDias),
+      name: "SISGEP · Jurídico — SindEducação-ES"
+    });
+    return true;
+  } catch (e) {
+    Logger.log("jurEnviarEmailAlertaAudiencia_ ERRO (" + processo.email + "): " + e.message);
+    return false;
+  }
+}
+
+// Mesmo template visual do alerta de Prazo (jurMontarHtmlAlertaPrazo_) —
+// só muda o conteúdo, pra manter o padrão visual dos e-mails do módulo.
+function jurMontarHtmlAlertaAudiencia_(processo, dataBr, hora, tipo, local, diffDias) {
+  var emoji, titulo, subtitulo, corBarra;
+  if (diffDias <= 1) {
+    emoji = "🔔"; corBarra = "#dc2626";
+    titulo = "AMANHÃ: Audiência Marcada";
+    subtitulo = "A audiência abaixo é <strong>amanhã</strong> (" + dataBr + ").";
+  } else if (diffDias <= 3) {
+    emoji = "⏰"; corBarra = "#d97706";
+    titulo = "Audiência Próxima";
+    subtitulo = "A audiência abaixo acontece em <strong>" + diffDias + " dias</strong> (" + dataBr + ").";
+  } else {
+    emoji = "📋"; corBarra = "#1565C0";
+    titulo = "Lembrete de Audiência";
+    subtitulo = "A audiência abaixo acontece em <strong>" + diffDias + " dias</strong> (" + dataBr + ").";
+  }
+  var saudacao = processo.responsavel ? ("Olá, <strong>" + processo.responsavel + "</strong>! ") : "";
+
+  return (
+    '<div style="font-family:Segoe UI,Arial,sans-serif;max-width:620px;margin:0 auto;color:#0f172a;">' +
+      '<div style="background:#001f4d;padding:20px 28px 16px;border-radius:12px 12px 0 0;border-bottom:4px solid ' + corBarra + ';">' +
+        '<div style="font-size:20px;font-weight:900;color:#fff;">SINDEDUCAÇÃO-ES</div>' +
+        '<div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:4px;">Sistema de Gestão de Processos — SISGEP</div>' +
+      '</div>' +
+      '<div style="background:#fff;border:1px solid #e2e8f0;border-top:none;padding:24px 28px;">' +
+        '<h2 style="color:#001f4d;margin:0 0 8px;">' + emoji + ' ' + titulo + '</h2>' +
+        '<p style="color:#475569;margin:0 0 20px;line-height:1.7;">' + saudacao + subtitulo + '</p>' +
+        '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid ' + corBarra + ';border-radius:10px;padding:16px 18px;margin-bottom:20px;">' +
+          '<table style="width:100%;border-collapse:collapse;font-size:14px;">' +
+            '<tr><td style="padding:5px 0;font-weight:700;width:130px;">Data/Hora:</td><td><strong style="font-size:16px;">' + dataBr + (hora ? " às " + hora : "") + '</strong></td></tr>' +
+            (tipo ? '<tr><td style="padding:5px 0;font-weight:700;">Tipo:</td><td>' + tipo + '</td></tr>' : '') +
+            (local ? '<tr><td style="padding:5px 0;font-weight:700;">Local:</td><td>' + local + '</td></tr>' : '') +
+            '<tr><td style="padding:5px 0;font-weight:700;">Processo:</td><td>' + processo.assunto + '</td></tr>' +
+            (processo.cnj ? '<tr><td style="padding:5px 0;font-weight:700;">Nº CNJ:</td><td>' + processo.cnj + '</td></tr>' : '') +
+            (processo.responsavel ? '<tr><td style="padding:5px 0;font-weight:700;">Responsável:</td><td>' + processo.responsavel + '</td></tr>' : '') +
+          '</table>' +
+        '</div>' +
+      '</div>' +
+      '<div style="background:#001f4d;padding:14px 28px;border-radius:0 0 12px 12px;text-align:center;">' +
+        '<div style="font-size:11px;color:rgba(255,255,255,.5);">SISGEP · SindEducação-ES · Módulo Jurídico</div>' +
+      '</div>' +
+    '</div>'
+  );
 }
 
 function jurBuscarProcessoParaAlerta_(idProcesso) {
@@ -1119,7 +1408,7 @@ function jurObterRelatorioExecutivo(tokenSessao) {
     var relatorio = {
       totalProcessos: 0, totalAtivos: 0, totalConcluidos: 0,
       exposicaoTotal: 0, tempoMedioTramitacaoDias: null, taxaExito: null,
-      porArea: {}, porEscola: {}, porStatus: {}, prazosVencendo30d: 0
+      porArea: {}, porEscola: {}, porStatus: {}, prazosVencendo30d: 0, prazosPerdidos: 0
     };
 
     if (ultimaLinha >= 2) {
@@ -1180,6 +1469,7 @@ function jurObterRelatorioExecutivo(tokenSessao) {
           if (isNaN(dataPrazo.getTime())) return;
           var diffDias = Math.round((dataPrazo - hoje) / 86400000);
           if (diffDias >= 0 && diffDias <= 30) relatorio.prazosVencendo30d++;
+          if (diffDias < 0) relatorio.prazosPerdidos++;
         });
       }
     } catch (ePrazos) {
@@ -1470,5 +1760,196 @@ function jurRemoverReclamante(id, tokenSessao) {
   } catch (e) {
     Logger.log("jurRemoverReclamante ERRO: " + e.message + " | stack: " + e.stack);
     return { ok: false, mensagem: e.message || "Erro ao remover reclamante." };
+  }
+}
+
+// ============================================================================
+// CONSULTA PROCESSUAL AUTOMÁTICA — API pública DataJud (CNJ)
+//
+// Só busca e MOSTRA as movimentações do tribunal — nunca grava nada sozinho
+// no processo (mesma regra de ouro das outras funções de IA/leitura deste
+// módulo: quem decide o que fazer com a informação é o usuário).
+//
+// Hoje só funciona pra Justiça do Trabalho (TRT): o dígito "TR" do número
+// CNJ É o número da região do TRT (ex.: 5.17 = TRT da 17ª Região), então o
+// mapeamento processo → índice do DataJud é mecânico e sem chance de erro.
+// Pras demais Justiças (Estadual, Federal...) o mapeamento não é tão direto
+// (precisa de tabela de código de tribunal → sigla) — em vez de arriscar
+// consultar o tribunal errado, por enquanto retorna uma mensagem clara.
+//
+// Configuração necessária (uma vez só, feita pelo administrador): copiar a
+// "Chave Pública" em https://datajud-wiki.cnj.jus.br/api-publica/ e salvar
+// em Extensões > Apps Script > Propriedades do projeto > Propriedades do
+// script, com o nome DATAJUD_API_KEY — mesmo padrão da ANTHROPIC_API_KEY
+// já usada pela IA Sofia.
+// ============================================================================
+
+function jurParseCnj_(cnj) {
+  var d = String(cnj || "").replace(/\D/g, "");
+  if (d.length !== 20) return null;
+  return {
+    numero: d,
+    sequencial: d.slice(0, 7),
+    dv: d.slice(7, 9),
+    ano: d.slice(9, 13),
+    justica: d.slice(13, 14),
+    tribunal: d.slice(14, 16),
+    origem: d.slice(16, 20)
+  };
+}
+
+function jurDataJudIndice_(partes) {
+  // Justiça do Trabalho (dígito "J" = 5): índice é sempre "api_publica_trt"
+  // + o número da região, sem zero à esquerda (ex.: TR="17" -> trt17).
+  if (partes.justica === "5") {
+    return "api_publica_trt" + parseInt(partes.tribunal, 10);
+  }
+  return null;
+}
+
+function jurConsultarDataJud(idProcesso, tokenSessao) {
+  try {
+    exigirSessaoDocumentos_(tokenSessao, false);
+    idProcesso = String(idProcesso || "").trim();
+    if (!idProcesso) return { ok: false, mensagem: "Processo não informado." };
+
+    var aba = jurObterAba_();
+    var encontrada = jurBuscarLinhaPorId_(aba, idProcesso);
+    if (!encontrada) return { ok: false, mensagem: "Processo não encontrado." };
+
+    var cnj = String(encontrada.valores[JUR_COL.NUMERO_CNJ - 1] || "").trim();
+    var partes = jurParseCnj_(cnj);
+    if (!partes) return { ok: false, mensagem: "Número CNJ não cadastrado ou em formato inválido nesta ficha. Preencha o campo \"Número CNJ\" completo (NNNNNNN-DD.AAAA.J.TR.OOOO) e tente de novo." };
+
+    var indice = jurDataJudIndice_(partes);
+    if (!indice) return { ok: false, mensagem: "Consulta automática hoje só funciona pra processos da Justiça do Trabalho (TRT). Este processo é de outro segmento da Justiça — consulte manualmente no site do tribunal." };
+
+    var chave = PropertiesService.getScriptProperties().getProperty("DATAJUD_API_KEY");
+    if (!chave) return { ok: false, mensagem: "Chave da API DataJud não configurada. Peça pro administrador cadastrar a propriedade DATAJUD_API_KEY (veja https://datajud-wiki.cnj.jus.br/api-publica/ pra pegar a chave pública)." };
+
+    var url = "https://api-publica.datajud.cnj.jus.br/" + indice + "/_search";
+    var corpo = { query: { match: { numeroProcesso: partes.numero } }, size: 1 };
+
+    var resposta = UrlFetchApp.fetch(url, {
+      method: "post",
+      contentType: "application/json",
+      headers: { Authorization: "APIKey " + chave },
+      payload: JSON.stringify(corpo),
+      muteHttpExceptions: true
+    });
+
+    var codigo = resposta.getResponseCode();
+    if (codigo !== 200) {
+      Logger.log("jurConsultarDataJud: HTTP " + codigo + " -> " + resposta.getContentText());
+      return { ok: false, mensagem: "A API do DataJud respondeu com erro (código " + codigo + "). Pode ser chave inválida/expirada ou instabilidade do CNJ — tente de novo mais tarde." };
+    }
+
+    var corpoResposta = JSON.parse(resposta.getContentText());
+    var hits = (corpoResposta.hits && corpoResposta.hits.hits) || [];
+    if (!hits.length) {
+      return { ok: false, mensagem: "Nenhum processo encontrado no DataJud com esse número. Pode ser processo muito recente (a base do DataJud é atualizada com atraso) ou o número CNJ cadastrado está incorreto." };
+    }
+
+    var fonte = hits[0]._source || {};
+    var movimentos = (fonte.movimentos || []).map(function(m) {
+      var complementos = (m.complementosTabelados || []).map(function(c) { return c.nome; }).filter(Boolean).join(", ");
+      return { data: jurTextoSeguro_(m.dataHora ? new Date(m.dataHora) : "", "dd/MM/yyyy HH:mm"), nome: (m.nome || "") + (complementos ? " — " + complementos : "") };
+    }).sort(function(a, b) { return new Date(b.data.split(" ")[0].split("/").reverse().join("-")) - new Date(a.data.split(" ")[0].split("/").reverse().join("-")); });
+
+    return {
+      ok: true,
+      classe: (fonte.classe && fonte.classe.nome) || "",
+      orgaoJulgador: (fonte.orgaoJulgador && fonte.orgaoJulgador.nome) || "",
+      movimentos: movimentos.slice(0, 20)
+    };
+  } catch (e) {
+    Logger.log("jurConsultarDataJud ERRO: " + e.message + " | stack: " + e.stack);
+    return { ok: false, mensagem: "Erro ao consultar o DataJud: " + e.message };
+  }
+}
+
+// ============================================================================
+// GERAÇÃO DE MINUTA/PETIÇÃO POR IA
+//
+// Mesma regra de ouro do módulo inteiro: a IA só REDIGE UM RASCUNHO — texto
+// solto, com placeholders pro que ela não sabe, nunca vira documento oficial
+// nem é salva em lugar nenhum sozinha. O advogado responsável copia, revisa,
+// completa a fundamentação jurídica de verdade e formata antes de usar.
+// ============================================================================
+
+function jurMontarContextoProcesso_(idProcesso) {
+  var aba = jurObterAba_();
+  var encontrada = jurBuscarLinhaPorId_(aba, idProcesso);
+  if (!encontrada) return null;
+  var v = encontrada.valores;
+
+  var reclamantes = [];
+  var abaRec = jurObterAbaReclamantes_();
+  var ultimaLinhaRec = abaRec.getLastRow();
+  if (ultimaLinhaRec >= 2) {
+    abaRec.getRange(2, 1, ultimaLinhaRec - 1, JUR_CABECALHO_RECLAMANTES.length).getValues()
+      .filter(function(l) { return String(l[JUR_COLR.ID_PROCESSO - 1]) === idProcesso; })
+      .forEach(function(l) { reclamantes.push(l[JUR_COLR.NOME - 1] || ""); });
+  }
+
+  return {
+    assunto: v[JUR_COL.ASSUNTO - 1] || "",
+    tipo: v[JUR_COL.TIPO - 1] || "",
+    area: v[JUR_COL.AREA - 1] || "",
+    cnj: v[JUR_COL.NUMERO_CNJ - 1] || "",
+    autor: v[JUR_COL.AUTOR - 1] || "",
+    reu: v[JUR_COL.REU - 1] || "",
+    natureza: v[JUR_COL.NATUREZA - 1] || "Individual",
+    responsavel: v[JUR_COL.RESPONSAVEL - 1] || "",
+    escolaNome: v[JUR_COL.ESCOLA_NOME - 1] || "",
+    associadoNome: v[JUR_COL.ASSOCIADO_NOME - 1] || "",
+    reclamantes: reclamantes.filter(Boolean)
+  };
+}
+
+var JUR_TIPOS_MINUTA = ["Contestação", "Réplica", "Recurso Ordinário", "Contrarrazões", "Petição genérica", "Manifestação"];
+
+function jurGerarMinutaIA(idProcesso, tipoMinuta, tokenSessao) {
+  try {
+    exigirSessaoDocumentos_(tokenSessao, false);
+    idProcesso = String(idProcesso || "").trim();
+    if (!idProcesso) return { ok: false, mensagem: "Salve o processo antes de gerar uma minuta." };
+
+    var tipo = JUR_TIPOS_MINUTA.indexOf(tipoMinuta) > -1 ? tipoMinuta : "Petição genérica";
+
+    var ctx = jurMontarContextoProcesso_(idProcesso);
+    if (!ctx) return { ok: false, mensagem: "Processo não encontrado." };
+
+    var reclamantesTexto = ctx.reclamantes.length ? ctx.reclamantes.join(", ") : (ctx.autor || "(não identificado)");
+
+    var prompt = [
+      "Você é assistente jurídico de um sindicato de trabalhadores em educação (SindEducação-ES).",
+      "Redija uma MINUTA de \"" + tipo + "\" para o processo abaixo. É apenas um RASCUNHO inicial",
+      "para o advogado responsável revisar, ajustar e formatar antes de protocolar — não é a peça final.",
+      "",
+      "DADOS DO PROCESSO:",
+      "- Assunto: " + (ctx.assunto || "não informado"),
+      "- Área: " + (ctx.area || "não informada"),
+      "- Número CNJ: " + (ctx.cnj || "não informado"),
+      "- Autor(es)/Reclamante(s): " + reclamantesTexto,
+      "- Réu: " + (ctx.reu || "não informado"),
+      "- Natureza: " + ctx.natureza,
+      ctx.escolaNome ? "- Escola vinculada: " + ctx.escolaNome : "",
+      "",
+      "Escreva em português jurídico formal, mas objetivo. Use placeholders entre colchetes",
+      "(ex.: [NOME DO JUIZ], [DATA], [FUNDAMENTAÇÃO ESPECÍFICA]) para qualquer informação que",
+      "você não tem certeza — NUNCA invente fatos, valores ou fundamentação jurídica específica",
+      "que não foi informada acima.",
+      "",
+      "Responda APENAS com o texto da minuta, sem comentários antes ou depois."
+    ].filter(Boolean).join("\n");
+
+    var texto = chamarIA_SISGEP(prompt);
+    if (!texto || !String(texto).trim()) return { ok: false, mensagem: "A IA não retornou nenhum conteúdo. Tente novamente." };
+
+    return { ok: true, minuta: String(texto).trim() };
+  } catch (e) {
+    Logger.log("jurGerarMinutaIA ERRO: " + e.message + " | stack: " + e.stack);
+    return { ok: false, mensagem: "Erro ao gerar a minuta: " + e.message };
   }
 }

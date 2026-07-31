@@ -58,7 +58,7 @@
       </div>
       <div id="jurNovoIAResultado" style="display:none;padding:12px 16px;background:#eef4ff;border-bottom:1px solid #eef2f7;font-size:12.5px;color:#1e3a8a"></div>
       <div class="mod-form"><div class="mod-field"><label>Assunto</label><input id="jurAssunto" placeholder="Ex.: Notificação escolar"></div><div class="mod-field"><label>Tipo</label><select id="jurTipo"><option>Processo</option><option>Notificação</option><option>Contrato</option><option>Consulta</option></select></div><div class="mod-field"><label>Prazo</label><input id="jurPrazo" type="date"></div><div class="mod-field"><label>Status</label><select id="jurStatus"><option>Ativo</option><option>Atenção</option><option>Concluído</option></select></div><button class="mod-btn primary" onclick="jurSalvar()">Salvar</button></div>
-      <div class="mod-search"><input id="jurBusca" placeholder="Buscar assunto, tipo, CNJ, responsável, associado ou escola..." oninput="jurRender()"><button class="mod-btn" onclick="jurLimpar()">Limpar</button></div>
+      <div class="mod-search"><input id="jurBusca" placeholder="Buscar assunto, tipo, CNJ, responsável, associado ou escola..." oninput="jurRender()"><label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#334155;white-space:nowrap;padding:0 4px"><input type="checkbox" id="jurSoMeus" onchange="jurRender()">Só meus processos</label><button class="mod-btn" onclick="jurLimpar()">Limpar</button></div>
       <div style="overflow:auto"><table class="mod-table"><thead><tr><th>Assunto</th><th>Tipo</th><th>Prazo</th><th>Status</th><th>Ações</th></tr></thead><tbody id="jurTabela"></tbody></table></div>
     </div>
   </div>
@@ -131,6 +131,14 @@
             <button class="mod-btn" onclick="jurAdicionarReclamanteLivre()">+ Adicionar nome digitado</button>
           </div>
 
+          <div class="jur-modal-section-title">Documentos do processo — <span id="jurQtdDocumentos">0</span></div>
+          <div id="jurFListaDocumentos" class="jur-sublista"></div>
+          <div class="jur-subform">
+            <select id="jurFNovoDocTipo" style="flex:1 1 160px"><option>Petição inicial</option><option>Contestação</option><option>Decisão/Despacho</option><option>Recurso</option><option>Sentença</option><option>Comprovante</option><option>Procuração</option><option>Outro</option></select>
+            <input id="jurFNovoDocArquivo" type="file" accept=".pdf,.jpg,.jpeg,.png" style="flex:1 1 200px">
+            <button class="mod-btn" onclick="jurAdicionarDocumentoClick()" id="jurBtnAdicionarDoc">+ Adicionar documento</button>
+          </div>
+
           <div class="jur-modal-section-title">Prazos do processo</div>
           <div id="jurFListaPrazos" class="jur-sublista"></div>
           <div class="jur-subform">
@@ -148,16 +156,27 @@
             <input id="jurFNovaAudienciaLocal" placeholder="Local/vara">
             <button class="mod-btn" onclick="jurAdicionarAudiencia()">+ Adicionar</button>
           </div>
+
+          <div class="jur-modal-section-title">Consulta processual (DataJud)</div>
+          <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+            <button class="mod-btn" onclick="jurConsultarDataJudClick()" id="jurBtnDataJud">🔍 Buscar movimentações no tribunal</button>
+          </div>
+          <div id="jurDataJudResultado" style="display:none;margin-bottom:14px"></div>
+
+          <div class="jur-modal-section-title">Minuta por IA</div>
+          <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+            <select id="jurFTipoMinuta" style="flex:1 1 180px"><option>Contestação</option><option>Réplica</option><option>Recurso Ordinário</option><option>Contrarrazões</option><option>Petição genérica</option><option>Manifestação</option></select>
+            <button class="mod-btn" onclick="jurGerarMinutaClick()" id="jurBtnMinuta" style="background:linear-gradient(135deg,#001f4d,#1565C0);color:#fff;border-color:#1565C0">✦ Gerar minuta com IA</button>
+          </div>
+          <div id="jurMinutaResultado" style="display:none;margin-bottom:14px"></div>
         </div>
-        <div id="jurAvisoNovoProcesso" style="display:none;font-size:12px;color:#94a3b8;margin:6px 0 4px">Reclamantes, prazos e audiências ficam disponíveis depois de salvar o processo pela primeira vez.</div>
+        <div id="jurAvisoNovoProcesso" style="display:none;font-size:12px;color:#94a3b8;margin:6px 0 4px">Documentos, reclamantes, prazos, audiências, consulta processual e minuta por IA ficam disponíveis depois de salvar o processo pela primeira vez.</div>
         <div id="jurAvisoReclamantesPendentes" style="display:none;font-size:12px;color:#166534;margin:0 0 14px"></div>
 
-        <div class="jur-modal-section-title">Documento anexado</div>
-        <div id="jurFAnexoAtual"></div>
-        <div class="mod-field"><label>Anexar petição, sentença ou notificação (PDF, JPG ou PNG · até 10MB)</label><input id="jurFArquivo" type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="jurAtualizarBotaoCancelarArquivo()"></div>
+        <div class="jur-modal-section-title">Ler documento com IA</div>
+        <div class="mod-field"><label>Escolher documento (PDF, JPG ou PNG · até 10MB)</label><input id="jurFArquivo" type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="jurAtualizarBotaoCancelarArquivo()"></div>
         <div id="jurAvisoAnexoAoSalvar" style="display:none;font-size:12px;color:#166534;margin-top:6px">📎 Esse arquivo será anexado automaticamente quando o processo for salvo.</div>
         <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-          <button class="mod-btn" onclick="jurEnviarAnexo()" id="jurBtnAnexo">Enviar anexo</button>
           <button class="mod-btn" onclick="jurCancelarSelecaoArquivo()" id="jurBtnCancelarArquivo" style="display:none">Cancelar seleção</button>
           <button class="mod-btn" onclick="jurLerComIA()" id="jurBtnLerIA" style="display:none;background:linear-gradient(135deg,#001f4d,#1565C0);color:#fff;border-color:#1565C0">✦ Ler com IA</button>
         </div>
@@ -212,6 +231,7 @@
     var ultimaBuscaAssociados=[], ultimaBuscaEscolas=[], ultimaBuscaEscolasColetivo=[], ultimaBuscaReclamantes=[];
     var vigiaBuscaEscolaColetivo=null, vigiaBuscaReclamante=null;
     var reclamantesPendentes=[];
+    var meuNome="";
     function g(i){return document.getElementById(i)}
     function token(){return typeof SISGEP_TOKEN_SESSAO!=="undefined"?SISGEP_TOKEN_SESSAO:""}
     function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])})}
@@ -220,7 +240,9 @@
 
     function renderLista(l){
       var b=String((g("jurBusca")||{}).value||"").toLowerCase();
+      var soMeus=g("jurSoMeus")&&g("jurSoMeus").checked;
       var f=l.filter(function(x){return !b||[x.assunto,x.tipo,x.status,x.cnj,x.responsavel,x.area,x.associadoNome,x.escolaNome].join(" ").toLowerCase().indexOf(b)>=0});
+      if(soMeus&&meuNome) f=f.filter(function(x){return String(x.responsavel||"").trim().toLowerCase()===meuNome.trim().toLowerCase()});
       g("jurAtivos").textContent=l.filter(function(x){return x.status!=="Concluído"}).length;
       g("jurPrazos").textContent=l.filter(function(x){var d=dias(x.prazo);return d>=0&&d<=15&&x.status!=="Concluído"}).length;
       g("jurNotificacoes").textContent=l.filter(function(x){return x.tipo==="Notificação"}).length;
@@ -242,6 +264,7 @@
           console.log("[JUR] jurListarProcessos respondeu:", r);
           if(!r||!r.ok){ g("jurTabela").innerHTML="<tr><td colspan='5' style='text-align:center;color:#991b1b;padding:24px'>"+esc((r&&r.mensagem)||"Não foi possível carregar.")+"</td></tr>"; return; }
           cache=r.itens||[];
+          meuNome=r.meuNome||"";
           renderLista(cache);
         })
         .withFailureHandler(function(e){
@@ -387,6 +410,7 @@
           html+="<div class='jur-rel-card'><small>Processos ativos</small><strong>"+rl.totalAtivos+"</strong></div>";
           html+="<div class='jur-rel-card'><small>Processos concluídos</small><strong>"+rl.totalConcluidos+"</strong></div>";
           html+="<div class='jur-rel-card'><small>Prazos vencendo em 30 dias</small><strong>"+rl.prazosVencendo30d+"</strong></div>";
+          html+="<div class='jur-rel-card'><small>Prazos perdidos</small><strong style='"+(rl.prazosPerdidos>0?"color:#dc2626":"")+"'>"+rl.prazosPerdidos+"</strong></div>";
           html+="</div>";
           html+="<h4 style='margin:0 0 10px;color:#001f4d;font-size:13px'>Processos por área</h4>"+jurRenderBarras_(rl.porArea);
           html+="<h4 style='margin:20px 0 10px;color:#001f4d;font-size:13px'>Processos por escola</h4>"+jurRenderBarras_(rl.porEscola);
@@ -634,22 +658,133 @@
 
     // ---------------- Vínculos: Associado e Escola ----------------
 
-    function renderAnexo(link, nome){
-      g("jurFAnexoAtual").innerHTML=link
-        ? "<div class='jur-anexo-atual'>📎 <a href='"+esc(link)+"' target='_blank' rel='noopener'>"+esc(nome||"Documento anexado")+"</a><button class='mod-btn' style='height:auto;padding:2px 8px;margin-left:auto' onclick='jurExcluirAnexoAtual()'>Excluir</button></div>"
-        : "<div style='font-size:12.5px;color:#94a3b8;margin-bottom:10px'>Nenhum documento anexado ainda.</div>";
-    }
+    // ---------------- Documentos do processo (múltiplos) ----------------
 
-    window.jurExcluirAnexoAtual=function(){
-      if(!confirm("Excluir o documento anexado a este processo?")) return;
+    window.jurCarregarDocumentos=function(){
+      var lista=g("jurFListaDocumentos");
+      lista.innerHTML="<div class='jur-vazio-sub'>Carregando...</div>";
       google.script.run
         .withSuccessHandler(function(r){
-          if(!r||!r.ok){ alert("Erro: "+((r&&r.mensagem)||"não foi possível excluir o anexo.")); return; }
-          renderAnexo("","");
-          jurRender();
+          if(!r||!r.ok){ lista.innerHTML="<div class='jur-vazio-sub'>"+esc((r&&r.mensagem)||"Não foi possível carregar os documentos.")+"</div>"; return; }
+          var itens=r.itens||[];
+          g("jurQtdDocumentos").textContent=itens.length;
+          lista.innerHTML=itens.length?itens.map(function(d){
+            var idAttr=d.legado?"":"'"+d.id+"'";
+            var legadoAttr=d.legado?"true":"false";
+            return "<div class='jur-subitem'><div class='corpo'><b>📎 "+esc(d.tipo)+"</b><span><a href='"+esc(d.link)+"' target='_blank' rel='noopener'>"+esc(d.nome||"Documento")+"</a>"+(d.dataUpload?" · "+esc(jurFormatarDataBr_(d.dataUpload)):"")+(d.enviadoPor?" · "+esc(d.enviadoPor):"")+"</span></div><div class='acoes'><button onclick=\"jurRemoverDocumentoItem("+idAttr+","+legadoAttr+")\" title='Excluir'>🗑️</button></div></div>";
+          }).join(""):"<div class='jur-vazio-sub'>Nenhum documento anexado ainda.</div>";
         })
-        .withFailureHandler(function(e){ alert("Erro ao excluir anexo: "+(e&&e.message?e.message:e)); })
-        .jurExcluirAnexo(fichaId, token());
+        .withFailureHandler(function(e){ lista.innerHTML="<div class='jur-vazio-sub'>Erro: "+esc(e&&e.message?e.message:e)+"</div>"; })
+        .jurListarDocumentosProcesso(fichaId, token());
+    };
+
+    window.jurAdicionarDocumentoClick=function(){
+      var input=g("jurFNovoDocArquivo");
+      var arquivo=input&&input.files&&input.files[0];
+      if(!arquivo) return alert("Escolha um arquivo primeiro.");
+      if(arquivo.size>10*1024*1024) return alert("Arquivo maior que 10MB.");
+      if(!fichaId) return alert("Salve o processo antes de adicionar documentos.");
+      var tipoDocumento=g("jurFNovoDocTipo").value;
+
+      var btn=g("jurBtnAdicionarDoc");
+      if(btn){btn.disabled=true;btn.textContent="Enviando...";}
+      var leitor=new FileReader();
+      leitor.onload=function(e){
+        var base64=String(e.target.result||"").split(",")[1]||"";
+        google.script.run
+          .withSuccessHandler(function(r){
+            if(btn){btn.disabled=false;btn.textContent="+ Adicionar documento";}
+            if(!r||!r.ok){ alert("Erro: "+((r&&r.mensagem)||"não foi possível enviar o documento.")); return; }
+            input.value="";
+            jurCarregarDocumentos();
+          })
+          .withFailureHandler(function(err){
+            if(btn){btn.disabled=false;btn.textContent="+ Adicionar documento";}
+            alert("Erro ao enviar documento: "+(err&&err.message?err.message:err));
+          })
+          .jurAdicionarDocumento({idProcesso:fichaId, base64:base64, nome:arquivo.name, tipoArquivo:arquivo.type||"application/pdf", tipoDocumento:tipoDocumento}, token());
+      };
+      leitor.onerror=function(){
+        if(btn){btn.disabled=false;btn.textContent="+ Adicionar documento";}
+        alert("Não foi possível ler o arquivo selecionado.");
+      };
+      leitor.readAsDataURL(arquivo);
+    };
+
+    window.jurRemoverDocumentoItem=function(id, legado){
+      if(!confirm("Excluir este documento?")) return;
+      if(legado){
+        google.script.run
+          .withSuccessHandler(function(r){
+            if(!r||!r.ok){ alert("Erro: "+((r&&r.mensagem)||"não foi possível excluir.")); return; }
+            jurCarregarDocumentos();
+            jurRender();
+          })
+          .withFailureHandler(function(e){ alert("Erro: "+(e&&e.message?e.message:e)); })
+          .jurExcluirAnexo(fichaId, token());
+        return;
+      }
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||!r.ok){ alert("Erro: "+((r&&r.mensagem)||"não foi possível excluir.")); return; }
+          jurCarregarDocumentos();
+        })
+        .withFailureHandler(function(e){ alert("Erro: "+(e&&e.message?e.message:e)); })
+        .jurExcluirDocumento(id, token());
+    };
+
+    // ---------------- Consulta processual (DataJud) ----------------
+
+    window.jurConsultarDataJudClick=function(){
+      if(!fichaId) return alert("Salve o processo antes de consultar o tribunal.");
+      var btn=g("jurBtnDataJud");
+      var resultado=g("jurDataJudResultado");
+      if(btn){btn.disabled=true;btn.textContent="Consultando...";}
+      resultado.style.display="none";
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="🔍 Buscar movimentações no tribunal";}
+          resultado.style.display="block";
+          if(!r||!r.ok){ resultado.innerHTML="<p style='color:#991b1b;font-size:12.5px'>"+esc((r&&r.mensagem)||"Não foi possível consultar.")+"</p>"; return; }
+          var itens=r.movimentos||[];
+          var cabecalho="<div style='font-size:12px;color:#64748b;margin-bottom:8px'>"+(r.classe?esc(r.classe):"")+(r.orgaoJulgador?" · "+esc(r.orgaoJulgador):"")+"</div>";
+          resultado.innerHTML=cabecalho+(itens.length?"<div class='jur-sublista'>"+itens.map(function(m){
+            return "<div class='jur-subitem'><div class='corpo'><b>"+esc(m.data||"—")+"</b><span>"+esc(m.nome||"")+"</span></div></div>";
+          }).join("")+"</div>":"<div class='jur-vazio-sub'>Nenhuma movimentação encontrada.</div>");
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="🔍 Buscar movimentações no tribunal";}
+          resultado.style.display="block";
+          resultado.innerHTML="<p style='color:#991b1b;font-size:12.5px'>Erro: "+esc(e&&e.message?e.message:e)+"</p>";
+        })
+        .jurConsultarDataJud(fichaId, token());
+    };
+
+    // ---------------- Minuta por IA ----------------
+
+    window.jurGerarMinutaClick=function(){
+      if(!fichaId) return alert("Salve o processo antes de gerar uma minuta.");
+      var tipoMinuta=g("jurFTipoMinuta").value;
+      var btn=g("jurBtnMinuta");
+      var resultado=g("jurMinutaResultado");
+      if(btn){btn.disabled=true;btn.textContent="Gerando...";}
+      resultado.style.display="none";
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="✦ Gerar minuta com IA";}
+          resultado.style.display="block";
+          if(!r||!r.ok){ resultado.innerHTML="<p style='color:#991b1b;font-size:12.5px'>"+esc((r&&r.mensagem)||"Não foi possível gerar a minuta.")+"</p>"; return; }
+          var textoFormatado=esc(r.minuta).replace(/\n/g,"<br>");
+          resultado.innerHTML="<div style='padding:14px 16px;background:#eef4ff;border:1px solid #bfdbfe;border-radius:9px'>"+
+            "<div style='font-size:11px;font-weight:900;color:#1565C0;text-transform:uppercase;margin-bottom:8px'>✦ Rascunho gerado por IA — revise antes de usar</div>"+
+            "<div style='font-size:12.5px;color:#1e3a8a;line-height:1.6;white-space:pre-wrap'>"+textoFormatado+"</div></div>";
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="✦ Gerar minuta com IA";}
+          resultado.style.display="block";
+          resultado.innerHTML="<p style='color:#991b1b;font-size:12.5px'>Erro: "+esc(e&&e.message?e.message:e)+"</p>";
+        })
+        .jurGerarMinutaIA(fichaId, tipoMinuta, token());
     };
 
     function renderVinculosChips(){
@@ -788,7 +923,6 @@
       g("jurFArquivo").value="";
       jurAtualizarBotaoCancelarArquivo();
       g("jurIAResultado").style.display="none";
-      renderAnexo(x.linkDocumento, x.nomeArquivo);
       g("jurFMeta").innerHTML="Criado por "+esc(x.criadoPor||"—")+" em "+esc(x.criadoEm||"—")+"<br>Última atualização por "+esc(x.atualizadoPor||"—")+" em "+esc(x.atualizadoEm||"—");
       g("jurFNovoPrazoDescricao").value="";
       g("jurFNovoPrazoData").value="";
@@ -796,7 +930,11 @@
       g("jurFNovaAudienciaHora").value="";
       g("jurFNovaAudienciaTipo").value="";
       g("jurFNovaAudienciaLocal").value="";
+      g("jurFNovoDocArquivo").value="";
+      g("jurDataJudResultado").style.display="none";
+      g("jurMinutaResultado").style.display="none";
       jurCarregarReclamantes();
+      jurCarregarDocumentos();
       jurCarregarPrazos();
       jurCarregarAudiencias();
       g("jurFReclamanteBusca").value="";
@@ -856,7 +994,6 @@
       }
       jurAtualizarBotaoCancelarArquivo();
       g("jurIAResultado").style.display="none";
-      renderAnexo("","");
       g("jurFMeta").innerHTML="Processo ainda não salvo.";
       g("jurModalOverlay").classList.add("aberto");
     };
@@ -882,7 +1019,8 @@
           if(!r||!r.ok){ lista.innerHTML="<div class='jur-vazio-sub'>"+esc((r&&r.mensagem)||"Não foi possível carregar os prazos.")+"</div>"; return; }
           var itens=r.itens||[];
           lista.innerHTML=itens.length?itens.map(function(p){
-            return "<div class='jur-subitem"+(p.cumprido?" cumprido":"")+"'><input type='checkbox' "+(p.cumprido?"checked":"")+" onchange=\"jurAlternarPrazo('"+p.id+"',this.checked)\" style='margin-top:2px'><div class='corpo'><b>"+esc(p.descricao)+"</b><span>"+esc(jurFormatarDataBr_(p.data))+"</span></div><div class='acoes'><button onclick=\"jurRemoverPrazo('"+p.id+"')\" title='Excluir'>🗑️</button></div></div>";
+            var selo=p.cumprido?"<span class='pill ok' style='margin-left:6px'>Cumprido</span>":(p.atrasado?"<span class='pill off' style='margin-left:6px'>Perdido</span>":"");
+            return "<div class='jur-subitem"+(p.cumprido?" cumprido":"")+"'><input type='checkbox' "+(p.cumprido?"checked":"")+" onchange=\"jurAlternarPrazo('"+p.id+"',this.checked)\" style='margin-top:2px'><div class='corpo'><b>"+esc(p.descricao)+selo+"</b><span>"+esc(jurFormatarDataBr_(p.data))+"</span></div><div class='acoes'><button onclick=\"jurRemoverPrazo('"+p.id+"')\" title='Excluir'>🗑️</button></div></div>";
           }).join(""):"<div class='jur-vazio-sub'>Nenhum prazo cadastrado ainda.</div>";
         })
         .withFailureHandler(function(e){ lista.innerHTML="<div class='jur-vazio-sub'>Erro: "+esc(e&&e.message?e.message:e)+"</div>"; })
@@ -1039,7 +1177,7 @@
             jurFecharFicha();
             jurRender();
           })
-          .jurUploadDocumento({idProcesso:idNovo, base64:base64, nome:arquivo.name, tipo:arquivo.type||"application/pdf"}, token());
+          .jurAdicionarDocumento({idProcesso:idNovo, base64:base64, nome:arquivo.name, tipoArquivo:arquivo.type||"application/pdf", tipoDocumento:"Petição inicial"}, token());
       };
       leitor.onerror=function(){
         alert("Processo salvo, mas não consegui ler o arquivo para anexar automaticamente.");
@@ -1056,7 +1194,6 @@
       g("jurBtnLerIA").style.display=tem?"inline-block":"none";
       g("jurIAResultado").style.display="none";
       var modoNovo=!fichaId;
-      g("jurBtnAnexo").style.display=modoNovo?"none":"inline-block";
       g("jurAvisoAnexoAoSalvar").style.display=(modoNovo&&tem)?"block":"none";
     };
 
@@ -1131,40 +1268,6 @@
     window.jurCancelarSelecaoArquivo=function(){
       g("jurFArquivo").value="";
       g("jurBtnCancelarArquivo").style.display="none";
-    };
-
-    window.jurEnviarAnexo=function(){
-      var input=g("jurFArquivo");
-      var arquivo=input&&input.files&&input.files[0];
-      if(!arquivo) return alert("Escolha um arquivo primeiro.");
-      if(arquivo.size>10*1024*1024) return alert("Arquivo maior que 10MB.");
-      if(!fichaId) return alert("Salve o processo antes de anexar um documento.");
-
-      var btn=g("jurBtnAnexo");
-      if(btn){btn.disabled=true;btn.textContent="Enviando...";}
-      var leitor=new FileReader();
-      leitor.onload=function(e){
-        var base64=String(e.target.result||"").split(",")[1]||"";
-        google.script.run
-          .withSuccessHandler(function(r){
-            if(btn){btn.disabled=false;btn.textContent="Enviar anexo";}
-            if(!r||!r.ok){ alert("Erro: "+((r&&r.mensagem)||"não foi possível enviar o anexo.")); return; }
-            renderAnexo(r.link, r.nome);
-            input.value="";
-            g("jurBtnCancelarArquivo").style.display="none";
-            jurRender();
-          })
-          .withFailureHandler(function(err){
-            if(btn){btn.disabled=false;btn.textContent="Enviar anexo";}
-            alert("Erro ao enviar anexo: "+(err&&err.message?err.message:err));
-          })
-          .jurUploadDocumento({idProcesso:fichaId, base64:base64, nome:arquivo.name, tipo:arquivo.type||"application/pdf"}, token());
-      };
-      leitor.onerror=function(){
-        if(btn){btn.disabled=false;btn.textContent="Enviar anexo";}
-        alert("Não foi possível ler o arquivo selecionado.");
-      };
-      leitor.readAsDataURL(arquivo);
     };
 
     window.initJuridico=jurRender;
