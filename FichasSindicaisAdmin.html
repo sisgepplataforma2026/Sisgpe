@@ -181,14 +181,67 @@
         <label class="fsa-label">Nome completo</label>
         <input type="text" id="fsaPapelNome" class="fsa-input">
 
-        <label class="fsa-label">CPF</label>
-        <input type="text" id="fsaPapelCpf" class="fsa-input">
+        <div style="display:flex;gap:10px;">
+          <div style="flex:2;">
+            <label class="fsa-label">CPF</label>
+            <input type="text" id="fsaPapelCpf" class="fsa-input">
+          </div>
+          <div style="flex:1;">
+            <label class="fsa-label">Sexo</label>
+            <select id="fsaPapelSexo" class="fsa-input">
+              <option value="">—</option>
+              <option value="M">M</option>
+              <option value="F">F</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;">
+          <div style="flex:2;">
+            <label class="fsa-label">RG</label>
+            <input type="text" id="fsaPapelRg" class="fsa-input">
+          </div>
+          <div style="flex:1;">
+            <label class="fsa-label">Órgão exp.</label>
+            <input type="text" id="fsaPapelOrgaoExpedidor" class="fsa-input">
+          </div>
+          <div style="flex:1;">
+            <label class="fsa-label">UF do RG</label>
+            <input type="text" id="fsaPapelUfRg" class="fsa-input" maxlength="2">
+          </div>
+        </div>
+
+        <label class="fsa-label">Data de nascimento</label>
+        <input type="text" id="fsaPapelDataNascimento" class="fsa-input" placeholder="dd/mm/aaaa">
 
         <label class="fsa-label">Escola (selecione a correspondência correta)</label>
         <select id="fsaPapelEscola" class="fsa-input"></select>
 
-        <label class="fsa-label">Cargo</label>
-        <input type="text" id="fsaPapelCargo" class="fsa-input">
+        <div style="display:flex;gap:10px;">
+          <div style="flex:1;">
+            <label class="fsa-label">Cargo</label>
+            <input type="text" id="fsaPapelCargo" class="fsa-input">
+          </div>
+          <div style="flex:1;">
+            <label class="fsa-label">Escolaridade</label>
+            <input type="text" id="fsaPapelEscolaridade" class="fsa-input">
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;">
+          <div style="flex:1;">
+            <label class="fsa-label">Data de admissão</label>
+            <input type="text" id="fsaPapelDataAdmissao" class="fsa-input" placeholder="dd/mm/aaaa">
+          </div>
+          <div style="flex:1;">
+            <label class="fsa-label">Cidade da escola</label>
+            <input type="text" id="fsaPapelCidadeEscola" class="fsa-input">
+          </div>
+          <div style="flex:1;">
+            <label class="fsa-label">CEP da escola</label>
+            <input type="text" id="fsaPapelCepEscola" class="fsa-input">
+          </div>
+        </div>
 
         <label class="fsa-label">Celular / WhatsApp</label>
         <input type="text" id="fsaPapelCelular" class="fsa-input">
@@ -196,8 +249,50 @@
         <label class="fsa-label">E-mail</label>
         <input type="text" id="fsaPapelEmail" class="fsa-input">
 
-        <label class="fsa-label">Endereço</label>
+        <label class="fsa-label" style="margin-top:14px;">Endereço residencial</label>
+        <div style="display:flex;gap:10px;">
+          <div style="flex:1;">
+            <label class="fsa-label">CEP</label>
+            <input type="text" id="fsaPapelCepResidencial" class="fsa-input">
+          </div>
+          <div style="flex:1;">
+            <label class="fsa-label">Tipo</label>
+            <select id="fsaPapelTipoLogradouro" class="fsa-input">
+              <option value="RUA">Rua</option>
+              <option value="AVENIDA">Avenida</option>
+              <option value="PRACA">Praça</option>
+            </select>
+          </div>
+        </div>
+
+        <label class="fsa-label">Logradouro</label>
         <input type="text" id="fsaPapelEndereco" class="fsa-input">
+
+        <div style="display:flex;gap:10px;">
+          <div style="flex:1;">
+            <label class="fsa-label">Número</label>
+            <input type="text" id="fsaPapelNumero" class="fsa-input">
+          </div>
+          <div style="flex:2;">
+            <label class="fsa-label">Complemento</label>
+            <input type="text" id="fsaPapelComplemento" class="fsa-input">
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;">
+          <div style="flex:1;">
+            <label class="fsa-label">Bairro</label>
+            <input type="text" id="fsaPapelBairro" class="fsa-input">
+          </div>
+          <div style="flex:2;">
+            <label class="fsa-label">Cidade</label>
+            <input type="text" id="fsaPapelCidade" class="fsa-input">
+          </div>
+          <div style="flex:1;">
+            <label class="fsa-label">UF</label>
+            <input type="text" id="fsaPapelUf" class="fsa-input" maxlength="2">
+          </div>
+        </div>
 
         <label class="fsa-label" style="display:flex;align-items:center;gap:8px;margin-top:14px;">
           <input type="checkbox" id="fsaPapelConfirmado" style="width:auto;">
@@ -951,11 +1046,28 @@ function fsaPapelRenderRevisao(res, nomeArquivo){
   document.getElementById('fsaPapelTipo').value = d.tipo === 'RECADASTRAMENTO' ? 'RECADASTRAMENTO' : 'CADASTRAMENTO';
   document.getElementById('fsaPapelNome').value = d.nome || '';
   document.getElementById('fsaPapelCpf').value = d.cpf || res.cpfDigitos || '';
+  document.getElementById('fsaPapelSexo').value = d.sexo === 'M' || d.sexo === 'F' ? d.sexo : '';
+  document.getElementById('fsaPapelRg').value = d.rg || '';
+  document.getElementById('fsaPapelOrgaoExpedidor').value = d.orgaoExpedidor || '';
+  document.getElementById('fsaPapelUfRg').value = d.ufRg || '';
+  document.getElementById('fsaPapelDataNascimento').value = d.dataNascimento || '';
   document.getElementById('fsaPapelCargo').value = d.cargo || '';
+  document.getElementById('fsaPapelEscolaridade').value = d.escolaridade || '';
+  document.getElementById('fsaPapelDataAdmissao').value = d.dataAdmissao || '';
+  document.getElementById('fsaPapelCidadeEscola').value = d.cidadeEscola || '';
+  document.getElementById('fsaPapelCepEscola').value = d.cepEscola || '';
   document.getElementById('fsaPapelCelular').value = d.celular || '';
   document.getElementById('fsaPapelEmail').value = d.email || '';
-  document.getElementById('fsaPapelEndereco').value = [d.endereco, d.numero, d.bairro, d.cidade, d.uf]
-    .filter(Boolean).join(', ');
+  document.getElementById('fsaPapelCepResidencial').value = d.cepResidencial || '';
+  document.getElementById('fsaPapelTipoLogradouro').value =
+    ['RUA', 'AVENIDA', 'PRACA'].indexOf(String(d.tipoLogradouro || '').toUpperCase()) >= 0 ?
+    String(d.tipoLogradouro).toUpperCase() : 'RUA';
+  document.getElementById('fsaPapelEndereco').value = d.endereco || '';
+  document.getElementById('fsaPapelNumero').value = d.numero || '';
+  document.getElementById('fsaPapelComplemento').value = d.complemento || '';
+  document.getElementById('fsaPapelBairro').value = d.bairro || '';
+  document.getElementById('fsaPapelCidade').value = d.cidade || '';
+  document.getElementById('fsaPapelUf').value = d.uf || '';
   document.getElementById('fsaPapelConfirmado').checked = false;
 
   var escolaSel = document.getElementById('fsaPapelEscola');
@@ -1006,21 +1118,32 @@ function fsaPapelConfirmar(){
   var escola = FSA_PAPEL_ESCOLAS[parseInt(idxEscola,10)];
   if (!escola) { alert('Escola inválida — selecione novamente.'); return; }
 
-  var enderecoPartes = String(document.getElementById('fsaPapelEndereco').value||'').split(',').map(function(s){return s.trim();});
-
   var payload = {
     tipo: document.getElementById('fsaPapelTipo').value,
     nome: document.getElementById('fsaPapelNome').value,
+    sexo: document.getElementById('fsaPapelSexo').value,
     cpf: document.getElementById('fsaPapelCpf').value,
+    rg: document.getElementById('fsaPapelRg').value,
+    orgaoExpedidor: document.getElementById('fsaPapelOrgaoExpedidor').value,
+    ufRg: document.getElementById('fsaPapelUfRg').value,
+    dataNascimento: document.getElementById('fsaPapelDataNascimento').value,
     escola: escola.nome,
     cargo: document.getElementById('fsaPapelCargo').value,
+    escolaridade: document.getElementById('fsaPapelEscolaridade').value,
+    dataAdmissao: document.getElementById('fsaPapelDataAdmissao').value,
+    cidadeEscola: document.getElementById('fsaPapelCidadeEscola').value,
+    cepEscola: document.getElementById('fsaPapelCepEscola').value,
     celular: document.getElementById('fsaPapelCelular').value,
     telefone1: document.getElementById('fsaPapelCelular').value,
     email: document.getElementById('fsaPapelEmail').value,
-    endereco: enderecoPartes[0] || '',
-    bairro: enderecoPartes[2] || '',
-    cidade: enderecoPartes[3] || '',
-    uf: enderecoPartes[4] || '',
+    cepResidencial: document.getElementById('fsaPapelCepResidencial').value,
+    tipoLogradouro: document.getElementById('fsaPapelTipoLogradouro').value,
+    endereco: document.getElementById('fsaPapelEndereco').value,
+    numero: document.getElementById('fsaPapelNumero').value,
+    complemento: document.getElementById('fsaPapelComplemento').value,
+    bairro: document.getElementById('fsaPapelBairro').value,
+    cidade: document.getElementById('fsaPapelCidade').value,
+    uf: document.getElementById('fsaPapelUf').value,
     arquivoBase64: FSA_PAPEL_ARQUIVO.base64,
     arquivoTipo: FSA_PAPEL_ARQUIVO.tipo,
     arquivoExtensao: FSA_PAPEL_ARQUIVO.extensao,
