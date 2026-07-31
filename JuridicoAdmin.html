@@ -47,6 +47,18 @@
     .jur-subform button{flex:1 1 100%}
     .jur-subform.audiencia input{flex:1 1 130px}
     .jur-vazio-sub{font-size:12px;color:#94a3b8;margin-bottom:10px}
+    .jur-agenda-cabecalho{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px}
+    .jur-agenda-mes{font-size:14px;font-weight:900;color:#001f4d;text-align:center;flex:1}
+    .jur-agenda-semana{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:6px}
+    .jur-agenda-semana span{font-size:9.5px;font-weight:900;color:#94a3b8;text-transform:uppercase;text-align:center;letter-spacing:.03em}
+    .jur-agenda-grade{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:18px}
+    .jur-dia{aspect-ratio:1;border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;font-size:12.5px;font-weight:700;color:#cbd5e1;border:1px solid transparent;background:none;font-family:inherit;padding:0}
+    .jur-dia:empty{cursor:default}
+    .jur-dia.tem-item{color:#0f172a;border-color:#eef2f7;background:#f8fafc}
+    .jur-dia.hoje{border-color:#1565C0;color:#1565C0;background:transparent}
+    .jur-dia.selecionado{background:#001f4d;color:#fff;border-color:#001f4d}
+    .jur-dia .ponto{width:5px;height:5px;border-radius:999px;background:#1565C0}
+    .jur-dia.selecionado .ponto{background:#fff}
   </style>
   <div class="mod-head"><div><div class="mod-title">Jurídico</div><div class="mod-sub">Processos, notificações, prazos e documentos</div></div><button class="mod-btn" onclick="spIr('sofia',null,{mensagem:'Preciso de apoio jurídico sindical.'})">Consultar SOFIA</button></div>
   <div class="mod-wrap">
@@ -205,7 +217,7 @@
   </div>
 
   <div id="jurAgendaOverlay" onclick="if(event.target===this) jurFecharAgenda()">
-    <div class="jur-modal" style="max-width:640px">
+    <div class="jur-modal" style="max-width:460px">
       <div class="jur-modal-head">
         <strong>Agenda — audiências</strong>
         <button class="jur-modal-close" onclick="jurFecharAgenda()" title="Fechar">&times;</button>
@@ -432,26 +444,96 @@
     // enxerga esse evento na própria Agenda. Isso garante visibilidade
     // dentro do próprio SISGEP, sem depender de qual conta Google recebeu
     // o convite.
+    var agendaItens=[], agendaPorDia={}, agendaMes=null, agendaDiaSelecionado=null;
+    var agendaNomesMes=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+
+    function jurAgendaISO_(d){
+      return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    }
+
     window.jurAbrirAgenda=function(){
       var overlay=g("jurAgendaOverlay");
+      overlay.classList.add("aberto");
+      var hoje=new Date();
+      agendaMes=new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+      agendaDiaSelecionado=null;
+      jurCarregarAgenda_();
+    };
+
+    function jurCarregarAgenda_(){
       var corpo=g("jurAgendaCorpo");
       corpo.innerHTML="Carregando...";
-      overlay.classList.add("aberto");
       google.script.run
         .withSuccessHandler(function(r){
           if(!r||!r.ok){ corpo.innerHTML="<p style='color:#991b1b'>"+esc((r&&r.mensagem)||"Não foi possível carregar a agenda.")+"</p>"; return; }
-          var itens=r.itens||[];
-          if(!itens.length){ corpo.innerHTML="<p style='color:#94a3b8;font-size:13px'>Nenhuma audiência marcada ainda.</p>"; return; }
-          var hojeISO=new Date().toISOString().slice(0,10);
-          corpo.innerHTML="<div class='jur-sublista'>"+itens.map(function(a){
-            var passada=a.data&&a.data<hojeISO;
-            var linha2=[a.tipo,a.local].filter(Boolean).join(" · ");
-            var statusAgenda=a.agendaOk?"✓ no Google Agenda":"sem convite na Google Agenda";
-            return "<div class='jur-subitem'"+(passada?" style='opacity:.55'":"")+"><div class='corpo'><b>"+esc(jurFormatarDataBr_(a.data))+(a.hora?" às "+esc(a.hora):"")+" — "+esc(a.processoAssunto)+"</b><span>"+esc(linha2||"—")+(a.processoCnj?" · "+esc(a.processoCnj):"")+" · "+statusAgenda+"</span></div><div class='acoes'><button class='mod-btn' style='height:26px;padding:0 8px;font-size:10.5px' onclick=\"jurAbrirProcessoDaAgenda('"+a.idProcesso+"')\">Abrir</button></div></div>";
-          }).join("")+"</div>";
+          agendaItens=r.itens||[];
+          agendaPorDia={};
+          agendaItens.forEach(function(a){ if(!a.data) return; (agendaPorDia[a.data]=agendaPorDia[a.data]||[]).push(a); });
+          var hojeISO=jurAgendaISO_(new Date());
+          if(!agendaDiaSelecionado){
+            agendaDiaSelecionado = agendaPorDia[hojeISO] ? hojeISO : null;
+          }
+          jurRenderizarAgendaCalendario_();
         })
-        .withFailureHandler(function(e){ corpo.innerHTML="<p style='color:#991b1b'>Erro: "+esc(e&&e.message?e.message:e)+"</p>"; })
+        .withFailureHandler(function(e){ g("jurAgendaCorpo").innerHTML="<p style='color:#991b1b'>Erro: "+esc(e&&e.message?e.message:e)+"</p>"; })
         .jurListarTodasAudiencias(token());
+    }
+
+    function jurRenderizarAgendaCalendario_(){
+      var corpo=g("jurAgendaCorpo");
+      var ano=agendaMes.getFullYear(), mes=agendaMes.getMonth();
+      var hojeISO=jurAgendaISO_(new Date());
+
+      var primeiroDiaSemana=new Date(ano,mes,1).getDay();
+      var diasNoMes=new Date(ano,mes+1,0).getDate();
+      var celulas=[];
+      for(var i=0;i<primeiroDiaSemana;i++) celulas.push(null);
+      for(var d=1;d<=diasNoMes;d++) celulas.push(d);
+      while(celulas.length%7!==0) celulas.push(null);
+
+      var html="<div class='jur-agenda-cabecalho'>"+
+        "<button class='mod-btn' style='width:32px;padding:0' onclick='jurAgendaMudarMes(-1)' aria-label='Mês anterior'>‹</button>"+
+        "<div class='jur-agenda-mes'>"+agendaNomesMes[mes]+" de "+ano+"</div>"+
+        "<div style='display:flex;gap:6px'><button class='mod-btn' onclick='jurAgendaIrHoje()'>Hoje</button><button class='mod-btn' style='width:32px;padding:0' onclick='jurAgendaMudarMes(1)' aria-label='Próximo mês'>›</button></div>"+
+        "</div>";
+
+      html+="<div class='jur-agenda-semana'>"+["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].map(function(x){return "<span>"+x+"</span>";}).join("")+"</div>";
+
+      html+="<div class='jur-agenda-grade'>"+celulas.map(function(dia){
+        if(!dia) return "<div></div>";
+        var iso=ano+"-"+String(mes+1).padStart(2,"0")+"-"+String(dia).padStart(2,"0");
+        var itens=agendaPorDia[iso]||[];
+        var classes="jur-dia"+(itens.length?" tem-item":"")+(iso===hojeISO?" hoje":"")+(iso===agendaDiaSelecionado?" selecionado":"");
+        var ponto=itens.length?"<span class='ponto'></span>":"";
+        return "<button class='"+classes+"' onclick=\"jurAgendaSelecionarDia('"+iso+"')\">"+dia+ponto+"</button>";
+      }).join("")+"</div>";
+
+      html+="<div class='jur-modal-section-title' style='margin-top:0'>"+(agendaDiaSelecionado?jurFormatarDataBr_(agendaDiaSelecionado):"Selecione um dia")+"</div>";
+      var itensDoDia=agendaDiaSelecionado?(agendaPorDia[agendaDiaSelecionado]||[]):[];
+      html+=itensDoDia.length?"<div class='jur-sublista'>"+itensDoDia.map(function(a){
+        var linha2=[a.tipo,a.local].filter(Boolean).join(" · ");
+        var statusAgenda=a.agendaOk?"<span class='pill ok'>✓ Google Agenda</span>":"<span class='pill off'>sem convite</span>";
+        return "<div class='jur-subitem'><div class='corpo'><b>"+(a.hora?esc(a.hora)+" — ":"")+esc(a.processoAssunto)+"</b><span>"+esc(linha2||"—")+(a.processoCnj?" · "+esc(a.processoCnj):"")+"</span><div style='margin-top:5px'>"+statusAgenda+"</div></div><div class='acoes'><button class='mod-btn' style='height:26px;padding:0 8px;font-size:10.5px' onclick=\"jurAbrirProcessoDaAgenda('"+a.idProcesso+"')\">Abrir</button></div></div>";
+      }).join("")+"</div>":"<div class='jur-vazio-sub'>"+(agendaDiaSelecionado?"Nenhuma audiência neste dia.":"Clique num dia com bolinha azul pra ver as audiências.")+"</div>";
+
+      corpo.innerHTML=html;
+    }
+
+    window.jurAgendaMudarMes=function(delta){
+      agendaMes=new Date(agendaMes.getFullYear(), agendaMes.getMonth()+delta, 1);
+      jurRenderizarAgendaCalendario_();
+    };
+
+    window.jurAgendaIrHoje=function(){
+      var hoje=new Date();
+      agendaMes=new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+      agendaDiaSelecionado=jurAgendaISO_(hoje);
+      jurRenderizarAgendaCalendario_();
+    };
+
+    window.jurAgendaSelecionarDia=function(iso){
+      agendaDiaSelecionado=iso;
+      jurRenderizarAgendaCalendario_();
     };
 
     window.jurFecharAgenda=function(){
