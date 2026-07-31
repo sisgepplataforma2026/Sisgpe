@@ -391,7 +391,8 @@ function gerarMatriculasEmLote() {
  * situação. Útil na ficha (avisar quem já é filiado) e no painel.
  * Retorna { existe, filiado, nome, matricula, escola, linha }
  */
-function consultarAssociadoPorCPF(cpf) {
+function consultarAssociadoPorCPF(cpf, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   var cpfDigitos = sindAss_digitos_(cpf);
   if (cpfDigitos.length !== 11) {
     return { existe: false, mensagem: 'CPF inválido.' };

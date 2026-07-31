@@ -145,7 +145,7 @@ function analisarCartaDesfiliacaoIA(base64, nomeArquivo, mimeType, tokenSessao) 
 
     var associado = null;
     if (cpfDigitos.length === 11) {
-      associado = consultarAssociadoPorCPF(cpfDigitos);
+      associado = consultarAssociadoPorCPF(cpfDigitos, tokenSessao);
       if (!associado || !associado.existe) {
         alertas.push('Não foi encontrado nenhum associado com este CPF — confirme antes de prosseguir.');
       } else if (!associado.filiado) {
@@ -392,7 +392,7 @@ function analisarFormularioFiliacaoIA(base64, nomeArquivo, mimeType, tokenSessao
         alertas.push('Já existe uma ficha ativa para este CPF (status: ' + fichaExistente.STATUS +
           ', ID ' + fichaExistente.ID_FICHA + ') — confira antes de criar outra.');
       }
-      var jaAssociado = consultarAssociadoPorCPF(cpfDigitos);
+      var jaAssociado = consultarAssociadoPorCPF(cpfDigitos, tokenSessao);
       if (jaAssociado && jaAssociado.existe && jaAssociado.filiado) {
         alertas.push('Este CPF já consta como filiado na base (matrícula ' + jaAssociado.matricula +
           ') — confirme se não é recadastramento.');
@@ -621,7 +621,7 @@ function analisarCartaOposicaoTaxaNegocialIA(base64, nomeArquivo, mimeType, toke
 
     var associado = null;
     if (cpfDigitos.length === 11) {
-      associado = consultarAssociadoPorCPF(cpfDigitos);
+      associado = consultarAssociadoPorCPF(cpfDigitos, tokenSessao);
       if (associado && associado.existe && associado.filiado) {
         alertas.push('Este CPF já consta como ASSOCIADO FILIADO na base — confirme se a oposição à Taxa Negocial se aplica mesmo assim antes de prosseguir.');
       }

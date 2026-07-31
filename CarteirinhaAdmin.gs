@@ -264,7 +264,7 @@ function cartAd_enviarLinkPortal(cpf, tokenSessao) {
     var email = cartAd_emailAssociado_(cpfLimpo);
     if (!email) return { sucesso: false, mensagem: 'Este associado não tem e-mail cadastrado.' };
 
-    var associado = consultarAssociadoPorCPF(cpfLimpo);
+    var associado = consultarAssociadoPorCPF(cpfLimpo, tokenSessao);
     var nome = (associado && associado.existe) ? associado.nome : '';
 
     var corpo = '<p>Olá, <b>' + sindAdm_esc_(nome) + '</b>!</p>' +

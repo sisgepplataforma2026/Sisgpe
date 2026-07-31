@@ -651,7 +651,7 @@ function fsaEscolaComEmail(){
     google.script.run
       .withSuccessHandler(function(){ salvar.checked=false; })
       .withFailureHandler(function(){})
-      .atualizarEmailEscola(base.cnpj, emails, fsaUsuarioAtual_());
+      .atualizarEmailEscola(base.cnpj, emails, fsaUsuarioAtual_(), SISGEP_TOKEN_SESSAO);
   }
 
   return {
@@ -688,7 +688,7 @@ function fsaVerPreview(){
     btn.disabled=false;
     btn.textContent='Ver prévia do ofício →';
     fsaMsgModal('Erro: '+err,'erro');
-  }).previewOficioFiliacao(FSA_FICHA_ATUAL.ID_FICHA, fsaEscolaComEmail());
+  }).previewOficioFiliacao(FSA_FICHA_ATUAL.ID_FICHA, fsaEscolaComEmail(), SISGEP_TOKEN_SESSAO);
 }
 
 function fsaVoltarEtapa1(){ fsaMsgModal(''); fsaIrEtapa(1); }

@@ -166,7 +166,8 @@ function sindOf_buscarDePara_(nomeNaFicha) {
  * @param {string} idFicha
  * @param {Object} escola   { nome, cnpj, emailPrincipal, emailsTodos }
  */
-function previewOficioFiliacao(idFicha, escola) {
+function previewOficioFiliacao(idFicha, escola, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     var f = sindAdm_buscarPorId_(idFicha);
     if (!f) return { sucesso: false, mensagem: 'Ficha não encontrada.' };
@@ -337,7 +338,8 @@ function aprovarEEncaminharFicha(idFicha, escola, aprovadoPor, tokenSessao) {
  * Reemite o ofício de uma ficha já matriculada (uso quando a emissão
  * falhou na aprovação ou quando é preciso reenviar a outra escola).
  */
-function reemitirOficioFicha(idFicha, escola, usuario) {
+function reemitirOficioFicha(idFicha, escola, usuario, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   var f = sindAdm_buscarPorId_(idFicha);
   if (!f) return { sucesso: false, mensagem: 'Ficha não encontrada.' };
   if (f.STATUS !== 'MATRICULADA') {
@@ -475,7 +477,8 @@ function diagnosticarDeParaEscolas() {
  * vírgula. Grava o primeiro em "E-mail (principal)" e todos em
  * "E-mails (todos)".
  */
-function atualizarEmailEscola(cnpj, emails, usuario) {
+function atualizarEmailEscola(cnpj, emails, usuario, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   var alvo = sindOf_digitos_(cnpj);
   if (alvo.length !== 14) return { sucesso: false, mensagem: 'CNPJ inválido.' };
 
