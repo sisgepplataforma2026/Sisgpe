@@ -1,16 +1,69 @@
 <div id="juridicoAdmin" style="min-height:100%;background:#f0f4f8;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#0f172a;">
   <style>
-    #juridicoAdmin *{box-sizing:border-box}.mod-head{background:linear-gradient(135deg,#001f4d,#1565C0);color:#fff;padding:22px 24px;display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}.mod-title{font-size:21px;font-weight:900}.mod-sub{font-size:12px;color:rgba(255,255,255,.68);margin-top:4px}.mod-wrap{padding:18px 22px 34px}.mod-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}.mod-card,.mod-panel{background:#fff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 2px 10px rgba(0,20,60,.06)}.mod-card{padding:15px}.mod-card small{font-size:10px;font-weight:900;color:#64748b;text-transform:uppercase}.mod-card strong{display:block;font-size:28px;color:#001f4d;margin-top:7px}.mod-panel{overflow:hidden}.mod-bar{padding:14px 16px;border-bottom:1px solid #eef2f7;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.mod-form{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr auto;gap:10px;padding:14px 16px;background:#f8fafc;border-bottom:1px solid #eef2f7}.mod-field label{display:block;font-size:10px;font-weight:900;color:#64748b;text-transform:uppercase;margin-bottom:4px}.mod-field input,.mod-field select{width:100%;height:36px;border:1.5px solid #dbe4ef;border-radius:9px;padding:0 10px;font-family:inherit}.mod-btn{height:34px;border-radius:9px;border:1px solid #cbd5e1;background:#fff;color:#334155;font-size:12px;font-weight:800;padding:0 12px;cursor:pointer;font-family:inherit}.mod-btn.primary{background:linear-gradient(135deg,#001f4d,#1565C0);color:#fff;border-color:#1565C0}.mod-search{padding:12px 16px;display:flex;gap:8px}.mod-search input{flex:1;height:36px;border:1.5px solid #dbe4ef;border-radius:999px;padding:0 14px}.mod-table{width:100%;border-collapse:collapse;min-width:760px}.mod-table th{background:#f8fafc;color:#64748b;font-size:10px;text-transform:uppercase;text-align:left;padding:10px}.mod-table td{font-size:12.5px;padding:11px 10px;border-top:1px solid #f1f5f9}.pill{border-radius:999px;padding:3px 9px;font-size:10.5px;font-weight:900}.ok{background:#dcfce7;color:#166534}.warn{background:#fef3c7;color:#92400e}.off{background:#fee2e2;color:#991b1b}@media(max-width:1000px){.mod-grid{grid-template-columns:repeat(2,1fr)}.mod-form{grid-template-columns:1fr 1fr}}
+    #juridicoAdmin *{box-sizing:border-box}.mod-head{background:linear-gradient(135deg,#001f4d,#1565C0);color:#fff;padding:22px 24px;display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}.mod-title{font-size:21px;font-weight:900}.mod-sub{font-size:12px;color:rgba(255,255,255,.68);margin-top:4px}.mod-wrap{padding:18px 22px 34px}.mod-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}.mod-card,.mod-panel{background:#fff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 2px 10px rgba(0,20,60,.06)}.mod-card{padding:15px}.mod-card small{font-size:10px;font-weight:900;color:#64748b;text-transform:uppercase}.mod-card strong{display:block;font-size:28px;color:#001f4d;margin-top:7px}.mod-panel{overflow:hidden}.mod-bar{padding:14px 16px;border-bottom:1px solid #eef2f7;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.mod-form{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr auto;gap:10px;padding:14px 16px;background:#f8fafc;border-bottom:1px solid #eef2f7}.mod-field label{display:block;font-size:10px;font-weight:900;color:#64748b;text-transform:uppercase;margin-bottom:4px}.mod-field input,.mod-field select{width:100%;height:36px;border:1.5px solid #dbe4ef;border-radius:9px;padding:0 10px;font-family:inherit}.mod-btn{height:34px;border-radius:9px;border:1px solid #cbd5e1;background:#fff;color:#334155;font-size:12px;font-weight:800;padding:0 12px;cursor:pointer;font-family:inherit}.mod-btn.primary{background:linear-gradient(135deg,#001f4d,#1565C0);color:#fff;border-color:#1565C0}.mod-btn:disabled{opacity:.6;cursor:default}.mod-search{padding:12px 16px;display:flex;gap:8px}.mod-search input{flex:1;height:36px;border:1.5px solid #dbe4ef;border-radius:999px;padding:0 14px}.mod-table{width:100%;border-collapse:collapse;min-width:760px}.mod-table th{background:#f8fafc;color:#64748b;font-size:10px;text-transform:uppercase;text-align:left;padding:10px}.mod-table td{font-size:12.5px;padding:11px 10px;border-top:1px solid #f1f5f9}.pill{border-radius:999px;padding:3px 9px;font-size:10.5px;font-weight:900}.ok{background:#dcfce7;color:#166534}.warn{background:#fef3c7;color:#92400e}.off{background:#fee2e2;color:#991b1b}.jur-link-assunto{background:none;border:none;padding:0;font:inherit;color:#0f172a;font-weight:700;cursor:pointer;text-align:left}.jur-link-assunto:hover{color:#1565C0;text-decoration:underline}@media(max-width:1000px){.mod-grid{grid-template-columns:repeat(2,1fr)}.mod-form{grid-template-columns:1fr 1fr}}
+    #jurModalOverlay{display:none;position:fixed;inset:0;background:rgba(6,21,37,.55);z-index:9999;align-items:center;justify-content:center;padding:20px}
+    #jurModalOverlay.aberto{display:flex}
+    .jur-modal{background:#fff;border-radius:16px;max-width:640px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 30px 70px rgba(0,0,0,.35)}
+    .jur-modal-head{padding:18px 22px;border-bottom:1px solid #eef2f7;display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .jur-modal-head strong{font-size:16px;color:#001f4d}
+    .jur-modal-close{background:none;border:none;font-size:20px;color:#64748b;cursor:pointer;line-height:1;padding:4px}
+    .jur-modal-body{padding:20px 22px}
+    .jur-modal-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px}
+    .jur-modal-grid.full{grid-template-columns:1fr}
+    .jur-modal-grid .mod-field input,.jur-modal-grid .mod-field select{height:38px}
+    .jur-modal-section-title{font-size:11px;font-weight:900;color:#64748b;text-transform:uppercase;margin:20px 0 10px;padding-top:14px;border-top:1px solid #eef2f7}
+    .jur-anexo-atual{display:flex;align-items:center;gap:8px;font-size:13px;padding:10px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:9px;margin-bottom:10px;color:#166534}
+    .jur-anexo-atual a{color:#166534;font-weight:700}
+    .jur-meta{font-size:11.5px;color:#94a3b8;margin-top:16px;line-height:1.6}
+    .jur-modal-foot{padding:16px 22px;border-top:1px solid #eef2f7;display:flex;justify-content:flex-end;gap:10px}
   </style>
   <div class="mod-head"><div><div class="mod-title">Jurídico</div><div class="mod-sub">Processos, notificações, prazos e documentos</div></div><button class="mod-btn" onclick="spIr('sofia',null,{mensagem:'Preciso de apoio jurídico sindical.'})">Consultar SOFIA</button></div>
   <div class="mod-wrap">
     <div class="mod-grid"><div class="mod-card"><small>Ativos</small><strong id="jurAtivos">0</strong></div><div class="mod-card"><small>Prazos 15d</small><strong id="jurPrazos">0</strong></div><div class="mod-card"><small>Notificações</small><strong id="jurNotificacoes">0</strong></div><div class="mod-card"><small>Concluídos</small><strong id="jurConcluidos">0</strong></div></div>
     <div class="mod-panel"><div class="mod-bar"><strong>Controle jurídico</strong><div><button class="mod-btn" onclick="jurExportar()">Exportar CSV</button><button class="mod-btn" onclick="spIr('documentos',null,{aba:'novo'})">Gerar documento</button></div></div>
       <div class="mod-form"><div class="mod-field"><label>Assunto</label><input id="jurAssunto" placeholder="Ex.: Notificação escolar"></div><div class="mod-field"><label>Tipo</label><select id="jurTipo"><option>Processo</option><option>Notificação</option><option>Contrato</option><option>Consulta</option></select></div><div class="mod-field"><label>Prazo</label><input id="jurPrazo" type="date"></div><div class="mod-field"><label>Status</label><select id="jurStatus"><option>Ativo</option><option>Atenção</option><option>Concluído</option></select></div><button class="mod-btn primary" onclick="jurSalvar()">Salvar</button></div>
-      <div class="mod-search"><input id="jurBusca" placeholder="Buscar assunto, tipo ou status..." oninput="jurRender()"><button class="mod-btn" onclick="jurLimpar()">Limpar</button></div>
+      <div class="mod-search"><input id="jurBusca" placeholder="Buscar assunto, tipo, CNJ, responsável..." oninput="jurRender()"><button class="mod-btn" onclick="jurLimpar()">Limpar</button></div>
       <div style="overflow:auto"><table class="mod-table"><thead><tr><th>Assunto</th><th>Tipo</th><th>Prazo</th><th>Status</th><th>Ações</th></tr></thead><tbody id="jurTabela"></tbody></table></div>
     </div>
   </div>
+
+  <div id="jurModalOverlay" onclick="if(event.target===this) jurFecharFicha()">
+    <div class="jur-modal">
+      <div class="jur-modal-head">
+        <strong>Ficha do processo</strong>
+        <button class="jur-modal-close" onclick="jurFecharFicha()" title="Fechar">&times;</button>
+      </div>
+      <div class="jur-modal-body">
+        <div class="jur-modal-grid full"><div class="mod-field"><label>Assunto</label><input id="jurFAssunto" placeholder="Ex.: Notificação escolar"></div></div>
+        <div class="jur-modal-grid">
+          <div class="mod-field"><label>Tipo</label><select id="jurFTipo"><option>Processo</option><option>Notificação</option><option>Contrato</option><option>Consulta</option></select></div>
+          <div class="mod-field"><label>Área</label><select id="jurFArea"><option value="">—</option><option>Trabalhista</option><option>Cível</option><option>Administrativo</option><option>Tributário</option><option>Outro</option></select></div>
+          <div class="mod-field"><label>Status</label><select id="jurFStatus"><option>Ativo</option><option>Atenção</option><option>Concluído</option></select></div>
+        </div>
+        <div class="jur-modal-grid" style="grid-template-columns:1fr 1fr">
+          <div class="mod-field"><label>Prazo</label><input id="jurFPrazo" type="date"></div>
+          <div class="mod-field"><label>Responsável interno</label><input id="jurFResponsavel" placeholder="Advogado/pessoa do caso"></div>
+        </div>
+        <div class="jur-modal-grid">
+          <div class="mod-field"><label>Número CNJ</label><input id="jurFCnj" placeholder="0000000-00.0000.0.00.0000"></div>
+          <div class="mod-field"><label>Autor</label><input id="jurFAutor" placeholder="Quem move a ação"></div>
+          <div class="mod-field"><label>Réu</label><input id="jurFReu" placeholder="Contra quem"></div>
+        </div>
+
+        <div class="jur-modal-section-title">Documento anexado</div>
+        <div id="jurFAnexoAtual"></div>
+        <div class="mod-field"><label>Anexar petição, sentença ou notificação (PDF, JPG ou PNG · até 10MB)</label><input id="jurFArquivo" type="file" accept=".pdf,.jpg,.jpeg,.png"></div>
+        <button class="mod-btn" style="margin-top:8px" onclick="jurEnviarAnexo()" id="jurBtnAnexo">Enviar anexo</button>
+
+        <div class="jur-meta" id="jurFMeta"></div>
+      </div>
+      <div class="jur-modal-foot">
+        <button class="mod-btn" onclick="jurFecharFicha()">Cancelar</button>
+        <button class="mod-btn primary" onclick="jurSalvarFicha()" id="jurBtnSalvarFicha">Salvar alterações</button>
+      </div>
+    </div>
+  </div>
+
   <script>
   (function(){
     console.log("[JUR] script do Jurídico carregado. readyState=", document.readyState);
@@ -19,7 +72,7 @@
       return;
     }
     window.__jurInicializado=true;
-    var edit="", cache=[];
+    var edit="", cache=[], fichaId="";
     function g(i){return document.getElementById(i)}
     function token(){return typeof SISGEP_TOKEN_SESSAO!=="undefined"?SISGEP_TOKEN_SESSAO:""}
     function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])})}
@@ -28,13 +81,13 @@
 
     function renderLista(l){
       var b=String((g("jurBusca")||{}).value||"").toLowerCase();
-      var f=l.filter(function(x){return !b||[x.assunto,x.tipo,x.status].join(" ").toLowerCase().indexOf(b)>=0});
+      var f=l.filter(function(x){return !b||[x.assunto,x.tipo,x.status,x.cnj,x.responsavel,x.area].join(" ").toLowerCase().indexOf(b)>=0});
       g("jurAtivos").textContent=l.filter(function(x){return x.status!=="Concluído"}).length;
       g("jurPrazos").textContent=l.filter(function(x){var d=dias(x.prazo);return d>=0&&d<=15&&x.status!=="Concluído"}).length;
       g("jurNotificacoes").textContent=l.filter(function(x){return x.tipo==="Notificação"}).length;
       g("jurConcluidos").textContent=l.filter(function(x){return x.status==="Concluído"}).length;
       g("jurTabela").innerHTML=f.length?f.map(function(x){
-        return "<tr><td><strong>"+esc(x.assunto)+"</strong></td><td>"+esc(x.tipo)+"</td><td>"+esc(x.prazo||"-")+"</td><td><span class='pill "+cls(x.status)+"'>"+esc(x.status)+"</span></td><td><button class='mod-btn' onclick=\"jurEditar('"+x.id+"')\">Editar</button> <button class='mod-btn' onclick=\"jurExcluir('"+x.id+"')\">Excluir</button></td></tr>";
+        return "<tr><td><button class='jur-link-assunto' onclick=\"jurAbrirFicha('"+x.id+"')\">"+esc(x.assunto)+"</button></td><td>"+esc(x.tipo)+"</td><td>"+esc(x.prazo||"-")+"</td><td><span class='pill "+cls(x.status)+"'>"+esc(x.status)+"</span></td><td><button class='mod-btn' onclick=\"jurAbrirFicha('"+x.id+"')\">Detalhes</button> <button class='mod-btn' onclick=\"jurExcluir('"+x.id+"')\">Excluir</button></td></tr>";
       }).join(""):"<tr><td colspan='5' style='text-align:center;color:#94a3b8;padding:24px'>Nenhum registro.</td></tr>";
     }
 
@@ -59,11 +112,14 @@
         .jurListarProcessos(token());
     };
 
+    // Cadastro rápido (form do topo) — só os 4 campos essenciais, pra não
+    // atrapalhar quem só quer abrir um registro rapidamente. Os campos
+    // jurídicos completos e o anexo ficam na ficha do processo.
     window.jurSalvar=function(){
       var assunto=g("jurAssunto").value;
       if(!String(assunto||"").trim()) return alert("Informe o assunto.");
-      var dados={id:edit||"", assunto:assunto, tipo:g("jurTipo").value, prazo:g("jurPrazo").value, status:g("jurStatus").value};
-      var btn=document.querySelector(".mod-btn.primary");
+      var dados={id:"", assunto:assunto, tipo:g("jurTipo").value, prazo:g("jurPrazo").value, status:g("jurStatus").value};
+      var btn=document.querySelector(".mod-form .mod-btn.primary");
       var avisouDemora=false;
       if(btn){btn.disabled=true;btn.textContent="Salvando...";}
       var vigia=setTimeout(function(){
@@ -87,16 +143,6 @@
         .jurSalvarProcesso(dados, token());
     };
 
-    window.jurEditar=function(id){
-      var x=cache.find(function(a){return a.id===id});
-      if(!x) return;
-      edit=id;
-      g("jurAssunto").value=x.assunto;
-      g("jurTipo").value=x.tipo;
-      g("jurPrazo").value=x.prazo;
-      g("jurStatus").value=x.status;
-    };
-
     window.jurExcluir=function(id){
       if(!confirm("Excluir registro?")) return;
       google.script.run
@@ -116,12 +162,97 @@
     };
 
     window.jurExportar=function(){
-      var rows=[["Assunto","Tipo","Prazo","Status"]].concat(cache.map(function(x){return[x.assunto,x.tipo,x.prazo,x.status]}));
+      var rows=[["Assunto","Tipo","Prazo","Status","Número CNJ","Área","Responsável","Autor","Réu"]].concat(cache.map(function(x){return[x.assunto,x.tipo,x.prazo,x.status,x.cnj,x.area,x.responsavel,x.autor,x.reu]}));
       var csv=rows.map(function(r){return r.map(function(c){return'"'+String(c||"").replace(/"/g,'""')+'"'}).join(";")}).join("\n");
       var a=document.createElement("a");
       a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
       a.download="sisgep-juridico.csv";
       a.click();
+    };
+
+    // ---------------- Ficha do processo ----------------
+
+    window.jurAbrirFicha=function(id){
+      var x=cache.find(function(a){return a.id===id});
+      if(!x) return;
+      fichaId=id;
+      g("jurFAssunto").value=x.assunto||"";
+      g("jurFTipo").value=x.tipo||"Processo";
+      g("jurFArea").value=x.area||"";
+      g("jurFStatus").value=x.status||"Ativo";
+      g("jurFPrazo").value=x.prazo||"";
+      g("jurFResponsavel").value=x.responsavel||"";
+      g("jurFCnj").value=x.cnj||"";
+      g("jurFAutor").value=x.autor||"";
+      g("jurFReu").value=x.reu||"";
+      g("jurFArquivo").value="";
+      g("jurFAnexoAtual").innerHTML=x.linkDocumento
+        ? "<div class='jur-anexo-atual'>📎 <a href='"+esc(x.linkDocumento)+"' target='_blank' rel='noopener'>"+esc(x.nomeArquivo||"Documento anexado")+"</a></div>"
+        : "<div style='font-size:12.5px;color:#94a3b8;margin-bottom:10px'>Nenhum documento anexado ainda.</div>";
+      g("jurFMeta").innerHTML="Criado por "+esc(x.criadoPor||"—")+" em "+esc(x.criadoEm||"—")+"<br>Última atualização por "+esc(x.atualizadoPor||"—")+" em "+esc(x.atualizadoEm||"—");
+      g("jurModalOverlay").classList.add("aberto");
+    };
+
+    window.jurFecharFicha=function(){
+      g("jurModalOverlay").classList.remove("aberto");
+      fichaId="";
+    };
+
+    window.jurSalvarFicha=function(){
+      var assunto=g("jurFAssunto").value;
+      if(!String(assunto||"").trim()) return alert("Informe o assunto.");
+      var dados={
+        id:fichaId, assunto:assunto, tipo:g("jurFTipo").value, status:g("jurFStatus").value,
+        prazo:g("jurFPrazo").value, area:g("jurFArea").value, responsavel:g("jurFResponsavel").value,
+        cnj:g("jurFCnj").value, autor:g("jurFAutor").value, reu:g("jurFReu").value
+      };
+      var btn=g("jurBtnSalvarFicha");
+      if(btn){btn.disabled=true;btn.textContent="Salvando...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="Salvar alterações";}
+          if(!r||!r.ok){ alert("Erro: "+((r&&r.mensagem)||"não foi possível salvar.")); return; }
+          jurFecharFicha();
+          jurRender();
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="Salvar alterações";}
+          alert("Erro ao salvar: "+(e&&e.message?e.message:e));
+        })
+        .jurSalvarProcesso(dados, token());
+    };
+
+    window.jurEnviarAnexo=function(){
+      var input=g("jurFArquivo");
+      var arquivo=input&&input.files&&input.files[0];
+      if(!arquivo) return alert("Escolha um arquivo primeiro.");
+      if(arquivo.size>10*1024*1024) return alert("Arquivo maior que 10MB.");
+      if(!fichaId) return alert("Salve o processo antes de anexar um documento.");
+
+      var btn=g("jurBtnAnexo");
+      if(btn){btn.disabled=true;btn.textContent="Enviando...";}
+      var leitor=new FileReader();
+      leitor.onload=function(e){
+        var base64=String(e.target.result||"").split(",")[1]||"";
+        google.script.run
+          .withSuccessHandler(function(r){
+            if(btn){btn.disabled=false;btn.textContent="Enviar anexo";}
+            if(!r||!r.ok){ alert("Erro: "+((r&&r.mensagem)||"não foi possível enviar o anexo.")); return; }
+            g("jurFAnexoAtual").innerHTML="<div class='jur-anexo-atual'>📎 <a href='"+esc(r.link)+"' target='_blank' rel='noopener'>"+esc(r.nome)+"</a></div>";
+            input.value="";
+            jurRender();
+          })
+          .withFailureHandler(function(err){
+            if(btn){btn.disabled=false;btn.textContent="Enviar anexo";}
+            alert("Erro ao enviar anexo: "+(err&&err.message?err.message:err));
+          })
+          .jurUploadDocumento({idProcesso:fichaId, base64:base64, nome:arquivo.name, tipo:arquivo.type||"application/pdf"}, token());
+      };
+      leitor.onerror=function(){
+        if(btn){btn.disabled=false;btn.textContent="Enviar anexo";}
+        alert("Não foi possível ler o arquivo selecionado.");
+      };
+      leitor.readAsDataURL(arquivo);
     };
 
     window.initJuridico=jurRender;
