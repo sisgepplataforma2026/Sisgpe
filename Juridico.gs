@@ -97,10 +97,11 @@ function listarProcessosJuridicos(tokenSessao) {
       return new Date(b.atualizadoEm || b.criadoEm) - new Date(a.atualizadoEm || a.criadoEm);
     });
 
+    Logger.log("listarProcessosJuridicos OK: " + itens.length + " itens");
     return { ok: true, itens: itens };
   } catch (e) {
-    Logger.log("listarProcessosJuridicos: " + e.message);
-    return { ok: false, mensagem: e.message };
+    Logger.log("listarProcessosJuridicos ERRO: " + e.message + " | stack: " + e.stack);
+    return { ok: false, mensagem: e.message || "Erro desconhecido ao listar." };
   }
 }
 
@@ -149,11 +150,15 @@ function salvarProcessoJuridico(dados, tokenSessao) {
       linha[JUR_COL.ATIVO - 1] = "SIM";
 
       aba.appendRow(linha);
+      Logger.log("salvarProcessoJuridico OK: criado " + id);
       return { ok: true, id: id };
     });
   } catch (e) {
-    Logger.log("salvarProcessoJuridico: " + e.message);
-    return { ok: false, mensagem: e.message === "CONCORRENCIA" ? "Outra pessoa está salvando um registro agora. Tente novamente em instantes." : e.message };
+    Logger.log("salvarProcessoJuridico ERRO: " + e.message + " | stack: " + e.stack);
+    var mensagem = e.message === "CONCORRENCIA"
+      ? "Outra pessoa está salvando um registro agora. Tente novamente em instantes."
+      : (e.message || "Erro desconhecido ao salvar.");
+    return { ok: false, mensagem: mensagem };
   }
 }
 
@@ -174,10 +179,11 @@ function excluirProcessoJuridico(id, tokenSessao) {
       aba.getRange(encontrada.linha, JUR_COL.ATUALIZADO_EM).setValue(new Date());
       aba.getRange(encontrada.linha, JUR_COL.ATUALIZADO_POR).setValue(responsavel);
 
+      Logger.log("excluirProcessoJuridico OK: " + id);
       return { ok: true };
     });
   } catch (e) {
-    Logger.log("excluirProcessoJuridico: " + e.message);
-    return { ok: false, mensagem: e.message };
+    Logger.log("excluirProcessoJuridico ERRO: " + e.message + " | stack: " + e.stack);
+    return { ok: false, mensagem: e.message || "Erro desconhecido ao excluir." };
   }
 }
