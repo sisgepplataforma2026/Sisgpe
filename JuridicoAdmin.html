@@ -286,6 +286,7 @@
           if(!r||!r.ok){ corpo.innerHTML="<p style='color:#991b1b'>"+esc((r&&r.mensagem)||"Não foi possível gerar o relatório.")+"</p>"; return; }
           var rl=r.relatorio;
           var html="";
+          html+="<div id='jurResumoIA' style='margin-bottom:18px'><button class='mod-btn' onclick='jurGerarResumoIA()' id='jurBtnResumoIA' style='background:linear-gradient(135deg,#001f4d,#1565C0);color:#fff;border-color:#1565C0'>✦ Gerar resumo executivo por IA</button></div>";
           html+="<div class='jur-rel-grid'>";
           html+="<div class='jur-rel-card'><small>Exposição total (ativos)</small><strong>"+jurFormatarMoeda_(rl.exposicaoTotal)+"</strong></div>";
           html+="<div class='jur-rel-card'><small>Tempo médio de tramitação</small><strong>"+(rl.tempoMedioTramitacaoDias!==null?rl.tempoMedioTramitacaoDias+" dias":"—")+"</strong></div>";
@@ -306,6 +307,28 @@
 
     window.jurFecharRelatorio=function(){
       g("jurRelatorioOverlay").classList.remove("aberto");
+    };
+
+    window.jurGerarResumoIA=function(){
+      var container=g("jurResumoIA");
+      var btn=g("jurBtnResumoIA");
+      if(btn){btn.disabled=true;btn.textContent="Gerando resumo...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||!r.ok){
+            container.innerHTML="<div style='padding:12px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:9px;color:#991b1b;font-size:12.5px'>"+esc((r&&r.mensagem)||"Não foi possível gerar o resumo.")+"</div>";
+            return;
+          }
+          var textoFormatado=esc(r.resumo).replace(/\n\n/g,"</p><p style='margin:8px 0 0'>").replace(/\n/g,"<br>");
+          container.innerHTML="<div style='padding:16px 18px;background:#eef4ff;border:1px solid #bfdbfe;border-radius:10px'>"+
+            "<div style='font-size:11px;font-weight:900;color:#1565C0;text-transform:uppercase;margin-bottom:8px'>✦ Resumo executivo — gerado por IA</div>"+
+            "<p style='margin:0;color:#1e3a8a;font-size:13px;line-height:1.6'>"+textoFormatado+"</p></div>";
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="✦ Gerar resumo executivo por IA";}
+          container.innerHTML="<div style='padding:12px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:9px;color:#991b1b;font-size:12.5px'>Erro: "+esc(e&&e.message?e.message:e)+"</div>";
+        })
+        .jurGerarResumoExecutivoIA(token());
     };
 
     // ---------------- Vínculos: Associado e Escola ----------------

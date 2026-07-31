@@ -1132,3 +1132,83 @@ function jurObterRelatorioExecutivo(tokenSessao) {
     return { ok: false, mensagem: e.message || "Erro ao gerar relatório." };
   }
 }
+
+// ============================================================================
+// FASE 4c — Resumo executivo e priorização por IA
+//
+// Pega os números já calculados (jurObterRelatorioExecutivo) + os prazos
+// mais urgentes de verdade, e pede pra IA escrever um resumo em linguagem
+// simples — pensado pra diretoria não-jurídica entender a situação em 30
+// segundos, sem precisar ler processo nenhum. Só texto, não sugere nem
+// executa nenhuma ação sobre os processos.
+// ============================================================================
+
+function jurGerarResumoExecutivoIA(tokenSessao) {
+  try {
+    exigirSessaoDocumentos_(tokenSessao, false);
+
+    var respRelatorio = jurObterRelatorioExecutivo(tokenSessao);
+    if (!respRelatorio.ok) return { ok: false, mensagem: respRelatorio.mensagem };
+    var rl = respRelatorio.relatorio;
+
+    var urgentes = [];
+    try {
+      var abaPrazos = jurObterAbaPrazos_();
+      var ultimaLinhaPrazos = abaPrazos.getLastRow();
+      if (ultimaLinhaPrazos >= 2) {
+        var hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        var dadosPrazos = abaPrazos.getRange(2, 1, ultimaLinhaPrazos - 1, JUR_CABECALHO_PRAZOS.length).getValues();
+        dadosPrazos.forEach(function(l) {
+          if (String(l[JUR_COLP.CUMPRIDO - 1] || "NAO") === "SIM") return;
+          var dataTexto = jurTextoSeguro_(l[JUR_COLP.DATA - 1]);
+          if (!dataTexto) return;
+          var dataPrazo = new Date(dataTexto + "T00:00:00");
+          if (isNaN(dataPrazo.getTime())) return;
+          var diffDias = Math.round((dataPrazo - hoje) / 86400000);
+          if (diffDias < 0 || diffDias > 15) return;
+          var processo = jurBuscarProcessoParaAlerta_(String(l[JUR_COLP.ID_PROCESSO - 1] || "").trim());
+          urgentes.push({
+            descricao: l[JUR_COLP.DESCRICAO - 1],
+            dias: diffDias,
+            processo: processo ? processo.assunto : "(processo não encontrado)"
+          });
+        });
+        urgentes.sort(function(a, b) { return a.dias - b.dias; });
+      }
+    } catch (ePrazos) {
+      Logger.log("jurGerarResumoExecutivoIA: falha ao levantar prazos urgentes — " + ePrazos.message);
+    }
+
+    var prompt = [
+      "Você é o assistente jurídico do SindEducação-ES (sindicato de trabalhadores em educação).",
+      "Escreva um RESUMO EXECUTIVO curto (máximo 3 parágrafos, linguagem simples, sem jargão",
+      "jurídico) para a diretoria do sindicato entender a situação do jurídico em 30 segundos.",
+      "",
+      "DADOS ATUAIS:",
+      "- Processos ativos: " + rl.totalAtivos,
+      "- Processos concluídos: " + rl.totalConcluidos,
+      "- Exposição financeira total (processos ainda ativos): R$ " + rl.exposicaoTotal.toFixed(2),
+      "- Tempo médio de tramitação: " + (rl.tempoMedioTramitacaoDias !== null ? rl.tempoMedioTramitacaoDias + " dias" : "sem dados suficientes"),
+      "- Taxa de êxito: " + (rl.taxaExito !== null ? rl.taxaExito + "%" : "sem dados suficientes"),
+      "- Prazos vencendo nos próximos 30 dias: " + rl.prazosVencendo30d,
+      "- Distribuição por área: " + JSON.stringify(rl.porArea),
+      "",
+      "PRAZOS MAIS URGENTES (próximos 15 dias):",
+      urgentes.length ? urgentes.map(function(u) { return "- " + u.descricao + " (" + u.processo + "), em " + u.dias + " dia(s)"; }).join("\n") : "- Nenhum prazo urgente no momento.",
+      "",
+      "Regras:",
+      "- Não invente número, valor ou processo que não está nos dados acima.",
+      "- Se algum dado estiver \"sem dados suficientes\", diga isso com naturalidade, não ignore.",
+      "- Termine com uma lista de até 3 prioridades objetivas para os próximos dias, se houver",
+      "  prazo urgente ou risco financeiro relevante.",
+      "- Responda só o texto do resumo, sem introdução do tipo \"aqui está o resumo\"."
+    ].join("\n");
+
+    var resumo = chamarIA_SISGEP(prompt);
+    return { ok: true, resumo: String(resumo || "").trim(), urgentes: urgentes };
+  } catch (e) {
+    Logger.log("jurGerarResumoExecutivoIA ERRO: " + e.message + " | stack: " + e.stack);
+    return { ok: false, mensagem: e.message || "Erro ao gerar resumo executivo." };
+  }
+}
