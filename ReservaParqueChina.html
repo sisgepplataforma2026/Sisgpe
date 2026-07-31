@@ -1,4 +1,11 @@
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reserva Parque do China — SindEducação-ES</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
 <style>
   .china-wrap{font-family:'Plus Jakarta Sans',sans-serif;padding:22px;background:#f4f7fb}
@@ -52,6 +59,8 @@
     .china-row,.china-row-3{grid-template-columns:1fr}
   }
 </style>
+</head>
+<body>
 
 <div class="china-wrap">
   <div class="china-header">
@@ -123,14 +132,14 @@
         <label>Chalé desejado</label>
         <select id="chinaChaleSolicitado">
           <option value="QUALQUER_DISPONIVEL">Qualquer disponível</option>
-          <option value="CH01">Chalé 01</option>
-          <option value="CH02">Chalé 02</option>
-          <option value="CH03">Chalé 03</option>
-          <option value="CH04">Chalé 04</option>
-          <option value="CH05">Chalé 05</option>
-          <option value="CH06">Chalé 06</option>
-          <option value="CH07">Chalé 07</option>
-          <option value="CH08">Chalé 08</option>
+          <option value="501">Suíte 501</option>
+          <option value="502">Suíte 502</option>
+          <option value="503">Suíte 503</option>
+          <option value="504">Suíte 504</option>
+          <option value="505">Suíte 505</option>
+          <option value="506">Suíte 506</option>
+          <option value="507">Suíte 507</option>
+          <option value="508">Suíte 508</option>
         </select>
       </div>
     </div>
@@ -159,15 +168,29 @@
 
     <div class="china-row">
       <div class="china-field">
+        <label>Tipo de reserva</label>
+        <select id="chinaTipoReserva">
+          <option value="SEMANAL">Semanal</option>
+          <option value="FIM_DE_SEMANA">Fim de semana</option>
+        </select>
+      </div>
+      <div class="china-field">
         <label>Solicitar colchão extra?</label>
         <select id="chinaColchaoExtra">
           <option value="NAO">Não</option>
           <option value="SIM">Sim</option>
         </select>
       </div>
+    </div>
+
+    <div class="china-row">
       <div class="china-field">
         <label>Valor estimado colchão extra</label>
         <input type="text" id="chinaValorExtra" value="R$ 0,00" readonly>
+      </div>
+      <div class="china-field">
+        <label>Valor total estimado</label>
+        <input type="text" id="chinaValorTotalEstimadoCampo" value="R$ 0,00" readonly>
       </div>
     </div>
 
@@ -179,7 +202,7 @@
     </div>
 
     <div class="china-actions">
-      <button class="btn-china btn-primary" onclick="enviarSolicitacaoChina()">Enviar Solicitação</button>
+      <button class="btn-china btn-primary" id="chinaBtnEnviar" onclick="enviarSolicitacaoChina()">Enviar Solicitação</button>
       <button class="btn-china btn-light" onclick="carregarDashboardChina()">Atualizar Painel</button>
     </div>
 
@@ -223,14 +246,14 @@
       var dados = coletarDadosChina();
       if (!dados.dataEntrada || !dados.dataSaida) {
         document.getElementById('chinaValorExtra').value = moedaBR(0);
-        document.getElementById('chinaValorTotalEstimado').textContent = moedaBR(0);
+        document.getElementById('chinaValorTotalEstimadoCampo').value = moedaBR(0);
         return;
       }
       google.script.run
         .withSuccessHandler(function(resp){
           if (!resp || !resp.ok) return;
           document.getElementById('chinaValorExtra').value = moedaBR(resp.valores.valorColchao);
-          document.getElementById('chinaValorTotalEstimado').textContent = moedaBR(resp.valores.valorTotal);
+          document.getElementById('chinaValorTotalEstimadoCampo').value = moedaBR(resp.valores.valorTotal);
         })
         .withFailureHandler(function(){ /* silencioso — não trava o formulário por falha na prévia */ })
         .calcularPreviaPublicaParqueChina(dados);
@@ -286,3 +309,5 @@
   carregarDashboardChina();
   solicitarPreviaChina();
 </script>
+</body>
+</html>

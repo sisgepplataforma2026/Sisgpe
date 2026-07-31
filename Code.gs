@@ -82,6 +82,19 @@ if (p.portal === "associado") {
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
+
+    // ── Portal público de solicitação de reserva do Parque do China ──
+    // Público, sem sessão — solicitarReservaParqueChina (Reservaparquechina.gs)
+    // já é uma função pública, chamada direto por este formulário; a reserva
+    // nasce PENDENTE e a equipe aprova pelo painel administrativo.
+    if (p.portal === "chinapark") {
+      Logger.log("[PORTAL] Redirecionando para o Portal do Parque do China");
+      return HtmlService.createHtmlOutputFromFile("ReservaParqueChina")
+        .setTitle("SindEducação-ES — Reserva Parque do China")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
 // ── Rota da tela de Emissão de Ingressos (Eventos) — protegida por sessão ──
     if (p.painel === "emissao") {
       var tokenEmissao = String(p.sessao || "").trim();
