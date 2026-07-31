@@ -245,6 +245,15 @@
       g("jurFAssociadoBusca").value="";
       g("jurFAssociadoLista").classList.remove("aberto");
       renderVinculosChips();
+      // O "escola" que vem do cadastro de Associados é nome informal
+      // (Sindicalização), diferente da base de Escolas por CNPJ (Ofícios) —
+      // não dá pra vincular automático (só ~4% batem entre as duas bases).
+      // Em vez de arriscar vincular errado, só pré-preenche a busca pra
+      // poupar digitação; quem confirma a escola certa é o usuário.
+      if(a.escola && !fichaEscola.nome){
+        g("jurFEscolaBusca").value=a.escola;
+        jurBuscarEscolaDigitada();
+      }
     };
 
     window.jurBuscarEscolaDigitada=function(){
