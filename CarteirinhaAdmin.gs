@@ -242,14 +242,15 @@ function cartAd_enviarEmailAprovacao_(email, nome, validade) {
     '</div>';
   var textoSimples = 'Olá, ' + nome + '!\n\nSua carteirinha digital foi aprovada e emitida. Validade: ' + validade +
     '.\n\nAcesse o Portal do Associado para visualizar, baixar ou imprimir.\n\n' + SIND_ENTIDADE_SIGLA;
-  try {
-    GmailApp.sendEmail(email, 'Sua carteirinha está pronta — ' + SIND_ENTIDADE_SIGLA, textoSimples,
-      sind_opcoesEmail_({ htmlBody: sind_emailHtml_('Carteirinha aprovada', corpo, destaque) }));
-    return { ok: true };
-  } catch (e) {
-    Logger.log('cartAd_enviarEmailAprovacao_: ' + e.message);
-    return { ok: false, mensagem: 'Falha ao enviar e-mail de notificação: ' + e.message };
+  var envio = enviarEmailSISGEP_(email, 'Sua carteirinha está pronta — ' + SIND_ENTIDADE_SIGLA, textoSimples, {
+    origem: 'Carteirinhas',
+    htmlBody: sind_emailHtml_('Carteirinha aprovada', corpo, destaque)
+  });
+  if (!envio.ok) {
+    Logger.log('cartAd_enviarEmailAprovacao_: ' + envio.mensagem);
+    return { ok: false, mensagem: 'Falha ao enviar e-mail de notificação: ' + envio.mensagem };
   }
+  return { ok: true };
 }
 
 /**
@@ -286,8 +287,11 @@ function cartAd_enviarLinkPortal(cpf, tokenSessao) {
     var textoSimples = 'Olá, ' + nome + '!\n\nAcesse o Portal do Associado: ' + urlPortal +
       '\n\nFaça login com o seu CPF — você recebe um código de acesso por e-mail.\n\n' + SIND_ENTIDADE_SIGLA;
 
-    GmailApp.sendEmail(email, 'Acesse o Portal do Associado — ' + SIND_ENTIDADE_SIGLA, textoSimples,
-      sind_opcoesEmail_({ htmlBody: sind_emailHtml_('Portal do Associado', corpo) }));
+    var envio = enviarEmailSISGEP_(email, 'Acesse o Portal do Associado — ' + SIND_ENTIDADE_SIGLA, textoSimples, {
+      origem: 'Carteirinhas',
+      htmlBody: sind_emailHtml_('Portal do Associado', corpo)
+    });
+    if (!envio.ok) return { sucesso: false, mensagem: 'Erro ao enviar: ' + envio.mensagem };
 
     return { sucesso: true, mensagem: 'Link enviado por e-mail para ' + email + '.' };
   } catch (e) {
@@ -308,14 +312,15 @@ function cartAd_enviarEmailRejeicao_(email, nome, motivo) {
   var extra = '<p style="font-size:12.5px;color:#6b7385;line-height:1.55;">Acesse o Portal do Associado e envie uma nova foto em "Minha Credencial".</p>';
   var textoSimples = 'Olá, ' + nome + '!\n\nSua solicitação de carteirinha precisa de uma nova foto:\n\n' + motivo +
     '\n\nAcesse o Portal do Associado e envie uma nova foto em "Minha Credencial".\n\n' + SIND_ENTIDADE_SIGLA;
-  try {
-    GmailApp.sendEmail(email, 'Sua carteirinha precisa de uma nova foto — ' + SIND_ENTIDADE_SIGLA, textoSimples,
-      sind_opcoesEmail_({ htmlBody: sind_emailHtml_('Foto não aprovada', corpo + extra, destaque) }));
-    return { ok: true };
-  } catch (e) {
-    Logger.log('cartAd_enviarEmailRejeicao_: ' + e.message);
-    return { ok: false, mensagem: 'Falha ao enviar e-mail de notificação: ' + e.message };
+  var envio = enviarEmailSISGEP_(email, 'Sua carteirinha precisa de uma nova foto — ' + SIND_ENTIDADE_SIGLA, textoSimples, {
+    origem: 'Carteirinhas',
+    htmlBody: sind_emailHtml_('Foto não aprovada', corpo + extra, destaque)
+  });
+  if (!envio.ok) {
+    Logger.log('cartAd_enviarEmailRejeicao_: ' + envio.mensagem);
+    return { ok: false, mensagem: 'Falha ao enviar e-mail de notificação: ' + envio.mensagem };
   }
+  return { ok: true };
 }
 
 /**

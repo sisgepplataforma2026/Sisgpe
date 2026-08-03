@@ -208,32 +208,31 @@ function brsVerificarDisponibilidade_(tipo, dataEntrada, dataSaida, idExcluir) {
 }
 
 function brsEnviarEmail_(tipo, evento, reserva) {
-  try {
-    if (!reserva.email) return;
-    var cfg = brsConfig_(tipo);
-    var titulo, corpo;
-    if (evento === "APROVADA") {
-      titulo = "Reserva confirmada — " + cfg.label;
-      corpo = "<p>Olá, <b>" + reserva.nomeSolicitante + "</b>!</p>" +
-        "<p>Sua reserva em <b>" + cfg.label + "</b> foi confirmada.</p>" +
-        "<p><b>Entrada:</b> " + reserva.dataEntrada + "<br><b>Saída:</b> " + reserva.dataSaida + "</p>";
-    } else if (evento === "RECUSADA") {
-      titulo = "Solicitação não aprovada — " + cfg.label;
-      corpo = "<p>Olá, <b>" + reserva.nomeSolicitante + "</b>!</p>" +
-        "<p>Sua solicitação em <b>" + cfg.label + "</b> não pôde ser aprovada.</p>" +
-        "<p><b>Motivo:</b> " + (reserva.motivoRecusa || "Não informado") + "</p>";
-    } else if (evento === "CANCELADA") {
-      titulo = "Reserva cancelada — " + cfg.label;
-      corpo = "<p>Olá, <b>" + reserva.nomeSolicitante + "</b>!</p>" +
-        "<p>Sua reserva em <b>" + cfg.label + "</b> foi cancelada.</p>";
-    } else {
-      return;
-    }
-    GmailApp.sendEmail(reserva.email, titulo, corpo.replace(/<[^>]+>/g, ""),
-      sind_opcoesEmail_({ htmlBody: sind_emailHtml_(titulo, corpo) }));
-  } catch (e) {
-    Logger.log("brsEnviarEmail_ (" + tipo + "/" + evento + "): " + e.message);
+  if (!reserva.email) return;
+  var cfg = brsConfig_(tipo);
+  var titulo, corpo;
+  if (evento === "APROVADA") {
+    titulo = "Reserva confirmada — " + cfg.label;
+    corpo = "<p>Olá, <b>" + reserva.nomeSolicitante + "</b>!</p>" +
+      "<p>Sua reserva em <b>" + cfg.label + "</b> foi confirmada.</p>" +
+      "<p><b>Entrada:</b> " + reserva.dataEntrada + "<br><b>Saída:</b> " + reserva.dataSaida + "</p>";
+  } else if (evento === "RECUSADA") {
+    titulo = "Solicitação não aprovada — " + cfg.label;
+    corpo = "<p>Olá, <b>" + reserva.nomeSolicitante + "</b>!</p>" +
+      "<p>Sua solicitação em <b>" + cfg.label + "</b> não pôde ser aprovada.</p>" +
+      "<p><b>Motivo:</b> " + (reserva.motivoRecusa || "Não informado") + "</p>";
+  } else if (evento === "CANCELADA") {
+    titulo = "Reserva cancelada — " + cfg.label;
+    corpo = "<p>Olá, <b>" + reserva.nomeSolicitante + "</b>!</p>" +
+      "<p>Sua reserva em <b>" + cfg.label + "</b> foi cancelada.</p>";
+  } else {
+    return;
   }
+  var envio = enviarEmailSISGEP_(reserva.email, titulo, corpo.replace(/<[^>]+>/g, ""), {
+    origem: "Benefícios",
+    htmlBody: sind_emailHtml_(titulo, corpo)
+  });
+  if (!envio.ok) Logger.log("brsEnviarEmail_ (" + tipo + "/" + evento + "): " + envio.mensagem);
 }
 
 // ----------------------------------------------------------------------------

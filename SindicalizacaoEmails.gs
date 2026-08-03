@@ -181,20 +181,18 @@ function enviarOTPSindicalizacao(idFicha) {
     'Se você não solicitou este código, ignore este e-mail.\n\n' +
     SIND_ENTIDADE_SIGLA;
 
-  try {
-    GmailApp.sendEmail(
-      registro.EMAIL,
-      'Código de assinatura — Ficha de Sindicalização',
-      textoSimples,
-      sind_opcoesEmail_({
-        htmlBody: sind_emailHtml_('Assinatura da sua Ficha de Sindicalização',
-          corpo + rodapeTexto, destaque)
-      })
-    );
-    return { sucesso: true, canal: 'EMAIL', mensagem: 'Código enviado.' };
-  } catch (e) {
-    return { sucesso: false, mensagem: 'Falha ao enviar e-mail: ' + e.message };
-  }
+  var envio = enviarEmailSISGEP_(
+    registro.EMAIL,
+    'Código de assinatura — Ficha de Sindicalização',
+    textoSimples,
+    {
+      origem: 'Sindicalização',
+      htmlBody: sind_emailHtml_('Assinatura da sua Ficha de Sindicalização',
+        corpo + rodapeTexto, destaque)
+    }
+  );
+  if (!envio.ok) return { sucesso: false, mensagem: 'Falha ao enviar e-mail: ' + envio.mensagem };
+  return { sucesso: true, canal: 'EMAIL', mensagem: 'Código enviado.' };
 }
 
 /* ==========================================================================
@@ -241,18 +239,15 @@ function sind_enviarEmailBoasVindas_(registro) {
     (registro.LINK_PDF ? 'Sua ficha em PDF: ' + registro.LINK_PDF + '\n\n' : '') +
     'Seja bem-vindo(a)!\n\n' + SIND_ENTIDADE_SIGLA;
 
-  try {
-    GmailApp.sendEmail(
-      registro.EMAIL,
-      'Bem-vindo(a) ao ' + SIND_ENTIDADE_SIGLA + ' — Matrícula ' + registro.MATRICULA,
-      textoSimples,
-      sind_opcoesEmail_({
-        htmlBody: sind_emailHtml_('Sindicalização aprovada', corpo + extra, destaque)
-      })
-    );
-  } catch (e) {
-    Logger.log('E-mail de boas-vindas falhou: ' + e.message);
-  }
+  enviarEmailSISGEP_(
+    registro.EMAIL,
+    'Bem-vindo(a) ao ' + SIND_ENTIDADE_SIGLA + ' — Matrícula ' + registro.MATRICULA,
+    textoSimples,
+    {
+      origem: 'Sindicalização',
+      htmlBody: sind_emailHtml_('Sindicalização aprovada', corpo + extra, destaque)
+    }
+  );
 }
 
 /**
@@ -287,18 +282,15 @@ function sind_enviarEmailRejeicao_(registro) {
     'Você pode preencher novamente pelo mesmo link ou procurar a secretaria ' +
     'do ' + SIND_ENTIDADE_SIGLA + '.\n\n' + SIND_ENTIDADE_SIGLA;
 
-  try {
-    GmailApp.sendEmail(
-      registro.EMAIL,
-      'Ficha de Sindicalização — pendência encontrada',
-      textoSimples,
-      sind_opcoesEmail_({
-        htmlBody: sind_emailHtml_('Sua ficha precisa de ajustes', corpo + extra, destaque)
-      })
-    );
-  } catch (e) {
-    Logger.log('E-mail de rejeição falhou: ' + e.message);
-  }
+  enviarEmailSISGEP_(
+    registro.EMAIL,
+    'Ficha de Sindicalização — pendência encontrada',
+    textoSimples,
+    {
+      origem: 'Sindicalização',
+      htmlBody: sind_emailHtml_('Sua ficha precisa de ajustes', corpo + extra, destaque)
+    }
+  );
 }
 
 // ============================================================================
