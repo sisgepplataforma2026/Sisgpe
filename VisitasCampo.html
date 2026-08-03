@@ -39,71 +39,71 @@
 
 <style>
 .vc-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;}
-.vc-topo-titulo{font-size:19px;font-weight:800;color:#002f6c;}
+.vc-topo-titulo{font-size:19px;font-weight:800;color:var(--navy2,#002f6c);}
 .vc-topo-sub{font-size:12.5px;color:#6b7385;margin-top:2px;text-transform:capitalize;}
-.vc-btn-rota{border:none;border-radius:10px;padding:10px 14px;background:#002f6c;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap;}
+.vc-btn-rota{border:none;border-radius:10px;padding:10px 14px;background:var(--navy2,#002f6c);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap;}
 .vc-progresso{margin-bottom:18px;}
-.vc-progresso-barra{height:6px;background:#e2e8f0;border-radius:4px;overflow:hidden;}
-.vc-progresso-barra>div{height:100%;background:#C9A84C;width:0%;transition:width .3s;}
+.vc-progresso-barra{height:6px;background:var(--g200,#e2e8f0);border-radius:4px;overflow:hidden;}
+.vc-progresso-barra>div{height:100%;background:var(--gold,#C9A84C);width:0%;transition:width .3s;}
 .vc-progresso-texto{font-size:11.5px;color:#6b7385;margin-top:6px;font-weight:600;}
 
-.vc-card{background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;padding:14px 16px;margin-bottom:12px;display:flex;gap:12px;align-items:flex-start;cursor:pointer;transition:.15s;}
+.vc-card{background:#fff;border:1.5px solid var(--g200,#e2e8f0);border-radius:14px;padding:14px 16px;margin-bottom:12px;display:flex;gap:12px;align-items:flex-start;cursor:pointer;transition:.15s;}
 .vc-card:active{transform:scale(.99);}
 .vc-card-hora{min-width:52px;text-align:center;}
-.vc-card-hora b{display:block;font-size:15px;font-weight:800;color:#002f6c;}
-.vc-card-hora small{display:block;font-size:9.5px;color:#94a3b8;font-weight:700;letter-spacing:.5px;}
+.vc-card-hora b{display:block;font-size:15px;font-weight:800;color:var(--navy2,#002f6c);}
+.vc-card-hora small{display:block;font-size:9.5px;color:var(--g400,#94a3b8);font-weight:700;letter-spacing:.5px;}
 .vc-card-info{flex:1;min-width:0;}
-.vc-card-info b{display:block;font-size:14px;color:#0f172a;line-height:1.3;}
+.vc-card-info b{display:block;font-size:14px;color:var(--g900,#0f172a);line-height:1.3;}
 .vc-card-info small{display:block;font-size:11.5px;color:#6b7385;margin-top:3px;}
-.vc-card-seta{color:#cbd5e1;font-size:18px;align-self:center;}
-.vc-card.vc-feita{background:#f8fafc;border-color:#dcfce7;}
+.vc-card-seta{color:var(--g300,#cbd5e1);font-size:18px;align-self:center;}
+.vc-card.vc-feita{background:var(--g50,#f8fafc);border-color:#dcfce7;}
 .vc-card.vc-feita .vc-card-info b{color:#64748b;}
-.vc-card.vc-andamento{border-color:#C9A84C;border-width:2px;background:#fffdf7;}
+.vc-card.vc-andamento{border-color:var(--gold,#C9A84C);border-width:2px;background:#fffdf7;}
 
 .vc-tag{display:inline-block;font-size:9.5px;font-weight:800;border-radius:5px;padding:2px 7px;margin-top:5px;}
-.vc-tag-agendada{background:#e2e8f0;color:#475569;}
-.vc-tag-andamento{background:#fef3c7;color:#92400e;}
+.vc-tag-agendada{background:var(--g200,#e2e8f0);color:#475569;}
+.vc-tag-andamento{background:var(--amber-lt,#fef3c7);color:#92400e;}
 .vc-tag-visitada{background:#dcfce7;color:#166534;}
 .vc-tag-retornar{background:#dbeafe;color:#1d4ed8;}
-.vc-tag-semcontato{background:#fee2e2;color:#991b1b;}
+.vc-tag-semcontato{background:var(--red-lt,#fee2e2);color:#991b1b;}
 
 .vc-modal{display:none;position:fixed;inset:0;background:rgba(6,11,20,.6);z-index:900;padding:12px;overflow-y:auto;}
 .vc-modal.vc-aberto{display:block;}
 .vc-modal-caixa{background:#fff;border-radius:16px;max-width:520px;margin:12px auto 40px;overflow:hidden;}
-.vc-modal-topo{background:#002f6c;color:#fff;padding:16px 18px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.vc-modal-topo{background:var(--navy2,#002f6c);color:#fff;padding:16px 18px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
 .vc-modal-escola{font-size:15px;font-weight:800;line-height:1.3;}
 .vc-modal-sub{font-size:11.5px;opacity:.8;margin-top:3px;}
 .vc-fechar{background:rgba(255,255,255,.15);border:none;color:#fff;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px;flex-shrink:0;}
 .vc-modal-corpo{padding:18px;}
 
-.vc-etapa-titulo{font-size:11px;font-weight:800;letter-spacing:.8px;color:#C9A84C;text-transform:uppercase;margin:0 0 10px;}
+.vc-etapa-titulo{font-size:11px;font-weight:800;letter-spacing:.8px;color:var(--gold,#C9A84C);text-transform:uppercase;margin:0 0 10px;}
 .vc-bloco{margin-bottom:20px;}
 .vc-btn-grande{width:100%;border:none;border-radius:12px;padding:16px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;}
-.vc-btn-checkin{background:#16a34a;color:#fff;}
-.vc-btn-qr{background:#C9A84C;color:#002f6c;}
-.vc-btn-cadastro{background:#eef2f7;color:#002f6c;}
-.vc-btn-finalizar{background:#002f6c;color:#fff;}
+.vc-btn-checkin{background:var(--green,#059669);color:#fff;}
+.vc-btn-qr{background:var(--gold,#C9A84C);color:var(--navy2,#002f6c);}
+.vc-btn-cadastro{background:#eef2f7;color:var(--navy2,#002f6c);}
+.vc-btn-finalizar{background:var(--navy2,#002f6c);color:#fff;}
 .vc-btn-grande:disabled{opacity:.5;cursor:wait;}
 .vc-btn-grande+.vc-btn-grande{margin-top:8px;}
 
-.vc-check{display:flex;align-items:center;gap:10px;padding:11px 12px;border:1.5px solid #e2e8f0;border-radius:10px;margin-bottom:7px;cursor:pointer;font-size:13.5px;color:#1d2433;}
-.vc-check input{width:20px;height:20px;accent-color:#002f6c;flex-shrink:0;}
-.vc-check.vc-marcado{background:#f5f8ff;border-color:#002f6c;}
+.vc-check{display:flex;align-items:center;gap:10px;padding:11px 12px;border:1.5px solid var(--g200,#e2e8f0);border-radius:10px;margin-bottom:7px;cursor:pointer;font-size:13.5px;color:#1d2433;}
+.vc-check input{width:20px;height:20px;accent-color:var(--navy2,#002f6c);flex-shrink:0;}
+.vc-check.vc-marcado{background:#f5f8ff;border-color:var(--navy2,#002f6c);}
 
 .vc-campo{margin-bottom:10px;}
-.vc-campo label{display:block;font-size:11.5px;font-weight:700;color:#002f6c;margin-bottom:4px;}
-.vc-campo input,.vc-campo textarea,.vc-campo select{width:100%;padding:10px 12px;font-size:14px;font-family:inherit;border:1.5px solid #cbd5e1;border-radius:9px;background:#fbfcfe;color:#1d2433;box-sizing:border-box;}
+.vc-campo label{display:block;font-size:11.5px;font-weight:700;color:var(--navy2,#002f6c);margin-bottom:4px;}
+.vc-campo input,.vc-campo textarea,.vc-campo select{width:100%;padding:10px 12px;font-size:14px;font-family:inherit;border:1.5px solid var(--g300,#cbd5e1);border-radius:9px;background:#fbfcfe;color:#1d2433;box-sizing:border-box;}
 .vc-campo textarea{min-height:64px;resize:vertical;}
 
-.vc-qr-caixa{text-align:center;padding:16px;background:#f8faff;border:2px solid #002f6c;border-radius:12px;}
+.vc-qr-caixa{text-align:center;padding:16px;background:#f8faff;border:2px solid var(--navy2,#002f6c);border-radius:12px;}
 .vc-qr-caixa canvas,.vc-qr-caixa img{margin:0 auto;display:block;}
 .vc-qr-legenda{font-size:12px;color:#6b7385;margin-top:10px;line-height:1.45;}
-.vc-qr-contador{font-size:26px;font-weight:800;color:#16a34a;margin-top:8px;}
+.vc-qr-contador{font-size:26px;font-weight:800;color:var(--green,#059669);margin-top:8px;}
 
-.vc-rota-aviso{background:#fffdf7;border:1.5px solid #C9A84C;border-radius:12px;padding:13px;margin-bottom:12px;font-size:13px;color:#0f172a;line-height:1.5;}
-.vc-rota-aviso a{display:inline-block;margin-top:8px;font-weight:800;color:#002f6c;}
-.vc-status-info{background:#f8fafc;border-radius:10px;padding:11px 13px;font-size:12.5px;color:#475569;margin-bottom:14px;line-height:1.5;}
-.vc-status-info b{color:#0f172a;}
+.vc-rota-aviso{background:#fffdf7;border:1.5px solid var(--gold,#C9A84C);border-radius:12px;padding:13px;margin-bottom:12px;font-size:13px;color:var(--g900,#0f172a);line-height:1.5;}
+.vc-rota-aviso a{display:inline-block;margin-top:8px;font-weight:800;color:var(--navy2,#002f6c);}
+.vc-status-info{background:var(--g50,#f8fafc);border-radius:10px;padding:11px 13px;font-size:12.5px;color:#475569;margin-bottom:14px;line-height:1.5;}
+.vc-status-info b{color:var(--g900,#0f172a);}
 .vc-msg{display:none;border-radius:9px;padding:10px 12px;font-size:13px;margin-top:12px;}
 .vc-msg.vc-erro{display:block;background:#fdecea;color:#c0392b;}
 .vc-msg.vc-ok{display:block;background:#e8f5ee;color:#1e8e5a;}
@@ -240,7 +240,7 @@ function vcRenderAgenda(){
 function vcAbrirRota(){
   google.script.run.withSuccessHandler(function(r){
     if(!vcOk(r)){
-      alert((r&&(r.mensagem||r.erro))||'Não foi possível montar a rota.');
+      toast((r&&(r.mensagem||r.erro))||'Não foi possível montar a rota.','err');
       return;
     }
     /* window.open fora do gesto de clique costuma ser bloqueado no
@@ -252,7 +252,7 @@ function vcAbrirRota(){
     if(aba) return;
 
     var alvo=document.getElementById('vcAgenda');
-    if(!alvo){ alert('Abra a rota por este endereço:\n\n'+r.url); return; }
+    if(!alvo){ toast('Abra a rota por este endereço: '+r.url,'info'); return; }
     var aviso=document.getElementById('vcRotaLink');
     if(!aviso){
       aviso=document.createElement('div');
@@ -263,7 +263,7 @@ function vcAbrirRota(){
       'abertura automática.<br><a href="'+vcEsc(r.url)+'" target="_blank">'+
       'Abrir a rota no Google Maps ('+(r.paradas||0)+' paradas)</a></div>';
   }).withFailureHandler(function(e){
-    alert('Erro: '+vcMsgErro(e));
+    toast('Erro: '+vcMsgErro(e),'err');
   }).gerarLinkRotaDoDia(null, null, vcToken());
 }
 
@@ -477,13 +477,13 @@ function vcCadastroRapido(){
     /* Antes dizia "Pré-cadastro enviado" mesmo quando o backend recusava:
        o diretor saía da escola achando que tinha captado a ficha. */
     if(vcOk(r)){
-      alert(r.mensagem||'Pré-cadastro enviado.');
+      toast(r.mensagem||'Pré-cadastro enviado.','ok');
       carregarVisitasDoDia();
     } else {
-      alert('NÃO enviado: '+((r&&(r.mensagem||r.erro))||'falha no cadastro.'));
+      toast('NÃO enviado: '+((r&&(r.mensagem||r.erro))||'falha no cadastro.'),'err');
     }
   }).withFailureHandler(function(e){
-    alert('Erro: '+vcMsgErro(e));
+    toast('Erro: '+vcMsgErro(e),'err');
   }).cadastroRapidoNaVisita(VC_VISITA.ID_VISITA, {
     nome:nome, cpf:cpf, celular:celular, email:email, cargo:cargo
   }, vcToken());
@@ -522,7 +522,7 @@ function vcFinalizar(){
         vcFecharModal();
         carregarVisitasDoDia();
         if(window.mostrarSucesso) mostrarSucesso(r.mensagem);
-        else alert(r.mensagem);
+        else toast(r.mensagem,'ok');
       } else {
         vcMsg((r&&r.mensagem)||'Não foi possível finalizar.','erro');
       }

@@ -6,35 +6,39 @@
 ═══════════════════════════════════════════════════════════ */
 #blocoEscolas *, #blocoEscolas *::before, #blocoEscolas *::after { box-sizing:border-box; margin:0; padding:0; }
 #blocoEscolas {
-  --ce-navy:  #001f4d;
-  --ce-navy2: #002f6c;
-  --ce-blue:  #1565C0;
+  /* --ce-* herdam dos tokens canonicos de OficiosStyles.html (eram os
+     mesmos valores hex duplicados aqui) — ver CLAUDE.md. Mantidos como
+     alias --ce-* porque sao usados em ~700 pontos deste arquivo; convergir
+     aqui evita reescrever cada var(--ce-*) individualmente. */
+  --ce-navy:  var(--navy, #001f4d);
+  --ce-navy2: var(--navy2, #002f6c);
+  --ce-blue:  var(--blue, #1565C0);
   --ce-blue2: #0d52b5;
-  --ce-gold:  #C9A84C;
-  --ce-gold2: #f0c843;
-  --ce-g50:   #f8fafc;
-  --ce-g100:  #f1f5f9;
-  --ce-g200:  #e2e8f0;
-  --ce-g300:  #cbd5e1;
-  --ce-g400:  #94a3b8;
-  --ce-g500:  #64748b;
-  --ce-g600:  #475569;
-  --ce-g700:  #334155;
-  --ce-g800:  #1e293b;
-  --ce-g900:  #0f172a;
-  --ce-green: #059669;
-  --ce-green-lt:#d1fae5;
+  --ce-gold:  var(--gold, #C9A84C);
+  --ce-gold2: var(--gold2, #f0c843);
+  --ce-g50:   var(--g50, #f8fafc);
+  --ce-g100:  var(--g100, #f1f5f9);
+  --ce-g200:  var(--g200, #e2e8f0);
+  --ce-g300:  var(--g300, #cbd5e1);
+  --ce-g400:  var(--g400, #94a3b8);
+  --ce-g500:  var(--g500, #64748b);
+  --ce-g600:  var(--g600, #475569);
+  --ce-g700:  var(--g700, #334155);
+  --ce-g800:  var(--g800, #1e293b);
+  --ce-g900:  var(--g900, #0f172a);
+  --ce-green: var(--green, #059669);
+  --ce-green-lt:var(--green-lt, #d1fae5);
   --ce-green-dk:#065f46;
-  --ce-amber: #d97706;
-  --ce-amber-lt:#fef3c7;
-  --ce-red:   #dc2626;
-  --ce-red-lt:#fee2e2;
-  --ce-teal:  #0d9488;
-  --ce-rad:   12px;
+  --ce-amber: var(--amber, #d97706);
+  --ce-amber-lt:var(--amber-lt, #fef3c7);
+  --ce-red:   var(--red, #dc2626);
+  --ce-red-lt:var(--red-lt, #fee2e2);
+  --ce-teal:  var(--teal, #0d9488);
+  --ce-rad:   var(--rad, 12px);
   --ce-rad-lg:18px;
-  --ce-sh-sm: 0 2px 8px rgba(0,20,60,.07),0 1px 3px rgba(0,20,60,.05);
-  --ce-sh-md: 0 6px 24px rgba(0,20,60,.10),0 2px 8px rgba(0,20,60,.06);
-  --ce-sh-lg: 0 16px 48px rgba(0,20,60,.14),0 4px 16px rgba(0,20,60,.08);
+  --ce-sh-sm: var(--sh-sm, 0 2px 8px rgba(0,20,60,.07),0 1px 3px rgba(0,20,60,.05));
+  --ce-sh-md: var(--sh-md, 0 6px 24px rgba(0,20,60,.10),0 2px 8px rgba(0,20,60,.06));
+  --ce-sh-lg: var(--sh-lg, 0 16px 48px rgba(0,20,60,.14),0 4px 16px rgba(0,20,60,.08));
   font-family:'Plus Jakarta Sans',Arial,sans-serif;
   color:var(--ce-g900);
 }
@@ -42,7 +46,7 @@
 /* ── Header ── */
 .ce-header {
   margin:-32px -24px 0;
-  background: linear-gradient(135deg, #001f4d 0%, #002f6c 50%, #1565C0 100%);
+  background: linear-gradient(135deg, var(--ce-navy) 0%, var(--ce-navy2) 50%, var(--ce-blue) 100%);
   padding:22px 24px 18px;
   display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
 }
