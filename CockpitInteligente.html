@@ -429,7 +429,7 @@ window.ckInit = function() {
     .withFailureHandler(function(){
       ckCarregarEmailsFallback();
     })
-    .getCockpit();
+    .getCockpit(SISGEP_TOKEN_SESSAO);
 };
 
 /* ── FALLBACK: carrega só e-mails ── */
