@@ -286,7 +286,8 @@ var linhas = dados.slice(1);
 /* ============================================================= */
 /* CONSULTA EXTERNA DE CNPJ                                      */
 /* ============================================================= */
-function consultarCNPJExterno(cnpj) {
+function consultarCNPJExterno(cnpj, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     var digits = String(cnpj || "").replace(/\D/g, "");
     if (digits.length !== 14) {
@@ -360,17 +361,18 @@ function consultarCNPJExterno(cnpj) {
   }
 }
 
-function consultarCnpjEscola(cnpj) {
-  return consultarCNPJExterno(cnpj);
+function consultarCnpjEscola(cnpj, tokenSessao) {
+  return consultarCNPJExterno(cnpj, tokenSessao);
 }
 
 /* ============================================================= */
 /* SINCRONIZAR ESCOLA POR CNPJ                                   */
 /* ✅ Suporta colunas antigas E novas (CAB_ESCOLAS)              */
 /* ============================================================= */
-function sincronizarEscolaPorCnpj(cnpj, forcar) {
+function sincronizarEscolaPorCnpj(cnpj, forcar, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
-    var externo = consultarCNPJExterno(cnpj);
+    var externo = consultarCNPJExterno(cnpj, tokenSessao);
     if (externo.erro) return { erro: true, mensagem: externo.mensagem };
 
     var digits  = String(cnpj || "").replace(/\D/g, "");
@@ -457,11 +459,12 @@ var row = i + 2;
   }
 }
 
-function sincronizarCNPJ(cnpj) {
-  return sincronizarEscolaPorCnpj(cnpj, false);
+function sincronizarCNPJ(cnpj, tokenSessao) {
+  return sincronizarEscolaPorCnpj(cnpj, false, tokenSessao);
 }
 
-function sincronizarTodasEscolas(forcar) {
+function sincronizarTodasEscolas(forcar, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, true);
   try {
     var ss  = SpreadsheetApp.openById(PLANILHA_ID);
     var aba = ss.getSheetByName("Escolas") || ss.getSheetByName(PLANILHA_REGISTRO);
@@ -483,7 +486,7 @@ function sincronizarTodasEscolas(forcar) {
       visto[digits] = true;
       Utilities.sleep(1200);
 
-      var resp = sincronizarEscolaPorCnpj(digits, forcar === true);
+      var resp = sincronizarEscolaPorCnpj(digits, forcar === true, tokenSessao);
       if (resp.erro) {
         erros++;
         resultados.push({ ok: false, status: "ERRO", cnpj: formatarCNPJ_(digits), mensagem: resp.mensagem });
@@ -504,7 +507,8 @@ function sincronizarTodasEscolas(forcar) {
 /* ============================================================= */
 /* SALVAR DADOS ESCOLA (compatibilidade legado)                  */
 /* ============================================================= */
-function salvarDadosEscola(dados) {
+function salvarDadosEscola(dados, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     dados = dados || {};
     var escola       = String(dados.escola || "").trim();
@@ -606,8 +610,8 @@ var colNome      = colOuNovo_(h, "NomeEscola",  ["Escola (Razão Social)", "Esco
   }
 }
 
-function salvarEscola(dados) {
-  return salvarDadosEscola(dados);
+function salvarEscola(dados, tokenSessao) {
+  return salvarDadosEscola(dados, tokenSessao);
 }
 
 /* ============================================================= */

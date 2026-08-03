@@ -29,7 +29,8 @@ var PAUSA_MS        = 1200; // intervalo entre chamadas BrasilAPI
 /* ─────────────────────────────────────────────────────────────
    1. CRIAR ABAS AUXILIARES
 ───────────────────────────────────────────────────────────── */
-function criarAbasModuloReceita() {
+function criarAbasModuloReceita(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     var ss = SpreadsheetApp.openById(PLANILHA_ID);
 
@@ -74,10 +75,11 @@ function criarAbasModuloReceita() {
 /* ─────────────────────────────────────────────────────────────
    2. PROCESSAR EXTRAÇÃO — consulta BrasilAPI, filtra e compara
 ───────────────────────────────────────────────────────────── */
-function processarExtracaoOficialReceita() {
+function processarExtracaoOficialReceita(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     // Garante que as abas existem
-    criarAbasModuloReceita();
+    criarAbasModuloReceita(tokenSessao);
 
     var ss       = SpreadsheetApp.openById(PLANILHA_ID);
     var shExt    = ss.getSheetByName(ABA_EXTRACAO);
@@ -223,7 +225,8 @@ function processarExtracaoOficialReceita() {
 /* ─────────────────────────────────────────────────────────────
    3. IMPORTAR NOVAS ESCOLAS
 ───────────────────────────────────────────────────────────── */
-function importarNovasEscolasReceita() {
+function importarNovasEscolasReceita(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     var ss     = SpreadsheetApp.openById(PLANILHA_ID);
     var shComp = ss.getSheetByName(ABA_COMPARACAO);
@@ -277,7 +280,7 @@ function importarNovasEscolasReceita() {
         uf:         iUf     > -1 ? String(linha[iUf    ] || "").trim() : "",
         cep:        iCep    > -1 ? String(linha[iCep   ] || "").trim() : "",
         situacao:   "ATIVA"
-      });
+      }, tokenSessao);
 
       if (resultado && resultado.ok) importadas++;
     });
@@ -299,20 +302,21 @@ function importarNovasEscolasReceita() {
 /* ─────────────────────────────────────────────────────────────
    ALIASES — compatibilidade com CadastroEscolas.html
 ───────────────────────────────────────────────────────────── */
-function captarNovasEscolasReceita()    { return processarExtracaoOficialReceita(); }
-function filtrarEscolasNovas()          { return processarExtracaoOficialReceita(); }
-function compararComBaseEscolas()       { return processarExtracaoOficialReceita(); }
-function criarAbaExtracaoCnpjOficial()  { return criarAbasModuloReceita(); }
+function captarNovasEscolasReceita(tokenSessao)    { return processarExtracaoOficialReceita(tokenSessao); }
+function filtrarEscolasNovas(tokenSessao)          { return processarExtracaoOficialReceita(tokenSessao); }
+function compararComBaseEscolas(tokenSessao)       { return processarExtracaoOficialReceita(tokenSessao); }
+function criarAbaExtracaoCnpjOficial(tokenSessao)  { return criarAbasModuloReceita(tokenSessao); }
 
-function executarPipelineReceita() {
-  var proc = processarExtracaoOficialReceita();
+function executarPipelineReceita(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
+  var proc = processarExtracaoOficialReceita(tokenSessao);
   if (!proc.ok) return { ok: false, mensagem: proc.mensagem };
   if ((proc.novas || 0) === 0) return {
     ok: true,
     captar: proc, filtrar: proc, comparar: proc,
     mensagem: "Nenhuma escola nova para importar."
   };
-  var imp = importarNovasEscolasReceita();
+  var imp = importarNovasEscolasReceita(tokenSessao);
   return {
     ok:      imp.ok,
     captar:  { gravadas: proc.inseridas,    erros: proc.erros, invalidos: 0, repetidos: proc.existentes },

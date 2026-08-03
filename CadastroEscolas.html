@@ -965,17 +965,6 @@
         </ol>
       </div>
 
-      <!-- Ações avançadas -->
-      <div style="border-top:1px solid var(--ce-g200);padding-top:12px;">
-        <div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--ce-g400);margin-bottom:10px;">Ações individuais</div>
-        <div class="ce-acoes">
-          <button type="button" class="ce-btn ce-btn-ghost ce-btn-sm" id="btnCeCaptar">📥 Captar CNPJs</button>
-          <button type="button" class="ce-btn ce-btn-ghost ce-btn-sm" id="btnCeFiltrar">🎯 Filtrar Educação ES</button>
-          <button type="button" class="ce-btn ce-btn-ghost ce-btn-sm" id="btnCeComparar">🔎 Comparar com Base</button>
-          <button type="button" class="ce-btn ce-btn-ghost ce-btn-sm" id="btnCeCriarAbaExt">🏛️ Criar Aba Extração</button>
-        </div>
-      </div>
-
       <div id="ceMsgReceita" class="ce-msg"></div>
     </div>
   </div>
@@ -1472,7 +1461,7 @@ function consultarCnpj(){
       ceCnpjStatus("✅ Dados preenchidos automaticamente pelo CNPJ.","ok");
     })
     .withFailureHandler(function(err){ btnReset(btn); ceCnpjStatus("Erro: "+esc((err&&err.message)||String(err||"")),"err"); })
-    .consultarCnpjEscola(cnpj);
+    .consultarCnpjEscola(cnpj,SISGEP_TOKEN_SESSAO);
 }
 
 function sincronizarCnpj(){
@@ -1488,7 +1477,7 @@ function sincronizarCnpj(){
       carregarLista();
     })
     .withFailureHandler(function(err){ btnReset(btn); ceCnpjStatus("Erro: "+esc((err&&err.message)||String(err||"")),"err"); })
-    .sincronizarEscolaPorCnpj(cnpj,true);
+    .sincronizarEscolaPorCnpj(cnpj,true,SISGEP_TOKEN_SESSAO);
 }
 
 /* ── CEP automático via ViaCEP ── */
@@ -1602,7 +1591,7 @@ function runReceita(fnName,btnId,loadingTxt,stepAtivo,successFn){
   if(stepAtivo)setPipelineStep(stepAtivo);
   google.script.run
     .withSuccessHandler(function(resp){ btnReset(btn); successFn(resp); })
-    .withFailureHandler(function(err){ btnReset(btn); ceMsg("ceMsgReceita","Erro: "+esc((err&&err.message)||String(err||"")),"err"); setPipelineStep(1); })[fnName]();
+    .withFailureHandler(function(err){ btnReset(btn); ceMsg("ceMsgReceita","Erro: "+esc((err&&err.message)||String(err||"")),"err"); setPipelineStep(1); })[fnName](SISGEP_TOKEN_SESSAO);
 }
 
 function mostrarCompBar(r){
@@ -1630,13 +1619,9 @@ function executarPipeline(){
       setPipelineStep(5); carregarLista();
     })
     .withFailureHandler(function(err){ btnReset(btn); ceMsg("ceMsgReceita","Erro: "+esc((err&&err.message)||String(err||"")),"err"); setPipelineStep(1); })
-    .executarPipelineReceita();
+    .executarPipelineReceita(SISGEP_TOKEN_SESSAO);
 }
 
-function captarCnpjs()   { runReceita("captarNovasEscolasReceita","btnCeCaptar","Captando...",3,function(r){ ceMsg("ceMsgReceita",r.ok?"✅ Captadas: <strong>"+(r.gravadas||0)+"</strong>":(r.mensagem||"Erro."),"ok"); }); }
-function filtrarEscolas(){ runReceita("filtrarEscolasNovas","btnCeFiltrar","Filtrando...",3,function(r){ ceMsg("ceMsgReceita",r.ok?"✅ Filtradas: <strong>"+(r.filtradas||0)+"</strong>":(r.mensagem||"Erro."),"ok"); }); }
-function compararBase()  { runReceita("compararComBaseEscolas","btnCeComparar","Comparando...",4,function(r){ ceMsg("ceMsgReceita",r.ok?"✅ Novas: <strong>"+(r.novas||0)+"</strong> · Existentes: <strong>"+(r.existentes||0)+"</strong>":(r.mensagem||"Erro."),"ok"); mostrarCompBar(r); }); }
-function criarAbaExt()   { runReceita("criarAbaExtracaoCnpjOficial","btnCeCriarAbaExt","Criando...",1,function(r){ ceMsg("ceMsgReceita",r.ok?"✅ "+esc(r.mensagem||"Aba criada."):(r.mensagem||"Erro."),"ok"); }); }
 
 /* ═══════════════════════════════════
    BIND EVENTOS
@@ -1716,10 +1701,6 @@ function bindEventos(){
   bind("btnCeProcessar",processarExtracao);
   bind("btnCeImportarRec",importarReceita);
   bind("btnCePipeline",executarPipeline);
-  bind("btnCeCaptar",captarCnpjs);
-  bind("btnCeFiltrar",filtrarEscolas);
-  bind("btnCeComparar",compararBase);
-  bind("btnCeCriarAbaExt",criarAbaExt);
 
   // Máscaras
   mask("ceCnpj",mascaraCnpj);
