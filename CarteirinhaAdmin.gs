@@ -232,7 +232,7 @@ function cartAd_emailAssociado_(cpfLimpo) {
  * manter uma identidade única de comunicação em todo o SISGEP.
  */
 function cartAd_enviarEmailAprovacao_(email, nome, validade) {
-  if (!email) return;
+  if (!email) return { ok: false, mensagem: 'Associado sem e-mail cadastrado — notificação não enviada.' };
   var corpo = '<p>Olá, <b>' + sindAdm_esc_(nome) + '</b>!</p>' +
     '<p>Sua carteirinha digital foi <b>aprovada e emitida</b>. Já está disponível no Portal do Associado para você visualizar, baixar ou imprimir.</p>';
   var destaque =
@@ -245,8 +245,10 @@ function cartAd_enviarEmailAprovacao_(email, nome, validade) {
   try {
     GmailApp.sendEmail(email, 'Sua carteirinha está pronta — ' + SIND_ENTIDADE_SIGLA, textoSimples,
       sind_opcoesEmail_({ htmlBody: sind_emailHtml_('Carteirinha aprovada', corpo, destaque) }));
+    return { ok: true };
   } catch (e) {
     Logger.log('cartAd_enviarEmailAprovacao_: ' + e.message);
+    return { ok: false, mensagem: 'Falha ao enviar e-mail de notificação: ' + e.message };
   }
 }
 
@@ -295,7 +297,7 @@ function cartAd_enviarLinkPortal(cpf, tokenSessao) {
 }
 
 function cartAd_enviarEmailRejeicao_(email, nome, motivo) {
-  if (!email) return;
+  if (!email) return { ok: false, mensagem: 'Associado sem e-mail cadastrado — notificação não enviada.' };
   var corpo = '<p>Olá, <b>' + sindAdm_esc_(nome) + '</b>!</p>' +
     '<p>Sua solicitação de carteirinha digital foi analisada e a foto enviada não pôde ser aprovada.</p>';
   var destaque =
@@ -309,8 +311,10 @@ function cartAd_enviarEmailRejeicao_(email, nome, motivo) {
   try {
     GmailApp.sendEmail(email, 'Sua carteirinha precisa de uma nova foto — ' + SIND_ENTIDADE_SIGLA, textoSimples,
       sind_opcoesEmail_({ htmlBody: sind_emailHtml_('Foto não aprovada', corpo + extra, destaque) }));
+    return { ok: true };
   } catch (e) {
     Logger.log('cartAd_enviarEmailRejeicao_: ' + e.message);
+    return { ok: false, mensagem: 'Falha ao enviar e-mail de notificação: ' + e.message };
   }
 }
 
@@ -341,7 +345,11 @@ function aprovarEEmitirCarteirinha(cpf, validade, tokenSessao) {
 
     var resultado = emitirCarteirinha(cpfLimpo, validade, tokenSessao);
     if (resultado && resultado.sucesso) {
-      cartAd_enviarEmailAprovacao_(cartAd_emailAssociado_(cpfLimpo), nomeAssociado, validade);
+      var envioEmail = cartAd_enviarEmailAprovacao_(cartAd_emailAssociado_(cpfLimpo), nomeAssociado, validade);
+      if (envioEmail && !envioEmail.ok) {
+        resultado.avisoEmail = envioEmail.mensagem;
+        resultado.mensagem = (resultado.mensagem || 'Carteirinha aprovada e emitida.') + ' Atenção: ' + envioEmail.mensagem;
+      }
     }
     return resultado;
   } catch (e) {
@@ -478,8 +486,15 @@ function rejeitarSolicitacaoCarteirinha(cpf, motivo, tokenSessao) {
     cartAd_garantirColunaMotivo_(sh);
     sh.getRange(linha, 9).setValue(String(motivo).trim());
 
-    cartAd_enviarEmailRejeicao_(cartAd_emailAssociado_(cpfLimpo), nomeAssociado, String(motivo).trim());
-    return { sucesso: true, mensagem: 'Solicitação rejeitada. O associado vai receber um e-mail com o motivo e pode enviar outra foto.' };
+    var envioEmail = cartAd_enviarEmailRejeicao_(cartAd_emailAssociado_(cpfLimpo), nomeAssociado, String(motivo).trim());
+    if (envioEmail && envioEmail.ok) {
+      return { sucesso: true, mensagem: 'Solicitação rejeitada. O associado vai receber um e-mail com o motivo e pode enviar outra foto.' };
+    }
+    return {
+      sucesso: true,
+      mensagem: 'Solicitação rejeitada. Atenção: ' + (envioEmail ? envioEmail.mensagem : 'não foi possível notificar o associado por e-mail.'),
+      avisoEmail: envioEmail ? envioEmail.mensagem : null
+    };
   } catch (e) {
     Logger.log('rejeitarSolicitacaoCarteirinha: ' + e);
     return { sucesso: false, mensagem: 'Erro ao rejeitar: ' + e.message };
