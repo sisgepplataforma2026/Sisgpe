@@ -8,7 +8,7 @@
 // ============================================================================
 
 function analisarEscolaIA_Oficios_(cnpjOuNome, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  exigirSessaoDocumentos_(tokenSessao, false);
   cnpjOuNome = String(cnpjOuNome || "").trim();
 
   if (!cnpjOuNome) {
@@ -36,56 +36,18 @@ function analisarEscolaIA_Oficios_(cnpjOuNome, tokenSessao) {
 
   var itensHistorico = historico && historico.itens ? historico.itens : [];
 
-  var resumoHistorico = itensHistorico.slice(0, 10).map(function(item, i) {
-    return [
-      (i + 1) + ".",
-      "Data: " + (item.data || "-"),
-      "Número: " + (item.numero || "-"),
-      "Tipo: " + (item.tipo || "-"),
-      "Status: " + (item.status || "-")
-    ].join(" ");
-  }).join("\n");
-
-  if (!resumoHistorico) {
-    resumoHistorico = "Nenhum histórico de ofícios localizado.";
-  }
-
-  var prompt = [
-    "Analise a escola abaixo com base nos dados do SISGEP.",
-    "",
-    "DADOS DA ESCOLA:",
-    "Nome: " + (escola.escola || escola.nome || ""),
-    "CNPJ: " + (escola.cnpj || ""),
-    "E-mail principal: " + (escola.email || ""),
-    "E-mails todos: " + (escola.emailsTodos || ""),
-    "Cidade: " + (escola.cidade || ""),
-    "UF: " + (escola.uf || ""),
-    "Endereço: " + (escola.endereco || ""),
-    "",
-    "HISTÓRICO DE OFÍCIOS:",
-    resumoHistorico,
-    "",
-    "Responda em formato objetivo:",
-    "1. Resumo da situação da escola",
-    "2. Pontos de atenção",
-    "3. Próxima ação recomendada",
-    "4. Tipo de ofício sugerido, se aplicável",
-    "",
-    "Regras:",
-    "- Não invente informações.",
-    "- Se não houver histórico, diga claramente.",
-    "- Não diga que há débito se isso não estiver nos dados.",
-    "- Use linguagem profissional e direta."
-  ].join("\n");
-
-  var resposta = chamarIA_SISGEP(prompt);
-  registrarAuditoriaSofia_(sessao, "Escolas", "analisarEscolaIA_Oficios_: " + cnpjOuNome, resposta, true);
+  // ESC-H: reaproveita analisarEscolaIA (IACore.gs) — mesma análise por IA
+  // que o botão "Analisar Escola" de CadastroEscolas.html já usa — em vez
+  // de manter um segundo prompt e um segundo caminho de LLM
+  // (chamarIA_SISGEP) fazendo essencialmente a mesma coisa. Já registra a
+  // própria auditoria em Sofia_Auditoria.
+  var analise = analisarEscolaIA(escola.cnpj || cnpjOuNome, tokenSessao);
 
   return {
     erro: false,
     escola: escola,
     totalHistorico: itensHistorico.length,
-    resposta: resposta
+    resposta: analise.resposta
   };
 }
 function analisarEscolaIA_HTML(cnpjOuNome, tokenSessao) {
