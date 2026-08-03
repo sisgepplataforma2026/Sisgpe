@@ -1275,7 +1275,7 @@ function ceMassaAtualizarSituacao(novaSituacao){
       btnReset(btn);
       ceMsg("ceMsgTabela","Erro: "+esc((err&&err.message)||String(err||"")),"err");
     })
-    .atualizarSituacaoEscolasEmLote(cnpjs,novaSituacao);
+    .atualizarSituacaoEscolasEmLote(cnpjs,novaSituacao,SISGEP_TOKEN_SESSAO);
 }
 
 function ceMassaExcluir(){
@@ -1296,7 +1296,7 @@ function ceMassaExcluir(){
       btnReset(btn);
       ceMsg("ceMsgTabela","Erro: "+esc((err&&err.message)||String(err||"")),"err");
     })
-    .excluirEscolasEmLote(cnpjs);
+    .excluirEscolasEmLote(cnpjs,SISGEP_TOKEN_SESSAO);
 }
 
 function ceMassaEmail(){
@@ -1526,7 +1526,7 @@ function salvarEscola(){
       limparForm(); carregarLista();
     })
     .withFailureHandler(function(err){ btnReset(btn); ceMsg("ceMsgBox","Erro: "+esc((err&&err.message)||String(err||"")),"err"); })
-    .cadastrarEscola(dados);
+    .cadastrarEscola(dados,SISGEP_TOKEN_SESSAO);
 }
 
 /* ═══════════════════════════════════
@@ -1538,7 +1538,7 @@ function importarDeAba(){
   google.script.run
     .withSuccessHandler(function(res){ btnReset(btn); res=res||{}; ceMsg("ceMsgBox","✅ Importação concluída! Importadas: <strong>"+(res.importadas||0)+"</strong> · Atualizadas: <strong>"+(res.atualizadas||0)+"</strong> · Puladas: <strong>"+(res.puladas||0)+"</strong>","ok"); carregarLista(); })
     .withFailureHandler(function(err){ btnReset(btn); ceMsg("ceMsgBox","Erro ao importar: "+esc((err&&err.message)||String(err||"")),"err"); })
-    .importarEscolasDeAba();
+    .importarEscolasDeAba(SISGEP_TOKEN_SESSAO);
 }
 
 function analisarDup(){
@@ -1553,7 +1553,7 @@ function analisarDup(){
       ceMsg("ceMsgBox",html,resp.duplicadas>0?"warn":"ok");
     })
     .withFailureHandler(function(err){ btnReset(btn); ceMsg("ceMsgBox","Erro: "+esc((err&&err.message)||String(err||"")),"err"); })
-    .analisarEscolasDuplicadas();
+    .analisarEscolasDuplicadas(SISGEP_TOKEN_SESSAO);
 }
 
 function removerDup(){
@@ -1568,7 +1568,7 @@ function removerDup(){
       carregarLista();
     })
     .withFailureHandler(function(err){ btnReset(btn); ceMsg("ceMsgBox","Erro: "+esc((err&&err.message)||String(err||"")),"err"); })
-    .removerEscolasDuplicadas();
+    .removerEscolasDuplicadas(SISGEP_TOKEN_SESSAO);
 }
 
 function exportarCsv(){

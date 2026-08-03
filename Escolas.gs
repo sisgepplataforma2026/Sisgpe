@@ -138,7 +138,8 @@ function invalidarCacheEscolasInterno_() {
 /* =============================================================== */
 /* CADASTRAR / ATUALIZAR ESCOLA                                     */
 /* =============================================================== */
-function cadastrarEscola(dados) {
+function cadastrarEscola(dados, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     dados = dados || {};
     const ss = SpreadsheetApp.openById(PLANILHA_ID);
@@ -324,7 +325,8 @@ function listarEscolasCadastroInterno() { return listarEscolasCadastro(); }
 /* =============================================================== */
 /* AÇÕES EM MASSA                                                   */
 /* =============================================================== */
-function atualizarSituacaoEscolasEmLote(cnpjs, novaSituacao) {
+function atualizarSituacaoEscolasEmLote(cnpjs, novaSituacao, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     if (!Array.isArray(cnpjs) || !cnpjs.length) {
       return { ok: false, mensagem: "Nenhum CNPJ informado para atualização em lote." };
@@ -372,7 +374,8 @@ function atualizarSituacaoEscolasEmLote(cnpjs, novaSituacao) {
   }
 }
 
-function excluirEscolasEmLote(cnpjs) {
+function excluirEscolasEmLote(cnpjs, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, true);
   try {
     if (!Array.isArray(cnpjs) || !cnpjs.length) {
       return { ok: false, mensagem: "Nenhum CNPJ informado para exclusão em lote." };
@@ -429,7 +432,8 @@ function excluirEscolasEmLote(cnpjs) {
 /* =============================================================== */
 /* ANALISAR / REMOVER DUPLICADAS (mantidas do original)            */
 /* =============================================================== */
-function analisarEscolasDuplicadas() {
+function analisarEscolasDuplicadas(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     const ss = SpreadsheetApp.openById(PLANILHA_ID);
     const sh = ss.getSheetByName(ABA_ESCOLAS);
@@ -478,7 +482,8 @@ function analisarEscolasDuplicadas() {
   }
 }
 
-function removerEscolasDuplicadas() {
+function removerEscolasDuplicadas(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, true);
   try {
     const ss = SpreadsheetApp.openById(PLANILHA_ID);
     const sh = ss.getSheetByName(ABA_ESCOLAS);
@@ -583,8 +588,8 @@ function obterEstatisticasEscolas(tokenSessao) {
   }
 }
 
-function resumoDashboardEscolas() {
-  const stats = obterEstatisticasEscolas();
+function resumoDashboardEscolas(tokenSessao) {
+  const stats = obterEstatisticasEscolas(tokenSessao);
   return {
     total:    stats.total   || 0,
     comEmail: stats.comEmail|| 0,
@@ -599,7 +604,8 @@ function resumoDashboardEscolas() {
 /* (mantidos do Escolas.gs original, apenas ajustando nomes das    */
 /*  colunas nos pontos onde referenciavam os nomes antigos)        */
 /* =============================================================== */
-function importarEscolasDeAba() {
+function importarEscolasDeAba(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     const ss        = SpreadsheetApp.openById(PLANILHA_ID);
     const abaOrigem = ss.getSheetByName("IMPORTACAO_ESCOLAS");
@@ -631,7 +637,7 @@ function importarEscolasDeAba() {
         cidade:     get(r,iCidade),
         uf:         get(r,iUF),
         situacao:   "ATIVA"
-      });
+      }, tokenSessao);
       if (res && res.ok) { if (res.atualizado) atualizadas++; else importadas++; }
       else puladas++;
     }
