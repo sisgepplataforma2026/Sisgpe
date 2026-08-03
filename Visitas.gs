@@ -1021,7 +1021,7 @@ function visitas_usuarioAtual_(tokenSessao) {
 
 function visitas_planilha_() {
   return SpreadsheetApp.getActiveSpreadsheet() ||
-    SpreadsheetApp.openById('1QPpsx19v4YzfskoYXK9WB89TClA7q8SWGSn55VZ040E');
+    SpreadsheetApp.openById(PLANILHA_ID);
 }
 
 function visitas_aba_() {
