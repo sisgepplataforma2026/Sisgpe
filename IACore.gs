@@ -14,7 +14,8 @@
    Parâmetro: chave = CNPJ (preferencial) ou nome da escola
    Retorna: { resposta: "texto formatado" }
 ───────────────────────────────────────────────────────────────── */
-function analisarEscolaIA(chave) {
+function analisarEscolaIA(chave, tokenSessao) {
+  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
   try {
     chave = String(chave || "").trim();
     if (!chave) return { resposta: "Nenhuma escola informada para análise." };
@@ -100,10 +101,12 @@ function analisarEscolaIA(chave) {
     ].join("\n");
 
     var resposta = chamarClaude_SISGEP(prompt);
+    registrarAuditoriaSofia_(sessao, "Escolas", "analisarEscolaIA: " + chave, resposta, true);
     return { resposta: resposta };
 
   } catch (e) {
     Logger.log("[analisarEscolaIA] erro: " + e.message);
+    registrarAuditoriaSofia_(sessao, "Escolas", "analisarEscolaIA: " + chave, "ERRO: " + e.message, false);
     return { resposta: "Erro ao analisar escola: " + e.message };
   }
 }
@@ -118,7 +121,8 @@ function analisarEscolaIA(chave) {
    }
    Retorna: { texto: "corpo do ofício gerado" }
 ───────────────────────────────────────────────────────────────── */
-function gerarOficioIA(dados) {
+function gerarOficioIA(dados, tokenSessao) {
+  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
   try {
     dados = dados || {};
 
@@ -174,10 +178,12 @@ function gerarOficioIA(dados) {
     ].filter(Boolean).join("\n");
 
     var texto = chamarClaude_SISGEP(prompt);
+    registrarAuditoriaSofia_(sessao, "Escolas", "gerarOficioIA: " + tipo + " / " + escola, texto, true);
     return { texto: String(texto || "").trim() };
 
   } catch (e) {
     Logger.log("[gerarOficioIA] erro: " + e.message);
+    registrarAuditoriaSofia_(sessao, "Escolas", "gerarOficioIA", "ERRO: " + e.message, false);
     return { texto: "Erro ao gerar ofício: " + e.message };
   }
 }
@@ -192,7 +198,8 @@ function gerarOficioIA(dados) {
    }
    Retorna: { resposta: "texto sugerido para resposta" }
 ───────────────────────────────────────────────────────────────── */
-function responderEmailIA(dados) {
+function responderEmailIA(dados, tokenSessao) {
+  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
   try {
     dados = dados || {};
 
@@ -234,10 +241,12 @@ function responderEmailIA(dados) {
     ].filter(Boolean).join("\n");
 
     var resposta = chamarClaude_SISGEP(prompt);
+    registrarAuditoriaSofia_(sessao, "Escolas", "responderEmailIA: " + assunto, resposta, true);
     return { resposta: String(resposta || "").trim() };
 
   } catch (e) {
     Logger.log("[responderEmailIA] erro: " + e.message);
+    registrarAuditoriaSofia_(sessao, "Escolas", "responderEmailIA", "ERRO: " + e.message, false);
     return { resposta: "Erro ao gerar resposta: " + e.message };
   }
 }

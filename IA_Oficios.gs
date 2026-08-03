@@ -7,7 +7,8 @@
 // - listarHistoricoOficios(filtros)
 // ============================================================================
 
-function analisarEscolaIA_Oficios_(cnpjOuNome) {
+function analisarEscolaIA_Oficios_(cnpjOuNome, tokenSessao) {
+  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
   cnpjOuNome = String(cnpjOuNome || "").trim();
 
   if (!cnpjOuNome) {
@@ -78,6 +79,7 @@ function analisarEscolaIA_Oficios_(cnpjOuNome) {
   ].join("\n");
 
   var resposta = chamarIA_SISGEP(prompt);
+  registrarAuditoriaSofia_(sessao, "Escolas", "analisarEscolaIA_Oficios_: " + cnpjOuNome, resposta, true);
 
   return {
     erro: false,
@@ -86,8 +88,8 @@ function analisarEscolaIA_Oficios_(cnpjOuNome) {
     resposta: resposta
   };
 }
-function analisarEscolaIA_HTML(cnpjOuNome) {
-  var r = analisarEscolaIA_Oficios_(cnpjOuNome);
+function analisarEscolaIA_HTML(cnpjOuNome, tokenSessao) {
+  var r = analisarEscolaIA_Oficios_(cnpjOuNome, tokenSessao);
 
   if (r.erro) {
     return '<div style="color:#991b1b;font-weight:700;">' + r.mensagem + '</div>';

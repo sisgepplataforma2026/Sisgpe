@@ -1769,7 +1769,7 @@ function ceExecutarAnaliseIA() {
         + String((erro && erro.message) || erro || 'Erro desconhecido')
         + '</div>';
     })
-    .analisarEscolaIA(chave);
+    .analisarEscolaIA(chave,SISGEP_TOKEN_SESSAO);
 }
 // ================================================================
 // PATCH CIRÚRGICO — CadastroEscolas.html
@@ -1861,7 +1861,7 @@ function ceGerarOficioIA() {
           + '</div>';
       }
     })
-    .gerarOficioIA(dados);
+    .gerarOficioIA(dados,SISGEP_TOKEN_SESSAO);
 }
 
 
@@ -1944,7 +1944,7 @@ function ceResponderEmailIA() {
           + '</div>';
       }
     })
-    .responderEmailIA(dados);
+    .responderEmailIA(dados,SISGEP_TOKEN_SESSAO);
 }
 
 
