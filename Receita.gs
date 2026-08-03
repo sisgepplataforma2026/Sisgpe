@@ -76,9 +76,11 @@ function normalizarValorReceita_(valor) {
 /* =========================================
  * CADASTRAR RECEITA
  * ========================================= */
-function cadastrarReceita(dados) {
+function cadastrarReceita(dados, tokenSessao) {
 
   try {
+
+    exigirSessaoDocumentos_(tokenSessao, false);
 
     garantirEstruturaReceitas_();
 
@@ -129,9 +131,11 @@ function cadastrarReceita(dados) {
 /* =========================================
  * LISTAR RECEITAS
  * ========================================= */
-function listarReceitas() {
+function listarReceitas(tokenSessao) {
 
   try {
+
+    exigirSessaoDocumentos_(tokenSessao, false);
 
     garantirEstruturaReceitas_();
 
@@ -172,11 +176,13 @@ function listarReceitas() {
 /* =========================================
  * RESUMO RECEITAS
  * ========================================= */
-function obterResumoReceitas() {
+function obterResumoReceitas(tokenSessao) {
 
   try {
 
-    const receitas = listarReceitas();
+    exigirSessaoDocumentos_(tokenSessao, false);
+
+    const receitas = listarReceitas(tokenSessao);
 
     let total = 0;
 
@@ -205,9 +211,11 @@ function obterResumoReceitas() {
 /* =========================================
  * EXCLUIR RECEITA
  * ========================================= */
-function excluirReceita(idReceita) {
+function excluirReceita(idReceita, tokenSessao) {
 
   try {
+
+    exigirSessaoDocumentos_(tokenSessao, true);
 
     garantirEstruturaReceitas_();
 

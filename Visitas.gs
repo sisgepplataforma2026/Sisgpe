@@ -1449,17 +1449,37 @@ function diagnosticarCidadesVisitas() {
 /**
  * LIMPEZA PRE-LANCAMENTO - apaga TODAS as linhas da aba SISGEP_Visitas e
  * devolve as escolas ao estado PENDENTE, preservando a classificacao de
- * equipe. Registra no log o que foi apagado, antes de apagar.
+ * equipe. Faz backup completo da aba de visitas antes de apagar. Registra
+ * no log o que foi apagado, antes de apagar.
+ *
+ * Exige sessao de administrador/diretoria e uma confirmacao explicita
+ * (confirmacao === 'CONFIRMAR') - inclusive quando rodada pelo editor.
  *
  * Use apenas enquanto tudo que existe e dado de teste. Depois do inicio da
  * operacao, esta funcao destroi historico real.
  */
-function limparVisitasDeTeste() {
+function limparVisitasDeTeste(tokenSessao, confirmacao) {
+  var sessao = visitas_exigirSessao_(tokenSessao);
+  if (!visitas_ehGestor_(sessao)) throw new Error('Ação permitida somente para administradores.');
+  if (String(confirmacao || '') !== 'CONFIRMAR') {
+    throw new Error('Confirmação obrigatória: informe confirmacao="CONFIRMAR" para apagar todas as visitas.');
+  }
+
   var aba = visitas_aba_();
   var ultima = aba.getLastRow();
   var apagadas = 0;
+  var nomeBackup = '';
 
   if (ultima >= 2) {
+    var ss = visitas_planilha_();
+    var dadosCompletos = aba.getRange(1, 1, ultima, aba.getLastColumn()).getValues();
+    nomeBackup = 'BACKUP_VISITAS_LIMPEZA_' +
+      Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd_HHmmss');
+    var shBackup = ss.insertSheet(nomeBackup);
+    shBackup.getRange(1, 1, dadosCompletos.length, dadosCompletos[0].length).setValues(dadosCompletos);
+    shBackup.getRange(1, 1, 1, dadosCompletos[0].length).setFontWeight('bold');
+    shBackup.setFrozenRows(1);
+
     visitas_lerTodas_().forEach(function (v) {
       Logger.log('APAGANDO: ' + v.ID_VISITA + ' | ' + v.ESCOLA +
         ' | ' + v.DATA_AGENDADA + ' | ' + v.STATUS);
@@ -1494,11 +1514,14 @@ function limparVisitasDeTeste() {
 
   visitas_limparCache_();
   return apagadas + ' visita(s) apagada(s) | ' + reset +
-    ' escola(s) devolvida(s) a PENDENTE. Equipes preservadas.';
+    ' escola(s) devolvida(s) a PENDENTE. Equipes preservadas.' +
+    (nomeBackup ? ' Backup: ' + nomeBackup + '.' : '');
 }
 
 /** Atalho para registrar a URL do web app pelo editor. */
-function definirURLWebAppAgora() {
+function definirURLWebAppAgora(tokenSessao) {
+  var sessao = visitas_exigirSessao_(tokenSessao);
+  if (!visitas_ehGestor_(sessao)) throw new Error('Ação permitida somente para administradores.');
   return definirURLWebAppVisitas_interno_(
     'https://script.google.com/macros/s/AKfycbzgPBSSF3D2OimoEJ-qMfDNp_Dsmc95THSNdUvFgqoX7NXWcmn7ZDMzF9L-OyUbEMw_ew/exec'
   );
@@ -1508,7 +1531,9 @@ function definirURLWebAppAgora() {
  * Cria 3 visitas de teste para hoje, com escolas reais da base.
  * Apague as linhas depois com limparVisitasDeTeste().
  */
-function criarVisitasDeTeste() {
+function criarVisitasDeTeste(tokenSessao) {
+  var sessao = visitas_exigirSessao_(tokenSessao);
+  if (!visitas_ehGestor_(sessao)) throw new Error('Ação permitida somente para administradores.');
   var escolas = visitas_listarEscolas_({ equipe: 'A' }).escolas.slice(0, 3);
   if (!escolas.length) throw new Error('Nenhuma escola encontrada.');
 
@@ -1535,7 +1560,9 @@ function criarVisitasDeTeste() {
 }
 
 /** Corrige o diretor das visitas de teste para o nome da sessao. */
-function corrigirDiretorVisitasTeste() {
+function corrigirDiretorVisitasTeste(tokenSessao) {
+  var sessao = visitas_exigirSessao_(tokenSessao);
+  if (!visitas_ehGestor_(sessao)) throw new Error('Ação permitida somente para administradores.');
   var aba = visitas_aba_();
   var ultima = aba.getLastRow();
   if (ultima < 2) return 'Nenhuma visita.';
@@ -1543,7 +1570,7 @@ function corrigirDiretorVisitasTeste() {
   var col = visitas_idxCol_(mapa, 'DIRETOR_BASE', 10);
   var n = ultima - 1;
   var valores = aba.getRange(2, col, n, 1).getValues();
-  var nomeCorreto = 'Wanderson N. Castelo';
+  var nomeCorreto = sessao.nome;
   var alterados = 0;
   for (var i = 0; i < n; i++) {
     if (String(valores[i][0]).indexOf('@') > 0) {
@@ -1587,7 +1614,9 @@ function testarAgendaHoje() {
  * Corrige a coluna HORA_AGENDADA: forca formato de texto e reescreve
  * as horas que o Sheets converteu em data-epoca (30/12/1899).
  */
-function corrigirHorasVisitas() {
+function corrigirHorasVisitas(tokenSessao) {
+  var sessao = visitas_exigirSessao_(tokenSessao);
+  if (!visitas_ehGestor_(sessao)) throw new Error('Ação permitida somente para administradores.');
   var aba = visitas_aba_();
   var ultima = aba.getLastRow();
   var mapa = visitas_mapaCabecalho_(aba);
