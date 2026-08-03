@@ -325,7 +325,6 @@ function servirPortalAssociado(params) {
     ? cartAd_emissaoAtivaPorCpf_(String(dados.cpf || '').replace(/\D/g, ''))
     : null;
   template.credencialValidade = emissaoAtiva ? emissaoAtiva.validade : '';
-  template.bannerDemo = modoDemo ? '<div style="background:#f59e0b;color:#08101f;text-align:center;padding:10px 16px;font-weight:800;font-size:13px;">MODO DE DEMONSTRAÇÃO — dados fictícios, nenhuma alteração será gravada</div>' : "";
 
   return template.evaluate()
     .setTitle("Meu SindEducação")

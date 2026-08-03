@@ -501,8 +501,6 @@
   </style>
 </head>
 <body>
-  <div style="background:#f59e0b;color:#08101f;text-align:center;padding:10px 16px;font-weight:800;font-size:13px;">MODO DE DEMONSTRAÇÃO — dados fictícios, nenhuma alteração será gravada</div>
-
   <!-- Header -->
   <header class="portal-header">
     <div class="portal-logo">🏫 SindEducação-ES</div>
@@ -567,7 +565,7 @@
       </div>
       
       <div class="progress-bar">
-        <div class="progress-fill" style="width: <?= precisaAtualizar ? '60%' : '100%' %>"></div>
+        <div class="progress-fill" style="width: <?= precisaAtualizar ? '60%' : '100%' ?>"></div>
       </div>
       
       <ul class="cadastro-itens">
@@ -658,8 +656,8 @@
             
             <div class="form-group">
               <label class="form-label">Celular/WhatsApp</label>
-              <input type="tel" id="novoCelular" class="form-input" 
-                     value="<?= celular ?>" placeholder="(27) 99999-9999">
+              <input type="tel" id="novoCelular" class="form-input"
+                     value="<?= celular ?>" placeholder="(27) 99999-9999" oninput="paMascaraTelefone(this)">
             </div>
             
             <div class="form-group">
@@ -675,8 +673,8 @@
             
             <div class="form-group">
               <label class="form-label">CEP</label>
-              <input type="text" id="novoCEP" class="form-input" 
-                     value="<?= cep ?>" placeholder="29000-000">
+              <input type="text" id="novoCEP" class="form-input"
+                     value="<?= cep ?>" placeholder="29000-000" oninput="paMascaraCEP(this)">
             </div>
             
             <div class="form-group">
@@ -780,7 +778,23 @@
       linha: <?= linha ?>
     };
     var SCRIPT_URL = "<?= scriptUrl ?>";
-    
+
+    function paMascaraTelefone(el) {
+      var v = el.value.replace(/\D/g, '').substring(0, 11);
+      if (v.length <= 10) {
+        v = v.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{4})(\d)/, '$1-$2');
+      } else {
+        v = v.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d)/, '$1-$2');
+      }
+      el.value = v;
+    }
+
+    function paMascaraCEP(el) {
+      var v = el.value.replace(/\D/g, '').substring(0, 8);
+      if (v.length > 5) v = v.replace(/^(\d{5})(\d)/, '$1-$2');
+      el.value = v;
+    }
+
     // Funções do Modal
     function iniciarAtualizacao() {
       document.getElementById('modalAtualizacao').classList.add('active');
