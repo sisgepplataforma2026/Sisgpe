@@ -145,12 +145,15 @@ function buscarEscolasOficioSmart(termo) {
 
 /* ============================================================= */
 /* LISTAR ESCOLAS — com CacheService                             */
-/* ✅ Mapeia colunas antigas E novas (CAB_ESCOLAS)               */
-/* ✅ Inclui EmailsTodos                                         */
+/* ESC-G: era uma segunda leitura independente da aba Escolas,    */
+/* com seu próprio mapeamento de coluna (podia divergir de        */
+/* listarEscolasCadastro se só um dos dois fosse corrigido no      */
+/* futuro). Agora deriva da fonte única (listarEscolasCadastro,    */
+/* Escolas.gs) e só reformata pro formato que os consumidores      */
+/* deste arquivo esperam (cnpjLimpo, cidadeUf, enderecoCompleto).  */
 /* ============================================================= */
 function listarEscolasOficio() {
   try {
-    // ✅ Tenta cache primeiro
     var cache = CacheService.getScriptCache();
     var cached = cache.get(CACHE_KEY_ESCOLAS_);
     if (cached) {
@@ -160,95 +163,44 @@ function listarEscolasOficio() {
       } catch (eCache) { Logger.log('[listarEscolas] cache read: ' + eCache); }
     }
 
-    var ss  = SpreadsheetApp.openById(PLANILHA_ID);
-    var aba = ss.getSheetByName("Escolas")
-           || ss.getSheetByName("Controle")
-           || ss.getSheetByName(PLANILHA_REGISTRO);
+    var base = (typeof listarEscolasCadastro === "function" ? listarEscolasCadastro() : []) || [];
 
-    if (!aba || aba.getLastRow() < 2) return [];
-
-    var dados = aba.getRange(1, 1, aba.getLastRow(), aba.getLastColumn()).getValues();
-var linhas = dados.slice(1);
- var h = getHeaderMap_(aba);
-
-    var resultado = linhas.map(function(linha) {
-      function getCampo() {
-        for (let i = 0; i < arguments.length; i++) {
-          var col = h[arguments[i]];
-          if (col && linha[col - 1] !== undefined && linha[col - 1] !== null && String(linha[col - 1]).trim() !== "") {
-            return String(linha[col - 1]).trim();
-          }
-        }
-        return "";
-      }
-
-      var escola = getCampo(
-        "NomeEscola",                  // ✅ CAB_ESCOLAS novo
-        "Escola (Razão Social)",       // legado
-        "Escola", "Razão Social", "Nome", "Instituição"
-      );
-
-      var fantasia = getCampo(
-        "Fantasia",                    // ✅ CAB_ESCOLAS novo
-        "Nome Fantasia", "Escola (Fantasia)"
-      );
-
-      var cnpj = getCampo("CNPJ");
-
-      var emailPrincipal = getCampo(
-        "Email",                       // ✅ CAB_ESCOLAS novo
-        "E-mail (principal)", "E-mail principal", "E-mail", "Correio eletrônico"
-      );
-
-      // ✅ Mapeia EmailsTodos (CAB_ESCOLAS novo) além dos nomes legados
-      var emailsTodos = getCampo(
-        "EmailsTodos",                 // ✅ CAB_ESCOLAS novo
-        "E-mails (todos)", "Emails (todos)", "Todos os e-mails", "E-mails", "Emails"
-      );
-
-      if (!emailsTodos && emailPrincipal) emailsTodos = emailPrincipal;
-
-      var endereco = getCampo("Endereco", "Endereço", "Logradouro", "Rua / Avenida");
-      var endCompleto = getCampo("Endereço completo", "Endereco completo", "Logradouro completo");
-      var numero      = getCampo("Numero", "Número", "Nº");
-      var complemento = getCampo("Complemento", "Comp.");
-      var bairro      = getCampo("Bairro");
-      var cidade      = getCampo("Municipio", "Município", "Cidade");  // ✅ CAB_ESCOLAS usa Municipio
-      var uf          = getCampo("UF", "Estado");
-      var cep         = getCampo("CEP");
-      var cidadeUf    = getCampo("Cidade / UF", "Cidade/UF", "Cidade - UF");
-      var unidade     = getCampo("CodigoInterno", "Unidade", "Campus");  // ✅ CAB_ESCOLAS usa CodigoInterno
-
-      var partes = extrairPartesEnderecoBuscaEscola_({
-        endereco: endereco, numero: numero, complemento: complemento,
-        bairro: bairro, cidade: cidade, uf: uf, cep: cep,
-        cidadeUf: cidadeUf, enderecoCompleto: endCompleto
-      });
+    var resultado = base.map(function(item) {
+      var cidade   = String(item.Municipio || item.cidade || "").trim();
+      var uf       = String(item.UF || item.uf || "").trim();
+      var cidadeUf = [cidade, uf].filter(Boolean).join(" / ");
+      var endereco = String(item.Endereco || "").trim();
+      var numero   = String(item.Numero || "").trim();
+      var complemento = String(item.Complemento || "").trim();
+      var bairro   = String(item.Bairro || "").trim();
+      var cep      = String(item.CEP || "").trim();
+      var cnpj     = String(item.CNPJ || "").trim();
+      var emailPrincipal = String(item.Email || "").trim();
+      var emailsTodos    = String(item.EmailsTodos || "").trim() || emailPrincipal;
 
       return {
-        escola:           escola,
-        fantasia:         fantasia,
-   cnpj:             formatarCNPJ_(cnpj),
+        escola:           String(item.NomeEscola || item.escola || "").trim(),
+        fantasia:         String(item.Fantasia || "").trim(),
+        cnpj:             formatarCNPJ_(cnpj),
         cnpjLimpo:        String(cnpj || "").replace(/\D/g, ""),
         email:            emailPrincipal,
-        emailsTodos:      normalizarEmailsBuscaEscola_(emailsTodos || emailPrincipal),
-        endereco:         partes.endereco,
-        numero:           partes.numero,
-        complemento:      partes.complemento,
-        bairro:           partes.bairro,
-        cidade:           partes.cidade,
-        uf:               partes.uf,
-        cidadeUf:         partes.cidadeUf,
-        cep:              partes.cep,
-        cepLimpo:         String(partes.cep || "").replace(/\D/g, ""),
-        unidade:          unidade,
-        enderecoCompleto: partes.enderecoCompleto
+        emailsTodos:      normalizarEmailsBuscaEscola_(emailsTodos),
+        endereco:         endereco,
+        numero:           numero,
+        complemento:      complemento,
+        bairro:           bairro,
+        cidade:           cidade,
+        uf:               uf,
+        cidadeUf:         cidadeUf,
+        cep:              cep,
+        cepLimpo:         String(cep || "").replace(/\D/g, ""),
+        unidade:          String(item.CodigoInterno || "").trim(),
+        enderecoCompleto: [endereco, numero, complemento, bairro, cidadeUf, cep].filter(Boolean).join(", ")
       };
     }).filter(function(item) {
-      return !!String(item.escola || "").trim();
+      return !!item.escola;
     });
 
-// Salva versão compacta no cache (sem campos derivados)
     try {
       var compacto = resultado.map(function(e) {
         return {
@@ -506,112 +458,21 @@ function sincronizarTodasEscolas(forcar, tokenSessao) {
 
 /* ============================================================= */
 /* SALVAR DADOS ESCOLA (compatibilidade legado)                  */
+/* ESC-G: era uma segunda rotina de upsert independente (achar    */
+/* linha por CNPJ, senão inserir), com sua própria busca de coluna */
+/* — cadastrarEscola (Escolas.gs) já faz exatamente isso, com os   */
+/* mesmos nomes de campo (escola/razaoSocial, cnpj, email,         */
+/* emailsTodos, endereco, numero, complemento, bairro, cidade, uf, */
+/* cep, fantasia/nomeFantasia). Sem chamador ativo hoje (nenhum     */
+/* HTML do projeto chama salvarDadosEscola/salvarEscola), por isso  */
+/* viram alias fino em vez de manter a lógica duplicada.            */
 /* ============================================================= */
 function salvarDadosEscola(dados, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
-  try {
-    dados = dados || {};
-    var escola       = String(dados.escola || "").trim();
-    var cnpj         = String(dados.cnpj || "").replace(/\D/g, "");
-    var email        = String(dados.email || "").trim();
-    var emailsTodos  = String(dados.emailsTodos || "").trim();
-    var endereco     = String(dados.endereco || "").trim();
-    var numero       = String(dados.numero || "").trim();
-    var complemento  = String(dados.complemento || "").trim();
-    var bairro       = String(dados.bairro || "").trim();
-    var cidade       = String(dados.cidade || "").trim();
-    var uf           = String(dados.uf || "").trim();
-    var cep          = String(dados.cep || "").trim();
-    var razaoSocial  = String(dados.razaoSocial || escola || "").trim();
-    var fantasia     = String(dados.fantasia || dados.nomeFantasia || "").trim();
-    var emailReceita = String(dados.emailReceita || "").trim();
-    var cidadeUf     = String(dados.cidadeUf || [cidade, uf].filter(Boolean).join(" / ")).trim();
-
-    if (!escola && !razaoSocial) return { erro: true, mensagem: "Nome da escola não informado." };
-    if (cnpj && cnpj.length !== 14) return { erro: true, mensagem: "CNPJ inválido." };
-
-    var ss  = SpreadsheetApp.openById(PLANILHA_ID);
-    var aba = ss.getSheetByName("Escolas") || ss.getSheetByName(PLANILHA_REGISTRO);
-    if (!aba) return { erro: true, mensagem: "Aba de escolas não encontrada." };
-
-    var h = getHeaderMap_(aba);
-
-    function colOuNovo(novo, antigos) {
-      if (h[novo]) return h[novo];
-      for (let i = 0; i < antigos.length; i++) { if (h[antigos[i]]) return h[antigos[i]]; }
-      return null;
-    }
-
-var colNome      = colOuNovo_(h, "NomeEscola",  ["Escola (Razão Social)", "Escola"]);
-    var colFant      = colOuNovo_(h, "Fantasia",     ["Nome Fantasia"]);
-    var colCnpj      = colOuNovo_(h, "CNPJ",         ["CNPJ"]);
-    var colEmail     = colOuNovo_(h, "Email",         ["E-mail (principal)", "E-mail"]);
-    var colEmailTodo = colOuNovo_(h, "EmailsTodos",   ["E-mails (todos)", "E-mails"]);
-    var colEnd       = colOuNovo_(h, "Endereco",      ["Endereço"]);
-    var colNum       = colOuNovo_(h, "Numero",        ["Número"]);
-    var colComp      = colOuNovo_(h, "Complemento",   ["Complemento"]);
-    var colBairro    = colOuNovo_(h, "Bairro",        ["Bairro"]);
-    var colCidade    = colOuNovo_(h, "Municipio",     ["Cidade"]);
-    var colUf        = colOuNovo_(h, "UF",            ["UF"]);
-    var colCep       = colOuNovo_(h, "CEP",           ["CEP"]);
-
-    if (!colNome) return { erro: true, mensagem: "Coluna principal da escola não encontrada." };
-
-    var ultimaLinha    = aba.getLastRow();
-    var dadosPlanilha  = ultimaLinha >= 2 ? aba.getRange(2, 1, ultimaLinha - 1, aba.getLastColumn()).getValues() : [];
-    var linhaEncontrada = -1;
-
-    if (colCnpj && cnpj) {
-      for (let i = 0; i < dadosPlanilha.length; i++) {
-        if (String(dadosPlanilha[i][colCnpj - 1] || "").replace(/\D/g, "") === cnpj) {
-          linhaEncontrada = i + 2;
-          break;
-        }
-      }
-    }
-
-    var todosEmailsMesclados = mesclarEmails_(emailsTodos, email, emailReceita);
-
-    if (linhaEncontrada > -1) {
-      if (colNome      && (razaoSocial || escola)) aba.getRange(linhaEncontrada, colNome).setValue(razaoSocial || escola);
-      if (colFant      && fantasia)                aba.getRange(linhaEncontrada, colFant).setValue(fantasia);
-      if (colCnpj      && cnpj)                    aba.getRange(linhaEncontrada, colCnpj).setValue(formatarCNPJ_(cnpj));
-      if (colEmail     && email)                   aba.getRange(linhaEncontrada, colEmail).setValue(email);
-      if (colEmailTodo && todosEmailsMesclados)    aba.getRange(linhaEncontrada, colEmailTodo).setValue(todosEmailsMesclados);
-      if (colEnd       && endereco)                aba.getRange(linhaEncontrada, colEnd).setValue(endereco);
-      if (colNum)                                  aba.getRange(linhaEncontrada, colNum).setValue(numero);
-      if (colComp)                                 aba.getRange(linhaEncontrada, colComp).setValue(complemento);
-      if (colBairro)                               aba.getRange(linhaEncontrada, colBairro).setValue(bairro);
-      if (colCidade)                               aba.getRange(linhaEncontrada, colCidade).setValue(cidade || cidadeUf);
-      if (colUf)                                   aba.getRange(linhaEncontrada, colUf).setValue(uf);
-      if (colCep)                                  aba.getRange(linhaEncontrada, colCep).setValue(formatarCEPBuscaEscola_(cep));
-    } else {
-      var novaLinha = new Array(aba.getLastColumn()).fill("");
-      if (colNome)      novaLinha[colNome - 1]      = razaoSocial || escola;
-      if (colFant)      novaLinha[colFant - 1]      = fantasia || "";
-      if (colCnpj && cnpj) novaLinha[colCnpj - 1]  = formatarCNPJ_(cnpj);
-      if (colEmail)     novaLinha[colEmail - 1]     = email || "";
-      if (colEmailTodo) novaLinha[colEmailTodo - 1] = todosEmailsMesclados;
-      if (colEnd)       novaLinha[colEnd - 1]       = endereco || "";
-      if (colNum)       novaLinha[colNum - 1]       = numero || "";
-      if (colComp)      novaLinha[colComp - 1]      = complemento || "";
-      if (colBairro)    novaLinha[colBairro - 1]    = bairro || "";
-      if (colCidade)    novaLinha[colCidade - 1]    = cidade || cidadeUf || "";
-      if (colUf)        novaLinha[colUf - 1]        = uf || "";
-      if (colCep)       novaLinha[colCep - 1]       = formatarCEPBuscaEscola_(cep);
-      aba.appendRow(novaLinha);
-    }
-
-    invalidarCacheEscolas_();
-    return { erro: false, mensagem: "Dados da escola salvos com sucesso." };
-
-  } catch (e) {
-    return { erro: true, mensagem: "Erro ao salvar dados da escola: " + e.message };
-  }
+  return cadastrarEscola(dados, tokenSessao);
 }
 
 function salvarEscola(dados, tokenSessao) {
-  return salvarDadosEscola(dados, tokenSessao);
+  return cadastrarEscola(dados, tokenSessao);
 }
 
 /* ============================================================= */
