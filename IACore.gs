@@ -100,7 +100,7 @@ function analisarEscolaIA(chave, tokenSessao) {
       "- Se faltar dado relevante, mencione como pendência.",
     ].join("\n");
 
-    var resposta = chamarClaude_SISGEP(prompt);
+    var resposta = chamarClaude_SISGEP(prompt, tokenSessao);
     registrarAuditoriaSofia_(sessao, "Escolas", "analisarEscolaIA: " + chave, resposta, true);
     return { resposta: resposta };
 
@@ -177,7 +177,7 @@ function gerarOficioIA(dados, tokenSessao) {
       "- Retorne apenas o corpo do ofício, pronto para colar no campo de texto.",
     ].filter(Boolean).join("\n");
 
-    var texto = chamarClaude_SISGEP(prompt);
+    var texto = chamarClaude_SISGEP(prompt, tokenSessao);
     registrarAuditoriaSofia_(sessao, "Escolas", "gerarOficioIA: " + tipo + " / " + escola, texto, true);
     return { texto: String(texto || "").trim() };
 
@@ -240,7 +240,7 @@ function responderEmailIA(dados, tokenSessao) {
       "- Responda apenas o texto do e-mail, sem explicações adicionais.",
     ].filter(Boolean).join("\n");
 
-    var resposta = chamarClaude_SISGEP(prompt);
+    var resposta = chamarClaude_SISGEP(prompt, tokenSessao);
     registrarAuditoriaSofia_(sessao, "Escolas", "responderEmailIA: " + assunto, resposta, true);
     return { resposta: String(resposta || "").trim() };
 
@@ -258,12 +258,12 @@ function responderEmailIA(dados, tokenSessao) {
    (btnIAOficio em OficiosFormulario.html)
    Mantido aqui para centralizar toda chamada à API
 ───────────────────────────────────────────────────────────────── */
-function iaAssistente(prompt) {
+function iaAssistente(prompt, tokenSessao) {
   try {
     if (!prompt || String(prompt).trim() === "") {
       return "Prompt vazio. Informe o contexto para a IA.";
     }
-    return chamarClaude_SISGEP(String(prompt).trim());
+    return chamarClaude_SISGEP(String(prompt).trim(), tokenSessao);
   } catch (e) {
     Logger.log("[iaAssistente] erro: " + e.message);
     throw new Error("Erro no assistente IA: " + e.message);

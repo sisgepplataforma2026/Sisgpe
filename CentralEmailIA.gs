@@ -967,7 +967,20 @@ function limparJsonIA_(texto) {
  * Chama a API da Anthropic — função central compartilhada com IACore.gs
  * (mantida aqui para caso CentralEmailIA.gs seja carregado isolado)
  */
-function chamarClaude_SISGEP(prompt) {
+function chamarClaude_SISGEP(prompt, tokenSessao) {
+  // COM-B: aceita QUALQUER uma das duas provas de autorização já usadas no
+  // projeto — conta autorizada da Central de E-mails (eiaAcessoAutorizado_)
+  // ou sessão SISGEP válida (exigirSessaoDocumentos_) — porque esta função
+  // é compartilhada por dois sistemas de login diferentes (CentralEmailIA.gs
+  // e IACore.gs/Escolas). Sem nenhuma das duas, era um proxy aberto para a
+  // API paga da Anthropic, alcançável direto via google.script.run.
+  var autorizado = false;
+  try { autorizado = eiaAcessoAutorizado_(); } catch (eAuth) { autorizado = false; }
+  if (!autorizado) {
+    try { exigirSessaoDocumentos_(tokenSessao, false); autorizado = true; } catch (eSessao) { autorizado = false; }
+  }
+  if (!autorizado) throw new Error("Acesso não autorizado.");
+
   var apiKey = PropertiesService.getScriptProperties().getProperty("ANTHROPIC_API_KEY");
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY não configurada nas Propriedades do Script.");
 
