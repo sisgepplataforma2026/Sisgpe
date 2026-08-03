@@ -23,7 +23,7 @@
   <div class="oftalmo-resumo-card" style="margin-bottom:16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
     <div style="flex:1;min-width:220px;">
       <h3 style="margin:0 0 4px;">🌐 Data liberada para o Portal do Associado</h3>
-      <p id="oftalmoDataLiberadaTexto" style="margin:0;font-size:13px;color:#64748b;">Carregando...</p>
+      <p id="oftalmoDataLiberadaTexto" style="margin:0;font-size:13px;color:var(--g500,#64748b);">Carregando...</p>
     </div>
     <input type="date" id="oftalmoDataLiberada" class="campo-input oftalmo-data">
     <button type="button" class="btn-primary" onclick="AgendOftalmo.salvarDataLiberada()">Liberar esta data</button>
@@ -336,8 +336,8 @@
       <button type="button" class="oftalmo-modal-close" onclick="AgendOftalmo.fecharModalRelatorio()">✕</button>
     </div>
     <div class="oftalmo-modal-body">
-      <div id="fecharAgendaResumo" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:16px;margin-bottom:16px;font-size:13px;line-height:1.9;"></div>
-      <p style="font-size:13px;color:#64748b;font-weight:600;margin-bottom:14px;">Enviar relação para a clínica:</p>
+      <div id="fecharAgendaResumo" style="background:var(--g50,#f8fafc);border:1px solid #e2e8f0;border-radius:14px;padding:16px;margin-bottom:16px;font-size:13px;line-height:1.9;"></div>
+      <p style="font-size:13px;color:var(--g500,#64748b);font-weight:600;margin-bottom:14px;">Enviar relação para a clínica:</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <button type="button" class="btn-oftalmo btn-whatsapp" onclick="AgendOftalmo.enviarRelatorioWhatsApp()">📱 WhatsApp</button>
         <button type="button" class="btn-secundario" onclick="AgendOftalmo.enviarRelatorioEmail()">📧 E-mail</button>
@@ -367,11 +367,11 @@
 }
 .oftalmo-header-l{ display:flex; align-items:center; gap:16px; }
 .oftalmo-header-icon{
-  width:52px; height:52px; border-radius:16px; background:#002e6d;
+  width:52px; height:52px; border-radius:16px; background:var(--navy2,#002f6c);
   display:flex; align-items:center; justify-content:center;
   color:#fff; font-size:22px; box-shadow:0 6px 18px rgba(0,0,0,.12);
 }
-.oftalmo-title{ font-size:18px; font-weight:800; color:#002e6d; margin:0; }
+.oftalmo-title{ font-size:18px; font-weight:800; color:var(--navy2,#002f6c); margin:0; }
 .oftalmo-subtitle{ margin-top:4px; color:#6b7280; font-size:12px; }
 .oftalmo-header-r{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
 .oftalmo-data{ min-width:220px; }
@@ -406,20 +406,20 @@
   background:#fff; border-radius:18px; padding:20px;
   border:1px solid #e5e7eb; box-shadow:0 4px 16px rgba(0,0,0,.035);
 }
-.oftalmo-resumo-card h3{ margin:0 0 14px; color:#002e6d; font-size:15px; }
-.oftalmo-proximo{ padding:10px 0; border-bottom:1px solid #f1f5f9; font-size:13px; }
-.oftalmo-proximo strong{ display:block; color:#0f172a; }
-.oftalmo-proximo span{ color:#64748b; font-size:12px; }
-.oftalmo-proximo.vazio{ color:#94a3b8; font-weight:600; }
+.oftalmo-resumo-card h3{ margin:0 0 14px; color:var(--navy2,#002f6c); font-size:15px; }
+.oftalmo-proximo{ padding:10px 0; border-bottom:1px solid var(--g100,#f1f5f9); font-size:13px; }
+.oftalmo-proximo strong{ display:block; color:var(--g900,#0f172a); }
+.oftalmo-proximo span{ color:var(--g500,#64748b); font-size:12px; }
+.oftalmo-proximo.vazio{ color:var(--g400,#94a3b8); font-weight:600; }
 .oftalmo-pend-item{
   display:flex; justify-content:space-between;
-  padding:10px 0; border-bottom:1px solid #f1f5f9; font-size:13px;
+  padding:10px 0; border-bottom:1px solid var(--g100,#f1f5f9); font-size:13px;
 }
-.oftalmo-pend-item strong{ color:#002e6d; }
+.oftalmo-pend-item strong{ color:var(--navy2,#002f6c); }
 
 .oftalmo-tabs{ display:flex; gap:8px; margin-bottom:18px; }
 .oftalmo-tab{ border:none; background:#f3f4f6; padding:12px 16px; border-radius:12px; font-weight:700; cursor:pointer; }
-.oftalmo-tab.active{ background:#002e6d; color:#fff; }
+.oftalmo-tab.active{ background:var(--navy2,#002f6c); color:#fff; }
 
 .oftalmo-operacao{
   display:flex; justify-content:space-between; align-items:center;
@@ -427,7 +427,7 @@
 }
 .oftalmo-filtro-status{ display:flex; gap:8px; flex-wrap:wrap; }
 .oftalmo-chip{ border:none; background:#f3f4f6; padding:10px 14px; border-radius:999px; cursor:pointer; font-weight:700; }
-.oftalmo-chip.active{ background:#002e6d; color:#fff; }
+.oftalmo-chip.active{ background:var(--navy2,#002f6c); color:#fff; }
 .oftalmo-operacao-r{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
 .oftalmo-busca{ min-width:280px; }
 .oftalmo-btn-modo{ border-radius:12px; font-weight:700; }
@@ -441,12 +441,12 @@
   width:100%; border-collapse:collapse; min-width:1000px; table-layout:fixed;
 }
 .oftalmo-tabela thead th{
-  background:#f8fafc; padding:12px 14px; font-size:11px; font-weight:800;
-  color:#64748b; text-transform:uppercase; letter-spacing:.06em;
+  background:var(--g50,#f8fafc); padding:12px 14px; font-size:11px; font-weight:800;
+  color:var(--g500,#64748b); text-transform:uppercase; letter-spacing:.06em;
   border-bottom:1px solid #e5e7eb; white-space:nowrap;
 }
 .oftalmo-tabela tbody td{
-  padding:10px 14px !important; border-bottom:1px solid #f1f5f9;
+  padding:10px 14px !important; border-bottom:1px solid var(--g100,#f1f5f9);
   font-size:13px; vertical-align:middle; white-space:nowrap;
 }
 .oftalmo-tabela tbody tr{ transition:.2s; }
@@ -470,14 +470,14 @@
   background:#fff; border-radius:18px; padding:18px;
   border:1px solid #e5e7eb; box-shadow:0 4px 14px rgba(0,0,0,.04);
 }
-.oftalmo-card-slot.livre{ border-left:6px solid #16a34a; }
+.oftalmo-card-slot.livre{ border-left:6px solid var(--green,#059669); }
 .oftalmo-card-slot.reservado{ border-left:6px solid #ea580c; }
 .oftalmo-card-slot.compareceu{ border-left:6px solid #2563eb; }
-.oftalmo-card-slot.cancelado{ border-left:6px solid #dc2626; }
+.oftalmo-card-slot.cancelado{ border-left:6px solid var(--red,#dc2626); }
 .oftalmo-card-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
-.oftalmo-card-hora{ font-size:24px; font-weight:900; color:#0f172a; }
+.oftalmo-card-hora{ font-size:24px; font-weight:900; color:var(--g900,#0f172a); }
 .oftalmo-card-nome{ font-size:15px; font-weight:700; margin-bottom:8px; }
-.oftalmo-card-info{ font-size:13px; color:#64748b; margin-bottom:14px; line-height:1.5; }
+.oftalmo-card-info{ font-size:13px; color:var(--g500,#64748b); margin-bottom:14px; line-height:1.5; }
 .oftalmo-card-acoes{ display:flex; gap:8px; flex-wrap:wrap; }
 
 .slot-livre,.slot-reservado,.slot-compareceu,.slot-cancelado{
@@ -487,17 +487,17 @@
 .slot-livre{ background:#dcfce7; color:#166534; }
 .slot-reservado{ background:#ffedd5; color:#9a3412; }
 .slot-compareceu{ background:#dbeafe; color:#1d4ed8; }
-.slot-cancelado{ background:#fee2e2; color:#991b1b; }
+.slot-cancelado{ background:var(--red-lt,#fee2e2); color:#991b1b; }
 
 .btn-acao,.btn-oftalmo{
   border:none; border-radius:10px; padding:8px 12px; font-size:12px; font-weight:700;
   cursor:pointer; transition:.2s; display:inline-flex; align-items:center; gap:6px;
 }
 .btn-acao:hover,.btn-oftalmo:hover{ transform:translateY(-1px); }
-.btn-acao.primary,.btn-reservar{ background:#16a34a; color:#fff; }
+.btn-acao.primary,.btn-reservar{ background:var(--green,#059669); color:#fff; }
 .btn-acao.primary:hover,.btn-reservar:hover{ background:#15803d; }
 .btn-compareceu{ background:#2563eb; color:#fff; }
-.btn-cancelar,.btn-acao.danger{ background:#dc2626; color:#fff; }
+.btn-cancelar,.btn-acao.danger{ background:var(--red,#dc2626); color:#fff; }
 .btn-whatsapp,.btn-acao.whats{ background:#22c55e; color:#fff; }
 
 .oftalmo-modal{
@@ -515,7 +515,7 @@
   background:#fff; border-radius:24px; box-shadow:0 30px 60px rgba(0,0,0,.2);
 }
 .oftalmo-modal-hero{
-  background:linear-gradient(135deg,#002e6d,#0047ab); color:#fff;
+  background:linear-gradient(135deg,var(--navy2,#002f6c),#0047ab); color:#fff;
   padding:18px 22px; display:flex; justify-content:space-between;
   align-items:flex-start; flex-shrink:0;
 }
@@ -529,7 +529,7 @@
   border-radius:12px; color:#fff; cursor:pointer;
 }
 .oftalmo-steps{ display:flex; gap:8px; padding:14px 22px 0; flex-shrink:0; }
-.oftalmo-step{ flex:1; background:#f8fafc; border-radius:16px; padding:14px; text-align:center; }
+.oftalmo-step{ flex:1; background:var(--g50,#f8fafc); border-radius:16px; padding:14px; text-align:center; }
 .oftalmo-step.active{ background:#dbeafe; }
 .oftalmo-step span{
   width:28px; height:28px; border-radius:50%; background:#2563eb; color:#fff;
@@ -539,11 +539,11 @@
 .oftalmo-resumo{
   display:grid; grid-template-columns:repeat(2,1fr); gap:10px; padding:14px 22px; flex-shrink:0;
 }
-.oftalmo-resumo-item{ background:#f8fafc; border-radius:16px; padding:16px; }
+.oftalmo-resumo-item{ background:var(--g50,#f8fafc); border-radius:16px; padding:16px; }
 .oftalmo-resumo-item small{
-  display:block; color:#64748b; font-size:11px; font-weight:700; margin-bottom:6px;
+  display:block; color:var(--g500,#64748b); font-size:11px; font-weight:700; margin-bottom:6px;
 }
-.oftalmo-resumo-item strong{ font-size:18px; color:#0f172a; }
+.oftalmo-resumo-item strong{ font-size:18px; color:var(--g900,#0f172a); }
 .oftalmo-modal-body{ padding:10px 22px 22px; overflow-y:auto; flex:1; min-height:0; }
 .oftalmo-modal-footer{
   padding:16px 22px; border-top:1px solid #e5e7eb;
@@ -556,14 +556,14 @@
   border:1px solid #e5e7eb; border-radius:12px; cursor:pointer;
   font-size:13px; font-weight:700; background:#fff;
 }
-.oftalmo-radio:has(input:checked){ border-color:#002e6d; background:#eff6ff; color:#002e6d; }
+.oftalmo-radio:has(input:checked){ border-color:var(--navy2,#002f6c); background:#eff6ff; color:var(--navy2,#002f6c); }
 .oftalmo-radio input{ display:none; }
 .oftalmo-validacao{ display:block; margin-top:8px; font-size:12px; font-weight:700; }
 .oftalmo-acoes-resumo{
-  background:#f8fafc; border-radius:16px; padding:16px;
+  background:var(--g50,#f8fafc); border-radius:16px; padding:16px;
   border:1px solid #e5e7eb; font-size:13px; line-height:1.8; margin-bottom:16px;
 }
-.oftalmo-acoes-texto{ color:#64748b; font-weight:600; }
+.oftalmo-acoes-texto{ color:var(--g500,#64748b); font-weight:600; }
 .oftalmo-acoes-botoes{ display:flex; gap:10px; flex-wrap:wrap; }
 .oftalmo-filtros-actions{ display:flex; gap:10px; margin-top:14px; }
 
@@ -585,38 +585,38 @@
 #modalOftalmo .oftalmo-modal-box,
 #modalOftalmoAcoes .oftalmo-modal-box,
 #modalFecharAgenda .oftalmo-modal-box {
-  color: #0f172a !important;
+  color: var(--g900,#0f172a) !important;
 }
 
 /* Labels dos campos */
 #modalOftalmo .field label,
 #modalOftalmo .section-subtitle {
-  color: #334155 !important;
+  color: var(--g700,#334155) !important;
 }
 
 /* Campos de formulário */
 #modalOftalmo input,
 #modalOftalmo select,
 #modalOftalmo textarea {
-  color: #0f172a !important;
+  color: var(--g900,#0f172a) !important;
   background: #ffffff !important;
-  border: 1px solid #cbd5e1 !important;
+  border: 1px solid var(--g300,#cbd5e1) !important;
 }
 
 /* Placeholder */
 #modalOftalmo input::placeholder,
 #modalOftalmo textarea::placeholder {
-  color: #94a3b8 !important;
+  color: var(--g400,#94a3b8) !important;
 }
 
 /* Etapas */
 #modalOftalmo .oftalmo-step {
-  color: #475569 !important;
-  background: #f8fafc !important;
+  color: var(--g600,#475569) !important;
+  background: var(--g50,#f8fafc) !important;
 }
 
 #modalOftalmo .oftalmo-step strong {
-  color: #475569 !important;
+  color: var(--g600,#475569) !important;
 }
 
 #modalOftalmo .oftalmo-step.active {
@@ -629,24 +629,24 @@
 
 /* Tipo trabalhador/dependente */
 #modalOftalmo .oftalmo-radio {
-  color: #334155 !important;
+  color: var(--g700,#334155) !important;
   background: #ffffff !important;
-  border: 1px solid #cbd5e1 !important;
+  border: 1px solid var(--g300,#cbd5e1) !important;
 }
 
 #modalOftalmo .oftalmo-radio:has(input:checked) {
-  color: #002e6d !important;
+  color: var(--navy2,#002f6c) !important;
   background: #eff6ff !important;
-  border-color: #002e6d !important;
+  border-color: var(--navy2,#002f6c) !important;
 }
 
 /* Resumo data e horário */
 #modalOftalmo .oftalmo-resumo-item small {
-  color: #64748b !important;
+  color: var(--g500,#64748b) !important;
 }
 
 #modalOftalmo .oftalmo-resumo-item strong {
-  color: #0f172a !important;
+  color: var(--g900,#0f172a) !important;
 }
 
 /* Rodapé */
@@ -656,14 +656,14 @@
 
 /* Botão cancelar */
 #modalOftalmo .btn-secundario {
-  color: #334155 !important;
+  color: var(--g700,#334155) !important;
   background: #ffffff !important;
-  border: 1px solid #cbd5e1 !important;
+  border: 1px solid var(--g300,#cbd5e1) !important;
 }
 
 /* Mensagem de validação */
 #modalOftalmo .oftalmo-validacao {
-  color: #475569;
+  color: var(--g600,#475569);
 }
 #modalOftalmo .form-grid {
   display: grid !important;
@@ -732,7 +732,7 @@
 #modalOftalmo .field > label {
   display: block !important;
   margin: 0 !important;
-  color: #334155 !important;
+  color: var(--g700,#334155) !important;
   font-size: 12px !important;
   font-weight: 800 !important;
   line-height: 1.3 !important;
@@ -750,10 +750,10 @@
   height: 44px !important;
   padding: 0 12px !important;
   margin: 0 !important;
-  border: 1px solid #cbd5e1 !important;
+  border: 1px solid var(--g300,#cbd5e1) !important;
   border-radius: 11px !important;
   background: #ffffff !important;
-  color: #0f172a !important;
+  color: var(--g900,#0f172a) !important;
   font-family: inherit !important;
   font-size: 13px !important;
   font-weight: 600 !important;
@@ -771,7 +771,7 @@
 
 /* Placeholder */
 #modalOftalmo input::placeholder {
-  color: #94a3b8 !important;
+  color: var(--g400,#94a3b8) !important;
   font-weight: 500 !important;
 }
 
@@ -828,7 +828,7 @@
   margin: 20px 0 4px !important;
   padding-bottom: 8px !important;
   border-bottom: 1px solid #e2e8f0 !important;
-  color: #002e6d !important;
+  color: var(--navy2,#002f6c) !important;
   font-size: 13px !important;
   font-weight: 900 !important;
 }
@@ -950,7 +950,7 @@
 }
 
 #oftalmoTabHistorico .oftalmo-filtros label {
-  color: #334155 !important;
+  color: var(--g700,#334155) !important;
   font-size: 11px;
   font-weight: 800;
 }
@@ -960,10 +960,10 @@
   width: 100%;
   height: 40px;
   padding: 0 11px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--g300,#cbd5e1);
   border-radius: 9px;
   background: #ffffff;
-  color: #0f172a;
+  color: var(--g900,#0f172a);
 }
 
 #oftalmoTabHistorico .oftalmo-filtros-actions {
@@ -994,8 +994,8 @@
   top: 0;
   z-index: 2;
   padding: 11px 10px;
-  background: #f8fafc;
-  color: #475569 !important;
+  background: var(--g50,#f8fafc);
+  color: var(--g600,#475569) !important;
   font-size: 10px;
   font-weight: 900;
   text-align: left;
@@ -1082,7 +1082,7 @@
 }
 
 .oft-hist-cancelado {
-  background: #fee2e2;
+  background: var(--red-lt,#fee2e2);
   color: #991b1b;
 }
 
@@ -1092,12 +1092,12 @@
 }
 
 .oft-hist-nao {
-  background: #f1f5f9;
-  color: #64748b;
+  background: var(--g100,#f1f5f9);
+  color: var(--g500,#64748b);
 }
 
 .oft-hist-tipo {
-  color: #334155;
+  color: var(--g700,#334155);
   font-size: 10px;
   font-weight: 800;
 }
@@ -1134,7 +1134,7 @@
 }
 
 .oft-hist-btn-reenviar {
-  background: #16a34a;
+  background: var(--green,#059669);
 }
 
 .oft-hist-btn-imprimir {
@@ -1146,7 +1146,7 @@
 .oft-hist-btn-excluir {
   width: 34px;
   padding: 0;
-  background: #dc2626;
+  background: var(--red,#dc2626);
 }
 
 @media (max-width: 900px) {

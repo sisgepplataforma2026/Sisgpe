@@ -1,45 +1,45 @@
 <style>
 .brs-wrap{padding:24px;max-width:1220px;margin:0 auto;color:#172033;font-family:'Plus Jakarta Sans',sans-serif}
 .brs-header{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;flex-wrap:wrap;margin-bottom:18px}
-.brs-header h2{font-size:22px;font-weight:900;color:#0f172a;margin:0 0 6px}
-.brs-header p{font-size:13px;color:#64748b;margin:0}
-.brs-btn{height:38px;border:0;border-radius:10px;padding:0 14px;font-weight:800;cursor:pointer;background:#e2e8f0;color:#172033}
-.brs-btn.primary{background:#0b3b75;color:#fff}
+.brs-header h2{font-size:22px;font-weight:900;color:var(--g900,#0f172a);margin:0 0 6px}
+.brs-header p{font-size:13px;color:var(--g500,#64748b);margin:0}
+.brs-btn{height:38px;border:0;border-radius:10px;padding:0 14px;font-weight:800;cursor:pointer;background:var(--g200,#e2e8f0);color:#172033}
+.brs-btn.primary{background:var(--navy,#001f4d);color:#fff}
 .brs-kpis{display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:10px;margin-bottom:14px}
-.brs-kpi{border:1px solid #e2e8f0;background:#fff;border-radius:13px;padding:14px}
-.brs-kpi span{display:block;color:#64748b;font-size:10px;text-transform:uppercase;font-weight:800}
-.brs-kpi strong{display:block;color:#0b3b75;font-size:24px;margin-top:5px}
+.brs-kpi{border:1px solid var(--g200,#e2e8f0);background:#fff;border-radius:13px;padding:14px}
+.brs-kpi span{display:block;color:var(--g500,#64748b);font-size:10px;text-transform:uppercase;font-weight:800}
+.brs-kpi strong{display:block;color:var(--navy,#001f4d);font-size:24px;margin-top:5px}
 .brs-toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
-.brs-toolbar input,.brs-toolbar select{height:38px;border:1px solid #cbd5e1;border-radius:9px;padding:0 12px;font-size:13px}
-.brs-table-wrap{background:#fff;border:1px solid #e2e8f0;border-radius:13px;overflow:auto}
+.brs-toolbar input,.brs-toolbar select{height:38px;border:1px solid var(--g300,#cbd5e1);border-radius:9px;padding:0 12px;font-size:13px}
+.brs-table-wrap{background:#fff;border:1px solid var(--g200,#e2e8f0);border-radius:13px;overflow:auto}
 .brs-table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:820px}
-.brs-table th{text-align:left;padding:10px 12px;background:#eef3f9;color:#0b3b75;font-weight:800;white-space:nowrap;position:sticky;top:0}
-.brs-table td{padding:10px 12px;border-top:1px solid #eef2f7;color:#334155;vertical-align:top}
+.brs-table th{text-align:left;padding:10px 12px;background:#eef3f9;color:var(--navy,#001f4d);font-weight:800;white-space:nowrap;position:sticky;top:0}
+.brs-table td{padding:10px 12px;border-top:1px solid #eef2f7;color:var(--g700,#334155);vertical-align:top}
 .brs-badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:10.5px;font-weight:800}
-.brs-badge.PENDENTE{background:#fef3c7;color:#92400e}
-.brs-badge.APROVADA{background:#d1fae5;color:#065f46}
-.brs-badge.RECUSADA{background:#fee2e2;color:#991b1b}
-.brs-badge.CANCELADA{background:#e2e8f0;color:#475569}
+.brs-badge.PENDENTE{background:var(--amber-lt,#fef3c7);color:#92400e}
+.brs-badge.APROVADA{background:var(--green-lt,#d1fae5);color:#065f46}
+.brs-badge.RECUSADA{background:var(--red-lt,#fee2e2);color:#991b1b}
+.brs-badge.CANCELADA{background:var(--g200,#e2e8f0);color:#475569}
 .brs-badge.FINALIZADA{background:#dbeafe;color:#1e3a8a}
 .brs-acoes{display:flex;gap:6px;flex-wrap:wrap}
-.brs-acoes button{border:0;border-radius:7px;padding:6px 9px;font-size:10.5px;font-weight:800;cursor:pointer;background:#eef2f7;color:#334155}
-.brs-acoes button.ok{background:#d1fae5;color:#065f46}
-.brs-acoes button.erro{background:#fee2e2;color:#991b1b}
-.brs-vazio{padding:28px;text-align:center;color:#64748b}
+.brs-acoes button{border:0;border-radius:7px;padding:6px 9px;font-size:10.5px;font-weight:800;cursor:pointer;background:#eef2f7;color:var(--g700,#334155)}
+.brs-acoes button.ok{background:var(--green-lt,#d1fae5);color:#065f46}
+.brs-acoes button.erro{background:var(--red-lt,#fee2e2);color:#991b1b}
+.brs-vazio{padding:28px;text-align:center;color:var(--g500,#64748b)}
 .brs-modal-bg{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:9500;align-items:center;justify-content:center}
 .brs-modal-bg.show{display:flex}
 .brs-modal{background:#fff;border-radius:16px;padding:22px;width:min(520px,92vw);max-height:88vh;overflow:auto}
-.brs-modal h3{margin:0 0 14px;color:#0f172a;font-size:16px}
+.brs-modal h3{margin:0 0 14px;color:var(--g900,#0f172a);font-size:16px}
 .brs-field{margin-bottom:12px}
-.brs-field label{display:block;font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:4px}
-.brs-field input,.brs-field select,.brs-field textarea{width:100%;height:38px;border:1px solid #cbd5e1;border-radius:9px;padding:0 12px;font-size:13px;font-family:inherit;box-sizing:border-box}
+.brs-field label{display:block;font-size:11px;font-weight:800;color:var(--g500,#64748b);text-transform:uppercase;margin-bottom:4px}
+.brs-field input,.brs-field select,.brs-field textarea{width:100%;height:38px;border:1px solid var(--g300,#cbd5e1);border-radius:9px;padding:0 12px;font-size:13px;font-family:inherit;box-sizing:border-box}
 .brs-field textarea{height:64px;padding:8px 12px;resize:vertical}
 .brs-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .brs-disp-msg{font-size:11.5px;margin-top:6px;padding:7px 10px;border-radius:8px}
-.brs-disp-msg.ok{background:#d1fae5;color:#065f46}
-.brs-disp-msg.erro{background:#fee2e2;color:#991b1b}
+.brs-disp-msg.ok{background:var(--green-lt,#d1fae5);color:#065f46}
+.brs-disp-msg.erro{background:var(--red-lt,#fee2e2);color:#991b1b}
 .brs-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
-.brs-check{display:flex;align-items:center;gap:8px;font-size:12.5px;color:#334155;margin-bottom:12px}
+.brs-check{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--g700,#334155);margin-bottom:12px}
 </style>
 
 <script>
@@ -109,7 +109,9 @@ function brsInicializarPainel(idContainer, tipo) {
 
 function brsToken_() { return (typeof SISGEP_TOKEN_SESSAO !== "undefined") ? SISGEP_TOKEN_SESSAO : ""; }
 function brsAvisar_(msg, tipoMsg) {
-  if (typeof toast === "function") toast(msg, tipoMsg === "erro" ? "erro" : "ok");
+  // tipo do toast() é "err" (não "erro") — sem isso o ícone/cor de erro
+  // nunca era aplicado, mesmo passando tipoMsg="erro" corretamente.
+  if (typeof toast === "function") toast(msg, tipoMsg === "erro" ? "err" : "ok");
   else alert(msg);
 }
 

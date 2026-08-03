@@ -5,15 +5,11 @@
 #secCertificadoAdmin *::after { box-sizing: border-box; }
 
 #secCertificadoAdmin {
-  --navy:  #071b38; --navy2: #0b3b75; --blue: #1565C0;
-  --gold:  #C9A84C; --gold2: #f0c843;
-  --bg:    #f0f4f8; --g50: #f8fafc; --g100: #f1f5f9;
-  --g200:  #e2e8f0; --g300: #cbd5e1; --g400: #94a3b8;
-  --g500:  #64748b; --g600: #475569; --g700: #334155;
-  --g800:  #1e293b; --g900: #0f172a;
-  --green: #059669; --green-lt: #d1fae5;
-  --amber: #d97706; --amber-lt: #fef3c7;
-  --red:   #dc2626; --red-lt: #fee2e2;
+  /* Tokens de cor herdados de :root (OficiosStyles.html) — eram
+     redeclarados aqui com os mesmos valores, exceto --navy/--navy2, que
+     usavam um tom levemente diferente (#071b38/#0b3b75) do canônico
+     (#001f4d/#002f6c). Removida a duplicata — ver CLAUDE.md.
+     --violet/--violet-lt não existem lá, mantidos como aditivo local. */
   --violet:#7c3aed; --violet-lt:#ede9fe;
   font-family: 'Plus Jakarta Sans', sans-serif;
 }
