@@ -5,9 +5,9 @@
 ══════════════════════════════════════════════ -->
 <div id="finIaPainel" style="display:none;position:fixed;bottom:88px;right:24px;width:420px;max-height:72vh;background:#fff;border:1.5px solid #bfdbfe;border-radius:18px;box-shadow:0 20px 60px rgba(0,20,60,.22);z-index:9999;overflow:hidden;flex-direction:column;font-family:'Plus Jakarta Sans',sans-serif;">
 
-  <div style="background:linear-gradient(135deg,#001f4d,#1565C0);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+  <div style="background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));padding:14px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
     <div style="display:flex;align-items:center;gap:8px;">
-      <div style="width:26px;height:26px;background:linear-gradient(135deg,#f8d66d,#C9A84C);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#002f6c;">S</div>
+      <div style="width:26px;height:26px;background:linear-gradient(135deg,var(--gold2,#f0c843),var(--gold,#C9A84C));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:var(--navy2,#002f6c);">S</div>
       <div>
         <div style="font-size:13px;font-weight:800;color:#fff;line-height:1.1;">SOFIA — Financeiro</div>
         <div style="font-size:10px;color:rgba(255,255,255,.6);">Análise inteligente de despesas</div>
@@ -17,24 +17,24 @@
   </div>
 
   <div id="finIaConteudo" style="flex:1;overflow-y:auto;padding:16px;">
-    <div style="text-align:center;color:#94a3b8;font-size:13px;padding:24px 0;">
+    <div style="text-align:center;color:var(--g400,#94a3b8);font-size:13px;padding:24px 0;">
       <div style="font-size:32px;margin-bottom:8px;">🧠</div>
       Clique em <strong>Analisar com IA</strong> para gerar insights do período atual.
     </div>
   </div>
 
-  <div style="padding:10px 14px;border-top:1px solid #f1f5f9;flex-shrink:0;display:flex;gap:6px;">
-    <button id="btnFinAnalisarIA" style="flex:1;height:36px;background:linear-gradient(135deg,#001f4d,#1565C0);color:#fff;border:none;border-radius:999px;font-size:12px;font-weight:800;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .18s;">
+  <div style="padding:10px 14px;border-top:1px solid var(--g100,#f1f5f9);flex-shrink:0;display:flex;gap:6px;">
+    <button id="btnFinAnalisarIA" style="flex:1;height:36px;background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));color:#fff;border:none;border-radius:999px;font-size:12px;font-weight:800;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .18s;">
       🤖 Analisar com IA
     </button>
-    <button id="btnFinChatSOFIA" style="height:36px;padding:0 14px;background:#fff;color:#001f4d;border:1.5px solid #bfdbfe;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .18s;">
+    <button id="btnFinChatSOFIA" style="height:36px;padding:0 14px;background:#fff;color:var(--navy,#001f4d);border:1.5px solid #bfdbfe;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .18s;">
       💬 Chat
     </button>
   </div>
 </div>
 
 <!-- Botão flutuante para abrir o painel IA -->
-<button id="btnFinIaFloat" title="Analisar com SOFIA IA" style="position:fixed;right:24px;bottom:24px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#001f4d,#1565C0);color:#fff;border:none;font-size:22px;cursor:pointer;box-shadow:0 8px 24px rgba(0,47,108,.36);z-index:9998;transition:all .18s;display:flex;align-items:center;justify-content:center;">
+<button id="btnFinIaFloat" title="Analisar com SOFIA IA" style="position:fixed;right:24px;bottom:24px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));color:#fff;border:none;font-size:22px;cursor:pointer;box-shadow:0 8px 24px rgba(0,47,108,.36);z-index:9998;transition:all .18s;display:flex;align-items:center;justify-content:center;">
   🤖
   <span style="position:absolute;top:-2px;right:-2px;width:12px;height:12px;border-radius:50%;background:#4ade80;border:2px solid #fff;animation:finIaPing 1.8s ease-in-out infinite;"></span>
 </button>
