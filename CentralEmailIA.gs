@@ -139,6 +139,50 @@ var EMAIL_IA_ASSINATURAS_USUARIOS = {
 
 // Usado quando o e-mail logado não está no mapa acima
 var EMAIL_IA_ASSINATURA_PADRAO = EMAIL_IA_ASSINATURAS_USUARIOS["financeiro@sindeducacao.com"];
+/**
+ * Leitura crua de e-mails do Gmail (sem checagem de autorização — quem
+ * decide se pode chamar é o caller). Extraído para eliminar a duplicidade
+ * entre a Caixa de E-mails (sisgepListarEmailsIA_CentralLegacy) e o Cockpit
+ * (getCockpitEmails_ em CockpitCore.gs), que mantinham cada um sua própria
+ * cópia quase idêntica do mapeamento thread → e-mail. A Central de E-mails
+ * é a dona natural dessa responsabilidade; o Cockpit reaproveita esta
+ * função, mas continua com seu próprio gate de sessão SISGEP — não usa a
+ * allowlist de 3 e-mails da Central, que é propositalmente mais restrita.
+ */
+function eiaBuscarEmailsGmail_(query, inicio, porPagina) {
+  var tz = Session.getScriptTimeZone();
+  var threads = GmailApp.search(query, inicio, porPagina);
+  return threads.map(function(thread) {
+    var msgs = thread.getMessages();
+    var msg = msgs[msgs.length - 1];
+    var corpo = msg.getPlainBody() || "";
+    var dataMsg = msg.getDate();
+    var dataStr = dataMsg ? Utilities.formatDate(new Date(dataMsg), tz, "dd/MM/yyyy HH:mm") : "";
+    var dataTs = dataMsg ? new Date(dataMsg).getTime() : 0;
+    var remetenteRaw = msg.getFrom() || "";
+    var destinatario = msg.getTo() || "";
+    var remetenteNome = remetenteRaw.replace(/<[^>]+>/g, "").replace(/"/g, "").trim() || remetenteRaw;
+    var anexos = msg.getAttachments({ includeInlineImages: false, includeAttachments: true }) || [];
+
+    return {
+      threadId: thread.getId(),
+      messageId: msg.getId(),
+      assunto: msg.getSubject() || "(sem assunto)",
+      remetente: remetenteRaw,
+      remetenteNome: remetenteNome,
+      destinatario: destinatario,
+      dataStr: dataStr,
+      dataTs: dataTs,
+      lido: !msg.isUnread(),
+      estrelado: msg.isStarred(),
+      temAnexo: anexos.length > 0,
+      qtdAnexos: anexos.length,
+      corpo: corpo.substring(0, 2500),
+      corpoPreview: corpo.substring(0, 220).replace(/\s+/g, " ").trim()
+    };
+  });
+}
+
 function sisgepListarEmailsIA_CentralLegacy(parametros, opcoes) {
   if (!eiaAcessoAutorizado_()) {
     throw new Error("Acesso não autorizado à Central de E-mails. E-mail: " + eiaEmailUsuarioAtivo_());
@@ -160,7 +204,6 @@ function sisgepListarEmailsIA_CentralLegacy(parametros, opcoes) {
     var busca = String(cfg.busca || "").trim();
     var status = String(cfg.status || "").trim();
     var ordenacao = String(cfg.ordenacao || "recentes").trim();
-    var tz = Session.getScriptTimeZone();
 
     var partes = [];
     if (caixa === "inbox" || caixa === "entrada") partes.push("in:inbox");
@@ -181,37 +224,8 @@ function sisgepListarEmailsIA_CentralLegacy(parametros, opcoes) {
 
     var query = partes.join(" ").replace(/\s+/g, " ").trim();
     var total = contarThreadsGmail_(query, 5000);
-    var threads = GmailApp.search(query, inicio, porPagina);
-    var emails = threads.map(function(thread) {
-      var msgs = thread.getMessages();
-      var msg = msgs[msgs.length - 1];
-      var corpo = msg.getPlainBody() || "";
-      var dataMsg = msg.getDate();
-      var dataStr = dataMsg ? Utilities.formatDate(new Date(dataMsg), tz, "dd/MM/yyyy HH:mm") : "";
-      var dataTs = dataMsg ? new Date(dataMsg).getTime() : 0;
-      var remetenteRaw = msg.getFrom() || "";
-      var destinatario = msg.getTo() || "";
-      var remetenteNome = remetenteRaw.replace(/<[^>]+>/g, "").replace(/"/g, "").trim() || remetenteRaw;
-      var anexos = msg.getAttachments({ includeInlineImages: false, includeAttachments: true }) || [];
-
-      return {
-        threadId: thread.getId(),
-        messageId: msg.getId(),
-        assunto: msg.getSubject() || "(sem assunto)",
-        remetente: remetenteRaw,
-        remetenteNome: remetenteNome,
-        destinatario: destinatario,
-        dataStr: dataStr,
-        dataTs: dataTs,
-        lido: !msg.isUnread(),
-        estrelado: msg.isStarred(),
-        caixa: caixa,
-        temAnexo: anexos.length > 0,
-        qtdAnexos: anexos.length,
-        corpo: corpo.substring(0, 2500),
-        corpoPreview: corpo.substring(0, 220).replace(/\s+/g, " ").trim()
-      };
-    });
+    var emails = eiaBuscarEmailsGmail_(query, inicio, porPagina);
+    emails.forEach(function(e) { e.caixa = caixa; });
 
     if (ordenacao === "antigos") emails.sort(function(a, b) { return (a.dataTs || 0) - (b.dataTs || 0); });
     if (ordenacao === "remetente") emails.sort(function(a, b) { return String(a.remetenteNome || a.remetente).localeCompare(String(b.remetenteNome || b.remetente)); });
