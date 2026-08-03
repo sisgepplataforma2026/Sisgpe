@@ -23,7 +23,7 @@ function analisarEscolaIA(chave, tokenSessao) {
     // Busca dados da escola na base
     var dadosEscola = null;
     try {
-      var lista = listarEscolas() || [];
+      var lista = listarEscolasCadastro(tokenSessao) || [];
       var chaveNorm = chave.replace(/\D/g, "");
 
       for (var i = 0; i < lista.length; i++) {

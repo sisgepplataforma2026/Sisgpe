@@ -202,7 +202,7 @@ function consultarEscolaDashboardOficios(query) {
     if (!query || query.length < 2) return [];
 
     if (typeof buscarEscolasPorTermo === "function") {
-      return (buscarEscolasPorTermo(query) || []).map(function(e) {
+      return (buscarEscolasPorTermo_interno_(query) || []).map(function(e) {
         return {
           nome:     e.escola || e.nome || e.razaoSocial || "",
           cnpj:     e.cnpj || e.cnpjLimpo || "",

@@ -633,7 +633,7 @@ function buscarEscolaTaxa(termo) {
     var termoNorm = norm_(termo), termoNum = nums_(termo);
 
     if (typeof listarEscolas === "function") {
-      var resultado = (listarEscolas() || []).filter(function(item) {
+      var resultado = (listarEscolasCadastro_interno_() || []).filter(function(item) {
         var nome = String(item.escola||item.nome||item.razaoSocial||"").trim();
         var cnpj = String(item.cnpj||item.cnpjLimpo||"").trim();
         return norm_(nome).indexOf(termoNorm) > -1 || (termoNum.length >= 3 && nums_(cnpj).indexOf(termoNum) > -1);

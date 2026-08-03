@@ -18,7 +18,7 @@ function analisarEscolaIA_Oficios_(cnpjOuNome, tokenSessao) {
     };
   }
 
-  var escolas = buscarEscola(cnpjOuNome);
+  var escolas = buscarEscola(cnpjOuNome, tokenSessao);
 
   if (!escolas || !escolas.length) {
     return {

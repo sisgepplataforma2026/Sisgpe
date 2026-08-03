@@ -2652,7 +2652,7 @@ google.script.run
         var el = document.getElementById("eiaRascunhoPara");
         if (el) el.textContent = para || "-";
       })
-      .listarEscolasCadastro();
+      .listarEscolasCadastro(SISGEP_TOKEN_SESSAO);
   } else {
     if (elPara) elPara.textContent = "-";
   }

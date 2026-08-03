@@ -206,7 +206,7 @@ function popularSelectEscolas(lista) {
 
   function carregarEscolasDaPlanilha() {
     if(!window.google||!window.google.script||!window.google.script.run){ syncFromSelect(); renderRecentes(); return; }
-    google.script.run.withSuccessHandler(popularSelectEscolas).withFailureHandler(function(err){ console.error("Erro ao carregar escolas:", err); toast("Erro ao carregar escolas: " + ((err && err.message) || err), "err", 6000); syncFromSelect(); renderRecentes(); }).listarEscolas();
+    google.script.run.withSuccessHandler(popularSelectEscolas).withFailureHandler(function(err){ console.error("Erro ao carregar escolas:", err); toast("Erro ao carregar escolas: " + ((err && err.message) || err), "err", 6000); syncFromSelect(); renderRecentes(); }).listarEscolas(SISGEP_TOKEN_SESSAO);
   }
 
   function setInput(id, v) { var el=$(id); if(el) el.value=v||""; }

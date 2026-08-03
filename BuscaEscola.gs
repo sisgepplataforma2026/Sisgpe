@@ -27,11 +27,13 @@ function colOuNovo_(h, novo, antigos) {
 /* ============================================================= */
 /* ENTRADA PÚBLICA                                               */
 /* ============================================================= */
-function buscarEscola(query) {
+/** Exige sessão válida — usada diretamente por telas via google.script.run. */
+function buscarEscola(query, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     query = String(query || "").trim();
     if (query.length < 2) return [];
-    return buscarEscolasPorTermo(query);
+    return buscarEscolasPorTermo_interno_(query);
   } catch (e) {
     Logger.log("buscarEscola erro: " + e.message);
     return [];
@@ -41,12 +43,23 @@ function buscarEscola(query) {
 /* ============================================================= */
 /* BUSCA POR TERMO                                               */
 /* ============================================================= */
-function buscarEscolasPorTermo(termo) {
+/** Exige sessão válida — usada diretamente por telas via google.script.run. */
+function buscarEscolasPorTermo(termo, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
+  return buscarEscolasPorTermo_interno_(termo);
+}
+
+/**
+ * Núcleo sem checagem de sessão, para uso interno de outras funções do
+ * servidor que já validam a própria sessão (ou não têm sessão de usuário
+ * disponível) — nunca exponha esta função diretamente a google.script.run.
+ */
+function buscarEscolasPorTermo_interno_(termo) {
   try {
     termo = String(termo || "").trim();
     if (!termo || termo.length < 2) return [];
 
-    var lista = (typeof listarEscolasCadastro === "function" ? listarEscolasCadastro() : listarEscolasOficio()) || [];
+    var lista = (typeof listarEscolasCadastro_interno_ === "function" ? listarEscolasCadastro_interno_() : listarEscolasOficio_interno_()) || [];
     var termoNorm = normalizarBuscaEscola_(termo);
     var termoDig  = String(termo || "").replace(/\D/g, "");
 
@@ -121,7 +134,7 @@ function buscarEscolasPorTermo(termo) {
 function testarBuscaSerraOficios() {
   var termos = ["Serra", "Vitória", "Cariacica", "municipal"];
   var saida = termos.map(function(termo) {
-    var lista = buscarEscolasPorTermo(termo) || [];
+    var lista = buscarEscolasPorTermo_interno_(termo) || [];
     return {
       termo: termo,
       total: lista.length,
@@ -140,7 +153,7 @@ function testarBuscaSerraOficios() {
 }
 
 function buscarEscolasOficioSmart(termo) {
-  return buscarEscolasPorTermo(termo);
+  return buscarEscolasPorTermo_interno_(termo);
 }
 
 /* ============================================================= */
@@ -152,7 +165,18 @@ function buscarEscolasOficioSmart(termo) {
 /* Escolas.gs) e só reformata pro formato que os consumidores      */
 /* deste arquivo esperam (cnpjLimpo, cidadeUf, enderecoCompleto).  */
 /* ============================================================= */
-function listarEscolasOficio() {
+/** Exige sessão válida — usada diretamente por telas via google.script.run. */
+function listarEscolasOficio(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
+  return listarEscolasOficio_interno_();
+}
+
+/**
+ * Núcleo sem checagem de sessão, para uso interno de outras funções do
+ * servidor que já validam a própria sessão (ou não têm sessão de usuário
+ * disponível) — nunca exponha esta função diretamente a google.script.run.
+ */
+function listarEscolasOficio_interno_() {
   try {
     var cache = CacheService.getScriptCache();
     var cached = cache.get(CACHE_KEY_ESCOLAS_);
@@ -163,7 +187,7 @@ function listarEscolasOficio() {
       } catch (eCache) { Logger.log('[listarEscolas] cache read: ' + eCache); }
     }
 
-    var base = (typeof listarEscolasCadastro === "function" ? listarEscolasCadastro() : []) || [];
+    var base = (typeof listarEscolasCadastro_interno_ === "function" ? listarEscolasCadastro_interno_() : []) || [];
 
     var resultado = base.map(function(item) {
       var cidade   = String(item.Municipio || item.cidade || "").trim();

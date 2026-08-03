@@ -588,7 +588,7 @@ function diagnosticarBuscaEscolasOficios() {
   var retorno = termos.map(function(termo) {
     var lista = [];
     try {
-      lista = buscarEscolasPorTermo(termo) || [];
+      lista = buscarEscolasPorTermo_interno_(termo) || [];
     } catch (e) {
       return { termo: termo, erro: e.message, total: 0, amostras: [] };
     }

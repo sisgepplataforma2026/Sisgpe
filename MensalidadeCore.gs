@@ -338,7 +338,7 @@ function enviarCobracasMensalidade(cpfs) {
 
     var escolas = {};
     try {
-      var listaEscolas = listarEscolas() || [];
+      var listaEscolas = listarEscolasCadastro_interno_() || [];
       listaEscolas.forEach(function(e) {
         var key = String(e.escola || e.NomeEscola || "").trim().toLowerCase();
         if (key) escolas[key] = e.email || e.Email || "";
@@ -801,7 +801,7 @@ function processarEmailsMensalidade() {
 
     // Carrega lista de escolas para identificar remetente
     var escolas = [];
-    try { escolas = listarEscolas() || []; } catch(e) {}
+    try { escolas = listarEscolasCadastro_interno_() || []; } catch(e) {}
 
     var totalProcessados = 0, totalErros = 0;
     var resumo = [];

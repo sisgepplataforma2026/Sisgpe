@@ -1436,7 +1436,7 @@ function carregarLista(){
       btnReset(btn);
       ceMsg("ceMsgTabela","Erro ao carregar: "+esc((err&&err.message)||String(err||"")),"err");
     })
- .listarEscolasParaModulo();
+ .listarEscolasParaModulo(SISGEP_TOKEN_SESSAO);
 }
 
 /* ═══════════════════════════════════

@@ -631,7 +631,7 @@ function jurBuscarAssociado(termo, tokenSessao) {
 function jurBuscarEscolaVinculo(termo, tokenSessao) {
   try {
     exigirSessaoDocumentos_(tokenSessao, false);
-    var resultado = buscarEscola(termo) || [];
+    var resultado = buscarEscola(termo, tokenSessao) || [];
     return { ok: true, itens: resultado };
   } catch (e) {
     Logger.log("jurBuscarEscolaVinculo ERRO: " + e.message + " | stack: " + e.stack);

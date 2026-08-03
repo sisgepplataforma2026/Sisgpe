@@ -316,9 +316,24 @@ function vcRenderCorpo(){
         '<div class="vc-etapa-titulo">Captação</div>'+
         '<button class="vc-btn-grande vc-btn-qr" onclick="vcMostrarQR()">'+
         '&#128241; Mostrar QR Code da ficha</button>'+
-        '<button class="vc-btn-grande vc-btn-cadastro" onclick="vcCadastroRapido()">'+
+        '<button class="vc-btn-grande vc-btn-cadastro" id="vcBtnAbrirCadastro" onclick="vcAbrirCadastroRapido()">'+
         '&#9997; Cadastro rápido</button>'+
         '<div id="vcQRBox" style="margin-top:12px;"></div>'+
+        '<div id="vcCadastroRapidoBox" style="display:none;margin-top:12px;">'+
+          '<div class="vc-campo"><label>Nome completo</label>'+
+          '<input type="text" id="vcCrNome" placeholder="Nome completo do trabalhador"></div>'+
+          '<div class="vc-campo"><label>CPF</label>'+
+          '<input type="text" id="vcCrCpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" oninput="Utils.aplicarMascaraCPF(this)"></div>'+
+          '<div class="vc-campo"><label>Celular</label>'+
+          '<input type="tel" id="vcCrCelular" inputmode="numeric" maxlength="15" placeholder="(27) 90000-0000" oninput="vcMascaraCelular(this)"></div>'+
+          '<div class="vc-campo"><label>E-mail (opcional)</label>'+
+          '<input type="email" id="vcCrEmail" placeholder="Para enviar o link de conclusão"></div>'+
+          '<div class="vc-campo"><label>Cargo (opcional)</label>'+
+          '<input type="text" id="vcCrCargo" placeholder="Ex.: Professor(a), Auxiliar…"></div>'+
+          '<button class="vc-btn-grande vc-btn-cadastro" onclick="vcCadastroRapido()">'+
+          '&#10003; Enviar pré-cadastro</button>'+
+          '<button class="vc-btn-grande" style="background:#eef1f6;color:#334155;" onclick="vcCancelarCadastroRapido()">Cancelar</button>'+
+        '</div>'+
       '</div>'+
 
       '<div class="vc-bloco">'+
@@ -464,20 +479,50 @@ function vcMostrarQR(){
   }).gerarLinkFichaDaVisita(VC_VISITA.ID_VISITA, vcToken());
 }
 
+function vcMascaraCelular(el){
+  var v=el.value.replace(/\D/g,'').substring(0,11);
+  if(v.length>10) v=v.replace(/(\d{2})(\d{5})(\d{0,4})/,'($1) $2-$3');
+  else if(v.length>5) v=v.replace(/(\d{2})(\d{4})(\d{0,4})/,'($1) $2-$3');
+  else if(v.length>2) v=v.replace(/(\d{2})(\d{0,5})/,'($1) $2');
+  else if(v.length>0) v=v.replace(/(\d{0,2})/,'($1');
+  el.value=v;
+}
+
+function vcAbrirCadastroRapido(){
+  var box=document.getElementById('vcCadastroRapidoBox');
+  if(!box) return;
+  box.style.display='block';
+  var btn=document.getElementById('vcBtnAbrirCadastro');
+  if(btn) btn.style.display='none';
+}
+
+function vcCancelarCadastroRapido(){
+  ['vcCrNome','vcCrCpf','vcCrCelular','vcCrEmail','vcCrCargo'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.value='';
+  });
+  var box=document.getElementById('vcCadastroRapidoBox');
+  if(box) box.style.display='none';
+  var btn=document.getElementById('vcBtnAbrirCadastro');
+  if(btn) btn.style.display='';
+}
+
 function vcCadastroRapido(){
-  var nome=prompt('Nome completo do trabalhador:');
-  if(!nome||!nome.trim()) return;
-  var cpf=prompt('CPF (somente números):');
-  if(!cpf||!cpf.trim()) return;
-  var celular=prompt('Celular com DDD:')||'';
-  var email=prompt('E-mail (para enviar o link de conclusão):')||'';
-  var cargo=prompt('Cargo:')||'';
+  var nome=(document.getElementById('vcCrNome')||{}).value||'';
+  var cpf=(document.getElementById('vcCrCpf')||{}).value||'';
+  var celular=(document.getElementById('vcCrCelular')||{}).value||'';
+  var email=(document.getElementById('vcCrEmail')||{}).value||'';
+  var cargo=(document.getElementById('vcCrCargo')||{}).value||'';
+
+  if(!nome.trim()){ toast('Informe o nome completo.','warn'); return; }
+  if(!cpf.trim()){ toast('Informe o CPF.','warn'); return; }
+  if(!Utils.validarCPF(cpf)){ toast('CPF inválido — confira os números digitados.','err'); return; }
 
   google.script.run.withSuccessHandler(function(r){
     /* Antes dizia "Pré-cadastro enviado" mesmo quando o backend recusava:
        o diretor saía da escola achando que tinha captado a ficha. */
     if(vcOk(r)){
       toast(r.mensagem||'Pré-cadastro enviado.','ok');
+      vcCancelarCadastroRapido();
       carregarVisitasDoDia();
     } else {
       toast('NÃO enviado: '+((r&&(r.mensagem||r.erro))||'falha no cadastro.'),'err');

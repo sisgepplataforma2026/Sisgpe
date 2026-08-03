@@ -768,7 +768,7 @@ function buscarContextoEscolaSisgep_(escolaNome, numeroOficio, cpf) {
   // Busca escola na base
   if (escolaNome && escolaNome.length >= 3) {
     try {
-      var lista = listarEscolas() || [];
+      var lista = listarEscolasCadastro_interno_() || [];
       var resultado = eiaMelhorCorrespondenciaEscola_(lista, escolaNome, ["escola", "NomeEscola", "nome"]);
 
       if (resultado.ambiguo) {
@@ -1725,7 +1725,7 @@ function sisgepResolverEmailDestinatario_CentralLegacy(nomeOuTexto) {
     if (!nomeOuTexto) return { ok: false, mensagem: "Digite um nome para buscar." };
     if (nomeOuTexto.indexOf("@") >= 0) return { ok: true, email: nomeOuTexto, jaEraEmail: true };
 
-    var lista = listarEscolasCadastro() || [];
+    var lista = listarEscolasCadastro_interno_() || [];
     var resultado = eiaMelhorCorrespondenciaEscola_(lista, nomeOuTexto, ["escola", "NomeEscola"]);
 
     if (resultado.ambiguo) {

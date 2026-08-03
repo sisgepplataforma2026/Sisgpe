@@ -322,7 +322,7 @@ function coletarContextoSISGEP_(mensagem, dominio) {
   // ── Carrega emails das escolas (cache em memória) ──
   var mapaEmailEscolas = {};
   try {
-    var listaEsc = listarEscolasCadastro() || [];
+    var listaEsc = listarEscolasCadastro_interno_() || [];
     listaEsc.forEach(function(e) {
       var nome = String(e[COL_NOME_ESCOLA] || e.escola || e.NomeEscola || "").trim().toLowerCase();
       var email = String(e[COL_EMAIL] || e.email || e.Email || "").trim();

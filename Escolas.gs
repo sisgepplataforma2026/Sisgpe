@@ -263,11 +263,25 @@ function cadastrarEscola(dados, tokenSessao) {
 /* =============================================================== */
 /* LISTAR PARA O MÓDULO INTERNO                                     */
 /* =============================================================== */
-function listarEscolas() {
-  return listarEscolasCadastro();
+/** Exige sessão válida — usada diretamente por telas via google.script.run. */
+function listarEscolas(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
+  return listarEscolasCadastro_interno_();
 }
 
-function listarEscolasCadastro() {
+/** Exige sessão válida — usada diretamente por telas via google.script.run. */
+function listarEscolasCadastro(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
+  return listarEscolasCadastro_interno_();
+}
+
+/**
+ * Núcleo sem checagem de sessão, para uso interno de outras funções do
+ * servidor que já validam a própria sessão (ou não têm sessão de usuário
+ * disponível, como triggers automáticos) — nunca exponha esta função
+ * diretamente a google.script.run.
+ */
+function listarEscolasCadastro_interno_() {
   try {
     const ss = SpreadsheetApp.openById(PLANILHA_ID);
     const sh = ss.getSheetByName(ABA_ESCOLAS);
@@ -320,7 +334,7 @@ function listarEscolasCadastro() {
   }
 }
 
-function listarEscolasCadastroInterno() { return listarEscolasCadastro(); }
+function listarEscolasCadastroInterno() { return listarEscolasCadastro_interno_(); }
 
 /* =============================================================== */
 /* AÇÕES EM MASSA                                                   */
@@ -662,10 +676,16 @@ function testarMapaCabecalho() {
   if (!sh) { Logger.log("Aba não encontrada."); return; }
   Logger.log(JSON.stringify(getHeaderMapEscolas_(sh), null, 2));
 }
-function listarEscolasParaModulo() {
+/** Exige sessão válida — usada diretamente pela tela de Cadastro de Escolas. */
+function listarEscolasParaModulo(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
+  return listarEscolasParaModulo_interno_();
+}
+
+function listarEscolasParaModulo_interno_() {
   try {
     function str(v) { return v instanceof Date ? "" : String(v || ""); }
-    var lista = listarEscolasCadastro();
+    var lista = listarEscolasCadastro_interno_();
     return lista.map(function(item) {
       return {
         NomeEscola:    str(item.NomeEscola  || item.escola),
