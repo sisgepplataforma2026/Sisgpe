@@ -12,7 +12,7 @@
 .dex-hdr {
   background:
     radial-gradient(ellipse at 90% -10%,rgba(201,168,76,.26) 0%,transparent 40%),
-    linear-gradient(135deg,#001230 0%,#002f6c 55%,#0d52b5 100%);
+    linear-gradient(135deg,#001230 0%,var(--navy2,#002f6c) 55%,#0d52b5 100%);
   padding:12px 20px 10px;
   display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
   position:sticky;
@@ -27,7 +27,7 @@
 .dex-hdr-online { display:inline-flex; align-items:center; gap:5px; font-size:10.5px; color:rgba(255,255,255,.6); font-weight:600; margin-top:5px; }
 .dex-hdr-dot { width:6px; height:6px; border-radius:50%; background:#4ade80; animation:dexPulse 2s infinite; }
 @keyframes dexPulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-.dex-badge { background:rgba(201,168,76,.18); border:1.5px solid rgba(201,168,76,.45); color:#f0c843; font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; padding:7px 16px; border-radius:999px; }
+.dex-badge { background:rgba(201,168,76,.18); border:1.5px solid rgba(201,168,76,.45); color:var(--gold2,#f0c843); font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; padding:7px 16px; border-radius:999px; }
 .dex-btn-ref { background:rgba(255,255,255,.12); border:1.5px solid rgba(255,255,255,.22); color:#fff; font-family:'Plus Jakarta Sans',sans-serif; font-size:11px; font-weight:700; padding:6px 14px; border-radius:999px; cursor:pointer; transition:all .15s; }
 .dex-btn-ref:hover { background:rgba(255,255,255,.22); }
 
@@ -42,7 +42,7 @@
 .dex-kpi-bar { position:absolute; top:0; left:0; right:0; height:3px; border-radius:12px 12px 0 0; }
 .dex-kpi-lbl { font-size:8.5px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.07em; margin-bottom:6px; }
 .dex-kpi-val { font-size:19px; font-weight:900; color:#0f172a; line-height:1; margin-bottom:1px; letter-spacing:-.3px; }
-.dex-kpi-val.g { color:#059669; } .dex-kpi-val.a { color:#d97706; } .dex-kpi-val.r { color:#dc2626; } .dex-kpi-val.p { color:#7c3aed; }
+.dex-kpi-val.g { color:var(--green,#059669); } .dex-kpi-val.a { color:var(--amber,#d97706); } .dex-kpi-val.r { color:var(--red,#dc2626); } .dex-kpi-val.p { color:#7c3aed; }
 .dex-kpi-sub { font-size:9.5px; color:#94a3b8; font-weight:500; }
 .dex-kpi-ico { position:absolute; top:11px; right:11px; width:26px; height:26px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:12px; }
 
@@ -68,7 +68,7 @@
 .dex-donut-wrap { display:flex; align-items:center; gap:14px; }
 .dex-donut-rel { position:relative; flex-shrink:0; }
 .dex-donut-center { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:none; }
-.dex-donut-pct { font-size:15px; font-weight:900; color:#002f6c; }
+.dex-donut-pct { font-size:15px; font-weight:900; color:var(--navy2,#002f6c); }
 .dex-donut-txt { font-size:8px; color:#94a3b8; }
 .dex-leg { display:flex; align-items:center; gap:6px; margin-bottom:9px; font-size:11px; color:#64748b; }
 .dex-leg-dot { width:9px; height:9px; border-radius:2px; flex-shrink:0; }
@@ -76,14 +76,14 @@
 
 /* Fluxo */
 .dex-fluxo { display:flex; align-items:center; gap:4px; margin-bottom:10px; }
-.dex-step { flex:1; background:#f8fafc; border:1px solid #e2e8f0; border-top:2.5px solid #002f6c; border-radius:8px; padding:8px 4px; text-align:center; }
-.dex-step.g { border-top-color:#059669; } .dex-step.a { border-top-color:#d97706; } .dex-step.r { border-top-color:#dc2626; }
+.dex-step { flex:1; background:#f8fafc; border:1px solid #e2e8f0; border-top:2.5px solid var(--navy2,#002f6c); border-radius:8px; padding:8px 4px; text-align:center; }
+.dex-step.g { border-top-color:var(--green,#059669); } .dex-step.a { border-top-color:var(--amber,#d97706); } .dex-step.r { border-top-color:var(--red,#dc2626); }
 .dex-step-n { font-size:16px; font-weight:900; color:#0f172a; line-height:1; }
-.dex-step.g .dex-step-n { color:#059669; } .dex-step.a .dex-step-n { color:#d97706; } .dex-step.r .dex-step-n { color:#dc2626; }
+.dex-step.g .dex-step-n { color:var(--green,#059669); } .dex-step.a .dex-step-n { color:var(--amber,#d97706); } .dex-step.r .dex-step-n { color:var(--red,#dc2626); }
 .dex-step-l { font-size:8px; color:#94a3b8; text-transform:uppercase; letter-spacing:.04em; margin-top:2px; }
 .dex-arr { color:#cbd5e1; font-size:14px; flex-shrink:0; }
 .dex-prog-t { height:5px; background:#f1f5f9; border-radius:999px; overflow:hidden; }
-.dex-prog-f { height:100%; border-radius:999px; background:linear-gradient(90deg,#002f6c,#C9A84C); transition:width .6s ease; }
+.dex-prog-f { height:100%; border-radius:999px; background:linear-gradient(90deg,var(--navy2,#002f6c),var(--gold,#C9A84C)); transition:width .6s ease; }
 
 /* Escolas section */
 .dex-esc-section { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
@@ -101,7 +101,7 @@
 
 .dex-alerta { background:#fef3c7; border:1px solid #fcd34d; border-radius:10px; padding:9px 12px; display:flex; align-items:center; gap:8px; grid-column:1/-1; }
 .dex-alerta-txt { font-size:11px; font-weight:700; color:#92400e; flex:1; }
-.dex-alerta-num { font-size:18px; font-weight:900; color:#d97706; flex-shrink:0; }
+.dex-alerta-num { font-size:18px; font-weight:900; color:var(--amber,#d97706); flex-shrink:0; }
 .dex-alerta-btn { font-size:10px; font-weight:700; color:#92400e; background:rgba(217,119,6,.12); border:1px solid rgba(217,119,6,.25); padding:3px 9px; border-radius:999px; cursor:pointer; white-space:nowrap; flex-shrink:0; }
 
 /* Atividades */
@@ -219,7 +219,7 @@
 }
 
 .sisgep-footer strong{
-  color:#002f6c;
+  color:var(--navy2,#002f6c);
   font-weight:700;
 }
 /* ==================================================
@@ -457,10 +457,10 @@
   <!-- KPIs Ofícios -->
   <div class="dex-sep" style="margin-top:4px;">📄 Ofícios</div>
   <div class="dex-kpis" id="dexKpis">
-    <div class="dex-kpi"><div class="dex-kpi-bar" style="background:linear-gradient(90deg,#002f6c,#1565C0);"></div><div class="dex-kpi-ico" style="background:#eef3fc;">📄</div><div class="dex-kpi-lbl">Total emitidos</div><div class="dex-kpi-val dex-skel" style="height:24px;width:50px;margin-bottom:4px;"></div><div class="dex-kpi-sub">Todos os períodos</div></div>
-    <div class="dex-kpi"><div class="dex-kpi-bar" style="background:linear-gradient(90deg,#059669,#34d399);"></div><div class="dex-kpi-ico" style="background:#d1fae5;">✅</div><div class="dex-kpi-lbl">Confirmados</div><div class="dex-kpi-val dex-skel g" style="height:24px;width:50px;margin-bottom:4px;"></div><div class="dex-kpi-sub">—</div></div>
-    <div class="dex-kpi"><div class="dex-kpi-bar" style="background:linear-gradient(90deg,#d97706,#fbbf24);"></div><div class="dex-kpi-ico" style="background:#fef3c7;">🕐</div><div class="dex-kpi-lbl">Pendentes</div><div class="dex-kpi-val dex-skel a" style="height:24px;width:50px;margin-bottom:4px;"></div><div class="dex-kpi-sub">Aguardando</div></div>
-    <div class="dex-kpi"><div class="dex-kpi-bar" style="background:linear-gradient(90deg,#dc2626,#f87171);"></div><div class="dex-kpi-ico" style="background:#fee2e2;">⚠️</div><div class="dex-kpi-lbl">Falhas</div><div class="dex-kpi-val dex-skel r" style="height:24px;width:50px;margin-bottom:4px;"></div><div class="dex-kpi-sub">Erro / falha</div></div>
+    <div class="dex-kpi"><div class="dex-kpi-bar" style="background:linear-gradient(90deg,var(--navy2,#002f6c),var(--blue,#1565C0));"></div><div class="dex-kpi-ico" style="background:#eef3fc;">📄</div><div class="dex-kpi-lbl">Total emitidos</div><div class="dex-kpi-val dex-skel" style="height:24px;width:50px;margin-bottom:4px;"></div><div class="dex-kpi-sub">Todos os períodos</div></div>
+    <div class="dex-kpi"><div class="dex-kpi-bar" style="background:linear-gradient(90deg,var(--green,#059669),#34d399);"></div><div class="dex-kpi-ico" style="background:#d1fae5;">✅</div><div class="dex-kpi-lbl">Confirmados</div><div class="dex-kpi-val dex-skel g" style="height:24px;width:50px;margin-bottom:4px;"></div><div class="dex-kpi-sub">—</div></div>
+    <div class="dex-kpi"><div class="dex-kpi-bar" style="background:linear-gradient(90deg,var(--amber,#d97706),#fbbf24);"></div><div class="dex-kpi-ico" style="background:#fef3c7;">🕐</div><div class="dex-kpi-lbl">Pendentes</div><div class="dex-kpi-val dex-skel a" style="height:24px;width:50px;margin-bottom:4px;"></div><div class="dex-kpi-sub">Aguardando</div></div>
+    <div class="dex-kpi"><div class="dex-kpi-bar" style="background:linear-gradient(90deg,var(--red,#dc2626),#f87171);"></div><div class="dex-kpi-ico" style="background:#fee2e2;">⚠️</div><div class="dex-kpi-lbl">Falhas</div><div class="dex-kpi-val dex-skel r" style="height:24px;width:50px;margin-bottom:4px;"></div><div class="dex-kpi-sub">Erro / falha</div></div>
     <div class="dex-kpi"><div class="dex-kpi-bar" style="background:linear-gradient(90deg,#7c3aed,#a78bfa);"></div><div class="dex-kpi-ico" style="background:#ede9fe;">🎯</div><div class="dex-kpi-lbl">Taxa sucesso</div><div class="dex-kpi-val dex-skel p" style="height:24px;width:50px;margin-bottom:4px;"></div><div class="dex-kpi-sub">Do ciclo atual</div></div>
   </div>
 
@@ -522,7 +522,7 @@
         <div class="dex-prog-t"><div class="dex-prog-f" id="dexProgFill" style="width:0%;"></div></div>
         <div style="display:flex;justify-content:space-between;margin-top:5px;">
           <span style="font-size:10px;color:#64748b;">Progresso</span>
-          <span style="font-size:10px;font-weight:800;color:#059669;" id="dexProgVal">—</span>
+          <span style="font-size:10px;font-weight:800;color:var(--green,#059669);" id="dexProgVal">—</span>
         </div>
         <!-- Atalhos de ação rápida -->
         <div id="dexAtalhos" style="display:none;gap:5px;flex-wrap:wrap;margin-top:10px;padding-top:9px;border-top:1px solid #f1f5f9;"></div>
@@ -619,12 +619,12 @@ function renderKpis(resumo,fila,graficos){
   if(!el) return;
 
   el.innerHTML=
-    kpi("linear-gradient(90deg,#002f6c,#1565C0)","#eef3fc","📄","Total emitidos",total,
+    kpi("linear-gradient(90deg,var(--navy2,#002f6c),var(--blue,#1565C0))","#eef3fc","📄","Total emitidos",total,
         somaStatus<total ? somaStatus+" contabilizados" : "Todos os períodos","")
-   +kpi("linear-gradient(90deg,#059669,#34d399)","#d1fae5","✅","Enviados + Confirm.",sucesso,
+   +kpi("linear-gradient(90deg,var(--green,#059669),#34d399)","#d1fae5","✅","Enviados + Confirm.",sucesso,
         confirmados+" confirm. · "+enviados+" enviados","g")
-   +kpi("linear-gradient(90deg,#d97706,#fbbf24)","#fef3c7","🕐","Pendentes",pendentes,"Aguardando envio","a")
-   +kpi("linear-gradient(90deg,#dc2626,#f87171)","#fee2e2","⚠️","Falhas",erros+falhas,"Erro / falha entrega","r")
+   +kpi("linear-gradient(90deg,var(--amber,#d97706),#fbbf24)","#fef3c7","🕐","Pendentes",pendentes,"Aguardando envio","a")
+   +kpi("linear-gradient(90deg,var(--red,#dc2626),#f87171)","#fee2e2","⚠️","Falhas",erros+falhas,"Erro / falha entrega","r")
    +kpi("linear-gradient(90deg,#7c3aed,#a78bfa)","#ede9fe","🎯","Taxa sucesso",taxaSuc+"%","Do ciclo atual","p");
 
   // Indicador de saúde no header
@@ -752,10 +752,10 @@ function renderDonut(graficos,resumo){
   if(pct) pct.textContent = resumo.taxaSucesso!=null ? Math.round(Number(resumo.taxaSucesso))+'%' : (total>0?Math.round(sucesso/total*100)+'%':'—');
 
   legEl.innerHTML=[
-    ['#059669','Confirmado',conf],
-    ['#1565C0','Enviado',env],
-    ['#C9A84C','Pendente',pend],
-    ['#dc2626','Falha',falh]
+    ['var(--green,#059669)','Confirmado',conf],
+    ['var(--blue,#1565C0)','Enviado',env],
+    ['var(--gold,#C9A84C)','Pendente',pend],
+    ['var(--red,#dc2626)','Falha',falh]
   ].map(function(it){
     return '<div class="dex-leg"><span class="dex-leg-dot" style="background:'+it[0]+';"></span>'+esc(it[1])+'<span class="dex-leg-val">'+it[2]+'</span></div>';
   }).join('');
@@ -794,7 +794,7 @@ function renderFluxo(resumo,fila,graficos){
   var pv=g("dexProgVal");
   if(pv){
     pv.textContent=taxaSuc+"% sucesso";
-    pv.style.color=taxaSuc>=70?"#059669":taxaSuc>=40?"#d97706":"#dc2626";
+    pv.style.color=taxaSuc>=70?"var(--green,#059669)":taxaSuc>=40?"var(--amber,#d97706)":"var(--red,#dc2626)";
   }
 
   var ft=g("dexFluxoTag");
@@ -837,11 +837,11 @@ function renderEscMetrics(stats){
   var el=g("dexEscMetrics"); if(!el) return;
   el.innerHTML=
     emClick("linear-gradient(135deg,#eef3fc,#dbeafe)","🏫","Total",total,"","escolas","")
-   +emClick("linear-gradient(135deg,#d1fae5,#a7f3d0)","✅","Ativas",ativas,"#059669","escolas","ATIVA")
-   +emClick("linear-gradient(135deg,#fee2e2,#fecaca)","🚫","Inativas",inativas,"#dc2626","escolas","INATIVA")
+   +emClick("linear-gradient(135deg,#d1fae5,#a7f3d0)","✅","Ativas",ativas,"var(--green,#059669)","escolas","ATIVA")
+   +emClick("linear-gradient(135deg,#fee2e2,#fecaca)","🚫","Inativas",inativas,"var(--red,#dc2626)","escolas","INATIVA")
    +emClick("linear-gradient(135deg,#eff6ff,#bfdbfe)","🔢","Com CNPJ",comCnpj,"","escolas","")
-   +emClick("linear-gradient(135deg,#fef3c7,#fde68a)","📧","Com e-mail",comEmail,"#d97706","escolas","")
-   +emClick("linear-gradient(135deg,#fee2e2,#fecaca)","⚠️","Sem e-mail",semEmail,"#dc2626","escolas","SEM_EMAIL")
+   +emClick("linear-gradient(135deg,#fef3c7,#fde68a)","📧","Com e-mail",comEmail,"var(--amber,#d97706)","escolas","")
+   +emClick("linear-gradient(135deg,#fee2e2,#fecaca)","⚠️","Sem e-mail",semEmail,"var(--red,#dc2626)","escolas","SEM_EMAIL")
    +'<div class="dex-alerta" id="dexAlertaSemEmail"'+(semEmail===0?' style="display:none;"':'')+'>'
    +'<span style="font-size:16px;">⚠️</span>'
    +'<span class="dex-alerta-txt">Escolas sem e-mail cadastrado</span>'
@@ -903,7 +903,7 @@ function renderAtividades(lista){
   if(lista.length>10){
     el.innerHTML+='<div style="text-align:center;padding-top:6px;">'
       +'<button onclick="if(window.mostrarAbaOficio)mostrarAbaOficio(\'historico\')" '
-      +'style="font-size:10px;font-weight:700;color:#002f6c;background:none;border:none;cursor:pointer;text-decoration:underline;">'
+      +'style="font-size:10px;font-weight:700;color:var(--navy2,#002f6c);background:none;border:none;cursor:pointer;text-decoration:underline;">'
       +'Ver todas as '+(lista.length)+' atividades →</button></div>';
   }
 }
@@ -973,7 +973,7 @@ function renderMonitoramentoRecebimento(dados) {
     + "<div class='dex-card-sub'>Acompanhamento da fila de ofícios</div>"
     + "</div>"
   + "<button onclick=\"if(window.mostrarAbaOficio)mostrarAbaOficio('monitoramento',{filtro:'AGUARDANDO'})\" "
-    + "style='font-size:10px;font-weight:800;color:#002f6c;background:#eef3fc;border:1px solid #bfdbfe;padding:5px 10px;border-radius:999px;cursor:pointer;'>"
+    + "style='font-size:10px;font-weight:800;color:var(--navy2,#002f6c);background:#eef3fc;border:1px solid #bfdbfe;padding:5px 10px;border-radius:999px;cursor:pointer;'>"
     + "Ver completo →"
     + "</button>"
     + "</div>"
@@ -987,12 +987,12 @@ function renderMonitoramentoRecebimento(dados) {
     + "</div>"
 
     + "<div style='height:7px;background:#f1f5f9;border-radius:999px;overflow:hidden;margin:10px 0 6px;'>"
-    + "<div style='height:100%;width:" + (mon.taxaConfirmacao || 0) + "%;background:linear-gradient(90deg,#059669,#34d399);border-radius:999px;'></div>"
+    + "<div style='height:100%;width:" + (mon.taxaConfirmacao || 0) + "%;background:linear-gradient(90deg,var(--green,#059669),#34d399);border-radius:999px;'></div>"
     + "</div>"
 
     + "<div style='display:flex;justify-content:space-between;'>"
     + "<span style='font-size:10px;color:#64748b;'>Taxa de confirmação</span>"
-    + "<strong style='font-size:10px;color:#059669;'>" + (mon.taxaConfirmacao || 0) + "%</strong>"
+    + "<strong style='font-size:10px;color:var(--green,#059669);'>" + (mon.taxaConfirmacao || 0) + "%</strong>"
     + "</div>"
     + "</div>"
     + "</div>";

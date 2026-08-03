@@ -62,7 +62,7 @@
              nada sozinho: "Analisar formulário" só sugere; "Confirmar" só cria a
              ficha (que ainda passa pela aprovação normal, como já acontece hoje
              em Sindicalização > Fichas Sindicais > "Importar formulário em papel"). -->
-        <div id="blocoFiliacaoIA" style="display:none;margin-top:14px;border:1.5px dashed #C9A84C;border-radius:14px;padding:16px;background:#fffdf7;">
+        <div id="blocoFiliacaoIA" style="display:none;margin-top:14px;border:1.5px dashed var(--gold,#C9A84C);border-radius:14px;padding:16px;background:#fffdf7;">
           <div style="display:flex;gap:10px;margin-bottom:12px;">
             <button type="button" id="btnModoManualFil" class="btn btn-outline" style="flex:1;" onclick="filIA_setModo('manual')">📝 Preencher manualmente</button>
             <button type="button" id="btnModoIAFil" class="btn btn-outline" style="flex:1;" onclick="filIA_setModo('ia')">✨ Extrair de formulário (IA)</button>
@@ -123,7 +123,7 @@
              Só aparece quando TIPO DE OFÍCIO = Desfiliação. Nada aqui grava
              ou envia nada sozinho: "Analisar carta" só sugere; "Confirmar
              desfiliação" só age depois que o atendente revisar os campos. -->
-        <div id="blocoDesfiliacaoIA" style="display:none;margin-top:14px;border:1.5px dashed #C9A84C;border-radius:14px;padding:16px;background:#fffdf7;">
+        <div id="blocoDesfiliacaoIA" style="display:none;margin-top:14px;border:1.5px dashed var(--gold,#C9A84C);border-radius:14px;padding:16px;background:#fffdf7;">
           <div style="display:flex;gap:10px;margin-bottom:12px;">
             <button type="button" id="btnModoManualDesf" class="btn btn-outline" style="flex:1;" onclick="desfIA_setModo('manual')">📝 Preencher manualmente</button>
             <button type="button" id="btnModoIADesf" class="btn btn-outline" style="flex:1;" onclick="desfIA_setModo('ia')">✨ Extrair de carta (IA)</button>
@@ -165,7 +165,7 @@
              Só aparece quando TIPO DE OFÍCIO = Taxa Negocial. Nada aqui grava
              ou envia nada sozinho: "Analisar carta" só sugere; "Confirmar
              oposição" só age depois que o atendente revisar os campos. -->
-        <div id="blocoOposicaoTaxaIA" style="display:none;margin-top:14px;border:1.5px dashed #C9A84C;border-radius:14px;padding:16px;background:#fffdf7;">
+        <div id="blocoOposicaoTaxaIA" style="display:none;margin-top:14px;border:1.5px dashed var(--gold,#C9A84C);border-radius:14px;padding:16px;background:#fffdf7;">
           <div style="display:flex;gap:10px;margin-bottom:12px;">
             <button type="button" id="btnModoManualOpos" class="btn btn-outline" style="flex:1;" onclick="oposIA_setModo('manual')">📝 Preencher manualmente</button>
             <button type="button" id="btnModoIAOpos" class="btn btn-outline" style="flex:1;" onclick="oposIA_setModo('ia')">✨ Extrair de carta de oposição (IA)</button>
@@ -673,15 +673,15 @@
           <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-top:4px;">Total</div>
         </div>
         <div class="mens-card" data-filtro="CONFIRMADO" style="background:#f0fdf4;border:1.5px solid #6ee7b7;">
-          <div style="font-size:24px;font-weight:900;color:#059669;" id="mensStatConfirmados">—</div>
+          <div style="font-size:24px;font-weight:900;color:var(--green,#059669);" id="mensStatConfirmados">—</div>
           <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-top:4px;">Confirmados</div>
         </div>
         <div class="mens-card" data-filtro="AGUARDANDO" style="background:#fffbeb;border:1.5px solid #fcd34d;">
-          <div style="font-size:24px;font-weight:900;color:#d97706;" id="mensStatAguardando">—</div>
+          <div style="font-size:24px;font-weight:900;color:var(--amber,#d97706);" id="mensStatAguardando">—</div>
           <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-top:4px;">Aguardando</div>
         </div>
         <div class="mens-card" data-filtro="PENDENTE_30D" style="background:#fef2f2;border:1.5px solid #fca5a5;">
-          <div style="font-size:24px;font-weight:900;color:#dc2626;" id="mensStatPendentes">—</div>
+          <div style="font-size:24px;font-weight:900;color:var(--red,#dc2626);" id="mensStatPendentes">—</div>
           <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-top:4px;">+30 dias</div>
         </div>
         <div class="mens-card" data-filtro="COBRANCA_ENVIADA" style="background:#ede9fe;border:1.5px solid #c4b5fd;">
@@ -723,9 +723,9 @@
       <!-- Barra de ações em massa -->
       <div id="mensBarraAcoes" style="display:none;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;margin-bottom:12px;">
         <span id="mensBarraLabel" style="font-size:13px;font-weight:700;color:#1e40af;">0 selecionado(s)</span>
-        <button id="btnMensConfirmarLote" class="btn btn-sm" style="background:#f0fdf4;color:#059669;border:1.5px solid #6ee7b7;">✅ Confirmar desconto</button>
+        <button id="btnMensConfirmarLote" class="btn btn-sm" style="background:#f0fdf4;color:var(--green,#059669);border:1.5px solid #6ee7b7;">✅ Confirmar desconto</button>
         <button id="btnMensCobracaLote" class="btn btn-navy btn-sm">📧 Cobrança em lote</button>
-        <button id="btnMensWhatsLote" class="btn btn-sm" style="background:#f0fdf4;color:#059669;border:1.5px solid #6ee7b7;">💬 WhatsApp em massa</button>
+        <button id="btnMensWhatsLote" class="btn btn-sm" style="background:#f0fdf4;color:var(--green,#059669);border:1.5px solid #6ee7b7;">💬 WhatsApp em massa</button>
         <button id="btnMensDesmarcar" class="btn btn-ghost btn-sm">✕ Desmarcar</button>
       </div>
 
@@ -772,7 +772,7 @@
   <div id="modalProcessarRelatorio" style="display:none;position:fixed;inset:0;background:rgba(0,18,48,.65);z-index:9999;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px);">
     <div style="background:#fff;border-radius:20px;width:100%;max-width:560px;box-shadow:0 40px 90px rgba(0,20,60,.36);overflow:hidden;">
       <!-- Header -->
-      <div style="background:linear-gradient(135deg,#001f4d,#002f6c,#1565C0);padding:20px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div style="background:linear-gradient(135deg,var(--navy,#001f4d),var(--navy2,#002f6c),var(--blue,#1565C0));padding:20px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
         <div>
           <div style="font-size:16px;font-weight:900;color:#fff;">📎 Processar Relatório de Desconto</div>
           <div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:3px;">A IA irá ler o documento e confirmar os associados encontrados</div>
@@ -797,7 +797,7 @@
             <div style="font-size:28px;margin-bottom:8px;">📄</div>
             <div style="font-size:13px;font-weight:700;color:#334155;">Clique para selecionar o arquivo</div>
             <div style="font-size:11px;color:#94a3b8;margin-top:4px;">PDF, Excel (.xlsx, .xls) ou imagem</div>
-            <div id="relArquivoNome" style="display:none;margin-top:10px;font-size:12px;font-weight:700;color:#059669;"></div>
+            <div id="relArquivoNome" style="display:none;margin-top:10px;font-size:12px;font-weight:700;color:var(--green,#059669);"></div>
           </div>
           <input type="file" id="relArquivoInput" accept=".pdf,.xlsx,.xls,.csv,.jpg,.jpeg,.png" style="display:none;">
         </div>
@@ -813,7 +813,7 @@
       <!-- Footer -->
       <div style="padding:16px 24px;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;gap:9px;background:#fafcff;">
         <button onclick="fecharModalRelatorio()" style="height:42px;padding:0 18px;border:1.5px solid #e2e8f0;border-radius:10px;background:#fff;font-family:Plus Jakarta Sans,sans-serif;font-size:13px;font-weight:700;color:#475569;cursor:pointer;">✕ Fechar</button>
-        <button id="btnProcessarEnviar" style="height:42px;padding:0 20px;border:none;border-radius:10px;background:linear-gradient(135deg,#002f6c,#0d52b5);color:#fff;font-family:Plus Jakarta Sans,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">🤖 Processar com IA</button>
+        <button id="btnProcessarEnviar" style="height:42px;padding:0 20px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--navy2,#002f6c),#0d52b5);color:#fff;font-family:Plus Jakarta Sans,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">🤖 Processar com IA</button>
       </div>
     </div>
   </div>
@@ -882,7 +882,7 @@ function _carregarPreviewEmail() {
   var p=_modalPayload||{}, numero=p.numero||"???", tipo=p.tipo||"Ofício", escola=p.escola||"";
   var textos={"Filiação":"Encaminhamos, em anexo, o <strong>Ofício de Filiação nº "+numero+"</strong>.<br><br>Nos termos da <strong>Cláusula 56ª da CCT 2025/2026</strong>, solicitamos a realização dos descontos mensais de <strong>2%</strong> sobre o salário-base, a título de Mensalidade Sindical.<br><br>Solicitamos a <strong>confirmação do recebimento</strong> respondendo a este e-mail.","Desfiliação":"Encaminhamos, em anexo, o <strong>Ofício de Desfiliação nº "+numero+"</strong>.<br><br>Nos termos da <strong>Cláusula 56ª da CCT 2025/2026</strong>, solicitamos que sejam <strong>cessados imediatamente os descontos</strong> de 2% sobre os salários-base.<br><br>Solicitamos a <strong>confirmação do recebimento</strong> respondendo a este e-mail.","Taxa Negocial":"Encaminhamos, em anexo, o <strong>Ofício nº "+numero+"</strong> referente à <strong>Taxa Negocial</strong>, conforme <strong>Cláusula 57ª da CCT 2025/2026</strong>.<br><br>Solicitamos os descontos e repasse até o <strong>10º dia útil do mês subsequente</strong>.<br><br>Solicitamos a <strong>confirmação do recebimento</strong> respondendo a este e-mail.","Taxa Assistencial":"Encaminhamos, em anexo, o <strong>Ofício nº "+numero+"</strong> referente à <strong>Taxa Assistencial – Assistência Médica</strong>, conforme previsto na CCT 2026.<br><br>O repasse deverá ser realizado em <strong>duas parcelas de 2%</strong> sobre o salário-base bruto dos colaboradores técnico-administrativos.<br><br>Solicitamos a <strong>confirmação do recebimento</strong> respondendo a este e-mail.","Ofício Livre":"Encaminhamos, em anexo, o <strong>Ofício nº "+numero+"</strong> conforme descrito no documento.<br><br>Permanecemos à disposição para quaisquer esclarecimentos.<br><br>Solicitamos a <strong>confirmação do recebimento</strong> respondendo a este e-mail."};
   var texto=textos[tipo]||textos["Ofício Livre"];
-  container.innerHTML='<div style="font-family:Segoe UI,Arial,sans-serif;max-width:580px;margin:0 auto;border-radius:8px;overflow:hidden;box-shadow:0 4px 16px rgba(0,20,60,.1);"><div style="background:linear-gradient(135deg,#001228,#001f4d,#003b82);padding:18px 22px;"><div style="font-size:18px;font-weight:900;color:#fff;">SINDEDUCAÇÃO-ES</div><div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:4px;">Sindicato dos Educadores Técnico-Administrativos em Estabelecimentos de Ensino Particular — ES</div><div style="height:1px;background:rgba(201,168,76,.25);margin:12px 0 10px;"></div><div style="display:inline-flex;background:rgba(255,255,255,.12);color:#C9A84C;font-size:10px;font-weight:800;padding:4px 12px;border-radius:999px;text-transform:uppercase;letter-spacing:.08em;">'+tipo+' · Ofício Nº '+numero+'</div></div><div style="background:#fff;padding:22px;"><p style="margin:0 0 14px;font-size:13.5px;color:#334155;">Bom dia! Tudo bem?</p>'+(escola?'<p style="margin:0 0 14px;font-size:13.5px;color:#0f172a;">Prezados(as) senhores(as) de <strong>'+escola.replace(/</g,"&lt;")+'</strong>,</p>':"")+'<p style="margin:0 0 14px;font-size:13.5px;color:#1a2233;line-height:1.75;text-align:justify;">'+texto+'</p><div style="margin:16px 0 0;padding:12px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-left:3px solid #2563eb;font-size:13px;font-weight:700;color:#1e3a8a;">⚠️ Solicitamos, por gentileza, a confirmação do recebimento respondendo a este e-mail.</div></div><div style="background:linear-gradient(135deg,#001228,#001f4d,#002f6c);padding:16px 22px;"><div style="font-size:13px;font-weight:900;color:#fff;margin-bottom:8px;">Marcelha Aline — Administrativo & Secretaria</div><div style="font-size:11px;color:rgba(255,255,255,.7);">📱 (27) 99735-8900 &nbsp;·&nbsp; ✉️ secretaria@sindeducacao.com &nbsp;·&nbsp; 📞 (27) 3222-2706</div></div></div>';
+  container.innerHTML='<div style="font-family:Segoe UI,Arial,sans-serif;max-width:580px;margin:0 auto;border-radius:8px;overflow:hidden;box-shadow:0 4px 16px rgba(0,20,60,.1);"><div style="background:linear-gradient(135deg,#001228,var(--navy,#001f4d),#003b82);padding:18px 22px;"><div style="font-size:18px;font-weight:900;color:#fff;">SINDEDUCAÇÃO-ES</div><div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:4px;">Sindicato dos Educadores Técnico-Administrativos em Estabelecimentos de Ensino Particular — ES</div><div style="height:1px;background:rgba(201,168,76,.25);margin:12px 0 10px;"></div><div style="display:inline-flex;background:rgba(255,255,255,.12);color:var(--gold,#C9A84C);font-size:10px;font-weight:800;padding:4px 12px;border-radius:999px;text-transform:uppercase;letter-spacing:.08em;">'+tipo+' · Ofício Nº '+numero+'</div></div><div style="background:#fff;padding:22px;"><p style="margin:0 0 14px;font-size:13.5px;color:#334155;">Bom dia! Tudo bem?</p>'+(escola?'<p style="margin:0 0 14px;font-size:13.5px;color:#0f172a;">Prezados(as) senhores(as) de <strong>'+escola.replace(/</g,"&lt;")+'</strong>,</p>':"")+'<p style="margin:0 0 14px;font-size:13.5px;color:#1a2233;line-height:1.75;text-align:justify;">'+texto+'</p><div style="margin:16px 0 0;padding:12px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-left:3px solid #2563eb;font-size:13px;font-weight:700;color:#1e3a8a;">⚠️ Solicitamos, por gentileza, a confirmação do recebimento respondendo a este e-mail.</div></div><div style="background:linear-gradient(135deg,#001228,var(--navy,#001f4d),var(--navy2,#002f6c));padding:16px 22px;"><div style="font-size:13px;font-weight:900;color:#fff;margin-bottom:8px;">Marcelha Aline — Administrativo & Secretaria</div><div style="font-size:11px;color:rgba(255,255,255,.7);">📱 (27) 99735-8900 &nbsp;·&nbsp; ✉️ secretaria@sindeducacao.com &nbsp;·&nbsp; 📞 (27) 3222-2706</div></div></div>';
   _modalPreviewCarregado=true;
 }
 
@@ -1051,7 +1051,7 @@ function renderResultadoRelatorio(resp) {
       + '<span style="font-size:18px;">' + (enc ? "✅" : "⚠️") + '</span>'
       + '<div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#0f172a;">' + (d.nome||"") + '</div>'
       + '<div style="font-size:11px;color:#64748b;">' + (d.cpf ? "CPF: " + d.cpf + " · " : "") + "Ofício: " + (d.oficio||"—") + '</div></div>'
-      + '<span style="font-size:11px;font-weight:800;' + (enc ? "color:#059669;" : "color:#dc2626;") + '">' + (enc ? "CONFIRMADO" : "NÃO ENCONTRADO") + '</span></div>';
+      + '<span style="font-size:11px;font-weight:800;' + (enc ? "color:var(--green,#059669);" : "color:var(--red,#dc2626);") + '">' + (enc ? "CONFIRMADO" : "NÃO ENCONTRADO") + '</span></div>';
   }).join("");
   if (resp.observacao) { obs.textContent = "💬 IA: " + resp.observacao; obs.style.display = "block"; } else { obs.style.display = "none"; }
   box.style.display = "block";
@@ -1062,7 +1062,7 @@ function renderResultadoRelatorio(resp) {
 .mens-card{border-radius:14px;padding:16px;text-align:center;cursor:pointer;transition:transform .15s,box-shadow .15s;user-select:none;}
 .mens-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,20,60,.10);}
 .mens-card:active{transform:translateY(0) scale(.97);}
-.mens-card.ativo{transform:translateY(-2px);box-shadow:0 0 0 3px rgba(201,168,76,.4);border-color:#C9A84C !important;}
+.mens-card.ativo{transform:translateY(-2px);box-shadow:0 0 0 3px rgba(201,168,76,.4);border-color:var(--gold,#C9A84C) !important;}
 </style>
 
 <script>
@@ -1112,7 +1112,7 @@ function renderTabela(lista){
   if(pagEl){pagEl.style.display=total>_mensPagTam?"flex":"none";var bAnt=$m("mensPagAnt"),bProx=$m("mensPagProx"),bInfo=$m("mensPagInfo");if(bAnt)bAnt.disabled=_mensPag<=1;if(bProx)bProx.disabled=_mensPag>=totalPags;if(bInfo)bInfo.textContent="Mostrando "+(total===0?0:ini+1)+"–"+fim+" de "+total;}
   var tbody=$m("mensTabelaBody");if(!tbody)return;
   if(!pag.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:48px;color:var(--g400);font-size:13px;">📭 Nenhum registro encontrado.</td></tr>';atualizarBarra();return;}
-  function corDias(d){if(d<=30)return"color:#059669;font-weight:700;";if(d<=60)return"color:#d97706;font-weight:800;";if(d<=90)return"color:#ea580c;font-weight:800;";return"color:#dc2626;font-weight:900;";}
+  function corDias(d){if(d<=30)return"color:var(--green,#059669);font-weight:700;";if(d<=60)return"color:var(--amber,#d97706);font-weight:800;";if(d<=90)return"color:#ea580c;font-weight:800;";return"color:var(--red,#dc2626);font-weight:900;";}
   tbody.innerHTML=pag.map(function(item,i){
     var idx=ini+i;
     var marcado=_mensSel.indexOf(item.linha)>=0;
@@ -1126,9 +1126,9 @@ function renderTabela(lista){
       +'<td style="padding:10px 13px;font-size:12px;'+dc+'">'+item.diasSemConfirm+'d</td>'
       +'<td style="padding:10px 13px;">'+badge(item.status)+'</td>'
       +'<td style="padding:10px 13px;"><div style="display:flex;gap:4px;">'
-      +'<button onclick="window._mensConfirmar('+item.linha+')" title="Confirmar" style="padding:3px 8px;border-radius:6px;background:#f0fdf4;color:#059669;border:1px solid #6ee7b7;font-size:11px;font-weight:700;cursor:pointer;">✅</button>'
-      +'<button onclick="window._mensCobrar([\''+esc(item.cpf)+'\'])" title="Cobrança" style="padding:3px 8px;border-radius:6px;background:#002f6c;color:#fff;border:none;font-size:11px;font-weight:700;cursor:pointer;">📧</button>'
-      +'<button onclick="window._mensWhats(\''+esc(item.escola)+'\',\''+esc(item.nome)+'\',\''+esc(item.numeroOficio||"")+'\')" title="WhatsApp" style="padding:3px 8px;border-radius:6px;background:#f0fdf4;color:#059669;border:1px solid #6ee7b7;font-size:11px;font-weight:700;cursor:pointer;">💬</button>'
+      +'<button onclick="window._mensConfirmar('+item.linha+')" title="Confirmar" style="padding:3px 8px;border-radius:6px;background:#f0fdf4;color:var(--green,#059669);border:1px solid #6ee7b7;font-size:11px;font-weight:700;cursor:pointer;">✅</button>'
+      +'<button onclick="window._mensCobrar([\''+esc(item.cpf)+'\'])" title="Cobrança" style="padding:3px 8px;border-radius:6px;background:var(--navy2,#002f6c);color:#fff;border:none;font-size:11px;font-weight:700;cursor:pointer;">📧</button>'
+      +'<button onclick="window._mensWhats(\''+esc(item.escola)+'\',\''+esc(item.nome)+'\',\''+esc(item.numeroOficio||"")+'\')" title="WhatsApp" style="padding:3px 8px;border-radius:6px;background:#f0fdf4;color:var(--green,#059669);border:1px solid #6ee7b7;font-size:11px;font-weight:700;cursor:pointer;">💬</button>'
       +'</div></td></tr>';
   }).join("");
   tbody.querySelectorAll(".mens-check").forEach(function(chk){
@@ -1217,7 +1217,7 @@ document.addEventListener("DOMContentLoaded",function(){
 .taxa-progresso-wrap {
   background: var(--color-background-primary, #fff);
   border: 1.5px solid #bfdbfe;
-  border-left: 4px solid #1565C0;
+  border-left: 4px solid var(--blue,#1565C0);
   border-radius: 0;
   padding: 18px 20px;
   margin-bottom: 18px;
@@ -1234,13 +1234,13 @@ document.addEventListener("DOMContentLoaded",function(){
 .taxa-progresso-titulo {
   font-size: 13px;
   font-weight: 700;
-  color: #001f4d;
+  color: var(--navy,#001f4d);
 }
 
 .taxa-progresso-pct {
   font-size: 22px;
   font-weight: 900;
-  color: #1565C0;
+  color: var(--blue,#1565C0);
 }
 
 .taxa-progresso-bar-track {
@@ -1253,18 +1253,18 @@ document.addEventListener("DOMContentLoaded",function(){
 
 .taxa-progresso-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, #1565C0, #0d52b5);
+  background: linear-gradient(90deg, var(--blue,#1565C0), #0d52b5);
   border-radius: 999px;
   transition: width .8s ease;
   min-width: 0;
 }
 
 .taxa-progresso-bar-fill.completo {
-  background: linear-gradient(90deg, #059669, #065f46);
+  background: linear-gradient(90deg, var(--green,#059669), #065f46);
 }
 
 .taxa-progresso-bar-fill.erro {
-  background: linear-gradient(90deg, #dc2626, #991b1b);
+  background: linear-gradient(90deg, var(--red,#dc2626), #991b1b);
 }
 
 .taxa-progresso-stats {
