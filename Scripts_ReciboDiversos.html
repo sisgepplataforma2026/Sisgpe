@@ -506,11 +506,11 @@ function rdMarcarAssinado(numero, tipo){
   google.script.run
     .withSuccessHandler(function(res){
       loader(false);
-      if(!res || !res.ok){ alert("❌ " + (res&&res.mensagem||"Erro")); return; }
+      if(!res || !res.ok){ toast((res&&res.mensagem)||"Erro", "err"); return; }
       _rdCarregarHistorico();
     })
     .withFailureHandler(function(err){
-      loader(false); alert("Erro: " + ((err&&err.message)||err));
+      loader(false); toast("Erro: " + ((err&&err.message)||err), "err");
     })
     .marcarReciboDiversoAssinado({ numero: numero, tipo: tipo }, SISGEP_TOKEN_SESSAO);
 }
@@ -646,11 +646,11 @@ function rdEnviarContabilidade(r){
   google.script.run
     .withSuccessHandler(function(res){
       loader(false);
-      alert(res.ok ? "✅ " + res.mensagem : "❌ " + res.mensagem);
+      toast(res.mensagem, res.ok ? "ok" : "err");
       if(res.ok) _rdCarregarHistorico();
     })
     .withFailureHandler(function(err){
-      loader(false); alert("Erro: " + ((err&&err.message)||err));
+      loader(false); toast("Erro: " + ((err&&err.message)||err), "err");
     })
     .enviarReciboDiversoContabilidade({
       emailTo:      emailTo,
@@ -792,7 +792,7 @@ function _rdRenderizarHistorico(res){
 
               // Enviar contabilidade — só ativo se tiver anexo
               (r.statusContabilidade !== "ENVIADO" ?
-                '<button onclick="' + (r.linkAssinado ? 'rdEnviarContabilidade(' + JSON.stringify(r) + ')' : 'alert(\'Anexe o recibo assinado antes de enviar para a contabilidade.\')') + '" ' +
+                '<button onclick="' + (r.linkAssinado ? 'rdEnviarContabilidade(' + JSON.stringify(r) + ')' : 'toast(\'Anexe o recibo assinado antes de enviar para a contabilidade.\',\'warn\')') + '" ' +
                 'style="height:28px;padding:0 10px;border:none;border-radius:7px;background:' + (r.linkAssinado ? 'var(--navy)' : 'var(--g200)') + ';color:' + (r.linkAssinado ? '#fff' : 'var(--g400)') + ';cursor:' + (r.linkAssinado ? 'pointer' : 'not-allowed') + ';font-size:11px;font-weight:700;font-family:inherit;">📤 Contabilidade</button>'
               : '') +
             '</div>'
@@ -832,8 +832,8 @@ function _rdReenviarEmailRd(r){
   if(!confirm("Reenviar e-mail do recibo " + r.numero + " para " + r.email + "?")) return;
   loader(true);
   google.script.run
-    .withSuccessHandler(function(res){ loader(false); alert(res.ok?"✅ "+res.mensagem:"❌ "+res.mensagem); if(res.ok) _rdCarregarHistorico(); })
-    .withFailureHandler(function(err){ loader(false); alert("Erro: "+((err&&err.message)||err)); })
+    .withSuccessHandler(function(res){ loader(false); toast(res.mensagem, res.ok?"ok":"err"); if(res.ok) _rdCarregarHistorico(); })
+    .withFailureHandler(function(err){ loader(false); toast("Erro: "+((err&&err.message)||err), "err"); })
     .reenviarEmailReciboDiverso({ email:r.email, linkPdf:r.linkPdf, numero:r.numero, nome:r.pagadorNome||r.nome, valor:r.valor, descricao:r.descricao }, SISGEP_TOKEN_SESSAO);
 }
 
@@ -848,8 +848,8 @@ function _rdExcluirRd(numero){
   if(!confirm("Excluir o recibo " + numero + " do histórico?\n\nO arquivo no Drive não será excluído.")) return;
   loader(true);
   google.script.run
-    .withSuccessHandler(function(res){ loader(false); alert(res.ok?"✅ "+res.mensagem:"❌ "+res.mensagem); if(res.ok) _rdCarregarHistorico(); })
-    .withFailureHandler(function(err){ loader(false); alert("Erro: "+((err&&err.message)||err)); })
+    .withSuccessHandler(function(res){ loader(false); toast(res.mensagem, res.ok?"ok":"err"); if(res.ok) _rdCarregarHistorico(); })
+    .withFailureHandler(function(err){ loader(false); toast("Erro: "+((err&&err.message)||err), "err"); })
     .excluirReciboDiverso({ numero: numero }, SISGEP_TOKEN_SESSAO);
 }
 

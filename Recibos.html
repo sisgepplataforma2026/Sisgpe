@@ -6,15 +6,15 @@
 ================================================================ -->
 
 <style>
+/* Cores, cinzas e semânticas (navy/gold/g50-g900/green/amber/red) herdam de
+   OficiosStyles.html — era uma :root duplicada com os mesmos valores hex.
+   Mantidos aqui só os aliases sem equivalente lá, agora apontando para os
+   tokens únicos em vez de hardcode, para convergir num único padrão visual
+   (ver CLAUDE.md / auditoria de UI). */
 :root {
-  --navy:#001f4d; --navy2:#002f6c; --sky:#e8f0fb; --gold:#C9A84C; --gold2:#f0c843;
-  --white:#fff; --g50:#f8fafc; --g100:#f1f5f9; --g200:#e2e8f0;
-  --g400:#94a3b8; --g500:#64748b; --g600:#475569; --g800:#1e293b; --g900:#0f172a;
-  --green:#059669; --green-lt:#d1fae5; --green-dk:#065f46;
-  --amber:#d97706; --amber-lt:#fef3c7;
-  --red:#dc2626; --red-lt:#fee2e2;
-  --ss:0 1px 3px rgba(0,20,60,.07); --sm:0 4px 16px rgba(0,20,60,.10); --lg:0 8px 32px rgba(0,20,60,.14);
-  --r:14px; --rs:10px;
+  --sky:var(--blue-lt, #e8f0fe); --white:#fff;
+  --ss:var(--sh-xs, 0 1px 3px rgba(0,20,60,.06)); --sm:var(--sh-md, 0 4px 16px rgba(0,20,60,.10)); --lg:var(--sh-lg, 0 8px 32px rgba(0,20,60,.14));
+  --r:var(--rad, 12px); --rs:10px;
 }
 
 .rec-wrap * { box-sizing:border-box; font-family:'Plus Jakarta Sans',sans-serif; }
@@ -209,11 +209,12 @@
   </div>
 
   <div class="rec-tabs">
-    <button type="button" id="abaReciboNovo" class="rec-tab active">🧾 Novo Recibo</button>
+    <button type="button" id="abaReciboNovo" class="rec-tab active" title="Formulário completo de emissão">🧾 Recibos de Processo</button>
     <button type="button"
         id="btnNovoReciboSISGEP"
-        class="rec-tab">
-  ➕ Novo Recibo
+        class="rec-tab"
+        title="Escolher o tipo de recibo antes de preencher">
+  ➕ Selecionar tipo de recibo
 </button>
   </div>
 
