@@ -140,6 +140,9 @@ var EMAIL_IA_ASSINATURAS_USUARIOS = {
 // Usado quando o e-mail logado não está no mapa acima
 var EMAIL_IA_ASSINATURA_PADRAO = EMAIL_IA_ASSINATURAS_USUARIOS["financeiro@sindeducacao.com"];
 function sisgepListarEmailsIA_CentralLegacy(parametros, opcoes) {
+  if (!eiaAcessoAutorizado_()) {
+    throw new Error("Acesso não autorizado à Central de E-mails. E-mail: " + eiaEmailUsuarioAtivo_());
+  }
   try {
     var cfg = {};
     if (typeof parametros === "object" && parametros !== null) {
@@ -343,6 +346,9 @@ function sisgepObterAnexoEmailIA(messageId, indice) {
    - Gera resposta personalizada
 ───────────────────────────────────────────────────────────────── */
 function sisgepAnalisarEmailIA_CentralLegacy(messageId) {
+  if (!eiaAcessoAutorizado_()) {
+    throw new Error("Acesso não autorizado à Central de E-mails. E-mail: " + eiaEmailUsuarioAtivo_());
+  }
   try {
     var msg = GmailApp.getMessageById(messageId);
     if (!msg) throw new Error("Mensagem não encontrada: " + messageId);
@@ -499,6 +505,7 @@ var blocoMemoria = eiaMontarBlocoMemoriaSofia_("", remetente);
    3. CRIAR RASCUNHO NO GMAIL
 ───────────────────────────────────────────────────────────────── */
 function sisgepCriarRascunhoRespostaIA_CentralLegacy(messageId, respostaSugerida, anexos, cc) {
+  if (!eiaAcessoAutorizado_()) return { ok: false, mensagem: "Acesso não autorizado." };
   try {
     var msg = GmailApp.getMessageById(messageId);
     if (!msg) throw new Error("Mensagem não encontrada.");
@@ -533,6 +540,7 @@ function sisgepCriarRascunhoRespostaIA_CentralLegacy(messageId, respostaSugerida
    4. ARQUIVAR E-MAIL (marcar como lido + arquivar)
 ───────────────────────────────────────────────────────────────── */
 function sisgepArquivarEmailIA_CentralLegacy(messageId) {
+  if (!eiaAcessoAutorizado_()) return { ok: false, mensagem: "Acesso não autorizado." };
   try {
     var msg = GmailApp.getMessageById(messageId);
     if (!msg) throw new Error("Mensagem não encontrada.");
@@ -554,6 +562,7 @@ function sisgepArquivarEmailIA_CentralLegacy(messageId) {
   }
 }
 function sisgepAlternarEstrelaEmailIA_CentralLegacy(messageId) {
+  if (!eiaAcessoAutorizado_()) return { ok: false, mensagem: "Acesso não autorizado." };
   try {
     var msg = GmailApp.getMessageById(messageId);
     if (!msg) throw new Error("Mensagem não encontrada.");
@@ -984,6 +993,7 @@ var payload = {
   return json.content[0].text;
 }
 function sisgepPreCategorizarEmailsIA_CentralLegacy(emails) {
+  if (!eiaAcessoAutorizado_()) return {};
   try {
     if (!Array.isArray(emails) || !emails.length) return {};
     var apiKey = PropertiesService.getScriptProperties().getProperty("ANTHROPIC_API_KEY");
@@ -1057,6 +1067,7 @@ function sisgepPreCategorizarEmailsIA_CentralLegacy(emails) {
   }
 }
 function sisgepEncaminharEmailIA_CentralLegacy(messageId, para, notaAdicional, anexos, cc) {
+  if (!eiaAcessoAutorizado_()) return { ok: false, mensagem: "Acesso não autorizado." };
   try {
     var msg = GmailApp.getMessageById(messageId);
     if (!msg) throw new Error("Mensagem não encontrada.");
@@ -1095,6 +1106,7 @@ function sisgepEncaminharEmailIA(messageId, para, notaAdicional, anexos, cc) {
 }
 
 function sisgepEnviarRespostaIA_CentralLegacy(messageId, textoResposta, anexos, cc) {
+  if (!eiaAcessoAutorizado_()) return { ok: false, mensagem: "Acesso não autorizado." };
   try {
     var msg = GmailApp.getMessageById(messageId);
     if (!msg) throw new Error("Mensagem não encontrada.");
@@ -1190,6 +1202,7 @@ function sisgepParsearComprovanteMensalidade(messageId) {
 }
 
 function sisgepEnviarEmailDireto_CentralLegacy(dados) {
+  if (!eiaAcessoAutorizado_()) return { ok: false, mensagem: "Acesso não autorizado." };
   try {
     dados = dados || {};
     var para    = String(dados.para    || "").trim();
@@ -1296,6 +1309,7 @@ function eiaAdiadosUsuarioAtual_() {
 }
 
 function sisgepAdiarEmailIA_CentralLegacy(messageId, dataVoltaISO) {
+  if (!eiaAcessoAutorizado_()) return { ok: false, mensagem: "Acesso não autorizado." };
   try {
     if (!messageId) throw new Error("ID da mensagem não informado.");
     var dataVolta = new Date(dataVoltaISO);
@@ -1330,6 +1344,7 @@ function sisgepAdiarEmailIA_CentralLegacy(messageId, dataVoltaISO) {
 }
 
 function sisgepCancelarAdiamentoEmailIA_CentralLegacy(messageId) {
+  if (!eiaAcessoAutorizado_()) return { ok: false, mensagem: "Acesso não autorizado." };
   try {
     var aba = obterAbaAdiadosEmailIA_();
     var dados = aba.getDataRange().getValues();
@@ -1423,6 +1438,7 @@ function eiaLimparAdiadosAntigos_() {
   }
 }
 function sisgepListarAdiadosEmailIA_CentralLegacy() {
+  if (!eiaAcessoAutorizado_()) return { ok: false, emails: [], pagina: 1, porPagina: 25, total: 0 };
   try {
     processarAdiadosVencidosEmailIA_();
 
@@ -1525,6 +1541,7 @@ function sisgepListarAdiadosEmailIA() {
  * GmailApp.createDraft() para gerar uma mensagem totalmente nova.
  */
 function sisgepCriarRascunhoDireto_CentralLegacy(dados) {
+  if (!eiaAcessoAutorizado_()) return { ok: false, mensagem: "Acesso não autorizado." };
   try {
     dados = dados || {};
     var para    = String(dados.para    || "").trim();
@@ -1569,6 +1586,7 @@ function sisgepCriarRascunhoDireto(dados) {
  * personalizar (igual já acontece em sisgepAnalisarEmailIA_CentralLegacy).
  */
 function sisgepGerarEmailComIA_CentralLegacy(instrucao, paraTexto) {
+  if (!eiaAcessoAutorizado_()) return { ok: false, mensagem: "Acesso não autorizado." };
   try {
     instrucao = String(instrucao || "").trim();
     paraTexto = String(paraTexto || "").trim();
@@ -1644,6 +1662,7 @@ function sisgepGerarEmailComIA(instrucao, paraTexto) {
  * em vez do e-mail direto.
  */
 function sisgepResolverEmailDestinatario_CentralLegacy(nomeOuTexto) {
+  if (!eiaAcessoAutorizado_()) return { ok: false, mensagem: "Acesso não autorizado." };
   try {
     nomeOuTexto = String(nomeOuTexto || "").trim();
     if (!nomeOuTexto) return { ok: false, mensagem: "Digite um nome para buscar." };
@@ -1695,6 +1714,7 @@ function sisgepResolverEmailDestinatario(nomeOuTexto) {
  * então não há necessidade de um botão "excluir para sempre" aqui.
  */
 function sisgepRestaurarEmailIA_CentralLegacy(messageId) {
+  if (!eiaAcessoAutorizado_()) return { ok: false, mensagem: "Acesso não autorizado." };
   try {
     var msg = GmailApp.getMessageById(messageId);
     if (!msg) throw new Error("Mensagem não encontrada.");
@@ -1910,6 +1930,7 @@ var EIA_MEMORIA_CATEGORIA = "CORRECAO_CATEGORIA_IA";
  * Organizacional do SISGEP (salvarMemoria_, de MemoriaCore.gs).
  */
 function sisgepRegistrarCorrecaoCategoriaIA_CentralLegacy(chaveEntidade, categoriaOriginal, categoriaCorrigida) {
+  if (!eiaAcessoAutorizado_()) return { ok: false, mensagem: "Acesso não autorizado." };
   try {
     chaveEntidade = String(chaveEntidade || "").trim();
     categoriaCorrigida = String(categoriaCorrigida || "").trim();
