@@ -112,7 +112,9 @@ var VIS_CHECKLIST = [
  * aba Escolas. Idempotente: rodar de novo nao duplica nem sobrescreve.
  * Nao altera nenhum dado existente das 681 escolas.
  */
-function configurarModuloVisitas() {
+function configurarModuloVisitas(tokenSessao) {
+  var sessao = visitas_exigirSessao_(tokenSessao);
+  if (!visitas_ehGestor_(sessao)) throw new Error('Ação permitida somente para administradores.');
   var ss = visitas_planilha_();
   var resultado = [];
 
@@ -162,7 +164,9 @@ function configurarModuloVisitas() {
  * tem status de visita. Nao sobrescreve classificacoes ja feitas a mao.
  * Executar uma vez apos configurarModuloVisitas().
  */
-function classificarEquipesEscolas() {
+function classificarEquipesEscolas(tokenSessao) {
+  var sessao = visitas_exigirSessao_(tokenSessao);
+  if (!visitas_ehGestor_(sessao)) throw new Error('Ação permitida somente para administradores.');
   var abaE = visitas_abaEscolas_();
   var ultima = abaE.getLastRow();
   if (ultima < 2) return 'Aba Escolas vazia.';
@@ -207,7 +211,19 @@ function classificarEquipesEscolas() {
 /**
  * Define a URL do web app usada para montar os QR Codes das visitas.
  */
-function definirURLWebAppVisitas(url) {
+function definirURLWebAppVisitas(url, tokenSessao) {
+  var sessao = visitas_exigirSessao_(tokenSessao);
+  if (!visitas_ehGestor_(sessao)) throw new Error('Ação permitida somente para administradores.');
+  return definirURLWebAppVisitas_interno_(url);
+}
+
+/**
+ * Implementação real, sem checagem de sessão — só para uso pelo editor
+ * (definirURLWebAppAgora, rodada manualmente por quem já tem acesso ao
+ * projeto Apps Script). definirURLWebAppVisitas é o caminho protegido
+ * pra quem chama via google.script.run/web.
+ */
+function definirURLWebAppVisitas_interno_(url) {
   var u = String(url || '').trim();
   if (u.indexOf('https://') !== 0) {
     throw new Error('Informe a URL completa do web app, comecando com https://');
@@ -1483,7 +1499,7 @@ function limparVisitasDeTeste() {
 
 /** Atalho para registrar a URL do web app pelo editor. */
 function definirURLWebAppAgora() {
-  return definirURLWebAppVisitas(
+  return definirURLWebAppVisitas_interno_(
     'https://script.google.com/macros/s/AKfycbzgPBSSF3D2OimoEJ-qMfDNp_Dsmc95THSNdUvFgqoX7NXWcmn7ZDMzF9L-OyUbEMw_ew/exec'
   );
 }
