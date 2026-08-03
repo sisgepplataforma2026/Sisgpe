@@ -471,6 +471,14 @@ var blocoMemoria = eiaMontarBlocoMemoriaSofia_("", remetente);
 
     var respostaSugerida = chamarClaude_SISGEP(promptResponder);
 
+    registrarAuditoriaSofia_(
+      { nome: eiaEmailUsuarioAtivo_(), email: eiaEmailUsuarioAtivo_() },
+      "Comunicação",
+      "sisgepAnalisarEmailIA: " + assunto + " (de " + remetente + ")",
+      "Categoria: " + categoria + " | Resposta sugerida: " + String(respostaSugerida || "").substring(0, 400),
+      true
+    );
+
     return {
       // Classificação
       categoria:          categoria,
@@ -497,6 +505,12 @@ var blocoMemoria = eiaMontarBlocoMemoriaSofia_("", remetente);
 
   } catch (e) {
     Logger.log("[sisgepAnalisarEmailIA] erro: " + e.message);
+    try {
+      registrarAuditoriaSofia_(
+        { nome: eiaEmailUsuarioAtivo_(), email: eiaEmailUsuarioAtivo_() },
+        "Comunicação", "sisgepAnalisarEmailIA: " + messageId, "ERRO: " + e.message, false
+      );
+    } catch (eAudit) {}
     throw new Error("Erro ao analisar e-mail: " + e.message);
   }
 }
@@ -1652,6 +1666,16 @@ var saudacaoAtual = eiaSaudacaoPorHorario_();
       json = { assunto: "", corpo: String(respostaIA || "").trim() };
     }
 
+    try {
+      registrarAuditoriaSofia_(
+        { nome: eiaEmailUsuarioAtivo_(), email: eiaEmailUsuarioAtivo_() },
+        "Comunicação",
+        "sisgepGerarEmailComIA: " + instrucao.substring(0, 200) + (paraTexto ? " (para " + paraTexto + ")" : ""),
+        "Assunto: " + json.assunto + " | Corpo: " + String(json.corpo || "").substring(0, 400),
+        true
+      );
+    } catch (eAudit) {}
+
     return {
       ok: true,
       assunto: String(json.assunto || "").trim(),
@@ -1660,6 +1684,12 @@ var saudacaoAtual = eiaSaudacaoPorHorario_();
 
   } catch (e) {
     Logger.log("[sisgepGerarEmailComIA] erro: " + e.message);
+    try {
+      registrarAuditoriaSofia_(
+        { nome: eiaEmailUsuarioAtivo_(), email: eiaEmailUsuarioAtivo_() },
+        "Comunicação", "sisgepGerarEmailComIA: " + String(instrucao || "").substring(0, 200), "ERRO: " + e.message, false
+      );
+    } catch (eAudit) {}
     return { ok: false, mensagem: e.message };
   }
 }
