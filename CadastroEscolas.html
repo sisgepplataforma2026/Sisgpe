@@ -792,7 +792,10 @@
           </div>
           <div class="ce-field">
             <label for="ceWhatsapp">WhatsApp</label>
-            <input type="text" id="ceWhatsapp" placeholder="(27) 99999-9999" maxlength="20">
+            <div style="display:flex;gap:6px;">
+              <input type="text" id="ceWhatsapp" placeholder="(27) 99999-9999" maxlength="20" style="flex:1;">
+              <button type="button" class="ce-btn ce-btn-outline ce-btn-sm" id="btnCeAbrirWhatsapp" title="Abrir conversa no WhatsApp" style="flex-shrink:0;">💬</button>
+            </div>
           </div>
           <div class="ce-field ce-full">
             <label for="ceEmail">E-mail Principal</label>
@@ -1119,6 +1122,20 @@ function norm(t){ return String(t||"").toLowerCase().normalize("NFD").replace(/[
 function valCampo(obj,chaves){ for(var i=0;i<chaves.length;i++){ var v=obj[chaves[i]]; if(v!==undefined&&v!==null&&String(v).trim()!=="")return String(v).trim(); } return ""; }
 
 function mascaraCnpj(v){ var d=digits(v).slice(0,14); return d.replace(/^(\d{2})(\d)/,"$1.$2").replace(/^(\d{2})\.(\d{3})(\d)/,"$1.$2.$3").replace(/\.(\d{3})(\d)/,".$1/$2").replace(/(\d{4})(\d)/,"$1-$2"); }
+
+// Normaliza telefone/WhatsApp para o formato aceito pelo wa.me (só dígitos, com DDI 55)
+function ceWhatsappNumero_(v){
+  var d=digits(v);
+  if(!d)return "";
+  if(d.length<=11)d="55"+d; // sem DDI: assume Brasil
+  return d;
+}
+function ceAbrirWhatsapp_(numero,nome){
+  var num=ceWhatsappNumero_(numero);
+  if(!num){ if(typeof toast==="function")toast("Nenhum número de WhatsApp cadastrado.","err"); return; }
+  var msg="Olá! Aqui é do SindEducação-ES"+(nome?", entrando em contato com a escola "+nome+".":".");
+  window.open("https://wa.me/"+num+"?text="+encodeURIComponent(msg),"_blank");
+}
 function mascaraCep(v) { var d=digits(v).slice(0,8); return d.length>5?d.replace(/^(\d{5})(\d)/,"$1-$2"):d; }
 function mascaraTel(v) { var d=digits(v).slice(0,11); return d.length<=10?d.replace(/^(\d{2})(\d{4})(\d)/,"($1) $2-$3"):d.replace(/^(\d{2})(\d{5})(\d)/,"($1) $2-$3"); }
 
@@ -1496,6 +1513,8 @@ function renderTabela(){
     var uf=valCampo(item,["UF","uf"]);
     var email=valCampo(item,["Email","email","E-mail (principal)"]);
     var tel=valCampo(item,["Telefone","telefone","Telefone 1"]);
+    var whats=valCampo(item,["Whatsapp","whatsapp","WhatsApp","Telefone 2"])||tel;
+    var whatsNum=ceWhatsappNumero_(whats);
     var sit=valCampo(item,["Situacao","situacao","SITUACAO_CADASTRAL"])||"ATIVA";
     var munUf=mun+(uf?" / "+uf:"");
     var av=avatarIniciais(nome);
@@ -1519,6 +1538,7 @@ function renderTabela(){
       +'<td class="no-clip"><div style="display:flex;gap:5px;">'
         +'<button class="ce-btn ce-btn-outline ce-btn-xs ce-btn-edit" data-idx="'+idx+'" title="Editar">✏️ Editar</button>'
         +(email?'<button class="ce-btn ce-btn-outline ce-btn-xs ce-btn-mail" data-email="'+esc(email)+'" data-nome="'+esc(nome)+'" title="Enviar e-mail" onclick="event.stopPropagation()">📧</button>':'')
+        +(whatsNum?'<button class="ce-btn ce-btn-outline ce-btn-xs ce-btn-whats" data-num="'+esc(whatsNum)+'" data-nome="'+esc(nome)+'" title="Abrir WhatsApp" onclick="event.stopPropagation()">💬</button>':'')
       +'</div></td>'
       +'</tr>';
   });
@@ -1562,6 +1582,12 @@ function renderTabela(){
   tbody.querySelectorAll(".ce-btn-mail").forEach(function(btn){
     btn.addEventListener("click",function(){
       window.open("mailto:"+this.dataset.email+"?subject=SindEducação-ES - "+encodeURIComponent(this.dataset.nome),"_blank");
+    });
+  });
+
+  tbody.querySelectorAll(".ce-btn-whats").forEach(function(btn){
+    btn.addEventListener("click",function(){
+      ceAbrirWhatsapp_(this.dataset.num,this.dataset.nome);
     });
   });
 }
@@ -1897,6 +1923,12 @@ function bindEventos(){
   bind("btnCeImportarRec",importarReceita);
   bind("btnCePipeline",executarPipeline);
   bind("btnCeSalvarConfigReceita",salvarConfigReceita);
+
+  bind("btnCeAbrirWhatsapp",function(){
+    var num=(g("ceWhatsapp")&&g("ceWhatsapp").value)||(g("ceTelefone")&&g("ceTelefone").value)||"";
+    var nome=(g("ceNomeEscola")&&g("ceNomeEscola").value)||"";
+    ceAbrirWhatsapp_(num,nome);
+  });
 
   // Máscaras
   mask("ceCnpj",mascaraCnpj);
