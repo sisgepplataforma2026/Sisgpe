@@ -256,7 +256,7 @@ function rh_gerarHtmlHolerite_(lancamento, colaborador, rubricasExtras, faixaIrr
     ".topo h1{font-size:14px;color:#001f4d;margin:0;}" +
     ".topo .sub{font-size:10px;color:#555;margin-top:2px;}" +
     ".topo .comp{font-size:12px;font-weight:bold;color:#001f4d;text-align:right;}" +
-    ".ident{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;font-size:10px;margin-bottom:12px;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;background:#f8fafc;}" +
+    ".ident{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;font-size:10px;margin-bottom:12px;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;background:#f8fafc;}" +
     ".ident div b{display:block;color:#94a3b8;font-size:8.5px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px;font-weight:900;}" +
     ".ident div span{font-weight:700;color:#0f172a;}" +
     ".ident .nome{grid-column:1/-1;}" +
@@ -283,6 +283,7 @@ function rh_gerarHtmlHolerite_(lancamento, colaborador, rubricasExtras, faixaIrr
     "<div class='nome'><b>Colaborador</b><span>" + rh_esc_(colaborador.matricula || "-") + " · " + rh_esc_(lancamento.nome) + " — " + rh_esc_(lancamento.cargo) + (colaborador.cpf ? " · CPF: " + rh_esc_(colaborador.cpf) : "") + "</span></div>" +
     "<div><b>CBO</b><span>" + rh_esc_(colaborador.cbo || "-") + "</span></div>" +
     "<div><b>Centro de Custo</b><span>" + rh_esc_(colaborador.centroCusto || "-") + "</span></div>" +
+    "<div><b>Departamento</b><span>" + rh_esc_(colaborador.departamento || "-") + "</span></div>" +
     "<div><b>Filial</b><span>" + rh_esc_(colaborador.filial || "-") + "</span></div>" +
     "<div><b>Admissão</b><span>" + rh_esc_(colaborador.admissao || "-") + "</span></div>" +
     "<div><b>Dependentes (IRRF)</b><span>" + lancamento.dependentes + "</span></div>" +

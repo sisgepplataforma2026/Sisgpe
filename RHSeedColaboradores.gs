@@ -156,6 +156,67 @@ function atualizarColaboradoresRH_ExtratoJunho2026_() {
 }
 
 // ================================
+// Centro de Custo / Departamento por MATRÍCULA — o extrato real tem DOIS
+// campos separados que eu tinha confundido num só: "CC" (Centro de
+// Custo, sempre "1" pra todo mundo — é o sindicato inteiro, um único
+// centro de custo) e "Depto" (1 a 4, varia por pessoa). Confirmado pelo
+// usuário: Centro de Custo = "SindEducação/ES" (nome do centro de custo
+// único). Departamento usa o mapeamento 1-4 já levantado do "Totais por
+// Departamento" do Extrato Mensal: 1=Administração, 2=Limpeza,
+// 3=Homologadores, 4=Atendimento — e os números por matrícula são os
+// mesmos que já estavam (por engano) na coluna CENTRO_CUSTO desde o seed
+// original; aqui só move esse dado pro campo certo.
+// ================================
+
+function aplicarCentroCustoEDepartamentoReal_publico(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, true);
+  try {
+    return aplicarCentroCustoEDepartamentoReal_();
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao aplicar centro de custo/departamento: " + e.message };
+  }
+}
+
+function aplicarCentroCustoEDepartamentoReal_() {
+  var NOMES_DEPARTAMENTO_ = { "1": "Administração", "2": "Limpeza", "3": "Homologadores", "4": "Atendimento" };
+  var CENTRO_CUSTO_UNICO_ = "SindEducação/ES";
+
+  // matrícula -> código do departamento (mesmo valor real do Extrato Mensal 06/2026)
+  var deptoPorMatricula = { "37": "4", "36": "1", "6": "2", "3": "3", "35": "1", "2": "4", "8": "1" };
+
+  var sh = rh_garantirColaboradores_();
+  var mapa = rh_mapaCabecalho_(sh);
+  var ultimaLinha = sh.getLastRow();
+  if (ultimaLinha < 2) return { ok: false, mensagem: "Nenhum colaborador cadastrado ainda." };
+
+  var matriculas = sh.getRange(2, mapa["MATRICULA"], ultimaLinha - 1, 1).getValues();
+  var quem = "SISGEP (Centro de Custo/Departamento reais)";
+  var agora = new Date();
+  var atualizados = [], naoEncontrados = [];
+
+  Object.keys(deptoPorMatricula).forEach(function (matricula) {
+    var linha = null;
+    for (var i = 0; i < matriculas.length; i++) {
+      if (String(matriculas[i][0]) === matricula) { linha = i + 2; break; }
+    }
+    if (!linha) { naoEncontrados.push("Matrícula " + matricula); return; }
+
+    var codigoDepto = deptoPorMatricula[matricula];
+    var nomeDepto = NOMES_DEPARTAMENTO_[codigoDepto] || codigoDepto;
+
+    sh.getRange(linha, mapa["CENTRO_CUSTO"]).setValue(CENTRO_CUSTO_UNICO_);
+    if (mapa["DEPARTAMENTO"]) sh.getRange(linha, mapa["DEPARTAMENTO"]).setValue(nomeDepto);
+    if (mapa["ATUALIZADO_POR"]) sh.getRange(linha, mapa["ATUALIZADO_POR"]).setValue(quem);
+    if (mapa["ATUALIZADO_EM"]) sh.getRange(linha, mapa["ATUALIZADO_EM"]).setValue(agora);
+
+    atualizados.push("Matrícula " + matricula + " (Departamento: " + nomeDepto + ")");
+  });
+
+  Logger.log("[RH] Centro de Custo/Departamento reais — atualizados: " + (atualizados.join(", ") || "nenhum") + " | não encontrados: " + (naoEncontrados.join(", ") || "nenhum"));
+  return { ok: true, atualizados: atualizados, naoEncontrados: naoEncontrados };
+}
+
+// ================================
 // Rubricas FIXAS (recorrentes) por MATRÍCULA — extraídas do mesmo
 // Extrato Mensal 06/2026. Confirmado pelo usuário: "os prêmios são
 // fixos" (Abono CCT, Quinquênio, Decênio, Insalubridade, Prêmio Mérito

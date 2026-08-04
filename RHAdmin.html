@@ -77,6 +77,7 @@
           <button class="rh-btn" onclick="rhImportarSeedModelo()" id="btnRhSeedModelo">🌱 Importar os 7 do modelo</button>
           <button class="rh-btn" onclick="rhAtualizarExtratoJunho2026()" id="btnRhAtualizarExtrato">💳 Atualizar salário/CPF (Extrato 06/2026)</button>
           <button class="rh-btn" onclick="rhAplicarRubricasFixas()" id="btnRhRubricasFixas">🏷️ Aplicar rubricas fixas (Abono CCT, Quinquênio...)</button>
+          <button class="rh-btn" onclick="rhAplicarCentroCustoDepartamento()" id="btnRhCentroCustoDepto">🏢 Aplicar Centro de Custo/Departamento reais</button>
         </div>
       </div>
 
@@ -95,7 +96,8 @@
         <div class="rh-field"><label>Matrícula</label><input id="rhMatricula" placeholder="Ex.: 37"></div>
         <div class="rh-field"><label>CPF</label><input id="rhCpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" oninput="Utils.aplicarMascaraCPF(this)"></div>
         <div class="rh-field"><label>CBO</label><input id="rhCbo" placeholder="Ex.: 411005"></div>
-        <div class="rh-field"><label>Centro de custo</label><input id="rhCentroCusto" placeholder="Ex.: 4"></div>
+        <div class="rh-field"><label>Centro de custo</label><input id="rhCentroCusto" placeholder="Ex.: SindEducação/ES"></div>
+        <div class="rh-field"><label>Departamento</label><input id="rhDepartamento" placeholder="Ex.: Administração"></div>
         <div class="rh-field"><label>Filial</label><input id="rhFilial" placeholder="Ex.: 1"></div>
         <div class="rh-field"><label>Admissão</label><input id="rhAdmissao" type="date"></div>
         <div class="rh-actions" style="align-items:end"><button class="rh-btn primary" onclick="rhSalvar()">Salvar</button></div>
@@ -231,7 +233,7 @@
       </div>
       <div class="rh-table-wrap">
         <table class="rh-table">
-          <thead><tr><th>Colaborador</th><th>Cargo</th><th>Salário (prorata)</th><th>Benefícios</th><th>Rubricas extras</th><th>INSS</th><th>IRRF</th><th>FGTS patronal</th><th>Líquido</th><th>Holerite</th><th>E-mail</th></tr></thead>
+          <thead><tr><th>Colaborador</th><th>Cargo</th><th>Salário (prorata)</th><th>Benefícios</th><th>Rubricas extras</th><th>INSS</th><th>IRRF</th><th>FGTS patronal</th><th>Líquido</th><th>Holerite</th><th>E-mail</th><th>WhatsApp</th></tr></thead>
           <tbody id="rhFolhaTabela"></tbody>
         </table>
       </div>
@@ -303,7 +305,7 @@
     }
 
     window.rhSalvar=function(){
-      var item={id:editId||"",nome:(g("rhNome")||{}).value||"",cargo:(g("rhCargo")||{}).value||"",setor:(g("rhSetor")||{}).value||"Administrativo",status:(g("rhStatus")||{}).value||"Ativo",vencimento:(g("rhVencimento")||{}).value||"",salario:num((g("rhSalario")||{}).value),beneficios:num((g("rhBeneficios")||{}).value),descontos:num((g("rhDescontos")||{}).value),dependentes:Math.max(0,parseInt((g("rhDependentes")||{}).value||"0",10)||0),aniversario:(g("rhAniversario")||{}).value||"",email:(g("rhEmail")||{}).value||"",matricula:(g("rhMatricula")||{}).value||"",cbo:(g("rhCbo")||{}).value||"",centroCusto:(g("rhCentroCusto")||{}).value||"",filial:(g("rhFilial")||{}).value||"",admissao:(g("rhAdmissao")||{}).value||"",cpf:(g("rhCpf")||{}).value||""};
+      var item={id:editId||"",nome:(g("rhNome")||{}).value||"",cargo:(g("rhCargo")||{}).value||"",setor:(g("rhSetor")||{}).value||"Administrativo",status:(g("rhStatus")||{}).value||"Ativo",vencimento:(g("rhVencimento")||{}).value||"",salario:num((g("rhSalario")||{}).value),beneficios:num((g("rhBeneficios")||{}).value),descontos:num((g("rhDescontos")||{}).value),dependentes:Math.max(0,parseInt((g("rhDependentes")||{}).value||"0",10)||0),aniversario:(g("rhAniversario")||{}).value||"",email:(g("rhEmail")||{}).value||"",matricula:(g("rhMatricula")||{}).value||"",cbo:(g("rhCbo")||{}).value||"",centroCusto:(g("rhCentroCusto")||{}).value||"",departamento:(g("rhDepartamento")||{}).value||"",filial:(g("rhFilial")||{}).value||"",admissao:(g("rhAdmissao")||{}).value||"",cpf:(g("rhCpf")||{}).value||""};
       if(!item.nome.trim()){avisar("Informe o nome do colaborador.","warn");return;}
       google.script.run
         .withSuccessHandler(function(r){
@@ -318,7 +320,7 @@
     window.rhEditar=function(id){
       var i=RH_CACHE.find(function(x){return x.id===id;}); if(!i)return;
       editId=id;
-      g("rhNome").value=i.nome||"";g("rhCargo").value=i.cargo||"";g("rhSetor").value=i.setor||"Administrativo";g("rhStatus").value=i.status||"Ativo";g("rhVencimento").value=i.vencimento||"";g("rhSalario").value=i.salario?String(i.salario).replace(".",","):"";g("rhBeneficios").value=i.beneficios?String(i.beneficios).replace(".",","):"";g("rhDescontos").value=i.descontos?String(i.descontos).replace(".",","):"";g("rhDependentes").value=i.dependentes||0;g("rhAniversario").value=i.aniversario||"";g("rhEmail").value=i.email||"";g("rhMatricula").value=i.matricula||"";g("rhCbo").value=i.cbo||"";g("rhCentroCusto").value=i.centroCusto||"";g("rhFilial").value=i.filial||"";g("rhAdmissao").value=i.admissao||"";g("rhCpf").value=i.cpf||"";g("rhNome").focus();
+      g("rhNome").value=i.nome||"";g("rhCargo").value=i.cargo||"";g("rhSetor").value=i.setor||"Administrativo";g("rhStatus").value=i.status||"Ativo";g("rhVencimento").value=i.vencimento||"";g("rhSalario").value=i.salario?String(i.salario).replace(".",","):"";g("rhBeneficios").value=i.beneficios?String(i.beneficios).replace(".",","):"";g("rhDescontos").value=i.descontos?String(i.descontos).replace(".",","):"";g("rhDependentes").value=i.dependentes||0;g("rhAniversario").value=i.aniversario||"";g("rhEmail").value=i.email||"";g("rhMatricula").value=i.matricula||"";g("rhCbo").value=i.cbo||"";g("rhCentroCusto").value=i.centroCusto||"";g("rhDepartamento").value=i.departamento||"";g("rhFilial").value=i.filial||"";g("rhAdmissao").value=i.admissao||"";g("rhCpf").value=i.cpf||"";g("rhNome").focus();
     };
 
     window.rhExcluir=function(id){
@@ -385,10 +387,28 @@
         .aplicarRubricasFixasReaisJunho2026_publico(tokenSessao());
     };
 
-    window.rhLimparForm=function(){editId="";["rhNome","rhCargo","rhVencimento","rhSalario","rhBeneficios","rhDescontos","rhDependentes","rhAniversario","rhEmail","rhMatricula","rhCbo","rhCentroCusto","rhFilial","rhAdmissao","rhCpf"].forEach(function(id){if(g(id))g(id).value="";});if(g("rhSetor"))g("rhSetor").value="Administrativo";if(g("rhStatus"))g("rhStatus").value="Ativo";};
+    window.rhAplicarCentroCustoDepartamento=function(){
+      if(!confirm("Aplicar o Centro de Custo real (\"SindEducação/ES\", único para todos) e o Departamento real (Administração/Limpeza/Homologadores/Atendimento) dos 7 colaboradores? Isso sobrescreve o que estiver hoje no campo Centro de Custo. Ação exige perfil administrador."))return;
+      var btn=g("btnRhCentroCustoDepto"); if(btn){btn.disabled=true;btn.textContent="Aplicando...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="🏢 Aplicar Centro de Custo/Departamento reais";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao aplicar.","err");return;}
+          var msg="Atualizados: "+(r.atualizados.length||0)+" · Não encontrados: "+(r.naoEncontrados.length||0);
+          avisar(msg,"ok");
+          rhRender();
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="🏢 Aplicar Centro de Custo/Departamento reais";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .aplicarCentroCustoEDepartamentoReal_publico(tokenSessao());
+    };
+
+    window.rhLimparForm=function(){editId="";["rhNome","rhCargo","rhVencimento","rhSalario","rhBeneficios","rhDescontos","rhDependentes","rhAniversario","rhEmail","rhMatricula","rhCbo","rhCentroCusto","rhDepartamento","rhFilial","rhAdmissao","rhCpf"].forEach(function(id){if(g(id))g(id).value="";});if(g("rhSetor"))g("rhSetor").value="Administrativo";if(g("rhStatus"))g("rhStatus").value="Ativo";};
 
     function baixarCSV(nome,rows){var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c==null?"":c).replace(/"/g,'""')+'"';}).join(";");}).join("\n");var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download=nome;a.click();}
-    window.rhExportarCSV=function(){var rows=[["Nome","Cargo","Setor","Status","Vencimento","Salario","Beneficios","Descontos","Dependentes","Aniversario","Email","Matricula","CBO","CentroCusto","Filial","Admissao","CPF"]].concat(RH_CACHE.map(function(i){return[i.nome,i.cargo,i.setor,i.status,i.vencimento,i.salario||0,i.beneficios||0,i.descontos||0,i.dependentes||0,i.aniversario||"",i.email||"",i.matricula||"",i.cbo||"",i.centroCusto||"",i.filial||"",i.admissao||"",i.cpf||""];}));baixarCSV("sisgep-rh.csv",rows);};
+    window.rhExportarCSV=function(){var rows=[["Nome","Cargo","Setor","Status","Vencimento","Salario","Beneficios","Descontos","Dependentes","Aniversario","Email","Matricula","CBO","CentroCusto","Departamento","Filial","Admissao","CPF"]].concat(RH_CACHE.map(function(i){return[i.nome,i.cargo,i.setor,i.status,i.vencimento,i.salario||0,i.beneficios||0,i.descontos||0,i.dependentes||0,i.aniversario||"",i.email||"",i.matricula||"",i.cbo||"",i.centroCusto||"",i.departamento||"",i.filial||"",i.admissao||"",i.cpf||""];}));baixarCSV("sisgep-rh.csv",rows);};
 
     /* ==== Documentos por colaborador ==== */
     var RH_DOC_COLAB_ATUAL="";
@@ -631,10 +651,11 @@
         totalBruto+=i.bruto; totalImpostos+=(i.inss+i.irrf); totalLiq+=i.liquido;
         var extrasLiq=(i.proventosExtra||0)-(i.descontosExtra||0);
         var extrasTxt=extrasLiq?((extrasLiq>0?"+":"")+moeda(extrasLiq)):"-";
-        return '<tr><td><strong>'+esc(i.nome)+'</strong></td><td>'+esc(i.cargo)+'</td><td>'+moeda(i.salarioProrata)+'</td><td>'+moeda(i.beneficios)+'</td><td>'+extrasTxt+'</td><td>'+moeda(i.inss)+'</td><td>'+moeda(i.irrf)+'</td><td>'+moeda(i.fgtsPatronal)+'</td><td><strong>'+moeda(i.liquido)+'</strong></td><td><button class="rh-btn" data-rh-holerite="'+esc(i.id)+'">📄 PDF</button></td><td><button class="rh-btn" data-rh-holerite-email="'+esc(i.id)+'">✉️</button></td></tr>';
+        return '<tr><td><strong>'+esc(i.nome)+'</strong></td><td>'+esc(i.cargo)+'</td><td>'+moeda(i.salarioProrata)+'</td><td>'+moeda(i.beneficios)+'</td><td>'+extrasTxt+'</td><td>'+moeda(i.inss)+'</td><td>'+moeda(i.irrf)+'</td><td>'+moeda(i.fgtsPatronal)+'</td><td><strong>'+moeda(i.liquido)+'</strong></td><td><button class="rh-btn" data-rh-holerite="'+esc(i.id)+'">📄 PDF</button></td><td><button class="rh-btn" data-rh-holerite-email="'+esc(i.id)+'">✉️</button></td><td><button class="rh-btn" data-rh-holerite-zap="'+esc(i.id)+'" data-rh-holerite-zap-nome="'+esc(i.nome)+'" data-rh-holerite-zap-comp="'+esc(i.competencia)+'">📱</button></td></tr>';
       }).join("");
       tb.querySelectorAll("[data-rh-holerite]").forEach(function(btn){btn.addEventListener("click",function(){rhBaixarHolerite(btn.getAttribute("data-rh-holerite"),btn);});});
       tb.querySelectorAll("[data-rh-holerite-email]").forEach(function(btn){btn.addEventListener("click",function(){rhEnviarHoleriteEmail(btn.getAttribute("data-rh-holerite-email"),btn);});});
+      tb.querySelectorAll("[data-rh-holerite-zap]").forEach(function(btn){btn.addEventListener("click",function(){rhEnviarHoleriteWhatsapp(btn.getAttribute("data-rh-holerite-zap"),btn.getAttribute("data-rh-holerite-zap-nome"),btn.getAttribute("data-rh-holerite-zap-comp"),btn);});});
       if(vazio)vazio.style.display=linhas.length?"none":"block";
       setText("rhFolhaQtd",String(linhas.length)); setText("rhFolhaBruto",moeda(totalBruto)); setText("rhFolhaDescontos",moeda(totalImpostos)); setText("rhFolhaLiquido",moeda(totalLiq));
     };
@@ -657,6 +678,41 @@
         })
         .withFailureHandler(function(e){
           if(btn){btn.disabled=false;btn.textContent="📄 PDF";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .gerarHoleritePDF(idLancamento, tokenSessao());
+    };
+
+    // O holerite tem salário líquido/IRRF — dado sensível. Por isso o PDF
+    // nunca é salvo no Drive com link público (mesma decisão já tomada em
+    // gerarHoleritePDF/rh_montarBlobHolerite_). O WhatsApp "clique para
+    // conversar" (wa.me) não tem como anexar arquivo automaticamente — é
+    // uma limitação da própria URL scheme, não dá pra contornar sem API
+    // paga do WhatsApp Business (que o sistema não usa). Então aqui:
+    // baixa o PDF localmente (mesmo fluxo de rhBaixarHolerite) e abre o
+    // WhatsApp com uma mensagem pronta — quem está enviando anexa o
+    // arquivo que acabou de baixar, manualmente, na conversa.
+    window.rhEnviarHoleriteWhatsapp=function(idLancamento,nome,competencia,btn){
+      if(btn){btn.disabled=true;btn.textContent="...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="📱";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao gerar holerite.","err");return;}
+          try{
+            var byteChars=atob(r.base64);
+            var byteNumbers=new Array(byteChars.length);
+            for(var i=0;i<byteChars.length;i++)byteNumbers[i]=byteChars.charCodeAt(i);
+            var blob=new Blob([new Uint8Array(byteNumbers)],{type:"application/pdf"});
+            var url=URL.createObjectURL(blob);
+            var a=document.createElement("a"); a.href=url; a.download=r.nomeArquivo||"holerite.pdf"; a.click();
+            setTimeout(function(){URL.revokeObjectURL(url);},4000);
+          }catch(e){avisar("Erro ao baixar o PDF gerado.","err");return;}
+          var msg="Olá, "+nome+"! Segue seu holerite da competência "+competencia+" — acabei de baixar o arquivo, é só anexar aqui nesta conversa (arquivo: "+(r.nomeArquivo||"holerite.pdf")+").";
+          window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank");
+          avisar("PDF baixado — anexe o arquivo na conversa do WhatsApp que abriu.","ok");
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="📱";}
           avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
         })
         .gerarHoleritePDF(idLancamento, tokenSessao());
