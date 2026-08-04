@@ -62,6 +62,7 @@
         <div class="vad-lote-info">
           <b id="vadLoteQtd">0</b> escola(s) selecionada(s)
           <button class="vad-link" onclick="vadLimparSelecao()">limpar seleção</button>
+          <button class="vad-link" style="color:#991b1b;" onclick="vadCancelarLote()">cancelar visitas agendadas/em andamento destas escolas</button>
         </div>
         <div class="vad-lote-campos">
           <div>
@@ -648,6 +649,29 @@ function vadLimparSelecao(){
   var t=document.getElementById('vadTodos');
   if(t) t.checked=false;
   vadRender();
+}
+
+function vadCancelarLote(){
+  var sel=vadEscolasSelecionadas();
+  if(!sel.length) return;
+
+  var motivo=prompt('Motivo do cancelamento em lote (opcional):','');
+  if(motivo===null) return;
+  if(!confirm('Cancelar TODAS as visitas agendadas/em andamento das '+sel.length+' escola(s) selecionadas? Visitas ja concluidas nao sao afetadas.'))return;
+
+  var payload=sel.map(function(e){ return {cnpj:e.cnpj||'', nome:e.nome||''}; });
+
+  google.script.run.withSuccessHandler(function(r){
+    if(!vadOk(r)){
+      alert((r&&(r.mensagem||r.erro))||'Nao foi possivel cancelar as visitas.');
+      return;
+    }
+    toast(r.mensagem||'Visitas canceladas!','ok');
+    vadLimparSelecao();
+    if(typeof carregarPainelVisitas==='function') carregarPainelVisitas();
+  }).withFailureHandler(function(e){
+    alert('Erro: '+vadMsgErro(e));
+  }).cancelarVisitasEmLote(payload, motivo, vadToken());
 }
 
 function vadEscolasSelecionadas(){

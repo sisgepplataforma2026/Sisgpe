@@ -678,6 +678,75 @@ function cancelarVisita(idVisita, motivo, tokenSessao) {
   }
 }
 
+/**
+ * Cancela em lote todas as visitas ainda nao finalizadas (AGENDADA ou
+ * EM_ANDAMENTO) das escolas informadas — pensado pra limpar agendamentos
+ * travados/de teste sem precisar abrir escola por escola e sem precisar
+ * saber a data de cada uma. Visita ja concluida nunca e tocada (mesma
+ * regra de cancelarVisita).
+ */
+function cancelarVisitasEmLote(escolas, motivo, tokenSessao) {
+  var sessao = visitas_exigirSessao_(tokenSessao);
+  if (!Array.isArray(escolas) || !escolas.length) {
+    return { sucesso: false, mensagem: 'Nenhuma escola selecionada.' };
+  }
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var alvosCnpj = {}, alvosNome = {};
+    escolas.forEach(function (e) {
+      var cnpj = String((e && e.cnpj) || '').replace(/\D/g, '');
+      var nome = visitas_normalizarTexto_((e && e.nome) || '');
+      if (cnpj) alvosCnpj[cnpj] = true;
+      if (nome) alvosNome[nome] = true;
+    });
+
+    var todas = visitas_lerTodas_();
+    var canceladas = 0;
+    var escolasAtingidas = {}; // nome da escola -> CNPJ
+
+    todas.forEach(function (v) {
+      if (v.STATUS !== VIS_STATUS.AGENDADA && v.STATUS !== VIS_STATUS.EM_ANDAMENTO) return;
+
+      var cnpjVisita = String(v.CNPJ || '').replace(/\D/g, '');
+      var nomeVisita = visitas_normalizarTexto_(v.ESCOLA);
+      var bate = (cnpjVisita && alvosCnpj[cnpjVisita]) || alvosNome[nomeVisita];
+      if (!bate) return;
+
+      v.STATUS = VIS_STATUS.CANCELADA;
+      v.OBSERVACOES = (v.OBSERVACOES ? v.OBSERVACOES + ' | ' : '') +
+        'Cancelada em lote por ' + sessao.nome + ': ' +
+        String(motivo || 'sem motivo informado');
+      v.ATUALIZADA_EM = new Date();
+      visitas_gravar_(v);
+      canceladas++;
+      escolasAtingidas[v.ESCOLA] = v.CNPJ || '';
+    });
+
+    Object.keys(escolasAtingidas).forEach(function (nomeEscola) {
+      var totais = visitas_totaisDaEscola_(nomeEscola);
+      visitas_atualizarEscola_(nomeEscola, {
+        STATUS_VISITA: totais.visitas > 0 ? VIS_STATUS.VISITADA : VIS_STATUS.PENDENTE,
+        PROXIMA_VISITA: ''
+      }, escolasAtingidas[nomeEscola]);
+    });
+
+    visitas_limparCache_();
+
+    return {
+      sucesso: true,
+      canceladas: canceladas,
+      escolas: Object.keys(escolasAtingidas).length,
+      mensagem: canceladas
+        ? (canceladas + ' visita(s) cancelada(s) em ' + Object.keys(escolasAtingidas).length + ' escola(s).')
+        : 'Nenhuma visita agendada/em andamento encontrada nas escolas selecionadas.'
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 /* ==========================================================================
  * AGENDA E ROTA
  * ========================================================================== */
