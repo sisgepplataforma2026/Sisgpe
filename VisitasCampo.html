@@ -111,6 +111,9 @@
 .vc-qr-caixa canvas,.vc-qr-caixa img{margin:0 auto;display:block;}
 .vc-qr-legenda{font-size:12px;color:#6b7385;margin-top:10px;line-height:1.45;}
 .vc-qr-contador{font-size:26px;font-weight:800;color:var(--green,#059669);margin-top:8px;}
+.vc-qr-envio{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;justify-content:center;}
+.vc-btn-link{border:1.5px solid var(--g300,#cbd5e1);background:#fff;color:var(--navy2,#002f6c);font-size:12px;font-weight:800;padding:8px 12px;border-radius:9px;cursor:pointer;font-family:inherit;}
+.vc-btn-link:hover{background:var(--g50,#f8fafc);}
 
 .vc-rota-aviso{background:#fffdf7;border:1.5px solid var(--gold,#C9A84C);border-radius:12px;padding:13px;margin-bottom:12px;font-size:13px;color:var(--g900,#0f172a);line-height:1.5;}
 .vc-rota-aviso a{display:inline-block;margin-top:8px;font-weight:800;color:var(--navy2,#002f6c);}
@@ -519,6 +522,8 @@ function vcCheckin(){
   }
 }
 
+var VC_LINK_FICHA_ATUAL='';
+
 function vcMostrarQR(){
   var box=document.getElementById('vcQRBox');
   box.innerHTML='<p style="font-size:12.5px;color:#94a3b8;">Gerando QR Code…</p>';
@@ -528,9 +533,14 @@ function vcMostrarQR(){
         vcEsc((r&&r.mensagem)||'Falha ao gerar o link.')+'</p>';
       return;
     }
+    VC_LINK_FICHA_ATUAL=r.url;
     box.innerHTML='<div class="vc-qr-caixa"><div id="vcQR"></div>'+
       '<div class="vc-qr-legenda">Peça para o trabalhador apontar a câmera do '+
-      'celular para este código.<br>A ficha já abre com a escola preenchida.</div></div>';
+      'celular para este código.<br>A ficha já abre com a escola preenchida.</div>'+
+      '<div class="vc-qr-envio">'+
+        '<button class="vc-btn-link" onclick="vcCopiarLinkFicha()">&#128203; Copiar link</button>'+
+        '<button class="vc-btn-link" onclick="vcCompartilharWhatsappFicha()">&#128172; Enviar por WhatsApp</button>'+
+      '</div></div>';
     try{
       new QRCode(document.getElementById('vcQR'), {
         text:r.url, width:190, height:190,
@@ -544,6 +554,29 @@ function vcMostrarQR(){
   }).withFailureHandler(function(e){
     box.innerHTML='<p style="font-size:12.5px;color:#dc2626;">Erro: '+vcEsc(e)+'</p>';
   }).gerarLinkFichaDaVisita(VC_VISITA.ID_VISITA, vcToken());
+}
+
+function vcCopiarLinkFicha(){
+  if(!VC_LINK_FICHA_ATUAL) return;
+  var ok=function(){ if(typeof toast==='function') toast('Link copiado!','ok'); };
+  var falhou=function(){
+    var campo=prompt('Copie o link abaixo:', VC_LINK_FICHA_ATUAL);
+    void campo;
+  };
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(VC_LINK_FICHA_ATUAL).then(ok).catch(falhou);
+  } else {
+    falhou();
+  }
+}
+
+function vcCompartilharWhatsappFicha(){
+  if(!VC_LINK_FICHA_ATUAL) return;
+  var escola=(VC_VISITA&&VC_VISITA.ESCOLA)?VC_VISITA.ESCOLA:'';
+  var texto='Olá! Segue o link para preencher sua ficha de sindicalização'+
+    (escola?(' — '+escola):'')+':\n'+VC_LINK_FICHA_ATUAL;
+  var url='https://wa.me/?text='+encodeURIComponent(texto);
+  window.open(url,'_blank');
 }
 
 function vcMascaraCelular(el){
