@@ -12,7 +12,12 @@
     .rh-panel-title{font-size:14px;font-weight:900;color:var(--navy,#001f4d)}.rh-actions{display:flex;gap:8px;flex-wrap:wrap}
     .rh-btn{height:34px;border-radius:9px;border:1px solid var(--g300,#cbd5e1);background:#fff;color:var(--g700,#334155);font-size:12px;font-weight:800;padding:0 12px;cursor:pointer;font-family:inherit}
     .rh-btn.primary{background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));border-color:var(--blue,#1565C0);color:#fff}.rh-btn.gold{background:#fff7d6;border-color:#e8c870;color:#7a5a00}
-    .rh-form{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 1fr 1fr 1fr auto;gap:10px;padding:14px 16px;background:var(--g50,#f8fafc);border-bottom:1px solid #eef2f7}
+    .rh-form{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 1fr 1fr 1fr 90px auto;gap:10px;padding:14px 16px;background:var(--g50,#f8fafc);border-bottom:1px solid #eef2f7}
+    .rh-tribrow{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;margin-bottom:8px}
+    .rh-tribrow.irrf{grid-template-columns:1fr 1fr 1fr}
+    .rh-tribrow label{display:block;font-size:9.5px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;color:var(--g500,#64748b);margin-bottom:3px}
+    .rh-tribrow input{width:100%;height:32px;border:1.5px solid #dbe4ef;border-radius:8px;padding:0 8px;font-size:12px;font-family:inherit}
+    .rh-alerta{background:#fff7d6;border:1px solid #e8c870;border-radius:10px;padding:10px 14px;font-size:11.5px;color:#7a5a00;margin:0 16px 14px;font-weight:700}
     .rh-field label{display:block;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:var(--g500,#64748b);margin-bottom:4px}
     .rh-field input,.rh-field select{width:100%;height:36px;border:1.5px solid #dbe4ef;border-radius:9px;padding:0 10px;font-size:12.5px;font-family:inherit;background:#fff;color:var(--g900,#0f172a);outline:none}
     .rh-field input:focus,.rh-field select:focus{border-color:var(--blue,#1565C0);box-shadow:0 0 0 3px rgba(21,101,192,.08)}
@@ -67,6 +72,7 @@
         <div class="rh-field"><label>Salário base</label><input id="rhSalario" inputmode="decimal" placeholder="0,00"></div>
         <div class="rh-field"><label>Benefícios</label><input id="rhBeneficios" inputmode="decimal" placeholder="0,00"></div>
         <div class="rh-field"><label>Descontos</label><input id="rhDescontos" inputmode="decimal" placeholder="0,00"></div>
+        <div class="rh-field"><label>Dependentes</label><input id="rhDependentes" type="number" min="0" step="1" placeholder="0"></div>
         <div class="rh-actions" style="align-items:end"><button class="rh-btn primary" onclick="rhSalvar()">Salvar</button></div>
       </div>
 
@@ -88,28 +94,68 @@
     <div class="rh-panel">
       <div class="rh-panel-head">
         <div>
-          <div class="rh-panel-title">Folha de pagamento</div>
-          <div class="rh-mini">Gera uma prévia por competência com base nos colaboradores ativos.</div>
+          <div class="rh-panel-title">Configuração tributária (INSS / IRRF / FGTS)</div>
+          <div class="rh-mini">Usada no cálculo da folha abaixo — confira com o contador do sindicato antes de gerar a folha oficial.</div>
         </div>
         <div class="rh-actions">
-          <button class="rh-btn primary" onclick="rhGerarFolha()">Gerar folha</button>
+          <button class="rh-btn primary" onclick="rhSalvarConfigTrib()">Salvar tabelas</button>
+        </div>
+      </div>
+      <div class="rh-alerta">⚠️ Tabelas de INSS e IRRF mudam todo ano por lei. Os valores aqui são só a última tabela conhecida no momento da implementação — verifique se ainda é a vigente antes de usar em pagamento real.</div>
+      <div style="padding:0 16px 16px;display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div>
+          <div style="font-size:12px;font-weight:900;color:var(--navy,#001f4d);margin-bottom:8px;">INSS (progressivo, por faixa)</div>
+          <div id="rhInssTabela"></div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:900;color:var(--navy,#001f4d);margin-bottom:8px;">IRRF (deixe "Até" em branco na última faixa = sem limite)</div>
+          <div id="rhIrrfTabela"></div>
+        </div>
+      </div>
+      <div class="rh-paybar">
+        <div class="rh-field"><label>Dedução por dependente (IRRF)</label><input id="rhDeducaoDependente" inputmode="decimal"></div>
+        <div class="rh-field"><label>FGTS patronal (%)</label><input id="rhFgtsPct" inputmode="decimal"></div>
+      </div>
+    </div>
+
+    <div class="rh-panel">
+      <div class="rh-panel-head">
+        <div>
+          <div class="rh-panel-title">Folha de pagamento</div>
+          <div class="rh-mini">Prepare a prévia, revise os dias trabalhados de cada colaborador (importante em férias/afastamento) e confirme.</div>
+        </div>
+        <div class="rh-actions">
           <button class="rh-btn" onclick="rhExportarFolhaCSV()">Exportar folha CSV</button>
         </div>
       </div>
       <div class="rh-paybar">
         <div class="rh-field"><label>Competência</label><input id="rhCompetencia" type="month"></div>
-        <div class="rh-field"><label>INSS/encargos (%)</label><input id="rhEncargos" inputmode="decimal" value="0"></div>
-        <div class="rh-field"><label>Observação</label><input id="rhObsFolha" placeholder="Ex.: folha mensal"></div>
+        <div class="rh-field" style="flex:1;min-width:220px;"><label>Observação</label><input id="rhObsFolha" placeholder="Ex.: folha mensal"></div>
+        <div class="rh-actions" style="align-items:end"><button class="rh-btn primary" onclick="rhPrepararFolha()">1. Preparar prévia</button></div>
       </div>
+
+      <div id="rhFolhaPreviaWrap" style="display:none;">
+        <div class="rh-table-wrap">
+          <table class="rh-table">
+            <thead><tr><th>Colaborador</th><th>Status</th><th>Salário</th><th>Dependentes</th><th>Dias trabalhados</th><th>Dias no mês</th></tr></thead>
+            <tbody id="rhFolhaPreviaTabela"></tbody>
+          </table>
+        </div>
+        <div style="padding:14px 16px;display:flex;gap:8px;">
+          <button class="rh-btn primary" onclick="rhConfirmarFolha()">2. Confirmar e gravar folha</button>
+          <button class="rh-btn" onclick="rhCancelarPreviaFolha()">Cancelar</button>
+        </div>
+      </div>
+
       <div class="rh-totalbar">
         <div class="rh-total"><small>Colaboradores</small><strong id="rhFolhaQtd">0</strong></div>
         <div class="rh-total"><small>Bruto</small><strong id="rhFolhaBruto">R$ 0,00</strong></div>
-        <div class="rh-total"><small>Descontos</small><strong id="rhFolhaDescontos">R$ 0,00</strong></div>
+        <div class="rh-total"><small>INSS + IRRF</small><strong id="rhFolhaDescontos">R$ 0,00</strong></div>
         <div class="rh-total"><small>Líquido</small><strong id="rhFolhaLiquido">R$ 0,00</strong></div>
       </div>
       <div class="rh-table-wrap">
         <table class="rh-table">
-          <thead><tr><th>Colaborador</th><th>Cargo</th><th>Salário</th><th>Benefícios</th><th>Descontos</th><th>Encargos</th><th>Líquido</th></tr></thead>
+          <thead><tr><th>Colaborador</th><th>Cargo</th><th>Salário (prorata)</th><th>Benefícios</th><th>INSS</th><th>IRRF</th><th>FGTS patronal</th><th>Líquido</th></tr></thead>
           <tbody id="rhFolhaTabela"></tbody>
         </table>
       </div>
@@ -129,6 +175,9 @@
     function diasAte(data){if(!data)return 9999;var h=new Date();h.setHours(0,0,0,0);var d=new Date(data+"T00:00:00");return Math.ceil((d-h)/86400000);}
     function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]);});}
     function num(v){v=String(v||"").replace(/\./g,"").replace(",",".").replace(/[^\d.-]/g,"");var n=Number(v);return isFinite(n)?n:0;}
+    // Parser simples (ponto decimal, sem separador de milhar) — usado nas tabelas
+    // tributárias, que são valores técnicos digitados/exibidos em formato plano.
+    function numPlano(v){var n=parseFloat(String(v==null?"":v).replace(",","."));return isFinite(n)?n:0;}
     function moeda(v){return Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});}
     function statusClass(s){s=String(s||"").toLowerCase();if(s==="ativo")return"ok";if(s==="férias")return"info";if(s==="afastado")return"warn";return"off";}
     function pendencia(item){var d=diasAte(item.vencimento);if(d<0)return'<span class="rh-pill off">Vencido</span>';if(d<=30)return'<span class="rh-pill warn">Atenção</span>';return'<span class="rh-pill ok">Ok</span>';}
@@ -170,7 +219,7 @@
     }
 
     window.rhSalvar=function(){
-      var item={id:editId||"",nome:(g("rhNome")||{}).value||"",cargo:(g("rhCargo")||{}).value||"",setor:(g("rhSetor")||{}).value||"Administrativo",status:(g("rhStatus")||{}).value||"Ativo",vencimento:(g("rhVencimento")||{}).value||"",salario:num((g("rhSalario")||{}).value),beneficios:num((g("rhBeneficios")||{}).value),descontos:num((g("rhDescontos")||{}).value)};
+      var item={id:editId||"",nome:(g("rhNome")||{}).value||"",cargo:(g("rhCargo")||{}).value||"",setor:(g("rhSetor")||{}).value||"Administrativo",status:(g("rhStatus")||{}).value||"Ativo",vencimento:(g("rhVencimento")||{}).value||"",salario:num((g("rhSalario")||{}).value),beneficios:num((g("rhBeneficios")||{}).value),descontos:num((g("rhDescontos")||{}).value),dependentes:Math.max(0,parseInt((g("rhDependentes")||{}).value||"0",10)||0)};
       if(!item.nome.trim()){avisar("Informe o nome do colaborador.","warn");return;}
       google.script.run
         .withSuccessHandler(function(r){
@@ -185,7 +234,7 @@
     window.rhEditar=function(id){
       var i=RH_CACHE.find(function(x){return x.id===id;}); if(!i)return;
       editId=id;
-      g("rhNome").value=i.nome||"";g("rhCargo").value=i.cargo||"";g("rhSetor").value=i.setor||"Administrativo";g("rhStatus").value=i.status||"Ativo";g("rhVencimento").value=i.vencimento||"";g("rhSalario").value=i.salario?String(i.salario).replace(".",","):"";g("rhBeneficios").value=i.beneficios?String(i.beneficios).replace(".",","):"";g("rhDescontos").value=i.descontos?String(i.descontos).replace(".",","):"";g("rhNome").focus();
+      g("rhNome").value=i.nome||"";g("rhCargo").value=i.cargo||"";g("rhSetor").value=i.setor||"Administrativo";g("rhStatus").value=i.status||"Ativo";g("rhVencimento").value=i.vencimento||"";g("rhSalario").value=i.salario?String(i.salario).replace(".",","):"";g("rhBeneficios").value=i.beneficios?String(i.beneficios).replace(".",","):"";g("rhDescontos").value=i.descontos?String(i.descontos).replace(".",","):"";g("rhDependentes").value=i.dependentes||0;g("rhNome").focus();
     };
 
     window.rhExcluir=function(id){
@@ -199,26 +248,62 @@
         .excluirColaboradorRH(id, tokenSessao());
     };
 
-    window.rhLimparForm=function(){editId="";["rhNome","rhCargo","rhVencimento","rhSalario","rhBeneficios","rhDescontos"].forEach(function(id){if(g(id))g(id).value="";});if(g("rhSetor"))g("rhSetor").value="Administrativo";if(g("rhStatus"))g("rhStatus").value="Ativo";};
+    window.rhLimparForm=function(){editId="";["rhNome","rhCargo","rhVencimento","rhSalario","rhBeneficios","rhDescontos","rhDependentes"].forEach(function(id){if(g(id))g(id).value="";});if(g("rhSetor"))g("rhSetor").value="Administrativo";if(g("rhStatus"))g("rhStatus").value="Ativo";};
 
     function baixarCSV(nome,rows){var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c==null?"":c).replace(/"/g,'""')+'"';}).join(";");}).join("\n");var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download=nome;a.click();}
-    window.rhExportarCSV=function(){var rows=[["Nome","Cargo","Setor","Status","Vencimento","Salario","Beneficios","Descontos"]].concat(RH_CACHE.map(function(i){return[i.nome,i.cargo,i.setor,i.status,i.vencimento,i.salario||0,i.beneficios||0,i.descontos||0];}));baixarCSV("sisgep-rh.csv",rows);};
+    window.rhExportarCSV=function(){var rows=[["Nome","Cargo","Setor","Status","Vencimento","Salario","Beneficios","Descontos","Dependentes"]].concat(RH_CACHE.map(function(i){return[i.nome,i.cargo,i.setor,i.status,i.vencimento,i.salario||0,i.beneficios||0,i.descontos||0,i.dependentes||0];}));baixarCSV("sisgep-rh.csv",rows);};
 
     function setText(id,v){if(g(id))g(id).textContent=v;}
 
-    window.rhGerarFolha=function(){
+    var RH_PREVIA_ITENS=[];
+
+    window.rhPrepararFolha=function(){
       var comp=(g("rhCompetencia")||{}).value||new Date().toISOString().slice(0,7);
-      var perc=num((g("rhEncargos")||{}).value);
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao preparar folha.","err");return;}
+          if(!r.itens.length){avisar("Nenhum colaborador ativo para gerar a folha.","warn");return;}
+          RH_PREVIA_ITENS=r.itens;
+          rhRenderPreviaFolha(r.itens, r.diasMes);
+        })
+        .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+        .prepararFolhaRH(comp, tokenSessao());
+    };
+
+    function rhRenderPreviaFolha(itens, diasMes){
+      var wrap=g("rhFolhaPreviaWrap"), tb=g("rhFolhaPreviaTabela"); if(!wrap||!tb)return;
+      tb.innerHTML=itens.map(function(i,idx){
+        var avisoStatus=(i.status==="Férias"||i.status==="Afastado")?' <span class="rh-pill warn">'+esc(i.status)+'</span>':'';
+        return '<tr><td><strong>'+esc(i.nome)+'</strong>'+avisoStatus+'</td><td>'+esc(i.status)+'</td><td>'+moeda(i.salario)+'</td><td>'+(i.dependentes||0)+'</td>'
+          +'<td><input type="number" min="0" max="'+diasMes+'" value="'+i.diasTrabalhadosSugerido+'" data-rh-dias="'+idx+'" style="width:70px;height:30px;border:1.5px solid #dbe4ef;border-radius:7px;padding:0 8px;font-family:inherit;"></td>'
+          +'<td>'+diasMes+'</td></tr>';
+      }).join("");
+      wrap.style.display="block";
+    }
+
+    window.rhCancelarPreviaFolha=function(){
+      var wrap=g("rhFolhaPreviaWrap"); if(wrap)wrap.style.display="none";
+      RH_PREVIA_ITENS=[];
+    };
+
+    window.rhConfirmarFolha=function(){
+      var comp=(g("rhCompetencia")||{}).value||new Date().toISOString().slice(0,7);
       var obs=(g("rhObsFolha")||{}).value||"";
+      var itens=RH_PREVIA_ITENS.map(function(item,idx){
+        var input=document.querySelector('[data-rh-dias="'+idx+'"]');
+        var dias=input?Number(input.value):item.diasTrabalhadosSugerido;
+        return { colaboradorId:item.colaboradorId, diasTrabalhados:isFinite(dias)?dias:item.diasTrabalhadosSugerido };
+      });
       google.script.run
         .withSuccessHandler(function(r){
           if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao gerar folha.","err");return;}
           RH_FOLHA_CACHE=r.linhas||[];
           rhRenderFolha(RH_FOLHA_CACHE);
+          rhCancelarPreviaFolha();
           avisar(r.mensagem||"Folha gerada!","ok");
         })
         .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
-        .gerarFolhaRH(comp, perc, obs, tokenSessao());
+        .gerarFolhaRH(comp, itens, obs, tokenSessao());
     };
 
     window.rhCarregarFolha=function(){
@@ -231,20 +316,69 @@
 
     window.rhRenderFolha=function(linhas){
       linhas=linhas||RH_FOLHA_CACHE; var tb=g("rhFolhaTabela"), vazio=g("rhFolhaVazio"); if(!tb)return;
-      var totalBruto=0,totalDesc=0,totalLiq=0;
-      tb.innerHTML=linhas.map(function(i){totalBruto+=i.bruto;totalDesc+=i.descontos;totalLiq+=i.liquido;return '<tr><td><strong>'+esc(i.nome)+'</strong></td><td>'+esc(i.cargo)+'</td><td>'+moeda(i.salario)+'</td><td>'+moeda(i.beneficios)+'</td><td>'+moeda(i.descontos)+'</td><td>'+moeda(i.encargos)+'</td><td><strong>'+moeda(i.liquido)+'</strong></td></tr>';}).join("");
+      var totalBruto=0,totalImpostos=0,totalLiq=0;
+      tb.innerHTML=linhas.map(function(i){
+        totalBruto+=i.bruto; totalImpostos+=(i.inss+i.irrf); totalLiq+=i.liquido;
+        return '<tr><td><strong>'+esc(i.nome)+'</strong></td><td>'+esc(i.cargo)+'</td><td>'+moeda(i.salarioProrata)+'</td><td>'+moeda(i.beneficios)+'</td><td>'+moeda(i.inss)+'</td><td>'+moeda(i.irrf)+'</td><td>'+moeda(i.fgtsPatronal)+'</td><td><strong>'+moeda(i.liquido)+'</strong></td></tr>';
+      }).join("");
       if(vazio)vazio.style.display=linhas.length?"none":"block";
-      setText("rhFolhaQtd",String(linhas.length)); setText("rhFolhaBruto",moeda(totalBruto)); setText("rhFolhaDescontos",moeda(totalDesc)); setText("rhFolhaLiquido",moeda(totalLiq));
+      setText("rhFolhaQtd",String(linhas.length)); setText("rhFolhaBruto",moeda(totalBruto)); setText("rhFolhaDescontos",moeda(totalImpostos)); setText("rhFolhaLiquido",moeda(totalLiq));
     };
 
     window.rhExportarFolhaCSV=function(){
       if(!RH_FOLHA_CACHE.length){avisar("Gere a folha da competência antes de exportar.","warn");return;}
-      var rows=[["Competencia","Nome","Cargo","Salario","Beneficios","Descontos","Encargos","Bruto","Liquido"]].concat(RH_FOLHA_CACHE.map(function(i){return[i.competencia,i.nome,i.cargo,i.salario,i.beneficios,i.descontos,i.encargos,i.bruto,i.liquido];}));
+      var rows=[["Competencia","Nome","Cargo","DiasTrabalhados","DiasMes","SalarioProrata","Beneficios","Descontos","INSS","IRRF","FGTSPatronal","Bruto","Liquido"]].concat(RH_FOLHA_CACHE.map(function(i){return[i.competencia,i.nome,i.cargo,i.diasTrabalhados,i.diasMes,i.salarioProrata,i.beneficios,i.descontos,i.inss,i.irrf,i.fgtsPatronal,i.bruto,i.liquido];}));
       baixarCSV("sisgep-folha-pagamento.csv",rows);
     };
 
     window.rhAbrirSofia=function(){if(typeof spIr==="function")spIr("sofia",null,{mensagem:"Preciso de apoio no RH: colaboradores, documentos, férias ou vencimentos."});};
     window.rhGerarDocumento=function(){if(typeof spIr==="function")spIr("documentos",null,{aba:"novo"});};
+
+    /* ==== Configuração tributária (INSS/IRRF/FGTS) ==== */
+    function rhLinhaInss(idx,f){
+      return '<div class="rh-tribrow"><div><label>Até (R$)</label><input type="text" inputmode="decimal" value="'+f.ate+'" data-rh-inss-ate="'+idx+'"></div><div><label>Alíquota (%)</label><input type="text" inputmode="decimal" value="'+f.aliquota+'" data-rh-inss-pct="'+idx+'"></div></div>';
+    }
+    function rhLinhaIrrf(idx,f){
+      return '<div class="rh-tribrow irrf"><div><label>Até (R$)</label><input type="text" inputmode="decimal" value="'+(f.ate===""?"":f.ate)+'" placeholder="sem limite" data-rh-irrf-ate="'+idx+'"></div><div><label>Alíquota (%)</label><input type="text" inputmode="decimal" value="'+f.aliquota+'" data-rh-irrf-pct="'+idx+'"></div><div><label>Dedução (R$)</label><input type="text" inputmode="decimal" value="'+f.deducao+'" data-rh-irrf-ded="'+idx+'"></div></div>';
+    }
+
+    window.rhCarregarConfigTrib=function(){
+      google.script.run
+        .withSuccessHandler(function(cfg){
+          if(!cfg||cfg.ok!==true)return;
+          var inssHtml=cfg.inss.map(function(f,i){return rhLinhaInss(i,f);}).join("");
+          var irrfHtml=cfg.irrf.map(function(f,i){return rhLinhaIrrf(i,f);}).join("");
+          if(g("rhInssTabela"))g("rhInssTabela").innerHTML=inssHtml;
+          if(g("rhIrrfTabela"))g("rhIrrfTabela").innerHTML=irrfHtml;
+          if(g("rhDeducaoDependente"))g("rhDeducaoDependente").value=cfg.deducaoDependente;
+          if(g("rhFgtsPct"))g("rhFgtsPct").value=cfg.fgtsPatronalPct;
+        })
+        .withFailureHandler(function(e){avisar("Erro ao carregar tabelas tributárias: "+((e&&e.message)||String(e||"")),"err");})
+        .rhObterConfigTributaria(tokenSessao());
+    };
+
+    window.rhSalvarConfigTrib=function(){
+      var inss=[]; document.querySelectorAll("[data-rh-inss-ate]").forEach(function(el){
+        var idx=el.getAttribute("data-rh-inss-ate");
+        var pctEl=document.querySelector('[data-rh-inss-pct="'+idx+'"]');
+        inss.push({ ate:numPlano(el.value), aliquota:numPlano(pctEl?pctEl.value:0) });
+      });
+      var irrf=[]; document.querySelectorAll("[data-rh-irrf-ate]").forEach(function(el){
+        var idx=el.getAttribute("data-rh-irrf-ate");
+        var pctEl=document.querySelector('[data-rh-irrf-pct="'+idx+'"]');
+        var dedEl=document.querySelector('[data-rh-irrf-ded="'+idx+'"]');
+        irrf.push({ ate: el.value.trim()===""?"":numPlano(el.value), aliquota:numPlano(pctEl?pctEl.value:0), deducao:numPlano(dedEl?dedEl.value:0) });
+      });
+      var dedDep=numPlano((g("rhDeducaoDependente")||{}).value);
+      var fgtsPct=numPlano((g("rhFgtsPct")||{}).value);
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao salvar tabelas.","err");return;}
+          avisar(r.mensagem||"Tabelas salvas!","ok");
+        })
+        .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+        .rhSalvarConfigTributaria(inss, irrf, dedDep, fgtsPct, tokenSessao());
+    };
 
     window.initRH=function(){
       var c=g("rhCompetencia");
@@ -252,6 +386,7 @@
       if(c&&!c.dataset.rhBound){ c.dataset.rhBound="1"; c.addEventListener("change", window.rhCarregarFolha); }
       rhRender();
       rhCarregarFolha();
+      rhCarregarConfigTrib();
     };
     if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",window.initRH);else setTimeout(window.initRH,80);
   })();
