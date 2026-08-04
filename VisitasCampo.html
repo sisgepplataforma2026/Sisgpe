@@ -3,7 +3,13 @@
   <div class="vc-topo">
     <div>
       <div class="vc-topo-titulo">Minhas visitas</div>
-      <div class="vc-topo-sub" id="vcDataHoje">—</div>
+      <div class="vc-data-nav">
+        <button class="vc-data-seta" onclick="vcMudarDia(-1)" aria-label="Dia anterior">&#8249;</button>
+        <span class="vc-topo-sub" id="vcDataHoje" onclick="vcAbrirSeletorData()">—</span>
+        <button class="vc-data-seta" onclick="vcMudarDia(1)" aria-label="Próximo dia">&#8250;</button>
+        <input type="date" id="vcDataInput" class="vc-data-input" onchange="vcSelecionarData(this.value)">
+      </div>
+      <button class="vc-data-hoje" id="vcBtnHoje" onclick="vcIrParaHoje()" style="display:none;">Voltar para hoje</button>
     </div>
     <button class="vc-btn-rota" onclick="vcAbrirRota()">
       <span>&#128663;</span> Rota
@@ -19,7 +25,7 @@
 
   <div id="vcVazio" style="display:none;text-align:center;padding:48px 16px;color:#6b7385;">
     <div style="font-size:34px;margin-bottom:10px;">&#128197;</div>
-    <p style="font-size:14px;margin:0;">Nenhuma visita agendada para hoje.</p>
+    <p style="font-size:14px;margin:0;" id="vcVazioTexto">Nenhuma visita agendada.</p>
   </div>
 </div>
 
@@ -40,7 +46,12 @@
 <style>
 .vc-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;}
 .vc-topo-titulo{font-size:19px;font-weight:800;color:var(--navy2,#002f6c);}
-.vc-topo-sub{font-size:12.5px;color:#6b7385;margin-top:2px;text-transform:capitalize;}
+.vc-topo-sub{font-size:12.5px;color:#6b7385;text-transform:capitalize;cursor:pointer;}
+.vc-data-nav{display:flex;align-items:center;gap:6px;margin-top:2px;}
+.vc-data-seta{border:none;background:var(--g100,#f1f5f9);color:var(--navy2,#002f6c);width:22px;height:22px;border-radius:6px;font-size:14px;font-weight:800;cursor:pointer;line-height:1;padding:0;}
+.vc-data-seta:hover{background:var(--g200,#e2e8f0);}
+.vc-data-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;}
+.vc-data-hoje{border:none;background:none;color:var(--navy2,#002f6c);font-size:11px;font-weight:800;text-decoration:underline;cursor:pointer;padding:2px 0 0;font-family:inherit;}
 .vc-btn-rota{border:none;border-radius:10px;padding:10px 14px;background:var(--navy2,#002f6c);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap;}
 .vc-progresso{margin-bottom:18px;}
 .vc-progresso-barra{height:6px;background:var(--g200,#e2e8f0);border-radius:4px;overflow:hidden;}
@@ -113,6 +124,27 @@
 <script>
 var VC_AGENDA = null;
 var VC_VISITA = null;
+var VC_DATA_ATUAL = null; /* yyyy-MM-dd — null até a 1ª carga, aí vira "hoje" */
+
+function vcHojeISO(){
+  var h=new Date();
+  return h.getFullYear()+'-'+String(h.getMonth()+1).padStart(2,'0')+'-'+String(h.getDate()).padStart(2,'0');
+}
+
+function vcFormatarDataLabel(iso){
+  var meses=['janeiro','fevereiro','março','abril','maio','junho','julho',
+             'agosto','setembro','outubro','novembro','dezembro'];
+  var partes=String(iso||'').split('-');
+  var d=new Date(Number(partes[0]), Number(partes[1])-1, Number(partes[2]));
+  return d.getDate()+' de '+meses[d.getMonth()]+' de '+d.getFullYear();
+}
+
+function vcSomarDias(iso, delta){
+  var partes=String(iso||'').split('-');
+  var d=new Date(Number(partes[0]), Number(partes[1])-1, Number(partes[2]));
+  d.setDate(d.getDate()+delta);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
 
 function vcEsc(v){
   return String(v==null?'':v).replace(/[&<>"']/g,function(c){
@@ -140,7 +172,10 @@ function vcMsgErro(e){
   return String(e);
 }
 
-/* Entrada do módulo — chamada pelo initModulo do index. */
+/* Entrada do módulo — chamada pelo initModulo do index. Mantém a data já
+   selecionada (navegação ◀ ▶ / calendário) em vez de sempre voltar pra
+   hoje — antes o backend já aceitava qualquer data, só o front nunca
+   pedia nada além de hoje. */
 window.carregarVisitasDoDia=function(){
   var box=document.getElementById('vcAgenda');
   var vazio=document.getElementById('vcVazio');
@@ -148,18 +183,19 @@ window.carregarVisitasDoDia=function(){
   var fill=document.getElementById('vcProgressoFill');
   if(!box) return;
 
+  if(!VC_DATA_ATUAL) VC_DATA_ATUAL=vcHojeISO();
+
   box.innerHTML='<p style="color:#94a3b8;font-size:12.5px;">Carregando agenda…</p>';
   if(vazio) vazio.style.display='none';
   if(txt)  txt.textContent='Carregando agenda…';
   if(fill) fill.style.width='0%';
 
-  var hoje=new Date();
-  var meses=['janeiro','fevereiro','março','abril','maio','junho','julho',
-             'agosto','setembro','outubro','novembro','dezembro'];
   var elData=document.getElementById('vcDataHoje');
-  if(elData){
-    elData.textContent=hoje.getDate()+' de '+meses[hoje.getMonth()]+' de '+hoje.getFullYear();
-  }
+  if(elData) elData.textContent=vcFormatarDataLabel(VC_DATA_ATUAL);
+  var elInput=document.getElementById('vcDataInput');
+  if(elInput) elInput.value=VC_DATA_ATUAL;
+  var elBtnHoje=document.getElementById('vcBtnHoje');
+  if(elBtnHoje) elBtnHoje.style.display=(VC_DATA_ATUAL===vcHojeISO())?'none':'block';
 
   google.script.run.withSuccessHandler(function(r){
     if(!vcOk(r)){
@@ -174,7 +210,31 @@ window.carregarVisitasDoDia=function(){
     box.innerHTML='<p style="color:#dc2626;font-size:12.5px;">Erro: '+
       vcEsc(vcMsgErro(e))+'</p>';
     if(txt) txt.textContent='Falha na conexão com o servidor.';
-  }).obterAgendaDoDia(null, null, vcToken());
+  }).obterAgendaDoDia(VC_DATA_ATUAL, null, vcToken());
+};
+
+window.vcMudarDia=function(delta){
+  if(!VC_DATA_ATUAL) VC_DATA_ATUAL=vcHojeISO();
+  VC_DATA_ATUAL=vcSomarDias(VC_DATA_ATUAL, delta);
+  carregarVisitasDoDia();
+};
+
+window.vcIrParaHoje=function(){
+  VC_DATA_ATUAL=vcHojeISO();
+  carregarVisitasDoDia();
+};
+
+window.vcAbrirSeletorData=function(){
+  var el=document.getElementById('vcDataInput');
+  if(!el) return;
+  if(typeof el.showPicker==='function') el.showPicker();
+  else el.focus();
+};
+
+window.vcSelecionarData=function(valor){
+  if(!valor) return;
+  VC_DATA_ATUAL=valor;
+  carregarVisitasDoDia();
 };
 
 function vcRenderAgenda(){
@@ -195,13 +255,19 @@ function vcRenderAgenda(){
     visitas.filter(function(v){ return CONCLUIDOS.indexOf(v.STATUS)>=0; }).length;
 
   var pct=total?Math.round(concluidas*100/total):0;
+  var ehHoje=VC_DATA_ATUAL===vcHojeISO();
   if(fill) fill.style.width=pct+'%';
   if(txt)  txt.textContent=total
       ? (concluidas+' de '+total+' visitas concluídas')
-      : 'Nenhuma visita agendada para hoje';
+      : ('Nenhuma visita agendada para '+(ehHoje?'hoje':'esta data'));
 
   box.innerHTML='';
-  if(!visitas.length){ if(vazio) vazio.style.display='block'; return; }
+  if(!visitas.length){
+    if(vazio) vazio.style.display='block';
+    var vazioTxt=document.getElementById('vcVazioTexto');
+    if(vazioTxt) vazioTxt.textContent='Nenhuma visita agendada para '+(ehHoje?'hoje':'esta data')+'.';
+    return;
+  }
   if(vazio) vazio.style.display='none';
 
   visitas.forEach(function(v){
