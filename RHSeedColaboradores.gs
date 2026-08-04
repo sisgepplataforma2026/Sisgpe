@@ -6,9 +6,9 @@
 // Pagamento SINDEDUCAÇÃO 13.2025 1ª parcela") enviado pelo usuário —
 // matrícula/cargo/CBO/centro de custo/filial/admissão/salário-base de
 // cada um dos 7 colaboradores extraídos diretamente do documento.
-// CPF não é gravado: o modelo só trazia um valor-placeholder
-// (999.999.999,00), não um CPF real, e o cadastro do SISGEP não tem
-// coluna de CPF para colaborador de RH.
+// Salário e CPF reais (competência 06/2026, extratos da contabilidade)
+// foram aplicados depois por atualizarColaboradoresRH_ExtratoJunho2026_,
+// abaixo — ela sobrescreve SALARIO/CPF por matrícula, sem duplicar linha.
 //
 // EXECUÇÃO — o editor de código deste projeto tem se mostrado
 // inconfiável na prática (dropdown "Executar função" trava/esvazia em
