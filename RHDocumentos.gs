@@ -198,7 +198,27 @@ function rh_faixaIrrfAliquota_(baseIrrf, tabelaIrrf) {
 // página como o modelo original, que existe só para caber 2 vias
 // físicas por folha impressa; aqui o holerite é baixado individualmente
 // por colaborador, então isso não se aplica).
-function rh_gerarHtmlHolerite_(lancamento, colaborador, rubricasExtras, faixaIrrfPct) {
+// Mesma logo institucional já usada em Recibo.gs (carregarImagensRecibo_)
+// e ReciboDiversos.gs — reaproveitando o mesmo arquivo do Drive em vez
+// de subir uma imagem nova. Cache em memória evita reler o Drive a cada
+// holerite ao enviar vários de uma vez (enviarTodosHoleritesPorEmail).
+var _cacheLogoRH_ = null;
+function rh_carregarLogo_() {
+  if (_cacheLogoRH_) return _cacheLogoRH_;
+  var base64 = "", mime = "image/jpeg";
+  try {
+    var blob = DriveApp.getFileById("1F1yULzB9yUJnjtD3VnRuZYRZuUK1cZ62").getBlob();
+    base64 = Utilities.base64Encode(blob.getBytes());
+    mime = blob.getContentType() || "image/jpeg";
+  } catch (e) {
+    Logger.log("[RH] rh_carregarLogo_: " + e.message);
+  }
+  _cacheLogoRH_ = { base64: base64, mime: mime };
+  return _cacheLogoRH_;
+}
+
+function rh_gerarHtmlHolerite_(lancamento, colaborador, rubricasExtras, faixaIrrfPct, logo) {
+  logo = logo || {};
   colaborador = colaborador || {};
   rubricasExtras = rubricasExtras || [];
 
@@ -231,6 +251,8 @@ function rh_gerarHtmlHolerite_(lancamento, colaborador, rubricasExtras, faixaIrr
     "body{font-family:Arial,sans-serif;color:#111827;margin:0;font-size:11.5px;}" +
     ".doc{border:2px solid #001f4d;padding:18px 22px;}" +
     ".topo{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #C9A84C;padding-bottom:10px;margin-bottom:12px;}" +
+    ".topo .marca{display:flex;align-items:center;gap:10px;}" +
+    ".topo .marca img{height:40px;width:40px;object-fit:contain;flex-shrink:0;}" +
     ".topo h1{font-size:14px;color:#001f4d;margin:0;}" +
     ".topo .sub{font-size:10px;color:#555;margin-top:2px;}" +
     ".topo .comp{font-size:12px;font-weight:bold;color:#001f4d;text-align:right;}" +
@@ -252,7 +274,10 @@ function rh_gerarHtmlHolerite_(lancamento, colaborador, rubricasExtras, faixaIrr
     ".rodape{margin-top:16px;font-size:9px;color:#888;}" +
     ".recibo{margin-top:14px;padding-top:10px;border-top:1px dashed #cbd5e1;font-size:9.5px;color:#555;}" +
     "</style></head><body><div class='doc'>" +
-    "<div class='topo'><div><h1>SINDEDUCAÇÃO-ES</h1><div class='sub'>Sindicato dos Educadores Técnico-Administrativos em<br>Estabelecimentos de Ensino Particular no Estado do Espírito Santo<br>CNPJ: 31.815.780/0001-51</div></div>" +
+    "<div class='topo'><div class='marca'>" +
+    (logo.base64 ? "<img src='data:" + logo.mime + ";base64," + logo.base64 + "' alt='SindEducação-ES'>" : "") +
+    "<div><h1>SINDEDUCAÇÃO-ES</h1><div class='sub'>Sindicato dos Educadores Técnico-Administrativos em<br>Estabelecimentos de Ensino Particular no Estado do Espírito Santo<br>CNPJ: 31.815.780/0001-51</div></div>" +
+    "</div>" +
     "<div class='comp'>Recibo de Pagamento<br>Competência " + rh_esc_(lancamento.competencia) + "</div></div>" +
     "<div class='ident'>" +
     "<div class='nome'><b>Colaborador</b><span>" + rh_esc_(colaborador.matricula || "-") + " · " + rh_esc_(lancamento.nome) + " — " + rh_esc_(lancamento.cargo) + "</span></div>" +
@@ -290,8 +315,9 @@ function rh_montarBlobHolerite_(idLancamento) {
   var rubricasExtras = rh_listarFolhaRubricasPorFolhaId_(idLancamento);
   var cfg = rh_obterConfigTributaria_();
   var faixaIrrfPct = rh_faixaIrrfAliquota_(lancamento.baseIrrf, cfg.irrf);
+  var logo = rh_carregarLogo_();
 
-  var html = rh_gerarHtmlHolerite_(lancamento, colaborador, rubricasExtras, faixaIrrfPct);
+  var html = rh_gerarHtmlHolerite_(lancamento, colaborador, rubricasExtras, faixaIrrfPct, logo);
   var nomeArquivo = "Holerite_" + lancamento.competencia + "_" + lancamento.nome.replace(/[^a-zA-Z0-9À-ÿ-]/g, "_") + ".pdf";
   var blobPdf = Utilities.newBlob(html, "text/html", nomeArquivo).getAs("application/pdf");
 
