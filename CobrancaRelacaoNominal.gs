@@ -426,6 +426,9 @@ function cob_rotinaDiaria_() {
               "Anexo localizado (" + candidato.dataStr + "), mas a competência não bate claramente com o assunto/corpo do e-mail — confira manualmente."
             );
           }
+          // Rastreabilidade (LGPD — toda mudança de status precisa de autor):
+          // a rotina automática também é um "autor", mesmo sem usuário logado.
+          sh.getRange(numLinha, mapa["ATUALIZADO_POR"]).setValue("SISGEP (rotina automática diária)");
         }
         // Se não achou candidato nenhum, mantém status/régua como está —
         // é a régua de lembretes (aprovada manualmente) que avança isso.

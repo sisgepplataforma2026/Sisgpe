@@ -125,6 +125,33 @@
     </div>
   </div>
 
+  <!-- Modal de revisão da lista extraída do anexo (dado pessoal — nunca grava sem confirmação) -->
+  <div id="cobModalAssocOverlay" class="of-modal-overlay">
+    <div class="of-modal" style="max-width:900px;">
+      <div class="of-modal-head" style="border-bottom:3px solid var(--gold,#C9A84C);">
+        <div>
+          <div class="of-modal-head-title" id="cobAssocTitulo">Revisar lista extraída do anexo</div>
+          <div class="of-modal-head-sub" id="cobAssocSub">Confira/corrija linha a linha antes de importar — nada é gravado ainda.</div>
+        </div>
+        <button type="button" class="of-modal-close" onclick="cobFecharModalAssoc()">×</button>
+      </div>
+      <div class="of-modal-body">
+        <div id="cobAssocAviso" class="cob-mini" style="margin-bottom:10px;"></div>
+        <div class="cob-table-wrap">
+          <table class="cob-table" id="cobAssocTabela" style="min-width:760px;">
+            <thead><tr><th>Nome</th><th>CPF</th><th>Matrícula</th><th>Cargo</th><th>Salário</th><th>Admissão</th><th></th></tr></thead>
+            <tbody id="cobAssocTbody"></tbody>
+          </table>
+        </div>
+        <button class="cob-btn mini" style="margin-top:8px;" onclick="cobAdicionarLinhaAssoc()">+ adicionar linha</button>
+      </div>
+      <div class="of-modal-foot">
+        <button class="cob-btn" onclick="cobFecharModalAssoc()">Cancelar</button>
+        <button class="cob-btn primary" onclick="cobConfirmarImportacaoAssoc()" id="btnCobConfirmarAssoc">Confirmar importação</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     function g(id){return document.getElementById(id);}
     function tokenSessao(){return typeof SISGEP_TOKEN_SESSAO!=="undefined"?SISGEP_TOKEN_SESSAO:"";}
@@ -205,6 +232,7 @@
           "<td>"+esc(acaoTxt)+"</td>"+
           "<td class='cob-mini'>"+esc(ultimaData||"—")+"</td>"+
           "<td><div class='cob-rowacts'>"+
+            "<button class='cob-btn mini' onclick=\"cobExtrairAnexo('"+l.id+"')\">📄 Extrair anexo</button>"+
             "<button class='cob-btn mini' onclick=\"cobMarcarManual('"+l.id+"','RECEBIDA')\">✅ Recebida</button>"+
             "<button class='cob-btn mini' onclick=\"cobMarcarManual('"+l.id+"','INCONSISTENTE')\">⚠️ Inconsistente</button>"+
           "</div></td>"+
@@ -282,6 +310,78 @@
         .withSuccessHandler(function(r){avisar((r&&r.mensagem)||"","ok");cobAtualizarStatusTrigger();})
         .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
         .cob_removerTriggerDiario_publico(tokenSessao());
+    };
+
+    /* ===== Extração da lista do anexo (dado pessoal — revisão obrigatória) ===== */
+    var COB_ASSOC_ID_ATUAL = null;
+    var COB_ASSOC_LINHAS = [];
+
+    window.cobExtrairAnexo=function(id){
+      var btn=document.querySelector('[data-cob-id="'+id+'"]');
+      avisar("Procurando e lendo o anexo no Gmail — pode levar alguns segundos…","info");
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||r.sucesso!==true){avisar((r&&r.mensagem)||"Não foi possível extrair o anexo.","err");return;}
+          COB_ASSOC_ID_ATUAL=id;
+          COB_ASSOC_LINHAS=(r.associados||[]).map(function(a){return{nome:a.nome||"",cpf:a.cpf||"",matricula:a.matricula||"",cargo:a.cargo||"",salario:a.salario||"",admissao:a.admissao||""};});
+          g("cobAssocTitulo").textContent="Revisar lista extraída — "+r.escolaNome;
+          g("cobAssocSub").textContent="Origem: \""+r.assuntoOrigem+"\" · "+r.remetenteOrigem+" · "+r.dataOrigem+" · arquivo "+r.nomeArquivo;
+          g("cobAssocAviso").textContent=r.aviso||("Confira cada linha contra o anexo original antes de confirmar — "+COB_ASSOC_LINHAS.length+" associado(s) identificado(s).");
+          cobRenderAssocTabela();
+          g("cobModalAssocOverlay").classList.add("aberto");
+        })
+        .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+        .cob_analisarAnexoEscola_publico(tokenSessao(), id);
+    };
+
+    function cobCampoAssoc(idx,campo,valor){
+      return "<input data-assoc-idx='"+idx+"' data-assoc-campo='"+campo+"' value=\""+esc(valor)+"\" style='width:100%;border:1px solid #dbe4ef;border-radius:6px;padding:4px 6px;font-size:12px;font-family:inherit;' oninput=\"cobAtualizarCampoAssoc(this)\">";
+    }
+
+    window.cobRenderAssocTabela=function(){
+      g("cobAssocTbody").innerHTML=COB_ASSOC_LINHAS.map(function(l,idx){
+        return "<tr>"+
+          "<td>"+cobCampoAssoc(idx,"nome",l.nome)+"</td>"+
+          "<td>"+cobCampoAssoc(idx,"cpf",l.cpf)+"</td>"+
+          "<td>"+cobCampoAssoc(idx,"matricula",l.matricula)+"</td>"+
+          "<td>"+cobCampoAssoc(idx,"cargo",l.cargo)+"</td>"+
+          "<td>"+cobCampoAssoc(idx,"salario",l.salario)+"</td>"+
+          "<td>"+cobCampoAssoc(idx,"admissao",l.admissao)+"</td>"+
+          "<td><button class='cob-btn mini red' onclick=\"cobRemoverLinhaAssoc("+idx+")\">remover</button></td>"+
+        "</tr>";
+      }).join("") || "<tr><td colspan='7' class='cob-empty'>Nenhuma linha — adicione manualmente ou cancele.</td></tr>";
+    };
+
+    window.cobAtualizarCampoAssoc=function(input){
+      var idx=+input.getAttribute("data-assoc-idx"), campo=input.getAttribute("data-assoc-campo");
+      if(COB_ASSOC_LINHAS[idx]) COB_ASSOC_LINHAS[idx][campo]=input.value;
+    };
+    window.cobAdicionarLinhaAssoc=function(){
+      COB_ASSOC_LINHAS.push({nome:"",cpf:"",matricula:"",cargo:"",salario:"",admissao:""});
+      cobRenderAssocTabela();
+    };
+    window.cobRemoverLinhaAssoc=function(idx){
+      COB_ASSOC_LINHAS.splice(idx,1);
+      cobRenderAssocTabela();
+    };
+    window.cobFecharModalAssoc=function(){g("cobModalAssocOverlay").classList.remove("aberto");};
+
+    window.cobConfirmarImportacaoAssoc=function(){
+      var validos=COB_ASSOC_LINHAS.filter(function(l){return String(l.nome||"").trim();});
+      if(!validos.length){avisar("Nenhuma linha com nome preenchido para importar.","err");return;}
+      if(!confirm("Confirmar a importação de "+validos.length+" associado(s)? Isso grava CPF/nome/cargo na base do SISGEP e marca a escola como RECEBIDA."))return;
+
+      var btn=g("btnCobConfirmarAssoc"); btn.disabled=true; btn.textContent="Importando…";
+      google.script.run
+        .withSuccessHandler(function(r){
+          btn.disabled=false; btn.textContent="Confirmar importação";
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao importar.","err");return;}
+          avisar("Importados: "+(r.importados||0)+" associado(s).","ok");
+          cobFecharModalAssoc();
+          cobCarregar();
+        })
+        .withFailureHandler(function(e){btn.disabled=false;btn.textContent="Confirmar importação";avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+        .cob_confirmarImportacaoAssociados_publico(tokenSessao(), COB_ASSOC_ID_ATUAL, validos);
     };
 
     /* ===== Revisão e envio de lote ===== */
