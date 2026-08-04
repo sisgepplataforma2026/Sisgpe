@@ -252,7 +252,7 @@ function rh_gerarHtmlHolerite_(lancamento, colaborador, rubricasExtras, faixaIrr
     ".rodape{margin-top:16px;font-size:9px;color:#888;}" +
     ".recibo{margin-top:14px;padding-top:10px;border-top:1px dashed #cbd5e1;font-size:9.5px;color:#555;}" +
     "</style></head><body><div class='doc'>" +
-    "<div class='topo'><div><h1>SINDEDUCAÇÃO-ES</h1><div class='sub'>SINDICATO DOS AUXILIARES DE ADM ESCOLAR DO ESTADO DO ES · CNPJ: 31.815.780/0001-51</div></div>" +
+    "<div class='topo'><div><h1>SINDEDUCAÇÃO-ES</h1><div class='sub'>Sindicato dos Educadores Técnico-Administrativos em<br>Estabelecimentos de Ensino Particular no Estado do Espírito Santo<br>CNPJ: 31.815.780/0001-51</div></div>" +
     "<div class='comp'>Recibo de Pagamento<br>Competência " + rh_esc_(lancamento.competencia) + "</div></div>" +
     "<div class='ident'>" +
     "<div class='nome'><b>Colaborador</b><span>" + rh_esc_(colaborador.matricula || "-") + " · " + rh_esc_(lancamento.nome) + " — " + rh_esc_(lancamento.cargo) + "</span></div>" +
