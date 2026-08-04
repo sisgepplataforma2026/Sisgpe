@@ -179,42 +179,102 @@ function rh_moeda_(v) {
   return "R$ " + Number(v || 0).toFixed(2).replace(".", ",");
 }
 
-function rh_gerarHtmlHolerite_(lancamento) {
+// Faixa de IRRF aplicada à base do lançamento — só para exibição no
+// "bases de cálculo" do holerite (o valor de IRRF em si já foi calculado
+// e gravado na hora de gerar a folha; isto não recalcula nada, só
+// localiza qual alíquota da tabela ATUAL bate com a base gravada).
+function rh_faixaIrrfAliquota_(baseIrrf, tabelaIrrf) {
+  if (!baseIrrf) return 0;
+  for (var i = 0; i < tabelaIrrf.length; i++) {
+    if (baseIrrf <= tabelaIrrf[i].ate) return tabelaIrrf[i].aliquota;
+  }
+  return tabelaIrrf.length ? tabelaIrrf[tabelaIrrf.length - 1].aliquota : 0;
+}
+
+// Layout inspirado no holerite real do sindicato (modelo .odg fornecido
+// pelo usuário): identificação completa do colaborador, tabela
+// itemizada de rubricas (base + extras do motor de rubricas) e bases de
+// cálculo no rodapé — via única (não duplica o documento na mesma
+// página como o modelo original, que existe só para caber 2 vias
+// físicas por folha impressa; aqui o holerite é baixado individualmente
+// por colaborador, então isso não se aplica).
+function rh_gerarHtmlHolerite_(lancamento, colaborador, rubricasExtras, faixaIrrfPct) {
+  colaborador = colaborador || {};
+  rubricasExtras = rubricasExtras || [];
+
+  var linhasRubrica = [];
+  linhasRubrica.push({ codigo: "SAL", descricao: "Salário (" + lancamento.diasTrabalhados + "/" + lancamento.diasMes + " dias)", referencia: lancamento.diasTrabalhados + "/" + lancamento.diasMes, vencimento: lancamento.salarioProrata, desconto: 0 });
+  if (lancamento.beneficios) linhasRubrica.push({ codigo: "BEN", descricao: "Benefícios", referencia: "", vencimento: lancamento.beneficios, desconto: 0 });
+  rubricasExtras.forEach(function (r) {
+    linhasRubrica.push({
+      codigo: r.codigo, descricao: r.descricao, referencia: r.referencia || "",
+      vencimento: r.tipo === "Provento" ? r.valor : 0, desconto: r.tipo === "Desconto" ? r.valor : 0
+    });
+  });
+  if (lancamento.descontos) linhasRubrica.push({ codigo: "DESC", descricao: "Descontos diversos", referencia: "", vencimento: 0, desconto: lancamento.descontos });
+  if (lancamento.inss) linhasRubrica.push({ codigo: "INSS", descricao: "INSS", referencia: "", vencimento: 0, desconto: lancamento.inss });
+  if (lancamento.irrf) linhasRubrica.push({ codigo: "IRRF", descricao: "IRRF", referencia: "", vencimento: 0, desconto: lancamento.irrf });
+
+  var totalVencimentos = linhasRubrica.reduce(function (s, r) { return s + r.vencimento; }, 0);
+  var totalDescontos = linhasRubrica.reduce(function (s, r) { return s + r.desconto; }, 0);
+
+  var linhasHtml = linhasRubrica.map(function (r) {
+    return "<tr><td>" + rh_esc_(r.codigo) + "</td><td>" + rh_esc_(r.descricao) + "</td><td class='ref'>" + rh_esc_(r.referencia) + "</td>" +
+      "<td class='val'>" + (r.vencimento ? rh_moeda_(r.vencimento) : "") + "</td>" +
+      "<td class='val'>" + (r.desconto ? rh_moeda_(r.desconto) : "") + "</td></tr>";
+  }).join("");
+
   return "" +
     "<!DOCTYPE html><html lang='pt-BR'><head><meta charset='UTF-8'>" +
     "<style>" +
-    "@page{size:A4;margin:18mm 16mm;}" +
-    "body{font-family:Arial,sans-serif;color:#111827;margin:0;}" +
-    ".doc{border:2px solid #002f6c;padding:24px 28px;}" +
-    ".cab{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #C9A84C;padding-bottom:12px;margin-bottom:16px;}" +
-    ".cab h1{font-size:16px;color:#002f6c;margin:0;}" +
-    ".cab .sub{font-size:11px;color:#555;margin-top:2px;}" +
-    ".cab .comp{font-size:13px;font-weight:bold;color:#002f6c;text-align:right;}" +
-    "table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px;}" +
-    "td{padding:6px 4px;border-bottom:1px solid #e5e7eb;}" +
-    "td.lbl{color:#555;}" +
-    "td.val{text-align:right;font-weight:bold;}" +
-    ".tot{background:#f4f6fa;font-size:13px;}" +
-    ".tot td{border-bottom:none;padding:10px 4px;}" +
-    ".liq{background:#002f6c;color:#fff;font-size:15px;font-weight:bold;}" +
-    ".liq td{border-bottom:none;padding:12px 4px;}" +
-    ".rodape{margin-top:20px;font-size:9.5px;color:#888;}" +
+    "@page{size:A4;margin:14mm 14mm;}" +
+    "body{font-family:Arial,sans-serif;color:#111827;margin:0;font-size:11.5px;}" +
+    ".doc{border:2px solid #002f6c;padding:18px 22px;}" +
+    ".topo{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #C9A84C;padding-bottom:10px;margin-bottom:12px;}" +
+    ".topo h1{font-size:14px;color:#002f6c;margin:0;}" +
+    ".topo .sub{font-size:10px;color:#555;margin-top:2px;}" +
+    ".topo .comp{font-size:12px;font-weight:bold;color:#002f6c;text-align:right;}" +
+    ".ident{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;font-size:10px;margin-bottom:12px;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;background:#f8fafc;}" +
+    ".ident div b{display:block;color:#94a3b8;font-size:8.5px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px;font-weight:900;}" +
+    ".ident div span{font-weight:700;color:#0f172a;}" +
+    ".ident .nome{grid-column:1/-1;}" +
+    "table.rub{width:100%;border-collapse:collapse;font-size:10.5px;margin-bottom:10px;}" +
+    "table.rub th{background:#002f6c;color:#fff;text-align:left;padding:6px 6px;font-size:9.5px;text-transform:uppercase;letter-spacing:.03em;}" +
+    "table.rub td{padding:5px 6px;border-bottom:1px solid #e5e7eb;}" +
+    "table.rub td.ref{color:#64748b;}" +
+    "table.rub td.val{text-align:right;font-weight:700;}" +
+    ".tot-linha{display:flex;justify-content:flex-end;gap:22px;font-size:11px;padding:8px 6px;background:#f4f6fa;border-radius:6px;margin-bottom:10px;}" +
+    ".tot-linha b{color:#002f6c;}" +
+    ".liq{background:#002f6c;color:#fff;font-size:14px;font-weight:900;padding:10px 14px;border-radius:8px;display:flex;justify-content:space-between;margin-bottom:12px;}" +
+    ".bases{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;font-size:9.5px;border-top:1px solid #e5e7eb;padding-top:10px;}" +
+    ".bases div b{display:block;color:#94a3b8;font-size:8.5px;text-transform:uppercase;margin-bottom:2px;font-weight:900;}" +
+    ".bases div span{font-weight:700;color:#0f172a;}" +
+    ".rodape{margin-top:16px;font-size:9px;color:#888;}" +
+    ".recibo{margin-top:14px;padding-top:10px;border-top:1px dashed #cbd5e1;font-size:9.5px;color:#555;}" +
     "</style></head><body><div class='doc'>" +
-    "<div class='cab'><div><h1>Holerite — SindEducação-ES</h1><div class='sub'>" + rh_esc_(lancamento.nome) + " · " + rh_esc_(lancamento.cargo) + "</div></div>" +
-    "<div class='comp'>Competência<br>" + rh_esc_(lancamento.competencia) + "</div></div>" +
-    "<table>" +
-    "<tr><td class='lbl'>Dias trabalhados</td><td class='val'>" + lancamento.diasTrabalhados + " / " + lancamento.diasMes + "</td></tr>" +
-    "<tr><td class='lbl'>Dependentes (IRRF)</td><td class='val'>" + lancamento.dependentes + "</td></tr>" +
-    "<tr><td class='lbl'>Salário (proporcional)</td><td class='val'>" + rh_moeda_(lancamento.salarioProrata) + "</td></tr>" +
-    "<tr><td class='lbl'>Benefícios</td><td class='val'>" + rh_moeda_(lancamento.beneficios) + "</td></tr>" +
-    "<tr class='tot'><td class='lbl'>Bruto</td><td class='val'>" + rh_moeda_(lancamento.bruto) + "</td></tr>" +
-    "<tr><td class='lbl'>(–) INSS</td><td class='val'>" + rh_moeda_(lancamento.inss) + "</td></tr>" +
-    "<tr><td class='lbl'>(–) IRRF</td><td class='val'>" + rh_moeda_(lancamento.irrf) + "</td></tr>" +
-    "<tr><td class='lbl'>(–) Descontos</td><td class='val'>" + rh_moeda_(lancamento.descontos) + "</td></tr>" +
-    "<tr class='liq'><td>Líquido a receber</td><td class='val'>" + rh_moeda_(lancamento.liquido) + "</td></tr>" +
-    "</table>" +
-    "<div style='font-size:11px;color:#555;'>FGTS patronal do período (informativo, não descontado do líquido): " + rh_moeda_(lancamento.fgtsPatronal) + "</div>" +
-    (lancamento.observacao ? "<div style='font-size:11px;color:#555;margin-top:8px;'>Observação: " + rh_esc_(lancamento.observacao) + "</div>" : "") +
+    "<div class='topo'><div><h1>SINDEDUCAÇÃO-ES</h1><div class='sub'>SINDICATO DOS AUXILIARES DE ADM ESCOLAR DO ESTADO DO ES · CNPJ: 31.815.780/0001-51</div></div>" +
+    "<div class='comp'>Recibo de Pagamento<br>Competência " + rh_esc_(lancamento.competencia) + "</div></div>" +
+    "<div class='ident'>" +
+    "<div class='nome'><b>Colaborador</b><span>" + rh_esc_(colaborador.matricula || "-") + " · " + rh_esc_(lancamento.nome) + " — " + rh_esc_(lancamento.cargo) + "</span></div>" +
+    "<div><b>CBO</b><span>" + rh_esc_(colaborador.cbo || "-") + "</span></div>" +
+    "<div><b>Centro de Custo</b><span>" + rh_esc_(colaborador.centroCusto || "-") + "</span></div>" +
+    "<div><b>Filial</b><span>" + rh_esc_(colaborador.filial || "-") + "</span></div>" +
+    "<div><b>Admissão</b><span>" + rh_esc_(colaborador.admissao || "-") + "</span></div>" +
+    "<div><b>Dependentes (IRRF)</b><span>" + lancamento.dependentes + "</span></div>" +
+    "</div>" +
+    "<table class='rub'><thead><tr><th>Código</th><th>Descrição</th><th>Referência</th><th>Vencimentos</th><th>Descontos</th></tr></thead>" +
+    "<tbody>" + linhasHtml + "</tbody></table>" +
+    "<div class='tot-linha'><span>Total de Vencimentos: <b>" + rh_moeda_(totalVencimentos) + "</b></span><span>Total de Descontos: <b>" + rh_moeda_(totalDescontos) + "</b></span></div>" +
+    "<div class='liq'><span>Valor Líquido</span><span>" + rh_moeda_(lancamento.liquido) + "</span></div>" +
+    "<div class='bases'>" +
+    "<div><b>Salário Base</b><span>" + rh_moeda_(lancamento.salario) + "</span></div>" +
+    "<div><b>Sal. Contr. INSS</b><span>" + rh_moeda_(lancamento.salarioProrata) + "</span></div>" +
+    "<div><b>Base Cálc. FGTS</b><span>" + rh_moeda_(lancamento.salarioProrata) + "</span></div>" +
+    "<div><b>F.G.T.S. do Mês</b><span>" + rh_moeda_(lancamento.fgtsPatronal) + "</span></div>" +
+    "<div><b>Base Cálc. IRRF</b><span>" + rh_moeda_(lancamento.baseIrrf) + " (" + Number(faixaIrrfPct || 0) + "%)</span></div>" +
+    "</div>" +
+    (lancamento.observacao ? "<div style='font-size:10px;color:#555;margin-top:8px;'>Observação: " + rh_esc_(lancamento.observacao) + "</div>" : "") +
+    "<div class='recibo'>Declaro ter recebido a importância líquida discriminada neste recibo.<br><br>____/____/_______ &nbsp;&nbsp;&nbsp;&nbsp; Assinatura do Funcionário: ______________________________________</div>" +
     "<div class='rodape'>Documento gerado eletronicamente pelo SISGEP em " + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm") + ".</div>" +
     "</div></body></html>";
 }
@@ -227,7 +287,12 @@ function gerarHoleritePDF(idLancamento, tokenSessao) {
     var lancamento = rh_buscarLancamentoFolhaPorId_(idLancamento);
     if (!lancamento) return { ok: false, mensagem: "Lançamento de folha não encontrado." };
 
-    var html = rh_gerarHtmlHolerite_(lancamento);
+    var colaborador = listarColaboradoresRH_interno_().filter(function (c) { return c.id === lancamento.colaboradorId; })[0] || null;
+    var rubricasExtras = rh_listarFolhaRubricasPorFolhaId_(idLancamento);
+    var cfg = rh_obterConfigTributaria_();
+    var faixaIrrfPct = rh_faixaIrrfAliquota_(lancamento.baseIrrf, cfg.irrf);
+
+    var html = rh_gerarHtmlHolerite_(lancamento, colaborador, rubricasExtras, faixaIrrfPct);
     var nomeArquivo = "Holerite_" + lancamento.competencia + "_" + lancamento.nome.replace(/[^a-zA-Z0-9À-ÿ-]/g, "_") + ".pdf";
     var blobPdf = Utilities.newBlob(html, "text/html", nomeArquivo).getAs("application/pdf");
 

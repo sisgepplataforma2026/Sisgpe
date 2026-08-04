@@ -62,12 +62,13 @@ function rh_garantirColaboradores_() {
     sh.appendRow([
       "ID", "NOME", "CARGO", "SETOR", "STATUS", "VENCIMENTO",
       "SALARIO", "BENEFICIOS", "DESCONTOS", "DEPENDENTES", "ANIVERSARIO", "EMAIL",
+      "MATRICULA", "CBO", "CENTRO_CUSTO", "FILIAL", "ADMISSAO",
       "CRIADO_POR", "CRIADO_EM", "ATUALIZADO_POR", "ATUALIZADO_EM"
     ]);
-    sh.getRange(1, 1, 1, 16).setFontWeight("bold");
+    sh.getRange(1, 1, 1, 20).setFontWeight("bold");
     sh.setFrozenRows(1);
   } else {
-    ["DEPENDENTES", "ANIVERSARIO", "EMAIL"].forEach(function (nomeCol) {
+    ["DEPENDENTES", "ANIVERSARIO", "EMAIL", "MATRICULA", "CBO", "CENTRO_CUSTO", "FILIAL", "ADMISSAO"].forEach(function (nomeCol) {
       var cab = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
       if (cab.indexOf(nomeCol) === -1) {
         sh.getRange(1, sh.getLastColumn() + 1).setValue(nomeCol).setFontWeight("bold");
@@ -104,10 +105,18 @@ function rh_garantirFolha_() {
       "DIAS_TRABALHADOS", "DIAS_MES", "SALARIO_PRORATA",
       "INSS", "BASE_IRRF", "IRRF", "FGTS_PATRONAL",
       "BRUTO", "LIQUIDO",
-      "OBSERVACAO", "GERADO_POR", "GERADO_EM"
+      "OBSERVACAO", "GERADO_POR", "GERADO_EM",
+      "PROVENTOS_EXTRA", "DESCONTOS_EXTRA"
     ]);
-    sh.getRange(1, 1, 1, 21).setFontWeight("bold");
+    sh.getRange(1, 1, 1, 23).setFontWeight("bold");
     sh.setFrozenRows(1);
+  } else {
+    ["PROVENTOS_EXTRA", "DESCONTOS_EXTRA"].forEach(function (nomeCol) {
+      var cab = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+      if (cab.indexOf(nomeCol) === -1) {
+        sh.getRange(1, sh.getLastColumn() + 1).setValue(nomeCol).setFontWeight("bold");
+      }
+    });
   }
   return sh;
 }
@@ -279,7 +288,12 @@ function listarColaboradoresRH_interno_() {
           descontos: Number(obj.DESCONTOS || 0),
           dependentes: Number(obj.DEPENDENTES || 0),
           aniversario: rh_formatarData_(obj.ANIVERSARIO),
-          email: String(obj.EMAIL || "")
+          email: String(obj.EMAIL || ""),
+          matricula: String(obj.MATRICULA || ""),
+          cbo: String(obj.CBO || ""),
+          centroCusto: String(obj.CENTRO_CUSTO || ""),
+          filial: String(obj.FILIAL || ""),
+          admissao: rh_formatarData_(obj.ADMISSAO)
         };
       })
       .filter(function (x) { return !!x.id; });
@@ -313,7 +327,12 @@ function salvarColaboradorRH(dados, tokenSessao) {
       DESCONTOS: Number(dados.descontos || 0),
       DEPENDENTES: Number(dados.dependentes || 0),
       ANIVERSARIO: dados.aniversario || "",
-      EMAIL: String(dados.email || "").trim()
+      EMAIL: String(dados.email || "").trim(),
+      MATRICULA: String(dados.matricula || "").trim(),
+      CBO: String(dados.cbo || "").trim(),
+      CENTRO_CUSTO: String(dados.centroCusto || "").trim(),
+      FILIAL: String(dados.filial || "").trim(),
+      ADMISSAO: dados.admissao || ""
     };
 
     function escreverCampos(linha) {
@@ -425,6 +444,9 @@ function gerarFolhaRH(competencia, itens, observacao, tokenSessao) {
     var mapaColab = {};
     colaboradores.forEach(function (c) { mapaColab[c.id] = c; });
 
+    var mapaCatalogoRubricas = {};
+    rh_listarRubricas_interno_().forEach(function (r) { mapaCatalogoRubricas[r.id] = r; });
+
     var sh = rh_garantirFolha_();
     var quem = sessao.nome || sessao.usuario || "SISGEP";
     var agora = new Date();
@@ -435,6 +457,11 @@ function gerarFolhaRH(competencia, itens, observacao, tokenSessao) {
         if (String(existentes[i][1]) === competencia) sh.deleteRow(i + 2);
       }
     }
+
+    // Rubricas extras de cada item só são gravadas em RH_FOLHA_RUBRICAS
+    // depois que a linha da folha já existe (precisa do folhaId) —
+    // por isso a lista fica pendente aqui e é processada após o append.
+    var pendentesRubricas = [];
 
     var linhas = [];
     itens.forEach(function (item) {
@@ -451,22 +478,49 @@ function gerarFolhaRH(competencia, itens, observacao, tokenSessao) {
       var irrf = rh_calcularIrrf_(baseIrrf, cfg.irrf);
       var fgtsPatronal = Math.round(salarioProrata * (cfg.fgtsPatronalPct / 100) * 100) / 100;
 
-      var bruto = salarioProrata + c.beneficios;
-      var liquido = bruto - c.descontos - inss - irrf;
+      // Rubricas extras (motor de rubricas): somam/descontam do bruto e
+      // do líquido, mas NÃO entram na base de INSS/IRRF/FGTS acima —
+      // simplificação deliberada, ver cabeçalho de RHRubricas.gs.
+      var proventosExtra = 0, descontosExtra = 0;
+      if (Array.isArray(item.rubricasExtras) && item.rubricasExtras.length) {
+        item.rubricasExtras.forEach(function (r) {
+          var catalogo = mapaCatalogoRubricas[String((r && r.rubricaId) || "").trim()];
+          if (!catalogo || !catalogo.ativo) return;
+          var valor = Math.round(Number((r && r.valor) || 0) * 100) / 100;
+          if (catalogo.tipo === "Desconto") descontosExtra += valor; else proventosExtra += valor;
+        });
+      }
+
+      var folhaId = rh_gerarId_("FOLHA");
+      var bruto = salarioProrata + c.beneficios + proventosExtra;
+      var liquido = bruto - c.descontos - inss - irrf - descontosExtra;
 
       linhas.push([
-        rh_gerarId_("FOLHA"), competencia, c.id, c.nome, c.cargo, c.dependentes,
+        folhaId, competencia, c.id, c.nome, c.cargo, c.dependentes,
         c.salario, c.beneficios, c.descontos,
         diasTrabalhados, diasMes, salarioProrata,
         inss, baseIrrf, irrf, fgtsPatronal,
         bruto, liquido,
-        observacao || "", quem, agora
+        observacao || "", quem, agora,
+        proventosExtra, descontosExtra
       ]);
+
+      if (Array.isArray(item.rubricasExtras) && item.rubricasExtras.length) {
+        pendentesRubricas.push({ folhaId: folhaId, colaboradorId: c.id, rubricasExtras: item.rubricasExtras });
+      }
     });
 
     if (linhas.length) {
       sh.getRange(sh.getLastRow() + 1, 1, linhas.length, linhas[0].length).setValues(linhas);
     }
+
+    pendentesRubricas.forEach(function (p) {
+      try {
+        rh_gravarFolhaRubricas_(p.folhaId, competencia, p.colaboradorId, p.rubricasExtras, mapaCatalogoRubricas);
+      } catch (eRub) {
+        Logger.log("[RH] falha ao gravar rubricas extras do lançamento " + p.folhaId + ": " + eRub.message);
+      }
+    });
 
     var linhasObj = linhas.map(rh_linhaFolhaParaObjeto_);
 
@@ -533,7 +587,8 @@ function rh_linhaFolhaParaObjeto_(l) {
     diasTrabalhados: Number(l[9] || 0), diasMes: Number(l[10] || 0), salarioProrata: Number(l[11] || 0),
     inss: Number(l[12] || 0), baseIrrf: Number(l[13] || 0), irrf: Number(l[14] || 0), fgtsPatronal: Number(l[15] || 0),
     bruto: Number(l[16] || 0), liquido: Number(l[17] || 0),
-    observacao: String(l[18] || ""), geradoPor: String(l[19] || ""), geradoEm: rh_formatarData_(l[20])
+    observacao: String(l[18] || ""), geradoPor: String(l[19] || ""), geradoEm: rh_formatarData_(l[20]),
+    proventosExtra: Number(l[21] || 0), descontosExtra: Number(l[22] || 0)
   };
 }
 

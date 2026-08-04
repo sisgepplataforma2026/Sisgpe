@@ -75,6 +75,11 @@
         <div class="rh-field"><label>Dependentes</label><input id="rhDependentes" type="number" min="0" step="1" placeholder="0"></div>
         <div class="rh-field"><label>Data de nascimento</label><input id="rhAniversario" type="date"></div>
         <div class="rh-field"><label>E-mail</label><input id="rhEmail" type="email" placeholder="colaborador@email.com"></div>
+        <div class="rh-field"><label>Matrícula</label><input id="rhMatricula" placeholder="Ex.: 37"></div>
+        <div class="rh-field"><label>CBO</label><input id="rhCbo" placeholder="Ex.: 411005"></div>
+        <div class="rh-field"><label>Centro de custo</label><input id="rhCentroCusto" placeholder="Ex.: 4"></div>
+        <div class="rh-field"><label>Filial</label><input id="rhFilial" placeholder="Ex.: 1"></div>
+        <div class="rh-field"><label>Admissão</label><input id="rhAdmissao" type="date"></div>
         <div class="rh-actions" style="align-items:end"><button class="rh-btn primary" onclick="rhSalvar()">Salvar</button></div>
       </div>
 
@@ -143,6 +148,28 @@
     <div class="rh-panel">
       <div class="rh-panel-head">
         <div>
+          <div class="rh-panel-title">Catálogo de rubricas</div>
+          <div class="rh-mini">Itens que podem ser lançados como extra na folha (hora extra, adicional noturno, vale, etc.). Desativar não apaga lançamentos já gerados.</div>
+        </div>
+      </div>
+      <div class="rh-form" style="grid-template-columns:1fr 1.6fr 140px auto;">
+        <div class="rh-field"><label>Código</label><input id="rhRubCodigo" placeholder="Ex.: HE50"></div>
+        <div class="rh-field"><label>Descrição</label><input id="rhRubDescricao" placeholder="Ex.: Hora Extra 50%"></div>
+        <div class="rh-field"><label>Tipo</label><select id="rhRubTipo"><option>Provento</option><option>Desconto</option></select></div>
+        <div class="rh-actions" style="align-items:end"><button class="rh-btn primary" onclick="rhSalvarRubrica()">Adicionar</button></div>
+      </div>
+      <div class="rh-table-wrap">
+        <table class="rh-table">
+          <thead><tr><th>Código</th><th>Descrição</th><th>Tipo</th><th>Status</th><th>Ações</th></tr></thead>
+          <tbody id="rhRubricasTabela"></tbody>
+        </table>
+      </div>
+      <div class="rh-empty" id="rhRubricasVazio" style="display:none;">Nenhuma rubrica cadastrada.</div>
+    </div>
+
+    <div class="rh-panel">
+      <div class="rh-panel-head">
+        <div>
           <div class="rh-panel-title">Folha de pagamento</div>
           <div class="rh-mini">Prepare a prévia, revise os dias trabalhados de cada colaborador (importante em férias/afastamento) e confirme.</div>
         </div>
@@ -159,7 +186,7 @@
       <div id="rhFolhaPreviaWrap" style="display:none;">
         <div class="rh-table-wrap">
           <table class="rh-table">
-            <thead><tr><th>Colaborador</th><th>Status</th><th>Salário</th><th>Dependentes</th><th>Dias trabalhados</th><th>Dias no mês</th></tr></thead>
+            <thead><tr><th>Colaborador</th><th>Status</th><th>Salário</th><th>Dependentes</th><th>Dias trabalhados</th><th>Dias no mês</th><th>Rubricas extras</th></tr></thead>
             <tbody id="rhFolhaPreviaTabela"></tbody>
           </table>
         </div>
@@ -177,7 +204,7 @@
       </div>
       <div class="rh-table-wrap">
         <table class="rh-table">
-          <thead><tr><th>Colaborador</th><th>Cargo</th><th>Salário (prorata)</th><th>Benefícios</th><th>INSS</th><th>IRRF</th><th>FGTS patronal</th><th>Líquido</th><th>Holerite</th></tr></thead>
+          <thead><tr><th>Colaborador</th><th>Cargo</th><th>Salário (prorata)</th><th>Benefícios</th><th>Rubricas extras</th><th>INSS</th><th>IRRF</th><th>FGTS patronal</th><th>Líquido</th><th>Holerite</th></tr></thead>
           <tbody id="rhFolhaTabela"></tbody>
         </table>
       </div>
@@ -248,7 +275,7 @@
     }
 
     window.rhSalvar=function(){
-      var item={id:editId||"",nome:(g("rhNome")||{}).value||"",cargo:(g("rhCargo")||{}).value||"",setor:(g("rhSetor")||{}).value||"Administrativo",status:(g("rhStatus")||{}).value||"Ativo",vencimento:(g("rhVencimento")||{}).value||"",salario:num((g("rhSalario")||{}).value),beneficios:num((g("rhBeneficios")||{}).value),descontos:num((g("rhDescontos")||{}).value),dependentes:Math.max(0,parseInt((g("rhDependentes")||{}).value||"0",10)||0),aniversario:(g("rhAniversario")||{}).value||"",email:(g("rhEmail")||{}).value||""};
+      var item={id:editId||"",nome:(g("rhNome")||{}).value||"",cargo:(g("rhCargo")||{}).value||"",setor:(g("rhSetor")||{}).value||"Administrativo",status:(g("rhStatus")||{}).value||"Ativo",vencimento:(g("rhVencimento")||{}).value||"",salario:num((g("rhSalario")||{}).value),beneficios:num((g("rhBeneficios")||{}).value),descontos:num((g("rhDescontos")||{}).value),dependentes:Math.max(0,parseInt((g("rhDependentes")||{}).value||"0",10)||0),aniversario:(g("rhAniversario")||{}).value||"",email:(g("rhEmail")||{}).value||"",matricula:(g("rhMatricula")||{}).value||"",cbo:(g("rhCbo")||{}).value||"",centroCusto:(g("rhCentroCusto")||{}).value||"",filial:(g("rhFilial")||{}).value||"",admissao:(g("rhAdmissao")||{}).value||""};
       if(!item.nome.trim()){avisar("Informe o nome do colaborador.","warn");return;}
       google.script.run
         .withSuccessHandler(function(r){
@@ -263,7 +290,7 @@
     window.rhEditar=function(id){
       var i=RH_CACHE.find(function(x){return x.id===id;}); if(!i)return;
       editId=id;
-      g("rhNome").value=i.nome||"";g("rhCargo").value=i.cargo||"";g("rhSetor").value=i.setor||"Administrativo";g("rhStatus").value=i.status||"Ativo";g("rhVencimento").value=i.vencimento||"";g("rhSalario").value=i.salario?String(i.salario).replace(".",","):"";g("rhBeneficios").value=i.beneficios?String(i.beneficios).replace(".",","):"";g("rhDescontos").value=i.descontos?String(i.descontos).replace(".",","):"";g("rhDependentes").value=i.dependentes||0;g("rhAniversario").value=i.aniversario||"";g("rhEmail").value=i.email||"";g("rhNome").focus();
+      g("rhNome").value=i.nome||"";g("rhCargo").value=i.cargo||"";g("rhSetor").value=i.setor||"Administrativo";g("rhStatus").value=i.status||"Ativo";g("rhVencimento").value=i.vencimento||"";g("rhSalario").value=i.salario?String(i.salario).replace(".",","):"";g("rhBeneficios").value=i.beneficios?String(i.beneficios).replace(".",","):"";g("rhDescontos").value=i.descontos?String(i.descontos).replace(".",","):"";g("rhDependentes").value=i.dependentes||0;g("rhAniversario").value=i.aniversario||"";g("rhEmail").value=i.email||"";g("rhMatricula").value=i.matricula||"";g("rhCbo").value=i.cbo||"";g("rhCentroCusto").value=i.centroCusto||"";g("rhFilial").value=i.filial||"";g("rhAdmissao").value=i.admissao||"";g("rhNome").focus();
     };
 
     window.rhExcluir=function(id){
@@ -277,10 +304,10 @@
         .excluirColaboradorRH(id, tokenSessao());
     };
 
-    window.rhLimparForm=function(){editId="";["rhNome","rhCargo","rhVencimento","rhSalario","rhBeneficios","rhDescontos","rhDependentes","rhAniversario","rhEmail"].forEach(function(id){if(g(id))g(id).value="";});if(g("rhSetor"))g("rhSetor").value="Administrativo";if(g("rhStatus"))g("rhStatus").value="Ativo";};
+    window.rhLimparForm=function(){editId="";["rhNome","rhCargo","rhVencimento","rhSalario","rhBeneficios","rhDescontos","rhDependentes","rhAniversario","rhEmail","rhMatricula","rhCbo","rhCentroCusto","rhFilial","rhAdmissao"].forEach(function(id){if(g(id))g(id).value="";});if(g("rhSetor"))g("rhSetor").value="Administrativo";if(g("rhStatus"))g("rhStatus").value="Ativo";};
 
     function baixarCSV(nome,rows){var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c==null?"":c).replace(/"/g,'""')+'"';}).join(";");}).join("\n");var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download=nome;a.click();}
-    window.rhExportarCSV=function(){var rows=[["Nome","Cargo","Setor","Status","Vencimento","Salario","Beneficios","Descontos","Dependentes","Aniversario","Email"]].concat(RH_CACHE.map(function(i){return[i.nome,i.cargo,i.setor,i.status,i.vencimento,i.salario||0,i.beneficios||0,i.descontos||0,i.dependentes||0,i.aniversario||"",i.email||""];}));baixarCSV("sisgep-rh.csv",rows);};
+    window.rhExportarCSV=function(){var rows=[["Nome","Cargo","Setor","Status","Vencimento","Salario","Beneficios","Descontos","Dependentes","Aniversario","Email","Matricula","CBO","CentroCusto","Filial","Admissao"]].concat(RH_CACHE.map(function(i){return[i.nome,i.cargo,i.setor,i.status,i.vencimento,i.salario||0,i.beneficios||0,i.descontos||0,i.dependentes||0,i.aniversario||"",i.email||"",i.matricula||"",i.cbo||"",i.centroCusto||"",i.filial||"",i.admissao||""];}));baixarCSV("sisgep-rh.csv",rows);};
 
     /* ==== Documentos por colaborador ==== */
     var RH_DOC_COLAB_ATUAL="";
@@ -364,7 +391,57 @@
 
     function setText(id,v){if(g(id))g(id).textContent=v;}
 
+    /* ==== Catálogo de rubricas ==== */
+    var RH_RUBRICAS_CACHE=[];
+
+    window.rhCarregarRubricas=function(){
+      google.script.run
+        .withSuccessHandler(function(lista){ RH_RUBRICAS_CACHE=lista||[]; rhPintarRubricas(); })
+        .withFailureHandler(function(e){ avisar("Erro ao carregar rubricas: "+((e&&e.message)||String(e||"")),"err"); })
+        .listarRubricasRH(tokenSessao());
+    };
+
+    function rhPintarRubricas(){
+      var tb=g("rhRubricasTabela"), vazio=g("rhRubricasVazio"); if(!tb)return;
+      tb.innerHTML=RH_RUBRICAS_CACHE.map(function(r){
+        return '<tr><td><strong>'+esc(r.codigo)+'</strong></td><td>'+esc(r.descricao)+'</td><td><span class="rh-pill '+(r.tipo==="Desconto"?"off":"ok")+'">'+esc(r.tipo)+'</span></td>'
+          +'<td><span class="rh-pill '+(r.ativo?"ok":"warn")+'">'+(r.ativo?"Ativa":"Inativa")+'</span></td>'
+          +'<td><button class="rh-btn" data-rh-rub-toggle="'+esc(r.id)+'" data-rh-rub-ativo="'+(r.ativo?"1":"0")+'">'+(r.ativo?"Desativar":"Ativar")+'</button></td></tr>';
+      }).join("");
+      tb.querySelectorAll("[data-rh-rub-toggle]").forEach(function(btn){
+        btn.addEventListener("click",function(){
+          rhAlternarRubrica(btn.getAttribute("data-rh-rub-toggle"), btn.getAttribute("data-rh-rub-ativo")!=="1");
+        });
+      });
+      if(vazio)vazio.style.display=RH_RUBRICAS_CACHE.length?"none":"block";
+    }
+
+    window.rhSalvarRubrica=function(){
+      var codigo=(g("rhRubCodigo")||{}).value||"", descricao=(g("rhRubDescricao")||{}).value||"", tipo=(g("rhRubTipo")||{}).value||"Provento";
+      if(!codigo.trim()||!descricao.trim()){avisar("Informe código e descrição da rubrica.","warn");return;}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao salvar rubrica.","err");return;}
+          avisar(r.mensagem||"Rubrica salva!","ok");
+          g("rhRubCodigo").value="";g("rhRubDescricao").value="";g("rhRubTipo").value="Provento";
+          rhCarregarRubricas();
+        })
+        .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+        .salvarRubricaRH({codigo:codigo,descricao:descricao,tipo:tipo}, tokenSessao());
+    };
+
+    window.rhAlternarRubrica=function(id,ativo){
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao atualizar rubrica.","err");return;}
+          rhCarregarRubricas();
+        })
+        .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+        .alternarRubricaRH(id, ativo, tokenSessao());
+    };
+
     var RH_PREVIA_ITENS=[];
+    var RH_PREVIA_RUBRICAS_EXTRAS={};
 
     window.rhPrepararFolha=function(){
       var comp=(g("rhCompetencia")||{}).value||new Date().toISOString().slice(0,7);
@@ -373,26 +450,68 @@
           if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao preparar folha.","err");return;}
           if(!r.itens.length){avisar("Nenhum colaborador ativo para gerar a folha.","warn");return;}
           RH_PREVIA_ITENS=r.itens;
+          RH_PREVIA_RUBRICAS_EXTRAS={};
           rhRenderPreviaFolha(r.itens, r.diasMes);
         })
         .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
         .prepararFolhaRH(comp, tokenSessao());
     };
 
+    function rhOpcoesRubricasHtml(){
+      return RH_RUBRICAS_CACHE.filter(function(r){return r.ativo;}).map(function(r){return '<option value="'+esc(r.id)+'">'+esc(r.codigo)+' — '+esc(r.descricao)+'</option>';}).join("");
+    }
+
     function rhRenderPreviaFolha(itens, diasMes){
       var wrap=g("rhFolhaPreviaWrap"), tb=g("rhFolhaPreviaTabela"); if(!wrap||!tb)return;
+      var opcoes=rhOpcoesRubricasHtml();
       tb.innerHTML=itens.map(function(i,idx){
         var avisoStatus=(i.status==="Férias"||i.status==="Afastado")?' <span class="rh-pill warn">'+esc(i.status)+'</span>':'';
         return '<tr><td><strong>'+esc(i.nome)+'</strong>'+avisoStatus+'</td><td>'+esc(i.status)+'</td><td>'+moeda(i.salario)+'</td><td>'+(i.dependentes||0)+'</td>'
           +'<td><input type="number" min="0" max="'+diasMes+'" value="'+i.diasTrabalhadosSugerido+'" data-rh-dias="'+idx+'" style="width:70px;height:30px;border:1.5px solid #dbe4ef;border-radius:7px;padding:0 8px;font-family:inherit;"></td>'
-          +'<td>'+diasMes+'</td></tr>';
+          +'<td>'+diasMes+'</td>'
+          +'<td style="min-width:220px;"><div data-rh-rubex-chips="'+idx+'" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;"></div>'
+          +'<div style="display:flex;gap:4px;"><select data-rh-rubex-sel="'+idx+'" style="height:28px;border:1.5px solid #dbe4ef;border-radius:6px;font-size:11px;font-family:inherit;max-width:120px;">'+opcoes+'</select>'
+          +'<input type="text" inputmode="decimal" placeholder="Valor" data-rh-rubex-val="'+idx+'" style="width:60px;height:28px;border:1.5px solid #dbe4ef;border-radius:6px;padding:0 6px;font-size:11px;font-family:inherit;">'
+          +'<button class="rh-btn" data-rh-rubex-add="'+idx+'" style="height:28px;padding:0 8px;">+</button></div></td></tr>';
       }).join("");
+      tb.querySelectorAll("[data-rh-rubex-add]").forEach(function(btn){
+        btn.addEventListener("click",function(){
+          var idx=btn.getAttribute("data-rh-rubex-add");
+          var sel=document.querySelector('[data-rh-rubex-sel="'+idx+'"]');
+          var valEl=document.querySelector('[data-rh-rubex-val="'+idx+'"]');
+          var rubricaId=sel?sel.value:"";
+          var valor=numPlano(valEl?valEl.value:"");
+          if(!rubricaId||!valor){avisar("Escolha a rubrica e informe o valor.","warn");return;}
+          if(!RH_PREVIA_RUBRICAS_EXTRAS[idx])RH_PREVIA_RUBRICAS_EXTRAS[idx]=[];
+          var rub=RH_RUBRICAS_CACHE.find(function(r){return r.id===rubricaId;});
+          RH_PREVIA_RUBRICAS_EXTRAS[idx].push({rubricaId:rubricaId,valor:valor,codigo:rub?rub.codigo:"",descricao:rub?rub.descricao:""});
+          if(valEl)valEl.value="";
+          rhRenderChipsRubex(idx);
+        });
+      });
+      itens.forEach(function(i,idx){ rhRenderChipsRubex(idx); });
       wrap.style.display="block";
+    }
+
+    function rhRenderChipsRubex(idx){
+      var box=document.querySelector('[data-rh-rubex-chips="'+idx+'"]'); if(!box)return;
+      var lista=RH_PREVIA_RUBRICAS_EXTRAS[idx]||[];
+      box.innerHTML=lista.map(function(item,i2){
+        return '<span class="rh-pill info" style="cursor:pointer;" data-rh-rubex-rm="'+idx+':'+i2+'" title="Clique para remover">'+esc(item.codigo)+' '+moeda(item.valor)+' ×</span>';
+      }).join("");
+      box.querySelectorAll("[data-rh-rubex-rm]").forEach(function(chip){
+        chip.addEventListener("click",function(){
+          var partes=chip.getAttribute("data-rh-rubex-rm").split(":");
+          RH_PREVIA_RUBRICAS_EXTRAS[partes[0]].splice(Number(partes[1]),1);
+          rhRenderChipsRubex(partes[0]);
+        });
+      });
     }
 
     window.rhCancelarPreviaFolha=function(){
       var wrap=g("rhFolhaPreviaWrap"); if(wrap)wrap.style.display="none";
       RH_PREVIA_ITENS=[];
+      RH_PREVIA_RUBRICAS_EXTRAS={};
     };
 
     window.rhConfirmarFolha=function(){
@@ -401,7 +520,8 @@
       var itens=RH_PREVIA_ITENS.map(function(item,idx){
         var input=document.querySelector('[data-rh-dias="'+idx+'"]');
         var dias=input?Number(input.value):item.diasTrabalhadosSugerido;
-        return { colaboradorId:item.colaboradorId, diasTrabalhados:isFinite(dias)?dias:item.diasTrabalhadosSugerido };
+        var extras=(RH_PREVIA_RUBRICAS_EXTRAS[idx]||[]).map(function(e){return {rubricaId:e.rubricaId,valor:e.valor};});
+        return { colaboradorId:item.colaboradorId, diasTrabalhados:isFinite(dias)?dias:item.diasTrabalhadosSugerido, rubricasExtras:extras };
       });
       google.script.run
         .withSuccessHandler(function(r){
@@ -428,7 +548,9 @@
       var totalBruto=0,totalImpostos=0,totalLiq=0;
       tb.innerHTML=linhas.map(function(i){
         totalBruto+=i.bruto; totalImpostos+=(i.inss+i.irrf); totalLiq+=i.liquido;
-        return '<tr><td><strong>'+esc(i.nome)+'</strong></td><td>'+esc(i.cargo)+'</td><td>'+moeda(i.salarioProrata)+'</td><td>'+moeda(i.beneficios)+'</td><td>'+moeda(i.inss)+'</td><td>'+moeda(i.irrf)+'</td><td>'+moeda(i.fgtsPatronal)+'</td><td><strong>'+moeda(i.liquido)+'</strong></td><td><button class="rh-btn" data-rh-holerite="'+esc(i.id)+'">📄 PDF</button></td></tr>';
+        var extrasLiq=(i.proventosExtra||0)-(i.descontosExtra||0);
+        var extrasTxt=extrasLiq?((extrasLiq>0?"+":"")+moeda(extrasLiq)):"-";
+        return '<tr><td><strong>'+esc(i.nome)+'</strong></td><td>'+esc(i.cargo)+'</td><td>'+moeda(i.salarioProrata)+'</td><td>'+moeda(i.beneficios)+'</td><td>'+extrasTxt+'</td><td>'+moeda(i.inss)+'</td><td>'+moeda(i.irrf)+'</td><td>'+moeda(i.fgtsPatronal)+'</td><td><strong>'+moeda(i.liquido)+'</strong></td><td><button class="rh-btn" data-rh-holerite="'+esc(i.id)+'">📄 PDF</button></td></tr>';
       }).join("");
       tb.querySelectorAll("[data-rh-holerite]").forEach(function(btn){btn.addEventListener("click",function(){rhBaixarHolerite(btn.getAttribute("data-rh-holerite"),btn);});});
       if(vazio)vazio.style.display=linhas.length?"none":"block";
@@ -460,7 +582,7 @@
 
     window.rhExportarFolhaCSV=function(){
       if(!RH_FOLHA_CACHE.length){avisar("Gere a folha da competência antes de exportar.","warn");return;}
-      var rows=[["Competencia","Nome","Cargo","DiasTrabalhados","DiasMes","SalarioProrata","Beneficios","Descontos","INSS","IRRF","FGTSPatronal","Bruto","Liquido"]].concat(RH_FOLHA_CACHE.map(function(i){return[i.competencia,i.nome,i.cargo,i.diasTrabalhados,i.diasMes,i.salarioProrata,i.beneficios,i.descontos,i.inss,i.irrf,i.fgtsPatronal,i.bruto,i.liquido];}));
+      var rows=[["Competencia","Nome","Cargo","DiasTrabalhados","DiasMes","SalarioProrata","Beneficios","Descontos","ProventosExtra","DescontosExtra","INSS","IRRF","FGTSPatronal","Bruto","Liquido"]].concat(RH_FOLHA_CACHE.map(function(i){return[i.competencia,i.nome,i.cargo,i.diasTrabalhados,i.diasMes,i.salarioProrata,i.beneficios,i.descontos,i.proventosExtra||0,i.descontosExtra||0,i.inss,i.irrf,i.fgtsPatronal,i.bruto,i.liquido];}));
       baixarCSV("sisgep-folha-pagamento.csv",rows);
     };
 
@@ -531,6 +653,7 @@
       rhRender();
       rhCarregarFolha();
       rhCarregarConfigTrib();
+      rhCarregarRubricas();
     };
     if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",window.initRH);else setTimeout(window.initRH,80);
   })();
