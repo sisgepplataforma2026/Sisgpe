@@ -15,7 +15,39 @@
 // seedColaboradoresRH_ModeloFolha2025_() uma vez pelo editor do Apps
 // Script. É seguro rodar mais de uma vez — cada colaborador só é
 // inserido se a matrícula ainda não existir no cadastro.
+//
+// ATALHO — a lista de funções do editor às vezes trava/some em
+// projetos grandes. Por isso este arquivo também instala um item de
+// menu (onOpen), pra rodar o seed direto pela interface da planilha
+// sem depender do dropdown "Executar função" do editor de código:
+// abra a planilha do SISGEP, recarregue a página (F5) e procure o
+// menu "🧪 RH — Ferramentas" na barra superior.
+//
+// Não existia nenhum onOpen() no projeto até este arquivo — se algum
+// outro módulo criar um onOpen() próprio no futuro, uma das duas
+// definições vai vencer silenciosamente (Apps Script só executa uma);
+// nesse caso, mover este addItem para dentro do onOpen() único do
+// projeto em vez de manter dois.
 // ================================
+
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu('🧪 RH — Ferramentas')
+    .addItem('Rodar seed de colaboradores (modelo holerite)', 'seedColaboradoresRH_ModeloFolha2025_menu_')
+    .addToUi();
+}
+
+// Wrapper para uso via menu: chamado por clique na planilha (não pelo
+// editor), então mostra o resultado num alerta em vez de só retornar
+// um objeto — quem clicou o menu não vê o valor de retorno de outra
+// forma.
+function seedColaboradoresRH_ModeloFolha2025_menu_() {
+  var r = seedColaboradoresRH_ModeloFolha2025_();
+  var ui = SpreadsheetApp.getUi();
+  var msg = "Inseridos:\n" + (r.inseridos.length ? r.inseridos.join("\n") : "nenhum (todos já cadastrados)") +
+    "\n\nIgnorados (matrícula já existia):\n" + (r.ignorados.length ? r.ignorados.join("\n") : "nenhum");
+  ui.alert("Seed de colaboradores do RH", msg, ui.ButtonSet.OK);
+}
 
 function seedColaboradoresRH_ModeloFolha2025_() {
   var sh = rh_garantirColaboradores_();
