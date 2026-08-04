@@ -175,8 +175,10 @@
         </div>
         <div class="rh-actions">
           <button class="rh-btn" onclick="rhExportarFolhaCSV()">Exportar folha CSV</button>
+          <button class="rh-btn" style="border-color:#f3b6b6;color:#991b1b;" onclick="rhExcluirFolhaCompetencia()">Excluir folha desta competência</button>
         </div>
       </div>
+      <div class="rh-alerta">🧪 Quer testar sem afetar dados reais? Use uma competência fictícia (ex.: 2099-01), gere a folha normalmente e depois exclua com o botão acima. Atenção: gerar folha cria automaticamente uma Despesa — excluir a folha não cancela essa despesa, cancele manualmente na tela de Despesas se necessário.</div>
       <div class="rh-paybar">
         <div class="rh-field"><label>Competência</label><input id="rhCompetencia" type="month"></div>
         <div class="rh-field" style="flex:1;min-width:220px;"><label>Observação</label><input id="rhObsFolha" placeholder="Ex.: folha mensal"></div>
@@ -584,6 +586,20 @@
       if(!RH_FOLHA_CACHE.length){avisar("Gere a folha da competência antes de exportar.","warn");return;}
       var rows=[["Competencia","Nome","Cargo","DiasTrabalhados","DiasMes","SalarioProrata","Beneficios","Descontos","ProventosExtra","DescontosExtra","INSS","IRRF","FGTSPatronal","Bruto","Liquido"]].concat(RH_FOLHA_CACHE.map(function(i){return[i.competencia,i.nome,i.cargo,i.diasTrabalhados,i.diasMes,i.salarioProrata,i.beneficios,i.descontos,i.proventosExtra||0,i.descontosExtra||0,i.inss,i.irrf,i.fgtsPatronal,i.bruto,i.liquido];}));
       baixarCSV("sisgep-folha-pagamento.csv",rows);
+    };
+
+    window.rhExcluirFolhaCompetencia=function(){
+      var comp=(g("rhCompetencia")||{}).value||"";
+      if(!comp){avisar("Escolha a competência a excluir.","warn");return;}
+      if(!confirm("Excluir TODOS os lançamentos de folha da competência "+comp+"? Isso não cancela despesas já geradas — apenas exclui a folha.  Ação exige perfil administrador."))return;
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao excluir folha.","err");return;}
+          avisar(r.mensagem||"Folha excluída!","ok");
+          rhCarregarFolha();
+        })
+        .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+        .excluirFolhaCompetenciaRH(comp, tokenSessao());
     };
 
     window.rhAbrirSofia=function(){

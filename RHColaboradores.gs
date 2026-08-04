@@ -609,6 +609,56 @@ function listarFolhaRH(competencia, tokenSessao) {
   }
 }
 
+// Exclui TODOS os lançamentos de uma competência (folha + rubricas
+// extras associadas) — pensado para permitir testar o motor de
+// rubricas/folha (ex.: competência fictícia "2099-01") sem deixar
+// lixo permanente na planilha. Admin-only, mesmo critério de
+// excluirColaboradorRH (dado financeiro sensível).
+//
+// IMPORTANTE: isto NÃO reverte a Despesa que gerarFolhaRH cria
+// automaticamente para a competência (rh_registrarDespesaFolha_) — a
+// exclusão de um lançamento financeiro exige revisão humana, não é
+// seguro fazer em cascata sem confirmação. Se a competência excluída
+// tinha uma despesa gerada, cancele/estorne manualmente na tela de
+// Despesas.
+function excluirFolhaCompetenciaRH(competencia, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, true);
+  try {
+    competencia = String(competencia || "").trim();
+    if (!competencia) return { ok: false, mensagem: "Informe a competência a excluir." };
+
+    var sh = rh_garantirFolha_();
+    var removidos = 0;
+    if (sh.getLastRow() > 1) {
+      var dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+      for (var i = dados.length - 1; i >= 0; i--) {
+        if (String(dados[i][1]) === competencia) { sh.deleteRow(i + 2); removidos++; }
+      }
+    }
+
+    if (!removidos) return { ok: false, mensagem: "Nenhum lançamento encontrado para a competência " + competencia + "." };
+
+    if (typeof rh_garantirFolhaRubricas_ === "function") {
+      var shRub = rh_garantirFolhaRubricas_();
+      if (shRub.getLastRow() > 1) {
+        var dadosRub = shRub.getRange(2, 1, shRub.getLastRow() - 1, shRub.getLastColumn()).getValues();
+        for (var j = dadosRub.length - 1; j >= 0; j--) {
+          if (String(dadosRub[j][2]) === competencia) shRub.deleteRow(j + 2);
+        }
+      }
+    }
+
+    return {
+      ok: true,
+      removidos: removidos,
+      mensagem: removidos + " lançamento(s) da competência " + competencia + " excluído(s). " +
+        "Se essa competência tinha gerado uma despesa automática, cancele/estorne manualmente na tela de Despesas — a exclusão da folha não reverte despesas já lançadas."
+    };
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao excluir folha: " + e.message };
+  }
+}
+
 // Usado pelo gerador de holerite (RHDocumentos.gs) — busca um lançamento
 // específico direto na planilha, não confia em valores vindos do cliente
 // para montar um documento com dado financeiro.
