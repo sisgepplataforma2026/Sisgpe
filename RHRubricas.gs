@@ -251,3 +251,142 @@ function rh_listarFolhaRubricasPorFolhaId_(folhaId) {
       return { id: l[0], folhaId: l[1], competencia: l[2], colaboradorId: l[3], rubricaId: l[4], codigo: l[5], descricao: l[6], tipo: l[7], referencia: l[8], valor: Number(l[9] || 0) };
     });
 }
+
+/* =========================================
+ * RUBRICAS FIXAS POR COLABORADOR
+ *
+ * Diferente das rubricas extras de RH_FOLHA_RUBRICAS (digitadas na hora,
+ * uma vez por lançamento — hora extra, adiantamento etc.), algumas
+ * rubricas do extrato real são recorrentes: o mesmo valor todo mês até
+ * mudar (ex.: Abono CCT — ~14,2% do salário em todos os 7 colaboradores
+ * reais —, Quinquênio, Decênio, Insalubridade 10%, Prêmio Mérito).
+ * Confirmado pelo usuário: "os prêmios são fixos". Diferença Salarial
+ * NÃO entra aqui — foi um ajuste retroativo de um mês específico
+ * (competência 06/2026), não recorrente.
+ *
+ * gerarFolhaRH aplica automaticamente as rubricas fixas ativas de cada
+ * colaborador em toda folha nova, junto com as rubricas extras variáveis
+ * digitadas manualmente naquele lançamento — se o cliente já mandar uma
+ * rubricaId que também é fixa (ajuste pontual daquele mês), o valor
+ * digitado na hora prevalece sobre o valor fixo cadastrado.
+ * ========================================= */
+
+var ABA_RH_RUBRICAS_FIXAS = "RH_RUBRICAS_FIXAS_COLABORADOR";
+
+function rh_garantirRubricasFixas_() {
+  var ss = SpreadsheetApp.openById(PLANILHA_ID);
+  var sh = ss.getSheetByName(ABA_RH_RUBRICAS_FIXAS);
+  if (!sh) sh = ss.insertSheet(ABA_RH_RUBRICAS_FIXAS);
+  if (sh.getLastRow() === 0) {
+    sh.appendRow([
+      "ID", "COLABORADOR_ID", "RUBRICA_ID", "CODIGO", "DESCRICAO", "TIPO", "VALOR", "ATIVO",
+      "CRIADO_POR", "CRIADO_EM", "ATUALIZADO_POR", "ATUALIZADO_EM"
+    ]);
+    sh.getRange(1, 1, 1, 12).setFontWeight("bold");
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+function rh_listarRubricasFixasColaborador_interno_(colaboradorId) {
+  var sh = rh_garantirRubricasFixas_();
+  if (sh.getLastRow() < 2) return [];
+  var dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+  return dados
+    .filter(function (l) { return String(l[1]) === String(colaboradorId); })
+    .map(function (l) {
+      return {
+        id: String(l[0]), colaboradorId: String(l[1]), rubricaId: String(l[2]),
+        codigo: String(l[3] || ""), descricao: String(l[4] || ""), tipo: String(l[5] || "Provento"),
+        valor: Number(l[6] || 0), ativo: l[7] !== false
+      };
+    });
+}
+
+// Público — leitura (usado pelo passo de prévia da folha e por uma
+// eventual tela de gestão das fixas do colaborador).
+function listarRubricasFixasColaboradorRH(colaboradorId, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
+  return rh_listarRubricasFixasColaborador_interno_(colaboradorId);
+}
+
+// Núcleo — upsert por (colaboradorId + rubricaId): nunca duplica a mesma
+// rubrica fixa pro mesmo colaborador, só atualiza o valor se já existir.
+function rh_salvarRubricaFixaColaborador_(colaboradorId, rubricaId, valor, quem) {
+  var sh = rh_garantirRubricasFixas_();
+  var mapa = rh_mapaCabecalho_(sh);
+  var catalogo = rh_listarRubricas_interno_().filter(function (r) { return r.id === rubricaId; })[0];
+  if (!catalogo) throw new Error("Rubrica não encontrada no catálogo: " + rubricaId);
+
+  var agora = new Date();
+  valor = Math.round(Number(valor || 0) * 100) / 100;
+
+  var ultimaLinha = sh.getLastRow();
+  if (ultimaLinha > 1) {
+    var dados = sh.getRange(2, 1, ultimaLinha - 1, sh.getLastColumn()).getValues();
+    for (var i = 0; i < dados.length; i++) {
+      if (String(dados[i][mapa["COLABORADOR_ID"] - 1]) === String(colaboradorId) &&
+        String(dados[i][mapa["RUBRICA_ID"] - 1]) === String(rubricaId)) {
+        var linha = i + 2;
+        sh.getRange(linha, mapa["VALOR"]).setValue(valor);
+        sh.getRange(linha, mapa["ATIVO"]).setValue(true);
+        sh.getRange(linha, mapa["ATUALIZADO_POR"]).setValue(quem);
+        sh.getRange(linha, mapa["ATUALIZADO_EM"]).setValue(agora);
+        return { id: String(dados[i][mapa["ID"] - 1]), atualizado: true };
+      }
+    }
+  }
+
+  var novoId = rh_gerarId_("RUBFIX");
+  sh.appendRow([
+    novoId, colaboradorId, rubricaId, catalogo.codigo, catalogo.descricao, catalogo.tipo, valor, true,
+    quem, agora, quem, agora
+  ]);
+  return { id: novoId, atualizado: false };
+}
+
+// Público — exige administrador (grava valor recorrente de RH em lote).
+function salvarRubricaFixaColaboradorRH(dados, tokenSessao) {
+  var sessao = exigirSessaoDocumentos_(tokenSessao, true);
+  try {
+    dados = dados || {};
+    var colaboradorId = String(dados.colaboradorId || "").trim();
+    var rubricaId = String(dados.rubricaId || "").trim();
+    if (!colaboradorId || !rubricaId) return { ok: false, mensagem: "Informe colaborador e rubrica." };
+    if (!Number(dados.valor)) return { ok: false, mensagem: "Informe um valor maior que zero." };
+
+    var quem = sessao.nome || sessao.usuario || "SISGEP";
+    var resultado = rh_salvarRubricaFixaColaborador_(colaboradorId, rubricaId, dados.valor, quem);
+    return { ok: true, id: resultado.id, mensagem: resultado.atualizado ? "Rubrica fixa atualizada." : "Rubrica fixa cadastrada." };
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao salvar rubrica fixa: " + e.message };
+  }
+}
+
+// Público — exige administrador. Nunca exclui de verdade (ATIVO=false),
+// mesmo padrão de alternarRubricaRH — preserva rastreabilidade.
+function alternarRubricaFixaColaboradorRH(id, ativo, tokenSessao) {
+  var sessao = exigirSessaoDocumentos_(tokenSessao, true);
+  try {
+    id = String(id || "").trim();
+    if (!id) return { ok: false, mensagem: "Rubrica fixa não informada." };
+    var sh = rh_garantirRubricasFixas_();
+    var mapa = rh_mapaCabecalho_(sh);
+    if (sh.getLastRow() < 2) return { ok: false, mensagem: "Rubrica fixa não encontrada." };
+
+    var ids = sh.getRange(2, mapa["ID"], sh.getLastRow() - 1, 1).getValues();
+    for (var i = 0; i < ids.length; i++) {
+      if (String(ids[i][0]) === id) {
+        var linha = i + 2;
+        var quem = sessao.nome || sessao.usuario || "SISGEP";
+        sh.getRange(linha, mapa["ATIVO"]).setValue(!!ativo);
+        sh.getRange(linha, mapa["ATUALIZADO_POR"]).setValue(quem);
+        sh.getRange(linha, mapa["ATUALIZADO_EM"]).setValue(new Date());
+        return { ok: true, mensagem: ativo ? "Rubrica fixa reativada." : "Rubrica fixa desativada." };
+      }
+    }
+    return { ok: false, mensagem: "Rubrica fixa não encontrada." };
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao atualizar rubrica fixa: " + e.message };
+  }
+}

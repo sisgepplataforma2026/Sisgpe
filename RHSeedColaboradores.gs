@@ -154,3 +154,66 @@ function atualizarColaboradoresRH_ExtratoJunho2026_() {
   Logger.log("[RH] Atualização Extrato 06/2026 — atualizados: " + (atualizados.join(", ") || "nenhum") + " | não encontrados: " + (naoEncontrados.join(", ") || "nenhum"));
   return { ok: true, atualizados: atualizados, naoEncontrados: naoEncontrados };
 }
+
+// ================================
+// Rubricas FIXAS (recorrentes) por MATRÍCULA — extraídas do mesmo
+// Extrato Mensal 06/2026. Confirmado pelo usuário: "os prêmios são
+// fixos" (Abono CCT, Quinquênio, Decênio, Insalubridade, Prêmio Mérito
+// se repetem todo mês até mudar) e "diferença não entra, foi só naquele
+// mês" (Diferença Salarial é ajuste pontual de junho/2026 — NUNCA
+// incluída aqui, fica só como rubrica variável digitada na hora, se
+// precisar de novo em outro mês). Valores cruzados e batidos contra o
+// "Resumo por Rubricas do Serviço" do extrato (totais por código).
+// ================================
+
+function aplicarRubricasFixasReaisJunho2026_publico(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, true);
+  try {
+    return aplicarRubricasFixasReaisJunho2026_();
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao aplicar rubricas fixas: " + e.message };
+  }
+}
+
+function aplicarRubricasFixasReaisJunho2026_() {
+  // matrícula -> [{ codigo, valor }] — só os 5 códigos confirmados como fixos.
+  var porMatricula = {
+    "37": [{ codigo: "518", valor: 136.77 }],
+    "36": [{ codigo: "518", valor: 309.06 }],
+    "6": [{ codigo: "292", valor: 88.03 }, { codigo: "518", valor: 246.88 }, { codigo: "504", valor: 176.05 }],
+    "3": [{ codigo: "355", valor: 240.14 }, { codigo: "518", valor: 341.11 }, { codigo: "20", valor: 200.23 }],
+    "35": [{ codigo: "518", valor: 309.07 }],
+    "2": [{ codigo: "355", valor: 362.82 }, { codigo: "518", valor: 515.37 }],
+    "8": [{ codigo: "292", valor: 148.07 }, { codigo: "518", valor: 420.64 }, { codigo: "20", valor: 1000.00 }]
+  };
+
+  var colaboradores = listarColaboradoresRH_interno_();
+  var porMatriculaColab = {};
+  colaboradores.forEach(function (c) { if (c.matricula) porMatriculaColab[String(c.matricula)] = c; });
+
+  var catalogo = rh_listarRubricas_interno_();
+  var porCodigo = {};
+  catalogo.forEach(function (r) { porCodigo[r.codigo] = r; });
+
+  var quem = "SISGEP (rubricas fixas — Extrato 06/2026)";
+  var aplicadas = [], naoEncontradas = [];
+
+  Object.keys(porMatricula).forEach(function (matricula) {
+    var colab = porMatriculaColab[matricula];
+    if (!colab) { naoEncontradas.push("Matrícula " + matricula + " (colaborador não encontrado)"); return; }
+
+    porMatricula[matricula].forEach(function (item) {
+      var rubrica = porCodigo[item.codigo];
+      if (!rubrica) { naoEncontradas.push(colab.nome + " — rubrica código " + item.codigo + " não está no catálogo"); return; }
+      try {
+        rh_salvarRubricaFixaColaborador_(colab.id, rubrica.id, item.valor, quem);
+        aplicadas.push(colab.nome + " — " + rubrica.descricao + " (R$ " + item.valor.toFixed(2) + ")");
+      } catch (e) {
+        naoEncontradas.push(colab.nome + " — " + rubrica.descricao + ": " + e.message);
+      }
+    });
+  });
+
+  Logger.log("[RH] Rubricas fixas Extrato 06/2026 — aplicadas: " + (aplicadas.join(", ") || "nenhuma") + " | pendências: " + (naoEncontradas.join(", ") || "nenhuma"));
+  return { ok: true, aplicadas: aplicadas, naoEncontradas: naoEncontradas };
+}

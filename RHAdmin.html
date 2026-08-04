@@ -76,6 +76,7 @@
           <button class="rh-btn" onclick="rhGerarDocumento()">Gerar documento</button>
           <button class="rh-btn" onclick="rhImportarSeedModelo()" id="btnRhSeedModelo">🌱 Importar os 7 do modelo</button>
           <button class="rh-btn" onclick="rhAtualizarExtratoJunho2026()" id="btnRhAtualizarExtrato">💳 Atualizar salário/CPF (Extrato 06/2026)</button>
+          <button class="rh-btn" onclick="rhAplicarRubricasFixas()" id="btnRhRubricasFixas">🏷️ Aplicar rubricas fixas (Abono CCT, Quinquênio...)</button>
         </div>
       </div>
 
@@ -365,6 +366,23 @@
           avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
         })
         .atualizarColaboradoresRH_ExtratoJunho2026_publico(tokenSessao());
+    };
+
+    window.rhAplicarRubricasFixas=function(){
+      if(!confirm("Aplicar as rubricas fixas reais (Abono CCT, Quinquênio, Decênio, Insalubridade, Prêmio Mérito) dos 7 colaboradores? Elas passam a entrar automaticamente em toda folha nova gerada para essas pessoas, até serem desativadas. Diferença Salarial NÃO entra aqui — continua sendo digitada na hora, por ser ajuste pontual de um mês específico. Ação exige perfil administrador."))return;
+      var btn=g("btnRhRubricasFixas"); if(btn){btn.disabled=true;btn.textContent="Aplicando...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="🏷️ Aplicar rubricas fixas (Abono CCT, Quinquênio...)";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao aplicar rubricas fixas.","err");return;}
+          var msg="Aplicadas: "+(r.aplicadas.length||0)+" · Pendências: "+(r.naoEncontradas.length||0);
+          avisar(msg,"ok");
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="🏷️ Aplicar rubricas fixas (Abono CCT, Quinquênio...)";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .aplicarRubricasFixasReaisJunho2026_publico(tokenSessao());
     };
 
     window.rhLimparForm=function(){editId="";["rhNome","rhCargo","rhVencimento","rhSalario","rhBeneficios","rhDescontos","rhDependentes","rhAniversario","rhEmail","rhMatricula","rhCbo","rhCentroCusto","rhFilial","rhAdmissao","rhCpf"].forEach(function(id){if(g(id))g(id).value="";});if(g("rhSetor"))g("rhSetor").value="Administrativo";if(g("rhStatus"))g("rhStatus").value="Ativo";};

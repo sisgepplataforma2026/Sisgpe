@@ -422,7 +422,8 @@ function prepararFolhaRH(competencia, tokenSessao) {
         return {
           colaboradorId: c.id, nome: c.nome, cargo: c.cargo, status: c.status,
           salario: c.salario, beneficios: c.beneficios, descontos: c.descontos, dependentes: c.dependentes,
-          diasTrabalhadosSugerido: diasMes
+          diasTrabalhadosSugerido: diasMes,
+          rubricasFixas: rh_listarRubricasFixasColaborador_interno_(c.id).filter(function (f) { return f.ativo; })
         };
       })
     };
@@ -479,6 +480,21 @@ function gerarFolhaRH(competencia, itens, observacao, tokenSessao) {
       var baseIrrf = Math.max(0, salarioProrata - inss - (c.dependentes * cfg.deducaoDependente));
       var irrf = rh_calcularIrrf_(baseIrrf, cfg.irrf);
       var fgtsPatronal = Math.round(salarioProrata * (cfg.fgtsPatronalPct / 100) * 100) / 100;
+
+      // Rubricas fixas do colaborador (Abono CCT, Quinquênio, Decênio,
+      // Insalubridade, Prêmio Mérito etc.) entram automaticamente em toda
+      // folha nova — quem gera a folha só digita rubrica VARIÁVEL daquele
+      // mês (hora extra, diferença salarial pontual etc.). Se a mesma
+      // rubricaId também vier digitada manualmente neste lançamento, o
+      // valor digitado agora prevalece sobre o valor fixo cadastrado.
+      var rubricaIdsInformadosManualmente = {};
+      (item.rubricasExtras || []).forEach(function (r) {
+        if (r && r.rubricaId) rubricaIdsInformadosManualmente[String(r.rubricaId)] = true;
+      });
+      var rubricasFixasParaAplicar = rh_listarRubricasFixasColaborador_interno_(c.id)
+        .filter(function (f) { return f.ativo && !rubricaIdsInformadosManualmente[f.rubricaId]; })
+        .map(function (f) { return { rubricaId: f.rubricaId, referencia: "Fixo", valor: f.valor }; });
+      item.rubricasExtras = rubricasFixasParaAplicar.concat(item.rubricasExtras || []);
 
       // Rubricas extras (motor de rubricas): somam/descontam do bruto e
       // do líquido, mas NÃO entram na base de INSS/IRRF/FGTS acima —
