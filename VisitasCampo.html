@@ -3,13 +3,13 @@
   <div class="vc-topo">
     <div>
       <div class="vc-topo-titulo">Minhas visitas</div>
-      <div class="vc-data-nav">
+      <div class="vc-data-pill">
         <button class="vc-data-seta" onclick="vcMudarDia(-1)" aria-label="Dia anterior">&#8249;</button>
-        <span class="vc-topo-sub" id="vcDataHoje" onclick="vcAbrirSeletorData()">—</span>
+        <span class="vc-data-texto" id="vcDataHoje" onclick="vcAbrirSeletorData()">—</span>
         <button class="vc-data-seta" onclick="vcMudarDia(1)" aria-label="Próximo dia">&#8250;</button>
-        <input type="date" id="vcDataInput" class="vc-data-input" onchange="vcSelecionarData(this.value)">
       </div>
-      <button class="vc-data-hoje" id="vcBtnHoje" onclick="vcIrParaHoje()" style="display:none;">Voltar para hoje</button>
+      <input type="date" id="vcDataInput" class="vc-data-input" onchange="vcSelecionarData(this.value)">
+      <button class="vc-data-hoje" id="vcBtnHoje" onclick="vcIrParaHoje()" style="display:none;">&#8635; Voltar para hoje</button>
     </div>
     <button class="vc-btn-rota" onclick="vcAbrirRota()">
       <span>&#128663;</span> Rota
@@ -44,14 +44,15 @@
 </div>
 
 <style>
-.vc-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;}
-.vc-topo-titulo{font-size:19px;font-weight:800;color:var(--navy2,#002f6c);}
-.vc-topo-sub{font-size:12.5px;color:#6b7385;text-transform:capitalize;cursor:pointer;}
-.vc-data-nav{display:flex;align-items:center;gap:6px;margin-top:2px;}
-.vc-data-seta{border:none;background:var(--g100,#f1f5f9);color:var(--navy2,#002f6c);width:22px;height:22px;border-radius:6px;font-size:14px;font-weight:800;cursor:pointer;line-height:1;padding:0;}
+.vc-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
+.vc-topo-titulo{font-size:19px;font-weight:800;color:var(--navy2,#002f6c);margin-bottom:7px;}
+.vc-data-pill{display:inline-flex;align-items:center;gap:2px;background:var(--g100,#f1f5f9);border-radius:999px;padding:3px;width:fit-content;}
+.vc-data-seta{border:none;background:#fff;color:var(--navy2,#002f6c);width:24px;height:24px;border-radius:50%;font-size:15px;font-weight:800;cursor:pointer;line-height:1;padding:0;box-shadow:0 1px 2px rgba(0,20,60,.12);flex-shrink:0;}
 .vc-data-seta:hover{background:var(--g200,#e2e8f0);}
+.vc-data-texto{font-size:12.5px;font-weight:700;color:var(--navy2,#002f6c);padding:0 8px;cursor:pointer;white-space:nowrap;}
 .vc-data-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;}
-.vc-data-hoje{border:none;background:none;color:var(--navy2,#002f6c);font-size:11px;font-weight:800;text-decoration:underline;cursor:pointer;padding:2px 0 0;font-family:inherit;}
+.vc-data-hoje{display:inline-flex;align-items:center;gap:4px;margin-top:8px;border:none;background:var(--amber-lt,#fef3c7);color:#92400e;font-size:10.5px;font-weight:800;cursor:pointer;padding:5px 10px;border-radius:999px;font-family:inherit;}
+.vc-data-hoje:hover{background:#fde68a;}
 .vc-btn-rota{border:none;border-radius:10px;padding:10px 14px;background:var(--navy2,#002f6c);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap;}
 .vc-progresso{margin-bottom:18px;}
 .vc-progresso-barra{height:6px;background:var(--g200,#e2e8f0);border-radius:4px;overflow:hidden;}
