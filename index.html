@@ -116,7 +116,7 @@
     </div>
 
     <div class="spAmbiente">
-      <i class="spAmbienteIcon">📻</i>
+      <img class="spRadioCover" src="https://lh3.googleusercontent.com/d/1T2AzStGL_Fv8zrmQ9gFJnD87teNuvbkQ" alt="Rádio SindEducação">
       <div>
         <strong>Rádio SindEducação</strong>
         <small><span id="spRadioDot" class="spRadioDot"></span><span id="spRadioStatusTxt">Parado</span></small>
@@ -621,15 +621,19 @@ button,input{font-family:inherit;}
 .spAmbiente{
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.15));
   border-radius: 16px;
-  padding: 20px;
+  padding: 14px 20px 20px;
   margin: 16px;
   border: 1px solid rgba(59, 130, 246, 0.2);
+  overflow: hidden;
 }
 
-.spAmbienteIcon{
-  font-size: 18px;
-  margin-bottom: 8px;
+.spRadioCover{
   display: block;
+  width: calc(100% + 40px);
+  margin: -14px -20px 10px;
+  height: 74px;
+  object-fit: cover;
+  object-position: center 25%;
 }
 
 .spAmbiente strong{
