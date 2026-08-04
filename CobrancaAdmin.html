@@ -71,6 +71,7 @@
           <button class="cob-btn" onclick="cobInstalarTrigger()" id="btnCobInstalarTrigger">Ativar busca diária (9h)</button>
           <button class="cob-btn" onclick="cobRemoverTrigger()" id="btnCobRemoverTrigger">Desativar</button>
           <button class="cob-btn primary" onclick="cobBuscarAgora()" id="btnCobBuscarAgora">🔄 Buscar agora</button>
+          <button class="cob-btn" onclick="cobDiagnostico()" id="btnCobDiagnostico">🩺 Diagnóstico</button>
         </div>
       </div>
 
@@ -284,6 +285,26 @@
         })
         .withFailureHandler(function(e){btn.disabled=false;btn.textContent="🔄 Buscar agora";avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
         .cob_forcarVarreduraAgora_publico(tokenSessao());
+    };
+
+    window.cobDiagnostico=function(){
+      var btn=g("btnCobDiagnostico"); btn.disabled=true; btn.textContent="Verificando…";
+      google.script.run
+        .withSuccessHandler(function(r){
+          btn.disabled=false; btn.textContent="🩺 Diagnóstico";
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro no diagnóstico.","err");return;}
+          alert(
+            "Diagnóstico — Cobrança de Relação Nominal\n\n"+
+            "Escolas cadastradas (Cadastro de Escolas): "+r.totalEscolasCadastradas+"\n"+
+            "Escolas com CNPJ/nome válido (entram na régua): "+r.totalEscolasComCnpjOuNome+"\n"+
+            "Nomes de escola distintos com filiado (Sindicalização): "+r.totalNomesDeEscolaComFiliado+"\n"+
+            "Total de linhas na aba de Sindicalização: "+r.totalLinhasSindicalizacao+"\n"+
+            "Aba de Sindicalização encontrada: "+(r.abaSindicalizacaoEncontrada?"sim":"NÃO")+"\n"+
+            "Escolas com sinal 'possui associados' (só informativo, não filtra mais): "+r.totalEscolasMarcadasPossuiAssociados
+          );
+        })
+        .withFailureHandler(function(e){btn.disabled=false;btn.textContent="🩺 Diagnóstico";avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+        .cob_diagnostico_publico(tokenSessao());
     };
 
     window.cobAtualizarStatusTrigger=function(){

@@ -370,7 +370,13 @@ function cob_rotinaDiaria_() {
     var competenciaAtual = cob_competenciaDe_(new Date());
     var competenciaAnterior = cob_competenciaAnterior_(competenciaAtual);
 
-    var escolasAlvo = cob_escolasAlvo_interno_().filter(function (e) { return e.possuiAssociados; });
+    // Não filtra mais por "possuiAssociados": esse cruzamento por nome
+    // normalizado contra o cadastro de Filiados é só um sinal auxiliar
+    // (mostrado na tela), não uma fonte confiável o bastante pra
+    // excluir escola nenhuma da régua — silenciosamente deixar de
+    // processar uma escola de verdade é pior do que processar uma a
+    // mais sem associado nenhum.
+    var escolasAlvo = cob_escolasAlvo_interno_();
 
     var existentes = sh.getLastRow() > 1 ? sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues() : [];
     var cab = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
@@ -437,8 +443,13 @@ function cob_rotinaDiaria_() {
       });
     });
 
-    Logger.log("[Cobrança] Rotina diária — escolas processadas: " + processadas + " | recebidas hoje: " + recebidasHoje);
-    return { ok: true, processadas: processadas, recebidasHoje: recebidasHoje };
+    Logger.log("[Cobrança] Rotina diária — escolas-alvo: " + escolasAlvo.length + " | processadas: " + processadas + " | recebidas hoje: " + recebidasHoje);
+    return {
+      ok: true,
+      escolasAlvo: escolasAlvo.length,
+      processadas: processadas,
+      recebidasHoje: recebidasHoje
+    };
   } finally {
     lock.releaseLock();
   }
@@ -460,6 +471,37 @@ function cob_forcarVarreduraAgora_publico(tokenSessao) {
     return cob_rotinaDiaria_();
   } catch (e) {
     return { ok: false, mensagem: "Erro na varredura: " + e.message };
+  }
+}
+
+/**
+ * Diagnóstico — só contagens (nenhum dado pessoal), pra localizar em
+ * qual etapa do pipeline algo está vazio quando "escolasAlvo" vem 0
+ * ou muito menor que o esperado: cadastro de Escolas vazio? cadastro
+ * de Filiados vazio? o cruzamento por nome não bateu nenhum?
+ */
+function cob_diagnostico_publico(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, true);
+  try {
+    var escolas = listarEscolasCadastro_interno_();
+    var comFiliados = cob_nomesEscolasComFiliados_();
+    var alvo = cob_escolasAlvo_interno_();
+
+    var ssSind = SpreadsheetApp.openById(PLANILHA_ID);
+    var shSind = ssSind.getSheetByName(SINDICALIZACAO_ABA);
+    var totalFiliados = shSind ? Math.max(0, shSind.getLastRow() - 1) : -1;
+
+    return {
+      ok: true,
+      totalEscolasCadastradas: escolas.length,
+      totalEscolasComCnpjOuNome: alvo.length,
+      totalNomesDeEscolaComFiliado: Object.keys(comFiliados).length,
+      totalLinhasSindicalizacao: totalFiliados,
+      totalEscolasMarcadasPossuiAssociados: alvo.filter(function (e) { return e.possuiAssociados; }).length,
+      abaSindicalizacaoEncontrada: !!shSind
+    };
+  } catch (e) {
+    return { ok: false, mensagem: "Erro no diagnóstico: " + e.message };
   }
 }
 
