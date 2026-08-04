@@ -999,6 +999,35 @@
     </div>
   </div>
 
+  <!-- Configuração de UF/CNAE -->
+  <div class="ce-card" style="margin-bottom:14px;">
+    <div class="ce-card-head">
+      <div class="ce-card-head-l">
+        <div class="ce-card-ico">⚙️</div>
+        <div>
+          <div class="ce-card-title">Filtro de Captação (UF / CNAE)</div>
+          <div class="ce-card-sub">Define quais CNPJs entram no pipeline ao processar a extração</div>
+        </div>
+      </div>
+    </div>
+    <div class="ce-card-body" id="ceConfigReceitaBody">
+      <div style="display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:end;margin-bottom:12px;">
+        <div>
+          <label style="display:block;font-size:11px;font-weight:700;color:var(--ce-g600);margin-bottom:4px;">UF Alvo</label>
+          <input type="text" id="ceConfigUf" maxlength="2" placeholder="ES" style="text-transform:uppercase;width:100%;padding:8px 10px;border:1.5px solid var(--ce-g300,#cbd5e1);border-radius:8px;font-size:13px;">
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;font-weight:700;color:var(--ce-g600);margin-bottom:4px;">Códigos CNAE de Educação (separados por vírgula)</label>
+          <input type="text" id="ceConfigCnae" placeholder="85, 8511, 8512, ..." style="width:100%;padding:8px 10px;border:1.5px solid var(--ce-g300,#cbd5e1);border-radius:8px;font-size:13px;">
+        </div>
+      </div>
+      <div class="ce-acoes">
+        <button type="button" class="ce-btn ce-btn-navy" id="btnCeSalvarConfigReceita">💾 Salvar Filtro</button>
+      </div>
+      <div id="ceMsgConfigReceita" class="ce-msg"></div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -1671,6 +1700,33 @@ function criarAbas(){ runReceita("criarAbasModuloReceita","btnCeCriarAbas","Cria
 function processarExtracao(){ runReceita("processarExtracaoOficialReceita","btnCeProcessar","Processando...",3,function(r){ if(!r||r.ok!==true){ceMsg("ceMsgReceita",(r&&r.mensagem)||"Erro.","err");setPipelineStep(3);return;} mostrarCompBar(r); ceMsg("ceMsgReceita","✅ "+esc(r.mensagem||"Processado."),"ok"); setPipelineStep(4); }); }
 function importarReceita(){ runReceita("importarNovasEscolasReceita","btnCeImportarRec","Importando...",5,function(r){ if(!r||r.ok!==true){ceMsg("ceMsgReceita",(r&&r.mensagem)||"Erro.","err");return;} ceMsg("ceMsgReceita","✅ "+esc(r.mensagem||"Importado."),"ok"); setPipelineStep(5); carregarLista(); }); }
 
+function carregarConfigReceita(){
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r||r.ok!==true)return;
+      var elUf=g("ceConfigUf"); if(elUf)elUf.value=r.uf||"";
+      var elCnae=g("ceConfigCnae"); if(elCnae)elCnae.value=r.cnaeCsv||"";
+    })
+    .withFailureHandler(function(){})
+    .escolasReceitaObterConfig(SISGEP_TOKEN_SESSAO);
+}
+
+function salvarConfigReceita(){
+  var uf=(g("ceConfigUf")&&g("ceConfigUf").value||"").trim();
+  var cnae=(g("ceConfigCnae")&&g("ceConfigCnae").value||"").trim();
+  var btn=g("btnCeSalvarConfigReceita"); btnLoad(btn,"Salvando...");
+  ceMsgClear("ceMsgConfigReceita");
+  google.script.run
+    .withSuccessHandler(function(r){
+      btnReset(btn);
+      if(!r||r.ok!==true){ ceMsg("ceMsgConfigReceita",(r&&r.mensagem)||"Erro ao salvar.","err"); return; }
+      ceMsg("ceMsgConfigReceita","✅ "+esc(r.mensagem||"Filtro salvo."),"ok");
+      if(typeof toast==="function") toast(r.mensagem||"Filtro salvo!","ok");
+    })
+    .withFailureHandler(function(err){ btnReset(btn); ceMsg("ceMsgConfigReceita","Erro: "+esc((err&&err.message)||String(err||"")),"err"); })
+    .escolasReceitaSalvarConfig(uf,cnae,SISGEP_TOKEN_SESSAO);
+}
+
 function executarPipeline(){
   var btn=g("btnCePipeline"); btnLoad(btn,"Executando pipeline...");
   ceMsgClear("ceMsgReceita"); setPipelineStep(1);
@@ -1765,6 +1821,7 @@ function bindEventos(){
   bind("btnCeProcessar",processarExtracao);
   bind("btnCeImportarRec",importarReceita);
   bind("btnCePipeline",executarPipeline);
+  bind("btnCeSalvarConfigReceita",salvarConfigReceita);
 
   // Máscaras
   mask("ceCnpj",mascaraCnpj);
@@ -1799,14 +1856,14 @@ function ceExecutarAnaliseIA() {
   var chave = cnpj || nome;
 
   if (!chave) {
-    alert('Selecione uma escola primeiro.');
+    if (typeof toast === "function") toast('Selecione uma escola primeiro.', 'err'); else alert('Selecione uma escola primeiro.');
     return;
   }
 
   var box = document.getElementById('ceIaResultado');
 
   if (!box) {
-    alert('Painel da IA não encontrado.');
+    if (typeof toast === "function") toast('Painel da IA não encontrado.', 'err'); else alert('Painel da IA não encontrado.');
     return;
   }
 
@@ -1866,7 +1923,7 @@ function ceGerarOficioIA() {
   };
 
   if (!dados.escola) {
-    alert("Selecione ou preencha uma escola antes de gerar o ofício.");
+    if (typeof toast === "function") toast("Selecione ou preencha uma escola antes de gerar o ofício.", "err"); else alert("Selecione ou preencha uma escola antes de gerar o ofício.");
     return;
   }
 
@@ -1947,7 +2004,7 @@ function ceResponderEmailIA() {
   emailRecebido = (emailRecebido || "").trim();
 
   if (!emailRecebido) {
-    alert("Informe o conteúdo do e-mail para gerar uma sugestão de resposta.");
+    if (typeof toast === "function") toast("Informe o conteúdo do e-mail para gerar uma sugestão de resposta.", "err"); else alert("Informe o conteúdo do e-mail para gerar uma sugestão de resposta.");
     return;
   }
 
@@ -2031,7 +2088,7 @@ function copiarTextoIA() {
     document.execCommand("copy");
     if (typeof toast === "function") toast("Texto copiado!", "ok");
   } catch (e) {
-    alert("Selecione o texto manualmente e copie com Ctrl+C.");
+    if (typeof toast === "function") toast("Selecione o texto manualmente e copie com Ctrl+C.", "err"); else alert("Selecione o texto manualmente e copie com Ctrl+C.");
   }
 }
 
@@ -2044,7 +2101,7 @@ function copiarRespostaIA() {
     document.execCommand("copy");
     if (typeof toast === "function") toast("Resposta copiada!", "ok");
   } catch (e) {
-    alert("Selecione o texto manualmente e copie com Ctrl+C.");
+    if (typeof toast === "function") toast("Selecione o texto manualmente e copie com Ctrl+C.", "err"); else alert("Selecione o texto manualmente e copie com Ctrl+C.");
   }
 }
 /* ═══════════════════════════════════
@@ -2056,6 +2113,7 @@ window.initCadastroEscolas = function(){
   bindEventos();
   atualizarBadgeSit();
   carregarLista();
+  carregarConfigReceita();
 };
 
 })();

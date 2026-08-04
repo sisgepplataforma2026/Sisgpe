@@ -26,6 +26,58 @@ var CNAE_EDUCACAO   = ["85", "8511", "8512", "8513", "8520", "8531", "8532", "85
 var UF_ALVO         = "ES";
 var PAUSA_MS        = 1200; // intervalo entre chamadas BrasilAPI
 
+var CHAVE_CONFIG_RECEITA_UF_    = "SISGEP_RECEITA_UF_ALVO";
+var CHAVE_CONFIG_RECEITA_CNAE_  = "SISGEP_RECEITA_CNAE_LISTA";
+
+/* ─────────────────────────────────────────────────────────────
+   CONFIGURAÇÃO DE UF/CNAE (PropertiesService, sobrepõe os padrões)
+───────────────────────────────────────────────────────────── */
+function escolasReceitaObterConfig_() {
+  var props = PropertiesService.getScriptProperties();
+  var uf    = String(props.getProperty(CHAVE_CONFIG_RECEITA_UF_) || UF_ALVO || "").trim().toUpperCase();
+  var cnaeSalvo = props.getProperty(CHAVE_CONFIG_RECEITA_CNAE_);
+  var cnaeLista;
+  if (cnaeSalvo) {
+    cnaeLista = cnaeSalvo.split(",").map(function(c) { return c.trim(); }).filter(Boolean);
+  } else {
+    cnaeLista = CNAE_EDUCACAO.slice();
+  }
+  return { uf: uf || "ES", cnaeLista: cnaeLista };
+}
+
+function escolasReceitaObterConfig(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
+  var cfg = escolasReceitaObterConfig_();
+  return { ok: true, uf: cfg.uf, cnaeCsv: cfg.cnaeLista.join(", ") };
+}
+
+function escolasReceitaSalvarConfig(uf, cnaeCsv, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, true);
+  try {
+    uf = String(uf || "").trim().toUpperCase();
+    if (uf.length !== 2) {
+      return { ok: false, mensagem: "Informe a UF com 2 letras (ex.: ES)." };
+    }
+
+    var lista = String(cnaeCsv || "")
+      .split(",")
+      .map(function(c) { return c.replace(/\D/g, "").trim(); })
+      .filter(Boolean);
+
+    if (!lista.length) {
+      return { ok: false, mensagem: "Informe ao menos um código CNAE." };
+    }
+
+    var props = PropertiesService.getScriptProperties();
+    props.setProperty(CHAVE_CONFIG_RECEITA_UF_, uf);
+    props.setProperty(CHAVE_CONFIG_RECEITA_CNAE_, lista.join(","));
+
+    return { ok: true, mensagem: "Configuração salva: UF " + uf + " · " + lista.length + " código(s) CNAE." };
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao salvar configuração: " + e.message };
+  }
+}
+
 /* ─────────────────────────────────────────────────────────────
    1. CRIAR ABAS AUXILIARES
 ───────────────────────────────────────────────────────────── */
@@ -81,6 +133,7 @@ function processarExtracaoOficialReceita(tokenSessao) {
     // Garante que as abas existem
     criarAbasModuloReceita(tokenSessao);
 
+    var config   = escolasReceitaObterConfig_();
     var ss       = SpreadsheetApp.openById(PLANILHA_ID);
     var shExt    = ss.getSheetByName(ABA_EXTRACAO);
     var shComp   = ss.getSheetByName(ABA_COMPARACAO);
@@ -143,9 +196,9 @@ function processarExtracaoOficialReceita(tokenSessao) {
         var dados = consultarBrasilApiReceita_(cnpj);
         if (!dados) { erros++; continue; }
 
-        // Filtra por UF e CNAE de educação
-        if (dados.uf.toUpperCase() !== UF_ALVO) { filtradas++; continue; }
-        if (!ehCnaeEducacao_(dados.cnaePrincipal)) { filtradas++; continue; }
+        // Filtra por UF e CNAE de educação (configuráveis via escolasReceitaSalvarConfig)
+        if (dados.uf.toUpperCase() !== config.uf) { filtradas++; continue; }
+        if (!ehCnaeEducacao_(dados.cnaePrincipal, config.cnaeLista)) { filtradas++; continue; }
 
         // Compara com base
         var statusComp, obsComp;
@@ -213,7 +266,7 @@ function processarExtracaoOficialReceita(tokenSessao) {
       filtradas: filtradas,
       erros:     erros,
       mensagem:  "Processamento concluído! Novas: " + novas + " · Existentes: " + existentes +
-                 " · Fora ES/CNAE: " + filtradas + " · Erros: " + erros +
+                 " · Fora " + config.uf + "/CNAE: " + filtradas + " · Erros: " + erros +
                  ". Revise a aba " + ABA_COMPARACAO + " antes de importar."
     };
 
@@ -366,14 +419,15 @@ function formatarCepReceita_(cep) {
   return d.length === 8 ? d.replace(/^(\d{5})(\d{3})$/, "$1-$2") : d;
 }
 
-function ehCnaeEducacao_(cnae) {
+function ehCnaeEducacao_(cnae, listaCnae) {
   if (!cnae) return false;
   var c = String(cnae).replace(/\D/g, "");
+  var lista = listaCnae && listaCnae.length ? listaCnae : CNAE_EDUCACAO;
   // Aceita CNAE que começa com 85 (educação)
   if (c.length >= 2 && c.substring(0, 2) === "85") return true;
   // Aceita os códigos exatos da lista
-  for (var i = 0; i < CNAE_EDUCACAO.length; i++) {
-    var ref = CNAE_EDUCACAO[i].replace(/\D/g, "");
+  for (var i = 0; i < lista.length; i++) {
+    var ref = String(lista[i]).replace(/\D/g, "");
     if (c.indexOf(ref) === 0 || ref.indexOf(c) === 0) return true;
   }
   return false;
