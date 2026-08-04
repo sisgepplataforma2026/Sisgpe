@@ -78,6 +78,7 @@
           <button class="rh-btn" onclick="rhAtualizarExtratoJunho2026()" id="btnRhAtualizarExtrato">💳 Atualizar salário/CPF (Extrato 06/2026)</button>
           <button class="rh-btn" onclick="rhAplicarRubricasFixas()" id="btnRhRubricasFixas">🏷️ Aplicar rubricas fixas (Abono CCT, Quinquênio...)</button>
           <button class="rh-btn" onclick="rhAplicarCentroCustoDepartamento()" id="btnRhCentroCustoDepto">🏢 Aplicar Centro de Custo/Departamento reais</button>
+          <button class="rh-btn gold" onclick="rhReajusteSalarial()" id="btnRhReajuste">💹 Reajuste salarial (convenção)</button>
         </div>
       </div>
 
@@ -403,6 +404,35 @@
           avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
         })
         .aplicarCentroCustoEDepartamentoReal_publico(tokenSessao());
+    };
+
+    // Reajuste salarial por convenção/dissídio — só pede o percentual e
+    // a referência; o novo salário é calculado automaticamente (salário
+    // atual × (1+percentual/100)) pra cada colaborador ativo, com salário
+    // anterior/novo registrados em RH_HISTORICO_REAJUSTES.
+    window.rhReajusteSalarial=function(){
+      var percTxt=prompt("Percentual do reajuste (ex.: 5 para 5%, -2 para redução de 2%):");
+      if(percTxt===null)return;
+      var perc=num(percTxt);
+      if(!perc){avisar("Informe um percentual válido, diferente de zero.","warn");return;}
+      var referencia=prompt("Referência do reajuste (ex.: CCT 2026, Dissídio 08/2026):");
+      if(referencia===null)return;
+      if(!referencia.trim()){avisar("Informe a referência do reajuste.","warn");return;}
+      if(!confirm("Aplicar "+perc+"% de reajuste no salário de TODOS os colaboradores ativos (\""+referencia+"\")? O novo salário é calculado automaticamente. Ação exige perfil administrador e não tem desfazer automático — o histórico fica salvo, mas a reversão seria manual."))return;
+
+      var btn=g("btnRhReajuste"); if(btn){btn.disabled=true;btn.textContent="Aplicando...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="💹 Reajuste salarial (convenção)";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao aplicar reajuste.","err");return;}
+          avisar(r.mensagem||"Reajuste aplicado.","ok");
+          rhRender();
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="💹 Reajuste salarial (convenção)";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .aplicarReajusteSalarialRH(perc, referencia.trim(), tokenSessao());
     };
 
     window.rhLimparForm=function(){editId="";["rhNome","rhCargo","rhVencimento","rhSalario","rhBeneficios","rhDescontos","rhDependentes","rhAniversario","rhEmail","rhMatricula","rhCbo","rhCentroCusto","rhDepartamento","rhFilial","rhAdmissao","rhCpf"].forEach(function(id){if(g(id))g(id).value="";});if(g("rhSetor"))g("rhSetor").value="Administrativo";if(g("rhStatus"))g("rhStatus").value="Ativo";};

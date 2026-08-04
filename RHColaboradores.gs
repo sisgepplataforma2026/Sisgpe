@@ -374,6 +374,98 @@ function salvarColaboradorRH(dados, tokenSessao) {
   }
 }
 
+/* =========================================
+ * REAJUSTE SALARIAL (convenção coletiva / dissídio) — aplica um
+ * percentual único sobre o salário-base de todos os colaboradores
+ * ATIVOS (mesmo filtro de "quem entra na folha" usado em
+ * prepararFolhaRH — desligado não recebe reajuste). O sistema calcula
+ * o novo salário sozinho (salário atual × (1 + percentual/100),
+ * arredondado a 2 casas) — quem aplica só informa o percentual e uma
+ * referência (ex.: "CCT 2026", "Dissídio 08/2026"). Cada reajuste fica
+ * registrado em RH_HISTORICO_REAJUSTES (salário antes/depois, quem
+ * aplicou, quando) — nunca sobrescreve sem deixar rastro.
+ * ========================================= */
+
+var ABA_RH_HISTORICO_REAJUSTES = "RH_HISTORICO_REAJUSTES";
+
+function rh_garantirHistoricoReajustes_() {
+  var ss = SpreadsheetApp.openById(PLANILHA_ID);
+  var sh = ss.getSheetByName(ABA_RH_HISTORICO_REAJUSTES);
+  if (!sh) sh = ss.insertSheet(ABA_RH_HISTORICO_REAJUSTES);
+  if (sh.getLastRow() === 0) {
+    sh.appendRow([
+      "ID", "COLABORADOR_ID", "NOME", "SALARIO_ANTERIOR", "SALARIO_NOVO",
+      "PERCENTUAL", "REFERENCIA", "APLICADO_POR", "APLICADO_EM"
+    ]);
+    sh.getRange(1, 1, 1, 9).setFontWeight("bold");
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+// Público — exige administrador (reajusta salário de todo mundo de uma vez).
+function aplicarReajusteSalarialRH(percentual, referencia, tokenSessao) {
+  var sessao = exigirSessaoDocumentos_(tokenSessao, true);
+  try {
+    percentual = Number(percentual);
+    if (!isFinite(percentual) || percentual === 0) return { ok: false, mensagem: "Informe um percentual válido (diferente de zero)." };
+    referencia = String(referencia || "").trim();
+    if (!referencia) return { ok: false, mensagem: "Informe a referência do reajuste (ex.: CCT 2026)." };
+
+    var sh = rh_garantirColaboradores_();
+    var mapa = rh_mapaCabecalho_(sh);
+    var ultimaLinha = sh.getLastRow();
+    if (ultimaLinha < 2) return { ok: false, mensagem: "Nenhum colaborador cadastrado ainda." };
+
+    var dados = sh.getRange(2, 1, ultimaLinha - 1, sh.getLastColumn()).getValues();
+    var quem = sessao.nome || sessao.usuario || "SISGEP";
+    var agora = new Date();
+
+    var shHist = rh_garantirHistoricoReajustes_();
+    var linhasHist = [];
+    var aplicados = [];
+
+    for (var i = 0; i < dados.length; i++) {
+      var linha = dados[i];
+      var status = String(linha[mapa["STATUS"] - 1] || "Ativo");
+      if (status === "Desligado") continue;
+
+      var salarioAtual = Number(linha[mapa["SALARIO"] - 1] || 0);
+      if (!salarioAtual) continue; // sem salário cadastrado — nada pra reajustar
+
+      var salarioNovo = Math.round(salarioAtual * (1 + percentual / 100) * 100) / 100;
+      var numLinha = i + 2;
+      var colaboradorId = String(linha[mapa["ID"] - 1] || "");
+      var nome = String(linha[mapa["NOME"] - 1] || "");
+
+      sh.getRange(numLinha, mapa["SALARIO"]).setValue(salarioNovo);
+      if (mapa["ATUALIZADO_POR"]) sh.getRange(numLinha, mapa["ATUALIZADO_POR"]).setValue(quem);
+      if (mapa["ATUALIZADO_EM"]) sh.getRange(numLinha, mapa["ATUALIZADO_EM"]).setValue(agora);
+
+      linhasHist.push([
+        rh_gerarId_("REAJ"), colaboradorId, nome, salarioAtual, salarioNovo,
+        percentual, referencia, quem, agora
+      ]);
+      aplicados.push(nome + " (R$ " + salarioAtual.toFixed(2) + " → R$ " + salarioNovo.toFixed(2) + ")");
+    }
+
+    if (linhasHist.length) {
+      shHist.getRange(shHist.getLastRow() + 1, 1, linhasHist.length, linhasHist[0].length).setValues(linhasHist);
+    }
+
+    Logger.log("[RH] Reajuste salarial " + percentual + "% (" + referencia + ") — aplicados: " + (aplicados.join(", ") || "nenhum"));
+    return {
+      ok: true,
+      aplicados: aplicados,
+      mensagem: aplicados.length
+        ? "Reajuste de " + percentual + "% aplicado a " + aplicados.length + " colaborador(es)."
+        : "Nenhum colaborador ativo com salário cadastrado para reajustar."
+    };
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao aplicar reajuste salarial: " + e.message };
+  }
+}
+
 // Exclusão exige administrador — dado sensível (salário) sem trilha de
 // recuperação, mesmo padrão de excluirReceita/excluirEscolasEmLote.
 function excluirColaboradorRH(id, tokenSessao) {
