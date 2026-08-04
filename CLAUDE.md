@@ -16,6 +16,8 @@ Antes de declarar QUALQUER arquivo ou função como "órfão", "morto", "não us
 
 Se qualquer passo não puder ser concluído com certeza, o veredito é **"não confirmado"** — nunca "morto". **Na dúvida, o arquivo fica.**
 
+**O momento mais crítico é quando o usuário pergunta "posso apagar esse arquivo?".** O usuário sempre pergunta antes de excluir — ou seja, a resposta do Claude é a única trava de segurança do processo. Nunca responder essa pergunta de memória, por impressão ou com base em análise anterior da conversa: rodar os 5 passos na hora, e só então responder. Se a checagem não for feita, a resposta obrigatória é "ainda não verifiquei — deixa eu checar antes de você apagar", nunca um "pode apagar".
+
 Quando houver dúvida entre remover e manter, a recomendação padrão é **manter e documentar como legado** no cabeçalho do arquivo (foi o que se fez com `GuiasPagamento.gs` no commit `3394040`, e foi a decisão certa). Remoção só acontece com pedido explícito do usuário, em commit separado, nunca junto de outra mudança.
 
 **Caso real que originou esta regra (2026-08-04):** `GuiasPagamento.gs` foi reportado como "3.262 linhas 100% mortas" com base só em grep de `.html`. Era falso — `Code.gs:163` ainda chama `guiasPagamento_registrarLeituraEmail()` na rota pública `?page=pub-pixel-nf`, e o cabeçalho do arquivo já documentava exatamente isso.
