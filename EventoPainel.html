@@ -236,10 +236,19 @@
     var box = document.getElementById('resultado');
     box.innerHTML = '<h3 style="color:#002f6c;font-size:13px;margin-bottom:6px">Resultado</h3>';
     res.forEach(function(r){
-      var d = document.createElement('div');
-      if(r.ok){ d.className='linha ok'; d.textContent='✅ '+r.numero+' — '+r.nome+' ('+r.categoria+')'+(r.valor?(' · '+money(r.valor)):''); }
-      else{ d.className='linha er'; d.textContent='❌ '+(r.nome||'')+' — '+r.erro; }
-      box.appendChild(d);
+      if(r.ok){
+        var d = document.createElement('div');
+        d.className='linha ok';
+        d.innerHTML = '✅ '+r.numero+' — '+r.nome+' ('+r.categoria+')'+(r.valor?(' · '+money(r.valor)):'')
+          + (r.emailEnviado ? ' · 📧 confirmação enviada' : '')
+          + (r.qrCodeUrl ? '<br><img src="'+r.qrCodeUrl+'" alt="QR do ingresso" style="width:64px;height:64px;margin-top:6px;border:1px solid #d1fae5;border-radius:6px;background:#fff;">' : '');
+        box.appendChild(d);
+      } else {
+        var d2 = document.createElement('div');
+        d2.className='linha er';
+        d2.textContent='❌ '+(r.nome||'')+' — '+r.erro;
+        box.appendChild(d2);
+      }
     });
     // limpa pra próxima emissão
     titular=null; extras=[];

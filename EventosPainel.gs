@@ -40,7 +40,7 @@ function painelEmissao_emitirGrupo(itens, tokenSessao) {
   for (var i = 0; i < itens.length; i++) {
     var it = itens[i];
     it.operador = operador;
-    resultados.push(emissao_emitirIngresso(it));
+    resultados.push(emissao_emitirIngresso(it, tokenSessao));
   }
   return resultados;
 }
