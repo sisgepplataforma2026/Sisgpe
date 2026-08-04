@@ -116,12 +116,12 @@
     </div>
 
     <div class="spAmbiente">
-      <i class="spAmbienteIcon"></i>
+      <i class="spAmbienteIcon">📻</i>
       <div>
-        <strong>Ambiente SOFIA</strong>
-        <small>Tela inteligente</small>
+        <strong>Rádio SindEducação</strong>
+        <small><span id="spRadioDot" class="spRadioDot"></span><span id="spRadioStatusTxt">Parado</span></small>
       </div>
-      <div class="spWaveform">
+      <div class="spWaveform" id="spRadioWave">
         <div class="spWaveBar" style="height: 20px"></div>
         <div class="spWaveBar" style="height: 35px"></div>
         <div class="spWaveBar" style="height: 25px"></div>
@@ -136,12 +136,14 @@
         <div class="spWaveBar" style="height: 25px"></div>
       </div>
       <div class="spAudioControls">
-        <span class="spTime">01:32 / 04:15</span>
-        <button class="spCtrlBtn"><i class="fas fa-step-backward"></i></button>
-        <button class="spPlayBtn"><i class="fas fa-pause"></i></button>
-        <button class="spCtrlBtn"><i class="fas fa-step-forward"></i></button>
-        <button class="spCtrlBtn spVolume"><i class="fas fa-volume-up"></i></button>
+        <button class="spPlayBtn" id="spRadioPlayBtn" onclick="spRadioToggle()" title="Tocar/pausar Rádio SindEducação">
+          <i class="fas fa-play" id="spRadioPlayIcon"></i>
+        </button>
+        <button class="spCtrlBtn spVolume" id="spRadioMuteBtn" onclick="spRadioMute()" title="Mudo">
+          <i class="fas fa-volume-up" id="spRadioVolIcon"></i>
+        </button>
       </div>
+      <audio id="spRadioAudio" preload="none" src="https://stm7.xcast.com.br:9688/stream"></audio>
     </div>
   </nav>
 
@@ -615,7 +617,7 @@ button,input{font-family:inherit;}
 .spN small{font-size:10px;color:rgba(255,255,255,.5);display:block;margin-top:2px;line-height:1.2;}
 .spSec{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:rgba(148,163,184,.5);padding:16px 12px 8px;}
 
-/* Ambiente SOFIA - Audio Player */
+/* Rádio SindEducação - Player real (stream ao vivo, stm7.xcast.com.br) */
 .spAmbiente{
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.15));
   border-radius: 16px;
@@ -639,10 +641,30 @@ button,input{font-family:inherit;}
 }
 
 .spAmbiente small{
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11px;
   color: var(--mut);
   margin-bottom: 16px;
+}
+
+.spRadioDot{
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #64748b;
+  flex-shrink: 0;
+}
+.spRadioDot.on{
+  background: #ef4444;
+  box-shadow: 0 0 0 rgba(239,68,68,.6);
+  animation: spRadioPulse 1.5s ease-out infinite;
+}
+@keyframes spRadioPulse{
+  0% { box-shadow: 0 0 0 0 rgba(239,68,68,.55); }
+  70% { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+  100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
 }
 
 .spWaveform{
@@ -658,6 +680,11 @@ button,input{font-family:inherit;}
   width: 3px;
   background: linear-gradient(180deg, #8b5cf6, #3b82f6);
   border-radius: 2px;
+  transform: scaleY(0.35);
+  opacity: .45;
+  transition: transform .2s, opacity .2s;
+}
+.spWaveform.tocando .spWaveBar{
   animation: waveAnim 1.2s ease-in-out infinite;
 }
 
@@ -682,14 +709,7 @@ button,input{font-family:inherit;}
 .spAudioControls{
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
-}
-
-.spTime{
-  font-size: 11px;
-  color: var(--mut);
-  font-weight: 500;
 }
 
 .spCtrlBtn{
@@ -1913,6 +1933,62 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
+/* ===== Rádio SindEducação (sidebar) — player real, sem duração/skip fingidos:
+   é um stream ao vivo (stm7.xcast.com.br), então os estados só refletem o que
+   o <audio> real está fazendo (tocando/pausado/conectando/erro). ===== */
+function spRadioInit_(){
+  var audio = document.getElementById("spRadioAudio");
+  var icon = document.getElementById("spRadioPlayIcon");
+  var status = document.getElementById("spRadioStatusTxt");
+  var dot = document.getElementById("spRadioDot");
+  var wave = document.getElementById("spRadioWave");
+  if (!audio) return;
+
+  audio.addEventListener("playing", function(){
+    icon.className = "fas fa-pause";
+    status.textContent = "Ao vivo";
+    dot.classList.add("on");
+    wave.classList.add("tocando");
+  });
+  audio.addEventListener("waiting", function(){
+    status.textContent = "Conectando…";
+  });
+  audio.addEventListener("pause", function(){
+    icon.className = "fas fa-play";
+    status.textContent = "Pausado";
+    dot.classList.remove("on");
+    wave.classList.remove("tocando");
+  });
+  audio.addEventListener("error", function(){
+    icon.className = "fas fa-play";
+    status.textContent = "Não foi possível conectar à rádio";
+    dot.classList.remove("on");
+    wave.classList.remove("tocando");
+  });
+}
+
+window.spRadioToggle = function(){
+  var audio = document.getElementById("spRadioAudio");
+  var status = document.getElementById("spRadioStatusTxt");
+  if (!audio) return;
+  if (audio.paused) {
+    status.textContent = "Conectando…";
+    audio.play().catch(function(){
+      status.textContent = "Não foi possível conectar à rádio";
+    });
+  } else {
+    audio.pause();
+  }
+};
+
+window.spRadioMute = function(){
+  var audio = document.getElementById("spRadioAudio");
+  var icon = document.getElementById("spRadioVolIcon");
+  if (!audio) return;
+  audio.muted = !audio.muted;
+  icon.className = audio.muted ? "fas fa-volume-mute" : "fas fa-volume-up";
+};
+
 document.addEventListener("DOMContentLoaded",function(){
   if(window.google&&google.script&&google.script.run){
     google.script.run.withSuccessHandler(function(s){
@@ -1935,6 +2011,8 @@ var ini=String(nome).trim().split(/\s+/).map(function(p){return p.charAt(0).toUp
 
     carregarResumoInicio();
   }
+
+  spRadioInit_();
 
   var bl=document.getElementById("spLogout");
   if(bl)bl.addEventListener("click",function(){
