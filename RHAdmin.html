@@ -79,6 +79,7 @@
           <button class="rh-btn" onclick="rhAplicarRubricasFixas()" id="btnRhRubricasFixas">🏷️ Aplicar rubricas fixas (Abono CCT, Quinquênio...)</button>
           <button class="rh-btn" onclick="rhAplicarCentroCustoDepartamento()" id="btnRhCentroCustoDepto">🏢 Aplicar Centro de Custo/Departamento reais</button>
           <button class="rh-btn gold" onclick="rhReajusteSalarial()" id="btnRhReajuste">💹 Reajuste salarial (convenção)</button>
+          <button class="rh-btn" onclick="rhVerificarQuinquenioDecenio()" id="btnRhQuinquenioDecenio">📅 Verificar Quinquênio/Decênio</button>
         </div>
       </div>
 
@@ -433,6 +434,51 @@
           avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
         })
         .aplicarReajusteSalarialRH(perc, referencia.trim(), tokenSessao());
+    };
+
+    // Verifica pela data de admissão quem tem direito a Quinquênio (5-9
+    // anos) ou Decênio (10+ anos) e oferece aplicar automaticamente as
+    // divergências — regra derivada dos dados reais, ver RHTempoServico.gs.
+    window.rhVerificarQuinquenioDecenio=function(){
+      var btn=g("btnRhQuinquenioDecenio"); if(btn){btn.disabled=true;btn.textContent="Verificando...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="📅 Verificar Quinquênio/Decênio";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao verificar.","err");return;}
+          var itens=r.itens||[];
+          var divergentes=itens.filter(function(i){return i.divergente;});
+          var semAdmissao=itens.filter(function(i){return i.elegibilidadeCalculada==="SEM_ADMISSAO";});
+          var rotulo={NENHUM:"nenhum",QUINQUENIO:"Quinquênio",DECENIO:"Decênio",SEM_ADMISSAO:"(sem data de admissão)"};
+          var texto="Verificação de Quinquênio/Decênio por tempo de serviço\n\n";
+          if(!divergentes.length){
+            texto+="Nenhuma divergência — todo mundo já está de acordo com o tempo de serviço.";
+          }else{
+            texto+=divergentes.length+" divergência(s) encontrada(s):\n\n"+divergentes.map(function(i){
+              return "• "+i.nome+" — "+(i.anosServico===null?"?":i.anosServico)+" anos de admissão — hoje: "+rotulo[i.situacaoAtual]+" → deveria ser: "+rotulo[i.elegibilidadeCalculada];
+            }).join("\n");
+          }
+          if(semAdmissao.length){
+            texto+="\n\n"+semAdmissao.length+" colaborador(es) sem data de admissão cadastrada, não avaliado(s): "+semAdmissao.map(function(i){return i.nome;}).join(", ");
+          }
+          alert(texto);
+          if(divergentes.length && confirm("Aplicar as "+divergentes.length+" correção(ões) acima agora? Isso ativa/desativa rubricas fixas de Quinquênio/Decênio automaticamente, com valor calculado (5%/10% do salário)."))
+            rhAplicarQuinquenioDecenio();
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="📅 Verificar Quinquênio/Decênio";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .verificarQuinquenioDecenioRH_publico(tokenSessao());
+    };
+
+    window.rhAplicarQuinquenioDecenio=function(){
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao aplicar.","err");return;}
+          avisar(r.mensagem||"Aplicado.","ok");
+        })
+        .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+        .aplicarQuinquenioDecenioRH_publico(tokenSessao());
     };
 
     window.rhLimparForm=function(){editId="";["rhNome","rhCargo","rhVencimento","rhSalario","rhBeneficios","rhDescontos","rhDependentes","rhAniversario","rhEmail","rhMatricula","rhCbo","rhCentroCusto","rhDepartamento","rhFilial","rhAdmissao","rhCpf"].forEach(function(id){if(g(id))g(id).value="";});if(g("rhSetor"))g("rhSetor").value="Administrativo";if(g("rhStatus"))g("rhStatus").value="Ativo";};
