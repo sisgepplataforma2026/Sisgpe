@@ -110,41 +110,32 @@
 
       <div class="spSec">Sistema</div>
 
+      <button class="spN" data-mod="radio" onclick="spIr('radio',this)">
+        <span class="spNI">📻</span><div><strong>Rádio SindEducação</strong><small>Ao vivo</small></div>
+      </button>
       <button class="spN" data-mod="config" onclick="spIr('config',this)">
         <span class="spNI">⚙️</span><div><strong>Configurações</strong><small>Sistema e Preferências</small></div>
       </button>
     </div>
 
-    <div class="spAmbiente">
-      <img class="spRadioCover" src="https://lh3.googleusercontent.com/d/1T2AzStGL_Fv8zrmQ9gFJnD87teNuvbkQ" alt="Rádio SindEducação">
-      <div>
-        <strong>Rádio SindEducação</strong>
-        <small><span id="spRadioDot" class="spRadioDot"></span><span id="spRadioStatusTxt">Parado</span></small>
+    <div class="spAmbienteCompact">
+      <div class="spRadioClick" onclick="spIr('radio')" role="button" tabindex="0" onkeypress="if(event.key==='Enter')spIr('radio')" title="Abrir Rádio SindEducação">
+        <img class="spRadioThumb" src="https://lh3.googleusercontent.com/d/1T2AzStGL_Fv8zrmQ9gFJnD87teNuvbkQ" alt="">
+        <span class="spRadioInfo">
+          <strong>Rádio SindEducação</strong>
+          <small><span class="spRadioDot"></span><span class="spRadioStatusTxt">Parado</span></small>
+        </span>
       </div>
-      <div class="spWaveform" id="spRadioWave">
-        <div class="spWaveBar" style="height: 20px"></div>
-        <div class="spWaveBar" style="height: 35px"></div>
-        <div class="spWaveBar" style="height: 25px"></div>
-        <div class="spWaveBar" style="height: 40px"></div>
-        <div class="spWaveBar" style="height: 30px"></div>
-        <div class="spWaveBar" style="height: 45px"></div>
-        <div class="spWaveBar" style="height: 25px"></div>
-        <div class="spWaveBar" style="height: 35px"></div>
-        <div class="spWaveBar" style="height: 20px"></div>
-        <div class="spWaveBar" style="height: 30px"></div>
-        <div class="spWaveBar" style="height: 40px"></div>
-        <div class="spWaveBar" style="height: 25px"></div>
-      </div>
-      <div class="spAudioControls">
-        <button class="spPlayBtn" id="spRadioPlayBtn" onclick="spRadioToggle()" title="Tocar/pausar Rádio SindEducação">
-          <i class="fas fa-play" id="spRadioPlayIcon"></i>
+      <div class="spRadioCompactCtrls">
+        <button class="spPlayBtnSm" onclick="spRadioToggle()" title="Tocar/pausar Rádio SindEducação">
+          <i class="fas fa-play spRadioPlayIcon"></i>
         </button>
-        <button class="spCtrlBtn spVolume" id="spRadioMuteBtn" onclick="spRadioMute()" title="Mudo">
-          <i class="fas fa-volume-up" id="spRadioVolIcon"></i>
+        <button class="spCtrlBtnSm" onclick="spRadioMute()" title="Mudo">
+          <i class="fas fa-volume-up spRadioVolIcon"></i>
         </button>
       </div>
-      <audio id="spRadioAudio" preload="none" src="https://stm7.xcast.com.br:9688/stream"></audio>
     </div>
+    <audio id="spRadioAudio" preload="none" src="https://stm7.xcast.com.br:9688/stream"></audio>
   </nav>
 
   <!-- ══════════════════════════════════════
@@ -546,6 +537,10 @@ function benefAdminPesquisar(){var input=document.getElementById("benefAdminBusc
         <?!= include('CobrancaAdmin'); ?>
       </div>
 
+      <div id="mRadio" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('RadioSindEducacao'); ?>
+      </div>
+
 <div id="mRelatorios" class="spM spPlaceholder" style="display:none;">
         <div class="spPH"><div>REL</div><h2>Relatorios</h2><p>Indicadores, analises e dashboards executivos.</p><small>Carregando painel de relatorios...</small><div class="spPHActions"><button onclick="spIr('documentos',null,{aba:'relatorios'})">Abrir painel</button><button onclick="spIr('documentos',null,{aba:'historico'})">Historico</button></div></div>
 
@@ -617,40 +612,57 @@ button,input{font-family:inherit;}
 .spN small{font-size:10px;color:rgba(255,255,255,.5);display:block;margin-top:2px;line-height:1.2;}
 .spSec{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:rgba(148,163,184,.5);padding:16px 12px 8px;}
 
-/* Rádio SindEducação - Player real (stream ao vivo, stm7.xcast.com.br) */
-.spAmbiente{
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.15));
-  border-radius: 16px;
-  padding: 14px 20px 20px;
-  margin: 16px;
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  overflow: hidden;
-}
-
-.spRadioCover{
-  display: block;
-  width: calc(100% + 40px);
-  margin: -14px -20px 10px;
-  height: 74px;
-  object-fit: cover;
-  object-position: center 25%;
-}
-
-.spAmbiente strong{
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--txt);
-  margin-bottom: 2px;
-}
-
-.spAmbiente small{
+/* Rádio SindEducação - controle compacto na sidebar (a tela cheia,
+   com a arte oficial e os detalhes, vive no módulo "radio" via spIr). */
+.spAmbienteCompact{
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
+  gap: 8px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.15));
+  border-radius: 12px;
+  padding: 9px 10px;
+  margin: 16px;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.spRadioClick{
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.spRadioThumb{
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  object-fit: cover;
+  object-position: center 25%;
+  flex-shrink: 0;
+}
+
+.spRadioInfo{
+  flex: 1;
+  min-width: 0;
+}
+.spRadioInfo strong{
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--txt);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.spRadioInfo small{
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
   color: var(--mut);
-  margin-bottom: 16px;
+  margin-top: 2px;
 }
 
 .spRadioDot{
@@ -662,7 +674,6 @@ button,input{font-family:inherit;}
 }
 .spRadioDot.on{
   background: #ef4444;
-  box-shadow: 0 0 0 rgba(239,68,68,.6);
   animation: spRadioPulse 1.5s ease-out infinite;
 }
 @keyframes spRadioPulse{
@@ -671,87 +682,39 @@ button,input{font-family:inherit;}
   100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
 }
 
-.spWaveform{
+.spRadioCompactCtrls{
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.spPlayBtnSm{
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  border: none;
+  color: #fff;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  height: 40px;
-  margin-bottom: 16px;
+  font-size: 12px;
+  box-shadow: 0 3px 8px rgba(59, 130, 246, 0.4);
 }
 
-.spWaveBar{
-  width: 3px;
-  background: linear-gradient(180deg, #8b5cf6, #3b82f6);
-  border-radius: 2px;
-  transform: scaleY(0.35);
-  opacity: .45;
-  transition: transform .2s, opacity .2s;
-}
-.spWaveform.tocando .spWaveBar{
-  animation: waveAnim 1.2s ease-in-out infinite;
-}
-
-.spWaveBar:nth-child(1){animation-delay:0s;}
-.spWaveBar:nth-child(2){animation-delay:0.1s;}
-.spWaveBar:nth-child(3){animation-delay:0.2s;}
-.spWaveBar:nth-child(4){animation-delay:0.3s;}
-.spWaveBar:nth-child(5){animation-delay:0.4s;}
-.spWaveBar:nth-child(6){animation-delay:0.5s;}
-.spWaveBar:nth-child(7){animation-delay:0.6s;}
-.spWaveBar:nth-child(8){animation-delay:0.7s;}
-.spWaveBar:nth-child(9){animation-delay:0.8s;}
-.spWaveBar:nth-child(10){animation-delay:0.9s;}
-.spWaveBar:nth-child(11){animation-delay:1s;}
-.spWaveBar:nth-child(12){animation-delay:1.1s;}
-
-@keyframes waveAnim{
-  0%, 100% { transform: scaleY(0.5); opacity: 0.6; }
-  50% { transform: scaleY(1); opacity: 1; }
-}
-
-.spAudioControls{
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.spCtrlBtn{
+.spCtrlBtnSm{
   background: none;
   border: none;
   color: var(--mut);
   cursor: pointer;
-  font-size: 14px;
-  padding: 4px;
-  transition: all 0.2s;
+  font-size: 12px;
+  padding: 5px;
+  transition: color 0.2s;
 }
-
-.spCtrlBtn:hover{
+.spCtrlBtnSm:hover{
   color: var(--txt);
-}
-
-.spPlayBtn{
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-  border: none;
-  color: white;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  transition: transform 0.2s;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-}
-
-.spPlayBtn:hover{
-  transform: scale(1.05);
-}
-
-.spVolume{
-  margin-left: auto;
 }
 
 /* Main */
@@ -1229,7 +1192,8 @@ var MODS={
 config:["mConfig","Configurações","Sistema e Preferências"],
 visitas:["mVisitas","Visitas às Escolas","Agenda do dia, check-in e captação"],
   visitasAdmin:["mVisitasAdmin","Gestão de Visitas","Cobertura das escolas, agenda em lote e desempenho por diretor"],
-  cobranca:["mCobranca","Cobrança de Relação Nominal","Acompanhamento por escola e competência para emissão das guias sindicais"]
+  cobranca:["mCobranca","Cobrança de Relação Nominal","Acompanhamento por escola e competência para emissão das guias sindicais"],
+  radio:["mRadio","Rádio SindEducação","Informação, conteúdo educativo, música e cultura — ao vivo"]
 };
 /* Guarda funções internas dos includes antes de criar wrappers globais */
 var SISGEP_INTERNOS={
@@ -1937,48 +1901,62 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
-/* ===== Rádio SindEducação (sidebar) — player real, sem duração/skip fingidos:
-   é um stream ao vivo (stm7.xcast.com.br), então os estados só refletem o que
-   o <audio> real está fazendo (tocando/pausado/conectando/erro). ===== */
+/* ===== Rádio SindEducação — player real, sem duração/skip fingidos: é um
+   stream ao vivo (stm7.xcast.com.br), então os estados só refletem o que o
+   <audio> real está fazendo (tocando/pausado/conectando/erro). O mesmo
+   <audio> (fixo na sidebar, fora de qualquer painel .spM) é controlado tanto
+   pela barra compacta quanto pela tela cheia do módulo "radio" — por isso
+   os elementos de estado são selecionados por CLASSE (podem existir em mais
+   de um lugar do DOM ao mesmo tempo), nunca por ID único. */
+function spRadioSetStatus_(texto){
+  document.querySelectorAll(".spRadioStatusTxt").forEach(function(el){ el.textContent = texto; });
+}
+function spRadioSetPlayIcon_(tocando){
+  document.querySelectorAll(".spRadioPlayIcon").forEach(function(el){
+    el.className = el.className.replace(/fa-(play|pause)/, tocando ? "fa-pause" : "fa-play");
+  });
+}
+function spRadioSetDot_(ligado){
+  document.querySelectorAll(".spRadioDot").forEach(function(el){ el.classList.toggle("on", ligado); });
+}
+function spRadioSetWave_(tocando){
+  document.querySelectorAll(".spRadioWave").forEach(function(el){ el.classList.toggle("tocando", tocando); });
+}
+
 function spRadioInit_(){
   var audio = document.getElementById("spRadioAudio");
-  var icon = document.getElementById("spRadioPlayIcon");
-  var status = document.getElementById("spRadioStatusTxt");
-  var dot = document.getElementById("spRadioDot");
-  var wave = document.getElementById("spRadioWave");
   if (!audio) return;
 
   audio.addEventListener("playing", function(){
-    icon.className = "fas fa-pause";
-    status.textContent = "Ao vivo";
-    dot.classList.add("on");
-    wave.classList.add("tocando");
+    spRadioSetPlayIcon_(true);
+    spRadioSetStatus_("Ao vivo");
+    spRadioSetDot_(true);
+    spRadioSetWave_(true);
   });
   audio.addEventListener("waiting", function(){
-    status.textContent = "Conectando…";
+    spRadioSetStatus_("Conectando…");
   });
   audio.addEventListener("pause", function(){
-    icon.className = "fas fa-play";
-    status.textContent = "Pausado";
-    dot.classList.remove("on");
-    wave.classList.remove("tocando");
+    spRadioSetPlayIcon_(false);
+    spRadioSetStatus_("Pausado");
+    spRadioSetDot_(false);
+    spRadioSetWave_(false);
   });
   audio.addEventListener("error", function(){
-    icon.className = "fas fa-play";
-    status.textContent = "Não foi possível conectar à rádio";
-    dot.classList.remove("on");
-    wave.classList.remove("tocando");
+    spRadioSetPlayIcon_(false);
+    spRadioSetStatus_("Não foi possível conectar à rádio");
+    spRadioSetDot_(false);
+    spRadioSetWave_(false);
   });
 }
 
 window.spRadioToggle = function(){
   var audio = document.getElementById("spRadioAudio");
-  var status = document.getElementById("spRadioStatusTxt");
   if (!audio) return;
   if (audio.paused) {
-    status.textContent = "Conectando…";
+    spRadioSetStatus_("Conectando…");
     audio.play().catch(function(){
-      status.textContent = "Não foi possível conectar à rádio";
+      spRadioSetStatus_("Não foi possível conectar à rádio");
     });
   } else {
     audio.pause();
@@ -1987,10 +1965,11 @@ window.spRadioToggle = function(){
 
 window.spRadioMute = function(){
   var audio = document.getElementById("spRadioAudio");
-  var icon = document.getElementById("spRadioVolIcon");
   if (!audio) return;
   audio.muted = !audio.muted;
-  icon.className = audio.muted ? "fas fa-volume-mute" : "fas fa-volume-up";
+  document.querySelectorAll(".spRadioVolIcon").forEach(function(el){
+    el.className = el.className.replace(/fa-volume-(up|mute)/, audio.muted ? "fa-volume-mute" : "fa-volume-up");
+  });
 };
 
 document.addEventListener("DOMContentLoaded",function(){
