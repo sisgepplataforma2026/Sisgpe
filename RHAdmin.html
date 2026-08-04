@@ -74,6 +74,7 @@
         <div class="rh-field"><label>Descontos</label><input id="rhDescontos" inputmode="decimal" placeholder="0,00"></div>
         <div class="rh-field"><label>Dependentes</label><input id="rhDependentes" type="number" min="0" step="1" placeholder="0"></div>
         <div class="rh-field"><label>Data de nascimento</label><input id="rhAniversario" type="date"></div>
+        <div class="rh-field"><label>E-mail</label><input id="rhEmail" type="email" placeholder="colaborador@email.com"></div>
         <div class="rh-actions" style="align-items:end"><button class="rh-btn primary" onclick="rhSalvar()">Salvar</button></div>
       </div>
 
@@ -247,7 +248,7 @@
     }
 
     window.rhSalvar=function(){
-      var item={id:editId||"",nome:(g("rhNome")||{}).value||"",cargo:(g("rhCargo")||{}).value||"",setor:(g("rhSetor")||{}).value||"Administrativo",status:(g("rhStatus")||{}).value||"Ativo",vencimento:(g("rhVencimento")||{}).value||"",salario:num((g("rhSalario")||{}).value),beneficios:num((g("rhBeneficios")||{}).value),descontos:num((g("rhDescontos")||{}).value),dependentes:Math.max(0,parseInt((g("rhDependentes")||{}).value||"0",10)||0),aniversario:(g("rhAniversario")||{}).value||""};
+      var item={id:editId||"",nome:(g("rhNome")||{}).value||"",cargo:(g("rhCargo")||{}).value||"",setor:(g("rhSetor")||{}).value||"Administrativo",status:(g("rhStatus")||{}).value||"Ativo",vencimento:(g("rhVencimento")||{}).value||"",salario:num((g("rhSalario")||{}).value),beneficios:num((g("rhBeneficios")||{}).value),descontos:num((g("rhDescontos")||{}).value),dependentes:Math.max(0,parseInt((g("rhDependentes")||{}).value||"0",10)||0),aniversario:(g("rhAniversario")||{}).value||"",email:(g("rhEmail")||{}).value||""};
       if(!item.nome.trim()){avisar("Informe o nome do colaborador.","warn");return;}
       google.script.run
         .withSuccessHandler(function(r){
@@ -262,7 +263,7 @@
     window.rhEditar=function(id){
       var i=RH_CACHE.find(function(x){return x.id===id;}); if(!i)return;
       editId=id;
-      g("rhNome").value=i.nome||"";g("rhCargo").value=i.cargo||"";g("rhSetor").value=i.setor||"Administrativo";g("rhStatus").value=i.status||"Ativo";g("rhVencimento").value=i.vencimento||"";g("rhSalario").value=i.salario?String(i.salario).replace(".",","):"";g("rhBeneficios").value=i.beneficios?String(i.beneficios).replace(".",","):"";g("rhDescontos").value=i.descontos?String(i.descontos).replace(".",","):"";g("rhDependentes").value=i.dependentes||0;g("rhAniversario").value=i.aniversario||"";g("rhNome").focus();
+      g("rhNome").value=i.nome||"";g("rhCargo").value=i.cargo||"";g("rhSetor").value=i.setor||"Administrativo";g("rhStatus").value=i.status||"Ativo";g("rhVencimento").value=i.vencimento||"";g("rhSalario").value=i.salario?String(i.salario).replace(".",","):"";g("rhBeneficios").value=i.beneficios?String(i.beneficios).replace(".",","):"";g("rhDescontos").value=i.descontos?String(i.descontos).replace(".",","):"";g("rhDependentes").value=i.dependentes||0;g("rhAniversario").value=i.aniversario||"";g("rhEmail").value=i.email||"";g("rhNome").focus();
     };
 
     window.rhExcluir=function(id){
@@ -276,10 +277,10 @@
         .excluirColaboradorRH(id, tokenSessao());
     };
 
-    window.rhLimparForm=function(){editId="";["rhNome","rhCargo","rhVencimento","rhSalario","rhBeneficios","rhDescontos","rhDependentes","rhAniversario"].forEach(function(id){if(g(id))g(id).value="";});if(g("rhSetor"))g("rhSetor").value="Administrativo";if(g("rhStatus"))g("rhStatus").value="Ativo";};
+    window.rhLimparForm=function(){editId="";["rhNome","rhCargo","rhVencimento","rhSalario","rhBeneficios","rhDescontos","rhDependentes","rhAniversario","rhEmail"].forEach(function(id){if(g(id))g(id).value="";});if(g("rhSetor"))g("rhSetor").value="Administrativo";if(g("rhStatus"))g("rhStatus").value="Ativo";};
 
     function baixarCSV(nome,rows){var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c==null?"":c).replace(/"/g,'""')+'"';}).join(";");}).join("\n");var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download=nome;a.click();}
-    window.rhExportarCSV=function(){var rows=[["Nome","Cargo","Setor","Status","Vencimento","Salario","Beneficios","Descontos","Dependentes","Aniversario"]].concat(RH_CACHE.map(function(i){return[i.nome,i.cargo,i.setor,i.status,i.vencimento,i.salario||0,i.beneficios||0,i.descontos||0,i.dependentes||0,i.aniversario||""];}));baixarCSV("sisgep-rh.csv",rows);};
+    window.rhExportarCSV=function(){var rows=[["Nome","Cargo","Setor","Status","Vencimento","Salario","Beneficios","Descontos","Dependentes","Aniversario","Email"]].concat(RH_CACHE.map(function(i){return[i.nome,i.cargo,i.setor,i.status,i.vencimento,i.salario||0,i.beneficios||0,i.descontos||0,i.dependentes||0,i.aniversario||"",i.email||""];}));baixarCSV("sisgep-rh.csv",rows);};
 
     /* ==== Documentos por colaborador ==== */
     var RH_DOC_COLAB_ATUAL="";
@@ -463,7 +464,18 @@
       baixarCSV("sisgep-folha-pagamento.csv",rows);
     };
 
-    window.rhAbrirSofia=function(){if(typeof spIr==="function")spIr("sofia",null,{mensagem:"Preciso de apoio no RH: colaboradores, documentos, férias ou vencimentos."});};
+    window.rhAbrirSofia=function(){
+      if(typeof spIr!=="function")return;
+      var mes=new Date().getMonth()+1;
+      var ativos=RH_CACHE.filter(function(i){return i.status==="Ativo";}).length;
+      var ferias=RH_CACHE.filter(function(i){return i.status==="Férias";}).length;
+      var afastados=RH_CACHE.filter(function(i){return i.status==="Afastado";}).length;
+      var aniv=RH_CACHE.filter(function(i){return i.aniversario&&Number(i.aniversario.slice(5,7))===mes;}).length;
+      var comp=(g("rhCompetencia")||{}).value||"";
+      var folhaTxt=RH_FOLHA_CACHE.length?("A folha de "+comp+" já foi gerada, com "+RH_FOLHA_CACHE.length+" lançamento(s)."):("A folha de "+comp+" ainda não foi gerada.");
+      var msg="Contexto do RH: "+ativos+" colaborador(es) ativo(s), "+ferias+" em férias, "+afastados+" afastado(s), "+aniv+" aniversariante(s) este mês. "+folhaTxt+" Preciso de apoio no RH.";
+      spIr("sofia",null,{mensagem:msg});
+    };
     window.rhGerarDocumento=function(){if(typeof spIr==="function")spIr("documentos",null,{aba:"novo"});};
 
     /* ==== Configuração tributária (INSS/IRRF/FGTS) ==== */

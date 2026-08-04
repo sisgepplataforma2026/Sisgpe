@@ -61,20 +61,18 @@ function rh_garantirColaboradores_() {
   if (sh.getLastRow() === 0) {
     sh.appendRow([
       "ID", "NOME", "CARGO", "SETOR", "STATUS", "VENCIMENTO",
-      "SALARIO", "BENEFICIOS", "DESCONTOS", "DEPENDENTES", "ANIVERSARIO",
+      "SALARIO", "BENEFICIOS", "DESCONTOS", "DEPENDENTES", "ANIVERSARIO", "EMAIL",
       "CRIADO_POR", "CRIADO_EM", "ATUALIZADO_POR", "ATUALIZADO_EM"
     ]);
-    sh.getRange(1, 1, 1, 15).setFontWeight("bold");
+    sh.getRange(1, 1, 1, 16).setFontWeight("bold");
     sh.setFrozenRows(1);
   } else {
-    var cab = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
-    if (cab.indexOf("DEPENDENTES") === -1) {
-      sh.getRange(1, sh.getLastColumn() + 1).setValue("DEPENDENTES").setFontWeight("bold");
-    }
-    cab = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
-    if (cab.indexOf("ANIVERSARIO") === -1) {
-      sh.getRange(1, sh.getLastColumn() + 1).setValue("ANIVERSARIO").setFontWeight("bold");
-    }
+    ["DEPENDENTES", "ANIVERSARIO", "EMAIL"].forEach(function (nomeCol) {
+      var cab = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+      if (cab.indexOf(nomeCol) === -1) {
+        sh.getRange(1, sh.getLastColumn() + 1).setValue(nomeCol).setFontWeight("bold");
+      }
+    });
   }
   return sh;
 }
@@ -245,8 +243,19 @@ function rh_diasNoMes_(competencia) {
 /* =========================================
  * COLABORADORES
  * ========================================= */
+// Público — exige sessão. Nunca chamar isto de dentro de uma rotina
+// disparada por trigger (sem usuário logado); use a versão _interno_.
 function listarColaboradoresRH(tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
+  return listarColaboradoresRH_interno_();
+}
+
+// Núcleo sem checagem de sessão — usado por gerarFolhaRH/prepararFolhaRH
+// (que já validam o token na entrada) e pela rotina de aniversariantes
+// disparada por trigger (verificarAniversariantesRH em RHAniversarios.gs,
+// sem usuário logado). Nunca exponha esta função diretamente a
+// google.script.run.
+function listarColaboradoresRH_interno_() {
   try {
     var sh = rh_garantirColaboradores_();
     if (sh.getLastRow() < 2) return [];
@@ -269,12 +278,13 @@ function listarColaboradoresRH(tokenSessao) {
           beneficios: Number(obj.BENEFICIOS || 0),
           descontos: Number(obj.DESCONTOS || 0),
           dependentes: Number(obj.DEPENDENTES || 0),
-          aniversario: rh_formatarData_(obj.ANIVERSARIO)
+          aniversario: rh_formatarData_(obj.ANIVERSARIO),
+          email: String(obj.EMAIL || "")
         };
       })
       .filter(function (x) { return !!x.id; });
   } catch (e) {
-    Logger.log("listarColaboradoresRH erro: " + e.message);
+    Logger.log("listarColaboradoresRH_interno_ erro: " + e.message);
     return [];
   }
 }
@@ -302,7 +312,8 @@ function salvarColaboradorRH(dados, tokenSessao) {
       BENEFICIOS: Number(dados.beneficios || 0),
       DESCONTOS: Number(dados.descontos || 0),
       DEPENDENTES: Number(dados.dependentes || 0),
-      ANIVERSARIO: dados.aniversario || ""
+      ANIVERSARIO: dados.aniversario || "",
+      EMAIL: String(dados.email || "").trim()
     };
 
     function escreverCampos(linha) {
@@ -380,7 +391,7 @@ function prepararFolhaRH(competencia, tokenSessao) {
     if (!competencia) return { ok: false, mensagem: "Informe a competência." };
 
     var diasMes = rh_diasNoMes_(competencia);
-    var colaboradores = listarColaboradoresRH(tokenSessao).filter(function (c) { return c.status !== "Desligado"; });
+    var colaboradores = listarColaboradoresRH_interno_().filter(function (c) { return c.status !== "Desligado"; });
 
     return {
       ok: true,
@@ -410,7 +421,7 @@ function gerarFolhaRH(competencia, itens, observacao, tokenSessao) {
 
     var diasMes = rh_diasNoMes_(competencia);
     var cfg = rh_obterConfigTributaria_();
-    var colaboradores = listarColaboradoresRH(tokenSessao);
+    var colaboradores = listarColaboradoresRH_interno_();
     var mapaColab = {};
     colaboradores.forEach(function (c) { mapaColab[c.id] = c; });
 
@@ -457,15 +468,62 @@ function gerarFolhaRH(competencia, itens, observacao, tokenSessao) {
       sh.getRange(sh.getLastRow() + 1, 1, linhas.length, linhas[0].length).setValues(linhas);
     }
 
+    var linhasObj = linhas.map(rh_linhaFolhaParaObjeto_);
+
+    // Fecha o ciclo com o Financeiro: registra o custo total da folha como
+    // despesa (Fase 4). Best-effort — a folha já está gravada nesse ponto,
+    // uma falha aqui não pode desfazer o que já foi confirmado. Reprocessar
+    // a mesma competência gera uma NOVA despesa (não substitui a anterior);
+    // se isso acontecer, cancele/estorne a duplicada na tela de Despesas.
+    if (linhasObj.length) {
+      try {
+        rh_registrarDespesaFolha_(competencia, linhasObj, tokenSessao);
+      } catch (eDesp) {
+        Logger.log("[RH] falha ao registrar despesa da folha (" + competencia + "): " + eDesp.message);
+      }
+    }
+
     return {
       ok: true,
       competencia: competencia,
-      linhas: linhas.map(rh_linhaFolhaParaObjeto_),
+      linhas: linhasObj,
       mensagem: "Folha de " + competencia + " gerada com " + linhas.length + " colaborador(es)."
     };
   } catch (e) {
     return { ok: false, mensagem: "Erro ao gerar folha: " + e.message };
   }
+}
+
+// Custo total da folha (Fase 4): bruto de todos os colaboradores + FGTS
+// patronal — é o desembolso real do sindicato no período (líquido pago ao
+// colaborador + INSS/IRRF retidos e recolhidos + FGTS depositado), não só
+// o que cai na conta de cada um. Vira um único lançamento em Despesas.
+function rh_registrarDespesaFolha_(competencia, linhasObj, tokenSessao) {
+  var totalBruto = 0, totalFgts = 0;
+  linhasObj.forEach(function (l) { totalBruto += l.bruto; totalFgts += l.fgtsPatronal; });
+  var totalDespesa = Math.round((totalBruto + totalFgts) * 100) / 100;
+  if (totalDespesa <= 0) return;
+
+  var diasMes = rh_diasNoMes_(competencia);
+  var dataVencimento = competencia + "-" + String(diasMes).padStart(2, "0");
+
+  if (typeof registrarLancamentoDespesa !== "function") {
+    Logger.log("[RH] registrarLancamentoDespesa não disponível — despesa da folha " + competencia + " não registrada.");
+    return;
+  }
+
+  registrarLancamentoDespesa({
+    tipoLancamento: (typeof TIPO_LANCAMENTO_DESP !== "undefined" ? TIPO_LANCAMENTO_DESP.AVULSO : "avulso"),
+    categoria: "Folha de Pagamento",
+    prestadorNome: "Folha de Pagamento — " + competencia,
+    descricao: "Custo total da folha de pagamento dos colaboradores do sindicato — competência " + competencia +
+      " (" + linhasObj.length + " colaborador(es); inclui FGTS patronal).",
+    valor: totalDespesa,
+    dataVencimento: dataVencimento,
+    quemAgendou: "Automático",
+    observacoes: "Gerado automaticamente ao fechar a folha de RH. Reprocessar a competência cria uma nova despesa — cancele a anterior se for o caso.",
+    confirmarDuplicidade: true
+  }, tokenSessao);
 }
 
 function rh_linhaFolhaParaObjeto_(l) {
