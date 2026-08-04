@@ -80,6 +80,9 @@
           <button class="rh-btn" onclick="rhAplicarCentroCustoDepartamento()" id="btnRhCentroCustoDepto">🏢 Aplicar Centro de Custo/Departamento reais</button>
           <button class="rh-btn gold" onclick="rhReajusteSalarial()" id="btnRhReajuste">💹 Reajuste salarial (convenção)</button>
           <button class="rh-btn" onclick="rhVerificarQuinquenioDecenio()" id="btnRhQuinquenioDecenio">📅 Verificar Quinquênio/Decênio</button>
+          <span id="rhTriggerTempoServicoStatus" class="rh-mini" style="display:inline-flex;align-items:center;gap:5px;"><span id="rhTriggerTempoServicoDot" style="width:8px;height:8px;border-radius:50%;background:#cbd5e1;display:inline-block;"></span><span id="rhTriggerTempoServicoTxt">verificando automação…</span></span>
+          <button class="rh-btn" onclick="rhAtivarAutoQuinquenioDecenio()" id="btnRhAtivarAuto">▶️ Ativar verificação automática</button>
+          <button class="rh-btn" onclick="rhDesativarAutoQuinquenioDecenio()" id="btnRhDesativarAuto">⏸️ Desativar</button>
           <button class="rh-btn red" onclick="rhCorrigirAbonoCCT()" id="btnRhCorrigirAbono">⚠️ Corrigir Abono CCT (não é recorrente)</button>
         </div>
       </div>
@@ -500,6 +503,52 @@
           avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
         })
         .corrigirAbonoCCTNaoRecorrente_publico(tokenSessao());
+    };
+
+    window.rhAtualizarStatusTriggerTempoServico=function(){
+      google.script.run
+        .withSuccessHandler(function(r){
+          var dot=g("rhTriggerTempoServicoDot"), txt=g("rhTriggerTempoServicoTxt");
+          if(!dot||!txt)return;
+          if(r&&r.ok&&r.instalado){dot.style.background="#0f8a5f";txt.textContent="automação ativa (~9h/dia)";}
+          else{dot.style.background="#cbd5e1";txt.textContent="automação desativada";}
+        })
+        .withFailureHandler(function(){})
+        .rh_statusTriggerQuinquenioDecenio_publico(tokenSessao());
+    };
+
+    window.rhAtivarAutoQuinquenioDecenio=function(){
+      if(!confirm("Ativar a verificação automática diária de Quinquênio/Decênio? Ela aplica sozinha as mudanças (ativa/desativa rubricas fixas) quando alguém completa 5 ou 10 anos de admissão, e avisa por e-mail (financeiro@sindeducacao.com) só quando encontra alguma mudança."))return;
+      var btn=g("btnRhAtivarAuto"); if(btn){btn.disabled=true;btn.textContent="Ativando...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="▶️ Ativar verificação automática";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao ativar.","err");return;}
+          avisar(r.mensagem||"Ativado.","ok");
+          rhAtualizarStatusTriggerTempoServico();
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="▶️ Ativar verificação automática";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .rh_instalarTriggerQuinquenioDecenio_publico(tokenSessao());
+    };
+
+    window.rhDesativarAutoQuinquenioDecenio=function(){
+      if(!confirm("Desativar a verificação automática diária de Quinquênio/Decênio?"))return;
+      var btn=g("btnRhDesativarAuto"); if(btn){btn.disabled=true;btn.textContent="...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="⏸️ Desativar";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao desativar.","err");return;}
+          avisar(r.mensagem||"Desativado.","ok");
+          rhAtualizarStatusTriggerTempoServico();
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="⏸️ Desativar";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .rh_removerTriggerQuinquenioDecenio_publico(tokenSessao());
     };
 
     window.rhLimparForm=function(){editId="";["rhNome","rhCargo","rhVencimento","rhSalario","rhBeneficios","rhDescontos","rhDependentes","rhAniversario","rhEmail","rhMatricula","rhCbo","rhCentroCusto","rhDepartamento","rhFilial","rhAdmissao","rhCpf"].forEach(function(id){if(g(id))g(id).value="";});if(g("rhSetor"))g("rhSetor").value="Administrativo";if(g("rhStatus"))g("rhStatus").value="Ativo";};
@@ -944,6 +993,7 @@
       rhCarregarFolha();
       rhCarregarConfigTrib();
       rhCarregarRubricas();
+      rhAtualizarStatusTriggerTempoServico();
     };
     if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",window.initRH);else setTimeout(window.initRH,80);
   })();
