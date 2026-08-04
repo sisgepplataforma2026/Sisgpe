@@ -13,6 +13,93 @@
     </div>
   </div>
   <script>
-  (function(){var KEY="sisgep_eventos_v1",edit="";function g(i){return document.getElementById(i)}function dados(){try{return JSON.parse(localStorage.getItem(KEY)||"[]")}catch(e){return[]}}function salvar(l){localStorage.setItem(KEY,JSON.stringify(l||[]))}function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])})}function hojeISO(){return new Date().toISOString().slice(0,10)}function cls(s){return s==="Concluido"?"ev-ok":s==="Em andamento"?"ev-warn":"ev-blue"}window.evRender=function(){var l=dados(),b=String((g("evBusca")||{}).value||"").toLowerCase(),h=hojeISO(),f=l.filter(function(x){return !b||[x.nome,x.tipo,x.status].join(" ").toLowerCase().indexOf(b)>=0});g("evProximos").textContent=l.filter(function(x){return x.data>=h&&x.status!=="Concluido"}).length;g("evHoje").textContent=l.filter(function(x){return x.data===h}).length;g("evComunicacao").textContent=l.filter(function(x){return x.tipo==="Comunicado"}).length;g("evConcluidos").textContent=l.filter(function(x){return x.status==="Concluido"}).length;g("evTabela").innerHTML=f.length?f.map(function(x){return"<tr><td><strong>"+esc(x.nome)+"</strong></td><td>"+esc(x.data||"-")+"</td><td>"+esc(x.tipo)+"</td><td><span class='ev-pill "+cls(x.status)+"'>"+esc(x.status)+"</span></td><td><button class='ev-btn' onclick=\"evEditar('"+x.id+"')\">Editar</button> <button class='ev-btn' onclick=\"evExcluir('"+x.id+"')\">Excluir</button></td></tr>"}).join(""):"<tr><td colspan='5' style='text-align:center;color:#94a3b8;padding:24px'>Nenhum evento cadastrado.</td></tr>"};window.evSalvar=function(){var x={id:edit||String(Date.now()),nome:g("evNome").value,data:g("evData").value,tipo:g("evTipo").value,status:g("evStatus").value};if(!x.nome)return toast("Informe o evento.","warn");var l=dados(),i=l.findIndex(function(a){return a.id===x.id});if(i>=0)l[i]=x;else l.push(x);salvar(l);evLimpar();evRender()};window.evEditar=function(id){var x=dados().find(function(a){return a.id===id});if(!x)return;edit=id;g("evNome").value=x.nome;g("evData").value=x.data;g("evTipo").value=x.tipo;g("evStatus").value=x.status};window.evExcluir=function(id){if(confirm("Excluir evento?")){salvar(dados().filter(function(x){return x.id!==id}));evRender()}};window.evLimpar=function(){edit="";["evNome","evData"].forEach(function(i){g(i).value=""});g("evTipo").value="Assembleia";g("evStatus").value="Planejado"};window.evExportar=function(){var rows=[["Evento","Data","Tipo","Status"]].concat(dados().map(function(x){return[x.nome,x.data,x.tipo,x.status]}));var csv=rows.map(function(r){return r.map(function(c){return'"'+String(c||"").replace(/"/g,'""')+'"'}).join(";")}).join("\n");var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download="sisgep-eventos.csv";a.click()};window.evAbrirEmissaoIngressos=function(){var token=typeof SISGEP_TOKEN_SESSAO!=="undefined"?SISGEP_TOKEN_SESSAO:"";var base=window.location.origin+window.location.pathname;window.open(base+"?painel=emissao&sessao="+encodeURIComponent(token),"_blank")};window.evAbrirCheckin=function(){var token=typeof SISGEP_TOKEN_SESSAO!=="undefined"?SISGEP_TOKEN_SESSAO:"";var base=window.location.origin+window.location.pathname;window.open(base+"?painel=checkin&sessao="+encodeURIComponent(token),"_blank")};window.initEventos=evRender;if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",evRender);else setTimeout(evRender,80)})();
+  (function(){
+    var EV_CACHE = [];
+    var EV_EDITANDO = "";
+
+    function g(i){ return document.getElementById(i); }
+    function esc(s){ return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]); }); }
+    function hojeISO(){ return new Date().toISOString().slice(0,10); }
+    function cls(s){ return s==="Concluido"?"ev-ok":s==="Em andamento"?"ev-warn":"ev-blue"; }
+    function tokenSessao(){ return typeof SISGEP_TOKEN_SESSAO!=="undefined" ? SISGEP_TOKEN_SESSAO : ""; }
+    function avisar(msg,tipo){ if(typeof toast==="function") toast(msg,tipo); }
+
+    function evPintar(){
+      var l=EV_CACHE, b=String((g("evBusca")||{}).value||"").toLowerCase(), h=hojeISO();
+      var f=l.filter(function(x){ return !b||[x.nome,x.tipo,x.status].join(" ").toLowerCase().indexOf(b)>=0; });
+      g("evProximos").textContent=l.filter(function(x){ return x.data>=h&&x.status!=="Concluido"; }).length;
+      g("evHoje").textContent=l.filter(function(x){ return x.data===h; }).length;
+      g("evComunicacao").textContent=l.filter(function(x){ return x.tipo==="Comunicado"; }).length;
+      g("evConcluidos").textContent=l.filter(function(x){ return x.status==="Concluido"; }).length;
+      g("evTabela").innerHTML=f.length?f.map(function(x){
+        return "<tr><td><strong>"+esc(x.nome)+"</strong></td><td>"+esc(x.data||"-")+"</td><td>"+esc(x.tipo)+"</td>"
+          +"<td><span class='ev-pill "+cls(x.status)+"'>"+esc(x.status)+"</span></td>"
+          +"<td><button class='ev-btn' onclick=\"evEditar('"+x.id+"')\">Editar</button> <button class='ev-btn' onclick=\"evExcluir('"+x.id+"')\">Excluir</button></td></tr>";
+      }).join(""):"<tr><td colspan='5' style='text-align:center;color:#94a3b8;padding:24px'>Nenhum evento cadastrado.</td></tr>";
+    }
+
+    window.evRender=function(){
+      var tbody=g("evTabela");
+      if(tbody) tbody.innerHTML="<tr><td colspan='5' style='text-align:center;color:#94a3b8;padding:24px'>⏳ Carregando agenda...</td></tr>";
+      google.script.run
+        .withSuccessHandler(function(lista){ EV_CACHE=lista||[]; evPintar(); })
+        .withFailureHandler(function(e){
+          if(tbody) tbody.innerHTML="<tr><td colspan='5' style='text-align:center;color:#b91c1c;padding:24px'>Erro ao carregar agenda: "+esc((e&&e.message)||String(e||""))+"</td></tr>";
+        })
+        .listarEventosAgenda(tokenSessao());
+    };
+
+    window.evSalvar=function(){
+      var x={ id:EV_EDITANDO||"", nome:g("evNome").value, data:g("evData").value, tipo:g("evTipo").value, status:g("evStatus").value };
+      if(!x.nome||!x.nome.trim()){ avisar("Informe o evento.","warn"); return; }
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||r.ok!==true){ avisar((r&&r.mensagem)||"Erro ao salvar.","err"); return; }
+          avisar(r.mensagem||"Evento salvo!","ok");
+          evLimpar(); evRender();
+        })
+        .withFailureHandler(function(e){ avisar("Erro: "+((e&&e.message)||String(e||"")),"err"); })
+        .salvarEventoAgenda(x, tokenSessao());
+    };
+
+    window.evEditar=function(id){
+      var x=EV_CACHE.find(function(a){ return a.id===id; });
+      if(!x) return;
+      EV_EDITANDO=id;
+      g("evNome").value=x.nome; g("evData").value=x.data; g("evTipo").value=x.tipo; g("evStatus").value=x.status;
+    };
+
+    window.evExcluir=function(id){
+      if(!confirm("Excluir evento?")) return;
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||r.ok!==true){ avisar((r&&r.mensagem)||"Erro ao excluir.","err"); return; }
+          evRender();
+        })
+        .withFailureHandler(function(e){ avisar("Erro: "+((e&&e.message)||String(e||"")),"err"); })
+        .excluirEventoAgenda(id, tokenSessao());
+    };
+
+    window.evLimpar=function(){
+      EV_EDITANDO="";
+      ["evNome","evData"].forEach(function(i){ g(i).value=""; });
+      g("evTipo").value="Assembleia"; g("evStatus").value="Planejado";
+    };
+
+    window.evExportar=function(){
+      var rows=[["Evento","Data","Tipo","Status"]].concat(EV_CACHE.map(function(x){ return [x.nome,x.data,x.tipo,x.status]; }));
+      var csv=rows.map(function(r){ return r.map(function(c){ return '"'+String(c||"").replace(/"/g,'""')+'"'; }).join(";"); }).join("\n");
+      var a=document.createElement("a");
+      a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+      a.download="sisgep-eventos.csv"; a.click();
+    };
+
+    window.evAbrirEmissaoIngressos=function(){ var token=tokenSessao(); var base=window.location.origin+window.location.pathname; window.open(base+"?painel=emissao&sessao="+encodeURIComponent(token),"_blank"); };
+    window.evAbrirCheckin=function(){ var token=tokenSessao(); var base=window.location.origin+window.location.pathname; window.open(base+"?painel=checkin&sessao="+encodeURIComponent(token),"_blank"); };
+
+    window.initEventos=evRender;
+    if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",evRender);
+    else setTimeout(evRender,80);
+  })();
   </script>
 </div>
