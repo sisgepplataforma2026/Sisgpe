@@ -65,7 +65,13 @@
   function ckObterTokenSessao(){
     try{
       var params = new URLSearchParams(window.location.search);
-      return params.get('sessao') || '';
+      var t = params.get('sessao') || '';
+      if(t){
+        var url = new URL(window.location.href);
+        url.searchParams.delete('sessao');
+        window.history.replaceState(null, '', url.pathname + (url.search || ''));
+      }
+      return t;
     }catch(e){ return ''; }
   }
   var CK_TOKEN = ckObterTokenSessao();
