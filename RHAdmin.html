@@ -11,7 +11,7 @@
     .rh-panel-head{padding:14px 16px;border-bottom:1px solid #eef2f7;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
     .rh-panel-title{font-size:14px;font-weight:900;color:var(--navy,#001f4d)}.rh-actions{display:flex;gap:8px;flex-wrap:wrap}
     .rh-btn{height:34px;border-radius:9px;border:1px solid var(--g300,#cbd5e1);background:#fff;color:var(--g700,#334155);font-size:12px;font-weight:800;padding:0 12px;cursor:pointer;font-family:inherit}
-    .rh-btn.primary{background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));border-color:var(--blue,#1565C0);color:#fff}.rh-btn.gold{background:#fff7d6;border-color:#e8c870;color:#7a5a00}
+    .rh-btn.primary{background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));border-color:var(--blue,#1565C0);color:#fff}.rh-btn.gold{background:#fff7d6;border-color:#e8c870;color:#7a5a00}.rh-btn.red{background:var(--red-lt,#fee2e2);border-color:#fca5a5;color:#991b1b}
     .rh-form{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 1fr 1fr 1fr 90px auto;gap:10px;padding:14px 16px;background:var(--g50,#f8fafc);border-bottom:1px solid #eef2f7}
     .rh-tribrow{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;margin-bottom:8px}
     .rh-tribrow.irrf{grid-template-columns:1fr 1fr 1fr}
@@ -80,6 +80,7 @@
           <button class="rh-btn" onclick="rhAplicarCentroCustoDepartamento()" id="btnRhCentroCustoDepto">🏢 Aplicar Centro de Custo/Departamento reais</button>
           <button class="rh-btn gold" onclick="rhReajusteSalarial()" id="btnRhReajuste">💹 Reajuste salarial (convenção)</button>
           <button class="rh-btn" onclick="rhVerificarQuinquenioDecenio()" id="btnRhQuinquenioDecenio">📅 Verificar Quinquênio/Decênio</button>
+          <button class="rh-btn red" onclick="rhCorrigirAbonoCCT()" id="btnRhCorrigirAbono">⚠️ Corrigir Abono CCT (não é recorrente)</button>
         </div>
       </div>
 
@@ -479,6 +480,26 @@
         })
         .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
         .aplicarQuinquenioDecenioRH_publico(tokenSessao());
+    };
+
+    // A CCT (CCTCore.gs) mostra que Abono CCT é pagamento ÚNICO ("pago
+    // até 03/07/2026"), não recorrente — eu tinha aplicado como rubrica
+    // fixa por engano. Isso só desativa a recorrência, não mexe no valor
+    // já pago em junho/2026.
+    window.rhCorrigirAbonoCCT=function(){
+      if(!confirm("Desativar o Abono CCT como rubrica fixa/recorrente? A CCT mostra que é um pagamento único (prazo 03/07/2026), não algo que se repete todo mês. O valor já pago em junho/2026 não é alterado."))return;
+      var btn=g("btnRhCorrigirAbono"); if(btn){btn.disabled=true;btn.textContent="Corrigindo...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="⚠️ Corrigir Abono CCT (não é recorrente)";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao corrigir.","err");return;}
+          avisar(r.mensagem||"Corrigido.","ok");
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="⚠️ Corrigir Abono CCT (não é recorrente)";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .corrigirAbonoCCTNaoRecorrente_publico(tokenSessao());
     };
 
     window.rhLimparForm=function(){editId="";["rhNome","rhCargo","rhVencimento","rhSalario","rhBeneficios","rhDescontos","rhDependentes","rhAniversario","rhEmail","rhMatricula","rhCbo","rhCentroCusto","rhDepartamento","rhFilial","rhAdmissao","rhCpf"].forEach(function(id){if(g(id))g(id).value="";});if(g("rhSetor"))g("rhSetor").value="Administrativo";if(g("rhStatus"))g("rhStatus").value="Ativo";};

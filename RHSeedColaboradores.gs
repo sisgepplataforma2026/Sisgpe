@@ -278,3 +278,49 @@ function aplicarRubricasFixasReaisJunho2026_() {
   Logger.log("[RH] Rubricas fixas Extrato 06/2026 — aplicadas: " + (aplicadas.join(", ") || "nenhuma") + " | pendências: " + (naoEncontradas.join(", ") || "nenhuma"));
   return { ok: true, aplicadas: aplicadas, naoEncontradas: naoEncontradas };
 }
+
+// ================================
+// CORREÇÃO — Abono CCT NÃO é recorrente. A CCTCore.gs (texto real da
+// convenção) mostra na Cláusula 03: "Abono de 15% sobre salário de
+// fevereiro/2026, pago até 03/07/2026 via Cartão Benefício" — é um
+// pagamento ÚNICO com prazo, não um item que se repete todo mês. Eu
+// tinha incluído o código 518 (Abono CCT) na lista de rubricas FIXAS
+// (aplicarRubricasFixasReaisJunho2026_ acima) — estava errado, essa
+// função desativa essa rubrica fixa nos 7 colaboradores (sem apagar o
+// histórico: usa o mesmo desligar lógico de alternarRubricaFixaColaboradorRH).
+// O valor de junho/2026 já foi pago e já está registrado normalmente
+// no lançamento daquele mês — não precisa mexer no passado, só parar
+// de repetir esse valor nos próximos meses.
+// ================================
+
+function corrigirAbonoCCTNaoRecorrente_publico(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, true);
+  try {
+    return corrigirAbonoCCTNaoRecorrente_(tokenSessao);
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao corrigir Abono CCT: " + e.message };
+  }
+}
+
+function corrigirAbonoCCTNaoRecorrente_(tokenSessao) {
+  var CODIGO_ABONO_CCT_ = "518";
+  var colaboradores = listarColaboradoresRH_interno_();
+  var desativados = [];
+
+  colaboradores.forEach(function (c) {
+    var fixas = rh_listarRubricasFixasColaborador_interno_(c.id).filter(function (f) { return f.ativo && f.codigo === CODIGO_ABONO_CCT_; });
+    fixas.forEach(function (f) {
+      alternarRubricaFixaColaboradorRH(f.id, false, tokenSessao);
+      desativados.push(c.nome);
+    });
+  });
+
+  Logger.log("[RH] Abono CCT desativado como rubrica fixa (era pagamento único, não recorrente) para: " + (desativados.join(", ") || "ninguém — nenhum tinha ativo"));
+  return {
+    ok: true,
+    desativados: desativados,
+    mensagem: desativados.length
+      ? "Abono CCT desativado como recorrente para " + desativados.length + " colaborador(es) — o valor de junho/2026 continua registrado normalmente, só não vai mais repetir nos próximos meses."
+      : "Nenhum colaborador tinha Abono CCT ativo como rubrica fixa."
+  };
+}
