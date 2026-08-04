@@ -50,7 +50,7 @@
       <div class="rh-panel-head">
         <div>
           <div class="rh-panel-title">Cadastro rápido</div>
-          <div class="rh-mini">Os registros ficam no navegador até integrar com uma planilha do RH.</div>
+          <div class="rh-mini">Os registros ficam salvos na planilha do RH, compartilhados por toda a equipe.</div>
         </div>
         <div class="rh-actions">
           <button class="rh-btn gold" onclick="rhAbrirSofia()">Consultar SOFIA</button>
@@ -120,20 +120,32 @@
   <script>
   (function(){
     "use strict";
-    var KEY="sisgep_rh_colaboradores_v1";
-    var FOLHA_KEY="sisgep_rh_folha_atual_v1";
+    var RH_CACHE=[];
+    var RH_FOLHA_CACHE=[];
     var editId="";
     function g(id){return document.getElementById(id);}
-    function dados(){try{return JSON.parse(localStorage.getItem(KEY)||"[]");}catch(e){return[];}}
-    function gravar(lista){localStorage.setItem(KEY,JSON.stringify(lista||[]));}
+    function tokenSessao(){return typeof SISGEP_TOKEN_SESSAO!=="undefined"?SISGEP_TOKEN_SESSAO:"";}
+    function avisar(msg,tipo){if(typeof toast==="function")toast(msg,tipo);}
     function diasAte(data){if(!data)return 9999;var h=new Date();h.setHours(0,0,0,0);var d=new Date(data+"T00:00:00");return Math.ceil((d-h)/86400000);}
     function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]);});}
     function num(v){v=String(v||"").replace(/\./g,"").replace(",",".").replace(/[^\d.-]/g,"");var n=Number(v);return isFinite(n)?n:0;}
     function moeda(v){return Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});}
     function statusClass(s){s=String(s||"").toLowerCase();if(s==="ativo")return"ok";if(s==="férias")return"info";if(s==="afastado")return"warn";return"off";}
     function pendencia(item){var d=diasAte(item.vencimento);if(d<0)return'<span class="rh-pill off">Vencido</span>';if(d<=30)return'<span class="rh-pill warn">Atenção</span>';return'<span class="rh-pill ok">Ok</span>';}
+
     window.rhRender=function(){
-      var lista=dados(), busca=String((g("rhBusca")||{}).value||"").toLowerCase();
+      var tb=g("rhTabela"); if(!tb)return;
+      tb.innerHTML='<tr><td colspan="8" class="rh-empty">⏳ Carregando colaboradores...</td></tr>';
+      google.script.run
+        .withSuccessHandler(function(lista){ RH_CACHE=lista||[]; rhPintar(); })
+        .withFailureHandler(function(e){
+          tb.innerHTML='<tr><td colspan="8" class="rh-empty">Erro ao carregar: '+esc((e&&e.message)||String(e||""))+'</td></tr>';
+        })
+        .listarColaboradoresRH(tokenSessao());
+    };
+
+    function rhPintar(){
+      var lista=RH_CACHE, busca=String((g("rhBusca")||{}).value||"").toLowerCase();
       var filtrada=lista.filter(function(i){return !busca || [i.nome,i.cargo,i.setor,i.status].join(" ").toLowerCase().indexOf(busca)>=0;});
       var tb=g("rhTabela"), vazio=g("rhVazio"); if(!tb)return;
       tb.innerHTML=filtrada.map(function(i){
@@ -143,7 +155,8 @@
       tb.querySelectorAll("[data-rh-excluir]").forEach(function(btn){btn.addEventListener("click",function(){rhExcluir(btn.getAttribute("data-rh-excluir"));});});
       if(vazio)vazio.style.display=filtrada.length?"none":"block";
       atualizarCards(lista);
-    };
+    }
+
     function atualizarCards(lista){
       var mes=new Date().getMonth()+1;
       var ativos=lista.filter(function(i){return i.status==="Ativo";}).length;
@@ -155,40 +168,91 @@
       if(g("rhDocs"))g("rhDocs").textContent=docs;
       if(g("rhAniversarios"))g("rhAniversarios").textContent=aniv;
     }
+
     window.rhSalvar=function(){
-      var item={id:editId||String(Date.now()),nome:(g("rhNome")||{}).value||"",cargo:(g("rhCargo")||{}).value||"",setor:(g("rhSetor")||{}).value||"Administrativo",status:(g("rhStatus")||{}).value||"Ativo",vencimento:(g("rhVencimento")||{}).value||"",salario:num((g("rhSalario")||{}).value),beneficios:num((g("rhBeneficios")||{}).value),descontos:num((g("rhDescontos")||{}).value)};
-      if(!item.nome.trim()){toast("Informe o nome do colaborador.","warn");return;}
-      var lista=dados(), idx=lista.findIndex(function(i){return i.id===item.id;});
-      if(idx>=0)lista[idx]=item;else lista.push(item);
-      gravar(lista); editId=""; rhLimparForm(); rhRender();
+      var item={id:editId||"",nome:(g("rhNome")||{}).value||"",cargo:(g("rhCargo")||{}).value||"",setor:(g("rhSetor")||{}).value||"Administrativo",status:(g("rhStatus")||{}).value||"Ativo",vencimento:(g("rhVencimento")||{}).value||"",salario:num((g("rhSalario")||{}).value),beneficios:num((g("rhBeneficios")||{}).value),descontos:num((g("rhDescontos")||{}).value)};
+      if(!item.nome.trim()){avisar("Informe o nome do colaborador.","warn");return;}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao salvar.","err");return;}
+          avisar(r.mensagem||"Colaborador salvo!","ok");
+          editId=""; rhLimparForm(); rhRender();
+        })
+        .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+        .salvarColaboradorRH(item, tokenSessao());
     };
-    window.rhEditar=function(id){var i=dados().find(function(x){return x.id===id;});if(!i)return;editId=id;g("rhNome").value=i.nome||"";g("rhCargo").value=i.cargo||"";g("rhSetor").value=i.setor||"Administrativo";g("rhStatus").value=i.status||"Ativo";g("rhVencimento").value=i.vencimento||"";g("rhSalario").value=i.salario?String(i.salario).replace(".",","):"";g("rhBeneficios").value=i.beneficios?String(i.beneficios).replace(".",","):"";g("rhDescontos").value=i.descontos?String(i.descontos).replace(".",","):"";g("rhNome").focus();};
-    window.rhExcluir=function(id){if(!confirm("Excluir este cadastro?"))return;gravar(dados().filter(function(i){return i.id!==id;}));rhRender();};
+
+    window.rhEditar=function(id){
+      var i=RH_CACHE.find(function(x){return x.id===id;}); if(!i)return;
+      editId=id;
+      g("rhNome").value=i.nome||"";g("rhCargo").value=i.cargo||"";g("rhSetor").value=i.setor||"Administrativo";g("rhStatus").value=i.status||"Ativo";g("rhVencimento").value=i.vencimento||"";g("rhSalario").value=i.salario?String(i.salario).replace(".",","):"";g("rhBeneficios").value=i.beneficios?String(i.beneficios).replace(".",","):"";g("rhDescontos").value=i.descontos?String(i.descontos).replace(".",","):"";g("rhNome").focus();
+    };
+
+    window.rhExcluir=function(id){
+      if(!confirm("Excluir este cadastro?"))return;
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao excluir.","err");return;}
+          rhRender();
+        })
+        .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+        .excluirColaboradorRH(id, tokenSessao());
+    };
+
     window.rhLimparForm=function(){editId="";["rhNome","rhCargo","rhVencimento","rhSalario","rhBeneficios","rhDescontos"].forEach(function(id){if(g(id))g(id).value="";});if(g("rhSetor"))g("rhSetor").value="Administrativo";if(g("rhStatus"))g("rhStatus").value="Ativo";};
+
     function baixarCSV(nome,rows){var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c==null?"":c).replace(/"/g,'""')+'"';}).join(";");}).join("\n");var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download=nome;a.click();}
-    window.rhExportarCSV=function(){var rows=[["Nome","Cargo","Setor","Status","Vencimento","Salario","Beneficios","Descontos"]].concat(dados().map(function(i){return[i.nome,i.cargo,i.setor,i.status,i.vencimento,i.salario||0,i.beneficios||0,i.descontos||0];}));baixarCSV("sisgep-rh.csv",rows);};
-    function folhaAtual(){try{return JSON.parse(localStorage.getItem(FOLHA_KEY)||"[]");}catch(e){return[];}}
+    window.rhExportarCSV=function(){var rows=[["Nome","Cargo","Setor","Status","Vencimento","Salario","Beneficios","Descontos"]].concat(RH_CACHE.map(function(i){return[i.nome,i.cargo,i.setor,i.status,i.vencimento,i.salario||0,i.beneficios||0,i.descontos||0];}));baixarCSV("sisgep-rh.csv",rows);};
+
     function setText(id,v){if(g(id))g(id).textContent=v;}
+
     window.rhGerarFolha=function(){
       var comp=(g("rhCompetencia")||{}).value||new Date().toISOString().slice(0,7);
       var perc=num((g("rhEncargos")||{}).value);
-      var linhas=dados().filter(function(i){return i.status!=="Desligado";}).map(function(i){
-        var salario=Number(i.salario||0), beneficios=Number(i.beneficios||0), descontos=Number(i.descontos||0), encargos=salario*(perc/100), bruto=salario+beneficios, liquido=bruto-descontos;
-        return {competencia:comp,nome:i.nome,cargo:i.cargo,salario:salario,beneficios:beneficios,descontos:descontos,encargos:encargos,bruto:bruto,liquido:liquido};
-      });
-      localStorage.setItem(FOLHA_KEY,JSON.stringify(linhas)); rhRenderFolha(linhas);
+      var obs=(g("rhObsFolha")||{}).value||"";
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao gerar folha.","err");return;}
+          RH_FOLHA_CACHE=r.linhas||[];
+          rhRenderFolha(RH_FOLHA_CACHE);
+          avisar(r.mensagem||"Folha gerada!","ok");
+        })
+        .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+        .gerarFolhaRH(comp, perc, obs, tokenSessao());
     };
+
+    window.rhCarregarFolha=function(){
+      var comp=(g("rhCompetencia")||{}).value||new Date().toISOString().slice(0,7);
+      google.script.run
+        .withSuccessHandler(function(lista){ RH_FOLHA_CACHE=lista||[]; rhRenderFolha(RH_FOLHA_CACHE); })
+        .withFailureHandler(function(){ rhRenderFolha([]); })
+        .listarFolhaRH(comp, tokenSessao());
+    };
+
     window.rhRenderFolha=function(linhas){
-      linhas=linhas||folhaAtual(); var tb=g("rhFolhaTabela"), vazio=g("rhFolhaVazio"); if(!tb)return;
+      linhas=linhas||RH_FOLHA_CACHE; var tb=g("rhFolhaTabela"), vazio=g("rhFolhaVazio"); if(!tb)return;
       var totalBruto=0,totalDesc=0,totalLiq=0;
       tb.innerHTML=linhas.map(function(i){totalBruto+=i.bruto;totalDesc+=i.descontos;totalLiq+=i.liquido;return '<tr><td><strong>'+esc(i.nome)+'</strong></td><td>'+esc(i.cargo)+'</td><td>'+moeda(i.salario)+'</td><td>'+moeda(i.beneficios)+'</td><td>'+moeda(i.descontos)+'</td><td>'+moeda(i.encargos)+'</td><td><strong>'+moeda(i.liquido)+'</strong></td></tr>';}).join("");
       if(vazio)vazio.style.display=linhas.length?"none":"block";
       setText("rhFolhaQtd",String(linhas.length)); setText("rhFolhaBruto",moeda(totalBruto)); setText("rhFolhaDescontos",moeda(totalDesc)); setText("rhFolhaLiquido",moeda(totalLiq));
     };
-    window.rhExportarFolhaCSV=function(){var linhas=folhaAtual();if(!linhas.length)rhGerarFolha(),linhas=folhaAtual();var rows=[["Competencia","Nome","Cargo","Salario","Beneficios","Descontos","Encargos","Bruto","Liquido"]].concat(linhas.map(function(i){return[i.competencia,i.nome,i.cargo,i.salario,i.beneficios,i.descontos,i.encargos,i.bruto,i.liquido];}));baixarCSV("sisgep-folha-pagamento.csv",rows);};
+
+    window.rhExportarFolhaCSV=function(){
+      if(!RH_FOLHA_CACHE.length){avisar("Gere a folha da competência antes de exportar.","warn");return;}
+      var rows=[["Competencia","Nome","Cargo","Salario","Beneficios","Descontos","Encargos","Bruto","Liquido"]].concat(RH_FOLHA_CACHE.map(function(i){return[i.competencia,i.nome,i.cargo,i.salario,i.beneficios,i.descontos,i.encargos,i.bruto,i.liquido];}));
+      baixarCSV("sisgep-folha-pagamento.csv",rows);
+    };
+
     window.rhAbrirSofia=function(){if(typeof spIr==="function")spIr("sofia",null,{mensagem:"Preciso de apoio no RH: colaboradores, documentos, férias ou vencimentos."});};
     window.rhGerarDocumento=function(){if(typeof spIr==="function")spIr("documentos",null,{aba:"novo"});};
-    window.initRH=function(){var c=g("rhCompetencia");if(c&&!c.value)c.value=new Date().toISOString().slice(0,7);rhRender();rhRenderFolha();};
+
+    window.initRH=function(){
+      var c=g("rhCompetencia");
+      if(c&&!c.value)c.value=new Date().toISOString().slice(0,7);
+      if(c&&!c.dataset.rhBound){ c.dataset.rhBound="1"; c.addEventListener("change", window.rhCarregarFolha); }
+      rhRender();
+      rhCarregarFolha();
+    };
     if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",window.initRH);else setTimeout(window.initRH,80);
   })();
   </script>
