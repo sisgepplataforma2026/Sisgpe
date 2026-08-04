@@ -114,6 +114,45 @@ function fs_get_(collection, docId) {
   return fs_fromFields_(JSON.parse(resp.getContentText()).fields);
 }
 
+// ---------- CONSULTAR (query estruturada por igualdade de campo) ----------
+// Usado pelo check-in: encontrar o ingresso pelo número impresso/digitado
+// (FCV-2026-000123), já que o documento é gravado com um UUID como ID.
+function fs_queryEquals_(collection, campo, valor) {
+  var url = fs_baseUrl_() + ':runQuery';
+  var body = {
+    structuredQuery: {
+      from: [{ collectionId: collection }],
+      where: {
+        fieldFilter: {
+          field: { fieldPath: campo },
+          op: 'EQUAL',
+          value: fs_toFields_({ v: valor }).v
+        }
+      },
+      limit: 5
+    }
+  };
+  var resp = UrlFetchApp.fetch(url, {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { Authorization: 'Bearer ' + fs_getAccessToken_() },
+    payload: JSON.stringify(body),
+    muteHttpExceptions: true
+  });
+  if (resp.getResponseCode() >= 300)
+    throw new Error('Erro na consulta (' + resp.getResponseCode() + '): ' + resp.getContentText());
+
+  var linhas = JSON.parse(resp.getContentText()) || [];
+  var out = [];
+  linhas.forEach(function (l) {
+    if (l && l.document) {
+      var partes = l.document.name.split('/');
+      out.push({ id: partes[partes.length - 1], data: fs_fromFields_(l.document.fields) });
+    }
+  });
+  return out;
+}
+
 // ================= TESTES DA PONTE =================
 function testeFirestore_gravar() {
   var r = fs_set_('ingressos', 'ponte-teste', {

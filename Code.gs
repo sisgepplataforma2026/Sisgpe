@@ -124,6 +124,22 @@ if (p.portal === "associado") {
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
+// ── Rota da tela de Check-in de Ingressos (Eventos) — protegida por sessão ──
+    if (p.painel === "checkin") {
+      var tokenCheckin = String(p.sessao || "").trim();
+      var sessaoCheckin = getSessaoUsuario(tokenCheckin);
+      if (!sessaoCheckin) {
+        return HtmlService.createHtmlOutputFromFile("Login")
+          .setTitle("SISGEP — Login")
+          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+          .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+      }
+      return HtmlService.createHtmlOutputFromFile("EventoCheckin")
+        .setTitle("Check-in — Compasso da Vida")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
     // ── Rota pública: Ficha de Sindicalização (QR Code das visitas) ──
     // Precisa vir ANTES da checagem de sessão: o trabalhador na escola
     // não tem login no SISGEP.
