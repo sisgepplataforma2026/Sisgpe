@@ -61,15 +61,19 @@ function rh_garantirColaboradores_() {
   if (sh.getLastRow() === 0) {
     sh.appendRow([
       "ID", "NOME", "CARGO", "SETOR", "STATUS", "VENCIMENTO",
-      "SALARIO", "BENEFICIOS", "DESCONTOS", "DEPENDENTES",
+      "SALARIO", "BENEFICIOS", "DESCONTOS", "DEPENDENTES", "ANIVERSARIO",
       "CRIADO_POR", "CRIADO_EM", "ATUALIZADO_POR", "ATUALIZADO_EM"
     ]);
-    sh.getRange(1, 1, 1, 14).setFontWeight("bold");
+    sh.getRange(1, 1, 1, 15).setFontWeight("bold");
     sh.setFrozenRows(1);
   } else {
     var cab = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
     if (cab.indexOf("DEPENDENTES") === -1) {
       sh.getRange(1, sh.getLastColumn() + 1).setValue("DEPENDENTES").setFontWeight("bold");
+    }
+    cab = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+    if (cab.indexOf("ANIVERSARIO") === -1) {
+      sh.getRange(1, sh.getLastColumn() + 1).setValue("ANIVERSARIO").setFontWeight("bold");
     }
   }
   return sh;
@@ -264,7 +268,8 @@ function listarColaboradoresRH(tokenSessao) {
           salario: Number(obj.SALARIO || 0),
           beneficios: Number(obj.BENEFICIOS || 0),
           descontos: Number(obj.DESCONTOS || 0),
-          dependentes: Number(obj.DEPENDENTES || 0)
+          dependentes: Number(obj.DEPENDENTES || 0),
+          aniversario: rh_formatarData_(obj.ANIVERSARIO)
         };
       })
       .filter(function (x) { return !!x.id; });
@@ -296,7 +301,8 @@ function salvarColaboradorRH(dados, tokenSessao) {
       SALARIO: Number(dados.salario || 0),
       BENEFICIOS: Number(dados.beneficios || 0),
       DESCONTOS: Number(dados.descontos || 0),
-      DEPENDENTES: Number(dados.dependentes || 0)
+      DEPENDENTES: Number(dados.dependentes || 0),
+      ANIVERSARIO: dados.aniversario || ""
     };
 
     function escreverCampos(linha) {
@@ -468,7 +474,8 @@ function rh_linhaFolhaParaObjeto_(l) {
     salario: Number(l[6] || 0), beneficios: Number(l[7] || 0), descontos: Number(l[8] || 0),
     diasTrabalhados: Number(l[9] || 0), diasMes: Number(l[10] || 0), salarioProrata: Number(l[11] || 0),
     inss: Number(l[12] || 0), baseIrrf: Number(l[13] || 0), irrf: Number(l[14] || 0), fgtsPatronal: Number(l[15] || 0),
-    bruto: Number(l[16] || 0), liquido: Number(l[17] || 0)
+    bruto: Number(l[16] || 0), liquido: Number(l[17] || 0),
+    observacao: String(l[18] || ""), geradoPor: String(l[19] || ""), geradoEm: rh_formatarData_(l[20])
   };
 }
 
@@ -487,4 +494,17 @@ function listarFolhaRH(competencia, tokenSessao) {
     Logger.log("listarFolhaRH erro: " + e.message);
     return [];
   }
+}
+
+// Usado pelo gerador de holerite (RHDocumentos.gs) — busca um lançamento
+// específico direto na planilha, não confia em valores vindos do cliente
+// para montar um documento com dado financeiro.
+function rh_buscarLancamentoFolhaPorId_(id) {
+  var sh = rh_garantirFolha_();
+  if (sh.getLastRow() < 2) return null;
+  var dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+  for (var i = 0; i < dados.length; i++) {
+    if (String(dados[i][0]) === String(id)) return rh_linhaFolhaParaObjeto_(dados[i]);
+  }
+  return null;
 }

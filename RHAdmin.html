@@ -47,7 +47,7 @@
     <div class="rh-grid">
       <div class="rh-card"><small>Ativos</small><strong id="rhTotalAtivos">0</strong><span>colaboradores em atividade</span></div>
       <div class="rh-card"><small>Férias próximas</small><strong id="rhFerias">0</strong><span>até 45 dias</span></div>
-      <div class="rh-card"><small>Documentos</small><strong id="rhDocs">0</strong><span>pendências cadastradas</span></div>
+      <div class="rh-card"><small>Documentos</small><strong id="rhDocs">0</strong><span>arquivos enviados</span></div>
       <div class="rh-card"><small>Aniversários</small><strong id="rhAniversarios">0</strong><span>no mês atual</span></div>
     </div>
 
@@ -73,6 +73,7 @@
         <div class="rh-field"><label>Benefícios</label><input id="rhBeneficios" inputmode="decimal" placeholder="0,00"></div>
         <div class="rh-field"><label>Descontos</label><input id="rhDescontos" inputmode="decimal" placeholder="0,00"></div>
         <div class="rh-field"><label>Dependentes</label><input id="rhDependentes" type="number" min="0" step="1" placeholder="0"></div>
+        <div class="rh-field"><label>Data de nascimento</label><input id="rhAniversario" type="date"></div>
         <div class="rh-actions" style="align-items:end"><button class="rh-btn primary" onclick="rhSalvar()">Salvar</button></div>
       </div>
 
@@ -89,6 +90,26 @@
         </table>
       </div>
       <div class="rh-empty" id="rhVazio" style="display:none;">Nenhum colaborador cadastrado ainda.</div>
+    </div>
+
+    <div id="rhDocsOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,18,48,.55);z-index:9999;align-items:center;justify-content:center;padding:20px;">
+      <div style="background:#fff;border-radius:16px;width:100%;max-width:560px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 30px 70px rgba(0,20,60,.3);overflow:hidden;">
+        <div style="background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));padding:18px 22px;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+          <div>
+            <div style="font-size:15px;font-weight:900;">📎 Documentos</div>
+            <div style="font-size:11.5px;color:rgba(255,255,255,.7);margin-top:2px;" id="rhDocsColabLabel">—</div>
+          </div>
+          <button type="button" onclick="rhFecharDocs()" style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;cursor:pointer;font-size:15px;">×</button>
+        </div>
+        <div style="padding:16px 22px;border-bottom:1px solid #eef2f7;display:flex;gap:8px;flex-wrap:wrap;align-items:end;">
+          <div class="rh-field" style="min-width:150px;"><label>Categoria</label><select id="rhDocCategoria"><option>Contrato</option><option>RG/CPF</option><option>Comprovante de residência</option><option>Comprovante de escolaridade</option><option>Exame admissional</option><option>Outro</option></select></div>
+          <div class="rh-field" style="flex:1;min-width:180px;"><label>Arquivo (PDF/JPG/PNG)</label><input type="file" id="rhDocArquivo" accept=".pdf,.jpg,.jpeg,.png"></div>
+          <button class="rh-btn primary" onclick="rhEnviarDocumento()" id="btnRhDocEnviar">Enviar</button>
+        </div>
+        <div style="padding:12px 22px;overflow:auto;flex:1;">
+          <div id="rhDocsLista" class="rh-mini">Carregando...</div>
+        </div>
+      </div>
     </div>
 
     <div class="rh-panel">
@@ -155,7 +176,7 @@
       </div>
       <div class="rh-table-wrap">
         <table class="rh-table">
-          <thead><tr><th>Colaborador</th><th>Cargo</th><th>Salário (prorata)</th><th>Benefícios</th><th>INSS</th><th>IRRF</th><th>FGTS patronal</th><th>Líquido</th></tr></thead>
+          <thead><tr><th>Colaborador</th><th>Cargo</th><th>Salário (prorata)</th><th>Benefícios</th><th>INSS</th><th>IRRF</th><th>FGTS patronal</th><th>Líquido</th><th>Holerite</th></tr></thead>
           <tbody id="rhFolhaTabela"></tbody>
         </table>
       </div>
@@ -198,9 +219,10 @@
       var filtrada=lista.filter(function(i){return !busca || [i.nome,i.cargo,i.setor,i.status].join(" ").toLowerCase().indexOf(busca)>=0;});
       var tb=g("rhTabela"), vazio=g("rhVazio"); if(!tb)return;
       tb.innerHTML=filtrada.map(function(i){
-        return '<tr><td><strong>'+esc(i.nome)+'</strong></td><td>'+esc(i.cargo)+'</td><td>'+esc(i.setor)+'</td><td><span class="rh-pill '+statusClass(i.status)+'">'+esc(i.status)+'</span></td><td>'+moeda(i.salario)+'</td><td>'+esc(i.vencimento||"-")+'</td><td>'+pendencia(i)+'</td><td><button class="rh-btn" data-rh-editar="'+esc(i.id)+'">Editar</button> <button class="rh-btn" data-rh-excluir="'+esc(i.id)+'">Excluir</button></td></tr>';
+        return '<tr><td><strong>'+esc(i.nome)+'</strong></td><td>'+esc(i.cargo)+'</td><td>'+esc(i.setor)+'</td><td><span class="rh-pill '+statusClass(i.status)+'">'+esc(i.status)+'</span></td><td>'+moeda(i.salario)+'</td><td>'+esc(i.vencimento||"-")+'</td><td>'+pendencia(i)+'</td><td><button class="rh-btn" data-rh-editar="'+esc(i.id)+'">Editar</button> <button class="rh-btn" data-rh-docs="'+esc(i.id)+'" data-rh-docs-nome="'+esc(i.nome)+'">📎 Docs</button> <button class="rh-btn" data-rh-excluir="'+esc(i.id)+'">Excluir</button></td></tr>';
       }).join("");
       tb.querySelectorAll("[data-rh-editar]").forEach(function(btn){btn.addEventListener("click",function(){rhEditar(btn.getAttribute("data-rh-editar"));});});
+      tb.querySelectorAll("[data-rh-docs]").forEach(function(btn){btn.addEventListener("click",function(){rhAbrirDocs(btn.getAttribute("data-rh-docs"),btn.getAttribute("data-rh-docs-nome"));});});
       tb.querySelectorAll("[data-rh-excluir]").forEach(function(btn){btn.addEventListener("click",function(){rhExcluir(btn.getAttribute("data-rh-excluir"));});});
       if(vazio)vazio.style.display=filtrada.length?"none":"block";
       atualizarCards(lista);
@@ -210,16 +232,22 @@
       var mes=new Date().getMonth()+1;
       var ativos=lista.filter(function(i){return i.status==="Ativo";}).length;
       var ferias=lista.filter(function(i){var d=diasAte(i.vencimento);return d>=0&&d<=45;}).length;
-      var docs=lista.filter(function(i){return diasAte(i.vencimento)<=30;}).length;
       var aniv=lista.filter(function(i){return i.aniversario&&Number(i.aniversario.slice(5,7))===mes;}).length;
       if(g("rhTotalAtivos"))g("rhTotalAtivos").textContent=ativos;
       if(g("rhFerias"))g("rhFerias").textContent=ferias;
-      if(g("rhDocs"))g("rhDocs").textContent=docs;
       if(g("rhAniversarios"))g("rhAniversarios").textContent=aniv;
+      rhAtualizarCardDocs();
+    }
+
+    function rhAtualizarCardDocs(){
+      google.script.run
+        .withSuccessHandler(function(n){ if(g("rhDocs"))g("rhDocs").textContent=n||0; })
+        .withFailureHandler(function(){})
+        .contarDocumentosRH(tokenSessao());
     }
 
     window.rhSalvar=function(){
-      var item={id:editId||"",nome:(g("rhNome")||{}).value||"",cargo:(g("rhCargo")||{}).value||"",setor:(g("rhSetor")||{}).value||"Administrativo",status:(g("rhStatus")||{}).value||"Ativo",vencimento:(g("rhVencimento")||{}).value||"",salario:num((g("rhSalario")||{}).value),beneficios:num((g("rhBeneficios")||{}).value),descontos:num((g("rhDescontos")||{}).value),dependentes:Math.max(0,parseInt((g("rhDependentes")||{}).value||"0",10)||0)};
+      var item={id:editId||"",nome:(g("rhNome")||{}).value||"",cargo:(g("rhCargo")||{}).value||"",setor:(g("rhSetor")||{}).value||"Administrativo",status:(g("rhStatus")||{}).value||"Ativo",vencimento:(g("rhVencimento")||{}).value||"",salario:num((g("rhSalario")||{}).value),beneficios:num((g("rhBeneficios")||{}).value),descontos:num((g("rhDescontos")||{}).value),dependentes:Math.max(0,parseInt((g("rhDependentes")||{}).value||"0",10)||0),aniversario:(g("rhAniversario")||{}).value||""};
       if(!item.nome.trim()){avisar("Informe o nome do colaborador.","warn");return;}
       google.script.run
         .withSuccessHandler(function(r){
@@ -234,7 +262,7 @@
     window.rhEditar=function(id){
       var i=RH_CACHE.find(function(x){return x.id===id;}); if(!i)return;
       editId=id;
-      g("rhNome").value=i.nome||"";g("rhCargo").value=i.cargo||"";g("rhSetor").value=i.setor||"Administrativo";g("rhStatus").value=i.status||"Ativo";g("rhVencimento").value=i.vencimento||"";g("rhSalario").value=i.salario?String(i.salario).replace(".",","):"";g("rhBeneficios").value=i.beneficios?String(i.beneficios).replace(".",","):"";g("rhDescontos").value=i.descontos?String(i.descontos).replace(".",","):"";g("rhDependentes").value=i.dependentes||0;g("rhNome").focus();
+      g("rhNome").value=i.nome||"";g("rhCargo").value=i.cargo||"";g("rhSetor").value=i.setor||"Administrativo";g("rhStatus").value=i.status||"Ativo";g("rhVencimento").value=i.vencimento||"";g("rhSalario").value=i.salario?String(i.salario).replace(".",","):"";g("rhBeneficios").value=i.beneficios?String(i.beneficios).replace(".",","):"";g("rhDescontos").value=i.descontos?String(i.descontos).replace(".",","):"";g("rhDependentes").value=i.dependentes||0;g("rhAniversario").value=i.aniversario||"";g("rhNome").focus();
     };
 
     window.rhExcluir=function(id){
@@ -248,10 +276,90 @@
         .excluirColaboradorRH(id, tokenSessao());
     };
 
-    window.rhLimparForm=function(){editId="";["rhNome","rhCargo","rhVencimento","rhSalario","rhBeneficios","rhDescontos","rhDependentes"].forEach(function(id){if(g(id))g(id).value="";});if(g("rhSetor"))g("rhSetor").value="Administrativo";if(g("rhStatus"))g("rhStatus").value="Ativo";};
+    window.rhLimparForm=function(){editId="";["rhNome","rhCargo","rhVencimento","rhSalario","rhBeneficios","rhDescontos","rhDependentes","rhAniversario"].forEach(function(id){if(g(id))g(id).value="";});if(g("rhSetor"))g("rhSetor").value="Administrativo";if(g("rhStatus"))g("rhStatus").value="Ativo";};
 
     function baixarCSV(nome,rows){var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c==null?"":c).replace(/"/g,'""')+'"';}).join(";");}).join("\n");var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download=nome;a.click();}
-    window.rhExportarCSV=function(){var rows=[["Nome","Cargo","Setor","Status","Vencimento","Salario","Beneficios","Descontos","Dependentes"]].concat(RH_CACHE.map(function(i){return[i.nome,i.cargo,i.setor,i.status,i.vencimento,i.salario||0,i.beneficios||0,i.descontos||0,i.dependentes||0];}));baixarCSV("sisgep-rh.csv",rows);};
+    window.rhExportarCSV=function(){var rows=[["Nome","Cargo","Setor","Status","Vencimento","Salario","Beneficios","Descontos","Dependentes","Aniversario"]].concat(RH_CACHE.map(function(i){return[i.nome,i.cargo,i.setor,i.status,i.vencimento,i.salario||0,i.beneficios||0,i.descontos||0,i.dependentes||0,i.aniversario||""];}));baixarCSV("sisgep-rh.csv",rows);};
+
+    /* ==== Documentos por colaborador ==== */
+    var RH_DOC_COLAB_ATUAL="";
+    var RH_DOC_CATEGORIAS_ICONE={"Contrato":"📄","RG/CPF":"🪪","Comprovante de residência":"🏠","Comprovante de escolaridade":"🎓","Exame admissional":"🩺","Outro":"📎"};
+
+    window.rhAbrirDocs=function(colaboradorId,nome){
+      RH_DOC_COLAB_ATUAL=colaboradorId;
+      if(g("rhDocsColabLabel"))g("rhDocsColabLabel").textContent=nome||"—";
+      if(g("rhDocArquivo"))g("rhDocArquivo").value="";
+      var overlay=g("rhDocsOverlay"); if(overlay)overlay.style.display="flex";
+      rhCarregarDocs();
+    };
+    window.rhFecharDocs=function(){
+      var overlay=g("rhDocsOverlay"); if(overlay)overlay.style.display="none";
+      RH_DOC_COLAB_ATUAL="";
+    };
+
+    window.rhCarregarDocs=function(){
+      var box=g("rhDocsLista"); if(!box)return;
+      box.innerHTML="Carregando...";
+      google.script.run
+        .withSuccessHandler(function(lista){
+          if(!lista||!lista.length){box.innerHTML='<div class="rh-mini">Nenhum documento enviado ainda.</div>';return;}
+          box.innerHTML=lista.map(function(d){
+            var icone=RH_DOC_CATEGORIAS_ICONE[d.categoria]||"📎";
+            return '<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #eef2f7;">'
+              +'<div><div style="font-size:12.5px;font-weight:800;color:#0f172a;">'+icone+' '+esc(d.categoria)+'</div>'
+              +'<a href="'+esc(d.link)+'" target="_blank" style="font-size:11.5px;color:var(--blue,#1565C0);text-decoration:none;">'+esc(d.nome)+'</a>'
+              +'<div style="font-size:10.5px;color:#94a3b8;">'+esc(d.enviadoPor)+' · '+esc(d.enviadoEm)+'</div></div>'
+              +'<button class="rh-btn" data-rh-doc-excluir="'+esc(d.id)+'">Excluir</button></div>';
+          }).join("");
+          box.querySelectorAll("[data-rh-doc-excluir]").forEach(function(btn){btn.addEventListener("click",function(){rhExcluirDocumento(btn.getAttribute("data-rh-doc-excluir"));});});
+        })
+        .withFailureHandler(function(e){box.innerHTML='<div class="rh-mini">Erro ao carregar: '+esc((e&&e.message)||String(e||""))+'</div>';})
+        .listarDocumentosRH(RH_DOC_COLAB_ATUAL, tokenSessao());
+    };
+
+    window.rhEnviarDocumento=function(){
+      var input=g("rhDocArquivo");
+      var arquivo=input&&input.files&&input.files[0];
+      if(!arquivo){avisar("Escolha um arquivo.","warn");return;}
+      var categoria=(g("rhDocCategoria")||{}).value||"Outro";
+      var btn=g("btnRhDocEnviar"); btn.disabled=true; btn.textContent="Enviando...";
+      var reader=new FileReader();
+      reader.onload=function(e){
+        google.script.run
+          .withSuccessHandler(function(r){
+            btn.disabled=false; btn.textContent="Enviar";
+            if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao enviar.","err");return;}
+            avisar(r.mensagem||"Documento enviado!","ok");
+            input.value="";
+            rhCarregarDocs();
+            rhAtualizarCardDocs();
+          })
+          .withFailureHandler(function(err){
+            btn.disabled=false; btn.textContent="Enviar";
+            avisar("Erro: "+((err&&err.message)||String(err||"")),"err");
+          })
+          .uploadDocumentoRH({
+            colaboradorId: RH_DOC_COLAB_ATUAL,
+            base64: e.target.result.split(",")[1],
+            nome: arquivo.name,
+            tipo: arquivo.type||"application/pdf",
+            categoria: categoria
+          }, tokenSessao());
+      };
+      reader.readAsDataURL(arquivo);
+    };
+
+    window.rhExcluirDocumento=function(id){
+      if(!confirm("Excluir este documento?"))return;
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao excluir.","err");return;}
+          rhCarregarDocs();
+          rhAtualizarCardDocs();
+        })
+        .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+        .excluirDocumentoRH(id, tokenSessao());
+    };
 
     function setText(id,v){if(g(id))g(id).textContent=v;}
 
@@ -319,10 +427,34 @@
       var totalBruto=0,totalImpostos=0,totalLiq=0;
       tb.innerHTML=linhas.map(function(i){
         totalBruto+=i.bruto; totalImpostos+=(i.inss+i.irrf); totalLiq+=i.liquido;
-        return '<tr><td><strong>'+esc(i.nome)+'</strong></td><td>'+esc(i.cargo)+'</td><td>'+moeda(i.salarioProrata)+'</td><td>'+moeda(i.beneficios)+'</td><td>'+moeda(i.inss)+'</td><td>'+moeda(i.irrf)+'</td><td>'+moeda(i.fgtsPatronal)+'</td><td><strong>'+moeda(i.liquido)+'</strong></td></tr>';
+        return '<tr><td><strong>'+esc(i.nome)+'</strong></td><td>'+esc(i.cargo)+'</td><td>'+moeda(i.salarioProrata)+'</td><td>'+moeda(i.beneficios)+'</td><td>'+moeda(i.inss)+'</td><td>'+moeda(i.irrf)+'</td><td>'+moeda(i.fgtsPatronal)+'</td><td><strong>'+moeda(i.liquido)+'</strong></td><td><button class="rh-btn" data-rh-holerite="'+esc(i.id)+'">📄 PDF</button></td></tr>';
       }).join("");
+      tb.querySelectorAll("[data-rh-holerite]").forEach(function(btn){btn.addEventListener("click",function(){rhBaixarHolerite(btn.getAttribute("data-rh-holerite"),btn);});});
       if(vazio)vazio.style.display=linhas.length?"none":"block";
       setText("rhFolhaQtd",String(linhas.length)); setText("rhFolhaBruto",moeda(totalBruto)); setText("rhFolhaDescontos",moeda(totalImpostos)); setText("rhFolhaLiquido",moeda(totalLiq));
+    };
+
+    window.rhBaixarHolerite=function(idLancamento,btn){
+      if(btn){btn.disabled=true;btn.textContent="Gerando...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="📄 PDF";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao gerar holerite.","err");return;}
+          try{
+            var byteChars=atob(r.base64);
+            var byteNumbers=new Array(byteChars.length);
+            for(var i=0;i<byteChars.length;i++)byteNumbers[i]=byteChars.charCodeAt(i);
+            var blob=new Blob([new Uint8Array(byteNumbers)],{type:"application/pdf"});
+            var url=URL.createObjectURL(blob);
+            var a=document.createElement("a"); a.href=url; a.download=r.nomeArquivo||"holerite.pdf"; a.click();
+            setTimeout(function(){URL.revokeObjectURL(url);},4000);
+          }catch(e){avisar("Erro ao baixar o PDF gerado.","err");}
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="📄 PDF";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .gerarHoleritePDF(idLancamento, tokenSessao());
     };
 
     window.rhExportarFolhaCSV=function(){
