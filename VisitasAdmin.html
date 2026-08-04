@@ -317,6 +317,8 @@
 .vad-hist-item:last-child{border-bottom:none;}
 .vad-hist-item b{color:var(--g900,#0f172a);}
 .vad-hist-item small{display:block;color:var(--g500,#64748b);margin-top:3px;}
+.vad-btn-cancelar{border:1px solid #f3b6b6;background:#fff;color:#991b1b;font-size:10.5px;font-weight:800;padding:4px 9px;border-radius:7px;cursor:pointer;font-family:inherit;flex-shrink:0;white-space:nowrap;}
+.vad-btn-cancelar:hover{background:#fdecec;}
 .vad-sem-dados{padding:16px;text-align:center;color:var(--g400,#94a3b8);font-size:12.5px;}
 
 
@@ -804,9 +806,12 @@ function vadFiltrarMunicipio(idx){
 
 /* ================= Visao 360 ================= */
 
+var VAD_360_ATUAL=null;
+
 function vadAbrir360(idx){
   var e=VAD_ESCOLAS[idx];
   if(!e) return;
+  VAD_360_ATUAL=e;
 
   document.getElementById('vadModalEscola').textContent='Carregando…';
   document.getElementById('vadModalSub').textContent='';
@@ -873,10 +878,15 @@ function vadRender360(r){
   if(!r.visitas.length){
     html+='<div class="vad-hist"><div class="vad-sem-dados">Nenhuma visita registrada.</div></div>';
   } else {
+    var VAD_CANCELAVEIS=['AGENDADA','EM_ANDAMENTO'];
     html+='<div class="vad-hist">'+r.visitas.map(function(v){
+      var podeCancelar=VAD_CANCELAVEIS.indexOf(v.STATUS)>=0;
       return '<div class="vad-hist-item">'+
-        '<b>'+vadEsc(v.DATA_AGENDADA||'—')+(v.HORA_AGENDADA?' as '+vadEsc(v.HORA_AGENDADA):'')+'</b> · '+
-        vadTag(v.STATUS)+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">'+
+        '<div><b>'+vadEsc(v.DATA_AGENDADA||'—')+(v.HORA_AGENDADA?' as '+vadEsc(v.HORA_AGENDADA):'')+'</b> · '+
+        vadTag(v.STATUS)+'</div>'+
+        (podeCancelar?'<button class="vad-btn-cancelar" onclick="vadCancelarVisita(\''+vadEsc(v.ID_VISITA)+'\')">Cancelar</button>':'')+
+        '</div>'+
         '<small>Diretor: '+vadEsc(v.DIRETOR_BASE||'—')+
         (v.DURACAO_MIN?' · '+vadEsc(v.DURACAO_MIN)+' min':'')+
         (v.FICHAS_GERADAS?' · '+vadEsc(v.FICHAS_GERADAS)+' ficha(s)':'')+
@@ -914,6 +924,23 @@ function vadTagTexto(status){
 function vadFecharModal(){
   var m=document.getElementById('vadModal');
   if(m) m.classList.remove('vad-aberto');
+}
+
+function vadCancelarVisita(idVisita){
+  var motivo=prompt('Motivo do cancelamento (opcional):','');
+  if(motivo===null) return; /* usuario cancelou o prompt */
+  if(!confirm('Cancelar esta visita agendada?')) return;
+
+  google.script.run.withSuccessHandler(function(r){
+    if(!vadOk(r)){
+      alert((r&&(r.mensagem||r.erro))||'Nao foi possivel cancelar a visita.');
+      return;
+    }
+    if(VAD_360_ATUAL) vadAbrir360(VAD_ESCOLAS.indexOf(VAD_360_ATUAL));
+    if(typeof carregarPainelVisitas==='function') carregarPainelVisitas();
+  }).withFailureHandler(function(e){
+    alert('Erro: '+vadMsgErro(e));
+  }).cancelarVisita(idVisita, motivo, vadToken());
 }
 
 
