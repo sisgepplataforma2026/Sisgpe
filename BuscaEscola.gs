@@ -131,27 +131,6 @@ function buscarEscolasPorTermo_interno_(termo) {
   }
 }
 
-function testarBuscaSerraOficios() {
-  var termos = ["Serra", "Vitória", "Cariacica", "municipal"];
-  var saida = termos.map(function(termo) {
-    var lista = buscarEscolasPorTermo_interno_(termo) || [];
-    return {
-      termo: termo,
-      total: lista.length,
-      amostras: lista.slice(0, 5).map(function(e) {
-        return {
-          escola: e.escola || e.NomeEscola || e.nome || "",
-          cidade: e.cidade || e.Municipio || e.municipio || "",
-          uf: e.uf || e.UF || "",
-          cnpj: e.cnpj || e.CNPJ || ""
-        };
-      })
-    };
-  });
-  Logger.log(JSON.stringify(saida, null, 2));
-  return saida;
-}
-
 function buscarEscolasOficioSmart(termo) {
   return buscarEscolasPorTermo_interno_(termo);
 }
@@ -435,10 +414,6 @@ var row = i + 2;
   }
 }
 
-function sincronizarCNPJ(cnpj, tokenSessao) {
-  return sincronizarEscolaPorCnpj(cnpj, false, tokenSessao);
-}
-
 function sincronizarTodasEscolas(forcar, tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, true);
   try {
@@ -478,25 +453,6 @@ function sincronizarTodasEscolas(forcar, tokenSessao) {
   } catch (e) {
     return { erro: true, mensagem: "Erro na sincronização em lote: " + e.message };
   }
-}
-
-/* ============================================================= */
-/* SALVAR DADOS ESCOLA (compatibilidade legado)                  */
-/* ESC-G: era uma segunda rotina de upsert independente (achar    */
-/* linha por CNPJ, senão inserir), com sua própria busca de coluna */
-/* — cadastrarEscola (Escolas.gs) já faz exatamente isso, com os   */
-/* mesmos nomes de campo (escola/razaoSocial, cnpj, email,         */
-/* emailsTodos, endereco, numero, complemento, bairro, cidade, uf, */
-/* cep, fantasia/nomeFantasia). Sem chamador ativo hoje (nenhum     */
-/* HTML do projeto chama salvarDadosEscola/salvarEscola), por isso  */
-/* viram alias fino em vez de manter a lógica duplicada.            */
-/* ============================================================= */
-function salvarDadosEscola(dados, tokenSessao) {
-  return cadastrarEscola(dados, tokenSessao);
-}
-
-function salvarEscola(dados, tokenSessao) {
-  return cadastrarEscola(dados, tokenSessao);
 }
 
 /* ============================================================= */
@@ -579,54 +535,3 @@ function formatarTelExterno_(ddd, tel) {
   return String(tel || ddd || "").trim();
 }
 
-function extrairPartesEnderecoBuscaEscola_(dados) {
-  dados = dados || {};
-  function limpar(v) { return String(v || "").trim(); }
-  function formatarCep(v) {
-    var d = String(v || "").replace(/\D/g, "");
-    if (d.length === 8) return d.replace(/^(\d{5})(\d{3})$/, "$1-$2");
-    return limpar(v);
-  }
-
-  var endereco        = limpar(dados.endereco);
-  var numero          = limpar(dados.numero);
-  var complemento     = limpar(dados.complemento);
-  var bairro          = limpar(dados.bairro);
-  var cidade          = limpar(dados.cidade);
-  var uf              = limpar(dados.uf).toUpperCase();
-  var cep             = formatarCep(dados.cep);
-  var cidadeUf        = limpar(dados.cidadeUf);
-  var enderecoCompleto = limpar(dados.enderecoCompleto);
-
-  if (!cidadeUf && (cidade || uf)) cidadeUf = [cidade, uf].filter(Boolean).join(" / ");
-
-  var precisaQuebrar = !!enderecoCompleto && (!endereco || !numero || !bairro || (!cidade && !cidadeUf) || !cep);
-
-  if (precisaQuebrar) {
-    var texto    = enderecoCompleto;
-    var cepMatch = texto.match(/\b\d{5}-?\d{3}\b/);
-    if (cepMatch && !cep) {
-      cep  = formatarCep(cepMatch[0]);
-      texto = texto.replace(cepMatch[0], "").trim().replace(/,\s*,/g, ",").replace(/^,\s*|\s*,$/g, "").trim();
-    }
-    var partes = texto.split(",").map(function(p) { return limpar(p); }).filter(Boolean);
-    if (!endereco && partes.length > 0) endereco = partes[0] || "";
-    if (!numero   && partes.length > 1) numero   = partes[1] || "";
-    if (!complemento && partes.length > 2 && /sala|bloco|ap|apt|andar|fundos|loja|cj|conj/i.test(partes[2])) complemento = partes[2];
-    if (!bairro) { bairro = complemento ? (partes[3] || "") : (partes[2] || ""); }
-    var ultimaParte = partes.length ? partes[partes.length - 1] : "";
-    var matchCidUf  = ultimaParte.match(/^(.*?)(?:\s*[-\/]\s*|\s+)([A-Z]{2})$/i);
-    if (matchCidUf) {
-      if (!cidade) cidade = limpar(matchCidUf[1]);
-      if (!uf)     uf     = limpar(matchCidUf[2]).toUpperCase();
-    } else if (!cidade && ultimaParte && ultimaParte !== bairro && ultimaParte !== numero && ultimaParte !== endereco) {
-      cidade = ultimaParte;
-    }
-    if (!cidadeUf) cidadeUf = [cidade, uf].filter(Boolean).join(" / ");
-  }
-
-  cidadeUf        = limpar(cidadeUf || [cidade, uf].filter(Boolean).join(" / "));
-  enderecoCompleto = [endereco, numero, complemento, bairro, cidadeUf, cep].filter(Boolean).join(", ");
-
-  return { endereco, numero, complemento, bairro, cidade, uf, cidadeUf, cep, enderecoCompleto };
-}

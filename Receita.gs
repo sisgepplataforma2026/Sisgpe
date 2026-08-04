@@ -259,21 +259,3 @@ function excluirReceita(idReceita, tokenSessao) {
 
 }
 
-/* =========================================
- * TESTE
- * ========================================= */
-function testeReceita() {
-
-  return cadastrarReceita({
-    tipo: "Taxa Assistencial",
-    categoria: "Sindical",
-    descricao: "Recebimento teste",
-    empresa: "Escola Teste",
-    cnpj: "00.000.000/0001-00",
-    valor: "1500,00",
-    formaRecebimento: "PIX",
-    competencia: "05/2026",
-    status: "RECEBIDO"
-  });
-
-}

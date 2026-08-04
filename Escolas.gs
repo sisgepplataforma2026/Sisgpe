@@ -133,6 +133,7 @@ function invalidarCacheEscolasInterno_() {
   try { invalidarCacheEscolas_(); } catch(e) {
     try { CacheService.getScriptCache().remove("sisgep_escolas_lista_v2"); } catch(e2) {}
   }
+  try { CacheService.getScriptCache().remove(CACHE_KEY_ESCOLAS_CADASTRO_); } catch(e3) {}
 }
 
 /* =============================================================== */
@@ -281,14 +282,26 @@ function listarEscolasCadastro(tokenSessao) {
  * disponível, como triggers automáticos) — nunca exponha esta função
  * diretamente a google.script.run.
  */
+var CACHE_KEY_ESCOLAS_CADASTRO_ = "sisgep_escolas_cadastro_v1";
+var CACHE_TTL_ESCOLAS_CADASTRO_ = 300; // 5 minutos — mesmo padrão de listarEscolasOficio_interno_
+
 function listarEscolasCadastro_interno_() {
   try {
+    var cache = CacheService.getScriptCache();
+    var cached = cache.get(CACHE_KEY_ESCOLAS_CADASTRO_);
+    if (cached) {
+      try {
+        var parsed = JSON.parse(cached);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (eCache) { Logger.log("[listarEscolasCadastro] cache read: " + eCache); }
+    }
+
     const ss = SpreadsheetApp.openById(PLANILHA_ID);
     const sh = ss.getSheetByName(ABA_ESCOLAS);
     if (!sh || sh.getLastRow() < 2) return [];
     const cab   = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
     const dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
-    return dados.map(function(linha) {
+    var resultado = dados.map(function(linha) {
       const obj = {};
       cab.forEach(function(coluna, i) {
         obj[String(coluna || "").trim()] = linha[i] !== undefined ? linha[i] : "";
@@ -328,13 +341,22 @@ function listarEscolasCadastro_interno_() {
     }).map(function(item) {
       return serializarParaCliente_(item);
     });
+
+    try {
+      var json = JSON.stringify(resultado);
+      if (json.length < 95000) {
+        cache.put(CACHE_KEY_ESCOLAS_CADASTRO_, json, CACHE_TTL_ESCOLAS_CADASTRO_);
+      } else {
+        Logger.log("[listarEscolasCadastro] lista muito grande para cache: " + json.length + " bytes");
+      }
+    } catch (ePut) { Logger.log("[listarEscolasCadastro] cache put: " + ePut); }
+
+    return resultado;
   } catch(e) {
     Logger.log("listarEscolasCadastro erro: " + e.message);
     return [];
   }
 }
-
-function listarEscolasCadastroInterno() { return listarEscolasCadastro_interno_(); }
 
 /* =============================================================== */
 /* AÇÕES EM MASSA                                                   */
@@ -663,19 +685,6 @@ function importarEscolasDeAba(tokenSessao) {
   }
 }
 
-/* =============================================================== */
-/* TESTE / DEBUG                                                    */
-/* =============================================================== */
-function testarAnaliseDuplicadas() {
-  Logger.log(JSON.stringify(analisarEscolasDuplicadas(), null, 2));
-}
-
-function testarMapaCabecalho() {
-  const ss = SpreadsheetApp.openById(PLANILHA_ID);
-  const sh = ss.getSheetByName(ABA_ESCOLAS);
-  if (!sh) { Logger.log("Aba não encontrada."); return; }
-  Logger.log(JSON.stringify(getHeaderMapEscolas_(sh), null, 2));
-}
 /** Exige sessão válida — usada diretamente pela tela de Cadastro de Escolas. */
 function listarEscolasParaModulo(tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
@@ -712,10 +721,6 @@ function listarEscolasParaModulo_interno_() {
     return [];
   }
 }
-function testeRetornoSimples() {
-  return [{escola: "Teste", cnpj: "123"}];
-}
-
 /**
  * Envia e-mail em massa para escolas selecionadas, roteado pela camada
  * central de envio (EmailCore.gs) em vez de abrir o cliente de e-mail
