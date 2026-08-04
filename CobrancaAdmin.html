@@ -1,0 +1,368 @@
+<div id="cobAdmin" style="display:block;min-height:100%;background:#f0f4f8;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#0f172a;">
+  <style>
+    #cobAdmin *{box-sizing:border-box}
+    .cob-head{background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));padding:22px 24px;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+    .cob-title{font-size:21px;font-weight:900;line-height:1.1}.cob-sub{font-size:12px;color:rgba(255,255,255,.68);margin-top:4px}
+    .cob-badge{height:32px;border-radius:999px;border:1px solid rgba(201,168,76,.5);background:rgba(201,168,76,.16);color:#f8d66d;font-size:11px;font-weight:900;padding:0 14px;display:flex;align-items:center}
+    .cob-wrap{padding:18px 22px 34px}
+    .cob-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+    .cob-card{background:#fff;border:1px solid var(--g200,#e2e8f0);border-radius:14px;padding:15px 16px;box-shadow:0 2px 10px rgba(0,20,60,.06)}
+    .cob-card small{display:block;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:var(--g500,#64748b);margin-bottom:8px}
+    .cob-card strong{font-size:28px;font-weight:900;color:var(--navy,#001f4d)}.cob-card span{display:block;font-size:11px;color:var(--g400,#94a3b8);margin-top:4px}
+    .cob-panel{background:#fff;border:1px solid var(--g200,#e2e8f0);border-radius:14px;box-shadow:0 2px 10px rgba(0,20,60,.06);overflow:hidden;margin-bottom:14px}
+    .cob-panel-head{padding:14px 16px;border-bottom:1px solid #eef2f7;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+    .cob-panel-title{font-size:14px;font-weight:900;color:var(--navy,#001f4d)}
+    .cob-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .cob-btn{height:34px;border-radius:9px;border:1px solid var(--g300,#cbd5e1);background:#fff;color:var(--g700,#334155);font-size:12px;font-weight:800;padding:0 12px;cursor:pointer;font-family:inherit}
+    .cob-btn.primary{background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));border-color:var(--blue,#1565C0);color:#fff}
+    .cob-btn.gold{background:#fff7d6;border-color:#e8c870;color:#7a5a00}
+    .cob-btn.red{background:#fee2e2;border-color:#fca5a5;color:#991b1b}
+    .cob-btn:disabled{opacity:.55;cursor:not-allowed}
+    .cob-btn.mini{height:26px;padding:0 8px;font-size:10.5px;border-radius:7px}
+    .cob-select{height:34px;border:1.5px solid #dbe4ef;border-radius:9px;padding:0 10px;font-size:12.5px;font-family:inherit;background:#fff}
+    .cob-trigger{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:800;color:var(--g500,#64748b)}
+    .cob-trigger .dot{width:9px;height:9px;border-radius:50%;background:#cbd5e1}
+    .cob-trigger.on .dot{background:#0f8a5f}
+    .cob-search{padding:12px 16px;display:flex;gap:10px;align-items:center;background:#fff;border-bottom:1px solid #eef2f7;flex-wrap:wrap}
+    .cob-search input{height:36px;border:1.5px solid #dbe4ef;border-radius:999px;padding:0 14px;min-width:220px;flex:1;font-family:inherit}
+    .cob-table-wrap{overflow:auto}.cob-table{width:100%;border-collapse:collapse;min-width:920px}
+    .cob-table th{background:var(--g50,#f8fafc);color:var(--g500,#64748b);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.07em;text-align:left;padding:10px 12px;border-bottom:1px solid var(--g200,#e2e8f0)}
+    .cob-table td{font-size:12.5px;color:var(--g700,#334155);padding:10px 12px;border-bottom:1px solid var(--g100,#f1f5f9);vertical-align:middle}
+    .cob-table tr:hover td{background:var(--g50,#f8fafc)}
+    .cob-pill{display:inline-flex;align-items:center;height:23px;border-radius:999px;padding:0 9px;font-size:10.5px;font-weight:900;white-space:nowrap}
+    .cob-pill.ok{background:#dcfce7;color:#166534}
+    .cob-pill.warn{background:var(--amber-lt,#fef3c7);color:#92400e}
+    .cob-pill.off{background:var(--red-lt,#fee2e2);color:#991b1b}
+    .cob-pill.info{background:#dbeafe;color:#1d4ed8}
+    .cob-pill.neutral{background:var(--g100,#f1f5f9);color:var(--g500,#64748b)}
+    .cob-empty{padding:30px;text-align:center;color:var(--g400,#94a3b8);font-size:13px}
+    .cob-mini{font-size:11px;color:var(--g400,#94a3b8)}
+    .cob-lote{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--g200,#e2e8f0);padding:10px 16px;display:none;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+    .cob-lote.show{display:flex}
+    .cob-rowacts{display:flex;gap:4px;flex-wrap:wrap}
+    @media(max-width:1100px){.cob-grid{grid-template-columns:repeat(2,1fr)}}
+  </style>
+
+  <div class="cob-head">
+    <div>
+      <div class="cob-title">Cobrança de Relação Nominal</div>
+      <div class="cob-sub">Acompanhamento por escola e competência — documento usado para emissão das guias sindicais</div>
+    </div>
+    <div class="cob-badge">SINDEDUCAÇÃO-ES</div>
+  </div>
+
+  <div class="cob-wrap">
+    <div class="cob-grid">
+      <div class="cob-card"><small>Escolas na régua</small><strong id="cobTotal">0</strong><span id="cobCompetenciaLabel">—</span></div>
+      <div class="cob-card"><small>Recebidas</small><strong id="cobRecebidas">0</strong><span>relação já localizada</span></div>
+      <div class="cob-card"><small>Pendentes</small><strong id="cobPendentes">0</strong><span>ainda em cobrança</span></div>
+      <div class="cob-card"><small>Críticas</small><strong id="cobCriticas">0</strong><span>15+ dias sem resposta</span></div>
+    </div>
+
+    <div class="cob-panel">
+      <div class="cob-panel-head">
+        <div>
+          <div class="cob-panel-title">Painel por escola</div>
+          <div class="cob-mini">A busca diária só lê e-mails e atualiza status — nenhum lembrete é enviado sem aprovação manual aqui.</div>
+        </div>
+        <div class="cob-actions">
+          <select id="cobCompetencia" class="cob-select" onchange="cobCarregar()"></select>
+          <span id="cobTriggerStatus" class="cob-trigger"><span class="dot"></span><span id="cobTriggerTxt">verificando trigger…</span></span>
+          <button class="cob-btn" onclick="cobInstalarTrigger()" id="btnCobInstalarTrigger">Ativar busca diária (9h)</button>
+          <button class="cob-btn" onclick="cobRemoverTrigger()" id="btnCobRemoverTrigger">Desativar</button>
+          <button class="cob-btn primary" onclick="cobBuscarAgora()" id="btnCobBuscarAgora">🔄 Buscar agora</button>
+        </div>
+      </div>
+
+      <div class="cob-search">
+        <input id="cobFiltro" placeholder="Filtrar por nome da escola…" oninput="cobRenderTabela()">
+        <select id="cobFiltroStatus" class="cob-select" onchange="cobRenderTabela()">
+          <option value="">Todos os status</option>
+          <option value="PENDENTE">Pendente</option>
+          <option value="SOLICITADA">Solicitada</option>
+          <option value="LEMBRETE_1">Lembrete 1</option>
+          <option value="LEMBRETE_2">Lembrete 2</option>
+          <option value="CRITICA">Crítica</option>
+          <option value="RECEBIDA">Recebida</option>
+          <option value="SEM_EMAIL">Sem e-mail</option>
+          <option value="INCONSISTENTE">Inconsistente</option>
+        </select>
+        <label class="cob-mini" style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="cobSoComAcao" onchange="cobRenderTabela()"> só com ação recomendada</label>
+      </div>
+
+      <div class="cob-table-wrap">
+        <table class="cob-table">
+          <thead><tr>
+            <th style="width:30px;"><input type="checkbox" id="cobMarcarTodos" onchange="cobMarcarTodos(this.checked)"></th>
+            <th>Escola</th><th>E-mail</th><th>Status</th><th>Próxima ação</th><th>Última atualização</th><th>Ações</th>
+          </tr></thead>
+          <tbody id="cobTbody"><tr><td colspan="7" class="cob-empty">Carregando…</td></tr></tbody>
+        </table>
+      </div>
+
+      <div class="cob-lote" id="cobLoteBar">
+        <div class="cob-mini"><b id="cobLoteQtd">0</b> escola(s) selecionada(s)</div>
+        <button class="cob-btn primary" onclick="cobAbrirRevisaoLote()">Revisar e aprovar envio</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de revisão do lote antes do envio -->
+  <div id="cobModalOverlay" class="of-modal-overlay">
+    <div class="of-modal" style="max-width:640px;">
+      <div class="of-modal-head" style="border-bottom:3px solid var(--gold,#C9A84C);">
+        <div>
+          <div class="of-modal-head-title">Revisar antes de enviar</div>
+          <div class="of-modal-head-sub">Nada é enviado até você confirmar — o texto abaixo é editável.</div>
+        </div>
+        <button type="button" class="of-modal-close" onclick="cobFecharModal()">×</button>
+      </div>
+      <div class="of-modal-body" id="cobModalBody"></div>
+      <div class="of-modal-foot">
+        <button class="cob-btn" onclick="cobFecharModal()">Cancelar</button>
+        <button class="cob-btn primary" onclick="cobConfirmarEnvioLote()" id="btnCobConfirmarLote">Confirmar envio</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function g(id){return document.getElementById(id);}
+    function tokenSessao(){return typeof SISGEP_TOKEN_SESSAO!=="undefined"?SISGEP_TOKEN_SESSAO:"";}
+    function avisar(msg,tipo){if(typeof toast==="function")toast(msg,tipo);}
+    function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]);});}
+
+    var COB_DADOS = [];
+    var COB_SELECIONADOS = {};
+    var COB_ROTULOS = {
+      PENDENTE:{t:"Pendente",c:"neutral"}, SOLICITADA:{t:"Solicitada",c:"info"},
+      LEMBRETE_1:{t:"Lembrete 1",c:"warn"}, LEMBRETE_2:{t:"Lembrete 2",c:"warn"},
+      CRITICA:{t:"Crítica",c:"off"}, RECEBIDA:{t:"Recebida",c:"ok"},
+      SEM_EMAIL:{t:"Sem e-mail",c:"off"}, INCONSISTENTE:{t:"Inconsistente",c:"warn"}
+    };
+    var COB_ACAO_ROTULOS = {
+      SOLICITADA:"Enviar 1ª solicitação", LEMBRETE_1:"Enviar 1º lembrete",
+      LEMBRETE_2:"Enviar 2º lembrete (urgente)", CRITICA:"Marcar como crítica",
+      CADASTRAR_EMAIL:"Cadastrar e-mail da escola"
+    };
+
+    function cobMesAtualISO(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");}
+    function cobMesAnteriorISO(iso){var p=iso.split("-");var a=+p[0],m=+p[1]-1;if(m<1){m=12;a--;}return a+"-"+String(m).padStart(2,"0");}
+
+    window.carregarPainelCobranca=function(){
+      var atual=cobMesAtualISO();
+      var sel=g("cobCompetencia");
+      sel.innerHTML="";
+      [atual,cobMesAnteriorISO(atual)].forEach(function(iso){
+        var op=document.createElement("option"); op.value=iso; op.textContent=iso; sel.appendChild(op);
+      });
+      cobCarregar();
+      cobAtualizarStatusTrigger();
+    };
+
+    window.cobCarregar=function(){
+      var competencia=g("cobCompetencia").value||cobMesAtualISO();
+      g("cobTbody").innerHTML='<tr><td colspan="7" class="cob-empty">Carregando…</td></tr>';
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao carregar.","err");return;}
+          COB_DADOS=r.linhas||[];
+          COB_SELECIONADOS={};
+          g("cobTotal").textContent=r.total||0;
+          g("cobCompetenciaLabel").textContent=r.competenciaLabel||"—";
+          g("cobRecebidas").textContent=r.recebidas||0;
+          g("cobPendentes").textContent=r.pendentes||0;
+          g("cobCriticas").textContent=COB_DADOS.filter(function(l){return l.status==="CRITICA";}).length;
+          cobRenderTabela();
+        })
+        .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+        .cob_listarPainel(tokenSessao(), competencia);
+    };
+
+    window.cobRenderTabela=function(){
+      var filtroTxt=(g("cobFiltro").value||"").toLowerCase();
+      var filtroStatus=g("cobFiltroStatus").value;
+      var soComAcao=g("cobSoComAcao").checked;
+
+      var linhas=COB_DADOS.filter(function(l){
+        if(filtroTxt && l.nome.toLowerCase().indexOf(filtroTxt)===-1) return false;
+        if(filtroStatus && l.status!==filtroStatus) return false;
+        if(soComAcao && !l.proximaAcao) return false;
+        return true;
+      });
+
+      if(!linhas.length){g("cobTbody").innerHTML='<tr><td colspan="7" class="cob-empty">Nenhuma escola encontrada com esses filtros.</td></tr>';cobAtualizarLoteBar();return;}
+
+      g("cobTbody").innerHTML=linhas.map(function(l){
+        var rot=COB_ROTULOS[l.status]||{t:l.status,c:"neutral"};
+        var acaoTxt=l.proximaAcao?(COB_ACAO_ROTULOS[l.proximaAcao]||l.proximaAcao):"—";
+        var ultimaData=l.dataRecebida||l.dataLembrete2||l.dataLembrete1||l.dataSolicitacao||"";
+        var podeSelecionar=l.proximaAcao && l.proximaAcao!=="CADASTRAR_EMAIL";
+        return "<tr>"+
+          "<td>"+(podeSelecionar?'<input type="checkbox" data-cob-id="'+esc(l.id)+'" '+(COB_SELECIONADOS[l.id]?"checked":"")+' onchange="cobSelecionar(\''+l.id+'\',this.checked)">':"")+"</td>"+
+          "<td><b>"+esc(l.nome)+"</b><div class='cob-mini'>"+esc(l.cnpj||"sem CNPJ")+"</div></td>"+
+          "<td>"+(l.email?esc(l.email):"<span class='cob-mini'>não cadastrado</span>")+"</td>"+
+          "<td><span class='cob-pill "+rot.c+"'>"+rot.t+"</span></td>"+
+          "<td>"+esc(acaoTxt)+"</td>"+
+          "<td class='cob-mini'>"+esc(ultimaData||"—")+"</td>"+
+          "<td><div class='cob-rowacts'>"+
+            "<button class='cob-btn mini' onclick=\"cobMarcarManual('"+l.id+"','RECEBIDA')\">✅ Recebida</button>"+
+            "<button class='cob-btn mini' onclick=\"cobMarcarManual('"+l.id+"','INCONSISTENTE')\">⚠️ Inconsistente</button>"+
+          "</div></td>"+
+        "</tr>";
+      }).join("");
+      cobAtualizarLoteBar();
+    };
+
+    window.cobSelecionar=function(id,marcado){
+      if(marcado) COB_SELECIONADOS[id]=true; else delete COB_SELECIONADOS[id];
+      cobAtualizarLoteBar();
+    };
+    window.cobMarcarTodos=function(marcado){
+      document.querySelectorAll('[data-cob-id]').forEach(function(chk){
+        chk.checked=marcado;
+        var id=chk.getAttribute('data-cob-id');
+        if(marcado) COB_SELECIONADOS[id]=true; else delete COB_SELECIONADOS[id];
+      });
+      cobAtualizarLoteBar();
+    };
+    function cobAtualizarLoteBar(){
+      var qtd=Object.keys(COB_SELECIONADOS).length;
+      g("cobLoteQtd").textContent=qtd;
+      g("cobLoteBar").className="cob-lote"+(qtd?" show":"");
+    }
+
+    window.cobMarcarManual=function(id,status){
+      var obs="";
+      if(status==="INCONSISTENTE") obs=prompt("Observação sobre a inconsistência (opcional):")||"";
+      if(status==="RECEBIDA" && !confirm("Marcar esta escola como RECEBIDA manualmente? Isso interrompe os lembretes.")) return;
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao atualizar.","err");return;}
+          avisar("Status atualizado.","ok");
+          cobCarregar();
+        })
+        .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+        .cob_atualizarStatusManual_publico(tokenSessao(), id, status, obs);
+    };
+
+    window.cobBuscarAgora=function(){
+      var btn=g("btnCobBuscarAgora"); btn.disabled=true; btn.textContent="Buscando…";
+      google.script.run
+        .withSuccessHandler(function(r){
+          btn.disabled=false; btn.textContent="🔄 Buscar agora";
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro na busca.","err");return;}
+          avisar("Varredura concluída — "+(r.recebidasHoje||0)+" relação(ões) localizada(s) agora.","ok");
+          cobCarregar();
+        })
+        .withFailureHandler(function(e){btn.disabled=false;btn.textContent="🔄 Buscar agora";avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+        .cob_forcarVarreduraAgora_publico(tokenSessao());
+    };
+
+    window.cobAtualizarStatusTrigger=function(){
+      google.script.run
+        .withSuccessHandler(function(r){
+          var el=g("cobTriggerStatus"); var txt=g("cobTriggerTxt");
+          if(r&&r.ok&&r.instalado){el.className="cob-trigger on";txt.textContent="busca diária ativa (~9h)";}
+          else{el.className="cob-trigger";txt.textContent="busca diária desativada";}
+        })
+        .withFailureHandler(function(){})
+        .cob_statusTriggerDiario_publico(tokenSessao());
+    };
+
+    window.cobInstalarTrigger=function(){
+      if(!confirm("Ativar a busca automática diária (por volta das 9h)? Ela só lê o Gmail e atualiza status — nenhum e-mail é enviado sozinha."))return;
+      google.script.run
+        .withSuccessHandler(function(r){avisar((r&&r.mensagem)||"","ok");cobAtualizarStatusTrigger();})
+        .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+        .cob_instalarTriggerDiario_publico(tokenSessao());
+    };
+    window.cobRemoverTrigger=function(){
+      if(!confirm("Desativar a busca automática diária?"))return;
+      google.script.run
+        .withSuccessHandler(function(r){avisar((r&&r.mensagem)||"","ok");cobAtualizarStatusTrigger();})
+        .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+        .cob_removerTriggerDiario_publico(tokenSessao());
+    };
+
+    /* ===== Revisão e envio de lote ===== */
+    window.cobAbrirRevisaoLote=function(){
+      var ids=Object.keys(COB_SELECIONADOS);
+      if(!ids.length) return;
+      var linhas=COB_DADOS.filter(function(l){return COB_SELECIONADOS[l.id];});
+      var grupos={};
+      linhas.forEach(function(l){
+        var acao=l.proximaAcao;
+        if(acao==="CADASTRAR_EMAIL"||acao==="CRITICA") return;
+        if(!grupos[acao]) grupos[acao]=[];
+        grupos[acao].push(l);
+      });
+
+      var criticas=linhas.filter(function(l){return l.proximaAcao==="CRITICA";});
+
+      var html="";
+      Object.keys(grupos).forEach(function(acao){
+        var itens=grupos[acao];
+        html+="<div style='margin-bottom:18px;border:1px solid #e2e8f0;border-radius:10px;padding:12px;'>"+
+          "<div style='font-weight:900;color:var(--navy,#001f4d);margin-bottom:6px;'>"+esc(COB_ACAO_ROTULOS[acao])+" — "+itens.length+" escola(s)</div>"+
+          "<div class='cob-mini' style='margin-bottom:8px;'>"+itens.map(function(l){return esc(l.nome);}).join(", ")+"</div>"+
+          "<textarea data-cob-grupo='"+esc(acao)+"' style='width:100%;min-height:130px;font-family:inherit;font-size:12px;border:1.5px solid #dbe4ef;border-radius:8px;padding:8px;'>"+esc(itens[0].corpoSugerido||"")+"</textarea>"+
+        "</div>";
+      });
+      if(criticas.length){
+        html+="<div style='margin-bottom:10px;padding:10px;background:#fee2e2;border-radius:8px;color:#991b1b;font-size:12px;'>"+
+          criticas.length+" escola(s) atingiram 15+ dias sem resposta e serão marcadas como <b>CRÍTICA</b> (aviso interno, não é enviado e-mail para a escola): "+
+          criticas.map(function(l){return esc(l.nome);}).join(", ")+"</div>";
+      }
+      if(!html){html="<div class='cob-empty'>Nada selecionado tem ação pendente de aprovação.</div>";}
+
+      g("cobModalBody").innerHTML=html;
+      g("cobModalOverlay").classList.add("aberto");
+      g("cobModalOverlay").dataset.grupos=JSON.stringify(Object.keys(grupos).reduce(function(acc,acao){acc[acao]=grupos[acao].map(function(l){return l.id;});return acc;},{}));
+      g("cobModalOverlay").dataset.criticas=JSON.stringify(criticas.map(function(l){return l.id;}));
+    };
+
+    window.cobFecharModal=function(){g("cobModalOverlay").classList.remove("aberto");};
+
+    window.cobConfirmarEnvioLote=function(){
+      var overlay=g("cobModalOverlay");
+      var grupos=JSON.parse(overlay.dataset.grupos||"{}");
+      var criticas=JSON.parse(overlay.dataset.criticas||"[]");
+      var itens=[];
+      Object.keys(grupos).forEach(function(acao){
+        var ta=document.querySelector('[data-cob-grupo="'+acao+'"]');
+        var corpo=ta?ta.value:"";
+        grupos[acao].forEach(function(id){ itens.push({id:id, acao:acao, corpoPersonalizado:corpo}); });
+      });
+
+      var btn=g("btnCobConfirmarLote"); btn.disabled=true; btn.textContent="Enviando…";
+
+      function marcarCriticas(cb){
+        if(!criticas.length){cb();return;}
+        var restantes=criticas.length;
+        criticas.forEach(function(id){
+          google.script.run
+            .withSuccessHandler(function(){ if(--restantes<=0) cb(); })
+            .withFailureHandler(function(){ if(--restantes<=0) cb(); })
+            .cob_marcarCritica_publico(tokenSessao(), id, "15+ dias sem resposta — marcado automaticamente pela régua de cobrança.");
+        });
+      }
+
+      function enviarLote(){
+        if(!itens.length){ btn.disabled=false; btn.textContent="Confirmar envio"; cobFecharModal(); cobCarregar(); return; }
+        google.script.run
+          .withSuccessHandler(function(r){
+            btn.disabled=false; btn.textContent="Confirmar envio";
+            cobFecharModal();
+            if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao enviar lote.","err");return;}
+            avisar("Enviados: "+(r.enviados.length||0)+" · Falhas: "+(r.falhas.length||0),"ok");
+            if(r.falhas&&r.falhas.length) console.warn("[Cobrança] falhas no lote:",r.falhas);
+            cobCarregar();
+          })
+          .withFailureHandler(function(e){btn.disabled=false;btn.textContent="Confirmar envio";avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+          .cob_aprovarEnviarLote_publico(tokenSessao(), itens);
+      }
+
+      marcarCriticas(enviarLote);
+    };
+  </script>
+</div>

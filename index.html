@@ -82,6 +82,7 @@
         <button type="button" class="docSubMenuBtn" data-esc-sub="escolas" onclick="spIr('escolas',null)">🏫 Cadastro de Escolas</button>
         <button type="button" class="docSubMenuBtn" data-esc-sub="visitas" onclick="spIr('visitas',null)">📍 Visita à Escola (agenda do dia)</button>
         <button type="button" class="docSubMenuBtn" data-esc-sub="visitasAdmin" onclick="spIr('visitasAdmin',null)">🗺️ Gestão de Visitas</button>
+        <button type="button" class="docSubMenuBtn" data-esc-sub="cobranca" onclick="spIr('cobranca',null)">📋 Cobrança de Relação Nominal</button>
       </div>
       <button class="spN" data-mod="rh" onclick="spIr('rh',this)">
         <span class="spNI">👥</span><div><strong>RH</strong><small>Colaboradores e Documentos</small></div>
@@ -541,6 +542,10 @@ function benefAdminPesquisar(){var input=document.getElementById("benefAdminBusc
 
       <div id="mVisitasAdmin" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
         <?!= include('VisitasAdmin'); ?>
+      </div>
+
+      <div id="mCobranca" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('CobrancaAdmin'); ?>
       </div>
 
 <div id="mRelatorios" class="spM spPlaceholder" style="display:none;">
@@ -1203,7 +1208,8 @@ var MODS={
   relatorios:["mDocumentos","Relatórios","Indicadores e Análises"],
 config:["mConfig","Configurações","Sistema e Preferências"],
 visitas:["mVisitas","Visitas às Escolas","Agenda do dia, check-in e captação"],
-  visitasAdmin:["mVisitasAdmin","Gestão de Visitas","Cobertura das escolas, agenda em lote e desempenho por diretor"]
+  visitasAdmin:["mVisitasAdmin","Gestão de Visitas","Cobertura das escolas, agenda em lote e desempenho por diretor"],
+  cobranca:["mCobranca","Cobrança de Relação Nominal","Acompanhamento por escola e competência para emissão das guias sindicais"]
 };
 /* Guarda funções internas dos includes antes de criar wrappers globais */
 var SISGEP_INTERNOS={
@@ -1596,6 +1602,10 @@ if(mod==="visitas"){
     setTimeout(function(){ callFn("carregarPainelVisitas"); },120);
     return;
   }
+  if(mod==="cobranca"){
+    setTimeout(function(){ callFn("carregarPainelCobranca"); },120);
+    return;
+  }
   if(mod==="centralEmailIA"){
     var eiaInnerBox=document.getElementById("centralEmailIA");
 
@@ -1646,7 +1656,7 @@ var flexMods={
 /* Módulos que vivem sob o acordeão Sindicalização. Como os sub-botões
      não são .spN, quem acende no menu é o botão-pai. */
 var SIND_SUBS={fichas:1,carteirinhas:1};
-  var ESC_SUBS={escolas:1,visitas:1,visitasAdmin:1};
+  var ESC_SUBS={escolas:1,visitas:1,visitasAdmin:1,cobranca:1};
 
   /* Mesma ideia para o acordeão Financeiro — Prestadores e Patrimônio não
      têm backend próprio (Prestadores vive em Despesas.gs; Patrimônio é
