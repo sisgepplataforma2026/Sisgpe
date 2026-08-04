@@ -275,12 +275,16 @@
     };
 
     window.cobBuscarAgora=function(){
-      var btn=g("btnCobBuscarAgora"); btn.disabled=true; btn.textContent="Buscando…";
+      var btn=g("btnCobBuscarAgora"); btn.disabled=true; btn.textContent="Buscando… (pode levar alguns minutos)";
       google.script.run
         .withSuccessHandler(function(r){
           btn.disabled=false; btn.textContent="🔄 Buscar agora";
           if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro na busca.","err");return;}
-          avisar("Varredura concluída — "+(r.recebidasHoje||0)+" relação(ões) localizada(s) agora.","ok");
+          if(r.parcial){
+            avisar("Varredura parcial — tempo limite atingido ("+(r.processadas||0)+" escola(s)/competência(s) verificadas, "+(r.recebidasHoje||0)+" localizada(s)). Clique em \"Buscar agora\" de novo para continuar de onde parou.","info");
+          } else {
+            avisar("Varredura concluída — "+(r.recebidasHoje||0)+" relação(ões) localizada(s) agora.","ok");
+          }
           cobCarregar();
         })
         .withFailureHandler(function(e){btn.disabled=false;btn.textContent="🔄 Buscar agora";avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})

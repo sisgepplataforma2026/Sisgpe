@@ -361,10 +361,21 @@ function cob_listarPainel(tokenSessao, competenciaParam) {
  * escola-alvo x competência) e roda o motor de correspondência.
  * ========================================= */
 
+// Cada escola-competência custa uma busca real no Gmail (GmailApp.search +
+// leitura de mensagens/anexos de cada thread) — não dá pra saber de
+// antemão quantas escolas o financeiro vai cadastrar, e o Apps Script mata
+// a execução em ~6min (conta pessoal) ou 30min (Workspace). Em vez de
+// arriscar estourar esse limite (e o botão "Buscar agora" ficar preso em
+// "Buscando…" até a chamada falhar), a rotina se autolimita por tempo e
+// devolve "parcial" — quem chamou decide se clica de novo para continuar
+// de onde parou (escolas já RECEBIDA são puladas sem custo de Gmail).
+var COB_LIMITE_MS_VARREDURA_ = 4 * 60 * 1000;
+
 function cob_rotinaDiaria_() {
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
+    var inicioExec = Date.now();
     var sh = cob_garantirSheet_();
     var mapa = cob_mapaCabecalho_(sh);
     var competenciaAtual = cob_competenciaDe_(new Date());
@@ -391,10 +402,14 @@ function cob_rotinaDiaria_() {
     // em lugar nenhum ainda, mantém também a anterior em aberto.
     var competencias = [competenciaAtual, competenciaAnterior];
     var agora = new Date();
-    var processadas = 0, recebidasHoje = 0;
+    var processadas = 0, recebidasHoje = 0, pararPorTempo = false;
 
-    escolasAlvo.forEach(function (escola) {
-      competencias.forEach(function (competencia) {
+    for (var iEscola = 0; iEscola < escolasAlvo.length && !pararPorTempo; iEscola++) {
+      var escola = escolasAlvo[iEscola];
+      for (var iComp = 0; iComp < competencias.length; iComp++) {
+        if (Date.now() - inicioExec > COB_LIMITE_MS_VARREDURA_) { pararPorTempo = true; break; }
+
+        var competencia = competencias[iComp];
         var chave = escola.cnpj + "::" + competencia;
         var numLinha = porChave[chave];
 
@@ -412,7 +427,7 @@ function cob_rotinaDiaria_() {
         }
 
         var statusAtual = String(sh.getRange(numLinha, mapa["STATUS"]).getValue() || "");
-        if (statusAtual === COB_STATUS.RECEBIDA) return; // já resolvida — nunca reabre sozinha
+        if (statusAtual === COB_STATUS.RECEBIDA) continue; // já resolvida — nunca reabre sozinha, e não custa Gmail
 
         var candidato = cob_buscarCandidatoParaEscola_(escola, competencia);
         processadas++;
@@ -440,15 +455,17 @@ function cob_rotinaDiaria_() {
         // é a régua de lembretes (aprovada manualmente) que avança isso.
 
         sh.getRange(numLinha, mapa["ATUALIZADO_EM"]).setValue(agora);
-      });
-    });
+      }
+    }
 
-    Logger.log("[Cobrança] Rotina diária — escolas-alvo: " + escolasAlvo.length + " | processadas: " + processadas + " | recebidas hoje: " + recebidasHoje);
+    Logger.log("[Cobrança] Rotina diária — escolas-alvo: " + escolasAlvo.length + " | processadas: " + processadas +
+      " | recebidas hoje: " + recebidasHoje + (pararPorTempo ? " | PARCIAL (limite de tempo atingido)" : ""));
     return {
       ok: true,
       escolasAlvo: escolasAlvo.length,
       processadas: processadas,
-      recebidasHoje: recebidasHoje
+      recebidasHoje: recebidasHoje,
+      parcial: pararPorTempo
     };
   } finally {
     lock.releaseLock();
