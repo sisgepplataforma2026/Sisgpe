@@ -75,6 +75,7 @@
           <button class="rh-btn gold" onclick="rhAbrirSofia()">Consultar SOFIA</button>
           <button class="rh-btn" onclick="rhGerarDocumento()">Gerar documento</button>
           <button class="rh-btn" onclick="rhImportarSeedModelo()" id="btnRhSeedModelo">🌱 Importar os 7 do modelo</button>
+          <button class="rh-btn" onclick="rhAtualizarExtratoJunho2026()" id="btnRhAtualizarExtrato">💳 Atualizar salário/CPF (Extrato 06/2026)</button>
         </div>
       </div>
 
@@ -91,6 +92,7 @@
         <div class="rh-field"><label>Data de nascimento</label><input id="rhAniversario" type="date"></div>
         <div class="rh-field"><label>E-mail</label><input id="rhEmail" type="email" placeholder="colaborador@email.com"></div>
         <div class="rh-field"><label>Matrícula</label><input id="rhMatricula" placeholder="Ex.: 37"></div>
+        <div class="rh-field"><label>CPF</label><input id="rhCpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" oninput="Utils.aplicarMascaraCPF(this)"></div>
         <div class="rh-field"><label>CBO</label><input id="rhCbo" placeholder="Ex.: 411005"></div>
         <div class="rh-field"><label>Centro de custo</label><input id="rhCentroCusto" placeholder="Ex.: 4"></div>
         <div class="rh-field"><label>Filial</label><input id="rhFilial" placeholder="Ex.: 1"></div>
@@ -300,7 +302,7 @@
     }
 
     window.rhSalvar=function(){
-      var item={id:editId||"",nome:(g("rhNome")||{}).value||"",cargo:(g("rhCargo")||{}).value||"",setor:(g("rhSetor")||{}).value||"Administrativo",status:(g("rhStatus")||{}).value||"Ativo",vencimento:(g("rhVencimento")||{}).value||"",salario:num((g("rhSalario")||{}).value),beneficios:num((g("rhBeneficios")||{}).value),descontos:num((g("rhDescontos")||{}).value),dependentes:Math.max(0,parseInt((g("rhDependentes")||{}).value||"0",10)||0),aniversario:(g("rhAniversario")||{}).value||"",email:(g("rhEmail")||{}).value||"",matricula:(g("rhMatricula")||{}).value||"",cbo:(g("rhCbo")||{}).value||"",centroCusto:(g("rhCentroCusto")||{}).value||"",filial:(g("rhFilial")||{}).value||"",admissao:(g("rhAdmissao")||{}).value||""};
+      var item={id:editId||"",nome:(g("rhNome")||{}).value||"",cargo:(g("rhCargo")||{}).value||"",setor:(g("rhSetor")||{}).value||"Administrativo",status:(g("rhStatus")||{}).value||"Ativo",vencimento:(g("rhVencimento")||{}).value||"",salario:num((g("rhSalario")||{}).value),beneficios:num((g("rhBeneficios")||{}).value),descontos:num((g("rhDescontos")||{}).value),dependentes:Math.max(0,parseInt((g("rhDependentes")||{}).value||"0",10)||0),aniversario:(g("rhAniversario")||{}).value||"",email:(g("rhEmail")||{}).value||"",matricula:(g("rhMatricula")||{}).value||"",cbo:(g("rhCbo")||{}).value||"",centroCusto:(g("rhCentroCusto")||{}).value||"",filial:(g("rhFilial")||{}).value||"",admissao:(g("rhAdmissao")||{}).value||"",cpf:(g("rhCpf")||{}).value||""};
       if(!item.nome.trim()){avisar("Informe o nome do colaborador.","warn");return;}
       google.script.run
         .withSuccessHandler(function(r){
@@ -315,7 +317,7 @@
     window.rhEditar=function(id){
       var i=RH_CACHE.find(function(x){return x.id===id;}); if(!i)return;
       editId=id;
-      g("rhNome").value=i.nome||"";g("rhCargo").value=i.cargo||"";g("rhSetor").value=i.setor||"Administrativo";g("rhStatus").value=i.status||"Ativo";g("rhVencimento").value=i.vencimento||"";g("rhSalario").value=i.salario?String(i.salario).replace(".",","):"";g("rhBeneficios").value=i.beneficios?String(i.beneficios).replace(".",","):"";g("rhDescontos").value=i.descontos?String(i.descontos).replace(".",","):"";g("rhDependentes").value=i.dependentes||0;g("rhAniversario").value=i.aniversario||"";g("rhEmail").value=i.email||"";g("rhMatricula").value=i.matricula||"";g("rhCbo").value=i.cbo||"";g("rhCentroCusto").value=i.centroCusto||"";g("rhFilial").value=i.filial||"";g("rhAdmissao").value=i.admissao||"";g("rhNome").focus();
+      g("rhNome").value=i.nome||"";g("rhCargo").value=i.cargo||"";g("rhSetor").value=i.setor||"Administrativo";g("rhStatus").value=i.status||"Ativo";g("rhVencimento").value=i.vencimento||"";g("rhSalario").value=i.salario?String(i.salario).replace(".",","):"";g("rhBeneficios").value=i.beneficios?String(i.beneficios).replace(".",","):"";g("rhDescontos").value=i.descontos?String(i.descontos).replace(".",","):"";g("rhDependentes").value=i.dependentes||0;g("rhAniversario").value=i.aniversario||"";g("rhEmail").value=i.email||"";g("rhMatricula").value=i.matricula||"";g("rhCbo").value=i.cbo||"";g("rhCentroCusto").value=i.centroCusto||"";g("rhFilial").value=i.filial||"";g("rhAdmissao").value=i.admissao||"";g("rhCpf").value=i.cpf||"";g("rhNome").focus();
     };
 
     window.rhExcluir=function(id){
@@ -347,10 +349,28 @@
         .seedColaboradoresRH_ModeloFolha2025_publico(tokenSessao());
     };
 
-    window.rhLimparForm=function(){editId="";["rhNome","rhCargo","rhVencimento","rhSalario","rhBeneficios","rhDescontos","rhDependentes","rhAniversario","rhEmail","rhMatricula","rhCbo","rhCentroCusto","rhFilial","rhAdmissao"].forEach(function(id){if(g(id))g(id).value="";});if(g("rhSetor"))g("rhSetor").value="Administrativo";if(g("rhStatus"))g("rhStatus").value="Ativo";};
+    window.rhAtualizarExtratoJunho2026=function(){
+      if(!confirm("Atualizar SALÁRIO e CPF dos 7 colaboradores reais (por matrícula) com os valores da competência 06/2026, extraídos dos extratos da contabilidade? Isso SOBRESCREVE o salário e o CPF atualmente cadastrados para esses 7 — os demais dados (cargo, CBO, admissão etc.) não são alterados. Ação exige perfil administrador."))return;
+      var btn=g("btnRhAtualizarExtrato"); if(btn){btn.disabled=true;btn.textContent="Atualizando...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="💳 Atualizar salário/CPF (Extrato 06/2026)";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao atualizar.","err");return;}
+          var msg="Atualizados: "+(r.atualizados.length||0)+" · Não encontrados: "+(r.naoEncontrados.length||0);
+          avisar(msg,"ok");
+          rhRender();
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="💳 Atualizar salário/CPF (Extrato 06/2026)";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .atualizarColaboradoresRH_ExtratoJunho2026_publico(tokenSessao());
+    };
+
+    window.rhLimparForm=function(){editId="";["rhNome","rhCargo","rhVencimento","rhSalario","rhBeneficios","rhDescontos","rhDependentes","rhAniversario","rhEmail","rhMatricula","rhCbo","rhCentroCusto","rhFilial","rhAdmissao","rhCpf"].forEach(function(id){if(g(id))g(id).value="";});if(g("rhSetor"))g("rhSetor").value="Administrativo";if(g("rhStatus"))g("rhStatus").value="Ativo";};
 
     function baixarCSV(nome,rows){var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c==null?"":c).replace(/"/g,'""')+'"';}).join(";");}).join("\n");var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download=nome;a.click();}
-    window.rhExportarCSV=function(){var rows=[["Nome","Cargo","Setor","Status","Vencimento","Salario","Beneficios","Descontos","Dependentes","Aniversario","Email","Matricula","CBO","CentroCusto","Filial","Admissao"]].concat(RH_CACHE.map(function(i){return[i.nome,i.cargo,i.setor,i.status,i.vencimento,i.salario||0,i.beneficios||0,i.descontos||0,i.dependentes||0,i.aniversario||"",i.email||"",i.matricula||"",i.cbo||"",i.centroCusto||"",i.filial||"",i.admissao||""];}));baixarCSV("sisgep-rh.csv",rows);};
+    window.rhExportarCSV=function(){var rows=[["Nome","Cargo","Setor","Status","Vencimento","Salario","Beneficios","Descontos","Dependentes","Aniversario","Email","Matricula","CBO","CentroCusto","Filial","Admissao","CPF"]].concat(RH_CACHE.map(function(i){return[i.nome,i.cargo,i.setor,i.status,i.vencimento,i.salario||0,i.beneficios||0,i.descontos||0,i.dependentes||0,i.aniversario||"",i.email||"",i.matricula||"",i.cbo||"",i.centroCusto||"",i.filial||"",i.admissao||"",i.cpf||""];}));baixarCSV("sisgep-rh.csv",rows);};
 
     /* ==== Documentos por colaborador ==== */
     var RH_DOC_COLAB_ATUAL="";

@@ -62,13 +62,13 @@ function rh_garantirColaboradores_() {
     sh.appendRow([
       "ID", "NOME", "CARGO", "SETOR", "STATUS", "VENCIMENTO",
       "SALARIO", "BENEFICIOS", "DESCONTOS", "DEPENDENTES", "ANIVERSARIO", "EMAIL",
-      "MATRICULA", "CBO", "CENTRO_CUSTO", "FILIAL", "ADMISSAO",
+      "MATRICULA", "CBO", "CENTRO_CUSTO", "FILIAL", "ADMISSAO", "CPF",
       "CRIADO_POR", "CRIADO_EM", "ATUALIZADO_POR", "ATUALIZADO_EM"
     ]);
-    sh.getRange(1, 1, 1, 20).setFontWeight("bold");
+    sh.getRange(1, 1, 1, 21).setFontWeight("bold");
     sh.setFrozenRows(1);
   } else {
-    ["DEPENDENTES", "ANIVERSARIO", "EMAIL", "MATRICULA", "CBO", "CENTRO_CUSTO", "FILIAL", "ADMISSAO"].forEach(function (nomeCol) {
+    ["DEPENDENTES", "ANIVERSARIO", "EMAIL", "MATRICULA", "CBO", "CENTRO_CUSTO", "FILIAL", "ADMISSAO", "CPF"].forEach(function (nomeCol) {
       var cab = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
       if (cab.indexOf(nomeCol) === -1) {
         sh.getRange(1, sh.getLastColumn() + 1).setValue(nomeCol).setFontWeight("bold");
@@ -293,7 +293,8 @@ function listarColaboradoresRH_interno_() {
           cbo: String(obj.CBO || ""),
           centroCusto: String(obj.CENTRO_CUSTO || ""),
           filial: String(obj.FILIAL || ""),
-          admissao: rh_formatarData_(obj.ADMISSAO)
+          admissao: rh_formatarData_(obj.ADMISSAO),
+          cpf: String(obj.CPF || "")
         };
       })
       .filter(function (x) { return !!x.id; });
@@ -332,7 +333,8 @@ function salvarColaboradorRH(dados, tokenSessao) {
       CBO: String(dados.cbo || "").trim(),
       CENTRO_CUSTO: String(dados.centroCusto || "").trim(),
       FILIAL: String(dados.filial || "").trim(),
-      ADMISSAO: dados.admissao || ""
+      ADMISSAO: dados.admissao || "",
+      CPF: String(dados.cpf || "").trim()
     };
 
     function escreverCampos(linha) {

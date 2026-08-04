@@ -280,7 +280,7 @@ function rh_gerarHtmlHolerite_(lancamento, colaborador, rubricasExtras, faixaIrr
     "</div>" +
     "<div class='comp'>Recibo de Pagamento<br>Competência " + rh_esc_(lancamento.competencia) + "</div></div>" +
     "<div class='ident'>" +
-    "<div class='nome'><b>Colaborador</b><span>" + rh_esc_(colaborador.matricula || "-") + " · " + rh_esc_(lancamento.nome) + " — " + rh_esc_(lancamento.cargo) + "</span></div>" +
+    "<div class='nome'><b>Colaborador</b><span>" + rh_esc_(colaborador.matricula || "-") + " · " + rh_esc_(lancamento.nome) + " — " + rh_esc_(lancamento.cargo) + (colaborador.cpf ? " · CPF: " + rh_esc_(colaborador.cpf) : "") + "</span></div>" +
     "<div><b>CBO</b><span>" + rh_esc_(colaborador.cbo || "-") + "</span></div>" +
     "<div><b>Centro de Custo</b><span>" + rh_esc_(colaborador.centroCusto || "-") + "</span></div>" +
     "<div><b>Filial</b><span>" + rh_esc_(colaborador.filial || "-") + "</span></div>" +

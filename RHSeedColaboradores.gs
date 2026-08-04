@@ -88,3 +88,69 @@ function seedColaboradoresRH_ModeloFolha2025_() {
   Logger.log("[RH] Seed colaboradores do modelo — inseridos: " + (inseridos.join(", ") || "nenhum") + " | ignorados: " + (ignorados.join(", ") || "nenhum"));
   return { ok: true, inseridos: inseridos, ignorados: ignorados };
 }
+
+// ================================
+// Atualização por MATRÍCULA — salário e CPF dos 7 colaboradores reais,
+// a partir dos documentos "Extrato Mensal" (competência 06/2026) da
+// contabilidade (IMPACTO CONSULTORIA), enviados pelo usuário. Diferente
+// do seed acima, esta função NUNCA insere linha nova: só localiza a
+// matrícula já existente e atualiza SALARIO/CPF. Se uma matrícula não
+// for encontrada, é reportada em "naoEncontrados" e nada é gravado
+// para ela — nunca cria colaborador novo por aqui.
+// ================================
+
+// Público — exige administrador (grava dado sensível de RH em lote).
+function atualizarColaboradoresRH_ExtratoJunho2026_publico(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, true);
+  try {
+    return atualizarColaboradoresRH_ExtratoJunho2026_();
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao atualizar colaboradores: " + e.message };
+  }
+}
+
+function atualizarColaboradoresRH_ExtratoJunho2026_() {
+  var sh = rh_garantirColaboradores_();
+  var mapa = rh_mapaCabecalho_(sh);
+
+  var dados = [
+    { matricula: "37", salario: 962.89, cpf: "191.355.007-94" },
+    { matricula: "36", salario: 2175.85, cpf: "017.402.447-96" },
+    { matricula: "6", salario: 1760.50, cpf: "925.578.486-20" },
+    { matricula: "3", salario: 2401.40, cpf: "073.080.527-10" },
+    { matricula: "35", salario: 2175.85, cpf: "089.384.197-89" },
+    { matricula: "2", salario: 3628.20, cpf: "102.849.547-13" },
+    { matricula: "8", salario: 2961.30, cpf: "080.297.397-37" }
+  ];
+
+  var colMatricula = mapa["MATRICULA"];
+  if (!colMatricula) return { ok: false, mensagem: "Coluna MATRICULA não encontrada na planilha de Colaboradores." };
+
+  var ultimaLinha = sh.getLastRow();
+  var porMatricula = {};
+  if (ultimaLinha > 1) {
+    var valores = sh.getRange(2, colMatricula, ultimaLinha - 1, 1).getValues();
+    valores.forEach(function (linha, i) {
+      var m = String(linha[0] || "").trim();
+      if (m) porMatricula[m] = i + 2;
+    });
+  }
+
+  var quem = "SISGEP (atualização Extrato 06/2026)";
+  var agora = new Date();
+  var atualizados = [], naoEncontrados = [];
+
+  dados.forEach(function (d) {
+    var linha = porMatricula[d.matricula];
+    if (!linha) { naoEncontrados.push("Matrícula " + d.matricula); return; }
+
+    if (mapa["SALARIO"]) sh.getRange(linha, mapa["SALARIO"]).setValue(d.salario);
+    if (mapa["CPF"]) sh.getRange(linha, mapa["CPF"]).setValue(d.cpf);
+    if (mapa["ATUALIZADO_POR"]) sh.getRange(linha, mapa["ATUALIZADO_POR"]).setValue(quem);
+    if (mapa["ATUALIZADO_EM"]) sh.getRange(linha, mapa["ATUALIZADO_EM"]).setValue(agora);
+    atualizados.push("Matrícula " + d.matricula + " (salário R$ " + d.salario.toFixed(2) + ", CPF " + d.cpf + ")");
+  });
+
+  Logger.log("[RH] Atualização Extrato 06/2026 — atualizados: " + (atualizados.join(", ") || "nenhum") + " | não encontrados: " + (naoEncontrados.join(", ") || "nenhum"));
+  return { ok: true, atualizados: atualizados, naoEncontrados: naoEncontrados };
+}

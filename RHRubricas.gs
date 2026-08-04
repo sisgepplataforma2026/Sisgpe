@@ -52,20 +52,56 @@ var RH_RUBRICAS_SEED_ = [
   { codigo: "DESCDIV", descricao: "Desconto Diverso", tipo: "Desconto" }
 ];
 
+// Rubricas reais em uso na folha de verdade do sindicato — extraídas do
+// Extrato Mensal (contabilidade, competência 06/2026). Códigos numéricos
+// iguais aos do sistema da contabilidade (IMPACTO CONSULTORIA), para
+// manter rastreabilidade entre o que o SISGEP lança e o que aparece no
+// extrato oficial que a contabilidade já usa.
+var RH_RUBRICAS_REAIS_EXTRATO_ = [
+  { codigo: "19", descricao: "Diferença Salarial", tipo: "Provento" },
+  { codigo: "20", descricao: "Prêmio Mérito", tipo: "Provento" },
+  { codigo: "292", descricao: "Quinquênio", tipo: "Provento" },
+  { codigo: "355", descricao: "Decênio", tipo: "Provento" },
+  { codigo: "504", descricao: "Insalubridade 10% Piso Salarial", tipo: "Provento" },
+  { codigo: "518", descricao: "Abono CCT", tipo: "Provento" },
+  { codigo: "992", descricao: "Arredondamento do Mês", tipo: "Provento" },
+  { codigo: "993", descricao: "Troco Mês Anterior", tipo: "Desconto" }
+];
+
 function rh_garantirRubricasCatalogo_() {
   var ss = SpreadsheetApp.openById(PLANILHA_ID);
   var sh = ss.getSheetByName(ABA_RH_RUBRICAS);
   if (!sh) sh = ss.insertSheet(ABA_RH_RUBRICAS);
+  var catalogoCompleto = RH_RUBRICAS_SEED_.concat(RH_RUBRICAS_REAIS_EXTRATO_);
+
   if (sh.getLastRow() === 0) {
     sh.appendRow(["ID", "CODIGO", "DESCRICAO", "TIPO", "ATIVO", "CRIADO_POR", "CRIADO_EM"]);
     sh.getRange(1, 1, 1, 7).setFontWeight("bold");
     sh.setFrozenRows(1);
 
     var agora = new Date();
-    var linhas = RH_RUBRICAS_SEED_.map(function (r) {
+    var linhas = catalogoCompleto.map(function (r) {
       return [rh_gerarId_("RUB"), r.codigo, r.descricao, r.tipo, true, "SISGEP", agora];
     });
     sh.getRange(2, 1, linhas.length, linhas[0].length).setValues(linhas);
+  } else {
+    // Migração idempotente: quem já tinha o catálogo criado antes só
+    // ganha as rubricas que ainda não existem (por CODIGO) — nada é
+    // sobrescrito nem duplicado.
+    var codigosExistentes = {};
+    if (sh.getLastRow() > 1) {
+      sh.getRange(2, 2, sh.getLastRow() - 1, 1).getValues().forEach(function (l) {
+        codigosExistentes[String(l[0]).trim()] = true;
+      });
+    }
+    var faltantes = catalogoCompleto.filter(function (r) { return !codigosExistentes[r.codigo]; });
+    if (faltantes.length) {
+      var agoraM = new Date();
+      var linhasNovas = faltantes.map(function (r) {
+        return [rh_gerarId_("RUB"), r.codigo, r.descricao, r.tipo, true, "SISGEP", agoraM];
+      });
+      sh.getRange(sh.getLastRow() + 1, 1, linhasNovas.length, linhasNovas[0].length).setValues(linhasNovas);
+    }
   }
   return sh;
 }
