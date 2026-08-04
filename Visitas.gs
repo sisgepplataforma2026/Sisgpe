@@ -1106,6 +1106,55 @@ function visitas_gravar_(registro) {
   }
 }
 
+/* ─────────────────────────────────────────────────────────────
+   RETENÇÃO LGPD — expurgo das coordenadas de geolocalização do
+   check-in (CHECKIN_LAT/CHECKIN_LNG) após 5 anos, contados a partir
+   de CHECKIN_DATA_HORA. O restante do registro de visita (histórico
+   operacional, sem dado sensível de localização precisa) é mantido.
+───────────────────────────────────────────────────────────── */
+var VIS_LGPD_RETENCAO_ANOS_ = 5;
+
+function visitas_expurgarGeolocalizacaoAntiga_() {
+  var aba = visitas_aba_();
+  var mapa = visitas_mapaCabecalho_(aba);
+  var colLat  = visitas_idxCol_(mapa, 'CHECKIN_LAT', 0);
+  var colLng  = visitas_idxCol_(mapa, 'CHECKIN_LNG', 0);
+  var colData = visitas_idxCol_(mapa, 'CHECKIN_DATA_HORA', 0);
+  if (!colLat || !colLng || !colData) {
+    return { ok: false, mensagem: 'Colunas de geolocalização não encontradas em ' + VIS_ABA_VISITAS + '.' };
+  }
+
+  var limite = new Date();
+  limite.setFullYear(limite.getFullYear() - VIS_LGPD_RETENCAO_ANOS_);
+
+  var ultima = aba.getLastRow();
+  if (ultima < 2) return { ok: true, expurgadas: 0 };
+
+  var dados = aba.getRange(2, 1, ultima - 1, aba.getLastColumn()).getValues();
+  var expurgadas = 0;
+
+  for (var i = 0; i < dados.length; i++) {
+    var linha = dados[i];
+    var lat = linha[colLat - 1];
+    var lng = linha[colLng - 1];
+    if (!lat && !lng) continue; // já sem geolocalização gravada
+
+    var dataCheckin = linha[colData - 1];
+    var dataObj = dataCheckin instanceof Date ? dataCheckin : new Date(dataCheckin);
+    if (isNaN(dataObj.getTime()) || dataObj > limite) continue; // sem data confiável ou ainda dentro do prazo
+
+    aba.getRange(i + 2, colLat).setValue('');
+    aba.getRange(i + 2, colLng).setValue('');
+    expurgadas++;
+  }
+
+  if (expurgadas) {
+    Logger.log('[LGPD] Geolocalização expurgada em ' + expurgadas + ' visita(s) com check-in anterior a ' + limite.toISOString());
+  }
+
+  return { ok: true, expurgadas: expurgadas };
+}
+
 /**
  * Atualiza campos de acompanhamento da escola, sem tocar no cadastro.
  *

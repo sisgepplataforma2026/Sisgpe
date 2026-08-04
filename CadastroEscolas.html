@@ -904,6 +904,81 @@
 
   </div>
 </div>
+
+<!-- Modal: Gerar Ofício IA -->
+<div id="ceOficioIaOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,18,48,.55);z-index:9999;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:16px;width:100%;max-width:520px;box-shadow:0 30px 70px rgba(0,20,60,.3);overflow:hidden;">
+    <div style="background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));padding:18px 22px;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+      <div>
+        <div style="font-size:15px;font-weight:900;">📄 Gerar Ofício IA</div>
+        <div style="font-size:11.5px;color:rgba(255,255,255,.7);margin-top:2px;" id="ceOficioIaEscolaLabel">—</div>
+      </div>
+      <button type="button" onclick="ceFecharModalOficioIA()" style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;cursor:pointer;font-size:15px;">×</button>
+    </div>
+    <div style="padding:20px 22px;display:flex;flex-direction:column;gap:14px;">
+      <div>
+        <label style="display:block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:6px;">Tipo do ofício</label>
+        <select id="ceOficioIaTipo" style="width:100%;height:42px;border:1.5px solid #dbe4ef;border-radius:9px;padding:0 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+          <option>Ofício Livre</option>
+          <option>Filiação</option>
+          <option>Desfiliação</option>
+          <option>Taxa Negocial</option>
+          <option>Taxa Assistencial</option>
+        </select>
+      </div>
+      <div>
+        <label style="display:block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:6px;">Assunto/referência (opcional)</label>
+        <input type="text" id="ceOficioIaAssunto" placeholder="Ex.: Ofício 234/2026" style="width:100%;height:42px;border:1.5px solid #dbe4ef;border-radius:9px;padding:0 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="display:block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:6px;">Instruções adicionais para a IA (opcional)</label>
+        <textarea id="ceOficioIaInstrucoes" placeholder="Ex.: mencionar prazo de 10 dias úteis para resposta" style="width:100%;min-height:100px;border:1.5px solid #dbe4ef;border-radius:9px;padding:12px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box;"></textarea>
+      </div>
+    </div>
+    <div style="padding:14px 22px;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;gap:8px;background:#fafcff;">
+      <button type="button" class="ce-btn ce-btn-outline" onclick="ceFecharModalOficioIA()">Cancelar</button>
+      <button type="button" class="ce-btn ce-btn-navy" id="btnCeOficioIaGerar" onclick="ceOficioIaSubmit()">🤖 Gerar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Responder E-mail IA -->
+<div id="ceRespostaIaOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,18,48,.55);z-index:9999;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:16px;width:100%;max-width:560px;box-shadow:0 30px 70px rgba(0,20,60,.3);overflow:hidden;">
+    <div style="background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));padding:18px 22px;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+      <div>
+        <div style="font-size:15px;font-weight:900;">📧 Responder E-mail IA</div>
+        <div style="font-size:11.5px;color:rgba(255,255,255,.7);margin-top:2px;" id="ceRespostaIaEscolaLabel">—</div>
+      </div>
+      <button type="button" onclick="ceFecharModalRespostaIA()" style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;cursor:pointer;font-size:15px;">×</button>
+    </div>
+    <div style="padding:20px 22px;display:flex;flex-direction:column;gap:14px;">
+      <div>
+        <label style="display:block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:6px;">Conteúdo do e-mail recebido</label>
+        <textarea id="ceRespostaIaEmail" placeholder="Cole aqui o conteúdo do e-mail recebido da escola..." style="width:100%;min-height:140px;border:1.5px solid #dbe4ef;border-radius:9px;padding:12px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box;"></textarea>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label style="display:block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:6px;">Assunto (opcional)</label>
+          <input type="text" id="ceRespostaIaAssunto" style="width:100%;height:42px;border:1.5px solid #dbe4ef;border-radius:9px;padding:0 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="display:block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:6px;">Remetente (opcional)</label>
+          <input type="text" id="ceRespostaIaRemetente" style="width:100%;height:42px;border:1.5px solid #dbe4ef;border-radius:9px;padding:0 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+        </div>
+      </div>
+      <div>
+        <label style="display:block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:6px;">Contexto adicional para a IA (opcional)</label>
+        <textarea id="ceRespostaIaContexto" placeholder="Ex.: escola deve confirmar recebimento do ofício 234/2026" style="width:100%;min-height:80px;border:1.5px solid #dbe4ef;border-radius:9px;padding:12px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box;"></textarea>
+      </div>
+    </div>
+    <div style="padding:14px 22px;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;gap:8px;background:#fafcff;">
+      <button type="button" class="ce-btn ce-btn-outline" onclick="ceFecharModalRespostaIA()">Cancelar</button>
+      <button type="button" class="ce-btn ce-btn-navy" id="btnCeRespostaIaGerar" onclick="ceRespostaIaSubmit()">🤖 Gerar</button>
+    </div>
+  </div>
+</div>
+
     <!-- Ações principais -->
     <div class="ce-acoes" style="margin-bottom:10px;">
       <button type="button" class="ce-btn ce-btn-gold" id="btnCeSalvar">🏫 Salvar Escola</button>
@@ -1902,44 +1977,58 @@ function ceExecutarAnaliseIA() {
 // COLE ESTE BLOCO NO LUGAR DAS DUAS FUNÇÕES ACIMA
 // ================================================================
 
-function ceGerarOficioIA() {
-  // Coleta dados do formulário da escola atualmente em edição
+// Coleta dados do formulário da escola atualmente em edição (usado pelos 2 fluxos de IA)
+function ceIaColetarDadosEscola_() {
   function v(id) {
     var el = document.getElementById(id);
     return el ? String(el.value || "").trim() : "";
   }
-
-  var dados = {
-    tipo:         "Ofício Livre",          // padrão; usuário pode alterar via instrucoes
+  return {
     escola:       v("ceNomeEscola"),
     cnpj:         v("ceCnpj"),
     email:        v("ceEmail"),
     cidade:       v("ceMunicipio"),
     uf:           v("ceUf"),
     destinatario: v("ceResponsavel"),
-    cargo:        v("ceCargoResponsavel"),
-    assunto:      "",
-    instrucoes:   ""
+    cargo:        v("ceCargoResponsavel")
   };
+}
 
-  if (!dados.escola) {
+function ceGerarOficioIA() {
+  var dadosEscola = ceIaColetarDadosEscola_();
+
+  if (!dadosEscola.escola) {
     if (typeof toast === "function") toast("Selecione ou preencha uma escola antes de gerar o ofício.", "err"); else alert("Selecione ou preencha uma escola antes de gerar o ofício.");
     return;
   }
 
-  // Solicita tipo e assunto via prompt simples
-  var tipoSel = window.prompt(
-    "Qual o tipo do ofício?\n\nOpções: Filiação | Desfiliação | Taxa Negocial | Taxa Assistencial | Ofício Livre",
-    "Ofício Livre"
-  );
-  if (tipoSel === null) return; // cancelou
-  dados.tipo = tipoSel.trim() || "Ofício Livre";
+  var lbl = document.getElementById("ceOficioIaEscolaLabel");
+  if (lbl) lbl.textContent = dadosEscola.escola;
 
-  var assuntoSel = window.prompt("Informe o assunto/referência do ofício (opcional):", "");
-  if (assuntoSel !== null) dados.assunto = assuntoSel.trim();
+  var elAssunto = document.getElementById("ceOficioIaAssunto"); if (elAssunto) elAssunto.value = "";
+  var elInstr   = document.getElementById("ceOficioIaInstrucoes"); if (elInstr) elInstr.value = "";
 
-  var instrSel = window.prompt("Instruções adicionais para a IA (opcional):", "");
-  if (instrSel !== null) dados.instrucoes = instrSel.trim();
+  var overlay = document.getElementById("ceOficioIaOverlay");
+  if (overlay) overlay.style.display = "flex";
+}
+
+function ceFecharModalOficioIA() {
+  var overlay = document.getElementById("ceOficioIaOverlay");
+  if (overlay) overlay.style.display = "none";
+}
+
+function ceOficioIaSubmit() {
+  function v(id) {
+    var el = document.getElementById(id);
+    return el ? String(el.value || "").trim() : "";
+  }
+
+  var dados = ceIaColetarDadosEscola_();
+  dados.tipo       = v("ceOficioIaTipo") || "Ofício Livre";
+  dados.assunto    = v("ceOficioIaAssunto");
+  dados.instrucoes = v("ceOficioIaInstrucoes");
+
+  ceFecharModalOficioIA();
 
   // Exibe loading no painel IA
   var box = document.getElementById("ceIaResultado");
@@ -1987,42 +2076,51 @@ function ceGerarOficioIA() {
 
 
 function ceResponderEmailIA() {
-  // Coleta contexto da escola
+  var dadosEscola = ceIaColetarDadosEscola_();
+
+  var lbl = document.getElementById("ceRespostaIaEscolaLabel");
+  if (lbl) lbl.textContent = dadosEscola.escola || "—";
+
+  var elEmail = document.getElementById("ceRespostaIaEmail"); if (elEmail) elEmail.value = "";
+  var elAssunto = document.getElementById("ceRespostaIaAssunto"); if (elAssunto) elAssunto.value = "";
+  var elRemetente = document.getElementById("ceRespostaIaRemetente"); if (elRemetente) elRemetente.value = dadosEscola.escola || "";
+  var elContexto = document.getElementById("ceRespostaIaContexto"); if (elContexto) elContexto.value = "";
+
+  var overlay = document.getElementById("ceRespostaIaOverlay");
+  if (overlay) overlay.style.display = "flex";
+}
+
+function ceFecharModalRespostaIA() {
+  var overlay = document.getElementById("ceRespostaIaOverlay");
+  if (overlay) overlay.style.display = "none";
+}
+
+function ceRespostaIaSubmit() {
   function v(id) {
     var el = document.getElementById(id);
     return el ? String(el.value || "").trim() : "";
   }
 
-  var escola = v("ceNomeEscola");
-  var cnpj   = v("ceCnpj");
-
-  // Solicita o e-mail recebido via prompt
-  var emailRecebido = window.prompt(
-    "Cole aqui o conteúdo do e-mail recebido da escola:"
-  );
-  if (emailRecebido === null) return; // cancelou
-  emailRecebido = (emailRecebido || "").trim();
+  var dadosEscola = ceIaColetarDadosEscola_();
+  var emailRecebido = v("ceRespostaIaEmail");
 
   if (!emailRecebido) {
     if (typeof toast === "function") toast("Informe o conteúdo do e-mail para gerar uma sugestão de resposta.", "err"); else alert("Informe o conteúdo do e-mail para gerar uma sugestão de resposta.");
     return;
   }
 
-  var assunto = window.prompt("Assunto do e-mail recebido (opcional):", "") || "";
-  var remetente = window.prompt("Remetente (nome ou e-mail, opcional):", escola) || escola;
-  var contexto = window.prompt(
-    "Contexto adicional para a IA (ex: 'escola deve confirmar recebimento do ofício 234/2026') (opcional):",
-    ""
-  ) || "";
+  var remetente = v("ceRespostaIaRemetente") || dadosEscola.escola;
 
   var dados = {
     emailRecebido: emailRecebido,
-    assunto:       assunto.trim(),
-    remetente:     remetente.trim(),
-    escola:        escola,
-    cnpj:          cnpj,
-    contexto:      contexto.trim()
+    assunto:       v("ceRespostaIaAssunto"),
+    remetente:     remetente,
+    escola:        dadosEscola.escola,
+    cnpj:          dadosEscola.cnpj,
+    contexto:      v("ceRespostaIaContexto")
   };
+
+  ceFecharModalRespostaIA();
 
   // Exibe loading no painel IA
   var box = document.getElementById("ceIaResultado");

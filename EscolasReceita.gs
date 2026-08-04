@@ -107,12 +107,19 @@ function criarAbasModuloReceita(tokenSessao) {
         "ENDERECO", "NUMERO", "COMPLEMENTO", "BAIRRO",
         "MUNICIPIO", "UF", "CEP",
         "CNAE_PRINCIPAL", "CNAE_DESCRICAO", "SITUACAO_CADASTRAL",
-        "STATUS_COMPARACAO", "OBSERVACAO_COMPARACAO"
+        "STATUS_COMPARACAO", "OBSERVACAO_COMPARACAO", "DATA_PROCESSAMENTO"
       ];
       shComp.getRange(1, 1, 1, cabComp.length).setValues([cabComp]);
       shComp.getRange(1, 1, 1, cabComp.length).setFontWeight("bold");
       shComp.setFrozenRows(1);
       try { shComp.autoResizeColumns(1, cabComp.length); } catch(e) {}
+    } else {
+      // Migração: planilhas criadas antes da coluna de retenção LGPD ganham a coluna agora
+      var cabAtual = shComp.getRange(1, 1, 1, shComp.getLastColumn()).getValues()[0];
+      if (cabAtual.indexOf("DATA_PROCESSAMENTO") === -1) {
+        var novaCol = shComp.getLastColumn() + 1;
+        shComp.getRange(1, novaCol).setValue("DATA_PROCESSAMENTO").setFontWeight("bold");
+      }
     }
 
     return {
@@ -229,7 +236,8 @@ function processarExtracaoOficialReceita(tokenSessao) {
           dados.cnaeDescricao,
           dados.situacaoCadastral,
           statusComp,
-          obsComp
+          obsComp,
+          new Date()
         ]);
 
         inseridas++;
@@ -377,6 +385,51 @@ function executarPipelineReceita(tokenSessao) {
     comparar:{ novas: proc.novas,           existentes: proc.existentes, suspeitas: 0 },
     mensagem: imp.mensagem
   };
+}
+
+/* ─────────────────────────────────────────────────────────────
+   RETENÇÃO LGPD — expurgo dos dados brutos consultados na Receita
+   Federal (RECEITA_COMPARACAO) após 5 anos, contados a partir de
+   DATA_PROCESSAMENTO. Escolas já importadas continuam normalmente
+   na aba Escolas — o expurgo atinge só a tabela de staging/comparação.
+───────────────────────────────────────────────────────────── */
+var LGPD_RETENCAO_ANOS_RECEITA_ = 5;
+
+function escolasReceitaExpurgarDadosAntigos_() {
+  var ss     = SpreadsheetApp.openById(PLANILHA_ID);
+  var shComp = ss.getSheetByName(ABA_COMPARACAO);
+  if (!shComp || shComp.getLastRow() < 2) return { ok: true, expurgadas: 0 };
+
+  var cab     = shComp.getRange(1, 1, 1, shComp.getLastColumn()).getValues()[0];
+  var idxData = cab.indexOf("DATA_PROCESSAMENTO");
+  if (idxData === -1) {
+    return { ok: true, expurgadas: 0, mensagem: "Planilha ainda sem coluna DATA_PROCESSAMENTO (será criada no próximo processamento)." };
+  }
+
+  var limite = new Date();
+  limite.setFullYear(limite.getFullYear() - LGPD_RETENCAO_ANOS_RECEITA_);
+
+  var dados = shComp.getRange(2, 1, shComp.getLastRow() - 1, shComp.getLastColumn()).getValues();
+  var linhasParaRemover = [];
+
+  dados.forEach(function(linha, i) {
+    var d = linha[idxData];
+    if (!d) return; // linha antiga sem timestamp: preservada, não há como avaliar idade com segurança
+    var dataObj = d instanceof Date ? d : new Date(d);
+    if (!isNaN(dataObj.getTime()) && dataObj <= limite) {
+      linhasParaRemover.push(i + 2); // linha real na planilha (1-based + cabeçalho)
+    }
+  });
+
+  // Remove de baixo para cima para não desalinhar os índices das linhas seguintes
+  linhasParaRemover.sort(function(a, b) { return b - a; });
+  linhasParaRemover.forEach(function(linha) { shComp.deleteRow(linha); });
+
+  if (linhasParaRemover.length) {
+    Logger.log("[LGPD] " + linhasParaRemover.length + " linha(s) de " + ABA_COMPARACAO + " expurgada(s) (mais de " + LGPD_RETENCAO_ANOS_RECEITA_ + " anos).");
+  }
+
+  return { ok: true, expurgadas: linhasParaRemover.length };
 }
 
 /* ─────────────────────────────────────────────────────────────
