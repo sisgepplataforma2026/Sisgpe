@@ -2,6 +2,24 @@
 
 Projeto Google Apps Script (single global scope — arquivos `.gs`/`.html` sem import, tudo em `google.script.run`/`include()`). Branch de trabalho padrão: `claude/sisgep-project-analysis-h9wcy3`.
 
+## 🚨 REGRA Nº 1 — NUNCA APAGAR ARQUIVO QUE O SISTEMA AINDA USA
+
+**Isto nunca pode acontecer. Nem uma vez.** O SISGEP roda em produção num sindicato real, com dado real de associado e de dinheiro. Apagar um arquivo ainda usado derruba função em produção e pode corromper dado.
+
+Antes de declarar QUALQUER arquivo ou função como "órfão", "morto", "não usado" ou "candidato a remoção" — seja num relatório, seja numa recomendação, seja antes de deletar — é **obrigatório** completar os 5 passos abaixo. **Grep só nos `.html` NÃO é suficiente.**
+
+1. **Ler o cabeçalho do próprio arquivo.** Este projeto documenta decisões arquiteturais em comentário de topo. A resposta muitas vezes já está escrita lá.
+2. **Checar `Code.gs` e todas as rotas `doGet`/`doPost`.** Funções chamadas por URL pública (pixel de rastreio, confirmação por token, upload externo) não aparecem em nenhum `.html` — e são as mais críticas, porque quem as usa é gente de fora do sindicato.
+3. **Checar triggers** (`ScriptApp.newTrigger`, `instalar*Trigger*`, `onOpen`/`onInstall`/`onStartup`). Rotina agendada não tem chamador visível.
+4. **Rodar `git log --follow -- <arquivo>`** e ler as mensagens de commit. Se já existe decisão anterior, ela se respeita — não se reabre como achado novo.
+5. **Grep no projeto inteiro** (`*.gs` E `*.html`), não só na pasta do módulo em análise.
+
+Se qualquer passo não puder ser concluído com certeza, o veredito é **"não confirmado"** — nunca "morto". **Na dúvida, o arquivo fica.**
+
+Quando houver dúvida entre remover e manter, a recomendação padrão é **manter e documentar como legado** no cabeçalho do arquivo (foi o que se fez com `GuiasPagamento.gs` no commit `3394040`, e foi a decisão certa). Remoção só acontece com pedido explícito do usuário, em commit separado, nunca junto de outra mudança.
+
+**Caso real que originou esta regra (2026-08-04):** `GuiasPagamento.gs` foi reportado como "3.262 linhas 100% mortas" com base só em grep de `.html`. Era falso — `Code.gs:163` ainda chama `guiasPagamento_registrarLeituraEmail()` na rota pública `?page=pub-pixel-nf`, e o cabeçalho do arquivo já documentava exatamente isso.
+
 ## Padrão visual obrigatório (Design System)
 
 A partir de 2026-08-03, **toda implementação nova ou alterada de tela deve seguir o Design System abaixo**, definido na Auditoria de Padronização Visual (skill `sisgep-auditoria-ui-design-system`, artifact publicado: https://claude.ai/code/artifact/c1262106-7f88-492c-87b8-ed974779ce5b). Não crie paleta, header, card, botão ou modal novo "do zero" para uma tela — reaproveite os tokens e componentes já existentes em `OficiosStyles.html`, que é o CSS mestre canônico do sistema.
