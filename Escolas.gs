@@ -715,3 +715,38 @@ function listarEscolasParaModulo_interno_() {
 function testeRetornoSimples() {
   return [{escola: "Teste", cnpj: "123"}];
 }
+
+/**
+ * Envia e-mail em massa para escolas selecionadas, roteado pela camada
+ * central de envio (EmailCore.gs) em vez de abrir o cliente de e-mail
+ * pessoal do usuário (mailto:) — fica registrado em Log_Emails_Enviados
+ * (quem enviou, para quem, quando, status), como qualquer outro envio do
+ * SISGEP.
+ */
+function escolasEnviarEmailMassa(destinatarios, assunto, corpo, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
+  try {
+    var lista = (Array.isArray(destinatarios) ? destinatarios : []).filter(Boolean);
+    if (!lista.length) return { ok: false, mensagem: "Nenhum destinatário informado." };
+
+    assunto = String(assunto || "").trim();
+    if (!assunto) return { ok: false, mensagem: "Informe o assunto." };
+
+    corpo = String(corpo || "").trim();
+    if (!corpo) return { ok: false, mensagem: "Informe o corpo do e-mail." };
+
+    var resultado = enviarEmailSISGEP_(
+      SIND_EMAIL_REMETENTE,
+      assunto,
+      corpo,
+      { origem: "Escolas", bcc: lista.join(",") }
+    );
+
+    if (!resultado.ok) {
+      return { ok: false, mensagem: resultado.mensagem || "Falha ao enviar o e-mail." };
+    }
+    return { ok: true, mensagem: "E-mail enviado para " + lista.length + " escola(s)." };
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao enviar e-mail: " + e.message };
+  }
+}

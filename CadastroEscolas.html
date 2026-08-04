@@ -601,6 +601,32 @@
         <button type="button" class="ce-btn ce-btn-ghost ce-btn-sm" id="btnCeMassaDesmarcar">✕ Desmarcar todas</button>
       </div>
 
+      <div id="ceEmailMassaOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,18,48,.55);z-index:9999;align-items:center;justify-content:center;padding:20px;">
+        <div style="background:#fff;border-radius:16px;width:100%;max-width:520px;box-shadow:0 30px 70px rgba(0,20,60,.3);overflow:hidden;">
+          <div style="background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));padding:18px 22px;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+            <div>
+              <div style="font-size:15px;font-weight:900;">📧 E-mail em massa</div>
+              <div style="font-size:11.5px;color:rgba(255,255,255,.7);margin-top:2px;" id="ceEmailMassaContagem">—</div>
+            </div>
+            <button type="button" onclick="ceFecharModalEmailMassa()" style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;cursor:pointer;font-size:15px;">×</button>
+          </div>
+          <div style="padding:20px 22px;display:flex;flex-direction:column;gap:14px;">
+            <div>
+              <label style="display:block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:6px;">Assunto</label>
+              <input type="text" id="ceEmailMassaAssunto" placeholder="Ex.: Comunicado SindEducação-ES" style="width:100%;height:42px;border:1.5px solid #dbe4ef;border-radius:9px;padding:0 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+            </div>
+            <div>
+              <label style="display:block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:6px;">Mensagem</label>
+              <textarea id="ceEmailMassaCorpo" placeholder="Escreva a mensagem para as escolas selecionadas..." style="width:100%;min-height:160px;border:1.5px solid #dbe4ef;border-radius:9px;padding:12px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box;"></textarea>
+            </div>
+          </div>
+          <div style="padding:14px 22px;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;gap:8px;background:#fafcff;">
+            <button type="button" class="ce-btn ce-btn-outline" onclick="ceFecharModalEmailMassa()">Cancelar</button>
+            <button type="button" class="ce-btn ce-btn-navy" id="btnCeEmailMassaEnviar" onclick="ceEnviarEmailMassa()">Enviar</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Tabela -->
       <div class="ce-table-wrap">
         <div class="ce-table-scroll">
@@ -1292,14 +1318,48 @@ function ceMassaExcluir(){
     .excluirEscolasEmLote(cnpjs,SISGEP_TOKEN_SESSAO);
 }
 
+var CE_EMAIL_MASSA_DESTINATARIOS = [];
+
 function ceMassaEmail(){
   var itens=ceItensSelecionados();
   if(!itens.length)return;
   var emails=itens.map(function(it){ return valCampo(it,["Email","email","E-mail (principal)"]); }).filter(Boolean);
   if(!emails.length){ ceMsg("ceMsgTabela","Nenhuma das escolas selecionadas tem e-mail cadastrado.","warn"); return; }
   var semEmail=itens.length-emails.length;
-  window.open("mailto:?bcc="+encodeURIComponent(emails.join(","))+"&subject="+encodeURIComponent("SindEducação-ES"),"_blank");
-  if(semEmail>0)ceMsg("ceMsgTabela","E-mail aberto com "+emails.length+" destinatário(s). "+semEmail+" escola(s) selecionada(s) sem e-mail foram ignoradas.","warn");
+  CE_EMAIL_MASSA_DESTINATARIOS=emails;
+  g("ceEmailMassaAssunto").value="";
+  g("ceEmailMassaCorpo").value="";
+  g("ceEmailMassaContagem").textContent=emails.length+" destinatário(s)"+(semEmail>0?" · "+semEmail+" sem e-mail (ignorada(s))":"");
+  g("ceEmailMassaOverlay").style.display="flex";
+}
+
+function ceFecharModalEmailMassa(){
+  var overlay=g("ceEmailMassaOverlay");
+  if(overlay) overlay.style.display="none";
+}
+
+function ceEnviarEmailMassa(){
+  var assunto=(g("ceEmailMassaAssunto").value||"").trim();
+  var corpo=(g("ceEmailMassaCorpo").value||"").trim();
+  if(!assunto){ toast("Informe o assunto.","warn"); return; }
+  if(!corpo){ toast("Escreva a mensagem.","warn"); return; }
+  var btn=g("btnCeEmailMassaEnviar");
+  btn.disabled=true; btn.textContent="Enviando...";
+  google.script.run
+    .withSuccessHandler(function(r){
+      btn.disabled=false; btn.textContent="Enviar";
+      if(r&&r.ok){
+        toast(r.mensagem||"E-mail enviado.","ok");
+        ceFecharModalEmailMassa();
+      } else {
+        toast((r&&r.mensagem)||"Erro ao enviar.","err");
+      }
+    })
+    .withFailureHandler(function(err){
+      btn.disabled=false; btn.textContent="Enviar";
+      toast("Erro: "+((err&&err.message)||err),"err");
+    })
+    .escolasEnviarEmailMassa(CE_EMAIL_MASSA_DESTINATARIOS, assunto, corpo, SISGEP_TOKEN_SESSAO);
 }
 
 function renderTabela(){
