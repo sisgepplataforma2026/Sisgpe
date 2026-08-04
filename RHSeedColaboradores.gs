@@ -10,43 +10,34 @@
 // (999.999.999,00), não um CPF real, e o cadastro do SISGEP não tem
 // coluna de CPF para colaborador de RH.
 //
-// EXECUÇÃO — função de uso único, sem sessão (mesmo padrão de
-// instalarTriggerAniversariosRH em RHAniversarios.gs): rode
-// seedColaboradoresRH_ModeloFolha2025_() uma vez pelo editor do Apps
-// Script. É seguro rodar mais de uma vez — cada colaborador só é
-// inserido se a matrícula ainda não existir no cadastro.
+// EXECUÇÃO — o editor de código deste projeto tem se mostrado
+// inconfiável na prática (dropdown "Executar função" trava/esvazia em
+// projetos grandes), e uma primeira tentativa de contornar isso com
+// onOpen()/menu na planilha partiu de uma suposição errada: este
+// script é standalone, não está vinculado à planilha de produção que o
+// usuário abre no Sheets, então onOpen() nunca dispararia ali mesmo.
 //
-// ATALHO — a lista de funções do editor às vezes trava/some em
-// projetos grandes. Por isso este arquivo também instala um item de
-// menu (onOpen), pra rodar o seed direto pela interface da planilha
-// sem depender do dropdown "Executar função" do editor de código:
-// abra a planilha do SISGEP, recarregue a página (F5) e procure o
-// menu "🧪 RH — Ferramentas" na barra superior.
+// Por isso o seed é exposto pela própria interface web do SISGEP (que
+// já está comprovadamente funcionando para o usuário): botão "Importar
+// os 7 do modelo" na aba Colaboradores do RHAdmin.html, chamando
+// seedColaboradoresRH_ModeloFolha2025_publico(tokenSessao) por
+// google.script.run — mesmo transporte que todo o resto do módulo já
+// usa, sem depender de editor, menu ou trigger nenhum.
 //
-// Não existia nenhum onOpen() no projeto até este arquivo — se algum
-// outro módulo criar um onOpen() próprio no futuro, uma das duas
-// definições vai vencer silenciosamente (Apps Script só executa uma);
-// nesse caso, mover este addItem para dentro do onOpen() único do
-// projeto em vez de manter dois.
+// A função-núcleo original continua existindo (idempotente por
+// matrícula) e pode ser chamada de qualquer contexto interno futuro.
 // ================================
 
-function onOpen() {
-  SpreadsheetApp.getUi()
-    .createMenu('🧪 RH — Ferramentas')
-    .addItem('Rodar seed de colaboradores (modelo holerite)', 'seedColaboradoresRH_ModeloFolha2025_menu_')
-    .addToUi();
-}
-
-// Wrapper para uso via menu: chamado por clique na planilha (não pelo
-// editor), então mostra o resultado num alerta em vez de só retornar
-// um objeto — quem clicou o menu não vê o valor de retorno de outra
-// forma.
-function seedColaboradoresRH_ModeloFolha2025_menu_() {
-  var r = seedColaboradoresRH_ModeloFolha2025_();
-  var ui = SpreadsheetApp.getUi();
-  var msg = "Inseridos:\n" + (r.inseridos.length ? r.inseridos.join("\n") : "nenhum (todos já cadastrados)") +
-    "\n\nIgnorados (matrícula já existia):\n" + (r.ignorados.length ? r.ignorados.join("\n") : "nenhum");
-  ui.alert("Seed de colaboradores do RH", msg, ui.ButtonSet.OK);
+// Público — exige administrador (mesmo critério de excluirColaboradorRH:
+// grava dado sensível de RH em lote). Chamado pelo botão "Importar os 7
+// do modelo" em RHAdmin.html.
+function seedColaboradoresRH_ModeloFolha2025_publico(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, true);
+  try {
+    return seedColaboradoresRH_ModeloFolha2025_();
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao importar colaboradores: " + e.message };
+  }
 }
 
 function seedColaboradoresRH_ModeloFolha2025_() {

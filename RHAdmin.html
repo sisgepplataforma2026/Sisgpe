@@ -74,6 +74,7 @@
         <div class="rh-actions">
           <button class="rh-btn gold" onclick="rhAbrirSofia()">Consultar SOFIA</button>
           <button class="rh-btn" onclick="rhGerarDocumento()">Gerar documento</button>
+          <button class="rh-btn" onclick="rhImportarSeedModelo()" id="btnRhSeedModelo">🌱 Importar os 7 do modelo</button>
         </div>
       </div>
 
@@ -325,6 +326,24 @@
         })
         .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
         .excluirColaboradorRH(id, tokenSessao());
+    };
+
+    window.rhImportarSeedModelo=function(){
+      if(!confirm("Importar os 7 colaboradores reais extraídos do modelo de holerite (Agatha, Alexandre, Celismar, Fabiana, Frank, Karla, Marcelha)? Quem já estiver cadastrado (mesma matrícula) é ignorado — seguro rodar mais de uma vez. Ação exige perfil administrador."))return;
+      var btn=g("btnRhSeedModelo"); if(btn){btn.disabled=true;btn.textContent="Importando...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="🌱 Importar os 7 do modelo";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao importar.","err");return;}
+          var msg="Inseridos: "+(r.inseridos.length||0)+" · Ignorados (já cadastrados): "+(r.ignorados.length||0);
+          avisar(msg,"ok");
+          rhRender();
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="🌱 Importar os 7 do modelo";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .seedColaboradoresRH_ModeloFolha2025_publico(tokenSessao());
     };
 
     window.rhLimparForm=function(){editId="";["rhNome","rhCargo","rhVencimento","rhSalario","rhBeneficios","rhDescontos","rhDependentes","rhAniversario","rhEmail","rhMatricula","rhCbo","rhCentroCusto","rhFilial","rhAdmissao"].forEach(function(id){if(g(id))g(id).value="";});if(g("rhSetor"))g("rhSetor").value="Administrativo";if(g("rhStatus"))g("rhStatus").value="Ativo";};
