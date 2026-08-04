@@ -273,11 +273,7 @@
           <section class="spBottomGrid">
             <div class="spActivity">
               <div class="spPanelTitle">Atividades recentes da SOFIA</div>
-              <div class="spAt"><span class="ok">✓</span><p>Nota fiscal da EDP enviada para contabilidade</p><time>14:45</time><b class="ok">Concluído</b></div>
-              <div class="spAt"><span class="ok">✓</span><p>E-mail respondido automaticamente para Escola XYZ</p><time>14:20</time><b class="ok">Concluído</b></div>
-              <div class="spAt"><span class="ok">✓</span><p>Ofício de cobrança gerado para 12 escolas</p><time>13:50</time><b class="ok">Concluído</b></div>
-              <div class="spAt"><span class="ok">✓</span><p>Cadastro da Escola ABC atualizado com sucesso</p><time>13:10</time><b class="ok">Concluído</b></div>
-              <div class="spAt"><span class="warn">!</span><p>Processo jurídico nº 2458 aguardando documento</p><time>12:35</time><b class="warn">Pendente</b></div>
+              <div id="spAtividadesSofia"><div class="spAt"><p>Carregando…</p></div></div>
             </div>
 
             <div class="spHighlight">
@@ -292,21 +288,21 @@
 
         <aside class="spRightRail">
           <div class="spRailCard">
-            <div class="spRailHead"><strong>🎯 Suas prioridades de hoje</strong><a onclick="spIr('relatorios')">Ver todas</a><span>37</span></div>
-            <button class="spPriority" onclick="spIr('financeiro')"><i style="background:#ef4444;">📄</i><p>Notas fiscais aguardando envio</p><b style="color:#ef4444;">4</b></button>
-            <button class="spPriority" onclick="spIr('comunicacao')"><i style="background:#f59e0b;">✉️</i><p>E-mails para sua resposta</p><b style="color:#f59e0b;">8</b></button>
-            <button class="spPriority" onclick="spIr('documentos',null,{sub:'oficios'})"><i style="background:#eab308;">📋</i><p>Ofícios aguardando assinatura</p><b style="color:#eab308;">2</b></button>
-            <button class="spPriority" onclick="spIr('juridico')"><i style="background:#8b5cf6;">⚖️</i><p>Processos jurídicos pendentes</p><b style="color:#8b5cf6;">1</b></button>
-            <button class="spPriority" onclick="spIr('escolas')"><i style="background:#3b82f6;">🏫</i><p>Escolas com cadastro incompleto</p><b style="color:#3b82f6;">3</b></button>
+            <div class="spRailHead"><strong>🎯 Suas prioridades de hoje</strong><a onclick="spIr('relatorios')">Ver todas</a><span id="spPrioridadesTotal">—</span></div>
+            <button class="spPriority" onclick="spIr('financeiro')"><i style="background:#ef4444;">📄</i><p>Notas fiscais aguardando envio</p><b id="spPrioNF" style="color:#ef4444;">—</b></button>
+            <button class="spPriority" onclick="spIr('comunicacao')"><i style="background:#f59e0b;">✉️</i><p>E-mails urgentes para sua resposta</p><b id="spPrioEmails" style="color:#f59e0b;">—</b></button>
+            <button class="spPriority" onclick="spIr('documentos',null,{sub:'oficios'})"><i style="background:#eab308;">📋</i><p>Ofícios pendentes de envio</p><b id="spPrioOficios" style="color:#eab308;">—</b></button>
+            <button class="spPriority" onclick="spIr('juridico')"><i style="background:#8b5cf6;">⚖️</i><p>Processos jurídicos com prazo em 15 dias</p><b id="spPrioJuridico" style="color:#8b5cf6;">—</b></button>
+            <button class="spPriority" onclick="spIr('escolas')"><i style="background:#3b82f6;">🏫</i><p>Escolas com cadastro incompleto</p><b id="spPrioEscolas" style="color:#3b82f6;">—</b></button>
           </div>
 
           <div class="spRailCard">
             <div class="spRailHead"><strong>❤️ Saúde do sindicato</strong><a onclick="spIr('relatorios')">Ver detalhes</a></div>
-            <div class="spHealth"><span> Financeiro</span><b class="green">SAUDÁVEL</b></div>
-            <div class="spHealth"><span>🏛️ Administrativo</span><b class="blue">ORGANIZADO</b></div>
-            <div class="spHealth"><span>⚖️ Jurídico</span><b class="amber">ATENÇÃO</b></div>
-            <div class="spHealth"><span>🏛️ Patrimônio</span><b class="green">OK</b></div>
-            <div class="spHealth"><span>✉️ Comunicação</span><b class="green">OK</b></div>
+            <div class="spHealth"><span> Financeiro</span><b id="spSaudeFinanceiro" class="blue">—</b></div>
+            <div class="spHealth"><span>🏛️ Administrativo</span><b id="spSaudeAdministrativo" class="blue">—</b></div>
+            <div class="spHealth"><span>⚖️ Jurídico</span><b id="spSaudeJuridico" class="blue">—</b></div>
+            <div class="spHealth"><span>🏛️ Patrimônio</span><b class="blue" title="Ainda sem indicador conectado neste painel">—</b></div>
+            <div class="spHealth"><span>✉️ Comunicação</span><b id="spSaudeComunicacao" class="blue">—</b></div>
           </div>
         </aside>
       </div>
@@ -1936,6 +1932,8 @@ var ini=String(nome).trim().split(/\s+/).map(function(p){return p.charAt(0).toUp
       if(pf)pf.textContent=s.perfil||"Administrador";
       if(dropdownPf)dropdownPf.textContent=s.perfil||"Administrador";
     }).getSessaoUsuario(SISGEP_TOKEN_SESSAO);
+
+    carregarResumoInicio();
   }
 
   var bl=document.getElementById("spLogout");
@@ -1951,6 +1949,55 @@ var ini=String(nome).trim().split(/\s+/).map(function(p){return p.charAt(0).toUp
     }else window.location.reload();
   });
 });
+
+/* Resumo real da tela Início — substitui os números/status que antes
+   eram fixos no HTML. Best-effort no servidor (InicioResumo.gs): se
+   algum módulo falhar, o card dele mostra 0/— em vez de travar a tela. */
+function carregarResumoInicio(){
+  if(!(window.google&&google.script&&google.script.run))return;
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r||!r.ok)return;
+      var p=r.prioridades||{};
+      var set=function(id,v){var el=document.getElementById(id);if(el)el.textContent=(v===undefined||v===null)?"—":v;};
+      set("spPrioNF",p.notasFiscais||0);
+      set("spPrioEmails",p.emails||0);
+      set("spPrioOficios",p.oficios||0);
+      set("spPrioJuridico",p.juridico||0);
+      set("spPrioEscolas",p.escolasIncompletas||0);
+      var total=(p.notasFiscais||0)+(p.emails||0)+(p.oficios||0)+(p.juridico||0)+(p.escolasIncompletas||0);
+      set("spPrioridadesTotal",total);
+
+      var s=r.saude||{};
+      var setSaude=function(id,v){
+        var el=document.getElementById(id);if(!el)return;
+        el.textContent=v||"—";
+        el.className=v==="ATENÇÃO"?"amber":(v==="OK"?"green":"blue");
+      };
+      setSaude("spSaudeFinanceiro",s.financeiro);
+      setSaude("spSaudeAdministrativo",s.administrativo);
+      setSaude("spSaudeJuridico",s.juridico);
+      setSaude("spSaudeComunicacao",s.comunicacao);
+
+      var box=document.getElementById("spAtividadesSofia");
+      if(box){
+        var itens=r.atividadesRecentes||[];
+        if(!itens.length){
+          box.innerHTML="<div class='spAt'><p>Nenhuma interação registrada com a SOFIA ainda.</p></div>";
+        }else{
+          box.innerHTML=itens.map(function(a){
+            var esc=function(v){return String(v==null?"":v).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]);});};
+            var hora=(a.dataHora||"").split(" ")[1]||a.dataHora||"";
+            return "<div class='spAt'><span class='"+(a.ok?"ok":"warn")+"'>"+(a.ok?"✓":"!")+"</span><p>["+esc(a.dominio)+"] "+esc(a.pergunta||"(sem descrição)")+"</p><time>"+esc(hora)+"</time><b class='"+(a.ok?"ok":"warn")+"'>"+(a.ok?"Concluído":"Erro")+"</b></div>";
+          }).join("");
+        }
+      }
+    })
+    .withFailureHandler(function(e){
+      console.error("[Início] falha ao carregar resumo real:", e);
+    })
+    .getResumoInicioSISGEP(SISGEP_TOKEN_SESSAO);
+}
 
 /* Wrappers compatíveis com botões antigos dos módulos */
 window.mostrarAbaOficio=function(aba){
