@@ -196,6 +196,7 @@
         </div>
         <div class="rh-actions">
           <button class="rh-btn" onclick="rhExportarFolhaCSV()">Exportar folha CSV</button>
+          <button class="rh-btn" onclick="rhEnviarTodosHolerites()" id="btnRhEnviarTodos">✉️ Enviar todos por e-mail</button>
           <button class="rh-btn" style="border-color:#f3b6b6;color:#991b1b;" onclick="rhExcluirFolhaCompetencia()">Excluir folha desta competência</button>
         </div>
       </div>
@@ -227,7 +228,7 @@
       </div>
       <div class="rh-table-wrap">
         <table class="rh-table">
-          <thead><tr><th>Colaborador</th><th>Cargo</th><th>Salário (prorata)</th><th>Benefícios</th><th>Rubricas extras</th><th>INSS</th><th>IRRF</th><th>FGTS patronal</th><th>Líquido</th><th>Holerite</th></tr></thead>
+          <thead><tr><th>Colaborador</th><th>Cargo</th><th>Salário (prorata)</th><th>Benefícios</th><th>Rubricas extras</th><th>INSS</th><th>IRRF</th><th>FGTS patronal</th><th>Líquido</th><th>Holerite</th><th>E-mail</th></tr></thead>
           <tbody id="rhFolhaTabela"></tbody>
         </table>
       </div>
@@ -592,9 +593,10 @@
         totalBruto+=i.bruto; totalImpostos+=(i.inss+i.irrf); totalLiq+=i.liquido;
         var extrasLiq=(i.proventosExtra||0)-(i.descontosExtra||0);
         var extrasTxt=extrasLiq?((extrasLiq>0?"+":"")+moeda(extrasLiq)):"-";
-        return '<tr><td><strong>'+esc(i.nome)+'</strong></td><td>'+esc(i.cargo)+'</td><td>'+moeda(i.salarioProrata)+'</td><td>'+moeda(i.beneficios)+'</td><td>'+extrasTxt+'</td><td>'+moeda(i.inss)+'</td><td>'+moeda(i.irrf)+'</td><td>'+moeda(i.fgtsPatronal)+'</td><td><strong>'+moeda(i.liquido)+'</strong></td><td><button class="rh-btn" data-rh-holerite="'+esc(i.id)+'">📄 PDF</button></td></tr>';
+        return '<tr><td><strong>'+esc(i.nome)+'</strong></td><td>'+esc(i.cargo)+'</td><td>'+moeda(i.salarioProrata)+'</td><td>'+moeda(i.beneficios)+'</td><td>'+extrasTxt+'</td><td>'+moeda(i.inss)+'</td><td>'+moeda(i.irrf)+'</td><td>'+moeda(i.fgtsPatronal)+'</td><td><strong>'+moeda(i.liquido)+'</strong></td><td><button class="rh-btn" data-rh-holerite="'+esc(i.id)+'">📄 PDF</button></td><td><button class="rh-btn" data-rh-holerite-email="'+esc(i.id)+'">✉️</button></td></tr>';
       }).join("");
       tb.querySelectorAll("[data-rh-holerite]").forEach(function(btn){btn.addEventListener("click",function(){rhBaixarHolerite(btn.getAttribute("data-rh-holerite"),btn);});});
+      tb.querySelectorAll("[data-rh-holerite-email]").forEach(function(btn){btn.addEventListener("click",function(){rhEnviarHoleriteEmail(btn.getAttribute("data-rh-holerite-email"),btn);});});
       if(vazio)vazio.style.display=linhas.length?"none":"block";
       setText("rhFolhaQtd",String(linhas.length)); setText("rhFolhaBruto",moeda(totalBruto)); setText("rhFolhaDescontos",moeda(totalImpostos)); setText("rhFolhaLiquido",moeda(totalLiq));
     };
@@ -620,6 +622,40 @@
           avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
         })
         .gerarHoleritePDF(idLancamento, tokenSessao());
+    };
+
+    window.rhEnviarHoleriteEmail=function(idLancamento,btn){
+      if(btn){btn.disabled=true;btn.textContent="...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="✉️";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao enviar e-mail.","err");return;}
+          avisar(r.mensagem||"Holerite enviado!","ok");
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="✉️";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .enviarHoleritePorEmail(idLancamento, tokenSessao());
+    };
+
+    window.rhEnviarTodosHolerites=function(){
+      if(!RH_FOLHA_CACHE.length){avisar("Gere a folha da competência antes de enviar.","warn");return;}
+      var comp=(g("rhCompetencia")||{}).value||"";
+      if(!confirm("Enviar por e-mail o holerite de todos os "+RH_FOLHA_CACHE.length+" colaborador(es) da competência "+comp+"? Quem não tiver e-mail cadastrado será listado à parte."))return;
+      var btn=g("btnRhEnviarTodos"); if(btn){btn.disabled=true;btn.textContent="Enviando...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="✉️ Enviar todos por e-mail";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao enviar holerites.","err");return;}
+          avisar(r.mensagem||"Envio concluído!","ok");
+          if(r.falhas&&r.falhas.length)console.warn("Holerites não enviados:",r.falhas);
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="✉️ Enviar todos por e-mail";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .enviarTodosHoleritesPorEmail(comp, tokenSessao());
     };
 
     window.rhExportarFolhaCSV=function(){

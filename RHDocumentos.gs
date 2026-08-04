@@ -279,31 +279,123 @@ function rh_gerarHtmlHolerite_(lancamento, colaborador, rubricasExtras, faixaIrr
     "</div></body></html>";
 }
 
+// Núcleo compartilhado por gerarHoleritePDF (download) e
+// enviarHoleritePorEmail (anexo) — busca o lançamento, o colaborador e
+// monta o PDF uma única vez, pra não duplicar a lógica entre os dois.
+function rh_montarBlobHolerite_(idLancamento) {
+  var lancamento = rh_buscarLancamentoFolhaPorId_(idLancamento);
+  if (!lancamento) return null;
+
+  var colaborador = listarColaboradoresRH_interno_().filter(function (c) { return c.id === lancamento.colaboradorId; })[0] || null;
+  var rubricasExtras = rh_listarFolhaRubricasPorFolhaId_(idLancamento);
+  var cfg = rh_obterConfigTributaria_();
+  var faixaIrrfPct = rh_faixaIrrfAliquota_(lancamento.baseIrrf, cfg.irrf);
+
+  var html = rh_gerarHtmlHolerite_(lancamento, colaborador, rubricasExtras, faixaIrrfPct);
+  var nomeArquivo = "Holerite_" + lancamento.competencia + "_" + lancamento.nome.replace(/[^a-zA-Z0-9À-ÿ-]/g, "_") + ".pdf";
+  var blobPdf = Utilities.newBlob(html, "text/html", nomeArquivo).getAs("application/pdf");
+
+  return { lancamento: lancamento, colaborador: colaborador, nomeArquivo: nomeArquivo, blobPdf: blobPdf };
+}
+
 // Gera o PDF e devolve em base64 — sem salvar no Drive, sem link público.
 // Quem gerou fica só no log (dado sensível: salário líquido, IRRF).
 function gerarHoleritePDF(idLancamento, tokenSessao) {
   var sessao = exigirSessaoDocumentos_(tokenSessao, false);
   try {
-    var lancamento = rh_buscarLancamentoFolhaPorId_(idLancamento);
-    if (!lancamento) return { ok: false, mensagem: "Lançamento de folha não encontrado." };
+    var m = rh_montarBlobHolerite_(idLancamento);
+    if (!m) return { ok: false, mensagem: "Lançamento de folha não encontrado." };
 
-    var colaborador = listarColaboradoresRH_interno_().filter(function (c) { return c.id === lancamento.colaboradorId; })[0] || null;
-    var rubricasExtras = rh_listarFolhaRubricasPorFolhaId_(idLancamento);
-    var cfg = rh_obterConfigTributaria_();
-    var faixaIrrfPct = rh_faixaIrrfAliquota_(lancamento.baseIrrf, cfg.irrf);
-
-    var html = rh_gerarHtmlHolerite_(lancamento, colaborador, rubricasExtras, faixaIrrfPct);
-    var nomeArquivo = "Holerite_" + lancamento.competencia + "_" + lancamento.nome.replace(/[^a-zA-Z0-9À-ÿ-]/g, "_") + ".pdf";
-    var blobPdf = Utilities.newBlob(html, "text/html", nomeArquivo).getAs("application/pdf");
-
-    Logger.log("[RH] Holerite gerado: " + lancamento.competencia + " / " + lancamento.nome + " por " + (sessao.nome || sessao.usuario));
+    Logger.log("[RH] Holerite gerado: " + m.lancamento.competencia + " / " + m.lancamento.nome + " por " + (sessao.nome || sessao.usuario));
 
     return {
       ok: true,
-      nomeArquivo: nomeArquivo,
-      base64: Utilities.base64Encode(blobPdf.getBytes())
+      nomeArquivo: m.nomeArquivo,
+      base64: Utilities.base64Encode(m.blobPdf.getBytes())
     };
   } catch (e) {
     return { ok: false, mensagem: "Erro ao gerar holerite: " + e.message };
+  }
+}
+
+// Núcleo sem checagem de sessão — usado tanto por enviarHoleritePorEmail
+// (1 clique = 1 pessoa) quanto por enviarTodosHoleritesPorEmail_interno_
+// (loop em massa), que já validam o token uma única vez antes de chamar
+// isto em sequência.
+function rh_enviarHoleritePorEmail_(idLancamento, quem) {
+  var m = rh_montarBlobHolerite_(idLancamento);
+  if (!m) return { ok: false, mensagem: "Lançamento de folha não encontrado.", nome: "" };
+
+  var email = m.colaborador && String(m.colaborador.email || "").trim();
+  if (!email) return { ok: false, mensagem: "sem e-mail cadastrado", nome: m.lancamento.nome };
+
+  var corpo = "<p>Olá, " + rh_esc_(m.lancamento.nome) + "!</p>" +
+    "<p>Segue em anexo o holerite referente à competência <strong>" + rh_esc_(m.lancamento.competencia) + "</strong>.</p>" +
+    "<p>Valor líquido: <strong>" + rh_moeda_(m.lancamento.liquido) + "</strong></p>";
+  var htmlBody = sind_emailHtml_("💰 Holerite — " + m.lancamento.competencia, corpo, "");
+  var corpoTexto = "Holerite de " + m.lancamento.competencia + " em anexo. Valor líquido: " + rh_moeda_(m.lancamento.liquido) + ".";
+
+  var resultado = enviarEmailSISGEP_(email, "Holerite — " + m.lancamento.competencia, corpoTexto, {
+    htmlBody: htmlBody,
+    origem: "RH",
+    attachments: [m.blobPdf]
+  });
+
+  if (!resultado || !resultado.ok) {
+    return { ok: false, mensagem: (resultado && resultado.mensagem) || "falha desconhecida", nome: m.lancamento.nome };
+  }
+
+  Logger.log("[RH] Holerite enviado por e-mail: " + m.lancamento.competencia + " / " + m.lancamento.nome + " -> " + email + " por " + quem);
+  return { ok: true, nome: m.lancamento.nome, email: email };
+}
+
+// Envia o holerite em PDF por e-mail para o endereço cadastrado do
+// colaborador — mesma camada central de envio já usada pelo resto do
+// SISGEP (EmailCore.gs/enviarEmailSISGEP_), com o PDF como anexo. Não
+// existe fila/histórico de reenvio nesta fase: cada clique dispara um
+// envio imediato, best-effort (falha não desfaz nada, só devolve erro).
+function enviarHoleritePorEmail(idLancamento, tokenSessao) {
+  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  try {
+    var r = rh_enviarHoleritePorEmail_(idLancamento, sessao.nome || sessao.usuario);
+    if (!r.ok) return { ok: false, mensagem: "Erro ao enviar e-mail" + (r.nome ? " (" + r.nome + ")" : "") + ": " + r.mensagem };
+    return { ok: true, mensagem: "Holerite enviado para " + r.email + "." };
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao enviar holerite: " + e.message };
+  }
+}
+
+// Envia o holerite de TODOS os lançamentos de uma competência de uma
+// vez — best-effort por pessoa: quem não tem e-mail cadastrado ou dá
+// erro no envio é reportado separadamente, não trava os demais.
+function enviarTodosHoleritesPorEmail(competencia, tokenSessao) {
+  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  try {
+    competencia = String(competencia || "").trim();
+    if (!competencia) return { ok: false, mensagem: "Informe a competência." };
+
+    var linhas = listarFolhaRH(competencia, tokenSessao);
+    if (!linhas.length) return { ok: false, mensagem: "Nenhum lançamento encontrado para " + competencia + "." };
+
+    var quem = sessao.nome || sessao.usuario;
+    var enviados = [], falhas = [];
+
+    linhas.forEach(function (l) {
+      try {
+        var r = rh_enviarHoleritePorEmail_(l.id, quem);
+        if (r.ok) enviados.push(r.nome); else falhas.push(r.nome + ": " + r.mensagem);
+      } catch (e) {
+        falhas.push(l.nome + ": " + e.message);
+      }
+    });
+
+    return {
+      ok: true,
+      enviados: enviados,
+      falhas: falhas,
+      mensagem: enviados.length + " holerite(s) enviado(s)" + (falhas.length ? ", " + falhas.length + " não enviado(s)" : "") + "."
+    };
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao enviar holerites: " + e.message };
   }
 }
