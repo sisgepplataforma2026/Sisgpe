@@ -58,6 +58,7 @@
       display:flex;align-items:center;justify-content:center;
     }
     #radioPage .rp-mutebtn:hover{color:var(--navy,#001f4d);}
+    #radioPage .rp-mutebtn.muted{color:#dc2626;border-color:#fca5a5;background:#fef2f2;}
 
     #radioPage .rp-pillars{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:22px;}
     #radioPage .rp-pillar{background:#fff;border:1px solid var(--g200,#e2e8f0);border-radius:14px;padding:16px 14px;text-align:center;box-shadow:var(--sh-sm,0 2px 10px rgba(0,20,60,.06));}
@@ -93,7 +94,7 @@
       <button type="button" class="rp-playbtn" onclick="spRadioToggle()" title="Tocar/pausar Rádio SindEducação">
         <i class="fas fa-play spRadioPlayIcon"></i>
       </button>
-      <button type="button" class="rp-mutebtn" onclick="spRadioMute()" title="Mudo">
+      <button type="button" class="rp-mutebtn spRadioMuteBtn" onclick="spRadioMute()" title="Mudo">
         <i class="fas fa-volume-up spRadioVolIcon"></i>
       </button>
     </div>

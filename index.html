@@ -130,7 +130,7 @@
         <button class="spPlayBtnSm" onclick="spRadioToggle()" title="Tocar/pausar Rádio SindEducação">
           <i class="fas fa-play spRadioPlayIcon"></i>
         </button>
-        <button class="spCtrlBtnSm" onclick="spRadioMute()" title="Mudo">
+        <button class="spCtrlBtnSm spRadioMuteBtn" onclick="spRadioMute()" title="Mudo">
           <i class="fas fa-volume-up spRadioVolIcon"></i>
         </button>
       </div>
@@ -715,6 +715,9 @@ button,input{font-family:inherit;}
 }
 .spCtrlBtnSm:hover{
   color: var(--txt);
+}
+.spRadioMuteBtn.muted{
+  color: #dc2626;
 }
 
 /* Main */
@@ -1969,6 +1972,10 @@ window.spRadioMute = function(){
   audio.muted = !audio.muted;
   document.querySelectorAll(".spRadioVolIcon").forEach(function(el){
     el.className = el.className.replace(/fa-volume-(up|mute)/, audio.muted ? "fa-volume-mute" : "fa-volume-up");
+  });
+  document.querySelectorAll(".spRadioMuteBtn").forEach(function(el){
+    el.classList.toggle("muted", audio.muted);
+    el.title = audio.muted ? "Ativar som" : "Mudo";
   });
 };
 
