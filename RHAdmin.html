@@ -74,16 +74,12 @@
         <div class="rh-actions">
           <button class="rh-btn gold" onclick="rhAbrirSofia()">Consultar SOFIA</button>
           <button class="rh-btn" onclick="rhGerarDocumento()">Gerar documento</button>
-          <button class="rh-btn" onclick="rhImportarSeedModelo()" id="btnRhSeedModelo">🌱 Importar os 7 do modelo</button>
-          <button class="rh-btn" onclick="rhAtualizarExtratoJunho2026()" id="btnRhAtualizarExtrato">💳 Atualizar salário/CPF (Extrato 06/2026)</button>
-          <button class="rh-btn" onclick="rhAplicarRubricasFixas()" id="btnRhRubricasFixas">🏷️ Aplicar rubricas fixas (Abono CCT, Quinquênio...)</button>
-          <button class="rh-btn" onclick="rhAplicarCentroCustoDepartamento()" id="btnRhCentroCustoDepto">🏢 Aplicar Centro de Custo/Departamento reais</button>
           <button class="rh-btn gold" onclick="rhReajusteSalarial()" id="btnRhReajuste">💹 Reajuste salarial (convenção)</button>
           <button class="rh-btn" onclick="rhVerificarQuinquenioDecenio()" id="btnRhQuinquenioDecenio">📅 Verificar Quinquênio/Decênio</button>
           <span id="rhTriggerTempoServicoStatus" class="rh-mini" style="display:inline-flex;align-items:center;gap:5px;"><span id="rhTriggerTempoServicoDot" style="width:8px;height:8px;border-radius:50%;background:#cbd5e1;display:inline-block;"></span><span id="rhTriggerTempoServicoTxt">verificando automação…</span></span>
-          <button class="rh-btn" onclick="rhAtivarAutoQuinquenioDecenio()" id="btnRhAtivarAuto">▶️ Ativar verificação automática</button>
+          <button class="rh-btn" onclick="rhAtivarAutoQuinquenioDecenio()" id="btnRhAtivarAuto">▶️ Ativar automática</button>
           <button class="rh-btn" onclick="rhDesativarAutoQuinquenioDecenio()" id="btnRhDesativarAuto">⏸️ Desativar</button>
-          <button class="rh-btn red" onclick="rhCorrigirAbonoCCT()" id="btnRhCorrigirAbono">⚠️ Corrigir Abono CCT (não é recorrente)</button>
+          <button class="rh-btn" onclick="rhAbrirFerramentasAdmin()">⚙️ Ferramentas administrativas</button>
         </div>
       </div>
 
@@ -245,6 +241,30 @@
       </div>
       <div class="rh-empty" id="rhFolhaVazio">Gere a folha para visualizar os lançamentos.</div>
     </div>
+    </div>
+  </div>
+
+  <!-- Ferramentas administrativas — ações que rodam raramente (seed inicial,
+       correções pontuais de dados reais), separadas da barra do dia a dia. -->
+  <div id="rhModalAdminOverlay" class="of-modal-overlay">
+    <div class="of-modal" style="max-width:560px;">
+      <div class="of-modal-head" style="border-bottom:3px solid var(--gold,#C9A84C);">
+        <div>
+          <div class="of-modal-head-title">⚙️ Ferramentas administrativas</div>
+          <div class="of-modal-head-sub">Ações pontuais — rodam raramente, não fazem parte do uso do dia a dia.</div>
+        </div>
+        <button type="button" class="of-modal-close" onclick="rhFecharFerramentasAdmin()">×</button>
+      </div>
+      <div class="of-modal-body" style="display:flex;flex-direction:column;gap:10px;">
+        <button class="rh-btn" style="width:100%;text-align:left;" onclick="rhImportarSeedModelo()" id="btnRhSeedModelo">🌱 Importar os 7 do modelo</button>
+        <button class="rh-btn" style="width:100%;text-align:left;" onclick="rhAtualizarExtratoJunho2026()" id="btnRhAtualizarExtrato">💳 Atualizar salário/CPF (Extrato 06/2026)</button>
+        <button class="rh-btn" style="width:100%;text-align:left;" onclick="rhAplicarRubricasFixas()" id="btnRhRubricasFixas">🏷️ Aplicar rubricas fixas (Abono CCT, Quinquênio...)</button>
+        <button class="rh-btn" style="width:100%;text-align:left;" onclick="rhAplicarCentroCustoDepartamento()" id="btnRhCentroCustoDepto">🏢 Aplicar Centro de Custo/Departamento reais</button>
+        <button class="rh-btn red" style="width:100%;text-align:left;" onclick="rhCorrigirAbonoCCT()" id="btnRhCorrigirAbono">⚠️ Corrigir Abono CCT (não é recorrente)</button>
+      </div>
+      <div class="of-modal-foot">
+        <button class="rh-btn" onclick="rhFecharFerramentasAdmin()">Fechar</button>
+      </div>
     </div>
   </div>
 
@@ -503,6 +523,9 @@
         })
         .corrigirAbonoCCTNaoRecorrente_publico(tokenSessao());
     };
+
+    window.rhAbrirFerramentasAdmin=function(){var el=g("rhModalAdminOverlay");if(el)el.classList.add("aberto");};
+    window.rhFecharFerramentasAdmin=function(){var el=g("rhModalAdminOverlay");if(el)el.classList.remove("aberto");};
 
     window.rhAtualizarStatusTriggerTempoServico=function(){
       google.script.run
