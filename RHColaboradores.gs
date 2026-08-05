@@ -168,7 +168,7 @@ function rh_obterConfigTributaria_() {
 }
 
 function rhObterConfigTributaria(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "rh", false);
   var cfg = rh_obterConfigTributaria_();
   return {
     ok: true,
@@ -182,7 +182,7 @@ function rhObterConfigTributaria(tokenSessao) {
 // Alterar as tabelas tributárias exige administrador — impacta o valor
 // líquido pago a todos os colaboradores.
 function rhSalvarConfigTributaria(inss, irrf, deducaoDependente, fgtsPatronalPct, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, true);
+  exigirModulo_(tokenSessao, "rh", true);
   try {
     if (!Array.isArray(inss) || !inss.length) return { ok: false, mensagem: "Tabela de INSS inválida." };
     if (!Array.isArray(irrf) || !irrf.length) return { ok: false, mensagem: "Tabela de IRRF inválida." };
@@ -255,7 +255,7 @@ function rh_diasNoMes_(competencia) {
 // Público — exige sessão. Nunca chamar isto de dentro de uma rotina
 // disparada por trigger (sem usuário logado); use a versão _interno_.
 function listarColaboradoresRH(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "rh", false);
   return listarColaboradoresRH_interno_();
 }
 
@@ -306,7 +306,7 @@ function listarColaboradoresRH_interno_() {
 }
 
 function salvarColaboradorRH(dados, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "rh", false);
   try {
     dados = dados || {};
     var nome = String(dados.nome || "").trim();
@@ -405,7 +405,7 @@ function rh_garantirHistoricoReajustes_() {
 
 // Público — exige administrador (reajusta salário de todo mundo de uma vez).
 function aplicarReajusteSalarialRH(percentual, referencia, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, true);
+  var sessao = exigirModulo_(tokenSessao, "rh", true);
   return rh_comLock_(function () {
   try {
     percentual = Number(percentual);
@@ -471,7 +471,7 @@ function aplicarReajusteSalarialRH(percentual, referencia, tokenSessao) {
 // Exclusão exige administrador — dado sensível (salário) sem trilha de
 // recuperação, mesmo padrão de excluirReceita/excluirEscolasEmLote.
 function excluirColaboradorRH(id, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, true);
+  exigirModulo_(tokenSessao, "rh", true);
   try {
     id = String(id || "").trim();
     if (!id) return { ok: false, mensagem: "Informe o colaborador a excluir." };
@@ -502,7 +502,7 @@ function excluirColaboradorRH(id, tokenSessao) {
 // competência e sugestão de dias trabalhados (mês cheio), que quem
 // gera a folha pode ajustar antes de confirmar (férias/afastamento).
 function prepararFolhaRH(competencia, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "rh", false);
   try {
     competencia = String(competencia || "").trim();
     if (!competencia) return { ok: false, mensagem: "Informe a competência." };
@@ -587,7 +587,7 @@ function rh_arquivarFolhaSubstituida_(linhas, cabecalho, quem, motivo) {
  * para poder avisar que a folha será substituída.
  */
 function contarFolhaCompetenciaRH(competencia, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "rh", false);
   try {
     competencia = String(competencia || "").trim();
     if (!competencia) return { ok: true, existentes: 0 };
@@ -603,7 +603,7 @@ function contarFolhaCompetenciaRH(competencia, tokenSessao) {
 }
 
 function gerarFolhaRH(competencia, itens, observacao, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "rh", false);
   var resultado = rh_comLock_(function () {
   try {
     competencia = String(competencia || "").trim();
@@ -804,7 +804,7 @@ function rh_linhaFolhaParaObjeto_(l) {
 }
 
 function listarFolhaRH(competencia, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "rh", false);
   try {
     competencia = String(competencia || "").trim();
     var sh = rh_garantirFolha_();
@@ -833,7 +833,7 @@ function listarFolhaRH(competencia, tokenSessao) {
 // tinha uma despesa gerada, cancele/estorne manualmente na tela de
 // Despesas.
 function excluirFolhaCompetenciaRH(competencia, tokenSessao) {
-  var sessaoExcl = exigirSessaoDocumentos_(tokenSessao, true);
+  var sessaoExcl = exigirModulo_(tokenSessao, "rh", true);
   return rh_comLock_(function () {
   try {
     competencia = String(competencia || "").trim();

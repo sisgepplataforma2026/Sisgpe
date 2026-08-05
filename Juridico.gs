@@ -179,7 +179,7 @@ function jurObterPastaAnexos_() {
 
 function jurListarProcessos(tokenSessao) {
   try {
-    var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+    var sessao = exigirModulo_(tokenSessao, "juridico", false);
     var meuNome = sessao.nome || sessao.usuario || sessao.email || "";
     var aba = jurObterAba_();
     var ultimaLinha = aba.getLastRow();
@@ -204,7 +204,7 @@ function jurListarProcessos(tokenSessao) {
 
 function jurSalvarProcesso(dados, tokenSessao) {
   try {
-    var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+    var sessao = exigirModulo_(tokenSessao, "juridico", false);
     dados = dados || {};
     var responsavelSessao = sessao.nome || sessao.usuario || sessao.email;
 
@@ -304,7 +304,7 @@ function jurSalvarProcesso(dados, tokenSessao) {
 // depois de "removido" da lista.
 function jurExcluirProcesso(id, tokenSessao) {
   try {
-    var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+    var sessao = exigirModulo_(tokenSessao, "juridico", false);
     var responsavel = sessao.nome || sessao.usuario || sessao.email;
 
     return jurComLock_(function() {
@@ -331,7 +331,7 @@ function jurExcluirProcesso(id, tokenSessao) {
 // planilha.
 function jurUploadDocumento(dados, tokenSessao) {
   try {
-    var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+    var sessao = exigirModulo_(tokenSessao, "juridico", false);
     dados = dados || {};
 
     var idProcesso = String(dados.idProcesso || "").trim();
@@ -390,7 +390,7 @@ function jurUploadDocumento(dados, tokenSessao) {
 // link/nome na planilha.
 function jurExcluirAnexo(idProcesso, tokenSessao) {
   try {
-    exigirSessaoDocumentos_(tokenSessao, false);
+    exigirModulo_(tokenSessao, "juridico", false);
     idProcesso = String(idProcesso || "").trim();
     if (!idProcesso) return { ok: false, mensagem: "Processo não informado." };
 
@@ -445,7 +445,7 @@ function jurObterAbaDocumentos_() {
 
 function jurListarDocumentosProcesso(idProcesso, tokenSessao) {
   try {
-    exigirSessaoDocumentos_(tokenSessao, false);
+    exigirModulo_(tokenSessao, "juridico", false);
     idProcesso = String(idProcesso || "").trim();
     if (!idProcesso) return { ok: false, mensagem: "Processo não informado." };
 
@@ -490,7 +490,7 @@ function jurListarDocumentosProcesso(idProcesso, tokenSessao) {
 
 function jurAdicionarDocumento(dados, tokenSessao) {
   try {
-    var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+    var sessao = exigirModulo_(tokenSessao, "juridico", false);
     dados = dados || {};
     var idProcesso = String(dados.idProcesso || "").trim();
     var base64 = String(dados.base64 || "").trim();
@@ -547,7 +547,7 @@ function jurAdicionarDocumento(dados, tokenSessao) {
 
 function jurExcluirDocumento(id, tokenSessao) {
   try {
-    exigirSessaoDocumentos_(tokenSessao, false);
+    exigirModulo_(tokenSessao, "juridico", false);
     return jurComLock_(function() {
       var aba = jurObterAbaDocumentos_();
       var ultimaLinha = aba.getLastRow();
@@ -587,7 +587,7 @@ function jurExcluirDocumento(id, tokenSessao) {
 
 function jurBuscarAssociado(termo, tokenSessao) {
   try {
-    exigirSessaoDocumentos_(tokenSessao, false);
+    exigirModulo_(tokenSessao, "juridico", false);
     termo = String(termo || "").trim().toLowerCase();
     if (termo.length < 2) return { ok: true, itens: [] };
 
@@ -630,7 +630,7 @@ function jurBuscarAssociado(termo, tokenSessao) {
 // busca de escolas usada em Ofícios (por razão social/CNPJ/cidade).
 function jurBuscarEscolaVinculo(termo, tokenSessao) {
   try {
-    exigirSessaoDocumentos_(tokenSessao, false);
+    exigirModulo_(tokenSessao, "juridico", false);
     var resultado = buscarEscola(termo, tokenSessao) || [];
     return { ok: true, itens: resultado };
   } catch (e) {
@@ -694,7 +694,7 @@ function jurObterAbaAudiencias_() {
 
 function jurListarPrazos(idProcesso, tokenSessao) {
   try {
-    exigirSessaoDocumentos_(tokenSessao, false);
+    exigirModulo_(tokenSessao, "juridico", false);
     idProcesso = String(idProcesso || "").trim();
     if (!idProcesso) return { ok: false, mensagem: "Processo não informado." };
 
@@ -731,7 +731,7 @@ function jurListarPrazos(idProcesso, tokenSessao) {
 
 function jurSalvarPrazo(dados, tokenSessao) {
   try {
-    var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+    var sessao = exigirModulo_(tokenSessao, "juridico", false);
     dados = dados || {};
     var idProcesso = String(dados.idProcesso || "").trim();
     var descricao = String(dados.descricao || "").trim();
@@ -778,7 +778,7 @@ function jurSalvarPrazo(dados, tokenSessao) {
 // errado. O que marca o desfecho de verdade é o campo "Cumprido".
 function jurExcluirPrazo(id, tokenSessao) {
   try {
-    exigirSessaoDocumentos_(tokenSessao, false);
+    exigirModulo_(tokenSessao, "juridico", false);
     return jurComLock_(function() {
       var aba = jurObterAbaPrazos_();
       var ultimaLinha = aba.getLastRow();
@@ -803,7 +803,7 @@ function jurExcluirPrazo(id, tokenSessao) {
 // como feito).
 function jurMarcarPrazo(id, cumprido, tokenSessao) {
   try {
-    exigirSessaoDocumentos_(tokenSessao, false);
+    exigirModulo_(tokenSessao, "juridico", false);
     return jurComLock_(function() {
       var aba = jurObterAbaPrazos_();
       var ultimaLinha = aba.getLastRow();
@@ -825,7 +825,7 @@ function jurMarcarPrazo(id, cumprido, tokenSessao) {
 
 function jurListarAudiencias(idProcesso, tokenSessao) {
   try {
-    exigirSessaoDocumentos_(tokenSessao, false);
+    exigirModulo_(tokenSessao, "juridico", false);
     idProcesso = String(idProcesso || "").trim();
     if (!idProcesso) return { ok: false, mensagem: "Processo não informado." };
 
@@ -864,7 +864,7 @@ function jurListarAudiencias(idProcesso, tokenSessao) {
 // Google Agenda ou vasculhar o e-mail de convite.
 function jurListarTodasAudiencias(tokenSessao) {
   try {
-    exigirSessaoDocumentos_(tokenSessao, false);
+    exigirModulo_(tokenSessao, "juridico", false);
 
     var abaProc = jurObterAba_();
     var mapaProc = {};
@@ -945,7 +945,7 @@ function jurCriarEventoAgenda_(idProcesso, data, hora, tipo, local, observacao) 
 
 function jurSalvarAudiencia(dados, tokenSessao) {
   try {
-    var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+    var sessao = exigirModulo_(tokenSessao, "juridico", false);
     dados = dados || {};
     var idProcesso = String(dados.idProcesso || "").trim();
     var data = String(dados.data || "").trim();
@@ -975,7 +975,7 @@ function jurSalvarAudiencia(dados, tokenSessao) {
 
 function jurExcluirAudiencia(id, tokenSessao) {
   try {
-    exigirSessaoDocumentos_(tokenSessao, false);
+    exigirModulo_(tokenSessao, "juridico", false);
     return jurComLock_(function() {
       var aba = jurObterAbaAudiencias_();
       var ultimaLinha = aba.getLastRow();
@@ -1302,7 +1302,7 @@ function jurRemoverTriggerAlertasPrazo() {
 // ============================================================================
 
 function jurAnalisarDocumentoIA(base64, nomeArquivo, mimeType, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "juridico", false);
   try {
     var texto = docIA_ocrParaTexto_(base64, nomeArquivo, mimeType);
     if (!texto.trim()) {
@@ -1401,7 +1401,7 @@ function jurAnalisarDocumentoIA(base64, nomeArquivo, mimeType, tokenSessao) {
 
 function jurObterRelatorioExecutivo(tokenSessao) {
   try {
-    exigirSessaoDocumentos_(tokenSessao, false);
+    exigirModulo_(tokenSessao, "juridico", false);
 
     var aba = jurObterAba_();
     var ultimaLinha = aba.getLastRow();
@@ -1495,7 +1495,7 @@ function jurObterRelatorioExecutivo(tokenSessao) {
 
 function jurGerarResumoExecutivoIA(tokenSessao) {
   try {
-    exigirSessaoDocumentos_(tokenSessao, false);
+    exigirModulo_(tokenSessao, "juridico", false);
 
     var respRelatorio = jurObterRelatorioExecutivo(tokenSessao);
     if (!respRelatorio.ok) return { ok: false, mensagem: respRelatorio.mensagem };
@@ -1586,7 +1586,7 @@ function jurObterAbaEscolasColetivo_() {
 
 function jurListarEscolasColetivo(idProcesso, tokenSessao) {
   try {
-    exigirSessaoDocumentos_(tokenSessao, false);
+    exigirModulo_(tokenSessao, "juridico", false);
     idProcesso = String(idProcesso || "").trim();
     if (!idProcesso) return { ok: false, mensagem: "Processo não informado." };
 
@@ -1608,7 +1608,7 @@ function jurListarEscolasColetivo(idProcesso, tokenSessao) {
 
 function jurAdicionarEscolaColetivo(dados, tokenSessao) {
   try {
-    var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+    var sessao = exigirModulo_(tokenSessao, "juridico", false);
     dados = dados || {};
     var idProcesso = String(dados.idProcesso || "").trim();
     var escolaCnpj = String(dados.escolaCnpj || "").trim();
@@ -1645,7 +1645,7 @@ function jurAdicionarEscolaColetivo(dados, tokenSessao) {
 
 function jurRemoverEscolaColetivo(id, tokenSessao) {
   try {
-    exigirSessaoDocumentos_(tokenSessao, false);
+    exigirModulo_(tokenSessao, "juridico", false);
     return jurComLock_(function() {
       var aba = jurObterAbaEscolasColetivo_();
       var ultimaLinha = aba.getLastRow();
@@ -1686,7 +1686,7 @@ function jurObterAbaReclamantes_() {
 
 function jurListarReclamantes(idProcesso, tokenSessao) {
   try {
-    exigirSessaoDocumentos_(tokenSessao, false);
+    exigirModulo_(tokenSessao, "juridico", false);
     idProcesso = String(idProcesso || "").trim();
     if (!idProcesso) return { ok: false, mensagem: "Processo não informado." };
 
@@ -1708,7 +1708,7 @@ function jurListarReclamantes(idProcesso, tokenSessao) {
 
 function jurAdicionarReclamante(dados, tokenSessao) {
   try {
-    var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+    var sessao = exigirModulo_(tokenSessao, "juridico", false);
     dados = dados || {};
     var idProcesso = String(dados.idProcesso || "").trim();
     var nome = String(dados.nome || "").trim();
@@ -1743,7 +1743,7 @@ function jurAdicionarReclamante(dados, tokenSessao) {
 
 function jurRemoverReclamante(id, tokenSessao) {
   try {
-    exigirSessaoDocumentos_(tokenSessao, false);
+    exigirModulo_(tokenSessao, "juridico", false);
     return jurComLock_(function() {
       var aba = jurObterAbaReclamantes_();
       var ultimaLinha = aba.getLastRow();
@@ -1809,7 +1809,7 @@ function jurDataJudIndice_(partes) {
 
 function jurConsultarDataJud(idProcesso, tokenSessao) {
   try {
-    exigirSessaoDocumentos_(tokenSessao, false);
+    exigirModulo_(tokenSessao, "juridico", false);
     idProcesso = String(idProcesso || "").trim();
     if (!idProcesso) return { ok: false, mensagem: "Processo não informado." };
 
@@ -1911,7 +1911,7 @@ var JUR_TIPOS_MINUTA = ["Contestação", "Réplica", "Recurso Ordinário", "Cont
 
 function jurGerarMinutaIA(idProcesso, tipoMinuta, tokenSessao) {
   try {
-    exigirSessaoDocumentos_(tokenSessao, false);
+    exigirModulo_(tokenSessao, "juridico", false);
     idProcesso = String(idProcesso || "").trim();
     if (!idProcesso) return { ok: false, mensagem: "Salve o processo antes de gerar uma minuta." };
 

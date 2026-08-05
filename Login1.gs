@@ -379,11 +379,22 @@ function autenticarUsuario(login, senha) {
       // ── LOGIN NORMAL ─────────────────────────────────────
       // Captura o token da sessão para devolver ao cliente — é ele que
       // vai na URL (?sessao=token) e mantém a sessão isolada por aba/usuário.
+      // Módulos permitidos vêm da coluna MODULOS (AcessoModulos.gs).
+      // Protegido por typeof e por try/catch lá dentro: se o arquivo de
+      // acesso não estiver instalado ou a leitura falhar, o login segue
+      // normalmente com acesso total — nunca derrubar quem tenta entrar
+      // por causa de leitura de permissão.
+      var modulosUsuario = "TODOS";
+      if (typeof acessoModulosDoUsuario_ === "function") {
+        modulosUsuario = acessoModulosDoUsuario_(dados[i], cab);
+      }
+
       var tokenSessao = salvarSessaoUsuario_({
         usuario: usuario,
         nome:    String(dados[i][idxNome]   || "").trim(),
         email:   email,
-        perfil:  String(dados[i][idxPerfil] || "Administrador").trim()
+        perfil:  String(dados[i][idxPerfil] || "Administrador").trim(),
+        modulos: modulosUsuario
       });
 
       return {

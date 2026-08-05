@@ -666,7 +666,7 @@ function rhEv_calcular_(tipo, params) {
 // Contexto para a tela pré-preencher os campos: base sugerida, avos já
 // contados, dias de aviso prévio. Só leitura — não grava nada.
 function rhEvContexto(colaboradorId, tipo, referencia, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "rh", false);
   try {
     var colaboradores = listarColaboradoresRH_interno_();
     var c = null;
@@ -733,7 +733,7 @@ function rhEv_somaAdiantamento13_(colaboradorId, ano) {
 
 // Prévia — calcula e devolve tudo, sem gravar. É o passo 1 da tela.
 function rhEvSimular(tipo, params, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "rh", false);
   try {
     return rhEv_calcular_(String(tipo || ""), params || {});
   } catch (e) {
@@ -745,7 +745,7 @@ function rhEvSimular(tipo, params, tokenSessao) {
 // parâmetros: nunca confia nos totais que voltaram da tela, porque
 // quem manipula o cliente manipularia o valor a pagar.
 function rhEvGravar(tipo, params, observacao, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "rh", false);
   var resultado = rh_comLock_(function () {
     try {
       tipo = String(tipo || "");
@@ -909,7 +909,7 @@ function rhEv_listar_interno_(filtros) {
 }
 
 function rhEvListar(filtros, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "rh", false);
   try {
     return { ok: true, eventos: rhEv_listar_interno_(filtros || {}) };
   } catch (e) {
@@ -929,7 +929,7 @@ function rhEv_buscarPorId_(id) {
 // pago) nunca some da planilha — fica com STATUS ESTORNADO, quem
 // estornou, quando e por quê. Mesma decisão já tomada em Despesas.
 function rhEvEstornar(id, motivo, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, true);
+  var sessao = exigirModulo_(tokenSessao, "rh", true);
   return rh_comLock_(function () {
     try {
       id = String(id || "").trim();
@@ -967,7 +967,7 @@ function rhEvEstornar(id, motivo, tokenSessao) {
 
 // Resumo para o topo da tela: quanto já foi lançado no ano, por tipo.
 function rhEvResumo(ano, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "rh", false);
   try {
     ano = String(ano || new Date().getFullYear());
     var eventos = rhEv_listar_interno_({ ano: ano, somenteAtivos: true });

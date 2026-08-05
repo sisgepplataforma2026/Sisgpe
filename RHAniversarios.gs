@@ -102,7 +102,7 @@ function rh_removerTriggerAniversarios_() {
 // Ligar/desligar o envio automático muda o que o sindicato manda em nome
 // dele para os colaboradores — é ação de administrador.
 function rh_instalarTriggerAniversarios_publico(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, true);
+  exigirModulo_(tokenSessao, "rh", true);
   try {
     return rh_instalarTriggerAniversarios_();
   } catch (e) {
@@ -111,7 +111,7 @@ function rh_instalarTriggerAniversarios_publico(tokenSessao) {
 }
 
 function rh_removerTriggerAniversarios_publico(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, true);
+  exigirModulo_(tokenSessao, "rh", true);
   try {
     return rh_removerTriggerAniversarios_();
   } catch (e) {
@@ -120,7 +120,7 @@ function rh_removerTriggerAniversarios_publico(tokenSessao) {
 }
 
 function rh_statusTriggerAniversarios_publico(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "rh", false);
   var instalado = ScriptApp.getProjectTriggers().some(function (t) {
     return t.getHandlerFunction() === "verificarAniversariantesRH";
   });

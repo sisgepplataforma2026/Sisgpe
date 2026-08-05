@@ -97,6 +97,10 @@ function configurarAbaSindicalizacao() {
  * Dispara automaticamente o link de conclusão por e-mail
  * quando houver e-mail informado.
  */
+// SEM trava de módulo, de propósito: o pré-cadastro é feito pelo diretor
+// de base DURANTE a visita à escola (Visitas.gs:889), que é do módulo
+// Escolas. Exigir Sindicalização aqui tiraria do diretor de base
+// justamente a função que ele usa em campo. A sessão continua exigida.
 function criarPreCadastroSindicalizacao(dados, tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
   var cpf = limparDigitos_(dados.cpf);

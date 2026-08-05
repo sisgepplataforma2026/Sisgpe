@@ -69,7 +69,7 @@ function cartAd_mapaEmitidasPorCpf_() {
  * indicando se cada uma tem emissão ativa, revogada, ou nenhuma ainda.
  */
 function listarCarteirinhasParaEmissao(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "sindicalizacao", false);
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openById(PLANILHA_ID);
     var sh = ss.getSheetByName(CARTAD_ABA_CARTEIRINHAS);
@@ -112,7 +112,7 @@ function listarCarteirinhasParaEmissao(tokenSessao) {
 }
 
 function sugerirValidadeCarteirinha(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "sindicalizacao", false);
   return cartAd_sugerirValidade_();
 }
 
@@ -123,7 +123,7 @@ function sugerirValidadeCarteirinha(tokenSessao) {
  * Portal Público já considera só a mais recente por CPF.
  */
 function emitirCarteirinha(cpf, validade, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "sindicalizacao", false);
   try {
     var cpfLimpo = String(cpf || '').replace(/\D/g, '');
     if (cpfLimpo.length !== 11) return { sucesso: false, mensagem: 'CPF inválido.' };
@@ -262,7 +262,7 @@ function cartAd_enviarEmailAprovacao_(email, nome, validade) {
  * repositório sisgep-portal-publico).
  */
 function cartAd_enviarLinkPortal(cpf, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "sindicalizacao", false);
   try {
     var cpfLimpo = String(cpf || '').replace(/\D/g, '');
     if (cpfLimpo.length !== 11) return { sucesso: false, mensagem: 'CPF inválido.' };
@@ -331,7 +331,7 @@ function cartAd_enviarEmailRejeicao_(email, nome, motivo) {
  * foto está adequada, confirma a validade e pronto.
  */
 function aprovarEEmitirCarteirinha(cpf, validade, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "sindicalizacao", false);
   try {
     var cpfLimpo = String(cpf || '').replace(/\D/g, '');
     if (cpfLimpo.length !== 11) return { sucesso: false, mensagem: 'CPF inválido.' };
@@ -473,7 +473,7 @@ function validarCarteirinhaPublico(codigo) {
  * motivo no Portal Público e pode enviar uma foto nova.
  */
 function rejeitarSolicitacaoCarteirinha(cpf, motivo, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "sindicalizacao", false);
   try {
     var cpfLimpo = String(cpf || '').replace(/\D/g, '');
     if (cpfLimpo.length !== 11) return { sucesso: false, mensagem: 'CPF inválido.' };
@@ -513,7 +513,7 @@ function rejeitarSolicitacaoCarteirinha(cpf, motivo, tokenSessao) {
  * roda como quem implantou, consegue ler — não expõe link público).
  */
 function obterFotoCarteirinhaParaRevisao(cpf, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "sindicalizacao", false);
   try {
     var cpfLimpo = String(cpf || '').replace(/\D/g, '');
     var ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openById(PLANILHA_ID);
@@ -536,7 +536,7 @@ function obterFotoCarteirinhaParaRevisao(cpf, tokenSessao) {
  * status REVOGADA, mesma lógica de sempre pegar a mais recente por CPF.
  */
 function revogarCarteirinha(cpf, motivo, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "sindicalizacao", false);
   try {
     var cpfLimpo = String(cpf || '').replace(/\D/g, '');
     if (cpfLimpo.length !== 11) return { sucesso: false, mensagem: 'CPF inválido.' };

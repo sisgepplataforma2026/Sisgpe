@@ -125,7 +125,7 @@ function rh_garantirFolhaRubricas_() {
  * CATÁLOGO — leitura pública, escrita exige administrador
  * ========================================= */
 function listarRubricasRH(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "rh", false);
   return rh_listarRubricas_interno_();
 }
 
@@ -148,7 +148,7 @@ function rh_listarRubricas_interno_() {
 
 // Cria ou atualiza (dados.id presente) uma rubrica do catálogo.
 function salvarRubricaRH(dados, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, true);
+  var sessao = exigirModulo_(tokenSessao, "rh", true);
   try {
     dados = dados || {};
     var codigo = String(dados.codigo || "").trim();
@@ -182,7 +182,7 @@ function salvarRubricaRH(dados, tokenSessao) {
 // Ativa/desativa — nunca exclui de verdade (linhas históricas em
 // RH_FOLHA_RUBRICAS apontam para o ID da rubrica).
 function alternarRubricaRH(id, ativo, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, true);
+  exigirModulo_(tokenSessao, "rh", true);
   try {
     id = String(id || "").trim();
     if (!id) return { ok: false, mensagem: "Rubrica não informada." };
@@ -306,7 +306,7 @@ function rh_listarRubricasFixasColaborador_interno_(colaboradorId) {
 // Público — leitura (usado pelo passo de prévia da folha e por uma
 // eventual tela de gestão das fixas do colaborador).
 function listarRubricasFixasColaboradorRH(colaboradorId, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "rh", false);
   return rh_listarRubricasFixasColaborador_interno_(colaboradorId);
 }
 
@@ -347,7 +347,7 @@ function rh_salvarRubricaFixaColaborador_(colaboradorId, rubricaId, valor, quem)
 
 // Público — exige administrador (grava valor recorrente de RH em lote).
 function salvarRubricaFixaColaboradorRH(dados, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, true);
+  var sessao = exigirModulo_(tokenSessao, "rh", true);
   try {
     dados = dados || {};
     var colaboradorId = String(dados.colaboradorId || "").trim();
@@ -366,7 +366,7 @@ function salvarRubricaFixaColaboradorRH(dados, tokenSessao) {
 // Público — exige administrador. Nunca exclui de verdade (ATIVO=false),
 // mesmo padrão de alternarRubricaRH — preserva rastreabilidade.
 function alternarRubricaFixaColaboradorRH(id, ativo, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, true);
+  var sessao = exigirModulo_(tokenSessao, "rh", true);
   try {
     id = String(id || "").trim();
     if (!id) return { ok: false, mensagem: "Rubrica fixa não informada." };

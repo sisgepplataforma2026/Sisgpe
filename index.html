@@ -2053,7 +2053,44 @@ var ini=String(nome).trim().split(/\s+/).map(function(p){return p.charAt(0).toUp
       if(dropdownPf)dropdownPf.textContent=s.perfil||"Administrador";
     }).getSessaoUsuario(SISGEP_TOKEN_SESSAO);
 
+    spAplicarAcessoModulos_();
+
     carregarResumoInicio();
+  }
+
+  /**
+   * Esconde do menu os módulos que o usuário não pode abrir
+   * (AcessoModulos.gs). As chaves do catálogo são as mesmas do
+   * atributo data-mod dos botões, então o casamento é direto.
+   *
+   * ⚠️ Isto é CONVENIÊNCIA, não segurança: sumir o botão não impede
+   * ninguém de alcançar a função por outro caminho. A trava real é a do
+   * servidor (exigirModulo_), aplicada nos módulos com dado de pessoa.
+   *
+   * Em caso de falha, o menu aparece inteiro de propósito — é melhor
+   * mostrar demais do que trancar fora do sistema quem tem direito.
+   */
+  function spAplicarAcessoModulos_(){
+    if(typeof google==="undefined"||!google.script||!google.script.run)return;
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||r.todos!==false||!Array.isArray(r.modulos))return;
+        var permitidos={};
+        r.modulos.forEach(function(m){permitidos[String(m)]=true;});
+        permitidos["inicio"]=true; // tela de entrada nunca some
+        document.querySelectorAll("[data-mod]").forEach(function(btn){
+          var mod=btn.getAttribute("data-mod");
+          if(permitidos[mod])return;
+          btn.style.display="none";
+          // Submenu sanfonado do módulo (Financeiro, Escolas, Benefícios,
+          // Documentos, Comunicação) fica logo depois do botão — sem
+          // isto os subitens continuariam visíveis, órfãos.
+          var prox=btn.nextElementSibling;
+          if(prox&&prox.querySelector&&prox.querySelector(".docSubMenuBtn"))prox.style.display="none";
+        });
+      })
+      .withFailureHandler(function(){})
+      .acessoMeusModulos(SISGEP_TOKEN_SESSAO);
   }
 
   spRadioInit_();

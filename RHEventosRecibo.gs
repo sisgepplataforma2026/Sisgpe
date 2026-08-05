@@ -147,7 +147,7 @@ function rhEv_montarBlobRecibo_(idEvento) {
 // Devolve o PDF em base64 — sem salvar no Drive e sem link público.
 // Mesma decisão do holerite: valor líquido e IRRF são dado sensível.
 function rhEvGerarReciboPDF(idEvento, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "rh", false);
   try {
     var m = rhEv_montarBlobRecibo_(idEvento);
     if (!m) return { ok: false, mensagem: "Lançamento não encontrado." };
@@ -162,7 +162,7 @@ function rhEvGerarReciboPDF(idEvento, tokenSessao) {
 }
 
 function rhEvEnviarReciboPorEmail(idEvento, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "rh", false);
   try {
     var m = rhEv_montarBlobRecibo_(idEvento);
     if (!m) return { ok: false, mensagem: "Lançamento não encontrado." };

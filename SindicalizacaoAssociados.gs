@@ -273,6 +273,11 @@ function sindAss_montarLogradouro_(ficha) {
  *
  * Retorna { encontrado, linha }
  */
+// SEM trava de módulo, de propósito: quem chama isto é gerarOficioWeb
+// (Oficios.gs:671), no fluxo do ofício de DESFILIAÇÃO. Exigir o módulo
+// Sindicalização aqui quebraria a emissão de ofício para quem só tem
+// Documentos — e a desfiliação é consequência do ofício, não uma
+// operação avulsa no cadastro de associados. A sessão continua exigida.
 function sindAss_desfiliar_(cpf, usuario, tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
   var lock = LockService.getScriptLock();
@@ -396,7 +401,7 @@ function gerarMatriculasEmLote() {
  * Retorna { existe, filiado, nome, matricula, escola, linha }
  */
 function consultarAssociadoPorCPF(cpf, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "sindicalizacao", false);
   var cpfDigitos = sindAss_digitos_(cpf);
   if (cpfDigitos.length !== 11) {
     return { existe: false, mensagem: 'CPF inválido.' };

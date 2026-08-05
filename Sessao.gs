@@ -56,6 +56,12 @@ function salvarSessaoUsuario_(dados) {
     nome: String(dados.nome || "").trim(),
     email: String(dados.email || "").trim().toLowerCase(),
     perfil: String(dados.perfil || "Administrador").trim(),
+    // Módulos que este usuário pode abrir. "TODOS" (ou ausente) = tudo,
+    // que é o comportamento de sempre — ver AcessoModulos.gs. Fica
+    // gravado na sessão para não reler a planilha a cada chamada; por
+    // isso mudança de acesso só vale no PRÓXIMO login do usuário.
+    modulos: (dados.modulos === undefined || dados.modulos === null || dados.modulos === "")
+      ? "TODOS" : dados.modulos,
     criadoEm: agora,
     expiraEm: agora + (SESSAO_CONFIG.DURACAO_SEGUNDOS * 1000)
   };

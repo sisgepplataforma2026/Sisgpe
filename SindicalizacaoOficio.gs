@@ -167,7 +167,7 @@ function sindOf_buscarDePara_(nomeNaFicha) {
  * @param {Object} escola   { nome, cnpj, emailPrincipal, emailsTodos }
  */
 function previewOficioFiliacao(idFicha, escola, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "sindicalizacao", false);
   try {
     var f = sindAdm_buscarPorId_(idFicha);
     if (!f) return { sucesso: false, mensagem: 'Ficha não encontrada.' };
@@ -219,7 +219,7 @@ function previewOficioFiliacao(idFicha, escola, tokenSessao) {
  * @param {string} tokenSessao Token da sessão SISGEP do atendente que aprova
  */
 function aprovarEEncaminharFicha(idFicha, escola, aprovadoPor, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "sindicalizacao", false);
   if (!escola || !escola.cnpj || sindOf_digitos_(escola.cnpj).length !== 14) {
     return { sucesso: false, mensagem: 'Selecione uma escola com CNPJ válido.' };
   }
@@ -339,7 +339,7 @@ function aprovarEEncaminharFicha(idFicha, escola, aprovadoPor, tokenSessao) {
  * falhou na aprovação ou quando é preciso reenviar a outra escola).
  */
 function reemitirOficioFicha(idFicha, escola, usuario, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "sindicalizacao", false);
   var f = sindAdm_buscarPorId_(idFicha);
   if (!f) return { sucesso: false, mensagem: 'Ficha não encontrada.' };
   if (f.STATUS !== 'MATRICULADA') {
@@ -478,7 +478,7 @@ function diagnosticarDeParaEscolas() {
  * "E-mails (todos)".
  */
 function atualizarEmailEscola(cnpj, emails, usuario, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "sindicalizacao", false);
   var alvo = sindOf_digitos_(cnpj);
   if (alvo.length !== 14) return { sucesso: false, mensagem: 'CNPJ inválido.' };
 
