@@ -407,7 +407,7 @@ function obterPreviewOficioFiscalDesp(idsDespesas, tokenSessao) {
     var params = { dataHoje: dataHoje, despesas: despesasOk, fornecedores: fornecedores, totalValor: totalValor, totalValorNum: totalValorNum, descricao: descricao, lote: lote, anexos: anexos };
     var htmlPrevia = gerarHtmlOficioDocumentacaoFiscal_(params, true);
 
-    var emailsResp = listarEmailsEnvioDespesas();
+    var emailsResp = listarEmailsEnvioDespesas_interno_();
     var emails     = emailsResp.lista || [];
     var paraPadrao = emails.filter(function(e){ return e.tipo === "PARA" && e.padrao; }).map(function(e){ return e.email; });
     var ccPadrao   = emails.filter(function(e){ return e.tipo === "CC"   && e.padrao; }).map(function(e){ return e.email; });

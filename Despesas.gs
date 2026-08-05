@@ -1127,7 +1127,8 @@ function registrarLancamentoDespesa_(dados) {
  * sem depender do portal do fornecedor.
  * dadosUpload: { idDespesa, arquivos: [{base64, nome, tipo}], obs: "" }
  */
-function uploadDocumentoManual(dadosUpload) {
+function uploadDocumentoManual(dadosUpload, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     dadosUpload   = dadosUpload || {};
     var idDespesa = String(dadosUpload.idDespesa || "").trim();
@@ -1800,7 +1801,12 @@ function garantirAbaConfigEmailsDesp_() {
   return sh;
 }
 
-function listarEmailsEnvioDespesas() {
+function listarEmailsEnvioDespesas(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
+  return listarEmailsEnvioDespesas_interno_();
+}
+
+function listarEmailsEnvioDespesas_interno_() {
   try {
     var sh = garantirAbaConfigEmailsDesp_();
     var dados = sh.getDataRange().getDisplayValues();
@@ -1866,7 +1872,8 @@ function montarAssuntoDocumentacaoFiscalDesp_(fornecedores) {
   return "📤 Documentação Fiscal - " + nomes + " - " + mesAno;
 }
 
-function obterPreviewEnvioContabilidadeDesp(idsDespesas) {
+function obterPreviewEnvioContabilidadeDesp(idsDespesas, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     if (!Array.isArray(idsDespesas) || !idsDespesas.length) {
       return { ok: false, mensagem: "Nenhuma despesa selecionada." };
@@ -1920,7 +1927,7 @@ function obterPreviewEnvioContabilidadeDesp(idsDespesas) {
       return { ok: false, mensagem: "Nenhuma despesa válida para prévia." };
     }
 
-    var emailsResp = listarEmailsEnvioDespesas();
+    var emailsResp = listarEmailsEnvioDespesas_interno_();
     var emails = emailsResp.lista || [];
 
     var paraPadrao = emails
@@ -1953,7 +1960,8 @@ function obterPreviewEnvioContabilidadeDesp(idsDespesas) {
 }
 /* ================= ENVIO EM LOTE PARA CONTABILIDADE ================= */
 
-function enviarLoteDespesasParaContabilidade(idsDespesas) {
+function enviarLoteDespesasParaContabilidade(idsDespesas, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     var emailUsuario = "";
     try { emailUsuario = Session.getActiveUser().getEmail() || "financeiro@sindeducacao.com"; } catch(e) { emailUsuario = "financeiro@sindeducacao.com"; }
@@ -2229,7 +2237,15 @@ function confirmarPagamentoDespesaPublico(token, dados) {
 
 /* ================= LISTAGEM E BUSCA ================= */
 
-function listarDespesas(filtros) {
+// Exposta ao navegador: exige sessão. Chamadas vindas de outros .gs devem
+// usar listarDespesas_interno_, que não revalida — a sessão já foi conferida
+// na função pública que iniciou a operação (mesmo padrão de ESCA-FIX-2).
+function listarDespesas(filtros, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
+  return listarDespesas_interno_(filtros);
+}
+
+function listarDespesas_interno_(filtros) {
   try {
     filtros = filtros || {};
     var aba     = obterAbaDesp_();
@@ -2337,8 +2353,14 @@ function buscarDespesaPorId(idDespesa) {
   } catch (e) { return { ok: false, mensagem: e.message }; }
 }
 
-function listarDespesasParaEnvioContabilidade() { return listarDespesas({ status: STATUS_DESPESA.DOC_RECEBIDO }); }
-function listarDespesasPendentes() { return listarDespesas({ ocultarPagos: true, ocultarCancelados: true }); }
+function listarDespesasParaEnvioContabilidade(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
+  return listarDespesas_interno_({ status: STATUS_DESPESA.DOC_RECEBIDO });
+}
+function listarDespesasPendentes(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
+  return listarDespesas_interno_({ ocultarPagos: true, ocultarCancelados: true });
+}
 
 /* ================= AÇÕES MANUAIS ================= */
 
@@ -2552,9 +2574,16 @@ function editarDespesa(payload, tokenSessao) {
 
 /* ================= DASHBOARD ================= */
 
-function obterResumoDespesas() {
+// Mesmo padrão: pública valida sessão, interna serve InicioResumo.gs e
+// FinanceiroIA.gs, que já validaram antes de chegar aqui.
+function obterResumoDespesas(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
+  return obterResumoDespesas_interno_();
+}
+
+function obterResumoDespesas_interno_() {
   try {
-    var resultado = listarDespesas({});
+    var resultado = listarDespesas_interno_({});
     var lista     = resultado.lista || [];
 
     var resumo = {
@@ -2768,14 +2797,14 @@ function testeRegistrarLancamentoAvulso() {
 }
 
 function testeListarDespesas() {
-  var resultado = listarDespesas({});
+  var resultado = listarDespesas_interno_({});
   Logger.log("Total: " + resultado.total);
   if (resultado.lista.length) Logger.log(JSON.stringify(resultado.lista.slice(0, 3)));
   return resultado;
 }
 
 function testeResumoDespesas() {
-  var resultado = obterResumoDespesas();
+  var resultado = obterResumoDespesas_interno_();
   Logger.log(JSON.stringify(resultado));
   return resultado;
 }
@@ -2991,7 +3020,8 @@ function despesas_registrarLeituraEmail(tokenPixel) {
  * Chamado pelo painel "Solicitar NF" / "Reenviar NF".
  * payload: { idDespesa, email, whatsapp }
  */
-function solicitarNFDespesa(payload) {
+function solicitarNFDespesa(payload, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     payload = payload || {};
     var idDespesa = String(payload.idDespesa || "").trim();
@@ -3075,7 +3105,8 @@ function solicitarNFDespesa(payload) {
     return { ok: false, mensagem: e.message };
   }
 }
-function cancelarEnvioDespesaLote(idDespesa) {
+function cancelarEnvioDespesaLote(idDespesa, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     var idDespesa = String(idDespesa || "").trim();
     if(!idDespesa) return { ok: false, mensagem: "ID não informado." };
@@ -3265,7 +3296,8 @@ function duplicarDespesa(payload, tokenSessao) {
      aplicarPendentes: true   // se true, atualiza despesas abertas
    }
    =============================================================== */
-function ajustarRecorrencia(payload) {
+function ajustarRecorrencia(payload, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     payload = payload || {};
     var rowIndex          = parseInt(String(payload.rowIndex || "0"), 10);

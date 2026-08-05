@@ -92,7 +92,7 @@
     google.script.run
       .withSuccessHandler(onDashboard)
       .withFailureHandler(function(e){ if(loader) loader.style.display="none"; showToast("Erro: "+e.message,"error"); })
-      .obterResumoDespesas();
+      .obterResumoDespesas(SISGEP_TOKEN_SESSAO);
   }
 
   function onDashboard(resp){
@@ -170,7 +170,7 @@
         paginaAtual=1; aplicarFiltros();
       })
       .withFailureHandler(function(e){ if(loader) loader.style.display="none"; showToast("Erro: "+e.message,"error"); })
-      .listarDespesas({});
+      .listarDespesas({}, SISGEP_TOKEN_SESSAO);
   }
 
   function aplicarFiltros(){
@@ -545,7 +545,7 @@
     var loader=g("lote-loader"),content=g("lote-content"),vazia=g("lote-vazio"),err=g("lote-err"),ok=g("lote-ok");
     if(loader) loader.style.display="flex"; if(content) content.style.display="none"; if(vazia) vazia.style.display="none";
     if(err) err.classList.remove("show"); if(ok) ok.classList.remove("show");
-    google.script.run.withSuccessHandler(onLoteRecebido).withFailureHandler(function(e){ if(loader) loader.style.display="none"; showToast("Erro: "+e.message,"error"); }).listarDespesasParaEnvioContabilidade();
+    google.script.run.withSuccessHandler(onLoteRecebido).withFailureHandler(function(e){ if(loader) loader.style.display="none"; showToast("Erro: "+e.message,"error"); }).listarDespesasParaEnvioContabilidade(SISGEP_TOKEN_SESSAO);
   }
 
   function onLoteRecebido(resp){
@@ -648,7 +648,7 @@
         else { showToast("Erro: " + ((resp && resp.mensagem) || "Falha."), "error"); }
       })
       .withFailureHandler(function(e){ showToast("Erro: " + e.message, "error"); })
-      .cancelarEnvioDespesaLote(despesa.idDespesa);
+      .cancelarEnvioDespesaLote(despesa.idDespesa, SISGEP_TOKEN_SESSAO);
   }
 
   function toggleLoteItem(i){ var cb=g("lote-cb-"+i); if(cb){ cb.checked=!cb.checked; atualizarSelecao(); } }
@@ -979,7 +979,7 @@
         else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
       })
       .withFailureHandler(function(e){ if(btn){ btn.disabled=false; btn.innerHTML="📨 Enviar Solicitação"; } showToast("Erro: "+e.message,"error"); })
-      .solicitarNFDespesa({ idDespesa:_idModalAtivo, email:email, whatsapp:whats });
+      .solicitarNFDespesa({ idDespesa:_idModalAtivo, email:email, whatsapp:whats }, SISGEP_TOKEN_SESSAO);
   }
 
   function abrirModalUpload(idDespesa,nome,valor){
@@ -1011,7 +1011,7 @@
             else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
           })
           .withFailureHandler(function(e){ if(pm) pm.style.display="none"; if(btn){ btn.disabled=false; btn.innerHTML="💾 Anexar Documento"; } showToast("Erro: "+e.message,"error"); })
-          .uploadDocumentoManual({ idDespesa:_idModalAtivo, arquivos:resultado, obs:obs });
+          .uploadDocumentoManual({ idDespesa:_idModalAtivo, arquivos:resultado, obs:obs }, SISGEP_TOKEN_SESSAO);
       };
       reader.readAsDataURL(arq);
     });
@@ -1111,7 +1111,7 @@
     google.script.run
       .withSuccessHandler(onRelatorioRecebido)
       .withFailureHandler(function(e){ if(loader) loader.style.display="none"; showToast("Erro: "+e.message,"error"); })
-      .listarDespesas({});
+      .listarDespesas({}, SISGEP_TOKEN_SESSAO);
   }
 
   function onRelatorioRecebido(resp) {
@@ -1323,7 +1323,7 @@
         else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
       })
       .withFailureHandler(function(e){ showToast("Erro: "+e.message,"error"); })
-      .ajustarRecorrencia({ rowIndex:rowIndex, novoValor:novoValor, aplicarPendentes:aplicar });
+      .ajustarRecorrencia({ rowIndex:rowIndex, novoValor:novoValor, aplicarPendentes:aplicar }, SISGEP_TOKEN_SESSAO);
   }
 
   /* ═══ CHIP SELECIONARR ═══ */

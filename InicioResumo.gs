@@ -60,7 +60,7 @@ function getResumoInicioSISGEP(tokenSessao) {
 
 function inicio_contarNotasFiscaisAguardando_() {
   try {
-    var r = obterResumoDespesas();
+    var r = obterResumoDespesas_interno_();
     return (r && r.ok && r.resumo) ? Number(r.resumo.totalDocRecebido || 0) : 0;
   } catch (e) {
     Logger.log("[Início] falha ao contar notas fiscais: " + e.message);
