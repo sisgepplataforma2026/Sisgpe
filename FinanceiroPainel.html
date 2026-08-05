@@ -1,0 +1,203 @@
+<div id="finPainel" style="min-height:100%;background:#f0f4f8;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#0f172a;">
+<!--
+  Painel executivo da Central Financeira. Responde num lugar só: quanto entrou,
+  quanto saiu, quanto está pendente. Consome finDashboardExecutivo
+  (FinanceiroDashboard.gs), que apenas agrega os resumos que cada módulo já
+  produz — nenhuma regra de negócio nova, nenhuma gravação.
+-->
+  <style>
+    #finPainel *{box-sizing:border-box}
+    .fp-head{background:linear-gradient(135deg,var(--navy,#001f4d),var(--navy2,#002f6c));padding:22px 24px;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+    .fp-title{font-size:21px;font-weight:900;line-height:1.1}
+    .fp-sub{font-size:12px;color:rgba(255,255,255,.68);margin-top:4px}
+    .fp-badge{height:32px;border-radius:999px;border:1px solid rgba(201,168,76,.5);background:rgba(201,168,76,.16);color:#f8d66d;font-size:11px;font-weight:900;padding:0 14px;display:flex;align-items:center}
+    .fp-wrap{padding:18px 22px 34px}
+    .fp-erro,.fp-aviso{margin:0 0 14px;padding:12px 14px;border-radius:12px;font-size:12.5px;font-weight:700;display:none}
+    .fp-erro{background:#fee2e2;border:1px solid #fca5a5;color:#991b1b}
+    .fp-aviso{background:var(--amber-lt,#fef3c7);border:1px solid #fcd34d;color:#92400e}
+    .fp-erro.show,.fp-aviso.show{display:block}
+
+    .fp-caixa{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:18px}
+    .fp-big{background:#fff;border:1px solid var(--g200,#e2e8f0);border-radius:14px;padding:18px 20px;box-shadow:0 2px 10px rgba(0,20,60,.06);position:relative;overflow:hidden}
+    .fp-big:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px}
+    .fp-big.entrou:before{background:#0f8a5f}
+    .fp-big.saiu:before{background:#dc2626}
+    .fp-big.saldo:before{background:var(--gold,#C9A84C)}
+    .fp-big small{display:block;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:var(--g500,#64748b);margin-bottom:8px}
+    .fp-big strong{font-size:29px;font-weight:900;font-variant-numeric:tabular-nums;word-break:break-word}
+    .fp-big.entrou strong{color:#0f8a5f}
+    .fp-big.saiu strong{color:#dc2626}
+    .fp-big.saldo strong{color:var(--navy,#001f4d)}
+    .fp-big span{display:block;font-size:11.5px;color:var(--g400,#94a3b8);margin-top:6px}
+
+    .fp-sec{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.09em;color:var(--g500,#64748b);margin:22px 0 10px}
+    .fp-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    .fp-card{background:#fff;border:1px solid var(--g200,#e2e8f0);border-radius:14px;padding:15px 16px;box-shadow:0 2px 10px rgba(0,20,60,.06);cursor:pointer;transition:transform .12s,box-shadow .12s}
+    .fp-card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,20,60,.12)}
+    .fp-card small{display:block;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:var(--g500,#64748b);margin-bottom:8px}
+    .fp-card strong{font-size:23px;font-weight:900;color:var(--navy,#001f4d);font-variant-numeric:tabular-nums}
+    .fp-card span{display:block;font-size:11px;color:var(--g400,#94a3b8);margin-top:4px}
+    .fp-card.alerta strong{color:#dc2626}
+    .fp-card.ok strong{color:#0f8a5f}
+    .fp-card.atencao strong{color:#d97706}
+    .fp-card .ir{font-size:10.5px;font-weight:800;color:var(--blue,#1565C0);margin-top:8px;display:block}
+
+    .fp-fontes{margin-top:20px;background:#fff;border:1px solid var(--g200,#e2e8f0);border-radius:14px;overflow:hidden}
+    .fp-fontes-head{padding:13px 16px;border-bottom:1px solid #eef2f7;font-size:13px;font-weight:900;color:var(--navy,#001f4d)}
+    .fp-fonte{padding:11px 16px;border-bottom:1px solid var(--g100,#f1f5f9);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .fp-fonte:last-child{border-bottom:none}
+    .fp-fonte-nome{font-size:12.5px;font-weight:800;color:var(--g700,#334155)}
+    .fp-fonte-desc{font-size:11px;color:var(--g400,#94a3b8);margin-top:2px}
+    .fp-tag{display:inline-flex;align-items:center;height:22px;border-radius:999px;padding:0 10px;font-size:10.5px;font-weight:900;white-space:nowrap}
+    .fp-tag.on{background:#dcfce7;color:#166534}
+    .fp-tag.off{background:var(--red-lt,#fee2e2);color:#991b1b}
+    .fp-rodape{margin-top:16px;font-size:11px;color:var(--g400,#94a3b8);text-align:right}
+    @media(max-width:1100px){.fp-caixa{grid-template-columns:1fr}.fp-grid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:640px){.fp-grid{grid-template-columns:1fr}}
+  </style>
+
+  <div class="fp-head">
+    <div>
+      <div class="fp-title">Painel Executivo — Central Financeira</div>
+      <div class="fp-sub">Quanto entrou, quanto saiu e o que está pendente, somando todas as fontes do sindicato</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="fp-badge" style="cursor:pointer;" type="button" onclick="fpCarregar()">↻ Atualizar</button>
+    </div>
+  </div>
+
+  <div class="fp-wrap">
+    <div id="fpErro" class="fp-erro"></div>
+    <div id="fpAviso" class="fp-aviso"></div>
+
+    <div class="fp-caixa">
+      <div class="fp-big entrou"><small>Entrou (receitas lançadas)</small><strong id="fpEntrou">R$ 0,00</strong><span id="fpEntrouDet">—</span></div>
+      <div class="fp-big saiu"><small>Saiu (despesas pagas)</small><strong id="fpSaiu">R$ 0,00</strong><span id="fpSaiuDet">—</span></div>
+      <div class="fp-big saldo"><small>Saldo do que foi registrado</small><strong id="fpSaldo">R$ 0,00</strong><span id="fpSaldoDet">entradas menos saídas</span></div>
+    </div>
+
+    <div class="fp-sec">Contas a pagar</div>
+    <div class="fp-grid">
+      <div class="fp-card" onclick="fpIr('financeiro')"><small>A pagar</small><strong id="fpAPagar">R$ 0,00</strong><span id="fpAPagarQtd">0 despesa(s) em aberto</span><span class="ir">abrir Despesas →</span></div>
+      <div class="fp-card alerta" onclick="fpIr('financeiro')"><small>Vencidas</small><strong id="fpVencidas">0</strong><span>já passaram do vencimento</span><span class="ir">abrir Despesas →</span></div>
+      <div class="fp-card atencao" onclick="fpIr('financeiro')"><small>Aguardando nota fiscal</small><strong id="fpAguardNF">0</strong><span>prestador ainda não enviou</span><span class="ir">abrir Despesas →</span></div>
+      <div class="fp-card" onclick="fpIr('financeiro')"><small>Na contabilidade</small><strong id="fpContab">0</strong><span>enviadas e aguardando</span><span class="ir">abrir Despesas →</span></div>
+    </div>
+
+    <div class="fp-sec">Contas a receber</div>
+    <div class="fp-grid">
+      <div class="fp-card ok" onclick="fpIr('receitas')"><small>Receitas lançadas</small><strong id="fpRecQtd">0</strong><span>eventos, Parque do China e manuais</span><span class="ir">abrir Receitas →</span></div>
+      <div class="fp-card ok" onclick="fpIr('mensalidades')"><small>Mensalidade confirmada</small><strong id="fpMensConf">0</strong><span id="fpMensTotal">de 0 associado(s)</span><span class="ir">abrir Mensalidade →</span></div>
+      <div class="fp-card atencao" onclick="fpIr('mensalidades')"><small>Mensalidade aguardando</small><strong id="fpMensAg">0</strong><span>desconto ainda não confirmado</span><span class="ir">abrir Mensalidade →</span></div>
+      <div class="fp-card alerta" onclick="fpIr('cobranca')"><small>Relação nominal crítica</small><strong id="fpCobCrit">0</strong><span id="fpCobComp">15+ dias sem resposta</span><span class="ir">abrir Cobrança →</span></div>
+    </div>
+
+    <div class="fp-fontes">
+      <div class="fp-fontes-head">Fontes de receita do sindicato</div>
+      <div class="fp-fonte">
+        <div><div class="fp-fonte-nome">Festa de fim de ano — ingresso de acompanhante</div><div class="fp-fonte-desc">Lança automaticamente ao emitir o ingresso</div></div>
+        <span class="fp-tag on">integrada</span>
+      </div>
+      <div class="fp-fonte">
+        <div><div class="fp-fonte-nome">Parque do China — hospedagem</div><div class="fp-fonte-desc">Lança automaticamente ao registrar o pagamento da reserva</div></div>
+        <span class="fp-tag on">integrada</span>
+      </div>
+      <div class="fp-fonte">
+        <div><div class="fp-fonte-nome">Mensalidade sindical — CCT cláusula 56</div><div class="fp-fonte-desc">Controle por associado e status de confirmação do desconto</div></div>
+        <span class="fp-tag on">integrada</span>
+      </div>
+      <div class="fp-fonte">
+        <div><div class="fp-fonte-nome">Taxa negocial — CCT cláusula 57</div><div class="fp-fonte-desc">Existe o envio do ofício; falta o controle de quem pagou</div></div>
+        <span class="fp-tag off">sem controle de recebimento</span>
+      </div>
+      <div class="fp-fonte">
+        <div><div class="fp-fonte-nome">Taxa assistencial — CCT cláusula 58</div><div class="fp-fonte-desc">Existe o envio do ofício; falta o controle de quem pagou</div></div>
+        <span class="fp-tag off">sem controle de recebimento</span>
+      </div>
+    </div>
+
+    <div class="fp-rodape" id="fpRodape">—</div>
+  </div>
+
+<script>
+(function(){
+"use strict";
+
+var FP_CARREGANDO = false;
+
+function g(id){ return document.getElementById(id); }
+function tokenSessao(){ return typeof SISGEP_TOKEN_SESSAO !== "undefined" ? SISGEP_TOKEN_SESSAO : ""; }
+function moeda(v){ return Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"}); }
+function txt(id,v){ var el=g(id); if(el) el.textContent=v; }
+
+function box(id, msg){
+  var el = g(id); if(!el) return;
+  if (!msg) { el.className = el.className.replace(" show",""); el.textContent=""; return; }
+  if (el.className.indexOf("show") < 0) el.className += " show";
+  el.textContent = msg;
+}
+
+window.fpIr = function(mod){ if (typeof window.spIr === "function") window.spIr(mod); };
+
+window.fpCarregar = function(){
+  if (FP_CARREGANDO) return;
+  FP_CARREGANDO = true;
+  box("fpErro",""); box("fpAviso","");
+
+  google.script.run
+    .withSuccessHandler(function(d){
+      FP_CARREGANDO = false;
+      if (!d) { box("fpErro","Resposta vazia do servidor."); return; }
+      fpPintar(d);
+    })
+    .withFailureHandler(function(err){
+      FP_CARREGANDO = false;
+      box("fpErro","Não foi possível montar o painel: " + (err && err.message ? err.message : err) +
+                   ". Se sua sessão expirou, entre novamente.");
+    })
+    .finDashboardExecutivo(tokenSessao());
+};
+
+function fpPintar(d){
+  var c = d.consolidado || {};
+  txt("fpEntrou", moeda(c.entrou));
+  txt("fpSaiu",   moeda(c.saiu));
+  txt("fpSaldo",  moeda(c.saldo));
+
+  var dsp = d.despesas || {};
+  var rec = d.receitas || {};
+  var men = d.mensalidade || {};
+  var cob = d.cobranca || {};
+
+  txt("fpEntrouDet", (rec.lancamentos || 0) + " lançamento(s) de receita");
+  txt("fpSaiuDet",   (dsp.pagas || 0) + " despesa(s) paga(s)");
+
+  txt("fpAPagar",    moeda(dsp.valorPendente));
+  txt("fpAPagarQtd", (dsp.pendentes || 0) + " despesa(s) em aberto");
+  txt("fpVencidas",  dsp.vencidas || 0);
+  txt("fpAguardNF",  dsp.aguardandoNF || 0);
+  txt("fpContab",    dsp.naContabil || 0);
+
+  txt("fpRecQtd",    rec.lancamentos || 0);
+  txt("fpMensConf",  men.confirmados || 0);
+  txt("fpMensTotal", "de " + (men.total || 0) + " associado(s)");
+  txt("fpMensAg",    men.aguardando || 0);
+  txt("fpCobCrit",   cob.criticas || 0);
+  txt("fpCobComp",   cob.competencia ? ("15+ dias sem resposta · " + cob.competencia) : "15+ dias sem resposta");
+
+  /* Sinaliza fonte indisponível em vez de mostrar zero como se fosse dado
+     real — zero por falha é pior do que aviso explícito num painel de caixa. */
+  var faltando = d.fontesIndisponiveis || [];
+  if (faltando.length) {
+    box("fpAviso", "Não foi possível ler: " + faltando.join(", ") +
+        ". Os números acima estão incompletos — as demais fontes seguem corretas.");
+  }
+
+  txt("fpRodape", "Atualizado em " + (d.geradoEm || "—"));
+}
+
+window.initFinanceiroPainel = function(){ fpCarregar(); };
+
+})();
+</script>
+</div>
