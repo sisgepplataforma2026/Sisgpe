@@ -685,13 +685,13 @@ window.ckArquivarAtual=function(){
 window.ckResponderManual=function(){var rBox=g("ckCtxResposta");if(rBox){rBox.style.display="block";rBox.scrollIntoView({behavior:"smooth"});}};
 window.ckEncaminhar=function(){if(typeof toast==="function")toast("Abra o Gmail para encaminhar este e-mail.","info");};
 
-window.ckAcaoConfirmarDesconto   =function(){if(typeof mostrarAbaOficio==="function")mostrarAbaOficio("mensalidades");};
-window.ckAcaoVerMensalidade       =function(){if(typeof mostrarAbaOficio==="function")mostrarAbaOficio("mensalidades");};
+window.ckAcaoConfirmarDesconto   =function(){if(typeof spIr==="function")spIr("mensalidades");};
+window.ckAcaoVerMensalidade       =function(){if(typeof spIr==="function")spIr("mensalidades");};
 window.ckAcaoRegistrarConfirmacao=function(){if(typeof toast==="function")toast("Registrando confirmação...","info");ckResponderComIA();};
 window.ckAcaoVerOficio            =function(){if(typeof mostrarAbaOficio==="function")mostrarAbaOficio("historico");};
 window.ckAcaoEscalarJuridico      =function(){if(typeof toast==="function")toast("🔴 Marcado para jurídico!","warn");};
 window.ckAcaoRegistrarProtocolo   =function(){if(typeof toast==="function")toast("Registrando protocolo...","info");};
-window.ckAcaoAtualizarStatus      =function(){if(typeof mostrarAbaOficio==="function")mostrarAbaOficio("mensalidades");};
+window.ckAcaoAtualizarStatus      =function(){if(typeof spIr==="function")spIr("mensalidades");};
 
 window.ckChatEnviar=function(texto){
   var input=g("ckChatInput");if(input)input.value=texto;

@@ -1878,8 +1878,8 @@ window.oposIA_confirmar = oposIA_confirmar;
   function el(id) { return document.getElementById(id); }
 
 function esconderTodos() {
-    ["blocoOficioNovo","blocoOficioHistorico","blocoTaxaAssistencial","blocoMonitoramento","blocoMensalidades","blocoEscolas","centralEmailIA","sisgepDashboardExecutivo"].forEach(function(id){ if(el(id)) el(id).style.display="none"; });
-    ["abaOficioNovo","abaOficioHistorico","abaTaxaAssistencial","abaMonitoramento","abaMensalidades"].forEach(function(id){ if(el(id)) el(id).classList.remove("active"); });
+    ["blocoOficioNovo","blocoOficioHistorico","blocoTaxaAssistencial","blocoMonitoramento","blocoEscolas","centralEmailIA","sisgepDashboardExecutivo"].forEach(function(id){ if(el(id)) el(id).style.display="none"; });
+    ["abaOficioNovo","abaOficioHistorico","abaTaxaAssistencial","abaMonitoramento"].forEach(function(id){ if(el(id)) el(id).classList.remove("active"); });
   }
 
   function mostrarDashboardExecutivo() {
@@ -1911,11 +1911,10 @@ function mostrarMonitoramento() {
     setTimeout(function() { if(typeof window.carregarMonitoramento === "function") window.carregarMonitoramento(); }, 300);
   }
 
+  /* Mensalidade virou módulo próprio no Financeiro (FIN-F5). Mantida como
+     ponte para não quebrar chamador antigo que ainda peça a aba daqui. */
   function mostrarMensalidades() {
-    esconderTodos();
-    if(el("blocoMensalidades")) el("blocoMensalidades").style.display="block";
-    if(el("abaMensalidades")) el("abaMensalidades").classList.add("active");
-    setTimeout(function() { if(typeof window.carregarMensalidades === "function") window.carregarMensalidades(); }, 300);
+    if (typeof window.spIr === "function") return window.spIr("mensalidades");
   }
 
   function iniciarAbasOficios() {
@@ -1923,7 +1922,6 @@ function mostrarMonitoramento() {
     if(el("abaOficioHistorico")) el("abaOficioHistorico").onclick=mostrarHistorico;
     if(el("abaTaxaAssistencial")) el("abaTaxaAssistencial").onclick=mostrarTaxaAssistencial;
  if(el("abaMonitoramento")) el("abaMonitoramento").onclick=mostrarMonitoramento;
-    if(el("abaMensalidades")) el("abaMensalidades").onclick=mostrarMensalidades;
     if(el("btnVoltarEmissao")) el("btnVoltarEmissao").onclick=mostrarNovoOficio;
     if(el("btnAplicarFiltroHist")) el("btnAplicarFiltroHist").onclick=function(){ if(typeof window.carregarHistoricoOficios==="function") window.carregarHistoricoOficios(); else if(typeof Historico!=="undefined") Historico.carregar(); };
     if(el("btnAtualizarMonitoramento")) el("btnAtualizarMonitoramento").onclick=mostrarMonitoramento;
@@ -2253,7 +2251,7 @@ window.mostrarAbaOficio = function(aba) {
 <script id="sisgep-sidebar-js">
 (function(){
   function ativarAba(aba){
- var mapa = {novo:'abaOficioNovo',historico:'abaOficioHistorico',monitoramento:'abaMonitoramento',taxa:'abaTaxaAssistencial',mensalidades:'abaMensalidades'};
+ var mapa = {novo:'abaOficioNovo',historico:'abaOficioHistorico',monitoramento:'abaMonitoramento',taxa:'abaTaxaAssistencial'};
     var id = mapa[aba];
     if(id){var b=document.getElementById(id);if(b)b.click();}
   }
@@ -2281,7 +2279,7 @@ window.mostrarAbaOficio = function(aba) {
     });
   });
   // Sync sidebar when native tabs are clicked
- var idMap = {abaOficioNovo:'novo',abaOficioHistorico:'historico',abaMonitoramento:'monitoramento',abaTaxaAssistencial:'novo',abaMensalidades:'mensalidades'};
+ var idMap = {abaOficioNovo:'novo',abaOficioHistorico:'historico',abaMonitoramento:'monitoramento',abaTaxaAssistencial:'novo'};
   Object.keys(idMap).forEach(function(id){
     var btn = document.getElementById(id);
     if(btn) btn.addEventListener('click',function(){
