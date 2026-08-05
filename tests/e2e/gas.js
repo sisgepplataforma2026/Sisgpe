@@ -156,7 +156,24 @@ class Sheet {
   getSheetId() { return Math.abs(hashCode(this.name)); }
   getParent() { return this.ss; }
   insertChart() { return this; } getCharts() { return []; }
-  getProtections() { return []; } protect() { return { setDescription: () => ({ removeEditors: () => ({}) }), addEditor: () => ({}), setWarningOnly: () => ({}) }; }
+  getProtections() { return []; }
+  protect() {
+    const p = {
+      _editors: [], _desc: "",
+      setDescription(d) { p._desc = d; return p; },
+      getEditors() { return p._editors.slice(); },
+      removeEditors(list) { (list || []).forEach(e => { const i = p._editors.indexOf(e); if (i >= 0) p._editors.splice(i, 1); }); return p; },
+      removeEditor(e) { return p.removeEditors([e]); },
+      addEditors(list) { (list || []).forEach(e => p._editors.push(e)); return p; },
+      addEditor(e) { p._editors.push(e); return p; },
+      canDomainEdit() { return false; },
+      setDomainEdit() { return p; },
+      setWarningOnly() { return p; },
+      remove() { return p; },
+      getRange() { return null; }
+    };
+    return p;
+  }
 }
 
 function hashCode(s) { let h = 0; for (let i = 0; i < s.length; i++) { h = (h << 5) - h + s.charCodeAt(i); h |= 0; } return h; }
@@ -345,6 +362,7 @@ function install(g, opts) {
     flush: () => {},
     newDataValidation: () => ({ requireValueInList: () => ({ setAllowInvalid: () => ({ build: () => ({}) }), build: () => ({}) }), setAllowInvalid: () => ({ build: () => ({}) }), build: () => ({}) }),
     BorderStyle: { SOLID: "SOLID" },
+    ProtectionType: { SHEET: "SHEET", RANGE: "RANGE" },
     Dimension: { ROWS: "ROWS", COLUMNS: "COLUMNS" }
   };
 

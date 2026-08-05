@@ -480,8 +480,14 @@ function previewOficioWeb(dados, tokenSessao) {
 // desfiliacao por aqui (SindicalizacaoOficio.gs e a leitura por IA).
 // Exigir Documentos quebraria a filiacao de quem so tem Sindicalizacao.
 // Sessao continua exigida.
+// A variavel PRECISA se chamar sessaoDocumentos. A linha de baixo le esse
+// nome, e o restante do projeto (outras 42 ocorrencias) usa o mesmo. Aqui a
+// declaracao estava como "sessao" e a leitura como "sessaoDocumentos": gerar
+// oficio devolvia "sessaoDocumentos is not defined" dentro do try, virava
+// {erro:true} e a tela mostrava a falha sem dizer a causa. Achado por teste
+// de execucao em 2026-08-05 (tests/e2e/t1-documentos.js).
 function gerarOficioWeb(dados, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
   try {
     var emailUsuario = String(sessaoDocumentos.email || sessaoDocumentos.usuario || "").trim().toLowerCase();
     if (!dados || typeof dados !== "object") throw new Error("Dados inválidos.");

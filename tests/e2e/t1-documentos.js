@@ -16,17 +16,28 @@ function aba(nome, cab) {
 b.fluxo("DOCUMENTOS · Ofício — gatilho → registro → fila → envio → rastreio");
 
 aba("CONFIG", ["CHAVE","VALOR"]);
-aba(g.PLANILHA_REGISTRO, ["NUMERO", "TIPO", "DATA", "DESTINATARIO", "ASSUNTO", "STATUS"]);
+aba(g.PLANILHA_REGISTRO, ["Item","Nome","CPF","Ficha / Arquivo","Tipo do Ofício","Número do Ofício","Escola","CNPJ","Data","Status","Link PDF","E-mail"]);
 
 b.passo("1. Gerar ofício (ação principal do módulo)");
-const ger = g.gerarOficioWeb({ tipo: "LIVRE", destinatario: "Escola Modelo", assunto: "Comunicado", corpo: "Texto do ofício." }, TOKEN);
+const ger = g.gerarOficioWeb({ tipo: "LIVRE", para: "Escola Modelo", email: "escola@exemplo.com", assunto: "Comunicado", corpo: "Texto do ofício." }, TOKEN);
 b.ok(ger && !ger.erro, "gerarOficioWeb conclui sem erro",
   ger && ger.erro ? "ERRO: " + ger.mensagem : "");
 
 b.passo("2. Preview do ofício");
-let prev; try { prev = g.previewOficioWeb({ tipo: "LIVRE", destinatario: "Escola Modelo", assunto: "X", corpo: "Y" }, TOKEN); }
+let prev; try { prev = g.previewOficioWeb({ tipo: "LIVRE", para: "Escola Modelo", email: "escola@exemplo.com", assunto: "X", corpo: "Y" }, TOKEN); }
 catch (e) { prev = { erro: true, mensagem: e.message }; }
 b.ok(prev && !prev.erro, "previewOficioWeb conclui sem erro", prev && prev.erro ? "ERRO: " + prev.mensagem : "");
+
+// Regressão travada: gerarOficioWeb já devolveu "sessaoDocumentos is not
+// defined" porque a declaração e a leitura usavam nomes diferentes. Se
+// alguém reintroduzir isso, a linha abaixo acusa.
+b.ok(!(ger && String(ger.mensagem || "").indexOf("is not defined") >= 0),
+  "não devolve erro de variável indefinida (regressão de 2026-08-05)");
+
+b.passo("2b. O ofício realmente entrou no registro?");
+const abaReg = ss.getSheetByName(g.PLANILHA_REGISTRO);
+b.ok(abaReg && abaReg.getLastRow() >= 2, "ofício gravado na aba de registro",
+  "linhas: " + (abaReg ? abaReg.getLastRow() - 1 : 0));
 
 b.passo("3. Fila de envio");
 let fila; try { fila = g.processarFilaEnvioOficios(); } catch (e) { fila = { erro: e.message }; }
