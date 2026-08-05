@@ -6,6 +6,15 @@
 .pca-mode-badge{display:inline-flex;align-items:center;gap:5px;border:1px solid #f59e0b;background:#fef3c7;color:#92400e;border-radius:999px;padding:5px 10px;font-size:11px;font-weight:800}
 .pca-mode-dot{width:7px;height:7px;border-radius:50%;background:#f59e0b}
 .pca-filtros,.pca-acoes{display:flex;gap:8px;flex-wrap:wrap}
+.pca-modo-barra{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  background:#f8fbff;border:1px solid #dbe3ee;border-left:3px solid var(--gold,#C9A84C);
+  border-radius:12px;padding:10px 14px;margin:12px 0}
+.pca-modo-barra #pcaModoTexto{font-size:12.5px;color:var(--g500,#64748b);font-weight:700}
+.pca-modo-acoes{display:flex;gap:8px;flex-wrap:wrap}
+.pca-modo-ajuda{margin:0 0 12px;font-size:13px;color:var(--g500,#64748b);line-height:1.55}
+#pcaModalLink textarea.pca-input{font-family:inherit;font-size:13px;line-height:1.5;resize:vertical}
+#pcaModalLink .pca-btn[disabled]{opacity:.45;cursor:not-allowed}
+@media(max-width:760px){.pca-modo-barra{align-items:stretch}.pca-modo-acoes .pca-btn{flex:1}}
 .pca-input,.pca-select{border:1px solid #d7dfe8;border-radius:10px;padding:9px 12px;background:#fff;font-size:13px;color:#172033}
 .pca-btn{border:0;border-radius:10px;padding:10px 16px;font-weight:800;cursor:pointer;font-size:13px;transition:.15s;font-family:inherit}
 .pca-btn:hover{transform:translateY(-1px)}
@@ -1413,14 +1422,56 @@
   </div>
 </section>
 <nav class="pca-tabs pca-module-tabs" aria-label="Áreas do módulo Parque do China">
-  <button class="pca-tab is-active" data-pca-tab="hoje" onclick="pcaSelecionarAba('hoje')">🏠 Hoje</button>
-  <button class="pca-tab" data-pca-tab="mapa" onclick="pcaSelecionarAba('mapa')">🗓️ Calendário</button>
+  <button class="pca-tab is-active" data-pca-tab="hoje" data-pca-avancado="1" onclick="pcaSelecionarAba('hoje')">🏠 Hoje</button>
+  <button class="pca-tab" data-pca-tab="mapa" data-pca-avancado="1" onclick="pcaSelecionarAba('mapa')">🗓️ Calendário</button>
   <button class="pca-tab" data-pca-tab="reservas" onclick="pcaSelecionarAba('reservas')">🛏️ Reservas</button>
-  <button class="pca-tab" onclick="pcaAbrirAutorizacoes()">📝 Autorizações</button>
-  <button class="pca-tab" data-pca-tab="visao" onclick="pcaSelecionarAba('visao')">💰 Financeiro</button>
+  <button class="pca-tab" data-pca-avancado="1" onclick="pcaAbrirAutorizacoes()">📝 Autorizações</button>
+  <button class="pca-tab" data-pca-tab="visao" data-pca-avancado="1" onclick="pcaSelecionarAba('visao')">💰 Financeiro</button>
   <button class="pca-tab" onclick="pcaAbrirConfig()">⚙️ Configurações</button>
-  <button class="pca-tab" onclick="pcaAbrirRelatorio()">📊 Relatórios</button>
+  <button class="pca-tab" data-pca-avancado="1" onclick="pcaAbrirRelatorio()">📊 Relatórios</button>
 </nav>
+
+<!-- Modo simples: esconde as areas de hotelaria (mapa, calendario, financeiro,
+     autorizacoes, relatorios) e deixa so a fila de reservas. Nada e apagado —
+     um clique traz tudo de volta. A escolha fica no navegador de cada pessoa. -->
+<div id="pcaModoBarra" class="pca-modo-barra">
+  <span id="pcaModoTexto">Modo simples — fila de solicitações. As telas de hotelaria estão ocultas.</span>
+  <div class="pca-modo-acoes">
+    <button class="pca-btn pca-success" onclick="pcaAbrirLinkInteresse()">📲 Enviar Link de Interesse</button>
+    <button class="pca-btn pca-light" id="pcaModoBtn" onclick="pcaAlternarModo()">Modo avançado</button>
+  </div>
+</div>
+
+<div id="pcaModalLink" class="pca-modal-bg">
+  <div class="pca-modal">
+    <h3>Enviar Link de Interesse</h3>
+    <p class="pca-modo-ajuda">Escolha o benefício, informe o WhatsApp de quem pediu e o SISGEP abre a conversa com a mensagem e o link já prontos.</p>
+    <div id="pcaLinkMsg" class="pca-msg"></div>
+    <div class="pca-form">
+      <div class="pca-field">
+        <label for="pcaLinkBeneficio">Benefício</label>
+        <select id="pcaLinkBeneficio" class="pca-select"><option value="chinapark">China Park Eco Resort</option></select>
+      </div>
+      <div class="pca-field">
+        <label for="pcaLinkNome">Nome de quem pediu <small>(opcional)</small></label>
+        <input id="pcaLinkNome" class="pca-input" placeholder="Ex.: Maria Souza">
+      </div>
+      <div class="pca-field">
+        <label for="pcaLinkTelefone">WhatsApp <small>(deixe vazio para só copiar o link)</small></label>
+        <input id="pcaLinkTelefone" class="pca-input" placeholder="(27) 99999-0000">
+      </div>
+    </div>
+    <div class="pca-field">
+      <label for="pcaLinkPreview">Mensagem que será enviada</label>
+      <textarea id="pcaLinkPreview" class="pca-input" rows="9" readonly></textarea>
+    </div>
+    <div class="pca-acoes" style="justify-content:flex-end;margin-top:12px">
+      <button class="pca-btn pca-light" onclick="pcaFecharLinkInteresse()">Fechar</button>
+      <button class="pca-btn pca-light" onclick="pcaCopiarLinkInteresse()">Copiar mensagem</button>
+      <button class="pca-btn pca-success" id="pcaLinkBtnWhats" onclick="pcaAbrirWhatsInteresse()">Abrir WhatsApp</button>
+    </div>
+  </div>
+</div>
   <div id="pcaToolbar" class="pca-toolbar"><div class="pca-filtros"><button class="pca-btn pca-light pca-nav" onclick="pcaMudarMes(-1)" title="Mês anterior" aria-label="Mês anterior">‹</button><select id="pcaMes" class="pca-select" onchange="pcaCarregar()" aria-label="Mês"></select><select id="pcaAno" class="pca-select" onchange="pcaCarregar()" aria-label="Ano"></select><button class="pca-btn pca-light pca-nav" onclick="pcaMudarMes(1)" title="Próximo mês" aria-label="Próximo mês">›</button><button class="pca-btn pca-primary" onclick="pcaCarregar()">Atualizar</button><button class="pca-btn pca-success" onclick="pcaAbrirAutorizacoes()">Autorizações e hóspedes</button><button class="pca-btn pca-light" onclick="pcaAbrirRelatorio()">Relatório</button><button class="pca-btn pca-light" onclick="pcaAbrirConfig()">Valores e regras</button></div><div class="pca-meta"><span id="pcaConnection" class="pca-connection is-loading">Conectando</span><span>Última atualização: <strong id="pcaAtualizadoEm">—</strong></span></div></div>
   <div id="pcaPanelHoje" class="pca-panel">
     <div class="pca-section"><div class="pca-today-head"><div><h3>Operação de hoje</h3><p>Acompanhe entradas, hospedagens, saídas e liberação das suítes no horário selecionado.</p></div><div class="pca-today-controls"><div class="pca-field"><label for="pcaHojeData">Data</label><input id="pcaHojeData" class="pca-input" type="date"></div><div class="pca-field"><label for="pcaHojeHora">Horário</label><input id="pcaHojeHora" class="pca-input" type="time"></div><button class="pca-btn pca-primary" onclick="pcaCarregarOperacaoHoje()">Atualizar</button><button class="pca-btn pca-light" onclick="pcaDefinirAgoraOperacao()">Agora</button><button class="pca-btn pca-light" onclick="pcaImprimirOperacaoHoje()">Imprimir</button></div></div><div id="pcaHojeMsg" class="pca-msg"></div>
@@ -2070,6 +2121,137 @@ function pcaAtualizarBadgeTopo(){
   if(b&&c)b.textContent=String(c.textContent||"0").replace(/\D/g,"")||"0";
 }
 
-window.initBeneficios=function(){pcaAtualizarTopoAdmin();setInterval(pcaAtualizarTopoAdmin,30000);pcaInit();};
+/* ══════════════════════════════════════════════════════════════════════
+   MODO SIMPLES  +  LINK DE INTERESSE
+   O modulo nasceu como sistema de hotelaria: mapa de suites, calendario,
+   financeiro, autorizacoes. Isso continua inteiro — mas nao e o que a
+   secretaria usa no dia a dia, que e receber pedido pelo WhatsApp e
+   despachar. O modo simples deixa so a fila; o avancado devolve tudo.
+   ══════════════════════════════════════════════════════════════════════ */
+
+var PCA_CHAVE_MODO = "sisgep.parquechina.modo";
+var PCA_LINK_ATUAL = null;
+
+function pcaModoAtual(){
+  try{ return localStorage.getItem(PCA_CHAVE_MODO)==="avancado" ? "avancado" : "simples"; }
+  catch(e){ return "simples"; }   // navegador sem localStorage cai no simples
+}
+
+function pcaAplicarModo(){
+  var simples = pcaModoAtual()==="simples";
+
+  Array.prototype.forEach.call(document.querySelectorAll("[data-pca-avancado]"),function(el){
+    el.style.display = simples ? "none" : "";
+  });
+
+  // O bloco da SOFIA nao tem id proprio — a classe e o unico ponto de apoio.
+  // Os paineis em si nao sao tocados aqui: quem os mostra e esconde e o
+  // pcaSelecionarAba, pelo atributo hidden. Mexer nos dois brigaria.
+  Array.prototype.forEach.call(document.querySelectorAll(".pca-sofia"),function(el){
+    el.style.display = simples ? "none" : "";
+  });
+
+  var btn=document.getElementById("pcaModoBtn");
+  if(btn) btn.textContent = simples ? "Modo avançado" : "Voltar ao modo simples";
+
+  var txt=document.getElementById("pcaModoTexto");
+  if(txt) txt.textContent = simples
+    ? "Modo simples — fila de solicitações. As telas de hotelaria estão ocultas."
+    : "Modo avançado — calendário, mapa de suítes, financeiro e autorizações visíveis.";
+
+  // No modo simples a aba util e a de reservas; as outras estao escondidas e
+  // deixar uma delas selecionada mostraria um painel sem aba correspondente.
+  if(simples && typeof pcaSelecionarAba==="function") pcaSelecionarAba("reservas");
+}
+
+function pcaAlternarModo(){
+  try{ localStorage.setItem(PCA_CHAVE_MODO, pcaModoAtual()==="simples" ? "avancado" : "simples"); }catch(e){}
+  pcaAplicarModo();
+}
+
+function pcaAbrirLinkInteresse(){
+  var bg=document.getElementById("pcaModalLink"); if(!bg) return;
+  bg.style.display="flex";
+  document.getElementById("pcaLinkMsg").textContent="";
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r||!r.ok) return;
+      var sel=document.getElementById("pcaLinkBeneficio");
+      if(sel && r.itens && r.itens.length){
+        sel.innerHTML=r.itens.map(function(i){
+          return "<option value='"+i.chave+"'>"+i.rotulo+"</option>";
+        }).join("");
+      }
+      pcaMontarLinkInteresse();
+    })
+    .withFailureHandler(function(){ pcaMontarLinkInteresse(); })
+    .beneficiosListarLinksInteresse(pcaToken());
+}
+
+function pcaFecharLinkInteresse(){
+  var bg=document.getElementById("pcaModalLink"); if(bg) bg.style.display="none";
+}
+
+function pcaMontarLinkInteresse(){
+  var msg=document.getElementById("pcaLinkMsg");
+  var beneficio=(document.getElementById("pcaLinkBeneficio")||{}).value||"chinapark";
+  var nome=(document.getElementById("pcaLinkNome")||{}).value||"";
+  var telefone=(document.getElementById("pcaLinkTelefone")||{}).value||"";
+
+  google.script.run
+    .withSuccessHandler(function(r){
+      PCA_LINK_ATUAL=r;
+      var area=document.getElementById("pcaLinkPreview");
+      if(!r||!r.ok){
+        if(area) area.value="";
+        msg.className="pca-msg is-error";
+        msg.textContent=(r&&r.mensagem)||"Não foi possível montar o link.";
+        return;
+      }
+      msg.className="pca-msg"; msg.textContent="";
+      if(area) area.value=r.texto||"";
+      var btn=document.getElementById("pcaLinkBtnWhats");
+      if(btn){
+        btn.disabled=!r.telefone;
+        btn.title=r.telefone?"":"Informe um WhatsApp válido para abrir a conversa";
+      }
+      // Sem URL publicada o link nao leva a lugar nenhum — avisa em vez de
+      // deixar a pessoa mandar uma mensagem quebrada para o associado.
+      if(!r.url){
+        msg.className="pca-msg is-error";
+        msg.textContent="O SISGEP ainda não tem endereço de publicação. Publique o app antes de enviar o link.";
+      }
+    })
+    .withFailureHandler(function(e){
+      msg.className="pca-msg is-error";
+      msg.textContent=(e&&e.message)?e.message:String(e);
+    })
+    .beneficiosPrepararLinkInteresse(beneficio,{nome:nome,telefone:telefone},pcaToken());
+}
+
+function pcaAbrirWhatsInteresse(){
+  if(!PCA_LINK_ATUAL||!PCA_LINK_ATUAL.ok||!PCA_LINK_ATUAL.telefone) return;
+  window.open("https://wa.me/"+PCA_LINK_ATUAL.telefone+"?text="+encodeURIComponent(PCA_LINK_ATUAL.texto||""),"_blank");
+}
+
+function pcaCopiarLinkInteresse(){
+  var area=document.getElementById("pcaLinkPreview"); if(!area||!area.value) return;
+  var msg=document.getElementById("pcaLinkMsg");
+  function feito(){ msg.className="pca-msg"; msg.textContent="Mensagem copiada."; }
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(area.value).then(feito,function(){ area.select(); document.execCommand("copy"); feito(); });
+  } else { area.select(); document.execCommand("copy"); feito(); }
+}
+
+["pcaLinkBeneficio","pcaLinkNome","pcaLinkTelefone"].forEach(function(id){
+  document.addEventListener("input",function(ev){
+    if(ev.target&&ev.target.id===id) pcaMontarLinkInteresse();
+  });
+  document.addEventListener("change",function(ev){
+    if(ev.target&&ev.target.id===id) pcaMontarLinkInteresse();
+  });
+});
+
+window.initBeneficios=function(){pcaAtualizarTopoAdmin();setInterval(pcaAtualizarTopoAdmin,30000);pcaInit();pcaAplicarModo();};
 window.carregarBeneficios=window.initBeneficios;
 </script>
