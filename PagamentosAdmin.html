@@ -147,41 +147,79 @@
     </div>
   </div>
 
-  <!-- ══ Resumo do mês ══ -->
-  <div id="pag-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:14px;">
-    <div class="card-desp"><div style="padding:14px 16px;"><div class="card-desp-sub">Total do mês</div><div class="card-desp-title" id="pag-total">R$ 0,00</div><div class="card-desp-sub" id="pag-total-qtd">0 contas</div></div></div>
-    <div class="card-desp"><div style="padding:14px 16px;"><div class="card-desp-sub">A pagar</div><div class="card-desp-title" style="color:#d97706;" id="pag-apagar">R$ 0,00</div><div class="card-desp-sub" id="pag-apagar-qtd">0 contas</div></div></div>
-    <div class="card-desp"><div style="padding:14px 16px;"><div class="card-desp-sub">Lançado no banco</div><div class="card-desp-title" style="color:#1565C0;" id="pag-lancado">R$ 0,00</div><div class="card-desp-sub" id="pag-lancado-qtd">0 contas</div></div></div>
-    <div class="card-desp"><div style="padding:14px 16px;"><div class="card-desp-sub">Pago</div><div class="card-desp-title" style="color:#0f8a5f;" id="pag-pago">R$ 0,00</div><div class="card-desp-sub" id="pag-pago-qtd">0 contas</div></div></div>
+  <!-- ══ Resumo do mês — uma faixa só ══
+       Antes eram 4 cartões grandes empilhados sobre um banner de alerta,
+       o que empurrava a tabela para baixo da dobra: a pessoa rolava
+       bastante antes de chegar no trabalho. Aqui os 4 números viram uma
+       faixa de uma linha e o alerta entra na mesma faixa, à direita. -->
+  <div class="card-desp" style="margin-bottom:14px;">
+    <div id="pag-resumo" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 26px;padding:12px 16px;">
+      <div><div class="pag-lbl">Total do mês</div><div class="pag-num" id="pag-total">R$ 0,00</div><div class="pag-sub" id="pag-total-qtd">0 contas</div></div>
+      <div><div class="pag-lbl">A pagar</div><div class="pag-num" style="color:#d97706;" id="pag-apagar">R$ 0,00</div><div class="pag-sub" id="pag-apagar-qtd">0 contas</div></div>
+      <div><div class="pag-lbl">Lançado no banco</div><div class="pag-num" style="color:#1565C0;" id="pag-lancado">R$ 0,00</div><div class="pag-sub" id="pag-lancado-qtd">0 contas</div></div>
+      <div><div class="pag-lbl">Pago</div><div class="pag-num" style="color:#0f8a5f;" id="pag-pago">R$ 0,00</div><div class="pag-sub" id="pag-pago-qtd">0 contas</div></div>
+      <div id="pag-alertas" style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;"></div>
+    </div>
   </div>
-
-  <div id="pag-alertas" style="margin-bottom:14px;"></div>
 
   <!-- ══ Fila ══ -->
   <div class="card-desp">
-    <div class="card-desp-head">
+    <div class="card-desp-head" style="padding-bottom:8px;">
       <div>
         <div class="card-desp-title">Fila de pagamentos</div>
-        <div class="card-desp-sub">Ordenada por vencimento. Vencidas aparecem primeiro, em vermelho.</div>
+        <div class="card-desp-sub">Vencidas primeiro, em vermelho.</div>
       </div>
+      <div class="card-desp-sub" id="pag-contador">—</div>
     </div>
     <div class="table-wrap">
-      <table>
+      <table class="pag-tab">
         <thead><tr>
           <th>Vencimento</th><th>Despesa</th><th>Favorecido</th>
-          <th style="text-align:right;">Valor</th><th>Situação</th><th>Comprovante</th><th>Ações</th>
+          <th style="text-align:right;">Valor</th><th>Situação</th><th>Compr.</th><th>Ações</th>
         </tr></thead>
         <tbody id="pag-tabela"><tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:24px;">—</td></tr></tbody>
       </table>
     </div>
+    <div id="pag-paginacao" style="display:flex;justify-content:center;align-items:center;gap:6px;padding:12px 16px;flex-wrap:wrap;"></div>
   </div>
 </div>
+
+<style>
+  /* Escopo próprio (.pag-*) para não vazar nas outras abas de Despesas. */
+  .pag-lbl{font-size:10.5px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;}
+  .pag-num{font-size:17px;font-weight:900;color:var(--navy,#001f4d);line-height:1.25;}
+  .pag-sub{font-size:11px;color:#64748b;}
+
+  /* Contraste: o nome do favorecido e a descrição estavam herdando um
+     cinza claro do CSS da tabela e ficavam quase ilegíveis — é a
+     informação que a pessoa mais lê nesta tela. */
+  .pag-tab td{color:#0f172a;font-size:13px;vertical-align:middle;}
+  .pag-tab td .pag-forn{font-weight:700;color:#0f172a;}
+  .pag-tab td .pag-desc{font-weight:800;color:var(--navy,#001f4d);}
+  .pag-tab td .pag-meta{font-size:11px;color:#64748b;}
+  .pag-tab tbody tr:nth-child(even){background:#fbfcfe;}
+  .pag-tab tbody tr:hover{background:#f1f5f9;}
+  .pag-tab tbody tr.pag-vencida{background:#fff5f5;}
+  .pag-tab tbody tr.pag-vencida:hover{background:#ffecec;}
+
+  /* Os três botões por linha empurravam a coluna e espremiam o
+     cabeçalho. Compactados e sem quebra de linha. */
+  .pag-tab td .btn{padding:5px 9px;font-size:11.5px;white-space:nowrap;}
+  .pag-acoes{display:flex;gap:4px;flex-wrap:nowrap;}
+
+  .pag-pg{border:1px solid #cbd5e1;background:#fff;color:var(--navy,#001f4d);border-radius:7px;
+          padding:5px 11px;font-weight:700;font-size:12.5px;cursor:pointer;}
+  .pag-pg[disabled]{opacity:.4;cursor:default;}
+  .pag-pg.ativa{background:var(--navy,#001f4d);color:#fff;border-color:var(--navy,#001f4d);}
+</style>
 
 <script>
 (function(){
   "use strict";
   var LISTA = [];
   var ID_ATIVO = "";
+  var PAGINA = 1;
+  var POR_PAGINA = 20;
 
   function g(id){return document.getElementById(id);}
   function tk(){return typeof SISGEP_TOKEN_SESSAO!=="undefined"?SISGEP_TOKEN_SESSAO:"";}
@@ -247,6 +285,7 @@
           return;
         }
         LISTA=r.lista||[];
+        PAGINA=1;
         pagPintar();
       })
       .withFailureHandler(function(e){
@@ -267,16 +306,51 @@
         if(g("pag-lancado-qtd")) g("pag-lancado-qtd").textContent = (s.qtdLancado||0)+" conta(s)";
         if(g("pag-pago-qtd"))    g("pag-pago-qtd").textContent    = (s.qtdPago||0)+" conta(s)";
 
+        // Alertas como etiqueta compacta na própria faixa, em vez de
+        // banner de largura inteira empurrando a tabela para baixo.
         var av=[];
-        if(s.qtdVencidas>0)      av.push('<div style="background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;border-radius:10px;padding:10px 14px;font-weight:700;font-size:13px;margin-bottom:8px;">🔴 '+s.qtdVencidas+' conta(s) vencida(s) ainda sem pagamento.</div>');
-        if(s.qtdSemComprovante>0)av.push('<div style="background:#fffbeb;border:1px solid #fcd34d;color:#92400e;border-radius:10px;padding:10px 14px;font-weight:700;font-size:13px;">📎 '+s.qtdSemComprovante+' pagamento(s) sem comprovante anexado.</div>');
+        if(s.qtdVencidas>0)      av.push('<span style="background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;border-radius:999px;padding:5px 12px;font-weight:800;font-size:12px;white-space:nowrap;">🔴 '+s.qtdVencidas+' vencida(s)</span>');
+        if(s.qtdSemComprovante>0)av.push('<span style="background:#fffbeb;border:1px solid #fcd34d;color:#92400e;border-radius:999px;padding:5px 12px;font-weight:800;font-size:12px;white-space:nowrap;">📎 '+s.qtdSemComprovante+' sem comprovante</span>');
         if(g("pag-alertas"))g("pag-alertas").innerHTML=av.join("");
       })
       .withFailureHandler(function(){})
       .pagResumoControle(filtros.competencia, tk());
   };
 
-  window.pagFiltrarLocal=function(){ pagPintar(); };
+  // Buscar volta para a página 1: continuar na página 5 depois de
+  // filtrar mostraria uma tela vazia sem explicação.
+  window.pagFiltrarLocal=function(){ PAGINA=1; pagPintar(); };
+
+  window.pagIrPagina=function(n){ PAGINA=Number(n)||1; pagPintar(); window.scrollTo({top:document.getElementById("pag-tabela").offsetTop-160,behavior:"smooth"}); };
+
+  /**
+   * Numeração com janela deslizante: com muitas páginas, mostrar todos
+   * os números vira outra poluição. Aparecem primeira, última, a atual
+   * e as vizinhas; o resto vira reticência.
+   */
+  function renderPaginacao(total){
+    var box=g("pag-paginacao"); if(!box)return;
+    if(total<=1){ box.innerHTML=""; return; }
+
+    var partes=[];
+    partes.push('<button class="pag-pg" data-pg="'+(PAGINA-1)+'"'+(PAGINA===1?' disabled':'')+'>‹</button>');
+
+    var nums=[];
+    for(var i=1;i<=total;i++){
+      if(i===1||i===total||Math.abs(i-PAGINA)<=1)nums.push(i);
+      else if(nums[nums.length-1]!=="...")nums.push("...");
+    }
+    nums.forEach(function(n){
+      if(n==="..."){ partes.push('<span style="color:#94a3b8;padding:0 2px;">…</span>'); return; }
+      partes.push('<button class="pag-pg'+(n===PAGINA?' ativa':'')+'" data-pg="'+n+'">'+n+'</button>');
+    });
+
+    partes.push('<button class="pag-pg" data-pg="'+(PAGINA+1)+'"'+(PAGINA===total?' disabled':'')+'>›</button>');
+    box.innerHTML=partes.join("");
+    box.querySelectorAll("[data-pg]").forEach(function(b){
+      b.addEventListener("click",function(){ if(!b.disabled)pagIrPagina(b.getAttribute("data-pg")); });
+    });
+  }
 
   function pagPintar(){
     var tb=g("pag-tabela"); if(!tb)return;
@@ -294,10 +368,28 @@
 
     if(!lista.length){
       tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:24px;">Nenhuma conta nesta competência.</td></tr>';
+      if(g("pag-paginacao"))g("pag-paginacao").innerHTML="";
+      if(g("pag-contador"))g("pag-contador").textContent="—";
       return;
     }
 
-    tb.innerHTML=lista.map(function(d){
+    // Paginação: uma competência cheia passa de 40 linhas, e com três
+    // botões por linha a rolagem fica longa demais para uma fila de
+    // trabalho. O filtro e a ordenação continuam valendo sobre a lista
+    // INTEIRA — a página é só a fatia exibida.
+    var totalPag=Math.max(1,Math.ceil(lista.length/POR_PAGINA));
+    if(PAGINA>totalPag)PAGINA=totalPag;
+    if(PAGINA<1)PAGINA=1;
+    var ini=(PAGINA-1)*POR_PAGINA;
+    var fatia=lista.slice(ini,ini+POR_PAGINA);
+
+    if(g("pag-contador")){
+      g("pag-contador").textContent=lista.length+" conta(s)"+
+        (totalPag>1?" · mostrando "+(ini+1)+"–"+Math.min(ini+POR_PAGINA,lista.length):"");
+    }
+    renderPaginacao(totalPag);
+
+    tb.innerHTML=fatia.map(function(d){
       var r=ROTULO_SITUACAO[d.situacao]||{txt:d.situacao,cor:"#334155",bg:"#f1f5f9"};
       var vencida=(d.statusVencimento==="VENCIDO"&&d.situacao!=="PAGO"&&d.situacao!=="CANCELADO");
       var pill='<span style="display:inline-block;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:800;color:'+r.cor+';background:'+r.bg+';">'+esc(r.txt)+'</span>';
@@ -325,14 +417,14 @@
             ? '<div style="font-size:11px;color:#0f8a5f;">pago em '+esc(d.dataPagamento)+(d.formaPagamento?" · "+esc(d.formaPagamento):"")+'</div>'
             : "");
 
-      return '<tr'+(vencida?' style="background:#fff5f5;"':'')+'>'+
-        '<td'+(vencida?' style="color:#991b1b;font-weight:800;"':'')+'>'+esc(d.dataVencimento||"—")+'</td>'+
-        '<td><strong>'+esc(d.descricao||d.categoria||"—")+'</strong><div style="font-size:11px;color:#94a3b8;">'+esc(d.numeroDespesa)+detalheStatus+'</div></td>'+
-        '<td>'+esc(d.fornecedor||"—")+'</td>'+
-        '<td style="text-align:right;font-weight:800;">'+esc(d.valor||"—")+'</td>'+
+      return '<tr'+(vencida?' class="pag-vencida"':'')+'>'+
+        '<td'+(vencida?' style="color:#991b1b;font-weight:800;"':' style="font-weight:700;"')+'>'+esc(d.dataVencimento||"—")+'</td>'+
+        '<td><div class="pag-desc">'+esc(d.descricao||d.categoria||"—")+'</div><div class="pag-meta">'+esc(d.numeroDespesa)+detalheStatus+'</div></td>'+
+        '<td><span class="pag-forn">'+esc(d.fornecedor||"—")+'</span></td>'+
+        '<td style="text-align:right;font-weight:900;white-space:nowrap;">'+esc(d.valor||"—")+'</td>'+
         '<td>'+pill+subLinha+'</td>'+
         '<td>'+comp+'</td>'+
-        '<td><div style="display:flex;gap:4px;flex-wrap:wrap;">'+acoes.join("")+'</div></td>'+
+        '<td><div class="pag-acoes">'+acoes.join("")+'</div></td>'+
       '</tr>';
     }).join("");
 
