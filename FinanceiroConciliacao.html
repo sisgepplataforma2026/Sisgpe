@@ -1,140 +1,304 @@
 <script>
+/*
+  Conciliação bancária — camada de tela.
+
+  Antes: tudo vivia em localStorage("sisgep_conciliacao_bancaria_v1"). O
+  trabalho de conciliar um mês sumia ao trocar de computador, ninguém mais via
+  o que já tinha sido conferido, e "conciliado" não gravava nada na despesa.
+
+  Agora: FinanceiroConciliacao.gs persiste em planilha, entende OFX (o formato
+  que os bancos brasileiros exportam) além de texto/CSV, deduplica por FITID e
+  a baixa vai por marcarDespesaComoPaga — a função dona da regra em Despesas.gs.
+
+  Os IDs de elemento e os nomes de função foram mantidos de propósito: a
+  interface vive em DespesasAdmin.html e não precisou ser tocada.
+*/
 (function(){
 "use strict";
 
-var FIN_CONC_KEY="sisgep_conciliacao_bancaria_v1";
+var CONC_ITENS = [], CONC_DESPESAS = [], CONC_OCUPADO = false;
 
-function g(id){return document.getElementById(id);}
-function money(v){return Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});}
-function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]);});}
-function norm(s){return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();}
-function parseValor(s){
-  s=String(s||"").trim();
-  var neg=/^-|D\b|DEB|SAIDA|PAGAMENTO|TARIFA|PIX ENVIADO/i.test(s);
-  s=s.replace(/[^\d,.-]/g,"");
-  if(s.indexOf(",")>=0) s=s.replace(/\./g,"").replace(",",".");
-  var n=Number(s);
-  if(!isFinite(n)) return 0;
-  return neg ? -Math.abs(n) : n;
-}
-function parseData(s){
-  var m=String(s||"").match(/\b(\d{1,2})[\/.-](\d{1,2})(?:[\/.-](\d{2,4}))?\b/);
-  if(!m)return "";
-  var y=m[3]||String(new Date().getFullYear());
-  if(y.length===2)y="20"+y;
-  return String(m[1]).padStart(2,"0")+"/"+String(m[2]).padStart(2,"0")+"/"+y;
-}
-function parseLinhas(texto){
-  var linhas=String(texto||"").split(/\r?\n/).map(function(l){return l.trim();}).filter(Boolean);
-  var out=[];
-  linhas.forEach(function(linha,idx){
-    var valorMatch=linha.match(/(?:R\$\s*)?-?\d{1,3}(?:\.\d{3})*,\d{2}\b|-?\d+\.\d{2}\b/g);
-    if(!valorMatch||!valorMatch.length)return;
-    var rawValor=valorMatch[valorMatch.length-1];
-    var data=parseData(linha);
-    var valor=parseValor((/D\b|DEB|SAIDA|PAGAMENTO|TARIFA|PIX ENVIADO/i.test(linha) && rawValor.charAt(0)!=="-") ? "-"+rawValor : rawValor);
-    var desc=linha.replace(rawValor,"").replace(/\b\d{1,2}[\/.-]\d{1,2}(?:[\/.-]\d{2,4})?\b/,"").replace(/\s{2,}/g," ").trim();
-    if(!desc)desc="Movimento "+(idx+1);
-    out.push({id:String(Date.now())+"_"+idx,data:data,descricao:desc,valor:valor,tipo:valor>=0?"Entrada":"Saída",status:"Pendente",sugestao:"",score:0});
-  });
-  return out;
-}
-function despesas(){
-  return Array.isArray(window.todasDespesas) ? window.todasDespesas : [];
-}
-function valorDespesa(d){
-  var v=d.valorNumero||d.valor||d.valorTotal||d.valorFmt||"";
-  if(typeof v==="number")return v;
-  return Math.abs(parseValor(String(v)));
-}
-function sugerir(mov){
-  if(mov.valor>=0)return {texto:"Receita/entrada",score:35};
-  var val=Math.abs(mov.valor), nd=norm(mov.descricao), melhor=null;
-  despesas().forEach(function(d){
-    var dv=valorDespesa(d), diff=Math.abs(dv-val);
-    if(diff>0.02)return;
-    var nome=d.prestadorNome||d.nome||d.fornecedor||d.descricao||"Despesa";
-    var nn=norm(nome);
-    var score=70;
-    nn.split(/\s+/).filter(function(p){return p.length>3;}).forEach(function(p){if(nd.indexOf(p)>=0)score+=8;});
-    if(!melhor||score>melhor.score)melhor={texto:"Possível despesa: "+nome,score:Math.min(score,98)};
-  });
-  if(melhor)return melhor;
-  if(/tarifa|cesta|manutencao|banco/i.test(mov.descricao))return {texto:"Tarifa bancária",score:82};
-  if(/pix|ted|doc|transfer/i.test(mov.descricao))return {texto:"Transferência/Pix a classificar",score:56};
-  if(/salario|folha|inss|fgts/i.test(mov.descricao))return {texto:"RH/Folha de pagamento",score:76};
-  return {texto:"Saída não conciliada",score:25};
-}
-function salvar(lista){localStorage.setItem(FIN_CONC_KEY,JSON.stringify(lista||[]));}
-function carregar(){try{return JSON.parse(localStorage.getItem(FIN_CONC_KEY)||"[]");}catch(e){return[];}}
-function setText(id,v){var el=g(id);if(el)el.textContent=v;}
-function aviso(msg){var el=g("finConcAviso");if(!el)return;el.textContent=msg||"";el.style.display=msg?"block":"none";}
+function g(id){ return document.getElementById(id); }
+function tokenSessao(){ return typeof SISGEP_TOKEN_SESSAO !== "undefined" ? SISGEP_TOKEN_SESSAO : ""; }
+function money(v){ return Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"}); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c];}); }
+function setText(id,v){ var el=g(id); if(el) el.textContent=v; }
 
-window.finConciliacaoRender=function(lista){
-  lista=lista||carregar();
-  var entradas=0,saidas=0,matches=0;
-  lista.forEach(function(m){if(m.valor>=0)entradas+=m.valor;else saidas+=Math.abs(m.valor);if(m.score>=70)matches++;});
-  setText("finConcTotal",String(lista.length));
-  setText("finConcEntradas",money(entradas));
-  setText("finConcSaidas",money(saidas));
-  setText("finConcMatch",String(matches));
-  var tb=g("finConcTabela"); if(!tb)return;
-  if(!lista.length){tb.innerHTML='<tr><td colspan="6" style="padding:28px;text-align:center;color:#94a3b8;">Cole ou importe um extrato para começar.</td></tr>';return;}
-  tb.innerHTML=lista.map(function(m,i){
-    var cor=m.valor>=0?"#059669":"#dc2626";
-    var badge=m.status==="Conciliado"?"background:#dcfce7;color:#166534":"background:#fef3c7;color:#92400e";
-    return '<tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:11px 12px;font-size:12px;">'+esc(m.data||"-")+'</td><td style="padding:11px 12px;font-size:12px;"><strong>'+esc(m.descricao)+'</strong><div style="margin-top:4px;display:inline-flex;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:800;'+badge+'">'+esc(m.status)+'</div></td><td style="padding:11px 12px;font-size:12px;">'+esc(m.tipo)+'</td><td style="padding:11px 12px;font-size:12px;font-weight:900;color:'+cor+';">'+money(m.valor)+'</td><td style="padding:11px 12px;font-size:12px;">'+esc(m.sugestao||"-")+'<div style="font-size:10px;color:#94a3b8;margin-top:2px;">confiança '+(m.score||0)+'%</div></td><td style="padding:11px 12px;white-space:nowrap;"><button class="btn btn-outline btn-sm" onclick="finConciliacaoMarcar('+i+')">Conciliar</button> '+(m.valor<0?'<button class="btn btn-navy btn-sm" onclick="finConciliacaoCriarDespesa('+i+')">Gerar despesa</button>':"")+'</td></tr>';
+function aviso(msg, tipo){
+  var el = g("finConcAviso");
+  if (!el) { if (msg && typeof window.toast==="function") window.toast(msg, tipo||"info"); return; }
+  el.textContent = msg || "";
+  el.style.display = msg ? "block" : "none";
+  if (msg) {
+    var erro = (tipo === "erro");
+    el.style.background   = erro ? "#fee2e2" : "#fff7ed";
+    el.style.borderColor  = erro ? "#fca5a5" : "#fed7aa";
+    el.style.color        = erro ? "#991b1b" : "#9a3412";
+  }
+}
+
+function dataBR(iso){
+  var m = String(iso||"").match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? (m[3]+"/"+m[2]+"/"+m[1]) : (iso || "—");
+}
+
+/* ─────────── CARGA ─────────── */
+window.finConciliacaoRender = function(){
+  var tb = g("finConcTabela");
+  var r = { total:0, entradas:0, saidas:0, prontos:0 };
+
+  CONC_ITENS.forEach(function(m){
+    r.total++;
+    if (m.valor >= 0) r.entradas += m.valor; else r.saidas += Math.abs(m.valor);
+    if (m.status === "PENDENTE" && m.confianca >= 70) r.prontos++;
+  });
+
+  setText("finConcTotal", String(r.total));
+  setText("finConcEntradas", money(r.entradas));
+  setText("finConcSaidas", money(r.saidas));
+  setText("finConcMatch", String(r.prontos));
+
+  if (!tb) return;
+  if (!CONC_ITENS.length) {
+    tb.innerHTML = '<tr><td colspan="6" style="padding:28px;text-align:center;color:#94a3b8;">Nenhum movimento importado. Envie o OFX do banco ou cole o extrato acima.</td></tr>';
+    return;
+  }
+
+  tb.innerHTML = CONC_ITENS.map(function(m){
+    var cor = m.valor >= 0 ? "#059669" : "#dc2626";
+    var badge, acoes;
+
+    if (m.status === "CONCILIADO") {
+      badge = "background:#dcfce7;color:#166534";
+      acoes = '<button class="btn btn-outline btn-sm" onclick="finConciliacaoDesfazer(\'' + esc(m.id) + '\')">Desfazer</button>';
+    } else if (m.status === "IGNORADO") {
+      badge = "background:#f1f5f9;color:#64748b";
+      acoes = '<button class="btn btn-outline btn-sm" onclick="finConciliacaoDesfazer(\'' + esc(m.id) + '\')">Reabrir</button>';
+    } else {
+      badge = "background:#fef3c7;color:#92400e";
+      acoes =
+        '<button class="btn btn-navy btn-sm" onclick="finConciliacaoAbrirVinculo(\'' + esc(m.id) + '\')">Conciliar</button> ' +
+        '<button class="btn btn-outline btn-sm" onclick="finConciliacaoIgnorar(\'' + esc(m.id) + '\')">Ignorar</button>';
+    }
+
+    var vinculo = m.idDespesa
+      ? '<div style="font-size:10px;color:#1565C0;margin-top:2px;">vinculado a ' + esc(m.idDespesa) + '</div>' : '';
+
+    return '<tr style="border-bottom:1px solid #f1f5f9;">' +
+      '<td style="padding:11px 12px;font-size:12px;">' + esc(dataBR(m.data)) + '</td>' +
+      '<td style="padding:11px 12px;font-size:12px;"><strong>' + esc(m.descricao) + '</strong>' +
+        '<div style="margin-top:4px;display:inline-flex;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:800;' + badge + '">' + esc(m.status) + '</div>' +
+        (m.origem === "OFX" ? '<span style="margin-left:6px;font-size:9.5px;color:#94a3b8;">OFX</span>' : '') + vinculo + '</td>' +
+      '<td style="padding:11px 12px;font-size:12px;">' + esc(m.tipo) + '</td>' +
+      '<td style="padding:11px 12px;font-size:12px;font-weight:900;color:' + cor + ';">' + money(m.valor) + '</td>' +
+      '<td style="padding:11px 12px;font-size:12px;">' + esc(m.sugestao || "—") +
+        '<div style="font-size:10px;color:#94a3b8;margin-top:2px;">confiança ' + (m.confianca||0) + '%</div></td>' +
+      '<td style="padding:11px 12px;white-space:nowrap;">' + acoes + '</td>' +
+    '</tr>';
   }).join("");
 };
 
-window.finConciliacaoProcessar=function(){
+window.finConciliacaoCarregar = function(){
+  google.script.run
+    .withSuccessHandler(function(r){
+      CONC_ITENS = (r && r.itens) || [];
+      finConciliacaoRender();
+    })
+    .withFailureHandler(function(err){
+      CONC_ITENS = [];
+      finConciliacaoRender();
+      aviso("Não foi possível carregar a conciliação: " + ((err&&err.message)||err) + ". Se sua sessão expirou, entre novamente.", "erro");
+    })
+    .conc_listar(tokenSessao());
+
+  google.script.run
+    .withSuccessHandler(function(l){ CONC_DESPESAS = Array.isArray(l) ? l : []; })
+    .withFailureHandler(function(){ CONC_DESPESAS = []; })
+    .conc_despesasEmAberto(tokenSessao());
+};
+
+/* ─────────── IMPORTAÇÃO ─────────── */
+function importar(conteudo){
+  if (CONC_OCUPADO) return;
+  if (!String(conteudo||"").trim()) { aviso("Cole o extrato ou selecione um arquivo OFX antes de analisar."); return; }
+  CONC_OCUPADO = true;
+  aviso("Lendo o extrato...");
+
+  google.script.run
+    .withSuccessHandler(function(r){
+      CONC_OCUPADO = false;
+      if (!r || !r.ok) { aviso((r && r.mensagem) || "Não foi possível importar.", "erro"); return; }
+      aviso(r.mensagem + (r.formato === "OFX" ? "" : " · Extrato lido como texto: se o banco oferecer OFX, prefira — a leitura é bem mais confiável."));
+      if (g("finConcTexto")) g("finConcTexto").value = "";
+      finConciliacaoCarregar();
+    })
+    .withFailureHandler(function(err){
+      CONC_OCUPADO = false;
+      aviso("Erro ao importar: " + ((err&&err.message)||err), "erro");
+    })
+    .conc_importarExtrato({ conteudo: conteudo }, tokenSessao());
+}
+
+window.finConciliacaoProcessar = function(){
+  importar((g("finConcTexto")||{}).value || "");
+};
+
+window.finConciliacaoLimpar = function(){
+  if (g("finConcTexto")) g("finConcTexto").value = "";
   aviso("");
-  var texto=(g("finConcTexto")||{}).value||"";
-  var lista=parseLinhas(texto).map(function(m){var s=sugerir(m);m.sugestao=s.texto;m.score=s.score;return m;});
-  if(!lista.length){aviso("Não encontrei lançamentos com data e valor. Se o arquivo for PDF escaneado, exporte o extrato em TXT/CSV ou cole o texto aqui.");}
-  salvar(lista); finConciliacaoRender(lista);
 };
-window.finConciliacaoExemplo=function(){
-  if(g("finConcTexto"))g("finConcTexto").value="01/07/2026 PIX RECEBIDO ESCOLA ACALANTO KIDS 1.250,00\n01/07/2026 TARIFA MANUTENCAO CONTA -69,90\n02/07/2026 PAGAMENTO ENERGIA EDP -485,30\n03/07/2026 PIX ENVIADO CONTABILIDADE SILVA -1.200,00";
-  finConciliacaoProcessar();
+
+window.finConciliacaoExemplo = function(){
+  if (g("finConcTexto")) {
+    g("finConcTexto").value =
+      "01/07/2026 PIX RECEBIDO ESCOLA ACALANTO KIDS 1.250,00\n" +
+      "01/07/2026 TARIFA MANUTENCAO CONTA -69,90\n" +
+      "02/07/2026 PAGAMENTO ENERGIA EDP -485,30\n" +
+      "03/07/2026 PIX ENVIADO CONTABILIDADE SILVA -1.200,00";
+  }
+  aviso("Exemplo carregado. Clique em \"Analisar extrato\" para importar.");
 };
-window.finConciliacaoLimpar=function(){if(g("finConcTexto"))g("finConcTexto").value="";salvar([]);aviso("");finConciliacaoRender([]);};
-window.finConciliacaoMarcar=function(i){var lista=carregar();if(lista[i])lista[i].status="Conciliado";salvar(lista);finConciliacaoRender(lista);};
-window.finConciliacaoConciliarAuto=function(){var lista=carregar();lista.forEach(function(m){if(m.score>=70)m.status="Conciliado";});salvar(lista);finConciliacaoRender(lista);};
-window.finConciliacaoCriarDespesa=function(i){
-  var m=carregar()[i]; if(!m)return;
-  if(typeof mudarTab==="function")mudarTab("nova");
-  setTimeout(function(){
-    if(g("r-avulso"))g("r-avulso").checked=true;
-    if(typeof atualizarTipoLanc==="function")atualizarTipoLanc();
-    if(g("n-nome-avulso"))g("n-nome-avulso").value=m.descricao;
-    if(g("n-valor"))g("n-valor").value=String(Math.abs(m.valor).toFixed(2)).replace(".",",");
-    if(g("n-desc"))g("n-desc").value="Despesa criada a partir da conciliação bancária: "+m.descricao;
-    if(g("n-obs"))g("n-obs").value="Origem: extrato bancário. Data do movimento: "+(m.data||"-");
-  },120);
+
+/* ─────────── AÇÕES ─────────── */
+window.finConciliacaoAbrirVinculo = function(id){
+  var m = CONC_ITENS.filter(function(x){ return x.id === id; })[0];
+  if (!m) return;
+
+  /* Sugestão com confiança alta: confirma direto, sem obrigar a escolher na
+     lista. Abaixo disso, o operador precisa dizer a qual despesa pertence. */
+  if (m.idDespesa && m.confianca >= 70) {
+    if (!window.confirm("Conciliar este movimento com a despesa sugerida?\n\n" + m.sugestao +
+        "\n\nMarcar a despesa como PAGA também?\n\nOK = concilia e dá baixa · Cancelar = só concilia")) {
+      return finConciliacaoConfirmar(id, m.idDespesa, false);
+    }
+    return finConciliacaoConfirmar(id, m.idDespesa, true);
+  }
+
+  var candidatas = CONC_DESPESAS.filter(function(d){
+    return Math.abs(Math.abs(d.valor) - Math.abs(m.valor)) < 0.02;
+  });
+  var lista = (candidatas.length ? candidatas : CONC_DESPESAS).slice(0, 30);
+
+  if (!lista.length) {
+    if (window.confirm("Não há despesa em aberto para vincular.\n\nMarcar este movimento como conciliado mesmo assim, sem vínculo?"))
+      finConciliacaoConfirmar(id, "", false);
+    return;
+  }
+
+  var texto = "A qual despesa este movimento corresponde?\n\n" +
+    lista.map(function(d,i){ return (i+1) + ") " + d.nome + " — " + money(d.valor) + (d.vencimento ? " — venc " + d.vencimento : ""); }).join("\n") +
+    "\n\nDigite o número (ou deixe vazio para conciliar sem vínculo):";
+
+  var escolha = window.prompt(texto, "");
+  if (escolha === null) return;
+  escolha = String(escolha).trim();
+
+  if (!escolha) return finConciliacaoConfirmar(id, "", false);
+  var idx = parseInt(escolha, 10) - 1;
+  if (isNaN(idx) || idx < 0 || idx >= lista.length) { aviso("Número inválido.", "erro"); return; }
+
+  var d = lista[idx];
+  var baixa = window.confirm("Marcar \"" + d.nome + "\" como PAGA?\n\nOK = concilia e dá baixa · Cancelar = só concilia");
+  finConciliacaoConfirmar(id, d.idDespesa, baixa);
 };
-window.finConciliacaoExportar=function(){
-  var lista=carregar();
-  var rows=[["Data","Descricao","Tipo","Valor","Sugestao","Confianca","Status"]].concat(lista.map(function(m){return[m.data,m.descricao,m.tipo,m.valor,m.sugestao,m.score,m.status];}));
-  var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c==null?"":c).replace(/"/g,'""')+'"';}).join(";");}).join("\n");
-  var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download="sisgep-conciliacao-bancaria.csv";a.click();
+
+window.finConciliacaoConfirmar = function(id, idDespesa, darBaixa){
+  if (CONC_OCUPADO) return;
+  CONC_OCUPADO = true;
+  google.script.run
+    .withSuccessHandler(function(r){
+      CONC_OCUPADO = false;
+      aviso((r && r.mensagem) || "Concluído.", (r && r.ok) ? "info" : "erro");
+      if (r && r.ok) {
+        finConciliacaoCarregar();
+        /* A baixa muda a lista de despesas: recarrega para o painel não ficar
+           mostrando como em aberto algo que acabou de ser pago. */
+        if (darBaixa && typeof window.carregarLista === "function") window.carregarLista();
+      }
+    })
+    .withFailureHandler(function(err){
+      CONC_OCUPADO = false;
+      aviso("Erro ao conciliar: " + ((err&&err.message)||err), "erro");
+    })
+    .conc_conciliar({ id:id, idDespesa:idDespesa||"", darBaixa:!!darBaixa }, tokenSessao());
 };
-window.finConciliacaoInit=function(){
-  finConciliacaoRender();
-  var file=g("finConcArquivo");
-  if(file&&!file.dataset.conciliacaoBound){
-    file.dataset.conciliacaoBound="1";
-    file.addEventListener("change",function(){
-      var f=file.files&&file.files[0]; if(!f)return;
-      if(/\.pdf$/i.test(f.name)){aviso("PDF recebido. Se ele for escaneado, o navegador não consegue extrair texto sem OCR. Para conciliar agora, cole o texto ou exporte TXT/CSV do banco.");return;}
-      var r=new FileReader();
-      r.onload=function(){if(g("finConcTexto"))g("finConcTexto").value=String(r.result||"");finConciliacaoProcessar();};
-      r.readAsText(f,"utf-8");
+
+window.finConciliacaoIgnorar = function(id){
+  var obs = window.prompt("Ignorar este movimento. Motivo (opcional):", "");
+  if (obs === null) return;
+  google.script.run
+    .withSuccessHandler(function(r){ aviso((r&&r.mensagem)||"", (r&&r.ok)?"info":"erro"); if(r&&r.ok) finConciliacaoCarregar(); })
+    .withFailureHandler(function(err){ aviso("Erro: " + ((err&&err.message)||err), "erro"); })
+    .conc_ignorar({ id:id, observacao:obs }, tokenSessao());
+};
+
+window.finConciliacaoDesfazer = function(id){
+  if (!window.confirm("Desfazer a conciliação deste movimento?")) return;
+  google.script.run
+    .withSuccessHandler(function(r){ aviso((r&&r.mensagem)||"", (r&&r.ok)?"info":"erro"); if(r&&r.ok) finConciliacaoCarregar(); })
+    .withFailureHandler(function(err){ aviso("Erro: " + ((err&&err.message)||err), "erro"); })
+    .conc_desfazer({ id:id }, tokenSessao());
+};
+
+/* Conciliação em lote das sugestões de alta confiança. Nunca dá baixa
+   automática: marcar despesa como paga é decisão que exige uma pessoa. */
+window.finConciliacaoConciliarAuto = function(){
+  var alvos = CONC_ITENS.filter(function(m){ return m.status === "PENDENTE" && m.confianca >= 70 && m.idDespesa; });
+  if (!alvos.length) { aviso("Nenhuma sugestão com confiança suficiente para conciliar em lote."); return; }
+  if (!window.confirm("Conciliar " + alvos.length + " movimento(s) com sugestão de alta confiança?\n\nA baixa das despesas NÃO será feita automaticamente — só o vínculo.")) return;
+
+  var fila = alvos.slice(), ok = 0;
+  (function prox(){
+    if (!fila.length) { aviso(ok + " movimento(s) conciliado(s)."); finConciliacaoCarregar(); return; }
+    var m = fila.shift();
+    google.script.run
+      .withSuccessHandler(function(r){ if (r && r.ok) ok++; prox(); })
+      .withFailureHandler(function(){ prox(); })
+      .conc_conciliar({ id:m.id, idDespesa:m.idDespesa, darBaixa:false }, tokenSessao());
+  })();
+};
+
+window.finConciliacaoExportar = function(){
+  if (!CONC_ITENS.length) { aviso("Nada para exportar."); return; }
+  var cab = ["Data","Descricao","Tipo","Valor","Sugestao","Confianca","Status","IdDespesa","ConciliadoPor","DataConciliacao","Origem","FITID"];
+  var linhas = [cab].concat(CONC_ITENS.map(function(m){
+    return [dataBR(m.data), m.descricao, m.tipo, Number(m.valor||0).toFixed(2),
+            m.sugestao, m.confianca, m.status, m.idDespesa, m.conciliadoPor, m.dataConciliacao, m.origem, m.fitid];
+  }));
+  var csv = linhas.map(function(l){
+    return l.map(function(c){ return '"' + String(c==null?"":c).replace(/"/g,'""') + '"'; }).join(";");
+  }).join("\n");
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["﻿"+csv], {type:"text/csv;charset=utf-8"}));
+  a.download = "sisgep-conciliacao-bancaria.csv";
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+/* ─────────── INIT ─────────── */
+window.finConciliacaoInit = function(){
+  finConciliacaoCarregar();
+  var file = g("finConcArquivo");
+  if (file && !file.dataset.conciliacaoBound) {
+    file.dataset.conciliacaoBound = "1";
+    file.addEventListener("change", function(){
+      var f = file.files && file.files[0];
+      if (!f) return;
+      if (/\.pdf$/i.test(f.name)) {
+        aviso("PDF não é lido diretamente. No internet banking, exporte o extrato em OFX — é o formato que o sistema entende melhor e que evita lançamento duplicado.", "erro");
+        file.value = "";
+        return;
+      }
+      var r = new FileReader();
+      r.onload = function(){ importar(String(r.result||"")); file.value = ""; };
+      r.onerror = function(){ aviso("Não foi possível ler o arquivo.", "erro"); };
+      r.readAsText(f, "utf-8");
     });
   }
 };
-if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",function(){setTimeout(finConciliacaoInit,120);});
-else setTimeout(finConciliacaoInit,120);
+
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function(){ setTimeout(finConciliacaoInit,150); });
+else setTimeout(finConciliacaoInit, 150);
 
 })();
 </script>
