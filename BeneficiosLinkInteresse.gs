@@ -41,7 +41,10 @@ var BENEF_LINKS = {
     titulo: "Hospedagem no China Park Eco Resort",
     abertura: "Recebemos sua manifestação de interesse em se hospedar no China Park Eco Resort.",
     instrucao: "Para dar continuidade à análise da sua solicitação, pedimos que preencha o formulário abaixo com as informações necessárias:",
-    importante: "o preenchimento deste formulário não confirma a reserva. A solicitação será analisada pela Secretaria do SindEducação-ES e posteriormente submetida à aprovação da Presidência, conforme a disponibilidade de vagas no período solicitado.",
+    // A menção à Presidência saiu a pedido do usuário em 2026-08-05. A
+    // aprovação continua existindo no sistema — o que mudou é que ela não é
+    // anunciada ao solicitante, que não precisa saber a instância interna.
+    importante: "o preenchimento deste formulário não confirma a reserva. A solicitação será analisada pela Secretaria do SindEducação-ES, conforme a disponibilidade de vagas no período solicitado.",
     retorno: "Após a conclusão da análise, você será informado sobre o resultado por e-mail e/ou WhatsApp.",
     prazo: "Prazo de resposta: nossa equipe retornará o mais breve possível após a análise da disponibilidade junto ao China Park."
   },

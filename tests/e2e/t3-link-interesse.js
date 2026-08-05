@@ -23,12 +23,18 @@ b.passo("2b. A mensagem diz tudo que precisa dizer");
 [["Recebemos", "reconhece o pedido que a pessoa já fez"],
  ["Importante:", "traz o aviso destacado"],
  ["não confirma a reserva", "deixa claro que o formulário não garante vaga"],
- ["Presidência", "diz quem aprova"],
+ ["Secretaria do SindEducação-ES", "diz quem analisa"],
  ["e/ou WhatsApp", "diz por onde a resposta chega"],
  ["Prazo de resposta", "responde a pergunta seguinte antes de ela ser feita"]
 ].forEach(function (par) {
   b.ok(r.texto.indexOf(par[0]) > 0, par[1]);
 });
+
+b.passo("2b-2. A mensagem não expõe a instância interna de aprovação");
+// Decisão do usuário: o solicitante não precisa saber quem decide dentro do
+// sindicato. Se alguém reintroduzir, este teste acusa.
+b.ok(r.texto.indexOf("Presidência") === -1 && r.texto.indexOf("Presidente") === -1,
+  "não cita a Presidência ao solicitante");
 
 b.passo("2c. Ordem do texto — o aviso vem antes da promessa de retorno");
 // Invertido, a pessoa lê "vamos te avisar" e entende que já está reservado.
