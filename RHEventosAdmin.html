@@ -2,8 +2,20 @@
   ARQUIVO: RHEventosAdmin.html
   MÓDULO: RH — aba "Eventos" (13º salário, férias e rescisão)
 
-  Incluído DENTRO de RHAdmin.html (<?!= include('RHEventosAdmin'); ?>),
-  como painel da 5ª aba. Por isso não repete <style>: reaproveita as
+  Incluído DENTRO de RHAdmin.html, como painel da 5ª aba.
+
+  🚨 NUNCA escreva um scriptlet do Apps Script (aquela sintaxe que abre
+  com menor-interrogação) dentro deste arquivo — NEM DENTRO DE COMENTÁRIO
+  HTML. O template engine avalia scriptlet em qualquer posição do arquivo,
+  inclusive comentado, porque ele roda ANTES do navegador ver o HTML.
+  Este cabeçalho já teve a chamada de include escrita como exemplo aqui
+  dentro: o arquivo passou a incluir a si mesmo em recursão infinita, o
+  HTML do RH saiu corrompido, o bloco de script quebrou no meio e derrubou
+  o JavaScript da tela toda — abas paradas, contadores zerados e nenhuma
+  mensagem de erro. Se precisar citar a chamada, escreva
+  "include de RHEventosAdmin" em palavras.
+
+  Por isso este arquivo também não repete folha de estilo: reaproveita as
   classes .rh-* já declaradas em RHAdmin.html e os tokens do design
   system (OficiosStyles.html). Toda a lógica vive numa IIFE própria
   para não colidir com a IIFE da tela principal do RH — as funções

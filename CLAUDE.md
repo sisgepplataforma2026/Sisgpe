@@ -2,6 +2,19 @@
 
 Projeto Google Apps Script (single global scope — arquivos `.gs`/`.html` sem import, tudo em `google.script.run`/`include()`). Branch de trabalho padrão: `claude/sisgep-project-analysis-h9wcy3`.
 
+## 🚨 REGRA Nº 0 — SCRIPTLET DO APPS SCRIPT NUNCA VAI DENTRO DE COMENTÁRIO
+
+O template engine do Apps Script (`createTemplateFromFile().evaluate()`, usado por `include()` em `Code.gs:267`) avalia scriptlet em **qualquer posição do arquivo**, inclusive dentro de `<!-- comentário HTML -->`, porque ele roda ANTES do navegador ver o HTML. Comentar um scriptlet não o desliga.
+
+**Caso real (2026-08-05):** o cabeçalho de `RHEventosAdmin.html` documentava, dentro de um comentário HTML, a própria chamada de include que o traz para a tela. O arquivo passou a se incluir em recursão infinita: o HTML do RH saiu corrompido, o bloco de script quebrou no meio e derrubou o JavaScript da tela inteira — abas paradas, contadores em 0 e **nenhuma mensagem de erro**, porque `listarColaboradoresRH_interno_` engole exceção e devolve `[]`.
+
+Regras práticas:
+- Em comentário, cite a chamada em palavras ("include de RHEventosAdmin"), nunca com a sintaxe real.
+- Não escreva tag literal de `script`/`style` dentro de comentário — quebra as ferramentas de extração e validação.
+- **Antes de todo commit que toque `.html`**, rodar a varredura: procurar scriptlet dentro de `<!-- -->` em todos os `.html` do projeto. Achou, é bug — não é estilo.
+
+**Sintoma que sempre aponta para cá:** tela renderiza, mas nenhum botão responde e todos os indicadores ficam no valor estático do HTML. Isso é JavaScript morto na página, não erro de backend — procure HTML corrompido antes de procurar erro no `.gs`.
+
 ## 🚨 REGRA Nº 1 — NUNCA APAGAR ARQUIVO QUE O SISTEMA AINDA USA
 
 **Isto nunca pode acontecer. Nem uma vez.** O SISGEP roda em produção num sindicato real, com dado real de associado e de dinheiro. Apagar um arquivo ainda usado derruba função em produção e pode corromper dado.
