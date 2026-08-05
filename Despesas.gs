@@ -128,6 +128,10 @@ var CATEGORIAS_DESPESA = {
   MATERIAL:         "Material de Consumo",
   SERVICO:          "Serviço Avulso",
   BENEFICIOS:       "Beneficios",
+  // Gratificação mensal dos diretores. Categoria própria de propósito:
+  // permite somar e separar essa despesa no fechamento sem confundir
+  // com fornecedor. Gerada por VerbasDiretoria.gs.
+  VERBA_DIRETORIA:  "Verba de Diretoria",
   OUTRA:            "Outra"
 };
 
