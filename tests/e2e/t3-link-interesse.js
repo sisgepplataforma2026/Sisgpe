@@ -18,6 +18,35 @@ b.ok(r && r.ok, "monta o link", r && !r.ok ? "ERRO: " + r.mensagem : "");
 b.ok(r.url && r.url.indexOf("?portal=chinapark") > 0, "URL aponta para a rota pública real do China Park", r.url);
 b.ok(r.texto && r.texto.indexOf(r.url) > 0, "o link está dentro da mensagem");
 b.ok(r.texto.indexOf("Maria Souza") > 0, "a mensagem chama a pessoa pelo nome");
+
+b.passo("2b. A mensagem diz tudo que precisa dizer");
+[["Recebemos", "reconhece o pedido que a pessoa já fez"],
+ ["Importante:", "traz o aviso destacado"],
+ ["não confirma a reserva", "deixa claro que o formulário não garante vaga"],
+ ["Presidência", "diz quem aprova"],
+ ["e/ou WhatsApp", "diz por onde a resposta chega"],
+ ["Prazo de resposta", "responde a pergunta seguinte antes de ela ser feita"]
+].forEach(function (par) {
+  b.ok(r.texto.indexOf(par[0]) > 0, par[1]);
+});
+
+b.passo("2c. Ordem do texto — o aviso vem antes da promessa de retorno");
+// Invertido, a pessoa lê "vamos te avisar" e entende que já está reservado.
+b.ok(r.texto.indexOf("Importante:") < r.texto.indexOf("você será informado"),
+  "o 'Importante' aparece antes do 'você será informado'");
+
+b.passo("2d. Sem nome informado, a saudação não quebra");
+const semNome = g.beneficiosPrepararLinkInteresse("chinapark", {}, TOKEN);
+b.ok(semNome.ok && semNome.texto.indexOf("Olá!") > 0 && semNome.texto.indexOf("undefined") === -1,
+  "vira 'Olá!' sem sobrar espaço nem 'undefined'");
+
+b.passo("2e. Os três benefícios têm o texto completo");
+["chinapark", "voucher", "oftalmo"].forEach(function (chave) {
+  const t = g.beneficiosPrepararLinkInteresse(chave, {}, TOKEN);
+  const completo = t.ok && ["Recebemos", "Importante:", "Prazo de resposta"]
+    .every(function (p) { return t.texto.indexOf(p) > 0; });
+  b.ok(completo, "'" + chave + "' tem abertura, aviso e prazo");
+});
 b.ok(r.telefone === "5527999991234", "telefone normalizado para o formato do WhatsApp", r.telefone);
 
 b.passo("3. A rota gerada é a mesma que o Code.gs atende?");

@@ -23,30 +23,49 @@
 // lista abaixo e o botão passa a funcionar para eles sem mais nenhuma mudança.
 // ============================================================================
 
+// Texto de cada benefício. A estrutura é a mesma nos três, na ordem em que a
+// pessoa lê: o que recebemos dela, o que ela precisa fazer, o que NÃO está
+// garantido, como ela vai ser avisada e em quanto tempo.
+//
+// A ordem importa: o aviso de que o formulário não confirma nada vem ANTES
+// da promessa de retorno. Invertido, a pessoa lê "vamos te avisar" e entende
+// que já está reservado — e cobra a vaga depois.
+//
+// Texto do China Park definido pelo usuário em 2026-08-05. Alterar só com
+// pedido dele: é comunicação institucional que sai em nome do sindicato.
 var BENEF_LINKS = {
   chinapark: {
     rotulo: "China Park Eco Resort",
     rota: "?portal=chinapark",
     modulo: "beneficios",
     titulo: "Hospedagem no China Park Eco Resort",
-    intro: "Para seguirmos com o seu pedido de hospedagem, preencha o formulário abaixo.",
-    aviso: "O preenchimento não confirma a reserva: a solicitação passa por análise da secretaria e aprovação da Presidência."
+    abertura: "Recebemos sua manifestação de interesse em se hospedar no China Park Eco Resort.",
+    instrucao: "Para dar continuidade à análise da sua solicitação, pedimos que preencha o formulário abaixo com as informações necessárias:",
+    importante: "o preenchimento deste formulário não confirma a reserva. A solicitação será analisada pela Secretaria do SindEducação-ES e posteriormente submetida à aprovação da Presidência, conforme a disponibilidade de vagas no período solicitado.",
+    retorno: "Após a conclusão da análise, você será informado sobre o resultado por e-mail e/ou WhatsApp.",
+    prazo: "Prazo de resposta: nossa equipe retornará o mais breve possível após a análise da disponibilidade junto ao China Park."
   },
   voucher: {
     rotulo: "Voucher de Bolsa de Estudo",
     rota: "?portal=voucher",
     modulo: "beneficios",
     titulo: "Solicitação de Voucher — Bolsa de Estudo",
-    intro: "Para solicitar o voucher, preencha o formulário abaixo.",
-    aviso: "A solicitação passa por conferência do cadastro antes da emissão."
+    abertura: "Recebemos seu interesse em solicitar o voucher de bolsa de estudo do SindEducação-ES.",
+    instrucao: "Para dar continuidade à análise da sua solicitação, pedimos que preencha o formulário abaixo com as informações necessárias:",
+    importante: "o preenchimento deste formulário não garante a concessão do voucher. A solicitação será analisada pela Secretaria do SindEducação-ES, que confere a regularidade do seu cadastro de associado antes da emissão.",
+    retorno: "Após a conclusão da análise, você será informado sobre o resultado por e-mail e/ou WhatsApp.",
+    prazo: "Prazo de resposta: nossa equipe retornará o mais breve possível após a conferência do cadastro."
   },
   oftalmo: {
     rotulo: "Exame oftalmológico",
     rota: "?portal=oftalmo",
     modulo: "beneficios",
-    titulo: "Agendamento de exame oftalmológico",
-    intro: "Para agendar o seu exame, preencha o formulário abaixo.",
-    aviso: "O formulário só aceita agendamento nas datas liberadas pela secretaria."
+    titulo: "Agendamento de Exame Oftalmológico",
+    abertura: "Recebemos seu interesse em agendar o exame oftalmológico oferecido pelo SindEducação-ES.",
+    instrucao: "Para dar continuidade ao seu agendamento, pedimos que preencha o formulário abaixo com as informações necessárias:",
+    importante: "o agendamento só pode ser feito nas datas liberadas pela Secretaria do SindEducação-ES. Se não houver data disponível no momento, o formulário informará, e você poderá tentar novamente quando uma nova data for aberta.",
+    retorno: "Após a confirmação do agendamento, você será informado sobre o dia e o horário por e-mail e/ou WhatsApp.",
+    prazo: "Prazo de resposta: nossa equipe retornará o mais breve possível após a confirmação da agenda com a clínica parceira."
   }
 };
 
@@ -74,16 +93,26 @@ function beneficiosPrepararLinkInteresse(beneficio, opcoes, tokenSessao) {
     var nome = String(opcoes.nome || "").trim();
     var url  = benefUrlBase_() + cfg.rota;
 
+    // O negrito e o itálico usam a marcação do WhatsApp (*texto* e _texto_).
+    // Quem receber por outro canal vê os asteriscos — é o preço de a mensagem
+    // ser, antes de tudo, uma mensagem de WhatsApp.
     var linhas = [];
     linhas.push("*SINDEDUCAÇÃO-ES*");
     linhas.push("*" + cfg.titulo + "*");
     linhas.push("");
-    linhas.push(nome ? ("Olá, *" + nome + "*.") : "Olá!");
-    linhas.push(cfg.intro);
+    linhas.push(nome ? ("Olá, *" + nome + "*!") : "Olá!");
+    linhas.push("");
+    linhas.push(cfg.abertura);
+    linhas.push("");
+    linhas.push(cfg.instrucao);
     linhas.push("");
     linhas.push(url);
     linhas.push("");
-    linhas.push("_" + cfg.aviso + "_");
+    linhas.push("*Importante:* " + cfg.importante);
+    linhas.push("");
+    linhas.push(cfg.retorno);
+    linhas.push("");
+    linhas.push("_" + cfg.prazo + "_");
 
     return {
       ok: true,
