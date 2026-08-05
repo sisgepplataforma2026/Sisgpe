@@ -2,6 +2,28 @@
 
 Projeto Google Apps Script (single global scope — arquivos `.gs`/`.html` sem import, tudo em `google.script.run`/`include()`). Branch de trabalho padrão: `claude/sisgep-project-analysis-h9wcy3`.
 
+## 🚨 REGRA Nº -1 — LER CÓDIGO NÃO É TESTAR. NADA É "PRONTO" SEM EXECUÇÃO
+
+Vale para toda resposta, todo relatório, toda auditoria e todo commit. Vem antes de qualquer outra regra porque é a que decide se as outras respostas são confiáveis.
+
+**Proibido dizer que uma função está pronta, funcionando, coberta, implementada ou integrada com base em:**
+- a tela abrir;
+- o botão existir;
+- o formulário salvar;
+- o registro aparecer numa lista;
+- a função existir no arquivo `.gs`;
+- o código "estar correto" na leitura.
+
+Uma função só é dada como concluída quando o processo inteiro roda do gatilho inicial até o encerramento: registro, encaminhamento, análise, aprovação, execução, comprovação, integração com os outros módulos, atualização de status, histórico, auditoria. Se qualquer etapa não foi executada, o veredito é **"não testado"** — escrito com essas palavras, sem eufemismo.
+
+**Estar no repositório não é estar no ar.** O projeto Apps Script em produção e o repositório divergem: o pull do dia 2026-08-05 veio parcial e 5 arquivos ficaram de fora sem aviso. Toda auditoria feita sobre o repositório precisa dizer, na primeira linha, que descreve o repositório — não necessariamente o que a equipe está usando. Antes de auditar comportamento, confirmar com o usuário quais arquivos existem no projeto.
+
+**Como testar sem tocar em produção:** existe emulador do Apps Script em Node (`scratchpad/e2e/gas.js`) que carrega os `.gs` reais contra uma planilha em memória — SpreadsheetApp, LockService, PropertiesService, CacheService, Utilities e datas com fidelidade; e-mail, Drive e UrlFetch apenas registrados. Serve para status, integração entre módulos, permissão, idempotência e cálculo. **Não** serve para PDF, entrega de e-mail, UI e agendamento de trigger — nesses casos o veredito continua "não testado" e o roteiro de teste manual vai junto.
+
+**Ordem correta de trabalho:** teste primeiro, diagnóstico depois. Quando o usuário pedir auditoria, análise ou diagnóstico de qualquer módulo, montar o teste executável ANTES de escrever conclusão — e oferecer isso por conta própria, sem esperar ele pedir.
+
+**Caso real que originou esta regra (2026-08-05):** entreguei uma auditoria de arquitetura do Portal Administrativo inteiro classificando módulos como "Coberto" a partir de leitura de código, sem executar uma linha. O usuário respondeu: *"tem que testar todos os fluxos"*, *"não tem nada real"*, *"pq não testou?"*, *"pq não sugeriu?"*. Estava certo nas quatro.
+
 ## 🚨 REGRA Nº 0 — SCRIPTLET DO APPS SCRIPT NUNCA VAI DENTRO DE COMENTÁRIO
 
 O template engine do Apps Script (`createTemplateFromFile().evaluate()`, usado por `include()` em `Code.gs:267`) avalia scriptlet em **qualquer posição do arquivo**, inclusive dentro de `<!-- comentário HTML -->`, porque ele roda ANTES do navegador ver o HTML. Comentar um scriptlet não o desliga.
