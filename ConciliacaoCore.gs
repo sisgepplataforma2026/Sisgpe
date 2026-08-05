@@ -1,5 +1,5 @@
 // ============================================================================
-// ARQUIVO: FinanceiroConciliacao.gs
+// ARQUIVO: ConciliacaoCore.gs
 //
 // Conciliação bancária com persistência real.
 //
