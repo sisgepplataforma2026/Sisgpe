@@ -12,4 +12,9 @@
   <script>
   (function(){var KEY="sisgep_config_local_v1",state={notif:true,compacto:false,confirmar:true,email:true};function g(i){return document.getElementById(i)}function load(){try{state=Object.assign(state,JSON.parse(localStorage.getItem(KEY)||"{}"))}catch(e){}}function draw(){g("cfgNotif").classList.toggle("on",!!state.notif);g("cfgCompacto").classList.toggle("on",!!state.compacto);g("cfgConfirmar").classList.toggle("on",!!state.confirmar);g("cfgEmail").classList.toggle("on",!!state.email)}window.cfgToggle=function(k){state[k]=!state[k];draw()};window.cfgSalvar=function(){localStorage.setItem(KEY,JSON.stringify(state));toast("Preferencias salvas neste navegador.","ok")};window.cfgCarregar=function(){g("cfgAmbiente").textContent="Producao";g("cfgPlanilha").textContent="Configurada";if(window.google&&google.script&&google.script.run){try{google.script.run.withSuccessHandler(function(r){r=r||{};g("cfgAmbiente").textContent=r.ambiente||r.AMBIENTE||"Producao";g("cfgPlanilha").textContent=r.planilhaId||r.PLANILHA_ID||"Configurada";g("cfgVersao").textContent=r.versao||r.VERSAO||"SISGEP"}).withFailureHandler(function(){g("cfgPlanilha").textContent="Verificar no Apps Script"}).getConfigPublica()}catch(e){}}};window.initConfig=function(){load();draw();cfgCarregar()};if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",initConfig);else setTimeout(initConfig,80)})();
   </script>
+
+  <!-- Usuarios e acesso por modulo. Arquivo separado (AcessoAdmin)
+       porque e a tela que decide quem enxerga salario e dado de
+       associado - merece ser revisada sozinha. -->
+  <?!= include('AcessoAdmin'); ?>
 </div>

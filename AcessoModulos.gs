@@ -284,6 +284,128 @@ function acessoDefinirModulos(usuario, modulos, tokenSessao) {
 }
 
 /**
+ * Cria um usuário de login. Até aqui isso só era possível editando a
+ * planilha à mão, o que na prática significava que ninguém novo entrava
+ * no sistema sem alguém mexer em célula — e que a coluna de módulos
+ * ficava em branco (ou seja, acesso total) por esquecimento.
+ *
+ * A senha entra como HASH desde o primeiro instante (gerarHashSenha_,
+ * Login1.gs) e o usuário nasce em PRIMEIRO_ACESSO, obrigado a trocá-la
+ * no primeiro login. A senha provisória nunca é gravada em texto puro.
+ */
+function acessoCriarUsuario(dados, tokenSessao) {
+  var sessao = exigirSessaoDocumentos_(tokenSessao, true);
+  var lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(15000)) return { ok: false, mensagem: "Sistema ocupado, tente novamente em instantes." };
+
+    dados = dados || {};
+    var usuario = String(dados.usuario || "").trim().toLowerCase();
+    var nome    = String(dados.nome    || "").trim();
+    var email   = String(dados.email   || "").trim().toLowerCase();
+    var senha   = String(dados.senha   || "").trim();
+
+    if (!usuario) return { ok: false, mensagem: "Informe o login do usuário." };
+    if (/\s/.test(usuario)) return { ok: false, mensagem: "O login não pode ter espaços." };
+    if (!nome)    return { ok: false, mensagem: "Informe o nome." };
+    if (!email)   return { ok: false, mensagem: "Informe o e-mail — é por ele que a recuperação de senha funciona." };
+    if (senha.length < 6) return { ok: false, mensagem: "A senha provisória precisa de pelo menos 6 caracteres." };
+
+    var aba = acessoGarantirColuna_();
+    if (!aba) return { ok: false, mensagem: "Aba de usuários não encontrada." };
+
+    var dadosAba = aba.getRange(1, 1, Math.max(1, aba.getLastRow()), aba.getLastColumn()).getValues();
+    var cab = dadosAba[0].map(function (h) { return String(h || "").trim().toUpperCase(); });
+    function col(n) { return cab.indexOf(n); }
+
+    var iUsuario = col("USUARIO"), iEmail = col("EMAIL"), iSenha = col("SENHA");
+    var iPrimeiro = col("PRIMEIRO_ACESSO"), iNome = col("NOME");
+    var iPerfil = col("PERFIL"), iStatus = col("STATUS"), iMods = col(ACESSO_COLUNA_MODULOS);
+
+    if (iUsuario === -1 || iSenha === -1 || iStatus === -1) {
+      return { ok: false, mensagem: "A aba de usuários não tem as colunas obrigatórias (USUARIO, SENHA, STATUS)." };
+    }
+
+    // Login e e-mail precisam ser únicos: duplicar qualquer um dos dois
+    // faz a autenticação encontrar a linha errada, porque ela casa pelos
+    // dois campos indistintamente.
+    for (var i = 1; i < dadosAba.length; i++) {
+      var u = String(dadosAba[i][iUsuario] || "").trim().toLowerCase();
+      var e = iEmail > -1 ? String(dadosAba[i][iEmail] || "").trim().toLowerCase() : "";
+      if (u && u === usuario) return { ok: false, mensagem: "Já existe um usuário com este login." };
+      if (e && e === email)   return { ok: false, mensagem: "Já existe um usuário com este e-mail." };
+    }
+
+    var validas = {};
+    ACESSO_MODULOS_CATALOGO.forEach(function (m) { validas[m.chave] = true; });
+    var lista = (dados.modulos || [])
+      .map(function (m) { return String(m || "").trim(); })
+      .filter(function (m) { return !!m && validas[m]; });
+
+    var linha = new Array(aba.getLastColumn()).fill("");
+    linha[iUsuario] = usuario;
+    linha[iSenha]   = gerarHashSenha_(senha);
+    linha[iStatus]  = "ATIVO";
+    if (iEmail    > -1) linha[iEmail]    = email;
+    if (iNome     > -1) linha[iNome]     = nome;
+    if (iPerfil   > -1) linha[iPerfil]   = String(dados.perfil || "Usuário").trim();
+    if (iPrimeiro > -1) linha[iPrimeiro] = "SIM";
+    if (iMods     > -1) linha[iMods]     = lista.length ? lista.join(",") : ACESSO_TODOS;
+
+    aba.appendRow(linha);
+    Logger.log("[ACESSO] " + (sessao.usuario || sessao.email) + " criou o usuário " + usuario +
+      " com módulos: " + (lista.length ? lista.join(",") : ACESSO_TODOS));
+
+    return {
+      ok: true,
+      mensagem: "Usuário " + usuario + " criado. Ele entra com a senha provisória e é obrigado a trocá-la no primeiro acesso." +
+        (lista.length ? "" : " ATENÇÃO: ficou com acesso a TODOS os módulos — marque os módulos se não for isso.")
+    };
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao criar usuário: " + e.message };
+  } finally { try { lock.releaseLock(); } catch (eRel) {} }
+}
+
+/**
+ * Ativa/inativa um usuário. Não existe exclusão: usuário inativo não
+ * loga (autenticarUsuario exige STATUS ATIVO), e apagar a linha
+ * destruiria o rastro de quem fez o quê no histórico dos módulos.
+ */
+function acessoAlternarUsuario(usuario, ativo, tokenSessao) {
+  var sessao = exigirSessaoDocumentos_(tokenSessao, true);
+  try {
+    usuario = String(usuario || "").trim().toLowerCase();
+    if (!usuario) return { ok: false, mensagem: "Usuário não informado." };
+
+    // Trava contra o tiro no pé: um administrador que se inativa perde o
+    // acesso na hora e não tem como se reativar pela tela.
+    if (String(sessao.usuario || "").trim().toLowerCase() === usuario && ativo === false) {
+      return { ok: false, mensagem: "Você não pode inativar o próprio usuário." };
+    }
+
+    var aba = acessoGarantirColuna_();
+    if (!aba) return { ok: false, mensagem: "Aba de usuários não encontrada." };
+    var dados = aba.getRange(1, 1, aba.getLastRow(), aba.getLastColumn()).getValues();
+    var cab = dados[0].map(function (h) { return String(h || "").trim().toUpperCase(); });
+    var iUsuario = cab.indexOf("USUARIO"), iStatus = cab.indexOf("STATUS");
+    if (iUsuario === -1 || iStatus === -1) return { ok: false, mensagem: "Colunas obrigatórias não encontradas." };
+
+    for (var i = 1; i < dados.length; i++) {
+      if (String(dados[i][iUsuario] || "").trim().toLowerCase() === usuario) {
+        aba.getRange(i + 1, iStatus + 1).setValue(ativo === false ? "INATIVO" : "ATIVO");
+        Logger.log("[ACESSO] " + (sessao.usuario || sessao.email) + (ativo === false ? " inativou " : " reativou ") + usuario);
+        return { ok: true, mensagem: ativo === false
+          ? "Usuário inativado — não consegue mais entrar. A sessão aberta cai quando expirar."
+          : "Usuário reativado." };
+      }
+    }
+    return { ok: false, mensagem: "Usuário não encontrado." };
+  } catch (e) {
+    return { ok: false, mensagem: "Erro: " + e.message };
+  }
+}
+
+/**
  * Lê os módulos de um usuário direto da planilha, para o login montar a
  * sessão. Sem checagem de sessão de propósito: roda ANTES de a sessão
  * existir. Nunca lança — se algo falhar, devolve TODOS, porque derrubar
