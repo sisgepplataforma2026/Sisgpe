@@ -131,11 +131,15 @@ function cadastrarReceita(dados, tokenSessao) {
 /* =========================================
  * LISTAR RECEITAS
  * ========================================= */
+// Não engole erro: devolver [] quando a sessão expirou faz a tela mostrar
+// "nenhuma receita" em vez de "sua sessão expirou" — num painel de dinheiro
+// isso é pior do que um erro visível. A falha sobe para o withFailureHandler.
+// Único consumidor além da tela é obterResumoReceitas (abaixo), que já trata.
 function listarReceitas(tokenSessao) {
 
-  try {
+  exigirSessaoDocumentos_(tokenSessao, false);
 
-    exigirSessaoDocumentos_(tokenSessao, false);
+  try {
 
     garantirEstruturaReceitas_();
 
