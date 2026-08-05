@@ -96,7 +96,7 @@ function montarEmailHTML(tipo, numero, assuntoTipo, quantidade, textoPrincipalCu
   );
 }
 function reenviarOficio(registro, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     var emailUsuario = String(sessaoDocumentos.email || sessaoDocumentos.usuario || "").trim().toLowerCase();
 

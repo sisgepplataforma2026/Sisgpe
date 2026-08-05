@@ -359,7 +359,7 @@ function gerarHtmlOficioDocumentacaoFiscal_(params, isPreview) {
    FUNÇÃO PÚBLICA: Gerar prévia do Ofício de Documentação Fiscal
    ───────────────────────────────────────────────────────────── */
 function obterPreviewOficioFiscalDesp(idsDespesas, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     if (!Array.isArray(idsDespesas) || !idsDespesas.length) {
       return { ok: false, mensagem: "Nenhuma despesa selecionada." };
@@ -440,7 +440,7 @@ function obterPreviewOficioFiscalDesp(idsDespesas, tokenSessao) {
    FUNÇÃO PÚBLICA: Enviar lote COM ofício de documentação fiscal
    ───────────────────────────────────────────────────────────── */
 function enviarLoteDespesasComOficio(payload, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     payload = payload || {};
     var idsDespesas = Array.isArray(payload.idsDespesas) ? payload.idsDespesas : [];

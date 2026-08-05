@@ -606,7 +606,7 @@ function gerarDocumentoCertBolsa(protocolo, tipoDocumento) {
 }
 
 function gerarDocumentoCertBolsaCompleto(protocolo, tipoDocumento, opcoes, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "beneficios", false);
   return gerarDocumentoVoucher(protocolo, tipoDocumento, opcoes || {});
 }
 function gerarQrCodeVoucherUrl_(codigoValidacao) {

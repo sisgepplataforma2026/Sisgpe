@@ -6,8 +6,10 @@ var ABA_FILA_OFICIOS      = "FILA_ENVIO_OFICIOS";
 
 /* ── Listar histórico com filtros ── */
 
+// SEM trava de modulo: consultada pela Central de E-mails e pelo nucleo
+// de IA para dar contexto ao usuario. Sessao continua exigida.
 function listarHistoricoOficios(filtros, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
   filtros = filtros || {};
 
   var ss  = SpreadsheetApp.openById(PLANILHA_ID);

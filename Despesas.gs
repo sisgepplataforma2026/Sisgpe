@@ -317,7 +317,7 @@ function garantirAbaPrestadoresDesp_() {
 function garantirAbaFornecedoresDesp_() { return garantirAbaPrestadoresDesp_(); }
 
 function listarPrestadoresDesp(filtros, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   return listarPrestadoresDesp_(filtros);
 }
 
@@ -520,7 +520,7 @@ function listarPrestadoresDesp_(filtros) {
   }
 }
 function salvarPrestadorDesp(payload, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     payload = payload || {};
     var nome = String(payload.nome || "").trim();
@@ -612,7 +612,7 @@ function formatarValorDesp_(valor) {
  * Inativa um prestador (soft delete).
  */
 function excluirPrestadorDesp(rowIndex, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     if (!rowIndex || rowIndex < 2) return { ok: false, mensagem: "Linha inválida." };
     var aba     = garantirAbaPrestadoresDesp_();
@@ -632,7 +632,7 @@ function excluirPrestadorDesp(rowIndex, tokenSessao) {
  * Salva e-mail e WhatsApp rapidamente (card "Sem E-mail").
  */
 function salvarContatoPrestadorRapido(rowIndex, email, whatsapp, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     if (!rowIndex || rowIndex < 2) return { ok: false, mensagem: "Linha inválida." };
     if (!email) return { ok: false, mensagem: "Informe o e-mail." };
@@ -662,7 +662,7 @@ function salvarContatoPrestadorRapido(rowIndex, email, whatsapp, tokenSessao) {
  * Lista prestadores sem e-mail cadastrado.
  */
 function listarPrestadoresSemEmailDesp(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     var resultado = listarPrestadoresDesp({}, tokenSessao);
     var lista = (resultado.lista || []).filter(function(p) { return !p.email; });
@@ -878,7 +878,7 @@ function parseDataFlexivelDesp_(valor) {
 // própria linha (não depende de uma tabela de log separada) — cobre criação,
 // anexo, envio à contabilidade, aprovação, pagamento/confirmação e estorno.
 function obterHistoricoDespesa(idDespesa, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     idDespesa = String(idDespesa || "").trim();
     if (!idDespesa) return { ok: false, mensagem: "ID da despesa não informado." };
@@ -1006,6 +1006,11 @@ function invalidarTokenDesp_(chaveCompleta) {
  * Ponto de entrada chamado pela tela (Scripts_Despesas.html) — exige sessão
  * válida antes de gravar qualquer despesa manual/avulsa.
  */
+// SEM trava de modulo, de proposito: e a PONTE que o RH usa para lancar
+// a despesa da folha (rh_registrarDespesaFolha_), dos eventos de 13o/
+// ferias/rescisao e das verbas de diretoria. Exigir o modulo Financeiro
+// aqui faria a folha salvar e o lancamento sumir em silencio, porque a
+// chamada e best-effort dentro de try/catch. Sessao continua exigida.
 function registrarLancamentoDespesa(dados, tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
   dados = dados || {};
@@ -1140,7 +1145,7 @@ function registrarLancamentoDespesa_(dados) {
  * dadosUpload: { idDespesa, arquivos: [{base64, nome, tipo}], obs: "" }
  */
 function uploadDocumentoManual(dadosUpload, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     dadosUpload   = dadosUpload || {};
     var idDespesa = String(dadosUpload.idDespesa || "").trim();
@@ -1818,7 +1823,7 @@ function garantirAbaConfigEmailsDesp_() {
 }
 
 function listarEmailsEnvioDespesas(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   return listarEmailsEnvioDespesas_interno_();
 }
 
@@ -1889,7 +1894,7 @@ function montarAssuntoDocumentacaoFiscalDesp_(fornecedores) {
 }
 
 function obterPreviewEnvioContabilidadeDesp(idsDespesas, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     if (!Array.isArray(idsDespesas) || !idsDespesas.length) {
       return { ok: false, mensagem: "Nenhuma despesa selecionada." };
@@ -1977,7 +1982,7 @@ function obterPreviewEnvioContabilidadeDesp(idsDespesas, tokenSessao) {
 /* ================= ENVIO EM LOTE PARA CONTABILIDADE ================= */
 
 function enviarLoteDespesasParaContabilidade(idsDespesas, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     var emailUsuario = "";
     try { emailUsuario = Session.getActiveUser().getEmail() || "financeiro@sindeducacao.com"; } catch(e) { emailUsuario = "financeiro@sindeducacao.com"; }
@@ -2266,7 +2271,7 @@ function confirmarPagamentoDespesaPublico(token, dados) {
 // usar listarDespesas_interno_, que não revalida — a sessão já foi conferida
 // na função pública que iniciou a operação (mesmo padrão de ESCA-FIX-2).
 function listarDespesas(filtros, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   return listarDespesas_interno_(filtros);
 }
 
@@ -2379,18 +2384,18 @@ function buscarDespesaPorId(idDespesa) {
 }
 
 function listarDespesasParaEnvioContabilidade(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   return listarDespesas_interno_({ status: STATUS_DESPESA.DOC_RECEBIDO });
 }
 function listarDespesasPendentes(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   return listarDespesas_interno_({ ocultarPagos: true, ocultarCancelados: true });
 }
 
 /* ================= AÇÕES MANUAIS ================= */
 
 function marcarDespesaComoPaga(payload, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   var lock = LockService.getScriptLock();
   try {
     if (!lock.tryLock(15000)) return { ok: false, mensagem: "Sistema ocupado, tente novamente em instantes." };
@@ -2440,7 +2445,7 @@ function marcarDespesaComoPaga(payload, tokenSessao) {
  * explícita: 1 nível, qualquer admin).
  */
 function aprovarDespesaParaPagamento(payload, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "financeiro", false);
   try {
     payload = payload || {};
     var idDespesa = String(payload.idDespesa || "").trim();
@@ -2463,7 +2468,7 @@ function aprovarDespesaParaPagamento(payload, tokenSessao) {
  * estornada, com motivo obrigatório.
  */
 function estornarDespesa(payload, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "financeiro", false);
   var lock = LockService.getScriptLock();
   try {
     if (!lock.tryLock(15000)) return { ok: false, mensagem: "Sistema ocupado, tente novamente em instantes." };
@@ -2504,7 +2509,7 @@ function estornarDespesa(payload, tokenSessao) {
 }
 
 function cancelarDespesa(payload, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     payload = payload || {};
     var idDespesa  = String(payload.idDespesa  || "").trim();
@@ -2518,7 +2523,7 @@ function cancelarDespesa(payload, tokenSessao) {
 }
 
 function removerAnexoDespesa(payload, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "financeiro", false);
   try {
     payload = payload || {};
     var idDespesa = String(payload.idDespesa || "").trim();
@@ -2553,7 +2558,7 @@ function removerAnexoDespesa(payload, tokenSessao) {
 // fornecedor/valor errado). Invalida o token público já emitido e volta a
 // despesa para DOC_RECEBIDO, mantendo o documento anexado.
 function cancelarEnvioContabilidadeDespesa(payload, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "financeiro", false);
   try {
     payload = payload || {};
     var idDespesa = String(payload.idDespesa || "").trim();
@@ -2582,7 +2587,7 @@ function cancelarEnvioContabilidadeDespesa(payload, tokenSessao) {
 }
 
 function editarDespesa(payload, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "financeiro", false);
   try {
     payload = payload || {};
     garantirColunasAprovacaoDesp_();
@@ -2637,6 +2642,9 @@ function editarDespesa(payload, tokenSessao) {
 
 // Mesmo padrão: pública valida sessão, interna serve InicioResumo.gs e
 // FinanceiroIA.gs, que já validaram antes de chegar aqui.
+// SEM trava de modulo: alimenta a tela Inicio (InicioResumo.gs), que
+// todo usuario abre ao entrar. Travar aqui quebraria a home de quem nao
+// tem Financeiro. Sessao continua exigida.
 function obterResumoDespesas(tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
   return obterResumoDespesas_interno_();
@@ -2894,7 +2902,7 @@ function testeDisparateAlertasD5() {
  * Gera novo token a cada envio (substitui o anterior).
  */
 function enviarLembretePrestadoresManual(payload, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     payload = payload || {};
     var rowIndexes    = Array.isArray(payload.rowIndexes) ? payload.rowIndexes : [];
@@ -3088,7 +3096,7 @@ function despesas_registrarLeituraEmail(tokenPixel) {
  * payload: { idDespesa, email, whatsapp }
  */
 function solicitarNFDespesa(payload, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     payload = payload || {};
     var idDespesa = String(payload.idDespesa || "").trim();
@@ -3173,7 +3181,7 @@ function solicitarNFDespesa(payload, tokenSessao) {
   }
 }
 function cancelarEnvioDespesaLote(idDespesa, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     var idDespesa = String(idDespesa || "").trim();
     if(!idDespesa) return { ok: false, mensagem: "ID não informado." };
@@ -3206,7 +3214,7 @@ function cancelarEnvioDespesaLote(idDespesa, tokenSessao) {
    payload: { mes: "06", ano: "2026" }  (strings)
    =============================================================== */
 function gerarDespesasEmLote(payload, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     payload = payload || {};
     var pad = function(n) { return n < 10 ? "0" + n : n; };
@@ -3307,7 +3315,7 @@ function gerarDespesasEmLote(payload, tokenSessao) {
    payload: { idDespesa: "...", novoVencimento: "DD/MM/YYYY" }
    =============================================================== */
 function duplicarDespesa(payload, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     payload = payload || {};
     var idOrigem      = String(payload.idDespesa      || "").trim();
@@ -3364,7 +3372,7 @@ function duplicarDespesa(payload, tokenSessao) {
    }
    =============================================================== */
 function ajustarRecorrencia(payload, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     payload = payload || {};
     var rowIndex          = parseInt(String(payload.rowIndex || "0"), 10);

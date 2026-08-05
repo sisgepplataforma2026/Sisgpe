@@ -26,7 +26,7 @@ function checkin_normalizarNumero_(v) {
 
 // Busca o ingresso pelo número, sem alterar nada — usado para conferir antes de confirmar.
 function checkin_buscarIngresso(codigo, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "eventos", false);
   try {
     var numero = checkin_normalizarNumero_(codigo);
     if (!numero) return { ok: false, mensagem: 'Informe o número do ingresso.' };
@@ -53,7 +53,7 @@ function checkin_buscarIngresso(codigo, tokenSessao) {
 
 // Confirma a entrada: marca status='UTILIZADO'. Bloqueia dupla entrada e ingresso cancelado.
 function checkin_confirmarEntrada(codigo, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "eventos", false);
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {

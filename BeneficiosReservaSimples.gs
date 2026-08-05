@@ -240,7 +240,7 @@ function brsEnviarEmail_(tipo, evento, reserva) {
 // ----------------------------------------------------------------------------
 
 function listarReservasBeneficioSimples(tipo, filtros, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     filtros = filtros || {};
     var aba = brsObterAba_(tipo);
@@ -269,7 +269,7 @@ function listarReservasBeneficioSimples(tipo, filtros, tokenSessao) {
 }
 
 function getDashboardBeneficioSimples(tipo, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     var cfg = brsConfig_(tipo);
     var r = listarReservasBeneficioSimples(tipo, {}, tokenSessao);
@@ -296,7 +296,7 @@ function getDashboardBeneficioSimples(tipo, tokenSessao) {
 }
 
 function consultarDisponibilidadeBeneficioSimples(tipo, dataEntrada, dataSaida, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     return Object.assign({ ok: true }, brsVerificarDisponibilidade_(tipo, dataEntrada, dataSaida, null));
   } catch (e) {
@@ -310,7 +310,7 @@ function consultarDisponibilidadeBeneficioSimples(tipo, dataEntrada, dataSaida, 
 // aprovação, sem checar disponibilidade ainda (a checagem acontece na hora
 // de aprovar, quando a vaga realmente precisa ser reservada).
 function criarReservaBeneficioSimples(tipo, dados, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "beneficios", false);
   try {
     dados = dados || {};
     var responsavel = sessao.nome || sessao.usuario || sessao.email;
@@ -360,7 +360,7 @@ function criarReservaBeneficioSimples(tipo, dados, tokenSessao) {
 }
 
 function aprovarReservaBeneficioSimples(tipo, idReserva, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "beneficios", false);
   try {
     var responsavel = sessao.nome || sessao.usuario || sessao.email;
 
@@ -393,7 +393,7 @@ function aprovarReservaBeneficioSimples(tipo, idReserva, tokenSessao) {
 }
 
 function recusarReservaBeneficioSimples(tipo, idReserva, motivo, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "beneficios", false);
   try {
     if (!String(motivo || "").trim()) return { ok: false, mensagem: "Informe o motivo da recusa." };
     var responsavel = sessao.nome || sessao.usuario || sessao.email;
@@ -424,7 +424,7 @@ function recusarReservaBeneficioSimples(tipo, idReserva, motivo, tokenSessao) {
 }
 
 function cancelarReservaBeneficioSimples(tipo, idReserva, motivo, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "beneficios", false);
   try {
     if (!String(motivo || "").trim()) return { ok: false, mensagem: "Informe o motivo do cancelamento." };
     var responsavel = sessao.nome || sessao.usuario || sessao.email;

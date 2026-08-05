@@ -408,7 +408,7 @@ function _resumoStatusVazio_() {
 }
 
 function listarStatusOficios(filtros, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     filtros = filtros || {};
 
@@ -454,7 +454,7 @@ function listarStatusOficios(filtros, tokenSessao) {
 }
 
 function atualizarStatusOficio(numero, novoStatus, observacao, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     var emailUsuario = String(sessaoDocumentos.email || sessaoDocumentos.usuario || "").trim().toLowerCase();
 

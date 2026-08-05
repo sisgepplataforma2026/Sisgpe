@@ -90,6 +90,10 @@ function docIA_extrairJSON_(prompt) {
  *
  * @return {Object} { sucesso, dados, associado, pendencia, sugestaoEscolas, alertas, textoOcr }
  */
+// SEM trava de modulo: o botao que dispara esta funcao fica na tela de
+// OFICIOS (Documentos), onde a pessoa trabalha, embora o registro gravado
+// seja de Sindicalizacao. Exigir o modulo aqui deixaria um botao visivel
+// que da erro ao clicar. Sessao continua exigida.
 function analisarCartaDesfiliacaoIA(base64, nomeArquivo, mimeType, tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
   try {
@@ -235,6 +239,10 @@ function analisarCartaDesfiliacaoIA(base64, nomeArquivo, mimeType, tokenSessao) 
  *   escolaEmail, escolaUnidade, motivo, cartaBase64, cartaTipo,
  *   confirmarDuplicata }
  */
+// SEM trava de modulo: o botao que dispara esta funcao fica na tela de
+// OFICIOS (Documentos), onde a pessoa trabalha, embora o registro gravado
+// seja de Sindicalizacao. Exigir o modulo aqui deixaria um botao visivel
+// que da erro ao clicar. Sessao continua exigida.
 function confirmarDesfiliacaoIA(dados, tokenSessao) {
   var sessao = exigirSessaoDocumentos_(tokenSessao, false);
   dados = dados || {};
@@ -316,6 +324,10 @@ function confirmarDesfiliacaoIA(dados, tokenSessao) {
  * NENHUM dado é gravado aqui — só em confirmarFiliacaoPapelIA, depois que
  * o atendente revisar/corrigir os campos na tela.
  */
+// SEM trava de modulo: o botao que dispara esta funcao fica na tela de
+// OFICIOS (Documentos), onde a pessoa trabalha, embora o registro gravado
+// seja de Sindicalizacao. Exigir o modulo aqui deixaria um botao visivel
+// que da erro ao clicar. Sessao continua exigida.
 function analisarFormularioFiliacaoIA(base64, nomeArquivo, mimeType, tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
   try {
@@ -452,6 +464,10 @@ function analisarFormularioFiliacaoIA(base64, nomeArquivo, mimeType, tokenSessao
  *   pelo atendente, + arquivoBase64/arquivoTipo/arquivoExtensao (o
  *   documento original) + confirmadoPeloAtendente (obrigatório, true).
  */
+// SEM trava de modulo: o botao que dispara esta funcao fica na tela de
+// OFICIOS (Documentos), onde a pessoa trabalha, embora o registro gravado
+// seja de Sindicalizacao. Exigir o modulo aqui deixaria um botao visivel
+// que da erro ao clicar. Sessao continua exigida.
 function confirmarFiliacaoPapelIA(dados, tokenSessao) {
   var sessao = exigirSessaoDocumentos_(tokenSessao, false);
   dados = dados || {};
@@ -565,6 +581,10 @@ function confirmarFiliacaoPapelIA(dados, tokenSessao) {
  *
  * @return {Object} { sucesso, dados, associado, sugestaoEscolas, alertas, textoOcr }
  */
+// SEM trava de modulo: o botao que dispara esta funcao fica na tela de
+// OFICIOS (Documentos), onde a pessoa trabalha, embora o registro gravado
+// seja de Sindicalizacao. Exigir o modulo aqui deixaria um botao visivel
+// que da erro ao clicar. Sessao continua exigida.
 function analisarCartaOposicaoTaxaNegocialIA(base64, nomeArquivo, mimeType, tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
   try {
@@ -690,6 +710,10 @@ function analisarCartaOposicaoTaxaNegocialIA(base64, nomeArquivo, mimeType, toke
  *   escolaEmail, escolaUnidade, motivo, cartaBase64, cartaTipo,
  *   confirmarDuplicata }
  */
+// SEM trava de modulo: o botao que dispara esta funcao fica na tela de
+// OFICIOS (Documentos), onde a pessoa trabalha, embora o registro gravado
+// seja de Sindicalizacao. Exigir o modulo aqui deixaria um botao visivel
+// que da erro ao clicar. Sessao continua exigida.
 function confirmarOposicaoTaxaNegocialIA(dados, tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
   dados = dados || {};

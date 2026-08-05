@@ -12,6 +12,8 @@
 /* ─────────────────────────────────────────────────────────────────
    FUNÇÃO PRINCIPAL — uma chamada, contexto completo
 ───────────────────────────────────────────────────────────────── */
+// SEM trava de modulo: alimenta a tela Inicio (InicioResumo.gs), que
+// todo usuario abre. Sessao continua exigida.
 function getCockpit(tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
   try {
@@ -303,7 +305,7 @@ function getCockpitGreeting_(usuario, resumoDia) {
    INVALIDAR CACHE (chamado após arquivar/responder e-mail)
 ───────────────────────────────────────────────────────────────── */
 function cockpitInvalidarCache(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "comunicacao", false);
   try {
     CacheService.getScriptCache().remove("cockpit_emails_inbox_v1");
     return { ok: true };

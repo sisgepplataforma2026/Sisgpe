@@ -15,7 +15,7 @@
    EXCLUIR RECIBO DO HISTÓRICO
 ───────────────────────────────────────────────────────────── */
 function excluirReciboHistorico(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, true);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", true);
   try {
     garantirEstruturaModuloRecibos_();
 
@@ -63,7 +63,7 @@ function excluirReciboHistorico(dados, tokenSessao) {
    MARCAR RECIBO COMO ASSINADO
 ───────────────────────────────────────────────────────────── */
 function marcarReciboComoAssinado(numeroRecibo, observacao, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "documentos", false);
   try {
     garantirEstruturaModuloRecibos_();
 
@@ -112,7 +112,7 @@ function marcarReciboAssinadoRecebido(numeroRecibo, observacao, tokenSessao) {
    EDITAR BENEFICIÁRIO DO RECIBO
 ───────────────────────────────────────────────────────────── */
 function editarBeneficiarioRecibo(numeroRecibo, dadosAtualizados, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "documentos", false);
   try {
     garantirEstruturaModuloRecibos_();
 
@@ -165,7 +165,7 @@ function editarBeneficiarioRecibo(numeroRecibo, dadosAtualizados, tokenSessao) {
    ✅ Paginação: pagina, porPagina
 ───────────────────────────────────────────────────────────── */
 function listarHistoricoRecibos(filtros, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     garantirEstruturaModuloRecibos_();
 
@@ -313,7 +313,7 @@ function listarHistoricoRecibos(filtros, tokenSessao) {
    ✅ Usado pelos cards de resumo no topo da aba Histórico
 ───────────────────────────────────────────────────────────── */
 function obterResumoHistoricoRecibos(tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     garantirEstruturaModuloRecibos_();
 
@@ -396,7 +396,7 @@ function obterResumoHistoricoRecibos(tokenSessao) {
    ✅ Chamado pelo botão de reenvio na tabela do histórico
 ───────────────────────────────────────────────────────────── */
 function reenviarEmailRecibo(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     dados = dados || {};
 
@@ -485,6 +485,6 @@ function rh_atualizarStatusEmailRecibo_(numero, novoStatus) {
    Mantido caso algo chame o nome antigo
 ───────────────────────────────────────────────────────────── */
 function listarHistoricoRecibosAvancado(filtros, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   return listarHistoricoRecibos(filtros, tokenSessao);
 }

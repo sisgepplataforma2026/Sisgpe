@@ -13,6 +13,8 @@
 // 4. Manter fallback seguro com zeros, sem valores fictícios.
 // ============================================================================
 
+// SEM trava de modulo: alimenta a tela Inicio (InicioResumo.gs).
+// Sessao continua exigida.
 function getDashboardOficiosData(filtros, tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
   filtros = filtros || {};

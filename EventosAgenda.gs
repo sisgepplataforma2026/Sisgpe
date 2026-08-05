@@ -45,7 +45,7 @@ function agendaEventos_formatarData_(v) {
  * LISTAR
  * ========================================= */
 function listarEventosAgenda(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "eventos", false);
   try {
     var sh = agendaEventos_garantirEstrutura_();
     if (sh.getLastRow() < 2) return [];
@@ -77,7 +77,7 @@ function listarEventosAgenda(tokenSessao) {
  * SALVAR (cria ou atualiza)
  * ========================================= */
 function salvarEventoAgenda(dados, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "eventos", false);
   try {
     dados = dados || {};
     var nome = String(dados.nome || "").trim();
@@ -122,7 +122,7 @@ function salvarEventoAgenda(dados, tokenSessao) {
  * EXCLUIR
  * ========================================= */
 function excluirEventoAgenda(id, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "eventos", false);
   try {
     id = String(id || "").trim();
     if (!id) return { ok: false, mensagem: "Informe o evento a excluir." };

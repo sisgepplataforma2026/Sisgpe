@@ -19,7 +19,7 @@ function abrirPainelEmissaoEventos() {
 
 // --- funções chamadas pela tela (google.script.run) — exigem sessão SISGEP ---
 function painelEmissao_status(tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "eventos", false);
   var c = emissao_lerContador_();
   return { limite: c.limite, usadas: c.vagasUsadas, restantes: c.limite - c.vagasUsadas,
            ultimoNumero: c.ultimoNumero, modoTeste: emissao_modoTeste_(),
@@ -27,14 +27,14 @@ function painelEmissao_status(tokenSessao) {
 }
 
 function painelEmissao_buscar(termo, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "eventos", false);
   return emissao_buscarAssociado(termo);
 }
 
 // O operador vem da sessão validada, nunca do que o cliente envie —
 // antes era um campo de texto livre, agora é sempre quem está logado.
 function painelEmissao_emitirGrupo(itens, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "eventos", false);
   var operador = sessao.nome || sessao.usuario || 'SISGEP';
   var resultados = [];
   for (var i = 0; i < itens.length; i++) {

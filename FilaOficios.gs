@@ -478,7 +478,7 @@ function processarFilaEnvioOficios() {
   };
 }
 function enviarOficioDaFilaAgora(numero, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   if (!numero) return { ok: false, mensagem: "Número do ofício não informado." };
 
   var ss = SpreadsheetApp.openById(PLANILHA_ID);

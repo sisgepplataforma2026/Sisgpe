@@ -5,7 +5,7 @@
 
 /* ── Histórico — alias de compatibilidade ── */
 function listarHistorico(filtros, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   if (typeof listarHistoricoOficios === "function") {
     return listarHistoricoOficios(filtros || {}, tokenSessao);
   }
@@ -14,7 +14,7 @@ function listarHistorico(filtros, tokenSessao) {
 
 /* ── Exportar Relatório de Ofícios ── */
 function exportarRelatorio(filtros, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   filtros = filtros || {};
   var tipoExportacao = filtros.tipoExportacao || "excel";
   var dataInicio     = filtros.dataInicio ? new Date(filtros.dataInicio + "T00:00:00") : null;
@@ -70,7 +70,7 @@ function exportarRelatorio(filtros, tokenSessao) {
 
 /* ── Exportar Auditoria (LOG_SISTEMA) ── */
 function exportarAuditoriaLog(filtros, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   filtros = filtros || {};
   var tipoExportacao = filtros.tipoExportacao || "excel";
   var dataInicio     = filtros.dataInicio ? new Date(filtros.dataInicio + "T00:00:00") : null;
@@ -163,7 +163,7 @@ function listarEscolasOficios() {
 
 /* ── salvarEscolaOficio ── */
 function salvarEscolaOficio(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, true);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", true);
   dados = dados || {};
 
   var ss = SpreadsheetApp.openById(PLANILHA_ID);
@@ -253,7 +253,7 @@ function relOficios_exportarPlanilhaTemporaria_(planilhaTemp, nomeArquivo, tipoE
 
 /* ── registrarOficioGerado ── */
 function registrarOficioGerado(payload, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   payload = payload || {};
 
   var escola        = payload.escola || {};

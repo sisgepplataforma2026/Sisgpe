@@ -54,7 +54,7 @@ function finAudRegistrarAlteracaoValor_(modulo, idRegistro, valorAnterior, valor
  * uma futura tela de consulta — por enquanto só a função de leitura, sem UI.
  */
 function finAudListarAlteracoesValor(tokenSessao, modulo) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     var sh = finAudObterAba_();
     if (sh.getLastRow() < 2) return [];

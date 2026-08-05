@@ -442,8 +442,10 @@ function montarDadosOficio_(dados, modo) {
   };
 }
 
+// SEM trava de modulo: mesma razao de gerarOficioWeb — a Sindicalizacao
+// monta a previa do oficio de filiacao por aqui. Sessao continua exigida.
 function previewOficioWeb(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
   Logger.log("✅ previewOficioWeb — " + new Date());
   try {
     var proc       = montarDadosOficio_(dados, "preview");
@@ -474,8 +476,12 @@ function previewOficioWeb(dados, tokenSessao) {
   }
 }
 
+// SEM trava de modulo: a Sindicalizacao gera o oficio de filiacao e de
+// desfiliacao por aqui (SindicalizacaoOficio.gs e a leitura por IA).
+// Exigir Documentos quebraria a filiacao de quem so tem Sindicalizacao.
+// Sessao continua exigida.
 function gerarOficioWeb(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
   try {
     var emailUsuario = String(sessaoDocumentos.email || sessaoDocumentos.usuario || "").trim().toLowerCase();
     if (!dados || typeof dados !== "object") throw new Error("Dados inválidos.");
@@ -935,7 +941,7 @@ function validarPublico(codigo) {
 /* ================= EXCLUIR REGISTROS ================= */
 
 function excluirRegistroOficio(numero, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, true);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", true);
   try {
     var ss        = SpreadsheetApp.openById(PLANILHA_ID);
     var excluidos = 0;
@@ -989,7 +995,7 @@ function excluirRegistroOficio(numero, tokenSessao) {
 }
 
 function excluirRegistrosOficio(numeros, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, true);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", true);
   try {
     if (!Array.isArray(numeros) || !numeros.length) return { ok: false, mensagem: "Nenhum número informado." };
 

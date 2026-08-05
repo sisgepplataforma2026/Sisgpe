@@ -206,7 +206,7 @@ function pagValorBR_(n) {
  * depois, em pagConfirmarPagamento.
  */
 function pagLancarNoBanco(payload, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "financeiro", false);
   var lock = LockService.getScriptLock();
   try {
     if (!lock.tryLock(15000)) return { ok: false, mensagem: "Sistema ocupado, tente novamente em instantes." };
@@ -260,7 +260,7 @@ function pagLancarNoBanco(payload, tokenSessao) {
  * tipo de coisa que o Conselho Fiscal pergunta depois.
  */
 function pagDesfazerLancamentoBanco(payload, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "financeiro", false);
   var lock = LockService.getScriptLock();
   try {
     if (!lock.tryLock(15000)) return { ok: false, mensagem: "Sistema ocupado, tente novamente em instantes." };
@@ -323,7 +323,7 @@ function pagDesfazerLancamentoBanco(payload, tokenSessao) {
  * alguém anexar — cobra sem bloquear o trabalho.
  */
 function pagConfirmarPagamento(payload, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "financeiro", false);
   var lock = LockService.getScriptLock();
   try {
     if (!lock.tryLock(15000)) return { ok: false, mensagem: "Sistema ocupado, tente novamente em instantes." };
@@ -404,7 +404,7 @@ function pagConfirmarPagamento(payload, tokenSessao) {
  * antes, anexar o comprovante apagaria a nota sem avisar ninguém.
  */
 function pagAnexarComprovante(payload, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "financeiro", false);
   try {
     payload = payload || {};
     var idDespesa = String(payload.idDespesa || "").trim();
@@ -475,7 +475,7 @@ function pagAnexarComprovante(payload, tokenSessao) {
  * detalhado continua disponível no campo statusOriginal.
  */
 function pagListarControle(filtros, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     filtros = filtros || {};
     pagGarantirColunas_();
@@ -565,7 +565,7 @@ function pagListarControle(filtros, tokenSessao) {
 }
 
 function pagResumoControle(competencia, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     var r = pagListarControle({ competencia: competencia }, tokenSessao);
     if (!r.ok) return r;
@@ -600,7 +600,7 @@ function pagResumoControle(competencia, tokenSessao) {
 
 /** Trilha completa de uma despesa, mais recente primeiro. */
 function pagHistoricoDespesa(idDespesa, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     idDespesa = String(idDespesa || "").trim();
     if (!idDespesa) return { ok: false, mensagem: "Despesa não informada.", historico: [] };
@@ -638,7 +638,7 @@ function pagHistoricoDespesa(idDespesa, tokenSessao) {
 
 /** Trilha do mês inteiro — é o extrato que o Conselho Fiscal pede. */
 function pagHistoricoCompetencia(competencia, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     var sh = pagGarantirLog_();
     if (sh.getLastRow() < 2) return { ok: true, historico: [] };
@@ -670,7 +670,7 @@ function pagHistoricoCompetencia(competencia, tokenSessao) {
 
 /** Competências que existem na base, para o seletor de mês da tela. */
 function pagListarCompetencias(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     var res = listarDespesas_interno_({});
     var vistas = {};

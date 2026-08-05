@@ -142,7 +142,7 @@ function verbListarDiretores_interno_() {
 }
 
 function verbListarDiretores(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     return { ok: true, diretores: verbListarDiretores_interno_() };
   } catch (e) {
@@ -152,7 +152,7 @@ function verbListarDiretores(tokenSessao) {
 
 /** Cria ou atualiza. ID vazio = novo. */
 function verbSalvarDiretor(dados, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "financeiro", false);
   var lock = LockService.getScriptLock();
   try {
     if (!lock.tryLock(15000)) return { ok: false, mensagem: "Sistema ocupado, tente novamente em instantes." };
@@ -219,7 +219,7 @@ function verbSalvarDiretor(dados, tokenSessao) {
  * inativar tira das próximas gerações sem apagar o passado.
  */
 function verbAlternarDiretor(id, ativo, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "financeiro", false);
   try {
     id = String(id || "").trim();
     if (!id) return { ok: false, mensagem: "Diretor não informado." };
@@ -258,7 +258,7 @@ function verbGeradasDaCompetencia_(competencia) {
 
 /** Prévia — mostra quem entra, quanto e o que já foi gerado. Não grava. */
 function verbPreviaCompetencia(competencia, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     competencia = String(competencia || "").trim();
     if (!verbCompetenciaValida_(competencia)) return { ok: false, mensagem: "Informe a competência no formato AAAA-MM." };
@@ -298,7 +298,7 @@ function verbPreviaCompetencia(competencia, tokenSessao) {
  * competência é PULADO, nunca duplicado.
  */
 function verbGerarCompetencia(competencia, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "financeiro", false);
   var lock = LockService.getScriptLock();
   var resultado;
   try {
@@ -395,7 +395,7 @@ function verbGerarCompetencia(competencia, tokenSessao) {
 
 /** Histórico do que já foi gerado, para conferência. */
 function verbHistoricoGeracoes(competencia, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     var sh = verbGarantirGeradas_();
     if (sh.getLastRow() < 2) return { ok: true, historico: [] };

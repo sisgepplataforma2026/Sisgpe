@@ -70,7 +70,7 @@ function atualizarStatusProtocolo_(protocolo, status, responsavel, observacao) {
 }
 
 function solicitarComplementacaoVoucher(protocolo, obs, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     const item = buscarSolicitacaoPorProtocolo_(protocolo);
     if (!item) return { ok: false, mensagem: "Solicitação não encontrada." };
@@ -100,7 +100,7 @@ function solicitarComplementacaoVoucher(protocolo, obs, tokenSessao) {
 }
 
 function confirmarAssociacaoVoucher(protocolo, obs, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     const item = buscarSolicitacaoPorProtocolo_(protocolo);
     if (!item) return { ok: false, mensagem: "Solicitação não encontrada." };
@@ -139,7 +139,7 @@ function confirmarAssociacaoVoucher(protocolo, obs, tokenSessao) {
 }
 
 function marcarNaoAssociadoVoucher(protocolo, obs, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     const item = buscarSolicitacaoPorProtocolo_(protocolo);
     if (!item) return { ok: false, mensagem: "Solicitação não encontrada." };
@@ -181,7 +181,7 @@ function marcarNaoAssociadoVoucher(protocolo, obs, tokenSessao) {
 }
 
 function aprovarSolicitacaoVoucher(protocolo, obs, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     const item = buscarSolicitacaoPorProtocolo_(protocolo);
     if (!item) return { ok: false, mensagem: "Solicitação não encontrada." };
@@ -224,7 +224,7 @@ function aprovarSolicitacaoVoucher(protocolo, obs, tokenSessao) {
 }
 
 function indeferirSolicitacaoVoucher(protocolo, obs, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     const item = buscarSolicitacaoPorProtocolo_(protocolo);
     if (!item) return { ok: false, mensagem: "Solicitação não encontrada." };

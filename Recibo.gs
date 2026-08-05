@@ -333,7 +333,7 @@ function gerarNumeroReciboSeguro() {
 
 /* ================= CONFIG RECIBO ================= */
 function buscarConfigRecibo(tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   const sheet = SpreadsheetApp
     .openById(PLANILHA_ID)
     .getSheetByName("CONFIG");
@@ -894,7 +894,7 @@ function normalizarBeneficiarioEntradaRecibo_(b, idx, exigirPagamento) {
 }
 /* ================= SALVAR / ABRIR LOTE ================= */
 function salvarLoteRecibo(dados, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "documentos", false);
   try {
     const emailUsuario = obterEmailUsuarioAtual_() || "usuario@sisgep.local";
 
@@ -992,7 +992,7 @@ function salvarLoteRecibo(dados, tokenSessao) {
 }
 
 function abrirLoteRecibo(idProcessoOuProcesso, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     const retorno = buscarDadosProcessoRecibo(idProcessoOuProcesso, tokenSessao);
 
@@ -1023,7 +1023,7 @@ function abrirLoteRecibo(idProcessoOuProcesso, tokenSessao) {
 }
 
 function buscarCadastroBeneficiarioRecibo(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     garantirEstruturaModuloRecibos_();
 
@@ -1141,7 +1141,7 @@ function buscarCadastroBeneficiarioRecibo(dados, tokenSessao) {
 }
 /* ================= LISTAR ================= */
 function listarProcessosRecibo(tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     const emailUsuario = String(sessaoDocumentos.email || sessaoDocumentos.usuario || "").trim().toLowerCase();
 
@@ -1310,7 +1310,7 @@ function listarBeneficiariosPorProcessoRecibo(idProcesso) {
 
 /* ================= CADASTRAR PROCESSO ================= */
 function cadastrarNovoProcessoRecibo(dados, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "documentos", false);
   const emailUsuario = obterEmailUsuarioAtual_();
 
   if (!emailUsuario) {
@@ -1419,7 +1419,7 @@ function cadastrarNovoProcessoRecibo(dados, tokenSessao) {
 
 /* ================= EXCLUIR PROCESSO ================= */
 function excluirProcessoRecibo(idProcesso, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, true);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", true);
   try {
     garantirEstruturaModuloRecibos_();
 
@@ -1732,7 +1732,7 @@ function montarMensagemEmailReciboSimples_(dados) {
 }
 
 function enviarReciboManualPorEmail(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     dados = dados || {};
 
@@ -1840,7 +1840,7 @@ function enviarReciboManualPorEmail(dados, tokenSessao) {
 }
 
 function gerarReciboWeb(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     const emailUsuario = String(sessaoDocumentos.email || sessaoDocumentos.usuario || "").trim().toLowerCase();
     garantirEstruturaModuloRecibos_();
@@ -2224,7 +2224,7 @@ const gerado = gerarPDFRecibo({
   }
 }
 function previewReciboWeb(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   dados = dados || {};
   const cfg = buscarConfigRecibo(tokenSessao);
 
@@ -2351,7 +2351,7 @@ const textoPgto = forma === "CHEQUE"
 }
 /* ================= BUSCAR PROCESSO ================= */
 function buscarProcessoReciboPorNumero(processo, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   garantirEstruturaModuloRecibos_();
 
   const alvo = String(processo || "").trim();
@@ -2365,7 +2365,7 @@ function buscarProcessoReciboPorNumero(processo, tokenSessao) {
 
 /* ================= BUSCAR DADOS PROCESSO ================= */
 function buscarDadosProcessoRecibo(processoOuId, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     const emailUsuario = String(sessaoDocumentos.email || sessaoDocumentos.usuario || "").trim().toLowerCase();
 
@@ -3086,7 +3086,7 @@ function importarBeneficiariosReciboDaPlanilha(planilhaId, nomeAba, processoFilt
 }
 
 function importarBeneficiariosReciboDaAbaImportacao(processoFiltro, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   return importarBeneficiariosReciboDaPlanilha(
     PLANILHA_ID,
     "IMPORTAR_RECIBOS",
@@ -3095,7 +3095,7 @@ function importarBeneficiariosReciboDaAbaImportacao(processoFiltro, tokenSessao)
 }
 /* ================= E-MAIL INDIVIDUAL SIMPLES ================= */
 function enviarReciboIndividual(dados, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "documentos", false);
   try {
     dados = dados || {};
 
@@ -3555,7 +3555,7 @@ function validarSomaBeneficiarios_(beneficiarios, valorTotalAlvara) {
 
 /* ================= IMPORTAÇÃO AUTOMÁTICA ================= */
 function importarDocumentosEGerarPlanilha(payload, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     payload = payload || {};
 
@@ -3723,7 +3723,7 @@ function importarDocumentosEGerarPlanilha(payload, tokenSessao) {
 }
 
 function importarAlvaraPDF(payload, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "documentos", false);
   try {
     payload = payload || {};
 
@@ -3782,7 +3782,7 @@ function importarAlvaraPDF(payload, tokenSessao) {
 
 /* ================= WHATSAPP ================= */
 function atualizarStatusWhatsappRecibo(numeroRecibo, novoStatus, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     garantirEstruturaModuloRecibos_();
 
@@ -3855,7 +3855,7 @@ function atualizarStatusWhatsappRecibo(numeroRecibo, novoStatus, tokenSessao) {
 
 /* ================= RESUMO FINANCEIRO ================= */
 function obterResumoFinanceiroProcesso(idProcesso, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     garantirEstruturaModuloRecibos_();
 
@@ -3981,7 +3981,7 @@ function obterResumoFinanceiroProcesso(idProcesso, tokenSessao) {
 
 /* ================= EDITAR PROCESSO ================= */
 function editarProcessoRecibo(dados, tokenSessao) {
-  var sessaoEdicao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoEdicao = exigirModulo_(tokenSessao, "documentos", false);
   try {
     dados = dados || {};
 
@@ -4186,7 +4186,7 @@ function registrarBeneficiariosEmLote_(listaDeDados) {
   sh.getRange(sh.getLastRow() + 1, 1, matriz.length, headers.length).setValues(matriz);
 }
 function buscarBeneficiariosReciboPorEmpresa(empresaBusca, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   return buscarBeneficiariosPorEmpresa(empresaBusca);
 }
 function testarListarProcessos() {
@@ -4868,7 +4868,7 @@ function registrarProgressoGeracao_(progresso) {
 }
 
 function obterProgressoGeracao(tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     var val = PropertiesService.getScriptProperties().getProperty('sisgep_progresso_recibo');
     if (!val) return { status:"idle", atual:0, total:0, ultimo:"", concluido:false };

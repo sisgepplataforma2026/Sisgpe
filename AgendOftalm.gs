@@ -264,7 +264,7 @@ function validarCPF(cpf) {
 
 function validarAssociadoOftalmo(cpf, tokenSessao) {
 
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "beneficios", false);
 
   try {
 
@@ -366,7 +366,7 @@ function validarAssociadoOftalmo(cpf, tokenSessao) {
 
 function listarHorariosOftalmo(dataStr, tokenSessao) {
 
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "beneficios", false);
 
   try {
 
@@ -521,7 +521,7 @@ function listarHorariosOftalmo(dataStr, tokenSessao) {
 
 function reservarHorarioOftalmo(dados, tokenSessao) {
 
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "beneficios", false);
 
   var lock = LockService.getScriptLock();
 
@@ -630,7 +630,7 @@ function obterDataLiberadaOftalmo() {
 }
 
 function definirDataLiberadaOftalmo(dataStr, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "beneficios", false);
   dataStr = String(dataStr || '').trim();
   if (dataStr && !/^\d{2}\/\d{2}\/\d{4}$/.test(dataStr)) {
     return { ok: false, erro: 'Data inválida. Use o formato dd/mm/aaaa.' };
@@ -793,7 +793,7 @@ function reservarHorarioOftalmoPublico(dados) {
    CANCELAR
 ========================================================= */
 function cancelarHorarioOftalmo(id, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     var aba   = obterAbaOftalmo_();
     var dados = aba.getDataRange().getValues();
@@ -817,7 +817,7 @@ function cancelarHorarioOftalmo(id, tokenSessao) {
    MARCAR COMPARECEU
 ========================================================= */
 function marcarCompareceuOftalmo(id, compareceu, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     var aba   = obterAbaOftalmo_();
     var dados = aba.getDataRange().getValues();
@@ -849,7 +849,7 @@ function marcarCompareceuOftalmo(id, compareceu, tokenSessao) {
    ENVIAR E-MAIL DE CONFIRMAÇÃO
 ========================================================= */
 function enviarEmailConfirmacaoOftalmo(dados, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     var email = String(dados.email || '').trim();
     if (!email) return { ok: false, erro: 'E-mail não informado.' };
@@ -946,7 +946,7 @@ function enviarEmailConfirmacaoOftalmo(dados, tokenSessao) {
    BUSCAR HISTÓRICO
 ========================================================= */
 function buscarAgendamentosOftalmo(filtros, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     var aba       = obterAbaOftalmo_();
     var dados     = aba.getDataRange().getValues();
@@ -993,7 +993,7 @@ function buscarAgendamentosOftalmo(filtros, tokenSessao) {
    ENVIAR RELATÓRIO DA AGENDA DO DIA
 ========================================================= */
 function enviarRelatorioAgendaOftalmo(dados, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     var emailClinica = PropertiesService.getScriptProperties()
       .getProperty('EMAIL_CLINICA_OFTALMO') || '';
@@ -1338,7 +1338,7 @@ function normalizarBuscaOftalmo_(valor) {
    EXCLUIR AGENDAMENTO DEFINITIVAMENTE
 ========================================================= */
 function excluirAgendamentoOftalmo(id, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, true);
+  exigirModulo_(tokenSessao, "beneficios", true);
   var lock = LockService.getScriptLock();
 
   try {

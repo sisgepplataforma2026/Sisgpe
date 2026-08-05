@@ -213,7 +213,7 @@ function conc_sugerir_(mov, despesas) {
  * data+valor+descrição quando é texto.
  */
 function conc_importarExtrato(payload, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
 
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(20000)) return { ok: false, mensagem: "Sistema ocupado, tente novamente em instantes." };
@@ -292,7 +292,7 @@ function conc_importarExtrato(payload, tokenSessao) {
 /* ================= LEITURA ================= */
 
 function conc_listar(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   var sh = conc_aba_();
   if (sh.getLastRow() < 2) return { ok: true, itens: [], resumo: conc_resumoVazio_() };
 
@@ -347,7 +347,7 @@ function conc_resumoVazio_() {
  * não pode ficar "conciliado" de um lado e "em aberto" do outro.
  */
 function conc_conciliar(payload, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
 
   try {
     payload = payload || {};
@@ -420,7 +420,7 @@ function conc_conciliar(payload, tokenSessao) {
 
 /** Marca como ignorado (tarifa, transferência interna, movimento que não é despesa). */
 function conc_ignorar(payload, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     var id = String((payload || {}).id || "").trim();
     if (!id) return { ok: false, mensagem: "Movimento não informado." };
@@ -445,7 +445,7 @@ function conc_ignorar(payload, tokenSessao) {
  * com motivo obrigatório e auditoria própria. Aqui só se desfaz o vínculo.
  */
 function conc_desfazer(payload, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     var id = String((payload || {}).id || "").trim();
     if (!id) return { ok: false, mensagem: "Movimento não informado." };
@@ -470,7 +470,7 @@ function conc_desfazer(payload, tokenSessao) {
 
 /** Despesas em aberto, para o seletor de vínculo manual da tela. */
 function conc_despesasEmAberto(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   var r = listarDespesas_interno_({ ocultarPagos: true, ocultarCancelados: true });
   return ((r && r.lista) || []).map(function (d) {
     return {

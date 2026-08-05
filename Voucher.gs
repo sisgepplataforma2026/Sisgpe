@@ -1046,7 +1046,7 @@ function listarSolicitacoesVoucher() {
 }
 
 function listarSolicitacoesCertBolsa(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "beneficios", false);
   return listarSolicitacoesVoucher();
 }
 

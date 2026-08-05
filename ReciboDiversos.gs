@@ -321,7 +321,7 @@ function rdRegistrarHistorico_(dados, numero, linkPdf, statusEmail) {
    PREVIEW
 ═══════════════════════════════════════ */
 function previewReciboDiverso(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   dados = dados || {};
 
   if (!dados.pagadorNome) throw new Error("Informe o nome do beneficiário.");
@@ -339,7 +339,7 @@ function previewReciboDiverso(dados, tokenSessao) {
    GERAR RECIBO DIVERSO INDIVIDUAL
 ═══════════════════════════════════════ */
 function gerarReciboDiverso(dados, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "documentos", false);
   try {
     dados = dados || {};
 
@@ -410,7 +410,7 @@ function gerarReciboDiverso(dados, tokenSessao) {
    GERAR LOTE DE RECIBOS DIVERSOS
 ═══════════════════════════════════════ */
 function gerarLoteReciboDiversos(lista, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "documentos", false);
   try {
     if (!Array.isArray(lista) || !lista.length) {
       return { erro: true, mensagem: "Lista de beneficiários vazia." };
@@ -544,7 +544,7 @@ function rdEnviarEmailIndividual_(dados, numero, urlPdf, blobPdf) {
    MARCAR RECIBO COMO ASSINADO
 ═══════════════════════════════════════ */
 function marcarReciboDiversoAssinado(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     dados = dados || {};
 
@@ -591,7 +591,7 @@ function marcarReciboDiversoAssinado(dados, tokenSessao) {
    SALVAR ANEXO ASSINADO (base64 → Drive)
 ═══════════════════════════════════════ */
 function salvarAnexoAssinadoDiverso(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     dados = dados || {};
 
@@ -643,7 +643,7 @@ function salvarAnexoAssinadoDiverso(dados, tokenSessao) {
    SALVAR LINK ASSINADO (colar link Drive)
 ═══════════════════════════════════════ */
 function salvarLinkAssinadoDiverso(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     dados = dados || {};
 
@@ -687,7 +687,7 @@ function rdSalvarLinkAssinado_(numero, link) {
    ENVIAR PARA CONTABILIDADE (com assinado)
 ═══════════════════════════════════════ */
 function enviarReciboDiversoContabilidade(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     dados = dados || {};
 
@@ -807,7 +807,7 @@ function rdAtualizarStatusContabilidade_(numero, novoStatus) {
    REENVIAR E-MAIL DO HISTÓRICO
 ═══════════════════════════════════════ */
 function reenviarEmailReciboDiverso(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     dados = dados || {};
 
@@ -877,7 +877,7 @@ function rdAtualizarStatusEmail_(numero, novoStatus) {
    Retorna campos de assinatura e contabilidade
 ═══════════════════════════════════════ */
 function listarHistoricoReciboDiversos(filtros, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     garantirEstruturaReciboDiversos_();
 
@@ -999,7 +999,7 @@ function listarHistoricoReciboDiversos(filtros, tokenSessao) {
    EXCLUIR DO HISTÓRICO
 ═══════════════════════════════════════ */
 function excluirReciboDiverso(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, true);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", true);
   try {
     var numero = String((dados && dados.numero) || "").trim();
     if (!numero) return { ok: false, mensagem: "Número não informado." };
