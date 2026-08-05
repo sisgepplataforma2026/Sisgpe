@@ -2,6 +2,10 @@
 
 Projeto Google Apps Script (single global scope — arquivos `.gs`/`.html` sem import, tudo em `google.script.run`/`include()`). Branch de trabalho padrão: `claude/sisgep-project-analysis-h9wcy3`.
 
+**Prompt mestre de arquitetura, auditoria e testes: `docs/PROMPT-MESTRE.md`.** É documento normativo, definido pelo usuário e mandado seguir à risca — ler antes de auditar, analisar ou reorganizar qualquer módulo. Em conflito, as regras de segurança abaixo prevalecem sobre ele, porque o sistema está em produção com dado real de associado e de dinheiro.
+
+**Acesso que eu tenho:** só o repositório GitHub. Não tenho o projeto Apps Script, a planilha de produção nem o Drive de trabalho. O conector do Google Drive lê metadado (dá para listar o projeto `SISGEP-OFICIOS`), mas **não lê o código-fonte** de projeto Apps Script — esse MIME type não é suportado. Portanto: toda afirmação sobre o que está no ar depende de o usuário confirmar.
+
 ## 🚨 REGRA Nº -1 — LER CÓDIGO NÃO É TESTAR. NADA É "PRONTO" SEM EXECUÇÃO
 
 Vale para toda resposta, todo relatório, toda auditoria e todo commit. Vem antes de qualquer outra regra porque é a que decide se as outras respostas são confiáveis.
