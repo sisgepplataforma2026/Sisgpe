@@ -1,0 +1,574 @@
+<!--
+  ARQUIVO: RHEventosAdmin.html
+  MÓDULO: RH — aba "Eventos" (13º salário, férias e rescisão)
+
+  Incluído DENTRO de RHAdmin.html (<?!= include('RHEventosAdmin'); ?>),
+  como painel da 5ª aba. Por isso não repete <style>: reaproveita as
+  classes .rh-* já declaradas em RHAdmin.html e os tokens do design
+  system (OficiosStyles.html). Toda a lógica vive numa IIFE própria
+  para não colidir com a IIFE da tela principal do RH — as funções
+  expostas em window são todas prefixadas com "rhEv".
+
+  Fluxo em 2 passos, igual ao da folha mensal: PRÉVIA (o servidor
+  calcula e devolve a memória de cálculo, sem gravar nada) e depois
+  CONFIRMAÇÃO (o servidor recalcula do zero e grava). A tela nunca
+  manda valor calculado no cliente — só os parâmetros.
+-->
+
+<div class="rh-panel">
+  <div class="rh-panel-head">
+    <div>
+      <div class="rh-panel-title">Eventos trabalhistas</div>
+      <div class="rh-mini">13º salário, férias e rescisão — o que não cabe na folha mensal. O sistema calcula, mostra a memória de cálculo e guarda o recibo.</div>
+    </div>
+    <div class="rh-actions">
+      <div class="rh-field" style="min-width:120px;"><label>Ano</label><input id="rhEvAno" type="number" min="2000" max="2100" step="1"></div>
+      <button class="rh-btn" onclick="rhEvCarregar()">🔄 Atualizar</button>
+      <button class="rh-btn" onclick="rhEvExportarCSV()">Exportar CSV</button>
+    </div>
+  </div>
+
+  <div class="rh-alerta">
+    ⚖️ <b>Isto é uma calculadora, não é o contador.</b> O SISGEP calcula pelas regras da CLT e pelas tabelas de INSS/IRRF cadastradas na aba <b>Config. Tributária</b>, e guarda a memória de cálculo — mas <b>não</b> emite TRCT homologado nem transmite eSocial/FGTS Digital. Confira cada evento com o contador antes de pagar.
+  </div>
+
+  <div class="rh-totalbar">
+    <div class="rh-total"><small>Lançamentos no ano</small><strong id="rhEvQtd">0</strong></div>
+    <div class="rh-total"><small>Bruto</small><strong id="rhEvBruto">R$ 0,00</strong></div>
+    <div class="rh-total"><small>Líquido pago</small><strong id="rhEvLiquido">R$ 0,00</strong></div>
+    <div class="rh-total"><small>Custo total (com FGTS)</small><strong id="rhEvCusto">R$ 0,00</strong></div>
+  </div>
+</div>
+
+<!-- ============ NOVO LANÇAMENTO ============ -->
+<div class="rh-panel">
+  <div class="rh-panel-head">
+    <div>
+      <div class="rh-panel-title">Novo lançamento</div>
+      <div class="rh-mini">Escolha o tipo e o colaborador — o sistema já sugere a base de cálculo e os avos. Revise antes de confirmar.</div>
+    </div>
+  </div>
+
+  <div class="rh-form">
+    <div class="rh-field">
+      <label>Tipo de evento</label>
+      <select id="rhEvTipo" onchange="rhEvTrocarTipo()">
+        <option value="13_1PARCELA">13º salário — 1ª parcela (adiantamento)</option>
+        <option value="13_2PARCELA">13º salário — 2ª parcela</option>
+        <option value="FERIAS">Férias</option>
+        <option value="RESCISAO">Rescisão de contrato</option>
+      </select>
+    </div>
+    <div class="rh-field">
+      <label>Colaborador</label>
+      <select id="rhEvColaborador" onchange="rhEvCarregarContexto()"><option value="">Selecione...</option></select>
+    </div>
+    <div class="rh-field">
+      <label>Base de cálculo (R$)</label>
+      <input id="rhEvBase" inputmode="decimal" placeholder="0,00">
+      <div class="rh-mini" id="rhEvBaseHint">Sugerida: salário-base + rubricas fixas ativas. Ajuste se houver média de variáveis.</div>
+    </div>
+    <div class="rh-field">
+      <label>Dependentes (IRRF)</label>
+      <input id="rhEvDependentes" type="number" min="0" step="1" placeholder="0">
+    </div>
+  </div>
+
+  <!-- Campos específicos do 13º -->
+  <div class="rh-form rhEvBloco" id="rhEvBloco13" style="display:none;">
+    <div class="rh-field"><label>Ano de referência</label><input id="rhEvAnoRef" type="number" min="2000" max="2100" step="1"></div>
+    <div class="rh-field">
+      <label>Avos (meses com 15+ dias)</label>
+      <input id="rhEvAvos" type="number" min="0" max="12" step="1">
+      <div class="rh-mini" id="rhEvAvosHint">Calculado pela data de admissão.</div>
+    </div>
+    <div class="rh-field"><label>Data do pagamento</label><input id="rhEvDataPagamento" type="date"></div>
+    <div class="rh-field" id="rhEvCampoAdiantamento" style="display:none;">
+      <label>Adiantamento já pago (1ª parcela)</label>
+      <input id="rhEvAdiantamento" inputmode="decimal" placeholder="0,00">
+      <div class="rh-mini" id="rhEvAdiantamentoHint">Preenchido com o que já foi lançado no ano.</div>
+    </div>
+  </div>
+
+  <!-- Campos específicos de férias -->
+  <div class="rh-form rhEvBloco" id="rhEvBlocoFerias" style="display:none;">
+    <div class="rh-field"><label>Período aquisitivo — início</label><input id="rhEvPeriodoInicio" type="date"></div>
+    <div class="rh-field"><label>Período aquisitivo — fim</label><input id="rhEvPeriodoFim" type="date"></div>
+    <div class="rh-field"><label>Início do gozo</label><input id="rhEvInicioGozo" type="date"></div>
+    <div class="rh-field">
+      <label>Dias de gozo</label>
+      <input id="rhEvDiasGozo" type="number" min="0" max="30" step="1" value="30">
+    </div>
+    <div class="rh-field">
+      <label>Dias vendidos (abono)</label>
+      <input id="rhEvDiasAbono" type="number" min="0" max="10" step="1" value="0">
+      <div class="rh-mini">Máximo 10 dias (1/3 do período) — art. 143 da CLT.</div>
+    </div>
+    <div class="rh-field">
+      <label>Adiantar o 13º junto?</label>
+      <select id="rhEvAdiantar13"><option value="">Não</option><option value="1">Sim — pagar a 1ª parcela do 13º com as férias</option></select>
+    </div>
+  </div>
+
+  <!-- Campos específicos de rescisão -->
+  <div class="rh-form rhEvBloco" id="rhEvBlocoRescisao" style="display:none;">
+    <div class="rh-field"><label>Data do desligamento</label><input id="rhEvDataDesligamento" type="date"></div>
+    <div class="rh-field">
+      <label>Motivo</label>
+      <select id="rhEvMotivo" onchange="rhEvTrocarMotivo()">
+        <option value="sem_justa_causa">Dispensa sem justa causa</option>
+        <option value="pedido_demissao">Pedido de demissão</option>
+        <option value="justa_causa">Dispensa por justa causa</option>
+        <option value="termino_contrato">Término de contrato por prazo determinado</option>
+      </select>
+    </div>
+    <div class="rh-field">
+      <label>Aviso prévio</label>
+      <!-- As opções são reescritas por rhEvTrocarMotivo() conforme o
+           motivo escolhido — o que faz sentido numa dispensa não faz
+           sentido num pedido de demissão. -->
+      <select id="rhEvAvisoPrevio">
+        <option value="indenizado">Indenizado (o sindicato paga)</option>
+        <option value="trabalhado">Trabalhado (entra na folha mensal)</option>
+      </select>
+      <div class="rh-mini" id="rhEvAvisoHint">—</div>
+    </div>
+    <div class="rh-field">
+      <label>Férias vencidas (períodos)</label>
+      <input id="rhEvFeriasVencidas" type="number" min="0" max="5" step="1" value="0">
+      <div class="rh-mini">Períodos aquisitivos completos que o colaborador não gozou.</div>
+    </div>
+    <div class="rh-field">
+      <label>Saldo do FGTS (extrato da Caixa)</label>
+      <input id="rhEvSaldoFgts" inputmode="decimal" placeholder="0,00">
+      <div class="rh-mini">Base da multa de 40%. Sem ele a multa sai só sobre o FGTS da rescisão.</div>
+    </div>
+  </div>
+
+  <div class="rh-form">
+    <div class="rh-field" style="flex:1;min-width:260px;"><label>Observação (aparece no recibo)</label><input id="rhEvObservacao" placeholder="Ex.: pago junto com a folha de novembro"></div>
+  </div>
+
+  <div style="padding:0 16px 14px;display:flex;gap:8px;flex-wrap:wrap;">
+    <button class="rh-btn primary" onclick="rhEvSimular()" id="btnRhEvSimular">1. Calcular prévia</button>
+    <button class="rh-btn" onclick="rhEvLimparForm()">Limpar</button>
+  </div>
+
+  <!-- Prévia -->
+  <div id="rhEvPreviaWrap" style="display:none;padding:0 16px 16px;">
+    <div class="rh-panel-title" style="margin-bottom:6px;">Memória de cálculo</div>
+    <div class="rh-table-wrap">
+      <table class="rh-table">
+        <thead><tr><th>Código</th><th>Descrição</th><th>Referência</th><th style="text-align:right;">Proventos</th><th style="text-align:right;">Descontos</th></tr></thead>
+        <tbody id="rhEvPreviaTabela"></tbody>
+      </table>
+    </div>
+    <div class="rh-totalbar" style="margin-top:10px;">
+      <div class="rh-total"><small>Proventos</small><strong id="rhEvPrevProventos">R$ 0,00</strong></div>
+      <div class="rh-total"><small>Descontos</small><strong id="rhEvPrevDescontos">R$ 0,00</strong></div>
+      <div class="rh-total"><small>FGTS</small><strong id="rhEvPrevFgts">R$ 0,00</strong></div>
+      <div class="rh-total"><small>Líquido a receber</small><strong id="rhEvPrevLiquido">R$ 0,00</strong></div>
+    </div>
+    <div id="rhEvPrevAvisos" style="margin-top:10px;"></div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="rh-btn primary" onclick="rhEvConfirmar()" id="btnRhEvConfirmar">2. Confirmar e gravar</button>
+      <button class="rh-btn" onclick="rhEvCancelarPrevia()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ HISTÓRICO ============ -->
+<div class="rh-panel">
+  <div class="rh-panel-head">
+    <div>
+      <div class="rh-panel-title">Lançamentos do ano</div>
+      <div class="rh-mini">Nada é apagado: um lançamento errado é ESTORNADO, com motivo e responsável registrados.</div>
+    </div>
+    <div class="rh-actions">
+      <div class="rh-field" style="min-width:190px;">
+        <label>Filtrar tipo</label>
+        <select id="rhEvFiltroTipo" onchange="rhEvCarregar()">
+          <option value="">Todos</option>
+          <option value="13_1PARCELA">13º — 1ª parcela</option>
+          <option value="13_2PARCELA">13º — 2ª parcela</option>
+          <option value="FERIAS">Férias</option>
+          <option value="RESCISAO">Rescisão</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="rh-table-wrap">
+    <table class="rh-table">
+      <thead><tr><th>Tipo</th><th>Colaborador</th><th>Referência</th><th>Data</th><th style="text-align:right;">Bruto</th><th style="text-align:right;">Descontos</th><th style="text-align:right;">Líquido</th><th>Status</th><th>Recibo</th><th>E-mail</th><th>Estorno</th></tr></thead>
+      <tbody id="rhEvTabela"></tbody>
+    </table>
+  </div>
+  <div class="rh-empty" id="rhEvVazio">Nenhum evento lançado neste ano.</div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var COLABS = [];
+  var PREVIA = null;      // resultado da simulação, só para exibir
+  var PARAMS = null;      // parâmetros que geraram a prévia — é isto que vai para o servidor gravar
+  var TIPO_PREVIA = "";
+  var EVENTOS = [];
+
+  function g(id){return document.getElementById(id);}
+  function tokenSessao(){return typeof SISGEP_TOKEN_SESSAO!=="undefined"?SISGEP_TOKEN_SESSAO:"";}
+  function avisar(msg,tipo){if(typeof toast==="function")toast(msg,tipo);}
+  function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]);});}
+  // Mesmo parser de moeda usado na tela principal do RH (milhar com
+  // ponto, decimal com vírgula) — dois parsers diferentes na mesma tela
+  // seria pedir para alguém digitar 1.500 e receber 1,50.
+  function num(v){v=String(v==null?"":v).replace(/\./g,"").replace(",",".").replace(/[^\d.-]/g,"");var n=Number(v);return isFinite(n)?n:0;}
+  function moeda(v){return Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});}
+  function dataBR(iso){if(!iso)return "—";var m=String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);return m?(m[3]+"/"+m[2]+"/"+m[1]):String(iso);}
+  function hojeISO(){return new Date().toISOString().slice(0,10);}
+
+  function anoSelecionado(){
+    var v=Number(g("rhEvAno")&&g("rhEvAno").value);
+    return isFinite(v)&&v>1900?v:new Date().getFullYear();
+  }
+
+  /* ============ CARGA ============ */
+
+  window.rhEvCarregarColaboradores=function(){
+    google.script.run
+      .withSuccessHandler(function(lista){
+        COLABS=lista||[];
+        var sel=g("rhEvColaborador"); if(!sel)return;
+        var atual=sel.value;
+        sel.innerHTML='<option value="">Selecione...</option>'+COLABS.map(function(c){
+          return '<option value="'+esc(c.id)+'">'+esc(c.nome)+(c.cargo?" — "+esc(c.cargo):"")+(c.status&&c.status!=="Ativo"?" ("+esc(c.status)+")":"")+'</option>';
+        }).join("");
+        if(atual)sel.value=atual;
+      })
+      .withFailureHandler(function(e){avisar("Não consegui carregar os colaboradores: "+((e&&e.message)||e),"err");})
+      .listarColaboradoresRH(tokenSessao());
+  };
+
+  // Pré-preenche base, avos e adiantamento a partir do cadastro — quem
+  // lança revisa em vez de digitar tudo do zero.
+  window.rhEvCarregarContexto=function(){
+    var id=g("rhEvColaborador")&&g("rhEvColaborador").value;
+    if(!id)return;
+    var ano=Number(g("rhEvAnoRef")&&g("rhEvAnoRef").value)||anoSelecionado();
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao carregar o colaborador.","err");return;}
+        if(g("rhEvBase"))g("rhEvBase").value=Number(r.baseSugerida||0).toFixed(2).replace(".",",");
+        if(g("rhEvDependentes"))g("rhEvDependentes").value=Number(r.colaborador.dependentes||0);
+        if(g("rhEvAvos"))g("rhEvAvos").value=Number(r.avos13||0);
+        if(g("rhEvAdiantamento"))g("rhEvAdiantamento").value=Number(r.adiantamento13Lancado||0).toFixed(2).replace(".",",");
+
+        var comp=(r.composicaoBase||[]).map(function(x){return esc(x.descricao)+" "+moeda(x.valor);}).join(" + ");
+        if(g("rhEvBaseHint"))g("rhEvBaseHint").innerHTML="Sugerida: "+(comp||"salário-base")+". Ajuste se houver média de variáveis (hora extra, comissão).";
+        if(g("rhEvAvosHint"))g("rhEvAvosHint").textContent=r.semAdmissao
+          ?"⚠️ Sem data de admissão no cadastro — assumido ano inteiro. Cadastre a admissão."
+          :"Calculado pela admissão em "+dataBR(r.colaborador.admissao)+".";
+        if(g("rhEvAdiantamentoHint"))g("rhEvAdiantamentoHint").textContent=Number(r.adiantamento13Lancado||0)>0
+          ?"Já lançado no ano: "+moeda(r.adiantamento13Lancado)+"."
+          :"Nenhuma 1ª parcela lançada neste ano.";
+        if(g("rhEvAvisoHint"))g("rhEvAvisoHint").textContent=r.semAdmissao
+          ?"Sem admissão cadastrada — não dá para calcular rescisão."
+          :r.anosCasa+" ano(s) de casa · aviso de "+r.avisoPrevioDias+" dias (30 + 3 por ano).";
+      })
+      .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||e),"err");})
+      .rhEvContexto(id, g("rhEvTipo")?g("rhEvTipo").value:"", ano, tokenSessao());
+  };
+
+  window.rhEvTrocarTipo=function(){
+    var tipo=g("rhEvTipo")?g("rhEvTipo").value:"";
+    ["rhEvBloco13","rhEvBlocoFerias","rhEvBlocoRescisao"].forEach(function(id){var el=g(id);if(el)el.style.display="none";});
+    if(tipo==="13_1PARCELA"||tipo==="13_2PARCELA"){
+      if(g("rhEvBloco13"))g("rhEvBloco13").style.display="";
+      if(g("rhEvCampoAdiantamento"))g("rhEvCampoAdiantamento").style.display=(tipo==="13_2PARCELA")?"":"none";
+    } else if(tipo==="FERIAS"){
+      if(g("rhEvBlocoFerias"))g("rhEvBlocoFerias").style.display="";
+    } else if(tipo==="RESCISAO"){
+      if(g("rhEvBlocoRescisao"))g("rhEvBlocoRescisao").style.display="";
+      rhEvTrocarMotivo();
+    }
+    rhEvCancelarPrevia();
+  };
+
+  // As opções de aviso prévio dependem do motivo — oferecer todas
+  // sempre convida ao erro caro: numa dispensa sem justa causa o aviso
+  // é SEMPRE devido (indenizado ou trabalhado, art. 487, §1º da CLT),
+  // e em justa causa/término de contrato ele não existe.
+  var AVISO_POR_MOTIVO={
+    "sem_justa_causa":[["indenizado","Indenizado (o sindicato paga)"],["trabalhado","Trabalhado (entra na folha mensal)"]],
+    "pedido_demissao":[["trabalhado","Cumprido pelo colaborador"],["indenizado","Não cumprido (desconta 30 dias)"],["dispensado","Dispensado pelo sindicato (sem desconto)"]],
+    "justa_causa":[["dispensado","Não se aplica"]],
+    "termino_contrato":[["dispensado","Não se aplica"]]
+  };
+
+  window.rhEvTrocarMotivo=function(){
+    var motivo=g("rhEvMotivo")?g("rhEvMotivo").value:"";
+    var sel=g("rhEvAvisoPrevio");
+    if(!sel)return;
+    var opcoes=AVISO_POR_MOTIVO[motivo]||AVISO_POR_MOTIVO["sem_justa_causa"];
+    sel.innerHTML=opcoes.map(function(o){return '<option value="'+o[0]+'">'+esc(o[1])+'</option>';}).join("");
+    sel.disabled=(motivo==="justa_causa"||motivo==="termino_contrato");
+    rhEvCancelarPrevia();
+  };
+
+  window.rhEvLimparForm=function(){
+    ["rhEvBase","rhEvDependentes","rhEvAvos","rhEvAdiantamento","rhEvObservacao",
+     "rhEvPeriodoInicio","rhEvPeriodoFim","rhEvInicioGozo","rhEvDataDesligamento",
+     "rhEvSaldoFgts","rhEvDataPagamento"].forEach(function(id){if(g(id))g(id).value="";});
+    if(g("rhEvDiasGozo"))g("rhEvDiasGozo").value=30;
+    if(g("rhEvDiasAbono"))g("rhEvDiasAbono").value=0;
+    if(g("rhEvFeriasVencidas"))g("rhEvFeriasVencidas").value=0;
+    if(g("rhEvAdiantar13"))g("rhEvAdiantar13").value="";
+    rhEvCancelarPrevia();
+  };
+
+  /* ============ PRÉVIA ============ */
+
+  function montarParams(){
+    var tipo=g("rhEvTipo")?g("rhEvTipo").value:"";
+    var p={
+      colaboradorId:g("rhEvColaborador")?g("rhEvColaborador").value:"",
+      base:num(g("rhEvBase")&&g("rhEvBase").value),
+      dependentes:g("rhEvDependentes")&&g("rhEvDependentes").value!==""?Number(g("rhEvDependentes").value):""
+    };
+    if(tipo==="13_1PARCELA"||tipo==="13_2PARCELA"){
+      p.ano=Number(g("rhEvAnoRef")&&g("rhEvAnoRef").value)||anoSelecionado();
+      p.avos=g("rhEvAvos")&&g("rhEvAvos").value!==""?Number(g("rhEvAvos").value):"";
+      p.dataPagamento=g("rhEvDataPagamento")?g("rhEvDataPagamento").value:"";
+      if(tipo==="13_2PARCELA")p.adiantamentoPago=num(g("rhEvAdiantamento")&&g("rhEvAdiantamento").value);
+    } else if(tipo==="FERIAS"){
+      p.periodoInicio=g("rhEvPeriodoInicio")?g("rhEvPeriodoInicio").value:"";
+      p.periodoFim=g("rhEvPeriodoFim")?g("rhEvPeriodoFim").value:"";
+      p.inicioGozo=g("rhEvInicioGozo")?g("rhEvInicioGozo").value:"";
+      p.diasGozo=Number(g("rhEvDiasGozo")&&g("rhEvDiasGozo").value)||0;
+      p.diasAbono=Number(g("rhEvDiasAbono")&&g("rhEvDiasAbono").value)||0;
+      p.adiantar13=!!(g("rhEvAdiantar13")&&g("rhEvAdiantar13").value);
+    } else if(tipo==="RESCISAO"){
+      p.dataDesligamento=g("rhEvDataDesligamento")?g("rhEvDataDesligamento").value:"";
+      p.motivo=g("rhEvMotivo")?g("rhEvMotivo").value:"";
+      p.avisoPrevio=g("rhEvAvisoPrevio")?g("rhEvAvisoPrevio").value:"";
+      p.feriasVencidasPeriodos=Number(g("rhEvFeriasVencidas")&&g("rhEvFeriasVencidas").value)||0;
+      p.saldoFgts=num(g("rhEvSaldoFgts")&&g("rhEvSaldoFgts").value);
+    }
+    return {tipo:tipo,params:p};
+  }
+
+  window.rhEvSimular=function(){
+    var m=montarParams();
+    if(!m.params.colaboradorId){avisar("Escolha o colaborador.","err");return;}
+    if(!(m.params.base>0)){avisar("Informe a base de cálculo.","err");return;}
+    var btn=g("btnRhEvSimular"); if(btn){btn.disabled=true;btn.textContent="Calculando...";}
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(btn){btn.disabled=false;btn.textContent="1. Calcular prévia";}
+        if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Não consegui calcular.","err");return;}
+        PREVIA=r; PARAMS=m.params; TIPO_PREVIA=m.tipo;
+        renderPrevia(r);
+      })
+      .withFailureHandler(function(e){
+        if(btn){btn.disabled=false;btn.textContent="1. Calcular prévia";}
+        avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+      })
+      .rhEvSimular(m.tipo, m.params, tokenSessao());
+  };
+
+  function renderPrevia(r){
+    var tb=g("rhEvPreviaTabela"); if(!tb)return;
+    tb.innerHTML=(r.linhas||[]).map(function(l){
+      if(l.informativo){
+        return "<tr style='background:#fffbeb;color:#92400e;'><td>"+esc(l.codigo)+"</td><td>"+esc(l.descricao)+
+          "</td><td>"+esc(l.referencia)+"</td><td colspan='2' style='text-align:right;font-weight:700;'>"+
+          moeda(l.valorInformativo)+" <span style='font-size:10px;text-transform:uppercase;'>informativo</span></td></tr>";
+      }
+      return "<tr><td>"+esc(l.codigo)+"</td><td>"+esc(l.descricao)+"</td><td>"+esc(l.referencia)+
+        "</td><td style='text-align:right;font-weight:700;'>"+(Number(l.provento||0)?moeda(l.provento):"")+
+        "</td><td style='text-align:right;font-weight:700;color:#991b1b;'>"+(Number(l.desconto||0)?moeda(l.desconto):"")+"</td></tr>";
+    }).join("");
+
+    if(g("rhEvPrevProventos"))g("rhEvPrevProventos").textContent=moeda(r.totalProventos);
+    if(g("rhEvPrevDescontos"))g("rhEvPrevDescontos").textContent=moeda(r.totalDescontos);
+    if(g("rhEvPrevFgts"))g("rhEvPrevFgts").textContent=moeda(r.fgts)+(Number(r.multaFgts||0)?" + multa "+moeda(r.multaFgts):"");
+    if(g("rhEvPrevLiquido"))g("rhEvPrevLiquido").textContent=moeda(r.liquido);
+
+    var box=g("rhEvPrevAvisos");
+    if(box){
+      box.innerHTML=(r.avisos&&r.avisos.length)
+        ? '<div class="rh-alerta" style="margin:0;">⚠️ <b>Antes de confirmar:</b><ul style="margin:6px 0 0;padding-left:18px;">'+
+          r.avisos.map(function(a){return "<li>"+esc(a)+"</li>";}).join("")+"</ul></div>"
+        : "";
+    }
+    if(g("rhEvPreviaWrap"))g("rhEvPreviaWrap").style.display="";
+  }
+
+  window.rhEvCancelarPrevia=function(){
+    PREVIA=null; PARAMS=null; TIPO_PREVIA="";
+    if(g("rhEvPreviaWrap"))g("rhEvPreviaWrap").style.display="none";
+    if(g("rhEvPreviaTabela"))g("rhEvPreviaTabela").innerHTML="";
+  };
+
+  window.rhEvConfirmar=function(){
+    if(!PARAMS||!TIPO_PREVIA){avisar("Calcule a prévia antes de gravar.","err");return;}
+    if(!confirm("Gravar "+(PREVIA&&PREVIA.rotulo||"o evento")+" de "+((PREVIA&&PREVIA.colaborador&&PREVIA.colaborador.nome)||"")+
+                "?\n\nLíquido: "+moeda(PREVIA&&PREVIA.liquido)+
+                "\n\nIsto também cria uma despesa no Financeiro."))return;
+    gravar(false);
+  };
+
+  function gravar(confirmarDuplicidade){
+    var btn=g("btnRhEvConfirmar"); if(btn){btn.disabled=true;btn.textContent="Gravando...";}
+    var params=JSON.parse(JSON.stringify(PARAMS));
+    params.confirmarDuplicidade=!!confirmarDuplicidade;
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(btn){btn.disabled=false;btn.textContent="2. Confirmar e gravar";}
+        if(r&&r.duplicado&&!confirmarDuplicidade){
+          if(confirm(r.mensagem+"\n\nGravar assim mesmo?"))gravar(true);
+          return;
+        }
+        if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Não consegui gravar.","err");return;}
+        avisar(r.mensagem||"Evento gravado.","ok");
+        rhEvCancelarPrevia();
+        rhEvLimparForm();
+        rhEvCarregar();
+      })
+      .withFailureHandler(function(e){
+        if(btn){btn.disabled=false;btn.textContent="2. Confirmar e gravar";}
+        avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+      })
+      .rhEvGravar(TIPO_PREVIA, params, (g("rhEvObservacao")&&g("rhEvObservacao").value)||"", tokenSessao());
+  }
+
+  /* ============ HISTÓRICO ============ */
+
+  window.rhEvCarregar=function(){
+    var ano=anoSelecionado();
+    var filtros={ano:String(ano)};
+    var ft=g("rhEvFiltroTipo")&&g("rhEvFiltroTipo").value;
+    if(ft)filtros.tipo=ft;
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        EVENTOS=(r&&r.eventos)||[];
+        renderTabela();
+      })
+      .withFailureHandler(function(e){avisar("Erro ao listar eventos: "+((e&&e.message)||e),"err");})
+      .rhEvListar(filtros, tokenSessao());
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||r.ok!==true)return;
+        if(g("rhEvQtd"))g("rhEvQtd").textContent=r.quantidade||0;
+        if(g("rhEvBruto"))g("rhEvBruto").textContent=moeda(r.totalBruto);
+        if(g("rhEvLiquido"))g("rhEvLiquido").textContent=moeda(r.totalLiquido);
+        if(g("rhEvCusto"))g("rhEvCusto").textContent=moeda(r.custoTotal);
+      })
+      .withFailureHandler(function(){})
+      .rhEvResumo(String(ano), tokenSessao());
+  };
+
+  function renderTabela(){
+    var tb=g("rhEvTabela"); if(!tb)return;
+    if(!EVENTOS.length){
+      tb.innerHTML="";
+      if(g("rhEvVazio"))g("rhEvVazio").style.display="";
+      return;
+    }
+    if(g("rhEvVazio"))g("rhEvVazio").style.display="none";
+    tb.innerHTML=EVENTOS.map(function(ev){
+      var estornado=ev.status==="ESTORNADO";
+      var pill=estornado
+        ?'<span class="rh-pill off" title="'+esc(ev.motivoEstorno)+'">Estornado</span>'
+        :'<span class="rh-pill ok">Ativo</span>';
+      return "<tr"+(estornado?" style='opacity:.6;'":"")+">"+
+        "<td>"+esc(ev.rotulo)+"</td>"+
+        "<td><strong>"+esc(ev.nome)+"</strong><div class='rh-mini'>"+esc(ev.cargo||"")+"</div></td>"+
+        "<td>"+esc(ev.referencia)+"</td>"+
+        "<td>"+dataBR(ev.dataEvento)+"</td>"+
+        "<td style='text-align:right;'>"+moeda(ev.totalProventos)+"</td>"+
+        "<td style='text-align:right;color:#991b1b;'>"+moeda(ev.totalDescontos)+"</td>"+
+        "<td style='text-align:right;font-weight:800;'>"+moeda(ev.liquido)+"</td>"+
+        "<td>"+pill+"</td>"+
+        "<td><button class='rh-btn' onclick=\"rhEvBaixarRecibo('"+esc(ev.id)+"')\">📄 PDF</button></td>"+
+        "<td><button class='rh-btn' onclick=\"rhEvEnviarRecibo('"+esc(ev.id)+"')\">✉️</button></td>"+
+        "<td>"+(estornado?"—":"<button class='rh-btn' style='border-color:#f3b6b6;color:#991b1b;' onclick=\"rhEvEstornar('"+esc(ev.id)+"')\">Estornar</button>")+"</td>"+
+      "</tr>";
+    }).join("");
+  }
+
+  window.rhEvBaixarRecibo=function(id){
+    avisar("Gerando o recibo...","info");
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Não consegui gerar o recibo.","err");return;}
+        var bin=atob(r.base64), bytes=new Uint8Array(bin.length);
+        for(var i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+        var a=document.createElement("a");
+        a.href=URL.createObjectURL(new Blob([bytes],{type:"application/pdf"}));
+        a.download=r.nomeArquivo||"recibo.pdf";
+        a.click();
+        setTimeout(function(){URL.revokeObjectURL(a.href);},4000);
+      })
+      .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+      .rhEvGerarReciboPDF(id, tokenSessao());
+  };
+
+  window.rhEvEnviarRecibo=function(id){
+    if(!confirm("Enviar o recibo por e-mail para o colaborador?"))return;
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Não consegui enviar.","err");return;}
+        avisar(r.mensagem||"Enviado.","ok");
+      })
+      .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+      .rhEvEnviarReciboPorEmail(id, tokenSessao());
+  };
+
+  window.rhEvEstornar=function(id){
+    var motivo=prompt("Motivo do estorno (obrigatório — é ele que explica o valor no fechamento):");
+    if(motivo===null)return;
+    if(!String(motivo).trim()){avisar("O motivo é obrigatório.","err");return;}
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Não consegui estornar.","err");return;}
+        avisar(r.mensagem,"ok");
+        rhEvCarregar();
+      })
+      .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+      .rhEvEstornar(id, motivo, tokenSessao());
+  };
+
+  window.rhEvExportarCSV=function(){
+    var rows=[["Tipo","Colaborador","CPF","Referência","Data","Base","Avos","Proventos","Descontos","INSS","IRRF","FGTS","Multa 40%","Líquido","Status","Gerado por"]]
+      .concat(EVENTOS.map(function(e){
+        return [e.rotulo,e.nome,e.cpf,e.referencia,e.dataEvento,e.base,e.avos,e.totalProventos,e.totalDescontos,
+                e.inss,e.irrf,e.fgts,e.multaFgts,e.liquido,e.status,e.geradoPor];
+      }));
+    var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c==null?"":c).replace(/"/g,'""')+'"';}).join(";");}).join("\n");
+    var a=document.createElement("a");
+    a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+    a.download="sisgep-rh-eventos.csv";
+    a.click();
+  };
+
+  /* ============ INIT ============ */
+  // Chamado por initRH (RHAdmin.html) — a aba só existe dentro daquela
+  // tela, então quem manda no ciclo de vida é ela.
+  window.initRHEventos=function(){
+    var ano=new Date().getFullYear();
+    if(g("rhEvAno")&&!g("rhEvAno").value)g("rhEvAno").value=ano;
+    if(g("rhEvAnoRef")&&!g("rhEvAnoRef").value)g("rhEvAnoRef").value=ano;
+    if(g("rhEvDataPagamento")&&!g("rhEvDataPagamento").value)g("rhEvDataPagamento").value=hojeISO();
+    if(g("rhEvAno")&&!g("rhEvAno").dataset.bound){
+      g("rhEvAno").dataset.bound="1";
+      g("rhEvAno").addEventListener("change", window.rhEvCarregar);
+    }
+    rhEvTrocarTipo();
+    rhEvCarregarColaboradores();
+    rhEvCarregar();
+  };
+})();
+</script>

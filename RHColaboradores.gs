@@ -604,7 +604,7 @@ function contarFolhaCompetenciaRH(competencia, tokenSessao) {
 
 function gerarFolhaRH(competencia, itens, observacao, tokenSessao) {
   var sessao = exigirSessaoDocumentos_(tokenSessao, false);
-  return rh_comLock_(function () {
+  var resultado = rh_comLock_(function () {
   try {
     competencia = String(competencia || "").trim();
     if (!competencia) return { ok: false, mensagem: "Informe a competência." };
@@ -720,19 +720,6 @@ function gerarFolhaRH(competencia, itens, observacao, tokenSessao) {
 
     var linhasObj = linhas.map(rh_linhaFolhaParaObjeto_);
 
-    // Fecha o ciclo com o Financeiro: registra o custo total da folha como
-    // despesa (Fase 4). Best-effort — a folha já está gravada nesse ponto,
-    // uma falha aqui não pode desfazer o que já foi confirmado. Reprocessar
-    // a mesma competência gera uma NOVA despesa (não substitui a anterior);
-    // se isso acontecer, cancele/estorne a duplicada na tela de Despesas.
-    if (linhasObj.length) {
-      try {
-        rh_registrarDespesaFolha_(competencia, linhasObj, tokenSessao);
-      } catch (eDesp) {
-        Logger.log("[RH] falha ao registrar despesa da folha (" + competencia + "): " + eDesp.message);
-      }
-    }
-
     return {
       ok: true,
       competencia: competencia,
@@ -743,6 +730,33 @@ function gerarFolhaRH(competencia, itens, observacao, tokenSessao) {
     return { ok: false, mensagem: "Erro ao gerar folha: " + e.message };
   }
   });
+
+  // Fecha o ciclo com o Financeiro: registra o custo total da folha como
+  // despesa (Fase 4).
+  //
+  // ⚠️ ISTO PRECISA ACONTECER FORA DO rh_comLock_ ACIMA. O caminho
+  // registrarLancamentoDespesa -> registrarLancamentoDespesa_ ->
+  // gerarNumeroDespesa_ pede o PRÓPRIO LockService.getScriptLock(). Se
+  // esta chamada ficasse dentro do nosso lock, o pedido de dentro
+  // esperaria 30s por um lock que só seria liberado quando ela mesma
+  // terminasse — a despesa nunca seria criada. E como a chamada é
+  // best-effort (try/catch com Logger), a folha salvaria normalmente e o
+  // lançamento no Financeiro sumiria em silêncio. Mesmo cuidado já
+  // tomado em ConciliacaoCore.gs.
+  //
+  // Best-effort de propósito: a folha já está gravada neste ponto, uma
+  // falha aqui não pode desfazer o que já foi confirmado. Reprocessar a
+  // mesma competência gera uma NOVA despesa (não substitui a anterior);
+  // se isso acontecer, cancele/estorne a duplicada na tela de Despesas.
+  if (resultado && resultado.ok && resultado.linhas && resultado.linhas.length) {
+    try {
+      rh_registrarDespesaFolha_(resultado.competencia, resultado.linhas, tokenSessao);
+    } catch (eDesp) {
+      Logger.log("[RH] falha ao registrar despesa da folha (" + resultado.competencia + "): " + eDesp.message);
+    }
+  }
+
+  return resultado;
 }
 
 // Custo total da folha (Fase 4): bruto de todos os colaboradores + FGTS

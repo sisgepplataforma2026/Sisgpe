@@ -62,6 +62,7 @@
       <button class="rh-tab-btn" data-rhtab="tributaria" onclick="rhMudarTab('tributaria')">🧾 Config. Tributária</button>
       <button class="rh-tab-btn" data-rhtab="rubricas" onclick="rhMudarTab('rubricas')">🏷️ Rubricas</button>
       <button class="rh-tab-btn" data-rhtab="folha" onclick="rhMudarTab('folha')">💰 Folha de Pagamento</button>
+      <button class="rh-tab-btn" data-rhtab="eventos" onclick="rhMudarTab('eventos')">🗓️ 13º, Férias e Rescisão</button>
     </div>
 
     <div class="rh-tab-panel active" id="rh-tab-colaboradores">
@@ -242,6 +243,14 @@
       <div class="rh-empty" id="rhFolhaVazio">Gere a folha para visualizar os lançamentos.</div>
     </div>
     </div>
+
+    <!-- 13º, férias e rescisão: o que não cabe na folha mensal. Arquivo
+         separado (RHEventosAdmin.html) porque tem regra própria e é a
+         parte do RH com maior risco trabalhista — misturar com a folha
+         mensal neste arquivo dificultaria revisar qualquer uma das duas. -->
+    <div class="rh-tab-panel" id="rh-tab-eventos">
+      <?!= include('RHEventosAdmin'); ?>
+    </div>
   </div>
 
   <!-- Ferramentas administrativas — ações que rodam raramente (seed inicial,
@@ -261,6 +270,20 @@
         <button class="rh-btn" style="width:100%;text-align:left;" onclick="rhAplicarRubricasFixas()" id="btnRhRubricasFixas">🏷️ Aplicar rubricas fixas (Abono CCT, Quinquênio...)</button>
         <button class="rh-btn" style="width:100%;text-align:left;" onclick="rhAplicarCentroCustoDepartamento()" id="btnRhCentroCustoDepto">🏢 Aplicar Centro de Custo/Departamento reais</button>
         <button class="rh-btn red" style="width:100%;text-align:left;" onclick="rhCorrigirAbonoCCT()" id="btnRhCorrigirAbono">⚠️ Corrigir Abono CCT (não é recorrente)</button>
+
+        <!-- Parabéns automático: antes só dava para ligar/desligar pelo
+             editor do Apps Script, e as funções ficavam expostas sem
+             checagem de sessão. Agora é botão com permissão de administrador. -->
+        <div style="border-top:1px solid #e5e7eb;margin-top:6px;padding-top:10px;">
+          <div class="rh-mini" style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+            <span id="rhTriggerAnivDot" style="width:8px;height:8px;border-radius:50%;background:#cbd5e1;display:inline-block;"></span>
+            <span id="rhTriggerAnivTxt">verificando parabéns automático…</span>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="rh-btn" style="flex:1;" onclick="rhAtivarAniversarios()" id="btnRhAnivAtivar">🎂 Ativar parabéns automático</button>
+            <button class="rh-btn" onclick="rhDesativarAniversarios()" id="btnRhAnivDesativar">⏸️ Desativar</button>
+          </div>
+        </div>
       </div>
       <div class="of-modal-foot">
         <button class="rh-btn" onclick="rhFecharFerramentasAdmin()">Fechar</button>
@@ -524,8 +547,54 @@
         .corrigirAbonoCCTNaoRecorrente_publico(tokenSessao());
     };
 
-    window.rhAbrirFerramentasAdmin=function(){var el=g("rhModalAdminOverlay");if(el)el.classList.add("aberto");};
+    window.rhAbrirFerramentasAdmin=function(){var el=g("rhModalAdminOverlay");if(el)el.classList.add("aberto");rhAtualizarStatusAniversarios();};
     window.rhFecharFerramentasAdmin=function(){var el=g("rhModalAdminOverlay");if(el)el.classList.remove("aberto");};
+
+    window.rhAtualizarStatusAniversarios=function(){
+      google.script.run
+        .withSuccessHandler(function(r){
+          var dot=g("rhTriggerAnivDot"), txt=g("rhTriggerAnivTxt");
+          if(!dot||!txt)return;
+          if(r&&r.ok&&r.instalado){dot.style.background="#0f8a5f";txt.textContent="parabéns automático ativo (~8h/dia)";}
+          else{dot.style.background="#cbd5e1";txt.textContent="parabéns automático desativado";}
+        })
+        .withFailureHandler(function(){})
+        .rh_statusTriggerAniversarios_publico(tokenSessao());
+    };
+
+    window.rhAtivarAniversarios=function(){
+      if(!confirm("Ativar o envio automático de parabéns de aniversário? O sistema verifica todo dia por volta das 8h e envia o e-mail em nome do sindicato para quem tem e-mail cadastrado."))return;
+      var btn=g("btnRhAnivAtivar"); if(btn){btn.disabled=true;btn.textContent="Ativando...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="🎂 Ativar parabéns automático";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao ativar.","err");return;}
+          avisar(r.mensagem||"Ativado.","ok");
+          rhAtualizarStatusAniversarios();
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="🎂 Ativar parabéns automático";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .rh_instalarTriggerAniversarios_publico(tokenSessao());
+    };
+
+    window.rhDesativarAniversarios=function(){
+      if(!confirm("Desativar o envio automático de parabéns?"))return;
+      var btn=g("btnRhAnivDesativar"); if(btn){btn.disabled=true;btn.textContent="...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="⏸️ Desativar";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao desativar.","err");return;}
+          avisar(r.mensagem||"Desativado.","ok");
+          rhAtualizarStatusAniversarios();
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="⏸️ Desativar";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .rh_removerTriggerAniversarios_publico(tokenSessao());
+    };
 
     window.rhAtualizarStatusTriggerTempoServico=function(){
       google.script.run
@@ -1042,6 +1111,9 @@
       rhCarregarConfigTrib();
       rhCarregarRubricas();
       rhAtualizarStatusTriggerTempoServico();
+      // A aba de eventos (13º/férias/rescisão) vem de RHEventosAdmin.html,
+      // incluído aqui dentro — quem manda no ciclo de vida dela é esta tela.
+      if(typeof window.initRHEventos==="function")window.initRHEventos();
     };
     if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",window.initRH);else setTimeout(window.initRH,80);
   })();
