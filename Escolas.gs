@@ -140,7 +140,7 @@ function invalidarCacheEscolasInterno_() {
 /* CADASTRAR / ATUALIZAR ESCOLA                                     */
 /* =============================================================== */
 function cadastrarEscola(dados, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "escolas", false);
   try {
     dados = dados || {};
     const ss = SpreadsheetApp.openById(PLANILHA_ID);
@@ -265,12 +265,18 @@ function cadastrarEscola(dados, tokenSessao) {
 /* LISTAR PARA O MÓDULO INTERNO                                     */
 /* =============================================================== */
 /** Exige sessão válida — usada diretamente por telas via google.script.run. */
+// SEM trava de modulo: leitura compartilhada, usada pela tela de Oficios
+// para escolher o destinatario. Sessao continua exigida.
 function listarEscolas(tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
   return listarEscolasCadastro_interno_();
 }
 
 /** Exige sessão válida — usada diretamente por telas via google.script.run. */
+// SEM trava de modulo: leitura compartilhada. Chamada pela Central de
+// E-mails, pelo nucleo de IA e pelo resumo da tela Inicio — travar aqui
+// quebraria a home de quem nao tem Escolas. Dado institucional da
+// escola (nome, CNPJ, contato), nao dado pessoal. Sessao continua exigida.
 function listarEscolasCadastro(tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
   return listarEscolasCadastro_interno_();
@@ -362,7 +368,7 @@ function listarEscolasCadastro_interno_() {
 /* AÇÕES EM MASSA                                                   */
 /* =============================================================== */
 function atualizarSituacaoEscolasEmLote(cnpjs, novaSituacao, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "escolas", false);
   try {
     if (!Array.isArray(cnpjs) || !cnpjs.length) {
       return { ok: false, mensagem: "Nenhum CNPJ informado para atualização em lote." };
@@ -411,7 +417,7 @@ function atualizarSituacaoEscolasEmLote(cnpjs, novaSituacao, tokenSessao) {
 }
 
 function excluirEscolasEmLote(cnpjs, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, true);
+  exigirModulo_(tokenSessao, "escolas", true);
   try {
     if (!Array.isArray(cnpjs) || !cnpjs.length) {
       return { ok: false, mensagem: "Nenhum CNPJ informado para exclusão em lote." };
@@ -469,7 +475,7 @@ function excluirEscolasEmLote(cnpjs, tokenSessao) {
 /* ANALISAR / REMOVER DUPLICADAS (mantidas do original)            */
 /* =============================================================== */
 function analisarEscolasDuplicadas(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "escolas", false);
   try {
     const ss = SpreadsheetApp.openById(PLANILHA_ID);
     const sh = ss.getSheetByName(ABA_ESCOLAS);
@@ -519,7 +525,7 @@ function analisarEscolasDuplicadas(tokenSessao) {
 }
 
 function removerEscolasDuplicadas(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, true);
+  exigirModulo_(tokenSessao, "escolas", true);
   try {
     const ss = SpreadsheetApp.openById(PLANILHA_ID);
     const sh = ss.getSheetByName(ABA_ESCOLAS);
@@ -587,6 +593,8 @@ function removerEscolasDuplicadas(tokenSessao) {
 /* =============================================================== */
 /* ESTATÍSTICAS (usa nomes reais das colunas)                      */
 /* =============================================================== */
+// SEM trava de modulo: alimenta o dashboard de Oficios (modulo
+// Documentos). Sessao continua exigida.
 function obterEstatisticasEscolas(tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
   try {
@@ -641,7 +649,7 @@ function resumoDashboardEscolas(tokenSessao) {
 /*  colunas nos pontos onde referenciavam os nomes antigos)        */
 /* =============================================================== */
 function importarEscolasDeAba(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "escolas", false);
   try {
     const ss        = SpreadsheetApp.openById(PLANILHA_ID);
     const abaOrigem = ss.getSheetByName("IMPORTACAO_ESCOLAS");
@@ -687,7 +695,7 @@ function importarEscolasDeAba(tokenSessao) {
 
 /** Exige sessão válida — usada diretamente pela tela de Cadastro de Escolas. */
 function listarEscolasParaModulo(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "escolas", false);
   return listarEscolasParaModulo_interno_();
 }
 
@@ -729,7 +737,7 @@ function listarEscolasParaModulo_interno_() {
  * SISGEP.
  */
 function escolasEnviarEmailMassa(destinatarios, assunto, corpo, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "escolas", false);
   try {
     var lista = (Array.isArray(destinatarios) ? destinatarios : []).filter(Boolean);
     if (!lista.length) return { ok: false, mensagem: "Nenhum destinatário informado." };

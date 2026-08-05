@@ -54,8 +54,27 @@ var SIND_ADM_COLUNAS = [
  * Lista fichas para o painel, com filtros opcionais:
  * { status, escola, origem, diretorBase, texto }.
  */
+// Público — exige sessão E o módulo Sindicalização.
 function listarFichasSindicalizacao(filtros, tokenSessao) {
   exigirModulo_(tokenSessao, "sindicalizacao", false);
+  return listarFichasSindicalizacao_interno_(filtros);
+}
+
+/**
+ * Núcleo sem checagem — chamado pelo módulo ESCOLAS (Visitas.gs), que
+ * mostra as fichas originadas em cada visita e no histórico da escola.
+ *
+ * Isto conserta um problema que já existia antes do controle de acesso:
+ * Visitas.gs chamava listarFichasSindicalizacao({}) SEM token, o que
+ * fazia a checagem de sessão lançar erro. Como as duas chamadas estão
+ * dentro de try/catch que só grava no log, a falha era silenciosa e a
+ * tela simplesmente mostrava zero fichas — parecia que a escola não
+ * tinha nenhuma. Agora a leitura funciona, e sem obrigar o diretor de
+ * base a ter o módulo Sindicalização só para ver o próprio resultado.
+ *
+ * Nunca exponha esta função a google.script.run.
+ */
+function listarFichasSindicalizacao_interno_(filtros) {
   filtros = filtros || {};
   var semFiltros = !filtros.status && !filtros.escola &&
     !filtros.origem && !filtros.diretorBase && !filtros.texto;

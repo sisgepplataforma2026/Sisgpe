@@ -46,13 +46,13 @@ function escolasReceitaObterConfig_() {
 }
 
 function escolasReceitaObterConfig(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "escolas", false);
   var cfg = escolasReceitaObterConfig_();
   return { ok: true, uf: cfg.uf, cnaeCsv: cfg.cnaeLista.join(", ") };
 }
 
 function escolasReceitaSalvarConfig(uf, cnaeCsv, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, true);
+  exigirModulo_(tokenSessao, "escolas", true);
   try {
     uf = String(uf || "").trim().toUpperCase();
     if (uf.length !== 2) {
@@ -82,7 +82,7 @@ function escolasReceitaSalvarConfig(uf, cnaeCsv, tokenSessao) {
    1. CRIAR ABAS AUXILIARES
 ───────────────────────────────────────────────────────────── */
 function criarAbasModuloReceita(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "escolas", false);
   try {
     var ss = SpreadsheetApp.openById(PLANILHA_ID);
 
@@ -135,7 +135,7 @@ function criarAbasModuloReceita(tokenSessao) {
    2. PROCESSAR EXTRAÇÃO — consulta BrasilAPI, filtra e compara
 ───────────────────────────────────────────────────────────── */
 function processarExtracaoOficialReceita(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "escolas", false);
   try {
     // Garante que as abas existem
     criarAbasModuloReceita(tokenSessao);
@@ -287,7 +287,7 @@ function processarExtracaoOficialReceita(tokenSessao) {
    3. IMPORTAR NOVAS ESCOLAS
 ───────────────────────────────────────────────────────────── */
 function importarNovasEscolasReceita(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "escolas", false);
   try {
     var ss     = SpreadsheetApp.openById(PLANILHA_ID);
     var shComp = ss.getSheetByName(ABA_COMPARACAO);
@@ -369,7 +369,7 @@ function compararComBaseEscolas(tokenSessao)       { return processarExtracaoOfi
 function criarAbaExtracaoCnpjOficial(tokenSessao)  { return criarAbasModuloReceita(tokenSessao); }
 
 function executarPipelineReceita(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "escolas", false);
   var proc = processarExtracaoOficialReceita(tokenSessao);
   if (!proc.ok) return { ok: false, mensagem: proc.mensagem };
   if ((proc.novas || 0) === 0) return {

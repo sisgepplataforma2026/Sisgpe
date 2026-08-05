@@ -28,6 +28,8 @@ function colOuNovo_(h, novo, antigos) {
 /* ENTRADA PÚBLICA                                               */
 /* ============================================================= */
 /** Exige sessão válida — usada diretamente por telas via google.script.run. */
+// SEM trava de modulo: usada pela IA de Oficios e pelo Juridico para
+// localizar a escola do processo. Sessao continua exigida.
 function buscarEscola(query, tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
   try {
@@ -45,7 +47,7 @@ function buscarEscola(query, tokenSessao) {
 /* ============================================================= */
 /** Exige sessão válida — usada diretamente por telas via google.script.run. */
 function buscarEscolasPorTermo(termo, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "escolas", false);
   return buscarEscolasPorTermo_interno_(termo);
 }
 
@@ -146,7 +148,7 @@ function buscarEscolasOficioSmart(termo) {
 /* ============================================================= */
 /** Exige sessão válida — usada diretamente por telas via google.script.run. */
 function listarEscolasOficio(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "escolas", false);
   return listarEscolasOficio_interno_();
 }
 
@@ -242,7 +244,7 @@ function listarEscolasOficio_interno_() {
 /* CONSULTA EXTERNA DE CNPJ                                      */
 /* ============================================================= */
 function consultarCNPJExterno(cnpj, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "escolas", false);
   try {
     var digits = String(cnpj || "").replace(/\D/g, "");
     if (digits.length !== 14) {
@@ -325,7 +327,7 @@ function consultarCnpjEscola(cnpj, tokenSessao) {
 /* ✅ Suporta colunas antigas E novas (CAB_ESCOLAS)              */
 /* ============================================================= */
 function sincronizarEscolaPorCnpj(cnpj, forcar, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "escolas", false);
   try {
     var externo = consultarCNPJExterno(cnpj, tokenSessao);
     if (externo.erro) return { erro: true, mensagem: externo.mensagem };
@@ -415,7 +417,7 @@ var row = i + 2;
 }
 
 function sincronizarTodasEscolas(forcar, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, true);
+  exigirModulo_(tokenSessao, "escolas", true);
   try {
     var ss  = SpreadsheetApp.openById(PLANILHA_ID);
     var aba = ss.getSheetByName("Escolas") || ss.getSheetByName(PLANILHA_REGISTRO);

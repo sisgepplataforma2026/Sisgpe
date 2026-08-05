@@ -333,7 +333,7 @@ function obterEscola360(cnpjOuNome, tokenSessao) {
 
   var fichas = [];
   try {
-    var todasFichas = listarFichasSindicalizacao({}).fichas || [];
+    var todasFichas = listarFichasSindicalizacao_interno_({}).fichas || [];
     fichas = todasFichas.filter(function (f) {
       return visitas_normalizarTexto_(f.ESCOLA) === visitas_normalizarTexto_(escola.nome);
     });
@@ -1055,6 +1055,16 @@ function visitas_exigirSessao_(tokenSessao) {
   if (!s || !(s.nome || s.usuario)) {
     throw new Error('Sessao invalida ou expirada. Faca login novamente.');
   }
+
+  // Visitas pertence ao modulo Escolas. Como este arquivo tem validacao
+  // propria (nao usa exigirSessaoDocumentos_), a checagem de modulo entra
+  // aqui — um ponto so, que todas as funcoes publicas ja atravessam.
+  // Protegido por typeof: se AcessoModulos.gs nao estiver instalado, o
+  // comportamento continua o de antes, so com sessao.
+  if (typeof sessaoPodeModulo_ === 'function' && !sessaoPodeModulo_(s, 'escolas')) {
+    throw new Error('Seu usuario nao tem acesso ao modulo Escolas. Fale com o administrador do SISGEP.');
+  }
+
   return {
     nome: String(s.nome || s.usuario).trim(),
     email: String(s.email || s.usuario || '').trim(),
@@ -1351,7 +1361,7 @@ function visitas_totaisDaEscola_(nomeEscola) {
 /** Conta fichas de sindicalizacao originadas nesta visita. */
 function visitas_contarFichas_(idVisita) {
   try {
-    var fichas = listarFichasSindicalizacao({}).fichas || [];
+    var fichas = listarFichasSindicalizacao_interno_({}).fichas || [];
     var alvo = String(idVisita).trim();
     var n = 0;
     fichas.forEach(function (f) {

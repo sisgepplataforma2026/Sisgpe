@@ -318,6 +318,10 @@ function cob_linhaParaObjeto_(cab, linha) {
   };
 }
 
+// SEM trava de modulo: alimenta o painel executivo do Financeiro
+// (finDashboardExecutivo). Travar aqui derrubaria o dashboard de quem so
+// tem Financeiro — exatamente o caso do Diretor Financeiro.
+// Sessao continua exigida.
 function cob_listarPainel(tokenSessao, competenciaParam) {
   exigirSessaoDocumentos_(tokenSessao, false);
   var sh = cob_garantirSheet_();
@@ -483,7 +487,7 @@ function cob_rotinaDiariaTrigger_() {
 
 /** Público — permite ao financeiro forçar uma nova varredura na hora, sem esperar o trigger das 9h. */
 function cob_forcarVarreduraAgora_publico(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, true);
+  exigirModulo_(tokenSessao, "escolas", true);
   try {
     return cob_rotinaDiaria_();
   } catch (e) {
@@ -498,7 +502,7 @@ function cob_forcarVarreduraAgora_publico(tokenSessao) {
  * de Filiados vazio? o cruzamento por nome não bateu nenhum?
  */
 function cob_diagnostico_publico(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, true);
+  exigirModulo_(tokenSessao, "escolas", true);
   try {
     var escolas = listarEscolasCadastro_interno_();
     var comFiliados = cob_nomesEscolasComFiliados_();
@@ -529,7 +533,7 @@ function cob_diagnostico_publico(tokenSessao) {
  * ========================================= */
 
 function cob_instalarTriggerDiario_publico(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, true);
+  exigirModulo_(tokenSessao, "escolas", true);
   try {
     ScriptApp.getProjectTriggers().forEach(function (t) {
       if (t.getHandlerFunction() === "cob_rotinaDiariaTrigger_") ScriptApp.deleteTrigger(t);
@@ -542,7 +546,7 @@ function cob_instalarTriggerDiario_publico(tokenSessao) {
 }
 
 function cob_removerTriggerDiario_publico(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, true);
+  exigirModulo_(tokenSessao, "escolas", true);
   try {
     var removidos = 0;
     ScriptApp.getProjectTriggers().forEach(function (t) {
@@ -555,7 +559,7 @@ function cob_removerTriggerDiario_publico(tokenSessao) {
 }
 
 function cob_statusTriggerDiario_publico(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "escolas", false);
   var instalado = ScriptApp.getProjectTriggers().some(function (t) {
     return t.getHandlerFunction() === "cob_rotinaDiariaTrigger_";
   });
@@ -569,7 +573,7 @@ function cob_statusTriggerDiario_publico(tokenSessao) {
  * ========================================= */
 
 function cob_aprovarEnviarLote_publico(tokenSessao, itens) {
-  exigirSessaoDocumentos_(tokenSessao, true);
+  exigirModulo_(tokenSessao, "escolas", true);
   if (!Array.isArray(itens) || !itens.length) return { ok: false, mensagem: "Nenhum item selecionado." };
 
   var lock = LockService.getScriptLock();
@@ -633,7 +637,7 @@ function cob_marcarCritica_publico(tokenSessao, id, observacao) {
  * ========================================= */
 
 function cob_atualizarStatusManual_publico(tokenSessao, id, novoStatus, observacao) {
-  exigirSessaoDocumentos_(tokenSessao, true);
+  exigirModulo_(tokenSessao, "escolas", true);
   if (Object.keys(COB_STATUS).map(function (k) { return COB_STATUS[k]; }).indexOf(novoStatus) === -1) {
     return { ok: false, mensagem: "Status inválido: " + novoStatus };
   }
