@@ -72,11 +72,19 @@ var EMAILS_FINANCEIRO_DESPESAS = [
   "secretaria@sindeducacao.com"
 ];
 
+// LANCADO_BANCO fica ENTRE o ciclo do documento e o pagamento: é o
+// estado "o Rogério já lançou no banco, falta a assinatura do presidente
+// e a compensação". Antes ele não existia e a despesa pulava de pendente
+// direto para paga — não dava para saber o que estava a caminho.
+// ATENÇÃO ao mexer aqui: todo lugar que classifica dinheiro por status
+// precisa conhecer o status novo, senão o valor some das somas em
+// silêncio (ver o switch de obterResumoDespesas_interno_).
 var STATUS_DESPESA = {
   PENDENTE:               "PENDENTE",
   AGUARDANDO_DOC:         "AGUARDANDO_DOC",
   DOC_RECEBIDO:           "DOC_RECEBIDO",
   ENVIADO_CONTABILIDADE:  "ENVIADO_CONTABILIDADE",
+  LANCADO_BANCO:          "LANCADO_BANCO",
   PAGO:                   "PAGO",
   CANCELADO:              "CANCELADO",
   ESTORNADO:              "ESTORNADO"
@@ -1368,8 +1376,12 @@ function verificarEDispararAlertasD5() {
       var jaAlertou = String(row[(headerMap["DATA_ALERTA_D5"]  || 0) - 1] || "").trim();
 
       if (!idDesp || !venc) { ignorados++; continue; }
+      // LANCADO_BANCO também não recebe cobrança de documento: o
+      // pagamento já está no banco, mandar "envie sua nota fiscal" nesse
+      // ponto confunde o fornecedor e não muda nada no fluxo.
       if (status === STATUS_DESPESA.PAGO || status === STATUS_DESPESA.CANCELADO ||
-          status === STATUS_DESPESA.DOC_RECEBIDO || status === STATUS_DESPESA.ENVIADO_CONTABILIDADE) { ignorados++; continue; }
+          status === STATUS_DESPESA.DOC_RECEBIDO || status === STATUS_DESPESA.ENVIADO_CONTABILIDADE ||
+          status === STATUS_DESPESA.LANCADO_BANCO) { ignorados++; continue; }
 
       var precisaDoc = tipoDoc === "NF" || tipoDoc === "Cupom Fiscal / Recibo" || tipoDoc === "NF/Recibo";
       if (!precisaDoc || !email) { ignorados++; continue; }
@@ -2224,6 +2236,15 @@ function confirmarPagamentoDespesaPublico(token, dados) {
 
     atualizarCamposDespesa_(idDespesa, { "STATUS": STATUS_DESPESA.PAGO, "DATA_PAGAMENTO": dataPagamento, "OBSERVACOES": obsCompleta });
 
+    if (typeof pagRegistrarEvento_ === "function") {
+      pagRegistrarEvento_({
+        idDespesa: idDespesa, numeroDespesa: numero, fornecedor: nome,
+        evento: "PAGAMENTO_CONFIRMADO", deStatus: statusAtual, paraStatus: STATUS_DESPESA.PAGO,
+        valor: valor, dataReferencia: dataPagamento, contaBancaria: banco,
+        usuario: "Contabilidade (link público)", detalhe: observacao
+      });
+    }
+
     invalidarTokenDesp_("TOKEN_CONT_DESP_" + token);
     return {
       ok: true, nome: nome, valor: valor, numero: numero,
@@ -2385,6 +2406,24 @@ function marcarDespesaComoPaga(payload, tokenSessao) {
       return { ok: false, precisaAprovacao: true, mensagem: "Esta despesa ainda não foi aprovada para pagamento. Aprove antes de marcar como paga." };
     }
     atualizarCamposDespesa_(idDespesa, { "STATUS": STATUS_DESPESA.PAGO, "DATA_PAGAMENTO": dataPagamento, "OBSERVACOES": observacao });
+
+    // Espelha na trilha do Controle de Pagamentos. Sem isto, quem paga
+    // pela tela antiga não apareceria no histórico e o extrato do mês
+    // ficaria com buraco justamente nos pagamentos mais antigos.
+    // Guardado por typeof: se PagamentosControle.gs ainda não estiver
+    // instalado, a baixa continua funcionando normalmente.
+    if (typeof pagRegistrarEvento_ === "function") {
+      pagRegistrarEvento_({
+        idDespesa: idDespesa,
+        numeroDespesa: String(despInfo.row[(despInfo.headerMap["NUMERO_DESPESA"] || 0) - 1] || ""),
+        fornecedor: String(despInfo.row[(despInfo.headerMap["PRESTADOR_NOME"] || 0) - 1] || ""),
+        evento: "PAGAMENTO_CONFIRMADO", deStatus: statusPg, paraStatus: STATUS_DESPESA.PAGO,
+        valor: String(despInfo.row[(despInfo.headerMap["VALOR"] || 0) - 1] || ""),
+        dataReferencia: dataPagamento, usuario: "Baixa manual (tela de Despesas)",
+        detalhe: observacao
+      });
+    }
+
     return { ok: true, mensagem: "Despesa marcada como paga com sucesso." };
   } catch (e) { return { ok: false, mensagem: e.message }; }
   finally { try { lock.releaseLock(); } catch (eRel) {} }
@@ -2443,6 +2482,18 @@ function estornarDespesa(payload, tokenSessao) {
       "ESTORNADO_POR":  sessao.email || sessao.usuario || "SISGEP",
       "MOTIVO_ESTORNO": motivo
     });
+
+    if (typeof pagRegistrarEvento_ === "function") {
+      pagRegistrarEvento_({
+        idDespesa: idDespesa,
+        numeroDespesa: String(despInfo.row[(despInfo.headerMap["NUMERO_DESPESA"] || 0) - 1] || ""),
+        fornecedor: String(despInfo.row[(despInfo.headerMap["PRESTADOR_NOME"] || 0) - 1] || ""),
+        evento: "ESTORNADO", deStatus: statusAtual, paraStatus: STATUS_DESPESA.ESTORNADO,
+        valor: String(despInfo.row[(despInfo.headerMap["VALOR"] || 0) - 1] || ""),
+        usuario: sessao.email || sessao.usuario || "SISGEP", detalhe: motivo
+      });
+    }
+
     return { ok: true, mensagem: "Despesa estornada com sucesso." };
   } catch (e) { return { ok: false, mensagem: e.message }; }
   finally { try { lock.releaseLock(); } catch (eRel) {} }
@@ -2537,9 +2588,15 @@ function editarDespesa(payload, tokenSessao) {
     if (!despInfo) return { ok: false, mensagem: "Despesa não encontrada." };
     var idxStatusEd = (despInfo.headerMap["STATUS"] || 0) - 1;
     var statusAtualEd = idxStatusEd > -1 ? String(despInfo.row[idxStatusEd] || "").trim() : "";
+    // LANCADO_BANCO entra na lista de bloqueio junto com os demais: depois
+    // que o pagamento já foi lançado no banco, mudar valor ou vencimento
+    // aqui faria a planilha divergir do que o banco vai pagar — e ninguém
+    // perceberia. Para corrigir, desfaz-se o lançamento primeiro
+    // (pagDesfazerLancamentoBanco), o que deixa rastro no histórico.
     if (statusAtualEd === STATUS_DESPESA.PAGO || statusAtualEd === STATUS_DESPESA.CANCELADO ||
-        statusAtualEd === STATUS_DESPESA.ENVIADO_CONTABILIDADE || statusAtualEd === STATUS_DESPESA.ESTORNADO) {
-      return { ok: false, mensagem: "Não é possível editar uma despesa paga, cancelada, enviada à contabilidade ou estornada." };
+        statusAtualEd === STATUS_DESPESA.ENVIADO_CONTABILIDADE || statusAtualEd === STATUS_DESPESA.ESTORNADO ||
+        statusAtualEd === STATUS_DESPESA.LANCADO_BANCO) {
+      return { ok: false, mensagem: "Não é possível editar uma despesa paga, cancelada, enviada à contabilidade, estornada ou já lançada no banco. Para alterar uma despesa lançada no banco, desfaça o lançamento antes." };
     }
     var idxValor = (despInfo.headerMap["VALOR"] || 0) - 1;
     var valorAnterior = idxValor > -1 ? String(despInfo.row[idxValor] || "").trim() : "";
@@ -2589,9 +2646,10 @@ function obterResumoDespesas_interno_() {
     var resumo = {
       total: lista.length, totalRecorrentes: 0, totalAvulsos: 0,
       totalPendentes: 0, totalAguardandoDoc: 0, totalDocRecebido: 0,
-      totalEnviadosContab: 0, totalPagos: 0, totalCancelados: 0, totalEstornados: 0,
+      totalEnviadosContab: 0, totalLancadosBanco: 0, totalPagos: 0,
+      totalCancelados: 0, totalEstornados: 0,
       totalVencidas: 0, totalUrgentes: 0,
-      valorTotal: 0, valorPago: 0, valorPendente: 0,
+      valorTotal: 0, valorPago: 0, valorPendente: 0, valorLancadoBanco: 0,
       porCategoria: {}
     };
 
@@ -2607,6 +2665,10 @@ function obterResumoDespesas_interno_() {
         case STATUS_DESPESA.AGUARDANDO_DOC:        resumo.totalAguardandoDoc++;  resumo.valorPendente += val; break;
         case STATUS_DESPESA.DOC_RECEBIDO:          resumo.totalDocRecebido++;    resumo.valorPendente += val; break;
         case STATUS_DESPESA.ENVIADO_CONTABILIDADE: resumo.totalEnviadosContab++; resumo.valorPendente += val; break;
+        // Lançado no banco ainda NÃO é dinheiro que saiu: conta como
+        // pendente no total geral (é desembolso a acontecer) e também
+        // separado, para a tela mostrar quanto está a caminho.
+        case STATUS_DESPESA.LANCADO_BANCO:         resumo.totalLancadosBanco++;  resumo.valorPendente += val; resumo.valorLancadoBanco += val; break;
         case STATUS_DESPESA.PAGO:                  resumo.totalPagos++;          resumo.valorPago     += val; break;
         case STATUS_DESPESA.CANCELADO:             resumo.totalCancelados++;     break;
         case STATUS_DESPESA.ESTORNADO:             resumo.totalEstornados++;     break;
@@ -2626,6 +2688,7 @@ function obterResumoDespesas_interno_() {
     resumo.valorTotalFmt    = "R$ " + fmt(resumo.valorTotal);
     resumo.valorPagoFmt     = "R$ " + fmt(resumo.valorPago);
     resumo.valorPendenteFmt = "R$ " + fmt(resumo.valorPendente);
+    resumo.valorLancadoBancoFmt = "R$ " + fmt(resumo.valorLancadoBanco);
 
     return { ok: true, resumo: resumo };
   } catch (e) { return { ok: false, mensagem: e.message }; }
