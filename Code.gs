@@ -100,7 +100,7 @@ if (p.portal === "associado") {
     // Público, sem sessão — o token da URL identifica a reserva. Precisa vir
     // antes da checagem de sessão porque quem preenche é o associado (ou o
     // acompanhante para quem ele repassou a mensagem), que não tem login.
-    // ParqueChinaHospedes.gs valida o token e recusa reserva que não esteja
+    // ParqueChinaHospedesCore.gs valida o token e recusa reserva que não esteja
     // aprovada. O token é lido no próprio cliente, pela URL.
     if (p.portal === "chinapark-hospedes") {
       Logger.log("[PORTAL] Hóspedes do Parque do China");

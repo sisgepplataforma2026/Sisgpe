@@ -1,5 +1,15 @@
 // ============================================================================
-// ARQUIVO: ParqueChinaHospedes.gs
+// ARQUIVO: ParqueChinaHospedesCore.gs
+//
+// ⚠️ O SUFIXO "Core" NO NOME NÃO É ENFEITE — NÃO RENOMEIE PARA
+//    "ParqueChinaHospedes.gs".
+// O Apps Script não aceita dois arquivos com o mesmo nome no mesmo projeto,
+// nem quando um é script e o outro é HTML. A tela pública PRECISA se chamar
+// ParqueChinaHospedes, porque Code.gs a pede por esse nome literal em
+// createHtmlOutputFromFile("ParqueChinaHospedes"). Já o nome deste arquivo
+// não tem efeito nenhum: o Apps Script coloca todas as funções de todos os
+// .gs no mesmo escopo global. Então quem cede é este aqui.
+// (Descoberto na implantação de 2026-08-05, quando o editor recusou o nome.)
 //
 // SEGUNDA ETAPA DO CHINA PARK — o solicitante informa quem vai se hospedar.
 //
