@@ -281,7 +281,14 @@ const Utilities_ = {
     return Array.from(h).map(b => (b > 127 ? b - 256 : b));
   },
   computeRsaSha256Signature() { return [1, 2, 3]; },
-  computeHmacSha256Signature() { return [1, 2, 3]; },
+  // HMAC de verdade. Um stub fixo aqui faria QUALQUER teste de token passar
+  // (ou falhar) por motivo errado — foi o que aconteceu com o link de
+  // hóspedes do China Park, onde duas reservas geravam o mesmo token.
+  computeHmacSha256Signature(valor, chave) {
+    const h = crypto.createHmac("sha256", Buffer.from(String(chave)))
+                    .update(Buffer.from(String(valor))).digest();
+    return Array.from(h).map(b => (b > 127 ? b - 256 : b));
+  },
   DigestAlgorithm: { SHA_256: "SHA_256", MD5: "MD5" },
   MacAlgorithm: { HMAC_SHA_256: "HMAC_SHA_256" },
   Charset: { UTF_8: "UTF_8" },

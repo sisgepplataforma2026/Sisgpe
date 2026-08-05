@@ -1902,15 +1902,19 @@ function pcaRenderTabelaReservas(lista,total){
     var btnAutorizar=operacional&&r.status!=="BLOQUEIO_ADMINISTRATIVO"&&r.suiteDefinida?"<button class='pca-btn pca-success' data-action='autorizar'>Autorizar</button> ":"";
     var btnEditar=r.status!=="BLOQUEIO_ADMINISTRATIVO"?"<button class='pca-btn pca-light' data-action='editar'>Editar</button> ":"";
     var btnComunicar=operacional&&r.status!=="BLOQUEIO_ADMINISTRATIVO"&&r.suiteDefinida?"<button class='pca-btn pca-light' data-action='email'>E-mail</button> <button class='pca-btn pca-light' data-action='whatsapp'>WhatsApp</button> ":"";
+    // Segunda etapa: pede ao proprio solicitante os nomes de quem vai se
+    // hospedar. Só aparece com a reserva aprovada, que é a unica situacao em
+    // que pcHospedesPrepararLink aceita gerar o link.
+    var btnHospedes=(r.status==="APROVADA"||r.status==="AGUARDANDO_PAGAMENTO")?"<button class='pca-btn pca-success' data-action='hospedes'>Pedir hóspedes</button> ":"";
     var acoes=pendente
       ? (btnEditar+"<button class='pca-btn pca-success' data-action='aprovar'>Aprovar</button> <button class='pca-btn pca-danger' data-action='recusar'>Recusar</button>")
       : operacional
-        ? (btnEditar+btnAutorizar+btnComunicar+(r.gratuitoPago!=="GRATUITO"&&r.status!=="BLOQUEIO_ADMINISTRATIVO"?"<button class='pca-btn pca-light' data-action='pagamento'>Pagamento</button> ":"")+"<button class='pca-btn pca-danger' data-action='cancelar'>Cancelar</button>")
+        ? (btnEditar+btnHospedes+btnAutorizar+btnComunicar+(r.gratuitoPago!=="GRATUITO"&&r.status!=="BLOQUEIO_ADMINISTRATIVO"?"<button class='pca-btn pca-light' data-action='pagamento'>Pagamento</button> ":"")+"<button class='pca-btn pca-danger' data-action='cancelar'>Cancelar</button>")
         : "<span style='color:#94a3b8'>Sem ações disponíveis</span>";
     var suiteTexto=r.suiteDefinida?r.suiteDefinida:(r.suiteSolicitada&&r.suiteSolicitada!=="QUALQUER_DISPONIVEL"?"Não definida · preferência "+r.suiteSolicitada:"Não definida");h+="<tr data-id='"+pcaEsc(r.idReserva)+"' data-suite='"+pcaEsc(r.suiteSolicitada||"")+"' data-total='"+Number(r.valorTotal||0)+"' data-recebido='"+Number(r.valorRecebido||0)+"'><td>"+pcaEsc(r.idReserva)+"</td><td><span class='pca-badge "+pcaStatusClass(r.status)+"'>"+pcaEsc(r.status)+"</span></td><td>"+pcaEsc(r.nomeSolicitante)+"</td><td>"+pcaData(r.dataEntrada)+" a "+pcaData(r.dataSaida)+"</td><td>"+pcaEsc(suiteTexto)+"</td><td>"+(r.quantidadeDiarias||0)+"</td><td>"+pcaMoeda(r.valorTotal)+"</td><td>"+pcaMoeda(r.valorRecebido)+"</td><td>"+pcaEsc(r.statusPagamento||(r.gratuitoPago==="GRATUITO"?"ISENTO":"PENDENTE"))+"</td><td><div class='pca-actions-wrap'>"+acoes+"</div></td></tr>";
   });
   container.innerHTML=h+"</tbody></table>";
-  Array.prototype.forEach.call(container.querySelectorAll("button[data-action]"),function(btn){btn.onclick=function(){var tr=btn.closest("tr"),id=tr.getAttribute("data-id"),acao=btn.getAttribute("data-action");if(acao==="aprovar")pcaAprovar(id,tr.getAttribute("data-suite"),Number(tr.getAttribute("data-total")));if(acao==="recusar")pcaRecusar(id);if(acao==="autorizar")pcaAbrirAutorizacoes(id);if(acao==="editar")pcaAbrirEdicao(id);if(acao==="email")pcaEnviarEmailManual(id);if(acao==="whatsapp")pcaWhatsAppManual(id);if(acao==="pagamento")pcaPagamento(id,Number(tr.getAttribute("data-total")),Number(tr.getAttribute("data-recebido")));if(acao==="cancelar")pcaCancelar(id);};});
+  Array.prototype.forEach.call(container.querySelectorAll("button[data-action]"),function(btn){btn.onclick=function(){var tr=btn.closest("tr"),id=tr.getAttribute("data-id"),acao=btn.getAttribute("data-action");if(acao==="aprovar")pcaAprovar(id,tr.getAttribute("data-suite"),Number(tr.getAttribute("data-total")));if(acao==="recusar")pcaRecusar(id);if(acao==="autorizar")pcaAbrirAutorizacoes(id);if(acao==="editar")pcaAbrirEdicao(id);if(acao==="email")pcaEnviarEmailManual(id);if(acao==="whatsapp")pcaWhatsAppManual(id);if(acao==="hospedes")pcaPedirHospedes(id);if(acao==="pagamento")pcaPagamento(id,Number(tr.getAttribute("data-total")),Number(tr.getAttribute("data-recebido")));if(acao==="cancelar")pcaCancelar(id);};});
 }
 var PCA_DEP_MAX=4;
 function pcaAbrirManual(){document.getElementById("pcaModalManual").style.display="flex";document.getElementById("pcaManualMsg").textContent="";document.getElementById("pcaManualMsg").className="pca-msg";pcaDepReset();pcaLigarMascarasModalManual();}
@@ -2167,6 +2171,38 @@ function pcaAplicarModo(){
 function pcaAlternarModo(){
   try{ localStorage.setItem(PCA_CHAVE_MODO, pcaModoAtual()==="simples" ? "avancado" : "simples"); }catch(e){}
   pcaAplicarModo();
+}
+
+/* Segunda etapa: manda ao solicitante o link onde ele informa os hospedes.
+   Reaproveita o mesmo modal do link de interesse — muda so o conteudo, porque
+   para quem usa a acao e a mesma: conferir a mensagem e mandar no WhatsApp. */
+function pcaPedirHospedes(id){
+  var bg=document.getElementById("pcaModalLink"); if(!bg) return;
+  bg.style.display="flex";
+  var msg=document.getElementById("pcaLinkMsg");
+  msg.className="pca-msg"; msg.textContent="Montando o link da reserva "+id+"...";
+  document.getElementById("pcaLinkPreview").value="";
+
+  google.script.run
+    .withSuccessHandler(function(r){
+      PCA_LINK_ATUAL=r;
+      if(!r||!r.ok){
+        msg.className="pca-msg is-error";
+        msg.textContent=(r&&r.mensagem)||"Não foi possível montar o link dos hóspedes.";
+        return;
+      }
+      msg.className="pca-msg"; msg.textContent="";
+      document.getElementById("pcaLinkPreview").value=r.texto||"";
+      var btn=document.getElementById("pcaLinkBtnWhats");
+      if(btn){ btn.disabled=!r.telefone; btn.title=r.telefone?"":"A reserva não tem telefone válido cadastrado"; }
+      var nome=document.getElementById("pcaLinkNome");   if(nome) nome.value=r.nomeSolicitante||"";
+      var fone=document.getElementById("pcaLinkTelefone");if(fone) fone.value=r.telefone||"";
+    })
+    .withFailureHandler(function(e){
+      msg.className="pca-msg is-error";
+      msg.textContent=(e&&e.message)?e.message:String(e);
+    })
+    .pcHospedesPrepararLink(id,pcaToken());
 }
 
 function pcaAbrirLinkInteresse(){

@@ -96,6 +96,21 @@ if (p.portal === "associado") {
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
 
+    // ── Segunda etapa do China Park: o solicitante informa os hóspedes ──
+    // Público, sem sessão — o token da URL identifica a reserva. Precisa vir
+    // antes da checagem de sessão porque quem preenche é o associado (ou o
+    // acompanhante para quem ele repassou a mensagem), que não tem login.
+    // ParqueChinaHospedes.gs valida o token e recusa reserva que não esteja
+    // aprovada. O token é lido no próprio cliente, pela URL.
+    if (p.portal === "chinapark-hospedes") {
+      Logger.log("[PORTAL] Hóspedes do Parque do China");
+      return HtmlService.createHtmlOutputFromFile("ParqueChinaHospedes")
+        .setTitle("SindEducação-ES — Hóspedes da reserva")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
+
     // ── Portal público de agendamento de Oftalmologia ──
     // Público, sem sessão — só funciona quando a equipe libera uma data
     // (AgendOftalmo.html, "Data liberada para o Portal"). Sem data liberada,

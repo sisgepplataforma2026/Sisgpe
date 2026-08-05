@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hóspedes da reserva — SindEducação-ES</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--navy:#001f4d;--navy2:#002f6c;--blue:#1565C0;--gold:#C9A84C;}
+  *{box-sizing:border-box}
+  body{margin:0;background:#f4f7fb;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a}
+  .hosp-wrap{max-width:620px;margin:0 auto;padding:20px 16px 56px}
+  .hosp-header{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;
+    padding:22px;border-radius:18px;box-shadow:0 10px 30px rgba(0,31,77,.18);margin-bottom:16px;
+    border-bottom:3px solid var(--gold)}
+  .hosp-header h1{margin:0 0 6px;font-size:22px;font-weight:800;letter-spacing:-.01em}
+  .hosp-header p{margin:0;font-size:14px;line-height:1.6;color:#c9d8ef}
+  .hosp-card{background:#fff;border:1px solid #e8eef6;border-radius:16px;padding:20px;
+    box-shadow:0 8px 24px rgba(15,23,42,.06);margin-bottom:14px}
+  .hosp-dados{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:6px}
+  .hosp-dado .rot{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#64748b;font-weight:700}
+  .hosp-dado .val{font-size:15px;font-weight:800;color:var(--navy);margin-top:2px}
+  .hosp-titular{background:#f8fbff;border:1px solid #dbeafe;border-radius:12px;padding:12px 14px;
+    font-size:14px;color:#0b3b75;margin:14px 0}
+  .hosp-titular strong{font-weight:800}
+  .hosp-campo{margin-bottom:12px}
+  .hosp-campo label{display:block;font-size:13px;font-weight:700;color:#334155;margin-bottom:5px}
+  .hosp-campo input{width:100%;padding:12px 14px;border:1px solid #d7e0ea;border-radius:11px;
+    font-size:15px;font-family:inherit;background:#fff;outline:none}
+  .hosp-campo input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(21,101,192,.12)}
+  .hosp-btn{width:100%;border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:800;
+    cursor:pointer;font-family:inherit;background:var(--navy);color:#fff}
+  .hosp-btn:disabled{opacity:.5;cursor:not-allowed}
+  .hosp-msg{margin:14px 0 0;padding:13px 15px;border-radius:12px;font-size:14px;font-weight:700;
+    line-height:1.5;display:none}
+  .hosp-msg.ok{display:block;background:#ecfdf5;color:#166534;border:1px solid #bbf7d0}
+  .hosp-msg.erro{display:block;background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
+  .hosp-nota{font-size:12.5px;color:#64748b;line-height:1.6;margin:12px 0 0}
+  .hosp-carregando{text-align:center;color:#64748b;padding:36px 12px;font-weight:700}
+</style>
+</head>
+<body>
+<div class="hosp-wrap">
+
+  <div class="hosp-header">
+    <h1>Quem vai se hospedar?</h1>
+    <p>Informe o nome completo de cada pessoa que vai entrar no China Park Eco Resort.
+       O parque exige essa lista para liberar a entrada.</p>
+  </div>
+
+  <div id="hospCarregando" class="hosp-card hosp-carregando">Abrindo sua reserva...</div>
+
+  <div id="hospConteudo" style="display:none">
+    <div class="hosp-card">
+      <div class="hosp-dados">
+        <div class="hosp-dado"><div class="rot">Protocolo</div><div class="val" id="hospProtocolo">—</div></div>
+        <div class="hosp-dado"><div class="rot">Entrada</div><div class="val" id="hospEntrada">—</div></div>
+        <div class="hosp-dado"><div class="rot">Saída</div><div class="val" id="hospSaida">—</div></div>
+        <div class="hosp-dado"><div class="rot">Chalé</div><div class="val" id="hospChale">—</div></div>
+      </div>
+      <div class="hosp-titular">
+        <strong id="hospTitular">—</strong> já está na lista como responsável pela reserva.
+        <span id="hospVagasTexto"></span>
+      </div>
+    </div>
+
+    <div class="hosp-card">
+      <div id="hospCampos"></div>
+      <button class="hosp-btn" id="hospBtn" onclick="hospEnviar()">Confirmar lista de hóspedes</button>
+      <div id="hospMsg" class="hosp-msg"></div>
+      <p class="hosp-nota">Pode enviar de novo se precisar corrigir algum nome — a lista mais recente
+         é a que vale. Depois de confirmada, a secretaria emite a autorização de entrada.</p>
+    </div>
+  </div>
+
+  <div id="hospErro" class="hosp-card" style="display:none">
+    <div class="hosp-msg erro" style="display:block" id="hospErroTexto"></div>
+  </div>
+</div>
+
+<script>
+  var HOSP_VAGAS = 0;
+
+  function hospToken(){
+    var m = String(window.location.search || "").match(/[?&]t=([^&]+)/);
+    if (m) return decodeURIComponent(m[1]);
+    // Dentro do iframe do Apps Script a query as vezes so aparece no
+    // referenciador da pagina pai — por isso a segunda tentativa.
+    try {
+      var ref = String(document.referrer || "").match(/[?&]t=([^&]+)/);
+      if (ref) return decodeURIComponent(ref[1]);
+    } catch(e){}
+    return "";
+  }
+
+  function hospMostrarErro(txt){
+    document.getElementById("hospCarregando").style.display = "none";
+    document.getElementById("hospConteudo").style.display = "none";
+    document.getElementById("hospErro").style.display = "block";
+    document.getElementById("hospErroTexto").textContent = txt;
+  }
+
+  function hospEsc(s){
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+
+  function hospMontarCampos(vagas, atuais){
+    var html = "";
+    for (var i = 0; i < vagas; i++){
+      html += '<div class="hosp-campo">' +
+                '<label for="hospNome' + i + '">Acompanhante ' + (i+1) +
+                (i === 0 ? '' : ' <small style="color:#94a3b8;font-weight:600">(se houver)</small>') + '</label>' +
+                '<input id="hospNome' + i + '" placeholder="Nome completo" value="' +
+                  hospEsc((atuais && atuais[i]) || "") + '">' +
+              '</div>';
+    }
+    if (!vagas){
+      html = '<p class="hosp-nota" style="margin:0 0 14px">Esta reserva é para uma pessoa só, ' +
+             'então não há acompanhante a informar. É só confirmar.</p>';
+    }
+    document.getElementById("hospCampos").innerHTML = html;
+  }
+
+  function hospCarregar(){
+    var t = hospToken();
+    if (!t){ hospMostrarErro("Link incompleto. Abra o endereço exatamente como recebeu na mensagem."); return; }
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        if (!r || !r.ok){ hospMostrarErro((r && r.mensagem) || "Não foi possível abrir a reserva."); return; }
+        document.getElementById("hospCarregando").style.display = "none";
+        document.getElementById("hospConteudo").style.display = "block";
+        document.getElementById("hospProtocolo").textContent = r.protocolo;
+        document.getElementById("hospEntrada").textContent   = r.entrada || "—";
+        document.getElementById("hospSaida").textContent     = r.saida || "—";
+        document.getElementById("hospChale").textContent     = r.chale || "—";
+        document.getElementById("hospTitular").textContent   = r.titular || "—";
+        HOSP_VAGAS = Number(r.vagasAcompanhantes || 0);
+        document.getElementById("hospVagasTexto").textContent = HOSP_VAGAS
+          ? "Faltam informar até " + HOSP_VAGAS + " acompanhante(s)."
+          : "";
+        hospMontarCampos(HOSP_VAGAS, r.acompanhantes || []);
+      })
+      .withFailureHandler(function(e){
+        hospMostrarErro("Erro ao abrir a reserva: " + ((e && e.message) ? e.message : e));
+      })
+      .pcHospedesCarregar(t);
+  }
+
+  function hospEnviar(){
+    var nomes = [];
+    for (var i = 0; i < HOSP_VAGAS; i++){
+      var el = document.getElementById("hospNome" + i);
+      if (el && el.value.trim()) nomes.push(el.value.trim());
+    }
+    var btn = document.getElementById("hospBtn");
+    var msg = document.getElementById("hospMsg");
+    btn.disabled = true; btn.textContent = "Enviando...";
+    msg.className = "hosp-msg";
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        btn.disabled = false; btn.textContent = "Confirmar lista de hóspedes";
+        if (r && r.ok){
+          msg.className = "hosp-msg ok";
+          msg.textContent = r.mensagem;
+        } else {
+          msg.className = "hosp-msg erro";
+          msg.textContent = (r && r.mensagem) || "Não foi possível salvar.";
+        }
+      })
+      .withFailureHandler(function(e){
+        btn.disabled = false; btn.textContent = "Confirmar lista de hóspedes";
+        msg.className = "hosp-msg erro";
+        msg.textContent = "Erro ao salvar: " + ((e && e.message) ? e.message : e);
+      })
+      .pcHospedesSalvar(hospToken(), { acompanhantes: nomes });
+  }
+
+  hospCarregar();
+</script>
+</body>
+</html>
