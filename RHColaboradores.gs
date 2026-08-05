@@ -406,6 +406,7 @@ function rh_garantirHistoricoReajustes_() {
 // Público — exige administrador (reajusta salário de todo mundo de uma vez).
 function aplicarReajusteSalarialRH(percentual, referencia, tokenSessao) {
   var sessao = exigirSessaoDocumentos_(tokenSessao, true);
+  return rh_comLock_(function () {
   try {
     percentual = Number(percentual);
     if (!isFinite(percentual) || percentual === 0) return { ok: false, mensagem: "Informe um percentual válido (diferente de zero)." };
@@ -464,6 +465,7 @@ function aplicarReajusteSalarialRH(percentual, referencia, tokenSessao) {
   } catch (e) {
     return { ok: false, mensagem: "Erro ao aplicar reajuste salarial: " + e.message };
   }
+  });
 }
 
 // Exclusão exige administrador — dado sensível (salário) sem trilha de
@@ -528,8 +530,81 @@ function prepararFolhaRH(competencia, tokenSessao) {
 
 // Passo 2: grava de fato. itens = [{ colaboradorId, diasTrabalhados }],
 // vindos da revisão do passo 1 (com eventual ajuste manual de dias).
+/**
+ * Trava de concorrência para as operações que reescrevem folha ou salário.
+ *
+ * Achado da auditoria do módulo RH: nenhum arquivo do RH usava LockService,
+ * enquanto Despesas, Conciliação, Taxas e Parque do China já usavam. Sem trava,
+ * duas pessoas gerando a folha da mesma competência ao mesmo tempo podem
+ * intercalar apagar-e-gravar, produzindo folha com colaborador faltando ou
+ * duplicado — erro que só aparece quando alguém reclama que não recebeu.
+ */
+function rh_comLock_(fn) {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(25000)) {
+    return { ok: false, mensagem: "Outra operação de folha está em andamento. Aguarde alguns segundos e tente novamente." };
+  }
+  try { return fn(); } finally { lock.releaseLock(); }
+}
+
+var ABA_RH_FOLHA_HISTORICO = "RH_FOLHA_HISTORICO";
+
+function rh_garantirFolhaHistorico_(cabecalhoFolha) {
+  var ss = SpreadsheetApp.openById(PLANILHA_ID);
+  var sh = ss.getSheetByName(ABA_RH_FOLHA_HISTORICO);
+  if (!sh) {
+    sh = ss.insertSheet(ABA_RH_FOLHA_HISTORICO);
+    var cab = ["DATA_SUBSTITUICAO", "SUBSTITUIDO_POR", "MOTIVO"].concat(cabecalhoFolha || []);
+    sh.appendRow(cab);
+    sh.getRange(1, 1, 1, cab.length).setFontWeight("bold").setBackground("#002f6c").setFontColor("#ffffff");
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+/**
+ * Guarda as linhas que estão prestes a ser apagadas. Sem isto, regerar uma
+ * folha já conferida descartava silenciosamente o trabalho anterior — sem
+ * aviso, sem cópia e sem registro de quem regerou. Nunca lança erro: falha ao
+ * arquivar não pode impedir a operação em si, mas fica no log.
+ */
+function rh_arquivarFolhaSubstituida_(linhas, cabecalho, quem, motivo) {
+  try {
+    if (!linhas || !linhas.length) return 0;
+    var sh = rh_garantirFolhaHistorico_(cabecalho);
+    var agora = new Date();
+    var out = linhas.map(function (l) { return [agora, quem || "", motivo || ""].concat(l); });
+    sh.getRange(sh.getLastRow() + 1, 1, out.length, out[0].length).setValues(out);
+    return out.length;
+  } catch (e) {
+    Logger.log("rh_arquivarFolhaSubstituida_ (não bloqueia a operação): " + e);
+    return 0;
+  }
+}
+
+/**
+ * Quantos lançamentos já existem numa competência. A tela chama antes de gerar
+ * para poder avisar que a folha será substituída.
+ */
+function contarFolhaCompetenciaRH(competencia, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
+  try {
+    competencia = String(competencia || "").trim();
+    if (!competencia) return { ok: true, existentes: 0 };
+    var sh = rh_garantirFolha_();
+    if (sh.getLastRow() < 2) return { ok: true, existentes: 0 };
+    var dados = sh.getRange(2, 2, sh.getLastRow() - 1, 1).getValues();
+    var n = 0;
+    dados.forEach(function (l) { if (String(l[0]) === competencia) n++; });
+    return { ok: true, existentes: n, competencia: competencia };
+  } catch (e) {
+    return { ok: false, mensagem: e.message, existentes: 0 };
+  }
+}
+
 function gerarFolhaRH(competencia, itens, observacao, tokenSessao) {
   var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  return rh_comLock_(function () {
   try {
     competencia = String(competencia || "").trim();
     if (!competencia) return { ok: false, mensagem: "Informe a competência." };
@@ -548,10 +623,19 @@ function gerarFolhaRH(competencia, itens, observacao, tokenSessao) {
     var quem = sessao.nome || sessao.usuario || "SISGEP";
     var agora = new Date();
 
+    // Antes de apagar, guarda o que será substituído: regerar uma folha já
+    // conferida não pode descartar o trabalho anterior sem deixar rastro.
+    var substituidos = 0;
     if (sh.getLastRow() > 1) {
+      var cabecalhoFolha = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
       var existentes = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+      var aArquivar = existentes.filter(function (l) { return String(l[1]) === competencia; });
+      if (aArquivar.length) {
+        rh_arquivarFolhaSubstituida_(aArquivar, cabecalhoFolha, quem,
+          "Folha regerada para a competência " + competencia);
+      }
       for (var i = existentes.length - 1; i >= 0; i--) {
-        if (String(existentes[i][1]) === competencia) sh.deleteRow(i + 2);
+        if (String(existentes[i][1]) === competencia) { sh.deleteRow(i + 2); substituidos++; }
       }
     }
 
@@ -658,6 +742,7 @@ function gerarFolhaRH(competencia, itens, observacao, tokenSessao) {
   } catch (e) {
     return { ok: false, mensagem: "Erro ao gerar folha: " + e.message };
   }
+  });
 }
 
 // Custo total da folha (Fase 4): bruto de todos os colaboradores + FGTS
@@ -734,7 +819,8 @@ function listarFolhaRH(competencia, tokenSessao) {
 // tinha uma despesa gerada, cancele/estorne manualmente na tela de
 // Despesas.
 function excluirFolhaCompetenciaRH(competencia, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, true);
+  var sessaoExcl = exigirSessaoDocumentos_(tokenSessao, true);
+  return rh_comLock_(function () {
   try {
     competencia = String(competencia || "").trim();
     if (!competencia) return { ok: false, mensagem: "Informe a competência a excluir." };
@@ -742,7 +828,15 @@ function excluirFolhaCompetenciaRH(competencia, tokenSessao) {
     var sh = rh_garantirFolha_();
     var removidos = 0;
     if (sh.getLastRow() > 1) {
+      var cabExcl = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
       var dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+      // Excluir folha é irreversível pela tela: guarda cópia antes de apagar.
+      var arquivar = dados.filter(function (l) { return String(l[1]) === competencia; });
+      if (arquivar.length) {
+        rh_arquivarFolhaSubstituida_(arquivar, cabExcl,
+          (sessaoExcl && (sessaoExcl.nome || sessaoExcl.usuario)) || "SISGEP",
+          "Folha excluída da competência " + competencia);
+      }
       for (var i = dados.length - 1; i >= 0; i--) {
         if (String(dados[i][1]) === competencia) { sh.deleteRow(i + 2); removidos++; }
       }
@@ -769,6 +863,7 @@ function excluirFolhaCompetenciaRH(competencia, tokenSessao) {
   } catch (e) {
     return { ok: false, mensagem: "Erro ao excluir folha: " + e.message };
   }
+  });
 }
 
 // Usado pelo gerador de holerite (RHDocumentos.gs) — busca um lançamento

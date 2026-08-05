@@ -792,16 +792,42 @@
         var extras=(RH_PREVIA_RUBRICAS_EXTRAS[idx]||[]).map(function(e){return {rubricaId:e.rubricaId,valor:e.valor};});
         return { colaboradorId:item.colaboradorId, diasTrabalhados:isFinite(dias)?dias:item.diasTrabalhadosSugerido, rubricasExtras:extras };
       });
+      /* Gerar folha SUBSTITUI a competência inteira: as linhas existentes são
+         apagadas e regravadas. Sem este aviso, regerar uma folha já conferida
+         descartava o trabalho anterior sem o operador perceber. O backend
+         guarda cópia em RH_FOLHA_HISTORICO, mas o aviso vem antes — desfazer
+         é sempre mais caro do que confirmar. */
+      function dispararGeracao(){
+        google.script.run
+          .withSuccessHandler(function(r){
+            if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao gerar folha.","err");return;}
+            RH_FOLHA_CACHE=r.linhas||[];
+            rhRenderFolha(RH_FOLHA_CACHE);
+            rhCancelarPreviaFolha();
+            avisar(r.mensagem||"Folha gerada!","ok");
+          })
+          .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+          .gerarFolhaRH(comp, itens, obs, tokenSessao());
+      }
+
       google.script.run
-        .withSuccessHandler(function(r){
-          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao gerar folha.","err");return;}
-          RH_FOLHA_CACHE=r.linhas||[];
-          rhRenderFolha(RH_FOLHA_CACHE);
-          rhCancelarPreviaFolha();
-          avisar(r.mensagem||"Folha gerada!","ok");
+        .withSuccessHandler(function(c){
+          var n = (c && Number(c.existentes)) || 0;
+          if(n > 0 && !confirm(
+              "A competência "+comp+" já tem "+n+" lançamento(s) de folha.\n\n" +
+              "Gerar de novo SUBSTITUI todos eles. Qualquer ajuste manual feito depois da " +
+              "geração anterior será perdido.\n\n" +
+              "Uma cópia do que for substituído fica guardada na aba RH_FOLHA_HISTORICO.\n\n" +
+              "Confirma a substituição?")) return;
+          dispararGeracao();
         })
-        .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
-        .gerarFolhaRH(comp, itens, obs, tokenSessao());
+        /* Se a contagem falhar, não trava a geração — só avisa em termos gerais. */
+        .withFailureHandler(function(){
+          if(confirm("Não consegui verificar se a competência "+comp+" já tem folha gerada.\n\n" +
+                     "Se já tiver, gerar agora substitui os lançamentos existentes.\n\nContinuar?"))
+            dispararGeracao();
+        })
+        .contarFolhaCompetenciaRH(comp, tokenSessao());
     };
 
     window.rhCarregarFolha=function(){
