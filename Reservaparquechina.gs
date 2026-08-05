@@ -881,8 +881,53 @@ function calcularPreviaAgendamentoParqueChina(dados, tokenSessao) {
   catch(erro){return {ok:false,mensagem:pcMensagemErro_(erro)};}
 }
 
+// ----------------------------------------------------------------------------
+// PONTE COM O FINANCEIRO — receita da hospedagem
+// ----------------------------------------------------------------------------
+// A reserva continua sendo Benefícios (suíte, hóspede, ocupação). O dinheiro
+// da hospedagem, porém, é receita do sindicato e precisa aparecer na Central
+// Financeira — mesmo padrão já usado em EventosEmissao.gs para o ingresso de
+// acompanhante. Sem isto, o valor fica preso no módulo de Benefícios e o
+// Financeiro enxerga só 1 das 5 fontes de receita do sindicato.
+//
+// Lança sempre a DIFERENÇA, nunca o valor cheio: registrarPagamentoParqueChina
+// grava VALOR_RECEBIDO como valor absoluto (não incremento), então registrar
+// 300 e depois corrigir para 500 dispararia dois lançamentos. Só o delta
+// positivo vira receita; correção para baixo é registrada na auditoria da
+// reserva, não gera receita negativa silenciosa.
+//
+// Nunca lança erro: falha ao espelhar no Financeiro não pode travar o
+// registro do pagamento em si (mesmo princípio de finAudRegistrarAlteracaoValor_).
+function pcRegistrarReceitaPagamento_(reserva, delta, dadosPagamento, tokenSessao) {
+  try {
+    if (!(delta > 0.009)) return;
+    if (String(reserva.gratuitoPago || "") === "GRATUITO") return;
+
+    var noite = reserva.quantidadeDiarias ? (reserva.quantidadeDiarias + " diária(s)") : "";
+    var suite = reserva.suiteDefinida || reserva.suiteSolicitada || "";
+
+    cadastrarReceita({
+      tipo: "Parque do China",
+      categoria: "Hospedagem",
+      descricao: "Hospedagem Parque do China — " + (reserva.nomeSolicitante || "") +
+                 (suite ? " — Suíte " + suite : "") + (noite ? " — " + noite : ""),
+      empresa: reserva.escola || "",
+      cnpj: reserva.cpf || "",
+      valor: delta,
+      formaRecebimento: (dadosPagamento && dadosPagamento.formaPagamento) || reserva.formaPagamento || "",
+      dataRecebimento: (dadosPagamento && dadosPagamento.dataPagamento) || "",
+      status: "RECEBIDO",
+      observacoes: "Reserva " + (reserva.idReserva || "") + ". Lançado automaticamente ao registrar o " +
+                   "pagamento no Parque do China (valor total da reserva: R$ " +
+                   Number(reserva.valorTotal || 0).toFixed(2) + ")."
+    }, tokenSessao);
+  } catch (e) {
+    Logger.log("pcRegistrarReceitaPagamento_ (não bloqueia o pagamento): " + e);
+  }
+}
+
 function registrarPagamentoParqueChina(idReserva, dadosPagamento, tokenSessao) {
-  try {var sessao=pcExigirAdmin_(tokenSessao),responsavel=sessao.nome||sessao.usuario||sessao.email;dadosPagamento=dadosPagamento||{};return pcComLock_(function(){var r=buscarReservaParqueChinaPorId_(idReserva);if(!r)return {ok:false,mensagem:"Reserva não encontrada."};var statusReserva=String(r.valores[PC_COL.STATUS-1]);if([PC_STATUS.APROVADA,PC_STATUS.AGUARDANDO_PAGAMENTO].indexOf(statusReserva)===-1)return {ok:false,mensagem:"O status da reserva não permite registrar pagamento."};if(String(r.valores[PC_COL.GRATUITO_PAGO-1])==="GRATUITO")return {ok:false,mensagem:"Reserva gratuita não recebe pagamento."};var aba=obterAbaReservaParqueChina_(),valor=pcNumero_(dadosPagamento.valorRecebido),total=pcNumero_(r.valores[PC_COL.VALOR_TOTAL-1]);if(valor<0)return {ok:false,mensagem:"O valor recebido não pode ser negativo."};if(valor>total+0.009)return {ok:false,mensagem:"O valor recebido não pode ser maior que o valor total."};var status=valor>=total&&total>0?PC_STATUS_PAGAMENTO.PAGO:valor>0?PC_STATUS_PAGAMENTO.PARCIAL:PC_STATUS_PAGAMENTO.PENDENTE;aba.getRange(r.linha,PC_COL.VALOR_RECEBIDO).setValue(valor);aba.getRange(r.linha,PC_COL.STATUS_PAGAMENTO).setValue(status);aba.getRange(r.linha,PC_COL.FORMA_PAGAMENTO).setValue(dadosPagamento.formaPagamento||r.valores[PC_COL.FORMA_PAGAMENTO-1]||"");aba.getRange(r.linha,PC_COL.DATA_PAGAMENTO).setValue(dadosPagamento.dataPagamento?pcDataDia_(dadosPagamento.dataPagamento):(valor>0?new Date():""));aba.getRange(r.linha,PC_COL.ATUALIZADO_EM).setValue(new Date());aba.getRange(r.linha,PC_COL.ATUALIZADO_POR).setValue(responsavel);pcAuditar_(idReserva,"PAGAMENTO_ATUALIZADO",String(r.valores[PC_COL.STATUS_PAGAMENTO-1]||""),status,responsavel,dadosPagamento.observacao||"",{valorAnterior:pcNumero_(r.valores[PC_COL.VALOR_RECEBIDO-1]),valorRecebido:valor,valorTotal:total});pcInvalidarCache_();return {ok:true,idReserva:idReserva,statusPagamento:status,valorRecebido:valor,valorPendente:Math.max(0,total-valor)};});}catch(erro){return {ok:false,mensagem:pcMensagemErro_(erro)};}
+  try {var sessao=pcExigirAdmin_(tokenSessao),responsavel=sessao.nome||sessao.usuario||sessao.email;dadosPagamento=dadosPagamento||{};return pcComLock_(function(){var r=buscarReservaParqueChinaPorId_(idReserva);if(!r)return {ok:false,mensagem:"Reserva não encontrada."};var statusReserva=String(r.valores[PC_COL.STATUS-1]);if([PC_STATUS.APROVADA,PC_STATUS.AGUARDANDO_PAGAMENTO].indexOf(statusReserva)===-1)return {ok:false,mensagem:"O status da reserva não permite registrar pagamento."};if(String(r.valores[PC_COL.GRATUITO_PAGO-1])==="GRATUITO")return {ok:false,mensagem:"Reserva gratuita não recebe pagamento."};var aba=obterAbaReservaParqueChina_(),valor=pcNumero_(dadosPagamento.valorRecebido),total=pcNumero_(r.valores[PC_COL.VALOR_TOTAL-1]);if(valor<0)return {ok:false,mensagem:"O valor recebido não pode ser negativo."};if(valor>total+0.009)return {ok:false,mensagem:"O valor recebido não pode ser maior que o valor total."};var status=valor>=total&&total>0?PC_STATUS_PAGAMENTO.PAGO:valor>0?PC_STATUS_PAGAMENTO.PARCIAL:PC_STATUS_PAGAMENTO.PENDENTE;aba.getRange(r.linha,PC_COL.VALOR_RECEBIDO).setValue(valor);aba.getRange(r.linha,PC_COL.STATUS_PAGAMENTO).setValue(status);aba.getRange(r.linha,PC_COL.FORMA_PAGAMENTO).setValue(dadosPagamento.formaPagamento||r.valores[PC_COL.FORMA_PAGAMENTO-1]||"");aba.getRange(r.linha,PC_COL.DATA_PAGAMENTO).setValue(dadosPagamento.dataPagamento?pcDataDia_(dadosPagamento.dataPagamento):(valor>0?new Date():""));aba.getRange(r.linha,PC_COL.ATUALIZADO_EM).setValue(new Date());aba.getRange(r.linha,PC_COL.ATUALIZADO_POR).setValue(responsavel);pcAuditar_(idReserva,"PAGAMENTO_ATUALIZADO",String(r.valores[PC_COL.STATUS_PAGAMENTO-1]||""),status,responsavel,dadosPagamento.observacao||"",{valorAnterior:pcNumero_(r.valores[PC_COL.VALOR_RECEBIDO-1]),valorRecebido:valor,valorTotal:total});pcRegistrarReceitaPagamento_(mapearLinhaParaObjetoParqueChina_(r.valores),valor-pcNumero_(r.valores[PC_COL.VALOR_RECEBIDO-1]),dadosPagamento,tokenSessao);pcInvalidarCache_();return {ok:true,idReserva:idReserva,statusPagamento:status,valorRecebido:valor,valorPendente:Math.max(0,total-valor)};});}catch(erro){return {ok:false,mensagem:pcMensagemErro_(erro)};}
 }
 
 function migrarModuloParqueChinaParaManual(tokenSessao) {
