@@ -123,8 +123,11 @@ b.passo("12. Lançar no banco uma despesa que nem foi aprovada");
 const d2 = novaDespesa("Material de escritório", 300);
 const ID2 = d2 && (d2.idDespesa || d2.id);
 const lanCedo = g.pagLancarNoBanco({ idDespesa: ID2, dataLancamento: dias(0) }, FIN);
-if (lanCedo && lanCedo.ok) b.aviso("lança no banco SEM aprovação prévia", "o fluxo do item 11 exige aprovação antes");
-else b.ok(true, "recusa lançar no banco sem aprovação", lanCedo.mensagem);
+b.ok(lanCedo && lanCedo.ok === false, "recusa lançar no banco sem aprovação prévia", lanCedo && lanCedo.mensagem);
+// E depois de aprovar, passa — a trava não pode virar impedimento.
+g.aprovarDespesaParaPagamento({ idDespesa: ID2 }, FIN);
+const lanDepois = g.pagLancarNoBanco({ idDespesa: ID2, dataLancamento: dias(0) }, FIN);
+b.ok(lanDepois && lanDepois.ok, "depois de aprovada, lança normalmente", lanDepois && lanDepois.mensagem);
 
 b.passo("13. Despesa inexistente");
 const fantasma = g.pagConfirmarPagamento({ idDespesa: "NAO-EXISTE-999", dataPagamento: dias(0) }, FIN);
@@ -133,10 +136,15 @@ b.ok(fantasma && fantasma.ok === false, "ID inexistente é recusado", fantasma &
 b.passo("14. Valor zero e valor negativo");
 const zero = novaDespesa("Teste zero", 0);
 const neg = novaDespesa("Teste negativo", -500);
-if (zero && zero.ok) b.aviso("aceita despesa de valor ZERO", "id " + (zero.idDespesa || zero.id));
-else b.ok(true, "recusa valor zero", zero && zero.mensagem);
-if (neg && neg.ok) b.aviso("aceita despesa de valor NEGATIVO", "id " + (neg.idDespesa || neg.id));
-else b.ok(true, "recusa valor negativo", neg && neg.mensagem);
+b.ok(zero && zero.ok === false, "recusa valor ZERO", zero && zero.mensagem);
+b.ok(neg && neg.ok === false, "recusa valor NEGATIVO", neg && neg.mensagem);
+b.ok(novaDespesa("Teste vazio", "").ok === false, "recusa valor vazio");
+// Formato que vem da tela precisa continuar passando.
+const brl = novaDespesa("Teste formato BR", "1.234,56");
+b.ok(brl && brl.ok, "aceita 1.234,56 no formato da tela", brl && brl.mensagem);
+// A edição também barra.
+const edZero = g.editarDespesa({ idDespesa: ID, valor: 0 }, FIN);
+b.ok(edZero && edZero.ok === false, "editar para zero também é recusado", edZero && edZero.mensagem);
 
 b.passo("15. Desfazer o lançamento no banco");
 const desf = g.pagDesfazerLancamentoBanco({ idDespesa: ID2 }, FIN);

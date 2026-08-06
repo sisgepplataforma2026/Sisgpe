@@ -1011,9 +1011,41 @@ function invalidarTokenDesp_(chaveCompleta) {
 // ferias/rescisao e das verbas de diretoria. Exigir o modulo Financeiro
 // aqui faria a folha salvar e o lancamento sumir em silencio, porque a
 // chamada e best-effort dentro de try/catch. Sessao continua exigida.
+/**
+ * Valor de despesa tem que ser maior que zero.
+ *
+ * Zero entra na fila, aparece no relatório e não significa nada. Negativo é
+ * pior: distorce todos os totais em silêncio, porque a soma continua somando.
+ * Se o caso for devolução ou estorno, existe estornarDespesa — que registra
+ * motivo e mantém o histórico. Achado por teste em 2026-08-06.
+ *
+ * Aceita "1.234,56", "1234.56" e número, porque é isso que chega da tela.
+ */
+function despValorValido_(valor) {
+  if (valor === null || valor === undefined || valor === "") {
+    return { ok: false, mensagem: "Informe o valor da despesa." };
+  }
+  var n;
+  if (typeof valor === "number") {
+    n = valor;
+  } else {
+    var txt = String(valor).replace(/[^\d,.-]/g, "");
+    // "1.234,56" → tira o ponto de milhar e troca a vírgula por ponto.
+    if (txt.indexOf(",") > -1) txt = txt.replace(/\./g, "").replace(",", ".");
+    n = Number(txt);
+  }
+  if (!isFinite(n)) return { ok: false, mensagem: "Valor inválido." };
+  if (n === 0)      return { ok: false, mensagem: "O valor da despesa não pode ser zero." };
+  if (n < 0)        return { ok: false, mensagem: "O valor da despesa não pode ser negativo. Para devolver ou reverter um pagamento, use o estorno." };
+  return { ok: true, valor: n };
+}
+
 function registrarLancamentoDespesa(dados, tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
   dados = dados || {};
+
+  var checagemValor = despValorValido_(dados.valor);
+  if (!checagemValor.ok) return { ok: false, mensagem: checagemValor.mensagem };
 
   // Duplicidade só é checada em lançamento manual/avulso — o recorrente
   // automático já tem sua própria checagem (jaExisteLancamentoMesDesp_)
@@ -2590,6 +2622,14 @@ function editarDespesa(payload, tokenSessao) {
   var sessao = exigirModulo_(tokenSessao, "financeiro", false);
   try {
     payload = payload || {};
+
+    // A mesma regra do cadastro: não adianta barrar zero e negativo na
+    // criação se a edição deixa passar depois.
+    if (payload.valor !== undefined && payload.valor !== null && payload.valor !== "") {
+      var checagemValor = despValorValido_(payload.valor);
+      if (!checagemValor.ok) return { ok: false, mensagem: checagemValor.mensagem };
+    }
+
     garantirColunasAprovacaoDesp_();
     var idDespesa = String(payload.idDespesa || "").trim();
     if (!idDespesa) return { ok: false, mensagem: "ID não informado." };

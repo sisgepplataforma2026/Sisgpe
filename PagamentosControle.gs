@@ -224,6 +224,19 @@ function pagLancarNoBanco(payload, tokenSessao) {
     if (statusAtual === STATUS_DESPESA.ESTORNADO) return { ok: false, mensagem: "Esta despesa está estornada." };
     if (statusAtual === STATUS_DESPESA.LANCADO_BANCO) return { ok: false, mensagem: "Esta despesa já está lançada no banco." };
 
+    // Aprovação vem antes do banco. Sem isto, o dinheiro saía sem passar por
+    // quem autoriza — e o fluxo do item 11 do prompt mestre exige aprovar
+    // antes de lançar. A aprovação não é um status: é a coluna
+    // APROVADO_PARA_PAGAMENTO, gravada por aprovarDespesaParaPagamento.
+    //
+    // Despesa criada antes desta coluna existir chega aqui sem "SIM" e é
+    // barrada — de propósito. A mensagem manda aprovar, que é um clique, e
+    // aprovar deixa registrado quem autorizou. Melhor do que abrir exceção
+    // para dado antigo e nunca mais saber quem liberou o quê.
+    if (String(pag_(despInfo, "APROVADO_PARA_PAGAMENTO") || "").trim().toUpperCase() !== "SIM") {
+      return { ok: false, mensagem: "Esta despesa ainda não foi aprovada para pagamento. Aprove antes de lançar no banco." };
+    }
+
     var dataLancamento = pagDataBR_(payload.dataLancamento) || formatarDataBRDesp_(new Date());
     var conta          = String(payload.contaBancaria  || "").trim();
     var forma          = String(payload.formaPagamento || "").trim();
