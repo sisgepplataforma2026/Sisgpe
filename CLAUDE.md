@@ -2,9 +2,39 @@
 
 Projeto Google Apps Script (single global scope — arquivos `.gs`/`.html` sem import, tudo em `google.script.run`/`include()`). Branch de trabalho padrão: `claude/sisgep-project-analysis-h9wcy3`.
 
-**Prompt mestre de arquitetura, auditoria e testes: `docs/PROMPT-MESTRE.md`.** É documento normativo, definido pelo usuário e mandado seguir à risca — ler antes de auditar, analisar ou reorganizar qualquer módulo. Em conflito, as regras de segurança abaixo prevalecem sobre ele, porque o sistema está em produção com dado real de associado e de dinheiro.
+**Prompt mestre de arquitetura, auditoria e testes: `docs/PROMPT-MESTRE.md`.** É documento normativo, definido pelo usuário e mandado seguir à risca — ler antes de auditar, analisar ou reorganizar qualquer módulo. Em conflito, as regras de segurança abaixo prevalecem sobre ele — ver a nota de estado de operação logo abaixo.
 
 **Acesso que eu tenho:** só o repositório GitHub. Não tenho o projeto Apps Script, a planilha de produção nem o Drive de trabalho. O conector do Google Drive lê metadado (dá para listar o projeto `SISGEP-OFICIOS`), mas **não lê o código-fonte** de projeto Apps Script — esse MIME type não é suportado. Portanto: toda afirmação sobre o que está no ar depende de o usuário confirmar.
+
+## ⚠️ ESTADO REAL DE OPERAÇÃO (confirmado pelo usuário em 2026-08-06)
+
+**O sistema ainda NÃO está em operação. Só a emissão de ofícios está em uso.**
+
+Isto corrige uma premissa que este arquivo carregava e que vinha calibrando
+mal as minhas recomendações. A distinção que importa:
+
+| | Situação |
+|---|---|
+| **Ofícios** | em uso diário — é a única operação viva |
+| **Base de Associados** | ~8.000 pessoas de dado real, mas ninguém opera por ela |
+| **Escolas** | 681 cadastros reais, idem |
+| **Todo o resto** | construído, não operado |
+
+**O que isso muda na prática:**
+
+- **Dado real existe; operação não.** São coisas diferentes. Perder os 8.000
+  associados continua sendo catastrófico e irrecuperável — a REGRA Nº 1 vale
+  inteira. Mas quebrar uma tela que ninguém usa ainda custa uma correção, não
+  um dia de sindicato parado.
+- **A janela para mudança estrutural é agora.** Reorganizar módulos, dividir
+  arquivos, trocar arquitetura de dados — tudo isso fica muito mais barato
+  antes de a equipe depender do sistema. Recomendações minhas que foram
+  conservadoras "porque está em produção" precisam ser relidas com este fato.
+- **Ofícios é a exceção.** Ali vale a cautela integral: é o que a Marcela usa
+  todo dia, e parar a emissão de ofício é parar trabalho real.
+
+Não usar isto como licença para pular teste. A REGRA Nº -1 continua valendo
+por inteiro — a diferença é no custo de errar, não no rigor de verificar.
 
 ## 🚨 REGRA Nº -1 — LER CÓDIGO NÃO É TESTAR. NADA É "PRONTO" SEM EXECUÇÃO
 
@@ -65,7 +95,7 @@ Regras práticas:
 
 ## 🚨 REGRA Nº 1 — NUNCA APAGAR ARQUIVO QUE O SISTEMA AINDA USA
 
-**Isto nunca pode acontecer. Nem uma vez.** O SISGEP roda em produção num sindicato real, com dado real de associado e de dinheiro. Apagar um arquivo ainda usado derruba função em produção e pode corromper dado.
+**Isto nunca pode acontecer. Nem uma vez.** A base tem dado real — ~8.000 associados e 681 escolas — e o módulo de Ofícios está em uso diário. Apagar um arquivo ainda usado derruba a emissão de ofício ou corrompe cadastro que ninguém tem de onde recuperar.
 
 Antes de declarar QUALQUER arquivo ou função como "órfão", "morto", "não usado" ou "candidato a remoção" — seja num relatório, seja numa recomendação, seja antes de deletar — é **obrigatório** completar os 5 passos abaixo. **Grep só nos `.html` NÃO é suficiente.**
 
