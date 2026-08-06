@@ -2,15 +2,60 @@
   <style>
     #configAdmin *{box-sizing:border-box}.cfg-head{background:linear-gradient(135deg,var(--navy,#001f4d),var(--navy2,#002f6c));color:#fff;padding:22px 24px;display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}.cfg-title{font-size:21px;font-weight:900}.cfg-sub{font-size:12px;color:rgba(255,255,255,.72);margin-top:4px}.cfg-wrap{padding:18px 22px 34px}.cfg-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}.cfg-card,.cfg-panel{background:#fff;border:1px solid var(--g200,#e2e8f0);border-radius:14px;box-shadow:0 2px 10px rgba(0,20,60,.06)}.cfg-card{padding:15px}.cfg-card small{font-size:10px;font-weight:900;color:var(--g500,#64748b);text-transform:uppercase}.cfg-card strong{display:block;font-size:15px;color:var(--g900,#0f172a);margin-top:7px;word-break:break-word}.cfg-panel{overflow:hidden}.cfg-bar{padding:14px 16px;border-bottom:1px solid #eef2f7;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.cfg-body{padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:14px}.cfg-row{border:1px solid var(--g200,#e2e8f0);border-radius:12px;padding:13px;background:var(--g50,#f8fafc);display:flex;justify-content:space-between;gap:12px;align-items:center}.cfg-row span{font-size:12px;color:var(--g500,#64748b)}.cfg-row strong{font-size:13px}.cfg-btn{height:34px;border-radius:9px;border:1px solid var(--g300,#cbd5e1);background:#fff;color:var(--g700,#334155);font-size:12px;font-weight:800;padding:0 12px;cursor:pointer;font-family:inherit}.cfg-btn.primary{background:linear-gradient(135deg,var(--navy,#001f4d),var(--navy2,#002f6c));color:#fff;border-color:var(--navy2,#002f6c)}.cfg-toggle{width:44px;height:24px;border-radius:999px;border:1px solid var(--g300,#cbd5e1);background:var(--g200,#e2e8f0);position:relative;cursor:pointer;flex:none}.cfg-toggle:after{content:"";width:18px;height:18px;left:2px;top:2px;border-radius:999px;background:#fff;position:absolute;box-shadow:0 1px 4px rgba(15,23,42,.22);transition:.15s}.cfg-toggle.on{background:var(--blue,#1565C0);border-color:var(--blue,#1565C0)}.cfg-toggle.on:after{left:22px}@media(max-width:1000px){.cfg-grid,.cfg-body{grid-template-columns:1fr 1fr}}@media(max-width:700px){.cfg-grid,.cfg-body{grid-template-columns:1fr}}
   </style>
-  <div class="cfg-head"><div><div class="cfg-title">Configuracoes</div><div class="cfg-sub">Ambiente, preferencias e verificacao rapida do sistema</div></div><button class="cfg-btn" onclick="cfgCarregar()">Atualizar</button></div>
+  <div class="cfg-head"><div><div class="cfg-title">Configurações</div><div class="cfg-sub">Ambiente, preferências e verificação rápida do sistema</div></div><button class="cfg-btn" onclick="cfgCarregar()">Atualizar</button></div>
   <div class="cfg-wrap">
-    <div class="cfg-grid"><div class="cfg-card"><small>Ambiente</small><strong id="cfgAmbiente">Carregando...</strong></div><div class="cfg-card"><small>Planilha</small><strong id="cfgPlanilha">-</strong></div><div class="cfg-card"><small>Versao</small><strong id="cfgVersao">SISGEP</strong></div><div class="cfg-card"><small>Usuario</small><strong id="cfgUsuario">Administrador</strong></div></div>
-    <div class="cfg-panel"><div class="cfg-bar"><strong>Preferencias locais</strong><div><button class="cfg-btn" onclick="cfgSalvar()">Salvar</button><button class="cfg-btn primary" onclick="spIr('inicio')">Voltar ao painel</button></div></div>
-      <div class="cfg-body"><div class="cfg-row"><div><strong>Notificacoes no painel</strong><span>Mostra alertas e lembretes importantes.</span></div><button id="cfgNotif" class="cfg-toggle" onclick="cfgToggle('notif')"></button></div><div class="cfg-row"><div><strong>Modo compacto</strong><span>Reduz espacamentos em telas de operacao.</span></div><button id="cfgCompacto" class="cfg-toggle" onclick="cfgToggle('compacto')"></button></div><div class="cfg-row"><div><strong>Confirmar acoes criticas</strong><span>Pede confirmacao antes de excluir ou enviar.</span></div><button id="cfgConfirmar" class="cfg-toggle" onclick="cfgToggle('confirmar')"></button></div><div class="cfg-row"><div><strong>Copiar e-mail administrativo</strong><span>Mantem copia interna nos fluxos de envio.</span></div><button id="cfgEmail" class="cfg-toggle" onclick="cfgToggle('email')"></button></div></div>
+    <div id="cfgAlertaAmbiente" style="display:none;margin-bottom:14px;padding:13px 17px;border-radius:12px;background:#fef3c7;border:1.5px solid #fcd34d;color:#92400e;font-size:12.5px;font-weight:700;"></div>
+    <div class="cfg-grid"><div class="cfg-card"><small>Ambiente</small><strong id="cfgAmbiente">Verificando...</strong></div><div class="cfg-card"><small>Planilha</small><strong id="cfgPlanilha">Verificando...</strong></div><div class="cfg-card"><small>Versão</small><strong id="cfgVersao">—</strong></div><div class="cfg-card"><small>Usuário</small><strong id="cfgUsuario">—</strong></div></div>
+    <div class="cfg-panel"><div class="cfg-bar"><strong>Preferências locais</strong><div><button class="cfg-btn" onclick="cfgSalvar()">Salvar</button><button class="cfg-btn primary" onclick="spIr('inicio')">Voltar ao painel</button></div></div>
+      <div class="cfg-body"><div class="cfg-row"><div><strong>Notificações no painel</strong><span>Mostra alertas e lembretes importantes.</span></div><button id="cfgNotif" class="cfg-toggle" onclick="cfgToggle('notif')"></button></div><div class="cfg-row"><div><strong>Modo compacto</strong><span>Reduz espaçamentos em telas de operação.</span></div><button id="cfgCompacto" class="cfg-toggle" onclick="cfgToggle('compacto')"></button></div><div class="cfg-row"><div><strong>Confirmar ações críticas</strong><span>Pede confirmação antes de excluir ou enviar.</span></div><button id="cfgConfirmar" class="cfg-toggle" onclick="cfgToggle('confirmar')"></button></div><div class="cfg-row"><div><strong>Copiar e-mail administrativo</strong><span>Mantém cópia interna nos fluxos de envio.</span></div><button id="cfgEmail" class="cfg-toggle" onclick="cfgToggle('email')"></button></div></div>
     </div>
   </div>
   <script>
-  (function(){var KEY="sisgep_config_local_v1",state={notif:true,compacto:false,confirmar:true,email:true};function g(i){return document.getElementById(i)}function load(){try{state=Object.assign(state,JSON.parse(localStorage.getItem(KEY)||"{}"))}catch(e){}}function draw(){g("cfgNotif").classList.toggle("on",!!state.notif);g("cfgCompacto").classList.toggle("on",!!state.compacto);g("cfgConfirmar").classList.toggle("on",!!state.confirmar);g("cfgEmail").classList.toggle("on",!!state.email)}window.cfgToggle=function(k){state[k]=!state[k];draw()};window.cfgSalvar=function(){localStorage.setItem(KEY,JSON.stringify(state));toast("Preferencias salvas neste navegador.","ok")};window.cfgCarregar=function(){g("cfgAmbiente").textContent="Producao";g("cfgPlanilha").textContent="Configurada";if(window.google&&google.script&&google.script.run){try{google.script.run.withSuccessHandler(function(r){r=r||{};g("cfgAmbiente").textContent=r.ambiente||r.AMBIENTE||"Producao";g("cfgPlanilha").textContent=r.planilhaId||r.PLANILHA_ID||"Configurada";g("cfgVersao").textContent=r.versao||r.VERSAO||"SISGEP"}).withFailureHandler(function(){g("cfgPlanilha").textContent="Verificar no Apps Script"}).getConfigPublica()}catch(e){}}};window.initConfig=function(){load();draw();cfgCarregar()};if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",initConfig);else setTimeout(initConfig,80)})();
+  (function(){var KEY="sisgep_config_local_v1",state={notif:true,compacto:false,confirmar:true,email:true};function g(i){return document.getElementById(i)}function load(){try{state=Object.assign(state,JSON.parse(localStorage.getItem(KEY)||"{}"))}catch(e){}}function draw(){g("cfgNotif").classList.toggle("on",!!state.notif);g("cfgCompacto").classList.toggle("on",!!state.compacto);g("cfgConfirmar").classList.toggle("on",!!state.confirmar);g("cfgEmail").classList.toggle("on",!!state.email)}window.cfgToggle=function(k){state[k]=!state[k];draw()};window.cfgSalvar=function(){localStorage.setItem(KEY,JSON.stringify(state));toast("Preferências salvas neste navegador.","ok")};
+
+  /* Os quatro cards vêm de getConfigPainel, que APURA cada um.
+     A versão anterior chamava getConfigPublica e lia campos que aquele
+     retorno não tem: r.ambiente é objeto (virava "[object Object]" na tela),
+     r.planilhaId não existe (caía no fallback e escrevia "Configurada" sem
+     verificar nada — garantia falsa), r.versao está em r.sistema.versao.
+     Nada aqui tem valor de reserva: se o servidor não responder, o card diz
+     que não respondeu. Card que chuta é pior que card vazio. */
+  function cfgToken(){
+    try{ return (window.SISGEP_TOKEN || window.tokenSessao || localStorage.getItem("sisgep_token") || ""); }
+    catch(e){ return window.SISGEP_TOKEN || ""; }
+  }
+  window.cfgCarregar=function(){
+    if(!(window.google&&google.script&&google.script.run)) return;
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||!r.ok) return;
+        g("cfgAmbiente").textContent = r.ambienteRotulo;
+        g("cfgPlanilha").textContent = r.planilha;
+        g("cfgPlanilha").style.color = r.planilhaOk ? "" : "#dc2626";
+        g("cfgVersao").textContent   = r.versao;
+        g("cfgVersao").title         = r.versaoDescricao || "";
+        g("cfgUsuario").textContent  = r.usuario;
+        g("cfgUsuario").title        = r.perfil || "";
+
+        /* Homologação tem que saltar aos olhos: quem não percebe que está
+           nela acha que gravou em produção — ou, pior, o contrário. */
+        var al = g("cfgAlertaAmbiente");
+        if(r.ambienteAlerta){
+          al.style.display = "block";
+          al.textContent = "⚠ Você está em HOMOLOGAÇÃO. O que for gravado aqui NÃO vai para a planilha de produção.";
+        } else {
+          al.style.display = "none";
+        }
+      })
+      .withFailureHandler(function(e){
+        g("cfgAmbiente").textContent = "Não verificado";
+        g("cfgPlanilha").textContent = "Não verificado";
+        g("cfgPlanilha").style.color = "#dc2626";
+        g("cfgVersao").textContent   = "—";
+        g("cfgUsuario").textContent  = "—";
+      })
+      .getConfigPainel(cfgToken());
+  };window.initConfig=function(){load();draw();cfgCarregar()};if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",initConfig);else setTimeout(initConfig,80)})();
   </script>
 
   <!-- Usuarios e acesso por modulo. Arquivo separado (AcessoAdmin)

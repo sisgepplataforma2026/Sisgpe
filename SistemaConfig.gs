@@ -411,6 +411,74 @@ function getConfigPublica() {
   };
 }
 
+/**
+ * Os quatro indicadores do topo de Configurações, verificados de verdade.
+ *
+ * POR QUE ESTA FUNÇÃO EXISTE (2026-08-06)
+ * A tela chamava getConfigPublica() e lia campos que aquele retorno não tem:
+ *
+ *   r.ambiente   → é um OBJETO {nome, isProducao}. Jogado em textContent,
+ *                  virava a palavra "[object Object]" na tela.
+ *   r.planilhaId → não existe no retorno. Caía no fallback e escrevia
+ *                  "Configurada" SEM VERIFICAR NADA. Era o pior dos quatro:
+ *                  dava garantia falsa. A planilha podia estar inacessível e
+ *                  o painel afirmava que estava certa.
+ *   r.versao     → está em r.sistema.versao. Caía no fallback "SISGEP",
+ *                  então a versão 2.1.0 nunca chegou à tela.
+ *   usuário      → texto fixo "Administrador" escrito no HTML. Mostrava isso
+ *                  para qualquer pessoa logada, inclusive quem não é admin.
+ *
+ * Aqui cada campo é apurado e devolvido plano — string, não objeto. A
+ * planilha é ABERTA para responder; se não abrir, o retorno diz que não
+ * abriu, em vez de dizer "Configurada".
+ */
+function getConfigPainel(tokenSessao) {
+  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+
+  var ambiente = "producao";
+  try { ambiente = getAmbienteAtual(); } catch (e) {}
+
+  // Verificação real: abrir a planilha. "Configurada" sem abrir é chute.
+  var planilha = { ok: false, texto: "Não foi possível verificar", id: "" };
+  try {
+    var ss = planilhaSisgep_();
+    var id = ss.getId();
+    planilha = {
+      ok: true,
+      // Só o final do ID: identifica qual é sem expor a chave inteira numa
+      // tela que fica aberta na mesa de todo mundo.
+      texto: ss.getName() + " (…" + id.slice(-6) + ")",
+      id: "…" + id.slice(-6)
+    };
+  } catch (e) {
+    planilha.texto = "Falhou ao abrir: " + e.message;
+  }
+
+  // O perfil já vem na sessão como texto. Não existe sessao.administrador —
+  // a checagem de admin em todo o projeto é feita pela normalização abaixo
+  // (Sessao.gs:395-401). Ler um campo que não existe daria "Usuário" para
+  // todo mundo, que é o mesmo erro do card antigo, invertido.
+  var perfilBruto = String(sessao.perfil || "");
+  var perfilNorm = perfilBruto.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
+  var ehAdmin = perfilNorm.indexOf("ADMIN") > -1;
+
+  return {
+    ok: true,
+    ambiente: ambiente,
+    ambienteRotulo: ambiente === "homologacao" ? "HOMOLOGAÇÃO" : "Produção",
+    // Homologação precisa saltar aos olhos: quem não percebe que está nela
+    // acha que gravou em produção — ou pior, o contrário.
+    ambienteAlerta: ambiente === "homologacao",
+    planilhaOk: planilha.ok,
+    planilha: planilha.texto,
+    versao: (typeof SISTEMA_VERSAO === "string" ? SISTEMA_VERSAO : "—"),
+    versaoDescricao: (typeof SISTEMA_VERSAO_DESC === "string" ? SISTEMA_VERSAO_DESC : ""),
+    usuario: sessao.nome || sessao.usuario || sessao.email || "—",
+    perfil: perfilBruto || "—",
+    administrador: ehAdmin
+  };
+}
+
 function inicializarConfig() {
   try {
     logSistema("INFO", "Config", "Inicializando mÃ³dulo de configuraÃ§Ãµes...");
