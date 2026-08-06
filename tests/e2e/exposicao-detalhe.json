@@ -1,7 +1,7 @@
 {
   "medidoEm": "2026-08-06",
   "totalPublicas": 787,
-  "protegidas": 447,
+  "protegidas": 453,
   "expostas": [
     {
       "nome": "validarCPF",
@@ -734,26 +734,6 @@
       "escreve": false
     },
     {
-      "nome": "validarOperacaoParqueChina",
-      "arquivo": "Reservaparquechina.gs",
-      "escreve": false
-    },
-    {
-      "nome": "validarIntegracaoAutorizacoesParqueChina",
-      "arquivo": "Reservaparquechina.gs",
-      "escreve": false
-    },
-    {
-      "nome": "validarMapaColunasParqueChina",
-      "arquivo": "Reservaparquechina.gs",
-      "escreve": false
-    },
-    {
-      "nome": "inspecionarAbaReservasParqueChina",
-      "arquivo": "Reservaparquechina.gs",
-      "escreve": false
-    },
-    {
       "nome": "encerrarSessaoUsuario",
       "arquivo": "Sessao.gs",
       "escreve": false
@@ -1099,5 +1079,5 @@
       "escreve": false
     }
   ],
-  "inconclusivas": 121
+  "inconclusivas": 119
 }

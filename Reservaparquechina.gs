@@ -351,6 +351,7 @@ function obterConfigParqueChina_() {
  * o painel administrativo chama esta função pra ler a configuração atual.
  */
 function obterConfiguracoesParqueChinaParaPainel(tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try { pcExigirAdmin_(tokenSessao); return {ok:true,config:obterConfigParqueChina_()}; }
   catch (erro) { return {ok:false,mensagem:pcMensagemErro_(erro)}; }
 }
@@ -360,6 +361,7 @@ function obterConfiguracoesParqueChinaParaPainel(tokenSessao) {
  * chamador (painel) se quiser travar só pra Presidente/Administrador.
  */
 function salvarConfiguracoesParqueChina(novaConfig, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     var sessao = pcExigirAdmin_(tokenSessao);
     pcExigirPerfis_(sessao, ["ADMINISTRADOR", "PRESIDENTE"]);
@@ -430,6 +432,7 @@ function pcConfigParaClienteV4_(config) {
 }
 
 function carregarConfiguracoesChinaParkV4(tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     pcExigirAdmin_(tokenSessao);
     return {ok:true,config:pcConfigParaClienteV4_(obterConfigParqueChina_())};
@@ -440,6 +443,7 @@ function carregarConfiguracoesChinaParkV4(tokenSessao) {
 }
 
 function salvarConfiguracoesChinaParkV4(novaConfig, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     var retorno=salvarConfiguracoesParqueChina(novaConfig,tokenSessao);
     if(!retorno||!retorno.ok)return retorno||{ok:false,mensagem:"O servidor não retornou o resultado da gravação."};
@@ -675,6 +679,7 @@ function dashboardReservaParqueChina() {
 // ----------------------------------------------------------------------------
 
 function listarReservasParqueChina(filtros, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   filtros=filtros||{}; pcExigirAdmin_(tokenSessao);
   var aba=obterAbaReservaParqueChina_(),last=aba.getLastRow();if(last<2)return [];
   return aba.getRange(2,1,last-1,PC_CABECALHO.length).getValues().map(mapearLinhaParaObjetoParqueChina_).filter(function(r){
@@ -701,6 +706,7 @@ function mapearLinhaParaObjetoParqueChina_(l) {
 }
 
 function obterAgendaMensalParqueChina(mes, ano, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     pcExigirAdmin_(tokenSessao);var aba=obterAbaReservaParqueChina_(),last=aba.getLastRow(),lista=[],periodo=pcPeriodoMes_(mes,ano);
     if(last>=2)lista=aba.getRange(2,1,last-1,PC_CABECALHO.length).getValues().map(mapearLinhaParaObjetoParqueChina_).filter(function(r){return pcPeriodosConflitam_(pcDataDia_(r.dataEntrada),pcDataDia_(r.dataSaida),periodo.inicio,periodo.fim);});
@@ -742,6 +748,7 @@ function obterAgendaMensalParqueChina(mes, ano, tokenSessao) {
  * transporte do google.script.run.
  */
 function getDashboardChinaPark(parametros, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     parametros=parametros||{};
     pcExigirAdmin_(tokenSessao);
@@ -760,6 +767,7 @@ function getDashboardChinaPark(parametros, tokenSessao) {
 function calcularSaldoMensalParqueChina(mes, ano, tokenSessao) { return obterAgendaMensalParqueChina(mes, ano, tokenSessao); }
 
 function obterRelatorioParqueChina(filtros, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     filtros=filtros||{};
     pcExigirAdmin_(tokenSessao);
@@ -798,6 +806,7 @@ function obterRelatorioParqueChina(filtros, tokenSessao) {
 // ----------------------------------------------------------------------------
 
 function aprovarReservaParqueChina(idReserva, dadosAprovacao, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try { var sessao=pcExigirAdmin_(tokenSessao),responsavel=sessao.nome||sessao.usuario||sessao.email;dadosAprovacao=dadosAprovacao||{};
     return pcComLock_(function(){var encontrada=buscarReservaParqueChinaPorId_(idReserva);if(!encontrada)return {ok:false,mensagem:"Reserva não encontrada."};var anterior=String(encontrada.valores[PC_COL.STATUS-1]);if([PC_STATUS.CANCELADA,PC_STATUS.RECUSADA,PC_STATUS.FINALIZADA].indexOf(anterior)!==-1)return {ok:false,mensagem:"O status atual não permite aprovação."};
       var suite=String(dadosAprovacao.suiteDefinida||encontrada.valores[PC_COL.SUITE_SOLICITADA-1]||"");if(!suite||suite==="QUALQUER_DISPONIVEL")return {ok:false,mensagem:"Escolha uma suíte específica."};if(PARQUE_CHINA_CONFIG.SUITES.indexOf(suite)===-1)return {ok:false,mensagem:"Suíte inválida."};var entrada=Utilities.formatDate(new Date(encontrada.valores[PC_COL.DATA_ENTRADA-1]),PARQUE_CHINA_CONFIG.TIMEZONE,"yyyy-MM-dd"),saida=Utilities.formatDate(new Date(encontrada.valores[PC_COL.DATA_SAIDA-1]),PARQUE_CHINA_CONFIG.TIMEZONE,"yyyy-MM-dd");if(!verificarDisponibilidadeSuiteParqueChina_(suite,entrada,saida,idReserva))return {ok:false,mensagem:"A suíte "+suite+" já está ocupada nesse período."};
@@ -808,14 +817,17 @@ function aprovarReservaParqueChina(idReserva, dadosAprovacao, tokenSessao) {
 }
 
 function recusarReservaParqueChina(idReserva, motivo, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {var sessao=pcExigirAdmin_(tokenSessao),responsavel=sessao.nome||sessao.usuario||sessao.email;if(!String(motivo||"").trim())return {ok:false,mensagem:"Informe o motivo da recusa."};return pcComLock_(function(){var r=buscarReservaParqueChinaPorId_(idReserva);if(!r)return {ok:false,mensagem:"Reserva não encontrada."};var anterior=String(r.valores[PC_COL.STATUS-1]);if([PC_STATUS.PENDENTE,PC_STATUS.INSCRITO_SORTEIO].indexOf(anterior)===-1)return {ok:false,mensagem:"Somente solicitações aguardando análise podem ser recusadas."};var aba=obterAbaReservaParqueChina_();aba.getRange(r.linha,PC_COL.STATUS).setValue(PC_STATUS.RECUSADA);aba.getRange(r.linha,PC_COL.MOTIVO_RECUSA).setValue(motivo);aba.getRange(r.linha,PC_COL.RESPONSAVEL_APROVACAO).setValue(responsavel);aba.getRange(r.linha,PC_COL.DATA_APROVACAO).setValue(new Date());aba.getRange(r.linha,PC_COL.ATUALIZADO_EM).setValue(new Date());aba.getRange(r.linha,PC_COL.ATUALIZADO_POR).setValue(responsavel);pcAuditar_(idReserva,"RESERVA_RECUSADA",anterior,PC_STATUS.RECUSADA,responsavel,motivo,{});pcInvalidarCache_();try{var obj=mapearLinhaParaObjetoParqueChina_(aba.getRange(r.linha,1,1,PC_CABECALHO.length).getValues()[0]);if(obj.email)enviarEmailRecusaParqueChina_(obj,motivo);}catch(e){Logger.log(e);}return {ok:true,idReserva:idReserva,status:PC_STATUS.RECUSADA};});}catch(erro){return {ok:false,mensagem:pcMensagemErro_(erro)};}
 }
 
 function cancelarReservaParqueChina(idReserva, motivo, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {var sessao=pcExigirAdmin_(tokenSessao),responsavel=sessao.nome||sessao.usuario||sessao.email;if(!String(motivo||"").trim())return {ok:false,mensagem:"Informe o motivo do cancelamento."};return pcComLock_(function(){var r=buscarReservaParqueChinaPorId_(idReserva);if(!r)return {ok:false,mensagem:"Reserva não encontrada."};var aut=pcMapaAutorizacoesAtivas_()[String(idReserva)];if(aut)return {ok:false,mensagem:"A reserva está vinculada ao Ofício "+aut.numeroOficio+". Faça o cancelamento por Retificação para comunicar formalmente o parque."};var anterior=String(r.valores[PC_COL.STATUS-1]);if([PC_STATUS.CANCELADA,PC_STATUS.RECUSADA,PC_STATUS.FINALIZADA].indexOf(anterior)!==-1)return {ok:false,mensagem:"O status atual não permite cancelamento."};var aba=obterAbaReservaParqueChina_();aba.getRange(r.linha,PC_COL.STATUS).setValue(PC_STATUS.CANCELADA);aba.getRange(r.linha,PC_COL.OBSERVACAO_ADMIN).setValue((r.valores[PC_COL.OBSERVACAO_ADMIN-1]||"")+" | Cancelada: "+motivo);aba.getRange(r.linha,PC_COL.ATUALIZADO_EM).setValue(new Date());aba.getRange(r.linha,PC_COL.ATUALIZADO_POR).setValue(responsavel);pcAuditar_(idReserva,"RESERVA_CANCELADA",anterior,PC_STATUS.CANCELADA,responsavel,motivo,{});pcInvalidarCache_();return {ok:true,idReserva:idReserva,status:PC_STATUS.CANCELADA};});}catch(erro){return {ok:false,mensagem:pcMensagemErro_(erro)};}
 }
 
 function editarReservaParqueChina(idReserva, dados, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     var sessao=pcExigirAdmin_(tokenSessao),responsavel=sessao.nome||sessao.usuario||sessao.email||"SISGEP";dados=dados||{};
     return pcComLock_(function(){
@@ -852,6 +864,7 @@ function editarReservaParqueChina(idReserva, dados, tokenSessao) {
  * APROVADA. Requer sessão logada.
  */
 function criarAgendamentoManualParqueChina(dados, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     var sessao=pcExigirAdmin_(tokenSessao),responsavel=sessao.nome||sessao.usuario||sessao.email;dados=dados||{};
     var erros=validarDadosReservaParqueChina_(dados,{admin:true});if(erros.length)return {ok:false,mensagem:"Corrija os campos informados.",erros:erros};
@@ -877,6 +890,7 @@ function criarAgendamentoManualParqueChina(dados, tokenSessao) {
 function bloquearSuiteAdministrativoParqueChina(dados, tokenSessao) { dados=dados||{};dados.bloqueioInstitucional=true;dados.gratuitoPago="GRATUITO";dados.statusPagamento="ISENTO";return criarAgendamentoManualParqueChina(dados,tokenSessao); }
 
 function calcularPreviaAgendamentoParqueChina(dados, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try { pcExigirAdmin_(tokenSessao); var erros=validarDadosReservaParqueChina_(dados||{}); if(erros.length)return {ok:false,erros:erros,mensagem:"Corrija os campos informados."}; return {ok:true,valores:calcularPeriodoParqueChina_(dados.dataEntrada,dados.dataSaida,dados.quantidadePessoas,dados.solicitouColchaoExtra,dados.desconto,dados.acrescimo)}; }
   catch(erro){return {ok:false,mensagem:pcMensagemErro_(erro)};}
 }
@@ -927,10 +941,12 @@ function pcRegistrarReceitaPagamento_(reserva, delta, dadosPagamento, tokenSessa
 }
 
 function registrarPagamentoParqueChina(idReserva, dadosPagamento, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {var sessao=pcExigirAdmin_(tokenSessao),responsavel=sessao.nome||sessao.usuario||sessao.email;dadosPagamento=dadosPagamento||{};return pcComLock_(function(){var r=buscarReservaParqueChinaPorId_(idReserva);if(!r)return {ok:false,mensagem:"Reserva não encontrada."};var statusReserva=String(r.valores[PC_COL.STATUS-1]);if([PC_STATUS.APROVADA,PC_STATUS.AGUARDANDO_PAGAMENTO].indexOf(statusReserva)===-1)return {ok:false,mensagem:"O status da reserva não permite registrar pagamento."};if(String(r.valores[PC_COL.GRATUITO_PAGO-1])==="GRATUITO")return {ok:false,mensagem:"Reserva gratuita não recebe pagamento."};var aba=obterAbaReservaParqueChina_(),valor=pcNumero_(dadosPagamento.valorRecebido),total=pcNumero_(r.valores[PC_COL.VALOR_TOTAL-1]);if(valor<0)return {ok:false,mensagem:"O valor recebido não pode ser negativo."};if(valor>total+0.009)return {ok:false,mensagem:"O valor recebido não pode ser maior que o valor total."};var status=valor>=total&&total>0?PC_STATUS_PAGAMENTO.PAGO:valor>0?PC_STATUS_PAGAMENTO.PARCIAL:PC_STATUS_PAGAMENTO.PENDENTE;aba.getRange(r.linha,PC_COL.VALOR_RECEBIDO).setValue(valor);aba.getRange(r.linha,PC_COL.STATUS_PAGAMENTO).setValue(status);aba.getRange(r.linha,PC_COL.FORMA_PAGAMENTO).setValue(dadosPagamento.formaPagamento||r.valores[PC_COL.FORMA_PAGAMENTO-1]||"");aba.getRange(r.linha,PC_COL.DATA_PAGAMENTO).setValue(dadosPagamento.dataPagamento?pcDataDia_(dadosPagamento.dataPagamento):(valor>0?new Date():""));aba.getRange(r.linha,PC_COL.ATUALIZADO_EM).setValue(new Date());aba.getRange(r.linha,PC_COL.ATUALIZADO_POR).setValue(responsavel);pcAuditar_(idReserva,"PAGAMENTO_ATUALIZADO",String(r.valores[PC_COL.STATUS_PAGAMENTO-1]||""),status,responsavel,dadosPagamento.observacao||"",{valorAnterior:pcNumero_(r.valores[PC_COL.VALOR_RECEBIDO-1]),valorRecebido:valor,valorTotal:total});pcRegistrarReceitaPagamento_(mapearLinhaParaObjetoParqueChina_(r.valores),valor-pcNumero_(r.valores[PC_COL.VALOR_RECEBIDO-1]),dadosPagamento,tokenSessao);pcInvalidarCache_();return {ok:true,idReserva:idReserva,statusPagamento:status,valorRecebido:valor,valorPendente:Math.max(0,total-valor)};});}catch(erro){return {ok:false,mensagem:pcMensagemErro_(erro)};}
 }
 
 function migrarModuloParqueChinaParaManual(tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {var sessao=pcExigirAdmin_(tokenSessao),responsavel=sessao.nome||sessao.usuario||sessao.email;return pcComLock_(function(){var aba=obterAbaReservaParqueChina_(),last=aba.getLastRow(),alteradas=0;if(last>=2){var status=aba.getRange(2,PC_COL.STATUS,last-1,1).getValues();for(var i=0;i<status.length;i++)if(String(status[i][0])===PC_STATUS.INSCRITO_SORTEIO){status[i][0]=PC_STATUS.PENDENTE;alteradas++;}if(alteradas)aba.getRange(2,PC_COL.STATUS,last-1,1).setValues(status);}obterAbaConfigParqueChina_();pcAuditar_("","MIGRACAO_PARA_MANUAL",PC_STATUS.INSCRITO_SORTEIO,PC_STATUS.PENDENTE,responsavel,"Sorteio desativado",{linhasAlteradas:alteradas});return {ok:true,linhasAlteradas:alteradas};});}catch(erro){return {ok:false,mensagem:pcMensagemErro_(erro)};}
 }
 
@@ -955,6 +971,7 @@ function pcSuiteLivreNaOcupacao_(suite, entrada, saida, ocupacao, ignorarId) {
 }
 
 function sugerirDistribuicaoAutomaticaParqueChina(parametros, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try{
     pcExigirAdmin_(tokenSessao);parametros=parametros||{};
     var mes=Number(parametros.mes)||new Date().getMonth()+1,ano=Number(parametros.ano)||new Date().getFullYear(),periodo=pcPeriodoMes_(mes,ano),hoje=pcDataDia_(new Date());
@@ -976,6 +993,7 @@ function sugerirDistribuicaoAutomaticaParqueChina(parametros, tokenSessao) {
 }
 
 function confirmarDistribuicaoAutomaticaParqueChina(sugestoes, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try{
     var sessao=pcExigirAdmin_(tokenSessao),responsavel=sessao.nome||sessao.usuario||sessao.email;sugestoes=Array.isArray(sugestoes)?sugestoes:[];
     if(!sugestoes.length)return {ok:false,mensagem:"Nenhuma sugestão foi enviada para confirmação."};
@@ -1001,6 +1019,7 @@ function confirmarDistribuicaoAutomaticaParqueChina(sugestoes, tokenSessao) {
 }
 
 function diagnosticarModuloParqueChina(tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try{
     pcExigirAdmin_(tokenSessao);var leitura=pcLerLinhasReservas_(),problemas=[];
     leitura.linhas.forEach(function(item){var r=item.reserva,total=pcNumero_(r.valorTotal),recebido=pcNumero_(r.valorRecebido),ativa=pcStatusBloqueiaSuite_(r.status);
@@ -1141,6 +1160,7 @@ function calcularPreviaPublicaParqueChina(dados) {
  * mínima da fila cadastral e cache curto para abertura imediata do painel.
  */
 function getCentralBeneficiosAdmin(tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     pcExigirAdmin_(tokenSessao);
     var agora=new Date(),mes=agora.getMonth()+1,ano=agora.getFullYear();
@@ -1285,6 +1305,7 @@ function obterDisponibilidadeParqueChina_(dataInicio, dataFim) {
  * funções administrativas do módulo.
  */
 function consultarDisponibilidadeParqueChina(dataInicio, dataFim, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     pcExigirAdmin_(tokenSessao);
     return obterDisponibilidadeParqueChina_(dataInicio, dataFim);
@@ -1434,6 +1455,7 @@ function pcHospedesReserva_(r) {
 }
 
 function listarReservasParaAutorizacaoParqueChina(parametros, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     pcExigirAdmin_(tokenSessao); parametros=parametros||{};
     var inicio=pcDataDia_(parametros.dataInicio||new Date()), fim=pcDataDia_(parametros.dataFim||new Date(Date.now()+7*86400000));
@@ -1519,6 +1541,7 @@ function pcMontarHtmlOficioAutorizacao_(reservas,dados,numero,isPreview) {
 }
 
 function previewOficioAutorizacaoParqueChina(dados, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try{pcExigirAdmin_(tokenSessao);dados=dados||{};var reservas=pcSelecionarReservasAutorizacao_(dados.idsReservas||[],String(dados.tipoEmissao||"").toUpperCase()==="RETIFICACAO");if(!reservas.length)return {ok:false,mensagem:"Selecione pelo menos uma reserva."};var numero=typeof preverProximoNumeroOficio==="function"?preverProximoNumeroOficio():"PRÉVIA";return {ok:true,html:pcMontarHtmlOficioAutorizacao_(reservas,dados,"PRÉVIA · "+numero,true),proximoNumero:numero};}catch(erro){return {ok:false,mensagem:String(erro.message||erro)};}
 }
 
@@ -1551,6 +1574,7 @@ function pcNumeroOficioJaRegistrado_(numero) {
 }
 
 function emitirOficioAutorizacaoParqueChina(dados, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   var numero="",idAut="";
   try{
     var sessao=pcExigirAdmin_(tokenSessao),responsavel=sessao.nome||sessao.usuario||sessao.email||"SISGEP";dados=dados||{};
@@ -1613,10 +1637,12 @@ function pcPrepararComunicacaoManual_(r) {
 }
 
 function prepararComunicacaoManualReservaParqueChina(idReserva, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {pcExigirAdmin_(tokenSessao);var achada=buscarReservaParqueChinaPorId_(idReserva);if(!achada)return {ok:false,mensagem:"Reserva não encontrada."};var r=mapearLinhaParaObjetoParqueChina_(achada.valores);if(!pcReservaAutorizavel_(r))return {ok:false,mensagem:"A reserva precisa estar aprovada e com suíte definida para comunicação."};var c=pcPrepararComunicacaoManual_(r);return {ok:true,idReserva:r.idReserva,nomeSolicitante:r.nomeSolicitante,telefone:c.telefone,email:c.email,numeroOficio:c.numeroOficio,textoWhatsApp:c.textoWhatsApp};}catch(erro){return {ok:false,mensagem:pcMensagemErro_(erro)};}
 }
 
 function enviarEmailManualReservaParqueChina(idReserva, emailAdicional, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {var sessao=pcExigirAdmin_(tokenSessao),responsavel=sessao.nome||sessao.usuario||sessao.email||"SISGEP",achada=buscarReservaParqueChinaPorId_(idReserva);if(!achada)return {ok:false,mensagem:"Reserva não encontrada."};var r=mapearLinhaParaObjetoParqueChina_(achada.valores);if(!pcReservaAutorizavel_(r))return {ok:false,mensagem:"A reserva precisa estar aprovada e com suíte definida para envio."};var c=pcPrepararComunicacaoManual_(r),destinos=pcEmailsValidos_([r.email||"",emailAdicional||""].join(","));if(!destinos.length)return {ok:false,mensagem:"A reserva não possui e-mail válido. Informe um destinatário adicional."};var enviados=[],falhas=[];destinos.forEach(function(email){try{GmailApp.sendEmail(email,c.assunto,"Confirmação da reserva "+r.idReserva+" no China Park.",{htmlBody:c.htmlEmail,name:"SindEducação-ES | SISGEP",replyTo:String(obterConfigParqueChina_().EMAIL_RESPOSTA_BENEFICIOS||"financeiro@sindeducacao.com")});pcRegistrarComunicacao_(r.idReserva,c.numeroOficio,"EMAIL_MANUAL_HOSPEDE",email,"ENVIADO",responsavel,"Envio manual pelas ações");enviados.push(email);}catch(e){pcRegistrarComunicacao_(r.idReserva,c.numeroOficio,"EMAIL_MANUAL_HOSPEDE",email,"ERRO",responsavel,String(e.message||e));falhas.push({email:email,motivo:String(e.message||e)});}});pcAuditar_(r.idReserva,"EMAIL_MANUAL_HOSPEDE","","",responsavel,"",{enviados:enviados,falhas:falhas,numeroOficio:c.numeroOficio});return {ok:falhas.length===0,totalEnviados:enviados.length,totalFalhas:falhas.length,mensagem:falhas.length?"Envio concluído com pendências.":"E-mail enviado com sucesso.",enviados:enviados,falhas:falhas};}catch(erro){Logger.log("enviarEmailManualReservaParqueChina: "+erro);return {ok:false,mensagem:pcMensagemErro_(erro)};}
 }
 
@@ -1636,6 +1662,7 @@ function pcMarcarAutorizacaoEnviada_(numero) {
 }
 
 function enviarOficioAutorizacaoParqueChinaAgora(numero, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try{
     var sessao=pcExigirAdmin_(tokenSessao),responsavel=sessao.nome||sessao.usuario||sessao.email||"SISGEP",dest=pcBuscarDestinatariosAutorizacao_(numero);
     var lock=LockService.getScriptLock();if(!lock.tryLock(15000))return {ok:false,mensagem:"Existe outro envio em processamento. Aguarde e tente novamente."};var fila;
@@ -1650,10 +1677,12 @@ function pcMontarEmailTesteParque_(reservas,proximoNumero) {
 }
 
 function enviarTesteEmailAutorizacaoParqueChina(dados,tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try{var sessao=pcExigirAdmin_(tokenSessao),responsavel=sessao.nome||sessao.usuario||sessao.email||"SISGEP";dados=dados||{};var destinos=pcNormalizarDestinatariosOficio_(dados,obterConfigParqueChina_());if(!destinos.para.length)return {ok:false,mensagem:"Selecione pelo menos um destinatário principal (Para)."};var reservas=pcSelecionarReservasAutorizacao_(dados.idsReservas||[],true);if(!reservas.length)return {ok:false,mensagem:"Selecione pelo menos uma reserva para compor o teste."};var proximo=typeof preverProximoNumeroOficio==="function"?preverProximoNumeroOficio():"—",assunto="[TESTE — NÃO É OFÍCIO] Autorização China Park — prévia "+proximo,opcoes={htmlBody:pcMontarEmailTesteParque_(reservas,proximo),name:"SindEducação-ES | SISGEP",replyTo:String(obterConfigParqueChina_().EMAIL_RESPOSTA_BENEFICIOS||"financeiro@sindeducacao.com")};if(destinos.cc.length)opcoes.cc=destinos.cc.join(",");if(destinos.cco.length)opcoes.bcc=destinos.cco.join(",");GmailApp.sendEmail(destinos.para.join(","),assunto,"TESTE SISGEP — esta mensagem não é um ofício e não autoriza entrada.",opcoes);pcRegistrarComunicacao_("","PRÉVIA "+proximo,"EMAIL_TESTE_PARQUE",destinos.para.join(","),"ENVIADO",responsavel,"CC: "+destinos.cc.join(",")+" · CCO: "+destinos.cco.join(","));pcAuditar_("","EMAIL_TESTE_AUTORIZACAO_CHINA_PARK","","ENVIADO",responsavel,"",{proximoNumeroNaoReservado:proximo,para:destinos.para,cc:destinos.cc,cco:destinos.cco,reservas:reservas.map(function(r){return r.idReserva;})});return {ok:true,mensagem:"E-mail de teste enviado. Nenhum número de ofício foi consumido.",proximoNumero:proximo,para:destinos.para,cc:destinos.cc,cco:destinos.cco};}catch(erro){return {ok:false,mensagem:pcMensagemErro_(erro)};}
 }
 
 function enviarConfirmacoesHospedesParqueChina(dados, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try{
     var sessao=pcExigirAdmin_(tokenSessao),responsavel=sessao.nome||sessao.usuario||sessao.email||"SISGEP";dados=dados||{};var numero=String(dados.numeroOficio||"").trim();if(!numero)return {ok:false,mensagem:"Número do ofício não informado."};
     var reservas=pcSelecionarReservasAutorizacao_(dados.idsReservas||[],true),extras=dados.emailsAdicionais||{},config=obterConfigParqueChina_(),enviados=[],falhas=[];
@@ -1706,6 +1735,7 @@ function pcItemOperacao_(r,suite,estado,oficios) {
 }
 
 function obterOperacaoHojeParqueChina(parametros,tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     pcExigirAdmin_(tokenSessao);parametros=parametros||{};var agora=new Date(),data=String(parametros.data||Utilities.formatDate(agora,PARQUE_CHINA_CONFIG.TIMEZONE,"yyyy-MM-dd")),hora=String(parametros.hora||Utilities.formatDate(agora,PARQUE_CHINA_CONFIG.TIMEZONE,"HH:mm")),instante=pcDataHoraOperacao_(data,hora);if(isNaN(instante.getTime()))return {ok:false,mensagem:"Informe data e horário válidos."};
     var config=obterConfigParqueChina_(),checkin=String(config.HORARIO_CHECKIN||"14:00"),checkout=String(config.HORARIO_CHECKOUT||"12:00"),movimentos=pcLerMovimentosOperacao_(instante),estados=pcEstadoOperacaoReservas_(movimentos),oficios=pcMapaAutorizacoesAtivas_(),reservas=pcLerLinhasReservas_().linhas.map(function(x){return x.reserva;}).filter(function(r){return pcStatusBloqueiaSuite_(r.status)&&String(r.suiteDefinida||"").trim();}),porSuite={},entradas=[],saidas=[],hospedados=[],limpeza=[],alertas=[],timeline=[];
@@ -1725,26 +1755,32 @@ function obterOperacaoHojeParqueChina(parametros,tokenSessao) {
 }
 
 function registrarCheckinParqueChina(idReserva,dados,tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {var sessao=pcExigirAdmin_(tokenSessao),responsavel=sessao.nome||sessao.usuario||sessao.email||"SISGEP";dados=dados||{};return pcComLock_(function(){var achada=buscarReservaParqueChinaPorId_(idReserva);if(!achada)return {ok:false,mensagem:"Reserva não encontrada."};var r=mapearLinhaParaObjetoParqueChina_(achada.valores);if(!pcReservaAutorizavel_(r))return {ok:false,mensagem:"A reserva precisa estar aprovada e com suíte definida."};var aut=pcMapaAutorizacoesAtivas_()[String(idReserva)];if(!aut)return {ok:false,codigo:"OFICIO_PENDENTE",mensagem:"Emita o ofício de autorização antes de realizar o check-in."};var estados=pcEstadoOperacaoReservas_(pcLerMovimentosOperacao_()),estado=estados[String(idReserva)];if(estado&&estado.estado==="HOSPEDADO")return {ok:false,mensagem:"O check-in já foi registrado."};if(estado&&estado.estado==="NO_SHOW")return {ok:false,mensagem:"A reserva foi marcada como no-show. Registre uma ocorrência administrativa antes de qualquer correção."};if(estado&&["AGUARDANDO_LIMPEZA","EM_LIMPEZA","LIBERADA"].indexOf(estado.estado)!==-1)return {ok:false,mensagem:"A reserva já possui check-out registrado."};var pendencias=[],saldo=Math.max(0,Number(r.valorTotal||0)-Number(r.valorRecebido||0));if(r.gratuitoPago!=="GRATUITO"&&saldo>0.009)pendencias.push("Pagamento pendente de R$ "+saldo.toFixed(2).replace(".",","));if(!pcCpfValido_(r.cpf))pendencias.push("CPF do responsável não validado");if(pendencias.length&&!dados.confirmarPendencias)return {ok:false,codigo:"PENDENCIAS_CHECKIN",mensagem:"Existem pendências antes do check-in.",pendencias:pendencias};var mov=pcRegistrarMovimentoOperacao_("CHECKIN",r,responsavel,String(dados.observacao||""),{numeroOficio:aut.numeroOficio,pendenciasConfirmadas:pendencias});pcAuditar_(idReserva,"CHECKIN_REALIZADO","","HOSPEDADO",responsavel,String(dados.observacao||""),{suite:r.suiteDefinida,numeroOficio:aut.numeroOficio,movimento:mov.idMovimento});return {ok:true,idReserva:idReserva,suite:r.suiteDefinida,mensagem:"Check-in registrado com sucesso."};});}catch(erro){return {ok:false,mensagem:pcMensagemErro_(erro)};}
 }
 
 function registrarCheckoutParqueChina(idReserva,dados,tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {var sessao=pcExigirAdmin_(tokenSessao),responsavel=sessao.nome||sessao.usuario||sessao.email||"SISGEP";dados=dados||{};return pcComLock_(function(){var achada=buscarReservaParqueChinaPorId_(idReserva);if(!achada)return {ok:false,mensagem:"Reserva não encontrada."};var r=mapearLinhaParaObjetoParqueChina_(achada.valores),estados=pcEstadoOperacaoReservas_(pcLerMovimentosOperacao_()),estado=estados[String(idReserva)];if((!estado||estado.estado!=="HOSPEDADO")&&!dados.confirmarSemCheckin)return {ok:false,codigo:"CHECKIN_NAO_REGISTRADO",mensagem:"O check-in não foi registrado. Confirme se deseja registrar o check-out mesmo assim."};if(estado&&["AGUARDANDO_LIMPEZA","EM_LIMPEZA","LIBERADA"].indexOf(estado.estado)!==-1)return {ok:false,mensagem:"O check-out já foi registrado."};var mov=pcRegistrarMovimentoOperacao_("CHECKOUT",r,responsavel,String(dados.observacao||""),{ocorrencia:String(dados.ocorrencia||""),checkinNaoRegistrado:!estado||estado.estado!=="HOSPEDADO"});pcAuditar_(idReserva,"CHECKOUT_REALIZADO","HOSPEDADO","AGUARDANDO_LIMPEZA",responsavel,String(dados.observacao||""),{suite:r.suiteDefinida,movimento:mov.idMovimento});return {ok:true,idReserva:idReserva,suite:r.suiteDefinida,mensagem:"Check-out registrado. A suíte está aguardando limpeza."};});}catch(erro){return {ok:false,mensagem:pcMensagemErro_(erro)};}
 }
 
 function registrarLimpezaParqueChina(idReserva,acao,observacao,tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {var sessao=pcExigirAdmin_(tokenSessao),responsavel=sessao.nome||sessao.usuario||sessao.email||"SISGEP",tipo=String(acao||"").toUpperCase()==="LIBERAR"?"SUITE_LIBERADA":"LIMPEZA_INICIADA";return pcComLock_(function(){var achada=buscarReservaParqueChinaPorId_(idReserva);if(!achada)return {ok:false,mensagem:"Reserva não encontrada."};var r=mapearLinhaParaObjetoParqueChina_(achada.valores),estado=pcEstadoOperacaoReservas_(pcLerMovimentosOperacao_())[String(idReserva)];if(!estado||["AGUARDANDO_LIMPEZA","EM_LIMPEZA"].indexOf(estado.estado)===-1)return {ok:false,mensagem:"A suíte não está aguardando limpeza."};if(tipo==="SUITE_LIBERADA"&&estado.estado!=="EM_LIMPEZA")return {ok:false,mensagem:"Inicie a limpeza antes de liberar a suíte."};var mov=pcRegistrarMovimentoOperacao_(tipo,r,responsavel,String(observacao||""),{}),novo=tipo==="SUITE_LIBERADA"?"LIBERADA":"EM_LIMPEZA";pcAuditar_(idReserva,tipo,estado.estado,novo,responsavel,String(observacao||""),{suite:r.suiteDefinida,movimento:mov.idMovimento});return {ok:true,idReserva:idReserva,suite:r.suiteDefinida,mensagem:tipo==="SUITE_LIBERADA"?"Suíte liberada para nova hospedagem.":"Limpeza iniciada."};});}catch(erro){return {ok:false,mensagem:pcMensagemErro_(erro)};}
 }
 
 function registrarOcorrenciaOperacaoParqueChina(idReserva,observacao,tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {var sessao=pcExigirAdmin_(tokenSessao),responsavel=sessao.nome||sessao.usuario||sessao.email||"SISGEP",texto=String(observacao||"").trim();if(!texto)return {ok:false,mensagem:"Descreva a ocorrência."};var achada=buscarReservaParqueChinaPorId_(idReserva);if(!achada)return {ok:false,mensagem:"Reserva não encontrada."};var r=mapearLinhaParaObjetoParqueChina_(achada.valores),mov=pcRegistrarMovimentoOperacao_("OCORRENCIA",r,responsavel,texto,{});pcAuditar_(idReserva,"OCORRENCIA_OPERACIONAL","","",responsavel,texto,{suite:r.suiteDefinida,movimento:mov.idMovimento});return {ok:true,mensagem:"Ocorrência registrada."};}catch(erro){return {ok:false,mensagem:pcMensagemErro_(erro)};}
 }
 
 function registrarNoShowParqueChina(idReserva,motivo,tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {var sessao=pcExigirAdmin_(tokenSessao),responsavel=sessao.nome||sessao.usuario||sessao.email||"SISGEP",texto=String(motivo||"").trim();if(!texto)return {ok:false,mensagem:"Informe o motivo do no-show."};return pcComLock_(function(){var achada=buscarReservaParqueChinaPorId_(idReserva);if(!achada)return {ok:false,mensagem:"Reserva não encontrada."};var r=mapearLinhaParaObjetoParqueChina_(achada.valores),estado=pcEstadoOperacaoReservas_(pcLerMovimentosOperacao_())[String(idReserva)];if(estado&&estado.estado==="HOSPEDADO")return {ok:false,mensagem:"Não é possível marcar no-show após o check-in."};if(estado&&estado.estado==="NO_SHOW")return {ok:false,mensagem:"O no-show já foi registrado."};var mov=pcRegistrarMovimentoOperacao_("NO_SHOW",r,responsavel,texto,{});pcAuditar_(idReserva,"NO_SHOW","","NO_SHOW",responsavel,texto,{suite:r.suiteDefinida,movimento:mov.idMovimento});return {ok:true,mensagem:"No-show registrado."};});}catch(erro){return {ok:false,mensagem:pcMensagemErro_(erro)};}
 }
 
-function validarOperacaoParqueChina() {
+function validarOperacaoParqueChina(tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     var estruturaReservas=pcValidarMapaColunas_(),ss=SpreadsheetApp.openById(PLANILHA_ID),sh=ss.getSheetByName("OperacaoParqueChina"),estruturaOperacao={ok:true,criada:!!sh,totalColunas:PC_OP_CABECALHO.length,mensagem:sh?"Aba operacional encontrada.":"A aba OperacaoParqueChina será criada automaticamente no primeiro acesso."};
     if(sh&&sh.getLastRow()>0){var atual=sh.getRange(1,1,1,PC_OP_CABECALHO.length).getDisplayValues()[0],divergencias=[];PC_OP_CABECALHO.forEach(function(h,i){if(String(atual[i]||"").trim()!==h)divergencias.push({coluna:i+1,esperado:h,encontrado:atual[i]||""});});estruturaOperacao.ok=!divergencias.length;estruturaOperacao.divergencias=divergencias;estruturaOperacao.mensagem=divergencias.length?"O cabeçalho da operação possui divergências.":"OperacaoParqueChina sincronizada (10 colunas).";}
@@ -1752,7 +1788,8 @@ function validarOperacaoParqueChina() {
   } catch(erro){return {ok:false,mensagem:pcMensagemErro_(erro)};}
 }
 
-function validarIntegracaoAutorizacoesParqueChina() {
+function validarIntegracaoAutorizacoesParqueChina(tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     var faltando=[];
     ["gerarProximoNumeroSeguro","preverProximoNumeroOficio","gerarHtmlOficioCompleto_","oficios_converterHtmlParaPdf_","criarFilaEnvioOficio_","enviarOficioDaFilaAgora","appendRowByHeader_","getHeaderMap_"].forEach(function(nome){
@@ -1766,7 +1803,8 @@ function validarIntegracaoAutorizacoesParqueChina() {
   } catch(erro){return {ok:false,mensagem:String(erro.message||erro)};}
 }
 
-function validarMapaColunasParqueChina() {
+function validarMapaColunasParqueChina(tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   return pcValidarMapaColunas_();
 }
 /**
@@ -1824,7 +1862,8 @@ function pcCalcDiarias_(entrada, saida){
  *   recalcularValor:true  -> se false, corrige apenas as diarias
  * }
  */
-function backfillDiariasValoresParqueChina(opcoes){
+function backfillDiariasValoresParqueChina(opcoes, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   opcoes = opcoes || {};
   var simular         = opcoes.simular !== false;
   var valorDiaria     = Number(opcoes.valorDiaria || 0);
@@ -1916,7 +1955,8 @@ var alvo = pcResolverAbaReservas_();
 }
 
 /** Atalho: roda em modo simulacao e imprime o resumo no log. */
-function simularBackfillParqueChina(){
+function simularBackfillParqueChina(tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   var r = backfillDiariasValoresParqueChina({ simular:true, valorDiaria:0, prefixo:"PC-HIST-" });
   Logger.log(JSON.stringify(r, null, 2));
   return r;
@@ -1966,7 +2006,8 @@ function pcResolverAbaReservas_(){
 }
 
 /** Diagnostico rapido: mostra a aba encontrada e o cabecalho lido. */
-function inspecionarAbaReservasParqueChina(){
+function inspecionarAbaReservasParqueChina(tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   var r = pcResolverAbaReservas_();
   if (!r.aba){
     Logger.log("Aba nao encontrada. Abas disponiveis:\n" + r.abasDisponiveis.join("\n"));
