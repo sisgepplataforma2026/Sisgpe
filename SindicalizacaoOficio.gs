@@ -411,8 +411,7 @@ function sindOf_fichaComoAnexo_(ficha) {
 }
 
 function sindOf_planilha_() {
-  return SpreadsheetApp.getActiveSpreadsheet() ||
-    SpreadsheetApp.openById('1QPpsx19v4YzfskoYXK9WB89TClA7q8SWGSn55VZ040E');
+  return planilhaSisgep_();
 }
 
 function sindOf_abaEscolas_() {

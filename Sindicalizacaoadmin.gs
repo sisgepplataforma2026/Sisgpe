@@ -134,8 +134,9 @@ function obterFichaSindicalizacao(idFicha, tokenSessao) {
 function aprovarFichaSindicalizacao(idFicha, aprovadoPor, tokenSessao) {
   exigirModulo_(tokenSessao, "sindicalizacao", false);
   var usuario = String(aprovadoPor || '').trim() || 'SISGEP';
-  var lock = LockService.getScriptLock();
-  lock.waitLock(30000);
+  // travarSisgep_ e não LockService: esta função chama sindAss_gravarDaFicha_,
+  // que também trava. Ver TravaSisgep.gs.
+  var trava = travarSisgep_(30000);
   try {
     var r = sindAdm_buscarPorId_(idFicha);
     if (!r) return { sucesso: false, mensagem: 'Ficha não encontrada.' };
@@ -194,7 +195,7 @@ function aprovarFichaSindicalizacao(idFicha, aprovadoPor, tokenSessao) {
       mensagem: msg
     };
   } finally {
-    lock.releaseLock();
+    trava.liberar();
   }
 }
 
@@ -208,8 +209,7 @@ function rejeitarFichaSindicalizacao(idFicha, motivo, aprovadoPor, tokenSessao) 
     return { sucesso: false, mensagem: 'Informe o motivo da rejeição.' };
   }
   var usuario = String(aprovadoPor || '').trim() || 'SISGEP';
-  var lock = LockService.getScriptLock();
-  lock.waitLock(20000);
+  var trava = travarSisgep_(20000);
   try {
     var r = sindAdm_buscarPorId_(idFicha);
     if (!r) return { sucesso: false, mensagem: 'Ficha não encontrada.' };
@@ -227,7 +227,7 @@ function rejeitarFichaSindicalizacao(idFicha, motivo, aprovadoPor, tokenSessao) 
 
     return { sucesso: true, mensagem: 'Ficha rejeitada e trabalhador notificado.' };
   } finally {
-    lock.releaseLock();
+    trava.liberar();
   }
 }
 
@@ -433,8 +433,7 @@ function sindAdm_logoDataUri_() {
 // ============================================================================
 
 function sindAdm_aba_() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet() ||
-    SpreadsheetApp.openById('1QPpsx19v4YzfskoYXK9WB89TClA7q8SWGSn55VZ040E');
+  var ss = planilhaSisgep_();
   var aba = ss.getSheetByName(SIND_ADM_ABA);
   if (!aba) {
     throw new Error('Aba ' + SIND_ADM_ABA + ' não existe. Execute ' +
@@ -688,8 +687,7 @@ function prepararAbaAssociadosParaSindicalizacao() {
     [16, 'ID_FICHA']
   ];
 
-  var ss = SpreadsheetApp.getActiveSpreadsheet() ||
-    SpreadsheetApp.openById('1QPpsx19v4YzfskoYXK9WB89TClA7q8SWGSn55VZ040E');
+  var ss = planilhaSisgep_();
   var aba = ss.getSheetByName('Associados');
   if (!aba) throw new Error('Aba Associados não encontrada.');
 
@@ -744,8 +742,7 @@ function prepararAbaAssociadosParaSindicalizacao() {
  * Somente leitura. Ver saída em Registro de execução.
  */
 function listarAbasDaPlanilha() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet() ||
-    SpreadsheetApp.openById('1QPpsx19v4YzfskoYXK9WB89TClA7q8SWGSn55VZ040E');
+  var ss = planilhaSisgep_();
   var abas = ss.getSheets();
   Logger.log('TOTAL DE ABAS: ' + abas.length);
   abas.forEach(function (aba) {
@@ -787,8 +784,7 @@ function regerarPDFTeste() {
  * Somente leitura. Ver saída em Registro de execução.
  */
 function diagnosticarAbaEscolas() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet() ||
-    SpreadsheetApp.openById('1QPpsx19v4YzfskoYXK9WB89TClA7q8SWGSn55VZ040E');
+  var ss = planilhaSisgep_();
   var aba = ss.getSheetByName('Escolas');
   if (!aba) throw new Error('Aba Escolas não encontrada.');
 
@@ -848,8 +844,7 @@ function diagnosticarAbaEscolas() {
  * Somente leitura. Ver saída em Registro de execução.
  */
 function contarEscolasDesalinhadas() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet() ||
-    SpreadsheetApp.openById('1QPpsx19v4YzfskoYXK9WB89TClA7q8SWGSn55VZ040E');
+  var ss = planilhaSisgep_();
   var aba = ss.getSheetByName('Escolas');
   var ultLinha = aba.getLastRow();
   var dados = aba.getRange(2, 1, ultLinha - 1, 14).getValues();

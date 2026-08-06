@@ -150,8 +150,12 @@ function sindAss_normalizarNomeEscola_(textoLivre) {
  * Retorna { linha, criado, escolaVinculada, avisos: [] }
  */
 function sindAss_gravarDaFicha_(ficha) {
-  var lock = LockService.getScriptLock();
-  lock.waitLock(30000);
+  // travarSisgep_ e não LockService direto: quem chama isto é
+  // aprovarFichaSindicalizacao (Sindicalizacaoadmin.gs:160), que JÁ está
+  // segurando a trava. Com LockService direto, esta linha esperava 30s por
+  // uma trava que só quem chamou podia soltar, estourava, e o trabalhador
+  // aprovado nunca chegava à aba Associados. Ver TravaSisgep.gs.
+  var trava = travarSisgep_(30000);
   try {
     var aba = sindAss_aba_();
     var mapa = sindAss_mapaCabecalho_(aba);
@@ -238,7 +242,7 @@ function sindAss_gravarDaFicha_(ficha) {
       avisos: avisos
     };
   } finally {
-    lock.releaseLock();
+    trava.liberar();
   }
 }
 
@@ -280,8 +284,9 @@ function sindAss_montarLogradouro_(ficha) {
 // operação avulsa no cadastro de associados. A sessão continua exigida.
 function sindAss_desfiliar_(cpf, usuario, tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
-  var lock = LockService.getScriptLock();
-  lock.waitLock(30000);
+  // travarSisgep_: gerarOficioWeb (Oficios.gs:683) chama isto no meio da
+  // emissão do ofício de desfiliação, e aquele fluxo também trava.
+  var trava = travarSisgep_(30000);
   try {
     var cpfDigitos = sindAss_digitos_(cpf);
     if (cpfDigitos.length !== 11) throw new Error('CPF inválido.');
@@ -311,7 +316,7 @@ function sindAss_desfiliar_(cpf, usuario, tokenSessao) {
     }
     return { encontrado: false };
   } finally {
-    lock.releaseLock();
+    trava.liberar();
   }
 }
 
@@ -337,8 +342,7 @@ function sindAss_desfiliar_(cpf, usuario, tokenSessao) {
  * em "Execuções" (View → Execution log).
  */
 function gerarMatriculasEmLote() {
-  var lock = LockService.getScriptLock();
-  lock.waitLock(30000);
+  var trava = travarSisgep_(30000);
   try {
     var aba = sindAss_aba_();
     var mapa = sindAss_mapaCabecalho_(aba);
@@ -391,7 +395,7 @@ function gerarMatriculasEmLote() {
     Logger.log(JSON.stringify(resultado));
     return resultado;
   } finally {
-    lock.releaseLock();
+    trava.liberar();
   }
 }
 
@@ -490,8 +494,7 @@ function diagnosticarVinculoEscolasAssociados() {
  * ========================================================================== */
 
 function sindAss_planilha_() {
-  return SpreadsheetApp.getActiveSpreadsheet() ||
-    SpreadsheetApp.openById('1QPpsx19v4YzfskoYXK9WB89TClA7q8SWGSn55VZ040E');
+  return planilhaSisgep_();
 }
 
 function sindAss_aba_() {

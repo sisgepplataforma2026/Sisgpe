@@ -263,8 +263,7 @@ function submeterFichaSindicalizacao(dados) {
  * do SindicalizacaoAdmin.gs). Notifica a secretaria.
  */
 function validarOTPEAssinarFicha(idFicha, otpInformado, ipCliente) {
-  var lock = LockService.getScriptLock();
-  lock.waitLock(20000);
+  var trava = travarSisgep_(20000);
   try {
     var registro = buscarFichaPorId_(idFicha);
     if (!registro) {
@@ -324,7 +323,7 @@ function validarOTPEAssinarFicha(idFicha, otpInformado, ipCliente) {
       linkPdf: registro.LINK_PDF || ''
     };
   } finally {
-    lock.releaseLock();
+    trava.liberar();
   }
 }
 
@@ -383,12 +382,12 @@ function calcularHashFicha_(r) {
   }).join('');
 }
 
+// Mantida porque outras funções deste arquivo chamam pelo ID. Passou a
+// perguntar ao acessador único (PlanilhaSisgep.gs) em vez de trazer o ID de
+// produção escrito aqui — era isso que fazia a escrita e a leitura poderem
+// cair em planilhas diferentes quando o ambiente mudava.
 function obterIdPlanilhaSindicalizacao_() {
-  // Mesmo padrão do SistemaConfig: usa a planilha de produção.
-  if (typeof obterIdPlanilhaAtiva_ === 'function') {
-    return obterIdPlanilhaAtiva_();
-  }
-  return '1QPpsx19v4YzfskoYXK9WB89TClA7q8SWGSn55VZ040E';
+  return planilhaSisgep_().getId();
 }
 
 function obterAbaSindicalizacao_() {
@@ -464,8 +463,18 @@ function buscarFichaAtivaPorCPF_(cpf) {
  * LockService. Atualização localiza a linha pelo ID_FICHA.
  */
 function gravarRegistroSindicalizacao_(registro) {
-  var lock = LockService.getScriptLock();
-  lock.waitLock(20000);
+  // ⚠️ LOCK ANINHADO — não volte a usar LockService direto aqui.
+  //
+  // validarOTPEAssinarFicha (linha ~266) já segura a trava do script quando
+  // chama esta função. Pedir de novo com LockService faz a execução esperar
+  // os 20 segundos e morrer — o associado que acabou de digitar o código de
+  // assinatura vê erro depois de uma tela travada.
+  //
+  // travarSisgep_ (TravaSisgep.gs) conta os níveis desta execução: quem
+  // chegou aninhado não pede a trava de novo nem solta a de quem chamou.
+  //
+  // Mesma família do bug de gerarFolhaRH corrigido em 2026-08-05.
+  var trava = travarSisgep_(20000);
   try {
     var aba = obterAbaSindicalizacao_();
     var mapa = mapaColunasSindicalizacao_(aba);
@@ -482,7 +491,9 @@ function gravarRegistroSindicalizacao_(registro) {
       aba.appendRow(linhaValores);
     }
   } finally {
-    lock.releaseLock();
+    // Só solta o que esta função pegou. Soltar a trava de quem chamou faria
+    // o resto daquela função rodar sem proteção nenhuma — pior que o problema.
+    trava.liberar();
   }
 }
 

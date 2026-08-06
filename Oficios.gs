@@ -180,8 +180,10 @@ function preverProximoNumeroOficio() {
 }
 
 function gerarProximoNumeroSeguro() {
-  var lock = LockService.getScriptLock();
-  lock.waitLock(15000);
+  // travarSisgep_ (TravaSisgep.gs): gerarOficioWeb chama esta função e, no
+  // ofício de desfiliação, também sindAss_desfiliar_ — que trava igual. Com
+  // LockService direto, basta alguém aninhar as duas para travar a emissão.
+  var trava = travarSisgep_(15000);
 
   try {
     var ss    = SpreadsheetApp.openById(PLANILHA_ID);
@@ -218,7 +220,7 @@ function gerarProximoNumeroSeguro() {
     return proximo;
 
   } finally {
-    lock.releaseLock();
+    trava.liberar();
   }
 }
 
