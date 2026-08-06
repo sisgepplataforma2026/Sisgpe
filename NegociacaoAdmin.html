@@ -1,0 +1,346 @@
+<div id="negociacaoAdmin" style="min-height:100%;background:#f0f4f8;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#0f172a;">
+<!--
+  Negociação Coletiva — a CCT como regra consultável.
+
+  Backend em NegociacaoColetiva.gs, que lê o texto de CCTCore.gs. Não existe
+  segunda cópia da convenção: a tela nunca guarda valor de piso nem texto de
+  cláusula em HTML fixo. Tudo vem do servidor, porque o dia em que a CCT do
+  ano seguinte for colada em CCTCore.gs, esta tela tem que mudar sozinha.
+
+  A conferência de piso mostra TODOS os enquadramentos possíveis do cargo e
+  se recusa a dar veredito quando o salário cai entre dois deles. Piso depende
+  de jornada e segmento, e o sistema não conhece nenhum dos dois com certeza.
+  Um "irregular" errado numa notificação a escola custa caro.
+-->
+
+  <div class="of-modulo-header">
+    <div>
+      <div class="of-modulo-header-title">📜 Negociação Coletiva</div>
+      <div class="of-modulo-header-sub">Convenção Coletiva de Trabalho — cláusulas, pisos e vigência</div>
+    </div>
+    <div class="of-modulo-header-badge">SindEducação-ES</div>
+  </div>
+
+  <!-- ═══ VIGÊNCIA ═══ -->
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">📅</div>
+        <div>
+          <div class="of-card-title" id="negIdentificacao">Carregando convenção…</div>
+          <div class="of-card-sub" id="negPeriodo">—</div>
+        </div>
+      </div>
+      <div class="row-btns">
+        <span id="negBadgeSituacao" style="display:inline-flex;align-items:center;height:28px;padding:0 14px;border-radius:999px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;background:#e2e8f0;color:#475569;">—</span>
+        <button type="button" id="negBtnRecarregar" class="btn btn-ghost btn-sm">↺ Atualizar</button>
+      </div>
+    </div>
+
+    <div class="of-card-body">
+      <div id="negAlerta" style="display:none;border-radius:14px;padding:14px 18px;margin-bottom:16px;font-size:13px;font-weight:600;line-height:1.5;"></div>
+
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;">
+        <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:14px;padding:14px 16px;">
+          <div style="font-size:24px;font-weight:900;color:#1d4ed8;" id="negStatClausulas">—</div>
+          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-top:4px;">Cláusulas</div>
+        </div>
+        <div style="background:#f0fdf4;border:1.5px solid #6ee7b7;border-radius:14px;padding:14px 16px;">
+          <div style="font-size:24px;font-weight:900;color:#059669;" id="negStatPisos">—</div>
+          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-top:4px;">Pisos salariais</div>
+        </div>
+        <div style="background:#fffbeb;border:1.5px solid #fcd34d;border-radius:14px;padding:14px 16px;">
+          <div style="font-size:18px;font-weight:900;color:#d97706;" id="negStatMenorPiso">—</div>
+          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-top:4px;">Menor piso (base da insalubridade)</div>
+        </div>
+        <div style="background:#faf5ff;border:1.5px solid #d8b4fe;border-radius:14px;padding:14px 16px;">
+          <div style="font-size:18px;font-weight:900;color:#7c3aed;" id="negStatDataBase">—</div>
+          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-top:4px;">Data-base</div>
+        </div>
+      </div>
+
+      <div id="negVinculosFin" style="margin-top:16px;font-size:12px;color:#475569;"></div>
+    </div>
+  </div>
+
+  <!-- ═══ CONFERÊNCIA DE PISO ═══ -->
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">⚖️</div>
+        <div>
+          <div class="of-card-title">Conferir salário contra o piso</div>
+          <div class="of-card-sub">Cláusula 04 — o sistema mostra os enquadramentos; a conclusão é sua</div>
+        </div>
+      </div>
+    </div>
+    <div class="of-card-body">
+      <div class="fg fg-3" style="margin-bottom:12px;">
+        <div class="fld">
+          <label for="negCargo">CARGO</label>
+          <input type="text" id="negCargo" placeholder="Ex.: Cozinheira, Secretário Escolar, Motorista">
+        </div>
+        <div class="fld">
+          <label for="negSalario">SALÁRIO INFORMADO</label>
+          <input type="text" id="negSalario" placeholder="Ex.: 1.760,50">
+        </div>
+        <div class="fld" style="display:flex;align-items:flex-end;">
+          <button type="button" id="negBtnConferir" class="btn btn-navy">Conferir</button>
+        </div>
+      </div>
+      <div id="negResultadoPiso"></div>
+    </div>
+  </div>
+
+  <!-- ═══ PISOS ═══ -->
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">💵</div>
+        <div>
+          <div class="of-card-title">Tabela de pisos</div>
+          <div class="of-card-sub" id="negPisosVigencia">—</div>
+        </div>
+      </div>
+      <div class="row-btns">
+        <input type="text" id="negBuscaPiso" placeholder="🔎 Filtrar por cargo ou segmento" style="height:34px;padding:0 12px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:12.5px;font-family:'Plus Jakarta Sans',sans-serif;min-width:260px;">
+      </div>
+    </div>
+    <div class="of-card-body">
+      <div style="overflow-x:auto;">
+        <table class="of-table" style="width:100%;">
+          <thead>
+            <tr><th>Cargo</th><th>Segmento</th><th style="text-align:center;">Jornada</th><th style="text-align:right;">Piso</th></tr>
+          </thead>
+          <tbody id="negPisosBody">
+            <tr><td colspan="4"><div class="of-table-empty">Carregando…</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ CLÁUSULAS ═══ -->
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">📖</div>
+        <div>
+          <div class="of-card-title">Cláusulas da convenção</div>
+          <div class="of-card-sub">Busque por número ou por qualquer palavra do texto</div>
+        </div>
+      </div>
+      <div class="row-btns">
+        <input type="text" id="negBuscaClausula" placeholder="🔎 Ex.: 56, tiquete, insalubridade" style="height:34px;padding:0 12px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:12.5px;font-family:'Plus Jakarta Sans',sans-serif;min-width:280px;">
+      </div>
+    </div>
+    <div class="of-card-body">
+      <div id="negClausulasLista"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var negTimerPiso = null, negTimerClausula = null;
+  function negEl(id){ return document.getElementById(id); }
+  function negEsc(t){
+    return String(t==null?"":t).replace(/[&<>"]/g,function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];
+    });
+  }
+  function negMoeda(v){
+    return "R$ " + Number(v||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+  }
+  /* A sessão vive no mesmo lugar que os outros módulos leem. */
+  function negToken(){
+    try{ return (window.SISGEP_TOKEN || window.tokenSessao || localStorage.getItem("sisgep_token") || ""); }
+    catch(e){ return window.SISGEP_TOKEN || ""; }
+  }
+  function negAviso(msg,tipo){
+    if(typeof window.toast==="function") return window.toast(msg,tipo||"erro",5000);
+    console.warn("[Negociação]",msg);
+  }
+
+  /* ── Painel: vigência e indicadores ── */
+  function negCarregarPainel(){
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r || !r.ok) return negAviso("Não consegui carregar a convenção.","erro");
+        var v = r.vigencia;
+        negEl("negIdentificacao").textContent = v.identificacao;
+        negEl("negPeriodo").textContent =
+          "Vigência de " + negDataBr(v.inicio) + " a " + negDataBr(v.fim) +
+          " · assinada em " + v.assinatura;
+
+        var cores = {
+          VIGENTE:  ["#dcfce7","#166534"],
+          "A VENCER":["#fef3c7","#92400e"],
+          VENCIDA:  ["#fee2e2","#991b1b"],
+          FUTURA:   ["#e0e7ff","#3730a3"]
+        };
+        var cor = cores[v.situacao] || ["#e2e8f0","#475569"];
+        var badge = negEl("negBadgeSituacao");
+        badge.textContent = v.situacao;
+        badge.style.background = cor[0];
+        badge.style.color = cor[1];
+
+        var al = negEl("negAlerta");
+        if(v.alerta){
+          al.style.display = "block";
+          al.style.background = cor[0];
+          al.style.color = cor[1];
+          al.style.border = "1.5px solid " + cor[1] + "33";
+          al.textContent = v.alerta;
+        } else {
+          al.style.display = "none";
+        }
+
+        negEl("negStatClausulas").textContent = r.totalClausulas;
+        negEl("negStatPisos").textContent = r.totalPisos;
+        negEl("negStatMenorPiso").textContent = r.menorPiso ? negMoeda(r.menorPiso.valor) : "—";
+        negEl("negStatDataBase").textContent = v.dataBase;
+
+        negEl("negVinculosFin").innerHTML =
+          "<strong>Cláusulas que geram receita e já têm tela no Financeiro:</strong> " +
+          r.clausulasFinanceiras.map(function(c){
+            return '<a href="javascript:void(0)" onclick="spIr(\'' + c.modulo + '\')" ' +
+                   'style="color:var(--blue,#1565C0);font-weight:700;">cláusula ' +
+                   c.numero + " — " + negEsc(c.titulo) + "</a>";
+          }).join(" · ");
+      })
+      .withFailureHandler(function(e){ negAviso("Erro ao carregar: " + e.message,"erro"); })
+      .negcolPainel(negToken());
+  }
+
+  function negDataBr(iso){
+    var p = String(iso||"").split("-");
+    return p.length===3 ? (p[2]+"/"+p[1]+"/"+p[0]) : iso;
+  }
+
+  /* ── Pisos ── */
+  function negCarregarPisos(){
+    var termo = negEl("negBuscaPiso").value || "";
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r || !r.ok) return;
+        negEl("negPisosVigencia").textContent = "Cláusula 04 — valores " + r.vigenciaPisos;
+        var body = negEl("negPisosBody");
+        if(!r.total){
+          body.innerHTML = '<tr><td colspan="4"><div class="of-table-empty">Nenhum cargo encontrado.</div></td></tr>';
+          return;
+        }
+        body.innerHTML = r.pisos.map(function(p){
+          return "<tr>" +
+            "<td><strong>" + negEsc(p.cargo) + "</strong></td>" +
+            "<td>" + negEsc(p.segmento) + "</td>" +
+            '<td style="text-align:center;">' + p.jornada + "h</td>" +
+            '<td style="text-align:right;font-weight:800;">' + negMoeda(p.valor) + "</td>" +
+            "</tr>";
+        }).join("");
+      })
+      .withFailureHandler(function(e){ negAviso("Erro nos pisos: " + e.message,"erro"); })
+      .negcolListarPisos(termo, negToken());
+  }
+
+  /* ── Cláusulas ── */
+  function negCarregarClausulas(){
+    var termo = negEl("negBuscaClausula").value || "";
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r || !r.ok) return;
+        var alvo = negEl("negClausulasLista");
+        if(!r.total){
+          alvo.innerHTML = '<div class="of-table-empty">Nenhuma cláusula com esse termo.</div>';
+          return;
+        }
+        alvo.innerHTML = r.clausulas.map(function(c){
+          return '<details style="border:1.5px solid #e2e8f0;border-radius:12px;padding:12px 16px;margin-bottom:8px;background:#fff;">' +
+            '<summary style="cursor:pointer;font-weight:800;font-size:13px;color:var(--navy,#001f4d);">' +
+            "Cláusula " + c.numero + " — " + negEsc(c.titulo) + "</summary>" +
+            '<div style="margin-top:10px;font-size:12.5px;line-height:1.6;color:#334155;white-space:pre-wrap;">' +
+            negEsc(c.texto) + "</div></details>";
+        }).join("");
+      })
+      .withFailureHandler(function(e){ negAviso("Erro nas cláusulas: " + e.message,"erro"); })
+      .negcolListarClausulas(termo, negToken());
+  }
+
+  /* ── Conferência de piso ── */
+  function negConferir(){
+    var cargo = negEl("negCargo").value || "";
+    var salario = negEl("negSalario").value || "";
+    var alvo = negEl("negResultadoPiso");
+
+    if(!cargo.trim() || !salario.trim()){
+      alvo.innerHTML = '<div class="of-table-empty">Preencha o cargo e o salário.</div>';
+      return;
+    }
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r){ alvo.innerHTML = ""; return; }
+        if(!r.ok){
+          alvo.innerHTML = '<div style="background:#fef3c7;border:1.5px solid #fcd34d;border-radius:12px;padding:14px 18px;font-size:13px;font-weight:600;color:#92400e;">' +
+            negEsc(r.mensagem) + "</div>";
+          return;
+        }
+
+        var cor = r.abaixoDoPiso ? ["#fee2e2","#fca5a5","#991b1b"]
+                : (r.exigeAnalise ? ["#fef3c7","#fcd34d","#92400e"]
+                                  : ["#dcfce7","#6ee7b7","#166534"]);
+
+        var linhas = r.resultados.map(function(x){
+          var sinal = x.diferenca >= 0 ? "+" : "−";
+          return "<tr>" +
+            "<td>" + negEsc(x.segmento) + "</td>" +
+            '<td style="text-align:center;">' + x.jornada + "h</td>" +
+            '<td style="text-align:right;">' + negMoeda(x.piso) + "</td>" +
+            '<td style="text-align:right;font-weight:800;color:' + (x.abaixoDoPiso ? "#dc2626" : "#059669") + ';">' +
+              sinal + " " + negMoeda(Math.abs(x.diferenca)) + "</td>" +
+            "</tr>";
+        }).join("");
+
+        alvo.innerHTML =
+          '<div style="background:' + cor[0] + ";border:1.5px solid " + cor[1] +
+            ";border-radius:12px;padding:14px 18px;margin-bottom:12px;font-size:13px;font-weight:700;color:" + cor[2] + ';">' +
+            negEsc(r.mensagem) + "</div>" +
+          '<div style="overflow-x:auto;"><table class="of-table" style="width:100%;">' +
+          "<thead><tr><th>Enquadramento</th><th style='text-align:center;'>Jornada</th>" +
+          "<th style='text-align:right;'>Piso</th><th style='text-align:right;'>Diferença</th></tr></thead>" +
+          "<tbody>" + linhas + "</tbody></table></div>";
+      })
+      .withFailureHandler(function(e){ negAviso("Erro ao conferir: " + e.message,"erro"); })
+      .negcolConferirPiso(cargo, salario, negToken());
+  }
+
+  /* ── Ligações ── */
+  function negLigar(){
+    var r = negEl("negBtnRecarregar");
+    if(r) r.onclick = function(){ negCarregarPainel(); negCarregarPisos(); negCarregarClausulas(); };
+
+    var c = negEl("negBtnConferir");
+    if(c) c.onclick = negConferir;
+
+    var s = negEl("negSalario");
+    if(s) s.onkeydown = function(ev){ if(ev.key==="Enter") negConferir(); };
+
+    var bp = negEl("negBuscaPiso");
+    if(bp) bp.oninput = function(){ clearTimeout(negTimerPiso); negTimerPiso = setTimeout(negCarregarPisos, 250); };
+
+    var bc = negEl("negBuscaClausula");
+    if(bc) bc.oninput = function(){ clearTimeout(negTimerClausula); negTimerClausula = setTimeout(negCarregarClausulas, 250); };
+  }
+
+  /* initModulo do index chama isto ao abrir o módulo. */
+  window.initNegociacao = function(){
+    negLigar();
+    negCarregarPainel();
+    negCarregarPisos();
+    negCarregarClausulas();
+  };
+})();
+</script>

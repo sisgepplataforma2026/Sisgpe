@@ -138,6 +138,9 @@
       <button class="spN" data-mod="juridico" onclick="spIr('juridico',this)">
         <span class="spNI">⚖️</span><div><strong>Jurídico</strong><small>Processos, prazos e audiências</small></div>
       </button>
+      <button class="spN" data-mod="negociacao" onclick="spIr('negociacao',this)">
+        <span class="spNI">📜</span><div><strong>Negociação Coletiva</strong><small>CCT, pisos e data-base</small></div>
+      </button>
 
       <div class="spSec">Sistema</div>
 
@@ -547,6 +550,9 @@ function benefAdminPesquisar(){var input=document.getElementById("benefAdminBusc
       
       <div id="mRH" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
         <?!= include('RHAdmin'); ?>
+      </div>
+      <div id="mNegociacao" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('NegociacaoAdmin'); ?>
       </div>
       <div id="mJuridico" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
         <?!= include('JuridicoAdmin'); ?>
@@ -1250,6 +1256,7 @@ var MODS={
   escolas:["mEscolas","Escolas","Cadastros e Relacionamentos"],
   rh:["mRH","RH","Colaboradores, Documentos e Vencimentos"],
   juridico:["mJuridico","Jurídico","Processos e Documentos"],
+  negociacao:["mNegociacao","Negociação Coletiva","Convenção Coletiva de Trabalho — cláusulas, pisos e vigência"],
   patrimonio:["mPatrimonio","Patrimônio","Bens e Inventário"],
   comunicacao:["mComunicacao","Painel do Dia","Central de Comunicação — resumo, prioridades e ações rápidas de e-mail"],
   centralEmailIA:["mCentralEmailIA","Caixa de E-mails","Central de Comunicação — categorização inteligente, contexto SISGEP e respostas automáticas"],
@@ -1634,6 +1641,11 @@ if(mod==="beneficios"){
     return callFn("initPatrimonio") ||
            callFn("carregarPatrimonio") ||
            initModuloAssistido(mod,opts);
+  }
+
+  if(mod==="negociacao"){
+    setTimeout(function(){ callFn("initNegociacao"); },120);
+    return;
   }
 
   if(mod==="eventos"){

@@ -61,6 +61,7 @@ var ACESSO_MODULOS_CATALOGO = [
   { chave: "escolas",          rotulo: "Escolas",               sensivel: false },
   { chave: "rh",               rotulo: "RH",                    sensivel: true  },
   { chave: "juridico",         rotulo: "Jurídico",              sensivel: true  },
+  { chave: "negociacao",       rotulo: "Negociação Coletiva",   sensivel: false },
   { chave: "comunicacao",      rotulo: "Central de Comunicação",sensivel: false },
   { chave: "eventos",          rotulo: "Eventos",               sensivel: false },
   { chave: "relatorios",       rotulo: "Relatórios",            sensivel: false },
