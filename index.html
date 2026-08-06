@@ -21,6 +21,31 @@
     </div>
     <div class="spPortalLabel">Portal Administrativo</div>
 
+    <!-- ══════════════════════════════════════════════════════════════════
+         MENU DO PORTAL ADMINISTRATIVO
+
+         HIERARQUIA (docs/PROMPT-MESTRE.md, item 4):
+             Módulo  →  Submódulo  →  Tela  →  Ação
+         Só existem DOIS níveis aqui: módulo (.spN) e submódulo
+         (.docSubMenuBtn). Tela e ação vivem DENTRO do módulo, em abas e
+         botões — nunca no menu lateral.
+
+         REGRA: nunca promover tela, botão ou ação a item de menu. Foi o
+         que estava acontecendo com "Atualização Cadastral" (é tela do
+         ciclo do associado), "Relatórios" (é tela de Ofícios) e "Rádio"
+         (não é área administrativa — é o player que já existe no rodapé).
+
+         AGRUPAMENTO: as seções são as áreas reais do sindicato, na ordem
+         em que o trabalho acontece — quem atende o associado, quem fala
+         com escola e imprensa, quem administra a casa. Não são categorias
+         técnicas.
+
+         ACORDEÃO: o módulo com submódulos declara data-acordeao (o id do
+         bloco que ele abre) e o bloco declara data-subs (os módulos que
+         vivem dentro dele). spIr() lê esses dois atributos e decide
+         sozinho o que abrir e o que acender. Não escreva mais uma função
+         toggleXAccordion por módulo — havia seis iguais.
+    ══════════════════════════════════════════════════════════════════ -->
     <div class="spNavArea">
       <button class="spN sp-ativo" data-mod="inicio" onclick="spIr('inicio',this)">
         <span class="spNI">🏠</span><div><strong>Início</strong></div>
@@ -28,98 +53,96 @@
       <button class="spN" data-mod="sofia" onclick="spIr('sofia',this)">
         <span class="spNI">💬</span><div><strong>Conversar com a SOFIA</strong></div>
       </button>
-<button class="spN" data-mod="sindicalizacao" onclick="toggleSindAccordion(this)">
-        <span class="spNI">🪪</span><div><strong>Sindicalização</strong><small>Fichas Sindicais e Carteirinhas</small></div>
-      </button>
 
-      <div id="sindSubMenuSidebar" class="docSubMenuSidebar" style="display:none;">
-        <button type="button" class="docSubMenuBtn" data-sind-sub="fichas" onclick="spIr('fichas',null)">📝 Fichas Sindicais</button>
-<button type="button" class="docSubMenuBtn" data-sind-sub="carteirinhas" onclick="spIr('carteirinhas',null)">🪪 Carteirinhas</button>
+      <div class="spSec">Atendimento ao associado</div>
+
+      <button class="spN" data-mod="sindicalizacao" data-acordeao="sindSubMenuSidebar" onclick="spAcordeao(this)">
+        <span class="spNI">🪪</span><div><strong>Sindicalização</strong><small>Filiação, credencial e cadastro</small></div>
+      </button>
+      <div id="sindSubMenuSidebar" class="docSubMenuSidebar" data-subs="fichas,carteirinhas,aprovacoesPortal" style="display:none;">
+        <button type="button" class="docSubMenuBtn" data-sub-mod="fichas" onclick="spIr('fichas',null)">📝 Fichas Sindicais</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="carteirinhas" onclick="spIr('carteirinhas',null)">🪪 Carteirinhas</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="aprovacoesPortal" onclick="abrirAprovacoesPortal(null)">✅ Atualização Cadastral</button>
       </div>
-      <button class="spN" data-mod="aprovacoesPortal" onclick="abrirAprovacoesPortal(this)">
-        <span class="spNI">✅</span><div><strong>Atualização Cadastral</strong><small>Aprovações do Portal do Associado</small></div>
-      </button>
-      <div class="spSec">Operações</div>
 
-      <button class="spN" data-mod="documentos" onclick="toggleDocAccordion(this)">
+      <button class="spN" data-mod="beneficios" data-acordeao="beneficiosSubMenuSidebar" onclick="spAcordeao(this);spIr('beneficios',this,{sub:'inicio'})">
+        <span class="spNI">🎁</span><div><strong>Benefícios</strong><small>Solicitações, reservas e aprovações</small></div>
+      </button>
+      <div id="beneficiosSubMenuSidebar" class="docSubMenuSidebar" data-subs="beneficios" style="display:none;">
+        <button type="button" class="docSubMenuBtn" data-sub-mod="beneficios:parqueChina" data-benef-sub="parqueChina" onclick="spIr('beneficios',null,{sub:'parqueChina'})">🏨 China Park Eco Resort</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="beneficios:guririBeach" data-benef-sub="guririBeach" onclick="spIr('beneficios',null,{sub:'guririBeach'})">🏖 Guriri Beach Acqua Park</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="beneficios:assefaz" data-benef-sub="assefaz" onclick="spIr('beneficios',null,{sub:'assefaz'})">🏥 Pousada Club Assefaz</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="beneficios:agendaOftalmo" data-benef-sub="agendaOftalmo" onclick="spIr('beneficios',null,{sub:'agendaOftalmo'})">👁 Exame oftalmológico</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="beneficios:vouchers" data-benef-sub="vouchers" onclick="spIr('beneficios',null,{sub:'vouchers'})">🎫 Vouchers</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="beneficios:historico" data-benef-sub="historico" onclick="spIr('beneficios',null,{sub:'historico'})">📋 Central de solicitações</button>
+      </div>
+
+      <button class="spN" data-mod="documentos" data-acordeao="docSubMenuSidebar" onclick="spAcordeao(this)">
         <span class="spNI">📄</span><div><strong>Documentos</strong><small>Ofícios, Recibos, Certidões</small></div>
       </button>
-<div id="docSubMenuSidebar" class="docSubMenuSidebar" style="display:none;">
-        <button type="button" class="docSubMenuBtn docSubMenuBtn-ativo" data-doc-sub="oficios" onclick="spIr('documentos',null,{sub:'oficios'})">📄 Ofícios</button>
-        <button type="button" class="docSubMenuBtn" data-doc-sub="recibos" onclick="spIr('documentos',null,{sub:'recibos'})">🧾 Recibos</button>
-        <button type="button" class="docSubMenuBtn" data-doc-sub="certidoes" onclick="spIr('documentos',null,{sub:'certidoes'})">📜 Certidões</button>
-<button type="button" class="docSubMenuBtn" data-doc-sub="historico" onclick="spIr('documentos',null,{sub:'historico'})">📚 Histórico</button>
+      <div id="docSubMenuSidebar" class="docSubMenuSidebar" data-subs="documentos,relatorios" style="display:none;">
+        <button type="button" class="docSubMenuBtn docSubMenuBtn-ativo" data-sub-mod="documentos:oficios" data-doc-sub="oficios" onclick="spIr('documentos',null,{sub:'oficios'})">📄 Ofícios</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="documentos:recibos" data-doc-sub="recibos" onclick="spIr('documentos',null,{sub:'recibos'})">🧾 Recibos</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="documentos:certidoes" data-doc-sub="certidoes" onclick="spIr('documentos',null,{sub:'certidoes'})">📜 Certidões</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="documentos:historico" data-doc-sub="historico" onclick="spIr('documentos',null,{sub:'historico'})">📚 Histórico</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="relatorios" onclick="spIr('relatorios',null)">📊 Relatórios de Ofícios</button>
       </div>
-<button class="spN" data-mod="beneficios" onclick="toggleBeneficiosAccordion(this);spIr('beneficios',this,{sub:'inicio'})">
-  <span class="spNI">🎁</span>
-<div>
-    <strong>Benefícios</strong>
-    <small>Gestão de Benefícios</small>
-  </div>
-</button>
 
-<div id="beneficiosSubMenuSidebar" class="docSubMenuSidebar" style="display:none;">
-  <button type="button" class="docSubMenuBtn docSubMenuBtn-ativo" data-benef-sub="parqueChina" onclick="spIr('beneficios',null,{sub:'parqueChina'})">🏨 China Park Eco Resort</button>
-  <button type="button" class="docSubMenuBtn" data-benef-sub="vouchers" onclick="spIr('beneficios',null,{sub:'vouchers'})">🎫 Vouchers</button>
-  <button type="button" class="docSubMenuBtn" data-benef-sub="agendaOftalmo" onclick="spIr('beneficios',null,{sub:'agendaOftalmo'})">👁 Exame oftalmológico</button>
-  <button type="button" class="docSubMenuBtn" data-benef-sub="guririBeach" onclick="spIr('beneficios',null,{sub:'guririBeach'})">🏖 Guriri Beach Acqua Park</button>
-  <button type="button" class="docSubMenuBtn" data-benef-sub="assefaz" onclick="spIr('beneficios',null,{sub:'assefaz'})">🏥 Pousada Club Assefaz</button>
-  <button type="button" class="docSubMenuBtn" data-benef-sub="historico" onclick="spIr('beneficios',null,{sub:'historico'})">📋 Central de solicitações</button>
-</div>
-<button class="spN" data-mod="financeiro" onclick="toggleFinanceiroAccordion(this);spIr('financeiro',this)">
-        <span class="spNI">💵</span><div><strong>Financeiro</strong><small>Despesas, Prestadores, Patrimônio</small></div>
+      <div class="spSec">Relacionamento</div>
+
+      <button class="spN" data-mod="escolas" data-acordeao="escolasSubMenuSidebar" onclick="spAcordeao(this)">
+        <span class="spNI">🏫</span><div><strong>Escolas</strong><small>Cadastro, visitas e cobrança</small></div>
+      </button>
+      <div id="escolasSubMenuSidebar" class="docSubMenuSidebar" data-subs="escolas,visitas,visitasAdmin,cobranca" style="display:none;">
+        <button type="button" class="docSubMenuBtn" data-sub-mod="escolas" onclick="spIr('escolas',null)">🏫 Cadastro de Escolas</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="visitas" onclick="spIr('visitas',null)">📍 Visita à Escola (agenda do dia)</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="visitasAdmin" onclick="spIr('visitasAdmin',null)">🗺️ Gestão de Visitas</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="cobranca" onclick="spIr('cobranca',null)">📋 Cobrança de Relação Nominal</button>
+      </div>
+
+      <button class="spN" data-mod="comunicacao" data-acordeao="comunicacaoSubMenuSidebar" onclick="spAcordeao(this);spIr('comunicacao',this)">
+        <span class="spNI">✉️</span><div><strong>Comunicação</strong><small>Painel do dia e caixa de e-mails</small></div>
+      </button>
+      <!-- Cockpit e Central IA de E-mails sao a mesma caixa Gmail, com o
+           Cockpit reaproveitando as acoes da Central IA. Dois botoes de
+           primeiro nivel para praticamente a mesma coisa confundia a
+           navegacao: viraram as duas visoes de um modulo so. -->
+      <div id="comunicacaoSubMenuSidebar" class="docSubMenuSidebar" data-subs="comunicacao,centralEmailIA" style="display:none;">
+        <button type="button" class="docSubMenuBtn" data-sub-mod="comunicacao" onclick="spIr('comunicacao',null)">📊 Painel do Dia</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="centralEmailIA" onclick="spIr('centralEmailIA',null)">📬 Caixa de E-mails</button>
+      </div>
+
+      <button class="spN" data-mod="eventos" onclick="spIr('eventos',this)">
+        <span class="spNI">📅</span><div><strong>Eventos</strong><small>Atividades e programações</small></div>
       </button>
 
-      <div id="financeiroSubMenuSidebar" class="docSubMenuSidebar" style="display:none;">
-        <button type="button" class="docSubMenuBtn" data-fin-sub="painelFin" onclick="spIr('painelFin',null)">📊 Painel Executivo</button>
-        <button type="button" class="docSubMenuBtn" data-fin-sub="receitas" onclick="spIr('receitas',null)">💰 Receitas</button>
-        <button type="button" class="docSubMenuBtn" data-fin-sub="mensalidades" onclick="spIr('mensalidades',null)">🧾 Mensalidade Sindical</button>
-        <button type="button" class="docSubMenuBtn" data-fin-sub="taxas" onclick="spIr('taxas',null)">📑 Taxa Negocial e Assistencial</button>
-        <button type="button" class="docSubMenuBtn" data-fin-sub="cadastroPrestadores" onclick="spIr('cadastroPrestadores',null)">🧑‍🔧 Prestadores</button>
-        <button type="button" class="docSubMenuBtn" data-fin-sub="patrimonio" onclick="spIr('patrimonio',null)">🏛️ Patrimônio</button>
-        <button type="button" class="docSubMenuBtn" data-fin-sub="auditoriaFin" onclick="spIr('auditoriaFin',null)">🔍 Auditoria de Valores</button>
-      </div>
-      <button class="spN" data-mod="escolas" onclick="toggleEscolasAccordion(this)">
-        <span class="spNI">🏫</span><div><strong>Escolas</strong><small>Cadastros, visitas e relacionamento</small></div>
-      </button>
+      <div class="spSec">Administração</div>
 
-      <div id="escolasSubMenuSidebar" class="docSubMenuSidebar" style="display:none;">
-        <button type="button" class="docSubMenuBtn" data-esc-sub="escolas" onclick="spIr('escolas',null)">🏫 Cadastro de Escolas</button>
-        <button type="button" class="docSubMenuBtn" data-esc-sub="visitas" onclick="spIr('visitas',null)">📍 Visita à Escola (agenda do dia)</button>
-        <button type="button" class="docSubMenuBtn" data-esc-sub="visitasAdmin" onclick="spIr('visitasAdmin',null)">🗺️ Gestão de Visitas</button>
-        <button type="button" class="docSubMenuBtn" data-esc-sub="cobranca" onclick="spIr('cobranca',null)">📋 Cobrança de Relação Nominal</button>
+      <button class="spN" data-mod="financeiro" data-acordeao="financeiroSubMenuSidebar" onclick="spAcordeao(this);spIr('financeiro',this)">
+        <span class="spNI">💵</span><div><strong>Financeiro</strong><small>Receitas, despesas e patrimônio</small></div>
+      </button>
+      <div id="financeiroSubMenuSidebar" class="docSubMenuSidebar" data-subs="financeiro,painelFin,receitas,mensalidades,taxas,cadastroPrestadores,patrimonio,auditoriaFin" style="display:none;">
+        <button type="button" class="docSubMenuBtn" data-sub-mod="painelFin" onclick="spIr('painelFin',null)">📊 Painel Executivo</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="financeiro" onclick="spIr('financeiro',null)">💸 Despesas e Pagamentos</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="receitas" onclick="spIr('receitas',null)">💰 Receitas</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="mensalidades" onclick="spIr('mensalidades',null)">🧾 Mensalidade Sindical</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="taxas" onclick="spIr('taxas',null)">📑 Taxa Negocial e Assistencial</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="cadastroPrestadores" onclick="spIr('cadastroPrestadores',null)">🧑‍🔧 Prestadores</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="patrimonio" onclick="spIr('patrimonio',null)">🏛️ Patrimônio</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="auditoriaFin" onclick="spIr('auditoriaFin',null)">🔍 Auditoria de Valores</button>
       </div>
+
       <button class="spN" data-mod="rh" onclick="spIr('rh',this)">
-        <span class="spNI">👥</span><div><strong>RH</strong><small>Colaboradores e Documentos</small></div>
+        <span class="spNI">👥</span><div><strong>RH</strong><small>Colaboradores, folha e documentos</small></div>
       </button>
       <button class="spN" data-mod="juridico" onclick="spIr('juridico',this)">
-        <span class="spNI">️</span><div><strong>Jurídico</strong><small>Processos e Documentos</small></div>
-      </button>
-      <button class="spN" data-mod="comunicacao" onclick="toggleComunicacaoAccordion(this);spIr('comunicacao',this)">
-        <span class="spNI">✉️</span><div><strong>Central de Comunicação</strong><small>Painel do dia e caixa de e-mails</small></div>
-      </button>
-
-      <!-- Comunicação (Cockpit) e Central IA de E-mails são a mesma caixa
-           Gmail, com o Cockpit reaproveitando as ações da Central IA —
-           dois botões de menu lado a lado pra praticamente a mesma coisa
-           confundia navegação. Unificado num só, com as duas visões. -->
-      <div id="comunicacaoSubMenuSidebar" class="docSubMenuSidebar" style="display:none;">
-        <button type="button" class="docSubMenuBtn" data-com-sub="centralEmailIA" onclick="spIr('centralEmailIA',null)">📬 Caixa de E-mails</button>
-      </div>
-      <button class="spN" data-mod="eventos" onclick="spIr('eventos',this)">
-        <span class="spNI">📅</span><div><strong>Eventos</strong><small>Atividades e Programações</small></div>
-      </button>
-      <button class="spN" data-mod="relatorios" onclick="spIr('relatorios',this)">
-        <span class="spNI">📊</span><div><strong>Relatórios</strong><small>Indicadores e Análises</small></div>
+        <span class="spNI">⚖️</span><div><strong>Jurídico</strong><small>Processos, prazos e audiências</small></div>
       </button>
 
       <div class="spSec">Sistema</div>
 
-      <button class="spN" data-mod="radio" onclick="spIr('radio',this)">
-        <span class="spNI">📻</span><div><strong>Rádio SindEducação</strong><small>Ao vivo</small></div>
-      </button>
       <button class="spN" data-mod="config" onclick="spIr('config',this)">
-        <span class="spNI">⚙️</span><div><strong>Configurações</strong><small>Sistema e Preferências</small></div>
+        <span class="spNI">⚙️</span><div><strong>Configurações</strong><small>Sistema, acessos e auditoria</small></div>
       </button>
     </div>
 
@@ -563,6 +586,12 @@ function benefAdminPesquisar(){var input=document.getElementById("benefAdminBusc
         <?!= include('RadioSindEducacao'); ?>
       </div>
 
+<!-- LEGADO, MANTIDO DE PROPÓSITO. Este div não é alcançável: MODS.relatorios
+     aponta para mDocumentos, porque o painel de relatórios é o blocoRelatorios
+     incluído lá dentro. Não foi removido porque remover não custa nada e
+     manter também não — e o dia em que existir um painel de indicadores do
+     sindicato inteiro (hoje não existe), é aqui que ele entra. Se for para
+     apagar, apague em commit separado. -->
 <div id="mRelatorios" class="spM spPlaceholder" style="display:none;">
         <div class="spPH"><div>REL</div><h2>Relatorios</h2><p>Indicadores, analises e dashboards executivos.</p><small>Carregando painel de relatorios...</small><div class="spPHActions"><button onclick="spIr('documentos',null,{aba:'relatorios'})">Abrir painel</button><button onclick="spIr('documentos',null,{aba:'historico'})">Historico</button></div></div>
 
@@ -1225,7 +1254,13 @@ var MODS={
   comunicacao:["mComunicacao","Painel do Dia","Central de Comunicação — resumo, prioridades e ações rápidas de e-mail"],
   centralEmailIA:["mCentralEmailIA","Caixa de E-mails","Central de Comunicação — categorização inteligente, contexto SISGEP e respostas automáticas"],
   eventos:["mEventos","Eventos","Atividades e Programações"],
-  relatorios:["mDocumentos","Relatórios","Indicadores e Análises"],
+  /* "relatorios" abre o MESMO div de Documentos (mDocumentos) porque o
+     painel é o blocoRelatorios, incluído lá dentro. O nome antigo prometia
+     "Indicadores e Análises" — indicadores do sindicato inteiro — e
+     entregava relatório de ofício filtrado por período, tipo e escola.
+     O título agora diz o que a tela realmente é. Um painel de indicadores
+     gerenciais de verdade ainda não existe. */
+  relatorios:["mDocumentos","Relatórios de Ofícios","Emissões por período, tipo e escola — exportável em Excel ou CSV"],
 config:["mConfig","Configurações","Sistema e Preferências"],
 visitas:["mVisitas","Visitas às Escolas","Agenda do dia, check-in e captação"],
   visitasAdmin:["mVisitasAdmin","Gestão de Visitas","Cobertura das escolas, agenda em lote e desempenho por diretor"],
@@ -1291,51 +1326,42 @@ var BENEF_SUB_TITULOS = {
   relatorios: ["Relatórios", "Indicadores gerenciais de benefícios"],
   configuracoes: ["Configurações", "Regras, valores e automações"]
 };
-/* Clique em "Documentos" no menu só expande/recolhe o accordion — não navega.
-   A navegação de fato só acontece ao clicar num item (Ofícios, Recibos, Certidões). */
-window.toggleDocAccordion=function(){
-  var accordionDoc=document.getElementById("docSubMenuSidebar");
-  if(!accordionDoc) return;
+/* ACORDEÃO ÚNICO DO MENU.
+   Clicar num módulo com submódulos só expande/recolhe — quem navega é o
+   item de dentro (Ofícios, Recibos, Fichas, Despesas...).
 
-  var aberto = accordionDoc.style.display==="flex";
-  accordionDoc.style.display = aberto ? "none" : "flex";
-};
-window.toggleSindAccordion=function(){
-  var acc=document.getElementById("sindSubMenuSidebar");
-  if(!acc) return;
-  acc.style.display = (acc.style.display==="flex") ? "none" : "flex";
-};
-window.toggleEscolasAccordion=function(){
-  var acc=document.getElementById("escolasSubMenuSidebar");
-  if(!acc) return;
-  acc.style.display = (acc.style.display==="flex") ? "none" : "flex";
-};
-window.toggleFinanceiroAccordion=function(){
-  var acc=document.getElementById("financeiroSubMenuSidebar");
-  if(!acc) return;
-  acc.style.display = (acc.style.display==="flex") ? "none" : "flex";
-};
-window.toggleComunicacaoAccordion=function(){
-  var acc=document.getElementById("comunicacaoSubMenuSidebar");
+   Antes existiam SEIS funções idênticas a esta, uma por módulo, cada uma
+   com o id do seu bloco escrito no corpo. Acrescentar um submódulo exigia
+   mexer em cinco lugares diferentes, e foi assim que o acordeão de
+   Benefícios passou meses ficando aberto por cima dos outros módulos.
+   Agora o botão diz qual bloco ele abre (data-acordeao) e o bloco diz
+   quais módulos moram nele (data-subs). O resto é consequência. */
+window.spAcordeao=function(btn){
+  var alvo = btn && btn.getAttribute("data-acordeao");
+  if(!alvo) return;
+  var acc = document.getElementById(alvo);
   if(!acc) return;
   acc.style.display = (acc.style.display==="flex") ? "none" : "flex";
 };
 
+/* Nomes antigos mantidos porque podem estar em uso em includes que ainda
+   não revi. Todos caem na mesma implementação. */
+function spAcordeaoPorId_(id){
+  var acc=document.getElementById(id);
+  if(!acc) return;
+  acc.style.display=(acc.style.display==="flex")?"none":"flex";
+}
+window.toggleDocAccordion        = function(){ spAcordeaoPorId_("docSubMenuSidebar"); };
+window.toggleSindAccordion       = function(){ spAcordeaoPorId_("sindSubMenuSidebar"); };
+window.toggleEscolasAccordion    = function(){ spAcordeaoPorId_("escolasSubMenuSidebar"); };
+window.toggleFinanceiroAccordion = function(){ spAcordeaoPorId_("financeiroSubMenuSidebar"); };
+window.toggleComunicacaoAccordion= function(){ spAcordeaoPorId_("comunicacaoSubMenuSidebar"); };
 window.toggleBeneficiosAccordion = function(btn){
-
-  var accordion = document.getElementById("beneficiosSubMenuSidebar");
-  if(!accordion) return;
-
-  var aberto = accordion.style.display === "flex";
-  accordion.style.display = aberto ? "none" : "flex";
-
+  spAcordeaoPorId_("beneficiosSubMenuSidebar");
   if(btn){
-    document.querySelectorAll(".spN").forEach(function(b){
-      b.classList.remove("sp-ativo");
-    });
+    document.querySelectorAll(".spN").forEach(function(b){ b.classList.remove("sp-ativo"); });
     btn.classList.add("sp-ativo");
   }
-
 };
 window.benefMostrarSub = function(sub){
   if(!BENEF_SUB_PAINEIS[sub]){
@@ -1349,14 +1375,17 @@ window.benefMostrarSub = function(sub){
     }
   });
 
-  document
-    .querySelectorAll("[data-benef-sub]")
-    .forEach(function(btn){
-      btn.classList.toggle(
-        "docSubMenuBtn-ativo",
-        btn.getAttribute("data-benef-sub")===sub
-      );
+  /* Marca pelo mesmo atributo que o spIr usa (data-sub-mod), e só dentro do
+     acordeão de Benefícios. Antes cada função marcava por um atributo
+     próprio e varria .docSubMenuBtn do menu inteiro — navegar dentro de
+     Benefícios apagava o item aceso de Documentos, e vice-versa. */
+  var accBenef=document.getElementById("beneficiosSubMenuSidebar");
+  if(accBenef){
+    accBenef.querySelectorAll("[data-sub-mod]").forEach(function(btn){
+      btn.classList.toggle("docSubMenuBtn-ativo",
+        btn.getAttribute("data-sub-mod")==="beneficios:"+sub);
     });
+  }
 };
 window.docHistoricoEscolher=function(tipo){
   if(tipo==="oficios"){
@@ -1389,9 +1418,14 @@ window.docMostrarSub=function(sub){
     if(painel) painel.style.display=(key===sub)?"block":"none";
   });
 
-  document.querySelectorAll(".docSubMenuBtn").forEach(function(btn){
-    btn.classList.toggle("docSubMenuBtn-ativo",btn.getAttribute("data-doc-sub")===sub);
-  });
+  /* Só dentro do acordeão de Documentos — ver a nota em benefMostrarSub. */
+  var accDoc=document.getElementById("docSubMenuSidebar");
+  if(accDoc){
+    accDoc.querySelectorAll("[data-sub-mod]").forEach(function(btn){
+      btn.classList.toggle("docSubMenuBtn-ativo",
+        btn.getAttribute("data-sub-mod")==="documentos:"+sub);
+    });
+  }
 
   /* Tenta inicializar o painel de Recibos na primeira exibição, sem quebrar se a função não existir */
   if(sub==="recibos"){
@@ -1694,58 +1728,36 @@ var flexMods={
     el.style.overflow = flexMods[mod] ? "" : "auto";
   }
 
-/* Módulos que vivem sob o acordeão Sindicalização. Como os sub-botões
-     não são .spN, quem acende no menu é o botão-pai. */
-var SIND_SUBS={fichas:1,carteirinhas:1};
-  var ESC_SUBS={escolas:1,visitas:1,visitasAdmin:1,cobranca:1};
+/* ACORDEÃO E DESTAQUE DO MENU — dirigidos pelo próprio HTML.
+     Cada bloco de submenu declara data-subs com os módulos que moram nele;
+     cada botão-pai declara data-acordeao com o id desse bloco. Daí sai tudo:
+     qual acordeão fica aberto, qual pai acende e qual filho fica marcado.
 
-  /* Mesma ideia para o acordeão Financeiro — Prestadores e Patrimônio não
-     têm backend próprio (Prestadores vive em Despesas.gs; Patrimônio é
-     ativo financeiro), então viraram submenu em vez de item de 1º nível. */
-  var FIN_SUBS={financeiro:1,cadastroPrestadores:1,patrimonio:1,receitas:1,mensalidades:1,auditoriaFin:1,painelFin:1,taxas:1};
+     Isto substituiu quatro mapas *_SUBS escritos à mão (SIND/ESC/FIN/COM) e
+     seis blocos de getElementById. Toda vez que um submódulo novo entrava,
+     era preciso lembrar de cinco lugares — e esquecer um deles produzia
+     exatamente o sintoma que o usuário via: item aberto sem estar na tela,
+     ou tela aberta sem o menu acender. */
+  var paiDoAcordeao=null;
+  Array.prototype.forEach.call(document.querySelectorAll("[data-subs]"),function(acc){
+    var lista=(acc.getAttribute("data-subs")||"").split(",");
+    var contem=lista.indexOf(mod)>-1;
+    acc.style.display=contem?"flex":"none";
+    if(contem && !paiDoAcordeao){
+      paiDoAcordeao=document.querySelector(".spN[data-acordeao='"+acc.id+"']");
+    }
+  });
 
-  /* Central de Comunicação: Cockpit ("comunicacao") é a visão padrão,
-     Central IA de E-mails é a segunda visão do mesmo módulo unificado. */
-  var COM_SUBS={comunicacao:1,centralEmailIA:1};
-
-  var n=navEl||document.querySelector(".spN[data-mod='"+mod+"']");
-  if(!n && SIND_SUBS[mod]) n=document.querySelector(".spN[data-mod='sindicalizacao']");
-  if(!n && ESC_SUBS[mod]) n=document.querySelector(".spN[data-mod='escolas']");
-  if(!n && FIN_SUBS[mod]) n=document.querySelector(".spN[data-mod='financeiro']");
-  if(!n && COM_SUBS[mod]) n=document.querySelector(".spN[data-mod='comunicacao']");
+  /* Sub-botões não são .spN — quando a navegação parte de um deles, quem
+     acende no menu é o módulo-pai. */
+  var n=navEl||document.querySelector(".spN[data-mod='"+mod+"']")||paiDoAcordeao;
   if(n)n.classList.add("sp-ativo");
 
-  var accordionDoc=document.getElementById("docSubMenuSidebar");
-  if(accordionDoc) accordionDoc.style.display=(mod==="documentos"||mod==="relatorios")?"flex":"none";
-
-  var accordionSind=document.getElementById("sindSubMenuSidebar");
-  if(accordionSind) accordionSind.style.display=SIND_SUBS[mod]?"flex":"none";
-
-  var accordionEsc=document.getElementById("escolasSubMenuSidebar");
-  if(accordionEsc) accordionEsc.style.display=ESC_SUBS[mod]?"flex":"none";
-
-  var accordionFin=document.getElementById("financeiroSubMenuSidebar");
-  if(accordionFin) accordionFin.style.display=FIN_SUBS[mod]?"flex":"none";
-
-  var accordionCom=document.getElementById("comunicacaoSubMenuSidebar");
-  if(accordionCom) accordionCom.style.display=COM_SUBS[mod]?"flex":"none";
-
-  /* Corrige comportamento antigo: o acordeão de Benefícios ficava aberto
-     pendurado ao navegar para Financeiro, RH e os demais módulos. */
-  var accordionBenef=document.getElementById("beneficiosSubMenuSidebar");
-  if(accordionBenef && mod!=="beneficios") accordionBenef.style.display="none";
-
-  Array.prototype.forEach.call(document.querySelectorAll("[data-sind-sub]"),function(b){
-    b.classList.toggle("docSubMenuBtn-ativo", b.getAttribute("data-sind-sub")===mod);
-  });
-  Array.prototype.forEach.call(document.querySelectorAll("[data-esc-sub]"),function(b){
-    b.classList.toggle("docSubMenuBtn-ativo", b.getAttribute("data-esc-sub")===mod);
-  });
-  Array.prototype.forEach.call(document.querySelectorAll("[data-fin-sub]"),function(b){
-    b.classList.toggle("docSubMenuBtn-ativo", b.getAttribute("data-fin-sub")===mod);
-  });
-  Array.prototype.forEach.call(document.querySelectorAll("[data-com-sub]"),function(b){
-    b.classList.toggle("docSubMenuBtn-ativo", b.getAttribute("data-com-sub")===mod);
+  /* Benefícios marca o filho por opts.sub (o mod é sempre "beneficios");
+     os demais marcam pelo próprio mod. */
+  var chaveSub=opts.sub?(mod+":"+opts.sub):mod;
+  Array.prototype.forEach.call(document.querySelectorAll("[data-sub-mod]"),function(b){
+    b.classList.toggle("docSubMenuBtn-ativo", b.getAttribute("data-sub-mod")===chaveSub);
   });
 
   var t=document.getElementById("spTit"),s=document.getElementById("spSub");
