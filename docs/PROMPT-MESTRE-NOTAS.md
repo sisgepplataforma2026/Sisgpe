@@ -29,14 +29,29 @@ A v1 está preservada em `PROMPT-MESTRE-v1-2026-08-05.md`.
 - **Escolas passa a ser "cadastro mestre institucional e CRM"**, com regra dura: *uma única entidade Escola; os demais módulos guardam `escolaId`*.
 - **Financeiro ganha Bancos, Diretoria, Contabilidade, Fluxo de Caixa e Prestação de Contas** como submódulos próprios, e a regra de que Conciliação pertence a Bancos.
 
-### Sobre a "consulta à Presidência" no China Park
+### Sobre a "consulta à Presidência" no China Park — DECISÃO DO USUÁRIO
 
-Há uma tensão aparente com uma instrução anterior do usuário (05/08): *"Tira a parte do presidente"*. **Não são a mesma coisa.**
+A v2 põe *"consulta à Presidência"* entre a análise interna e a aprovação.
 
-- A instrução de 05/08 era sobre a **mensagem enviada ao associado** — que não deve mencionar a Presidência. Há teste travando isso (`t3-link-interesse`).
-- A v2 descreve o **fluxo interno** — a análise passa pela Presidência antes de aprovar.
+**O usuário determinou, em 06/08, que a Presidência NÃO entra no fluxo**
+("Tira o presidente"). É a segunda vez que ele diz isso — em 05/08 já havia
+mandado tirar da mensagem ao associado.
 
-Fluxo interno pode passar pela Presidência sem que a mensagem ao associado diga isso. Está mantido como está.
+Eu tinha registrado aqui que o fluxo interno ficaria como a v2 descreve, por
+entender que mensagem e fluxo eram coisas separadas. **Estava errado quanto à
+intenção dele.** Vale a determinação:
+
+- **Não implementar** etapa de consulta à Presidência no China Park.
+- A mensagem ao associado continua sem citar a Presidência — com teste
+  travando (`t3-link-interesse`).
+
+**Cuidado ao aplicar isto.** Existem duas "Presidências" diferentes no código,
+e só a primeira está em discussão:
+
+| O que é | Onde | Situação |
+|---|---|---|
+| Etapa de consulta no fluxo de aprovação | não existe implementada | não implementar, por decisão do usuário |
+| **Perfil de acesso `PRESIDENTE`** | `Reservaparquechina.gs:39, 150, 367` | **mantido** — é quem pode aprovar reserva e editar configuração do módulo. Tirar daqui removeria o acesso do presidente ao sistema, que é outra decisão e não foi pedida. |
 
 ---
 
