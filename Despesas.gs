@@ -877,8 +877,136 @@ function parseDataFlexivelDesp_(valor) {
 // Sintetiza o histórico de uma despesa a partir dos campos já gravados na
 // própria linha (não depende de uma tabela de log separada) — cobre criação,
 // anexo, envio à contabilidade, aprovação, pagamento/confirmação e estorno.
+/**
+ * TRILHA ÚNICA DA DESPESA — cadastro, documento, aprovação, banco, pagamento,
+ * comprovante, contabilidade, estorno e cancelamento, na mesma lista.
+ *
+ * POR QUE ISTO EXISTE
+ * Havia duas trilhas para o mesmo registro: uma derivada dos campos da linha
+ * (cadastro, aprovação, NF, contabilidade) e outra na aba
+ * DESPESAS_PAGAMENTOS_LOG (banco, pagamento, comprovante). Cada tela mostrava
+ * metade da vida da despesa, e nenhuma respondia "o que aconteceu com este
+ * lançamento, do começo ao fim" — que é o que o item 15 do prompt mestre pede.
+ *
+ * FORMA DO EVENTO
+ * Cada item carrega os campos das DUAS telas de propósito — `titulo`/`data`
+ * para a tela de Despesas e `evento`/`dataHora` para a de Pagamentos. Assim a
+ * unificação não exigiu mexer em nenhuma das duas telas, que é o jeito de
+ * fazer isso sem risco.
+ *
+ * DUPLICIDADE
+ * Pagamento e estorno aparecem nos dois lados. Quando o log tem o evento, ele
+ * vence — é mais rico, traz de/para status, conta e forma de pagamento. O
+ * derivado da linha entra só quando o log não tem.
+ */
+function despTrilhaDespesa_(idDespesa) {
+  var despInfo = localizarLinhaDespesaPorId_(idDespesa);
+  if (!despInfo) return null;
+
+  var row = despInfo.row, headerMap = despInfo.headerMap;
+  function get(col) { var i = (headerMap[col] || 0) - 1; return i > -1 ? row[i] : ""; }
+  function getStr(col) { return String(get(col) || "").trim(); }
+
+  var eventos = [];
+  function add(tipo, titulo, dataRaw, detalhe, usuario, extra) {
+    var d = parseDataFlexivelDesp_(dataRaw);
+    if (!d) return;
+    var e = {
+      tipo: tipo,
+      titulo: titulo,
+      evento: (extra && extra.evento) || tipo,   // a tela de Pagamentos lê isto
+      data: formatarDataHoraBRDesp_(d),
+      dataHora: formatarDataHoraBRDesp_(d),      // e isto
+      detalhe: detalhe || "",
+      usuario: usuario || "",
+      origem: (extra && extra.origem) || "REGISTRO",
+      _ts: d.getTime()
+    };
+    if (extra) {
+      ["deStatus", "paraStatus", "valor", "dataReferencia", "formaPagamento",
+       "contaBancaria", "numeroDespesa", "fornecedor"].forEach(function (k) {
+        if (extra[k] !== undefined) e[k] = extra[k];
+      });
+    }
+    eventos.push(e);
+  }
+
+  /* ── 1. o que está gravado na própria linha ── */
+  add("CRIADO", "Lançamento criado", get("DATA_CADASTRO"), getStr("DESCRICAO"), getStr("CRIADO_POR"));
+  if (getStr("DATA_RECEBIMENTO_DOC")) add("DOC", "Documento fiscal anexado", get("DATA_RECEBIMENTO_DOC"), getStr("NOME_ARQUIVO"), "");
+  if (getStr("DATA_APROVACAO"))       add("APROVADO", "Aprovado para pagamento", get("DATA_APROVACAO"), "", getStr("APROVADO_POR"));
+  if (getStr("DATA_ENVIO_CONTABILIDADE")) add("ENVIADO", "Enviado à contabilidade", get("DATA_ENVIO_CONTABILIDADE"), "", "");
+
+  /* ── 2. o que está no log de pagamentos ── */
+  var doLog = {};
+  try {
+    if (typeof pagGarantirLog_ === "function") {
+      var sh = pagGarantirLog_();
+      if (sh.getLastRow() >= 2) {
+        sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues().forEach(function (l) {
+          if (String(l[2]) !== String(idDespesa)) return;
+          var nome = String(l[5] || "");
+          doLog[nome] = true;
+          add(nome, despRotuloEvento_(nome), l[1], String(l[13] || ""), String(l[12] || ""), {
+            evento: nome, origem: "LOG",
+            deStatus: String(l[6] || ""), paraStatus: String(l[7] || ""),
+            valor: String(l[8] || ""), dataReferencia: String(l[9] || ""),
+            formaPagamento: String(l[10] || ""), contaBancaria: String(l[11] || ""),
+            numeroDespesa: String(l[3] || ""), fornecedor: String(l[4] || "")
+          });
+        });
+      }
+    }
+  } catch (e) {
+    Logger.log("despTrilhaDespesa_ — log de pagamentos indisponível: " + e);
+  }
+
+  /* ── 3. o que só existe na linha SE o log não cobriu ── */
+  if (getStr("DATA_PAGAMENTO") && !doLog["PAGAMENTO_CONFIRMADO"]) {
+    var obs = getStr("OBSERVACOES");
+    var viaContab = obs.indexOf("Confirmado pela contabilidade") > -1;
+    add("PAGO", viaContab ? "Pagamento confirmado pela contabilidade" : "Marcado como pago",
+      get("DATA_PAGAMENTO"), viaContab ? obs : "", "");
+  }
+  if (getStr("DATA_ESTORNO") && !doLog["ESTORNADO"]) {
+    add("ESTORNADO", "Pagamento estornado", get("DATA_ESTORNO"), getStr("MOTIVO_ESTORNO"), getStr("ESTORNADO_POR"));
+  }
+  if (getStr("STATUS") === STATUS_DESPESA.CANCELADO && !doLog["CANCELADO"]) {
+    add("CANCELADO", "Despesa cancelada", get("ULTIMA_ATUALIZACAO"), getStr("OBSERVACOES"), "");
+  }
+
+  eventos.sort(function (a, b) { return b._ts - a._ts; });   // mais recente primeiro
+  eventos.forEach(function (e) { delete e._ts; });
+  return eventos;
+}
+
+/** Nome técnico do log → texto que a pessoa lê. */
+function despRotuloEvento_(evento) {
+  var mapa = {
+    LANCADO_BANCO:         "Lançado no banco",
+    LANCAMENTO_DESFEITO:   "Lançamento no banco desfeito",
+    PAGAMENTO_CONFIRMADO:  "Pagamento confirmado",
+    COMPROVANTE_ANEXADO:   "Comprovante anexado",
+    ENVIADO_CONTABILIDADE: "Enviado à contabilidade",
+    ESTORNADO:             "Pagamento estornado",
+    CANCELADO:             "Despesa cancelada"
+  };
+  return mapa[String(evento || "")] || String(evento || "").replace(/_/g, " ").toLowerCase();
+}
+
 function obterHistoricoDespesa(idDespesa, tokenSessao) {
   exigirModulo_(tokenSessao, "financeiro", false);
+  try {
+    idDespesa = String(idDespesa || "").trim();
+    if (!idDespesa) return { ok: false, mensagem: "ID da despesa não informado." };
+    var trilha = despTrilhaDespesa_(idDespesa);
+    if (!trilha) return { ok: false, mensagem: "Despesa não encontrada." };
+    return { ok: true, historico: trilha };
+  } catch (e) { return { ok: false, mensagem: e.message }; }
+}
+
+/** Mantida só para não perder a versão derivada da linha, caso o log falhe. */
+function obterHistoricoDespesaSomenteLinha_(idDespesa, tokenSessao) {
   try {
     idDespesa = String(idDespesa || "").trim();
     if (!idDespesa) return { ok: false, mensagem: "ID da despesa não informado." };

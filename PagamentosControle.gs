@@ -612,12 +612,42 @@ function pagResumoControle(competencia, tokenSessao) {
 }
 
 /** Trilha completa de uma despesa, mais recente primeiro. */
+/**
+ * Histórico do pagamento — agora a trilha COMPLETA da despesa.
+ *
+ * Antes lia só a aba DESPESAS_PAGAMENTOS_LOG, então a tela de Pagamentos
+ * mostrava banco/pagamento/comprovante e não mostrava cadastro nem aprovação,
+ * que ficam em campos da linha. Eram duas metades da vida do mesmo registro,
+ * cada uma numa tela.
+ *
+ * Delega para despTrilhaDespesa_ (Despesas.gs), que junta as duas fontes. Os
+ * eventos continuam trazendo `evento`, `dataHora` e `usuario`, que é o que
+ * esta tela lê — por isso a unificação não exigiu mexer no HTML.
+ *
+ * Se por algum motivo a função central não estiver no projeto, cai na leitura
+ * antiga em vez de devolver tela vazia.
+ */
 function pagHistoricoDespesa(idDespesa, tokenSessao) {
   exigirModulo_(tokenSessao, "financeiro", false);
   try {
     idDespesa = String(idDespesa || "").trim();
     if (!idDespesa) return { ok: false, mensagem: "Despesa não informada.", historico: [] };
 
+    if (typeof despTrilhaDespesa_ === "function") {
+      var trilha = despTrilhaDespesa_(idDespesa);
+      if (trilha) return { ok: true, historico: trilha };
+      return { ok: false, mensagem: "Despesa não encontrada.", historico: [] };
+    }
+
+    return pagHistoricoSomenteLog_(idDespesa);
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao ler o histórico: " + e.message, historico: [] };
+  }
+}
+
+/** Leitura antiga, só do log. Reserva — ver o comentário acima. */
+function pagHistoricoSomenteLog_(idDespesa) {
+  try {
     var sh = pagGarantirLog_();
     if (sh.getLastRow() < 2) return { ok: true, historico: [] };
 

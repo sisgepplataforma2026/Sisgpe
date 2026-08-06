@@ -85,13 +85,33 @@ b.ok(comp && comp.ok, "pagAnexarComprovante anexa", comp && !comp.ok ? "ERRO: " 
 b.passo("7. Histórico — os quatro eventos");
 const hist = g.pagHistoricoDespesa(ID, FIN);
 const eventos = (hist && hist.historico) || [];
-b.ok(eventos.length >= 3, "trilha com lançamento no banco, pagamento e comprovante",
-  eventos.length + " eventos: " + eventos.map(e => e.evento || e.acao).join(", ").slice(0, 90));
-// O cadastro e a aprovação da despesa NÃO entram nesta trilha: ficam em
-// campos da própria linha, lidos pelo Histórico do módulo Despesas. São duas
-// trilhas para o mesmo registro — anotado como melhoria, não como falha.
-b.aviso("a trilha do pagamento não inclui cadastro nem aprovação",
-  "essas etapas vivem em outra trilha, no módulo Despesas");
+const nomes = eventos.map(e => e.evento || e.tipo);
+b.ok(eventos.length >= 5, "trilha ÚNICA, do cadastro ao comprovante",
+  eventos.length + " eventos: " + nomes.join(", ").slice(0, 110));
+
+b.passo("7b. A trilha conta a vida inteira do lançamento");
+[["CRIADO", "cadastro"], ["APROVADO", "aprovação"], ["LANCADO_BANCO", "lançamento no banco"],
+ ["PAGAMENTO_CONFIRMADO", "pagamento"], ["COMPROVANTE_ANEXADO", "comprovante"]
+].forEach(function (par) {
+  b.ok(nomes.indexOf(par[0]) >= 0, "a trilha inclui " + par[1]);
+});
+
+b.passo("7c. As duas telas leem a MESMA trilha");
+const histDesp = g.obterHistoricoDespesa(ID, FIN);
+b.ok(histDesp.ok && histDesp.historico.length === eventos.length,
+  "obterHistoricoDespesa e pagHistoricoDespesa devolvem o mesmo",
+  (histDesp.historico || []).length + " x " + eventos.length);
+
+b.passo("7d. Cada evento serve às duas telas sem mexer no HTML");
+const um = eventos[0] || {};
+b.ok(um.titulo && um.data && um.evento && um.dataHora,
+  "o evento traz titulo/data (Despesas) e evento/dataHora (Pagamentos)",
+  um.titulo + " · " + um.evento);
+
+b.passo("7e. Pagamento não aparece duas vezes");
+const pagos = nomes.filter(n => n === "PAGAMENTO_CONFIRMADO" || n === "PAGO");
+b.ok(pagos.length === 1, "o log vence sobre o campo da linha — sem evento repetido",
+  pagos.join(", "));
 
 b.passo("8. INTEGRAÇÃO — a conciliação enxerga essa despesa?");
 // Achado R2 do relatório: conc_despesasEmAberto usa ocultarPagos:true.
