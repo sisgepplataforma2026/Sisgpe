@@ -1,0 +1,250 @@
+<div id="governancaAdmin" style="min-height:100%;background:#f0f4f8;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#0f172a;">
+<!--
+  Governança — composição empossada e vigilância do mandato.
+  Backend em Governanca.gs. Fonte: Ata de Posse da Gestão 2022/2027.
+
+  A tela existe por causa de uma data: o edital de eleição tem antecedência
+  mínima de 30 dias do fim do mandato (art. 79). Perder esse prazo não produz
+  erro em lugar nenhum — só aparece quando o mandato acaba sem eleição
+  convocada. Por isso a janela do edital é a primeira coisa que se vê.
+
+  Nomes e cargos aqui são públicos (ata registrada em cartório). CPF, RG,
+  PIS, CTPS e endereço não trafegam nesta tela nem existem no backend.
+-->
+
+  <div class="of-modulo-header">
+    <div>
+      <div class="of-modulo-header-title">🏛️ Governança e Mandatos</div>
+      <div class="of-modulo-header-sub">Composição empossada, mandato vigente e calendário eleitoral</div>
+    </div>
+    <div class="of-modulo-header-badge">SindEducação-ES</div>
+  </div>
+
+  <!-- ═══ MANDATO ═══ -->
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">📅</div>
+        <div>
+          <div class="of-card-title" id="govGestao">Carregando…</div>
+          <div class="of-card-sub" id="govPeriodo">—</div>
+        </div>
+      </div>
+      <div class="row-btns">
+        <span id="govBadge" style="display:inline-flex;align-items:center;height:28px;padding:0 14px;border-radius:999px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;background:#e2e8f0;color:#475569;">—</span>
+        <button type="button" id="govBtnRecarregar" class="btn btn-ghost btn-sm">↺ Atualizar</button>
+      </div>
+    </div>
+
+    <div class="of-card-body">
+      <div id="govAlertaEdital" style="margin-bottom:16px;"></div>
+
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;">
+        <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:14px;padding:14px 16px;">
+          <div style="font-size:22px;font-weight:900;color:#1d4ed8;" id="govStatDias">—</div>
+          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-top:4px;">Dias até o fim do mandato</div>
+        </div>
+        <div style="background:#fffbeb;border:1.5px solid #fcd34d;border-radius:14px;padding:14px 16px;">
+          <div style="font-size:17px;font-weight:900;color:#d97706;" id="govStatPrazoEdital">—</div>
+          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-top:4px;">Prazo final do edital (art. 79)</div>
+        </div>
+        <div style="background:#f0fdf4;border:1.5px solid #6ee7b7;border-radius:14px;padding:14px 16px;">
+          <div style="font-size:22px;font-weight:900;color:#059669;" id="govStatPessoas">—</div>
+          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-top:4px;">Empossados na gestão</div>
+        </div>
+        <div style="background:#faf5ff;border:1.5px solid #d8b4fe;border-radius:14px;padding:14px 16px;">
+          <div style="font-size:17px;font-weight:900;color:#7c3aed;" id="govStatProxima">—</div>
+          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-top:4px;">Próxima gestão</div>
+        </div>
+      </div>
+
+      <div id="govFonte" style="margin-top:14px;font-size:11.5px;color:#64748b;"></div>
+    </div>
+  </div>
+
+  <!-- ═══ COMPOSIÇÃO ═══ -->
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">👥</div>
+        <div>
+          <div class="of-card-title">Composição empossada</div>
+          <div class="of-card-sub">Nome, cargo e órgão — dados públicos da ata registrada em cartório</div>
+        </div>
+      </div>
+    </div>
+    <div class="of-card-body">
+      <div id="govAvisoAcesso" style="margin-bottom:14px;"></div>
+      <div id="govOrgaos"></div>
+    </div>
+  </div>
+
+  <!-- ═══ CONSELHO FISCAL ═══ -->
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">🔍</div>
+        <div>
+          <div class="of-card-title">Conselho Fiscal</div>
+          <div class="of-card-sub">Ao menos uma reunião ordinária por semestre (art. 35, parágrafo único)</div>
+        </div>
+      </div>
+      <div class="row-btns">
+        <input type="number" id="govAno" min="2022" max="2040" style="height:34px;width:110px;padding:0 12px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:12.5px;font-family:'Plus Jakarta Sans',sans-serif;">
+      </div>
+    </div>
+    <div class="of-card-body">
+      <div class="fld" style="margin-bottom:12px;">
+        <label for="govReunioes">DATAS DAS REUNIÕES ORDINÁRIAS REALIZADAS (uma por linha, AAAA-MM-DD)</label>
+        <textarea id="govReunioes" rows="3" placeholder="2026-03-15&#10;2026-09-20"></textarea>
+      </div>
+      <button type="button" id="govBtnConferir" class="btn btn-outline">Conferir calendário</button>
+      <div id="govCalendario" style="margin-top:14px;"></div>
+      <div id="govCompeteCF" style="margin-top:14px;font-size:12px;color:#475569;line-height:1.55;"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  function gEl(id){ return document.getElementById(id); }
+  function gEsc(t){
+    return String(t==null?"":t).replace(/[&<>"]/g,function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];
+    });
+  }
+  function gToken(){
+    try{ return (window.SISGEP_TOKEN || window.tokenSessao || localStorage.getItem("sisgep_token") || ""); }
+    catch(e){ return window.SISGEP_TOKEN || ""; }
+  }
+  function gAviso(msg,tipo){
+    if(typeof window.toast==="function") return window.toast(msg,tipo||"erro",5000);
+    console.warn("[Governança]",msg);
+  }
+  function gData(iso){
+    var p=String(iso||"").split("-");
+    return p.length===3 ? (p[2]+"/"+p[1]+"/"+p[0]) : (iso||"—");
+  }
+  function gCaixa(texto,cor){
+    var c={erro:["#fee2e2","#fca5a5","#991b1b"],ok:["#dcfce7","#6ee7b7","#166534"],
+           alerta:["#fef3c7","#fcd34d","#92400e"],info:["#eff6ff","#bfdbfe","#1e40af"]}[cor||"info"];
+    return '<div style="background:'+c[0]+";border:1.5px solid "+c[1]+
+      ";border-radius:12px;padding:13px 17px;font-size:12.5px;font-weight:600;line-height:1.55;color:"+c[2]+
+      ';">'+texto+"</div>";
+  }
+
+  function gCarregar(){
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r || !r.ok) return gAviso("Não consegui carregar a governança.","erro");
+        var m = r.mandato;
+
+        gEl("govGestao").textContent = "Gestão " + m.gestao;
+        gEl("govPeriodo").textContent =
+          "Posse em " + gData(m.posse) + " · término em " + gData(m.termino) +
+          " · mandato de " + m.duracaoAnos + " anos (" + m.estatutoAplicavel + ")";
+
+        var cores = { VIGENTE:["#dcfce7","#166534"], ENCERRADO:["#fee2e2","#991b1b"],
+                      FUTURO:["#e0e7ff","#3730a3"] };
+        var c = cores[m.situacao] || ["#e2e8f0","#475569"];
+        var badge = gEl("govBadge");
+        badge.textContent = m.situacao;
+        badge.style.background = c[0];
+        badge.style.color = c[1];
+
+        // A janela do edital é o motivo desta tela existir.
+        var je = m.janelaEdital;
+        var corJanela = { AINDA_NAO_ABRIU:"info", ABERTA:"alerta",
+                          PRAZO_PERDIDO:"erro", MANDATO_ENCERRADO:"info" }[je.estado] || "info";
+        gEl("govAlertaEdital").innerHTML = gCaixa(
+          "<strong>Edital de eleição (art. 79):</strong> " + gEsc(je.mensagem), corJanela);
+
+        gEl("govStatDias").textContent = m.diasParaFim;
+        gEl("govStatPrazoEdital").textContent = gData(m.editalPrazoFinal);
+        gEl("govStatPessoas").textContent = r.total;
+        gEl("govStatProxima").textContent = m.proximaGestao
+          ? m.proximaGestao.duracaoAnos + " anos" : "—";
+
+        gEl("govFonte").innerHTML = "<strong>Fonte:</strong> " + gEsc(m.fonte) +
+          (m.proximaGestao ? "<br><strong>Próxima gestão:</strong> " +
+            gEsc(m.proximaGestao.estatutoAplicavel) + ". " +
+            gEsc(m.proximaGestao.observacao || "") : "");
+
+        gEl("govAvisoAcesso").innerHTML = gCaixa(gEsc(r.aviso), "info");
+        gRenderOrgaos(r.orgaos);
+      })
+      .withFailureHandler(function(e){ gAviso("Erro: "+e.message,"erro"); })
+      .govComposicao(gToken());
+  }
+
+  function gRenderOrgaos(orgaos){
+    var html = "";
+    Object.keys(orgaos).forEach(function(chave){
+      var o = orgaos[chave];
+      html +=
+        '<div style="margin-bottom:20px;">' +
+        '<div style="font-size:13px;font-weight:900;color:var(--navy,#001f4d);margin-bottom:2px;">'+gEsc(o.rotulo)+"</div>" +
+        '<div style="font-size:11px;color:#64748b;margin-bottom:10px;">'+gEsc(o.artigo)+"</div>" +
+        '<div style="overflow-x:auto;"><table class="of-table" style="width:100%;">' +
+        "<thead><tr><th style='width:38%;'>Nome</th><th>Cargo</th><th style='width:15%;'>Condição</th><th style='width:18%;'>Responde por</th></tr></thead><tbody>";
+
+      function linhas(lista, condicao){
+        return lista.map(function(p){
+          return "<tr>" +
+            "<td><strong>"+gEsc(p.nome)+"</strong></td>" +
+            "<td>"+gEsc(p.cargo)+"</td>" +
+            "<td><span style='display:inline-block;padding:2px 9px;border-radius:999px;font-size:10px;font-weight:800;background:"+
+              (condicao==="EFETIVO"?"#dcfce7;color:#166534":"#f1f5f9;color:#475569")+";'>"+condicao+"</span></td>" +
+            "<td>" + (p.moduloSisgep
+              ? '<a href="javascript:void(0)" onclick="spIr(\''+gEsc(p.moduloSisgep)+'\')" style="color:var(--blue,#1565C0);font-weight:700;">'+gEsc(p.moduloSisgep)+"</a>"
+              : '<span style="color:#94a3b8;">—</span>') + "</td>" +
+            "</tr>";
+        }).join("");
+      }
+
+      html += linhas(o.efetivos, "EFETIVO") + linhas(o.suplentes, "SUPLENTE");
+      html += "</tbody></table></div></div>";
+    });
+    gEl("govOrgaos").innerHTML = html;
+  }
+
+  function gConferirCF(){
+    var ano = parseInt(gEl("govAno").value, 10) || new Date().getFullYear();
+    var datas = String(gEl("govReunioes").value || "")
+      .split(/[\n,;]/).map(function(s){ return s.trim(); }).filter(Boolean);
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r || !r.ok) return;
+        var cal = r.calendario;
+        gEl("govCalendario").innerHTML = gCaixa(
+          "<strong>" + cal.ano + ":</strong> " + cal.realizadas + " reunião(ões) registrada(s) — " +
+          cal.primeiroSemestre + " no 1º semestre, " + cal.segundoSemestre + " no 2º." +
+          (cal.emDia ? " Calendário em dia (" + gEsc(cal.artigo) + ")."
+                     : "<br><br><strong>Pendências:</strong><ul style='margin:6px 0 0 18px;'>" +
+                       cal.pendencias.map(function(p){ return "<li>"+gEsc(p)+"</li>"; }).join("") + "</ul>"),
+          cal.emDia ? "ok" : "alerta");
+
+        gEl("govCompeteCF").innerHTML = "<strong>Competência:</strong> " + gEsc(r.competencia) +
+          "<br><strong>Composição:</strong> " +
+          r.composicao.map(function(p){ return gEsc(p.nome) + " (" + p.condicao.toLowerCase() + ")"; }).join(" · ");
+      })
+      .withFailureHandler(function(e){ gAviso("Erro: "+e.message,"erro"); })
+      .govConselhoFiscal(ano, datas, gToken());
+  }
+
+  window.initGovernanca = function(){
+    var a = gEl("govAno");
+    if(a && !a.value) a.value = new Date().getFullYear();
+
+    var b = gEl("govBtnConferir");    if(b) b.onclick = gConferirCF;
+    var r = gEl("govBtnRecarregar");  if(r) r.onclick = function(){ gCarregar(); gConferirCF(); };
+
+    gCarregar();
+    gConferirCF();
+  };
+})();
+</script>

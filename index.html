@@ -142,6 +142,15 @@
         <span class="spNI">📜</span><div><strong>Negociação Coletiva</strong><small>CCT, pisos e data-base</small></div>
       </button>
 
+      <div class="spSec">Institucional</div>
+
+      <button class="spN" data-mod="governanca" onclick="spIr('governanca',this)">
+        <span class="spNI">🏛️</span><div><strong>Governança</strong><small>Diretoria, mandato e eleição</small></div>
+      </button>
+      <button class="spN" data-mod="assembleias" onclick="spIr('assembleias',this)">
+        <span class="spNI">📣</span><div><strong>Assembleias Gerais</strong><small>Convocação, quórum e deliberação</small></div>
+      </button>
+
       <div class="spSec">Sistema</div>
 
       <button class="spN" data-mod="config" onclick="spIr('config',this)">
@@ -553,6 +562,12 @@ function benefAdminPesquisar(){var input=document.getElementById("benefAdminBusc
       </div>
       <div id="mNegociacao" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
         <?!= include('NegociacaoAdmin'); ?>
+      </div>
+      <div id="mAssembleias" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('AssembleiasAdmin'); ?>
+      </div>
+      <div id="mGovernanca" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('GovernancaAdmin'); ?>
       </div>
       <div id="mJuridico" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
         <?!= include('JuridicoAdmin'); ?>
@@ -1257,6 +1272,8 @@ var MODS={
   rh:["mRH","RH","Colaboradores, Documentos e Vencimentos"],
   juridico:["mJuridico","Jurídico","Processos e Documentos"],
   negociacao:["mNegociacao","Negociação Coletiva","Convenção Coletiva de Trabalho — cláusulas, pisos e vigência"],
+  assembleias:["mAssembleias","Assembleias Gerais","Convocação, instalação e deliberação — Estatuto, arts. 59 a 73"],
+  governanca:["mGovernanca","Governança e Mandatos","Composição empossada, mandato vigente e calendário eleitoral"],
   patrimonio:["mPatrimonio","Patrimônio","Bens e Inventário"],
   comunicacao:["mComunicacao","Painel do Dia","Central de Comunicação — resumo, prioridades e ações rápidas de e-mail"],
   centralEmailIA:["mCentralEmailIA","Caixa de E-mails","Central de Comunicação — categorização inteligente, contexto SISGEP e respostas automáticas"],
@@ -1645,6 +1662,16 @@ if(mod==="beneficios"){
 
   if(mod==="negociacao"){
     setTimeout(function(){ callFn("initNegociacao"); },120);
+    return;
+  }
+
+  if(mod==="assembleias"){
+    setTimeout(function(){ callFn("initAssembleias"); },120);
+    return;
+  }
+
+  if(mod==="governanca"){
+    setTimeout(function(){ callFn("initGovernanca"); },120);
     return;
   }
 

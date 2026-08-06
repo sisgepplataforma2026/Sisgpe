@@ -1,0 +1,462 @@
+<div id="assembleiasAdmin" style="min-height:100%;background:#f0f4f8;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#0f172a;">
+<!--
+  Assembleias Gerais — Estatuto 2026, arts. 59 a 73.
+  Backend em Assembleias.gs.
+
+  A tela é construída em torno de uma ideia: descobrir que a convocação está
+  irregular DEPOIS da assembleia custa a deliberação inteira. Por isso a
+  conferência do art. 72 roda enquanto a pessoa preenche, e o botão de
+  registrar só acende quando não há pendência.
+
+  Nenhum quórum é calculado aqui. Todo número vem do servidor — se a regra
+  mudar em Assembleias.gs, esta tela muda junto, sem ninguém lembrar dela.
+-->
+
+  <div class="of-modulo-header">
+    <div>
+      <div class="of-modulo-header-title">🏛️ Assembleias Gerais</div>
+      <div class="of-modulo-header-sub">Convocação, instalação e deliberação — Estatuto, arts. 59 a 73</div>
+    </div>
+    <div class="of-modulo-header-badge">SindEducação-ES</div>
+  </div>
+
+  <div id="assembAvisoEstatuto" style="margin:0 0 16px;padding:12px 18px;border-radius:12px;background:#eff6ff;border:1.5px solid #bfdbfe;font-size:12.5px;color:#1e40af;font-weight:600;"></div>
+
+  <!-- ═══ NOVA CONVOCAÇÃO ═══ -->
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">📣</div>
+        <div>
+          <div class="of-card-title">Nova convocação</div>
+          <div class="of-card-sub">O tipo não se escolhe — decorre da matéria (art. 67)</div>
+        </div>
+      </div>
+      <div class="row-btns">
+        <span id="assembBadgeTipo" style="display:inline-flex;align-items:center;height:28px;padding:0 14px;border-radius:999px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;background:#e2e8f0;color:#475569;">—</span>
+      </div>
+    </div>
+
+    <div class="of-card-body">
+      <div class="fg fg-2" style="margin-bottom:12px;">
+        <div class="fld">
+          <label for="assembMateria">MATÉRIA</label>
+          <select id="assembMateria"></select>
+        </div>
+        <div class="fld">
+          <label for="assembTitulo">TÍTULO DA ASSEMBLEIA</label>
+          <input type="text" id="assembTitulo" placeholder="Ex.: AGE — Alteração do Estatuto Social">
+        </div>
+      </div>
+
+      <div class="fg fg-3" style="margin-bottom:12px;">
+        <div class="fld">
+          <label for="assembData1">1ª CONVOCAÇÃO (DATA E HORA)</label>
+          <input type="datetime-local" id="assembData1">
+        </div>
+        <div class="fld">
+          <label for="assembData2">2ª CONVOCAÇÃO (DATA E HORA)</label>
+          <input type="datetime-local" id="assembData2">
+        </div>
+        <div class="fld">
+          <label for="assembAptos">ASSOCIADOS APTOS</label>
+          <input type="number" id="assembAptos" min="0" placeholder="Base do quórum de 2/3">
+        </div>
+      </div>
+
+      <div class="fg fg-2" style="margin-bottom:12px;">
+        <div class="fld">
+          <label for="assembLocal">LOCAL</label>
+          <input type="text" id="assembLocal" placeholder="Ex.: Sede — Vitória/ES">
+        </div>
+        <div class="fld">
+          <label for="assembOrigem">QUEM CONVOCA (arts. 69 e 70)</label>
+          <select id="assembOrigem"></select>
+        </div>
+      </div>
+
+      <div class="fld" id="assembCampoProtocolo" style="display:none;margin-bottom:12px;">
+        <label for="assembProtocolo">PROTOCOLO NA SECRETARIA GERAL (art. 70)</label>
+        <input type="text" id="assembProtocolo" placeholder="Número do protocolo entregue pelos associados">
+      </div>
+
+      <div class="fld" style="margin-bottom:12px;">
+        <label for="assembOrdemDia">ORDEM DO DIA</label>
+        <textarea id="assembOrdemDia" rows="3" placeholder="Matérias que serão deliberadas. Fora daqui, nada pode ser votado (art. 63)."></textarea>
+      </div>
+
+      <div style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:12px;padding:14px 18px;margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:#475569;margin-bottom:10px;">📋 Publicidade do edital (art. 72)</div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;margin-bottom:6px;cursor:pointer;">
+          <input type="checkbox" id="assembEditalSede"> Edital afixado na sede do sindicato (inciso I)
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;margin-bottom:6px;cursor:pointer;">
+          <input type="checkbox" id="assembEditalPub"> Publicado em jornal de grande circulação ou no Diário Oficial do ES (inciso II)
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;cursor:pointer;">
+          <input type="checkbox" id="assembEditalTrab"> Edital no local de trabalho (inciso III — greve por empresa)
+        </label>
+      </div>
+
+      <div id="assembPendencias" style="margin-bottom:14px;"></div>
+
+      <div class="row-btns">
+        <button type="button" id="assembBtnRegistrar" class="btn btn-navy" disabled>Registrar convocação</button>
+        <button type="button" id="assembBtnLimpar" class="btn btn-ghost">Limpar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PRAZO DO ART. 70 ═══ -->
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">⏱️</div>
+        <div>
+          <div class="of-card-title">Prazo de convocação por associados</div>
+          <div class="of-card-sub">10 dias úteis do protocolo (art. 70, parágrafo único)</div>
+        </div>
+      </div>
+    </div>
+    <div class="of-card-body">
+      <div class="fg fg-3">
+        <div class="fld">
+          <label for="assembDataProto">DATA DO PROTOCOLO</label>
+          <input type="date" id="assembDataProto">
+        </div>
+        <div class="fld" style="display:flex;align-items:flex-end;">
+          <button type="button" id="assembBtnPrazo" class="btn btn-outline">Calcular prazo</button>
+        </div>
+      </div>
+      <div id="assembResultadoPrazo" style="margin-top:12px;"></div>
+    </div>
+  </div>
+
+  <!-- ═══ ASSEMBLEIAS REGISTRADAS ═══ -->
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">📚</div>
+        <div>
+          <div class="of-card-title">Assembleias registradas</div>
+          <div class="of-card-sub" id="assembContagem">—</div>
+        </div>
+      </div>
+      <div class="row-btns">
+        <button type="button" id="assembBtnRecarregar" class="btn btn-ghost btn-sm">↺ Atualizar</button>
+      </div>
+    </div>
+    <div class="of-card-body">
+      <div style="overflow-x:auto;">
+        <table class="of-table" style="width:100%;">
+          <thead>
+            <tr><th>Título</th><th>Tipo</th><th>1ª convocação</th><th>Status</th><th>Resultado</th><th></th></tr>
+          </thead>
+          <tbody id="assembLista">
+            <tr><td colspan="6"><div class="of-table-empty">Carregando…</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="assembPainelAcao" style="margin-top:16px;"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var ASSEMB_CAT = null;
+  var ASSEMB_SEL = null;
+
+  function aEl(id){ return document.getElementById(id); }
+  function aEsc(t){
+    return String(t==null?"":t).replace(/[&<>"]/g,function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];
+    });
+  }
+  function aToken(){
+    try{ return (window.SISGEP_TOKEN || window.tokenSessao || localStorage.getItem("sisgep_token") || ""); }
+    catch(e){ return window.SISGEP_TOKEN || ""; }
+  }
+  function aAviso(msg,tipo){
+    if(typeof window.toast==="function") return window.toast(msg,tipo||"erro",5000);
+    console.warn("[Assembleias]",msg);
+  }
+  function aData(v){
+    if(!v) return "—";
+    var s=String(v);
+    var m=/^(\d{4})-(\d{2})-(\d{2})[T ]?(\d{2}:\d{2})?/.exec(s);
+    return m ? (m[3]+"/"+m[2]+"/"+m[1]+(m[4]?" "+m[4]:"")) : s;
+  }
+  function aCaixa(texto,cor){
+    var c={erro:["#fee2e2","#fca5a5","#991b1b"],ok:["#dcfce7","#6ee7b7","#166534"],
+           alerta:["#fef3c7","#fcd34d","#92400e"],info:["#eff6ff","#bfdbfe","#1e40af"]}[cor||"info"];
+    return '<div style="background:'+c[0]+";border:1.5px solid "+c[1]+
+      ";border-radius:12px;padding:13px 17px;font-size:12.5px;font-weight:600;line-height:1.55;color:"+c[2]+
+      ';">'+texto+"</div>";
+  }
+
+  /* ── Monta os seletores a partir do catálogo do servidor ── */
+  function aCarregarCatalogo(){
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r || !r.ok) return aAviso("Não consegui carregar o catálogo de matérias.","erro");
+        ASSEMB_CAT = r;
+
+        aEl("assembAvisoEstatuto").innerHTML =
+          "<strong>Regras aplicadas:</strong> " + aEsc(r.estatuto.versao) + ". " +
+          aEsc(r.estatuto.observacaoTransicao || "");
+
+        var sm = aEl("assembMateria");
+        sm.innerHTML = r.materias.map(function(m){
+          return '<option value="'+m.chave+'">'+aEsc(m.rotulo)+"</option>";
+        }).join("");
+
+        var so = aEl("assembOrigem");
+        so.innerHTML = r.origens.map(function(o){
+          return '<option value="'+o.chave+'">'+aEsc(o.rotulo)+" ("+aEsc(o.artigo)+")</option>";
+        }).join("");
+
+        aRefletirMateria();
+        aConferir();
+      })
+      .withFailureHandler(function(e){ aAviso("Erro: "+e.message,"erro"); })
+      .assembCatalogo(aToken());
+  }
+
+  /* ── Mostra o tipo e o escrutínio assim que a matéria muda ── */
+  function aRefletirMateria(){
+    if(!ASSEMB_CAT) return;
+    var chave = aEl("assembMateria").value;
+    var m = ASSEMB_CAT.materias.filter(function(x){ return x.chave===chave; })[0];
+    var badge = aEl("assembBadgeTipo");
+    if(!m){ badge.textContent="—"; return; }
+
+    badge.textContent = m.tipo + (m.escrutinioSecreto ? " · ESCRUTÍNIO SECRETO" : "");
+    var cor = m.tipo==="ORDINARIA" ? ["#dbeafe","#1e40af"] : ["#fef3c7","#92400e"];
+    badge.style.background = cor[0];
+    badge.style.color = cor[1];
+    badge.title = m.artigos;
+  }
+
+  /* ── Conferência do art. 72 enquanto se preenche ── */
+  function aDadosForm(){
+    return {
+      materia: aEl("assembMateria").value,
+      titulo: aEl("assembTitulo").value,
+      dataHora1a: aEl("assembData1").value,
+      dataHora2a: aEl("assembData2").value,
+      local: aEl("assembLocal").value,
+      ordemDoDia: aEl("assembOrdemDia").value,
+      origemConvocacao: aEl("assembOrigem").value,
+      protocoloAssociados: aEl("assembProtocolo").value,
+      editalSede: aEl("assembEditalSede").checked,
+      editalPublicacao: aEl("assembEditalPub").checked,
+      editalLocalTrabalho: aEl("assembEditalTrab").checked,
+      associadosAptos: aEl("assembAptos").value,
+      convocadaPor: ""
+    };
+  }
+
+  function aConferir(){
+    aEl("assembCampoProtocolo").style.display =
+      (aEl("assembOrigem").value === "ASSOCIADOS") ? "block" : "none";
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r || !r.ok) return;
+        var alvo = aEl("assembPendencias");
+        var btn = aEl("assembBtnRegistrar");
+        if(r.valida){
+          alvo.innerHTML = aCaixa("Convocação regular. Pode registrar.","ok");
+          btn.disabled = false;
+        }else{
+          alvo.innerHTML = aCaixa(
+            "<strong>Falta para a convocação ser regular:</strong><ul style='margin:8px 0 0 18px;'>" +
+            r.falhas.map(function(f){ return "<li>"+aEsc(f)+"</li>"; }).join("") + "</ul>", "alerta");
+          btn.disabled = true;
+        }
+      })
+      .withFailureHandler(function(e){ aAviso("Erro na conferência: "+e.message,"erro"); })
+      .assembConferirConvocacao(aDadosForm(), aToken());
+  }
+
+  function aRegistrar(){
+    var d = aDadosForm();
+    d.convocadaPor = (aEl("assembOrigem").selectedOptions[0]||{}).text || "";
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r || !r.ok){
+          aEl("assembPendencias").innerHTML = aCaixa(aEsc((r&&r.mensagem)||"Não registrou."),"erro");
+          return;
+        }
+        aAviso(r.mensagem,"sucesso");
+        aEl("assembPendencias").innerHTML = aCaixa(aEsc(r.mensagem),"ok");
+        aLimpar();
+        aListar();
+      })
+      .withFailureHandler(function(e){ aAviso("Erro ao registrar: "+e.message,"erro"); })
+      .assembRegistrar(d, aToken());
+  }
+
+  function aLimpar(){
+    ["assembTitulo","assembData1","assembData2","assembLocal","assembOrdemDia",
+     "assembProtocolo","assembAptos"].forEach(function(id){ aEl(id).value=""; });
+    ["assembEditalSede","assembEditalPub","assembEditalTrab"].forEach(function(id){ aEl(id).checked=false; });
+    aConferir();
+  }
+
+  /* ── Lista e ações ── */
+  function aListar(){
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r || !r.ok) return;
+        aEl("assembContagem").textContent = r.total + " assembleia(s) registrada(s)";
+        var body = aEl("assembLista");
+        if(!r.total){
+          body.innerHTML = '<tr><td colspan="6"><div class="of-table-empty">Nenhuma assembleia registrada ainda.</div></td></tr>';
+          return;
+        }
+        var cores = {CONVOCADA:["#eff6ff","#1e40af"],INSTALADA:["#dcfce7","#166534"],
+                     SEM_QUORUM:["#fef3c7","#92400e"],ENCERRADA:["#e2e8f0","#475569"]};
+        body.innerHTML = r.assembleias.map(function(a){
+          var c = cores[a.STATUS] || ["#e2e8f0","#475569"];
+          return "<tr>" +
+            "<td><strong>"+aEsc(a.TITULO)+"</strong><br><small style='color:#64748b;'>"+aEsc(a.ID)+"</small></td>" +
+            "<td>"+aEsc(a.TIPO)+(String(a.ESCRUTINIO)==="SECRETO"?" 🔒":"")+"</td>" +
+            "<td>"+aData(a.DATA_HORA_1A)+"</td>" +
+            "<td><span style='display:inline-block;padding:3px 10px;border-radius:999px;font-size:10.5px;font-weight:800;background:"+c[0]+";color:"+c[1]+";'>"+aEsc(a.STATUS)+"</span></td>" +
+            "<td>"+aEsc(a.RESULTADO||"—")+"</td>" +
+            "<td style='text-align:right;'><button type='button' class='btn btn-ghost btn-sm' onclick=\"assembAbrir('"+aEsc(a.ID)+"')\">Abrir</button></td>" +
+            "</tr>";
+        }).join("");
+      })
+      .withFailureHandler(function(e){ aAviso("Erro ao listar: "+e.message,"erro"); })
+      .assembListar({}, aToken());
+  }
+
+  /* Painel de instalação e deliberação da assembleia escolhida. */
+  window.assembAbrir = function(id){
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r || !r.ok) return;
+        var a = r.assembleias.filter(function(x){ return String(x.ID)===String(id); })[0];
+        if(!a) return;
+        ASSEMB_SEL = a;
+
+        var m = (ASSEMB_CAT ? ASSEMB_CAT.materias.filter(function(x){ return x.chave===String(a.MATERIA); })[0] : null);
+        var html =
+          '<div style="border:1.5px solid #cbd5e1;border-radius:14px;padding:18px;background:#fff;">' +
+          '<div style="font-size:14px;font-weight:900;color:var(--navy,#001f4d);margin-bottom:4px;">'+aEsc(a.TITULO)+"</div>" +
+          '<div style="font-size:12px;color:#64748b;margin-bottom:14px;">'+aEsc(a.TIPO)+" · "+
+            (m?aEsc(m.rotulo):aEsc(a.MATERIA))+" · "+(m?aEsc(m.artigos):"")+"</div>" +
+          '<div style="font-size:12.5px;margin-bottom:14px;"><strong>Ordem do dia:</strong> '+aEsc(a.ORDEM_DO_DIA||"—")+"</div>";
+
+        if(String(a.STATUS)==="ENCERRADA"){
+          html += aCaixa("Assembleia encerrada. Resultado: <strong>"+aEsc(a.RESULTADO)+
+            "</strong> — "+a.VOTOS_SIM+" sim, "+a.VOTOS_NAO+" não, "+a.ABSTENCOES+" abstenções.","info");
+        } else if(String(a.STATUS)==="CONVOCADA" || String(a.STATUS)==="SEM_QUORUM"){
+          html +=
+            '<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:#475569;margin-bottom:8px;">Instalar (art. 73)</div>' +
+            '<div class="fg fg-3">' +
+            '<div class="fld"><label>CONVOCAÇÃO</label><select id="assembConv"><option value="1">1ª — exige 2/3</option><option value="2">2ª — qualquer número</option></select></div>' +
+            '<div class="fld"><label>PRESENTES</label><input type="number" id="assembPresentes" min="0"></div>' +
+            '<div class="fld" style="display:flex;align-items:flex-end;"><button type="button" class="btn btn-navy" onclick="assembInstalar()">Instalar</button></div>' +
+            "</div>";
+        } else if(String(a.STATUS)==="INSTALADA"){
+          html +=
+            aCaixa("Instalada com "+a.PRESENTES+" presentes, em "+a.CONVOCACAO_APLICADA+"ª convocação." +
+              (String(a.ESCRUTINIO)==="SECRETO" ? " <strong>Esta matéria exige escrutínio SECRETO (art. 62).</strong>" : ""), "ok") +
+            '<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:#475569;margin:14px 0 8px;">Apurar deliberação</div>' +
+            '<div class="fg fg-4">' +
+            '<div class="fld"><label>SIM</label><input type="number" id="assembSim" min="0" value="0"></div>' +
+            '<div class="fld"><label>NÃO</label><input type="number" id="assembNao" min="0" value="0"></div>' +
+            '<div class="fld"><label>ABSTENÇÕES</label><input type="number" id="assembAbst" min="0" value="0"></div>' +
+            '<div class="fld" style="display:flex;align-items:flex-end;"><button type="button" class="btn btn-navy" onclick="assembDeliberar()">Apurar</button></div>' +
+            "</div>";
+        }
+
+        html += '<div id="assembRetornoAcao" style="margin-top:12px;"></div></div>';
+        aEl("assembPainelAcao").innerHTML = html;
+        aEl("assembPainelAcao").scrollIntoView({behavior:"smooth",block:"nearest"});
+      })
+      .withFailureHandler(function(e){ aAviso("Erro: "+e.message,"erro"); })
+      .assembListar({}, aToken());
+  };
+
+  window.assembInstalar = function(){
+    if(!ASSEMB_SEL) return;
+    google.script.run
+      .withSuccessHandler(function(r){
+        var alvo = aEl("assembRetornoAcao");
+        if(!r || !r.ok){ alvo.innerHTML = aCaixa(aEsc((r&&r.mensagem)||"Erro."),"erro"); return; }
+        var texto = aEsc(r.mensagem);
+        if(r.quorum && r.quorum.avisoInterpretacao){
+          texto += "<br><br><em>" + aEsc(r.quorum.avisoInterpretacao) + "</em>";
+        }
+        alvo.innerHTML = aCaixa(texto, r.instalada ? "ok" : "alerta");
+        aListar();
+        setTimeout(function(){ assembAbrir(ASSEMB_SEL.ID); }, 400);
+      })
+      .withFailureHandler(function(e){ aAviso("Erro ao instalar: "+e.message,"erro"); })
+      .assembInstalar(ASSEMB_SEL.ID, aEl("assembConv").value, aEl("assembPresentes").value, aToken());
+  };
+
+  window.assembDeliberar = function(){
+    if(!ASSEMB_SEL) return;
+    var votos = { sim: aEl("assembSim").value, nao: aEl("assembNao").value, abstencoes: aEl("assembAbst").value };
+    google.script.run
+      .withSuccessHandler(function(r){
+        var alvo = aEl("assembRetornoAcao");
+        if(!r || !r.ok){ alvo.innerHTML = aCaixa(aEsc((r&&r.mensagem)||"Erro."),"erro"); return; }
+        if(r.exigeAnaliseHumana){ alvo.innerHTML = aCaixa(aEsc(r.mensagem),"alerta"); return; }
+        alvo.innerHTML = aCaixa(aEsc(r.mensagem), r.aprovado ? "ok" : "alerta");
+        aListar();
+        setTimeout(function(){ assembAbrir(ASSEMB_SEL.ID); }, 400);
+      })
+      .withFailureHandler(function(e){ aAviso("Erro ao apurar: "+e.message,"erro"); })
+      .assembDeliberar(ASSEMB_SEL.ID, ASSEMB_SEL.MATERIA, votos, aToken());
+  };
+
+  /* ── Prazo do art. 70 ── */
+  function aPrazo(){
+    var d = aEl("assembDataProto").value;
+    if(!d){ aEl("assembResultadoPrazo").innerHTML = aCaixa("Informe a data do protocolo.","alerta"); return; }
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r || !r.ok){ aEl("assembResultadoPrazo").innerHTML = aCaixa(aEsc((r&&r.mensagem)||""),"erro"); return; }
+        var p = r.prazo;
+        var cor = p.vencido ? "erro" : (p.alerta ? "alerta" : "ok");
+        aEl("assembResultadoPrazo").innerHTML = aCaixa(
+          "Protocolo em <strong>"+aData(p.protocolo)+"</strong> · limite para convocar: <strong>"+
+          aData(p.limite)+"</strong> (10 dias úteis, "+aEsc(p.artigo)+")." +
+          (p.alerta ? "<br>"+aEsc(p.alerta) : ""), cor);
+      })
+      .withFailureHandler(function(e){ aAviso("Erro no prazo: "+e.message,"erro"); })
+      .assembPrazoProtocolo(d, aToken());
+  }
+
+  /* ── Ligações ── */
+  window.initAssembleias = function(){
+    var mat = aEl("assembMateria");
+    if(mat) mat.onchange = function(){ aRefletirMateria(); aConferir(); };
+
+    ["assembOrigem","assembEditalSede","assembEditalPub","assembEditalTrab"].forEach(function(id){
+      var el = aEl(id); if(el) el.onchange = aConferir;
+    });
+    ["assembOrdemDia","assembData2","assembProtocolo"].forEach(function(id){
+      var el = aEl(id); if(el) el.oninput = aConferir;
+    });
+
+    var br = aEl("assembBtnRegistrar"); if(br) br.onclick = aRegistrar;
+    var bl = aEl("assembBtnLimpar");    if(bl) bl.onclick = aLimpar;
+    var bp = aEl("assembBtnPrazo");     if(bp) bp.onclick = aPrazo;
+    var brc= aEl("assembBtnRecarregar");if(brc) brc.onclick = function(){ aCarregarCatalogo(); aListar(); };
+
+    aCarregarCatalogo();
+    aListar();
+  };
+})();
+</script>
