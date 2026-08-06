@@ -627,8 +627,14 @@ function benefAdminPesquisar(){var input=document.getElementById("benefAdminBusc
             <button type="button" id="spLogout" style="height:38px;padding:0 18px;border:none;border-radius:999px;background:#fee2e2;color:#991b1b;font-size:12.5px;font-weight:800;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;display:inline-flex;align-items:center;gap:6px;">🚪 Sair do sistema</button>
           </div>
         </div>
-        <?!= include('PortalAuditoriaAdmin'); ?>
+        <!-- ORDEM IMPORTA. Configuracoes vem antes da Auditoria porque e o
+             que a pessoa foi buscar ao clicar em "Configuracoes"; a auditoria
+             do Portal do Associado e consulta ocasional. Estava invertido, e
+             o efeito era ter que rolar uma tela inteira de log para chegar
+             aos ajustes — com dois cabecalhos azuis grandes pelo caminho,
+             o que fazia a tela parecer nao terminar nunca. -->
         <?!= include('ConfigAdmin'); ?>
+        <?!= include('PortalAuditoriaAdmin'); ?>
       </div>
     </section>
   </main>
