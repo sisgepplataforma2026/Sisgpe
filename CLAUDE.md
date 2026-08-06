@@ -28,6 +28,28 @@ Uma função só é dada como concluída quando o processo inteiro roda do gatil
 
 **Caso real que originou esta regra (2026-08-05):** entreguei uma auditoria de arquitetura do Portal Administrativo inteiro classificando módulos como "Coberto" a partir de leitura de código, sem executar uma linha. O usuário respondeu: *"tem que testar todos os fluxos"*, *"não tem nada real"*, *"pq não testou?"*, *"pq não sugeriu?"*. Estava certo nas quatro.
 
+## 🚨 REGRA Nº 0.5 — ARQUITETURA E LAYOUT ANTES DE IMPLEMENTAR
+
+Definida pelo usuário em 2026-08-06. Antes de escrever backend, tela ou
+qualquer módulo/submódulo novo, **mostrar primeiro**:
+
+1. **Arquitetura** — Módulo → Submódulo → Telas (por ESTADO, não por assunto,
+   conforme o item 4 do PROMPT-MESTRE) → Ações de cada tela.
+2. **Layout** — como a tela vai ficar: onde ficam os cards de contagem, a
+   lista, os filtros, os botões. Wireframe em texto serve; o que não serve é
+   descrever em prosa e implementar direto.
+
+Só depois de o usuário ver e concordar é que se escreve código.
+
+**Por que:** desenho errado descoberto depois do código pronto custa duas
+vezes — e o usuário é quem conhece a operação do sindicato. Ele consegue
+apontar em dez segundos que uma fila não faz sentido ou que falta uma tela
+que a secretaria usa todo dia. Ler isso num wireframe é barato; descobrir
+depois de 300 linhas de backend e uma tela pronta, não.
+
+Vale inclusive quando o pedido parece pequeno: "cria a tela X" também tem
+arquitetura, e é aí que a divergência aparece.
+
 ## 🚨 REGRA Nº 0 — SCRIPTLET DO APPS SCRIPT NUNCA VAI DENTRO DE COMENTÁRIO
 
 O template engine do Apps Script (`createTemplateFromFile().evaluate()`, usado por `include()` em `Code.gs:267`) avalia scriptlet em **qualquer posição do arquivo**, inclusive dentro de `<!-- comentário HTML -->`, porque ele roda ANTES do navegador ver o HTML. Comentar um scriptlet não o desliga.
