@@ -64,6 +64,7 @@ var ACESSO_MODULOS_CATALOGO = [
   { chave: "negociacao",       rotulo: "Negociação Coletiva",   sensivel: false },
   { chave: "assembleias",      rotulo: "Assembleias Gerais",    sensivel: true  },
   { chave: "governanca",       rotulo: "Governança e Mandatos", sensivel: true  },
+  { chave: "auditoria",        rotulo: "Auditoria e Compliance",sensivel: true  },
   { chave: "comunicacao",      rotulo: "Central de Comunicação",sensivel: false },
   { chave: "eventos",          rotulo: "Eventos",               sensivel: false },
   { chave: "relatorios",       rotulo: "Relatórios",            sensivel: false },
