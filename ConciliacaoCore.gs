@@ -246,8 +246,9 @@ function conc_importarExtrato(payload, tokenSessao) {
              conc_normalizar_(l[mapa["DESCRICAO"]])] = true;
     });
 
-    var despResp = listarDespesas_interno_({ ocultarPagos: true, ocultarCancelados: true });
-    var despesas = (despResp && despResp.lista) || [];
+    // Mesma regra do seletor manual: candidata é quem ainda não foi
+    // conciliado, esteja pago ou não. Ver o comentário em conc_candidatas_.
+    var despesas = conc_candidatas_();
 
     var usuario = "";
     try { usuario = Session.getActiveUser().getEmail() || ""; } catch (e) {}
@@ -468,16 +469,56 @@ function conc_desfazer(payload, tokenSessao) {
   }
 }
 
-/** Despesas em aberto, para o seletor de vínculo manual da tela. */
+/**
+ * IDs de despesa que JÁ foram conciliadas — são as únicas que devem sumir da
+ * lista de candidatas. Antes disso, "pago" e "conciliado" eram tratados como
+ * a mesma coisa, e não são: pagar é o sindicato mandar; conciliar é o extrato
+ * do banco provar que saiu.
+ */
+function conc_idsJaConciliados_() {
+  var sh = conc_aba_(), mapa = conc_mapa_(sh), ids = {};
+  if (sh.getLastRow() < 2) return ids;
+  sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues().forEach(function (l) {
+    if (String(l[mapa["STATUS"]]) !== CONC_STATUS.CONCILIADO) return;
+    var id = String(l[mapa["ID_DESPESA"]] || "").trim();
+    if (id) ids[id] = true;
+  });
+  return ids;
+}
+
+/**
+ * Candidatas à conciliação.
+ *
+ * ⚠️ NÃO volte a usar ocultarPagos:true aqui. Era o que estava escrito, e
+ * criava um degrau no meio do fluxo do dinheiro: quem confirmava o pagamento
+ * no Controle de Pagamentos e depois importava o extrato via o movimento do
+ * banco cair como "Saída sem despesa correspondente" — porque a despesa,
+ * justamente por estar paga, tinha sumido da lista.
+ *
+ * O critério certo é conciliação, não pagamento: some da lista quem já foi
+ * conciliado. Confirmado por execução em tests/e2e/t7-financeiro.js.
+ */
 function conc_despesasEmAberto(tokenSessao) {
   exigirModulo_(tokenSessao, "financeiro", false);
-  var r = listarDespesas_interno_({ ocultarPagos: true, ocultarCancelados: true });
-  return ((r && r.lista) || []).map(function (d) {
-    return {
-      idDespesa: String(d.idDespesa || ""),
-      nome: String(d.prestadorNome || d.descricao || ""),
-      valor: conc_num_(d.valor),
-      vencimento: String(d.dataVencimentoBR || d.dataVencimento || "")
-    };
-  });
+  return conc_candidatas_();
+}
+
+/** Núcleo sem sessão — usado também pela importação do extrato. */
+function conc_candidatas_() {
+  var r = listarDespesas_interno_({ ocultarCancelados: true });
+  var conciliadas = conc_idsJaConciliados_();
+  return ((r && r.lista) || [])
+    .filter(function (d) { return !conciliadas[String(d.idDespesa || "")]; })
+    .map(function (d) {
+      return {
+        idDespesa: String(d.idDespesa || ""),
+        nome: String(d.prestadorNome || d.descricao || ""),
+        prestadorNome: String(d.prestadorNome || ""),
+        descricao: String(d.descricao || ""),
+        status: String(d.status || ""),
+        valor: conc_num_(d.valor),
+        dataVencimento: d.dataVencimento,
+        vencimento: String(d.dataVencimentoBR || d.dataVencimento || "")
+      };
+    });
 }
