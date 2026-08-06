@@ -182,6 +182,7 @@ function auditoriaConsultar(filtros, tokenSessao) {
   exigirModulo_(tokenSessao, AUD_MODULO, false);
   filtros = filtros || {};
 
+  var limite = Math.min(parseInt(filtros.limite, 10) || 200, 1000);
   var condicoes = [];
   if (filtros.modulo) condicoes.push({ campo: "modulo", op: "EQUAL", valor: filtros.modulo });
   if (filtros.usuario) condicoes.push({ campo: "usuario", op: "EQUAL", valor: filtros.usuario });
@@ -189,23 +190,44 @@ function auditoriaConsultar(filtros, tokenSessao) {
   if (filtros.registroId) condicoes.push({ campo: "registroId", op: "EQUAL", valor: filtros.registroId });
   if (filtros.apenasCriticas === true) condicoes.push({ campo: "critica", op: "EQUAL", valor: true });
 
+  // Período. O dia inteiro entra: "até 06/08" tem que incluir o que foi feito
+  // às 23h50 do dia 06, senão a última ação do dia some do relatório.
+  var de = aud_inicioDoDia_(filtros.de);
+  var ate = aud_fimDoDia_(filtros.ate);
+  if (de) condicoes.push({ campo: "dataHora", op: "GREATER_THAN_OR_EQUAL", valor: de });
+  if (ate) condicoes.push({ campo: "dataHora", op: "LESS_THAN_OR_EQUAL", valor: ate });
+
   if (typeof firebaseDisponivel_ === "function" && firebaseDisponivel_()) {
-    var r = firebaseConsultar_(AUD_COLECAO, condicoes, "dataHora", true,
-                               filtros.limite || 200);
+    var r = firebaseConsultar_(AUD_COLECAO, condicoes, "dataHora", true, limite);
     if (r && r.ok) {
-      return { ok: true, fonte: "FIRESTORE", total: r.total, acoes: r.itens };
+      return { ok: true, fonte: "FIRESTORE", limite: limite,
+        total: r.total, truncado: r.total >= limite, acoes: r.itens };
     }
     // Consulta com filtro composto exige índice. O erro traz o link que o
     // cria; preservar a mensagem é o que permite resolver em um clique.
-    return { ok: true, fonte: "PLANILHA", avisoFirestore: r && r.mensagem,
-      total: 0, acoes: aud_lerDaPlanilha_(condicoes, filtros.limite || 200) };
+    return aud_respostaDaPlanilha_(condicoes, limite, r && r.mensagem);
   }
 
-  return { ok: true, fonte: "PLANILHA",
-    acoes: aud_lerDaPlanilha_(condicoes, filtros.limite || 200) };
+  return aud_respostaDaPlanilha_(condicoes, limite, "");
 }
 
-function aud_lerDaPlanilha_(condicoes, limite) {
+/** Resposta lida da reserva, já no mesmo formato da resposta do Firestore. */
+function aud_respostaDaPlanilha_(condicoes, limite, avisoFirestore) {
+  var todas = aud_lerDaPlanilha_(condicoes);
+  return {
+    ok: true, fonte: "PLANILHA", avisoFirestore: avisoFirestore || "",
+    limite: limite, total: todas.length, truncado: todas.length > limite,
+    acoes: todas.slice(0, limite)
+  };
+}
+
+/**
+ * Lê a reserva inteira e aplica os filtros. Devolve TUDO que casa — quem
+ * chama é que corta no limite. Sem isto não dá para dizer "há mais registros
+ * do que estes", e uma trilha que esconde silenciosamente metade do resultado
+ * numa fiscalização é pior que trilha nenhuma.
+ */
+function aud_lerDaPlanilha_(condicoes) {
   var aba = abaSisgep_(AUD_ABA_RESERVA, AUD_COLUNAS_RESERVA);
   if (!aba || aba.getLastRow() < 2) return [];
 
@@ -221,11 +243,83 @@ function aud_lerDaPlanilha_(condicoes, limite) {
   });
 
   (condicoes || []).forEach(function (c) {
-    itens = itens.filter(function (i) { return String(i[c.campo]) === String(c.valor); });
+    itens = itens.filter(function (i) { return aud_bate_(i[c.campo], c); });
   });
 
   itens.reverse();
-  return itens.slice(0, limite);
+  return itens;
+}
+
+/** Compara um campo do registro com uma condição, respeitando o operador. */
+function aud_bate_(valor, condicao) {
+  var op = condicao.op || "EQUAL";
+  if (op === "EQUAL") return String(valor) === String(condicao.valor);
+
+  var d = aud_paraData_(valor);
+  var alvo = aud_paraData_(condicao.valor);
+  if (!d || !alvo) return false;
+  if (op === "GREATER_THAN_OR_EQUAL") return d.getTime() >= alvo.getTime();
+  if (op === "LESS_THAN_OR_EQUAL") return d.getTime() <= alvo.getTime();
+  return true;
+}
+
+/**
+ * Converte para Date o que vier: Date da planilha, ISO do Firestore ou
+ * "AAAA-MM-DD" do formulário. Devolve null quando não é data — nunca uma
+ * data inventada, porque data errada em filtro de auditoria esconde registro.
+ */
+function aud_paraData_(v) {
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+  if (!v) return null;
+  var d = new Date(v);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function aud_inicioDoDia_(iso) {
+  var d = aud_paraData_(iso);
+  if (!d) return null;
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+}
+
+function aud_fimDoDia_(iso) {
+  var d = aud_paraData_(iso);
+  if (!d) return null;
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+}
+
+/**
+ * Opções que existem de fato na trilha, para os seletores da tela.
+ *
+ * Deliberadamente NÃO devolve a lista fixa de módulos do sistema: se o filtro
+ * oferece "Patrimônio" e a trilha não tem uma ação de Patrimônio sequer, quem
+ * consulta conclui que o módulo é limpo, quando na verdade ele nunca gravou
+ * nada. O filtro mostra o que há.
+ */
+function auditoriaFiltros(tokenSessao) {
+  exigirModulo_(tokenSessao, AUD_MODULO, false);
+
+  var todas = aud_lerDaPlanilha_([]);
+  if (typeof firebaseDisponivel_ === "function" && firebaseDisponivel_()) {
+    var r = firebaseConsultar_(AUD_COLECAO, [], "dataHora", true, 1000);
+    if (r && r.ok) todas = r.itens;
+  }
+
+  function distintos(campo) {
+    var vistos = {}, saida = [];
+    todas.forEach(function (a) {
+      var v = String(a[campo] || "").trim();
+      if (!v || v === "—" || vistos[v]) return;
+      vistos[v] = true; saida.push(v);
+    });
+    return saida.sort();
+  }
+
+  return {
+    ok: true,
+    modulos: distintos("modulo"),
+    usuarios: distintos("usuario"),
+    acoes: distintos("acao")
+  };
 }
 
 /** Contagens do painel (item 16). */
@@ -247,7 +341,11 @@ function auditoriaPainel(tokenSessao) {
     ok: true,
     fonte: r.fonte,
     avisoFirestore: r.avisoFirestore || "",
-    total: acoes.length,
+    // total é o que existe na trilha; as contagens abaixo olham só as 1.000
+    // mais recentes. Quando os dois divergem, a tela avisa em vez de fingir.
+    total: r.total !== undefined ? r.total : acoes.length,
+    contadas: acoes.length,
+    truncado: r.truncado === true,
     hoje: acoes.filter(function (a) { return dia(a.dataHora) === hoje; }).length,
     criticas: acoes.filter(function (a) { return a.critica; }).length,
     falhas: acoes.filter(function (a) { return String(a.resultado) === "FALHA"; }).length,

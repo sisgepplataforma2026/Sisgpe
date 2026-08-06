@@ -153,6 +153,13 @@
 
       <div class="spSec">Sistema</div>
 
+      <button class="spN" data-mod="auditoriaTrilha" data-acordeao="auditoriaSubMenuSidebar" onclick="spAcordeao(this);spIr('auditoriaTrilha',this)">
+        <span class="spNI">🛡️</span><div><strong>Auditoria e Compliance</strong><small>Rastreabilidade, LGPD e ações críticas</small></div>
+      </button>
+      <div id="auditoriaSubMenuSidebar" class="docSubMenuSidebar" data-subs="auditoriaTrilha" style="display:none;">
+        <button type="button" class="docSubMenuBtn" data-sub-mod="auditoriaTrilha" onclick="spIr('auditoriaTrilha',null)">📋 Trilha de Alterações</button>
+      </div>
+
       <button class="spN" data-mod="config" onclick="spIr('config',this)">
         <span class="spNI">⚙️</span><div><strong>Configurações</strong><small>Sistema, acessos e auditoria</small></div>
       </button>
@@ -568,6 +575,9 @@ function benefAdminPesquisar(){var input=document.getElementById("benefAdminBusc
       </div>
       <div id="mGovernanca" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
         <?!= include('GovernancaAdmin'); ?>
+      </div>
+      <div id="mAuditoriaTrilha" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('AuditoriaTrilha'); ?>
       </div>
       <div id="mJuridico" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
         <?!= include('JuridicoAdmin'); ?>
@@ -1280,6 +1290,7 @@ var MODS={
   negociacao:["mNegociacao","Negociação Coletiva","Convenção Coletiva de Trabalho — cláusulas, pisos e vigência"],
   assembleias:["mAssembleias","Assembleias Gerais","Convocação, instalação e deliberação — Estatuto, arts. 59 a 73"],
   governanca:["mGovernanca","Governança e Mandatos","Composição empossada, mandato vigente e calendário eleitoral"],
+  auditoriaTrilha:["mAuditoriaTrilha","Trilha de Alterações","Auditoria e Compliance — quem fez o quê, quando, e o que mudou"],
   patrimonio:["mPatrimonio","Patrimônio","Bens e Inventário"],
   comunicacao:["mComunicacao","Painel do Dia","Central de Comunicação — resumo, prioridades e ações rápidas de e-mail"],
   centralEmailIA:["mCentralEmailIA","Caixa de E-mails","Central de Comunicação — categorização inteligente, contexto SISGEP e respostas automáticas"],
@@ -1678,6 +1689,11 @@ if(mod==="beneficios"){
 
   if(mod==="governanca"){
     setTimeout(function(){ callFn("initGovernanca"); },120);
+    return;
+  }
+
+  if(mod==="auditoriaTrilha"){
+    setTimeout(function(){ callFn("initAuditoriaTrilha"); },120);
     return;
   }
 

@@ -1,0 +1,459 @@
+<div id="auditoriaTrilha" style="min-height:100%;background:#f0f4f8;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#0f172a;">
+<!--
+  Auditoria e Compliance — Trilha de Alterações (item 16.3 do PROMPT-MESTRE).
+  Backend em AuditoriaCore.gs: auditoriaConsultar, auditoriaFiltros.
+
+  Esta tela NÃO tem ação de escrita, e isso é de propósito. Trilha que se
+  edita não é trilha. Nem administrador altera ou apaga registro daqui — a
+  única coisa que se faz é ler, filtrar e abrir o detalhe.
+
+  Ela é a primeira do módulo porque todo o resto aponta para cá: os cards do
+  dashboard, o filtro de ações críticas e os relatórios abrem esta lista já
+  filtrada, por spIr("auditoriaTrilha") seguido de audAplicarFiltroExterno().
+-->
+
+  <div class="of-modulo-header">
+    <div>
+      <div class="of-modulo-header-title">🛡️ Trilha de Alterações</div>
+      <div class="of-modulo-header-sub">Quem fez o quê, quando, e o que mudou — os 14 campos exigidos pela auditoria</div>
+    </div>
+    <div class="of-modulo-header-badge" id="audFonteBadge">—</div>
+  </div>
+
+  <!-- Estado da fonte: Firestore no ar, reserva, ou falha. -->
+  <div id="audEstadoFonte" style="margin-bottom:14px;"></div>
+
+  <!-- ═══ FILTROS ═══ -->
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">🔎</div>
+        <div>
+          <div class="of-card-title">Filtrar a trilha</div>
+          <div class="of-card-sub">Os seletores listam só o que existe de fato nos registros</div>
+        </div>
+      </div>
+      <div class="row-btns">
+        <button type="button" id="audBtnLimpar" class="btn btn-ghost btn-sm">Limpar</button>
+        <button type="button" id="audBtnFiltrar" class="btn btn-navy btn-sm">Filtrar</button>
+      </div>
+    </div>
+
+    <div class="of-card-body">
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;">
+        <div class="fld">
+          <label for="audFModulo">MÓDULO</label>
+          <select id="audFModulo"><option value="">Todos</option></select>
+        </div>
+        <div class="fld">
+          <label for="audFUsuario">USUÁRIO</label>
+          <select id="audFUsuario"><option value="">Todos</option></select>
+        </div>
+        <div class="fld">
+          <label for="audFAcao">AÇÃO</label>
+          <select id="audFAcao"><option value="">Todas</option></select>
+        </div>
+        <div class="fld">
+          <label for="audFRegistro">REGISTRO</label>
+          <input type="text" id="audFRegistro" placeholder="DESP-2026-0412" autocomplete="off">
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:12px;align-items:end;">
+        <div class="fld">
+          <label for="audFDe">DE</label>
+          <input type="date" id="audFDe">
+        </div>
+        <div class="fld">
+          <label for="audFAte">ATÉ</label>
+          <input type="date" id="audFAte">
+        </div>
+        <div class="fld">
+          <label for="audFLimite">MOSTRAR ATÉ</label>
+          <select id="audFLimite">
+            <option value="200">200 registros</option>
+            <option value="500">500 registros</option>
+            <option value="1000">1.000 registros</option>
+          </select>
+        </div>
+        <div style="padding-bottom:2px;">
+          <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:#334155;cursor:pointer;">
+            <input type="checkbox" id="audFCriticas" style="width:16px;height:16px;cursor:pointer;">
+            Só ações críticas
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ RESULTADO ═══ -->
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">📋</div>
+        <div>
+          <div class="of-card-title" id="audResumo">Carregando…</div>
+          <div class="of-card-sub" id="audResumoSub">—</div>
+        </div>
+      </div>
+      <div class="row-btns">
+        <button type="button" id="audBtnRecarregar" class="btn btn-ghost btn-sm">↺ Atualizar</button>
+      </div>
+    </div>
+    <div class="of-card-body">
+      <div id="audAvisoTruncado" style="margin-bottom:14px;"></div>
+      <div id="audLista"></div>
+    </div>
+  </div>
+
+  <!-- ═══ DETALHE ═══ -->
+  <div class="of-modal-overlay" id="audModalOverlay" style="display:none;">
+    <div class="of-modal" style="max-width:760px;">
+      <div class="of-modal-head">
+        <div>
+          <div class="of-modal-title" id="audModalTitulo">Ação</div>
+          <div class="of-modal-sub" id="audModalSub">—</div>
+        </div>
+        <button type="button" class="of-modal-x" id="audModalFechar" aria-label="Fechar">×</button>
+      </div>
+      <div class="of-modal-body" id="audModalCorpo"></div>
+      <div class="of-modal-foot">
+        <button type="button" class="btn btn-outline" id="audBtnCopiar">Copiar registro</button>
+        <button type="button" class="btn btn-navy" id="audBtnFechar2">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var audAcoes = [];          // o que está na tela agora
+  var audAberta = null;       // registro aberto no modal
+
+  function aEl(id){ return document.getElementById(id); }
+  function aEsc(t){
+    return String(t==null?"":t).replace(/[&<>"]/g,function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];
+    });
+  }
+  function aToken(){
+    try{ return (window.SISGEP_TOKEN || window.tokenSessao || localStorage.getItem("sisgep_token") || ""); }
+    catch(e){ return window.SISGEP_TOKEN || ""; }
+  }
+  function aAviso(msg,tipo){
+    if(typeof window.toast==="function") return window.toast(msg,tipo||"erro",5000);
+    console.warn("[Auditoria]",msg);
+  }
+  function aCaixa(texto,cor){
+    var c={erro:["#fee2e2","#fca5a5","#991b1b"],ok:["#dcfce7","#6ee7b7","#166534"],
+           alerta:["#fef3c7","#fcd34d","#92400e"],info:["#eff6ff","#bfdbfe","#1e40af"]}[cor||"info"];
+    return '<div style="background:'+c[0]+";border:1.5px solid "+c[1]+
+      ";border-radius:12px;padding:13px 17px;font-size:12.5px;font-weight:600;line-height:1.55;color:"+c[2]+
+      ';">'+texto+"</div>";
+  }
+
+  // A trilha vem com Date (planilha) ou ISO (Firestore). Os dois têm que
+  // virar a mesma coisa na tela, senão a ordenação visual mente.
+  function aData(v){
+    if(!v) return null;
+    var d = (v instanceof Date) ? v : new Date(v);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  function aDataHora(v){
+    var d = aData(v);
+    if(!d) return "—";
+    function z(n){ return (n<10?"0":"")+n; }
+    return z(d.getDate())+"/"+z(d.getMonth()+1)+" "+z(d.getHours())+":"+z(d.getMinutes());
+  }
+  function aDataHoraLonga(v){
+    var d = aData(v);
+    if(!d) return "—";
+    function z(n){ return (n<10?"0":"")+n; }
+    return z(d.getDate())+"/"+z(d.getMonth()+1)+"/"+d.getFullYear()+" "+
+           z(d.getHours())+":"+z(d.getMinutes())+":"+z(d.getSeconds());
+  }
+
+  /* ─── FONTE ────────────────────────────────────────────────────────────
+     De onde a trilha foi lida importa tanto quanto o que ela diz. Quem
+     consulta precisa saber se está vendo o registro imutável do Firestore
+     ou a planilha de reserva, que qualquer um com acesso consegue editar. */
+  function aRenderFonte(r){
+    var badge = aEl("audFonteBadge");
+    var caixa = aEl("audEstadoFonte");
+
+    if(r.avisoFirestore){
+      badge.textContent = "RESERVA";
+      caixa.innerHTML = aCaixa(
+        "<strong>O Firestore recusou a consulta e a trilha está sendo lida da planilha de reserva.</strong>" +
+        "<br>Registro na reserva pode ser editado por quem tem acesso à planilha — não vale como prova." +
+        "<br><br><code style='font-size:11px;word-break:break-all;'>"+aEsc(r.avisoFirestore)+"</code>",
+        "erro");
+      return;
+    }
+    if(r.fonte === "FIRESTORE"){
+      badge.textContent = "FIRESTORE";
+      caixa.innerHTML = "";
+      return;
+    }
+    badge.textContent = "RESERVA";
+    caixa.innerHTML = aCaixa(
+      "<strong>Trilha gravando na planilha de reserva.</strong> O Firestore ainda não foi configurado " +
+      "neste projeto, então os registros ficam na aba <code>SISGEP_Auditoria</code> — onde podem ser " +
+      "alterados por quem tem acesso à planilha.", "alerta");
+  }
+
+  /* ─── LISTA ─── */
+  function aRenderLista(){
+    if(!audAcoes.length){
+      aEl("audLista").innerHTML = aCaixa(
+        "Nenhuma ação registrada para este filtro.", "info");
+      return;
+    }
+
+    var linhas = audAcoes.map(function(a,i){
+      var falhou = String(a.resultado||"").toUpperCase() === "FALHA";
+      var caminho = aEsc(a.modulo||"—") + (a.submodulo ? " › "+aEsc(a.submodulo) : "");
+      return "<tr style='cursor:pointer;"+(falhou?"background:#fef2f2;":"")+"' data-i='"+i+"'>" +
+        "<td style='white-space:nowrap;'>" +
+          (a.critica ? "<span title='Ação crítica' style='color:#dc2626;font-size:13px;'>●</span> " : "") +
+          aEsc(aDataHora(a.dataHora)) + "</td>" +
+        "<td>" + caminho + "</td>" +
+        "<td><strong>" + aEsc(a.acao||"—") + "</strong>" +
+          (falhou ? " <span style='display:inline-block;padding:1px 7px;border-radius:999px;font-size:9.5px;font-weight:800;background:#fee2e2;color:#991b1b;'>FALHA</span>" : "") +
+        "</td>" +
+        "<td>" + aEsc(String(a.usuario||"—").split("@")[0]) + "</td>" +
+        "<td style='color:#64748b;'>" + aEsc(a.registroId||"—") + "</td>" +
+        "<td style='text-align:right;color:var(--blue,#1565C0);font-weight:800;'>ver</td>" +
+      "</tr>";
+    }).join("");
+
+    aEl("audLista").innerHTML =
+      "<div style='overflow-x:auto;'><table class='of-table' style='width:100%;'>" +
+      "<thead><tr>" +
+        "<th style='width:13%;'>Quando</th>" +
+        "<th style='width:26%;'>Módulo › Submódulo</th>" +
+        "<th style='width:24%;'>Ação</th>" +
+        "<th style='width:15%;'>Quem</th>" +
+        "<th style='width:17%;'>Registro</th>" +
+        "<th style='width:5%;'></th>" +
+      "</tr></thead><tbody>" + linhas + "</tbody></table></div>";
+
+    Array.prototype.forEach.call(
+      aEl("audLista").querySelectorAll("tbody tr"), function(tr){
+        tr.onclick = function(){ aAbrir(audAcoes[parseInt(tr.getAttribute("data-i"),10)]); };
+      });
+  }
+
+  /* ─── DETALHE ─── */
+
+  // valorAnterior/valorNovo podem chegar como objeto (Firestore) ou como
+  // texto JSON (planilha, que só guarda string). Os dois viram objeto aqui.
+  function aObjeto(v){
+    if(v === null || v === undefined || v === "") return null;
+    if(typeof v === "object") return v;
+    try{ var o = JSON.parse(v); return (o && typeof o === "object") ? o : { valor: v }; }
+    catch(e){ return { valor: String(v) }; }
+  }
+
+  function aRenderComparacao(antes, depois){
+    var a = aObjeto(antes), d = aObjeto(depois);
+    if(!a && !d) return "";
+
+    var chaves = {}, lista = [];
+    [a,d].forEach(function(o){
+      if(o) Object.keys(o).forEach(function(k){ if(!chaves[k]){ chaves[k]=1; lista.push(k); } });
+    });
+
+    var linhas = lista.map(function(k){
+      var va = a && a[k] !== undefined ? a[k] : null;
+      var vd = d && d[k] !== undefined ? d[k] : null;
+      var mudou = JSON.stringify(va) !== JSON.stringify(vd);
+      function cel(v){
+        return v===null||v===undefined ? "<span style='color:#94a3b8;'>—</span>"
+             : aEsc(typeof v === "object" ? JSON.stringify(v) : v);
+      }
+      return "<tr"+(mudou?" style='background:#fffbeb;'":"")+">" +
+        "<td style='font-weight:700;color:#475569;width:32%;'>"+aEsc(k)+"</td>" +
+        "<td>"+cel(va)+"</td>" +
+        "<td>"+(mudou?"<strong>":"")+cel(vd)+(mudou?"</strong>":"")+"</td>" +
+      "</tr>";
+    }).join("");
+
+    return "<div style='font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin:18px 0 8px;'>O que mudou</div>" +
+      "<div style='overflow-x:auto;'><table class='of-table' style='width:100%;'>" +
+      "<thead><tr><th>Campo</th><th>Antes</th><th>Depois</th></tr></thead>" +
+      "<tbody>"+linhas+"</tbody></table></div>";
+  }
+
+  function aLinha(rotulo, valor){
+    return "<div style='display:flex;gap:14px;padding:7px 0;border-bottom:1px solid #eef2f7;'>" +
+      "<div style='width:150px;flex:none;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#64748b;padding-top:2px;'>"+aEsc(rotulo)+"</div>" +
+      "<div style='flex:1;font-size:13px;font-weight:600;color:#0f172a;'>"+valor+"</div></div>";
+  }
+
+  function aAbrir(a){
+    if(!a) return;
+    audAberta = a;
+
+    var falhou = String(a.resultado||"").toUpperCase() === "FALHA";
+    aEl("audModalTitulo").textContent = (a.critica ? "🔴 " : "") + (a.acao || "Ação");
+    aEl("audModalSub").textContent =
+      (a.modulo||"—") + (a.submodulo ? " › "+a.submodulo : "") +
+      (a.registroId ? "  ·  " + a.registroId : "");
+
+    function txt(v){ return v && String(v).trim() && String(v)!=="—"
+      ? aEsc(v) : "<span style='color:#94a3b8;'>—</span>"; }
+
+    aEl("audModalCorpo").innerHTML =
+      (falhou ? aCaixa("<strong>Esta ação terminou em FALHA.</strong> A operação foi tentada e não se concluiu.","erro")+"<div style='height:14px;'></div>" : "") +
+      aLinha("Quando", aEsc(aDataHoraLonga(a.dataHora))) +
+      aLinha("Resultado", "<span style='display:inline-block;padding:2px 10px;border-radius:999px;font-size:10.5px;font-weight:800;background:"+
+        (falhou?"#fee2e2;color:#991b1b":"#dcfce7;color:#166534")+";'>"+aEsc(a.resultado||"SUCESSO")+"</span>") +
+      aLinha("Quem", txt(a.usuario)) +
+      aLinha("Perfil", txt(a.perfil)) +
+      aLinha("Setor", txt(a.setor)) +
+      aLinha("Origem", txt(a.origem)) +
+      aLinha("Sessão", "<code style='font-size:11.5px;'>"+aEsc(a.sessao||"—")+"</code>" +
+        "<div style='font-size:10.5px;color:#94a3b8;font-weight:600;margin-top:2px;'>prefixo, só para correlacionar ações da mesma sessão</div>") +
+      aLinha("Justificativa", txt(a.justificativa)) +
+      aLinha("Documento", txt(a.documento)) +
+      aRenderComparacao(a.valorAnterior, a.valorNovo);
+
+    aEl("audModalOverlay").style.display = "flex";
+  }
+
+  function aFechar(){ aEl("audModalOverlay").style.display = "none"; audAberta = null; }
+
+  function aCopiar(){
+    if(!audAberta) return;
+    var t = JSON.stringify(audAberta, null, 2);
+    try{
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(t);
+        return aAviso("Registro copiado.","sucesso");
+      }
+    }catch(e){}
+    // Sem clipboard (navegador antigo ou iframe sem permissão), mostra para
+    // copiar na mão em vez de falhar calado.
+    aEl("audModalCorpo").innerHTML =
+      "<textarea readonly style='width:100%;height:280px;font-family:monospace;font-size:11.5px;'>"+aEsc(t)+"</textarea>";
+  }
+
+  /* ─── CARGA ─── */
+  function aFiltrosAtuais(){
+    return {
+      modulo: aEl("audFModulo").value || "",
+      usuario: aEl("audFUsuario").value || "",
+      acao: aEl("audFAcao").value || "",
+      registroId: String(aEl("audFRegistro").value || "").trim(),
+      de: aEl("audFDe").value || "",
+      ate: aEl("audFAte").value || "",
+      apenasCriticas: aEl("audFCriticas").checked === true,
+      limite: parseInt(aEl("audFLimite").value, 10) || 200
+    };
+  }
+
+  function aConsultar(){
+    aEl("audResumo").textContent = "Carregando…";
+    aEl("audResumoSub").textContent = "—";
+    aEl("audLista").innerHTML = "";
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r || !r.ok) return aAviso("Não consegui ler a trilha.","erro");
+
+        audAcoes = r.acoes || [];
+        aRenderFonte(r);
+
+        aEl("audResumo").textContent = audAcoes.length +
+          (audAcoes.length === 1 ? " ação" : " ações");
+        aEl("audResumoSub").textContent =
+          "Fonte: " + (r.fonte === "FIRESTORE" ? "Firestore" : "planilha de reserva") +
+          (r.total !== undefined ? "  ·  " + r.total + " no total para este filtro" : "");
+
+        aEl("audAvisoTruncado").innerHTML = r.truncado
+          ? aCaixa("<strong>Há mais registros do que os exibidos.</strong> Esta lista mostra os " +
+              audAcoes.length + " mais recentes de " + r.total + ". Estreite o período ou aumente o limite " +
+              "antes de concluir qualquer coisa a partir desta tela.", "alerta")
+          : "";
+
+        aRenderLista();
+      })
+      .withFailureHandler(function(e){
+        aEl("audResumo").textContent = "Não foi possível carregar";
+        aEl("audResumoSub").textContent = e && e.message ? e.message : "erro";
+        aAviso("Erro ao consultar a trilha: " + (e && e.message ? e.message : e), "erro");
+      })
+      .auditoriaConsultar(aFiltrosAtuais(), aToken());
+  }
+
+  function aCarregarFiltros(){
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r || !r.ok) return;
+        function preencher(id, valores, rotuloTodos){
+          var s = aEl(id), atual = s.value;
+          s.innerHTML = '<option value="">'+rotuloTodos+"</option>" +
+            (valores||[]).map(function(v){
+              return '<option value="'+aEsc(v)+'">'+aEsc(v)+"</option>";
+            }).join("");
+          if(atual) s.value = atual;
+        }
+        preencher("audFModulo", r.modulos, "Todos");
+        preencher("audFUsuario", r.usuarios, "Todos");
+        preencher("audFAcao", r.acoes, "Todas");
+      })
+      .withFailureHandler(function(){ /* filtro vazio não impede consultar */ })
+      .auditoriaFiltros(aToken());
+  }
+
+  function aLimpar(){
+    ["audFModulo","audFUsuario","audFAcao"].forEach(function(id){ aEl(id).value = ""; });
+    aEl("audFRegistro").value = "";
+    aEl("audFDe").value = "";
+    aEl("audFAte").value = "";
+    aEl("audFCriticas").checked = false;
+    aEl("audFLimite").value = "200";
+    aConsultar();
+  }
+
+  /**
+   * Entrada vinda de fora: o dashboard e os demais submódulos chamam
+   * spIr("auditoriaTrilha") e em seguida esta função com o filtro que o card
+   * representa. É o que faz o card ser clicável de verdade.
+   */
+  window.audAplicarFiltroExterno = function(f){
+    f = f || {};
+    aEl("audFModulo").value   = f.modulo   || "";
+    aEl("audFUsuario").value  = f.usuario  || "";
+    aEl("audFAcao").value     = f.acao     || "";
+    aEl("audFRegistro").value = f.registroId || "";
+    aEl("audFDe").value       = f.de   || "";
+    aEl("audFAte").value      = f.ate  || "";
+    aEl("audFCriticas").checked = f.apenasCriticas === true;
+    aConsultar();
+  };
+
+  window.initAuditoriaTrilha = function(){
+    var b;
+    b = aEl("audBtnFiltrar");    if(b) b.onclick = aConsultar;
+    b = aEl("audBtnLimpar");     if(b) b.onclick = aLimpar;
+    b = aEl("audBtnRecarregar"); if(b) b.onclick = function(){ aCarregarFiltros(); aConsultar(); };
+    b = aEl("audModalFechar");   if(b) b.onclick = aFechar;
+    b = aEl("audBtnFechar2");    if(b) b.onclick = aFechar;
+    b = aEl("audBtnCopiar");     if(b) b.onclick = aCopiar;
+
+    b = aEl("audFRegistro");
+    if(b) b.onkeydown = function(ev){ if(ev.key === "Enter") aConsultar(); };
+
+    b = aEl("audModalOverlay");
+    if(b) b.onclick = function(ev){ if(ev.target === b) aFechar(); };
+
+    aCarregarFiltros();
+    aConsultar();
+  };
+})();
+</script>
