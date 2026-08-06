@@ -42,12 +42,17 @@
 //    e sinalizada no retorno de cada cálculo. NÃO trate isso como resolvido:
 //    leve ao Jurídico antes da primeira assembleia de verdade.
 //
-// 2. QUAL ESTATUTO ESTÁ EM VIGOR. Existem dois no Drive: o de 2026
-//    (.docx "VERSÃO FINAL 10.06.2026", que é a fonte deste arquivo) e o de
-//    2023 registrado em cartório (PDF). Se o registro do novo ainda não
-//    saiu, quem vale é o antigo — e os quóruns podem diferir. A versão está
-//    declarada em ASSEMB_ESTATUTO e aparece na tela justamente para que
-//    ninguém aplique a regra errada sem perceber.
+// 2. O QUE O ESTATUTO 2026 JÁ REGE E O QUE SÓ VALE DEPOIS. O Estatuto 2026
+//    está aprovado, e é dele que saem as regras de assembleia deste arquivo.
+//    Mas nem tudo nele se aplica hoje: a regra de mandato de 10 anos
+//    (art. 23) vale para a PRÓXIMA gestão. A atual foi empossada sob o
+//    estatuto anterior, com 5 anos, e termina em 10/08/2027 — ver
+//    Governanca.gs, GOV_GESTOES.
+//
+//    Para assembleia isso não muda quórum nem convocação. Fica registrado
+//    porque a confusão entre "estatuto aprovado" e "regra já aplicável" é
+//    exatamente o tipo de coisa que faz alguém calcular a próxima eleição
+//    para 2032.
 //
 // O QUE ESTE MÓDULO NÃO FAZ: não convoca, não publica edital, não conta voto
 // em urna. Ele registra, classifica, valida e alerta. A assembleia continua
@@ -60,7 +65,12 @@ var ASSEMB_ABA = "SISGEP_Assembleias";
 var ASSEMB_ESTATUTO = {
   versao: "Estatuto SindEducação-ES 2026",
   arquivo: "Estatuto Sindeducação ES novo 2026_VERSÃO FINAL 10.06.2026.docx",
-  confirmadoEmVigor: false   // ver nota 2 do cabeçalho
+  aprovado: true,
+  // Regras de assembleia (arts. 59-73) valem. Mandato de 10 anos (art. 23)
+  // só a partir da próxima gestão — ver nota 2 do cabeçalho.
+  observacaoTransicao: "As regras de assembleia deste Estatuto se aplicam. " +
+    "A regra de mandato de 10 anos (art. 23) vale a partir da próxima gestão; " +
+    "a atual vai até 10/08/2027."
 };
 
 // Ver nota 1 do cabeçalho: interpretação, não certeza.

@@ -256,16 +256,16 @@ b.bloqueia(() => g.assembListar({}, ""), "assembListar nega token vazio");
 /* ══════════ 8. PROCEDÊNCIA DA REGRA ══════════ */
 b.fluxo("ASSEMBLEIAS · De onde vem a regra");
 
-b.passo("34. A versão do Estatuto aplicada é declarada");
-// Existem dois Estatutos no Drive (2026 e o de 2023 registrado em cartório).
-// Aplicar o errado muda quórum. A versão tem que estar visível, e o fato de
-// não estar confirmada em vigor também.
+b.passo("34. A versão do Estatuto aplicada é declarada, com a transição");
+// As regras de assembleia do Estatuto 2026 valem. O mandato de 10 anos
+// (art. 23) não — só a partir da próxima gestão. Confundir as duas coisas
+// faz alguém calcular a próxima eleição para 2032 em vez de 2027.
 const cat = g.assembCatalogo(ADM);
 b.ok(cat.ok && /2026/.test(cat.estatuto.versao), "o módulo diz qual Estatuto aplica",
   cat.estatuto.versao);
-b.ok(cat.estatuto.confirmadoEmVigor === false,
-  "e admite que a vigência ainda não foi confirmada",
-  "confirmadoEmVigor = false até o Jurídico confirmar o registro");
+b.ok(cat.estatuto.aprovado === true && /pr[oó]xima gest[aã]o/i.test(cat.estatuto.observacaoTransicao),
+  "e separa o que já vale do que só vale na próxima gestão",
+  cat.estatuto.observacaoTransicao);
 
 b.passo("35. Toda matéria cita os artigos que a fundamentam");
 const semArtigo = cat.materias.filter(m => !m.artigos || !/art/i.test(m.artigos));
