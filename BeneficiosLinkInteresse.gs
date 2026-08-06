@@ -46,6 +46,14 @@ var BENEF_LINKS = {
     // anunciada ao solicitante, que não precisa saber a instância interna.
     importante: "o preenchimento deste formulário não confirma a reserva. A solicitação será analisada pela Secretaria do SindEducação-ES, conforme a disponibilidade de vagas no período solicitado.",
     retorno: "Após a conclusão da análise, você será informado sobre o resultado por e-mail e/ou WhatsApp.",
+    // Os dois avisos abaixo entram já na PRIMEIRA mensagem, a pedido do
+    // usuário. A pessoa precisa saber do prazo e da não devolução antes de
+    // pedir, não na hora de confirmar — descobrir depois é o que gera
+    // discussão no balcão.
+    condicoes: [
+      "A confirmação dos hóspedes deve ser feita até 24 horas antes da data de entrada.",
+      "Em caso de desistência após a confirmação da reserva, o valor pago não será devolvido."
+    ],
     prazo: "Prazo de resposta: nossa equipe retornará o mais breve possível após a análise da disponibilidade junto ao China Park."
   },
   voucher: {
@@ -112,6 +120,11 @@ function beneficiosPrepararLinkInteresse(beneficio, opcoes, tokenSessao) {
     linhas.push(url);
     linhas.push("");
     linhas.push("*Importante:* " + cfg.importante);
+    if (cfg.condicoes && cfg.condicoes.length) {
+      linhas.push("");
+      linhas.push("*Condições da reserva:*");
+      cfg.condicoes.forEach(function (c) { linhas.push("• " + c); });
+    }
     linhas.push("");
     linhas.push(cfg.retorno);
     linhas.push("");

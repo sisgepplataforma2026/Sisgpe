@@ -267,7 +267,12 @@ const Utilities_ = {
       mm: pad(d.getMinutes()), ss: pad(d.getSeconds()),
       SSS: pad(d.getMilliseconds(), 3)
     };
-    return String(fmt).replace(/yyyy|yy|MMM|MM|M|dd|d|HH|H|mm|ss|SSS/g, m => (m in map ? map[m] : m));
+    // Literais entre aspas simples ('T', 'às') saem como texto — é assim que o
+    // Apps Script se comporta, e o SISGEP usa isso para montar ISO 8601
+    // ("yyyy-MM-dd'T'HH:mm:ss"). Sem isto, o emulador devolvia a data com as
+    // aspas no meio e qualquer new Date() em cima virava Invalid Date.
+    return String(fmt).replace(/'([^']*)'|yyyy|yy|MMM|MM|M|dd|d|HH|H|mm|ss|SSS/g,
+      (m, lit) => (lit !== undefined ? lit : (m in map ? map[m] : m)));
   },
   getUuid() { return crypto.randomUUID(); },
   sleep() {},

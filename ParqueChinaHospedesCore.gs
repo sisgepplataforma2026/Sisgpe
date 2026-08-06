@@ -41,6 +41,43 @@
 
 var PC_HOSP_CHAVE_SEGREDO = "PC_HOSPEDES_SEGREDO";
 
+// ── PRAZO E TERMO (regras definidas pelo usuário em 2026-08-06) ──
+//
+// A confirmação dos hóspedes tem que acontecer até 24 horas ANTES da data de
+// entrada. O prazo não conta a partir da aprovação: conta para trás, a partir
+// da hospedagem. Motivo prático — o parque precisa da relação nominal com
+// antecedência para liberar a portaria, e de nada adianta o associado
+// confirmar na véspera do check-in.
+//
+// Quando o prazo vence, o link PARA de aceitar preenchimento e a reserva fica
+// marcada no painel para a secretaria decidir. NÃO cancela sozinho: cancelar
+// automaticamente a reserva de uma pessoa real, em produção, é irreversível e
+// pega quem estava sem sinal ou viajando.
+//
+// A secretaria continua conseguindo registrar os nomes pelo painel
+// (editarReservaParqueChina) mesmo depois de vencido — o bloqueio é do
+// autoatendimento, não do atendimento.
+var PC_HOSP_HORAS_ANTECEDENCIA = 24;
+
+// Termo de não devolução. Cobre desistência do associado DEPOIS de confirmada
+// a reserva — foi o escopo que o usuário definiu. Não fala de não
+// comparecimento nem de saída antecipada: se um dia entrarem, entram aqui e
+// no texto das telas, que leem esta constante.
+var PC_HOSP_TERMO = "Estou ciente de que, em caso de desistência após a confirmação da reserva, o valor pago não será devolvido pelo SindEducação-ES.";
+
+/** Momento limite para o autoatendimento: 24h antes da entrada. */
+function pcHosp_limiteConfirmacao_(dataEntrada) {
+  var d = (dataEntrada instanceof Date) ? new Date(dataEntrada.getTime()) : new Date(dataEntrada);
+  if (isNaN(d.getTime())) return null;
+  d.setHours(d.getHours() - PC_HOSP_HORAS_ANTECEDENCIA);
+  return d;
+}
+
+function pcHosp_prazoVencido_(dataEntrada) {
+  var limite = pcHosp_limiteConfirmacao_(dataEntrada);
+  return limite ? (new Date().getTime() > limite.getTime()) : false;
+}
+
 /** Segredo do cofre, criado na primeira vez que alguém gera um link. */
 function pcHosp_segredo_() {
   var props = PropertiesService.getScriptProperties();
@@ -108,6 +145,11 @@ function pcHospedesPrepararLink(idReserva, tokenSessao) {
     var url = benefUrlBase_() + "?portal=chinapark-hospedes&t=" + pcHosp_token_(r.idReserva);
     var suite = r.suiteDefinida || r.suiteSolicitada || "a definir";
 
+    var limite = pcHosp_limiteConfirmacao_(achada.valores[PC_COL.DATA_ENTRADA - 1]);
+    var prazoTexto = limite
+      ? Utilities.formatDate(limite, PARQUE_CHINA_CONFIG.TIMEZONE, "dd/MM/yyyy 'às' HH:mm")
+      : "24 horas antes da entrada";
+
     var texto = [
       "*SINDEDUCAÇÃO-ES*",
       "*Reserva aprovada — China Park Eco Resort*",
@@ -123,6 +165,11 @@ function pcHospedesPrepararLink(idReserva, tokenSessao) {
       "Para liberarmos a entrada no parque, informe o nome completo de cada pessoa que vai se hospedar:",
       "",
       url,
+      "",
+      "*Prazo:* confirme até " + prazoTexto + " — " + PC_HOSP_HORAS_ANTECEDENCIA +
+        " horas antes da entrada. Depois desse horário, só a Secretaria consegue incluir os nomes.",
+      "",
+      "*Importante:* " + PC_HOSP_TERMO.replace(/^Estou ciente de que, /, "").replace(/^e/, "E"),
       "",
       "_Sem essa lista não conseguimos emitir a autorização de entrada._"
     ].join("\n");
@@ -160,6 +207,12 @@ function pcHospedesCarregar(token) {
     var qtd = Number(r.quantidadePessoas || 1);
     var vagas = Math.max(0, Math.min(4, qtd - 1)); // o titular não entra na lista
 
+    // A data crua da linha, não a do objeto mapeado: mapearLinhaParaObjeto...
+    // devolve a data já formatada como texto para a tela, e reparsear texto
+    // formatado é o tipo de coisa que funciona até alguém mudar o formato.
+    var entradaCrua = achada.valores[PC_COL.DATA_ENTRADA - 1];
+    var limite = pcHosp_limiteConfirmacao_(entradaCrua);
+
     return {
       ok: true,
       protocolo: r.idReserva,
@@ -170,7 +223,13 @@ function pcHospedesCarregar(token) {
       quantidadePessoas: qtd,
       vagasAcompanhantes: vagas,
       acompanhantes: [r.dependente1, r.dependente2, r.dependente3, r.dependente4]
-        .map(function (n) { return String(n || "").trim(); })
+        .map(function (n) { return String(n || "").trim(); }),
+      // A tela precisa saber do prazo ANTES de mostrar o formulário: deixar a
+      // pessoa preencher tudo para só então recusar no envio é desrespeitoso.
+      prazoVencido: pcHosp_prazoVencido_(entradaCrua),
+      prazoLimite: limite ? Utilities.formatDate(limite, PARQUE_CHINA_CONFIG.TIMEZONE, "dd/MM/yyyy 'às' HH:mm") : "",
+      horasAntecedencia: PC_HOSP_HORAS_ANTECEDENCIA,
+      termo: PC_HOSP_TERMO
     };
   } catch (erro) {
     Logger.log("pcHospedesCarregar: " + erro);
@@ -191,6 +250,26 @@ function pcHospedesSalvar(token, dados) {
     var r = mapearLinhaParaObjetoParqueChina_(achada.valores);
     if (!pcHosp_statusAceita_(r.status)) {
       return { ok: false, mensagem: "Esta reserva não está mais ativa. Fale com a secretaria do sindicato." };
+    }
+
+    // Prazo antes de qualquer validação de conteúdo: se venceu, o que a
+    // pessoa digitou não importa mais, e ela precisa saber disso e não de um
+    // erro sobre nome incompleto.
+    var entradaCrua = achada.valores[PC_COL.DATA_ENTRADA - 1];
+    if (pcHosp_prazoVencido_(entradaCrua)) {
+      var lim = pcHosp_limiteConfirmacao_(entradaCrua);
+      return { ok: false, prazoVencido: true, mensagem:
+        "O prazo para confirmar os hóspedes terminou em " +
+        Utilities.formatDate(lim, PARQUE_CHINA_CONFIG.TIMEZONE, "dd/MM/yyyy 'às' HH:mm") +
+        " (" + PC_HOSP_HORAS_ANTECEDENCIA + " horas antes da entrada). " +
+        "Fale com a Secretaria do SindEducação-ES para informar os nomes." };
+    }
+
+    // O aceite do termo é condição para gravar. Sem ele não há confirmação —
+    // é o momento em que o associado assume que não haverá devolução se
+    // desistir depois.
+    if (dados.aceiteTermo !== true) {
+      return { ok: false, mensagem: "É necessário aceitar o termo para confirmar a reserva." };
     }
 
     var qtd = Number(r.quantidadePessoas || 1);
@@ -225,6 +304,12 @@ function pcHospedesSalvar(token, dados) {
 
       pcAuditar_(r.idReserva, "HOSPEDES_INFORMADOS", anterior.join(" | "), nomes.join(" | "),
         "Solicitante", "", { totalAnterior: anterior.length, totalNovo: nomes.length });
+
+      // O aceite vira evento próprio na trilha, com o texto exato que a pessoa
+      // aceitou. Se o termo mudar amanhã, o registro continua provando o que
+      // estava escrito no dia — que é o que faz um aceite valer alguma coisa.
+      pcAuditar_(r.idReserva, "TERMO_ACEITO", "", "ACEITO", r.nomeSolicitante || "Solicitante",
+        PC_HOSP_TERMO, { via: "link de confirmação de hóspedes" });
 
       pcInvalidarCache_();
 

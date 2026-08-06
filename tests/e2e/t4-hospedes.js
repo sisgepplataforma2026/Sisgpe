@@ -6,11 +6,13 @@ const TOKEN = b.logar(g, "wanderson");
 const TOKEN_FIN = b.logar(g, "rogerio");           // sem módulo Benefícios
 const dias = n => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
 
-function criarReserva(cpf, pessoas) {
+function criarReserva(cpf, pessoas, diasEntrada, diasSaida) {
   const r = g.solicitarReservaParqueChina({
     nomeSolicitante: "Maria Aparecida Souza", cpf: cpf,
     telefone: "(27) 99999-1234", email: "maria@exemplo.com", escola: "Escola Modelo",
-    chaleSolicitado: "QUALQUER_DISPONIVEL", dataEntrada: dias(10), dataSaida: dias(12),
+    chaleSolicitado: "QUALQUER_DISPONIVEL",
+    dataEntrada: dias(diasEntrada === undefined ? 10 : diasEntrada),
+    dataSaida: dias(diasSaida === undefined ? 12 : diasSaida),
     tipoReserva: "FIM_DE_SEMANA", quantidadePessoas: String(pessoas), solicitouColchaoExtra: "NAO"
   });
   if (!r.ok) throw new Error("falhou criar reserva: " + r.mensagem + " " + JSON.stringify(r.erros || []));
@@ -60,7 +62,7 @@ const falso = g.pcHospedesCarregar("token-que-eu-inventei-agora");
 b.ok(falso && falso.ok === false, "token inválido é recusado", falso.mensagem);
 
 b.passo("7. Gravar a lista de hóspedes");
-const salvo = g.pcHospedesSalvar(T, { acompanhantes: ["João Pedro Souza", "Ana Clara Souza"] });
+const salvo = g.pcHospedesSalvar(T, { acompanhantes: ["João Pedro Souza", "Ana Clara Souza"], aceiteTermo: true });
 b.ok(salvo && salvo.ok && salvo.total === 2, "grava 2 acompanhantes",
   salvo && !salvo.ok ? "ERRO: " + salvo.mensagem : salvo.mensagem);
 
@@ -70,28 +72,50 @@ b.ok(dep.dependente1 === "João Pedro Souza" && dep.dependente2 === "Ana Clara S
   dep.dependente1 + " / " + dep.dependente2);
 
 b.passo("8. Reenviar corrige a lista, sem duplicar");
-const corrigido = g.pcHospedesSalvar(T, { acompanhantes: ["João Pedro Souza Filho"] });
+const corrigido = g.pcHospedesSalvar(T, { acompanhantes: ["João Pedro Souza Filho"], aceiteTermo: true });
 const dep2 = g.mapearLinhaParaObjetoParqueChina_(g.buscarReservaParqueChinaPorId_(ID).valores);
 b.ok(corrigido.ok && dep2.dependente1 === "João Pedro Souza Filho" && !dep2.dependente2,
   "lista nova substitui a anterior por inteiro", dep2.dependente1 + " | resto: " + (dep2.dependente2 || "(vazio)"));
 
 b.passo("9. Mais acompanhantes do que a reserva comporta");
-const demais = g.pcHospedesSalvar(T, { acompanhantes: ["Um Nome", "Dois Nome", "Tres Nome", "Quatro Nome"] });
+const demais = g.pcHospedesSalvar(T, { acompanhantes: ["Um Nome", "Dois Nome", "Tres Nome", "Quatro Nome"], aceiteTermo: true });
 b.ok(demais && demais.ok === false, "recusa acima da quantidade de pessoas da reserva", demais.mensagem);
 
 b.passo("10. Nome incompleto");
-const curto = g.pcHospedesSalvar(T, { acompanhantes: ["Zé"] });
+const curto = g.pcHospedesSalvar(T, { acompanhantes: ["Zé"], aceiteTermo: true });
 b.ok(curto && curto.ok === false, "exige nome e sobrenome", curto.mensagem);
+
+b.passo("10b. Termo é obrigatório");
+const semTermo = g.pcHospedesSalvar(T, { acompanhantes: ["Fulano De Tal"] });
+b.ok(semTermo && semTermo.ok === false, "sem aceitar o termo não grava", semTermo.mensagem);
+
+b.passo("10c. Prazo — confirmação até 24h antes da entrada");
+b.ok(tela.prazoVencido === false, "reserva para daqui a 10 dias está dentro do prazo");
+b.ok(!!tela.prazoLimite && tela.horasAntecedencia === 24, "a tela recebe o limite e as horas", tela.prazoLimite);
+b.ok(!!tela.termo && tela.termo.indexOf("não será devolvido") > 0, "a tela recebe o texto do termo");
+
+// Reserva que entra AMANHÃ: o limite (24h antes) já passou.
+const ID3 = criarReserva("111.444.777-35", 2, 1, 3);
+g.aprovarReservaParqueChina(ID3, { suiteDefinida: "503" }, TOKEN);
+const T3 = g.pcHospedesPrepararLink(ID3, TOKEN).url.split("&t=")[1];
+const tela3 = g.pcHospedesCarregar(T3);
+b.ok(tela3.ok && tela3.prazoVencido === true, "entrada amanhã: prazo já vencido", "limite era " + tela3.prazoLimite);
+const tarde = g.pcHospedesSalvar(T3, { acompanhantes: ["Fulano De Tal"], aceiteTermo: true });
+b.ok(tarde && tarde.ok === false && tarde.prazoVencido === true,
+  "depois do prazo o link não grava mais", tarde.mensagem);
 
 b.passo("11. Auditoria");
 const aud = g.SpreadsheetApp.openById(g.PLANILHA_ID).getSheetByName("HistoricoParqueChina");
 const linhas = aud ? aud.getRange(2, 1, aud.getLastRow() - 1, aud.getLastColumn()).getValues() : [];
 const evt = linhas.filter(l => l.join("|").indexOf("HOSPEDES_INFORMADOS") >= 0);
 b.ok(evt.length >= 2, "cada envio da lista vira um evento na trilha", evt.length + " eventos");
+const aceites = linhas.filter(l => l.join("|").indexOf("TERMO_ACEITO") >= 0);
+b.ok(aceites.length >= 2, "o aceite do termo também vira evento, com o texto aceito",
+  aceites.length + " aceites registrados");
 
 b.passo("12. Cancelar a reserva fecha o link");
 g.cancelarReservaParqueChina(ID, "teste", TOKEN);
-const depoisCancelar = g.pcHospedesSalvar(T, { acompanhantes: ["Outro Nome"] });
+const depoisCancelar = g.pcHospedesSalvar(T, { acompanhantes: ["Outro Nome"], aceiteTermo: true });
 b.ok(depoisCancelar && depoisCancelar.ok === false, "reserva cancelada não aceita mais hóspedes", depoisCancelar.mensagem);
 
 b.passo("13. Permissão para gerar o link");

@@ -37,6 +37,14 @@
   .hosp-msg.ok{display:block;background:#ecfdf5;color:#166534;border:1px solid #bbf7d0}
   .hosp-msg.erro{display:block;background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
   .hosp-nota{font-size:12.5px;color:#64748b;line-height:1.6;margin:12px 0 0}
+  .hosp-prazo{background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:12px 14px;
+    font-size:13.5px;color:#92400e;line-height:1.55;margin:14px 0 0;font-weight:700}
+  .hosp-termo{display:flex;gap:11px;align-items:flex-start;background:#f8fbff;
+    border:1px solid #dbeafe;border-radius:12px;padding:14px;margin:4px 0 16px;cursor:pointer}
+  .hosp-termo input{margin:2px 0 0;width:19px;height:19px;flex:none;cursor:pointer}
+  .hosp-termo span{font-size:13.5px;color:#0b3b75;line-height:1.55;font-weight:700}
+  .hosp-vencido{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:12px;
+    padding:16px;font-size:14px;line-height:1.6;font-weight:700}
   .hosp-carregando{text-align:center;color:#64748b;padding:36px 12px;font-weight:700}
 </style>
 </head>
@@ -63,11 +71,18 @@
         <strong id="hospTitular">—</strong> já está na lista como responsável pela reserva.
         <span id="hospVagasTexto"></span>
       </div>
+      <div class="hosp-prazo" id="hospPrazo" style="display:none"></div>
     </div>
 
     <div class="hosp-card">
       <div id="hospCampos"></div>
-      <button class="hosp-btn" id="hospBtn" onclick="hospEnviar()">Confirmar lista de hóspedes</button>
+
+      <label class="hosp-termo" for="hospAceite">
+        <input type="checkbox" id="hospAceite" onchange="hospAtualizarBotao()">
+        <span id="hospTermoTexto">Carregando o termo...</span>
+      </label>
+
+      <button class="hosp-btn" id="hospBtn" onclick="hospEnviar()" disabled>Confirmar lista de hóspedes</button>
       <div id="hospMsg" class="hosp-msg"></div>
       <p class="hosp-nota">Pode enviar de novo se precisar corrigir algum nome — a lista mais recente
          é a que vale. Depois de confirmada, a secretaria emite a autorização de entrada.</p>
@@ -142,12 +157,47 @@
         document.getElementById("hospVagasTexto").textContent = HOSP_VAGAS
           ? "Faltam informar até " + HOSP_VAGAS + " acompanhante(s)."
           : "";
+
+        // Prazo vencido: a pessoa vê o recado no lugar do formulário. Deixar
+        // preencher tudo para recusar no envio seria desrespeitoso com quem
+        // já perdeu o prazo.
+        if (r.prazoVencido) {
+          document.getElementById("hospCampos").innerHTML =
+            '<div class="hosp-vencido">O prazo para confirmar os hóspedes terminou em ' +
+            hospEsc(r.prazoLimite) + ' (' + r.horasAntecedencia +
+            ' horas antes da entrada).<br><br>Fale com a Secretaria do SindEducação-ES ' +
+            'para informar os nomes.</div>';
+          var termoEl = document.querySelector(".hosp-termo");
+          if (termoEl) termoEl.style.display = "none";
+          var btnEl = document.getElementById("hospBtn");
+          if (btnEl) btnEl.style.display = "none";
+          return;
+        }
+
+        var prazo = document.getElementById("hospPrazo");
+        if (prazo && r.prazoLimite) {
+          prazo.style.display = "block";
+          prazo.textContent = "Confirme até " + r.prazoLimite + " — " +
+            r.horasAntecedencia + " horas antes da entrada. Depois desse horário, " +
+            "só a Secretaria consegue incluir os nomes.";
+        }
+
+        document.getElementById("hospTermoTexto").textContent = r.termo || "";
         hospMontarCampos(HOSP_VAGAS, r.acompanhantes || []);
+        hospAtualizarBotao();
       })
       .withFailureHandler(function(e){
         hospMostrarErro("Erro ao abrir a reserva: " + ((e && e.message) ? e.message : e));
       })
       .pcHospedesCarregar(t);
+  }
+
+  // O botão só liga com o termo aceito. O backend também exige — a trava da
+  // tela é conveniência, a que vale é a de lá.
+  function hospAtualizarBotao(){
+    var aceite = document.getElementById("hospAceite");
+    var btn = document.getElementById("hospBtn");
+    if (btn && aceite) btn.disabled = !aceite.checked;
   }
 
   function hospEnviar(){
@@ -177,7 +227,10 @@
         msg.className = "hosp-msg erro";
         msg.textContent = "Erro ao salvar: " + ((e && e.message) ? e.message : e);
       })
-      .pcHospedesSalvar(hospToken(), { acompanhantes: nomes });
+      .pcHospedesSalvar(hospToken(), {
+        acompanhantes: nomes,
+        aceiteTermo: !!(document.getElementById("hospAceite") || {}).checked
+      });
   }
 
   hospCarregar();
