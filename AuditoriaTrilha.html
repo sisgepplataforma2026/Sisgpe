@@ -132,6 +132,7 @@
 
   var audAcoes = [];          // o que está na tela agora
   var audAberta = null;       // registro aberto no modal
+  var audVigia = null;        // cão de guarda da consulta
 
   function aEl(id){ return document.getElementById(id); }
   function aEsc(t){
@@ -356,15 +357,52 @@
     };
   }
 
+  /**
+   * Falha que a pessoa vê. Toast some em 5 segundos e desaparece se a aba
+   * estiver em segundo plano; o motivo de a tela estar vazia tem que ficar
+   * escrito NA tela.
+   */
+  function aFalhaDura(titulo, e){
+    if(audVigia){ clearTimeout(audVigia); audVigia = null; }
+    aEl("audResumo").textContent = "Não foi possível carregar";
+    aEl("audResumoSub").textContent = "—";
+    aEl("audLista").innerHTML = aCaixa(
+      "<strong>" + aEsc(titulo) + "</strong>" +
+      (e ? "<br><br><code style='font-size:11px;word-break:break-all;'>" +
+           aEsc(e && e.message ? e.message : e) + "</code>" : "") +
+      "<br><br>Se a mensagem citar uma função que não existe, o " +
+      "<code>AuditoriaCore.gs</code> não está salvo no projeto ou a implantação " +
+      "ainda está numa versão antiga.", "erro");
+    aAviso(titulo, "erro");
+  }
+
   function aConsultar(){
-    aEl("audResumo").textContent = "Carregando…";
+    // "Consultando o servidor…" e não "Carregando…" de propósito: o HTML já
+    // nasce com "Carregando…". Se a tela ficar parada nesse texto, é porque
+    // esta função NUNCA rodou — distinguir os dois casos num print poupa uma
+    // hora de investigação.
+    aEl("audResumo").textContent = "Consultando o servidor…";
     aEl("audResumoSub").textContent = "—";
     aEl("audLista").innerHTML = "";
+    aEl("audAvisoTruncado").innerHTML = "";
+
+    // Cão de guarda: o Apps Script pode simplesmente não voltar. Melhor uma
+    // mensagem depois de 25s do que a tela girando para sempre.
+    if(audVigia) clearTimeout(audVigia);
+    audVigia = setTimeout(function(){
+      aFalhaDura("O servidor não respondeu em 25 segundos. A trilha pode estar " +
+        "grande demais para o limite escolhido, ou a implantação pode estar " +
+        "numa versão antiga.", null);
+    }, 25000);
 
     google.script.run
       .withSuccessHandler(function(r){
-        if(!r || !r.ok) return aAviso("Não consegui ler a trilha.","erro");
+        if(audVigia){ clearTimeout(audVigia); audVigia = null; }
+        if(!r || !r.ok) return aFalhaDura("O servidor respondeu, mas sem a trilha.", null);
 
+        // Exceção aqui dentro NÃO cai no withFailureHandler — ficaria a tela
+        // congelada no texto anterior, que foi o sintoma desta manhã.
+        try {
         audAcoes = r.acoes || [];
         aRenderFonte(r);
 
@@ -381,11 +419,12 @@
           : "";
 
         aRenderLista();
+        } catch (err) {
+          aFalhaDura("A trilha veio do servidor, mas a tela não conseguiu desenhá-la.", err);
+        }
       })
       .withFailureHandler(function(e){
-        aEl("audResumo").textContent = "Não foi possível carregar";
-        aEl("audResumoSub").textContent = e && e.message ? e.message : "erro";
-        aAviso("Erro ao consultar a trilha: " + (e && e.message ? e.message : e), "erro");
+        aFalhaDura("Erro ao consultar a trilha.", e);
       })
       .auditoriaConsultar(aFiltrosAtuais(), aToken());
   }
@@ -441,7 +480,7 @@
     var b;
     b = aEl("audBtnFiltrar");    if(b) b.onclick = aConsultar;
     b = aEl("audBtnLimpar");     if(b) b.onclick = aLimpar;
-    b = aEl("audBtnRecarregar"); if(b) b.onclick = function(){ aCarregarFiltros(); aConsultar(); };
+    b = aEl("audBtnRecarregar"); if(b) b.onclick = function(){ aConsultar(); aCarregarFiltros(); };
     b = aEl("audModalFechar");   if(b) b.onclick = aFechar;
     b = aEl("audBtnFechar2");    if(b) b.onclick = aFechar;
     b = aEl("audBtnCopiar");     if(b) b.onclick = aCopiar;
@@ -452,8 +491,34 @@
     b = aEl("audModalOverlay");
     if(b) b.onclick = function(ev){ if(ev.target === b) aFechar(); };
 
-    aCarregarFiltros();
-    aConsultar();
+    /* ORDEM E ISOLAMENTO — os dois de propósito.
+       A trilha vem primeiro; os seletores são enfeite perto dela. E cada uma
+       vai no seu try, porque google.script.run lança SÍNCRONO quando a função
+       não existe no servidor — e withFailureHandler não pega esse caso, já
+       que o erro acontece antes de a chamada sair do navegador.
+       Foi exatamente isso que travou a tela em 06/08/2026: aCarregarFiltros()
+       vinha primeiro, morreu ao chamar uma função que o projeto ainda não
+       tinha, e aConsultar() nunca chegou a rodar. A tela ficou com o
+       "Carregando…" estático do HTML, sem nunca ter pedido nada — e sem uma
+       linha de erro em lugar nenhum. */
+    try {
+      aConsultar();
+    } catch (e) {
+      aFalhaDura("Não consegui nem iniciar a consulta da trilha.", e);
+    }
+
+    try {
+      aCarregarFiltros();
+    } catch (e) {
+      // Sem os seletores a tela continua utilizável: filtra por registro e
+      // por data. Avisa e segue.
+      aEl("audAvisoTruncado").innerHTML = aCaixa(
+        "<strong>Os seletores de módulo, usuário e ação não carregaram.</strong> " +
+        "A função <code>auditoriaFiltros</code> não respondeu — confira se o " +
+        "<code>AuditoriaCore.gs</code> foi salvo e se saiu uma nova versão da implantação. " +
+        "O resto da tela funciona.<br><br><code style='font-size:11px;'>" +
+        aEsc(e && e.message ? e.message : e) + "</code>", "alerta");
+    }
   };
 })();
 </script>

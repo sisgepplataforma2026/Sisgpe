@@ -187,6 +187,71 @@ b.passo("21. Sem sessão");
 b.bloqueia(() => g.auditoriaConsultar({}, ""), "nega token vazio");
 b.bloqueia(() => g.auditoriaFiltros(""), "nega token vazio nos filtros");
 
+/* ══════════ 7. A REGRESSÃO DE 06/08 — TELA TRAVADA EM SILÊNCIO ══════════ */
+b.fluxo("TRILHA · Arranque da tela (regressão 06/08/2026)");
+
+// Não dá para clicar sem DOM, mas dá para conferir a estrutura do arquivo —
+// que é onde o defeito morava. A tela abriu, ficou em "Carregando…" para
+// sempre e não emitiu erro nenhum: aCarregarFiltros() rodava primeiro,
+// morria ao chamar uma função ausente no servidor (google.script.run lança
+// SÍNCRONO nesse caso, sem passar pelo withFailureHandler) e aConsultar()
+// nunca chegava a rodar.
+const fs = require("fs");
+const tela = fs.readFileSync(__dirname + "/../../AuditoriaTrilha.html", "utf8");
+const init = tela.slice(tela.indexOf("window.initAuditoriaTrilha"));
+
+// O arranque é o que vem DEPOIS das amarrações de evento. Medir o início da
+// função pegaria a linha do botão "Atualizar", que também chama as duas — e
+// foi assim que a primeira versão deste teste passou pelo motivo errado.
+// Comentários fora antes de medir: o comentário que documenta este próprio
+// defeito cita as duas funções pelo nome e inverteria o resultado.
+function semComentarios(s) {
+  return s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+}
+const arranque = semComentarios(
+  init.slice(init.lastIndexOf("onclick"), init.indexOf("})();")));
+
+b.passo("22. A trilha é buscada ANTES dos seletores, no arranque");
+const posConsulta = arranque.indexOf("aConsultar()");
+const posFiltros = arranque.indexOf("aCarregarFiltros()");
+b.ok(posConsulta > -1 && posFiltros > -1 && posConsulta < posFiltros,
+  "conteúdo antes do enfeite — quebrar o seletor não pode cegar a tela",
+  "aConsultar em " + posConsulta + ", aCarregarFiltros em " + posFiltros);
+
+b.passo("23. As duas chamadas do arranque são isoladas uma da outra");
+const tries = (arranque.match(/try\s*\{/g) || []).length;
+b.ok(tries >= 2, "cada uma no seu try — uma falhando não derruba a outra",
+  tries + " blocos try no arranque");
+
+b.passo("24. O texto de 'buscando' é diferente do texto estático do HTML");
+// É o que permite ler um print: parado em "Carregando…" significa que a
+// função nunca rodou; "Consultando o servidor…" significa que rodou e a
+// resposta é que não veio. São dois defeitos diferentes.
+b.ok(tela.indexOf(">Carregando…<") > -1 && tela.indexOf("Consultando o servidor") > -1,
+  "os dois estados são distinguíveis num print", "estático ≠ em andamento");
+
+b.passo("25. Existe cão de guarda para resposta que nunca chega");
+b.ok(/setTimeout\([\s\S]{0,400}?aFalhaDura/.test(tela),
+  "a tela desiste e explica, em vez de girar para sempre",
+  "watchdog presente");
+
+b.passo("26. Exceção dentro do handler de sucesso vira mensagem, não congelamento");
+// withFailureHandler NÃO pega erro lançado dentro do withSuccessHandler.
+// Sem este try, um campo inesperado na trilha congela a tela no texto
+// anterior — exatamente o sintoma que se quer nunca mais ver.
+// Buscar ".withFailureHandler" com o ponto: a palavra solta aparece dentro de
+// um comentário logo acima e cortaria o trecho antes da hora.
+const sucesso = tela.slice(tela.indexOf("withSuccessHandler"),
+                           tela.indexOf(".withFailureHandler"));
+b.ok(sucesso.indexOf("try {") > -1 && sucesso.indexOf("aFalhaDura") > -1,
+  "handler de sucesso protegido", "try + aFalhaDura presentes");
+
+b.passo("27. Toda falha escreve NA tela, não só no toast");
+// Toast some em 5 segundos e nem aparece se a aba estiver em segundo plano.
+const falhaDura = tela.slice(tela.indexOf("function aFalhaDura"));
+b.ok(falhaDura.indexOf('aEl("audLista").innerHTML') > -1,
+  "o motivo fica escrito na área da lista", "aFalhaDura escreve na tela");
+
 b.naoTestavel("A tela AuditoriaTrilha.html",
   "sem DOM no emulador — roteiro manual: abrir Auditoria e Compliance › Trilha, " +
   "conferir a faixa âmbar de 'planilha de reserva', filtrar por um módulo, " +
