@@ -1693,7 +1693,28 @@ if(mod==="beneficios"){
   }
 
   if(mod==="auditoriaTrilha"){
-    setTimeout(function(){ callFn("initAuditoriaTrilha"); },120);
+    /* callFn devolve false calado quando a função não existe — e o sintoma
+       disso é a tela parada no texto estático do HTML, sem erro em lugar
+       nenhum. Foi o que aconteceu em 10/08/2026: o arquivo da tela estava
+       salvo no projeto, mas a implantação servia uma versão anterior, e não
+       havia como saber disso olhando a tela. Agora tem. */
+    setTimeout(function(){
+      if(callFn("initAuditoriaTrilha")) return;
+      var alvo = document.getElementById("audLista");
+      if(alvo){
+        alvo.innerHTML =
+          '<div style="background:#fee2e2;border:1.5px solid #fca5a5;border-radius:12px;' +
+          'padding:13px 17px;font-size:12.5px;font-weight:600;line-height:1.55;color:#991b1b;">' +
+          "<strong>O script desta tela não carregou.</strong><br>" +
+          "A função <code>initAuditoriaTrilha</code> não existe na página. " +
+          "Quase sempre significa que o <code>AuditoriaTrilha.html</code> foi salvo no " +
+          "projeto mas a implantação ainda está numa versão anterior — publique uma " +
+          "nova versão, ou teste pela URL <code>/dev</code>, que serve sempre o código salvo." +
+          "</div>";
+      }
+      var r = document.getElementById("audResumo");
+      if(r) r.textContent = "A tela não iniciou";
+    },120);
     return;
   }
 
