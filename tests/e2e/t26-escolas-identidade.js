@@ -298,10 +298,12 @@ g.__usuarioAtivoEmail = "";
 b.bloqueia(function () { return g.escolaMigrarIds(); },
   "sem identidade, não migra — falha fechado");
 
-b.passo("25c. ⚠ Sem token e com e-mail que NÃO é administrador: recusa");
+b.passo("25c. ⚠ Sem token, com e-mail identificado que não é dono nem admin: recusa");
+// Cenário do visitante identificado chamando google.script.run. Nem ser dono
+// do projeto, nem administrador cadastrado — não passa.
 g.__usuarioAtivoEmail = "rogerio@sindeducacao.com";
 b.bloqueia(function () { return g.escolaMigrarIds(); },
-  "ter conta Google não basta — tem que ser administrador do SISGEP");
+  "ter conta Google não basta — tem que ser dono do projeto ou administrador");
 
 b.passo("25d. Sem token e com e-mail de administrador ATIVO: migra");
 zerarTudo().appendRow(linhaCrua("Escola Do Editor", "11.222.333/0001-81", {}));
@@ -311,7 +313,33 @@ b.ok(migEditor.ok === true && migEditor.criados === 1 && idsNaPlanilha()[0] === 
   "o caminho do editor faz o mesmo trabalho do caminho da tela",
   migEditor.mensagem);
 
+b.passo("25f. ⚠ O DONO do projeto migra — é o caso real do editor");
+// A conta Google que roda o editor deste projeto é pessoal (@gmail.com); a aba
+// de usuários guarda os institucionais (@sindeducacao.com). Nunca vão casar.
+// Exigir que casassem obrigaria a criar conta de login no SISGEP só para rodar
+// uma migração — conta de acesso a base com 8.000 pessoas não se cria como
+// efeito colateral de tarefa técnica.
+zerarTudo().appendRow(linhaCrua("Escola Do Dono", "22.333.444/0001-81", {}));
+g.__usuarioAtivoEmail = g.__donoDoProjetoEmail;   // no editor, ativo === efetivo
+const migDono = g.escolaMigrarIds();
+b.ok(migDono.ok === true && migDono.criados === 1,
+  "quem é dono do projeto Apps Script pode migrar sem estar na aba USUARIOS",
+  migDono.mensagem);
+
+b.passo("25g. E quem NÃO é dono continua barrado, mesmo identificado");
+g.__usuarioAtivoEmail = "estranho@outrodominio.com";
+b.bloqueia(function () { return g.escolaMigrarIds(); },
+  "ser identificado não basta — tem que ser o dono ou administrador");
+g.__usuarioAtivoEmail = "wanderson@sindeducacao.com";
+
 b.passo("25e. E fica registrado QUEM rodou pelo editor");
+// Autossuficiente de propósito: faz a própria migração e confere a trilha logo
+// depois. A versão anterior lia "a última linha da trilha" e quebrou quando
+// passos novos entraram na frente — assertiva que depende da ordem dos vizinhos
+// não mede o que promete.
+zerarTudo().appendRow(linhaCrua("Escola Da Trilha", "33.444.555/0001-81", {}));
+g.__usuarioAtivoEmail = "wanderson@sindeducacao.com";
+g.escolaMigrarIds();
 const ultimas = g.auditoriaConsultar({ acao: "MIGRAR_IDENTIDADE" }, ADM).acoes;
 b.ok(ultimas.length > 0 && /wanderson@sindeducacao\.com/i.test(ultimas[0].usuario || ""),
   "o e-mail da conta Google vai para a trilha",

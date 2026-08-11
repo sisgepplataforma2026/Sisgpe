@@ -250,7 +250,32 @@ function escolaMigrarIds(tokenSessao) {
   if (!email) {
     throw new Error("Sessão inválida ou expirada. Entre novamente no SISGEP.");
   }
-  if (!escolaEhAdministradorPorEmail_(email)) {
+
+  /* Dono do projeto Apps Script.
+   *
+   * Este é o caminho que realmente resolve o caso do editor, e a razão é
+   * concreta: a conta Google que roda o editor deste projeto é uma conta
+   * pessoal (@gmail.com), enquanto a aba de usuários guarda os e-mails
+   * institucionais (@sindeducacao.com). São identidades diferentes — exigir
+   * que batessem obrigaria a criar uma conta de login no SISGEP só para rodar
+   * uma migração, o que é pior: conta de acesso a uma base com 8.000 pessoas
+   * não se cria como efeito colateral de tarefa técnica.
+   *
+   * Session.getEffectiveUser() é sob qual identidade o script executa — o dono
+   * do projeto. Quando quem executa É o dono, estamos no editor (ou é o
+   * próprio dono no navegador, que já podia abrir o editor de qualquer jeito).
+   * Nenhum privilégio novo: quem é dono do projeto já pode reescrever qualquer
+   * regra deste código.
+   *
+   * No app publicado "executar como eu / qualquer pessoa", o visitante anônimo
+   * tem getActiveUser() vazio e já foi recusado acima; um visitante
+   * identificado tem e-mail DIFERENTE do dono e cai na checagem de
+   * administrador logo abaixo. Falha fechado nos dois casos. */
+  var dono = "";
+  try { dono = String(Session.getEffectiveUser().getEmail() || "").trim().toLowerCase(); } catch (e2) {}
+  var ehDonoDoProjeto = !!dono && dono === email;
+
+  if (!ehDonoDoProjeto && !escolaEhAdministradorPorEmail_(email)) {
     // A mensagem diz QUAL conta foi vista e o que se procurou. "Ação permitida
     // somente para administradores", sozinha, não deixa ninguém consertar nada:
     // a causa quase sempre é o e-mail da conta Google ser diferente do que está
@@ -258,12 +283,13 @@ function escolaMigrarIds(tokenSessao) {
     // como perceber. Mostrar ao usuário o próprio e-mail não vaza nada.
     throw new Error(
       "Ação permitida somente para administradores. A conta " + email +
-      " não foi encontrada na aba " + ABA_USUARIOS_LOGIN +
-      " com EMAIL igual a esse, PERFIL = ADMINISTRADOR e STATUS = ATIVO. " +
-      "Confira a linha do seu usuário nessa aba."
+      " não é a dona deste projeto Apps Script (" + (dono || "desconhecida") +
+      ") nem foi encontrada na aba " + ABA_USUARIOS_LOGIN +
+      " com EMAIL igual a esse, PERFIL = ADMINISTRADOR e STATUS = ATIVO."
     );
   }
-  Logger.log("escolaMigrarIds — execução pelo editor, como " + email);
+  Logger.log("escolaMigrarIds — execução " +
+    (ehDonoDoProjeto ? "pelo dono do projeto" : "por administrador cadastrado") + ": " + email);
   var r = escolaMigrarIds_interno_(email);
   Logger.log(JSON.stringify(r));
   return r;

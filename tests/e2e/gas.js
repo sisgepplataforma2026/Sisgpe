@@ -410,12 +410,24 @@ function install(g, opts) {
   // trocar de identidade no meio do teste — daí __usuarioAtivoEmail.
   // Em app publicado "executar como eu / qualquer pessoa", getActiveUser()
   // devolve string vazia; é esse o caso que a string vazia representa aqui.
+  // ATIVO e EFETIVO são identidades DIFERENTES, e a diferença virou trava de
+  // segurança — por isso são modeladas separadas aqui:
+  //
+  //   getActiveUser()    quem disparou a execução. No editor, a pessoa. Num app
+  //                      publicado "executar como eu / qualquer pessoa", VAZIO
+  //                      para o visitante anônimo.
+  //   getEffectiveUser() sob qual identidade o script roda — o dono do projeto.
+  //                      Não muda com quem chama.
+  //
+  // Modelar as duas como a mesma coisa faria "quem executa é o dono do
+  // projeto?" dar verdadeiro sempre, e o teste dessa trava passaria sem nunca
+  // exercitá-la.
+  g.__donoDoProjetoEmail = opts.donoDoProjeto || "financeirosindeducacao@gmail.com";
   g.Session = {
     getScriptTimeZone: () => "America/Sao_Paulo",
     getActiveUser: () => ({ getEmail: () =>
       (g.__usuarioAtivoEmail !== undefined ? g.__usuarioAtivoEmail : (opts.usuarioAtivo || "")) }),
-    getEffectiveUser: () => ({ getEmail: () =>
-      (g.__usuarioAtivoEmail || opts.usuarioAtivo || "sistema@sindeducacao.com") }),
+    getEffectiveUser: () => ({ getEmail: () => g.__donoDoProjetoEmail }),
     getTemporaryActiveUserKey: () => "chave-temp"
   };
 
