@@ -131,6 +131,23 @@ ciência do sindicato, não da hora do registro.
 
 ---
 
+### 9. LGPD — inventário e prazo do titular
+**Aberto em:** 11/08/2026
+
+| O quê | Situação |
+|---|---|
+| **O inventário está completo?** | Ele lista 6 origens de dado pessoal, montadas do código. Se existir dado pessoal em algum lugar que eu não mapeei, **o inventário fica incompleto** — e é documento que se apresenta. Ler a tela e conferir se falta alguma origem. |
+| **Base legal de cada origem** | Escrevi o que me pareceu correto (contrato, legítimo interesse, obrigação legal). **Confirmar com o jurídico** — errar a base legal invalida o tratamento inteiro. |
+| **Prazo de 15 dias** | Art. 19, II, dias corridos. Configurável em `LGPD_PRAZO_TITULAR_DIAS`. |
+| A tela | Registrar um pedido de teste e percorrer até responder. |
+
+**O botão "ver trilha"** só encontra o que os módulos gravaram com aquele
+identificador — hoje, ofícios. A trilha **não busca por CPF**; ela indexa
+por `registroId`. Eu havia prometido busca por CPF no desenho e corrigi
+antes de implementar.
+
+---
+
 ### 2. Firestore — gravação real
 **Aberto em:** 06/08/2026
 
