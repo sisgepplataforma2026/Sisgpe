@@ -285,26 +285,38 @@ b.bloqueia(function () { return g.escolaMigrarIds(""); },   "migrar exige sessã
 b.bloqueia(function () { return g.escolaMigrarIds(FIN); },  "financeiro não migra");
 b.bloqueia(function () { return g.escolaMigrarIds(ESC); },  "usuário de Escolas não-admin não migra");
 
-b.passo("25b. ⚠ A porta do editor não pode virar porta do navegador");
-// escolaMigrarIdsPeloEditor_ pula a checagem de sessão de propósito — pelo
-// editor não existe sessão do SISGEP. O que impede isso de ser um bypass de
-// autorização é o underscore final: neste projeto, todo top-level SEM
-// underscore é endpoint de google.script.run, alcançável de qualquer tela.
-// Se alguém tirar o underscore "para padronizar", a trava cai junto.
-const fonteIdent = require("fs").readFileSync(
-  require("path").join(__dirname, "../../EscolasIdentidade.gs"), "utf8");
-const exposta = /^function\s+escolaMigrarIdsPeloEditor\s*\(/m.test(fonteIdent);
-const privada = /^function\s+escolaMigrarIdsPeloEditor_\s*\(/m.test(fonteIdent);
-b.ok(privada === true && exposta === false,
-  "a função do editor termina em underscore e não é endpoint",
-  privada ? "privada, como tem que ser" : "EXPOSTA — vira bypass de sessão");
+/* O caminho SEM token existe para o editor do Apps Script, onde não há sessão
+ * do SISGEP para apresentar. Quem segura esse caminho é a identidade Google de
+ * quem executa, cruzada com a aba USUARIOS. Os três passos abaixo cobram
+ * justamente que ela segure — sem eles, o caminho do editor seria um bypass
+ * de autorização alcançável por google.script.run de qualquer tela. */
 
-b.passo("25c. E ela migra de verdade quando roda");
+b.passo("25b. ⚠ Sem token e SEM e-mail identificado: recusa");
+// É o cenário do navegador anônimo chamando google.script.run. No app
+// publicado "executar como eu / qualquer pessoa", getActiveUser() vem vazio.
+g.__usuarioAtivoEmail = "";
+b.bloqueia(function () { return g.escolaMigrarIds(); },
+  "sem identidade, não migra — falha fechado");
+
+b.passo("25c. ⚠ Sem token e com e-mail que NÃO é administrador: recusa");
+g.__usuarioAtivoEmail = "rogerio@sindeducacao.com";
+b.bloqueia(function () { return g.escolaMigrarIds(); },
+  "ter conta Google não basta — tem que ser administrador do SISGEP");
+
+b.passo("25d. Sem token e com e-mail de administrador ATIVO: migra");
 zerarTudo().appendRow(linhaCrua("Escola Do Editor", "11.222.333/0001-81", {}));
-const migEditor = g.escolaMigrarIdsPeloEditor_();
+g.__usuarioAtivoEmail = "wanderson@sindeducacao.com";
+const migEditor = g.escolaMigrarIds();
 b.ok(migEditor.ok === true && migEditor.criados === 1 && idsNaPlanilha()[0] === "ESC-000001",
   "o caminho do editor faz o mesmo trabalho do caminho da tela",
   migEditor.mensagem);
+
+b.passo("25e. E fica registrado QUEM rodou pelo editor");
+const ultimas = g.auditoriaConsultar({ acao: "MIGRAR_IDENTIDADE" }, ADM).acoes;
+b.ok(ultimas.length > 0 && /wanderson@sindeducacao\.com/i.test(ultimas[0].usuario || ""),
+  "o e-mail da conta Google vai para a trilha",
+  ultimas.length ? ultimas[0].usuario : "nada registrado");
+g.__usuarioAtivoEmail = "";
 
 b.passo("26. Consultar identidade exige sessão");
 b.bloqueia(function () { return g.escolaStatusIdentidade(""); },        "status exige sessão");

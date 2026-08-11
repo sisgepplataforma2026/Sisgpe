@@ -205,43 +205,87 @@ function escolaIdDaLinha_(sh, rowNum) {
  *     e sem id continuaria invisível para exclusão e para o lote, que é
  *     exatamente o defeito que esta fase existe para fechar.
  */
-function escolaMigrarIds(tokenSessao) {
-  var sessao = exigirModulo_(tokenSessao, "escolas", true);
-  return escolaMigrarIds_interno_(
-    String((sessao && (sessao.nome || sessao.usuario || sessao.email)) || "").trim() || "—"
-  );
-}
-
 /**
- * A MESMA migração, para rodar pelo editor do Apps Script.
+ * DOIS CAMINHOS DE ENTRADA, UMA TRAVA EM CADA.
  *
- * Por que existe: pelo editor não há sessão do SISGEP — `escolaMigrarIds()`
- * sem token bate em exigirModulo_ e recusa, que é a trava fazendo o trabalho
- * dela. Mas a migração precisa rodar UMA vez antes de existir botão (a tela é
- * da Fase 2), e é isso que esta função resolve.
+ * COM token: é a tela chamando. Trava normal — sessão do SISGEP, módulo
+ * Escolas, perfil administrador.
  *
- * POR QUE ISTO NÃO É UM FURO DE SEGURANÇA — e por que o underscore no fim
- * não é estilo:
+ * SEM token: é o editor do Apps Script. Precisa existir porque a migração tem
+ * de rodar UMA vez antes de haver botão (a tela é da Fase 2), e pelo editor
+ * não há sessão do SISGEP para apresentar.
  *
- * Neste projeto todo top-level SEM underscore final é endpoint de
- * `google.script.run`, alcançável de QUALQUER tela por quem estiver no
- * navegador. Uma função que pula a checagem de sessão e fosse alcançável dali
- * seria exatamente um bypass de autorização. O underscore final é o que impede
- * `google.script.run` de chamá-la — ela só roda pelo editor.
+ * A primeira tentativa foi uma função separada terminada em underscore, que
+ * `google.script.run` não alcança. Não serve: o seletor de funções do editor
+ * também não lista função com underscore final — ela existe e não tem como ser
+ * executada dali. Por isso a trava mudou de lugar.
  *
- * E rodar pelo editor já exige acesso de edição ao projeto Apps Script: quem
- * tem isso pode reescrever qualquer regra e abrir a planilha inteira. Não há
- * privilégio novo a conceder aqui — só um caminho para quem já é dono.
+ * O QUE SEGURA O CAMINHO SEM TOKEN
  *
- * NÃO REMOVER O UNDERSCORE. Sem ele, esta função vira uma porta aberta.
+ * A identidade Google de quem executa, cruzada com a aba USUARIOS:
+ *
+ *   - `Session.getActiveUser().getEmail()` devolve o e-mail de verdade quando
+ *     se roda pelo editor. Numa chamada de `google.script.run` vinda do app
+ *     publicado "executar como eu / qualquer pessoa", devolve string VAZIA —
+ *     e string vazia é recusa aqui. Ou seja: falha fechado.
+ *   - Mesmo com e-mail, só passa quem estiver cadastrado como
+ *     ADMINISTRADOR ATIVO no SISGEP. Ter conta Google não basta.
+ *
+ * Quem roda pelo editor já tem acesso de edição ao projeto — pode reescrever
+ * qualquer regra e abrir a planilha inteira. Não há privilégio novo sendo
+ * concedido; só um caminho para quem já é dono, com o registro de quem foi.
  */
-function escolaMigrarIdsPeloEditor_() {
-  var quem = "editor";
-  try { quem = Session.getEffectiveUser().getEmail() || "editor"; } catch (e) {}
-  Logger.log("escolaMigrarIdsPeloEditor_ — executando como " + quem);
-  var r = escolaMigrarIds_interno_(quem);
+function escolaMigrarIds(tokenSessao) {
+  var comToken = String(tokenSessao || "").trim();
+
+  if (comToken) {
+    var sessao = exigirModulo_(comToken, "escolas", true);
+    return escolaMigrarIds_interno_(
+      String((sessao && (sessao.nome || sessao.usuario || sessao.email)) || "").trim() || "—"
+    );
+  }
+
+  var email = "";
+  try { email = String(Session.getActiveUser().getEmail() || "").trim().toLowerCase(); } catch (e) {}
+  if (!email) {
+    throw new Error("Sessão inválida ou expirada. Entre novamente no SISGEP.");
+  }
+  if (!escolaEhAdministradorPorEmail_(email)) {
+    throw new Error("Ação permitida somente para administradores.");
+  }
+  Logger.log("escolaMigrarIds — execução pelo editor, como " + email);
+  var r = escolaMigrarIds_interno_(email);
   Logger.log(JSON.stringify(r));
   return r;
+}
+
+/** Administrador ATIVO na aba USUARIOS, procurado pelo e-mail da conta Google. */
+function escolaEhAdministradorPorEmail_(email) {
+  try {
+    var alvo = String(email || "").trim().toLowerCase();
+    if (!alvo) return false;
+    var aba = SpreadsheetApp.openById(PLANILHA_ID).getSheetByName(ABA_USUARIOS_LOGIN);
+    if (!aba || aba.getLastRow() < 2) return false;
+
+    var dados = aba.getDataRange().getValues();
+    var cab = dados[0].map(function (h) { return String(h || "").trim().toUpperCase(); });
+    var iEmail  = cab.indexOf("EMAIL");
+    var iPerfil = cab.indexOf("PERFIL");
+    var iStatus = cab.indexOf("STATUS");
+    if (iEmail === -1 || iPerfil === -1) return false;
+
+    for (var i = 1; i < dados.length; i++) {
+      if (String(dados[i][iEmail] || "").trim().toLowerCase() !== alvo) continue;
+      var perfil = String(dados[i][iPerfil] || "").trim().toUpperCase();
+      var status = iStatus === -1 ? "ATIVO" : String(dados[i][iStatus] || "").trim().toUpperCase();
+      return perfil === "ADMINISTRADOR" && status === "ATIVO";
+    }
+    return false;
+  } catch (e) {
+    // Falhar aqui é recusar. Erro de leitura não pode virar permissão.
+    Logger.log("escolaEhAdministradorPorEmail_ falhou: " + e);
+    return false;
+  }
 }
 
 function escolaMigrarIds_interno_(quemExecutou) {

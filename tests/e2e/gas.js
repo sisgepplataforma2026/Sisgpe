@@ -404,10 +404,18 @@ function install(g, opts) {
   g.Logger = { log: m => logs.push(typeof m === "string" ? m : JSON.stringify(m)), clear: () => (logs.length = 0), getLog: () => logs.join("\n") };
   g.console = console;
 
+  // A identidade Google de quem executa. Lida a cada chamada, e não fixada no
+  // carregamento, porque virou trava de segurança: o caminho sem token de
+  // escolaMigrarIds só passa para administrador identificado. Testar isso exige
+  // trocar de identidade no meio do teste — daí __usuarioAtivoEmail.
+  // Em app publicado "executar como eu / qualquer pessoa", getActiveUser()
+  // devolve string vazia; é esse o caso que a string vazia representa aqui.
   g.Session = {
     getScriptTimeZone: () => "America/Sao_Paulo",
-    getActiveUser: () => ({ getEmail: () => opts.usuarioAtivo || "" }),
-    getEffectiveUser: () => ({ getEmail: () => opts.usuarioAtivo || "sistema@sindeducacao.com" }),
+    getActiveUser: () => ({ getEmail: () =>
+      (g.__usuarioAtivoEmail !== undefined ? g.__usuarioAtivoEmail : (opts.usuarioAtivo || "")) }),
+    getEffectiveUser: () => ({ getEmail: () =>
+      (g.__usuarioAtivoEmail || opts.usuarioAtivo || "sistema@sindeducacao.com") }),
     getTemporaryActiveUserKey: () => "chave-temp"
   };
 
