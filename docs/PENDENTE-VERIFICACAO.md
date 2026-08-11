@@ -90,6 +90,26 @@ que saiu do sindicato".
 
 ---
 
+### 7. Compartilhamentos — revogar no navegador
+**Aberto em:** 11/08/2026
+
+A revogação foi provada por execução: revogar faz `buscarTokenFornecedorDespesa_`
+devolver `null`, que é o mesmo caminho que o fornecedor percorre. O que falta
+é o teste de ponta a ponta com navegador.
+
+| O quê | Como verificar |
+|---|---|
+| Link nasce na lista | Gerar um envio de NF. O link tem que aparecer em Auditoria › Compartilhamentos como ATIVO. |
+| Abrir marca como usado | Abrir o link. Voltar à tela: estado USADO. |
+| **Revogar bloqueia** | Revogar pela tela (com motivo). Recarregar o link — tem que deixar de abrir. |
+| Pixel sem botão | O pixel de leitura não pode oferecer "Revogar". |
+
+**Links criados ANTES desta tela existir** continuam funcionando e **não
+aparecem na lista** — não há registro deles em lugar nenhum para recuperar.
+Se algum precisar ser desligado, é por outro caminho.
+
+---
+
 ### 2. Firestore — gravação real
 **Aberto em:** 06/08/2026
 

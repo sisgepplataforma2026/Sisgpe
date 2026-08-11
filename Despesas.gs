@@ -1081,10 +1081,23 @@ function atualizarStatusDespesa_(idDespesa, novoStatus, observacao, extras) {
 
 function gerarTokenFornecedorDespesa_(idDespesa) {
   var token = Utilities.getUuid().replace(/-/g, "");
+  var expira = new Date().getTime() + (30 * 24 * 60 * 60 * 1000);
   PropertiesService.getScriptProperties().setProperty(
     "TOKEN_FORN_DESP_" + token,
-    JSON.stringify({ idDespesa: idDespesa, criado: new Date().getTime(), expira: new Date().getTime() + (30 * 24 * 60 * 60 * 1000) })
+    JSON.stringify({ idDespesa: idDespesa, criado: new Date().getTime(), expira: expira })
   );
+
+  /* Registro do link (item 16.6). Funil único de criação — todo link de
+   * fornecedor nasce aqui, então um ponto cobre todos os pontos de envio. */
+  try {
+    if (typeof compart_registrar_ === "function") {
+      compart_registrar_({
+        token: token, tipo: "NF_FORNECEDOR", referencia: idDespesa,
+        validade: new Date(expira)
+      });
+    }
+  } catch (e) { Logger.log("[compart] registro falhou (link seguiu): " + e.message); }
+
   return token;
 }
 
@@ -1094,16 +1107,44 @@ function buscarTokenFornecedorDespesa_(token) {
     if (!raw) return null;
     var dados = JSON.parse(raw);
     if (new Date().getTime() > dados.expira) return null;
+
+    /* É AQUI que a revogação vira realidade. Este é o funil por onde todo
+     * acesso público de fornecedor passa; devolver null faz o link parar de
+     * abrir. Sem esta linha, o botão "revogar" da tela mudaria um status e
+     * nada mais — controle de mentira. */
+    /* Try PRÓPRIO, e não é detalhe: dentro do try externo, uma falha aqui
+     * cairia no catch que devolve null — e TODOS os links parariam de abrir
+     * por causa de um problema de leitura da planilha. O teste t21 pegou
+     * exatamente isso: eu havia documentado que a checagem erra para o lado
+     * do acesso, e o código fazia o contrário. */
+    try {
+      if (typeof compart_revogado_ === "function" && compart_revogado_(token)) return null;
+      if (typeof compart_marcarUsado_ === "function") compart_marcarUsado_(token);
+    } catch (eRev) {
+      Logger.log("[compart] checagem de revogacao falhou — link mantido: " + eRev.message);
+    }
+
     return dados;
   } catch (e) { return null; }
 }
 
 function gerarTokenContabilidadeDespesa_(idDespesa) {
   var token = Utilities.getUuid().replace(/-/g, "");
+  var expira = new Date().getTime() + (60 * 24 * 60 * 60 * 1000);
   PropertiesService.getScriptProperties().setProperty(
     "TOKEN_CONT_DESP_" + token,
-    JSON.stringify({ idDespesa: idDespesa, criado: new Date().getTime(), expira: new Date().getTime() + (60 * 24 * 60 * 60 * 1000) })
+    JSON.stringify({ idDespesa: idDespesa, criado: new Date().getTime(), expira: expira })
   );
+
+  try {
+    if (typeof compart_registrar_ === "function") {
+      compart_registrar_({
+        token: token, tipo: "CONTABILIDADE", referencia: idDespesa,
+        validade: new Date(expira)
+      });
+    }
+  } catch (e) { Logger.log("[compart] registro falhou (link seguiu): " + e.message); }
+
   return token;
 }
 
@@ -1113,6 +1154,19 @@ function buscarTokenContabilidadeDespesa_(token) {
     if (!raw) return null;
     var dados = JSON.parse(raw);
     if (new Date().getTime() > dados.expira) return null;
+
+    /* Try PRÓPRIO, e não é detalhe: dentro do try externo, uma falha aqui
+     * cairia no catch que devolve null — e TODOS os links parariam de abrir
+     * por causa de um problema de leitura da planilha. O teste t21 pegou
+     * exatamente isso: eu havia documentado que a checagem erra para o lado
+     * do acesso, e o código fazia o contrário. */
+    try {
+      if (typeof compart_revogado_ === "function" && compart_revogado_(token)) return null;
+      if (typeof compart_marcarUsado_ === "function") compart_marcarUsado_(token);
+    } catch (eRev) {
+      Logger.log("[compart] checagem de revogacao falhou — link mantido: " + eRev.message);
+    }
+
     return dados;
   } catch (e) { return null; }
 }
