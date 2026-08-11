@@ -143,6 +143,11 @@ class Sheet {
   deleteColumn() { return this; }
   clear() { this.data = []; return this; }
   clearContents() { this.data = []; return this; }
+  // Só formatação — o emulador não guarda formato, então é no-op de propósito.
+  // Precisa existir mesmo assim: removerEscolasDuplicadas() chama clearFormats()
+  // logo depois de clearContents(), e sem o método a função inteira caía no
+  // catch e devolvia ok:false — dando a impressão de bug de produto.
+  clearFormats() { return this; }
   setFrozenRows(n) { this.frozen = n; return this; }
   setFrozenColumns() { return this; }
   autoResizeColumn() { return this; } autoResizeColumns() { return this; }
