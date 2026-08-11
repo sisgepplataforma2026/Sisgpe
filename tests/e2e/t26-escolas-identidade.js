@@ -285,6 +285,27 @@ b.bloqueia(function () { return g.escolaMigrarIds(""); },   "migrar exige sessã
 b.bloqueia(function () { return g.escolaMigrarIds(FIN); },  "financeiro não migra");
 b.bloqueia(function () { return g.escolaMigrarIds(ESC); },  "usuário de Escolas não-admin não migra");
 
+b.passo("25b. ⚠ A porta do editor não pode virar porta do navegador");
+// escolaMigrarIdsPeloEditor_ pula a checagem de sessão de propósito — pelo
+// editor não existe sessão do SISGEP. O que impede isso de ser um bypass de
+// autorização é o underscore final: neste projeto, todo top-level SEM
+// underscore é endpoint de google.script.run, alcançável de qualquer tela.
+// Se alguém tirar o underscore "para padronizar", a trava cai junto.
+const fonteIdent = require("fs").readFileSync(
+  require("path").join(__dirname, "../../EscolasIdentidade.gs"), "utf8");
+const exposta = /^function\s+escolaMigrarIdsPeloEditor\s*\(/m.test(fonteIdent);
+const privada = /^function\s+escolaMigrarIdsPeloEditor_\s*\(/m.test(fonteIdent);
+b.ok(privada === true && exposta === false,
+  "a função do editor termina em underscore e não é endpoint",
+  privada ? "privada, como tem que ser" : "EXPOSTA — vira bypass de sessão");
+
+b.passo("25c. E ela migra de verdade quando roda");
+zerarTudo().appendRow(linhaCrua("Escola Do Editor", "11.222.333/0001-81", {}));
+const migEditor = g.escolaMigrarIdsPeloEditor_();
+b.ok(migEditor.ok === true && migEditor.criados === 1 && idsNaPlanilha()[0] === "ESC-000001",
+  "o caminho do editor faz o mesmo trabalho do caminho da tela",
+  migEditor.mensagem);
+
 b.passo("26. Consultar identidade exige sessão");
 b.bloqueia(function () { return g.escolaStatusIdentidade(""); },        "status exige sessão");
 b.bloqueia(function () { return g.escolaPorId("ESC-000001", ""); },     "buscar por id exige sessão");

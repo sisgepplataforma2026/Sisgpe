@@ -207,6 +207,44 @@ function escolaIdDaLinha_(sh, rowNum) {
  */
 function escolaMigrarIds(tokenSessao) {
   var sessao = exigirModulo_(tokenSessao, "escolas", true);
+  return escolaMigrarIds_interno_(
+    String((sessao && (sessao.nome || sessao.usuario || sessao.email)) || "").trim() || "—"
+  );
+}
+
+/**
+ * A MESMA migração, para rodar pelo editor do Apps Script.
+ *
+ * Por que existe: pelo editor não há sessão do SISGEP — `escolaMigrarIds()`
+ * sem token bate em exigirModulo_ e recusa, que é a trava fazendo o trabalho
+ * dela. Mas a migração precisa rodar UMA vez antes de existir botão (a tela é
+ * da Fase 2), e é isso que esta função resolve.
+ *
+ * POR QUE ISTO NÃO É UM FURO DE SEGURANÇA — e por que o underscore no fim
+ * não é estilo:
+ *
+ * Neste projeto todo top-level SEM underscore final é endpoint de
+ * `google.script.run`, alcançável de QUALQUER tela por quem estiver no
+ * navegador. Uma função que pula a checagem de sessão e fosse alcançável dali
+ * seria exatamente um bypass de autorização. O underscore final é o que impede
+ * `google.script.run` de chamá-la — ela só roda pelo editor.
+ *
+ * E rodar pelo editor já exige acesso de edição ao projeto Apps Script: quem
+ * tem isso pode reescrever qualquer regra e abrir a planilha inteira. Não há
+ * privilégio novo a conceder aqui — só um caminho para quem já é dono.
+ *
+ * NÃO REMOVER O UNDERSCORE. Sem ele, esta função vira uma porta aberta.
+ */
+function escolaMigrarIdsPeloEditor_() {
+  var quem = "editor";
+  try { quem = Session.getEffectiveUser().getEmail() || "editor"; } catch (e) {}
+  Logger.log("escolaMigrarIdsPeloEditor_ — executando como " + quem);
+  var r = escolaMigrarIds_interno_(quem);
+  Logger.log(JSON.stringify(r));
+  return r;
+}
+
+function escolaMigrarIds_interno_(quemExecutou) {
   var lock = LockService.getScriptLock();
   var travou = false;
   try {
@@ -258,9 +296,9 @@ function escolaMigrarIds(tokenSessao) {
     SpreadsheetApp.flush();
     invalidarCacheEscolasInterno_();
 
-    var quem = String((sessao && (sessao.nome || sessao.usuario || sessao.email)) || "").trim();
     escolaAuditar_("MIGRAR_IDENTIDADE", "", "",
-      "Identidade única atribuída a " + semId.length + " escola(s). Backup: " + nomeBackup + ".", quem);
+      "Identidade única atribuída a " + semId.length + " escola(s). Backup: " + nomeBackup + ".",
+      String(quemExecutou || "—"));
 
     return {
       ok: true,
