@@ -156,9 +156,10 @@
       <button class="spN" data-mod="auditoriaPainel" data-acordeao="auditoriaSubMenuSidebar" onclick="spAcordeao(this);spIr('auditoriaPainel',this)">
         <span class="spNI">🛡️</span><div><strong>Auditoria e Compliance</strong><small>Rastreabilidade, LGPD e ações críticas</small></div>
       </button>
-      <div id="auditoriaSubMenuSidebar" class="docSubMenuSidebar" data-subs="auditoriaPainel,auditoriaTrilha" style="display:none;">
+      <div id="auditoriaSubMenuSidebar" class="docSubMenuSidebar" data-subs="auditoriaPainel,auditoriaTrilha,auditoriaRetencao" style="display:none;">
         <button type="button" class="docSubMenuBtn" data-sub-mod="auditoriaPainel" onclick="spIr('auditoriaPainel',null)">📊 Dashboard</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="auditoriaTrilha" onclick="spIr('auditoriaTrilha',null)">📋 Trilha de Alterações</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="auditoriaRetencao" onclick="spIr('auditoriaRetencao',null)">🗑️ Retenção e Descarte</button>
       </div>
 
       <button class="spN" data-mod="config" onclick="spIr('config',this)">
@@ -582,6 +583,9 @@ function benefAdminPesquisar(){var input=document.getElementById("benefAdminBusc
       </div>
       <div id="mAuditoriaTrilha" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
         <?!= include('AuditoriaTrilha'); ?>
+      </div>
+      <div id="mAuditoriaRetencao" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('AuditoriaRetencao'); ?>
       </div>
       <div id="mJuridico" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
         <?!= include('JuridicoAdmin'); ?>
@@ -1296,6 +1300,7 @@ var MODS={
   governanca:["mGovernanca","Governança e Mandatos","Composição empossada, mandato vigente e calendário eleitoral"],
   auditoriaPainel:["mAuditoriaPainel","Auditoria e Compliance","O que aconteceu no SISGEP — e o que merece olhar agora"],
   auditoriaTrilha:["mAuditoriaTrilha","Trilha de Alterações","Auditoria e Compliance — quem fez o quê, quando, e o que mudou"],
+  auditoriaRetencao:["mAuditoriaRetencao","Retenção e Descarte","Prazo de guarda dos dados pessoais e o expurgo automático — LGPD"],
   patrimonio:["mPatrimonio","Patrimônio","Bens e Inventário"],
   comunicacao:["mComunicacao","Painel do Dia","Central de Comunicação — resumo, prioridades e ações rápidas de e-mail"],
   centralEmailIA:["mCentralEmailIA","Caixa de E-mails","Central de Comunicação — categorização inteligente, contexto SISGEP e respostas automáticas"],
@@ -1712,6 +1717,24 @@ if(mod==="beneficios"){
             : "<strong>O script do painel não executou.</strong><br>" +
               "Ou o <code>AuditoriaPainel.html</code> não está no projeto, ou a implantação " +
               "está numa versão anterior. Teste pela URL <code>/dev</code>.") +
+          "</div>";
+      }
+    },120);
+    return;
+  }
+
+  if(mod==="auditoriaRetencao"){
+    setTimeout(function(){
+      if(callFn("initAuditoriaRetencao")) return;
+      var alvo = document.getElementById("retEstado");
+      if(alvo){
+        alvo.innerHTML =
+          '<div style="background:#fee2e2;border:1.5px solid #fca5a5;border-radius:12px;' +
+          'padding:13px 17px;font-size:12.5px;font-weight:600;line-height:1.55;color:#991b1b;">' +
+          (typeof window.AUD_RETENCAO_MARCADOR === "string"
+            ? "<strong>O script da tela executou, mas quebrou no meio.</strong>"
+            : "<strong>O script desta tela nao executou.</strong> Confira se o " +
+              "<code>AuditoriaRetencao.html</code> esta no projeto e se saiu nova versao da implantacao.") +
           "</div>";
       }
     },120);

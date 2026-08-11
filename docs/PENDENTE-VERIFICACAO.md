@@ -53,6 +53,24 @@ exibe** — o que não dá para provar sem navegador é o clique em si.
 
 ---
 
+### 5. Retenção e Descarte — o gatilho de verdade
+**Aberto em:** 11/08/2026
+
+O emulador não instala trigger do Apps Script. O que a tela faz com o
+gatilho é **não testado** ponta a ponta.
+
+| O quê | Como verificar |
+|---|---|
+| Estado do gatilho | Abrir a tela. Se disser DESLIGADO, conferir em **Extensões › Acionadores** que de fato não existe. |
+| Instalar | Clicar em "Instalar o expurgo automático". Voltar aos Acionadores e ver `verificarEExpurgarDadosLGPD` diário às 3h. |
+| Desligar | Deve pedir confirmação e registrar na trilha como ação crítica. |
+| **Expurgo real** | Executar manualmente (digitando EXPURGAR). Conferir na planilha que só saiu dado com mais de 5 anos. **Não tem como desfazer.** |
+
+**Provável achado no primeiro acesso:** o gatilho nunca foi instalado. Se
+for isso, nenhum dado vencido foi apagado até hoje.
+
+---
+
 ### 2. Firestore — gravação real
 **Aberto em:** 06/08/2026
 
