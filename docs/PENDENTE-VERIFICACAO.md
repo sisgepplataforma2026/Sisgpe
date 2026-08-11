@@ -12,6 +12,33 @@
 
 ## 🔴 ABERTO
 
+### 11. Escolas — a migração de identidade sobre as 681 reais
+**Aberto em:** 11/08/2026 · **Fase 1 do item 8 do PROMPT-MESTRE**
+
+A migração roda idempotente e com backup, e foi provada por execução em
+`t26` (32 passos, dois deles testados por mutação). O que o emulador **não**
+prova é ela sobre a base de verdade.
+
+**Pré-requisito:** colar `EscolasIdentidade.gs` (arquivo NOVO) e `Escolas.gs`
+no projeto + nova versão da implantação.
+
+| O quê | Como verificar |
+|---|---|
+| **Rodar a migração** | No editor do Apps Script, executar `escolaMigrarIds()`. Ainda não há botão — a tela vem na Fase 2. |
+| A coluna nasceu certa | Abrir a aba `Escolas`. A coluna `EscolaID` tem que estar **no fim**, preenchida de `ESC-000001` em diante, e **nenhuma outra coluna pode ter se deslocado**. |
+| Ninguém ficou de fora | A contagem de `criados` + `jaTinham` tem que bater com o total de linhas — inclusive as sem CNPJ e as sem razão social. |
+| **Rodar de novo** | Executar `escolaMigrarIds()` uma segunda vez. Tem que devolver `criados: 0` e **não** criar aba de backup nova. |
+| O backup | Conferir que existe `BACKUP_ESCOLAS_ID_...` com a base de antes. |
+
+**Se algo der errado:** a migração só escreve numa coluna nova. Apagar a
+coluna `EscolaID` devolve a base ao estado anterior, e o backup está lá.
+
+**Ainda não migrado, de propósito:** os vínculos de Ofícios, Cobrança e dos
+~8.000 associados continuam por nome/CNPJ. Isso é Fase 4 e 5 — a identidade
+precisa estar de pé e conferida antes.
+
+---
+
 ### 1. Trilha de Auditoria com dado real — Ofícios
 **Aberto em:** 11/08/2026 · **Combinado com o usuário:** ele testa mais adiante
 
