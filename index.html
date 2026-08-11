@@ -1700,17 +1700,29 @@ if(mod==="beneficios"){
        havia como saber disso olhando a tela. Agora tem. */
     setTimeout(function(){
       if(callFn("initAuditoriaTrilha")) return;
+
+      /* Bissecção: o AuditoriaTrilha.html tem um bloco de script mínimo, antes
+         do principal, que só marca presença. Comparar os dois separa dois
+         defeitos que produzem o mesmo sintoma. */
+      var marcador = (typeof window.AUD_TRILHA_MARCADOR === "string");
+      var diagnostico = marcador
+        ? "<strong>O script da tela executou, mas quebrou no meio.</strong><br>" +
+          "O bloco de diagnóstico rodou e a função <code>initAuditoriaTrilha</code> " +
+          "não chegou a ser criada — é erro dentro do próprio script, quase sempre " +
+          "conteúdo truncado no momento de colar. Reabra o <code>AuditoriaTrilha.html</code> " +
+          "no editor e confira se a última linha é <code>})();</code> seguida do " +
+          "fechamento do script. Abra o console (F12) para ver o erro exato."
+        : "<strong>O script desta tela não executou.</strong><br>" +
+          "Nem o bloco de diagnóstico rodou. Ou o <code>AuditoriaTrilha.html</code> " +
+          "no projeto não é o arquivo novo, ou a implantação está numa versão anterior. " +
+          "Teste pela URL <code>/dev</code>, que serve sempre o código salvo, antes de publicar.";
+
       var alvo = document.getElementById("audLista");
       if(alvo){
         alvo.innerHTML =
           '<div style="background:#fee2e2;border:1.5px solid #fca5a5;border-radius:12px;' +
           'padding:13px 17px;font-size:12.5px;font-weight:600;line-height:1.55;color:#991b1b;">' +
-          "<strong>O script desta tela não carregou.</strong><br>" +
-          "A função <code>initAuditoriaTrilha</code> não existe na página. " +
-          "Quase sempre significa que o <code>AuditoriaTrilha.html</code> foi salvo no " +
-          "projeto mas a implantação ainda está numa versão anterior — publique uma " +
-          "nova versão, ou teste pela URL <code>/dev</code>, que serve sempre o código salvo." +
-          "</div>";
+          diagnostico + "</div>";
       }
       var r = document.getElementById("audResumo");
       if(r) r.textContent = "A tela não iniciou";

@@ -126,6 +126,19 @@
 
 </div>
 
+<!--
+  MARCADOR DE DIAGNÓSTICO — bloco separado de propósito.
+
+  Se este bloco roda e o de baixo não, o problema está DENTRO do script da
+  tela (erro de sintaxe, paste truncado). Se nenhum dos dois roda, o script
+  do include não está sendo executado, que é outro problema inteiramente.
+
+  Sem isto, os dois casos produzem o mesmo sintoma — "a função não existe" —
+  e não há como escolher entre eles olhando a tela. Foi o impasse de
+  10/08/2026.
+-->
+<script>window.AUD_TRILHA_MARCADOR = "bloco de script executou";</script>
+
 <script>
 (function(){
   "use strict";
