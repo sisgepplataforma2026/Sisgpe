@@ -157,8 +157,17 @@
   }
   /* A sessão vive no mesmo lugar que os outros módulos leem. */
   function negToken(){
-    try{ return (window.SISGEP_TOKEN || window.tokenSessao || localStorage.getItem("sisgep_token") || ""); }
-    catch(e){ return window.SISGEP_TOKEN || ""; }
+    /* SISGEP_TOKEN_SESSAO é o nome que o projeto inteiro usa — mais de 20
+       telas leem daqui. A versão anterior desta função procurava
+       window.SISGEP_TOKEN (que não existe) e caía em window.tokenSessao,
+       que é uma FUNÇÃO global declarada por nove outras telas. Função é
+       truthy: o helper devolvia a função no lugar do token, e o
+       google.script.run recusava a chamada com "Failed due to illegal value
+       in property" — mensagem que não diz nada sobre sessão.
+       O teste de tipo abaixo é o que transforma esse erro opaco em
+       "sessão inválida", que é o que de fato está acontecendo. */
+    var t = (typeof SISGEP_TOKEN_SESSAO !== "undefined") ? SISGEP_TOKEN_SESSAO : "";
+    return (typeof t === "string") ? t : "";
   }
   function negAviso(msg,tipo){
     if(typeof window.toast==="function") return window.toast(msg,tipo||"erro",5000);

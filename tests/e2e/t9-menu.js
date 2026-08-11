@@ -149,6 +149,46 @@ b.ok(!!mods.radio && idsNoHtml.has(mods.radio.div), "spIr('radio') continua com 
   mods.radio ? "→ " + mods.radio.div : "MODS.radio sumiu");
 b.ok(/spRadioToggle\(\)/.test(html), "controles do player seguem no rodapé", "");
 
+b.passo("13. Nenhuma tela lê a sessão pelo nome errado");
+// Regressão de 10/08/2026, cinco telas de uma vez. O helper procurava
+// window.SISGEP_TOKEN (que não existe) e caía em window.tokenSessao — que é
+// uma FUNÇÃO global declarada por nove outras telas. Função é truthy: o
+// token enviado ao servidor era uma função, e o google.script.run recusava
+// com "Failed due to illegal value in property", mensagem que não diz uma
+// palavra sobre sessão. Quatro rodadas até achar.
+// O nome do projeto é SISGEP_TOKEN_SESSAO, usado por mais de 20 telas.
+const fsT9 = require("fs");
+const raiz = __dirname + "/../..";
+const telas = fsT9.readdirSync(raiz).filter(f => f.endsWith(".html"));
+
+// Sem comentários. O comentário que documenta este próprio defeito cita os
+// dois nomes errados e faria a varredura acusar as telas já corrigidas —
+// terceira vez nesta sessão que um comentário engana uma medição.
+function codigo(f) {
+  return fsT9.readFileSync(raiz + "/" + f, "utf8")
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/[^\n]*/g, "");
+}
+const comNomeErrado = telas.filter(f =>
+  /window\.tokenSessao|window\.SISGEP_TOKEN\b(?!_)/.test(codigo(f)));
+b.ok(comNomeErrado.length === 0,
+  "todas leem SISGEP_TOKEN_SESSAO, não um nome que colide com função global",
+  comNomeErrado.length ? "AINDA ERRADAS: " + comNomeErrado.join(", ")
+                       : telas.length + " telas varridas");
+
+b.passo("14. E o helper confere que o token é mesmo texto");
+// Sem o teste de tipo, qualquer colisão futura volta a produzir o erro
+// opaco em vez de "sessão inválida".
+const helpers = telas.filter(f => /SISGEP_TOKEN_SESSAO/.test(fsT9.readFileSync(raiz + "/" + f, "utf8")) &&
+                                   /function \w*[Tt]oken\w*\(\)/.test(fsT9.readFileSync(raiz + "/" + f, "utf8")));
+const semGuarda = ["AssembleiasAdmin.html","AuditoriaTrilha.html","ConfigAdmin.html",
+                   "GovernancaAdmin.html","NegociacaoAdmin.html"]
+  .filter(f => !/typeof t === "string"/.test(fsT9.readFileSync(raiz + "/" + f, "utf8")));
+b.ok(semGuarda.length === 0,
+  "as cinco telas corrigidas checam o tipo antes de enviar",
+  semGuarda.length ? "SEM GUARDA: " + semGuarda.join(", ") : "5 de 5 · " + helpers.length + " telas com helper");
+
 b.naoTestavel("Aparência, animação do acordeão e clique real", "exige navegador");
 b.naoTestavel("Carregamento do conteúdo de cada módulo", "depende do Apps Script servindo os includes");
 
