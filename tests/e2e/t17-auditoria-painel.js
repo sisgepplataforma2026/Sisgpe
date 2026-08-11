@@ -23,6 +23,10 @@ const FIN = b.logar(g, "rogerio");
 const ss = g.SpreadsheetApp.openById(g.PLANILHA_ID);
 if (!ss.getSheetByName("CONFIG")) ss.insertSheet("CONFIG").getRange(1,1,1,2).setValues([["CHAVE","VALOR"]]);
 
+/* Linha de base ANTES de semear — o login virou ação auditada, e b.logar()
+ * já escreveu na trilha antes deste arquivo semear qualquer coisa. */
+const BASE = g.auditoriaPainel(ADM);
+
 const AGORA = new Date();
 const ONTEM = new Date(AGORA.getTime() - 24 * 3600 * 1000);
 
@@ -50,26 +54,30 @@ b.ok(falta.length === 0, "nada que a tela lê vem indefinido",
   falta.length ? "FALTOU: " + falta.join(", ") : campos.length + " campos");
 
 b.passo("2. Total");
-b.ok(p.total === 5, "conta a trilha inteira", p.total + " ações");
+b.ok(p.total === BASE.total + 5, "conta a trilha inteira",
+  p.total + " ações (" + BASE.total + " antes + 5 semeadas)");
 
 b.passo("3. Hoje separa de ontem");
-b.ok(p.hoje === 3, "só as de hoje", p.hoje + " de " + p.total);
+b.ok(p.hoje === BASE.hoje + 3, "só as de hoje",
+  p.hoje + " de " + p.total + " (" + BASE.hoje + " antes + 3 de hoje)");
 
 b.passo("4. Críticas");
 // LANCAR_NO_BANCO, CANCELAR e DELIBERAR? Não — DELIBERAR não está no
 // catálogo de ações críticas. As críticas são as duas primeiras.
-b.ok(p.criticas === 2, "só as que mexem em dinheiro ou desfazem", p.criticas + " críticas");
+b.ok(p.criticas === BASE.criticas + 2, "só as que mexem em dinheiro ou desfazem",
+  p.criticas + " críticas");
 
 b.passo("5. Falhas");
-b.ok(p.falhas === 1, "só o que não se concluiu", p.falhas + " falha(s)");
+b.ok(p.falhas === BASE.falhas + 1, "só o que não se concluiu", p.falhas + " falha(s)");
 
 b.passo("6. Por módulo");
 b.ok(p.porModulo.Financeiro === 2 && p.porModulo.Documentos === 2 && p.porModulo.Assembleias === 1,
   "agrupamento certo", JSON.stringify(p.porModulo));
 
 b.passo("7. Últimas ações, no máximo dez e da mais nova para a mais velha");
-b.ok(p.ultimas.length === 5 && p.ultimas[0].registroId === "D-5",
-  "ordem decrescente", p.ultimas.map(a => a.registroId).join(" → "));
+b.ok(p.ultimas.length <= 10 && p.ultimas[0].registroId === "D-5",
+  "no máximo dez, da mais nova para a mais velha",
+  p.ultimas.length + " itens · " + p.ultimas.map(a => a.registroId || "(acesso)").join(" → "));
 
 /* ══════════ 2. O QUE FAZ O CARD NÃO SER DECORATIVO ══════════ */
 b.fluxo("PAINEL · Cada card leva à lista com o mesmo número (DIRETRIZ DE DASHBOARDS)");

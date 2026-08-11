@@ -60,7 +60,13 @@ var AUD_MODULO = "auditoria";
 var AUD_ACOES_CRITICAS = [
   "EXCLUIR", "CANCELAR", "ESTORNAR", "REVOGAR", "DESFILIAR", "REABRIR",
   "APROVAR", "LANCAR_NO_BANCO", "CONFIRMAR_PAGAMENTO", "DEFINIR_AMBIENTE",
-  "ALTERAR_PERMISSAO", "EXPORTAR"
+  "ALTERAR_PERMISSAO", "EXPORTAR",
+  // Eventos de segurança. O catálogo nasceu pensando só em ação sobre dado,
+  // e por isso deixava de fora justamente o que uma tentativa de invasão
+  // parece: uma conta travada por tentativas seguidas. Sem estar aqui, o
+  // bloqueio não subia para o card de críticas do dashboard — ficava
+  // enterrado numa lista que ninguém abre todo dia.
+  "BLOQUEIO"
 ];
 
 var AUD_COLUNAS_RESERVA = [
@@ -387,6 +393,34 @@ function aud_deLogSistema_(d) {
     documento: d.codigo || "",
     justificativa: [d.escola, d.cnpj, d.email].filter(Boolean).join(" · "),
     origem: "PORTAL_ADMIN"
+  });
+}
+
+/**
+ * Acesso ao sistema — entrada, saída, tentativa falha e bloqueio.
+ *
+ * Vira submódulo "Acesso" dentro de Segurança, e é o que alimenta a tela de
+ * Logs de Acesso (item 16.2). Antes disto, tentativa de invasão só existia
+ * no Logger, que some em dias e ninguém abre.
+ *
+ * O QUE NÃO DÁ PARA REGISTRAR: o endereço de quem acessou. O Apps Script não
+ * entrega o IP do chamador da web app — não há volta por cima disso. A
+ * origem registrada é a que o sistema conhece (PORTAL_ADMIN,
+ * FORMULARIO_PUBLICO), não localização. Numa fiscalização, a resposta
+ * honesta para "de qual máquina" é que o sistema não sabe.
+ *
+ * @param {string} acao ENTRAR | SAIR | SENHA_INCORRETA | BLOQUEIO_POR_TENTATIVAS
+ */
+function aud_deAcesso_(acao, identificador, detalhe) {
+  return auditar_({
+    modulo: "Segurança", submodulo: "Acesso",
+    acao: acao,
+    // O identificador digitado é o que se tem: numa tentativa falha pode nem
+    // ser um usuário do sistema, e é justamente isso que interessa saber.
+    usuario: String(identificador || "").trim() || "—",
+    justificativa: detalhe || "",
+    resultado: (acao === "ENTRAR" || acao === "SAIR") ? "SUCESSO" : "FALHA",
+    origem: "LOGIN"
   });
 }
 

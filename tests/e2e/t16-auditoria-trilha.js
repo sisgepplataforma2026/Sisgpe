@@ -31,6 +31,15 @@ function semear(quando, dados) {
   return g.auditar_(Object.assign({ dataHora: quando }, dados));
 }
 
+/* Linha de base ANTES de semear.
+ *
+ * Desde que o login passou a ser auditado (t19), entrar no sistema já
+ * escreve na trilha — e b.logar() acima entrou duas vezes. Contar a trilha
+ * inteira supondo que só existe o que este arquivo semeou passou a ser
+ * falso. Comparar contra a base é o que sobrevive ao próximo ponto de log
+ * que for ligado. */
+const BASE = g.auditoriaConsultar({}, ADM).acoes.length;
+
 const DIA_1 = new Date(2026, 6, 10, 9, 30, 0);    // 10/07/2026 09:30
 const DIA_2_CEDO = new Date(2026, 6, 15, 0, 5, 0); // 15/07/2026 00:05
 const DIA_2_TARDE = new Date(2026, 6, 15, 23, 50, 0); // 15/07/2026 23:50
@@ -74,21 +83,21 @@ b.passo("4. Data inválida não vira filtro silencioso");
 // "abacaxi" como data não pode ser interpretado como hoje, nem como 1970 —
 // nos dois casos o resultado sairia errado sem ninguém perceber.
 const lixo = g.auditoriaConsultar({ de: "abacaxi" }, ADM);
-b.ok(lixo.acoes.length === 4, "entrada inválida é ignorada, não estreita o resultado",
-  lixo.acoes.length + " de 4 ações");
+b.ok(lixo.acoes.length === BASE + 4, "entrada inválida é ignorada, não estreita o resultado",
+  lixo.acoes.length + " de " + (BASE + 4) + " ações");
 
 /* ══════════ 2. TRUNCAMENTO — O PASSO QUE MAIS IMPORTA ══════════ */
 b.fluxo("TRILHA · Aviso de resultado cortado");
 
 b.passo("5. Quando cabe tudo, não avisa nada");
 const completo = g.auditoriaConsultar({}, ADM);
-b.ok(completo.truncado === false && completo.total === 4,
+b.ok(completo.truncado === false && completo.total === BASE + 4,
   "sem aviso e com o total certo", completo.total + " ações, truncado=" + completo.truncado);
 
 b.passo("6. Quando corta, DIZ que cortou e quanto existe");
 const cortado = g.auditoriaConsultar({ limite: 2 }, ADM);
-b.ok(cortado.acoes.length === 2 && cortado.truncado === true && cortado.total === 4,
-  "devolve 2, informa que existem 4",
+b.ok(cortado.acoes.length === 2 && cortado.truncado === true && cortado.total === BASE + 4,
+  "devolve 2, informa quantas existem",
   cortado.acoes.length + " exibidas de " + cortado.total + " · truncado=" + cortado.truncado);
 
 b.passo("7. E o que ficou são os mais recentes, não os primeiros");
