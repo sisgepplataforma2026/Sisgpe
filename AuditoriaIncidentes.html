@@ -1,0 +1,448 @@
+<div id="auditoriaIncidentes" style="min-height:100%;background:#f0f4f8;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#0f172a;">
+<!--
+  Auditoria e Compliance — Incidentes de Segurança (item 16.7).
+  Backend em IncidentesCore.gs.
+
+  A diferença desta tela para as outras do módulo: aqui há RELÓGIO CORRENDO.
+  A LGPD manda comunicar a ANPD e os titulares, e o prazo conta da CIÊNCIA do
+  incidente. Por isso o prazo é a primeira coisa da tela, e o incidente
+  vencendo aparece antes de qualquer contagem bonita.
+
+  O fluxo é de mão única: cada estado oferece só a ação que cabe nele. Não há
+  como pular de Aberto para Encerrado — apurar, conter e decidir sobre a
+  comunicação são etapas que a fiscalização vai querer ver documentadas.
+-->
+
+  <div class="of-modulo-header">
+    <div>
+      <div class="of-modulo-header-title">🚨 Incidentes de Segurança</div>
+      <div class="of-modulo-header-sub">Registro, apuração e comunicação — LGPD art. 48</div>
+    </div>
+    <div class="of-modulo-header-badge" id="inBadge">—</div>
+  </div>
+
+  <div id="inAlerta" style="margin-bottom:16px;"></div>
+
+  <div id="inCards" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px;"></div>
+
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">📋</div>
+        <div>
+          <div class="of-card-title" id="inResumo">Carregando…</div>
+          <div class="of-card-sub" id="inResumoSub">—</div>
+        </div>
+      </div>
+      <div class="row-btns">
+        <select id="inFiltro" style="height:34px;padding:0 10px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:12.5px;font-family:'Plus Jakarta Sans',sans-serif;">
+          <option value="">Todos</option>
+          <option value="ABERTO">Abertos</option>
+          <option value="EM_ANALISE">Em análise</option>
+          <option value="CONTIDO">Contidos</option>
+          <option value="COMUNICADO">Comunicados</option>
+          <option value="DISPENSADO">Dispensados</option>
+          <option value="ENCERRADO">Encerrados</option>
+        </select>
+        <button type="button" id="inBtnRecarregar" class="btn btn-ghost btn-sm">↺ Atualizar</button>
+        <button type="button" id="inBtnNovo" class="btn btn-navy btn-sm">+ Registrar incidente</button>
+      </div>
+    </div>
+    <div class="of-card-body">
+      <div id="inLista"></div>
+    </div>
+  </div>
+
+  <!-- ═══ NOVO INCIDENTE ═══ -->
+  <div class="of-modal-overlay" id="inModalNovo" style="display:none;">
+    <div class="of-modal" style="max-width:620px;">
+      <div class="of-modal-head">
+        <div>
+          <div class="of-modal-title">Registrar incidente</div>
+          <div class="of-modal-sub">O prazo começa a contar da data de detecção</div>
+        </div>
+        <button type="button" class="of-modal-x" id="inNovoFechar" aria-label="Fechar">×</button>
+      </div>
+      <div class="of-modal-body">
+        <div class="fld">
+          <label for="inNovoData">QUANDO O SINDICATO SOUBE DO INCIDENTE</label>
+          <input type="date" id="inNovoData">
+          <div style="font-size:11px;color:#64748b;margin-top:4px;line-height:1.5;">
+            É a data da <strong>ciência</strong>, não a do fato. Um vazamento de março
+            descoberto hoje tem o prazo começando hoje.
+          </div>
+        </div>
+        <div class="fld" style="margin-top:14px;">
+          <label for="inNovoDescricao">O QUE ACONTECEU</label>
+          <textarea id="inNovoDescricao" rows="4" placeholder="Descreva com o que se sabe agora. A classificação vem no passo seguinte."></textarea>
+        </div>
+      </div>
+      <div class="of-modal-foot">
+        <button type="button" class="btn btn-outline" id="inNovoCancelar">Cancelar</button>
+        <button type="button" class="btn btn-navy" id="inNovoSalvar" disabled>Registrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ AVANÇAR ═══ -->
+  <div class="of-modal-overlay" id="inModalAvancar" style="display:none;">
+    <div class="of-modal" style="max-width:620px;">
+      <div class="of-modal-head">
+        <div>
+          <div class="of-modal-title" id="inAvTitulo">Avançar</div>
+          <div class="of-modal-sub" id="inAvSub">—</div>
+        </div>
+        <button type="button" class="of-modal-x" id="inAvFechar" aria-label="Fechar">×</button>
+      </div>
+      <div class="of-modal-body" id="inAvCorpo"></div>
+      <div class="of-modal-foot">
+        <button type="button" class="btn btn-outline" id="inAvCancelar">Cancelar</button>
+        <button type="button" class="btn btn-navy" id="inAvConfirmar">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>window.AUD_INC_MARCADOR = "bloco de script executou";</script>
+
+<script>
+(function(){
+  "use strict";
+
+  var inVigia = null;
+  var inTudo = [];
+  var inCat = null;
+  var inAlvo = null, inDestino = null;
+
+  function nEl(id){ return document.getElementById(id); }
+  function nEsc(t){
+    return String(t==null?"":t).replace(/[&<>"]/g,function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];
+    });
+  }
+  function nToken(){
+    var t = (typeof SISGEP_TOKEN_SESSAO !== "undefined") ? SISGEP_TOKEN_SESSAO : "";
+    return (typeof t === "string") ? t : "";
+  }
+  function nAviso(msg,tipo){
+    if(typeof window.toast==="function") return window.toast(msg,tipo||"erro",5000);
+    console.warn("[Incidentes]",msg);
+  }
+  function nCaixa(texto,cor){
+    var c={erro:["#fee2e2","#fca5a5","#991b1b"],ok:["#dcfce7","#6ee7b7","#166534"],
+           alerta:["#fef3c7","#fcd34d","#92400e"],info:["#eff6ff","#bfdbfe","#1e40af"]}[cor||"info"];
+    return '<div style="background:'+c[0]+";border:1.5px solid "+c[1]+
+      ";border-radius:12px;padding:13px 17px;font-size:12.5px;font-weight:600;line-height:1.55;color:"+c[2]+
+      ';">'+texto+"</div>";
+  }
+  function nData(v){
+    if(!v) return "—";
+    var d=(v instanceof Date)?v:new Date(v);
+    if(isNaN(d.getTime())) return "—";
+    function z(n){ return (n<10?"0":"")+n; }
+    return z(d.getDate())+"/"+z(d.getMonth()+1)+"/"+d.getFullYear();
+  }
+  function nHoje(){
+    var d=new Date();
+    function z(n){ return (n<10?"0":"")+n; }
+    return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate());
+  }
+
+  var IN_CORES = {
+    ABERTO:{c:"#dc2626",f:"#fee2e2"}, EM_ANALISE:{c:"#d97706",f:"#fef3c7"},
+    CONTIDO:{c:"#1565C0",f:"#eff6ff"}, COMUNICADO:{c:"#0f8a5f",f:"#dcfce7"},
+    DISPENSADO:{c:"#7c3aed",f:"#f3e8ff"}, ENCERRADO:{c:"#64748b",f:"#f1f5f9"}
+  };
+  var IN_ACAO_ROTULO = {
+    EM_ANALISE:"Classificar", CONTIDO:"Registrar contenção",
+    COMUNICADO:"Registrar comunicação", DISPENSADO:"Dispensar comunicação",
+    ENCERRADO:"Encerrar"
+  };
+
+  /* ─── PRAZO — o que exige ação agora ─── */
+  function nRenderAlerta(r){
+    var v = r.vencendo || [];
+    if(!v.length){
+      nEl("inAlerta").innerHTML = "";
+      nEl("inBadge").textContent = (r.total ? r.total + " REGISTRADO(S)" : "NENHUM");
+      return;
+    }
+    nEl("inBadge").textContent = "⛔ PRAZO";
+    nEl("inAlerta").innerHTML = nCaixa(
+      "<strong>" + v.length + " incidente(s) com o prazo de comunicação vencendo ou vencido.</strong>" +
+      "<ul style='margin:8px 0 0 18px;'>" +
+      v.map(function(x){
+        return "<li><strong>"+nEsc(x.id)+"</strong> — " +
+          (x.prazo.vencido
+            ? "prazo VENCIDO há " + Math.abs(x.prazo.diasRestantes) + " dia(s)"
+            : "falta(m) " + x.prazo.diasRestantes + " dia(s)") +
+          " · limite " + nEsc(nData(x.prazo.limite)) + "</li>";
+      }).join("") + "</ul>", "erro");
+  }
+
+  function nCard(valor, rotulo, nota, cor){
+    return '<div class="of-card" style="padding:16px 18px;margin:0;border-left:4px solid '+cor+';">' +
+      '<div style="font-size:27px;font-weight:900;color:'+cor+';line-height:1.1;">'+valor+'</div>' +
+      '<div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-top:5px;">'+nEsc(rotulo)+'</div>' +
+      '<div style="font-size:11.5px;color:#94a3b8;font-weight:600;margin-top:3px;">'+nEsc(nota)+'</div>' +
+      '</div>';
+  }
+
+  function nRenderCards(r){
+    var res = r.resumo || {};
+    var emAndamento = (res.ABERTO||0) + (res.EM_ANALISE||0) + (res.CONTIDO||0);
+    nEl("inCards").innerHTML =
+      nCard(res.ABERTO || 0, "Abertos", "ninguém classificou ainda",
+            (res.ABERTO||0) ? "#dc2626" : "#94a3b8") +
+      nCard(emAndamento, "Em andamento", "com o prazo correndo",
+            emAndamento ? "#d97706" : "#94a3b8") +
+      nCard((res.COMUNICADO||0) + (res.DISPENSADO||0), "Decididos",
+            "comunicados ou dispensados", "#0f8a5f") +
+      nCard(res.ENCERRADO || 0, "Encerrados", "com relatório final", "#64748b");
+  }
+
+  function nRenderLista(){
+    var f = nEl("inFiltro").value;
+    var lista = f ? inTudo.filter(function(x){ return x.estado === f; }) : inTudo;
+
+    nEl("inResumo").textContent = lista.length +
+      (lista.length===1 ? " incidente" : " incidentes");
+
+    if(!lista.length){
+      nEl("inLista").innerHTML = nCaixa(
+        inTudo.length
+          ? "Nenhum incidente neste estado."
+          : "<strong>Nenhum incidente registrado.</strong> É o que se espera — e, se um " +
+            "acontecer, registrar logo é o que preserva a defesa do sindicato: o prazo " +
+            "conta da ciência, e registro tardio é difícil de justificar depois.", "ok");
+      return;
+    }
+
+    nEl("inLista").innerHTML =
+      "<div style='overflow-x:auto;'><table class='of-table' style='width:100%;'>" +
+      "<thead><tr><th style='width:13%;'>ID</th><th style='width:12%;'>Detectado</th>" +
+      "<th style='width:20%;'>Tipo</th><th style='width:10%;'>Pessoas</th>" +
+      "<th style='width:15%;'>Estado</th><th style='width:16%;'>Prazo</th>" +
+      "<th style='width:14%;'></th></tr></thead><tbody>" +
+      lista.map(function(x, i){
+        var cor = IN_CORES[x.estado] || {c:"#64748b",f:"#f1f5f9"};
+        var p = x.prazo || {};
+        var prazoTxt = !p.conhecido ? "—"
+          : p.parado ? "<span style='color:#94a3b8;'>encerrado</span>"
+          : p.vencido ? "<strong style='color:#dc2626;'>vencido há "+Math.abs(p.diasRestantes)+"d</strong>"
+          : p.vencendo ? "<strong style='color:#d97706;'>falta "+p.diasRestantes+"d</strong>"
+          : p.diasRestantes + " dias";
+        var proximo = (x.proximos && x.proximos.length) ? x.proximos[0] : null;
+        return "<tr"+((p.vencido||p.vencendo)?" style='background:#fef2f2;'":"")+">" +
+          "<td><strong>"+nEsc(x.id)+"</strong></td>" +
+          "<td>"+nEsc(nData(x.detectadoEm))+"</td>" +
+          "<td>"+nEsc(x.tipoRotulo || "—")+
+            (x.gravidadeRotulo ? "<div style='font-size:11px;color:#94a3b8;'>gravidade "+nEsc(x.gravidadeRotulo)+"</div>" : "")+"</td>" +
+          "<td>"+(x.numTitulares===""||x.numTitulares===null?"—":nEsc(x.numTitulares))+"</td>" +
+          "<td><span style='display:inline-block;padding:2px 10px;border-radius:999px;font-size:10.5px;font-weight:800;background:"+
+            cor.f+";color:"+cor.c+";'>"+nEsc(x.estadoRotulo)+"</span></td>" +
+          "<td>"+prazoTxt+"</td>" +
+          "<td style='text-align:right;'>" +
+            (proximo
+              ? "<button type='button' class='btn btn-outline btn-sm' data-i='"+i+"' data-para='"+proximo+"'>"+
+                nEsc(IN_ACAO_ROTULO[proximo]||proximo)+"</button>" +
+                (x.proximos.length>1
+                  ? " <button type='button' class='btn btn-ghost btn-sm' data-i='"+i+"' data-para='"+x.proximos[1]+"'>"+
+                    nEsc(IN_ACAO_ROTULO[x.proximos[1]]||x.proximos[1])+"</button>" : "")
+              : "<span style='color:#cbd5e1;font-size:11px;'>—</span>") +
+          "</td></tr>";
+      }).join("") + "</tbody></table></div>";
+
+    Array.prototype.forEach.call(nEl("inLista").querySelectorAll("button[data-i]"), function(btn){
+      btn.onclick = function(){
+        nAbrirAvancar(lista[parseInt(btn.getAttribute("data-i"),10)], btn.getAttribute("data-para"));
+      };
+    });
+  }
+
+  /* ─── NOVO ─── */
+  function nValidarNovo(){
+    var d = String(nEl("inNovoDescricao").value||"").trim();
+    nEl("inNovoSalvar").disabled = (d.length < 10) || !nEl("inNovoData").value;
+  }
+  function nAbrirNovo(){
+    nEl("inNovoData").value = nHoje();
+    nEl("inNovoDescricao").value = "";
+    nValidarNovo();
+    nEl("inModalNovo").style.display = "flex";
+  }
+  function nSalvarNovo(){
+    var btn = nEl("inNovoSalvar");
+    btn.disabled = true; btn.textContent = "Registrando…";
+    google.script.run
+      .withSuccessHandler(function(r){
+        btn.textContent = "Registrar"; nValidarNovo();
+        if(!r || !r.ok) return nAviso((r&&r.mensagem)||"Não foi possível registrar.","erro");
+        nEl("inModalNovo").style.display = "none";
+        nAviso(r.mensagem,"sucesso");
+        nCarregar();
+      })
+      .withFailureHandler(function(e){
+        btn.textContent = "Registrar"; nValidarNovo();
+        nAviso("Erro: "+(e&&e.message?e.message:e),"erro");
+      })
+      .incRegistrar({
+        detectadoEm: nEl("inNovoData").value,
+        descricao: String(nEl("inNovoDescricao").value||"").trim()
+      }, nToken());
+  }
+
+  /* ─── AVANÇAR — cada destino pede o que aquele destino precisa ─── */
+  function nCampo(id, rotulo, tipo, dica){
+    return '<div class="fld" style="margin-top:12px;"><label for="'+id+'">'+nEsc(rotulo)+'</label>' +
+      (tipo === "textarea"
+        ? '<textarea id="'+id+'" rows="3"></textarea>'
+        : '<input type="'+tipo+'" id="'+id+'">') +
+      (dica ? '<div style="font-size:11px;color:#64748b;margin-top:4px;line-height:1.5;">'+dica+'</div>' : '') +
+      '</div>';
+  }
+  function nSelect(id, rotulo, opcoes){
+    return '<div class="fld" style="margin-top:12px;"><label for="'+id+'">'+nEsc(rotulo)+'</label><select id="'+id+'">' +
+      '<option value="">Selecione…</option>' +
+      Object.keys(opcoes).map(function(k){
+        return '<option value="'+nEsc(k)+'">'+nEsc(opcoes[k])+'</option>';
+      }).join("") + '</select></div>';
+  }
+
+  function nAbrirAvancar(x, para){
+    if(!x || !para) return;
+    inAlvo = x; inDestino = para;
+    nEl("inAvTitulo").textContent = IN_ACAO_ROTULO[para] || para;
+    nEl("inAvSub").textContent = x.id + " · " + x.estadoRotulo + " → " +
+      ((inCat && inCat.estados && inCat.estados[para]) || para);
+
+    var html = "";
+    if(para === "EM_ANALISE"){
+      html = nSelect("inAvTipo","TIPO DO INCIDENTE", (inCat&&inCat.tipos)||{}) +
+             nSelect("inAvGrav","GRAVIDADE", (inCat&&inCat.gravidades)||{}) +
+             nCampo("inAvDados","DADOS ATINGIDOS","text","Ex.: nome, CPF e e-mail de associados") +
+             nCampo("inAvNum","QUANTAS PESSOAS FORAM ATINGIDAS","number",
+               "Coloque 0 se ainda não se sabe. O número pode ser corrigido depois.");
+    } else if(para === "CONTIDO"){
+      html = nCampo("inAvMedidas","O QUE FOI FEITO PARA CONTER","textarea",
+        "Ex.: acesso revogado, senha trocada, link desativado.");
+    } else if(para === "COMUNICADO"){
+      html = nCaixa("Informe pelo menos uma das duas datas. O estado só muda se " +
+        "alguma comunicação tiver de fato acontecido.","info") +
+        nCampo("inAvAnpd","DATA DA COMUNICAÇÃO À ANPD","date","") +
+        nCampo("inAvTit","DATA DA COMUNICAÇÃO AOS TITULARES","date","");
+    } else if(para === "DISPENSADO"){
+      html = nCaixa("<strong>Esta é a decisão que a ANPD questiona.</strong> Se ela discordar " +
+        "depois, esta justificativa é o que o sindicato terá para apresentar.","alerta") +
+        nCampo("inAvMotivo","POR QUE A COMUNICAÇÃO FOI DISPENSADA","textarea",
+          "Mínimo 20 caracteres. Ex.: dado criptografado, sem risco relevante ao titular.");
+    } else if(para === "ENCERRADO"){
+      html = nCampo("inAvRelatorio","RELATÓRIO FINAL","textarea",
+        "O que aconteceu, o que foi feito, e o que muda para não repetir.");
+    }
+    nEl("inAvCorpo").innerHTML = html;
+    nEl("inModalAvancar").style.display = "flex";
+  }
+
+  function nConfirmarAvancar(){
+    if(!inAlvo || !inDestino) return;
+    function val(id){ var e = nEl(id); return e ? e.value : ""; }
+
+    var dados = {};
+    if(inDestino === "EM_ANALISE"){
+      dados = { tipo: val("inAvTipo"), gravidade: val("inAvGrav"),
+                dadosAtingidos: val("inAvDados"), numTitulares: val("inAvNum") };
+    } else if(inDestino === "CONTIDO"){
+      dados = { medidas: val("inAvMedidas") };
+    } else if(inDestino === "COMUNICADO"){
+      dados = { anpdData: val("inAvAnpd"), titularesData: val("inAvTit") };
+    } else if(inDestino === "DISPENSADO"){
+      dados = { motivo: val("inAvMotivo") };
+    } else if(inDestino === "ENCERRADO"){
+      dados = { relatorio: val("inAvRelatorio") };
+    }
+
+    var btn = nEl("inAvConfirmar");
+    btn.disabled = true; btn.textContent = "Salvando…";
+    google.script.run
+      .withSuccessHandler(function(r){
+        btn.disabled = false; btn.textContent = "Confirmar";
+        if(!r || !r.ok) return nAviso((r&&r.mensagem)||"Não foi possível avançar.","erro");
+        nEl("inModalAvancar").style.display = "none";
+        nAviso(r.mensagem,"sucesso");
+        nCarregar();
+      })
+      .withFailureHandler(function(e){
+        btn.disabled = false; btn.textContent = "Confirmar";
+        nAviso("Erro: "+(e&&e.message?e.message:e),"erro");
+      })
+      .incAvancar(inAlvo.id, inDestino, dados, nToken());
+  }
+
+  /* ─── CARGA ─── */
+  function nFalhaDura(titulo, e){
+    if(inVigia){ clearTimeout(inVigia); inVigia = null; }
+    nEl("inResumo").textContent = "Não foi possível carregar";
+    nEl("inCards").innerHTML = "";
+    nEl("inLista").innerHTML = nCaixa("<strong>"+nEsc(titulo)+"</strong>" +
+      (e ? "<br><br><code style='font-size:11px;word-break:break-all;'>" +
+           nEsc(e && e.message ? e.message : e)+"</code>" : ""),"erro");
+    nAviso(titulo,"erro");
+  }
+
+  function nCarregar(){
+    nEl("inResumo").textContent = "Consultando o servidor…";
+    nEl("inLista").innerHTML = "";
+
+    if(inVigia) clearTimeout(inVigia);
+    inVigia = setTimeout(function(){
+      nFalhaDura("O servidor não respondeu em 25 segundos.", null);
+    }, 25000);
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(inVigia){ clearTimeout(inVigia); inVigia = null; }
+        if(!r || !r.ok) return nFalhaDura("O servidor respondeu, mas sem os incidentes.", null);
+        try {
+          inTudo = r.incidentes || [];
+          nRenderAlerta(r);
+          nRenderCards(r);
+          nRenderLista();
+          nEl("inResumoSub").innerHTML =
+            "Prazo de comunicação: <strong>" + r.prazoDiasUteis + " dias úteis</strong> da ciência " +
+            "(configurável na aba CONFIG, chave <code>LGPD_PRAZO_ANPD_DIAS_UTEIS</code>). " +
+            "O contador <strong>não desconta feriado</strong> — aperta o prazo, não afrouxa. " +
+            "Confirme o número com o jurídico.";
+        } catch (err) {
+          nFalhaDura("Os incidentes vieram, mas a tela não conseguiu desenhá-los.", err);
+        }
+      })
+      .withFailureHandler(function(e){ nFalhaDura("Erro ao carregar os incidentes.", e); })
+      .incListar({}, nToken());
+  }
+
+  window.initAuditoriaIncidentes = function(){
+    var b;
+    b = nEl("inBtnRecarregar"); if(b) b.onclick = nCarregar;
+    b = nEl("inFiltro");        if(b) b.onchange = nRenderLista;
+    b = nEl("inBtnNovo");       if(b) b.onclick = nAbrirNovo;
+    b = nEl("inNovoFechar");    if(b) b.onclick = function(){ nEl("inModalNovo").style.display="none"; };
+    b = nEl("inNovoCancelar");  if(b) b.onclick = function(){ nEl("inModalNovo").style.display="none"; };
+    b = nEl("inNovoSalvar");    if(b) b.onclick = nSalvarNovo;
+    b = nEl("inNovoDescricao"); if(b){ b.oninput = nValidarNovo; b.onkeyup = nValidarNovo; }
+    b = nEl("inNovoData");      if(b) b.onchange = nValidarNovo;
+    b = nEl("inAvFechar");      if(b) b.onclick = function(){ nEl("inModalAvancar").style.display="none"; };
+    b = nEl("inAvCancelar");    if(b) b.onclick = function(){ nEl("inModalAvancar").style.display="none"; };
+    b = nEl("inAvConfirmar");   if(b) b.onclick = nConfirmarAvancar;
+
+    google.script.run
+      .withSuccessHandler(function(c){ inCat = c; })
+      .withFailureHandler(function(){ /* a lista funciona sem os catálogos */ })
+      .incCatalogos(nToken());
+
+    try { nCarregar(); }
+    catch (e) { nFalhaDura("Não consegui nem iniciar a consulta dos incidentes.", e); }
+  };
+})();
+</script>

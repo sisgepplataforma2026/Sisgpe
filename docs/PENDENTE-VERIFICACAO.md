@@ -110,6 +110,27 @@ Se algum precisar ser desligado, é por outro caminho.
 
 ---
 
+### 8. Incidentes — confirmar o prazo com o jurídico
+**Aberto em:** 11/08/2026
+
+O contador funciona e foi provado por execução (dias úteis, alerta de
+vencido, relógio que para na comunicação). **O que NÃO foi verificado é o
+número em si.**
+
+| O quê | Situação |
+|---|---|
+| **3 dias úteis** | Meu entendimento da resolução da ANPD. Não tenho como conferir a fonte daqui, e o prazo mudou nos últimos anos. **Confirmar com o jurídico.** |
+| Como mudar | Aba CONFIG, linha `LGPD_PRAZO_ANPD_DIAS_UTEIS` com o número. Sem tocar em código. |
+| Feriados | O contador pula só sábado e domingo. Com feriado no meio, aponta um dia a mais do que a ANPD consideraria — **aperta** o prazo, não afrouxa. |
+| A tela | Registrar um incidente de teste e percorrer o fluxo até encerrar. |
+
+**Decisão registrada:** tudo exige administrador ("Administrador por
+enquanto", 11/08). A contrapartida: quem não é administrador e descobre um
+incidente precisa avisar alguém para o registro existir — e o prazo conta da
+ciência do sindicato, não da hora do registro.
+
+---
+
 ### 2. Firestore — gravação real
 **Aberto em:** 06/08/2026
 
