@@ -251,7 +251,17 @@ function escolaMigrarIds(tokenSessao) {
     throw new Error("Sessão inválida ou expirada. Entre novamente no SISGEP.");
   }
   if (!escolaEhAdministradorPorEmail_(email)) {
-    throw new Error("Ação permitida somente para administradores.");
+    // A mensagem diz QUAL conta foi vista e o que se procurou. "Ação permitida
+    // somente para administradores", sozinha, não deixa ninguém consertar nada:
+    // a causa quase sempre é o e-mail da conta Google ser diferente do que está
+    // na coluna EMAIL da aba USUARIOS, e sem ver os dois lado a lado não há
+    // como perceber. Mostrar ao usuário o próprio e-mail não vaza nada.
+    throw new Error(
+      "Ação permitida somente para administradores. A conta " + email +
+      " não foi encontrada na aba " + ABA_USUARIOS_LOGIN +
+      " com EMAIL igual a esse, PERFIL = ADMINISTRADOR e STATUS = ATIVO. " +
+      "Confira a linha do seu usuário nessa aba."
+    );
   }
   Logger.log("escolaMigrarIds — execução pelo editor, como " + email);
   var r = escolaMigrarIds_interno_(email);
