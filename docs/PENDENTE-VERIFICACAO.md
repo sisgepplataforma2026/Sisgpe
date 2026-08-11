@@ -36,6 +36,23 @@ dele.
 
 ---
 
+### 4. Dashboard de Auditoria — o clique nos cards
+**Aberto em:** 11/08/2026
+
+Os cards e as linhas de "movimento por módulo" abrem a trilha já filtrada.
+O teste prova que **o filtro de cada card devolve a contagem que o card
+exibe** — o que não dá para provar sem navegador é o clique em si.
+
+| O quê | Como verificar |
+|---|---|
+| Card "Hoje" | Clicar. A trilha abre e o número de linhas tem que bater com o card. |
+| Card "Ações críticas" | Idem. |
+| Card "Falhas" | Idem. |
+| Linha de módulo | Clicar numa linha. Só ações daquele módulo. |
+| **Virada do dia** | Abrir o painel perto da meia-noite. O `formatDate` do emulador ignora fuso, então só o Apps Script real decide isto. |
+
+---
+
 ### 2. Firestore — gravação real
 **Aberto em:** 06/08/2026
 

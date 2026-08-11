@@ -153,10 +153,11 @@
 
       <div class="spSec">Sistema</div>
 
-      <button class="spN" data-mod="auditoriaTrilha" data-acordeao="auditoriaSubMenuSidebar" onclick="spAcordeao(this);spIr('auditoriaTrilha',this)">
+      <button class="spN" data-mod="auditoriaPainel" data-acordeao="auditoriaSubMenuSidebar" onclick="spAcordeao(this);spIr('auditoriaPainel',this)">
         <span class="spNI">🛡️</span><div><strong>Auditoria e Compliance</strong><small>Rastreabilidade, LGPD e ações críticas</small></div>
       </button>
-      <div id="auditoriaSubMenuSidebar" class="docSubMenuSidebar" data-subs="auditoriaTrilha" style="display:none;">
+      <div id="auditoriaSubMenuSidebar" class="docSubMenuSidebar" data-subs="auditoriaPainel,auditoriaTrilha" style="display:none;">
+        <button type="button" class="docSubMenuBtn" data-sub-mod="auditoriaPainel" onclick="spIr('auditoriaPainel',null)">📊 Dashboard</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="auditoriaTrilha" onclick="spIr('auditoriaTrilha',null)">📋 Trilha de Alterações</button>
       </div>
 
@@ -575,6 +576,9 @@ function benefAdminPesquisar(){var input=document.getElementById("benefAdminBusc
       </div>
       <div id="mGovernanca" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
         <?!= include('GovernancaAdmin'); ?>
+      </div>
+      <div id="mAuditoriaPainel" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('AuditoriaPainel'); ?>
       </div>
       <div id="mAuditoriaTrilha" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
         <?!= include('AuditoriaTrilha'); ?>
@@ -1290,6 +1294,7 @@ var MODS={
   negociacao:["mNegociacao","Negociação Coletiva","Convenção Coletiva de Trabalho — cláusulas, pisos e vigência"],
   assembleias:["mAssembleias","Assembleias Gerais","Convocação, instalação e deliberação — Estatuto, arts. 59 a 73"],
   governanca:["mGovernanca","Governança e Mandatos","Composição empossada, mandato vigente e calendário eleitoral"],
+  auditoriaPainel:["mAuditoriaPainel","Auditoria e Compliance","O que aconteceu no SISGEP — e o que merece olhar agora"],
   auditoriaTrilha:["mAuditoriaTrilha","Trilha de Alterações","Auditoria e Compliance — quem fez o quê, quando, e o que mudou"],
   patrimonio:["mPatrimonio","Patrimônio","Bens e Inventário"],
   comunicacao:["mComunicacao","Painel do Dia","Central de Comunicação — resumo, prioridades e ações rápidas de e-mail"],
@@ -1689,6 +1694,27 @@ if(mod==="beneficios"){
 
   if(mod==="governanca"){
     setTimeout(function(){ callFn("initGovernanca"); },120);
+    return;
+  }
+
+  if(mod==="auditoriaPainel"){
+    setTimeout(function(){
+      if(callFn("initAuditoriaPainel")) return;
+      var alvo = document.getElementById("apPorModulo");
+      if(alvo){
+        alvo.innerHTML =
+          '<div style="background:#fee2e2;border:1.5px solid #fca5a5;border-radius:12px;' +
+          'padding:13px 17px;font-size:12.5px;font-weight:600;line-height:1.55;color:#991b1b;">' +
+          (typeof window.AUD_PAINEL_MARCADOR === "string"
+            ? "<strong>O script do painel executou, mas quebrou no meio.</strong><br>" +
+              "Reabra o <code>AuditoriaPainel.html</code> no editor e confira se o " +
+              "conteúdo chegou inteiro. O console (F12) mostra o erro exato."
+            : "<strong>O script do painel não executou.</strong><br>" +
+              "Ou o <code>AuditoriaPainel.html</code> não está no projeto, ou a implantação " +
+              "está numa versão anterior. Teste pela URL <code>/dev</code>.") +
+          "</div>";
+      }
+    },120);
     return;
   }
 

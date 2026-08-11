@@ -189,6 +189,11 @@ function auditoriaConsultar(filtros, tokenSessao) {
   if (filtros.acao) condicoes.push({ campo: "acao", op: "EQUAL", valor: filtros.acao });
   if (filtros.registroId) condicoes.push({ campo: "registroId", op: "EQUAL", valor: filtros.registroId });
   if (filtros.apenasCriticas === true) condicoes.push({ campo: "critica", op: "EQUAL", valor: true });
+  // O card de falhas do painel cai aqui. Sem este filtro ele seria um número
+  // sem destino — e card que não leva a lugar nenhum é o "dashboard
+  // decorativo" que o PROMPT-MESTRE proíbe.
+  if (filtros.resultado) condicoes.push({ campo: "resultado", op: "EQUAL",
+    valor: String(filtros.resultado).toUpperCase() });
 
   // Período. O dia inteiro entra: "até 06/08" tem que incluir o que foi feito
   // às 23h50 do dia 06, senão a última ação do dia some do relatório.
@@ -351,7 +356,15 @@ function auditoriaPainel(tokenSessao) {
     falhas: acoes.filter(function (a) { return String(a.resultado) === "FALHA"; }).length,
     porModulo: acoes.reduce(function (m, a) {
       var k = a.modulo || "—"; m[k] = (m[k] || 0) + 1; return m;
-    }, {})
+    }, {}),
+    // As últimas ações vão juntas na mesma resposta. Uma segunda chamada só
+    // para isto dobraria a leitura da trilha inteira — que no Firestore é
+    // cota e na planilha é tempo de tela.
+    ultimas: acoes.slice(0, 10),
+    // O dia de referência viaja junto: o card "hoje" abre a trilha filtrada
+    // por esta data, e quem calcula o dia tem que ser quem contou, senão o
+    // card diz 37 e a lista abre com outro número.
+    dataHoje: hoje
   };
 }
 
