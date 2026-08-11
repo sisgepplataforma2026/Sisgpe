@@ -225,15 +225,16 @@ zerarBase(); limparBackups();
 g.cadastrarEscola({ nomeEscola: "Escola Sem Documento", municipio: "Cariacica", uf: "ES" }, ADM);
 const semCnpj = g.excluirEscolasEmLote([""], ADM);
 const aindaLa = acharPorNome("Escola Sem Documento").length;
-// Estes dois ficam VERMELHOS de propósito até o escolaId existir. A seleção
-// da tela e o casamento do backend são por CNPJ; sem CNPJ não há como apontar
-// a linha. Só se fecha com a identidade única do item 8 do PROMPT-MESTRE.
-b.ok(aindaLa === 0,
-  "excluir escola sem CNPJ [aguarda escolaId — item 8]",
-  aindaLa ? "não dá: a linha fica presa na base" : "excluiu");
-b.ok(g.atualizarSituacaoEscolasEmLote([""], "INATIVA", ADM).atualizadas === 1,
-  "inativar escola sem CNPJ [aguarda escolaId — item 8]",
-  "atualizadas=" + g.atualizarSituacaoEscolasEmLote([""], "INATIVA", ADM).atualizadas);
+// Por CNPJ isto é impossível por definição — não há CNPJ para apontar. O que
+// se cobra aqui é que a recusa seja HONESTA: nada apagado e mensagem clara,
+// em vez de "0 excluídas" fingindo sucesso.
+// O caminho que funciona é por escolaId, provado em t26 (passos 21 e 22).
+b.ok(semCnpj.ok === false && aindaLa === 1,
+  "seleção sem CNPJ é recusada sem apagar nada",
+  semCnpj.mensagem);
+b.ok(g.atualizarSituacaoEscolasEmLote([""], "INATIVA", ADM).ok === false,
+  "e o lote de situação recusa igual",
+  "a escola sem CNPJ se resolve por escolaId — ver t26");
 
 b.passo("20. ⚠ Selecionar UMA linha não pode apagar as OUTRAS do mesmo CNPJ");
 // Matriz e filial compartilham raiz de CNPJ; e a própria base tem duplicatas

@@ -323,9 +323,21 @@ function cadastrarEscola(dados, tokenSessao) {
 
     sh.appendRow(novaLinha);
     SpreadsheetApp.flush();
+
+    // Identidade única, no nascimento do registro (item 8 do PROMPT-MESTRE).
+    // Fecha por fora: se a alocação falhar, a escola fica cadastrada sem id e
+    // a migração pega depois. Perder o cadastro por causa do id seria pior.
+    var idNovo = "";
+    try {
+      if (typeof escolaIdDaLinha_ === "function") idNovo = escolaIdDaLinha_(sh, sh.getLastRow());
+    } catch (eId) {
+      Logger.log("cadastrarEscola — identidade nao atribuida (cadastro seguiu): " + eId);
+    }
+
     invalidarCacheEscolasInterno_();
-    escolaAuditar_("CRIAR", nome, cnpjRaw, "Escola cadastrada pela tela de Escolas.", usuario);
-    return { ok: true, mensagem: "Escola cadastrada com sucesso.", atualizado: false };
+    escolaAuditar_("CRIAR", nome, cnpjRaw, "Escola cadastrada pela tela de Escolas." +
+      (idNovo ? " Identidade: " + idNovo + "." : ""), usuario);
+    return { ok: true, mensagem: "Escola cadastrada com sucesso.", atualizado: false, escolaId: idNovo };
 
   } catch(e) {
     return { ok: false, mensagem: "Erro ao cadastrar escola: " + e.message };
@@ -388,6 +400,10 @@ function listarEscolasCadastro_interno_() {
       // as duplicatas que a própria base tem). Calculado antes do filter, para
       // não deslizar quando linha sem nome é descartada da lista.
       obj.linha = iLinha + 2;
+      // Identidade única (item 8). É por ela que as telas e os outros módulos
+      // devem apontar — nunca pelo nome, nunca pelo número da linha.
+      obj.EscolaID = String(obj[ESC_COL_ID] || "").trim().toUpperCase();
+      obj.escolaId = obj.EscolaID;
       // Aliases para compatibilidade com o frontend
       obj.NomeEscola  = obj[COL_NOME_ESCOLA]  || "";
       obj.escola      = obj[COL_NOME_ESCOLA]  || "";
@@ -467,15 +483,36 @@ function atualizarSituacaoEscolasEmLote(cnpjs, novaSituacao, tokenSessao) {
     if (!colCnpj) return { ok: false, mensagem: "Coluna '" + COL_CNPJ + "' não encontrada." };
     if (!colSit)  return { ok: false, mensagem: "Coluna '" + COL_SITUACAO + "' não encontrada." };
 
+    // Aceita EscolaID e CNPJ. Sem o id, escola cadastrada sem CNPJ não podia
+    // sequer ser inativada — ficava presa ATIVA para sempre.
+    const colIdSit = hMap[ESC_COL_ID];
     const alvo = {};
-    cnpjs.forEach(function(c) { alvo[onlyDigitsEscolas_(c)] = true; });
+    const alvoIdSit = {};
+    cnpjs.forEach(function(c) {
+      const bruto = String(c || "").trim();
+      if (typeof escolaIdValido_ === "function" && escolaIdValido_(bruto)) {
+        alvoIdSit[bruto.toUpperCase()] = true;
+        return;
+      }
+      const d = onlyDigitsEscolas_(bruto);
+      if (d) alvo[d] = true;
+    });
+    // Seleção sem nenhum alvo válido é recusa, não sucesso com zero linhas.
+    // Devolver ok:true/atualizadas:0 fazia a tela dizer "pronto" sem ter feito
+    // nada — o usuário só descobria conferindo linha por linha.
+    if (!Object.keys(alvo).length && !Object.keys(alvoIdSit).length) {
+      return { ok: false, atualizadas: 0, mensagem: "Nenhuma escola válida na seleção." };
+    }
 
-    const dadosCnpj = sh.getRange(2, colCnpj, lastRow - 1, 1).getValues();
+    const numCols = sh.getLastColumn();
+    const dadosSit = sh.getRange(2, 1, lastRow - 1, numCols).getValues();
     let atualizadas = 0;
 
-    for (let i = 0; i < dadosCnpj.length; i++) {
-      const cnpjLinha = onlyDigitsEscolas_(dadosCnpj[i][0]);
-      if (!cnpjLinha || !alvo[cnpjLinha]) continue;
+    for (let i = 0; i < dadosSit.length; i++) {
+      const idLinha = colIdSit ? String(dadosSit[i][colIdSit - 1] || "").trim().toUpperCase() : "";
+      const cnpjLinha = onlyDigitsEscolas_(dadosSit[i][colCnpj - 1]);
+      const bate = (idLinha && alvoIdSit[idLinha]) || (cnpjLinha && alvo[cnpjLinha]);
+      if (!bate) continue;
       sh.getRange(i + 2, colSit).setValue(situacao);
       atualizadas++;
     }
@@ -537,24 +574,40 @@ function excluirEscolasEmLote(cnpjs, tokenSessao) {
     // de backup para depois desistir só deixa lixo na planilha.
     if (!colCnpj) return { ok: false, mensagem: "Coluna '" + COL_CNPJ + "' não encontrada." };
 
+    // A seleção aceita EscolaID (preferido) e CNPJ (compatibilidade).
+    // Com id não existe ambiguidade nenhuma: um id, uma linha. É por isso que
+    // escola sem CNPJ — que antes ficava presa na base, sem poder ser excluída
+    // — passa a ser tratável como qualquer outra.
+    const colIdEscola = hMap[ESC_COL_ID];
     const alvo = {};
+    const alvoId = {};
     cnpjs.forEach(function(c) {
-      const d = onlyDigitsEscolas_(c);
+      const bruto = String(c || "").trim();
+      if (typeof escolaIdValido_ === "function" && escolaIdValido_(bruto)) {
+        alvoId[bruto.toUpperCase()] = true;
+        return;
+      }
+      const d = onlyDigitsEscolas_(bruto);
       if (d) alvo[d] = true;
     });
-    if (!Object.keys(alvo).length) {
-      return { ok: false, mensagem: "Nenhum CNPJ válido na seleção. Escola sem CNPJ ainda não pode ser excluída em lote." };
+    if (!Object.keys(alvo).length && !Object.keys(alvoId).length) {
+      return { ok: false, mensagem: "Nenhuma escola válida na seleção." };
     }
 
     const dados = sh.getRange(2, 1, lastRow - 1, sh.getLastColumn()).getValues();
 
-    // Passo 1: agrupa as linhas por CNPJ, para saber quais são ambíguos.
+    // Passo 1: agrupa as linhas por chave, para saber quais são ambíguas.
+    // Chave de id nunca agrupa mais de uma; só CNPJ pode.
     const linhasPorCnpj = {};
     for (let i = 0; i < dados.length; i++) {
+      const idLinha = colIdEscola ? String(dados[i][colIdEscola - 1] || "").trim().toUpperCase() : "";
       const c = onlyDigitsEscolas_(dados[i][colCnpj - 1]);
-      if (!c || !alvo[c]) continue;
-      if (!linhasPorCnpj[c]) linhasPorCnpj[c] = [];
-      linhasPorCnpj[c].push({
+      let chave = "";
+      if (idLinha && alvoId[idLinha]) chave = "ID::" + idLinha;
+      else if (c && alvo[c])          chave = "CNPJ::" + c;
+      else continue;
+      if (!linhasPorCnpj[chave]) linhasPorCnpj[chave] = [];
+      linhasPorCnpj[chave].push({
         row: i + 2,
         nome: colNome ? String(dados[i][colNome - 1] || "").trim() : ""
       });
@@ -564,9 +617,10 @@ function excluirEscolasEmLote(cnpjs, tokenSessao) {
     const linhasParaExcluir = [];
     const ambiguos = [];
     const nomesExcluidos = [];
-    Object.keys(linhasPorCnpj).forEach(function(c) {
-      const grupo = linhasPorCnpj[c];
+    Object.keys(linhasPorCnpj).forEach(function(chave) {
+      const grupo = linhasPorCnpj[chave];
       if (grupo.length > 1) {
+        const c = chave.replace(/^CNPJ::/, "");
         ambiguos.push({
           cnpj: formatarCNPJEscolas_(c),
           quantidade: grupo.length,
@@ -756,6 +810,19 @@ function removerEscolasDuplicadas(tokenSessao) {
       map[k].push({ linhaPlanilha:i+1, row });
     }
 
+    /* Identidade na fusão (item 8 do PROMPT-MESTRE).
+     *
+     * Ao fundir duas linhas, uma identidade deixa de existir como registro.
+     * Quem tiver guardado o id absorvido ficaria com um ponteiro para o nada —
+     * e, pior, sem saber disso. Por isso cada absorção vira uma linha em
+     * SISGEP_Escolas_Merges, e escolaResolverId_ passa a levar o id antigo até
+     * o sobrevivente. É o que permite fundir duplicata sem quebrar o passado.
+     *
+     * Sobrevive o id da linha mais antiga do grupo — a que tem mais chance de
+     * já estar referenciada por ofício ou cobrança emitidos. */
+    const iId = cab.indexOf(ESC_COL_ID);
+    const fusoes = [];
+
     const mantidas=[dados[0]]; let removidas=0;
     Object.keys(map).forEach(function(k){
       const itens=map[k];
@@ -763,6 +830,19 @@ function removerEscolasDuplicadas(tokenSessao) {
       itens.sort(function(a,b){ return a.linhaPlanilha-b.linhaPlanilha; });
       let linhaFinal=itens[0].row.slice();
       for(let i=1;i<itens.length;i++) linhaFinal=mesclar_(linhaFinal,itens[i].row);
+
+      if (iId > -1) {
+        // mesclar_ só preenche vazio, então o id do primeiro já prevalece.
+        // Aqui só se anota quem foi absorvido.
+        const idFinal = String(linhaFinal[iId] || "").trim().toUpperCase();
+        for (let j = 0; j < itens.length; j++) {
+          const idItem = String(itens[j].row[iId] || "").trim().toUpperCase();
+          if (idItem && idFinal && idItem !== idFinal) {
+            fusoes.push({ de: idItem, para: idFinal });
+          }
+        }
+      }
+
       mantidas.push(linhaFinal); removidas+=itens.length-1;
     });
     // As sem nome voltam ao fim, preservadas.
@@ -776,8 +856,19 @@ function removerEscolasDuplicadas(tokenSessao) {
 
     SpreadsheetApp.flush();
     invalidarCacheEscolasInterno_();
+
+    const quemDedup = String((sessaoDedup && (sessaoDedup.nome || sessaoDedup.usuario || sessaoDedup.email)) || "").trim();
+    fusoes.forEach(function(f){
+      try {
+        if (typeof escolaRegistrarFusao_ === "function") {
+          escolaRegistrarFusao_(f.de, f.para, "Deduplicação automática de Escolas.", quemDedup);
+        }
+      } catch (eF) { Logger.log("removerEscolasDuplicadas — fusao nao registrada: " + eF); }
+    });
+
     escolaAuditar_("EXCLUIR", "", "",
       "Deduplicação: " + removidas + " linha(s) fundida(s). Backup: " + nomeBackup +
+      (fusoes.length ? " | " + fusoes.length + " identidade(s) redirecionada(s)." : "") +
       (semNome.length ? " | " + semNome.length + " linha(s) sem razão social preservadas." : ""),
       String((sessaoDedup && (sessaoDedup.nome || sessaoDedup.usuario || sessaoDedup.email)) || "").trim());
     return {
@@ -921,6 +1012,8 @@ function listarEscolasParaModulo_interno_() {
     return lista.map(function(item) {
       return {
         linha:         Number(item.linha || 0),
+        EscolaID:      str(item.EscolaID),
+        escolaId:      str(item.EscolaID),
         NomeEscola:    str(item.NomeEscola  || item.escola),
         escola:        str(item.escola      || item.NomeEscola),
         CNPJ:          str(item.CNPJ        || item.cnpj),
