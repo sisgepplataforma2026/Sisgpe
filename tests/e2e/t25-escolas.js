@@ -225,11 +225,14 @@ zerarBase(); limparBackups();
 g.cadastrarEscola({ nomeEscola: "Escola Sem Documento", municipio: "Cariacica", uf: "ES" }, ADM);
 const semCnpj = g.excluirEscolasEmLote([""], ADM);
 const aindaLa = acharPorNome("Escola Sem Documento").length;
+// Estes dois ficam VERMELHOS de propósito até o escolaId existir. A seleção
+// da tela e o casamento do backend são por CNPJ; sem CNPJ não há como apontar
+// a linha. Só se fecha com a identidade única do item 8 do PROMPT-MESTRE.
 b.ok(aindaLa === 0,
-  "dá para excluir uma escola cadastrada sem CNPJ",
-  aindaLa ? "não dá — a linha fica presa na base para sempre" : "excluiu");
+  "excluir escola sem CNPJ [aguarda escolaId — item 8]",
+  aindaLa ? "não dá: a linha fica presa na base" : "excluiu");
 b.ok(g.atualizarSituacaoEscolasEmLote([""], "INATIVA", ADM).atualizadas === 1,
-  "dá para inativar uma escola cadastrada sem CNPJ",
+  "inativar escola sem CNPJ [aguarda escolaId — item 8]",
   "atualizadas=" + g.atualizarSituacaoEscolasEmLote([""], "INATIVA", ADM).atualizadas);
 
 b.passo("20. ⚠ Selecionar UMA linha não pode apagar as OUTRAS do mesmo CNPJ");
@@ -242,9 +245,15 @@ limparBackups();
 shDup.appendRow(["", "Escola Dupla — cadastro velho", "11.222.333/0001-81", "velho@e.com", "", "", "", "Vitória", "", "", "", "", "ES", "", "", "ATIVA", "", "", "", "", "", ""]);
 shDup.appendRow(["", "Escola Dupla — cadastro novo",  "11.222.333/0001-81", "novo@e.com",  "", "", "", "Vitória", "", "", "", "", "ES", "", "", "ATIVA", "", "", "", "", "", ""]);
 const exclDup = g.excluirEscolasEmLote([CNPJ_A], ADM);
-b.ok(exclDup.ok === true && exclDup.excluidas === 1,
-  "marcar uma linha exclui uma linha",
-  "marcou 1, excluiu " + exclDup.excluidas + " de 2 que dividem o CNPJ");
+b.ok(exclDup.excluidas !== 2 && lerLinhas().length === 2,
+  "marcar um CNPJ ambíguo NÃO apaga as duas linhas",
+  "excluidas=" + exclDup.excluidas + " · restaram " + lerLinhas().length + " de 2");
+
+b.passo("20a. E o usuário fica sabendo POR QUE nada foi excluído");
+b.ok(exclDup.ok === false && Array.isArray(exclDup.ambiguos) && exclDup.ambiguos.length === 1 &&
+     exclDup.ambiguos[0].quantidade === 2 && /[Dd]uplicad/.test(exclDup.mensagem || ""),
+  "a recusa diz qual CNPJ, quantas linhas e para onde ir",
+  exclDup.mensagem);
 
 b.passo("20b. ⚠ Duas exclusões no mesmo segundo: a segunda falha");
 // O nome da aba de backup é carimbado só até o segundo. Duas operações
