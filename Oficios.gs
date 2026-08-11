@@ -238,6 +238,26 @@ function registrarLogSistema(dadosLog) {
     new Date(), dadosLog.usuario, dadosLog.numero, dadosLog.tipo,
     dadosLog.escola, dadosLog.cnpj, dadosLog.email, dadosLog.codigo, SISTEMA_VERSAO
   ]);
+
+  /* PONTE PARA A TRILHA ÚNICA (item 16 do PROMPT-MESTRE).
+   *
+   * Primeiro dos 28 pontos de log a ser ligado, e de propósito: Ofícios é a
+   * única operação em uso diário, então é a única que alimenta a trilha com
+   * movimento real em vez de dado de teste.
+   *
+   * ADITIVO. O LOG_SISTEMA acima continua gravando exatamente como sempre —
+   * nada foi removido nem substituído, e desfazer é apagar este bloco.
+   *
+   * As duas travas que tornam isto seguro para produção:
+   *   1. typeof — se o AuditoriaCore.gs não estiver no projeto, nem chama.
+   *   2. try/catch — auditar_() já promete nunca lançar; o catch é o cinto
+   *      além do suspensório. Emissão de ofício não pode parar porque a
+   *      auditoria teve um problema. */
+  try {
+    if (typeof aud_deLogSistema_ === "function") aud_deLogSistema_(dadosLog);
+  } catch (e) {
+    Logger.log("registrarLogSistema — ponte de auditoria falhou (ofício seguiu): " + e);
+  }
 }
 
 function protegerLogSistema_(sheet) {
