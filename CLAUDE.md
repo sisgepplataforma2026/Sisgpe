@@ -58,6 +58,24 @@ Uma função só é dada como concluída quando o processo inteiro roda do gatil
 
 **Caso real que originou esta regra (2026-08-05):** entreguei uma auditoria de arquitetura do Portal Administrativo inteiro classificando módulos como "Coberto" a partir de leitura de código, sem executar uma linha. O usuário respondeu: *"tem que testar todos os fluxos"*, *"não tem nada real"*, *"pq não testou?"*, *"pq não sugeriu?"*. Estava certo nas quatro.
 
+## 📋 COBRAR O QUE ESTÁ PENDENTE DE VERIFICAÇÃO
+
+**Ler `docs/PENDENTE-VERIFICACAO.md` no começo de cada sessão e cobrar o que
+estiver aberto**, antes de propor trabalho novo. Pedido do usuário em
+2026-08-11: *"eu testo mais adiante.. Salve para me cobrar"*.
+
+Ali fica o que foi entregue e está **"não testado"** pela REGRA Nº -1 —
+depende de alguém executar no sistema no ar. Não é lista de bug nem de
+tarefa.
+
+Duas regras de uso:
+
+- **Item só sai de lá com o usuário dizendo que rodou.** Nunca por dedução,
+  nunca por "já faz dias, deve estar funcionando".
+- **Cobrar é lembrar, não insistir.** Uma linha no começo da resposta basta.
+  Se ele disser que testa depois, a resposta é registrar a data e seguir com
+  o trabalho — não repetir a cada mensagem.
+
 ## 🚨 REGRA Nº 0.5 — ARQUITETURA E LAYOUT ANTES DE IMPLEMENTAR
 
 Definida pelo usuário em 2026-08-06. Antes de escrever backend, tela ou
