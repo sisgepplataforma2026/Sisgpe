@@ -12,23 +12,25 @@
 
 ## 🔴 ABERTO
 
-### 11. Escolas — a migração de identidade sobre as 681 reais
+### 11. Escolas — a migração de identidade sobre a base real
 **Aberto em:** 11/08/2026 · **Fase 1 do item 8 do PROMPT-MESTRE**
+**Parcialmente verificado em:** 11/08/2026, pelo log de execução do usuário
 
-A migração roda idempotente e com backup, e foi provada por execução em
-`t26` (32 passos, dois deles testados por mutação). O que o emulador **não**
-prova é ela sobre a base de verdade.
+A migração **rodou na base real**: `criados: 679`, `jaTinham: 0`, `total: 679`,
+backup em `BACKUP_ESCOLAS_ID_20260811_205201`. Executada pelo dono do projeto
+(`financeirosindecucacao@gmail.com`), registrada no log.
 
-**Pré-requisito:** colar `EscolasIdentidade.gs` (arquivo NOVO) e `Escolas.gs`
-no projeto + nova versão da implantação.
+Isso corrigiu um número que este projeto vinha repetindo: são **679** escolas,
+não 681. O `CLAUDE.md` foi ajustado.
 
-| O quê | Como verificar |
+| O quê | Situação |
 |---|---|
-| **Rodar a migração** | No editor do Apps Script, executar `escolaMigrarIds()`. Ainda não há botão — a tela vem na Fase 2. |
-| A coluna nasceu certa | Abrir a aba `Escolas`. A coluna `EscolaID` tem que estar **no fim**, preenchida de `ESC-000001` em diante, e **nenhuma outra coluna pode ter se deslocado**. |
-| Ninguém ficou de fora | A contagem de `criados` + `jaTinham` tem que bater com o total de linhas — inclusive as sem CNPJ e as sem razão social. |
-| **Rodar de novo** | Executar `escolaMigrarIds()` uma segunda vez. Tem que devolver `criados: 0` e **não** criar aba de backup nova. |
-| O backup | Conferir que existe `BACKUP_ESCOLAS_ID_...` com a base de antes. |
+| Rodar a migração | ✅ **verificado** — 679 escolas, zero erro |
+| Ninguém ficou de fora | ✅ **verificado** — `criados` + `jaTinham` = `total` = 679 |
+| Rodar de novo não estraga | ✅ **verificado** — segunda execução devolveu `criados: 0`, `jaTinham: 679`, **sem backup novo** |
+| O backup existe | ✅ **verificado** — `BACKUP_ESCOLAS_ID_20260811_205201` |
+| **A coluna nasceu no lugar certo** | 🔴 **falta olhar a planilha.** `EscolaID` tem que ser a **última** coluna, de `ESC-000001` a `ESC-000679`, e **nenhuma outra coluna pode ter deslocado**. É o ponto que mais importa: coluna deslocada = dado trocado de lugar em 679 linhas. |
+| **Ofícios continua emitindo** | 🔴 **falta testar.** É o único módulo em uso diário e lê a aba Escolas. Uma emissão de teste basta. |
 
 **Se algo der errado:** a migração só escreve numa coluna nova. Apagar a
 coluna `EscolaID` devolve a base ao estado anterior, e o backup está lá.

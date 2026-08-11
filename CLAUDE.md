@@ -17,7 +17,7 @@ mal as minhas recomendações. A distinção que importa:
 |---|---|
 | **Ofícios** | em uso diário — é a única operação viva |
 | **Base de Associados** | ~8.000 pessoas de dado real, mas ninguém opera por ela |
-| **Escolas** | 681 cadastros reais, idem |
+| **Escolas** | 679 cadastros reais, idem (contagem medida em 11/08/2026, na migração de identidade) |
 | **Todo o resto** | construído, não operado |
 
 **O que isso muda na prática:**
@@ -113,7 +113,7 @@ Regras práticas:
 
 ## 🚨 REGRA Nº 1 — NUNCA APAGAR ARQUIVO QUE O SISTEMA AINDA USA
 
-**Isto nunca pode acontecer. Nem uma vez.** A base tem dado real — ~8.000 associados e 681 escolas — e o módulo de Ofícios está em uso diário. Apagar um arquivo ainda usado derruba a emissão de ofício ou corrompe cadastro que ninguém tem de onde recuperar.
+**Isto nunca pode acontecer. Nem uma vez.** A base tem dado real — ~8.000 associados e 679 escolas — e o módulo de Ofícios está em uso diário. Apagar um arquivo ainda usado derruba a emissão de ofício ou corrompe cadastro que ninguém tem de onde recuperar.
 
 Antes de declarar QUALQUER arquivo ou função como "órfão", "morto", "não usado" ou "candidato a remoção" — seja num relatório, seja numa recomendação, seja antes de deletar — é **obrigatório** completar os 5 passos abaixo. **Grep só nos `.html` NÃO é suficiente.**
 
