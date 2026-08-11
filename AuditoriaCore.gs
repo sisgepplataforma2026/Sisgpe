@@ -424,6 +424,53 @@ function aud_deAcesso_(acao, identificador, detalhe) {
   });
 }
 
+/**
+ * Exportação de dados — item 16.5.
+ *
+ * Registra o que saiu do sistema: qual módulo, quantos registros, em que
+ * formato, com que filtro, e se levava dado pessoal.
+ *
+ * POR QUE ISTO IMPORTA MAIS QUE OS OUTROS PONTOS
+ * Toda ação registrada nos outros pontos acontece DENTRO do sistema, onde a
+ * permissão continua valendo. Exportação é o contrário: o dado sai, vira
+ * arquivo, e a partir dali o SISGEP não controla mais nada — para onde foi,
+ * quem abriu, se ainda existe. Se um vazamento acontecer, esta é a única
+ * lista que responde por onde saiu.
+ *
+ * EXPORTAR é ação crítica pelo catálogo, então cai direto no card de
+ * críticas do painel.
+ *
+ * @param {Object} d { modulo, submodulo, formato, total, dadoPessoal,
+ *                     filtros, sessao }
+ */
+function aud_deExportacao_(d) {
+  d = d || {};
+  var partes = [];
+  if (d.total !== undefined) partes.push(d.total + " registro(s)");
+  if (d.formato) partes.push(String(d.formato).toUpperCase());
+  if (d.filtros) {
+    var f = [];
+    Object.keys(d.filtros).forEach(function (k) {
+      var v = d.filtros[k];
+      if (v !== "" && v !== null && v !== undefined) f.push(k + "=" + v);
+    });
+    if (f.length) partes.push("filtro: " + f.join(", "));
+  }
+  // O aviso de dado pessoal vai no texto, e não só num campo, porque é o que
+  // precisa saltar aos olhos de quem varre a lista.
+  if (d.dadoPessoal) partes.push("⚠ CONTÉM DADO PESSOAL");
+
+  return auditar_({
+    modulo: d.modulo || "Auditoria e Compliance",
+    submodulo: d.submodulo || "Exportações",
+    acao: "EXPORTAR",
+    sessao: d.sessao,
+    usuario: d.usuario,
+    valorNovo: { total: d.total, formato: d.formato, dadoPessoal: !!d.dadoPessoal },
+    justificativa: partes.join(" · ")
+  });
+}
+
 /** Formato do log financeiro: { modulo, idRegistro, usuario, valorAnterior, valorNovo, motivo } */
 function aud_deLogFinanceiro_(d) {
   d = d || {};

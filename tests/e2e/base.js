@@ -57,11 +57,34 @@ function aviso(descricao, detalhe) { registrar("ATENÇÃO", descricao, detalhe);
 function naoTestavel(descricao, motivo) { registrar("NÃO TESTÁVEL", descricao, motivo); }
 
 /** Espera que a chamada exploda (usado para testes de permissão). */
+/* Uma recusa só conta como trava de segurança se ela FOR sobre segurança.
+ *
+ * Até 11/08/2026 esta função dava PASSOU para qualquer exceção. Uma função
+ * sem trava nenhuma, que quebrasse por motivo alheio — "is not a function",
+ * planilha ausente, Drive indisponível — era contada como protegida. Foi
+ * assim que uma exposição real passou despercebida em t20: remover a
+ * verificação de sessão não derrubou o teste, porque a função continuava
+ * lançando por outro motivo.
+ *
+ * Agora a mensagem precisa parecer recusa de acesso. Erro de outra natureza
+ * é FALHOU, com o texto à vista — é informação, não ruído. */
+const BLOQUEIO_ESPERADO = /sess[ãa]o|permiss|acesso|administrador|autoriza|n[ãa]o tem|negad/i;
+
 function bloqueia(fn, descricao) {
-  try { const r = fn();
+  try {
+    const r = fn();
     if (r && r.ok === false) { registrar("PASSOU", descricao, "recusado: " + (r.mensagem || "").slice(0, 80)); return true; }
     registrar("FALHOU", descricao, "não bloqueou — retornou " + JSON.stringify(r).slice(0, 120)); return false;
-  } catch (e) { registrar("PASSOU", descricao, "bloqueado: " + String(e.message).slice(0, 80)); return true; }
+  } catch (e) {
+    const msg = String(e && e.message ? e.message : e);
+    if (BLOQUEIO_ESPERADO.test(msg)) {
+      registrar("PASSOU", descricao, "bloqueado: " + msg.slice(0, 80));
+      return true;
+    }
+    registrar("FALHOU", descricao,
+      "lançou, mas NÃO por sessão/permissão — a trava pode não existir: " + msg.slice(0, 90));
+    return false;
+  }
 }
 
 function resumo() {

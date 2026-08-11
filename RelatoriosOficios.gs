@@ -65,6 +65,35 @@ function exportarRelatorio(filtros, tokenSessao) {
   aba.getRange(2, 1, linhas.length, linhas[0].length).setValues(linhas);
   aba.autoResizeColumns(1, cabecalho.length);
 
+  /* Exportação na trilha (item 16.5). O relatório de ofícios não leva CPF —
+   * as colunas são número, tipo, escola, CNPJ e data — por isso dadoPessoal
+   * fica falso aqui. Marcar tudo como dado pessoal esvaziaria o alerta. */
+  try {
+    if (typeof aud_deExportacao_ === "function") {
+      aud_deExportacao_({
+        modulo: "Documentos", submodulo: "Relatórios de Ofícios",
+        formato: tipoExportacao, total: linhas.length, dadoPessoal: false,
+        filtros: { tipo: tipoFiltro, escola: escolaFiltro,
+                   de: filtros.dataInicio || "", ate: filtros.dataFim || "" },
+        sessao: sessaoDocumentos
+      });
+    }
+  } catch (e) { Logger.log("[exportacao] ponte de auditoria falhou: " + e.message); }
+
+  /* Exportar a auditoria é, ele próprio, ação auditada — senão a única ação
+   * que não deixa rastro seria justamente levar o rastro embora. */
+  try {
+    if (typeof aud_deExportacao_ === "function") {
+      aud_deExportacao_({
+        modulo: "Auditoria e Compliance", submodulo: "Exportações",
+        formato: tipoExportacao, total: linhas.length, dadoPessoal: false,
+        filtros: { usuario: usuarioFiltro, tipo: tipoFiltro, escola: escolaFiltro,
+                   de: filtros.dataInicio || "", ate: filtros.dataFim || "" },
+        sessao: sessaoDocumentos
+      });
+    }
+  } catch (e) { Logger.log("[exportacao] ponte de auditoria falhou: " + e.message); }
+
   return relOficios_exportarPlanilhaTemporaria_(planilhaTemp, nomeArquivo, tipoExportacao);
 }
 

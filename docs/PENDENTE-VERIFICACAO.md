@@ -71,6 +71,25 @@ for isso, nenhum dado vencido foi apagado até hoje.
 
 ---
 
+### 6. Exportações — o arquivo gerado
+**Aberto em:** 11/08/2026
+
+O emulador não cria arquivo no Drive. O conteúdo do que sai continua
+**não testado**.
+
+| O quê | Como verificar |
+|---|---|
+| Relatório de ofícios | Exportar por Relatórios. Conferir que a linha aparece em Auditoria › Exportações, **sem** marca vermelha. |
+| Base de associados | Exportar uma fila. A linha tem que aparecer **com** marca vermelha de dado pessoal, e o CPF no arquivo sair mascarado. |
+| Exportar a auditoria | Também tem que se registrar. |
+
+**O que a lista não alcança, e é bom saber:** abrir a planilha do Google
+direto, copiar e colar de uma tela, tirar print ou baixar anexo de e-mail
+não passa pelo SISGEP. A tela responde "o que saiu pelo sistema", não "o
+que saiu do sindicato".
+
+---
+
 ### 2. Firestore — gravação real
 **Aberto em:** 06/08/2026
 

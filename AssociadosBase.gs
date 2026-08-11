@@ -358,5 +358,19 @@ function assocExportarFila(fila, tokenSessao) {
                  a.escola || "", a.cidade || ""]);
   });
 
+  /* Exportação da base na trilha. dadoPessoal fica VERDADEIRO mesmo com o
+   * CPF mascarado: nome completo, e-mail e escola juntos já identificam a
+   * pessoa, e a LGPD não fala em CPF — fala em dado que identifica. */
+  try {
+    if (typeof aud_deExportacao_ === "function") {
+      aud_deExportacao_({
+        modulo: "Base de Associados", submodulo: "Exportações",
+        formato: "CSV", total: lista.length, dadoPessoal: true,
+        filtros: { fila: f.rotulo },
+        sessao: { token: tokenSessao }
+      });
+    }
+  } catch (e) { Logger.log("[exportacao] ponte de auditoria falhou: " + e.message); }
+
   return { ok: true, fila: f.rotulo, total: lista.length, linhas: linhas };
 }
