@@ -156,7 +156,7 @@
       <button class="spN" data-mod="auditoriaPainel" data-acordeao="auditoriaSubMenuSidebar" onclick="spAcordeao(this);spIr('auditoriaPainel',this)">
         <span class="spNI">🛡️</span><div><strong>Auditoria e Compliance</strong><small>Rastreabilidade, LGPD e ações críticas</small></div>
       </button>
-      <div id="auditoriaSubMenuSidebar" class="docSubMenuSidebar" data-subs="auditoriaPainel,auditoriaTrilha,auditoriaAcessos,auditoriaExportacoes,auditoriaCompart,auditoriaIncidentes,auditoriaLgpd,auditoriaRetencao" style="display:none;">
+      <div id="auditoriaSubMenuSidebar" class="docSubMenuSidebar" data-subs="auditoriaPainel,auditoriaTrilha,auditoriaAcessos,auditoriaExportacoes,auditoriaCompart,auditoriaIncidentes,auditoriaLgpd,auditoriaRetencao,auditoriaRelatorios" style="display:none;">
         <button type="button" class="docSubMenuBtn" data-sub-mod="auditoriaPainel" onclick="spIr('auditoriaPainel',null)">📊 Dashboard</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="auditoriaTrilha" onclick="spIr('auditoriaTrilha',null)">📋 Trilha de Alterações</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="auditoriaAcessos" onclick="spIr('auditoriaAcessos',null)">🔑 Logs de Acesso</button>
@@ -165,6 +165,7 @@
         <button type="button" class="docSubMenuBtn" data-sub-mod="auditoriaIncidentes" onclick="spIr('auditoriaIncidentes',null)">🚨 Incidentes</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="auditoriaLgpd" onclick="spIr('auditoriaLgpd',null)">⚖️ LGPD e Direitos</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="auditoriaRetencao" onclick="spIr('auditoriaRetencao',null)">🗑️ Retenção e Descarte</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="auditoriaRelatorios" onclick="spIr('auditoriaRelatorios',null)">📑 Relatórios</button>
       </div>
 
       <button class="spN" data-mod="config" onclick="spIr('config',this)">
@@ -603,6 +604,9 @@ function benefAdminPesquisar(){var input=document.getElementById("benefAdminBusc
       </div>
       <div id="mAuditoriaLgpd" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
         <?!= include('AuditoriaLgpd'); ?>
+      </div>
+      <div id="mAuditoriaRelatorios" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('AuditoriaRelatorios'); ?>
       </div>
       <div id="mAuditoriaRetencao" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
         <?!= include('AuditoriaRetencao'); ?>
@@ -1325,6 +1329,7 @@ var MODS={
   auditoriaCompart:["mAuditoriaCompart","Compartilhamentos","Links que abrem sem login — quem recebeu, até quando vale, e como desligar"],
   auditoriaIncidentes:["mAuditoriaIncidentes","Incidentes de Segurança","Registro, apuração e comunicação — LGPD art. 48"],
   auditoriaLgpd:["mAuditoriaLgpd","LGPD — Dados e Direitos","Onde há dado pessoal, e o que os titulares pediram"],
+  auditoriaRelatorios:["mAuditoriaRelatorios","Relatórios de Auditoria","Seis perguntas, respondidas em um clique"],
   auditoriaRetencao:["mAuditoriaRetencao","Retenção e Descarte","Prazo de guarda dos dados pessoais e o expurgo automático — LGPD"],
   patrimonio:["mPatrimonio","Patrimônio","Bens e Inventário"],
   comunicacao:["mComunicacao","Painel do Dia","Central de Comunicação — resumo, prioridades e ações rápidas de e-mail"],
@@ -1832,6 +1837,24 @@ if(mod==="beneficios"){
             ? "<strong>O script da tela executou, mas quebrou no meio.</strong>"
             : "<strong>O script desta tela nao executou.</strong> Confira se o " +
               "<code>AuditoriaLgpd.html</code> esta no projeto e se saiu nova versao.") +
+          "</div>";
+      }
+    },120);
+    return;
+  }
+
+  if(mod==="auditoriaRelatorios"){
+    setTimeout(function(){
+      if(callFn("initAuditoriaRelatorios")) return;
+      var alvo = document.getElementById("raCatalogo");
+      if(alvo){
+        alvo.innerHTML =
+          '<div style="background:#fee2e2;border:1.5px solid #fca5a5;border-radius:12px;' +
+          'padding:13px 17px;font-size:12.5px;font-weight:600;color:#991b1b;">' +
+          (typeof window.AUD_REL_MARCADOR === "string"
+            ? "<strong>O script da tela executou, mas quebrou no meio.</strong>"
+            : "<strong>O script desta tela nao executou.</strong> Confira se o " +
+              "<code>AuditoriaRelatorios.html</code> esta no projeto e se saiu nova versao.") +
           "</div>";
       }
     },120);

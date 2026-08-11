@@ -148,6 +148,17 @@ antes de implementar.
 
 ---
 
+### 10. Relatórios — o CSV e a leitura em produção
+**Aberto em:** 11/08/2026
+
+| O quê | Como verificar |
+|---|---|
+| **Conformidade LGPD** | É o relatório que se leva para reunião. Gerar e ler linha por linha. No emulador ele acusa pendências que **podem já estar resolvidas no projeto real** — só o ambiente real dá o retrato certo. |
+| Download do CSV | O arquivo é montado no navegador. Abrir no Excel e conferir **os acentos** (usa BOM e ponto e vírgula). |
+| A geração se registra | Gerar um relatório e conferir que a linha aparece em Auditoria › Exportações. |
+
+---
+
 ### 2. Firestore — gravação real
 **Aberto em:** 06/08/2026
 
