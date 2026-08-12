@@ -388,9 +388,23 @@ do projeto no editor, log confirmado pelo usuário em 12/08/2026:
 | **`escolasPendenciasListar` responde** | ✅ **verificado** — a lista traz as 65, com nome, id, documento mascarado, cidade/UF e linha |
 | **Os cards batem com o backend** | ✅ **verificado** — 19 / 0 / 1 / 0 / 39 / 13 / 1 e "614 de 679 (90,4%)", idênticos ao log do resumo |
 | **O detalhe de "dado fora do lugar"** | ✅ **verificado** — mostra campo, conteúdo e o que aparenta ser |
+| **Layout em duas faixas** | ✅ **verificado** em 12/08/2026 — 4 cards em "Trava a operação", 3 em "Reduz o alcance" |
+| **Busca e paginação na tela** | ✅ **verificado** — campo presente, "página 1 de 2" com 65 em páginas de 50 |
+| **O e-mail aparece na linha** | ✅ **verificado** — `ceibrilhodesol@gmail.com`, `decio@controllerone.com.br` |
+| 🔴 **Digitar na busca filtra** | por nome, CNPJ, e-mail e ID — e os cards não podem mudar de número |
+| 🔴 **Os botões de página funcionam** | « ‹ › » e o contador virando para "página 2 de 2" |
 | 🔴 **Clicar num card filtra** | e os outros seis cards têm que ficar com o mesmo número |
 | 🔴 **"Abrir no Cadastro"** | deve navegar e deixar o nome já digitado na busca |
 | 🔴 **Corrigir uma escola e ver o número cair** | de 19 para 18 é o ciclo completo |
+
+**Segundo achado da fila, 12/08/2026 — a UF que falta está dentro do
+telefone.** A única escola sem UF é o `Colegio Alternativo LTDA`
+(`ESC-000194`, linha 195, cidade Jacaraípe), e o `Telefone 1` dela guarda
+`Serra - ES`. Jacaraípe fica em Serra/ES, então o `ES` existe — só está na
+coluna errada. A Etapa C não pegou porque procurava a UF no fim do nome da
+cidade, e aqui o par cidade-estado tinha ido parar noutra coluna.
+**Correção sugerida:** `UF = ES` e limpar o `Telefone 1`. Uma linha, decisão
+humana — que é para isso que a fila existe.
 
 **Achado da primeira tela com dado real:** a única escola sem e-mail é a
 **Pre-escola Anjo Azul** (`ESC-000123`, linha 124). Ela acumula as três
