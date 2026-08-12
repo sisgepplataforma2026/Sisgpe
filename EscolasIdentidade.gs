@@ -1177,9 +1177,12 @@ function escolaJuntarValores_(atual, novo) {
 var ESC_PROP_CONSENTIMENTO = "SISGEP_ESCOLAS_SANEAR_OK";
 var ESC_CONSENTIMENTO_MINUTOS = 15;
 
-function escolaConsentimentoValido_() {
+/* A chave separa as operações: preparar o saneamento NÃO pode autorizar a
+ * padronização, e vice-versa. Sem isso, uma prévia liberaria a outra
+ * migração — que o usuário nunca viu. */
+function escolaConsentimentoValido_(chave) {
   try {
-    var v = PropertiesService.getScriptProperties().getProperty(ESC_PROP_CONSENTIMENTO);
+    var v = PropertiesService.getScriptProperties().getProperty(ESC_PROP_CONSENTIMENTO + (chave || ""));
     if (!v) return false;
     var quando = parseInt(v, 10);
     if (!quando) return false;
@@ -1187,8 +1190,13 @@ function escolaConsentimentoValido_() {
   } catch (e) { return false; }
 }
 
-function escolaConsumirConsentimento_() {
-  try { PropertiesService.getScriptProperties().deleteProperty(ESC_PROP_CONSENTIMENTO); } catch (e) {}
+function escolaConsumirConsentimento_(chave) {
+  try { PropertiesService.getScriptProperties().deleteProperty(ESC_PROP_CONSENTIMENTO + (chave || "")); } catch (e) {}
+}
+
+function escolaLiberarConsentimento_(chave) {
+  PropertiesService.getScriptProperties()
+    .setProperty(ESC_PROP_CONSENTIMENTO + (chave || ""), String(new Date().getTime()));
 }
 
 /**
@@ -1209,8 +1217,7 @@ function escolaSanearPreparar() {
   var r = escolaSanearReceita("", "", true);   // true = simular
   if (r && r.ok === false) return r;
   try {
-    PropertiesService.getScriptProperties()
-      .setProperty(ESC_PROP_CONSENTIMENTO, String(new Date().getTime()));
+    escolaLiberarConsentimento_("SANEAR");
   } catch (e) {
     Logger.log("Não consegui registrar o consentimento: " + e);
     return { ok: false, mensagem: "Falha ao liberar a aplicação: " + e.message };
@@ -1287,7 +1294,7 @@ function escolaSanearReceita(tokenSessao, confirmacao, simular) {
       return recusaTela;
     }
   } else {
-    if (!escolaConsentimentoValido_()) {
+    if (!escolaConsentimentoValido_("SANEAR")) {
       var recusa = {
         ok: false,
         mensagem: "Saneamento NÃO executado — falta a prévia.\n\n" +
@@ -1297,7 +1304,7 @@ function escolaSanearReceita(tokenSessao, confirmacao, simular) {
       Logger.log(recusa.mensagem);
       return recusa;
     }
-    escolaConsumirConsentimento_();
+    escolaConsumirConsentimento_("SANEAR");
   }
 
   var lock = LockService.getScriptLock();
@@ -1433,6 +1440,307 @@ function escolaImprimirSaneamento_(r) {
     Logger.log(L.join("\n"));
   } catch (e) {
     Logger.log("escolaImprimirSaneamento_ falhou: " + e);
+  }
+}
+
+/* =============================================================== */
+/* ETAPA C — PADRONIZAR FORMATO                                     */
+/* =============================================================== */
+/*
+ * Um mesmo dado escrito de cinco jeitos é cinco dados diferentes para quem
+ * filtra, agrupa ou compara. A base tem telefone como "(028) 73521-8042",
+ * "2732566107" e "(61) 9210-5761"; CEP como "29190062" e "29.190-062";
+ * e-mails separados ora por ";" ora por ",".
+ *
+ * E o caso que mais rende: UF está VAZIA em 649 das 679 linhas — mas
+ * `Cidade` guarda "Alegre - ES". A UF sempre esteve lá, grudada. Dá para
+ * preencher as 649 sem consultar nada.
+ *
+ * DECISÃO DO USUÁRIO (11/08/2026), opção A: a cidade fica só com o nome.
+ * "Alegre - ES" vira Cidade="Alegre" + UF="ES". Cada dado no seu campo — é
+ * para isso que a coluna UF existe. Manter a UF nos dois lugares seria a
+ * mesma duplicidade que o item 8 do PROMPT-MESTRE manda evitar: dois lugares
+ * divergem com o tempo.
+ *
+ * REGRA DE OURO DESTA ETAPA: na dúvida, não mexe. Valor que não casa com o
+ * padrão fica exatamente como está e vai para Pendências. Padronizador que
+ * "adivinha" estraga dado — "(028) 73521-8042" tem 12 dígitos e não há como
+ * saber qual é o número certo.
+ */
+
+/** Telefone brasileiro: 10 ou 11 dígitos. Fora disso, devolve null. */
+function escolaFormatarTelefone_(v) {
+  var d = String(v == null ? "" : v).replace(/\D/g, "");
+  if (d.length === 11) return "(" + d.slice(0, 2) + ") " + d.slice(2, 7) + "-" + d.slice(7);
+  if (d.length === 10) return "(" + d.slice(0, 2) + ") " + d.slice(2, 6) + "-" + d.slice(6);
+  return null;   // 12 dígitos, 8 dígitos, letras — não se inventa
+}
+
+/** CEP: 8 dígitos → 29190-062. */
+function escolaFormatarCep_(v) {
+  var d = String(v == null ? "" : v).replace(/\D/g, "");
+  if (d.length !== 8) return null;
+  return d.slice(0, 5) + "-" + d.slice(5);
+}
+
+/**
+ * Lista de e-mails: minúsculo, sem espaço, separador único, sem repetido.
+ * Só devolve valor se TODAS as partes parecerem e-mail — uma lista com lixo
+ * dentro é caso de Pendências, não de formatação.
+ */
+function escolaFormatarEmails_(v) {
+  var t = String(v == null ? "" : v).trim();
+  if (!t) return null;
+  var partes = t.split(/[;,]/).map(function (x) { return x.trim().toLowerCase(); })
+                .filter(function (x) { return x; });
+  if (!partes.length) return null;
+  for (var i = 0; i < partes.length; i++) {
+    if (partes[i].indexOf("@") === -1 || /\s/.test(partes[i])) return null;
+  }
+  var vistos = {}, limpos = [];
+  partes.forEach(function (p) { if (!vistos[p]) { vistos[p] = true; limpos.push(p); } });
+  return limpos.join("; ");
+}
+
+/**
+ * Separa "Alegre - ES" em { cidade: "Alegre", uf: "ES" }.
+ * Devolve null quando não há sufixo de UF — "São Paulo" tem que continuar
+ * "São Paulo", e não virar cidade "São Pau" com UF "LO".
+ */
+function escolaSepararCidadeUf_(v) {
+  var t = String(v == null ? "" : v).trim();
+  if (!t) return null;
+  var m = t.match(/^(.+?)\s*[-–—\/]\s*([A-Za-z]{2})$/);
+  if (!m) return null;
+  var uf = m[2].toUpperCase();
+  if (ESC_UFS.indexOf(uf) === -1) return null;      // "Rio - do Sul" não vira UF
+  var cidade = m[1].trim();
+  if (!cidade) return null;
+  return { cidade: cidade, uf: uf };
+}
+
+var ESC_PADRONIZACAO = [
+  { coluna: "Telefone 1",         fn: escolaFormatarTelefone_, rotulo: "telefone" },
+  { coluna: "Telefone 2",         fn: escolaFormatarTelefone_, rotulo: "telefone" },
+  { coluna: "CEP",                fn: escolaFormatarCep_,      rotulo: "CEP" },
+  { coluna: "E-mail (principal)", fn: escolaFormatarEmails_,   rotulo: "e-mail" },
+  { coluna: "E-mails (todos)",    fn: escolaFormatarEmails_,   rotulo: "e-mails" },
+  { coluna: "EMAIL_EXTERNO",      fn: escolaFormatarEmails_,   rotulo: "e-mails" }
+];
+
+function escolaPadronizarBase(tokenSessao, confirmacao, simular) {
+  simular = (simular === true);
+  var quem;
+  if (String(tokenSessao || "").trim()) {
+    var s = exigirModulo_(tokenSessao, "escolas", true);
+    quem = String((s && (s.nome || s.usuario || s.email)) || "").trim() || "—";
+  } else {
+    var email = "";
+    try { email = String(Session.getActiveUser().getEmail() || "").trim().toLowerCase(); } catch (e) {}
+    var dono = "";
+    try { dono = String(Session.getEffectiveUser().getEmail() || "").trim().toLowerCase(); } catch (e2) {}
+    if (!email) throw new Error("Sessão inválida ou expirada. Entre novamente no SISGEP.");
+    if (email !== dono && !escolaEhAdministradorPorEmail_(email)) {
+      throw new Error("Ação permitida somente para administradores.");
+    }
+    quem = email;
+  }
+
+  // Mesma trava de duas etapas do saneamento — com chave PRÓPRIA, para que
+  // preparar uma migração nunca autorize a outra.
+  if (simular) {
+    /* segue */
+  } else if (String(tokenSessao || "").trim()) {
+    if (String(confirmacao || "").trim().toUpperCase() !== "PADRONIZAR") {
+      var rt = { ok: false, mensagem: "Confirmação obrigatória para padronizar a base." };
+      Logger.log(rt.mensagem);
+      return rt;
+    }
+  } else {
+    if (!escolaConsentimentoValido_("PADRONIZAR")) {
+      var r0 = {
+        ok: false,
+        mensagem: "Padronização NÃO executada — falta a prévia.\n\n" +
+                  "1) rode  escolaPadronizarPreparar\n" +
+                  "2) rode  escolaPadronizarAplicar   (dentro de 15 minutos)"
+      };
+      Logger.log(r0.mensagem);
+      return r0;
+    }
+    escolaConsumirConsentimento_("PADRONIZAR");
+  }
+
+  var lock = LockService.getScriptLock();
+  var travou = false;
+  try {
+    travou = lock.tryLock(30000);
+    if (!travou) return { ok: false, mensagem: "Outra operação de Escolas está em andamento." };
+
+    var ss = SpreadsheetApp.openById(PLANILHA_ID);
+    var sh = ss.getSheetByName(ABA_ESCOLAS);
+    if (!sh) return { ok: false, mensagem: "Aba '" + ABA_ESCOLAS + "' não encontrada." };
+    var ultimaLinha = sh.getLastRow();
+    if (ultimaLinha < 2) return { ok: true, alterados: 0, mensagem: "Nenhuma escola na base." };
+
+    var dados = sh.getRange(1, 1, ultimaLinha, sh.getLastColumn()).getValues();
+    var cab = dados[0].map(function (c) { return String(c || "").trim(); });
+    function idx(n) { return cab.indexOf(n); }
+
+    var nomeBackup = "";
+    if (!simular) {
+      nomeBackup = escolaNomeBackupLivre_(ss, "BACKUP_ESCOLAS_PADRAO_");
+      var shB = ss.insertSheet(nomeBackup);
+      shB.getRange(1, 1, dados.length, dados[0].length).setValues(dados);
+      shB.getRange(1, 1, 1, dados[0].length).setFontWeight("bold");
+      shB.setFrozenRows(1);
+    }
+
+    var porColuna = {};
+    ESC_PADRONIZACAO.forEach(function (p) {
+      porColuna[p.coluna] = { coluna: p.coluna, rotulo: p.rotulo, i: idx(p.coluna),
+                              alterados: 0, naoReconhecidos: 0, exemplos: [] };
+    });
+
+    var iCidade = idx("Cidade"), iUf = idx("UF");
+    var ufsPreenchidas = 0, cidadesSemSufixo = 0, ufsDivergentes = 0;
+    var exemplosCidade = [], exemplosDivergencia = [];
+    var totalAlterados = 0;
+
+    for (var l = 1; l < dados.length; l++) {
+      // 1) formato coluna a coluna
+      for (var k = 0; k < ESC_PADRONIZACAO.length; k++) {
+        var p = ESC_PADRONIZACAO[k];
+        var reg = porColuna[p.coluna];
+        if (reg.i === -1) continue;
+        var atual = dados[l][reg.i];
+        if (atual instanceof Date) continue;
+        var txt = String(atual == null ? "" : atual).trim();
+        if (!txt) continue;
+        var novo = p.fn(txt);
+        if (novo === null) {
+          // Não casou com o padrão: FICA COMO ESTÁ. Vai para Pendências.
+          reg.naoReconhecidos++;
+          if (reg.exemplos.length < 3) reg.exemplos.push({ linha: l + 1, valor: txt.slice(0, 35) });
+          continue;
+        }
+        if (novo === txt) continue;      // já estava no padrão
+        dados[l][reg.i] = novo;
+        reg.alterados++;
+        totalAlterados++;
+      }
+
+      // 2) separar "Alegre - ES" em Cidade + UF (decisão do usuário: opção A)
+      if (iCidade > -1 && iUf > -1) {
+        var sep = escolaSepararCidadeUf_(dados[l][iCidade]);
+        if (!sep) {
+          if (String(dados[l][iCidade] || "").trim()) cidadesSemSufixo++;
+        } else {
+          var ufAtual = String(dados[l][iUf] || "").trim().toUpperCase();
+          if (ufAtual && ufAtual !== sep.uf) {
+            // Duas fontes discordam. Não escolho por dedução — nada muda.
+            ufsDivergentes++;
+            if (exemplosDivergencia.length < 3) {
+              exemplosDivergencia.push({ linha: l + 1, cidade: String(dados[l][iCidade]), ufColuna: ufAtual });
+            }
+          } else {
+            if (dados[l][iCidade] !== sep.cidade) { dados[l][iCidade] = sep.cidade; totalAlterados++; }
+            if (!ufAtual) { dados[l][iUf] = sep.uf; ufsPreenchidas++; totalAlterados++; }
+            if (exemplosCidade.length < 3 && sep.cidade) {
+              exemplosCidade.push({ linha: l + 1, cidade: sep.cidade, uf: sep.uf });
+            }
+          }
+        }
+      }
+    }
+
+    if (!simular && totalAlterados > 0) {
+      sh.getRange(1, 1, dados.length, cab.length).setValues(dados);
+      SpreadsheetApp.flush();
+      invalidarCacheEscolasInterno_();
+      escolaAuditar_("PADRONIZAR_BASE", "", "",
+        "Padronização de formato: " + totalAlterados + " célula(s) ajustada(s), " +
+        ufsPreenchidas + " UF(s) preenchida(s) a partir da cidade. Backup: " + nomeBackup + ".", quem);
+    }
+
+    var resultado = {
+      ok: true, simulacao: simular, alterados: totalAlterados,
+      ufsPreenchidas: ufsPreenchidas, cidadesSemSufixo: cidadesSemSufixo,
+      ufsDivergentes: ufsDivergentes, exemplosCidade: exemplosCidade,
+      exemplosDivergencia: exemplosDivergencia, backup: nomeBackup,
+      colunas: ESC_PADRONIZACAO.map(function (p) { return porColuna[p.coluna]; })
+    };
+    escolaImprimirPadronizacao_(resultado);
+    return resultado;
+  } catch (e) {
+    Logger.log("Erro na padronização: " + e.message);
+    return { ok: false, mensagem: "Erro na padronização: " + e.message };
+  } finally {
+    if (travou) { try { lock.releaseLock(); } catch (e3) {} }
+  }
+}
+
+/** PASSO 1 — mostra o que vai mudar. Não escreve nada. */
+function escolaPadronizarPreparar() {
+  var r = escolaPadronizarBase("", "", true);
+  if (r && r.ok === false) return r;
+  try { escolaLiberarConsentimento_("PADRONIZAR"); }
+  catch (e) { return { ok: false, mensagem: "Falha ao liberar: " + e.message }; }
+  Logger.log("\n═══════════════════════════════════════════════\n" +
+             "PRÉVIA ACIMA. Nada foi alterado ainda.\n" +
+             "Se concorda, rode  escolaPadronizarAplicar  nos próximos " +
+             ESC_CONSENTIMENTO_MINUTOS + " minutos.\n" +
+             "═══════════════════════════════════════════════");
+  return { ok: true, preparado: true, validoPorMinutos: ESC_CONSENTIMENTO_MINUTOS };
+}
+
+/** PASSO 2 — aplica. Só depois de escolaPadronizarPreparar. */
+function escolaPadronizarAplicar() {
+  return escolaPadronizarBase("", "");
+}
+
+function escolaImprimirPadronizacao_(r) {
+  try {
+    var L = [];
+    L.push(r.simulacao ? "═══ PRÉVIA DA PADRONIZAÇÃO (nada foi alterado) ═══"
+                       : "═══ PADRONIZAÇÃO DA BASE DE ESCOLAS ═══");
+    if (r.backup) L.push("backup: " + r.backup);
+    L.push("");
+    L.push("FORMATO POR COLUNA");
+    r.colunas.forEach(function (c) {
+      if (c.i === -1) return;
+      L.push("  " + c.coluna + "  (" + c.rotulo + ")");
+      L.push("     " + (r.simulacao ? "a ajustar ....... " : "ajustados ....... ") + c.alterados);
+      if (c.naoReconhecidos) {
+        L.push("     NÃO reconhecidos  " + c.naoReconhecidos + "  ← ficam como estão, vão para Pendências");
+        c.exemplos.forEach(function (e) { L.push("        linha " + e.linha + ": " + e.valor); });
+      }
+    });
+
+    L.push("");
+    L.push("CIDADE → CIDADE + UF");
+    L.push("  " + (r.simulacao ? "UFs a preencher ..... " : "UFs preenchidas ..... ") + r.ufsPreenchidas);
+    r.exemplosCidade.forEach(function (e) {
+      L.push("     linha " + e.linha + ": Cidade=\"" + e.cidade + "\"  UF=\"" + e.uf + "\"");
+    });
+    if (r.cidadesSemSufixo) {
+      L.push("  cidades sem sufixo de UF  " + r.cidadesSemSufixo + "  ← intocadas, de propósito");
+    }
+    if (r.ufsDivergentes) {
+      L.push("  ⚠ UF da coluna DIVERGE da cidade  " + r.ufsDivergentes + "  ← intocadas");
+      r.exemplosDivergencia.forEach(function (e) {
+        L.push("     linha " + e.linha + ": cidade diz outra coisa, coluna UF diz " + e.ufColuna);
+      });
+    }
+
+    L.push("");
+    L.push((r.simulacao ? "  TOTAL a alterar ..... " : "  TOTAL alterado ...... ") + r.alterados + " célula(s)");
+    L.push("");
+    L.push(r.simulacao
+      ? "Nada foi alterado. Este é exatamente o que escolaPadronizarAplicar fará."
+      : "Para desfazer, a aba " + r.backup + " tem a base como estava.");
+    Logger.log(L.join("\n"));
+  } catch (e) {
+    Logger.log("escolaImprimirPadronizacao_ falhou: " + e);
   }
 }
 

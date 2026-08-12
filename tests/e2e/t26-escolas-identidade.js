@@ -649,7 +649,7 @@ b.passo("48. ⚠ Sem a prévia, NÃO roda");
 // função SEM ARGUMENTOS, então exigir uma palavra digitada tornava a migração
 // impossível de rodar pelo único caminho que existe hoje.
 montarBaseSuja();
-try { g.PropertiesService.getScriptProperties().deleteProperty(g.ESC_PROP_CONSENTIMENTO); } catch (e) {}
+try { g.PropertiesService.getScriptProperties().deleteProperty(g.ESC_PROP_CONSENTIMENTO + "SANEAR"); } catch (e) {}
 // Sem token, como o editor chama. A identidade do dono passa a permissão —
 // que é checada ANTES da trava de mão, e é assim que tem que ser: quem não
 // pode nem chega a ver a trava.
@@ -772,7 +772,7 @@ b.passo("54c. ⚠ E a liberação EXPIRA");
 montarBaseSuja();
 g.escolaSanearPreparar();
 g.PropertiesService.getScriptProperties().setProperty(
-  g.ESC_PROP_CONSENTIMENTO, String(new Date().getTime() - 20 * 60 * 1000));  // 20 min atrás
+  g.ESC_PROP_CONSENTIMENTO + "SANEAR", String(new Date().getTime() - 20 * 60 * 1000));  // 20 min atrás
 const expirado = g.escolaSanearAplicar();
 b.ok(expirado.ok === false && /pr[ée]via|preparar/i.test(expirado.mensagem || ""),
   "prévia de 20 minutos atrás não autoriza mais",
@@ -806,5 +806,121 @@ g.__usuarioAtivoEmail = "";
 b.bloqueia(function () { return g.escolaSanearReceita("", "SANEAR"); },  "sanear exige sessão");
 b.bloqueia(function () { return g.escolaSanearReceita(FIN, "SANEAR"); }, "financeiro não saneia");
 b.bloqueia(function () { return g.escolaSanearReceita(ESC, "SANEAR"); }, "não-admin não saneia");
+
+/* ══════════════════════════════════════════════════════════════════════
+   11. ETAPA C — PADRONIZAR FORMATO
+   ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("IDENTIDADE · Padronizar formato");
+
+b.passo("59. Os formatadores acertam o que dá, e recusam o que não dá");
+const fmt = [
+  [g.escolaFormatarTelefone_("2732566107"),      "(27) 3256-6107"],
+  [g.escolaFormatarTelefone_("27999998888"),     "(27) 99999-8888"],
+  [g.escolaFormatarTelefone_("(61) 9210-5761"),  "(61) 9210-5761"],
+  [g.escolaFormatarCep_("29190062"),             "29190-062"],
+  [g.escolaFormatarCep_("29.190-062"),           "29190-062"],
+  [g.escolaFormatarEmails_(" A@X.com ; b@Y.com "), "a@x.com; b@y.com"],
+  [g.escolaFormatarEmails_("a@x.com, a@x.com"),  "a@x.com"]
+];
+const errosFmt = fmt.filter(([obtido, esp]) => obtido !== esp);
+b.ok(errosFmt.length === 0, "telefone, CEP e lista de e-mails",
+  errosFmt.length ? JSON.stringify(errosFmt[0]) : "7 formatos");
+
+b.passo("60. ⚠ O que não casa com o padrão devolve null — não se inventa");
+// "(028) 73521-8042" tem 12 dígitos. Não existe telefone brasileiro assim, e
+// não há como saber qual seria o certo. Padronizador que adivinha estraga.
+b.ok(g.escolaFormatarTelefone_("(028) 73521-8042") === null &&
+     g.escolaFormatarTelefone_("Alegre - ES") === null &&
+     g.escolaFormatarCep_("310") === null &&
+     g.escolaFormatarEmails_("290") === null,
+  "telefone de 12 dígitos, texto, CEP curto e número solto são recusados");
+
+b.passo("61. ⚠ Cidade só perde o sufixo quando ele é UF de verdade");
+// Sem esta checagem, "São Paulo" viraria cidade "São Pau" com UF "LO".
+const sep1 = g.escolaSepararCidadeUf_("Alegre - ES");
+b.ok(sep1 && sep1.cidade === "Alegre" && sep1.uf === "ES" &&
+     g.escolaSepararCidadeUf_("São Paulo") === null &&
+     g.escolaSepararCidadeUf_("Rio - do") === null,
+  "separa Alegre - ES, e deixa São Paulo em paz",
+  JSON.stringify(sep1));
+
+b.passo("62. Padroniza a base e preenche a UF a partir da cidade");
+const shP = zerarTudo();
+const CAB_P = ["Escola (Razão Social)", "CNPJ", "Telefone 1", "Telefone 2",
+               "Cidade", "UF", "CEP", "E-mails (todos)"];
+shP.getRange(1, 1, 1, CAB_P.length).setValues([CAB_P]);
+shP.appendRow(["Escola A", "11.222.333/0001-81", "2732566107", "",
+               "Alegre - ES", "", "29190062", " A@X.com ; b@Y.com "]);
+shP.appendRow(["Escola B", "22.333.444/0001-81", "(028) 73521-8042", "",
+               "São Paulo", "", "", ""]);
+g.__usuarioAtivoEmail = g.__donoDoProjetoEmail;
+g.escolaPadronizarPreparar();
+const pad = g.escolaPadronizarAplicar();
+const linhasP = shP.getRange(2, 1, 2, CAB_P.length).getValues();
+b.ok(pad.ok === true &&
+     linhasP[0][2] === "(27) 3256-6107" &&
+     linhasP[0][4] === "Alegre" && linhasP[0][5] === "ES" &&
+     linhasP[0][6] === "29190-062" &&
+     linhasP[0][7] === "a@x.com; b@y.com",
+  "telefone, cidade/UF, CEP e e-mails no padrão",
+  linhasP[0].slice(2).join(" · "));
+
+b.passo("63. ⚠ E NÃO toca no que não reconhece");
+// A linha B tem telefone impossível e cidade sem sufixo. Tudo tem que ficar
+// exatamente como estava — é o que separa padronizar de estragar.
+b.ok(linhasP[1][2] === "(028) 73521-8042" && linhasP[1][4] === "São Paulo" &&
+     String(linhasP[1][5]) === "" && pad.cidadesSemSufixo === 1,
+  "telefone impossível e cidade sem UF ficam intactos",
+  linhasP[1][2] + " · " + linhasP[1][4]);
+
+b.passo("64. ⚠ UF que já existe e DIVERGE da cidade não é sobrescrita");
+// Duas fontes discordando é decisão humana, não dedução.
+zerarTudo();
+const shD2 = ss.getSheetByName("Escolas");
+shD2.getRange(1, 1, 1, CAB_P.length).setValues([CAB_P]);
+shD2.appendRow(["Escola C", "", "", "", "Alegre - ES", "MG", "", ""]);
+g.escolaPadronizarPreparar();
+const padD = g.escolaPadronizarAplicar();
+const lD = shD2.getRange(2, 1, 1, CAB_P.length).getValues()[0];
+b.ok(padD.ufsDivergentes === 1 && lD[4] === "Alegre - ES" && lD[5] === "MG",
+  "cidade diz ES, coluna diz MG — nada muda, vai para Pendências",
+  "divergentes=" + padD.ufsDivergentes);
+
+b.passo("65. ⚠ A prévia prevê exatamente o que a aplicação faz");
+zerarTudo();
+const shS2 = ss.getSheetByName("Escolas");
+shS2.getRange(1, 1, 1, CAB_P.length).setValues([CAB_P]);
+shS2.appendRow(["Escola D", "", "2732566107", "", "Serra - ES", "", "29190062", ""]);
+const simP = g.escolaPadronizarBase("", "", true);
+g.escolaPadronizarPreparar();
+const apP = g.escolaPadronizarAplicar();
+b.ok(simP.alterados === apP.alterados && simP.ufsPreenchidas === apP.ufsPreenchidas &&
+     simP.simulacao === true && !simP.backup && !!apP.backup,
+  "mesma contagem, e só a aplicação cria backup",
+  "prévia=" + simP.alterados + " aplicado=" + apP.alterados);
+
+b.passo("66. ⚠ Rodar de novo não muda mais nada");
+const antesRep = JSON.stringify(shS2.getRange(1, 1, shS2.getLastRow(), CAB_P.length).getValues());
+g.escolaPadronizarPreparar();
+const rep = g.escolaPadronizarAplicar();
+b.ok(rep.alterados === 0 &&
+     antesRep === JSON.stringify(shS2.getRange(1, 1, shS2.getLastRow(), CAB_P.length).getValues()),
+  "idempotente", "alterados na 2ª = " + rep.alterados);
+
+b.passo("67. ⚠ A prévia do SANEAMENTO não autoriza a PADRONIZAÇÃO");
+// Consentimento sem chave deixaria uma prévia liberar a outra migração — que
+// o usuário nunca viu.
+try { g.PropertiesService.getScriptProperties().deleteProperty(g.ESC_PROP_CONSENTIMENTO + "PADRONIZAR"); } catch (e) {}
+g.escolaSanearPreparar();
+const cruzado = g.escolaPadronizarAplicar();
+b.ok(cruzado.ok === false && /pr[ée]via/i.test(cruzado.mensagem || ""),
+  "cada migração exige a própria prévia",
+  (cruzado.mensagem || "").split("\n")[0]);
+
+b.passo("68. E exige permissão");
+g.__usuarioAtivoEmail = "";
+b.bloqueia(function () { return g.escolaPadronizarBase("", "PADRONIZAR"); }, "padronizar exige sessão");
+b.bloqueia(function () { return g.escolaPadronizarBase(FIN, "PADRONIZAR"); }, "financeiro não padroniza");
+b.bloqueia(function () { return g.escolaPadronizarBase(ESC, "PADRONIZAR"); }, "não-admin não padroniza");
 
 b.resumo();
