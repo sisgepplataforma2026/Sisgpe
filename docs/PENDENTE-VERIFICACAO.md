@@ -12,6 +12,51 @@
 
 ## 🔴 ABERTO
 
+### 17. Voucher — o reparo do cabeçalho de `Voucher_Solicitacoes`
+**Aberto em:** 12/08/2026 · `Voucher.gs`, `VoucherReparoColunas.gs` · **BLOQUEIA EMISSÃO**
+
+**O que aconteceu, e a instrução foi minha.** Mandei rodar
+`inicializarModuloCertBolsa()` dizendo que era idempotente e que podia rodar
+sem medo. O `ensureHeaders_` escrevia o nome de uma coluna faltante **na
+posição que ela ocupa na lista canônica**, por cima do nome que já estava ali.
+O dado embaixo não se move — e `mapRowToObject_` resolve por nome, então o
+valor de uma coluna passa a ser lido sob o nome de outra.
+
+Medido na planilha real pelo `voucherDiagnosticoColunas`: **13 das 38 colunas
+com rótulo trocado**, e três nomes sumiram (`CURSO`, `ORDEM_FILHO`,
+`LINK_CONTRACHEQUE`). Piorava a cada execução, e
+`setupVoucherModuleFase1()` é chamada de nove lugares — vários em caminho de
+leitura. Abrir a prévia já rodava mais uma volta.
+
+**O que já está fechado (código, verificado no emulador):**
+
+| | |
+|---|---|
+| `ensureHeaders_` não renomeia mais | coluna nova entra no fim; `t31`, 15 asserções |
+| o reparo existe, com prévia e backup | `t32`, 46 asserções, 11 mutações mortas |
+| a trava de mapa vencido morde | recusa se uma célula do cabeçalho divergir |
+
+**O que falta — e trava a emissão até acontecer:**
+
+| Item | O que precisa acontecer |
+|---|---|
+| 🔴 **Rodar `voucherRepararColunasPrevia`** | e o usuário conferir as 13 linhas contra o que ele sabe da operação. A coluna 3 (`DATA_SOLICITACAO_TEXTO` guardando uma data) é a que tem menos evidência |
+| 🔴 **Rodar `voucherRepararColunasAplicar`** | dentro dos 15 minutos, e conferir que o backup `BACKUP_VOUCHER_SOLIC_*` foi criado |
+| 🔴 **Rodar `voucherDiagnosticoColunas` de novo** | todo rótulo tem que bater com o valor embaixo, e não pode sobrar nome ausente |
+| 🔴 **Conferir a prévia do certificado depois** | "Instituição de ensino" deve sair vazia (o campo nunca foi coletado), não com uma data |
+
+**Duas coisas menores que o mesmo log revelou, e que ficam para depois do
+reparo:**
+
+- **CPF perdeu o zero à esquerda** — saiu com 10 dígitos, então
+  `formatarCpfVoucher_` (`Voucher.gs:35`) desistiu de formatar e imprimiu cru.
+  A planilha guardou o CPF como número.
+- **A logo do cabeçalho é URL externa** (`lh3.googleusercontent.com`). A
+  assinatura virou base64 justamente porque URL externa não carrega de forma
+  confiável no `getAs(MimeType.PDF)`; a logo tem o mesmo risco e ficou de fora.
+
+---
+
 ### 16. Voucher — o envio do certificado (e-mail, WhatsApp e trilha)
 **Aberto em:** 12/08/2026 · `VoucherEnvio.gs`, `Voucher.gs`, `AuditoriaCore.gs`
 
