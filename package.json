@@ -1,0 +1,11 @@
+{
+  "name": "sisgep-tests",
+  "private": true,
+  "description": "Só o ferramental de teste. O SISGEP em si é um projeto Google Apps Script e não usa npm.",
+  "scripts": {
+    "test": "for f in tests/e2e/t*.js; do node \"$f\" || exit 1; done"
+  },
+  "devDependencies": {
+    "jsdom": "^30.0.1"
+  }
+}

@@ -89,7 +89,7 @@ var ESC_PENDENCIAS = [
  *     o CNPJ inteiro nunca encontraria nada. Aqui ela compara com os dígitos
  *     de verdade e devolve o mascarado — procura pelo real, mostra o seguro.
  *
- * @param {Object} filtros  { tipo, busca, pagina, porPagina }
+ * @param {Object} filtros  { tipo, busca, ordem, pagina, porPagina }
  * @return {Object} { ok, total, pagina, totalPaginas, resumo, escolas }
  */
 function escolasPendenciasListar(filtros, tokenSessao) {
@@ -233,11 +233,41 @@ function escolasPendenciasCalcular_(filtros) {
       });
     }
 
-    // Mais grave primeiro; dentro da mesma gravidade, quem tem mais pendências.
-    escolas.sort(function (a, b) {
-      if (a.gravidade !== b.gravidade) return a.gravidade - b.gravidade;
-      return b.pendencias.length - a.pendencias.length;
-    });
+    /* ORDENAÇÃO — e ela é AQUI, antes de fatiar a página.
+     *
+     * Ordenar no navegador só reorganizaria as 50 linhas já carregadas: a
+     * "primeira escola em A–Z" seria a primeira das 50 que por acaso vieram,
+     * não a primeira das 65. Ordenar antes de paginar é o que faz o A–Z
+     * significar alguma coisa. */
+    var ordem = String((filtros.ordem || "GRAVIDADE")).trim().toUpperCase();
+
+    function porNome(a, b) {
+      /* Cadastro sem razão social não tem como entrar na ordem alfabética.
+       * Vai para o fim nos dois sentidos — no começo ele encabeçaria a lista
+       * como um bloco de linhas em branco, que é a pior leitura possível. */
+      if (!a.nome && !b.nome) return a.linha - b.linha;
+      if (!a.nome) return 1;
+      if (!b.nome) return -1;
+      var x = escolasPendenciasNormalizar_(a.nome);
+      var y = escolasPendenciasNormalizar_(b.nome);
+      return x < y ? -1 : (x > y ? 1 : a.linha - b.linha);
+    }
+
+    if (ordem === "AZ") {
+      escolas.sort(porNome);
+    } else if (ordem === "ZA") {
+      escolas.sort(function (a, b) { return -porNome(a, b); });
+    } else {
+      // Padrão: mais grave primeiro; empatou, quem tem mais pendências.
+      ordem = "GRAVIDADE";
+      escolas.sort(function (a, b) {
+        if (a.gravidade !== b.gravidade) return a.gravidade - b.gravidade;
+        if (b.pendencias.length !== a.pendencias.length) {
+          return b.pendencias.length - a.pendencias.length;
+        }
+        return porNome(a, b);   // desempate estável, senão a ordem varia entre chamadas
+      });
+    }
 
     /* Página fora do intervalo volta para a última existente, em vez de
      * devolver lista vazia. Acontece o tempo todo: a pessoa está na página 5,
@@ -254,6 +284,7 @@ function escolasPendenciasCalcular_(filtros) {
       totalNaBase: tudo.length - 1,
       pagina: pagina,
       porPagina: porPagina,
+      ordem: ordem,
       totalPaginas: totalPaginas,
       resumo: resumo,
       catalogo: ESC_PENDENCIAS,

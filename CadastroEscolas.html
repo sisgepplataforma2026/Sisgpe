@@ -2234,6 +2234,89 @@ function copiarRespostaIA() {
     if (typeof toast === "function") toast("Selecione o texto manualmente e copie com Ctrl+C.", "err"); else alert("Selecione o texto manualmente e copie com Ctrl+C.");
   }
 }
+
+/* ═══════════════════════════════════
+   PORTA DE ENTRADA VINDA DE OUTRA TELA
+═══════════════════════════════════ */
+/**
+ * Abre UMA escola direto na ficha de edição, a partir de um identificador.
+ *
+ * Quem usa: a fila de Pendências (PendenciasAdmin), no botão "Abrir no
+ * Cadastro". Antes disto ela só navegava para cá e deixava o nome digitado
+ * na busca — o usuário ainda tinha que achar a linha e clicar em Editar.
+ * Duas etapas para uma intenção só.
+ *
+ * TRÊS CHAVES, NESTA ORDEM, e a ordem importa:
+ *   1. EscolaID  — a identidade, criada na Fase 1. Nunca repete.
+ *   2. CNPJ      — pode se repetir (matriz e filial), por isso vem depois.
+ *   3. Nome exato — último recurso; é o que muda com mais frequência.
+ *
+ * A LISTA CHEGA DEPOIS DA NAVEGAÇÃO. CE_CACHE é preenchido por
+ * google.script.run, então quem vem de outra tela chega antes do dado. Daí a
+ * espera: tenta a cada 200ms, por até 5 segundos. Sem isso, o botão
+ * funcionaria só quando o cadastro já estivesse aberto — que é justamente o
+ * caso em que ninguém precisa dele.
+ *
+ * @return {boolean} true quando abriu (ou vai abrir, após a espera)
+ */
+window.ceAbrirEscolaPorChave = function(chave, tentativa){
+  chave = String(chave == null ? "" : chave).trim();
+  if(!chave) return false;
+  tentativa = tentativa || 0;
+
+  if(!CE_CACHE.length){
+    if(tentativa >= 25){
+      ceMsg("ceMsgBox","Não consegui carregar a base a tempo para abrir <strong>"
+        + esc(chave) + "</strong>. Tente pela busca.","alerta");
+      return false;
+    }
+    setTimeout(function(){ window.ceAbrirEscolaPorChave(chave, tentativa + 1); }, 200);
+    return true;
+  }
+
+  var alvoUp  = chave.toUpperCase();
+  var alvoDig = digits(chave);
+  var achado  = null;
+
+  for(var i=0;i<CE_CACHE.length && !achado;i++){
+    if(valCampo(CE_CACHE[i],["EscolaID","escolaId"]).toUpperCase() === alvoUp) achado = CE_CACHE[i];
+  }
+  /* 11 dígitos no mínimo: é o tamanho de um CPF. Menos que isso não é
+   * documento, é pedaço de número, e casaria com a escola errada. */
+  if(!achado && alvoDig.length >= 11){
+    for(var j=0;j<CE_CACHE.length && !achado;j++){
+      if(digits(valCampo(CE_CACHE[j],["CNPJ","cnpj"])) === alvoDig) achado = CE_CACHE[j];
+    }
+  }
+  if(!achado){
+    for(var k=0;k<CE_CACHE.length && !achado;k++){
+      var n = valCampo(CE_CACHE[k],["NomeEscola","escola","Escola","razaoSocial"]);
+      if(n && n.toUpperCase() === alvoUp) achado = CE_CACHE[k];
+    }
+  }
+
+  /* Não achou: em vez de não fazer nada, deixa o texto na busca e DIZ que
+   * não achou. Botão que não responde é o pior desfecho possível — foi
+   * exatamente o sintoma que originou esta função. */
+  if(!achado){
+    var campo = g("ceBusca");
+    if(campo){
+      campo.value = chave;
+      campo.dispatchEvent(new Event("input", { bubbles:true }));
+    }
+    ceMsg("ceMsgBox","Não encontrei <strong>" + esc(chave)
+      + "</strong> pelo identificador. Deixei o texto na busca.","alerta");
+    return false;
+  }
+
+  preencherForm(achado);
+  entrarEdicao(valCampo(achado,["CNPJ","cnpj"]));
+  ceMsg("ceMsgBox","Editando: <strong>"
+    + esc(valCampo(achado,["NomeEscola","escola","Escola","razaoSocial"]) || "—")
+    + "</strong>","info");
+  return true;
+};
+
 /* ═══════════════════════════════════
    INIT
 ═══════════════════════════════════ */

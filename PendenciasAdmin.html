@@ -74,6 +74,12 @@
         <input type="search" id="epBusca" placeholder="Escola, CNPJ, e-mail ou ID…"
                autocomplete="off"
                style="height:34px;padding:0 11px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:12.5px;min-width:230px;font-family:'Plus Jakarta Sans',sans-serif;">
+        <select id="epOrdem" title="Ordem da lista"
+                style="height:34px;padding:0 10px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:12.5px;font-family:'Plus Jakarta Sans',sans-serif;">
+          <option value="GRAVIDADE">Mais graves primeiro</option>
+          <option value="AZ">Escola — A a Z</option>
+          <option value="ZA">Escola — Z a A</option>
+        </select>
         <button type="button" id="epBtnTudo" class="btn btn-ghost btn-sm">Limpar filtros</button>
         <button type="button" id="epBtnRecarregar" class="btn btn-ghost btn-sm">↺ Atualizar</button>
       </div>
@@ -94,6 +100,7 @@
   var epDados = null;
   var epFiltro = "";
   var epBusca = "";
+  var epOrdem = "GRAVIDADE";
   var epPagina = 1;
   var epCarregando = false;
   var epTimerBusca = null;
@@ -282,7 +289,7 @@
         '</td>' +
         '<td style="padding:11px 10px;border-bottom:1px solid #e2e8f0;vertical-align:top;text-align:right;white-space:nowrap;">' +
           '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'+cor+';margin-right:6px;"></span>' +
-          '<button type="button" class="btn btn-ghost btn-sm ep-abrir" data-nome="'+eEsc(e.nome)+'">Abrir no Cadastro</button>' +
+          '<button type="button" class="btn btn-ghost btn-sm ep-abrir" data-chave="'+eEsc(e.escolaId || e.documento || e.nome)+'" data-nome="'+eEsc(e.nome)+'">Abrir no Cadastro</button>' +
         '</td>' +
         '</tr>';
     }).join("");
@@ -298,26 +305,46 @@
 
     var botoes = alvo.querySelectorAll(".ep-abrir");
     for(var i=0;i<botoes.length;i++){
-      botoes[i].onclick = function(){ eAbrirNoCadastro(this.getAttribute("data-nome")); };
+      botoes[i].onclick = function(){
+        eAbrirNoCadastro(this.getAttribute("data-chave"), this.getAttribute("data-nome"));
+      };
     }
   }
 
-  /* Leva para o Cadastro de Escolas e deixa o nome já digitado na busca.
-   * Se a navegação não existir nesta montagem do sistema, avisa em vez de
-   * não fazer nada — botão que não responde é pior que botão ausente. */
-  function eAbrirNoCadastro(nome){
+  /* ABRE A ESCOLA, não a tela.
+   *
+   * A primeira versão navegava para o Cadastro e deixava o nome digitado na
+   * busca — o usuário ainda tinha que achar a linha e clicar em Editar.
+   * Ele apontou: "quando eu abrir o cadastro da escola deveria ir na escola
+   * diretamente". Duas etapas para uma intenção só, e a segunda invisível.
+   *
+   * A chave que viaja é o EscolaID, não o nome: nome muda, id não. Se por
+   * algum motivo a linha não tiver id, cai para o documento e só então para
+   * o nome — na mesma ordem que ceAbrirEscolaPorChave procura do outro lado.
+   *
+   * A espera de 350ms é a troca de módulo do index.html: o bloco do Cadastro
+   * só existe no DOM depois que o spIr o exibe. */
+  function eAbrirNoCadastro(chave, nome){
     if(typeof window.abrirEscolas !== "function"){
       return eAviso("Não consegui abrir o Cadastro de Escolas a partir daqui. Use o menu Escolas.", "alerta");
     }
     window.abrirEscolas();
-    if(!nome) return;
-    setTimeout(function(){
-      var campo = document.querySelector("#buscaEscola,#ceBusca,#filtroEscola,input[name='buscaEscola']");
-      if(!campo) return;
-      campo.value = nome;
-      campo.dispatchEvent(new Event("input", { bubbles:true }));
-      campo.dispatchEvent(new Event("keyup",  { bubbles:true }));
-    }, 400);
+
+    function tentar(restantes){
+      if(typeof window.ceAbrirEscolaPorChave === "function"){
+        window.ceAbrirEscolaPorChave(chave || nome);
+        return;
+      }
+      if(restantes <= 0){
+        /* O Cadastro está no ar mas sem a porta de entrada — versão antiga
+         * de CadastroEscolas.html no projeto. Dizer isso é melhor do que
+         * navegar e deixar a pessoa sem entender por que nada aconteceu. */
+        return eAviso("Abri o Cadastro, mas esta versão dele não sabe abrir uma escola direto. " +
+                      "Procure por " + (nome || chave) + " na busca.", "alerta");
+      }
+      setTimeout(function(){ tentar(restantes - 1); }, 120);
+    }
+    tentar(8);
   }
 
   function eRenderEstado(){
@@ -342,6 +369,8 @@
     if(epFiltro || epBusca) {
       sub.push("de " + (d.totalEscolasComPendencia||0) + " com pendência");
     }
+    if(epOrdem === "AZ") sub.push("em ordem alfabética");
+    else if(epOrdem === "ZA") sub.push("alfabética invertida");
     if((d.totalPaginas||1) > 1) sub.push("página " + (d.pagina||1) + " de " + d.totalPaginas);
     sub.push("uma escola pode ter mais de uma pendência");
     eEl("epResumoSub").textContent = sub.join(" · ");
@@ -398,7 +427,8 @@
         epCarregando = false;
         eFalhaDura("Erro ao carregar as pendências.", e);
       })
-      .escolasPendenciasListar({ tipo: epFiltro, busca: epBusca, pagina: epPagina }, eToken());
+      .escolasPendenciasListar(
+        { tipo: epFiltro, busca: epBusca, ordem: epOrdem, pagina: epPagina }, eToken());
   }
 
   /* Espera a pessoa parar de digitar. Sem isto, "Anjo Azul" dispararia nove
@@ -420,10 +450,19 @@
     var b;
     b = eEl("epBtnRecarregar"); if(b) b.onclick = eCarregar;
     b = eEl("epBtnTudo");       if(b) b.onclick = function(){
-      epFiltro = ""; epBusca = ""; epPagina = 1;
+      epFiltro = ""; epBusca = ""; epOrdem = "GRAVIDADE"; epPagina = 1;
       var campo = eEl("epBusca"); if(campo) campo.value = "";
+      var sel = eEl("epOrdem"); if(sel) sel.value = "GRAVIDADE";
       eCarregar();
     };
+    b = eEl("epOrdem");
+    if(b) b.onchange = function(){
+      epOrdem = this.value || "GRAVIDADE";
+      epPagina = 1;          /* trocar a ordem sem voltar para a página 1 deixaria
+                                a pessoa no meio de uma lista que ela nunca viu */
+      eCarregar();
+    };
+
     b = eEl("epBusca");
     if(b){
       b.oninput = eBuscaMudou;
