@@ -1,7 +1,7 @@
 {
   "medidoEm": "2026-08-12",
-  "totalPublicas": 830,
-  "protegidas": 498,
+  "totalPublicas": 834,
+  "protegidas": 501,
   "expostas": [
     {
       "nome": "validarCPF",
@@ -995,6 +995,11 @@
     },
     {
       "nome": "inicializarModuloCert",
+      "arquivo": "Voucher.gs",
+      "escreve": false
+    },
+    {
+      "nome": "voucherPreviaSegura",
       "arquivo": "Voucher.gs",
       "escreve": false
     },

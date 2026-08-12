@@ -70,7 +70,30 @@ function voucherPrepararEnvio(protocolo, tokenSessao) {
      * tela mostra a caixa em branco — em vez de sumir com a linha e deixar
      * quem emite achando que a cópia foi. */
     var emailAssociado = voucherPrimeiroEmail_(solic.EMAIL);
+
+    /* O e-mail da instituição vem de três lugares, nesta ordem — e a tela
+     * mostra DE ONDE veio, porque a confiança em cada um é diferente:
+     *
+     *   1. gravado na solicitação   — alguém digitou de propósito
+     *   2. achado no cadastro de Escolas pelo CNPJ/nome
+     *   3. nenhum                   — o campo abre vazio, para digitar
+     *
+     * Mostrar a origem importa: um e-mail que veio do cadastro pode estar
+     * desatualizado há anos, e quem envia precisa saber que está usando um
+     * palpite do sistema em vez de algo confirmado. Sem isso, o campo
+     * preenchido passa a impressão de conferido. */
     var emailInstituicao = voucherPrimeiroEmail_(solic.EMAIL_INSTITUICAO);
+    var origemEmailInstituicao = emailInstituicao ? "SOLICITACAO" : "";
+
+    if (!emailInstituicao && typeof buscarEmailRhEscolaVoucher_ === "function") {
+      try {
+        var achado = voucherPrimeiroEmail_(
+          buscarEmailRhEscolaVoucher_(solic.INSTITUICAO_ENSINO || "", solic.CNPJ_INSTITUICAO || ""));
+        if (achado) { emailInstituicao = achado; origemEmailInstituicao = "CADASTRO"; }
+      } catch (e) {
+        Logger.log("Busca do e-mail da instituição falhou: " + e.message);
+      }
+    }
 
     var telefone = String(solic.TELEFONE || "").replace(/\D/g, "");
     var telefoneZap = voucherTelefoneParaZap_(telefone);
@@ -88,6 +111,9 @@ function voucherPrepararEnvio(protocolo, tokenSessao) {
       temPdf: !!link,
       emailAssociado: emailAssociado,
       emailInstituicao: emailInstituicao,
+      /* "SOLICITACAO" = digitado por alguém · "CADASTRO" = achado na aba
+       * Escolas, pode estar velho · "" = não achou, campo em branco. */
+      origemEmailInstituicao: origemEmailInstituicao,
       telefone: voucherTelefoneFormatado_(telefone),
       /* Vazio quando o número não serve. A tela desabilita o botão em vez de
        * abrir um wa.me quebrado, que no celular vira "número inválido" e faz
@@ -125,7 +151,24 @@ function voucherEnviarPorEmail(protocolo, opcoes, tokenSessao) {
     if (!para) {
       return { ok: false, mensagem: "Sem e-mail do associado. Preencha o destinatário." };
     }
-    var copia = String(opcoes.copia !== undefined ? opcoes.copia : pronto.emailInstituicao || "").trim();
+    /* A cópia para a instituição é OPCIONAL e EDITÁVEL.
+     *
+     * enviarInstituicao === false desliga de vez — há casos em que o
+     * associado prefere levar o documento pessoalmente, e mandar por fora
+     * disso é decidir pela vida dele.
+     *
+     * `copia` vindo preenchido substitui o sugerido: quem emite corrige o
+     * endereço ali, sem precisar abrir o cadastro da escola para trocar uma
+     * letra. O que ele digitar vale mais que o palpite do sistema. */
+    var copia = "";
+    if (opcoes.enviarInstituicao !== false) {
+      copia = String(opcoes.copia !== undefined && opcoes.copia !== null
+        ? opcoes.copia
+        : (pronto.emailInstituicao || "")).trim();
+    }
+    if (copia && copia.indexOf("@") < 1) {
+      return { ok: false, mensagem: "O e-mail da instituição não parece válido: " + copia };
+    }
 
     var anexos = [];
     if (opcoes.anexarPdf !== false && pronto.linkPdf) {

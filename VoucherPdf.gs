@@ -655,10 +655,23 @@ function buscarEmailRhEscolaVoucher_(nomeEscola, cnpj) {
 
     const idxEscola = findCol("NomeEscola", "Escola (Razão Social)", "Escola");
     const idxCnpj = findCol("CNPJ");
+    /* "E-mail (principal)" É O NOME REAL DA COLUNA na aba Escolas, e faltava.
+     *
+     * A lista original procurava por Email, E-mail, EMAIL_RH e variações —
+     * nenhuma delas existe ali. O resultado é que esta função devolvia string
+     * vazia para as 679 escolas, em silêncio, e o ofício ao RH nunca
+     * encontrava destinatário. Achado em 12/08/2026 ao montar o envio do
+     * certificado. O nome correto está em Escolas.gs:16, COL_EMAIL.
+     *
+     * A ordem importa: e-mail de RH, quando existe, é melhor destinatário que
+     * o e-mail geral da escola. Por isso os específicos vêm antes. */
     const idxEmail = findCol(
       "Email RH",
       "E-mail RH",
       "EMAIL_RH",
+      "E-mail (principal)",
+      "E-mails (todos)",
+      "EMAILS_RECEITA",
       "Email",
       "E-mail",
       "EMAIL",

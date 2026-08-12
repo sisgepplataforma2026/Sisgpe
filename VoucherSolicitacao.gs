@@ -125,6 +125,7 @@ function salvarCadastroESolicitacaoVoucher(payload) {
      * existem nem o portal atual, que ainda não coleta estes campos. */
     setCol("INSTITUICAO_ENSINO", valorSeguroVoucher_(payload.instituicaoEnsino));
     setCol("CNPJ_INSTITUICAO",   valorSeguroVoucher_(payload.cnpjInstituicao));
+    setCol("EMAIL_INSTITUICAO",  String(payload.emailInstituicao || "").trim().toLowerCase());
     setCol("MODALIDADE", String(payload.modalidade || "").toUpperCase());
     setCol("CURSO", valorSeguroVoucher_(payload.curso));
     setCol("AREA_CURSO", String(payload.areaCurso || "").toUpperCase());

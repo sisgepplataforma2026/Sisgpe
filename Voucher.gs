@@ -331,6 +331,12 @@ function setupVoucherModuleFase1() {
          * base — e com um campo só a resposta era ambígua. */
         "INSTITUICAO_ENSINO",
         "CNPJ_INSTITUICAO",
+        /* Para onde o certificado é enviado em cópia. Guardado na
+         * solicitação, e não só buscado na hora, porque a instituição de
+         * ensino pode não estar no cadastro de Escolas — muitas faculdades
+         * não são base do sindicato — e porque quem emite pode corrigir o
+         * endereço no modal sem alterar o cadastro da escola inteira. */
+        "EMAIL_INSTITUICAO",
         "SITUACAO_SINDICAL",
         "STATUS_VALIDACAO_SINDICAL",
         "TIPO_BENEFICIARIO",
