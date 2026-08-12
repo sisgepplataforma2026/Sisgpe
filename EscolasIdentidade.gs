@@ -595,9 +595,68 @@ function escolaDiagnosticoColunas(tokenSessao) {
       };
     }
 
-    return { ok: true, total: total, totalColunas: ultimaCol, colunas: colunas, duplicidade: duplicidade };
+    var resultado = { ok: true, total: total, totalColunas: ultimaCol, colunas: colunas, duplicidade: duplicidade };
+    escolaImprimirDiagnostico_(resultado);
+    return resultado;
   } catch (e) {
+    Logger.log("Erro no diagnóstico: " + e.message);
     return { ok: false, mensagem: "Erro no diagnóstico: " + e.message };
+  }
+}
+
+/*
+ * Escreve o diagnóstico no Registro de execução, em tabela.
+ *
+ * Existe porque rodar a função pelo editor não mostra nada: o editor não
+ * imprime o valor de retorno, só o que passou por Logger.log. Sem isto, a
+ * execução termina com "Execução concluída" e nenhuma informação — foi o que
+ * aconteceu na primeira tentativa.
+ *
+ * Devolver JSON cru de 37 colunas também não resolveria: ninguém lê. Vai em
+ * tabela, ordenada da coluna mais vazia para a mais cheia, que é a ordem em
+ * que a decisão interessa — coluna vazia é candidata a sair, coluna cheia é
+ * dado que alguém precisa ver na tela.
+ */
+function escolaImprimirDiagnostico_(r) {
+  try {
+    var L = [];
+    L.push("═══ DIAGNÓSTICO DA ABA ESCOLAS ═══");
+    L.push(r.total + " escolas · " + r.totalColunas + " colunas");
+    L.push("");
+    L.push("COLUNA                          PREENCHIDAS        AMOSTRA");
+    L.push("──────────────────────────────────────────────────────────────────────");
+
+    var ordenadas = r.colunas.slice().sort(function (a, b) {
+      if (a.preenchidas !== b.preenchidas) return a.preenchidas - b.preenchidas;
+      return a.posicao - b.posicao;
+    });
+    ordenadas.forEach(function (c) {
+      var nome = (c.posicao + ". " + c.nome);
+      while (nome.length < 32) nome += " ";
+      var cont = (c.preenchidas + "/" + r.total + " (" + c.percentual + "%)");
+      while (cont.length < 19) cont += " ";
+      L.push(nome + cont + (c.amostra.join(" · ") || "— vazia —"));
+    });
+
+    if (r.duplicidade) {
+      var d = r.duplicidade;
+      L.push("");
+      L.push("═══ DUPLICIDADE: \"" + d.colunaNome + "\" × \"" + d.colunaRazao + "\" ═══");
+      L.push("  iguais ................. " + d.iguais);
+      L.push("  DIFERENTES ............. " + d.diferentes + "   <<< são estas que precisam de decisão");
+      L.push("  só em RAZAO_SOCIAL ..... " + d.soEmRazaoSocial);
+      if (d.exemplos.length) {
+        L.push("  exemplos:");
+        d.exemplos.forEach(function (e) {
+          L.push("    linha " + e.linha);
+          L.push("      col.2  = " + e.coluna2);
+          L.push("      RAZAO  = " + e.razaoSocial);
+        });
+      }
+    }
+    Logger.log(L.join("\n"));
+  } catch (e) {
+    Logger.log("escolaImprimirDiagnostico_ falhou: " + e + " | dados: " + JSON.stringify(r).slice(0, 500));
   }
 }
 
