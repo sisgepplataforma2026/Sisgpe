@@ -70,10 +70,32 @@ function naoTestavel(descricao, motivo) { registrar("NÃO TESTÁVEL", descricao,
  * é FALHOU, com o texto à vista — é informação, não ruído. */
 const BLOQUEIO_ESPERADO = /sess[ãa]o|permiss|acesso|administrador|autoriza|n[ãa]o tem|negad/i;
 
+/* A MESMA exigência vale para os DOIS caminhos.
+ *
+ * Até 12/08/2026 esta função checava a mensagem só quando a função LANÇAVA.
+ * Quando ela devolvia `{ok:false}`, qualquer motivo passava: "aba não
+ * encontrada", "coluna não reconhecida", "planilha fora do ar" — tudo era
+ * contado como trava de segurança funcionando.
+ *
+ * O buraco apareceu numa mutação da Fase 4: removi a checagem de
+ * administrador de escolaVinculosPrevia e o teste continuou verde, porque a
+ * função sem guarda seguiu adiante e recusou por OUTRO motivo — coluna
+ * ausente. Trava de permissão removida, teste passando. É a mesma falha que
+ * o comentário acima já descrevia para o caminho de exceção; ela só não
+ * tinha sido fechada aqui. */
 function bloqueia(fn, descricao) {
   try {
     const r = fn();
-    if (r && r.ok === false) { registrar("PASSOU", descricao, "recusado: " + (r.mensagem || "").slice(0, 80)); return true; }
+    if (r && r.ok === false) {
+      const msg = String(r.mensagem || "");
+      if (BLOQUEIO_ESPERADO.test(msg)) {
+        registrar("PASSOU", descricao, "recusado: " + msg.slice(0, 80));
+        return true;
+      }
+      registrar("FALHOU", descricao,
+        "recusou, mas NÃO por sessão/permissão — a trava pode não existir: " + msg.slice(0, 90));
+      return false;
+    }
     registrar("FALHOU", descricao, "não bloqueou — retornou " + JSON.stringify(r).slice(0, 120)); return false;
   } catch (e) {
     const msg = String(e && e.message ? e.message : e);

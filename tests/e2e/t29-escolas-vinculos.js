@@ -557,5 +557,111 @@ b.passo("52. E exige administrador, como as outras portas da Fase 4");
 b.bloqueia(function () { return g.escolaVinculosMapearAbas(ESC); },
   "mapear a planilha inteira não é leitura de rotina");
 
+/* ══════════════════════════════════════════════════════════════════════
+   13. RODAR PELO EDITOR — sem argumento nenhum
+   ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("VÍNCULOS · Chamado pelo editor, sem argumento");
+
+/* O botão Run do editor chama a função SEM ARGUMENTO. Em 12/08/2026 a prévia
+ * foi rodada assim e recebeu chave = undefined: recusou com "Alvo
+ * desconhecido", que é seguro mas inútil. Terceira vez que esta armadilha
+ * aparece nesta migração — antes foi em escolaMigrarIds e no token do resumo
+ * de pendências. */
+
+criarAba("SISGEP_Visitas", ["ID_VISITA", "ESCOLA", "CNPJ"],
+  [["1", "Colégio Alfa", "11.222.333/0001-81"], ["2", "Colégio Beta", ""]]);
+limparConsentimentos();
+
+/* Chamar sem argumento significa TAMBÉM sem token — é a porta do editor.
+ * Aqui a identidade do dono do projeto é assumida, que é o que o Apps Script
+ * faz quando alguém aperta Run. */
+g.__usuarioAtivoEmail = g.__donoDoProjetoEmail;
+
+b.passo("53. Prévia sem argumento mede o PRÓXIMO alvo pendente");
+const semArg = g.escolaVinculosPrevia();
+b.ok(semArg.ok === true && semArg.alvo === "VISITAS" && semArg.total === 2,
+  "escolheu o menor alvo por migrar, em vez de recusar",
+  "alvo=" + semArg.alvo);
+
+b.passo("54. E DIZ no log qual escolheu");
+/* Medir um alvo que o usuário não pediu, em silêncio, seria pior que a
+ * recusa: ele leria os números achando que são de outra aba. */
+g.Logger.clear();
+g.escolaVinculosPrevia();
+b.ok(/Sem alvo informado — medindo o próximo pendente: Visitas/.test(g.Logger.getLog()),
+  "em voz alta, com o nome do alvo",
+  (g.Logger.getLog().split("\n")[0] || "").slice(0, 80));
+
+b.passo("55. Aplicar sem argumento usa o alvo que TEM prévia recente");
+/* E não o "próximo pendente": esse poderia ser uma aba que o usuário nunca
+ * viu. Só pode gravar onde ele acabou de ler a prévia. */
+const aplicouSemArg = g.escolaVinculosAplicar();
+b.ok(aplicouSemArg.ok === true && aplicouSemArg.alvo === "VISITAS" &&
+     coluna("SISGEP_Visitas", "EscolaID") !== null,
+  "gravou no alvo da prévia", "alvo=" + aplicouSemArg.alvo);
+
+b.passo("56. Sem prévia nenhuma, aplicar sem argumento recusa");
+limparConsentimentos();
+const semNada = g.escolaVinculosAplicar();
+b.ok(semNada.ok === false && /Nenhuma prévia recente/.test(semNada.mensagem),
+  "não inventa alvo para gravar", semNada.mensagem.slice(0, 60));
+
+b.passo("57. Com prévia de DOIS alvos, recusa e nomeia os dois");
+/* Escolher um dos dois seria adivinhar em cima de uma operação de escrita. */
+criarAba("Juridico", ["ID", "Escola CNPJ", "Escola Nome"],
+  [["1", "", "Colégio Alfa"]]);
+limparConsentimentos();
+g.escolaVinculosPrevia("VISITAS", ADM);
+g.escolaVinculosPrevia("JURIDICO", ADM);
+const doisAlvos = g.escolaVinculosAplicar();
+b.ok(doisAlvos.ok === false && /mais de um alvo/.test(doisAlvos.mensagem) &&
+     /VISITAS/.test(doisAlvos.mensagem) && /JURIDICO/.test(doisAlvos.mensagem),
+  "pergunta em vez de escolher", doisAlvos.mensagem.slice(0, 90));
+
+b.passo("56b. Prévia VENCIDA não serve para aplicar sem argumento");
+/* A lista de "consentimentos vivos" precisa respeitar o prazo. Sem isso,
+ * uma prévia de ontem autorizaria a gravação de hoje — e a base mudou no
+ * meio. */
+limparConsentimentos();
+g.escolaVinculosPrevia("VISITAS", ADM);
+g.PropertiesService.getScriptProperties().setProperty(
+  g.ESC_VINC_PROP_CONSENT + "VISITAS",
+  JSON.stringify({ quando: new Date().getTime() - (g.ESC_VINC_MINUTOS + 5) * 60 * 1000 }));
+const vencidoSemArg = g.escolaVinculosAplicar();
+b.ok(vencidoSemArg.ok === false && /Nenhuma prévia recente/.test(vencidoSemArg.mensagem),
+  "prévia vencida não conta como viva", vencidoSemArg.mensagem.slice(0, 60));
+
+b.passo("56c. O 'próximo pendente' PULA o alvo que já está inteiro");
+/* Se ele devolvesse sempre o primeiro da lista, a prévia sem argumento
+ * ficaria presa em Visitas para sempre — e a Fase 4 nunca avançaria. */
+limparConsentimentos();
+criarAba("SISGEP_Visitas", ["ID_VISITA", "ESCOLA", "CNPJ", "EscolaID"],
+  [["1", "Colégio Alfa", "", "ESC-000001"], ["2", "Colégio Beta", "", "ESC-000002"]]);
+criarAba("Agend_Oftalmo", ["ID", "Data", "Escola"], [["1", "01/08", "Colégio Alfa"]]);
+const proximo = g.escolaVincProximoPendente_();
+b.ok(!!proximo && proximo.chave === "OFTALMO",
+  "Visitas está completa, então vem a próxima",
+  proximo ? proximo.chave : "nenhum");
+
+b.passo("57b. Mesmo sem argumento, conta Google estranha continua barrada");
+/* A facilidade de chamar sem alvo não pode virar porta larga: quem não é
+ * dono nem administrador continua fora. */
+g.__usuarioAtivoEmail = "estranho@gmail.com";
+b.bloqueia(function () { return g.escolaVinculosPrevia(); },
+  "sem alvo não quer dizer sem dono");
+g.__usuarioAtivoEmail = g.__donoDoProjetoEmail;
+
+b.passo("58. Com tudo migrado, a prévia sem argumento diz isso e não quebra");
+/* Estado final da Fase 4: nada pendente. Precisa terminar com uma frase, não
+ * com "Alvo desconhecido: undefined". */
+const alvosOriginais = g.ESC_VINC_ALVOS.slice();
+g.ESC_VINC_ALVOS.length = 0;
+const tudoPronto = g.escolaVinculosPrevia();
+Array.prototype.push.apply(g.ESC_VINC_ALVOS, alvosOriginais);
+b.ok(tudoPronto.ok === true && tudoPronto.nada === true,
+  "termina dizendo que acabou", tudoPronto.mensagem);
+
+g.__usuarioAtivoEmail = "";
+
 const c = b.resumo();
 process.exit(c.FALHOU ? 1 : 0);
