@@ -93,8 +93,9 @@
       <button class="spN" data-mod="escolas" data-acordeao="escolasSubMenuSidebar" onclick="spAcordeao(this)">
         <span class="spNI">🏫</span><div><strong>Escolas</strong><small>Cadastro, visitas e cobrança</small></div>
       </button>
-      <div id="escolasSubMenuSidebar" class="docSubMenuSidebar" data-subs="escolas,visitas,visitasAdmin,cobranca" style="display:none;">
+      <div id="escolasSubMenuSidebar" class="docSubMenuSidebar" data-subs="escolas,escolasPendencias,visitas,visitasAdmin,cobranca" style="display:none;">
         <button type="button" class="docSubMenuBtn" data-sub-mod="escolas" onclick="spIr('escolas',null)">🏫 Cadastro de Escolas</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="escolasPendencias" onclick="spIr('escolasPendencias',null)">🧾 Pendências do Cadastro</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="visitas" onclick="spIr('visitas',null)">📍 Visita à Escola (agenda do dia)</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="visitasAdmin" onclick="spIr('visitasAdmin',null)">🗺️ Gestão de Visitas</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="cobranca" onclick="spIr('cobranca',null)">📋 Cobrança de Relação Nominal</button>
@@ -643,6 +644,10 @@ function benefAdminPesquisar(){var input=document.getElementById("benefAdminBusc
 
       <div id="mCobranca" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
         <?!= include('CobrancaAdmin'); ?>
+      </div>
+
+      <div id="mEscolasPendencias" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('PendenciasAdmin'); ?>
       </div>
 
       <div id="mRadio" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
@@ -1346,6 +1351,7 @@ config:["mConfig","Configurações","Sistema e Preferências"],
 visitas:["mVisitas","Visitas às Escolas","Agenda do dia, check-in e captação"],
   visitasAdmin:["mVisitasAdmin","Gestão de Visitas","Cobertura das escolas, agenda em lote e desempenho por diretor"],
   cobranca:["mCobranca","Cobrança de Relação Nominal","Acompanhamento por escola e competência para emissão das guias sindicais"],
+  escolasPendencias:["mEscolasPendencias","Pendências do Cadastro","O que está incompleto ou fora do lugar nas escolas — só leitura"],
   radio:["mRadio","Rádio SindEducação","Informação, conteúdo educativo, música e cultura — ao vivo"]
 };
 /* Guarda funções internas dos includes antes de criar wrappers globais */
@@ -1940,6 +1946,10 @@ if(mod==="visitas"){
   }
   if(mod==="cobranca"){
     setTimeout(function(){ callFn("carregarPainelCobranca"); },120);
+    return;
+  }
+  if(mod==="escolasPendencias"){
+    setTimeout(function(){ callFn("initEscolasPendencias"); },120);
     return;
   }
   if(mod==="receitas"){

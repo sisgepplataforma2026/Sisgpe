@@ -384,9 +384,17 @@ do projeto no editor, log confirmado pelo usuário em 12/08/2026:
 
 | Item | Por quê |
 |---|---|
-| 🔴 `escolasPendenciasListar` | só roda com token de sessão, e a tela ainda não existe. O que foi medido é o resumo, não a listagem. |
-| 🔴 A tela de Pendências | não existe ainda |
-| 🔴 Corrigir uma escola pela fila e ver o número cair | é o ciclo completo; sem tela, não dá |
+| 🔴 **A tela `PendenciasAdmin` abre** | criada em 12/08/2026, **não testada** — não rodo navegador. Menu Escolas › Pendências do Cadastro. |
+| 🔴 **`escolasPendenciasListar` responde** | só roda com token; a medição feita foi do resumo, não da listagem |
+| 🔴 **Clicar num card filtra** | e os outros seis cards têm que ficar com o mesmo número |
+| 🔴 **"Abrir no Cadastro"** | deve navegar e deixar o nome já digitado na busca |
+| 🔴 **Corrigir uma escola e ver o número cair** | de 19 para 18 é o ciclo completo |
+
+**Sinal de que a tela quebrou:** cards em branco e lista vazia sem mensagem
+de erro. Pela REGRA Nº 0, isso é JavaScript morto na página — procurar HTML
+corrompido antes de procurar erro no `.gs`. O marcador
+`window.ESC_PENDENCIAS_MARCADOR` existe para isso: se ele não estiver
+definido no console, o bloco de script não executou.
 
 **Detalhe operacional que vale registrar:** com 1 escola sem e-mail, o
 sindicato alcança 678 das 679 por ofício e cobrança. A base está utilizável

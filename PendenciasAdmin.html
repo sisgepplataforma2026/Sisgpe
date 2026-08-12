@@ -1,0 +1,316 @@
+<div id="escolasPendencias" style="min-height:100%;background:#f0f4f8;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#0f172a;">
+<!--
+  ESCOLAS — Pendências do Cadastro (submódulo 10 do item 8 do PROMPT-MESTRE).
+
+  Backend: escolasPendenciasListar / escolasPendenciasResumo, em
+  EscolasPendencias.gs. Só leitura — esta tela não grava nada.
+
+  POR QUE O ARQUIVO NÃO SE CHAMA EscolasPendencias.html
+
+  No Apps Script os arquivos não têm extensão: um script e um HTML com o
+  mesmo nome são o MESMO nome, e o projeto recusa na implantação. O backend
+  já se chama EscolasPendencias, então a tela segue a convenção dos outros
+  painéis do sistema — VisitasAdmin, CobrancaAdmin, RHAdmin. O passo 2 do
+  t5-arquivos.js verifica isso em todo o projeto e foi ele que pegou a
+  colisão aqui, antes de ela chegar na implantação.
+
+  POR QUE ELA NÃO TEM BOTÃO DE "CORRIGIR AQUI"
+
+  Corrigir daqui exigiria uma segunda porta de escrita no cadastro de
+  escolas, com outra validação e outra auditoria. Duas portas de escrita
+  para a mesma entidade divergem — e a que é usada menos é a que fica
+  desatualizada. A fila aponta; quem conserta é o Cadastro de Escolas, pelo
+  caminho de sempre.
+
+  NÚMEROS MEDIDOS NA BASE REAL EM 12/08/2026: 65 de 679 escolas com alguma
+  pendência. 19 com dado fora do lugar, 39 sem telefone, 13 sem situação,
+  1 sem e-mail, 1 sem UF, 0 sem documento, 0 sem razão social.
+
+  OS CARDS ZERADOS FICAM NA TELA, por decisão do usuário: servem de
+  verificação. Card que some não prova que a checagem existe, e no dia em
+  que um cadastro novo entrar torto ele precisa estar ali para acender.
+-->
+
+  <div class="of-modulo-header">
+    <div>
+      <div class="of-modulo-header-title">🧾 Pendências do Cadastro</div>
+      <div class="of-modulo-header-sub">O que está incompleto ou fora do lugar nas escolas</div>
+    </div>
+    <div class="of-modulo-header-badge" id="epBadge">—</div>
+  </div>
+
+  <div id="epEstado" style="margin-bottom:14px;"></div>
+
+  <div id="epCards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:16px;"></div>
+
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">📋</div>
+        <div>
+          <div class="of-card-title" id="epResumo">Carregando…</div>
+          <div class="of-card-sub" id="epResumoSub">—</div>
+        </div>
+      </div>
+      <div class="row-btns">
+        <button type="button" id="epBtnTudo" class="btn btn-ghost btn-sm">Ver tudo</button>
+        <button type="button" id="epBtnRecarregar" class="btn btn-ghost btn-sm">↺ Atualizar</button>
+      </div>
+    </div>
+    <div class="of-card-body">
+      <div id="epLista"></div>
+    </div>
+  </div>
+</div>
+
+<script>window.ESC_PENDENCIAS_MARCADOR = "bloco de script executou";</script>
+
+<script>
+(function(){
+  "use strict";
+
+  var epDados = null;
+  var epFiltro = "";
+  var epCarregando = false;
+
+  function eEl(id){ return document.getElementById(id); }
+  function eEsc(t){
+    return String(t==null?"":t).replace(/[&<>"]/g,function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];
+    });
+  }
+  function eToken(){
+    var t = (typeof SISGEP_TOKEN_SESSAO !== "undefined") ? SISGEP_TOKEN_SESSAO : "";
+    return (typeof t === "string") ? t : "";
+  }
+  function eAviso(msg,tipo){
+    if(typeof window.toast==="function") return window.toast(msg,tipo||"erro",5000);
+    console.warn("[Pendências]",msg);
+  }
+  function eCaixa(texto,cor){
+    var c={erro:["#fee2e2","#fca5a5","#991b1b"],ok:["#dcfce7","#6ee7b7","#166534"],
+           alerta:["#fef3c7","#fcd34d","#92400e"],info:["#eff6ff","#bfdbfe","#1e40af"]}[cor||"info"];
+    return '<div style="background:'+c[0]+";border:1.5px solid "+c[1]+
+      ";border-radius:12px;padding:13px 17px;font-size:12.5px;font-weight:600;line-height:1.55;color:"+c[2]+
+      ';">'+texto+"</div>";
+  }
+
+  /* Gravidade 1 trava alguma operação; 2 tira o segundo caminho; 3 é recorte
+   * de relatório. A cor segue essa escala — e zero é cinza em qualquer
+   * gravidade, porque o que está resolvido não deve gritar. */
+  var EP_COR = { 1:"#dc2626", 2:"#d97706", 3:"#1565C0" };
+  function eCor(gravidade, valor){
+    if(!valor) return "#94a3b8";
+    return EP_COR[gravidade] || "#64748b";
+  }
+
+  function eCard(p, valor, ativo){
+    var cor = eCor(p.gravidade, valor);
+    return '<button type="button" class="of-card ep-card" data-tipo="'+eEsc(p.chave)+'" ' +
+      'style="text-align:left;cursor:pointer;padding:15px 17px;margin:0;border:0;border-left:4px solid '+cor+';' +
+      (ativo ? 'outline:2.5px solid '+cor+';outline-offset:1px;' : '') +
+      'font-family:inherit;width:100%;">' +
+      '<div style="font-size:26px;font-weight:900;color:'+cor+';line-height:1.1;">'+valor+'</div>' +
+      '<div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-top:5px;">' +
+        eEsc(p.rotulo) + '</div>' +
+      '<div style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:4px;line-height:1.45;">' +
+        eEsc(p.impacto) + '</div>' +
+      '</button>';
+  }
+
+  function eRenderCards(){
+    if(!epDados || !epDados.catalogo) return;
+    var html = epDados.catalogo.slice().sort(function(a,b){
+      return a.gravidade - b.gravidade;
+    }).map(function(p){
+      return eCard(p, epDados.resumo[p.chave] || 0, epFiltro === p.chave);
+    }).join("");
+    eEl("epCards").innerHTML = html;
+
+    var botoes = eEl("epCards").querySelectorAll(".ep-card");
+    for(var i=0;i<botoes.length;i++){
+      botoes[i].onclick = function(){
+        var t = this.getAttribute("data-tipo");
+        epFiltro = (epFiltro === t) ? "" : t;   // clicar de novo desliga
+        eCarregar();
+      };
+    }
+  }
+
+  function eChip(texto, cor){
+    return '<span style="display:inline-block;background:'+cor+'18;color:'+cor+
+      ';border:1px solid '+cor+'55;border-radius:999px;padding:2px 9px;font-size:10.5px;' +
+      'font-weight:800;margin:2px 4px 2px 0;white-space:nowrap;">'+eEsc(texto)+'</span>';
+  }
+
+  function eRotuloDe(chave){
+    var achado = null;
+    (epDados.catalogo||[]).forEach(function(p){ if(p.chave===chave) achado = p; });
+    return achado || { rotulo: chave, gravidade: 9 };
+  }
+
+  /* O detalhe de "dado fora do lugar" é o que evita abrir a planilha: diz o
+   * campo, o que tem dentro e o que aquilo aparenta ser. */
+  function eDetalheCampos(pend){
+    if(!pend.campos || !pend.campos.length) return "";
+    return '<div style="margin-top:6px;padding-left:2px;">' + pend.campos.map(function(c){
+      return '<div style="font-size:11.5px;color:#475569;line-height:1.6;">' +
+        '<strong style="color:#0f172a;">'+eEsc(c.campo)+'</strong> tem ' +
+        '<code style="background:#f1f5f9;padding:1px 5px;border-radius:4px;">'+eEsc(c.valor)+'</code>' +
+        ' — parece <strong>'+eEsc(c.pareceSer)+'</strong>, esperado <strong>'+eEsc(c.esperado)+'</strong>' +
+        '</div>';
+    }).join("") + '</div>';
+  }
+
+  function eRenderLista(){
+    var alvo = eEl("epLista");
+    if(!epDados){ alvo.innerHTML = ""; return; }
+
+    var escolas = epDados.escolas || [];
+    if(!escolas.length){
+      alvo.innerHTML = eCaixa(
+        epFiltro
+          ? "Nenhuma escola com esta pendência. O card está zerado — e continua na tela justamente para mostrar que a verificação existe."
+          : "Nenhuma pendência no cadastro. As " + (epDados.totalNaBase||0) + " escolas estão completas.",
+        "ok");
+      return;
+    }
+
+    var linhas = escolas.map(function(e){
+      var pior = Math.min.apply(null, e.pendencias.map(function(p){ return eRotuloDe(p.tipo).gravidade; }));
+      var cor = EP_COR[pior] || "#64748b";
+      var chips = e.pendencias.map(function(p){
+        var meta = eRotuloDe(p.tipo);
+        return eChip(meta.rotulo, EP_COR[meta.gravidade] || "#64748b");
+      }).join("");
+      var detalhes = e.pendencias.map(eDetalheCampos).join("");
+
+      return '<tr>' +
+        '<td style="padding:11px 10px;border-bottom:1px solid #e2e8f0;vertical-align:top;">' +
+          '<div style="font-weight:800;font-size:13px;color:#0f172a;">' +
+            (e.nome ? eEsc(e.nome) : '<span style="color:#dc2626;">(sem razão social)</span>') + '</div>' +
+          '<div style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:2px;">' +
+            (e.escolaId ? eEsc(e.escolaId) : "sem id") +
+            (e.documento ? " · " + eEsc(e.documento) : "") +
+            (e.cidade || e.uf ? " · " + eEsc(e.cidade) + (e.uf ? "/" + eEsc(e.uf) : "") : "") +
+            ' · linha ' + eEsc(e.linha) +
+          '</div>' +
+        '</td>' +
+        '<td style="padding:11px 10px;border-bottom:1px solid #e2e8f0;vertical-align:top;">' +
+          chips + detalhes +
+        '</td>' +
+        '<td style="padding:11px 10px;border-bottom:1px solid #e2e8f0;vertical-align:top;text-align:right;white-space:nowrap;">' +
+          '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'+cor+';margin-right:6px;"></span>' +
+          '<button type="button" class="btn btn-ghost btn-sm ep-abrir" data-nome="'+eEsc(e.nome)+'">Abrir no Cadastro</button>' +
+        '</td>' +
+        '</tr>';
+    }).join("");
+
+    alvo.innerHTML =
+      '<div style="overflow-x:auto;">' +
+      '<table style="width:100%;border-collapse:collapse;min-width:640px;">' +
+      '<thead><tr>' +
+        '<th style="text-align:left;padding:9px 10px;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:#64748b;border-bottom:2px solid #cbd5e1;">Escola</th>' +
+        '<th style="text-align:left;padding:9px 10px;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:#64748b;border-bottom:2px solid #cbd5e1;">O que falta</th>' +
+        '<th style="text-align:right;padding:9px 10px;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:#64748b;border-bottom:2px solid #cbd5e1;">Ação</th>' +
+      '</tr></thead><tbody>' + linhas + '</tbody></table></div>';
+
+    var botoes = alvo.querySelectorAll(".ep-abrir");
+    for(var i=0;i<botoes.length;i++){
+      botoes[i].onclick = function(){ eAbrirNoCadastro(this.getAttribute("data-nome")); };
+    }
+  }
+
+  /* Leva para o Cadastro de Escolas e deixa o nome já digitado na busca.
+   * Se a navegação não existir nesta montagem do sistema, avisa em vez de
+   * não fazer nada — botão que não responde é pior que botão ausente. */
+  function eAbrirNoCadastro(nome){
+    if(typeof window.abrirEscolas !== "function"){
+      return eAviso("Não consegui abrir o Cadastro de Escolas a partir daqui. Use o menu Escolas.", "alerta");
+    }
+    window.abrirEscolas();
+    if(!nome) return;
+    setTimeout(function(){
+      var campo = document.querySelector("#buscaEscola,#ceBusca,#filtroEscola,input[name='buscaEscola']");
+      if(!campo) return;
+      campo.value = nome;
+      campo.dispatchEvent(new Event("input", { bubbles:true }));
+      campo.dispatchEvent(new Event("keyup",  { bubbles:true }));
+    }, 400);
+  }
+
+  function eRenderEstado(){
+    var d = epDados;
+    if(!d) return;
+    var completas = (d.totalNaBase || 0) - (d.totalEscolasComPendencia || 0);
+    var pct = d.totalNaBase ? Math.round(completas * 1000 / d.totalNaBase) / 10 : 0;
+
+    eEl("epBadge").textContent = (d.totalEscolasComPendencia||0) + " com pendência";
+
+    eEl("epEstado").innerHTML = eCaixa(
+      "<strong>" + completas + " de " + (d.totalNaBase||0) + "</strong> escolas (" + pct +
+      "%) estão com o cadastro completo. As demais aparecem abaixo, mais graves primeiro. " +
+      "Esta tela só mostra — a correção se faz no Cadastro de Escolas, que é onde a auditoria registra.",
+      (d.totalEscolasComPendencia === 0) ? "ok" : "info");
+
+    var nomeFiltro = epFiltro ? eRotuloDe(epFiltro).rotulo : "";
+    eEl("epResumo").textContent = epFiltro
+      ? nomeFiltro + " — " + (d.total||0) + " escola(s)"
+      : "Todas as pendências — " + (d.total||0) + " escola(s)";
+
+    var sub = [];
+    if(epFiltro) sub.push("filtrado de " + (d.totalEscolasComPendencia||0) + " com pendência");
+    if((d.total||0) > (d.escolas||[]).length) {
+      sub.push("mostrando as " + (d.escolas||[]).length + " primeiras");
+    }
+    sub.push("uma escola pode ter mais de uma pendência");
+    eEl("epResumoSub").textContent = sub.join(" · ");
+  }
+
+  function eFalhaDura(msg, err){
+    console.error("[Pendências]", msg, err);
+    eEl("epEstado").innerHTML = eCaixa(
+      "<strong>" + eEsc(msg) + "</strong><br>" +
+      eEsc(String(err && err.message ? err.message : err || "")), "erro");
+    eEl("epLista").innerHTML = "";
+    eEl("epResumo").textContent = "Não foi possível carregar";
+    eEl("epResumoSub").textContent = "—";
+  }
+
+  function eCarregar(){
+    if(epCarregando) return;
+    epCarregando = true;
+    eEl("epResumo").textContent = "Carregando…";
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        epCarregando = false;
+        try {
+          if(!r || r.ok !== true){
+            return eFalhaDura("O servidor recusou a consulta.", (r && r.mensagem) || "sem detalhe");
+          }
+          epDados = r;
+          eRenderEstado();
+          eRenderCards();
+          eRenderLista();
+        } catch (err) {
+          eFalhaDura("As pendências vieram, mas a tela não conseguiu desenhá-las.", err);
+        }
+      })
+      .withFailureHandler(function(e){
+        epCarregando = false;
+        eFalhaDura("Erro ao carregar as pendências.", e);
+      })
+      .escolasPendenciasListar({ tipo: epFiltro }, eToken());
+  }
+
+  window.initEscolasPendencias = function(){
+    var b;
+    b = eEl("epBtnRecarregar"); if(b) b.onclick = eCarregar;
+    b = eEl("epBtnTudo");       if(b) b.onclick = function(){ epFiltro = ""; eCarregar(); };
+
+    try { eCarregar(); }
+    catch (e) { eFalhaDura("Não consegui nem iniciar a consulta das pendências.", e); }
+  };
+})();
+</script>
