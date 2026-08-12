@@ -496,4 +496,81 @@ b.passo("40. E exige permissão");
 b.bloqueia(function () { return g.escolaValidarColunas(""); },  "validação exige sessão");
 b.bloqueia(function () { return g.escolaValidarColunas(FIN); }, "financeiro não valida");
 
+/* ══════════════════════════════════════════════════════════════════════
+   9. COMPARAÇÃO DOS DESLOCADOS — o que decide apagar × mover
+   ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("IDENTIDADE · Deslocado é cópia ou é único?");
+
+const shC = zerarTudo();
+const CAB_C = ["Escola (Razão Social)", "E-mail (principal)", "Telefone 1", "Telefone 2",
+               "ULTIMA_VERIFICACAO", "RAZAO_SOCIAL", "NOME_FANTASIA",
+               "CNAE_PRINCIPAL", "SITUACAO_CADASTRAL"];
+shC.getRange(1, 1, 1, CAB_C.length).setValues([CAB_C]);
+// 1 — CÓPIA: o telefone deslocado é o mesmo do lugar certo, só que formatado
+//     diferente. Tem que ser reconhecido como cópia, não como divergência.
+shC.appendRow(["Escola Cópia", "a@e.com", "(27) 3256-6107", "", "2732566107", "", "", "", ""]);
+// 2 — RECUPERÁVEL: a coluna certa está vazia; o dado só existe no lugar errado.
+shC.appendRow(["Escola Recupera", "b@e.com", "", "", "(27) 9999-1111", "", "", "", ""]);
+// 3 — DIVERGENTE: as duas têm conteúdo e são telefones diferentes.
+shC.appendRow(["Escola Diverge", "c@e.com", "(27) 3333-1111", "", "(27) 8888-2222", "", "", "", ""]);
+
+const cmp = g.escolaCompararDeslocados(ADM);
+const parTel = (cmp.pares || []).filter(p => p.origem === "ULTIMA_VERIFICACAO")[0] || {};
+
+b.passo("41. ⚠ Telefone igual escrito diferente conta como CÓPIA, não divergência");
+// "(27) 3256-6107" e "2732566107" são o mesmo telefone. Comparar texto cru
+// classificaria como divergente e mandaria uma decisão humana desnecessária
+// para a fila — 268 vezes.
+b.ok(parTel.copia === 1, "compara por dígitos, não por pontuação",
+  "cópia=" + parTel.copia + " divergente=" + parTel.divergente);
+
+b.passo("42. ⚠ Coluna certa vazia = RECUPERÁVEL, nunca apagar");
+// Se este passo falhar e a migração apagar, o telefone dessa escola some e
+// não há de onde tirar de volta a não ser do backup.
+b.ok(parTel.recuperavel === 1 && parTel.exemplosRecuperavel[0].valor === "(27) 9999-1111",
+  "dado que só existe no lugar errado é marcado para MOVER",
+  "recuperável=" + parTel.recuperavel);
+
+b.passo("43. E telefone diferente nos dois lados vai para decisão humana");
+b.ok(parTel.divergente === 1 &&
+     parTel.exemplosDivergente[0].naColunaErrada === "(27) 8888-2222" &&
+     parTel.exemplosDivergente[0].naColunaCerta === "(27) 3333-1111",
+  "mostra os dois valores lado a lado, sem escolher",
+  parTel.exemplosDivergente.length ? JSON.stringify(parTel.exemplosDivergente[0]) : "nenhum");
+
+b.passo("44. E-mail com maiúscula e espaço também é reconhecido como cópia");
+zerarTudo();
+const shE = ss.getSheetByName("Escolas");
+shE.getRange(1, 1, 1, CAB_C.length).setValues([CAB_C]);
+shE.appendRow(["Escola Mail", " Contato@Escola.COM ", "", "", "", "", "contato@escola.com", "", ""]);
+const cmpE = g.escolaCompararDeslocados(ADM);
+const parMail = (cmpE.pares || []).filter(p => p.origem === "NOME_FANTASIA")[0] || {};
+b.ok(parMail.copia === 1 && parMail.divergente === 0,
+  "caixa e espaço não fazem e-mail diferente",
+  "cópia=" + parMail.copia + " divergente=" + parMail.divergente);
+
+b.passo("45. Valor legítimo na própria coluna não entra na conta");
+// RAZAO_SOCIAL com razão social de verdade não é deslocamento — é o uso
+// correto da coluna. Contar isso como problema inflaria o número e mandaria
+// corrigir o que está certo.
+zerarTudo();
+const shL = ss.getSheetByName("Escolas");
+shL.getRange(1, 1, 1, CAB_C.length).setValues([CAB_C]);
+shL.appendRow(["Escola Certa", "d@e.com", "(27) 3333-9999", "", "", "BETA EDUCACIONAL LTDA", "", "", ""]);
+const cmpL = g.escolaCompararDeslocados(ADM);
+const parRaz = (cmpL.pares || []).filter(p => p.origem === "RAZAO_SOCIAL")[0] || {};
+b.ok(parRaz.copia === 0 && parRaz.recuperavel === 0 && parRaz.divergente === 0,
+  "razão social dentro de RAZAO_SOCIAL não é deslocamento",
+  "cópia=" + parRaz.copia + " rec=" + parRaz.recuperavel + " div=" + parRaz.divergente);
+
+b.passo("46. ⚠ E NÃO escreve nada");
+const antesCmp = JSON.stringify(shL.getRange(1, 1, shL.getLastRow(), shL.getLastColumn()).getValues());
+g.escolaCompararDeslocados(ADM);
+b.ok(antesCmp === JSON.stringify(shL.getRange(1, 1, shL.getLastRow(), shL.getLastColumn()).getValues()),
+  "comparar não muda uma célula sequer");
+
+b.passo("47. E exige permissão");
+b.bloqueia(function () { return g.escolaCompararDeslocados(""); },  "comparação exige sessão");
+b.bloqueia(function () { return g.escolaCompararDeslocados(FIN); }, "financeiro não compara");
+
 b.resumo();

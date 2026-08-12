@@ -892,6 +892,196 @@ function escolaImprimirValidacao_(r) {
   }
 }
 
+/* =============================================================== */
+/* COMPARAÇÃO DOS DESLOCADOS — só leitura                          */
+/* =============================================================== */
+/*
+ * Para cada dado que está na coluna errada, pergunta: ele já existe, igual, na
+ * coluna certa?
+ *
+ * É a pergunta que decide a correção inteira. Três respostas possíveis, e cada
+ * uma pede um tratamento diferente:
+ *
+ *   CÓPIA        o valor deslocado é idêntico ao que já está no lugar certo.
+ *                Nada se perde apagando. É limpeza.
+ *   RECUPERAVEL  a coluna certa está VAZIA e a errada tem conteúdo. Esse dado
+ *                só existe ali. Apagar seria perder — tem que MOVER.
+ *   DIVERGENTE   as duas têm conteúdo e são diferentes. Ninguém pode escolher
+ *                por dedução qual é o certo: vai para Pendências, para alguém
+ *                decidir com o cadastro na mão.
+ *
+ * Sem esta medição, a correção seria um chute entre "apagar" e "mover" — e o
+ * chute errado em 642 linhas ou perde telefone de escola, ou deixa lixo que
+ * volta a confundir na próxima leitura.
+ *
+ * NÃO ESCREVE NADA.
+ */
+
+/*
+ * Onde cada dado deslocado mora de verdade.
+ *
+ * Deduzido do padrão medido em 11/08/2026: uma rotina antiga gravou o bloco de
+ * contato e sincronização na ordem DELA, não na ordem do cabeçalho. Lido em
+ * sequência a partir da coluna 13, o que ela escreveu foi:
+ *   status · telefone1 · telefone2 · email · emails · … · situação · … · data
+ */
+var ESC_DESLOCADOS = [
+  { origem: "ULTIMA_VERIFICACAO", destino: "Telefone 1",         tipo: "TELEFONE",
+    nota: "coluna de data contém telefone" },
+  { origem: "RAZAO_SOCIAL",       destino: "Telefone 2",         tipo: "TELEFONE",
+    nota: "coluna de razão social contém telefone" },
+  { origem: "NOME_FANTASIA",      destino: "E-mail (principal)", tipo: "EMAIL",
+    nota: "coluna de nome fantasia contém e-mail" },
+  { origem: "CNAE_PRINCIPAL",     destino: "SITUACAO_CADASTRAL", tipo: "SITUACAO",
+    nota: "a situação real está na coluna de CNAE" },
+  { origem: "SITUACAO_CADASTRAL", destino: "ULTIMA_VERIFICACAO", tipo: "DATA",
+    nota: "a data de verificação está na coluna de situação" }
+];
+
+/** Compara dois valores pelo que eles SÃO, não pelo texto cru. */
+function escolaMesmoValor_(a, b, tipo) {
+  if (a instanceof Date || b instanceof Date) {
+    if (!(a instanceof Date) || !(b instanceof Date)) return false;
+    return a.getTime() === b.getTime();
+  }
+  var x = String(a == null ? "" : a).trim();
+  var y = String(b == null ? "" : b).trim();
+  if (!x || !y) return false;
+  switch (tipo) {
+    // "(27) 3256-6107" e "2732566107" são o mesmo telefone.
+    case "TELEFONE": return x.replace(/\D/g, "") === y.replace(/\D/g, "");
+    // Maiúscula e espaço não fazem e-mail diferente.
+    case "EMAIL":    return x.toLowerCase().replace(/\s/g, "") === y.toLowerCase().replace(/\s/g, "");
+    default:         return x.toUpperCase() === y.toUpperCase();
+  }
+}
+
+function escolaCompararDeslocados(tokenSessao) {
+  if (String(tokenSessao || "").trim()) {
+    exigirModulo_(tokenSessao, "escolas", true);
+  } else {
+    var email = "";
+    try { email = String(Session.getActiveUser().getEmail() || "").trim().toLowerCase(); } catch (e) {}
+    var dono = "";
+    try { dono = String(Session.getEffectiveUser().getEmail() || "").trim().toLowerCase(); } catch (e2) {}
+    if (!email) throw new Error("Sessão inválida ou expirada. Entre novamente no SISGEP.");
+    if (email !== dono && !escolaEhAdministradorPorEmail_(email)) {
+      throw new Error("Ação permitida somente para administradores.");
+    }
+  }
+
+  try {
+    var sh = SpreadsheetApp.openById(PLANILHA_ID).getSheetByName(ABA_ESCOLAS);
+    if (!sh) return { ok: false, mensagem: "Aba '" + ABA_ESCOLAS + "' não encontrada." };
+    var ultimaLinha = sh.getLastRow();
+    if (ultimaLinha < 2) return { ok: true, total: 0, mensagem: "Nenhuma escola na base." };
+
+    var tudo = sh.getRange(1, 1, ultimaLinha, sh.getLastColumn()).getValues();
+    var cab = tudo[0].map(function (c) { return String(c || "").trim(); });
+    var total = ultimaLinha - 1;
+
+    var pares = ESC_DESLOCADOS.map(function (d) {
+      return {
+        origem: d.origem, destino: d.destino, tipo: d.tipo, nota: d.nota,
+        iOrigem: cab.indexOf(d.origem), iDestino: cab.indexOf(d.destino),
+        copia: 0, recuperavel: 0, divergente: 0, semNada: 0,
+        exemplosDivergente: [], exemplosRecuperavel: []
+      };
+    }).filter(function (p) { return p.iOrigem > -1 && p.iDestino > -1; });
+
+    for (var l = 1; l < tudo.length; l++) {
+      for (var k = 0; k < pares.length; k++) {
+        var p = pares[k];
+        var vOrigem  = tudo[l][p.iOrigem];
+        var vDestino = tudo[l][p.iDestino];
+
+        // Só interessa o que está DESLOCADO: valor na origem cujo tipo aparente
+        // é o do destino. Valor legítimo na própria coluna não entra na conta.
+        var aparente = escolaTipoAparente_(vOrigem);
+        if (aparente === "VAZIO" || aparente !== p.tipo) { p.semNada++; continue; }
+
+        var destinoVazio = escolaTipoAparente_(vDestino) === "VAZIO";
+        if (destinoVazio) {
+          p.recuperavel++;
+          if (p.exemplosRecuperavel.length < 3) {
+            p.exemplosRecuperavel.push({ linha: l + 1, valor: escolaTexto_(vOrigem) });
+          }
+          continue;
+        }
+        if (escolaMesmoValor_(vOrigem, vDestino, p.tipo)) { p.copia++; continue; }
+
+        p.divergente++;
+        if (p.exemplosDivergente.length < 5) {
+          p.exemplosDivergente.push({
+            linha: l + 1,
+            naColunaErrada: escolaTexto_(vOrigem),
+            naColunaCerta:  escolaTexto_(vDestino)
+          });
+        }
+      }
+    }
+
+    var resultado = { ok: true, total: total, pares: pares };
+    escolaImprimirComparacao_(resultado);
+    return resultado;
+  } catch (e) {
+    Logger.log("Erro na comparação: " + e.message);
+    return { ok: false, mensagem: "Erro na comparação: " + e.message };
+  }
+}
+
+function escolaTexto_(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm");
+  return String(v == null ? "" : v).trim().slice(0, 40);
+}
+
+function escolaImprimirComparacao_(r) {
+  try {
+    var L = [];
+    L.push("═══ DESLOCADOS: o dado já existe no lugar certo? ═══");
+    L.push(r.total + " escolas");
+    L.push("");
+    L.push("CÓPIA        idêntico ao que já está no lugar certo → apagar não perde nada");
+    L.push("RECUPERÁVEL  a coluna certa está VAZIA → tem que MOVER, senão perde");
+    L.push("DIVERGENTE   as duas têm conteúdo e diferem → ninguém decide por dedução");
+    L.push("");
+
+    var totalMover = 0, totalDecidir = 0;
+    r.pares.forEach(function (p) {
+      L.push("─────────────────────────────────────────────────────────────");
+      L.push(p.origem + "  →  " + p.destino + "   (" + p.nota + ")");
+      L.push("   cópia ......... " + p.copia);
+      L.push("   RECUPERÁVEL ... " + p.recuperavel);
+      L.push("   DIVERGENTE .... " + p.divergente);
+      totalMover += p.recuperavel;
+      totalDecidir += p.divergente;
+      if (p.exemplosRecuperavel.length) {
+        L.push("   exemplos a mover:");
+        p.exemplosRecuperavel.forEach(function (e) {
+          L.push("     linha " + e.linha + ": " + e.valor);
+        });
+      }
+      if (p.exemplosDivergente.length) {
+        L.push("   exemplos que DIVERGEM (vão para Pendências):");
+        p.exemplosDivergente.forEach(function (e) {
+          L.push("     linha " + e.linha);
+          L.push("       na coluna errada: " + e.naColunaErrada);
+          L.push("       na coluna certa : " + e.naColunaCerta);
+        });
+      }
+    });
+
+    L.push("");
+    L.push("═══ RESUMO PARA A MIGRAÇÃO ═══");
+    L.push("  mover (dado que só existe no lugar errado) ... " + totalMover);
+    L.push("  decidir a mão (divergentes) .................. " + totalDecidir);
+    L.push("  o resto é cópia — limpeza pura.");
+    Logger.log(L.join("\n"));
+  } catch (e) {
+    Logger.log("escolaImprimirComparacao_ falhou: " + e);
+  }
+}
+
 /** Estado da migração — alimenta o card do dashboard e o botão de migrar. */
 function escolaStatusIdentidade(tokenSessao) {
   exigirModulo_(tokenSessao, "escolas", false);
