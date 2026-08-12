@@ -1158,6 +1158,57 @@ function escolaJuntarValores_(atual, novo) {
   return a + " | " + n;
 }
 
+/* ─── O par de duas etapas, para rodar pelo editor ─────────────── */
+
+var ESC_PROP_CONSENTIMENTO = "SISGEP_ESCOLAS_SANEAR_OK";
+var ESC_CONSENTIMENTO_MINUTOS = 15;
+
+function escolaConsentimentoValido_() {
+  try {
+    var v = PropertiesService.getScriptProperties().getProperty(ESC_PROP_CONSENTIMENTO);
+    if (!v) return false;
+    var quando = parseInt(v, 10);
+    if (!quando) return false;
+    return (new Date().getTime() - quando) <= ESC_CONSENTIMENTO_MINUTOS * 60 * 1000;
+  } catch (e) { return false; }
+}
+
+function escolaConsumirConsentimento_() {
+  try { PropertiesService.getScriptProperties().deleteProperty(ESC_PROP_CONSENTIMENTO); } catch (e) {}
+}
+
+/**
+ * PASSO 1 — mostra o que vai mudar e libera a aplicação por 15 minutos.
+ * Não escreve nada na aba Escolas.
+ */
+function escolaSanearPreparar() {
+  var r = escolaCompararDeslocados();     // já valida permissão e imprime o mapa
+  if (r && r.ok === false) return r;
+  try {
+    PropertiesService.getScriptProperties()
+      .setProperty(ESC_PROP_CONSENTIMENTO, String(new Date().getTime()));
+  } catch (e) {
+    Logger.log("Não consegui registrar o consentimento: " + e);
+    return { ok: false, mensagem: "Falha ao liberar a aplicação: " + e.message };
+  }
+  Logger.log("\n═══════════════════════════════════════════════\n" +
+             "PRÉVIA ACIMA. Nada foi alterado ainda.\n" +
+             "Se concorda, rode  escolaSanearAplicar  nos próximos " +
+             ESC_CONSENTIMENTO_MINUTOS + " minutos.\n" +
+             "═══════════════════════════════════════════════");
+  return { ok: true, preparado: true, validoPorMinutos: ESC_CONSENTIMENTO_MINUTOS };
+}
+
+/**
+ * PASSO 2 — aplica. Só funciona depois de escolaSanearPreparar.
+ * NÃO passa confirmação: a trava do caminho do editor é o consentimento, e
+ * mandar a palavra aqui pularia justamente a checagem que este par existe
+ * para fazer.
+ */
+function escolaSanearAplicar() {
+  return escolaSanearReceita("", "");
+}
+
 function escolaSanearReceita(tokenSessao, confirmacao) {
   var quem;
   if (String(tokenSessao || "").trim()) {
@@ -1175,14 +1226,49 @@ function escolaSanearReceita(tokenSessao, confirmacao) {
     quem = email;
   }
 
-  // Trava de mão: esta escreve em 679 linhas. Rodar sem querer não pode
-  // acontecer, e o editor executa com um clique.
-  if (String(confirmacao || "").trim().toUpperCase() !== "SANEAR") {
-    return {
-      ok: false,
-      mensagem: 'Confirmação obrigatória. Chame escolaSanearReceita("", "SANEAR"). ' +
-                'Rode antes escolaCompararDeslocados() e confira o que vai mudar.'
-    };
+  /* TRAVA DE MÃO — duas etapas deliberadas.
+   *
+   * A primeira versão exigia a palavra "SANEAR" como argumento. Não funciona:
+   * o botão Executar do editor do Apps Script chama a função SEM ARGUMENTOS.
+   * Na prática a migração ficava impossível de rodar pelo único caminho que
+   * existe hoje — e recusava em silêncio, porque eu também não loguei a
+   * recusa. O usuário viu "Execução concluída" e nada mais.
+   *
+   * A trava agora é de estado, não de argumento: só aplica quem acabou de
+   * rodar a PRÉVIA. Vale mais que a palavra digitada, porque obriga a olhar
+   * antes de escrever — e funciona com execução sem argumento.
+   *
+   * O consentimento vale 15 minutos e é de uso único: aplicar consome. Rodar
+   * duas vezes seguidas exige preparar duas vezes. */
+  /* Cada porta tem a SUA trava, e nenhuma abre a outra.
+   *
+   * A primeira versão aceitava "ou a palavra, ou o consentimento". Como
+   * escolaSanearAplicar passava a palavra, ela pulava o consentimento — e a
+   * trava de duas etapas virava decoração. O teste do uso único pegou: dava
+   * para aplicar duas vezes preparando uma só.
+   *
+   * pela TELA (com token)  → confirmação explícita, que a tela manda depois
+   *                          do seu próprio "tem certeza?";
+   * pelo EDITOR (sem token) → prévia recente, porque no editor não há diálogo
+   *                          de confirmação nenhum: executar é um clique. */
+  if (String(tokenSessao || "").trim()) {
+    if (String(confirmacao || "").trim().toUpperCase() !== "SANEAR") {
+      var recusaTela = { ok: false, mensagem: 'Confirmação obrigatória para sanear a base.' };
+      Logger.log(recusaTela.mensagem);
+      return recusaTela;
+    }
+  } else {
+    if (!escolaConsentimentoValido_()) {
+      var recusa = {
+        ok: false,
+        mensagem: "Saneamento NÃO executado — falta a prévia.\n\n" +
+                  "1) rode  escolaSanearPreparar   (mostra o que vai mudar, não escreve nada)\n" +
+                  "2) rode  escolaSanearAplicar    (dentro de 15 minutos)"
+      };
+      Logger.log(recusa.mensagem);
+      return recusa;
+    }
+    escolaConsumirConsentimento_();
   }
 
   var lock = LockService.getScriptLock();

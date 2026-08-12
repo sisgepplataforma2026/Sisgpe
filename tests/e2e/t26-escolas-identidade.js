@@ -621,16 +621,39 @@ function lerAba() {
   return { cab, linha: n => { const o = {}; cab.forEach((c, i) => o[c] = v[n][i]); return o; } };
 }
 
-b.passo("48. ⚠ Sem a palavra de confirmação, NÃO roda");
-// Esta é a única função desta série que escreve, e escreve em 679 linhas. No
-// editor, executar é um clique — sem trava de mão, roda sem querer.
+b.passo("48. ⚠ Sem a prévia, NÃO roda");
+// Esta é a única função desta série que escreve, e escreve em 679 linhas.
+// A trava é de ESTADO, não de argumento: o botão Executar do editor chama a
+// função SEM ARGUMENTOS, então exigir uma palavra digitada tornava a migração
+// impossível de rodar pelo único caminho que existe hoje.
 montarBaseSuja();
-const semConf = g.escolaSanearReceita(ADM);
-b.ok(semConf.ok === false && /confirma/i.test(semConf.mensagem || ""),
-  "escrever em massa exige confirmação explícita", semConf.mensagem);
+try { g.PropertiesService.getScriptProperties().deleteProperty(g.ESC_PROP_CONSENTIMENTO); } catch (e) {}
+// Sem token, como o editor chama. A identidade do dono passa a permissão —
+// que é checada ANTES da trava de mão, e é assim que tem que ser: quem não
+// pode nem chega a ver a trava.
+g.__usuarioAtivoEmail = g.__donoDoProjetoEmail;
+g.Logger.clear();
+const semConf = g.escolaSanearReceita();
+b.ok(semConf.ok === false && /pr[ée]via|preparar/i.test(semConf.mensagem || ""),
+  "escrever em massa exige a prévia antes", (semConf.mensagem || "").split("\n")[0]);
 
-b.passo("49. Com a confirmação, move cada valor para a coluna do tipo dele");
-const san = g.escolaSanearReceita(ADM, "SANEAR");
+b.passo("48b. ⚠ E a recusa APARECE no log — não morre calada");
+// A primeira versão recusava sem logar. O usuário via "Execução concluída" e
+// nada mais, e não tinha como saber por que a migração não rodou.
+b.ok(/pr[ée]via|preparar/i.test(g.Logger.getLog() || ""),
+  "quem executa entende por que nada aconteceu");
+
+b.passo("48c. A prévia libera, e ela mesma não escreve nada");
+const antesPrev = JSON.stringify(lerAba());
+g.__usuarioAtivoEmail = g.__donoDoProjetoEmail;   // no editor não há token
+const prep = g.escolaSanearPreparar();
+b.ok(prep.ok === true && prep.preparado === true &&
+     antesPrev === JSON.stringify(lerAba()),
+  "preparar mostra o mapa e não toca na planilha",
+  "válido por " + prep.validoPorMinutos + " min");
+
+b.passo("49. Depois da prévia, move cada valor para a coluna do tipo dele");
+const san = g.escolaSanearAplicar();
 const t1 = lerAba().linha(1);
 b.ok(san.ok === true &&
      String(t1["TELEFONE_RECEITA"]).indexOf("(31) 3515-7500") > -1 &&
@@ -679,11 +702,33 @@ b.ok(salvouFant.ok === true && String(lerAba().linha(1)["NOME_FANTASIA"]) === "A
   "o cadastro ainda escreve fantasia na coluna certa",
   String(lerAba().linha(1)["NOME_FANTASIA"]));
 
+b.passo("54b. ⚠ O consentimento é de USO ÚNICO");
+// Preparar uma vez e aplicar duas seria uma trava de mentira: a segunda
+// aplicação rodaria sem ninguém ter olhado nada.
+const segundaSemPreparar = g.escolaSanearAplicar();
+b.ok(segundaSemPreparar.ok === false,
+  "aplicar consome a liberação — a próxima exige prévia de novo",
+  (segundaSemPreparar.mensagem || "").split("\n")[0]);
+
+b.passo("54c. ⚠ E a liberação EXPIRA");
+// Sem prazo, uma prévia rodada de manhã autorizaria uma aplicação à noite —
+// sobre uma base que mudou no meio. A liberação vale 15 minutos.
+montarBaseSuja();
+g.escolaSanearPreparar();
+g.PropertiesService.getScriptProperties().setProperty(
+  g.ESC_PROP_CONSENTIMENTO, String(new Date().getTime() - 20 * 60 * 1000));  // 20 min atrás
+const expirado = g.escolaSanearAplicar();
+b.ok(expirado.ok === false && /pr[ée]via|preparar/i.test(expirado.mensagem || ""),
+  "prévia de 20 minutos atrás não autoriza mais",
+  (expirado.mensagem || "").split("\n")[0]);
+
 b.passo("55. ⚠ Rodar de novo não muda mais nada");
 montarBaseSuja();
-g.escolaSanearReceita(ADM, "SANEAR");
+g.escolaSanearPreparar();
+g.escolaSanearAplicar();
 const depois1 = JSON.stringify(lerAba());
-const san2 = g.escolaSanearReceita(ADM, "SANEAR");
+g.escolaSanearPreparar();
+const san2 = g.escolaSanearAplicar();
 b.ok(san2.movidos === 0 && depois1 === JSON.stringify(lerAba()),
   "idempotente: a segunda passada move zero",
   "movidos na 2ª = " + san2.movidos);
@@ -699,6 +744,9 @@ b.ok(trSan.length >= 1 && /Saneamento/i.test(trSan[0].justificativa || ""),
   trSan.length ? trSan[0].justificativa.slice(0, 60) : "nada");
 
 b.passo("58. E exige permissão");
+// Sem identidade nenhuma — nem token, nem conta Google. É o cenário do
+// visitante anônimo chamando google.script.run.
+g.__usuarioAtivoEmail = "";
 b.bloqueia(function () { return g.escolaSanearReceita("", "SANEAR"); },  "sanear exige sessão");
 b.bloqueia(function () { return g.escolaSanearReceita(FIN, "SANEAR"); }, "financeiro não saneia");
 b.bloqueia(function () { return g.escolaSanearReceita(ESC, "SANEAR"); }, "não-admin não saneia");
