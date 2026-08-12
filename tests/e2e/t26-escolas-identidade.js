@@ -439,6 +439,28 @@ b.ok(errosTipo.length === 0 && g.escolaTipoAparente_(new Date()) === "DATA",
   "telefone, e-mail, CEP, CNPJ, CNAE, UF, situação, id e data",
   errosTipo.length ? errosTipo.join(" | ") : "11 formatos reconhecidos");
 
+b.passo("33b. ⚠ CPF na coluna de documento NÃO é dado fora do lugar");
+// Escola de pessoa física guarda CPF na coluna CNPJ, e isso é correto — o
+// cadastro já aceita. Enquanto o validador não sabia disso, ele acusava as
+// três escolas de PF como problema, e eu cheguei a reportá-las ao usuário.
+const shCpf = zerarTudo();
+shCpf.getRange(1, 1, 1, 2).setValues([["Escola (Razão Social)", "CNPJ"]]);
+shCpf.appendRow(["Creche da Dona Maria", "111.444.777-35"]);   // CPF sintético válido
+shCpf.appendRow(["Colégio Beta",         "11.222.333/0001-81"]);
+const valCpf = g.escolaValidarColunas(ADM);
+const colDoc = (valCpf.colunas || []).filter(c => c.nome === "CNPJ")[0] || {};
+b.ok(g.escolaTipoAparente_("111.444.777-35") === "CPF" && colDoc.trocadas === 0,
+  "CPF válido é reconhecido e aceito na coluna do documento",
+  "trocadas=" + colDoc.trocadas);
+
+b.passo("33c. ⚠ Mas número de 11 dígitos qualquer NÃO vira CPF");
+// Sem exigir dígito verificador, todo celular escrito sem pontuação viraria
+// "CPF" — e o validador deixaria de acusar telefone fora do lugar.
+b.ok(g.escolaTipoAparente_("27999999999") !== "CPF" &&
+     g.escolaTipoAparente_("111.444.777-00") !== "CPF",
+  "exige dígito verificador válido",
+  "27999999999 → " + g.escolaTipoAparente_("27999999999"));
+
 b.passo("34. ⚠ Telefone de 10 dígitos NÃO pode ser lido como CEP");
 // "(27) 3256-6107" sem pontuação vira 10 dígitos; CEP tem 8. Confundir os dois
 // faria o validador aprovar telefone dentro da coluna CEP — justamente o tipo

@@ -733,6 +733,18 @@ function escolaTipoAparente_(v) {
   if (/^\(?\d{2}\)?[\s-]?\d{4,5}-?\d{4}$/.test(t)) return "TELEFONE";
   if (d.length === 14 && /[.\/-]/.test(t)) return "CNPJ";
   if (d.length === 14) return "CNPJ";
+  /* CPF — escola de pessoa física.
+   *
+   * O validador acusava esses três como TEXTO dentro da coluna CNPJ, e eu
+   * cheguei a reportá-los ao usuário como problema. Não são: ele confirmou que
+   * "tem alguns colaboradores que pagam pelo CPF e não CNPJ", e o cadastro já
+   * foi corrigido para aceitar. Faltava o validador saber disso.
+   *
+   * Exige dígito verificador válido de propósito: sem isso, qualquer sequência
+   * de 11 dígitos — inclusive celular escrito sem pontuação — viraria "CPF" e
+   * o validador deixaria de acusar telefone fora do lugar. A checagem de
+   * TELEFONE vem antes, e esta fecha o resto. */
+  if (d.length === 11 && typeof validarDigitosCpf_ === "function" && validarDigitosCpf_(d)) return "CPF";
   // CEP aparece em três grafias na base: 29190062, 29190-062 e 29.190-062.
   // A terceira me escapou na primeira versão e o teste pegou — ela cairia em
   // TEXTO, e uma coluna de CEP cheia de "TEXTO" seria acusada de troca sem ter
@@ -757,11 +769,13 @@ function escolaTipoServe_(esperado, aparente) {
     case "CNAE":       return aparente === "NUMERO";
     case "CEP":        return aparente === "NUMERO";
     case "TELEFONE":   return aparente === "NUMERO";
+    // A coluna se chama CNPJ mas guarda o DOCUMENTO da escola, que pode ser
+    // CPF quando ela é de pessoa física. Ver escolaAnalisarDocumento_.
+    case "CNPJ":       return aparente === "CPF";
     case "SITUACAO":   return false;              // catálogo fechado, sem tolerância
     case "UF":         return false;
     case "DATA":       return false;
     case "EMAIL":      return false;
-    case "CNPJ":       return false;
     case "ESCOLAID":   return false;
     default:           return true;
   }

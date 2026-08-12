@@ -29,8 +29,47 @@ não 681. O `CLAUDE.md` foi ajustado.
 | Ninguém ficou de fora | ✅ **verificado** — `criados` + `jaTinham` = `total` = 679 |
 | Rodar de novo não estraga | ✅ **verificado** — segunda execução devolveu `criados: 0`, `jaTinham: 679`, **sem backup novo** |
 | O backup existe | ✅ **verificado** — `BACKUP_ESCOLAS_ID_20260811_205201` |
-| **A coluna nasceu no lugar certo** | 🔴 **falta olhar a planilha.** `EscolaID` tem que ser a **última** coluna, de `ESC-000001` a `ESC-000679`, e **nenhuma outra coluna pode ter deslocado**. É o ponto que mais importa: coluna deslocada = dado trocado de lugar em 679 linhas. |
-| **Ofícios continua emitindo** | 🔴 **falta testar.** É o único módulo em uso diário e lê a aba Escolas. Uma emissão de teste basta. |
+| A coluna nasceu no lugar certo | ✅ **verificado** — `EscolaID` é a 37ª e última, 679/679 preenchidas, nenhuma outra coluna deslocada |
+| **Ofícios continua emitindo** | 🟡 **parcial.** O seletor de escola do ofício foi aberto e trouxe CNPJ, cidade e e-mail corretos. **Emissão completa, com PDF e envio, continua não testada.** |
+
+---
+
+### 12. Escolas — o saneamento da base
+**Aberto em:** 11/08/2026 · **Executado e conferido em:** 11/08/2026
+
+A aba tinha um segundo conjunto de dados, vindo da consulta à Receita,
+gravado em colunas com o rótulo errado. Medido, corrigido e conferido pelo
+validador antes e depois:
+
+| | Antes | Depois |
+|---|---|---|
+| Linhas 100% coerentes | 37 | **657** |
+| Linhas com dado fora do lugar | 642 | **22** |
+| `SITUACAO_CADASTRAL` | 634 datas | **0 trocadas** |
+| `CNAE_PRINCIPAL` | 634 situações | **0** |
+| `NOME_FANTASIA` | 638 e-mails | **0** |
+| `ULTIMA_VERIFICACAO` | 268 telefones | **0** |
+
+Backup em `BACKUP_ESCOLAS_SANEAMENTO_...`. Colunas novas no fim da aba:
+`TELEFONE_RECEITA`, `EMAILS_RECEITA`, `SITUACAO_RECEITA`,
+`DATA_CONSULTA_RECEITA`, `CEP_RECEITA`.
+
+**Continua aberto — 19 linhas, em 4 padrões:**
+
+| Padrão | Linhas | O quê |
+|---|---|---|
+| `E-mails (todos)` com número + `Telefone 1` com cidade | 9 | outra gravação antiga, outra ordem |
+| `E-mails (todos)` com número | 6 | idem |
+| `Telefone 2` com texto | 2 | inclui `(028) 73521-8042`, telefone malformado |
+| `Telefone 1` com texto | 2 | nome de cidade |
+
+São poucas e sem padrão limpo o bastante para migração automática. **Vão
+para a fila de Pendências na Fase 2** — que é exatamente para isso que ela
+existe.
+
+**Não confundir com problema:** as 3 linhas com CPF na coluna CNPJ (583,
+620, 636) são escolas de pessoa física, e estão certas. O validador as
+acusava por falha minha, corrigida.
 
 **Se algo der errado:** a migração só escreve numa coluna nova. Apagar a
 coluna `EscolaID` devolve a base ao estado anterior, e o backup está lá.
