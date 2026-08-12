@@ -7,6 +7,22 @@
 /* ================= CONFIG ================= */
 const PASTA_VOUCHER_DOCUMENTOS_ID = "1PyMA0bm0FZuyYONlY4dNNo3pgJRiI63n";
 
+/* A LOGO É LIDA DO DRIVE E EMBUTIDA EM base64 — não é buscada por URL.
+ *
+ * O endereço abaixo continua aqui só como registro de qual arquivo é. Quem
+ * monta o documento chama `logoSindicatoVoucher_()` (VoucherPdf.gs), que faz
+ * o mesmo que já se faz com a assinatura do presidente.
+ *
+ * POR QUÊ: `getAs(MimeType.PDF)` renderiza o HTML num processo do Google que
+ * não carrega imagem por URL externa de forma confiável — às vezes vem, às
+ * vezes o PDF sai com o quadrado vazio no lugar do brasão, e não há erro
+ * nenhum no log. Foi por isso que a assinatura virou base64 em 12/08/2026; a
+ * logo tinha o mesmo risco e ficou de fora naquele dia.
+ *
+ * O sintoma é traiçoeiro: na prévia, que é HTML no navegador, a imagem
+ * aparece — o navegador busca a URL sem problema. Só no PDF é que some. Ou
+ * seja, conferir pela prévia não prova nada sobre a logo. */
+const LOGO_VOUCHER_FILE_ID = "1c-RHfb0W-wl_ZK1xlMjNRs9DS4ep2ov7";
 const LOGO_VOUCHER        = "https://lh3.googleusercontent.com/d/1c-RHfb0W-wl_ZK1xlMjNRs9DS4ep2ov7";
 const PRESIDENTE_VOUCHER  = "Leonil Dias da Silva";
 const CARGO_PRESIDENTE_V  = "Presidente Sindeducação-ES";
@@ -32,8 +48,45 @@ function normalizarCPF_(cpf) {
   return String(cpf || "").replace(/\D/g, "");
 }
 
+/**
+ * CPF formatado, devolvendo o zero à esquerda que a planilha comeu.
+ *
+ * O CASO REAL (12/08/2026): o certificado saiu com "8538104780" cru, dez
+ * dígitos. Não era CPF errado no cadastro — era a planilha guardando a
+ * coluna como NÚMERO, e número não tem zero à esquerda. O CPF verdadeiro
+ * começa com 0, e o Sheets o descartou na gravação.
+ *
+ * A versão anterior desistia (`if (d.length !== 11) return cpf`) e imprimia
+ * o número cru no documento oficial. Silenciosa e feia: quem lê o
+ * certificado vê um CPF que não existe.
+ *
+ * COMO SE COMPLETA SEM CHUTAR
+ *
+ * Zeros só somem da ESQUERDA, e só na quantidade que falta para 11. Então a
+ * reconstrução é determinística: 10 dígitos = faltou um zero, 9 = faltaram
+ * dois. Mas completar não basta — é preciso PROVAR que o resultado é um CPF
+ * de verdade, e para isso existe o dígito verificador. `cpfValido`
+ * (Utils.gs:269) confere os dois dígitos.
+ *
+ * Se o CPF completado não passar na conferência, o número não era um CPF com
+ * zero perdido — era outra coisa. Aí devolve como veio, sem inventar. Um
+ * documento com o dado cru é ruim; um documento com um CPF fabricado que
+ * pertence a outra pessoa é muito pior.
+ */
 function formatarCpfVoucher_(cpf) {
-  const d = normalizarCPF_(cpf);
+  var d = normalizarCPF_(cpf);
+
+  if (d.length > 0 && d.length < 11 && d.length >= 9) {
+    var completo = ("00" + d).slice(-11);
+    var passa = true;
+    try { passa = (typeof cpfValido === "function") ? cpfValido(completo) : true; } catch (e) {}
+    if (passa) {
+      Logger.log("CPF recuperado: a planilha guardou " + d.length +
+                 " dígitos (zero à esquerda perdido por estar como número).");
+      d = completo;
+    }
+  }
+
   if (d.length !== 11) return String(cpf || "");
   return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
 }

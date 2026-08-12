@@ -219,48 +219,63 @@ function registrarEmissaoVoucher_(reg, dados) {
 }
 
 /**
- * A assinatura do presidente, como data URI para embutir no PDF.
+ * Uma imagem do Drive como data: URI, pronta para entrar no HTML.
  *
- * POR QUE BASE64 E NÃO A URL DO DRIVE
+ * TODA IMAGEM DO DOCUMENTO PASSA POR AQUI — e isso não é organização, é
+ * requisito. `getAs(MimeType.PDF)` renderiza o HTML num processo do Google
+ * que não busca imagem por URL externa de forma confiável: às vezes vem, às
+ * vezes o PDF sai com um quadrado vazio, sem erro nenhum no log.
  *
- * O PDF é gerado por getAs(MimeType.PDF) a partir do HTML. Nessa conversão o
- * Google não busca imagem de host externo de forma confiável — e uma
- * assinatura que às vezes aparece é pior que assinatura nenhuma, porque
- * ninguém descobre que faltou até o associado reclamar. Embutida, ela sempre
- * vai junto.
+ * E o sintoma engana: na PRÉVIA, que é HTML aberto no navegador, a imagem
+ * aparece normalmente — quem busca a URL ali é o navegador. Só no PDF é que
+ * some. Conferir pela prévia, portanto, não prova nada sobre imagem.
  *
- * O CACHE existe porque a conversão base64 de uma imagem custa caro e o
- * arquivo não muda. Sem ele, cada voucher emitido bate no Drive.
- *
- * FALHA SILENCIOSA É DELIBERADA AQUI, e só aqui: se o Drive estiver fora, o
- * documento sai com a linha de assinatura e o nome, como saía antes. Travar a
- * emissão de um benefício por causa de uma imagem seria pior que emitir sem
- * ela — mas o log registra, para não virar defeito invisível.
+ * Falha aqui NÃO derruba a emissão: devolve "" e o documento sai sem aquela
+ * imagem. Um certificado sem brasão ainda vale; uma emissão que explode por
+ * causa do Drive fora do ar, não.
  */
-function assinaturaPresidenteVoucher_() {
+function imagemDoDriveVoucher_(fileId, chaveCache, rotulo) {
+  if (!fileId) return "";
+
   var cache = null;
   try { cache = CacheService.getScriptCache(); } catch (e) {}
-  var CHAVE = "sisgep_assinatura_presidente_v1";
-
   if (cache) {
-    var guardado = cache.get(CHAVE);
+    var guardado = cache.get(chaveCache);
     if (guardado) return guardado;
   }
 
   try {
-    var blob = DriveApp.getFileById(ASSINATURA_FILE_ID_V).getBlob();
+    var blob = DriveApp.getFileById(fileId).getBlob();
     var mime = blob.getContentType() || "image/jpeg";
     var uri = "data:" + mime + ";base64," + Utilities.base64Encode(blob.getBytes());
-    /* 100KB é o teto de um item no CacheService. Assinatura maior que isso
-     * não é cacheada — funciona igual, só relê do Drive a cada emissão. */
+    /* 100KB é o teto de um item no CacheService. Imagem maior que isso não é
+     * cacheada — funciona igual, só relê do Drive a cada emissão. */
     if (cache && uri.length < 95000) {
-      try { cache.put(CHAVE, uri, 21600); } catch (e2) {}
+      try { cache.put(chaveCache, uri, 21600); } catch (e2) {}
     }
     return uri;
   } catch (e) {
-    Logger.log("⚠ Assinatura do presidente não carregada (documento sai sem ela): " + e.message);
+    Logger.log("⚠ " + rotulo + " não carregada (o documento sai sem ela): " + e.message);
     return "";
   }
+}
+
+/**
+ * A assinatura do presidente.
+ *
+ * Uma assinatura que às vezes aparece é pior que assinatura nenhuma: ninguém
+ * descobre que faltou até o associado reclamar do documento na mão. Por isso
+ * ela é embutida, e por isso o log registra quando não carrega.
+ */
+function assinaturaPresidenteVoucher_() {
+  return imagemDoDriveVoucher_(
+    ASSINATURA_FILE_ID_V, "sisgep_assinatura_presidente_v1", "Assinatura do presidente");
+}
+
+/** O brasão do cabeçalho. Ver o comentário de LOGO_VOUCHER_FILE_ID. */
+function logoSindicatoVoucher_() {
+  return imagemDoDriveVoucher_(
+    LOGO_VOUCHER_FILE_ID, "sisgep_logo_sindicato_v1", "Logo do sindicato");
 }
 
 function gerarHtmlDocumentoVoucher_(dados) {
@@ -347,7 +362,7 @@ const cnpjInstituicao = reg.CNPJ_INSTITUICAO || "";
 
     "<div class='top'>" +
     "<div class='brand'>" +
-    "<img class='logo' src='" + escHtmlVoucher_(LOGO_VOUCHER) + "'>" +
+    "<img class='logo' src='" + escHtmlVoucher_(logoSindicatoVoucher_()) + "'>" +
     "<div>" +
     "<div class='brand-title'>SindEducação-ES</div>" +
     "<div class='brand-sub'>Sindicato dos Educadores Técnico-Administrativos em Estabelecimentos de Ensino Privado do Estado do Espírito Santo</div>" +
@@ -499,7 +514,7 @@ function gerarHtmlOficioEscolaVoucher_(dados) {
     "<div class='doc'>" +
 
     "<div class='top'>" +
-    "<img class='logo' src='" + escHtmlVoucher_(LOGO_VOUCHER) + "'>" +
+    "<img class='logo' src='" + escHtmlVoucher_(logoSindicatoVoucher_()) + "'>" +
     "<div>" +
     "<div class='brand'>SindEducação-ES</div>" +
     "<div class='sub'>Sindicato dos Educadores Técnico-Administrativos em Estabelecimentos de Ensino Privado do Estado do Espírito Santo</div>" +
@@ -711,14 +726,57 @@ function gerarDocumentoCertBolsaCompleto(protocolo, tipoDocumento, opcoes, token
   exigirModulo_(tokenSessao, "beneficios", false);
   return gerarDocumentoVoucher(protocolo, tipoDocumento, opcoes || {});
 }
+/**
+ * O QR de validação, EMBUTIDO — não é um link para o quickchart.io.
+ *
+ * ACHADO EM 12/08/2026, e foi o teste que apontou: eu tinha corrigido a
+ * assinatura e a logo para base64 por causa do `getAs(MimeType.PDF)`, que não
+ * busca imagem de host externo de forma confiável — e passei direto pelo QR,
+ * que tinha exatamente o mesmo problema. O teste t33 varre o HTML inteiro
+ * atrás de `src=http` e não deixou passar.
+ *
+ * E aqui doía mais que nas outras duas. Logo faltando é feio; QR faltando
+ * quebra a função do documento: é por ele que a escola confere se o
+ * certificado é verdadeiro. Um voucher impresso com o quadrado em branco não
+ * tem como ser validado por quem o recebe no papel.
+ *
+ * A imagem é buscada UMA vez, na emissão, e vai embutida. Se o quickchart
+ * estiver fora do ar nesse momento, devolve "" e o documento sai sem o QR —
+ * o código de validação em texto continua impresso logo ao lado, e é por ele
+ * que se confere. Travar a emissão por causa disso seria pior.
+ */
 function gerarQrCodeVoucherUrl_(codigoValidacao) {
-  var baseUrl = ScriptApp.getService().getUrl();
-
+  var codigo = String(codigoValidacao || "");
   var urlValidacao =
-    baseUrl +
-    "?page=pub-validar-voucher&codigo=" +
-    encodeURIComponent(String(codigoValidacao || ""));
+    ScriptApp.getService().getUrl() +
+    "?page=pub-validar-voucher&codigo=" + encodeURIComponent(codigo);
 
-  return "https://quickchart.io/qr?size=160&text=" +
-    encodeURIComponent(urlValidacao);
+  var urlQr = "https://quickchart.io/qr?size=160&text=" + encodeURIComponent(urlValidacao);
+
+  var cache = null;
+  try { cache = CacheService.getScriptCache(); } catch (e) {}
+  var chave = "sisgep_qr_voucher_" + codigo;
+  if (cache) {
+    var guardado = cache.get(chave);
+    if (guardado) return guardado;
+  }
+
+  try {
+    var resp = UrlFetchApp.fetch(urlQr, { muteHttpExceptions: true });
+    if (resp.getResponseCode() !== 200) {
+      Logger.log("⚠ QR do voucher: quickchart devolveu " + resp.getResponseCode() +
+                 " (documento sai sem o QR, com o código em texto).");
+      return "";
+    }
+    var blob = resp.getBlob();
+    var uri = "data:" + (blob.getContentType() || "image/png") +
+              ";base64," + Utilities.base64Encode(blob.getBytes());
+    if (cache && uri.length < 95000) {
+      try { cache.put(chave, uri, 21600); } catch (e2) {}
+    }
+    return uri;
+  } catch (e) {
+    Logger.log("⚠ QR do voucher não gerado (documento sai sem ele): " + e.message);
+    return "";
+  }
 }
