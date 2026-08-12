@@ -104,7 +104,8 @@ diz**. São só 2 linhas; dá para olhar direto na planilha.
 
 | O que falta conferir | Como |
 |---|---|
-| 🔴 **`escolaValidarColunas` depois da padronização** | linhas coerentes devem passar de 660; `UF` deve sair de 30 para ~678 preenchidas |
+| ✅ **`UF` preenchida** | previsto ~678 de 679; medido **678** (`Sem UF` = 1) em 12/08/2026 |
+| 🔴 **`escolaValidarColunas` depois da padronização** | linhas coerentes devem passar de 660 |
 | 🔴 **Formulário de ofício** | `CIDADE/UF` deve mostrar cidade e UF separados, telefone no formato novo |
 
 ---
@@ -349,3 +350,47 @@ Travado por teste: `t9-menu.js`, passos 13 e 14, varre os 71 `.html`.
 |---|---|---|
 | 10/08/2026 | Trilha abre e consulta | print do usuário |
 | 10/08/2026 | Token nas 5 telas | print do usuário |
+
+---
+
+### 14. Escolas — a fila de Pendências (Fase 2)
+**Aberto em:** 12/08/2026
+
+**Backend medido na base real.** `escolasPendenciasResumo` rodada pelo dono
+do projeto no editor, log confirmado pelo usuário em 12/08/2026:
+
+```
+65 de 679 escolas têm alguma pendência
+
+     19  Dado fora do lugar...... (gravidade 1)
+      0  Sem CNPJ nem CPF........ (gravidade 1)
+      1  Sem e-mail.............. (gravidade 1)
+      0  Sem razão social........ (gravidade 1)
+     39  Sem telefone............ (gravidade 2)
+     13  Sem situação............ (gravidade 2)
+      1  Sem UF.................. (gravidade 3)
+```
+
+**O que isto FECHA:**
+
+- O `19` bate exatamente com o que sobrou do saneamento de 11/08. Emulador e
+  base real concordam — a medição é a mesma dos dois lados.
+- `Sem UF = 1` confirma a Etapa C: 678 de 679 preenchidas, como previsto.
+- `Sem documento = 0` e `Sem razão social = 0`: nenhuma escola está sem o que
+  a trava para ofício, cobrança e listagem.
+- **614 das 679 (90,4%) com cadastro completo.**
+
+**O que isto NÃO fecha — continua "não testado" pela REGRA Nº -1:**
+
+| Item | Por quê |
+|---|---|
+| 🔴 `escolasPendenciasListar` | só roda com token de sessão, e a tela ainda não existe. O que foi medido é o resumo, não a listagem. |
+| 🔴 A tela de Pendências | não existe ainda |
+| 🔴 Corrigir uma escola pela fila e ver o número cair | é o ciclo completo; sem tela, não dá |
+
+**Detalhe operacional que vale registrar:** com 1 escola sem e-mail, o
+sindicato alcança 678 das 679 por ofício e cobrança. A base está utilizável
+hoje — as pendências restantes são de qualidade, não de bloqueio.
+
+**As 39 sem telefone** são a maior fila, e são gravidade 2 justamente porque
+o e-mail cobre o contato. Não travam nada; tiram o segundo caminho.
