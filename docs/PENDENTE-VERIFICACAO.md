@@ -12,6 +12,55 @@
 
 ## 🔴 ABERTO
 
+### 16. Voucher — o envio do certificado (e-mail, WhatsApp e trilha)
+**Aberto em:** 12/08/2026 · `VoucherEnvio.gs`, `Voucher.gs`, `AuditoriaCore.gs`
+
+O backend do envio está escrito e coberto por `tests/e2e/t30-voucher-envio.js`
+(66 asserções, 10 mutações — todas mortas). O que o emulador prova é lógica:
+quem entra pela porta, de onde vem cada e-mail, o que é destinatário e o que
+é cópia, o que é recusado antes de sair, e o que fica no rastro.
+
+**Três defeitos foram achados por rodar isto, e os três eram silenciosos:**
+
+| # | Defeito | De quem | Como se manifestava |
+|---|---|---|---|
+| 1 | `voucherPrepararEnvio` lia `EMAIL_INSTITUICAO`, coluna que não existia | meu, deste trabalho | campo sempre vazio |
+| 2 | `buscarEmailRhEscolaVoucher_` não procurava em `"E-mail (principal)"` | **anterior** a este trabalho | nunca achava e-mail de escola nenhuma, nas 679 |
+| 3 | `voucherRegistrarEnvio_` chamava `auditoriaRegistrar`, que não existe | meu | e-mail saía, rastro não era gravado |
+
+O 3 valia junto com um quarto: `voucherEnviosAnteriores_` lia por
+`auditoriaConsultar`, que exige o módulo **Auditoria** — que quem emite
+certificado normalmente não tem. A lista voltava vazia sem erro, e o modal
+diria "nunca enviado" sobre um protocolo já enviado três vezes.
+
+**E uma exposição, que eu mesmo introduzi:** `voucherPreviaSegura` foi escrita
+sem trava nenhuma, para rodar pelo botão Run do editor. Prévia não grava nada
+e por isso pareceu inofensiva — mas devolve o documento inteiro de um
+associado real, e era alcançável sem login. O `t6-exposicao` acusou na hora
+(216 · teto 215). Com a trava removida na mutação M1, um anônimo recebia
+`{ok:true, linkPdf:"https://drive.google.com/file/d/..."}`. Corrigido com
+porta dupla; o teto voltou a 215.
+
+**Continua "não testado" — depende de execução no sistema no ar:**
+
+| Item | O que precisa acontecer |
+|---|---|
+| 🔴 **O e-mail chega** | o emulador registra a chamada, não entrega. Enviar um para um endereço seu e conferir caixa de entrada, assunto, corpo e o botão "Abrir o certificado" |
+| 🔴 **O PDF vai anexado** | `DriveApp.getFileById().getBlob()` é falso no emulador. Conferir se o anexo abre — e se não abrir, o link no corpo tem que salvar o envio |
+| 🔴 **O defeito nº 2 sumiu na base real** | rodar `voucherPrepararEnvio` de um protocolo cuja instituição esteja nas 679 e ver `origemEmailInstituicao: "CADASTRO"` com o endereço certo |
+| 🔴 **`voucherPreviaSegura()` roda pelo botão Run** | a porta dupla depende de `Session.getActiveUser()` devolver e-mail no editor. O padrão já funcionou em `escolaVinculosStatus`, mas nesta função ainda não foi executado |
+| 🔴 **A trilha grava em produção** | no emulador cai na planilha de reserva. Com Firestore configurado o caminho é outro — conferir que `ENVIAR_EMAIL` aparece com protocolo, destino e usuário |
+| 🔴 **O link `wa.me` abre no celular** | com a mensagem já escrita. O sistema **não envia zap** — quem aperta enviar é a pessoa |
+| 🔴 **O modal de envio** | ainda não existe em `Scripts_Certificado.html`. O backend está pronto; a tela, não |
+
+**Três colunas novas em `Voucher_Solicitacoes`** — `INSTITUICAO_ENSINO`,
+`CNPJ_INSTITUICAO`, `EMAIL_INSTITUICAO` — entram por `ensureHeaders_`, que é
+idempotente. Rodar `inicializarModuloCertBolsa()` (`Voucher.gs:1307`) uma vez
+para criá-las. **Nenhuma tela preenche esses campos ainda**: a solicitação
+hoje não pergunta onde a pessoa estuda, só onde ela trabalha.
+
+---
+
 ### 15. Escolas Fase 4 — os vínculos passam a guardar escolaId
 **Aberto em:** 12/08/2026 · **Fase 4 do item 8 do PROMPT-MESTRE**
 

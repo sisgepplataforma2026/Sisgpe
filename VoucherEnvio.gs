@@ -141,7 +141,10 @@ function voucherPrepararEnvio(protocolo, tokenSessao) {
  * pode mudar. O link vai junto no corpo, para quem lê no celular.
  */
 function voucherEnviarPorEmail(protocolo, opcoes, tokenSessao) {
-  exigirModulo_(tokenSessao, "beneficios", false);
+  /* A sessão é guardada, não descartada: sem ela a trilha registra o envio
+   * como usuário "—", e um rastro que não diz QUEM mandou o certificado de
+   * alguém não serve para a única pergunta que se faz depois. */
+  var sessao = exigirModulo_(tokenSessao, "beneficios", false);
   opcoes = opcoes || {};
   try {
     var pronto = voucherPrepararEnvio(protocolo, tokenSessao);
@@ -193,7 +196,7 @@ function voucherEnviarPorEmail(protocolo, opcoes, tokenSessao) {
 
     MailApp.sendEmail(msg);
     voucherRegistrarEnvio_(pronto.protocolo, "EMAIL",
-      para + (copia ? " (cc " + copia + ")" : ""), tokenSessao);
+      para + (copia ? " (cc " + copia + ")" : ""), sessao);
 
     return { ok: true, mensagem: "E-mail enviado para " + para + (copia ? " com cópia para " + copia : "") + ".",
              para: para, copia: copia, comAnexo: anexos.length > 0 };
@@ -214,9 +217,9 @@ function voucherEnviarPorEmail(protocolo, opcoes, tokenSessao) {
  * pode confirmar é pior que não registrar nada.
  */
 function voucherRegistrarAberturaWhatsApp(protocolo, tokenSessao) {
-  exigirModulo_(tokenSessao, "beneficios", false);
+  var sessao = exigirModulo_(tokenSessao, "beneficios", false);
   try {
-    var r = voucherRegistrarEnvio_(String(protocolo || "").trim(), "WHATSAPP_ABERTO", "", tokenSessao);
+    var r = voucherRegistrarEnvio_(String(protocolo || "").trim(), "WHATSAPP_ABERTO", "", sessao);
     return r ? { ok: true } : { ok: false, mensagem: "Não consegui registrar a abertura." };
   } catch (e) {
     return { ok: false, mensagem: e.message };
@@ -356,40 +359,68 @@ function voucherIdDoLink_(url) {
  * Não cria aba nova: usa a trilha que o projeto já tem. Uma aba
  * "Voucher_Envios" seria um terceiro lugar para procurar histórico, e o
  * Histórico 360° já vai ler da trilha.
+ *
+ * A FUNÇÃO CHAMADA É auditar_, NÃO "auditoriaRegistrar".
+ *
+ * Escrevi este arquivo chamando auditoriaRegistrar, que não existe em lugar
+ * nenhum do projeto — o nome saiu de suposição, não de leitura. E o defeito
+ * era do tipo que não aparece: a guarda `typeof ... !== "function"` devolvia
+ * false calada, o e-mail saía normalmente e o rastro simplesmente não era
+ * gravado. Ninguém descobriria antes de precisar provar que enviou.
+ *
+ * A trilha real é auditar_(dados) — AuditoriaCore.gs:133. Ela NUNCA lança, e
+ * cai para a planilha de reserva quando o Firestore não está configurado.
  */
-function voucherRegistrarEnvio_(protocolo, canal, destino, tokenSessao) {
+function voucherRegistrarEnvio_(protocolo, canal, destino, sessao) {
   try {
-    if (typeof auditoriaRegistrar !== "function") return false;
-    auditoriaRegistrar({
+    if (typeof auditar_ !== "function") return false;
+    var r = auditar_({
       modulo: "Benefícios",
       submodulo: "Certificado de Bolsa",
       acao: canal === "EMAIL" ? "ENVIAR_EMAIL" : "ABRIR_WHATSAPP",
-      registroId: protocolo,
+      registroId: String(protocolo || ""),
       valorNovo: destino || canal,
-      resultado: "OK"
-    }, tokenSessao);
-    return true;
+      documento: String(protocolo || ""),
+      sessao: sessao || {}
+    });
+    return !!(r && r.ok);
   } catch (e) {
     Logger.log("Registro do envio falhou (o envio em si foi feito): " + e.message);
     return false;
   }
 }
 
-/** O que já foi enviado deste protocolo, para o modal não repetir sem avisar. */
+/**
+ * O que já foi enviado deste protocolo, para o modal não repetir sem avisar.
+ *
+ * Lê por aud_consultar_, e não por auditoriaConsultar, porque esta última
+ * exige o módulo AUDITORIA — que quem emite certificado normalmente não tem.
+ * Com ela, a lista voltava vazia para o usuário comum, sem erro visível, e o
+ * modal dizia "nunca enviado" sobre um protocolo já enviado três vezes.
+ *
+ * O filtro por modulo + registroId é o que mantém a leitura presa ao
+ * protocolo que a pessoa já tem direito de ver: voucherPrepararEnvio, único
+ * chamador, já passou por exigirModulo_("beneficios").
+ */
 function voucherEnviosAnteriores_(ss, protocolo) {
   try {
-    if (typeof auditoriaConsultar !== "function") return [];
-    var r = auditoriaConsultar({ modulo: "Benefícios", limite: 200 });
+    if (typeof aud_consultar_ !== "function") return [];
+    var r = aud_consultar_({ modulo: "Benefícios", registroId: String(protocolo || ""), limite: 200 });
     var lista = (r && r.acoes) || [];
     return lista
-      .filter(function (a) {
-        return String(a.registroId || "") === protocolo &&
-               /ENVIAR_EMAIL|ABRIR_WHATSAPP/.test(String(a.acao || ""));
-      })
+      .filter(function (a) { return /ENVIAR_EMAIL|ABRIR_WHATSAPP/.test(String(a.acao || "")); })
       .map(function (a) {
-        return { quando: a.dataHora, canal: a.acao, destino: a.valorNovo, quem: a.usuario };
+        return {
+          quando: a.dataHora,
+          canal: a.acao,
+          /* A reserva grava valorNovo com JSON.stringify, então o endereço
+           * volta entre aspas. Tirar aqui evita "cc \"x@y.com\"" na tela. */
+          destino: String(a.valorNovo == null ? "" : a.valorNovo).replace(/^"|"$/g, ""),
+          quem: a.usuario
+        };
       });
   } catch (e) {
+    Logger.log("Histórico de envios do voucher falhou: " + e.message);
     return [];
   }
 }

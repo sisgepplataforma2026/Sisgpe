@@ -183,9 +183,38 @@ function aud_gravarNaPlanilha_(r) {
 /**
  * Consulta a trilha. Lê do Firestore; se não estiver configurado ou falhar,
  * lê da planilha de reserva — assim a tela funciona nos dois cenários.
+ *
+ * É a porta do módulo AUDITORIA: quem chama daqui está pedindo para VER A
+ * TRILHA, e isso exige acesso à trilha.
  */
 function auditoriaConsultar(filtros, tokenSessao) {
   exigirModulo_(tokenSessao, AUD_MODULO, false);
+  return aud_consultar_(filtros);
+}
+
+/**
+ * A consulta em si, SEM a trava do módulo Auditoria.
+ *
+ * POR QUE EXISTE SEPARADA
+ *
+ * Um módulo mostrando o próprio histórico não é o mesmo que alguém abrindo a
+ * trilha do sindicato inteiro. Quando o modal do certificado mostra "e-mail
+ * enviado para fulano às 16:42", ele não está auditando ninguém: está
+ * relendo o que aquela mesma tela acabou de escrever, sobre o protocolo que
+ * já está na frente da pessoa.
+ *
+ * Exigir o módulo Auditoria ali deixaria a lista vazia para quem tem
+ * Benefícios e não tem Auditoria — que é o caso normal de quem emite. E o
+ * pior: vazia SEM ERRO, porque quem chama engole a exceção. Histórico que
+ * some sem avisar faz a pessoa reenviar o que já foi.
+ *
+ * REGRA DE USO: quem chamar daqui é responsável por duas coisas —
+ *   1. ter feito a própria checagem de módulo antes (exigirModulo_);
+ *   2. filtrar por `modulo` E `registroId`, prendendo a leitura ao registro
+ *      que a pessoa já tem direito de ver.
+ * Chamar sem filtro é abrir a trilha inteira por uma porta lateral.
+ */
+function aud_consultar_(filtros) {
   filtros = filtros || {};
 
   var limite = Math.min(parseInt(filtros.limite, 10) || 200, 1000);

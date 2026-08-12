@@ -1420,8 +1420,21 @@ function testeAprovarVoucher() {
  *
  * Aqui o tipo é "PREVIA", que retorna o HTML antes de salvar e antes de
  * enviar. Nada sai, nada é gravado.
+ *
+ * NÃO GRAVAR NÃO É NÃO VAZAR. Escrevi esta função sem trava nenhuma, para
+ * rodar pelo botão Run do editor, e o teste de exposição (t6) apontou na
+ * mesma hora: ela era a 216ª função que um anônimo alcançava sem login, e o
+ * que ela devolve é o documento inteiro de um associado real — nome,
+ * protocolo, instituição de ensino. Prévia é leitura, e leitura de dado
+ * pessoal também precisa de porta.
+ *
+ * A trava é a porta dupla: token do SISGEP quando vem da tela, conta Google
+ * do dono/administrador quando vem do editor (o botão Run não passa
+ * argumento). Anônimo não passa.
  */
-function voucherPreviaSegura() {
+function voucherPreviaSegura(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, "beneficios", "Prévia de voucher", false);
+
   var lista = listarSolicitacoesVoucher() || [];
   if (!lista.length) {
     Logger.log("Nenhuma solicitação cadastrada. Sem protocolo, não há o que pré-visualizar.");

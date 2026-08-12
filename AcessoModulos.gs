@@ -155,6 +155,74 @@ function exigirModulo_(tokenSessao, modulo, exigirAdministrador) {
   return sessao;
 }
 
+/**
+ * Porta dupla: sessão do SISGEP OU conta Google com poder de administrador.
+ *
+ * Existe por causa de uma armadilha do editor do Apps Script: o botão Run
+ * chama a função SEM ARGUMENTO NENHUM. Uma função de manutenção escrita para
+ * ser rodada ali não recebe token — e se ela exigir token, é inútil no editor;
+ * se não exigir nada, vira endpoint anônimo de google.script.run, porque no
+ * Apps Script toda função global sem "_" no fim é alcançável por QUALQUER
+ * página do projeto, inclusive as públicas.
+ *
+ * A saída é aceitar os dois caminhos e recusar o terceiro:
+ *   - veio token  → vale a permissão de módulo do SISGEP;
+ *   - sem token   → só passa o dono do projeto ou um ADMINISTRADOR ATIVO
+ *                   da aba de usuários, identificado pela conta Google;
+ *   - anônimo     → recusa.
+ *
+ * Falhar em verificar é recusar: sem e-mail identificável, sem consulta à aba,
+ * o veredito é não.
+ *
+ * Nota de dívida: EscolasIdentidade.gs tem 5 cópias desta mesma lógica
+ * (escolaExigirAdminOuSessao_ e as anteriores a ela). A consolidação delas
+ * fica para um commit separado — mexer nelas junto com uma correção de
+ * segurança misturaria duas coisas que precisam ser revisadas em separado.
+ *
+ * @param {string} tokenSessao  token do SISGEP, ou vazio quando roda no editor
+ * @param {string} modulo       chave do módulo (ex.: "beneficios")
+ * @param {string} rotulo       nome da operação, para o log
+ * @param {boolean} exigeAdmin  true quando nem todo usuário do módulo pode
+ * @return {string} e-mail de quem executou pelo editor, ou "" quando veio por sessão
+ */
+function exigirAdminOuSessao_(tokenSessao, modulo, rotulo, exigeAdmin) {
+  if (String(tokenSessao || "").trim()) {
+    exigirModulo_(tokenSessao, modulo, !!exigeAdmin);
+    Logger.log(rotulo + " — execução por sessão do SISGEP");
+    return "";
+  }
+
+  var email = "";
+  try { email = String(Session.getActiveUser().getEmail() || "").trim().toLowerCase(); } catch (e) {}
+  if (!email) {
+    Logger.log(rotulo + " — RECUSADO: sem sessão e sem conta Google identificável.");
+    throw new Error("Sessão inválida ou expirada. Entre novamente no SISGEP.");
+  }
+
+  var dono = "";
+  try { dono = String(Session.getEffectiveUser().getEmail() || "").trim().toLowerCase(); } catch (e2) {}
+  var ehDono = !!dono && dono === email;
+
+  var ehAdmin = false;
+  if (!ehDono && typeof escolaEhAdministradorPorEmail_ === "function") {
+    ehAdmin = escolaEhAdministradorPorEmail_(email);
+  }
+
+  if (!ehDono && !ehAdmin) {
+    Logger.log(rotulo + " — RECUSADO para " + email + " (dono do projeto: " + (dono || "desconhecido") + ")");
+    throw new Error(
+      "Ação permitida somente para administradores. A conta " + email +
+      " não é a dona deste projeto Apps Script (" + (dono || "desconhecida") +
+      ") nem foi encontrada na aba " + ABA_USUARIOS_LOGIN +
+      " com EMAIL igual a esse, PERFIL = ADMINISTRADOR e STATUS = ATIVO."
+    );
+  }
+
+  Logger.log(rotulo + " — execução " +
+    (ehDono ? "pelo dono do projeto" : "por administrador cadastrado") + ": " + email);
+  return email;
+}
+
 /* =========================================
  * API PARA A TELA
  * ========================================= */
