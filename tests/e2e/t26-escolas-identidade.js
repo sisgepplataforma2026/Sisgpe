@@ -363,4 +363,55 @@ b.ok(registrou,
   "dá para saber quem rodou a migração e quando",
   registrou ? "registrada" : "NÃO registrada");
 
+/* ══════════════════════════════════════════════════════════════════════
+   7. DIAGNÓSTICO DE COLUNAS — só leitura
+   ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("IDENTIDADE · Diagnóstico de colunas");
+
+const shDiag = zerarTudo();
+// Acrescenta a coluna duplicada que existe na planilha real, para medir
+// exatamente o caso que motivou a função.
+shDiag.getRange(1, CABECALHO.length + 1).setValue("RAZAO_SOCIAL");
+shDiag.appendRow(linhaCrua("Escola Alfa", "11.222.333/0001-81", { "Cidade": "Vitória" }).concat(["Escola Alfa"]));
+shDiag.appendRow(linhaCrua("Escola Beta", "22.333.444/0001-81", {}).concat(["BETA EDUCACIONAL LTDA"]));
+shDiag.appendRow(linhaCrua("Escola Gama", "", {}).concat([""]));
+g.escolaMigrarIds(ADM);
+
+b.passo("28. Conta o preenchimento de cada coluna");
+const diag = g.escolaDiagnosticoColunas(ADM);
+const porNome = {};
+(diag.colunas || []).forEach(c => { porNome[c.nome] = c; });
+b.ok(diag.ok === true && diag.total === 3 &&
+     porNome["CNPJ"].preenchidas === 2 && porNome["CNPJ"].vazias === 1,
+  "diz quantas linhas cada coluna tem preenchida",
+  "CNPJ: " + porNome["CNPJ"].preenchidas + " de " + diag.total);
+
+b.passo("29. E traz amostra do que há dentro — é o que revela coluna com lixo");
+b.ok(Array.isArray(porNome["Cidade"].amostra) && porNome["Cidade"].amostra[0] === "Vitória",
+  "amostra do conteúdo real da coluna", JSON.stringify(porNome["Cidade"].amostra));
+
+b.passo("30. ⚠ Mede a duplicidade entre as DUAS colunas de razão social");
+// Decisão do usuário em 11/08/2026: "Sempre razão social". Antes de consolidar
+// é preciso saber em quantas linhas as duas divergem — consolidar às cegas
+// escolheria o valor errado em quem diverge.
+b.ok(!!diag.duplicidade && diag.duplicidade.iguais === 1 && diag.duplicidade.diferentes === 1 &&
+     diag.duplicidade.exemplos.length === 1 &&
+     diag.duplicidade.exemplos[0].razaoSocial === "BETA EDUCACIONAL LTDA",
+  "separa iguais, diferentes e mostra exemplo das que divergem",
+  diag.duplicidade ? ("iguais=" + diag.duplicidade.iguais + " diferentes=" + diag.duplicidade.diferentes) : "não mediu");
+
+b.passo("31. ⚠ E NÃO escreve nada na planilha");
+// Diagnóstico que altera dado não é diagnóstico. Comparação byte a byte da aba
+// antes e depois.
+const antesDiag = JSON.stringify(shDiag.getRange(1, 1, shDiag.getLastRow(), shDiag.getLastColumn()).getValues());
+g.escolaDiagnosticoColunas(ADM);
+g.escolaDiagnosticoColunas(ADM);
+const depoisDiag = JSON.stringify(shDiag.getRange(1, 1, shDiag.getLastRow(), shDiag.getLastColumn()).getValues());
+b.ok(antesDiag === depoisDiag, "rodar o diagnóstico não muda uma célula sequer",
+  antesDiag === depoisDiag ? "aba idêntica" : "A ABA MUDOU");
+
+b.passo("32. E exige permissão como as demais");
+b.bloqueia(function () { return g.escolaDiagnosticoColunas(""); }, "diagnóstico exige sessão");
+b.bloqueia(function () { return g.escolaDiagnosticoColunas(FIN); }, "financeiro não diagnostica");
+
 b.resumo();

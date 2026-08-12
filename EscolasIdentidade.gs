@@ -505,6 +505,102 @@ function escolaResolverIdentidade(id, tokenSessao) {
   };
 }
 
+/* =============================================================== */
+/* DIAGNÓSTICO DE COLUNAS — só leitura                             */
+/* =============================================================== */
+/*
+ * Conta o que existe em cada coluna da aba Escolas, sem escrever nada.
+ *
+ * Por que existe: a aba tem 37 colunas e o cadastro mexe em 20. Para decidir
+ * quais das outras 17 são dado vivo, quais são resíduo de funcionalidade
+ * antiga e quais estão duplicando outra, é preciso saber quantas linhas cada
+ * uma tem preenchida — e isso ninguém consegue olhando a planilha na tela com
+ * 679 linhas.
+ *
+ * Tentei responder isso exportando a planilha por fora e não deu: a exportação
+ * junta todas as abas sem separador e trunca, e me devolveu telefone dentro da
+ * coluna de razão social. Contagem tirada dali seria invenção. Esta função lê a
+ * aba de verdade, que é a única fonte que vale.
+ *
+ * NÃO ESCREVE NADA. Pode rodar quantas vezes quiser, a qualquer hora.
+ */
+function escolaDiagnosticoColunas(tokenSessao) {
+  // Mesma porta dupla da migração: token da tela, ou dono/administrador no editor.
+  if (String(tokenSessao || "").trim()) {
+    exigirModulo_(tokenSessao, "escolas", true);
+  } else {
+    var email = "";
+    try { email = String(Session.getActiveUser().getEmail() || "").trim().toLowerCase(); } catch (e) {}
+    var dono = "";
+    try { dono = String(Session.getEffectiveUser().getEmail() || "").trim().toLowerCase(); } catch (e2) {}
+    if (!email) throw new Error("Sessão inválida ou expirada. Entre novamente no SISGEP.");
+    if (email !== dono && !escolaEhAdministradorPorEmail_(email)) {
+      throw new Error("Ação permitida somente para administradores.");
+    }
+  }
+
+  try {
+    var sh = SpreadsheetApp.openById(PLANILHA_ID).getSheetByName(ABA_ESCOLAS);
+    if (!sh) return { ok: false, mensagem: "Aba '" + ABA_ESCOLAS + "' não encontrada." };
+
+    var ultimaLinha = sh.getLastRow();
+    var ultimaCol   = sh.getLastColumn();
+    if (ultimaLinha < 2) return { ok: true, total: 0, colunas: [], mensagem: "Nenhuma escola na base." };
+
+    var tudo = sh.getRange(1, 1, ultimaLinha, ultimaCol).getValues();
+    var cab  = tudo[0].map(function (c) { return String(c || "").trim(); });
+    var total = ultimaLinha - 1;
+
+    var colunas = cab.map(function (nome, i) {
+      var preenchidas = 0;
+      var amostra = [];
+      for (var l = 1; l < tudo.length; l++) {
+        var v = tudo[l][i];
+        var t = (v instanceof Date) ? "[data] " + Utilities.formatDate(v, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm")
+                                    : String(v == null ? "" : v).trim();
+        if (!t) continue;
+        preenchidas++;
+        if (amostra.length < 3 && amostra.indexOf(t) === -1) amostra.push(t.slice(0, 40));
+      }
+      return {
+        posicao: i + 1,
+        nome: nome || "(sem nome no cabeçalho)",
+        preenchidas: preenchidas,
+        vazias: total - preenchidas,
+        percentual: total ? Math.round((preenchidas / total) * 100) : 0,
+        amostra: amostra
+      };
+    });
+
+    // O caso que motivou tudo: duas colunas para o mesmo dado.
+    var iNome  = cab.indexOf(COL_NOME_ESCOLA);
+    var iRazao = cab.indexOf("RAZAO_SOCIAL");
+    var duplicidade = null;
+    if (iNome > -1 && iRazao > -1) {
+      var iguais = 0, diferentes = 0, soRazao = 0, exemplos = [];
+      for (var r = 1; r < tudo.length; r++) {
+        var a = String(tudo[r][iNome]  || "").trim();
+        var b = String(tudo[r][iRazao] || "").trim();
+        if (!b) continue;
+        if (!a) { soRazao++; continue; }
+        if (a.toLowerCase() === b.toLowerCase()) iguais++;
+        else {
+          diferentes++;
+          if (exemplos.length < 5) exemplos.push({ linha: r + 1, coluna2: a.slice(0, 45), razaoSocial: b.slice(0, 45) });
+        }
+      }
+      duplicidade = {
+        colunaNome: COL_NOME_ESCOLA, colunaRazao: "RAZAO_SOCIAL",
+        iguais: iguais, diferentes: diferentes, soEmRazaoSocial: soRazao, exemplos: exemplos
+      };
+    }
+
+    return { ok: true, total: total, totalColunas: ultimaCol, colunas: colunas, duplicidade: duplicidade };
+  } catch (e) {
+    return { ok: false, mensagem: "Erro no diagnóstico: " + e.message };
+  }
+}
+
 /** Estado da migração — alimenta o card do dashboard e o botão de migrar. */
 function escolaStatusIdentidade(tokenSessao) {
   exigirModulo_(tokenSessao, "escolas", false);
