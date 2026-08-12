@@ -382,13 +382,21 @@ do projeto no editor, log confirmado pelo usuário em 12/08/2026:
 
 **O que isto NÃO fecha — continua "não testado" pela REGRA Nº -1:**
 
-| Item | Por quê |
+| Item | Situação |
 |---|---|
-| 🔴 **A tela `PendenciasAdmin` abre** | criada em 12/08/2026, **não testada** — não rodo navegador. Menu Escolas › Pendências do Cadastro. |
-| 🔴 **`escolasPendenciasListar` responde** | só roda com token; a medição feita foi do resumo, não da listagem |
+| **A tela `PendenciasAdmin` abre** | ✅ **verificado** em 12/08/2026, por print do usuário |
+| **`escolasPendenciasListar` responde** | ✅ **verificado** — a lista traz as 65, com nome, id, documento mascarado, cidade/UF e linha |
+| **Os cards batem com o backend** | ✅ **verificado** — 19 / 0 / 1 / 0 / 39 / 13 / 1 e "614 de 679 (90,4%)", idênticos ao log do resumo |
+| **O detalhe de "dado fora do lugar"** | ✅ **verificado** — mostra campo, conteúdo e o que aparenta ser |
 | 🔴 **Clicar num card filtra** | e os outros seis cards têm que ficar com o mesmo número |
 | 🔴 **"Abrir no Cadastro"** | deve navegar e deixar o nome já digitado na busca |
 | 🔴 **Corrigir uma escola e ver o número cair** | de 19 para 18 é o ciclo completo |
+
+**Achado da primeira tela com dado real:** a única escola sem e-mail é a
+**Pre-escola Anjo Azul** (`ESC-000123`, linha 124). Ela acumula as três
+pendências ao mesmo tempo — sem e-mail, sem telefone e com `307` gravado em
+`E-mails (todos)`. É a única escola das 679 com quem o sindicato não tem
+como falar por nenhum caminho. Prioridade de contato, não de sistema.
 
 **Sinal de que a tela quebrou:** cards em branco e lista vazia sem mensagem
 de erro. Pela REGRA Nº 0, isso é JavaScript morto na página — procurar HTML
