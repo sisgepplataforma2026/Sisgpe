@@ -67,6 +67,48 @@ São poucas e sem padrão limpo o bastante para migração automática. **Vão
 para a fila de Pendências na Fase 2** — que é exatamente para isso que ela
 existe.
 
+---
+
+### 13. Escolas — a padronização de formato (Etapa C)
+**Aberto e executado em:** 11/08/2026
+
+Rodou na base real. A prévia previu **1760 células** e a aplicação alterou
+**1760** — linha por linha idêntica. Backup em
+`BACKUP_ESCOLAS_PADRAO_20260811_231031`.
+
+| O quê | Quantas |
+|---|---|
+| **UF preenchida a partir da cidade** | **648** — de 30 preenchidas para 678 |
+| E-mails normalizados (`E-mails (todos)`) | 287 |
+| Telefones (`Telefone 2`) | 79 |
+| CEPs | 29 |
+| Telefones (`Telefone 1`) | 20 |
+| E-mail principal | 19 |
+
+Decisão do usuário (opção A): `Alegre - ES` virou `Cidade="Alegre"` +
+`UF="ES"`. Cada dado no seu campo.
+
+**Intocados de propósito — 28 ocorrências, e é assim que tem que ser:**
+
+| O quê | Quantas | Por quê |
+|---|---|---|
+| `E-mails (todos)` com número (`310`, `289`) | 15 | não é e-mail; adivinhar estragaria |
+| `Telefone 1` com nome de cidade | 11 | idem |
+| `Telefone 2` — inclui `(028) 73521-8042` | 2 | 12 dígitos, não existe telefone assim |
+| Cidade sem sufixo de UF | 1 | extrair daria UF inventada |
+| **UF da coluna diverge da cidade** (linhas 271, 364) | 2 | duas fontes discordam — decisão humana |
+
+**Falha do meu relatório, para corrigir se voltar a aparecer:** a linha de
+divergência diz *"cidade diz outra coisa"* e **não mostra o que a cidade
+diz**. São só 2 linhas; dá para olhar direto na planilha.
+
+| O que falta conferir | Como |
+|---|---|
+| 🔴 **`escolaValidarColunas` depois da padronização** | linhas coerentes devem passar de 660; `UF` deve sair de 30 para ~678 preenchidas |
+| 🔴 **Formulário de ofício** | `CIDADE/UF` deve mostrar cidade e UF separados, telefone no formato novo |
+
+---
+
 **Não confundir com problema:** as 3 linhas com CPF na coluna CNPJ (583,
 620, 636) são escolas de pessoa física, e estão certas. O validador as
 acusava por falha minha, corrigida — depois dela, `CNPJ` fechou em 679 ok,
