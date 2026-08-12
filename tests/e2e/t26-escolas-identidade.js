@@ -646,11 +646,45 @@ b.ok(/pr[ée]via|preparar/i.test(g.Logger.getLog() || ""),
 b.passo("48c. A prévia libera, e ela mesma não escreve nada");
 const antesPrev = JSON.stringify(lerAba());
 g.__usuarioAtivoEmail = g.__donoDoProjetoEmail;   // no editor não há token
+g.Logger.clear();
 const prep = g.escolaSanearPreparar();
+const logPrev = g.Logger.getLog() || "";
 b.ok(prep.ok === true && prep.preparado === true &&
      antesPrev === JSON.stringify(lerAba()),
   "preparar mostra o mapa e não toca na planilha",
   "válido por " + prep.validoPorMinutos + " min");
+
+b.passo("48c2. ⚠ E o que ela IMPRIME é o plano do saneamento");
+// Não basta a simulação bater com a aplicação: é preciso que a PRÉVIA use a
+// simulação. Enquanto isto não era cobrado, trocar preparar de volta por
+// escolaCompararDeslocados passava incólume — e era exatamente o defeito que
+// mandava o usuário aprovar "→ Telefone 1" e acontecer "→ TELEFONE_RECEITA".
+b.ok(/PRÉVIA DO SANEAMENTO/.test(logPrev) && /TELEFONE_RECEITA/.test(logPrev),
+  "o log da prévia fala das colunas que o saneamento realmente usa",
+  /PRÉVIA DO SANEAMENTO/.test(logPrev) ? "plano correto" : "está descrevendo outra operação");
+
+b.passo("48d. ⚠ A prévia PREVÊ exatamente o que a aplicação faz");
+// A primeira versão da prévia chamava escolaCompararDeslocados, que responde
+// outra pergunta: dizia "ULTIMA_VERIFICACAO → Telefone 1" enquanto o
+// saneamento move para TELEFONE_RECEITA. O usuário aprovaria uma coisa e
+// aconteceria outra — e consentimento sobre relatório errado não é
+// consentimento. Aqui se cobra que os dois números batam.
+const simulado = g.escolaSanearReceita("", "", true);
+const aplicado = g.escolaSanearAplicar();
+b.ok(simulado.movidos === aplicado.movidos &&
+     simulado.situacoesRestauradas === aplicado.situacoesRestauradas &&
+     JSON.stringify(simulado.porRegra) === JSON.stringify(aplicado.porRegra),
+  "prévia e aplicação dão o MESMO resultado, regra por regra",
+  "prévia=" + simulado.movidos + " aplicado=" + aplicado.movidos);
+
+b.passo("48e. E a prévia não cria aba de backup");
+b.ok(simulado.simulacao === true && !simulado.backup && !!aplicado.backup,
+  "backup só existe quando escreve de verdade",
+  "prévia=" + (simulado.backup || "nenhum") + " · aplicação=" + aplicado.backup);
+
+// Recompõe o cenário sujo para os passos seguintes.
+montarBaseSuja();
+g.escolaSanearPreparar();
 
 b.passo("49. Depois da prévia, move cada valor para a coluna do tipo dele");
 const san = g.escolaSanearAplicar();

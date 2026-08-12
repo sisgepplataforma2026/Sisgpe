@@ -1182,7 +1182,17 @@ function escolaConsumirConsentimento_() {
  * Não escreve nada na aba Escolas.
  */
 function escolaSanearPreparar() {
-  var r = escolaCompararDeslocados();     // já valida permissão e imprime o mapa
+  /* A prévia roda O MESMO CÓDIGO da aplicação, em modo simulação.
+   *
+   * A primeira versão chamava escolaCompararDeslocados() — que responde outra
+   * pergunta. Ela dizia "ULTIMA_VERIFICACAO → Telefone 1", enquanto o
+   * saneamento move para TELEFONE_RECEITA, coluna nova. O usuário aprovaria
+   * uma coisa e aconteceria outra.
+   *
+   * Consentimento em cima de relatório que descreve outra operação não vale
+   * nada. Compartilhar o código é o que garante que a prévia não possa
+   * divergir da aplicação nem hoje nem depois de qualquer manutenção. */
+  var r = escolaSanearReceita("", "", true);   // true = simular
   if (r && r.ok === false) return r;
   try {
     PropertiesService.getScriptProperties()
@@ -1209,7 +1219,8 @@ function escolaSanearAplicar() {
   return escolaSanearReceita("", "");
 }
 
-function escolaSanearReceita(tokenSessao, confirmacao) {
+function escolaSanearReceita(tokenSessao, confirmacao, simular) {
+  simular = (simular === true);
   var quem;
   if (String(tokenSessao || "").trim()) {
     var s = exigirModulo_(tokenSessao, "escolas", true);
@@ -1251,7 +1262,11 @@ function escolaSanearReceita(tokenSessao, confirmacao) {
    *                          do seu próprio "tem certeza?";
    * pelo EDITOR (sem token) → prévia recente, porque no editor não há diálogo
    *                          de confirmação nenhum: executar é um clique. */
-  if (String(tokenSessao || "").trim()) {
+  // Simulação não escreve: não precisa de trava, e exigir uma impediria a
+  // própria prévia de rodar.
+  if (simular) {
+    /* segue direto */
+  } else if (String(tokenSessao || "").trim()) {
     if (String(confirmacao || "").trim().toUpperCase() !== "SANEAR") {
       var recusaTela = { ok: false, mensagem: 'Confirmação obrigatória para sanear a base.' };
       Logger.log(recusaTela.mensagem);
@@ -1283,13 +1298,16 @@ function escolaSanearReceita(tokenSessao, confirmacao) {
     var ultimaLinha = sh.getLastRow();
     if (ultimaLinha < 2) return { ok: true, movidos: 0, mensagem: "Nenhuma escola na base." };
 
-    // Backup ANTES de qualquer escrita.
-    var nomeBackup = escolaNomeBackupLivre_(ss, "BACKUP_ESCOLAS_SANEAMENTO_");
     var antes = sh.getRange(1, 1, ultimaLinha, sh.getLastColumn()).getValues();
-    var shBackup = ss.insertSheet(nomeBackup);
-    shBackup.getRange(1, 1, antes.length, antes[0].length).setValues(antes);
-    shBackup.getRange(1, 1, 1, antes[0].length).setFontWeight("bold");
-    shBackup.setFrozenRows(1);
+    // Backup ANTES de qualquer escrita. Simulação não cria aba nenhuma.
+    var nomeBackup = "";
+    if (!simular) {
+      nomeBackup = escolaNomeBackupLivre_(ss, "BACKUP_ESCOLAS_SANEAMENTO_");
+      var shBackup = ss.insertSheet(nomeBackup);
+      shBackup.getRange(1, 1, antes.length, antes[0].length).setValues(antes);
+      shBackup.getRange(1, 1, 1, antes[0].length).setFontWeight("bold");
+      shBackup.setFrozenRows(1);
+    }
 
     // Colunas de destino, criadas no fim para não deslocar nada.
     var cab = antes[0].map(function (c) { return String(c || "").trim(); });
@@ -1345,17 +1363,20 @@ function escolaSanearReceita(tokenSessao, confirmacao) {
       }
     }
 
-    sh.getRange(1, 1, dados.length, cab.length).setValues(dados);
-    sh.getRange(1, 1, 1, cab.length).setFontWeight("bold");
-    SpreadsheetApp.flush();
-    invalidarCacheEscolasInterno_();
+    if (!simular) {
+      sh.getRange(1, 1, dados.length, cab.length).setValues(dados);
+      sh.getRange(1, 1, 1, cab.length).setFontWeight("bold");
+      SpreadsheetApp.flush();
+      invalidarCacheEscolasInterno_();
+    }
 
-    escolaAuditar_("SANEAR_BASE", "", "",
+    if (!simular) escolaAuditar_("SANEAR_BASE", "", "",
       "Saneamento da base de Escolas: " + totalMovidos + " valor(es) movidos para as colunas da Receita, " +
       situacoesRestauradas + " situação(ões) restaurada(s). Backup: " + nomeBackup + ".", quem);
 
     var resultado = {
-      ok: true, movidos: totalMovidos, situacoesRestauradas: situacoesRestauradas,
+      ok: true, simulacao: simular,
+      movidos: totalMovidos, situacoesRestauradas: situacoesRestauradas,
       colunasCriadas: colunasNovas, backup: nomeBackup,
       porRegra: regras.map(function (r) {
         return { de: r.nomeOrigem, para: r.nomeDestino, tipo: r.tipo, movidos: r.movidos };
@@ -1374,20 +1395,27 @@ function escolaSanearReceita(tokenSessao, confirmacao) {
 function escolaImprimirSaneamento_(r) {
   try {
     var L = [];
-    L.push("═══ SANEAMENTO DA BASE DE ESCOLAS ═══");
-    L.push("backup: " + r.backup);
-    if (r.colunasCriadas.length) L.push("colunas criadas: " + r.colunasCriadas.join(", "));
+    L.push(r.simulacao ? "═══ PRÉVIA DO SANEAMENTO (nada foi alterado) ═══"
+                       : "═══ SANEAMENTO DA BASE DE ESCOLAS ═══");
+    if (r.backup) L.push("backup: " + r.backup);
+    if (r.colunasCriadas.length) {
+      L.push((r.simulacao ? "colunas que serão criadas: " : "colunas criadas: ") + r.colunasCriadas.join(", "));
+    }
     L.push("");
     r.porRegra.forEach(function (x) {
       if (!x.movidos) return;
       L.push("  " + x.movidos + " × " + x.tipo + "   " + x.de + " → " + x.para);
     });
     L.push("");
-    L.push("  total movido ................ " + r.movidos);
-    L.push("  situações restauradas ....... " + r.situacoesRestauradas);
+    L.push((r.simulacao ? "  total A MOVER ............... " : "  total movido ................ ") + r.movidos);
+    L.push((r.simulacao ? "  situações A RESTAURAR ....... " : "  situações restauradas ....... ") + r.situacoesRestauradas);
     L.push("");
-    L.push("Nada foi apagado: todo valor movido está na coluna de destino.");
-    L.push("Para desfazer, a aba " + r.backup + " tem a base como estava.");
+    if (r.simulacao) {
+      L.push("Nada foi alterado. Este é exatamente o que escolaSanearAplicar fará.");
+    } else {
+      L.push("Nada foi apagado: todo valor movido está na coluna de destino.");
+      L.push("Para desfazer, a aba " + r.backup + " tem a base como estava.");
+    }
     Logger.log(L.join("\n"));
   } catch (e) {
     Logger.log("escolaImprimirSaneamento_ falhou: " + e);
