@@ -414,4 +414,86 @@ b.passo("32. E exige permissão como as demais");
 b.bloqueia(function () { return g.escolaDiagnosticoColunas(""); }, "diagnóstico exige sessão");
 b.bloqueia(function () { return g.escolaDiagnosticoColunas(FIN); }, "financeiro não diagnostica");
 
+/* ══════════════════════════════════════════════════════════════════════
+   8. VALIDADOR LINHA A LINHA
+   ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("IDENTIDADE · Validador de conteúdo por coluna");
+
+b.passo("33. Reconhece o que cada conteúdo PARECE ser");
+const tipos = [
+  ["(27) 2127-1111",       "TELEFONE"],
+  ["contato@escola.com",   "EMAIL"],
+  ["29190062",             "CEP"],
+  ["29.190-062",           "CEP"],
+  ["11.222.333/0001-81",   "CNPJ"],
+  ["8511200",              "CNAE"],
+  ["ES",                   "UF"],
+  ["ATIVA",                "SITUACAO"],
+  ["ESC-000042",           "ESCOLAID"],
+  ["Colégio Alfa",         "TEXTO"],
+  ["",                     "VAZIO"]
+];
+const errosTipo = tipos.filter(([v, esp]) => g.escolaTipoAparente_(v) !== esp)
+  .map(([v, esp]) => v + " deu " + g.escolaTipoAparente_(v) + ", esperava " + esp);
+b.ok(errosTipo.length === 0 && g.escolaTipoAparente_(new Date()) === "DATA",
+  "telefone, e-mail, CEP, CNPJ, CNAE, UF, situação, id e data",
+  errosTipo.length ? errosTipo.join(" | ") : "11 formatos reconhecidos");
+
+b.passo("34. ⚠ Telefone de 10 dígitos NÃO pode ser lido como CEP");
+// "(27) 3256-6107" sem pontuação vira 10 dígitos; CEP tem 8. Confundir os dois
+// faria o validador aprovar telefone dentro da coluna CEP — justamente o tipo
+// de troca que ele existe para achar.
+b.ok(g.escolaTipoAparente_("(27) 3256-6107") === "TELEFONE" &&
+     g.escolaTipoAparente_("2732566107") !== "CEP",
+  "os dois formatos não se confundem",
+  "2732566107 → " + g.escolaTipoAparente_("2732566107"));
+
+b.passo("35. Acha dado fora do lugar numa base quebrada igual à real");
+const shV = zerarTudo();
+const CAB_V = ["Escola (Razão Social)", "CNPJ", "Telefone 1", "UF", "CEP",
+               "SITUACAO_CADASTRAL", "RAZAO_SOCIAL"];
+shV.getRange(1, 1, 1, CAB_V.length).setValues([CAB_V]);
+// linha sadia
+shV.appendRow(["Colégio Alfa", "11.222.333/0001-81", "(27) 3333-1111", "ES", "29100-000", "ATIVA", ""]);
+// quebradas do mesmo jeito que a planilha real: telefone na razão social,
+// e-mail na UF, data na situação
+shV.appendRow(["Colégio Beta", "22.333.444/0001-81", "(27) 3333-2222", "beta@e.com", "29100-000", new Date(2026,3,2), "(27) 2127-1111"]);
+shV.appendRow(["Colégio Gama", "33.444.555/0001-81", "(27) 3333-3333", "gama@e.com", "29100-000", new Date(2026,3,2), "(27) 2122-4148"]);
+const val = g.escolaValidarColunas(ADM);
+b.ok(val.ok === true && val.total === 3 && val.linhasSadias === 1 && val.linhasComProblema === 2,
+  "separa linha sadia de linha com dado trocado",
+  "sadias=" + val.linhasSadias + " problema=" + val.linhasComProblema);
+
+b.passo("36. E diz, por coluna, o que foi encontrado no lugar errado");
+const cv = {}; (val.colunas || []).forEach(c => { cv[c.nome] = c; });
+b.ok(cv["UF"].trocadas === 2 && cv["UF"].tiposEncontrados.EMAIL === 2 &&
+     cv["SITUACAO_CADASTRAL"].trocadas === 2 && cv["SITUACAO_CADASTRAL"].tiposEncontrados.DATA === 2 &&
+     cv["RAZAO_SOCIAL"].trocadas === 2 && cv["RAZAO_SOCIAL"].tiposEncontrados.TELEFONE === 2,
+  "UF com e-mail, situação com data, razão social com telefone",
+  "UF→" + JSON.stringify(cv["UF"].tiposEncontrados) +
+  " SIT→" + JSON.stringify(cv["SITUACAO_CADASTRAL"].tiposEncontrados));
+
+b.passo("37. ⚠ E agrupa por PADRÃO de quebra — é assim que a correção se faz");
+// Duas linhas quebradas igual quebraram pelo mesmo motivo. Corrigir por padrão
+// é o que separa uma migração dirigida de 679 decisões manuais.
+b.ok(val.padroes.length === 1 && val.padroes[0].linhas === 2,
+  "as duas linhas quebradas caem num padrão só",
+  val.padroes.length + " padrão(ões) · " + (val.padroes[0] ? val.padroes[0].linhas + " linha(s)" : ""));
+
+b.passo("38. Coluna correta não é acusada");
+b.ok(cv["CNPJ"].trocadas === 0 && cv["Telefone 1"].trocadas === 0 &&
+     cv["Escola (Razão Social)"].trocadas === 0,
+  "sem falso positivo em CNPJ, telefone e nome",
+  "CNPJ=" + cv["CNPJ"].trocadas + " Tel=" + cv["Telefone 1"].trocadas);
+
+b.passo("39. ⚠ E NÃO escreve nada");
+const antesVal = JSON.stringify(shV.getRange(1, 1, shV.getLastRow(), shV.getLastColumn()).getValues());
+g.escolaValidarColunas(ADM);
+b.ok(antesVal === JSON.stringify(shV.getRange(1, 1, shV.getLastRow(), shV.getLastColumn()).getValues()),
+  "validar não muda uma célula sequer");
+
+b.passo("40. E exige permissão");
+b.bloqueia(function () { return g.escolaValidarColunas(""); },  "validação exige sessão");
+b.bloqueia(function () { return g.escolaValidarColunas(FIN); }, "financeiro não valida");
+
 b.resumo();

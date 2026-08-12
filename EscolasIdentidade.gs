@@ -660,6 +660,238 @@ function escolaImprimirDiagnostico_(r) {
   }
 }
 
+/* =============================================================== */
+/* VALIDADOR LINHA A LINHA — só leitura                            */
+/* =============================================================== */
+/*
+ * Confere, célula a célula, se o conteúdo tem a cara do que a coluna promete.
+ *
+ * POR QUE ESTA FUNÇÃO EXISTE
+ *
+ * O diagnóstico de colunas (escolaDiagnosticoColunas) mostrou que a aba tem
+ * dado fora de lugar: telefone dentro de RAZAO_SOCIAL, e-mail dentro de UF,
+ * data dentro de SITUACAO_CADASTRAL, CEP dentro de STATUS_SINCRO. Não é um
+ * deslocamento uniforme — cada faixa de linhas quebrou de um jeito.
+ *
+ * Enquanto o padrão de quebra não estiver mapeado, QUALQUER correção em massa
+ * é chute. E chute em 679 linhas de cadastro institucional não tem volta:
+ * trocar o nome de uma escola por um telefone é irreversível sem backup, e
+ * ninguém percebe até um ofício sair com o nome errado.
+ *
+ * Foi o que quase aconteceu: a decisão de "sempre razão social" faria a
+ * consolidação usar a coluna 15 como fonte — que não tem razão social em
+ * nenhuma das linhas divergentes.
+ *
+ * O QUE ELA FAZ
+ *
+ * Para cada célula, deduz o TIPO APARENTE do conteúdo (data, e-mail, telefone,
+ * CEP, CNPJ, CNAE, UF, situação, número, texto) e compara com o tipo que a
+ * coluna espera. Depois agrupa as linhas por "assinatura de quebra" — o
+ * conjunto de colunas erradas — porque linhas que quebraram juntas quebraram
+ * pelo mesmo motivo, e é isso que permite corrigir por padrão em vez de uma a
+ * uma.
+ *
+ * NÃO ESCREVE NADA.
+ */
+
+/** Tipos que a coluna espera. Coluna fora desta lista não é avaliada. */
+var ESC_TIPO_ESPERADO = {
+  "CNPJ": "CNPJ",
+  "E-mail (principal)": "EMAIL",
+  "E-mails (todos)": "EMAIL",
+  "EMAIL_EXTERNO": "EMAIL",
+  "Telefone 1": "TELEFONE",
+  "Telefone 2": "TELEFONE",
+  "UF": "UF",
+  "CEP": "CEP",
+  "CNAE_PRINCIPAL": "CNAE",
+  "SITUACAO_CADASTRAL": "SITUACAO",
+  "ULTIMA_VERIFICACAO": "DATA",
+  "ULTIMA_VISITA": "DATA",
+  "PROXIMA_VISITA": "DATA",
+  "Escola (Razão Social)": "TEXTO_NOME",
+  "RAZAO_SOCIAL": "TEXTO_NOME",
+  "NOME_FANTASIA": "TEXTO_NOME",
+  "Cidade": "TEXTO_NOME",
+  "EscolaID": "ESCOLAID"
+};
+
+var ESC_UFS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG",
+               "PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
+var ESC_SITUACOES = ["ATIVA","INATIVA","PENDENTE","BAIXADA","INAPTA","SUSPENSA","NULA"];
+
+/** Deduz o que o conteúdo PARECE ser, independente de onde está. */
+function escolaTipoAparente_(v) {
+  if (v instanceof Date) return "DATA";
+  var t = String(v == null ? "" : v).trim();
+  if (!t) return "VAZIO";
+  if (/^ESC-\d+$/i.test(t)) return "ESCOLAID";
+  if (t.indexOf("@") > -1) return "EMAIL";
+
+  var d = t.replace(/\D/g, "");
+  // Telefone antes de CEP: "(27) 3256-6107" tem 10 dígitos, CEP tem 8.
+  if (/^\(?\d{2}\)?[\s-]?\d{4,5}-?\d{4}$/.test(t)) return "TELEFONE";
+  if (d.length === 14 && /[.\/-]/.test(t)) return "CNPJ";
+  if (d.length === 14) return "CNPJ";
+  // CEP aparece em três grafias na base: 29190062, 29190-062 e 29.190-062.
+  // A terceira me escapou na primeira versão e o teste pegou — ela cairia em
+  // TEXTO, e uma coluna de CEP cheia de "TEXTO" seria acusada de troca sem ter
+  // troca nenhuma. Falso positivo em validador é pior que falha: manda corrigir
+  // o que está certo.
+  if (d.length === 8 && /^[\d.\s-]+$/.test(t)) return "CEP";
+  if (/^\d{7}$/.test(d) && d === t.replace(/\D/g, "") && t.length <= 9) return "CNAE";
+  if (/^[A-Za-z]{2}$/.test(t) && ESC_UFS.indexOf(t.toUpperCase()) > -1) return "UF";
+  if (ESC_SITUACOES.indexOf(t.toUpperCase()) > -1) return "SITUACAO";
+  if (/^\d+$/.test(t)) return "NUMERO";
+  return "TEXTO";
+}
+
+/** O tipo aparente serve para a coluna? */
+function escolaTipoServe_(esperado, aparente) {
+  if (aparente === "VAZIO") return true;          // vazio é falta, não erro de lugar
+  if (esperado === aparente) return true;
+  switch (esperado) {
+    // Nome aceita texto comum e número solto (escola com nome numérico existe).
+    case "TEXTO_NOME": return aparente === "TEXTO" || aparente === "NUMERO";
+    // Cidade às vezes vem "Alegre - ES"; continua texto.
+    case "CNAE":       return aparente === "NUMERO";
+    case "CEP":        return aparente === "NUMERO";
+    case "TELEFONE":   return aparente === "NUMERO";
+    case "SITUACAO":   return false;              // catálogo fechado, sem tolerância
+    case "UF":         return false;
+    case "DATA":       return false;
+    case "EMAIL":      return false;
+    case "CNPJ":       return false;
+    case "ESCOLAID":   return false;
+    default:           return true;
+  }
+}
+
+function escolaValidarColunas(tokenSessao) {
+  if (String(tokenSessao || "").trim()) {
+    exigirModulo_(tokenSessao, "escolas", true);
+  } else {
+    var email = "";
+    try { email = String(Session.getActiveUser().getEmail() || "").trim().toLowerCase(); } catch (e) {}
+    var dono = "";
+    try { dono = String(Session.getEffectiveUser().getEmail() || "").trim().toLowerCase(); } catch (e2) {}
+    if (!email) throw new Error("Sessão inválida ou expirada. Entre novamente no SISGEP.");
+    if (email !== dono && !escolaEhAdministradorPorEmail_(email)) {
+      throw new Error("Ação permitida somente para administradores.");
+    }
+  }
+
+  try {
+    var sh = SpreadsheetApp.openById(PLANILHA_ID).getSheetByName(ABA_ESCOLAS);
+    if (!sh) return { ok: false, mensagem: "Aba '" + ABA_ESCOLAS + "' não encontrada." };
+    var ultimaLinha = sh.getLastRow();
+    if (ultimaLinha < 2) return { ok: true, total: 0, mensagem: "Nenhuma escola na base." };
+
+    var tudo = sh.getRange(1, 1, ultimaLinha, sh.getLastColumn()).getValues();
+    var cab = tudo[0].map(function (c) { return String(c || "").trim(); });
+    var total = ultimaLinha - 1;
+
+    // Só as colunas que sabemos avaliar.
+    var avaliadas = [];
+    cab.forEach(function (nome, i) {
+      if (ESC_TIPO_ESPERADO[nome]) avaliadas.push({ i: i, nome: nome, esperado: ESC_TIPO_ESPERADO[nome] });
+    });
+
+    var porColuna = {};
+    avaliadas.forEach(function (c) {
+      porColuna[c.nome] = { nome: c.nome, posicao: c.i + 1, esperado: c.esperado,
+                            ok: 0, vazias: 0, trocadas: 0, tiposEncontrados: {}, exemplos: [] };
+    });
+
+    var assinaturas = {};
+    var linhasSadias = 0;
+
+    for (var l = 1; l < tudo.length; l++) {
+      var erradasDaLinha = [];
+      for (var k = 0; k < avaliadas.length; k++) {
+        var c = avaliadas[k];
+        var valor = tudo[l][c.i];
+        var aparente = escolaTipoAparente_(valor);
+        var reg = porColuna[c.nome];
+
+        if (aparente === "VAZIO") { reg.vazias++; continue; }
+        if (escolaTipoServe_(c.esperado, aparente)) { reg.ok++; continue; }
+
+        reg.trocadas++;
+        reg.tiposEncontrados[aparente] = (reg.tiposEncontrados[aparente] || 0) + 1;
+        if (reg.exemplos.length < 3) {
+          var amostra = (valor instanceof Date)
+            ? Utilities.formatDate(valor, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm")
+            : String(valor).slice(0, 35);
+          reg.exemplos.push({ linha: l + 1, valor: amostra, pareceSer: aparente });
+        }
+        erradasDaLinha.push(c.nome + "→" + aparente);
+      }
+
+      if (!erradasDaLinha.length) { linhasSadias++; continue; }
+      var chave = erradasDaLinha.join(" | ");
+      if (!assinaturas[chave]) assinaturas[chave] = { padrao: chave, linhas: 0, exemplosLinha: [] };
+      assinaturas[chave].linhas++;
+      if (assinaturas[chave].exemplosLinha.length < 5) assinaturas[chave].exemplosLinha.push(l + 1);
+    }
+
+    var listaAssin = Object.keys(assinaturas).map(function (k) { return assinaturas[k]; })
+      .sort(function (a, b) { return b.linhas - a.linhas; });
+
+    var resultado = {
+      ok: true, total: total, linhasSadias: linhasSadias,
+      linhasComProblema: total - linhasSadias,
+      colunas: avaliadas.map(function (c) { return porColuna[c.nome]; }),
+      padroes: listaAssin
+    };
+    escolaImprimirValidacao_(resultado);
+    return resultado;
+  } catch (e) {
+    Logger.log("Erro na validação: " + e.message);
+    return { ok: false, mensagem: "Erro na validação: " + e.message };
+  }
+}
+
+function escolaImprimirValidacao_(r) {
+  try {
+    var L = [];
+    L.push("═══ VALIDAÇÃO DA ABA ESCOLAS ═══");
+    L.push(r.total + " escolas");
+    L.push("  linhas 100% coerentes ....... " + r.linhasSadias);
+    L.push("  linhas com dado fora do lugar " + r.linhasComProblema);
+    L.push("");
+    L.push("POR COLUNA");
+    L.push("─────────────────────────────────────────────────────────────────");
+    r.colunas.forEach(function (c) {
+      var nome = c.posicao + ". " + c.nome;
+      while (nome.length < 30) nome += " ";
+      var tipos = Object.keys(c.tiposEncontrados).map(function (t) {
+        return t + "(" + c.tiposEncontrados[t] + ")";
+      }).join(" ");
+      L.push(nome + "espera " + c.esperado);
+      L.push("    ok " + c.ok + " · vazias " + c.vazias + " · TROCADAS " + c.trocadas +
+             (tipos ? "  → tem: " + tipos : ""));
+      c.exemplos.forEach(function (e) {
+        L.push("      linha " + e.linha + ": " + e.valor + "   (parece " + e.pareceSer + ")");
+      });
+    });
+
+    L.push("");
+    L.push("═══ PADRÕES DE QUEBRA ═══");
+    L.push("Linhas que quebraram igual, quebraram pelo mesmo motivo.");
+    L.push("É por padrão que a correção se faz — nunca linha a linha.");
+    L.push("");
+    r.padroes.slice(0, 12).forEach(function (p, n) {
+      L.push((n + 1) + ") " + p.linhas + " linha(s)   ex.: " + p.exemplosLinha.join(", "));
+      L.push("    " + p.padrao.slice(0, 220));
+    });
+    if (r.padroes.length > 12) L.push("... e mais " + (r.padroes.length - 12) + " padrão(ões) menor(es).");
+    Logger.log(L.join("\n"));
+  } catch (e) {
+    Logger.log("escolaImprimirValidacao_ falhou: " + e);
+  }
+}
+
 /** Estado da migração — alimenta o card do dashboard e o botão de migrar. */
 function escolaStatusIdentidade(tokenSessao) {
   exigirModulo_(tokenSessao, "escolas", false);
