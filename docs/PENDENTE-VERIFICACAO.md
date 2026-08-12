@@ -56,10 +56,24 @@ planilha. Duas erraram. **`escolaVinculosMapearAbas()`** varre a planilha e
 aponta as candidatas por evidência — nome da coluna e conteúdo com cara de
 CNPJ — para a correção vir do que existe, não de um segundo palpite.
 
+**Mapeamento da planilha real, 12/08/2026:** 102 abas, 24 tocam escola,
+**14 escolhidas como alvo**. Dois achados que mudaram o desenho:
+
+- A aba de ofícios chama-se **`Controle`**, não `Controle_Oficios`.
+- **`Contatos` não existe** — `contatos.gs:37` cria a aba na primeira
+  gravação. O submódulo nunca rodou. Não é erro de nome.
+
+**Fora de propósito:** `IMPORTACAO_ESCOLAS` (retrato, não vínculo),
+`LOG_SISTEMA` (reescrever log é adulterar registro), `Prestadores_Serviços`
+e `SISGEP_Sindicalizacao` (falsos positivos — o segundo casou por
+"ESCOLARIDADE", já corrigido no mapeador).
+
 | O que conferir | Como |
 |---|---|
-| ✅ **Status inicial** | rodado em 12/08/2026 — 939 / ausente / 6 / ausente / 8019 |
-| 🔴 **Mapear as abas** | `escolaVinculosMapearAbas()` — achar Contatos e Ofícios |
+| ✅ **Status inicial** | rodado em 12/08/2026 |
+| ✅ **Mapear as abas** | rodado — 24 candidatas, 14 viraram alvo |
+| 🔴 **Status com os nomes certos** | `escolaVinculosStatus()` — as 14 devem existir |
+| 🔴 **Começar por Visitas (6 linhas)** | `escolaVinculosPrevia("VISITAS")` |
 | 🔴 **Prévia da Cobrança** | quantos casam por CNPJ, quantos ficam ambíguos |
 | 🔴 **Aplicar na Cobrança** | coluna `EscolaID` nasce; `ESCOLA_NOME` intacta |
 | 🔴 **As outras três** | uma por vez, conferindo entre elas |

@@ -40,48 +40,79 @@
  * Se nenhuma bater, a rotina recusa a aba inteira em vez de escrever no lugar
  * errado — que é exatamente como a aba Escolas ficou torta. */
 var ESC_VINC_ALVOS = [
-  {
-    chave: "COBRANCA", ordem: 1,
-    rotulo: "Cobrança — Relação Nominal",
-    aba: "COBRANCA_RELACAO_NOMINAL",
-    colsCnpj: ["ESCOLA_CNPJ"],
-    colsNome: ["ESCOLA_NOME"],
-    nota: "Casa por CNPJ, que é o caso mais seguro de todos."
-  },
-  {
-    chave: "CONTATOS", ordem: 2,
-    rotulo: "Contatos e Responsáveis",
-    aba: "Contatos",
-    colsCnpj: [],
-    colsNome: ["Escola"],
-    nota: "Só tem o nome — depende do casamento por texto."
-  },
-  {
-    chave: "VISITAS", ordem: 3,
-    rotulo: "Visitas",
-    aba: "SISGEP_Visitas",
-    colsCnpj: ["CNPJ"],
-    colsNome: ["ESCOLA"],
-    nota: "Tem CNPJ e nome; o CNPJ resolve a maioria."
-  },
-  {
-    chave: "OFICIOS", ordem: 4,
-    rotulo: "Ofícios",
-    aba: "Controle_Oficios",
-    abaAlternativa: "Ofícios",
-    colsCnpj: ["CNPJ", "ESCOLA_CNPJ"],
-    colsNome: ["Escola (Razão Social)", "ESCOLA", "Escola", "NomeEscola"],
-    nota: "Módulo em uso diário — a coluna nova não altera a emissão."
-  },
-  {
-    chave: "ASSOCIADOS", ordem: 5,
-    rotulo: "Associados",
-    aba: "Associados",
-    colsCnpj: [],
-    colsNome: ["Nome fantasia"],
-    nota: "~8.000 linhas. O vínculo é um nome, numa coluna chamada 'Nome fantasia'."
-  }
+  { chave:"VISITAS", ordem:1, rotulo:"Visitas", aba:"SISGEP_Visitas",
+    colsCnpj:["CNPJ"], colsNome:["ESCOLA"],
+    nota:"6 linhas — o menor alvo, e por isso o primeiro." },
+
+  { chave:"OFTALMO", ordem:2, rotulo:"Agendamento Oftalmológico", aba:"Agend_Oftalmo",
+    colsCnpj:[], colsNome:["Escola"],
+    nota:"Benefício. A escola vem do que o associado declarou." },
+
+  { chave:"JURIDICO", ordem:3, rotulo:"Jurídico", aba:"Juridico",
+    colsCnpj:["Escola CNPJ"], colsNome:["Escola Nome"],
+    nota:"Processos e ações coletivas ligados à escola." },
+
+  { chave:"RECIBOS_IMPORT", ordem:4, rotulo:"Recibos — importação", aba:"IMPORTAR_RECIBOS",
+    colsCnpj:[], colsNome:["Empresa"],
+    nota:"Coluna EMPRESA — confirmado pelo usuário em 12/08/2026: é sempre escola da base." },
+
+  { chave:"RECIBO_PROCESSOS", ordem:5, rotulo:"Recibos — processos", aba:"Recibo_Processos",
+    colsCnpj:[], colsNome:["EMPRESA"],
+    nota:"Idem — EMPRESA é escola." },
+
+  { chave:"OFICIOS_HISTORICO", ordem:6, rotulo:"Ofícios — histórico", aba:"Oficios_Historico",
+    colsCnpj:["CNPJ"], colsNome:["ESCOLA"],
+    nota:"Histórico de emissão. Alimenta o Histórico 360°." },
+
+  { chave:"FILA_OFICIOS", ordem:7, rotulo:"Ofícios — fila de envio", aba:"FILA_ENVIO_OFICIOS",
+    colsCnpj:["CNPJ"], colsNome:["ESCOLA"],
+    nota:"Fila transitória, mas é por onde o ofício sai." },
+
+  { chave:"MENSALIDADE", ordem:8, rotulo:"Mensalidade — controle", aba:"Mensalidade_Controle",
+    colsCnpj:[], colsNome:["Escola"],
+    nota:"Uma linha por associado. A coluna Observacoes tem CNPJ solto — NÃO é a chave." },
+
+  { chave:"PARQUE_HISTORICO", ordem:9, rotulo:"Parque do China — histórico",
+    aba:"ImportacaoHistoricoParqueChina",
+    colsCnpj:[], colsNome:["escola"],
+    nota:"Reservas antigas. Escola em texto livre, declarada pelo associado." },
+
+  { chave:"PARQUE", ordem:10, rotulo:"Parque do China — reservas", aba:"ReservasParqueChina",
+    colsCnpj:[], colsNome:["Escola/Vínculo"],
+    nota:"'Escola/Vínculo' aceita também vínculo que não é escola — espere órfãos." },
+
+  { chave:"TAXA", ordem:11, rotulo:"Taxa Assistencial", aba:"ENVIO_TAXA_ASSISTENCIAL",
+    colsCnpj:["CNPJ"], colsNome:["ESCOLA"],
+    nota:"Envio de ofício de taxa. Tem CNPJ, então casa bem." },
+
+  { chave:"OFICIOS", ordem:12, rotulo:"Ofícios — controle", aba:"Controle",
+    colsCnpj:["CNPJ"], colsNome:["Escola (Razão Social)"],
+    nota:"EM USO DIÁRIO. A aba se chama 'Controle', não 'Controle_Oficios' — descoberto pelo mapeamento de 12/08/2026." },
+
+  { chave:"COBRANCA", ordem:13, rotulo:"Cobrança — Relação Nominal",
+    aba:"COBRANCA_RELACAO_NOMINAL",
+    colsCnpj:["ESCOLA_CNPJ"], colsNome:["ESCOLA_NOME"],
+    nota:"939 linhas — não são dezenas, como estimei antes de medir. Casa por CNPJ." },
+
+  { chave:"ASSOCIADOS", ordem:14, rotulo:"Associados", aba:"Associados",
+    colsCnpj:[], colsNome:["Nome fantasia"],
+    nota:"8.019 linhas. O vínculo é um nome, numa coluna chamada 'Nome fantasia'. ÚLTIMO, sempre." }
 ];
+
+/* FORA DA FASE 4, por decisão — e o motivo importa mais que a lista:
+ *
+ *   IMPORTACAO_ESCOLAS (680)  mesmo cabeçalho da aba Escolas. É área de
+ *                             importação: retrato de um momento, não vínculo
+ *                             vivo. Migrar não liga nada a nada.
+ *   LOG_SISTEMA (473)         log é registro histórico. Reescrever log é
+ *                             adulterar registro. O Histórico 360° sai da
+ *                             trilha de auditoria, não daqui.
+ *   Prestadores_Serviços      falso positivo do mapeador: CNPJ_CPF é o
+ *                             documento do PRESTADOR, não de escola.
+ *   SISGEP_Sindicalizacao     falso positivo: casou por "ESCOLARIDADE".
+ *   Voucher_* / Certificado_* 1 a 3 linhas cada. Entram quando tiverem
+ *                             volume que justifique.
+ */
 
 var ESC_VINC_COL_DESTINO = "EscolaID";
 var ESC_VINC_PROP_CONSENT = "SISGEP_VINCULOS_CONSENTIMENTO_";
@@ -493,6 +524,10 @@ function escolaVinculosMapearAbas(tokenSessao) {
       cab.forEach(function (h, i) {
         if (!h) return;
         var n = escolasPendenciasNormalizar_(h);
+        /* "ESCOLARIDADE" contém "escola" e entrou na lista de 12/08/2026 como
+         * candidata — falso positivo puro. Descartado antes de testar o resto,
+         * senão toda aba de ficha cadastral vira candidata. */
+        if (/escolarid/.test(n)) return;
         if (/escola|instituic|colegio|entidade|empresa|razao|fantasia|cnpj/.test(n)) {
           porNome.push(h);
         }

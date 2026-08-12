@@ -266,10 +266,10 @@ b.igual(a1.contagem, p1.contagem, "mesma medição, mesmo código");
 b.fluxo("VÍNCULOS · Travas");
 
 b.passo("24. Aplicar sem prévia é recusado");
-criarAba("Contatos", ["ID", "Nome", "Telefone", "Email", "Cidade", "Escola"],
-  [["1", "Maria", "27999", "m@x.com", "Alegre", "Colégio Alfa"]]);
+criarAba("Agend_Oftalmo", ["ID", "Data", "CPF_Titular", "Escola"],
+  [["1", "01/08", "000", "Colégio Alfa"]]);
 limparConsentimentos();
-const semPrevia = g.escolaVinculosAplicar("CONTATOS", ADM);
+const semPrevia = g.escolaVinculosAplicar("OFTALMO", ADM);
 /* A mensagem é conferida com precisão, não só por conter "prévia".
  *
  * Motivo: existe uma SEGUNDA trava logo abaixo — a de validade — que também
@@ -280,7 +280,7 @@ const semPrevia = g.escolaVinculosAplicar("CONTATOS", ADM);
 b.ok(semPrevia.ok === false &&
      /Rode a prévia/i.test(semPrevia.mensagem) &&
      !/minutos/i.test(semPrevia.mensagem) &&
-     coluna("Contatos", "EscolaID") === null,
+     coluna("Agend_Oftalmo", "EscolaID") === null,
   "recusa dizendo exatamente o que fazer", semPrevia.mensagem.slice(0, 70));
 
 b.passo("25. A prévia de UM alvo não autoriza aplicar em OUTRO");
@@ -288,26 +288,26 @@ b.passo("25. A prévia de UM alvo não autoriza aplicar em OUTRO");
  * de 5 linhas da Cobrança não pode liberar escrita nos 8.000 associados. */
 limparConsentimentos();
 g.escolaVinculosPrevia("COBRANCA", ADM);
-const cruzado = g.escolaVinculosAplicar("CONTATOS", ADM);
-b.ok(cruzado.ok === false && coluna("Contatos", "EscolaID") === null,
+const cruzado = g.escolaVinculosAplicar("OFTALMO", ADM);
+b.ok(cruzado.ok === false && coluna("Agend_Oftalmo", "EscolaID") === null,
   "o consentimento é por aba", cruzado.mensagem.slice(0, 70));
 
 b.passo("26. Consentimento vencido não vale");
 limparConsentimentos();
-g.escolaVinculosPrevia("CONTATOS", ADM);
+g.escolaVinculosPrevia("OFTALMO", ADM);
 const props = g.PropertiesService.getScriptProperties();
-props.setProperty(g.ESC_VINC_PROP_CONSENT + "CONTATOS",
+props.setProperty(g.ESC_VINC_PROP_CONSENT + "OFTALMO",
   JSON.stringify({ quando: new Date().getTime() - (g.ESC_VINC_MINUTOS + 1) * 60 * 1000 }));
-const vencido = g.escolaVinculosAplicar("CONTATOS", ADM);
+const vencido = g.escolaVinculosAplicar("OFTALMO", ADM);
 b.ok(vencido.ok === false && /minutos/i.test(vencido.mensagem) &&
-     coluna("Contatos", "EscolaID") === null,
+     coluna("Agend_Oftalmo", "EscolaID") === null,
   "a base pode ter mudado nesse tempo", vencido.mensagem.slice(0, 70));
 
 b.passo("27. Uma prévia serve para UMA aplicação");
 limparConsentimentos();
-g.escolaVinculosPrevia("CONTATOS", ADM);
-const primeira = g.escolaVinculosAplicar("CONTATOS", ADM);
-const segunda  = g.escolaVinculosAplicar("CONTATOS", ADM);
+g.escolaVinculosPrevia("OFTALMO", ADM);
+const primeira = g.escolaVinculosAplicar("OFTALMO", ADM);
+const segunda  = g.escolaVinculosAplicar("OFTALMO", ADM);
 b.ok(primeira.ok === true && segunda.ok === false,
   "o consentimento é consumido, não fica de pé");
 
@@ -319,16 +319,16 @@ b.fluxo("VÍNCULOS · Idempotência");
 b.passo("28. Rodar de novo não troca vínculo já gravado");
 /* Inclui vínculo que alguém corrigiu à mão: se a rotina reavaliasse, ela
  * desfaria a correção humana na próxima execução. */
-const shC = ss.getSheetByName("Contatos");
+const shC = ss.getSheetByName("Agend_Oftalmo");
 const cabC = shC.getRange(1, 1, 1, shC.getLastColumn()).getValues()[0]
   .map(function (c) { return String(c || "").trim(); });
 shC.getRange(2, cabC.indexOf("EscolaID") + 1).setValue("ESC-000004");  // correção humana
 limparConsentimentos();
-g.escolaVinculosPrevia("CONTATOS", ADM);
-const denovo = g.escolaVinculosAplicar("CONTATOS", ADM);
-b.ok(coluna("Contatos", "EscolaID")[0] === "ESC-000004" && denovo.contagem.JA_TINHA === 1,
+g.escolaVinculosPrevia("OFTALMO", ADM);
+const denovo = g.escolaVinculosAplicar("OFTALMO", ADM);
+b.ok(coluna("Agend_Oftalmo", "EscolaID")[0] === "ESC-000004" && denovo.contagem.JA_TINHA === 1,
   "correção a mão sobrevive à rotina",
-  "id=" + coluna("Contatos", "EscolaID")[0]);
+  "id=" + coluna("Agend_Oftalmo", "EscolaID")[0]);
 
 b.passo("29. E não cria uma segunda coluna EscolaID");
 const cabDepois = shC.getRange(1, 1, 1, shC.getLastColumn()).getValues()[0]
@@ -342,23 +342,23 @@ b.ok(cabDepois.filter(function (c) { return c === "EscolaID"; }).length === 1,
 b.fluxo("VÍNCULOS · Quando não dá para prosseguir");
 
 b.passo("30. Aba que não existe é recusada com nome e motivo");
-const semAba = g.escolaVinculosPrevia("OFICIOS", ADM);
+const semAba = g.escolaVinculosPrevia("TAXA", ADM);   // ENVIO_TAXA_ASSISTENCIAL não existe no teste
 b.ok(semAba.ok === false && /não existe/i.test(semAba.mensagem),
   "diz qual aba faltou", semAba.mensagem.slice(0, 70));
 
 b.passo("31. Coluna irreconhecível RECUSA a aba — não escreve por posição");
 /* É assim que a aba Escolas ficou com telefone dentro da razão social:
  * alguém escreveu por posição. A Fase 4 não repete isso. */
-criarAba("Contatos", ["ID", "Nome", "Fone", "Mail", "Municipio", "Instituicao"],
-  [["1", "Maria", "27999", "m@x.com", "Alegre", "Colégio Alfa"]]);
-const semColuna = g.escolaVinculosPrevia("CONTATOS", ADM);
+criarAba("Agend_Oftalmo", ["ID", "Data", "CPF_Titular", "Instituicao"],
+  [["1", "01/08", "000", "Colégio Alfa"]]);
+const semColuna = g.escolaVinculosPrevia("OFTALMO", ADM);
 b.ok(semColuna.ok === false && /coluna da escola/i.test(semColuna.mensagem) &&
      /Instituicao|Municipio/.test(semColuna.mensagem),
   "mostra o que procurou e o que achou", semColuna.mensagem.slice(0, 110));
 
 b.passo("32. E a recusa não deixa consentimento de pé");
 const consent = g.PropertiesService.getScriptProperties()
-  .getProperty(g.ESC_VINC_PROP_CONSENT + "CONTATOS");
+  .getProperty(g.ESC_VINC_PROP_CONSENT + "OFTALMO");
 b.ok(!consent, "prévia que falhou não autoriza nada");
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -394,10 +394,23 @@ b.fluxo("VÍNCULOS · Painel de status");
 
 const st = g.escolaVinculosStatus(ADM);
 
-b.passo("37. O status lista os cinco alvos em ordem de risco");
-b.igual(st.alvos.map(function (a) { return a.chave; }),
-  ["COBRANCA", "CONTATOS", "VISITAS", "OFICIOS", "ASSOCIADOS"],
-  "Associados por último, sempre");
+b.passo("37. O status lista os alvos em ordem de risco, Associados por último");
+/* A lista veio do mapeamento da planilha real em 12/08/2026 — 102 abas, 24
+ * tocando escola, 14 escolhidas. Não é palpite: cada nome aqui foi lido do
+ * cabeçalho da aba que existe. */
+const chaves = st.alvos.map(function (a) { return a.chave; });
+b.ok(chaves.length === 14 &&
+     chaves[0] === "VISITAS" && chaves[chaves.length - 1] === "ASSOCIADOS" &&
+     chaves.indexOf("OFICIOS") > chaves.indexOf("JURIDICO"),
+  "14 alvos, do menor para o maior", chaves.join(" → "));
+
+b.passo("37b. Nenhum alvo aponta para aba de importação ou log");
+/* Área de importação é retrato, não vínculo. Log é registro histórico, e
+ * reescrever log é adulterar registro. */
+const abas = st.alvos.map(function (a) { return a.aba; });
+b.ok(abas.indexOf("IMPORTACAO_ESCOLAS") === -1 && abas.indexOf("LOG_SISTEMA") === -1 &&
+     abas.indexOf("Prestadores_Serviços") === -1,
+  "importação, log e prestadores ficam de fora");
 
 b.passo("38. E diz quantas linhas já têm id em cada uma");
 const cob = st.alvos.filter(function (a) { return a.chave === "COBRANCA"; })[0];
@@ -405,7 +418,7 @@ b.ok(cob.existe === true && cob.migrado === true && cob.comId === 2 && cob.total
   "2 de 5 na Cobrança", "comId=" + cob.comId + " total=" + cob.total);
 
 b.passo("39. Aba inexistente aparece como tal, sem quebrar o painel");
-const of = st.alvos.filter(function (a) { return a.chave === "OFICIOS"; })[0];
+const of = st.alvos.filter(function (a) { return a.chave === "TAXA"; })[0];
 b.ok(st.ok === true && of.existe === false,
   "o painel sobrevive a alvo ausente");
 
@@ -496,6 +509,16 @@ const ofi = mapa.candidatas.filter(function (c) { return c.aba === "Controle de 
 b.ok(!!ofi && ofi.colunasPorConteudo.indexOf("DOC") > -1,
   "coluna 'DOC' delatada pelo conteúdo",
   ofi ? "porConteudo=" + ofi.colunasPorConteudo.join(" · ") : "não veio");
+
+b.passo("47b. 'ESCOLARIDADE' NÃO é reconhecida como referência a escola");
+/* Falso positivo real do mapeamento de 12/08/2026: a aba
+ * SISGEP_Sindicalizacao entrou na lista porque "ESCOLARIDADE" contém
+ * "escola". Sem este descarte, toda ficha cadastral vira candidata. */
+criarAba("Fichas_Com_Escolaridade", ["ID", "NOME", "ESCOLARIDADE"],
+  [["1", "Maria", "Superior"], ["2", "João", "Médio"]]);
+const mapa2 = g.escolaVinculosMapearAbas(ADM);
+b.ok(!mapa2.candidatas.some(function (c) { return c.aba === "Fichas_Com_Escolaridade"; }),
+  "escolaridade é grau de ensino, não escola");
 
 b.passo("48. Aba sem nenhuma referência a escola fica de fora");
 b.ok(!mapa.candidatas.some(function (c) { return c.aba === "Financeiro_Boletos"; }),
