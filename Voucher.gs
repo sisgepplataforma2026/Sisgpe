@@ -220,13 +220,53 @@ function getOrCreateSheet_(ss, name) {
   return sh;
 }
 
+/**
+ * Garante que a aba tenha todas as colunas da lista canônica.
+ *
+ * ⚠ ESTA FUNÇÃO JÁ DESTRUIU CABEÇALHO DE PLANILHA COM DADO REAL (12/08/2026).
+ *
+ * A versão anterior fazia isto:
+ *
+ *     headers.forEach(function (header, idx) {
+ *       if (existingHeaders.indexOf(header) === -1) {
+ *         sheet.getRange(1, idx + 1).setValue(header);   // ← posição CANÔNICA
+ *       }
+ *     });
+ *
+ * Ou seja: achou um nome faltando, escreveu ele na posição que ele ocupa na
+ * LISTA — por cima do nome que já estava naquela coluna. O dado embaixo não
+ * se mexe. Resultado: três colunas perdem o nome e passam a ser lidas com o
+ * rótulo errado, e `mapRowToObject_` devolve o valor de uma coluna sob o nome
+ * de outra. Foi assim que a data de nascimento de um beneficiário apareceu no
+ * certificado como "Instituição de ensino", e a idade (11) como "CNPJ".
+ *
+ * E PIORAVA A CADA EXECUÇÃO. Os três nomes atropelados sumiam da aba, então
+ * na rodada seguinte eles é que estavam "faltando" — e eram reescritos nas
+ * posições canônicas deles, atropelando outros três. Medido no emulador:
+ * rodada 1 perde 3 nomes, rodada 2 perde outros 3, e na 3ª estabiliza com a
+ * linha de cabeçalho inteira deslocada em relação ao dado. Como
+ * setupVoucherModuleFase1() é chamada de nove lugares, vários deles em
+ * caminho de LEITURA (VoucherPdf.gs:8, Voucher.gs:981...), bastava abrir a
+ * prévia para rodar mais uma volta.
+ *
+ * A REGRA AGORA: em aba que já tem cabeçalho, coluna nova entra SEMPRE NO
+ * FIM. A ordem da lista canônica é a ordem desejada para uma aba nova — nunca
+ * uma instrução para reposicionar coluna de aba existente. Todo o sistema lê
+ * por NOME (mapRowToObject_/obterHeaders_), então a posição não importa; o
+ * que importa é que nome e dado continuem na mesma coluna.
+ *
+ * Reordenar coluna de aba com dado é operação de migração: move o dado junto,
+ * com backup antes, em função própria e com pedido explícito. Não é algo que
+ * um "ensure" faz de passagem.
+ */
 function ensureHeaders_(sheet, headers) {
-  const currentLastCol = Math.max(sheet.getLastColumn(), headers.length, 1);
+  const currentLastCol = Math.max(sheet.getLastColumn(), 1);
   const existing = sheet.getRange(1, 1, 1, currentLastCol).getValues()[0];
   const hasContent = existing.some(function(v) {
     return String(v).trim() !== "";
   });
 
+  // Aba nova ou sem cabeçalho: aí sim vale a ordem canônica inteira.
   if (!hasContent) {
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
     return;
@@ -236,11 +276,17 @@ function ensureHeaders_(sheet, headers) {
     return String(v).trim();
   });
 
-  headers.forEach(function(header, idx) {
-    if (existingHeaders.indexOf(header) === -1) {
-      sheet.getRange(1, idx + 1).setValue(header);
-    }
+  const faltando = headers.filter(function(h) {
+    return existingHeaders.indexOf(h) === -1;
   });
+  if (!faltando.length) return;
+
+  // No fim, na ordem em que aparecem na lista canônica. Nenhuma coluna
+  // existente é tocada — o dado de ninguém muda de rótulo.
+  sheet.getRange(1, currentLastCol + 1, 1, faltando.length).setValues([faltando]);
+
+  Logger.log("ensureHeaders_ — " + sheet.getName() + ": " + faltando.length +
+             " coluna(s) acrescentada(s) NO FIM: " + faltando.join(", "));
 }
 
 function formatHeader_(sheet, numCols) {
@@ -274,38 +320,16 @@ function mapRowToObject_(headers, row) {
 
 /* ================= SETUP ================= */
 
-function setupVoucherModuleFase1() {
-  const ss = SpreadsheetApp.openById(PLANILHA_ID);
-
-  const sheets = [
-    {
-      name: "Voucher_Cadastros",
-      headers: [
-        "ID_CADASTRO",
-        "DATA_CADASTRO",
-        "DATA_ULTIMA_ATUALIZACAO",
-        "CPF",
-        "NOME",
-        "DATA_NASCIMENTO",
-        "IDADE",
-        "TELEFONE",
-        "EMAIL",
-        "ENDERECO",
-        "ESCOLA_ATUAL",
-        "UNIDADE_ESCOLA",
-        "CNPJ_ESCOLA",
-        "CIDADE_ESCOLA",
-        "CARGO_FUNCAO",
-        "SITUACAO_VINCULO",
-        "SITUACAO_SINDICAL",
-        "ORIGEM_CADASTRO",
-        "STATUS_CADASTRO",
-        "OBSERVACOES"
-      ]
-    },
-    {
-      name: "Voucher_Solicitacoes",
-      headers: [
+/**
+ * A lista canônica de colunas de Voucher_Solicitacoes, em UM lugar só.
+ *
+ * Estava inline dentro de setupVoucherModuleFase1, e o diagnóstico precisava
+ * da mesma lista para dizer o que está faltando na aba. Duas cópias de uma
+ * lista de 40 nomes divergem — e a que ia divergir era justamente a que
+ * responde "a planilha está certa?".
+ */
+function VOUCHER_COLUNAS_SOLICITACOES_() {
+  return [
         "ID_SOLICITACAO",
         "DATA_SOLICITACAO",
         "DATA_SOLICITACAO_TEXTO",
@@ -364,7 +388,41 @@ function setupVoucherModuleFase1() {
         "DATA_EMISSAO",
         "OBSERVACOES",
         "NUMERO_PROTOCOLO"
+  ];
+}
+
+function setupVoucherModuleFase1() {
+  const ss = SpreadsheetApp.openById(PLANILHA_ID);
+
+  const sheets = [
+    {
+      name: "Voucher_Cadastros",
+      headers: [
+        "ID_CADASTRO",
+        "DATA_CADASTRO",
+        "DATA_ULTIMA_ATUALIZACAO",
+        "CPF",
+        "NOME",
+        "DATA_NASCIMENTO",
+        "IDADE",
+        "TELEFONE",
+        "EMAIL",
+        "ENDERECO",
+        "ESCOLA_ATUAL",
+        "UNIDADE_ESCOLA",
+        "CNPJ_ESCOLA",
+        "CIDADE_ESCOLA",
+        "CARGO_FUNCAO",
+        "SITUACAO_VINCULO",
+        "SITUACAO_SINDICAL",
+        "ORIGEM_CADASTRO",
+        "STATUS_CADASTRO",
+        "OBSERVACOES"
       ]
+    },
+    {
+      name: "Voucher_Solicitacoes",
+      headers: VOUCHER_COLUNAS_SOLICITACOES_()
     },
     {
       name: "Voucher_Protocolos",
@@ -1404,6 +1462,100 @@ function testeAprovarVoucher() {
     null,
     2
   ));
+}
+
+/**
+ * DIAGNÓSTICO DO CABEÇALHO — só leitura, não escreve uma célula.
+ *
+ * Existe para responder uma pergunta específica depois do estrago do
+ * ensureHeaders_ antigo (ver o comentário dele acima): QUAIS colunas de
+ * Voucher_Solicitacoes estão com o nome trocado em relação ao dado?
+ *
+ * O jeito de descobrir é olhar o valor embaixo de cada nome e perguntar se
+ * ele tem cara do que o nome promete. Uma data sob "INSTITUICAO_ENSINO" e um
+ * "11" sob "CNPJ_INSTITUICAO" não deixam dúvida.
+ *
+ * O que é dado pessoal sai MASCARADO. Este log vai parar em print, e print
+ * vai parar em conversa — CPF e e-mail inteiros não precisam estar aqui para
+ * a coluna ser identificada.
+ */
+function voucherDiagnosticoColunas(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, "beneficios", "Diagnóstico de colunas do Voucher", true);
+
+  var ss = SpreadsheetApp.openById(PLANILHA_ID);
+  var sh = ss.getSheetByName("Voucher_Solicitacoes");
+  if (!sh) {
+    Logger.log("A aba Voucher_Solicitacoes não existe.");
+    return { ok: false, mensagem: "Aba Voucher_Solicitacoes não encontrada." };
+  }
+
+  var nCols = sh.getLastColumn();
+  var nLinhas = sh.getLastRow();
+  var cab = sh.getRange(1, 1, 1, nCols).getValues()[0];
+  var amostra = nLinhas >= 2 ? sh.getRange(2, 1, 1, nCols).getValues()[0] : [];
+
+  function mascarar(nome, v) {
+    var s = v instanceof Date ? v.toString() : String(v == null ? "" : v);
+    if (!s) return "(vazio)";
+    var n = String(nome || "").toUpperCase();
+    if (n.indexOf("CPF") > -1) return s.replace(/\d(?=\d{2})/g, "*");
+    if (n.indexOf("EMAIL") > -1 && s.indexOf("@") > 0) {
+      return s.charAt(0) + "***@" + s.split("@")[1];
+    }
+    if (n.indexOf("TELEFONE") > -1) return s.replace(/\d(?=\d{4})/g, "*");
+    return s.length > 42 ? s.slice(0, 42) + "…" : s;
+  }
+
+  /* O tipo aparente é o que denuncia o desalinhamento: o nome diz uma coisa,
+   * o formato do valor diz outra. */
+  function cara(v) {
+    if (v instanceof Date) return "DATA";
+    if (v === "" || v === null || v === undefined) return "vazio";
+    if (typeof v === "number") return "número";
+    var s = String(v);
+    if (/^\d{14}$/.test(s.replace(/\D/g, "")) && s.replace(/\D/g, "").length === 14) return "CNPJ?";
+    if (s.indexOf("@") > 0) return "e-mail";
+    return "texto";
+  }
+
+  Logger.log("═══ Voucher_Solicitacoes — " + nCols + " colunas · " +
+             Math.max(nLinhas - 1, 0) + " solicitações ═══");
+  Logger.log("");
+  Logger.log("col  CABEÇALHO                          tipo      1ª linha");
+  Logger.log("───────────────────────────────────────────────────────────────────");
+
+  var linhas = [];
+  for (var i = 0; i < nCols; i++) {
+    var nome = String(cab[i] || "(sem nome)");
+    var v = amostra.length ? amostra[i] : "";
+    var txt = ("" + (i + 1)).padStart(3) + "  " + (nome + "                                   ").slice(0, 34) +
+              " " + (cara(v) + "        ").slice(0, 9) + " " + mascarar(nome, v);
+    Logger.log(txt);
+    linhas.push({ coluna: i + 1, cabecalho: nome, tipo: cara(v) });
+  }
+
+  /* Duplicata é a marca registrada do estrago: o nome foi escrito por cima de
+   * outro, e agora existe duas vezes ou sumiu de vez. */
+  var vistos = {}, repetidos = [];
+  cab.forEach(function (c) {
+    var n = String(c || "").trim();
+    if (!n) return;
+    if (vistos[n]) { if (repetidos.indexOf(n) === -1) repetidos.push(n); }
+    vistos[n] = true;
+  });
+
+  var canonicas = VOUCHER_COLUNAS_SOLICITACOES_();
+  var ausentes = canonicas.filter(function (h) { return !vistos[h]; });
+
+  Logger.log("");
+  Logger.log("cabeçalhos REPETIDOS ..... " + (repetidos.length ? repetidos.join(", ") : "nenhum"));
+  Logger.log("cabeçalhos AUSENTES ...... " + (ausentes.length ? ausentes.join(", ") : "nenhum"));
+  Logger.log("");
+  Logger.log(ausentes.length || repetidos.length
+    ? "⚠ A aba está desalinhada. NÃO emitir certificado antes de corrigir."
+    : "✓ Nenhum nome ausente nem repetido.");
+
+  return { ok: true, colunas: linhas, repetidos: repetidos, ausentes: ausentes };
 }
 
 /**
