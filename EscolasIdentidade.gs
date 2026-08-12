@@ -295,6 +295,77 @@ function escolaMigrarIds(tokenSessao) {
   return r;
 }
 
+/**
+ * Guarda de porta dupla: aceita ou uma sessão do SISGEP, ou o dono do projeto
+ * / um administrador cadastrado rodando pelo editor do Apps Script.
+ *
+ * POR QUE ELA PRECISA EXISTIR
+ *
+ * O botão Run do editor chama a função SEM ARGUMENTO NENHUM. Uma função que
+ * só aceita token, portanto, é inalcançável pelo editor — e enquanto a tela
+ * do submódulo não existe, o editor é o único caminho para medir a base.
+ * Foi assim que escolaMigrarIds respondeu "Sessão inválida ou expirada" na
+ * primeira tentativa, em 11/08/2026.
+ *
+ * FALHA FECHADO NOS TRÊS CENÁRIOS:
+ *   - visitante anônimo no app publicado: getActiveUser() vem vazio → recusa;
+ *   - visitante identificado que não é o dono: cai na checagem de
+ *     administrador na aba USUARIOS → recusa se não for;
+ *   - erro de leitura da aba: escolaEhAdministradorPorEmail_ devolve false.
+ *
+ * Não concede privilégio novo: quem é dono do projeto já pode reescrever
+ * qualquer regra deste arquivo pelo editor.
+ *
+ * Esta é a mesma lógica repetida em escolaMigrarIds, escolaValidarColunas e
+ * mais três pontos deste arquivo. As cópias antigas ficaram onde estão de
+ * propósito: consolidar cinco guardas de segurança já testadas no mesmo
+ * commit de uma funcionalidade nova é justamente o tipo de mistura que a
+ * regra de proteção do que funciona proíbe. Fica registrado como pendência.
+ *
+ * Atenção ao terceiro parâmetro. Pela porta do EDITOR só passa administrador,
+ * sempre — não há como ser diferente, porque não existe módulo para conferir
+ * sem sessão. Pela porta da TELA, quem manda é o chamador: uma leitura que a
+ * secretaria precisa ver todo dia não pode exigir perfil de administrador só
+ * porque a mesma função também é alcançável pelo editor. Passar `true` aqui
+ * por descuido tranca a tela para o usuário comum.
+ *
+ * @param {string}  tokenSessao   token da tela, ou vazio quando vem do editor
+ * @param {string}  rotulo        nome da ação, para o log
+ * @param {boolean} exigeAdmin    na porta da TELA, se exige perfil admin
+ * @return {string} o e-mail de quem executou (vazio quando veio por token)
+ */
+function escolaExigirAdminOuSessao_(tokenSessao, rotulo, exigeAdmin) {
+  if (String(tokenSessao || "").trim()) {
+    exigirModulo_(tokenSessao, "escolas", !!exigeAdmin);
+    Logger.log(rotulo + " — execução por sessão do SISGEP");
+    return "";
+  }
+
+  var email = "";
+  try { email = String(Session.getActiveUser().getEmail() || "").trim().toLowerCase(); } catch (e) {}
+  if (!email) {
+    Logger.log(rotulo + " — RECUSADO: sem sessão e sem conta Google identificável.");
+    throw new Error("Sessão inválida ou expirada. Entre novamente no SISGEP.");
+  }
+
+  var dono = "";
+  try { dono = String(Session.getEffectiveUser().getEmail() || "").trim().toLowerCase(); } catch (e2) {}
+  var ehDono = !!dono && dono === email;
+
+  if (!ehDono && !escolaEhAdministradorPorEmail_(email)) {
+    Logger.log(rotulo + " — RECUSADO para " + email + " (dono do projeto: " + (dono || "desconhecido") + ")");
+    throw new Error(
+      "Ação permitida somente para administradores. A conta " + email +
+      " não é a dona deste projeto Apps Script (" + (dono || "desconhecida") +
+      ") nem foi encontrada na aba " + ABA_USUARIOS_LOGIN +
+      " com EMAIL igual a esse, PERFIL = ADMINISTRADOR e STATUS = ATIVO."
+    );
+  }
+  Logger.log(rotulo + " — execução " +
+    (ehDono ? "pelo dono do projeto" : "por administrador cadastrado") + ": " + email);
+  return email;
+}
+
 /** Administrador ATIVO na aba USUARIOS, procurado pelo e-mail da conta Google. */
 function escolaEhAdministradorPorEmail_(email) {
   try {

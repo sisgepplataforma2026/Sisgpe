@@ -73,13 +73,23 @@ var ESC_PENDENCIAS = [
 ];
 
 /**
- * Monta a fila de pendências.
+ * Monta a fila de pendências, para a tela.
+ *
+ * Exige sessão do SISGEP — sem porta pelo editor. Diferente do resumo, esta
+ * função devolve nome, cidade e documento mascarado de cada escola; é a
+ * listagem que a tela consome, e listagem se abre com login, não com o
+ * e-mail de quem por acaso está com o editor aberto.
  *
  * @param {Object} filtros  { tipo } — chave de ESC_PENDENCIAS, ou vazio para todas
  * @return {Object} { ok, total, resumo, escolas }
  */
 function escolasPendenciasListar(filtros, tokenSessao) {
   exigirModulo_(tokenSessao, "escolas", false);
+  return escolasPendenciasCalcular_(filtros);
+}
+
+/** O cálculo em si. Sem guarda: quem chama já checou. */
+function escolasPendenciasCalcular_(filtros) {
   try {
     filtros = filtros || {};
     var tipoFiltro = String(filtros.tipo || "").trim().toUpperCase();
@@ -202,15 +212,54 @@ function escolasPendenciasResumoVazio_() {
   return r;
 }
 
-/** Contagem por tipo, para os cards do dashboard. Não devolve a lista. */
+/**
+ * Contagem por tipo, para os cards do dashboard. NÃO devolve a lista.
+ *
+ * Aceita as duas portas: a tela manda o token; o editor do Apps Script chama
+ * sem argumento nenhum e cai na checagem de administrador. Enquanto a tela do
+ * submódulo não existe, esta é a única forma de medir a base real — e é
+ * seguro justamente porque o retorno é só contagem: nenhum nome de escola,
+ * nenhum documento, nada de pessoal.
+ */
 function escolasPendenciasResumo(tokenSessao) {
-  var r = escolasPendenciasListar({}, tokenSessao);
-  if (!r.ok) return r;
-  return {
+  escolaExigirAdminOuSessao_(tokenSessao, "escolasPendenciasResumo");
+
+  var r = escolasPendenciasCalcular_({});
+  if (!r.ok) { Logger.log("FALHOU: " + r.mensagem); return r; }
+
+  var saida = {
     ok: true,
     totalEscolasComPendencia: r.totalEscolasComPendencia,
     totalNaBase: r.totalNaBase,
     resumo: r.resumo,
     catalogo: ESC_PENDENCIAS
   };
+  escolasPendenciasImprimir_(saida);
+  return saida;
+}
+
+/* Sem isto, rodar pelo editor mostra "Execução concluída" e mais nada: o
+ * valor devolvido some, porque ninguém está do outro lado para receber. Já
+ * aconteceu duas vezes nesta migração. */
+function escolasPendenciasImprimir_(r) {
+  try {
+    var L = [];
+    L.push("═══ PENDÊNCIAS DO CADASTRO DE ESCOLAS ═══");
+    L.push(r.totalEscolasComPendencia + " de " + r.totalNaBase + " escolas têm alguma pendência");
+    L.push("");
+    ESC_PENDENCIAS.slice().sort(function (a, b) { return a.gravidade - b.gravidade; })
+      .forEach(function (p) {
+        var n = String(r.resumo[p.chave] || 0);
+        while (n.length < 5) n = " " + n;
+        var rot = p.rotulo;
+        while (rot.length < 24) rot += ".";
+        L.push("  " + n + "  " + rot + " (gravidade " + p.gravidade + ")");
+      });
+    L.push("");
+    L.push("Uma escola pode ter mais de uma pendência — a soma acima passa do total.");
+    Logger.log(L.join("\n"));
+  } catch (e) {
+    Logger.log("Resumo calculado, mas a impressão falhou: " + e.message);
+    Logger.log(JSON.stringify(r));
+  }
 }

@@ -426,6 +426,129 @@ const rEsc = g.escolasPendenciasListar({}, ESC);
 b.ok(rEsc.ok === true && rEsc.total === 1,
   "joscimar (escolas,sindicalizacao) lista normalmente", "total=" + rEsc.total);
 
+b.passo("42. E o RESUMO também abre para quem só tem o módulo — sem exigir admin");
+/* Os cards do dashboard são leitura de todo dia da secretaria. Se o resumo
+ * exigisse perfil de administrador só porque a mesma função é alcançável
+ * pelo editor, a tela nasceria trancada para quem mais precisa dela. */
+const resEsc = g.escolasPendenciasResumo(ESC);
+b.ok(resEsc.ok === true && resEsc.totalEscolasComPendencia === 1,
+  "joscimar vê os cards", "comPendencia=" + (resEsc.totalEscolasComPendencia));
+
+/* ══════════════════════════════════════════════════════════════════════
+   10b. A PORTA DO EDITOR — sem token, pela conta Google
+   ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("PENDÊNCIAS · Rodar pelo editor do Apps Script");
+
+/* O botão Run do editor chama a função SEM ARGUMENTO. Enquanto a tela do
+ * submódulo não existe, é o único jeito de medir a base real — e por isso
+ * precisa funcionar E precisa recusar quem não deve entrar. */
+
+b.passo("43. O dono do projeto roda sem token");
+g.__usuarioAtivoEmail = g.__donoDoProjetoEmail;
+const rDono = g.escolasPendenciasResumo();
+b.ok(rDono.ok === true && rDono.totalEscolasComPendencia === 1,
+  "é a porta que o editor usa", JSON.stringify(rDono.resumo));
+
+b.passo("44. Administrador cadastrado na aba USUARIOS também roda sem token");
+g.__usuarioAtivoEmail = "wanderson@sindeducacao.com";
+const rAdm = g.escolasPendenciasResumo();
+b.ok(rAdm.ok === true, "admin ATIVO pelo e-mail da conta Google");
+
+b.passo("45. Conta Google QUALQUER é recusada — não basta estar logado no Google");
+g.__usuarioAtivoEmail = "estranho@gmail.com";
+b.bloqueia(function () { return g.escolasPendenciasResumo(); },
+  "quem não é dono nem admin não passa pela porta do editor");
+
+b.passo("46. Usuário comum do SISGEP não vira admin pela porta do editor");
+/* joscimar tem o módulo escolas e passa COM token (passo 42). Sem token,
+ * pela conta Google, ele não é dono nem ADMINISTRADOR — tem que ser
+ * recusado. Se passasse, a porta do editor viraria escalada de privilégio. */
+g.__usuarioAtivoEmail = "joscimar@sindeducacao.com";
+b.bloqueia(function () { return g.escolasPendenciasResumo(); },
+  "a porta do editor não promove usuário comum a administrador");
+
+b.passo("47. Visitante anônimo (getActiveUser vazio) é recusado");
+/* NOTA DE MUTAÇÃO, para quem vier depois: remover a checagem de e-mail vazio
+ * NÃO derruba este passo, e isso está certo. Com o e-mail em branco, a conta
+ * não bate com a do dono e não é achada na aba USUARIOS — a recusa acontece
+ * de novo, uma linha abaixo. São duas travas independentes para o mesmo caso.
+ * O que muda sem a primeira é só a mensagem: em vez de "Sessão inválida", o
+ * visitante leria um texto sobre perfil de administrador que não o ajuda em
+ * nada. Manter as duas é clareza, não redundância inútil. */
+g.__usuarioAtivoEmail = "";
+b.bloqueia(function () { return g.escolasPendenciasResumo(); },
+  "app publicado 'qualquer pessoa' não vaza a medição");
+
+b.passo("48. A LISTAGEM não tem porta pelo editor — só token");
+/* Assimetria de propósito: o resumo devolve só contagem; a listagem devolve
+ * nome, cidade e documento de cada escola. Dado de escola se abre com login. */
+g.__usuarioAtivoEmail = g.__donoDoProjetoEmail;
+b.bloqueia(function () { return g.escolasPendenciasListar({}); },
+  "nem o dono do projeto lista escolas sem sessão");
+
+b.passo("49. Rodando pelo editor, os números aparecem no LOG");
+/* Devolver o valor não basta: no editor ninguém está do outro lado para
+ * receber o retorno, e a execução termina com "Execução concluída" e mais
+ * nada na tela. Aconteceu duas vezes nesta migração — em escolaMigrarIds e
+ * na prévia do saneamento. O log é a única saída visível. */
+g.Logger.clear();
+g.__usuarioAtivoEmail = g.__donoDoProjetoEmail;
+g.escolasPendenciasResumo();
+const log49 = g.Logger.getLog();
+b.ok(/PEND[ÊE]NCIAS DO CADASTRO/.test(log49) &&
+     /1 de 1 escolas/.test(log49) &&
+     /Sem e-mail/.test(log49),
+  "quem rodar pelo editor lê o resultado sem abrir o depurador",
+  log49.split("\n").filter(function (l) { return /Sem e-mail/.test(l); })[0] || "(sem linha)");
+
+b.passo("50. E a recusa também vai para o log — silêncio não explica nada");
+g.Logger.clear();
+g.__usuarioAtivoEmail = "estranho@gmail.com";
+try { g.escolasPendenciasResumo(); } catch (e) {}
+b.ok(/RECUSADO/.test(g.Logger.getLog()),
+  "negativa registrada, com a conta que tentou",
+  g.Logger.getLog().slice(0, 90));
+
+/* ── NÃO CONSEGUIR VERIFICAR É RECUSAR ──
+ *
+ * Estes dois passos existem porque uma mutação sobreviveu: trocar o
+ * `return false` do catch de escolaEhAdministradorPorEmail_ por `return true`
+ * não derrubava nenhum teste. Ou seja, a propriedade mais importante daquela
+ * função — falhar fechado — não estava sendo verificada por ninguém. Erro de
+ * leitura virando permissão é como se abre uma base de 8.000 pessoas. */
+
+b.passo("51. Aba USUARIOS ausente NÃO libera ninguém");
+const abaUsuarios = ss.getSheetByName(g.ABA_USUARIOS_LOGIN);
+const guardaUsuarios = abaUsuarios
+  ? abaUsuarios.getRange(1, 1, abaUsuarios.getLastRow(), abaUsuarios.getLastColumn()).getValues()
+  : null;
+if (abaUsuarios) ss.deleteSheet(abaUsuarios);
+g.__usuarioAtivoEmail = "wanderson@sindeducacao.com";   // era admin antes de a aba sumir
+b.bloqueia(function () { return g.escolasPendenciasResumo(); },
+  "sem a aba para conferir o perfil, a resposta é não");
+
+b.passo("52. Falha ao LER a planilha também recusa — não vira permissão");
+const openIdOriginal = g.SpreadsheetApp.openById;
+g.SpreadsheetApp.openById = function () { throw new Error("Serviço indisponível (simulado)"); };
+let recusouNaFalha;
+try {
+  g.escolasPendenciasResumo();
+  recusouNaFalha = false;
+} catch (e) {
+  recusouNaFalha = /administrador|permiss|sess[ãa]o/i.test(String(e.message));
+}
+g.SpreadsheetApp.openById = openIdOriginal;
+b.ok(recusouNaFalha === true,
+  "planilha fora do ar não promove ninguém a administrador",
+  recusouNaFalha === false ? "PASSOU DIRETO — fail-open" : "recusado");
+
+// devolve a aba de usuários para os passos seguintes
+if (guardaUsuarios) {
+  const nova = ss.insertSheet(g.ABA_USUARIOS_LOGIN);
+  nova.getRange(1, 1, guardaUsuarios.length, guardaUsuarios[0].length).setValues(guardaUsuarios);
+}
+g.__usuarioAtivoEmail = "";
+
 /* ══════════════════════════════════════════════════════════════════════
    11. SÓ LEITURA — a fila mede, não corrige
    ══════════════════════════════════════════════════════════════════════ */
