@@ -100,12 +100,48 @@ const cInv = g.cadastrarEscola({ nomeEscola: "Escola Falsa", cnpj: "111111111111
 b.ok(cInv.ok === false && /d[íi]gito|inv[áa]lid/i.test(cInv.mensagem || ""),
   "não grava CNPJ inventado", cInv.mensagem);
 
+b.passo("4b. ⚠ Escola de PESSOA FÍSICA cadastra com CPF");
+// Confirmado pelo usuário: "tem alguns colaboradores que pagam pelo CPF e não
+// CNPJ". Antes disto, cadastrarEscola recusava com "CNPJ inválido" — essas
+// escolas existiam na base, apareciam na lista e emitiam ofício, mas NÃO
+// PODIAM SER EDITADAS. Ninguém sabia, porque só quem tentasse editar veria.
+const CPF_OK = "111.444.777-35";           // sintético, dígito verificador válido
+const cPf = g.cadastrarEscola({
+  nomeEscola: "Creche da Dona Maria", cnpj: CPF_OK, municipio: "Vitória", uf: "ES"
+}, ADM);
+const linhaPf = acharPorNome("Creche da Dona Maria")[0] || [];
+b.ok(cPf.ok === true && linhaPf[col("CNPJ") - 1] === "111.444.777-35",
+  "CPF é aceito e gravado formatado", cPf.mensagem + " · " + linhaPf[col("CNPJ") - 1]);
+
+b.passo("4c. CPF com dígito errado continua recusado");
+const cPfRuim = g.cadastrarEscola({ nomeEscola: "Creche Falsa", cnpj: "111.444.777-00" }, ADM);
+b.ok(cPfRuim.ok === false && /CPF inv/i.test(cPfRuim.mensagem || ""),
+  "aceitar CPF não é aceitar qualquer número de 11 dígitos", cPfRuim.mensagem);
+
+b.passo("4d. E documento com tamanho impossível é recusado com explicação");
+const cDoc = g.cadastrarEscola({ nomeEscola: "Escola X", cnpj: "12345" }, ADM);
+b.ok(cDoc.ok === false && /CPF|CNPJ/.test(cDoc.mensagem || "") && /5/.test(cDoc.mensagem || ""),
+  "a mensagem diz o que se espera e o que veio", cDoc.mensagem);
+
+b.passo("4e. ⚠ LGPD: o CPF sai MASCARADO da listagem, o CNPJ sai inteiro");
+// CPF é dado pessoal. A partir do momento em que a coluna CNPJ passou a
+// aceitá-lo, ela carrega dado pessoal para toda tela e todo arquivo.
+const listaPf = g.listarEscolasParaModulo(ADM);
+const pf = listaPf.filter(x => x.NomeEscola === "Creche da Dona Maria")[0] || {};
+const pj = listaPf.filter(x => x.NomeEscola === "Escola Municipal Alfa")[0] || {};
+b.ok(pf.documentoTipo === "CPF" && pf.documentoMascarado === "111.***.***-35" &&
+     pj.documentoTipo === "CNPJ" && pj.documentoMascarado === "11.222.333/0001-81",
+  "CPF mascarado, CNPJ inteiro, e a tela sabe qual é qual",
+  "PF: " + pf.documentoMascarado + " · PJ: " + pj.documentoMascarado);
+
 b.passo("5. Escola sem nome é recusada");
 const cSemNome = g.cadastrarEscola({ cnpj: CNPJ_B, municipio: "Serra" }, ADM);
 b.ok(cSemNome.ok === false, "nome é obrigatório", cSemNome.mensagem);
 
 b.passo("6. Nada disso sujou a base");
-b.ok(lerLinhas().length === 1, "só a escola válida entrou", lerLinhas().length + " linha(s)");
+// 2 = a escola com CNPJ (passo 1) + a de pessoa física (passo 4b). As três
+// tentativas inválidas — CNPJ falso, CPF falso, documento curto — não entraram.
+b.ok(lerLinhas().length === 2, "só as escolas válidas entraram", lerLinhas().length + " linha(s)");
 
 /* ══════════════════════════════════════════════════════════════════════
    2. RECADASTRAR — o mesmo formulário, o mesmo CNPJ
@@ -119,9 +155,9 @@ const c2 = g.cadastrarEscola({
   telefone: "27999990001", responsavel: "Maria", cargoResponsavel: "Diretora",
   situacao: "ATIVA"
 }, ADM);
-b.ok(c2.ok === true && c2.atualizado === true && lerLinhas().length === 1,
+b.ok(c2.ok === true && c2.atualizado === true && lerLinhas().length === 2,
   "o CNPJ é a chave — não duplica",
-  c2.mensagem + " · " + lerLinhas().length + " linha(s)");
+  c2.mensagem + " · " + lerLinhas().length + " linha(s), nenhuma nova");
 
 b.passo("8. ⚠ O QUE MAIS IMPORTA AQUI: campo não enviado é APAGADO");
 // O formulário reenvia a linha inteira. Todo campo que o usuário não digitou

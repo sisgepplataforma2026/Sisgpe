@@ -107,6 +107,95 @@ function formatarCNPJEscolas_(cnpj) {
   return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
 }
 
+/* =============================================================== */
+/* DOCUMENTO DA ESCOLA — CPF **OU** CNPJ                           */
+/* =============================================================== */
+/*
+ * Nem toda escola é pessoa jurídica.
+ *
+ * Confirmado pelo usuário em 11/08/2026: "tem alguns colaboradores que pagam
+ * pelo CPF e não CNPJ". A base tem pelo menos três — creches e escolas de
+ * pessoa física, que contribuem igual e são associadas igual.
+ *
+ * O que isso causava, e foi medido por execução antes de virar código:
+ *
+ *   cadastrarEscola({ nomeEscola: "...", cnpj: "111.444.777-35" })
+ *   → { ok: false, mensagem: "CNPJ inválido — dígito verificador incorreto." }
+ *
+ * Ou seja: essas escolas existem na base, aparecem na lista e emitem ofício,
+ * mas NÃO PODEM SER EDITADAS. Qualquer tentativa de salvar era recusada. Elas
+ * estavam congeladas e ninguém sabia, porque só quem tentasse editar
+ * descobriria.
+ *
+ * A coluna continua se chamando CNPJ — meio sistema depende desse nome, e
+ * renomear seria trocar um problema pequeno por um grande. O que muda é o que
+ * ela aceita.
+ *
+ * ⚠ LGPD: CPF é DADO PESSOAL. Passando a viver oficialmente nesta coluna, ele
+ * herda tudo que a coluna faz — aparece em tela e sai em exportação. Por isso
+ * vem junto o mascaramento; ver escolaDocMascarado_.
+ */
+function validarDigitosCpf_(cpf) {
+  const c = onlyDigitsEscolas_(cpf);
+  if (c.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(c)) return false;   // 111.111.111-11 e afins
+  function dig(qtd) {
+    let soma = 0;
+    for (let i = 0; i < qtd; i++) soma += parseInt(c[i], 10) * (qtd + 1 - i);
+    const r = (soma * 10) % 11;
+    return r === 10 ? 0 : r;
+  }
+  return dig(9) === parseInt(c[9], 10) && dig(10) === parseInt(c[10], 10);
+}
+
+function formatarCpfEscolas_(cpf) {
+  const d = onlyDigitsEscolas_(cpf).slice(0, 11);
+  if (d.length !== 11) return d;
+  return d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
+}
+
+/**
+ * Analisa o documento e diz o que ele é.
+ * Devolve { ok, tipo: "CPF"|"CNPJ"|"", digitos, formatado, mensagem }.
+ */
+function escolaAnalisarDocumento_(doc) {
+  const d = onlyDigitsEscolas_(doc);
+  if (!d) return { ok: true, tipo: "", digitos: "", formatado: "", mensagem: "" };
+
+  if (d.length === 11) {
+    if (!validarDigitosCpf_(d)) {
+      return { ok: false, tipo: "CPF", digitos: d, formatado: "",
+               mensagem: "CPF inválido — dígito verificador incorreto." };
+    }
+    return { ok: true, tipo: "CPF", digitos: d, formatado: formatarCpfEscolas_(d), mensagem: "" };
+  }
+
+  if (d.length === 14) {
+    if (!validarDigitosCnpj_(d)) {
+      return { ok: false, tipo: "CNPJ", digitos: d, formatado: "",
+               mensagem: "CNPJ inválido — dígito verificador incorreto." };
+    }
+    return { ok: true, tipo: "CNPJ", digitos: d, formatado: formatarCNPJEscolas_(d), mensagem: "" };
+  }
+
+  return { ok: false, tipo: "", digitos: d, formatado: "",
+           mensagem: "Documento inválido: informe um CPF (11 dígitos) ou um CNPJ (14 dígitos). Recebi " + d.length + "." };
+}
+
+/**
+ * Versão do documento que pode aparecer em lista e sair em arquivo.
+ *
+ * CNPJ é público — sai inteiro. CPF é dado pessoal — sai mascarado.
+ * Nunca troque isto por "mascarar os dois" nem por "mostrar os dois": o
+ * primeiro atrapalha o trabalho sem proteger ninguém, o segundo expõe pessoa
+ * física numa planilha que circula por e-mail.
+ */
+function escolaDocMascarado_(doc) {
+  const a = escolaAnalisarDocumento_(doc);
+  if (a.tipo !== "CPF" || !a.digitos) return String(doc || "").trim();
+  return a.digitos.slice(0, 3) + ".***.***-" + a.digitos.slice(9);
+}
+
 function validarDigitosCnpj_(cnpj) {
   const c = onlyDigitsEscolas_(cnpj);
   if (c.length !== 14) return false;
@@ -209,9 +298,9 @@ function cadastrarEscola(dados, tokenSessao) {
     const emailTodos = normalizarEmailsEscolas_([dados.emailsTodos || "", email].join(", "));
 
     if (!nome) return { ok: false, mensagem: "Informe o nome da escola." };
-    if (cnpjRaw && !validarDigitosCnpj_(cnpjRaw)) {
-      return { ok: false, mensagem: "CNPJ inválido — dígito verificador incorreto." };
-    }
+    // Aceita CPF (pessoa física) e CNPJ. Ver escolaAnalisarDocumento_.
+    const doc = escolaAnalisarDocumento_(cnpjRaw);
+    if (!doc.ok) return { ok: false, mensagem: doc.mensagem };
 
     const agora = agoraFormatadoEscolas_();
     // Quem cadastrou é quem está LOGADO, não quem publicou a implantação.
@@ -258,7 +347,7 @@ function cadastrarEscola(dados, tokenSessao) {
         // O nome é exceção: já foi validado como obrigatório lá em cima.
         setIfColEscola_(sh, rowNum, hMap, COL_NOME_ESCOLA, nome);
         setSeEnviouEscola_(sh, rowNum, hMap, COL_FANTASIA,     dados, ["fantasia","nomeFantasia"],  fantasia);
-        setSeEnviouEscola_(sh, rowNum, hMap, COL_CNPJ,         dados, ["cnpj"],                     cnpjRaw ? formatarCNPJEscolas_(cnpjRaw) : "");
+        setSeEnviouEscola_(sh, rowNum, hMap, COL_CNPJ,         dados, ["cnpj"],                     doc.formatado);
         setSeEnviouEscola_(sh, rowNum, hMap, COL_UNIDADE,      dados, ["codigoInterno"],            String(dados.codigoInterno || "").trim());
         setSeEnviouEscola_(sh, rowNum, hMap, COL_REDE,         dados, ["rede"],                     String(dados.rede || "").trim());
         setSeEnviouEscola_(sh, rowNum, hMap, COL_CIDADE,       dados, ["municipio","cidade"],       municipio);
@@ -300,7 +389,7 @@ function cadastrarEscola(dados, tokenSessao) {
 
     setCol(COL_NOME_ESCOLA,     nome);
     setCol(COL_FANTASIA,        fantasia);
-    setCol(COL_CNPJ,            cnpjRaw ? formatarCNPJEscolas_(cnpjRaw) : "");
+    setCol(COL_CNPJ,            doc.formatado);
     setCol(COL_UNIDADE,         String(dados.codigoInterno || "").trim());
     setCol(COL_REDE,            String(dados.rede || "").trim());
     setCol(COL_CIDADE,          municipio);
@@ -404,6 +493,13 @@ function listarEscolasCadastro_interno_() {
       // devem apontar — nunca pelo nome, nunca pelo número da linha.
       obj.EscolaID = String(obj[ESC_COL_ID] || "").trim().toUpperCase();
       obj.escolaId = obj.EscolaID;
+      // Tipo do documento e versão mascarada. A tela escolhe qual usar: a
+      // lista mostra a mascarada, a ficha individual mostra a inteira.
+      // Sem isto, a tela não teria como saber que aquele número é CPF de
+      // pessoa física e o trataria como CNPJ público.
+      var docInfo = escolaAnalisarDocumento_(obj.CNPJ);
+      obj.documentoTipo = docInfo.tipo;
+      obj.documentoMascarado = escolaDocMascarado_(obj.CNPJ);
       // Aliases para compatibilidade com o frontend
       obj.NomeEscola  = obj[COL_NOME_ESCOLA]  || "";
       obj.escola      = obj[COL_NOME_ESCOLA]  || "";
@@ -1018,6 +1114,8 @@ function listarEscolasParaModulo_interno_() {
         escola:        str(item.escola      || item.NomeEscola),
         CNPJ:          str(item.CNPJ        || item.cnpj),
         cnpj:          str(item.cnpj        || item.CNPJ),
+        documentoTipo:      str(item.documentoTipo),
+        documentoMascarado: str(item.documentoMascarado),
         Email:         str(item.Email       || item.email),
         email:         str(item.email       || item.Email),
         EmailsTodos:   str(item.EmailsTodos),

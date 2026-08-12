@@ -141,7 +141,13 @@ function exportarEscolaEAssociados(dados, tokenSessao) {
     tipo: dados.tipo || "", 
     numeroOficio: dados.numeroOficio || "", 
     escola: escola.escola || dados.escola || "", 
-    cnpj: escola.cnpj || dados.cnpj || "", 
+    // CPF de escola de pessoa fisica sai MASCARADO no arquivo. CNPJ e
+    // publico e sai inteiro. Este arquivo circula por e-mail e fica no Drive
+    // — e a partir do momento em que a coluna CNPJ passou a aceitar CPF, ela
+    // carrega dado pessoal.
+    cnpj: (typeof escolaDocMascarado_ === "function")
+            ? escolaDocMascarado_(escola.cnpj || dados.cnpj || "")
+            : (escola.cnpj || dados.cnpj || ""), 
     data: dados.data || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm") 
   };
   const nomeArquivo = "Exportacao Completa - " + String(meta.escola || "Escola").substring(0, 80);
