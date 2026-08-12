@@ -716,7 +716,21 @@ function escolaVincImprimirStatus_(r) {
       else                 L.push(rot + a.comId + " de " + a.total + " com id");
     });
     L.push("");
-    L.push('Para medir uma:  escolaVinculosPrevia("COBRANCA")');
+    /* O exemplo aponta para o PRÓXIMO alvo não migrado, não para um nome
+     * fixo. Antes ele dizia sempre "COBRANCA" — que depois do mapeamento
+     * de 12/08/2026 virou o penúltimo alvo, com 939 linhas. Sugerir o maior
+     * quando existe um de 6 linhas por fazer é empurrar para o risco. */
+    var proximo = null;
+    r.alvos.forEach(function (a) {
+      if (!proximo && a.existe && a.comId < a.total) proximo = a;
+    });
+    if (proximo) {
+      L.push("PRÓXIMO PASSO — o menor alvo ainda por migrar:");
+      L.push('  escolaVinculosPrevia("' + proximo.chave + '")   → ' +
+             proximo.rotulo + ", " + proximo.total + " linhas");
+    } else {
+      L.push("Todos os alvos já têm vínculo. Fase 4 concluída.");
+    }
     L.push("Ordem de risco crescente — Associados por último.");
     Logger.log(L.join("\n"));
   } catch (e) {

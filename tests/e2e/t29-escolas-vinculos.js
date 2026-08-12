@@ -422,6 +422,17 @@ const of = st.alvos.filter(function (a) { return a.chave === "TAXA"; })[0];
 b.ok(st.ok === true && of.existe === false,
   "o painel sobrevive a alvo ausente");
 
+b.passo("39b. O log sugere o PRÓXIMO alvo por migrar, não um nome fixo");
+/* O rodapé dizia sempre "COBRANCA". Depois do mapeamento da planilha real
+ * ela virou o penúltimo alvo, com 939 linhas — e o log passou a empurrar
+ * para o maior quando havia um de 6 linhas por fazer. */
+g.Logger.clear();
+g.escolaVinculosStatus(ADM);
+const logSt = g.Logger.getLog();
+b.ok(/PRÓXIMO PASSO/.test(logSt) && !/escolaVinculosPrevia\("COBRANCA"\)/.test(logSt),
+  "aponta o menor alvo pendente",
+  (logSt.split("\n").filter(function (l) { return /escolaVinculosPrevia/.test(l); })[0] || "").trim());
+
 b.passo("40. O status é só leitura");
 const antesStatus = JSON.stringify(coluna("COBRANCA_RELACAO_NOMINAL", "EscolaID"));
 g.escolaVinculosStatus(ADM);
