@@ -36,14 +36,29 @@ leitura. Abrir a prévia já rodava mais uma volta.
 | o reparo existe, com prévia e backup | `t32`, 46 asserções, 11 mutações mortas |
 | a trava de mapa vencido morde | recusa se uma célula do cabeçalho divergir |
 
-**O que falta — e trava a emissão até acontecer:**
+**O REPARO FOI EXECUTADO E CONFERIDO — 12/08/2026, 19h20.**
+
+| Item | Situação |
+|---|---|
+| **Prévia conferida pelo usuário** | ✅ as 13 linhas, idênticas ao mapa testado |
+| **Reparo aplicado** | ✅ backup `BACKUP_VOUCHER_SOLIC_20260812_191949` (2 linhas × 38 colunas) |
+| **Diagnóstico de conferência** | ✅ **41 colunas · ausentes: nenhum · repetidos: nenhum** |
+| **Cada rótulo bate com o valor** | ✅ conferido linha a linha no log |
+
+O par que mais importava saiu certo: `MODALIDADE` = `EDUCACAO_INFANTIL`
+(código do catálogo) e `CURSO` = `Educação Infantil` (texto digitado). Era a
+distinção mais fina da reconstrução — enum de um lado, texto livre do outro —
+e ela se confirmou sozinha.
+
+A coluna 3, minha única dúvida no mapa, não estava entre as 13 e não foi
+tocada.
+
+**O que ainda falta:**
 
 | Item | O que precisa acontecer |
 |---|---|
-| 🔴 **Rodar `voucherRepararColunasPrevia`** | e o usuário conferir as 13 linhas contra o que ele sabe da operação. A coluna 3 (`DATA_SOLICITACAO_TEXTO` guardando uma data) é a que tem menos evidência |
-| 🔴 **Rodar `voucherRepararColunasAplicar`** | dentro dos 15 minutos, e conferir que o backup `BACKUP_VOUCHER_SOLIC_*` foi criado |
-| 🔴 **Rodar `voucherDiagnosticoColunas` de novo** | todo rótulo tem que bater com o valor embaixo, e não pode sobrar nome ausente |
-| 🔴 **Conferir a prévia do certificado depois** | "Instituição de ensino" deve sair vazia (o campo nunca foi coletado), não com uma data |
+| 🔴 **Prévia do certificado depois do reparo** | "Instituição de ensino" deve sair **vazia** — o campo nunca foi coletado — e não com uma data de nascimento no lugar |
+| 🔴 **Guardar o backup** | `BACKUP_VOUCHER_SOLIC_20260812_191949` só pode ser apagado depois de a emissão sair correta pelo menos uma vez |
 
 **Duas coisas menores que o mesmo log revelou, e que ficam para depois do
 reparo:**
