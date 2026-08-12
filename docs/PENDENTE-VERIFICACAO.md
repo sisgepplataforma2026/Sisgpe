@@ -41,9 +41,25 @@ escolaVinculosPrevia("COBRANCA")    → mede, NÃO grava, vale 15 min
 escolaVinculosAplicar("COBRANCA")   → grava, com backup
 ```
 
+**Medido em 12/08/2026 por `escolaVinculosStatus()`:**
+
+| # | Alvo | Situação real |
+|---|---|---|
+| 1 | Cobrança | **939 linhas** — não são dezenas, como eu estimei |
+| 2 | Contatos | ❌ **aba não existe com esse nome** |
+| 3 | Visitas | 6 linhas |
+| 4 | Ofícios | ❌ **aba não existe com esse nome** |
+| 5 | Associados | **8.019 linhas** |
+
+Os nomes de aba em `ESC_VINC_ALVOS` foram deduzidos do código-fonte, não da
+planilha. Duas erraram. **`escolaVinculosMapearAbas()`** varre a planilha e
+aponta as candidatas por evidência — nome da coluna e conteúdo com cara de
+CNPJ — para a correção vir do que existe, não de um segundo palpite.
+
 | O que conferir | Como |
 |---|---|
-| 🔴 **Status inicial** | `escolaVinculosStatus()` — as 5 abas existem? |
+| ✅ **Status inicial** | rodado em 12/08/2026 — 939 / ausente / 6 / ausente / 8019 |
+| 🔴 **Mapear as abas** | `escolaVinculosMapearAbas()` — achar Contatos e Ofícios |
 | 🔴 **Prévia da Cobrança** | quantos casam por CNPJ, quantos ficam ambíguos |
 | 🔴 **Aplicar na Cobrança** | coluna `EscolaID` nasce; `ESCOLA_NOME` intacta |
 | 🔴 **As outras três** | uma por vez, conferindo entre elas |

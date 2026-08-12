@@ -448,6 +448,109 @@ function escolaVinculosStatus(tokenSessao) {
 }
 
 /**
+ * Varre a planilha e diz QUAIS abas apontam para escola.
+ *
+ * POR QUE ESTA FUNÇÃO EXISTE
+ *
+ * Os nomes de aba em ESC_VINC_ALVOS foram deduzidos lendo o código-fonte —
+ * eu não vejo a planilha. Em 12/08/2026 o status mostrou que duas das cinco
+ * não existem com o nome que eu supus: "Contatos" e "Controle_Oficios".
+ *
+ * Adivinhar um segundo nome seria repetir o erro. Esta função lê o cabeçalho
+ * de cada aba e aponta as candidatas por evidência: coluna cujo NOME sugere
+ * escola, e coluna cujo CONTEÚDO parece CNPJ. Assim a correção vem do que a
+ * planilha realmente tem, não do que eu imagino que ela tenha.
+ *
+ * Só leitura. Não altera nada, em aba nenhuma.
+ */
+function escolaVinculosMapearAbas(tokenSessao) {
+  escolaExigirAdminOuSessao_(tokenSessao, "escolaVinculosMapearAbas", true);
+  try {
+    var ss = SpreadsheetApp.openById(PLANILHA_ID);
+    var jaSao = {};
+    ESC_VINC_ALVOS.forEach(function (a) {
+      jaSao[a.aba] = a.chave;
+      if (a.abaAlternativa) jaSao[a.abaAlternativa] = a.chave;
+    });
+
+    var candidatas = [], ignoradas = 0;
+    ss.getSheets().forEach(function (sh) {
+      var nome = sh.getName();
+
+      /* Backups e a própria aba Escolas ficam de fora: um backup casaria com
+       * tudo e poluiria a lista justamente quando ela precisa ser curta. */
+      if (nome === ABA_ESCOLAS || /^BKP_|^BACKUP_/i.test(nome)) { ignoradas++; return; }
+
+      var linhas = sh.getLastRow();
+      if (linhas < 2) { ignoradas++; return; }
+
+      var cab = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0]
+        .map(function (c) { return String(c || "").trim(); });
+
+      var porNome = [], porConteudo = [];
+      var amostra = sh.getRange(2, 1, Math.min(30, linhas - 1), sh.getLastColumn()).getValues();
+
+      cab.forEach(function (h, i) {
+        if (!h) return;
+        var n = escolasPendenciasNormalizar_(h);
+        if (/escola|instituic|colegio|entidade|empresa|razao|fantasia|cnpj/.test(n)) {
+          porNome.push(h);
+        }
+        /* Conteúdo com cara de CNPJ vale mesmo com cabeçalho estranho — é
+         * como se acha a coluna certa numa aba cujo cabeçalho ninguém
+         * padronizou. */
+        var comCnpj = 0;
+        for (var l = 0; l < amostra.length; l++) {
+          var d = String(amostra[l][i] == null ? "" : amostra[l][i]).replace(/\D/g, "");
+          if (d.length === 14) comCnpj++;
+        }
+        if (comCnpj >= 3 && porNome.indexOf(h) === -1) porConteudo.push(h);
+      });
+
+      if (!porNome.length && !porConteudo.length) { ignoradas++; return; }
+
+      candidatas.push({
+        aba: nome,
+        linhas: linhas - 1,
+        jaMapeada: jaSao[nome] || "",
+        colunasPorNome: porNome,
+        colunasPorConteudo: porConteudo,
+        cabecalho: cab.filter(String).slice(0, 14)
+      });
+    });
+
+    candidatas.sort(function (a, b) { return b.linhas - a.linhas; });
+    var r = { ok: true, candidatas: candidatas, abasIgnoradas: ignoradas,
+              totalAbas: ss.getSheets().length };
+    escolaVincImprimirMapa_(r);
+    return r;
+  } catch (e) {
+    Logger.log("Erro ao mapear as abas: " + e.message);
+    return { ok: false, mensagem: "Erro ao mapear as abas: " + e.message };
+  }
+}
+
+function escolaVincImprimirMapa_(r) {
+  try {
+    var L = ["═══ ABAS QUE APONTAM PARA ESCOLA ═══",
+             r.totalAbas + " abas na planilha · " + r.candidatas.length + " candidatas · " +
+             r.abasIgnoradas + " sem relação com escola", ""];
+    r.candidatas.forEach(function (c) {
+      L.push("▸ " + c.aba + "   (" + c.linhas + " linhas)" +
+             (c.jaMapeada ? "   ← já é o alvo " + c.jaMapeada : ""));
+      if (c.colunasPorNome.length)     L.push("    pelo nome da coluna: " + c.colunasPorNome.join(" · "));
+      if (c.colunasPorConteudo.length) L.push("    conteúdo de CNPJ em:  " + c.colunasPorConteudo.join(" · "));
+      L.push("    cabeçalho: " + c.cabecalho.join(" | "));
+      L.push("");
+    });
+    L.push("Mande este log para o Claude ajustar ESC_VINC_ALVOS aos nomes reais.");
+    Logger.log(L.join("\n"));
+  } catch (e) {
+    Logger.log(JSON.stringify(r));
+  }
+}
+
+/**
  * PRÉVIA — só mede, não escreve. Libera o consentimento daquele alvo.
  *
  * O consentimento é POR ALVO: ver a prévia de Contatos não autoriza aplicar

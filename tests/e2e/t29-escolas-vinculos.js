@@ -463,5 +463,65 @@ b.ok(!!aAss.backup && !!ss.getSheetByName(aAss.backup) &&
      ss.getSheetByName(aAss.backup).getLastRow() === 901,
   "backup com as 900 linhas + cabeçalho", aAss.backup);
 
+/* ══════════════════════════════════════════════════════════════════════
+   12. MAPEAR AS ABAS — descobrir os nomes reais em vez de adivinhar
+   ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("VÍNCULOS · Mapear a planilha");
+
+/* Duas abas com nomes que eu NÃO deduzi: é o caso real de 12/08/2026, em que
+ * "Contatos" e "Controle_Oficios" não existiam com esse nome na planilha. */
+criarAba("Cadastro_Contatos_Escola",
+  ["ID", "Nome do contato", "Fone", "Instituição de Ensino"],
+  [["1", "Maria", "27999", "Colégio Alfa"], ["2", "João", "27988", "Colégio Beta"]]);
+criarAba("Controle de Ofícios 2026",
+  ["NUM", "DATA", "DESTINATARIO", "DOC"],
+  [["1", "01/07", "Colégio Alfa", "11.222.333/0001-81"],
+   ["2", "02/07", "Colégio Beta", "22.333.444/0001-81"],
+   ["3", "03/07", "Colégio Alfa", "11.222.333/0001-81"]]);
+criarAba("Financeiro_Boletos", ["ID", "VALOR", "VENCIMENTO"],
+  [["1", "100", "01/08"], ["2", "200", "02/08"]]);
+
+const mapa = g.escolaVinculosMapearAbas(ADM);
+
+b.passo("46. Acha a aba de contatos pelo NOME da coluna, mesmo com outro rótulo");
+const cont = mapa.candidatas.filter(function (c) { return c.aba === "Cadastro_Contatos_Escola"; })[0];
+b.ok(!!cont && cont.colunasPorNome.indexOf("Instituição de Ensino") > -1,
+  "'Instituição de Ensino' é reconhecida como referência a escola",
+  cont ? cont.colunasPorNome.join(" · ") : "não veio");
+
+b.passo("47. E acha a de ofícios pelo CONTEÚDO, mesmo com cabeçalho genérico");
+/* "DOC" não diz nada; o que denuncia a coluna é ter CNPJ dentro. É assim que
+ * se acha a aba certa quando ninguém padronizou o cabeçalho. */
+const ofi = mapa.candidatas.filter(function (c) { return c.aba === "Controle de Ofícios 2026"; })[0];
+b.ok(!!ofi && ofi.colunasPorConteudo.indexOf("DOC") > -1,
+  "coluna 'DOC' delatada pelo conteúdo",
+  ofi ? "porConteudo=" + ofi.colunasPorConteudo.join(" · ") : "não veio");
+
+b.passo("48. Aba sem nenhuma referência a escola fica de fora");
+b.ok(!mapa.candidatas.some(function (c) { return c.aba === "Financeiro_Boletos"; }),
+  "lista curta é lista útil");
+
+b.passo("49. Backups e a própria aba Escolas não entram na lista");
+/* Um backup casaria com tudo e poluiria a lista justamente quando ela
+ * precisa ser curta para eu ler. */
+b.ok(!mapa.candidatas.some(function (c) {
+       return c.aba === "Escolas" || c.aba.indexOf("BKP_VINC_") === 0; }),
+  "sem ruído", mapa.candidatas.map(function (c) { return c.aba; }).join(", "));
+
+b.passo("50. As abas já mapeadas aparecem marcadas, para eu não duplicar alvo");
+const cobM = mapa.candidatas.filter(function (c) { return c.aba === "COBRANCA_RELACAO_NOMINAL"; })[0];
+b.ok(!!cobM && cobM.jaMapeada === "COBRANCA",
+  "diz qual alvo já cobre aquela aba", cobM ? cobM.jaMapeada : "não veio");
+
+b.passo("51. O mapa é só leitura");
+const antesMapa = JSON.stringify(coluna("Associados", "EscolaID"));
+g.escolaVinculosMapearAbas(ADM);
+b.ok(JSON.stringify(coluna("Associados", "EscolaID")) === antesMapa,
+  "mapear não altera nada");
+
+b.passo("52. E exige administrador, como as outras portas da Fase 4");
+b.bloqueia(function () { return g.escolaVinculosMapearAbas(ESC); },
+  "mapear a planilha inteira não é leitura de rotina");
+
 const c = b.resumo();
 process.exit(c.FALHOU ? 1 : 0);
