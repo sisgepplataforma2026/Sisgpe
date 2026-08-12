@@ -1082,6 +1082,232 @@ function escolaImprimirComparacao_(r) {
   }
 }
 
+/* =============================================================== */
+/* SANEAMENTO: separar o dado da Receita do dado operacional        */
+/* =============================================================== */
+/*
+ * O QUE ESTA MIGRAÇÃO ARRUMA
+ *
+ * As colunas 13–23 da aba Escolas não são cópia deslocada do cadastro: são um
+ * SEGUNDO conjunto de dados, vindo da consulta à Receita, gravado em colunas
+ * com o rótulo errado. A comparação de 11/08/2026 provou isso — os "iguais"
+ * eram raríssimos e os "divergentes" eram sistematicamente dados DIFERENTES,
+ * não variações de formato:
+ *
+ *   NOME_FANTASIA contém "contato@x.com.br; fiscal@y" enquanto
+ *   E-mail (principal) contém "servicaped@gmail.com"     → e-mails distintos
+ *
+ * POR QUE NÃO É SÓ RENOMEAR CABEÇALHO
+ *
+ * Renomear seria a correção mais barata, e foi minha primeira ideia. Não
+ * serve para duas dessas colunas:
+ *
+ *   NOME_FANTASIA é COL_FANTASIA — o cadastro escreve nela. Renomear faria
+ *   todo campo "nome fantasia" da tela cair no vazio, em silêncio, porque
+ *   setIfColEscola_ só loga quando não acha a coluna.
+ *
+ *   E as colunas são MISTAS: ULTIMA_VERIFICACAO tem 381 datas legítimas e 268
+ *   telefones. Renomear a coluna inteira resolveria metade e estragaria a
+ *   outra.
+ *
+ * A REGRA, ENTÃO, É UMA SÓ: cada valor vai para a coluna do TIPO dele.
+ * O que está no tipo certo fica onde está. O que não está, muda de coluna —
+ * nunca é apagado.
+ *
+ * GARANTIAS
+ *   - backup da aba inteira antes de escrever;
+ *   - nada é apagado: todo valor movido chega ao destino antes de sair da
+ *     origem, e valor que já existe no destino é preservado ao lado (" | ");
+ *   - idempotente por construção: depois da primeira passada não sobra valor
+ *     de tipo errado, então a segunda move zero;
+ *   - sob lock, e registrada na trilha.
+ */
+
+/* Cada regra: "nesta coluna, valor deste tipo não pertence — mande para lá". */
+var ESC_SANEAMENTO = [
+  { origem: "ULTIMA_VERIFICACAO", tipoErrado: "TELEFONE", destino: "TELEFONE_RECEITA" },
+  { origem: "RAZAO_SOCIAL",       tipoErrado: "TELEFONE", destino: "TELEFONE_RECEITA" },
+  { origem: "RAZAO_SOCIAL",       tipoErrado: "SITUACAO", destino: "SITUACAO_RECEITA" },
+  { origem: "NOME_FANTASIA",      tipoErrado: "EMAIL",    destino: "EMAILS_RECEITA" },
+  { origem: "CNAE_PRINCIPAL",     tipoErrado: "SITUACAO", destino: "SITUACAO_RECEITA" },
+  { origem: "SITUACAO_CADASTRAL", tipoErrado: "DATA",     destino: "DATA_CONSULTA_RECEITA" },
+  { origem: "EMAIL_EXTERNO",      tipoErrado: "DATA",     destino: "DATA_CONSULTA_RECEITA" },
+  { origem: "UF",                 tipoErrado: "EMAIL",    destino: "EMAILS_RECEITA" },
+  { origem: "STATUS_SINCRO",      tipoErrado: "CEP",      destino: "CEP_RECEITA" }
+];
+
+var ESC_COLUNAS_RECEITA = ["TELEFONE_RECEITA", "EMAILS_RECEITA", "SITUACAO_RECEITA",
+                           "DATA_CONSULTA_RECEITA", "CEP_RECEITA"];
+
+/**
+ * Junta dois valores sem perder nenhum.
+ * Usado quando o destino já tem conteúdo: escola pode ter mais de um telefone
+ * e mais de um e-mail, e escolher um deles seria decidir por dedução.
+ */
+function escolaJuntarValores_(atual, novo) {
+  var a = String(atual == null ? "" : atual).trim();
+  var n = String(novo == null ? "" : novo).trim();
+  if (!a) return n;
+  if (!n) return a;
+  // Não duplica o que já está lá.
+  var partes = a.split(/\s*\|\s*/);
+  for (var i = 0; i < partes.length; i++) {
+    if (partes[i].replace(/\D/g, "") && partes[i].replace(/\D/g, "") === n.replace(/\D/g, "")) return a;
+    if (partes[i].toLowerCase() === n.toLowerCase()) return a;
+  }
+  return a + " | " + n;
+}
+
+function escolaSanearReceita(tokenSessao, confirmacao) {
+  var quem;
+  if (String(tokenSessao || "").trim()) {
+    var s = exigirModulo_(tokenSessao, "escolas", true);
+    quem = String((s && (s.nome || s.usuario || s.email)) || "").trim() || "—";
+  } else {
+    var email = "";
+    try { email = String(Session.getActiveUser().getEmail() || "").trim().toLowerCase(); } catch (e) {}
+    var dono = "";
+    try { dono = String(Session.getEffectiveUser().getEmail() || "").trim().toLowerCase(); } catch (e2) {}
+    if (!email) throw new Error("Sessão inválida ou expirada. Entre novamente no SISGEP.");
+    if (email !== dono && !escolaEhAdministradorPorEmail_(email)) {
+      throw new Error("Ação permitida somente para administradores.");
+    }
+    quem = email;
+  }
+
+  // Trava de mão: esta escreve em 679 linhas. Rodar sem querer não pode
+  // acontecer, e o editor executa com um clique.
+  if (String(confirmacao || "").trim().toUpperCase() !== "SANEAR") {
+    return {
+      ok: false,
+      mensagem: 'Confirmação obrigatória. Chame escolaSanearReceita("", "SANEAR"). ' +
+                'Rode antes escolaCompararDeslocados() e confira o que vai mudar.'
+    };
+  }
+
+  var lock = LockService.getScriptLock();
+  var travou = false;
+  try {
+    travou = lock.tryLock(30000);
+    if (!travou) return { ok: false, mensagem: "Outra operação de Escolas está em andamento." };
+
+    var ss = SpreadsheetApp.openById(PLANILHA_ID);
+    var sh = ss.getSheetByName(ABA_ESCOLAS);
+    if (!sh) return { ok: false, mensagem: "Aba '" + ABA_ESCOLAS + "' não encontrada." };
+    var ultimaLinha = sh.getLastRow();
+    if (ultimaLinha < 2) return { ok: true, movidos: 0, mensagem: "Nenhuma escola na base." };
+
+    // Backup ANTES de qualquer escrita.
+    var nomeBackup = escolaNomeBackupLivre_(ss, "BACKUP_ESCOLAS_SANEAMENTO_");
+    var antes = sh.getRange(1, 1, ultimaLinha, sh.getLastColumn()).getValues();
+    var shBackup = ss.insertSheet(nomeBackup);
+    shBackup.getRange(1, 1, antes.length, antes[0].length).setValues(antes);
+    shBackup.getRange(1, 1, 1, antes[0].length).setFontWeight("bold");
+    shBackup.setFrozenRows(1);
+
+    // Colunas de destino, criadas no fim para não deslocar nada.
+    var cab = antes[0].map(function (c) { return String(c || "").trim(); });
+    var colunasNovas = [];
+    ESC_COLUNAS_RECEITA.forEach(function (nome) {
+      if (cab.indexOf(nome) === -1) { cab.push(nome); colunasNovas.push(nome); }
+    });
+
+    // Matriz de trabalho, já com as colunas novas.
+    var dados = antes.map(function (linha, i) {
+      var l = linha.slice();
+      while (l.length < cab.length) l.push("");
+      if (i === 0) return cab.slice();
+      return l;
+    });
+
+    function idx(nome) { return cab.indexOf(nome); }
+    var regras = ESC_SANEAMENTO
+      .map(function (r) { return { origem: idx(r.origem), destino: idx(r.destino), tipo: r.tipoErrado,
+                                   nomeOrigem: r.origem, nomeDestino: r.destino, movidos: 0 }; })
+      .filter(function (r) { return r.origem > -1 && r.destino > -1; });
+
+    var totalMovidos = 0;
+    for (var l = 1; l < dados.length; l++) {
+      for (var k = 0; k < regras.length; k++) {
+        var r = regras[k];
+        var v = dados[l][r.origem];
+        if (escolaTipoAparente_(v) !== r.tipo) continue;
+        // O valor já está em `v`, uma cópia local — a ordem entre gravar e
+        // limpar não muda nada. O que garante que nada se perde é outra coisa:
+        // toda a movimentação acontece na matriz em memória, e a planilha só é
+        // escrita no fim, de uma vez. Se algo explodir no meio, a planilha
+        // continua exatamente como estava.
+        dados[l][r.destino] = (r.tipo === "DATA" && !String(dados[l][r.destino] || "").trim())
+          ? v
+          : escolaJuntarValores_(dados[l][r.destino], escolaTexto_(v));
+        dados[l][r.origem] = "";
+        r.movidos++;
+        totalMovidos++;
+      }
+    }
+
+    // A situação operacional volta para a coluna dela, onde ficou vazia.
+    var iSit = idx(COL_SITUACAO), iSitRec = idx("SITUACAO_RECEITA");
+    var situacoesRestauradas = 0;
+    if (iSit > -1 && iSitRec > -1) {
+      for (var m = 1; m < dados.length; m++) {
+        if (String(dados[m][iSit] || "").trim()) continue;
+        var sr = String(dados[m][iSitRec] || "").trim();
+        if (!sr) continue;
+        dados[m][iSit] = sr.toUpperCase();
+        situacoesRestauradas++;
+      }
+    }
+
+    sh.getRange(1, 1, dados.length, cab.length).setValues(dados);
+    sh.getRange(1, 1, 1, cab.length).setFontWeight("bold");
+    SpreadsheetApp.flush();
+    invalidarCacheEscolasInterno_();
+
+    escolaAuditar_("SANEAR_BASE", "", "",
+      "Saneamento da base de Escolas: " + totalMovidos + " valor(es) movidos para as colunas da Receita, " +
+      situacoesRestauradas + " situação(ões) restaurada(s). Backup: " + nomeBackup + ".", quem);
+
+    var resultado = {
+      ok: true, movidos: totalMovidos, situacoesRestauradas: situacoesRestauradas,
+      colunasCriadas: colunasNovas, backup: nomeBackup,
+      porRegra: regras.map(function (r) {
+        return { de: r.nomeOrigem, para: r.nomeDestino, tipo: r.tipo, movidos: r.movidos };
+      })
+    };
+    escolaImprimirSaneamento_(resultado);
+    return resultado;
+  } catch (e) {
+    Logger.log("Erro no saneamento: " + e.message);
+    return { ok: false, mensagem: "Erro no saneamento: " + e.message };
+  } finally {
+    if (travou) { try { lock.releaseLock(); } catch (e3) {} }
+  }
+}
+
+function escolaImprimirSaneamento_(r) {
+  try {
+    var L = [];
+    L.push("═══ SANEAMENTO DA BASE DE ESCOLAS ═══");
+    L.push("backup: " + r.backup);
+    if (r.colunasCriadas.length) L.push("colunas criadas: " + r.colunasCriadas.join(", "));
+    L.push("");
+    r.porRegra.forEach(function (x) {
+      if (!x.movidos) return;
+      L.push("  " + x.movidos + " × " + x.tipo + "   " + x.de + " → " + x.para);
+    });
+    L.push("");
+    L.push("  total movido ................ " + r.movidos);
+    L.push("  situações restauradas ....... " + r.situacoesRestauradas);
+    L.push("");
+    L.push("Nada foi apagado: todo valor movido está na coluna de destino.");
+    L.push("Para desfazer, a aba " + r.backup + " tem a base como estava.");
+    Logger.log(L.join("\n"));
+  } catch (e) {
+    Logger.log("escolaImprimirSaneamento_ falhou: " + e);
+  }
+}
+
 /** Estado da migração — alimenta o card do dashboard e o botão de migrar. */
 function escolaStatusIdentidade(tokenSessao) {
   exigirModulo_(tokenSessao, "escolas", false);

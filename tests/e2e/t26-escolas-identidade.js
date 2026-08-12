@@ -573,4 +573,134 @@ b.passo("47. E exige permissão");
 b.bloqueia(function () { return g.escolaCompararDeslocados(""); },  "comparação exige sessão");
 b.bloqueia(function () { return g.escolaCompararDeslocados(FIN); }, "financeiro não compara");
 
+/* ══════════════════════════════════════════════════════════════════════
+   10. SANEAMENTO — a migração que escreve
+   ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("IDENTIDADE · Saneamento da base");
+
+const CAB_S = ["Escola (Razão Social)", "CNPJ", "Telefone 1", "UF",
+               "ULTIMA_VERIFICACAO", "RAZAO_SOCIAL", "NOME_FANTASIA",
+               "CNAE_PRINCIPAL", "SITUACAO_CADASTRAL", "EMAIL_EXTERNO"];
+function montarBaseSuja() {
+  // Aba montada do zero, e NÃO por cima da que zerarTudo() cria.
+  // zerarTudo escreve o cabeçalho de 22 colunas; escrever CAB_S (10) por cima
+  // deixava as colunas 11–22 com os nomes antigos, e a aba passava a ter
+  // NOME_FANTASIA e SITUACAO_CADASTRAL DUPLICADOS. cab.indexOf pegava a
+  // primeira ocorrência e getHeaderMapEscolas_ a última — o saneamento lia uma
+  // coluna e o cadastro escrevia noutra. Dois passos falharam por isso, e a
+  // causa era o teste, não a função.
+  let sh = ss.getSheetByName("Escolas");
+  if (sh) ss.deleteSheet(sh);
+  sh = ss.insertSheet("Escolas");
+  limparBackupsSan();
+  try { g.CacheService.getScriptCache().remove("sisgep_escolas_lista_v2"); } catch (e) {}
+  try { g.CacheService.getScriptCache().remove(g.CACHE_KEY_ESCOLAS_CADASTRO_); } catch (e) {}
+  sh.getRange(1, 1, 1, CAB_S.length).setValues([CAB_S]);
+  // A linha quebrada do padrão dominante da base real.
+  sh.appendRow(["Escola Suja", "11.222.333/0001-81", "(27) 3333-1111", "",
+                "(31) 3515-7500",          // telefone na coluna de data
+                "(27) 2127-1111",          // telefone na razão social
+                "contato@x.com.br",        // e-mail no nome fantasia
+                "ATIVA",                   // situação no CNAE
+                new Date(2026, 3, 2),      // data na situação
+                "oficial@x.com.br"]);
+  // Linha sadia: nada dela pode se mexer.
+  sh.appendRow(["Escola Limpa", "22.333.444/0001-81", "(27) 4444-2222", "ES",
+                new Date(2026, 2, 9), "RAZAO LTDA", "Fantasia X", "8511200", "ATIVA", "b@x.com"]);
+  return sh;
+}
+function limparBackupsSan() {
+  ss.getSheets().forEach(sh => {
+    if (String(sh.getName()).indexOf("BACKUP_ESCOLAS") === 0) ss.deleteSheet(sh);
+  });
+}
+function lerAba() {
+  const sh = ss.getSheetByName("Escolas");
+  const v = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getValues();
+  const cab = v[0].map(String);
+  return { cab, linha: n => { const o = {}; cab.forEach((c, i) => o[c] = v[n][i]); return o; } };
+}
+
+b.passo("48. ⚠ Sem a palavra de confirmação, NÃO roda");
+// Esta é a única função desta série que escreve, e escreve em 679 linhas. No
+// editor, executar é um clique — sem trava de mão, roda sem querer.
+montarBaseSuja();
+const semConf = g.escolaSanearReceita(ADM);
+b.ok(semConf.ok === false && /confirma/i.test(semConf.mensagem || ""),
+  "escrever em massa exige confirmação explícita", semConf.mensagem);
+
+b.passo("49. Com a confirmação, move cada valor para a coluna do tipo dele");
+const san = g.escolaSanearReceita(ADM, "SANEAR");
+const t1 = lerAba().linha(1);
+b.ok(san.ok === true &&
+     String(t1["TELEFONE_RECEITA"]).indexOf("(31) 3515-7500") > -1 &&
+     String(t1["TELEFONE_RECEITA"]).indexOf("(27) 2127-1111") > -1 &&
+     String(t1["EMAILS_RECEITA"]) === "contato@x.com.br" &&
+     String(t1["SITUACAO_RECEITA"]) === "ATIVA",
+  "telefones, e-mails e situação da Receita em colunas próprias",
+  "TEL_REC=" + t1["TELEFONE_RECEITA"] + " · SIT_REC=" + t1["SITUACAO_RECEITA"]);
+
+b.passo("50. ⚠ Os DOIS telefones sobrevivem — nenhum sobrescreve o outro");
+// Escola tem mais de um telefone. Se o segundo movido sobrescrevesse o
+// primeiro, a migração perderia dado calada.
+b.ok(String(t1["TELEFONE_RECEITA"]).indexOf("|") > -1,
+  "valores múltiplos ficam lado a lado", String(t1["TELEFONE_RECEITA"]));
+
+b.passo("51. ⚠ A situação operacional é restaurada na coluna certa");
+// Era o defeito visível na tela: SITUACAO_CADASTRAL tinha data, e o card do
+// ofício mostrava "02/04/2026" onde devia dizer ATIVA.
+b.ok(String(t1["SITUACAO_CADASTRAL"]) === "ATIVA" && san.situacoesRestauradas === 1,
+  "SITUACAO_CADASTRAL volta a conter situação",
+  "situação=" + t1["SITUACAO_CADASTRAL"]);
+
+b.passo("52. E a data da consulta não se perde");
+b.ok(t1["DATA_CONSULTA_RECEITA"] instanceof Date,
+  "vai para DATA_CONSULTA_RECEITA, preservada como data",
+  String(t1["DATA_CONSULTA_RECEITA"]));
+
+b.passo("53. ⚠ A linha SADIA não é tocada");
+// Toda migração em massa tem que provar que não mexe em quem está certo.
+const t2 = lerAba().linha(2);
+b.ok(String(t2["RAZAO_SOCIAL"]) === "RAZAO LTDA" &&
+     String(t2["NOME_FANTASIA"]) === "Fantasia X" &&
+     String(t2["CNAE_PRINCIPAL"]) === "8511200" &&
+     String(t2["SITUACAO_CADASTRAL"]) === "ATIVA" &&
+     t2["ULTIMA_VERIFICACAO"] instanceof Date,
+  "razão social, fantasia, CNAE, situação e data continuam onde estavam",
+  "fantasia=" + t2["NOME_FANTASIA"] + " cnae=" + t2["CNAE_PRINCIPAL"]);
+
+b.passo("54. ⚠ NOME_FANTASIA continua servindo ao cadastro");
+// A tentação era renomear a coluna. Ela é COL_FANTASIA — renomear faria o
+// campo fantasia da tela cair no vazio, em silêncio.
+const salvouFant = g.cadastrarEscola({
+  nomeEscola: "Escola Suja", cnpj: "11.222.333/0001-81", fantasia: "Apelido Novo"
+}, ADM);
+b.ok(salvouFant.ok === true && String(lerAba().linha(1)["NOME_FANTASIA"]) === "Apelido Novo",
+  "o cadastro ainda escreve fantasia na coluna certa",
+  String(lerAba().linha(1)["NOME_FANTASIA"]));
+
+b.passo("55. ⚠ Rodar de novo não muda mais nada");
+montarBaseSuja();
+g.escolaSanearReceita(ADM, "SANEAR");
+const depois1 = JSON.stringify(lerAba());
+const san2 = g.escolaSanearReceita(ADM, "SANEAR");
+b.ok(san2.movidos === 0 && depois1 === JSON.stringify(lerAba()),
+  "idempotente: a segunda passada move zero",
+  "movidos na 2ª = " + san2.movidos);
+
+b.passo("56. E fez backup antes de escrever");
+b.ok(!!san.backup && !!ss.getSheetByName(san.backup),
+  "dá para desfazer", san.backup);
+
+b.passo("57. E entra na trilha de auditoria");
+const trSan = g.auditoriaConsultar({ acao: "SANEAR_BASE" }, ADM).acoes;
+b.ok(trSan.length >= 1 && /Saneamento/i.test(trSan[0].justificativa || ""),
+  "quem saneou, quando, e quanto mexeu",
+  trSan.length ? trSan[0].justificativa.slice(0, 60) : "nada");
+
+b.passo("58. E exige permissão");
+b.bloqueia(function () { return g.escolaSanearReceita("", "SANEAR"); },  "sanear exige sessão");
+b.bloqueia(function () { return g.escolaSanearReceita(FIN, "SANEAR"); }, "financeiro não saneia");
+b.bloqueia(function () { return g.escolaSanearReceita(ESC, "SANEAR"); }, "não-admin não saneia");
+
 b.resumo();
