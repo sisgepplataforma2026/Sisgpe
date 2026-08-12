@@ -12,6 +12,53 @@
 
 ## 🔴 ABERTO
 
+### 15. Escolas Fase 4 — os vínculos passam a guardar escolaId
+**Aberto em:** 12/08/2026 · **Fase 4 do item 8 do PROMPT-MESTRE**
+
+A identidade existe desde 11/08 e **nenhum módulo a adotava**: `escolaId`
+aparecia em 3 arquivos, os três do próprio módulo Escolas. `escolaPorId()` e
+`escolaResolverIdentidade()` não tinham um único chamador externo.
+
+`EscolasVinculos.gs` acrescenta uma coluna `EscolaID` em cada aba que aponta
+para escola. **A coluna de nome não é tocada** — nome vira rótulo, id vira
+vínculo, e desfazer é apagar uma coluna.
+
+**Ordem obrigatória, de risco crescente. Associados é a ÚLTIMA:**
+
+| # | Alvo | Aba | Casa por |
+|---|---|---|---|
+| 1 | Cobrança | `COBRANCA_RELACAO_NOMINAL` | CNPJ |
+| 2 | Contatos | `Contatos` | nome |
+| 3 | Visitas | `SISGEP_Visitas` | CNPJ + nome |
+| 4 | Ofícios | `Controle_Oficios` | CNPJ + nome |
+| 5 | **Associados** | `Associados` (col. `Nome fantasia`) | nome — **~8.000 linhas** |
+
+**Roteiro, uma aba por vez:**
+
+```
+escolaVinculosStatus()              → o que já foi migrado
+escolaVinculosPrevia("COBRANCA")    → mede, NÃO grava, vale 15 min
+escolaVinculosAplicar("COBRANCA")   → grava, com backup
+```
+
+| O que conferir | Como |
+|---|---|
+| 🔴 **Status inicial** | `escolaVinculosStatus()` — as 5 abas existem? |
+| 🔴 **Prévia da Cobrança** | quantos casam por CNPJ, quantos ficam ambíguos |
+| 🔴 **Aplicar na Cobrança** | coluna `EscolaID` nasce; `ESCOLA_NOME` intacta |
+| 🔴 **As outras três** | uma por vez, conferindo entre elas |
+| 🔴 **Associados por último** | e só depois de as quatro anteriores terem passado |
+| 🔴 **Ofícios continua emitindo** | a coluna nova não pode afetar a emissão |
+
+**AMBÍGUO NÃO É ADIVINHADO.** Nome que casa com duas escolas fica sem id e
+vai para a fila. Coberto pelos passos 12, 13 e 42 do `t29`, com 120 linhas
+de "CEI Girassol" que ficam vazias mesmo sendo 120.
+
+**Se algo der errado:** apagar a coluna `EscolaID` da aba devolve tudo. O
+backup de cada aba é criado antes de escrever, com nome `BKP_VINC_...`.
+
+---
+
 ### 11. Escolas — a migração de identidade sobre a base real
 **Aberto em:** 11/08/2026 · **Fase 1 do item 8 do PROMPT-MESTRE**
 **Parcialmente verificado em:** 11/08/2026, pelo log de execução do usuário
