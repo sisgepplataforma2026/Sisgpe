@@ -1400,6 +1400,58 @@ function testeAprovarVoucher() {
   ));
 }
 
+/**
+ * PRÉVIA SEGURA — gera o documento sem emitir, sem salvar PDF e SEM ENVIAR
+ * e-mail. Serve para conferir o modelo com dado real antes de valer.
+ *
+ * POR QUE ELA EXISTE, tendo testeGerarDocumentoVoucher logo abaixo
+ *
+ * Aquela chama com "CERTIFICADO", e esse caminho não é teste: gera o PDF,
+ * grava em Voucher_Emitidos e dispara enviarVoucherAssociado_ e
+ * enviarVoucherEscola_ — ou seja, manda e-mail para o associado e para a
+ * escola. O nome diz "teste", o efeito é emissão. Rodar por curiosidade
+ * custa um voucher indevido na caixa de entrada de alguém.
+ *
+ * Aqui o tipo é "PREVIA", que retorna o HTML antes de salvar e antes de
+ * enviar. Nada sai, nada é gravado.
+ */
+function voucherPreviaSegura() {
+  var lista = listarSolicitacoesVoucher() || [];
+  if (!lista.length) {
+    Logger.log("Nenhuma solicitação cadastrada. Sem protocolo, não há o que pré-visualizar.");
+    return { ok: false, mensagem: "Nenhuma solicitação cadastrada." };
+  }
+
+  var s = lista[0];
+  Logger.log("Pré-visualizando o protocolo " + s.protocolo +
+             "  (status: " + (s.status || "sem status") + ")");
+
+  var r = gerarDocumentoVoucher(s.protocolo, "PREVIA", { percentual: 70 });
+
+  if (!r || r.ok !== true) {
+    Logger.log("✗ " + ((r && r.mensagem) || "falhou sem mensagem"));
+    return r;
+  }
+
+  var h = String(r.html || "");
+  Logger.log("═══ PRÉVIA GERADA — NADA FOI EMITIDO NEM ENVIADO ═══");
+  Logger.log("tamanho do documento .......... " + h.length + " caracteres");
+  Logger.log("assinatura do presidente ...... " + (h.indexOf("height:56px") > -1 ? "presente" : "AUSENTE"));
+  Logger.log("instituição de ensino ......... " + (/Instituição de ensino/.test(h) ? "presente" : "vazia no cadastro"));
+  Logger.log("documentos conferidos ......... " +
+             (/Documentos conferidos/.test(h) ? "APARECENDO — não deveria, na via do aluno" : "oculto (correto)"));
+  Logger.log("página A4 em milímetros ....... " + (/min-height:262mm/.test(h) ? "sim" : "NÃO"));
+  Logger.log("");
+  Logger.log("Para ver o documento: copie o HTML abaixo e abra num navegador.");
+  Logger.log(h);
+  return r;
+}
+
+/* ⚠ ISTO NÃO É TESTE — É EMISSÃO.
+ *
+ * Chama com "CERTIFICADO", e nesse caminho o código gera o PDF, grava em
+ * Voucher_Emitidos e DISPARA E-MAIL para o associado e para a escola. O nome
+ * engana. Para conferir o modelo, use voucherPreviaSegura() acima. */
 function testeGerarDocumentoVoucher() {
   const lista = listarSolicitacoesVoucher().filter(function(s) {
     return String(s.status || "").toUpperCase() === "APROVADO";
