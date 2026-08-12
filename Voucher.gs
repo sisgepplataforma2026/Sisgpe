@@ -16,6 +16,16 @@ const SITE_SIND_V         = "www.sindeducacao.com · secretaria@sindeducacao.com
 const CCT_TEXTO_V         = "Convenção Coletiva de Trabalho 2026/2027";
 const CCT_CLAUSULA_V      = "Cláusula 5ª, § 4º";
 
+/* Assinatura do presidente, em imagem.
+ *
+ * MESMO ARQUIVO já usado pelo ofício de documentação fiscal
+ * (Despesas_Oficio_Fiscal.gs:133), onde o id está escrito direto no meio da
+ * função. Aqui ele vira constante nomeada. Os dois pontos deveriam usar uma
+ * função só — fica registrado como consolidação a fazer em commit separado,
+ * porque mexer no ofício fiscal para acrescentar assinatura ao voucher é
+ * misturar duas coisas. */
+const ASSINATURA_FILE_ID_V = "1hktAmOL6c9XjU8ckAyJ3Y4cn39ILpsoe";
+
 /* ================= HELPERS GERAIS ================= */
 
 function normalizarCPF_(cpf) {

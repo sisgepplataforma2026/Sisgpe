@@ -218,6 +218,51 @@ function registrarEmissaoVoucher_(reg, dados) {
   ]);
 }
 
+/**
+ * A assinatura do presidente, como data URI para embutir no PDF.
+ *
+ * POR QUE BASE64 E NÃO A URL DO DRIVE
+ *
+ * O PDF é gerado por getAs(MimeType.PDF) a partir do HTML. Nessa conversão o
+ * Google não busca imagem de host externo de forma confiável — e uma
+ * assinatura que às vezes aparece é pior que assinatura nenhuma, porque
+ * ninguém descobre que faltou até o associado reclamar. Embutida, ela sempre
+ * vai junto.
+ *
+ * O CACHE existe porque a conversão base64 de uma imagem custa caro e o
+ * arquivo não muda. Sem ele, cada voucher emitido bate no Drive.
+ *
+ * FALHA SILENCIOSA É DELIBERADA AQUI, e só aqui: se o Drive estiver fora, o
+ * documento sai com a linha de assinatura e o nome, como saía antes. Travar a
+ * emissão de um benefício por causa de uma imagem seria pior que emitir sem
+ * ela — mas o log registra, para não virar defeito invisível.
+ */
+function assinaturaPresidenteVoucher_() {
+  var cache = null;
+  try { cache = CacheService.getScriptCache(); } catch (e) {}
+  var CHAVE = "sisgep_assinatura_presidente_v1";
+
+  if (cache) {
+    var guardado = cache.get(CHAVE);
+    if (guardado) return guardado;
+  }
+
+  try {
+    var blob = DriveApp.getFileById(ASSINATURA_FILE_ID_V).getBlob();
+    var mime = blob.getContentType() || "image/jpeg";
+    var uri = "data:" + mime + ";base64," + Utilities.base64Encode(blob.getBytes());
+    /* 100KB é o teto de um item no CacheService. Assinatura maior que isso
+     * não é cacheada — funciona igual, só relê do Drive a cada emissão. */
+    if (cache && uri.length < 95000) {
+      try { cache.put(CHAVE, uri, 21600); } catch (e2) {}
+    }
+    return uri;
+  } catch (e) {
+    Logger.log("⚠ Assinatura do presidente não carregada (documento sai sem ela): " + e.message);
+    return "";
+  }
+}
+
 function gerarHtmlDocumentoVoucher_(dados) {
   const reg = dados.reg || {};
 
@@ -242,6 +287,7 @@ const documentos =
     : ["Documento pessoal", "Comprovante de vínculo"];
 
 const qrCodeUrl = gerarQrCodeVoucherUrl_(codigo);
+const assinaturaImg = assinaturaPresidenteVoucher_();
 
   const docsHtml = documentos.map(function(d) {
     return "<li>" + escHtmlVoucher_(d) + "</li>";
@@ -341,6 +387,9 @@ const qrCodeUrl = gerarQrCodeVoucherUrl_(codigo);
     "<p class='texto' style='text-align:right;margin-top:28px;'>" + escHtmlVoucher_(dataExtenso) + "</p>" +
 
     "<div class='assinatura'>" +
+    (assinaturaImg
+      ? "<img src='" + assinaturaImg + "' style='height:56px;width:auto;display:block;margin:0 auto -4px;'>"
+      : "") +
     "<div class='linha'></div>" +
     "<div class='pres'>" + escHtmlVoucher_(PRESIDENTE_VOUCHER) + "</div>" +
     "<div class='cargo'>" + escHtmlVoucher_(CARGO_PRESIDENTE_V) + "</div>" +
