@@ -388,14 +388,173 @@ sh9.getRange(2, 1, muitas.length, CABECALHO.length).setValues(muitas);
 
 const r9 = g.escolasPendenciasListar({}, ADM);
 
-b.passo("35. A lista é limitada, mas a CONTAGEM não é");
-b.ok(r9.escolas.length === 300 && r9.total === 420 && r9.totalEscolasComPendencia === 420,
-  "300 na tela, 420 na verdade — e a tela sabe da diferença",
-  "lista=" + r9.escolas.length + " total=" + r9.total);
+b.passo("35. A página é limitada, mas a CONTAGEM não é");
+b.ok(r9.escolas.length === 50 && r9.total === 420 && r9.totalEscolasComPendencia === 420,
+  "50 na página, 420 na verdade — e a tela sabe da diferença",
+  "pagina=" + r9.escolas.length + " total=" + r9.total);
 
 b.passo("36. O resumo continua contando as 420");
 b.ok(r9.resumo.SEM_EMAIL === 420, "o corte é de exibição, não de medição",
   "SEM_EMAIL=" + r9.resumo.SEM_EMAIL);
+
+/* ══════════════════════════════════════════════════════════════════════
+   9b. PAGINAÇÃO
+   ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("PENDÊNCIAS · Paginação");
+
+b.passo("36a. O total de páginas é o esperado");
+b.ok(r9.totalPaginas === 9 && r9.pagina === 1 && r9.porPagina === 50,
+  "420 em páginas de 50 dá 9 páginas", "paginas=" + r9.totalPaginas);
+
+b.passo("36b. A última página traz o resto, não 50");
+const ultima = g.escolasPendenciasListar({ pagina: 9 }, ADM);
+b.ok(ultima.escolas.length === 20 && ultima.pagina === 9,
+  "420 = 8 páginas cheias + 20", "ultima=" + ultima.escolas.length);
+
+b.passo("36c. Páginas diferentes trazem escolas diferentes");
+const pag1 = g.escolasPendenciasListar({ pagina: 1 }, ADM);
+const pag2 = g.escolasPendenciasListar({ pagina: 2 }, ADM);
+const ids1 = pag1.escolas.map(function (e) { return e.escolaId; });
+const ids2 = pag2.escolas.map(function (e) { return e.escolaId; });
+b.ok(ids1.length === 50 && ids2.length === 50 &&
+     ids2.every(function (id) { return ids1.indexOf(id) === -1; }),
+  "nenhuma escola aparece nas duas — sem repetir nem pular");
+
+b.passo("36d. Somando todas as páginas, ninguém fica de fora");
+/* O jeito de uma paginação errar sem ninguém ver é perder a última escola de
+ * cada página. Só a soma prova. */
+const vistos = {};
+for (let p = 1; p <= r9.totalPaginas; p++) {
+  g.escolasPendenciasListar({ pagina: p }, ADM).escolas.forEach(function (e) {
+    vistos[e.escolaId] = (vistos[e.escolaId] || 0) + 1;
+  });
+}
+const chaves = Object.keys(vistos);
+b.ok(chaves.length === 420 && chaves.every(function (k) { return vistos[k] === 1; }),
+  "as 420 aparecem, cada uma exatamente uma vez",
+  "distintas=" + chaves.length);
+
+b.passo("36e. Página além do fim volta para a última, não para o vazio");
+/* Acontece o tempo todo: a pessoa está na página 9 e filtra por um tipo que
+ * só tem 12 escolas. Devolver lista vazia faria parecer que o filtro não
+ * achou nada. */
+const alem = g.escolasPendenciasListar({ pagina: 99 }, ADM);
+b.ok(alem.pagina === 9 && alem.escolas.length === 20,
+  "corrige a página em vez de mostrar tela em branco",
+  "pagina=" + alem.pagina + " itens=" + alem.escolas.length);
+
+b.passo("36f. Página zero ou negativa vira 1");
+const zero = g.escolasPendenciasListar({ pagina: 0 }, ADM);
+const neg  = g.escolasPendenciasListar({ pagina: -5 }, ADM);
+b.ok(zero.pagina === 1 && neg.pagina === 1, "entrada boba não quebra a lista");
+
+b.passo("36g. porPagina é respeitado, mas com teto");
+const p20  = g.escolasPendenciasListar({ porPagina: 20 }, ADM);
+const p999 = g.escolasPendenciasListar({ porPagina: 999 }, ADM);
+b.ok(p20.escolas.length === 20 && p20.totalPaginas === 21 &&
+     p999.porPagina === 200 && p999.escolas.length === 200,
+  "20 obedece; 999 vira 200 para não estourar o retorno",
+  "p20=" + p20.escolas.length + " p999=" + p999.porPagina);
+
+/* ══════════════════════════════════════════════════════════════════════
+   9c. BUSCA
+   ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("PENDÊNCIAS · Busca por nome, documento e e-mail");
+
+const shB = zerarTudo();
+shB.appendRow(linhaBoa("ESC-000090", "Pré-escola Anjo Azul",
+  { "CNPJ": "00.652.298/0001-14", "E-mail (principal)": "", "Telefone 1": "", "Telefone 2": "" }));
+shB.appendRow(linhaBoa("ESC-000091", "Centro Brilho de Sol",
+  { "CNPJ": "06.272.153/0002-55", "E-mail (principal)": "contato@brilho.com.br", "UF": "" }));
+shB.appendRow(linhaBoa("ESC-000092", "Colégio São João",
+  { "CNPJ": "11.222.333/0001-81", "E-mail (principal)": "diretoria@saojoao.com", "SITUACAO_CADASTRAL": "" }));
+shB.appendRow(linhaBoa("ESC-000093", "Escola da Dona Maria",
+  { "CNPJ": CPF_VALIDO, "E-mail (principal)": "maria@pessoal.com", "Telefone 1": "", "Telefone 2": "" }));
+
+b.passo("37a. Busca por parte do nome");
+const bNome = g.escolasPendenciasListar({ busca: "anjo" }, ADM);
+b.ok(bNome.total === 1 && bNome.escolas[0].escolaId === "ESC-000090",
+  "'anjo' acha a Anjo Azul", "total=" + bNome.total);
+
+b.passo("37b. Busca ignora acento — 'sao joao' acha 'São João'");
+const bAcento = g.escolasPendenciasListar({ busca: "sao joao" }, ADM);
+b.ok(bAcento.total === 1 && bAcento.escolas[0].escolaId === "ESC-000092",
+  "quem digita sem acento também encontra", "total=" + bAcento.total);
+
+b.passo("37c. E ignora maiúscula");
+b.ok(g.escolasPendenciasListar({ busca: "BRILHO" }, ADM).total === 1,
+  "'BRILHO' acha 'Brilho de Sol'");
+
+b.passo("37d. Busca por e-mail — que a tela sozinha não conseguiria fazer");
+/* Este é o passo que justifica a busca ser no servidor. Antes desta mudança
+ * a listagem não devolvia e-mail nenhum: filtrar no navegador era impossível. */
+const bEmail = g.escolasPendenciasListar({ busca: "saojoao.com" }, ADM);
+b.ok(bEmail.total === 1 && bEmail.escolas[0].escolaId === "ESC-000092",
+  "acha pelo e-mail", "total=" + bEmail.total);
+
+b.passo("37e. Busca pelo CNPJ INTEIRO, mesmo o documento saindo mascarado");
+/* O outro motivo de a busca ser no servidor. Na tela o documento aparece
+ * mascarado, com o miolo trocado por asteriscos; procurar ali pelos dígitos
+ * do meio nunca acharia nada. */
+const bCnpj = g.escolasPendenciasListar({ busca: "00.652.298/0001-14" }, ADM);
+b.ok(bCnpj.total === 1 && bCnpj.escolas[0].escolaId === "ESC-000090",
+  "acha pelo CNPJ com pontuação",
+  bCnpj.total === 1 ? bCnpj.escolas[0].documento : "total=" + bCnpj.total);
+
+b.passo("37e2. CNPJ sai inteiro; CPF sai mascarado — a diferença é de propósito");
+/* CNPJ é dado público de empresa; CPF é dado pessoal. Mascarar os dois
+ * atrapalharia a conferência sem proteger ninguém a mais. Quem confirmou a
+ * regra foi escolaDocMascarado_, que só mascara CPF. */
+const pfBusca = g.escolasPendenciasListar({ busca: "Dona Maria" }, ADM);
+b.ok(bCnpj.escolas[0].documento.indexOf("***") === -1 &&
+     pfBusca.total === 1 && pfBusca.escolas[0].documento.indexOf("***") > -1,
+  "empresa aberta, pessoa física protegida",
+  "cnpj=" + bCnpj.escolas[0].documento + " cpf=" + (pfBusca.escolas[0]||{}).documento);
+
+b.passo("37f. Só os dígitos do meio também acham");
+b.ok(g.escolasPendenciasListar({ busca: "652298" }, ADM).total === 1,
+  "não precisa digitar pontuação");
+
+b.passo("37g. Busca por EscolaID");
+b.ok(g.escolasPendenciasListar({ busca: "ESC-000091" }, ADM).total === 1,
+  "o id da tela serve de busca");
+
+b.passo("37h. Um ou dois dígitos NÃO viram busca por documento");
+/* "1" está dentro de quase todo CNPJ da base. Se dois dígitos filtrassem,
+ * a busca traria tudo e pareceria quebrada. */
+const bCurta = g.escolasPendenciasListar({ busca: "00" }, ADM);
+b.ok(bCurta.total === 0, "busca curta demais por número não traz a base inteira",
+  "total=" + bCurta.total);
+
+b.passo("37i. Busca sem resultado devolve zero, não a lista toda");
+b.ok(g.escolasPendenciasListar({ busca: "zzzznaoexiste" }, ADM).total === 0,
+  "nada encontrado é nada, não tudo");
+
+b.passo("37j. O RESUMO não muda com a busca — mesma regra dos cards");
+const semBusca = g.escolasPendenciasListar({}, ADM);
+b.igual(bNome.resumo, semBusca.resumo,
+  "buscar não pode zerar os cards, igual filtrar não pode");
+
+b.passo("37k. E o contador de escolas com pendência também não");
+b.ok(bNome.totalEscolasComPendencia === 4 && bNome.total === 1,
+  "'1 de 4' — a tela consegue dizer que está buscando dentro de 4",
+  "comPendencia=" + bNome.totalEscolasComPendencia);
+
+b.passo("37l. Busca e filtro por tipo funcionam juntos");
+/* "escola" casa com a Anjo Azul ("Pré-escola") e com a Dona Maria
+ * ("Escola da"), e as duas estão sem telefone — logo 2, não 1. Já com
+ * "brilho", que não está sem telefone, a interseção tem que dar zero: é ela
+ * que prova que os dois filtros se somam em vez de um anular o outro. */
+const eJunto = g.escolasPendenciasListar({ busca: "escola", tipo: "SEM_TELEFONE" }, ADM);
+const eVazio = g.escolasPendenciasListar({ busca: "brilho", tipo: "SEM_TELEFONE" }, ADM);
+b.ok(eJunto.total === 2 && eVazio.total === 0 &&
+     g.escolasPendenciasListar({ busca: "brilho" }, ADM).total === 1,
+  "os dois filtros se somam — 'brilho' existe, mas não sem telefone",
+  "escola+semTel=" + eJunto.total + " brilho+semTel=" + eVazio.total);
+
+b.passo("37m. O e-mail volta na listagem, para a tela poder mostrar o que casou");
+b.ok(bEmail.escolas[0].email === "diretoria@saojoao.com",
+  "quem buscou por e-mail vê o e-mail", bEmail.escolas[0].email);
 
 /* ══════════════════════════════════════════════════════════════════════
    10. PERMISSÃO

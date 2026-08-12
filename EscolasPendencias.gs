@@ -80,25 +80,54 @@ var ESC_PENDENCIAS = [
  * listagem que a tela consome, e listagem se abre com login, não com o
  * e-mail de quem por acaso está com o editor aberto.
  *
- * @param {Object} filtros  { tipo } — chave de ESC_PENDENCIAS, ou vazio para todas
- * @return {Object} { ok, total, resumo, escolas }
+ * A BUSCA É AQUI, NÃO NA TELA, e por dois motivos que não são de gosto:
+ *
+ *  1. Procurar por e-mail é impossível no navegador — a listagem não devolvia
+ *     e-mail nenhum. Ou o servidor procura, ou a busca por e-mail não existe.
+ *  2. O documento sai MASCARADO para a tela (`529.***.***-25`). Uma busca
+ *     feita no navegador só acharia o que a máscara deixou passar, e digitar
+ *     o CNPJ inteiro nunca encontraria nada. Aqui ela compara com os dígitos
+ *     de verdade e devolve o mascarado — procura pelo real, mostra o seguro.
+ *
+ * @param {Object} filtros  { tipo, busca, pagina, porPagina }
+ * @return {Object} { ok, total, pagina, totalPaginas, resumo, escolas }
  */
 function escolasPendenciasListar(filtros, tokenSessao) {
   exigirModulo_(tokenSessao, "escolas", false);
   return escolasPendenciasCalcular_(filtros);
 }
 
+/* Minúscula e sem acento, para "Anjo Azul" achar "anjo azul" e "São" achar
+ * "sao". O try existe porque normalize() não é garantido em todo runtime —
+ * falhando, a busca fica sensível a acento, que é pior mas não quebra. */
+function escolasPendenciasNormalizar_(v) {
+  var t = String(v == null ? "" : v).trim().toLowerCase();
+  try { t = t.normalize("NFD").replace(/[̀-ͯ]/g, ""); } catch (e) {}
+  return t;
+}
+
+var ESC_PEND_POR_PAGINA = 50;
+
 /** O cálculo em si. Sem guarda: quem chama já checou. */
 function escolasPendenciasCalcular_(filtros) {
   try {
     filtros = filtros || {};
     var tipoFiltro = String(filtros.tipo || "").trim().toUpperCase();
+    var busca = escolasPendenciasNormalizar_(filtros.busca);
+    var buscaDigitos = String(filtros.busca == null ? "" : filtros.busca).replace(/\D/g, "");
+
+    var porPagina = parseInt(filtros.porPagina, 10);
+    if (!porPagina || porPagina < 10) porPagina = ESC_PEND_POR_PAGINA;
+    if (porPagina > 200) porPagina = 200;
+    var pagina = parseInt(filtros.pagina, 10);
+    if (!pagina || pagina < 1) pagina = 1;
 
     var sh = SpreadsheetApp.openById(PLANILHA_ID).getSheetByName(ABA_ESCOLAS);
     if (!sh) return { ok: false, mensagem: "Aba '" + ABA_ESCOLAS + "' não encontrada." };
     var ultimaLinha = sh.getLastRow();
     if (ultimaLinha < 2) {
       return { ok: true, total: 0, totalEscolasComPendencia: 0, totalNaBase: 0,
+               pagina: 1, porPagina: porPagina, totalPaginas: 1,
                resumo: escolasPendenciasResumoVazio_(), catalogo: ESC_PENDENCIAS, escolas: [] };
     }
 
@@ -167,11 +196,36 @@ function escolasPendenciasCalcular_(filtros) {
 
       if (tipoFiltro && !pend.some(function (p) { return p.tipo === tipoFiltro; })) continue;
 
+      var nome  = iNome  > -1 ? String(linha[iNome]  || "").trim() : "";
+      var email = iEmail > -1 ? String(linha[iEmail] || "").trim() : "";
+      var id    = iId    > -1 ? String(linha[iId]    || "").trim() : "";
+
+      /* A busca compara com o documento DE VERDADE, não com o mascarado.
+       * Digitar o CNPJ inteiro tem que encontrar; o que volta para a tela
+       * continua mascarado. Dois dígitos ou menos não filtram nada — buscar
+       * por "1" traria metade da base e não ajudaria ninguém. */
+      if (busca) {
+        var docDigitos = iDoc > -1 ? String(linha[iDoc] || "").replace(/\D/g, "") : "";
+
+        /* O EscolaID NÃO entra no texto livre, e isto foi um bug de verdade,
+         * pego pelo teste: todo id é ESC-000123, ou seja contém "000". Com o
+         * id no meio do texto, buscar "00" casava com as 679 escolas — a
+         * busca parecia quebrada justamente quando a pessoa digitava pouco.
+         * O id casa por regra própria, com 4 caracteres no mínimo. */
+        var alvo = escolasPendenciasNormalizar_(nome + " " + email);
+        var achou =
+          alvo.indexOf(busca) > -1 ||
+          (busca.length >= 4 && escolasPendenciasNormalizar_(id).indexOf(busca) > -1) ||
+          (buscaDigitos.length >= 3 && docDigitos.indexOf(buscaDigitos) > -1);
+        if (!achou) continue;
+      }
+
       escolas.push({
-        escolaId: iId > -1 ? String(linha[iId] || "").trim() : "",
+        escolaId: id,
         linha: l + 1,
-        nome: iNome > -1 ? String(linha[iNome] || "").trim() : "",
+        nome: nome,
         documento: iDoc > -1 ? escolaDocMascarado_(linha[iDoc]) : "",
+        email: email,
         cidade: iCidade > -1 ? String(linha[iCidade] || "").trim() : "",
         uf: iUf > -1 ? String(linha[iUf] || "").trim() : "",
         pendencias: pend,
@@ -185,14 +239,25 @@ function escolasPendenciasCalcular_(filtros) {
       return b.pendencias.length - a.pendencias.length;
     });
 
+    /* Página fora do intervalo volta para a última existente, em vez de
+     * devolver lista vazia. Acontece o tempo todo: a pessoa está na página 5,
+     * filtra por um tipo que só tem 12 escolas, e sem isto veria uma tela em
+     * branco achando que o filtro não achou nada. */
+    var totalPaginas = Math.max(1, Math.ceil(escolas.length / porPagina));
+    if (pagina > totalPaginas) pagina = totalPaginas;
+    var inicio = (pagina - 1) * porPagina;
+
     return {
       ok: true,
-      total: escolas.length,                    // quantas a lista traz (com filtro)
-      totalEscolasComPendencia: comAlgumaPendencia,  // quantas existem (sem filtro)
+      total: escolas.length,                    // quantas casam com filtro + busca
+      totalEscolasComPendencia: comAlgumaPendencia,  // quantas existem (sem nada)
       totalNaBase: tudo.length - 1,
+      pagina: pagina,
+      porPagina: porPagina,
+      totalPaginas: totalPaginas,
       resumo: resumo,
       catalogo: ESC_PENDENCIAS,
-      escolas: escolas.slice(0, 300)
+      escolas: escolas.slice(inicio, inicio + porPagina)
     };
   } catch (e) {
     return { ok: false, mensagem: "Erro ao montar pendências: " + e.message };

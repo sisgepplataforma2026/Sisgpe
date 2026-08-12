@@ -41,7 +41,25 @@
 
   <div id="epEstado" style="margin-bottom:14px;"></div>
 
-  <div id="epCards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:16px;"></div>
+  <!--
+    DUAS FAIXAS, NÃO UMA GRADE SOLTA.
+
+    Com sete cards numa grade automática sobrava um sozinho na segunda
+    linha — feio, e pior que feio: sugeria que o último era um resto.
+
+    A divisão aqui não é cosmética. São exatamente 4 pendências que travam
+    uma operação (gravidade 1) e 3 que só reduzem alcance (gravidades 2 e 3).
+    As faixas dizem isso em palavras, e de quebra o layout fecha 4 + 3.
+  -->
+  <div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#dc2626;margin:0 0 7px 2px;">
+    Trava a operação
+  </div>
+  <div id="epCardsG1" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px;"></div>
+
+  <div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#d97706;margin:0 0 7px 2px;">
+    Reduz o alcance
+  </div>
+  <div id="epCardsG2" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:18px;"></div>
 
   <div class="of-card">
     <div class="of-card-head">
@@ -53,12 +71,16 @@
         </div>
       </div>
       <div class="row-btns">
-        <button type="button" id="epBtnTudo" class="btn btn-ghost btn-sm">Ver tudo</button>
+        <input type="search" id="epBusca" placeholder="Escola, CNPJ, e-mail ou ID…"
+               autocomplete="off"
+               style="height:34px;padding:0 11px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:12.5px;min-width:230px;font-family:'Plus Jakarta Sans',sans-serif;">
+        <button type="button" id="epBtnTudo" class="btn btn-ghost btn-sm">Limpar filtros</button>
         <button type="button" id="epBtnRecarregar" class="btn btn-ghost btn-sm">↺ Atualizar</button>
       </div>
     </div>
     <div class="of-card-body">
       <div id="epLista"></div>
+      <div id="epPaginacao" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px;"></div>
     </div>
   </div>
 </div>
@@ -71,7 +93,10 @@
 
   var epDados = null;
   var epFiltro = "";
+  var epBusca = "";
+  var epPagina = 1;
   var epCarregando = false;
+  var epTimerBusca = null;
 
   function eEl(id){ return document.getElementById(id); }
   function eEsc(t){
@@ -120,19 +145,60 @@
 
   function eRenderCards(){
     if(!epDados || !epDados.catalogo) return;
-    var html = epDados.catalogo.slice().sort(function(a,b){
-      return a.gravidade - b.gravidade;
-    }).map(function(p){
-      return eCard(p, epDados.resumo[p.chave] || 0, epFiltro === p.chave);
-    }).join("");
-    eEl("epCards").innerHTML = html;
 
-    var botoes = eEl("epCards").querySelectorAll(".ep-card");
+    function faixa(destino, quais){
+      eEl(destino).innerHTML = quais.map(function(p){
+        return eCard(p, epDados.resumo[p.chave] || 0, epFiltro === p.chave);
+      }).join("");
+    }
+    var cat = epDados.catalogo.slice().sort(function(a,b){ return a.gravidade - b.gravidade; });
+    faixa("epCardsG1", cat.filter(function(p){ return p.gravidade === 1; }));
+    faixa("epCardsG2", cat.filter(function(p){ return p.gravidade !== 1; }));
+
+    var botoes = document.querySelectorAll("#epCardsG1 .ep-card, #epCardsG2 .ep-card");
     for(var i=0;i<botoes.length;i++){
       botoes[i].onclick = function(){
         var t = this.getAttribute("data-tipo");
         epFiltro = (epFiltro === t) ? "" : t;   // clicar de novo desliga
+        epPagina = 1;                           // trocar de filtro volta ao começo
         eCarregar();
+      };
+    }
+  }
+
+  /* Paginação. O contador diz "Página 2 de 9", não só as setas: sem o total,
+   * quem está na 2 não sabe se falta uma página ou vinte. */
+  function eRenderPaginacao(){
+    var alvo = eEl("epPaginacao");
+    if(!epDados || (epDados.totalPaginas || 1) <= 1){ alvo.innerHTML = ""; return; }
+
+    var pag = epDados.pagina || 1;
+    var tot = epDados.totalPaginas || 1;
+    var de  = ((pag - 1) * (epDados.porPagina || 50)) + 1;
+    var ate = Math.min(pag * (epDados.porPagina || 50), epDados.total || 0);
+
+    function bt(rotulo, destino, ligado){
+      return '<button type="button" class="btn btn-ghost btn-sm ep-pag" data-ir="'+destino+'"' +
+        (ligado ? '' : ' disabled style="opacity:.4;cursor:not-allowed;"') + '>' + rotulo + '</button>';
+    }
+    alvo.innerHTML =
+      bt("« Primeira", 1, pag > 1) +
+      bt("‹ Anterior", pag - 1, pag > 1) +
+      '<span style="font-size:12.5px;font-weight:800;color:#0f172a;padding:0 10px;white-space:nowrap;">' +
+        'Página ' + pag + ' de ' + tot +
+        '<span style="font-weight:600;color:#94a3b8;"> · ' + de + '–' + ate + ' de ' + (epDados.total||0) + '</span>' +
+      '</span>' +
+      bt("Próxima ›", pag + 1, pag < tot) +
+      bt("Última »", tot, pag < tot);
+
+    var bs = alvo.querySelectorAll(".ep-pag");
+    for(var i=0;i<bs.length;i++){
+      bs[i].onclick = function(){
+        if(this.disabled) return;
+        epPagina = parseInt(this.getAttribute("data-ir"), 10) || 1;
+        eCarregar();
+        var topo = eEl("epLista");
+        if(topo && topo.scrollIntoView) topo.scrollIntoView({ behavior:"smooth", block:"start" });
       };
     }
   }
@@ -168,11 +234,22 @@
 
     var escolas = epDados.escolas || [];
     if(!escolas.length){
-      alvo.innerHTML = eCaixa(
-        epFiltro
-          ? "Nenhuma escola com esta pendência. O card está zerado — e continua na tela justamente para mostrar que a verificação existe."
-          : "Nenhuma pendência no cadastro. As " + (epDados.totalNaBase||0) + " escolas estão completas.",
-        "ok");
+      var msg, cor = "ok";
+      if(epBusca){
+        /* Buscar e não achar não é a mesma coisa que não haver pendência.
+         * Dizer "está tudo certo" aqui seria mentira — e a pessoa acharia
+         * que resolveu o que só não encontrou. */
+        msg = "Nenhuma escola com pendência casa com <strong>" + eEsc(epBusca) + "</strong>" +
+              (epFiltro ? " dentro de <strong>" + eEsc(eRotuloDe(epFiltro).rotulo) + "</strong>" : "") +
+              ".<br>Continuam existindo <strong>" + (epDados.totalEscolasComPendencia||0) +
+              "</strong> escolas com pendência na base.";
+        cor = "info";
+      } else if(epFiltro){
+        msg = "Nenhuma escola com esta pendência. O card está zerado — e continua na tela justamente para mostrar que a verificação existe.";
+      } else {
+        msg = "Nenhuma pendência no cadastro. As " + (epDados.totalNaBase||0) + " escolas estão completas.";
+      }
+      alvo.innerHTML = eCaixa(msg, cor);
       return;
     }
 
@@ -195,6 +272,10 @@
             (e.cidade || e.uf ? " · " + eEsc(e.cidade) + (e.uf ? "/" + eEsc(e.uf) : "") : "") +
             ' · linha ' + eEsc(e.linha) +
           '</div>' +
+          /* O e-mail aparece porque dá para buscar por ele — quem procurou
+           * precisa ver o que casou, senão o resultado parece arbitrário. */
+          (e.email ? '<div style="font-size:11px;color:#64748b;font-weight:600;margin-top:2px;">✉ ' +
+                     eEsc(e.email) + '</div>' : "") +
         '</td>' +
         '<td style="padding:11px 10px;border-bottom:1px solid #e2e8f0;vertical-align:top;">' +
           chips + detalhes +
@@ -253,16 +334,15 @@
       "Esta tela só mostra — a correção se faz no Cadastro de Escolas, que é onde a auditoria registra.",
       (d.totalEscolasComPendencia === 0) ? "ok" : "info");
 
-    var nomeFiltro = epFiltro ? eRotuloDe(epFiltro).rotulo : "";
-    eEl("epResumo").textContent = epFiltro
-      ? nomeFiltro + " — " + (d.total||0) + " escola(s)"
-      : "Todas as pendências — " + (d.total||0) + " escola(s)";
+    var titulo = epFiltro ? eRotuloDe(epFiltro).rotulo : "Todas as pendências";
+    if(epBusca) titulo += ' · "' + epBusca + '"';
+    eEl("epResumo").textContent = titulo + " — " + (d.total||0) + " escola(s)";
 
     var sub = [];
-    if(epFiltro) sub.push("filtrado de " + (d.totalEscolasComPendencia||0) + " com pendência");
-    if((d.total||0) > (d.escolas||[]).length) {
-      sub.push("mostrando as " + (d.escolas||[]).length + " primeiras");
+    if(epFiltro || epBusca) {
+      sub.push("de " + (d.totalEscolasComPendencia||0) + " com pendência");
     }
+    if((d.totalPaginas||1) > 1) sub.push("página " + (d.pagina||1) + " de " + d.totalPaginas);
     sub.push("uma escola pode ter mais de uma pendência");
     eEl("epResumoSub").textContent = sub.join(" · ");
   }
@@ -277,37 +357,86 @@
     eEl("epResumoSub").textContent = "—";
   }
 
+  /* Cada chamada leva um número. Só a resposta da ÚLTIMA desenha a tela.
+   *
+   * Antes isto era um `if(epCarregando) return`, e tinha dois defeitos que só
+   * aparecem com o servidor lento: a busca digitada durante um carregamento
+   * em curso era DESCARTADA em silêncio — a pessoa digitava e a tela não
+   * mudava — e, sem descarte, a resposta de uma busca antiga podia chegar
+   * depois da nova e sobrescrever o resultado certo. Numerar resolve os dois:
+   * nenhuma chamada é recusada, e a resposta atrasada é ignorada na chegada. */
+  var epSeq = 0;
+
   function eCarregar(){
-    if(epCarregando) return;
+    var meu = ++epSeq;
     epCarregando = true;
     eEl("epResumo").textContent = "Carregando…";
 
     google.script.run
       .withSuccessHandler(function(r){
+        if(meu !== epSeq) return;          // chegou atrasada; já tem coisa mais nova
         epCarregando = false;
         try {
           if(!r || r.ok !== true){
             return eFalhaDura("O servidor recusou a consulta.", (r && r.mensagem) || "sem detalhe");
           }
           epDados = r;
+          /* O servidor corrige a página quando ela passa do fim (filtrar
+           * estando na 9 com só 2 páginas de resultado). A tela tem que
+           * seguir a correção, senão o próximo clique parte da página errada. */
+          epPagina = r.pagina || 1;
           eRenderEstado();
           eRenderCards();
           eRenderLista();
+          eRenderPaginacao();
         } catch (err) {
           eFalhaDura("As pendências vieram, mas a tela não conseguiu desenhá-las.", err);
         }
       })
       .withFailureHandler(function(e){
+        if(meu !== epSeq) return;
         epCarregando = false;
         eFalhaDura("Erro ao carregar as pendências.", e);
       })
-      .escolasPendenciasListar({ tipo: epFiltro }, eToken());
+      .escolasPendenciasListar({ tipo: epFiltro, busca: epBusca, pagina: epPagina }, eToken());
+  }
+
+  /* Espera a pessoa parar de digitar. Sem isto, "Anjo Azul" dispararia nove
+   * chamadas ao servidor, e a resposta da quarta poderia chegar depois da
+   * nona e sobrescrever o resultado certo. */
+  function eAplicarBusca(){
+    var v = (eEl("epBusca").value || "").trim();
+    if(v === epBusca) return;
+    epBusca = v;
+    epPagina = 1;            // busca nova sempre começa da primeira página
+    eCarregar();
+  }
+  function eBuscaMudou(){
+    if(epTimerBusca) clearTimeout(epTimerBusca);
+    epTimerBusca = setTimeout(eAplicarBusca, 350);
   }
 
   window.initEscolasPendencias = function(){
     var b;
     b = eEl("epBtnRecarregar"); if(b) b.onclick = eCarregar;
-    b = eEl("epBtnTudo");       if(b) b.onclick = function(){ epFiltro = ""; eCarregar(); };
+    b = eEl("epBtnTudo");       if(b) b.onclick = function(){
+      epFiltro = ""; epBusca = ""; epPagina = 1;
+      var campo = eEl("epBusca"); if(campo) campo.value = "";
+      eCarregar();
+    };
+    b = eEl("epBusca");
+    if(b){
+      b.oninput = eBuscaMudou;
+      b.onsearch = eBuscaMudou;             // o "x" do campo de busca
+      /* Enter não espera os 350ms: quem apertou Enter já terminou de digitar. */
+      b.onkeydown = function(ev){
+        if(ev.key === "Enter"){
+          ev.preventDefault();
+          if(epTimerBusca) clearTimeout(epTimerBusca);
+          eAplicarBusca();
+        }
+      };
+    }
 
     try { eCarregar(); }
     catch (e) { eFalhaDura("Não consegui nem iniciar a consulta das pendências.", e); }
