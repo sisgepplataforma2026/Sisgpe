@@ -317,6 +317,20 @@ function setupVoucherModuleFase1() {
         "UNIDADE_ESCOLA",
         "CNPJ_ESCOLA",
         "CIDADE_ESCOLA",
+        /* A INSTITUIÇÃO DE ENSINO É OUTRA EMPRESA.
+         *
+         * ESCOLA_SELECIONADA é onde o associado TRABALHA; estas duas são onde
+         * ele ESTUDA. No documento em uso desde sempre elas aparecem
+         * separadas — "empregado(a) da empresa MULTIVIX" e "junto à empresa
+         * educacional IESES, CNPJ 02.213.188/0001-81" — e o cadastro tinha um
+         * campo só. Apontado pelo usuário em 12/08/2026, ao comparar o modelo
+         * gerado com o certificado real da associada.
+         *
+         * Guardar as duas importa além do texto: quando o voucher for ligado
+         * ao escolaId da Fase 4, é preciso saber QUAL das duas é a escola da
+         * base — e com um campo só a resposta era ambígua. */
+        "INSTITUICAO_ENSINO",
+        "CNPJ_INSTITUICAO",
         "SITUACAO_SINDICAL",
         "STATUS_VALIDACAO_SINDICAL",
         "TIPO_BENEFICIARIO",

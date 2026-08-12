@@ -120,6 +120,11 @@ function salvarCadastroESolicitacaoVoucher(payload) {
     setCol("PARENTESCO", parentesco);
     setCol("ENTEADO_DECLARADO_IR", valorSeguroVoucher_(payload.enteadoDeclaradoIR || "NAO").toUpperCase());
 
+    /* Instituição de ensino — onde a pessoa ESTUDA, diferente da escola onde
+     * trabalha. Opcional na gravação para não quebrar solicitações que já
+     * existem nem o portal atual, que ainda não coleta estes campos. */
+    setCol("INSTITUICAO_ENSINO", valorSeguroVoucher_(payload.instituicaoEnsino));
+    setCol("CNPJ_INSTITUICAO",   valorSeguroVoucher_(payload.cnpjInstituicao));
     setCol("MODALIDADE", String(payload.modalidade || "").toUpperCase());
     setCol("CURSO", valorSeguroVoucher_(payload.curso));
     setCol("AREA_CURSO", String(payload.areaCurso || "").toUpperCase());

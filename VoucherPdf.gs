@@ -288,6 +288,8 @@ const documentos =
 
 const qrCodeUrl = gerarQrCodeVoucherUrl_(codigo);
 const assinaturaImg = assinaturaPresidenteVoucher_();
+const instituicao = reg.INSTITUICAO_ENSINO || "";
+const cnpjInstituicao = reg.CNPJ_INSTITUICAO || "";
 
   const docsHtml = documentos.map(function(d) {
     return "<li>" + escHtmlVoucher_(d) + "</li>";
@@ -300,9 +302,19 @@ const assinaturaImg = assinaturaPresidenteVoucher_();
     "<meta charset='UTF-8'>" +
     "<title>Voucher de Bolsa - " + escHtmlVoucher_(protocolo) + "</title>" +
     "<style>" +
-    "@page{size:A4;margin:18mm 16mm;}" +
-    "body{font-family:Arial,sans-serif;color:#111827;margin:0;background:#fff;}" +
-    ".doc{border:2px solid #002f6c;padding:26px 30px;min-height:940px;position:relative;}" +
+    "@page{size:A4 portrait;margin:14mm 13mm;}" +
+    "html,body{width:184mm;}" +
+    "body{font-family:Arial,sans-serif;color:#111827;margin:0;background:#fff;" +
+      "-webkit-print-color-adjust:exact;print-color-adjust:exact;}" +
+    /* Altura em MILÍMETROS, não em pixel.
+     *
+     * Estava min-height:940px. A área útil de um A4 com estas margens tem
+     * ~269mm, que a 96dpi dá ~1017px — mas a conversão para PDF do Apps
+     * Script não usa 96dpi de forma garantida, e 940px + padding passava do
+     * limite em algumas renderizações, jogando o rodapé para uma segunda
+     * página em branco. Milímetro é absoluto na impressão; pixel não é. */
+    ".doc{border:2px solid #002f6c;padding:8mm 9mm;min-height:262mm;" +
+      "box-sizing:border-box;position:relative;page-break-inside:avoid;}" +
     ".top{display:flex;align-items:center;justify-content:space-between;border-bottom:4px solid #C9A84C;padding-bottom:16px;margin-bottom:24px;}" +
     ".brand{display:flex;align-items:center;gap:14px;}" +
     ".logo{width:82px;height:auto;}" +
@@ -361,12 +373,22 @@ const assinaturaImg = assinaturaPresidenteVoucher_();
     "<div><span class='label'>Associado(a)</span><span class='val'>" + escHtmlVoucher_(nomeSolicitante) + "</span></div>" +
     "<div><span class='label'>CPF</span><span class='val'>" + escHtmlVoucher_(cpf) + "</span></div>" +
     "<div><span class='label'>RG</span><span class='val'>" + escHtmlVoucher_(rg) + "</span></div>" +
-    "<div><span class='label'>Escola / vínculo</span><span class='val'>" + escHtmlVoucher_(escola) + "</span></div>" +
+    "<div><span class='label'>Empresa empregadora</span><span class='val'>" + escHtmlVoucher_(escola) + "</span></div>" +
     "<div><span class='label'>Beneficiário</span><span class='val'>" + escHtmlVoucher_(beneficiario) + "</span></div>" +
     "<div><span class='label'>Modalidade</span><span class='val'>" + escHtmlVoucher_(modalidade) + "</span></div>" +
     "<div><span class='label'>Curso</span><span class='val'>" + escHtmlVoucher_(curso) + "</span></div>" +
     "<div><span class='label'>Período / Regime</span><span class='val'>" + escHtmlVoucher_(periodo + (regime ? " · " + regime : "")) + "</span></div>" +
     "</div>" +
+    /* A instituição de ensino ocupa a largura inteira porque o nome costuma
+     * ser longo — "INSTITUTO DE ENSINO SUP. DO ESPÍRITO SANTO - IESES" não
+     * cabe em meia coluna sem quebrar feio. */
+    (instituicao
+      ? "<div style='margin-top:12px;padding-top:12px;border-top:1px solid #e2e8f0;'>" +
+        "<span class='label'>Instituição de ensino</span>" +
+        "<span class='val'>" + escHtmlVoucher_(instituicao) +
+        (cnpjInstituicao ? " &nbsp;·&nbsp; CNPJ " + escHtmlVoucher_(cnpjInstituicao) : "") +
+        "</span></div>"
+      : "") +
     "</div>" +
 
     "<div class='desconto'>" +
@@ -374,10 +396,28 @@ const assinaturaImg = assinaturaPresidenteVoucher_();
     "<div class='t'>Desconto concedido — " + escHtmlVoucher_(percentualExtenso) + "</div>" +
     "</div>" +
 
-    "<div class='box'>" +
-    "<span class='label'>Documentos conferidos</span>" +
-    "<ul class='docs'>" + docsHtml + "</ul>" +
-    "</div>" +
+    /* DOCUMENTOS CONFERIDOS — SÓ NA VIA INTERNA.
+     *
+     * A lista revela Certidão de Casamento, Sentença Judicial de Guarda e
+     * Declaração de IR. Isso é dado da vida privada do associado e da
+     * família dele, e não tem por que chegar à instituição de ensino, que
+     * precisa saber apenas o percentual do desconto.
+     *
+     * No documento em papel que o sindicato usa hoje, a lista aparece na
+     * folha do COMPROVANTE DE ENTREGA — a que o associado assina no balcão —
+     * e NÃO no certificado da folha seguinte. A regra já existia; o sistema
+     * é que a estava ignorando. Apontado pelo usuário em 12/08/2026.
+     *
+     * O PADRÃO É NÃO MOSTRAR, e a inversão é deliberada: quem criar um tipo
+     * novo de documento e esquecer deste campo produz um documento sem a
+     * lista, não um documento vazando a vida do associado. Falha para o lado
+     * seguro. */
+    (dados.mostrarDocumentos === true
+      ? "<div class='box'>" +
+        "<span class='label'>Documentos conferidos</span>" +
+        "<ul class='docs'>" + docsHtml + "</ul>" +
+        "</div>"
+      : "") +
 
     "<p class='texto'>" +
     "Este voucher é pessoal, intransferível e deverá ser apresentado à instituição de ensino para fins de validação do benefício. " +
