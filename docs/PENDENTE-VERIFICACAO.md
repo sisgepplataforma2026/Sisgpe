@@ -69,7 +69,14 @@ existe.
 
 **Não confundir com problema:** as 3 linhas com CPF na coluna CNPJ (583,
 620, 636) são escolas de pessoa física, e estão certas. O validador as
-acusava por falha minha, corrigida.
+acusava por falha minha, corrigida — depois dela, `CNPJ` fechou em 679 ok,
+0 trocadas, e a base subiu para **660 linhas coerentes**.
+
+✅ **CONFIRMADO NA TELA em 11/08/2026, por print do usuário:** o card da
+escola no formulário de ofício mostra `STATUS: ATIVA`. Era ali que o
+problema aparecia — `02/04/2026 00:40` no lugar da situação — e foi o que
+disparou toda esta investigação. A tela sempre esteve certa; o dado é que
+estava trocado de coluna.
 
 **Se algo der errado:** a migração só escreve numa coluna nova. Apagar a
 coluna `EscolaID` devolve a base ao estado anterior, e o backup está lá.
