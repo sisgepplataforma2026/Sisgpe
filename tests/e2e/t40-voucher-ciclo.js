@@ -48,28 +48,15 @@ b.passo("2. Ela aparece na lista, com os campos que a tela mostra");
 const lista = g.listarSolicitacoesCertBolsa(token) || [];
 const s = lista.filter(x => x.protocolo === PROT)[0];
 b.ok(s, "está na listagem");
-/* DIVERGÊNCIA ENTRE AS DUAS PORTAS DE ENTRADA — achada em 13/08/2026,
- * fica como ATENÇÃO porque a decisão é do usuário, não minha.
+/* NASCE PENDENTE — as duas portas de entrada alinhadas.
  *
- * O portal público (VoucherSolicitacao.gs) tem máquina de status:
- * AGUARDANDO_VALIDACAO_CADASTRAL, PENDENTE, AGUARDANDO_ATENDIMENTO_PRESENCIAL
- * ou BLOQUEADA_POR_REGRA, conforme o que se sabe do associado.
- *
- * A tela administrativa (voucherCriarSolicitacao) grava "ANALISE" fixo. E
- * ANALISE, na própria tela, é o card rotulado "Complementação solicitada" —
- * ou seja, uma solicitação recém-criada nasce dizendo que já foi analisada e
- * teve documento pedido. O card "PENDENTES · Aguardando análise" nunca sai
- * de zero pela porta administrativa.
- *
- * Não mudo por conta própria: pode ser deliberado (a secretária cria com a
- * pessoa na frente, já com documento em mãos). Se for engano, a correção é
- * uma palavra em VoucherNovaSolicitacao.gs:139. */
-if (s && s.status === "ANALISE") {
-  b.aviso("a solicitação criada pela tela nasce ANALISE, não PENDENTE",
-    "o card 'Aguardando análise' nunca conta a porta administrativa — decisão do usuário");
-} else {
-  b.igual(s && s.status, "PENDENTE", "nasce PENDENTE");
-}
+ * A tela administrativa gravava "ANALISE" fixo, que é o card rotulado
+ * "Complementação solicitada": toda solicitação nova nascia afirmando que
+ * já tinha sido analisada e que faltava documento, e o card "Aguardando
+ * análise" nunca saía de zero. Achado pelo ciclo em 13/08/2026, corrigido
+ * no mesmo dia por decisão do usuário. Quem coloca em ANALISE é quem pede
+ * complementação — que é o único momento em que a palavra é verdade. */
+b.igual(s && s.status, "PENDENTE", "nasce PENDENTE, como pelo portal público");
 b.igual(s && s.periodoReferencia, "2026/1", "e o PERÍODO chega como texto legível");
 /* O período era o defeito medido na planilha real em 13/08: o Sheets
  * converte "2026/1" em 1º de janeiro de 2026, e a coluna mostrava

@@ -136,7 +136,24 @@ function voucherCriarSolicitacao(dados, tokenSessao) {
       TIPO_DOCUMENTO_VINCULO: String(dados.tipoDocumentoVinculo || "").trim(),
       LINK_CONTRACHEQUE: String(dados.linkContracheque || "").trim(),
       LINK_DOC_PESSOAL: String(dados.linkDocPessoal || "").trim(),
-      STATUS_SOLICITACAO: aprovar ? "APROVADO" : "ANALISE",
+      /* NASCE PENDENTE — decisão do usuário em 13/08/2026.
+       *
+       * Era "ANALISE" fixo, e isso desalinhava as duas portas de entrada: o
+       * portal público (VoucherSolicitacao.gs) escolhe entre
+       * AGUARDANDO_VALIDACAO_CADASTRAL, PENDENTE e
+       * AGUARDANDO_ATENDIMENTO_PRESENCIAL conforme o que se sabe do
+       * associado; a tela administrativa gravava ANALISE sempre.
+       *
+       * ANALISE, na própria tela, é o card rotulado "Complementação
+       * solicitada". Uma solicitação recém-criada nascia dizendo que já
+       * tinha sido analisada e que faltava documento — e o card "PENDENTES ·
+       * Aguardando análise" nunca saía de zero pela porta administrativa.
+       * Quem coloca em ANALISE é quem pede complementação
+       * (VoucherAdmin.gs:81), que é o único momento em que isso é verdade.
+       *
+       * A trava do período não muda: PENDENTE e ANALISE ocupam a janela do
+       * mesmo jeito (VOUCHER_STATUS_OCUPA_PERIODO_). */
+      STATUS_SOLICITACAO: aprovar ? "APROVADO" : "PENDENTE",
       /* EMAIL, não PORTAL. Ver o cabeçalho deste arquivo. */
       CANAL_ENTRADA: String(dados.canal || "EMAIL").trim().toUpperCase(),
       USUARIO_CADASTRO: quem,
