@@ -727,15 +727,45 @@ function fontesDoPrompt_(systemPrompt) {
  * anexado. Contar essas como citação faria o alerta disparar em resposta
  * correta, e alerta que grita à toa é alerta que se aprende a ignorar.
  */
-function citaArtigoProprio_(texto) {
-  var re = /\bart(?:\.|igos?)\s*\d+/gi;
+function citacoesDeArtigo_(texto) {
+  /* "Arts. 74, 85 e 96" É UMA CITAÇÃO DE TRÊS, não de uma.
+   *
+   * A primeira versão lia só o número colado no "art." e devolvia [74] para
+   * a linha de referência que o próprio caso real trouxe — deixando 85 e 96
+   * de fora justamente do aviso que manda conferir. Por isso a captura
+   * segue a lista inteira depois do "arts.". */
+  var re = /\bart(?:\.|igos?|s\.?)\s*(\d+(?:\s*[ºo°]?\s*(?:,|e)\s*\d+)*)/gi;
+  var achados = [];
   var m;
   while ((m = re.exec(String(texto || ""))) !== null) {
     var cauda = String(texto).substr(m.index + m[0].length, 40);
     if (/^\s*[ºo°]?\s*,?\s*(?:d[ao]s?\s+)?(?:CLT|Lei|Decreto|Constitui|C[óo]digo|CF\b)/i.test(cauda)) continue;
-    return true;
+    String(m[1]).split(/[^0-9]+/).forEach(function (n) {
+      if (n && achados.indexOf(n) < 0) achados.push(n);
+    });
   }
-  return false;
+  return achados;
+}
+
+/** Mantida para quem só quer saber se houve citação. */
+function citaArtigoProprio_(texto) {
+  return citacoesDeArtigo_(texto).length > 0;
+}
+
+function citacoesDeClausula_(texto) {
+  var re = /\bcl[áa]usulas?\s*n?[º°]?\s*(\d+)/gi;
+  var achados = [];
+  var m;
+  while ((m = re.exec(String(texto || ""))) !== null) {
+    if (achados.indexOf(m[1]) < 0) achados.push(m[1]);
+  }
+  return achados;
+}
+
+/** "74, 85 e 96" — como se escreve, não como se programa. */
+function listarNumerosPt_(lista) {
+  if (lista.length === 1) return lista[0];
+  return lista.slice(0, -1).join(", ") + " e " + lista[lista.length - 1];
 }
 
 /**
@@ -752,11 +782,39 @@ function alertaFonteAusente_(resposta, fontes) {
     for (var i = 0; i < lista.length; i++) if (lista[i].tipo === t) return true;
     return false;
   };
-  var faltando = [];
-  if (/\bcl[áa]usula/i.test(String(resposta || "")) && !temTipo("CCT")) faltando.push("cláusula da CCT");
-  if (citaArtigoProprio_(resposta) && !temTipo("ESTATUTO")) faltando.push("artigo do Estatuto");
-  if (!faltando.length) return "";
-  return "Esta resposta cita " + faltando.join(" e ") + ", mas o documento não foi consultado — confira antes de usar.";
+  var texto = String(resposta || "");
+  var partes = [];
+
+  /* A REDAÇÃO IMPORTA, e a primeira estava errada.
+   *
+   * Dizia: "Esta resposta cita artigo do Estatuto, mas o documento não foi
+   * consultado". O usuário apontou a contradição no primeiro dia de uso, e
+   * ele tem razão: se o documento não foi consultado, NÃO SE SABE que aquele
+   * número é do Estatuto. Pode ser de outro documento, de outra versão, ou
+   * de lugar nenhum. Chamar de "artigo do Estatuto" é justamente conceder a
+   * procedência que este aviso existe para negar.
+   *
+   * A frase de agora afirma só o que se sabe: qual documento não entrou, e
+   * quais números saíram sem conferência. Nomear os números também ajuda —
+   * quem for conferir já sabe o que procurar. */
+  var arts = citacoesDeArtigo_(texto);
+  if (arts.length && !temTipo("ESTATUTO")) {
+    partes.push("o Estatuto não foi consultado nesta resposta, e o" +
+      (arts.length > 1 ? "s arts. " : " art. ") + listarNumerosPt_(arts) +
+      (arts.length > 1 ? " saíram" : " saiu") + " sem conferência");
+  }
+  var claus = citacoesDeClausula_(texto);
+  if (!claus.length && /\bcl[áa]usula/i.test(texto)) claus = null; // citou sem número
+  if ((claus === null || (claus && claus.length)) && !temTipo("CCT")) {
+    partes.push("a CCT não foi consultada nesta resposta, e a" +
+      (claus && claus.length > 1 ? "s cláusulas " + listarNumerosPt_(claus) + " saíram" :
+       claus ? " cláusula " + claus[0] + " saiu" : " cláusula citada saiu") + " sem conferência");
+  }
+
+  if (!partes.length) return "";
+  var frase = partes.join(" · ") +
+    ". O número pode não corresponder ao documento — confira antes de usar.";
+  return frase.charAt(0).toUpperCase() + frase.slice(1);
 }
 
 function montarSystemPrompt_(contexto, mensagem) {

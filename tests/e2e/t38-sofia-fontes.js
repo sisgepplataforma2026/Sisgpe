@@ -195,6 +195,48 @@ b.igual(g.alertaFonteAusente_("O art. 8º da Constituição garante a liberdade 
 b.igual(g.alertaFonteAusente_("Temos 8.000 associados na base.", []), "",
   "e resposta de cadastro não dispara nada");
 
+b.passo("17. O aviso não atribui a citação a um documento que não foi lido");
+/* DEFEITO DE REDAÇÃO, APONTADO PELO USUÁRIO NO PRIMEIRO DIA DE USO.
+ *
+ * A frase era: "Esta resposta cita artigo do Estatuto, mas o documento não
+ * foi consultado". Ele respondeu: *"não deveria citar o estatuto e não o
+ * documento não foi consultado"* — e está certo. Se o documento não foi
+ * consultado, NÃO SE SABE que aquele número é do Estatuto; pode ser de
+ * outro documento, de outra versão, ou de lugar nenhum. Chamar de "artigo
+ * do Estatuto" concede justamente a procedência que o aviso existe para
+ * negar.
+ *
+ * O caso real que gerou isto: "quem pode participar da votação?" no domínio
+ * Geral. A resposta citou arts. 74, 85 e 96 com toda a segurança. Conferido
+ * depois contra o estatuto vigente: o art. 74 é da eleição decenal dos
+ * órgãos diretivos e o art. 85 é da publicação das chapas registradas —
+ * nenhum dos dois fala de quem vota. O conteúdo existia, mas no art. 88. */
+const avisoReal = g.alertaFonteAusente_(
+  "Podem participar (Art. 74, III). Conforme Art. 85, §1º, o voto em separado... " +
+  "Referência: Arts. 74, 85 e 96 do Estatuto do SindEducação-ES", []);
+b.igual(/artigo do Estatuto|cl[áa]usula da CCT/i.test(avisoReal), false,
+  "não diz 'artigo do Estatuto' — não há como saber de que documento é o número");
+b.ok(/n[ãa]o foi consultado/i.test(avisoReal), "diz o que de fato se sabe: o documento não entrou");
+
+b.passo("18. E nomeia todos os artigos citados, não só o primeiro");
+/* "Arts. 74, 85 e 96" é citação de TRÊS. A primeira versão lia só o número
+ * colado no "art." e deixava 85 e 96 de fora — do aviso que manda conferir
+ * justamente esses números. */
+b.igual(g.citacoesDeArtigo_("Referência: Arts. 74, 85 e 96 do Estatuto"), ["74", "85", "96"],
+  "os três saem da linha de referência");
+b.igual(g.citacoesDeArtigo_("O art. 477 da CLT trata da rescisão."), [],
+  "e referência de lei continua fora");
+b.igual(g.citacoesDeClausula_("Pela cláusula 04 e pela cláusula 12"), ["04", "12"],
+  "cláusulas idem");
+/* Citar SEM número ainda é citar — "a cláusula prevê o adicional" tem a
+ * mesma autoridade e a mesma falta de fonte. Passar a exigir número para
+ * alertar seria uma perda silenciosa: descoberto por mutação, que apagou
+ * este caminho e nenhum teste reclamou. */
+b.ok(g.alertaFonteAusente_("A cláusula prevê o adicional de insalubridade.", []),
+  "cláusula sem número também alerta");
+b.igual(g.alertaFonteAusente_("A cláusula prevê o adicional.", [{ tipo: "CCT" }]), "",
+  "e com a CCT consultada, silêncio");
+
 b.naoTestavel("Como a linha de procedência aparece na tela",
   "o teste prova o que o servidor devolve; o desenho da linha só se confere no navegador");
 
