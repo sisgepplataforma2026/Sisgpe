@@ -380,6 +380,33 @@ function logoSindicatoVoucher_() {
  * Confirmado pelo usuário. Quando o beneficiário é o próprio titular, o texto
  * perde a oração "dependente de" e segue igual.
  */
+/**
+ * O período da CCT que o certificado cita — "2026/2027".
+ *
+ * NÃO É CONSTANTE AQUI DE PROPÓSITO. Sai de NEGCOL_VIGENCIA, em
+ * NegociacaoColetiva.gs, que é onde a CCT vigente já era declarada e que o
+ * t10 confere contra o texto do documento. Assim, quando a CCT for trocada no
+ * ano que vem, o certificado acompanha sozinho — e ninguém precisa lembrar
+ * que existia um ano escrito dentro do gerador de PDF.
+ *
+ * O papel de referência mostra exatamente o custo de não fazer isso: emitido
+ * em agosto de 2026, cita "2025/2026", CCT que venceu em 28/02/2026.
+ *
+ * O fallback existe porque este arquivo não pode depender da ordem de
+ * carregamento dos .gs no Apps Script. Se NEGCOL_VIGENCIA não estiver lá, o
+ * certificado sai sem o ano em vez de sair com "undefined" — omitir é feio,
+ * escrever errado é pior.
+ */
+function cctVigenteVoucher_() {
+  try {
+    if (typeof NEGCOL_VIGENCIA === "undefined" || !NEGCOL_VIGENCIA) return "vigente";
+    const achou = /(\d{4}\/\d{4})/.exec(String(NEGCOL_VIGENCIA.identificacao || ""));
+    return achou ? achou[1] : "vigente";
+  } catch (e) {
+    return "vigente";
+  }
+}
+
 function gerarHtmlDocumentoVoucher_(dados) {
   const reg = dados.reg || {};
 
@@ -449,14 +476,41 @@ function gerarHtmlDocumentoVoucher_(dados) {
     return valor ? rotulo + "<strong>" + escHtmlVoucher_(valor) + "</strong>" : "";
   }
 
-  /* O CORPO É UMA FRASE SÓ, como no papel. Montada por pedaços porque cada
-   * oração some quando o dado dela não existe: sem RG não se escreve
-   * "portador da carteira de identidade nº —", que é pior que não dizer. */
+  /* ── A REDAÇÃO É A DO PAPEL, PALAVRA POR PALAVRA ──────────────────────
+   *
+   * Pedido do usuário em 13/08/2026: "texto tem que ser o padrão que te
+   * enviei". A redação abaixo foi EXTRAÍDA do certificado real que o
+   * sindicato emite (GLAUCIA_SOUZA_NRAMOS.pdf), não transcrita de memória
+   * nem parafraseada. A anterior era invenção minha — dizia a mesma coisa
+   * com outras palavras, e "a mesma coisa com outras palavras" num documento
+   * que a escola confere contra o que já recebeu antes é problema, não
+   * estilo.
+   *
+   * O que MUDOU em relação ao papel, e por quê:
+   *
+   * - "inscrita no CNPJ: sob nº" → "inscrita no CNPJ sob nº". O dois-pontos
+   *   é erro de digitação do original. Reproduzir erro não é fidelidade.
+   * - O ano da CCT sai de NEGCOL_VIGENCIA, não fixo no texto. O papel de
+   *   referência cita "2025/2026" num documento datado de agosto de 2026 —
+   *   ou seja, cita CCT já vencida (a vigente vai de 01/03/2026 a
+   *   28/02/2027). Amarrando à fonte única, o certificado não envelhece
+   *   sozinho e a troca anual da CCT já o corrige.
+   *
+   * O que foi ACRESCENTADO ao padrão, por pedido anterior do usuário:
+   * o CPF (13/08/2026), a oração de dependente (o papel de referência é de
+   * um titular, mas o benefício alcança filho) e o período letivo — que é a
+   * chave do controle "um por pessoa, por curso, por período".
+   *
+   * É UMA FRASE SÓ, como no papel. Montada por pedaços porque cada oração
+   * some quando o dado dela não existe: sem RG não se escreve "portador da
+   * carteira de identidade nº —", que é pior que não dizer. */
   const corpo =
-    "O Sindicato dos Educadores Técnico-Administrativos em Estabelecimentos de Ensino " +
-    "Particular no Estado do Espírito Santo – <strong>SINDEDUCAÇÃO-ES</strong>, nos termos do " +
-    "convênio firmado com o Sindicato das Empresas Particulares de Ensino do Estado do " +
-    "Espírito Santo – <strong>SINEPE-ES</strong>, certifica que " +
+    "O <strong>SINDEDUCAÇÃO-ES</strong> - Sindicato dos Educadores Técnico – Administrativos " +
+    "em Estabelecimentos de Ensino Particular no Estado do Espírito Santo, em conformidade " +
+    "com a cláusula de Incentivo ao Aprimoramento prevista na Convenção Coletiva de " +
+    "Trabalho " + escHtmlVoucher_(cctVigenteVoucher_()) + ", firmada com o " +
+    "<strong>SINEPE – ES</strong> - Sindicato das Empresas Particulares de Ensino do Estado " +
+    "do Espírito Santo, certifica que " +
     "<strong>" + escHtmlVoucher_(beneficiario) + "</strong>" +
     (ehDependente ? ", dependente de <strong>" + escHtmlVoucher_(nomeSolicitante) + "</strong>" : "") +
     frag(", portador da carteira de identidade nº ", rg) +
@@ -467,12 +521,12 @@ function gerarHtmlDocumentoVoucher_(dados) {
     frag(", empregado da instituição ", instituicaoTexto) +
     frag(", mantida pela ", mantenedora) +
     (cnpj ? ", inscrita no CNPJ sob nº <strong>" + escHtmlVoucher_(cnpj) + "</strong>" : "") +
-    " encontra-se regularmente habilitado ao benefício de <strong>" +
+    ", atende aos requisitos estabelecidos para a concessão do benefício de <strong>" +
     escHtmlVoucher_(percentual) + "% (" + escHtmlVoucher_(percentualExtenso) + ")</strong> " +
-    "de desconto sobre a matrícula, rematrícula e semestralidade" +
+    "de desconto sobre matrícula, rematrícula e semestralidade/anuidade escolar" +
     frag(" do Curso de ", curso) +
     (periodo ? ", referente ao " + escHtmlVoucher_(rotuloPeriodo) : "") +
-    ", após verificação do atendimento aos requisitos exigidos para a concessão do benefício.";
+    ".";
 
   return (
     "<!DOCTYPE html>" +
@@ -584,9 +638,15 @@ function gerarHtmlDocumentoVoucher_(dados) {
     /* A validação flutua SOBRE o rodapé do papel, no espaço vazio à direita
      * dos contatos — assim ela não empurra a arte nem cria uma faixa a mais. */
     ".valida-box{position:absolute;right:14mm;bottom:26mm;text-align:right;}" +
-    /* O QR fica AQUI, discreto, e não no meio do documento: foi acrescentado
-     * ao modelo com autorização, e o que é acréscimo não disputa espaço com o
-     * que a escola já sabe ler. */
+    /* O QR E O CÓDIGO DE VALIDAÇÃO FICAM — decisão do usuário em 13/08/2026,
+     * reafirmada depois de eu apontar que o certificado de referência do
+     * sindicato NÃO os tem. Não reabrir: é acréscimo nosso ao modelo, feito
+     * de propósito, e a ausência deles no papel antigo não é argumento para
+     * tirá-los daqui.
+     *
+     * Por que aqui e não no meio do documento: o que é acréscimo não disputa
+     * espaço com o que a escola já sabe ler. Discreto no canto do rodapé,
+     * flutuando sobre a arte, sem empurrar nada. */
     ".valida{font-size:7pt;color:#64748b;line-height:1.35;margin-top:1mm;}" +
     ".valida-qr{width:15mm;height:15mm;display:block;margin-left:auto;}" +
     "</style>" +
@@ -605,10 +665,11 @@ function gerarHtmlDocumentoVoucher_(dados) {
     "<div class='corpo'>" +
     "<h1>CERTIFICADO DE HABILITAÇÃO À BOLSA DE ESTUDOS</h1>" +
     "<p>" + corpo + "</p>" +
-    "<p>O presente certificado destina-se exclusivamente à comprovação da habilitação do " +
-    "beneficiário para utilização do benefício acima especificado, sendo pessoal, individual " +
-    "e intransferível, produzindo efeitos enquanto permanecerem atendidas as condições que " +
-    "fundamentaram sua emissão.</p>" +
+    /* Segundo parágrafo, também extraído do papel real. O que estava aqui
+     * antes ("pessoal, individual e intransferível…") era redação minha. */
+    "<p>A presente certificação destina-se à comprovação da habilitação do beneficiário ao " +
+    "referido desconto, nos termos da Convenção Coletiva de Trabalho vigente, para fins de " +
+    "utilização junto à instituição de ensino acima identificada.</p>" +
 
     "<div class='data-local'>" + escHtmlVoucher_(dataExtenso) + "</div>" +
 

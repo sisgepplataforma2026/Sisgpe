@@ -363,6 +363,77 @@ b.ok(validaBase >= TETO_TARJA,
   "validação em " + validaBase + "mm");
 b.ok(tarjaBase > 0, "e a tarja não encosta na borda de baixo da folha");
 
+b.passo("21. O QR e o código de validação FICAM — decisão do usuário, travada aqui");
+/* 13/08/2026. Eu apontei que o certificado de referência do sindicato não tem
+ * QR nem código; o usuário respondeu "manter o QR code e código de validação".
+ * Está escrito neste teste, e não só num comentário, porque comentário não
+ * impede ninguém de "limpar" o que parece sobra. Aqui, quebra. */
+const comQr = g.gerarHtmlDocumentoVoucher_({
+  protocolo: "BOLSA-QR", codigo: "ZZZZ-9999",
+  reg: { NOME_SOLICITANTE: "Fulano de Tal" }
+});
+b.ok(/class='valida-qr'/.test(comQr), "o QR está no documento");
+b.ok(/Código ZZZZ-9999/.test(comQr), "e o código de validação também");
+b.ok(/BOLSA-QR/.test(comQr), "com o protocolo embaixo");
+
+/* ══════════════════════════════════════════════════════════════════════
+   A REDAÇÃO É A DO PAPEL
+
+   "Texto tem que ser o padrão que te enviei" — usuário, 13/08/2026. A
+   redação anterior era invenção minha: dizia a mesma coisa com outras
+   palavras. Num documento que a escola confere contra o que já recebeu
+   antes, "a mesma coisa com outras palavras" é problema, não estilo.
+
+   Os trechos abaixo foram EXTRAÍDOS do certificado real
+   (GLAUCIA_SOUZA_NRAMOS.pdf) com PyMuPDF, não transcritos de memória.
+   ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("VOUCHER · A redação é a do certificado que o sindicato emite");
+
+const red = g.gerarHtmlDocumentoVoucher_({
+  protocolo: "BOLSA-RED", codigo: "R1", percentual: 60,
+  rg: "2079656 SPTC ES",
+  reg: {
+    NOME_SOLICITANTE: "Glaucia Souza Ramos", TIPO_BENEFICIARIO: "TITULAR",
+    CURSO: "ENGENHARIA DE PRODUÇÃO EAD", REGIME: "SEMESTRAL",
+    PERIODO_REFERENCIA: "2026/2",
+    ESCOLA_FANTASIA: "MULTIVIX - SERRA",
+    ESCOLA_SELECIONADA: "EMPRESA CAPIXABA DA SERRA ENS. PESQ. EXTENSÃO",
+    CNPJ_ESCOLA: "11062400000148"
+  }
+});
+
+b.passo("22. As orações do papel, palavra por palavra");
+b.ok(/em conformidade com a cláusula de Incentivo ao Aprimoramento prevista na/.test(red),
+  "cita a cláusula de Incentivo ao Aprimoramento — era 'nos termos do convênio'");
+b.ok(/atende aos requisitos estabelecidos para a concessão do benefício de/.test(red),
+  "'atende aos requisitos estabelecidos' — era 'encontra-se regularmente habilitado'");
+b.ok(/de desconto sobre matrícula, rematrícula e semestralidade\/anuidade escolar/.test(red),
+  "'semestralidade/anuidade escolar' — a nossa dizia só 'semestralidade'");
+b.ok(/A presente certificação destina-se à comprovação da habilitação do beneficiário ao referido desconto, nos termos da Convenção Coletiva de Trabalho vigente, para fins de utilização junto à instituição de ensino acima identificada\./.test(red),
+  "e o segundo parágrafo inteiro é o do papel");
+b.ok(!/pessoal, individual e intransferível/.test(red),
+  "a redação antiga saiu de vez — não ficou meio a meio");
+
+b.passo("23. O ano da CCT sai da fonte única, não fixo no texto");
+b.igual(g.cctVigenteVoucher_(), "2026/2027",
+  "vem de NEGCOL_VIGENCIA, que é onde a CCT vigente já era declarada");
+b.ok(/Convenção Coletiva de Trabalho 2026\/2027, firmada com o/.test(red),
+  "e é esse ano que entra no certificado");
+/* O papel de referência foi emitido em agosto de 2026 citando "2025/2026" —
+ * CCT vencida em 28/02/2026. É exatamente o erro que amarrar à fonte evita:
+ * trocada a CCT, o certificado acompanha sem ninguém lembrar dele. */
+b.ok(!/2025\/2026/.test(red),
+  "e NÃO sai a CCT vencida que o papel de referência citava");
+
+b.passo("24. Sem a fonte, omite o ano — nunca escreve 'undefined'");
+const vigOrig = g.NEGCOL_VIGENCIA;
+g.NEGCOL_VIGENCIA = null;
+b.igual(g.cctVigenteVoucher_(), "vigente", "cai para 'vigente', que é verdade e não quebra a frase");
+g.NEGCOL_VIGENCIA = { identificacao: "sem ano nenhum aqui" };
+b.igual(g.cctVigenteVoucher_(), "vigente", "identificação sem ano também");
+g.NEGCOL_VIGENCIA = vigOrig;
+b.igual(g.cctVigenteVoucher_(), "2026/2027", "e volta ao normal quando a fonte volta");
+
 b.naoTestavel("A aparência final do PDF convertido pelo Apps Script",
   "conferir emitindo um certificado no ar e comparando com o papel do sindicato");
 

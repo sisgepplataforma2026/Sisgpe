@@ -44,12 +44,16 @@ linhas de contato caíam dentro do azul: texto azul sobre fundo azul.
 | 🔴 A marca d'água aparece sem escurecer o texto | opacidade só se confere no papel |
 | 🔴 Cabe em UMA página | o rodapé é absoluto; conteúdo longo pode empurrar |
 
-**Duas decisões que continuam suas, não minhas:** o certificado de referência
-**não tem QR nem código de validação** — mantive porque foi o que você
-orientou antes, mas é acréscimo nosso ao modelo. E a redação do papel real
-cita a *"cláusula de Incentivo ao Aprimoramento"* da CCT e fala em
-*"semestralidade/anuidade escolar"*; a nossa é diferente. Se quiser a redação
-idêntica, é uma edição só.
+**Decisão fechada em 13/08/2026 — o QR e o código de validação FICAM.**
+Apontei que o certificado de referência do sindicato não os tem; o usuário
+reafirmou que quer os dois. É acréscimo nosso ao modelo, feito de propósito.
+Não reabrir. Travado por teste no passo 21 do `t33` — quem tirar o QR ou o
+código do documento quebra a suíte, com a decisão escrita ali dentro.
+
+**Decisão que continua sua:** a redação do papel real cita a *"cláusula de
+Incentivo ao Aprimoramento"* da CCT e fala em *"semestralidade/anuidade
+escolar"*; a nossa é diferente. Se quiser a redação idêntica, é uma edição
+só.
 
 ### 19. SOFIA — a procedência embaixo da resposta
 **Aberto em:** 13/08/2026 · `ChatIACore.gs`, `ChatSISGEP.html`
