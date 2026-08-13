@@ -550,6 +550,63 @@ function el(id) { return doc.getElementById(id); }
     "nenhuma classe fica sem regra em nenhum dos três modais",
     problemas.length ? problemas.slice(0, 4).join(" · ") : "");
 
+  /* ══════════════════════════════════════════════════════════════════════
+     A ESCOLA COMPLETA, e a busca aproximada
+
+     Relatado com a tela na mão em 13/08/2026: o nome do empregador vinha da
+     base de Associados, CNPJ e cidade ficavam em branco, e quem atendia
+     precisava digitar a escola de novo no campo ao lado. Depois veio o
+     motivo de a busca não achar: "está no nome da SEGEX UVV" — a base de
+     Associados diz "UVV - VILA VELHA", o cadastro de Escolas diz outra coisa.
+     ══════════════════════════════════════════════════════════════════════ */
+  b.fluxo("NOVA SOLICITAÇÃO · A escola vem completa");
+
+  const shE = ss.getSheetByName("Escolas") || ss.insertSheet("Escolas");
+  shE.clear();
+  shE.getRange(1, 1, 1, 6).setValues([["EscolaID", "Escola (Razão Social)", "Nome Fantasia", "CNPJ", "Município", "UF"]]);
+  shE.getRange(2, 1, 3, 6).setValues([
+    ["ESC-000001", "SEGEX UVV LTDA", "SEGEX UVV", "12345678000199", "Vila Velha", "ES"],
+    ["ESC-000002", "COLEGIO SAO JOSE", "SAO JOSE", "98765432000188", "Vitoria", "ES"],
+    ["ESC-000003", "COLEGIO ANCHIETA", "ANCHIETA", "11222333000144", "Serra", "ES"]
+  ]);
+  /* O cadastro de escolas fica 5 min em CacheService — sem limpar, a busca
+   * responderia com a lista de antes desta linha e o teste mediria o cache,
+   * não o código. */
+  try { g.CacheService.getScriptCache().remove(g.CACHE_KEY_ESCOLAS_CADASTRO_); } catch (e) {}
+  try { g.CacheService.getScriptCache().remove("sisgep_escolas_lista_v2"); } catch (e) {}
+  try { g.CacheService.getScriptCache().remove(g.CACHE_KEY_ESCOLAS_); } catch (e) {}
+
+  b.passo("A1. Nome que existe no cadastro traz CNPJ, cidade e escolaId");
+  const exata = g.voucherBuscarEscola("COLEGIO SAO JOSE", TOKEN);
+  b.igual(exata.aproximada, false, "achou pelo texto — não precisou de aproximação");
+  b.igual((exata.escolas[0] || {}).cnpj, "98765432000188", "o CNPJ vem junto");
+  b.igual((exata.escolas[0] || {}).escolaId, "ESC-000002",
+    "e o escolaId, que é o que amarra a solicitação à escola de verdade");
+
+  b.passo("A2. 'UVV - VILA VELHA' acha 'SEGEX UVV' — o caso que motivou tudo");
+  const aprox = g.voucherBuscarEscola("UVV - VILA VELHA", TOKEN);
+  b.ok(aprox.aproximada === true, "veio pela busca aproximada, e vem MARCADA como tal");
+  b.igual((aprox.escolas[0] || {}).nome, "SEGEX UVV LTDA", "e é a escola certa");
+
+  b.passo("A3. Aproximado não vira qualquer coisa");
+  /* Devolver muitos parecidos é pior que devolver nenhum: quem atende
+   * escolheria da lista sem conferir, e CNPJ errado em certificado ninguém
+   * relê depois — o campo está preenchido. */
+  const nada = g.voucherBuscarEscola("ZZZZ QUE NAO EXISTE", TOKEN);
+  b.igual(nada.escolas.length, 0, "termo sem parentesco nenhum não devolve palpite");
+  b.igual(nada.aproximada, false, "e não se diz aproximada quando não achou nada");
+
+  b.passo("A4. Palavra que não distingue nada não aproxima");
+  /* "COLEGIO" está em duas das três — se contasse, meia base pareceria
+   * semelhante a meia base. */
+  b.ok(!g.voucherBuscarEscola("COLEGIO ZZZZ", TOKEN).aproximada,
+    "'COLEGIO' sozinho não é parentesco");
+
+  b.passo("A5. Erro de digitação ainda encontra");
+  b.igual((g.voucherBuscarEscola("ANCHETA", TOKEN).escolas[0] || {}).nome, "COLEGIO ANCHIETA",
+    "'ANCHETA' acha 'ANCHIETA' — uma letra a menos não pode esconder a escola");
+
+
   b.resumo();
   process.exit(0);
 })();

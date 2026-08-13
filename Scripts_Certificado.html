@@ -1672,20 +1672,84 @@ function nvChecarPeriodo(){
 function nvResolverEscola(nomeEscola){
   var termo = String(nomeEscola||'').trim();
   if(termo.length < 2) return;
+  nvBuscarEscolaComTermo(termo, true);
+}
+
+/* Segunda tentativa, com o PEDAÇO MAIS DISTINTIVO do nome.
+   O associado trabalha na "UVV - VILA VELHA" segundo a base de Associados; no
+   cadastro de Escolas a mesma instituição está como "SEGEX UVV". Buscar pelo
+   texto inteiro nunca casaria — sobra "- VILA VELHA", que é onde ela fica, não
+   como ela se chama. Apontado pelo usuário em 13/08/2026.
+
+   A palavra escolhida é a mais longa que não seja ruído: siglas e nomes
+   próprios ("UVV", "MULTIVIX") sobrevivem; "ESCOLA", "CENTRO", "LTDA" e afins
+   não distinguem nada e só trariam meia base de volta.
+
+   O resultado da busca por pedaço NUNCA é aplicado sozinho, mesmo quando vem
+   um só: casar por uma palavra é evidência fraca, e gravar o CNPJ da escola
+   errada num certificado é o tipo de erro que ninguém confere depois, porque
+   o campo está preenchido. Aqui a lista abre e a pessoa escolhe. */
+var NV_PALAVRAS_SEM_VALOR = [
+  'ESCOLA','COLEGIO','CENTRO','EDUCACIONAL','EDUCACAO','ENSINO','INSTITUTO',
+  'FACULDADE','UNIDADE','MUNICIPAL','ESTADUAL','PARTICULAR','LTDA','EIRELI',
+  'EPP','ME','SA','DE','DA','DO','DOS','DAS','E','INFANTIL','FUNDAMENTAL',
+  'MEDIO','CRECHE','PRE','PROFESSOR','PROFESSORA','SANTA','SANTO','SAO'
+];
+function nvPedacoDistintivo(termo){
+  var palavras = nvNormalizarTexto(termo).split(' ').filter(function(p){
+    return p.length >= 3 && NV_PALAVRAS_SEM_VALOR.indexOf(p) === -1;
+  });
+  if(!palavras.length) return '';
+  palavras.sort(function(a,b){ return b.length - a.length; });
+  return palavras[0];
+}
+
+function nvBuscarEscolaComTermo(termo, podeTentarDeNovo){
   google.script.run
     .withSuccessHandler(function(r){
-      if(!r || !r.ok || !r.escolas || !r.escolas.length) return;
+      if(!r || !r.ok || !r.escolas || !r.escolas.length){
+        /* Antes de desistir, tenta pelo pedaço distintivo — é o caso da
+           "UVV - VILA VELHA" que no cadastro é "SEGEX UVV". */
+        var pedaco = podeTentarDeNovo ? nvPedacoDistintivo(termo) : '';
+        if(pedaco && pedaco !== nvNormalizarTexto(termo)){
+          nvBuscarEscolaComTermo(pedaco, false);
+          return;
+        }
+        /* NÃO ACHOU: dizer isso é obrigatório. Antes a função voltava calada,
+           e a tela ficava exatamente igual a quando ela nem tinha sido
+           chamada — quem atendia via o nome preenchido, CNPJ e cidade em
+           branco, e não tinha como saber se o sistema procurou, se falhou, ou
+           se aquela escola não existe no cadastro. */
+        if(g('certNvOrgEscola')){
+          g('certNvOrgEscola').innerHTML =
+            '<span class="cert-nv-org padrao">não achei no cadastro de escolas</span>';
+        }
+        return;
+      }
 
       var alvo = nvNormalizarTexto(termo);
       var exatas = r.escolas.filter(function(e){
         return nvNormalizarTexto(e.nome) === alvo || nvNormalizarTexto(e.fantasia) === alvo;
       });
-      var escolhida = exatas.length === 1 ? exatas[0]
-                    : (r.escolas.length === 1 ? r.escolas[0] : null);
+      /* Aplica sozinho só com evidência FORTE: nome idêntico, ou resultado
+         único de uma busca pelo nome inteiro.
+
+         `r.aproximada` NUNCA é aplicada sozinha, nem quando vem uma só. Ali o
+         servidor está dizendo "não achei pelo texto, isto aqui é o que se
+         parece" — e parecido não é a mesma escola. Gravar o CNPJ de uma
+         escola parecida num certificado é o erro que ninguém confere depois,
+         porque o campo está preenchido, e campo preenchido não se relê. */
+      var escolhida = r.aproximada ? null
+                    : (exatas.length === 1 ? exatas[0]
+                    : (podeTentarDeNovo && r.escolas.length === 1 ? r.escolas[0] : null));
 
       if(!escolhida){
-        /* Ambíguo: mostra as opções em vez de adivinhar. */
         nvMostrarListaEscolas(r.escolas);
+        if(g('certNvOrgEscola')){
+          g('certNvOrgEscola').innerHTML = '<span class="cert-nv-org padrao">'
+            + (r.aproximada ? 'nome parecido — confira e escolha'
+                            : r.escolas.length + ' parecidas — escolha') + '</span>';
+        }
         return;
       }
       nvAplicarEscola(escolhida, 'CADASTRO');
@@ -1985,6 +2049,18 @@ function exportarCsv(){
   msg('📤 CSV exportado.','ok');
 }
 
+/* Fecha ao clicar fora, sem perder formulário por seleção de texto.
+   Ver o comentário no uso, em initInterno. */
+function ligarFecharPorClique(overlay, fechar){
+  if(!overlay) return;
+  var nasceuNoOverlay = false;
+  overlay.addEventListener('mousedown', function(ev){ nasceuNoOverlay = (ev.target === this); });
+  overlay.addEventListener('click', function(ev){
+    if(ev.target === this && nasceuNoOverlay) fechar();
+    nasceuNoOverlay = false;
+  });
+}
+
 // ── Init
 function initInterno(){
   if(g('certBusca'))           g('certBusca').addEventListener('input',function(){clearTimeout(_buscaTimer);_buscaTimer=setTimeout(aplicarFiltros,300);});
@@ -2039,11 +2115,7 @@ function initInterno(){
   /* Clicar fora fecha — mas SÓ no overlay, não em qualquer clique que borbulhe
      de dentro da caixa. Sem o teste de alvo, clicar num campo do formulário
      fecharia o modal e perderia o que a pessoa digitou. */
-  if(g('certEnvioOverlay')){
-    g('certEnvioOverlay').addEventListener('click', function(ev){
-      if(ev.target === this) envFechar();
-    });
-  }
+  ligarFecharPorClique(g('certEnvioOverlay'), envFechar);
   document.addEventListener('keydown', function(ev){
     if(ev.key === 'Escape' && g('certEnvioOverlay') &&
        g('certEnvioOverlay').classList.contains('ativo')) envFechar();
@@ -2142,11 +2214,17 @@ function initInterno(){
     });
   }
 
-  if(g('certNovaOverlay')){
-    g('certNovaOverlay').addEventListener('click', function(ev){
-      if(ev.target === this) nvFechar();
-    });
-  }
+  /* FECHAR AO CLICAR FORA — mas só quando o clique COMEÇOU fora.
+     Relatado em 13/08/2026: "quando demora a preencher ele está fechando
+     sozinho". Não era o tempo: era o gesto. Quem seleciona um texto dentro de
+     um campo e solta o mouse um pouco além da borda da caixa dispara um
+     `click` cujo alvo é o overlay — e o formulário inteiro ia embora, com
+     tudo que já tinha sido digitado. Quanto mais demorado o preenchimento,
+     mais seleção e mais chance de acontecer.
+
+     Guardar onde o clique NASCEU resolve: só fecha quando começou E terminou
+     no overlay. Vale para os dois modais, porque o gesto é o mesmo. */
+  ligarFecharPorClique(g('certNovaOverlay'), nvFechar);
 
   carregarLista();
 }

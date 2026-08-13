@@ -384,8 +384,33 @@ function voucherBuscarEscola(termo, tokenSessao) {
     }
 
     var achadas = buscarEscolasPorTermo_interno_(termo) || [];
+
+    /* BUSCA APROXIMADA — o segundo caminho, quando o texto exato não acha.
+     *
+     * Pedido do usuário em 13/08/2026, depois de "UVV - VILA VELHA" (como
+     * está na base de Associados) não encontrar "SEGEX UVV" (como está no
+     * cadastro de Escolas). A busca normal casa por PEDAÇO DE TEXTO: serve
+     * para abreviação e para nome escrito pela metade, e não serve quando as
+     * duas grafias divergem de verdade — e elas divergem, porque uma foi
+     * digitada pela escola e a outra pelo sindicato, anos diferentes.
+     *
+     * Só roda quando a exata não achou NADA. Rodar sempre encheria a lista
+     * de parecidos ao lado do resultado certo, e o parecido só ajuda quando
+     * o certo não existe.
+     *
+     * As aproximadas voltam MARCADAS. A tela precisa saber que aquilo é
+     * palpite: nome parecido não é a mesma escola, e o CNPJ errado num
+     * certificado não é conferido por ninguém depois — o campo está
+     * preenchido, e campo preenchido não se relê. */
+    var aproximada = false;
+    if (!achadas.length) {
+      achadas = voucherEscolasParecidas_(termo);
+      aproximada = achadas.length > 0;
+    }
+
     return {
       ok: true,
+      aproximada: aproximada,
       escolas: achadas.slice(0, 10).map(function (e) {
         return {
           nome: String(e.escola || e.NomeEscola || e.nome || e["Escola (Razão Social)"] || "").trim(),
@@ -400,5 +425,133 @@ function voucherBuscarEscola(termo, tokenSessao) {
   } catch (e) {
     Logger.log("voucherBuscarEscola: " + e.message);
     return { ok: false, mensagem: e.message, escolas: [] };
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   BUSCA APROXIMADA DE ESCOLA — o segundo caminho, e só quando o primeiro
+   falha por completo.
+
+   O PROBLEMA REAL, que não é de digitação. A base de Associados diz
+   "UVV - VILA VELHA"; o cadastro de Escolas diz "SEGEX UVV". Nenhuma das duas
+   está errada — uma foi escrita pelo sindicato, a outra pela escola, em anos
+   diferentes. A busca por pedaço de texto não casa as duas, porque o que
+   sobra em comum é uma sigla no meio de palavras que não se repetem.
+
+   COMO A SEMELHANÇA É MEDIDA, em duas camadas:
+
+     1. PALAVRA EM COMUM vale muito. "UVV" aparecendo dos dois lados é
+        evidência forte, mesmo com todo o resto diferente. Palavras que não
+        distinguem nada ("ESCOLA", "CENTRO", "LTDA") são descartadas antes —
+        senão metade do cadastro pareceria semelhante a metade do cadastro.
+     2. DISTÂNCIA DE EDIÇÃO cobre o erro de digitação e a variação de grafia
+        ("MULTIVIX" × "MULTVIX"). Ela só entra quando não há palavra em comum,
+        porque é mais cara e mais frouxa.
+
+   O corte é deliberadamente ALTO. Devolver muitos parecidos é pior que
+   devolver nenhum: quem atende escolheria da lista sem conferir, e o CNPJ
+   errado num certificado não é conferido por ninguém depois — o campo está
+   preenchido, e campo preenchido não se relê.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+var VOUCHER_ESCOLA_RUIDO_ = [
+  "ESCOLA", "COLEGIO", "CENTRO", "EDUCACIONAL", "EDUCACAO", "ENSINO",
+  "INSTITUTO", "FACULDADE", "UNIDADE", "MUNICIPAL", "ESTADUAL", "PARTICULAR",
+  "LTDA", "EIRELI", "EPP", "ME", "SA", "DE", "DA", "DO", "DOS", "DAS", "E",
+  "INFANTIL", "FUNDAMENTAL", "MEDIO", "CRECHE", "PRE", "PROFESSOR",
+  "PROFESSORA", "SANTA", "SANTO", "SAO", "DOUTOR", "DOUTORA"
+];
+
+function voucherEscolaPalavras_(texto) {
+  var t = String(texto || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase().replace(/[^A-Z0-9]+/g, " ").trim();
+  if (!t) return [];
+  return t.split(" ").filter(function (p) {
+    return p.length >= 3 && VOUCHER_ESCOLA_RUIDO_.indexOf(p) === -1;
+  });
+}
+
+/** Distância de edição entre duas palavras curtas. Barata o bastante para
+ *  rodar sobre as ~679 do cadastro, e só é chamada quando precisa. */
+function voucherDistanciaEdicao_(a, b) {
+  a = String(a || ""); b = String(b || "");
+  if (a === b) return 0;
+  if (!a.length || !b.length) return Math.max(a.length, b.length);
+  var linha = [];
+  for (var j = 0; j <= b.length; j++) linha[j] = j;
+  for (var i = 1; i <= a.length; i++) {
+    var anterior = linha[0];
+    linha[0] = i;
+    for (var k = 1; k <= b.length; k++) {
+      var guardado = linha[k];
+      linha[k] = Math.min(
+        linha[k] + 1,
+        linha[k - 1] + 1,
+        anterior + (a.charAt(i - 1) === b.charAt(k - 1) ? 0 : 1)
+      );
+      anterior = guardado;
+    }
+  }
+  return linha[b.length];
+}
+
+/** Quão parecidos, de 0 a 1. Ver o bloco acima para o critério. */
+function voucherSemelhancaEscola_(palavrasA, palavrasB) {
+  if (!palavrasA.length || !palavrasB.length) return 0;
+
+  var comuns = palavrasA.filter(function (p) { return palavrasB.indexOf(p) > -1; });
+  if (comuns.length) {
+    /* Uma palavra distintiva em comum já vale 0,75; cada palavra a mais
+     * aproxima de 1. Uma sigla igual dos dois lados é evidência forte. */
+    return Math.min(1, 0.75 + (comuns.length - 1) * 0.15);
+  }
+
+  /* Sem palavra em comum: o melhor par por distância de edição. Só conta
+   * quando a diferença é pequena perto do tamanho da palavra — "MULTIVIX" e
+   * "MULTVIX" sim; "ANCHIETA" e "ARACRUZ" não. */
+  var melhor = 0;
+  palavrasA.forEach(function (a) {
+    palavrasB.forEach(function (b) {
+      var maior = Math.max(a.length, b.length);
+      if (maior < 4) return;
+      var d = voucherDistanciaEdicao_(a, b);
+      if (d > 2) return;
+      var s = 1 - (d / maior);
+      if (s > melhor) melhor = s;
+    });
+  });
+  /* Pesa menos que palavra idêntica, mas não tão pouco que o erro de uma
+   * letra caia abaixo do corte: "ANCHETA" × "ANCHIETA" tem que achar. Com
+   * 0,85, uma letra a menos em palavra de 8 passa; duas, não. */
+  return melhor >= 0.75 ? melhor * 0.85 : 0;
+}
+
+function voucherEscolasParecidas_(termo) {
+  try {
+    var palavrasTermo = voucherEscolaPalavras_(termo);
+    if (!palavrasTermo.length) return [];
+
+    var lista = (typeof listarEscolasCadastro_interno_ === "function"
+      ? listarEscolasCadastro_interno_() : []) || [];
+    if (!lista.length) return [];
+
+    var pontuadas = [];
+    for (var i = 0; i < lista.length; i++) {
+      var e = lista[i];
+      var nome = e.escola || e.NomeEscola || e.nome || e["Escola (Razão Social)"] || "";
+      var fantasia = e.fantasia || e.Fantasia || e.NOME_FANTASIA || "";
+      var s = Math.max(
+        voucherSemelhancaEscola_(palavrasTermo, voucherEscolaPalavras_(nome)),
+        voucherSemelhancaEscola_(palavrasTermo, voucherEscolaPalavras_(fantasia))
+      );
+      if (s >= 0.7) pontuadas.push({ escola: e, pontos: s });
+    }
+
+    pontuadas.sort(function (a, b) { return b.pontos - a.pontos; });
+    /* No máximo 8. Lista longa de "parecidas" convida a escolher sem ler. */
+    return pontuadas.slice(0, 8).map(function (p) { return p.escola; });
+  } catch (e) {
+    Logger.log("voucherEscolasParecidas_: " + e.message);
+    return [];
   }
 }
