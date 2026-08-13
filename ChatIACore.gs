@@ -617,6 +617,44 @@ function selecionarContextoIA_(texto, consulta, limite) {
   return escolhidos.map(function(x) { return x.texto; }).join("\n\n").substring(0, limite);
 }
 
+/**
+ * Um documento longo virando bloco de contexto — COM A IDENTIFICAÇÃO PRESA.
+ *
+ * O DEFEITO QUE ISTO CORRIGE, medido em 13/08/2026 e não relatado por
+ * ninguém: `selecionarContextoIA_` escolhe os PARÁGRAFOS mais relevantes para
+ * a pergunta e descarta o resto — inclusive a primeira linha, que é onde mora
+ * "qual documento é este e desde quando ele vale".
+ *
+ * O resultado media certo e estava errado: perguntando o quórum de assembleia
+ * dentro da especialidade Estatuto, chegavam à IA os arts. 62, 66 e a seção
+ * das Assembleias Gerais — os artigos CERTOS — mas soltos, sem dizer de que
+ * documento vieram nem de que ano. Com CCT e Estatuto podendo entrar no mesmo
+ * prompt, isso é o convite para a resposta citar "art. 62" da fonte errada, e
+ * o prompt logo abaixo manda justamente NÃO trocar as fontes. Mandar não
+ * trocar sem dizer qual é qual é pedir o impossível.
+ *
+ * A identificação vai FORA do seletor, sempre. É uma linha; o corte de 60 ou
+ * 90 mil caracteres não pode escolher jogá-la fora.
+ */
+function blocoDocumentoIA_(rotulo, texto, consulta, limite) {
+  var inteiro = String(texto || "");
+  if (!inteiro) return "";
+  /* A primeira linha não vazia do documento é a identificação dele — é assim
+   * que CCTCore e EstatutoCore começam. Ler de lá em vez de repetir a
+   * vigência aqui evita a cópia que envelhece sozinha. */
+  var linhas = inteiro.split("\n");
+  var identificacao = "";
+  for (var i = 0; i < linhas.length && i < 5; i++) {
+    if (String(linhas[i]).trim()) { identificacao = linhas[i].trim(); break; }
+  }
+  var trechos = selecionarContextoIA_(inteiro, consulta, limite);
+  if (!trechos) return "";
+  return "\n=== " + rotulo + " — TRECHOS RELEVANTES ===\n" +
+         (identificacao ? identificacao + "\n" : "") +
+         "(Ao citar, diga o artigo ou a cláusula E de qual destes documentos.)\n\n" +
+         trechos + "\n";
+}
+
 function montarSystemPrompt_(contexto, mensagem) {
   var hoje = Utilities.formatDate(new Date(), "America/Sao_Paulo", "dd/MM/yyyy");
   var resumo = contexto.resumo || {};
@@ -639,7 +677,8 @@ function montarSystemPrompt_(contexto, mensagem) {
   var dominioAtual = String((contexto && contexto.dominio) || "").toUpperCase();
   var precisaCCT = dominioAtual === "CCT" ||
     /(cct|convenção|convencao|cláusula|clausula|dissídio|dissidio|acordo coletivo|piso|reajuste)/i.test(consulta);
-  var conteudoCCT = precisaCCT ? selecionarContextoIA_(getCCTTexto_(), consulta, 90000) : "";
+  var conteudoCCT = precisaCCT
+    ? blocoDocumentoIA_("CCT", getCCTTexto_(), consulta, 90000) : "";
   /* O ESTATUTO, pela mesma porta da CCT e com o mesmo cuidado.
    *
    * São documentos diferentes e não podem se substituir: a CCT rege a
@@ -654,7 +693,7 @@ function montarSystemPrompt_(contexto, mensagem) {
   var precisaEstatuto = dominioAtual === "ESTATUTO" ||
     /(estatuto|assembleia|assembléia|mandato|diretoria|conselho fiscal|eleição|eleicao|posse|quórum|quorum|destitui|filia(ção|cao)|art\.\s*\d)/i.test(consulta);
   var conteudoEstatuto = (precisaEstatuto && typeof getEstatutoTexto_ === "function")
-    ? selecionarContextoIA_(getEstatutoTexto_(), consulta, 60000) : "";
+    ? blocoDocumentoIA_("ESTATUTO", getEstatutoTexto_(), consulta, 60000) : "";
 
   var memoriaRelevante = selecionarContextoIA_(carregarMemoriaOrganizacional(), consulta, 30000);
 
