@@ -134,7 +134,52 @@ b.ok(html.indexOf(NOME) > -1, "o nome do beneficiário");
 b.ok(/\d{3}\.\d{3}\.\d{3}-\d{2}/.test(html), "o CPF formatado");
 
 /* ══════════════════════════════════════════════════════════════════════ */
-b.fluxo("VOUCHER · 5. Quando quebra, o erro diz ONDE");
+b.fluxo("VOUCHER · 5. A emissão de verdade");
+
+/* Até aqui o teste parava na prévia — que retorna antes de tudo o que
+ * importa: PDF, Drive, planilha de emitidos, status, histórico. O emulador
+ * tem DriveApp, então o caminho inteiro roda. */
+
+b.passo("13. Solicitação NÃO aprovada não emite certificado");
+/* A trava mais importante do módulo: certificado de bolsa é benefício de
+ * associado, e emitir para quem não passou pela aprovação é conceder
+ * benefício sem conferência — com o documento saindo com cara de legítimo.
+ *
+ * MINHA PRIMEIRA VERSÃO DESTE PASSO ESTAVA ERRADA, e vale registrar: usei o
+ * protocolo que JÁ TINHA SIDO APROVADO no passo 8 e esperei recusa. O
+ * sistema emitiu, e por um instante pareceu defeito grave. Não era: APROVAR
+ * É VALIDAR — decisão documentada em VoucherAdmin.gs, porque o único lugar
+ * que gravava VALIDADO era a confirmação de associação, e quem aprova está
+ * declarando que conferiu. O teste é que apontava para o protocolo errado. */
+const naoAprovado = g.gerarDocumentoVoucher(r4.protocolo, "CERTIFICADO", { percentual: 70 });
+b.igual(naoAprovado.ok, false, "recusa quem não passou pela aprovação");
+b.ok(/associa|status/i.test(String(naoAprovado.mensagem || "")),
+  "dizendo por quê", naoAprovado.mensagem);
+
+b.passo("14. O protocolo aprovado emite");
+const emitido = g.gerarDocumentoVoucher(PROT, "CERTIFICADO", { percentual: 70, rg: "1234567" });
+b.igual(emitido.ok, true, "emitiu", emitido.mensagem || "");
+b.ok(emitido.codigoValidacao, "com código de validação", emitido.codigoValidacao);
+b.ok(emitido.linkPdf, "e com o PDF salvo no Drive", emitido.linkPdf);
+
+b.passo("15. O status vira EMITIDO e o RG fica guardado");
+const sEmit = (g.listarSolicitacoesCertBolsa(token) || [])
+  .filter(x => x.protocolo === PROT)[0];
+b.igual(sEmit && sEmit.status, "EMITIDO", "a lista mostra EMITIDO");
+b.igual(sEmit && sEmit.rg, "1234567", "e o RG digitado ficou na linha");
+
+b.passo("16. Emitir de novo NÃO gera segundo documento");
+/* Idempotência: dois cliques no botão, ou duas abas abertas, não podem
+ * produzir dois certificados com códigos diferentes para o mesmo protocolo —
+ * cada um validaria, e a escola receberia dois papéis igualmente legítimos. */
+const denovo = g.gerarDocumentoVoucher(PROT, "CERTIFICADO", { percentual: 70 });
+b.igual(denovo.ok, true, "responde ok");
+b.igual(denovo.reemitido, true, "mas marcado como já emitido");
+b.igual(denovo.codigoValidacao, emitido.codigoValidacao,
+  "e com o MESMO código — não nasceu um segundo certificado");
+
+/* ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("VOUCHER · 6. Quando quebra, o erro diz ONDE");
 
 b.passo("13. A falha traz a etapa, não só a mensagem do Google");
 /* NASCEU DE UM ERRO REAL, 13/08/2026: "Erro ao gerar voucher: This
@@ -145,12 +190,15 @@ b.passo("13. A falha traz a etapa, não só a mensagem do Google");
 const quebrado = g.gerarDocumentoVoucher("BOLSA-NAO-EXISTE-999", "PREVIA", {});
 b.igual(quebrado.ok, false, "protocolo inexistente é recusado");
 
-/* Força uma quebra de verdade no meio do processo, para ver a etapa sair. */
+/* Força uma quebra de verdade no meio do processo, para ver a etapa sair.
+ * Num protocolo AINDA NÃO EMITIDO: a checagem de "já emitido" acontece
+ * antes do retorno da prévia, então um protocolo já emitido devolveria
+ * "Voucher já emitido" sem chegar na montagem do HTML. */
 const originalHtml = g.gerarHtmlDocumentoVoucher_;
 g.gerarHtmlDocumentoVoucher_ = function () {
   throw new Error("This operation is not supported for this document: TESTE");
 };
-const comFalha = g.gerarDocumentoVoucher(PROT, "PREVIA", { percentual: 70 });
+const comFalha = g.gerarDocumentoVoucher(r3.protocolo, "PREVIA", { percentual: 70 });
 g.gerarHtmlDocumentoVoucher_ = originalHtml;
 b.igual(comFalha.ok, false, "a emissão falha");
 b.ok(/etapa/i.test(String(comFalha.mensagem || "")),
@@ -159,7 +207,7 @@ b.ok(/HTML do certificado/.test(String(comFalha.etapa || "")),
   "apontando o passo certo", comFalha.etapa);
 
 /* ══════════════════════════════════════════════════════════════════════ */
-b.fluxo("VOUCHER · 6. O que ainda não dá para provar aqui");
+b.fluxo("VOUCHER · 7. O que ainda não dá para provar aqui");
 
 b.naoTestavel("O PDF de verdade",
   "getAs(MimeType.PDF) não existe no emulador; A4 se confere abrindo o arquivo");
