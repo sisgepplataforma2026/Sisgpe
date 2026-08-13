@@ -64,7 +64,9 @@ if (voucherExistente) {
     const codigo = gerarCodigoValidacaoVoucher_();
 
     const percentual = Number(opcoes.percentual || reg.PERCENTUAL_APLICADO || 70);
-    const rg = valorSeguroVoucher_(opcoes.rg || "");
+    /* O que foi digitado agora manda; o que já estava guardado salva a
+     * emissão de quem não digitou nada. */
+    const rg = valorSeguroVoucher_(opcoes.rg || reg.RG_SOLICITANTE || "");
     const documentos = Array.isArray(opcoes.documentos) ? opcoes.documentos : [];
 
  const dadosDoc = {
@@ -126,6 +128,11 @@ registrarEmissaoVoucher_(reg, {
     });
 
     atualizarStatusProtocolo_(protocolo, "EMITIDO", usuario, "Voucher emitido.");
+    /* O RG digitado agora fica na linha, para a próxima emissão já vir com
+     * ele. Nunca lança: o certificado já foi gerado quando isto roda, e
+     * perder a emissão por causa de uma gravação de conveniência seria
+     * trocar o problema grande pelo pequeno. */
+    voucherGravarRgSolicitante_(protocolo, rg);
 
     /* A MEMÓRIA APRENDE NA EMISSÃO — só aqui, nunca na prévia.
      *
@@ -917,4 +924,46 @@ function voucherDiagnosticoImagens(tokenSessao) {
       : falhas.length + " de 3 não viram base64: " +
         falhas.map(function (i) { return i.rotulo; }).join(", ") + "."
   };
+}
+
+
+/**
+ * Guarda o RG do titular na linha da solicitação.
+ *
+ * Só escreve quando há RG novo e a coluna existe — não inventa coluna, pela
+ * mesma razão que o resto do módulo não inventa: aba de produção com coluna
+ * a mais criada por engano é o começo do desalinhamento que custou 13 colunas
+ * em 12/08.
+ */
+function voucherGravarRgSolicitante_(protocolo, rg) {
+  var valor = String(rg || "").trim();
+  if (!valor || !protocolo) return false;
+  try {
+    var ss = SpreadsheetApp.openById(PLANILHA_ID);
+    var sh = ss.getSheetByName(VOUCHER_ABA_SOLICITACOES);
+    if (!sh || sh.getLastRow() < 2) return false;
+
+    var cab = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0]
+      .map(function (c) { return String(c || "").trim(); });
+    var iRg = cab.indexOf("RG_SOLICITANTE");
+    var iProt = cab.indexOf("NUMERO_PROTOCOLO");
+    if (iProt === -1) iProt = cab.indexOf("PROTOCOLO");
+    if (iRg === -1 || iProt === -1) return false;
+
+    var alvo = String(protocolo).trim().toUpperCase();
+    var col = sh.getRange(2, iProt + 1, sh.getLastRow() - 1, 1).getValues();
+    for (var i = col.length - 1; i >= 0; i--) {
+      if (String(col[i][0] || "").trim().toUpperCase() !== alvo) continue;
+      var cel = sh.getRange(i + 2, iRg + 1);
+      /* Não sobrescreve um RG já guardado com o mesmo valor — poupa escrita
+       * e mantém a data de modificação da linha significando alguma coisa. */
+      if (String(cel.getValue() || "").trim() === valor) return true;
+      cel.setValue(valor);
+      return true;
+    }
+    return false;
+  } catch (e) {
+    Logger.log("RG não foi guardado (o certificado saiu): " + e.message);
+    return false;
+  }
 }

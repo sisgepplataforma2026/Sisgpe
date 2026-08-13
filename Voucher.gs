@@ -453,6 +453,14 @@ function VOUCHER_COLUNAS_SOLICITACOES_() {
          * perguntado a quem digita. Fica gravado porque a dedução depende de
          * linhas que podem ser recusadas ou canceladas depois: relida meses
          * adiante, a mesma conta daria outra resposta. */
+        /* O RG DO TITULAR, guardado.
+         * Ele era digitado no modal na hora de emitir e ia embora com a tela:
+         * reemitir o mesmo certificado exigia digitar de novo, e o do ano
+         * seguinte também. Pior — quem esquecesse emitiria um documento sem a
+         * oração da identidade, sem aviso, porque omitir é o comportamento
+         * certo quando o dado não existe. Gravado na primeira emissão, a
+         * próxima já vem preenchida. */
+        "RG_SOLICITANTE",
         "TIPO_SOLICITACAO",
         /* Preenchida SÓ quando um administrador autorizou uma exceção à trava
          * de "um por período" — guarda o protocolo da bolsa anterior. Existe
@@ -1306,6 +1314,7 @@ function listarSolicitacoesVoucher() {
          * etiqueta só aparece quando o dado existe, porque afirmar "primeira
          * vez" sobre uma bolsa que já foi renovada três vezes é pior que não
          * dizer nada. */
+        rg: String(val(l, "RG_SOLICITANTE", "RG") || ""),
         tipoSolicitacao: String(val(l, "TIPO_SOLICITACAO", "TIPO_SOLICITAÇÃO") || ""),
 
         status: String(val(l, "STATUS_SOLICITACAO", "STATUS_SOLICITAÇÃO", "STATUS") || "PENDENTE"),

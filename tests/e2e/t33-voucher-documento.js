@@ -189,7 +189,44 @@ b.ok(!/carteira de identidade/.test(htmlTitular),
 b.ok(!/inscrito no CPF/.test(htmlTitular),
   "e sem CPF, a do CPF também — cada oração some sozinha");
 
-b.passo("14. A marca d'água é imagem própria e embutida");
+b.passo("14. O RG digitado na emissão fica guardado na linha");
+/* Sem isto ele vivia só na tela: reemitir exigia digitar de novo, e quem
+ * esquecesse emitia um certificado SEM a oração da identidade — sem aviso,
+ * porque omitir é o comportamento certo quando o dado não existe. */
+b.seedUsuarios(g);
+const TK = b.logar(g, "wanderson");
+g.setupVoucherModuleFase1();
+const criada = g.voucherCriarSolicitacao({
+  cpf: "11144477735", nome: "Fulano de Tal", modalidade: "GRADUACAO",
+  area: "HUMANAS", curso: "Pedagogia", regime: "SEMESTRAL",
+  periodo: "2026/1", percentual: 70, aprovar: true
+}, TK);
+b.ok(criada.ok, "solicitação para emitir", criada.mensagem);
+
+const ssT = g.SpreadsheetApp.openById(g.PLANILHA_ID);
+function lerRg(prot) {
+  const sh = ssT.getSheetByName("Voucher_Solicitacoes");
+  const tudo = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getValues();
+  const cab = tudo[0].map(c => String(c || "").trim());
+  for (let l = tudo.length - 1; l >= 1; l--) {
+    if (String(tudo[l][cab.indexOf("NUMERO_PROTOCOLO")] || "").trim() !== prot) continue;
+    return String(tudo[l][cab.indexOf("RG_SOLICITANTE")] || "").trim();
+  }
+  return null;
+}
+b.igual(lerRg(criada.protocolo), "", "nasce sem RG");
+g.voucherGravarRgSolicitante_(criada.protocolo, "1.234.567/SPTC-ES");
+b.igual(lerRg(criada.protocolo), "1.234.567/SPTC-ES", "e passa a ter o RG digitado");
+
+b.passo("15. Não grava vazio por cima do que já existe");
+/* Emitir de novo sem digitar nada não pode APAGAR o RG guardado — seria o
+ * defeito ao contrário, e mais difícil de perceber. */
+g.voucherGravarRgSolicitante_(criada.protocolo, "");
+b.igual(lerRg(criada.protocolo), "1.234.567/SPTC-ES", "RG vazio não sobrescreve");
+b.igual(g.voucherGravarRgSolicitante_("BOLSA-QUE-NAO-EXISTE", "9.9"), false,
+  "protocolo inexistente devolve false em vez de escrever em linha errada");
+
+b.passo("16. A marca d'água é imagem própria e embutida");
 b.ok(/class='dagua'/.test(htmlTitular), "a marca d'água está no documento");
 const marca = g.marcaDaguaVoucher_();
 b.ok(String(marca).indexOf("data:") === 0,
