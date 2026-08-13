@@ -640,6 +640,22 @@ function montarSystemPrompt_(contexto, mensagem) {
   var precisaCCT = dominioAtual === "CCT" ||
     /(cct|convenção|convencao|cláusula|clausula|dissídio|dissidio|acordo coletivo|piso|reajuste)/i.test(consulta);
   var conteudoCCT = precisaCCT ? selecionarContextoIA_(getCCTTexto_(), consulta, 90000) : "";
+  /* O ESTATUTO, pela mesma porta da CCT e com o mesmo cuidado.
+   *
+   * São documentos diferentes e não podem se substituir: a CCT rege a
+   * relação com as escolas (piso, reajuste, bolsa); o Estatuto rege o
+   * sindicato por dentro (assembleia, mandato, eleição, conselho fiscal).
+   * Responder assembleia com CCT, ou piso com Estatuto, é errar a fonte —
+   * e errar a fonte é o defeito que ninguém confere, porque a resposta sai
+   * com a mesma cara de sempre.
+   *
+   * 60.000 de teto contra os 90.000 da CCT: os dois juntos precisam caber
+   * no prompt, e a pergunta que aciona os dois ao mesmo tempo é rara. */
+  var precisaEstatuto = dominioAtual === "ESTATUTO" ||
+    /(estatuto|assembleia|assembléia|mandato|diretoria|conselho fiscal|eleição|eleicao|posse|quórum|quorum|destitui|filia(ção|cao)|art\.\s*\d)/i.test(consulta);
+  var conteudoEstatuto = (precisaEstatuto && typeof getEstatutoTexto_ === "function")
+    ? selecionarContextoIA_(getEstatutoTexto_(), consulta, 60000) : "";
+
   var memoriaRelevante = selecionarContextoIA_(carregarMemoriaOrganizacional(), consulta, 30000);
 
 var prompt =
@@ -649,7 +665,13 @@ var prompt =
     "Responda sempre em português brasileiro, de forma direta e objetiva. " +
     "Use listas quando houver múltiplos itens. Seja assertivo, não especule. " +
     "Para perguntas sobre a CCT, cite o número da cláusula relevante.\n\n" +
+    "Para perguntas sobre o Estatuto, cite o número do artigo. NUNCA responda " +
+    "sobre Estatuto usando a CCT, nem sobre CCT usando o Estatuto: são " +
+    "documentos diferentes, e trocá-los produz resposta com a forma certa e a " +
+    "fonte errada.\n\n" +
     conteudoCCT +
+    "\n" +
+    conteudoEstatuto +
     "\n" +
     memoriaRelevante +
 
