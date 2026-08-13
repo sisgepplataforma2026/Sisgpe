@@ -640,7 +640,21 @@
           <label class="cert-nv-lbl">Percentual (%) <span id="certNvOrgPct"></span></label>
           <input class="cert-nv-in" id="certNvPercentual" type="number" min="0" max="100">
         </div>
-        <div class="cert-nv-campo"><label class="cert-nv-lbl">Regime</label><input class="cert-nv-in" id="certNvRegime"></div>
+        <!-- REGIME É SELETOR, não texto livre. Só existem dois — anual e
+             semestral — e é o regime que define de quanto em quanto tempo o
+             associado volta a pedir. Digitado à mão viraria "Anual",
+             "ANUAL", "anual" e "1 ano" na mesma coluna, e qualquer contagem
+             de renovação por regime pararia de fechar.
+             A regra da convenção já devolve um sugerido (semestral para
+             graduação, anual para o resto); o seletor deixa corrigir. -->
+        <div class="cert-nv-campo">
+          <label class="cert-nv-lbl">Regime <span id="certNvOrgRegime"></span></label>
+          <select class="cert-nv-in" id="certNvRegime">
+            <option value="">—</option>
+            <option value="ANUAL">Anual</option>
+            <option value="SEMESTRAL">Semestral</option>
+          </select>
+        </div>
       </div>
 
       <div class="cert-section-title">Observações</div>
@@ -1175,8 +1189,8 @@ function nvLimpar(){
   ['certNvBusca','certNvCpf','certNvNome','certNvEmail','certNvTelefone','certNvEscola',
    'certNvCnpjEscola','certNvInstituicao','certNvCnpjInst','certNvEmailInst',
    'certNvBeneficiario','certNvCurso','certNvIdade','certNvPeriodo','certNvPercentual',
-   'certNvRegime','certNvObs','certNvCidadeEscola'].forEach(function(id){ if(g(id)) g(id).value=''; });
-  ['certNvModalidade','certNvArea'].forEach(function(id){ if(g(id)) g(id).value=''; });
+   'certNvObs','certNvCidadeEscola'].forEach(function(id){ if(g(id)) g(id).value=''; });
+  ['certNvModalidade','certNvArea','certNvRegime'].forEach(function(id){ if(g(id)) g(id).value=''; });
   if(g('certNvQuem')) g('certNvQuem').value='PROPRIO';
   nvSincronizarBeneficiario();
   if(g('certNvSituacao')) g('certNvSituacao').value='ASSOCIADO';
@@ -1228,7 +1242,7 @@ function nvSugerir(){
        ['escola','certNvEscola'],['cnpjEscola','certNvCnpjEscola'],
        ['instituicao','certNvInstituicao'],['cnpjInstituicao','certNvCnpjInst'],
        ['emailInstituicao','certNvEmailInst'],['beneficiario','certNvBeneficiario'],
-       ['curso','certNvCurso'],['regime','certNvRegime']].forEach(function(par){
+       ['curso','certNvCurso']].forEach(function(par){
         /* O NOME DO BENEFICIÁRIO NÃO É PREENCHIDO QUANDO O BENEFICIÁRIO É O
            PRÓPRIO TITULAR. O campo está escondido nesse caso, e a memória
            voltaria a enchê-lo logo depois de nvSincronizarBeneficiario ter
@@ -1242,6 +1256,11 @@ function nvSugerir(){
         var el = g(k==='modalidade'?'certNvModalidade':k==='area'?'certNvArea':'certNvTipoBenef');
         if(el && !el.value && c[k]) el.value=c[k];
       });
+
+      /* O regime segue a mesma regra do percentual: vindo da convenção,
+         manda; vazio, preenche; digitado pela pessoa, fica. */
+      var reg=g('certNvRegime');
+      if(reg && c.regime && (org.percentual==='REGRA_CCT' || !reg.value)) reg.value=c.regime;
 
       var pct=g('certNvPercentual');
       if(pct){
@@ -1258,6 +1277,10 @@ function nvSugerir(){
         }
       }
       nvOrigem(g('certNvOrgPct'), org.percentual);
+      /* O regime vem da mesma regra que o percentual: quando a convenção diz
+         "graduação é semestral", a etiqueta mostra que aquilo não foi
+         escolha de quem digita. */
+      nvOrigem(g('certNvOrgRegime'), c.regime ? org.percentual : '');
       nvOrigem(g('certNvOrgInst'), org.instituicao);
       nvOrigem(g('certNvOrgEmailInst'), org.emailInstituicao);
 

@@ -351,6 +351,50 @@ function el(id) { return doc.getElementById(id); }
   b.igual(cProprio && cProprio.args[0].beneficiario, "Marcelo Alves de Oliveira",
     "e o beneficiário é o próprio titular");
 
+
+  b.passo("21. Regime é seletor, e a regra da convenção o preenche");
+  /* Só existem dois — anual e semestral — e é o regime que define de quanto
+   * em quanto tempo o associado volta a pedir. Digitado à mão viraria
+   * "Anual", "ANUAL" e "1 ano" na mesma coluna, e qualquer contagem de
+   * renovação por regime pararia de fechar. */
+  b.igual(String(el("certNvRegime").tagName).toUpperCase(), "SELECT",
+    "o campo é um seletor, não texto livre");
+  const ops = Array.prototype.map.call(el("certNvRegime").options, o => o.value).filter(Boolean);
+  b.igual(ops.sort(), ["ANUAL", "SEMESTRAL"], "com as duas opções que existem");
+
+  t.clicar("#certBtnNova");
+  await t.assentar(40);
+  el("certNvCpf").value = CPF_M;
+  el("certNvNome").value = "Marcelo Alves de Oliveira";
+  t.escolher("#certNvModalidade", "GRADUACAO");
+  t.escolher("#certNvArea", "HUMANAS");
+  await t.assentar(200);
+  b.igual(el("certNvRegime").value, "SEMESTRAL",
+    "graduação vem SEMESTRAL pela convenção");
+
+  t.escolher("#certNvModalidade", "ENSINO_MEDIO");
+  t.escolher("#certNvQuem", "FILHO_1");
+  el("certNvIdade").value = "16";
+  t.escolher("#certNvArea", "");
+  await t.assentar(220);
+  b.igual(el("certNvRegime").value, "ANUAL", "ensino médio vem ANUAL");
+
+  b.passo("22. Idade: 24 passa, 25 não");
+  /* O código dizia `>= 24` e a mensagem ao lado dizia "até 24 anos" — uma
+   * negando a outra. Um dependente de 24 era recusado por erro de um ano,
+   * com explicação que afirmava o contrário. */
+  el("certNvIdade").value = "24";
+  t.escolher("#certNvModalidade", "ENSINO_MEDIO");
+  await t.assentar(220);
+  b.igual(String(el("certNvPercentual").value), "100", "24 anos ainda tem direito");
+
+  el("certNvIdade").value = "25";
+  t.escolher("#certNvModalidade", "ENSINO_MEDIO");
+  await t.assentar(220);
+  b.igual(String(el("certNvPercentual").value), "", "25 anos: campo zerado");
+  b.ok(/24 anos/.test(t.texto("#certNvAvisos") || ""),
+    "com o limite escrito no aviso", (t.texto("#certNvAvisos") || "").slice(0, 70));
+
   /* ═══════════════════════════════════════════════════════════════════ */
   b.fluxo("NOVA SOLICITAÇÃO · O CSS alcança o modal novo");
 

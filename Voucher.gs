@@ -708,22 +708,39 @@ function calcularRegraVoucher_(dados, idadeBeneficiario) {
     }
   }
 
-  if (tipoBeneficiario === "FILHO" && (idadeBeneficiario === "" || Number(idadeBeneficiario) >= 24)) {
+  /* IDADE MÁXIMA: 24 ANOS — e "até 24" inclui os 24.
+   *
+   * O código dizia `>= 24`, ou seja RECUSAVA quem tem 24 — e a mensagem ao
+   * lado dizia "até 24 anos". As duas coisas no mesmo bloco, uma negando a
+   * outra. Um dependente de 24 anos era recusado por um erro de um ano, com
+   * uma explicação que afirmava o contrário do que o código fazia; quem
+   * ligasse para o sindicato ouviria que tinha direito.
+   *
+   * Confirmado pelo usuário em 12/08/2026: "a idade máxima de solicitação é
+   * 24 anos". Agora recusa a partir de 25. */
+  if (tipoBeneficiario === "FILHO" && (idadeBeneficiario === "" || Number(idadeBeneficiario) > 24)) {
     return {
       apto: false,
       percentual: "",
       regime: "",
-      observacao: "Beneficiário filho não atende ao limite etário (até 24 anos)."
+      observacao: idadeBeneficiario === ""
+        ? "Informe a idade do beneficiário — o limite é 24 anos."
+        : "Beneficiário com " + idadeBeneficiario +
+          " anos: o limite da convenção é 24 anos."
     };
   }
 
   if (tipoBeneficiario === "ENTEADO") {
-    if (idadeBeneficiario === "" || Number(idadeBeneficiario) >= 24) {
+    /* Mesmo erro de um ano, mesma correção — enteado segue o limite do filho. */
+    if (idadeBeneficiario === "" || Number(idadeBeneficiario) > 24) {
       return {
         apto: false,
         percentual: "",
         regime: "",
-        observacao: "Beneficiário enteado não atende ao limite etário (até 24 anos)."
+        observacao: idadeBeneficiario === ""
+          ? "Informe a idade do beneficiário — o limite é 24 anos."
+          : "Beneficiário enteado com " + idadeBeneficiario +
+            " anos: o limite da convenção é 24 anos."
       };
     }
 
