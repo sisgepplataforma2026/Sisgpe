@@ -38,14 +38,51 @@ Constituição`, que são referência de lei e não citação nossa.
 
 | | |
 |---|---|
-| 🔴 A linha aparece embaixo de uma resposta real | perguntar algo de Estatuto e ver o chip |
-| 🔴 Com CCT e Estatuto na mesma pergunta, os dois chips aparecem | ex.: piso + quórum |
+| ✅ A linha aparece embaixo de uma resposta real | **verificado 13/08, print** — `CONSULTEI 📘 CCT · CCT 2026/2027` |
+| ✅ O aviso âmbar aparece quando deve | **verificado 13/08, print** — e pegou três citações erradas na primeira vez |
+| 🔴 Com CCT e Estatuto na mesma pergunta, os dois chips aparecem | ex.: piso da telefonista + quórum da assembleia |
 | 🔴 Pergunta de cadastro não desenha nada | "quantos associados temos" |
-| 🔴 O aviso âmbar aparece quando deve | pergunta que force citação sem documento |
 
-O desenho foi conferido no navegador (quatro estados renderizados no
-Chromium), mas **isso não é a tela no ar**: o emulador não chama a Anthropic,
-então nenhuma resposta real passou por este caminho ainda.
+**O que o aviso pegou em 13/08, e vale registrar:** perguntado "quem pode
+participar da votação?" no domínio Geral, sem documento anexado, a SOFIA
+respondeu citando **arts. 74, 85 e 96**. Conferido contra o estatuto vigente:
+o art. 74 é da eleição decenal dos órgãos diretivos, o art. 85 é da
+publicação das chapas registradas — nenhum dos dois fala de quem vota. O
+conteúdo citado existe, mas no **art. 88**, e quem pode votar é o **art. 4º,
+II**. Três citações, três endereços errados, nada na resposta denunciando.
+Isso gerou os itens 21 e a correção da redação do aviso.
+
+### 21. SOFIA — a segunda leitura
+**Aberto em:** 13/08/2026 · `ChatIACore.gs`
+
+Pedido do usuário depois de ver o aviso funcionando: *"mas ele deveria ser
+consultado"*. Avisar que não consultou trata o sintoma. Agora, quando a
+resposta cita artigo ou cláusula que não entrou no prompt, o sistema **anexa
+o documento que faltou e pergunta de novo** — e entrega a segunda resposta.
+
+Junto foi o vocabulário: "votação", "voto", "eleitor", "eleitoral", "chapa",
+"urna", "escrutínio", "delegado", "estatutário", "desfiliação".
+
+**Travado por teste** (`t38`, 75 asserções, 7 mutações mortas em 7): a
+segunda chamada acontece e leva o documento; a resposta entregue é a
+segunda; pergunta sem citação não gasta chamada extra; se a segunda falhar —
+por erro 500 **ou** por resposta vazia com código 200 — fica a primeira
+**com** o aviso; e o caminho da CCT vale igual.
+
+**O que só se confere no ar:**
+
+| | |
+|---|---|
+| 🔴 "quem pode participar da votação?" no Geral | agora deve vir com o chip do Estatuto e **sem** faixa âmbar |
+| 🔴 A citação passa a estar certa | conferir se cita art. 88 e art. 4º, II — e não 74/85/96 |
+| 🔴 A demora da segunda leitura é tolerável | ela só acontece quando a primeira citou sem fonte |
+
+**Cuidado ao ler o resultado:** se a resposta continuar citando artigo
+errado **com** o chip do Estatuto presente, o problema deixou de ser "não
+consultou" e passa a ser o seletor de trechos — ele escolhe parágrafos pelas
+palavras da pergunta e pode não ter trazido o artigo certo. Aí a correção é
+outra: conferência de citação (comparar os artigos citados com os que
+entraram) ou um índice do documento sempre anexado.
 
 ### 20. Layout — painel sob demanda, chips e menu recolhível
 **Aberto em:** 13/08/2026 · `ChatSISGEP.html`, `index.html`
@@ -74,9 +111,10 @@ visto de fato:
 |---|---|
 | 🔴 Os chips cabem na barra e rolam | com o menu do Portal aberto e recolhido |
 | 🔴 A coluna da direita some mesmo | e volta quando a escola é identificada |
-| 🔴 O ☰ recolhe e a escolha sobrevive ao F5 | é `localStorage`; pode estar bloqueado no navegador |
+| ✅ O ☰ recolhe | **verificado 13/08** — falta só confirmar que sobrevive ao F5 |
+| 🔴 A escolha sobrevive ao F5 | é `localStorage`; pode estar bloqueado no navegador |
 | 🔴 Clicar num módulo com submenu estando recolhido | deve abrir o menu e o acordeão junto |
-| 🔴 **Ofícios continua igual** | o menu aparece nos 12 módulos; Ofícios é o que está em uso diário |
+| ✅ **Ofícios continua igual** | **verificado 13/08** — "ofício apareceu"; emissão inteira conferida |
 
 O último item é o que mais importa: mexi no `index.html`, que é a moldura de
 tudo. Se a emissão de ofício estiver diferente em qualquer coisa, é aqui que
