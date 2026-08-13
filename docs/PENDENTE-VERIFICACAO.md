@@ -115,6 +115,51 @@ decisão é sua — o outro lado da moeda é emitir dois vouchers no mesmo semes
 ### 16. Voucher — o envio do certificado (e-mail, WhatsApp e trilha)
 **Aberto em:** 12/08/2026 · `VoucherEnvio.gs`, `Voucher.gs`, `AuditoriaCore.gs`
 
+#### ROTEIRO, NA ORDEM — 13/08/2026
+
+A ordem importa: cada passo só faz sentido se o anterior passou, e os dois
+primeiros não mandam e-mail para ninguém.
+
+**1. `voucherDiagnosticoImagens()`** — botão Run do editor, sem argumento.
+Só lê; não emite, não envia, não grava. Responde a única pergunta que a
+prévia **não** responde:
+
+```
+✅ Logo do sindicato — data · 34 KB
+✅ Assinatura do presidente — data · 12 KB
+✅ QR code de validação — data · 3 KB
+✅ As três imagens viram base64 — o PDF sai completo.
+```
+
+Qualquer linha `http` ou `VAZIO` é defeito **antes** de o documento existir.
+`http` é o pior dos dois: aparece na prévia e some no PDF, porque quem baixa
+a imagem na prévia é o navegador. Se o QR falhar, pare aqui — sem ele a
+escola aponta a câmera no certificado e não acontece nada.
+
+**2. `voucherPreviaSegura()`** — Run, sem argumento. Duas coisas ao mesmo
+tempo: prova que a porta dupla funciona (é o padrão de `escolaVinculosStatus`,
+mas nesta função nunca foi executado) e mostra o documento montado. **Não
+conclua nada sobre imagem por esta tela** — ver o passo 1.
+
+**3. Emitir um certificado de verdade**, pela tela, num protocolo APROVADO.
+Abrir o PDF gerado e conferir as três imagens **no PDF**, não na prévia.
+
+**4. Enviar para um endereço seu** — não para o associado. Conferir na caixa
+de entrada: assunto com o protocolo, corpo, botão "Abrir o certificado", e o
+**PDF anexado**. Se o anexo não vier, o link no corpo salva o envio.
+
+**5. Reabrir o modal de envio do mesmo protocolo.** O histórico tem que
+mostrar o envio do passo 4, com data, destino e quem enviou — é o que prova
+que a trilha gravou. E a linha na planilha tem que ter o carimbo em
+`OBSERVACOES`.
+
+**6. `voucherPrepararEnvio("BOLSA-...")`** de um protocolo cuja instituição
+esteja nas 679 escolas. Procurar `origemEmailInstituicao: "CADASTRO"` com o
+endereço certo — é o defeito nº 2 da tabela abaixo, anterior a este trabalho.
+
+**7. O `wa.me` no celular.** Abrir pelo botão e ver a mensagem já escrita. O
+sistema **não envia zap** — quem aperta enviar é você.
+
 O backend do envio está escrito e coberto por `tests/e2e/t30-voucher-envio.js`
 (66 asserções, 10 mutações — todas mortas). O que o emulador prova é lógica:
 quem entra pela porta, de onde vem cada e-mail, o que é destinatário e o que

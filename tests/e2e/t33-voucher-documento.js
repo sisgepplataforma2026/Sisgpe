@@ -140,5 +140,61 @@ b.ok(String(html).indexOf("085.381.047-80") > -1,
 b.ok(String(html).indexOf(">8538104780<") === -1,
   "e o número cru de 10 dígitos não aparece em lugar nenhum");
 
+/* ══════════════════════════════════════════════════════════════════════
+   O DIAGNÓSTICO DAS IMAGENS
+
+   ATENÇÃO AO QUE ESTE BLOCO **NÃO** PROVA. No emulador, DriveApp e UrlFetch
+   são simulados e devolvem base64 de mentira — então "as três viram data:"
+   aqui é resultado do andaime, não do Drive real. O diagnóstico só vale
+   rodado no Apps Script.
+
+   O que dá para provar é o que importa em seguida: que o diagnóstico SABE
+   acusar. Um verificador que devolve verde para tudo é pior que não ter
+   verificador — passa confiança sem base.
+   ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("VOUCHER · O diagnóstico das imagens sabe acusar");
+
+b.seedUsuarios(g);
+const TOKEN = b.logar(g, "wanderson");
+
+b.passo("12. A porta dupla protege");
+b.bloqueia(() => g.voucherDiagnosticoImagens("token-que-nao-existe"),
+  "recusa quem não tem sessão");
+
+b.passo("13. URL externa é acusada — é o defeito que a prévia esconde");
+const logoOrig = g.logoSindicatoVoucher_;
+const qrOrig = g.gerarQrCodeVoucherUrl_;
+g.logoSindicatoVoucher_ = function () { return "https://exemplo.com/logo.png"; };
+const comHttp = g.voucherDiagnosticoImagens(TOKEN);
+b.ok(!comHttp.ok, "o diagnóstico não fica verde com uma imagem em http");
+b.igual(comHttp.falhas, 1, "uma falha contada");
+b.igual((comHttp.itens.find(i => /Logo/.test(i.rotulo)) || {}).tipo, "http",
+  "e o tipo aparece como http, que é o que some no PDF");
+
+b.passo("14. Imagem vazia também");
+g.logoSindicatoVoucher_ = function () { return ""; };
+b.igual((g.voucherDiagnosticoImagens(TOKEN).itens.find(i => /Logo/.test(i.rotulo)) || {}).tipo,
+  "VAZIO", "vazio é acusado, não tratado como 'sem imagem, tudo bem'");
+
+b.passo("15. O QR é o único marcado como CRÍTICO");
+g.logoSindicatoVoucher_ = logoOrig;
+g.gerarQrCodeVoucherUrl_ = function () { return ""; };
+const semQr = g.voucherDiagnosticoImagens(TOKEN);
+b.igual(semQr.criticas, 1, "a falha do QR conta como crítica");
+b.ok(/QR/.test(semQr.mensagem), "e a mensagem nomeia o QR", semQr.mensagem);
+/* Logo e assinatura faltando são feios; QR faltando quebra a validação do
+ * certificado — a escola aponta a câmera e não acontece nada. */
+g.gerarQrCodeVoucherUrl_ = qrOrig;
+g.logoSindicatoVoucher_ = function () { return ""; };
+b.igual(g.voucherDiagnosticoImagens(TOKEN).criticas, 0,
+  "já a logo faltando NÃO é crítica — a gravidade não é a mesma");
+g.logoSindicatoVoucher_ = logoOrig;
+
+b.passo("16. Com tudo em base64, fica verde");
+const limpo = g.voucherDiagnosticoImagens(TOKEN);
+b.ok(limpo.ok, "as três em data: — mas isto é o emulador, não o Drive real");
+b.naoTestavel("As imagens REAIS (Drive e quickchart) no PDF de produção",
+  "DriveApp e UrlFetch são simulados aqui — rodar voucherDiagnosticoImagens() no Apps Script");
+
 b.resumo();
 process.exit(0);

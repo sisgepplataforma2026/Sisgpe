@@ -807,3 +807,89 @@ function gerarQrCodeVoucherUrl_(codigoValidacao) {
     return "";
   }
 }
+
+/**
+ * DIAGNÓSTICO DAS TRÊS IMAGENS DO CERTIFICADO — logo, assinatura e QR.
+ *
+ * POR QUE ESTA FUNÇÃO EXISTE, e por que ela vale mais que olhar a prévia.
+ *
+ * As três imagens têm que virar `data:` (base64) antes de entrarem no HTML.
+ * `getAs(MimeType.PDF)` não busca host externo de forma confiável: uma URL
+ * `https://` funciona perfeitamente na PRÉVIA — porque quem baixa a imagem
+ * ali é o navegador — e sai em branco no PDF, que é o documento que chega no
+ * associado e na escola. É o pior tipo de defeito: invisível exatamente no
+ * lugar onde a pessoa foi conferir.
+ *
+ * O QR é o que mais importa dos três. Logo faltando é feio; assinatura
+ * faltando é grave; QR faltando quebra a VALIDAÇÃO do certificado — a escola
+ * aponta a câmera e não acontece nada.
+ *
+ * SÓ LÊ. Não emite, não envia, não grava, não apaga cache. Pode rodar em
+ * produção a qualquer hora, inclusive pelo botão Run do editor — daí a porta
+ * dupla, que é o que permite chamar sem token.
+ *
+ * COMO LER O RESULTADO:
+ *
+ *   data:  ✅  — vai aparecer no PDF
+ *   http:  🔴  — aparece na prévia e SOME no PDF
+ *   vazio: 🔴  — some nos dois; ver o motivo no log da função que carrega
+ */
+function voucherDiagnosticoImagens(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, "beneficios", "voucherDiagnosticoImagens", false);
+
+  function medir(rotulo, critico, fn) {
+    var uri = "", erro = "";
+    try { uri = String(fn() || ""); } catch (e) { erro = e.message; }
+
+    var tipo = !uri ? "VAZIO"
+             : uri.indexOf("data:") === 0 ? "data"
+             : uri.indexOf("http") === 0 ? "http" : "?";
+    var ok = tipo === "data";
+
+    Logger.log((ok ? "✅ " : "🔴 ") + rotulo + " — " + tipo +
+      (ok ? " · " + Math.round(uri.length / 1024) + " KB" : "") +
+      (erro ? " · erro: " + erro : "") +
+      (!ok && critico ? "  ← ISTO QUEBRA A VALIDAÇÃO DO CERTIFICADO" : ""));
+
+    return { rotulo: rotulo, ok: ok, tipo: tipo, critico: !!critico,
+             tamanhoKb: uri ? Math.round(uri.length / 1024) : 0, erro: erro };
+  }
+
+  Logger.log("── Imagens do certificado ─────────────────────────────");
+  var itens = [
+    medir("Logo do sindicato", false, logoSindicatoVoucher_),
+    medir("Assinatura do presidente", false, assinaturaPresidenteVoucher_),
+    /* Um código de brincadeira: gerar o QR não emite nada nem consome
+     * numeração — o que se está medindo é se a imagem VOLTA como base64. */
+    medir("QR code de validação", true, function () {
+      return gerarQrCodeVoucherUrl_("DIAGNOSTICO-SEM-VALOR");
+    })
+  ];
+
+  var falhas = itens.filter(function (i) { return !i.ok; });
+  var criticas = falhas.filter(function (i) { return i.critico; });
+
+  Logger.log("───────────────────────────────────────────────────────");
+  if (!falhas.length) {
+    Logger.log("✅ As três imagens viram base64 — o PDF sai completo.");
+  } else {
+    Logger.log("🔴 " + falhas.length + " de 3 não viram base64: " +
+      falhas.map(function (i) { return i.rotulo; }).join(", ") + ".");
+    Logger.log("   Atenção: a PRÉVIA no navegador vai mostrar essas imagens " +
+               "assim mesmo. Só o PDF prova.");
+  }
+  /* O cache guarda por 6 horas. Se alguém acabou de trocar a logo no Drive e
+   * o diagnóstico ainda mostra a antiga, não é defeito — é o cache. */
+  Logger.log("   (logo e assinatura ficam 6h em cache; QR também)");
+
+  return {
+    ok: !falhas.length,
+    itens: itens,
+    falhas: falhas.length,
+    criticas: criticas.length,
+    mensagem: !falhas.length
+      ? "As três imagens viram base64 — o PDF sai completo."
+      : falhas.length + " de 3 não viram base64: " +
+        falhas.map(function (i) { return i.rotulo; }).join(", ") + "."
+  };
+}
