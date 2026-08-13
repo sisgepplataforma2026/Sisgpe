@@ -117,22 +117,49 @@
 #certModalOverlay { position: fixed; inset: 0; background: rgba(15,23,42,.52); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 9999; backdrop-filter: blur(3px); }
 #certModalOverlay.ativo { display: flex; }
 #certModalBox { width: min(820px, 100%); background: #fff; border-radius: 20px; box-shadow: 0 30px 80px rgba(0,20,60,.28); overflow: hidden; max-height: 94vh; display: flex; flex-direction: column; font-family: 'Plus Jakarta Sans', sans-serif; }
-#certModalBox .cert-modal-head { padding: 18px 22px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
-#certModalBox .cert-modal-head-l { display: flex; align-items: center; gap: 12px; }
-#certModalBox .cert-modal-ico { width: 40px; height: 40px; border-radius: 11px; background: linear-gradient(135deg, #0b3b75, #1565C0); display: flex; align-items: center; justify-content: center; font-size: 18px; }
-#certModalBox .cert-modal-title { font-size: 15px; font-weight: 900; color: #0f172a; }
-#certModalBox .cert-modal-sub   { font-size: 11px; color: #64748b; margin-top: 2px; }
-#certModalBox .cert-modal-body  { padding: 20px 22px; overflow-y: auto; flex: 1; }
-#certModalBox .cert-modal-foot  { padding: 14px 22px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
-#certModalBox .cert-modal-close { width: 36px; height: 36px; border-radius: 999px; border: 1.5px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer; font-size: 17px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: all .14s; }
-#certModalBox .cert-modal-close:hover { background: #fee2e2; border-color: #dc2626; color: #dc2626; }
-#certModalBox .cert-info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
-#certModalBox .cert-info-item { display: flex; flex-direction: column; gap: 3px; }
-#certModalBox .cert-info-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
-#certModalBox .cert-info-val   { font-size: 13px; font-weight: 700; color: #1e293b; }
-#certModalBox .cert-section-title { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #94a3b8; border-bottom: 1px solid #f1f5f9; padding-bottom: 7px; margin-bottom: 12px; margin-top: 16px; }
-#certModalBox .cert-obs-area { width: 100%; min-height: 80px; border-radius: 11px; border: 1.5px solid #cbd5e1; background: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; padding: 11px 13px; outline: none; resize: vertical; line-height: 1.55; color: #1e293b; transition: border-color .16s; }
-#certModalBox .cert-obs-area:focus { border-color: #1565C0; box-shadow: 0 0 0 4px rgba(21,101,192,.09); }
+
+/* Modal de ENVIO. z-index acima do modal de análise porque ele abre POR CIMA:
+   quem acabou de emitir continua vendo a solicitação atrás, e fechar o envio
+   devolve para onde estava. */
+#certEnvioOverlay { position: fixed; inset: 0; background: rgba(15,23,42,.52); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 10000; backdrop-filter: blur(3px); }
+#certEnvioOverlay.ativo { display: flex; }
+#certEnvioBox { width: min(640px, 100%); background: #fff; border-radius: 20px; box-shadow: 0 30px 80px rgba(0,20,60,.28); overflow: hidden; max-height: 94vh; display: flex; flex-direction: column; font-family: 'Plus Jakarta Sans', sans-serif; }
+#certEnvioBox .cert-env-campo { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+#certEnvioBox .cert-env-lbl { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
+#certEnvioBox .cert-env-input { width: 100%; border-radius: 10px; border: 1.5px solid #cbd5e1; background: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; padding: 10px 12px; outline: none; color: #1e293b; transition: border-color .16s; }
+#certEnvioBox .cert-env-input:focus { border-color: #1565C0; box-shadow: 0 0 0 4px rgba(21,101,192,.09); }
+#certEnvioBox .cert-env-input:disabled { background: #f8fafc; color: #94a3b8; }
+#certEnvioBox .cert-env-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; color: #334155; cursor: pointer; margin-bottom: 8px; }
+#certEnvioBox .cert-env-check input { accent-color: #1565C0; width: 15px; height: 15px; }
+#certEnvioBox .cert-env-dica { font-size: 11px; color: #64748b; line-height: 1.5; margin-top: 3px; }
+/* A origem do e-mail sugerido. "CADASTRO" pode estar velho e quem envia
+   precisa saber que está usando um palpite, não algo conferido. */
+#certEnvioBox .cert-env-origem { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; padding: 2px 8px; border-radius: 999px; }
+#certEnvioBox .cert-env-origem.digitado { background: #ecfdf5; color: #047857; }
+#certEnvioBox .cert-env-origem.cadastro { background: #fffbeb; color: #b45309; }
+/* O aviso de reenvio. Vai no TOPO da seção, não enterrado sob a lista:
+   quem vai reenviar precisa ver antes de clicar, não depois. */
+#certEnvioBox .cert-env-alerta { background: #fffbeb; border: 1.5px solid #fcd34d; color: #92400e; border-radius: 11px; padding: 10px 13px; font-size: 12.5px; font-weight: 800; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+#certEnvioBox .cert-env-hist { font-size: 12px; color: #475569; line-height: 1.7; }
+#certEnvioBox .cert-env-hist-linha { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid #f1f5f9; }
+#certEnvioBox .cert-env-hist-quando { color: #94a3b8; font-weight: 700; white-space: nowrap; font-size: 11px; }
+#certEnvioBox .cert-env-vazio { font-size: 12px; color: #94a3b8; font-style: italic; }
+#certModalBox .cert-modal-head, #certEnvioBox .cert-modal-head { padding: 18px 22px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
+#certModalBox .cert-modal-head-l, #certEnvioBox .cert-modal-head-l { display: flex; align-items: center; gap: 12px; }
+#certModalBox .cert-modal-ico, #certEnvioBox .cert-modal-ico { width: 40px; height: 40px; border-radius: 11px; background: linear-gradient(135deg, #0b3b75, #1565C0); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+#certModalBox .cert-modal-title, #certEnvioBox .cert-modal-title { font-size: 15px; font-weight: 900; color: #0f172a; }
+#certModalBox .cert-modal-sub, #certEnvioBox .cert-modal-sub   { font-size: 11px; color: #64748b; margin-top: 2px; }
+#certModalBox .cert-modal-body, #certEnvioBox .cert-modal-body  { padding: 20px 22px; overflow-y: auto; flex: 1; }
+#certModalBox .cert-modal-foot, #certEnvioBox .cert-modal-foot  { padding: 14px 22px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
+#certModalBox .cert-modal-close, #certEnvioBox .cert-modal-close { width: 36px; height: 36px; border-radius: 999px; border: 1.5px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer; font-size: 17px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: all .14s; }
+#certModalBox .cert-modal-close:hover, #certEnvioBox .cert-modal-close:hover { background: #fee2e2; border-color: #dc2626; color: #dc2626; }
+#certModalBox .cert-info-grid, #certEnvioBox .cert-info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
+#certModalBox .cert-info-item, #certEnvioBox .cert-info-item { display: flex; flex-direction: column; gap: 3px; }
+#certModalBox .cert-info-label, #certEnvioBox .cert-info-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
+#certModalBox .cert-info-val, #certEnvioBox .cert-info-val   { font-size: 13px; font-weight: 700; color: #1e293b; }
+#certModalBox .cert-section-title, #certEnvioBox .cert-section-title { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #94a3b8; border-bottom: 1px solid #f1f5f9; padding-bottom: 7px; margin-bottom: 12px; margin-top: 16px; }
+#certModalBox .cert-obs-area, #certEnvioBox .cert-obs-area { width: 100%; min-height: 80px; border-radius: 11px; border: 1.5px solid #cbd5e1; background: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; padding: 11px 13px; outline: none; resize: vertical; line-height: 1.55; color: #1e293b; transition: border-color .16s; }
+#certModalBox .cert-obs-area:focus, #certEnvioBox .cert-obs-area:focus { border-color: #1565C0; box-shadow: 0 0 0 4px rgba(21,101,192,.09); }
 
 @media (max-width: 900px) {
   #secCertificadoAdmin .cert-metrics-grid { grid-template-columns: repeat(3, 1fr); }
@@ -358,6 +385,89 @@
   </div>
 </div>
 
+<!-- ══════════════════════════════════════════════════════════════════════
+     MODAL DE ENVIO — abre depois de emitir, e também pela lista
+
+     Existe porque emitir e enviar são dois atos, e separá-los é o que
+     permite emitir hoje e mandar amanhã, reenviar quando o associado apaga
+     o e-mail, e abrir o zap quando o e-mail volta.
+
+     REENVIO É ROTINA, NÃO EXCEÇÃO. O associado perde a mensagem, a escola
+     pede de novo, o semestre vira. Por isso o histórico não é rodapé
+     decorativo: é a informação que evita a quarta cópia mandada por quem
+     achava que era a primeira.
+     ══════════════════════════════════════════════════════════════════════ -->
+<div id="certEnvioOverlay">
+  <div id="certEnvioBox">
+    <div class="cert-modal-head">
+      <div class="cert-modal-head-l">
+        <div class="cert-modal-ico">📨</div>
+        <div>
+          <div class="cert-modal-title">Enviar certificado</div>
+          <div class="cert-modal-sub" id="certEnvSub">—</div>
+        </div>
+      </div>
+      <button class="cert-modal-close" id="certEnvFechar">✕</button>
+    </div>
+
+    <div class="cert-modal-body">
+      <div class="cert-info-grid" style="grid-template-columns:repeat(2,1fr);">
+        <div class="cert-info-item"><span class="cert-info-label">Associado</span><span class="cert-info-val" id="certEnvNome">—</span></div>
+        <div class="cert-info-item"><span class="cert-info-label">Código de validação</span><span class="cert-info-val" id="certEnvCodigo">—</span></div>
+        <div class="cert-info-item"><span class="cert-info-label">Curso / período</span><span class="cert-info-val" id="certEnvCurso">—</span></div>
+        <div class="cert-info-item"><span class="cert-info-label">Emitido em</span><span class="cert-info-val" id="certEnvEmitido">—</span></div>
+      </div>
+
+      <div class="cert-section-title">E-mail</div>
+      <div class="cert-env-campo">
+        <label class="cert-env-lbl" for="certEnvPara">Para (associado)</label>
+        <input type="email" class="cert-env-input" id="certEnvPara" placeholder="e-mail do associado">
+      </div>
+
+      <label class="cert-env-check">
+        <input type="checkbox" id="certEnvCopiaAtiva" checked>
+        Enviar cópia para a instituição de ensino
+      </label>
+      <div class="cert-env-campo">
+        <input type="email" class="cert-env-input" id="certEnvCopia" placeholder="e-mail da instituição">
+        <div class="cert-env-dica" id="certEnvOrigemDica"></div>
+      </div>
+
+      <label class="cert-env-check">
+        <input type="checkbox" id="certEnvAnexo" checked>
+        Anexar o PDF à mensagem
+      </label>
+
+      <div style="display:flex;justify-content:flex-end;margin-top:12px;">
+        <button type="button" class="cert-btn cert-btn-violet cert-btn-sm" id="certEnvBtnEmail">📧 Enviar por e-mail</button>
+      </div>
+
+      <div class="cert-section-title">WhatsApp</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div>
+          <div class="cert-info-val" id="certEnvTelefone">—</div>
+          <!-- O botão diz ABRIR e não ENVIAR de propósito: o SISGEP não manda
+               zap. Não existe API de WhatsApp em nenhum arquivo do projeto —
+               o que existe, em oito telas, é um link wa.me aberto numa aba
+               nova com a mensagem já escrita, e quem aperta enviar é a
+               pessoa, no aparelho dela. Botão que promete o que não faz é
+               como se perde a confiança numa tela inteira. -->
+          <div class="cert-env-dica">O SISGEP não envia WhatsApp — abre a conversa com a mensagem pronta, e você envia.</div>
+        </div>
+        <button type="button" class="cert-btn cert-btn-success cert-btn-sm" id="certEnvBtnZap">💬 Abrir WhatsApp</button>
+      </div>
+
+      <div class="cert-section-title">Já enviado</div>
+      <div id="certEnvAlerta" style="display:none;"></div>
+      <div class="cert-env-hist" id="certEnvHistorico"></div>
+    </div>
+
+    <div class="cert-modal-foot">
+      <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certEnvFechar2">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
 'use strict';
@@ -469,6 +579,9 @@ function renderTabela(){
       +'<td style="text-align:center;"><div style="display:inline-flex;gap:5px;align-items:center;">'
         +'<button type="button" class="cert-btn-abrir-modal" data-id="'+escHtml(s.id)+'" title="Ver / Ações" style="'+bs+'">'+icoEdit+'</button>'
         +(podeEmitir?'<button type="button" class="cert-btn-emitir-rapido" data-id="'+escHtml(s.id)+'" title="Emitir certificado" style="'+bs+'background:#f5f0ff;border-color:#c4b5fd;color:#5b21b6;">🎓</button>':'')
+        /* Enviar só aparece em EMITIDO: antes de existir documento não há o
+           que mandar, e um botão que sempre recusa é pior que botão nenhum. */
+        +(s.status==='EMITIDO'?'<button type="button" class="cert-btn-enviar" data-prot="'+escHtml(s.protocolo||'')+'" title="Enviar / reenviar certificado" style="'+bs+'background:#eff6ff;border-color:#93c5fd;color:#1565C0;">📨</button>':'')
       +'</div></td>'
       +'</tr>';
   });
@@ -483,6 +596,11 @@ function renderTabela(){
     btn.addEventListener('click',function(){
       var s=_lista.find(function(x){return x.id===this.getAttribute('data-id');},this);
       if(s){_solAtual=s; gerarDocumento('CERTIFICADO');}
+    });
+  });
+  tbody.querySelectorAll('.cert-btn-enviar').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      envAbrir(this.getAttribute('data-prot'));
     });
   });
   renderPaginacao(total,totalPag);
@@ -587,6 +705,216 @@ function acao(funcaoGas,labelBtn,labelMsg){
     [funcaoGas](_solAtual.protocolo, obs, certToken());
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   ENVIO — o passo depois de emitir
+
+   `_envAtual` guarda o que o backend devolveu no preparo. É dele que saem
+   o link do zap e os e-mails sugeridos; não se remonta nada no navegador.
+
+   `_envSeq` é sequência de requisição, não bandeira de "carregando". Com
+   bandeira, um segundo pedido feito durante o primeiro é DESCARTADO — e o
+   modal fica mostrando o protocolo errado. Com sequência, o pedido novo
+   sempre vale, e a resposta atrasada do anterior é ignorada ao chegar.
+   ══════════════════════════════════════════════════════════════════════ */
+var _envAtual = null;
+var _envSeq   = 0;
+
+function envFechar(){
+  var o=g('certEnvioOverlay');
+  if(o){o.style.display='none';o.classList.remove('ativo');}
+  _envAtual=null;
+}
+
+/* Exposto no window logo na definição, e não dentro do init: quem chama de
+   fora — a lista, e o teste de tela — precisa dele assim que os scripts
+   rodam, sem depender de o init já ter acontecido. */
+function envAbrir(protocolo){
+  if(!protocolo){msg('Sem protocolo para enviar.','warn');return;}
+  var o=g('certEnvioOverlay');
+  if(o){o.style.display='flex';o.classList.add('ativo');}
+
+  /* Limpa ANTES de pedir. Sem isto o modal abre mostrando os dados do
+     protocolo anterior por um instante — e quem vê um e-mail preenchido
+     acha que é daquele associado. */
+  g('certEnvSub').textContent   = protocolo;
+  g('certEnvNome').textContent  = 'carregando...';
+  g('certEnvCodigo').textContent= '—';
+  g('certEnvCurso').textContent = '—';
+  g('certEnvEmitido').textContent='—';
+  g('certEnvPara').value  = '';
+  g('certEnvCopia').value = '';
+  g('certEnvOrigemDica').innerHTML = '';
+  g('certEnvTelefone').textContent = '—';
+  g('certEnvAlerta').style.display='none';
+  g('certEnvHistorico').innerHTML = '<span class="cert-env-vazio">carregando...</span>';
+
+  var meu = ++_envSeq;
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(meu !== _envSeq) return;            /* resposta atrasada de outro protocolo */
+      if(!r||!r.ok){
+        g('certEnvHistorico').innerHTML='';
+        msg((r&&r.mensagem)||'Não consegui preparar o envio.','erro');
+        envFechar(); return;
+      }
+      _envAtual = r;
+      envPintar(r);
+    })
+    .withFailureHandler(function(err){
+      if(meu !== _envSeq) return;
+      msg('Erro ao preparar o envio: '+((err&&err.message)||''),'erro');
+      envFechar();
+    })
+    .voucherPrepararEnvio(protocolo, certToken());
+}
+
+function envPintar(r){
+  g('certEnvSub').textContent    = r.protocolo || '—';
+  g('certEnvNome').textContent   = r.nome || '—';
+  g('certEnvCodigo').textContent = r.codigo || '—';
+  g('certEnvCurso').textContent  = [r.curso, r.periodo].filter(Boolean).join(' · ') || '—';
+  g('certEnvEmitido').textContent= [r.emitidoEm, r.emitidoPor].filter(Boolean).join(' · ') || '—';
+
+  g('certEnvPara').value  = r.emailAssociado || '';
+  g('certEnvCopia').value = r.emailInstituicao || '';
+
+  /* A ORIGEM DO E-MAIL SUGERIDO, à vista.
+     "CADASTRO" é palpite do sistema e pode estar desatualizado há anos.
+     Sem dizer isso, campo preenchido passa impressão de conferido — e quem
+     envia manda o certificado de alguém para um endereço que ninguém
+     confirmou. */
+  var dica='';
+  if(r.origemEmailInstituicao === 'SOLICITACAO'){
+    dica = '<span class="cert-env-origem digitado">digitado na solicitação</span>';
+  }else if(r.origemEmailInstituicao === 'CADASTRO'){
+    dica = '<span class="cert-env-origem cadastro">achado no cadastro</span> '
+         + 'pode estar desatualizado — confira antes de enviar';
+  }else{
+    dica = 'Nenhum e-mail cadastrado para '
+         + escHtml(r.instituicao || 'a instituição') + '. Digite, ou desmarque a cópia.';
+  }
+  g('certEnvOrigemDica').innerHTML = dica;
+
+  var temTel = !!r.whatsappUrl;
+  g('certEnvTelefone').textContent = r.telefone || 'sem telefone cadastrado';
+  var btnZap = g('certEnvBtnZap');
+  if(btnZap){
+    btnZap.disabled = !temTel;
+    btnZap.style.opacity = temTel ? '' : '.4';
+    btnZap.style.cursor  = temTel ? '' : 'not-allowed';
+  }
+
+  envPintarHistorico(r.envios || []);
+  envSincronizarCopia();
+}
+
+function envPintarHistorico(envios){
+  var caixa=g('certEnvHistorico'), alerta=g('certEnvAlerta');
+  if(!envios.length){
+    caixa.innerHTML='<span class="cert-env-vazio">Nunca enviado.</span>';
+    alerta.style.display='none';
+    return;
+  }
+
+  /* O AVISO VEM ANTES DA LISTA, não depois.
+     Reenvio é rotina neste módulo, e quem abre o modal para reenviar
+     precisa saber quantas vezes já mandou ANTES de clicar. Enterrado sob a
+     lista, o número só é lido por quem já rolou a tela — ou seja, depois. */
+  var emails = envios.filter(function(e){ return String(e.canal||'')==='ENVIAR_EMAIL'; }).length;
+  if(emails >= 1){
+    alerta.innerHTML = '⚠ Este certificado já foi enviado por e-mail '
+      + emails + (emails===1 ? ' vez' : ' vezes') + '.';
+    alerta.className = 'cert-env-alerta';
+    alerta.style.display='flex';
+  }else{
+    alerta.style.display='none';
+  }
+
+  caixa.innerHTML = envios.map(function(e){
+    var ehEmail = String(e.canal||'')==='ENVIAR_EMAIL';
+    var rotulo  = ehEmail ? 'e-mail →' : 'WhatsApp aberto';
+    /* A trilha grava o canal no lugar do destino quando não há destino — é o
+       caso do WhatsApp, que não tem endereço. Sem este filtro a linha sai
+       "WhatsApp aberto WHATSAPP_ABERTO", com o nome interno da ação vazando
+       para a tela de quem opera. */
+    var destino = String(e.destino||'');
+    if(!ehEmail && destino.indexOf('@') < 0) destino = '';
+    return '<div class="cert-env-hist-linha">'
+         + '<span class="cert-env-hist-quando">'+escHtml(envQuando(e.quando))+'</span>'
+         + '<span>'+escHtml(rotulo)+(destino?' '+escHtml(destino):'')+'</span>'
+         + '<span class="cert-env-hist-quando" style="margin-left:auto;">'+escHtml(e.quem||'')+'</span>'
+         + '</div>';
+  }).join('');
+}
+
+window.certAbrirEnvio = envAbrir;
+
+function envQuando(v){
+  if(!v) return '—';
+  var d = (v instanceof Date) ? v : new Date(v);
+  if(isNaN(d.getTime())) return String(v).slice(0,16);
+  function dd(n){ return (n<10?'0':'')+n; }
+  return dd(d.getDate())+'/'+dd(d.getMonth()+1)+' '+dd(d.getHours())+':'+dd(d.getMinutes());
+}
+
+/** Desmarcar a cópia desabilita o campo — e não some com ele, para a pessoa
+    ver o endereço que deixou de usar em vez de achar que sumiu. */
+function envSincronizarCopia(){
+  var ativo = g('certEnvCopiaAtiva') ? g('certEnvCopiaAtiva').checked : true;
+  var campo = g('certEnvCopia');
+  if(campo) campo.disabled = !ativo;
+}
+
+function envEnviarEmail(){
+  if(!_envAtual){msg('Nada preparado para enviar.','warn');return;}
+  var para = String(g('certEnvPara').value||'').trim();
+  if(!para){msg('Informe o e-mail do associado.','warn');g('certEnvPara').focus();return;}
+
+  var enviarInst = g('certEnvCopiaAtiva').checked;
+  var copia = enviarInst ? String(g('certEnvCopia').value||'').trim() : '';
+  if(enviarInst && copia && copia.indexOf('@') < 1){
+    msg('O e-mail da instituição não parece válido.','warn');g('certEnvCopia').focus();return;
+  }
+
+  var btn=g('certEnvBtnEmail');
+  setBtnLoad(btn,'Enviando...');
+  var protocolo=_envAtual.protocolo;
+
+  google.script.run
+    .withSuccessHandler(function(r){
+      resetBtn(btn);
+      if(!r||!r.ok){msg((r&&r.mensagem)||'Erro ao enviar.','erro');return;}
+      msg('✅ '+(r.mensagem||'E-mail enviado.'),'ok');
+      /* Recarrega o preparo em vez de acrescentar a linha na mão: o
+         histórico passa a vir do rastro gravado, que é a fonte, e não de
+         uma cópia montada no navegador que pode divergir dela. */
+      envAbrir(protocolo);
+      carregarLista();
+    })
+    .withFailureHandler(function(err){resetBtn(btn);msg('Erro: '+((err&&err.message)||''),'erro');})
+    .voucherEnviarPorEmail(protocolo, {
+      para: para,
+      enviarInstituicao: enviarInst,
+      copia: copia,
+      anexarPdf: g('certEnvAnexo').checked
+    }, certToken());
+}
+
+function envAbrirZap(){
+  if(!_envAtual || !_envAtual.whatsappUrl){msg('Sem telefone válido para WhatsApp.','warn');return;}
+  var protocolo=_envAtual.protocolo;
+
+  /* A aba abre PRIMEIRO, no clique. Abrir dentro do withSuccessHandler faria
+     o navegador tratar como popup não pedido pelo usuário e bloquear. */
+  window.open(_envAtual.whatsappUrl,'_blank');
+
+  google.script.run
+    .withSuccessHandler(function(){ envAbrir(protocolo); })
+    .withFailureHandler(function(){ /* o zap já abriu; falhar o registro não
+        pode virar mensagem de erro para quem já está com a conversa aberta */ })
+    .voucherRegistrarAberturaWhatsApp(protocolo, certToken());
+}
+
 function gerarDocumento(tipo){
   if(!_solAtual){msg('Nenhuma solicitação selecionada.','warn');return;}
   var btnId=tipo==='CERTIFICADO'?'certBtnGerarCertificado':'certBtnGerarComprovante';
@@ -610,6 +938,16 @@ function gerarDocumento(tipo){
       if(resp.html){
         var janela=window.open('about:blank','_blank');
         if(janela){janela.document.open();janela.document.write(resp.html);janela.document.close();}
+      }
+      /* Emitir e enviar são dois atos, mas na prática vêm colados: quem
+         acabou de gerar o certificado quer mandar agora. O modal abre
+         sozinho — e como é modal, quem não quiser enviar hoje fecha e o
+         documento continua emitido, para enviar depois pela lista.
+         Só no CERTIFICADO: o comprovante é papel interno, não vai para o
+         associado nem para a escola. */
+      if(tipo === 'CERTIFICADO' && _solAtual){
+        var prot = _solAtual.protocolo;
+        setTimeout(function(){ envAbrir(prot); }, 250);
       }
     })
     .withFailureHandler(function(err){resetBtn(btn);msg('Erro: '+((err&&err.message)||''),'erro');})
@@ -691,6 +1029,26 @@ function init(){
       gerarDocumento('CERTIFICADO');
     });
   }
+
+  // ── modal de envio
+  if(g('certEnvFechar'))     g('certEnvFechar').addEventListener('click', envFechar);
+  if(g('certEnvFechar2'))    g('certEnvFechar2').addEventListener('click', envFechar);
+  if(g('certEnvBtnEmail'))   g('certEnvBtnEmail').addEventListener('click', envEnviarEmail);
+  if(g('certEnvBtnZap'))     g('certEnvBtnZap').addEventListener('click', envAbrirZap);
+  if(g('certEnvCopiaAtiva')) g('certEnvCopiaAtiva').addEventListener('change', envSincronizarCopia);
+
+  /* Clicar fora fecha — mas SÓ no overlay, não em qualquer clique que borbulhe
+     de dentro da caixa. Sem o teste de alvo, clicar num campo do formulário
+     fecharia o modal e perderia o que a pessoa digitou. */
+  if(g('certEnvioOverlay')){
+    g('certEnvioOverlay').addEventListener('click', function(ev){
+      if(ev.target === this) envFechar();
+    });
+  }
+  document.addEventListener('keydown', function(ev){
+    if(ev.key === 'Escape' && g('certEnvioOverlay') &&
+       g('certEnvioOverlay').classList.contains('ativo')) envFechar();
+  });
 
   carregarLista();
 }

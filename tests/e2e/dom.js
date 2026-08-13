@@ -136,6 +136,13 @@ function montar(g, arquivos, opts) {
   win.google = { script: { host: { close: function () {} } } };
   Object.defineProperty(win.google.script, "run", { get: novoRunner });
 
+  /* jsdom não implementa scrollIntoView — não é falta da tela, é falta do
+   * andaime. Sem este remendo, qualquer tela que role até a mensagem de
+   * feedback explode no meio do teste, e a explosão se parece com bug da
+   * tela. Vazio de propósito: rolagem é aparência, e aparência não se testa
+   * aqui de todo jeito. */
+  win.Element.prototype.scrollIntoView = function () {};
+
   /* toast() e a navegação entre módulos são do index.html, que não entra
    * aqui. Registrados para o teste poder afirmar que a tela avisou. */
   const avisos = [];
@@ -195,6 +202,23 @@ function montar(g, arquivos, opts) {
       if (!el) throw new Error("select não existe: " + sel);
       el.value = valor;
       el.dispatchEvent(new win.Event("change", { bubbles: true }));
+    },
+    /* CHECKBOX NÃO SE MARCA COM clicar().
+     *
+     * `new Event("click")` não é evento confiável, e o jsdom não executa a
+     * "activation behavior" do checkbox para ele: a caixa NÃO alterna e o
+     * `change` NÃO dispara. Quem usasse clicar() num checkbox veria o estado
+     * não mudar e culparia a tela — foi o que aconteceu na primeira rodada
+     * do t34, onde o campo da cópia "não desabilitava".
+     *
+     * Aqui o estado é posto à mão e o `change` disparado explicitamente, que
+     * é o que a tela de fato escuta. */
+    marcar: function (sel, valor) {
+      const el = win.document.querySelector(sel);
+      if (!el) throw new Error("checkbox não existe: " + sel);
+      el.checked = !!valor;
+      el.dispatchEvent(new win.Event("change", { bubbles: true }));
+      return el.checked;
     }
   };
 }
