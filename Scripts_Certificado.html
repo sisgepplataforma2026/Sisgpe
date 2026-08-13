@@ -118,6 +118,32 @@
 #certModalOverlay.ativo { display: flex; }
 #certModalBox { width: min(820px, 100%); background: #fff; border-radius: 20px; box-shadow: 0 30px 80px rgba(0,20,60,.28); overflow: hidden; max-height: 94vh; display: flex; flex-direction: column; font-family: 'Plus Jakarta Sans', sans-serif; }
 
+/* Modal de NOVA SOLICITAÇÃO. Reaproveita a caixa do modal de envio via a
+   lista de seletores compartilhada, e acrescenta só o que é próprio dele. */
+#certNovaOverlay { position: fixed; inset: 0; background: rgba(15,23,42,.52); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 10001; backdrop-filter: blur(3px); }
+#certNovaOverlay.ativo { display: flex; }
+#certNovaBox { width: min(760px, 100%); background: #fff; border-radius: 20px; box-shadow: 0 30px 80px rgba(0,20,60,.28); overflow: hidden; max-height: 94vh; display: flex; flex-direction: column; font-family: 'Plus Jakarta Sans', sans-serif; }
+#certNovaBox .cert-nv-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 14px; }
+#certNovaBox .cert-nv-campo { display: flex; flex-direction: column; gap: 4px; }
+#certNovaBox .cert-nv-lbl { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
+#certNovaBox .cert-nv-in { width: 100%; border-radius: 10px; border: 1.5px solid #cbd5e1; background: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; padding: 9px 11px; outline: none; color: #1e293b; }
+#certNovaBox .cert-nv-in:focus { border-color: #1565C0; box-shadow: 0 0 0 4px rgba(21,101,192,.09); }
+/* A ORIGEM DE CADA CAMPO PREENCHIDO. Campo que aparece cheio sem dizer de
+   onde veio passa impressão de conferido — e ninguém relê. */
+#certNovaBox .cert-nv-org { font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: 1px 6px; border-radius: 999px; align-self: flex-start; }
+#certNovaBox .cert-nv-org.hist { background: #eff6ff; color: #1565C0; }
+#certNovaBox .cert-nv-org.regra { background: #ecfdf5; color: #047857; }
+#certNovaBox .cert-nv-org.padrao { background: #fffbeb; color: #b45309; }
+#certNovaBox .cert-nv-org.recusa { background: #fef2f2; color: #dc2626; }
+#certNovaBox .cert-nv-aviso { background: #f8fafc; border: 1px solid #cbd5e1; border-left: 3px solid #1565C0; border-radius: 8px; padding: 8px 11px; font-size: 12px; color: #334155; margin-bottom: 7px; line-height: 1.5; }
+#certNovaBox .cert-nv-aviso.alerta { background: #fffbeb; border-color: #fcd34d; border-left-color: #d97706; color: #92400e; font-weight: 700; }
+#certNovaBox .cert-nv-sug { position: relative; }
+#certNovaBox .cert-nv-lista { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1.5px solid #cbd5e1; border-radius: 10px; box-shadow: 0 12px 30px rgba(0,20,60,.16); max-height: 190px; overflow-y: auto; z-index: 30; display: none; }
+#certNovaBox .cert-nv-lista.ativo { display: block; }
+#certNovaBox .cert-nv-item { padding: 8px 11px; font-size: 12.5px; cursor: pointer; border-bottom: 1px solid #f1f5f9; }
+#certNovaBox .cert-nv-item:hover { background: #eff6ff; }
+#certNovaBox .cert-nv-item small { color: #64748b; display: block; font-size: 11px; }
+
 /* Modal de ENVIO. z-index acima do modal de análise porque ele abre POR CIMA:
    quem acabou de emitir continua vendo a solicitação atrás, e fechar o envio
    devolve para onde estava. */
@@ -180,6 +206,7 @@
         <p>Solicitações, validação, aprovação e emissão de certificados</p>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <button type="button" class="cert-btn cert-btn-violet cert-btn-sm" id="certBtnNova">➕ Nova solicitação</button>
         <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certBtnRecarregar">↻ Atualizar</button>
         <button type="button" class="cert-btn cert-btn-gold cert-btn-sm" id="certBtnExportarCsv">📤 Exportar CSV</button>
       </div>
@@ -464,6 +491,130 @@
 
     <div class="cert-modal-foot">
       <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certEnvFechar2">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     NOVA SOLICITAÇÃO — a secretaria transcreve o e-mail do associado
+
+     Hoje o associado pede por e-mail e o sindicato gera. Quem digita aqui
+     JÁ LEU o e-mail e os anexos — por isso existe o botão "Salvar e
+     aprovar" ao lado de "Salvar em análise": aprovar direto economiza dois
+     cliques por certificado sem perder o registro de quem aprovou.
+
+     O formulário separa ONDE TRABALHA de ONDE ESTUDA. São empresas
+     diferentes — "empregado da MULTIVIX", "junto à empresa educacional
+     IESES" — e o cadastro tinha um campo só, o que impedia mandar a cópia
+     do certificado para a faculdade certa.
+     ══════════════════════════════════════════════════════════════════════ -->
+<div id="certNovaOverlay">
+  <div id="certNovaBox">
+    <div class="cert-modal-head">
+      <div class="cert-modal-head-l">
+        <div class="cert-modal-ico">➕</div>
+        <div>
+          <div class="cert-modal-title">Nova solicitação de bolsa</div>
+          <div class="cert-modal-sub">Recebida por e-mail do associado</div>
+        </div>
+      </div>
+      <button class="cert-modal-close" id="certNvFechar">✕</button>
+    </div>
+
+    <div class="cert-modal-body">
+      <div id="certNvAvisos"></div>
+
+      <div class="cert-section-title" style="margin-top:0;">Quem pede</div>
+      <div class="cert-nv-campo cert-nv-sug" style="margin-bottom:10px;">
+        <label class="cert-nv-lbl">Buscar associado (nome ou CPF)</label>
+        <input type="text" class="cert-nv-in" id="certNvBusca" placeholder="digite ao menos 3 caracteres" autocomplete="off">
+        <div class="cert-nv-lista" id="certNvListaAssoc"></div>
+      </div>
+      <div class="cert-nv-grid">
+        <div class="cert-nv-campo"><label class="cert-nv-lbl">CPF</label><input class="cert-nv-in" id="certNvCpf"></div>
+        <div class="cert-nv-campo"><label class="cert-nv-lbl">Nome do associado</label><input class="cert-nv-in" id="certNvNome"></div>
+        <div class="cert-nv-campo"><label class="cert-nv-lbl">E-mail</label><input class="cert-nv-in" id="certNvEmail"></div>
+        <div class="cert-nv-campo"><label class="cert-nv-lbl">Telefone</label><input class="cert-nv-in" id="certNvTelefone"></div>
+      </div>
+
+      <div class="cert-section-title">Onde trabalha</div>
+      <div class="cert-nv-grid">
+        <div class="cert-nv-campo"><label class="cert-nv-lbl">Escola / empregador</label><input class="cert-nv-in" id="certNvEscola"></div>
+        <div class="cert-nv-campo"><label class="cert-nv-lbl">CNPJ da escola</label><input class="cert-nv-in" id="certNvCnpjEscola"></div>
+      </div>
+
+      <div class="cert-section-title">Onde estuda</div>
+      <div class="cert-nv-campo cert-nv-sug" style="margin-bottom:10px;">
+        <label class="cert-nv-lbl">Instituição de ensino <span id="certNvOrgInst"></span></label>
+        <input type="text" class="cert-nv-in" id="certNvInstituicao" autocomplete="off">
+        <div class="cert-nv-lista" id="certNvListaInst"></div>
+      </div>
+      <div class="cert-nv-grid">
+        <div class="cert-nv-campo"><label class="cert-nv-lbl">CNPJ da instituição</label><input class="cert-nv-in" id="certNvCnpjInst"></div>
+        <div class="cert-nv-campo"><label class="cert-nv-lbl">E-mail da instituição <span id="certNvOrgEmailInst"></span></label><input class="cert-nv-in" id="certNvEmailInst"></div>
+      </div>
+
+      <div class="cert-section-title">O benefício</div>
+      <div class="cert-nv-grid">
+        <div class="cert-nv-campo"><label class="cert-nv-lbl">Beneficiário</label><input class="cert-nv-in" id="certNvBeneficiario"></div>
+        <div class="cert-nv-campo">
+          <label class="cert-nv-lbl">Parentesco</label>
+          <select class="cert-nv-in" id="certNvTipoBenef">
+            <option value="TITULAR">Titular</option>
+            <option value="CONJUGE">Cônjuge</option>
+            <option value="FILHO">Filho</option>
+            <option value="ENTEADO">Enteado</option>
+          </select>
+        </div>
+        <div class="cert-nv-campo">
+          <label class="cert-nv-lbl">Modalidade</label>
+          <select class="cert-nv-in" id="certNvModalidade">
+            <option value="">—</option>
+            <option value="CRECHE">Creche (0–3)</option>
+            <option value="EDUCACAO_INFANTIL">Educação Infantil (4–5)</option>
+            <option value="ENSINO_FUNDAMENTAL">Ensino Fundamental</option>
+            <option value="ENSINO_MEDIO">Ensino Médio</option>
+            <option value="TECNICO">Técnico</option>
+            <option value="GRADUACAO">Graduação</option>
+            <option value="POS_GRADUACAO">Pós-Graduação</option>
+            <option value="MESTRADO">Mestrado</option>
+            <option value="DOUTORADO">Doutorado</option>
+          </select>
+        </div>
+        <div class="cert-nv-campo">
+          <label class="cert-nv-lbl">Área (graduação)</label>
+          <select class="cert-nv-in" id="certNvArea">
+            <option value="">—</option>
+            <option value="HUMANAS">Humanas</option>
+            <option value="SAUDE">Saúde</option>
+            <option value="ENGENHARIA">Engenharia / Exatas</option>
+          </select>
+        </div>
+        <div class="cert-nv-campo"><label class="cert-nv-lbl">Curso</label><input class="cert-nv-in" id="certNvCurso"></div>
+        <div class="cert-nv-campo">
+          <label class="cert-nv-lbl">Ordem do filho</label>
+          <select class="cert-nv-in" id="certNvOrdem">
+            <option value="">—</option><option value="1">1º filho</option>
+            <option value="2">2º filho</option><option value="3">3º filho</option>
+          </select>
+        </div>
+        <div class="cert-nv-campo"><label class="cert-nv-lbl">Idade do beneficiário</label><input class="cert-nv-in" id="certNvIdade" type="number" min="0" max="120"></div>
+        <div class="cert-nv-campo"><label class="cert-nv-lbl">Período de referência</label><input class="cert-nv-in" id="certNvPeriodo" placeholder="2026/2"></div>
+        <div class="cert-nv-campo">
+          <label class="cert-nv-lbl">Percentual (%) <span id="certNvOrgPct"></span></label>
+          <input class="cert-nv-in" id="certNvPercentual" type="number" min="0" max="100">
+        </div>
+        <div class="cert-nv-campo"><label class="cert-nv-lbl">Regime</label><input class="cert-nv-in" id="certNvRegime"></div>
+      </div>
+
+      <div class="cert-section-title">Observações</div>
+      <textarea class="cert-obs-area" id="certNvObs" placeholder="O que o e-mail do associado dizia, o que falta, o que foi combinado..."></textarea>
+    </div>
+
+    <div class="cert-modal-foot">
+      <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certNvCancelar">Cancelar</button>
+      <button type="button" class="cert-btn cert-btn-gold cert-btn-sm" id="certNvSalvarAnalise">Salvar em análise</button>
+      <button type="button" class="cert-btn cert-btn-success cert-btn-sm" id="certNvSalvarAprovar">Salvar e aprovar</button>
     </div>
   </div>
 </div>
@@ -915,6 +1066,225 @@ function envAbrirZap(){
     .voucherRegistrarAberturaWhatsApp(protocolo, certToken());
 }
 
+
+/* ══════════════════════════════════════════════════════════════════════
+   NOVA SOLICITAÇÃO — a tela que consome a memória
+
+   `_nvSeq` é sequência de requisição, como no modal de envio. Quem digita
+   depressa dispara várias sugestões, e sem sequência a resposta de "adm"
+   chega depois da de "administra" e sobrescreve o campo com o palpite
+   errado.
+   ══════════════════════════════════════════════════════════════════════ */
+var _nvSeq = 0;
+var _nvTimer = null;
+var _nvTimerInst = null;
+
+function nvCampos(){
+  return {
+    cpf:              g('certNvCpf').value,
+    nome:             g('certNvNome').value,
+    email:            g('certNvEmail').value,
+    telefone:         g('certNvTelefone').value,
+    escola:           g('certNvEscola').value,
+    cnpjEscola:       g('certNvCnpjEscola').value,
+    instituicao:      g('certNvInstituicao').value,
+    cnpjInstituicao:  g('certNvCnpjInst').value,
+    emailInstituicao: g('certNvEmailInst').value,
+    beneficiario:     g('certNvBeneficiario').value,
+    tipoBeneficiario: g('certNvTipoBenef').value,
+    modalidade:       g('certNvModalidade').value,
+    area:             g('certNvArea').value,
+    curso:            g('certNvCurso').value,
+    ordemFilho:       g('certNvOrdem').value,
+    idadeBeneficiario:g('certNvIdade').value === '' ? '' : Number(g('certNvIdade').value),
+    periodo:          g('certNvPeriodo').value,
+    percentual:       g('certNvPercentual').value,
+    regime:           g('certNvRegime').value,
+    observacoes:      g('certNvObs').value
+  };
+}
+
+function nvLimpar(){
+  ['certNvBusca','certNvCpf','certNvNome','certNvEmail','certNvTelefone','certNvEscola',
+   'certNvCnpjEscola','certNvInstituicao','certNvCnpjInst','certNvEmailInst',
+   'certNvBeneficiario','certNvCurso','certNvIdade','certNvPeriodo','certNvPercentual',
+   'certNvRegime','certNvObs'].forEach(function(id){ if(g(id)) g(id).value=''; });
+  ['certNvModalidade','certNvArea','certNvOrdem'].forEach(function(id){ if(g(id)) g(id).value=''; });
+  if(g('certNvTipoBenef')) g('certNvTipoBenef').value='TITULAR';
+  ['certNvOrgInst','certNvOrgEmailInst','certNvOrgPct','certNvAvisos'].forEach(function(id){
+    if(g(id)) g(id).innerHTML='';
+  });
+}
+
+function nvAbrir(){
+  nvLimpar();
+  var o=g('certNovaOverlay');
+  if(o){o.style.display='flex';o.classList.add('ativo');}
+  if(g('certNvBusca')) g('certNvBusca').focus();
+}
+function nvFechar(){
+  var o=g('certNovaOverlay');
+  if(o){o.style.display='none';o.classList.remove('ativo');}
+}
+
+/** Etiqueta de origem — o que faz "preenchido" não virar "conferido". */
+function nvOrigem(el, origem){
+  if(!el) return;
+  var mapa = {
+    ULTIMA_SOLICITACAO: ['hist','da última dele'],
+    REGRA_CCT:          ['regra','regra da convenção'],
+    REGRA_CCT_RECUSA:   ['recusa','convenção não prevê'],
+    PADRAO_DO_CURSO:    ['padrao','padrão do curso'],
+    MEMORIA_INSTITUICAO:['hist','já usada antes']
+  };
+  var m = mapa[origem];
+  el.innerHTML = m ? '<span class="cert-nv-org '+m[0]+'">'+m[1]+'</span>' : '';
+}
+
+/** Pergunta ao backend o que ele já sabe, e preenche o que ainda está vazio. */
+function nvSugerir(){
+  var meu = ++_nvSeq;
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(meu !== _nvSeq) return;          // resposta atrasada de outra digitação
+      if(!r || !r.ok) return;
+      var c = r.campos || {}, org = r.origens || {};
+
+      /* O QUE A PESSOA JÁ DIGITOU NUNCA É SOBRESCRITO.
+         A memória preenche o vazio; ela não corrige quem está digitando. O
+         percentual é a exceção deliberada: quando vem da REGRA da convenção,
+         ele manda — e continua editável, que foi a decisão do usuário. */
+      [['nome','certNvNome'],['email','certNvEmail'],['telefone','certNvTelefone'],
+       ['escola','certNvEscola'],['cnpjEscola','certNvCnpjEscola'],
+       ['instituicao','certNvInstituicao'],['cnpjInstituicao','certNvCnpjInst'],
+       ['emailInstituicao','certNvEmailInst'],['beneficiario','certNvBeneficiario'],
+       ['curso','certNvCurso'],['regime','certNvRegime']].forEach(function(par){
+        var el=g(par[1]);
+        if(el && !String(el.value||'').trim() && c[par[0]]) el.value=c[par[0]];
+      });
+      ['modalidade','area','tipoBeneficiario'].forEach(function(k){
+        var el = g(k==='modalidade'?'certNvModalidade':k==='area'?'certNvArea':'certNvTipoBenef');
+        if(el && !el.value && c[k]) el.value=c[k];
+      });
+
+      var pct=g('certNvPercentual');
+      if(pct){
+        /* RECUSA DA CONVENÇÃO LIMPA O CAMPO — e este `REGRA_CCT_RECUSA`
+           faltava aqui.
+           Sem ele, trocar a modalidade para Mestrado deixava a etiqueta
+           dizendo "convenção não prevê" ao lado de um campo mostrando os
+           50% da área anterior. Duas informações contraditórias na mesma
+           linha, e a que vale para o que se grava é a errada: bastava
+           clicar em Salvar para conceder desconto onde não há. */
+        if(org.percentual==='REGRA_CCT' || org.percentual==='REGRA_CCT_RECUSA'
+           || !String(pct.value||'').trim()){
+          pct.value = (c.percentual===undefined||c.percentual===null) ? '' : c.percentual;
+        }
+      }
+      nvOrigem(g('certNvOrgPct'), org.percentual);
+      nvOrigem(g('certNvOrgInst'), org.instituicao);
+      nvOrigem(g('certNvOrgEmailInst'), org.emailInstituicao);
+
+      var caixa=g('certNvAvisos');
+      if(caixa){
+        caixa.innerHTML = (r.avisos||[]).map(function(a){
+          var alerta = r.divergencia && /[úu]ltima bolsa/i.test(a);
+          return '<div class="cert-nv-aviso'+(alerta?' alerta':'')+'">'+escHtml(a)+'</div>';
+        }).join('');
+      }
+    })
+    .withFailureHandler(function(){})
+    .voucherSugerirSolicitacao(nvCampos(), certToken());
+}
+
+function nvBuscarAssociado(){
+  var termo=String(g('certNvBusca').value||'').trim();
+  var lista=g('certNvListaAssoc');
+  if(termo.length<3){ lista.classList.remove('ativo'); return; }
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r||!r.ok||!r.associados.length){ lista.classList.remove('ativo'); return; }
+      lista.innerHTML = r.associados.map(function(a,i){
+        return '<div class="cert-nv-item" data-i="'+i+'">'+escHtml(a.nome)
+             + '<small>'+escHtml(a.cpfMascarado)+(a.escola?' · '+escHtml(a.escola):'')+'</small></div>';
+      }).join('');
+      lista.classList.add('ativo');
+      lista.querySelectorAll('.cert-nv-item').forEach(function(it){
+        it.addEventListener('click',function(){
+          var a=r.associados[Number(this.getAttribute('data-i'))];
+          g('certNvCpf').value=a.cpf;
+          g('certNvNome').value=a.nome;
+          if(a.email && !g('certNvEmail').value) g('certNvEmail').value=a.email;
+          if(a.telefone && !g('certNvTelefone').value) g('certNvTelefone').value=a.telefone;
+          if(a.escola && !g('certNvEscola').value) g('certNvEscola').value=a.escola;
+          lista.classList.remove('ativo');
+          g('certNvBusca').value=a.nome;
+          nvSugerir();          // é aqui que a história dele aparece
+        });
+      });
+    })
+    .withFailureHandler(function(){ lista.classList.remove('ativo'); })
+    .voucherBuscarAssociado(termo, certToken());
+}
+
+function nvBuscarInstituicao(){
+  var termo=String(g('certNvInstituicao').value||'').trim();
+  var lista=g('certNvListaInst');
+  if(termo.length<2){ lista.classList.remove('ativo'); return; }
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r||!r.ok||!r.instituicoes.length){ lista.classList.remove('ativo'); return; }
+      lista.innerHTML = r.instituicoes.map(function(x,i){
+        return '<div class="cert-nv-item" data-i="'+i+'">'+escHtml(x.nome)
+             + '<small>'+escHtml(x.cnpj||'sem CNPJ')+' · usada '+x.vezes+'x</small></div>';
+      }).join('');
+      lista.classList.add('ativo');
+      lista.querySelectorAll('.cert-nv-item').forEach(function(it){
+        it.addEventListener('click',function(){
+          var x=r.instituicoes[Number(this.getAttribute('data-i'))];
+          g('certNvInstituicao').value=x.nome;
+          if(x.cnpj)  g('certNvCnpjInst').value=x.cnpj;
+          if(x.email) g('certNvEmailInst').value=x.email;
+          nvOrigem(g('certNvOrgInst'),'MEMORIA_INSTITUICAO');
+          nvOrigem(g('certNvOrgEmailInst'), x.email?'MEMORIA_INSTITUICAO':'');
+          lista.classList.remove('ativo');
+        });
+      });
+    })
+    .withFailureHandler(function(){ lista.classList.remove('ativo'); })
+    .voucherInstituicoesSugerir(termo, certToken());
+}
+
+function nvSalvar(aprovar){
+  var btn = g(aprovar?'certNvSalvarAprovar':'certNvSalvarAnalise');
+  var dados = nvCampos();
+  dados.aprovar = !!aprovar;
+
+  /* Barrado ANTES de sair: o backend também recusa, mas deixar a ida ao
+     servidor acontecer para voltar com "falta o CPF" é meio segundo de
+     espera para dizer o que a tela já sabia. */
+  if(String(dados.cpf||'').replace(/\D/g,'').length!==11){
+    msg('Informe um CPF válido — é por ele que a memória reencontra o associado.','warn');
+    g('certNvCpf').focus(); return;
+  }
+  if(!String(dados.nome||'').trim()){ msg('Informe o nome do associado.','warn'); return; }
+  if(!String(dados.modalidade||'').trim()){ msg('Escolha a modalidade.','warn'); return; }
+
+  setBtnLoad(btn, aprovar?'Aprovando...':'Salvando...');
+  google.script.run
+    .withSuccessHandler(function(r){
+      resetBtn(btn);
+      if(!r||!r.ok){ msg((r&&r.mensagem)||'Erro ao salvar.','erro'); return; }
+      msg('✅ '+r.mensagem,'ok');
+      nvFechar();
+      carregarLista();
+    })
+    .withFailureHandler(function(err){ resetBtn(btn); msg('Erro: '+((err&&err.message)||''),'erro'); })
+    .voucherCriarSolicitacao(dados, certToken());
+}
+
+window.certAbrirNovaSolicitacao = nvAbrir;
+
 function gerarDocumento(tipo){
   if(!_solAtual){msg('Nenhuma solicitação selecionada.','warn');return;}
   var btnId=tipo==='CERTIFICADO'?'certBtnGerarCertificado':'certBtnGerarComprovante';
@@ -1049,6 +1419,41 @@ function init(){
     if(ev.key === 'Escape' && g('certEnvioOverlay') &&
        g('certEnvioOverlay').classList.contains('ativo')) envFechar();
   });
+
+  // ── nova solicitação
+  if(g('certBtnNova'))          g('certBtnNova').addEventListener('click', nvAbrir);
+  if(g('certNvFechar'))         g('certNvFechar').addEventListener('click', nvFechar);
+  if(g('certNvCancelar'))       g('certNvCancelar').addEventListener('click', nvFechar);
+  if(g('certNvSalvarAnalise'))  g('certNvSalvarAnalise').addEventListener('click', function(){ nvSalvar(false); });
+  if(g('certNvSalvarAprovar'))  g('certNvSalvarAprovar').addEventListener('click', function(){ nvSalvar(true); });
+
+  /* Debounce nas duas buscas. Sem ele, cada tecla vira uma ida ao servidor
+     e a planilha inteira é lida oito vezes para digitar "Marcelo". */
+  if(g('certNvBusca')){
+    g('certNvBusca').addEventListener('input', function(){
+      clearTimeout(_nvTimer); _nvTimer=setTimeout(nvBuscarAssociado, 320);
+    });
+  }
+  if(g('certNvInstituicao')){
+    g('certNvInstituicao').addEventListener('input', function(){
+      clearTimeout(_nvTimerInst); _nvTimerInst=setTimeout(nvBuscarInstituicao, 320);
+    });
+  }
+
+  /* Mudou modalidade, área, curso, ordem ou idade → o percentual pode mudar.
+     São exatamente os campos que a regra da convenção lê. */
+  ['certNvModalidade','certNvArea','certNvOrdem','certNvTipoBenef'].forEach(function(id){
+    if(g(id)) g(id).addEventListener('change', nvSugerir);
+  });
+  ['certNvCurso','certNvIdade'].forEach(function(id){
+    if(g(id)) g(id).addEventListener('change', nvSugerir);
+  });
+
+  if(g('certNovaOverlay')){
+    g('certNovaOverlay').addEventListener('click', function(ev){
+      if(ev.target === this) nvFechar();
+    });
+  }
 
   carregarLista();
 }
