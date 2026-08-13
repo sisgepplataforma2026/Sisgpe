@@ -622,7 +622,23 @@ function montarSystemPrompt_(contexto, mensagem) {
   var resumo = contexto.resumo || {};
 
     var consulta = String(mensagem || "").toLowerCase();
-  var precisaCCT = /(cct|convenção|convencao|cláusula|clausula|dissídio|dissidio|acordo coletivo)/i.test(consulta);
+
+  /* O BOTÃO "CCT" DA BARRA LATERAL NÃO CARREGAVA A CCT.
+   *
+   * A decisão de anexar o texto da convenção olhava SÓ as palavras da
+   * pergunta. Quem clicava em "CCT" na lista de especialidades e perguntava
+   * "quanto ganha um secretário escolar?" — sem escrever "CCT", "cláusula"
+   * nem "convenção" — recebia resposta SEM a convenção anexada. A IA
+   * respondia assim mesmo, do que sabia por fora, e ninguém tinha como
+   * perceber: a resposta vinha com a mesma cara de sempre.
+   *
+   * É o pior tipo de defeito num assistente: ele não erra o formato, erra a
+   * fonte. Agora o domínio escolhido também manda — quem entrou na
+   * especialidade CCT está dizendo, com todas as letras, sobre o que quer
+   * falar. */
+  var dominioAtual = String((contexto && contexto.dominio) || "").toUpperCase();
+  var precisaCCT = dominioAtual === "CCT" ||
+    /(cct|convenção|convencao|cláusula|clausula|dissídio|dissidio|acordo coletivo|piso|reajuste)/i.test(consulta);
   var conteudoCCT = precisaCCT ? selecionarContextoIA_(getCCTTexto_(), consulta, 90000) : "";
   var memoriaRelevante = selecionarContextoIA_(carregarMemoriaOrganizacional(), consulta, 30000);
 
