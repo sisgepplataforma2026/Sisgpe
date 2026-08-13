@@ -359,7 +359,16 @@ function gerarHtmlDocumentoVoucher_(dados) {
     (!!beneficiario && !!nomeSolicitante &&
       beneficiario.trim().toUpperCase() !== nomeSolicitante.trim().toUpperCase());
 
-  const rg = dados.rg || reg.RG || "";
+  const rg = dados.rg || reg.RG || reg.RG_SOLICITANTE || "";
+  /* O CPF É DO TITULAR, como o RG — mesmo quando o beneficiário é o filho.
+   * Quem tem vínculo de emprego com a instituição é o associado, e é o
+   * vínculo dele que sustenta o benefício; identificar o dependente por
+   * documento não diria nada à escola.
+   *
+   * Ele não existe no papel de hoje — entrou por pedido do usuário em
+   * 13/08/2026 ("tem que ter o CPF também e identidade"). Passa pelo mesmo
+   * formatarCpfVoucher_ que devolve o zero à esquerda que o Sheets come. */
+  const cpf = formatarCpfVoucher_(reg.CPF_SOLICITANTE || "");
   const curso = reg.CURSO || "";
   const periodo = reg.PERIODO_REFERENCIA || "";
   const regime = String(reg.REGIME || "").toUpperCase();
@@ -409,6 +418,10 @@ function gerarHtmlDocumentoVoucher_(dados) {
     "<strong>" + escHtmlVoucher_(beneficiario) + "</strong>" +
     (ehDependente ? ", dependente de <strong>" + escHtmlVoucher_(nomeSolicitante) + "</strong>" : "") +
     frag(", portador da carteira de identidade nº ", rg) +
+    /* "e inscrito no CPF sob o nº" — a mesma construção que o documento já
+     * usa para o CNPJ da mantenedora, para as duas identificações lerem
+     * igual. Some inteira quando não há CPF, como as outras orações. */
+    (cpf ? " e inscrito no CPF sob o nº <strong>" + escHtmlVoucher_(cpf) + "</strong>" : "") +
     frag(", empregado da instituição ", instituicaoTexto) +
     frag(", mantida pela ", mantenedora) +
     (cnpj ? ", inscrita no CNPJ sob nº <strong>" + escHtmlVoucher_(cnpj) + "</strong>" : "") +

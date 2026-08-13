@@ -134,19 +134,25 @@ b.ok(externas.length === 0,
   "nenhum src=http no documento — tudo embutido",
   externas.length ? externas.slice(0, 2).join(" · ") : "");
 
-b.passo("11. O CPF não vai para o certificado — e o cru, muito menos");
-/* MUDOU EM 13/08/2026, quando o usuário mandou o documento que o sindicato
- * realmente emite. Ele não traz CPF: identifica o titular pelo RG, e o
- * beneficiário pelo nome. A asserção anterior exigia o CPF formatado no
- * documento — estava medindo o certificado que EU tinha inventado.
+b.passo("11. O CPF sai no certificado — formatado, e nunca cru");
+/* DUAS MUDANÇAS NO MESMO DIA, e vale registrar as duas porque a segunda
+ * corrige a primeira:
  *
- * Não levar o CPF é melhor por dois motivos, e o segundo vale mais: o
- * documento vai por e-mail para a instituição de ensino, que não precisa do
- * CPF de ninguém para aplicar um desconto. */
-b.ok(String(html).indexOf("085.381.047-80") === -1,
-  "o certificado não carrega o CPF do associado");
-b.ok(String(html).indexOf("8538104780") === -1,
+ *   1. Quando o usuário mandou o documento real, tirei o CPF: o papel de hoje
+ *      identifica o titular pelo RG e o beneficiário pelo nome.
+ *   2. Ele então pediu "tem que ter o CPF também e identidade". É decisão
+ *      dele — é o documento do sindicato dele — e o CPF voltou.
+ *
+ * O que NÃO muda em nenhuma das duas versões é o que este teste protege
+ * desde o começo: se o CPF aparecer, aparece completo e formatado. O número
+ * cru de dez dígitos num documento oficial foi o defeito real de 12/08. */
+b.ok(String(html).indexOf("085.381.047-80") > -1,
+  "o CPF aparece completo e formatado");
+b.ok(String(html).indexOf(">8538104780<") === -1 &&
+     String(html).indexOf(" 8538104780") === -1,
   "e o número cru de 10 dígitos não aparece em lugar nenhum");
+b.ok(/inscrito no CPF sob o nº/.test(html),
+  "com a mesma construção que o documento usa para o CNPJ");
 
 b.passo("12. O texto é o do documento real, e muda com quem é o beneficiário");
 /* O PDF que o sindicato emite, mandado pelo usuário em 13/08/2026. As frases
@@ -180,6 +186,8 @@ b.passo("13. Oração sem dado não vira 'campo vazio' no documento");
  * não dizer nada: parece erro de emissão para quem recebe. */
 b.ok(!/carteira de identidade/.test(htmlTitular),
   "sem RG, a oração inteira desaparece");
+b.ok(!/inscrito no CPF/.test(htmlTitular),
+  "e sem CPF, a do CPF também — cada oração some sozinha");
 
 b.passo("14. A marca d'água é imagem própria e embutida");
 b.ok(/class='dagua'/.test(htmlTitular), "a marca d'água está no documento");
