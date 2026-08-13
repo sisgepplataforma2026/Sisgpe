@@ -457,6 +457,39 @@ function el(id) { return doc.getElementById(id); }
     "o aviso foi para o toast, que fica acima do modal",
     t.avisos.length ? t.avisos[t.avisos.length-1].msg.slice(0, 60) : "nenhum");
 
+
+  b.passo("27. Aprovar NÃO fecha o modal — a área de emissão aparece");
+  /* Aprovar e emitir vêm colados. Fechar aqui obrigava a pessoa a achar a
+   * mesma linha na lista e clicar no 🎓 — dois passos para continuar o que
+   * ela já estava fazendo. A área de emissão já está neste modal; só ficava
+   * escondida porque o status ainda não era APROVADO. */
+  await t.assentar(60);
+  const emAnalise = g.voucherCriarSolicitacao({
+    cpf: CPF_M, nome: "Marcelo Alves de Oliveira",
+    modalidade: "GRADUACAO", area: "HUMANAS", percentual: 70, aprovar: false
+  }, TOKEN);
+  t.clicar("#certBtnRecarregar");
+  await t.assentar(250);
+
+  const linhaNova = doc.querySelector('.cert-btn-abrir-modal');
+  if (linhaNova) {
+    /* Abre pela lista, como quem opera faz. */
+    win.certAbrirEnvio && null;
+    const btns = doc.querySelectorAll('.cert-btn-abrir-modal');
+    t.clicar(btns[0]);
+    await t.assentar(120);
+    b.ok(el("certModalOverlay").classList.contains("ativo"), "modal de análise aberto");
+
+    t.clicar("#certBtnAprovar");
+    await t.assentar(700);
+    b.ok(el("certModalOverlay").classList.contains("ativo"),
+      "continua aberto depois de aprovar");
+    b.ok(el("certModalEmissaoArea").style.display !== "none",
+      "e a área de emissão apareceu, pronta para gerar o certificado");
+  } else {
+    b.aviso("lista vazia no teste", "passo 27 não pôde rodar");
+  }
+
   /* ═══════════════════════════════════════════════════════════════════ */
   b.fluxo("NOVA SOLICITAÇÃO · O CSS alcança o modal novo");
 

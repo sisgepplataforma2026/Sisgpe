@@ -685,6 +685,26 @@ function certToken(){ return (typeof SISGEP_TOKEN_SESSAO!=='undefined') ? SISGEP
 function escHtml(t){ return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function normTxt(t){ return String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim(); }
 
+/* A DATA VINHA CRUA — e foi ela que empurrou a coluna "Ações" para fora.
+ *
+ * O valor chega como Date do Apps Script e virava
+ * "Thu Aug 13 2026 02:21:00 GMT-0300 (Horário Padrão de Brasília)": 55
+ * caracteres numa coluna que precisa de 14. A tabela esticava, e o botão de
+ * ação — que sempre esteve lá, no cabeçalho e na linha — ficava fora da
+ * área visível. O usuário viu "não tem botão de ação"; o que havia era uma
+ * coluna espremida contra a borda.
+ *
+ * Dia e hora bastam: quem opera quer saber se entrou hoje ou semana passada,
+ * não o fuso horário. */
+function certData(v){
+  if(!v) return '—';
+  var d = (v instanceof Date) ? v : new Date(v);
+  if(isNaN(d.getTime())) return String(v).slice(0,16);
+  function dd(n){ return (n<10?'0':'')+n; }
+  return dd(d.getDate())+'/'+dd(d.getMonth()+1)+'/'+d.getFullYear()
+       + ' ' + dd(d.getHours())+':'+dd(d.getMinutes());
+}
+
 function msg(texto, tipo){
   /* O FEEDBACK IA PARAR ATRÁS DO MODAL.
    *
@@ -793,7 +813,7 @@ function renderTabela(){
       +'<td style="font-size:11.5px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(s.curso||'—')+'</td>'
       +'<td style="font-size:11.5px;">'+escHtml(s.periodoReferencia||s.periodo||'—')+'</td>'
       +'<td>'+badgeStatus(s.status)+'</td>'
-      +'<td style="font-size:11px;color:#64748b;white-space:nowrap;">'+escHtml(s.data||'—')+'</td>'
+      +'<td style="font-size:11px;color:#64748b;white-space:nowrap;">'+escHtml(certData(s.data))+'</td>'
       +'<td style="text-align:center;"><div style="display:inline-flex;gap:5px;align-items:center;">'
         +'<button type="button" class="cert-btn-abrir-modal" data-id="'+escHtml(s.id)+'" title="Ver / Ações" style="'+bs+'">'+icoEdit+'</button>'
         +(podeEmitir?'<button type="button" class="cert-btn-emitir-rapido" data-id="'+escHtml(s.id)+'" title="Emitir certificado" style="'+bs+'background:#f5f0ff;border-color:#c4b5fd;color:#5b21b6;">🎓</button>':'')
@@ -864,7 +884,7 @@ function abrirModal(s){
   set('cmi-modalidade',  s.nivel||s.modalidade);
   set('cmi-curso',       s.curso);
   set('cmi-periodo',     s.periodoReferencia||s.periodo);
-  set('cmi-data',        s.data);
+  set('cmi-data',        certData(s.data));
   if(g('certModalObs')) g('certModalObs').value=s.observacao||'';
   if(g('certModalRg'))  g('certModalRg').value=s.rg||'';
 
@@ -917,7 +937,30 @@ function acao(funcaoGas,labelBtn,labelMsg){
       resetBtn(btn);
       if(!resp||!resp.ok){msg((resp&&resp.mensagem)||'Erro.','erro');return;}
       msg('✅ '+(resp.mensagem||labelMsg+' com sucesso!'),'ok');
-      fecharModal(); carregarLista();
+      carregarLista();
+
+      /* APROVAR E EMITIR VÊM COLADOS.
+       *
+       * Fechar o modal aqui obrigava a pessoa a achar a mesma linha na lista
+       * e clicar no 🎓 — dois passos para continuar o que ela já estava
+       * fazendo. E a área de emissão JÁ ESTÁ neste modal; ela só ficava
+       * escondida porque o status ainda não era APROVADO.
+       *
+       * Então o modal fica aberto e se REABRE com o registro atualizado: a
+       * área de emissão aparece, com o percentual já lá. Quem não quiser
+       * emitir agora fecha, e a aprovação continua gravada.
+       *
+       * As outras duas ações — indeferir e solicitar complementação —
+       * fecham, porque ali o trabalho realmente acabou. */
+      if(labelBtn === 'certBtnAprovar' && _solAtual){
+        var prot = _solAtual.protocolo;
+        setTimeout(function(){
+          var atualizada = _lista.find(function(x){ return x.protocolo === prot; });
+          if(atualizada) abrirModal(atualizada);
+        }, 400);
+      } else {
+        fecharModal();
+      }
     })
     .withFailureHandler(function(err){resetBtn(btn);msg('Erro: '+((err&&err.message)||''),'erro');})
     [funcaoGas](_solAtual.protocolo, obs, certToken());
