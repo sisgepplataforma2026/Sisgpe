@@ -134,11 +134,59 @@ b.ok(externas.length === 0,
   "nenhum src=http no documento — tudo embutido",
   externas.length ? externas.slice(0, 2).join(" · ") : "");
 
-b.passo("11. E o CPF sai formatado no documento, não cru");
-b.ok(String(html).indexOf("085.381.047-80") > -1,
-  "o CPF aparece completo e formatado no HTML do certificado");
-b.ok(String(html).indexOf(">8538104780<") === -1,
+b.passo("11. O CPF não vai para o certificado — e o cru, muito menos");
+/* MUDOU EM 13/08/2026, quando o usuário mandou o documento que o sindicato
+ * realmente emite. Ele não traz CPF: identifica o titular pelo RG, e o
+ * beneficiário pelo nome. A asserção anterior exigia o CPF formatado no
+ * documento — estava medindo o certificado que EU tinha inventado.
+ *
+ * Não levar o CPF é melhor por dois motivos, e o segundo vale mais: o
+ * documento vai por e-mail para a instituição de ensino, que não precisa do
+ * CPF de ninguém para aplicar um desconto. */
+b.ok(String(html).indexOf("085.381.047-80") === -1,
+  "o certificado não carrega o CPF do associado");
+b.ok(String(html).indexOf("8538104780") === -1,
   "e o número cru de 10 dígitos não aparece em lugar nenhum");
+
+b.passo("12. O texto é o do documento real, e muda com quem é o beneficiário");
+/* O PDF que o sindicato emite, mandado pelo usuário em 13/08/2026. As frases
+ * abaixo são dele, não minhas — é o que separa "documento do sindicato" de
+ * "documento que eu achei bonito". */
+b.ok(/CERTIFICADO DE HABILITAÇÃO À BOLSA DE ESTUDOS/.test(html), "o título é o do papel");
+b.ok(/SINEPE/.test(html), "cita o convênio com o SINEPE-ES");
+b.ok(/dependente de <strong>Fulano de Tal<\/strong>/.test(html),
+  "beneficiário diferente do titular ganha a oração 'dependente de'");
+b.ok(/ano letivo de 2026\/2/.test(html),
+  "e bolsa ANUAL diz 'ano letivo', não 'semestre letivo'");
+
+const htmlTitular = g.gerarHtmlDocumentoVoucher_({
+  protocolo: "BOLSA-2026-000002", codigo: "T2", percentual: 50,
+  reg: { NOME_SOLICITANTE: "Fulano de Tal", NOME_BENEFICIARIO: "Fulano de Tal",
+         TIPO_BENEFICIARIO: "TITULAR", ESCOLA_FANTASIA: "MULTIVIX",
+         ESCOLA_SELECIONADA: "EMBRAE S/A", CNPJ_ESCOLA: "01936248000121",
+         CURSO: "Direito", PERIODO_REFERENCIA: "2026/1", REGIME: "SEMESTRAL" }
+});
+b.ok(!/dependente de/.test(htmlTitular),
+  "quando o beneficiário é o próprio titular, a oração some");
+b.ok(/semestre letivo de 2026\/1/.test(htmlTitular), "e semestral diz 'semestre letivo'");
+b.ok(/instituição <strong>MULTIVIX<\/strong>/.test(htmlTitular),
+  "a instituição é o NOME FANTASIA");
+b.ok(/mantida pela <strong>EMBRAE S\/A<\/strong>/.test(htmlTitular),
+  "e a mantenedora é a RAZÃO SOCIAL — os dois já existem no cadastro de Escolas");
+b.ok(/01\.936\.248\/0001-21/.test(htmlTitular), "com o CNPJ formatado");
+
+b.passo("13. Oração sem dado não vira 'campo vazio' no documento");
+/* "portador da carteira de identidade nº —" num documento oficial é pior que
+ * não dizer nada: parece erro de emissão para quem recebe. */
+b.ok(!/carteira de identidade/.test(htmlTitular),
+  "sem RG, a oração inteira desaparece");
+
+b.passo("14. A marca d'água é imagem própria e embutida");
+b.ok(/class='dagua'/.test(htmlTitular), "a marca d'água está no documento");
+const marca = g.marcaDaguaVoucher_();
+b.ok(String(marca).indexOf("data:") === 0,
+  "e vem como data: — URL externa funcionaria na prévia e sumiria no PDF",
+  String(marca).slice(0, 30));
 
 /* ══════════════════════════════════════════════════════════════════════
    O DIAGNÓSTICO DAS IMAGENS

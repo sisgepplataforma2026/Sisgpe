@@ -98,6 +98,9 @@ function voucherCriarSolicitacao(dados, tokenSessao) {
       STATUS_VALIDACAO_SINDICAL: aprovar ? "VALIDADO" : "PENDENTE",
       /* Onde TRABALHA */
       ESCOLA_SELECIONADA: String(dados.escola || "").trim(),
+      /* Razão social em ESCOLA_SELECIONADA, fantasia aqui: é assim que o
+       * certificado consegue dizer "instituição X, mantida pela Y". */
+      ESCOLA_FANTASIA: String(dados.escolaFantasia || "").trim(),
       UNIDADE_ESCOLA: String(dados.unidadeEscola || "").trim(),
       CNPJ_ESCOLA: String(dados.cnpjEscola || "").replace(/\D/g, ""),
       CIDADE_ESCOLA: String(dados.cidadeEscola || "").trim(),

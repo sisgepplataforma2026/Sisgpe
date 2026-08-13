@@ -382,6 +382,11 @@ function gerarHtmlDocumentoVoucher_(dados) {
   const qrCodeUrl = gerarQrCodeVoucherUrl_(codigo);
   const assinaturaImg = assinaturaPresidenteVoucher_();
   const logoImg = logoSindicatoVoucher_();
+  /* A marca d'água tem imagem PRÓPRIA — a do papel do sindicato, extraída do
+   * PDF real. Reusar a logo com transparência chegava perto e não era: a logo
+   * traz o texto "SindEducação ES" junto, e o que aparece no fundo da página
+   * é só o símbolo. Ver VoucherMarcaDagua.gs. */
+  const marcaDagua = (typeof marcaDaguaVoucher_ === "function") ? marcaDaguaVoucher_() : "";
 
   function frag(rotulo, valor) {
     return valor ? rotulo + "<strong>" + escHtmlVoucher_(valor) + "</strong>" : "";
@@ -462,7 +467,7 @@ function gerarHtmlDocumentoVoucher_(dados) {
     "<body>" +
     "<div class='pagina'>" +
 
-    (logoImg ? "<img class='dagua' src='" + escHtmlVoucher_(logoImg) + "'>" : "") +
+    (marcaDagua ? "<img class='dagua' src='" + escHtmlVoucher_(marcaDagua) + "'>" : "") +
 
     "<div class='cab'>" +
     (logoImg ? "<img class='cab-logo' src='" + escHtmlVoucher_(logoImg) + "'>" : "<div></div>") +

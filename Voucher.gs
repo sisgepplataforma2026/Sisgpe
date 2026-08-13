@@ -394,6 +394,13 @@ function VOUCHER_COLUNAS_SOLICITACOES_() {
         "UNIDADE_ESCOLA",
         "CNPJ_ESCOLA",
         "CIDADE_ESCOLA",
+        /* O NOME FANTASIA, ao lado da razão social que já estava em
+         * ESCOLA_SELECIONADA. O certificado real precisa dos dois na mesma
+         * frase — "instituição MULTIVIX – VITÓRIA, mantida pela Empresa
+         * Brasileira de Ensino... EMBRAE" — e com um campo só a frase perdia
+         * metade. Os dois já existem no cadastro de Escolas; o que faltava
+         * era a solicitação guardar o par. */
+        "ESCOLA_FANTASIA",
         /* A INSTITUIÇÃO DE ENSINO É OUTRA EMPRESA.
          *
          * ESCOLA_SELECIONADA é onde o associado TRABALHA; estas duas são onde
