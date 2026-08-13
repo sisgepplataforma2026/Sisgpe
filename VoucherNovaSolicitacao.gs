@@ -63,6 +63,20 @@ function voucherCriarSolicitacao(dados, tokenSessao) {
     if (cpf.length !== 11) faltando.push("CPF válido");
     if (!nome) faltando.push("nome do associado");
     if (!modalidade) faltando.push("modalidade");
+    /* O PERÍODO É OBRIGATÓRIO — e a falta dele não era um campo em branco a
+     * mais, era a trava de duplicidade desligada.
+     *
+     * Achado em 13/08/2026, na tela do usuário: duas solicitações com a
+     * coluna PERÍODO vazia. Reproduzido no emulador — sem período, a mesma
+     * pessoa, no mesmo curso, passa DUAS VEZES: a janela que o
+     * voucherPeriodoHistorico_ compara é o período, e comparar vazio com
+     * vazio não delimita janela nenhuma. "Não pode gerar duas vezes para a
+     * mesma pessoa" (decisão de 13/08) deixava de valer sem ninguém ver.
+     *
+     * A porta pública já exigia (VoucherSolicitacao.gs, "Informe o período de
+     * referência"); a administrativa não. Mesma divergência de portas que o
+     * STATUS_SOLICITACAO teve, e mesma correção: alinhar pela mais estrita. */
+    if (!String(dados.periodo || "").trim()) faltando.push("período de referência");
     if (faltando.length) {
       return { ok: false, mensagem: "Falta preencher: " + faltando.join(", ") + "." };
     }

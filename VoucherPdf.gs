@@ -463,10 +463,34 @@ function gerarHtmlDocumentoVoucher_(dados) {
    * traz o texto "SindEducação ES" junto, e o que aparece no fundo da página
    * é só o símbolo. Ver VoucherMarcaDagua.gs. */
   const marcaDagua = (typeof marcaDaguaVoucher_ === "function") ? marcaDaguaVoucher_() : "";
-  /* Cabeçalho e rodapé também vêm do papel real, como imagem única. A prévia
-   * renderizada em 13/08/2026 mostrou por quê: com a logo do Drive mais as
-   * faixas em CSS, as faixas apareciam DUAS VEZES — o arquivo de logo já traz
-   * a faixa inteira. Ver VoucherMarcaDagua.gs. */
+  /* ── CABEÇALHO E RODAPÉ: A ARTE REAL, COM DESENHO DE RESERVA ──────────
+   *
+   * ERRO MEU, CORRIGIDO EM 13/08/2026 — vale registrar porque a conclusão
+   * errada quase virou arquitetura.
+   *
+   * Eu tinha medido UM PDF emitido no ar, visto que faltavam o cabeçalho e o
+   * rodapé, e concluído que o conversor `getAs(MimeType.PDF)` largava as
+   * imagens grandes (12 KB e 21 KB) pelo caminho. Reescrevi as duas peças em
+   * CSS por causa disso.
+   *
+   * Estava errado. Um segundo PDF, emitido 46 minutos depois, traz as duas
+   * imagens inteiras — 1000×177 com 12.010 bytes e 1000×226 com 21.865. O
+   * conversor nunca largou nada. O que faltava, na primeira emissão, era o
+   * PRÓPRIO ARQUIVO: as constantes de cabeçalho e rodapé ainda não estavam no
+   * projeto do Apps Script naquele momento.
+   *
+   * Uma amostra, duas explicações possíveis, e eu escolhi a que exigia menos
+   * verificação. A arte volta a ser imagem porque a arte é melhor: a faixa
+   * rosa do papel é um paralelogramo, os contatos têm ícones e a tarja do
+   * Salmos é manuscrita — nada disso se reproduz com retângulo de CSS.
+   *
+   * O DESENHO FICA COMO RESERVA. Se um dia a constante não estiver lá, o
+   * documento sai com a logo pequena e as faixas desenhadas em vez de sair
+   * careca — e é isso que a primeira emissão precisava ter feito. Reserva
+   * que ninguém exercita é reserva que não funciona, então o t33 exercita as
+   * duas pontas. */
+  const cabecalhoImg = (typeof cabecalhoVoucher_ === "function") ? cabecalhoVoucher_() : "";
+  const rodapeImg = (typeof rodapeVoucher_ === "function") ? rodapeVoucher_() : "";
   const logoPapel = (typeof logoVoucherPapel_ === "function") ? logoVoucherPapel_() : "";
   /* O rodapé virou desenho; a data por extenso vem do mesmo helper que o
      ofício da escola já usa, para os dois documentos datarem igual. */
@@ -565,15 +589,12 @@ function gerarHtmlDocumentoVoucher_(dados) {
         "box-shadow:0 2px 6px rgba(15,39,71,.12),0 12px 34px rgba(15,39,71,.18);}" +
     "}" +
 
-    /* ── cabeçalho: logo à esquerda, faixas à direita ── */
-    /* ── CABEÇALHO E RODAPÉ DESENHADOS, não fotografados ──────────────
-       As duas peças eram JPEG de 1000px (12 KB e 21 KB). Medindo o PDF
-       emitido no ar, as duas SUMIRAM: só entraram marca d'água, QR e
-       assinatura. O conversor largou as maiores sem dizer nada.
-       Agora as faixas, os contatos e a tarja do Salmos são retângulos e
-       texto — que em PDF saem vetoriais, mais nítidos que qualquer JPEG, e
-       não têm peso para o conversor engasgar. Só a marca do sindicato
-       continua imagem, porque é arte. */
+    /* ── cabeçalho: a arte do papel, largura inteira ── */
+    ".cab-img{width:100%;display:block;}" +
+
+    /* ── e o desenho de reserva, para quando a arte não estiver lá ──
+       Só entra em cena se cabecalhoVoucher_ devolver vazio. Ver o comentário
+       longo em gerarHtmlDocumentoVoucher_ sobre por que a reserva existe. */
     ".cab{position:relative;height:40mm;padding:9mm 0 0 28mm;box-sizing:border-box;}" +
     ".cab-logo{width:60mm;height:auto;display:block;}" +
     /* AS DUAS FAIXAS SE SOBREPÕEM, não se empilham. Medindo o papel real: a
@@ -622,7 +643,13 @@ function gerarHtmlDocumentoVoucher_(dados) {
        área visível de uma página com overflow:hidden. Ancorando as duas
        diretamente — contatos acima, tarja colada no pé — não há empilhamento
        para dar errado, e o conversor não precisa calcular fluxo nenhum. */
-    ".rodape{position:absolute;left:0;right:0;bottom:0;height:44mm;}" +
+    /* SEM ALTURA FIXA: com a arte, quem dá a altura é a própria imagem. Fixar
+     * 44mm aqui cortava o rodapé do papel, que é mais alto que isso. */
+    ".rodape{position:absolute;left:0;right:0;bottom:0;}" +
+    ".rod-img{width:100%;display:block;}" +
+    /* O desenho de reserva precisa da altura, porque as peças dele são
+     * absolutas e sem caixa não teriam de onde se pendurar. */
+    ".rod-desenho{position:relative;height:44mm;}" +
     /* 25mm: a tarja termina em 22mm, e com 18mm as duas últimas linhas de
      * contato caíam DENTRO do azul — texto azul sobre fundo azul, ilegível.
      * Medido na renderização, não estimado. */
@@ -656,11 +683,15 @@ function gerarHtmlDocumentoVoucher_(dados) {
 
     (marcaDagua ? "<img class='dagua' src='" + escHtmlVoucher_(marcaDagua) + "'>" : "") +
 
-    "<div class='cab'>" +
-      (logoPapel ? "<img class='cab-logo' src='" + escHtmlVoucher_(logoPapel) + "'>" : "") +
-      "<div class='faixa faixa-azul'></div>" +
-      "<div class='faixa faixa-rosa'></div>" +
-    "</div>" +
+    /* A arte primeiro; o desenho só se ela faltar. Nunca os dois — foi o que
+     * aconteceu numa tentativa anterior e as faixas saíram em duplicata. */
+    (cabecalhoImg
+      ? "<img class='cab-img' src='" + escHtmlVoucher_(cabecalhoImg) + "'>"
+      : "<div class='cab'>" +
+          (logoPapel ? "<img class='cab-logo' src='" + escHtmlVoucher_(logoPapel) + "'>" : "") +
+          "<div class='faixa faixa-azul'></div>" +
+          "<div class='faixa faixa-rosa'></div>" +
+        "</div>") +
 
     "<div class='corpo'>" +
     "<h1>CERTIFICADO DE HABILITAÇÃO À BOLSA DE ESTUDOS</h1>" +
@@ -681,11 +712,24 @@ function gerarHtmlDocumentoVoucher_(dados) {
     "</div>" +
 
     "<div class='rodape'>" +
-    "<div class='rod-contatos'>" +
-      "(27) 3222-2706<br>(27) 99735-8900<br>sindeducacao.com<br>" +
-      "contato@sindeducacao.com<br>SindEducacaoES<br>sindeducacaoes" +
-    "</div>" +
-    "<div class='rod-tarja'>Você comerá do fruto do seu trabalho e será feliz e próspero. Salmos 128:2.</div>" +
+    (rodapeImg
+      ? "<img class='rod-img' src='" + escHtmlVoucher_(rodapeImg) + "'>"
+      : "<div class='rod-desenho'>" +
+          /* E-mail e site conferidos com o usuário em 13/08/2026:
+           * secretaria@sindeducacao.com e www.sindeducacao.com.
+           *
+           * ATENÇÃO: a ARTE do rodapé (VOUCHER_RODAPE_B64_) ainda traz
+           * "contato@sindeducacao.com" e "sindeducacao.com" desenhados dentro
+           * do JPEG, e daqui não há como corrigir — imagem não se edita por
+           * código. Enquanto o caminho normal for a arte, é o endereço antigo
+           * que sai impresso. Para corrigir de verdade, é preciso uma nova
+           * imagem de rodapé. */
+          "<div class='rod-contatos'>" +
+            "(27) 3222-2706<br>(27) 99735-8900<br>www.sindeducacao.com<br>" +
+            "secretaria@sindeducacao.com<br>SindEducacaoES<br>sindeducacaoes" +
+          "</div>" +
+          "<div class='rod-tarja'>Você comerá do fruto do seu trabalho e será feliz e próspero. Salmos 128:2.</div>" +
+        "</div>") +
     "<div class='valida-box'>" +
     (qrCodeUrl ? "<img class='valida-qr' src='" + escHtmlVoucher_(qrCodeUrl) + "'>" : "") +
     "<div class='valida'>" +

@@ -1392,7 +1392,15 @@ function envAbrir(protocolo){
       if(meu !== _envSeq) return;            /* resposta atrasada de outro protocolo */
       if(!r||!r.ok){
         g('certEnvHistorico').innerHTML='';
-        msg((r&&r.mensagem)||'Não consegui preparar o envio.','erro');
+        /* "Não consegui preparar o envio." sozinho não dizia NADA — e foi o
+           que o usuário viu na tela em 13/08/2026, sem ter para onde ir.
+           O backend sempre manda um motivo; quando não vier nenhum, o que
+           aconteceu foi resposta vazia do servidor, e é isso que se diz,
+           com o protocolo junto para dar por onde começar. */
+        msg((r&&r.mensagem) ||
+            ('O servidor não respondeu nada ao preparar o envio de '+protocolo+
+             '. Recarregue a tela (F5) e tente de novo; se repetir, é erro de '+
+             'execução do Apps Script.'),'erro');
         envFechar(); return;
       }
       _envAtual = r;
@@ -2251,6 +2259,14 @@ function nvSalvar(aprovar){
       'Informe o nome do associado.')) return;
   if(!nvExigir('certNvModalidade', !!String(dados.modalidade||'').trim(),
       'Escolha a modalidade.')) return;
+  /* O PERÍODO ENTROU NESTA LISTA EM 13/08/2026, e não é campo cosmético:
+     é a janela que a trava de "um por pessoa, por curso, por período"
+     compara. Duas solicitações foram gravadas sem ele na tela real, e sem
+     período a mesma pessoa passa duas vezes no mesmo curso — a trava não
+     tem o que comparar. Marca o ANO, que é a parte obrigatória: em bolsa
+     anual não há semestre. */
+  if(!nvExigir('certNvPeriodoAno', !!String(dados.periodo||'').trim(),
+      'Escolha o período de referência — é ele que impede o mesmo voucher sair duas vezes.')) return;
 
   /* A trava também barra AQUI, não só no visual. Botão desabilitado é
      aparência; esta linha é a regra. O servidor recusa de novo depois — três

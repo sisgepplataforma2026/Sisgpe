@@ -255,6 +255,50 @@ if (!d.jsdomDisponivel()) {
     "e gerar some — a segunda emissão devolve o mesmo código, não um novo");
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   SEM PERÍODO, A TRAVA DE DUPLICIDADE NÃO TRAVA
+
+   Achado em 13/08/2026 na tela do usuário: duas solicitações com a coluna
+   PERÍODO vazia. Parecia campo em branco a mais; era a trava desligada.
+
+   O motivo é simples quando se olha: a trava compara a JANELA de uma
+   solicitação com a janela das anteriores. Se a janela é vazia, não há o que
+   comparar — e a mesma pessoa, no mesmo curso, passa duas vezes. "Não pode
+   gerar duas vezes para a mesma pessoa" (decisão do usuário em 13/08)
+   deixava de valer sem ninguém ver, porque o sistema não reclamava de nada.
+
+   A porta pública já exigia o período; a administrativa, não. Este bloco
+   existe porque a correção passou por uma bateria de mutação e SOBREVIVEU —
+   nenhum teste acusava a remoção da regra. Um teste que não morre quando a
+   regra some não protege a regra. */
+b.fluxo("VOUCHER · 7b. O período é obrigatório — é ele que sustenta a trava");
+
+b.passo("1. Sem período, a solicitação é recusada na porta administrativa");
+const semPeriodo = novaSolicitacao({ cpf: "52998224725", nome: "SEM PERIODO",
+  periodo: "" });
+b.igual(semPeriodo.ok, false, "não grava");
+b.ok(/período de referência/i.test(semPeriodo.mensagem || ""),
+  "e diz qual campo falta, com o nome que está na tela", semPeriodo.mensagem);
+
+b.passo("2. E a recusa não é genérica — CPF e nome continuam sendo cobrados");
+const semNada = g.voucherCriarSolicitacao({ modalidade: "GRADUACAO" }, token);
+b.ok(/CPF válido/.test(semNada.mensagem || "") &&
+     /nome do associado/.test(semNada.mensagem || "") &&
+     /período de referência/.test(semNada.mensagem || ""),
+  "os três faltando saem juntos, numa lista só", semNada.mensagem);
+
+b.passo("3. Com período, a mesma pessoa no mesmo curso é barrada de verdade");
+/* É a prova de que a exigência serve para alguma coisa: o par CPF+curso só
+ * é bloqueado porque existe uma janela para comparar. */
+const p1 = novaSolicitacao({ cpf: "52998224725", nome: "COM PERIODO",
+  periodo: "2027/1" });
+b.ok(p1.ok, "a primeira entra", p1.protocolo || p1.mensagem);
+const p2 = novaSolicitacao({ cpf: "52998224725", nome: "COM PERIODO",
+  periodo: "2027/1" });
+b.igual(p2.ok, false, "a segunda é barrada");
+b.ok(/2027\/1/.test(p2.mensagem || ""),
+  "e a mensagem nomeia a janela ocupada", p2.mensagem);
+
 /* ══════════════════════════════════════════════════════════════════════ */
 b.fluxo("VOUCHER · 8. O que ainda não dá para provar aqui");
 

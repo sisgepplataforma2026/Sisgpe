@@ -328,19 +328,47 @@ b.ok(/@page\{size:A4 portrait;margin:0;\}/.test(papel),
 b.igual(mm(".pagina", "width"), 210, "largura de folha A4");
 b.igual(mm(".pagina", "min-height"), 297, "altura de folha A4");
 
-b.passo("18. Cabeçalho e rodapé são desenho, não fotografia");
-b.ok(/class='faixa faixa-azul'/.test(papel) && /class='faixa faixa-rosa'/.test(papel),
-  "as duas faixas do timbre são divs — o conversor não tem o que largar");
-b.ok(/rod-tarja/.test(papel) && /Salmos 128:2/.test(papel),
-  "a tarja do Salmos vai como texto");
-b.ok(/\(27\) 3222-2706/.test(papel) && /contato@sindeducacao\.com/.test(papel),
-  "e os contatos também");
-/* A logo continua imagem porque é arte — mas é a pequena, de 6 KB, que
- * sobreviveu à conversão quando as de 12 KB e 21 KB sumiram. */
-b.ok(String(g.logoVoucherPapel_()).indexOf("data:") === 0,
-  "a logo do timbre é embutida em base64");
+/* ── A ARTE PRIMEIRO, O DESENHO DE RESERVA ────────────────────────────
+   Este passo era o contrário disto até 13/08/2026, e o contrário estava
+   errado. Eu tinha medido UM PDF sem cabeçalho e concluído que o conversor
+   largava imagem grande; um segundo PDF, 46 minutos depois, trouxe as duas
+   imagens inteiras (12.010 e 21.865 bytes). O que faltava na primeira
+   emissão era o arquivo, que ainda não estava no projeto.
 
-b.passo("19. As faixas se sobrepõem em vez de virar escada");
+   Agora o teste exercita AS DUAS PONTAS — porque reserva que ninguém
+   exercita é reserva que não funciona. */
+b.passo("18. Com a arte do papel, é a arte que entra");
+b.ok(/<img class='cab-img'/.test(papel), "o cabeçalho é a imagem do papel timbrado");
+b.ok(/<img class='rod-img'/.test(papel), "e o rodapé também");
+b.ok(!/<div class='faixa faixa-azul'>/.test(papel),
+  "e o desenho NÃO entra junto — faixa em cima de faixa foi defeito real");
+b.ok(String(g.cabecalhoVoucher_()).indexOf("data:") === 0 &&
+     String(g.rodapeVoucher_()).indexOf("data:") === 0,
+  "as duas vêm embutidas em base64, não de URL externa");
+
+b.passo("19. Sem a arte, o desenho assume — e o documento não sai careca");
+const cabOrig = g.cabecalhoVoucher_, rodOrig = g.rodapeVoucher_;
+g.cabecalhoVoucher_ = function () { return ""; };
+g.rodapeVoucher_ = function () { return ""; };
+const reserva = g.gerarHtmlDocumentoVoucher_({
+  protocolo: "BOLSA-RESERVA", codigo: "X1",
+  reg: { NOME_SOLICITANTE: "Fulano de Tal" }
+});
+g.cabecalhoVoucher_ = cabOrig; g.rodapeVoucher_ = rodOrig;
+b.ok(!/<img class='cab-img'/.test(reserva) && !/<img class='rod-img'/.test(reserva),
+  "sem a arte, nenhuma das duas imagens é escrita");
+b.ok(/<div class='faixa faixa-azul'>/.test(reserva) && /<div class='faixa faixa-rosa'>/.test(reserva),
+  "as faixas passam a ser desenhadas");
+b.ok(/rod-tarja/.test(reserva) && /Salmos 128:2/.test(reserva),
+  "a tarja do Salmos vai como texto");
+/* Endereços conferidos com o usuário em 13/08/2026. Valem para o desenho; a
+ * arte tem os antigos gravados dentro do JPEG e só muda trocando a imagem. */
+b.ok(/secretaria@sindeducacao\.com/.test(reserva) && /www\.sindeducacao\.com/.test(reserva),
+  "com o e-mail e o site corretos");
+b.ok(String(g.logoVoucherPapel_()).indexOf("data:") === 0,
+  "e a logo pequena do desenho é embutida em base64");
+
+b.passo("20. No desenho, as faixas se sobrepõem em vez de virar escada");
 const azulTopo = mm(".faixa-azul", "top");
 const rosaTopo = mm(".faixa-rosa", "top");
 b.ok(Math.abs(azulTopo - rosaTopo) <= 2,
@@ -348,7 +376,7 @@ b.ok(Math.abs(azulTopo - rosaTopo) <= 2,
   "azul " + azulTopo + "mm, rosa " + rosaTopo + "mm");
 b.ok(rosaTopo < azulTopo, "com a rosa por cima, ligeiramente acima");
 
-b.passo("20. O rodapé não atropela a si mesmo — o defeito que só a renderização mostrou");
+b.passo("21. E o rodapé desenhado não atropela a si mesmo");
 const tarjaBase = mm(".rod-tarja", "bottom");
 const contatosBase = mm(".rod-contatos", "bottom");
 const validaBase = mm(".valida-box", "bottom");
@@ -363,7 +391,7 @@ b.ok(validaBase >= TETO_TARJA,
   "validação em " + validaBase + "mm");
 b.ok(tarjaBase > 0, "e a tarja não encosta na borda de baixo da folha");
 
-b.passo("21. O QR e o código de validação FICAM — decisão do usuário, travada aqui");
+b.passo("22. O QR e o código de validação FICAM — decisão do usuário, travada aqui");
 /* 13/08/2026. Eu apontei que o certificado de referência do sindicato não tem
  * QR nem código; o usuário respondeu "manter o QR code e código de validação".
  * Está escrito neste teste, e não só num comentário, porque comentário não
@@ -402,7 +430,7 @@ const red = g.gerarHtmlDocumentoVoucher_({
   }
 });
 
-b.passo("22. As orações do papel, palavra por palavra");
+b.passo("23. As orações do papel, palavra por palavra");
 b.ok(/em conformidade com a cláusula de Incentivo ao Aprimoramento prevista na/.test(red),
   "cita a cláusula de Incentivo ao Aprimoramento — era 'nos termos do convênio'");
 b.ok(/atende aos requisitos estabelecidos para a concessão do benefício de/.test(red),
@@ -414,7 +442,7 @@ b.ok(/A presente certificação destina-se à comprovação da habilitação do 
 b.ok(!/pessoal, individual e intransferível/.test(red),
   "a redação antiga saiu de vez — não ficou meio a meio");
 
-b.passo("23. O ano da CCT sai da fonte única, não fixo no texto");
+b.passo("24. O ano da CCT sai da fonte única, não fixo no texto");
 b.igual(g.cctVigenteVoucher_(), "2026/2027",
   "vem de NEGCOL_VIGENCIA, que é onde a CCT vigente já era declarada");
 b.ok(/Convenção Coletiva de Trabalho 2026\/2027, firmada com o/.test(red),

@@ -231,6 +231,9 @@ function el(id) { return doc.getElementById(id); }
   el("certNvCpf").value = CPF_M;
   t.escolher("#certNvModalidade", "GRADUACAO");
   t.escolher("#certNvArea", "HUMANAS");
+  /* Período obrigatório desde 13/08/2026 — ver o passo 12. */
+  t.escolher("#certNvPeriodoAno", String(new Date().getFullYear()));
+  t.escolher("#certNvPeriodoSem", "1");
   await t.assentar(150);
   t.clicar("#certNvSalvarAnalise");
   await t.assentar(200);
@@ -247,6 +250,12 @@ function el(id) { return doc.getElementById(id); }
   t.escolher("#certNvModalidade", "GRADUACAO");
   t.escolher("#certNvArea", "HUMANAS");
   el("certNvCurso").value = "Administracao";
+  /* O ANO DO PERÍODO passou a ser obrigatório em 13/08/2026 — na tela e no
+     backend. Sem ele o modal não fecha, e é isso que o usuário viu na
+     produção ao contrário: solicitação gravada SEM período, com a trava de
+     duplicidade sem janela para comparar. */
+  t.escolher("#certNvPeriodoAno", String(new Date().getFullYear()));
+  t.escolher("#certNvPeriodoSem", "2");
   await t.assentar(150);
   t.clicar("#certNvSalvarAprovar");
   await t.assentar(250);
@@ -410,9 +419,15 @@ function el(id) { return doc.getElementById(id); }
    *   b) A recusa era escrita em #certMsgBox, que fica na área da LISTA —
    *      atrás do modal aberto. O backend respondia com um motivo claro e a
    *      tela não mostrava nada. */
+  /* O `periodo` entrou aqui em 13/08/2026 e o teste ficou VERMELHO antes
+   * disso — corretamente. Sem período a solicitação passava a ser recusada,
+   * porque sem período a trava de "um por pessoa, por curso, por janela" não
+   * tem janela para comparar e deixa a mesma pessoa passar duas vezes. O
+   * teste é que estava desatualizado, não a regra nova. */
   const nova = g.voucherCriarSolicitacao({
     cpf: CPF_M, nome: "Marcelo Alves de Oliveira",
-    modalidade: "GRADUACAO", area: "HUMANAS", percentual: 70, aprovar: false
+    modalidade: "GRADUACAO", area: "HUMANAS", percentual: 70,
+    periodo: "2026/2", aprovar: false
   }, TOKEN);
   b.ok(nova.ok, "solicitação criada em análise", nova.protocolo);
 
@@ -439,8 +454,13 @@ function el(id) { return doc.getElementById(id); }
   /* A trava certa não foi removida — só a errada. */
   const naoAss = g.voucherCriarSolicitacao({
     cpf: "52998224725", nome: "Nao Associado", modalidade: "GRADUACAO",
-    area: "HUMANAS", situacaoSindical: "NAO_ASSOCIADO", aprovar: false
+    area: "HUMANAS", situacaoSindical: "NAO_ASSOCIADO",
+    periodo: "2026/2", aprovar: false
   }, TOKEN);
+  /* Sem esta asserção o teste seguinte mentia: a solicitação nem chegava a
+   * ser criada (faltava o período) e a "recusa" que ele comemorava era
+   * "protocolo não encontrado", não "só associado tem direito". */
+  b.ok(naoAss.ok, "a solicitação do não-associado é criada", naoAss.protocolo || naoAss.mensagem);
   const rec = g.aprovarSolicitacaoVoucher(naoAss.protocolo, "", TOKEN);
   b.ok(rec && rec.ok === false, "aprovação recusada");
   b.ok(/s[óo] associado/i.test(rec.mensagem || ""),
@@ -464,10 +484,15 @@ function el(id) { return doc.getElementById(id); }
    * ela já estava fazendo. A área de emissão já está neste modal; só ficava
    * escondida porque o status ainda não era APROVADO. */
   await t.assentar(60);
+  /* Período obrigatório desde 13/08/2026 — e num período ainda livre, senão
+     a trava de duplicidade recusa a criação e o resto do passo não acontece. */
   const emAnalise = g.voucherCriarSolicitacao({
     cpf: CPF_M, nome: "Marcelo Alves de Oliveira",
-    modalidade: "GRADUACAO", area: "HUMANAS", percentual: 70, aprovar: false
+    modalidade: "GRADUACAO", area: "HUMANAS", percentual: 70,
+    periodo: (new Date().getFullYear() + 1) + "/1", aprovar: false
   }, TOKEN);
+  b.ok(emAnalise.ok, "a solicitação em análise foi criada",
+    emAnalise.protocolo || emAnalise.mensagem);
   t.clicar("#certBtnRecarregar");
   await t.assentar(250);
 

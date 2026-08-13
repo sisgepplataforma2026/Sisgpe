@@ -12,48 +12,55 @@
 
 ## 🔴 ABERTO
 
-### 22. Voucher — o certificado no papel timbrado do sindicato
-**Aberto em:** 13/08/2026 · `VoucherPdf.gs`, `VoucherMarcaDagua.gs`
+### 22. Voucher — o papel timbrado, a redação e o período obrigatório
+**Aberto em:** 13/08/2026 · `VoucherPdf.gs`, `VoucherNovaSolicitacao.gs`, `Scripts_Certificado.html`
 
-O certificado saía **sem cabeçalho e sem rodapé**. O motivo foi medido, não
-suposto: as duas peças eram JPEG de 1000px (12 KB e 21 KB) e o
-`getAs(MimeType.PDF)` do Apps Script **largou as duas** — abrindo o PDF
-emitido, sobraram três imagens (marca d'água, QR e assinatura) e nenhuma das
-duas maiores. A de 5 KB sobreviveu. O HTML estava perfeito o tempo todo.
+**Primeiro, um erro meu, corrigido no mesmo dia.** Eu tinha medido UM PDF
+emitido no ar, visto que faltavam cabeçalho e rodapé, e concluído que o
+`getAs(MimeType.PDF)` largava as imagens grandes. Reescrevi as duas peças em
+CSS por causa disso. Estava errado: um segundo PDF, emitido 46 minutos
+depois, traz as duas imagens inteiras — 1000×177 com 12.010 bytes e 1000×226
+com 21.865. O conversor nunca largou nada; o que faltava na primeira emissão
+era o próprio arquivo, que ainda não estava no projeto. Uma amostra, duas
+explicações possíveis, e eu escolhi a que exigia menos verificação.
 
-**A correção troca fotografia por desenho.** Faixas do timbre, contatos e a
-tarja do Salmos viraram retângulos e texto em CSS — que em PDF saem
-vetoriais, mais nítidos que qualquer JPEG, e não têm peso para o conversor
-engasgar. Só a marca do sindicato continua imagem, agora recortada para
-6 KB. A fonte passou a ser serifada (Times), a entrelinha caiu de 1,75 para
-1,45 e a assinatura foi para a esquerda — tudo medido contra o certificado
-real que o sindicato emite hoje (`GLAUCIA_SOUZA_NRAMOS.pdf`).
+A arte voltou a ser imagem, porque a arte é melhor: a faixa rosa é um
+paralelogramo, os contatos têm ícones e a tarja do Salmos é manuscrita — nada
+disso se reproduz com retângulo de CSS. **O desenho ficou como reserva**, para
+o documento não sair careca se a constante faltar, e o `t33` exercita as duas
+pontas.
 
-**O que já está travado por teste** (`t33-voucher-documento.js`, passos 17 a
-20, 5 mutações mortas em 5): a folha é A4 em milímetro; as faixas e a tarja
-são markup, não imagem; rosa e azul ficam no mesmo nível (era uma escada de
-duas faixas separadas); e — o defeito que **só a renderização mostrou** — os
-contatos e o QR ficam ACIMA da tarja azul. Na primeira versão as duas últimas
-linhas de contato caíam dentro do azul: texto azul sobre fundo azul.
+**O rodapé impresso ainda traz o e-mail antigo.** Você passou
+`secretaria@sindeducacao.com` e `www.sindeducacao.com`; o desenho de reserva
+já usa os dois. A ARTE, não — os endereços estão desenhados dentro do JPEG e
+não há como corrigir por código. Enquanto o caminho normal for a arte, sai
+`contato@sindeducacao.com` impresso. **Para corrigir de verdade, preciso de
+uma nova imagem de rodapé.**
+
+**O período virou obrigatório**, e não é campo cosmético. Sua tela mostrou
+duas solicitações com PERÍODO vazio; reproduzido no emulador, sem período a
+mesma pessoa passa DUAS VEZES no mesmo curso — a trava compara a janela, e
+janela vazia não delimita nada. A porta pública já exigia; a administrativa,
+não. Agora as duas exigem, e a tela avisa antes de ir ao servidor.
 
 | | |
 |---|---|
-| 🔴 O PDF emitido no ar sai com cabeçalho e rodapé | é o defeito que originou o item |
-| 🔴 A assinatura do presidente aparece | vem do Drive, que é simulado no emulador |
-| 🔴 O QR aparece e a câmera lê | mesma razão |
-| 🔴 A marca d'água aparece sem escurecer o texto | opacidade só se confere no papel |
+| 🔴 O PDF emitido sai com cabeçalho e rodapé | com a arte de volta |
+| 🔴 A assinatura e o QR aparecem | vêm do Drive, simulado no emulador |
 | 🔴 Cabe em UMA página | o rodapé é absoluto; conteúdo longo pode empurrar |
+| 🔴 Salvar sem escolher o ano é barrado na tela | com o campo marcado em vermelho |
+| 🔴 As duas solicitações antigas, sem período | ficaram gravadas assim e continuam sem trava — decidir se corrige na mão |
+| 🔴 O banner "Não consegui preparar o envio" | agora diz o motivo; ver se ainda aparece |
 
 **Decisão fechada em 13/08/2026 — o QR e o código de validação FICAM.**
-Apontei que o certificado de referência do sindicato não os tem; o usuário
-reafirmou que quer os dois. É acréscimo nosso ao modelo, feito de propósito.
-Não reabrir. Travado por teste no passo 21 do `t33` — quem tirar o QR ou o
-código do documento quebra a suíte, com a decisão escrita ali dentro.
+Apontei que o certificado de referência não os tem; você reafirmou que quer os
+dois. Travado por teste no `t33`.
 
-**Decisão que continua sua:** a redação do papel real cita a *"cláusula de
-Incentivo ao Aprimoramento"* da CCT e fala em *"semestralidade/anuidade
-escolar"*; a nossa é diferente. Se quiser a redação idêntica, é uma edição
-só.
+**A redação passou a ser a do papel**, extraída do `GLAUCIA_SOUZA_NRAMOS.pdf`
+com PyMuPDF. Duas divergências deliberadas: o dois-pontos de "inscrita no
+CNPJ: sob nº" é erro de digitação do original e saiu; e o ano da CCT vem de
+`NEGCOL_VIGENCIA` em vez de fixo — o papel de referência, emitido em agosto de
+2026, cita a CCT 2025/2026, que venceu em 28/02/2026.
 
 ### 19. SOFIA — a procedência embaixo da resposta
 **Aberto em:** 13/08/2026 · `ChatIACore.gs`, `ChatSISGEP.html`
