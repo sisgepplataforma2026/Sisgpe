@@ -286,6 +286,71 @@ function el(id) { return doc.getElementById(id); }
   b.ok(/associado/i.test(t.texto("#certNvAvisos") || ""),
     "com o motivo na tela", (t.texto("#certNvAvisos") || "").slice(0, 60));
 
+
+  /* ═══════════════════════════════════════════════════════════════════ */
+  b.fluxo("NOVA SOLICITAÇÃO · Quem é o beneficiário decide o que aparece");
+
+  b.passo("15. Com 'Próprio', os campos de dependente ficam escondidos");
+  /* Campo vazio na tela é campo que alguém tenta preencher. Nome, idade e
+   * declaração de IR não têm o que dizer quando o beneficiário é o próprio
+   * associado. */
+  t.clicar("#certBtnNova");
+  await t.assentar(40);
+  b.igual(el("certNvQuem").value, "PROPRIO", "abre em 'Próprio'");
+  b.igual(el("certNvBoxNome").style.display, "none", "nome do beneficiário escondido");
+  b.igual(el("certNvBoxIdade").style.display, "none", "idade escondida");
+  b.igual(el("certNvBoxIR").style.display, "none", "declaração de IR escondida");
+
+  b.passo("16. Escolher '2º filho' revela nome e idade, e deduz a ordem");
+  t.escolher("#certNvQuem", "FILHO_2");
+  await t.assentar(120);
+  b.ok(el("certNvBoxNome").style.display !== "none", "nome aparece");
+  b.ok(el("certNvBoxIdade").style.display !== "none", "idade aparece");
+  b.igual(el("certNvBoxIR").style.display, "none", "IR continua escondida (é filho, não enteado)");
+
+  el("certNvCpf").value = CPF_M;
+  el("certNvNome").value = "Marcelo Alves de Oliveira";
+  el("certNvBeneficiario").value = "Pedro";
+  el("certNvIdade").value = "8";
+  t.escolher("#certNvModalidade", "ENSINO_FUNDAMENTAL");
+  await t.assentar(180);
+  b.igual(String(el("certNvPercentual").value), "100",
+    "2º filho do fundamental: 100% pela regra da convenção");
+
+  b.passo("17. '3º filho' muda o percentual sem ninguém digitar a ordem");
+  /* A ordem sai do seletor. Pedir três vezes a mesma coisa — beneficiário,
+   * parentesco e ordem — era convite a contradição: a tela antiga permitia
+   * "filho 2" com parentesco "Cônjuge". */
+  t.escolher("#certNvQuem", "FILHO_3");
+  await t.assentar(180);
+  b.igual(String(el("certNvPercentual").value), "60", "3º filho: 60%");
+
+  b.passo("18. 'Enteado' pede a declaração de IR");
+  t.escolher("#certNvQuem", "ENTEADO");
+  await t.assentar(120);
+  b.ok(el("certNvBoxIR").style.display !== "none", "campo do IR aparece");
+  b.ok(el("certNvBoxIdade").style.display !== "none", "e a idade também");
+
+  b.passo("19. Voltar para 'Próprio' LIMPA o que ficou escondido");
+  /* Campo invisível com valor dentro é o pior dos dois mundos: ninguém vê e
+   * mesmo assim vai para a planilha. */
+  t.escolher("#certNvQuem", "PROPRIO");
+  await t.assentar(120);
+  b.igual(el("certNvBeneficiario").value, "", "nome do beneficiário foi limpo");
+  b.igual(el("certNvIdade").value, "", "idade foi limpa");
+
+  b.passo("20. E o titular vira o beneficiário na gravação");
+  t.escolher("#certNvModalidade", "GRADUACAO");
+  t.escolher("#certNvArea", "HUMANAS");
+  await t.assentar(180);
+  t.clicar("#certNvSalvarAprovar");
+  await t.assentar(250);
+  const cProprio = t.chamadas.filter(c => c.fn === "voucherCriarSolicitacao").pop();
+  b.igual(cProprio && cProprio.args[0].tipoBeneficiario, "TITULAR", "tipo TITULAR");
+  b.igual(cProprio && cProprio.args[0].ordemFilho, "", "sem ordem de filho");
+  b.igual(cProprio && cProprio.args[0].beneficiario, "Marcelo Alves de Oliveira",
+    "e o beneficiário é o próprio titular");
+
   /* ═══════════════════════════════════════════════════════════════════ */
   b.fluxo("NOVA SOLICITAÇÃO · O CSS alcança o modal novo");
 

@@ -576,15 +576,29 @@
 
       <div class="cert-section-title">O benefício</div>
       <div class="cert-nv-grid">
-        <div class="cert-nv-campo"><label class="cert-nv-lbl">Beneficiário</label><input class="cert-nv-in" id="certNvBeneficiario"></div>
+        <!-- QUEM É O BENEFICIÁRIO decide o que aparece a seguir.
+             Com "Próprio", os campos de dependente somem: nome, idade e a
+             declaração de IR não têm o que dizer quando o beneficiário é o
+             próprio associado, e campo vazio na tela é campo que alguém
+             tenta preencher.
+             O seletor também SUBSTITUI "Parentesco" e "Ordem do filho" — os
+             dois eram deduzíveis daqui, e pedir três vezes a mesma coisa é
+             convite a contradição: filho 2 com parentesco "Cônjuge" era um
+             estado que a tela antiga permitia. -->
         <div class="cert-nv-campo">
-          <label class="cert-nv-lbl">Parentesco</label>
-          <select class="cert-nv-in" id="certNvTipoBenef">
-            <option value="TITULAR">Titular</option>
+          <label class="cert-nv-lbl">Beneficiário</label>
+          <select class="cert-nv-in" id="certNvQuem">
+            <option value="PROPRIO">Próprio (titular)</option>
             <option value="CONJUGE">Cônjuge</option>
-            <option value="FILHO">Filho</option>
+            <option value="FILHO_1">1º filho</option>
+            <option value="FILHO_2">2º filho</option>
+            <option value="FILHO_3">3º filho</option>
             <option value="ENTEADO">Enteado</option>
           </select>
+        </div>
+        <div class="cert-nv-campo" id="certNvBoxNome" style="display:none;">
+          <label class="cert-nv-lbl">Nome do beneficiário</label>
+          <input class="cert-nv-in" id="certNvBeneficiario">
         </div>
         <div class="cert-nv-campo">
           <label class="cert-nv-lbl">Modalidade</label>
@@ -611,14 +625,16 @@
           </select>
         </div>
         <div class="cert-nv-campo"><label class="cert-nv-lbl">Curso</label><input class="cert-nv-in" id="certNvCurso"></div>
-        <div class="cert-nv-campo">
-          <label class="cert-nv-lbl">Ordem do filho</label>
-          <select class="cert-nv-in" id="certNvOrdem">
-            <option value="">—</option><option value="1">1º filho</option>
-            <option value="2">2º filho</option><option value="3">3º filho</option>
+        <div class="cert-nv-campo" id="certNvBoxIdade" style="display:none;">
+          <label class="cert-nv-lbl">Idade do beneficiário</label>
+          <input class="cert-nv-in" id="certNvIdade" type="number" min="0" max="120">
+        </div>
+        <div class="cert-nv-campo" id="certNvBoxIR" style="display:none;">
+          <label class="cert-nv-lbl">Declarado no IR?</label>
+          <select class="cert-nv-in" id="certNvEnteadoIR">
+            <option value="">—</option><option value="SIM">Sim</option><option value="NAO">Não</option>
           </select>
         </div>
-        <div class="cert-nv-campo"><label class="cert-nv-lbl">Idade do beneficiário</label><input class="cert-nv-in" id="certNvIdade" type="number" min="0" max="120"></div>
         <div class="cert-nv-campo"><label class="cert-nv-lbl">Período de referência</label><input class="cert-nv-in" id="certNvPeriodo" placeholder="2026/2"></div>
         <div class="cert-nv-campo">
           <label class="cert-nv-lbl">Percentual (%) <span id="certNvOrgPct"></span></label>
@@ -1100,6 +1116,32 @@ var _nvTimer = null;
 var _nvTimerInst = null;
 var _nvTimerEsc = null;
 
+/* O seletor traduzido para o que a regra da convenção entende.
+   Um lugar só: se a tradução ficasse espalhada, "3º filho" viraria ordem 3
+   num ponto e ordem "" noutro, e o percentual sairia diferente conforme o
+   caminho. */
+function nvQuem(){
+  var v = g('certNvQuem') ? g('certNvQuem').value : 'PROPRIO';
+  if(v === 'PROPRIO')  return { tipo:'TITULAR', ordem:'', proprio:true,  idade:false, ir:false };
+  if(v === 'CONJUGE')  return { tipo:'CONJUGE', ordem:'', proprio:false, idade:false, ir:false };
+  if(v === 'ENTEADO')  return { tipo:'ENTEADO', ordem:'', proprio:false, idade:true,  ir:true  };
+  return { tipo:'FILHO', ordem:v.replace('FILHO_',''), proprio:false, idade:true, ir:false };
+}
+
+/** Mostra só o que faz sentido para quem foi escolhido. */
+function nvSincronizarBeneficiario(){
+  var q = nvQuem();
+  function ver(id, mostrar){ var el=g(id); if(el) el.style.display = mostrar ? '' : 'none'; }
+  ver('certNvBoxNome',  !q.proprio);
+  ver('certNvBoxIdade', q.idade);
+  ver('certNvBoxIR',    q.ir);
+  /* Escondeu, limpa. Campo invisível com valor dentro é o pior dos dois
+     mundos: ninguém vê e mesmo assim vai para a planilha. */
+  if(q.proprio && g('certNvBeneficiario')) g('certNvBeneficiario').value='';
+  if(!q.idade && g('certNvIdade')) g('certNvIdade').value='';
+  if(!q.ir && g('certNvEnteadoIR')) g('certNvEnteadoIR').value='';
+}
+
 function nvCampos(){
   return {
     cpf:              g('certNvCpf').value,
@@ -1114,12 +1156,13 @@ function nvCampos(){
     instituicao:      g('certNvInstituicao').value,
     cnpjInstituicao:  g('certNvCnpjInst').value,
     emailInstituicao: g('certNvEmailInst').value,
-    beneficiario:     g('certNvBeneficiario').value,
-    tipoBeneficiario: g('certNvTipoBenef').value,
+    beneficiario:     nvQuem().proprio ? g('certNvNome').value : g('certNvBeneficiario').value,
+    tipoBeneficiario: nvQuem().tipo,
+    enteadoDeclaradoIR: g('certNvEnteadoIR') ? g('certNvEnteadoIR').value : '',
     modalidade:       g('certNvModalidade').value,
     area:             g('certNvArea').value,
     curso:            g('certNvCurso').value,
-    ordemFilho:       g('certNvOrdem').value,
+    ordemFilho:       nvQuem().ordem,
     idadeBeneficiario:g('certNvIdade').value === '' ? '' : Number(g('certNvIdade').value),
     periodo:          g('certNvPeriodo').value,
     percentual:       g('certNvPercentual').value,
@@ -1133,9 +1176,11 @@ function nvLimpar(){
    'certNvCnpjEscola','certNvInstituicao','certNvCnpjInst','certNvEmailInst',
    'certNvBeneficiario','certNvCurso','certNvIdade','certNvPeriodo','certNvPercentual',
    'certNvRegime','certNvObs','certNvCidadeEscola'].forEach(function(id){ if(g(id)) g(id).value=''; });
-  ['certNvModalidade','certNvArea','certNvOrdem'].forEach(function(id){ if(g(id)) g(id).value=''; });
-  if(g('certNvTipoBenef')) g('certNvTipoBenef').value='TITULAR';
+  ['certNvModalidade','certNvArea'].forEach(function(id){ if(g(id)) g(id).value=''; });
+  if(g('certNvQuem')) g('certNvQuem').value='PROPRIO';
+  nvSincronizarBeneficiario();
   if(g('certNvSituacao')) g('certNvSituacao').value='ASSOCIADO';
+  if(g('certNvEnteadoIR')) g('certNvEnteadoIR').value='';
   ['certNvOrgInst','certNvOrgEmailInst','certNvOrgPct','certNvAvisos'].forEach(function(id){
     if(g(id)) g(id).innerHTML='';
   });
@@ -1184,6 +1229,12 @@ function nvSugerir(){
        ['instituicao','certNvInstituicao'],['cnpjInstituicao','certNvCnpjInst'],
        ['emailInstituicao','certNvEmailInst'],['beneficiario','certNvBeneficiario'],
        ['curso','certNvCurso'],['regime','certNvRegime']].forEach(function(par){
+        /* O NOME DO BENEFICIÁRIO NÃO É PREENCHIDO QUANDO O BENEFICIÁRIO É O
+           PRÓPRIO TITULAR. O campo está escondido nesse caso, e a memória
+           voltaria a enchê-lo logo depois de nvSincronizarBeneficiario ter
+           limpado — as duas rodam no mesmo evento. O valor invisível seguiria
+           para a planilha, e a limpeza pareceria funcionar na tela. */
+        if(par[0]==='beneficiario' && nvQuem().proprio) return;
         var el=g(par[1]);
         if(el && !String(el.value||'').trim() && c[par[0]]) el.value=c[par[0]];
       });
@@ -1501,6 +1552,13 @@ function init(){
       clearTimeout(_nvTimerInst); _nvTimerInst=setTimeout(nvBuscarInstituicao, 320);
     });
   }
+  if(g('certNvQuem')){
+    g('certNvQuem').addEventListener('change', function(){
+      nvSincronizarBeneficiario(); nvSugerir();
+    });
+  }
+  if(g('certNvEnteadoIR')) g('certNvEnteadoIR').addEventListener('change', nvSugerir);
+
   if(g('certNvEscola')){
     g('certNvEscola').addEventListener('input', function(){
       /* Digitou de novo: o id anterior não vale mais. Deixá-lo grudado
@@ -1513,7 +1571,7 @@ function init(){
 
   /* Mudou modalidade, área, curso, ordem ou idade → o percentual pode mudar.
      São exatamente os campos que a regra da convenção lê. */
-  ['certNvModalidade','certNvArea','certNvOrdem','certNvTipoBenef','certNvSituacao'].forEach(function(id){
+  ['certNvModalidade','certNvArea','certNvQuem','certNvSituacao'].forEach(function(id){
     if(g(id)) g(id).addEventListener('change', nvSugerir);
   });
   ['certNvCurso','certNvIdade'].forEach(function(id){
