@@ -30,12 +30,14 @@ disso se reproduz com retângulo de CSS. **O desenho ficou como reserva**, para
 o documento não sair careca se a constante faltar, e o `t33` exercita as duas
 pontas.
 
-**O rodapé impresso ainda traz o e-mail antigo.** Você passou
-`secretaria@sindeducacao.com` e `www.sindeducacao.com`; o desenho de reserva
-já usa os dois. A ARTE, não — os endereços estão desenhados dentro do JPEG e
-não há como corrigir por código. Enquanto o caminho normal for a arte, sai
-`contato@sindeducacao.com` impresso. **Para corrigir de verdade, preciso de
-uma nova imagem de rodapé.**
+**O rodapé ganhou imagem nova** (13/08/2026). Em vez de pedir a arte
+refeita, editei a própria imagem: as duas linhas de texto foram apagadas e
+redesenhadas com `secretaria@sindeducacao.com` e `www.sindeducacao.com`,
+preservando ícones, tarja do Salmos e tudo o mais. O tamanho e a cor da fonte
+saíram medidos da imagem original — Liberation Sans (métrica do Arial), corpo
+calibrado pela largura da linha antiga, cor escolhida por comparação
+estatística com os pixels do texto que já estava lá. Antes e depois lado a
+lado ficaram indistinguíveis.
 
 **O período virou obrigatório**, e não é campo cosmético. Sua tela mostrou
 duas solicitações com PERÍODO vazio; reproduzido no emulador, sem período a
@@ -51,6 +53,10 @@ não. Agora as duas exigem, e a tela avisa antes de ir ao servidor.
 | 🔴 Salvar sem escolher o ano é barrado na tela | com o campo marcado em vermelho |
 | 🔴 As duas solicitações antigas, sem período | ficaram gravadas assim e continuam sem trava — decidir se corrige na mão |
 | 🔴 O banner "Não consegui preparar o envio" | agora diz o motivo; ver se ainda aparece |
+| 🔴 O rodapé sai com secretaria@ e www. | a imagem foi regravada; conferir no PDF real |
+| 🔴 Linha sem período mostra "⚠ sem período" na lista | as duas antigas devem aparecer assim |
+| 🔴 Emitir uma delas é recusado com o motivo | e a prévia continua abrindo |
+| 🔴 O 4º dependente é recusado no ensino básico | e aceito em graduação/pós |
 
 **Decisão fechada em 13/08/2026 — o QR e o código de validação FICAM.**
 Apontei que o certificado de referência não os tem; você reafirmou que quer os

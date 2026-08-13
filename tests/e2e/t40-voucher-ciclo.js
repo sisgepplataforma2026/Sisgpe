@@ -125,7 +125,14 @@ b.ok(/@media screen\{/.test(html),
   "e a prévia na tela ganha fundo e sombra — para se ver onde a folha acaba");
 
 b.passo("11. O período aparece no documento como período, não como data");
-b.igual(/Thu |Mon |GMT/.test(html), false,
+/* SÓ O TEXTO, sem as imagens. A asserção varria o HTML inteiro e passou a
+ * falhar em 13/08/2026 quando o rodapé foi regravado: a sequência "GMT"
+ * apareceu por acaso DENTRO do base64 da imagem nova. O teste acusava um
+ * defeito que não existe, e um teste que acusa o que não existe é tão ruim
+ * quanto um que deixa passar o que existe — nos dois casos ele deixa de ser
+ * confiável. Fora os data: URIs, a varredura volta a falar do documento. */
+const textoDoc = String(html).replace(/data:[^'"]+/g, "");
+b.igual(/Thu |Mon |GMT/.test(textoDoc), false,
   "nenhum resto de Date no texto do certificado");
 b.ok(/2026/.test(html), "e o ano está lá");
 
@@ -287,7 +294,36 @@ b.ok(/CPF válido/.test(semNada.mensagem || "") &&
      /período de referência/.test(semNada.mensagem || ""),
   "os três faltando saem juntos, numa lista só", semNada.mensagem);
 
-b.passo("3. Com período, a mesma pessoa no mesmo curso é barrada de verdade");
+b.passo("3. A linha antiga, sem período, NÃO EMITE");
+/* As duas solicitações que o usuário tem na base foram gravadas antes de o
+ * período virar obrigatório. Elas continuam lá, e emitir por cima delas seria
+ * dar validade ao furo em vez de fechá-lo: o certificado sairia sem dizer a
+ * que semestre se refere, e a janela da trava continuaria vazia. */
+const shSol = g.SpreadsheetApp.openById(g.PLANILHA_ID)
+  .getSheetByName(g.VOUCHER_ABA_SOLICITACOES || "Voucher_Solicitacoes");
+const cabSol = shSol.getRange(1,1,1,shSol.getLastColumn()).getValues()[0]
+  .map(x => String(x||"").trim());
+const colPer = cabSol.indexOf("PERIODO_REFERENCIA");
+/* apaga o período de uma linha JÁ criada — é a linha antiga, reproduzida */
+for (let i = 2; i <= shSol.getLastRow(); i++) {
+  if (String(shSol.getRange(i, cabSol.indexOf("NUMERO_PROTOCOLO")+1).getValue()) === PROT) {
+    shSol.getRange(i, colPer+1).setValue("");
+  }
+}
+const semPer = g.gerarDocumentoVoucher(PROT, "CERTIFICADO", {});
+b.igual(semPer.ok, false, "a emissão é recusada");
+b.ok(/PERÍODO DE REFERÊNCIA/.test(semPer.mensagem || ""),
+  "e a mensagem diz o que fazer", semPer.mensagem);
+b.igual(semPer.semPeriodo, true, "com a marca que a tela usa para destacar o campo");
+
+b.passo("4. Mas a PRÉVIA continua abrindo — é onde se vê que falta");
+/* Travar a prévia esconderia o problema em vez de mostrá-lo. */
+const previaSemPer = g.gerarDocumentoVoucher(PROT, "PREVIA", {});
+b.ok(previaSemPer.ok !== false || !previaSemPer.semPeriodo,
+  "a prévia não é barrada pela falta de período",
+  JSON.stringify(previaSemPer.mensagem || "abriu"));
+
+b.passo("5. Com período, a mesma pessoa no mesmo curso é barrada de verdade");
 /* É a prova de que a exigência serve para alguma coisa: o par CPF+curso só
  * é bloqueado porque existe uma janela para comparar. */
 const p1 = novaSolicitacao({ cpf: "52998224725", nome: "COM PERIODO",
@@ -298,6 +334,59 @@ const p2 = novaSolicitacao({ cpf: "52998224725", nome: "COM PERIODO",
 b.igual(p2.ok, false, "a segunda é barrada");
 b.ok(/2027\/1/.test(p2.mensagem || ""),
   "e a mensagem nomeia a janela ocupada", p2.mensagem);
+
+/* ══════════════════════════════════════════════════════════════════════
+   ATÉ TRÊS DEPENDENTES — E A EXCEÇÃO DO ENSINO SUPERIOR
+
+   A regra já existia no cálculo do percentual, mas NÃO na criação: testado
+   em 13/08/2026, o 4º filho era gravado com protocolo, igual aos outros
+   três. Pela tela não acontecia — o seletor só oferece três —, e é
+   exatamente por isso que passava despercebido: "a tela não deixa" é
+   aparência, não trava. Portal público e chamada direta entram por aqui.
+
+   A exceção é do usuário, no mesmo dia: "máximo são três dependentes ao
+   mesmo tempo (menos graduação e pós-graduação)". O teto é do ensino
+   básico, onde a convenção escalona 100/100/60 por ordem de filho.
+   ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("VOUCHER · 7c. Até três dependentes, fora o ensino superior");
+
+function filho(ordem, nome, mod) {
+  return g.voucherCriarSolicitacao({
+    cpf: "52998224725", nome: "PAI DE FAMILIA",
+    modalidade: mod || "ENSINO_FUNDAMENTAL", curso: "Ensino Fundamental",
+    regime: "ANUAL", periodo: "2030", tipoBeneficiario: "FILHO",
+    beneficiario: nome, ordemFilho: String(ordem)
+  }, token);
+}
+
+b.passo("1. Os três primeiros entram, um de cada vez");
+b.ok(filho(1, "ANA").ok, "1º dependente");
+b.ok(filho(2, "BRUNO").ok, "2º dependente");
+b.ok(filho(3, "CARLA").ok, "3º dependente");
+
+b.passo("2. O quarto é recusado — e era ele que passava antes");
+const quarto = filho(4, "DANIEL");
+b.igual(quarto.ok, false, "não grava");
+b.ok(/3º dependente/.test(quarto.mensagem || ""),
+  "e a mensagem diz o teto, não uma recusa genérica", quarto.mensagem);
+
+b.passo("3. No ensino superior o teto não se aplica");
+/* Recusar pedido legítimo é pior que aceitar um que depois se analisa. */
+const quartoSuperior = filho(4, "ELISA", "GRADUACAO");
+b.igual(quartoSuperior.ok, true,
+  "4º dependente em graduação passa", quartoSuperior.mensagem || "");
+const quintoPos = filho(5, "FABIO", "POS_GRADUACAO");
+b.igual(quintoPos.ok, true, "e em pós-graduação também");
+
+b.passo("4. Cada dependente é uma solicitação — a trava é por beneficiário");
+/* Confirmado no emulador em 13/08/2026: dois filhos diferentes do mesmo
+ * associado, no mesmo curso e período, passam os dois; o MESMO filho
+ * repetido é barrado. É o comportamento certo — o benefício é de quem
+ * estuda, não do titular. */
+const anaDeNovo = filho(1, "ANA");
+b.igual(anaDeNovo.ok, false, "a mesma ANA de novo é barrada");
+b.ok(/já existe/i.test(anaDeNovo.mensagem || ""),
+  "pela trava de duplicidade, não pelo teto", anaDeNovo.mensagem);
 
 /* ══════════════════════════════════════════════════════════════════════ */
 b.fluxo("VOUCHER · 8. O que ainda não dá para provar aqui");

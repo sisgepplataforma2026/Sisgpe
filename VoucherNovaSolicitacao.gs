@@ -81,6 +81,45 @@ function voucherCriarSolicitacao(dados, tokenSessao) {
       return { ok: false, mensagem: "Falta preencher: " + faltando.join(", ") + "." };
     }
 
+    /* ATÉ O 3º FILHO — a convenção não prevê o quarto.
+     *
+     * A regra já existia, mas só no CÁLCULO DO PERCENTUAL (Voucher.gs): quem
+     * pedisse para o 4º filho recebia percentual vazio e uma observação
+     * explicando. A CRIAÇÃO não olhava a ordem — e gravava a solicitação
+     * assim mesmo. Testado em 13/08/2026: 1º, 2º, 3º e 4º filhos, todos os
+     * quatro criados com protocolo.
+     *
+     * Pela tela isso não acontecia, porque o seletor só oferece três. Mas o
+     * portal público e qualquer chamada direta passam por aqui, e "a tela não
+     * deixa" nunca foi trava — é aparência. Uma solicitação de 4º filho na
+     * fila é trabalho de análise que termina em recusa, depois de alguém já
+     * ter conferido documento.
+     *
+     * A mensagem é a mesma que o cálculo já dava, para o sindicato dizer a
+     * mesma coisa nos dois lugares. */
+    var ordem = String(dados.ordemFilho || "").trim();
+    var tipoBenef = String(dados.tipoBeneficiario || "").toUpperCase();
+    /* EXCETO GRADUAÇÃO E PÓS — regra dita pelo usuário em 13/08/2026:
+     * "máximo são três dependentes ao mesmo tempo (menos graduação e
+     * pós-graduação)".
+     *
+     * O teto de três é do ensino básico, onde a convenção escalona 1º e 2º
+     * filho em 100% e o 3º em 60%. No superior o benefício não é contado por
+     * ordem de filho dessa forma, e aplicar o teto ali recusaria pedido
+     * legítimo — que é pior do que aceitar um que depois se analisa. */
+    var modalidadeSuperior =
+      ["GRADUACAO", "POS_GRADUACAO"].indexOf(modalidade.toUpperCase()) > -1;
+    if ((tipoBenef === "FILHO" || tipoBenef === "ENTEADO") && ordem && !modalidadeSuperior) {
+      var n = parseInt(ordem, 10);
+      if (isNaN(n) || n < 1 || n > 3) {
+        return {
+          ok: false,
+          mensagem: "A convenção prevê desconto até o 3º dependente no ensino básico. " +
+                    "Informado: " + ordem + "º."
+        };
+      }
+    }
+
     var ss = SpreadsheetApp.openById(PLANILHA_ID);
     var sh = ss.getSheetByName(VOUCHER_ABA_SOLICITACOES);
     if (!sh) {

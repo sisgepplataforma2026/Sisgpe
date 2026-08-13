@@ -1144,7 +1144,19 @@ function renderTabela(){
       +'<td style="font-size:11.5px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(s.escola||'—')+'</td>'
       +'<td style="font-size:11.5px;">'+escHtml(s.nivel||s.modalidade||'—')+'</td>'
       +'<td style="font-size:11.5px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(s.curso||'—')+'</td>'
-      +'<td style="font-size:11.5px;">'+escHtml(s.periodoReferencia||s.periodo||'—')+'</td>'
+      /* PERÍODO VAZIO NÃO É TRAÇO, É AVISO — pedido do usuário em 13/08/2026:
+         "deveria avisar quando não estiver".
+         Duas linhas da produção estão assim, gravadas antes de o período
+         virar obrigatório. Um "—" discreto some no meio da tabela; o que a
+         pessoa precisa saber é que aquela linha NÃO EMITE, e por quê. A cor
+         é a de alerta do design system, não o dourado institucional. */
+      +'<td style="font-size:11.5px;">'
+        + ((s.periodoReferencia||s.periodo)
+            ? escHtml(s.periodoReferencia||s.periodo)
+            : '<span title="Sem período não dá para emitir: ele sai impresso no '
+              + 'certificado e é o que impede o mesmo voucher sair duas vezes." '
+              + 'style="color:#d97706;font-weight:700;white-space:nowrap;">⚠ sem período</span>')
+      +'</td>'
       +'<td>'+badgeStatus(s.status)+'</td>'
       +'<td style="font-size:11px;color:#64748b;white-space:nowrap;">'+escHtml(certData(s.data))+'</td>'
       +'<td style="text-align:center;"><div style="display:inline-flex;gap:5px;align-items:center;">'

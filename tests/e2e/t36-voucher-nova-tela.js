@@ -632,6 +632,42 @@ function el(id) { return doc.getElementById(id); }
     "'ANCHETA' acha 'ANCHIETA' — uma letra a menos não pode esconder a escola");
 
 
+  /* ══════════════════════════════════════════════════════════════════
+     A LINHA SEM PERÍODO AVISA NA LISTA
+
+     Pedido do usuário em 13/08/2026: "deveria avisar quando não estiver".
+     Duas linhas da produção estão assim — gravadas antes de o período virar
+     obrigatório — e apareciam como um "—" discreto, igual a qualquer campo
+     em branco. O que a pessoa precisa saber é que aquela linha NÃO EMITE.
+
+     A linha é criada escrevendo direto na aba, sem passar pelo backend, que
+     hoje recusa: é a única forma de reproduzir o que já está gravado. */
+  b.passo("P1. Período vazio vira aviso, não traço");
+  const shP = ss.getSheetByName("Voucher_Solicitacoes");
+  const cabP = shP.getRange(1,1,1,shP.getLastColumn()).getValues()[0].map(x=>String(x||"").trim());
+  const linhaP = new Array(cabP.length).fill("");
+  function poe(nome, v){ const i = cabP.indexOf(nome); if (i>-1) linhaP[i] = v; }
+  poe("NUMERO_PROTOCOLO","BOLSA-SEM-PERIODO"); poe("CPF_SOLICITANTE",CPF_M);
+  poe("NOME_SOLICITANTE","LINHA ANTIGA"); poe("MODALIDADE","GRADUACAO");
+  poe("CURSO","Administracao"); poe("STATUS_SOLICITACAO","APROVADO");
+  poe("PERIODO_REFERENCIA","");
+  shP.appendRow(linhaP);
+
+  t.clicar("#certBtnRecarregar");
+  await t.assentar(300);
+  const corpoTab = el("certTbody") ? el("certTbody").innerHTML : "";
+  b.ok(/sem período/i.test(corpoTab),
+    "a linha sem período diz 'sem período' na coluna, em vez de '—'");
+  b.ok(/#d97706/.test(corpoTab),
+    "na cor de alerta do design system, não no dourado institucional");
+  /* E o aviso não pode aparecer nas linhas que TÊM período — senão vira
+     ruído e a pessoa para de olhar. */
+  /* Conta o AVISO VISÍVEL, não a palavra: o texto "sem período" aparece
+     duas vezes na mesma célula — no rótulo e na explicação do title. Contar
+     a palavra dava 2 e o teste acusava uma linha extra que não existe. */
+  const quantosAvisos = (corpoTab.match(/⚠ sem período/g) || []).length;
+  b.igual(quantosAvisos, 1, "e só naquela linha");
+
   b.resumo();
   process.exit(0);
 })();

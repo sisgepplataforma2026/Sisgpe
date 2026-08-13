@@ -62,6 +62,41 @@ function gerarDocumentoVoucher(protocolo, tipoDocumento, opcoes) {
           mensagem: "Status atual não permite emissão do voucher: " + statusAtual
         };
       }
+
+      /* SEM PERÍODO NÃO SE EMITE — decisão do usuário em 13/08/2026:
+       * "trava, tem que sair o período e deveria avisar quando não estiver".
+       *
+       * São dois motivos, e o segundo é o grave:
+       *
+       *   1. O período SAI IMPRESSO no certificado ("referente ao semestre
+       *      letivo de 2026/2"). Sem ele, a escola recebe um documento que
+       *      não diz a que semestre o desconto se refere.
+       *   2. É a janela da trava de duplicidade. Uma linha sem período não
+       *      ocupa janela nenhuma — a mesma pessoa, no mesmo curso, passa de
+       *      novo. Emitir por cima de uma linha assim é dar validade a um
+       *      furo em vez de fechá-lo.
+       *
+       * A criação já exige o período desde hoje; esta trava existe para as
+       * linhas que foram gravadas ANTES, e que continuam na base. A mensagem
+       * diz o que fazer, porque quem está emitindo não tem culpa do que foi
+       * gravado semana passada.
+       *
+       * NA PRÉVIA, NÃO. Prévia é para conferir, inclusive para conferir que
+       * está faltando o período — travar ali esconderia o problema em vez de
+       * mostrá-lo. */
+      var periodoDaLinha = (typeof voucherPeriodoTexto_ === "function")
+        ? voucherPeriodoTexto_(reg.PERIODO_REFERENCIA)
+        : String(reg.PERIODO_REFERENCIA || "").trim();
+      if (!periodoDaLinha) {
+        return {
+          ok: false,
+          semPeriodo: true,
+          mensagem: "Esta solicitação está sem PERÍODO DE REFERÊNCIA e por isso não " +
+                    "pode ser emitida. O período sai impresso no certificado e é ele " +
+                    "que impede o mesmo voucher sair duas vezes para a mesma pessoa. " +
+                    "Abra a solicitação, informe o período e emita em seguida."
+        };
+      }
     }
 
     const usuario = obterUsuarioAtualVoucher_();
