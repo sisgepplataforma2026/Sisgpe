@@ -805,6 +805,11 @@ function voucherSugerirSolicitacao(dados, tokenSessao) {
         regra = calcularRegraVoucher_({
           modalidade: modalidade, areaCurso: area,
           tipoBeneficiario: dados.tipoBeneficiario || r.campos.tipoBeneficiario || "TITULAR",
+          /* A situação sindical vai junto: é ela que decide se há direito.
+           * Sem passá-la, a regra calcularia percentual para quem não é
+           * associado — e a recusa só apareceria na emissão, com todo o
+           * cadastro já feito. */
+          situacaoSindical: dados.situacaoSindical || r.campos.situacaoSindical || "",
           ordemFilho: dados.ordemFilho || "",
           enteadoDeclaradoIR: dados.enteadoDeclaradoIR || ""
         }, dados.idadeBeneficiario === undefined ? "" : dados.idadeBeneficiario);

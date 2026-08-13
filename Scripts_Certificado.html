@@ -535,6 +535,18 @@
         <div class="cert-nv-campo"><label class="cert-nv-lbl">Nome do associado</label><input class="cert-nv-in" id="certNvNome"></div>
         <div class="cert-nv-campo"><label class="cert-nv-lbl">E-mail</label><input class="cert-nv-in" id="certNvEmail"></div>
         <div class="cert-nv-campo"><label class="cert-nv-lbl">Telefone</label><input class="cert-nv-in" id="certNvTelefone"></div>
+        <!-- SÓ ASSOCIADO TEM DIREITO. O campo fica aqui em cima, junto de
+             quem pede, porque é a primeira coisa que decide se vale a pena
+             preencher o resto: escolher "não associado" zera o percentual e
+             mostra o motivo, antes de digitar curso e instituição. -->
+        <div class="cert-nv-campo">
+          <label class="cert-nv-lbl">Situação sindical</label>
+          <select class="cert-nv-in" id="certNvSituacao">
+            <option value="ASSOCIADO">Associado</option>
+            <option value="NAO_ASSOCIADO">Não associado</option>
+            <option value="">— não informado —</option>
+          </select>
+        </div>
       </div>
 
       <div class="cert-section-title">Onde trabalha</div>
@@ -1085,6 +1097,7 @@ function nvCampos(){
     nome:             g('certNvNome').value,
     email:            g('certNvEmail').value,
     telefone:         g('certNvTelefone').value,
+    situacaoSindical: g('certNvSituacao') ? g('certNvSituacao').value : '',
     escola:           g('certNvEscola').value,
     cnpjEscola:       g('certNvCnpjEscola').value,
     instituicao:      g('certNvInstituicao').value,
@@ -1111,6 +1124,7 @@ function nvLimpar(){
    'certNvRegime','certNvObs'].forEach(function(id){ if(g(id)) g(id).value=''; });
   ['certNvModalidade','certNvArea','certNvOrdem'].forEach(function(id){ if(g(id)) g(id).value=''; });
   if(g('certNvTipoBenef')) g('certNvTipoBenef').value='TITULAR';
+  if(g('certNvSituacao')) g('certNvSituacao').value='ASSOCIADO';
   ['certNvOrgInst','certNvOrgEmailInst','certNvOrgPct','certNvAvisos'].forEach(function(id){
     if(g(id)) g(id).innerHTML='';
   });
@@ -1442,7 +1456,7 @@ function init(){
 
   /* Mudou modalidade, área, curso, ordem ou idade → o percentual pode mudar.
      São exatamente os campos que a regra da convenção lê. */
-  ['certNvModalidade','certNvArea','certNvOrdem','certNvTipoBenef'].forEach(function(id){
+  ['certNvModalidade','certNvArea','certNvOrdem','certNvTipoBenef','certNvSituacao'].forEach(function(id){
     if(g(id)) g(id).addEventListener('change', nvSugerir);
   });
   ['certNvCurso','certNvIdade'].forEach(function(id){

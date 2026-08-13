@@ -668,6 +668,45 @@ function calcularRegraVoucher_(dados, idadeBeneficiario) {
   const tipoBeneficiario = String(dados.tipoBeneficiario || "").trim().toUpperCase();
   const ordemFilho       = String(dados.ordemFilho || "").trim();
   const enteadoIR        = String(dados.enteadoDeclaradoIR || "").trim().toUpperCase();
+  const situacao         = String(dados.situacaoSindical || "").trim().toUpperCase();
+
+  /* SÓ ASSOCIADO TEM DIREITO — regra dita pelo usuário em 12/08/2026.
+   *
+   * A verificação existia só na EMISSÃO (VoucherPdf.gs), o que é tarde
+   * demais: a solicitação era cadastrada, analisada, aprovada, e só na hora
+   * de gerar o documento é que aparecia "só pode ser emitido após
+   * confirmação de associação". Todo o trabalho já tinha sido feito.
+   *
+   * Aqui a recusa acontece no cálculo, ou seja no instante em que a tela
+   * pergunta o percentual — antes de alguém digitar o resto.
+   *
+   * Situação em branco NÃO é recusa: quem ainda não escolheu o campo não
+   * está declarando que a pessoa é não-associada. A trava da emissão
+   * continua lá para esse caso. */
+  if (situacao && situacao !== "ASSOCIADO") {
+    return {
+      apto: false, percentual: "", regime: "",
+      observacao: "Só associado tem direito ao benefício. Situação sindical: " + situacao + "."
+    };
+  }
+
+  /* ATÉ TRÊS FILHOS — mesma conversa.
+   *
+   * A convenção prevê 1º, 2º e 3º. Do quarto em diante não há benefício, e
+   * a versão anterior devolvia "Ordem do filho inválida para a modalidade
+   * informada" — mensagem que faz quem lê procurar erro na MODALIDADE,
+   * quando o problema é a ordem. Recusar é certo; explicar errado custa
+   * uma ligação para o sindicato. */
+  if (tipoBeneficiario === "FILHO" || tipoBeneficiario === "ENTEADO") {
+    const n = parseInt(ordemFilho, 10);
+    if (ordemFilho && (isNaN(n) || n > 3)) {
+      return {
+        apto: false, percentual: "", regime: "",
+        observacao: "A convenção prevê desconto até o 3º filho. Informado: " +
+                    ordemFilho + "º."
+      };
+    }
+  }
 
   if (tipoBeneficiario === "FILHO" && (idadeBeneficiario === "" || Number(idadeBeneficiario) >= 24)) {
     return {

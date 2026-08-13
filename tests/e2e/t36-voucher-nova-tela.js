@@ -196,6 +196,27 @@ function el(id) { return doc.getElementById(id); }
   b.ok(!!String(v("NUMERO_PROTOCOLO")), "e com protocolo", String(v("NUMERO_PROTOCOLO")));
 
 
+
+  b.passo("13b. Marcar 'não associado' zera o percentual na hora");
+  /* Só associado tem direito. Antes, a recusa só aparecia na EMISSÃO — a
+   * solicitação era cadastrada, analisada e aprovada, e o "não pode" vinha
+   * na hora de gerar o documento, com todo o trabalho feito. */
+  t.clicar("#certBtnNova");
+  await t.assentar(40);
+  el("certNvCpf").value = CPF_M;
+  el("certNvNome").value = "Marcelo Alves de Oliveira";
+  t.escolher("#certNvModalidade", "GRADUACAO");
+  t.escolher("#certNvArea", "HUMANAS");
+  await t.assentar(180);
+  b.igual(String(el("certNvPercentual").value), "70", "associado: 70%");
+
+  t.escolher("#certNvSituacao", "NAO_ASSOCIADO");
+  await t.assentar(180);
+  b.igual(String(el("certNvPercentual").value), "",
+    "não associado: campo zerado imediatamente");
+  b.ok(/associado/i.test(t.texto("#certNvAvisos") || ""),
+    "com o motivo na tela", (t.texto("#certNvAvisos") || "").slice(0, 60));
+
   /* ═══════════════════════════════════════════════════════════════════ */
   b.fluxo("NOVA SOLICITAÇÃO · O CSS alcança o modal novo");
 

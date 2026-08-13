@@ -433,5 +433,62 @@ b.passo("39. O resolvedor exige o módulo Benefícios");
 b.bloqueia(() => g.voucherSugerirSolicitacao({ cpf: CPF_MARCELO }), "recusa anônimo");
 b.bloqueia(() => g.voucherSugerirSolicitacao({ cpf: CPF_MARCELO }, ESC), "recusa sem o módulo");
 
+
+/* ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("REGRA DA CCT · quem tem direito, e até quantos filhos");
+
+b.passo("40. Só ASSOCIADO tem direito");
+/* Ditado pelo usuário em 12/08/2026: "dependente: só tem direito quem é
+ * associado". A verificação existia só na EMISSÃO — ou seja, a solicitação
+ * era cadastrada, analisada e aprovada, e o "não pode" só aparecia na hora
+ * de gerar o documento, com todo o trabalho já feito. */
+const naoAssoc = g.calcularRegraVoucher_(
+  { modalidade: "GRADUACAO", areaCurso: "HUMANAS", tipoBeneficiario: "TITULAR",
+    situacaoSindical: "NAO_ASSOCIADO" }, "");
+b.ok(!naoAssoc.apto, "não-associado é recusado no cálculo, não só na emissão");
+b.ok(/s[óo] associado/i.test(naoAssoc.observacao), "com o motivo escrito", naoAssoc.observacao);
+b.ok(g.calcularRegraVoucher_(
+  { modalidade: "GRADUACAO", areaCurso: "HUMANAS", tipoBeneficiario: "TITULAR",
+    situacaoSindical: "ASSOCIADO" }, "").apto, "e associado passa normalmente");
+
+b.passo("41. Situação em BRANCO não é recusa");
+/* Quem ainda não escolheu o campo não está declarando que a pessoa é
+ * não-associada. Recusar aqui faria o formulário nascer bloqueado. */
+b.ok(g.calcularRegraVoucher_(
+  { modalidade: "GRADUACAO", areaCurso: "HUMANAS", tipoBeneficiario: "TITULAR" }, "").apto,
+  "campo vazio não bloqueia o cálculo");
+
+b.passo("42. Desconto vai até o 3º filho");
+b.igual(g.calcularRegraVoucher_(
+  { modalidade: "EDUCACAO_INFANTIL", tipoBeneficiario: "FILHO", ordemFilho: "1",
+    situacaoSindical: "ASSOCIADO" }, 10).percentual, "100", "1º filho 100%");
+b.igual(g.calcularRegraVoucher_(
+  { modalidade: "EDUCACAO_INFANTIL", tipoBeneficiario: "FILHO", ordemFilho: "3",
+    situacaoSindical: "ASSOCIADO" }, 10).percentual, "60", "3º filho 60%");
+
+b.passo("43. Do 4º em diante, recusa — e a mensagem fala da ORDEM");
+/* A versão anterior devolvia "Ordem do filho inválida para a modalidade
+ * informada" — mensagem que faz quem lê procurar erro na MODALIDADE, quando
+ * o problema é a ordem. Recusar é certo; explicar errado custa uma ligação
+ * para o sindicato. */
+const quarto = g.calcularRegraVoucher_(
+  { modalidade: "EDUCACAO_INFANTIL", tipoBeneficiario: "FILHO", ordemFilho: "4",
+    situacaoSindical: "ASSOCIADO" }, 10);
+b.ok(!quarto.apto, "4º filho é recusado");
+b.ok(/3º filho/.test(quarto.observacao) && /4/.test(quarto.observacao),
+  "e a mensagem diz o limite E o que foi informado", quarto.observacao);
+b.ok(!/modalidade/i.test(quarto.observacao),
+  "sem culpar a modalidade, que não tem nada a ver");
+
+b.passo("44. O resolvedor repassa a situação sindical à regra");
+/* Sem repassar, o resolvedor calcularia percentual para quem não é
+ * associado e a recusa só apareceria lá na emissão. */
+const rNao = g.voucherSugerirSolicitacao(
+  { modalidade: "GRADUACAO", area: "HUMANAS", situacaoSindical: "NAO_ASSOCIADO" }, ADM);
+b.igual(rNao.campos.percentual, "", "campo vazio para não-associado");
+b.ok(rNao.bloqueadoPelaRegra === true, "e bloqueado");
+b.ok(rNao.avisos.some(a => /s[óo] associado/i.test(a)), "com o aviso na tela",
+  (rNao.avisos.find(a => /associado/i.test(a)) || ""));
+
 b.resumo();
 process.exit(0);
