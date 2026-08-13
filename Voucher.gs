@@ -440,7 +440,13 @@ function VOUCHER_COLUNAS_SOLICITACOES_() {
         "DATA_VALIDACAO",
         "DATA_EMISSAO",
         "OBSERVACOES",
-        "NUMERO_PROTOCOLO"
+        "NUMERO_PROTOCOLO",
+        /* PRIMEIRA_VEZ ou RENOVACAO — deduzido na gravação a partir do que já
+         * existe para a mesma pessoa no mesmo curso (VoucherPeriodo.gs), nunca
+         * perguntado a quem digita. Fica gravado porque a dedução depende de
+         * linhas que podem ser recusadas ou canceladas depois: relida meses
+         * adiante, a mesma conta daria outra resposta. */
+        "TIPO_SOLICITACAO"
   ];
 }
 
@@ -1282,6 +1288,12 @@ function listarSolicitacoesVoucher() {
         periodoReferencia: String(val(l, "PERIODO_REFERENCIA", "PERÍODO_REFERENCIA", "PERIODO", "PERÍODO") || ""),
         percentual: String(val(l, "PERCENTUAL_APLICADO", "PERCENTUAL", "% DESCONTO", "DESCONTO") || ""),
         regime: String(val(l, "REGIME") || ""),
+        /* PRIMEIRA_VEZ ou RENOVACAO, gravado na criação (VoucherPeriodo.gs).
+         * Linha antiga vem vazia — e vazio não vira "primeira vez" aqui: a
+         * etiqueta só aparece quando o dado existe, porque afirmar "primeira
+         * vez" sobre uma bolsa que já foi renovada três vezes é pior que não
+         * dizer nada. */
+        tipoSolicitacao: String(val(l, "TIPO_SOLICITACAO", "TIPO_SOLICITAÇÃO") || ""),
 
         status: String(val(l, "STATUS_SOLICITACAO", "STATUS_SOLICITAÇÃO", "STATUS") || "PENDENTE"),
         data: String(dataTexto || formatarDataBrVoucher_(dataSolicitacao) || ""),

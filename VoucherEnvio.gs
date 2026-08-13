@@ -393,6 +393,12 @@ function voucherIdDoLink_(url) {
  * cai para a planilha de reserva quando o Firestore não está configurado.
  */
 function voucherRegistrarEnvio_(protocolo, canal, destino, sessao) {
+  /* A anotação na linha vem ANTES da auditoria e fora do try dela de
+   * propósito: são dois registros independentes, e uma auditoria indisponível
+   * não pode levar junto a data de envio que fica à vista de quem abre a
+   * planilha. */
+  voucherAnotarEnvioNaObservacao_(protocolo, canal, destino, sessao);
+
   try {
     if (typeof auditar_ !== "function") return false;
     var r = auditar_({
@@ -408,6 +414,71 @@ function voucherRegistrarEnvio_(protocolo, canal, destino, sessao) {
   } catch (e) {
     Logger.log("Registro do envio falhou (o envio em si foi feito): " + e.message);
     return false;
+  }
+}
+
+/**
+ * Carimba a DATA DO ENVIO nas Observações da própria solicitação.
+ *
+ * Pedido do usuário em 13/08/2026: "tem que salvar em observações a data de
+ * envio do voucher".
+ *
+ * POR QUE NÃO BASTAVA A AUDITORIA. O envio já era registrado lá, e o modal
+ * de envio já mostrava o histórico — mas só o modal. Quem abre a planilha,
+ * quem exporta a lista, quem confere no fim do mês, quem atende no telefone
+ * o associado perguntando "vocês mandaram?" não vê a auditoria. A linha da
+ * solicitação é o lugar onde essa pergunta é feita, e era o único lugar que
+ * não tinha a resposta.
+ *
+ * ACRESCENTA, NUNCA SUBSTITUI. As observações são texto que a secretaria
+ * escreveu — o que o e-mail do associado dizia, o que ficou combinado. Um
+ * carimbo automático que apagasse aquilo destruiria informação que ninguém
+ * tem de onde recuperar. Cada envio vira mais uma linha, e reenvio aparece
+ * como mais um carimbo, que é exatamente o que se quer enxergar.
+ *
+ * WHATSAPP DIZ "ABERTO", não "enviado": o sistema abre o link, quem envia é
+ * a pessoa, no aplicativo. Afirmar entrega que não se pode confirmar é pior
+ * que não registrar nada.
+ *
+ * Nunca lança. O e-mail já saiu quando isto roda; falhar aqui não pode virar
+ * erro na tela de quem enviou com sucesso.
+ */
+function voucherAnotarEnvioNaObservacao_(protocolo, canal, destino, sessao) {
+  var prot = String(protocolo || "").trim();
+  if (!prot) return false;
+
+  var lock = LockService.getScriptLock();
+  var travou = false;
+  try {
+    travou = lock.tryLock(10000);
+
+    var ss = SpreadsheetApp.openById(PLANILHA_ID);
+    var linha = voucherLinhaPorProtocolo_(ss, VOUCHER_ABA_SOLICITACOES, prot);
+    if (!linha || !linha.__linha) return false;
+
+    var sh = ss.getSheetByName(VOUCHER_ABA_SOLICITACOES);
+    var cab = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0]
+      .map(function (c) { return String(c || "").trim(); });
+    var iObs = cab.indexOf("OBSERVACOES");
+    if (iObs === -1) return false;
+
+    var quando = Utilities.formatDate(new Date(), "America/Sao_Paulo", "dd/MM/yyyy HH:mm");
+    var quem = (sessao && (sessao.email || sessao.usuario || sessao.nome)) || "";
+    var ehEmail = String(canal || "").toUpperCase().indexOf("EMAIL") > -1;
+
+    var carimbo = (ehEmail ? "Enviado por e-mail em " : "WhatsApp aberto em ") + quando +
+      (destino ? " para " + destino : "") +
+      (quem ? " por " + quem : "") + ".";
+
+    var atual = String(sh.getRange(linha.__linha, iObs + 1).getValue() || "").trim();
+    sh.getRange(linha.__linha, iObs + 1).setValue(atual ? atual + "\n" + carimbo : carimbo);
+    return true;
+
+  } catch (e) {
+    Logger.log("Carimbo do envio nas observações falhou (o envio foi feito): " + e.message);
+    return false;
+  } finally {
+    if (travou) lock.releaseLock();
   }
 }
 

@@ -137,6 +137,13 @@
 #certNovaBox .cert-nv-org.recusa { background: #fef2f2; color: #dc2626; }
 #certNovaBox .cert-nv-aviso { background: #f8fafc; border: 1px solid #cbd5e1; border-left: 3px solid #1565C0; border-radius: 8px; padding: 8px 11px; font-size: 12px; color: #334155; margin-bottom: 7px; line-height: 1.5; }
 #certNovaBox .cert-nv-aviso.alerta { background: #fffbeb; border-color: #fcd34d; border-left-color: #d97706; color: #92400e; font-weight: 700; }
+#certNovaBox .cert-nv-trava { background: #fef2f2; border: 1.5px solid #fecaca; border-left: 4px solid #dc2626; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
+#certNovaBox .cert-nv-trava-tit { font-size: 13px; font-weight: 900; color: #991b1b; display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
+#certNovaBox .cert-nv-trava-l { font-size: 12px; color: #7f1d1d; line-height: 1.55; }
+#certNovaBox .cert-nv-trava-l strong { font-weight: 800; }
+#certNovaBox .cert-nv-trava-acoes { display: flex; gap: 7px; margin-top: 10px; flex-wrap: wrap; }
+#certNovaBox .cert-nv-renov { background: #eff6ff; border: 1px solid #bfdbfe; border-left: 3px solid #1565C0; border-radius: 8px; padding: 8px 11px; margin-bottom: 7px; font-size: 12px; color: #1e3a8a; line-height: 1.5; }
+.cert-tag-renov { display: inline-block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: 1px 6px; border-radius: 999px; background: #eff6ff; color: #1565C0; margin-left: 6px; vertical-align: middle; }
 #certNovaBox .cert-nv-sug { position: relative; }
 #certNovaBox .cert-nv-lista { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1.5px solid #cbd5e1; border-radius: 10px; box-shadow: 0 12px 30px rgba(0,20,60,.16); max-height: 190px; overflow-y: auto; z-index: 30; display: none; }
 #certNovaBox .cert-nv-lista.ativo { display: block; }
@@ -522,6 +529,11 @@
     </div>
 
     <div class="cert-modal-body">
+      <!-- A trava de "um voucher por pessoa, por curso, por periodo" e a
+           etiqueta de renovacao. Ficam ANTES de tudo porque a resposta que
+           elas dao muda o que fazer com o formulario inteiro: nao adianta
+           conferir CNPJ de instituicao numa solicitacao que nao pode existir. -->
+      <div id="certNvTrava"></div>
       <div id="certNvAvisos"></div>
 
       <div class="cert-section-title" style="margin-top:0;">Quem pede</div>
@@ -806,7 +818,11 @@ function renderTabela(){
     var podeEmitir=s.status==='APROVADO'||s.status==='EMITIDO';
     html+='<tr>'
       +'<td><strong style="font-size:12px;color:#002f6c;">'+escHtml(s.protocolo||'—')+'</strong></td>'
-      +'<td><div style="font-weight:700;font-size:12.5px;color:#0f172a;">'+escHtml(s.nome||'—')+'</div>'
+      +'<td><div style="font-weight:700;font-size:12.5px;color:#0f172a;">'+escHtml(s.nome||'—')
+        /* A etiqueta só aparece quando o dado existe. Linha antiga, gravada
+           antes da coluna TIPO_SOLICITACAO, não recebe "primeira vez" por
+           omissão — dizer isso de uma bolsa já renovada seria inventar. */
+        +(s.tipoSolicitacao==='RENOVACAO'?'<span class="cert-tag-renov">renovação</span>':'')+'</div>'
         +'<div style="font-size:11px;color:#94a3b8;">'+escHtml(s.cpf||'')+'</div></td>'
       +'<td style="font-size:11.5px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(s.escola||'—')+'</td>'
       +'<td style="font-size:11.5px;">'+escHtml(s.nivel||s.modalidade||'—')+'</td>'
@@ -885,6 +901,12 @@ function abrirModal(s){
   set('cmi-curso',       s.curso);
   set('cmi-periodo',     s.periodoReferencia||s.periodo);
   set('cmi-data',        certData(s.data));
+  /* A etiqueta de renovação, colada no curso: é ali que ela responde a
+     pergunta que se faz ao abrir o registro ("já teve antes?"). Só aparece
+     quando o dado existe — ver o comentário na listagem. */
+  if(g('cmi-curso') && s.tipoSolicitacao==='RENOVACAO'){
+    g('cmi-curso').innerHTML = escHtml(s.curso||'—') + '<span class="cert-tag-renov">renovação</span>';
+  }
   if(g('certModalObs')) g('certModalObs').value=s.observacao||'';
   if(g('certModalRg'))  g('certModalRg').value=s.rg||'';
 
@@ -1186,6 +1208,15 @@ function envAbrirZap(){
    errado.
    ══════════════════════════════════════════════════════════════════════ */
 var _nvSeq = 0;
+/* Sequência PRÓPRIA da checagem de período, separada da sugestão. As duas
+   saem no mesmo evento e voltam fora de ordem; com uma sequência só, a
+   resposta de uma cancelaria a da outra e a trava piscaria. */
+var _pdSeq = 0;
+/* O bloqueio em vigor, se houver. É o que impede o salvar — e é lido no
+   nvSalvar, não só no visual: esconder o botão sem travar a função deixaria
+   o Enter do teclado passar por cima da trava. */
+var _nvBloqueio = null;
+var _pdTimer = null;
 var _nvTimer = null;
 var _nvTimerInst = null;
 var _nvTimerEsc = null;
@@ -1255,6 +1286,12 @@ function nvLimpar(){
   nvSincronizarBeneficiario();
   if(g('certNvSituacao')) g('certNvSituacao').value='ASSOCIADO';
   if(g('certNvEnteadoIR')) g('certNvEnteadoIR').value='';
+  /* A trava sai junto com o resto — e o botão volta a valer. Sem isto, o
+     bloqueio de uma solicitação anterior sobreviveria ao "Cancelar" e o
+     próximo atendimento abriria com os botões travados sem explicação. */
+  _nvBloqueio = null;
+  if(g('certNvTrava')) g('certNvTrava').innerHTML='';
+  nvSalvarHabilitar();
   ['certNvOrgInst','certNvOrgEmailInst','certNvOrgPct','certNvAvisos'].forEach(function(id){
     if(g(id)) g(id).innerHTML='';
   });
@@ -1356,6 +1393,92 @@ function nvSugerir(){
     .voucherSugerirSolicitacao(nvCampos(), certToken());
 }
 
+/* ── UM VOUCHER POR PESSOA, POR CURSO, POR PERÍODO ────────────────────────
+   Regra do usuário em 13/08/2026: "somente um voucher por semestre ou por
+   ano (no caso do integral)", "renovação é por curso", "não pode gerar duas
+   vezes para a mesma pessoa".
+
+   Esta checagem é CONVENIÊNCIA — avisa enquanto a pessoa preenche, para ela
+   não descobrir no fim que perdeu o trabalho. A que VALE roda no servidor,
+   dentro do lock, um instante antes de gravar. Duas abas abertas ou uma tela
+   parada há vinte minutos não podem furar a regra, e por isso a mesma
+   pergunta é feita duas vezes. */
+function nvTravaDesenhar(r){
+  var caixa = g('certNvTrava');
+  _nvBloqueio = (r && r.bloqueado) ? (r.bloqueio || {}) : null;
+  if(!caixa) { nvSalvarHabilitar(); return; }
+
+  if(_nvBloqueio){
+    var b = _nvBloqueio;
+    var linha2 = [b.beneficiario||'', b.curso||b.modalidade||'', b.periodo||''].filter(Boolean).join(' · ');
+    var linha3 = [b.protocolo||'', b.status?b.status.toLowerCase():'', b.data?('em '+b.data):'',
+                  b.quem?('por '+b.quem):''].filter(Boolean).join(' · ');
+    caixa.innerHTML =
+      '<div class="cert-nv-trava">'
+      +'<div class="cert-nv-trava-tit">⛔ Já existe voucher para esta pessoa neste período</div>'
+      +(linha2?'<div class="cert-nv-trava-l"><strong>'+escHtml(linha2)+'</strong></div>':'')
+      +(linha3?'<div class="cert-nv-trava-l">'+escHtml(linha3)+'</div>':'')
+      +'<div class="cert-nv-trava-l" style="margin-top:5px;">'+escHtml(r.mensagem||'')+'</div>'
+      +'<div class="cert-nv-trava-acoes">'
+        +(b.protocolo?'<button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certNvVerAnterior">Abrir a anterior</button>':'')
+        /* Reenviar fica AQUI de propósito: quem cai nesta trava quase sempre
+           não quer um segundo voucher — quer o mesmo de novo, porque o
+           associado perdeu o e-mail. O atendimento termina nesta tela. */
+        +(b.protocolo&&b.status==='EMITIDO'?'<button type="button" class="cert-btn cert-btn-primary cert-btn-sm" id="certNvReenviar">📨 Reenviar por e-mail</button>':'')
+      +'</div></div>';
+
+    var vb = g('certNvVerAnterior');
+    if(vb) vb.addEventListener('click', function(){
+      var s = _lista.find(function(x){ return x.protocolo === b.protocolo; });
+      if(s){ nvFechar(); abrirModal(s); }
+      else msg('A anterior é o protocolo '+b.protocolo+'. Procure por ele na lista.','warn');
+    });
+    var rb = g('certNvReenviar');
+    if(rb) rb.addEventListener('click', function(){ nvFechar(); envAbrir(b.protocolo); });
+
+  } else if(r && r.tipo === 'RENOVACAO' && r.ultima){
+    caixa.innerHTML = '<div class="cert-nv-renov">↻ <strong>Renovação</strong> — '
+      + escHtml(String(r.vezes||1)) + 'ª bolsa neste curso. Última: '
+      + escHtml([r.ultima.protocolo, r.ultima.periodo,
+                 (r.ultima.percentual||r.ultima.percentual===0)?r.ultima.percentual+'%':'']
+                .filter(Boolean).join(' · ')) + '.</div>';
+  } else {
+    caixa.innerHTML = '';
+  }
+  nvSalvarHabilitar();
+}
+
+/* Um lugar só decide se dá para salvar. Espalhar isto pelos dois botões faria
+   um deles ficar habilitado numa refatoração futura, e o botão habilitado é
+   o que grava. */
+function nvSalvarHabilitar(){
+  ['certNvSalvarAnalise','certNvSalvarAprovar'].forEach(function(id){
+    var b = g(id);
+    if(!b) return;
+    b.disabled = !!_nvBloqueio;
+    b.style.opacity = _nvBloqueio ? '.45' : '';
+    b.style.cursor  = _nvBloqueio ? 'not-allowed' : '';
+  });
+}
+
+function nvChecarPeriodo(){
+  var d = nvCampos();
+  if(String(d.cpf||'').replace(/\D/g,'').length !== 11 || !String(d.modalidade||'').trim()){
+    nvTravaDesenhar(null); return;
+  }
+  var meu = ++_pdSeq;
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(meu !== _pdSeq) return;
+      /* ok:false é falha de LEITURA, não "pode emitir". A trava do servidor
+         continua de pé; aqui só não se afirma nada. */
+      if(!r || !r.ok) return;
+      nvTravaDesenhar(r);
+    })
+    .withFailureHandler(function(){})
+    .voucherChecarPeriodo(d, certToken());
+}
+
 function nvBuscarAssociado(){
   var termo=String(g('certNvBusca').value||'').trim();
   var lista=g('certNvListaAssoc');
@@ -1379,6 +1502,7 @@ function nvBuscarAssociado(){
           lista.classList.remove('ativo');
           g('certNvBusca').value=a.nome;
           nvSugerir();          // é aqui que a história dele aparece
+          nvChecarPeriodo();    // e é aqui que a trava do período aparece
         });
       });
     })
@@ -1466,11 +1590,31 @@ function nvSalvar(aprovar){
   if(!String(dados.nome||'').trim()){ msg('Informe o nome do associado.','warn'); return; }
   if(!String(dados.modalidade||'').trim()){ msg('Escolha a modalidade.','warn'); return; }
 
+  /* A trava também barra AQUI, não só no visual. Botão desabilitado é
+     aparência; esta linha é a regra. O servidor recusa de novo depois — três
+     travas para a mesma coisa é o que se faz quando emitir duas vezes não
+     tem desfazer. */
+  if(_nvBloqueio){
+    msg('Já existe voucher para esta pessoa neste período'
+        + (_nvBloqueio.protocolo?' — protocolo '+_nvBloqueio.protocolo:'') + '.','erro');
+    return;
+  }
+
   setBtnLoad(btn, aprovar?'Aprovando...':'Salvando...');
   google.script.run
     .withSuccessHandler(function(r){
       resetBtn(btn);
-      if(!r||!r.ok){ msg((r&&r.mensagem)||'Erro ao salvar.','erro'); return; }
+      if(!r||!r.ok){
+        /* Recusa por duplicidade não é "erro ao salvar": é a resposta certa,
+           e ela traz o protocolo anterior. Desenha a trava para a pessoa ver
+           qual é e poder reenviar aquele mesmo. */
+        if(r && r.duplicado){
+          nvTravaDesenhar({ bloqueado:true, bloqueio:r.bloqueio||{}, mensagem:r.mensagem||'' });
+          msg(r.mensagem||'Já existe voucher para esta pessoa neste período.','erro');
+          return;
+        }
+        msg((r&&r.mensagem)||'Erro ao salvar.','erro'); return;
+      }
       msg('✅ '+r.mensagem,'ok');
       nvFechar();
       carregarLista();
@@ -1656,6 +1800,26 @@ function init(){
      São exatamente os campos que a regra da convenção lê. */
   ['certNvModalidade','certNvArea','certNvQuem','certNvSituacao'].forEach(function(id){
     if(g(id)) g(id).addEventListener('change', nvSugerir);
+  });
+  /* A checagem de período depende de OUTROS campos que a sugestão: quem é o
+     beneficiário, qual o curso, qual o período e qual o regime. Escutar os
+     mesmos eventos da sugestão faria a trava ignorar justamente a troca do
+     período — que é o campo que decide se há bloqueio. */
+  ['certNvModalidade','certNvQuem','certNvRegime'].forEach(function(id){
+    if(g(id)) g(id).addEventListener('change', nvChecarPeriodo);
+  });
+  /* Os campos DIGITADOS escutam `input`, não `change`. `change` num campo de
+     texto só dispara quando a pessoa SAI dele — e quem digita o período e vai
+     direto clicar em Salvar nunca sai do campo. A trava apareceria depois de
+     a gravação já ter sido tentada, que é tarde demais para servir de aviso.
+     Daí o atraso curto: não é uma ida ao servidor por tecla. */
+  ['certNvCpf','certNvCurso','certNvPeriodo','certNvBeneficiario'].forEach(function(id){
+    if(!g(id)) return;
+    g(id).addEventListener('change', nvChecarPeriodo);
+    g(id).addEventListener('input', function(){
+      clearTimeout(_pdTimer);
+      _pdTimer = setTimeout(nvChecarPeriodo, 260);
+    });
   });
   ['certNvCurso','certNvIdade'].forEach(function(id){
     if(g(id)) g(id).addEventListener('change', nvSugerir);

@@ -142,6 +142,41 @@ function voucherCriarSolicitacao(dados, tokenSessao) {
       NUMERO_PROTOCOLO: protocolo
     };
 
+    /* UM VOUCHER POR PESSOA, POR CURSO, POR JANELA — e esta é a checagem que
+     * VALE, não a da tela.
+     *
+     * A tela já avisa enquanto a pessoa preenche, mas aquilo é conveniência:
+     * ela pode estar aberta há vinte minutos, ou pode haver duas abas do
+     * mesmo formulário. Aqui é dentro do lock, com a aba na mão e um
+     * instante antes de escrever a linha — é o único ponto onde a resposta
+     * ainda é verdade quando a gravação acontece.
+     *
+     * Sem escapatória, por decisão do usuário em 13/08/2026: "não pode gerar
+     * duas vezes para a mesma pessoa". Quem cai aqui quase sempre quer
+     * REENVIAR o que já existe, e é isso que a mensagem oferece. */
+    var hist = { anteriores: [] };
+    if (typeof voucherPeriodoHistorico_ === "function") {
+      hist = voucherPeriodoHistorico_({
+        cpf: cpf, nome: nome, beneficiario: valores.NOME_BENEFICIARIO,
+        modalidade: modalidade, curso: valores.CURSO,
+        regime: valores.REGIME, periodo: valores.PERIODO_REFERENCIA
+      }, sh);
+
+      if (hist.bloqueado) {
+        return {
+          ok: false,
+          duplicado: true,
+          bloqueio: hist.bloqueio,
+          mensagem: voucherPeriodoMensagemBloqueio_(hist.bloqueio, {
+            regime: valores.REGIME, periodo: valores.PERIODO_REFERENCIA
+          })
+        };
+      }
+      /* Deduzido do que já existe, nunca perguntado a quem digita. A coluna
+       * só é gravada se a aba tiver ela — não invento coluna aqui. */
+      valores.TIPO_SOLICITACAO = voucherTipoSolicitacao_(hist);
+    }
+
     sh.getRange(sh.getLastRow() + 1, 1, 1, cab.length).setValues([
       cab.map(function (c) { return valores[c] !== undefined ? valores[c] : ""; })
     ]);
@@ -187,6 +222,8 @@ function voucherCriarSolicitacao(dados, tokenSessao) {
 
     return {
       ok: true, protocolo: protocolo, status: valores.STATUS_SOLICITACAO,
+      tipo: valores.TIPO_SOLICITACAO || "",
+      renovacao: valores.TIPO_SOLICITACAO === "RENOVACAO",
       mensagem: aprovar
         ? "Solicitação criada e aprovada. Protocolo " + protocolo + "."
         : "Solicitação criada em análise. Protocolo " + protocolo + "."

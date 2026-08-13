@@ -92,9 +92,22 @@ b.igual(CERTO.length, HOJE.length, "o mapa tem exatamente o número de colunas d
 b.ok(CERTO.every(h => canon.indexOf(h) > -1), "todo nome do mapa existe no catálogo canônico",
   CERTO.filter(h => canon.indexOf(h) === -1).join(", "));
 b.igual(new Set(CERTO).size, CERTO.length, "nenhum nome repetido no mapa");
-b.igual(canon.filter(h => CERTO.indexOf(h) === -1).sort(),
-  ["CNPJ_INSTITUICAO", "EMAIL_INSTITUICAO", "INSTITUICAO_ENSINO"],
-  "o que sobra do canônico são exatamente as 3 colunas novas");
+/* O QUE ESTA CHECAGEM PROVA — e o que ela deixou de exigir em 13/08/2026.
+ *
+ * O mapa do reparo é um retrato HISTÓRICO: as colunas que a aba tinha no dia
+ * em que o cabeçalho foi destruído. O catálogo canônico é vivo e cresce.
+ * A versão anterior exigia que a diferença fosse exatamente as 3 colunas de
+ * instituição, e por isso quebrou quando TIPO_SOLICITACAO entrou no catálogo
+ * — acusando de erro justamente o crescimento normal do sistema.
+ *
+ * O que importa de verdade continua sendo verificado, e é o contrário disso:
+ * que NENHUMA coluna do mapa desapareceu do catálogo. Perder uma seria
+ * reparar a aba para um nome que o sistema não escreve mais. */
+b.ok(CERTO.every(h => canon.indexOf(h) > -1),
+  "nenhuma coluna do mapa do reparo sumiu do catálogo canônico");
+b.ok(canon.filter(h => CERTO.indexOf(h) === -1).length >= 3,
+  "e o catálogo só cresceu desde o reparo",
+  canon.filter(h => CERTO.indexOf(h) === -1).sort().join(", "));
 
 /* ══════════════════════════════════════════════════════════════════════ */
 b.fluxo("VOUCHER · Quem pode mandar reparar");

@@ -41,19 +41,21 @@ function salvarCadastroESolicitacaoVoucher(payload) {
     const idadeBeneficiario = calcularIdade_(payload.dataNascimentoBeneficiario);
     const regra             = calcularRegraVoucher_(payload, idadeBeneficiario);
 
-    const dupCheck = verificarDuplicidadeVoucher_(
-      cpf,
-      payload.modalidade,
-      payload.periodoReferencia,
-      regra.regime
-    );
+    /* A chave é PESSOA × CURSO × JANELA, e por isso o beneficiário e o curso
+     * vão junto: sem eles, dois filhos do mesmo associado em cursos
+     * diferentes no mesmo ano se bloqueavam entre si. Ver VoucherPeriodo.gs. */
+    const dupCheck = verificarDuplicidadeVoucher_({
+      cpf: cpf,
+      nome: nome,
+      beneficiario: nomeBeneficiario || nome,
+      modalidade: payload.modalidade,
+      curso: payload.curso,
+      periodo: payload.periodoReferencia,
+      regime: regra.regime
+    });
 
     if (dupCheck.duplicado) {
-      return {
-        ok: false,
-        mensagem: "Já existe uma solicitação ativa para este benefício no período " +
-          dupCheck.periodo + ". Protocolo: " + dupCheck.protocolo + "."
-      };
+      return { ok: false, mensagem: dupCheck.mensagem };
     }
 
     const escolaInfo    = buscarEscolaPorNome_(escolaAtual);
@@ -280,86 +282,58 @@ function montarObservacaoSolicitacaoVoucher_(regra, flags) {
   return partes.join(" | ");
 }
 
-function verificarDuplicidadeVoucher_(cpf, modalidade, periodoReferencia, regime) {
+/**
+ * A trava de duplicidade do portal — hoje só a porta, a regra mora em
+ * VoucherPeriodo.gs.
+ *
+ * ESTA FUNÇÃO TINHA A PRÓPRIA IMPLEMENTAÇÃO, e ela chaveava por CPF DO
+ * SOLICITANTE + MODALIDADE. Errava dos dois lados ao mesmo tempo: bloqueava
+ * dois filhos do mesmo associado em cursos diferentes no mesmo ano (que é o
+ * caso normal de uma família), e deixava passar a mesma pessoa em dois
+ * cursos diferentes no mesmo semestre (porque a modalidade não muda). Ver o
+ * cabeçalho de VoucherPeriodo.gs.
+ *
+ * O corpo saiu daqui em vez de ser corrigido em duas cópias porque as duas
+ * portas de entrada — a secretaria hoje, o portal quando existir — têm que
+ * recusar pelo mesmo critério e com as mesmas palavras. Duas implementações
+ * da mesma regra dariam respostas diferentes para a mesma pergunta,
+ * dependendo de onde a pessoa clicou.
+ *
+ * Aceita a forma antiga (4 argumentos posicionais) porque ela é a assinatura
+ * que já estava publicada; sem beneficiário e sem curso, porém, a chave cai
+ * para o nome do titular e para a modalidade — que é o comportamento antigo,
+ * com os defeitos antigos. Quem chama deve passar o objeto.
+ */
+function verificarDuplicidadeVoucher_(dadosOuCpf, modalidade, periodoReferencia, regime) {
   try {
-    const ss = SpreadsheetApp.openById(PLANILHA_ID);
-    const sh = ss.getSheetByName("Voucher_Solicitacoes");
+    var dados = (dadosOuCpf && typeof dadosOuCpf === "object")
+      ? dadosOuCpf
+      : { cpf: dadosOuCpf, modalidade: modalidade, periodo: periodoReferencia, regime: regime };
 
-    if (!sh || sh.getLastRow() < 2) {
-      return { duplicado: false };
-    }
+    var hist = voucherPeriodoHistorico_(dados);
+    if (!hist.bloqueado) return { duplicado: false, tipo: voucherTipoSolicitacao_(hist) };
 
-    const headers = obterHeaders_(sh);
-    const idx = function(n) { return headers.indexOf(n); };
-    const dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
-
-    const cpfNorm = normalizarCPF_(cpf);
-    const modalUp = String(modalidade || "").toUpperCase();
-    const periodoNorm = String(periodoReferencia || "").trim();
-    const regimeUp = String(regime || "ANUAL").toUpperCase();
-
-    const anoAtual = periodoNorm.substring(0, 4);
-    const semestreAtual = periodoNorm.indexOf("/") > -1 ? periodoNorm.split("/")[1] : "";
-
-    const statusBloqueantes = [
-      "PENDENTE",
-      "ANALISE",
-      "APROVADO",
-      "EMITIDO",
-      "AGUARDANDO_VALIDACAO_CADASTRAL",
-      "AGUARDANDO_ATENDIMENTO_PRESENCIAL"
-    ];
-
-    for (let i = 0; i < dados.length; i++) {
-      const cpfLinha = normalizarCPF_(dados[i][idx("CPF_SOLICITANTE")]);
-      const modalLinha = String(dados[i][idx("MODALIDADE")] || "").toUpperCase();
-      const periodoLinha = String(dados[i][idx("PERIODO_REFERENCIA")] || "").trim();
-      const statusLinha = String(dados[i][idx("STATUS_SOLICITACAO")] || "").toUpperCase();
-      const regimeLinha = String(dados[i][idx("REGIME")] || "ANUAL").toUpperCase();
-      const protocoloLinha = String(dados[i][idx("NUMERO_PROTOCOLO")] || "");
-
-      if (cpfLinha !== cpfNorm) continue;
-      if (modalLinha !== modalUp) continue;
-      if (statusBloqueantes.indexOf(statusLinha) === -1) continue;
-
-      if (regimeUp === "ANUAL" || regimeLinha === "ANUAL") {
-        const anoLinha = periodoLinha.substring(0, 4);
-
-        if (anoLinha && anoAtual && anoLinha === anoAtual) {
-          return {
-            duplicado: true,
-            protocolo: protocoloLinha,
-            periodo: periodoLinha
-          };
-        }
-      }
-
-      if (regimeUp === "SEMESTRAL" || regimeLinha === "SEMESTRAL") {
-        const anoLinha = periodoLinha.substring(0, 4);
-        const semestreLinha = periodoLinha.indexOf("/") > -1 ? periodoLinha.split("/")[1] : "";
-
-        if (
-          anoLinha &&
-          anoAtual &&
-          anoLinha === anoAtual &&
-          semestreLinha &&
-          semestreAtual &&
-          semestreLinha === semestreAtual
-        ) {
-          return {
-            duplicado: true,
-            protocolo: protocoloLinha,
-            periodo: periodoLinha
-          };
-        }
-      }
-    }
-
-    return { duplicado: false };
+    return {
+      duplicado: true,
+      protocolo: hist.bloqueio.protocolo,
+      periodo: hist.bloqueio.periodo,
+      bloqueio: hist.bloqueio,
+      mensagem: voucherPeriodoMensagemBloqueio_(hist.bloqueio, dados)
+    };
 
   } catch(e) {
     Logger.log("verificarDuplicidadeVoucher_ erro: " + e.message);
-    return { duplicado: false };
+    /* NÃO devolve "pode emitir" em cima de erro de leitura: quem chama grava
+     * logo em seguida, e um erro transitório de planilha viraria o segundo
+     * voucher emitido em silêncio. Recusar é reversível; emitir duas vezes
+     * não é. */
+    return {
+      duplicado: true,
+      protocolo: "",
+      periodo: "",
+      mensagem: "Não foi possível conferir se já existe voucher para este " +
+                "período (" + e.message + "). Tente de novo em instantes."
+    };
   }
 }
 

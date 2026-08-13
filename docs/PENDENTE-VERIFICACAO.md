@@ -72,6 +72,46 @@ reparo:**
 
 ---
 
+### 18. Voucher — um por pessoa, por curso, por período (+ data do envio nas observações)
+**Aberto em:** 13/08/2026 · `VoucherPeriodo.gs` (novo), `VoucherNovaSolicitacao.gs`,
+`VoucherSolicitacao.gs`, `VoucherEnvio.gs`, `Voucher.gs`, `Scripts_Certificado.html`
+
+Regra dada pelo usuário: *"somente um voucher por semestre ou por ano (no caso
+do integral)"*, *"renovação é por curso — somente um por vez"*, *"não pode
+gerar duas vezes para a mesma pessoa"*. Coberto por
+`tests/e2e/t37-voucher-periodo.js` — 82 asserções, 15 mutações, todas mortas.
+
+**O que o emulador provou:** a chave é PESSOA × CURSO × JANELA; a segunda
+solicitação na mesma janela não grava linha; a recusa traz o protocolo
+anterior; dois filhos do mesmo associado não se bloqueiam; RECUSADO e
+CANCELADO liberam a janela; ANÁLISE já ocupa; `TIPO_SOLICITACAO` grava
+PRIMEIRA_VEZ/RENOVACAO; o carimbo de envio acrescenta linha às observações sem
+apagar o que a secretaria escreveu.
+
+**O que uma mutação achou e eu não teria visto:** minha asserção da regra do
+ANUAL estava medindo outra coisa — apagando a regra inteira o teste continuava
+verde, porque os casos escolhidos caíam na regra do semestre desconhecido.
+Corrigido com dois casos que só a regra do ANUAL faz passar.
+
+| O que falta rodar no ar | Como se vê que está certo |
+|---|---|
+| 🔴 **Rodar `inicializarModuloCertBolsa()`** | a coluna `TIPO_SOLICITACAO` tem que aparecer **no fim** da aba, sem mexer em nenhuma existente |
+| 🔴 **Cadastrar a mesma pessoa/curso duas vezes no mesmo semestre** | a caixa vermelha aparece com o protocolo anterior e os dois botões de salvar ficam apagados |
+| 🔴 **Clicar em "Abrir a anterior"** | deve fechar este modal e abrir o detalhe do protocolo citado |
+| 🔴 **Clicar em "Reenviar por e-mail"** (só aparece em EMITIDO) | deve abrir o modal de envio já com aquele protocolo |
+| 🔴 **Trocar o período para o semestre seguinte** | a caixa vermelha vira a etiqueta azul de renovação e os botões voltam |
+| 🔴 **Cadastrar dois filhos no mesmo ano** | os dois têm que entrar — este é o caso que a trava antiga bloqueava |
+| 🔴 **Enviar um certificado e abrir a linha na planilha** | `OBSERVACOES` tem que terminar com `Enviado por e-mail em dd/mm/aaaa hh:mm para ... por ...` |
+| 🔴 **Reenviar o mesmo** | segunda linha de carimbo, sem apagar a primeira |
+| 🔴 **A etiqueta "renovação" na lista e no detalhe** | só nas linhas gravadas a partir de agora; as antigas ficam sem etiqueta de propósito |
+
+**Ponto que merece olho na primeira semana:** período escrito sem o semestre
+(`2026` num regime semestral) faz o sistema **travar** por precaução, com a
+mensagem pedindo o formato `2026/1`. Se isso atrapalhar o atendimento, a
+decisão é sua — o outro lado da moeda é emitir dois vouchers no mesmo semestre.
+
+---
+
 ### 16. Voucher — o envio do certificado (e-mail, WhatsApp e trilha)
 **Aberto em:** 12/08/2026 · `VoucherEnvio.gs`, `Voucher.gs`, `AuditoriaCore.gs`
 
