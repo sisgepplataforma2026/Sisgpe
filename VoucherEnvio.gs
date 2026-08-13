@@ -198,6 +198,27 @@ function voucherEnviarPorEmail(protocolo, opcoes, tokenSessao) {
     voucherRegistrarEnvio_(pronto.protocolo, "EMAIL",
       para + (copia ? " (cc " + copia + ")" : ""), sessao);
 
+    /* A MEMÓRIA APRENDE AQUI, e este é o ponto mais valioso dela.
+     *
+     * Quando quem envia CORRIGE o e-mail da instituição no modal, essa
+     * correção é o sinal mais forte que o sistema recebe: alguém olhou o
+     * endereço sugerido, viu que estava errado e digitou o certo. Antes
+     * disso, a correção morria no envio e a próxima solicitação sugeria o
+     * endereço velho de novo — errar duas vezes o mesmo endereço é o que
+     * não pode acontecer.
+     *
+     * Nunca lança: memória é conveniência, o e-mail já saiu. */
+    if (typeof voucherInstLembrar_ === "function") {
+      voucherInstLembrar_({
+        nome: pronto.instituicao,
+        cnpj: (voucherLinhaPorProtocolo_(SpreadsheetApp.openById(PLANILHA_ID),
+                 VOUCHER_ABA_SOLICITACOES, pronto.protocolo) || {}).CNPJ_INSTITUICAO,
+        email: copia,
+        percentual: pronto.percentual,
+        quem: (sessao && (sessao.email || sessao.usuario)) || ""
+      });
+    }
+
     return { ok: true, mensagem: "E-mail enviado para " + para + (copia ? " com cópia para " + copia : "") + ".",
              para: para, copia: copia, comAnexo: anexos.length > 0 };
   } catch (e) {

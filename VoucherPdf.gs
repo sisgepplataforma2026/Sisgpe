@@ -127,6 +127,33 @@ registrarEmissaoVoucher_(reg, {
 
     atualizarStatusProtocolo_(protocolo, "EMITIDO", usuario, "Voucher emitido.");
 
+    /* A MEMÓRIA APRENDE NA EMISSÃO — só aqui, nunca na prévia.
+     *
+     * Prévia é rascunho: alguém experimentando 100% para ver como fica não
+     * está concedendo nada. Se a prévia alimentasse a memória, o padrão
+     * passaria a refletir o que se testou, não o que se deu — e a sugestão
+     * ficaria pior a cada experimento.
+     *
+     * O caminho da prévia retorna bem antes desta linha, então a separação
+     * é estrutural, não uma condição que alguém possa esquecer de manter. */
+    if (typeof voucherPadraoLembrar_ === "function") {
+      voucherPadraoLembrar_({
+        modalidade: reg.MODALIDADE,
+        area: reg.AREA_CURSO,
+        curso: reg.CURSO,
+        percentual: percentual
+      });
+    }
+    if (typeof voucherInstLembrar_ === "function") {
+      voucherInstLembrar_({
+        nome: reg.INSTITUICAO_ENSINO,
+        cnpj: reg.CNPJ_INSTITUICAO,
+        email: reg.EMAIL_INSTITUICAO,
+        percentual: percentual,
+        quem: usuario
+      });
+    }
+
     registrarHistoricoVoucher_(
       reg.ID_SOLICITACAO,
       reg.CPF_SOLICITANTE,

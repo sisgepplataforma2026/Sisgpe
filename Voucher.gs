@@ -590,33 +590,64 @@ function seedVoucherRules_() {
 
   if (existingData.length > 1) return;
 
-  const rows = [
-    ["REG001","PERCENTUAL_POR_ORDEM","EDUCACAO_INFANTIL","","1","FILHO","24","100","ANUAL","SIM","1º filho"],
-    ["REG002","PERCENTUAL_POR_ORDEM","EDUCACAO_INFANTIL","","2","FILHO","24","100","ANUAL","SIM","2º filho"],
-    ["REG003","PERCENTUAL_POR_ORDEM","EDUCACAO_INFANTIL","","3","FILHO","24","60","ANUAL","SIM","3º filho"],
-    ["REG004","PERCENTUAL_POR_ORDEM","CRECHE","","1","FILHO","24","100","ANUAL","SIM","1º filho"],
-    ["REG005","PERCENTUAL_POR_ORDEM","CRECHE","","2","FILHO","24","100","ANUAL","SIM","2º filho"],
-    ["REG006","PERCENTUAL_POR_ORDEM","CRECHE","","3","FILHO","24","60","ANUAL","SIM","3º filho"],
-    ["REG007","PERCENTUAL_POR_ORDEM","ENSINO_FUNDAMENTAL","","1","FILHO","24","100","ANUAL","SIM","1º filho"],
-    ["REG008","PERCENTUAL_POR_ORDEM","ENSINO_FUNDAMENTAL","","2","FILHO","24","100","ANUAL","SIM","2º filho"],
-    ["REG009","PERCENTUAL_POR_ORDEM","ENSINO_FUNDAMENTAL","","3","FILHO","24","60","ANUAL","SIM","3º filho"],
-    ["REG010","PERCENTUAL_POR_ORDEM","TECNICO","","1","FILHO","24","100","ANUAL","SIM","1º filho"],
-    ["REG011","PERCENTUAL_POR_ORDEM","TECNICO","","2","FILHO","24","100","ANUAL","SIM","2º filho"],
-    ["REG012","PERCENTUAL_POR_ORDEM","TECNICO","","3","FILHO","24","60","ANUAL","SIM","3º filho"],
-    ["REG013","PERCENTUAL_POR_AREA","GRADUACAO","ENGENHARIA","","TITULAR","","60","SEMESTRAL","SIM","Graduação Engenharia"],
-    ["REG014","PERCENTUAL_POR_AREA","GRADUACAO","HUMANAS","","TITULAR","","70","SEMESTRAL","SIM","Graduação Humanas"],
-    ["REG015","PERCENTUAL_POR_AREA","GRADUACAO","SAUDE","","TITULAR","","50","SEMESTRAL","SIM","Graduação Saúde"],
-    ["REG016","PERCENTUAL_POR_AREA","GRADUACAO","ENGENHARIA","","CONJUGE","","60","SEMESTRAL","SIM","Graduação Engenharia"],
-    ["REG017","PERCENTUAL_POR_AREA","GRADUACAO","HUMANAS","","CONJUGE","","70","SEMESTRAL","SIM","Graduação Humanas"],
-    ["REG018","PERCENTUAL_POR_AREA","GRADUACAO","SAUDE","","CONJUGE","","50","SEMESTRAL","SIM","Graduação Saúde"],
-    ["REG019","PERCENTUAL_POR_AREA","GRADUACAO","ENGENHARIA","","ENTEADO","24","60","SEMESTRAL","SIM","Graduação Engenharia"],
-    ["REG020","PERCENTUAL_POR_AREA","GRADUACAO","HUMANAS","","ENTEADO","24","70","SEMESTRAL","SIM","Graduação Humanas"],
-    ["REG021","PERCENTUAL_POR_AREA","GRADUACAO","SAUDE","","ENTEADO","24","50","SEMESTRAL","SIM","Graduação Saúde"],
-    ["REG022","PERCENTUAL_FIXO","POS_GRADUACAO","","","TITULAR","","70","ANUAL","SIM","Pós-graduação"],
-    ["REG023","PERCENTUAL_FIXO","POS_GRADUACAO","","","CONJUGE","","70","ANUAL","SIM","Pós-graduação"],
-    ["REG024","PERCENTUAL_FIXO","POS_GRADUACAO","","","FILHO","24","70","ANUAL","SIM","Pós-graduação"],
-    ["REG025","PERCENTUAL_FIXO","POS_GRADUACAO","","","ENTEADO","24","70","ANUAL","SIM","Pós-graduação"]
-  ];
+  /* AS REGRAS DA CONVENÇÃO COLETIVA — ditadas pelo usuário em 12/08/2026.
+   *
+   * ENSINO BÁSICO (infantil, fundamental, médio, técnico), por ordem do filho:
+   *   1º filho 100% · 2º filho 100% · 3º filho 50%
+   *
+   * GRADUAÇÃO, por área:
+   *   Humanas 70% · Saúde 50% · Engenharia/Exatas 60%
+   *
+   * PÓS-GRADUAÇÃO: 70%
+   *
+   * MESTRADO e DOUTORADO: NÃO HÁ BENEFÍCIO. Entram aqui com percentual 0 e
+   * ATIVO = SIM de propósito — uma regra explícita que concede zero é
+   * diferente de regra ausente. Sem ela, o mestrado cairia no vazio e o
+   * sistema deixaria o campo em branco, e campo em branco alguém preenche
+   * na mão. Com ela, a tela pode dizer "esta modalidade não tem desconto
+   * em convenção" — que é a informação verdadeira.
+   *
+   * ATENÇÃO A QUEM FOR MEXER: este seed só roda em aba VAZIA (a linha
+   * `if (existingData.length > 1) return;` logo acima). Alterar percentual
+   * de planilha que já opera é mudança de dinheiro e exige migração
+   * própria, com prévia — nunca de passagem por um seed. */
+  const BASICO = ["EDUCACAO_INFANTIL", "CRECHE", "ENSINO_FUNDAMENTAL", "ENSINO_MEDIO", "TECNICO"];
+  const POR_ORDEM = { "1": 100, "2": 100, "3": 50 };
+  const AREAS = { "HUMANAS": 70, "SAUDE": 50, "ENGENHARIA": 60 };
+  const PARENTES = ["TITULAR", "CONJUGE", "FILHO", "ENTEADO"];
+
+  const rows = [];
+  let n = 0;
+  function id() { n++; return "REG" + ("00" + n).slice(-3); }
+
+  BASICO.forEach(function (mod) {
+    ["1", "2", "3"].forEach(function (ordem) {
+      rows.push([id(), "PERCENTUAL_POR_ORDEM", mod, "", ordem, "FILHO", "24",
+                 String(POR_ORDEM[ordem]), "ANUAL", "SIM", ordem + "º filho"]);
+    });
+  });
+
+  Object.keys(AREAS).forEach(function (area) {
+    PARENTES.forEach(function (quem) {
+      rows.push([id(), "PERCENTUAL_POR_AREA", "GRADUACAO", area, "", quem,
+                 (quem === "FILHO" || quem === "ENTEADO") ? "24" : "",
+                 String(AREAS[area]), "SEMESTRAL", "SIM", "Graduação " + area]);
+    });
+  });
+
+  PARENTES.forEach(function (quem) {
+    rows.push([id(), "PERCENTUAL_FIXO", "POS_GRADUACAO", "", "", quem,
+               (quem === "FILHO" || quem === "ENTEADO") ? "24" : "",
+               "70", "ANUAL", "SIM", "Pós-graduação"]);
+  });
+
+  /* Mestrado e doutorado: regra explícita de ZERO, não ausência de regra. */
+  ["MESTRADO", "DOUTORADO"].forEach(function (mod) {
+    PARENTES.forEach(function (quem) {
+      rows.push([id(), "SEM_BENEFICIO", mod, "", "", quem, "", "0", "ANUAL", "SIM",
+                 "Não há desconto em convenção para " + mod.toLowerCase()]);
+    });
+  });
 
   sh.getRange(2, 1, rows.length, rows[0].length).setValues(rows);
   autoResizeSafe_(sh, sh.getLastColumn());
