@@ -596,6 +596,45 @@
   </div>
 </div>
 
+<!-- MODAL DO DOCUMENTO — prévia, geração e o que fazer depois.
+     Pedido do usuário em 13/08/2026: "tem que abrir um modal igual ao
+     ofício", "prévia e gerar", "após gerado abre para enviar e-mail e zap,
+     imprimir, baixar".
+
+     DOIS ESTADOS NO MESMO MODAL, e a diferença entre eles é o que existe:
+     antes de gerar há rascunho — dá para imprimir e conferir, mas não há o
+     que enviar, porque não existe documento nem código de validação. Depois
+     de gerar aparecem baixar e os dois envios, e o botão Gerar some: a
+     segunda emissão devolve o mesmo código, não um novo. -->
+<div id="certDocOverlay" style="position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;padding:14px;z-index:10003;backdrop-filter:blur(3px);">
+  <div id="certDocBox" style="width:min(900px,100%);height:min(92vh,100%);background:#fff;border-radius:18px;box-shadow:0 30px 80px rgba(0,20,60,.3);overflow:hidden;display:flex;flex-direction:column;font-family:'Plus Jakarta Sans',sans-serif;">
+    <div class="cert-modal-head">
+      <div class="cert-modal-head-l">
+        <div class="cert-modal-ico">🎓</div>
+        <div>
+          <div class="cert-modal-title" id="certDocTitulo">Certificado de Bolsa</div>
+          <div class="cert-modal-sub" id="certDocSub">—</div>
+        </div>
+      </div>
+      <button class="cert-modal-close" id="certDocFechar">✕</button>
+    </div>
+
+    <div style="flex:1;min-height:0;background:#e9edf3;padding:12px;overflow:auto;">
+      <div id="certDocCarregando" style="text-align:center;color:#64748b;font-size:13px;padding:40px 0;">⏳ Montando o documento...</div>
+      <iframe id="certDocFrame" title="Prévia do certificado"
+              style="display:none;width:100%;height:100%;min-height:520px;border:0;background:#fff;box-shadow:0 2px 6px rgba(15,39,71,.14),0 12px 34px rgba(15,39,71,.18);"></iframe>
+    </div>
+
+    <div class="cert-modal-foot">
+      <span id="certDocAviso" style="margin-right:auto;font-size:11.5px;color:#64748b;"></span>
+      <button type="button" id="certDocImprimir" class="cert-btn cert-btn-secondary">🖨 Imprimir</button>
+      <button type="button" id="certDocBaixar"   class="cert-btn cert-btn-secondary" style="display:none;">⬇ Baixar PDF</button>
+      <button type="button" id="certDocEnviar"   class="cert-btn cert-btn-secondary" style="display:none;">📧 E-mail / 📱 WhatsApp</button>
+      <button type="button" id="certDocGerar"    class="cert-btn cert-btn-primary">🎓 Gerar certificado</button>
+    </div>
+  </div>
+</div>
+
 <div id="certNovaOverlay">
   <div id="certNovaBox">
     <div class="cert-modal-head">
@@ -1150,7 +1189,11 @@ function renderTabela(){
   tbody.querySelectorAll('.cert-btn-emitir-rapido').forEach(function(btn){
     btn.addEventListener('click',function(){
       var s=linhaDoBotao(this);
-      if(s){_solAtual=s; gerarDocumento('CERTIFICADO');}
+      /* ABRE A PRÉVIA, NÃO EMITE. Emitir direto do botão da lista fazia um
+         clique só produzir documento definitivo, com código de validação e
+         status EMITIDO — sem ninguém ver o papel antes. Agora o clique abre
+         o modal com a prévia, e emitir é uma segunda decisão. */
+      if(s){ certDocAbrir(s); }
     });
   });
   tbody.querySelectorAll('.cert-sel-linha').forEach(function(cb){
@@ -2290,6 +2333,125 @@ function gerarDocumento(tipo){
     }, certToken());
 }
 
+/* ══ MODAL DO DOCUMENTO ══════════════════════════════════════════════════
+   Prévia → gerar → imprimir, baixar, e-mail, WhatsApp.
+
+   POR QUE A PRÉVIA VEM ANTES: emitir grava código de validação, muda o
+   status para EMITIDO e cria o PDF no Drive. É irreversível na prática — a
+   segunda emissão devolve o mesmo código, de propósito. Um documento assim
+   não deveria nascer de um clique único num ícone da lista, sem ninguém ver
+   o papel. Agora vê-se primeiro; emitir é a segunda decisão. */
+var _docSol = null;      // a solicitação aberta no modal
+var _docEmitido = null;  // resposta da emissão, quando já houve
+
+function certDocEstado(emitido){
+  var g_ = g;
+  if(g_('certDocBaixar')) g_('certDocBaixar').style.display = emitido ? '' : 'none';
+  if(g_('certDocEnviar')) g_('certDocEnviar').style.display = emitido ? '' : 'none';
+  /* O Gerar some depois de emitido: deixá-lo aceso convidaria ao segundo
+     clique que não gera nada e parece que o sistema ignorou. */
+  if(g_('certDocGerar'))  g_('certDocGerar').style.display  = emitido ? 'none' : '';
+  if(g_('certDocAviso'))  g_('certDocAviso').textContent = emitido
+    ? 'Emitido. Código ' + ((_docEmitido && _docEmitido.codigoValidacao) || '—')
+    : 'Rascunho — nada foi emitido nem enviado ainda.';
+}
+
+function certDocMostrarHtml(html){
+  var frame = g('certDocFrame'), carreg = g('certDocCarregando');
+  if(carreg) carreg.style.display = 'none';
+  if(!frame) return;
+  frame.style.display = '';
+  /* srcdoc e não document.write: o documento tem CSS próprio (A4 em
+     milímetros, @page, marca d'água) e precisa de um contexto isolado —
+     dentro da página do portal ele herdaria o CSS do sistema e deixaria de
+     parecer o papel que vai ser impresso. */
+  frame.srcdoc = String(html || '');
+}
+
+window.certDocAbrir = function(sol){
+  _docSol = sol || null;
+  _docEmitido = null;
+  if(!_docSol){ msg('Não consegui identificar a solicitação.','erro'); return; }
+
+  var ov = g('certDocOverlay');
+  if(ov) ov.style.display = 'flex';
+  if(g('certDocTitulo')) g('certDocTitulo').textContent = 'Certificado · ' + (_docSol.protocolo || '');
+  if(g('certDocSub')) g('certDocSub').textContent =
+    [(_docSol.nome||''), (_docSol.curso||''), (_docSol.periodoReferencia||_docSol.periodo||'')]
+      .filter(Boolean).join(' · ');
+  if(g('certDocFrame')) { g('certDocFrame').style.display='none'; g('certDocFrame').srcdoc=''; }
+  if(g('certDocCarregando')) g('certDocCarregando').style.display = '';
+  certDocEstado(_docSol.status === 'EMITIDO');
+
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r || !r.ok){
+        if(g('certDocCarregando')) g('certDocCarregando').textContent =
+          '⚠️ ' + ((r && r.mensagem) || 'Não consegui montar a prévia.');
+        return;
+      }
+      /* Protocolo já emitido devolve o documento pronto em vez da prévia —
+         e nesse caso o modal já nasce no estado "emitido". */
+      if(r.reemitido){ _docEmitido = r; certDocEstado(true); }
+      certDocMostrarHtml(r.html || '');
+      if(!r.html && g('certDocCarregando')){
+        g('certDocCarregando').style.display = '';
+        g('certDocCarregando').textContent = 'Documento já emitido. Use Baixar PDF.';
+      }
+    })
+    .withFailureHandler(function(err){
+      if(g('certDocCarregando')) g('certDocCarregando').textContent =
+        '⚠️ ' + ((err && err.message) || 'Falha ao montar a prévia.');
+    })
+    .gerarDocumentoCertBolsaCompleto(_docSol.protocolo, 'PREVIA', { percentual: 70 }, certToken());
+};
+
+function certDocFechar(){
+  var ov = g('certDocOverlay');
+  if(ov) ov.style.display = 'none';
+  if(g('certDocFrame')) g('certDocFrame').srcdoc = '';
+}
+
+function certDocImprimir(){
+  var frame = g('certDocFrame');
+  if(!frame || !frame.srcdoc){ msg('Nada para imprimir ainda.','warn'); return; }
+  try { frame.contentWindow.focus(); frame.contentWindow.print(); }
+  catch(e){ msg('O navegador bloqueou a impressão: ' + (e.message||''),'erro'); }
+}
+
+function certDocGerar(){
+  if(!_docSol) return;
+  var btn = g('certDocGerar');
+  setBtnLoad(btn,'Gerando...');
+  google.script.run
+    .withSuccessHandler(function(r){
+      resetBtn(btn);
+      if(!r || !r.ok){ msg((r && r.mensagem) || 'Erro ao gerar o certificado.','erro'); return; }
+      _docEmitido = r;
+      certDocEstado(true);
+      if(r.html) certDocMostrarHtml(r.html);
+      msg('✅ Certificado emitido. Código: <strong>'+(r.codigoValidacao||'—')+'</strong>','ok');
+      carregarLista();
+    })
+    .withFailureHandler(function(err){ resetBtn(btn); msg('Erro: '+((err&&err.message)||''),'erro'); })
+    .gerarDocumentoCertBolsaCompleto(_docSol.protocolo, 'CERTIFICADO', { percentual: 70 }, certToken());
+}
+
+function certDocBaixar(){
+  var link = _docEmitido && _docEmitido.linkPdf;
+  if(!link){ msg('O PDF só existe depois de gerar.','warn'); return; }
+  window.open(link,'_blank');
+}
+
+function certDocEnviar(){
+  if(!_docSol) return;
+  if(!_docEmitido && _docSol.status !== 'EMITIDO'){
+    msg('Gere o certificado antes de enviar.','warn'); return;
+  }
+  certDocFechar();
+  envAbrir(_docSol.protocolo);
+}
+
 // ── Carregar
 function carregarLista(){
   var tbody=g('certTbody');
@@ -2353,6 +2515,14 @@ function initInterno(){
     if(g(id)) g(id).addEventListener('change', aplicarFiltros);
   });
   if(g('certLimparFiltros')) g('certLimparFiltros').addEventListener('click', limparFiltros);
+
+  // ── modal do documento: prévia, gerar, imprimir, baixar, enviar
+  if(g('certDocFechar'))   g('certDocFechar').addEventListener('click', certDocFechar);
+  if(g('certDocImprimir')) g('certDocImprimir').addEventListener('click', certDocImprimir);
+  if(g('certDocGerar'))    g('certDocGerar').addEventListener('click', certDocGerar);
+  if(g('certDocBaixar'))   g('certDocBaixar').addEventListener('click', certDocBaixar);
+  if(g('certDocEnviar'))   g('certDocEnviar').addEventListener('click', certDocEnviar);
+  ligarFecharPorClique(g('certDocOverlay'), certDocFechar);
 
   // ── seleção e exclusão (lixeira)
   if(g('certSelTodos')) g('certSelTodos').addEventListener('change', function(){

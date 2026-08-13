@@ -207,7 +207,56 @@ b.ok(/HTML do certificado/.test(String(comFalha.etapa || "")),
   "apontando o passo certo", comFalha.etapa);
 
 /* ══════════════════════════════════════════════════════════════════════ */
-b.fluxo("VOUCHER · 7. O que ainda não dá para provar aqui");
+b.fluxo("VOUCHER · 7. O modal do documento");
+
+/* Pedido do usuário em 13/08/2026: "tem que abrir um modal igual ao
+ * ofício", "prévia e gerar", "após gerado abre para enviar e-mail e zap,
+ * imprimir, baixar". jsdom não desenha, então o que se prova aqui é a
+ * LÓGICA: o que abre, o que aparece quando, e o que o botão pede ao
+ * servidor. */
+const d = require("./dom");
+if (!d.jsdomDisponivel()) {
+  b.naoTestavel("O modal do documento", "jsdom não instalado neste ambiente");
+} else {
+  const tela = d.montar(g, ["Scripts_Certificado.html"], { token: token });
+  const el = id => tela.doc.getElementById(id);
+  const visivel = id => { const e = el(id); return !!e && e.style.display !== "none"; };
+
+  b.passo("17. O modal existe, com os quatro destinos do documento");
+  b.ok(el("certDocOverlay"), "o modal está na tela");
+  b.ok(el("certDocFrame"), "com moldura para a folha");
+  ["certDocImprimir", "certDocBaixar", "certDocEnviar", "certDocGerar"]
+    .forEach(id => b.ok(el(id), "botão " + id));
+
+  b.passo("18. Antes de gerar, só imprimir — não há o que enviar nem baixar");
+  /* É a regra que dá sentido aos dois estados: antes de gerar é rascunho.
+   * Não existe PDF no Drive nem código de validação, então oferecer baixar
+   * ou enviar seria oferecer o que não existe. */
+  tela.win.certDocAbrir({ protocolo: PROT, nome: NOME, curso: "Pedagogia",
+                          status: "APROVADO", periodoReferencia: "2026/1" });
+  b.ok(visivel("certDocOverlay"), "o modal abre");
+  b.igual(visivel("certDocBaixar"), false, "baixar escondido");
+  b.igual(visivel("certDocEnviar"), false, "enviar escondido");
+  b.ok(visivel("certDocGerar"), "e gerar disponível");
+
+  b.passo("19. Abrir a prévia NÃO emite");
+  const pedidos = tela.chamadas.map(c => c.fn + ":" + JSON.stringify(c.args[1] || ""));
+  b.ok(pedidos.some(p => /PREVIA/.test(p)),
+    "o modal pede PREVIA ao abrir", pedidos.join(" | "));
+  b.igual(pedidos.some(p => /CERTIFICADO/.test(p)), false,
+    "e não pede CERTIFICADO — abrir não emite");
+
+  b.passo("20. Depois de emitido, aparecem baixar e enviar, e gerar some");
+  tela.win.certDocAbrir({ protocolo: PROT, nome: NOME, curso: "Pedagogia",
+                          status: "EMITIDO", periodoReferencia: "2026/1" });
+  b.ok(visivel("certDocBaixar"), "baixar aparece");
+  b.ok(visivel("certDocEnviar"), "enviar aparece");
+  b.igual(visivel("certDocGerar"), false,
+    "e gerar some — a segunda emissão devolve o mesmo código, não um novo");
+}
+
+/* ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("VOUCHER · 8. O que ainda não dá para provar aqui");
 
 b.naoTestavel("O PDF de verdade",
   "getAs(MimeType.PDF) não existe no emulador; A4 se confere abrindo o arquivo");
