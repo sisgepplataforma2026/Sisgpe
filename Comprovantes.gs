@@ -1,6 +1,35 @@
 // ================================================================
 // 📄 ARQUIVO: Comprovantes.gs
 // Módulo de Comprovantes e Despesas Avulsas
+//
+// ⚠️ LEGADO — MÓDULO SEM TELA E SEM LIGAÇÃO, desde sempre neste repositório.
+//
+// Verificado em 13/08/2026 pelos 5 passos da REGRA Nº 1, e o resultado é o
+// mesmo em todos:
+//
+//   1. cabeçalho .......... nada documentava o estado (esta nota corrige)
+//   2. rotas doGet/doPost . as três rotas públicas de Code.gs são de
+//                           Despesas (pub-pixel-nf, pub-nf-despesa,
+//                           pub-contabil-despesa). Nenhuma chega aqui.
+//   3. triggers/onOpen .... NÃO EXISTE onOpen no projeto, e
+//                           adicionarMenuComprovantes() não tem chamador —
+//                           o item de menu da planilha nunca é criado
+//   4. git log ............ vem do "Primeiro backup do Sisgpe"; nenhuma
+//                           decisão anterior sobre o arquivo
+//   5. grep no projeto .... salvarComprovante, excluirComprovante,
+//                           listarComprovantes, gerarComprovanteWeb,
+//                           gerarPdfComprovanteWeb, enviarComprovantePorEmail
+//                           e criarAbasModuloComprovantes: NENHUM chamador
+//                           em .gs ou .html fora deste arquivo
+//
+// O que veio depois: o fluxo de comprovante e nota fiscal hoje vive em
+// Despesas (DespesasAdmin, PubNFDespesa, PubContabilDespesa), com as rotas
+// públicas religadas em 08/2026. Este arquivo é o antecessor daquilo.
+//
+// FICA, e fica inteiro. As funções continuam expostas ao google.script.run,
+// e o dado da aba COMPROVANTES, se existir na planilha, continua alcançável
+// por elas. Remoção só com pedido explícito do usuário, em commit separado —
+// REGRA Nº 1.
 // ================================================================
 
 var ABA_COMPROVANTES       = "COMPROVANTES";
@@ -1150,11 +1179,33 @@ if (typeof saudacaoHoraBR_ !== 'function') {
  * @return {GoogleAppsScript.HTML.HtmlOutput}
  */
 function incluirComprovantes() {
-  return HtmlService.createHtmlOutputFromFile('Index')
+  /* PEDIA UM ARQUIVO QUE NÃO EXISTE.
+   *
+   * Pedia, pelo nome, um arquivo HTML chamado Index — que não existe
+   * neste projeto — o portal é `index`, em minúscula, e a busca do
+   * Apps Script diferencia maiúscula. Chamar esta função, hoje, devolve o
+   * erro cru "No HTML file named Index" para quem clicou.
+   *
+   * Servir o portal inteiro daqui também não seria certo: este módulo é
+   * legado e não tem tela própria (ver o cabeçalho do arquivo). Então em vez
+   * de um erro de plataforma, sai um recado que diz o que aconteceu e para
+   * onde ir. Ninguém chama esta função hoje; o dia em que alguém chamar,
+   * merece uma frase em português e não um stack trace. */
+  return HtmlService.createHtmlOutput(
+      '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+      '<title>Comprovantes — módulo legado</title></head>' +
+      '<body style="margin:0;padding:28px;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;' +
+      'color:#0f172a;background:#f1f5f9;line-height:1.6">' +
+      '<h2 style="margin:0 0 8px;color:#001f4d;font-size:18px">Comprovantes — módulo legado</h2>' +
+      '<p style="margin:0 0 10px;font-size:14px">Este módulo não tem tela própria neste projeto. ' +
+      'O fluxo de comprovante e nota fiscal passou para <strong>Despesas</strong>, no Portal Administrativo.</p>' +
+      '<p style="margin:0;font-size:13px;color:#475569">As funções de <code>Comprovantes.gs</code> continuam ' +
+      'disponíveis e o dado da aba COMPROVANTES não foi tocado.</p>' +
+      '</body></html>')
     .setTitle('Comprovantes - SISGEP')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-    .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
 /* ================= FUNÇÃO PARA MENU DO SISGEP ================= */
