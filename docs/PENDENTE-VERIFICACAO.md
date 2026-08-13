@@ -12,6 +12,41 @@
 
 ## 🔴 ABERTO
 
+### 19. SOFIA — a procedência embaixo da resposta
+**Aberto em:** 13/08/2026 · `ChatIACore.gs`, `ChatSISGEP.html`
+
+Depois de responder, a SOFIA passa a dizer **de que documento a resposta
+saiu**: um chip discreto embaixo do balão — `📜 Estatuto · ESTATUTO
+SINDEDUCACAO-ES (vigente, aprovado em 17/11/2025)`. Sem documento consultado,
+nada é desenhado.
+
+E há um segundo caso, que é o motivo real disto existir: quando a resposta
+**cita cláusula ou artigo sem o documento ter entrado no prompt**, aparece um
+aviso âmbar dizendo que o número não foi conferido contra fonte nenhuma. É o
+defeito que ninguém percebe sozinho — a resposta sai com a mesma cara de
+sempre e o artigo pode ser invenção.
+
+**O que já está travado por teste** (`t38-sofia-fontes.js`, 46 asserções,
+7 mutações mortas em 7): a lista de fontes é **lida do prompt montado**, nunca
+recalculada — a única forma de a tela dizer "consultei o Estatuto" é o bloco
+do Estatuto estar lá dentro; a identificação vem da primeira linha do próprio
+documento, sem a moldura de `===`; documento fora do mapa de rótulos também é
+anunciado; e o alerta não dispara em `art. 477 da CLT` nem em `art. 8º da
+Constituição`, que são referência de lei e não citação nossa.
+
+**O que só se confere no ar** — é isto que fica pendente:
+
+| | |
+|---|---|
+| 🔴 A linha aparece embaixo de uma resposta real | perguntar algo de Estatuto e ver o chip |
+| 🔴 Com CCT e Estatuto na mesma pergunta, os dois chips aparecem | ex.: piso + quórum |
+| 🔴 Pergunta de cadastro não desenha nada | "quantos associados temos" |
+| 🔴 O aviso âmbar aparece quando deve | pergunta que force citação sem documento |
+
+O desenho foi conferido no navegador (quatro estados renderizados no
+Chromium), mas **isso não é a tela no ar**: o emulador não chama a Anthropic,
+então nenhuma resposta real passou por este caminho ainda.
+
 ### 17. Voucher — o reparo do cabeçalho de `Voucher_Solicitacoes`
 **Aberto em:** 12/08/2026 · `Voucher.gs`, `VoucherReparoColunas.gs` · **BLOQUEIA EMISSÃO**
 

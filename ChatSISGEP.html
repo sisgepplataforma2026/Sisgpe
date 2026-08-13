@@ -80,6 +80,15 @@
 .chat-msg-ia>div:first-child{box-shadow:0 4px 12px rgba(0,47,108,.16)}
 .chat-msg-ia>div:last-child{background:#fff;border:1px solid #e3eaf3;border-radius:6px 16px 16px 16px;padding:14px 16px;box-shadow:0 4px 16px rgba(15,39,71,.055);max-width:min(88%,820px)!important}
 .chat-msg-ia>div:last-child strong:first-child{color:var(--navy2,#002f6c)}
+/* Procedência da resposta — discreta por padrão, porque ela não compete com
+   o texto; só é lida por quem foi conferir. O alerta, ao contrário, precisa
+   ser visto sem procurar: ele diz que o número citado pode ser invenção. */
+.sofia-fontes{margin-top:11px;padding-top:9px;border-top:1px dashed #e3eaf3;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.sofia-fontes-rot{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#94a3b8}
+.sofia-fonte{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;line-height:1.35;color:#1e3a8a;background:#eff6ff;border:1px solid #bfdbfe;border-left:3px solid var(--blue,#1565C0);border-radius:7px;padding:4px 9px}
+.sofia-fonte b{font-weight:700}
+.sofia-fonte span{color:#475569}
+.sofia-alerta-fonte{margin-top:9px;font-size:11.5px;line-height:1.5;color:#8a4b06;background:#fffbeb;border:1px solid #fde68a;border-left:3px solid #d97706;border-radius:7px;padding:7px 10px}
 #sugestoesInicio,#chatSugestoes{gap:7px!important}
 #sugestoesInicio button,#chatSugestoes button{border:1px solid #d9e4f0!important;background:#f7faff!important;color:#174a7c!important;border-radius:999px!important;padding:7px 11px!important;transition:all .16s ease}
 #sugestoesInicio button:hover,#chatSugestoes button:hover{background:#e5effa!important;border-color:#9db9d6!important;transform:translateY(-1px)}
@@ -396,6 +405,7 @@
 
         if (resp && resp.ok) {
           var wrapper = adicionarMensagem("ia", resp.resposta);
+          renderizarProcedencia(wrapper, resp);
           _state.historico.push({ role: "assistant", content: resp.resposta });
           if (_state.historico.length > 20) _state.historico = _state.historico.slice(-20);
           setStatus("● Pronto para ajudar", "var(--gold,#C9A84C)");
@@ -556,6 +566,63 @@
     container.appendChild(wrapper);
     if (scroll) container.scrollTop = container.scrollHeight;
     return wrapper;
+  }
+
+  /**
+   * A linha de procedência, embaixo da resposta.
+   *
+   * Por que DEPOIS e não antes: escolher a especialidade antes de perguntar é
+   * palpite; dizer de onde a resposta saiu é prestação de contas — e é a única
+   * coisa que permite conferir. Um assistente que erra o formato é descoberto
+   * na primeira leitura; um que erra a FONTE não é descoberto nunca, porque a
+   * resposta sai com a mesma cara de sempre.
+   *
+   * `resp.fontes` vem do prompt que o servidor de fato montou. Vazio significa
+   * "nenhum documento foi consultado" — e aí não se desenha nada, porque a
+   * maioria das perguntas é sobre o cadastro e não tem documento nenhum
+   * envolvido. O que não pode passar calado é o caso em que a resposta CITA um
+   * documento que não foi lido: esse vem em `resp.alertaFonte`.
+   */
+  function renderizarProcedencia(wrapper, resp) {
+    if (!wrapper || !resp) return;
+    var balao = wrapper.querySelector("div:last-child");
+    if (!balao) return;
+
+    var fontes = Array.isArray(resp.fontes) ? resp.fontes : [];
+    if (fontes.length) {
+      var caixa = document.createElement("div");
+      caixa.className = "sofia-fontes";
+
+      var rot = document.createElement("span");
+      rot.className = "sofia-fontes-rot";
+      rot.textContent = "Consultei";
+      caixa.appendChild(rot);
+
+      fontes.forEach(function(f) {
+        var chip = document.createElement("span");
+        chip.className = "sofia-fonte";
+        var nome = document.createElement("b");
+        nome.textContent = (f.icone ? f.icone + " " : "") + (f.rotulo || f.tipo || "documento");
+        chip.appendChild(nome);
+        if (f.identificacao) {
+          var ident = document.createElement("span");
+          /* A identificação é a primeira linha do próprio documento — não um
+           * rótulo redigitado aqui. Redigitar seria criar uma segunda verdade
+           * que envelhece sozinha no dia em que o documento for trocado. */
+          ident.textContent = "· " + f.identificacao;
+          chip.appendChild(ident);
+        }
+        caixa.appendChild(chip);
+      });
+      balao.appendChild(caixa);
+    }
+
+    if (resp.alertaFonte) {
+      var aviso = document.createElement("div");
+      aviso.className = "sofia-alerta-fonte";
+      aviso.textContent = "⚠️ " + resp.alertaFonte;
+      balao.appendChild(aviso);
+    }
   }
 
   function adicionarTyping() {

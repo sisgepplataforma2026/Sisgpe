@@ -124,6 +124,80 @@ b.igual(g.ESTATUTO_VERSAO.artigos, 134, "134 artigos, não os 135 do revogado");
 b.ok(/Art\. 62\.\s*Serão sempre tomadas por escrutínios secretos/.test(g.getEstatutoTexto_()),
   "e o art. 62 é o do escrutínio secreto — a numeração que Assembleias.gs cita");
 
+/* ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("SOFIA · A tela presta contas da fonte");
+
+/* A procedência é a contrapartida dos blocos acima: lá o documento passou a
+ * chegar identificado À IA; aqui a identificação chega A QUEM LÊ. E ela é
+ * LIDA DO PROMPT montado, nunca recalculada — recalcular criaria duas
+ * verdades que envelhecem em separado, e a segunda é a que aparece na tela.
+ * O dia em que a condição mudasse de um lado só, a SOFIA passaria a anunciar
+ * documento que não consultou: pior que não anunciar nada, porque dá ao
+ * leitor a confiança que ele não teria sozinho. */
+
+b.passo("11. O que a tela anuncia é o que entrou no prompt");
+const fEst = g.fontesDoPrompt_(pEst);
+b.igual(fEst.length, 1, "uma fonte no prompt do Estatuto");
+b.igual(fEst[0].tipo, "ESTATUTO", "e é o Estatuto");
+b.ok(fEst[0].identificacao.indexOf("17/11/2025") > -1,
+  "com a data que denuncia estatuto revogado", fEst[0].identificacao);
+b.igual(fEst[0].identificacao.indexOf("="), -1,
+  "e sem a moldura de '===' que enfeita a primeira linha do documento");
+
+b.passo("12. Pergunta sem documento não anuncia documento nenhum");
+b.igual(g.fontesDoPrompt_(pRotina).length, 0,
+  "'quantos associados temos' não consultou CCT nem Estatuto");
+b.igual(g.fontesDoPrompt_("prompt qualquer, sem bloco de documento").length, 0,
+  "e texto sem bloco não inventa fonte");
+
+b.passo("13. Os dois documentos juntos aparecem os dois");
+const pDois = prompt("o piso da secretária escolar e o quórum da assembleia", "Geral");
+const fDois = g.fontesDoPrompt_(pDois).map(function (f) { return f.tipo; });
+b.igual(fDois, ["CCT", "ESTATUTO"], "CCT e Estatuto, cada um com o seu rótulo");
+
+b.passo("14. A leitura não depende de conhecer o documento de antemão");
+/* Um documento novo — que ninguém cadastrou no mapa de rótulos — tem que
+ * aparecer assim mesmo. Silêncio sobre fonte desconhecida é o pior padrão
+ * possível: some justamente no caso em que ninguém está esperando. */
+const fNovo = g.fontesDoPrompt_("\n=== REGIMENTO — TRECHOS RELEVANTES ===\nREGIMENTO INTERNO 2026\n\nArt. 1º ...");
+b.igual(fNovo.length, 1, "documento fora do mapa também é anunciado");
+b.igual(fNovo[0].identificacao, "REGIMENTO INTERNO 2026", "lendo a identificação do próprio texto");
+/* Documento que não começa com uma linha de identificação: o que vem logo
+ * abaixo do cabeçalho é a instrução de citação, e ela não identifica nada.
+ * Exibi-la como se fosse a procedência seria mentir com cara de dado. */
+const fSemIdent = g.fontesDoPrompt_(
+  "\n=== REGIMENTO — TRECHOS RELEVANTES ===\n" +
+  "(Ao citar, diga o artigo ou a cláusula E de qual destes documentos.)\n\nArt. 1º ...");
+b.igual(fSemIdent[0].identificacao, "",
+  "sem identificação, fica em branco — não mostra a instrução de citação no lugar");
+
+b.passo("15. Citar documento que não foi lido vira alerta");
+/* É o defeito que a procedência existe para pegar: a resposta afirma
+ * "cláusula 12" com a mesma segurança de sempre, e o número pode ser
+ * invenção. Quem lê não tem como distinguir — a não ser por esta linha. */
+b.ok(g.alertaFonteAusente_("Conforme a cláusula 12 da convenção, o adicional é devido.", []),
+  "cita cláusula sem a CCT anexada → alerta");
+b.ok(g.alertaFonteAusente_("O art. 62 exige escrutínio secreto.", []),
+  "cita artigo sem o Estatuto anexado → alerta");
+b.igual(g.alertaFonteAusente_("O art. 62 exige escrutínio secreto.",
+  [{ tipo: "ESTATUTO" }]), "", "com o Estatuto anexado, nenhum alerta");
+b.igual(g.alertaFonteAusente_("Conforme a cláusula 04, o piso é R$ 3.721,87.",
+  [{ tipo: "CCT" }]), "", "com a CCT anexada, nenhum alerta");
+
+b.passo("16. E o alerta não grita à toa");
+/* Alerta que dispara em resposta correta é alerta que se aprende a ignorar —
+ * e aí ele deixa de servir no dia em que estiver certo. Referência de LEI não
+ * é citação do nosso Estatuto: a IA pode fazê-la sem documento anexado. */
+b.igual(g.alertaFonteAusente_("O art. 477 da CLT trata da rescisão.", []), "",
+  "art. da CLT não é citação do Estatuto");
+b.igual(g.alertaFonteAusente_("O art. 8º da Constituição garante a liberdade sindical.", []), "",
+  "nem artigo da Constituição");
+b.igual(g.alertaFonteAusente_("Temos 8.000 associados na base.", []), "",
+  "e resposta de cadastro não dispara nada");
+
+b.naoTestavel("Como a linha de procedência aparece na tela",
+  "o teste prova o que o servidor devolve; o desenho da linha só se confere no navegador");
+
 b.naoTestavel("A resposta que a IA de fato dá",
   "o emulador não chama a Anthropic; o que se prova aqui é o que chega até ela");
 

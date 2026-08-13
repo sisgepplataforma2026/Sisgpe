@@ -79,9 +79,24 @@ function chatSISGEP(payload, tokenSessao) {
 
     registrarAuditoriaSofia_(sessao, dominio, mensagem, textoResposta, true);
 
+    /* A procedência sai do prompt que foi montado, nunca de um novo cálculo —
+     * ver o comentário de fontesDoPrompt_. Se a leitura falhar por qualquer
+     * motivo, a resposta segue sem a linha de fonte: melhor a tela calada do
+     * que a tela afirmando o que não conferiu. */
+    var fontes = [];
+    var alertaFonte = "";
+    try {
+      fontes = fontesDoPrompt_(systemPrompt);
+      alertaFonte = alertaFonteAusente_(textoResposta, fontes);
+    } catch (eFonte) {
+      Logger.log("chatSISGEP procedência: " + eFonte.message);
+    }
+
     return {
       ok: true,
       resposta: textoResposta,
+      fontes: fontes,
+      alertaFonte: alertaFonte,
       contexto: {
         totalRegistros: contexto.totalRegistros,
         resumo: contexto.resumo,
@@ -653,6 +668,95 @@ function blocoDocumentoIA_(rotulo, texto, consulta, limite) {
          (identificacao ? identificacao + "\n" : "") +
          "(Ao citar, diga o artigo ou a cláusula E de qual destes documentos.)\n\n" +
          trechos + "\n";
+}
+
+/* ═══════════════════════════════════════════════════════
+   PROCEDÊNCIA — de que documento a resposta saiu
+
+   Isto é a contrapartida do bloco acima: lá o documento passou a chegar
+   identificado à IA; aqui a identificação chega a quem lê a resposta.
+
+   A REGRA DE OURO DESTE PEDAÇO: a lista de fontes NÃO é recalculada.
+   Ela é LIDA DO PROMPT que de fato foi montado. Recalcular — repetindo as
+   condições de `precisaCCT`/`precisaEstatuto` — criaria duas verdades que
+   envelhecem em separado, e a segunda seria a que aparece na tela: um dia a
+   condição muda de um lado só e a SOFIA passa a anunciar um documento que
+   não consultou. Anunciar fonte errada é pior que não anunciar nada, porque
+   dá ao leitor a confiança que ele não teria sozinho.
+
+   Lendo do prompt, a única forma de a tela dizer "consultei o Estatuto" é o
+   bloco do Estatuto estar lá dentro.
+═══════════════════════════════════════════════════════ */
+var FONTES_IA_ = {
+  CCT:      { rotulo: "CCT",      icone: "📘" },
+  ESTATUTO: { rotulo: "Estatuto", icone: "📜" }
+};
+
+/** Tira a moldura (=== , ━━━) que enfeita a primeira linha dos documentos. */
+function limparIdentificacaoFonte_(linha) {
+  return String(linha || "").replace(/^[\s=━─—*#]+/, "").replace(/[\s=━─—*#]+$/, "").trim();
+}
+
+/**
+ * Quais documentos entraram no prompt — lido do próprio prompt.
+ * Devolve [] quando nenhum entrou, que é o caso da maioria das perguntas.
+ */
+function fontesDoPrompt_(systemPrompt) {
+  var texto = String(systemPrompt || "");
+  var re = /=== ([A-ZÀ-Ú0-9 ._-]+) — TRECHOS RELEVANTES ===\n([^\n]*)/g;
+  var fontes = [];
+  var m;
+  while ((m = re.exec(texto)) !== null) {
+    var tipo = String(m[1]).trim();
+    var meta = FONTES_IA_[tipo] || { rotulo: tipo, icone: "📄" };
+    /* Documento sem primeira linha de identificação: o que vem depois do
+     * cabeçalho é a instrução de citação, e ela não é identificação de
+     * coisa nenhuma. Melhor ficar sem do que mostrar a instrução. */
+    var ident = limparIdentificacaoFonte_(m[2]);
+    if (/^\(Ao citar/i.test(ident)) ident = "";
+    fontes.push({ tipo: tipo, rotulo: meta.rotulo, icone: meta.icone, identificacao: ident });
+  }
+  return fontes;
+}
+
+/**
+ * A resposta cita artigo DE DOCUMENTO NOSSO?
+ *
+ * "Art. 477 da CLT" e "art. 8º da Constituição" não são citação do Estatuto —
+ * são referência de lei, que a IA pode fazer legitimamente sem o Estatuto
+ * anexado. Contar essas como citação faria o alerta disparar em resposta
+ * correta, e alerta que grita à toa é alerta que se aprende a ignorar.
+ */
+function citaArtigoProprio_(texto) {
+  var re = /\bart(?:\.|igos?)\s*\d+/gi;
+  var m;
+  while ((m = re.exec(String(texto || ""))) !== null) {
+    var cauda = String(texto).substr(m.index + m[0].length, 40);
+    if (/^\s*[ºo°]?\s*,?\s*(?:d[ao]s?\s+)?(?:CLT|Lei|Decreto|Constitui|C[óo]digo|CF\b)/i.test(cauda)) continue;
+    return true;
+  }
+  return false;
+}
+
+/**
+ * O aviso que aparece quando a resposta cita um documento que não foi lido.
+ *
+ * É o defeito que a procedência existe para pegar: a IA respondendo "conforme
+ * a cláusula 12" sem a CCT no prompt, ou "art. 62" sem o Estatuto. A resposta
+ * sai com a mesma cara de sempre e o número pode ser invenção — quem lê não
+ * tem como distinguir. Aqui tem.
+ */
+function alertaFonteAusente_(resposta, fontes) {
+  var lista = Array.isArray(fontes) ? fontes : [];
+  var temTipo = function(t) {
+    for (var i = 0; i < lista.length; i++) if (lista[i].tipo === t) return true;
+    return false;
+  };
+  var faltando = [];
+  if (/\bcl[áa]usula/i.test(String(resposta || "")) && !temTipo("CCT")) faltando.push("cláusula da CCT");
+  if (citaArtigoProprio_(resposta) && !temTipo("ESTATUTO")) faltando.push("artigo do Estatuto");
+  if (!faltando.length) return "";
+  return "Esta resposta cita " + faltando.join(" e ") + ", mas o documento não foi consultado — confira antes de usar.";
 }
 
 function montarSystemPrompt_(contexto, mensagem) {
