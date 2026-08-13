@@ -595,6 +595,24 @@ faltando.
 
 ## ✅ VERIFICADO
 
+### SOFIA — especialidade Estatuto e o botão CCT carregando a fonte certa
+**Verificado em:** 13/08/2026, pelo usuário ("testei e funcionou")
+
+O que passa a valer como testado no ar:
+
+- a especialidade **📜 Estatuto** aparece na barra e carrega o Estatuto 2026;
+- o botão **📘 CCT** carrega a convenção sem depender da palavra "CCT" na
+  pergunta — era o defeito relatado, e a correção está confirmada;
+- a resposta chega com a citação, o que só é possível se o documento tiver
+  entrado no prompt.
+
+**O que este item NÃO cobre**, e continua valendo dizer: a qualidade das
+respostas ao longo do uso. Um assistente que erra a FONTE não é descoberto na
+primeira leitura — a resposta sai com a mesma cara de sempre. Se em algum
+momento a SOFIA citar um artigo que não bate com o documento, é aqui que se
+volta.
+
+
 ### Trilha de Alterações — tela abre e consulta
 **Verificado em:** 10/08/2026, por print do usuário
 
