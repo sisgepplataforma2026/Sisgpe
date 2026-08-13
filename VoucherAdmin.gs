@@ -187,19 +187,40 @@ function aprovarSolicitacaoVoucher(protocolo, obs, tokenSessao) {
     if (!item) return { ok: false, mensagem: "Solicitação não encontrada." };
 
     const situacaoSindical = String(item.registro.SITUACAO_SINDICAL || "").toUpperCase();
-    const statusValidacao = String(item.registro.STATUS_VALIDACAO_SINDICAL || "").toUpperCase();
 
-    if (situacaoSindical !== "ASSOCIADO" || statusValidacao !== "VALIDADO") {
+    /* A TRAVA EXIGIA UM ESTADO QUE NENHUMA TELA PRODUZIA.
+     *
+     * A versão anterior recusava quando STATUS_VALIDACAO_SINDICAL não fosse
+     * "VALIDADO". Só que solicitação criada "em análise" nasce PENDENTE, e o
+     * único lugar do sistema que grava VALIDADO é confirmarAssociacao... —
+     * que não tem botão em tela nenhuma. Resultado: o botão Aprovar recusava
+     * SEMPRE, para toda solicitação em análise. Porta trancada com a chave
+     * do lado de dentro.
+     *
+     * O que a regra realmente exige — dita pelo usuário em 12/08/2026 — é
+     * que a pessoa SEJA ASSOCIADA. Isso continua sendo verificado, e com
+     * mensagem que diz a situação encontrada em vez de uma frase genérica.
+     *
+     * E APROVAR É VALIDAR: quem aprova está declarando que conferiu. O campo
+     * passa a VALIDADO aqui, com quem e quando, em vez de exigir um passo
+     * anterior que não existe. */
+    if (situacaoSindical && situacaoSindical !== "ASSOCIADO") {
       return {
         ok: false,
-        mensagem: "A solicitação só pode ser aprovada após confirmação de associação."
+        mensagem: "Só associado tem direito ao benefício. Situação registrada: " +
+                  situacaoSindical + "."
       };
     }
 
     const usuario = obterUsuarioAtualVoucher_();
     const observacao = obs || "Solicitação aprovada pela análise administrativa.";
 
-    atualizarStatusSolicitacao_(item, "APROVADO", observacao);
+    atualizarStatusSolicitacao_(item, "APROVADO", observacao, {
+      SITUACAO_SINDICAL: situacaoSindical || "ASSOCIADO",
+      STATUS_VALIDACAO_SINDICAL: "VALIDADO",
+      USUARIO_VALIDACAO: usuario,
+      DATA_VALIDACAO: new Date()
+    });
     atualizarStatusProtocolo_(protocolo, "APROVADO", usuario, observacao);
 
     registrarHistoricoVoucher_(

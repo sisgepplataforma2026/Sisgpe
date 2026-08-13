@@ -395,6 +395,68 @@ function el(id) { return doc.getElementById(id); }
   b.ok(/24 anos/.test(t.texto("#certNvAvisos") || ""),
     "com o limite escrito no aviso", (t.texto("#certNvAvisos") || "").slice(0, 70));
 
+
+  /* ═══════════════════════════════════════════════════════════════════ */
+  b.fluxo("APROVAR · a porta que estava trancada por dentro");
+
+  b.passo("23. Solicitação criada em ANÁLISE pode ser aprovada");
+  /* O usuário clicou em Aprovar e "não acontecia nada". Eram DOIS defeitos,
+   * um escondendo o outro:
+   *
+   *   a) A trava exigia STATUS_VALIDACAO_SINDICAL = "VALIDADO". Solicitação
+   *      criada em análise nasce PENDENTE, e o único lugar do sistema que
+   *      grava VALIDADO não tem botão em tela nenhuma. O Aprovar recusava
+   *      SEMPRE — porta trancada com a chave do lado de dentro.
+   *   b) A recusa era escrita em #certMsgBox, que fica na área da LISTA —
+   *      atrás do modal aberto. O backend respondia com um motivo claro e a
+   *      tela não mostrava nada. */
+  const nova = g.voucherCriarSolicitacao({
+    cpf: CPF_M, nome: "Marcelo Alves de Oliveira",
+    modalidade: "GRADUACAO", area: "HUMANAS", percentual: 70, aprovar: false
+  }, TOKEN);
+  b.ok(nova.ok, "solicitação criada em análise", nova.protocolo);
+
+  const aprov = g.aprovarSolicitacaoVoucher(nova.protocolo, "", TOKEN);
+  b.ok(aprov && aprov.ok === true, "e o Aprovar funciona",
+    String(aprov && aprov.mensagem || ""));
+
+  b.passo("24. Aprovar É validar — grava quem e quando");
+  /* Quem aprova está declarando que conferiu. Exigir um passo anterior que
+   * não existe só produzia um estado do qual não se saía. */
+  const shS = ss.getSheetByName("Voucher_Solicitacoes");
+  const cabS = shS.getRange(1,1,1,shS.getLastColumn()).getValues()[0].map(x=>String(x||"").trim());
+  let linha = null;
+  const todas = shS.getRange(1,1,shS.getLastRow(),shS.getLastColumn()).getValues();
+  for (let i = todas.length - 1; i >= 1; i--) {
+    if (String(todas[i][cabS.indexOf("NUMERO_PROTOCOLO")]) === nova.protocolo) { linha = todas[i]; break; }
+  }
+  function vS(n){ const i=cabS.indexOf(n); return i===-1?"":String(linha[i]||""); }
+  b.igual(vS("STATUS_SOLICITACAO"), "APROVADO", "status APROVADO");
+  b.igual(vS("STATUS_VALIDACAO_SINDICAL"), "VALIDADO", "validação sindical marcada");
+  b.ok(!!vS("USUARIO_VALIDACAO"), "com quem validou", vS("USUARIO_VALIDACAO"));
+
+  b.passo("25. Não-associado continua sendo recusado");
+  /* A trava certa não foi removida — só a errada. */
+  const naoAss = g.voucherCriarSolicitacao({
+    cpf: "52998224725", nome: "Nao Associado", modalidade: "GRADUACAO",
+    area: "HUMANAS", situacaoSindical: "NAO_ASSOCIADO", aprovar: false
+  }, TOKEN);
+  const rec = g.aprovarSolicitacaoVoucher(naoAss.protocolo, "", TOKEN);
+  b.ok(rec && rec.ok === false, "aprovação recusada");
+  b.ok(/s[óo] associado/i.test(rec.mensagem || ""),
+    "com o motivo verdadeiro, não uma frase genérica", rec.mensagem);
+
+  b.passo("26. Com modal aberto, o aviso sai por toast — visível");
+  t.clicar("#certBtnNova");
+  await t.assentar(40);
+  const antesToast = t.avisos.length;
+  el("certNvCpf").value = "123";                 // inválido de propósito
+  t.clicar("#certNvSalvarAprovar");
+  await t.assentar(80);
+  b.ok(t.avisos.length > antesToast,
+    "o aviso foi para o toast, que fica acima do modal",
+    t.avisos.length ? t.avisos[t.avisos.length-1].msg.slice(0, 60) : "nenhum");
+
   /* ═══════════════════════════════════════════════════════════════════ */
   b.fluxo("NOVA SOLICITAÇÃO · O CSS alcança o modal novo");
 

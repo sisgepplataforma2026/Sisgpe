@@ -686,6 +686,23 @@ function escHtml(t){ return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&l
 function normTxt(t){ return String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim(); }
 
 function msg(texto, tipo){
+  /* O FEEDBACK IA PARAR ATRÁS DO MODAL.
+   *
+   * `#certMsgBox` fica na área da lista. Com um modal aberto por cima, a
+   * mensagem era escrita num elemento coberto pelo overlay — e o usuário
+   * clicava em Aprovar, o backend RECUSAVA com um motivo claro, e na tela
+   * não acontecia nada. "Não está fazendo nada" era, na verdade, "recusou e
+   * você não viu".
+   *
+   * Com modal aberto, o aviso vai pelo toast(), que é fixo na tela e fica
+   * acima de tudo. O toast é o padrão de feedback do design system; usá-lo
+   * aqui não é remendo, é voltar para o caminho certo. */
+  var modalAberto = document.querySelector(
+    '#certModalOverlay.ativo, #certEnvioOverlay.ativo, #certNovaOverlay.ativo');
+  if(modalAberto && typeof toast === 'function' && texto){
+    var limpo = String(texto).replace(/<[^>]*>/g,'');
+    toast(limpo, tipo==='erro'?'erro':tipo==='warn'?'alerta':tipo==='ok'?'ok':'info', 7000);
+  }
   var box = g('certMsgBox'); if(!box) return;
   box.className = 'cert-msg ' + (tipo||'info');
   box.innerHTML = texto||'';
