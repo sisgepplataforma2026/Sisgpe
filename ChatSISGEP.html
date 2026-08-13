@@ -1,15 +1,19 @@
 <div id="blocoChat" style="display:flex;margin:-20px -24px -48px;height:calc(100vh - 60px);flex-direction:column;background:#f0f4f8;font-family:'Plus Jakarta Sans',sans-serif;">
 
-  <div class="sofiaOpsGrid" style="display:grid;grid-template-columns:170px minmax(0,1fr) 260px;flex:1;min-height:0;">
-    <aside style="background:#e8eef7;border-right:1px solid #d7e0ec;padding:16px;overflow:auto;">
-      <button onclick="limparChat()" style="width:100%;background:var(--navy2,#002f6c);color:#fff;border:0;border-radius:9px;padding:10px;font-weight:700;cursor:pointer;">＋ Nova conversa</button>
-      <div style="color:#64748b;font-size:10px;font-weight:700;text-transform:uppercase;margin:20px 0 8px;">Especialidades</div>
-      <div id="sofiaEspecialidades" style="display:grid;gap:5px;font-size:12px;color:var(--navy2,#002f6c);"><button type="button" data-sofia-dominio="Geral" onclick="selecionarDominioSofia_('Geral')" style="text-align:left;border:0;background:transparent;color:var(--navy2,#002f6c);border-radius:7px;padding:7px 8px;cursor:pointer;font-family:inherit;">◉ Geral</button><button type="button" data-sofia-dominio="Associados" onclick="selecionarDominioSofia_('Associados')" style="text-align:left;border:0;background:transparent;color:var(--navy2,#002f6c);border-radius:7px;padding:7px 8px;cursor:pointer;font-family:inherit;">👥 Associados</button><button type="button" data-sofia-dominio="Financeiro" onclick="selecionarDominioSofia_('Financeiro')" style="text-align:left;border:0;background:transparent;color:var(--navy2,#002f6c);border-radius:7px;padding:7px 8px;cursor:pointer;font-family:inherit;">💰 Financeiro</button><button type="button" data-sofia-dominio="Escolas" onclick="selecionarDominioSofia_('Escolas')" style="text-align:left;border:0;background:transparent;color:var(--navy2,#002f6c);border-radius:7px;padding:7px 8px;cursor:pointer;font-family:inherit;">🏫 Escolas</button><button type="button" data-sofia-dominio="Comunicação" onclick="selecionarDominioSofia_('Comunicação')" style="text-align:left;border:0;background:transparent;color:var(--navy2,#002f6c);border-radius:7px;padding:7px 8px;cursor:pointer;font-family:inherit;">✉ Comunicação</button><button type="button" data-sofia-dominio="CCT" onclick="selecionarDominioSofia_('CCT')" style="text-align:left;border:0;background:transparent;color:var(--navy2,#002f6c);border-radius:7px;padding:7px 8px;cursor:pointer;font-family:inherit;">📘 CCT</button><button type="button" data-sofia-dominio="Estatuto" onclick="selecionarDominioSofia_('Estatuto')" style="text-align:left;border:0;background:transparent;color:var(--navy2,#002f6c);border-radius:7px;padding:7px 8px;cursor:pointer;font-family:inherit;">📜 Estatuto</button><button type="button" data-sofia-dominio="Jurídico" onclick="selecionarDominioSofia_('Jurídico')" style="text-align:left;border:0;background:transparent;color:var(--navy2,#002f6c);border-radius:7px;padding:7px 8px;cursor:pointer;font-family:inherit;">⚖ Jurídico</button><button type="button" data-sofia-dominio="Documentos" onclick="selecionarDominioSofia_('Documentos')" style="text-align:left;border:0;background:transparent;color:var(--navy2,#002f6c);border-radius:7px;padding:7px 8px;cursor:pointer;font-family:inherit;">📄 Documentos</button><button type="button" data-sofia-dominio="Benefícios" onclick="selecionarDominioSofia_('Benefícios')" style="text-align:left;border:0;background:transparent;color:var(--navy2,#002f6c);border-radius:7px;padding:7px 8px;cursor:pointer;font-family:inherit;">🎁 Benefícios</button><button type="button" data-sofia-dominio="RH e Administrativo" onclick="selecionarDominioSofia_('RH e Administrativo')" style="text-align:left;border:0;background:transparent;color:var(--navy2,#002f6c);border-radius:7px;padding:7px 8px;cursor:pointer;font-family:inherit;">👤 RH e Administrativo</button></div>
-      <div style="color:#64748b;font-size:10px;font-weight:700;text-transform:uppercase;margin:20px 0 8px;">Memória</div>
-      <div style="font-size:11px;color:#475569;line-height:1.5;">A SOFIA usará memórias autorizadas e o histórico desta conversa.</div>
-    </aside>
+  <div class="sofiaOpsGrid sofia-sem-painel" style="display:grid;grid-template-columns:minmax(0,1fr) 260px;flex:1;min-height:0;">
 
     <main style="display:flex;flex-direction:column;min-width:0;background:#f7f9fc;">
+    <!-- Especialidades em linha, não em coluna.
+         Elas eram uma segunda navegação vertical colada à do sistema, com a
+         mesma cara — e pedindo à pessoa uma decisão que a máquina já toma
+         sozinha: as palavras da pergunta escolhem o documento (ChatIACore,
+         precisaCCT/precisaEstatuto). Como chips, a escolha continua
+         disponível para FORÇAR o modo e manter o histórico por
+         especialidade, custando altura em vez de largura. -->
+    <div class="sofia-barra-modos">
+      <div id="sofiaEspecialidades" class="sofia-chips"><button type="button" class="sofia-chip" data-sofia-dominio="Geral" onclick="selecionarDominioSofia_('Geral')">◉ Geral</button><button type="button" class="sofia-chip" data-sofia-dominio="Associados" onclick="selecionarDominioSofia_('Associados')">👥 Associados</button><button type="button" class="sofia-chip" data-sofia-dominio="Financeiro" onclick="selecionarDominioSofia_('Financeiro')">💰 Financeiro</button><button type="button" class="sofia-chip" data-sofia-dominio="Escolas" onclick="selecionarDominioSofia_('Escolas')">🏫 Escolas</button><button type="button" class="sofia-chip" data-sofia-dominio="Comunicação" onclick="selecionarDominioSofia_('Comunicação')">✉ Comunicação</button><button type="button" class="sofia-chip" data-sofia-dominio="CCT" onclick="selecionarDominioSofia_('CCT')">📘 CCT</button><button type="button" class="sofia-chip" data-sofia-dominio="Estatuto" onclick="selecionarDominioSofia_('Estatuto')">📜 Estatuto</button><button type="button" class="sofia-chip" data-sofia-dominio="Jurídico" onclick="selecionarDominioSofia_('Jurídico')">⚖ Jurídico</button><button type="button" class="sofia-chip" data-sofia-dominio="Documentos" onclick="selecionarDominioSofia_('Documentos')">📄 Documentos</button><button type="button" class="sofia-chip" data-sofia-dominio="Benefícios" onclick="selecionarDominioSofia_('Benefícios')">🎁 Benefícios</button><button type="button" class="sofia-chip" data-sofia-dominio="RH e Administrativo" onclick="selecionarDominioSofia_('RH e Administrativo')">👤 RH e Administrativo</button></div>
+      <button type="button" class="sofia-nova" onclick="limparChat()" title="Começa uma conversa nova nesta especialidade">＋ Nova conversa</button>
+    </div>
       <div id="chatMensagens" style="flex:1;overflow-y:auto;padding:22px;display:flex;flex-direction:column;gap:12px;">
         <div class="chat-msg-ia" style="display:flex;gap:10px;align-items:flex-start;">
           <div style="width:30px;height:30px;background:var(--navy2,#002f6c);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">✦</div>
@@ -34,10 +38,15 @@
       </div>
     </main>
 
-    <aside style="background:#fff;border-left:1px solid #dbe3ef;padding:16px;overflow:auto;">
-      <div style="display:flex;gap:6px;margin-bottom:16px;"><button style="background:var(--navy2,#002f6c);color:#fff;border:0;border-radius:8px;padding:7px 9px;">Contexto</button><button style="background:#eef3f9;color:var(--navy2,#002f6c);border:0;border-radius:8px;padding:7px 9px;">Ações</button></div>
-      <div id="sofiaContextoPainel"><strong style="color:var(--navy2,#002f6c);">Contexto da conversa</strong><p style="font-size:12px;color:#64748b;line-height:1.5;">Quando você mencionar uma escola, documento ou processo, os dados relacionados aparecerão aqui.</p></div>
-      <div style="border-top:1px solid #e2e8f0;margin-top:18px;padding-top:14px;"><strong style="color:var(--navy2,#002f6c);">Atividade da SOFIA</strong><div style="font-size:11px;color:#64748b;line-height:1.8;margin-top:8px;">○ Aguardando sua solicitação<br>○ Fontes serão exibidas aqui<br>○ Ações exigirão confirmação</div></div>
+    <!-- Painel de contexto: só existe quando tem o que dizer.
+         Ele passava a tela inteira ocupando um quinto dela para prometer
+         "Fontes serão exibidas aqui" e "Ações exigirão confirmação" —
+         conteúdo que nunca chegava. Espaço permanente para informação
+         eventual é o dashboard decorativo que o PROMPT-MESTRE proíbe.
+         Começa recolhido (classe sofia-sem-painel na grade) e abre quando
+         uma escola é identificada na conversa. -->
+    <aside id="sofiaPainelDireito" style="background:#fff;border-left:1px solid #dbe3ef;padding:16px;overflow:auto;">
+      <div id="sofiaContextoPainel"></div>
     </aside>
   </div>
 </div>
@@ -55,8 +64,7 @@
 #chatMensagens::-webkit-scrollbar,.sofiaOpsGrid>aside::-webkit-scrollbar{width:8px;}
 #chatMensagens::-webkit-scrollbar-thumb,.sofiaOpsGrid>aside::-webkit-scrollbar-thumb{background:#b8c7da;border-radius:10px;}
 #chatMensagens::-webkit-scrollbar-track,.sofiaOpsGrid>aside::-webkit-scrollbar-track{background:#edf2f7;}
-@media(max-width:1000px){.sofiaOpsGrid{grid-template-columns:140px minmax(0,1fr)!important}.sofiaOpsGrid>aside:last-child{display:none}}
-@media(max-width:720px){.sofiaOpsGrid{grid-template-columns:1fr!important}.sofiaOpsGrid>aside{display:none}}
+@media(max-width:1000px){.sofiaOpsGrid{grid-template-columns:minmax(0,1fr)!important}.sofiaOpsGrid>aside:last-child{display:none}}
 </style>
 
 <style id="sofia-refino-v378">
@@ -66,20 +74,33 @@
 #blocoChat>div:first-child>div:first-child>div:first-child{box-shadow:0 4px 14px rgba(201,168,76,.25)}
 #blocoChat>div:first-child button{transition:background .18s ease,transform .18s ease}
 #blocoChat>div:first-child button:hover{background:rgba(255,255,255,.2)!important;transform:translateY(-1px)}
-.sofiaOpsGrid{grid-template-columns:184px minmax(440px,1fr) 276px!important;background:var(--sofia-bg)!important}
+.sofiaOpsGrid{grid-template-columns:minmax(440px,1fr) 276px!important;background:var(--sofia-bg)!important}
 .sofiaOpsGrid>aside{scrollbar-width:thin;scrollbar-color:#b8c7da transparent}
-.sofiaOpsGrid>aside:first-child{padding:14px 12px!important;background:#edf2f8!important;border-right:1px solid var(--sofia-line)!important}
-.sofiaOpsGrid>aside:first-child>button{min-height:40px;border-radius:11px!important;box-shadow:0 5px 12px rgba(0,47,108,.14);transition:transform .18s ease,box-shadow .18s ease,background .18s ease}
-.sofiaOpsGrid>aside:first-child>button:hover{background:#064b91!important;box-shadow:0 7px 16px rgba(0,47,108,.2);transform:translateY(-1px)}
-.sofiaOpsGrid>aside:first-child>div[style*="display:grid"]{gap:4px!important}
-.sofiaOpsGrid>aside:first-child>div[style*="display:grid"]>div{padding:7px 8px;border-radius:8px;font-weight:600;transition:background .16s ease,transform .16s ease}
-.sofiaOpsGrid>aside:first-child>div[style*="display:grid"]>div:hover{background:#dce8f6;transform:translateX(2px)}
+/* As seis regras da coluna de especialidades saíram com ela. Deixá-las era
+   perigoso, não só inútil: `>aside:first-child` passaria a acertar o painel
+   da direita, que agora é o único aside da grade — ele nasceria com fundo de
+   menu e borda do lado errado. */
 .sofiaOpsGrid>main{background:linear-gradient(180deg,#f8fafc 0%,#f3f6fa 100%)!important}
 #chatMensagens{padding:22px clamp(18px,3vw,38px)!important;gap:16px!important;scroll-behavior:smooth}
 .chat-msg-ia{max-width:900px;width:100%;margin-right:auto}
 .chat-msg-ia>div:first-child{box-shadow:0 4px 12px rgba(0,47,108,.16)}
 .chat-msg-ia>div:last-child{background:#fff;border:1px solid #e3eaf3;border-radius:6px 16px 16px 16px;padding:14px 16px;box-shadow:0 4px 16px rgba(15,39,71,.055);max-width:min(88%,820px)!important}
 .chat-msg-ia>div:last-child strong:first-child{color:var(--navy2,#002f6c)}
+/* Barra de especialidades — a coluna virou linha.
+   Altura fixa e rolagem horizontal no lugar de quebrar em três fileiras:
+   com 11 modos, a quebra empurraria a conversa para baixo justamente nas
+   telas menores, que é onde ela já é apertada. */
+.sofia-barra-modos{display:flex;align-items:center;gap:10px;padding:9px 14px;background:#fff;border-bottom:1px solid var(--sofia-line);flex-shrink:0}
+.sofia-chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:1px;scrollbar-width:thin;flex:1;min-width:0}
+.sofia-chips::-webkit-scrollbar{height:5px}
+.sofia-chips::-webkit-scrollbar-thumb{background:#cbd8e6;border-radius:9px}
+.sofia-chip{flex:0 0 auto;border:1px solid #d9e4f0;background:#f7faff;color:#174a7c;border-radius:999px;padding:6px 12px;font-size:11.5px;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap;transition:background .16s ease,border-color .16s ease,transform .16s ease}
+.sofia-chip:hover{background:#e5effa;border-color:#9db9d6;transform:translateY(-1px)}
+.sofia-chip.ativo{background:var(--navy2,#002f6c);border-color:var(--navy2,#002f6c);color:#fff;font-weight:700}
+.sofia-nova{flex:0 0 auto;border:0;background:var(--navy2,#002f6c);color:#fff;border-radius:9px;padding:7px 12px;font-size:11.5px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 4px 10px rgba(0,47,108,.16);transition:background .16s ease,transform .16s ease}
+.sofia-nova:hover{background:#064b91;transform:translateY(-1px)}
+@media(max-width:720px){.sofia-barra-modos{padding:7px 10px;gap:7px}.sofia-nova{padding:7px 9px}}
+
 /* Procedência da resposta — discreta por padrão, porque ela não compete com
    o texto; só é lida por quem foi conferir. O alerta, ao contrário, precisa
    ser visto sem procurar: ele diz que o número citado pode ser invenção. */
@@ -99,33 +120,40 @@
 #chatBtnEnviar:hover{transform:translateY(-1px);box-shadow:0 7px 17px rgba(0,47,108,.26)}
 #chatBtnEnviar:disabled{opacity:.55;transform:none;box-shadow:none}
 .sofiaOpsGrid>aside:last-child{padding:14px!important;background:#fff!important;border-left:1px solid var(--sofia-line)!important}
-.sofiaOpsGrid>aside:last-child>div:first-child{padding:3px;background:#edf3f9;border-radius:11px;display:inline-flex!important;margin-bottom:14px!important}
-.sofiaOpsGrid>aside:last-child>div:first-child button{border-radius:8px!important;min-height:32px;padding:7px 12px!important}
+/* As duas regras que ficavam aqui vestiam a barrinha decorativa
+   "Contexto | Ações" e o bloco "Atividade da SOFIA" — os dois saíram com o
+   painel sob demanda. Deixá-las era pior que inútil: `>div:first-child`
+   passaria a acertar o próprio #sofiaContextoPainel e o transformaria numa
+   pílula inline-flex. */
 #sofiaContextoPainel{padding:14px;border:1px solid #e3eaf3;border-radius:13px;background:#fbfdff}
 #sofiaContextoPainel>strong{display:block;font-size:15px;margin-bottom:4px}
 #sofiaContextoPainel p{margin:5px 0 0!important}
 #sofiaContextoPainel button{border:0!important;border-radius:8px!important;padding:7px 10px!important;font-weight:600;cursor:pointer;transition:background .16s ease,transform .16s ease}
 #sofiaContextoPainel button:hover{transform:translateY(-1px);background:#dce8f6!important}
-.sofiaOpsGrid>aside:last-child>div:last-child{padding:14px!important;border:1px solid #e8edf4!important;border-radius:13px!important;background:#fff!important;margin-top:12px!important}
-@media(max-width:1180px){.sofiaOpsGrid{grid-template-columns:160px minmax(380px,1fr) 238px!important}.sofiaOpsGrid>aside:last-child{padding:11px!important}}
-@media(max-width:980px){.sofiaOpsGrid{grid-template-columns:155px minmax(0,1fr)!important}.sofiaOpsGrid>aside:last-child{display:none!important}#chatMensagens{padding:18px 22px!important}}
-@media(max-width:720px){#blocoChat{margin:-20px -14px -48px!important}.sofiaOpsGrid{grid-template-columns:1fr!important}.sofiaOpsGrid>aside:first-child{display:none!important}#chatMensagens{padding:15px 12px!important}.chat-msg-ia>div:last-child{max-width:calc(100% - 38px)!important}.sofiaOpsGrid>main>div:last-child{padding:10px!important}#chatBtnEnviar{padding:10px 14px!important}}
+/* ── O painel só existe quando tem o que dizer ──────────────────────────
+   Especificidade (0,2,0) contra os (0,1,0) das regras de grade acima e das
+   media queries — por isso a coluna some em qualquer largura sem eu ter de
+   repetir a regra em cada breakpoint. */
+.sofiaOpsGrid.sofia-sem-painel{grid-template-columns:minmax(0,1fr)!important}
+.sofiaOpsGrid.sofia-sem-painel>aside:last-child{display:none!important}
+@media(max-width:1180px){.sofiaOpsGrid{grid-template-columns:minmax(380px,1fr) 238px!important}.sofiaOpsGrid>aside:last-child{padding:11px!important}}
+@media(max-width:980px){.sofiaOpsGrid{grid-template-columns:minmax(0,1fr)!important}.sofiaOpsGrid>aside:last-child{display:none!important}#chatMensagens{padding:18px 22px!important}}
+@media(max-width:720px){#blocoChat{margin:-20px -14px -48px!important}.sofiaOpsGrid{grid-template-columns:1fr!important}#chatMensagens{padding:15px 12px!important}.chat-msg-ia>div:last-child{max-width:calc(100% - 38px)!important}.sofiaOpsGrid>main>div:last-child{padding:10px!important}#chatBtnEnviar{padding:10px 14px!important}}
 @media(prefers-reduced-motion:reduce){#blocoChat *{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 
 #blocoChat,#blocoChat *{box-sizing:border-box}
 #blocoChat{width:auto!important;max-width:none!important;overflow:hidden!important}
 #blocoChat>div:first-child{width:100%;min-width:0}
 #blocoChat>div:first-child>div{min-width:0}
-.sofiaOpsGrid{width:100%!important;max-width:100%!important;min-width:0!important;grid-template-columns:clamp(140px,16%,176px) minmax(0,1fr) clamp(210px,23%,258px)!important}
+.sofiaOpsGrid{width:100%!important;max-width:100%!important;min-width:0!important;grid-template-columns:minmax(0,1fr) clamp(210px,23%,258px)!important}
 .sofiaOpsGrid>main,.sofiaOpsGrid>aside{min-width:0!important;max-width:100%}
 #chatMensagens{width:100%;max-width:100%;overflow-x:hidden!important}
 .chat-msg-ia,.chat-msg-ia>div:last-child{min-width:0;overflow-wrap:anywhere}
 .sofiaOpsGrid>main>div:last-child>div[style*="display:flex"]{min-width:0}
 #chatInput{min-width:0;width:100%}
 #chatBtnEnviar{flex:0 0 auto}
-@media(max-width:1060px){.sofiaOpsGrid{grid-template-columns:140px minmax(0,1fr) 210px!important}#chatMensagens{padding:18px!important}}
-@media(max-width:900px){.sofiaOpsGrid{grid-template-columns:145px minmax(0,1fr)!important}.sofiaOpsGrid>aside:last-child{display:none!important}}
-@media(max-width:680px){.sofiaOpsGrid{grid-template-columns:minmax(0,1fr)!important}.sofiaOpsGrid>aside:first-child{display:none!important}}
+@media(max-width:1060px){.sofiaOpsGrid{grid-template-columns:minmax(0,1fr) 210px!important}#chatMensagens{padding:18px!important}}
+@media(max-width:900px){.sofiaOpsGrid{grid-template-columns:minmax(0,1fr)!important}.sofiaOpsGrid>aside:last-child{display:none!important}}
 </style>
 
 <script>
@@ -220,20 +248,28 @@
         container.innerHTML = _boasVindasHtml;
         if (_state.historico.length > 0) restaurarMensagensDaSessao();
       }
-      var painel = document.getElementById("sofiaContextoPainel");
-      if (painel) painel.innerHTML = "<strong style=\"color:var(--navy2,#002f6c);\">Contexto da conversa</strong><p style=\"font-size:12px;color:#64748b;line-height:1.5;\">Novo contexto no modo " + dominio + ". Os dados relacionados aparecerão aqui.</p>";
+      /* Trocar de especialidade recomeça a conversa — e o contexto da
+       * anterior não vale mais. Antes ficava um texto prometendo que "os
+       * dados relacionados aparecerão aqui"; agora o painel simplesmente
+       * fecha e devolve a largura para a conversa. */
+      mostrarPainelContexto_(false);
       var campo = document.getElementById("chatInput");
       if (campo) { campo.value = ""; campo.style.height = "auto"; }
     } else {
       _state.dominio = dominio;
     }
 
+    /* O modo ativo é uma CLASSE, não estilo inline: como chip, ele tem
+     * fundo, borda e hover próprios, e o inline vencia todos eles. */
     var botoes = document.querySelectorAll("[data-sofia-dominio]");
     Array.prototype.forEach.call(botoes, function(btn) {
       var ativo = btn.getAttribute("data-sofia-dominio") === dominio;
-      btn.style.background = ativo ? "var(--navy2,#002f6c)" : "transparent";
-      btn.style.color = ativo ? "#ffffff" : "var(--navy2,#002f6c)";
-      btn.style.fontWeight = ativo ? "700" : "500";
+      if (ativo) btn.classList.add("ativo"); else btn.classList.remove("ativo");
+      /* O chip ativo pode estar fora da faixa visível da rolagem — sem isto,
+       * trocar de modo pelo teclado ou por código deixaria a marca invisível. */
+      if (ativo && btn.scrollIntoView) {
+        try { btn.scrollIntoView({ block: "nearest", inline: "nearest" }); } catch (e) {}
+      }
     });
     var input = document.getElementById("chatInput");
     if (input) input.placeholder = dominio === "Geral" ? "Pergunte, peça uma análise ou diga o que precisa resolver..." : "Pergunte à SOFIA no modo " + dominio + "...";
@@ -698,15 +734,35 @@ function formatarResposta(texto) {
     return String(valor == null ? "" : valor).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
 
+  /**
+   * Abre ou fecha a coluna da direita.
+   *
+   * A coluna some da GRADE, não só do fluxo: escondendo o `aside` sozinho, a
+   * terceira faixa de 260px continuaria reservada e a conversa não ganharia
+   * nada — que era exatamente o defeito. A classe troca o
+   * `grid-template-columns` para duas colunas.
+   */
+  function mostrarPainelContexto_(abrir) {
+    var grade = document.querySelector(".sofiaOpsGrid");
+    if (!grade) return;
+    if (abrir) grade.classList.remove("sofia-sem-painel");
+    else {
+      grade.classList.add("sofia-sem-painel");
+      var p = document.getElementById("sofiaContextoPainel");
+      if (p) p.innerHTML = "";
+    }
+  }
+
   function atualizarPainelContexto(ctx, pergunta) {
     var painel = document.getElementById("sofiaContextoPainel");
     if (!painel || !ctx) return;
     var dados = ctx.dados || {};
     var escola = dados.escolaFiltrada;
-    if (!escola) {
-      painel.innerHTML = "<strong style=\"color:var(--navy2,#002f6c);\">Contexto da conversa</strong><p style=\"font-size:12px;color:#64748b;line-height:1.5;\">A SOFIA consultou o SISGEP, mas nenhum cadastro específico foi selecionado.</p>";
-      return;
-    }
+    /* Sem escola identificada não há contexto nenhum a mostrar. Dizer "a
+     * SOFIA consultou o SISGEP, mas nenhum cadastro específico foi
+     * selecionado" gastava um quinto da tela para informar que não havia
+     * informação. */
+    if (!escola) { mostrarPainelContexto_(false); return; }
     var info = escola.infoEscola || {};
     var html = "<div style=\"font-size:11px;color:#64748b;margin-bottom:4px;\">ESCOLA IDENTIFICADA</div>" +
       "<strong style=\"display:block;color:var(--navy2,#002f6c);font-size:17px;margin-bottom:12px;\">🏫 " + escaparPainel_(escola.termo).toUpperCase() + "</strong>" +
@@ -727,6 +783,7 @@ function formatarResposta(texto) {
       (!info.requerEscolha && escola.email ? "<div><span style=\"color:#64748b;\">Contato da planilha</span><div style=\"word-break:break-word;\">" + escaparPainel_(escola.email) + "</div><small style=\"color:#64748b;\">Fonte: Planilha SISGEP</small></div>" : "") +
       "</div><div id=\"sofiaAcoesContextuais\" style=\"display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;\"></div>";
     painel.innerHTML = html;
+    mostrarPainelContexto_(true);
 
     var opcoes = document.getElementById("sofiaOpcoesEscola");
     if (opcoes) (info.candidatos || []).forEach(function(c) {
@@ -769,6 +826,7 @@ function setStatus(texto, cor) {
     wrapper.appendChild(balao);
     container.appendChild(wrapper);
     setStatus("● Pronto para ajudar", "var(--gold,#C9A84C)");
+    mostrarPainelContexto_(false);
 
     var ind = document.getElementById("chatDataIndicador");
     if (ind) ind.style.display = "none";

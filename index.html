@@ -21,6 +21,17 @@
     </div>
     <div class="spPortalLabel">Portal Administrativo</div>
 
+    <!-- Recolher o menu para ícones.
+         O menu é a única coisa que responde "o que mais existe aqui dentro",
+         e com 12 módulos isso não é decoração — por isso ele se recolhe, não
+         se remove. A escolha fica gravada por pessoa (localStorage): quem
+         nunca clicar aqui não vê diferença nenhuma. -->
+    <div class="spMenuBarra">
+      <button id="spMenuToggle" type="button" class="spRecolherBtn"
+              onclick="spAlternarMenu()" aria-expanded="true"
+              title="Recolher o menu">☰<span>Recolher</span></button>
+    </div>
+
     <!-- ══════════════════════════════════════════════════════════════════
          MENU DO PORTAL ADMINISTRATIVO
 
@@ -195,6 +206,19 @@
 
     <div class="spCredito">Produzido por Wanderson Nascimento Castelo</div>
   </nav>
+
+  <!-- Aplica a preferência ANTES de o resto da página desenhar. Deixar para
+       o script do fim do arquivo faria o menu abrir largo e encolher na
+       frente de quem já o deixou recolhido — um pulo a cada carregamento. -->
+  <script>
+    try {
+      if (localStorage.getItem("sisgep.menuRecolhido") === "1") {
+        document.getElementById("spApp").classList.add("sp-menu-recolhido");
+        var _b = document.getElementById("spMenuToggle");
+        if (_b) { _b.title = "Expandir o menu"; _b.setAttribute("aria-expanded", "false"); }
+      }
+    } catch (e) {}
+  </script>
 
   <!-- ══════════════════════════════════════
        MAIN
@@ -736,6 +760,35 @@ button,input{font-family:inherit;}
 .spN strong{font-size:13px;font-weight:700;line-height:1.2;display:block;}
 .spN small{font-size:10px;color:rgba(255,255,255,.5);display:block;margin-top:2px;line-height:1.2;}
 .spSec{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:rgba(148,163,184,.5);padding:16px 12px 8px;}
+
+/* ── Menu recolhido ────────────────────────────────────────────────────
+   Recolher para ícones, não esconder: o menu continua respondendo "o que
+   existe aqui dentro" — que é a pergunta que ele existe para responder num
+   sistema de 12 módulos. A transição é de largura, então o conteúdo à
+   direita se acomoda sozinho. */
+.spMenuBarra{display:flex;justify-content:flex-end;padding:0 16px 10px;}
+.spRecolherBtn{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:rgba(255,255,255,.62);border-radius:9px;padding:6px 10px;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;transition:.17s;}
+.spRecolherBtn:hover{background:rgba(255,255,255,.12);color:#fff;}
+#spSidebar{transition:width .18s ease,min-width .18s ease;}
+#spApp.sp-menu-recolhido #spSidebar{width:70px;min-width:70px;}
+#spApp.sp-menu-recolhido .spPortalLabel,
+#spApp.sp-menu-recolhido .spSec,
+#spApp.sp-menu-recolhido .spN div,
+#spApp.sp-menu-recolhido .spRecolherBtn span,
+#spApp.sp-menu-recolhido .spAmbienteCompact,
+#spApp.sp-menu-recolhido .spCredito,
+#spApp.sp-menu-recolhido .docSubMenuSidebar{display:none!important;}
+/* O crédito e o rádio saem junto: em 70px eles não encolhem, quebram — o
+   crédito virava um bloco de sete linhas no pé da coluna. Descoberto
+   renderizando, não lendo. */
+#spApp.sp-menu-recolhido .spMenuBarra{justify-content:center;padding:0 8px 10px;}
+#spApp.sp-menu-recolhido .spRecolherBtn{padding:6px 9px;}
+#spApp.sp-menu-recolhido .spLogoBox{margin:12px 9px 14px;height:46px;}
+#spApp.sp-menu-recolhido .spLogo{width:44px;}
+#spApp.sp-menu-recolhido .spNavArea{padding:6px 9px;}
+#spApp.sp-menu-recolhido .spN{justify-content:center;padding:12px 0;gap:0;}
+#spApp.sp-menu-recolhido .spNI{width:auto;font-size:18px;}
+@media(prefers-reduced-motion:reduce){#spSidebar{transition:none;}}
 
 /* Rádio SindEducação - controle compacto na sidebar (a tela cheia,
    com a arte oficial e os detalhes, vive no módulo "radio" via spIr). */
@@ -1423,11 +1476,51 @@ var BENEF_SUB_TITULOS = {
    Benefícios passou meses ficando aberto por cima dos outros módulos.
    Agora o botão diz qual bloco ele abre (data-acordeao) e o bloco diz
    quais módulos moram nele (data-subs). O resto é consequência. */
+/* ── Menu recolhido: ícones em vez de rótulos ──────────────────────────
+   Recolher, não remover. Num sistema de 12 módulos o menu é a única coisa
+   que responde "o que mais existe aqui dentro" — e essa pergunta continua
+   valendo. A escolha é de cada pessoa e fica gravada no navegador dela:
+   quem nunca clicar no ☰ não vê diferença nenhuma.
+
+   O localStorage aqui guarda PREFERÊNCIA DE TELA, não dado do sindicato —
+   é o uso certo dele. Dado de trabalho vai para a planilha, sempre. */
+var SP_MENU_CHAVE_ = "sisgep.menuRecolhido";
+
+window.spMenuRecolhido = function(){
+  var app = document.getElementById("spApp");
+  return !!(app && app.classList.contains("sp-menu-recolhido"));
+};
+
+window.spAlternarMenu = function(forcar){
+  var app = document.getElementById("spApp");
+  if(!app) return;
+  var recolher = (forcar === undefined) ? !spMenuRecolhido() : !!forcar;
+  if(recolher) app.classList.add("sp-menu-recolhido");
+  else app.classList.remove("sp-menu-recolhido");
+
+  var btn = document.getElementById("spMenuToggle");
+  if(btn){
+    btn.title = recolher ? "Expandir o menu" : "Recolher o menu";
+    btn.setAttribute("aria-expanded", recolher ? "false" : "true");
+  }
+  /* Navegador com armazenamento bloqueado não pode derrubar o menu: a
+     preferência se perde, a tela continua funcionando. */
+  try { localStorage.setItem(SP_MENU_CHAVE_, recolher ? "1" : "0"); } catch(e){}
+};
+
 window.spAcordeao=function(btn){
   var alvo = btn && btn.getAttribute("data-acordeao");
   if(!alvo) return;
   var acc = document.getElementById(alvo);
   if(!acc) return;
+  /* Com o menu recolhido não há largura para o submenu — clicar num módulo
+     que tem filhos abre o menu primeiro e depois o acordeão. Sem isto, o
+     clique não faria absolutamente nada e pareceria botão quebrado. */
+  if(spMenuRecolhido()){
+    spAlternarMenu(false);
+    acc.style.display = "flex";
+    return;
+  }
   acc.style.display = (acc.style.display==="flex") ? "none" : "flex";
 };
 

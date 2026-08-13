@@ -47,6 +47,46 @@ O desenho foi conferido no navegador (quatro estados renderizados no
 Chromium), mas **isso não é a tela no ar**: o emulador não chama a Anthropic,
 então nenhuma resposta real passou por este caminho ainda.
 
+### 20. Layout — painel sob demanda, chips e menu recolhível
+**Aberto em:** 13/08/2026 · `ChatSISGEP.html`, `index.html`
+
+Três mudanças aprovadas em 13/08:
+
+1. **A coluna de especialidades virou uma linha de chips** dentro da SOFIA.
+   Os 11 modos continuam lá, com rolagem horizontal; a coluna de ~176px
+   sumiu. Junto foi a barrinha decorativa "Contexto | Ações" e o bloco
+   "Atividade da SOFIA", que listava três promessas que nunca chegavam.
+2. **O painel da direita só aparece quando tem conteúdo** — quando a
+   conversa identifica uma escola. Sem isso, a conversa ocupa a largura
+   inteira.
+3. **O menu do Portal recolhe para ícones** (☰), com a escolha gravada por
+   pessoa no navegador. Quem não clicar não vê diferença.
+
+**Travado por teste** (`t39-sofia-tela.js`, 23 asserções, 7 mutações mortas
+em 7): os 11 chips existem, um só fica ativo por vez, o painel nasce
+recolhido, abre com escola identificada, fecha ao trocar de modo e fecha
+quando a resposta seguinte não traz contexto.
+
+**O que só se confere no ar** — jsdom não aplica CSS, então nada disto foi
+visto de fato:
+
+| | |
+|---|---|
+| 🔴 Os chips cabem na barra e rolam | com o menu do Portal aberto e recolhido |
+| 🔴 A coluna da direita some mesmo | e volta quando a escola é identificada |
+| 🔴 O ☰ recolhe e a escolha sobrevive ao F5 | é `localStorage`; pode estar bloqueado no navegador |
+| 🔴 Clicar num módulo com submenu estando recolhido | deve abrir o menu e o acordeão junto |
+| 🔴 **Ofícios continua igual** | o menu aparece nos 12 módulos; Ofícios é o que está em uso diário |
+
+O último item é o que mais importa: mexi no `index.html`, que é a moldura de
+tudo. Se a emissão de ofício estiver diferente em qualquer coisa, é aqui que
+se volta.
+
+**Uma perda deliberada:** a frase "A SOFIA usará memórias autorizadas e o
+histórico desta conversa" ficava no pé da coluna que saiu. Não a realoquei —
+se fizer falta, ela volta como uma linha discreta no rodapé do campo de
+digitação.
+
 ### 17. Voucher — o reparo do cabeçalho de `Voucher_Solicitacoes`
 **Aberto em:** 12/08/2026 · `Voucher.gs`, `VoucherReparoColunas.gs` · **BLOQUEIA EMISSÃO**
 
