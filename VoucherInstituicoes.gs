@@ -741,3 +741,131 @@ function voucherPercentualPorCurso(curso, tokenSessao) {
     return { ok: false, achou: false, mensagem: e.message };
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   O RESOLVEDOR — uma chamada só, para a tela de solicitação
+
+   Junta as quatro fontes numa resposta só, porque é assim que a tela
+   consegue preencher o formulário sem quatro idas ao servidor com a
+   planilha aberta.
+
+   A ORDEM IMPORTA, E É ESTA:
+
+     1. REGRA DA CCT           — o que a convenção determina. É a base.
+     2. ÚLTIMA DO ASSOCIADO    — o que se concedeu a esta pessoa.
+     3. PADRÃO DO CURSO        — o que costuma sair naquele curso.
+
+   A regra vem primeiro porque é a única com valor normativo: memória é
+   observação, convenção é obrigação. Mas quando a história da pessoa
+   diverge da regra, as DUAS aparecem — e é justamente aí que quem analisa
+   precisa olhar. Um associado que vinha recebendo 70% num curso cuja regra
+   diz 50% é uma exceção que alguém concedeu; pode ter havido motivo, e pode
+   ter havido engano. Esconder qualquer um dos dois números decidiria por
+   quem deveria decidir.
+   ══════════════════════════════════════════════════════════════════════ */
+
+function voucherSugerirSolicitacao(dados, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
+  try {
+    dados = dados || {};
+    var r = { ok: true, campos: {}, origens: {}, avisos: [] };
+
+    /* ── 1. a pessoa ── */
+    var mem = null;
+    var cpf = String(dados.cpf || "").replace(/\D/g, "");
+    if (cpf.length === 11) {
+      mem = voucherMemoriaAssociado(cpf, tokenSessao);
+      if (mem && mem.achou) {
+        ["nome", "email", "telefone", "situacaoSindical", "escola", "cnpjEscola",
+         "cidadeEscola", "instituicao", "cnpjInstituicao", "emailInstituicao",
+         "beneficiario", "parentesco", "tipoBeneficiario", "modalidade",
+         "area", "curso", "regime"].forEach(function (c) {
+          if (mem[c]) { r.campos[c] = mem[c]; r.origens[c] = "ULTIMA_SOLICITACAO"; }
+        });
+        r.avisos.push(mem.aviso);
+        r.ultimoProtocolo = mem.ultimoProtocolo;
+        r.ultimoPeriodo = mem.ultimoPeriodo;
+      }
+    }
+
+    /* O que a tela mandou VENCE o que a memória lembrou: se a pessoa já
+     * trocou a modalidade no formulário, é sobre a nova que ela quer saber
+     * o percentual, não sobre a do semestre passado. */
+    var modalidade = String(dados.modalidade || r.campos.modalidade || "").trim();
+    var area  = String(dados.area  || r.campos.area  || "").trim();
+    var curso = String(dados.curso || r.campos.curso || "").trim();
+    if (dados.modalidade) { r.campos.modalidade = dados.modalidade; delete r.origens.modalidade; }
+    if (dados.area)  { r.campos.area  = dados.area;  delete r.origens.area; }
+    if (dados.curso) { r.campos.curso = dados.curso; delete r.origens.curso; }
+
+    /* ── 2. a regra da convenção ── */
+    var regra = null;
+    if (modalidade && typeof calcularRegraVoucher_ === "function") {
+      try {
+        regra = calcularRegraVoucher_({
+          modalidade: modalidade, areaCurso: area,
+          tipoBeneficiario: dados.tipoBeneficiario || r.campos.tipoBeneficiario || "TITULAR",
+          ordemFilho: dados.ordemFilho || "",
+          enteadoDeclaradoIR: dados.enteadoDeclaradoIR || ""
+        }, dados.idadeBeneficiario === undefined ? "" : dados.idadeBeneficiario);
+      } catch (e) { Logger.log("regra da CCT falhou: " + e.message); }
+    }
+
+    if (regra && regra.apto && regra.percentual) {
+      r.campos.percentual = Number(regra.percentual);
+      r.origens.percentual = "REGRA_CCT";
+      r.campos.regime = regra.regime || r.campos.regime || "";
+      r.regraObservacao = regra.observacao || "";
+    } else if (regra && !regra.apto) {
+      /* Regra que RECUSA é informação, não silêncio. Mestrado sem desconto,
+       * filho fora do limite de idade, enteado sem declaração de IR — em
+       * todos, o campo fica vazio E o motivo aparece. */
+      r.campos.percentual = "";
+      r.origens.percentual = "REGRA_CCT_RECUSA";
+      r.avisos.push(regra.observacao || "A convenção não prevê desconto para este caso.");
+      r.bloqueadoPelaRegra = true;
+    }
+
+    /* ── 3. a história do associado, e a divergência ── */
+    if (mem && mem.achou && mem.percentual) {
+      var daPessoa = Number(mem.percentual);
+      if (!r.campos.percentual && !r.bloqueadoPelaRegra) {
+        r.campos.percentual = daPessoa;
+        r.origens.percentual = "ULTIMA_SOLICITACAO";
+      } else if (r.campos.percentual && Number(r.campos.percentual) !== daPessoa) {
+        r.avisos.push("Atenção: a última bolsa deste associado saiu com " +
+                      daPessoa + "%, e a regra da convenção indica " +
+                      r.campos.percentual + "%.");
+        r.divergencia = { regra: Number(r.campos.percentual), associado: daPessoa };
+      }
+    }
+
+    /* ── 4. o padrão observado do curso, quando nada acima resolveu ── */
+    if (!r.campos.percentual && !r.bloqueadoPelaRegra && curso) {
+      var pc = voucherPercentualPorCurso(curso, tokenSessao);
+      if (pc && pc.achou) {
+        r.campos.percentual = pc.percentualSugerido;
+        r.origens.percentual = "PADRAO_DO_CURSO";
+        r.avisos.push(pc.aviso);
+      }
+    }
+
+    /* ── a instituição, quando a pessoa é nova mas a faculdade não ── */
+    if (!r.campos.instituicao && dados.instituicao) {
+      var inst = voucherInstituicaoDetalhe(dados.instituicao, tokenSessao);
+      if (inst && inst.achou) {
+        r.campos.instituicao = inst.nome;
+        r.campos.cnpjInstituicao = inst.cnpj;
+        r.campos.emailInstituicao = inst.email;
+        r.origens.instituicao = "MEMORIA_INSTITUICAO";
+        r.origens.emailInstituicao = "MEMORIA_INSTITUICAO";
+      }
+    }
+
+    r.avisos = r.avisos.filter(Boolean);
+    return r;
+  } catch (e) {
+    Logger.log("voucherSugerirSolicitacao: " + e.message);
+    return { ok: false, mensagem: e.message, campos: {}, origens: {}, avisos: [] };
+  }
+}

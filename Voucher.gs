@@ -698,7 +698,36 @@ function calcularRegraVoucher_(dados, idadeBeneficiario) {
     }
   }
 
-  if (["EDUCACAO_INFANTIL", "CRECHE", "ENSINO_FUNDAMENTAL", "TECNICO"].indexOf(modalidade) > -1) {
+  /* MESTRADO E DOUTORADO NÃO TÊM DESCONTO EM CONVENÇÃO.
+   *
+   * Isto precisa vir ANTES de tudo, e a razão é um defeito que estava aqui:
+   * o bloco `if (tipoBeneficiario === "TITULAR")` lá embaixo é alcançado
+   * quando NENHUMA modalidade casa, e concede 100%. Ou seja, um titular
+   * pedindo bolsa de mestrado — modalidade sem regra — saía com desconto
+   * integral. O oposto exato do que a convenção diz.
+   *
+   * Recusar explicitamente é diferente de não ter regra: a resposta abaixo
+   * explica o motivo, em vez de deixar o campo em branco para alguém
+   * preencher na mão. */
+  if (["MESTRADO", "DOUTORADO"].indexOf(modalidade) > -1) {
+    return {
+      apto: false,
+      percentual: "",
+      regime: "",
+      observacao: "Não há desconto previsto em convenção para " +
+                  modalidade.toLowerCase() + "."
+    };
+  }
+
+  /* ENSINO_MEDIO ESTAVA FALTANDO NESTA LISTA.
+   *
+   * `getPortalVoucherInitData` oferece "Ensino Médio (15–17 anos)" no menu
+   * de modalidades, e quem escolhesse caía no "Modalidade não reconhecida
+   * nas regras do voucher" lá no fim — pedido recusado por um buraco no
+   * código, não por regra da convenção. Segue os mesmos 100/100/60 das
+   * demais modalidades do ensino básico. */
+  if (["EDUCACAO_INFANTIL", "CRECHE", "ENSINO_FUNDAMENTAL",
+       "ENSINO_MEDIO", "TECNICO"].indexOf(modalidade) > -1) {
     let percentual = "";
 
     if (ordemFilho === "1" || ordemFilho === "2") percentual = "100";

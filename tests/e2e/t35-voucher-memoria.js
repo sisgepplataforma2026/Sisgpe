@@ -327,5 +327,111 @@ b.bloqueia(() => g.voucherMemoriaAssociado(CPF_MARCELO), "recusa anônimo");
 b.bloqueia(() => g.voucherPercentualPorCurso("Direito"), "percentual por curso recusa anônimo");
 b.bloqueia(() => g.voucherMemoriaAssociado(CPF_MARCELO, ESC), "recusa quem não tem Benefícios");
 
+
+/* ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("REGRA DA CCT · dois defeitos que estavam no motor");
+
+b.passo("29. ENSINO_MEDIO era oferecido no menu e não tinha regra");
+/* getPortalVoucherInitData oferece "Ensino Médio (15–17 anos)", e quem
+ * escolhesse caía em "Modalidade não reconhecida" — pedido recusado por um
+ * buraco no código, não por regra da convenção. */
+const medio = g.calcularRegraVoucher_(
+  { modalidade: "ENSINO_MEDIO", tipoBeneficiario: "FILHO", ordemFilho: "1" }, 10);
+b.ok(medio.apto, "ensino médio é aceito", medio.observacao);
+b.igual(medio.percentual, "100", "1º filho do ensino médio: 100%");
+b.igual(g.calcularRegraVoucher_(
+  { modalidade: "ENSINO_MEDIO", tipoBeneficiario: "FILHO", ordemFilho: "3" }, 10).percentual,
+  "60", "3º filho do ensino médio: 60%");
+
+b.passo("30. Titular de MESTRADO saía com 100% — o oposto da convenção");
+/* O bloco `if (tipoBeneficiario === "TITULAR")` era alcançado quando NENHUMA
+ * modalidade casava, e concedia desconto integral. Mestrado não tem regra;
+ * logo, mestrado dava 100%. */
+const mest = g.calcularRegraVoucher_(
+  { modalidade: "MESTRADO", tipoBeneficiario: "TITULAR" }, "");
+b.ok(!mest.apto, "mestrado é recusado");
+b.igual(mest.percentual, "", "sem percentual nenhum");
+b.ok(/n[ãa]o h[áa] desconto/i.test(mest.observacao),
+  "e com o motivo escrito", mest.observacao);
+b.ok(!g.calcularRegraVoucher_(
+  { modalidade: "DOUTORADO", tipoBeneficiario: "TITULAR" }, "").apto,
+  "doutorado idem");
+
+b.passo("31. As demais regras continuam como estavam");
+b.igual(g.calcularRegraVoucher_(
+  { modalidade: "GRADUACAO", areaCurso: "HUMANAS", tipoBeneficiario: "TITULAR" }, "").percentual,
+  "70", "graduação humanas 70%");
+b.igual(g.calcularRegraVoucher_(
+  { modalidade: "GRADUACAO", areaCurso: "SAUDE", tipoBeneficiario: "TITULAR" }, "").percentual,
+  "50", "graduação saúde 50%");
+b.igual(g.calcularRegraVoucher_(
+  { modalidade: "POS_GRADUACAO", tipoBeneficiario: "TITULAR" }, "").percentual,
+  "70", "pós 70%");
+
+/* ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("RESOLVEDOR · a chamada única que a tela de solicitação consome");
+
+b.passo("32. A REGRA da convenção é a base");
+const s1 = g.voucherSugerirSolicitacao(
+  { modalidade: "GRADUACAO", area: "HUMANAS", curso: "Filosofia" }, ADM);
+b.igual(s1.campos.percentual, 70, "70% para humanas");
+b.igual(s1.origens.percentual, "REGRA_CCT", "e a origem é a convenção, não a memória");
+
+b.passo("33. Sem regra que case, cai no padrão observado do curso");
+/* Modalidade em branco: a convenção não tem o que dizer, mas a memória do
+ * curso tem. É o caso de quem digita só "Direito" no balcão. */
+const s2 = g.voucherSugerirSolicitacao({ curso: "Direito" }, ADM);
+b.igual(s2.campos.percentual, 50, "Direito vem com 50% da memória");
+b.igual(s2.origens.percentual, "PADRAO_DO_CURSO", "e diz que veio do padrão do curso");
+
+b.passo("34. Com CPF conhecido, o formulário inteiro vem preenchido");
+const s3 = g.voucherSugerirSolicitacao({ cpf: CPF_MARCELO }, ADM);
+b.igual(s3.campos.nome, "Marcelo Alves de Oliveira", "nome");
+b.igual(s3.campos.instituicao, "MULTIVIX", "faculdade");
+b.igual(s3.origens.instituicao, "ULTIMA_SOLICITACAO", "com a origem marcada");
+b.ok(s3.avisos.length > 0, "e um aviso dizendo de onde veio", s3.avisos[0]);
+
+b.passo("35. O que a tela mandou VENCE o que a memória lembrou");
+/* Se a pessoa já trocou a modalidade no formulário, é sobre a NOVA que ela
+ * quer saber o percentual — não sobre a do semestre passado. */
+const s4 = g.voucherSugerirSolicitacao(
+  { cpf: CPF_MARCELO, modalidade: "GRADUACAO", area: "SAUDE", curso: "Enfermagem" }, ADM);
+b.igual(s4.campos.curso, "Enfermagem", "o curso digitado agora prevalece");
+b.igual(s4.campos.percentual, 50, "e o percentual é o da área nova (saúde)");
+b.igual(s4.origens.percentual, "REGRA_CCT", "vindo da convenção");
+
+b.passo("36. Divergência entre a regra e a história do associado APARECE");
+/* Um associado que vinha recebendo 40% num caso cuja regra diz 70% é uma
+ * exceção que alguém concedeu. Pode ter havido motivo, e pode ter havido
+ * engano — esconder qualquer um dos dois números decidiria por quem
+ * deveria decidir. */
+const s5 = g.voucherSugerirSolicitacao(
+  { cpf: CPF_MARCELO, modalidade: "GRADUACAO", area: "HUMANAS", curso: "Administracao" }, ADM);
+b.igual(s5.campos.percentual, 70, "o campo vem com o da regra");
+b.ok(!!s5.divergencia, "e a divergência é sinalizada");
+b.igual(s5.divergencia && s5.divergencia.associado, 40, "com o valor da última dele");
+b.ok(s5.avisos.some(a => /[úu]ltima bolsa/i.test(a)),
+  "e um aviso em texto para quem analisa", (s5.avisos.find(a => /[úu]ltima/i.test(a)) || ""));
+
+b.passo("37. Regra que RECUSA deixa o campo vazio E diz o motivo");
+const s6 = g.voucherSugerirSolicitacao({ modalidade: "MESTRADO" }, ADM);
+b.igual(s6.campos.percentual, "", "campo em branco");
+b.igual(s6.origens.percentual, "REGRA_CCT_RECUSA", "com a origem marcando a recusa");
+b.ok(s6.bloqueadoPelaRegra === true, "e o bloqueio sinalizado para a tela");
+b.ok(s6.avisos.some(a => /n[ãa]o h[áa] desconto/i.test(a)), "com o motivo à vista", s6.avisos[0]);
+
+b.passo("38. Memória NÃO fura a recusa da convenção");
+/* O mais importante deste bloco: se o mestrado não tem desconto, nenhuma
+ * memória pode preencher um número ali. */
+g.voucherPadraoLembrar_({ modalidade: "MESTRADO", curso: "Mestrado em Gestao", percentual: 80 });
+const s7 = g.voucherSugerirSolicitacao(
+  { modalidade: "MESTRADO", curso: "Mestrado em Gestao" }, ADM);
+b.igual(s7.campos.percentual, "", "continua vazio, mesmo com padrão observado de 80%");
+b.ok(s7.bloqueadoPelaRegra === true, "e continua bloqueado");
+
+b.passo("39. O resolvedor exige o módulo Benefícios");
+b.bloqueia(() => g.voucherSugerirSolicitacao({ cpf: CPF_MARCELO }), "recusa anônimo");
+b.bloqueia(() => g.voucherSugerirSolicitacao({ cpf: CPF_MARCELO }, ESC), "recusa sem o módulo");
+
 b.resumo();
 process.exit(0);
