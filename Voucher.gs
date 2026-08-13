@@ -593,7 +593,14 @@ function seedVoucherRules_() {
   /* AS REGRAS DA CONVENÇÃO COLETIVA — ditadas pelo usuário em 12/08/2026.
    *
    * ENSINO BÁSICO (infantil, fundamental, médio, técnico), por ordem do filho:
-   *   1º filho 100% · 2º filho 100% · 3º filho 50%
+   *   1º filho 100% · 2º filho 100% · 3º filho 60%
+   *
+   * O 3º FILHO É 60%, E ISSO FOI CONFERIDO. Na conversa de 12/08/2026 o
+   * usuário disse 50%, o que divergia dos 60% que já estavam semeados desde
+   * o início do módulo. Perguntei antes de mexer — percentual é dinheiro do
+   * sindicato — e ele confirmou: "o semeado está correto, eu errei".
+   * Registrado aqui para ninguém "corrigir" de volta para 50 lendo só o
+   * histórico da conversa.
    *
    * GRADUAÇÃO, por área:
    *   Humanas 70% · Saúde 50% · Engenharia/Exatas 60%
@@ -612,7 +619,7 @@ function seedVoucherRules_() {
    * de planilha que já opera é mudança de dinheiro e exige migração
    * própria, com prévia — nunca de passagem por um seed. */
   const BASICO = ["EDUCACAO_INFANTIL", "CRECHE", "ENSINO_FUNDAMENTAL", "ENSINO_MEDIO", "TECNICO"];
-  const POR_ORDEM = { "1": 100, "2": 100, "3": 50 };
+  const POR_ORDEM = { "1": 100, "2": 100, "3": 60 };
   const AREAS = { "HUMANAS": 70, "SAUDE": 50, "ENGENHARIA": 60 };
   const PARENTES = ["TITULAR", "CONJUGE", "FILHO", "ENTEADO"];
 
