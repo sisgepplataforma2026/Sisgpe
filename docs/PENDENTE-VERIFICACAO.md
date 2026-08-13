@@ -151,7 +151,7 @@ porta dupla; o teto voltou a 215.
 | 🔴 **`voucherPreviaSegura()` roda pelo botão Run** | a porta dupla depende de `Session.getActiveUser()` devolver e-mail no editor. O padrão já funcionou em `escolaVinculosStatus`, mas nesta função ainda não foi executado |
 | 🔴 **A trilha grava em produção** | no emulador cai na planilha de reserva. Com Firestore configurado o caminho é outro — conferir que `ENVIAR_EMAIL` aparece com protocolo, destino e usuário |
 | 🔴 **O link `wa.me` abre no celular** | com a mensagem já escrita. O sistema **não envia zap** — quem aperta enviar é a pessoa |
-| 🔴 **O modal de envio** | ainda não existe em `Scripts_Certificado.html`. O backend está pronto; a tela, não |
+| 🔴 **O modal de envio** | ~~não existe~~ — construído em 12/08/2026 e coberto por `t34` (49 asserções). Falta abrir no navegador: destinatário, cópia, aviso de reenvio e o botão do WhatsApp |
 
 **Três colunas novas em `Voucher_Solicitacoes`** — `INSTITUICAO_ENSINO`,
 `CNPJ_INSTITUICAO`, `EMAIL_INSTITUICAO` — entram por `ensureHeaders_`, que é
