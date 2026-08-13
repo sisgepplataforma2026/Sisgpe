@@ -387,6 +387,12 @@ function gerarHtmlDocumentoVoucher_(dados) {
    * traz o texto "SindEducação ES" junto, e o que aparece no fundo da página
    * é só o símbolo. Ver VoucherMarcaDagua.gs. */
   const marcaDagua = (typeof marcaDaguaVoucher_ === "function") ? marcaDaguaVoucher_() : "";
+  /* Cabeçalho e rodapé também vêm do papel real, como imagem única. A prévia
+   * renderizada em 13/08/2026 mostrou por quê: com a logo do Drive mais as
+   * faixas em CSS, as faixas apareciam DUAS VEZES — o arquivo de logo já traz
+   * a faixa inteira. Ver VoucherMarcaDagua.gs. */
+  const cabecalhoImg = (typeof cabecalhoVoucher_ === "function") ? cabecalhoVoucher_() : "";
+  const rodapeImg = (typeof rodapeVoucher_ === "function") ? rodapeVoucher_() : "";
 
   function frag(rotulo, valor) {
     return valor ? rotulo + "<strong>" + escHtmlVoucher_(valor) + "</strong>" : "";
@@ -430,15 +436,16 @@ function gerarHtmlDocumentoVoucher_(dados) {
       "padding:0 0 40mm;overflow:hidden;page-break-inside:avoid;}" +
 
     /* ── cabeçalho: logo à esquerda, faixas à direita ── */
-    ".cab{display:flex;align-items:flex-start;justify-content:space-between;padding:12mm 15mm 0;}" +
-    ".cab-logo{width:52mm;height:auto;}" +
-    ".faixas{position:relative;width:78mm;height:16mm;margin-top:2mm;}" +
-    ".faixa-azul{position:absolute;right:-15mm;top:3mm;width:88mm;height:7mm;background:#00A0E3;transform:skewX(-20deg);}" +
-    ".faixa-rosa{position:absolute;right:-2mm;top:0;width:62mm;height:7mm;background:#E5187E;transform:skewX(-20deg);}" +
+    ".cab{width:100%;display:block;}" +
 
     /* ── marca d'água: símbolo no canto inferior direito, sangrando ── */
-    ".dagua{position:absolute;right:-28mm;bottom:18mm;width:120mm;opacity:.07;" +
-      "filter:grayscale(100%);z-index:0;pointer-events:none;}" +
+    /* A IMAGEM JÁ É CINZA CLARÍSSIMO — ela nasce assim no papel do sindicato.
+     * Estava com opacity .07 por cima disso, e o resultado foi marca d'água
+     * NENHUMA: a prévia renderizada saiu com o fundo branco. Opacidade se
+     * aplica sobre o tom que a imagem tem, não sobre o tom que ela deveria
+     * ter. */
+    ".dagua{position:absolute;right:-30mm;bottom:26mm;width:125mm;opacity:.9;" +
+      "z-index:0;pointer-events:none;}" +
 
     ".corpo{position:relative;z-index:1;padding:0 20mm;}" +
     "h1{text-align:center;font-size:15pt;font-weight:bold;color:#1a1a1a;" +
@@ -452,16 +459,15 @@ function gerarHtmlDocumentoVoucher_(dados) {
 
     /* ── rodapé: contatos + faixa do salmo + a validação ── */
     ".rodape{position:absolute;left:0;right:0;bottom:0;}" +
-    ".contatos{padding:0 15mm 3mm;font-size:8.5pt;color:#1565C0;line-height:1.5;" +
-      "display:flex;justify-content:space-between;align-items:flex-end;}" +
-    ".contatos div{white-space:nowrap;}" +
+    ".rod-img{width:100%;display:block;}" +
+    /* A validação flutua SOBRE o rodapé do papel, no espaço vazio à direita
+     * dos contatos — assim ela não empurra a arte nem cria uma faixa a mais. */
+    ".valida-box{position:absolute;right:14mm;bottom:14mm;text-align:right;}" +
     /* O QR fica AQUI, discreto, e não no meio do documento: foi acrescentado
      * ao modelo com autorização, e o que é acréscimo não disputa espaço com o
      * que a escola já sabe ler. */
-    ".valida{text-align:right;font-size:7.5pt;color:#64748b;line-height:1.4;}" +
-    ".valida img{width:16mm;height:16mm;display:block;margin-left:auto;}" +
-    ".salmo{background:#1565C0;color:#fff;text-align:center;font-style:italic;" +
-      "font-size:10pt;padding:2.5mm 4mm;}" +
+    ".valida{font-size:7pt;color:#64748b;line-height:1.35;margin-top:1mm;}" +
+    ".valida-qr{width:15mm;height:15mm;display:block;margin-left:auto;}" +
     "</style>" +
     "</head>" +
     "<body>" +
@@ -469,10 +475,7 @@ function gerarHtmlDocumentoVoucher_(dados) {
 
     (marcaDagua ? "<img class='dagua' src='" + escHtmlVoucher_(marcaDagua) + "'>" : "") +
 
-    "<div class='cab'>" +
-    (logoImg ? "<img class='cab-logo' src='" + escHtmlVoucher_(logoImg) + "'>" : "<div></div>") +
-    "<div class='faixas'><div class='faixa-azul'></div><div class='faixa-rosa'></div></div>" +
-    "</div>" +
+    (cabecalhoImg ? "<img class='cab' src='" + escHtmlVoucher_(cabecalhoImg) + "'>" : "") +
 
     "<div class='corpo'>" +
     "<h1>CERTIFICADO DE HABILITAÇÃO À BOLSA DE ESTUDOS</h1>" +
@@ -490,17 +493,14 @@ function gerarHtmlDocumentoVoucher_(dados) {
     "</div>" +
 
     "<div class='rodape'>" +
-    "<div class='contatos'>" +
-    "<div>" +
-    "(27) 3222-2706<br>(27) 99735-8900<br>sindeducacao.com<br>contato@sindeducacao.com" +
-    "</div>" +
+    (rodapeImg ? "<img class='rod-img' src='" + escHtmlVoucher_(rodapeImg) + "'>" : "") +
+    "<div class='valida-box'>" +
+    (qrCodeUrl ? "<img class='valida-qr' src='" + escHtmlVoucher_(qrCodeUrl) + "'>" : "") +
     "<div class='valida'>" +
-    (qrCodeUrl ? "<img src='" + escHtmlVoucher_(qrCodeUrl) + "'>" : "") +
     (codigo ? "Código " + escHtmlVoucher_(codigo) + "<br>" : "") +
     (protocolo ? escHtmlVoucher_(protocolo) : "") +
     "</div>" +
     "</div>" +
-    "<div class='salmo'>Você comerá do fruto do seu trabalho e será feliz e próspero. Salmos 128:2.</div>" +
     "</div>" +
 
     "</div>" +
