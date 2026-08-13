@@ -446,7 +446,13 @@ function VOUCHER_COLUNAS_SOLICITACOES_() {
          * perguntado a quem digita. Fica gravado porque a dedução depende de
          * linhas que podem ser recusadas ou canceladas depois: relida meses
          * adiante, a mesma conta daria outra resposta. */
-        "TIPO_SOLICITACAO"
+        "TIPO_SOLICITACAO",
+        /* Preenchida SÓ quando um administrador autorizou uma exceção à trava
+         * de "um por período" — guarda o protocolo da bolsa anterior. Existe
+         * como coluna, e não apenas como texto na observação, para a pergunta
+         * "quantas exceções foram autorizadas e quais" ter resposta por
+         * filtro. O que sai da regra é o que mais precisa ser encontrável. */
+        "EXCECAO_DUPLICIDADE"
   ];
 }
 

@@ -98,6 +98,11 @@ const M = [
   ["SEMESTRAL", "2026/2", "ANUAL",     "2026",   true,  "e a integral já concedida barra o semestral"],
   ["ANUAL",     "2026",   "ANUAL",     "2027",   false, "integral de outro ano é outra bolsa"],
   ["SEMESTRAL", "",       "SEMESTRAL", "2026/1", false, "sem ano de um lado não se afirma conflito"],
+  /* OS DOIS PERÍODOS EM BRANCO — achado por mutação. Sem a guarda do ano
+   * vazio, "" e "" são "o mesmo ano", e duas linhas sem período nenhum
+   * viravam aviso de duplicata uma da outra. Numa base com dado antigo
+   * incompleto isso encheria a tela de alerta sobre nada. */
+  ["SEMESTRAL", "",       "SEMESTRAL", "",       false, "dois períodos em branco não são a mesma janela"],
   /* OS DOIS CASOS ABAIXO SÃO OS ÚNICOS QUE PROVAM A REGRA DO ANUAL.
    *
    * Achados por mutação em 13/08/2026: apagando a regra do ANUAL inteira, os
@@ -118,9 +123,20 @@ M.forEach(function (c) {
   b.igual(g.voucherPeriodoJanelaConflita_(c[0], c[1], c[2], c[3]), c[4], c[5]);
 });
 
-b.passo("5. Semestral sem o semestre TRAVA — e diz o que fazer");
-b.igual(g.voucherPeriodoJanelaConflita_("SEMESTRAL", "2026", "SEMESTRAL", "2026/1"), true,
-  "mesmo ano e semestre desconhecido: trava, porque deixar passar emite duas vezes");
+b.passo("5. Semestral sem o semestre é INCERTO — avisa, não trava");
+/* MUDOU EM 13/08/2026, a pedido do usuário. Antes travava por precaução.
+ * Travar por dado que FALTA é recusar o atendimento por um defeito do
+ * formulário, não por uma regra do sindicato. A origem foi atacada na tela —
+ * o período virou dois seletores e não nasce mais sem semestre; o INCERTO
+ * existe para o que JÁ ESTÁ GRAVADO. */
+b.igual(g.voucherPeriodoJanelaSituacao_("SEMESTRAL", "2026", "SEMESTRAL", "2026/1"), "INCERTO",
+  "mesmo ano, semestre desconhecido de um lado: incerto");
+b.igual(g.voucherPeriodoJanelaConflita_("SEMESTRAL", "2026", "SEMESTRAL", "2026/1"), false,
+  "e incerto NÃO trava");
+b.igual(g.voucherPeriodoJanelaSituacao_("SEMESTRAL", "2026/1", "SEMESTRAL", "2026/1"), "CONFLITA",
+  "com os dois semestres à vista, volta a ser conflito");
+b.igual(g.voucherPeriodoJanelaSituacao_("SEMESTRAL", "2026/1", "SEMESTRAL", "2027/1"), "LIVRE",
+  "e ano diferente é livre, sem aviso nenhum");
 
 /* ══════════════════════════════════════════════════════════════════════ */
 b.fluxo("PERÍODO · A trava na criação");
@@ -258,6 +274,104 @@ const acento = g.voucherChecarPeriodo({
 b.ok(acento.bloqueado, "acento, caixa e espaço não abrem uma segunda vaga");
 
 /* ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("PERÍODO · O incerto avisa e deixa passar");
+
+b.passo("23. Uma anterior sem semestre não impede a gravação");
+const CPF_I = "35374350770";
+function criarI(extra) {
+  return g.voucherCriarSolicitacao(Object.assign({
+    cpf: CPF_I, nome: "Rita Souza", modalidade: "GRADUACAO", area: "SAUDE",
+    curso: "Enfermagem", regime: "SEMESTRAL", periodo: "2026", percentual: 50,
+    aprovar: true
+  }, extra || {}), ADM);
+}
+const i1 = criarI();
+b.ok(i1.ok, "a primeira, gravada só com o ano (dado antigo)", i1.mensagem);
+const i2 = criarI({ periodo: "2026/2" });
+b.ok(i2.ok, "a segunda PASSA — o sistema não sabe o semestre da anterior", i2.mensagem);
+
+b.passo("24. Mas a consulta avisa, e o aviso nomeia a anterior");
+const ckI = g.voucherChecarPeriodo({
+  cpf: CPF_I, beneficiario: "Rita Souza", modalidade: "GRADUACAO",
+  curso: "Enfermagem", regime: "SEMESTRAL", periodo: "2026/1"
+}, ADM);
+b.igual(ckI.bloqueado, false, "não bloqueia");
+b.ok(!!ckI.incerto, "mas devolve o incerto separado do bloqueio");
+b.ok(/n[ãa]o d[áa] para saber/i.test(ckI.mensagemIncerteza),
+  "com a frase pronta, que admite não saber", ckI.mensagemIncerteza);
+b.ok(ckI.mensagemIncerteza.indexOf(i1.protocolo) > -1,
+  "e aponta qual é a anterior", i1.protocolo);
+
+/* ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("PERÍODO · A exceção autorizada");
+
+const CPF_X = "15350946056";
+function criarX(extra) {
+  return g.voucherCriarSolicitacao(Object.assign({
+    cpf: CPF_X, nome: "Paulo Dias", modalidade: "GRADUACAO", area: "ENGENHARIA",
+    curso: "Civil", regime: "SEMESTRAL", periodo: "2026/1", percentual: 60,
+    aprovar: true
+  }, extra || {}), ADM);
+}
+const x1 = criarX();
+b.ok(x1.ok, "a primeira do Paulo", x1.mensagem);
+
+b.passo("25. Sem exceção, continua travado");
+b.ok(!criarX().ok, "duplicata recusada como antes");
+
+b.passo("26. Exceção SEM justificativa não vale");
+const semTexto = criarX({ excecao: { justificativa: "ok" } });
+b.ok(!semTexto.ok, "recusada");
+b.ok(/motivo/i.test(semTexto.mensagem),
+  "e a mensagem pede o motivo — não repete a recusa genérica", semTexto.mensagem);
+
+b.passo("27. Exceção sem o campo preenchido também não");
+b.ok(!criarX({ excecao: {} }).ok, "objeto vazio não é autorização");
+
+b.passo("28. Quem NÃO é administrador não autoriza");
+/* joscimar não tem Benefícios, então nem chega aqui. É preciso alguém COM o
+ * módulo e SEM o perfil de administrador — senão o teste provaria a barreira
+ * errada e passaria por acidente. */
+const abaU = ss.getSheetByName(g.ABA_USUARIOS_LOGIN);
+abaU.getRange(abaU.getLastRow() + 1, 1, 1, 8).setValues([[
+  "marcela", g.gerarHashSenha_("Senha@2026"), "Marcela", "marcela@sindeducacao.com",
+  "USUARIO", "ATIVO", "NAO", "beneficios"
+]]);
+const COMUM = b.logar(g, "marcela");
+const porComum = g.voucherCriarSolicitacao({
+  cpf: CPF_X, nome: "Paulo Dias", modalidade: "GRADUACAO", area: "ENGENHARIA",
+  curso: "Civil", regime: "SEMESTRAL", periodo: "2026/1", percentual: 60,
+  aprovar: true, excecao: { justificativa: "a faculdade perdeu o documento e pediu outro" }
+}, COMUM);
+b.ok(!porComum.ok, "recusada mesmo com justificativa boa");
+b.ok(/administrador/i.test(porComum.mensagem),
+  "e a mensagem diz a quem recorrer", porComum.mensagem);
+
+b.passo("29. Administrador com motivo escrito passa");
+const JUSTIF = "a faculdade extraviou o primeiro e exigiu segunda via oficial";
+const xOk = criarX({ excecao: { justificativa: JUSTIF } });
+b.ok(xOk.ok, "gravou", xOk.mensagem);
+b.ok(xOk.excecao === true, "e a resposta diz que foi por exceção");
+
+b.passo("30. E o rastro ficou nos três lugares");
+const linhaX = linhaDo(xOk.protocolo);
+b.igual(String(linhaX.EXCECAO_DUPLICIDADE), x1.protocolo,
+  "coluna EXCECAO_DUPLICIDADE com o protocolo da anterior");
+b.ok(String(linhaX.OBSERVACOES).indexOf(JUSTIF) > -1,
+  "a justificativa por extenso nas observações");
+b.ok(/Exce[çc][ãa]o autorizada por/.test(String(linhaX.OBSERVACOES)),
+  "com quem autorizou e quando", String(linhaX.OBSERVACOES).split("\n")[0]);
+const trilha = g.aud_consultar_({ modulo: "Benefícios", registroId: xOk.protocolo, limite: 50 });
+const atos = ((trilha && trilha.acoes) || []).filter(a => /EXCECAO/.test(String(a.acao || "")));
+b.igual(atos.length, 1, "e UM registro próprio na trilha, não diluído na criação");
+b.ok(String(atos[0] && atos[0].justificativa || "").indexOf(JUSTIF) > -1,
+  "a trilha guarda o motivo", (atos[0] || {}).acao);
+
+b.passo("31. A exceção NÃO abre a porta para a próxima");
+b.ok(!criarX().ok,
+  "a seguinte volta a ser recusada — exceção vale para um caso, não para o par");
+
+/* ══════════════════════════════════════════════════════════════════════ */
 b.fluxo("PERÍODO · A listagem mostra a etiqueta");
 
 b.passo("23. A lista devolve o tipo gravado");
@@ -324,7 +438,10 @@ function el(id) { return doc.getElementById(id); }
   t.escolher("#certNvModalidade", "GRADUACAO");
   t.digitar("#certNvCurso", "Administracao");
   t.escolher("#certNvRegime", "SEMESTRAL");
-  t.digitar("#certNvPeriodo", "2026/1");
+  /* O período agora são DOIS seletores, e não um campo de texto: foi assim
+   * que o caso "2026 sem semestre" deixou de existir na entrada nova. */
+  t.escolher("#certNvPeriodoAno", "2026");
+  t.escolher("#certNvPeriodoSem", "1");
   await t.assentar(420);
   const html = el("certNvTrava").innerHTML;
   b.ok(/cert-nv-trava/.test(html), "a trava foi desenhada");
@@ -348,7 +465,7 @@ function el(id) { return doc.getElementById(id); }
     "nvSalvar não chegou a chamar o backend");
 
   b.passo("32. Trocar para um período livre solta a trava");
-  t.digitar("#certNvPeriodo", "2028/1");
+  t.escolher("#certNvPeriodoAno", "2027");
   await t.assentar(420);
   b.igual(el("certNvSalvarAprovar").disabled, false, "botão liberado de novo");
   b.ok(!/cert-nv-trava/.test(el("certNvTrava").innerHTML), "e a trava sumiu");
@@ -358,7 +475,7 @@ function el(id) { return doc.getElementById(id); }
     "renovação é informação, não impedimento", el("certNvTrava").innerHTML);
 
   b.passo("34. Fechar e reabrir não carrega a trava do atendimento anterior");
-  t.digitar("#certNvPeriodo", "2026/1");
+  t.escolher("#certNvPeriodoAno", "2026");
   await t.assentar(420);
   b.igual(el("certNvSalvarAprovar").disabled, true, "travado de novo");
   t.clicar("#certNvCancelar");
@@ -367,6 +484,143 @@ function el(id) { return doc.getElementById(id); }
   b.igual(el("certNvSalvarAprovar").disabled, false,
     "o próximo atendimento abre com os botões valendo");
   b.igual(el("certNvTrava").innerHTML, "", "e sem a caixa vermelha de outro caso");
+
+  b.passo("35. O semestre só é perguntado quando o regime é semestral");
+  /* O passo 34 reabriu o formulário limpo — preenche de novo, senão o que
+   * vem a seguir mediria um formulário vazio e passaria por acidente. */
+  t.digitar("#certNvCpf", CPF_M);
+  t.escolher("#certNvModalidade", "GRADUACAO");
+  t.digitar("#certNvCurso", "Administracao");
+  t.escolher("#certNvRegime", "ANUAL");
+  await t.assentar(60);
+  b.igual(el("certNvPeriodoSem").style.display, "none",
+    "bolsa anual não pergunta semestre — ele não existe ali");
+  b.igual(el("certNvPeriodoSem").value, "",
+    "e o valor é limpo, para não virar '2026/1' numa bolsa do ano inteiro");
+  t.escolher("#certNvRegime", "SEMESTRAL");
+  await t.assentar(60);
+  b.igual(el("certNvPeriodoSem").style.display, "",
+    "voltou a semestral, volta a perguntar");
+
+  b.fluxo("PERÍODO · A exceção na tela");
+
+  b.passo("36. Com a trava desenhada, o administrador vê o botão");
+  t.escolher("#certNvPeriodoAno", "2026");
+  t.escolher("#certNvPeriodoSem", "1");
+  await t.assentar(420);
+  b.ok(!!el("certNvAbrirExcecao"), "botão 'Autorizar exceção' presente para admin");
+  b.igual(el("certNvSalvarAprovar").disabled, true, "e o salvar segue travado");
+
+  b.passo("37. A caixa da justificativa só abre no clique");
+  b.igual(el("certNvExcecaoBox").style.display, "none", "começa escondida");
+  t.clicar("#certNvAbrirExcecao");
+  await t.assentar(30);
+  b.igual(el("certNvExcecaoBox").style.display, "block", "abriu");
+
+  b.passo("38. Justificativa curta não destrava nada");
+  t.digitar("#certNvExcecaoTexto", "ok");
+  t.clicar("#certNvExcecaoConfirmar");
+  await t.assentar(30);
+  b.igual(el("certNvSalvarAprovar").disabled, true,
+    "'ok' não é motivo — o salvar continua travado");
+
+  b.passo("39. Com o motivo escrito, o salvar libera");
+  t.digitar("#certNvExcecaoTexto", "a faculdade extraviou e exigiu segunda via");
+  t.clicar("#certNvExcecaoConfirmar");
+  await t.assentar(30);
+  b.igual(el("certNvSalvarAprovar").disabled, false, "liberado");
+  b.ok(/cert-nv-trava/.test(el("certNvTrava").innerHTML),
+    "e a caixa vermelha CONTINUA à vista — é o lembrete de que isto é exceção");
+
+  b.passo("40. E a justificativa viaja junto no salvamento");
+  const antesExc = t.chamadas.filter(c => c.fn === "voucherCriarSolicitacao").length;
+  t.clicar("#certNvSalvarAprovar");
+  await t.assentar(120);
+  const chamada = t.chamadas.filter(c => c.fn === "voucherCriarSolicitacao").pop();
+  b.igual(t.chamadas.filter(c => c.fn === "voucherCriarSolicitacao").length, antesExc + 1,
+    "o backend foi chamado");
+  b.ok(!!(chamada && chamada.args[0] && chamada.args[0].excecao),
+    "com a exceção no payload");
+  b.ok(/extraviou/.test(String(chamada.args[0].excecao.justificativa || "")),
+    "e a justificativa é a que foi escrita",
+    (chamada.args[0].excecao || {}).justificativa);
+
+  b.passo("41. Reabrir o formulário não carrega a exceção do caso anterior");
+  t.clicar("#certBtnNova");
+  await t.assentar(60);
+  b.igual(el("certNvTrava").innerHTML, "", "caixa limpa");
+  b.igual(el("certNvSalvarAprovar").disabled, false, "botões valendo");
+  /* A justificativa anterior descrevia OUTRA duplicata. Se sobrevivesse, o
+   * próximo caso seria gravado com um motivo que não é o dele. */
+  t.digitar("#certNvCpf", CPF_M);
+  t.escolher("#certNvModalidade", "GRADUACAO");
+  t.digitar("#certNvCurso", "Administracao");
+  t.escolher("#certNvRegime", "SEMESTRAL");
+  t.escolher("#certNvPeriodoAno", "2026");
+  t.escolher("#certNvPeriodoSem", "1");
+  await t.assentar(420);
+  b.igual(el("certNvSalvarAprovar").disabled, true,
+    "a mesma duplicata volta a travar — a autorização anterior não vale para ela");
+
+  b.fluxo("TELA · O que era silêncio agora fala");
+
+  b.passo("42. Campo obrigatório em falta marca o campo, e não grava");
+  /* Relatado em 13/08/2026 como "não está salvando": a modalidade estava em
+   * "—", o sistema recusava com a frase certa, e a frase ia para a faixa de
+   * mensagem que fica ATRÁS do modal. */
+  t.clicar("#certNvCancelar");
+  t.clicar("#certBtnNova");
+  await t.assentar(60);
+  t.digitar("#certNvCpf", CPF_M);
+  t.digitar("#certNvNome", "Marcelo Alves de Oliveira");
+  const antesVal = t.chamadas.filter(c => c.fn === "voucherCriarSolicitacao").length;
+  t.clicar("#certNvSalvarAprovar");
+  await t.assentar(60);
+  b.igual(t.chamadas.filter(c => c.fn === "voucherCriarSolicitacao").length, antesVal,
+    "sem modalidade, não vai para o backend");
+  b.ok(/dc2626|rgb\(220, 38, 38\)/i.test(el("certNvModalidade").style.borderColor || ""),
+    "e o campo que falta fica marcado em vermelho",
+    el("certNvModalidade").style.borderColor);
+
+  b.passo("43. Preenchida, a marca some");
+  t.escolher("#certNvModalidade", "GRADUACAO");
+  t.digitar("#certNvCurso", "Pedagogia");
+  t.escolher("#certNvRegime", "SEMESTRAL");
+  t.escolher("#certNvPeriodoAno", "2027");
+  t.escolher("#certNvPeriodoSem", "2");
+  await t.assentar(420);
+  t.clicar("#certNvSalvarAnalise");
+  await t.assentar(120);
+  b.igual(el("certNvModalidade").style.borderColor, "",
+    "a marca vermelha sai quando o campo é preenchido");
+
+  b.passo("44. O botão de emitir acha a linha pelo protocolo, sem depender do id");
+  /* "O botão de emitir não acontece nada": a linha era procurada só pelo
+   * ID_SOLICITACAO, e linha antiga não tem esse campo. O `if(s)` sem `else`
+   * transformava a falha em silêncio absoluto. */
+  const btnEmitir = doc.querySelector(".cert-btn-emitir-rapido");
+  b.ok(!!btnEmitir, "há um botão de emitir na lista");
+  b.ok(!!btnEmitir.getAttribute("data-prot"), "e ele carrega o protocolo junto do id",
+    btnEmitir.getAttribute("data-prot"));
+  btnEmitir.setAttribute("data-id", "ID-QUE-NAO-EXISTE");
+  const antesEmit = t.chamadas.filter(c => c.fn === "gerarDocumentoCertBolsaCompleto").length;
+  btnEmitir.dispatchEvent(new win.Event("click", { bubbles: true }));
+  await t.assentar(120);
+  b.igual(t.chamadas.filter(c => c.fn === "gerarDocumentoCertBolsaCompleto").length, antesEmit + 1,
+    "com o id inválido, o protocolo salva o clique");
+
+  b.passo("45. E quando nem o protocolo bate, ele RECLAMA");
+  const btn2 = doc.querySelector(".cert-btn-emitir-rapido");
+  btn2.setAttribute("data-id", "NADA");
+  btn2.setAttribute("data-prot", "NADA");
+  const antes2 = t.chamadas.filter(c => c.fn === "gerarDocumentoCertBolsaCompleto").length;
+  btn2.dispatchEvent(new win.Event("click", { bubbles: true }));
+  await t.assentar(60);
+  b.igual(t.chamadas.filter(c => c.fn === "gerarDocumentoCertBolsaCompleto").length, antes2,
+    "não emite nada");
+  b.ok(/n[ãa]o consegui identificar/i.test(el("certMsgBox").textContent || ""),
+    "mas diz o que houve — silêncio é o pior defeito possível",
+    (el("certMsgBox").textContent || "").slice(0, 60));
 
   b.resumo();
   process.exit(0);

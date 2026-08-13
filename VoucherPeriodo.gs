@@ -93,38 +93,56 @@ function voucherPeriodoEhAnual_(regime) {
 }
 
 /**
- * As duas solicitações caem na mesma janela?
+ * Em que situação as duas solicitações estão, uma em relação à outra.
  *
- * | regime envolvido | janela                                  |
- * |------------------|-----------------------------------------|
- * | ANUAL (qualquer lado) | o ano inteiro                      |
- * | SEMESTRAL dos dois    | ano + semestre                     |
+ * TRÊS RESPOSTAS, não duas — e a do meio é a que existe porque a realidade
+ * tem dado faltando:
+ *
+ *   CONFLITA — é a mesma janela. Trava.
+ *   INCERTO  — o ano coincide, mas falta o semestre de algum lado e não há
+ *              como saber. Avisa, não trava.
+ *   LIVRE    — janelas diferentes. Nem avisa.
+ *
+ * | regime envolvido      | janela         |
+ * |-----------------------|----------------|
+ * | ANUAL (qualquer lado) | o ano inteiro  |
+ * | SEMESTRAL dos dois    | ano + semestre |
  *
  * O ANUAL manda mesmo quando é só de um lado, e isso é intencional nas duas
  * direções: a bolsa integral de 2026 já cobre 2026/1 e 2026/2, então nem
  * cabe um semestral por cima; e um semestral de 2026/1 já concedido impede
  * a integral de 2026, que cobriria um período já concedido.
  *
- * Sem ano de um dos lados, NÃO conflita: período em branco não é prova de
- * nada, e travar por falta de informação recusaria solicitação legítima sem
- * ter como a pessoa provar o contrário.
+ * Sem ano de um dos lados é LIVRE: período em branco não é prova de nada, e
+ * recusar por falta de informação nega solicitação legítima sem dar à pessoa
+ * como provar o contrário.
+ *
+ * POR QUE O INCERTO DEIXOU DE TRAVAR — 13/08/2026, decisão do usuário.
+ * Até aqui, semestre faltando travava por precaução. Travar por dado que
+ * FALTA é recusar o atendimento por um defeito do formulário, não por uma
+ * regra do sindicato — e quem paga é a pessoa do outro lado do balcão. O
+ * caminho certo foi atacar a origem: o período virou dois seletores na tela,
+ * e solicitação nova não consegue mais nascer sem semestre. O INCERTO existe
+ * para o que JÁ ESTÁ GRAVADO — ali, o sistema avisa e deixa a pessoa decidir,
+ * que é o que ela pode fazer e o sistema não.
  */
-function voucherPeriodoJanelaConflita_(regimeA, periodoA, regimeB, periodoB) {
+function voucherPeriodoJanelaSituacao_(regimeA, periodoA, regimeB, periodoB) {
   var a = voucherPeriodoPartes_(periodoA);
   var b = voucherPeriodoPartes_(periodoB);
 
-  if (!a.ano || !b.ano) return false;
-  if (a.ano !== b.ano) return false;
+  if (!a.ano || !b.ano) return "LIVRE";
+  if (a.ano !== b.ano) return "LIVRE";
 
-  if (voucherPeriodoEhAnual_(regimeA) || voucherPeriodoEhAnual_(regimeB)) return true;
+  if (voucherPeriodoEhAnual_(regimeA) || voucherPeriodoEhAnual_(regimeB)) return "CONFLITA";
 
-  /* Semestral com o semestre faltando em algum lado: o ano coincide e não há
-   * como saber se o semestre coincide. Aqui a decisão é TRAVAR — e o recado
-   * na tela diz para completar o período ("2026/1"), porque isto é dado
-   * faltando, que tem conserto, e não uma recusa sem saída. */
-  if (!a.semestre || !b.semestre) return true;
+  if (!a.semestre || !b.semestre) return "INCERTO";
 
-  return a.semestre === b.semestre;
+  return a.semestre === b.semestre ? "CONFLITA" : "LIVRE";
+}
+
+/** Só o que TRAVA. O incerto não entra aqui — ele avisa. */
+function voucherPeriodoJanelaConflita_(regimeA, periodoA, regimeB, periodoB) {
+  return voucherPeriodoJanelaSituacao_(regimeA, periodoA, regimeB, periodoB) === "CONFLITA";
 }
 
 /** Chave da pessoa: CPF do titular + nome do beneficiário. Ver cabeçalho. */
@@ -183,6 +201,7 @@ function voucherPeriodoHistorico_(dados, sheet) {
   }
 
   var bloqueio = null;
+  var incertos = [];
   var anteriores = [];
 
   /* De trás para frente: quando houver mais de uma na mesma janela — o que
@@ -218,8 +237,17 @@ function voucherPeriodoHistorico_(dados, sheet) {
       email: String(v(linha, "EMAIL") || "").trim()
     };
 
-    if (voucherPeriodoJanelaConflita_(dados.regime, dados.periodo, registro.regime, registro.periodo)) {
+    var situacao = voucherPeriodoJanelaSituacao_(
+      dados.regime, dados.periodo, registro.regime, registro.periodo);
+
+    if (situacao === "CONFLITA") {
       if (!bloqueio) bloqueio = registro;
+    } else if (situacao === "INCERTO") {
+      incertos.push(registro);
+      /* O incerto TAMBÉM conta como anterior para efeito de renovação: seja
+       * qual for o semestre dele, é uma bolsa que esta pessoa já teve neste
+       * curso. Deixar de contar diria "primeira vez" sobre a terceira. */
+      anteriores.push(registro);
     } else {
       anteriores.push(registro);
     }
@@ -229,6 +257,11 @@ function voucherPeriodoHistorico_(dados, sheet) {
     ok: true,
     bloqueado: !!bloqueio,
     bloqueio: bloqueio,
+    /* Separado do bloqueio de propósito: a tela pinta um de vermelho e trava,
+     * o outro de amarelo e deixa passar. Misturar os dois num campo só
+     * obrigaria a tela a re-decidir o que o backend já sabe. */
+    incerto: incertos.length ? incertos[0] : null,
+    incertos: incertos,
     anteriores: anteriores,
     vezes: anteriores.length + (bloqueio ? 1 : 0),
     ultima: anteriores.length ? anteriores[0] : null
@@ -261,15 +294,94 @@ function voucherPeriodoMensagemBloqueio_(bloqueio, dados) {
   frase += ". Somente um por " +
     (voucherPeriodoEhAnual_(b.regime) || voucherPeriodoEhAnual_((dados || {}).regime)
       ? "ano" : "semestre") + ".";
-
-  /* O caso do período sem semestre merece instrução, não só recusa: é o
-   * único bloqueio que pode estar errado, e tem conserto em dois segundos. */
-  if (!voucherPeriodoEhAnual_(b.regime) && !voucherPeriodoEhAnual_((dados || {}).regime) &&
-      (!partesNovo.semestre || !partesVelho.semestre)) {
-    frase += " O período está sem o semestre — escreva no formato 2026/1 para" +
-             " o sistema saber se é o mesmo semestre.";
-  }
   return frase;
+}
+
+/**
+ * O texto do AVISO — o caso em que não dá para saber.
+ *
+ * Diferente do bloqueio em tudo: não trava, não acusa, e termina pedindo a
+ * conferência a quem pode fazê-la. O sistema não sabe o semestre daquela
+ * linha antiga; a pessoa abre o registro e sabe em cinco segundos.
+ */
+function voucherPeriodoMensagemIncerteza_(incerto) {
+  var i = incerto || {};
+  var qual = [i.beneficiario, i.curso || i.modalidade, i.periodo].filter(Boolean).join(" · ");
+  return "Pode ser a mesma bolsa — o período da anterior (" +
+    (i.periodo || "em branco") + ") não diz o semestre, então não dá para" +
+    " saber se é o mesmo." + (qual ? " Anterior: " + qual + "." : "") +
+    (i.protocolo ? " Protocolo " + i.protocolo + "." : "") +
+    " Confira antes de salvar.";
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   A EXCEÇÃO AUTORIZADA
+
+   A trava não tem escapatória para quem atende — e não deve ter. Mas a
+   operação de um sindicato tem casos que a regra não previu, e um sistema
+   sem nenhuma saída acaba contornado por fora: alguém recusa a anterior só
+   para poder gravar a nova, e aí a planilha passa a mentir sobre o que
+   aconteceu. A saída controlada existe justamente para não haver a saída
+   descontrolada.
+
+   TRÊS EXIGÊNCIAS, e nenhuma é decorativa:
+
+     1. Só ADMINISTRADOR. Decisão de gestão, não de atendimento. Se qualquer
+        pessoa com Benefícios pudesse liberar, a trava viraria um aviso que
+        se clica para sumir — e em duas semanas ninguém mais o leria.
+     2. JUSTIFICATIVA ESCRITA, e não uma palavra. Exceção sem motivo é
+        indistinguível de clique por engano quando alguém for conferir seis
+        meses depois.
+     3. RASTRO EM TRÊS LUGARES — coluna, observações e auditoria. O que sai
+        da regra é justamente o que mais precisa ser encontrável.
+
+   A tela pede; QUEM DECIDE É AQUI. O backend nunca aceita a exceção porque a
+   tela mandou: ele reconfere o perfil e o texto, e recusa os dois casos com
+   mensagens diferentes, porque "você não pode" e "faltou escrever o motivo"
+   pedem ações opostas de quem está do outro lado.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** Mínimo de caracteres da justificativa. "ok" e "sim" não são motivo. */
+var VOUCHER_EXCECAO_MIN_JUSTIFICATIVA = 15;
+
+function voucherSessaoEhAdmin_(sessao) {
+  var perfil = String((sessao && sessao.perfil) || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+  return perfil.indexOf("ADMIN") > -1;
+}
+
+/**
+ * A exceção pedida vale? Devolve `{ vale, justificativa, mensagem }`.
+ *
+ * `vale:false` com `mensagem:""` significa "não foi pedida exceção nenhuma" —
+ * o caminho normal, em que o bloqueio simplesmente recusa.
+ */
+function voucherPeriodoValidarExcecao_(excecao, sessao) {
+  if (!excecao) return { vale: false, justificativa: "", mensagem: "" };
+
+  if (!voucherSessaoEhAdmin_(sessao)) {
+    return { vale: false, justificativa: "", mensagem:
+      "Já existe voucher para esta pessoa neste período. Só um administrador " +
+      "pode autorizar exceção — procure quem tem esse perfil." };
+  }
+
+  var texto = String((excecao && excecao.justificativa) || "").trim();
+  if (texto.length < VOUCHER_EXCECAO_MIN_JUSTIFICATIVA) {
+    return { vale: false, justificativa: "", mensagem:
+      "Para autorizar a exceção, escreva o motivo (ao menos " +
+      VOUCHER_EXCECAO_MIN_JUSTIFICATIVA + " caracteres). Ele fica gravado " +
+      "com o seu nome." };
+  }
+
+  return { vale: true, justificativa: texto, mensagem: "" };
+}
+
+/** O carimbo da exceção nas observações. Ver o bloco acima. */
+function voucherPeriodoCarimboExcecao_(bloqueio, justificativa, quem) {
+  return "⚠ Exceção autorizada por " + (quem || "—") + " em " +
+    Utilities.formatDate(new Date(), "America/Sao_Paulo", "dd/MM/yyyy HH:mm") +
+    " — " + justificativa +
+    (bloqueio && bloqueio.protocolo ? " (duplicata de " + bloqueio.protocolo + ")" : "");
 }
 
 /**
@@ -281,12 +393,18 @@ function voucherPeriodoMensagemBloqueio_(bloqueio, dados) {
  * furar a regra, e é por isso que a mesma pergunta é feita duas vezes.
  */
 function voucherChecarPeriodo(dados, tokenSessao) {
-  exigirModulo_(tokenSessao, "beneficios", false);
+  var sessao = exigirModulo_(tokenSessao, "beneficios", false);
   try {
     dados = dados || {};
+    /* Quem NÃO é administrador nem vê o botão de exceção. Esconder não é a
+     * trava — a trava está no servidor, em voucherPeriodoValidarExcecao_ —
+     * mas oferecer um botão que sempre recusa é pior que não oferecer. */
+    var podeAutorizar = voucherSessaoEhAdmin_(sessao);
+
     var cpf = String(dados.cpf || "").replace(/\D/g, "");
     if (cpf.length !== 11 || !String(dados.modalidade || "").trim()) {
-      return { ok: true, bloqueado: false, tipo: "", vezes: 0 };
+      return { ok: true, bloqueado: false, tipo: "", vezes: 0,
+               podeAutorizarExcecao: podeAutorizar };
     }
 
     var hist = voucherPeriodoHistorico_(dados);
@@ -294,10 +412,14 @@ function voucherChecarPeriodo(dados, tokenSessao) {
       ok: true,
       bloqueado: hist.bloqueado,
       bloqueio: hist.bloqueio,
+      incerto: hist.incerto,
       tipo: voucherTipoSolicitacao_(hist),
       vezes: hist.vezes,
       ultima: hist.ultima,
-      mensagem: hist.bloqueado ? voucherPeriodoMensagemBloqueio_(hist.bloqueio, dados) : ""
+      podeAutorizarExcecao: podeAutorizar,
+      mensagem: hist.bloqueado ? voucherPeriodoMensagemBloqueio_(hist.bloqueio, dados) : "",
+      mensagemIncerteza: (!hist.bloqueado && hist.incerto)
+        ? voucherPeriodoMensagemIncerteza_(hist.incerto) : ""
     };
   } catch (e) {
     Logger.log("voucherChecarPeriodo: " + e.message);

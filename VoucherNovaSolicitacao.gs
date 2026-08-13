@@ -155,6 +155,7 @@ function voucherCriarSolicitacao(dados, tokenSessao) {
      * duas vezes para a mesma pessoa". Quem cai aqui quase sempre quer
      * REENVIAR o que já existe, e é isso que a mensagem oferece. */
     var hist = { anteriores: [] };
+    var excecaoAplicada = null;
     if (typeof voucherPeriodoHistorico_ === "function") {
       hist = voucherPeriodoHistorico_({
         cpf: cpf, nome: nome, beneficiario: valores.NOME_BENEFICIARIO,
@@ -163,14 +164,33 @@ function voucherCriarSolicitacao(dados, tokenSessao) {
       }, sh);
 
       if (hist.bloqueado) {
-        return {
-          ok: false,
-          duplicado: true,
-          bloqueio: hist.bloqueio,
-          mensagem: voucherPeriodoMensagemBloqueio_(hist.bloqueio, {
-            regime: valores.REGIME, periodo: valores.PERIODO_REFERENCIA
-          })
-        };
+        /* A ÚNICA saída da trava, e ela é estreita: administrador, com o
+         * motivo escrito. Quem valida é aqui, nunca a tela — ver o bloco da
+         * exceção em VoucherPeriodo.gs. */
+        var exc = voucherPeriodoValidarExcecao_(dados.excecao, sessao);
+
+        if (!exc.vale) {
+          return {
+            ok: false,
+            duplicado: true,
+            bloqueio: hist.bloqueio,
+            /* Quando a exceção foi PEDIDA e recusada, a mensagem é a dela —
+             * "só administrador" e "faltou o motivo" pedem ações opostas de
+             * quem está do outro lado, e a recusa genérica não diria nem
+             * uma nem outra. */
+            mensagem: exc.mensagem || voucherPeriodoMensagemBloqueio_(hist.bloqueio, {
+              regime: valores.REGIME, periodo: valores.PERIODO_REFERENCIA
+            })
+          };
+        }
+
+        /* Autorizada: grava com rastro em três lugares. O que sai da regra é
+         * justamente o que mais precisa ser encontrável depois. */
+        excecaoAplicada = exc;
+        valores.EXCECAO_DUPLICIDADE = String((hist.bloqueio && hist.bloqueio.protocolo) || "SIM");
+        var carimbo = voucherPeriodoCarimboExcecao_(hist.bloqueio, exc.justificativa, quem);
+        valores.OBSERVACOES = valores.OBSERVACOES
+          ? valores.OBSERVACOES + "\n" + carimbo : carimbo;
       }
       /* Deduzido do que já existe, nunca perguntado a quem digita. A coluna
        * só é gravada se a aba tiver ela — não invento coluna aqui. */
@@ -218,12 +238,30 @@ function voucherCriarSolicitacao(dados, tokenSessao) {
                    (valores.PERCENTUAL_APLICADO || "sem percentual") + "%",
         justificativa: valores.OBSERVACOES, sessao: sessao || {}
       });
+
+      /* A EXCEÇÃO GANHA REGISTRO PRÓPRIO na trilha, e não uma linha a mais na
+       * observação da criação. Quem for auditar depois procura pelo ATO
+       * ("quantas exceções foram autorizadas, por quem"), não pela
+       * solicitação — e ação diluída dentro de outra não se encontra por
+       * filtro nenhum. */
+      if (excecaoAplicada) {
+        auditar_({
+          modulo: "Benefícios", submodulo: "Certificado de Bolsa",
+          acao: "AUTORIZAR_EXCECAO_DUPLICIDADE",
+          registroId: protocolo, documento: protocolo,
+          valorAnterior: String(valores.EXCECAO_DUPLICIDADE || ""),
+          valorNovo: protocolo,
+          justificativa: excecaoAplicada.justificativa,
+          sessao: sessao || {}
+        });
+      }
     }
 
     return {
       ok: true, protocolo: protocolo, status: valores.STATUS_SOLICITACAO,
       tipo: valores.TIPO_SOLICITACAO || "",
       renovacao: valores.TIPO_SOLICITACAO === "RENOVACAO",
+      excecao: !!excecaoAplicada,
       mensagem: aprovar
         ? "Solicitação criada e aprovada. Protocolo " + protocolo + "."
         : "Solicitação criada em análise. Protocolo " + protocolo + "."

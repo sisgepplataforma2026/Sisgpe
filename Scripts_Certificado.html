@@ -647,7 +647,25 @@
             <option value="">—</option><option value="SIM">Sim</option><option value="NAO">Não</option>
           </select>
         </div>
-        <div class="cert-nv-campo"><label class="cert-nv-lbl">Período de referência</label><input class="cert-nv-in" id="certNvPeriodo" placeholder="2026/2"></div>
+        <!-- PERIODO EM DOIS SELETORES, e nao um campo de texto.
+             O campo livre aceitava "2026", "2026/1", "1o sem", "2026.1" — e
+             cada variacao virava uma janela diferente para a trava de "um por
+             periodo". Pior: sem o semestre, o sistema nao consegue saber se e
+             a mesma janela, e o atendimento parava por um defeito do
+             formulario. Aqui a pergunta muda com o regime: semestral pede
+             semestre, anual nao pede, porque nao existe. O valor gravado
+             continua "2026/1" e "2026" — a planilha nao muda. -->
+        <div class="cert-nv-campo">
+          <label class="cert-nv-lbl">Período de referência</label>
+          <div style="display:flex;gap:6px;">
+            <select class="cert-nv-in" id="certNvPeriodoAno" style="flex:1;"></select>
+            <select class="cert-nv-in" id="certNvPeriodoSem" style="flex:1;">
+              <option value="">semestre</option>
+              <option value="1">1º semestre</option>
+              <option value="2">2º semestre</option>
+            </select>
+          </div>
+        </div>
         <div class="cert-nv-campo">
           <label class="cert-nv-lbl">Percentual (%) <span id="certNvOrgPct"></span></label>
           <input class="cert-nv-in" id="certNvPercentual" type="number" min="0" max="100">
@@ -831,8 +849,14 @@ function renderTabela(){
       +'<td>'+badgeStatus(s.status)+'</td>'
       +'<td style="font-size:11px;color:#64748b;white-space:nowrap;">'+escHtml(certData(s.data))+'</td>'
       +'<td style="text-align:center;"><div style="display:inline-flex;gap:5px;align-items:center;">'
-        +'<button type="button" class="cert-btn-abrir-modal" data-id="'+escHtml(s.id)+'" title="Ver / Ações" style="'+bs+'">'+icoEdit+'</button>'
-        +(podeEmitir?'<button type="button" class="cert-btn-emitir-rapido" data-id="'+escHtml(s.id)+'" title="Emitir certificado" style="'+bs+'background:#f5f0ff;border-color:#c4b5fd;color:#5b21b6;">🎓</button>':'')
+        /* O PROTOCOLO VAI JUNTO DO ID, e não é redundância.
+         O ID_SOLICITACAO pode vir vazio em linha antiga, gravada antes de a
+         coluna existir. Com o id vazio, o botão procurava a linha por um
+         valor em branco e podia não achar nada — e aí o clique não fazia
+         absolutamente nada, sem erro, sem aviso, sem log. "Não acontece nada"
+         é o pior defeito possível, porque não deixa nem por onde começar. */
+      +'<button type="button" class="cert-btn-abrir-modal" data-id="'+escHtml(s.id)+'" data-prot="'+escHtml(s.protocolo||'')+'" title="Ver / Ações" style="'+bs+'">'+icoEdit+'</button>'
+        +(podeEmitir?'<button type="button" class="cert-btn-emitir-rapido" data-id="'+escHtml(s.id)+'" data-prot="'+escHtml(s.protocolo||'')+'" title="Emitir certificado" style="'+bs+'background:#f5f0ff;border-color:#c4b5fd;color:#5b21b6;">🎓</button>':'')
         /* Enviar só aparece em EMITIDO: antes de existir documento não há o
            que mandar, e um botão que sempre recusa é pior que botão nenhum. */
         +(s.status==='EMITIDO'?'<button type="button" class="cert-btn-enviar" data-prot="'+escHtml(s.protocolo||'')+'" title="Enviar / reenviar certificado" style="'+bs+'background:#eff6ff;border-color:#93c5fd;color:#1565C0;">📨</button>':'')
@@ -840,15 +864,32 @@ function renderTabela(){
       +'</tr>';
   });
   tbody.innerHTML=html;
+  /* Acha a linha por id OU por protocolo, e RECLAMA se não achar.
+     As duas coisas nasceram do mesmo defeito relatado em 13/08/2026 — "o
+     botão de emitir não acontece nada". Procurar só pelo id falha em linha
+     antiga sem ID_SOLICITACAO, e o `if(s)` sem `else` transformava a falha
+     em silêncio: nem erro, nem aviso, nem log. */
+  function linhaDoBotao(botao){
+    var id = botao.getAttribute('data-id') || '';
+    var prot = botao.getAttribute('data-prot') || '';
+    var achada = null;
+    if(id)   achada = _lista.find(function(x){ return String(x.id||'') === id; });
+    if(!achada && prot) achada = _lista.find(function(x){ return String(x.protocolo||'') === prot; });
+    if(!achada){
+      msg('Não consegui identificar esta solicitação na lista'
+          + (prot?' ('+prot+')':'') + '. Clique em Atualizar e tente de novo.','erro');
+    }
+    return achada;
+  }
   tbody.querySelectorAll('.cert-btn-abrir-modal').forEach(function(btn){
     btn.addEventListener('click',function(){
-      var s=_lista.find(function(x){return x.id===this.getAttribute('data-id');},this);
+      var s=linhaDoBotao(this);
       if(s) abrirModal(s);
     });
   });
   tbody.querySelectorAll('.cert-btn-emitir-rapido').forEach(function(btn){
     btn.addEventListener('click',function(){
-      var s=_lista.find(function(x){return x.id===this.getAttribute('data-id');},this);
+      var s=linhaDoBotao(this);
       if(s){_solAtual=s; gerarDocumento('CERTIFICADO');}
     });
   });
@@ -1216,6 +1257,13 @@ var _pdSeq = 0;
    nvSalvar, não só no visual: esconder o botão sem travar a função deixaria
    o Enter do teclado passar por cima da trava. */
 var _nvBloqueio = null;
+/* A exceção preparada nesta tela — `{justificativa}` — e se quem está logado
+   pode sequer pedi-la. As duas coisas são reconferidas no servidor; aqui elas
+   só decidem o que aparece e o que fica clicável. */
+var _nvExcecao = null;
+var _nvPodeExcecao = false;
+/* A pessoa mexeu no regime? Então a convenção para de reescrevê-lo. */
+var _nvRegimeManual = false;
 var _pdTimer = null;
 var _nvTimer = null;
 var _nvTimerInst = null;
@@ -1247,6 +1295,41 @@ function nvSincronizarBeneficiario(){
   if(!q.ir && g('certNvEnteadoIR')) g('certNvEnteadoIR').value='';
 }
 
+/* O período montado a partir dos dois seletores, no formato que a planilha
+   sempre teve: "2026/1" quando há semestre, "2026" quando não há. A tela
+   mudou; o dado gravado, não — linha antiga e linha nova continuam
+   comparáveis, que é o que a trava de período depende para funcionar. */
+function nvPeriodoValor(){
+  var ano = g('certNvPeriodoAno') ? String(g('certNvPeriodoAno').value||'') : '';
+  var sem = g('certNvPeriodoSem') ? String(g('certNvPeriodoSem').value||'') : '';
+  if(!ano) return '';
+  return sem ? ano + '/' + sem : ano;
+}
+
+/* Os anos oferecidos: do anterior ao seguinte. Bolsa de dez anos atrás não se
+   cadastra, e ano digitado errado (2062) some do problema quando a lista é
+   curta. */
+function nvPeriodoMontarAnos(){
+  var sel = g('certNvPeriodoAno');
+  if(!sel || sel.options.length) return;
+  var hoje = new Date().getFullYear();
+  var html = '<option value="">ano</option>';
+  for(var a = hoje - 1; a <= hoje + 1; a++) html += '<option value="'+a+'">'+a+'</option>';
+  sel.innerHTML = html;
+}
+
+/* O semestre só é perguntado quando o regime é semestral. Numa bolsa anual
+   ele não existe — e um seletor preenchido que não devia estar ali acaba
+   virando "2026/1" numa bolsa que cobre o ano inteiro. */
+function nvPeriodoSincronizarRegime(){
+  var reg = g('certNvRegime') ? String(g('certNvRegime').value||'').toUpperCase() : '';
+  var sem = g('certNvPeriodoSem');
+  if(!sem) return;
+  var anual = reg.indexOf('ANUAL') > -1;
+  sem.style.display = anual ? 'none' : '';
+  if(anual) sem.value = '';
+}
+
 function nvCampos(){
   return {
     cpf:              g('certNvCpf').value,
@@ -1269,7 +1352,7 @@ function nvCampos(){
     curso:            g('certNvCurso').value,
     ordemFilho:       nvQuem().ordem,
     idadeBeneficiario:g('certNvIdade').value === '' ? '' : Number(g('certNvIdade').value),
-    periodo:          g('certNvPeriodo').value,
+    periodo:          nvPeriodoValor(),
     percentual:       g('certNvPercentual').value,
     regime:           g('certNvRegime').value,
     observacoes:      g('certNvObs').value
@@ -1279,9 +1362,12 @@ function nvCampos(){
 function nvLimpar(){
   ['certNvBusca','certNvCpf','certNvNome','certNvEmail','certNvTelefone','certNvEscola',
    'certNvCnpjEscola','certNvInstituicao','certNvCnpjInst','certNvEmailInst',
-   'certNvBeneficiario','certNvCurso','certNvIdade','certNvPeriodo','certNvPercentual',
+   'certNvBeneficiario','certNvCurso','certNvIdade','certNvPercentual',
    'certNvObs','certNvCidadeEscola'].forEach(function(id){ if(g(id)) g(id).value=''; });
-  ['certNvModalidade','certNvArea','certNvRegime'].forEach(function(id){ if(g(id)) g(id).value=''; });
+  ['certNvModalidade','certNvArea','certNvRegime',
+   'certNvPeriodoAno','certNvPeriodoSem'].forEach(function(id){ if(g(id)) g(id).value=''; });
+  nvPeriodoMontarAnos();
+  nvPeriodoSincronizarRegime();
   if(g('certNvQuem')) g('certNvQuem').value='PROPRIO';
   nvSincronizarBeneficiario();
   if(g('certNvSituacao')) g('certNvSituacao').value='ASSOCIADO';
@@ -1290,6 +1376,8 @@ function nvLimpar(){
      bloqueio de uma solicitação anterior sobreviveria ao "Cancelar" e o
      próximo atendimento abriria com os botões travados sem explicação. */
   _nvBloqueio = null;
+  _nvExcecao = null;
+  _nvRegimeManual = false;
   if(g('certNvTrava')) g('certNvTrava').innerHTML='';
   nvSalvarHabilitar();
   ['certNvOrgInst','certNvOrgEmailInst','certNvOrgPct','certNvAvisos'].forEach(function(id){
@@ -1357,7 +1445,19 @@ function nvSugerir(){
       /* O regime segue a mesma regra do percentual: vindo da convenção,
          manda; vazio, preenche; digitado pela pessoa, fica. */
       var reg=g('certNvRegime');
-      if(reg && c.regime && (org.percentual==='REGRA_CCT' || !reg.value)) reg.value=c.regime;
+      /* `_nvRegimeManual` é o que faz o seletor ser um seletor.
+         Sem ele, a convenção reescrevia a escolha da pessoa a cada
+         sugestão: escolher ANUAL numa graduação e mexer em qualquer outro
+         campo devolvia SEMESTRAL, sem aviso. O usuário pediu o seletor
+         justamente porque "tem regime que é Anual e Semestral" — se a regra
+         sempre vence, não havia escolha a fazer. */
+      if(reg && c.regime && !_nvRegimeManual && (org.percentual==='REGRA_CCT' || !reg.value)){
+        reg.value=c.regime;
+        /* O seletor de semestre acompanha o regime que a regra acabou de
+           definir — senão a convenção diz "anual" e o campo de semestre
+           continua na tela, pedindo um dado que não existe naquela bolsa. */
+        nvPeriodoSincronizarRegime();
+      }
 
       var pct=g('certNvPercentual');
       if(pct){
@@ -1406,6 +1506,11 @@ function nvSugerir(){
 function nvTravaDesenhar(r){
   var caixa = g('certNvTrava');
   _nvBloqueio = (r && r.bloqueado) ? (r.bloqueio || {}) : null;
+  _nvPodeExcecao = !!(r && r.podeAutorizarExcecao);
+  /* Trocou o caso, a justificativa escrita antes não vale mais: ela foi
+     escrita sobre OUTRA duplicata. Carregá-la adiante gravaria um motivo que
+     não descreve o que foi autorizado. */
+  _nvExcecao = null;
   if(!caixa) { nvSalvarHabilitar(); return; }
 
   if(_nvBloqueio){
@@ -1425,6 +1530,19 @@ function nvTravaDesenhar(r){
            não quer um segundo voucher — quer o mesmo de novo, porque o
            associado perdeu o e-mail. O atendimento termina nesta tela. */
         +(b.protocolo&&b.status==='EMITIDO'?'<button type="button" class="cert-btn cert-btn-primary cert-btn-sm" id="certNvReenviar">📨 Reenviar por e-mail</button>':'')
+        /* O botão de exceção só existe para administrador. Esconder não é a
+           trava — o servidor reconfere o perfil — mas oferecer um botão que
+           sempre recusa é pior que não oferecer nenhum. */
+        +(_nvPodeExcecao?'<button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certNvAbrirExcecao">Autorizar exceção</button>':'')
+      +'</div>'
+      +'<div id="certNvExcecaoBox" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed #fecaca;">'
+        +'<label class="cert-nv-lbl" style="color:#991b1b;">Por que este caso é exceção?</label>'
+        +'<textarea class="cert-nv-in" id="certNvExcecaoTexto" rows="2" style="resize:vertical;" placeholder="o que faz este caso sair da regra"></textarea>'
+        +'<div class="cert-nv-trava-l" style="margin-top:5px;">Fica gravado com o seu nome, na linha e na trilha de auditoria.</div>'
+        +'<div class="cert-nv-trava-acoes">'
+          +'<button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certNvExcecaoCancelar">Cancelar</button>'
+          +'<button type="button" class="cert-btn cert-btn-danger cert-btn-sm" id="certNvExcecaoConfirmar">Confirmar exceção</button>'
+        +'</div>'
       +'</div></div>';
 
     var vb = g('certNvVerAnterior');
@@ -1435,6 +1553,55 @@ function nvTravaDesenhar(r){
     });
     var rb = g('certNvReenviar');
     if(rb) rb.addEventListener('click', function(){ nvFechar(); envAbrir(b.protocolo); });
+
+    var ab = g('certNvAbrirExcecao');
+    if(ab) ab.addEventListener('click', function(){
+      var cx = g('certNvExcecaoBox');
+      if(cx){ cx.style.display='block'; }
+      if(g('certNvExcecaoTexto')) g('certNvExcecaoTexto').focus();
+    });
+    var cb = g('certNvExcecaoCancelar');
+    if(cb) cb.addEventListener('click', function(){
+      _nvExcecao = null;
+      if(g('certNvExcecaoBox')) g('certNvExcecaoBox').style.display='none';
+      if(g('certNvExcecaoTexto')) g('certNvExcecaoTexto').value='';
+      nvSalvarHabilitar();
+    });
+    var ok = g('certNvExcecaoConfirmar');
+    if(ok) ok.addEventListener('click', function(){
+      var txt = String((g('certNvExcecaoTexto')||{}).value||'').trim();
+      /* O mesmo mínimo do servidor. Barrar aqui é cortesia; o servidor
+         reconfere, porque a tela não é onde a regra mora. */
+      if(txt.length < 15){
+        msg('Escreva o motivo da exceção — ao menos 15 caracteres.','warn');
+        if(g('certNvExcecaoTexto')) g('certNvExcecaoTexto').focus();
+        return;
+      }
+      _nvExcecao = { justificativa: txt };
+      /* A trava CONTINUA desenhada, de propósito: a caixa vermelha some só
+         quando a solicitação for gravada. Enquanto isso, ela é o lembrete de
+         que este salvamento é uma exceção, e não uma solicitação comum. */
+      nvSalvarHabilitar();
+      msg('Exceção preparada. Agora é só salvar — o motivo vai junto.','ok');
+    });
+
+  } else if(r && r.incerto){
+    /* AMARELO, e sem travar nada. O sistema não sabe o semestre daquela linha
+       antiga e não vai fingir que sabe; quem abre o registro descobre em
+       cinco segundos. Travar aqui seria recusar atendimento por um dado que
+       falta na planilha — decisão do usuário em 13/08/2026. */
+    var i = r.incerto;
+    caixa.innerHTML =
+      '<div class="cert-nv-aviso alerta">⚠ <strong>Pode ser a mesma bolsa — não dá para saber.</strong><br>'
+      + escHtml(r.mensagemIncerteza||'')
+      + (i.protocolo?' <button type="button" class="cert-btn cert-btn-secondary cert-btn-xs" id="certNvVerIncerto">Abrir a anterior</button>':'')
+      + '</div>';
+    var vi = g('certNvVerIncerto');
+    if(vi) vi.addEventListener('click', function(){
+      var s = _lista.find(function(x){ return x.protocolo === i.protocolo; });
+      if(s){ nvFechar(); abrirModal(s); }
+      else msg('A anterior é o protocolo '+i.protocolo+'. Procure por ele na lista.','warn');
+    });
 
   } else if(r && r.tipo === 'RENOVACAO' && r.ultima){
     caixa.innerHTML = '<div class="cert-nv-renov">↻ <strong>Renovação</strong> — '
@@ -1452,12 +1619,16 @@ function nvTravaDesenhar(r){
    um deles ficar habilitado numa refatoração futura, e o botão habilitado é
    o que grava. */
 function nvSalvarHabilitar(){
+  /* Travado = há bloqueio E não há exceção autorizada. A exceção destrava,
+     mas ela é a única coisa que destrava — e continua sendo revalidada no
+     servidor, que é onde a permissão de administrador é conferida de fato. */
+  var travado = !!_nvBloqueio && !_nvExcecao;
   ['certNvSalvarAnalise','certNvSalvarAprovar'].forEach(function(id){
     var b = g(id);
     if(!b) return;
-    b.disabled = !!_nvBloqueio;
-    b.style.opacity = _nvBloqueio ? '.45' : '';
-    b.style.cursor  = _nvBloqueio ? 'not-allowed' : '';
+    b.disabled = travado;
+    b.style.opacity = travado ? '.45' : '';
+    b.style.cursor  = travado ? 'not-allowed' : '';
   });
 }
 
@@ -1477,6 +1648,96 @@ function nvChecarPeriodo(){
     })
     .withFailureHandler(function(){})
     .voucherChecarPeriodo(d, certToken());
+}
+
+/* ── A ESCOLA COMPLETA, a partir do nome que veio da base de Associados ──
+   Pedido do usuário em 13/08/2026, com a tela na mão: "quando buscar o nome
+   pelo CPF deveria vir a escola também, com todos os dados".
+
+   A base de Associados guarda só o NOME do empregador — texto digitado, sem
+   CNPJ e sem vínculo. O cadastro de Escolas é que tem CNPJ, cidade e, o que
+   mais importa adiante, o `escolaId`. Sem esta ponte, a solicitação nascia
+   com um nome solto que ninguém consegue casar depois — exatamente o que a
+   Fase 4 existe para acabar.
+
+   TRÊS RESULTADOS POSSÍVEIS, e cada um pede uma conduta diferente:
+
+     uma só, ou uma que bate exatamente  → preenche e etiqueta "do cadastro"
+     várias parecidas                    → abre a lista, quem atende escolhe
+     nenhuma                             → deixa como está, sem inventar
+
+   O que NÃO se faz é escolher a primeira de uma lista ambígua: gravaria o
+   CNPJ da escola errada num certificado, e ninguém conferiria — o campo
+   estaria preenchido. */
+function nvResolverEscola(nomeEscola){
+  var termo = String(nomeEscola||'').trim();
+  if(termo.length < 2) return;
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r || !r.ok || !r.escolas || !r.escolas.length) return;
+
+      var alvo = nvNormalizarTexto(termo);
+      var exatas = r.escolas.filter(function(e){
+        return nvNormalizarTexto(e.nome) === alvo || nvNormalizarTexto(e.fantasia) === alvo;
+      });
+      var escolhida = exatas.length === 1 ? exatas[0]
+                    : (r.escolas.length === 1 ? r.escolas[0] : null);
+
+      if(!escolhida){
+        /* Ambíguo: mostra as opções em vez de adivinhar. */
+        nvMostrarListaEscolas(r.escolas);
+        return;
+      }
+      nvAplicarEscola(escolhida, 'CADASTRO');
+    })
+    .withFailureHandler(function(){})
+    .voucherBuscarEscola(termo, certToken());
+}
+
+function nvNormalizarTexto(t){
+  return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim();
+}
+
+/* Um lugar só escreve os campos da escola — a busca por CPF e a busca manual
+   preenchem exatamente os mesmos, e é isso que garante que o `escolaId` não
+   apareça por um caminho e falte pelo outro. */
+function nvAplicarEscola(x, origem){
+  if(!x) return;
+  if(g('certNvEscola')){
+    g('certNvEscola').value = x.nome || x.fantasia || '';
+    g('certNvEscola').setAttribute('data-escola-id', x.escolaId||'');
+  }
+  if(x.cnpj && g('certNvCnpjEscola')) g('certNvCnpjEscola').value = x.cnpj;
+  if(g('certNvCidadeEscola') && (x.cidade || x.uf)){
+    g('certNvCidadeEscola').value = [x.cidade, x.uf].filter(Boolean).join(' - ');
+  }
+  if(g('certNvOrgEscola')){
+    /* O ID FICA À VISTA quando existe — é a prova de que a escola digitada é
+       a escola do cadastro, e não um nome parecido. Quando não existe, dizer
+       "sem id na base" é mais honesto que omitir: quem atende precisa saber
+       que aquele vínculo não vai casar com nada depois. */
+    g('certNvOrgEscola').innerHTML = x.escolaId
+      ? '<span class="cert-nv-org hist">'+escHtml(x.escolaId)+
+        (origem==='CADASTRO'?' · do cadastro':'')+'</span>'
+      : '<span class="cert-nv-org padrao">sem id na base</span>';
+  }
+}
+
+function nvMostrarListaEscolas(escolas){
+  var lista = g('certNvListaEscola');
+  if(!lista) return;
+  lista.innerHTML = escolas.map(function(e,i){
+    return '<div class="cert-nv-item" data-i="'+i+'">'+escHtml(e.nome||e.fantasia||'—')
+      +'<small>'+escHtml([e.cnpj, e.cidade, e.uf].filter(Boolean).join(' · '))+'</small></div>';
+  }).join('');
+  lista.classList.add('ativo');
+  lista.querySelectorAll('.cert-nv-item').forEach(function(it){
+    it.addEventListener('click', function(){
+      nvAplicarEscola(escolas[Number(this.getAttribute('data-i'))], 'CADASTRO');
+      lista.classList.remove('ativo');
+    });
+  });
 }
 
 function nvBuscarAssociado(){
@@ -1503,6 +1764,12 @@ function nvBuscarAssociado(){
           g('certNvBusca').value=a.nome;
           nvSugerir();          // é aqui que a história dele aparece
           nvChecarPeriodo();    // e é aqui que a trava do período aparece
+          /* E a escola vai buscar a SI MESMA no cadastro das 679.
+             A base de Associados só guarda o NOME do empregador — era por
+             isso que "UVV - VILA VELHA" aparecia com CNPJ e cidade em branco,
+             e quem atende tinha que digitar a escola de novo, no campo ao
+             lado, para o certificado sair completo. */
+          if(a.escola) nvResolverEscola(a.escola);
         });
       });
     })
@@ -1554,25 +1821,36 @@ function nvBuscarEscola(){
       lista.classList.add('ativo');
       lista.querySelectorAll('.cert-nv-item').forEach(function(it){
         it.addEventListener('click',function(){
-          var x=r.escolas[Number(this.getAttribute('data-i'))];
-          g('certNvEscola').value=x.nome;
-          /* O escolaId viaja no elemento, não num campo visível: é
-             identificador de sistema, e mostrá-lo só ocuparia espaço na tela
-             de quem digita. Mas ele PRECISA ir junto na gravação. */
-          g('certNvEscola').setAttribute('data-escola-id', x.escolaId||'');
-          if(x.cnpj) g('certNvCnpjEscola').value=x.cnpj;
-          if(x.cidade) g('certNvCidadeEscola').value=[x.cidade,x.uf].filter(Boolean).join(' - ');
-          if(g('certNvOrgEscola')){
-            g('certNvOrgEscola').innerHTML = x.escolaId
-              ? '<span class="cert-nv-org hist">'+escHtml(x.escolaId)+'</span>'
-              : '<span class="cert-nv-org padrao">sem id na base</span>';
-          }
+          /* Escolher aqui e ser encontrada pela busca do associado gravam
+             exatamente os mesmos campos — inclusive o escolaId, que viaja no
+             elemento e não num campo visível: é identificador de sistema, mas
+             PRECISA ir junto na gravação. Duas rotinas de preenchimento
+             divergiriam, e a que esquecesse o id só apareceria na Fase 4. */
+          nvAplicarEscola(r.escolas[Number(this.getAttribute('data-i'))], 'MANUAL');
           lista.classList.remove('ativo');
         });
       });
     })
     .withFailureHandler(function(){ lista.classList.remove('ativo'); })
     .voucherBuscarEscola(termo, certToken());
+}
+
+/* Marca o campo, rola até ele e avisa. Devolve `false` quando falta — para o
+   chamador poder escrever `if(!nvExigir(...)) return;` e a validação caber
+   numa linha por campo. */
+function nvExigir(id, condicao, aviso){
+  var el = g(id);
+  if(el){
+    el.style.borderColor = condicao ? '' : '#dc2626';
+    el.style.boxShadow  = condicao ? '' : '0 0 0 4px rgba(220,38,38,.10)';
+  }
+  if(condicao) return true;
+  msg(aviso, 'warn');
+  if(el){
+    if(el.scrollIntoView) el.scrollIntoView({ block: 'center' });
+    el.focus();
+  }
+  return false;
 }
 
 function nvSalvar(aprovar){
@@ -1583,22 +1861,33 @@ function nvSalvar(aprovar){
   /* Barrado ANTES de sair: o backend também recusa, mas deixar a ida ao
      servidor acontecer para voltar com "falta o CPF" é meio segundo de
      espera para dizer o que a tela já sabia. */
-  if(String(dados.cpf||'').replace(/\D/g,'').length!==11){
-    msg('Informe um CPF válido — é por ele que a memória reencontra o associado.','warn');
-    g('certNvCpf').focus(); return;
-  }
-  if(!String(dados.nome||'').trim()){ msg('Informe o nome do associado.','warn'); return; }
-  if(!String(dados.modalidade||'').trim()){ msg('Escolha a modalidade.','warn'); return; }
+  /* O CAMPO QUE FALTA FICA MARCADO, e a tela rola até ele.
+     Antes o aviso ia só para a faixa de mensagem — que fica ATRÁS do modal,
+     na área da lista. Relatado em 13/08/2026 como "não está salvando": a
+     modalidade estava em "—", o sistema recusava com a frase certa, e a
+     frase aparecia num lugar que o modal cobria. */
+  if(!nvExigir('certNvCpf',
+      String(dados.cpf||'').replace(/\D/g,'').length===11,
+      'Informe um CPF válido — é por ele que a memória reencontra o associado.')) return;
+  if(!nvExigir('certNvNome', !!String(dados.nome||'').trim(),
+      'Informe o nome do associado.')) return;
+  if(!nvExigir('certNvModalidade', !!String(dados.modalidade||'').trim(),
+      'Escolha a modalidade.')) return;
 
   /* A trava também barra AQUI, não só no visual. Botão desabilitado é
      aparência; esta linha é a regra. O servidor recusa de novo depois — três
      travas para a mesma coisa é o que se faz quando emitir duas vezes não
      tem desfazer. */
-  if(_nvBloqueio){
+  if(_nvBloqueio && !_nvExcecao){
     msg('Já existe voucher para esta pessoa neste período'
         + (_nvBloqueio.protocolo?' — protocolo '+_nvBloqueio.protocolo:'') + '.','erro');
     return;
   }
+  /* A justificativa só viaja quando há um bloqueio para excetuar. Mandar
+     exceção numa solicitação que não é duplicata gravaria a coluna
+     EXCECAO_DUPLICIDADE num caso comum, e a pergunta "quantas exceções houve"
+     passaria a ter resposta errada. */
+  if(_nvBloqueio && _nvExcecao) dados.excecao = _nvExcecao;
 
   setBtnLoad(btn, aprovar?'Aprovando...':'Salvando...');
   google.script.run
@@ -1697,7 +1986,7 @@ function exportarCsv(){
 }
 
 // ── Init
-function init(){
+function initInterno(){
   if(g('certBusca'))           g('certBusca').addEventListener('input',function(){clearTimeout(_buscaTimer);_buscaTimer=setTimeout(aplicarFiltros,300);});
   if(g('certFiltroStatus'))    g('certFiltroStatus').addEventListener('change',aplicarFiltros);
   if(g('certFiltroModalidade'))g('certFiltroModalidade').addEventListener('change',aplicarFiltros);
@@ -1805,15 +2094,24 @@ function init(){
      beneficiário, qual o curso, qual o período e qual o regime. Escutar os
      mesmos eventos da sugestão faria a trava ignorar justamente a troca do
      período — que é o campo que decide se há bloqueio. */
-  ['certNvModalidade','certNvQuem','certNvRegime'].forEach(function(id){
+  ['certNvModalidade','certNvQuem','certNvPeriodoAno','certNvPeriodoSem'].forEach(function(id){
     if(g(id)) g(id).addEventListener('change', nvChecarPeriodo);
+  });
+  /* O regime faz DUAS coisas: mostra ou esconde o seletor de semestre, e muda
+     a janela da trava. A ordem importa — sincronizar primeiro, porque numa
+     bolsa anual o semestre é limpo, e checar antes leria o valor que ainda
+     estava lá. */
+  if(g('certNvRegime')) g('certNvRegime').addEventListener('change', function(){
+    _nvRegimeManual = true;      // escolheu à mão: a sugestão não desfaz mais
+    nvPeriodoSincronizarRegime();
+    nvChecarPeriodo();
   });
   /* Os campos DIGITADOS escutam `input`, não `change`. `change` num campo de
      texto só dispara quando a pessoa SAI dele — e quem digita o período e vai
      direto clicar em Salvar nunca sai do campo. A trava apareceria depois de
      a gravação já ter sido tentada, que é tarde demais para servir de aviso.
      Daí o atraso curto: não é uma ida ao servidor por tecla. */
-  ['certNvCpf','certNvCurso','certNvPeriodo','certNvBeneficiario'].forEach(function(id){
+  ['certNvCpf','certNvCurso','certNvBeneficiario'].forEach(function(id){
     if(!g(id)) return;
     g(id).addEventListener('change', nvChecarPeriodo);
     g(id).addEventListener('input', function(){
@@ -1853,11 +2151,26 @@ function init(){
   carregarLista();
 }
 
-window.initCertificadoAdmin = function(){
+/* A TRAVA DE INICIALIZAÇÃO ÚNICA MORA DENTRO DO init(), não no invólucro.
+ *
+ * Ela estava só aqui, e o arquivo TAMBÉM chama init() sozinho no fim (pelo
+ * DOMContentLoaded ou pelo setTimeout logo abaixo). Quem carregasse a tela e
+ * depois chamasse initCertificadoAdmin() — que é como o menu abre o módulo —
+ * rodava init() DUAS vezes, e cada addEventListener era registrado duas
+ * vezes.
+ *
+ * O efeito não é visual: é um clique em "Salvar e aprovar" gravando DUAS
+ * solicitações, uma emissão em duplicidade a cada botão. Achado por mutação
+ * no t37 em 13/08/2026, ao contar as chamadas ao backend — 2 onde devia ser
+ * 1. Nenhum teste anterior pegou porque todos liam a ÚLTIMA chamada, e a
+ * última estava correta; era a existência da penúltima que era o defeito. */
+function init(){
   if(window._certAdminInit) return;
   window._certAdminInit = true;
-  init();
-};
+  initInterno();
+}
+
+window.initCertificadoAdmin = init;
 
 if(document.readyState === 'loading'){
   document.addEventListener('DOMContentLoaded', function(){
