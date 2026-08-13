@@ -50,10 +50,19 @@ b.passo("2. A especialidade Estatuto carrega o Estatuto, mesmo sem a palavra");
  * passava pelo caminho errado e não provava nada sobre o domínio.
  *
  * Descoberto por mutação: apagando `dominioAtual === "ESTATUTO"` o teste
- * continuava verde. "Votação" não está na lista; é por isso que serve. */
-const pEst = prompt("quem pode participar da votação?", "Estatuto");
+ * continuava verde.
+ *
+ * A PERGUNTA JÁ MUDOU UMA VEZ, e a troca conta uma história: era "quem pode
+ * participar da votação?", escolhida por "votação" não estar na lista. Em
+ * 13/08 o usuário perguntou exatamente isso no sistema no ar, o Estatuto não
+ * entrou, e a resposta citou três artigos errados de memória. A palavra foi
+ * acrescentada à lista — e este teste passou a falhar, porque a premissa
+ * dele tinha deixado de valer. Falha legítima: o teste avisou que o mundo
+ * mudou embaixo dele. Agora a pergunta é sobre prestação de contas, que
+ * também não tem palavra-gatilho. */
+const pEst = prompt("quem decide sobre a prestação de contas anual?", "Estatuto");
 b.ok(temEst(pEst), "o estatuto entrou pelo domínio, não pela palavra");
-b.igual(temEst(prompt("quem pode participar da votação?", "Geral")), false,
+b.igual(temEst(prompt("quem decide sobre a prestação de contas anual?", "Geral")), false,
   "e a mesma pergunta no domínio Geral NÃO carrega o estatuto — é o domínio que decide");
 
 b.passo("3. E o conteúdo é o certo, não um pedaço qualquer");
@@ -236,6 +245,115 @@ b.ok(g.alertaFonteAusente_("A cláusula prevê o adicional de insalubridade.", [
   "cláusula sem número também alerta");
 b.igual(g.alertaFonteAusente_("A cláusula prevê o adicional.", [{ tipo: "CCT" }]), "",
   "e com a CCT consultada, silêncio");
+
+/* ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("SOFIA · Segunda leitura — o sistema se corrige em vez de avisar");
+
+/* POR QUE ISTO EXISTE, com as palavras de quem pediu: *"mas ele deveria ser
+ * consultado"*. Avisar "confira antes de usar" trata o sintoma. Se a
+ * resposta cita artigo, a pergunta ERA sobre o documento — e o documento
+ * deveria ter entrado.
+ *
+ * A lista de palavras ficou mais larga, mas lista de palavras sempre vaza.
+ * A garantia não pode depender de eu ter adivinhado o vocabulário: aqui ela
+ * é estrutural — toda resposta que cita algo sem fonte é refeita COM a
+ * fonte antes de chegar na tela.
+ *
+ * A chamada à Anthropic é encenada; o que se prova é o que o sistema faz
+ * com uma resposta que cita sem consultar. */
+const tokenIA = b.logar(g, "wanderson");
+g.PropertiesService.getScriptProperties().setProperty("ANTHROPIC_API_KEY", "sk-teste");
+
+function encenar(respostas, codigos) {
+  const chamadas = { n: 0, prompts: [] };
+  g.UrlFetchApp = {
+    fetch: function (url, opts) {
+      const i = chamadas.n++;
+      chamadas.prompts.push(JSON.parse(opts.payload).system);
+      const cod = (codigos && codigos[i]) || 200;
+      return {
+        getResponseCode: function () { return cod; },
+        getContentText: function () {
+          return JSON.stringify({ content: [{ text: respostas[i] || respostas[respostas.length - 1] }] });
+        }
+      };
+    }
+  };
+  return chamadas;
+}
+const temEstNo = p => p.indexOf("=== ESTATUTO —") > -1;
+
+b.passo("19. Citou artigo sem o documento? Pergunta de novo, com ele");
+/* A pergunta é de propósito uma que o vocabulário NÃO pega — "dirigentes"
+ * não está na lista. É o caso que a lista deixa passar, e é justamente o
+ * que a segunda leitura existe para cobrir. */
+let ch = encenar([
+  "Podem votar os associados (Art. 74, III). Ver Arts. 85 e 96.",
+  "Podem votar os associados em dia (art. 4º, II). A relação de aptos é o art. 88."
+]);
+let r = g.chatSISGEP({ mensagem: "me explique o processo de escolha dos dirigentes",
+                       dominio: "Geral", historico: [] }, tokenIA);
+b.igual(ch.n, 2, "duas chamadas: a primeira sem documento, a segunda com");
+b.igual(temEstNo(ch.prompts[0]), false, "a primeira não tinha o Estatuto — foi o que causou tudo");
+b.igual(temEstNo(ch.prompts[1]), true, "a segunda tem");
+b.ok(/art\. 88/.test(r.resposta), "a resposta entregue é a SEGUNDA", r.resposta);
+b.igual(r.segundaLeitura, true, "e ela vem marcada como segunda leitura");
+b.igual(r.fontes.map(f => f.tipo), ["ESTATUTO"], "a procedência mostra o documento consultado");
+b.igual(r.alertaFonte, "", "sem aviso — não há mais o que avisar");
+
+b.passo("20. Resposta que não cita nada não gasta uma segunda chamada");
+/* A segunda leitura custa uma chamada à API. Se ela disparasse sempre, cada
+ * pergunta de cadastro pagaria o dobro por nada. */
+ch = encenar(["Temos 8.014 associados na base."]);
+r = g.chatSISGEP({ mensagem: "quantos associados temos?", dominio: "Geral", historico: [] }, tokenIA);
+b.igual(ch.n, 1, "uma chamada só");
+b.igual(r.segundaLeitura, false, "nenhuma segunda leitura");
+
+b.passo("21. Se a segunda falhar, fica a primeira COM o aviso");
+/* Nunca o contrário. Resposta sem fonte e sem aviso é o pior dos mundos —
+ * é exatamente o estado que existia antes de tudo isto. */
+ch = encenar(["O art. 62 exige escrutínio secreto.", "não chega a ser usada"], [200, 500]);
+r = g.chatSISGEP({ mensagem: "me fale sobre o processo decisório interno",
+                   dominio: "Geral", historico: [] }, tokenIA);
+b.igual(ch.n, 2, "tentou a segunda");
+b.ok(/art\. 62/.test(r.resposta), "mas entregou a primeira");
+b.igual(r.segundaLeitura, false, "sem marcar segunda leitura");
+b.ok(r.alertaFonte, "e COM o aviso, que é o que sobra quando não deu para conferir");
+
+b.passo("22. Segunda resposta VAZIA também mantém a primeira com o aviso");
+/* Código 200 com conteúdo vazio é diferente de erro 500, e a API devolve os
+ * dois. Descoberto por mutação: trocando `if (texto2)` por `if (true)`, a
+ * tela passava a receber resposta em branco — e nenhum teste reclamava,
+ * porque eu só tinha coberto o 500. */
+ch = encenar(["O art. 62 exige escrutínio secreto.", ""], [200, 200]);
+r = g.chatSISGEP({ mensagem: "me fale sobre o processo decisório interno",
+                   dominio: "Geral", historico: [] }, tokenIA);
+b.ok(/art\. 62/.test(r.resposta), "entregou a primeira, não o vazio");
+b.ok(r.alertaFonte, "com o aviso");
+b.igual(r.segundaLeitura, false, "e sem marcar segunda leitura");
+
+b.passo("23. A segunda leitura vale igual para a CCT");
+/* O caminho da convenção é o mesmo, e precisa do mesmo teste: sem ele, uma
+ * mutação que desligasse o `forcar.cct` passava batida — e passou, na
+ * primeira rodada. */
+ch = encenar([
+  "O adicional é devido conforme a cláusula 12.",
+  "O adicional de insalubridade está na cláusula 27 da CCT 2026/2027."
+]);
+r = g.chatSISGEP({ mensagem: "o pessoal da limpeza tem direito a adicional?",
+                   dominio: "Geral", historico: [] }, tokenIA);
+b.igual(ch.n, 2, "duas chamadas");
+b.igual(ch.prompts[0].indexOf("=== CCT —") > -1, false, "a primeira foi sem a convenção");
+b.igual(ch.prompts[1].indexOf("=== CCT —") > -1, true, "a segunda com ela");
+b.igual(r.fontes.map(f => f.tipo), ["CCT"], "e a procedência mostra a CCT");
+
+b.passo("24. O vocabulário largo evita a segunda chamada nos casos óbvios");
+/* A segunda leitura é a rede; o vocabulário é o chão. "Votação" era o caso
+ * real que caiu, e agora ele nem chega a precisar de rede. */
+ch = encenar(["Podem votar os associados em dia (art. 4º, II)."]);
+r = g.chatSISGEP({ mensagem: "quem pode participar da votação?", dominio: "Geral", historico: [] }, tokenIA);
+b.igual(ch.n, 1, "uma chamada: o Estatuto já foi na primeira");
+b.igual(temEstNo(ch.prompts[0]), true, "porque 'votação' agora aciona o documento");
 
 b.naoTestavel("Como a linha de procedência aparece na tela",
   "o teste prova o que o servidor devolve; o desenho da linha só se confere no navegador");

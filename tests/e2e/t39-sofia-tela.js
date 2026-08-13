@@ -35,11 +35,18 @@ if (!d.jsdomDisponivel()) {
 /* A IA encenada. `respostaIA` é trocada a cada caso para simular o que o
  * modelo responderia — inclusive respondendo mal, que é o caso interessante. */
 let respostaIA = "Resposta qualquer.";
+/* `codigosIA` permite derrubar uma chamada específica. Serve para o caso em
+ * que a SEGUNDA leitura falha — que é quando o aviso âmbar ainda aparece na
+ * tela. Sem isso não dá para testar o aviso: com a segunda leitura
+ * funcionando, o sistema conserta sozinho e não há aviso nenhum. */
+let codigosIA = [];
+let chamadasIA = 0;
 g.PropertiesService.getScriptProperties().setProperty("ANTHROPIC_API_KEY", "sk-teste");
 g.UrlFetchApp = {
   fetch: function () {
+    const cod = codigosIA[chamadasIA++] || 200;
     return {
-      getResponseCode: function () { return 200; },
+      getResponseCode: function () { return cod; },
       getContentText: function () {
         return JSON.stringify({ content: [{ text: respostaIA }] });
       }
@@ -65,7 +72,9 @@ const alerta = () => doc.querySelector(".sofia-alerta-fonte");
  * tudo o que vem DEPOIS disso — pedido ao servidor, resposta, DOM. O que ele
  * NÃO prova é que o botão está ligado nessa função; isso continua
  * "não testado" e só se confere no navegador. */
-async function perguntar(texto) {
+async function perguntar(texto, codigos) {
+  codigosIA = codigos || [];
+  chamadasIA = 0;
   t.digitar("#chatInput", texto);
   t.win.enviarMensagemChat();
   await t.assentar(60);
@@ -142,12 +151,20 @@ await perguntar("quantos confirmados no mês?");
 b.igual(doc.querySelectorAll(".sofia-fontes").length, 0,
   "sem documento no prompt, a tela não anuncia fonte nenhuma");
 
-b.passo("8. Citação sem documento → o aviso âmbar");
-/* É o defeito que a procedência existe para pegar. A resposta afirma
- * "cláusula 12" com a mesma segurança de sempre e o número pode ser
- * invenção; sem esta linha, ninguém tem como desconfiar. */
+b.passo("8. Citação sem documento, e sem conserto possível → o aviso âmbar");
+/* ESTE PASSO MUDOU DE SENTIDO EM 13/08, e a mudança é a melhoria.
+ *
+ * Antes, citar sem documento produzia o aviso direto. Agora o sistema tenta
+ * consertar primeiro: anexa o documento que faltou e refaz a pergunta (a
+ * segunda leitura, provada no t38). O aviso passou a ser o ÚLTIMO recurso —
+ * o que sobra quando nem a segunda tentativa deu certo.
+ *
+ * Por isso a segunda chamada aqui é derrubada de propósito. Sem derrubá-la,
+ * este teste ficou vermelho quando a segunda leitura entrou — e estava
+ * certo em ficar: a tela realmente não mostra mais aviso nesse caso, porque
+ * não há mais o que avisar. */
 respostaIA = "Conforme a cláusula 12 da convenção, o adicional é devido.";
-await perguntar("quantos associados temos em Vitória?");
+await perguntar("quantos associados temos em Vitória?", [200, 500]);
 const av = alerta();
 b.ok(av, "o aviso aparece");
 b.ok(av && /cl[áa]usula/i.test(av.textContent), "dizendo o que foi citado sem fonte",

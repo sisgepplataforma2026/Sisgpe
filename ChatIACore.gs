@@ -49,27 +49,25 @@ function chatSISGEP(payload, tokenSessao) {
       messages: messages
     };
 
-    var options = {
-      method: "post",
-      contentType: "application/json",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01"
-      },
-      payload: JSON.stringify(requestBody),
-      muteHttpExceptions: true
+    var perguntar = function (prompt) {
+      requestBody.system = prompt;
+      var resp = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", {
+        method: "post",
+        contentType: "application/json",
+        headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+        payload: JSON.stringify(requestBody),
+        muteHttpExceptions: true
+      });
+      return { codigo: resp.getResponseCode(), texto: resp.getContentText() };
     };
 
-    var response = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", options);
-    var respCode = response.getResponseCode();
-    var respText = response.getContentText();
-
-    if (respCode !== 200) {
-      Logger.log("chatSISGEP erro API: " + respCode + " — " + respText);
-      return { ok: false, resposta: "Erro na comunicação com a IA (código " + respCode + "). Tente novamente." };
+    var r1 = perguntar(systemPrompt);
+    if (r1.codigo !== 200) {
+      Logger.log("chatSISGEP erro API: " + r1.codigo + " — " + r1.texto);
+      return { ok: false, resposta: "Erro na comunicação com a IA (código " + r1.codigo + "). Tente novamente." };
     }
 
-    var respJson = JSON.parse(respText);
+    var respJson = JSON.parse(r1.texto);
     var textoResposta = respJson.content && respJson.content[0] ? respJson.content[0].text : "";
 
     if (!textoResposta) {
@@ -77,26 +75,82 @@ function chatSISGEP(payload, tokenSessao) {
       return { ok: false, resposta: "A IA não retornou nenhum conteúdo para esta pergunta. Tente reformular." };
     }
 
-    registrarAuditoriaSofia_(sessao, dominio, mensagem, textoResposta, true);
-
     /* A procedência sai do prompt que foi montado, nunca de um novo cálculo —
      * ver o comentário de fontesDoPrompt_. Se a leitura falhar por qualquer
      * motivo, a resposta segue sem a linha de fonte: melhor a tela calada do
      * que a tela afirmando o que não conferiu. */
     var fontes = [];
     var alertaFonte = "";
+    var segundaLeitura = false;
     try {
       fontes = fontesDoPrompt_(systemPrompt);
       alertaFonte = alertaFonteAusente_(textoResposta, fontes);
+
+      /* ── SEGUNDA LEITURA ──────────────────────────────────────────────
+       *
+       * Avisar "confira antes de usar" é tratar o sintoma. Se a resposta
+       * cita artigo ou cláusula, a pergunta ERA sobre o documento — e o
+       * documento deveria ter entrado. O usuário disse isso com todas as
+       * letras no primeiro dia: *"mas ele deveria ser consultado"*.
+       *
+       * Então em vez de avisar, o sistema se corrige: anexa o documento que
+       * faltou e pergunta de novo. A resposta que vale é a segunda, agora
+       * com o texto à vista.
+       *
+       * POR QUE ISSO NÃO É CARO: só acontece quando a primeira resposta
+       * citou algo sem fonte — raro depois do vocabulário mais largo, e
+       * exatamente o caso em que uma chamada a mais vale muito mais que uma
+       * resposta errada. Nunca há uma terceira: se depois de anexar o
+       * documento a resposta continuar citando o que não foi consultado
+       * (por exemplo, citando cláusula quando só o Estatuto entrou), aí sim
+       * o aviso aparece — porque aí ele é a informação certa. */
+      /* Sem `if (alertaFonte)` na frente: a mutação mostrou que a guarda era
+       * REDUNDANTE — as condições abaixo são as mesmas que geram o aviso, e
+       * o teste continuava verde com ela apagada, como tinha de continuar.
+       * Guarda que não guarda nada é linha a mais para alguém entender. */
+      var faltou = {};
+      var temTipo_ = function (t) {
+        for (var i = 0; i < fontes.length; i++) if (fontes[i].tipo === t) return true;
+        return false;
+      };
+      if (citaArtigoProprio_(textoResposta) && !temTipo_("ESTATUTO") &&
+          typeof getEstatutoTexto_ === "function") faltou.estatuto = true;
+      if (/\bcl[áa]usula/i.test(textoResposta) && !temTipo_("CCT")) faltou.cct = true;
+
+      if (faltou.estatuto || faltou.cct) {
+        Logger.log("SOFIA · segunda leitura: anexando " +
+          (faltou.estatuto ? "ESTATUTO " : "") + (faltou.cct ? "CCT" : "") +
+          " porque a resposta citou sem fonte.");
+        var prompt2 = montarSystemPrompt_(contexto, mensagem, faltou);
+        var r2 = perguntar(prompt2);
+        if (r2.codigo === 200) {
+          var json2 = JSON.parse(r2.texto);
+          var texto2 = json2.content && json2.content[0] ? json2.content[0].text : "";
+          if (texto2) {
+            textoResposta = texto2;
+            systemPrompt = prompt2;
+            fontes = fontesDoPrompt_(prompt2);
+            alertaFonte = alertaFonteAusente_(texto2, fontes);
+            segundaLeitura = true;
+          }
+        } else {
+          /* Falhou a segunda: fica a primeira resposta COM o aviso. Nunca o
+           * contrário — resposta sem fonte e sem aviso é o pior dos mundos. */
+          Logger.log("SOFIA · segunda leitura falhou (" + r2.codigo + "); mantida a primeira com aviso.");
+        }
+      }
     } catch (eFonte) {
       Logger.log("chatSISGEP procedência: " + eFonte.message);
     }
+
+    registrarAuditoriaSofia_(sessao, dominio, mensagem, textoResposta, true);
 
     return {
       ok: true,
       resposta: textoResposta,
       fontes: fontes,
       alertaFonte: alertaFonte,
+      segundaLeitura: segundaLeitura,
       contexto: {
         totalRegistros: contexto.totalRegistros,
         resumo: contexto.resumo,
@@ -817,7 +871,13 @@ function alertaFonteAusente_(resposta, fontes) {
   return frase.charAt(0).toUpperCase() + frase.slice(1);
 }
 
-function montarSystemPrompt_(contexto, mensagem) {
+/**
+ * @param {Object} forcar  {cct:true} / {estatuto:true} — anexa o documento
+ *        independentemente das palavras da pergunta. É o que a segunda
+ *        leitura usa quando a resposta cita um documento que não entrou.
+ */
+function montarSystemPrompt_(contexto, mensagem, forcar) {
+  forcar = forcar || {};
   var hoje = Utilities.formatDate(new Date(), "America/Sao_Paulo", "dd/MM/yyyy");
   var resumo = contexto.resumo || {};
 
@@ -837,7 +897,7 @@ function montarSystemPrompt_(contexto, mensagem) {
    * especialidade CCT está dizendo, com todas as letras, sobre o que quer
    * falar. */
   var dominioAtual = String((contexto && contexto.dominio) || "").toUpperCase();
-  var precisaCCT = dominioAtual === "CCT" ||
+  var precisaCCT = forcar.cct === true || dominioAtual === "CCT" ||
     /(cct|convenção|convencao|cláusula|clausula|dissídio|dissidio|acordo coletivo|piso|reajuste)/i.test(consulta);
   var conteudoCCT = precisaCCT
     ? blocoDocumentoIA_("CCT", getCCTTexto_(), consulta, 90000) : "";
@@ -852,8 +912,19 @@ function montarSystemPrompt_(contexto, mensagem) {
    *
    * 60.000 de teto contra os 90.000 da CCT: os dois juntos precisam caber
    * no prompt, e a pergunta que aciona os dois ao mesmo tempo é rara. */
-  var precisaEstatuto = dominioAtual === "ESTATUTO" ||
-    /(estatuto|assembleia|assembléia|mandato|diretoria|conselho fiscal|eleição|eleicao|posse|quórum|quorum|destitui|filia(ção|cao)|art\.\s*\d)/i.test(consulta);
+  /* O VOCABULÁRIO FOI CURTO DEMAIS, e o caso real mostrou onde.
+   *
+   * "Quem pode participar da votação?" é pergunta de Estatuto para qualquer
+   * pessoa que leia — e não acionava nada, porque "votação", "voto" e
+   * "eleitor" não estavam na lista. A resposta saiu citando três artigos de
+   * memória, todos com o número errado.
+   *
+   * Lista de palavras sempre vaza; por isso ela agora é mais larga E existe
+   * a segunda leitura (ver `chatSISGEP`), que pega o que ela deixar passar.
+   * Larga sem ser indiscriminada: cada palavra aqui é de assunto que só o
+   * Estatuto rege. */
+  var precisaEstatuto = forcar.estatuto === true || dominioAtual === "ESTATUTO" ||
+    /(estatuto|estatutári|assembleia|assembléia|mandato|diretoria|conselho fiscal|elei(ção|cao|toral)|posse|quórum|quorum|destitui|filia(ção|cao)|desfilia|vot(o|ar|ação|acao|antes)|eleitor|chapa|urna|escrut[íi]nio|delegad|sindical(izad|iza)|art\.\s*\d)/i.test(consulta);
   var conteudoEstatuto = (precisaEstatuto && typeof getEstatutoTexto_ === "function")
     ? blocoDocumentoIA_("ESTATUTO", getEstatutoTexto_(), consulta, 60000) : "";
 
