@@ -440,8 +440,10 @@ function gerarHtmlDocumentoVoucher_(dados) {
    * renderizada em 13/08/2026 mostrou por quê: com a logo do Drive mais as
    * faixas em CSS, as faixas apareciam DUAS VEZES — o arquivo de logo já traz
    * a faixa inteira. Ver VoucherMarcaDagua.gs. */
-  const cabecalhoImg = (typeof cabecalhoVoucher_ === "function") ? cabecalhoVoucher_() : "";
-  const rodapeImg = (typeof rodapeVoucher_ === "function") ? rodapeVoucher_() : "";
+  const logoPapel = (typeof logoVoucherPapel_ === "function") ? logoVoucherPapel_() : "";
+  /* O rodapé virou desenho; a data por extenso vem do mesmo helper que o
+     ofício da escola já usa, para os dois documentos datarem igual. */
+  const dataExtenso = dataExtensoVoucher_(dados.dataEmissao || new Date());
 
   function frag(rotulo, valor) {
     return valor ? rotulo + "<strong>" + escHtmlVoucher_(valor) + "</strong>" : "";
@@ -483,7 +485,10 @@ function gerarHtmlDocumentoVoucher_(dados) {
      * 96dpi, e altura em px joga o rodapé para uma segunda página em branco. */
     "@page{size:A4 portrait;margin:0;}" +
     "html,body{margin:0;padding:0;background:#fff;}" +
-    "body{font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;" +
+    /* SERIFADA, como o documento oficial. O certificado que o sindicato
+     * emite hoje é Times; sair em Arial fazia o mesmo texto parecer outro
+     * documento — e quem recebe compara com o que já viu. */
+    "body{font-family:'Times New Roman',Times,Georgia,serif;color:#1a1a1a;" +
       "-webkit-print-color-adjust:exact;print-color-adjust:exact;}" +
     ".pagina{position:relative;width:210mm;min-height:297mm;box-sizing:border-box;" +
       "padding:0 0 40mm;overflow:hidden;page-break-inside:avoid;}" +
@@ -507,7 +512,24 @@ function gerarHtmlDocumentoVoucher_(dados) {
     "}" +
 
     /* ── cabeçalho: logo à esquerda, faixas à direita ── */
-    ".cab{width:100%;display:block;}" +
+    /* ── CABEÇALHO E RODAPÉ DESENHADOS, não fotografados ──────────────
+       As duas peças eram JPEG de 1000px (12 KB e 21 KB). Medindo o PDF
+       emitido no ar, as duas SUMIRAM: só entraram marca d'água, QR e
+       assinatura. O conversor largou as maiores sem dizer nada.
+       Agora as faixas, os contatos e a tarja do Salmos são retângulos e
+       texto — que em PDF saem vetoriais, mais nítidos que qualquer JPEG, e
+       não têm peso para o conversor engasgar. Só a marca do sindicato
+       continua imagem, porque é arte. */
+    ".cab{position:relative;height:40mm;padding:9mm 0 0 28mm;box-sizing:border-box;}" +
+    ".cab-logo{width:60mm;height:auto;display:block;}" +
+    /* AS DUAS FAIXAS SE SOBREPÕEM, não se empilham. Medindo o papel real: a
+     * azul atravessa até a borda direita e a rosa fica POR CIMA dela, recuada,
+     * com o topo 1,5mm acima — é isso que dá o efeito de camada. No primeiro
+     * desenho a rosa estava 4mm acima da azul e o resultado foi uma escada de
+     * duas faixas separadas, coisa que o papel não tem. */
+    ".faixa{position:absolute;}" +
+    ".faixa-azul{right:0;top:13mm;width:100mm;height:9mm;background:#29abe2;}" +
+    ".faixa-rosa{right:33mm;top:11.5mm;width:63mm;height:9mm;background:#ec008c;}" +
 
     /* ── marca d'água: símbolo no canto inferior direito, sangrando ── */
     /* A IMAGEM JÁ É CINZA CLARÍSSIMO — ela nasce assim no papel do sindicato.
@@ -515,25 +537,53 @@ function gerarHtmlDocumentoVoucher_(dados) {
      * NENHUMA: a prévia renderizada saiu com o fundo branco. Opacidade se
      * aplica sobre o tom que a imagem tem, não sobre o tom que ela deveria
      * ter. */
-    ".dagua{position:absolute;right:-30mm;bottom:26mm;width:125mm;opacity:.9;" +
+    ".dagua{position:absolute;right:-8mm;bottom:14mm;width:112mm;opacity:.9;" +
       "z-index:0;pointer-events:none;}" +
 
-    ".corpo{position:relative;z-index:1;padding:0 20mm;}" +
-    "h1{text-align:center;font-size:15pt;font-weight:bold;color:#1a1a1a;" +
-      "margin:16mm 0 12mm;letter-spacing:.02em;}" +
-    "p{font-size:11pt;line-height:1.75;text-align:justify;margin:0 0 6mm;}" +
+    /* 15mm de margem lateral, medido no papel (≈6% da largura da folha). Com
+     * 20mm o texto sobrava linha e a mancha ficava estreita demais perto do
+     * documento real. */
+    ".corpo{position:relative;z-index:1;padding:0 15mm;}" +
+    "h1{text-align:center;font-size:13.5pt;font-weight:bold;color:#1a1a1a;" +
+      "margin:14mm 0 14mm;letter-spacing:.01em;}" +
+    /* ENTRELINHA 1.45, não 1.75: o certificado do sindicato é um texto denso
+     * de dois parágrafos, e com 1.75 o mesmo conteúdo ocupava meia página a
+     * mais e parecia carta, não certificado. */
+    "p{font-size:11pt;line-height:1.45;text-align:justify;margin:0 0 6mm;}" +
 
-    ".assinatura{margin-top:22mm;text-align:center;}" +
-    ".assinatura img{width:34mm;height:auto;display:block;margin:0 auto 1mm;}" +
+    /* À ESQUERDA, como no certificado que o sindicato emite. Centralizada era
+     * escolha minha, e destoava do papel que a escola já conhece. */
+    ".assinatura{margin-top:14mm;text-align:left;padding-left:4mm;}" +
+    ".assinatura img{width:34mm;height:auto;display:block;margin:0 0 1mm;}" +
     ".pres{font-size:11pt;font-weight:bold;}" +
-    ".cargo{font-size:10pt;}" +
+    /* Negrito também no cargo, com o nome do sindicato em itálico — é assim no
+     * papel, e é o único lugar do documento onde a marca aparece escrita. */
+    ".cargo{font-size:11pt;font-weight:bold;}" +
+    ".cargo em{font-style:italic;}" +
 
     /* ── rodapé: contatos + faixa do salmo + a validação ── */
-    ".rodape{position:absolute;left:0;right:0;bottom:0;}" +
-    ".rod-img{width:100%;display:block;}" +
+    /* CADA PEÇA ANCORADA NA PÁGINA, e não empilhada dentro do rodapé.
+       No primeiro desenho a tarja azul não aparecia: o bloco do rodapé era
+       absoluto com bottom:0 e os filhos em fluxo, e a tarja acabava fora da
+       área visível de uma página com overflow:hidden. Ancorando as duas
+       diretamente — contatos acima, tarja colada no pé — não há empilhamento
+       para dar errado, e o conversor não precisa calcular fluxo nenhum. */
+    ".rodape{position:absolute;left:0;right:0;bottom:0;height:44mm;}" +
+    /* 25mm: a tarja termina em 22mm, e com 18mm as duas últimas linhas de
+     * contato caíam DENTRO do azul — texto azul sobre fundo azul, ilegível.
+     * Medido na renderização, não estimado. */
+    ".rod-contatos{position:absolute;left:28mm;bottom:25mm;font-size:8.5pt;" +
+      "color:#2b6cb0;line-height:1.75;}" +
+    /* A TARJA NÃO ENCOSTA NAS BORDAS. No papel ela é um retângulo com a mesma
+     * margem lateral da mancha de texto e sobra branca embaixo; encostada nas
+     * quatro bordas parecia rodapé de sistema, não papel timbrado. */
+    ".rod-tarja{position:absolute;left:14mm;right:14mm;bottom:8mm;background:#1a7fd4;" +
+      "color:#fff;text-align:center;font-style:italic;font-size:11pt;" +
+      "padding:3mm 0;letter-spacing:.2px;}" +
+    ".data-local{text-align:right;margin:14mm 0 0;font-size:11pt;}" +
     /* A validação flutua SOBRE o rodapé do papel, no espaço vazio à direita
      * dos contatos — assim ela não empurra a arte nem cria uma faixa a mais. */
-    ".valida-box{position:absolute;right:14mm;bottom:14mm;text-align:right;}" +
+    ".valida-box{position:absolute;right:14mm;bottom:26mm;text-align:right;}" +
     /* O QR fica AQUI, discreto, e não no meio do documento: foi acrescentado
      * ao modelo com autorização, e o que é acréscimo não disputa espaço com o
      * que a escola já sabe ler. */
@@ -546,7 +596,11 @@ function gerarHtmlDocumentoVoucher_(dados) {
 
     (marcaDagua ? "<img class='dagua' src='" + escHtmlVoucher_(marcaDagua) + "'>" : "") +
 
-    (cabecalhoImg ? "<img class='cab' src='" + escHtmlVoucher_(cabecalhoImg) + "'>" : "") +
+    "<div class='cab'>" +
+      (logoPapel ? "<img class='cab-logo' src='" + escHtmlVoucher_(logoPapel) + "'>" : "") +
+      "<div class='faixa faixa-azul'></div>" +
+      "<div class='faixa faixa-rosa'></div>" +
+    "</div>" +
 
     "<div class='corpo'>" +
     "<h1>CERTIFICADO DE HABILITAÇÃO À BOLSA DE ESTUDOS</h1>" +
@@ -556,15 +610,21 @@ function gerarHtmlDocumentoVoucher_(dados) {
     "e intransferível, produzindo efeitos enquanto permanecerem atendidas as condições que " +
     "fundamentaram sua emissão.</p>" +
 
+    "<div class='data-local'>" + escHtmlVoucher_(dataExtenso) + "</div>" +
+
     "<div class='assinatura'>" +
     (assinaturaImg ? "<img src='" + escHtmlVoucher_(assinaturaImg) + "'>" : "") +
     "<div class='pres'>" + escHtmlVoucher_(PRESIDENTE_VOUCHER) + "</div>" +
-    "<div class='cargo'>Presidente - SindEducação-ES</div>" +
+    "<div class='cargo'>Presidente – <em>SindEducação/ES</em></div>" +
     "</div>" +
     "</div>" +
 
     "<div class='rodape'>" +
-    (rodapeImg ? "<img class='rod-img' src='" + escHtmlVoucher_(rodapeImg) + "'>" : "") +
+    "<div class='rod-contatos'>" +
+      "(27) 3222-2706<br>(27) 99735-8900<br>sindeducacao.com<br>" +
+      "contato@sindeducacao.com<br>SindEducacaoES<br>sindeducacaoes" +
+    "</div>" +
+    "<div class='rod-tarja'>Você comerá do fruto do seu trabalho e será feliz e próspero. Salmos 128:2.</div>" +
     "<div class='valida-box'>" +
     (qrCodeUrl ? "<img class='valida-qr' src='" + escHtmlVoucher_(qrCodeUrl) + "'>" : "") +
     "<div class='valida'>" +

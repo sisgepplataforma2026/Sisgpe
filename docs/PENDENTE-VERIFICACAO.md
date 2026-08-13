@@ -12,6 +12,45 @@
 
 ## 🔴 ABERTO
 
+### 22. Voucher — o certificado no papel timbrado do sindicato
+**Aberto em:** 13/08/2026 · `VoucherPdf.gs`, `VoucherMarcaDagua.gs`
+
+O certificado saía **sem cabeçalho e sem rodapé**. O motivo foi medido, não
+suposto: as duas peças eram JPEG de 1000px (12 KB e 21 KB) e o
+`getAs(MimeType.PDF)` do Apps Script **largou as duas** — abrindo o PDF
+emitido, sobraram três imagens (marca d'água, QR e assinatura) e nenhuma das
+duas maiores. A de 5 KB sobreviveu. O HTML estava perfeito o tempo todo.
+
+**A correção troca fotografia por desenho.** Faixas do timbre, contatos e a
+tarja do Salmos viraram retângulos e texto em CSS — que em PDF saem
+vetoriais, mais nítidos que qualquer JPEG, e não têm peso para o conversor
+engasgar. Só a marca do sindicato continua imagem, agora recortada para
+6 KB. A fonte passou a ser serifada (Times), a entrelinha caiu de 1,75 para
+1,45 e a assinatura foi para a esquerda — tudo medido contra o certificado
+real que o sindicato emite hoje (`GLAUCIA_SOUZA_NRAMOS.pdf`).
+
+**O que já está travado por teste** (`t33-voucher-documento.js`, passos 17 a
+20, 5 mutações mortas em 5): a folha é A4 em milímetro; as faixas e a tarja
+são markup, não imagem; rosa e azul ficam no mesmo nível (era uma escada de
+duas faixas separadas); e — o defeito que **só a renderização mostrou** — os
+contatos e o QR ficam ACIMA da tarja azul. Na primeira versão as duas últimas
+linhas de contato caíam dentro do azul: texto azul sobre fundo azul.
+
+| | |
+|---|---|
+| 🔴 O PDF emitido no ar sai com cabeçalho e rodapé | é o defeito que originou o item |
+| 🔴 A assinatura do presidente aparece | vem do Drive, que é simulado no emulador |
+| 🔴 O QR aparece e a câmera lê | mesma razão |
+| 🔴 A marca d'água aparece sem escurecer o texto | opacidade só se confere no papel |
+| 🔴 Cabe em UMA página | o rodapé é absoluto; conteúdo longo pode empurrar |
+
+**Duas decisões que continuam suas, não minhas:** o certificado de referência
+**não tem QR nem código de validação** — mantive porque foi o que você
+orientou antes, mas é acréscimo nosso ao modelo. E a redação do papel real
+cita a *"cláusula de Incentivo ao Aprimoramento"* da CCT e fala em
+*"semestralidade/anuidade escolar"*; a nossa é diferente. Se quiser a redação
+idêntica, é uma edição só.
+
 ### 19. SOFIA — a procedência embaixo da resposta
 **Aberto em:** 13/08/2026 · `ChatIACore.gs`, `ChatSISGEP.html`
 

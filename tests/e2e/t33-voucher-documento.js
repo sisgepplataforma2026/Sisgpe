@@ -289,5 +289,82 @@ b.ok(limpo.ok, "as três em data: — mas isto é o emulador, não o Drive real"
 b.naoTestavel("As imagens REAIS (Drive e quickchart) no PDF de produção",
   "DriveApp e UrlFetch são simulados aqui — rodar voucherDiagnosticoImagens() no Apps Script");
 
+/* ══════════════════════════════════════════════════════════════════════
+   O PAPEL TIMBRADO
+
+   Este bloco existe porque o cabeçalho e o rodapé DEIXARAM de ser imagem.
+   Eram dois JPEG de 1000px (12 KB e 21 KB) e o conversor de PDF do Apps
+   Script largou os dois sem avisar — o certificado saía sem timbre e sem
+   rodapé, e nenhum teste acusava, porque o HTML continuava perfeito.
+
+   Agora as faixas, os contatos e a tarja do Salmos são retângulos de CSS.
+   O que se ganha em robustez se paga em geometria: peça posicionada em
+   milímetro pode ATROPELAR peça vizinha, e foi exatamente o que aconteceu
+   na primeira versão — as duas últimas linhas de contato caíram dentro da
+   tarja azul, texto azul sobre fundo azul. O HTML estava certo; só a
+   renderização mostrava.
+
+   Por isso as asserções abaixo leem os NÚMEROS do CSS e checam a relação
+   entre eles, em vez de só conferir que a classe existe.
+   ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("VOUCHER · O documento sai no papel timbrado do sindicato");
+
+const papel = g.gerarHtmlDocumentoVoucher_({
+  protocolo: "BOLSA-PAPEL", codigo: "AAAA-BBBB",
+  reg: { NOME_SOLICITANTE: "Fulano de Tal", PERIODO_REFERENCIA: "2026/1" }
+});
+
+/* mm declarado para uma propriedade dentro de um seletor */
+function mm(seletor, prop) {
+  const bloco = new RegExp("\\" + seletor + "\\{([^}]*)\\}").exec(papel);
+  if (!bloco) return null;
+  const achou = new RegExp("(?:^|;)\\s*" + prop + ":\\s*(-?[\\d.]+)mm").exec(bloco[1]);
+  return achou ? Number(achou[1]) : null;
+}
+
+b.passo("17. A folha é A4 em milímetro, não em pixel");
+b.ok(/@page\{size:A4 portrait;margin:0;\}/.test(papel),
+  "a página é declarada A4 retrato sem margem de impressora");
+b.igual(mm(".pagina", "width"), 210, "largura de folha A4");
+b.igual(mm(".pagina", "min-height"), 297, "altura de folha A4");
+
+b.passo("18. Cabeçalho e rodapé são desenho, não fotografia");
+b.ok(/class='faixa faixa-azul'/.test(papel) && /class='faixa faixa-rosa'/.test(papel),
+  "as duas faixas do timbre são divs — o conversor não tem o que largar");
+b.ok(/rod-tarja/.test(papel) && /Salmos 128:2/.test(papel),
+  "a tarja do Salmos vai como texto");
+b.ok(/\(27\) 3222-2706/.test(papel) && /contato@sindeducacao\.com/.test(papel),
+  "e os contatos também");
+/* A logo continua imagem porque é arte — mas é a pequena, de 6 KB, que
+ * sobreviveu à conversão quando as de 12 KB e 21 KB sumiram. */
+b.ok(String(g.logoVoucherPapel_()).indexOf("data:") === 0,
+  "a logo do timbre é embutida em base64");
+
+b.passo("19. As faixas se sobrepõem em vez de virar escada");
+const azulTopo = mm(".faixa-azul", "top");
+const rosaTopo = mm(".faixa-rosa", "top");
+b.ok(Math.abs(azulTopo - rosaTopo) <= 2,
+  "rosa e azul no mesmo nível (≤2mm de diferença), como no papel real",
+  "azul " + azulTopo + "mm, rosa " + rosaTopo + "mm");
+b.ok(rosaTopo < azulTopo, "com a rosa por cima, ligeiramente acima");
+
+b.passo("20. O rodapé não atropela a si mesmo — o defeito que só a renderização mostrou");
+const tarjaBase = mm(".rod-tarja", "bottom");
+const contatosBase = mm(".rod-contatos", "bottom");
+const validaBase = mm(".valida-box", "bottom");
+/* 12mm é a altura da tarja com folga: 3mm de padding em cima, 3mm embaixo e
+ * uma linha de 11pt (≈3,9mm). Quem ficar abaixo disso entra no azul. */
+const TETO_TARJA = tarjaBase + 12;
+b.ok(contatosBase >= TETO_TARJA,
+  "os contatos começam ACIMA da tarja azul",
+  "contatos em " + contatosBase + "mm, topo da tarja em ~" + TETO_TARJA + "mm");
+b.ok(validaBase >= TETO_TARJA,
+  "o código de validação e o QR também",
+  "validação em " + validaBase + "mm");
+b.ok(tarjaBase > 0, "e a tarja não encosta na borda de baixo da folha");
+
+b.naoTestavel("A aparência final do PDF convertido pelo Apps Script",
+  "conferir emitindo um certificado no ar e comparando com o papel do sindicato");
+
 b.resumo();
 process.exit(0);
