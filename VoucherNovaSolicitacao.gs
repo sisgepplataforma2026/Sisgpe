@@ -101,6 +101,11 @@ function voucherCriarSolicitacao(dados, tokenSessao) {
       UNIDADE_ESCOLA: String(dados.unidadeEscola || "").trim(),
       CNPJ_ESCOLA: String(dados.cnpjEscola || "").replace(/\D/g, ""),
       CIDADE_ESCOLA: String(dados.cidadeEscola || "").trim(),
+      /* O escolaId vem da busca e amarra a solicitacao a escola de verdade.
+       * Sem ele sobraria um nome digitado que ninguem casa depois — que e o
+       * que a Fase 4 existe para acabar. A coluna so e gravada se a aba ja
+       * tiver ela; nao invento coluna aqui. */
+      ESCOLA_ID: String(dados.escolaId || "").trim(),
       /* Onde ESTUDA — outra empresa, e é isto que faltava no cadastro */
       INSTITUICAO_ENSINO: String(dados.instituicao || "").trim(),
       CNPJ_INSTITUICAO: String(dados.cnpjInstituicao || "").replace(/\D/g, ""),
@@ -235,15 +240,32 @@ function voucherBuscarAssociado(termo, tokenSessao) {
       var nome = iNome === -1 ? "" : String(tudo[l][iNome] || "");
       var cpf = iCpf === -1 ? "" : String(tudo[l][iCpf] || "").replace(/\D/g, "");
       var casaNome = busca.length >= 3 && voucherInstNormalizar_(nome).indexOf(busca) > -1;
-      var casaCpf  = digitos.length >= 3 && cpf.indexOf(digitos) > -1;
+      /* O CPF DA BASE PODE ESTAR SEM O ZERO À ESQUERDA.
+       *
+       * Mesmo defeito que fez o certificado sair com "8538104780" cru: a
+       * planilha guarda a coluna como NÚMERO, e número não tem zero à
+       * esquerda. Quem digita o CPF completo — com o zero, como está no
+       * documento da pessoa — não achava ninguém, e concluía que o associado
+       * não estava cadastrado.
+       *
+       * Os dois lados são comparados completados até 11. Assim "08538104780"
+       * digitado casa com "8538104780" guardado, e vice-versa. */
+      var cpfCheio = cpf.length && cpf.length < 11 ? ("00" + cpf).slice(-11) : cpf;
+      var buscaCheia = digitos.length > 8 && digitos.length < 11
+        ? ("00" + digitos).slice(-11) : digitos;
+      var casaCpf  = digitos.length >= 3 &&
+        (cpf.indexOf(digitos) > -1 || cpfCheio.indexOf(buscaCheia) > -1);
       if (!casaNome && !casaCpf) continue;
       achados.push({
         nome: nome,
         /* O CPF sai MASCARADO na lista. Ele aparece inteiro só depois de a
          * pessoa escolher um nome — uma busca por "maria" não precisa
          * despejar o CPF de quarenta associadas na tela. */
-        cpfMascarado: cpf ? cpf.replace(/\d(?=\d{2})/g, "*") : "",
-        cpf: cpf,
+        cpfMascarado: cpfCheio ? cpfCheio.replace(/\d(?=\d{2})/g, "*") : "",
+        /* Devolve o CPF COMPLETO, com o zero recuperado: é ele que vai para
+         * o formulário e para a memória, e um CPF de 10 dígitos gravado numa
+         * solicitação nova propagaria o defeito adiante. */
+        cpf: cpfCheio || cpf,
         email: iMail === -1 ? "" : String(tudo[l][iMail] || "").trim(),
         telefone: iTel === -1 ? "" : String(tudo[l][iTel] || "").trim(),
         escola: iEsc === -1 ? "" : String(tudo[l][iEsc] || "").trim()
@@ -253,5 +275,55 @@ function voucherBuscarAssociado(termo, tokenSessao) {
   } catch (e) {
     Logger.log("voucherBuscarAssociado: " + e.message);
     return { ok: false, mensagem: e.message, associados: [] };
+  }
+}
+
+/**
+ * Busca nas 679 escolas para o campo "onde trabalha".
+ *
+ * REUSA `buscarEscolasPorTermo_interno_` (BuscaEscola.gs) — não é uma busca
+ * nova. Aquela já procura por nome, nome fantasia, CNPJ, e-mail, endereço,
+ * bairro, cidade e UF, e foi amadurecendo com o uso do módulo de Ofícios.
+ * Escrever uma terceira daria resultados diferentes para a mesma escola
+ * dependendo da tela, que é exatamente o que o item 8 do PROMPT-MESTRE
+ * manda evitar: uma única entidade Escola.
+ *
+ * A FUNÇÃO PÚBLICA `buscarEscolasPorTermo` NÃO SERVE AQUI porque exige o
+ * módulo ESCOLAS, e quem emite certificado tem BENEFÍCIOS. Daí este
+ * invólucro: mesma busca, porta própria. O `_interno_` existe justamente
+ * para isto — quem chama é responsável pela própria checagem, e ela está
+ * na primeira linha.
+ *
+ * O ESCOLA_ID VAI JUNTO na resposta. É ele que a Fase 4 usa para amarrar a
+ * solicitação à escola de verdade em vez de guardar um nome digitado que
+ * ninguém consegue casar depois.
+ */
+function voucherBuscarEscola(termo, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
+  try {
+    if (String(termo || "").trim().length < 2) {
+      return { ok: true, escolas: [], mensagem: "Digite ao menos 2 caracteres." };
+    }
+    if (typeof buscarEscolasPorTermo_interno_ !== "function") {
+      return { ok: false, mensagem: "Busca de escolas indisponível.", escolas: [] };
+    }
+
+    var achadas = buscarEscolasPorTermo_interno_(termo) || [];
+    return {
+      ok: true,
+      escolas: achadas.slice(0, 10).map(function (e) {
+        return {
+          nome: String(e.escola || e.NomeEscola || e.nome || e["Escola (Razão Social)"] || "").trim(),
+          fantasia: String(e.fantasia || e.Fantasia || e.NOME_FANTASIA || "").trim(),
+          cnpj: String(e.cnpjLimpo || e.cnpj || e.CNPJ || "").replace(/\D/g, ""),
+          cidade: String(e.cidade || e.municipio || e.Cidade || "").trim(),
+          uf: String(e.uf || e.UF || "").trim(),
+          escolaId: String(e.EscolaID || e.escolaId || (typeof ESC_COL_ID !== "undefined" ? e[ESC_COL_ID] : "") || "").trim()
+        };
+      })
+    };
+  } catch (e) {
+    Logger.log("voucherBuscarEscola: " + e.message);
+    return { ok: false, mensagem: e.message, escolas: [] };
   }
 }

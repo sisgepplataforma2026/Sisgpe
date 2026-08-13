@@ -79,6 +79,41 @@ function el(id) { return doc.getElementById(id); }
     "e o CPF sai MASCARADO na lista de busca",
     doc.querySelector("#certNvListaAssoc small").textContent);
 
+
+  b.passo("3b. Buscar pelo CPF COM o zero à esquerda acha o associado");
+  /* A base guarda o CPF como NÚMERO, e número não tem zero à esquerda —
+   * o mesmo defeito que fez o certificado sair com "8538104780" cru. Quem
+   * digita o CPF completo, como está no documento da pessoa, não achava
+   * ninguém e concluía que o associado não estava cadastrado. */
+  t.digitar("#certNvBusca", "011144477735".slice(1));   // 11144477735, como guardado
+  await t.assentar(420);
+  b.ok(doc.querySelectorAll("#certNvListaAssoc .cert-nv-item").length > 0,
+    "acha digitando como está guardado");
+
+  t.digitar("#certNvBusca", "0" + "8538104780");        // 11 dígitos, com zero
+  await t.assentar(420);
+  const semZero = ss.getSheetByName("Associados");
+  semZero.getRange(3, 1, 1, 4).setValues([["Zero A Esquerda", "8538104780", "z@x.com", ""]]);
+  t.digitar("#certNvBusca", "08538104780");
+  await t.assentar(420);
+  const achou = doc.querySelectorAll("#certNvListaAssoc .cert-nv-item");
+  b.ok(achou.length > 0,
+    "e acha o CPF guardado com 10 dígitos quando se digita os 11",
+    achou.length + " resultado(s)");
+
+  b.passo("3c. As máscaras de CPF e telefone existem no Utils");
+  /* Do Helpers.html, uma só para o sistema inteiro — não reimplementada
+   * aqui. Telefone gravado em três formatos quebra a busca depois. */
+  const helpers = require("fs").readFileSync(dom.RAIZ + "/Helpers.html", "utf8");
+  b.ok(/aplicarMascaraCPF\s*:/.test(helpers), "Utils.aplicarMascaraCPF existe");
+  b.ok(/aplicarMascaraTelefone\s*:/.test(helpers), "Utils.aplicarMascaraTelefone existe");
+  const tela = require("fs").readFileSync(dom.RAIZ + "/Scripts_Certificado.html", "utf8");
+  b.ok(/Utils\[par\[1\]\]\(this\)/.test(tela) && /aplicarMascaraTelefone/.test(tela),
+    "e a tela usa as do Utils, sem reimplementar");
+
+  t.digitar("#certNvBusca", "Marcelo");
+  await t.assentar(420);
+
   b.passo("4. Escolher o associado traz a HISTÓRIA dele preenchida");
   t.clicar(itens[0]);
   await t.assentar(220);
@@ -90,6 +125,40 @@ function el(id) { return doc.getElementById(id); }
   b.igual(el("certNvCurso").value, "Administracao", "o curso");
   b.igual(el("certNvModalidade").value, "GRADUACAO", "a modalidade");
   b.igual(String(el("certNvPercentual").value), "70", "e os 70% PREENCHIDOS");
+
+
+  b.passo("4b. A escola vem da base das 679, não de texto livre");
+  /* O campo era um input solto. Nome digitado à mão não casa com nada
+   * depois, e o escolaId — que a Fase 4 usa para amarrar a solicitação à
+   * escola de verdade — nunca seria preenchido. */
+  const shEsc = ss.getSheetByName("Escolas") || ss.insertSheet("Escolas");
+  shEsc.clear();
+  shEsc.getRange(1, 1, 1, 5).setValues([["Escola (Razão Social)", "CNPJ", "Cidade", "UF", "EscolaID"]]);
+  shEsc.getRange(2, 1, 1, 5).setValues([["COLEGIO SAO JOSE LTDA", "13004995000100", "VITORIA", "ES", "ESC-000042"]]);
+
+  t.digitar("#certNvEscola", "sao jose");
+  await t.assentar(450);
+  const itensEsc = doc.querySelectorAll("#certNvListaEscola .cert-nv-item");
+  b.ok(itensEsc.length > 0, "a busca de escola devolveu resultado", itensEsc.length + " item(ns)");
+
+  if (itensEsc.length) {
+    t.clicar(itensEsc[0]);
+    await t.assentar(120);
+    b.igual(el("certNvEscola").value, "COLEGIO SAO JOSE LTDA", "nome preenchido");
+    b.igual(el("certNvCnpjEscola").value, "13004995000100", "CNPJ preenchido junto");
+    b.igual(el("certNvEscola").getAttribute("data-escola-id"), "ESC-000042",
+      "e o escolaId viaja no elemento, para a Fase 4");
+    b.ok(/ESC-000042/.test(t.texto("#certNvOrgEscola") || ""),
+      "com o id à vista de quem digita", t.texto("#certNvOrgEscola"));
+  }
+
+  b.passo("4c. Digitar de novo solta o escolaId anterior");
+  /* Deixá-lo grudado amarraria a solicitação a uma escola que a pessoa
+   * acabou de trocar — e ninguém veria, porque o id não aparece no campo. */
+  t.digitar("#certNvEscola", "outra coisa");
+  await t.assentar(40);
+  b.ok(!el("certNvEscola").getAttribute("data-escola-id"),
+    "o id foi solto ao redigitar");
 
   b.passo("5. A origem do percentual aparece na tela");
   const org = (t.texto("#certNvOrgPct") || "");

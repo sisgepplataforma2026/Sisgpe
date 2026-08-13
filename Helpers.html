@@ -53,6 +53,27 @@ var Utils = {
     input.value = v.substring(0, 14);
   },
 
+  /* Telefone brasileiro, fixo ou celular.
+   *
+   * Mora aqui e não na tela porque o CLAUDE.md manda: máscara é do Utils,
+   * uma só para o sistema inteiro. Cada tela com a sua diverge no primeiro
+   * ajuste — e telefone gravado em três formatos diferentes quebra qualquer
+   * busca depois.
+   *
+   * Formata enquanto se digita, então precisa aguentar número incompleto:
+   * "(27) 9" tem que sair de "279", não esperar os onze dígitos. */
+  aplicarMascaraTelefone: function(input) {
+    if (!input) return;
+    var d = onlyDigits(input.value).substring(0, 11);
+    var v = d;
+    if (d.length > 2)  v = "(" + d.substring(0,2) + ") " + d.substring(2);
+    if (d.length > 6)  {
+      var corte = d.length > 10 ? 7 : 6;   // celular: 5 dígitos antes do traço
+      v = "(" + d.substring(0,2) + ") " + d.substring(2, corte) + "-" + d.substring(corte);
+    }
+    input.value = v;
+  },
+
   /* Validação completa com dígitos verificadores */
   validarCPF: function(cpf) {
     var dig = onlyDigits(cpf);

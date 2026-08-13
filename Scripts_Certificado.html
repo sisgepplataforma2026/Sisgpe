@@ -550,9 +550,17 @@
       </div>
 
       <div class="cert-section-title">Onde trabalha</div>
+      <!-- A escola vem da base das 679, não de texto livre. Nome digitado à
+           mão não casa com nada depois — e o escolaId, que a Fase 4 usa para
+           amarrar a solicitação à escola de verdade, nunca seria preenchido. -->
+      <div class="cert-nv-campo cert-nv-sug" style="margin-bottom:10px;">
+        <label class="cert-nv-lbl">Escola / empregador <span id="certNvOrgEscola"></span></label>
+        <input type="text" class="cert-nv-in" id="certNvEscola" placeholder="nome, CNPJ ou cidade" autocomplete="off">
+        <div class="cert-nv-lista" id="certNvListaEscola"></div>
+      </div>
       <div class="cert-nv-grid">
-        <div class="cert-nv-campo"><label class="cert-nv-lbl">Escola / empregador</label><input class="cert-nv-in" id="certNvEscola"></div>
         <div class="cert-nv-campo"><label class="cert-nv-lbl">CNPJ da escola</label><input class="cert-nv-in" id="certNvCnpjEscola"></div>
+        <div class="cert-nv-campo"><label class="cert-nv-lbl">Cidade</label><input class="cert-nv-in" id="certNvCidadeEscola"></div>
       </div>
 
       <div class="cert-section-title">Onde estuda</div>
@@ -1090,6 +1098,7 @@ function envAbrirZap(){
 var _nvSeq = 0;
 var _nvTimer = null;
 var _nvTimerInst = null;
+var _nvTimerEsc = null;
 
 function nvCampos(){
   return {
@@ -1100,6 +1109,8 @@ function nvCampos(){
     situacaoSindical: g('certNvSituacao') ? g('certNvSituacao').value : '',
     escola:           g('certNvEscola').value,
     cnpjEscola:       g('certNvCnpjEscola').value,
+    cidadeEscola:     g('certNvCidadeEscola') ? g('certNvCidadeEscola').value : '',
+    escolaId:         g('certNvEscola') ? (g('certNvEscola').getAttribute('data-escola-id')||'') : '',
     instituicao:      g('certNvInstituicao').value,
     cnpjInstituicao:  g('certNvCnpjInst').value,
     emailInstituicao: g('certNvEmailInst').value,
@@ -1121,7 +1132,7 @@ function nvLimpar(){
   ['certNvBusca','certNvCpf','certNvNome','certNvEmail','certNvTelefone','certNvEscola',
    'certNvCnpjEscola','certNvInstituicao','certNvCnpjInst','certNvEmailInst',
    'certNvBeneficiario','certNvCurso','certNvIdade','certNvPeriodo','certNvPercentual',
-   'certNvRegime','certNvObs'].forEach(function(id){ if(g(id)) g(id).value=''; });
+   'certNvRegime','certNvObs','certNvCidadeEscola'].forEach(function(id){ if(g(id)) g(id).value=''; });
   ['certNvModalidade','certNvArea','certNvOrdem'].forEach(function(id){ if(g(id)) g(id).value=''; });
   if(g('certNvTipoBenef')) g('certNvTipoBenef').value='TITULAR';
   if(g('certNvSituacao')) g('certNvSituacao').value='ASSOCIADO';
@@ -1267,6 +1278,43 @@ function nvBuscarInstituicao(){
     })
     .withFailureHandler(function(){ lista.classList.remove('ativo'); })
     .voucherInstituicoesSugerir(termo, certToken());
+}
+
+function nvBuscarEscola(){
+  var termo=String(g('certNvEscola').value||'').trim();
+  var lista=g('certNvListaEscola');
+  if(termo.length<2){ lista.classList.remove('ativo'); return; }
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r||!r.ok||!r.escolas.length){ lista.classList.remove('ativo'); return; }
+      lista.innerHTML = r.escolas.map(function(x,i){
+        var linha2=[x.fantasia && x.fantasia!==x.nome ? x.fantasia : '',
+                    x.cnpj, [x.cidade,x.uf].filter(Boolean).join('/')].filter(Boolean).join(' · ');
+        return '<div class="cert-nv-item" data-i="'+i+'">'+escHtml(x.nome)
+             + '<small>'+escHtml(linha2||'sem dados adicionais')+'</small></div>';
+      }).join('');
+      lista.classList.add('ativo');
+      lista.querySelectorAll('.cert-nv-item').forEach(function(it){
+        it.addEventListener('click',function(){
+          var x=r.escolas[Number(this.getAttribute('data-i'))];
+          g('certNvEscola').value=x.nome;
+          /* O escolaId viaja no elemento, não num campo visível: é
+             identificador de sistema, e mostrá-lo só ocuparia espaço na tela
+             de quem digita. Mas ele PRECISA ir junto na gravação. */
+          g('certNvEscola').setAttribute('data-escola-id', x.escolaId||'');
+          if(x.cnpj) g('certNvCnpjEscola').value=x.cnpj;
+          if(x.cidade) g('certNvCidadeEscola').value=[x.cidade,x.uf].filter(Boolean).join(' - ');
+          if(g('certNvOrgEscola')){
+            g('certNvOrgEscola').innerHTML = x.escolaId
+              ? '<span class="cert-nv-org hist">'+escHtml(x.escolaId)+'</span>'
+              : '<span class="cert-nv-org padrao">sem id na base</span>';
+          }
+          lista.classList.remove('ativo');
+        });
+      });
+    })
+    .withFailureHandler(function(){ lista.classList.remove('ativo'); })
+    .voucherBuscarEscola(termo, certToken());
 }
 
 function nvSalvar(aprovar){
@@ -1453,6 +1501,15 @@ function init(){
       clearTimeout(_nvTimerInst); _nvTimerInst=setTimeout(nvBuscarInstituicao, 320);
     });
   }
+  if(g('certNvEscola')){
+    g('certNvEscola').addEventListener('input', function(){
+      /* Digitou de novo: o id anterior não vale mais. Deixá-lo grudado
+         amarraria a solicitação a uma escola que a pessoa acabou de trocar. */
+      this.removeAttribute('data-escola-id');
+      if(g('certNvOrgEscola')) g('certNvOrgEscola').innerHTML='';
+      clearTimeout(_nvTimerEsc); _nvTimerEsc=setTimeout(nvBuscarEscola, 320);
+    });
+  }
 
   /* Mudou modalidade, área, curso, ordem ou idade → o percentual pode mudar.
      São exatamente os campos que a regra da convenção lê. */
@@ -1462,6 +1519,25 @@ function init(){
   ['certNvCurso','certNvIdade'].forEach(function(id){
     if(g(id)) g(id).addEventListener('change', nvSugerir);
   });
+
+  /* MÁSCARAS — do Utils, nunca reimplementadas aqui.
+     O CLAUDE.md é explícito: máscara de CPF/telefone é do Helpers.html, uma
+     só para o sistema inteiro. Cada tela com a sua diverge no primeiro
+     ajuste, e telefone gravado em três formatos quebra a busca depois. */
+  [['certNvCpf','aplicarMascaraCPF'],
+   ['certNvTelefone','aplicarMascaraTelefone']].forEach(function(par){
+    var el=g(par[0]);
+    if(el && typeof Utils!=='undefined' && Utils[par[1]]){
+      el.addEventListener('input', function(){ Utils[par[1]](this); });
+    }
+  });
+  /* A busca também: quem digita CPF ali quer ver o número formatado, e o
+     backend normaliza para dígitos de qualquer jeito. */
+  if(g('certNvBusca') && typeof Utils!=='undefined' && Utils.aplicarMascaraCPF){
+    g('certNvBusca').addEventListener('input', function(){
+      if(/^[\d.\-]+$/.test(this.value)) Utils.aplicarMascaraCPF(this);
+    });
+  }
 
   if(g('certNovaOverlay')){
     g('certNovaOverlay').addEventListener('click', function(ev){
