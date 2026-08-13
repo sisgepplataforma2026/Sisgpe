@@ -133,7 +133,9 @@ function salvarCadastroESolicitacaoVoucher(payload) {
     setCol("AREA_CURSO", String(payload.areaCurso || "").toUpperCase());
     setCol("ORDEM_FILHO", valorSeguroVoucher_(payload.ordemFilho));
     setCol("REGIME", regra.regime);
-    setCol("PERIODO_REFERENCIA", valorSeguroVoucher_(payload.periodoReferencia));
+    setCol("PERIODO_REFERENCIA", (typeof voucherPeriodoParaGravar_ === "function"
+      ? voucherPeriodoParaGravar_(payload.periodoReferencia)
+      : valorSeguroVoucher_(payload.periodoReferencia)));
     setCol("PERCENTUAL_APLICADO", regra.percentual);
 
     setCol("TIPO_DOCUMENTO_VINCULO", tipoDocVinculo);

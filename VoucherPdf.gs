@@ -377,7 +377,9 @@ function gerarHtmlDocumentoVoucher_(dados) {
    * formatarCpfVoucher_ que devolve o zero à esquerda que o Sheets come. */
   const cpf = formatarCpfVoucher_(reg.CPF_SOLICITANTE || "");
   const curso = reg.CURSO || "";
-  const periodo = reg.PERIODO_REFERENCIA || "";
+  /* Normalizado: sem isto o certificado sairia com "semestre letivo de Thu
+     Jan 01 2026 05:00:00 GMT-0300". Ver voucherPeriodoTexto_. */
+  const periodo = voucherPeriodoTexto_(reg.PERIODO_REFERENCIA);
   const regime = String(reg.REGIME || "").toUpperCase();
 
   /* Fantasia = "instituição"; razão social = "mantida pela"; e o CNPJ é o
@@ -454,6 +456,24 @@ function gerarHtmlDocumentoVoucher_(dados) {
       "-webkit-print-color-adjust:exact;print-color-adjust:exact;}" +
     ".pagina{position:relative;width:210mm;min-height:297mm;box-sizing:border-box;" +
       "padding:0 0 40mm;overflow:hidden;page-break-inside:avoid;}" +
+
+    /* A PRÉVIA TEM QUE PARECER UMA FOLHA — pedido do usuário em 13/08/2026.
+     *
+     * O documento sempre teve A4 em milímetros, mas isso vale para o PDF.
+     * Na prévia, que abre numa aba do navegador, a página era um bloco branco
+     * encostado no canto superior esquerdo de uma tela branca: não dava para
+     * ver onde a folha começava nem onde terminava, e portanto não dava para
+     * conferir margem, corte de rodapé nem se o conteúdo cabe.
+     *
+     * Só em `@media screen`: no papel, nada disto existe — fundo cinza e
+     * sombra em PDF seriam tinta desperdiçada, e a conversão do Apps Script
+     * ignora o bloco de tela por definição. O documento impresso continua
+     * exatamente o mesmo. */
+    "@media screen{" +
+      "body{background:#e9edf3;padding:18px 0;}" +
+      ".pagina{margin:0 auto;background:#fff;" +
+        "box-shadow:0 2px 6px rgba(15,39,71,.12),0 12px 34px rgba(15,39,71,.18);}" +
+    "}" +
 
     /* ── cabeçalho: logo à esquerda, faixas à direita ── */
     ".cab{width:100%;display:block;}" +
@@ -542,7 +562,9 @@ function gerarHtmlOficioEscolaVoucher_(dados) {
   const beneficiario = reg.NOME_BENEFICIARIO || nomeSolicitante;
   const modalidade = reg.MODALIDADE || "";
   const curso = reg.CURSO || "";
-  const periodo = reg.PERIODO_REFERENCIA || "";
+  /* Normalizado: sem isto o certificado sairia com "semestre letivo de Thu
+     Jan 01 2026 05:00:00 GMT-0300". Ver voucherPeriodoTexto_. */
+  const periodo = voucherPeriodoTexto_(reg.PERIODO_REFERENCIA);
 
   return (
     "<!DOCTYPE html>" +

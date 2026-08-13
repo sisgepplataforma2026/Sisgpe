@@ -72,8 +72,62 @@ function VOUCHER_STATUS_OCUPA_PERIODO_() {
  * posição — quem digita depressa inverte, e inverter não pode virar um ano
  * "2" que nunca casa com nada e desliga a trava em silêncio.
  */
+/**
+ * O PERÍODO VOLTANDO A SER TEXTO — porque o Google Sheets o transforma em data.
+ *
+ * DEFEITO MEDIDO NA PLANILHA REAL EM 13/08/2026, numa solicitação criada
+ * naquele mesmo dia. A tela grava `"2026/1"`. O Sheets lê isso como
+ * **1º de janeiro de 2026** e guarda um Date. Na tela, a coluna Período
+ * mostrava `Thu Jan 01 2026 05:00:00 GMT-0300 (Horário Padrão de Brasília)`.
+ *
+ * O ESTRAGO NÃO É A FEIURA. É que o semestre some: `voucherPeriodoPartes_`
+ * lia o ano (2026 está no texto da data) e não achava o "1". Sem semestre, a
+ * janela vira INCERTO em vez de CONFLITA — ou seja, a trava que o usuário
+ * pediu ("não pode gerar duas vezes para a mesma pessoa") passava a AVISAR
+ * em vez de BLOQUEAR. Silenciosamente.
+ *
+ * POR QUE O TESTE NÃO PEGOU, e isto vale registrar: o emulador guarda
+ * `"2026/1"` como string, porque é um objeto JavaScript. O Sheets converte,
+ * porque interpreta o que se escreve como se alguém tivesse digitado. O
+ * emulador é fiel em quase tudo; nisto, não é. Foi preciso ver a tela.
+ *
+ * A REGRA DE RECONSTRUÇÃO, e ela tem uma armadilha: quando o valor é um
+ * Date, o MÊS é o dígito do semestre — "2026/2" virou fevereiro, não julho.
+ * Então mês 1 ou 2 é o próprio semestre. Mês de 3 em diante veio de outra
+ * origem (um seletor de mês, por exemplo) e aí o semestre se deriva do
+ * calendário: até junho é o primeiro, de julho em diante é o segundo.
+ */
+function voucherPeriodoTexto_(periodo) {
+  if (periodo instanceof Date && !isNaN(periodo.getTime())) {
+    var ano = periodo.getFullYear();
+    var mes = periodo.getMonth() + 1;
+    var sem = (mes === 1 || mes === 2) ? mes : (mes <= 6 ? 1 : 2);
+    return ano + "/" + sem;
+  }
+  /* O apóstrofo protetor do Sheets não faz parte do valor, mas aparece em
+   * cópia manual de célula. Sai aqui para não virar parte do período. */
+  return String(periodo == null ? "" : periodo).replace(/^'/, "").trim();
+}
+
+/**
+ * O valor a GRAVAR, protegido contra a conversão do Sheets.
+ *
+ * O apóstrofo inicial é a forma que a planilha entende como "isto é texto,
+ * não converta". Ele não faz parte do valor: `getValue()` devolve "2026/1"
+ * sem ele. E se em algum caminho ele sobrar, `voucherPeriodoTexto_` o remove
+ * na leitura — os dois lados se protegem, e nenhum depende do outro.
+ *
+ * NÃO TESTADO no emulador, e não tem como ser: gas.js guarda string como
+ * string e nunca converteu nada. Isto se confere na planilha real, olhando
+ * se a célula do período mostra "2026/1" ou uma data.
+ */
+function voucherPeriodoParaGravar_(periodo) {
+  var t = voucherPeriodoTexto_(periodo);
+  return t ? "'" + t : "";
+}
+
 function voucherPeriodoPartes_(periodo) {
-  var t = String(periodo || "").trim();
+  var t = voucherPeriodoTexto_(periodo);
   if (!t) return { ano: "", semestre: "" };
 
   var nums = t.match(/\d+/g) || [];
@@ -285,7 +339,13 @@ function voucherTipoSolicitacao_(hist) {
  */
 function voucherPeriodoMensagemBloqueio_(bloqueio, dados) {
   var b = bloqueio || {};
-  var quando = b.periodo || "no mesmo período";
+  /* NORMALIZADO ANTES DE VIRAR FRASE. O período vem do que está gravado, e
+   * o que está gravado pode ser um Date (o Sheets converte) ou trazer o
+   * apóstrofo protetor. Sem isto, a recusa dizia literalmente
+   * "neste período ('2026/1)" — apóstrofo e tudo, na cara de quem tentou
+   * solicitar. Defeito meu, de 13/08/2026, achado pelo teste do ciclo no
+   * mesmo dia em que o apóstrofo foi introduzido. */
+  var quando = voucherPeriodoTexto_(b.periodo) || "no mesmo período";
   var partesNovo = voucherPeriodoPartes_((dados || {}).periodo);
   var partesVelho = voucherPeriodoPartes_(b.periodo);
 
@@ -308,7 +368,7 @@ function voucherPeriodoMensagemIncerteza_(incerto) {
   var i = incerto || {};
   var qual = [i.beneficiario, i.curso || i.modalidade, i.periodo].filter(Boolean).join(" · ");
   return "Pode ser a mesma bolsa — o período da anterior (" +
-    (i.periodo || "em branco") + ") não diz o semestre, então não dá para" +
+    (voucherPeriodoTexto_(i.periodo) || "em branco") + ") não diz o semestre, então não dá para" +
     " saber se é o mesmo." + (qual ? " Anterior: " + qual + "." : "") +
     (i.protocolo ? " Protocolo " + i.protocolo + "." : "") +
     " Confira antes de salvar.";

@@ -674,7 +674,7 @@ function voucherMemoriaAssociado(cpf, tokenSessao) {
       regime: String(v(ultima, "REGIME") || "").trim(),
       percentual: pct,
       origemPercentual: origemPct,
-      ultimoPeriodo: String(v(ultima, "PERIODO_REFERENCIA") || "").trim(),
+      ultimoPeriodo: voucherPeriodoTexto_(v(ultima, "PERIODO_REFERENCIA")),
       ultimoProtocolo: String(v(ultima, "NUMERO_PROTOCOLO") || "").trim(),
       /* O aviso que a tela mostra no topo, escrito aqui para as duas telas
        * que vão consumir isto dizerem exatamente a mesma coisa. */

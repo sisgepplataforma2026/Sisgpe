@@ -189,7 +189,7 @@ function voucherListarLixeira(tokenSessao) {
         protocolo: String(v(tudo[l], "NUMERO_PROTOCOLO") || "").trim(),
         nome: String(v(tudo[l], "NOME_SOLICITANTE") || "").trim(),
         curso: String(v(tudo[l], "CURSO") || "").trim(),
-        periodo: String(v(tudo[l], "PERIODO_REFERENCIA") || "").trim(),
+        periodo: voucherPeriodoTexto_(v(tudo[l], "PERIODO_REFERENCIA")),
         status: String(v(tudo[l], "STATUS_SOLICITACAO") || "").trim(),
         excluidoEm: v(tudo[l], "EXCLUIDO_EM") || "",
         excluidoPor: String(v(tudo[l], "EXCLUIDO_POR") || "").trim(),

@@ -127,7 +127,9 @@ function voucherCriarSolicitacao(dados, tokenSessao) {
       AREA_CURSO: String(dados.area || "").trim(),
       CURSO: String(dados.curso || "").trim(),
       REGIME: String(dados.regime || "").trim(),
-      PERIODO_REFERENCIA: String(dados.periodo || "").trim(),
+      PERIODO_REFERENCIA: (typeof voucherPeriodoParaGravar_ === "function"
+        ? voucherPeriodoParaGravar_(dados.periodo)
+        : String(dados.periodo || "").trim()),
       PERCENTUAL_APLICADO: dados.percentual === undefined || dados.percentual === ""
         ? "" : Number(dados.percentual),
       /* Comprovação e trilha */

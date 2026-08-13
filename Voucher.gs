@@ -1306,7 +1306,13 @@ function listarSolicitacoesVoucher() {
         curso: String(val(l, "CURSO") || ""),
         areaCurso: String(val(l, "AREA_CURSO", "ÁREA_CURSO", "AREA", "ÁREA") || ""),
         ordemFilho: String(val(l, "ORDEM_FILHO", "ORDEM DO FILHO") || ""),
-        periodoReferencia: String(val(l, "PERIODO_REFERENCIA", "PERÍODO_REFERENCIA", "PERIODO", "PERÍODO") || ""),
+        /* Normalizado, nunca cru: o Sheets guarda o período como Date e
+         * `String(Date)` vira "Thu Jan 01 2026 05:00:00 GMT-0300 (...)"
+         * — 55 caracteres numa coluna de 8, e o semestre perdido.
+         * Ver o cabeçalho de voucherPeriodoTexto_. */
+        periodoReferencia: (typeof voucherPeriodoTexto_ === "function"
+          ? voucherPeriodoTexto_(val(l, "PERIODO_REFERENCIA", "PERÍODO_REFERENCIA", "PERIODO", "PERÍODO"))
+          : String(val(l, "PERIODO_REFERENCIA", "PERÍODO_REFERENCIA", "PERIODO", "PERÍODO") || "")),
         percentual: String(val(l, "PERCENTUAL_APLICADO", "PERCENTUAL", "% DESCONTO", "DESCONTO") || ""),
         regime: String(val(l, "REGIME") || ""),
         /* PRIMEIRA_VEZ ou RENOVACAO, gravado na criação (VoucherPeriodo.gs).
