@@ -137,6 +137,18 @@
 #certNovaBox .cert-nv-org.recusa { background: #fef2f2; color: #dc2626; }
 #certNovaBox .cert-nv-aviso { background: #f8fafc; border: 1px solid #cbd5e1; border-left: 3px solid #1565C0; border-radius: 8px; padding: 8px 11px; font-size: 12px; color: #334155; margin-bottom: 7px; line-height: 1.5; }
 #certNovaBox .cert-nv-aviso.alerta { background: #fffbeb; border-color: #fcd34d; border-left-color: #d97706; color: #92400e; font-weight: 700; }
+.cert-linha-filtros th { padding: 4px 8px 8px !important; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+.cert-filtro-col { width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 7px; background: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px; padding: 4px 6px; color: #334155; outline: none; font-weight: 600; }
+.cert-filtro-col:focus { border-color: #1565C0; box-shadow: 0 0 0 3px rgba(21,101,192,.10); }
+.cert-filtro-col.ativo { border-color: #1565C0; background: #eff6ff; }
+.cert-filtro-data { display: inline-flex; align-items: center; gap: 6px; }
+.cert-filtro-lbl { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: #94a3b8; }
+.cert-input-data { padding: 7px 9px; font-size: 12px; }
+/* Barra de acao em massa: so existe quando ha selecao. Barra fixa com botao
+   vermelho permanente e convite a clique acidental. */
+.cert-barra-sel { display: none; align-items: center; gap: 12px; padding: 9px 14px; margin-bottom: 10px; border-radius: 10px; background: #eff6ff; border: 1px solid #bfdbfe; }
+.cert-barra-sel.ativo { display: flex; }
+.cert-barra-sel-txt { font-size: 12.5px; font-weight: 800; color: #1e3a8a; flex: 1; }
 #certNovaBox .cert-nv-trava { background: #fef2f2; border: 1.5px solid #fecaca; border-left: 4px solid #dc2626; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
 #certNovaBox .cert-nv-trava-tit { font-size: 13px; font-weight: 900; color: #991b1b; display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
 #certNovaBox .cert-nv-trava-l { font-size: 12px; color: #7f1d1d; line-height: 1.55; }
@@ -177,15 +189,15 @@
 #certEnvioBox .cert-env-hist-linha { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid #f1f5f9; }
 #certEnvioBox .cert-env-hist-quando { color: #94a3b8; font-weight: 700; white-space: nowrap; font-size: 11px; }
 #certEnvioBox .cert-env-vazio { font-size: 12px; color: #94a3b8; font-style: italic; }
-#certModalBox .cert-modal-head, #certEnvioBox .cert-modal-head, #certNovaBox .cert-modal-head { padding: 18px 22px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
-#certModalBox .cert-modal-head-l, #certEnvioBox .cert-modal-head-l, #certNovaBox .cert-modal-head-l { display: flex; align-items: center; gap: 12px; }
-#certModalBox .cert-modal-ico, #certEnvioBox .cert-modal-ico, #certNovaBox .cert-modal-ico { width: 40px; height: 40px; border-radius: 11px; background: linear-gradient(135deg, #0b3b75, #1565C0); display: flex; align-items: center; justify-content: center; font-size: 18px; }
-#certModalBox .cert-modal-title, #certEnvioBox .cert-modal-title, #certNovaBox .cert-modal-title { font-size: 15px; font-weight: 900; color: #0f172a; }
-#certModalBox .cert-modal-sub, #certEnvioBox .cert-modal-sub, #certNovaBox .cert-modal-sub   { font-size: 11px; color: #64748b; margin-top: 2px; }
-#certModalBox .cert-modal-body, #certEnvioBox .cert-modal-body, #certNovaBox .cert-modal-body  { padding: 20px 22px; overflow-y: auto; flex: 1; }
-#certModalBox .cert-modal-foot, #certEnvioBox .cert-modal-foot, #certNovaBox .cert-modal-foot  { padding: 14px 22px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
-#certModalBox .cert-modal-close, #certEnvioBox .cert-modal-close, #certNovaBox .cert-modal-close { width: 36px; height: 36px; border-radius: 999px; border: 1.5px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer; font-size: 17px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: all .14s; }
-#certModalBox .cert-modal-close:hover, #certEnvioBox .cert-modal-close:hover, #certNovaBox .cert-modal-close:hover { background: #fee2e2; border-color: #dc2626; color: #dc2626; }
+#certModalBox .cert-modal-head, #certEnvioBox .cert-modal-head, #certNovaBox .cert-modal-head, #certExcluirBox .cert-modal-head { padding: 18px 22px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
+#certModalBox .cert-modal-head-l, #certEnvioBox .cert-modal-head-l, #certExcluirBox .cert-modal-head-l, #certNovaBox .cert-modal-head-l { display: flex; align-items: center; gap: 12px; }
+#certModalBox .cert-modal-ico, #certEnvioBox .cert-modal-ico, #certExcluirBox .cert-modal-ico, #certNovaBox .cert-modal-ico { width: 40px; height: 40px; border-radius: 11px; background: linear-gradient(135deg, #0b3b75, #1565C0); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+#certModalBox .cert-modal-title, #certEnvioBox .cert-modal-title, #certExcluirBox .cert-modal-title, #certNovaBox .cert-modal-title { font-size: 15px; font-weight: 900; color: #0f172a; }
+#certModalBox .cert-modal-sub, #certEnvioBox .cert-modal-sub, #certExcluirBox .cert-modal-sub, #certNovaBox .cert-modal-sub   { font-size: 11px; color: #64748b; margin-top: 2px; }
+#certModalBox .cert-modal-body, #certEnvioBox .cert-modal-body, #certExcluirBox .cert-modal-body, #certNovaBox .cert-modal-body  { padding: 20px 22px; overflow-y: auto; flex: 1; }
+#certModalBox .cert-modal-foot, #certEnvioBox .cert-modal-foot, #certExcluirBox .cert-modal-foot, #certNovaBox .cert-modal-foot  { padding: 14px 22px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
+#certModalBox .cert-modal-close, #certEnvioBox .cert-modal-close, #certExcluirBox .cert-modal-close, #certNovaBox .cert-modal-close { width: 36px; height: 36px; border-radius: 999px; border: 1.5px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer; font-size: 17px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: all .14s; }
+#certModalBox .cert-modal-close:hover, #certEnvioBox .cert-modal-close:hover, #certExcluirBox .cert-modal-close:hover, #certNovaBox .cert-modal-close:hover { background: #fee2e2; border-color: #dc2626; color: #dc2626; }
 #certModalBox .cert-info-grid, #certEnvioBox .cert-info-grid, #certNovaBox .cert-info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
 #certModalBox .cert-info-item, #certEnvioBox .cert-info-item, #certNovaBox .cert-info-item { display: flex; flex-direction: column; gap: 3px; }
 #certModalBox .cert-info-label, #certEnvioBox .cert-info-label, #certNovaBox .cert-info-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
@@ -267,39 +279,82 @@
             <div class="cert-card-sub" id="certTabelaSub">Carregando...</div>
           </div>
         </div>
+        <!-- FAIXA DE FILTROS — o que NAO cabe numa coluna estreita.
+             Status, modalidade e periodo desceram para a linha de filtro do
+             cabecalho, junto da coluna que cada um filtra. Manter os dois
+             lugares criaria dois controles para a mesma pergunta, e a hora em
+             que eles discordassem seria a hora em que alguem concluiria que a
+             lista esta errada. -->
         <div class="cert-filtros">
           <input type="text" class="cert-input cert-busca" id="certBusca" placeholder="🔍 Nome, CPF, protocolo...">
-          <select class="cert-select" id="certFiltroStatus">
-            <option value="">Todos os status</option>
-            <option value="PENDENTE">Pendente</option>
-            <option value="ANALISE">Em Análise</option>
-            <option value="APROVADO">Aprovado</option>
-            <option value="INDEFERIDO">Indeferido</option>
-            <option value="EMITIDO">Emitido</option>
-          </select>
-          <select class="cert-select" id="certFiltroModalidade">
-            <option value="">Todas as modalidades</option>
-            <option value="CRECHE">Creche</option>
-            <option value="EDUCACAO_INFANTIL">Ed. Infantil</option>
-            <option value="ENSINO_FUNDAMENTAL">Ens. Fundamental</option>
-            <option value="ENSINO_MEDIO">Ens. Médio</option>
-            <option value="TECNICO">Técnico</option>
-            <option value="GRADUACAO">Graduação</option>
-            <option value="POS_GRADUACAO">Pós-Graduação</option>
-          </select>
+          <div class="cert-filtro-data">
+            <span class="cert-filtro-lbl">Data</span>
+            <input type="date" class="cert-input cert-input-data" id="certFiltroDataDe" title="a partir de">
+            <span class="cert-filtro-lbl">até</span>
+            <input type="date" class="cert-input cert-input-data" id="certFiltroDataAte" title="até">
+          </div>
+          <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certLimparFiltros" style="display:none;">Limpar filtros</button>
         </div>
+      <div class="cert-barra-sel" id="certBarraSel">
+        <span class="cert-barra-sel-txt" id="certBarraSelTxt">0 selecionadas</span>
+        <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certSelLimpar">Limpar seleção</button>
+        <button type="button" class="cert-btn cert-btn-danger cert-btn-sm" id="certSelExcluir">🗑 Excluir</button>
       </div>
       <div class="cert-tabela-wrap">
         <table class="cert-tabela">
           <thead>
             <tr>
+              <th style="width:34px;text-align:center;"><input type="checkbox" id="certSelTodos" title="Selecionar os desta página"></th>
               <th>Protocolo</th><th>Solicitante</th><th>Escola</th>
               <th>Modalidade</th><th>Curso</th><th>Período</th>
               <th>Status</th><th>Data</th><th style="text-align:center;">Ações</th>
             </tr>
+            <!-- FILTRO POR COLUNA, embaixo do titulo dela.
+                 Pedido do usuario em 13/08/2026 apontando a propria linha de
+                 cabecalho. Cada controle fica sob a coluna que filtra: nao ha
+                 o que decifrar, e some a duvida de "qual campo filtra o que"
+                 que uma faixa generica sempre deixa. -->
+            <tr class="cert-linha-filtros">
+              <th></th>
+              <th><input type="text" class="cert-filtro-col" id="certFiltroProtocolo" placeholder="filtrar"></th>
+              <th><input type="text" class="cert-filtro-col" id="certFiltroSolicitante" placeholder="nome ou CPF"></th>
+              <th><input type="text" class="cert-filtro-col" id="certFiltroEscola" placeholder="filtrar"></th>
+              <th>
+                <select class="cert-filtro-col" id="certFiltroModalidade">
+                  <option value="">todas</option>
+                  <option value="CRECHE">Creche</option>
+                  <option value="EDUCACAO_INFANTIL">Ed. Infantil</option>
+                  <option value="ENSINO_FUNDAMENTAL">Ens. Fundamental</option>
+                  <option value="ENSINO_MEDIO">Ens. Médio</option>
+                  <option value="TECNICO">Técnico</option>
+                  <option value="GRADUACAO">Graduação</option>
+                  <option value="POS_GRADUACAO">Pós-Graduação</option>
+                  <option value="MESTRADO">Mestrado</option>
+                  <option value="DOUTORADO">Doutorado</option>
+                </select>
+              </th>
+              <th><input type="text" class="cert-filtro-col" id="certFiltroCurso" placeholder="filtrar"></th>
+              <!-- O periodo e montado a partir do que EXISTE na lista, nunca
+                   de uma lista fixa de anos: assim nao oferece periodo vazio
+                   nem esconde um que existe. -->
+              <th><select class="cert-filtro-col" id="certFiltroPeriodo"><option value="">todos</option></select></th>
+              <th>
+                <select class="cert-filtro-col" id="certFiltroStatus">
+                  <option value="">todos</option>
+                  <option value="PENDENTE">Pendente</option>
+                  <option value="ANALISE">Em Análise</option>
+                  <option value="APROVADO">Aprovado</option>
+                  <option value="INDEFERIDO">Indeferido</option>
+                  <option value="EMITIDO">Emitido</option>
+                  <option value="CANCELADO">Cancelado</option>
+                </select>
+              </th>
+              <th></th>
+              <th></th>
+            </tr>
           </thead>
           <tbody id="certTbody">
-            <tr><td colspan="9"><div class="cert-tabela-vazia">⏳ Carregando...</div></td></tr>
+            <tr><td colspan="10"><div class="cert-tabela-vazia">⏳ Carregando...</div></td></tr>
           </tbody>
         </table>
       </div>
@@ -515,6 +570,32 @@
      IESES" — e o cadastro tinha um campo só, o que impedia mandar a cópia
      do certificado para a faculdade certa.
      ══════════════════════════════════════════════════════════════════════ -->
+<div id="certExcluirOverlay" style="position:fixed;inset:0;background:rgba(15,23,42,.52);display:none;align-items:center;justify-content:center;padding:16px;z-index:10002;backdrop-filter:blur(3px);">
+  <div id="certExcluirBox" style="width:min(560px,100%);background:#fff;border-radius:18px;box-shadow:0 30px 80px rgba(0,20,60,.28);overflow:hidden;max-height:90vh;display:flex;flex-direction:column;font-family:'Plus Jakarta Sans',sans-serif;">
+    <div class="cert-modal-head">
+      <div class="cert-modal-head-l">
+        <div class="cert-modal-ico" style="background:linear-gradient(135deg,#b91c1c,#dc2626);">🗑</div>
+        <div>
+          <div class="cert-modal-title">Excluir solicitações</div>
+          <div class="cert-modal-sub">Vão para a lixeira — dá para restaurar</div>
+        </div>
+      </div>
+      <button class="cert-modal-close" id="certExcluirFechar">✕</button>
+    </div>
+    <div class="cert-modal-body">
+      <div id="certExcluirLista"></div>
+      <div style="margin-top:12px;">
+        <label class="cert-nv-lbl">Motivo (opcional, fica gravado na lixeira)</label>
+        <textarea class="cert-nv-in" id="certExcluirMotivo" rows="2" style="resize:vertical;width:100%;box-sizing:border-box;" placeholder="cadastro em duplicidade, teste, digitado por engano..."></textarea>
+      </div>
+    </div>
+    <div class="cert-modal-foot">
+      <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certExcluirCancelar">Cancelar</button>
+      <button type="button" class="cert-btn cert-btn-danger cert-btn-sm" id="certExcluirConfirmar">Mover para a lixeira</button>
+    </div>
+  </div>
+</div>
+
 <div id="certNovaOverlay">
   <div id="certNovaBox">
     <div class="cert-modal-head">
@@ -781,20 +862,193 @@ function atualizarMetricas(){
 }
 
 // ── Filtros
+/* Valor de um filtro, e a marca visual de que ele está ligado.
+   Filtro ativo que não se vê é a causa nº 1 de "sumiu tudo": alguém filtrou
+   ontem, voltou hoje e concluiu que o sistema perdeu os registros. */
+function filtroVal(id){
+  var el = g(id);
+  if(!el) return '';
+  var v = String(el.value||'').trim();
+  el.classList.toggle('ativo', !!v);
+  return v;
+}
+
+/* A data da linha vem como "13/08/2026 02:21" ou como Date já formatada.
+   Comparar texto de data dá errado no primeiro dia 10 do mês; aqui vira
+   número aaaammdd, que ordena e compara certo sempre. */
+function certDataNum(txt){
+  var m = String(txt||'').match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  if(m) return Number(m[3]+m[2]+m[1]);
+  var d = new Date(txt);
+  if(!isNaN(d.getTime())) return Number(String(d.getFullYear())
+    + ('0'+(d.getMonth()+1)).slice(-2) + ('0'+d.getDate()).slice(-2));
+  return 0;
+}
+function certDataNumISO(iso){
+  var m = String(iso||'').match(/(\d{4})-(\d{2})-(\d{2})/);
+  return m ? Number(m[1]+m[2]+m[3]) : 0;
+}
+
+/* O seletor de período é montado do que EXISTE na lista, nunca de uma lista
+   fixa de anos: assim ele não oferece período vazio nem esconde um que
+   existe. Remontado a cada carga, preservando o que estava escolhido. */
+function montarFiltroPeriodo(){
+  var sel = g('certFiltroPeriodo');
+  if(!sel) return;
+  var atual = sel.value;
+  var vistos = {};
+  _lista.forEach(function(s){
+    var p = String(s.periodoReferencia||s.periodo||'').trim();
+    if(p) vistos[p] = true;
+  });
+  var chaves = Object.keys(vistos).sort().reverse();
+  sel.innerHTML = '<option value="">todos</option>'
+    + chaves.map(function(p){ return '<option value="'+escHtml(p)+'">'+escHtml(p)+'</option>'; }).join('');
+  if(atual && chaves.indexOf(atual) > -1) sel.value = atual;
+}
+
 function aplicarFiltros(){
-  var busca  = normTxt(g('certBusca')           ? g('certBusca').value           : '');
-  var status = g('certFiltroStatus')             ? g('certFiltroStatus').value     : '';
-  var mod    = g('certFiltroModalidade')         ? g('certFiltroModalidade').value : '';
+  var busca  = normTxt(filtroVal('certBusca'));
+  var status = filtroVal('certFiltroStatus');
+  var mod    = filtroVal('certFiltroModalidade');
+  var prot   = normTxt(filtroVal('certFiltroProtocolo'));
+  var quem   = normTxt(filtroVal('certFiltroSolicitante'));
+  var esc    = normTxt(filtroVal('certFiltroEscola'));
+  var curso  = normTxt(filtroVal('certFiltroCurso'));
+  var per    = filtroVal('certFiltroPeriodo');
+  var de     = certDataNumISO(filtroVal('certFiltroDataDe'));
+  var ate    = certDataNumISO(filtroVal('certFiltroDataAte'));
+
+  /* Todos se combinam com E, não com OU: cada filtro estreita o que o
+     anterior deixou. É o que a pessoa espera ao ir preenchendo campo por
+     campo — e o contador embaixo do título reflete o conjunto. */
   _filtrada = _lista.filter(function(s){
     if(status && String(s.status||'').toUpperCase() !== status) return false;
     if(mod    && String(s.nivel||s.modalidade||'').toUpperCase() !== mod) return false;
+    if(per    && String(s.periodoReferencia||s.periodo||'').trim() !== per) return false;
+    if(prot   && normTxt(s.protocolo).indexOf(prot) === -1) return false;
+    /* Solicitante procura no nome E no CPF: quem tem o CPF na mão digita o
+       CPF, e obrigar a lembrar em qual campo cada coisa vai é atrito puro. */
+    if(quem   && normTxt([s.nome, s.cpf].join(' ')).indexOf(quem) === -1) return false;
+    if(esc    && normTxt(s.escola).indexOf(esc) === -1) return false;
+    if(curso  && normTxt(s.curso).indexOf(curso) === -1) return false;
+    if(de || ate){
+      var d = certDataNum(s.data);
+      if(!d) return false;                    // sem data não dá para afirmar
+      if(de  && d < de)  return false;
+      if(ate && d > ate) return false;
+    }
     if(busca){
       var txt = normTxt([s.nome,s.cpf,s.protocolo,s.escola,s.curso,s.periodoReferencia].join(' '));
       if(txt.indexOf(busca)===-1) return false;
     }
     return true;
   });
+
+  var algum = !!(busca||status||mod||prot||quem||esc||curso||per||de||ate);
+  if(g('certLimparFiltros')) g('certLimparFiltros').style.display = algum ? '' : 'none';
+
   _paginaAtual=1; renderTabela();
+}
+
+/* ── SELEÇÃO E EXCLUSÃO ────────────────────────────────────────────────────
+   "Excluir" aqui quer dizer MOVER PARA A LIXEIRA — decisão do usuário em
+   13/08/2026. A linha sai da lista e continua inteira na aba
+   Voucher_Excluidas, com quem tirou e quando. Ver VoucherLixeira.gs. */
+var _selecionados = {};
+
+function selecionadosLista(){ return Object.keys(_selecionados); }
+
+function atualizarBarraSelecao(){
+  var n = selecionadosLista().length;
+  var barra = g('certBarraSel');
+  if(barra) barra.classList.toggle('ativo', n > 0);
+  if(g('certBarraSelTxt')){
+    g('certBarraSelTxt').textContent = n === 1 ? '1 selecionada' : n + ' selecionadas';
+  }
+  if(g('certSelExcluir')) g('certSelExcluir').innerHTML = '🗑 Excluir' + (n ? ' ('+n+')' : '');
+  /* O "marcar todos" reflete a página, não a base: marcar 8.000 registros com
+     um clique é a forma mais rápida de esvaziar a lista sem querer. */
+  var cbs = document.querySelectorAll('.cert-sel-linha');
+  var marcados = 0;
+  cbs.forEach(function(c){ if(c.checked) marcados++; });
+  var todos = g('certSelTodos');
+  if(todos){
+    todos.checked = cbs.length > 0 && marcados === cbs.length;
+    todos.indeterminate = marcados > 0 && marcados < cbs.length;
+  }
+}
+
+function limparSelecao(){
+  _selecionados = {};
+  document.querySelectorAll('.cert-sel-linha').forEach(function(c){
+    c.checked = false;
+    var tr = c.closest('tr'); if(tr) tr.style.background = '';
+  });
+  atualizarBarraSelecao();
+}
+
+function confirmarExclusao(){
+  var protos = selecionadosLista();
+  if(!protos.length){ msg('Nenhuma solicitação selecionada.','warn'); return; }
+
+  var itens = _lista.filter(function(s){ return protos.indexOf(s.protocolo) > -1; });
+  var emitidas = itens.filter(function(s){ return String(s.status||'').toUpperCase()==='EMITIDO'; });
+
+  var html = '<div style="font-size:12.5px;color:#334155;line-height:1.6;">'
+    + itens.map(function(s){
+        return '<div style="padding:4px 0;border-bottom:1px solid #f1f5f9;">'
+          + '<strong>'+escHtml(s.protocolo)+'</strong> · '+escHtml(s.nome||'—')
+          + ' · '+escHtml(s.status||'—')+'</div>';
+      }).join('')
+    + '</div>';
+
+  /* O modal LISTA os protocolos, não diz "excluir 2 registros?". Quem confirma
+     precisa ver QUAIS — número não deixa perceber que um deles é o errado. */
+  var aviso = emitidas.length
+    ? '<div class="cert-nv-aviso alerta" style="margin-top:10px;">⚠ '
+      + (emitidas.length===1 ? 'Uma delas já foi EMITIDA' : emitidas.length+' já foram EMITIDAS')
+      + ' — o certificado pode já estar com o associado e com a escola. '
+      + 'A linha vai para a lixeira e pode ser restaurada, mas o documento continua existindo lá fora.</div>'
+    : '';
+
+  if(g('certExcluirLista')) g('certExcluirLista').innerHTML = html + aviso;
+  if(g('certExcluirMotivo')) g('certExcluirMotivo').value = '';
+  var o = g('certExcluirOverlay');
+  if(o){ o.style.display='flex'; o.classList.add('ativo'); }
+}
+
+function fecharExclusao(){
+  var o = g('certExcluirOverlay');
+  if(o){ o.style.display='none'; o.classList.remove('ativo'); }
+}
+
+function executarExclusao(){
+  var protos = selecionadosLista();
+  if(!protos.length){ fecharExclusao(); return; }
+  var btn = g('certExcluirConfirmar');
+  setBtnLoad(btn,'Excluindo...');
+  google.script.run
+    .withSuccessHandler(function(r){
+      resetBtn(btn);
+      if(!r||!r.ok){ msg((r&&r.mensagem)||'Erro ao excluir.','erro'); return; }
+      fecharExclusao();
+      limparSelecao();
+      msg('🗑 '+r.mensagem+' Dá para restaurar pela lixeira.','ok');
+      carregarLista();
+    })
+    .withFailureHandler(function(err){ resetBtn(btn); msg('Erro: '+((err&&err.message)||''),'erro'); })
+    .voucherExcluirSolicitacoes(protos,
+      g('certExcluirMotivo') ? g('certExcluirMotivo').value : '', certToken());
+}
+
+function limparFiltros(){
+  ['certBusca','certFiltroProtocolo','certFiltroSolicitante','certFiltroEscola',
+   'certFiltroCurso','certFiltroDataDe','certFiltroDataAte','certFiltroStatus',
+   'certFiltroModalidade','certFiltroPeriodo'].forEach(function(id){
+    if(g(id)){ g(id).value=''; g(id).classList.remove('ativo'); }
+  });
+  aplicarFiltros();
 }
 
 window.certFiltrarPorStatus = function(status){
@@ -821,7 +1075,7 @@ function renderTabela(){
   if(!tbody) return;
   if(!_filtrada.length){
     if(sub) sub.textContent='Nenhuma solicitação encontrada';
-    tbody.innerHTML='<tr><td colspan="9"><div class="cert-tabela-vazia">📭 Nenhuma solicitação encontrada.</div></td></tr>';
+    tbody.innerHTML='<tr><td colspan="10"><div class="cert-tabela-vazia">📭 Nenhuma solicitação encontrada.</div></td></tr>';
     if(g('certPagWrap')) g('certPagWrap').style.display='none';
     return;
   }
@@ -834,7 +1088,13 @@ function renderTabela(){
   pag.forEach(function(s){
     var bs='width:28px;height:28px;border-radius:7px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;border:1px solid #e2e8f0;background:#fff;color:#475569;';
     var podeEmitir=s.status==='APROVADO'||s.status==='EMITIDO';
-    html+='<tr>'
+    var marcado = !!_selecionados[s.protocolo];
+    html+='<tr'+(marcado?' style="background:#eff6ff;"':'')+'>'
+      /* A CAIXA DE SELEÇÃO FICA NA PRIMEIRA COLUNA, e não dentro de Ações.
+         Decisão do usuário em 13/08/2026. A coluna de ações já carrega três
+         botões e é a mais apertada da tabela; uma caixa ali seria clicada por
+         engano no lugar do botão vizinho — e o vizinho emite documento. */
+      +'<td style="text-align:center;"><input type="checkbox" class="cert-sel-linha" data-prot="'+escHtml(s.protocolo||'')+'"'+(marcado?' checked':'')+'></td>'
       +'<td><strong style="font-size:12px;color:#002f6c;">'+escHtml(s.protocolo||'—')+'</strong></td>'
       +'<td><div style="font-weight:700;font-size:12.5px;color:#0f172a;">'+escHtml(s.nome||'—')
         /* A etiqueta só aparece quando o dado existe. Linha antiga, gravada
@@ -891,6 +1151,17 @@ function renderTabela(){
     btn.addEventListener('click',function(){
       var s=linhaDoBotao(this);
       if(s){_solAtual=s; gerarDocumento('CERTIFICADO');}
+    });
+  });
+  tbody.querySelectorAll('.cert-sel-linha').forEach(function(cb){
+    cb.addEventListener('change', function(){
+      var p = this.getAttribute('data-prot');
+      if(this.checked) _selecionados[p] = true; else delete _selecionados[p];
+      /* Redesenhar a tabela inteira a cada clique perderia o foco e faria a
+         lista piscar; só a linha e a barra mudam. */
+      var tr = this.closest('tr');
+      if(tr) tr.style.background = this.checked ? '#eff6ff' : '';
+      atualizarBarraSelecao();
     });
   });
   tbody.querySelectorAll('.cert-btn-enviar').forEach(function(btn){
@@ -2022,11 +2293,18 @@ function gerarDocumento(tipo){
 // ── Carregar
 function carregarLista(){
   var tbody=g('certTbody');
-  if(tbody) tbody.innerHTML='<tr><td colspan="9"><div class="cert-tabela-vazia">⏳ Carregando...</div></td></tr>';
+  if(tbody) tbody.innerHTML='<tr><td colspan="10"><div class="cert-tabela-vazia">⏳ Carregando...</div></td></tr>';
   google.script.run
     .withSuccessHandler(function(lista){
       _lista=Array.isArray(lista)?lista:[];
       _filtrada=_lista.slice();
+      /* A seleção NÃO sobrevive a uma recarga: os protocolos podem ter mudado
+         de status, saído da lista ou já terem sido excluídos por outra aba.
+         Manter marcado o que não se sabe mais o que é seria o pior estado
+         possível para uma ação destrutiva. */
+      _selecionados = {};
+      atualizarBarraSelecao();
+      montarFiltroPeriodo();
       atualizarMetricas(); aplicarFiltros();
     })
     .withFailureHandler(function(err){msg('Erro ao carregar: '+((err&&err.message)||''),'erro');})
@@ -2064,6 +2342,36 @@ function ligarFecharPorClique(overlay, fechar){
 // ── Init
 function initInterno(){
   if(g('certBusca'))           g('certBusca').addEventListener('input',function(){clearTimeout(_buscaTimer);_buscaTimer=setTimeout(aplicarFiltros,300);});
+  /* Os filtros de coluna: texto com atraso curto, seletor e data na hora. */
+  ['certFiltroProtocolo','certFiltroSolicitante','certFiltroEscola','certFiltroCurso']
+    .forEach(function(id){
+      if(g(id)) g(id).addEventListener('input', function(){
+        clearTimeout(_buscaTimer); _buscaTimer = setTimeout(aplicarFiltros, 250);
+      });
+    });
+  ['certFiltroPeriodo','certFiltroDataDe','certFiltroDataAte'].forEach(function(id){
+    if(g(id)) g(id).addEventListener('change', aplicarFiltros);
+  });
+  if(g('certLimparFiltros')) g('certLimparFiltros').addEventListener('click', limparFiltros);
+
+  // ── seleção e exclusão (lixeira)
+  if(g('certSelTodos')) g('certSelTodos').addEventListener('change', function(){
+    var marcar = this.checked;
+    document.querySelectorAll('.cert-sel-linha').forEach(function(c){
+      c.checked = marcar;
+      var p = c.getAttribute('data-prot');
+      if(marcar) _selecionados[p] = true; else delete _selecionados[p];
+      var tr = c.closest('tr'); if(tr) tr.style.background = marcar ? '#eff6ff' : '';
+    });
+    atualizarBarraSelecao();
+  });
+  if(g('certSelLimpar'))       g('certSelLimpar').addEventListener('click', limparSelecao);
+  if(g('certSelExcluir'))      g('certSelExcluir').addEventListener('click', confirmarExclusao);
+  if(g('certExcluirFechar'))   g('certExcluirFechar').addEventListener('click', fecharExclusao);
+  if(g('certExcluirCancelar')) g('certExcluirCancelar').addEventListener('click', fecharExclusao);
+  if(g('certExcluirConfirmar'))g('certExcluirConfirmar').addEventListener('click', executarExclusao);
+  ligarFecharPorClique(g('certExcluirOverlay'), fecharExclusao);
+
   if(g('certFiltroStatus'))    g('certFiltroStatus').addEventListener('change',aplicarFiltros);
   if(g('certFiltroModalidade'))g('certFiltroModalidade').addEventListener('change',aplicarFiltros);
   if(g('certBtnRecarregar'))   g('certBtnRecarregar').addEventListener('click',carregarLista);
