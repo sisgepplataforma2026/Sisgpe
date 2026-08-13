@@ -305,6 +305,43 @@ function logoSindicatoVoucher_() {
     LOGO_VOUCHER_FILE_ID, "sisgep_logo_sindicato_v1", "Logo do sindicato");
 }
 
+/**
+ * O CERTIFICADO, fiel ao documento que o sindicato já emite.
+ *
+ * O usuário mandou o PDF real em 13/08/2026 — o do ÁTILA/ISABELA — e disse
+ * "esse é o texto de base para voucher de dependente", "olha o layout de
+ * página, marca d'água", "precisamos ajustar o texto". O que existia aqui era
+ * um documento inventado por mim: caixa com borda azul, faixa dourada, um
+ * quadro verde gigante com o percentual. Bonito e errado — a escola conhece o
+ * papel do sindicato, e um documento que não se parece com aquele levanta
+ * dúvida em vez de resolver.
+ *
+ * O QUE O PDF REAL TEM, e está reproduzido aqui:
+ *
+ *   • A4, cabeçalho com a logo à esquerda e duas faixas (rosa sobre azul) à
+ *     direita;
+ *   • marca d'água do símbolo em cinza claríssimo, ancorada no canto
+ *     INFERIOR DIREITO e sangrando para fora da página;
+ *   • dois parágrafos, sem quadros nem caixas — o texto é o documento;
+ *   • assinatura manuscrita sobre o nome do presidente;
+ *   • rodapé com os contatos e a faixa azul do Salmos 128:2.
+ *
+ * O QUE FOI ACRESCENTADO AO MODELO, com autorização explícita: o QR e o
+ * código de validação, discretos no rodapé. Eles não existem no papel de
+ * hoje, e são o único jeito de a escola conferir se o certificado é
+ * verdadeiro sem telefonar para o sindicato.
+ *
+ * MANTENEDORA NÃO É CAMPO NOVO. O documento diz "instituição MULTIVIX –
+ * VITÓRIA, mantida pela Empresa Brasileira de Ensino... EMBRAE, inscrita no
+ * CNPJ 01.936.248/0001-21". Isso é, respectivamente, o NOME FANTASIA, a RAZÃO
+ * SOCIAL e o CNPJ — os três já no cadastro de Escolas. Decisão do usuário:
+ * "ficam na escola".
+ *
+ * PARA DEPENDENTE, A INSTITUIÇÃO É UMA SÓ: onde o titular trabalha é onde o
+ * dependente estuda, e é por isso que o documento cita uma única empresa.
+ * Confirmado pelo usuário. Quando o beneficiário é o próprio titular, o texto
+ * perde a oração "dependente de" e segue igual.
+ */
 function gerarHtmlDocumentoVoucher_(dados) {
   const reg = dados.reg || {};
 
@@ -312,183 +349,153 @@ function gerarHtmlDocumentoVoucher_(dados) {
   const codigo = dados.codigo || "";
   const percentual = Number(dados.percentual || 70);
   const percentualExtenso = percentualPorExtensoVoucher_(percentual);
-  const dataExtenso = dataExtensoVoucher_(dados.dataEmissao || new Date());
 
   const nomeSolicitante = reg.NOME_SOLICITANTE || "";
-  const cpf = formatarCpfVoucher_(reg.CPF_SOLICITANTE || "");
-  const rg = dados.rg || "—";
-  const escola = reg.ESCOLA_SELECIONADA || "";
   const beneficiario = reg.NOME_BENEFICIARIO || nomeSolicitante;
-  const modalidade = reg.MODALIDADE || "";
+  const tipoBenef = String(reg.TIPO_BENEFICIARIO || "").toUpperCase();
+  /* Dependente é qualquer beneficiário que não seja o próprio titular — e a
+   * comparação de nome cobre o caso de a coluna vir vazia em linha antiga. */
+  const ehDependente = (tipoBenef && tipoBenef !== "TITULAR") ||
+    (!!beneficiario && !!nomeSolicitante &&
+      beneficiario.trim().toUpperCase() !== nomeSolicitante.trim().toUpperCase());
+
+  const rg = dados.rg || reg.RG || "";
   const curso = reg.CURSO || "";
   const periodo = reg.PERIODO_REFERENCIA || "";
-  const regime = reg.REGIME || "";
-const documentos =
-  (dados.documentos && dados.documentos.length)
-    ? dados.documentos
-    : ["Documento pessoal", "Comprovante de vínculo"];
+  const regime = String(reg.REGIME || "").toUpperCase();
 
-const qrCodeUrl = gerarQrCodeVoucherUrl_(codigo);
-const assinaturaImg = assinaturaPresidenteVoucher_();
-const instituicao = reg.INSTITUICAO_ENSINO || "";
-const cnpjInstituicao = reg.CNPJ_INSTITUICAO || "";
+  /* Fantasia = "instituição"; razão social = "mantida pela"; e o CNPJ é o
+   * dela. Quando a fantasia não estiver preenchida, a razão social ocupa o
+   * lugar da instituição e a oração "mantida pela" desaparece — repetir o
+   * mesmo nome duas vezes na mesma frase é pior que omitir. */
+  const fantasia = String(reg.ESCOLA_FANTASIA || "").trim();
+  const razaoSocial = String(reg.ESCOLA_SELECIONADA || reg.INSTITUICAO_ENSINO || "").trim();
+  const instituicaoTexto = fantasia || razaoSocial;
+  const mantenedora = (fantasia && razaoSocial && fantasia !== razaoSocial) ? razaoSocial : "";
+  const cnpj = formatarCnpj_(reg.CNPJ_ESCOLA || reg.CNPJ_INSTITUICAO || "");
 
-  const docsHtml = documentos.map(function(d) {
-    return "<li>" + escHtmlVoucher_(d) + "</li>";
-  }).join("");
+  /* "semestre letivo de 2026/2" ou "ano letivo de 2026": o documento diz o
+   * que a bolsa é, e bolsa anual não tem semestre. */
+  const rotuloPeriodo = (regime.indexOf("ANUAL") > -1 ? "ano letivo de " : "semestre letivo de ")
+    + periodo;
+
+  const qrCodeUrl = gerarQrCodeVoucherUrl_(codigo);
+  const assinaturaImg = assinaturaPresidenteVoucher_();
+  const logoImg = logoSindicatoVoucher_();
+
+  function frag(rotulo, valor) {
+    return valor ? rotulo + "<strong>" + escHtmlVoucher_(valor) + "</strong>" : "";
+  }
+
+  /* O CORPO É UMA FRASE SÓ, como no papel. Montada por pedaços porque cada
+   * oração some quando o dado dela não existe: sem RG não se escreve
+   * "portador da carteira de identidade nº —", que é pior que não dizer. */
+  const corpo =
+    "O Sindicato dos Educadores Técnico-Administrativos em Estabelecimentos de Ensino " +
+    "Particular no Estado do Espírito Santo – <strong>SINDEDUCAÇÃO-ES</strong>, nos termos do " +
+    "convênio firmado com o Sindicato das Empresas Particulares de Ensino do Estado do " +
+    "Espírito Santo – <strong>SINEPE-ES</strong>, certifica que " +
+    "<strong>" + escHtmlVoucher_(beneficiario) + "</strong>" +
+    (ehDependente ? ", dependente de <strong>" + escHtmlVoucher_(nomeSolicitante) + "</strong>" : "") +
+    frag(", portador da carteira de identidade nº ", rg) +
+    frag(", empregado da instituição ", instituicaoTexto) +
+    frag(", mantida pela ", mantenedora) +
+    (cnpj ? ", inscrita no CNPJ sob nº <strong>" + escHtmlVoucher_(cnpj) + "</strong>" : "") +
+    " encontra-se regularmente habilitado ao benefício de <strong>" +
+    escHtmlVoucher_(percentual) + "% (" + escHtmlVoucher_(percentualExtenso) + ")</strong> " +
+    "de desconto sobre a matrícula, rematrícula e semestralidade" +
+    frag(" do Curso de ", curso) +
+    (periodo ? ", referente ao " + escHtmlVoucher_(rotuloPeriodo) : "") +
+    ", após verificação do atendimento aos requisitos exigidos para a concessão do benefício.";
 
   return (
     "<!DOCTYPE html>" +
     "<html lang='pt-BR'>" +
     "<head>" +
     "<meta charset='UTF-8'>" +
-    "<title>Voucher de Bolsa - " + escHtmlVoucher_(protocolo) + "</title>" +
+    "<title>Certificado de Habilitação à Bolsa de Estudos - " + escHtmlVoucher_(protocolo) + "</title>" +
     "<style>" +
-    "@page{size:A4 portrait;margin:14mm 13mm;}" +
-    "html,body{width:184mm;}" +
-    "body{font-family:Arial,sans-serif;color:#111827;margin:0;background:#fff;" +
+    /* Milímetro, nunca pixel: a conversão para PDF do Apps Script não garante
+     * 96dpi, e altura em px joga o rodapé para uma segunda página em branco. */
+    "@page{size:A4 portrait;margin:0;}" +
+    "html,body{margin:0;padding:0;background:#fff;}" +
+    "body{font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;" +
       "-webkit-print-color-adjust:exact;print-color-adjust:exact;}" +
-    /* Altura em MILÍMETROS, não em pixel.
-     *
-     * Estava min-height:940px. A área útil de um A4 com estas margens tem
-     * ~269mm, que a 96dpi dá ~1017px — mas a conversão para PDF do Apps
-     * Script não usa 96dpi de forma garantida, e 940px + padding passava do
-     * limite em algumas renderizações, jogando o rodapé para uma segunda
-     * página em branco. Milímetro é absoluto na impressão; pixel não é. */
-    ".doc{border:2px solid #002f6c;padding:8mm 9mm;min-height:262mm;" +
-      "box-sizing:border-box;position:relative;page-break-inside:avoid;}" +
-    ".top{display:flex;align-items:center;justify-content:space-between;border-bottom:4px solid #C9A84C;padding-bottom:16px;margin-bottom:24px;}" +
-    ".brand{display:flex;align-items:center;gap:14px;}" +
-    ".logo{width:82px;height:auto;}" +
-    ".brand-title{font-size:20px;font-weight:900;color:#002f6c;text-transform:uppercase;line-height:1.1;}" +
-    ".brand-sub{font-size:11px;color:#64748b;margin-top:4px;}" +
-    ".proto{text-align:right;font-size:11px;color:#64748b;line-height:1.5;}" +
-    ".proto strong{display:block;color:#002f6c;font-size:15px;margin-top:2px;}" +
-    ".title{text-align:center;margin:30px 0 24px;}" +
-    ".title h1{margin:0;color:#002f6c;font-size:24px;text-transform:uppercase;letter-spacing:.08em;}" +
-    ".title .bar{width:90px;height:3px;background:#C9A84C;margin:12px auto 0;}" +
-    ".texto{font-size:14.5px;line-height:1.85;text-align:justify;margin-top:18px;}" +
-    ".box{background:#f8fafc;border:1px solid #cbd5e1;border-radius:12px;padding:16px 18px;margin:22px 0;}" +
-    ".grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 22px;font-size:13px;}" +
-    ".label{color:#64748b;font-size:10px;text-transform:uppercase;font-weight:800;letter-spacing:.08em;display:block;margin-bottom:3px;}" +
-    ".val{font-weight:800;color:#0f172a;}" +
-    ".desconto{background:#ecfdf5;border:2px solid #10b981;border-radius:14px;padding:18px;text-align:center;margin:24px 0;}" +
-    ".desconto .n{font-size:42px;font-weight:900;color:#047857;line-height:1;}" +
-    ".desconto .t{font-size:13px;color:#065f46;margin-top:8px;font-weight:700;}" +
-    ".docs{font-size:12.5px;color:#334155;line-height:1.6;margin-top:6px;}" +
-    ".assinatura{margin-top:58px;text-align:center;}" +
-    ".linha{width:270px;border-top:1px solid #111827;margin:0 auto 8px;}" +
-    ".pres{font-size:13px;font-weight:800;color:#111827;}" +
-    ".cargo{font-size:11px;color:#64748b;margin-top:2px;}" +
-    ".validacao{margin-top:34px;background:#f8fafc;border:1px dashed #94a3b8;border-radius:10px;padding:12px;font-size:11px;color:#475569;}" +
-    ".footer{position:absolute;left:30px;right:30px;bottom:18px;border-top:1px solid #e2e8f0;padding-top:10px;font-size:10.5px;color:#64748b;text-align:center;line-height:1.5;}" +
+    ".pagina{position:relative;width:210mm;min-height:297mm;box-sizing:border-box;" +
+      "padding:0 0 40mm;overflow:hidden;page-break-inside:avoid;}" +
+
+    /* ── cabeçalho: logo à esquerda, faixas à direita ── */
+    ".cab{display:flex;align-items:flex-start;justify-content:space-between;padding:12mm 15mm 0;}" +
+    ".cab-logo{width:52mm;height:auto;}" +
+    ".faixas{position:relative;width:78mm;height:16mm;margin-top:2mm;}" +
+    ".faixa-azul{position:absolute;right:-15mm;top:3mm;width:88mm;height:7mm;background:#00A0E3;transform:skewX(-20deg);}" +
+    ".faixa-rosa{position:absolute;right:-2mm;top:0;width:62mm;height:7mm;background:#E5187E;transform:skewX(-20deg);}" +
+
+    /* ── marca d'água: símbolo no canto inferior direito, sangrando ── */
+    ".dagua{position:absolute;right:-28mm;bottom:18mm;width:120mm;opacity:.07;" +
+      "filter:grayscale(100%);z-index:0;pointer-events:none;}" +
+
+    ".corpo{position:relative;z-index:1;padding:0 20mm;}" +
+    "h1{text-align:center;font-size:15pt;font-weight:bold;color:#1a1a1a;" +
+      "margin:16mm 0 12mm;letter-spacing:.02em;}" +
+    "p{font-size:11pt;line-height:1.75;text-align:justify;margin:0 0 6mm;}" +
+
+    ".assinatura{margin-top:22mm;text-align:center;}" +
+    ".assinatura img{width:34mm;height:auto;display:block;margin:0 auto 1mm;}" +
+    ".pres{font-size:11pt;font-weight:bold;}" +
+    ".cargo{font-size:10pt;}" +
+
+    /* ── rodapé: contatos + faixa do salmo + a validação ── */
+    ".rodape{position:absolute;left:0;right:0;bottom:0;}" +
+    ".contatos{padding:0 15mm 3mm;font-size:8.5pt;color:#1565C0;line-height:1.5;" +
+      "display:flex;justify-content:space-between;align-items:flex-end;}" +
+    ".contatos div{white-space:nowrap;}" +
+    /* O QR fica AQUI, discreto, e não no meio do documento: foi acrescentado
+     * ao modelo com autorização, e o que é acréscimo não disputa espaço com o
+     * que a escola já sabe ler. */
+    ".valida{text-align:right;font-size:7.5pt;color:#64748b;line-height:1.4;}" +
+    ".valida img{width:16mm;height:16mm;display:block;margin-left:auto;}" +
+    ".salmo{background:#1565C0;color:#fff;text-align:center;font-style:italic;" +
+      "font-size:10pt;padding:2.5mm 4mm;}" +
     "</style>" +
     "</head>" +
     "<body>" +
-    "<div class='doc'>" +
+    "<div class='pagina'>" +
 
-    "<div class='top'>" +
-    "<div class='brand'>" +
-    "<img class='logo' src='" + escHtmlVoucher_(logoSindicatoVoucher_()) + "'>" +
-    "<div>" +
-    "<div class='brand-title'>SindEducação-ES</div>" +
-    "<div class='brand-sub'>Sindicato dos Educadores Técnico-Administrativos em Estabelecimentos de Ensino Privado do Estado do Espírito Santo</div>" +
-    "</div>" +
-    "</div>" +
-    "<div class='proto'>Protocolo<strong>" + escHtmlVoucher_(protocolo) + "</strong></div>" +
+    (logoImg ? "<img class='dagua' src='" + escHtmlVoucher_(logoImg) + "'>" : "") +
+
+    "<div class='cab'>" +
+    (logoImg ? "<img class='cab-logo' src='" + escHtmlVoucher_(logoImg) + "'>" : "<div></div>") +
+    "<div class='faixas'><div class='faixa-azul'></div><div class='faixa-rosa'></div></div>" +
     "</div>" +
 
-    "<div class='title'>" +
-    "<h1>Voucher de Bolsa de Estudo</h1>" +
-    "<div class='bar'></div>" +
-    "</div>" +
-
-    "<p class='texto'>" +
-    "O <strong>SindEducação-ES</strong>, no uso de suas atribuições e conforme previsto na " +
-    "<strong>" + escHtmlVoucher_(CCT_TEXTO_V) + "</strong>, " +
-    "<strong>" + escHtmlVoucher_(CCT_CLAUSULA_V) + "</strong>, certifica que o(a) trabalhador(a) abaixo identificado(a) teve sua solicitação de bolsa analisada e deferida, " +
-    "fazendo jus ao desconto indicado neste voucher, observadas as regras da Convenção Coletiva e da instituição de ensino." +
-    "</p>" +
-
-    "<div class='box'>" +
-    "<div class='grid'>" +
-    "<div><span class='label'>Associado(a)</span><span class='val'>" + escHtmlVoucher_(nomeSolicitante) + "</span></div>" +
-    "<div><span class='label'>CPF</span><span class='val'>" + escHtmlVoucher_(cpf) + "</span></div>" +
-    "<div><span class='label'>RG</span><span class='val'>" + escHtmlVoucher_(rg) + "</span></div>" +
-    "<div><span class='label'>Empresa empregadora</span><span class='val'>" + escHtmlVoucher_(escola) + "</span></div>" +
-    "<div><span class='label'>Beneficiário</span><span class='val'>" + escHtmlVoucher_(beneficiario) + "</span></div>" +
-    "<div><span class='label'>Modalidade</span><span class='val'>" + escHtmlVoucher_(modalidade) + "</span></div>" +
-    "<div><span class='label'>Curso</span><span class='val'>" + escHtmlVoucher_(curso) + "</span></div>" +
-    "<div><span class='label'>Período / Regime</span><span class='val'>" + escHtmlVoucher_(periodo + (regime ? " · " + regime : "")) + "</span></div>" +
-    "</div>" +
-    /* A instituição de ensino ocupa a largura inteira porque o nome costuma
-     * ser longo — "INSTITUTO DE ENSINO SUP. DO ESPÍRITO SANTO - IESES" não
-     * cabe em meia coluna sem quebrar feio. */
-    (instituicao
-      ? "<div style='margin-top:12px;padding-top:12px;border-top:1px solid #e2e8f0;'>" +
-        "<span class='label'>Instituição de ensino</span>" +
-        "<span class='val'>" + escHtmlVoucher_(instituicao) +
-        (cnpjInstituicao ? " &nbsp;·&nbsp; CNPJ " + escHtmlVoucher_(cnpjInstituicao) : "") +
-        "</span></div>"
-      : "") +
-    "</div>" +
-
-    "<div class='desconto'>" +
-    "<div class='n'>" + escHtmlVoucher_(percentual) + "%</div>" +
-    "<div class='t'>Desconto concedido — " + escHtmlVoucher_(percentualExtenso) + "</div>" +
-    "</div>" +
-
-    /* DOCUMENTOS CONFERIDOS — SÓ NA VIA INTERNA.
-     *
-     * A lista revela Certidão de Casamento, Sentença Judicial de Guarda e
-     * Declaração de IR. Isso é dado da vida privada do associado e da
-     * família dele, e não tem por que chegar à instituição de ensino, que
-     * precisa saber apenas o percentual do desconto.
-     *
-     * No documento em papel que o sindicato usa hoje, a lista aparece na
-     * folha do COMPROVANTE DE ENTREGA — a que o associado assina no balcão —
-     * e NÃO no certificado da folha seguinte. A regra já existia; o sistema
-     * é que a estava ignorando. Apontado pelo usuário em 12/08/2026.
-     *
-     * O PADRÃO É NÃO MOSTRAR, e a inversão é deliberada: quem criar um tipo
-     * novo de documento e esquecer deste campo produz um documento sem a
-     * lista, não um documento vazando a vida do associado. Falha para o lado
-     * seguro. */
-    (dados.mostrarDocumentos === true
-      ? "<div class='box'>" +
-        "<span class='label'>Documentos conferidos</span>" +
-        "<ul class='docs'>" + docsHtml + "</ul>" +
-        "</div>"
-      : "") +
-
-    "<p class='texto'>" +
-    "Este voucher é pessoal, intransferível e deverá ser apresentado à instituição de ensino para fins de validação do benefício. " +
-    "A concessão do desconto está condicionada à confirmação dos dados e à observância das normas internas da instituição e da Convenção Coletiva vigente." +
-    "</p>" +
-
-    "<p class='texto' style='text-align:right;margin-top:28px;'>" + escHtmlVoucher_(dataExtenso) + "</p>" +
+    "<div class='corpo'>" +
+    "<h1>CERTIFICADO DE HABILITAÇÃO À BOLSA DE ESTUDOS</h1>" +
+    "<p>" + corpo + "</p>" +
+    "<p>O presente certificado destina-se exclusivamente à comprovação da habilitação do " +
+    "beneficiário para utilização do benefício acima especificado, sendo pessoal, individual " +
+    "e intransferível, produzindo efeitos enquanto permanecerem atendidas as condições que " +
+    "fundamentaram sua emissão.</p>" +
 
     "<div class='assinatura'>" +
-    (assinaturaImg
-      ? "<img src='" + assinaturaImg + "' style='height:56px;width:auto;display:block;margin:0 auto -4px;'>"
-      : "") +
-    "<div class='linha'></div>" +
+    (assinaturaImg ? "<img src='" + escHtmlVoucher_(assinaturaImg) + "'>" : "") +
     "<div class='pres'>" + escHtmlVoucher_(PRESIDENTE_VOUCHER) + "</div>" +
-    "<div class='cargo'>" + escHtmlVoucher_(CARGO_PRESIDENTE_V) + "</div>" +
+    "<div class='cargo'>Presidente - SindEducação-ES</div>" +
+    "</div>" +
     "</div>" +
 
-"<div class='validacao' style='display:flex;align-items:center;justify-content:space-between;gap:16px;'>" +
-  "<div>" +
-    "<strong>Código de validação:</strong> " + escHtmlVoucher_(codigo) + "<br>" +
-    "Documento emitido eletronicamente pelo SISGEP/SindEducação-ES em " + escHtmlVoucher_(formatarDataHoraBrVoucher_(dados.dataEmissao)) + ".<br>" +
-    "A autenticidade pode ser confirmada pelo QR Code ao lado." +
-  "</div>" +
-  "<img src='" + escHtmlVoucher_(qrCodeUrl) + "' style='width:92px;height:92px;border:1px solid #cbd5e1;border-radius:8px;padding:4px;background:#fff;'>" +
-"</div>" +
-
-    "<div class='footer'>" +
-    escHtmlVoucher_(ENDERECO_SIND_V) + "<br>" +
-    escHtmlVoucher_(TELEFONE_SIND_V) + " · " + escHtmlVoucher_(SITE_SIND_V) +
+    "<div class='rodape'>" +
+    "<div class='contatos'>" +
+    "<div>" +
+    "(27) 3222-2706<br>(27) 99735-8900<br>sindeducacao.com<br>contato@sindeducacao.com" +
+    "</div>" +
+    "<div class='valida'>" +
+    (qrCodeUrl ? "<img src='" + escHtmlVoucher_(qrCodeUrl) + "'>" : "") +
+    (codigo ? "Código " + escHtmlVoucher_(codigo) + "<br>" : "") +
+    (protocolo ? escHtmlVoucher_(protocolo) : "") +
+    "</div>" +
+    "</div>" +
+    "<div class='salmo'>Você comerá do fruto do seu trabalho e será feliz e próspero. Salmos 128:2.</div>" +
     "</div>" +
 
     "</div>" +
