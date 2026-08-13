@@ -195,6 +195,67 @@ function el(id) { return doc.getElementById(id); }
   b.ok(!!String(v("USUARIO_VALIDACAO")), "com o aprovador gravado", String(v("USUARIO_VALIDACAO")));
   b.ok(!!String(v("NUMERO_PROTOCOLO")), "e com protocolo", String(v("NUMERO_PROTOCOLO")));
 
+
+  /* ═══════════════════════════════════════════════════════════════════ */
+  b.fluxo("NOVA SOLICITAÇÃO · O CSS alcança o modal novo");
+
+  b.passo("14. Toda classe compartilhada tem regra para ESTE modal");
+  /* POR QUE ESTE PASSO EXISTE
+   *
+   * A tela foi entregue com 44 asserções verdes e o modal SEM ESTILO: título
+   * ilegível, seções invisíveis, botão de fechar quebrado. As duas coisas
+   * conviviam sem se contradizer porque jsdom não desenha — o teste prova a
+   * LÓGICA da tela, nunca o desenho.
+   *
+   * A causa foi textual, e é essa que dá para pegar aqui: as regras
+   * `.cert-modal-head`, `.cert-section-title` e companhia estão escritas
+   * ESCOPADAS por id — `#certModalBox .cert-modal-head`. Ao criar o modal de
+   * envio eu acrescentei `#certEnvioBox` à lista; ao criar o de solicitação,
+   * esqueci. As classes estavam no HTML e a regra não alcançava nenhuma.
+   *
+   * Aparência não se testa sem navegador. Mas "existe regra de CSS cujo
+   * seletor casa com este id" é propriedade de texto — e é exatamente o que
+   * faltava. */
+  const fonte = require("fs").readFileSync(dom.RAIZ + "/Scripts_Certificado.html", "utf8");
+
+  const CAIXAS = ["certModalBox", "certEnvioBox", "certNovaBox"];
+  const problemas = [];
+
+  CAIXAS.forEach(function (caixa) {
+    const box = doc.getElementById(caixa);
+    if (!box) { problemas.push(caixa + " não existe no HTML"); return; }
+
+    /* As classes que o modal usa de fato, lidas do DOM montado. */
+    const usadas = new Set();
+    box.querySelectorAll("[class]").forEach(function (el) {
+      String(el.getAttribute("class") || "").split(/\s+/).forEach(function (c) {
+        if (c.indexOf("cert-modal") === 0 || c.indexOf("cert-section") === 0 ||
+            c.indexOf("cert-info") === 0 || c.indexOf("cert-obs") === 0) usadas.add(c);
+      });
+    });
+
+    usadas.forEach(function (classe) {
+      /* A classe só precisa de escopo se ela é DECLARADA escopada por algum
+       * #cert...Box. Classe global (como .cert-btn) alcança todo mundo. */
+      /* `\\b` NÃO SERVE AQUI, e foi o que fez a mutação sobreviver na
+       * primeira rodada: entre "head" e "-l" existe fronteira de palavra,
+       * então procurar `.cert-modal-head\\b` casava dentro de
+       * `.cert-modal-head-l`. Tirar a regra de `.cert-modal-head` não
+       * derrubava nada, porque a da variante ainda estava lá.
+       * O fim da classe tem que ser um caractere que não pode compor nome
+       * de classe. */
+      const fim = "(?![A-Za-z0-9_-])";
+      const escopada = new RegExp("#cert\\w*Box\\s+\\." + classe + fim).test(fonte);
+      if (!escopada) return;
+      const alcanca = new RegExp("#" + caixa + "\\s+\\." + classe + fim).test(fonte);
+      if (!alcanca) problemas.push(caixa + " usa ." + classe + " e não há regra para ele");
+    });
+  });
+
+  b.ok(problemas.length === 0,
+    "nenhuma classe fica sem regra em nenhum dos três modais",
+    problemas.length ? problemas.slice(0, 4).join(" · ") : "");
+
   b.resumo();
   process.exit(0);
 })();
