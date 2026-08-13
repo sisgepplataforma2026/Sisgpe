@@ -4,6 +4,10 @@
 // =============================================================================
 
 function gerarDocumentoVoucher(protocolo, tipoDocumento, opcoes) {
+  /* Declarada FORA do try e antes do setup: o primeiro passo do processo é
+     o próprio setup, e uma etapa que só começa depois dele mentiria sobre
+     onde quebrou justamente na primeira coisa que roda. */
+  var etapa = "preparar as abas do módulo (setupVoucherModuleFase1)";
   try {
     setupVoucherModuleFase1();
 
@@ -21,6 +25,19 @@ function gerarDocumentoVoucher(protocolo, tipoDocumento, opcoes) {
     "PREVIA"
   ].indexOf(modo) > -1;
 
+    /* EM QUE ETAPA QUEBROU — instrumentação de 13/08/2026.
+     *
+     * O usuário recebeu "Erro ao gerar voucher: This operation is not
+     * supported for this document: <id da planilha>". A mensagem diz o QUE
+     * o Google recusou e não diz ONDE, e o `catch` no fim engolia a pilha:
+     * sobrava um id e nenhum caminho. Os três lugares que tocam o Drive já
+     * tratam a própria falha, então o erro vem de fora deles — e por leitura
+     * não se acha.
+     *
+     * `etapa` é atualizada antes de cada passo e entra na mensagem e no log,
+     * junto com a pilha. Custa uma linha por passo e transforma um mistério
+     * em diagnóstico na próxima tentativa. */
+    etapa = "localizar a solicitação";
     const item = buscarSolicitacaoPorProtocolo_(protocolo);
     if (!item) {
       return { ok: false, mensagem: "Solicitação não encontrada." };
@@ -61,6 +78,7 @@ if (voucherExistente) {
     reemitido: true
   };
 }
+    etapa = "gerar código de validação";
     const codigo = gerarCodigoValidacaoVoucher_();
 
     const percentual = Number(opcoes.percentual || reg.PERCENTUAL_APLICADO || 70);
@@ -82,6 +100,7 @@ if (voucherExistente) {
   reg: reg
 };
 
+    etapa = "montar o HTML do certificado (logo, assinatura, QR, marca d'água)";
     const htmlVoucher = gerarHtmlDocumentoVoucher_(dadosDoc);
 
     if (isPreview) {
@@ -94,6 +113,7 @@ if (voucherExistente) {
       };
     }
 
+    etapa = "converter em PDF e salvar na pasta do Drive";
     const pdfVoucher = salvarHtmlComoPdfVoucher_(
       htmlVoucher,
       "Voucher Bolsa - " + protocolo + " - " + reg.NOME_SOLICITANTE
@@ -103,6 +123,7 @@ if (voucherExistente) {
     let idOficio = "";
 
     if (opcoes.enviarRhEscola === true) {
+      etapa = "gerar o ofício da escola";
       const htmlOficio = gerarHtmlOficioEscolaVoucher_(dadosDoc);
       const pdfOficio = salvarHtmlComoPdfVoucher_(
         htmlOficio,
@@ -113,6 +134,7 @@ if (voucherExistente) {
       idOficio = pdfOficio.id;
     }
 
+etapa = "registrar a emissão na planilha";
 registrarEmissaoVoucher_(reg, {
   protocolo: protocolo,
   idSolicitacao: reg.ID_SOLICITACAO,
@@ -123,6 +145,7 @@ registrarEmissaoVoucher_(reg, {
   usuario: usuario
 });
 
+    etapa = "atualizar o status para EMITIDO";
     atualizarStatusSolicitacao_(item, "EMITIDO", opcoes.observacao || "Voucher emitido.", {
       DATA_EMISSAO: agora
     });
@@ -132,6 +155,7 @@ registrarEmissaoVoucher_(reg, {
      * ele. Nunca lança: o certificado já foi gerado quando isto roda, e
      * perder a emissão por causa de uma gravação de conveniência seria
      * trocar o problema grande pelo pequeno. */
+    etapa = "gravar o RG do solicitante";
     voucherGravarRgSolicitante_(protocolo, rg);
 
     /* A MEMÓRIA APRENDE NA EMISSÃO — só aqui, nunca na prévia.
@@ -143,6 +167,7 @@ registrarEmissaoVoucher_(reg, {
      *
      * O caminho da prévia retorna bem antes desta linha, então a separação
      * é estrutural, não uma condição que alguém possa esquecer de manter. */
+    etapa = "atualizar a memória de percentual e instituição";
     if (typeof voucherPadraoLembrar_ === "function") {
       voucherPadraoLembrar_({
         modalidade: reg.MODALIDADE,
@@ -161,6 +186,7 @@ registrarEmissaoVoucher_(reg, {
       });
     }
 
+    etapa = "registrar no histórico";
     registrarHistoricoVoucher_(
       reg.ID_SOLICITACAO,
       reg.CPF_SOLICITANTE,
@@ -170,6 +196,7 @@ registrarEmissaoVoucher_(reg, {
       protocolo
     );
 
+    etapa = "enviar por e-mail ao associado";
     if (opcoes.enviarAssociado === true) {
       enviarVoucherAssociado_(reg, {
         protocolo: protocolo,
@@ -179,6 +206,7 @@ registrarEmissaoVoucher_(reg, {
       });
     }
 
+    etapa = "enviar por e-mail à escola";
     if (opcoes.enviarRhEscola === true) {
       enviarVoucherEscola_(reg, {
         protocolo: protocolo,
@@ -202,10 +230,13 @@ registrarEmissaoVoucher_(reg, {
     };
 
   } catch (e) {
-    Logger.log("gerarDocumentoVoucher erro: " + e.message);
+    Logger.log("gerarDocumentoVoucher · ETAPA: " + etapa +
+               "\nmensagem: " + e.message +
+               "\npilha: " + (e.stack || "(sem pilha)"));
     return {
       ok: false,
-      mensagem: "Erro ao gerar voucher: " + e.message
+      etapa: etapa,
+      mensagem: "Erro ao gerar voucher na etapa \"" + etapa + "\": " + e.message
     };
   }
 }

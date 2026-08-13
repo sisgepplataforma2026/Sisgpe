@@ -134,7 +134,32 @@ b.ok(html.indexOf(NOME) > -1, "o nome do beneficiário");
 b.ok(/\d{3}\.\d{3}\.\d{3}-\d{2}/.test(html), "o CPF formatado");
 
 /* ══════════════════════════════════════════════════════════════════════ */
-b.fluxo("VOUCHER · 5. O que ainda não dá para provar aqui");
+b.fluxo("VOUCHER · 5. Quando quebra, o erro diz ONDE");
+
+b.passo("13. A falha traz a etapa, não só a mensagem do Google");
+/* NASCEU DE UM ERRO REAL, 13/08/2026: "Erro ao gerar voucher: This
+ * operation is not supported for this document: 1QPpsx...". Esse id é o da
+ * PLANILHA, e a mensagem não dizia em que passo o Google recusou. Os três
+ * lugares que tocam o Drive já tratam a própria falha, então o erro vinha de
+ * fora deles — e sem a etapa não havia por onde começar. */
+const quebrado = g.gerarDocumentoVoucher("BOLSA-NAO-EXISTE-999", "PREVIA", {});
+b.igual(quebrado.ok, false, "protocolo inexistente é recusado");
+
+/* Força uma quebra de verdade no meio do processo, para ver a etapa sair. */
+const originalHtml = g.gerarHtmlDocumentoVoucher_;
+g.gerarHtmlDocumentoVoucher_ = function () {
+  throw new Error("This operation is not supported for this document: TESTE");
+};
+const comFalha = g.gerarDocumentoVoucher(PROT, "PREVIA", { percentual: 70 });
+g.gerarHtmlDocumentoVoucher_ = originalHtml;
+b.igual(comFalha.ok, false, "a emissão falha");
+b.ok(/etapa/i.test(String(comFalha.mensagem || "")),
+  "e a mensagem diz a etapa", comFalha.mensagem);
+b.ok(/HTML do certificado/.test(String(comFalha.etapa || "")),
+  "apontando o passo certo", comFalha.etapa);
+
+/* ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("VOUCHER · 6. O que ainda não dá para provar aqui");
 
 b.naoTestavel("O PDF de verdade",
   "getAs(MimeType.PDF) não existe no emulador; A4 se confere abrindo o arquivo");
