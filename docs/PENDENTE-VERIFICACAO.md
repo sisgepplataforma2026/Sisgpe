@@ -12,6 +12,40 @@
 
 ## 🔴 ABERTO
 
+### 24. Voucher — vários beneficiários num pedido só
+**Aberto em:** 13/08/2026 · `VoucherInstituicoes.gs`, `VoucherNovaSolicitacao.gs`, `Scripts_Certificado.html`
+
+O bloco repetível de beneficiários, no padrão do "Adicionar trabalhador" do
+Ofício: card numerado, ✕ para remover, `+ Adicionar` no cabeçalho, teto de 3.
+
+O beneficiário que já existia continua sendo o **nº 1** e não mudou de lugar
+— quem cadastra um só não vê diferença nenhuma, e o caminho antigo continua
+chamando a criação única. Isso é testado.
+
+**Dois defeitos de desenho que só a tela revelou**, os dois meus e os dois
+corrigidos no mesmo dia:
+
+1. A trava de duplicidade da tela abortava **o pedido inteiro** porque UM
+   beneficiário estava duplicado — o contrário do desenho aprovado. Ela olha
+   só o beneficiário de cima, que é o único que dá para conferir enquanto se
+   digita; com cards extras, quem decide é o servidor, um a um.
+2. E ela agarrava em **dois lugares**: o `return` em `nvSalvar` e o botão
+   Salvar desabilitado. Corrigi o primeiro, o teste continuou vermelho, e o
+   segundo só apareceu porque o teste clica no botão de verdade em vez de
+   chamar a função.
+
+| | |
+|---|---|
+| 🔴 Cadastrar dois filhos num pedido só | e ver dois protocolos |
+| 🔴 O ✕ remove e renumera | sem deixar buraco na numeração |
+| 🔴 O + Adicionar trava no 3º dependente | contando o de cima quando ele é dependente |
+| 🔴 Lote parcial: um card verde, outro vermelho | e o modal NÃO fecha |
+| 🔴 Cadastrar UM beneficiário continua igual | é o caminho que já funcionava |
+
+**Falta a faixa "Renovar os 3"** — a memória já devolve os dependentes
+conhecidos (backend pronto e testado no `t41`), mas a tela ainda não a
+consome. Registrado como não testável dentro do `t41` e do `t42`.
+
 ### 23. Voucher — as regras de quantidade, corrigidas
 **Aberto em:** 13/08/2026 · `VoucherPeriodo.gs`, `VoucherNovaSolicitacao.gs`
 

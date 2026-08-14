@@ -133,6 +133,36 @@
 #certNovaBox .cert-nv-org { font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: 1px 6px; border-radius: 999px; align-self: flex-start; }
 #certNovaBox .cert-nv-org.hist { background: #eff6ff; color: #1565C0; }
 #certNovaBox .cert-nv-org.regra { background: #ecfdf5; color: #047857; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   O BLOCO REPETIVEL DE BENEFICIARIOS
+
+   Mesmo desenho do bloco de trabalhadores do Oficio (OficiosStyles), que e
+   o padrao que o usuario apontou: card com badge numerada, titulo, sub e o
+   X de remover no canto. Reusar o padrao vale mais que reusar a classe —
+   estes seletores vivem dentro de #certNovaBox e nao vazam para fora.
+   ══════════════════════════════════════════════════════════════════════ */
+#certNovaBox .cert-nv-benef-topo { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:18px 0 8px; }
+#certNovaBox .cert-nv-benef-sub { font-size:11.5px; color:#64748b; margin-top:2px; }
+#certNovaBox .cert-nv-benef-card { border:1.5px solid #e2e8f0; border-radius:12px; padding:12px 14px; margin-bottom:10px; background:#fff; }
+#certNovaBox .cert-nv-benef-cab { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+#certNovaBox .cert-nv-benef-ident { display:flex; align-items:center; gap:10px; }
+#certNovaBox .cert-nv-benef-num { width:26px; height:26px; border-radius:8px; background:#001f4d; color:#fff; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; flex:0 0 auto; }
+#certNovaBox .cert-nv-benef-tit { font-size:13px; font-weight:800; color:#0f172a; }
+#certNovaBox .cert-nv-benef-x { border:1.5px solid #e2e8f0; background:#fff; border-radius:8px; width:26px; height:26px; cursor:pointer; color:#64748b; font-size:13px; line-height:1; }
+#certNovaBox .cert-nv-benef-x:hover { border-color:#dc2626; color:#dc2626; }
+#certNovaBox .cert-nv-benef-vazio { border:1.5px dashed #e2e8f0; border-radius:12px; padding:14px; text-align:center; color:#94a3b8; font-size:12px; }
+/* O RESULTADO DE CADA CARD depois de salvar: protocolo em verde, motivo em
+   vermelho. Fica NO CARD, e nao numa faixa unica no topo — com tres pedidos
+   de uma vez, "um falhou" sem dizer qual nao ajuda ninguem. */
+#certNovaBox .cert-nv-benef-res { margin-top:8px; font-size:11.5px; font-weight:700; padding:6px 9px; border-radius:8px; }
+#certNovaBox .cert-nv-benef-res.ok { background:#ecfdf5; color:#047857; }
+#certNovaBox .cert-nv-benef-res.erro { background:#fef2f2; color:#b91c1c; }
+/* A FAIXA DE RENOVACAO — aparece so quando a memoria achou dependentes. */
+#certNovaBox .cert-nv-renov { border:1.5px solid #bfdbfe; background:#eff6ff; border-radius:12px; padding:12px 14px; margin:14px 0; }
+#certNovaBox .cert-nv-renov-tit { font-size:12.5px; font-weight:800; color:#1565C0; margin-bottom:8px; }
+#certNovaBox .cert-nv-renov-item { font-size:12px; color:#334155; padding:3px 0; }
+#certNovaBox .cert-nv-renov-acoes { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
 #certNovaBox .cert-nv-org.padrao { background: #fffbeb; color: #b45309; }
 #certNovaBox .cert-nv-org.recusa { background: #fef2f2; color: #dc2626; }
 #certNovaBox .cert-nv-aviso { background: #f8fafc; border: 1px solid #cbd5e1; border-left: 3px solid #1565C0; border-radius: 8px; padding: 8px 11px; font-size: 12px; color: #334155; margin-bottom: 7px; line-height: 1.5; }
@@ -806,6 +836,26 @@
           </select>
         </div>
       </div>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           OUTROS BENEFICIARIOS — o bloco repetivel, no padrao de Oficios.
+
+           O beneficiario de cima continua sendo o numero 1 e nao mudou de
+           lugar: quem so cadastra um nao ve diferenca nenhuma. Este bloco e
+           acrescimo, e comeca vazio.
+
+           A escolha de ACRESCENTAR em vez de reestruturar o modal inteiro e
+           deliberada: a tela de cima ja funciona e ja tem teste, e mexer
+           nela para caber tres seria trocar risco por elegancia.
+           ══════════════════════════════════════════════════════════════ -->
+      <div class="cert-nv-benef-topo">
+        <div>
+          <div class="cert-section-title" style="margin:0;">Outros beneficiários</div>
+          <div class="cert-nv-benef-sub" id="certNvBenefSub">Até 3 dependentes no mesmo pedido</div>
+        </div>
+        <button type="button" class="cert-btn cert-btn-navy cert-btn-sm" id="certNvBenefAdd">+ Adicionar</button>
+      </div>
+      <div id="certNvBenefLista"></div>
 
       <div class="cert-section-title">Observações</div>
       <textarea class="cert-obs-area" id="certNvObs" placeholder="O que o e-mail do associado dizia, o que falta, o que foi combinado..."></textarea>
@@ -1607,12 +1657,20 @@ var _nvTimerEsc = null;
    Um lugar só: se a tradução ficasse espalhada, "3º filho" viraria ordem 3
    num ponto e ordem "" noutro, e o percentual sairia diferente conforme o
    caminho. */
-function nvQuem(){
-  var v = g('certNvQuem') ? g('certNvQuem').value : 'PROPRIO';
+/* A tradução de "1º filho" para tipo + ordem, num lugar só.
+   Extraída de nvQuem em 13/08/2026 porque os cards de beneficiário extra
+   precisam da mesma tradução — e duas cópias dela é como um card acabaria
+   gravando FILHO sem ordem enquanto o de cima grava com. */
+function nvQuemDe(v){
+  v = String(v || 'PROPRIO');
   if(v === 'PROPRIO')  return { tipo:'TITULAR', ordem:'', proprio:true,  idade:false, ir:false };
   if(v === 'CONJUGE')  return { tipo:'CONJUGE', ordem:'', proprio:false, idade:false, ir:false };
   if(v === 'ENTEADO')  return { tipo:'ENTEADO', ordem:'', proprio:false, idade:true,  ir:true  };
   return { tipo:'FILHO', ordem:v.replace('FILHO_',''), proprio:false, idade:true, ir:false };
+}
+
+function nvQuem(){
+  return nvQuemDe(g('certNvQuem') ? g('certNvQuem').value : 'PROPRIO');
 }
 
 /** Mostra só o que faz sentido para quem foi escolhido. */
@@ -1664,6 +1722,167 @@ function nvPeriodoSincronizarRegime(){
   if(anual) sem.value = '';
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   OS BENEFICIARIOS EXTRAS
+
+   O de cima e o numero 1 e continua onde estava. Estes sao do 2 em diante,
+   e cada um vira uma solicitacao propria — com protocolo e certificado
+   proprios. A tela junta; a planilha continua uma linha por pessoa.
+
+   O TETO E CONFERIDO AQUI E NO SERVIDOR. Aqui e conveniencia (o botao
+   desabilita e o toast explica); la e a regra. "A tela nao deixa" nunca foi
+   trava — o portal publico e qualquer chamada direta nao passam por esta
+   funcao.
+   ══════════════════════════════════════════════════════════════════════ */
+var NV_MAX_DEPENDENTES = 3;
+
+function nvBenefCards(){
+  var l = g('certNvBenefLista');
+  return l ? Array.prototype.slice.call(l.querySelectorAll('.cert-nv-benef-card')) : [];
+}
+
+/* Quantos dependentes o pedido ja tem, contando o beneficiario de cima.
+   Se o de cima for o proprio titular, ele nao ocupa vaga de dependente —
+   e a mesma regra que o servidor aplica. */
+function nvBenefTotalDependentes(){
+  var doTopo = nvQuem().proprio ? 0 : 1;
+  return doTopo + nvBenefCards().length;
+}
+
+function nvBenefRenumerar(){
+  nvBenefCards().forEach(function(c, i){
+    var n = i + 2;                       /* o 1 e o de cima */
+    var badge = c.querySelector('.cert-nv-benef-num');
+    var tit   = c.querySelector('.cert-nv-benef-tit');
+    if(badge) badge.textContent = n;
+    if(tit)   tit.textContent = 'Beneficiário ' + n;
+  });
+  var sub = g('certNvBenefSub');
+  if(sub){
+    var t = nvBenefTotalDependentes();
+    sub.textContent = t >= NV_MAX_DEPENDENTES
+      ? 'Limite de ' + NV_MAX_DEPENDENTES + ' dependentes atingido'
+      : 'Até ' + NV_MAX_DEPENDENTES + ' dependentes no mesmo pedido' +
+        (t ? ' — ' + t + ' até agora' : '');
+  }
+  var btn = g('certNvBenefAdd');
+  if(btn) btn.disabled = nvBenefTotalDependentes() >= NV_MAX_DEPENDENTES;
+}
+
+function nvBenefAdicionar(dados){
+  var lista = g('certNvBenefLista');
+  if(!lista) return null;
+  if(nvBenefTotalDependentes() >= NV_MAX_DEPENDENTES){
+    msg('São no máximo ' + NV_MAX_DEPENDENTES + ' dependentes no mesmo pedido.','warn');
+    return null;
+  }
+  dados = dados || {};
+
+  var c = document.createElement('div');
+  c.className = 'cert-nv-benef-card';
+  c.innerHTML =
+     '<div class="cert-nv-benef-cab">'
+   +   '<div class="cert-nv-benef-ident">'
+   +     '<div class="cert-nv-benef-num"></div>'
+   +     '<div><div class="cert-nv-benef-tit"></div>'
+   +     '<div class="cert-nv-benef-sub">Dados do curso e do desconto</div></div>'
+   +   '</div>'
+   +   '<button type="button" class="cert-nv-benef-x" title="Remover">✕</button>'
+   + '</div>'
+   + '<div class="cert-nv-grid">'
+   +   '<div class="cert-nv-campo"><label class="cert-nv-lbl">Quem é</label>'
+   +     '<select class="cert-nv-in js-quem">'
+   +       '<option value="FILHO_1">1º filho</option>'
+   +       '<option value="FILHO_2">2º filho</option>'
+   +       '<option value="FILHO_3">3º filho</option>'
+   +       '<option value="CONJUGE">Cônjuge</option>'
+   +       '<option value="ENTEADO">Enteado</option>'
+   +     '</select></div>'
+   +   '<div class="cert-nv-campo"><label class="cert-nv-lbl">Nome do beneficiário</label>'
+   +     '<input class="cert-nv-in js-nome"></div>'
+   +   '<div class="cert-nv-campo"><label class="cert-nv-lbl">Instituição de ensino</label>'
+   +     '<input class="cert-nv-in js-inst"></div>'
+   +   '<div class="cert-nv-campo"><label class="cert-nv-lbl">Modalidade</label>'
+   +     '<select class="cert-nv-in js-modalidade">'
+   +       '<option value="">—</option>'
+   +       '<option value="CRECHE">Creche (0–3)</option>'
+   +       '<option value="EDUCACAO_INFANTIL">Educação Infantil (4–5)</option>'
+   +       '<option value="ENSINO_FUNDAMENTAL">Ensino Fundamental</option>'
+   +       '<option value="ENSINO_MEDIO">Ensino Médio</option>'
+   +       '<option value="TECNICO">Técnico</option>'
+   +       '<option value="GRADUACAO">Graduação</option>'
+   +       '<option value="POS_GRADUACAO">Pós-Graduação</option>'
+   +     '</select></div>'
+   +   '<div class="cert-nv-campo"><label class="cert-nv-lbl">Curso</label>'
+   +     '<input class="cert-nv-in js-curso"></div>'
+   +   '<div class="cert-nv-campo"><label class="cert-nv-lbl">Percentual (%)</label>'
+   +     '<input class="cert-nv-in js-percentual" inputmode="numeric"></div>'
+   + '</div>'
+   + '<div class="cert-nv-benef-res" style="display:none;"></div>';
+
+  c.querySelector('.cert-nv-benef-x').onclick = function(){
+    c.remove(); nvBenefRenumerar();
+    /* Removido o último card, a trava do beneficiário de cima volta a valer. */
+    nvSalvarHabilitar();
+  };
+
+  /* Preenche o que veio da memoria — e deixa editar, sempre. */
+  if(dados.quem)        c.querySelector('.js-quem').value = dados.quem;
+  if(dados.nome)        c.querySelector('.js-nome').value = dados.nome;
+  if(dados.instituicao) c.querySelector('.js-inst').value = dados.instituicao;
+  if(dados.modalidade)  c.querySelector('.js-modalidade').value = dados.modalidade;
+  if(dados.curso)       c.querySelector('.js-curso').value = dados.curso;
+  if(dados.percentual !== undefined && dados.percentual !== '')
+    c.querySelector('.js-percentual').value = dados.percentual;
+
+  lista.appendChild(c);
+  nvBenefRenumerar();
+  /* O Salvar pode estar desabilitado por uma trava do beneficiário de cima;
+     com card extra ela deixa de valer — ver nvSalvarHabilitar. */
+  nvSalvarHabilitar();
+  return c;
+}
+
+function nvBenefLimpar(){
+  var l = g('certNvBenefLista');
+  if(l) l.innerHTML = '';
+  nvBenefRenumerar();
+}
+
+/* O que cada card extra manda para o servidor. O `quem` vira tipo + ordem
+   pelo mesmo helper do beneficiario de cima — uma regra, um lugar. */
+function nvBenefPayload(){
+  return nvBenefCards().map(function(c){
+    var v = String(c.querySelector('.js-quem').value || 'FILHO_1');
+    var q = nvQuemDe(v);
+    return {
+      tipoBeneficiario: q.tipo,
+      ordemFilho: q.ordem,
+      beneficiario: c.querySelector('.js-nome').value,
+      instituicao: c.querySelector('.js-inst').value,
+      modalidade: c.querySelector('.js-modalidade').value,
+      curso: c.querySelector('.js-curso').value,
+      percentual: c.querySelector('.js-percentual').value
+    };
+  });
+}
+
+/* O resultado volta POR CARD: protocolo em verde, motivo em vermelho. */
+function nvBenefPintarResultado(resultados){
+  var cards = nvBenefCards();
+  (resultados || []).forEach(function(r){
+    /* o indice 0 e o beneficiario de cima; do 1 em diante sao os cards */
+    if(r.indice === 0) return;
+    var c = cards[r.indice - 1];
+    if(!c) return;
+    var box = c.querySelector('.cert-nv-benef-res');
+    if(!box) return;
+    box.style.display = '';
+    box.className = 'cert-nv-benef-res ' + (r.ok ? 'ok' : 'erro');
+    box.textContent = r.ok ? ('✓ ' + r.protocolo) : ('✕ ' + (r.mensagem || 'não foi criado'));
+  });
+}
+
 function nvCampos(){
   return {
     cpf:              g('certNvCpf').value,
@@ -1712,6 +1931,7 @@ function nvLimpar(){
   _nvBloqueio = null;
   _nvExcecao = null;
   _nvRegimeManual = false;
+  nvBenefLimpar();          /* os cards extras saem junto — ver nvLimpar */
   if(g('certNvTrava')) g('certNvTrava').innerHTML='';
   nvSalvarHabilitar();
   ['certNvOrgInst','certNvOrgEmailInst','certNvOrgPct','certNvAvisos'].forEach(function(id){
@@ -1956,7 +2176,17 @@ function nvSalvarHabilitar(){
   /* Travado = há bloqueio E não há exceção autorizada. A exceção destrava,
      mas ela é a única coisa que destrava — e continua sendo revalidada no
      servidor, que é onde a permissão de administrador é conferida de fato. */
-  var travado = !!_nvBloqueio && !_nvExcecao;
+  /* COM CARDS EXTRAS, NÃO TRAVA — mesma razão do bloco em nvSalvar, e este
+     era o segundo lugar onde a trava agarrava o pedido inteiro. Ela olha o
+     beneficiário DE CIMA, que é o único que a tela consegue conferir enquanto
+     se digita; com três filhos no pedido, desabilitar o Salvar por causa de
+     um deles impede de gravar os outros dois, que estão em ordem.
+
+     Achado pelo teste de tela em 13/08/2026: o primeiro pedido do teste
+     passava, o segundo não chamava o servidor, e o motivo não era o `return`
+     que eu já tinha corrigido — era o botão desabilitado, que faz o clique
+     não acontecer. Um teste que só olhasse a função de salvar não veria. */
+  var travado = !!_nvBloqueio && !_nvExcecao && !nvBenefCards().length;
   ['certNvSalvarAnalise','certNvSalvarAprovar'].forEach(function(id){
     var b = g(id);
     if(!b) return;
@@ -2284,7 +2514,18 @@ function nvSalvar(aprovar){
      aparência; esta linha é a regra. O servidor recusa de novo depois — três
      travas para a mesma coisa é o que se faz quando emitir duas vezes não
      tem desfazer. */
-  if(_nvBloqueio && !_nvExcecao){
+  /* A TRAVA DA TELA SÓ ABORTA PEDIDO DE UM BENEFICIÁRIO SÓ.
+   *
+   * Achado pelo teste de tela em 13/08/2026, e é defeito de desenho, não de
+   * digitação: com três filhos no pedido, esta linha barrava TODOS porque UM
+   * deles já tinha bolsa. O desenho aprovado diz o contrário — "recusa de um
+   * não desfaz os outros" —, e a trava da tela olha só o beneficiário de
+   * cima, que é o único que ela sabe conferir enquanto a pessoa digita.
+   *
+   * Com cards extras, quem decide é o servidor, um a um, e cada card volta
+   * marcado. A trava do servidor continua valendo para todos: o que muda
+   * aqui é só a conveniência de avisar antes. */
+  if(_nvBloqueio && !_nvExcecao && !nvBenefCards().length){
     msg('Já existe voucher para esta pessoa neste período'
         + (_nvBloqueio.protocolo?' — protocolo '+_nvBloqueio.protocolo:'') + '.','erro');
     return;
@@ -2294,6 +2535,60 @@ function nvSalvar(aprovar){
      EXCECAO_DUPLICIDADE num caso comum, e a pergunta "quantas exceções houve"
      passaria a ter resposta errada. */
   if(_nvBloqueio && _nvExcecao) dados.excecao = _nvExcecao;
+
+  /* ══════════════════════════════════════════════════════════════════
+     DOIS CAMINHOS, UM FORMULARIO
+
+     Sem cards extras, nada muda: continua a chamada unica de sempre, e quem
+     cadastra um beneficiario nao ve diferenca nenhuma. Com cards, vai o
+     lote — que no servidor chama a MESMA criacao uma vez por pessoa.
+
+     O `if` fica aqui e nao no servidor de proposito: um pedido de um so
+     beneficiario nao precisa carregar a estrutura de lote, nem devolver
+     resultado por card para a tela ignorar.
+     ══════════════════════════════════════════════════════════════════════ */
+  var extras = nvBenefPayload();
+  if(extras.length){
+    setBtnLoad(btn, aprovar?'Aprovando...':'Salvando...');
+    /* O beneficiario de cima e o PRIMEIRO da lista — e por isso o indice 0
+       do resultado e dele, e os cards comecam do 1. */
+    var primeiro = {
+      tipoBeneficiario: dados.tipoBeneficiario,
+      ordemFilho: dados.ordemFilho,
+      beneficiario: dados.beneficiario,
+      instituicao: dados.instituicao,
+      modalidade: dados.modalidade,
+      area: dados.area,
+      curso: dados.curso,
+      percentual: dados.percentual,
+      idadeBeneficiario: dados.idadeBeneficiario,
+      enteadoDeclaradoIR: dados.enteadoDeclaradoIR
+    };
+    google.script.run
+      .withSuccessHandler(function(r){
+        resetBtn(btn);
+        if(!r){ msg('O servidor não respondeu nada ao salvar o pedido.','erro'); return; }
+        nvBenefPintarResultado(r.resultados);
+        if(!r.ok){ msg(r.mensagem||'Nenhuma solicitação foi criada.','erro'); return; }
+        if(r.parcial){
+          /* NAO FECHA O MODAL quando e parcial: o que foi recusado esta
+             marcado no card, e fechar esconderia justamente o que a pessoa
+             precisa corrigir. */
+          msg('⚠ '+r.mensagem,'warn');
+          carregarLista();
+          return;
+        }
+        msg('✅ '+r.mensagem,'ok');
+        nvFechar();
+        carregarLista();
+      })
+      .withFailureHandler(function(err){ resetBtn(btn); msg('Erro: '+((err&&err.message)||''),'erro'); })
+      .voucherCriarSolicitacoesEmLote({
+        comuns: dados,
+        beneficiarios: [primeiro].concat(extras)
+      }, certToken());
+    return;
+  }
 
   setBtnLoad(btn, aprovar?'Aprovando...':'Salvando...');
   google.script.run
@@ -2633,6 +2928,10 @@ function initInterno(){
   if(g('certNvCancelar'))       g('certNvCancelar').addEventListener('click', nvFechar);
   if(g('certNvSalvarAnalise'))  g('certNvSalvarAnalise').addEventListener('click', function(){ nvSalvar(false); });
   if(g('certNvSalvarAprovar'))  g('certNvSalvarAprovar').addEventListener('click', function(){ nvSalvar(true); });
+  /* O + Adicionar do bloco de beneficiarios. Fica aqui, junto dos outros
+     botoes do modal, e nao num bloco proprio: quem procura "quem escuta o
+     clique" olha um lugar so. */
+  if(g('certNvBenefAdd')) g('certNvBenefAdd').addEventListener('click', function(){ nvBenefAdicionar(); });
 
   /* Debounce nas duas buscas. Sem ele, cada tecla vira uma ida ao servidor
      e a planilha inteira é lida oito vezes para digitar "Marcelo". */
@@ -2649,6 +2948,12 @@ function initInterno(){
   if(g('certNvQuem')){
     g('certNvQuem').addEventListener('change', function(){
       nvSincronizarBeneficiario(); nvSugerir();
+      /* RECONTA AS VAGAS. Trocar o de cima de "Próprio" para "1º filho" muda
+         quantos dependentes o pedido tem — e sem esta linha o + Adicionar
+         continuava liberado depois de o teto já ter sido atingido. Achado
+         pelo teste de tela em 13/08/2026, num passo escrito justamente para
+         matar uma mutação que sobreviveu. */
+      nvBenefRenumerar();
     });
   }
   if(g('certNvEnteadoIR')) g('certNvEnteadoIR').addEventListener('change', nvSugerir);

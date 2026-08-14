@@ -191,14 +191,21 @@ function montar(g, arquivos, opts) {
       el.dispatchEvent(new win.Event("click", { bubbles: true }));
       return true;
     },
+    /* SELETOR **OU** ELEMENTO, como o clicar() já aceitava.
+     *
+     * Os três divergiam: clicar() resolvia elemento, digitar() e escolher()
+     * não — e passar um elemento a eles caía num DOMException do seletor,
+     * erro que não diz o que houve. Apareceu em 13/08/2026 num teste de
+     * bloco repetível, onde os campos não têm id: eles são achados dentro do
+     * card, e o que se tem em mãos é o elemento. */
     digitar: function (sel, valor) {
-      const el = win.document.querySelector(sel);
+      const el = typeof sel === "string" ? win.document.querySelector(sel) : sel;
       if (!el) throw new Error("campo não existe: " + sel);
       el.value = valor;
       el.dispatchEvent(new win.Event("input", { bubbles: true }));
     },
     escolher: function (sel, valor) {
-      const el = win.document.querySelector(sel);
+      const el = typeof sel === "string" ? win.document.querySelector(sel) : sel;
       if (!el) throw new Error("select não existe: " + sel);
       el.value = valor;
       el.dispatchEvent(new win.Event("change", { bubbles: true }));
