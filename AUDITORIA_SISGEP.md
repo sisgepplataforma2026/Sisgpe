@@ -18,8 +18,9 @@
 | **Total** | **21** |
 
 A primeira rodada da auditoria (achados #1 a #10) foi corrigida e mergeada no PR #1. O commit
-`81bc626` ("Segunda versão do Projeto-Sisgepadm") reexportou o projeto do Apps Script por cima
-dessas correções e **desfez as 20 correções**, em 40 arquivos. Este relatório trata a regressão
+`81bc626` ("Segunda versão do Projeto-Sisgepadm") subiu por cima dessas correções uma árvore
+**idêntica à do backup anterior** (`899bc79`) e **desfez as 20 correções**, em 40 arquivos — sem
+trazer nenhuma alteração própria em troca. Este relatório trata a regressão
 como o achado **#11** e acrescenta os achados **#12 a #31**, resultado da varredura dos módulos
 que a primeira rodada não tinha alcançado (Central de E-mail, Portal do Associado, Eventos,
 Comprovantes, Despesas, Guias, Login/Sessão, Escolas, Agendamento Oftalmológico, Voucher).
@@ -72,15 +73,25 @@ ofícios.
   Script chegam ao Git por merge, não por sobrescrita.
 - **Impacto:** Todos os riscos das rodadas anteriores voltaram ao ar simultaneamente, e o histórico
   de auditoria perdeu valor — nada garante que a próxima correção sobreviva ao próximo export.
-- **Evidência:** `git show --stat 81bc626` (40 arquivos, 1.160 inserções, 1.508 remoções);
-  `git log --oneline 3d447dd~1..42add50` (20 commits de correção anteriores ao export).
+- **Evidência:** `git show --stat 81bc626` (40 arquivos, 1.160 inserções, 1.508 remoções).
+  O dado decisivo: **`git diff 899bc79 81bc626` é vazio** — a árvore da "Segunda versão" é idêntica,
+  byte a byte, à do "Primeiro backup do Sisgpe" (`899bc79`, do dia anterior). O export não trouxe
+  nenhuma alteração própria: o conjunto de arquivos que ele modifica é exatamente o conjunto que os
+  20 commits de correção haviam tocado — 40 de 40, nenhum arquivo fora. As `+179` linhas em
+  `MensalidadeCore.gs`, por exemplo, não são código novo: são a restauração da
+  `processarRelatorioMensalidade` duplicada que a correção havia removido.
+  Consequência prática: **não há trabalho a preservar no commit `81bc626`** — ele é, em efeito, um
+  revert integral.
 - **Correção recomendada:** Antes de qualquer nova correção, definir o fluxo de sincronização
-  (recomendado: `clasp pull` numa branch → PR → `clasp push` só a partir da `main`). Depois,
-  reaplicar as 20 correções sobre a segunda versão, preservando as melhorias novas que vieram no
-  export (`MensalidadeCore.gs`, `GuiasPagamento.gs`).
+  (recomendado: `clasp pull` numa branch → PR → `clasp push` só a partir da `main`). Como o export
+  não contém alteração própria, a recuperação é direta — `git revert 81bc626` (ou restaurar a
+  árvore de `42add50`) devolve as 20 correções sem merge manual arquivo a arquivo. O passo
+  seguinte, e indispensável, é **publicar essa árvore no Apps Script** (`clasp push`): as correções
+  nunca chegaram ao projeto ao vivo, o que é justamente a razão de o export tê-las apagado.
 - **Teste de validação:** Após reaplicar, rodar de novo os greps de marcador deste relatório
   (`aprovEsc`, `exigirSessaoDocumentos_` em `AprovacaoCadastro.gs`, `TENTATIVAS_OTP`) e confirmar
-  que a varredura de colisões devolve zero.
+  que a varredura de colisões devolve zero. Em seguida, `clasp pull` numa branch limpa e conferir
+  que o diff contra a `main` é vazio — prova de que Git e Apps Script estão sincronizados.
 
 ---
 
