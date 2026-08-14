@@ -76,6 +76,36 @@ Duas regras de uso:
   Se ele disser que testa depois, a resposta é registrar a data e seguir com
   o trabalho — não repetir a cada mensagem.
 
+## 🚨 REGRA Nº 0.6 — AUTOMATIZAR É O PADRÃO, NÃO O EXTRA
+
+Definida pelo usuário em 2026-08-13: *"devemos pensar sempre em automatizar e
+facilitar o trabalho das pessoas que estarão trabalhando com o sistema"*.
+
+Vale para todo desenho, toda tela e toda proposta. Não é sobre inventar
+funcionalidade: é sobre **não deixar a pessoa fazer o que o sistema já sabe
+fazer sozinho**.
+
+**O teste prático, antes de mostrar qualquer desenho:** olhar cada campo da
+tela e perguntar *"o sistema já tem esse dado em algum lugar?"*. Se tem, o
+campo nasce preenchido — com a origem à vista, para não passar impressão de
+conferido (ver o padrão de `origemEmailInstituicao` em `VoucherEnvio.gs`).
+Campo que a pessoa redigita todo semestre é defeito de desenho, não trabalho.
+
+**Perguntas boas de fazer a cada tela:**
+
+- Esse dado já está na base? Então preencha e deixe editar.
+- Essa é a segunda vez que a pessoa faz isso? Então ofereça repetir.
+- Esse cálculo é regra escrita (CCT, estatuto)? Então calcule e explique.
+- Esse erro é previsível? Então avise ANTES de a pessoa terminar de digitar.
+- Essa conferência é mecânica? Então faça, e reserve a pessoa para o que
+  exige julgamento.
+
+**O limite:** automatizar não é decidir pela pessoa. Percentual sugerido pela
+CCT continua editável; e-mail achado no cadastro aparece dizendo que veio do
+cadastro. **Sugerir com origem à vista, nunca impor em silêncio** — o dado
+que o sistema preencheu sozinho e não avisou é o que vira erro que ninguém
+percebe.
+
 ## 🚨 REGRA Nº 0.5 — ARQUITETURA E LAYOUT ANTES DE IMPLEMENTAR
 
 Definida pelo usuário em 2026-08-06. Antes de escrever backend, tela ou
