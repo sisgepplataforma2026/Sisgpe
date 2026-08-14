@@ -1001,7 +1001,32 @@ function aplicarCadastroLocalizado(cadastro) {
   atualizarProgresso();
   autoSave();
 }
+    /* Desliga o envio e diz, no próprio botão, por quê.
+       Botão que fica clicável e falha no clique ensina a pessoa a insistir;
+       botão desligado sem legenda ensina que o site está quebrado. O texto
+       no rótulo é o que transforma a recusa em instrução. */
+    function bloquearEnvioNaoAssociado(mail) {
+      var btn = document.getElementById('btnSalvar');
+      if (btn) {
+        btn.disabled = true;
+        btn.setAttribute('data-bloqueado-nao-associado', '1');
+        var lbl = document.getElementById('labelSalvar');
+        if (lbl) lbl.textContent = 'Solicitação presencial — escreva para ' + mail;
+      }
+    }
+
     function identificar() {
+      /* Recomeçar a identificação libera o botão: a pessoa pode ter digitado
+         o CPF errado na primeira tentativa, e ficar travada por causa do
+         engano de outra pessoa seria pior do que a trava resolve. */
+      var btnS = document.getElementById('btnSalvar');
+      if (btnS && btnS.getAttribute('data-bloqueado-nao-associado') === '1') {
+        btnS.disabled = false;
+        btnS.removeAttribute('data-bloqueado-nao-associado');
+        var lblS = document.getElementById('labelSalvar');
+        if (lblS) lblS.textContent = 'Salvar solicitação';
+      }
+
       var cpfVal = document.getElementById('cpf').value.replace(/\D/g, '');
       var dataNasc = document.getElementById('dataNascimento').value;
       if (!cpfVal || cpfVal.length !== 11) { showMsg('❌ Informe um CPF válido.', 'erro'); document.getElementById('cpf').classList.add('invalid'); return; }
@@ -1015,6 +1040,28 @@ function aplicarCadastroLocalizado(cadastro) {
         .withSuccessHandler(function(res) {
           setLoading('btnIdentificar', 'spinnerIdent', 'labelIdent', false, 'Buscando...', 'Buscar cadastro');
           if (!res || !res.encontrado) { showMsg('⚠️ Cadastro não localizado. Preencha os dados abaixo para realizar o primeiro cadastro.', 'warn'); return; }
+
+          /* NÃO ASSOCIADO PARA AQUI — e sai daqui sabendo o que fazer.
+             Regra de 14/08/2026: a solicitação pelo portal é só para
+             associado, e quem não é deve escrever para a secretaria. O
+             aviso aparece na IDENTIFICAÇÃO, antes de preencher escola,
+             curso, período e anexar documento — descobrir isso no fim
+             seria o formulário inteiro jogado fora.
+             O backend recusa o envio de qualquer jeito; isto aqui poupa o
+             trabalho, não substitui a trava. */
+          if (res.naoAssociado === true) {
+            var mail = res.emailContato || 'secretaria@sindeducacao.com';
+            showMsg(
+              '🏛️ <strong>A solicitação pelo portal é exclusiva para associados.</strong> ' +
+              'O benefício é o mesmo — muda só a forma. Escreva para ' +
+              '<a href="mailto:' + mail + '" style="color:inherit;text-decoration:underline;">' + mail + '</a> ' +
+              'para receber as orientações e fazer a solicitação presencialmente, na sede do SindEducação-ES.',
+              'warn'
+            );
+            bloquearEnvioNaoAssociado(mail);
+            return;
+          }
+
 var c = res.cadastro || {};
 aplicarCadastroLocalizado(c);
           showMsg('✅ Cadastro localizado! Confira e atualize os dados, se necessário.', 'ok');
@@ -1102,7 +1149,22 @@ escolaAtual:
               }
 
               var numProtocolo = res.protocolo && res.protocolo.numeroProtocolo ? res.protocolo.numeroProtocolo : '';
-              var isSindicalizado = String(document.getElementById('situacaoSindicalDeclarada').value || '').toUpperCase() === 'ASSOCIADO';
+
+              /* QUEM DECIDE É A BASE, NÃO O QUE A PESSOA DIGITOU.
+                 Esta linha lia o SELECT do formulário — ou seja, a declaração
+                 do próprio solicitante. Quem se declarasse "Associado" sem
+                 ser recebia a faixa VERDE de "você será notificado por
+                 e-mail", enquanto o backend tinha marcado NAO_ASSOCIADO e
+                 mandado o pedido para a fila do presencial. A pessoa ia
+                 embora esperando um e-mail que nunca chegaria, e ninguém
+                 descobriria até ela ligar cobrando.
+                 O backend consulta a base de Associados e devolve a resposta
+                 em res.naoAssociado. A declaração do formulário só vale como
+                 último recurso, quando o backend não disse nada. */
+              var isSindicalizado;
+              if (res.naoAssociado === true)       isSindicalizado = false;
+              else if (res.naoAssociado === false) isSindicalizado = true;
+              else isSindicalizado = String(document.getElementById('situacaoSindicalDeclarada').value || '').toUpperCase() === 'ASSOCIADO';
               var nomeSolicitante = document.getElementById('nome').value.trim();
               var modalidadeVal   = document.getElementById('modalidade').value;
               var cursoVal        = document.getElementById('curso').value.trim();
@@ -1135,8 +1197,15 @@ escolaAtual:
                     (isSindicalizado
                       ? 'background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);color:#6ee7b7;">' +
                         '✅ Solicitação <strong>registrada com sucesso</strong>. Nossa equipe irá analisar seus documentos em até <strong>15 dias úteis</strong>. Você será notificado por e-mail.'
+                      /* O TEXTO ANTERIOR SOAVA RECUSA, e a regra é o oposto.
+                         Ele dizia "cadastro identificado como Não Associado"
+                         e mandava comparecer — sem nunca dizer que a pessoa
+                         TEM o benefício. Quem lia entendia que estava sendo
+                         barrado. Regra dita pelo usuário em 14/08/2026: o
+                         benefício é o mesmo, muda só o canal. A primeira
+                         frase agora é a boa notícia; a segunda é o caminho. */
                       : 'background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);color:#fcd34d;">' +
-                        '⚠️ Cadastro identificado como <strong>Não Associado</strong>. Guarde este protocolo e compareça à sede do sindicato em até <strong>15 dias úteis</strong> com sua documentação.') +
+                        '🏛️ <strong>Seu pedido foi registrado.</strong> Como você ainda não é associado, o atendimento é <strong>presencial</strong> — o benefício é o mesmo, muda só a forma. Guarde este protocolo e compareça à sede do SindEducação-ES em até <strong>15 dias úteis</strong>, com documento com foto e comprovante de matrícula. O voucher é retirado na sede, e não enviado por e-mail.') +
                   '</div>' +
                 '</div>';
 

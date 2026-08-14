@@ -3,6 +3,17 @@
 // Cadastro, busca, atualização e validação sindical do módulo Voucher
 // =============================================================================
 
+/* O ENDEREÇO PARA ONDE O NÃO ASSOCIADO É ENCAMINHADO.
+ *
+ * Constante, e não literal repetido, porque a mesma frase aparece na
+ * identificação (aqui), na recusa do envio (VoucherSolicitacao.gs) e na
+ * tela. Endereço de contato muda — e quando mudar, tem que mudar nos três
+ * ao mesmo tempo, senão sobra um mandando gente para uma caixa que ninguém
+ * lê. O mesmo endereço já aparecia solto no rodapé do certificado
+ * (VoucherPdf.gs) e em AgendOftalm.gs; unificar aqueles é outra tarefa, e
+ * não se mistura com esta. */
+var VOUCHER_EMAIL_SECRETARIA_ = "secretaria@sindeducacao.com";
+
 /* ================= CADASTRO ================= */
 
 function registrarOuAtualizarCadastroVoucher(dados) {
@@ -108,6 +119,38 @@ function identificarSolicitanteVoucher(payload) {
         mensagem: "Cadastro não localizado com os dados informados."
       };
     }
+  }
+
+  /* O AVISO SAI NA PORTA, NÃO NO FIM DO FORMULÁRIO.
+   *
+   * Regra do usuário em 14/08/2026: "quem não é associado não pode fazer a
+   * solicitação pelo site... portal"; "esse benefício de ter ON é somente
+   * para o associado"; e "quando tentar entrar, deve ser solicitado a
+   * encaminhar um e-mail para secretaria@sindeducacao.com".
+   *
+   * "Quando tentar ENTRAR" é esta função — o passo em que a pessoa digita
+   * CPF e data de nascimento para se identificar. Deixar o aviso só para o
+   * envio final faria alguém preencher escola, curso, período e anexar
+   * documento para ouvir no fim que aquele caminho não era o dela. Isso não
+   * é uma trava a mais: é a mesma trava, na hora certa.
+   *
+   * A recusa do envio (VoucherSolicitacao.gs) CONTINUA existindo, e as duas
+   * não são redundância. Esta aqui é conveniência e mora na tela; a de lá é
+   * a regra, e vale para qualquer chamada — inclusive a que não passa por
+   * tela nenhuma. Trava que só existe na interface não é trava. */
+  const situacaoCad = String(
+    (resultado.cadastro && (resultado.cadastro.situacaoSindical ||
+                            resultado.cadastro.SITUACAO_SINDICAL)) || ""
+  ).toUpperCase();
+
+  if (situacaoCad === "NAO_ASSOCIADO") {
+    resultado.naoAssociado = true;
+    resultado.emailContato = VOUCHER_EMAIL_SECRETARIA_;
+    resultado.avisoPresencial =
+      "A solicitação de bolsa pelo portal é exclusiva para associados. " +
+      "O benefício é o mesmo — muda só a forma: escreva para " +
+      VOUCHER_EMAIL_SECRETARIA_ + " para receber as orientações e fazer a " +
+      "solicitação presencialmente, na sede do SindEducação-ES.";
   }
 
   return resultado;

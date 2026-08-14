@@ -16,40 +16,49 @@ function salvarCadastroESolicitacaoVoucher(payload) {
     const escolaAtual      = valorSeguroVoucher_(payload.escolaAtual || payload.escola);
     const tipoDocVinculo   = inferirTipoDocumentoVinculo_(payload);
 
-    /* O PORTAL É PORTA DE ASSOCIADO. A CONSULTA VEM ANTES DE GRAVAR.
+    /* PELO PORTAL, O NÃO ASSOCIADO NÃO FAZ A SOLICITAÇÃO.
      *
-     * Decisão do usuário em 14/08/2026: o não associado "não terá acesso,
-     * pois não é associado" — ele vem à sede e faz a solicitação em papel.
-     * Todos têm o mesmo benefício; o que muda é o canal.
+     * Regra dita pelo usuário em 14/08/2026: "quem não é associado não pode
+     * fazer a solicitação pelo site... portal". Ele vem à sede e entrega em
+     * papel.
      *
-     * Antes, o portal aceitava, gravava a solicitação como
-     * AGUARDANDO_ATENDIMENTO_PRESENCIAL e orientava procurar a sede. Vira
-     * recusa na porta: nada é criado. A solicitação dele nasce no balcão, a
-     * partir do papel, e criar aqui uma linha que o atendimento vai
-     * duplicar depois é fabricar trabalho e risco de bolsa contada em
-     * dobro na trava de janela.
+     * ISTO CONVIVE COM O "não pode bloquear" dito minutos antes, e a leitura
+     * das duas frases juntas é o que define este código: o que não pode é o
+     * bloqueio MUDO — a tela que recusa e não diz nada, deixando a pessoa
+     * sem saber o que fazer. A recusa em si é a regra. Por isso a resposta
+     * não é um erro seco: ela carrega `naoAssociado` e `avisoPresencial`,
+     * para a tela mostrar uma faixa que EXPLICA o caminho, e não um alerta
+     * vermelho de falha.
      *
-     * A CONSULTA SUBIU PARA ANTES DO CADASTRO de propósito. Recusar depois
-     * de gravar deixaria no sistema o cadastro de quem não pode usar o
-     * portal — dado pessoal guardado sem finalidade, que é exatamente o que
-     * a LGPD manda evitar.
+     * A CONSULTA VEM ANTES DE QUALQUER GRAVAÇÃO. Recusar depois de gravar
+     * deixaria no sistema o cadastro de quem não pode usar o portal — dado
+     * pessoal guardado sem finalidade, que é o que a LGPD manda evitar.
      *
-     * RECUSA SÓ QUEM A BASE CONFIRMA COMO NÃO FILIADO. Quem não está na
-     * base NÃO é recusado: pode ser associado novo, ainda não lançado, e
-     * barrá-lo seria negar direito por atraso de cadastro. Esse caso segue
-     * como sempre seguiu, para a fila de validação cadastral — que é pedir
-     * conferência humana, não conceder nada. */
+     * RECUSA SÓ QUEM A BASE CONFIRMA COMO NÃO FILIADO. Quem não está na base
+     * não é recusado: pode ser associado novo, ainda não lançado, e barrá-lo
+     * seria negar direito por atraso de cadastro. Esse caso segue para a
+     * fila de validação cadastral, que é pedir conferência humana — não
+     * conceder nada. */
     const resultadoBase = consultarAssociadoNaBase_(cpf);
+    const naoAssociadoConfirmado = resultadoBase.encontrado && !resultadoBase.filiado;
 
-    if (resultadoBase.encontrado && !resultadoBase.filiado) {
+    if (naoAssociadoConfirmado) {
       return {
         ok: false,
         naoAssociado: true,
+        /* Sem "erro", sem "não foi possível": a frase abre pelo que ele TEM,
+         * não pelo que ele deixa de poder. O benefício existe para ele. */
         mensagem:
-          "O pedido de bolsa para quem não é associado é feito presencialmente, " +
-          "na sede do SindEducação-ES. O benefício é o mesmo — muda só a forma: " +
-          "a solicitação é entregue em papel e o voucher é retirado na sede. " +
-          "Traga um documento com foto e o comprovante de matrícula."
+          "O pedido de bolsa pelo portal é exclusivo para associados. " +
+          "O benefício é o mesmo — muda só a forma: escreva para " +
+          VOUCHER_EMAIL_SECRETARIA_ + " para receber as orientações e " +
+          "fazer a solicitação presencialmente, na sede do SindEducação-ES.",
+        emailContato: VOUCHER_EMAIL_SECRETARIA_,
+        avisoPresencial:
+          "A solicitação é entregue em papel e o voucher é retirado na sede. " +
+          "Se você já se associou recentemente e este aviso apareceu, " +
+          "escreva para " + VOUCHER_EMAIL_SECRETARIA_ + " para atualizarmos " +
+          "seu cadastro."
       };
     }
 
@@ -69,7 +78,7 @@ function salvarCadastroESolicitacaoVoucher(payload) {
 
     const situacaoSindicalFinal = resultadoBase.filiado
       ? "ASSOCIADO"
-      : "PENDENTE_VALIDACAO";
+      : (naoAssociadoConfirmado ? "NAO_ASSOCIADO" : "PENDENTE_VALIDACAO");
 
     atualizarSituacaoSindicalCadastro_(cpf, situacaoSindicalFinal);
 
@@ -111,20 +120,14 @@ function salvarCadastroESolicitacaoVoucher(payload) {
     } else if (resultadoBase.filiado) {
       statusSolicitacao = "PENDENTE";
       statusValidacaoSindical = "VALIDADO";
+    } else if (naoAssociadoConfirmado) {
+      /* O PEDIDO ENTRA NA FILA DO PRESENCIAL — não é recusa, é outro
+       * caminho. Ele fica visível para a secretaria, que sabe que alguém
+       * procurou e vai aparecer na sede com o papel. Bloquear aqui faria o
+       * sindicato perder o registro de que a pessoa existiu. */
+      statusSolicitacao = "AGUARDANDO_ATENDIMENTO_PRESENCIAL";
+      statusValidacaoSindical = "NAO_ASSOCIADO";
     }
-
-    /* AQUI HAVIA UM TERCEIRO RAMO — encontrado e não filiado →
-     * AGUARDANDO_ATENDIMENTO_PRESENCIAL. Ele saiu porque virou INALCANÇÁVEL
-     * em 14/08/2026: esse caso agora é recusado lá em cima, antes de existir
-     * solicitação. Quem chega até aqui é filiado, ou não está na base.
-     *
-     * Removido em vez de mantido como legado justamente por ser um ramo de
-     * decisão de status: ramo morto que ATRIBUI status é pior do que código
-     * morto comum, porque quem lê depois acredita que aquele status ainda é
-     * produzido por este caminho e vai procurá-lo na aba sem nunca achar. O
-     * status em si continua existindo e sendo escrito por
-     * `marcarNaoAssociadoVoucher` (VoucherAdmin.gs), que é onde o
-     * atendimento presencial de fato começa. */
 
     const docsResult       = registrarDocumentosPayloadVoucher_(idSolicitacao, cpf, payload);
     const linkContracheque = docsResult.find(function(d) { return d && d.tipoDocumento !== "DOCUMENTO_PESSOAL"; });
@@ -258,12 +261,28 @@ function salvarCadastroESolicitacaoVoucher(payload) {
 
     return {
       ok: true,
-      mensagem: "Solicitação registrada com sucesso!",
+      /* A MENSAGEM DE SUCESSO DIZ O QUE VEM DEPOIS.
+       *
+       * Para o não associado, "registrada com sucesso" sozinho é meia
+       * verdade que vira frustração: ele fecharia a tela esperando um
+       * e-mail com o voucher. O aviso vai junto do sucesso, não no lugar
+       * dele — o pedido foi aceito mesmo, e o que muda é por onde termina. */
+      mensagem: naoAssociadoConfirmado
+        ? "Solicitação registrada! Como você ainda não é associado, o " +
+          "atendimento é presencial: compareça à sede do SindEducação-ES " +
+          "para entregar a solicitação em papel e retirar o voucher."
+        : "Solicitação registrada com sucesso!",
+      avisoPresencial: naoAssociadoConfirmado
+        ? "O benefício é o mesmo do associado — muda só a forma de retirar. " +
+          "Traga um documento com foto e o comprovante de matrícula. " +
+          "O voucher não será enviado por e-mail."
+        : "",
       protocolo: { numeroProtocolo: protocolo },
       solicitacao: { idSolicitacao: idSolicitacao },
       percentual: regra.percentual,
       apto: regra.apto,
       status: statusSolicitacao,
+      naoAssociado: naoAssociadoConfirmado,
       situacaoSindical: situacaoSindicalFinal
     };
 
@@ -322,14 +341,14 @@ function montarObservacaoSolicitacaoVoucher_(regra, flags) {
     partes.push("Escola não localizada no cadastro de escolas.");
   }
 
-  /* HOJE INALCANÇÁVEL POR ESTE CAMINHO, e mantido de propósito.
+  /* ALCANÇÁVEL, e é bom que seja.
    *
-   * Desde 14/08/2026 o portal recusa o não associado antes de criar
-   * solicitação, então `situacaoSindicalFinal` só chega aqui como ASSOCIADO
-   * ou PENDENTE_VALIDACAO. Fica porque é uma frase de observação, não um
-   * ramo de decisão: não produz status nem concede nada, e se a regra do
-   * canal mudar de novo ela volta a valer sem ninguém precisar reescrevê-la.
-   * Na dúvida entre remover e manter, mantém-se documentado (REGRA Nº 1). */
+   * Cheguei a marcar esta linha como inalcançável em 14/08/2026, quando o
+   * portal recusava o não associado. No mesmo dia o usuário corrigiu — o
+   * portal avisa, não bloqueia — e o caso voltou a passar por aqui. Fica o
+   * registro porque "código morto" declarado cedo demais é como se apaga
+   * coisa viva por engano (REGRA Nº 1): a leitura estava certa para o código
+   * daquele minuto e errada meia hora depois. */
   if (flags && flags.situacaoSindicalFinal === "NAO_ASSOCIADO") {
     partes.push("Cadastro identificado como não associado. Orientar atendimento presencial.");
   }

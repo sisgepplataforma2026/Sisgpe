@@ -355,6 +355,23 @@ function enviarEmailAprovacaoVoucher_(reg, protocolo) {
 
     const percentual = valorSeguroVoucher_(reg.PERCENTUAL_APLICADO);
 
+    /* ESTE E-MAIL PROMETIA ALGO QUE NÃO IA ACONTECER.
+     *
+     * A frase de fecho era "o voucher será emitido e ENCAMINHADO após a
+     * geração do documento oficial" — verdade para o associado, mentira
+     * para quem retira presencialmente. A pessoa ficaria esperando um
+     * e-mail que, por decisão de 14/08/2026, nunca sai.
+     *
+     * Achado por um teste que media a caixa de saída, não a intenção do
+     * código: eu tinha bloqueado o envio DO VOUCHER na emissão e concluído
+     * que nenhum e-mail chegava ao não associado. Chegava — este, de outro
+     * arquivo, disparado na aprovação, que eu nem sabia que existia.
+     *
+     * O aviso de aprovação em si CONTINUA saindo, e deve mesmo: ser
+     * aprovado é notícia boa e a pessoa tem direito de saber. O que muda é
+     * a última frase, que passa a dizer a verdade do canal dela. */
+    const presencial = voucherEhNaoAssociado_(reg.SITUACAO_SINDICAL);
+
     MailApp.sendEmail({
       to: email,
       subject: "Bolsa aprovada — " + protocolo + " · SindEducação-ES",
@@ -366,7 +383,13 @@ function enviarEmailAprovacaoVoucher_(reg, protocolo) {
         "<p><strong>Protocolo:</strong> " + escHtmlVoucher_(protocolo) + "</p>" +
         "<p><strong>Curso:</strong> " + escHtmlVoucher_(reg.CURSO) + "</p>" +
         "<p><strong>Desconto:</strong> " + escHtmlVoucher_(percentual || "—") + "%</p>" +
-        "<p>O voucher será emitido e encaminhado após a geração do documento oficial.</p>" +
+        (presencial
+          ? "<p><strong>A retirada é presencial.</strong> Compareça à sede do " +
+            "SindEducação-ES com um documento com foto e este número de " +
+            "protocolo para retirar o seu voucher. Ele não será enviado por " +
+            "e-mail.</p>"
+          : "<p>O voucher será emitido e encaminhado após a geração do " +
+            "documento oficial.</p>") +
         "<p>Atenciosamente,<br>SindEducação-ES</p>" +
         "</div>"
     });
