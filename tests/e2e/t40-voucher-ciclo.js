@@ -173,8 +173,21 @@ b.passo("13. Solicitação NÃO aprovada não emite certificado");
  * declarando que conferiu. O teste é que apontava para o protocolo errado. */
 const naoAprovado = g.gerarDocumentoVoucher(r5.protocolo, "CERTIFICADO", { percentual: 70 });
 b.igual(naoAprovado.ok, false, "recusa quem não passou pela aprovação");
-b.ok(/associa|status/i.test(String(naoAprovado.mensagem || "")),
-  "dizendo por quê", naoAprovado.mensagem);
+/* A MENSAGEM MUDOU EM 14/08/2026, e a asserção mudou junto — de propósito.
+ *
+ * Ela dizia "só pode ser emitido após confirmação de associação", e o teste
+ * casava com /associa|status/. Ser associado deixou de ser condição para
+ * emitir (todos têm o mesmo benefício; o não associado retira na sede), mas
+ * TER SIDO APROVADO continua sendo — e é essa a trava que este passo
+ * defende. A mensagem nova fala de análise e aprovação, que é o que a recusa
+ * realmente significa hoje.
+ *
+ * Casar com /associa/ agora seria pior do que inútil: passaria a testar uma
+ * palavra que não deve mais estar ali. */
+b.ok(/aprov|an[áa]lise/i.test(String(naoAprovado.mensagem || "")),
+  "dizendo por quê — falta a aprovação", naoAprovado.mensagem);
+b.ok(!/confirma[çc][ãa]o de associa/i.test(String(naoAprovado.mensagem || "")),
+  "e sem exigir associação, que não é mais condição", naoAprovado.mensagem);
 
 b.passo("14. O protocolo aprovado emite");
 const emitido = g.gerarDocumentoVoucher(PROT, "CERTIFICADO", { percentual: 70, rg: "1234567" });

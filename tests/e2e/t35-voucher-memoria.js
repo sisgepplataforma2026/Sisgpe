@@ -437,19 +437,43 @@ b.bloqueia(() => g.voucherSugerirSolicitacao({ cpf: CPF_MARCELO }, ESC), "recusa
 /* ══════════════════════════════════════════════════════════════════════ */
 b.fluxo("REGRA DA CCT · quem tem direito, e até quantos filhos");
 
-b.passo("40. Só ASSOCIADO tem direito");
-/* Ditado pelo usuário em 12/08/2026: "dependente: só tem direito quem é
- * associado". A verificação existia só na EMISSÃO — ou seja, a solicitação
- * era cadastrada, analisada e aprovada, e o "não pode" só aparecia na hora
- * de gerar o documento, com todo o trabalho já feito. */
+b.passo("40. MESMO BENEFÍCIO para associado e não associado — muda o CANAL");
+/* ESTE PASSO AFIRMAVA O CONTRÁRIO ATÉ 14/08/2026, e a história fica escrita
+ * aqui porque ela é o motivo de o teste existir.
+ *
+ * Em 12/08 foi registrado "só tem direito quem é associado", e a recusa
+ * acabou em quatro lugares: o cálculo, a aprovação, a emissão e o portal.
+ * Em 14/08 o usuário corrigiu: "hoje todos tem o mesmo benefício, mas o não
+ * associado a solicitação do voucher e a retirada é presencial".
+ *
+ * O estrago da versão anterior era pior do que uma recusa a mais: o portal
+ * mandava a pessoa à sede e o balcão a recusava quando ela chegava. O
+ * caminho presencial existia no nome dos status e em lugar nenhum mais.
+ *
+ * Por isso a asserção agora é de IGUALDADE — os dois percentuais têm que
+ * bater. Comparar com "100" fixo passaria mesmo se a regra do associado
+ * quebrasse junto; comparar um com o outro é o que prova que ninguém ficou
+ * para trás. */
 const naoAssoc = g.calcularRegraVoucher_(
   { modalidade: "GRADUACAO", areaCurso: "HUMANAS", tipoBeneficiario: "TITULAR",
     situacaoSindical: "NAO_ASSOCIADO" }, "");
-b.ok(!naoAssoc.apto, "não-associado é recusado no cálculo, não só na emissão");
-b.ok(/s[óo] associado/i.test(naoAssoc.observacao), "com o motivo escrito", naoAssoc.observacao);
-b.ok(g.calcularRegraVoucher_(
+const simAssoc = g.calcularRegraVoucher_(
   { modalidade: "GRADUACAO", areaCurso: "HUMANAS", tipoBeneficiario: "TITULAR",
-    situacaoSindical: "ASSOCIADO" }, "").apto, "e associado passa normalmente");
+    situacaoSindical: "ASSOCIADO" }, "");
+b.ok(naoAssoc.apto, "não associado é APTO — o benefício não olha a carteirinha");
+b.igual(naoAssoc.percentual, simAssoc.percentual,
+  "e o percentual é o MESMO dos dois lados");
+b.ok(simAssoc.apto, "associado continua passando normalmente");
+
+b.passo("40b. O que muda é o canal, e ele vem dito na resposta");
+b.igual(naoAssoc.canal, "PRESENCIAL", "não associado → canal PRESENCIAL");
+b.igual(simAssoc.canal, "REMOTO", "associado → canal REMOTO");
+b.ok(/presencial/i.test(naoAssoc.observacao) && /papel/i.test(naoAssoc.observacao),
+  "a observação explica papel e retirada presencial", naoAssoc.observacao);
+b.ok(!/presencial/i.test(simAssoc.observacao),
+  "e a do associado NÃO fala em presencial", simAssoc.observacao);
+b.ok(!/s[óo] associado tem direito/i.test(naoAssoc.observacao),
+  "a frase da regra revogada não sobrou em lugar nenhum");
 
 b.passo("41. Situação em BRANCO não é recusa");
 /* Quem ainda não escolheu o campo não está declarando que a pessoa é
@@ -480,15 +504,26 @@ b.ok(/3º filho/.test(quarto.observacao) && /4/.test(quarto.observacao),
 b.ok(!/modalidade/i.test(quarto.observacao),
   "sem culpar a modalidade, que não tem nada a ver");
 
-b.passo("44. O resolvedor repassa a situação sindical à regra");
-/* Sem repassar, o resolvedor calcularia percentual para quem não é
- * associado e a recusa só apareceria lá na emissão. */
+b.passo("44. O resolvedor sugere o MESMO percentual, e avisa do canal");
+/* Antes este passo exigia campo vazio e bloqueio. Virou o oposto pelo mesmo
+ * motivo do passo 40 — mas o que ele guarda continua valendo: o resolvedor
+ * PRECISA repassar a situação sindical à regra. Se parar de repassar, o
+ * percentual até sai certo (é o mesmo dos dois lados agora), e o AVISO DO
+ * CANAL some — e some calado, que é o pior jeito de sumir: a atendente não
+ * saberia que aquele voucher não vai por e-mail. É o aviso, não o número,
+ * que prova o repasse hoje. */
 const rNao = g.voucherSugerirSolicitacao(
   { modalidade: "GRADUACAO", area: "HUMANAS", situacaoSindical: "NAO_ASSOCIADO" }, ADM);
-b.igual(rNao.campos.percentual, "", "campo vazio para não-associado");
-b.ok(rNao.bloqueadoPelaRegra === true, "e bloqueado");
-b.ok(rNao.avisos.some(a => /s[óo] associado/i.test(a)), "com o aviso na tela",
-  (rNao.avisos.find(a => /associado/i.test(a)) || ""));
+const rSim = g.voucherSugerirSolicitacao(
+  { modalidade: "GRADUACAO", area: "HUMANAS", situacaoSindical: "ASSOCIADO" }, ADM);
+b.igual(rNao.campos.percentual, rSim.campos.percentual,
+  "o percentual sugerido é o mesmo para os dois");
+b.ok(rNao.bloqueadoPelaRegra !== true, "e o não associado NÃO nasce bloqueado");
+b.ok(rNao.avisos.some(a => /presencial/i.test(a)),
+  "mas a tela recebe o aviso do canal presencial",
+  (rNao.avisos.find(a => /presencial/i.test(a)) || "(nenhum aviso)"));
+b.ok(!rSim.avisos.some(a => /presencial/i.test(a)),
+  "e o associado não recebe esse aviso");
 
 b.resumo();
 process.exit(0);

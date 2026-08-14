@@ -279,10 +279,16 @@ function el(id) { return doc.getElementById(id); }
 
 
 
-  b.passo("13b. Marcar 'não associado' zera o percentual na hora");
-  /* Só associado tem direito. Antes, a recusa só aparecia na EMISSÃO — a
-   * solicitação era cadastrada, analisada e aprovada, e o "não pode" vinha
-   * na hora de gerar o documento, com todo o trabalho feito. */
+  b.passo("13b. Marcar 'não associado' MANTÉM o percentual e avisa do canal");
+  /* ESTE PASSO EXIGIA O CONTRÁRIO — campo zerado — até 14/08/2026, quando o
+   * usuário corrigiu a regra: todos têm o mesmo benefício, o não associado é
+   * que solicita em papel e retira presencialmente.
+   *
+   * A asserção que importa aqui é a do AVISO, não a do número. O percentual
+   * continuar em 70 é o comportamento novo; mas se o aviso do canal sumir,
+   * a tela fica idêntica à do associado e a atendente não tem como saber que
+   * aquele voucher não vai por e-mail. É por isso que o número e o aviso são
+   * verificados juntos: um sem o outro é meio caminho. */
   t.clicar("#certBtnNova");
   await t.assentar(40);
   el("certNvCpf").value = CPF_M;
@@ -291,13 +297,16 @@ function el(id) { return doc.getElementById(id); }
   t.escolher("#certNvArea", "HUMANAS");
   await t.assentar(180);
   b.igual(String(el("certNvPercentual").value), "70", "associado: 70%");
+  b.ok(!/presencial/i.test(t.texto("#certNvAvisos") || ""),
+    "e nenhum aviso de presencial para ele");
 
   t.escolher("#certNvSituacao", "NAO_ASSOCIADO");
   await t.assentar(180);
-  b.igual(String(el("certNvPercentual").value), "",
-    "não associado: campo zerado imediatamente");
-  b.ok(/associado/i.test(t.texto("#certNvAvisos") || ""),
-    "com o motivo na tela", (t.texto("#certNvAvisos") || "").slice(0, 60));
+  b.igual(String(el("certNvPercentual").value), "70",
+    "não associado: MESMO percentual, o benefício não muda");
+  b.ok(/presencial/i.test(t.texto("#certNvAvisos") || ""),
+    "e a tela avisa que é papel e retirada presencial",
+    (t.texto("#certNvAvisos") || "").slice(0, 90));
 
 
   /* ═══════════════════════════════════════════════════════════════════ */
@@ -454,21 +463,39 @@ function el(id) { return doc.getElementById(id); }
   b.igual(vS("STATUS_VALIDACAO_SINDICAL"), "VALIDADO", "validação sindical marcada");
   b.ok(!!vS("USUARIO_VALIDACAO"), "com quem validou", vS("USUARIO_VALIDACAO"));
 
-  b.passo("25. Não-associado continua sendo recusado");
-  /* A trava certa não foi removida — só a errada. */
+  b.passo("25. Não associado é APROVADO, com o presencial registrado");
+  /* ESTE PASSO EXIGIA RECUSA até 14/08/2026 — era "a trava certa não foi
+   * removida". A trava inteira estava errada, e o teste a defendia.
+   *
+   * O que ela causava, medido: o portal mandava o não associado à sede, ele
+   * chegava com o papel, e o balcão recusava na aprovação e na emissão. O
+   * atendimento presencial não existia na prática.
+   *
+   * A asserção do protocolo criado fica de pé pelo motivo de sempre: sem
+   * ela, um "aprovou" sobre protocolo inexistente passaria despercebido. */
   const naoAss = g.voucherCriarSolicitacao({
     cpf: "52998224725", nome: "Nao Associado", modalidade: "GRADUACAO",
     area: "HUMANAS", situacaoSindical: "NAO_ASSOCIADO",
     periodo: "2026/2", aprovar: false
   }, TOKEN);
-  /* Sem esta asserção o teste seguinte mentia: a solicitação nem chegava a
-   * ser criada (faltava o período) e a "recusa" que ele comemorava era
-   * "protocolo não encontrado", não "só associado tem direito". */
-  b.ok(naoAss.ok, "a solicitação do não-associado é criada", naoAss.protocolo || naoAss.mensagem);
+  b.ok(naoAss.ok, "a solicitação do não associado é criada", naoAss.protocolo || naoAss.mensagem);
   const rec = g.aprovarSolicitacaoVoucher(naoAss.protocolo, "", TOKEN);
-  b.ok(rec && rec.ok === false, "aprovação recusada");
-  b.ok(/s[óo] associado/i.test(rec.mensagem || ""),
-    "com o motivo verdadeiro, não uma frase genérica", rec.mensagem);
+  b.ok(rec && rec.ok === true, "aprovação ACEITA — o benefício é o mesmo", rec.mensagem);
+  b.ok(!/s[óo] associado tem direito/i.test(rec.mensagem || ""),
+    "e a frase da regra revogada não aparece", rec.mensagem);
+
+  /* O rastro do canal vai para o HISTÓRICO, que é append-only — não para
+   * OBSERVACOES, que a próxima ação sobrescreve. Ler o histórico é o que
+   * prova que o registro sobrevive à emissão. */
+  const histNA = g.SpreadsheetApp.openById(g.PLANILHA_ID)
+    .getSheetByName("Voucher_Historico");
+  const linhasHist = histNA ? histNA.getDataRange().getValues() : [];
+  const achouPresencial = linhasHist.some(function (l) {
+    return l.join(" | ").indexOf(naoAss.protocolo) > -1 &&
+           /presencial/i.test(l.join(" | "));
+  });
+  b.ok(achouPresencial,
+    "e o histórico guarda que o atendimento é presencial");
 
   b.passo("26. Com modal aberto, o aviso sai por toast — visível");
   t.clicar("#certBtnNova");

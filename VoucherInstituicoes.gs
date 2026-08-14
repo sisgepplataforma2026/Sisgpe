@@ -921,6 +921,26 @@ function voucherSugerirSolicitacao(dados, tokenSessao) {
       r.origens.percentual = "REGRA_CCT";
       r.campos.regime = regra.regime || r.campos.regime || "";
       r.regraObservacao = regra.observacao || "";
+
+      /* O CANAL PRESENCIAL É AVISO, MESMO QUANDO A REGRA APROVA.
+       *
+       * Só o ramo da RECUSA empurrava algo para `r.avisos`, porque até
+       * 14/08/2026 a única coisa que a regra tinha a dizer sobre situação
+       * sindical era "não pode". Agora o não associado PODE — e passa por
+       * este ramo, o do sim, que não avisava nada.
+       *
+       * O buraco foi achado pelo teste, e ele é do tipo que não dói na hora:
+       * o percentual saía certo, a solicitação gravava, e a atendente só
+       * descobria que o voucher não foi por e-mail quando a pessoa ligasse
+       * cobrando. Aviso que falta em cima de resultado certo é o mais caro
+       * de encontrar depois. */
+      if (regra.presencial) {
+        r.avisos.push(
+          "Não associado: mesmo benefício, mas a solicitação é em papel e a " +
+          "retirada é presencial na sede. O voucher não será enviado por e-mail."
+        );
+        r.canalPresencial = true;
+      }
     } else if (regra && !regra.apto) {
       /* Regra que RECUSA é informação, não silêncio. Mestrado sem desconto,
        * filho fora do limite de idade, enteado sem declaração de IR — em

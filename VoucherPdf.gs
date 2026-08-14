@@ -48,11 +48,29 @@ function gerarDocumentoVoucher(protocolo, tipoDocumento, opcoes) {
     const situacaoSindical = String(reg.SITUACAO_SINDICAL || "").toUpperCase();
     const statusValidacao = String(reg.STATUS_VALIDACAO_SINDICAL || "").toUpperCase();
 
+    /* PRESENCIAL NÃO É RECUSA — é outra forma de entregar.
+     *
+     * Até 14/08/2026 este bloco exigia `situacaoSindical === "ASSOCIADO"` e
+     * recusava todo o resto. Somado à recusa igual na aprovação, o efeito era
+     * que o não associado NÃO CONSEGUIA SER ATENDIDO DE JEITO NENHUM — nem
+     * pelo portal, que o mandava à sede, nem no balcão, que o recusava
+     * quando ele chegava lá. Medido no emulador antes de mexer.
+     *
+     * A regra real, dita pelo usuário: todos têm o mesmo benefício; o não
+     * associado solicita em papel e RETIRA PRESENCIALMENTE. Então o que
+     * muda aqui não é o direito de emitir, é o que acontece depois de
+     * emitir — o voucher dele não sai por e-mail, fica guardado para ele
+     * buscar. Ver `voucherEhNaoAssociado_` em Voucher.gs. */
+    const retiradaPresencial = voucherEhNaoAssociado_(situacaoSindical);
+
     if (!isPreview) {
-      if (situacaoSindical !== "ASSOCIADO" || statusValidacao !== "VALIDADO") {
+      /* A validação continua exigida para os dois: ela diz que ALGUÉM
+       * CONFERIU o pedido, e isso vale igual no papel e no portal. O que
+       * saiu foi a exigência de ser associado, não a de ter sido conferido. */
+      if (statusValidacao !== "VALIDADO") {
         return {
           ok: false,
-          mensagem: "O voucher só pode ser emitido após confirmação de associação."
+          mensagem: "O voucher só pode ser emitido após a análise aprovar a solicitação."
         };
       }
 
@@ -251,8 +269,32 @@ registrarEmissaoVoucher_(reg, {
       protocolo
     );
 
+    /* RETIRADA PRESENCIAL: O VOUCHER DELE NÃO SAI POR E-MAIL.
+     *
+     * Decisão do usuário em 14/08/2026, escolhendo "não envia — só retirada
+     * presencial" entre as três opções. O certificado é gerado e fica
+     * guardado; a pessoa busca na sede.
+     *
+     * A TRAVA MORA AQUI, no backend, e não em não marcar a caixinha na tela.
+     * Marcar caixinha é aparência: qualquer chamada direta, qualquer tela
+     * futura e qualquer lote passariam por cima. Se `opcoes.enviarAssociado`
+     * vier `true` para um atendimento presencial, o envio NÃO acontece e o
+     * motivo fica registrado — em vez de sair calado, que é como um e-mail
+     * indevido viraria descoberta de terceiro. */
     etapa = "enviar por e-mail ao associado";
-    if (opcoes.enviarAssociado === true) {
+    var envioBloqueadoPresencial = false;
+    if (opcoes.enviarAssociado === true && retiradaPresencial) {
+      envioBloqueadoPresencial = true;
+      registrarHistoricoVoucher_(
+        reg.ID_SOLICITACAO,
+        reg.CPF_SOLICITANTE,
+        "EMAIL_NAO_ENVIADO_RETIRADA_PRESENCIAL",
+        usuario,
+        "Envio por e-mail não realizado: atendimento presencial, o voucher " +
+        "fica guardado para retirada na sede.",
+        protocolo
+      );
+    } else if (opcoes.enviarAssociado === true) {
       enviarVoucherAssociado_(reg, {
         protocolo: protocolo,
         codigo: codigo,
@@ -274,14 +316,22 @@ registrarEmissaoVoucher_(reg, {
 
     return {
       ok: true,
-      mensagem: "Voucher emitido com sucesso.",
+      /* A mensagem DIZ a diferença. Quem emite precisa saber, na hora, que
+       * aquele voucher não foi para a caixa de entrada de ninguém — senão
+       * a pessoa vai embora esperando um e-mail que nunca vem. */
+      mensagem: retiradaPresencial
+        ? "Voucher emitido. Atendimento presencial: o documento NÃO foi " +
+          "enviado por e-mail e fica guardado para retirada na sede."
+        : "Voucher emitido com sucesso.",
       codigoValidacao: codigo,
       linkPdf: pdfVoucher.url,
       idArquivo: pdfVoucher.id,
       linkOficio: linkOficio,
       idOficio: idOficio,
       html: htmlVoucher,
-      percentual: percentual
+      percentual: percentual,
+      retiradaPresencial: retiradaPresencial,
+      envioBloqueadoPresencial: envioBloqueadoPresencial
     };
 
   } catch (e) {

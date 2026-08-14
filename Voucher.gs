@@ -689,33 +689,66 @@ function seedVoucherRules_() {
 
 /* ================= REGRAS DE NEGÓCIO ================= */
 
+/* O CANAL DE ATENDIMENTO, QUE NÃO SE CONFUNDE COM O DIREITO.
+ *
+ * Todo mundo tem o MESMO benefício — o percentual da convenção não olha
+ * para a carteirinha. O que muda entre associado e não associado é por
+ * ONDE o pedido entra e por onde o voucher sai:
+ *
+ *   associado      → portal ou balcão · voucher por e-mail
+ *   não associado  → só balcão, em papel · retirada presencial
+ *
+ * ISTO CORRIGE UMA REGRA MINHA, DE 12/08/2026. Naquele dia foi escrito aqui
+ * "só associado tem direito ao benefício", e a recusa acabou em QUATRO
+ * lugares: este cálculo, a aprovação, a emissão e o portal. O usuário
+ * corrigiu em 14/08: "hoje todos tem o mesmo benefício, mas o não associado
+ * a solicitação do voucher e a retirada é presencial".
+ *
+ * O efeito medido da versão errada era pior do que uma recusa a mais: o
+ * portal mandava a pessoa até a sede, ela chegava com o papel na mão, e o
+ * sistema recusava na aprovação E na emissão. O caminho presencial existia
+ * no nome dos status e terminava numa parede. Confirmado no emulador, com
+ * os dois `false` em sequência.
+ *
+ * Por que um invólucro em vez de apagar o `if`: a regra da convenção tem
+ * oito pontos de retorno, e o canal precisa aparecer em todos. Anotar num
+ * lugar só é o que garante que nenhum caminho devolva a bolsa sem dizer
+ * como ela vai ser entregue. */
+var VOUCHER_CANAL_PRESENCIAL_ = "PRESENCIAL";
+var VOUCHER_CANAL_REMOTO_ = "REMOTO";
+
+function voucherEhNaoAssociado_(situacaoSindical) {
+  var s = String(situacaoSindical || "").trim().toUpperCase();
+  /* Em branco NÃO é "não associado": quem ainda não escolheu o campo não
+   * declarou nada. Só o valor explícito conta. */
+  return !!s && s !== "ASSOCIADO";
+}
+
 function calcularRegraVoucher_(dados, idadeBeneficiario) {
+  var regra = calcularRegraVoucherConvencao_(dados, idadeBeneficiario);
+  var naoAssociado = voucherEhNaoAssociado_(dados && dados.situacaoSindical);
+
+  regra.canal = naoAssociado ? VOUCHER_CANAL_PRESENCIAL_ : VOUCHER_CANAL_REMOTO_;
+  regra.presencial = naoAssociado;
+
+  /* A observação é acrescentada, nunca substitui a da convenção: se a regra
+   * recusou por idade ou por ordem de filho, esse motivo continua sendo o
+   * que a pessoa precisa ler primeiro. */
+  if (naoAssociado && regra.apto) {
+    regra.observacao = (regra.observacao ? regra.observacao + " " : "") +
+      "Não associado: mesmo benefício, solicitação em papel e retirada " +
+      "presencial na sede — o voucher não é enviado por e-mail.";
+  }
+
+  return regra;
+}
+
+function calcularRegraVoucherConvencao_(dados, idadeBeneficiario) {
   const modalidade       = String(dados.modalidade || "").trim().toUpperCase();
   const areaCurso        = String(dados.areaCurso || "").trim().toUpperCase();
   const tipoBeneficiario = String(dados.tipoBeneficiario || "").trim().toUpperCase();
   const ordemFilho       = String(dados.ordemFilho || "").trim();
   const enteadoIR        = String(dados.enteadoDeclaradoIR || "").trim().toUpperCase();
-  const situacao         = String(dados.situacaoSindical || "").trim().toUpperCase();
-
-  /* SÓ ASSOCIADO TEM DIREITO — regra dita pelo usuário em 12/08/2026.
-   *
-   * A verificação existia só na EMISSÃO (VoucherPdf.gs), o que é tarde
-   * demais: a solicitação era cadastrada, analisada, aprovada, e só na hora
-   * de gerar o documento é que aparecia "só pode ser emitido após
-   * confirmação de associação". Todo o trabalho já tinha sido feito.
-   *
-   * Aqui a recusa acontece no cálculo, ou seja no instante em que a tela
-   * pergunta o percentual — antes de alguém digitar o resto.
-   *
-   * Situação em branco NÃO é recusa: quem ainda não escolheu o campo não
-   * está declarando que a pessoa é não-associada. A trava da emissão
-   * continua lá para esse caso. */
-  if (situacao && situacao !== "ASSOCIADO") {
-    return {
-      apto: false, percentual: "", regime: "",
-      observacao: "Só associado tem direito ao benefício. Situação sindical: " + situacao + "."
-    };
-  }
 
   /* ATÉ TRÊS FILHOS — mesma conversa.
    *

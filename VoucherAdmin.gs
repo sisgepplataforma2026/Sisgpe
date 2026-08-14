@@ -197,23 +197,39 @@ function aprovarSolicitacaoVoucher(protocolo, obs, tokenSessao) {
      * SEMPRE, para toda solicitação em análise. Porta trancada com a chave
      * do lado de dentro.
      *
-     * O que a regra realmente exige — dita pelo usuário em 12/08/2026 — é
-     * que a pessoa SEJA ASSOCIADA. Isso continua sendo verificado, e com
-     * mensagem que diz a situação encontrada em vez de uma frase genérica.
-     *
      * E APROVAR É VALIDAR: quem aprova está declarando que conferiu. O campo
      * passa a VALIDADO aqui, com quem e quando, em vez de exigir um passo
-     * anterior que não existe. */
-    if (situacaoSindical && situacaoSindical !== "ASSOCIADO") {
-      return {
-        ok: false,
-        mensagem: "Só associado tem direito ao benefício. Situação registrada: " +
-                  situacaoSindical + "."
-      };
-    }
+     * anterior que não existe.
+     *
+     * AQUI TAMBÉM HAVIA UMA RECUSA POR NÃO SER ASSOCIADO, e ela saiu em
+     * 14/08/2026. Todo mundo tem o mesmo benefício; o que muda é o canal
+     * (ver o cabeçalho de calcularRegraVoucher_ em Voucher.gs). Com a recusa
+     * aqui, o não associado que o próprio sistema mandava à sede chegava com
+     * o papel e não conseguia ser atendido — o presencial existia no nome do
+     * status e em lugar nenhum mais.
+     *
+     * O que fica no lugar não é uma trava, é um REGISTRO: a aprovação anota
+     * que aquele atendimento é presencial, para quem emitir depois saber que
+     * o voucher não vai por e-mail.
+     *
+     * E O CANAL É DERIVADO, NÃO GRAVADO EM COLUNA PRÓPRIA. Duas razões. A
+     * primeira é que coluna nova exige migração na aba de produção — que eu
+     * não tenho como rodar, e que a REGRA Nº 1 manda tratar com cuidado. A
+     * segunda é melhor: duas colunas dizendo a mesma coisa é uma chance de
+     * elas se contradizerem, e um dia uma linha teria SITUACAO_SINDICAL
+     * "NAO_ASSOCIADO" com canal "REMOTO" e ninguém saberia qual acreditar.
+     * A situação sindical é a fonte; o canal se lê dela.
+     *
+     * O rastro durável vai para o HISTÓRICO, que é append-only — não para
+     * OBSERVACOES, que `atualizarStatusSolicitacao_` sobrescreve na ação
+     * seguinte (defeito achado em 13/08 na correção de período). */
+    const presencial = voucherEhNaoAssociado_(situacaoSindical);
 
     const usuario = obterUsuarioAtualVoucher_();
-    const observacao = obs || "Solicitação aprovada pela análise administrativa.";
+    const observacao = obs || (presencial
+      ? "Solicitação aprovada pela análise administrativa. Atendimento " +
+        "presencial: solicitação em papel, retirada na sede, sem envio por e-mail."
+      : "Solicitação aprovada pela análise administrativa.");
 
     atualizarStatusSolicitacao_(item, "APROVADO", observacao, {
       SITUACAO_SINDICAL: situacaoSindical || "ASSOCIADO",
