@@ -12,6 +12,42 @@
 
 ## 🔴 ABERTO
 
+### 23. Voucher — as regras de quantidade, corrigidas
+**Aberto em:** 13/08/2026 · `VoucherPeriodo.gs`, `VoucherNovaSolicitacao.gs`
+
+Regra fechada pelo usuário: **"dependente é no máximo 3, para ele mesmo é
+somente um por semestre ou ano"**. O sistema fazia diferente das duas
+maneiras, e as duas foram medidas antes de mexer.
+
+**1. O titular tirava mais de uma bolsa no mesmo semestre.** A trava chaveava
+por pessoa + CURSO + janela, então cada curso abria uma janela nova. Medido no
+emulador: o mesmo titular criou TRÊS vouchers para 2026/2 — Pedagogia, Direito
+e um MBA. **O curso saiu da chave**: o benefício é por pessoa e por período,
+não por matrícula.
+
+**2. O teto de dependentes era por ORDEM, não por contagem** — defeito do que
+eu mesmo escrevi de manhã. Conferia se `ORDEM_FILHO` era ≤ 3, o que deixa
+passar um quarto dependente cadastrado como "3º filho" com outro nome. Agora
+é **contagem de nomes distintos na janela**, e o titular não ocupa vaga de
+dependente: três filhos e o pai estudando são quatro bolsas.
+
+| | |
+|---|---|
+| 🔴 Pedir a segunda bolsa do titular no mesmo semestre é recusado | mesmo em outro curso, outra faculdade |
+| 🔴 O 4º dependente é recusado com os nomes de quem ocupa as vagas | inclusive no ensino superior |
+| 🔴 O semestre seguinte libera as vagas de novo | o teto é por janela, não vitalício |
+| 🔴 Titular + 3 dependentes na mesma janela passam | quatro bolsas, e é o certo |
+
+**Consequência que precisa da sua palavra:** o que já está gravado não muda.
+Se houver titular com mais de uma bolsa no mesmo período na base real, ele
+continua como está. Posso levantar quem são — é relatório, não migração.
+
+**Três testes mudaram de lado** e estão registrados com a história dentro:
+`t37` passo 10 e `t40` passo 7 afirmavam que curso diferente abria janela
+nova; `t40` afirmava que o 4º dependente em graduação passava. Não eram
+testes errados na época — é a regra que mudou, e ficou escrito para ninguém
+"consertar" a trava daqui a seis meses.
+
 ### 22. Voucher — o papel timbrado, a redação e o período obrigatório
 **Aberto em:** 13/08/2026 · `VoucherPdf.gs`, `VoucherNovaSolicitacao.gs`, `Scripts_Certificado.html`
 

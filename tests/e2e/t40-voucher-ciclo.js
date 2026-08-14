@@ -89,9 +89,22 @@ const s3 = (g.listarSolicitacoesCertBolsa(token) || [])
   .filter(x => x.protocolo === r3.protocolo)[0];
 b.igual(s3 && s3.tipoSolicitacao, "RENOVACAO", "e vem marcada como renovação");
 
-b.passo("7. Curso diferente no mesmo semestre não é duplicata");
+b.passo("7. Curso diferente no mesmo semestre TAMBÉM é duplicata");
+/* INVERTIDO EM 13/08/2026, e o passo estava verde antes disso.
+ *
+ * A trava chaveava por pessoa + curso + janela: duas bolsas no mesmo
+ * semestre em cursos diferentes eram janelas separadas. Medido: o mesmo
+ * titular criou TRÊS vouchers para 2026/2.
+ *
+ * Regra fechada pelo usuário: "para ele mesmo é somente um por semestre ou
+ * ano". O benefício é por pessoa e por período, não por matrícula. */
 const r4 = novaSolicitacao({ curso: "Direito" });
-b.igual(r4.ok, true, "outro curso passa — é outra bolsa", r4.mensagem || "");
+b.igual(r4.ok, false, "outro curso não abre janela nova", r4.mensagem || "");
+b.ok(/somente um por semestre/i.test(r4.mensagem || ""),
+  "e a recusa diz a regra", r4.mensagem);
+/* Um protocolo que EXISTE, para os passos adiante que precisam de um. */
+const r5 = novaSolicitacao({ curso: "Direito", periodo: "2028/1" });
+b.ok(r5.ok, "e em janela livre o mesmo pedido passa", r5.mensagem || "");
 
 /* ══════════════════════════════════════════════════════════════════════ */
 b.fluxo("VOUCHER · 3. Análise e aprovação");
@@ -158,7 +171,7 @@ b.passo("13. Solicitação NÃO aprovada não emite certificado");
  * É VALIDAR — decisão documentada em VoucherAdmin.gs, porque o único lugar
  * que gravava VALIDADO era a confirmação de associação, e quem aprova está
  * declarando que conferiu. O teste é que apontava para o protocolo errado. */
-const naoAprovado = g.gerarDocumentoVoucher(r4.protocolo, "CERTIFICADO", { percentual: 70 });
+const naoAprovado = g.gerarDocumentoVoucher(r5.protocolo, "CERTIFICADO", { percentual: 70 });
 b.igual(naoAprovado.ok, false, "recusa quem não passou pela aprovação");
 b.ok(/associa|status/i.test(String(naoAprovado.mensagem || "")),
   "dizendo por quê", naoAprovado.mensagem);
@@ -370,15 +383,95 @@ b.igual(quarto.ok, false, "não grava");
 b.ok(/3º dependente/.test(quarto.mensagem || ""),
   "e a mensagem diz o teto, não uma recusa genérica", quarto.mensagem);
 
-b.passo("3. No ensino superior o teto não se aplica");
-/* Recusar pedido legítimo é pior que aceitar um que depois se analisa. */
+b.passo("3. No superior o teto de ORDEM não se aplica — mas o de CONTAGEM sim");
+/* DUAS REGRAS DIFERENTES, e eu tinha misturado as duas de manhã:
+ *
+ *   - o escalonamento 1º/2º/3º (100/100/60) é do ensino básico, e é dele que
+ *     vem a recusa "a convenção prevê até o 3º dependente";
+ *   - o teto de TRÊS DEPENDENTES por período vale para todo mundo, e foi
+ *     confirmado pelo usuário sem exceção: "dependente é no máximo 3".
+ *
+ * Então o 4º em graduação não é recusado pela ordem — é recusado pela
+ * contagem, e a mensagem tem que ser a da contagem, com os nomes de quem já
+ * ocupa as três vagas. Mensagem errada manda quem atende procurar no lugar
+ * errado. */
 const quartoSuperior = filho(4, "ELISA", "GRADUACAO");
-b.igual(quartoSuperior.ok, true,
-  "4º dependente em graduação passa", quartoSuperior.mensagem || "");
-const quintoPos = filho(5, "FABIO", "POS_GRADUACAO");
-b.igual(quintoPos.ok, true, "e em pós-graduação também");
+b.igual(quartoSuperior.ok, false, "o 4º dependente é barrado também no superior");
+b.ok(/já tem 3 dependentes/.test(quartoSuperior.mensagem || ""),
+  "pela CONTAGEM, e a mensagem nomeia quem ocupa as vagas",
+  quartoSuperior.mensagem);
+b.ok(!/convenção prevê/.test(quartoSuperior.mensagem || ""),
+  "e não pela ordem, que é regra do ensino básico");
 
-b.passo("4. Cada dependente é uma solicitação — a trava é por beneficiário");
+b.passo("4. A vaga é POR JANELA — o semestre seguinte começa do zero");
+/* Sem isto o teto viraria "três dependentes para sempre": a família que usou
+ * as três vagas em 2030 nunca mais poria ninguém. Mutação que sobreviveu na
+ * primeira bateria — ignorar a janela na contagem não quebrava nada. */
+const outraJanela = filho(1, "DANIEL", "ENSINO_FUNDAMENTAL");
+b.ok(false === outraJanela.ok, "em 2030 o quarto continua barrado");
+const proxJanela = g.voucherCriarSolicitacao({
+  cpf: "52998224725", nome: "PAI DE FAMILIA", modalidade: "ENSINO_FUNDAMENTAL",
+  curso: "Ensino Fundamental", regime: "ANUAL", periodo: "2031",
+  tipoBeneficiario: "FILHO", beneficiario: "DANIEL", ordemFilho: "1"
+}, token);
+b.igual(proxJanela.ok, true,
+  "mas em 2031 ele entra — as vagas de 2030 não valem para 2031",
+  proxJanela.mensagem || "");
+
+b.passo("5. O TITULAR não ocupa vaga de dependente");
+/* Três filhos e o pai estudando são QUATRO bolsas, e é isso mesmo: o teto de
+ * três é dos dependentes, e o titular é barrado por outro caminho (uma por
+ * período, qualquer curso). Outra mutação que sobreviveu: fazer o titular
+ * contar não quebrava teste nenhum. */
+const paiTambem = g.voucherCriarSolicitacao({
+  cpf: "52998224725", nome: "PAI DE FAMILIA", modalidade: "GRADUACAO",
+  curso: "Administracao", regime: "ANUAL", periodo: "2030",
+  tipoBeneficiario: "TITULAR", beneficiario: "PAI DE FAMILIA"
+}, token);
+b.igual(paiTambem.ok, true,
+  "o pai entra mesmo com as três vagas de dependente ocupadas",
+  paiTambem.mensagem || "");
+/* E a dele, sim, é uma só. */
+const paiDeNovo = g.voucherCriarSolicitacao({
+  cpf: "52998224725", nome: "PAI DE FAMILIA", modalidade: "POS_GRADUACAO",
+  curso: "MBA", regime: "ANUAL", periodo: "2030",
+  tipoBeneficiario: "TITULAR", beneficiario: "PAI DE FAMILIA"
+}, token);
+b.igual(paiDeNovo.ok, false, "e a segunda dele, em outro curso, é barrada");
+
+b.passo("6. O titular PRIMEIRO, e os três filhos depois — todos entram");
+/* ESTA É A ORDEM QUE EXPÕE A REGRA, e a outra não expunha.
+ *
+ * No passo 5 os filhos entram antes do pai, então a contagem nunca chega a
+ * ver um titular na janela — e fazer o titular contar não quebrava nada. A
+ * mutação sobreviveu por isso. Invertendo a ordem, o pai já está lá quando o
+ * terceiro filho é contado: se ele ocupasse vaga, o terceiro seria recusado.
+ *
+ * CPF próprio, para não depender do que os passos anteriores deixaram. */
+const CPF_FAM = "40157625080";
+function daFamilia(extra) {
+  return g.voucherCriarSolicitacao(Object.assign({
+    cpf: CPF_FAM, nome: "MAE DE FAMILIA", modalidade: "ENSINO_FUNDAMENTAL",
+    curso: "Ensino Fundamental", regime: "ANUAL", periodo: "2033"
+  }, extra), token);
+}
+const mae = daFamilia({ tipoBeneficiario: "TITULAR", beneficiario: "MAE DE FAMILIA",
+  modalidade: "GRADUACAO", curso: "Pedagogia" });
+b.ok(mae.ok, "a titular entra primeiro", mae.mensagem || "");
+["GABRIEL", "HELENA", "IGOR"].forEach(function (nome, i) {
+  const r = daFamilia({ tipoBeneficiario: "FILHO", beneficiario: nome,
+    ordemFilho: String(i + 1) });
+  b.ok(r.ok, "e o " + (i + 1) + "º filho (" + nome + ") entra depois dela",
+    r.mensagem || "");
+});
+/* Quatro bolsas na mesma janela: uma da titular e três dos filhos. */
+const quartoFilho = daFamilia({ tipoBeneficiario: "FILHO", beneficiario: "JULIA",
+  ordemFilho: "3" });
+b.igual(quartoFilho.ok, false, "e só o QUARTO filho é barrado");
+b.ok(/já tem 3 dependentes/.test(quartoFilho.mensagem || ""),
+  "pela contagem de dependentes, sem contar a mãe", quartoFilho.mensagem);
+
+b.passo("7. Cada dependente é uma solicitação — a trava é por beneficiário");
 /* Confirmado no emulador em 13/08/2026: dois filhos diferentes do mesmo
  * associado, no mesmo curso e período, passam os dois; o MESMO filho
  * repetido é barrado. É o comportamento certo — o benefício é de quem

@@ -231,8 +231,12 @@ function el(id) { return doc.getElementById(id); }
   el("certNvCpf").value = CPF_M;
   t.escolher("#certNvModalidade", "GRADUACAO");
   t.escolher("#certNvArea", "HUMANAS");
-  /* Período obrigatório desde 13/08/2026 — ver o passo 12. */
-  t.escolher("#certNvPeriodoAno", String(new Date().getFullYear()));
+  /* JANELA LIVRE, e não a do seed. Período obrigatório desde 13/08/2026; e
+     desde a regra de "uma por pessoa por período" (mesmo dia), o Marcelo do
+     seed já ocupa 2026/1. A tela passou a barrar antes de chamar o backend —
+     comportamento certo, teste desatualizado. Cada passo daqui usa a sua
+     própria janela, senão um passo derruba o seguinte. */
+  t.escolher("#certNvPeriodoAno", String(new Date().getFullYear() + 1));
   t.escolher("#certNvPeriodoSem", "1");
   await t.assentar(150);
   t.clicar("#certNvSalvarAnalise");
@@ -254,7 +258,7 @@ function el(id) { return doc.getElementById(id); }
      backend. Sem ele o modal não fecha, e é isso que o usuário viu na
      produção ao contrário: solicitação gravada SEM período, com a trava de
      duplicidade sem janela para comparar. */
-  t.escolher("#certNvPeriodoAno", String(new Date().getFullYear()));
+  t.escolher("#certNvPeriodoAno", String(new Date().getFullYear() + 1));
   t.escolher("#certNvPeriodoSem", "2");
   await t.assentar(150);
   t.clicar("#certNvSalvarAprovar");
@@ -427,9 +431,9 @@ function el(id) { return doc.getElementById(id); }
   const nova = g.voucherCriarSolicitacao({
     cpf: CPF_M, nome: "Marcelo Alves de Oliveira",
     modalidade: "GRADUACAO", area: "HUMANAS", percentual: 70,
-    periodo: "2026/2", aprovar: false
+    periodo: "2029/1", aprovar: false
   }, TOKEN);
-  b.ok(nova.ok, "solicitação criada em análise", nova.protocolo);
+  b.ok(nova.ok, "solicitação criada em análise", nova.protocolo || nova.mensagem);
 
   const aprov = g.aprovarSolicitacaoVoucher(nova.protocolo, "", TOKEN);
   b.ok(aprov && aprov.ok === true, "e o Aprovar funciona",
@@ -489,7 +493,7 @@ function el(id) { return doc.getElementById(id); }
   const emAnalise = g.voucherCriarSolicitacao({
     cpf: CPF_M, nome: "Marcelo Alves de Oliveira",
     modalidade: "GRADUACAO", area: "HUMANAS", percentual: 70,
-    periodo: (new Date().getFullYear() + 1) + "/1", aprovar: false
+    periodo: "2031/1", aprovar: false
   }, TOKEN);
   b.ok(emAnalise.ok, "a solicitação em análise foi criada",
     emAnalise.protocolo || emAnalise.mensagem);

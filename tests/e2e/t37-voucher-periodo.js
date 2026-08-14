@@ -165,13 +165,30 @@ b.ok(p3.ok, "2026/2 passa", p3.mensagem);
 b.igual(p3.tipo, "RENOVACAO", "mesmo curso, janela nova: renovação");
 b.ok(p3.renovacao === true, "e a tela recebe o sinalizador pronto");
 
-b.passo("10. Curso diferente na MESMA janela passa");
-/* A trava antiga chaveava por MODALIDADE e barrava isto. Duas graduações no
- * mesmo semestre são raras, mas legítimas — e o que a regra do usuário diz é
- * "renovação é por curso". */
+b.passo("10. Curso diferente na MESMA janela NÃO passa mais");
+/* ESTE PASSO AFIRMAVA O CONTRÁRIO ATÉ 13/08/2026, e estava verde.
+ *
+ * A trava chaveava por pessoa + CURSO + janela, então duas bolsas no mesmo
+ * semestre em cursos diferentes eram duas janelas separadas. Medido no
+ * emulador, o mesmo titular chegou a criar TRÊS vouchers para 2026/2 —
+ * Pedagogia, Direito e um MBA — sem nada barrar.
+ *
+ * O usuário fechou a regra no mesmo dia: "para ele mesmo é somente um por
+ * semestre ou ano". O benefício é por PESSOA e por PERÍODO, não por
+ * matrícula: quem estuda duas coisas ao mesmo tempo continua tendo direito a
+ * uma bolsa. O curso saiu da chave.
+ *
+ * A premissa deste passo morreu com a regra nova — não é o teste que estava
+ * errado na época, é a regra que mudou. Fica registrado para ninguém
+ * "consertar" a trava daqui a seis meses achando que é defeito. */
 const p4 = criar({ curso: "Direito", area: "HUMANAS", periodo: "2026/2", percentual: 50 });
-b.ok(p4.ok, "Direito em 2026/2 passa mesmo com Administração em 2026/2", p4.mensagem);
-b.igual(p4.tipo, "PRIMEIRA_VEZ", "e é primeira vez NESTE curso");
+b.igual(p4.ok, false, "Direito em 2026/2 é barrado — já há bolsa nesta janela");
+b.ok(/somente um por semestre/i.test(p4.mensagem || ""),
+  "e a recusa diz a regra, não só que existe outra", p4.mensagem);
+/* O `tipo` não vem mais: recusada, a solicitação não chega a existir, e não
+ * há de que dizer "primeira vez" ou "renovação". Antes vinha porque ela era
+ * criada. */
+b.ok(!p4.tipo, "e não devolve tipo — não há solicitação para tipificar");
 
 /* ══════════════════════════════════════════════════════════════════════ */
 b.fluxo("PERÍODO · A família não pode ser confundida com duplicata");
@@ -385,7 +402,11 @@ b.igual(achou && achou.tipoSolicitacao, "RENOVACAO", "e a lista carrega a etique
 b.fluxo("ENVIO · A data fica na linha, não só na auditoria");
 
 b.passo("24. O carimbo entra em OBSERVACOES");
-const alvo = criar({ curso: "Pedagogia", periodo: "2026/1", observacoes: "veio por e-mail dia 10" });
+/* PERÍODO LIVRE, e não 2026/1: com a regra de "uma por pessoa por período"
+ * (13/08/2026), este CPF já ocupa 2026/1 desde o passo 1. O passo aqui é
+ * sobre o CARIMBO nas observações, não sobre a trava — usar uma janela
+ * ocupada faria ele falhar por um motivo que não é o dele. */
+const alvo = criar({ curso: "Pedagogia", periodo: "2029/1", observacoes: "veio por e-mail dia 10" });
 b.ok(alvo.ok, "solicitação para carimbar", alvo.mensagem);
 g.voucherRegistrarEnvio_(alvo.protocolo, "EMAIL", "marcelo@exemplo.com", { email: "wanderson" });
 const obs1 = String(linhaDo(alvo.protocolo).OBSERVACOES || "");

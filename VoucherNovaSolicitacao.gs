@@ -99,6 +99,7 @@ function voucherCriarSolicitacao(dados, tokenSessao) {
      * mesma coisa nos dois lugares. */
     var ordem = String(dados.ordemFilho || "").trim();
     var tipoBenef = String(dados.tipoBeneficiario || "").toUpperCase();
+    var ehDependente = !!tipoBenef && tipoBenef !== "TITULAR";
     /* EXCETO GRADUAÇÃO E PÓS — regra dita pelo usuário em 13/08/2026:
      * "máximo são três dependentes ao mesmo tempo (menos graduação e
      * pós-graduação)".
@@ -229,6 +230,35 @@ function voucherCriarSolicitacao(dados, tokenSessao) {
      * Sem escapatória, por decisão do usuário em 13/08/2026: "não pode gerar
      * duas vezes para a mesma pessoa". Quem cai aqui quase sempre quer
      * REENVIAR o que já existe, e é isso que a mensagem oferece. */
+    /* O TETO DE TRÊS DEPENDENTES, contado dentro do lock e com a aba na mão.
+     *
+     * Fica aqui e não junto das validações de cima porque precisa da planilha
+     * — é contagem do que já existe, não conferência do que foi digitado. E
+     * fica ANTES da trava de duplicidade porque as duas recusas são
+     * diferentes: "este dependente já tem bolsa" e "este associado já tem
+     * três" pedem coisas opostas de quem atende. */
+    if (ehDependente && typeof voucherPeriodoDependentesNaJanela_ === "function") {
+      var jaTem = voucherPeriodoDependentesNaJanela_({
+        cpf: cpf, regime: valores.REGIME, periodo: valores.PERIODO_REFERENCIA
+      }, sh);
+      var esteNome = String(valores.NOME_BENEFICIARIO || "").trim().toUpperCase();
+      var jaEsta = jaTem.nomes.some(function (n) {
+        return String(n || "").trim().toUpperCase() === esteNome;
+      });
+      /* Quem JÁ ESTÁ na lista não ocupa uma vaga nova — a recusa dele é a de
+       * duplicidade, logo abaixo, que diz o protocolo. Barrar aqui daria a
+       * mensagem errada para quem só está repetindo um pedido. */
+      if (!jaEsta && jaTem.total >= VOUCHER_MAX_DEPENDENTES_) {
+        return {
+          ok: false,
+          tetoDependentes: true,
+          mensagem: "Este associado já tem " + jaTem.total + " dependentes com bolsa " +
+                    "neste período (" + jaTem.nomes.join(", ") + "). O máximo é " +
+                    VOUCHER_MAX_DEPENDENTES_ + "."
+        };
+      }
+    }
+
     var hist = { anteriores: [] };
     var excecaoAplicada = null;
     if (typeof voucherPeriodoHistorico_ === "function") {
