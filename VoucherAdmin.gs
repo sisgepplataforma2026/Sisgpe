@@ -401,3 +401,153 @@ function aprovarSolicitacaoCertBolsaComEmail(protocolo, obs, tokenSessao) {
 function indeferirSolicitacaoCertBolsa(protocolo, obs, tokenSessao) {
   return indeferirSolicitacaoVoucher(protocolo, obs, tokenSessao);
 }
+/**
+ * CORRIGIR O PERÍODO QUE FALTOU numa solicitação já gravada.
+ *
+ * Aprovado pelo usuário em 13/08/2026. Duas linhas da base foram criadas
+ * antes de o período virar obrigatório: elas não emitem — a trava recusa,
+ * porque o período sai impresso no certificado e é ele que impede o mesmo
+ * voucher sair duas vezes — e não havia como consertá-las pelo sistema. O
+ * lápis da lista é "Ver / Ações": aprova e emite, não edita campo.
+ *
+ * ESTA PORTA SÓ PREENCHE O QUE ESTÁ VAZIO. Trocar um período existente move
+ * a bolsa de janela e é outra decisão, com outras consequências — não entra
+ * por aqui, e a recusa diz isso em vez de fingir que não entendeu.
+ *
+ * E ELA NÃO PODE VIRAR ATALHO PARA A DUPLICATA. Se a pessoa já tem bolsa
+ * naquela janela, preencher aqui criaria justamente o que a regra proíbe —
+ * então a mesma checagem da criação roda antes de gravar, e a mensagem diz
+ * qual protocolo já ocupa o lugar.
+ *
+ * Permissão: a mesma de quem aprova e emite — decisão do usuário no mesmo
+ * dia. Exigir administrador para uma correção trivial travaria a secretaria
+ * no meio do atendimento. O rastro fica nas observações.
+ */
+function voucherCorrigirPeriodo(protocolo, periodo, tokenSessao) {
+  var sessao = exigirModulo_(tokenSessao, "beneficios", false);
+
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(20000)) {
+    return { ok: false, mensagem: "Outra gravação está em andamento. Tente de novo em instantes." };
+  }
+
+  try {
+    protocolo = String(protocolo || "").trim();
+    if (!protocolo) return { ok: false, mensagem: "Informe o protocolo." };
+
+    var novo = (typeof voucherPeriodoTexto_ === "function")
+      ? voucherPeriodoTexto_(periodo)
+      : String(periodo || "").trim();
+    if (!novo) return { ok: false, mensagem: "Informe o período de referência." };
+
+    var item = buscarSolicitacaoPorProtocolo_(protocolo);
+    if (!item) return { ok: false, mensagem: "Solicitação não encontrada." };
+
+    var reg = item.registro || {};
+    var atual = (typeof voucherPeriodoTexto_ === "function")
+      ? voucherPeriodoTexto_(reg.PERIODO_REFERENCIA)
+      : String(reg.PERIODO_REFERENCIA || "").trim();
+
+    if (atual) {
+      return {
+        ok: false,
+        jaTem: true,
+        mensagem: "Esta solicitação já tem período (" + atual + "). Esta correção só " +
+                  "preenche o que está em branco — trocar um período existente move a " +
+                  "bolsa de janela e não se faz por aqui."
+      };
+    }
+
+    /* A MESMA CHECAGEM DA CRIAÇÃO, antes de gravar. Sem ela, a correção
+     * viraria porta lateral: bastava criar sem período e preencher depois
+     * para furar a trava de "um por pessoa por janela". */
+    if (typeof voucherPeriodoHistorico_ === "function") {
+      var hist = voucherPeriodoHistorico_({
+        cpf: reg.CPF_SOLICITANTE,
+        nome: reg.NOME_SOLICITANTE,
+        beneficiario: reg.NOME_BENEFICIARIO,
+        modalidade: reg.MODALIDADE,
+        curso: reg.CURSO,
+        regime: reg.REGIME,
+        periodo: novo,
+        /* A própria linha não bloqueia a si mesma.
+         *
+         * INALCANÇÁVEL HOJE, e é bom saber por quê: esta ação só roda em
+         * linha SEM período, e linha sem período não ocupa janela nenhuma —
+         * então ela nunca conflitaria consigo mesma de qualquer forma. Uma
+         * mutação que apaga este argumento sobrevive, e não é falha de
+         * teste: é código sem efeito no caminho atual.
+         *
+         * Fica porque é a forma CORRETA de chamar voucherPeriodoHistorico_,
+         * e porque passa a valer no minuto em que alguém relaxar a regra de
+         * "só preenche o que está vazio". */
+        protocoloAtual: protocolo
+      });
+      if (hist.bloqueado) {
+        return {
+          ok: false,
+          duplicado: true,
+          mensagem: voucherPeriodoMensagemBloqueio_(hist.bloqueio, {
+            regime: reg.REGIME, periodo: novo
+          })
+        };
+      }
+    }
+
+    /* Com o apóstrofo protetor: gravar "2026/2" cru faz o Sheets converter em
+     * 1º de fevereiro, que é o defeito que originou tudo isto. */
+    var paraGravar = (typeof voucherPeriodoParaGravar_ === "function")
+      ? voucherPeriodoParaGravar_(novo)
+      : novo;
+
+    var quem = (typeof obterUsuarioAtualVoucher_ === "function")
+      ? obterUsuarioAtualVoucher_()
+      : ((sessao && (sessao.email || sessao.usuario)) || "");
+
+    var carimbo = "Período preenchido (" + novo + ") por " + quem + " em " +
+      Utilities.formatDate(new Date(), "America/Sao_Paulo", "dd/MM/yyyy HH:mm") + ".";
+
+    /* O RASTRO VAI PARA A AUDITORIA, NÃO PARA AS OBSERVAÇÕES — e isto foi
+     * achado por teste em 13/08/2026.
+     *
+     * `atualizarStatusSolicitacao_` SOBRESCREVE a coluna OBSERVACOES. O
+     * carimbo escrito lá durava até a próxima ação: a emissão logo em
+     * seguida trocava o texto por "Voucher emitido." e o registro de quem
+     * corrigiu sumia. Prometer rastro que some é pior do que não prometer —
+     * quem for conferir depois acha a linha limpa e conclui que ninguém
+     * mexeu.
+     *
+     * A aba Voucher_Auditoria é append-only: cada ação vira uma linha, e
+     * nenhuma apaga a anterior. É o lugar de quem-fez-o-quê. */
+    if (typeof registrarAuditoriaVoucher_ === "function") {
+      registrarAuditoriaVoucher_({
+        protocolo: protocolo,
+        tipoAcesso: "CORRECAO_PERIODO",
+        resultado: "PERIODO_PREENCHIDO",
+        usuario: quem,
+        observacao: carimbo
+      });
+    }
+
+    /* Nas observações o carimbo entra ACRESCENTADO ao que já havia, não no
+     * lugar. Ele é volátil — a próxima ação apaga —, mas enquanto está lá
+     * aparece na tela, que é onde quem atende olha primeiro. */
+    var obsAnterior = String(reg.OBSERVACOES || "").trim();
+    atualizarStatusSolicitacao_(item, String(reg.STATUS_SOLICITACAO || "PENDENTE"),
+      obsAnterior ? (carimbo + " | " + obsAnterior) : carimbo, {
+      PERIODO_REFERENCIA: paraGravar
+    });
+
+    return {
+      ok: true,
+      periodo: novo,
+      protocolo: protocolo,
+      mensagem: "Período " + novo + " gravado. A solicitação já pode ser emitida."
+    };
+  } catch (e) {
+    Logger.log("voucherCorrigirPeriodo: " + e.message + "\n" + (e.stack || ""));
+    return { ok: false, mensagem: "Erro ao gravar o período: " + e.message };
+  } finally {
+    try { lock.releaseLock(); } catch (e2) {}
+  }
+}

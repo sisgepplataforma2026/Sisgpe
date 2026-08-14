@@ -464,6 +464,28 @@
         <button type="button" class="cert-btn cert-btn-success cert-btn-sm"  id="certBtnAprovar">✅ Aprovar</button>
       </div>
 
+      <!-- CORRIGIR O PERIODO QUE FALTOU.
+           So aparece quando a solicitacao esta SEM periodo — e some sozinha
+           depois de corrigida. Fica ANTES da area de emissao de proposito:
+           e o que impede a emissao, entao e o que a pessoa precisa ver
+           primeiro. -->
+      <div id="certCorrPeriodo" style="display:none;margin-top:14px;padding:14px 16px;background:#fffbeb;border-radius:12px;border:1.5px solid #fcd34d;">
+        <div style="font-size:12.5px;font-weight:800;color:#b45309;margin-bottom:6px;">⚠ Esta solicitação está sem PERÍODO DE REFERÊNCIA</div>
+        <div style="font-size:12px;color:#78350f;line-height:1.5;margin-bottom:10px;">
+          Sem ele não emite: o período sai impresso no certificado e é o que
+          impede o mesmo voucher sair duas vezes para a mesma pessoa.
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <select class="cert-nv-in" id="certCorrAno" style="max-width:120px;"></select>
+          <select class="cert-nv-in" id="certCorrSem" style="max-width:150px;">
+            <option value="">semestre</option>
+            <option value="1">1º semestre</option>
+            <option value="2">2º semestre</option>
+          </select>
+          <button type="button" class="cert-btn cert-btn-navy cert-btn-sm" id="certCorrGravar">Gravar período</button>
+        </div>
+      </div>
+
       <!-- Área de emissão -->
       <div id="certModalEmissaoArea" style="display:none;margin-top:14px;padding:14px 16px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;">
         <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;margin-bottom:12px;">📄 Emissão de Documentos</div>
@@ -1333,6 +1355,10 @@ function abrirModal(s){
   set('cmi-modalidade',  s.nivel||s.modalidade);
   set('cmi-curso',       s.curso);
   set('cmi-periodo',     s.periodoReferencia||s.periodo);
+  /* A faixa de correção acompanha o registro aberto: aparece se a linha veio
+     sem período, some se veio com. Sem isto, ela ficaria do jeito que o
+     registro ANTERIOR deixou. */
+  corrPeriodoSincronizar(s);
   set('cmi-data',        certData(s.data));
   /* A etiqueta de renovação, colada no curso: é ali que ela responde a
      pergunta que se faz ao abrir o registro ("já teve antes?"). Só aparece
@@ -2026,6 +2052,71 @@ function nvBenefPintarResultado(resultados){
     box.className = 'cert-nv-benef-res ' + (r.ok ? 'ok' : 'erro');
     box.textContent = r.ok ? ('✓ ' + r.protocolo) : ('✕ ' + (r.mensagem || 'não foi criado'));
   });
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   CORRIGIR O PERIODO QUE FALTOU
+
+   Duas linhas da base foram criadas antes de o periodo virar obrigatorio.
+   Elas nao emitem — e a trava esta certa — mas tambem nao tinham conserto
+   pelo sistema: o lapis da lista aprova e emite, nao edita campo.
+
+   A faixa so aparece quando falta o periodo. Corrigido, ela some, e o
+   registro volta a ser um registro comum.
+   ══════════════════════════════════════════════════════════════════════ */
+var _corrProtocolo = '';
+
+function corrPeriodoSincronizar(s){
+  var faixa = g('certCorrPeriodo');
+  if(!faixa) return;
+  var tem = String((s && (s.periodoReferencia || s.periodo)) || '').trim();
+  _corrProtocolo = String((s && s.protocolo) || '');
+
+  if(tem){ faixa.style.display = 'none'; return; }
+
+  /* Os anos oferecidos: do anterior ao seguinte, como na tela de nova
+     solicitacao. Bolsa de dez anos atras nao se corrige por aqui. */
+  var sel = g('certCorrAno');
+  if(sel && !sel.options.length){
+    var hoje = new Date().getFullYear();
+    var html = '<option value="">ano</option>';
+    for(var a = hoje - 1; a <= hoje + 1; a++) html += '<option value="'+a+'">'+a+'</option>';
+    sel.innerHTML = html;
+  }
+  if(sel) sel.value = '';
+  if(g('certCorrSem')) g('certCorrSem').value = '';
+  faixa.style.display = '';
+}
+
+function corrPeriodoGravar(){
+  var ano = g('certCorrAno') ? String(g('certCorrAno').value || '') : '';
+  var sem = g('certCorrSem') ? String(g('certCorrSem').value || '') : '';
+  if(!ano){ msg('Escolha o ano do período.','warn'); return; }
+  /* Sem semestre vale: bolsa anual e "2026", e o servidor entende os dois. */
+  var periodo = sem ? (ano + '/' + sem) : ano;
+
+  var btn = g('certCorrGravar');
+  setBtnLoad(btn, 'Gravando...');
+  google.script.run
+    .withSuccessHandler(function(r){
+      resetBtn(btn);
+      if(!r || !r.ok){
+        msg((r && r.mensagem) || 'Não consegui gravar o período.','erro');
+        return;
+      }
+      msg('✅ ' + r.mensagem,'ok');
+      /* A lista recarrega para o ⚠ sair da linha, e a faixa some do modal —
+         o registro deixou de ter o problema que ela existia para resolver. */
+      if(g('certCorrPeriodo')) g('certCorrPeriodo').style.display = 'none';
+      var cel = g('cmi-periodo');
+      if(cel) cel.textContent = r.periodo;
+      carregarLista();
+    })
+    .withFailureHandler(function(err){
+      resetBtn(btn);
+      msg('Erro ao gravar o período: ' + ((err && err.message) || ''),'erro');
+    })
+    .voucherCorrigirPeriodo(_corrProtocolo, periodo, certToken());
 }
 
 function nvCampos(){
@@ -3111,6 +3202,7 @@ function initInterno(){
      clique" olha um lugar so. */
   if(g('certNvBenefAdd')) g('certNvBenefAdd').addEventListener('click', function(){ nvBenefAdicionar(); });
   if(g('certNvRenovarBtn')) g('certNvRenovarBtn').addEventListener('click', nvFamiliaRenovar);
+  if(g('certCorrGravar')) g('certCorrGravar').addEventListener('click', corrPeriodoGravar);
   if(g('certNvRenovarNao')) g('certNvRenovarNao').addEventListener('click', function(){
     /* "Montar na mão" só fecha a faixa. Não limpa nada: quem clicou aqui
        quer digitar, e apagar o que ele já digitou seria castigo. */

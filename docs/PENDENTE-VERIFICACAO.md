@@ -12,6 +12,40 @@
 
 ## 🔴 ABERTO
 
+### 25. Voucher — corrigir o período que faltou
+**Aberto em:** 13/08/2026 · `VoucherAdmin.gs`, `Scripts_Certificado.html`
+
+As duas linhas antigas da base não emitiam — a trava está certa — e também
+não tinham conserto pelo sistema: o lápis da lista é "Ver / Ações", aprova e
+emite, não edita campo. Ficavam travadas dos dois lados.
+
+Agora, ao abrir uma solicitação **sem período**, aparece uma faixa âmbar
+dentro do modal com ano, semestre e "Gravar período". Some sozinha depois de
+corrigida. Permissão: o mesmo perfil que aprova e emite, decidido por você.
+
+**A porta é estreita de propósito, e as duas recusas são o que importa:**
+
+1. **Não troca período que já existe** — trocar move a bolsa de janela e é
+   outra decisão.
+2. **Não vira atalho para a duplicata** — sem isso bastaria criar sem período
+   e preencher depois para furar "um por pessoa por janela". A mesma checagem
+   da criação roda antes de gravar, e a mensagem diz qual protocolo já ocupa
+   o lugar.
+
+**Um defeito meu, achado pelo próprio teste:** o rastro ia para OBSERVACOES,
+e `atualizarStatusSolicitacao_` **sobrescreve** essa coluna — a emissão
+seguinte trocava o texto por "Voucher emitido." e o registro de quem corrigiu
+sumia. Passou para `Voucher_Auditoria`, que é append-only. O teste só pegou
+porque lia depois da emissão; lendo antes, teria passado e a promessa de
+rastro seria falsa.
+
+| | |
+|---|---|
+| 🔴 A faixa aparece nas duas linhas antigas | e só nelas |
+| 🔴 Gravar o período faz o ⚠ sumir da lista | e a solicitação passa a emitir |
+| 🔴 A célula no Sheets mostra `2026/2`, não uma data | é o apóstrofo protetor funcionando |
+| 🔴 A linha aparece em Voucher_Auditoria | com quem corrigiu e quando |
+
 ### 24. Voucher — vários beneficiários num pedido só
 **Aberto em:** 13/08/2026 · `VoucherInstituicoes.gs`, `VoucherNovaSolicitacao.gs`, `Scripts_Certificado.html`
 
