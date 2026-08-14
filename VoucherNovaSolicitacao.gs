@@ -660,3 +660,115 @@ function voucherEscolasParecidas_(termo) {
     return [];
   }
 }
+
+/**
+ * VÁRIOS BENEFICIÁRIOS NUM PEDIDO SÓ — o titular e até três dependentes.
+ *
+ * Pedido do usuário em 13/08/2026: *"eu consigo fazer os três num único
+ * pedido?"*. Hoje não dava: cada beneficiário é uma solicitação, com
+ * protocolo e certificado próprios, e quem atende abria o modal três vezes
+ * redigitando o associado, a escola e o período em cada uma.
+ *
+ * ESTA FUNÇÃO NÃO TEM REGRA NENHUMA DENTRO DELA, e é o ponto principal do
+ * desenho. Ela monta o payload de cada beneficiário juntando o que é comum
+ * com o que é dele, e chama `voucherCriarSolicitacao` uma vez por pessoa. A
+ * trava de período, o teto de três dependentes, a obrigatoriedade do
+ * período, a validação de CPF — tudo continua num lugar só. Uma segunda
+ * implementação das mesmas regras é a forma mais confiável de elas
+ * divergirem em seis meses.
+ *
+ * SEM LOCK AQUI. `voucherCriarSolicitacao` já pega o lock do script a cada
+ * chamada; embrulhar o lote num segundo lock seria lock aninhado, que neste
+ * projeto já causou bug real na folha de pagamento.
+ *
+ * O RESULTADO É PARCIAL DE PROPÓSITO. Se o segundo beneficiário for
+ * recusado, o primeiro e o terceiro FICAM gravados. Desfazer tudo por causa
+ * de um obrigaria a redigitar a família inteira por causa de uma criança que
+ * já tinha bolsa — e quem opera corrige o card recusado e clica de novo. A
+ * resposta traz um resultado por beneficiário, na ordem em que vieram, para
+ * a tela marcar cada card com o protocolo ou com o motivo.
+ */
+function voucherCriarSolicitacoesEmLote(pedido, tokenSessao) {
+  var sessao = exigirModulo_(tokenSessao, "beneficios", false);
+  pedido = pedido || {};
+
+  var comuns = pedido.comuns || {};
+  var lista = pedido.beneficiarios || [];
+
+  if (!lista.length) {
+    return { ok: false, mensagem: "Nenhum beneficiário informado." };
+  }
+  /* O teto vale para o LOTE também, e antes de gravar qualquer linha: mandar
+   * cinco e gravar três, recusando dois, entrega meio pedido feito e deixa
+   * quem atende sem saber o que aconteceu com o resto. */
+  var quantosDependentes = 0;
+  for (var d = 0; d < lista.length; d++) {
+    var t = String(lista[d].tipoBeneficiario || "").toUpperCase();
+    if (t && t !== "TITULAR") quantosDependentes++;
+  }
+  var teto = (typeof VOUCHER_MAX_DEPENDENTES_ !== "undefined") ? VOUCHER_MAX_DEPENDENTES_ : 3;
+  if (quantosDependentes > teto) {
+    return {
+      ok: false,
+      mensagem: "São " + quantosDependentes + " dependentes no mesmo pedido, e o " +
+                "máximo é " + teto + ". Tire " + (quantosDependentes - teto) +
+                " do pedido antes de salvar."
+    };
+  }
+
+  var resultados = [];
+  var criados = 0;
+
+  for (var i = 0; i < lista.length; i++) {
+    var b = lista[i] || {};
+
+    /* O que é do PEDIDO vem primeiro; o que é do BENEFICIÁRIO sobrescreve.
+     * Dois filhos podem estudar em instituições e modalidades diferentes —
+     * é o motivo de o curso morar no card e não no cabeçalho. */
+    var dados = {};
+    Object.keys(comuns).forEach(function (k) { dados[k] = comuns[k]; });
+    Object.keys(b).forEach(function (k) {
+      if (b[k] !== "" && b[k] !== null && b[k] !== undefined) dados[k] = b[k];
+    });
+
+    /* O período é do pedido, um só para todos — com a exceção de o card
+     * trazer o dele, que é o caso raro previsto no desenho. */
+    if (!dados.periodo) dados.periodo = comuns.periodo;
+
+    var r;
+    try {
+      r = voucherCriarSolicitacao(dados, tokenSessao);
+    } catch (e) {
+      /* Um beneficiário que explode não pode derrubar os outros: o lote
+       * continua e o card dele mostra o erro. */
+      Logger.log("voucherCriarSolicitacoesEmLote [" + i + "]: " + e.message);
+      r = { ok: false, mensagem: "Erro ao gravar: " + e.message };
+    }
+
+    if (r && r.ok) criados++;
+    resultados.push({
+      indice: i,
+      nome: String(dados.beneficiario || dados.nome || "").trim(),
+      ok: !!(r && r.ok),
+      protocolo: (r && r.protocolo) || "",
+      duplicado: !!(r && r.duplicado),
+      tetoDependentes: !!(r && r.tetoDependentes),
+      mensagem: (r && r.mensagem) || ""
+    });
+  }
+
+  return {
+    ok: criados > 0,
+    criados: criados,
+    total: lista.length,
+    /* `parcial` existe para a tela não precisar comparar números para saber
+     * se mostra o resumo verde ou o resumo misto. */
+    parcial: criados > 0 && criados < lista.length,
+    resultados: resultados,
+    mensagem: criados === lista.length
+      ? (criados === 1 ? "Solicitação criada." : criados + " solicitações criadas.")
+      : (criados === 0
+          ? "Nenhuma solicitação foi criada — veja o motivo em cada beneficiário."
+          : criados + " de " + lista.length + " criadas. As demais estão marcadas com o motivo.")
+  };
+}

@@ -597,6 +597,75 @@ function voucherPadraoPercentual(modalidade, area, curso, tokenSessao) {
    ══════════════════════════════════════════════════════════════════════ */
 
 /**
+ * OS BENEFICIÁRIOS QUE ESTE ASSOCIADO JÁ TEVE — um por pessoa, com a última
+ * bolsa de cada.
+ *
+ * Recebe as linhas do associado JÁ ORDENADAS da mais recente para a mais
+ * antiga (é como `voucherMemoriaAssociado` monta), então a primeira vez que
+ * um nome aparece é a bolsa mais recente daquela pessoa. Por isso o `if
+ * (visto[chave]) continue` basta: quem chega depois é história velha.
+ *
+ * O TITULAR ENTRA NA LISTA, marcado. A tela precisa saber que o próprio
+ * associado também estuda — senão, na renovação em lote, a bolsa dele fica
+ * de fora e ninguém percebe até o semestre acabar.
+ *
+ * `voucherPeriodoTexto_` normaliza o período de cada um, porque a coluna pode
+ * trazer Date (o Sheets converte "2026/1") ou o apóstrofo protetor.
+ */
+function voucherDependentesConhecidos_(linhas, cab) {
+  function v(linha, nome) {
+    var i = cab.indexOf(nome);
+    return i === -1 ? "" : linha[i];
+  }
+  var visto = {};
+  var saida = [];
+
+  for (var i = 0; i < linhas.length; i++) {
+    var linha = linhas[i];
+    var nome = String(v(linha, "NOME_BENEFICIARIO") || "").trim();
+    var tipo = String(v(linha, "TIPO_BENEFICIARIO") || "").trim().toUpperCase();
+
+    /* Linha antiga pode não ter beneficiário: nela, quem estuda é o titular.
+     * O tipo não precisa ser preenchido aqui — o `tipo || "TITULAR"` lá
+     * embaixo já resolve. Havia uma linha fazendo isso e ela foi removida em
+     * 13/08/2026: a mutação que a apagava não quebrava teste nenhum, e ao
+     * conferir por quê ficou claro que era redundância, não falta de teste.
+     * Código que dá para apagar sem mudar saída é código a menos para ler. */
+    if (!nome) nome = String(v(linha, "NOME_SOLICITANTE") || "").trim();
+    if (!nome) continue;
+
+    var chave = nome.toUpperCase();
+    if (visto[chave]) continue;
+    visto[chave] = true;
+
+    saida.push({
+      nome: nome,
+      tipo: tipo || "TITULAR",
+      ehTitular: !tipo || tipo === "TITULAR",
+      ordemFilho: String(v(linha, "ORDEM_FILHO") || "").trim(),
+      /* Onde ESTE beneficiário estuda — pode ser outra instituição que a do
+       * irmão, e é justamente por isso que a lista existe. */
+      instituicao: String(v(linha, "INSTITUICAO_ENSINO") || "").trim(),
+      cnpjInstituicao: String(v(linha, "CNPJ_INSTITUICAO") || "").trim(),
+      emailInstituicao: String(v(linha, "EMAIL_INSTITUICAO") || "").trim(),
+      modalidade: String(v(linha, "MODALIDADE") || "").trim(),
+      area: String(v(linha, "AREA_CURSO") || "").trim(),
+      curso: String(v(linha, "CURSO") || "").trim(),
+      regime: String(v(linha, "REGIME") || "").trim(),
+      percentual: v(linha, "PERCENTUAL_APLICADO"),
+      idadeBeneficiario: v(linha, "IDADE_BENEFICIARIO"),
+      enteadoDeclaradoIR: String(v(linha, "ENTEADO_DECLARADO_IR") || "").trim(),
+      ultimoPeriodo: (typeof voucherPeriodoTexto_ === "function")
+        ? voucherPeriodoTexto_(v(linha, "PERIODO_REFERENCIA"))
+        : String(v(linha, "PERIODO_REFERENCIA") || "").trim(),
+      ultimoProtocolo: String(v(linha, "NUMERO_PROTOCOLO") || "").trim(),
+      ultimoStatus: String(v(linha, "STATUS_SOLICITACAO") || "").trim().toUpperCase()
+    });
+  }
+  return saida;
+}
+
+/**
  * Tudo que o sistema já sabe sobre as bolsas deste associado.
  *
  * Devolve os campos prontos para PREENCHER o formulário — decisão do usuário
@@ -676,6 +745,17 @@ function voucherMemoriaAssociado(cpf, tokenSessao) {
       origemPercentual: origemPct,
       ultimoPeriodo: voucherPeriodoTexto_(v(ultima, "PERIODO_REFERENCIA")),
       ultimoProtocolo: String(v(ultima, "NUMERO_PROTOCOLO") || "").trim(),
+      /* CADA BENEFICIÁRIO, COM A HISTÓRIA DELE — não a do último pedido.
+       *
+       * Até 13/08/2026 esta função devolvia UM beneficiário: o da última
+       * linha. Testado no emulador com um pai de três filhos, ela devolveu
+       * só o terceiro; os outros dois estavam gravados e a tela não os
+       * oferecia. Resultado: todo semestre alguém redigita a família inteira
+       * do zero.
+       *
+       * É o que a REGRA Nº 0.6 manda procurar — o dado já está na base, e a
+       * pessoa estava fazendo o trabalho de trazê-lo à mão. */
+      dependentes: voucherDependentesConhecidos_(anteriores, cab),
       /* O aviso que a tela mostra no topo, escrito aqui para as duas telas
        * que vão consumir isto dizerem exatamente a mesma coisa. */
       aviso: anteriores.length === 1
