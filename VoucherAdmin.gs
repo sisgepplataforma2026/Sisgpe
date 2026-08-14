@@ -551,3 +551,146 @@ function voucherCorrigirPeriodo(protocolo, periodo, tokenSessao) {
     try { lock.releaseLock(); } catch (e2) {}
   }
 }
+
+/**
+ * RELATÓRIO — QUEM TEM MAIS DE UMA BOLSA NA MESMA JANELA.
+ *
+ * Pedido do usuário em 13/08/2026, depois de a regra mudar. Ela vale para
+ * pedido NOVO; o que já estava gravado continua como está, porque a trava
+ * antiga chaveava por pessoa + CURSO + janela e deixava passar. Medido no
+ * emulador: o mesmo titular chegou a ter três vouchers para 2026/2 —
+ * Pedagogia, Direito e um MBA.
+ *
+ * SÓ LEITURA. Não apaga, não cancela, não corrige. Devolve a lista para
+ * alguém olhar e decidir caso a caso: se foi erro, cancela uma; se foi
+ * exceção autorizada, deixa. Decidir isso é trabalho de quem conhece o caso,
+ * não de uma rotina.
+ *
+ * Duas listas, porque são dois problemas diferentes:
+ *   - `pessoas`  — o mesmo beneficiário com duas bolsas ocupando a mesma
+ *                  janela. É a duplicidade propriamente dita.
+ *   - `familias` — o mesmo associado com mais de três dependentes na mesma
+ *                  janela. Não é duplicidade: é o teto estourado.
+ *
+ * Roda pelo editor do Apps Script (Executar) ou por tela, e escreve o
+ * resultado no log formatado — para quem rodar pelo editor conseguir ler
+ * sem montar nada.
+ */
+function voucherRelatorioDuplicidades(tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
+  try {
+    var ss = SpreadsheetApp.openById(PLANILHA_ID);
+    var sh = ss.getSheetByName(VOUCHER_ABA_SOLICITACOES);
+    if (!sh || sh.getLastRow() < 2) {
+      return { ok: true, pessoas: [], familias: [], total: 0, mensagem: "Nenhuma solicitação na base." };
+    }
+
+    var ocupa = VOUCHER_STATUS_OCUPA_PERIODO_();
+    var tudo = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getValues();
+    var cab = tudo[0].map(function (c) { return String(c || "").trim(); });
+    function v(l, n) { var i = cab.indexOf(n); return i === -1 ? "" : l[i]; }
+
+    /* Agrupado por PESSOA + JANELA. A janela é o texto normalizado do
+     * período: linha que guardou Date volta a ser "2026/1" antes de comparar,
+     * senão a mesma janela apareceria como duas. */
+    var porPessoa = {};
+    var porFamilia = {};
+
+    for (var i = 1; i < tudo.length; i++) {
+      var l = tudo[i];
+      var status = String(v(l, "STATUS_SOLICITACAO") || "").trim().toUpperCase();
+      if (ocupa.indexOf(status) === -1) continue;
+
+      var cpf = String(v(l, "CPF_SOLICITANTE") || "").replace(/\D/g, "");
+      if (!cpf) continue;
+
+      var periodo = (typeof voucherPeriodoTexto_ === "function")
+        ? voucherPeriodoTexto_(v(l, "PERIODO_REFERENCIA"))
+        : String(v(l, "PERIODO_REFERENCIA") || "").trim();
+      /* Linha sem período não entra: ela não ocupa janela nenhuma, e é outro
+       * problema — o do "⚠ sem período", que tem correção própria. */
+      if (!periodo) continue;
+
+      var nome = String(v(l, "NOME_BENEFICIARIO") || v(l, "NOME_SOLICITANTE") || "").trim();
+      var tipo = String(v(l, "TIPO_BENEFICIARIO") || "").trim().toUpperCase();
+      var registro = {
+        protocolo: String(v(l, "NUMERO_PROTOCOLO") || "").trim(),
+        linha: i + 1,
+        curso: String(v(l, "CURSO") || "").trim(),
+        modalidade: String(v(l, "MODALIDADE") || "").trim(),
+        status: status,
+        data: String(v(l, "DATA_SOLICITACAO_TEXTO") || "").trim()
+      };
+
+      var chaveP = cpf + "|" + nome.toUpperCase() + "|" + periodo;
+      if (!porPessoa[chaveP]) {
+        porPessoa[chaveP] = {
+          cpf: cpf, nome: nome, titular: String(v(l, "NOME_SOLICITANTE") || "").trim(),
+          ehTitular: !tipo || tipo === "TITULAR", periodo: periodo, bolsas: []
+        };
+      }
+      porPessoa[chaveP].bolsas.push(registro);
+
+      if (tipo && tipo !== "TITULAR") {
+        var chaveF = cpf + "|" + periodo;
+        if (!porFamilia[chaveF]) {
+          porFamilia[chaveF] = {
+            cpf: cpf, titular: String(v(l, "NOME_SOLICITANTE") || "").trim(),
+            periodo: periodo, dependentes: [], vistos: {}
+          };
+        }
+        var chave = nome.toUpperCase();
+        if (!porFamilia[chaveF].vistos[chave]) {
+          porFamilia[chaveF].vistos[chave] = true;
+          porFamilia[chaveF].dependentes.push(nome);
+        }
+      }
+    }
+
+    var pessoas = Object.keys(porPessoa)
+      .map(function (k) { return porPessoa[k]; })
+      .filter(function (p) { return p.bolsas.length > 1; });
+
+    var teto = (typeof VOUCHER_MAX_DEPENDENTES_ !== "undefined") ? VOUCHER_MAX_DEPENDENTES_ : 3;
+    var familias = Object.keys(porFamilia)
+      .map(function (k) { var f = porFamilia[k]; delete f.vistos; return f; })
+      .filter(function (f) { return f.dependentes.length > teto; });
+
+    /* O log formatado é para quem roda pelo editor do Apps Script — ali não
+     * há tela, e um objeto cru no console não se lê. */
+    var linhas = ["=== VOUCHERS EM DUPLICIDADE NA MESMA JANELA ==="];
+    if (!pessoas.length) linhas.push("(nenhuma pessoa com mais de uma bolsa na mesma janela)");
+    pessoas.forEach(function (p) {
+      linhas.push("");
+      linhas.push(p.nome + (p.ehTitular ? " (titular)" : " (dependente de " + p.titular + ")") +
+                  " — CPF " + p.cpf + " — janela " + p.periodo + " — " + p.bolsas.length + " bolsas:");
+      p.bolsas.forEach(function (b) {
+        linhas.push("   linha " + b.linha + " · " + b.protocolo + " · " +
+                    (b.curso || b.modalidade) + " · " + b.status + " · " + b.data);
+      });
+    });
+    linhas.push("");
+    linhas.push("=== ASSOCIADOS COM MAIS DE " + teto + " DEPENDENTES NA MESMA JANELA ===");
+    if (!familias.length) linhas.push("(nenhum)");
+    familias.forEach(function (f) {
+      linhas.push(f.titular + " — CPF " + f.cpf + " — janela " + f.periodo + " — " +
+                  f.dependentes.length + ": " + f.dependentes.join(", "));
+    });
+    Logger.log(linhas.join("\n"));
+
+    return {
+      ok: true,
+      pessoas: pessoas,
+      familias: familias,
+      total: pessoas.length + familias.length,
+      relatorio: linhas.join("\n"),
+      mensagem: (pessoas.length + familias.length) === 0
+        ? "Nenhuma duplicidade encontrada na base."
+        : pessoas.length + " pessoa(s) com mais de uma bolsa na mesma janela e " +
+          familias.length + " associado(s) acima do teto de dependentes."
+    };
+  } catch (e) {
+    Logger.log("voucherRelatorioDuplicidades: " + e.message + "\n" + (e.stack || ""));
+    return { ok: false, mensagem: "Erro ao montar o relatório: " + e.message };
+  }
+}

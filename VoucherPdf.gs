@@ -180,12 +180,32 @@ registrarEmissaoVoucher_(reg, {
   usuario: usuario
 });
 
+    /* O REGISTRO DA EMISSÃO DIZ EM FACE DE QUEM E QUANDO — pedido do usuário
+     * em 13/08/2026.
+     *
+     * Era "Voucher emitido." nos três lugares que gravam: a solicitação, o
+     * protocolo e o histórico. Uma frase que não diz de quem nem quando não
+     * responde a única pergunta que se faz meses depois, olhando a linha:
+     * "esse voucher saiu para quem, e em que dia?". O nome do beneficiário
+     * pode ser o do filho, não o do titular — e é justamente esse o caso em
+     * que a frase genérica engana.
+     *
+     * Montado UMA vez e usado nos três, para os três dizerem o mesmo. Quando
+     * a emissão traz observação própria (o `opcoes.observacao`), ela ganha o
+     * carimbo junto em vez de perdê-lo. */
+    var emFaceDe = String(reg.NOME_BENEFICIARIO || reg.NOME_SOLICITANTE || "").trim();
+    var quandoTexto = Utilities.formatDate(agora, "America/Sao_Paulo", "dd/MM/yyyy HH:mm");
+    var carimboEmissao = "Voucher emitido em face de " +
+      (emFaceDe || "beneficiário não identificado") + " em " + quandoTexto +
+      (usuario ? " por " + usuario : "") + ".";
+
     etapa = "atualizar o status para EMITIDO";
-    atualizarStatusSolicitacao_(item, "EMITIDO", opcoes.observacao || "Voucher emitido.", {
+    atualizarStatusSolicitacao_(item, "EMITIDO",
+      opcoes.observacao ? (carimboEmissao + " | " + opcoes.observacao) : carimboEmissao, {
       DATA_EMISSAO: agora
     });
 
-    atualizarStatusProtocolo_(protocolo, "EMITIDO", usuario, "Voucher emitido.");
+    atualizarStatusProtocolo_(protocolo, "EMITIDO", usuario, carimboEmissao);
     /* O RG digitado agora fica na linha, para a próxima emissão já vir com
      * ele. Nunca lança: o certificado já foi gerado quando isto roda, e
      * perder a emissão por causa de uma gravação de conveniência seria
@@ -227,7 +247,7 @@ registrarEmissaoVoucher_(reg, {
       reg.CPF_SOLICITANTE,
       "VOUCHER_EMITIDO",
       usuario,
-      "Voucher emitido. Código: " + codigo,
+      carimboEmissao + " Código: " + codigo,
       protocolo
     );
 

@@ -174,6 +174,125 @@ b.passo("11. A porta dupla protege");
 b.bloqueia(function () { g.voucherCorrigirPeriodo(PROT, "2026/1", "token-que-nao-existe"); },
   "sem sessão, não corrige");
 
+/* ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("EMISSÃO · O registro diz EM FACE DE QUEM e QUANDO");
+
+b.passo("12. O carimbo nomeia o beneficiário, não o titular");
+/* Pedido do usuário em 13/08/2026. Era "Voucher emitido." — uma frase que
+ * não responde a única pergunta que se faz meses depois, olhando a linha:
+ * "esse voucher saiu para quem, e em que dia?".
+ *
+ * O nome do beneficiário pode ser o do FILHO, não o do titular — e é
+ * justamente esse o caso em que a frase genérica engana. */
+const PROT_FILHO = "BOLSA-COM-FILHO";
+linhaAntiga(PROT_FILHO, "MARIA DE TESTE", "JOAO FILHO DE TESTE", "Pedagogia");
+g.voucherCorrigirPeriodo(PROT_FILHO, "2029/1", token);
+const emitida = g.gerarDocumentoVoucher(PROT_FILHO, "CERTIFICADO", {});
+b.igual(emitida.ok, true, "emitiu", emitida.mensagem || "");
+
+const obsFinal = String(sh.getRange(
+  todasLinhas().indexOf(PROT_FILHO) + 1, cab.indexOf("OBSERVACOES") + 1).getValue());
+b.ok(/em face de JOAO FILHO DE TESTE/.test(obsFinal),
+  "diz em face de quem — e é o nome do filho", obsFinal);
+b.ok(!/em face de MARIA DE TESTE/.test(obsFinal),
+  "e NÃO o do titular, que é o erro que a frase genérica escondia");
+b.ok(/em \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}/.test(obsFinal),
+  "com a data e a hora", obsFinal);
+
+b.passo("13. Sem beneficiário gravado, cai no titular — e diz");
+const PROT_TITULAR = "BOLSA-SO-TITULAR";
+linhaAntiga(PROT_TITULAR, "CARLOS DE TESTE", "", "Direito");
+g.voucherCorrigirPeriodo(PROT_TITULAR, "2029/2", token);
+g.gerarDocumentoVoucher(PROT_TITULAR, "CERTIFICADO", {});
+const obsTit = String(sh.getRange(
+  todasLinhas().indexOf(PROT_TITULAR) + 1, cab.indexOf("OBSERVACOES") + 1).getValue());
+b.ok(/em face de CARLOS DE TESTE/.test(obsTit),
+  "usa o nome do solicitante quando não há beneficiário", obsTit);
+b.ok(!/não identificado/.test(obsTit), "e não cai no texto de reserva");
+
+/* ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("RELATÓRIO · Quem tem mais de uma bolsa na mesma janela");
+
+b.passo("14. Acha o titular com duas bolsas na mesma janela");
+/* A regra nova impede criar assim, então a duplicata é escrita direto na
+ * aba — que é exatamente o estado em que a base real pode estar, porque as
+ * linhas antigas foram criadas com a trava que chaveava por curso. */
+linhaAntiga("BOLSA-DUP-1", "DUPLICADO DE TESTE", "", "Pedagogia");
+linhaAntiga("BOLSA-DUP-2", "DUPLICADO DE TESTE", "", "Direito");
+[["BOLSA-DUP-1"], ["BOLSA-DUP-2"]].forEach(function (par) {
+  const i = todasLinhas().indexOf(par[0]) + 1;
+  sh.getRange(i, cab.indexOf("PERIODO_REFERENCIA") + 1).setValue("2028/1");
+});
+
+const rel = g.voucherRelatorioDuplicidades(token);
+b.igual(rel.ok, true, "o relatório roda", rel.mensagem);
+const oDup = (rel.pessoas || []).filter(function (p) {
+  return p.nome === "DUPLICADO DE TESTE" && p.periodo === "2028/1";
+})[0];
+b.ok(!!oDup, "achou a pessoa com duas bolsas na mesma janela");
+b.igual(oDup && oDup.bolsas.length, 2, "com as duas listadas");
+b.ok((oDup.bolsas || []).some(function (x) { return x.protocolo === "BOLSA-DUP-1"; }) &&
+     (oDup.bolsas || []).some(function (x) { return x.protocolo === "BOLSA-DUP-2"; }),
+  "nomeando os dois protocolos");
+b.ok((oDup.bolsas || []).every(function (x) { return x.linha > 1; }),
+  "e a linha da planilha, para achar sem procurar");
+
+b.passo("15. Não acusa quem tem uma bolsa em cada semestre");
+/* Renovação não é duplicidade — e um relatório que acusa renovação vira
+ * relatório que ninguém abre. */
+const semDuplicata = (rel.pessoas || []).filter(function (p) {
+  return p.nome === "MARIA DE TESTE";
+});
+b.igual(semDuplicata.length, 0, "MARIA, com bolsas em janelas diferentes, não aparece");
+
+b.passo("15b. Indeferida não conta como bolsa ocupando a janela");
+/* Uma solicitação INDEFERIDA não ocupa período — se contasse, o relatório
+ * acusaria como duplicata uma bolsa que foi negada, e mandaria alguém
+ * investigar um caso resolvido. Mutação que sobreviveu na primeira bateria:
+ * sem este caso, ignorar o status não quebrava nada. */
+linhaAntiga("BOLSA-NEG-1", "NEGADO DE TESTE", "", "Pedagogia");
+linhaAntiga("BOLSA-NEG-2", "NEGADO DE TESTE", "", "Direito");
+[["BOLSA-NEG-1", "APROVADO"], ["BOLSA-NEG-2", "INDEFERIDO"]].forEach(function (par) {
+  const i = todasLinhas().indexOf(par[0]) + 1;
+  sh.getRange(i, cab.indexOf("PERIODO_REFERENCIA") + 1).setValue("2028/2");
+  sh.getRange(i, cab.indexOf("STATUS_SOLICITACAO") + 1).setValue(par[1]);
+});
+const relNeg = g.voucherRelatorioDuplicidades(token);
+b.igual((relNeg.pessoas || []).filter(function (p) {
+  return p.nome === "NEGADO DE TESTE";
+}).length, 0, "a indeferida não vira duplicidade");
+
+b.passo("15c. Linha SEM período não entra no relatório");
+/* Ela não ocupa janela nenhuma — é outro problema, com correção própria (o
+ * "⚠ sem período"). Juntá-las aqui criaria um grupo falso: duas linhas sem
+ * período apareceriam como "duas bolsas na mesma janela", e a janela nem
+ * existe. Outra mutação que sobreviveu por falta deste caso. */
+linhaAntiga("BOLSA-VAZIA-1", "SEM PERIODO DE TESTE", "", "Pedagogia");
+linhaAntiga("BOLSA-VAZIA-2", "SEM PERIODO DE TESTE", "", "Direito");
+const relVazio = g.voucherRelatorioDuplicidades(token);
+b.igual((relVazio.pessoas || []).filter(function (p) {
+  return p.nome === "SEM PERIODO DE TESTE";
+}).length, 0, "as duas sem período não viram duplicidade");
+b.ok((relVazio.pessoas || []).every(function (p) { return !!p.periodo; }),
+  "e nenhum grupo do relatório tem janela vazia");
+
+b.passo("16. O relatório é SÓ LEITURA");
+const antesDoRel = sh.getLastRow();
+g.voucherRelatorioDuplicidades(token);
+b.igual(sh.getLastRow(), antesDoRel, "rodar de novo não escreve nada na aba");
+const aindaLa = (g.listarSolicitacoesCertBolsa(token) || [])
+  .filter(function (x) { return x.protocolo === "BOLSA-DUP-1"; });
+b.igual(aindaLa.length, 1, "e não apaga nem cancela nada");
+
+b.passo("17. Traz o texto pronto para quem roda pelo editor");
+b.ok(/VOUCHERS EM DUPLICIDADE/.test(rel.relatorio || ""),
+  "o relatório vem formatado", String(rel.relatorio || "").split("\n")[0]);
+b.ok(/DUPLICADO DE TESTE/.test(rel.relatorio || ""), "com os nomes dentro");
+
+b.passo("18. A porta dupla protege o relatório");
+b.bloqueia(function () { g.voucherRelatorioDuplicidades("token-que-nao-existe"); },
+  "sem sessão, não lê");
+
 b.naoTestavel("A faixa na tela e o apóstrofo protetor na planilha real",
   "a faixa se confere abrindo o modal no ar; o apóstrofo, olhando a célula no Sheets");
 

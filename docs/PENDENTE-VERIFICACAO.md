@@ -12,6 +12,36 @@
 
 ## 🔴 ABERTO
 
+### 26. Voucher — o registro diz em face de quem, e o relatório de duplicidade
+**Aberto em:** 14/08/2026 · `VoucherPdf.gs`, `VoucherAdmin.gs`
+
+Duas coisas pequenas e independentes, das suas duas últimas decisões.
+
+**1. "Voucher emitido em face de FULANO em 14/08/2026 12:18 por SISTEMA."**
+O registro de emissão dizia só "Voucher emitido." — e num módulo em que o
+titular pede para três filhos, essa frase não diz nada. Quem lê o histórico
+seis meses depois precisa saber **de quem** era a bolsa, não de quem era o
+CPF. O nome que entra é o do **beneficiário** (`NOME_BENEFICIARIO`), caindo
+para o solicitante só quando o beneficiário é o próprio titular. O carimbo é
+montado uma vez e usado nos três lugares — status da solicitação, status do
+protocolo e histórico — para os três dizerem a mesma coisa.
+
+**2. `voucherRelatorioDuplicidades` — leitura, não migração.** Roda pelo
+editor de scripts e não escreve uma célula. Devolve duas listas: quem tem
+mais de uma bolsa na mesma janela, e quem passou dos 3 dependentes na mesma
+janela. Cada grupo traz protocolo, nome e **a linha da planilha**, para
+conferir sem procurar. Linhas sem período não entram (é o problema do item
+25, não duplicidade) e status que não ocupa janela — INDEFERIDO, CANCELADO —
+também não. Esses dois filtros sobreviveram à primeira rodada de mutação:
+sem eles o relatório inventava duplicidade, e o teste não percebia.
+
+| | |
+|---|---|
+| 🔴 Emitir um voucher de filho e ler o histórico | tem que sair o nome do **filho**, com data e hora |
+| 🔴 Rodar `voucherRelatorioDuplicidades` na base real | pelo editor, olhando o Logger |
+| 🔴 Conferir cada grupo que ele apontar | abrindo as linhas que ele nomeia |
+| 🔴 Nada mudou na aba depois de rodar | é leitura; se mudou, é bug |
+
 ### 25. Voucher — corrigir o período que faltou
 **Aberto em:** 13/08/2026 · `VoucherAdmin.gs`, `Scripts_Certificado.html`
 
