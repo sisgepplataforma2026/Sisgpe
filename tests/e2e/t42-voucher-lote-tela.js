@@ -220,8 +220,156 @@ function campo(card, classe) { return card.querySelector("." + classe); }
   await t.assentar(40);
   b.igual(cards().length, 0, "o bloco voltou a ficar vazio");
 
-  b.naoTestavel("O botão 'Renovar os 3'",
-    "a faixa de renovação a partir da memória ainda não foi ligada à tela");
+  b.fluxo("RENOVAR · A família volta preenchida");
+
+  /* Uma família com histórico: dois filhos e o próprio titular, todos com
+     bolsa num período que já passou. É o caso comum — o mesmo associado
+     voltando no semestre seguinte. */
+  const CPF_FAM = "52998224725";
+  [["ANA CLARA", "FILHO", "1", "ENSINO_FUNDAMENTAL", "Fundamental", "COLEGIO SAO JOSE", 100],
+   ["BRENO LUIS", "FILHO", "2", "GRADUACAO", "Engenharia", "MULTIVIX", 60]
+  ].forEach(function (d) {
+    g.voucherCriarSolicitacao({
+      cpf: CPF_FAM, nome: "MAE DA FAMILIA", email: "mae@exemplo.com",
+      escola: "COLEGIO ONDE TRABALHA", instituicao: d[5],
+      tipoBeneficiario: d[1], beneficiario: d[0], ordemFilho: d[2],
+      modalidade: d[3], curso: d[4], percentual: d[6],
+      regime: "SEMESTRAL", periodo: "2020/1", aprovar: true
+    }, TOKEN);
+  });
+
+  b.passo("11. Digitar o CPF traz a faixa com a família");
+  t.clicar("#certNvCancelar");
+  await t.assentar(40);
+  t.clicar("#certBtnNova");
+  await t.assentar(40);
+  b.igual(el("certNvRenov").style.display, "none", "a faixa começa escondida");
+
+  t.digitar("#certNvCpf", CPF_FAM);
+  await t.assentar(500);
+  b.ok(el("certNvRenov").style.display !== "none", "a faixa apareceu");
+  b.ok(/Encontrei 2/.test(el("certNvRenovTit").textContent),
+    "dizendo quantos achou", el("certNvRenovTit").textContent);
+  const itens = doc.querySelectorAll("#certNvRenovLista .js-renov");
+  b.igual(itens.length, 2, "com um item por beneficiário");
+  b.ok(Array.prototype.every.call(itens, function (i) { return i.checked; }),
+    "todos marcados — quem não quer, desmarca");
+  b.ok(/ANA CLARA/.test(el("certNvRenovLista").textContent) &&
+       /BRENO LUIS/.test(el("certNvRenovLista").textContent),
+    "os dois nomes na tela");
+  b.ok(/Engenharia/.test(el("certNvRenovLista").textContent),
+    "com o curso de CADA um, não o do último", el("certNvRenovLista").textContent);
+
+  b.passo("12. O botão oferece o período CORRENTE, calculado da data");
+  const hoje = new Date();
+  const semAtual = (hoje.getMonth() + 1) <= 6 ? "1" : "2";
+  b.ok(el("certNvRenovarBtn").textContent.indexOf(hoje.getFullYear() + "/" + semAtual) > -1,
+    "o botão diz o período em que vai renovar", el("certNvRenovarBtn").textContent);
+
+  b.passo("12b. A regra do semestre vale nos DOIS lados do ano");
+  /* SEM ISTO A ASSERÇÃO ANTERIOR NÃO PROVA NADA HOJE. Estamos em agosto, que
+     cai no 2º semestre — e uma versão que devolvesse "2" sempre passaria
+     igual. Foi uma mutação sobrevivente que mostrou isso.
+     Trocando o relógio da página, a regra aparece: janeiro a junho é 1, o
+     resto é 2. Janeiro e fevereiro contam como 1º porque matrícula de
+     fevereiro é do semestre que começa.
+     O relógio fica trocado ATRAVESSANDO O await — a faixa é desenhada na
+     resposta do servidor, e restaurar antes disso devolvia a data real. Foi
+     assim que a primeira versão deste passo falhou. */
+  const DateReal = win.Date;
+  function trocarRelogio(ano, mes, dia) {
+    function Falso(){ return new DateReal(ano, mes - 1, dia); }
+    Falso.now = function(){ return new DateReal(ano, mes - 1, dia).getTime(); };
+    Falso.prototype = DateReal.prototype;
+    win.Date = Falso;
+  }
+  /* CPF diferente antes, senão a busca não repete: a tela guarda o último
+     CPF consultado justamente para não chamar o servidor a cada tecla. */
+  async function redesenharFaixa() {
+    t.digitar("#certNvCpf", "11144477735");
+    await t.assentar(400);
+    t.digitar("#certNvCpf", CPF_FAM);
+    await t.assentar(500);
+  }
+
+  trocarRelogio(2031, 3, 10);
+  await redesenharFaixa();
+  b.ok(/2031\/1/.test(el("certNvRenovarBtn").textContent),
+    "março de 2031 oferece 2031/1", el("certNvRenovarBtn").textContent);
+
+  trocarRelogio(2032, 9, 10);
+  await redesenharFaixa();
+  b.ok(/2032\/2/.test(el("certNvRenovarBtn").textContent),
+    "setembro de 2032 oferece 2032/2", el("certNvRenovarBtn").textContent);
+
+  trocarRelogio(2033, 2, 20);
+  await redesenharFaixa();
+  b.ok(/2033\/1/.test(el("certNvRenovarBtn").textContent),
+    "e fevereiro conta como 1º semestre, não como fim do ano anterior",
+    el("certNvRenovarBtn").textContent);
+
+  win.Date = DateReal;
+  await redesenharFaixa();
+
+  b.passo("13. Renovar preenche o de cima e cria card para o resto");
+  t.clicar("#certNvRenovarBtn");
+  await t.assentar(120);
+  b.igual(el("certNvBeneficiario").value, "ANA CLARA",
+    "o primeiro marcado foi para o beneficiário de cima");
+  b.igual(el("certNvQuem").value, "FILHO_1", "com o 'quem é' remontado do histórico");
+  b.igual(el("certNvCurso").value, "Fundamental", "e o curso dele");
+  b.igual(cards().length, 1, "o segundo virou card");
+  b.igual(campo(cards()[0], "js-nome").value, "BRENO LUIS", "com o nome");
+  b.igual(campo(cards()[0], "js-quem").value, "FILHO_2", "a ordem certa");
+  b.igual(campo(cards()[0], "js-curso").value, "Engenharia",
+    "e o curso DELE, que é diferente do da irmã");
+
+  b.passo("14. O período já veio preenchido — ninguém digita duas vezes");
+  b.igual(el("certNvPeriodoAno").value, String(hoje.getFullYear()), "o ano corrente");
+  b.igual(el("certNvPeriodoSem").value, semAtual, "e o semestre corrente");
+
+  b.passo("15. A faixa some depois de usada");
+  b.igual(el("certNvRenov").style.display, "none",
+    "não fica pedindo para renovar o que já foi preenchido");
+
+  b.passo("16. Desmarcar um deixa ele de fora");
+  t.clicar("#certNvCancelar");
+  await t.assentar(40);
+  t.clicar("#certBtnNova");
+  await t.assentar(40);
+  t.digitar("#certNvCpf", CPF_FAM);
+  await t.assentar(500);
+  const caixas = doc.querySelectorAll("#certNvRenovLista .js-renov");
+  caixas[1].checked = false;
+  t.clicar("#certNvRenovarBtn");
+  await t.assentar(120);
+  b.igual(el("certNvBeneficiario").value, "ANA CLARA", "só a marcada entrou");
+  b.igual(cards().length, 0, "e nenhum card extra foi criado");
+
+  b.passo("17. 'Montar na mão' fecha a faixa sem preencher nada");
+  t.clicar("#certNvCancelar");
+  await t.assentar(40);
+  t.clicar("#certBtnNova");
+  await t.assentar(40);
+  t.digitar("#certNvCpf", CPF_FAM);
+  await t.assentar(500);
+  b.ok(el("certNvRenov").style.display !== "none", "a faixa está aberta");
+  t.clicar("#certNvRenovarNao");
+  await t.assentar(40);
+  b.igual(el("certNvRenov").style.display, "none", "fechou");
+  b.igual(cards().length, 0, "sem criar card nenhum");
+
+  b.passo("18. Trocar de associado não herda a família do anterior");
+  /* Sem isto, o próximo atendimento abriria com a família de outra pessoa —
+     e ela vem MARCADA, pronta para ser salva por engano. */
+  t.clicar("#certNvCancelar");
+  await t.assentar(40);
+  t.clicar("#certBtnNova");
+  await t.assentar(40);
+  b.igual(el("certNvRenov").style.display, "none",
+    "a faixa voltou escondida no atendimento novo");
+  b.igual(el("certNvRenovLista").innerHTML, "",
+    "e a lista foi esvaziada, não só escondida");
 
   b.resumo();
   process.exit(0);

@@ -179,6 +179,24 @@ b.igual(ana && ana.ordemFilho, "1", "a ordem é a dela");
 b.igual(ana && ana.modalidade, "ENSINO_FUNDAMENTAL", "a modalidade é a dela");
 b.igual(ana && ana.ehTitular, false, "e ela não é o titular");
 
+b.passo("11b. A lista vem em ORDEM DE FAMÍLIA, não de planilha");
+/* As linhas chegam da mais recente para a mais antiga, então sem ordenação a
+ * lista saía na ordem em que cada bolsa foi mexida pela última vez — o 2º
+ * filho antes do 1º. Na tela de renovação isso é pior do que parece: o
+ * PRIMEIRO da lista é o que vai para o beneficiário de cima, e quem atende
+ * confere uma família fora de ordem toda vez. Achado pelo teste de tela em
+ * 13/08/2026, corrigido no backend, que é onde a lista nasce. */
+const ordem = mem.dependentes.map(function (d) {
+  return d.ehTitular ? "T" : (d.ordemFilho || "?");
+});
+b.igual(ordem[0], "T", "o titular vem primeiro");
+const soFilhos = mem.dependentes.filter(function (d) { return !d.ehTitular && d.ordemFilho; });
+const crescente = soFilhos.every(function (d, i) {
+  return i === 0 || Number(soFilhos[i - 1].ordemFilho) <= Number(d.ordemFilho);
+});
+b.ok(crescente, "e os filhos vêm em ordem crescente",
+  soFilhos.map(function (d) { return d.ordemFilho + "º " + d.nome; }).join(" · "));
+
 b.passo("12. O titular aparece na lista, marcado");
 /* Sem isto, a renovação em lote deixaria a bolsa do próprio associado de
  * fora e ninguém perceberia até o semestre acabar. */

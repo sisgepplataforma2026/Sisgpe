@@ -662,6 +662,26 @@ function voucherDependentesConhecidos_(linhas, cab) {
       ultimoStatus: String(v(linha, "STATUS_SOLICITACAO") || "").trim().toUpperCase()
     });
   }
+
+  /* ORDEM DE FAMÍLIA, não ordem de planilha.
+   *
+   * As linhas chegam da mais recente para a mais antiga, então a lista saía
+   * na ordem em que cada bolsa foi mexida pela última vez: o 2º filho antes
+   * do 1º, porque foi cadastrado depois. Na tela de renovação isso é pior do
+   * que parece — o primeiro da lista é o que vai para o beneficiário de
+   * cima, e a pessoa confere uma família fora de ordem toda vez.
+   *
+   * Titular primeiro, porque é dele o vínculo que sustenta o benefício;
+   * depois os filhos pela ordem da convenção; o resto por nome, que é
+   * estável e é como quem atende procura. */
+  saida.sort(function (a, b) {
+    if (a.ehTitular !== b.ehTitular) return a.ehTitular ? -1 : 1;
+    var oa = parseInt(a.ordemFilho, 10), ob = parseInt(b.ordemFilho, 10);
+    if (!isNaN(oa) && !isNaN(ob) && oa !== ob) return oa - ob;
+    if (!isNaN(oa) !== !isNaN(ob)) return isNaN(oa) ? 1 : -1;
+    return String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR");
+  });
+
   return saida;
 }
 

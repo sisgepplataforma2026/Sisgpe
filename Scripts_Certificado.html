@@ -163,6 +163,9 @@
 #certNovaBox .cert-nv-renov-tit { font-size:12.5px; font-weight:800; color:#1565C0; margin-bottom:8px; }
 #certNovaBox .cert-nv-renov-item { font-size:12px; color:#334155; padding:3px 0; }
 #certNovaBox .cert-nv-renov-acoes { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+#certNovaBox .cert-nv-renov-item label { display:flex; align-items:center; gap:8px; cursor:pointer; }
+#certNovaBox .cert-nv-renov-item .quem { font-weight:800; color:#0f172a; }
+#certNovaBox .cert-nv-renov-item .det { color:#64748b; }
 #certNovaBox .cert-nv-org.padrao { background: #fffbeb; color: #b45309; }
 #certNovaBox .cert-nv-org.recusa { background: #fef2f2; color: #dc2626; }
 #certNovaBox .cert-nv-aviso { background: #f8fafc; border: 1px solid #cbd5e1; border-left: 3px solid #1565C0; border-radius: 8px; padding: 8px 11px; font-size: 12px; color: #334155; margin-bottom: 7px; line-height: 1.5; }
@@ -834,6 +837,19 @@
             <option value="ANUAL">Anual</option>
             <option value="SEMESTRAL">Semestral</option>
           </select>
+        </div>
+      </div>
+
+      <!-- A FAIXA DE RENOVACAO — so aparece quando a memoria acha alguem.
+           Comeca escondida e some quando nao ha o que renovar: faixa vazia
+           na tela e ruido que a pessoa aprende a ignorar, e no dia em que
+           tiver conteudo ela ja nao olha mais. -->
+      <div class="cert-nv-renov" id="certNvRenov" style="display:none;">
+        <div class="cert-nv-renov-tit" id="certNvRenovTit"></div>
+        <div id="certNvRenovLista"></div>
+        <div class="cert-nv-renov-acoes">
+          <button type="button" class="cert-btn cert-btn-navy cert-btn-sm" id="certNvRenovarBtn"></button>
+          <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certNvRenovarNao">Montar na mão</button>
         </div>
       </div>
 
@@ -1736,6 +1752,135 @@ function nvPeriodoSincronizarRegime(){
    ══════════════════════════════════════════════════════════════════════ */
 var NV_MAX_DEPENDENTES = 3;
 
+/* ══════════════════════════════════════════════════════════════════════
+   RENOVAR A FAMILIA
+
+   O caso comum nao e cadastrar familia nova: e o mesmo associado voltando a
+   cada semestre. Ate 13/08/2026 a tela recuperava UM beneficiario — o da
+   ultima linha —, entao um pai de tres filhos tinha dois deles redigitados
+   do zero todo semestre.
+
+   Aqui a memoria devolve a familia inteira e a pessoa CONFERE E CLICA. O que
+   ela nao pode e ser obrigada a aceitar: cada dependente tem sua caixa, e
+   "Montar na mao" fecha a faixa sem preencher nada.
+   ══════════════════════════════════════════════════════════════════════ */
+var _nvFamilia = [];
+/* O CPF cuja família já foi buscada — evita repetir a chamada a cada
+   tecla depois que o CPF ficou completo. */
+var _nvFamiliaCpf = '';
+
+/* O PERIODO CORRENTE, calculado da data — nao perguntado.
+   Janeiro e fevereiro contam como 1º semestre: matricula de fevereiro e do
+   semestre que comeca, nao do que passou. Mesma conta de
+   voucherPeriodoTexto_ no servidor, e as duas precisam continuar iguais. */
+function nvPeriodoCorrente(){
+  var d = new Date(), m = d.getMonth() + 1;
+  return { ano: String(d.getFullYear()), semestre: (m <= 6 ? '1' : '2') };
+}
+
+/* De TIPO + ORDEM de volta para o valor do seletor — o caminho inverso de
+   nvQuemDe, para a memoria conseguir remontar o card de quem ja existe. */
+function nvQuemPara(tipo, ordem){
+  tipo = String(tipo || '').toUpperCase();
+  if(tipo === 'TITULAR' || !tipo) return 'PROPRIO';
+  if(tipo === 'CONJUGE') return 'CONJUGE';
+  if(tipo === 'ENTEADO') return 'ENTEADO';
+  var n = String(ordem || '1').replace(/\D/g,'') || '1';
+  if(['1','2','3'].indexOf(n) === -1) n = '1';
+  return 'FILHO_' + n;
+}
+
+/* Desenha a faixa. Chamada quando o CPF fica completo; se nao houver
+   ninguem, a faixa some — e some MESMO, para o proximo atendimento nao
+   herdar a familia do anterior. */
+function nvFamiliaDesenhar(lista){
+  _nvFamilia = lista || [];
+  var faixa = g('certNvRenov');
+  if(!faixa) return;
+  if(!_nvFamilia.length){ faixa.style.display='none'; return; }
+
+  var p = nvPeriodoCorrente();
+  g('certNvRenovTit').textContent =
+    'Encontrei ' + _nvFamilia.length +
+    (_nvFamilia.length === 1 ? ' beneficiário deste associado' : ' beneficiários deste associado');
+
+  g('certNvRenovLista').innerHTML = _nvFamilia.map(function(d, i){
+    var quem = d.ehTitular ? 'o próprio titular'
+             : (d.ordemFilho ? d.ordemFilho + 'º filho' : String(d.tipo||'').toLowerCase());
+    var det = [d.curso || d.modalidade, d.instituicao,
+               d.percentual ? d.percentual + '%' : '',
+               d.ultimoPeriodo ? 'último: ' + d.ultimoPeriodo : ''
+              ].filter(Boolean).join(' · ');
+    return '<div class="cert-nv-renov-item"><label>'
+         +   '<input type="checkbox" class="js-renov" data-i="' + i + '" checked>'
+         +   '<span class="quem">' + escHtml(d.nome) + '</span>'
+         +   '<span class="det">' + escHtml(quem + (det ? ' · ' + det : '')) + '</span>'
+         + '</label></div>';
+  }).join('');
+
+  g('certNvRenovarBtn').textContent = 'Renovar em ' + p.ano + '/' + p.semestre;
+  faixa.style.display = '';
+}
+
+/* Marcados -> formulario. O primeiro vai para o beneficiario de cima; os
+   demais viram cards. E a ordem importa: o de cima e o indice 0 do
+   resultado, e e nele que a tela pinta o protocolo. */
+function nvFamiliaRenovar(){
+  var marcados = Array.prototype.slice
+    .call(document.querySelectorAll('#certNvRenovLista .js-renov'))
+    .filter(function(c){ return c.checked; })
+    .map(function(c){ return _nvFamilia[Number(c.getAttribute('data-i'))]; })
+    .filter(Boolean);
+
+  if(!marcados.length){ msg('Marque ao menos um beneficiário para renovar.','warn'); return; }
+
+  var dependentes = marcados.filter(function(d){ return !d.ehTitular; }).length;
+  if(dependentes > NV_MAX_DEPENDENTES){
+    msg('São ' + dependentes + ' dependentes marcados, e o máximo é ' +
+        NV_MAX_DEPENDENTES + '.','warn');
+    return;
+  }
+
+  nvBenefLimpar();
+
+  var primeiro = marcados[0];
+  if(g('certNvQuem')) g('certNvQuem').value = nvQuemPara(primeiro.tipo, primeiro.ordemFilho);
+  nvSincronizarBeneficiario();
+  if(!primeiro.ehTitular && g('certNvBeneficiario')) g('certNvBeneficiario').value = primeiro.nome;
+  [['certNvInstituicao','instituicao'],['certNvCnpjInst','cnpjInstituicao'],
+   ['certNvEmailInst','emailInstituicao'],['certNvCurso','curso'],
+   ['certNvPercentual','percentual']].forEach(function(par){
+    var el = g(par[0]);
+    if(el && primeiro[par[1]] !== undefined && primeiro[par[1]] !== '') el.value = primeiro[par[1]];
+  });
+  ['certNvModalidade','certNvArea','certNvRegime'].forEach(function(id){
+    var chave = id === 'certNvModalidade' ? 'modalidade' : id === 'certNvArea' ? 'area' : 'regime';
+    var el = g(id);
+    if(el && primeiro[chave]) el.value = primeiro[chave];
+  });
+
+  marcados.slice(1).forEach(function(d){
+    nvBenefAdicionar({
+      quem: nvQuemPara(d.tipo, d.ordemFilho),
+      nome: d.nome, instituicao: d.instituicao,
+      modalidade: d.modalidade, curso: d.curso, percentual: d.percentual
+    });
+  });
+
+  /* O PERIODO CORRENTE JA PREENCHIDO — é o campo que a pessoa ia digitar
+     igual em todos, e o sistema sabe que semestre é hoje. */
+  var p = nvPeriodoCorrente();
+  if(g('certNvPeriodoAno'))  g('certNvPeriodoAno').value  = p.ano;
+  if(g('certNvPeriodoSem'))  g('certNvPeriodoSem').value  = p.semestre;
+  nvPeriodoSincronizarRegime();
+  nvSalvarHabilitar();
+
+  g('certNvRenov').style.display = 'none';
+  msg('Preenchi ' + marcados.length + ' beneficiário' +
+      (marcados.length > 1 ? 's' : '') + ' — confira e salve.','ok');
+}
+
+
 function nvBenefCards(){
   var l = g('certNvBenefLista');
   return l ? Array.prototype.slice.call(l.querySelectorAll('.cert-nv-benef-card')) : [];
@@ -1932,6 +2077,11 @@ function nvLimpar(){
   _nvExcecao = null;
   _nvRegimeManual = false;
   nvBenefLimpar();          /* os cards extras saem junto — ver nvLimpar */
+  /* A faixa de renovação também: sem isto, o próximo atendimento abriria
+     com a família do associado anterior — e ela vem MARCADA. */
+  _nvFamilia = []; _nvFamiliaCpf = '';
+  if(g('certNvRenov')) g('certNvRenov').style.display='none';
+  if(g('certNvRenovLista')) g('certNvRenovLista').innerHTML='';
   if(g('certNvTrava')) g('certNvTrava').innerHTML='';
   nvSalvarHabilitar();
   ['certNvOrgInst','certNvOrgEmailInst','certNvOrgPct','certNvAvisos'].forEach(function(id){
@@ -2045,6 +2195,7 @@ function nvSugerir(){
     })
     .withFailureHandler(function(){})
     .voucherSugerirSolicitacao(nvCampos(), certToken());
+
 }
 
 /* ── UM VOUCHER POR PESSOA, POR CURSO, POR PERÍODO ────────────────────────
@@ -2196,7 +2347,34 @@ function nvSalvarHabilitar(){
   });
 }
 
+/* A FAMÍLIA — buscada quando o CPF fica completo.
+ *
+ * FICA FORA de nvSugerir de propósito, e isso foi achado por teste: nvSugerir
+ * só é chamada ao ESCOLHER alguém na lista de busca, não ao digitar o CPF. A
+ * secretaria que digita o CPF direto — que é o caminho mais rápido e o que a
+ * pessoa usa quando já tem o número na mão — nunca via a faixa aparecer.
+ *
+ * Entra em nvChecarPeriodo porque é ela que já roda a cada tecla do CPF, com
+ * o mesmo debounce, e já espera o CPF completo para valer.
+ */
+function nvFamiliaBuscar(){
+  var cpfAgora = String((nvCampos().cpf)||'').replace(/\D/g,'');
+  if(cpfAgora.length !== 11 || cpfAgora === _nvFamiliaCpf) return;
+  _nvFamiliaCpf = cpfAgora;
+  google.script.run
+    .withSuccessHandler(function(m){
+      /* Só desenha se o CPF ainda é o mesmo: a pessoa pode ter apagado e
+         digitado outro enquanto a resposta vinha, e a família do anterior
+         apareceria como se fosse deste. */
+      if(String((nvCampos().cpf)||'').replace(/\D/g,'') !== cpfAgora) return;
+      nvFamiliaDesenhar(m && m.achou ? (m.dependentes||[]) : []);
+    })
+    .withFailureHandler(function(){})
+    .voucherMemoriaAssociado(cpfAgora, certToken());
+}
+
 function nvChecarPeriodo(){
+  nvFamiliaBuscar();
   var d = nvCampos();
   if(String(d.cpf||'').replace(/\D/g,'').length !== 11 || !String(d.modalidade||'').trim()){
     nvTravaDesenhar(null); return;
@@ -2932,6 +3110,12 @@ function initInterno(){
      botoes do modal, e nao num bloco proprio: quem procura "quem escuta o
      clique" olha um lugar so. */
   if(g('certNvBenefAdd')) g('certNvBenefAdd').addEventListener('click', function(){ nvBenefAdicionar(); });
+  if(g('certNvRenovarBtn')) g('certNvRenovarBtn').addEventListener('click', nvFamiliaRenovar);
+  if(g('certNvRenovarNao')) g('certNvRenovarNao').addEventListener('click', function(){
+    /* "Montar na mão" só fecha a faixa. Não limpa nada: quem clicou aqui
+       quer digitar, e apagar o que ele já digitou seria castigo. */
+    g('certNvRenov').style.display = 'none';
+  });
 
   /* Debounce nas duas buscas. Sem ele, cada tecla vira uma ida ao servidor
      e a planilha inteira é lida oito vezes para digitar "Marcelo". */
