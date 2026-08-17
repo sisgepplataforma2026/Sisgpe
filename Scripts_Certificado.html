@@ -3109,7 +3109,11 @@ window.certDocAbrir = function(sol){
       if(g('certDocCarregando')) g('certDocCarregando').textContent =
         '⚠️ ' + ((err && err.message) || 'Falha ao montar a prévia.');
     })
-    .gerarDocumentoCertBolsaCompleto(_docSol.protocolo, 'PREVIA', { percentual: 70 }, certToken());
+    /* SEM PERCENTUAL. A prévia tem que mostrar o MESMO número que o
+       certificado vai imprimir — e quem decide é a solicitação, não a tela.
+       Mandar 70 aqui fazia a prévia mentir de um jeito especialmente ruim:
+       ela era o lugar onde alguém conferia antes de emitir. */
+    .gerarDocumentoCertBolsaCompleto(_docSol.protocolo, 'PREVIA', {}, certToken());
 };
 
 function certDocFechar(){
@@ -3140,7 +3144,13 @@ function certDocGerar(){
       carregarLista();
     })
     .withFailureHandler(function(err){ resetBtn(btn); msg('Erro: '+((err&&err.message)||''),'erro'); })
-    .gerarDocumentoCertBolsaCompleto(_docSol.protocolo, 'CERTIFICADO', { percentual: 70 }, certToken());
+    /* ESTA LINHA MANDAVA 70 FIXO — e foi ela que imprimiu 70% num
+       certificado de Medicina, que é 50%. Achado em 17/08/2026, conferindo
+       um PDF real.
+       O percentual sai da solicitação, calculado pela regra da convenção e
+       gravado em PERCENTUAL_APLICADO. A tela não tem opinião sobre isso: ela
+       pede a emissão, o backend lê o que está guardado. */
+    .gerarDocumentoCertBolsaCompleto(_docSol.protocolo, 'CERTIFICADO', {}, certToken());
 }
 
 function certDocBaixar(){

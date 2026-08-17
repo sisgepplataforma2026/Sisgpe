@@ -184,8 +184,53 @@ function voucherCriarSolicitacao(dados, tokenSessao) {
       PERIODO_REFERENCIA: (typeof voucherPeriodoParaGravar_ === "function"
         ? voucherPeriodoParaGravar_(dados.periodo)
         : String(dados.periodo || "").trim()),
-      PERCENTUAL_APLICADO: dados.percentual === undefined || dados.percentual === ""
-        ? "" : Number(dados.percentual),
+      /* O PERCENTUAL É CALCULADO AQUI QUANDO NÃO VEIO PREENCHIDO.
+       *
+       * ESTA ERA A RAIZ DE UM CERTIFICADO COM 70% NUMA MEDICINA (50%),
+       * achado pelo usuário em 17/08/2026 num PDF real.
+       *
+       * O balcão só GRAVAVA o que a tela mandasse. Campo vazio virava célula
+       * vazia, e a solicitação seguia a vida sem percentual — enquanto o
+       * portal público (VoucherSolicitacao.gs:187) sempre calculou pela
+       * regra. Duas portas para o mesmo benefício, uma calculando e a outra
+       * não.
+       *
+       * Ninguém via, porque a EMISSÃO tapava o buraco com `|| 70`: vazio
+       * virava 70 na hora de imprimir, e 70 é o percentual de Humanas, a área
+       * mais comum. Todo certificado de humanas saiu certo por coincidência.
+       *
+       * Dois defeitos que se escondiam. Consertar só um deixaria o outro à
+       * mostra: tirar o 70 sem calcular aqui faria toda emissão do balcão
+       * passar a recusar.
+       *
+       * O que vem da tela prevalece quando foi realmente preenchido — pode
+       * haver exceção analisada que a convenção não cobre, e sobrescrever a
+       * decisão de quem analisou seria trocar um erro por outro. */
+      PERCENTUAL_APLICADO: (function () {
+        if (dados.percentual !== undefined && String(dados.percentual).trim() !== "") {
+          return Number(dados.percentual);
+        }
+        try {
+          var regraPct = calcularRegraVoucher_({
+            modalidade: modalidade,
+            areaCurso: String(dados.area || "").trim(),
+            curso: String(dados.curso || "").trim(),
+            tipoBeneficiario: tipoBenef,
+            ordemFilho: ordem,
+            enteadoDeclaradoIR: String(dados.enteadoDeclaradoIR || "").trim(),
+            situacaoSindical: String(dados.situacaoSindical || "").trim()
+          }, dados.idade === undefined || dados.idade === "" ? "" : Number(dados.idade));
+          return (regraPct && regraPct.apto && regraPct.percentual)
+            ? Number(regraPct.percentual) : "";
+        } catch (e) {
+          /* Nunca derruba a criação por causa do cálculo: sem percentual a
+           * solicitação existe e pode ser corrigida; com exceção lançada, o
+           * atendimento inteiro se perde. A emissão recusa depois, com a
+           * mensagem que explica o que fazer. */
+          Logger.log("cálculo do percentual falhou na criação: " + e.message);
+          return "";
+        }
+      })(),
       /* Comprovação e trilha */
       TIPO_DOCUMENTO_VINCULO: String(dados.tipoDocumentoVinculo || "").trim(),
       LINK_CONTRACHEQUE: String(dados.linkContracheque || "").trim(),

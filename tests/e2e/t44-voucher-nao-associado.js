@@ -89,9 +89,27 @@ const criado = g.voucherCriarSolicitacao({
   escola: "ESCOLA X", modalidade: "ENSINO_FUNDAMENTAL",
   instituicao: "INST Y", curso: "6 ANO",
   tipoBeneficiario: "FILHO", nomeBeneficiario: "FILHO DO NAO FILIADO",
-  ordemFilho: "1", periodo: "2026/2", regime: "SEMESTRAL"
+  ordemFilho: "1", idade: 12, periodo: "2026/2", regime: "SEMESTRAL"
 }, TOKEN);
 b.ok(criado.ok, "a solicitação é criada", criado.protocolo || criado.mensagem);
+
+/* O PERCENTUAL É CALCULADO NA CRIAÇÃO, NÃO ESPERADO DA TELA.
+ *
+ * Acrescentado em 17/08/2026, depois de um certificado real de Medicina sair
+ * com 70% — o percentual de Humanas. Eram dois defeitos que se cobriam: o
+ * balcão não calculava (gravava só o que a tela mandasse) e a emissão usava
+ * `|| 70` como padrão. Vazio virava 70 na hora de imprimir.
+ *
+ * Esta asserção lê a CÉLULA, não o retorno da função: é a planilha que a
+ * emissão vai consultar meses depois, e é ela que precisa estar certa. */
+(function () {
+  var shC = ss.getSheetByName("Voucher_Solicitacoes");
+  var cabC = shC.getRange(1, 1, 1, shC.getLastColumn()).getValues()[0].map(String);
+  var linC = shC.getRange(shC.getLastRow(), 1, 1, shC.getLastColumn()).getValues()[0];
+  var iPct = cabC.indexOf("PERCENTUAL_APLICADO");
+  b.igual(String(linC[iPct]), "100",
+    "e nasce com o percentual da regra gravado (1º filho = 100)");
+})();
 
 const aprovado = g.aprovarSolicitacaoVoucher(criado.protocolo, "", TOKEN);
 b.ok(aprovado.ok === true, "a aprovação é ACEITA", aprovado.mensagem);
@@ -178,7 +196,7 @@ const cSim = g.voucherCriarSolicitacao({
   escola: "ESCOLA X", modalidade: "ENSINO_FUNDAMENTAL",
   instituicao: "INST Y", curso: "6 ANO",
   tipoBeneficiario: "FILHO", nomeBeneficiario: "FILHO DO FILIADO",
-  ordemFilho: "1", periodo: "2026/2", regime: "SEMESTRAL"
+  ordemFilho: "1", idade: 12, periodo: "2026/2", regime: "SEMESTRAL"
 }, TOKEN);
 g.aprovarSolicitacaoVoucher(cSim.protocolo, "", TOKEN);
 const eSim = g.gerarDocumentoCertBolsaCompleto(

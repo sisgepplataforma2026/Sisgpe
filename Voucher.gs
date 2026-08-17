@@ -724,6 +724,62 @@ function voucherEhNaoAssociado_(situacaoSindical) {
   return !!s && s !== "ASSOCIADO";
 }
 
+/* A ÁREA DEDUZIDA DO NOME DO CURSO.
+ *
+ * A área é o que decide o percentual da graduação — Saúde 50, Engenharia 60,
+ * Humanas 70 —, e até 17/08/2026 ela era escolhida à mão num seletor. Quem
+ * marcasse "Humanas" para Medicina recebia 70% sem nenhum aviso, porque a
+ * regra obedece ao que foi marcado e não sabe o que é Medicina.
+ *
+ * Isso é a REGRA Nº 0.6: o sistema TEM como saber. Deixar a pessoa classificar
+ * curso por curso, todo semestre, é pedir para errar num campo que vale
+ * dinheiro — e o erro sai impresso num documento que a escola aceita.
+ *
+ * SUGERE, NÃO IMPÕE. Devolve a área e o motivo; quem chama decide se preenche
+ * um campo vazio ou se apenas avisa uma divergência. Curso que não casa com
+ * nenhuma lista devolve vazio, e aí a escolha continua sendo humana — inventar
+ * área para curso desconhecido seria trocar um erro visível por um invisível.
+ *
+ * A lista cobre o que aparece no dia a dia do sindicato, não o catálogo do MEC.
+ * Cobrir 90% dos casos e admitir os outros 10% é melhor do que fingir 100%. */
+function voucherAreaDoCurso_(curso) {
+  var c = normalizarTextoVoucher_(curso);
+  if (!c) return { area: "", motivo: "" };
+
+  var mapa = [
+    { area: "SAUDE", termos: [
+      "medicina", "enfermagem", "odontolog", "farmacia", "fisioterapia",
+      "nutricao", "psicolog", "biomedicina", "veterinaria", "fonoaudiolog",
+      "terapia ocupacional", "educacao fisica", "estetica", "radiolog",
+      "biolog", "obstetr" ] },
+    { area: "ENGENHARIA", termos: [
+      "engenharia", "arquitetura", "computacao", "sistemas de informacao",
+      "analise e desenvolvimento", "ciencia da computacao", "redes de computadores",
+      "matematica", "fisica", "quimica", "estatistica", "agronomia",
+      "tecnologia da informacao", "mecatronica", "eletrotecnica" ] },
+    { area: "HUMANAS", termos: [
+      "direito", "pedagog", "administrac", "contabe", "contabilidade",
+      "letras", "historia", "geografia", "filosofia", "sociolog",
+      "servico social", "jornalismo", "publicidade", "comunicacao",
+      "marketing", "recursos humanos", "gestao", "turismo", "teolog",
+      "musica", "artes", "design", "secretariado", "economia",
+      "relacoes internacionais", "logistica" ] }
+  ];
+
+  for (var i = 0; i < mapa.length; i++) {
+    for (var j = 0; j < mapa[i].termos.length; j++) {
+      if (c.indexOf(mapa[i].termos[j]) > -1) {
+        return {
+          area: mapa[i].area,
+          motivo: "deduzida do curso “" + String(curso).trim() + "”"
+        };
+      }
+    }
+  }
+
+  return { area: "", motivo: "" };
+}
+
 function calcularRegraVoucher_(dados, idadeBeneficiario) {
   var regra = calcularRegraVoucherConvencao_(dados, idadeBeneficiario);
   var naoAssociado = voucherEhNaoAssociado_(dados && dados.situacaoSindical);
@@ -867,18 +923,45 @@ function calcularRegraVoucherConvencao_(dados, idadeBeneficiario) {
   }
 
   if (modalidade === "GRADUACAO") {
+    /* A ÁREA MARCADA MANDA, MAS A DEDUZIDA PREENCHE E CONFERE.
+     *
+     * Duas situações, e as duas vinham de um certificado real de Medicina
+     * que saiu com 70% (o de Humanas) em 17/08/2026:
+     *
+     *   1. Área em BRANCO → a regra recusava com "área inválida", e alguém
+     *      escolhia no chute para destravar. Agora o curso responde sozinho.
+     *   2. Área MARCADA ERRADA → passava calada. Agora a divergência entre o
+     *      que foi marcado e o que o curso diz vira aviso escrito.
+     *
+     * O marcado continua vencendo: pode haver caso legítimo que a lista de
+     * termos não conhece, e sobrescrever a escolha de quem analisou seria
+     * trocar um erro por outro. O que não pode é a divergência ser muda. */
+    var deduzida = voucherAreaDoCurso_(dados.curso);
+    var areaUsada = areaCurso || deduzida.area;
+    var avisoArea = "";
+
+    if (!areaCurso && deduzida.area) {
+      avisoArea = " Área " + deduzida.area.toLowerCase() + " " + deduzida.motivo + ".";
+    } else if (areaCurso && deduzida.area && deduzida.area !== areaCurso) {
+      avisoArea = " ATENÇÃO: a área marcada é " + areaCurso.toLowerCase() +
+                  ", mas o curso “" + String(dados.curso || "").trim() +
+                  "” costuma ser " + deduzida.area.toLowerCase() +
+                  " — confira antes de emitir.";
+    }
+
     let percentualGrad = "";
 
-    if (areaCurso === "ENGENHARIA") percentualGrad = "60";
-    if (areaCurso === "HUMANAS")    percentualGrad = "70";
-    if (areaCurso === "SAUDE")      percentualGrad = "50";
+    if (areaUsada === "ENGENHARIA") percentualGrad = "60";
+    if (areaUsada === "HUMANAS")    percentualGrad = "70";
+    if (areaUsada === "SAUDE")      percentualGrad = "50";
 
     if (!percentualGrad) {
       return {
         apto: false,
         percentual: "",
         regime: "SEMESTRAL",
-        observacao: "Área do curso inválida para graduação."
+        observacao: "Informe a área do curso para a graduação — ela é o que " +
+                    "define o percentual (saúde 50%, engenharia 60%, humanas 70%)."
       };
     }
 
@@ -886,7 +969,8 @@ function calcularRegraVoucherConvencao_(dados, idadeBeneficiario) {
       apto: true,
       percentual: percentualGrad,
       regime: "SEMESTRAL",
-      observacao: "Solicitação enquadrada por área do curso."
+      areaDeduzida: deduzida.area || "",
+      observacao: "Solicitação enquadrada por área do curso." + avisoArea
     };
   }
 

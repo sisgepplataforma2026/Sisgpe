@@ -134,7 +134,52 @@ if (voucherExistente) {
     etapa = "gerar código de validação";
     const codigo = gerarCodigoValidacaoVoucher_();
 
-    const percentual = Number(opcoes.percentual || reg.PERCENTUAL_APLICADO || 70);
+    /* O PERCENTUAL SAI DA SOLICITAÇÃO, NUNCA DE UM NÚMERO ESCRITO NA MÃO.
+     *
+     * ESTA LINHA IMPRIMIU 70% NUM CERTIFICADO DE MEDICINA, que é 50%.
+     * Achado por conferência do usuário num PDF real, em 17/08/2026.
+     *
+     * A ordem estava invertida e o padrão era um chute. `opcoes.percentual`
+     * vinha primeiro — e a tela mandava `{ percentual: 70 }` FIXO em
+     * Scripts_Certificado.html, para toda emissão. Resultado: o
+     * PERCENTUAL_APLICADO, calculado pela regra da convenção e gravado certo
+     * na planilha, nunca era lido. O documento oficial saía com um número que
+     * ninguém escolheu.
+     *
+     * POR QUE DEMOROU A APARECER: 70 é o percentual de Humanas, que é a área
+     * mais comum. Todo certificado de humanas saiu correto por coincidência.
+     * Só Saúde (50) e Engenharia (60) revelavam o defeito — e bastava não
+     * emitir nenhum desses para o sistema parecer certo por meses.
+     *
+     * AGORA: o gravado manda. `opcoes.percentual` só entra quando a linha não
+     * tem percentual — caso de solicitação antiga, anterior ao cálculo
+     * automático.
+     *
+     * E NÃO HÁ MAIS PADRÃO. O `|| 70` saiu de propósito: sem percentual
+     * nenhum, isto RECUSA em vez de inventar um número. Foi exatamente o
+     * padrão silencioso que transformou um campo vazio num certificado
+     * errado — e certificado é documento que a escola aceita como prova de
+     * desconto. Recusar dá trabalho a uma pessoa; inventar dá prejuízo a
+     * alguém. */
+    const percentualBruto = String(
+      reg.PERCENTUAL_APLICADO !== undefined && String(reg.PERCENTUAL_APLICADO).trim() !== ""
+        ? reg.PERCENTUAL_APLICADO
+        : (opcoes.percentual !== undefined ? opcoes.percentual : "")
+    ).replace("%", "").replace(",", ".").trim();
+
+    const percentual = Number(percentualBruto);
+
+    if (!isPreview && (!percentualBruto || isNaN(percentual) || percentual <= 0)) {
+      return {
+        ok: false,
+        semPercentual: true,
+        mensagem: "Esta solicitação está sem percentual de desconto. Abra a " +
+                  "solicitação, confira a modalidade e a área do curso para a " +
+                  "regra calcular, e emita depois — o certificado não pode sair " +
+                  "com um percentual arbitrado."
+      };
+    }
+
     /* O que foi digitado agora manda; o que já estava guardado salva a
      * emissão de quem não digitou nada. */
     const rg = valorSeguroVoucher_(opcoes.rg || reg.RG_SOLICITANTE || "");
