@@ -494,6 +494,57 @@ if (!dom.jsdomDisponivel()) {
   b.ok(cMail.ok, "solicitação do associado criada", cMail.protocolo || cMail.mensagem);
   b.igual(vM("CANAL_ENTRADA"), "EMAIL", "e o canal dele continua EMAIL");
 
+  /* ════════════════════════════════════════════════════════════════════ */
+  b.fluxo("ENVIO · o apóstrofo protetor não pode vazar para a pessoa");
+
+  b.passo("20. A tela de envio recebe o período limpo");
+  /* MEDIDO EM 17/08/2026: voucherPrepararEnvio devolvia "'2027/1", com o
+   * apóstrofo que a planilha usa para não converter o período em data.
+   *
+   * O t30 já afirmava `p.periodo === "2026/2"` e passava — porque ele SEMEIA
+   * a célula direto, sem apóstrofo. A asserção existia e nunca exercitou o
+   * caso real. Aqui a solicitação é criada pelo caminho de verdade, que grava
+   * com voucherPeriodoParaGravar_ — e é só assim que o defeito aparece.
+   *
+   * O estrago não parava na tela: o mesmo campo entra no texto do WhatsApp e
+   * no corpo do e-mail. O associado receberia "referente ao período '2027/1",
+   * com uma aspa solta que ninguém consegue explicar. */
+  /* Pessoa NOVA de propósito: CPF_SIM já acumulou bolsas nos passos
+     anteriores, e a trava de "um por janela" recusaria — o que faria este
+     passo falhar por um motivo que não é o que ele investiga. */
+  var cEnv = g.voucherCriarSolicitacao({
+    cpf: "52998224725", nome: "PESSOA DO ENVIO", email: "envio@teste.com",
+    situacaoSindical: "ASSOCIADO",
+    escola: "ESCOLA X", modalidade: "GRADUACAO", area: "SAUDE",
+    instituicao: "INST Y", curso: "Medicina",
+    tipoBeneficiario: "TITULAR", nomeBeneficiario: "PESSOA DO ENVIO",
+    periodo: "2028/1", regime: "SEMESTRAL"
+  }, TOKEN);
+  b.ok(cEnv.ok, "solicitação criada pelo caminho real", cEnv.protocolo || cEnv.mensagem);
+
+  /* A célula PRECISA ter o apóstrofo — senão o passo seguinte não prova
+   * nada, que é exatamente o buraco do t30. */
+  var shE = ss.getSheetByName("Voucher_Solicitacoes");
+  var cabE = shE.getRange(1, 1, 1, shE.getLastColumn()).getValues()[0].map(String);
+  var linE = shE.getRange(shE.getLastRow(), 1, 1, shE.getLastColumn()).getValues()[0];
+  var cru = String(linE[cabE.indexOf("PERIODO_REFERENCIA")]);
+  b.ok(cru.charAt(0) === "'",
+    "a célula guarda o apóstrofo protetor — o caso está sendo exercitado", cru);
+
+  g.aprovarSolicitacaoVoucher(cEnv.protocolo, "", TOKEN);
+  g.gerarDocumentoCertBolsaCompleto(cEnv.protocolo, "VOUCHER", { rg: "1" }, TOKEN);
+
+  var prep = g.voucherPrepararEnvio(cEnv.protocolo, TOKEN);
+  b.ok(prep && prep.ok, "o preparo do envio responde", prep && prep.mensagem);
+  b.igual(prep.periodo, "2028/1", "e o período chega LIMPO, sem o apóstrofo");
+  b.ok(String(prep.textoWhatsApp || "").indexOf("'2028") === -1,
+    "o texto do WhatsApp também não leva a aspa solta");
+
+  b.passo("21. E o percentual do envio é o da regra, não um chute");
+  /* Medicina é saúde: 50%. Se voltar 70, o padrão arbitrado ressuscitou. */
+  b.igual(String(prep.percentual), "50",
+    "Medicina sai com 50% — o percentual de saúde");
+
   b.resumo();
   process.exit(0);
 })();

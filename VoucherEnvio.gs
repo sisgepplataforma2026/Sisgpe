@@ -61,7 +61,23 @@ function voucherPrepararEnvio(protocolo, tokenSessao) {
     var link = String(emissao.LINK_ARQUIVO || "").trim();
     var codigo = String(emissao.CODIGO_VALIDACAO || "").trim();
     var curso = String(solic.CURSO || "").trim();
-    var periodo = String(solic.PERIODO_REFERENCIA || "").trim();
+    /* NORMALIZADO, e não lido cru — este era o último lugar que ainda lia.
+     *
+     * Medido em 17/08/2026: a tela de envio recebia "'2027/1", COM o
+     * apóstrofo protetor que a planilha usa para não converter o período em
+     * data. Ele não faz parte do valor, mas aparece em quem lê a célula sem
+     * passar pelo normalizador.
+     *
+     * O estrago não parava na tela: o mesmo `periodo` entra no texto do
+     * WhatsApp e no corpo do e-mail. O associado receberia uma mensagem do
+     * sindicato escrita "referente ao período '2027/1" — com uma aspa solta
+     * que ninguém consegue explicar.
+     *
+     * `voucherPeriodoTexto_` resolve os dois casos de uma vez: tira o
+     * apóstrofo e converte de volta a Date que o Sheets tenha criado. */
+    var periodo = (typeof voucherPeriodoTexto_ === "function")
+      ? voucherPeriodoTexto_(solic.PERIODO_REFERENCIA)
+      : String(solic.PERIODO_REFERENCIA || "").replace(/^'/, "").trim();
     var percentual = String(emissao.PERCENTUAL || solic.PERCENTUAL_APLICADO || "").trim();
 
     /* Dois e-mails, dois papéis. O do associado vem da solicitação; o da
