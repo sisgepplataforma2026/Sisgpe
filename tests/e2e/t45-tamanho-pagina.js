@@ -3,39 +3,38 @@
  *
  * POR QUE ESTE TESTE EXISTE
  *
- * Em 13/08/2026 metade do sistema parou de abrir — Jurídico, RH,
- * Sindicalização, Financeiro, Eventos. Nenhum erro, nenhum log, nenhuma
- * mensagem. O botão clicava e não acontecia nada.
+ * O index.html não é um arquivo: ele cola 60 outros dentro de si pelo
+ * include(), e a página montada passa de 2,5 MB. Ninguém nunca mediu isso.
+ * Cada módulo novo entrou às cegas, e o número só apareceu quando foi
+ * procurado — em 17/08/2026, depois de uma semana de sintoma sem causa.
  *
- * A causa não estava em módulo nenhum: o index.html cola 60 arquivos dentro
- * de si pelo include(), e a página montada passou de 2,5 MB. O HtmlService
- * do Apps Script CORTA a saída quando ela fica grande demais e não avisa —
- * nem no navegador, nem no registro de execução. O servidor montou os 2,5 MB
- * inteiros (medido: 41 seções, terminando em </html>); o navegador recebeu
- * ~78 KB. Tudo que estava depois do corte simplesmente não existia na tela.
+ * ATENÇÃO AO QUE ESTE TESTE NÃO AFIRMA
  *
- * Medição que delimita o limite, feita no projeto em produção:
+ * Uma versão anterior deste cabeçalho dizia que o HtmlService cortava a
+ * página acima de ~2,5 MB e que era isso que derrubava os módulos. ESTÁ
+ * RETIRADO. A afirmação se apoiava numa medição do lado do navegador que
+ * eu mesmo já havia invalidado (feita no frame errado — o invólucro do
+ * Google em vez do userCodeAppPanel). Depois disso o usuário confirmou que
+ * a versão 650, com os mesmos ~2,53 MB, ABRE TODAS AS TELAS. Ou seja: não
+ * há corte comprovado, e o limite de entrega do HtmlService continua
+ * DESCONHECIDO.
  *
- *     versão 627 (11/08) ≈ 2,42 MB  → entrega inteira, sistema funcionando
- *     versão 650 (13/08) ≈ 2,53 MB  → cortada, metade do sistema morta
- *
- * O que faltou não foi diagnóstico. Faltou TRAVA: ninguém mediu o tamanho da
- * página em momento nenhum, e cada módulo novo entrou às cegas até um deles
- * cruzar a linha. Este teste é a trava. Ele mede a página montada do mesmo
- * jeito que o Apps Script monta e reprova quando ela chega perto do limite
- * conhecido — para o próximo módulo quebrar o teste na hora, e não a tela do
- * sindicato três dias depois.
+ * A causa do apagão de 13/08 segue sem diagnóstico confirmado. Pela
+ * REGRA Nº -1, o veredito é "não confirmado" — não "resolvido".
  *
  * O QUE ELE PODE E O QUE NÃO PODE DIZER
  *
- * Ele NÃO abre navegador e não prova que a página renderiza. O que ele prova,
- * por execução: quanto pesa o HTML que o servidor vai tentar entregar, quem
- * são os maiores responsáveis por esse peso, que todo include aponta para um
- * arquivo que existe, e que não há ciclo de include (a recursão infinita da
- * REGRA Nº 0, que corrompe o HTML sem erro).
+ * Ele NÃO abre navegador, não prova que a página renderiza e NÃO sabe onde
+ * fica o limite de entrega. O que ele prova, por execução: quanto pesa o
+ * HTML que o servidor vai tentar entregar, quem são os maiores responsáveis
+ * por esse peso, que todo include aponta para um arquivo que existe, e que
+ * não há ciclo de include (a recursão infinita da REGRA Nº 0, que corrompe
+ * o HTML sem erro nenhum).
  *
- * ESTE TESTE SAI COM CÓDIGO 1 QUANDO REPROVA — de propósito, diferente dos
- * demais. Trava que não trava não é trava.
+ * Serve para o crescimento da página ser um número visível a cada commit,
+ * em vez de uma surpresa. É vigia, não é trava: como não existe limite
+ * comprovado, ele AVISA quando a página cresce e só reprova se o peso
+ * disparar para um patamar que ninguém pretendeu.
  */
 const fs = require("fs");
 const path = require("path");
@@ -44,18 +43,21 @@ const b = require("./base");
 const RAIZ = path.resolve(__dirname, "../..");
 
 /* ── Os dois patamares ──────────────────────────────────────────────────
-   TETO: acima disso o Apps Script pode cortar. 2,42 MB é o maior tamanho
-   comprovadamente entregue; 2,53 MB é o menor comprovadamente cortado. O
-   teto fica ABAIXO do que funcionou, porque o ponto exato do corte não é
-   documentado pelo Google e pode variar com o conteúdo.
+   Nenhum dos dois é o limite do Apps Script: esse número não é documentado
+   pelo Google e não foi medido aqui. São marcas de referência do PROJETO.
 
-   ATENCAO: aviso antecipado, para a conversa acontecer antes da parede. */
-const TETO = Math.round(2.0 * 1024 * 1024);
-const ATENCAO = Math.round(1.2 * 1024 * 1024);
+   ATENCAO (2,7 MB): a página cresceu além do tamanho conhecido em 17/08/2026
+   (2,57 MB) com folga de uns 130 KB. Cruzar isso não quebra nada — significa
+   que entrou coisa grande e alguém precisa olhar.
 
-/* Depois do carregamento sob demanda entrar, o índice deve cair para a
-   ordem de 200 KB. Quando isso acontecer, baixar TETO para ~600 KB — aí a
-   trava volta a ter folga real em vez de vigiar uma linha já estourada. */
+   TETO (3,5 MB): patamar que ninguém pretendeu atingir. Se a página chegar
+   lá, houve include em duplicidade, arquivo colado duas vezes ou coisa
+   parecida — é defeito, não crescimento. */
+const TETO = Math.round(3.5 * 1024 * 1024);
+const ATENCAO = Math.round(2.7 * 1024 * 1024);
+
+/* Se um dia o carregamento sob demanda entrar, o índice cai para a ordem de
+   200 KB e estes dois números devem descer junto. */
 
 const kb = n => (n / 1024).toFixed(1) + " KB";
 const mb = n => (n / 1024 / 1024).toFixed(2) + " MB";
@@ -139,7 +141,7 @@ b.ok(ranking.length > 0, "ranking de contribuição calculado",
 b.passo("5. A página cabe no que o Apps Script entrega");
 const dentroDoTeto = montado.length <= TETO;
 b.ok(dentroDoTeto,
-  "página montada dentro do teto de entrega",
+  "página montada dentro do patamar de referência",
   "montada: " + mb(montado.length) + "  ·  teto: " + mb(TETO) +
   (dentroDoTeto ? "  ·  folga: " + kb(TETO - montado.length)
                 : "  ·  ESTOUROU em " + kb(montado.length - TETO)));
@@ -151,18 +153,14 @@ if (dentroDoTeto && montado.length > ATENCAO) {
 }
 
 if (!dentroDoTeto) {
-  console.log("\n\x1b[31m  O QUE ISSO SIGNIFICA NA PRÁTICA\x1b[0m");
-  console.log("  O HtmlService vai cortar esta página na entrega, sem erro nenhum.");
-  console.log("  Os módulos que estiverem depois do ponto de corte abrem em branco:");
-  console.log("  o botão do menu clica e não acontece nada. Não adianta procurar");
-  console.log("  defeito no módulo — a seção dele não chegou ao navegador.");
-  console.log("  Conserto: carregamento sob demanda (a página manda o menu e busca");
-  console.log("  a tela no clique), não dividir o index em mais arquivos — o");
-  console.log("  include cola tudo de volta antes de entregar.\n");
+  console.log("\n\x1b[31m  O QUE OLHAR\x1b[0m");
+  console.log("  Este patamar não é limite do Apps Script — é peso que ninguém");
+  console.log("  pretendeu. Procure include repetido, arquivo colado duas vezes ou");
+  console.log("  um módulo que dobrou de tamanho. O ranking acima diz onde.\n");
 }
 
-b.naoTestavel("O ponto exato em que o HtmlService corta",
-  "não é documentado pelo Google; o teto aqui vem de medição em produção (2,42 MB entregue, 2,53 MB cortado)");
+b.naoTestavel("Onde fica o limite de entrega do HtmlService",
+  "não é documentado pelo Google e não foi medido aqui; a página de ~2,53 MB da versão 650 abre todas as telas, então o limite é maior que isso");
 b.naoTestavel("Se a página realmente renderiza no navegador", "exige abrir o portal");
 
 const c = b.resumo();
