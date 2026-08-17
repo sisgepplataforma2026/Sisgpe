@@ -350,5 +350,132 @@ if (!dom.jsdomDisponivel()) {
     "sem o texto antigo, que soava recusa");
 }
 
-b.resumo();
-process.exit(0);
+/* ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("BALCÃO · A faixa do presencial na tela de nova solicitação");
+
+if (!dom.jsdomDisponivel()) {
+  b.naoTestavel("faixa presencial no balcão", "jsdom não instalado");
+  b.resumo();
+  process.exit(0);
+}
+
+(async function () {
+  const t = dom.montar(g, ["Scripts_Certificado.html"], { token: TOKEN });
+  const doc = t.doc;
+  const el = function (id) { return doc.getElementById(id); };
+
+  t.win.initCertificadoAdmin();
+  await t.assentar(60);
+  t.clicar("#certBtnNova");
+  await t.assentar(40);
+
+  b.passo("16. A faixa existe e começa ESCONDIDA");
+  /* O padrão da tela é "Associado". Se a faixa nascesse visível, todo
+   * atendimento começaria dizendo "retirada presencial" — e aviso que
+   * aparece sempre é aviso que ninguém lê. */
+  b.ok(!!el("certNvPresencial"), "existe o bloco #certNvPresencial");
+  b.ok(!el("certNvPresencial").classList.contains("ativo"),
+    "e ele não está ativo com 'Associado' selecionado");
+
+  b.passo("17. Escolher 'Não associado' abre a faixa NA HORA");
+  /* Na hora, não depois da ida ao servidor: a faixa tem ouvinte próprio, e
+   * não pendurado no nvSugerir. Foi esse o erro da faixa de renovação em
+   * 13/08 — amarrada ao nvSugerir, só disparava ao escolher da lista. Por
+   * isso este passo NÃO espera resposta de backend antes de conferir. */
+  t.escolher("#certNvSituacao", "NAO_ASSOCIADO");
+  await t.assentar(5);
+  b.ok(el("certNvPresencial").classList.contains("ativo"),
+    "a faixa aparece sem esperar o servidor");
+  b.ok(/benef[íi]cio [ée] o mesmo/i.test(el("certNvPresencial").textContent),
+    "dizendo que o benefício é o mesmo");
+  b.ok(/n[ãa]o ser[áa] enviado por e-?mail/i.test(el("certNvPresencial").textContent),
+    "e que não vai por e-mail");
+
+  b.passo("18. Os dois campos do papel nascem preenchidos (REGRA 0.6)");
+  const hoje = new Date();
+  const esperada = hoje.getFullYear() + "-" +
+    String(hoje.getMonth() + 1).padStart(2, "0") + "-" +
+    String(hoje.getDate()).padStart(2, "0");
+  b.igual(el("certNvPapelData").value, esperada,
+    "a data vem com hoje — o papel está na mão de quem digita agora");
+  b.ok(!el("certNvPapelData").disabled, "e continua editável");
+  b.ok(!el("certNvPapelQuem").disabled, "o 'recebido por' também");
+
+  b.passo("19. Voltar para 'Associado' esconde E LIMPA");
+  /* Esconder sem limpar é o pior dos dois mundos: ninguém vê o campo e o
+   * valor vai junto no payload assim mesmo. Uma solicitação de associado
+   * sairia carregando "papel recebido em", que nunca existiu. */
+  t.escolher("#certNvSituacao", "ASSOCIADO");
+  await t.assentar(5);
+  b.ok(!el("certNvPresencial").classList.contains("ativo"), "a faixa some");
+  b.igual(el("certNvPapelData").value, "", "e a data foi limpa");
+  b.igual(el("certNvPapelQuem").value, "", "o 'recebido por' também");
+
+  b.passo("20. O que a pessoa corrigiu não é reescrito ao reabrir a faixa");
+  t.escolher("#certNvSituacao", "NAO_ASSOCIADO");
+  await t.assentar(5);
+  el("certNvPapelData").value = "2026-08-01";
+  el("certNvPapelQuem").value = "Marcela";
+  /* Um evento de change qualquer não pode passar por cima da correção. */
+  t.escolher("#certNvSituacao", "NAO_ASSOCIADO");
+  await t.assentar(5);
+  b.igual(el("certNvPapelData").value, "2026-08-01",
+    "a data digitada à mão sobrevive");
+  b.igual(el("certNvPapelQuem").value, "Marcela", "e o nome também");
+
+  b.passo("21. O selo 'presencial' aparece na linha da lista, e só nela");
+  /* O selo é o que impede a secretaria de ligar cobrando um e-mail que,
+   * por decisão, nunca foi enviado. */
+  const fonteC = require("fs").readFileSync(dom.RAIZ + "/Scripts_Certificado.html", "utf8");
+  b.ok(/cert-tag-presencial/.test(fonteC), "a classe do selo existe");
+  b.ok(/NAO_ASSOCIADO'\s*\?\s*'<span class="cert-tag-presencial"/.test(fonteC),
+    "e ele é desenhado só quando a situação for NAO_ASSOCIADO");
+  /* Dourado institucional, não a cor de alerta: não é pendência, é canal. */
+  b.ok(/\.cert-tag-presencial[^}]*#8a6d1f/.test(fonteC),
+    "na cor institucional, não na de alerta (#d97706)");
+
+  b.passo("22. O canal entra como PAPEL, e o rastro vai para o histórico");
+  const cPapel = g.voucherCriarSolicitacao({
+    cpf: CPF_NAO, nome: "NAO FILIADO DE TESTE",
+    situacaoSindical: "NAO_ASSOCIADO",
+    escola: "ESCOLA X", modalidade: "ENSINO_FUNDAMENTAL",
+    instituicao: "INST Y", curso: "9 ANO",
+    tipoBeneficiario: "FILHO", nomeBeneficiario: "QUARTO NOME", ordemFilho: "1",
+    periodo: "2028/1", regime: "SEMESTRAL",
+    papelRecebidoEm: "2026-08-14", papelRecebidoPor: "Marcela"
+  }, TOKEN);
+  b.ok(cPapel.ok, "solicitação em papel criada", cPapel.protocolo || cPapel.mensagem);
+
+  const shP = ss.getSheetByName("Voucher_Solicitacoes");
+  const cabP = shP.getRange(1, 1, 1, shP.getLastColumn()).getValues()[0].map(String);
+  const ultP = shP.getRange(shP.getLastRow(), 1, 1, shP.getLastColumn()).getValues()[0];
+  const vP = function (n) { const i = cabP.indexOf(n); return i === -1 ? "" : String(ultP[i] || ""); };
+  b.igual(vP("CANAL_ENTRADA"), "PAPEL", "CANAL_ENTRADA gravado como PAPEL");
+
+  const shH2 = ss.getSheetByName("Voucher_Historico");
+  const linhasP = (shH2 ? shH2.getDataRange().getValues() : []).filter(function (l) {
+    return l.join(" | ").indexOf(cPapel.protocolo) > -1;
+  });
+  b.ok(linhasP.some(function (l) { return /SOLICITACAO_EM_PAPEL/.test(l.join(" | ")); }),
+    "o histórico registra que veio em papel");
+  b.ok(linhasP.some(function (l) { return /Marcela/.test(l.join(" | ")); }),
+    "com quem recebeu");
+  b.ok(linhasP.some(function (l) { return /2026-08-14/.test(l.join(" | ")); }),
+    "e quando");
+
+  b.passo("23. Associado NÃO vira PAPEL — a metade que prova a separação");
+  const cMail = g.voucherCriarSolicitacao({
+    cpf: CPF_SIM, nome: "FILIADO DE TESTE", situacaoSindical: "ASSOCIADO",
+    escola: "ESCOLA X", modalidade: "ENSINO_FUNDAMENTAL",
+    instituicao: "INST Y", curso: "9 ANO",
+    tipoBeneficiario: "FILHO", nomeBeneficiario: "QUINTO NOME", ordemFilho: "1",
+    periodo: "2028/1", regime: "SEMESTRAL"
+  }, TOKEN);
+  const ultM = shP.getRange(shP.getLastRow(), 1, 1, shP.getLastColumn()).getValues()[0];
+  const vM = function (n) { const i = cabP.indexOf(n); return i === -1 ? "" : String(ultM[i] || ""); };
+  b.ok(cMail.ok, "solicitação do associado criada", cMail.protocolo || cMail.mensagem);
+  b.igual(vM("CANAL_ENTRADA"), "EMAIL", "e o canal dele continua EMAIL");
+
+  b.resumo();
+  process.exit(0);
+})();

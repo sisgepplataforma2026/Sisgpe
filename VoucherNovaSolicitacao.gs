@@ -208,8 +208,16 @@ function voucherCriarSolicitacao(dados, tokenSessao) {
        * A trava do período não muda: PENDENTE e ANALISE ocupam a janela do
        * mesmo jeito (VOUCHER_STATUS_OCUPA_PERIODO_). */
       STATUS_SOLICITACAO: aprovar ? "APROVADO" : "PENDENTE",
-      /* EMAIL, não PORTAL. Ver o cabeçalho deste arquivo. */
-      CANAL_ENTRADA: String(dados.canal || "EMAIL").trim().toUpperCase(),
+      /* EMAIL, não PORTAL. Ver o cabeçalho deste arquivo.
+       *
+       * EXCETO NO PRESENCIAL, que entra como PAPEL — e isso não é rótulo
+       * bonito, é o dado verdadeiro. Regra de 14/08/2026: o não associado
+       * "virá presencial e fará a solicitação em papel". Quem for contar
+       * depois por onde os pedidos chegaram precisa ver o papel separado do
+       * e-mail, senão o balcão fica invisível na estatística. */
+      CANAL_ENTRADA: voucherEhNaoAssociado_(dados.situacaoSindical)
+        ? "PAPEL"
+        : String(dados.canal || "EMAIL").trim().toUpperCase(),
       USUARIO_CADASTRO: quem,
       USUARIO_VALIDACAO: aprovar ? quem : "",
       DATA_VALIDACAO: aprovar ? agora : "",
@@ -305,6 +313,40 @@ function voucherCriarSolicitacao(dados, tokenSessao) {
     sh.getRange(sh.getLastRow() + 1, 1, 1, cab.length).setValues([
       cab.map(function (c) { return valores[c] !== undefined ? valores[c] : ""; })
     ]);
+
+    /* QUANDO E POR QUEM O PAPEL FOI RECEBIDO — no histórico, não em coluna.
+     *
+     * A faixa do atendimento presencial pergunta as duas coisas, e elas
+     * precisam sobreviver: é o que responde "quem atendeu essa pessoa?" seis
+     * meses depois, quando o papel físico já está numa pasta e ninguém lembra.
+     *
+     * Vai para o HISTÓRICO porque ele é append-only. OBSERVACOES seria o
+     * lugar óbvio e seria errado: `atualizarStatusSolicitacao_` sobrescreve
+     * essa coluna, então a primeira aprovação apagaria o registro — o mesmo
+     * defeito que a correção de período teve em 13/08, e que só apareceu
+     * porque o teste leu DEPOIS da emissão em vez de antes.
+     *
+     * Não lança: a solicitação já está gravada quando isto roda, e perder o
+     * atendimento inteiro por causa de uma anotação seria trocar o problema
+     * grande pelo pequeno. */
+    if (voucherEhNaoAssociado_(dados.situacaoSindical)) {
+      try {
+        var papelData = String(dados.papelRecebidoEm || "").trim();
+        var papelQuem = String(dados.papelRecebidoPor || "").trim();
+        if (typeof registrarHistoricoVoucher_ === "function") {
+          registrarHistoricoVoucher_(
+            valores.ID_SOLICITACAO, cpf, "SOLICITACAO_EM_PAPEL", quem,
+            "Atendimento presencial: solicitação recebida em papel" +
+            (papelData ? " em " + papelData : "") +
+            (papelQuem ? ", por " + papelQuem : "") +
+            ". Retirada na sede, sem envio por e-mail.",
+            protocolo
+          );
+        }
+      } catch (e) {
+        Logger.log("Rastro do papel não gravado (a solicitação foi): " + e.message);
+      }
+    }
 
     /* A MEMÓRIA APRENDE NO CADASTRO, não só na emissão.
      *

@@ -189,6 +189,23 @@
 #certNovaBox .cert-nv-trava-acoes { display: flex; gap: 7px; margin-top: 10px; flex-wrap: wrap; }
 #certNovaBox .cert-nv-renov { background: #eff6ff; border: 1px solid #bfdbfe; border-left: 3px solid #1565C0; border-radius: 8px; padding: 8px 11px; margin-bottom: 7px; font-size: 12px; color: #1e3a8a; line-height: 1.5; }
 .cert-tag-renov { display: inline-block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: 1px 6px; border-radius: 999px; background: #eff6ff; color: #1565C0; margin-left: 6px; vertical-align: middle; }
+/* Selo do atendimento presencial. Dourado institucional, MESMA forma do selo
+   de renovação — os dois dizem "esta linha tem uma particularidade", não
+   "esta linha tem problema". O alerta (#d97706) fica reservado para o que
+   trava, como o "sem período". */
+.cert-tag-presencial { display: inline-block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: 1px 6px; border-radius: 999px; background: #fdf6e3; color: #8a6d1f; border: 1px solid #e8d9a8; margin-left: 6px; vertical-align: middle; }
+
+/* FAIXA DO ATENDIMENTO PRESENCIAL, dentro do modal de nova solicitação.
+   Dourada e não vermelha porque não é recusa: o benefício é o mesmo, o que
+   muda é o canal. Ver o cabeçalho de calcularRegraVoucher_ em Voucher.gs. */
+#certNvPresencial { display: none; }
+#certNvPresencial.ativo { display: block; }
+.cert-nv-presencial { border: 1.5px solid #e8d9a8; background: linear-gradient(180deg,#fffdf6,#fdf6e3); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; }
+.cert-nv-presencial .cnp-tit { font-size: 12.5px; font-weight: 800; color: #6b5313; letter-spacing: .01em; margin-bottom: 4px; }
+.cert-nv-presencial .cnp-txt { font-size: 12px; color: #6b5313; line-height: 1.55; }
+.cert-nv-presencial .cnp-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap: 10px; margin-top: 10px; }
+.cert-nv-presencial .cnp-lbl { display: block; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #8a6d1f; margin-bottom: 3px; }
+.cert-nv-presencial .cnp-in { width: 100%; padding: 7px 9px; border: 1.5px solid #e8d9a8; border-radius: 8px; font-size: 12.5px; font-family: inherit; background: #fff; color: #0f172a; }
 #certNovaBox .cert-nv-sug { position: relative; }
 #certNovaBox .cert-nv-lista { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1.5px solid #cbd5e1; border-radius: 10px; box-shadow: 0 12px 30px rgba(0,20,60,.16); max-height: 190px; overflow-y: auto; z-index: 30; display: none; }
 #certNovaBox .cert-nv-lista.ativo { display: block; }
@@ -711,6 +728,33 @@
       <div id="certNvTrava"></div>
       <div id="certNvAvisos"></div>
 
+      <!-- ATENDIMENTO PRESENCIAL. Aparece quando a situação sindical for
+           "Não associado", e some quando voltar para associado. Fica aqui em
+           cima, junto da trava e dos avisos, porque muda o que fazer com o
+           formulário inteiro: quem atende precisa saber, ANTES de digitar
+           curso e instituição, que aquele voucher não vai por e-mail.
+           Dourado institucional: não é recusa, é outro canal. -->
+      <div id="certNvPresencial">
+        <div class="cert-nv-presencial">
+          <div class="cnp-tit">🏛️ Atendimento presencial</div>
+          <div class="cnp-txt">
+            <strong>O benefício é o mesmo.</strong> Muda a forma: a solicitação
+            é entregue em papel e o voucher é retirado na sede — ele
+            <strong>não será enviado por e-mail</strong>.
+          </div>
+          <div class="cnp-grid">
+            <div>
+              <label class="cnp-lbl" for="certNvPapelData">Papel recebido em</label>
+              <input type="date" class="cnp-in" id="certNvPapelData">
+            </div>
+            <div>
+              <label class="cnp-lbl" for="certNvPapelQuem">Recebido por</label>
+              <input type="text" class="cnp-in" id="certNvPapelQuem" placeholder="quem atendeu">
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="cert-section-title" style="margin-top:0;">Quem pede</div>
       <div class="cert-nv-campo cert-nv-sug" style="margin-bottom:10px;">
         <label class="cert-nv-lbl">Buscar associado (nome ou CPF)</label>
@@ -1227,7 +1271,18 @@ function renderTabela(){
         /* A etiqueta só aparece quando o dado existe. Linha antiga, gravada
            antes da coluna TIPO_SOLICITACAO, não recebe "primeira vez" por
            omissão — dizer isso de uma bolsa já renovada seria inventar. */
-        +(s.tipoSolicitacao==='RENOVACAO'?'<span class="cert-tag-renov">renovação</span>':'')+'</div>'
+        +(s.tipoSolicitacao==='RENOVACAO'?'<span class="cert-tag-renov">renovação</span>':'')
+        /* SELO PRESENCIAL — quem olha a fila precisa saber que aquele voucher
+           espera alguém buscar, em vez de achar que o e-mail falhou.
+           Regra de 14/08/2026: o não associado tem o MESMO benefício, mas
+           solicita em papel e retira na sede. Por isso o selo é dourado
+           institucional e não a cor de alerta: não é pendência nem erro, é
+           outro canal. A ausência dele é que seria o problema — sem selo, a
+           secretaria ligaria para a pessoa avisando de um e-mail que, por
+           decisão, nunca foi enviado. */
+        +(String(s.situacaoSindicalDeclarada||s.sindical||'').toUpperCase()==='NAO_ASSOCIADO'
+            ?'<span class="cert-tag-presencial" title="Não associado: solicitação em papel e retirada na sede. O voucher não é enviado por e-mail.">presencial</span>':'')
+        +'</div>'
         +'<div style="font-size:11px;color:#94a3b8;">'+escHtml(s.cpf||'')+'</div></td>'
       +'<td style="font-size:11.5px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(s.escola||'—')+'</td>'
       +'<td style="font-size:11.5px;">'+escHtml(s.nivel||s.modalidade||'—')+'</td>'
@@ -1729,6 +1784,57 @@ function nvSincronizarBeneficiario(){
   if(!q.ir && g('certNvEnteadoIR')) g('certNvEnteadoIR').value='';
 }
 
+/* ── A FAIXA DO ATENDIMENTO PRESENCIAL ────────────────────────────────────
+   Regra de 14/08/2026: o não associado tem o MESMO benefício, mas solicita
+   em papel e retira na sede — o voucher dele não vai por e-mail.
+
+   A faixa aparece quando a situação sindical for "Não associado" e some
+   quando voltar para associado. Some LIMPANDO os campos, pelo mesmo motivo
+   de nvSincronizarBeneficiario: campo escondido com valor dentro é o pior
+   dos dois mundos — ninguém vê e mesmo assim vai junto no payload.
+
+   REGRA Nº 0.6, automatizar é o padrão: os dois campos nascem preenchidos.
+   A data é hoje, porque o papel está na mão de quem está digitando agora; o
+   "recebido por" é quem está logado. Os dois continuam editáveis — papel
+   entregue ontem e digitado hoje existe, e quem atendeu pode não ser quem
+   digita. Sugerir com origem à vista, nunca impor em silêncio. */
+function nvPresencialAtivo(){
+  var s = g('certNvSituacao');
+  return !!s && String(s.value||'').toUpperCase() === 'NAO_ASSOCIADO';
+}
+
+function nvPresencialSincronizar(){
+  var box = g('certNvPresencial');
+  if(!box) return;
+  var ativo = nvPresencialAtivo();
+  box.classList.toggle('ativo', ativo);
+
+  if(!ativo){
+    if(g('certNvPapelData')) g('certNvPapelData').value='';
+    if(g('certNvPapelQuem')) g('certNvPapelQuem').value='';
+    return;
+  }
+
+  /* Só preenche o que estiver VAZIO. Reescrever por cima apagaria a correção
+     que a pessoa acabou de fazer — bastaria ela trocar de "não associado"
+     para "associado" e voltar. */
+  var d = g('certNvPapelData');
+  if(d && !d.value){
+    var hoje = new Date();
+    d.value = hoje.getFullYear() + '-' +
+              String(hoje.getMonth()+1).padStart(2,'0') + '-' +
+              String(hoje.getDate()).padStart(2,'0');
+  }
+  var q = g('certNvPapelQuem');
+  if(q && !q.value){
+    /* O nome de quem está logado, quando a tela souber. Sem inventar: se não
+       souber, o campo fica vazio para a pessoa escrever — melhor em branco
+       do que com um nome errado, que viraria registro falso de quem atendeu. */
+    var nome = (typeof window!=='undefined' && (window.SISGEP_USUARIO_NOME || window.SISGEP_USUARIO)) || '';
+    if(nome) q.value = nome;
+  }
+}
+
 /* O período montado a partir dos dois seletores, no formato que a planilha
    sempre teve: "2026/1" quando há semestre, "2026" quando não há. A tela
    mudou; o dado gravado, não — linha antiga e linha nova continuam
@@ -2126,6 +2232,11 @@ function nvCampos(){
     email:            g('certNvEmail').value,
     telefone:         g('certNvTelefone').value,
     situacaoSindical: g('certNvSituacao') ? g('certNvSituacao').value : '',
+    /* Quando e por quem o papel foi recebido. Só vão preenchidos no
+       atendimento presencial — nos demais a faixa está escondida e os campos
+       limpos, então seguem vazios em vez de carregar sobra da tela. */
+    papelRecebidoEm: g('certNvPapelData') ? g('certNvPapelData').value : '',
+    papelRecebidoPor: g('certNvPapelQuem') ? g('certNvPapelQuem').value : '',
     escola:           g('certNvEscola').value,
     cnpjEscola:       g('certNvCnpjEscola').value,
     cidadeEscola:     g('certNvCidadeEscola') ? g('certNvCidadeEscola').value : '',
@@ -2160,6 +2271,9 @@ function nvLimpar(){
   if(g('certNvQuem')) g('certNvQuem').value='PROPRIO';
   nvSincronizarBeneficiario();
   if(g('certNvSituacao')) g('certNvSituacao').value='ASSOCIADO';
+  /* A faixa some junto com o resto. Sem isto, o próximo atendimento abriria
+     com "atendimento presencial" no topo por causa da pessoa anterior. */
+  nvPresencialSincronizar();
   if(g('certNvEnteadoIR')) g('certNvEnteadoIR').value='';
   /* A trava sai junto com o resto — e o botão volta a valer. Sem isto, o
      bloqueio de uma solicitação anterior sobreviveria ao "Cancelar" e o
@@ -3249,6 +3363,13 @@ function initInterno(){
   ['certNvModalidade','certNvArea','certNvQuem','certNvSituacao'].forEach(function(id){
     if(g(id)) g(id).addEventListener('change', nvSugerir);
   });
+
+  /* A faixa do presencial escuta o MESMO seletor, em ouvinte próprio.
+     Pendurar no nvSugerir não serviria: ele é uma ida ao servidor, e a faixa
+     precisa aparecer no instante do clique — não depois da resposta chegar.
+     Este é o mesmo erro que a faixa de renovação teve em 13/08, quando foi
+     amarrada ao nvSugerir e só disparava ao escolher da lista de busca. */
+  if(g('certNvSituacao')) g('certNvSituacao').addEventListener('change', nvPresencialSincronizar);
   /* A checagem de período depende de OUTROS campos que a sugestão: quem é o
      beneficiário, qual o curso, qual o período e qual o regime. Escutar os
      mesmos eventos da sugestão faria a trava ignorar justamente a troca do
