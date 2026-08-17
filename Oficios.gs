@@ -779,7 +779,21 @@ var iniciais = nomeEscola.split(/\s+/).filter(function(w){ return w.length > 2 &
   var escolaNomeFontSize = nomeEscola.length <= 30 ? "15px" : nomeEscola.length <= 50 ? "13px" : "11px";
 
   var blocoColabHTML = "";
-  if ((p.tipoNorm === "FILIACAO" || p.tipoNorm === "DESFILIACAO") && p.colaboradores && p.colaboradores.length > 0) {
+  /* A lista de nomes sai em TODO ofício nominal — não só filiação e
+   * desfiliação.
+   *
+   * Até 17/08/2026 a condição citava os dois tipos pelo nome, e Taxa
+   * Negocial, Taxa Assistencial e Oposição saíam sem nome nenhum: o
+   * usuário informava até 25 pessoas, anexava uma ficha para cada, e o
+   * documento chegava à escola sem dizer de quem descontar. Medido antes
+   * de mexer: 0 de 25 nomes no PDF de Taxa Negocial, contra 25 de 25 no
+   * de filiação.
+   *
+   * Agora a regra é pela natureza do ofício, não por lista de tipos: todo
+   * ofício que tem colaborador mostra os colaboradores. Só o OFÍCIO LIVRE
+   * fica de fora, porque nele o corpo é escrito à mão e não existe lista.
+   * Escrito assim, o próximo tipo nominal que aparecer já nasce certo. */
+  if (p.tipoNorm !== "OFICIO_LIVRE" && p.colaboradores && p.colaboradores.length > 0) {
     var itens = p.colaboradores.map(function(nome, i) {
       return '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;' + (i % 2 === 0 ? 'background:#f8fafc;' : 'background:#fff;') + 'border-bottom:1px solid #f1f5f9;">' +
         '<div style="width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,#001f4d,#1565C0);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;">' + (i + 1) + '</div>' +
