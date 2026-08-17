@@ -36,6 +36,30 @@ mal as minhas recomendações. A distinção que importa:
 Não usar isto como licença para pular teste. A REGRA Nº -1 continua valendo
 por inteiro — a diferença é no custo de errar, não no rigor de verificar.
 
+## 🚨 REGRA Nº -2 — ARQUIVO NÃO SAI DAQUI SEM VALIDAÇÃO RODADA
+
+Definida pelo usuário em 2026-08-17: *"você não pode me passar um arquivo com
+erro, você tem que testar isso antes"* — e, no mesmo dia, o lembrete de que
+não era a primeira vez: *"não é só de hoje, você vem me mandando o arquivo,
+que eu sempre pergunto"*.
+
+**Antes de entregar qualquer `.gs` ou `.html` para ele colar no Apps Script,
+rodar `node tests/e2e/t46-arquivos-integros.js`.** Se reprovar, não manda —
+conserta primeiro. Na mensagem que acompanha os arquivos, dizer que a
+validação rodou e o que ela cobre.
+
+Por que isso é crítico neste projeto: os `.html` são colados uns dentro dos
+outros pelo `include()` e todos os `<script>` viram um escopo global só. Um
+único arquivo com `<script>` desbalanceado, um `</script>` literal dentro de
+string ou um erro de sintaxe **derruba o JavaScript da página inteira** — e o
+sintoma não aponta para o culpado: todos os módulos param de responder ao
+mesmo tempo, sem erro visível. Ver a REGRA Nº 0.
+
+O que o t46 cobre: sintaxe de todo `.gs`, sintaxe de todo bloco `<script>`,
+balanço das tags, `</script>` dentro de string, e scriptlet em comentário.
+**É o piso, não o teto** — sintaxe válida não é comportamento correto. A
+REGRA Nº -1 continua valendo inteira por cima desta.
+
 ## 🚨 REGRA Nº -1 — LER CÓDIGO NÃO É TESTAR. NADA É "PRONTO" SEM EXECUÇÃO
 
 Vale para toda resposta, todo relatório, toda auditoria e todo commit. Vem antes de qualquer outra regra porque é a que decide se as outras respostas são confiáveis.

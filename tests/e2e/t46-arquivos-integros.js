@@ -1,0 +1,162 @@
+/**
+ * TESTE — INTEGRIDADE ESTRUTURAL DE TODO ARQUIVO DO PROJETO
+ *
+ * POR QUE ESTE TESTE EXISTE
+ *
+ * O usuário cobrou, em 17/08/2026, uma coisa que ele já tinha cobrado antes:
+ * "você vem me mandando o arquivo, que eu sempre pergunto". Toda vez que eu
+ * entrego um .gs ou um .html para ele colar no Apps Script, ele pergunta se
+ * está testado — e a resposta honesta, até aqui, era que ninguém tinha olhado
+ * a integridade do arquivo. Só o que ele fazia. Não se ele ABRE.
+ *
+ * Num projeto Apps Script isso é grave por um motivo específico: os .html são
+ * colados uns dentro dos outros pelo include(), e todos os <script> viram um
+ * escopo global só. Um único arquivo com <script> desbalanceado, um </script>
+ * literal dentro de uma string ou um erro de sintaxe DERRUBA O JAVASCRIPT DA
+ * PÁGINA INTEIRA. O sintoma não aponta para o culpado: todos os módulos param
+ * de responder ao mesmo tempo, os contadores ficam no valor estático do HTML,
+ * e não aparece erro nenhum em lugar nenhum.
+ *
+ * É por isso que este teste roda sobre TODOS os arquivos, e não só sobre os
+ * que mudaram: o arquivo quebrado pode ter sido colado semanas atrás.
+ *
+ * O QUE ELE PROVA, POR EXECUÇÃO
+ *
+ *   1. Todo .gs tem sintaxe JavaScript válida (parseado de verdade).
+ *   2. Todo bloco <script> dos .html tem sintaxe válida (idem).
+ *   3. As tags <script> abrem e fecham na conta certa.
+ *   4. Nenhum </script> literal dentro de string — fecha o bloco no meio.
+ *   5. Nenhum scriptlet do Apps Script dentro de comentário HTML (REGRA Nº 0):
+ *      o template engine avalia scriptlet em qualquer posição, inclusive
+ *      dentro de <!-- -->, e um include comentado vira recursão infinita.
+ *
+ * O QUE ELE NÃO PROVA, e continua "não testado" pela REGRA Nº -1: que a
+ * função faz a coisa certa. Sintaxe válida não é comportamento correto. Este
+ * teste é o piso — o arquivo ABRE — não o teto.
+ */
+const fs = require("fs");
+const path = require("path");
+const b = require("./base");
+
+const RAIZ = path.resolve(__dirname, "../..");
+const todos = fs.readdirSync(RAIZ);
+const arquivosGs = todos.filter(f => f.endsWith(".gs")).sort();
+const arquivosHtml = todos.filter(f => f.endsWith(".html")).sort();
+
+/* O Apps Script resolve os scriptlets ANTES de o JavaScript existir. Para
+   checar sintaxe, trocamos cada <?= ... ?> por um identificador nu.
+   NU, sem aspas, de propósito: o uso mais comum no projeto é DENTRO de uma
+   string — `var t = "<?!= tokenSessao ?>";` — e substituir por um literal
+   com aspas produz `""SCRIPTLET""`, um erro de sintaxe que não existe no
+   arquivo. Identificador nu funciona nas duas posições: vira "SCRIPTLET"
+   dentro da string e uma referência válida fora dela. */
+function semScriptlet(js) {
+  return js.replace(/<\?[!=]?[\s\S]*?\?>/g, "SCRIPTLET");
+}
+
+/** Parseia sem executar. Devolve null se estiver ok, ou a mensagem do erro. */
+function erroDeSintaxe(codigo) {
+  try { new Function(codigo); return null; }
+  catch (e) { return String(e.message).slice(0, 140); }
+}
+
+/** Posição legível (linha) de um índice dentro do texto. */
+function linhaDe(txt, idx) { return txt.slice(0, idx).split("\n").length; }
+
+b.fluxo("ARQUIVOS · Integridade estrutural de todo o projeto");
+
+/* ─── 1. Sintaxe dos .gs ─────────────────────────────────────────────── */
+b.passo("1. Todo arquivo .gs tem sintaxe JavaScript válida");
+const gsQuebrados = [];
+arquivosGs.forEach(f => {
+  const erro = erroDeSintaxe(fs.readFileSync(path.join(RAIZ, f), "utf8"));
+  if (erro) gsQuebrados.push(f + ": " + erro);
+});
+b.ok(gsQuebrados.length === 0, "os " + arquivosGs.length + " arquivos .gs parseiam",
+  gsQuebrados.length ? "QUEBRADOS: " + gsQuebrados.join(" | ") : arquivosGs.length + " arquivos");
+
+/* ─── 2 a 5. Estrutura dos .html ─────────────────────────────────────── */
+const semBalanco = [];
+const scriptQuebrado = [];
+const fechaNaString = [];
+const scriptletComentado = [];
+
+arquivosHtml.forEach(f => {
+  const txt = fs.readFileSync(path.join(RAIZ, f), "utf8");
+
+  /* Balanço das tags. Contar `<script` no arquivo inteiro dá falso positivo:
+     a palavra aparece dentro de comentário e de string ("no final do
+     <script>"), e o contador acusa abertura que não existe. Então primeiro
+     retiramos os blocos COMPLETOS — o que sobrar são tags sem par de
+     verdade, e essas o navegador trata como código solto, engolindo o resto
+     do arquivo ou fechando um bloco que não era para fechar. */
+  const sobra = txt.replace(/<script(?:\s[^>]*)?>[\s\S]*?<\/script\s*>/gi, "");
+  const abreSolta = (sobra.match(/<script(?:\s[^>]*)?>/gi) || []).length;
+  const fechaSolta = (sobra.match(/<\/script\s*>/gi) || []).length;
+  if (abreSolta || fechaSolta) {
+    semBalanco.push(f + " (" + abreSolta + " abertura sem fecho, " + fechaSolta + " fecho sem abertura)");
+  }
+
+  /* Sintaxe de cada bloco. */
+  const r = /<script(?:\s[^>]*)?>([\s\S]*?)<\/script\s*>/gi;
+  let m, n = 0;
+  while ((m = r.exec(txt))) {
+    n++;
+    const tag = m[0].slice(0, m[0].indexOf(">") + 1);
+    if (/type\s*=\s*["'](?!text\/javascript|module|application\/javascript)/i.test(tag)) continue;
+    const erro = erroDeSintaxe(semScriptlet(m[1]));
+    if (erro) scriptQuebrado.push(f + " · bloco " + n + " (linha " + linhaDe(txt, m.index) + "): " + erro);
+  }
+
+  /* `</script>` escrito dentro de uma string JavaScript. O navegador não
+     entende de strings quando procura o fim do bloco: ele fecha ali, e o
+     resto do JavaScript vira texto solto na página. A forma segura é
+     quebrar a sequência ("<\/script>" ou "</scr"+"ipt>"). */
+  const rBloco = /<script(?:\s[^>]*)?>([\s\S]*?)<\/script\s*>/gi;
+  while ((m = rBloco.exec(txt))) {
+    const corpo = m[1];
+    const rStr = /(["'`])(?:\\.|(?!\1)[\s\S])*?\1/g;
+    let s;
+    while ((s = rStr.exec(corpo))) {
+      if (/<\/script/i.test(s[0])) {
+        fechaNaString.push(f + " (linha " + linhaDe(txt, m.index + s.index) + ")");
+      }
+    }
+  }
+
+  /* REGRA Nº 0: scriptlet dentro de comentário HTML. */
+  const rCom = /<!--[\s\S]*?-->/g;
+  let c;
+  while ((c = rCom.exec(txt))) {
+    if (/<\?[!=]?[\s\S]*?\?>/.test(c[0])) {
+      scriptletComentado.push(f + " (linha " + linhaDe(txt, c.index) + "): " +
+        c[0].replace(/\s+/g, " ").slice(0, 90));
+    }
+  }
+});
+
+b.passo("2. Todo bloco <script> dos .html tem sintaxe válida");
+b.ok(scriptQuebrado.length === 0,
+  "os blocos de script dos " + arquivosHtml.length + " arquivos .html parseiam",
+  scriptQuebrado.length ? "QUEBRADOS: " + scriptQuebrado.join(" | ") : arquivosHtml.length + " arquivos varridos");
+
+b.passo("3. As tags <script> abrem e fecham na conta certa");
+b.ok(semBalanco.length === 0, "nenhuma tag <script> sem par",
+  semBalanco.length ? "DESBALANCEADOS: " + semBalanco.join(", ") : "balanço correto em todos");
+
+b.passo("4. Nenhum </script> literal dentro de string");
+b.ok(fechaNaString.length === 0, "nenhum bloco se fecha por engano dentro de uma string",
+  fechaNaString.length ? "ACHADOS: " + fechaNaString.join(", ") : "nenhuma ocorrência");
+
+b.passo("5. Nenhum scriptlet dentro de comentário HTML (REGRA Nº 0)");
+// O template engine roda ANTES do navegador ver o HTML: comentar um
+// scriptlet não o desliga. Um include comentado se auto-inclui em recursão
+// infinita e corrompe a página inteira, sem erro nenhum.
+b.ok(scriptletComentado.length === 0, "nenhum scriptlet escondido em comentário",
+  scriptletComentado.length ? "ACHADOS: " + scriptletComentado.join(" | ") : "comentários limpos");
+
+b.naoTestavel("Se a função faz a coisa certa",
+  "sintaxe válida é o piso, não o teto — comportamento se prova nos testes de fluxo");
+
+const c = b.resumo();
+process.exit(c.FALHOU ? 1 : 0);
