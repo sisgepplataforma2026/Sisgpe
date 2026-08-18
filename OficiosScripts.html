@@ -1121,7 +1121,7 @@ function removerFichaCard(btn, idx) {
 
     /* Cada tipo tem a sua área de leitura por IA; abre só a do tipo atual. */
     var tipo = ($("tipo") && $("tipo").value) || "";
-    var areasIA = { "Filiação": "filIA_areaUpload", "Desfiliação": "desfIA_areaUpload", "Taxa Negocial": "oposIA_areaUpload" };
+    var areasIA = { "Filiação": "filIA_areaUpload", "Desfiliação": "desfIA_areaUpload", "Oposição à Taxa Negocial": "oposIA_areaUpload" };
     Object.keys(areasIA).forEach(function (t) {
       var area = $(areasIA[t]); if (!area) return;
       area.style.display = (MODO_OFICIO_ATUAL === "ia" && t === tipo) ? "block" : "none";
@@ -1162,7 +1162,7 @@ function removerFichaCard(btn, idx) {
        carta nem ficha: botão que não faz nada confunde mais do que ajuda. */
     var btnIA = $("btnModoIAUnico");
     if (btnIA) {
-      var temIA = (tipo === "Filiação" || tipo === "Desfiliação" || tipo === "Taxa Negocial");
+      var temIA = (tipo === "Filiação" || tipo === "Desfiliação" || tipo === "Oposição à Taxa Negocial");
       btnIA.style.display = temIA ? "" : "none";
       if (!temIA && MODO_OFICIO_ATUAL === "ia") MODO_OFICIO_ATUAL = "individual";
     }
@@ -2453,7 +2453,8 @@ function oposIA_atualizarVisibilidade() {
   var tipo = $("tipo");
   var bloco = $("blocoOposicaoTaxaIA");
   if (!tipo || !bloco) return;
-  var ehTaxaNegocial = tipo.value === "Taxa Negocial";
+  /* Segue o tipo PRÓPRIO da oposição, não mais a cobrança. */
+  var ehTaxaNegocial = tipo.value === "Oposição à Taxa Negocial";
   bloco.style.display = ehTaxaNegocial ? "block" : "none";
   if (!ehTaxaNegocial) oposIA_setModo("manual");
 }

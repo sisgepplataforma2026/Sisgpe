@@ -45,7 +45,16 @@
               <option value="">Selecione...</option>
               <option value="Filiação">Filiação</option>
               <option value="Desfiliação">Desfiliação</option>
-              <option value="Taxa Negocial">Taxa Negocial</option>
+              <!-- A OPOSIÇÃO É TIPO PRÓPRIO desde 18/08/2026.
+                   Ela existia no backend, com texto e template próprios, mas
+                   NÃO estava na lista: só dava para chegar nela pelo caminho
+                   da IA. Quem precisava emitir uma oposição escolhia "Taxa
+                   Negocial" e recebia o ofício de COBRANÇA — o contrário do
+                   que queria mandar. O usuário descreveu exatamente isso:
+                   "eu não estou cobrando as escolas; esse ofício é ofício de
+                   oposição à taxa negocial". -->
+              <option value="Taxa Negocial">Taxa Negocial — cobrança</option>
+              <option value="Oposição à Taxa Negocial">Taxa Negocial — oposição</option>
               <option value="Taxa Assistencial">Taxa Assistencial</option>
               <option value="Ofício Livre">Ofício Livre</option>
             </select>

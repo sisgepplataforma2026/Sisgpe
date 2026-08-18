@@ -79,8 +79,14 @@ function escolherTipo(t) {
   $("tipo").dispatchEvent(new win.Event("change", { bubbles: true }));
 }
 
-const COM_ESCOLA = ["Filiação", "Desfiliação", "Taxa Negocial", "Taxa Assistencial"];
-const COM_IA     = ["Filiação", "Desfiliação", "Taxa Negocial"];
+/* A OPOSIÇÃO virou tipo próprio no seletor em 18/08/2026. Antes ela existia
+   só no backend e era alcançável apenas pelo caminho da IA — quem precisava
+   emitir uma oposição escolhia "Taxa Negocial" e recebia a COBRANÇA, o
+   contrário do que queria mandar. Palavras do usuário: "eu não estou
+   cobrando as escolas; esse ofício é ofício de oposição à taxa negocial". */
+const COM_ESCOLA = ["Filiação", "Desfiliação", "Taxa Negocial",
+                    "Oposição à Taxa Negocial", "Taxa Assistencial"];
+const COM_IA     = ["Filiação", "Desfiliação", "Oposição à Taxa Negocial"];
 
 /* ═══════════════════════════════════════════════════════════
    1. Uma linha de modos só — não quatro cópias
@@ -308,5 +314,62 @@ b.passo("20");
 lote(["MARIA SOUZA"]);
 b.igual(nomesNaTela(), ["CLARA GOMES", "ANA LIMA", "JOAO REIS", "MARIA SOUZA"],
   "com todos os cartões preenchidos, o lote acrescenta sem apagar nada");
+
+/* ═══════════════════════════════════════════════════════════
+   9. A oposição é escolhível no seletor, e traz o texto dela
+   ═══════════════════════════════════════════════════════════ */
+b.fluxo("OFÍCIOS · Oposição à Taxa Negocial como tipo próprio");
+
+b.passo("21");
+const opcoes = Array.from($("tipo").options).map(o => o.value);
+b.ok(opcoes.indexOf("Oposição à Taxa Negocial") > -1,
+  "a oposição aparece na lista de tipos", opcoes.join(" | "));
+b.ok(opcoes.indexOf("Taxa Negocial") > -1,
+  "e a cobrança continua existindo, separada",
+  "quem for cobrar em setembro/2026 precisa dela");
+
+/* Os rótulos têm que deixar claro qual é qual — escolher errado aqui manda
+   a escola descontar quando era para NÃO descontar. */
+b.passo("22");
+const rotulos = Array.from($("tipo").options).map(o => o.textContent.trim());
+b.ok(rotulos.some(r => /cobran(ç|c)a/i.test(r)),
+  "o rótulo da cobrança diz que é cobrança", rotulos.join(" | "));
+b.ok(rotulos.some(r => /oposi(ç|c)(ã|a)o/i.test(r)),
+  "e o da oposição diz que é oposição");
+
+b.passo("23");
+escolherTipo("Oposição à Taxa Negocial");
+b.ok(visivel("secaoOficioPadrao"), "a oposição tem escola e trabalhadores");
+b.ok(visivel("blocoModosOficio"),  "e a linha de modos");
+b.ok(visivel("btnModoIAUnico"),    "com IA, porque existe carta para ler");
+
+/* O bloco de leitura da carta de oposição segue o tipo NOVO. Antes ele
+   aparecia em "Taxa Negocial" — na tela de cobrança, onde não faz sentido. */
+b.passo("24");
+b.ok(visivel("blocoOposicaoTaxaIA"),
+  "a área de leitura da carta de oposição aparece na oposição");
+escolherTipo("Taxa Negocial");
+b.ok(!visivel("blocoOposicaoTaxaIA"),
+  "e NÃO aparece na cobrança");
+
+/* O que fecha o caso do usuário: escolher a oposição tem que produzir o
+   texto da oposição, não o da cobrança. */
+b.passo("25");
+function corpoDe(tipo) {
+  return String(g.montarDadosOficio_({
+    tipo: tipo, escola: "COLEGIO EXEMPLO", cnpj: "36136001000105",
+    colaboradores: [{ nome: "CLARA GOMES" }]
+  }, "preview").corpoTexto || "");
+}
+const txtOpos = corpoDe("Oposição à Taxa Negocial");
+b.ok(/N(Ã|A)O seja efetuado o desconto/.test(txtOpos),
+  "escolher a oposição gera o texto que manda NÃO descontar");
+b.ok(!/6% \(seis por cento\)/.test(txtOpos),
+  "e NÃO o texto de cobrança",
+  "era o defeito: escolhia oposição e saía cobrança");
+
+const txtCobr = corpoDe("Taxa Negocial");
+b.ok(/6% \(seis por cento\)/.test(txtCobr),
+  "e a cobrança continua gerando o texto de cobrança");
 
 b.resumo();
