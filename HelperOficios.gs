@@ -187,10 +187,14 @@ function montarTextoFiliacao_(dados, colaboradoresArr) {
       ? "o(a) colaborador(a) abaixo identificado(a) passou a integrar"
       : "os(as) colaboradores(as) abaixo identificados(as) passaram a integrar") +
     " nosso quadro de associados, a partir da presente data.\n\n" +
-    "Nos termos da Cláusula 56ª da Convenção Coletiva de Trabalho 2025/2026, solicitamos " +
+    "Nos termos da Cláusula 56ª da Convenção Coletiva de Trabalho 2026/2027, com vigência " +
+    "de 1º de março de 2026 a 28 de fevereiro de 2027, solicitamos " +
     "a realização do desconto mensal de 2% (dois por cento) sobre o salário-base " +
     (qtd === 1 ? "do(a) trabalhador(a)" : "de cada trabalhador(a)") +
-    ", a título de Mensalidade Sindical, com repasse a este Sindicato conforme os prazos dispostos na CCT.\n\n" +
+    ", a título de Mensalidade Sindical, mediante autorização expressa " +
+    (qtd === 1 ? "do(a) associado(a)" : "de cada associado(a)") + " na ficha de filiação em anexo.\n\n" +
+    "O repasse a este Sindicato deverá ocorrer até o 10º (décimo) dia do mês subsequente ao " +
+    "desconto, acompanhado da relação nominal dos contribuintes.\n\n" +
     "Colocamo-nos à disposição para quaisquer esclarecimentos que se façam necessários.\n\n" +
     "Atenciosamente,"
   );
@@ -210,7 +214,7 @@ function montarTextoDesfiliacao_(dados, colaboradoresArr) {
     " cessado" + (qtd === 1 ? "" : "s") + " imediatamente o" + (qtd === 1 ? "" : "s") +
     " desconto" + (qtd === 1 ? "" : "s") +
     " da contribuição sindical de 2% (dois por cento) sobre o salário-base, " +
-    "em conformidade com a Cláusula 56ª da Convenção Coletiva de Trabalho 2025/2026.\n\n" +
+    "em conformidade com a Cláusula 56ª da Convenção Coletiva de Trabalho 2026/2027.\n\n" +
     "Colocamo-nos à disposição para quaisquer esclarecimentos que se façam necessários.\n\n" +
     "Atenciosamente,"
   );
@@ -229,7 +233,7 @@ function montarTextoOposicaoTaxaNegocial_(dados, colaboradoresArr) {
     " efetuado" + (qtd === 1 ? "" : "s") + " o" + (qtd === 1 ? "" : "s") +
     " desconto" + (qtd === 1 ? "" : "s") +
     " referente" + (qtd === 1 ? "" : "s") + " à Taxa Negocial prevista na Cláusula 57ª da Convenção " +
-    "Coletiva de Trabalho 2025/2026, em relação ao" + (qtd === 1 ? "" : "s") + " colaborador" +
+    "Coletiva de Trabalho 2026/2027, em relação ao" + (qtd === 1 ? "" : "s") + " colaborador" +
     (qtd === 1 ? "" : "es") + " acima identificado" + (qtd === 1 ? "" : "s") + ".\n\n" +
     "Solicitamos a confirmação de recebimento deste ofício, respondendo a este e-mail.\n\n" +
     "Colocamo-nos à disposição para quaisquer esclarecimentos que se façam necessários.\n\n" +
@@ -272,15 +276,17 @@ function montarTextoTaxaNegocial_(dados, colaboradoresArr) {
 function montarTextoTaxaAssistencial_(dados, colaboradoresArr) {
   return (
     "Prezados(as) Senhores(as),\n\n" +
-    "O SindEducação/ES, em conformidade com a Convenção Coletiva de Trabalho 2025/2026, " +
-    "vem orientar e solicitar o cumprimento do repasse da Taxa Assistencial destinada à " +
-    "Assistência Médica dos trabalhadores técnico-administrativos.\n\n" +
-    "Nos termos da cláusula específica da CCT, as instituições de ensino deverão proceder " +
-    "ao recolhimento de 4% (quatro por cento) sobre o salário-base bruto dos colaboradores, " +
-    "apurado na competência março de 2026.\n\n" +
-    "O valor deverá ser recolhido em duas parcelas de 2% (dois por cento). " +
-    "Para instituições exclusivamente de educação infantil, o recolhimento será de " +
-    "2% (dois por cento), dividido em duas parcelas de 1% (um por cento).\n\n" +
+    "O SindEducação/ES, em conformidade com a Convenção Coletiva de Trabalho 2026/2027, " +
+    "com vigência de 1º de março de 2026 a 28 de fevereiro de 2027, vem orientar e solicitar " +
+    "o cumprimento do repasse da Taxa Assistencial destinada à Assistência Médica dos " +
+    "trabalhadores técnico-administrativos.\n\n" +
+    "Nos termos da Cláusula 58ª da referida CCT, as instituições de ensino deverão proceder " +
+    "ao recolhimento de 4% (quatro por cento) sobre a folha salarial bruta dos educadores " +
+    "técnico-administrativos, apurada na competência março de 2027.\n\n" +
+    "O valor deverá ser recolhido em duas parcelas de 2% (dois por cento), com vencimentos " +
+    "em 15 de abril de 2027 e 15 de maio de 2027. Para instituições que praticam " +
+    "exclusivamente educação infantil, o recolhimento será de 2% (dois por cento), dividido " +
+    "em duas parcelas de 1% (um por cento).\n\n" +
     "Solicitamos a confirmação do recebimento deste ofício, respondendo a este e-mail, " +
     "e o atendimento às orientações dentro dos prazos estabelecidos.\n\n" +
     "Sem mais para o momento, renovamos nossos protestos de elevada estima e consideração.\n\n" +

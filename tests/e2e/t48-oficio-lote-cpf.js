@@ -171,6 +171,49 @@ b.ok(!/if\(d\.beneficiarios\.some\(function\(b\)\{return !b\.nome\|\|!b\.cpf;\}\
 b.ok(/oficioLimitePessoas\(tipo\) \? 25 : 50|\? 25 : 50/.test(telaOficios),
   "limite 50 para taxas e 25 onde há ficha por pessoa");
 
+b.passo("10. TODO texto de ofício cita a CCT 2026/2027, e nenhum a vencida");
+/* A CCT 2025/2026 venceu em 28/02/2026. Ofício que a cita manda a escola
+   agir por convenção que não vale mais — e a escola tem como conferir. */
+const TIPOS_TEXTO = ["FILIACAO", "DESFILIACAO", "TAXA_NEGOCIAL",
+                     "TAXA_ASSISTENCIAL", "OPOSICAO_TAXA_NEGOCIAL"];
+TIPOS_TEXTO.forEach(tipo => {
+  const corpo = gerar(tipo, [{ nome: "Teste Da Silva", cpf: "" }]).proc.corpoTexto;
+  b.ok(/2026\/2027/.test(corpo) && !/2025\/2026/.test(corpo),
+    tipo + " cita a CCT 2026/2027 e não a vencida",
+    /2025\/2026/.test(corpo) ? "AINDA CITA 2025/2026" : "ok");
+});
+
+b.passo("11. O e-mail que leva o ofício também foi atualizado");
+const fsCct = require("fs"), pathCct = require("path");
+["EmailOficios.gs", "OficiosFormulario.html", "TaxaAssistencial.gs"].forEach(arq => {
+  const txt = fsCct.readFileSync(pathCct.resolve(__dirname, "../../" + arq), "utf8");
+  b.ok(!/CCT 2025\/2026/.test(txt) && !/previsto na CCT 2026\./.test(txt),
+    arq + " sem referência à CCT vencida",
+    /CCT 2025\/2026/.test(txt) ? "AINDA CITA 2025/2026" : "ok");
+});
+
+b.passo("12. A Taxa Assistencial passou a trazer os dados da Cláusula 58");
+const corpoAssist = gerar("TAXA_ASSISTENCIAL", ["Teste Da Silva"]).proc.corpoTexto;
+b.ok(/Cláusula 58/.test(corpoAssist), "cita a Cláusula 58ª");
+/* Olha a COMPETÊNCIA, não qualquer menção ao mês: o texto cita "1º de março
+   de 2026" ao informar a vigência da CCT, e isso está certo. O que não pode
+   é a competência da apuração continuar em 2026. */
+b.ok(/compet[êe]ncia mar[çc]o de 2027/.test(corpoAssist) &&
+     !/compet[êe]ncia mar[çc]o de 2026/.test(corpoAssist),
+  "competência de apuração corrigida para março de 2027",
+  /compet[êe]ncia mar[çc]o de 2026/.test(corpoAssist) ? "AINDA MARÇO/2026" : "março de 2027");
+b.ok(/15 de abril de 2027/.test(corpoAssist) && /15 de maio de 2027/.test(corpoAssist),
+  "traz os vencimentos das duas parcelas");
+
+b.passo("13. A Filiação diz o prazo de repasse em vez de mandar consultar a CCT");
+const corpoFil = gerar("FILIACAO", ["Teste Da Silva"]).proc.corpoTexto;
+b.ok(/10º \(décimo\) dia do mês subsequente/.test(corpoFil),
+  "prazo de repasse escrito no ofício");
+b.ok(/relação nominal/.test(corpoFil),
+  "pede a relação nominal dos contribuintes, como manda a Cláusula 56");
+b.ok(!/conforme os prazos dispostos na CCT/.test(corpoFil),
+  "saiu o 'conforme os prazos dispostos na CCT', que não dizia nada à escola");
+
 b.naoTestavel("A conversão para PDF e a aparência da lista na folha",
   "o emulador não converte HTML em PDF — exige gerar um ofício no sistema no ar");
 
