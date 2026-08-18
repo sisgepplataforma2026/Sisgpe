@@ -492,7 +492,7 @@ window.renderDropdownEscolas = renderDropdown;
     var t = String(tipo || "");
     return t === "Filiação" || t === "Desfiliação";
   }
-  function oficioLimitePessoas(tipo) { return oficioExigeFichaECpf(tipo) ? 25 : 50; }
+  function oficioLimitePessoas(tipo) { return 50; }   // 50 em todos os tipos desde 18/08/2026
 
   var MAX_TRABALHADORES = 50, contadorTrabalhadores = 0;
 
@@ -610,7 +610,7 @@ function atualizarPayloadOficio(num) {
   if (!bens.length && p.tipo !== "Ofício Livre") pend.push("Adicione trabalhadores.");
   if (bens.some(function(b) { return !b.nome; })) pend.push("Complete o nome do trabalhador.");
   if (oficioExigeFichaECpf(p.tipo) && bens.some(function(b) { return !b.cpf; })) pend.push("Complete o CPF.");
-  if (oficioExigeFichaECpf(p.tipo) && bens.length > 0 && fichs.length < bens.length) pend.push("Anexe pelo menos 1 ficha por trabalhador.");
+  if (oficioExigeFichaECpf(p.tipo) && bens.length > 0 && fichs.length === 0) pend.push("Anexe ao menos uma ficha.");
   if (bens.length > oficioLimitePessoas(p.tipo)) pend.push("Limite máximo de " + oficioLimitePessoas(p.tipo) + " trabalhadores para este tipo.");
 
   if (!p.tipo && !esc && !bens.length && !fichs.length) {
@@ -937,26 +937,52 @@ function removerFichaCard(btn, idx) {
      * na ordem em que o sistema operacional listou, que não é confiável. */
     lista.sort(function (a, c) { return a.name.localeCompare(c.name, "pt-BR"); });
 
-    if (lista.length !== cards.length) {
-      toast("Você anexou " + lista.length + (lista.length === 1 ? " ficha" : " fichas") +
-            " para " + cards.length + (cards.length === 1 ? " pessoa" : " pessoas") +
-            ". As quantidades precisam bater.", "warn");
+    /* A quantidade NÃO precisa bater com a de pessoas.
+     *
+     * O usuário apontou o caso real: "geralmente quando você escaneia, vem
+     * um arquivo só com todas as fichas". Exigir uma ficha por pessoa
+     * recusaria justamente o formato mais comum na secretaria. Quando as
+     * quantidades coincidem, distribui uma para cada — dá para nomear cada
+     * anexo com a pessoa certa. Quando não coincidem, todas vão para o
+     * primeiro cartão como um lote só, e o backend numera os anexos em vez
+     * de inventar de quem é cada um. */
+    if (lista.length === cards.length) {
+      cards.forEach(function (card, i) {
+        var input = card.querySelector(".input-ficha-trabalhador");
+        if (!input) return;
+        var dt = new DataTransfer();
+        dt.items.add(lista[i]);
+        input.files = dt.files;
+        /* Dispara o mesmo caminho do anexo individual — renomeia o arquivo
+         * com o nome da pessoa, atualiza o contador e sincroniza o pool
+         * global. Reaproveitar evita que os dois caminhos divirjam. */
+        input.dispatchEvent(new Event("change"));
+      });
+      toast(lista.length + " fichas distribuídas, uma por pessoa. Confira cada cartão.", "ok");
       return;
     }
 
-    cards.forEach(function (card, i) {
-      var input = card.querySelector(".input-ficha-trabalhador");
-      if (!input) return;
-      var dt = new DataTransfer();
-      dt.items.add(lista[i]);
-      input.files = dt.files;
-      /* Dispara o mesmo caminho do anexo individual — renomeia o arquivo com
-       * o nome da pessoa, atualiza o contador e sincroniza o pool global.
-       * Reaproveitar em vez de repetir evita que os dois caminhos divirjam. */
-      input.dispatchEvent(new Event("change"));
-    });
+    var inputLote = cards[0].querySelector(".input-ficha-trabalhador");
+    if (!inputLote) return;
+    var dtLote = new DataTransfer();
+    lista.forEach(function (f) { dtLote.items.add(f); });
+    inputLote.files = dtLote.files;
+    inputLote.dispatchEvent(new Event("change"));
+    toast(lista.length + (lista.length === 1 ? " arquivo anexado" : " arquivos anexados") +
+          " para " + cards.length + " pessoas. Como as quantidades diferem, foram anexados " +
+          "como lote — confira antes de emitir.", "ok");
+  }
 
-    toast(lista.length + " fichas distribuídas, uma por pessoa. Confira cada cartão.", "ok");
+  /** Existe pelo menos uma ficha anexada, em qualquer cartão? */
+  function todosArquivosTemAlgumaFicha() {
+    var cards = document.querySelectorAll("#listaTrabalhadores .trabalhador-card");
+    for (var i = 0; i < cards.length; i++) {
+      var c = cards[i];
+      if (c._fichasDrive && c._fichasDrive.length) return true;
+      var inp = c.querySelector(".input-ficha-trabalhador");
+      if (inp && inp.files && inp.files.length) return true;
+    }
+    return false;
   }
 
   function addTrabalhador() {
@@ -1129,8 +1155,13 @@ function atualizarContadorFichas() {
       return;
     }
 
+    /* Basta UMA ficha no ofício, não uma por pessoa — o escaneado costuma
+     * vir num arquivo só. Antes exigia-se ficha em cada cartão. */
     var cards = document.querySelectorAll("#listaTrabalhadores .trabalhador-card");
-    for (var i = 0; oficioExigeFichaECpf(d.tipo) && i < d.beneficiarios.length; i++) {
+    if (oficioExigeFichaECpf(d.tipo) && !todosArquivosTemAlgumaFicha()) {
+      return aoErro(new Error("Anexe ao menos uma ficha para emitir este ofício."));
+    }
+    for (var i = 0; false && i < d.beneficiarios.length; i++) {
       var card = cards[i];
       var temDrive = card && card._fichasDrive && card._fichasDrive.length > 0;
       var fichaInpCheck = card && card.querySelector(".input-ficha-trabalhador");

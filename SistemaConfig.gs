@@ -193,7 +193,12 @@ function usuarioEstaLogadoEAutorizado() {
    ðŸ“ REGRAS DE NEGÃ“CIO E LIMITES
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 var REGRAS_NEGOCIO = {
-  LIMITE_ASSOCIADOS_POR_LOTE: 25,
+  /* 50 desde 18/08/2026, por decisão do usuário ("Até 50"), para os ofícios
+     que levam lista nominal de trabalhadores. Era 25.
+     ATENÇÃO: em filiação e desfiliação cada pessoa leva uma ficha anexada ao
+     mesmo e-mail. 50 anexos podem estourar o limite de tamanho da mensagem —
+     ver o aviso registrado em Oficios.gs. */
+  LIMITE_ASSOCIADOS_POR_LOTE: 50,
   VALOR_MINIMO_RECIBO_CENTAVOS: 100,
   CPF_TAMANHO_FORMATADO: 14,
   CNPJ_TAMANHO_FORMATADO: 18,

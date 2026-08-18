@@ -4,8 +4,17 @@
 // ============================================================================
 
 var PRIMEIRO_OFICIO_PLATAFORMA = 65;
-var LIMITE_ASSOCIADOS          = 25;   // filiação e desfiliação: uma ficha por pessoa
-var LIMITE_PESSOAS_TAXA        = 50;   // as três taxas: lista de nomes, sem ficha
+/* Limite de pessoas por ofício: 50 em todos os tipos.
+ *
+ * Era 25 onde havia ficha por pessoa e 50 nas taxas. O usuário unificou em
+ * 18/08/2026, respondendo "Até 50".
+ *
+ * O QUE VIGIAR: em filiação e desfiliação cada pessoa leva uma ficha
+ * anexada ao MESMO e-mail. Com 50 fichas, o e-mail pode estourar o limite
+ * de tamanho do Gmail e falhar no envio — e a falha aparece no envio, não
+ * na geração. Nas três taxas não há ficha, então 50 não traz esse risco. */
+var LIMITE_ASSOCIADOS          = 50;
+var LIMITE_PESSOAS_TAXA        = 50;
 
 var PASTA_OFICIOS_ID = "1_0BS8UuPmuhbKycdLy7_M4HhHKMkpu4h"; // fallback → pasta Filiação
 var PASTA_OFICIOS_FILIACAO_ID      = "1_0BS8UuPmuhbKycdLy7_M4HhHKMkpu4h";
@@ -653,8 +662,19 @@ function gerarOficioWeb(dados, tokenSessao) {
       }
       if (exigeFicha) {
         if (!Array.isArray(dados.fichas) || dados.fichas.length === 0) throw new Error("É obrigatório anexar pelo menos uma ficha.");
-        if (dados.fichas.length > limitePessoas) throw new Error("Limite máximo de " + limitePessoas + " associados por ofício. Recebido: " + dados.fichas.length + ".");
-        if (dados.fichas.length !== proc.colaboradoresArr.length) throw new Error("Você tem " + proc.colaboradoresArr.length + " colaboradores mas enviou " + dados.fichas.length + " fichas.");
+        if (dados.fichas.length > limitePessoas) throw new Error("Limite máximo de " + limitePessoas + " fichas por ofício. Recebido: " + dados.fichas.length + ".");
+        /* A quantidade de fichas NÃO precisa mais bater com a de pessoas.
+         *
+         * Até 18/08/2026 exigia-se uma ficha por colaborador. O usuário
+         * apontou o caso real que a regra ignorava: "geralmente quando você
+         * escaneia, vem um arquivo só com todas as fichas". Ou seja, o
+         * formato mais comum na secretaria — um PDF único com 25 fichas
+         * dentro — era justamente o que a validação recusava.
+         *
+         * Continua obrigatório anexar ALGUMA ficha em filiação e
+         * desfiliação: ali a ficha é a prova da autorização do desconto, e
+         * sem nenhuma o ofício não deve sair. O que caiu foi a exigência de
+         * contagem exata. */
       }
     }
 
@@ -663,6 +683,8 @@ function gerarOficioWeb(dados, tokenSessao) {
      * posição original de cada pessoa mantém o casamento nome↔ficha — sem
      * isto, o anexo da Ana sairia com o nome do Bruno. */
     if (exigeFicha && Array.isArray(dados.fichas) && dados.fichas.length === proc.colaboradoresLista.length) {
+      /* Só reordena quando é uma ficha por pessoa — com o arquivo único
+       * escaneado não há par a preservar. */
       dados.fichas = proc.colaboradoresLista.map(function (pessoa) {
         return dados.fichas[pessoa.indiceOriginal];
       });
@@ -696,13 +718,40 @@ function gerarOficioWeb(dados, tokenSessao) {
 
     /* Ofício de taxa não tem ficha para anexar — e agora pode não ter
      * mesmo, sem isto o forEach explodiria em `undefined.forEach`. */
+    /* Uma ficha por pessoa: o anexo leva o nome da pessoa. Um arquivo só com
+     * várias fichas dentro (o escaneado): não dá para dizer de quem é, e
+     * batizar com o nome do primeiro da lista seria informação errada no
+     * nome do arquivo. Nesse caso o anexo é numerado. */
+    var fichaPorPessoa = !proc.isLivre && Array.isArray(dados.fichas) &&
+                         dados.fichas.length === proc.colaboradoresArr.length;
+
+    /* Nome do arquivo do lote: escola e data.
+     *
+     * Pedido do usuário em 18/08/2026 — "na hora de salvar pode colocar o
+     * nome da escola e a data" — e faz sentido com o formato que ele
+     * descreveu: "seria um PDF de fichas para cada escola por dia". Assim o
+     * arquivo se identifica sozinho na pasta do Drive, sem depender de
+     * abrir para saber de quem é. */
+    var escolaArquivo = String(dados.escola || dados.para || "ESCOLA")
+      .toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^A-Z0-9\s]/g, "").trim().replace(/\s+/g, "_").slice(0, 45) || "ESCOLA";
+    var dataArquivo = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy");
+
     if (!proc.isLivre && Array.isArray(dados.fichas)) {
       dados.fichas.forEach(function(ficha, indice) {
-        var nomeFormatado = String(proc.colaboradoresArr[indice] || "ASSOCIADO")
-          .toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-          .replace(/[^A-Z0-9\s]/g, "").trim().replace(/\s+/g, "_");
-        var extensao    = obterExtensaoArquivo_(ficha.nome, ficha.tipo);
-        var nomeArquivo = "Ficha_Filiacao_" + nomeFormatado + "." + extensao;
+        var extensao = obterExtensaoArquivo_(ficha.nome, ficha.tipo);
+        var nomeArquivo;
+        if (fichaPorPessoa) {
+          var nomeFormatado = String(proc.colaboradoresArr[indice] || "ASSOCIADO")
+            .toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^A-Z0-9\s]/g, "").trim().replace(/\s+/g, "_");
+          nomeArquivo = "Ficha_Filiacao_" + nomeFormatado + "." + extensao;
+        } else {
+          /* Um PDF por escola por dia: o número de ordem só entra quando há
+           * mais de um arquivo, para o caso comum não ganhar um "_1" inútil. */
+          nomeArquivo = "Fichas_" + escolaArquivo + "_" + dataArquivo +
+            (dados.fichas.length > 1 ? "_" + (indice + 1) : "") + "." + extensao;
+        }
         var blob        = Utilities.newBlob(Utilities.base64Decode(ficha.base64), ficha.tipo || "application/pdf", nomeArquivo);
         var arquivoFicha = pastaAno.createFile(blob);
         anexosFila.push({ nome: arquivoFicha.getName(), mimeType: ficha.tipo || "application/pdf", fileId: arquivoFicha.getId() });

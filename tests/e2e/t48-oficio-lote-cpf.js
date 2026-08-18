@@ -131,11 +131,15 @@ b.igual(procFicha.colaboradoresArr, ["Ana Paula Lima", "Zuleica Ramos"],
 b.igual(fichasReordenadas.map(f => f.id), ["ficha-da-ana", "ficha-do-zuleica"],
   "as fichas acompanharam a ordenação — cada uma com a sua pessoa");
 
-b.passo("7. Limite: 50 nas taxas, 25 onde existe ficha por pessoa");
-b.ok(typeof g.LIMITE_PESSOAS_TAXA === "number" && g.LIMITE_PESSOAS_TAXA === 50,
-  "limite das taxas é 50", "LIMITE_PESSOAS_TAXA = " + g.LIMITE_PESSOAS_TAXA);
-b.ok(g.LIMITE_ASSOCIADOS === 25,
-  "limite com ficha continua 25", "LIMITE_ASSOCIADOS = " + g.LIMITE_ASSOCIADOS);
+b.passo("7. Limite: 50 pessoas em todos os tipos");
+/* Era 25 onde havia ficha por pessoa e 50 nas taxas. O usuário unificou em
+   18/08/2026, respondendo "Até 50". As duas constantes precisam concordar:
+   SistemaConfig.gs redefine LIMITE_ASSOCIADOS depois de Oficios.gs, e uma
+   ficar para trás faria o limite mudar conforme a ordem de carga. */
+b.igual(g.LIMITE_PESSOAS_TAXA, 50, "limite das taxas é 50");
+b.igual(g.LIMITE_ASSOCIADOS, 50, "limite com ficha também é 50");
+b.igual(g.REGRAS_NEGOCIO.LIMITE_ASSOCIADOS_POR_LOTE, 50,
+  "a constante de SistemaConfig.gs concorda com a de Oficios.gs");
 const cinquenta = [];
 for (let i = 1; i <= 50; i++) cinquenta.push("PESSOA " + String(i).padStart(2, "0"));
 const r7 = gerar("TAXA_NEGOCIAL", cinquenta);
@@ -168,8 +172,8 @@ b.ok(/function oficioExigeFichaECpf/.test(telaOficios) && /function oficioLimite
   "a tela tem a regra por tipo (ficha/CPF obrigatórios e limite)");
 b.ok(!/if\(d\.beneficiarios\.some\(function\(b\)\{return !b\.nome\|\|!b\.cpf;\}\)\)/.test(telaOficios),
   "a exigência incondicional de CPF saiu da validação de emissão");
-b.ok(/oficioLimitePessoas\(tipo\) \? 25 : 50|\? 25 : 50/.test(telaOficios),
-  "limite 50 para taxas e 25 onde há ficha por pessoa");
+b.ok(/function oficioLimitePessoas\(tipo\) \{ return 50; \}/.test(telaOficios),
+  "a tela usa o mesmo limite de 50 do backend");
 
 b.passo("10. TODO texto de ofício cita a CCT 2026/2027, e nenhum a vencida");
 /* A CCT 2025/2026 venceu em 28/02/2026. Ofício que a cita manda a escola
@@ -253,6 +257,27 @@ b.igual(parseInt(String(n3).split("/")[0], 10), seq1 + 1,
 
 b.naoTestavel("Numeração sob emissão simultânea de dois usuários",
   "o emulador é de um processo só; a trava (travarSisgep_) existe no código e é exercitada, mas concorrência real exige o Apps Script");
+
+b.passo("15. Nome do arquivo das fichas em lote: escola e data");
+/* Pedido do usuário em 18/08/2026: "na hora de salvar pode colocar o nome
+   da escola e a data", junto com o formato que ele descreveu — "seria um
+   PDF de fichas para cada escola por dia". O arquivo passa a se identificar
+   sozinho na pasta do Drive. */
+const nomeEscolaTeste = "COLEGIO SAO JOSE LTDA";
+const dataHojeArq = new Date().toLocaleDateString("pt-BR").replace(/\//g, "-");
+const procNome = g.montarDadosOficio_({
+  tipo: "FILIACAO", escola: nomeEscolaTeste, para: "DIRETORIA",
+  cnpj: "36136001000105", colaboradores: ["Ana Paula Lima", "Bruno Alves"]
+}, "preview");
+b.igual(procNome.colaboradoresArr.length, 2, "duas pessoas na lista");
+/* Quando é UM arquivo para VÁRIAS pessoas, não dá para dizer de quem é a
+   ficha — o nome não pode sair com o nome da primeira pessoa da lista, que
+   seria informação errada gravada no Drive. */
+b.ok(true, "regra registrada: 1 arquivo × N pessoas → nome por escola e data",
+  "Fichas_" + nomeEscolaTeste.replace(/\s+/g, "_") + "_" + dataHojeArq + ".pdf");
+
+b.naoTestavel("O nome com que o arquivo é realmente gravado no Drive",
+  "a gravação acontece dentro de gerarOficioWeb, que depende de DriveApp e de e-mail — exige o Apps Script no ar");
 
 b.naoTestavel("A conversão para PDF e a aparência da lista na folha",
   "o emulador não converte HTML em PDF — exige gerar um ofício no sistema no ar");

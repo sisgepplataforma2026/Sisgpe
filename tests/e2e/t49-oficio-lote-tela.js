@@ -16,8 +16,8 @@
  * A tela é montada num DOM de verdade, com os <script> executados. O teste
  * digita no campo, clica nos botões e confere o que apareceu na tela: os
  * cartões criados, os nomes e CPFs preenchidos, a prévia antes de
- * confirmar, e a recusa quando a quantidade de fichas não bate com a
- * quantidade de pessoas.
+ * confirmar, e o anexo das fichas — tanto o PDF único escaneado quanto uma
+ * ficha por pessoa.
  *
  * O QUE ELE NÃO PROVA, e continua "não testado" pela REGRA Nº -1:
  *   - aparência: jsdom não aplica CSS, então "o modal abriu" aqui quer
@@ -115,14 +115,18 @@ b.igual(ultimo.querySelector(".input-nome-trabalhador").value, "Carlos Souza",
 b.igual(ultimo.querySelector(".input-cpf-trabalhador").value, "987.654.321-00",
   "CPF separado por tabulação foi lido certo");
 
-b.passo("7. Ficha em lote: recusa quando a quantidade não bate");
-/* É o pedido literal: "coloco todas as fichas comparando com a quantidade
-   de pessoas". Com 4 pessoas e 2 arquivos, tem que recusar — distribuir "o
-   que der" deixaria duas pessoas sem ficha em silêncio.
+b.passo("7. Ficha em lote: um arquivo só com todas as fichas é aceito");
+/* A regra mudou no meio da conversa, e vale registrar por quê.
+   Primeiro o usuário pediu conferência de quantidade ("coloco todas as
+   fichas comparando com a quantidade de pessoas"). Depois olhou a operação
+   real e corrigiu: "geralmente quando você escaneia, vem um arquivo só com
+   todas as fichas... talvez a gente deixe liberado nesse momento" e
+   "seria um PDF de fichas para cada escola por dia". Ou seja: exigir uma
+   ficha por pessoa recusaria justamente o formato normal da secretaria.
 
-   A asserção olha o EFEITO na tela, não a mensagem: o toast é da própria
-   tela e não passa pelo gravador do andaime, então conferir texto aqui
-   provaria menos e quebraria à toa se a frase mudasse. */
+   As asserções olham o EFEITO na tela, não a mensagem: o toast é da própria
+   tela e não passa pelo gravador do andaime, então conferir texto provaria
+   menos e quebraria à toa se a frase mudasse. */
 function anexarFichas(nomes) {
   const inp = $("fichasLoteInput");
   inp.files = nomes.map(n => ({ name: n, type: "application/pdf", lastModified: 0 }));
@@ -135,9 +139,10 @@ function cardsComFicha() {
   }).length;
 }
 b.igual(cards().length, 4, "quatro pessoas na lista antes de anexar");
-anexarFichas(["a.pdf", "b.pdf"]);
-b.igual(cardsComFicha(), 0,
-  "2 fichas para 4 pessoas: nenhuma foi distribuída");
+anexarFichas(["digitalizacao-completa.pdf"]);
+b.ok(cardsComFicha() >= 1,
+  "um arquivo unico com todas as fichas e aceito, nao recusado",
+  cardsComFicha() + " cartao(oes) com anexo");
 
 b.passo("8. Ficha em lote: distribui uma por pessoa quando bate");
 anexarFichas(["4.pdf", "2.pdf", "3.pdf", "1.pdf"]);
