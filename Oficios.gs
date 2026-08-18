@@ -782,7 +782,17 @@ function gerarOficioWeb(dados, tokenSessao) {
           var nomeFormatado = String(proc.colaboradoresArr[indice] || "ASSOCIADO")
             .toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
             .replace(/[^A-Z0-9\s]/g, "").trim().replace(/\s+/g, "_");
-          nomeArquivo = "Ficha_" + tipoArquivo + "_" + nomeFormatado + "." + extensao;
+          /* Nome da pessoa + escola + data, os três — decisão do usuário em
+             18/08/2026. Assim o arquivo se identifica sozinho na pasta do
+             Drive e no anexo do e-mail, sem depender de abrir nem de saber
+             de qual ofício veio.
+
+             O nome da pessoa entra cortado em 40 caracteres: nome composto
+             longo somado à escola (45) e à data passa dos limites que alguns
+             clientes de e-mail exibem, e o que interessa para reconhecer já
+             está no começo. */
+          nomeArquivo = "Ficha_" + tipoArquivo + "_" + nomeFormatado.slice(0, 40) +
+            "_" + escolaArquivo + "_" + dataArquivo + "." + extensao;
         } else {
           /* Um PDF por escola por dia: o número de ordem só entra quando há
            * mais de um arquivo, para o caso comum não ganhar um "_1" inútil. */
