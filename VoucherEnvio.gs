@@ -41,9 +41,35 @@ var VOUCHER_ABA_SOLICITACOES = "Voucher_Solicitacoes";
  * Uma chamada e não três porque o modal abre logo depois de emitir, e três
  * idas ao servidor com a planilha aberta viram meio segundo de tela cinza.
  */
-function voucherPrepararEnvio(protocolo, tokenSessao) {
-  exigirModulo_(tokenSessao, "beneficios", false);
+/**
+ * Data em texto, sempre — nunca objeto Date no retorno para a tela.
+ *
+ * Por que existe: google.script.run devolve NULL ao navegador, calado, se
+ * algo no pacote não serializar. Uma Date inválida (célula com conteúdo
+ * estranho, importação torta) é o caso clássico, e o sintoma engana: a tela
+ * recebe "nada" e não tem como dizer o que houve.
+ *
+ * Aceita Date, texto ou vazio. Nunca lança: o pior que devolve é "".
+ */
+function voucherDataTexto_(valor) {
+  if (valor === null || valor === undefined || valor === "") return "";
   try {
+    if (Object.prototype.toString.call(valor) === "[object Date]") {
+      if (isNaN(valor.getTime())) return "";
+      return Utilities.formatDate(valor, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm");
+    }
+    return String(valor);
+  } catch (e) {
+    return "";
+  }
+}
+
+function voucherPrepararEnvio(protocolo, tokenSessao) {
+  try {
+    /* Guarda DENTRO do try, pelo mesmo motivo de voucherEnviarPorEmail:
+       fora dele, a recusa vira exceção crua e a tela mostra erro sem nome. */
+    exigirModulo_(tokenSessao, "beneficios", false);
+
     protocolo = String(protocolo || "").trim();
     if (!protocolo) return { ok: false, mensagem: "Informe o protocolo." };
 
@@ -140,7 +166,19 @@ function voucherPrepararEnvio(protocolo, tokenSessao) {
         : "",
       textoWhatsApp: voucherTextoWhatsApp_(nome, protocolo, curso, periodo, link),
       envios: voucherEnviosAnteriores_(ss, protocolo),
-      emitidoEm: emissao.DATA_EMISSAO || "",
+      /* TEXTO, NÃO Date. Esta é a causa mais provável do "o servidor não
+       * respondeu nada" que o usuário viu em 18/08/2026 no protocolo
+       * BOLSA-2026-916155.
+       *
+       * google.script.run serializa o retorno para o navegador. Quando algo
+       * no pacote não serializa — e uma Date inválida vinda de célula com
+       * conteúdo estranho é o caso clássico — o cliente recebe NULL, sem
+       * erro, sem log, sem nada. A tela então cai no ramo `!r`, mostra a
+       * mensagem genérica e fecha o modal.
+       *
+       * Data convertida para texto no servidor não tem como quebrar a
+       * serialização, e a tela já exibia isso como texto de qualquer forma. */
+      emitidoEm: voucherDataTexto_(emissao.DATA_EMISSAO),
       emitidoPor: String(emissao.USUARIO || "").trim()
     };
   } catch (e) {
@@ -534,7 +572,9 @@ function voucherEnviosAnteriores_(ss, protocolo) {
       .filter(function (a) { return /ENVIAR_EMAIL|ABRIR_WHATSAPP/.test(String(a.acao || "")); })
       .map(function (a) {
         return {
-          quando: a.dataHora,
+          /* Mesma razão do emitidoEm: Date no pacote é risco de resposta
+             nula e silenciosa. Sai como texto. */
+          quando: voucherDataTexto_(a.dataHora),
           canal: a.acao,
           /* A reserva grava valorNovo com JSON.stringify, então o endereço
            * volta entre aspas. Tirar aqui evita "cc \"x@y.com\"" na tela. */
