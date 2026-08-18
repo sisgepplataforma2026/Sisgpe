@@ -160,9 +160,24 @@ function voucherEnviarPorEmail(protocolo, opcoes, tokenSessao) {
   /* A sessão é guardada, não descartada: sem ela a trilha registra o envio
    * como usuário "—", e um rastro que não diz QUEM mandou o certificado de
    * alguém não serve para a única pergunta que se faz depois. */
-  var sessao = exigirModulo_(tokenSessao, "beneficios", false);
   opcoes = opcoes || {};
   try {
+    /* A GUARDA DE SESSÃO FICA DENTRO DO TRY.
+     *
+     * Fora dele, qualquer recusa aqui vira exceção não capturada — e o que
+     * chega na tela é "erro de servidor", genérico, sem dizer o que houve.
+     * O usuário relatou exatamente isso em 18/08/2026: "o voucher não é
+     * enviado, dá erro de servidor".
+     *
+     * Recusar continua recusando: nada é enviado, nada é gravado. O que
+     * muda é que a pessoa lê o motivo — sessão expirada, falta de acesso ao
+     * módulo — em vez de um erro sem nome, e sabe se relogar resolve ou se
+     * precisa chamar o administrador.
+     *
+     * Todo o resto desta função já devolvia mensagem legível pelo catch. A
+     * guarda era o único ponto que escapava. */
+    var sessao = exigirModulo_(tokenSessao, "beneficios", false);
+
     var pronto = voucherPrepararEnvio(protocolo, tokenSessao);
     if (!pronto.ok) return pronto;
 
