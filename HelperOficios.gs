@@ -220,14 +220,26 @@ function montarTextoDesfiliacao_(dados, colaboradoresArr) {
   );
 }
 
+/* O período de oposição sai do COMUNICADO publicado pelo sindicato em jornal
+ * (A Tribuna), assinado pelo Presidente, datado de 17/07/2026: "no período
+ * compreendido entre os dias 17 e 26 de agosto de 2026".
+ *
+ * Antes o texto dizia apenas "dentro do prazo legal". Era uma afirmação de
+ * tempestividade que o sindicato assina e que a escola não tem como
+ * conferir. Com a data publicada no ofício, quem recebe pode checar contra o
+ * jornal — e quem emite é obrigado a olhar a data da carta antes de mandar.
+ *
+ * A concordância singular/plural acompanha o número de trabalhadores, como
+ * o usuário pediu ("a questão do singular deve se observar o quantitativo de
+ * pessoas"). Isto já funcionava; agora está travado pelo t54. */
 function montarTextoOposicaoTaxaNegocial_(dados, colaboradoresArr) {
   var qtd = colaboradoresArr.length;
   return (
     "Prezados(as) Senhores(as),\n\n" +
     "Por meio deste, comunicamos que " +
     (qtd === 1
-      ? "o(a) colaborador(a) acima identificado(a) exerceu, dentro do prazo legal, seu direito de oposição"
-      : "os(as) colaboradores(as) acima identificados(as) exerceram, dentro do prazo legal, seu direito de oposição") +
+      ? "o(a) colaborador(a) acima identificado(a) exerceu, no período de 17 a 26 de agosto de 2026, seu direito de oposição"
+      : "os(as) colaboradores(as) acima identificados(as) exerceram, no período de 17 a 26 de agosto de 2026, seu direito de oposição") +
     " ao desconto da Taxa Negocial, conforme carta" + (qtd === 1 ? "" : "s") + " em anexo.\n\n" +
     "Solicitamos, portanto, que NÃO seja" + (qtd === 1 ? "" : "m") +
     " efetuado" + (qtd === 1 ? "" : "s") + " o" + (qtd === 1 ? "" : "s") +
@@ -262,7 +274,8 @@ function montarTextoTaxaNegocial_(dados, colaboradoresArr) {
     "Negocial.\n\n" +
     "Nos termos da Cláusula 57ª da referida CCT, a Taxa Negocial corresponde a 6% (seis por " +
     "cento), recolhida em 3 (três) parcelas mensais e sucessivas de 2% (dois por cento) " +
-    "sobre o salário-base dos educadores técnico-administrativos.\n\n" +
+    "sobre o salário-base dos educadores técnico-administrativos, iniciando-se na " +
+    "competência de setembro de 2026.\n\n" +
     "Ficam isentos do recolhimento os trabalhadores filiados ao SindEducação/ES.\n\n" +
     "Os valores descontados deverão ser repassados a este Sindicato até o 10º (décimo) dia " +
     "útil do mês subsequente ao desconto, acompanhados da relação nominal dos contribuintes.\n\n" +

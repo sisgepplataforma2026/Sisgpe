@@ -51,7 +51,7 @@ function montarEmailHTML(tipo, numero, assuntoTipo, quantidade, textoPrincipalCu
          mensalidade sindical, e o sindicato devolve depois. */
       textoPrincipal =
         "Encaminhamos, em anexo, o <strong>Ofício nº " + numero + "</strong> referente à <strong>Taxa Negocial</strong>, em conformidade com a <strong>Cláusula 57ª da CCT 2026/2027</strong>.\n\n" +
-        "A contribuição corresponde a <strong>6% (seis por cento)</strong> do salário-base, descontada em <strong>três parcelas de 2% (dois por cento)</strong>. <strong>Os trabalhadores filiados ao sindicato estão isentos</strong>, por já recolherem a mensalidade sindical.\n\n" +
+        "A contribuição corresponde a <strong>6% (seis por cento)</strong> do salário-base, descontada em <strong>três parcelas mensais e sucessivas de 2% (dois por cento)</strong>, <strong>iniciando-se na competência de setembro de 2026</strong>. <strong>Os trabalhadores filiados ao sindicato estão isentos</strong>, por já recolherem a mensalidade sindical.\n\n" +
         "Solicitamos que os descontos sejam realizados e o repasse efetuado até o <strong>10º dia útil do mês subsequente</strong>, acompanhado da <strong>relação nominal</strong> dos trabalhadores e dos respectivos valores.\n\n" +
         "Solicitamos, por gentileza, a <strong>confirmação do recebimento</strong> respondendo a este e-mail.";
     } else if (assuntoTipo === "Oposição à Taxa Negocial") {
@@ -71,9 +71,11 @@ function montarEmailHTML(tipo, numero, assuntoTipo, quantidade, textoPrincipalCu
            18/08/2026. O ofício anexo também não pede devolução — só determina
            que o desconto não seja feito. O e-mail agora diz a mesma coisa que
            o documento, nem mais nem menos. */
+        /* O período vem do comunicado publicado em jornal (17/07/2026): a
+           oposição deveria ser apresentada entre 17 e 26 de agosto de 2026. */
         (quantidade === 1
-          ? "O(a) trabalhador(a) relacionado(a) manifestou formalmente oposição ao desconto. Solicitamos, portanto, que <strong>o desconto da Taxa Negocial não seja realizado</strong>.\n\n"
-          : "Os(as) trabalhadores(as) relacionados(as) manifestaram formalmente oposição ao desconto. Solicitamos, portanto, que <strong>o desconto da Taxa Negocial não seja realizado</strong> para essas pessoas.\n\n") +
+          ? "O(a) trabalhador(a) relacionado(a) manifestou formalmente oposição ao desconto, no período de <strong>17 a 26 de agosto de 2026</strong>, conforme prazo publicado pelo Sindicato. Solicitamos, portanto, que <strong>o desconto da Taxa Negocial não seja realizado</strong>.\n\n"
+          : "Os(as) trabalhadores(as) relacionados(as) manifestaram formalmente oposição ao desconto, no período de <strong>17 a 26 de agosto de 2026</strong>, conforme prazo publicado pelo Sindicato. Solicitamos, portanto, que <strong>o desconto da Taxa Negocial não seja realizado</strong> para essas pessoas.\n\n") +
         "Solicitamos, por gentileza, a <strong>confirmação do recebimento</strong> respondendo a este e-mail.";
     } else if (assuntoTipo === "Ofício Livre") {
       textoPrincipal =

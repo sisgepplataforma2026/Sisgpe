@@ -176,10 +176,21 @@ function getCCTTexto_() {
     "• Multa por atraso: 0,33% ao dia sobre o valor principal + correção pelo INPC\n" +
     "• Atraso reiterado pode configurar apropriação indébita\n\n" +
 
+    /* Corrigido em 18/08/2026 a partir do comunicado publicado pelo sindicato
+       em jornal (A Tribuna), assinado pelo Presidente, datado de 17/07/2026 —
+       foto enviada pelo usuário. Dizia "iniciando em setembro/2025", um ano
+       antes do correto. Esta é a fonte que a Sofia consulta: ano errado aqui
+       vira resposta errada para quem pergunta quando o desconto começa. */
     "CLÁUSULA 57 — TAXA NEGOCIAL (contribuição assistencial laboral):\n" +
-    "• 6% em 3 parcelas mensais de 2%, iniciando em setembro/2025\n" +
+    "• 6% em 3 parcelas mensais e sucessivas de 2%, iniciando na competência setembro/2026\n" +
     "• ISENTOS: filiados ao SindEducação-ES\n" +
-    "• Repasse: até o 10º dia útil do mês subsequente\n\n" +
+    "• Repasse: até o 10º dia útil do mês subsequente ao desconto, com relação nominal\n" +
+    "• PRAZO DE OPOSIÇÃO: de 17 a 26 de agosto de 2026, por carta de próprio punho,\n" +
+    "  entregue pessoalmente em duas vias de igual teor, na sede do SindEducação-ES\n" +
+    "  (Rua General Osório, 83, Ed. Portugal, salas 501 a 504, Centro, Vitória/ES),\n" +
+    "  de segunda a sexta, das 10h às 12h e das 14h às 16h\n" +
+    "• Base: Assembleia Geral Extraordinária de 17/11/2025 (edital em A Tribuna, 15/11/2025);\n" +
+    "  constitucionalidade reconhecida pelo STF no Tema 935 (Repercussão Geral)\n\n" +
 
     "CLÁUSULA 58 — ASSISTÊNCIA MÉDICA AO SINDICATO (2027):\n" +
     "• 4% da folha bruta de março/2027, em 2 parcelas de 2% (15/abr e 15/mai/2027)\n" +
