@@ -640,7 +640,7 @@ function atualizarPayloadOficio(num) {
   if (!em) pend.push("Informe o e-mail.");
   if (!bens.length && p.tipo !== "Ofício Livre") pend.push("Adicione trabalhadores.");
   if (bens.some(function(b) { return !b.nome; })) pend.push("Complete o nome do trabalhador.");
-  if (oficioExigeFichaECpf(p.tipo) && bens.some(function(b) { return !b.cpf; })) pend.push("Complete o CPF.");
+  if (oficioExigeCpf(p.tipo) && bens.some(function(b) { return !b.cpf; })) pend.push("Complete o CPF.");
   if (oficioExigeFichaECpf(p.tipo) && bens.length > 0 && fichs.length === 0) pend.push("Anexe ao menos uma ficha.");
   if (bens.length > oficioLimitePessoas(p.tipo)) pend.push("Limite máximo de " + oficioLimitePessoas(p.tipo) + " trabalhadores para este tipo.");
 
@@ -1278,9 +1278,27 @@ function removerFichaCard(btn, idx) {
     var lista = $("listaTrabalhadores"); if (!lista) return;
     var vazio = lista.querySelector(".worker-empty"); if (vazio) vazio.remove();
 
+    /* O lote APROVEITA os cartões em branco que já estão na tela antes de
+       criar novos — sugestão do usuário em 18/08/2026: "quando for em lote
+       ele deveria mudar o card de trabalhador acima e não criar outro".
+       Ele está certo. A tela nasce com um cartão vazio; sem isto o lote
+       empilhava os nomes DEPOIS dele, e o ofício saía com um "Trabalhador 1"
+       em branco no meio da lista — ou pior, com um beneficiário sem nome
+       barrando a emissão por um cartão que a pessoa nem preencheu. */
+    function cartoesEmBranco() {
+      return Array.prototype.filter.call(
+        lista.querySelectorAll(".trabalhador-card"),
+        function (c) {
+          var n = c.querySelector(".input-nome-trabalhador");
+          var f = c.querySelector(".input-cpf-trabalhador");
+          return (!n || !txt(n.value)) && (!f || !somenteDigitos(f.value));
+        });
+    }
+    var vagos = cartoesEmBranco();
+
     r.pessoas.forEach(function (p) {
-      var card = criarCardTrabalhador();
-      lista.appendChild(card);
+      var card = vagos.shift();
+      if (!card) { card = criarCardTrabalhador(); lista.appendChild(card); }
       var iNome = card.querySelector(".input-nome-trabalhador");
       var iCpf  = card.querySelector(".input-cpf-trabalhador");
       if (iNome) iNome.value = p.nome;
@@ -1519,7 +1537,12 @@ function atualizarContadorFichas() {
       if(!d.escola.email) return toast("Informe o e-mail.","warn");
       if(!d.beneficiarios.length) return toast("Adicione trabalhadores.","warn");
       if(d.beneficiarios.some(function(b){return !b.nome;})) return toast("Complete o nome do trabalhador.","warn");
-      if(oficioExigeFichaECpf(d.tipo)&&d.beneficiarios.some(function(b){return !b.cpf;})) return toast("Complete nome e CPF.","warn");
+      /* CPF NAO trava mais a emissao, em tipo nenhum. Eu havia criado
+         oficioExigeCpf() devolvendo false e esquecido de ligar aqui: a tela
+         dizia "(opcional)" no rotulo e o botao recusava com "Complete nome e
+         CPF". O usuario pegou pelo print. Vale a razao que ele deu: "muita
+         gente nao sabe nem o proprio CPF" — o oficio precisa sair. */
+      if(oficioExigeCpf(d.tipo)&&d.beneficiarios.some(function(b){return !b.cpf;})) return toast("Complete o CPF.","warn");
       if(d.beneficiarios.length>oficioLimitePessoas(d.tipo)) return toast("Limite de "+oficioLimitePessoas(d.tipo)+" trabalhadores para este tipo.","warn");
     } else {
       /* Guardas MORTAS até 18/08/2026: a condição era `!$("x") && $("x").value`,

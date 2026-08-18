@@ -229,4 +229,84 @@ b.passo("14");
   b.igual(win.oficioLimitePessoas(t), 50, "limite de 50 trabalhadores em " + t);
 });
 
+/* ═══════════════════════════════════════════════════════════
+   7. CPF opcional TAMBÉM na hora de emitir
+   ═══════════════════════════════════════════════════════════
+
+   O usuário mandou o print: o rótulo dizia "CPF (opcional)" e, ao clicar em
+   emitir, aparecia "Complete nome e CPF." Eu tinha criado oficioExigeCpf()
+   devolvendo false e esquecido de ligar na emissão — a regra existia e não
+   valia. Rótulo dizendo uma coisa e botão fazendo outra é pior que exigir o
+   CPF abertamente: a pessoa não entende por que não consegue emitir.
+   ═══════════════════════════════════════════════════════════ */
+b.passo("15");
+const fonteEmissao = require("fs").readFileSync(
+  require("path").join(__dirname, "..", "..", "OficiosScripts.html"), "utf8");
+b.ok(!/oficioExigeFichaECpf\([^)]*\)\s*&&[^;]*!b\.cpf/.test(fonteEmissao),
+  "nenhuma trava de emissão exige CPF por tipo",
+  "a checagem tem que passar por oficioExigeCpf(), que devolve false");
+
+b.passo("16");
+["Filiação", "Desfiliação", "Taxa Negocial", "Taxa Assistencial"].forEach(t => {
+  b.ok(win.oficioExigeCpf(t) === false, "emitir " + t + " sem CPF não é bloqueado");
+});
+
+/* Contraprova: a FICHA continua exigida onde ela é a prova da autorização do
+   desconto. Sem esta asserção, apagar as duas travas passaria. */
+b.passo("17");
+b.ok(/oficioExigeFichaECpf\(d\.tipo\)\s*&&\s*!todosArquivosTemAlgumaFicha\(\)/.test(fonteEmissao),
+  "a exigência de ficha em Filiação e Desfiliação continua de pé");
+
+/* ═══════════════════════════════════════════════════════════
+   8. O lote preenche o cartão vazio antes de criar outro
+   ═══════════════════════════════════════════════════════════
+
+   Sugestão do usuário, com o print: "quando for em lote ele deveria mudar o
+   card de trabalhador acima e não criar outro". A tela nasce com um cartão
+   em branco; sem isto o lote empilhava os nomes DEPOIS dele e sobrava um
+   "Trabalhador 1" vazio — que ainda barrava a emissão por "Complete o nome".
+   ═══════════════════════════════════════════════════════════ */
+b.passo("18");
+escolherTipo("Taxa Negocial");
+$("btnModoIndividual").click();
+doc.querySelectorAll("#listaTrabalhadores .trabalhador-card").forEach(c => c.remove());
+$("btnAddTrabalhador").click();
+b.igual(doc.querySelectorAll("#listaTrabalhadores .trabalhador-card").length, 1,
+  "a tela começa com um cartão em branco");
+
+/* Escola pelos campos visíveis — é o que loteConfirmar valida. */
+$("escolaBusca").value = "COLEGIO EXEMPLO LTDA";
+$("cnpj").value = "36.136.001/0001-05";
+
+/* Dirigido pela TELA, não por função interna: o lote não é exposto no
+   window, e chamar por dentro testaria um caminho que o atendente não usa. */
+function lote(nomes) {
+  $("btnModoLote").click();
+  nomes.forEach(n => {
+    $("loteNome").value = n;
+    $("loteCpf").value = "";
+    $("btnLoteAdicionarPessoa").click();
+  });
+  $("btnConfirmarLoteTrabalhadores").click();
+}
+function nomesNaTela() {
+  return Array.from(doc.querySelectorAll("#listaTrabalhadores .trabalhador-card"))
+    .map(c => (c.querySelector(".input-nome-trabalhador") || {}).value || "");
+}
+
+lote(["CLARA GOMES", "ANA LIMA", "JOAO REIS"]);
+b.igual(nomesNaTela().length, 3,
+  "3 pessoas no lote geram 3 cartões — o vazio foi aproveitado, não somado");
+
+b.passo("19");
+b.igual(nomesNaTela(), ["CLARA GOMES", "ANA LIMA", "JOAO REIS"],
+  "e o primeiro cartão ficou com o primeiro nome, sem sobra em branco");
+
+/* Contraprova: com a lista JÁ preenchida, o lote não pode sobrescrever
+   ninguém — aí ele cria cartões novos mesmo. */
+b.passo("20");
+lote(["MARIA SOUZA"]);
+b.igual(nomesNaTela(), ["CLARA GOMES", "ANA LIMA", "JOAO REIS", "MARIA SOUZA"],
+  "com todos os cartões preenchidos, o lote acrescenta sem apagar nada");
+
 b.resumo();
