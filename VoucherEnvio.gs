@@ -398,43 +398,142 @@ function voucherTextoWhatsApp_(nome, protocolo, curso, periodo, link) {
   return l.join("\n");
 }
 
+/**
+ * O e-mail do certificado, no padrão visual do SISGEP.
+ *
+ * POR QUE FOI REFEITO (pedido do usuário em 18/08/2026: "só precisa
+ * ajustar o texto para ficar no padrão Sisgep")
+ *
+ * O e-mail anterior era de outra família visual: Arial, faixa lisa com só
+ * "SindEducação-ES" — que ainda saía CORTADA no topo —, dados soltos no
+ * meio do texto e um rodapé de duas linhas cinza. Quem recebe um ofício e
+ * depois um certificado via dois remetentes diferentes.
+ *
+ * Este agora usa o MESMO desenho do e-mail de ofício (EmailOficios.gs):
+ * cabeçalho navy em gradiente com o filete dourado à esquerda, o nome
+ * inteiro do sindicato e o CNPJ, o protocolo em dourado à direita, badge
+ * do tipo, corpo branco e rodapé navy assinado.
+ *
+ * DUAS DECISÕES QUE VALE REGISTRAR:
+ *
+ * - QUEM ASSINA O QUÊ, definido pelo usuário em 18/08/2026: o CERTIFICADO
+ *   em anexo é assinado pelo presidente, Leonil Dias da Silva; o E-MAIL
+ *   que o acompanha é da Marcelha, do administrativo — a mesma assinatura
+ *   do e-mail de ofício. São papéis diferentes: o documento é ato do
+ *   sindicato, o e-mail é quem atende. Quem responder a mensagem cai em
+ *   quem sabe resolver, e não na presidência.
+ * - O bloco de dados é rotulado (curso, período, desconto, validação) em
+ *   vez de diluído na frase. O associado leva esse e-mail para a
+ *   secretaria da faculdade, e lá o que se procura é campo, não prosa.
+ *
+ * Tudo em style inline e sem imagem externa: cliente de e-mail ignora
+ * <style> em <head> e bloqueia imagem remota por padrão.
+ */
 function voucherCorpoEmail_(d) {
   function esc(s) {
     return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
+
+  /* Uma linha do bloco de dados. Some inteira quando o dado não existe —
+     rótulo com traço na frente é pior do que rótulo nenhum. */
+  function linha(rotulo, valor, espacado) {
+    if (!valor) return "";
+    return "<tr>" +
+      "<td style='padding:7px 0;font-size:10.5px;font-weight:700;color:#64748b;" +
+        "text-transform:uppercase;letter-spacing:.09em;white-space:nowrap;" +
+        "vertical-align:top;width:34%;'>" + esc(rotulo) + "</td>" +
+      "<td style='padding:7px 0;font-size:14px;font-weight:800;color:#0f172a;" +
+        (espacado ? "letter-spacing:.06em;" : "") + "'>" + esc(valor) + "</td>" +
+    "</tr>";
+  }
+
+  var saudacao = "Olá" + (d.nome ? ", " + esc(voucherPrimeiroNome_(d.nome)) : "") + "!";
+
   return "" +
-    "<div style='font-family:Arial,sans-serif;max-width:620px;margin:0 auto;color:#111827;'>" +
-    "<div style='background:#002f6c;padding:22px;border-radius:12px 12px 0 0;text-align:center;'>" +
-      "<div style='color:#C9A84C;font-size:20px;font-weight:900;'>SindEducação-ES</div>" +
-    "</div>" +
-    "<div style='background:#fff;padding:26px;border:1px solid #e2e8f0;border-top:none;line-height:1.7;'>" +
-      "<p>Olá <strong>" + esc(d.nome) + "</strong>,</p>" +
-      "<p>Seu <strong>Certificado de Bolsa de Estudo</strong> foi emitido" +
-        (d.curso ? " para o curso de <strong>" + esc(d.curso) + "</strong>" : "") +
-        (d.periodo ? " (" + esc(d.periodo) + ")" : "") + "." +
-      "</p>" +
-      (d.percentual ? "<p>Desconto concedido: <strong>" + esc(d.percentual) + "%</strong></p>" : "") +
-      "<div style='background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:14px;margin:18px 0;'>" +
-        "<div style='font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;'>Protocolo</div>" +
-        "<div style='font-weight:800;font-size:15px;'>" + esc(d.protocolo) + "</div>" +
-        (d.codigo
-          ? "<div style='font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-top:10px;'>Código de validação</div>" +
-            "<div style='font-weight:800;font-size:15px;letter-spacing:.08em;'>" + esc(d.codigo) + "</div>"
-          : "") +
+  "<div style='font-family:Segoe UI,Arial,sans-serif;max-width:680px;color:#0f172a;'>" +
+
+    /* ── CABEÇALHO ── */
+    "<div style='background:linear-gradient(135deg,#001228 0%,#001f4d 55%,#003b82 100%);" +
+      "padding:22px 28px 20px;border-radius:8px 8px 0 0;'>" +
+      "<div style='display:flex;align-items:flex-start;justify-content:space-between;gap:20px;'>" +
+        "<div style='border-left:4px solid #C9A84C;padding-left:16px;'>" +
+          "<div style='font-size:21px;font-weight:900;color:#fff;'>SINDEDUCAÇÃO-ES</div>" +
+          "<div style='font-size:11px;color:rgba(255,255,255,.6);margin-top:5px;'>" +
+            "Sindicato dos Educadores Técnico-Administrativos<br>" +
+            "em Estabelecimentos de Ensino Particular no Estado do Espírito Santo</div>" +
+          "<div style='font-size:10.5px;font-weight:800;color:#C9A84C;margin-top:6px;'>" +
+            "CNPJ: 31.815.780/0001-51</div>" +
+        "</div>" +
+        "<div style='text-align:right;'>" +
+          "<div style='font-size:10px;font-weight:700;color:rgba(255,255,255,.4);" +
+            "text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px;'>Protocolo</div>" +
+          "<div style='font-size:16px;font-weight:900;color:#C9A84C;white-space:nowrap;'>" +
+            esc(d.protocolo) + "</div>" +
+        "</div>" +
       "</div>" +
+      "<div style='height:1px;background:rgba(201,168,76,.25);margin:16px 0 14px;'></div>" +
+      /* Verde, e não o dourado institucional: o dourado é identidade, não
+         estado. Concessão de benefício é notícia boa, e o badge diz isso
+         antes de a pessoa ler o texto. */
+      "<div style='display:inline-block;background:rgba(16,185,129,.18);" +
+        "border:1px solid rgba(52,211,153,.42);color:#6ee7b7;font-size:11px;" +
+        "font-weight:800;padding:5px 14px;border-radius:999px;" +
+        "text-transform:uppercase;'>Bolsa de Estudo</div>" +
+    "</div>" +
+
+    /* ── CORPO ── */
+    "<div style='background:#fff;padding:28px 28px 24px;border:1px solid #e2e8f0;border-top:none;'>" +
+      "<p style='margin:0 0 18px 0;font-size:14px;color:#334155;'>" + saudacao + " Tudo bem?</p>" +
+
+      "<div style='text-align:justify;line-height:1.7;font-size:13.5px;color:#1a2233;'>" +
+        "Seu <strong>Certificado de Bolsa de Estudo</strong> foi emitido pelo SindEducação-ES, " +
+        "nos termos da Convenção Coletiva de Trabalho vigente, e segue " +
+        (d.linkPdf ? "<strong>anexo a este e-mail</strong>" : "em anexo") + "." +
+      "</div>" +
+
+      "<table role='presentation' cellpadding='0' cellspacing='0' " +
+        "style='width:100%;background:#f8fafc;border:1px solid #cbd5e1;" +
+        "border-radius:10px;padding:6px 16px;margin:20px 0;border-collapse:separate;'>" +
+        linha("Curso", d.curso) +
+        linha("Período", d.periodo) +
+        linha("Desconto", d.percentual ? d.percentual + "%" : "") +
+        linha("Código de validação", d.codigo, true) +
+      "</table>" +
+
       (d.linkPdf
-        ? "<p style='text-align:center;margin:22px 0;'>" +
-          "<a href='" + esc(d.linkPdf) + "' style='background:#002f6c;color:#fff;text-decoration:none;" +
-          "padding:12px 26px;border-radius:8px;font-weight:800;display:inline-block;'>Abrir o certificado</a></p>"
+        ? "<div style='text-align:center;margin:24px 0 20px;'>" +
+            "<a href='" + esc(d.linkPdf) + "' style='background:#001f4d;color:#fff;" +
+            "text-decoration:none;padding:13px 30px;border-radius:8px;font-weight:800;" +
+            "font-size:14px;display:inline-block;'>Abrir o certificado</a>" +
+          "</div>"
         : "") +
-      "<p style='font-size:13px;color:#475569;'>Apresente o certificado à instituição de ensino para " +
-      "que o desconto seja aplicado na matrícula, rematrícula e mensalidades.</p>" +
+
+      "<div style='margin:20px 0 0;padding:14px 16px;background:#eff6ff;" +
+        "border:1px solid #bfdbfe;border-left:4px solid #2563eb;border-radius:8px;" +
+        "font-size:13px;color:#1e3a8a;line-height:1.65;'>" +
+        "<strong>Apresente o certificado à instituição de ensino</strong> para que o desconto " +
+        "seja aplicado na matrícula, rematrícula e mensalidades." +
+      "</div>" +
     "</div>" +
-    "<div style='padding:14px;font-size:11px;color:#64748b;text-align:center;line-height:1.6;'>" +
-      esc(typeof ENDERECO_SIND_V !== "undefined" ? ENDERECO_SIND_V : "") + "<br>" +
-      esc(typeof TELEFONE_SIND_V !== "undefined" ? TELEFONE_SIND_V : "") +
+
+    /* ── RODAPÉ ── */
+    "<div style='background:linear-gradient(135deg,#001228 0%,#001f4d 60%,#002f6c 100%);" +
+      "border-radius:0 0 8px 8px;padding:22px 28px;text-align:center;'>" +
+      "<div style='height:3px;background:linear-gradient(90deg,#C9A84C,#f0c843,#C9A84C);" +
+        "margin-bottom:18px;'></div>" +
+      "<div style='font-size:16px;font-weight:900;color:#fff;'>MARCELHA ALINE PINTO GOMES</div>" +
+      "<div style='font-size:12px;color:#C9A84C;font-weight:700;margin-top:3px;'>" +
+        "Administrativo &amp; Secretaria — SindEducação-ES</div>" +
+      "<div style='margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.10);" +
+        "font-size:11px;color:rgba(255,255,255,.75);line-height:1.7;'>" +
+        "Av. Nossa Senhora dos Navegantes, 755 - Salas 707/708<br>" +
+        "Enseada do Suá - Vitória/ES - CEP 29.050-355<br>" +
+        "(27) 99735-8900 • secretaria@sindeducacao.com • www.sindeducacao.com.br" +
+      "</div>" +
+      "<div style='margin-top:12px;font-size:10px;color:rgba(255,255,255,.25);'>" +
+        "Documento gerado pelo SISGEP · SindEducação-ES</div>" +
     "</div>" +
-    "</div>";
+  "</div>";
 }
 
 /** Extrai o id do arquivo de uma URL do Drive, para poder anexar o blob. */
