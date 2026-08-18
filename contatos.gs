@@ -5,7 +5,6 @@
 
 const ABA_CONTATOS_SISGEP = "Contatos";
 const ABA_LISTAS_TRANSMISSAO_SISGEP = "Listas_Transmissao";
-const PLANILHA_CONTATOS = PLANILHAS.CONTATOS;
 const CABECALHO_CONTATOS_SISGEP = [
   "ID",
   "Nome",
@@ -26,8 +25,12 @@ const CABECALHO_CONTATOS_SISGEP = [
  * HELPERS
  * ================================================================ */
 
+function getPlanilhaContatosId_() {
+  return getPlanilhasConfig_().CONTATOS;
+}
+
 function abrirPlanilhaContatos_() {
-  return SpreadsheetApp.openById(PLANILHA_CONTATOS);
+  return SpreadsheetApp.openById(getPlanilhaContatosId_());
 }
 
 function obterAbaContatos_() {
@@ -661,7 +664,7 @@ function excluirContatos(ids) {
 
 function listarListasTransmissao() {
   try {
-    const ss = SpreadsheetApp.openById(PLANILHA_CONTATOS);
+    const ss = SpreadsheetApp.openById(getPlanilhaContatosId_());
     const aba = ss.getSheetByName(ABA_LISTAS_TRANSMISSAO_SISGEP);
 
     if (!aba) {
@@ -696,7 +699,7 @@ function listarListasTransmissao() {
 
 function listarListasTransmissaoDisponiveis() {
   try {
-    const ss = SpreadsheetApp.openById(PLANILHA_CONTATOS);
+    const ss = SpreadsheetApp.openById(getPlanilhaContatosId_());
     const aba = ss.getSheetByName(ABA_LISTAS_TRANSMISSAO_SISGEP);
 
     if (!aba) {
@@ -763,7 +766,7 @@ function listarListasTransmissaoDisponiveis() {
 
 function organizarListasWhatsApp() {
   try {
-    const ss = SpreadsheetApp.openById(PLANILHA_CONTATOS);
+    const ss = SpreadsheetApp.openById(getPlanilhaContatosId_());
     const abaContatos = obterAbaContatos_();
 
     let abaListas = ss.getSheetByName(ABA_LISTAS_TRANSMISSAO_SISGEP);
@@ -849,7 +852,7 @@ function organizarListasWhatsApp() {
 }
 
 function buscarListaWhatsApp(nomeLista) {
-  const aba = SpreadsheetApp.openById(PLANILHA_CONTATOS).getSheetByName(ABA_LISTAS_TRANSMISSAO_SISGEP);
+  const aba = SpreadsheetApp.openById(getPlanilhaContatosId_()).getSheetByName(ABA_LISTAS_TRANSMISSAO_SISGEP);
 
   if (!aba) {
     return "";
