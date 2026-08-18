@@ -189,7 +189,163 @@ b.ok(/emitidoEm:\s*voucherDataTexto_/.test(preparoLimpo),
 b.ok(!/emitidoEm:\s*emissao\.DATA_EMISSAO/.test(preparoLimpo),
   "e a leitura crua da data de emissão não sobrou");
 
-b.naoTestavel("Se ERA isto que derrubava o protocolo BOLSA-2026-916155",
-  "o emulador serializa em JavaScript puro e não reproduz a serialização do Apps Script — só a próxima tentativa no ar diz");
+/* ═══════════════════════════════════════════════════════════
+   9. REPRODUÇÃO REAL: emissão de verdade, com a data como Date
+   ═══════════════════════════════════════════════════════════
+
+   Tudo acima mediu o conversor isolado. Isso não é o mesmo que provar que
+   o PACOTE INTEIRO de um protocolo real atravessa — e era aí que eu tinha
+   parado cedo demais, chamando de "não testável" o que só era trabalhoso.
+
+   Duas coisas mudaram o que dá para medir:
+
+   1. VoucherPdf.gs:268 grava `DATA_EMISSAO: agora` — um objeto Date de
+      verdade. Ou seja: no ar, essa célula NÃO guarda texto. O caminho que
+      eu supus é o caminho que o sistema usa.
+
+   2. google.script.run tem contrato de tipos publicado. O retorno só pode
+      conter Number, Boolean, String, null, Date, Array e Object desses.
+      Fora disso, o cliente recebe null — sem erro e sem log.
+
+   Então dá para semear uma emissão real, com a data como Date (o caso
+   normal) e com Date INVÁLIDA (a célula corrompida), chamar a função de
+   verdade e conferir o pacote inteiro contra esse contrato.
+
+   O QUE ISTO NÃO É: prova de que a célula do BOLSA-2026-916155 estava
+   corrompida. Isso continua dependendo do painel de Execuções. O que ficou
+   provado é o mecanismo: com a data crua, o pacote violava o contrato;
+   com a correção, atravessa nos dois casos.
+   ═══════════════════════════════════════════════════════════ */
+b.fluxo("VOUCHER · Pacote real de um protocolo emitido atravessa o contrato");
+
+/** O contrato de tipos do google.script.run, aplicado ao pacote inteiro.
+ *  Devolve a lista de violações — vazia quer dizer que atravessa. */
+function violacoesDeContrato(v, caminho, vistos, fora) {
+  caminho = caminho || "retorno"; fora = fora || []; vistos = vistos || [];
+  const t = typeof v;
+  if (v === null || t === "string" || t === "boolean") return fora;
+  if (t === "number") {
+    if (!isFinite(v)) fora.push(caminho + ": número não finito (" + v + ")");
+    return fora;
+  }
+  if (t === "undefined")  { fora.push(caminho + ": undefined"); return fora; }
+  if (t === "function")   { fora.push(caminho + ": função"); return fora; }
+  if (t === "symbol")     { fora.push(caminho + ": symbol"); return fora; }
+  if (Object.prototype.toString.call(v) === "[object Date]") {
+    if (isNaN(v.getTime())) fora.push(caminho + ": Date INVÁLIDA");
+    return fora;
+  }
+  if (vistos.indexOf(v) > -1) { fora.push(caminho + ": referência circular"); return fora; }
+  vistos = vistos.concat([v]);
+  if (Array.isArray(v)) {
+    v.forEach(function (item, i) {
+      violacoesDeContrato(item, caminho + "[" + i + "]", vistos, fora);
+    });
+    return fora;
+  }
+  Object.keys(v).forEach(function (k) {
+    violacoesDeContrato(v[k], caminho + "." + k, vistos, fora);
+  });
+  return fora;
+}
+
+b.passo("9");
+/* Contraprova do próprio verificador, ANTES de usar ele para julgar o
+   código. Verificador que aprova tudo não mede nada — e eu não tenho como
+   saber disso se só rodar ele no caminho feliz. */
+b.igual(violacoesDeContrato({ a: 1, b: "x", c: null, d: [1, 2], e: new Date(2026, 0, 1) }), [],
+  "o verificador APROVA um pacote legítimo");
+b.igual(violacoesDeContrato({ d: new Date("banana") }).length, 1,
+  "e REPROVA uma Date inválida — o verificador morde");
+b.igual(violacoesDeContrato({ f: function () {} }).length, 1,
+  "reprova função");
+b.igual(violacoesDeContrato({ u: undefined }).length, 1,
+  "reprova undefined");
+
+b.passo("10");
+/* Uma emissão REAL, pelo caminho real do módulo. */
+g.setupVoucherModuleFase1();
+const ss = g.SpreadsheetApp.openById(g.PLANILHA_ID);
+
+function gravarLinha(nomeAba, campos) {
+  const sh = ss.getSheetByName(nomeAba);
+  const cab = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0]
+    .map(function (c) { return String(c || "").trim(); });
+  const linha = cab.map(function (c) {
+    return campos[c] !== undefined ? campos[c] : "";
+  });
+  sh.getRange(sh.getLastRow() + 1, 1, 1, linha.length).setValues([linha]);
+}
+
+/** Semeia protocolo com a DATA_EMISSAO que se mandar — Date, Date inválida
+ *  ou texto — e devolve o pacote que a tela receberia. */
+function pacoteDoProtocolo(protocolo, dataEmissao) {
+  gravarLinha("Voucher_Solicitacoes", {
+    ID_SOLICITACAO: "SOL-" + protocolo,
+    CPF_SOLICITANTE: "11144477735",
+    NOME_SOLICITANTE: "Beatriz do Nascimento Campos",
+    EMAIL: "beatriz@exemplo.com",
+    TELEFONE: "(27) 99876-5432",
+    INSTITUICAO_ENSINO: "IESES",
+    CNPJ_INSTITUICAO: "02213188000181",
+    CURSO: "Pedagogia",
+    PERIODO_REFERENCIA: "2026/2",
+    PERCENTUAL_APLICADO: "70",
+    STATUS_SOLICITACAO: "APROVADO",
+    NUMERO_PROTOCOLO: protocolo
+  });
+  gravarLinha("Voucher_Emitidos", {
+    ID_EMISSAO: "EMI-" + protocolo,
+    DATA_EMISSAO: dataEmissao,
+    PROTOCOLO: protocolo,
+    ID_SOLICITACAO: "SOL-" + protocolo,
+    NOME_SOLICITANTE: "Beatriz do Nascimento Campos",
+    CPF: "11144477735",
+    TIPO_DOCUMENTO: "CERTIFICADO",
+    CODIGO_VALIDACAO: "A1B2C3D4",
+    LINK_ARQUIVO: "https://drive.google.com/file/d/1AbCd/view",
+    PERCENTUAL: "70",
+    USUARIO: "wanderson"
+  });
+  return g.voucherPrepararEnvio(protocolo, tokenAdmin);
+}
+
+/* Caso normal: a data como Date, exatamente como VoucherPdf.gs a grava. */
+const pacoteNormal = pacoteDoProtocolo("BOLSA-2026-000001", new Date(2026, 7, 12, 10, 30));
+b.ok(pacoteNormal && pacoteNormal.ok === true,
+  "o preparo de um protocolo emitido de verdade responde ok",
+  pacoteNormal && pacoteNormal.mensagem);
+b.igual(violacoesDeContrato(pacoteNormal), [],
+  "e o pacote INTEIRO atravessa o contrato do google.script.run");
+b.ok(String(pacoteNormal.emitidoEm).indexOf("2026") > -1,
+  "com a data de emissão legível para a tela", pacoteNormal.emitidoEm);
+
+b.passo("11");
+/* O caso que derruba: célula com data corrompida. É este pacote que voltava
+   null para a tela, fazendo aparecer "O servidor não respondeu nada" e o
+   modal fechar sem enviar. */
+const pacoteCorrompido = pacoteDoProtocolo("BOLSA-2026-000002", new Date("data-invalida"));
+b.ok(pacoteCorrompido && pacoteCorrompido.ok === true,
+  "com a data CORROMPIDA na planilha, o preparo ainda responde ok",
+  pacoteCorrompido && pacoteCorrompido.mensagem);
+b.igual(violacoesDeContrato(pacoteCorrompido), [],
+  "e o pacote continua atravessando — a data ruim não contamina o retorno",
+  "era exatamente aqui que a tela recebia null e fechava o modal");
+b.igual(pacoteCorrompido.emitidoEm, "",
+  "a data corrompida vira vazio, e o resto do pacote chega inteiro");
+
+b.passo("12");
+/* Contraprova de que a correção é o que segura: o resto do pacote tem que
+   continuar chegando com conteúdo. Uma correção que devolvesse tudo vazio
+   também passaria nas asserções de contrato acima. */
+b.igual(pacoteCorrompido.protocolo, "BOLSA-2026-000002", "o protocolo chega");
+b.ok(String(pacoteCorrompido.nome).indexOf("Beatriz") > -1,
+  "o nome do associado chega", pacoteCorrompido.nome);
+b.ok(String(pacoteCorrompido.emailAssociado).indexOf("@") > -1,
+  "o e-mail do associado chega", pacoteCorrompido.emailAssociado);
+b.ok(pacoteCorrompido.temPdf === true, "e o link do PDF chega");
+
+b.naoTestavel("Se a célula do BOLSA-2026-916155 estava mesmo corrompida",
+  "o mecanismo ficou provado nos passos 10-12; QUAL era o valor daquela célula só o painel de Execuções ou a próxima tentativa no ar dizem");
 
 b.resumo();
