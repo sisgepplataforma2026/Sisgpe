@@ -1016,3 +1016,55 @@ hoje — as pendências restantes são de qualidade, não de bloqueio.
 
 **As 39 sem telefone** são a maior fila, e são gravidade 2 justamente porque
 o e-mail cobre o contato. Não travam nada; tiram o segundo caminho.
+
+---
+
+## VOUCHER — envio e data de emissão (publicado em 18/08/2026)
+
+Dois defeitos corrigidos e **publicados pelo usuário em 18/08/2026**.
+Publicar não é testar: até ele rodar no ar, tudo aqui é "não testado" pela
+REGRA Nº -1.
+
+Provas por execução que já existem, no emulador:
+`t57-voucher-envio-erro.js` (36 asserções, 2 mutações mortas) e
+`t58-voucher-data-emissao.js` (33 asserções, 4 mutações mortas). Suíte
+completa verde: 2.423 asserções, 58 arquivos.
+
+### O que foi corrigido
+
+| Arquivo | Defeito |
+|---|---|
+| `VoucherEnvio.gs` | o preparo devolvia `Date` crua; quando a célula estava corrompida o `google.script.run` devolvia **null** e a tela mostrava "O servidor não respondeu nada" e fechava o modal |
+| `VoucherEnvio.gs` | `exigirModulo_` estava FORA do `try` — recusa de sessão virava "erro de servidor" sem motivo |
+| `Voucher.gs` | as 4 funções de data faziam `new Date(texto)`, que lê barra no formato **americano** |
+
+O defeito de data tinha duas caras, e a pior é a silenciosa:
+
+- **dia até 12** — a data saía **ERRADA** (`12/08` virava 8 de dezembro).
+  O certificado ia para a instituição de ensino com outra data e ninguém
+  percebia, porque `08/12/2026` é plausível.
+- **dia de 13 em diante** — a data **não saía**: branco na lista e
+  `Vitória/ES, NaN de undefined de NaN.` no documento. Foi o que o usuário
+  relatou.
+- **a ordenação da lista** afundava toda linha com dia acima de 12, porque
+  ela reprocessa o texto já formatado e o timestamp virava 0.
+
+Achado ao rodar o teste: o `Date` nativo lia `"período 2026/2"` como 1º de
+fevereiro — e `PERIODO_REFERENCIA` deste módulo é literalmente `"2026/2"`.
+
+### 🔴 A cobrar do usuário
+
+| Item | Como verificar |
+|---|---|
+| 🔴 **O envio do voucher completa** | abrir o `BOLSA-2026-916155` (o protocolo do relato) e mandar. Se repetir, o painel **Execuções** do Apps Script mostra a exceção real |
+| 🔴 **O e-mail chega com o PDF anexado** | conferir na caixa do associado, não só no "enviado" |
+| 🔴 **A data aparece na lista de emitidos** | e com o dia e o mês no lugar certo — conferir uma linha com **dia acima de 12** e outra com **dia até 12** |
+| 🔴 **A data sai no PDF do certificado** | a linha `Vitória/ES, ... de ... de ...` — o emulador não gera PDF, isto só se vê abrindo o documento |
+| 🔴 **A lista está em ordem de data** | com o leitor antigo, linhas de dia acima de 12 iam para o fim |
+
+### ⚠ Decisão registrada, à espera da operação
+
+Quando a data é ilegível, o documento cai para **hoje** — mesmo
+comportamento que já existia para célula vazia. Numa **reemissão** de
+certificado antigo isso data o documento com o dia de hoje. Fica assim até
+aparecer reemissão na operação; se aparecer, trocar.
