@@ -179,4 +179,125 @@ b.ok(String(custom).indexOf("Texto escrito pela secretaria") > -1,
 b.ok(String(custom).indexOf("10º dia útil") === -1,
   "e o texto padrão não é grudado junto");
 
+/* ═══════════════════════════════════════════════════════════
+   8. O OFÍCIO também tem texto próprio por tipo
+   ═══════════════════════════════════════════════════════════
+
+   O usuário, em 18/08/2026, foi taxativo: "você tem que tratar cada taxa
+   com seu texto. Taxa Negocial é um texto, Taxa Assistencial é outro texto,
+   Filiação é outro, Desfiliação é outro, cada um com o seu. Você não pode
+   classificar um somente para todos."
+
+   O e-mail já estava coberto acima. O corpo do OFÍCIO, não — e é ele que
+   vira o PDF que a escola arquiva. Este bloco fecha a porta nos dois lados.
+   ═══════════════════════════════════════════════════════════ */
+b.fluxo("OFÍCIO · Cada tipo com o seu texto no documento");
+
+const UMA_PESSOA = [{ nome: "CLARA GOMES" }];
+function corpoOficio(tipo) {
+  const p = g.montarDadosOficio_({
+    tipo: tipo, escola: "COLEGIO EXEMPLO", cnpj: "36136001000105",
+    colaboradores: UMA_PESSOA
+  }, "preview");
+  return String(p.corpoTexto || "").replace(/\s+/g, " ").trim();
+}
+
+b.passo("10");
+const TIPOS_DOC = ["Filiação", "Desfiliação", "Taxa Negocial",
+                   "Oposição à Taxa Negocial", "Taxa Assistencial"];
+const corposDoc = {};
+TIPOS_DOC.forEach(t => {
+  corposDoc[t] = corpoOficio(t);
+  b.ok(corposDoc[t].length > 200, "o ofício de " + t + " tem corpo",
+    corposDoc[t].length + " caracteres");
+});
+
+b.passo("11");
+b.igual(new Set(TIPOS_DOC.map(t => corposDoc[t])).size, 5,
+  "os CINCO textos de ofício são diferentes entre si",
+  "um texto único para todos passaria na asserção anterior");
+
+/* Cada um tem que citar a SUA cláusula. É o que separa um documento
+   institucional de um texto genérico com o nome do tipo trocado. */
+b.passo("12");
+const CLAUSULA_DOC = {
+  "Filiação": "56", "Desfiliação": "56", "Taxa Negocial": "57",
+  "Oposição à Taxa Negocial": "57", "Taxa Assistencial": "58"
+};
+TIPOS_DOC.forEach(t => {
+  b.ok(corposDoc[t].indexOf("Cláusula " + CLAUSULA_DOC[t]) > -1,
+    "o ofício de " + t + " cita a Cláusula " + CLAUSULA_DOC[t] + "ª");
+});
+
+/* O assunto de cada um aparece no seu próprio texto e NÃO no dos outros —
+   a prova de que nenhum foi copiado do vizinho. */
+b.passo("13");
+const MARCA = {
+  "Filiação": /quadro de associados.*a partir da presente data/i,
+  "Desfiliação": /direito de desfiliação/i,
+  "Taxa Negocial": /6% \(seis por cento\)/i,
+  "Oposição à Taxa Negocial": /direito de oposição/i,
+  "Taxa Assistencial": /Assistência Médica/i
+};
+TIPOS_DOC.forEach(t => {
+  b.ok(MARCA[t].test(corposDoc[t]),
+    "o ofício de " + t + " diz o que só ele diz");
+});
+
+/* Contraprova cruzada: a marca de um tipo não pode aparecer no texto de
+   outro. Se a Filiação carregasse "6% (seis por cento)", seria sinal de
+   texto emprestado. */
+b.passo("14");
+let vazamentos = [];
+TIPOS_DOC.forEach(dono => {
+  TIPOS_DOC.forEach(outro => {
+    if (dono === outro) return;
+    /* Negocial e Oposição falam da mesma taxa de propósito — a oposição
+       PRECISA citar a Taxa Negocial para dizer que não se deve descontar. */
+    if (/Taxa Negocial/.test(dono) && /Taxa Negocial/.test(outro)) return;
+    if (MARCA[dono].test(corposDoc[outro])) vazamentos.push(dono + " → " + outro);
+  });
+});
+b.igual(vazamentos, [], "nenhum tipo carrega a marca registrada de outro");
+
+/* ═══════════════════════════════════════════════════════════
+   9. Existe UM despachante de texto, não dois
+   ═══════════════════════════════════════════════════════════
+
+   Descoberto ao mutar o código para provar as asserções acima: a mutação
+   PASSOU. Havia dois despachantes — o switch de Oficios.gs, que está no ar,
+   e montarTextoOficioPadrao_ em HelperOficios.gs, que não tem chamador
+   nenhum. Mutei o morto e o teste não sentiu.
+
+   Um despachante duplicado é onde "cada tipo com o seu texto" volta a se
+   misturar sem ninguém ver — e o legado já tinha divergido: não trata
+   OPOSICAO_TAXA_NEGOCIAL. Este bloco vigia os dois.
+   ═══════════════════════════════════════════════════════════ */
+b.fluxo("OFÍCIO · Um despachante de texto, não dois");
+
+const fs = require("fs"), path = require("path");
+const raiz = path.join(__dirname, "..", "..");
+const fonteOficios = fs.readFileSync(path.join(raiz, "Oficios.gs"), "utf8");
+const fonteHelper  = fs.readFileSync(path.join(raiz, "HelperOficios.gs"), "utf8");
+
+b.passo("15");
+/* O switch vivo tem que cobrir os CINCO tipos, cada um com a sua função. */
+["montarTextoFiliacao_", "montarTextoDesfiliacao_", "montarTextoTaxaNegocial_",
+ "montarTextoOposicaoTaxaNegocial_", "montarTextoTaxaAssistencial_"].forEach(fn => {
+  b.ok(fonteOficios.indexOf(fn + "(dados, colaboradoresArr)") > -1,
+    "o despachante vivo chama " + fn);
+});
+
+b.passo("16");
+/* O legado continua sem chamador. Se alguém o religar, esta asserção cai e
+   obriga a decidir qual dos dois manda — em vez de os dois divergirem. */
+const chamadasLegado = (fonteOficios + fonteHelper)
+  .split("montarTextoOficioPadrao_").length - 1;
+b.igual(chamadasLegado, 1,
+  "montarTextoOficioPadrao_ aparece só na própria declaração",
+  "mais de uma ocorrência significa que o despachante morto foi religado");
+
+b.ok(/DESPACHANTE LEGADO/.test(fonteHelper),
+  "e está marcado no arquivo como legado, para ninguém corrigir o lado errado");
+
 b.resumo();

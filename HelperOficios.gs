@@ -307,6 +307,26 @@ function montarTextoTaxaAssistencial_(dados, colaboradoresArr) {
   );
 }
 
+/* ⚠ DESPACHANTE LEGADO — NÃO É ESTE QUE ESTÁ NO AR.
+ *
+ * O corpo do ofício é escolhido pelo switch de Oficios.gs (~linha 508, dentro
+ * de montarDadosOficio_). Esta função aqui não tem UM chamador no projeto:
+ * varri os 125 .gs e os 80 .html em 18/08/2026 e ela aparece uma única vez,
+ * nesta linha de declaração. Também não é chamada por rota doGet/doPost nem
+ * por trigger (REGRA Nº 1, cinco passos rodados).
+ *
+ * Fica documentada em vez de removida — remoção é pedido explícito do
+ * usuário, em commit separado.
+ *
+ * POR QUE ISTO IMPORTA: eu mesmo caí na armadilha. Ao testar se cada tipo
+ * tem o seu texto, mutei ESTA função para fazer a Taxa Assistencial usar o
+ * texto da Filiação — e o teste passou, porque o sistema nem olha para cá.
+ * Um despachante duplicado é exatamente o lugar onde "cada tipo com o seu
+ * texto" volta a se misturar sem ninguém ver.
+ *
+ * Repare que ela já divergiu: não trata OPOSICAO_TAXA_NEGOCIAL, que o
+ * switch de Oficios.gs trata. Se alguém a religasse hoje, a oposição
+ * quebraria com "Tipo de ofício padrão não reconhecido". */
 function montarTextoOficioPadrao_(tipoNorm, dados, colaboradoresArr) {
   if (tipoNorm === "FILIACAO")          return montarTextoFiliacao_(dados, colaboradoresArr);
   if (tipoNorm === "DESFILIACAO")       return montarTextoDesfiliacao_(dados, colaboradoresArr);
