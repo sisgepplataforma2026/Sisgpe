@@ -747,15 +747,35 @@ function gerarOficioWeb(dados, tokenSessao) {
       dados.fichas.forEach(function(ficha, indice) {
         var extensao = obterExtensaoArquivo_(ficha.nome, ficha.tipo);
         var nomeArquivo;
+        /* O NOME DO ANEXO SEGUE O TIPO DO OFÍCIO.
+         *
+         * Até 18/08/2026 TODO anexo saía como "Ficha_Filiacao_<NOME>", em
+         * qualquer tipo. Medido: Filiação, Desfiliação e Oposição produziam
+         * exatamente o mesmo "Ficha_Filiacao_PESSOA_1.pdf".
+         *
+         * A escola recebia, num ofício de OPOSIÇÃO — que determina que o
+         * desconto NÃO seja feito —, um arquivo chamado ficha de filiação. O
+         * documento diz uma coisa e o anexo, pelo nome, diz o contrário. Numa
+         * contestação é o nome do arquivo que fica no e-mail arquivado. */
+        /* Singular e plural declarados, não montados com "+s": o plural de
+           "Carta_Oposicao" é "Cartas_Oposicao", não "Carta_Oposicaos". */
+        var rotuloUm   = (proc.tipoNorm === "DESFILIACAO")            ? "Carta_Desfiliacao"
+                       : (proc.tipoNorm === "OPOSICAO_TAXA_NEGOCIAL") ? "Carta_Oposicao"
+                       : (proc.tipoNorm === "FILIACAO")               ? "Ficha_Filiacao"
+                       : "Documento";
+        var rotuloVarios = (proc.tipoNorm === "DESFILIACAO")            ? "Cartas_Desfiliacao"
+                         : (proc.tipoNorm === "OPOSICAO_TAXA_NEGOCIAL") ? "Cartas_Oposicao"
+                         : (proc.tipoNorm === "FILIACAO")               ? "Fichas"
+                         : "Documentos";
         if (fichaPorPessoa) {
           var nomeFormatado = String(proc.colaboradoresArr[indice] || "ASSOCIADO")
             .toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
             .replace(/[^A-Z0-9\s]/g, "").trim().replace(/\s+/g, "_");
-          nomeArquivo = "Ficha_Filiacao_" + nomeFormatado + "." + extensao;
+          nomeArquivo = rotuloUm + "_" + nomeFormatado + "." + extensao;
         } else {
           /* Um PDF por escola por dia: o número de ordem só entra quando há
            * mais de um arquivo, para o caso comum não ganhar um "_1" inútil. */
-          nomeArquivo = "Fichas_" + escolaArquivo + "_" + dataArquivo +
+          nomeArquivo = rotuloVarios + "_" + escolaArquivo + "_" + dataArquivo +
             (dados.fichas.length > 1 ? "_" + (indice + 1) : "") + "." + extensao;
         }
         var blob        = Utilities.newBlob(Utilities.base64Decode(ficha.base64), ficha.tipo || "application/pdf", nomeArquivo);
