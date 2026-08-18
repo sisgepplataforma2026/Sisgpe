@@ -226,23 +226,30 @@ function lotePorModal(nomes, fichas) {
 const antesUnico = cards().length;
 lotePorModal("Paulo Um\nPaula Dois\nPedro Tres", ["digitalizacao-completa.pdf"]);
 b.igual(cards().length, antesUnico + 3, "as três pessoas entraram");
-b.ok(cardsComFicha() >= 1,
-  "o PDF único foi aceito, não recusado por divergir da quantidade",
-  cardsComFicha() + " cartão(ões) com anexo");
+/* O arquivo vai para o bloco do OFÍCIO, não para os cartões: ele é um PDF
+   com as fichas de todo mundo, não a ficha de uma pessoa. */
+b.ok(Array.from($("fichasOficioLote").files || []).some(f => f.name === "digitalizacao-completa.pdf"),
+  "o PDF único foi aceito e anexado ao ofício",
+  Array.from($("fichasOficioLote").files || []).map(f => f.name).join(", ") || "NENHUM");
+b.igual(cardsComFicha(), 0,
+  "e não foi espalhado pelos cartões, que não são donos dele");
 
-b.passo("8. Uma ficha por pessoa: cada uma vai para a sua");
-// Zera a lista para a contagem do passo ser inequívoca.
+b.passo("8. Ficha por pessoa continua possível, no cartão de cada uma");
+/* O modal manda tudo para o bloco do OFÍCIO — é o caso normal, um PDF por
+   escola. Quem quiser uma ficha por pessoa anexa no cartão dela, e esse
+   caminho não pode ter sido quebrado pelo lote. */
 Array.from(cards()).forEach(c => c.querySelector(".btn-remover-trabalhador-premium").click());
 b.igual(cards().length, 0, "lista zerada antes do caso um-para-um");
-lotePorModal("Ana Alfa\nBeto Beta", ["2.pdf", "1.pdf"]);
+lotePorModal("Ana Alfa\nBeto Beta", []);
 b.igual(cards().length, 2, "duas pessoas entraram");
-b.igual(cardsComFicha(), 2, "2 fichas para 2 pessoas: cada cartão ficou com a sua");
-/* Os arquivos são ordenados pelo nome antes de distribuir — a ordem em que
-   o navegador entrega depende do sistema operacional. E o anexo é renomeado
-   com a pessoa, como no anexo individual. */
-const fichaDoPrimeiro = cards()[0].querySelector(".input-ficha-trabalhador").files[0].name;
-b.ok(fichaDoPrimeiro.indexOf("Ficha_") === 0 && /ANA|Ana/.test(fichaDoPrimeiro),
-  "o anexo do primeiro cartão leva o nome da pessoa dele", fichaDoPrimeiro);
+
+const inpAna = cards()[0].querySelector(".input-ficha-trabalhador");
+inpAna.files = [{ name: "ficha-da-ana.pdf", type: "application/pdf", lastModified: 0 }];
+inpAna.dispatchEvent(new win.Event("change"));
+b.igual(cardsComFicha(), 1, "só o cartão da Ana ficou com ficha");
+const fichaDoPrimeiro = inpAna.files[0].name;
+b.ok(fichaDoPrimeiro.indexOf("Ficha_") === 0 && /Ana/i.test(fichaDoPrimeiro),
+  "o anexo do cartão leva o nome da pessoa dele", fichaDoPrimeiro);
 
 b.passo("9. O botão '+ Adicionar' um a um continua funcionando");
 const antes = cards().length;
@@ -313,6 +320,51 @@ const todasEscondidas = Array.from(cards()).every(c => {
 });
 b.ok(todasEscondidas,
   "ao trocar para uma taxa, os cartões já criados também escondem a ficha");
+
+b.passo("12. O PDF único do lote tem onde ser anexado");
+/* Pergunta do usuário em 18/08/2026: "e onde eu coloco o pdf das fichas do
+   lote?". Não tinha resposta boa — getFichasPayload() só lia fichas DOS
+   CARTÕES, então um PDF com todas as fichas da escola não tinha lugar. */
+const tipoPdf = $("tipo");
+tipoPdf.value = "Filiação";
+tipoPdf.dispatchEvent(new win.Event("change", { bubbles: true }));
+
+b.ok(!!$("fichasOficioLote"), "existe o campo de fichas do OFÍCIO, fora dos cartões");
+b.ok($("blocoFichasOficio").style.display !== "none",
+  "em Filiação o bloco de fichas do ofício aparece");
+
+tipoPdf.value = "Taxa Negocial";
+tipoPdf.dispatchEvent(new win.Event("change", { bubbles: true }));
+b.igual($("blocoFichasOficio").style.display, "none",
+  "em Taxa Negocial ele some, porque ali não há ficha");
+
+tipoPdf.value = "Filiação";
+tipoPdf.dispatchEvent(new win.Event("change", { bubbles: true }));
+
+/* O anexo do ofício precisa CHEGAR no payload: sem isso o campo existiria
+   na tela e o arquivo não sairia junto do ofício — o pior dos mundos. */
+$("fichasOficioLote").files = [{ name: "fichas-da-escola.pdf", type: "application/pdf", lastModified: 0 }];
+$("fichasOficioLote").dispatchEvent(new win.Event("change"));
+const fichasPayload = (typeof win.getFichasPayload === "function") ? win.getFichasPayload() : null;
+if (!fichasPayload) {
+  b.naoTestavel("Payload das fichas", "getFichasPayload não exposta no escopo da janela");
+} else {
+  b.ok(fichasPayload.some(f => f.arquivoOriginal === "fichas-da-escola.pdf"),
+    "o PDF do ofício entra no payload que vai ao backend",
+    JSON.stringify(fichasPayload.map(f => f.arquivoOriginal)));
+  b.ok(fichasPayload.some(f => f.arquivoOriginal === "fichas-da-escola.pdf" && !f.beneficiario),
+    "e vai SEM beneficiário — não é ficha de ninguém em particular");
+}
+
+b.passo("13. O modal manda as fichas para o bloco do ofício");
+clicar("btnModoLoteFil");
+$("loteNome").value = "Teste Do Lote";
+clicar("btnLoteAdicionarPessoa");
+$("loteFichasInput").files = [{ name: "digitalizacao-do-dia.pdf", type: "application/pdf", lastModified: 0 }];
+clicar("btnConfirmarLoteTrabalhadores");
+b.ok(Array.from($("fichasOficioLote").files || []).some(f => f.name === "digitalizacao-do-dia.pdf"),
+  "o arquivo escolhido no modal foi parar no bloco do ofício",
+  Array.from($("fichasOficioLote").files || []).map(f => f.name).join(", "));
 
 b.naoTestavel("Aparência do modal e do cartão", "jsdom não aplica CSS");
 b.naoTestavel("Upload real das fichas e emissão do ofício no Apps Script",

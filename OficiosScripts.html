@@ -1018,6 +1018,8 @@ function removerFichaCard(btn, idx) {
     var exige = oficioExigeFichaECpf(($("tipo") && $("tipo").value) || "");
     document.querySelectorAll("#listaTrabalhadores .trabalhador-ficha-area")
       .forEach(function (a) { a.style.display = exige ? "" : "none"; });
+    var bloco = $("blocoFichasOficio");
+    if (bloco) bloco.style.display = exige ? "block" : "none";
   }
 
   function loteAtualizarModoTaxas() {
@@ -1077,8 +1079,18 @@ function removerFichaCard(btn, idx) {
     /* As fichas escolhidas no modal entram pelo mesmo caminho do botão
      * "Fichas em lote" — inclusive a regra de distribuir uma por pessoa
      * quando as quantidades coincidem. */
+    /* As fichas escolhidas no modal vão para o bloco do OFÍCIO, não para os
+     * cartões: o caso normal é um PDF único da escola, que não pertence a
+     * uma pessoa. Quem quiser uma ficha por pessoa continua anexando no
+     * cartão de cada uma. */
     var fi = $("loteFichasInput");
-    if (fi && fi.files && fi.files.length) loteDistribuirFichas(fi.files);
+    var destino = $("fichasOficioLote");
+    if (fi && fi.files && fi.files.length && destino) {
+      var dt = new DataTransfer();
+      Array.prototype.slice.call(fi.files).forEach(function (f) { dt.items.add(f); });
+      destino.files = dt.files;
+      destino.dispatchEvent(new Event("change"));
+    }
 
     loteFecharModal();
     toast(r.pessoas.length + (r.pessoas.length === 1 ? " pessoa adicionada" : " pessoas adicionadas") +
@@ -1134,6 +1146,8 @@ function removerFichaCard(btn, idx) {
 
   /** Existe pelo menos uma ficha anexada, em qualquer cartão? */
   function todosArquivosTemAlgumaFicha() {
+    var oficio = $("fichasOficioLote");
+    if (oficio && oficio.files && oficio.files.length) return true;
     var cards = document.querySelectorAll("#listaTrabalhadores .trabalhador-card");
     for (var i = 0; i < cards.length; i++) {
       var c = cards[i];
@@ -1184,6 +1198,23 @@ function atualizarContadorFichas() {
   var cards = Array.from(lista.querySelectorAll(".trabalhador-card"));
   var trabalhadores = getTrabalhadoresPayload();
   var fichas = [];
+
+  /* Fichas do OFÍCIO — o PDF único da escola, que não pertence a ninguém em
+   * particular. Entram primeiro e sem beneficiário: o backend nomeia esses
+   * anexos por escola e data, em vez de inventar de quem é cada um. */
+  var inputOficio = $("fichasOficioLote");
+  if (inputOficio && inputOficio.files && inputOficio.files.length) {
+    Array.from(inputOficio.files).forEach(function (f) {
+      fichas.push({
+        ordem: fichas.length + 1,
+        arquivoOriginal: f.name,
+        arquivoSugerido: f.name,
+        beneficiario: "",
+        cpf: "",
+        arquivo: f
+      });
+    });
+  }
 
   cards.forEach(function(card, idxCard) {
     var trab = trabalhadores[idxCard] || {};
@@ -1491,6 +1522,11 @@ function enviarWhatsappOficio(urlPdf, numero) {
 
     window.removerFicha = removerFicha;
     window.removerFichaCard = removerFichaCard;
+    /* Exposta junto das demais do arquivo. Serve para diagnóstico e para o
+     * teste conferir que o anexo do ofício CHEGA no payload — sem isso, o
+     * campo existiria na tela e o arquivo poderia não sair junto do ofício,
+     * que é o pior dos mundos: parece que anexou e não anexou. */
+    window.getFichasPayload = getFichasPayload;
     window.enviarEmailOficioAgora = enviarEmailOficioAgora;
     window.imprimirPdfOficioGerado = imprimirPdfOficioGerado;
     window.enviarWhatsappOficio = enviarWhatsappOficio;
@@ -1538,6 +1574,16 @@ function enviarWhatsappOficio(urlPdf, numero) {
         var n = _fichasModal.files ? _fichasModal.files.length : 0;
         var res = $("loteFichasResumo");
         if (res) res.textContent = n ? (n === 1 ? "1 arquivo selecionado" : n + " arquivos selecionados") : "";
+      });
+    }
+    var _fichasOf = $("fichasOficioLote");
+    if (_fichasOf && !_fichasOf.dataset.bound) {
+      _fichasOf.dataset.bound = "1";
+      _fichasOf.addEventListener("change", function () {
+        var n = _fichasOf.files ? _fichasOf.files.length : 0;
+        var res = $("fichasOficioResumo");
+        if (res) res.textContent = n ? (n === 1 ? "1 arquivo anexado ao ofício" : n + " arquivos anexados ao ofício") : "";
+        atualizarResumoTrabalhadores();
       });
     }
     blindarBotao("btnLoteAdicionarPessoa", loteAdicionarPessoa);
