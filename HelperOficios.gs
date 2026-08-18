@@ -237,16 +237,32 @@ function montarTextoOposicaoTaxaNegocial_(dados, colaboradoresArr) {
   );
 }
 
+/* Texto da CCT 2026/2027 (vigência 01/03/2026 a 28/02/2027), Cláusula 57.
+ *
+ * Até 17/08/2026 este texto citava a CCT 2025/2026 — convenção que venceu em
+ * 28/02/2026 — e não dizia o percentual, nem o parcelamento, nem a isenção
+ * dos filiados. A escola recebia uma cobrança que mandava "observar os
+ * percentuais previstos" sem dizer quais são, e tinha que ir procurar na
+ * convenção. Agora o ofício diz o que a escola precisa fazer: quanto,
+ * em quantas parcelas, de quem descontar e até quando repassar.
+ *
+ * Os números vêm da Cláusula 57 registrada em CCTCore.gs, não de memória:
+ * 6% em 3 parcelas mensais de 2%, isentos os filiados, repasse até o 10º dia
+ * útil do mês subsequente. */
 function montarTextoTaxaNegocial_(dados, colaboradoresArr) {
   return (
     "Prezados(as) Senhores(as),\n\n" +
     "O SindEducação/ES, no exercício de suas atribuições legais e em conformidade com a " +
-    "Convenção Coletiva de Trabalho 2025/2026, vem solicitar o cumprimento das disposições " +
-    "relativas à Taxa Negocial.\n\n" +
-    "Nos termos da Cláusula 57ª da referida CCT, os estabelecimentos de ensino deverão " +
-    "efetuar os descontos nos salários dos colaboradores técnico-administrativos e repassá-los " +
-    "a este Sindicato até o 10º (décimo) dia útil do mês subsequente ao desconto.\n\n" +
-    "Solicitamos a observância dos prazos e percentuais previstos, bem como a confirmação " +
+    "Convenção Coletiva de Trabalho 2026/2027, com vigência de 1º de março de 2026 a 28 de " +
+    "fevereiro de 2027, vem solicitar o cumprimento das disposições relativas à Taxa " +
+    "Negocial.\n\n" +
+    "Nos termos da Cláusula 57ª da referida CCT, a Taxa Negocial corresponde a 6% (seis por " +
+    "cento), recolhida em 3 (três) parcelas mensais e sucessivas de 2% (dois por cento) " +
+    "sobre o salário-base dos educadores técnico-administrativos.\n\n" +
+    "Ficam isentos do recolhimento os trabalhadores filiados ao SindEducação/ES.\n\n" +
+    "Os valores descontados deverão ser repassados a este Sindicato até o 10º (décimo) dia " +
+    "útil do mês subsequente ao desconto, acompanhados da relação nominal dos contribuintes.\n\n" +
+    "Solicitamos a observância dos prazos e percentuais acima, bem como a confirmação " +
     "de recebimento deste ofício, respondendo a este e-mail.\n\n" +
     "Renovamos nossos protestos de elevada estima e consideração.\n\n" +
     "Atenciosamente,"

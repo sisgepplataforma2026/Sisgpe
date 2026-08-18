@@ -4,7 +4,8 @@
 // ============================================================================
 
 var PRIMEIRO_OFICIO_PLATAFORMA = 65;
-var LIMITE_ASSOCIADOS          = 25;
+var LIMITE_ASSOCIADOS          = 25;   // filiação e desfiliação: uma ficha por pessoa
+var LIMITE_PESSOAS_TAXA        = 50;   // as três taxas: lista de nomes, sem ficha
 
 var PASTA_OFICIOS_ID = "1_0BS8UuPmuhbKycdLy7_M4HhHKMkpu4h"; // fallback → pasta Filiação
 var PASTA_OFICIOS_FILIACAO_ID      = "1_0BS8UuPmuhbKycdLy7_M4HhHKMkpu4h";
@@ -413,6 +414,37 @@ function gerarPDFUniversal(config) {
 
 /* ================= PREVIEW E GERAÇÃO WEB ================= */
 
+/* Máscara de CNPJ e CPF para o documento.
+ *
+ * Existem formatadores em Utils.gs e Sindicalizacao.gs, mas eles são de
+ * outros módulos e podem não estar carregados quando o ofício é gerado por
+ * uma rota pública. Estes dois são locais, sem dependência, e caem para o
+ * valor original quando a quantidade de dígitos não bate — imprimir o
+ * número como veio é melhor do que imprimir um número cortado. */
+function oficios_formatarCnpj_(valor) {
+  var d = String(valor || "").replace(/\D/g, "");
+  if (d.length !== 14) return String(valor || "");
+  return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+}
+
+function oficios_formatarCpf_(valor) {
+  var d = String(valor || "").replace(/\D/g, "");
+  if (d.length !== 11) return String(valor || "");
+  return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+}
+
+/* Chave de ordenação alfabética em português.
+ *
+ * localeCompare com locale não é confiável no runtime do Apps Script, e
+ * comparar direto joga "Ângela" depois de "Zuleica" — a acentuada vai para
+ * o fim da tabela. Tirar o acento antes de comparar resolve, e maiúscula
+ * evita que "ana" caia depois de "Bruno". */
+function oficios_chaveOrdenacao_(nome) {
+  return String(nome || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase().replace(/\s+/g, " ").trim();
+}
+
 function montarDadosOficio_(dados, modo) {
   if (!dados || typeof dados !== "object") throw new Error("Dados inválidos para processamento do ofício.");
 
@@ -428,10 +460,40 @@ function montarDadosOficio_(dados, modo) {
     try { codigoVerificacao = gerarCodigoVerificacao(numero); } catch (e) { Logger.log("⚠ gerarCodigoVerificacao falhou: " + e.message); }
   }
 
-  var colaboradoresArr = Array.isArray(dados.colaboradores)
-    ? dados.colaboradores.map(function(n){ return String(n || "").trim(); }).filter(Boolean)
-    : String(dados.colaboradores || "").split(",").map(function(n){ return String(n || "").trim(); }).filter(Boolean);
+  /* A lista de pessoas do ofício.
+   *
+   * Aceita três formas, para não quebrar quem já chama esta função:
+   *   - array de textos:    ["MARIA", "JOAO"]
+   *   - texto separado por vírgula: "MARIA, JOAO"
+   *   - array de objetos:   [{nome:"MARIA", cpf:"123..."}, ...]   ← lote
+   *
+   * O CPF é OPCIONAL em qualquer uma delas: quem não informar continua
+   * gerando o ofício igual, só sem o CPF impresso.
+   *
+   * `indiceOriginal` guarda a posição em que a pessoa foi digitada, porque
+   * as fichas anexadas são casadas com os nomes POR POSIÇÃO em
+   * gerarOficioWeb. Sem isso, ordenar a lista renomearia os anexos com o
+   * nome da pessoa errada — o tipo de erro que ninguém percebe até chegar
+   * na escola. */
+  var listaBruta = Array.isArray(dados.colaboradores)
+    ? dados.colaboradores
+    : String(dados.colaboradores || "").split(",");
 
+  var colaboradoresLista = listaBruta.map(function (item, i) {
+    if (item && typeof item === "object") {
+      return { nome: String(item.nome || "").trim(),
+               cpf:  String(item.cpf  || "").trim(),
+               indiceOriginal: i };
+    }
+    return { nome: String(item || "").trim(), cpf: "", indiceOriginal: i };
+  }).filter(function (x) { return x.nome; });
+
+  colaboradoresLista.sort(function (a, c) {
+    return oficios_chaveOrdenacao_(a.nome) < oficios_chaveOrdenacao_(c.nome) ? -1
+         : oficios_chaveOrdenacao_(a.nome) > oficios_chaveOrdenacao_(c.nome) ?  1 : 0;
+  });
+
+  var colaboradoresArr = colaboradoresLista.map(function (x) { return x.nome; });
   var colaboradoresStr = colaboradoresArr.map(function(n, i){ return (i + 1) + ". " + n.toUpperCase(); }).join("\n");
 
   var corpoTexto = "";
@@ -460,6 +522,7 @@ function montarDadosOficio_(dados, modo) {
     configTipo: configTipo, numero: numero, codigoVerificacao: codigoVerificacao,
     dataHoje: dataHoje, dataExtenso: dataExtenso,
     colaboradoresArr: colaboradoresArr, colaboradoresStr: colaboradoresStr,
+    colaboradoresLista: colaboradoresLista,
     corpoTexto: corpoTexto
   };
 }
@@ -484,6 +547,7 @@ function previewOficioWeb(dados, tokenSessao) {
       para:         dados.para || "",
       cnpj:         formatarCnpj_(dados.cnpj || ""),
       colaboradores: proc.colaboradoresArr || [],
+      colaboradoresLista: proc.colaboradoresLista || [],
       corpoTexto:   proc.corpoTexto || "",
       dataHoje:     proc.dataExtenso || proc.dataHoje,
       assBase64:    imgs.assBase64,
@@ -568,11 +632,40 @@ function gerarOficioWeb(dados, tokenSessao) {
 
     var proc = montarDadosOficio_(dados, "gerar");
 
+    /* Ofício de taxa não é ofício de filiação.
+     *
+     * Filiação e desfiliação nascem de um documento assinado: a ficha é a
+     * prova da autorização do desconto, e sem ela o ofício não deve sair.
+     * As três taxas são cobrança prevista na CCT — a escola deve recolher
+     * de todo o quadro técnico-administrativo, filiado ou não, e não existe
+     * ficha para anexar. Exigir ficha ali era trabalho inútil: o usuário
+     * teria que juntar 50 documentos para mandar uma lista de nomes.
+     *
+     * Por isso o limite também é diferente: 25 no que depende de ficha, 50
+     * nas taxas, que é o que ele pediu para o lote. */
+    var exigeFicha  = (proc.tipoNorm === "FILIACAO" || proc.tipoNorm === "DESFILIACAO");
+    var limitePessoas = exigeFicha ? LIMITE_ASSOCIADOS : LIMITE_PESSOAS_TAXA;
+
     if (!proc.isLivre) {
       if (!proc.colaboradoresArr.length) throw new Error("Informe o(s) colaborador(es).");
-      if (!Array.isArray(dados.fichas) || dados.fichas.length === 0) throw new Error("É obrigatório anexar pelo menos uma ficha.");
-      if (dados.fichas.length > LIMITE_ASSOCIADOS) throw new Error("Limite máximo de " + LIMITE_ASSOCIADOS + " associados por ofício. Recebido: " + dados.fichas.length + ".");
-      if (dados.fichas.length !== proc.colaboradoresArr.length) throw new Error("Você tem " + proc.colaboradoresArr.length + " colaboradores mas enviou " + dados.fichas.length + " fichas.");
+      if (proc.colaboradoresArr.length > limitePessoas) {
+        throw new Error("Limite máximo de " + limitePessoas + " pessoas por ofício. Recebido: " + proc.colaboradoresArr.length + ".");
+      }
+      if (exigeFicha) {
+        if (!Array.isArray(dados.fichas) || dados.fichas.length === 0) throw new Error("É obrigatório anexar pelo menos uma ficha.");
+        if (dados.fichas.length > limitePessoas) throw new Error("Limite máximo de " + limitePessoas + " associados por ofício. Recebido: " + dados.fichas.length + ".");
+        if (dados.fichas.length !== proc.colaboradoresArr.length) throw new Error("Você tem " + proc.colaboradoresArr.length + " colaboradores mas enviou " + dados.fichas.length + " fichas.");
+      }
+    }
+
+    /* A lista sai do montarDadosOficio_ em ordem alfabética, mas as fichas
+     * chegaram na ordem em que foram digitadas. Reordenar as fichas pela
+     * posição original de cada pessoa mantém o casamento nome↔ficha — sem
+     * isto, o anexo da Ana sairia com o nome do Bruno. */
+    if (exigeFicha && Array.isArray(dados.fichas) && dados.fichas.length === proc.colaboradoresLista.length) {
+      dados.fichas = proc.colaboradoresLista.map(function (pessoa) {
+        return dados.fichas[pessoa.indiceOriginal];
+      });
     }
 
     var imgs = carregarImagensOficio_();
@@ -587,6 +680,7 @@ function gerarOficioWeb(dados, tokenSessao) {
       instituicao:   dados.instituicao || "",
       cnpj:          dados.cnpj || "",
       colaboradores: proc.colaboradoresArr || [],
+      colaboradoresLista: proc.colaboradoresLista || [],
       corpoTexto:    proc.corpoTexto || "",
       dataHoje:      proc.dataExtenso || proc.dataHoje,
       assBase64:     imgs.assBase64,
@@ -600,7 +694,9 @@ function gerarOficioWeb(dados, tokenSessao) {
 
     var anexosFila = [{ nome: pdfFile.getName(), mimeType: MimeType.PDF, fileId: pdfFile.getId() }];
 
-    if (!proc.isLivre) {
+    /* Ofício de taxa não tem ficha para anexar — e agora pode não ter
+     * mesmo, sem isto o forEach explodiria em `undefined.forEach`. */
+    if (!proc.isLivre && Array.isArray(dados.fichas)) {
       dados.fichas.forEach(function(ficha, indice) {
         var nomeFormatado = String(proc.colaboradoresArr[indice] || "ASSOCIADO")
           .toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -613,7 +709,7 @@ function gerarOficioWeb(dados, tokenSessao) {
       });
     }
 
-    var qtdFichas          = proc.isLivre ? 0 : dados.fichas.length;
+    var qtdFichas          = (proc.isLivre || !Array.isArray(dados.fichas)) ? 0 : dados.fichas.length;
     // Texto digitado pelo atendente (Ofício Livre) — escapado antes de entrar no
     // e-mail para não permitir injeção de HTML. Os textos padrão dos demais tipos
     // (Filiação/Desfiliação/Taxas) são montados internamente por montarEmailHTML e
@@ -675,6 +771,7 @@ registrarLogSistema({
           escola:        dados.escola || "",
           numero:        proc.numero,
           colaboradores: proc.colaboradoresArr || [],
+          colaboradoresLista: proc.colaboradoresLista || [],
           cpfs:          Array.isArray(dados.cpfs) ? dados.cpfs : []
         });
         Logger.log("✅ Mensalidade_Controle atualizado — Ofício " + proc.numero);
@@ -794,10 +891,24 @@ var iniciais = nomeEscola.split(/\s+/).filter(function(w){ return w.length > 2 &
    * fica de fora, porque nele o corpo é escrito à mão e não existe lista.
    * Escrito assim, o próximo tipo nominal que aparecer já nasce certo. */
   if (p.tipoNorm !== "OFICIO_LIVRE" && p.colaboradores && p.colaboradores.length > 0) {
-    var itens = p.colaboradores.map(function(nome, i) {
+    /* A lista pode vir de duas formas: como array de nomes (chamadas
+     * antigas) ou como array de {nome, cpf} (lote). Normalizamos aqui para
+     * a montagem não precisar saber de onde veio. */
+    var listaColab = (p.colaboradoresLista && p.colaboradoresLista.length)
+      ? p.colaboradoresLista
+      : p.colaboradores.map(function (n) { return { nome: n, cpf: "" }; });
+
+    var itens = listaColab.map(function(pessoa, i) {
+      var nome = String(pessoa && pessoa.nome !== undefined ? pessoa.nome : pessoa);
+      var cpfBruto = String(pessoa && pessoa.cpf ? pessoa.cpf : "").replace(/\D/g, "");
+      /* CPF é opcional: quem não informou não ganha linha vazia no documento. */
+      var cpfHTML = cpfBruto
+        ? '<div style="font-size:11px;color:#64748b;margin-top:2px;letter-spacing:.02em;">CPF: ' +
+            escapeHtml_(oficios_formatarCpf_(cpfBruto)) + '</div>'
+        : '';
       return '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;' + (i % 2 === 0 ? 'background:#f8fafc;' : 'background:#fff;') + 'border-bottom:1px solid #f1f5f9;">' +
         '<div style="width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,#001f4d,#1565C0);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;">' + (i + 1) + '</div>' +
-        '<div style="font-size:13px;font-weight:700;color:#0f172a;">' + escapeHtml_(nome) + '</div>' +
+        '<div><div style="font-size:13px;font-weight:700;color:#0f172a;">' + escapeHtml_(nome) + '</div>' + cpfHTML + '</div>' +
         '<div style="margin-left:auto;width:18px;height:18px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;"><span style="color:#166534;font-size:11px;">&#x2713;</span></div>' +
         '</div>';
     }).join("");
@@ -821,7 +932,11 @@ var iniciais = nomeEscola.split(/\s+/).filter(function(w){ return w.length > 2 &
     }).join("");
   }
 
-  var cnpjHTML   = p.cnpj ? '<div style="font-size:12px;color:#475569;margin-top:3px;">CNPJ: ' + escapeHtml_(p.cnpj) + '</div>' : '';
+  /* CNPJ com máscara. O cadastro guarda só os dígitos, e o documento saía
+   * com "36136001000105" na cara da escola. Se vier com quantidade de
+   * dígitos que não é 14, imprime como veio — melhor um número estranho
+   * do que um número mutilado por uma máscara que não serve. */
+  var cnpjHTML   = p.cnpj ? '<div style="font-size:12px;color:#475569;margin-top:3px;">CNPJ: ' + escapeHtml_(oficios_formatarCnpj_(p.cnpj)) + '</div>' : '';
   var numeroEsc  = escapeHtml_(p.numero || 'PR\u00c9VIA');
 
   return "<!DOCTYPE html>\n" +
