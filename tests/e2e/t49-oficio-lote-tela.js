@@ -69,6 +69,25 @@ b.ok(!!$("btnAnexarFichasLote"), "botão 'Fichas em lote' existe");
 b.ok(!!$("modalLoteTrabalhadores"), "modal do lote existe");
 b.ok(!!$("fichasLoteInput"), "campo de arquivo do lote existe");
 
+b.passo("1b. O lote é o terceiro modo, ao lado de 'Preencher manualmente'");
+/* Decisão do usuário em 18/08/2026: "terceiro modo ao lado de preencher
+   manualmente". Filiação, Desfiliação e Oposição têm a linha de modos; Taxa
+   Negocial e Taxa Assistencial não têm, e mantêm o botão no cabeçalho do
+   bloco de trabalhadores. Todos abrem o mesmo modal. */
+["btnModoLoteFil", "btnModoLoteDesf", "btnModoLoteOpos"].forEach(id => {
+  const el = $(id);
+  b.ok(!!el, "botão '" + id + "' existe na linha de modos",
+    el ? (el.textContent || "").trim() : "AUSENTE");
+});
+const linhaModos = $("btnModoManualFil") && $("btnModoManualFil").parentNode;
+b.ok(!!linhaModos && linhaModos.contains($("btnModoLoteFil")),
+  "o botão do lote está na MESMA linha do 'Preencher manualmente'",
+  linhaModos ? linhaModos.querySelectorAll("button").length + " botões na linha" : "linha não encontrada");
+$("btnModoLoteFil").click();
+b.ok($("modalLoteTrabalhadores").classList.contains("aberto"),
+  "o terceiro modo abre o mesmo modal do lote");
+clicar("btnCancelarLoteTrabalhadores");
+
 b.passo("2. O modal abre e fecha");
 clicar("btnColarLoteTrabalhadores");
 b.ok($("modalLoteTrabalhadores").classList.contains("aberto"), "modal abriu ao clicar em 'Colar lista'");

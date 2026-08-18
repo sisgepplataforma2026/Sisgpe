@@ -1342,7 +1342,14 @@ function enviarWhatsappOficio(urlPdf, numero) {
       btn.addEventListener("click", function(ev){ ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation(); handler(); return false; }, true);
     }
 
-    blindarBotao("btnColarLoteTrabalhadores", loteAbrirModal);
+    /* O lote é o terceiro modo de preenchimento, ao lado de "Preencher
+     * manualmente" e "Extrair (IA)" — decisão do usuário em 18/08/2026.
+     * Filiação, Desfiliação e Oposição têm a linha de modos; Taxa Negocial e
+     * Taxa Assistencial não têm, e por isso mantêm o botão no cabeçalho do
+     * bloco de trabalhadores. Todos abrem o MESMO modal: um caminho só, com
+     * várias portas, em vez de três implementações que divergem com o tempo. */
+    ["btnColarLoteTrabalhadores", "btnModoLoteFil", "btnModoLoteDesf", "btnModoLoteOpos"]
+      .forEach(function (id) { blindarBotao(id, loteAbrirModal); });
     blindarBotao("btnFecharLoteTrabalhadores", loteFecharModal);
     blindarBotao("btnCancelarLoteTrabalhadores", loteFecharModal);
     blindarBotao("btnConfirmarLoteTrabalhadores", loteConfirmar);
