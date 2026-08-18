@@ -66,9 +66,14 @@ function montarEmailHTML(tipo, numero, assuntoTipo, quantidade, textoPrincipalCu
          documento anexo determina. */
       textoPrincipal =
         "Encaminhamos, em anexo, o <strong>Ofício nº " + numero + "</strong> referente à <strong>oposição à Taxa Negocial</strong> prevista na <strong>Cláusula 57ª da CCT 2026/2027</strong>, acompanhado da carta de oposição.\n\n" +
+        /* Sem pedido de restituição: eu havia incluído "caso já tenha sido
+           efetuado, que o valor seja restituído", e o usuário mandou tirar em
+           18/08/2026. O ofício anexo também não pede devolução — só determina
+           que o desconto não seja feito. O e-mail agora diz a mesma coisa que
+           o documento, nem mais nem menos. */
         (quantidade === 1
-          ? "O(a) trabalhador(a) relacionado(a) manifestou formalmente oposição ao desconto. Solicitamos, portanto, que <strong>o desconto da Taxa Negocial não seja realizado</strong> — e, caso já tenha sido efetuado, que o valor seja <strong>restituído</strong> ao(à) trabalhador(a).\n\n"
-          : "Os(as) trabalhadores(as) relacionados(as) manifestaram formalmente oposição ao desconto. Solicitamos, portanto, que <strong>o desconto da Taxa Negocial não seja realizado</strong> para essas pessoas — e, caso já tenha sido efetuado, que os valores sejam <strong>restituídos</strong>.\n\n") +
+          ? "O(a) trabalhador(a) relacionado(a) manifestou formalmente oposição ao desconto. Solicitamos, portanto, que <strong>o desconto da Taxa Negocial não seja realizado</strong>.\n\n"
+          : "Os(as) trabalhadores(as) relacionados(as) manifestaram formalmente oposição ao desconto. Solicitamos, portanto, que <strong>o desconto da Taxa Negocial não seja realizado</strong> para essas pessoas.\n\n") +
         "Solicitamos, por gentileza, a <strong>confirmação do recebimento</strong> respondendo a este e-mail.";
     } else if (assuntoTipo === "Ofício Livre") {
       textoPrincipal =

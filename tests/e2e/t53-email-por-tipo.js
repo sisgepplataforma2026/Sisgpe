@@ -138,8 +138,14 @@ b.ok(/oposi(ç|c)(ã|a)o/i.test(oposicao),
 b.ok(/descont/i.test(oposicao) && /n(ã|a)o seja (realizado|efetuado|feito)/i.test(oposicao),
   "e pede que o desconto NÃO seja realizado para quem se opôs",
   "é a única coisa que esse ofício existe para dizer");
-b.ok(/restitu/i.test(oposicao),
-  "e pede a restituição se o desconto já tiver sido feito");
+/* NÃO pede restituição. Eu havia escrito "caso já tenha sido efetuado, que
+   o valor seja restituído" e o usuário mandou tirar: o ofício anexo não pede
+   devolução, só determina que o desconto não seja feito. E-mail e documento
+   têm que dizer a mesma coisa — se o e-mail pede mais que o ofício, a escola
+   recebe duas ordens diferentes no mesmo envio. */
+b.ok(!/restitu/i.test(oposicao),
+  "NÃO pede restituição — o ofício anexo também não pede",
+  "e-mail e documento precisam determinar a mesma coisa");
 b.ok(!/6%|tr(ê|e)s parcelas/i.test(oposicao),
   "e NÃO repete a cobrança da Taxa Negocial",
   "seria o contrário do que o documento pede");
