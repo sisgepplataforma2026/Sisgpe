@@ -154,6 +154,23 @@ b.ok(/isentos/i.test(texto) && /filiados/i.test(texto),
 b.ok(/10º \(décimo\) dia\s*\n?\s*útil/.test(texto.replace(/\s+/g, " ")) || /10º \(décimo\) dia útil/.test(texto.replace(/\s+/g, " ")),
   "mantém o prazo de repasse até o 10º dia útil");
 
+b.passo("9. A tela manda o CPF e afrouxa ficha/CPF só nas taxas");
+/* Asserções sobre o CÓDIGO da tela, não sobre a tela rodando. jsdom não
+   monta o formulário de ofícios inteiro aqui, então isto é o piso: garante
+   que o CPF viaja para o backend e que a regra por tipo existe. O
+   comportamento no navegador continua "não testado". */
+const fsT48 = require("fs");
+const telaOficios = fsT48.readFileSync(require("path").resolve(__dirname, "../../OficiosScripts.html"), "utf8");
+b.ok(/colaboradores:d\.beneficiarios\.map\(function\(b\)\{return \{nome:b\.nome, cpf:b\.cpf\};\}\)/.test(telaOficios),
+  "a tela envia nome E CPF de cada trabalhador ao backend",
+  (telaOficios.match(/return \{nome:b\.nome, cpf:b\.cpf\};/g) || []).length + " pontos de envio");
+b.ok(/function oficioExigeFichaECpf/.test(telaOficios) && /function oficioLimitePessoas/.test(telaOficios),
+  "a tela tem a regra por tipo (ficha/CPF obrigatórios e limite)");
+b.ok(!/if\(d\.beneficiarios\.some\(function\(b\)\{return !b\.nome\|\|!b\.cpf;\}\)\)/.test(telaOficios),
+  "a exigência incondicional de CPF saiu da validação de emissão");
+b.ok(/oficioLimitePessoas\(tipo\) \? 25 : 50|\? 25 : 50/.test(telaOficios),
+  "limite 50 para taxas e 25 onde há ficha por pessoa");
+
 b.naoTestavel("A conversão para PDF e a aparência da lista na folha",
   "o emulador não converte HTML em PDF — exige gerar um ofício no sistema no ar");
 

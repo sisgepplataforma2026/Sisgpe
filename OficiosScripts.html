@@ -476,7 +476,25 @@ window.renderDropdownEscolas = renderDropdown;
   /* ─────────────────────────────────────────────
      TRABALHADORES & FICHAS
   ────────────────────────────────────────────── */
-  var MAX_TRABALHADORES = 25, contadorTrabalhadores = 0;
+  /* Regra por tipo de ofício.
+   *
+   * Filiação e desfiliação nascem de um documento assinado: a ficha é a
+   * prova da autorização do desconto, e o CPF identifica quem autorizou.
+   * As três taxas são cobrança prevista na CCT, incidem sobre o quadro
+   * técnico-administrativo inteiro e não têm ficha para anexar — exigir
+   * ficha e CPF ali era pedir 50 documentos para mandar uma lista de nomes.
+   *
+   * Definido pelo usuário em 18/08/2026: "pode até 50 trabalhadores, sendo
+   * o CPF não obrigatório para as três taxas e tem que sair no ofício para
+   * todas as taxas". Opcional é diferente de ausente: quando informado, o
+   * CPF sai no documento. */
+  function oficioExigeFichaECpf(tipo) {
+    var t = String(tipo || "");
+    return t === "Filiação" || t === "Desfiliação";
+  }
+  function oficioLimitePessoas(tipo) { return oficioExigeFichaECpf(tipo) ? 25 : 50; }
+
+  var MAX_TRABALHADORES = 50, contadorTrabalhadores = 0;
 
   function atualizarResumoTrabalhadores() {
     var lista = $("listaTrabalhadores"), st = $("statusSincronizacao"), btn = $("btnEmitir"), tipo = $("tipo");
@@ -590,9 +608,10 @@ function atualizarPayloadOficio(num) {
   if (!esc || esc === "Selecione...") pend.push("Selecione uma escola.");
   if (!em) pend.push("Informe o e-mail.");
   if (!bens.length && p.tipo !== "Ofício Livre") pend.push("Adicione trabalhadores.");
-  if (bens.some(function(b) { return !b.nome || !b.cpf; })) pend.push("Complete nome e CPF.");
-  if (p.tipo !== "Ofício Livre" && bens.length > 0 && fichs.length < bens.length) pend.push("Anexe pelo menos 1 ficha por trabalhador.");
-  if (fichs.length > 25) pend.push("Limite máximo de 25 fichas.");
+  if (bens.some(function(b) { return !b.nome; })) pend.push("Complete o nome do trabalhador.");
+  if (oficioExigeFichaECpf(p.tipo) && bens.some(function(b) { return !b.cpf; })) pend.push("Complete o CPF.");
+  if (oficioExigeFichaECpf(p.tipo) && bens.length > 0 && fichs.length < bens.length) pend.push("Anexe pelo menos 1 ficha por trabalhador.");
+  if (bens.length > oficioLimitePessoas(p.tipo)) pend.push("Limite máximo de " + oficioLimitePessoas(p.tipo) + " trabalhadores para este tipo.");
 
   if (!p.tipo && !esc && !bens.length && !fichs.length) {
     painel.innerHTML = '<div class="revisao-empty">Preencha os dados para montar a revisão.</div>';
@@ -759,7 +778,9 @@ function removerFichaCard(btn, idx) {
 
   function addTrabalhador() {
     var l = $("listaTrabalhadores"); if (!l) return;
-    if (l.querySelectorAll(".trabalhador-card").length >= MAX_TRABALHADORES) { toast("Limite de 25 trabalhadores.", "warn"); return; }
+    var _tipoAtual = ($("tipo") && $("tipo").value) || "";
+    var _limite = oficioLimitePessoas(_tipoAtual);
+    if (l.querySelectorAll(".trabalhador-card").length >= _limite) { toast("Limite de " + _limite + " trabalhadores para este tipo de ofício.", "warn"); return; }
     var v = l.querySelector(".worker-empty"); if (v) v.remove();
     l.appendChild(criarCardTrabalhador()); renumerarTrabalhadores(); atualizarResumoTrabalhadores();
   }
@@ -869,7 +890,7 @@ function atualizarContadorFichas() {
     if(!novaAba) return toast("Pop-up bloqueado pelo navegador.","warn");
     var payload = d.tipo==="Ofício Livre"
       ? {tipo:d.tipo, para:$("para")&&$("para").value, cargo:$("cargo")&&$("cargo").value, assunto:$("assunto")&&$("assunto").value, corpo:$("corpo")&&$("corpo").value, email:$("emailLivreAux")&&$("emailLivreAux").value}
-      : {tipo:d.tipo, escola:d.escola.nome, cnpj:d.escola.cnpj, email:d.escola.email, endereco:d.escola.endereco, colaboradores:d.beneficiarios.map(function(b){return b.nome;})};
+      : {tipo:d.tipo, escola:d.escola.nome, cnpj:d.escola.cnpj, email:d.escola.email, endereco:d.escola.endereco, colaboradores:d.beneficiarios.map(function(b){return {nome:b.nome, cpf:b.cpf};})};
     google.script.run
       .withSuccessHandler(function(html){ novaAba.document.open(); novaAba.document.write(html); novaAba.document.close(); })
       .withFailureHandler(function(err){ try{novaAba.close();}catch(_){} toast("Erro ao gerar preview: "+((err&&err.message)||err),"err"); })
@@ -884,7 +905,9 @@ function atualizarContadorFichas() {
       if(!d.escola.cnpj||somenteDigitos(d.escola.cnpj).length!==14) return toast("CNPJ inválido.","warn");
       if(!d.escola.email) return toast("Informe o e-mail.","warn");
       if(!d.beneficiarios.length) return toast("Adicione trabalhadores.","warn");
-      if(d.beneficiarios.some(function(b){return !b.nome||!b.cpf;})) return toast("Complete nome e CPF.","warn");
+      if(d.beneficiarios.some(function(b){return !b.nome;})) return toast("Complete o nome do trabalhador.","warn");
+      if(oficioExigeFichaECpf(d.tipo)&&d.beneficiarios.some(function(b){return !b.cpf;})) return toast("Complete nome e CPF.","warn");
+      if(d.beneficiarios.length>oficioLimitePessoas(d.tipo)) return toast("Limite de "+oficioLimitePessoas(d.tipo)+" trabalhadores para este tipo.","warn");
     } else {
       if(!$("para")&&$("para").value) return toast("Informe o destinatário.","warn");
       if(!$("emailLivreAux")&&$("emailLivreAux").value) return toast("Informe o e-mail.","warn");
@@ -924,7 +947,7 @@ function atualizarContadorFichas() {
     }
 
     var cards = document.querySelectorAll("#listaTrabalhadores .trabalhador-card");
-    for (var i = 0; i < d.beneficiarios.length; i++) {
+    for (var i = 0; oficioExigeFichaECpf(d.tipo) && i < d.beneficiarios.length; i++) {
       var card = cards[i];
       var temDrive = card && card._fichasDrive && card._fichasDrive.length > 0;
       var fichaInpCheck = card && card.querySelector(".input-ficha-trabalhador");
@@ -957,7 +980,7 @@ function atualizarContadorFichas() {
     })).then(function(fichasBase64) {
       enviarGerarOficio({
         tipo:d.tipo, escola:d.escola.nome, cnpj:d.escola.cnpj, email:d.escola.email, endereco:d.escola.endereco,
-        colaboradores:d.beneficiarios.map(function(b){return b.nome;}),
+        colaboradores:d.beneficiarios.map(function(b){return {nome:b.nome, cpf:b.cpf};}),
         cpfs:d.beneficiarios.map(function(b){return b.cpf;}),
         fichas:fichasBase64
       });
