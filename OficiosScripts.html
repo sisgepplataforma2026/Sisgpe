@@ -1603,6 +1603,24 @@ function atualizarContadorFichas() {
     }
 
     var todosArquivos = [];
+
+    /* O PDF ÚNICO DO OFÍCIO ENTRA PRIMEIRO.
+     *
+     * Defeito medido em 18/08/2026, com o usuário reportando "a ficha não
+     * está indo junto ao ofício no e-mail". A varredura abaixo lia SÓ os
+     * cartões dos trabalhadores — o campo "Fichas do ofício"
+     * (#fichasOficioLote), onde ele anexa o escaneado de todas as cartas da
+     * escola, não era lido por ninguém na hora de emitir. O arquivo ficava
+     * no navegador e o e-mail saía com o ofício sozinho, sem erro nenhum.
+     *
+     * getFichasPayload() já lia esse campo, mas só alimenta o painel de
+     * revisão; quem monta o que vai para o backend é este trecho. Duas
+     * leituras do mesmo campo, uma delas sem consumidor. */
+    var inputFichasOficio = $("fichasOficioLote");
+    if (inputFichasOficio && inputFichasOficio.files) {
+      Array.from(inputFichasOficio.files).forEach(function (f) { todosArquivos.push(f); });
+    }
+
     document.querySelectorAll("#listaTrabalhadores .trabalhador-card").forEach(function(card) {
       if (card._fichasDrive && card._fichasDrive.length) {
         card._fichasDrive.forEach(function(f) { todosArquivos.push({ _isDrive: true, driveId: f.id, nome: f.nome, tipo: f.tipo }); });
