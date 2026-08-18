@@ -238,8 +238,8 @@ function montarTextoOposicaoTaxaNegocial_(dados, colaboradoresArr) {
     "Prezados(as) Senhores(as),\n\n" +
     "Por meio deste, comunicamos que " +
     (qtd === 1
-      ? "o(a) colaborador(a) acima identificado(a) exerceu, no período de 17 a 26 de agosto de 2026, seu direito de oposição"
-      : "os(as) colaboradores(as) acima identificados(as) exerceram, no período de 17 a 26 de agosto de 2026, seu direito de oposição") +
+      ? "o(a) colaborador(a) acima identificado(a) exerceu, no período de 17 a 26 de agosto de 2026, em dia útil, seu direito de oposição"
+      : "os(as) colaboradores(as) acima identificados(as) exerceram, no período de 17 a 26 de agosto de 2026, em dia útil, seu direito de oposição") +
     " ao desconto da Taxa Negocial, conforme carta" + (qtd === 1 ? "" : "s") + " em anexo.\n\n" +
     "Solicitamos, portanto, que NÃO seja" + (qtd === 1 ? "" : "m") +
     " efetuado" + (qtd === 1 ? "" : "s") + " o" + (qtd === 1 ? "" : "s") +
@@ -384,4 +384,77 @@ function carregarImagensOficio_() {
 function invalidarCacheTemplatesOficios(templateId) {
   Logger.log("ℹ Sistema utiliza templates internos em código.");
   return { ok: true, mensagem: "Sistema utilizando templates internos. Nenhum cache necessário." };
+}
+/* ════════════════════════════════════════════════════════════════════
+   PRAZO DE OPOSIÇÃO À TAXA NEGOCIAL — CCT 2026/2027
+   ════════════════════════════════════════════════════════════════════
+
+   Fonte: comunicado publicado pelo SindEducação-ES em jornal (A Tribuna),
+   assinado pelo Presidente, datado de 17/07/2026.
+
+     "no período compreendido entre os dias 17 e 26 de agosto de 2026"
+     "Horário de atendimento: Segunda a sexta-feira, das 10h às 12h e das
+      14h às 16h"
+
+   O usuário corrigiu, em 18/08/2026, uma leitura minha que estava frouxa:
+   "17 a 26 — não entra sábado e domingo". O intervalo tem 10 dias corridos,
+   mas só 8 valem:
+
+     17, 18, 19, 20, 21/08  (seg a sex)
+     22/08 sábado  — FORA
+     23/08 domingo — FORA
+     24, 25, 26/08  (seg a qua)
+
+   Estas funções são de LEITURA: dizem se uma data cabe no prazo e listam os
+   dias válidos. Nada aqui bloqueia emissão — quem decide é quem atende, com
+   a informação à vista (REGRA Nº 0.6). */
+
+var OPOSICAO_TAXA_NEGOCIAL_INICIO_ = { ano: 2026, mes: 7, dia: 17 };  // mês 7 = agosto
+var OPOSICAO_TAXA_NEGOCIAL_FIM_    = { ano: 2026, mes: 7, dia: 26 };
+
+/** Normaliza para meia-noite local, para comparar só a data. */
+function oposicao_soData_(valor) {
+  var d = (valor instanceof Date) ? new Date(valor.getTime()) : new Date(valor);
+  if (isNaN(d.getTime())) return null;
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+/** Sábado (6) e domingo (0) não contam — o atendimento é de segunda a sexta. */
+function oposicao_ehDiaUtil_(data) {
+  var d = oposicao_soData_(data);
+  if (!d) return false;
+  var w = d.getDay();
+  return w !== 0 && w !== 6;
+}
+
+/**
+ * A data cabe no prazo de oposição?
+ * Devolve { dentro, motivo } — o motivo serve de texto de aviso na tela.
+ */
+function oposicao_dentroDoPrazo_(data) {
+  var d = oposicao_soData_(data);
+  if (!d) return { dentro: false, motivo: "Data inválida." };
+
+  var ini = new Date(OPOSICAO_TAXA_NEGOCIAL_INICIO_.ano, OPOSICAO_TAXA_NEGOCIAL_INICIO_.mes, OPOSICAO_TAXA_NEGOCIAL_INICIO_.dia);
+  var fim = new Date(OPOSICAO_TAXA_NEGOCIAL_FIM_.ano,    OPOSICAO_TAXA_NEGOCIAL_FIM_.mes,    OPOSICAO_TAXA_NEGOCIAL_FIM_.dia);
+
+  if (d < ini) return { dentro: false, motivo: "Antes da abertura do prazo (17/08/2026)." };
+  if (d > fim) return { dentro: false, motivo: "Depois do encerramento do prazo (26/08/2026)." };
+  if (!oposicao_ehDiaUtil_(d)) {
+    return { dentro: false, motivo: "Sábado e domingo não contam — o atendimento é de segunda a sexta." };
+  }
+  return { dentro: true, motivo: "" };
+}
+
+/** Os dias que realmente valem, em ordem. Serve para mostrar na tela. */
+function oposicao_diasUteisDoPrazo_() {
+  var lista = [];
+  var d   = new Date(OPOSICAO_TAXA_NEGOCIAL_INICIO_.ano, OPOSICAO_TAXA_NEGOCIAL_INICIO_.mes, OPOSICAO_TAXA_NEGOCIAL_INICIO_.dia);
+  var fim = new Date(OPOSICAO_TAXA_NEGOCIAL_FIM_.ano,    OPOSICAO_TAXA_NEGOCIAL_FIM_.mes,    OPOSICAO_TAXA_NEGOCIAL_FIM_.dia);
+  while (d <= fim) {
+    if (oposicao_ehDiaUtil_(d)) lista.push(new Date(d.getTime()));
+    d.setDate(d.getDate() + 1);
+  }
+  return lista;
 }

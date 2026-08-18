@@ -185,10 +185,13 @@ function getCCTTexto_() {
     "• 6% em 3 parcelas mensais e sucessivas de 2%, iniciando na competência setembro/2026\n" +
     "• ISENTOS: filiados ao SindEducação-ES\n" +
     "• Repasse: até o 10º dia útil do mês subsequente ao desconto, com relação nominal\n" +
-    "• PRAZO DE OPOSIÇÃO: de 17 a 26 de agosto de 2026, por carta de próprio punho,\n" +
-    "  entregue pessoalmente em duas vias de igual teor, na sede do SindEducação-ES\n" +
-    "  (Rua General Osório, 83, Ed. Portugal, salas 501 a 504, Centro, Vitória/ES),\n" +
-    "  de segunda a sexta, das 10h às 12h e das 14h às 16h\n" +
+    "• PRAZO DE OPOSIÇÃO: de 17 a 26 de agosto de 2026, SOMENTE EM DIAS ÚTEIS\n" +
+    "  (segunda a sexta-feira) — sábado e domingo NÃO contam. No calendário de 2026\n" +
+    "  isso são 8 dias: 17, 18, 19, 20 e 21/08 (seg a sex) e 24, 25 e 26/08 (seg a qua).\n" +
+    "  Ficam de fora 22/08 (sábado) e 23/08 (domingo).\n" +
+    "  Forma: carta de próprio punho, entregue PESSOALMENTE, em duas vias de igual teor,\n" +
+    "  na sede do SindEducação-ES (Rua General Osório, 83, Ed. Portugal, salas 501 a 504,\n" +
+    "  Centro, Vitória/ES), das 10h às 12h e das 14h às 16h\n" +
     "• Base: Assembleia Geral Extraordinária de 17/11/2025 (edital em A Tribuna, 15/11/2025);\n" +
     "  constitucionalidade reconhecida pelo STF no Tema 935 (Repercussão Geral)\n\n" +
 

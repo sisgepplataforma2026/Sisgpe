@@ -158,4 +158,56 @@ b.ok(/colaborador\(a\) acima identificado\(a\) exerceu/.test(oficio("DESFILIACAO
 b.ok(/colaboradores\(as\) acima identificados\(as\) exerceram/.test(oficio("DESFILIACAO", TRES)),
   "Desfiliação com 3 pessoas também vai no plural");
 
+/* ═══════════════════════════════════════════════════════════
+   4. Sábado e domingo NÃO entram no prazo
+   ═══════════════════════════════════════════════════════════
+
+   Correção do usuário em 18/08/2026: "17 a 26 — não entra sábado e domingo".
+   O comunicado publicado fecha a questão no horário de atendimento: "Segunda
+   a sexta-feira, das 10h às 12h e das 14h às 16h". O intervalo tem 10 dias
+   corridos e só 8 valem.
+   ═══════════════════════════════════════════════════════════ */
+b.fluxo("OPOSIÇÃO · O prazo conta em dias úteis");
+
+b.passo("12");
+const uteis = g.oposicao_diasUteisDoPrazo_();
+b.igual(uteis.length, 8, "o prazo tem 8 dias úteis, não os 10 corridos");
+b.igual(uteis.map(d => d.getDate()), [17, 18, 19, 20, 21, 24, 25, 26],
+  "e são exatamente 17 a 21 e 24 a 26 de agosto");
+
+/* Os dois dias que o usuário apontou. */
+b.passo("13");
+[[22, "sábado"], [23, "domingo"]].forEach(([dia, nome]) => {
+  const r = g.oposicao_dentroDoPrazo_(new Date(2026, 7, dia));
+  b.ok(r.dentro === false, dia + "/08 (" + nome + ") fica FORA do prazo");
+  b.ok(/[Ss](á|a)bado e domingo/.test(r.motivo),
+    "e o motivo diz por quê, para virar aviso na tela", r.motivo);
+});
+
+/* Contraprova: os dias úteis do meio do intervalo continuam dentro. Sem
+   isto, uma função que recusasse tudo passaria nas asserções acima. */
+b.passo("14");
+[17, 21, 24, 26].forEach(dia => {
+  b.ok(g.oposicao_dentroDoPrazo_(new Date(2026, 7, dia)).dentro === true,
+    dia + "/08 é dia útil e está DENTRO do prazo");
+});
+
+b.passo("15");
+const antes = g.oposicao_dentroDoPrazo_(new Date(2026, 7, 14));
+b.ok(antes.dentro === false && /Antes/.test(antes.motivo),
+  "14/08 (antes da abertura) fica fora, e o motivo diz isso", antes.motivo);
+const depois = g.oposicao_dentroDoPrazo_(new Date(2026, 7, 27));
+b.ok(depois.dentro === false && /Depois/.test(depois.motivo),
+  "27/08 (depois do encerramento) fica fora, e o motivo diz isso", depois.motivo);
+
+/* Data lixo não pode virar "dentro do prazo" por acidente. */
+b.passo("16");
+b.ok(g.oposicao_dentroDoPrazo_("banana").dentro === false,
+  "texto que não é data não passa como dentro do prazo");
+
+/* O aviso na tela ainda NÃO existe — estas funções são de leitura e nada as
+   chama na emissão. Registrado como não testável para não virar "pronto". */
+b.naoTestavel("Aviso na tela quando a oposição estiver fora do prazo",
+  "as funções existem e estão cobertas, mas nada as chama ainda na emissão — falta o usuário decidir se quer o aviso");
+
 b.resumo();
