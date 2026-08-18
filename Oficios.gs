@@ -757,25 +757,36 @@ function gerarOficioWeb(dados, tokenSessao) {
          * desconto NÃO seja feito —, um arquivo chamado ficha de filiação. O
          * documento diz uma coisa e o anexo, pelo nome, diz o contrário. Numa
          * contestação é o nome do arquivo que fica no e-mail arquivado. */
-        /* Singular e plural declarados, não montados com "+s": o plural de
-           "Carta_Oposicao" é "Cartas_Oposicao", não "Carta_Oposicaos". */
-        var rotuloUm   = (proc.tipoNorm === "DESFILIACAO")            ? "Carta_Desfiliacao"
-                       : (proc.tipoNorm === "OPOSICAO_TAXA_NEGOCIAL") ? "Carta_Oposicao"
-                       : (proc.tipoNorm === "FILIACAO")               ? "Ficha_Filiacao"
-                       : "Documento";
-        var rotuloVarios = (proc.tipoNorm === "DESFILIACAO")            ? "Cartas_Desfiliacao"
-                         : (proc.tipoNorm === "OPOSICAO_TAXA_NEGOCIAL") ? "Cartas_Oposicao"
-                         : (proc.tipoNorm === "FILIACAO")               ? "Fichas"
-                         : "Documentos";
+        /* Padrão definido pelo usuário em 18/08/2026: prefixo "Ficha_" em
+           todos, com o TIPO logo depois.
+
+             Ficha_Filiacao_<NOME>      ·  Fichas_Filiacao_<ESCOLA>_<data>
+             Ficha_Desfiliacao_<NOME>   ·  Fichas_Desfiliacao_<ESCOLA>_<data>
+             Ficha_Oposicao_<NOME>      ·  Fichas_Oposicao_<ESCOLA>_<data>
+
+           Antes TODO tipo produzia "Ficha_Filiacao_<NOME>": a escola recebia,
+           num ofício de oposição — que manda NÃO descontar —, um arquivo com
+           nome de ficha de filiação. Numa contestação é o nome do arquivo que
+           fica no e-mail arquivado.
+
+           Sem acento de propósito: nome de arquivo com ç e ã atravessa Drive,
+           Gmail e o computador da escola com codificações diferentes, e o que
+           chega do outro lado costuma ser "Desfiliaa~o". */
+        var tipoArquivo = (proc.tipoNorm === "DESFILIACAO")            ? "Desfiliacao"
+                        : (proc.tipoNorm === "OPOSICAO_TAXA_NEGOCIAL") ? "Oposicao"
+                        : (proc.tipoNorm === "FILIACAO")               ? "Filiacao"
+                        : (proc.tipoNorm === "TAXA_ASSISTENCIAL")      ? "Taxa_Assistencial"
+                        : (proc.tipoNorm === "TAXA_NEGOCIAL")          ? "Taxa_Negocial"
+                        : "Documento";
         if (fichaPorPessoa) {
           var nomeFormatado = String(proc.colaboradoresArr[indice] || "ASSOCIADO")
             .toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
             .replace(/[^A-Z0-9\s]/g, "").trim().replace(/\s+/g, "_");
-          nomeArquivo = rotuloUm + "_" + nomeFormatado + "." + extensao;
+          nomeArquivo = "Ficha_" + tipoArquivo + "_" + nomeFormatado + "." + extensao;
         } else {
           /* Um PDF por escola por dia: o número de ordem só entra quando há
            * mais de um arquivo, para o caso comum não ganhar um "_1" inútil. */
-          nomeArquivo = rotuloVarios + "_" + escolaArquivo + "_" + dataArquivo +
+          nomeArquivo = "Fichas_" + tipoArquivo + "_" + escolaArquivo + "_" + dataArquivo +
             (dados.fichas.length > 1 ? "_" + (indice + 1) : "") + "." + extensao;
         }
         var blob        = Utilities.newBlob(Utilities.base64Decode(ficha.base64), ficha.tipo || "application/pdf", nomeArquivo);

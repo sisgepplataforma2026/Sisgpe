@@ -111,8 +111,8 @@ const nomes = (anexos || []).map(a => String(a.nome || ""));
    data". Minha primeira asserção procurava o nome original do arquivo e
    reprovava o comportamento CERTO. Confere a regra de nomeação, não o nome
    que o atendente deu ao arquivo no computador dele. */
-b.ok(nomes.some(n => /^Cartas_Oposicao_.+_\d{2}-\d{2}-\d{4}/i.test(n)),
-  "a carta anexada aparece como CARTA DE OPOSIÇÃO, com escola e data",
+b.ok(nomes.some(n => /^Fichas_Oposicao_.+_\d{2}-\d{2}-\d{4}/i.test(n)),
+  "a carta anexada aparece como Fichas_Oposicao, com escola e data",
   nomes.join(" · "));
 b.ok(nomes.some(n => /^Of[ií]cio/i.test(n)),
   "e o PDF do próprio ofício também vai", nomes.join(" · "));
@@ -207,13 +207,13 @@ b.igual(anexoDe("Filiação", [{ nome: "CLARA GOMES" }], [arquivo("scan.pdf", "A
 
 b.passo("9");
 b.igual(anexoDe("Desfiliação", [{ nome: "CLARA GOMES" }], [arquivo("scan.pdf", "A")]),
-  ["Carta_Desfiliacao_CLARA_GOMES.pdf"],
-  "Desfiliação anexa uma CARTA DE DESFILIAÇÃO, não uma ficha de filiação");
+  ["Ficha_Desfiliacao_CLARA_GOMES.pdf"],
+  "Desfiliação anexa Ficha_Desfiliacao, não Ficha_Filiacao");
 
 b.passo("10");
 b.igual(anexoDe("Oposição à Taxa Negocial", [{ nome: "CLARA GOMES" }], [arquivo("scan.pdf", "A")]),
-  ["Carta_Oposicao_CLARA_GOMES.pdf"],
-  "Oposição anexa uma CARTA DE OPOSIÇÃO",
+  ["Ficha_Oposicao_CLARA_GOMES.pdf"],
+  "Oposição anexa Ficha_Oposicao",
   "era o defeito: vinha como ficha de filiação, dizendo o contrário do ofício");
 
 /* Contraprova: os três nomes têm que ser DIFERENTES. Sem isto, um rótulo
@@ -233,8 +233,8 @@ b.passo("12");
 const lote = anexoDe("Oposição à Taxa Negocial",
   [{ nome: "A A" }, { nome: "B B" }, { nome: "C C" }],
   [arquivo("scan_unico.pdf", "TUDO")]);
-b.ok(/^Cartas_Oposicao_/.test(lote[0] || ""),
-  "no lote o PDF único sai como Cartas_Oposicao — plural correto, não 'Oposicaos'",
+b.ok(/^Fichas_Oposicao_/.test(lote[0] || ""),
+  "no lote o PDF único sai como Fichas_Oposicao — plural no Ficha, não no tipo",
   lote.join(" · "));
 b.ok(/COLEGIO/.test(lote[0] || "") && /\d{2}-\d{2}-\d{4}/.test(lote[0] || ""),
   "com nome da escola e data", lote[0] || "");
