@@ -672,6 +672,19 @@ function atualizarPayloadOficio(num) {
     + '<div class="ficha-preview-individual" style="margin-top:8px;"></div>'
     + '</div>';
 
+  /* A área de ficha só existe onde a ficha existe.
+   *
+   * Nas três taxas não há ficha por pessoa — é cobrança prevista na CCT,
+   * incide sobre o quadro todo. Deixar o campo ali fazia o cartão pedir uma
+   * coisa que a pessoa não tem para dar, e ainda ocupava um terço da altura
+   * de cada cartão: com 50 pessoas, é muita rolagem para nada. */
+  (function () {
+    var area = c.querySelector(".trabalhador-ficha-area");
+    if (area && !oficioExigeFichaECpf(($("tipo") && $("tipo").value) || "")) {
+      area.style.display = "none";
+    }
+  })();
+
   var inputFicha   = c.querySelector(".input-ficha-trabalhador");
   var contadorFich = c.querySelector(".ficha-contador");
   var previewFich  = c.querySelector(".ficha-preview-individual");
@@ -821,11 +834,52 @@ function removerFichaCard(btn, idx) {
     return { pessoas: pessoas, avisos: avisos };
   }
 
+  /* Fila do modal: a pessoa entra uma por vez, e só vira cartão no ofício
+   * quando ela confirma. Ficar criando cartão a cada nome digitado
+   * espalharia o trabalho pela tela inteira e tiraria a chance de conferir
+   * a lista antes. */
+  var lotePessoas = [];
+
+  function loteAdicionarPessoa() {
+    var iNome = $("loteNome"), iCpf = $("loteCpf");
+    var bruto = String((iNome || {}).value || "").trim();
+    if (!bruto) { toast("Informe o nome do trabalhador.", "warn"); if (iNome) iNome.focus(); return; }
+
+    /* Colar várias linhas no campo de nome adiciona todas — quem tem a lista
+     * pronta na planilha não precisa digitar de novo, e quem digita uma por
+     * vez nem percebe que isso existe. */
+    var linhas = bruto.split(/\r?\n/).map(function (t) { return t.trim(); }).filter(Boolean);
+    var cpfDigitado = somenteDigitos((iCpf || {}).value || "");
+
+    if (linhas.length > 1) {
+      var r = loteInterpretarTexto(linhas.join("\n"));
+      r.pessoas.forEach(function (p) { lotePessoas.push(p); });
+      if (r.avisos.length) toast(r.avisos[0], "warn");
+    } else {
+      if (cpfDigitado && cpfDigitado.length !== 11) {
+        toast("CPF com " + cpfDigitado.length + " dígitos. Deixe em branco ou complete.", "warn");
+        if (iCpf) iCpf.focus();
+        return;
+      }
+      lotePessoas.push({ nome: linhas[0], cpf: cpfDigitado });
+    }
+
+    if (iNome) iNome.value = "";
+    if (iCpf) iCpf.value = "";
+    loteRenderizarPrevia();
+    if (iNome) iNome.focus();
+  }
+
+  function loteRemoverPessoa(indice) {
+    lotePessoas.splice(indice, 1);
+    loteRenderizarPrevia();
+  }
+
   function loteRenderizarPrevia() {
     var caixa = $("loteTrabalhadoresPreview");
     var btnOk = $("btnConfirmarLoteTrabalhadores");
     if (!caixa) return;
-    var r = loteInterpretarTexto(($("loteTrabalhadoresTexto") || {}).value || "");
+    var r = { pessoas: lotePessoas, avisos: [] };
     var tipoAtual = ($("tipo") && $("tipo").value) || "";
     var limite = oficioLimitePessoas(tipoAtual);
     var jaTem = document.querySelectorAll("#listaTrabalhadores .trabalhador-card").length;
@@ -833,7 +887,7 @@ function removerFichaCard(btn, idx) {
     var comCpf = r.pessoas.filter(function (p) { return p.cpf; }).length;
 
     if (!r.pessoas.length) {
-      caixa.innerHTML = '<div style="font-size:12.5px;color:var(--g400);">Cole a lista acima para ver o que será adicionado.</div>';
+      caixa.innerHTML = '<div style="font-size:12.5px;color:var(--g400);">Nenhum trabalhador adicionado ainda.</div>';
       if (btnOk) { btnOk.disabled = true; btnOk.textContent = "Adicionar"; }
       return;
     }
@@ -842,18 +896,16 @@ function removerFichaCard(btn, idx) {
     /* Zebra igual à lista de colaboradores do próprio ofício e do cartão de
        trabalhador — mesma linguagem visual dos dois lugares onde a pessoa já
        vê uma lista de gente neste módulo. */
-    var linhas = r.pessoas.slice(0, 6).map(function (p, i) {
+    var linhas = r.pessoas.map(function (p, i) {
       return '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;font-size:12.5px;' +
         (i % 2 === 0 ? 'background:var(--g50);' : 'background:var(--surface);') + '">' +
         '<span style="width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,var(--navy),var(--blue));color:#fff;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;flex-shrink:0;">' + (i + 1) + '</span>' +
         '<span style="font-weight:700;color:var(--g900);">' + escaparHtmlLote(p.nome) + '</span>' +
-        (p.cpf ? '<span style="color:var(--g500);margin-left:auto;font-size:11.5px;">' + formatarCpfLote(p.cpf) + '</span>' : '') +
+        (p.cpf ? '<span style="color:var(--g500);margin-left:auto;font-size:11.5px;">' + formatarCpfLote(p.cpf) + '</span>' : '<span style="margin-left:auto;"></span>') +
+        '<button type="button" class="lote-remover" data-i="' + i + '" title="Remover" ' +
+        'style="border:none;background:transparent;color:var(--g400);cursor:pointer;font-size:14px;line-height:1;padding:2px 4px;">✕</button>' +
         '</div>';
     }).join("");
-    if (r.pessoas.length > 6) {
-      linhas += '<div style="font-size:12px;color:var(--g500);padding:8px 12px;">… e mais ' +
-                (r.pessoas.length - 6) + '</div>';
-    }
 
     /* Cabeçalho navy com contador dourado: o mesmo par que identifica o bloco
        "Colaborador(es)" no ofício gerado. Quem conferir a prévia reconhece o
@@ -877,9 +929,13 @@ function removerFichaCard(btn, idx) {
         : '') +
       '</div>';
 
+    caixa.querySelectorAll(".lote-remover").forEach(function (b) {
+      b.onclick = function () { loteRemoverPessoa(Number(b.dataset.i)); };
+    });
+
     if (btnOk) {
       btnOk.disabled = estouro;
-      btnOk.textContent = "Adicionar " + r.pessoas.length;
+      btnOk.textContent = "Adicionar " + r.pessoas.length + (r.pessoas.length === 1 ? " ao ofício" : " ao ofício");
     }
   }
 
@@ -903,11 +959,22 @@ function removerFichaCard(btn, idx) {
     var box = $("loteEscolaLista"); if (!box) return;
     var termo = normalizarBusca(($("loteEscolaBusca") || {}).value || "");
     var base = (typeof escolasSmartOficio !== "undefined" && escolasSmartOficio) ? escolasSmartOficio : [];
-    var lista = base.filter(function (e) {
-      if (!termo) return true;
-      return normalizarBusca([e.nome, e.razao, e.cnpj, e.cidade, e.uf, e.cidadeUf].join(" ")).indexOf(termo) >= 0;
-    }).slice(0, 8);
 
+    /* Sem busca, lista nenhuma. São centenas de escolas; despejar todas aqui
+     * empurra as etapas 2 e 3 para fora da tela e obriga a rolar antes de
+     * fazer qualquer coisa — que foi exatamente o que apareceu no primeiro
+     * desenho. Duas letras já filtram o suficiente. */
+    if (termo.length < 2) {
+      box.style.display = "none";
+      box.innerHTML = "";
+      return;
+    }
+
+    var lista = base.filter(function (e) {
+      return normalizarBusca([e.nome, e.razao, e.cnpj, e.cidade, e.uf, e.cidadeUf].join(" ")).indexOf(termo) >= 0;
+    }).slice(0, 5);
+
+    box.style.display = "";
     if (!lista.length) {
       box.innerHTML = '<div class="escola-recentes-empty">' +
         (base.length ? "Nenhuma escola encontrada." : "A lista aparecerá após carregar a base.") + "</div>";
@@ -937,32 +1004,50 @@ function removerFichaCard(btn, idx) {
     var lista = $("loteEscolaLista"); if (lista) lista.style.display = "none";
   }
 
-  /** A linha de modos das Taxas só aparece nos dois tipos que a usam. */
+  /* Só a Taxa Assistencial precisa desta linha.
+   *
+   * Eu tinha mostrado ela também na Taxa Negocial, e o usuário viu duas
+   * linhas de modo empilhadas na tela. O motivo: "Oposição à Taxa Negocial"
+   * NÃO é um tipo próprio na aba de tipos — é uma variante da Taxa
+   * Negocial, e o bloco dela (blocoOposicaoTaxaIA) já aparece quando esse
+   * tipo é escolhido, com "Preencher manualmente", "Extrair de carta de
+   * oposição (IA)" e agora "Via lote". Ou seja, a Taxa Negocial já tinha a
+   * sua linha; quem não tinha era só a Assistencial. */
+  /** Mostra/esconde a área de ficha dos cartões conforme o tipo escolhido. */
+  function atualizarAreasFichaPorTipo() {
+    var exige = oficioExigeFichaECpf(($("tipo") && $("tipo").value) || "");
+    document.querySelectorAll("#listaTrabalhadores .trabalhador-ficha-area")
+      .forEach(function (a) { a.style.display = exige ? "" : "none"; });
+  }
+
   function loteAtualizarModoTaxas() {
     var bloco = $("blocoModoTaxas"); if (!bloco) return;
     var tipo = ($("tipo") && $("tipo").value) || "";
-    bloco.style.display = (tipo === "Taxa Negocial" || tipo === "Taxa Assistencial") ? "block" : "none";
+    bloco.style.display = (tipo === "Taxa Assistencial") ? "block" : "none";
   }
 
   function loteAbrirModal() {
     var ov = $("modalLoteTrabalhadores"); if (!ov) return;
-    var ta = $("loteTrabalhadoresTexto"); if (ta) ta.value = "";
+    lotePessoas = [];
+    var iNome = $("loteNome"); if (iNome) iNome.value = "";
+    var iCpf = $("loteCpf"); if (iCpf) iCpf.value = "";
     var fi = $("loteFichasInput"); if (fi) fi.value = "";
     var res = $("loteFichasResumo"); if (res) res.textContent = "";
-    var box = $("loteEscolaLista"); if (box) box.style.display = "";
+    var busca = $("loteEscolaBusca"); if (busca) busca.value = "";
+    var box = $("loteEscolaLista"); if (box) { box.style.display = "none"; box.innerHTML = ""; }
     loteRenderEscolas();
     loteMostrarEscolaEscolhida();
     loteRenderizarPrevia();
     ov.classList.add("aberto");
-    if (ta) ta.focus();
+    if (iNome) iNome.focus();
   }
   function loteFecharModal() {
     var ov = $("modalLoteTrabalhadores"); if (ov) ov.classList.remove("aberto");
   }
 
   function loteConfirmar() {
-    var r = loteInterpretarTexto(($("loteTrabalhadoresTexto") || {}).value || "");
-    if (!r.pessoas.length) { toast("Cole ao menos uma linha com nome.", "warn"); return; }
+    var r = { pessoas: lotePessoas };
+    if (!r.pessoas.length) { toast("Adicione ao menos um trabalhador.", "warn"); return; }
     /* Escola primeiro: sem ela o ofício não tem destinatário, e descobrir
      * isso só na hora de emitir faria a pessoa refazer a lista.
      *
@@ -1429,10 +1514,14 @@ function enviarWhatsappOficio(urlPdf, numero) {
      * que nos outros tipos. */
     blindarBotao("btnModoManualTaxa", function () { toast("Preencha os trabalhadores abaixo.", "info"); });
     loteAtualizarModoTaxas();
+    atualizarAreasFichaPorTipo();
     var _tipoSel = $("tipo");
     if (_tipoSel && !_tipoSel.dataset.loteTaxaBound) {
       _tipoSel.dataset.loteTaxaBound = "1";
-      _tipoSel.addEventListener("change", loteAtualizarModoTaxas);
+      _tipoSel.addEventListener("change", function () {
+        loteAtualizarModoTaxas();
+        atualizarAreasFichaPorTipo();
+      });
     }
     blindarBotao("btnFecharLoteTrabalhadores", loteFecharModal);
     blindarBotao("btnCancelarLoteTrabalhadores", loteFecharModal);
@@ -1440,10 +1529,7 @@ function enviarWhatsappOficio(urlPdf, numero) {
     var _buscaLote = $("loteEscolaBusca");
     if (_buscaLote && !_buscaLote.dataset.bound) {
       _buscaLote.dataset.bound = "1";
-      _buscaLote.addEventListener("input", function () {
-        var box = $("loteEscolaLista"); if (box) box.style.display = "";
-        loteRenderEscolas();
-      });
+      _buscaLote.addEventListener("input", loteRenderEscolas);
     }
     var _fichasModal = $("loteFichasInput");
     if (_fichasModal && !_fichasModal.dataset.bound) {
@@ -1454,8 +1540,24 @@ function enviarWhatsappOficio(urlPdf, numero) {
         if (res) res.textContent = n ? (n === 1 ? "1 arquivo selecionado" : n + " arquivos selecionados") : "";
       });
     }
-    var _taLote = $("loteTrabalhadoresTexto");
-    if (_taLote && !_taLote.dataset.bound) { _taLote.dataset.bound="1"; _taLote.addEventListener("input", loteRenderizarPrevia); }
+    blindarBotao("btnLoteAdicionarPessoa", loteAdicionarPessoa);
+    var _nomeLote = $("loteNome");
+    if (_nomeLote && !_nomeLote.dataset.bound) {
+      _nomeLote.dataset.bound = "1";
+      /* Enter adiciona: quem está digitando 50 nomes não vai tirar a mão do
+       * teclado para clicar 50 vezes. */
+      _nomeLote.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") { ev.preventDefault(); loteAdicionarPessoa(); }
+      });
+    }
+    var _cpfLote = $("loteCpf");
+    if (_cpfLote && !_cpfLote.dataset.bound) {
+      _cpfLote.dataset.bound = "1";
+      _cpfLote.addEventListener("input", function () { aplicarMascaraCpf(_cpfLote); });
+      _cpfLote.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") { ev.preventDefault(); loteAdicionarPessoa(); }
+      });
+    }
     blindarBotao("btnAddTrabalhador", function(){ if(typeof Oficio !== "undefined" && typeof Oficio.adicionarTrabalhador === "function"){ Oficio.adicionarTrabalhador(); } else { addTrabalhador(); } });
     blindarBotao("btnPreview", previewOficio);
     blindarBotao("btnEmitir", gerarOficio);

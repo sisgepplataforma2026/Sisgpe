@@ -670,8 +670,8 @@
       <div style="display:flex;align-items:center;gap:14px;flex:1;">
         <div style="width:50px;height:50px;border-radius:14px;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">⇩</div>
         <div>
-          <div class="of-modal-head-title">Colar lista de trabalhadores</div>
-          <div class="of-modal-head-sub">Um por linha. Nome e CPF separados por vírgula, ponto-e-vírgula ou tabulação</div>
+          <div class="of-modal-head-title">Ofício em lote</div>
+          <div class="of-modal-head-sub">Escolha a escola, cole os trabalhadores e anexe as fichas</div>
         </div>
       </div>
       <button type="button" class="of-modal-close" id="btnFecharLoteTrabalhadores" aria-label="Fechar">✕</button>
@@ -687,20 +687,31 @@
         <label for="loteEscolaBusca">Buscar escola</label>
         <input type="text" id="loteEscolaBusca" placeholder="Digite nome, CNPJ ou cidade…" autocomplete="off">
       </div>
-      <div id="loteEscolaLista" class="escola-recentes-list" style="max-height:150px;overflow-y:auto;margin-bottom:10px;"></div>
+      <!-- A lista só aparece enquanto se digita. Despejar a base inteira aqui
+           empurrava as etapas 2 e 3 para fora da tela — foi o que o usuário
+           viu no primeiro desenho. -->
+      <div id="loteEscolaLista" class="escola-recentes-list" style="display:none;max-height:132px;overflow-y:auto;margin-bottom:10px;"></div>
       <div id="loteEscolaSelecionada" style="display:none;padding:10px 12px;border-radius:var(--rad);background:var(--green-lt);border:1px solid var(--green);font-size:12.5px;color:var(--green-dk);font-weight:700;margin-bottom:18px;"></div>
 
       <!-- 2. TRABALHADORES -->
       <div style="font-size:11px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.09em;margin-bottom:8px;">2 · Trabalhadores</div>
       <div style="font-size:12.5px;color:var(--g600);line-height:1.7;margin-bottom:10px;">
-        Um por linha. Cole direto de uma planilha ou digite. O <strong>CPF é opcional</strong> —
-        quem não tiver sai no ofício só com o nome.
+        Adicione um por vez. O <strong>CPF é opcional</strong> — quem não tiver sai
+        no ofício só com o nome. Se colar várias linhas no nome, cada linha vira uma pessoa.
       </div>
-      <div class="fld">
-        <label for="loteTrabalhadoresTexto">Lista de trabalhadores</label>
-        <textarea id="loteTrabalhadoresTexto" rows="7" spellcheck="false"
-          style="min-height:130px;"
-          placeholder="Marcelha Aline Pinto Gomes, 123.456.789-09&#10;Wanderson Nascimento Castelo&#10;Ana Paula Lima; 98765432100"></textarea>
+      <div class="fg fg-3" style="align-items:end;gap:10px;margin-bottom:4px;">
+        <div class="fld fg-full">
+          <label for="loteNome">Nome completo</label>
+          <input type="text" id="loteNome" placeholder="Nome do trabalhador" autocomplete="off">
+        </div>
+        <div class="fld">
+          <label for="loteCpf">CPF (opcional)</label>
+          <input type="text" id="loteCpf" placeholder="000.000.000-00" maxlength="14" inputmode="numeric">
+        </div>
+        <div class="fld">
+          <label style="visibility:hidden;">Ação</label>
+          <button type="button" id="btnLoteAdicionarPessoa" class="btn btn-navy" style="width:100%;">+ Adicionar</button>
+        </div>
       </div>
       <div id="loteTrabalhadoresPreview" style="margin-top:14px;margin-bottom:18px;"></div>
 

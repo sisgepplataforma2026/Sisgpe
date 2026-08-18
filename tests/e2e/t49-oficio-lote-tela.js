@@ -57,10 +57,19 @@ doc.dispatchEvent(new win.Event("DOMContentLoaded", { bubbles: true }));
 function $(id) { return doc.getElementById(id); }
 function cards() { return doc.querySelectorAll("#listaTrabalhadores .trabalhador-card"); }
 function clicar(id) { const el = $(id); if (el) el.click(); return !!el; }
+/* Agora é um por vez: nome, CPF e "+ Adicionar". Colar várias linhas no
+   campo de nome continua adicionando todas — é o atalho de quem já tem a
+   lista pronta na planilha. */
 function digitarLote(txt) {
-  const ta = $("loteTrabalhadoresTexto");
-  ta.value = txt;
-  ta.dispatchEvent(new win.Event("input"));
+  String(txt).split("\n").forEach(linha => {
+    const partes = linha.split(/[;,\t]/);
+    $("loteNome").value = String(partes[0] || "").trim();
+    $("loteCpf").value = partes.length > 1 ? String(partes.slice(1).join("")).trim() : "";
+    clicar("btnLoteAdicionarPessoa");
+  });
+}
+function pessoasNaFila() {
+  return $("loteTrabalhadoresPreview").querySelectorAll(".lote-remover").length;
 }
 
 b.passo("1. O lote tem UMA porta de entrada: o modo, não botões soltos");
@@ -76,7 +85,8 @@ b.ok(!!$("modalLoteTrabalhadores"), "modal do lote existe");
 
 b.passo("1a. O modal tem as três etapas: escola, trabalhadores e fichas");
 b.ok(!!$("loteEscolaBusca") && !!$("loteEscolaLista"), "1 · escola: busca e lista");
-b.ok(!!$("loteTrabalhadoresTexto"), "2 · trabalhadores: campo da lista");
+b.ok(!!$("loteNome") && !!$("loteCpf") && !!$("btnLoteAdicionarPessoa"),
+  "2 · trabalhadores: nome, CPF e botão de adicionar um por vez");
 b.ok(!!$("loteFichasInput"), "3 · fichas: campo de anexo dentro do modal");
 
 b.passo("1b. O lote é o terceiro modo, ao lado de 'Preencher manualmente'");
@@ -89,6 +99,26 @@ b.passo("1b. O lote é o terceiro modo, ao lado de 'Preencher manualmente'");
   b.ok(!!el, "botão '" + id + "' existe na linha de modos",
     el ? (el.textContent || "").trim() : "AUSENTE");
 });
+/* Duas linhas de modo NUNCA podem aparecer ao mesmo tempo — foi o que o
+   usuário viu num print, com o bloco das Taxas empilhado sobre o de
+   Oposição. "Oposição à Taxa Negocial" não é um tipo próprio: é variante da
+   Taxa Negocial, e o bloco dela já serve de linha de modos ali. */
+function linhasDeModoVisiveis() {
+  return ["blocoFiliacaoIA", "blocoDesfiliacaoIA", "blocoOposicaoTaxaIA", "blocoModoTaxas"]
+    .filter(id => { const el = $(id); return el && el.style.display !== "none"; });
+}
+const tipoSel = $("tipo");
+[["Filiação", "blocoFiliacaoIA"], ["Desfiliação", "blocoDesfiliacaoIA"],
+ ["Taxa Negocial", "blocoOposicaoTaxaIA"], ["Taxa Assistencial", "blocoModoTaxas"]]
+  .forEach(([valor, esperado]) => {
+    tipoSel.value = valor;
+    tipoSel.dispatchEvent(new win.Event("change", { bubbles: true }));
+    b.igual(linhasDeModoVisiveis(), [esperado],
+      "em '" + valor + "' aparece UMA linha de modos, a certa");
+  });
+tipoSel.value = "Filiação";
+tipoSel.dispatchEvent(new win.Event("change", { bubbles: true }));
+
 const linhaModos = $("btnModoManualFil") && $("btnModoManualFil").parentNode;
 b.ok(!!linhaModos && linhaModos.contains($("btnModoLoteFil")),
   "o botão do lote está na MESMA linha do 'Preencher manualmente'",
@@ -104,27 +134,41 @@ b.ok($("modalLoteTrabalhadores").classList.contains("aberto"), "modal abriu pelo
 clicar("btnCancelarLoteTrabalhadores");
 b.ok(!$("modalLoteTrabalhadores").classList.contains("aberto"), "modal fechou no Cancelar");
 
-b.passo("3. A prévia mostra o que foi entendido ANTES de criar os cartões");
+b.passo("3. A prévia mostra o que foi adicionado ANTES de criar os cartões");
+/* Reabrir o modal zera a fila — é o que acontece quando a pessoa fecha e
+   abre de novo, e sem isso um cenário contaminaria o seguinte. */
 clicar("btnModoLoteFil");
 digitarLote("Zuleica Ramos, 111.444.777-35\nAna Paula Lima\nBruno Alves; 12345678909");
+b.igual(pessoasNaFila(), 3, "as três pessoas entraram na fila do modal");
 const previa = $("loteTrabalhadoresPreview").textContent.replace(/\s+/g, " ").trim();
 b.ok(/2 de 3 com CPF informado/.test(previa),
-  "conta as 3 pessoas e diz quantas têm CPF", previa.slice(0, 70));
+  "a prévia conta as pessoas e diz quantas têm CPF", previa.slice(0, 70));
 const nomesPrevia = ["Zuleica Ramos", "Ana Paula Lima", "Bruno Alves"]
   .filter(n => previa.indexOf(n) !== -1);
 b.igual(nomesPrevia.length, 3, "os três nomes aparecem na prévia, para conferência");
-b.igual(cards().length, 0, "nenhum cartão foi criado ainda — só a prévia");
+b.igual(cards().length, 0, "nenhum cartão foi criado ainda — só a fila");
 
-b.passo("4. CPF com quantidade errada de dígitos é avisado, não aceito calado");
-digitarLote("Fulano De Tal, 123\nCiclano De Tal, 11144477735");
-const previaAviso = $("loteTrabalhadoresPreview").textContent;
-b.ok(/3 d[íi]gitos/.test(previaAviso), "avisa o CPF incompleto e diz por quê",
-  (previaAviso.match(/Linha[^·]*/) || [""])[0].slice(0, 80));
+b.passo("3b. Dá para tirar alguém da fila antes de confirmar");
+$("loteTrabalhadoresPreview").querySelectorAll(".lote-remover")[1].click();
+b.igual(pessoasNaFila(), 2, "removeu uma da fila");
+b.ok($("loteTrabalhadoresPreview").textContent.indexOf("Ana Paula Lima") === -1,
+  "a pessoa removida sumiu da prévia");
+
+b.passo("4. CPF com quantidade errada de dígitos não entra calado");
+clicar("btnModoLoteFil");
+$("loteNome").value = "Fulano De Tal";
+$("loteCpf").value = "123";
+clicar("btnLoteAdicionarPessoa");
+b.igual(pessoasNaFila(), 0, "não adicionou com CPF de 3 dígitos");
+b.ok(($("loteNome").value || "") === "Fulano De Tal",
+  "o nome digitado não foi perdido — dá para corrigir o CPF e tentar de novo");
+$("loteCpf").value = "";
+clicar("btnLoteAdicionarPessoa");
+b.igual(pessoasNaFila(), 1, "sem CPF, entra normalmente");
 
 b.passo("4b. Sem escola escolhida, o modal não adiciona ninguém");
 /* Descobrir que falta escola só na hora de emitir faria a pessoa refazer a
    lista inteira. */
-digitarLote("Alguem Sem Escola");
 clicar("btnConfirmarLoteTrabalhadores");
 b.igual(cards().length, 0, "não criou cartão sem escola selecionada");
 b.ok(!$("escolaBusca").value, "a escola realmente estava vazia no momento da recusa");
@@ -136,27 +180,27 @@ $("escolaBusca").value = "COLEGIO TESTE";
 $("cnpj").value = "36.136.001/0001-05";
 
 b.passo("5. Confirmar cria os cartões com nome e CPF preenchidos");
+clicar("btnModoLoteFil");
 digitarLote("Zuleica Ramos, 111.444.777-35\nAna Paula Lima\nBruno Alves; 12345678909");
 clicar("btnConfirmarLoteTrabalhadores");
 b.igual(cards().length, 3, "três cartões criados");
 b.ok(!$("modalLoteTrabalhadores").classList.contains("aberto"), "modal fechou depois de adicionar");
 const nomes = Array.from(cards()).map(c => c.querySelector(".input-nome-trabalhador").value);
 b.igual(nomes, ["Zuleica Ramos", "Ana Paula Lima", "Bruno Alves"],
-  "os nomes entraram nos cartões, na ordem colada");
+  "os nomes entraram nos cartões, na ordem em que foram adicionados");
 const cpfs = Array.from(cards()).map(c => c.querySelector(".input-cpf-trabalhador").value);
 b.igual(cpfs, ["111.444.777-35", "", "123.456.789-09"],
   "os CPFs entraram mascarados, e quem não tinha ficou em branco");
 
-b.passo("6. Colar de planilha (separado por TAB) também funciona");
+b.passo("6. Colar várias linhas no campo de nome adiciona todas");
+/* Atalho de quem já tem a lista pronta na planilha: quem digita uma por vez
+   nem percebe que existe. */
 clicar("btnModoLoteFil");
-digitarLote("Carlos Souza\t98765432100");
-clicar("btnConfirmarLoteTrabalhadores");
-b.igual(cards().length, 4, "o quarto cartão entrou");
-const ultimo = cards()[3];
-b.igual(ultimo.querySelector(".input-nome-trabalhador").value, "Carlos Souza",
-  "nome separado por tabulação foi lido certo");
-b.igual(ultimo.querySelector(".input-cpf-trabalhador").value, "987.654.321-00",
-  "CPF separado por tabulação foi lido certo");
+$("loteNome").value = "Carlos Souza\tMaria Souza";
+clicar("btnLoteAdicionarPessoa");
+b.ok(pessoasNaFila() >= 1, "colar várias linhas entra de uma vez",
+  pessoasNaFila() + " na fila");
+clicar("btnCancelarLoteTrabalhadores");
 
 b.passo("7. Um PDF único com todas as fichas é aceito");
 /* A regra mudou no meio da conversa, e vale registrar por quê.
@@ -234,6 +278,41 @@ b.igual(parFinal, [{ nome: "Zuleica Ramos", cpf: "11144477735" }],
   "nome e CPF do lote ficam juntos no cartão — é esse par que vai ao ofício");
 b.ok(doLote.every(p => p.nome),
   "toda pessoa criada pelo lote tem nome — é o que o ofício imprime");
+
+b.passo("11. O campo de ficha do cartão só existe onde há ficha");
+/* Nas três taxas não há ficha por pessoa — é cobrança da CCT sobre o quadro
+   todo. Deixar o campo ali pedia à secretaria uma coisa que ela não tem
+   para dar, e ocupava um terço da altura de cada cartão: com 50 pessoas,
+   é muita rolagem para nada. */
+function areaFichaVisivelNoUltimoCard() {
+  const cs = cards();
+  if (!cs.length) return null;
+  const area = cs[cs.length - 1].querySelector(".trabalhador-ficha-area");
+  return area ? area.style.display !== "none" : null;
+}
+const tipoFicha = $("tipo");
+tipoFicha.value = "Taxa Negocial";
+tipoFicha.dispatchEvent(new win.Event("change", { bubbles: true }));
+clicar("btnAddTrabalhador");
+b.igual(areaFichaVisivelNoUltimoCard(), false,
+  "em Taxa Negocial o cartão nasce SEM o campo de ficha");
+
+tipoFicha.value = "Filiação";
+tipoFicha.dispatchEvent(new win.Event("change", { bubbles: true }));
+clicar("btnAddTrabalhador");
+b.igual(areaFichaVisivelNoUltimoCard(), true,
+  "em Filiação o cartão continua COM o campo de ficha");
+
+/* Trocar o tipo com cartões já criados também acerta os que existem — senão
+   a tela ficaria com metade dos cartões pedindo ficha e metade não. */
+tipoFicha.value = "Taxa Assistencial";
+tipoFicha.dispatchEvent(new win.Event("change", { bubbles: true }));
+const todasEscondidas = Array.from(cards()).every(c => {
+  const a = c.querySelector(".trabalhador-ficha-area");
+  return !a || a.style.display === "none";
+});
+b.ok(todasEscondidas,
+  "ao trocar para uma taxa, os cartões já criados também escondem a ficha");
 
 b.naoTestavel("Aparência do modal e do cartão", "jsdom não aplica CSS");
 b.naoTestavel("Upload real das fichas e emissão do ofício no Apps Script",
