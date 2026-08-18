@@ -286,11 +286,16 @@ b.igual(parFinal, [{ nome: "Zuleica Ramos", cpf: "11144477735" }],
 b.ok(doLote.every(p => p.nome),
   "toda pessoa criada pelo lote tem nome — é o que o ofício imprime");
 
-b.passo("11. O campo de ficha do cartão só existe onde há ficha");
-/* Nas três taxas não há ficha por pessoa — é cobrança da CCT sobre o quadro
-   todo. Deixar o campo ali pedia à secretaria uma coisa que ela não tem
-   para dar, e ocupava um terço da altura de cada cartão: com 50 pessoas,
-   é muita rolagem para nada. */
+b.passo("11. O campo de ficha do cartão existe em TODO tipo de ofício");
+/* Eu havia escondido nas três taxas e o usuário pegou: "não tem a ficha do
+   trabalhador no modo individual, você tirou?". O furo era real e não
+   estético: "Oposição à Taxa Negocial" não é um tipo próprio no seletor —
+   roda dentro de "Taxa Negocial" —, e na oposição existe documento: a carta
+   de oposição, que o texto do ofício cita como "conforme carta em anexo".
+   Esconder por tipo deixava a oposição sem onde anexar a prova dela.
+
+   Anexar não é obrigatório em lugar nenhum, então um campo opcional a mais
+   custa espaço; um campo ausente custa uma emissão que não dá para fazer. */
 function areaFichaVisivelNoUltimoCard() {
   const cs = cards();
   if (!cs.length) return null;
@@ -298,28 +303,39 @@ function areaFichaVisivelNoUltimoCard() {
   return area ? area.style.display !== "none" : null;
 }
 const tipoFicha = $("tipo");
-tipoFicha.value = "Taxa Negocial";
-tipoFicha.dispatchEvent(new win.Event("change", { bubbles: true }));
-clicar("btnAddTrabalhador");
-b.igual(areaFichaVisivelNoUltimoCard(), false,
-  "em Taxa Negocial o cartão nasce SEM o campo de ficha");
+["Filiação", "Desfiliação", "Taxa Negocial", "Taxa Assistencial"].forEach(valor => {
+  tipoFicha.value = valor;
+  tipoFicha.dispatchEvent(new win.Event("change", { bubbles: true }));
+  clicar("btnAddTrabalhador");
+  b.igual(areaFichaVisivelNoUltimoCard(), true,
+    "em '" + valor + "' o cartão nasce COM o campo de ficha");
+  b.ok($("blocoFichasOficio").style.display !== "none",
+    "em '" + valor + "' o bloco de fichas do ofício também aparece");
+});
 
+/* E o cartão JÁ CRIADO não pode perder a ficha quando o tipo muda.
+   Este é o caso que a asserção acima não pega: criar o cartão depois da
+   troca de tipo não exercita a rotina que varre os cartões existentes. Sem
+   esta, a regra podia voltar a esconder e o teste continuaria verde — foi o
+   que uma mutação mostrou. */
 tipoFicha.value = "Filiação";
 tipoFicha.dispatchEvent(new win.Event("change", { bubbles: true }));
 clicar("btnAddTrabalhador");
-b.igual(areaFichaVisivelNoUltimoCard(), true,
-  "em Filiação o cartão continua COM o campo de ficha");
-
-/* Trocar o tipo com cartões já criados também acerta os que existem — senão
-   a tela ficaria com metade dos cartões pedindo ficha e metade não. */
-tipoFicha.value = "Taxa Assistencial";
-tipoFicha.dispatchEvent(new win.Event("change", { bubbles: true }));
-const todasEscondidas = Array.from(cards()).every(c => {
-  const a = c.querySelector(".trabalhador-ficha-area");
-  return !a || a.style.display === "none";
+b.igual(areaFichaVisivelNoUltimoCard(), true, "cartão criado em Filiação tem ficha");
+["Taxa Negocial", "Taxa Assistencial", "Desfiliação"].forEach(valor => {
+  tipoFicha.value = valor;
+  tipoFicha.dispatchEvent(new win.Event("change", { bubbles: true }));
+  b.igual(areaFichaVisivelNoUltimoCard(), true,
+    "ao trocar para '" + valor + "', o cartão existente MANTÉM a ficha");
 });
-b.ok(todasEscondidas,
-  "ao trocar para uma taxa, os cartões já criados também escondem a ficha");
+
+/* O botão de excluir do cartão: o usuário perguntou se eu tinha tirado.
+   Nunca foi mexido, mas sem asserção isso é palavra minha. */
+b.ok(!!cards()[cards().length - 1].querySelector(".btn-remover-trabalhador-premium"),
+  "o cartão tem o botão de excluir");
+const antesExcluir = cards().length;
+cards()[cards().length - 1].querySelector(".btn-remover-trabalhador-premium").click();
+b.igual(cards().length, antesExcluir - 1, "e ele remove o cartão de verdade");
 
 b.passo("12. O PDF único do lote tem onde ser anexado");
 /* Pergunta do usuário em 18/08/2026: "e onde eu coloco o pdf das fichas do
@@ -331,15 +347,7 @@ tipoPdf.dispatchEvent(new win.Event("change", { bubbles: true }));
 
 b.ok(!!$("fichasOficioLote"), "existe o campo de fichas do OFÍCIO, fora dos cartões");
 b.ok($("blocoFichasOficio").style.display !== "none",
-  "em Filiação o bloco de fichas do ofício aparece");
-
-tipoPdf.value = "Taxa Negocial";
-tipoPdf.dispatchEvent(new win.Event("change", { bubbles: true }));
-b.igual($("blocoFichasOficio").style.display, "none",
-  "em Taxa Negocial ele some, porque ali não há ficha");
-
-tipoPdf.value = "Filiação";
-tipoPdf.dispatchEvent(new win.Event("change", { bubbles: true }));
+  "o bloco de fichas do ofício está visível");
 
 /* O anexo do ofício precisa CHEGAR no payload: sem isso o campo existiria
    na tela e o arquivo não sairia junto do ofício — o pior dos mundos. */

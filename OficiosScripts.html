@@ -672,19 +672,6 @@ function atualizarPayloadOficio(num) {
     + '<div class="ficha-preview-individual" style="margin-top:8px;"></div>'
     + '</div>';
 
-  /* A área de ficha só existe onde a ficha existe.
-   *
-   * Nas três taxas não há ficha por pessoa — é cobrança prevista na CCT,
-   * incide sobre o quadro todo. Deixar o campo ali fazia o cartão pedir uma
-   * coisa que a pessoa não tem para dar, e ainda ocupava um terço da altura
-   * de cada cartão: com 50 pessoas, é muita rolagem para nada. */
-  (function () {
-    var area = c.querySelector(".trabalhador-ficha-area");
-    if (area && !oficioExigeFichaECpf(($("tipo") && $("tipo").value) || "")) {
-      area.style.display = "none";
-    }
-  })();
-
   var inputFicha   = c.querySelector(".input-ficha-trabalhador");
   var contadorFich = c.querySelector(".ficha-contador");
   var previewFich  = c.querySelector(".ficha-preview-individual");
@@ -1014,12 +1001,26 @@ function removerFichaCard(btn, idx) {
    * oposição (IA)" e agora "Via lote". Ou seja, a Taxa Negocial já tinha a
    * sua linha; quem não tinha era só a Assistencial. */
   /** Mostra/esconde a área de ficha dos cartões conforme o tipo escolhido. */
+  /* O campo de ficha FICA, em todo tipo de ofício.
+   *
+   * Eu havia escondido nas três taxas, com o argumento de que ali não há
+   * ficha. O argumento estava incompleto e o usuário pegou: "não tem a ficha
+   * do trabalhador no modo individual, você tirou?".
+   *
+   * O furo: "Oposição à Taxa Negocial" NÃO é um tipo próprio no seletor —
+   * roda dentro de "Taxa Negocial". E na oposição existe documento: a carta
+   * de oposição, que o próprio texto do ofício cita como "conforme carta em
+   * anexo". Esconder o campo por tipo deixava a oposição sem onde anexar a
+   * prova dela.
+   *
+   * Como anexar ficha não é mais obrigatório em lugar nenhum, um campo
+   * opcional a mais custa espaço; um campo ausente custa uma emissão que não
+   * dá para fazer. Fica visível. */
   function atualizarAreasFichaPorTipo() {
-    var exige = oficioExigeFichaECpf(($("tipo") && $("tipo").value) || "");
     document.querySelectorAll("#listaTrabalhadores .trabalhador-ficha-area")
-      .forEach(function (a) { a.style.display = exige ? "" : "none"; });
+      .forEach(function (a) { a.style.display = ""; });
     var bloco = $("blocoFichasOficio");
-    if (bloco) bloco.style.display = exige ? "block" : "none";
+    if (bloco) bloco.style.display = "block";
   }
 
   function loteAtualizarModoTaxas() {
