@@ -776,6 +776,178 @@ function removerFichaCard(btn, idx) {
 
   function restaurarVazio() { var l = $("listaTrabalhadores"); if (l && !l.querySelector(".trabalhador-card")) l.innerHTML = '<div class="worker-empty">👤 Nenhum trabalhador adicionado ainda.<br>Clique em <strong>"+ Adicionar"</strong> para começar.</div>'; }
 
+  /* ══════════════════════════════════════════════════════════════════
+     LOTE — colar a lista de pessoas e anexar todas as fichas de uma vez
+
+     Pedido do usuário em 18/08/2026: "Hoje está cada trabalhador com sua
+     ficha, preciso que tenha um modal ou um botão para enviar por lote" e
+     "quando for o lote só adiciono as pessoas e coloco todas as fichas
+     comparando com a quantidade de pessoas".
+
+     São duas etapas independentes, e de propósito: a lista pode entrar sem
+     ficha nenhuma (as três taxas não têm ficha), e as fichas podem entrar
+     depois, todas juntas.
+
+     O que NÃO se faz aqui: adivinhar em silêncio. As fichas são casadas com
+     as pessoas por ORDEM, e a ordem de arquivo nem sempre é a ordem que a
+     pessoa tem na cabeça. Por isso o par nome↔arquivo aparece na tela para
+     conferência antes de emitir, e a divergência de quantidade é dita com
+     todas as letras em vez de ser resolvida por conta própria.
+     ══════════════════════════════════════════════════════════════════ */
+
+  /** Lê o texto colado e devolve {pessoas, avisos}. Não cria nada. */
+  function loteInterpretarTexto(texto) {
+    var pessoas = [], avisos = [];
+    String(texto || "").split(/\r?\n/).forEach(function (linha, i) {
+      var bruta = String(linha || "").trim();
+      if (!bruta) return;
+      /* Aceita tabulação (colado de planilha), ponto-e-vírgula e vírgula.
+         A vírgula vem por último: nome com "JÚNIOR, MARIA" é raro, mas
+         separador de planilha é tab, e testar tab primeiro evita quebrar
+         um nome que tenha vírgula. */
+      var partes = bruta.indexOf("\t") !== -1 ? bruta.split("\t")
+                 : bruta.indexOf(";")  !== -1 ? bruta.split(";")
+                 : bruta.split(",");
+      var nome = String(partes[0] || "").trim();
+      var cpfBruto = partes.length > 1 ? somenteDigitos(partes.slice(1).join("")) : "";
+      if (!nome) return;
+      if (cpfBruto && cpfBruto.length !== 11) {
+        avisos.push("Linha " + (i + 1) + " (" + nome + "): CPF com " + cpfBruto.length +
+                    " dígitos — será deixado em branco.");
+        cpfBruto = "";
+      }
+      pessoas.push({ nome: nome, cpf: cpfBruto });
+    });
+    return { pessoas: pessoas, avisos: avisos };
+  }
+
+  function loteRenderizarPrevia() {
+    var caixa = $("loteTrabalhadoresPreview");
+    var btnOk = $("btnConfirmarLoteTrabalhadores");
+    if (!caixa) return;
+    var r = loteInterpretarTexto(($("loteTrabalhadoresTexto") || {}).value || "");
+    var tipoAtual = ($("tipo") && $("tipo").value) || "";
+    var limite = oficioLimitePessoas(tipoAtual);
+    var jaTem = document.querySelectorAll("#listaTrabalhadores .trabalhador-card").length;
+    var totalFinal = jaTem + r.pessoas.length;
+    var comCpf = r.pessoas.filter(function (p) { return p.cpf; }).length;
+
+    if (!r.pessoas.length) {
+      caixa.innerHTML = '<div style="font-size:12.5px;color:var(--g400,#94a3b8);">Cole a lista acima para ver o que será adicionado.</div>';
+      if (btnOk) { btnOk.disabled = true; btnOk.textContent = "Adicionar"; }
+      return;
+    }
+
+    var estouro = totalFinal > limite;
+    var linhas = r.pessoas.slice(0, 6).map(function (p, i) {
+      return '<div style="display:flex;gap:10px;padding:4px 0;font-size:12.5px;">' +
+        '<span style="color:var(--g400,#94a3b8);min-width:22px;">' + (i + 1) + '.</span>' +
+        '<span style="font-weight:600;">' + escaparHtmlLote(p.nome) + '</span>' +
+        (p.cpf ? '<span style="color:var(--g400,#94a3b8);margin-left:auto;">' + formatarCpfLote(p.cpf) + '</span>' : '') +
+        '</div>';
+    }).join("");
+    if (r.pessoas.length > 6) {
+      linhas += '<div style="font-size:12px;color:var(--g400,#94a3b8);padding-top:4px;">… e mais ' +
+                (r.pessoas.length - 6) + '</div>';
+    }
+
+    caixa.innerHTML =
+      '<div style="border:1px solid var(--bd,#dbe3ee);border-radius:12px;padding:12px 14px;">' +
+      '<div style="font-size:12.5px;font-weight:700;color:#0f8a5f;margin-bottom:8px;">✓ ' +
+        r.pessoas.length + (r.pessoas.length === 1 ? " pessoa reconhecida" : " pessoas reconhecidas") +
+        ' · ' + comCpf + ' com CPF</div>' + linhas +
+      (r.avisos.length
+        ? '<div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--bd,#dbe3ee);font-size:12px;color:#d97706;">⚠ ' +
+          r.avisos.map(escaparHtmlLote).join('<br>⚠ ') + '</div>'
+        : '') +
+      (estouro
+        ? '<div style="margin-top:10px;font-size:12px;color:#dc2626;font-weight:700;">Excede o limite: ' +
+          totalFinal + ' de ' + limite + ' para este tipo de ofício.</div>'
+        : '') +
+      '</div>';
+
+    if (btnOk) {
+      btnOk.disabled = estouro;
+      btnOk.textContent = "Adicionar " + r.pessoas.length;
+    }
+  }
+
+  function escaparHtmlLote(t) {
+    return String(t == null ? "" : t).replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+  function formatarCpfLote(d) {
+    var x = somenteDigitos(d);
+    return x.length === 11 ? x.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4") : x;
+  }
+
+  function loteAbrirModal() {
+    var ov = $("modalLoteTrabalhadores"); if (!ov) return;
+    var ta = $("loteTrabalhadoresTexto"); if (ta) ta.value = "";
+    loteRenderizarPrevia();
+    ov.classList.add("aberto");
+    if (ta) ta.focus();
+  }
+  function loteFecharModal() {
+    var ov = $("modalLoteTrabalhadores"); if (ov) ov.classList.remove("aberto");
+  }
+
+  function loteConfirmar() {
+    var r = loteInterpretarTexto(($("loteTrabalhadoresTexto") || {}).value || "");
+    if (!r.pessoas.length) { toast("Cole ao menos uma linha com nome.", "warn"); return; }
+    var lista = $("listaTrabalhadores"); if (!lista) return;
+    var vazio = lista.querySelector(".worker-empty"); if (vazio) vazio.remove();
+
+    r.pessoas.forEach(function (p) {
+      var card = criarCardTrabalhador();
+      lista.appendChild(card);
+      var iNome = card.querySelector(".input-nome-trabalhador");
+      var iCpf  = card.querySelector(".input-cpf-trabalhador");
+      if (iNome) iNome.value = p.nome;
+      if (iCpf && p.cpf) { iCpf.value = formatarCpfLote(p.cpf); }
+    });
+
+    renumerarTrabalhadores();
+    atualizarResumoTrabalhadores();
+    loteFecharModal();
+    toast(r.pessoas.length + (r.pessoas.length === 1 ? " pessoa adicionada" : " pessoas adicionadas") +
+          ". Confira os dados antes de emitir.", "ok");
+  }
+
+  /** Distribui as fichas escolhidas, uma por pessoa, na ordem dos cartões. */
+  function loteDistribuirFichas(arquivos) {
+    var cards = Array.prototype.slice.call(
+      document.querySelectorAll("#listaTrabalhadores .trabalhador-card"));
+    if (!cards.length) { toast("Adicione as pessoas antes de anexar as fichas.", "warn"); return; }
+
+    var lista = Array.prototype.slice.call(arquivos || []);
+    /* Ordem alfabética do NOME DO ARQUIVO. O navegador entrega os arquivos
+     * na ordem em que o sistema operacional listou, que não é confiável. */
+    lista.sort(function (a, c) { return a.name.localeCompare(c.name, "pt-BR"); });
+
+    if (lista.length !== cards.length) {
+      toast("Você anexou " + lista.length + (lista.length === 1 ? " ficha" : " fichas") +
+            " para " + cards.length + (cards.length === 1 ? " pessoa" : " pessoas") +
+            ". As quantidades precisam bater.", "warn");
+      return;
+    }
+
+    cards.forEach(function (card, i) {
+      var input = card.querySelector(".input-ficha-trabalhador");
+      if (!input) return;
+      var dt = new DataTransfer();
+      dt.items.add(lista[i]);
+      input.files = dt.files;
+      /* Dispara o mesmo caminho do anexo individual — renomeia o arquivo com
+       * o nome da pessoa, atualiza o contador e sincroniza o pool global.
+       * Reaproveitar em vez de repetir evita que os dois caminhos divirjam. */
+      input.dispatchEvent(new Event("change"));
+    });
+
+    toast(lista.length + " fichas distribuídas, uma por pessoa. Confira cada cartão.", "ok");
+  }
+
   function addTrabalhador() {
     var l = $("listaTrabalhadores"); if (!l) return;
     var _tipoAtual = ($("tipo") && $("tipo").value) || "";
@@ -1128,6 +1300,18 @@ function enviarWhatsappOficio(urlPdf, numero) {
       btn.addEventListener("click", function(ev){ ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation(); handler(); return false; }, true);
     }
 
+    blindarBotao("btnColarLoteTrabalhadores", loteAbrirModal);
+    blindarBotao("btnFecharLoteTrabalhadores", loteFecharModal);
+    blindarBotao("btnCancelarLoteTrabalhadores", loteFecharModal);
+    blindarBotao("btnConfirmarLoteTrabalhadores", loteConfirmar);
+    blindarBotao("btnAnexarFichasLote", function(){ var i=$("fichasLoteInput"); if(i) i.click(); });
+    var _taLote = $("loteTrabalhadoresTexto");
+    if (_taLote && !_taLote.dataset.bound) { _taLote.dataset.bound="1"; _taLote.addEventListener("input", loteRenderizarPrevia); }
+    var _fiLote = $("fichasLoteInput");
+    if (_fiLote && !_fiLote.dataset.bound) {
+      _fiLote.dataset.bound="1";
+      _fiLote.addEventListener("change", function(){ loteDistribuirFichas(_fiLote.files); _fiLote.value=""; });
+    }
     blindarBotao("btnAddTrabalhador", function(){ if(typeof Oficio !== "undefined" && typeof Oficio.adicionarTrabalhador === "function"){ Oficio.adicionarTrabalhador(); } else { addTrabalhador(); } });
     blindarBotao("btnPreview", previewOficio);
     blindarBotao("btnEmitir", gerarOficio);

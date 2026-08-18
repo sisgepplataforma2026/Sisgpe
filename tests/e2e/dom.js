@@ -136,6 +136,29 @@ function montar(g, arquivos, opts) {
   win.google = { script: { host: { close: function () {} } } };
   Object.defineProperty(win.google.script, "run", { get: novoRunner });
 
+  /* jsdom não implementa DataTransfer nem deixa escrever em input.files.
+   *
+   * A tela de ofícios usa os dois para montar o anexo de ficha de cada
+   * trabalhador — sem eles, criar um cartão explode em "DataTransfer is not
+   * defined" e o teste acusaria defeito onde não há. O que está aqui é o
+   * mínimo que o navegador oferece: uma lista de arquivos que se pode
+   * montar e atribuir.
+   *
+   * ATENÇÃO ao que isto NÃO prova: o arquivo não é lido, não tem conteúdo e
+   * não sobe para lugar nenhum. Serve para exercitar a LÓGICA de
+   * distribuição e contagem. O upload de verdade continua "não testado"
+   * pela REGRA Nº -1 e exige navegador. */
+  win.DataTransfer = function () {
+    const arquivos = [];
+    this.items = { add: function (f) { arquivos.push(f); } };
+    Object.defineProperty(this, "files", { get: function () { return arquivos; } });
+  };
+  Object.defineProperty(win.HTMLInputElement.prototype, "files", {
+    configurable: true,
+    get: function () { return this._filesFalsos || []; },
+    set: function (v) { this._filesFalsos = Array.prototype.slice.call(v || []); }
+  });
+
   /* jsdom não implementa scrollIntoView — não é falta da tela, é falta do
    * andaime. Sem este remendo, qualquer tela que role até a mensagem de
    * feedback explode no meio do teste, e a explosão se parece com bug da

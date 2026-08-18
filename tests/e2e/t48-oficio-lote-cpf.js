@@ -214,6 +214,46 @@ b.ok(/relação nominal/.test(corpoFil),
 b.ok(!/conforme os prazos dispostos na CCT/.test(corpoFil),
   "saiu o 'conforme os prazos dispostos na CCT', que não dizia nada à escola");
 
+b.passo("14. Numeração sequencial dos ofícios gerados");
+/* Pedido do usuário em 18/08/2026: "número sequencial também dos ofícios
+   que são gerados". A numeração é por ANO e vem do maior número já gravado
+   na planilha de registro — não de um contador em memória, que se perderia
+   entre execuções. Um ofício em lote com 50 pessoas continua sendo UM
+   ofício e consome UM número. */
+const ssNum = g.SpreadsheetApp.openById(g.PLANILHA_ID);
+let abaReg = ssNum.getSheetByName(g.PLANILHA_REGISTRO);
+if (!abaReg) abaReg = ssNum.insertSheet(g.PLANILHA_REGISTRO);
+abaReg.getRange(1, 1, 1, 2).setValues([["Número do Ofício", "Escola"]]);
+
+const n1 = g.gerarProximoNumeroSeguro();
+const anoAtual = new Date().getFullYear();
+b.ok(new RegExp("^\\d+/" + anoAtual + "$").test(n1),
+  "o número sai no formato NNN/ANO", n1);
+
+/* Grava o primeiro como se o ofício tivesse sido emitido e pede o próximo:
+   sem gravar, o "próximo" seria sempre o mesmo. */
+abaReg.getRange(2, 1).setValue(n1);
+const n2 = g.gerarProximoNumeroSeguro();
+const seq1 = parseInt(String(n1).split("/")[0], 10);
+const seq2 = parseInt(String(n2).split("/")[0], 10);
+b.igual(seq2, seq1 + 1, "o próximo ofício recebe o número seguinte");
+
+/* O primeiro número da plataforma é fixo, para não colidir com os ofícios
+   emitidos em papel antes do sistema existir. */
+b.ok(seq1 >= g.PRIMEIRO_OFICIO_PLATAFORMA,
+  "a numeração começa depois dos ofícios anteriores ao sistema",
+  "primeiro da plataforma: " + g.PRIMEIRO_OFICIO_PLATAFORMA + " · gerado: " + seq1);
+
+/* Número de outro ano na planilha não pode influenciar o contador do ano
+   corrente — senão a virada de ano herdaria a sequência antiga. */
+abaReg.getRange(3, 1).setValue("999/" + (anoAtual - 1));
+const n3 = g.gerarProximoNumeroSeguro();
+b.igual(parseInt(String(n3).split("/")[0], 10), seq1 + 1,
+  "ofício de ano anterior não empurra a numeração do ano corrente");
+
+b.naoTestavel("Numeração sob emissão simultânea de dois usuários",
+  "o emulador é de um processo só; a trava (travarSisgep_) existe no código e é exercitada, mas concorrência real exige o Apps Script");
+
 b.naoTestavel("A conversão para PDF e a aparência da lista na folha",
   "o emulador não converte HTML em PDF — exige gerar um ofício no sistema no ar");
 

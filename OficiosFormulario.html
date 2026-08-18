@@ -315,10 +315,15 @@
             <div class="of-step">3</div>
             <div>
               <div class="of-card-title">Trabalhadores / Associados</div>
-              <div class="of-card-sub">Cadastre os trabalhadores vinculados ao ofício (máx. 25)</div>
+              <div class="of-card-sub" id="ofSubTrabalhadores">Cadastre os trabalhadores vinculados ao ofício</div>
             </div>
           </div>
-          <button type="button" id="btnAddTrabalhador" class="btn btn-navy btn-sm">+ Adicionar</button>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <button type="button" id="btnColarLoteTrabalhadores" class="btn btn-outline btn-sm">⇩ Colar lista</button>
+            <button type="button" id="btnAnexarFichasLote" class="btn btn-outline btn-sm">📎 Fichas em lote</button>
+            <input type="file" id="fichasLoteInput" multiple accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
+            <button type="button" id="btnAddTrabalhador" class="btn btn-navy btn-sm">+ Adicionar</button>
+          </div>
         </div>
         <div class="of-card-body">
           <div class="worker-zone">
@@ -637,6 +642,48 @@
 <!-- ═══ BLOCO: MENSALIDADES ═══ -->
 
 <!-- ═══ MODAL ENVIO ═══ -->
+<!-- ══════════════════════════════════════════════════════════════════
+     MODAL — COLAR LISTA DE TRABALHADORES (lote)
+
+     Pedido do usuário em 18/08/2026: "Hoje está cada trabalhador com sua
+     ficha, preciso que tenha um modal ou um botão para enviar por lote".
+     Para uma cobrança de taxa com 50 pessoas, criar 50 cartões na mão é
+     meia hora de trabalho que o sistema pode fazer sozinho.
+
+     Aceita colar direto de planilha (o Excel separa por TAB), ou digitado
+     com vírgula ou ponto-e-vírgula. O CPF é opcional. A prévia mostra o que
+     foi entendido ANTES de criar os cartões — erro de digitação aparece
+     aqui, e não no ofício que chega à escola.
+     ══════════════════════════════════════════════════════════════════ -->
+<div id="modalLoteTrabalhadores" class="of-modal-overlay">
+  <div class="of-modal" style="max-width:680px;">
+    <div class="of-modal-head" style="border-bottom:3px solid var(--gold);">
+      <div style="display:flex;align-items:center;gap:14px;flex:1;">
+        <div style="width:50px;height:50px;border-radius:14px;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">⇩</div>
+        <div>
+          <div class="of-modal-head-title">Colar lista de trabalhadores</div>
+          <div class="of-modal-head-sub">Um por linha. Nome e CPF separados por vírgula, ponto-e-vírgula ou tabulação</div>
+        </div>
+      </div>
+      <button type="button" class="of-modal-close" id="btnFecharLoteTrabalhadores" aria-label="Fechar">✕</button>
+    </div>
+    <div class="of-modal-body">
+      <div style="font-size:12.5px;color:var(--txt-2,#475569);line-height:1.7;margin-bottom:12px;">
+        Cole direto de uma planilha ou digite. O <strong>CPF é opcional</strong> —
+        quem não tiver sai no ofício só com o nome.
+      </div>
+      <textarea id="loteTrabalhadoresTexto" rows="9" spellcheck="false"
+        style="width:100%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;line-height:1.7;padding:12px 14px;border:1.5px solid var(--bd,#dbe3ee);border-radius:12px;resize:vertical;"
+        placeholder="Marcelha Aline Pinto Gomes, 123.456.789-09&#10;Wanderson Nascimento Castelo&#10;Ana Paula Lima; 98765432100"></textarea>
+      <div id="loteTrabalhadoresPreview" style="margin-top:14px;"></div>
+    </div>
+    <div class="of-modal-foot">
+      <button type="button" class="btn btn-outline" id="btnCancelarLoteTrabalhadores">Cancelar</button>
+      <button type="button" class="btn btn-navy" id="btnConfirmarLoteTrabalhadores" disabled>Adicionar</button>
+    </div>
+  </div>
+</div>
+
 <div id="modalEnvioOficioSISGEP" class="of-modal-overlay">
   <div class="of-modal" style="max-width:600px;">
     <div class="of-modal-head" style="border-bottom:3px solid var(--gold);">
