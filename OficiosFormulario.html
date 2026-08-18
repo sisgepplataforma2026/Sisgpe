@@ -166,6 +166,17 @@
              Só aparece quando TIPO DE OFÍCIO = Taxa Negocial. Nada aqui grava
              ou envia nada sozinho: "Analisar carta" só sugere; "Confirmar
              oposição" só age depois que o atendente revisar os campos. -->
+        <!-- Linha de modos das Taxas.
+             Filiação, Desfiliação e Oposição já tinham a sua; Taxa Negocial e
+             Taxa Assistencial não tinham, e sem esta linha o lote ficaria sem
+             porta de entrada justamente nos tipos em que ele mais serve. -->
+        <div id="blocoModoTaxas" style="display:none;margin-top:14px;border:1.5px dashed var(--gold);border-radius:14px;padding:16px;background:#fffdf7;">
+          <div style="display:flex;gap:10px;">
+            <button type="button" id="btnModoManualTaxa" class="btn btn-outline" style="flex:1;">📝 Preencher manualmente</button>
+            <button type="button" id="btnModoLoteTaxa" class="btn btn-outline" style="flex:1;">⇩ Via lote</button>
+          </div>
+        </div>
+
         <div id="blocoOposicaoTaxaIA" style="display:none;margin-top:14px;border:1.5px dashed var(--gold,#C9A84C);border-radius:14px;padding:16px;background:#fffdf7;">
           <div style="display:flex;gap:10px;margin-bottom:12px;">
             <button type="button" id="btnModoManualOpos" class="btn btn-outline" style="flex:1;" onclick="oposIA_setModo('manual')">📝 Preencher manualmente</button>
@@ -321,12 +332,7 @@
               <div class="of-card-sub" id="ofSubTrabalhadores">Cadastre os trabalhadores vinculados ao ofício</div>
             </div>
           </div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <button type="button" id="btnColarLoteTrabalhadores" class="btn btn-outline btn-sm">⇩ Colar lista</button>
-            <button type="button" id="btnAnexarFichasLote" class="btn btn-outline btn-sm">📎 Fichas em lote</button>
-            <input type="file" id="fichasLoteInput" multiple accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
-            <button type="button" id="btnAddTrabalhador" class="btn btn-navy btn-sm">+ Adicionar</button>
-          </div>
+          <button type="button" id="btnAddTrabalhador" class="btn btn-navy btn-sm">+ Adicionar</button>
         </div>
         <div class="of-card-body">
           <div class="worker-zone">
@@ -671,21 +677,46 @@
       <button type="button" class="of-modal-close" id="btnFecharLoteTrabalhadores" aria-label="Fechar">✕</button>
     </div>
     <div class="of-modal-body">
-      <div style="font-size:12.5px;color:var(--g600);line-height:1.7;margin-bottom:14px;">
-        Cole direto de uma planilha ou digite. O <strong>CPF é opcional</strong> —
+
+      <!-- 1. ESCOLA — usa a MESMA lista e a MESMA função de seleção da tela
+           (escolasSmartOficio / selecionarEscola), para o CNPJ, o e-mail e o
+           cartão da escola serem preenchidos pelo caminho de sempre. Uma
+           segunda implementação aqui divergiria da primeira com o tempo. -->
+      <div style="font-size:11px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.09em;margin-bottom:8px;">1 · Escola</div>
+      <div class="fld" style="margin-bottom:10px;">
+        <label for="loteEscolaBusca">Buscar escola</label>
+        <input type="text" id="loteEscolaBusca" placeholder="Digite nome, CNPJ ou cidade…" autocomplete="off">
+      </div>
+      <div id="loteEscolaLista" class="escola-recentes-list" style="max-height:150px;overflow-y:auto;margin-bottom:10px;"></div>
+      <div id="loteEscolaSelecionada" style="display:none;padding:10px 12px;border-radius:var(--rad);background:var(--green-lt);border:1px solid var(--green);font-size:12.5px;color:var(--green-dk);font-weight:700;margin-bottom:18px;"></div>
+
+      <!-- 2. TRABALHADORES -->
+      <div style="font-size:11px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.09em;margin-bottom:8px;">2 · Trabalhadores</div>
+      <div style="font-size:12.5px;color:var(--g600);line-height:1.7;margin-bottom:10px;">
+        Um por linha. Cole direto de uma planilha ou digite. O <strong>CPF é opcional</strong> —
         quem não tiver sai no ofício só com o nome.
       </div>
       <div class="fld">
         <label for="loteTrabalhadoresTexto">Lista de trabalhadores</label>
-        <textarea id="loteTrabalhadoresTexto" rows="9" spellcheck="false"
-          style="min-height:170px;"
+        <textarea id="loteTrabalhadoresTexto" rows="7" spellcheck="false"
+          style="min-height:130px;"
           placeholder="Marcelha Aline Pinto Gomes, 123.456.789-09&#10;Wanderson Nascimento Castelo&#10;Ana Paula Lima; 98765432100"></textarea>
       </div>
-      <div id="loteTrabalhadoresPreview" style="margin-top:16px;"></div>
+      <div id="loteTrabalhadoresPreview" style="margin-top:14px;margin-bottom:18px;"></div>
+
+      <!-- 3. FICHAS — opcional, e sem exigir uma por pessoa: o escaneado
+           costuma vir num arquivo só por escola, por dia. -->
+      <div style="font-size:11px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.09em;margin-bottom:8px;">3 · Fichas <span style="font-weight:600;text-transform:none;letter-spacing:0;color:var(--g400);">(opcional)</span></div>
+      <div class="fld">
+        <label for="loteFichasInput">Anexar fichas</label>
+        <input type="file" id="loteFichasInput" multiple accept=".pdf,.jpg,.jpeg,.png">
+        <div class="fld-help">Pode ser um PDF único com todas as fichas da escola — a quantidade não precisa bater com a de pessoas.</div>
+      </div>
+      <div id="loteFichasResumo" style="margin-top:8px;font-size:12px;color:var(--g500);"></div>
     </div>
     <div class="of-modal-foot">
       <button type="button" class="btn btn-outline" id="btnCancelarLoteTrabalhadores">Cancelar</button>
-      <button type="button" class="btn btn-navy" id="btnConfirmarLoteTrabalhadores" disabled>Adicionar</button>
+      <button type="button" class="btn btn-navy" id="btnConfirmarLoteTrabalhadores" disabled>Adicionar ao ofício</button>
     </div>
   </div>
 </div>

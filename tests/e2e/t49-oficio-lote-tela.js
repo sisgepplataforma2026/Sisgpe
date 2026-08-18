@@ -63,18 +63,28 @@ function digitarLote(txt) {
   ta.dispatchEvent(new win.Event("input"));
 }
 
-b.passo("1. Os controles do lote existem na tela");
-b.ok(!!$("btnColarLoteTrabalhadores"), "botão 'Colar lista' existe");
-b.ok(!!$("btnAnexarFichasLote"), "botão 'Fichas em lote' existe");
+b.passo("1. O lote tem UMA porta de entrada: o modo, não botões soltos");
+/* O usuário apontou os dois botões que eu tinha deixado no cabeçalho do
+   bloco de trabalhadores — "por que tem esses botões aqui, não deveria
+   ter". Estava certo: com o lote virando modo de preenchimento, aqueles
+   botões eram uma segunda entrada para a mesma coisa, e o cabeçalho do
+   cartão não é onde se escolhe COMO preencher o ofício. */
+b.ok(!$("btnColarLoteTrabalhadores"), "o botão 'Colar lista' saiu do cabeçalho");
+b.ok(!$("btnAnexarFichasLote"), "o botão 'Fichas em lote' saiu do cabeçalho");
+b.ok(!!$("btnAddTrabalhador"), "o '+ Adicionar' continua no cabeçalho");
 b.ok(!!$("modalLoteTrabalhadores"), "modal do lote existe");
-b.ok(!!$("fichasLoteInput"), "campo de arquivo do lote existe");
+
+b.passo("1a. O modal tem as três etapas: escola, trabalhadores e fichas");
+b.ok(!!$("loteEscolaBusca") && !!$("loteEscolaLista"), "1 · escola: busca e lista");
+b.ok(!!$("loteTrabalhadoresTexto"), "2 · trabalhadores: campo da lista");
+b.ok(!!$("loteFichasInput"), "3 · fichas: campo de anexo dentro do modal");
 
 b.passo("1b. O lote é o terceiro modo, ao lado de 'Preencher manualmente'");
 /* Decisão do usuário em 18/08/2026: "terceiro modo ao lado de preencher
    manualmente". Filiação, Desfiliação e Oposição têm a linha de modos; Taxa
    Negocial e Taxa Assistencial não têm, e mantêm o botão no cabeçalho do
    bloco de trabalhadores. Todos abrem o mesmo modal. */
-["btnModoLoteFil", "btnModoLoteDesf", "btnModoLoteOpos"].forEach(id => {
+["btnModoLoteFil", "btnModoLoteDesf", "btnModoLoteOpos", "btnModoLoteTaxa"].forEach(id => {
   const el = $(id);
   b.ok(!!el, "botão '" + id + "' existe na linha de modos",
     el ? (el.textContent || "").trim() : "AUSENTE");
@@ -89,13 +99,13 @@ b.ok($("modalLoteTrabalhadores").classList.contains("aberto"),
 clicar("btnCancelarLoteTrabalhadores");
 
 b.passo("2. O modal abre e fecha");
-clicar("btnColarLoteTrabalhadores");
-b.ok($("modalLoteTrabalhadores").classList.contains("aberto"), "modal abriu ao clicar em 'Colar lista'");
+clicar("btnModoLoteFil");
+b.ok($("modalLoteTrabalhadores").classList.contains("aberto"), "modal abriu pelo modo 'Via lote'");
 clicar("btnCancelarLoteTrabalhadores");
 b.ok(!$("modalLoteTrabalhadores").classList.contains("aberto"), "modal fechou no Cancelar");
 
 b.passo("3. A prévia mostra o que foi entendido ANTES de criar os cartões");
-clicar("btnColarLoteTrabalhadores");
+clicar("btnModoLoteFil");
 digitarLote("Zuleica Ramos, 111.444.777-35\nAna Paula Lima\nBruno Alves; 12345678909");
 const previa = $("loteTrabalhadoresPreview").textContent.replace(/\s+/g, " ").trim();
 b.ok(/2 de 3 com CPF informado/.test(previa),
@@ -111,6 +121,20 @@ const previaAviso = $("loteTrabalhadoresPreview").textContent;
 b.ok(/3 d[íi]gitos/.test(previaAviso), "avisa o CPF incompleto e diz por quê",
   (previaAviso.match(/Linha[^·]*/) || [""])[0].slice(0, 80));
 
+b.passo("4b. Sem escola escolhida, o modal não adiciona ninguém");
+/* Descobrir que falta escola só na hora de emitir faria a pessoa refazer a
+   lista inteira. */
+digitarLote("Alguem Sem Escola");
+clicar("btnConfirmarLoteTrabalhadores");
+b.igual(cards().length, 0, "não criou cartão sem escola selecionada");
+b.ok(!$("escolaBusca").value, "a escola realmente estava vazia no momento da recusa");
+
+/* Preenche os campos de escola da tela — os mesmos que a emissão valida.
+   O modal olha para eles, não para uma variável interna, justamente para o
+   que a pessoa vê e o que o sistema considera não divergirem. */
+$("escolaBusca").value = "COLEGIO TESTE";
+$("cnpj").value = "36.136.001/0001-05";
+
 b.passo("5. Confirmar cria os cartões com nome e CPF preenchidos");
 digitarLote("Zuleica Ramos, 111.444.777-35\nAna Paula Lima\nBruno Alves; 12345678909");
 clicar("btnConfirmarLoteTrabalhadores");
@@ -124,7 +148,7 @@ b.igual(cpfs, ["111.444.777-35", "", "123.456.789-09"],
   "os CPFs entraram mascarados, e quem não tinha ficou em branco");
 
 b.passo("6. Colar de planilha (separado por TAB) também funciona");
-clicar("btnColarLoteTrabalhadores");
+clicar("btnModoLoteFil");
 digitarLote("Carlos Souza\t98765432100");
 clicar("btnConfirmarLoteTrabalhadores");
 b.igual(cards().length, 4, "o quarto cartão entrou");
@@ -134,44 +158,47 @@ b.igual(ultimo.querySelector(".input-nome-trabalhador").value, "Carlos Souza",
 b.igual(ultimo.querySelector(".input-cpf-trabalhador").value, "987.654.321-00",
   "CPF separado por tabulação foi lido certo");
 
-b.passo("7. Ficha em lote: um arquivo só com todas as fichas é aceito");
+b.passo("7. Um PDF único com todas as fichas é aceito");
 /* A regra mudou no meio da conversa, e vale registrar por quê.
-   Primeiro o usuário pediu conferência de quantidade ("coloco todas as
-   fichas comparando com a quantidade de pessoas"). Depois olhou a operação
-   real e corrigiu: "geralmente quando você escaneia, vem um arquivo só com
-   todas as fichas... talvez a gente deixe liberado nesse momento" e
-   "seria um PDF de fichas para cada escola por dia". Ou seja: exigir uma
-   ficha por pessoa recusaria justamente o formato normal da secretaria.
-
-   As asserções olham o EFEITO na tela, não a mensagem: o toast é da própria
-   tela e não passa pelo gravador do andaime, então conferir texto provaria
-   menos e quebraria à toa se a frase mudasse. */
-function anexarFichas(nomes) {
-  const inp = $("fichasLoteInput");
-  inp.files = nomes.map(n => ({ name: n, type: "application/pdf", lastModified: 0 }));
-  inp.dispatchEvent(new win.Event("change"));
-}
+   Primeiro o usuário pediu conferência de quantidade. Depois olhou a
+   operação real e corrigiu: "geralmente quando você escaneia, vem um
+   arquivo só com todas as fichas... talvez a gente deixe liberado" e
+   "seria um PDF de fichas para cada escola por dia". Exigir uma ficha por
+   pessoa recusaria justamente o formato normal da secretaria. */
 function cardsComFicha() {
   return Array.from(cards()).filter(c => {
     const i = c.querySelector(".input-ficha-trabalhador");
     return i && i.files && i.files.length > 0;
   }).length;
 }
-b.igual(cards().length, 4, "quatro pessoas na lista antes de anexar");
-anexarFichas(["digitalizacao-completa.pdf"]);
-b.ok(cardsComFicha() >= 1,
-  "um arquivo unico com todas as fichas e aceito, nao recusado",
-  cardsComFicha() + " cartao(oes) com anexo");
+function lotePorModal(nomes, fichas) {
+  clicar("btnModoLoteFil");
+  digitarLote(nomes);
+  const fi = $("loteFichasInput");
+  fi.files = (fichas || []).map(n => ({ name: n, type: "application/pdf", lastModified: 0 }));
+  clicar("btnConfirmarLoteTrabalhadores");
+}
 
-b.passo("8. Ficha em lote: distribui uma por pessoa quando bate");
-anexarFichas(["4.pdf", "2.pdf", "3.pdf", "1.pdf"]);
-b.igual(cardsComFicha(), 4, "4 fichas para 4 pessoas: todas distribuídas");
-// Os arquivos são ordenados pelo nome antes de distribuir, porque a ordem
-// em que o navegador entrega depende do sistema operacional.
+const antesUnico = cards().length;
+lotePorModal("Paulo Um\nPaula Dois\nPedro Tres", ["digitalizacao-completa.pdf"]);
+b.igual(cards().length, antesUnico + 3, "as três pessoas entraram");
+b.ok(cardsComFicha() >= 1,
+  "o PDF único foi aceito, não recusado por divergir da quantidade",
+  cardsComFicha() + " cartão(ões) com anexo");
+
+b.passo("8. Uma ficha por pessoa: cada uma vai para a sua");
+// Zera a lista para a contagem do passo ser inequívoca.
+Array.from(cards()).forEach(c => c.querySelector(".btn-remover-trabalhador-premium").click());
+b.igual(cards().length, 0, "lista zerada antes do caso um-para-um");
+lotePorModal("Ana Alfa\nBeto Beta", ["2.pdf", "1.pdf"]);
+b.igual(cards().length, 2, "duas pessoas entraram");
+b.igual(cardsComFicha(), 2, "2 fichas para 2 pessoas: cada cartão ficou com a sua");
+/* Os arquivos são ordenados pelo nome antes de distribuir — a ordem em que
+   o navegador entrega depende do sistema operacional. E o anexo é renomeado
+   com a pessoa, como no anexo individual. */
 const fichaDoPrimeiro = cards()[0].querySelector(".input-ficha-trabalhador").files[0].name;
-b.ok(/_1\.pdf$|1\.pdf/.test(fichaDoPrimeiro) || fichaDoPrimeiro.indexOf("Ficha_") === 0,
-  "a ficha foi renomeada com o nome da pessoa, como no anexo individual",
-  fichaDoPrimeiro);
+b.ok(fichaDoPrimeiro.indexOf("Ficha_") === 0 && /ANA|Ana/.test(fichaDoPrimeiro),
+  "o anexo do primeiro cartão leva o nome da pessoa dele", fichaDoPrimeiro);
 
 b.passo("9. O botão '+ Adicionar' um a um continua funcionando");
 const antes = cards().length;
@@ -193,11 +220,18 @@ const doLote = Array.from(cards()).map(c => ({
   cpf: c.querySelector(".input-cpf-trabalhador").value.replace(/\D/g, "")
 })).filter(p => p.nome);
 
-b.ok(doLote.length >= 4, "os cartões do lote estão preenchidos",
+b.ok(doLote.length >= 2, "os cartões do lote estão preenchidos",
   doLote.length + " pessoas");
-b.ok(doLote.some(p => p.nome === "Zuleica Ramos" && p.cpf === "11144477735"),
-  "nome e CPF do lote ficam juntos no cartão — é esse par que vai ao ofício",
-  JSON.stringify(doLote[0] || {}));
+/* Confere o par nome+CPF num lote criado agora, para a asserção não depender
+   do que sobrou dos passos anteriores. */
+Array.from(cards()).forEach(c => c.querySelector(".btn-remover-trabalhador-premium").click());
+lotePorModal("Zuleica Ramos, 111.444.777-35", []);
+const parFinal = Array.from(cards()).map(c => ({
+  nome: c.querySelector(".input-nome-trabalhador").value.trim(),
+  cpf: c.querySelector(".input-cpf-trabalhador").value.replace(/\D/g, "")
+}));
+b.igual(parFinal, [{ nome: "Zuleica Ramos", cpf: "11144477735" }],
+  "nome e CPF do lote ficam juntos no cartão — é esse par que vai ao ofício");
 b.ok(doLote.every(p => p.nome),
   "toda pessoa criada pelo lote tem nome — é o que o ofício imprime");
 

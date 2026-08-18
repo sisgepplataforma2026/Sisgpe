@@ -893,9 +893,65 @@ function removerFichaCard(btn, idx) {
     return x.length === 11 ? x.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4") : x;
   }
 
+  /* Lista de escolas dentro do modal.
+   *
+   * Reaproveita escolasSmartOficio (a base já carregada pela tela) e
+   * selecionarEscola() (o caminho que preenche CNPJ, e-mail e o cartão da
+   * escola). Repetir essa lógica aqui criaria uma segunda verdade sobre
+   * "qual escola está escolhida", e as duas divergiriam. */
+  function loteRenderEscolas() {
+    var box = $("loteEscolaLista"); if (!box) return;
+    var termo = normalizarBusca(($("loteEscolaBusca") || {}).value || "");
+    var base = (typeof escolasSmartOficio !== "undefined" && escolasSmartOficio) ? escolasSmartOficio : [];
+    var lista = base.filter(function (e) {
+      if (!termo) return true;
+      return normalizarBusca([e.nome, e.razao, e.cnpj, e.cidade, e.uf, e.cidadeUf].join(" ")).indexOf(termo) >= 0;
+    }).slice(0, 8);
+
+    if (!lista.length) {
+      box.innerHTML = '<div class="escola-recentes-empty">' +
+        (base.length ? "Nenhuma escola encontrada." : "A lista aparecerá após carregar a base.") + "</div>";
+      return;
+    }
+    box.innerHTML = lista.map(function (e, i) {
+      return '<button type="button" class="escola-recente-btn" data-idx="' + i + '">' +
+        "<strong>" + escapeHtml(e.nome) + "</strong><span>" +
+        escapeHtml([e.cnpj, e.cidadeUf || e.cidade].filter(Boolean).join(" - ")) + "</span></button>";
+    }).join("");
+    box.querySelectorAll(".escola-recente-btn").forEach(function (btn) {
+      btn.onclick = function () {
+        selecionarEscola(lista[Number(btn.dataset.idx)]);
+        loteMostrarEscolaEscolhida();
+        loteRenderizarPrevia();
+      };
+    });
+  }
+
+  function loteMostrarEscolaEscolhida() {
+    var faixa = $("loteEscolaSelecionada"); if (!faixa) return;
+    var e = (typeof escolaSmartSelecionada !== "undefined") ? escolaSmartSelecionada : null;
+    if (!e || !e.nome) { faixa.style.display = "none"; return; }
+    faixa.style.display = "block";
+    faixa.textContent = "✓ " + e.nome + (e.cnpj ? "  ·  CNPJ " + e.cnpj : "") +
+      ((emailSmartSelecionado || e.emailPrincipal) ? "  ·  " + (emailSmartSelecionado || e.emailPrincipal) : "");
+    var lista = $("loteEscolaLista"); if (lista) lista.style.display = "none";
+  }
+
+  /** A linha de modos das Taxas só aparece nos dois tipos que a usam. */
+  function loteAtualizarModoTaxas() {
+    var bloco = $("blocoModoTaxas"); if (!bloco) return;
+    var tipo = ($("tipo") && $("tipo").value) || "";
+    bloco.style.display = (tipo === "Taxa Negocial" || tipo === "Taxa Assistencial") ? "block" : "none";
+  }
+
   function loteAbrirModal() {
     var ov = $("modalLoteTrabalhadores"); if (!ov) return;
     var ta = $("loteTrabalhadoresTexto"); if (ta) ta.value = "";
+    var fi = $("loteFichasInput"); if (fi) fi.value = "";
+    var res = $("loteFichasResumo"); if (res) res.textContent = "";
+    var box = $("loteEscolaLista"); if (box) box.style.display = "";
+    loteRenderEscolas();
+    loteMostrarEscolaEscolhida();
     loteRenderizarPrevia();
     ov.classList.add("aberto");
     if (ta) ta.focus();
@@ -907,6 +963,17 @@ function removerFichaCard(btn, idx) {
   function loteConfirmar() {
     var r = loteInterpretarTexto(($("loteTrabalhadoresTexto") || {}).value || "");
     if (!r.pessoas.length) { toast("Cole ao menos uma linha com nome.", "warn"); return; }
+    /* Escola primeiro: sem ela o ofício não tem destinatário, e descobrir
+     * isso só na hora de emitir faria a pessoa refazer a lista.
+     *
+     * A checagem olha os CAMPOS DA TELA — os mesmos que a emissão valida —
+     * e não uma variável interna. Estado guardado em variável privada tende
+     * a divergir do que a pessoa está vendo, e aí a tela recusa mostrando
+     * uma escola escolhida na frente dela. */
+    var nomeEscolaTela = txt(($("escolaBusca") || {}).value || "");
+    var cnpjTela = somenteDigitos(($("cnpj") || {}).value || "");
+    var escolaOk = !!nomeEscolaTela && !ehOpcaoPlaceholder(nomeEscolaTela) && cnpjTela.length === 14;
+    if (!escolaOk) { toast("Escolha a escola antes de adicionar os trabalhadores.", "warn"); return; }
     var lista = $("listaTrabalhadores"); if (!lista) return;
     var vazio = lista.querySelector(".worker-empty"); if (vazio) vazio.remove();
 
@@ -921,9 +988,16 @@ function removerFichaCard(btn, idx) {
 
     renumerarTrabalhadores();
     atualizarResumoTrabalhadores();
+
+    /* As fichas escolhidas no modal entram pelo mesmo caminho do botão
+     * "Fichas em lote" — inclusive a regra de distribuir uma por pessoa
+     * quando as quantidades coincidem. */
+    var fi = $("loteFichasInput");
+    if (fi && fi.files && fi.files.length) loteDistribuirFichas(fi.files);
+
     loteFecharModal();
     toast(r.pessoas.length + (r.pessoas.length === 1 ? " pessoa adicionada" : " pessoas adicionadas") +
-          ". Confira os dados antes de emitir.", "ok");
+          ". Confira os cartões antes de emitir.", "ok");
   }
 
   /** Distribui as fichas escolhidas, uma por pessoa, na ordem dos cartões. */
@@ -1348,19 +1422,40 @@ function enviarWhatsappOficio(urlPdf, numero) {
      * Taxa Assistencial não têm, e por isso mantêm o botão no cabeçalho do
      * bloco de trabalhadores. Todos abrem o MESMO modal: um caminho só, com
      * várias portas, em vez de três implementações que divergem com o tempo. */
-    ["btnColarLoteTrabalhadores", "btnModoLoteFil", "btnModoLoteDesf", "btnModoLoteOpos"]
+    ["btnModoLoteFil", "btnModoLoteDesf", "btnModoLoteOpos", "btnModoLoteTaxa"]
       .forEach(function (id) { blindarBotao(id, loteAbrirModal); });
+    /* "Preencher manualmente" das Taxas não muda nada: é o estado padrão da
+     * tela. O botão existe para a escolha ficar explícita, do mesmo jeito
+     * que nos outros tipos. */
+    blindarBotao("btnModoManualTaxa", function () { toast("Preencha os trabalhadores abaixo.", "info"); });
+    loteAtualizarModoTaxas();
+    var _tipoSel = $("tipo");
+    if (_tipoSel && !_tipoSel.dataset.loteTaxaBound) {
+      _tipoSel.dataset.loteTaxaBound = "1";
+      _tipoSel.addEventListener("change", loteAtualizarModoTaxas);
+    }
     blindarBotao("btnFecharLoteTrabalhadores", loteFecharModal);
     blindarBotao("btnCancelarLoteTrabalhadores", loteFecharModal);
     blindarBotao("btnConfirmarLoteTrabalhadores", loteConfirmar);
-    blindarBotao("btnAnexarFichasLote", function(){ var i=$("fichasLoteInput"); if(i) i.click(); });
+    var _buscaLote = $("loteEscolaBusca");
+    if (_buscaLote && !_buscaLote.dataset.bound) {
+      _buscaLote.dataset.bound = "1";
+      _buscaLote.addEventListener("input", function () {
+        var box = $("loteEscolaLista"); if (box) box.style.display = "";
+        loteRenderEscolas();
+      });
+    }
+    var _fichasModal = $("loteFichasInput");
+    if (_fichasModal && !_fichasModal.dataset.bound) {
+      _fichasModal.dataset.bound = "1";
+      _fichasModal.addEventListener("change", function () {
+        var n = _fichasModal.files ? _fichasModal.files.length : 0;
+        var res = $("loteFichasResumo");
+        if (res) res.textContent = n ? (n === 1 ? "1 arquivo selecionado" : n + " arquivos selecionados") : "";
+      });
+    }
     var _taLote = $("loteTrabalhadoresTexto");
     if (_taLote && !_taLote.dataset.bound) { _taLote.dataset.bound="1"; _taLote.addEventListener("input", loteRenderizarPrevia); }
-    var _fiLote = $("fichasLoteInput");
-    if (_fiLote && !_fiLote.dataset.bound) {
-      _fiLote.dataset.bound="1";
-      _fiLote.addEventListener("change", function(){ loteDistribuirFichas(_fiLote.files); _fiLote.value=""; });
-    }
     blindarBotao("btnAddTrabalhador", function(){ if(typeof Oficio !== "undefined" && typeof Oficio.adicionarTrabalhador === "function"){ Oficio.adicionarTrabalhador(); } else { addTrabalhador(); } });
     blindarBotao("btnPreview", previewOficio);
     blindarBotao("btnEmitir", gerarOficio);
