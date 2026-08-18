@@ -1,0 +1,39 @@
+name: Deploy Homologacao Apps Script
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/claude/sisgep-project-analysis-h9wcy3'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar clasp
+        run: npm install -g @google/clasp
+
+      - name: Configurar autenticacao e projeto de homologacao
+        shell: bash
+        run: |
+          printf '%s' '${{ secrets.CLASPRC_JSON }}' > "$HOME/.clasprc.json"
+          printf '%s' '${{ secrets.CLASP_JSON_HOMOLOG }}' > .clasp.json
+
+      - name: Validar arquivos que serao enviados
+        run: clasp status
+
+      - name: Enviar codigo para Apps Script - Homologacao
+        run: clasp push --force
+
+      - name: Registrar versao de homologacao
+        run: clasp version "homolog-${GITHUB_SHA::7}"
