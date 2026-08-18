@@ -89,47 +89,56 @@ b.ok(!!$("loteNome") && !!$("loteCpf") && !!$("btnLoteAdicionarPessoa"),
   "2 · trabalhadores: nome, CPF e botão de adicionar um por vez");
 b.ok(!!$("loteFichasInput"), "3 · fichas: campo de anexo dentro do modal");
 
-b.passo("1b. O lote é o terceiro modo, ao lado de 'Preencher manualmente'");
-/* Decisão do usuário em 18/08/2026: "terceiro modo ao lado de preencher
-   manualmente". Filiação, Desfiliação e Oposição têm a linha de modos; Taxa
-   Negocial e Taxa Assistencial não têm, e mantêm o botão no cabeçalho do
-   bloco de trabalhadores. Todos abrem o mesmo modal. */
-["btnModoLoteFil", "btnModoLoteDesf", "btnModoLoteOpos", "btnModoLoteTaxa"].forEach(id => {
+b.passo("1b. O lote é o terceiro modo, numa linha de modos ÚNICA");
+/* Decisão do usuário em 18/08/2026 ("terceiro modo ao lado de preencher
+   manualmente") e, dois dias depois, o padrão único: "independente se é
+   taxa negocial, taxa assistencial... tem dois formatos, individual e em
+   lote, ou outro através da IA".
+
+   Até então cada tipo tinha a SUA cópia da linha de modos — quatro blocos
+   diferentes. Elas divergiram, e em Taxa Negocial duas apareciam
+   empilhadas: foi o print que o usuário mandou perguntando "pq tem esses
+   botões aqui, não deveria ter". A cobertura mudou de "cada tipo tem o seu
+   botão" para "existe UMA linha, e ela vale para todos". */
+["btnModoIndividual", "btnModoLote", "btnModoIAUnico"].forEach(id => {
   const el = $(id);
-  b.ok(!!el, "botão '" + id + "' existe na linha de modos",
+  b.ok(!!el, "botão '" + id + "' existe na linha única de modos",
     el ? (el.textContent || "").trim() : "AUSENTE");
 });
-/* Duas linhas de modo NUNCA podem aparecer ao mesmo tempo — foi o que o
-   usuário viu num print, com o bloco das Taxas empilhado sobre o de
-   Oposição. "Oposição à Taxa Negocial" não é um tipo próprio: é variante da
-   Taxa Negocial, e o bloco dela já serve de linha de modos ali. */
-function linhasDeModoVisiveis() {
-  return ["blocoFiliacaoIA", "blocoDesfiliacaoIA", "blocoOposicaoTaxaIA", "blocoModoTaxas"]
-    .filter(id => { const el = $(id); return el && el.style.display !== "none"; });
-}
+
+/* Nenhum dos IDs antigos pode ter sobrado: dois lugares oferecendo o mesmo
+   lote é exatamente como a divergência recomeça. */
+const ANTIGOS_MODO = ["btnModoManualFil", "btnModoLoteFil", "btnModoManualDesf",
+                      "btnModoLoteDesf", "btnModoManualOpos", "btnModoLoteOpos",
+                      "btnModoManualTaxa", "btnModoLoteTaxa"];
+b.igual(ANTIGOS_MODO.filter(id => !!$(id)), [],
+  "nenhuma linha de modos duplicada sobrou");
+
 const tipoSel = $("tipo");
-[["Filiação", "blocoFiliacaoIA"], ["Desfiliação", "blocoDesfiliacaoIA"],
- ["Taxa Negocial", "blocoOposicaoTaxaIA"], ["Taxa Assistencial", "blocoModoTaxas"]]
-  .forEach(([valor, esperado]) => {
-    tipoSel.value = valor;
-    tipoSel.dispatchEvent(new win.Event("change", { bubbles: true }));
-    b.igual(linhasDeModoVisiveis(), [esperado],
-      "em '" + valor + "' aparece UMA linha de modos, a certa");
-  });
+["Filiação", "Desfiliação", "Taxa Negocial", "Taxa Assistencial"].forEach(valor => {
+  tipoSel.value = valor;
+  tipoSel.dispatchEvent(new win.Event("change", { bubbles: true }));
+  const linha = $("blocoModosOficio");
+  b.ok(linha && linha.style.display !== "none",
+    "em '" + valor + "' a linha única de modos aparece");
+  b.ok($("btnModoLote") && $("btnModoLote").style.display !== "none",
+    "e o botão Em lote está nela, em " + valor);
+});
+
 tipoSel.value = "Filiação";
 tipoSel.dispatchEvent(new win.Event("change", { bubbles: true }));
 
-const linhaModos = $("btnModoManualFil") && $("btnModoManualFil").parentNode;
-b.ok(!!linhaModos && linhaModos.contains($("btnModoLoteFil")),
-  "o botão do lote está na MESMA linha do 'Preencher manualmente'",
+const linhaModos = $("btnModoIndividual") && $("btnModoIndividual").parentNode;
+b.ok(!!linhaModos && linhaModos.contains($("btnModoLote")),
+  "o botão do lote está na MESMA linha do 'Individual'",
   linhaModos ? linhaModos.querySelectorAll("button").length + " botões na linha" : "linha não encontrada");
-$("btnModoLoteFil").click();
+$("btnModoLote").click();
 b.ok($("modalLoteTrabalhadores").classList.contains("aberto"),
   "o terceiro modo abre o mesmo modal do lote");
 clicar("btnCancelarLoteTrabalhadores");
 
 b.passo("2. O modal abre e fecha");
-clicar("btnModoLoteFil");
+clicar("btnModoLote");
 b.ok($("modalLoteTrabalhadores").classList.contains("aberto"), "modal abriu pelo modo 'Via lote'");
 clicar("btnCancelarLoteTrabalhadores");
 b.ok(!$("modalLoteTrabalhadores").classList.contains("aberto"), "modal fechou no Cancelar");
@@ -137,7 +146,7 @@ b.ok(!$("modalLoteTrabalhadores").classList.contains("aberto"), "modal fechou no
 b.passo("3. A prévia mostra o que foi adicionado ANTES de criar os cartões");
 /* Reabrir o modal zera a fila — é o que acontece quando a pessoa fecha e
    abre de novo, e sem isso um cenário contaminaria o seguinte. */
-clicar("btnModoLoteFil");
+clicar("btnModoLote");
 digitarLote("Zuleica Ramos, 111.444.777-35\nAna Paula Lima\nBruno Alves; 12345678909");
 b.igual(pessoasNaFila(), 3, "as três pessoas entraram na fila do modal");
 const previa = $("loteTrabalhadoresPreview").textContent.replace(/\s+/g, " ").trim();
@@ -155,7 +164,7 @@ b.ok($("loteTrabalhadoresPreview").textContent.indexOf("Ana Paula Lima") === -1,
   "a pessoa removida sumiu da prévia");
 
 b.passo("4. CPF com quantidade errada de dígitos não entra calado");
-clicar("btnModoLoteFil");
+clicar("btnModoLote");
 $("loteNome").value = "Fulano De Tal";
 $("loteCpf").value = "123";
 clicar("btnLoteAdicionarPessoa");
@@ -180,7 +189,7 @@ $("escolaBusca").value = "COLEGIO TESTE";
 $("cnpj").value = "36.136.001/0001-05";
 
 b.passo("5. Confirmar cria os cartões com nome e CPF preenchidos");
-clicar("btnModoLoteFil");
+clicar("btnModoLote");
 digitarLote("Zuleica Ramos, 111.444.777-35\nAna Paula Lima\nBruno Alves; 12345678909");
 clicar("btnConfirmarLoteTrabalhadores");
 b.igual(cards().length, 3, "três cartões criados");
@@ -195,7 +204,7 @@ b.igual(cpfs, ["111.444.777-35", "", "123.456.789-09"],
 b.passo("6. Colar várias linhas no campo de nome adiciona todas");
 /* Atalho de quem já tem a lista pronta na planilha: quem digita uma por vez
    nem percebe que existe. */
-clicar("btnModoLoteFil");
+clicar("btnModoLote");
 $("loteNome").value = "Carlos Souza\tMaria Souza";
 clicar("btnLoteAdicionarPessoa");
 b.ok(pessoasNaFila() >= 1, "colar várias linhas entra de uma vez",
@@ -216,7 +225,7 @@ function cardsComFicha() {
   }).length;
 }
 function lotePorModal(nomes, fichas) {
-  clicar("btnModoLoteFil");
+  clicar("btnModoLote");
   digitarLote(nomes);
   const fi = $("loteFichasInput");
   fi.files = (fichas || []).map(n => ({ name: n, type: "application/pdf", lastModified: 0 }));
@@ -365,7 +374,7 @@ if (!fichasPayload) {
 }
 
 b.passo("13. O modal manda as fichas para o bloco do ofício");
-clicar("btnModoLoteFil");
+clicar("btnModoLote");
 $("loteNome").value = "Teste Do Lote";
 clicar("btnLoteAdicionarPessoa");
 $("loteFichasInput").files = [{ name: "digitalizacao-do-dia.pdf", type: "application/pdf", lastModified: 0 }];

@@ -488,11 +488,42 @@ window.renderDropdownEscolas = renderDropdown;
    * o CPF não obrigatório para as três taxas e tem que sair no ofício para
    * todas as taxas". Opcional é diferente de ausente: quando informado, o
    * CPF sai no documento. */
+  /* CPF NÃO É OBRIGATÓRIO EM NENHUM TIPO.
+   *
+   * Decisão do usuário em 18/08/2026, com a razão junto: "pode ser opcional,
+   * mas a sugestão que eu sei falar pra quem trabalha no SISGEP é que inclua
+   * o CPF, que tem muita gente que não sabe nem o próprio CPF".
+   *
+   * Ou seja: o sistema PEDE o CPF, não exige. Travar a emissão por causa de
+   * um número que a pessoa não tem na mão na hora só faz o ofício não sair —
+   * e o ofício é o que a escola precisa receber. O que o sistema faz é dizer,
+   * na tela, o que se perde sem ele (o vínculo com o cadastro do associado),
+   * e deixar a decisão com quem está atendendo. */
+  function oficioExigeCpf() { return false; }
+  window.oficioExigeCpf = oficioExigeCpf;
+
+  /* Ficha continua sendo exigida onde ela é a prova da autorização do
+   * desconto: filiação e desfiliação nascem de um documento assinado. */
   function oficioExigeFichaECpf(tipo) {
     var t = String(tipo || "");
     return t === "Filiação" || t === "Desfiliação";
   }
+
+  /* A recomendação muda de peso conforme o tipo: em Filiação e Desfiliação o
+   * CPF é o que liga o ofício ao cadastro do associado — sem ele a
+   * desfiliação não marca ninguém. Nos demais ele só sai impresso. */
+  function atualizarRecomendacaoCpf() {
+    var tipo = ($("tipo") && $("tipo").value) || "";
+    var ligaCadastro = (tipo === "Filiação" || tipo === "Desfiliação");
+    var texto = ligaCadastro
+      ? "Sem CPF o ofício sai normalmente, mas o cadastro do associado não é atualizado."
+      : "Sem CPF o ofício sai normalmente, só sem o número impresso ao lado do nome.";
+    document.querySelectorAll("#listaTrabalhadores .cpf-recomendacao")
+      .forEach(function (el) { el.textContent = texto; });
+  }
+  window.atualizarRecomendacaoCpf = atualizarRecomendacaoCpf;
   function oficioLimitePessoas(tipo) { return 50; }   // 50 em todos os tipos desde 18/08/2026
+  window.oficioLimitePessoas = oficioLimitePessoas;
 
   var MAX_TRABALHADORES = 50, contadorTrabalhadores = 0;
 
@@ -660,8 +691,9 @@ function atualizarPayloadOficio(num) {
     + '<div class="trabalhador-grid">'
     + '<div class="trabalhador-campo"><label>Nome completo</label>'
     + '<input type="text" class="input-nome-trabalhador" placeholder="Nome do trabalhador"></div>'
-    + '<div class="trabalhador-campo"><label>CPF</label>'
-    + '<input type="text" class="input-cpf-trabalhador" placeholder="000.000.000-00" maxlength="14" inputmode="numeric"></div>'
+    + '<div class="trabalhador-campo"><label>CPF <span style="font-weight:600;text-transform:none;letter-spacing:0;color:var(--g400);">(opcional)</span></label>'
+    + '<input type="text" class="input-cpf-trabalhador" placeholder="000.000.000-00" maxlength="14" inputmode="numeric">'
+    + '<span class="cpf-recomendacao" style="display:block;font-size:11px;color:var(--g400);margin-top:4px;line-height:1.5;"></span></div>'
     + '</div>'
     + '<div class="trabalhador-ficha-area" style="margin-top:10px;padding:10px 12px;background:var(--g50);border-radius:8px;border:1px dashed var(--g200);">'
     + '<label style="font-size:11px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">Ficha do trabalhador</label>'
@@ -719,6 +751,22 @@ function atualizarPayloadOficio(num) {
     renderizarPreviewFichaCard(previewFich, fichasCard);
     sincronizarFichasGlobais();
   };
+
+  /* O cartão nasce já no modo em que a tela está: no lote a ficha do
+     trabalhador não aparece, e a recomendação de CPF é a do tipo escolhido.
+     Sem isto, cartão criado DEPOIS de trocar o modo saía com a ficha à
+     mostra — foi assim que uma mutação minha passou num teste anterior. */
+  var areaFicha = c.querySelector(".trabalhador-ficha-area");
+  if (areaFicha && typeof window.oficioModoAtual === "function") {
+    areaFicha.style.display = (window.oficioModoAtual() === "individual") ? "" : "none";
+  }
+  var recCpf = c.querySelector(".cpf-recomendacao");
+  if (recCpf) {
+    var _t = ($("tipo") && $("tipo").value) || "";
+    recCpf.textContent = (_t === "Filiação" || _t === "Desfiliação")
+      ? "Sem CPF o ofício sai normalmente, mas o cadastro do associado não é atualizado."
+      : "Sem CPF o ofício sai normalmente, só sem o número impresso ao lado do nome.";
+  }
 
   return c;
 }
@@ -1016,18 +1064,116 @@ function removerFichaCard(btn, idx) {
    * Como anexar ficha não é mais obrigatório em lugar nenhum, um campo
    * opcional a mais custa espaço; um campo ausente custa uma emissão que não
    * dá para fazer. Fica visível. */
-  function atualizarAreasFichaPorTipo() {
-    document.querySelectorAll("#listaTrabalhadores .trabalhador-ficha-area")
-      .forEach(function (a) { a.style.display = ""; });
-    var bloco = $("blocoFichasOficio");
-    if (bloco) bloco.style.display = "block";
-  }
+  /* ═══════════════════════════════════════════════════════════════
+     PADRÃO ÚNICO DE PREENCHIMENTO — INDIVIDUAL, LOTE E IA
+     ═══════════════════════════════════════════════════════════════
 
-  function loteAtualizarModoTaxas() {
-    var bloco = $("blocoModoTaxas"); if (!bloco) return;
+     Pedido do usuário em 18/08/2026: "independente se é taxa negocial, taxa
+     assistencial, ofício livre, tem dois formatos: individual e em lote, ou
+     outro através da IA pra leitura... essa sequência é um padrão único".
+
+     A diferença entre os três é UMA só: onde mora a ficha.
+
+       individual → uma ficha por trabalhador, dentro do cartão
+       lote       → nenhuma no cartão; um PDF único no fim (o escaneado
+                    da escola costuma vir num arquivo só)
+       ia         → o documento lido é a própria prova
+
+     Escola, nomes, CPF, limite de 50, revisão, emissão, e as quatro ações
+     finais (baixar, imprimir, e-mail, WhatsApp) são o MESMO caminho nos
+     três. É isso que faz o padrão ser único de verdade, em vez de três
+     fluxos parecidos que divergem com o tempo.
+
+     No modo individual o bloco do PDF do ofício continua visível: anexar
+     nunca é obrigatório, e um campo opcional a mais custa espaço enquanto
+     um campo ausente custa uma emissão que não dá para fazer. */
+  var MODO_OFICIO_ATUAL = "individual";
+
+  function oficioModoAtual() { return MODO_OFICIO_ATUAL; }
+
+  function oficioSetModo(modo) {
+    MODO_OFICIO_ATUAL = (modo === "lote" || modo === "ia") ? modo : "individual";
+
+    var mapa = { individual: "btnModoIndividual", lote: "btnModoLote", ia: "btnModoIAUnico" };
+    Object.keys(mapa).forEach(function (m) {
+      var btn = $(mapa[m]); if (!btn) return;
+      btn.classList.toggle("btn-navy",   m === MODO_OFICIO_ATUAL);
+      btn.classList.toggle("btn-outline", m !== MODO_OFICIO_ATUAL);
+    });
+
+    var ajuda = $("modoOficioAjuda");
+    if (ajuda) {
+      ajuda.innerHTML = MODO_OFICIO_ATUAL === "lote"
+        ? "Adicione os trabalhadores um a um e anexe <strong>um PDF único</strong> com todas as fichas da escola, no fim. A quantidade de fichas não precisa bater com a de pessoas."
+        : MODO_OFICIO_ATUAL === "ia"
+        ? "Anexe o documento escaneado ou a foto. A IA <strong>sugere</strong> os dados; nada é gravado antes de você conferir."
+        : "Um cartão por trabalhador, cada um com a sua ficha. O <strong>CPF é opcional</strong>.";
+    }
+
+    /* A ficha por trabalhador só faz sentido no individual. No lote ela sai
+       de cena — foi o pedido: "em lote eu não preciso ficha". */
+    var mostrarFichaCartao = (MODO_OFICIO_ATUAL === "individual");
+    document.querySelectorAll("#listaTrabalhadores .trabalhador-ficha-area")
+      .forEach(function (a) { a.style.display = mostrarFichaCartao ? "" : "none"; });
+
+    var blocoPdf = $("blocoFichasOficio");
+    if (blocoPdf) blocoPdf.style.display = (MODO_OFICIO_ATUAL === "ia") ? "none" : "block";
+
+    /* Cada tipo tem a sua área de leitura por IA; abre só a do tipo atual. */
     var tipo = ($("tipo") && $("tipo").value) || "";
-    bloco.style.display = (tipo === "Taxa Assistencial") ? "block" : "none";
+    var areasIA = { "Filiação": "filIA_areaUpload", "Desfiliação": "desfIA_areaUpload", "Taxa Negocial": "oposIA_areaUpload" };
+    Object.keys(areasIA).forEach(function (t) {
+      var area = $(areasIA[t]); if (!area) return;
+      area.style.display = (MODO_OFICIO_ATUAL === "ia" && t === tipo) ? "block" : "none";
+    });
+
+    var secaoPadrao = $("secaoOficioPadrao");
+    if (secaoPadrao && tipo !== "Ofício Livre") {
+      secaoPadrao.style.display = (MODO_OFICIO_ATUAL === "ia") ? "none" : "";
+    }
+
+    if (MODO_OFICIO_ATUAL === "lote") loteAbrirModal();
   }
+  window.oficioSetModo   = oficioSetModo;
+  window.oficioModoAtual = oficioModoAtual;
+
+  /* Ofício Livre é a exceção, e o usuário foi explícito: "vamos enviar um
+     ofício pro governo do estado, vou enviar um ofício para secretaria de
+     saúde — usa um padrão de ofício, mas o texto é livre". Papel timbrado e
+     número sequencial sim; escola, trabalhadores e os três modos, não.
+
+     Até 18/08/2026 esse tipo estava INUTILIZÁVEL: secaoOficioLivre nascia
+     display:none e nenhum arquivo do projeto a abria (procurei nos 205).
+     Quem escolhia Ofício Livre via a tela de escola, não tinha onde
+     escrever, e o backend recusava com "Destinatário é obrigatório". */
+  function oficioAtualizarPorTipo() {
+    var tipo = ($("tipo") && $("tipo").value) || "";
+    var ehLivre = (tipo === "Ofício Livre");
+
+    var secaoLivre  = $("secaoOficioLivre");
+    var secaoPadrao = $("secaoOficioPadrao");
+    var blocoModos  = $("blocoModosOficio");
+
+    if (secaoLivre)  secaoLivre.style.display  = ehLivre ? "block" : "none";
+    if (secaoPadrao) secaoPadrao.style.display = ehLivre ? "none"  : "";
+    if (blocoModos)  blocoModos.style.display  = (ehLivre || !tipo) ? "none" : "block";
+
+    /* IA só onde existe documento para ler. Em Taxa Assistencial não há
+       carta nem ficha: botão que não faz nada confunde mais do que ajuda. */
+    var btnIA = $("btnModoIAUnico");
+    if (btnIA) {
+      var temIA = (tipo === "Filiação" || tipo === "Desfiliação" || tipo === "Taxa Negocial");
+      btnIA.style.display = temIA ? "" : "none";
+      if (!temIA && MODO_OFICIO_ATUAL === "ia") MODO_OFICIO_ATUAL = "individual";
+    }
+
+    if (!ehLivre) oficioSetModo(MODO_OFICIO_ATUAL === "lote" ? "individual" : MODO_OFICIO_ATUAL);
+    atualizarRecomendacaoCpf();
+  }
+  window.oficioAtualizarPorTipo = oficioAtualizarPorTipo;
+
+  /* Mantido para quem ainda chama pelo nome antigo. */
+  function atualizarAreasFichaPorTipo() { oficioSetModo(MODO_OFICIO_ATUAL); }
 
   /* AVISO DE OFÍCIO REPETIDO — modal do sistema, não o confirm() do navegador.
    *
@@ -1376,9 +1522,16 @@ function atualizarContadorFichas() {
       if(oficioExigeFichaECpf(d.tipo)&&d.beneficiarios.some(function(b){return !b.cpf;})) return toast("Complete nome e CPF.","warn");
       if(d.beneficiarios.length>oficioLimitePessoas(d.tipo)) return toast("Limite de "+oficioLimitePessoas(d.tipo)+" trabalhadores para este tipo.","warn");
     } else {
-      if(!$("para")&&$("para").value) return toast("Informe o destinatário.","warn");
-      if(!$("emailLivreAux")&&$("emailLivreAux").value) return toast("Informe o e-mail.","warn");
-      if(!$("corpo")&&$("corpo").value) return toast("Informe o corpo.","warn");
+      /* Guardas MORTAS até 18/08/2026: a condição era `!$("x") && $("x").value`,
+         que só seria verdadeira se o elemento não existisse — e aí o segundo
+         termo estouraria. Na prática nunca avisava nada: o atendente clicava
+         em emitir e recebia o erro cru do servidor ("Destinatário é
+         obrigatório"), sem saber qual campo faltava. */
+      var _val = function (id) { var e = $(id); return e ? String(e.value || "").trim() : ""; };
+      if(!_val("para"))          return toast("Informe o destinatário.","warn");
+      if(!_val("assunto"))       return toast("Informe o assunto do ofício.","warn");
+      if(!_val("corpo"))         return toast("Informe o corpo do ofício.","warn");
+      if(!_val("emailLivreAux")) return toast("Informe o e-mail do destinatário.","warn");
     }
 
     var btn=$("btnEmitir"), etapas=["⏳ Iniciando...","📄 Gerando...","🖨 PDF...","📧 Enviando...","💾 Registrando..."];
@@ -1604,27 +1757,18 @@ function enviarWhatsappOficio(urlPdf, numero) {
       btn.addEventListener("click", function(ev){ ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation(); handler(); return false; }, true);
     }
 
-    /* O lote é o terceiro modo de preenchimento, ao lado de "Preencher
-     * manualmente" e "Extrair (IA)" — decisão do usuário em 18/08/2026.
-     * Filiação, Desfiliação e Oposição têm a linha de modos; Taxa Negocial e
-     * Taxa Assistencial não têm, e por isso mantêm o botão no cabeçalho do
-     * bloco de trabalhadores. Todos abrem o MESMO modal: um caminho só, com
-     * várias portas, em vez de três implementações que divergem com o tempo. */
-    ["btnModoLoteFil", "btnModoLoteDesf", "btnModoLoteOpos", "btnModoLoteTaxa"]
-      .forEach(function (id) { blindarBotao(id, loteAbrirModal); });
-    /* "Preencher manualmente" das Taxas não muda nada: é o estado padrão da
-     * tela. O botão existe para a escolha ficar explícita, do mesmo jeito
-     * que nos outros tipos. */
-    blindarBotao("btnModoManualTaxa", function () { toast("Preencha os trabalhadores abaixo.", "info"); });
-    loteAtualizarModoTaxas();
-    atualizarAreasFichaPorTipo();
+    /* Os três modos ficam numa linha só, valem para todos os tipos com
+     * escola, e sempre passam por oficioSetModo — inclusive o lote, que
+     * abre o mesmo modal de antes. Um caminho só, com três portas. */
+    blindarBotao("btnModoIndividual", function () { oficioSetModo("individual"); });
+    blindarBotao("btnModoLote",       function () { oficioSetModo("lote"); });
+    blindarBotao("btnModoIAUnico",    function () { oficioSetModo("ia"); });
+
+    oficioAtualizarPorTipo();
     var _tipoSel = $("tipo");
     if (_tipoSel && !_tipoSel.dataset.loteTaxaBound) {
       _tipoSel.dataset.loteTaxaBound = "1";
-      _tipoSel.addEventListener("change", function () {
-        loteAtualizarModoTaxas();
-        atualizarAreasFichaPorTipo();
-      });
+      _tipoSel.addEventListener("change", oficioAtualizarPorTipo);
     }
     blindarBotao("btnFecharLoteTrabalhadores", loteFecharModal);
     blindarBotao("btnCancelarLoteTrabalhadores", loteFecharModal);
@@ -1922,16 +2066,14 @@ window.carregarMonitoramento = carregarMonitoramento;
    ═══════════════════════════════════════════════════════ */
 var filIA_estado = { arquivoBase64: "", arquivoTipo: "", arquivoExtensao: "", escolas: [] };
 
+/* Só cuida da PRÓPRIA área de leitura. Quem decide se a seção de escola e
+   trabalhadores aparece é oficioSetModo/oficioAtualizarPorTipo — três
+   funções mexendo no mesmo secaoOficioPadrao era corrida garantida, e no
+   Ofício Livre a última a rodar reabria a seção que tinha acabado de sumir. */
 function filIA_setModo(modo) {
   var areaUpload = $("filIA_areaUpload");
-  var secaoPadrao = $("secaoOficioPadrao");
-  if (modo === "ia") {
-    if (areaUpload) areaUpload.style.display = "block";
-    if (secaoPadrao) secaoPadrao.style.display = "none";
-  } else {
-    if (areaUpload) areaUpload.style.display = "none";
-    if (secaoPadrao) secaoPadrao.style.display = "";
-  }
+  if (areaUpload) areaUpload.style.display = (modo === "ia") ? "block" : "none";
+  if (typeof window.oficioSetModo === "function") window.oficioSetModo(modo === "ia" ? "ia" : "individual");
 }
 
 function filIA_atualizarVisibilidade() {
@@ -2106,17 +2248,14 @@ window.filIA_confirmar = filIA_confirmar;
    ═══════════════════════════════════════════════════════ */
 var desfIA_estado = { arquivoBase64: "", arquivoTipo: "", escolas: [] };
 
+/* Só cuida da PRÓPRIA área de leitura. Quem decide se a seção de escola e
+   trabalhadores aparece é oficioSetModo/oficioAtualizarPorTipo — três
+   funções mexendo no mesmo secaoOficioPadrao era corrida garantida, e no
+   Ofício Livre a última a rodar reabria a seção que tinha acabado de sumir. */
 function desfIA_setModo(modo) {
   var areaUpload = $("desfIA_areaUpload");
-  var secaoPadrao = $("secaoOficioPadrao");
-  var btnManual = $("btnModoManualDesf"), btnIA = $("btnModoIADesf");
-  if (modo === "ia") {
-    if (areaUpload) areaUpload.style.display = "block";
-    if (secaoPadrao) secaoPadrao.style.display = "none";
-  } else {
-    if (areaUpload) areaUpload.style.display = "none";
-    if (secaoPadrao) secaoPadrao.style.display = "";
-  }
+  if (areaUpload) areaUpload.style.display = (modo === "ia") ? "block" : "none";
+  if (typeof window.oficioSetModo === "function") window.oficioSetModo(modo === "ia" ? "ia" : "individual");
 }
 
 function desfIA_atualizarVisibilidade() {
@@ -2277,17 +2416,14 @@ window.desfIA_confirmar = desfIA_confirmar;
    ═══════════════════════════════════════════════════════ */
 var oposIA_estado = { arquivoBase64: "", arquivoTipo: "", escolas: [] };
 
+/* Só cuida da PRÓPRIA área de leitura. Quem decide se a seção de escola e
+   trabalhadores aparece é oficioSetModo/oficioAtualizarPorTipo — três
+   funções mexendo no mesmo secaoOficioPadrao era corrida garantida, e no
+   Ofício Livre a última a rodar reabria a seção que tinha acabado de sumir. */
 function oposIA_setModo(modo) {
   var areaUpload = $("oposIA_areaUpload");
-  var secaoPadrao = $("secaoOficioPadrao");
-  var btnManual = $("btnModoManualOpos"), btnIA = $("btnModoIAOpos");
-  if (modo === "ia") {
-    if (areaUpload) areaUpload.style.display = "block";
-    if (secaoPadrao) secaoPadrao.style.display = "none";
-  } else {
-    if (areaUpload) areaUpload.style.display = "none";
-    if (secaoPadrao) secaoPadrao.style.display = "";
-  }
+  if (areaUpload) areaUpload.style.display = (modo === "ia") ? "block" : "none";
+  if (typeof window.oficioSetModo === "function") window.oficioSetModo(modo === "ia" ? "ia" : "individual");
 }
 
 function oposIA_atualizarVisibilidade() {

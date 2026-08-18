@@ -56,18 +56,36 @@
           </div>
         </div>
 
+        <!-- ═══ COMO PREENCHER — UMA linha de modos, para todos os tipos ═══
+             Antes existiam QUATRO cópias desta linha, uma dentro de cada
+             bloco de tipo. Elas divergiram: um tipo ganhava um botão que o
+             outro não tinha, e em Taxa Negocial duas linhas apareciam
+             empilhadas. Foi o que o usuário fotografou ("Pq tem esses botões
+             aqui, não deveria ter"). Uma linha só, com a visibilidade
+             decidida em oficioAtualizarPorTipo(), fecha essa porta.
+
+             Os três modos diferem em UMA coisa: onde mora a ficha.
+               Individual → uma ficha por trabalhador, no cartão
+               Em lote    → nenhuma no cartão, um PDF único no fim
+               IA         → o documento lido é a própria ficha
+             Escola, nomes, CPF, limite de 50, revisão, emissão e as quatro
+             ações finais são o mesmo caminho nos três. -->
+        <div id="blocoModosOficio" style="display:none;margin-top:14px;border:1.5px dashed var(--gold);border-radius:14px;padding:16px;background:#fffdf7;">
+          <div style="font-size:11px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.09em;margin-bottom:9px;">Como preencher</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button type="button" id="btnModoIndividual" class="btn btn-outline" style="flex:1;min-width:170px;">📝 Individual</button>
+            <button type="button" id="btnModoLote" class="btn btn-outline" style="flex:1;min-width:170px;">⇩ Em lote</button>
+            <button type="button" id="btnModoIAUnico" class="btn btn-outline" style="flex:1;min-width:170px;">✨ Extrair com IA</button>
+          </div>
+          <div id="modoOficioAjuda" style="margin-top:10px;font-size:12.5px;color:var(--g600);line-height:1.6;"></div>
+        </div>
+
         <!-- ═══ FILIAÇÃO VIA IA — leitura de formulário de sindicalização escaneado/foto ═══
              Só aparece quando TIPO DE OFÍCIO = Filiação. Nada aqui grava ou envia
              nada sozinho: "Analisar formulário" só sugere; "Confirmar" só cria a
              ficha (que ainda passa pela aprovação normal, como já acontece hoje
              em Sindicalização > Fichas Sindicais > "Importar formulário em papel"). -->
         <div id="blocoFiliacaoIA" style="display:none;margin-top:14px;border:1.5px dashed var(--gold,#C9A84C);border-radius:14px;padding:16px;background:#fffdf7;">
-          <div style="display:flex;gap:10px;margin-bottom:12px;">
-            <button type="button" id="btnModoManualFil" class="btn btn-outline" style="flex:1;" onclick="filIA_setModo('manual')">📝 Preencher manualmente</button>
-            <button type="button" id="btnModoIAFil" class="btn btn-outline" style="flex:1;" onclick="filIA_setModo('ia')">✨ Extrair de formulário (IA)</button>
-            <button type="button" id="btnModoLoteFil" class="btn btn-outline" style="flex:1;">⇩ Via lote</button>
-          </div>
-
           <div id="filIA_areaUpload" style="display:none;">
             <div class="fld" style="margin-bottom:10px;">
               <label>ANEXAR FORMULÁRIO DE SINDICALIZAÇÃO (PDF ou foto)</label>
@@ -124,12 +142,6 @@
              ou envia nada sozinho: "Analisar carta" só sugere; "Confirmar
              desfiliação" só age depois que o atendente revisar os campos. -->
         <div id="blocoDesfiliacaoIA" style="display:none;margin-top:14px;border:1.5px dashed var(--gold,#C9A84C);border-radius:14px;padding:16px;background:#fffdf7;">
-          <div style="display:flex;gap:10px;margin-bottom:12px;">
-            <button type="button" id="btnModoManualDesf" class="btn btn-outline" style="flex:1;" onclick="desfIA_setModo('manual')">📝 Preencher manualmente</button>
-            <button type="button" id="btnModoIADesf" class="btn btn-outline" style="flex:1;" onclick="desfIA_setModo('ia')">✨ Extrair de carta (IA)</button>
-            <button type="button" id="btnModoLoteDesf" class="btn btn-outline" style="flex:1;">⇩ Via lote</button>
-          </div>
-
           <div id="desfIA_areaUpload" style="display:none;">
             <div class="fld" style="margin-bottom:10px;">
               <label>ANEXAR CARTA DE DESFILIAÇÃO (PDF ou foto)</label>
@@ -166,24 +178,7 @@
              Só aparece quando TIPO DE OFÍCIO = Taxa Negocial. Nada aqui grava
              ou envia nada sozinho: "Analisar carta" só sugere; "Confirmar
              oposição" só age depois que o atendente revisar os campos. -->
-        <!-- Linha de modos das Taxas.
-             Filiação, Desfiliação e Oposição já tinham a sua; Taxa Negocial e
-             Taxa Assistencial não tinham, e sem esta linha o lote ficaria sem
-             porta de entrada justamente nos tipos em que ele mais serve. -->
-        <div id="blocoModoTaxas" style="display:none;margin-top:14px;border:1.5px dashed var(--gold);border-radius:14px;padding:16px;background:#fffdf7;">
-          <div style="display:flex;gap:10px;">
-            <button type="button" id="btnModoManualTaxa" class="btn btn-outline" style="flex:1;">📝 Preencher manualmente</button>
-            <button type="button" id="btnModoLoteTaxa" class="btn btn-outline" style="flex:1;">⇩ Via lote</button>
-          </div>
-        </div>
-
         <div id="blocoOposicaoTaxaIA" style="display:none;margin-top:14px;border:1.5px dashed var(--gold,#C9A84C);border-radius:14px;padding:16px;background:#fffdf7;">
-          <div style="display:flex;gap:10px;margin-bottom:12px;">
-            <button type="button" id="btnModoManualOpos" class="btn btn-outline" style="flex:1;" onclick="oposIA_setModo('manual')">📝 Preencher manualmente</button>
-            <button type="button" id="btnModoIAOpos" class="btn btn-outline" style="flex:1;" onclick="oposIA_setModo('ia')">✨ Extrair de carta de oposição (IA)</button>
-            <button type="button" id="btnModoLoteOpos" class="btn btn-outline" style="flex:1;">⇩ Via lote</button>
-          </div>
-
           <div id="oposIA_areaUpload" style="display:none;">
             <div class="fld" style="margin-bottom:10px;">
               <label>ANEXAR CARTA DE OPOSIÇÃO À TAXA NEGOCIAL (PDF ou foto)</label>
