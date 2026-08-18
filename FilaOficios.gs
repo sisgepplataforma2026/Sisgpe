@@ -206,6 +206,19 @@ function processarFilaEnvioOficios() {
   var PAUSA_ENTRE_ENVIOS_MS = 4000;
   var MAX_TENTATIVAS        = 3;
 
+  if (typeof getAmbienteAtual === "function" &&
+      getAmbienteAtual() === "homologacao") {
+    Logger.log("[HOMOLOGACAO] processarFilaEnvioOficios bloqueado: ambiente de homologação.");
+    return {
+      ok: true,
+      homologacao: true,
+      mensagem: "Envio de ofícios bloqueado em ambiente de homologação.",
+      processados: 0,
+      enviados: 0,
+      erros: 0
+    };
+  }
+
   var ss = SpreadsheetApp.openById(PLANILHA_ID);
   var sh = obterOuCriarAbaFilaOficios_();
 

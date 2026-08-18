@@ -28,7 +28,7 @@ function getSistemaUrlBase() {
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 var PLANILHAS_PADRAO = {
   PRODUCAO: "1QPpsx19v4YzfskoYXK9WB89TClA7q8SWGSn55VZ040E",
-  HOMOLOGACAO: "1ZRjyxKew4YJxEuMejNqfORfHw58Lg3UWii73UHiAS8c",
+  HOMOLOGACAO: "1OGtjryOUagEgKMHjFaluiEgLnzZ11Ydc-PB-IdrHLMk",
   CONTATOS: "1IT02LHH8tO3A-RZW6Pu-tIWASawdxIAJgV9UwEaOOx0",
   ABAS: {
     REGISTRO: "Controle",
@@ -59,7 +59,7 @@ function getNomeAba(chave) {
 function getPlanilhasConfig_() {
   var fallback = {
     PRODUCAO: "1QPpsx19v4YzfskoYXK9WB89TClA7q8SWGSn55VZ040E",
-    HOMOLOGACAO: "1ZRjyxKew4YJxEuMejNqfORfHw58Lg3UWii73UHiAS8c",
+    HOMOLOGACAO: "1OGtjryOUagEgKMHjFaluiEgLnzZ11Ydc-PB-IdrHLMk",
     CONTATOS: "1IT02LHH8tO3A-RZW6Pu-tIWASawdxIAJgV9UwEaOOx0",
     ABAS: {
       REGISTRO: "Controle",
@@ -117,6 +117,8 @@ function getTiposTemplatesDisponiveis() {
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 var PASTAS = {
   OFICIOS:                   "1_0BS8UuPmuhbKycdLy7_M4HhHKMkpu4h",
+  OFICIOS_HOMOLOGACAO:       "1AHzDV6m8C0-5RDK9_xcm-eT0VdVjzTs-",
+  OFICIOS_LIVRE:             "1MToLVFg_TmRH5DfvnlKIVPwmbmUOYTYn",
   OFICIOS_DESFILIACAO:       "16pfKB3vxz33QRJooUGW79Ei-D3eInSyd",
   OFICIOS_TAXA_ASSISTENCIAL: "1__l7hUe3g3l6iBNvPBKJUR3eR5Kqjs93",
   OFICIOS_TAXA_NEGOCIAL:     "1OcrxiWCGErvYHLaevNTov1aaavLuI3gX",
@@ -128,6 +130,8 @@ function getPastaId(tipo) {
   var chave = String(tipo || "").toLowerCase().trim();
   var map = {
     oficios:                   PASTAS.OFICIOS,
+    oficios_homologacao:       PASTAS.OFICIOS_HOMOLOGACAO,
+    oficios_livre:             PASTAS.OFICIOS_LIVRE,
     oficios_desfiliacao:       PASTAS.OFICIOS_DESFILIACAO,
     oficios_taxa_assistencial: PASTAS.OFICIOS_TAXA_ASSISTENCIAL,
     oficios_taxa_negocial:     PASTAS.OFICIOS_TAXA_NEGOCIAL,
@@ -135,6 +139,21 @@ function getPastaId(tipo) {
     relatorios:                PASTAS.RELATORIOS
   };
   return map[chave] || null;
+}
+
+function getPastaOficiosDestinoId(tipoNorm) {
+  if (typeof getAmbienteAtual === "function" && getAmbienteAtual() === "homologacao") {
+    return PASTAS.OFICIOS_HOMOLOGACAO;
+  }
+  var mapa = {
+    "FILIACAO":                 PASTAS.OFICIOS,
+    "DESFILIACAO":              PASTAS.OFICIOS_DESFILIACAO,
+    "TAXA_NEGOCIAL":            PASTAS.OFICIOS_TAXA_NEGOCIAL,
+    "OPOSICAO_TAXA_NEGOCIAL":   PASTAS.OFICIOS_TAXA_NEGOCIAL,
+    "TAXA_ASSISTENCIAL":        PASTAS.OFICIOS_TAXA_ASSISTENCIAL,
+    "OFICIO_LIVRE":             PASTAS.OFICIOS_LIVRE
+  };
+  return mapa[String(tipoNorm || "").toUpperCase()] || PASTAS.OFICIOS;
 }
 
 function isPastaConfigurada(tipo) {

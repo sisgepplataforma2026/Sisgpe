@@ -26,17 +26,7 @@ var PASTA_OFICIOS_LIVRE_ID         = "1MToLVFg_TmRH5DfvnlKIVPwmbmUOYTYn";
 /* ================= PASTA POR TIPO ================= */
 
 function obterPastaPorTipo_(tipoNorm) {
-  var mapa = {
-    "FILIACAO":                 PASTA_OFICIOS_FILIACAO_ID,
-    "DESFILIACAO":              PASTA_OFICIOS_DESFILIACAO_ID,
-    "TAXA_NEGOCIAL":            PASTA_OFICIOS_TAXA_NEGOCIAL_ID,
-    // Sem pasta própria ainda — reaproveita a pasta de Taxa Negocial,
-    // já que trata do mesmo assunto (Cláusula 57ª), só que em sentido oposto.
-    "OPOSICAO_TAXA_NEGOCIAL":   PASTA_OFICIOS_TAXA_NEGOCIAL_ID,
-    "TAXA_ASSISTENCIAL":        PASTA_OFICIOS_TAXA_ASSIST_ID,
-    "OFICIO_LIVRE":             PASTA_OFICIOS_LIVRE_ID
-  };
-  var id = mapa[String(tipoNorm || "").toUpperCase()] || PASTA_OFICIOS_ID;
+  var id = getPastaOficiosDestinoId(tipoNorm);
   return obterOuCriarSubpastaAno(id);
 }
 
@@ -289,7 +279,7 @@ function protegerLogSistema_(sheet) {
 /* ================= GERAR PDF ================= */
 
 function gerarPDFOficio(templateId, numero, escola, cnpj, colaboradores, dataHoje, codigo) {
-  var pastaAno     = obterOuCriarSubpastaAno(PASTA_OFICIOS_ID);
+  var pastaAno     = obterOuCriarSubpastaAno(getPastaOficiosDestinoId("FILIACAO"));
   var baseUrl      = ScriptApp.getService().getUrl();
   var urlValidacao = baseUrl ? baseUrl + "?codigo=" + codigo : "";
   var nomeBase     = montarNomeArquivoOficio_(numero, escola, colaboradores, new Date()).replace(/\.pdf$/i, "");
@@ -306,7 +296,7 @@ function gerarPDFOficio(templateId, numero, escola, cnpj, colaboradores, dataHoj
 }
 
 function gerarPDFOficioLivre(numero, para, cargo, assunto, corpo, dataHoje, codigo, cidadeUf) {
-  var pastaAno     = obterOuCriarSubpastaAno(PASTA_OFICIOS_LIVRE_ID);
+  var pastaAno     = obterOuCriarSubpastaAno(getPastaOficiosDestinoId("OFICIO_LIVRE"));
   var baseUrl      = ScriptApp.getService().getUrl();
   var urlValidacao = baseUrl ? baseUrl + "?codigo=" + codigo : "";
   var nomeBase     = montarNomeArquivoOficio_(numero, para || "", []).replace(/\.pdf$/i, "");
