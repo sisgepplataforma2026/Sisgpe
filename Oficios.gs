@@ -623,10 +623,16 @@ function gerarOficioWeb(dados, tokenSessao) {
           erro: false,
           duplicataDetectada: true,
           duplicata: duplicata,
+          // Texto corrido só como reserva: a tela monta o modal a partir dos
+          // campos separados de `duplicata`. Cita o ofício MAIS RECENTE da
+          // janela — antes citava o mais antigo, e o atendente não
+          // reconhecia o caso.
           mensagem: "Já existe um ofício de " + assuntoTipo + " para " + (duplicata.escola || dados.escola) +
             (duplicata.numeroExistente ? " (nº " + duplicata.numeroExistente + ")" : "") +
             (duplicata.dataExistente ? ", gerado em " + duplicata.dataExistente : "") +
-            " nas últimas 24h. Confirme se deseja gerar mesmo assim."
+            " nas últimas 24h" +
+            (duplicata.quantidade > 1 ? " (são " + duplicata.quantidade + " no período)" : "") +
+            ". Confirme se deseja gerar mesmo assim."
         };
       }
     }

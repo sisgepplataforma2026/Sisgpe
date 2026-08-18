@@ -751,6 +751,59 @@
   </div>
 </div>
 
+<!-- AVISO DE OFÍCIO REPETIDO NAS ÚLTIMAS 24H.
+     Estava saindo na caixa cinza do navegador ("Uma página incorporada em
+     ...googleusercontent.com diz"), que não é do sistema, não mostra os
+     dados separados e obriga o atendente a ler um parágrafo corrido para
+     achar o número do ofício. Aqui os campos ficam em linhas próprias e os
+     botões dizem o que fazem, no lugar de OK/Cancelar. -->
+<div id="modalDuplicataOficio" class="of-modal-overlay">
+  <div class="of-modal" style="max-width:560px;">
+    <div class="of-modal-head" style="border-bottom:3px solid var(--amber);">
+      <div style="display:flex;align-items:center;gap:14px;flex:1;">
+        <div style="width:50px;height:50px;border-radius:14px;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">⚠️</div>
+        <div>
+          <div class="of-modal-head-title">Ofício parecido nas últimas 24h</div>
+          <div class="of-modal-head-sub" id="dupSubtitulo">Confira se não é o mesmo caso</div>
+        </div>
+      </div>
+      <button type="button" class="of-modal-close" id="btnFecharDuplicata" aria-label="Fechar">✕</button>
+    </div>
+    <div class="of-modal-body">
+      <div style="font-size:13px;color:var(--g600);line-height:1.7;margin-bottom:14px;">
+        Esta escola já recebeu um ofício deste tipo há pouco. O último foi:
+      </div>
+      <div style="border:1px solid var(--g200);border-radius:var(--rad);overflow:hidden;">
+        <div style="display:flex;gap:12px;padding:11px 14px;border-bottom:1px solid var(--g100);">
+          <div style="min-width:96px;font-size:11px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.07em;padding-top:2px;">Escola</div>
+          <div id="dupEscola" style="font-size:13.5px;font-weight:700;color:var(--g900);"></div>
+        </div>
+        <div style="display:flex;gap:12px;padding:11px 14px;border-bottom:1px solid var(--g100);">
+          <div style="min-width:96px;font-size:11px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.07em;padding-top:2px;">Tipo</div>
+          <div id="dupTipo" style="font-size:13.5px;color:var(--g700);"></div>
+        </div>
+        <div style="display:flex;gap:12px;padding:11px 14px;border-bottom:1px solid var(--g100);">
+          <div style="min-width:96px;font-size:11px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.07em;padding-top:2px;">Nº do ofício</div>
+          <div id="dupNumero" style="font-size:15px;font-weight:900;color:var(--navy);letter-spacing:-.2px;"></div>
+        </div>
+        <div style="display:flex;gap:12px;padding:11px 14px;">
+          <div style="min-width:96px;font-size:11px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.07em;padding-top:2px;">Emitido em</div>
+          <div id="dupData" style="font-size:13.5px;color:var(--g700);"></div>
+        </div>
+      </div>
+      <div id="dupQuantidade" style="display:none;margin-top:10px;padding:9px 12px;border-radius:var(--rad);background:var(--amber-lt);border:1px solid var(--amber);font-size:12.5px;font-weight:700;color:#92400e;"></div>
+      <div style="margin-top:14px;font-size:12.5px;color:var(--g500);line-height:1.7;">
+        Se for o mesmo caso, cancele — o ofício que já saiu continua valendo.
+        Se for outro (remessa nova, correção), pode gerar: um número novo será usado.
+      </div>
+    </div>
+    <div class="of-modal-foot">
+      <button type="button" class="btn btn-outline" id="btnCancelarDuplicata">Cancelar emissão</button>
+      <button type="button" class="btn btn-navy" id="btnConfirmarDuplicata">Gerar mesmo assim</button>
+    </div>
+  </div>
+</div>
+
 <div id="modalEnvioOficioSISGEP" class="of-modal-overlay">
   <div class="of-modal" style="max-width:600px;">
     <div class="of-modal-head" style="border-bottom:3px solid var(--gold);">

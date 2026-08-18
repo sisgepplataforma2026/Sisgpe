@@ -1029,6 +1029,73 @@ function removerFichaCard(btn, idx) {
     bloco.style.display = (tipo === "Taxa Assistencial") ? "block" : "none";
   }
 
+  /* AVISO DE OFÍCIO REPETIDO — modal do sistema, não o confirm() do navegador.
+   *
+   * O usuário mandou a foto da caixa cinza do Chrome, com o cabeçalho "Uma
+   * página incorporada em ...googleusercontent.com diz". Além de não ser do
+   * sistema, ela despeja escola, número e data num parágrafo só: para achar
+   * o número do ofício é preciso ler a frase inteira. Aqui cada dado tem sua
+   * linha, e os botões dizem o que fazem no lugar de OK/Cancelar.
+   *
+   * Recebe a resposta crua do backend (res.duplicata + res.mensagem). Se por
+   * qualquer motivo o modal não existir na página, cai no confirm() do
+   * navegador — feio, mas emitir ofício não pode parar por causa de markup
+   * faltando. */
+  function abrirModalDuplicata(res, aoConfirmar, aoCancelar) {
+    var info    = (res && res.duplicata) || {};
+    var overlay = $("modalDuplicataOficio");
+
+    if (!overlay) {
+      var texto = (res && res.mensagem) || "Possível ofício duplicado detectado.";
+      if (window.confirm(texto + "\n\nDeseja gerar mesmo assim?")) aoConfirmar();
+      else if (aoCancelar) aoCancelar();
+      return;
+    }
+
+    function escreve(id, valor) { var e = $(id); if (e) e.textContent = valor; }
+    escreve("dupEscola", info.escola || "—");
+    escreve("dupTipo",   info.tipo   || (($("tipo") && $("tipo").value) || "—"));
+    escreve("dupNumero", info.numeroExistente || "—");
+    escreve("dupData",   info.dataExistente   || "—");
+
+    /* Quantos saíram na janela. Com três emissões no dia, saber que são três
+       muda a leitura: não é "esqueci que emiti", é "alguém está repetindo". */
+    var qtd  = Number(info.quantidade || 0);
+    var elQt = $("dupQuantidade");
+    if (elQt) {
+      if (qtd > 1) {
+        elQt.textContent = "São " + qtd + " ofícios deste tipo para esta escola nas últimas 24 horas.";
+        elQt.style.display = "block";
+      } else {
+        elQt.style.display = "none";
+      }
+    }
+    escreve("dupSubtitulo", info.escola ? info.escola : "Confira se não é o mesmo caso");
+
+    var btnOk  = $("btnConfirmarDuplicata");
+    var btnNao = $("btnCancelarDuplicata");
+    var btnX   = $("btnFecharDuplicata");
+
+    function fechar() {
+      overlay.classList.remove("aberto");
+      document.removeEventListener("keydown", aoTeclar);
+    }
+    function recusar() { fechar(); if (aoCancelar) aoCancelar(); }
+    function aceitar() { fechar(); aoConfirmar(); }
+    function aoTeclar(ev) { if (ev.key === "Escape") recusar(); }
+
+    /* onclick (e não addEventListener) de propósito: o modal é reaberto a
+       cada emissão e um listener acumulado dispararia a emissão duas vezes. */
+    if (btnOk)  btnOk.onclick  = aceitar;
+    if (btnNao) btnNao.onclick = recusar;
+    if (btnX)   btnX.onclick   = recusar;
+    overlay.onclick = function(ev) { if (ev.target === overlay) recusar(); };
+    document.addEventListener("keydown", aoTeclar);
+
+    overlay.classList.add("aberto");
+  }
+  window.abrirModalDuplicata = abrirModalDuplicata;
+
   function loteAbrirModal() {
     var ov = $("modalLoteTrabalhadores"); if (!ov) return;
     lotePessoas = [];
@@ -1327,14 +1394,13 @@ function atualizarContadorFichas() {
     function enviarGerarOficio(payload){
       google.script.run.withSuccessHandler(function(res){
         if (res && res.duplicataDetectada) {
-          var msg = (res.mensagem || "Possível ofício duplicado detectado.") + "\n\nDeseja gerar mesmo assim?";
-          if (window.confirm(msg)) {
+          window.abrirModalDuplicata(res, function() {
             payload.confirmarDuplicata = true;
             enviarGerarOficio(payload);
-          } else {
+          }, function() {
             clearInterval(timer); if(btn){btn.disabled=false;btn.innerText="✅ Emitir Documento";}
             toast("Emissão cancelada — ofício não gerado.","warn");
-          }
+          });
           return;
         }
         aoSucesso(res);
@@ -2179,10 +2245,12 @@ function desfIA_confirmar(confirmarDuplicata) {
   google.script.run
     .withSuccessHandler(function(res) {
       if (res && res.duplicataDetectada) {
-        var msg = (res.mensagem || "Possível ofício duplicado detectado.") + "\n\nDeseja gerar mesmo assim?";
-        if (window.confirm(msg)) { desfIA_confirmar(true); return; }
-        if (btn) { btn.disabled = false; btn.textContent = "✅ Confirmar e gerar ofício de desfiliação"; }
-        toast("Confirmação cancelada.", "warn");
+        window.abrirModalDuplicata(res, function() {
+          desfIA_confirmar(true);
+        }, function() {
+          if (btn) { btn.disabled = false; btn.textContent = "✅ Confirmar e gerar ofício de desfiliação"; }
+          toast("Confirmação cancelada.", "warn");
+        });
         return;
       }
       if (btn) { btn.disabled = false; btn.textContent = "✅ Confirmar e gerar ofício de desfiliação"; }
@@ -2348,10 +2416,12 @@ function oposIA_confirmar(confirmarDuplicata) {
   google.script.run
     .withSuccessHandler(function(res) {
       if (res && res.duplicataDetectada) {
-        var msg = (res.mensagem || "Possível ofício duplicado detectado.") + "\n\nDeseja gerar mesmo assim?";
-        if (window.confirm(msg)) { oposIA_confirmar(true); return; }
-        if (btn) { btn.disabled = false; btn.textContent = "✅ Confirmar e gerar ofício de oposição à Taxa Negocial"; }
-        toast("Confirmação cancelada.", "warn");
+        window.abrirModalDuplicata(res, function() {
+          oposIA_confirmar(true);
+        }, function() {
+          if (btn) { btn.disabled = false; btn.textContent = "✅ Confirmar e gerar ofício de oposição à Taxa Negocial"; }
+          toast("Confirmação cancelada.", "warn");
+        });
         return;
       }
       if (btn) { btn.disabled = false; btn.textContent = "✅ Confirmar e gerar ofício de oposição à Taxa Negocial"; }
