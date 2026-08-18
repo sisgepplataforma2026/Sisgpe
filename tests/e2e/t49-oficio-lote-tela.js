@@ -78,9 +78,12 @@ b.ok(!$("modalLoteTrabalhadores").classList.contains("aberto"), "modal fechou no
 b.passo("3. A prévia mostra o que foi entendido ANTES de criar os cartões");
 clicar("btnColarLoteTrabalhadores");
 digitarLote("Zuleica Ramos, 111.444.777-35\nAna Paula Lima\nBruno Alves; 12345678909");
-const previa = $("loteTrabalhadoresPreview").textContent;
-b.ok(/3 pessoas reconhecidas/.test(previa), "conta as 3 pessoas", previa.slice(0, 60).replace(/\s+/g, " "));
-b.ok(/2 com CPF/.test(previa), "conta quantas têm CPF");
+const previa = $("loteTrabalhadoresPreview").textContent.replace(/\s+/g, " ").trim();
+b.ok(/2 de 3 com CPF informado/.test(previa),
+  "conta as 3 pessoas e diz quantas têm CPF", previa.slice(0, 70));
+const nomesPrevia = ["Zuleica Ramos", "Ana Paula Lima", "Bruno Alves"]
+  .filter(n => previa.indexOf(n) !== -1);
+b.igual(nomesPrevia.length, 3, "os três nomes aparecem na prévia, para conferência");
 b.igual(cards().length, 0, "nenhum cartão foi criado ainda — só a prévia");
 
 b.passo("4. CPF com quantidade errada de dígitos é avisado, não aceito calado");

@@ -833,35 +833,46 @@ function removerFichaCard(btn, idx) {
     var comCpf = r.pessoas.filter(function (p) { return p.cpf; }).length;
 
     if (!r.pessoas.length) {
-      caixa.innerHTML = '<div style="font-size:12.5px;color:var(--g400,#94a3b8);">Cole a lista acima para ver o que será adicionado.</div>';
+      caixa.innerHTML = '<div style="font-size:12.5px;color:var(--g400);">Cole a lista acima para ver o que será adicionado.</div>';
       if (btnOk) { btnOk.disabled = true; btnOk.textContent = "Adicionar"; }
       return;
     }
 
     var estouro = totalFinal > limite;
+    /* Zebra igual à lista de colaboradores do próprio ofício e do cartão de
+       trabalhador — mesma linguagem visual dos dois lugares onde a pessoa já
+       vê uma lista de gente neste módulo. */
     var linhas = r.pessoas.slice(0, 6).map(function (p, i) {
-      return '<div style="display:flex;gap:10px;padding:4px 0;font-size:12.5px;">' +
-        '<span style="color:var(--g400,#94a3b8);min-width:22px;">' + (i + 1) + '.</span>' +
-        '<span style="font-weight:600;">' + escaparHtmlLote(p.nome) + '</span>' +
-        (p.cpf ? '<span style="color:var(--g400,#94a3b8);margin-left:auto;">' + formatarCpfLote(p.cpf) + '</span>' : '') +
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;font-size:12.5px;' +
+        (i % 2 === 0 ? 'background:var(--g50);' : 'background:var(--surface);') + '">' +
+        '<span style="width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,var(--navy),var(--blue));color:#fff;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;flex-shrink:0;">' + (i + 1) + '</span>' +
+        '<span style="font-weight:700;color:var(--g900);">' + escaparHtmlLote(p.nome) + '</span>' +
+        (p.cpf ? '<span style="color:var(--g500);margin-left:auto;font-size:11.5px;">' + formatarCpfLote(p.cpf) + '</span>' : '') +
         '</div>';
     }).join("");
     if (r.pessoas.length > 6) {
-      linhas += '<div style="font-size:12px;color:var(--g400,#94a3b8);padding-top:4px;">… e mais ' +
+      linhas += '<div style="font-size:12px;color:var(--g500);padding:8px 12px;">… e mais ' +
                 (r.pessoas.length - 6) + '</div>';
     }
 
+    /* Cabeçalho navy com contador dourado: o mesmo par que identifica o bloco
+       "Colaborador(es)" no ofício gerado. Quem conferir a prévia reconhece o
+       que vai sair no documento. */
     caixa.innerHTML =
-      '<div style="border:1px solid var(--bd,#dbe3ee);border-radius:12px;padding:12px 14px;">' +
-      '<div style="font-size:12.5px;font-weight:700;color:#0f8a5f;margin-bottom:8px;">✓ ' +
-        r.pessoas.length + (r.pessoas.length === 1 ? " pessoa reconhecida" : " pessoas reconhecidas") +
-        ' · ' + comCpf + ' com CPF</div>' + linhas +
+      '<div style="border:1px solid var(--g200);border-radius:var(--rad);overflow:hidden;box-shadow:var(--sh-xs);">' +
+      '<div style="background:linear-gradient(135deg,var(--navy),var(--navy2));padding:9px 12px;display:flex;align-items:center;gap:8px;">' +
+      '<span style="font-size:11px;font-weight:900;color:rgba(255,255,255,.85);text-transform:uppercase;letter-spacing:.08em;">Vai ser adicionado</span>' +
+      '<span style="margin-left:auto;background:var(--gold);color:var(--navy);font-size:11px;font-weight:800;padding:2px 9px;border-radius:999px;">' +
+        r.pessoas.length + '</span></div>' +
+      '<div style="padding:8px 12px;font-size:11.5px;color:var(--g600);border-bottom:1px solid var(--g100);">' +
+        comCpf + ' de ' + r.pessoas.length + ' com CPF informado</div>' +
+      linhas +
       (r.avisos.length
-        ? '<div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--bd,#dbe3ee);font-size:12px;color:#d97706;">⚠ ' +
+        ? '<div style="padding:10px 12px;border-top:1px solid var(--g100);background:var(--amber-lt);font-size:12px;color:var(--amber);line-height:1.6;">⚠ ' +
           r.avisos.map(escaparHtmlLote).join('<br>⚠ ') + '</div>'
         : '') +
       (estouro
-        ? '<div style="margin-top:10px;font-size:12px;color:#dc2626;font-weight:700;">Excede o limite: ' +
+        ? '<div style="padding:10px 12px;border-top:1px solid var(--g100);background:var(--red-lt);font-size:12px;color:var(--red);font-weight:700;">Excede o limite: ' +
           totalFinal + ' de ' + limite + ' para este tipo de ofício.</div>'
         : '') +
       '</div>';

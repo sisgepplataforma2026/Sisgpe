@@ -668,14 +668,17 @@
       <button type="button" class="of-modal-close" id="btnFecharLoteTrabalhadores" aria-label="Fechar">✕</button>
     </div>
     <div class="of-modal-body">
-      <div style="font-size:12.5px;color:var(--txt-2,#475569);line-height:1.7;margin-bottom:12px;">
+      <div style="font-size:12.5px;color:var(--g600);line-height:1.7;margin-bottom:14px;">
         Cole direto de uma planilha ou digite. O <strong>CPF é opcional</strong> —
         quem não tiver sai no ofício só com o nome.
       </div>
-      <textarea id="loteTrabalhadoresTexto" rows="9" spellcheck="false"
-        style="width:100%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;line-height:1.7;padding:12px 14px;border:1.5px solid var(--bd,#dbe3ee);border-radius:12px;resize:vertical;"
-        placeholder="Marcelha Aline Pinto Gomes, 123.456.789-09&#10;Wanderson Nascimento Castelo&#10;Ana Paula Lima; 98765432100"></textarea>
-      <div id="loteTrabalhadoresPreview" style="margin-top:14px;"></div>
+      <div class="fld">
+        <label for="loteTrabalhadoresTexto">Lista de trabalhadores</label>
+        <textarea id="loteTrabalhadoresTexto" rows="9" spellcheck="false"
+          style="min-height:170px;"
+          placeholder="Marcelha Aline Pinto Gomes, 123.456.789-09&#10;Wanderson Nascimento Castelo&#10;Ana Paula Lima; 98765432100"></textarea>
+      </div>
+      <div id="loteTrabalhadoresPreview" style="margin-top:16px;"></div>
     </div>
     <div class="of-modal-foot">
       <button type="button" class="btn btn-outline" id="btnCancelarLoteTrabalhadores">Cancelar</button>
