@@ -1116,3 +1116,39 @@ atrás** — provado por três sinais no PDF do BOLSA-2026-920837 (redação
 antiga, período como Date crua, sem bloco de data). Divergência entre o
 projeto Apps Script e o repositório, não defeito de código. Se sintoma
 antigo reaparecer, conferir a versão do arquivo ANTES de procurar bug.
+
+---
+
+## ✅ SINDICALIZAÇÃO — "todo azul, não abre nada" (VERIFICADO em 19/08/2026)
+
+**Status: fechado pelo usuário** — *"Abriu os modulos"*, 19/08/2026, depois
+de colar `Scripts_Certificado.html` e publicar.
+
+**Causa:** `<div id="secCertificadoAdmin">` aberto na linha 269 e nunca
+fechado. Como o `include()` cola tudo num HTML só e o Certificado entra em
+`index.html:544` — antes de Aprovacaocadastro (573), FichasSindicaisAdmin
+(651) e Carteirinhaadmin (658) —, os três módulos ficavam DENTRO da seção
+do Certificado, escondida e com fundo navy.
+
+Não era JavaScript morto nem erro de backend. O sintoma da REGRA Nº 0
+apontou para HTML corrompido, e apontou certo.
+
+**O defeito era antigo** — presente em HEAD~30. Não veio de entrega
+recente.
+
+**Guarda criada:** `t46` passo 6 — balanço de elementos de bloco
+(`div/section/main/table/tbody/form`) em todos os `.html`. Os cinco passos
+anteriores passavam verdes o tempo todo, porque nenhum olhava o balanço
+dos ELEMENTOS. Duas mutações mortas.
+
+**Lição para a próxima:** tela que renderiza mas não responde, ou módulo
+que aparece com a cor de outro, é HTML corrompido até prova em contrário —
+procurar tag antes de procurar erro no `.gs`. E rodar `t46`, que agora
+pega este caso.
+
+### ⚠ Pergunta em aberto
+
+Se a Sindicalização **já funcionou** no ar antes, então o
+`Scripts_Certificado.html` do projeto era mais antigo que o do repositório
+e a versão quebrada foi colada em algum momento — o que indicaria outros
+arquivos divergentes. O usuário ainda não respondeu.
