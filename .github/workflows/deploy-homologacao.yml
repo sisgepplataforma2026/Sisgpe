@@ -1,3 +1,20 @@
+# DEPLOY DA HOMOLOGAÇÃO
+#
+# PARA ESTE ARQUIVO FUNCIONAR ELE PRECISA ESTAR NA BRANCH PADRÃO (main).
+# O GitHub só oferece o botão "Run workflow" — e só aceita disparo pela API —
+# para workflows que existem na branch padrão. Enquanto este arquivo viveu só
+# na branch de trabalho, ele não apareceu em lugar nenhum: medido em
+# 19/08/2026, a API respondeu `total_count: 0` na lista de workflows e 404 no
+# disparo. O pipeline foi escrito em 18/08 e nunca rodou uma vez.
+#
+# Estando na main, o `ref` do disparo continua podendo ser a branch de
+# trabalho — é dela que o código sai. É o que a trava do `if` abaixo garante.
+#
+# ANTES DE RODAR, confirmar que existem os segredos do repositório:
+#   CLASPRC_JSON              credencial da conta Google que tem acesso
+#   CLASP_JSON_HOMOLOG        { "scriptId": "..." } do projeto de HOMOLOGAÇÃO
+#   CLASP_DEPLOYMENT_ID_HOMOLOG   (opcional — ver a nota sobre publicar)
+
 name: Deploy Homologacao Apps Script
 
 on:
@@ -8,6 +25,8 @@ permissions:
 
 jobs:
   deploy:
+    # Trava de segurança: só a branch de trabalho serve de origem. Sem isto,
+    # qualquer branch poderia sobrescrever a homologação.
     if: github.ref == 'refs/heads/claude/sisgep-project-analysis-h9wcy3'
     runs-on: ubuntu-latest
 
@@ -23,11 +42,33 @@ jobs:
       - name: Instalar clasp
         run: npm install -g @google/clasp
 
+      # A VALIDAÇÃO VEM ANTES DE TUDO — REGRA Nº -2.
+      #
+      # Um .html com <script> desbalanceado derruba o JavaScript da página
+      # inteira, e o sintoma não aponta para o culpado: todos os módulos param
+      # de responder ao mesmo tempo, sem erro visível. Subir isso para a
+      # homologação custa uma tarde de caça ao fantasma. O t46 varre sintaxe
+      # de todo .gs, sintaxe de todo bloco <script>, balanço de tags,
+      # </script> dentro de string e scriptlet em comentário.
+      - name: Instalar ferramental de teste
+        run: npm ci || npm install
+
+      - name: Validar integridade dos arquivos (t46)
+        run: node tests/e2e/t46-arquivos-integros.js
+
+      - name: Rodar a suite inteira
+        run: npm test
+
       - name: Configurar autenticacao e projeto de homologacao
         shell: bash
         run: |
+          set -euo pipefail
           printf '%s' '${{ secrets.CLASPRC_JSON }}' > "$HOME/.clasprc.json"
           printf '%s' '${{ secrets.CLASP_JSON_HOMOLOG }}' > .clasp.json
+          if [ ! -s "$HOME/.clasprc.json" ] || [ ! -s .clasp.json ]; then
+            echo "::error::Faltam os segredos CLASPRC_JSON e/ou CLASP_JSON_HOMOLOG no repositorio."
+            exit 1
+          fi
 
       - name: Validar arquivos que serao enviados
         run: clasp status
@@ -36,4 +77,40 @@ jobs:
         run: clasp push --force
 
       - name: Registrar versao de homologacao
-        run: clasp version "homolog-${GITHUB_SHA::7}"
+        id: versao
+        shell: bash
+        run: |
+          set -euo pipefail
+          clasp version "homolog-${GITHUB_SHA::7}" | tee saida-versao.txt
+          NUM=$(grep -oE '[0-9]+' saida-versao.txt | tail -1)
+          echo "numero=$NUM" >> "$GITHUB_OUTPUT"
+          echo "Versao criada: $NUM"
+
+      # PUBLICAR NÃO É SUBIR, E VERSÃO NÃO É PUBLICAÇÃO.
+      #
+      # `clasp push` sobe o código e `clasp version` congela um número — mas
+      # a URL do web app continua servindo a publicação anterior. Era o que
+      # faltava aqui: o workflow terminava verde e a homologação seguia com o
+      # código antigo. É a mesma armadilha do "salvar não basta" que já custou
+      # tempo neste projeto várias vezes.
+      #
+      # `clasp deploy` SEM deploymentId cria uma publicação NOVA, com URL
+      # NOVA — o que não serve para homologação, onde o endereço tem que ser
+      # estável. Por isso o id vem de segredo. Sem ele, o passo NÃO inventa
+      # publicação: avisa em alto e bom som que falta publicar na mão.
+      - name: Publicar na URL de homologacao
+        shell: bash
+        env:
+          DEPLOY_ID: ${{ secrets.CLASP_DEPLOYMENT_ID_HOMOLOG }}
+          VERSAO: ${{ steps.versao.outputs.numero }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DEPLOY_ID}" ]; then
+            echo "::warning::CLASP_DEPLOYMENT_ID_HOMOLOG nao configurado."
+            echo "::warning::O CODIGO SUBIU E A VERSAO ${VERSAO} FOI CRIADA, MAS A HOMOLOGACAO AINDA SERVE A PUBLICACAO ANTERIOR."
+            echo "::warning::Publique manualmente: Apps Script > Implantar > Gerenciar implantacoes > editar > Versao ${VERSAO}."
+            exit 0
+          fi
+          clasp deploy --deploymentId "${DEPLOY_ID}" --versionNumber "${VERSAO}" \
+            --description "homolog-${GITHUB_SHA::7}"
+          echo "Homologacao publicada na versao ${VERSAO}."
