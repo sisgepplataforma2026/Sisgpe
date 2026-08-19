@@ -73,10 +73,40 @@ jobs:
           set -euo pipefail
           printf '%s' '${{ secrets.CLASPRC_JSON }}' > "$HOME/.clasprc.json"
           printf '%s' '${{ secrets.CLASP_JSON_HOMOLOG }}' > .clasp.json
-          if [ ! -s "$HOME/.clasprc.json" ] || [ ! -s .clasp.json ]; then
-            echo "::error::Faltam os segredos CLASPRC_JSON e/ou CLASP_JSON_HOMOLOG no repositorio."
-            exit 1
+
+          # UM SEGREDO POR VEZ, NOMEADO.
+          #
+          # A primeira versão desta checagem dizia "faltam CLASPRC_JSON e/ou
+          # CLASP_JSON_HOMOLOG" — e "e/ou" manda a pessoa conferir os dois
+          # sem saber qual está errado. Quando parou aqui em 19/08/2026, o
+          # log sugeria que um dos dois existia, e não dava para afirmar
+          # qual. Mensagem de erro que não nomeia o culpado é a mesma
+          # doença que o relator da suíte tinha.
+          faltou=0
+          if [ ! -s "$HOME/.clasprc.json" ]; then
+            echo "::error::Segredo CLASPRC_JSON ausente ou vazio. E o conteudo do ~/.clasprc.json de quem rodou 'clasp login'."
+            faltou=1
+          else
+            echo "CLASPRC_JSON presente."
           fi
+          if [ ! -s .clasp.json ]; then
+            echo "::error::Segredo CLASP_JSON_HOMOLOG ausente ou vazio. E o { \"scriptId\": \"...\" } do projeto de HOMOLOGACAO."
+            faltou=1
+          else
+            echo "CLASP_JSON_HOMOLOG presente."
+          fi
+
+          # O conteudo tem que ser JSON, nao um texto colado torto. Sem esta
+          # conferencia o clasp falha tres passos adiante com mensagem que
+          # nao aponta para o segredo.
+          if [ "$faltou" = "0" ]; then
+            node -e 'JSON.parse(require("fs").readFileSync(process.env.HOME+"/.clasprc.json","utf8"))' \
+              || { echo "::error::CLASPRC_JSON existe mas nao e JSON valido."; faltou=1; }
+            node -e 'const j=JSON.parse(require("fs").readFileSync(".clasp.json","utf8")); if(!j.scriptId) throw new Error("sem scriptId")' \
+              || { echo "::error::CLASP_JSON_HOMOLOG existe mas nao e JSON valido ou nao tem scriptId."; faltou=1; }
+          fi
+
+          [ "$faltou" = "0" ] || exit 1
 
       - name: Validar arquivos que serao enviados
         run: clasp status
