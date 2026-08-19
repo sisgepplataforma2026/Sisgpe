@@ -194,3 +194,34 @@ function bingo_gerarCartelasDoEvento(rodadaId, tokenSessao) {
     lock.releaseLock();
   }
 }
+
+function bingo_statusParticipantesEvento(eventoId, rodadaId, tokenSessao) {
+  bingo_exigirAdmin_(tokenSessao);
+  var participantes = bingo_listarParticipantesEvento(eventoId, tokenSessao);
+  var cartelas = rodadaId
+    ? bingo_queryEquals_(bingo_colecao_('cartelas'), 'rodadaId', String(rodadaId), 500)
+    : [];
+  var porParticipante = {};
+  cartelas.forEach(function(x) {
+    var c = x.data || {};
+    porParticipante[String(c.participanteId || '')] = c;
+  });
+
+  return participantes.map(function(p) {
+    var c = porParticipante[p.participanteId] || null;
+    return {
+      participanteId: p.participanteId,
+      associadoId: p.associadoId || '',
+      nome: p.nome,
+      escola: p.escola || '',
+      email: p.email || '',
+      whatsapp: p.whatsapp || '',
+      categoria: p.categoria || '',
+      origem: p.origem,
+      cartelaId: c ? c.cartelaId : '',
+      cartelaGerada: !!c,
+      possuiLink: !!(c && c.tokenHash),
+      statusCartela: c ? (c.status || 'ATIVA') : ''
+    };
+  });
+}
