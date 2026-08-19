@@ -71,7 +71,7 @@ const html = certificado();
 b.ok(html.indexOf("Vitória/ES,") > -1,
   "o certificado traz a linha de local e data",
   "no PDF que o usuário mandou ela não existia — versão antiga no ar");
-b.ok(/Vit[óo]ria\/ES,\s*18 de Agosto de 2026/.test(html),
+b.ok(/Vit[óo]ria\/ES,\s*18 de agosto de 2026/.test(html),
   "com a data da emissão, por extenso",
   (html.match(/Vit[óo]ria\/ES,[^<]*/) || ["(não achou)"])[0]);
 
@@ -104,9 +104,11 @@ b.ok(!/Horário Padrão de Brasília/.test(html),
   "nem o nome do fuso, que só aparece quando a Date foi impressa inteira");
 
 b.passo("4");
-b.ok(html.indexOf("semestre letivo de 2027/1") > -1,
-  "o período sai legível: 'semestre letivo de 2027/1'",
-  (html.match(/(semestre|ano) letivo de [^<.,]*/) || ["(não achou)"])[0]);
+/* O caso base é de TITULAR, e o papel do titular escreve o período mais
+   curto: "semestre 2027/1", sem o "letivo de". Ver t61. */
+b.ok(html.indexOf("semestre 2027/1") > -1,
+  "o período sai legível: 'semestre 2027/1'",
+  (html.match(/(semestre|ano) (letivo de )?\d{4}\/\d/) || ["(não achou)"])[0]);
 
 /* ═══════════════════════════════════════════════════════════
    3. O período vindo como Date da planilha
@@ -126,21 +128,24 @@ function periodoNoDocumento(data) {
     reg: { NOME_SOLICITANTE: "WANDERSON NASCIMENTO CASTELO", CURSO: "MARKETING",
            PERIODO_REFERENCIA: data, ESCOLA_SELECIONADA: "UVV" }
   });
-  return { html: h, rotulo: (h.match(/(semestre|ano) letivo de [^<.,]*/) || ["(não achou)"])[0] };
+  /* O titular escreve "semestre 2027/1"; o dependente, "semestre letivo de
+     2027/1". O extrator tem que aceitar as duas formas, senão mede a
+     redação em vez de medir o período. */
+  return { html: h, rotulo: (h.match(/(semestre|ano) (letivo de )?\d{4}\/\d/) || ["(não achou)"])[0] };
 }
 
 const segundoSem = periodoNoDocumento(new Date(2027, 1, 1));
 b.ok(textoDoDocumento(segundoSem.html).indexOf("GMT") === -1,
   "com o período vindo como Date da planilha, nada de GMT no texto",
   "este é EXATAMENTE o caso do PDF que o usuário mandou");
-b.igual(segundoSem.rotulo, "semestre letivo de 2027/2",
+b.igual(segundoSem.rotulo, "semestre 2027/2",
   "1º de fevereiro volta a ser 2027/2 — o semestre estava na casa do mês");
 
 b.passo("6");
 /* Contraprova: janeiro tem que dar OUTRO resultado. Sem isto, uma função
    que devolvesse "2027/2" para tudo passaria na asserção de cima. */
 const primeiroSem = periodoNoDocumento(new Date(2027, 0, 1));
-b.igual(primeiroSem.rotulo, "semestre letivo de 2027/1",
+b.igual(primeiroSem.rotulo, "semestre 2027/1",
   "e 1º de janeiro volta a ser 2027/1, não o mesmo valor");
 
 /* ═══════════════════════════════════════════════════════════

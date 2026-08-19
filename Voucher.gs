@@ -315,9 +315,12 @@ function percentualPorExtensoVoucher_(n) {
  * reemissão de documento antigo na operação.
  */
 function dataExtensoVoucher_(data) {
+  /* MINÚSCULA, e sem ponto no fim — é assim nos dois certificados que o
+     usuário mandou em 18/08/2026 ("Vitória/ES, 18 de agosto de 2026") e é
+     assim em português: nome de mês não é nome próprio. */
   const meses = [
-    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+    "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+    "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"
   ];
 
   const dt = voucherDataDeQualquerCoisa_(data) || new Date();
@@ -327,8 +330,7 @@ function dataExtensoVoucher_(data) {
     " de " +
     meses[dt.getMonth()] +
     " de " +
-    dt.getFullYear() +
-    ".";
+    dt.getFullYear();
 }
 
 function escHtmlVoucher_(t) {

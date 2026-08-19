@@ -600,10 +600,17 @@ function gerarHtmlDocumentoVoucher_(dados) {
   const mantenedora = (fantasia && razaoSocial && fantasia !== razaoSocial) ? razaoSocial : "";
   const cnpj = formatarCnpj_(reg.CNPJ_ESCOLA || reg.CNPJ_INSTITUICAO || "");
 
-  /* "semestre letivo de 2026/2" ou "ano letivo de 2026": o documento diz o
-   * que a bolsa é, e bolsa anual não tem semestre. */
-  const rotuloPeriodo = (regime.indexOf("ANUAL") > -1 ? "ano letivo de " : "semestre letivo de ")
-    + periodo;
+  /* O período é escrito DIFERENTE nos dois papéis, e a diferença não é
+   * estilo — é como a frase se encaixa:
+   *
+   *   titular ..... "...do Curso de BIOMEDICINA semestre 2026/2."
+   *   dependente .. "...do Curso de Biomedicina, referente ao semestre
+   *                  letivo de 2026/2, após verificação..."
+   *
+   * Nos dois casos, bolsa anual não tem semestre — daí o par ano/semestre. */
+  const ehAnual = regime.indexOf("ANUAL") > -1;
+  const rotuloPeriodo = (ehAnual ? "ano letivo de " : "semestre letivo de ") + periodo;
+  const rotuloPeriodoTitular = (ehAnual ? "ano " : "semestre ") + periodo;
 
   const qrCodeUrl = gerarQrCodeVoucherUrl_(codigo);
   const assinaturaImg = assinaturaPresidenteVoucher_();
@@ -650,43 +657,58 @@ function gerarHtmlDocumentoVoucher_(dados) {
     return valor ? rotulo + "<strong>" + escHtmlVoucher_(valor) + "</strong>" : "";
   }
 
-  /* ── A REDAÇÃO É A DO PAPEL, PALAVRA POR PALAVRA ──────────────────────
+  /* ── SÃO DUAS REDAÇÕES, NÃO UMA ───────────────────────────────────────
    *
-   * Pedido do usuário em 13/08/2026: "texto tem que ser o padrão que te
-   * enviei". A redação abaixo foi EXTRAÍDA do certificado real que o
-   * sindicato emite (GLAUCIA_SOUZA_NRAMOS.pdf), não transcrita de memória
-   * nem parafraseada. A anterior era invenção minha — dizia a mesma coisa
-   * com outras palavras, e "a mesma coisa com outras palavras" num documento
-   * que a escola confere contra o que já recebeu antes é problema, não
-   * estilo.
+   * O usuário mandou, em 18/08/2026, os DOIS certificados que o sindicato
+   * emite hoje — "segue os modelos como devem sair tanto para o titular
+   * quanto o dependente" —, escaneados dos originais assinados.
    *
-   * O que MUDOU em relação ao papel, e por quê:
+   * Até aqui o código tinha UMA redação (a do titular) e injetava nela
+   * ", dependente de FULANO" quando o beneficiário era filho. Está errado:
+   * o papel do dependente não é o do titular com uma oração a mais. Ele
+   * tem fundamento jurídico próprio, verbo próprio e fecho próprio.
    *
-   * - "inscrita no CNPJ: sob nº" → "inscrita no CNPJ sob nº". O dois-pontos
-   *   é erro de digitação do original. Reproduzir erro não é fidelidade.
-   * - O ano da CCT sai de NEGCOL_VIGENCIA, não fixo no texto. O papel de
-   *   referência cita "2025/2026" num documento datado de agosto de 2026 —
-   *   ou seja, cita CCT já vencida (a vigente vai de 01/03/2026 a
-   *   28/02/2027). Amarrando à fonte única, o certificado não envelhece
-   *   sozinho e a troca anual da CCT já o corrige.
+   *   TITULAR ....... "em conformidade com a cláusula de Incentivo ao
+   *                    Aprimoramento prevista na CCT"
+   *                   "ATENDE AOS REQUISITOS ESTABELECIDOS para a concessão"
+   *                   "...e semestralidade/ANUIDADE ESCOLAR do Curso de X
+   *                    semestre 2026/2"
+   *                   fecho: "A presente certificação destina-se..."
    *
-   * O que foi ACRESCENTADO ao padrão, por pedido anterior do usuário:
-   * o CPF (13/08/2026), a oração de dependente (o papel de referência é de
-   * um titular, mas o benefício alcança filho) e o período letivo — que é a
-   * chave do controle "um por pessoa, por curso, por período".
+   *   DEPENDENTE .... "nos termos do CONVÊNIO firmado com o SINEPE-ES"
+   *                   "ENCONTRA-SE REGULARMENTE HABILITADO ao benefício"
+   *                   "...e semestralidade do Curso de X, referente ao
+   *                    semestre letivo de 2026/2, após verificação..."
+   *                   fecho: "O presente certificado destina-se
+   *                    EXCLUSIVAMENTE... pessoal, individual e
+   *                    intransferível..."
    *
-   * É UMA FRASE SÓ, como no papel. Montada por pedaços porque cada oração
-   * some quando o dado dela não existe: sem RG não se escreve "portador da
-   * carteira de identidade nº —", que é pior que não dizer. */
-  const corpo =
-    "O <strong>SINDEDUCAÇÃO-ES</strong> - Sindicato dos Educadores Técnico – Administrativos " +
-    "em Estabelecimentos de Ensino Particular no Estado do Espírito Santo, em conformidade " +
-    "com a cláusula de Incentivo ao Aprimoramento prevista na Convenção Coletiva de " +
-    "Trabalho " + escHtmlVoucher_(cctVigenteVoucher_()) + ", firmada com o " +
-    "<strong>SINEPE – ES</strong> - Sindicato das Empresas Particulares de Ensino do Estado " +
-    "do Espírito Santo, certifica que " +
-    "<strong>" + escHtmlVoucher_(beneficiario) + "</strong>" +
-    (ehDependente ? ", dependente de <strong>" + escHtmlVoucher_(nomeSolicitante) + "</strong>" : "") +
+   * ATENÇÃO A UMA COISA QUE OS DOIS MODELOS CONFIRMAM: no do dependente, o
+   * RG e o vínculo de emprego são do TITULAR, não da criança. Quem tem
+   * vínculo com a instituição é o associado, e é o vínculo dele que
+   * sustenta o benefício. `rg` e `cpf` já vêm do titular — não trocar.
+   *
+   * O QUE MUDA EM RELAÇÃO AO PAPEL, e por quê (confirmado pelo usuário em
+   * 18/08/2026, pergunta a pergunta):
+   *
+   * - "inscrita no CNPJ: sob nº" → "inscrita no CNPJ sob nº". O
+   *   dois-pontos é erro de digitação do original nos dois modelos.
+   *   Reproduzir erro não é fidelidade.
+   * - O ano da CCT sai de NEGCOL_VIGENCIA, não fixo no texto. O papel cita
+   *   "2025/2026" num documento de agosto de 2026 — CCT já vencida (a
+   *   vigente vai de 01/03/2026 a 28/02/2027). Amarrado à fonte única, o
+   *   certificado não envelhece sozinho.
+   * - O modelo do dependente não traz a linha de local e data; o do
+   *   titular traz. Os DOIS passam a trazer, por decisão dele: documento
+   *   sem data é difícil de conferir depois.
+   *
+   * Cada oração some quando o dado dela não existe: sem RG não se escreve
+   * "portador da carteira de identidade nº —", que é pior que não dizer. */
+
+  /* A identificação do TITULAR — RG, CPF, instituição, mantenedora, CNPJ.
+     É idêntica nos dois modelos, e é por isso que fica separada: o que
+     muda entre titular e dependente é o texto ao redor dela. */
+  const identificacaoTitular =
     frag(", portador da carteira de identidade nº ", rg) +
     /* "e inscrito no CPF sob o nº" — a mesma construção que o documento já
      * usa para o CNPJ da mantenedora, para as duas identificações lerem
@@ -694,13 +716,55 @@ function gerarHtmlDocumentoVoucher_(dados) {
     (cpf ? " e inscrito no CPF sob o nº <strong>" + escHtmlVoucher_(cpf) + "</strong>" : "") +
     frag(", empregado da instituição ", instituicaoTexto) +
     frag(", mantida pela ", mantenedora) +
-    (cnpj ? ", inscrita no CNPJ sob nº <strong>" + escHtmlVoucher_(cnpj) + "</strong>" : "") +
-    ", atende aos requisitos estabelecidos para a concessão do benefício de <strong>" +
-    escHtmlVoucher_(percentual) + "% (" + escHtmlVoucher_(percentualExtenso) + ")</strong> " +
-    "de desconto sobre matrícula, rematrícula e semestralidade/anuidade escolar" +
-    frag(" do Curso de ", curso) +
-    (periodo ? ", referente ao " + escHtmlVoucher_(rotuloPeriodo) : "") +
-    ".";
+    (cnpj ? ", inscrita no CNPJ sob nº <strong>" + escHtmlVoucher_(cnpj) + "</strong>" : "");
+
+  const beneficioExtenso =
+    "<strong>" + escHtmlVoucher_(percentual) + "% (" +
+    escHtmlVoucher_(percentualExtenso) + ")</strong>";
+
+  const corpo = ehDependente
+    ? /* ── DEPENDENTE ── */
+      "O Sindicato dos Educadores Técnico - Administrativos em Estabelecimentos de Ensino " +
+      "Particular no Estado do Espírito Santo – <strong>SINDEDUCAÇÃO-ES</strong>, nos termos " +
+      "do convênio firmado com o Sindicato das Empresas Particulares de Ensino do Estado do " +
+      "Espírito Santo – <strong>SINEPE – ES</strong>, certifica que " +
+      "<strong>" + escHtmlVoucher_(beneficiario) + "</strong>" +
+      ", dependente de <strong>" + escHtmlVoucher_(nomeSolicitante) + "</strong>" +
+      identificacaoTitular +
+      " encontra-se regularmente habilitado ao benefício de " + beneficioExtenso +
+      " de desconto sobre a matrícula, rematrícula e semestralidade" +
+      frag(" do Curso de ", curso) +
+      (periodo ? ", referente ao " + escHtmlVoucher_(rotuloPeriodo) : "") +
+      ", após verificação do atendimento aos requisitos exigidos para a concessão do benefício."
+
+    : /* ── TITULAR ── */
+      "O <strong>SINDEDUCAÇÃO-ES</strong> - Sindicato dos Educadores Técnico – Administrativos " +
+      "em Estabelecimentos de Ensino Particular no Estado do Espírito Santo, em conformidade " +
+      "com a cláusula de Incentivo ao Aprimoramento prevista na Convenção Coletiva de " +
+      "Trabalho " + escHtmlVoucher_(cctVigenteVoucher_()) + ", firmada com o " +
+      "<strong>SINEPE – ES</strong> - Sindicato das Empresas Particulares de Ensino do Estado " +
+      "do Espírito Santo, certifica que " +
+      "<strong>" + escHtmlVoucher_(beneficiario) + "</strong>" +
+      identificacaoTitular +
+      ", atende aos requisitos estabelecidos para a concessão do benefício de " +
+      beneficioExtenso +
+      " de desconto sobre matrícula, rematrícula e semestralidade/anuidade escolar" +
+      frag(" do Curso de ", curso) +
+      (periodo ? " " + escHtmlVoucher_(rotuloPeriodoTitular) : "") +
+      ".";
+
+  /* O segundo parágrafo também é diferente nos dois papéis. O do
+     dependente é mais restritivo — "exclusivamente", "pessoal, individual
+     e intransferível" —, e faz sentido: benefício de filho não se
+     transfere para outro filho. */
+  const fecho = ehDependente
+    ? "O presente certificado destina-se exclusivamente à comprovação da habilitação do " +
+      "beneficiário para utilização do benefício acima especificado, sendo pessoal, individual " +
+      "e intransferível, produzindo efeitos enquanto permanecerem atendidas as condições que " +
+      "fundamentaram sua emissão."
+    : "A presente certificação destina-se à comprovação da habilitação do beneficiário ao " +
+      "referido desconto, nos termos da Convenção Coletiva de Trabalho vigente, para fins de " +
+      "utilização junto à instituição de ensino acima identificada.";
 
   return (
     "<!DOCTYPE html>" +
@@ -846,12 +910,15 @@ function gerarHtmlDocumentoVoucher_(dados) {
     "<div class='corpo'>" +
     "<h1>CERTIFICADO DE HABILITAÇÃO À BOLSA DE ESTUDOS</h1>" +
     "<p>" + corpo + "</p>" +
-    /* Segundo parágrafo, também extraído do papel real. O que estava aqui
-     * antes ("pessoal, individual e intransferível…") era redação minha. */
-    "<p>A presente certificação destina-se à comprovação da habilitação do beneficiário ao " +
-    "referido desconto, nos termos da Convenção Coletiva de Trabalho vigente, para fins de " +
-    "utilização junto à instituição de ensino acima identificada.</p>" +
+    /* Segundo parágrafo, extraído do papel real — e DIFERENTE nos dois
+     * modelos. Ver o bloco que monta `fecho`. */
+    "<p>" + fecho + "</p>" +
 
+    /* A LINHA DE LOCAL E DATA FICA NO FIM DO TEXTO, alinhada à direita,
+     * logo acima da assinatura — como nos dois modelos que o usuário
+     * mandou em 18/08/2026, e como ele reforçou: "a data tem que sair no
+     * final do arquivo igual o modelo enviado". Depois dela só vem quem
+     * assina. */
     "<div class='data-local'>" + escHtmlVoucher_(dataExtenso) + "</div>" +
 
     "<div class='assinatura'>" +

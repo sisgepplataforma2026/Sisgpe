@@ -113,18 +113,18 @@ b.passo("6");
 const extenso25 = g.dataExtensoVoucher_("25/08/2026");
 b.ok(extenso25.indexOf("NaN") === -1,
   "o documento NUNCA imprime NaN", extenso25);
-b.ok(extenso25.indexOf("25 de Agosto de 2026") > -1,
+b.ok(extenso25.indexOf("25 de agosto de 2026") > -1,
   "e traz a data que estava na planilha, por extenso", extenso25);
 
 const extenso12 = g.dataExtensoVoucher_("12/08/2026 10:30");
-b.ok(extenso12.indexOf("12 de Agosto") > -1,
+b.ok(extenso12.indexOf("12 de agosto") > -1,
   "dia 12 sai como 12 de agosto, não como 8 de dezembro", extenso12);
 
 b.passo("7");
 /* Contraprova: o extenso não pode ter virado uma função que sempre devolve
    hoje. Isso "consertaria" o NaN apagando a informação. */
 const extensoAntigo = g.dataExtensoVoucher_(new Date(2024, 2, 7));
-b.ok(extensoAntigo.indexOf("07 de Março de 2024") > -1,
+b.ok(extensoAntigo.indexOf("07 de março de 2024") > -1,
   "uma data antiga sai como ela é, não como hoje", extensoAntigo);
 b.ok(g.dataExtensoVoucher_(new Date("banana")).indexOf("NaN") === -1,
   "e o ilegível cai para hoje em vez de imprimir NaN",
