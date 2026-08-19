@@ -680,7 +680,56 @@ diz**. São só 2 linhas; dá para olhar direto na planilha.
 |---|---|
 | ✅ **`UF` preenchida** | previsto ~678 de 679; medido **678** (`Sem UF` = 1) em 12/08/2026 |
 | 🔴 **`escolaValidarColunas` depois da padronização** | linhas coerentes devem passar de 660 |
-| 🔴 **Formulário de ofício** | `CIDADE/UF` deve mostrar cidade e UF separados, telefone no formato novo |
+| ✅ **`CIDADE / UF` e telefone** | **verificado por execução em 19/08/2026** — ver logo abaixo |
+
+#### ✅ `CIDADE / UF` e telefone — verificado em 19/08/2026
+
+<details>
+<summary>Texto original do item, preservado</summary>
+
+> 🔴 **Formulário de ofício** — `CIDADE/UF` deve mostrar cidade e UF
+> separados, telefone no formato novo
+
+</details>
+
+**Primeiro, uma correção no próprio item:** ele mistura duas telas. O
+formulário de ofício **não tem campo de telefone**, e o backend que o
+alimenta (`listarEscolasOficio_interno_`) não devolve telefone. Quem mostra
+telefone é o **Cadastro de Escolas**. Item que manda conferir um campo
+inexistente nunca fecha — então ele se separa em dois, e os dois foram
+medidos.
+
+Teste: `tests/e2e/t67-cidade-uf-telefone.js` — **39 asserções**, base
+semeada com os nomes de coluna reais (as constantes de `Escolas.gs`).
+
+| O que foi medido | Resultado |
+|---|---|
+| `listarEscolas` devolve cidade e UF em campos separados | ✅ `cidade="Vitória"`, `uf="ES"`, sem separador dentro da cidade |
+| e o telefone com máscara | ✅ `(27) 3222-1010` |
+| `listarEscolasOficio_interno_` monta `Cidade / UF` para exibir | ✅ `"Vitória / ES"` — a junção é de exibição, na planilha continuam separadas |
+| **Formulário de ofício:** clicar na escola preenche `#cidadeUfReceita` | ✅ `"Vitória / ES"`, pelo caminho real (clique no botão da lista A-Z) |
+| **Cadastro de Escolas:** abrir a ficha preenche cidade, UF e telefone | ✅ `ceMunicipio="Vitória"`, `ceUf="ES"`, `ceTelefone="(27) 3222-1010"`, `ceWhatsapp` e `ceCep` junto |
+| **Contraprova** — a 1 escola sem UF não ganha barra pendurada | ✅ sai `"Serra"`, não `"Serra / "` — nas duas telas |
+
+Cinco mutações rodadas, todas mataram asserção (2, 1, 3, 1 e 3 falhas). A
+mais instrutiva: apagar a normalização boa **não** derrubou o campo do
+ofício, porque `preencherCompat` tem uma reserva — quem denunciou foi a
+lista A-Z, que não tem. Duas asserções sobre o mesmo dado em telas
+diferentes não é redundância.
+
+**Achado que fica registrado, sem mexer:** `normalizarEscola` está
+declarada **três vezes no mesmo escopo** de `OficiosScripts.html` (linhas
+122, 133 e 146). Declaração de função sobe e a última vence — e só a última
+entende `Municipio` e `cidadeUf`. As duas primeiras são inalcançáveis.
+Funciona hoje, e quebra em silêncio se alguém apagar a cópia errada. Pela
+REGRA Nº 1, remoção é decisão do usuário e vai em commit separado; até lá,
+o passo 10 do t67 trava isso — apagar a cópia certa reprova o teste em vez
+de quebrar a tela.
+
+🔴 **Continua não testado:** como isso aparece com os 679 cadastros reais.
+A base do teste é semeada — a forma do dado é a real, o volume não. E
+aparência (cor, alinhamento, largura) não se mede em jsdom: isso é abrir a
+tela.
 
 ---
 
