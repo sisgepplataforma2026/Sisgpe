@@ -34,10 +34,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # NODE 22, E NÃO 20, POR EXIGÊNCIA DO FERRAMENTAL.
+      #
+      # O jsdom 30 declara `engines: node ^22.22.2 || ^24.15.0 || >=26.0.0`.
+      # Com o 20, o `npm install` apenas AVISA e segue em frente — e o
+      # estrago só aparece na hora de rodar, como suíte vermelha sem causa
+      # à vista. Foi o que derrubou o segundo deploy de homologação em
+      # 19/08/2026. O GitHub também já anunciou a descontinuação do Node 20
+      # nos runners, então 20 era dívida em dois sentidos.
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Instalar clasp
         run: npm install -g @google/clasp
