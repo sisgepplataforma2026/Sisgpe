@@ -39,7 +39,7 @@ b.ok(link.texto.indexOf("501") > 0 && link.texto.indexOf(ID) > 0, "a mensagem tr
 const T = link.url.split("&t=")[1];
 
 b.passo("3. A rota existe em Code.gs");
-const code = require("fs").readFileSync("/home/user/Sisgpe/Code.gs", "utf8");
+const code = require("fs").readFileSync(require("path").resolve(__dirname, "..", "..", "Code.gs"), "utf8");
 b.ok(code.indexOf('p.portal === "chinapark-hospedes"') > 0, "Code.gs atende a rota chinapark-hospedes");
 
 b.passo("4. O solicitante abre o link (sem login)");

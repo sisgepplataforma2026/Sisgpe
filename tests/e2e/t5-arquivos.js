@@ -12,7 +12,13 @@
 const fs = require("fs");
 const path = require("path");
 const b = require("./base");
-const RAIZ = "/home/user/Sisgpe";
+/* A RAIZ SAI DO LOCAL DESTE ARQUIVO, NUNCA DE UM CAMINHO DE MÁQUINA.
+   Aqui havia "/home/user/Sisgpe" cravado. Funcionava na minha máquina e
+   estourava em qualquer outra: no runner do GitHub o repositório fica em
+   /home/runner/work/Sisgpe/Sisgpe, e todo teste que sobe o emulador
+   morria com ENOENT antes da primeira asserção. Foi o CI que achou, no
+   primeiro deploy de homologação — 19/08/2026. */
+const RAIZ = require("path").resolve(__dirname, "..", "..");
 
 const gs = fs.readdirSync(RAIZ).filter(f => f.endsWith(".gs"));
 const html = fs.readdirSync(RAIZ).filter(f => f.endsWith(".html"));
