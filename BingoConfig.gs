@@ -185,5 +185,7 @@ function bingo_obterRodada_(rodadaId) {
 
 function bingo_salvarRodada_(rodada) {
   if (!rodada || !rodada.rodadaId) throw new Error('Rodada inválida.');
-  return fs_set_(bingo_colecao_('rodadas'), rodada.rodadaId, rodada);
+  var salvo = fs_set_(bingo_colecao_('rodadas'), rodada.rodadaId, rodada);
+  if (typeof bingo_publicarEstadoRodada_ === 'function') bingo_publicarEstadoRodada_(rodada);
+  return salvo;
 }
