@@ -41,6 +41,19 @@ function agendaEventos_formatarData_(v) {
   return String(v);
 }
 
+/**
+ * Retorna a URL oficial do Web App atualmente implantado.
+ * Necessário porque páginas HtmlService rodam dentro de googleusercontent.com;
+ * usar window.location nessas páginas gera URLs internas userCodeAppPanel que
+ * não passam pelo doGet e podem abrir em branco.
+ */
+function eventos_obterWebAppUrl(tokenSessao) {
+  exigirModulo_(tokenSessao, "eventos", false);
+  var url = ScriptApp.getService().getUrl();
+  if (!url) throw new Error("URL do Web App não disponível. Verifique a implantação de homologação.");
+  return url;
+}
+
 /* =========================================
  * LISTAR
  * ========================================= */
