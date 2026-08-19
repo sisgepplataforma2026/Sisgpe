@@ -3116,13 +3116,57 @@ window.mostrarAbaOficio = function(aba) {
       Historico.selecionados=[]; Historico.atualizarBarraAcoes();
       Historico.initOrdenacao();
 
+      /* TRAVA DE ESPERA — a tela não pode ficar em "Carregando..." para sempre.
+       *
+       * Relato do usuário em 19/08/2026: "o histórico só está carregando".
+       * Medido no emulador, o caminho normal e o de erro conhecido chegam ao
+       * fim; o que não existia era o terceiro caso — a chamada que NÃO VOLTA.
+       * Quando nenhum dos dois handlers dispara (função ausente no projeto
+       * publicado, execução interrompida, sessão derrubada no meio), a tabela
+       * fica no "Carregando..." indefinidamente, sem erro e sem log.
+       *
+       * "Carregando" eterno é a pior mensagem possível: quem lê fica
+       * esperando em vez de agir. Passados 20 segundos a tela diz o que
+       * aconteceu e oferece o caminho. */
+      var respondeu = false;
+      var espera = setTimeout(function() {
+        if (respondeu) return;
+        if (contEl) contEl.textContent = "0 registro(s)";
+        tbody.innerHTML = '<tr><td colspan="7"><div class="of-table-empty">' +
+          '⏱️ O servidor não respondeu ao carregar o histórico.<br>' +
+          '<small>Recarregue a tela (F5). Se repetir, o painel <strong>Execuções</strong> ' +
+          'do Apps Script mostra o erro real.</small></div></td></tr>';
+      }, 20000);
+
       google.script.run
         .withSuccessHandler(function(resp) {
+          respondeu = true; clearTimeout(espera);
+          /* O ERRO DO BACKEND PRECISA APARECER. Ele volta pelo caminho de
+           * SUCESSO — { erro:true, mensagem:"...", itens:[] } —, e a versão
+           * anterior lia só `itens`. Com a aba faltando, a tela dizia
+           * "Nenhum registro encontrado": uma mentira tranquila, que faz
+           * quem lê concluir que não há ofício nenhum quando na verdade a
+           * origem dos dados sumiu. Medido no emulador em 19/08/2026. */
+          if (resp && resp.erro) {
+            if (contEl) contEl.textContent = "0 registro(s)";
+            /* Escape LOCAL, de propósito. O escapeHtml do arquivo mora no
+               primeiro IIFE (linha 20) e este bloco está no segundo — usá-lo
+               aqui daria ReferenceError e trocaria uma mensagem ausente por
+               uma tela quebrada. Peguei isso conferindo o escopo antes de
+               rodar, não depois. */
+            var seguro = String(resp.mensagem || "O servidor recusou a leitura.")
+              .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            tbody.innerHTML = '<tr><td colspan="7"><div class="of-table-empty">' +
+              '⚠️ Não foi possível carregar o histórico.<br><small>' + seguro +
+              '</small></div></td></tr>';
+            return;
+          }
           var lista = (resp && Array.isArray(resp.itens)) ? resp.itens : (Array.isArray(resp) ? resp : []);
           Historico._dadosCache = lista;
           Historico.renderLista(lista);
         })
         .withFailureHandler(function(err) {
+          respondeu = true; clearTimeout(espera);
           if(contEl) contEl.textContent="0 registro(s)";
           tbody.innerHTML='<tr><td colspan="7"><div class="of-table-empty">Erro: '+((err&&err.message)||err||"")+'</div></td></tr>';
         })
