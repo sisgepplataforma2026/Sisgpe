@@ -1068,3 +1068,51 @@ Quando a data é ilegível, o documento cai para **hoje** — mesmo
 comportamento que já existia para célula vazia. Numa **reemissão** de
 certificado antigo isso data o documento com o dia de hoje. Fica assim até
 aparecer reemissão na operação; se aparecer, trocar.
+
+---
+
+## VOUCHER — e-mail padrão SISGEP e as duas redações do certificado
+
+Entregue em 18/08/2026 e **salvo pelo usuário em 19/08/2026**. Salvar no
+editor do Apps Script não muda nada no ar: só passa a valer depois de
+**publicar nova versão**. Até ele publicar E emitir, tudo aqui é "não
+testado" pela REGRA Nº -1.
+
+Provas por execução que já existem: `t60-email-voucher-padrao.js` (32
+asserções, 3 mutações mortas) e `t61-certificado-titular-dependente.js`
+(36 asserções, 3 mutações mortas). Suíte completa: 2.506 asserções.
+
+### O que mudou
+
+| Arquivo | Mudança |
+|---|---|
+| `VoucherEnvio.gs` | e-mail no padrão SISGEP (mesmo desenho do e-mail de ofício), assinado pela **Marcelha** — o certificado em anexo é do **Leonil** |
+| `VoucherPdf.gs` | **duas redações**: titular e dependente, cada uma com seu fundamento, verbo e fecho |
+| `VoucherPdf.gs` | data no fim do texto, acima da assinatura, nos dois modelos |
+| `Voucher.gs` | mês por extenso em minúscula e sem ponto final |
+
+O papel do dependente não é o do titular com uma oração a mais. Muda o
+fundamento (convênio × cláusula da CCT), o verbo ("encontra-se
+regularmente habilitado" × "atende aos requisitos estabelecidos") e o
+fecho (restritivo × simples).
+
+### 🔴 A cobrar do usuário
+
+| Item | Como verificar |
+|---|---|
+| 🔴 **Publicou nova versão?** | salvar não basta — sem publicar, o Apps Script continua rodando o código anterior |
+| 🔴 **Certificado de TITULAR** | tem que dizer "atende aos requisitos estabelecidos" e "semestralidade/anuidade escolar" |
+| 🔴 **Certificado de DEPENDENTE** | tem que dizer "encontra-se regularmente habilitado", nomear de quem é dependente e fechar com "pessoal, individual e intransferível" |
+| 🔴 **Nenhuma redação vaza na outra** | é o erro que a instituição de ensino percebe primeiro |
+| 🔴 **A data no fim, acima da assinatura**, nos dois | "Vitória/ES, 19 de agosto de 2026" — minúscula, sem ponto |
+| 🔴 **O período legível, sem GMT** | conferir um do 1º e um do 2º semestre |
+| 🔴 **O e-mail no padrão** | cabeçalho navy com CNPJ, badge "Bolsa de Estudo", rodapé com a Marcelha |
+| 🔴 **`VoucherPeriodo.gs` existe no projeto** | o `VoucherPdf.gs` novo depende dele; se faltar, a emissão quebra |
+
+### ⚠ Contexto que não pode se perder
+
+O `VoucherPdf.gs` que estava no ar em 18/08 era de **13/08, nove commits
+atrás** — provado por três sinais no PDF do BOLSA-2026-920837 (redação
+antiga, período como Date crua, sem bloco de data). Divergência entre o
+projeto Apps Script e o repositório, não defeito de código. Se sintoma
+antigo reaparecer, conferir a versão do arquivo ANTES de procurar bug.
