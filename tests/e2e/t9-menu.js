@@ -218,19 +218,40 @@ b.ok(falaComDev.length === 0,
   falaComDev.length ? "AINDA FALA: " + falaComDev.join(" · ")
                     : "index.html varrido fora de comentário, script e style");
 
-b.passo("16. E o painel de Certidões diz a verdade a quem clica nele");
-/* O painel FICA — pela REGRA Nº 1, remover item de menu é pedido explícito
-   do usuário, em commit separado. O que mudou foi o texto. Esta asserção
-   existe para que a troca não se perca numa edição futura. */
-const painel = visivel.slice(visivel.indexOf("docSubCertidoes"));
-const textoPainel = painel.slice(0, painel.indexOf("</div>", painel.indexOf("<p")))
-  .replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-b.ok(/não emite certidões pelo sistema/i.test(textoPainel),
-  "o painel diz que o sindicato não emite certidão pelo sistema",
-  textoPainel.slice(0, 140));
-b.ok(!/em prepara/i.test(textoPainel),
-  "e não promete um módulo 'em preparação' que ninguém está preparando",
-  "promessa de tela que não vem é pior que espaço declarado vazio");
+b.passo("16. Certidões saiu do menu inteiro, não pela metade");
+/* PEDIDO EXPLÍCITO do usuário em 19/08/2026, depois de registrar o
+   submódulo como não usado: "tira essas certidões". Pela REGRA Nº 1 é
+   assim que remoção acontece — pedido dele, commit separado.
+
+   Esta asserção existe porque remoção de item de menu é justamente o tipo
+   de mudança que sai pela metade: some o botão e fica a chave no mapa, ou
+   some o painel e fica o card. O que resta em qualquer estado intermediário
+   é uma tela que abre vazia, ou um botão que não leva a lugar nenhum.
+
+   A varredura é do arquivo INTEIRO fora de comentário — em comentário a
+   palavra é legítima, e de propósito: a nota que explica a remoção fica lá
+   para quem procurar Certidões e não achar. Sem ela, a mesma investigação
+   dos 5 passos seria refeita do zero daqui a seis meses. */
+const semComentario = fsT9.readFileSync(raiz + "/index.html", "utf8")
+  .replace(/<!--[\s\S]*?-->/g, " ")
+  .replace(/\/\*[\s\S]*?\*\//g, " ")
+  .replace(/\/\/[^\n]*/g, " ");
+b.ok(!/certid/i.test(semComentario),
+  "nenhuma menção viva a Certidões no index.html",
+  (semComentario.match(/.{0,60}certid.{0,60}/i) || ["fora de comentário, zero ocorrências"])[0]);
+b.ok(!/docSubCertidoes/.test(semComentario),
+  "o painel e a chave do mapa DOC_SUB_PAINEIS saíram juntos",
+  "chave sem painel abre uma tela em branco; painel sem chave vira HTML morto");
+
+b.passo("17. E o que ficou de Certidões no projeto é outra coisa");
+/* CONTRAPROVA. Uma remoção com sed solto pelo projeto teria levado junto
+   duas coisas legítimas — e nenhuma tem relação com o submódulo. */
+b.ok(/certidão de quitação eleitoral/i.test(fsT9.readFileSync(raiz + "/EstatutoCore.gs", "utf8")),
+  "o texto do estatuto continua citando a certidão de quitação eleitoral",
+  "é documento de candidatura, não submódulo");
+b.ok(/Certidão de Casamento/i.test(fsT9.readFileSync(raiz + "/Scripts_Certificado.html", "utf8")),
+  "e o voucher continua aceitando certidão de casamento e de nascimento",
+  "são tipos de documento anexável do dependente");
 
 b.naoTestavel("Aparência, animação do acordeão e clique real", "exige navegador");
 b.naoTestavel("Carregamento do conteúdo de cada módulo", "depende do Apps Script servindo os includes");
