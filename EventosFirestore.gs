@@ -1,50 +1,45 @@
 /**
  * PONTE SISGEP ↔ FIRESTORE (projeto sisgep-plataforma)
- * Autentica com a conta de serviço guardada no cofre (FIRESTORE_SERVICE_ACCOUNT)
- * e lê/grava documentos no Firestore via API REST.
- * Etapa 1: só a ponte + testes. O motor de emissão vem por cima disto.
+ *
+ * IMPORTANTE:
+ * Esta ponte reutiliza a infraestrutura oficial de FirebaseCore.gs.
+ * As credenciais ficam separadas em ScriptProperties:
+ *   FIREBASE_PROJETO
+ *   FIREBASE_CLIENT_EMAIL
+ *   FIREBASE_PRIVATE_KEY
+ *
+ * Não usar FIRESTORE_SERVICE_ACCOUNT: manter duas formas de autenticação no
+ * mesmo projeto cria configuração duplicada e aumenta o risco operacional.
  */
 
 // ---------- CONFIG / CREDENCIAL ----------
 function fs_getConfig_() {
-  var raw = PropertiesService.getScriptProperties().getProperty('FIRESTORE_SERVICE_ACCOUNT');
-  if (!raw) throw new Error('Credencial FIRESTORE_SERVICE_ACCOUNT não encontrada no cofre.');
-  var sa = JSON.parse(raw);
-  return { projectId: sa.project_id, clientEmail: sa.client_email, privateKey: sa.private_key };
-}
-
-// ---------- TOKEN DE ACESSO (OAuth via JWT da conta de serviço) ----------
-function fs_getAccessToken_() {
-  var cache = CacheService.getScriptCache();
-  var cached = cache.get('FS_TOKEN');
-  if (cached) return cached;
-
-  var cfg = fs_getConfig_();
-  var now = Math.floor(Date.now() / 1000);
-  var header = { alg: 'RS256', typ: 'JWT' };
-  var claim = {
-    iss: cfg.clientEmail,
-    scope: 'https://www.googleapis.com/auth/datastore',
-    aud: 'https://oauth2.googleapis.com/token',
-    exp: now + 3600,
-    iat: now
+  if (typeof fb_config_ !== 'function') {
+    throw new Error('FirebaseCore.gs não está disponível no projeto.');
+  }
+  var cfg = fb_config_();
+  if (!cfg) {
+    throw new Error('Firebase não configurado. Verifique FIREBASE_PROJETO, FIREBASE_CLIENT_EMAIL e FIREBASE_PRIVATE_KEY nas Propriedades do script.');
+  }
+  return {
+    projectId: cfg.projeto,
+    clientEmail: cfg.email,
+    privateKey: cfg.chave
   };
-  var toSign = fs_b64url_(JSON.stringify(header)) + '.' + fs_b64url_(JSON.stringify(claim));
-  var signature = Utilities.computeRsaSha256Signature(toSign, cfg.privateKey);
-  var jwt = toSign + '.' + fs_b64url_(signature);
-
-  var resp = UrlFetchApp.fetch('https://oauth2.googleapis.com/token', {
-    method: 'post',
-    payload: { grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: jwt },
-    muteHttpExceptions: true
-  });
-  var data = JSON.parse(resp.getContentText());
-  if (!data.access_token) throw new Error('Falha ao obter token: ' + resp.getContentText());
-  cache.put('FS_TOKEN', data.access_token, 3000); // ~50 min
-  return data.access_token;
 }
 
+// ---------- TOKEN DE ACESSO ----------
+// Reutiliza o OAuth/cache oficial de FirebaseCore.gs.
+function fs_getAccessToken_() {
+  if (typeof fb_token_ !== 'function') {
+    throw new Error('FirebaseCore.gs não está disponível para gerar o token OAuth.');
+  }
+  return fb_token_();
+}
+
+// Mantida por compatibilidade com código legado que possa chamá-la.
 function fs_b64url_(input) {
+  if (typeof fb_base64Url_ === 'function') return fb_base64Url_(input);
   return Utilities.base64EncodeWebSafe(input).replace(/=+$/, '');
 }
 
@@ -115,8 +110,6 @@ function fs_get_(collection, docId) {
 }
 
 // ---------- CONSULTAR (query estruturada por igualdade de campo) ----------
-// Usado pelo check-in: encontrar o ingresso pelo número impresso/digitado
-// (FCV-2026-000123), já que o documento é gravado com um UUID como ID.
 function fs_queryEquals_(collection, campo, valor) {
   var url = fs_baseUrl_() + ':runQuery';
   var body = {
