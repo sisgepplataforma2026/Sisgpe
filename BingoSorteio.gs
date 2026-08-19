@@ -137,8 +137,22 @@ function bingo_retomarRodada(rodadaId, tokenSessao) {
     if ([BINGO_STATUS_RODADA.PAUSADA, BINGO_STATUS_RODADA.AGUARDANDO_MANIFESTACAO].indexOf(rodada.status) < 0) {
       return { ok: false, mensagem: 'A rodada não está pausada.' };
     }
+
+    if (rodada.status === BINGO_STATUS_RODADA.AGUARDANDO_MANIFESTACAO) {
+      if (typeof bingo_expirarManifestacoesPendentes === 'function') {
+        bingo_expirarManifestacoesPendentes(rodadaId, tokenSessao);
+      }
+      var pendentes = bingo_queryEquals_(bingo_colecao_('deteccoes'), 'rodadaId', String(rodadaId), 500)
+        .map(function(x) { return x.data || {}; })
+        .filter(function(d) { return String(d.status || '') === 'AGUARDANDO_MANIFESTACAO'; });
+      if (pendentes.length) {
+        return { ok: false, mensagem: 'Existe Bingo aguardando manifestação. Resolva ou aguarde o prazo antes de retomar.', pendentes: pendentes.length };
+      }
+    }
+
     rodada.status = BINGO_STATUS_RODADA.EM_ANDAMENTO;
     rodada.retomadaEm = bingo_agoraIso_();
+    rodada.motivoPausa = '';
     rodada.versaoEstado = (parseInt(rodada.versaoEstado, 10) || 0) + 1;
     bingo_salvarRodada_(rodada);
     bingo_auditar_('RODADA_RETOMADA', rodadaId, sessao, null, { rodadaId: rodadaId });
