@@ -50,7 +50,7 @@ function bingo_numerosOficiais_(rodadaId) {
 function bingo_setSorteados_(sorteios) {
   var set = {};
   (sorteios || []).forEach(function(s) { set[Number(s.numero)] = true; });
-  set[0] = true; // casa livre
+  set[0] = true;
   return set;
 }
 
@@ -117,9 +117,12 @@ function bingo_detectarBingosAposNumero_(rodada, sorteio, sessao) {
     var numeros = bingo_parseJson_(c.numerosJson, []);
     if (!bingo_validarPadrao_(numeros, rodada.modalidade, set)) return;
 
-    var detDocId = bingo_hash_(rodada.rodadaId + '|' + c.cartelaId + '|' + sorteio.posicao).substring(0, 40);
+    // Uma cartela só pode entrar no fluxo de vitória uma vez por rodada.
+    // Se o prazo expirar, ela não reaparece no próximo número, pois isso
+    // anularia a regra de manifestação ao vivo.
+    var detDocId = bingo_hash_(rodada.rodadaId + '|' + c.cartelaId).substring(0, 40);
     var existente = fs_get_(bingo_colecao_('deteccoes'), detDocId);
-    if (existente) { deteccoes.push(existente); return; }
+    if (existente) return;
 
     var prazoSeg = Math.max(30, parseInt(rodada.prazoManifestacaoSegundos || 180, 10));
     var detectado = new Date();
