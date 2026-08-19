@@ -737,15 +737,56 @@ function gerarOficioWeb(dados, tokenSessao) {
       dados.fichas.forEach(function(ficha, indice) {
         var extensao = obterExtensaoArquivo_(ficha.nome, ficha.tipo);
         var nomeArquivo;
+        /* O NOME DO ANEXO SEGUE O TIPO DO OFÍCIO.
+         *
+         * Até 18/08/2026 TODO anexo saía como "Ficha_Filiacao_<NOME>", em
+         * qualquer tipo. Medido: Filiação, Desfiliação e Oposição produziam
+         * exatamente o mesmo "Ficha_Filiacao_PESSOA_1.pdf".
+         *
+         * A escola recebia, num ofício de OPOSIÇÃO — que determina que o
+         * desconto NÃO seja feito —, um arquivo chamado ficha de filiação. O
+         * documento diz uma coisa e o anexo, pelo nome, diz o contrário. Numa
+         * contestação é o nome do arquivo que fica no e-mail arquivado. */
+        /* Padrão definido pelo usuário em 18/08/2026: prefixo "Ficha_" em
+           todos, com o TIPO logo depois.
+
+             Ficha_Filiacao_<NOME>      ·  Fichas_Filiacao_<ESCOLA>_<data>
+             Ficha_Desfiliacao_<NOME>   ·  Fichas_Desfiliacao_<ESCOLA>_<data>
+             Ficha_Oposicao_<NOME>      ·  Fichas_Oposicao_<ESCOLA>_<data>
+
+           Antes TODO tipo produzia "Ficha_Filiacao_<NOME>": a escola recebia,
+           num ofício de oposição — que manda NÃO descontar —, um arquivo com
+           nome de ficha de filiação. Numa contestação é o nome do arquivo que
+           fica no e-mail arquivado.
+
+           Sem acento de propósito: nome de arquivo com ç e ã atravessa Drive,
+           Gmail e o computador da escola com codificações diferentes, e o que
+           chega do outro lado costuma ser "Desfiliaa~o". */
+        var tipoArquivo = (proc.tipoNorm === "DESFILIACAO")            ? "Desfiliacao"
+                        : (proc.tipoNorm === "OPOSICAO_TAXA_NEGOCIAL") ? "Oposicao"
+                        : (proc.tipoNorm === "FILIACAO")               ? "Filiacao"
+                        : (proc.tipoNorm === "TAXA_ASSISTENCIAL")      ? "Taxa_Assistencial"
+                        : (proc.tipoNorm === "TAXA_NEGOCIAL")          ? "Taxa_Negocial"
+                        : "Documento";
         if (fichaPorPessoa) {
           var nomeFormatado = String(proc.colaboradoresArr[indice] || "ASSOCIADO")
             .toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
             .replace(/[^A-Z0-9\s]/g, "").trim().replace(/\s+/g, "_");
-          nomeArquivo = "Ficha_Filiacao_" + nomeFormatado + "." + extensao;
+          /* Nome da pessoa + escola + data, os três — decisão do usuário em
+             18/08/2026. Assim o arquivo se identifica sozinho na pasta do
+             Drive e no anexo do e-mail, sem depender de abrir nem de saber
+             de qual ofício veio.
+
+             O nome da pessoa entra cortado em 40 caracteres: nome composto
+             longo somado à escola (45) e à data passa dos limites que alguns
+             clientes de e-mail exibem, e o que interessa para reconhecer já
+             está no começo. */
+          nomeArquivo = "Ficha_" + tipoArquivo + "_" + nomeFormatado.slice(0, 40) +
+            "_" + escolaArquivo + "_" + dataArquivo + "." + extensao;
         } else {
           /* Um PDF por escola por dia: o número de ordem só entra quando há
            * mais de um arquivo, para o caso comum não ganhar um "_1" inútil. */
-          nomeArquivo = "Fichas_" + escolaArquivo + "_" + dataArquivo +
+          nomeArquivo = "Fichas_" + tipoArquivo + "_" + escolaArquivo + "_" + dataArquivo +
             (dados.fichas.length > 1 ? "_" + (indice + 1) : "") + "." + extensao;
         }
         var blob        = Utilities.newBlob(Utilities.base64Decode(ficha.base64), ficha.tipo || "application/pdf", nomeArquivo);

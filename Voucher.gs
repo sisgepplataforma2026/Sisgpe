@@ -158,33 +158,95 @@ function formatDateInput_(valor) {
   return Utilities.formatDate(data, Session.getScriptTimeZone(), "yyyy-MM-dd");
 }
 
-function formatarDataBrVoucher_(data) {
-  if (!data) return "";
+/**
+ * Lê uma data de onde ela vier: objeto Date, texto brasileiro ou ISO.
+ * Devolve um Date válido, ou null quando não dá para entender o valor.
+ *
+ * POR QUE ISTO EXISTE (medido em 18/08/2026)
+ *
+ * As quatro funções de data do voucher faziam `new Date(valor)` no texto
+ * cru. O JavaScript lê texto com barra no formato AMERICANO — mês primeiro.
+ * O resultado, medido:
+ *
+ *   "12/08/2026 10:30"  →  8 de DEZEMBRO de 2026   (dia e mês trocados)
+ *   "25/08/2026"        →  Date inválida            (não existe mês 25)
+ *
+ * Os dois estragos são diferentes e o segundo é o que o usuário viu:
+ *
+ *   - Dia até 12: a data SAI, e sai ERRADA. O certificado vai para a
+ *     instituição de ensino com outra data, e ninguém percebe, porque
+ *     08/12/2026 é uma data plausível.
+ *   - Dia de 13 em diante: a data não sai. Na lista fica em branco; no
+ *     documento saía "Vitória/ES, NaN de undefined de NaN.".
+ *
+ * O estrago pegava também a ORDENAÇÃO da lista: ela ordena por
+ * timestampSeguroVoucher_ aplicado ao texto já formatado, então toda linha
+ * com dia acima de 12 virava timestamp 0 e afundava para o fim.
+ *
+ * A ordem de leitura é deliberada: Date primeiro, depois o formato
+ * brasileiro, e só então o Date nativo. O brasileiro vem ANTES porque é o
+ * formato que este sistema grava e mostra — deixar o nativo tentar antes
+ * seria reintroduzir a troca de dia e mês.
+ */
+function voucherDataDeQualquerCoisa_(valor) {
+  if (valor === null || valor === undefined || valor === "") return null;
 
-  const dt = Object.prototype.toString.call(data) === "[object Date]" ? data : new Date(data);
-  if (isNaN(dt.getTime())) return "";
+  if (Object.prototype.toString.call(valor) === "[object Date]") {
+    return isNaN(valor.getTime()) ? null : valor;
+  }
+
+  const texto = String(valor).trim().replace(/^'/, "");
+  if (!texto) return null;
+
+  /* Formato brasileiro: dd/MM/yyyy, com hora opcional. Aceita barra ou
+     traço como separador, porque as duas coisas aparecem em planilha. */
+  const m = texto.match(
+    /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[\sT]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (m) {
+    const dia = Number(m[1]), mes = Number(m[2]), ano = Number(m[3]);
+    const hh = Number(m[4] || 0), mi = Number(m[5] || 0), ss = Number(m[6] || 0);
+    if (mes >= 1 && mes <= 12 && dia >= 1 && dia <= 31) {
+      const dt = new Date(ano, mes - 1, dia, hh, mi, ss);
+      /* Confere que a data existe de verdade: 31/02 vira 03/03 em
+         JavaScript, e uma data que "escorregou" de mês não é a data que
+         estava escrita na célula. */
+      if (dt.getFullYear() === ano && dt.getMonth() === mes - 1 && dt.getDate() === dia) {
+        return dt;
+      }
+      return null;
+    }
+    return null;
+  }
+
+  /* Só ISO daqui para baixo, e conferido por formato antes de converter.
+     O Date nativo aceita coisa demais: medido, `new Date("período 2026/2")`
+     devolve 1º de fevereiro de 2026 sem reclamar. Como o campo
+     PERIODO_REFERENCIA deste módulo é literalmente "2026/2", deixar o
+     nativo tentar qualquer texto seria transformar período em data — o
+     mesmo tipo de erro silencioso que esta função existe para impedir. */
+  if (!/^\d{4}-\d{2}-\d{2}([T\s]\d{2}:\d{2}(:\d{2})?)?/.test(texto)) return null;
+
+  const nativo = new Date(texto);
+  return isNaN(nativo.getTime()) ? null : nativo;
+}
+
+function formatarDataBrVoucher_(data) {
+  const dt = voucherDataDeQualquerCoisa_(data);
+  if (!dt) return "";
 
   return Utilities.formatDate(dt, Session.getScriptTimeZone(), "dd/MM/yyyy");
 }
 
 function formatarDataHoraBrVoucher_(data) {
-  if (!data) return "";
-
-  const dt = Object.prototype.toString.call(data) === "[object Date]" ? data : new Date(data);
-  if (isNaN(dt.getTime())) return "";
+  const dt = voucherDataDeQualquerCoisa_(data);
+  if (!dt) return "";
 
   return Utilities.formatDate(dt, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm");
 }
 
 function timestampSeguroVoucher_(valor) {
-  if (!valor) return 0;
-
-  if (Object.prototype.toString.call(valor) === "[object Date]") {
-    return isNaN(valor.getTime()) ? 0 : valor.getTime();
-  }
-
-  const dt = new Date(valor);
-  return isNaN(dt.getTime()) ? 0 : dt.getTime();
+  const dt = voucherDataDeQualquerCoisa_(valor);
+  return dt ? dt.getTime() : 0;
 }
 
 function valorSeguroVoucher_(valor) {
@@ -239,23 +301,36 @@ function percentualPorExtensoVoucher_(n) {
   return mapa[n] || n + " por cento";
 }
 
+/**
+ * A linha de local e data do documento: "Vitória/ES, 12 de Agosto de 2026.".
+ *
+ * Lê pelo voucherDataDeQualquerCoisa_ e NUNCA imprime NaN. Antes, uma célula
+ * com "25/08/2026" — texto brasileiro com dia acima de 12 — saía no
+ * certificado como "Vitória/ES, NaN de undefined de NaN.". O documento ia
+ * assim para a instituição de ensino.
+ *
+ * Quando a data não é legível de jeito nenhum, cai para hoje — que é o mesmo
+ * que já acontecia com célula vazia. ATENÇÃO: numa REEMISSÃO de certificado
+ * antigo isso data o documento com o dia de hoje. Vale rever se aparecer
+ * reemissão de documento antigo na operação.
+ */
 function dataExtensoVoucher_(data) {
-  if (!data) data = new Date();
-
+  /* MINÚSCULA, e sem ponto no fim — é assim nos dois certificados que o
+     usuário mandou em 18/08/2026 ("Vitória/ES, 18 de agosto de 2026") e é
+     assim em português: nome de mês não é nome próprio. */
   const meses = [
-    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+    "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+    "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"
   ];
 
-  const dt = data instanceof Date ? data : new Date(data);
+  const dt = voucherDataDeQualquerCoisa_(data) || new Date();
 
   return "Vitória/ES, " +
     String(dt.getDate()).padStart(2, "0") +
     " de " +
     meses[dt.getMonth()] +
     " de " +
-    dt.getFullYear() +
-    ".";
+    dt.getFullYear();
 }
 
 function escHtmlVoucher_(t) {

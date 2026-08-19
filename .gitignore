@@ -1,3 +1,4 @@
 node_modules/
-node_modules/
 .clasp.json
+.clasprc.json
+client_secret*.json

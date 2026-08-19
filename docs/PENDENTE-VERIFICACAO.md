@@ -1016,3 +1016,139 @@ hoje — as pendências restantes são de qualidade, não de bloqueio.
 
 **As 39 sem telefone** são a maior fila, e são gravidade 2 justamente porque
 o e-mail cobre o contato. Não travam nada; tiram o segundo caminho.
+
+---
+
+## VOUCHER — envio e data de emissão (publicado em 18/08/2026)
+
+Dois defeitos corrigidos e **publicados pelo usuário em 18/08/2026**.
+Publicar não é testar: até ele rodar no ar, tudo aqui é "não testado" pela
+REGRA Nº -1.
+
+Provas por execução que já existem, no emulador:
+`t57-voucher-envio-erro.js` (36 asserções, 2 mutações mortas) e
+`t58-voucher-data-emissao.js` (33 asserções, 4 mutações mortas). Suíte
+completa verde: 2.423 asserções, 58 arquivos.
+
+### O que foi corrigido
+
+| Arquivo | Defeito |
+|---|---|
+| `VoucherEnvio.gs` | o preparo devolvia `Date` crua; quando a célula estava corrompida o `google.script.run` devolvia **null** e a tela mostrava "O servidor não respondeu nada" e fechava o modal |
+| `VoucherEnvio.gs` | `exigirModulo_` estava FORA do `try` — recusa de sessão virava "erro de servidor" sem motivo |
+| `Voucher.gs` | as 4 funções de data faziam `new Date(texto)`, que lê barra no formato **americano** |
+
+O defeito de data tinha duas caras, e a pior é a silenciosa:
+
+- **dia até 12** — a data saía **ERRADA** (`12/08` virava 8 de dezembro).
+  O certificado ia para a instituição de ensino com outra data e ninguém
+  percebia, porque `08/12/2026` é plausível.
+- **dia de 13 em diante** — a data **não saía**: branco na lista e
+  `Vitória/ES, NaN de undefined de NaN.` no documento. Foi o que o usuário
+  relatou.
+- **a ordenação da lista** afundava toda linha com dia acima de 12, porque
+  ela reprocessa o texto já formatado e o timestamp virava 0.
+
+Achado ao rodar o teste: o `Date` nativo lia `"período 2026/2"` como 1º de
+fevereiro — e `PERIODO_REFERENCIA` deste módulo é literalmente `"2026/2"`.
+
+### 🔴 A cobrar do usuário
+
+| Item | Como verificar |
+|---|---|
+| 🔴 **O envio do voucher completa** | abrir o `BOLSA-2026-916155` (o protocolo do relato) e mandar. Se repetir, o painel **Execuções** do Apps Script mostra a exceção real |
+| 🔴 **O e-mail chega com o PDF anexado** | conferir na caixa do associado, não só no "enviado" |
+| 🔴 **A data aparece na lista de emitidos** | e com o dia e o mês no lugar certo — conferir uma linha com **dia acima de 12** e outra com **dia até 12** |
+| 🔴 **A data sai no PDF do certificado** | a linha `Vitória/ES, ... de ... de ...` — o emulador não gera PDF, isto só se vê abrindo o documento |
+| 🔴 **A lista está em ordem de data** | com o leitor antigo, linhas de dia acima de 12 iam para o fim |
+
+### ⚠ Decisão registrada, à espera da operação
+
+Quando a data é ilegível, o documento cai para **hoje** — mesmo
+comportamento que já existia para célula vazia. Numa **reemissão** de
+certificado antigo isso data o documento com o dia de hoje. Fica assim até
+aparecer reemissão na operação; se aparecer, trocar.
+
+---
+
+## VOUCHER — e-mail padrão SISGEP e as duas redações do certificado
+
+Entregue em 18/08/2026 e **salvo pelo usuário em 19/08/2026**. Salvar no
+editor do Apps Script não muda nada no ar: só passa a valer depois de
+**publicar nova versão**. Até ele publicar E emitir, tudo aqui é "não
+testado" pela REGRA Nº -1.
+
+Provas por execução que já existem: `t60-email-voucher-padrao.js` (32
+asserções, 3 mutações mortas) e `t61-certificado-titular-dependente.js`
+(36 asserções, 3 mutações mortas). Suíte completa: 2.506 asserções.
+
+### O que mudou
+
+| Arquivo | Mudança |
+|---|---|
+| `VoucherEnvio.gs` | e-mail no padrão SISGEP (mesmo desenho do e-mail de ofício), assinado pela **Marcelha** — o certificado em anexo é do **Leonil** |
+| `VoucherPdf.gs` | **duas redações**: titular e dependente, cada uma com seu fundamento, verbo e fecho |
+| `VoucherPdf.gs` | data no fim do texto, acima da assinatura, nos dois modelos |
+| `Voucher.gs` | mês por extenso em minúscula e sem ponto final |
+
+O papel do dependente não é o do titular com uma oração a mais. Muda o
+fundamento (convênio × cláusula da CCT), o verbo ("encontra-se
+regularmente habilitado" × "atende aos requisitos estabelecidos") e o
+fecho (restritivo × simples).
+
+### 🔴 A cobrar do usuário
+
+| Item | Como verificar |
+|---|---|
+| 🔴 **Publicou nova versão?** | salvar não basta — sem publicar, o Apps Script continua rodando o código anterior |
+| 🔴 **Certificado de TITULAR** | tem que dizer "atende aos requisitos estabelecidos" e "semestralidade/anuidade escolar" |
+| 🔴 **Certificado de DEPENDENTE** | tem que dizer "encontra-se regularmente habilitado", nomear de quem é dependente e fechar com "pessoal, individual e intransferível" |
+| 🔴 **Nenhuma redação vaza na outra** | é o erro que a instituição de ensino percebe primeiro |
+| 🔴 **A data no fim, acima da assinatura**, nos dois | "Vitória/ES, 19 de agosto de 2026" — minúscula, sem ponto |
+| 🔴 **O período legível, sem GMT** | conferir um do 1º e um do 2º semestre |
+| 🔴 **O e-mail no padrão** | cabeçalho navy com CNPJ, badge "Bolsa de Estudo", rodapé com a Marcelha |
+| 🔴 **`VoucherPeriodo.gs` existe no projeto** | o `VoucherPdf.gs` novo depende dele; se faltar, a emissão quebra |
+
+### ⚠ Contexto que não pode se perder
+
+O `VoucherPdf.gs` que estava no ar em 18/08 era de **13/08, nove commits
+atrás** — provado por três sinais no PDF do BOLSA-2026-920837 (redação
+antiga, período como Date crua, sem bloco de data). Divergência entre o
+projeto Apps Script e o repositório, não defeito de código. Se sintoma
+antigo reaparecer, conferir a versão do arquivo ANTES de procurar bug.
+
+---
+
+## ✅ SINDICALIZAÇÃO — "todo azul, não abre nada" (VERIFICADO em 19/08/2026)
+
+**Status: fechado pelo usuário** — *"Abriu os modulos"*, 19/08/2026, depois
+de colar `Scripts_Certificado.html` e publicar.
+
+**Causa:** `<div id="secCertificadoAdmin">` aberto na linha 269 e nunca
+fechado. Como o `include()` cola tudo num HTML só e o Certificado entra em
+`index.html:544` — antes de Aprovacaocadastro (573), FichasSindicaisAdmin
+(651) e Carteirinhaadmin (658) —, os três módulos ficavam DENTRO da seção
+do Certificado, escondida e com fundo navy.
+
+Não era JavaScript morto nem erro de backend. O sintoma da REGRA Nº 0
+apontou para HTML corrompido, e apontou certo.
+
+**O defeito era antigo** — presente em HEAD~30. Não veio de entrega
+recente.
+
+**Guarda criada:** `t46` passo 6 — balanço de elementos de bloco
+(`div/section/main/table/tbody/form`) em todos os `.html`. Os cinco passos
+anteriores passavam verdes o tempo todo, porque nenhum olhava o balanço
+dos ELEMENTOS. Duas mutações mortas.
+
+**Lição para a próxima:** tela que renderiza mas não responde, ou módulo
+que aparece com a cor de outro, é HTML corrompido até prova em contrário —
+procurar tag antes de procurar erro no `.gs`. E rodar `t46`, que agora
+pega este caso.
+
+### ⚠ Pergunta em aberto
+
+Se a Sindicalização **já funcionou** no ar antes, então o
+`Scripts_Certificado.html` do projeto era mais antigo que o do repositório
+e a versão quebrada foi colada em algum momento — o que indicaria outros
+arquivos divergentes. O usuário ainda não respondeu.
