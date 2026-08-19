@@ -435,11 +435,43 @@
             <?!= include('Scripts_ReciboDiversos'); ?>
             <?!= include('Scripts_HistoricoRecibos'); ?>
           </div>
+<!--
+  CERTIDÕES — SUBMÓDULO QUE NUNCA EXISTIU, E POR DECISÃO NÃO VAI EXISTIR
+  POR ORA. Registrado pelo usuário em 19/08/2026: o sindicato não emite
+  certidão pelo sistema.
+
+  O QUE A VERIFICAÇÃO ENCONTROU (os 5 passos da REGRA Nº 1, rodados antes
+  de escrever isto):
+
+    - não há, e nunca houve, arquivo de Certidões — nem .gs nem .html.
+      O git não registra criação nem remoção de nenhum arquivo com esse
+      nome, em commit nenhum;
+    - não há rota pública em Code.gs, nem trigger agendado;
+    - o painel abaixo está aqui desde o PRIMEIRO commit do repositório;
+    - as outras duas ocorrências da palavra "certidão" no projeto são
+      outra coisa, e devem continuar onde estão: o texto do estatuto em
+      EstatutoCore.gs (certidão de quitação eleitoral) e os tipos de
+      documento anexáveis ao voucher em Scripts_Certificado.html
+      (certidão de casamento e de nascimento).
+
+  O QUE FICA: este painel, o botão do submenu, o card da landing de
+  Documentos e o subtítulo do módulo. Nada disso foi removido — pela
+  REGRA Nº 1, remoção é pedido explícito do usuário e vai em commit
+  separado. Se um dia o submódulo nascer, é este painel que recebe a
+  chamada de include da tela, do mesmo jeito que os painéis de Ofícios e
+  de Recibos logo acima.
+
+  O TEXTO ABAIXO FOI TROCADO em 19/08/2026. O anterior era uma nota
+  minha para o desenvolvedor — "assim que o include estiver pronto, é só
+  me passar o nome do arquivo que eu conecto aqui" — exposta na tela
+  como se fosse mensagem do sistema. Quem da secretaria clicasse em
+  Certidões lia uma instrução técnica endereçada a outra pessoa.
+-->
 <div id="docSubCertidoes" class="docSubPanel" style="display:none;">
             <div style="text-align:center;padding:70px 20px;">
               <div style="font-size:40px;margin-bottom:10px;">📜</div>
               <h2 style="font-size:18px;font-weight:800;color:#0f172a;margin:0 0 6px;">Certidões</h2>
-              <p style="font-size:13px;color:#64748b;max-width:360px;margin:0 auto;">Módulo de certidões em preparação. Assim que o include estiver pronto, é só me passar o nome do arquivo que eu conecto aqui.</p>
+              <p style="font-size:13px;color:#64748b;max-width:360px;margin:0 auto;">O sindicato não emite certidões pelo sistema. O espaço está reservado aqui — se isso mudar, é nesta tela que o submódulo entra.</p>
             </div>
           </div>
 

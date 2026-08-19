@@ -189,6 +189,49 @@ b.ok(semGuarda.length === 0,
   "as cinco telas corrigidas checam o tipo antes de enviar",
   semGuarda.length ? "SEM GUARDA: " + semGuarda.join(", ") : "5 de 5 · " + helpers.length + " telas com helper");
 
+b.passo("15. Nenhuma tela fala com o desenvolvedor em vez de falar com quem usa");
+/* ORIGEM (19/08/2026). O usuário registrou que o sindicato não emite
+   certidão pelo sistema. Ao verificar o submódulo pelos 5 passos da REGRA
+   Nº 1 — não há arquivo, não houve nunca, não há rota nem trigger — o que
+   apareceu foi outro defeito: o painel de Certidões dizia, na tela,
+   "assim que o include estiver pronto, é só me passar o nome do arquivo
+   que eu conecto aqui". Uma nota minha para o desenvolvedor, exposta como
+   se fosse mensagem do sistema. Quem da secretaria clicasse ali lia uma
+   instrução técnica endereçada a outra pessoa.
+
+   A varredura é do arquivo inteiro, não só do painel: o defeito não tem
+   nada de específico de Certidões, e o lugar de travá-lo é onde ele possa
+   reaparecer. Comentários saem antes — comentário é conversa entre quem
+   escreve o código, e ali a nota é legítima. */
+const visivel = fsT9.readFileSync(raiz + "/index.html", "utf8")
+  .replace(/<!--[\s\S]*?-->/g, " ")
+  .replace(/<script[\s\S]*?<\/script>/gi, " ")
+  .replace(/<style[\s\S]*?<\/style>/gi, " ");
+const falaComDev = [
+  /me passar o nome do arquivo/i,
+  /assim que o include estiver pronto/i,
+  /\bTODO\b/,
+  /\bFIXME\b/
+].filter(re => re.test(visivel));
+b.ok(falaComDev.length === 0,
+  "nenhum texto visível endereça o desenvolvedor",
+  falaComDev.length ? "AINDA FALA: " + falaComDev.join(" · ")
+                    : "index.html varrido fora de comentário, script e style");
+
+b.passo("16. E o painel de Certidões diz a verdade a quem clica nele");
+/* O painel FICA — pela REGRA Nº 1, remover item de menu é pedido explícito
+   do usuário, em commit separado. O que mudou foi o texto. Esta asserção
+   existe para que a troca não se perca numa edição futura. */
+const painel = visivel.slice(visivel.indexOf("docSubCertidoes"));
+const textoPainel = painel.slice(0, painel.indexOf("</div>", painel.indexOf("<p")))
+  .replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+b.ok(/não emite certidões pelo sistema/i.test(textoPainel),
+  "o painel diz que o sindicato não emite certidão pelo sistema",
+  textoPainel.slice(0, 140));
+b.ok(!/em prepara/i.test(textoPainel),
+  "e não promete um módulo 'em preparação' que ninguém está preparando",
+  "promessa de tela que não vem é pior que espaço declarado vazio");
+
 b.naoTestavel("Aparência, animação do acordeão e clique real", "exige navegador");
 b.naoTestavel("Carregamento do conteúdo de cada módulo", "depende do Apps Script servindo os includes");
 
