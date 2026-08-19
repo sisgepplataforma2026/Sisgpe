@@ -1,6 +1,7 @@
 /**
  * BINGO ONLINE — CARTELAS
- * Geração server-side, uma cartela por participante/rodada por padrão.
+ * Geração server-side, uma cartela por participante/rodada por padrão e
+ * combinação numérica única dentro da rodada.
  */
 
 function bingo_embaralhar_(arr) {
@@ -34,8 +35,17 @@ function bingo_fingerprintCartela_(rodadaId, participanteId, numeros) {
   return bingo_hash_(String(rodadaId) + '|' + String(participanteId) + '|' + bingo_json_(numeros));
 }
 
+function bingo_hashCombinacao_(rodadaId, numeros) {
+  return bingo_hash_(String(rodadaId) + '|COMBINACAO|' + bingo_json_(numeros));
+}
+
 function bingo_cartelaDocId_(rodadaId, participanteId) {
   return bingo_hash_(String(rodadaId) + '|' + String(participanteId)).substring(0, 40);
+}
+
+function bingo_combinacaoJaExiste_(rodadaId, combinacaoHash) {
+  var itens = bingo_queryEquals_(bingo_colecao_('cartelas'), 'combinacaoHash', String(combinacaoHash || ''), 5);
+  return itens.some(function(x) { return String(x.data.rodadaId) === String(rodadaId); });
 }
 
 function bingo_gerarCartela(dados, tokenSessao) {
@@ -52,38 +62,63 @@ function bingo_gerarCartela(dados, tokenSessao) {
     return { ok: false, mensagem: 'Não é permitido gerar nova cartela após o início da rodada.' };
   }
 
-  var docId = bingo_cartelaDocId_(rodadaId, participanteId);
-  var existente = fs_get_(bingo_colecao_('cartelas'), docId);
-  if (existente) return { ok: true, existente: true, cartela: bingo_hidratarCartela_(existente) };
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    // Revalida dentro do lock: evita duas requisições simultâneas gerarem duas
+    // cartelas para o mesmo participante.
+    rodada = bingo_obterRodada_(rodadaId);
+    if (!rodada || [BINGO_STATUS_RODADA.EM_ANDAMENTO, BINGO_STATUS_RODADA.PAUSADA, BINGO_STATUS_RODADA.AGUARDANDO_MANIFESTACAO, BINGO_STATUS_RODADA.ENCERRADA].indexOf(rodada.status) >= 0) {
+      return { ok: false, mensagem: 'Rodada já iniciada; geração de cartela bloqueada.' };
+    }
 
-  var numeros = bingo_gerarNumeros75_(rodada.usaCasaLivre !== false);
-  var token = bingo_tokenSeguro_();
-  var cartela = {
-    cartelaId: bingo_uuid_('CAR'),
-    eventoId: rodada.eventoId,
-    rodadaId: rodadaId,
-    participanteId: participanteId,
-    associadoId: associadoId,
-    numerosJson: bingo_json_(numeros),
-    fingerprint: bingo_fingerprintCartela_(rodadaId, participanteId, numeros),
-    tokenHash: bingo_hash_(token),
-    status: 'ATIVA',
-    bloqueada: false,
-    geradaEm: bingo_agoraIso_(),
-    geradaPor: sessao.nome || sessao.usuario || sessao.email || 'SISGEP'
-  };
+    var docId = bingo_cartelaDocId_(rodadaId, participanteId);
+    var existente = fs_get_(bingo_colecao_('cartelas'), docId);
+    if (existente) return { ok: true, existente: true, cartela: bingo_hidratarCartela_(existente) };
 
-  fs_set_(bingo_colecao_('cartelas'), docId, cartela);
-  bingo_auditar_('CARTELA_GERADA', cartela.cartelaId, sessao, null, {
-    eventoId: cartela.eventoId,
-    rodadaId: rodadaId,
-    participanteId: participanteId,
-    fingerprint: cartela.fingerprint
-  });
+    var numeros = null, combinacaoHash = '', tentativa = 0;
+    do {
+      numeros = bingo_gerarNumeros75_(rodada.usaCasaLivre !== false);
+      combinacaoHash = bingo_hashCombinacao_(rodadaId, numeros);
+      tentativa++;
+    } while (bingo_combinacaoJaExiste_(rodadaId, combinacaoHash) && tentativa < 20);
 
-  var retorno = bingo_hidratarCartela_(cartela);
-  retorno.token = token; // mostrado só nesta resposta para distribuição; persistido apenas como hash.
-  return { ok: true, existente: false, cartela: retorno };
+    if (bingo_combinacaoJaExiste_(rodadaId, combinacaoHash)) {
+      return { ok: false, mensagem: 'Não foi possível gerar combinação única. Tente novamente.' };
+    }
+
+    var token = bingo_tokenSeguro_();
+    var cartela = {
+      cartelaId: bingo_uuid_('CAR'),
+      eventoId: rodada.eventoId,
+      rodadaId: rodadaId,
+      participanteId: participanteId,
+      associadoId: associadoId,
+      numerosJson: bingo_json_(numeros),
+      combinacaoHash: combinacaoHash,
+      fingerprint: bingo_fingerprintCartela_(rodadaId, participanteId, numeros),
+      tokenHash: bingo_hash_(token),
+      status: 'ATIVA',
+      bloqueada: false,
+      geradaEm: bingo_agoraIso_(),
+      geradaPor: sessao.nome || sessao.usuario || sessao.email || 'SISGEP'
+    };
+
+    fs_set_(bingo_colecao_('cartelas'), docId, cartela);
+    bingo_auditar_('CARTELA_GERADA', cartela.cartelaId, sessao, null, {
+      eventoId: cartela.eventoId,
+      rodadaId: rodadaId,
+      participanteId: participanteId,
+      fingerprint: cartela.fingerprint,
+      combinacaoHash: cartela.combinacaoHash
+    });
+
+    var retorno = bingo_hidratarCartela_(cartela);
+    retorno.token = token; // mostrado só nesta resposta; persistido apenas como hash.
+    return { ok: true, existente: false, cartela: retorno };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function bingo_hidratarCartela_(c) {
@@ -97,10 +132,6 @@ function bingo_hidratarCartela_(c) {
 }
 
 function bingo_bloquearCartelasRodada_(rodadaId, sessao) {
-  // Com a ponte REST atual não há query por rodada + atualização em lote.
-  // A imutabilidade é garantida por regra: bingo_gerarCartela recusa geração
-  // após o início e nenhuma função pública de alteração de números existe.
-  // Este marcador na rodada deixa a intenção explícita para futuras migrações.
   var rodada = bingo_obterRodada_(rodadaId);
   if (!rodada) throw new Error('Rodada não encontrada.');
   rodada.cartelasBloqueadas = true;
