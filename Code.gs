@@ -128,6 +128,17 @@ function doGet(e) {
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
+    if (p.painel === "bingo-telao") {
+      var tokenTelao = String(p.sessao || "").trim();
+      var sessaoTelao = getSessaoUsuario(tokenTelao);
+      if (!sessaoTelao) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
+      exigirModulo_(tokenTelao, "eventos", false);
+      return HtmlService.createHtmlOutputFromFile("BingoTelao")
+        .setTitle("Bingo Online — Telão")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
 
     // ── FICHA PÚBLICA DE SINDICALIZAÇÃO ────────────────────────────────────
     if (p.ficha === "sindicalizacao") {
