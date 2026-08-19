@@ -26,7 +26,7 @@ var PASTA_OFICIOS_LIVRE_ID         = "1MToLVFg_TmRH5DfvnlKIVPwmbmUOYTYn";
 /* ================= PASTA POR TIPO ================= */
 
 function obterPastaPorTipo_(tipoNorm) {
-  var id = getPastaOficiosDestinoId(tipoNorm);
+  var id = getPastaOficiosDestinoId_(tipoNorm);
   return obterOuCriarSubpastaAno(id);
 }
 
@@ -279,7 +279,7 @@ function protegerLogSistema_(sheet) {
 /* ================= GERAR PDF ================= */
 
 function gerarPDFOficio(templateId, numero, escola, cnpj, colaboradores, dataHoje, codigo) {
-  var pastaAno     = obterOuCriarSubpastaAno(getPastaOficiosDestinoId("FILIACAO"));
+  var pastaAno     = obterOuCriarSubpastaAno(getPastaOficiosDestinoId_("FILIACAO"));
   var baseUrl      = ScriptApp.getService().getUrl();
   var urlValidacao = baseUrl ? baseUrl + "?codigo=" + codigo : "";
   var nomeBase     = montarNomeArquivoOficio_(numero, escola, colaboradores, new Date()).replace(/\.pdf$/i, "");
@@ -296,7 +296,7 @@ function gerarPDFOficio(templateId, numero, escola, cnpj, colaboradores, dataHoj
 }
 
 function gerarPDFOficioLivre(numero, para, cargo, assunto, corpo, dataHoje, codigo, cidadeUf) {
-  var pastaAno     = obterOuCriarSubpastaAno(getPastaOficiosDestinoId("OFICIO_LIVRE"));
+  var pastaAno     = obterOuCriarSubpastaAno(getPastaOficiosDestinoId_("OFICIO_LIVRE"));
   var baseUrl      = ScriptApp.getService().getUrl();
   var urlValidacao = baseUrl ? baseUrl + "?codigo=" + codigo : "";
   var nomeBase     = montarNomeArquivoOficio_(numero, para || "", []).replace(/\.pdf$/i, "");

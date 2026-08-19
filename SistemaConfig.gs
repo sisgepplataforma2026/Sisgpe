@@ -141,7 +141,7 @@ function getPastaId(tipo) {
   return map[chave] || null;
 }
 
-function getPastaOficiosDestinoId(tipoNorm) {
+function getPastaOficiosDestinoId_(tipoNorm) {
   if (typeof getAmbienteAtual === "function" && getAmbienteAtual() === "homologacao") {
     return PASTAS.OFICIOS_HOMOLOGACAO;
   }
