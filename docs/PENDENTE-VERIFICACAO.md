@@ -704,7 +704,40 @@ precisa estar de pé e conferida antes.
 
 ---
 
-### 1. Trilha de Auditoria com dado real — Ofícios
+### ✅ 1. Trilha de Auditoria com dado real — Ofícios (FECHADO em 19/08/2026)
+
+**Status: fechado por execução, aqui — não dependia do usuário.**
+
+Aberto em 11/08 com "ele testa mais adiante", e ficou oito dias parado. Ao
+sentar para testar em 19/08, dava para ter rodado desde sempre: o emulador
+emite ofício de verdade e a trilha grava numa aba de verdade. Mandar para
+o usuário o que eu podia rodar aqui é o que a REGRA Nº -1 chama de "não
+sugeriu" — fica o registro do erro de julgamento.
+
+**Provado por execução** (`t66-trilha-oficios-com-dado.js`, 27 asserções,
+3 mutações mortas), o caminho inteiro:
+
+    emitir ofício → registrarLogSistema → aud_deLogSistema_ → grava na aba
+                  → auditoriaConsultar → a tela desenha a linha
+                  → o clique abre o modal com os campos
+
+- A trilha ganha uma linha por ofício emitido (a ponte é aditiva: o
+  LOG_SISTEMA continua gravando).
+- O registro sai como `Documentos › Ofícios`, com o número, o usuário e a
+  escola.
+- O filtro por módulo funciona, e filtro sem correspondência volta vazio.
+- **A lista foi vista com dado** — era a pendência principal.
+- **O modal foi aberto** — nunca tinha sido, em navegador nenhum.
+
+**Armadilha registrada:** a resposta da consulta traz a lista em `acoes`,
+não em `itens`. Meu primeiro probe procurou `itens`, achou zero e eu quase
+reportei "a consulta não devolve nada" — o defeito era do probe.
+
+**Continua não testado:** a aparência da lista e do modal. jsdom não
+aplica CSS.
+
+<details><summary>Registro original do item (11/08/2026)</summary>
+
 **Aberto em:** 11/08/2026 · **Combinado com o usuário:** ele testa mais adiante
 
 A ponte de auditoria foi ligada no `registrarLogSistema()` do `Oficios.gs`.
@@ -725,6 +758,8 @@ sempre e a trilha nova.
 **Se algo der errado:** desfazer é apagar o bloco marcado
 `PONTE PARA A TRILHA ÚNICA` no `registrarLogSistema()`. Nada mais depende
 dele.
+
+</details>
 
 ---
 
