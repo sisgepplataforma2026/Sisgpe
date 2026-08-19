@@ -33,7 +33,7 @@ jobs:
         run: clasp status
 
       - name: Enviar codigo para Apps Script - Homologacao
-        run: clasp push --force
+        run: clasp push
 
       - name: Registrar versao de homologacao
         run: clasp version "homolog-${GITHUB_SHA::7}"
