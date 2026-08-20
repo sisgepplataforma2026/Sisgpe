@@ -27,7 +27,7 @@ function compasso_emitirIngressoV2(payload) {
 
     var novoNumero = c.ultimoNumero + 1;
     var numero = emissao_formatarNumero_(novoNumero);
-    var qrToken = Utilities.getUuid() + Utilities.getUuid();
+    var qrToken = compasso_gerarQrToken_(ingressoId);
     var qrTokenHash = compasso_hash_(qrToken);
     var agora = new Date();
     var valor = cat === 'acompanhante' ? EMISSAO_CFG.VALOR_ACOMPANHANTE : 0;
