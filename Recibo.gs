@@ -1485,13 +1485,13 @@ function excluirProcessoRecibo(idProcesso, tokenSessao) {
       if (idxIdBen > -1) {
         for (let i = dadosBen.length - 1; i >= 1; i--) {
           if (String(dadosBen[i][idxIdBen] || "").trim() === alvo) {
-            shBen.deleteRow(i + 1);
+            lixeiraMover_(shBen, i + 1, { origem: "excluirProcessoRecibo" });
           }
         }
       }
     }
 
-    shProc.deleteRow(linhaProcesso);
+    lixeiraMover_(shProc, linhaProcesso, { origem: "excluirProcessoRecibo" });
 
     return {
       erro: false,

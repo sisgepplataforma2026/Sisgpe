@@ -147,7 +147,7 @@ function excluirDocumentoRH(id, tokenSessao) {
           try { DriveApp.getFileById(fileId).setTrashed(true); }
           catch (eTrash) { Logger.log("excluirDocumentoRH: não consegui mover pra lixeira (" + fileId + "): " + eTrash.message); }
         }
-        sh.deleteRow(i + 2);
+        lixeiraMover_(sh, i + 2, { origem: "excluirDocumentoRH" });
         return { ok: true, mensagem: "Documento excluído com sucesso." };
       }
     }

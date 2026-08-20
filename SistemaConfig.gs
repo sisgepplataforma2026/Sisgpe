@@ -218,6 +218,11 @@ var REGRAS_NEGOCIO = {
      mesmo e-mail. 50 anexos podem estourar o limite de tamanho da mensagem —
      ver o aviso registrado em Oficios.gs. */
   LIMITE_ASSOCIADOS_POR_LOTE: 50,
+  /* Teto de exclusao em lote — pedido do usuario em 20/08/2026, ao decidir
+     sobre excluirEscolasEmLote, que podia mandar centenas de escolas de uma
+     vez. Acima do teto a operacao RECUSA e diz quantas foram pedidas: nao
+     corta em silencio. Ver Lixeira.gs. */
+  LIMITE_EXCLUSAO_POR_LOTE: 50,
   VALOR_MINIMO_RECIBO_CENTAVOS: 100,
   CPF_TAMANHO_FORMATADO: 14,
   CNPJ_TAMANHO_FORMATADO: 18,

@@ -1774,7 +1774,7 @@ function excluirSolicitacaoVoucher(idSolicitacao) {
       if (String(dados[i][idxId] || "") === String(idSolicitacao || "")) {
         const protocolo = String(dados[i][idxProt] || "");
 
-        sh.deleteRow(i + 2);
+        lixeiraMover_(sh, i + 2, { origem: "excluirSolicitacaoVoucher" });
 
         registrarHistoricoVoucher_(
           idSolicitacao,

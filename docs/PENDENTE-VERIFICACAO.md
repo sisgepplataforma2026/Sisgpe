@@ -12,6 +12,19 @@
 
 ## 🔴 ABERTO
 
+### 29. Tela genérica da Lixeira
+**Aberto em:** 20/08/2026 · aprovado pelo usuário ("tela de lixeira eu concordo")
+
+O backend da lixeira está pronto (`Lixeira.gs`) e os 21 pontos de exclusão de
+cadastro já movem em vez de apagar. Falta a TELA que lista e restaura.
+
+A decisão foi não fazer 21 telas: uma só, genérica, que liste de qualquer aba
+`*_LIXEIRA` e permita restaurar. Enquanto ela não existe, a linha é recuperável
+abrindo a planilha — nada se perde, mas depende de alguém saber onde olhar.
+
+Segue a REGRA Nº 0.5: arquitetura e layout mostrados antes de implementar.
+
+
 ### 28. O acervo do Drive que já foi gravado público
 **Aberto em:** 20/08/2026 · nenhum arquivo do repositório — é operação no Drive
 

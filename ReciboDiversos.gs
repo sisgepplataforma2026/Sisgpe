@@ -1040,7 +1040,7 @@ function excluirReciboDiverso(dados, tokenSessao) {
 
     for (var i = valores.length - 1; i >= 1; i--) {
       if (String(valores[i][idxNum] || "").trim() === numero) {
-        sh.deleteRow(i + 1);
+        lixeiraMover_(sh, i + 1, { origem: "excluirReciboDiverso" });
         return { ok: true, mensagem: "Recibo " + numero + " removido do histórico." };
       }
     }

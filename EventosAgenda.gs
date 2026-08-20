@@ -72,5 +72,5 @@ function salvarEventoAgenda(dados, tokenSessao) {
 
 function excluirEventoAgenda(id, tokenSessao) {
   exigirModulo_(tokenSessao,"eventos",false);
-  try {id=String(id||"").trim();if(!id)return {ok:false,mensagem:"Informe o evento a excluir."};var sh=agendaEventos_garantirEstrutura_();if(sh.getLastRow()<2)return {ok:false,mensagem:"Evento não encontrado."};var idsCol=sh.getRange(2,1,sh.getLastRow()-1,1).getValues();for(var i=idsCol.length-1;i>=0;i--){if(String(idsCol[i][0])===id){sh.deleteRow(i+2);return {ok:true,mensagem:"Evento excluído com sucesso."};}}return {ok:false,mensagem:"Evento não encontrado."};} catch(e){return {ok:false,mensagem:"Erro ao excluir evento: "+e.message};}
+  try {id=String(id||"").trim();if(!id)return {ok:false,mensagem:"Informe o evento a excluir."};var sh=agendaEventos_garantirEstrutura_();if(sh.getLastRow()<2)return {ok:false,mensagem:"Evento não encontrado."};var idsCol=sh.getRange(2,1,sh.getLastRow()-1,1).getValues();for(var i=idsCol.length-1;i>=0;i--){if(String(idsCol[i][0])===id){lixeiraMover_(sh, i+2, { origem: "excluirEventoAgenda" });return {ok:true,mensagem:"Evento excluído com sucesso."};}}return {ok:false,mensagem:"Evento não encontrado."};} catch(e){return {ok:false,mensagem:"Erro ao excluir evento: "+e.message};}
 }

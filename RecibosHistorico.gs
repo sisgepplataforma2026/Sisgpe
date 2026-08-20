@@ -46,7 +46,7 @@ function excluirReciboHistorico(dados, tokenSessao) {
     for (var i = dadosPlan.length - 1; i >= 1; i--) {
       if (String(dadosPlan[i][idxNumero] || "").trim() === alvo) {
         var idProcesso = idxProcesso > -1 ? String(dadosPlan[i][idxProcesso] || "") : "";
-        sh.deleteRow(i + 1);
+        lixeiraMover_(sh, i + 1, { origem: "excluirReciboHistorico" });
         if (idProcesso) atualizarResumoProcessoRecibo_(idProcesso);
         return { erro: false, ok: true, mensagem: "Recibo excluído com sucesso." };
       }

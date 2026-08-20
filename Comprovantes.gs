@@ -1090,7 +1090,7 @@ function excluirComprovante(rowIndex) {
       return { ok: false, mensagem: "Linha não encontrada." };
     }
 
-    sh.deleteRow(rowIndex);
+    lixeiraMover_(sh, rowIndex, { origem: "excluirComprovante" });
 
     return { ok: true, mensagem: "Comprovante removido." };
 
