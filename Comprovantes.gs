@@ -564,7 +564,7 @@ function gerarPdfComprovanteWeb(dados) {
 
     var pdfFile = converterHtmlParaPdfComprovante_(htmlDoc, nomeBase, pastaMes);
 
-    // ✅ Libera acesso público ao PDF
+    // 🔒 Mantém o PDF privado no Drive
     pdfFile.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
 
     var pdfUrl = "https://drive.google.com/file/d/" + pdfFile.getId() + "/view";
@@ -853,7 +853,7 @@ function gerarComprovanteWeb(dados) {
 
 var pdfFile = converterHtmlParaPdfComprovante_(htmlDoc, nomeBase, pastaMes);
 
-// ✅ Libera acesso para qualquer pessoa com o link
+// 🔒 Mantém o PDF privado no Drive
 pdfFile.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
 
 var pdfUrl = "https://drive.google.com/file/d/" + pdfFile.getId() + "/view";
