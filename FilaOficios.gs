@@ -263,6 +263,7 @@ function processarFilaEnvioOficios() {
   var colStatusRecebimento = headerMap["STATUS_RECEBIMENTO"];
 
   var obrigatorias = {
+    ID: colId,
     NUMERO_OFICIO: colNumero,
     TIPO: colTipo,
     ESCOLA: colEscola,
@@ -490,7 +491,7 @@ function processarFilaEnvioOficios() {
     erros: erros
   };
 }
-function enviarOficioDaFilaAgora(numero, tokenSessao) {
+function enviarOficioDaFilaAgora(numero, tokenSessao, filaId) {
   var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   if (!numero) return { ok: false, mensagem: "Número do ofício não informado." };
 
@@ -503,6 +504,7 @@ function enviarOficioDaFilaAgora(numero, tokenSessao) {
 
   var headerMap = getHeaderMap_(sh);
 
+  var colId                  = headerMap["ID"];
   var colNumero              = headerMap["NUMERO_OFICIO"];
   var colEmailPrincipal      = headerMap["EMAIL_PRINCIPAL"];
   var colEmailsTodos         = headerMap["EMAILS_TODOS"];
@@ -550,26 +552,47 @@ function enviarOficioDaFilaAgora(numero, tokenSessao) {
   var linhaIdx = -1;
   var linhaIdxFallback = -1;
   var numeroBuscado = String(numero).trim();
+  var filaIdBuscado = String(filaId || "").trim();
 
-  // Havendo números repetidos (comum em cópia de Produção para HML),
-  // prioriza o registro mais recente que ainda pode ser enviado. Só usa um
-  // ENVIADO/CONFIRMADO como fallback quando não existe linha acionável.
-  for (var i = dados.length - 1; i >= 0; i--) {
-    if (String(dados[i][colNumero - 1] || "").trim() !== numeroBuscado) continue;
-
-    var statusCandidato = String(dados[i][colStatus - 1] || "").trim().toUpperCase();
-    if (statusCandidato === "PENDENTE" || statusCandidato === "ERRO" || statusCandidato === "PROCESSANDO") {
-      linhaIdx = i;
-      break;
+  // Caminho principal: o ID é único e identifica exatamente a linha criada
+  // nesta emissão. Isso elimina ambiguidades quando dois ambientes possuem o
+  // mesmo NUMERO_OFICIO (ex.: histórico de Produção copiado para HML).
+  if (filaIdBuscado) {
+    for (var i = dados.length - 1; i >= 0; i--) {
+      if (String(dados[i][colId - 1] || "").trim() === filaIdBuscado) {
+        linhaIdx = i;
+        break;
+      }
     }
 
-    if (linhaIdxFallback === -1) linhaIdxFallback = i;
-  }
+    if (linhaIdx === -1) {
+      return { ok: false, mensagem: "Registro da fila não encontrado para o ID informado." };
+    }
 
-  if (linhaIdx === -1) linhaIdx = linhaIdxFallback;
+    var numeroDoId = String(dados[linhaIdx][colNumero - 1] || "").trim();
+    if (numeroBuscado && numeroDoId !== numeroBuscado) {
+      return { ok: false, mensagem: "O ID da fila não corresponde ao número do ofício informado." };
+    }
+  } else {
+    // Compatibilidade com chamadas antigas: sem filaId, usa o número e
+    // prioriza o registro acionável mais recente.
+    for (var j = dados.length - 1; j >= 0; j--) {
+      if (String(dados[j][colNumero - 1] || "").trim() !== numeroBuscado) continue;
 
-  if (linhaIdx === -1) {
-    return { ok: false, mensagem: "Ofício " + numero + " não encontrado na fila." };
+      var statusCandidato = String(dados[j][colStatus - 1] || "").trim().toUpperCase();
+      if (statusCandidato === "PENDENTE" || statusCandidato === "ERRO" || statusCandidato === "PROCESSANDO") {
+        linhaIdx = j;
+        break;
+      }
+
+      if (linhaIdxFallback === -1) linhaIdxFallback = j;
+    }
+
+    if (linhaIdx === -1) linhaIdx = linhaIdxFallback;
+
+    if (linhaIdx === -1) {
+      return { ok: false, mensagem: "Ofício " + numero + " não encontrado na fila." };
+    }
   }
 
   var linha = dados[linhaIdx];
