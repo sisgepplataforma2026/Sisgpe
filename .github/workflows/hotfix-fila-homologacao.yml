@@ -99,7 +99,7 @@ jobs:
       # Para conferir na maquina de quem fez o login:  clasp -v
       - name: Instalar clasp
         run: |
-          npm install -g @google/clasp@2.5.0
+          npm install -g @google/clasp@3.3.0
           echo "clasp instalado: $(clasp --version 2>&1 | head -1)"
 
       - name: Validar credenciais e alvo de homologacao
@@ -151,6 +151,18 @@ jobs:
         run: |
           set -euo pipefail
           cd /tmp/sisgep-hml
+
+          # DIAGNOSTICO ANTES DA FALHA, NAO DEPOIS.
+          #
+          # Este passo ja derrubou o pipeline quatro vezes com tres erros
+          # DIFERENTES, e a cada vez foi preciso um run inteiro so para
+          # descobrir o proximo. As linhas abaixo imprimem o que se precisa
+          # saber ANTES do comando falhar. Nenhum valor sensivel sai daqui:
+          # so nomes de chave e tamanhos.
+          echo "--- clasp: $(clasp --version 2>&1 | head -1)"
+          echo "--- chaves do .clasp.json: $(node -e 'console.log(Object.keys(JSON.parse(require("fs").readFileSync(".clasp.json","utf8"))).join(", "))')"
+          echo "--- chaves do ~/.clasprc.json: $(node -e 'console.log(Object.keys(JSON.parse(require("fs").readFileSync(process.env.HOME+"/.clasprc.json","utf8"))).join(", "))')"
+
           clasp pull
           cp FilaOficios.gs FilaOficios.gs.antes-hotfix
           cp OficiosScripts.html OficiosScripts.html.antes-hotfix
