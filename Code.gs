@@ -94,7 +94,7 @@ function doGet(e) {
     // BingoInscricao.gs. Esta rota só entrega a página.
     if (p["bingo-inscricao"]) {
       Logger.log("[BINGO] Inscricao publica");
-      return HtmlService.createHtmlOutputFromFile("BingoInscricao")
+      return HtmlService.createHtmlOutputFromFile("BingoInscricaoPublica")
         .setTitle("Inscrição — Bingo Online — SindEducação-ES")
         .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)

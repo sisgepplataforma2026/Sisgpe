@@ -105,7 +105,7 @@ ok(!/bingo_expirarManifestacoes\s*\(/.test(admin),
 passo("o começo do fluxo, que não existia");
 
 ok(fs.existsSync(path.join(RAIZ, "BingoInscricao.gs")), "BingoInscricao.gs existe");
-ok(fs.existsSync(path.join(RAIZ, "BingoInscricao.html")), "BingoInscricao.html existe");
+ok(fs.existsSync(path.join(RAIZ, "BingoInscricaoPublica.html")), "BingoInscricaoPublica.html existe");
 
 /* SEM COMENTÁRIO. Duas asserções deste arquivo nasceram furadas por
    ignorar isto, e as mutações 3 e 6 sobreviveram em 20/08/2026: o
@@ -184,7 +184,7 @@ passo("o texto que muda a cada sorteio");
    legítimo. Por isso a varredura tira comentários antes de acusar —
    mesmo critério do semComentarios() em t71. Sem isso, o teste puniria
    justamente quem documenta a decisão. */
-const tela = semCom(ler("BingoInscricao.html"));
+const tela = semCom(ler("BingoInscricaoPublica.html"));
 ok(!/Dia dos Pais|China Park|tvsindeducacao/i.test(tela),
    "nenhum texto de evento específico está cravado na tela",
    "o convite muda a cada sorteio — vem da configuração");

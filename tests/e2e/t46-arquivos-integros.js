@@ -220,5 +220,39 @@ b.ok(desbalanceados.length === 0,
 b.naoTestavel("Se a função faz a coisa certa",
   "sintaxe válida é o piso, não o teto — comportamento se prova nos testes de fluxo");
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   NENHUM .gs PODE TER O MESMO NOME-BASE DE UM .html
+
+   O QUE ORIGINOU, em 20/08/2026: o deploy da homologação reprovou com
+
+       A file with this name already exists in the current project: BingoInscricao
+
+   Eu tinha criado BingoInscricao.gs E BingoInscricao.html. No Apps Script o
+   nome do arquivo é único DENTRO DO PROJETO, independente do tipo — o `.gs` e
+   o `.html` são só como o clasp representa o tipo no disco, não parte do nome.
+
+   POR QUE ISTO ENTRA NO t46, e não noutro teste: a REGRA Nº -2 diz que o t46 é
+   o portão antes de qualquer arquivo sair daqui. Este defeito passou por ele
+   porque a checagem não existia — a sintaxe estava perfeita nos dois arquivos,
+   isolados. Só o PROJETO INTEIRO revela o choque, e é exatamente o tipo de
+   propriedade que este arquivo existe para guardar.
+
+   Medido na hora da correção: em 223 arquivos, nenhum par jamais conviveu.
+   O único choque da história do projeto foi o que eu acabara de criar.
+   ═══════════════════════════════════════════════════════════════════════════ */
+b.passo("nome de arquivo único no projeto");
+
+const basesGs = new Set(arquivosGs.map(f => f.slice(0, -3)));
+/* O parâmetro NÃO pode se chamar `b`: sombrearia o módulo de asserções e a
+   linha seguinte quebraria com "b.ok is not a function". */
+const chocam = arquivosHtml.map(f => f.slice(0, -5))
+                           .filter(base => basesGs.has(base));
+
+b.ok(chocam.length === 0,
+     chocam.length === 0
+       ? "nenhum .html tem o mesmo nome-base de um .gs"
+       : "CHOQUE DE NOME: " + chocam.join(", ") + " existe como .gs e como .html",
+     "o Apps Script recusa o push inteiro — e a mensagem só aparece no deploy");
+
 const c = b.resumo();
 process.exit(c.FALHOU ? 1 : 0);
