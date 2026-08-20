@@ -1656,6 +1656,7 @@ function atualizarContadorFichas() {
     dadosGerados = dadosGerados || {};
     var urlPdf = typeof dadosGerados === "string" ? dadosGerados : (dadosGerados.url || "");
     var numero = dadosGerados.numero || "";
+    var filaId = dadosGerados.filaId || "";
     if (!urlPdf) return;
     // Desfiliação: o ofício saiu, mas o cadastro do associado pode não ter
     // sido atualizado (CPF não encontrado, ou não informado) — avisa o
@@ -1676,7 +1677,7 @@ function atualizarContadorFichas() {
         + "<div class='row-btns' style='margin-bottom:14px;'>"
         + "<button type='button' class='btn btn-outline' onclick=\"window.open('" + urlPdf + "', '_blank')\">📄 Abrir / Baixar PDF</button>"
         + "<button type='button' class='btn btn-outline' onclick=\"imprimirPdfOficioGerado('" + urlPdf + "')\">🖨 Imprimir</button>"
-        + "<button type='button' class='btn btn-navy' onclick=\"enviarEmailOficioAgora('" + numero + "')\">📧 Enviar e-mail agora</button>"
+        + "<button type='button' class='btn btn-navy' onclick=\"enviarEmailOficioAgora('" + numero + "','" + filaId + "')\">📧 Enviar e-mail agora</button>"
         + "<button type='button' class='btn btn-teal' onclick=\"enviarWhatsappOficio('" + urlPdf + "', '" + numero + "')\">💬 WhatsApp</button>"
         + "</div>"
         + "<div id='statusEnvioOficioGerado' style='display:flex;align-items:center;gap:8px;padding:11px 14px;background:var(--g50);border:1.5px solid var(--g200);border-radius:11px;font-size:12.5px;font-weight:600;color:var(--g500);'>"
@@ -1703,7 +1704,7 @@ function imprimirPdfOficioGerado(urlPdf) {
   setTimeout(function() { try { w.focus(); w.print(); } catch(e) {} }, 1200);
 }
 
-function enviarEmailOficioAgora(numero) {
+function enviarEmailOficioAgora(numero, filaId) {
   if (!numero) { toast("Número do ofício não encontrado.", "err"); return; }
   var payload = window.SISGEP_OFICIO_PAYLOAD || {};
   var escola = payload.escola || {};
@@ -1735,7 +1736,7 @@ function enviarEmailOficioAgora(numero) {
         if (btn) { btn.disabled = false; btn.innerHTML = "📨 Enviar agora"; }
         toast("Erro: " + (err.message || err), "err", 6000);
       })
-      .enviarOficioDaFilaAgora(numero, SISGEP_TOKEN_SESSAO);
+      .enviarOficioDaFilaAgora(numero, SISGEP_TOKEN_SESSAO, filaId || "");
   });
 }
 
