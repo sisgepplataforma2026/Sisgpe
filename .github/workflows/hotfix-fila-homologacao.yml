@@ -140,7 +140,7 @@ jobs:
           }
           mkdir -p /tmp/sisgep-hml
           printf '%s' "$CLASP_JSON_HOMOLOG" > /tmp/sisgep-hml/.clasp.json
-          node -e 'const fs=require("fs"); const j=JSON.parse(fs.readFileSync("/tmp/sisgep-hml/.clasp.json","utf8")); if(j.scriptId!=="1S_LckCVMJy0dza6tlw5w9Vq7ZqJ9RzxsrYoPMR1zl65rKXC-JgvDUSVR") { console.error("Alvo bloqueado: Script ID nao e o da Homologacao."); process.exit(1); }'
+          node -e 'const fs=require("fs"); const j=JSON.parse(fs.readFileSync("/tmp/sisgep-hml/.clasp.json","utf8")); if(j.scriptId!=="1S_LckCVMJy0dza6tlw5w9Vq7ZqJ9RzxsrYoPMR1zI65rKXC-JgvDUSVR") { console.error("Alvo bloqueado: Script ID nao e o da Homologacao."); process.exit(1); }'
           if [ "$DEPLOY_ID" != 'AKfycbzOfoQ4y2yc7oM9hiz2ATvB6YztGEMDjgO1FiezQ0schgqcOJnJgROzCC3sEeV6h4n0ZA' ]; then
             echo 'Alvo bloqueado: Deployment ID nao e o da Homologacao.' >&2
             exit 1
@@ -299,7 +299,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git pull --rebase origin integracao/sisgep-homologacao
           mkdir -p .github
-          printf '{\n  "status": "ok",\n  "ambiente": "homologacao",\n  "versao": "%s",\n  "scriptId": "1S_LckCVMJy0dza6tlw5w9Vq7ZqJ9RzxsrYoPMR1zl65rKXC-JgvDUSVR",\n  "deploymentId": "AKfycbzOfoQ4y2yc7oM9hiz2ATvB6YztGEMDjgO1FiezQ0schgqcOJnJgROzCC3sEeV6h4n0ZA",\n  "publicadoEmUtc": "%s"\n}\n' "$VERSAO" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .github/hml-hotfix-fila-status.json
+          printf '{\n  "status": "ok",\n  "ambiente": "homologacao",\n  "versao": "%s",\n  "scriptId": "1S_LckCVMJy0dza6tlw5w9Vq7ZqJ9RzxsrYoPMR1zI65rKXC-JgvDUSVR",\n  "deploymentId": "AKfycbzOfoQ4y2yc7oM9hiz2ATvB6YztGEMDjgO1FiezQ0schgqcOJnJgROzCC3sEeV6h4n0ZA",\n  "publicadoEmUtc": "%s"\n}\n' "$VERSAO" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .github/hml-hotfix-fila-status.json
           git add .github/hml-hotfix-fila-status.json
           git commit -m "ci: registrar deploy HML fila v${VERSAO}" || true
           git push origin HEAD:integracao/sisgep-homologacao
