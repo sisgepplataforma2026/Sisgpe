@@ -96,6 +96,29 @@ jobs:
           test -n "$DEPLOY_ID"
           mkdir -p "$HOME"
           printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+
+          # A CREDENCIAL PRECISA SER JSON, E NAO SO "NAO-VAZIA".
+          #
+          # Em 20/08/2026 o segredo CLASPRC_JSON guardava o COMANDO do
+          # PowerShell em vez da saida dele — comecava com "Get-Content".
+          # O `test -n` acima passou (texto nao-vazio e nao-vazio), e o erro
+          # so apareceu tres passos adiante, dentro do clasp pull:
+          #
+          #     Unexpected token 'G', "Get-Conten"... is not valid JSON
+          #
+          # Quem le isso nao pensa em segredo mal colado. Resultado: o
+          # pipeline reprovou varias vezes seguidas sem que a causa
+          # aparecesse. A checagem abaixo nomeia o problema no passo certo.
+          #
+          # Nada do conteudo e impresso — so o diagnostico. Credencial em
+          # log de CI e credencial vazada.
+          node -e 'JSON.parse(require("fs").readFileSync(process.env.HOME + "/.clasprc.json", "utf8"))' 2>/dev/null || {
+            echo '::error::CLASPRC_JSON existe mas NAO e JSON valido.' >&2
+            echo '::error::Sintoma tipico: foi colado o COMANDO (ex.: Get-Content ...) em vez do CONTEUDO do arquivo.' >&2
+            echo '::error::Corrija em Settings > Secrets and variables > Actions > CLASPRC_JSON.' >&2
+            echo '::error::No Windows: Get-Content "$HOME\.clasprc.json" -Raw | Set-Clipboard  e cole. O valor certo comeca com {' >&2
+            exit 1
+          }
           mkdir -p /tmp/sisgep-hml
           printf '%s' "$CLASP_JSON_HOMOLOG" > /tmp/sisgep-hml/.clasp.json
           node -e 'const fs=require("fs"); const j=JSON.parse(fs.readFileSync("/tmp/sisgep-hml/.clasp.json","utf8")); if(j.scriptId!=="1S_LckCVMJy0dza6tlw5w9Vq7ZqJ9RzxsrYoPMR1zl65rKXC-JgvDUSVR") { console.error("Alvo bloqueado: Script ID nao e o da Homologacao."); process.exit(1); }'
