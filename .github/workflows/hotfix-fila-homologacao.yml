@@ -148,5 +148,23 @@ jobs:
           NUM=$(grep -oE '[0-9]+' /tmp/saida-versao.txt | tail -1)
           test -n "$NUM"
           clasp deploy --deploymentId "$DEPLOY_ID" --versionNumber "$NUM" --description "hml-fila-id-${GITHUB_SHA::7}"
+          clasp deployments | tee /tmp/deployments.txt
+          grep -q "$DEPLOY_ID" /tmp/deployments.txt
           echo "numero=$NUM" >> "$GITHUB_OUTPUT"
           echo "Homologacao publicada na versao $NUM."
+
+      - name: Registrar comprovante de publicacao
+        shell: bash
+        env:
+          VERSAO: ${{ steps.versao.outputs.numero }}
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git pull --rebase origin integracao/sisgep-homologacao
+          mkdir -p .github
+          printf '{\n  "status": "ok",\n  "ambiente": "homologacao",\n  "versao": "%s",\n  "scriptId": "1S_LckCVMJy0dza6tlw5w9Vq7ZqJ9RzxsrYoPMR1zl65rKXC-JgvDUSVR",\n  "deploymentId": "AKfycbzOfoQ4y2yc7oM9hiz2ATvB6YztGEMDjgO1FiezQ0schgqcOJnJgROzCC3sEeV6h4n0ZA",\n  "publicadoEmUtc": "%s"\n}\n' "$VERSAO" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .github/hml-hotfix-fila-status.json
+          git add .github/hml-hotfix-fila-status.json
+          git commit -m "ci: registrar deploy HML fila v${VERSAO}" || true
+          git push origin HEAD:integracao/sisgep-homologacao
