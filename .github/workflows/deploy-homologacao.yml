@@ -1,39 +1,296 @@
+# DEPLOY COMPLETO DA HOMOLOGAÇÃO
+#
+# DIFERENÇA PARA O hotfix-fila-homologacao.yml, e ela é grande:
+#
+#   hotfix  -> pull, troca DOIS arquivos, push. Preserva o resto.
+#   este    -> push do repositório INTEIRO. Substitui tudo.
+#
+# `clasp push --force` remove do projeto o que não está no repositório. Em
+# 20/08/2026 o repositório tinha 218 arquivos e a homologação 206 — os dois
+# divergem, e ninguém sabia em quê. Por isso este workflow começa em modo
+# CONFERIR: mostra o que mudaria e não escreve nada. Publicar é escolha
+# explícita, feita depois de ler o relatório.
+#
+# HISTÓRICO QUE NÃO PODE SE PERDER. A versão anterior deste arquivo:
+#   - apontava para `develop`, que não tem pasta .github — nunca rodou;
+#   - instalava o clasp sem versão, e a 3.x mudou o esquema;
+#   - não renovava o token, e o access_token do segredo vence em 1 hora;
+#   - não conferia o alvo — um segredo trocado escreveria em PRODUÇÃO;
+#   - parava no `clasp version`, sem publicar. Terminava verde entregando
+#     menos do que prometia.
+# Cada um desses custou pelo menos uma execução para ser descoberto em
+# 19-20/08/2026. Estão todos tratados abaixo, comentados onde importam.
+
 name: Deploy Homologacao Apps Script
 
 on:
   workflow_dispatch:
+    inputs:
+      modo:
+        description: 'conferir = so relatorio (nao escreve nada) | publicar = envia e publica'
+        required: true
+        default: conferir
+        type: choice
+        options:
+          - conferir
+          - publicar
 
 permissions:
   contents: read
 
+concurrency:
+  group: deploy-homologacao
+  cancel-in-progress: false
+
 jobs:
   deploy:
-    if: github.ref == 'refs/heads/develop'
+    # Só a branch de integração serve de origem. Sem isto, qualquer branch
+    # poderia sobrescrever a homologação inteira.
+    if: github.ref == 'refs/heads/integracao/sisgep-homologacao'
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # NODE 22 POR EXIGÊNCIA DO jsdom 30, que declara
+      # `engines: ^22.22.2 || ^24.15.0 || >=26.0.0`. Com o 20 o npm apenas
+      # AVISA e segue — o estrago aparece depois, como suíte vermelha sem
+      # causa à vista.
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
+      # VERSÃO FIXA. `npm install -g @google/clasp` traz a mais nova (hoje
+      # 3.3.0), e pipeline que instala "a mais nova" quebra sozinho num dia
+      # em que ninguém mexeu em nada. A 3.3.0 é a que combina com o formato
+      # do ~/.clasprc.json guardado no segredo.
       - name: Instalar clasp
-        run: npm install -g @google/clasp
+        run: |
+          npm install -g @google/clasp@3.3.0
+          echo "clasp: $(clasp --version 2>&1 | head -1)"
 
-      - name: Configurar autenticacao e projeto de homologacao
+      # ═══ A VALIDAÇÃO VEM ANTES DE TUDO — REGRA Nº -2 ═══
+      #
+      # Um .html com <script> desbalanceado derruba o JavaScript da página
+      # inteira, e o sintoma não aponta para o culpado: todos os módulos
+      # param de responder ao mesmo tempo, sem erro visível. Barrar aqui
+      # custa dois minutos; descobrir na homologação custa uma tarde.
+      - name: Instalar ferramental de teste
+        run: npm ci || npm install
+
+      - name: Validar integridade dos arquivos (t46)
+        run: node tests/e2e/t46-arquivos-integros.js
+
+      - name: Rodar a suite inteira
+        run: npm test
+
+      - name: Configurar credenciais e travar o alvo
+        shell: bash
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          CLASP_JSON_HOMOLOG: ${{ secrets.CLASP_JSON_HOMOLOG }}
+          DEPLOY_ID: ${{ secrets.CLASP_DEPLOYMENT_ID_HOMOLOG }}
+        run: |
+          set -euo pipefail
+          test -n "$CLASPRC_JSON"
+          test -n "$CLASP_JSON_HOMOLOG"
+          test -n "$DEPLOY_ID"
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+
+          # A CREDENCIAL PRECISA SER JSON, e não só "não-vazia". Em
+          # 20/08/2026 o segredo guardava o COMANDO do PowerShell em vez da
+          # saída dele, começando com "Get-Content". O `test -n` passou, e o
+          # erro só apareceu três passos adiante, dentro do clasp.
+          node -e 'JSON.parse(require("fs").readFileSync(process.env.HOME+"/.clasprc.json","utf8"))' 2>/dev/null || {
+            echo '::error::CLASPRC_JSON existe mas NAO e JSON valido.' >&2
+            echo '::error::Sintoma tipico: foi colado o COMANDO em vez do CONTEUDO do arquivo.' >&2
+            exit 1
+          }
+
+          # TRAVA DE ALVO. Sem ela, um segredo trocado manda o repositório
+          # inteiro para PRODUÇÃO. É a única barreira entre um deploy de
+          # homologação e 8.000 cadastros reais.
+          printf '%s' "$CLASP_JSON_HOMOLOG" > .clasp.json
+          node -e '
+            const fs = require("fs");
+            const j = JSON.parse(fs.readFileSync(".clasp.json", "utf8"));
+            if (j.scriptId !== "1S_LckCVMJy0dza6tlw5w9Vq7ZqJ9RzxsrYoPMR1zI65rKXC-JgvDUSVR") {
+              console.error("Alvo bloqueado: Script ID nao e o da Homologacao.");
+              process.exit(1);
+            }
+            // O clasp 3 grava os arquivos de servidor como .js; este projeto
+            // usa .gs. Sem isto, tudo daqui para baixo quebra por nome.
+            j.fileExtension = "gs";
+            fs.writeFileSync(".clasp.json", JSON.stringify(j));
+            console.log("alvo confirmado: homologacao");
+          '
+          if [ "$DEPLOY_ID" != 'AKfycbzOfoQ4y2yc7oM9hiz2ATvB6YztGEMDjgO1FiezQ0schgqcOJnJgROzCC3sEeV6h4n0ZA' ]; then
+            echo '::error::Alvo bloqueado: Deployment ID nao e o da Homologacao.' >&2
+            exit 1
+          fi
+
+      # RENOVAR O TOKEN NÓS MESMOS, porque o clasp 3.3.0 não renova.
+      #
+      # Medido em 20/08/2026: o access_token do segredo vence em uma hora, e
+      # o clasp sai com ele vencido em vez de trocá-lo. A renovação pelo
+      # endpoint funciona (HTTP 200). Fazendo aqui, o segredo deixa de ter
+      # prazo de validade — só o refresh_token importa.
+      - name: Renovar o token de acesso
         shell: bash
         run: |
-          printf '%s' '${{ secrets.CLASPRC_JSON }}' > "$HOME/.clasprc.json"
-          printf '%s' '${{ secrets.CLASP_JSON_HOMOLOG }}' > .clasp.json
+          set -euo pipefail
+          node > /tmp/body 2>/dev/null <<'JS'
+          const fs = require("fs");
+          const rc = JSON.parse(fs.readFileSync(process.env.HOME + "/.clasprc.json", "utf8"));
+          const k = rc.tokens ? (rc.tokens.default ? "default" : Object.keys(rc.tokens)[0]) : null;
+          const t = k ? rc.tokens[k] : (rc.token || {});
+          process.stdout.write(
+            "client_id=" + encodeURIComponent(t.client_id || "") +
+            "&client_secret=" + encodeURIComponent(t.client_secret || "") +
+            "&refresh_token=" + encodeURIComponent(t.refresh_token || "") +
+            "&grant_type=refresh_token");
+          JS
+          curl -s -o /tmp/novo.json -w "renovacao: HTTP %{http_code}\n" \
+            -X POST -d @/tmp/body https://oauth2.googleapis.com/token
+          node <<'JS'
+          const fs = require("fs");
+          const r = JSON.parse(fs.readFileSync("/tmp/novo.json", "utf8"));
+          if (r.error) {
+            console.error("::error::Falha ao renovar o token: " + r.error + " — " +
+              (r.error_description || "sem descricao"));
+            console.error("::error::Se for invalid_grant, o refresh_token foi revogado:" +
+              " rode `clasp login` e atualize o segredo CLASPRC_JSON.");
+            process.exit(1);
+          }
+          const caminho = process.env.HOME + "/.clasprc.json";
+          const rc = JSON.parse(fs.readFileSync(caminho, "utf8"));
+          const k = rc.tokens ? (rc.tokens.default ? "default" : Object.keys(rc.tokens)[0]) : null;
+          const alvo = k ? rc.tokens[k] : rc.token;
+          alvo.access_token = r.access_token;
+          alvo.expiry_date = Date.now() + (Number(r.expires_in) || 3600) * 1000;
+          if (r.id_token) alvo.id_token = r.id_token;
+          fs.writeFileSync(caminho, JSON.stringify(rc));
+          console.log("token valido ate " + new Date(alvo.expiry_date).toISOString());
+          JS
+          rm -f /tmp/body /tmp/novo.json
 
-      - name: Validar arquivos que serao enviados
-        run: clasp status
+      # ═══ O ESTADO ATUAL DA HOMOLOGAÇÃO, ANTES DE QUALQUER COISA ═══
+      #
+      # Serve para duas coisas: montar o relatório de diferenças e virar
+      # backup. Backup tirado DEPOIS de escrever não é backup.
+      - name: Baixar o estado atual da homologacao
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/hml-atual
+          cp .clasp.json /tmp/hml-atual/
+          cd /tmp/hml-atual
+          clasp pull
+          # Rede: se vier .js apesar do fileExtension, renomeia. `find` no
+          # lugar de `ls` porque `ls *.js` sai com erro quando não acha nada
+          # — e não achar nada é o caso BOM. Isso derrubou o run 32376950132.
+          n=$(find . -maxdepth 1 -name '*.js' | wc -l)
+          if [ "$n" -gt 0 ]; then
+            for f in *.js; do mv -- "$f" "${f%.js}.gs"; done
+            echo "renomeados $n arquivo(s) .js -> .gs"
+          fi
+          echo "homologacao tem $(find . -maxdepth 1 \( -name '*.gs' -o -name '*.html' \) | wc -l) arquivos"
 
-      - name: Enviar codigo para Apps Script - Homologacao
-        run: clasp push
+      - name: Guardar backup da homologacao
+        uses: actions/upload-artifact@v4
+        with:
+          name: homologacao-antes-${{ github.run_number }}
+          path: /tmp/hml-atual
+          retention-days: 30
 
-      - name: Registrar versao de homologacao
-        run: clasp version "homolog-${GITHUB_SHA::7}"
+      # ═══ O RELATÓRIO ═══
+      #
+      # O que a publicação FARIA. Os removidos vêm primeiro, porque são o
+      # único efeito irreversível: arquivo que sai do projeto e não está em
+      # lugar nenhum some de vez.
+      - name: Comparar repositorio x homologacao
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE"
+          find . -maxdepth 1 \( -name '*.gs' -o -name '*.html' -o -name 'appsscript.json' \) \
+            -printf '%f\n' | sort > /tmp/repo.txt
+          find /tmp/hml-atual -maxdepth 1 \( -name '*.gs' -o -name '*.html' -o -name 'appsscript.json' \) \
+            -printf '%f\n' | sort > /tmp/hml.txt
+
+          echo "=================================================="
+          echo "  repositorio: $(wc -l < /tmp/repo.txt) arquivos"
+          echo "  homologacao: $(wc -l < /tmp/hml.txt) arquivos"
+          echo "=================================================="
+          echo ""
+          echo "--- SERIAM APAGADOS da homologacao (so existem la):"
+          if comm -13 /tmp/repo.txt /tmp/hml.txt | grep -q .; then
+            comm -13 /tmp/repo.txt /tmp/hml.txt | sed 's/^/    /'
+          else
+            echo "    (nenhum)"
+          fi
+          echo ""
+          echo "--- SERIAM CRIADOS na homologacao (so existem no repo):"
+          if comm -23 /tmp/repo.txt /tmp/hml.txt | grep -q .; then
+            comm -23 /tmp/repo.txt /tmp/hml.txt | sed 's/^/    /'
+          else
+            echo "    (nenhum)"
+          fi
+          echo ""
+          echo "--- SERIAM ALTERADOS (existem nos dois, conteudo diferente):"
+          alterados=0
+          while read -r f; do
+            if ! cmp -s "./$f" "/tmp/hml-atual/$f"; then
+              echo "    $f"
+              alterados=$((alterados+1))
+            fi
+          done < <(comm -12 /tmp/repo.txt /tmp/hml.txt)
+          [ "$alterados" = "0" ] && echo "    (nenhum)"
+          echo ""
+          echo "=================================================="
+          echo "  modo desta execucao: ${{ inputs.modo }}"
+          if [ "${{ inputs.modo }}" = "conferir" ]; then
+            echo "  NADA FOI ESCRITO. Para aplicar, rode de novo em 'publicar'."
+          fi
+          echo "=================================================="
+
+      # ═══ DAQUI PARA BAIXO SÓ EM MODO PUBLICAR ═══
+
+      - name: Enviar codigo para a homologacao
+        if: inputs.modo == 'publicar'
+        run: clasp push --force
+
+      - name: Criar versao
+        id: versao
+        if: inputs.modo == 'publicar'
+        shell: bash
+        run: |
+          set -euo pipefail
+          clasp version "homolog-${GITHUB_SHA::7}" | tee /tmp/versao.txt
+          NUM=$(grep -oE '[0-9]+' /tmp/versao.txt | tail -1)
+          echo "numero=$NUM" >> "$GITHUB_OUTPUT"
+          echo "versao criada: $NUM"
+
+      # PUBLICAR NÃO É SUBIR, E VERSÃO NÃO É PUBLICAÇÃO.
+      #
+      # `clasp push` sobe o código e `clasp version` congela um número, mas
+      # a URL do web app continua servindo a publicação anterior. Era o que
+      # faltava na versão antiga deste arquivo: terminava verde e a
+      # homologação seguia com o código velho.
+      #
+      # O deploymentId vem de segredo porque `clasp deploy` sem ele cria uma
+      # publicação NOVA, com URL NOVA — inútil aqui, onde o endereço precisa
+      # ser estável.
+      - name: Publicar na URL de homologacao
+        if: inputs.modo == 'publicar'
+        shell: bash
+        env:
+          DEPLOY_ID: ${{ secrets.CLASP_DEPLOYMENT_ID_HOMOLOG }}
+          VERSAO: ${{ steps.versao.outputs.numero }}
+        run: |
+          set -euo pipefail
+          clasp deploy --deploymentId "$DEPLOY_ID" --versionNumber "$VERSAO" \
+            --description "homolog-${GITHUB_SHA::7}"
+          echo "Homologacao publicada na versao $VERSAO."
