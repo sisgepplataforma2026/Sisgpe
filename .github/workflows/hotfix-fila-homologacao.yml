@@ -140,6 +140,19 @@ jobs:
           }
           mkdir -p /tmp/sisgep-hml
           printf '%s' "$CLASP_JSON_HOMOLOG" > /tmp/sisgep-hml/.clasp.json
+
+          # O CLASP 3 SALVA COMO .js; ESTE PROJETO USA .gs.
+          #
+          # Medido em 20/08/2026: o pull trouxe 206 arquivos, todos com
+          # extensao .js (VoucherSolicitacao.js, VoucherValidacao.js...), e o
+          # passo seguinte quebrou em `cp: cannot stat 'FilaOficios.gs'`.
+          # A v2 gravava .gs. E mudanca de comportamento entre as versoes.
+          #
+          # `fileExtension` no .clasp.json e a forma documentada de pedir a
+          # extensao. Fica AQUI, e nao dentro do segredo, para o segredo
+          # continuar sendo so a identidade do projeto — quem mexe nele e o
+          # usuario, e nao se pede a ele que carregue detalhe de ferramenta.
+          node -e 'const fs=require("fs");const p="/tmp/sisgep-hml/.clasp.json";const j=JSON.parse(fs.readFileSync(p,"utf8"));j.fileExtension="gs";fs.writeFileSync(p,JSON.stringify(j));console.log("fileExtension=gs adicionado ao .clasp.json");' 
           node -e 'const fs=require("fs"); const j=JSON.parse(fs.readFileSync("/tmp/sisgep-hml/.clasp.json","utf8")); if(j.scriptId!=="1S_LckCVMJy0dza6tlw5w9Vq7ZqJ9RzxsrYoPMR1zI65rKXC-JgvDUSVR") { console.error("Alvo bloqueado: Script ID nao e o da Homologacao."); process.exit(1); }'
           if [ "$DEPLOY_ID" != 'AKfycbzOfoQ4y2yc7oM9hiz2ATvB6YztGEMDjgO1FiezQ0schgqcOJnJgROzCC3sEeV6h4n0ZA' ]; then
             echo 'Alvo bloqueado: Deployment ID nao e o da Homologacao.' >&2
@@ -245,6 +258,22 @@ jobs:
           rm -f /tmp/tk /tmp/sid /tmp/resp.json
 
           clasp pull
+
+          # REDE DE SEGURANCA. Se o `fileExtension` acima nao surtir efeito
+          # numa versao futura do clasp, os arquivos ainda chegam como .js e
+          # tudo daqui para baixo quebra por nome. Renomear e deterministico
+          # e nao custa nada: no Apps Script, .gs e .js sao o mesmo arquivo
+          # de servidor, e este repositorio usa .gs.
+          n=$(ls *.js 2>/dev/null | wc -l)
+          if [ "$n" -gt 0 ]; then
+            echo "clasp trouxe $n arquivo(s) .js — renomeando para .gs"
+            for f in *.js; do mv -- "$f" "${f%.js}.gs"; done
+          else
+            echo "arquivos ja vieram como .gs"
+          fi
+          echo "conferindo o alvo do hotfix:"
+          ls -1 FilaOficios.gs OficiosScripts.html
+
           cp FilaOficios.gs FilaOficios.gs.antes-hotfix
           cp OficiosScripts.html OficiosScripts.html.antes-hotfix
 
