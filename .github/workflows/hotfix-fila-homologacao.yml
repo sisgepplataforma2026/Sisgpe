@@ -5,13 +5,17 @@ on:
     branches:
       - integracao/sisgep-homologacao
     paths:
-      - FilaOficios.gs
       - scripts/hotfix-fila-envio-agora.js
+      - tests/e2e/t57-envio-fila-id-unico.js
       - .github/workflows/hotfix-fila-homologacao.yml
   workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: hotfix-fila-hml
+  cancel-in-progress: false
 
 jobs:
   hotfix:
@@ -29,18 +33,22 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Aplicar hotfix no FilaOficios.gs
+      - name: Aplicar hotfix no backend e na tela
         run: node scripts/hotfix-fila-envio-agora.js
 
       - name: Validar alteracao esperada
         shell: bash
         run: |
           set -euo pipefail
-          grep -q 'var linhaIdxFallback = -1;' FilaOficios.gs
+          grep -q 'function enviarOficioDaFilaAgora(numero, tokenSessao, filaId)' FilaOficios.gs
+          grep -q 'var filaIdBuscado = String(filaId || "").trim();' FilaOficios.gs
+          grep -q 'var colId.*headerMap\["ID"\]' FilaOficios.gs
           grep -q 'lockEnvioAgora.tryLock(15000)' FilaOficios.gs
-          grep -q '\[ENVIO_AGORA\] Selecionado' FilaOficios.gs
-          git --no-pager diff --check -- FilaOficios.gs
-          git --no-pager diff -- FilaOficios.gs
+          grep -q 'var filaId = dadosGerados.filaId || "";' OficiosScripts.html
+          grep -q 'function enviarEmailOficioAgora(numero, filaId)' OficiosScripts.html
+          grep -q 'enviarOficioDaFilaAgora(numero, SISGEP_TOKEN_SESSAO, filaId || "")' OficiosScripts.html
+          git --no-pager diff --check -- FilaOficios.gs OficiosScripts.html
+          git --no-pager diff -- FilaOficios.gs OficiosScripts.html
 
       - name: Instalar dependencias de teste
         run: npm ci || npm install
@@ -52,21 +60,24 @@ jobs:
           sudo rm -rf /home/user/Sisgpe
           sudo ln -s "$GITHUB_WORKSPACE" /home/user/Sisgpe
 
-      - name: Testar fluxo real de anexos e envio
+      - name: Testar anexos e envio existente
         run: node tests/e2e/t56-envio-anexa-ficha.js
+
+      - name: Testar numero duplicado com filaId
+        run: node tests/e2e/t57-envio-fila-id-unico.js
 
       - name: Registrar hotfix na branch
         shell: bash
         run: |
           set -euo pipefail
-          if git diff --quiet -- FilaOficios.gs; then
-            echo 'FilaOficios.gs ja estava ajustado.'
+          if git diff --quiet -- FilaOficios.gs OficiosScripts.html; then
+            echo 'Arquivos ja estavam ajustados.'
             exit 0
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add FilaOficios.gs
-          git commit -m 'fix: tornar envio imediato de oficios resiliente a concorrencia'
+          git add FilaOficios.gs OficiosScripts.html
+          git commit -m 'fix: enviar oficio pelo id unico da fila'
           git push origin HEAD:integracao/sisgep-homologacao
 
       - name: Instalar clasp
@@ -100,16 +111,23 @@ jobs:
           cd /tmp/sisgep-hml
           clasp pull
           cp FilaOficios.gs FilaOficios.gs.antes-hotfix
+          cp OficiosScripts.html OficiosScripts.html.antes-hotfix
 
-      - name: Substituir somente FilaOficios.gs
+      - name: Substituir somente os dois arquivos do hotfix
         shell: bash
         run: |
           set -euo pipefail
           cp "$GITHUB_WORKSPACE/FilaOficios.gs" /tmp/sisgep-hml/FilaOficios.gs
-          grep -q 'var linhaIdxFallback = -1;' /tmp/sisgep-hml/FilaOficios.gs
-          grep -q 'lockEnvioAgora.tryLock(15000)' /tmp/sisgep-hml/FilaOficios.gs
+          cp "$GITHUB_WORKSPACE/OficiosScripts.html" /tmp/sisgep-hml/OficiosScripts.html
+          grep -q 'function enviarOficioDaFilaAgora(numero, tokenSessao, filaId)' /tmp/sisgep-hml/FilaOficios.gs
+          grep -q 'var filaIdBuscado = String(filaId || "").trim();' /tmp/sisgep-hml/FilaOficios.gs
+          grep -q 'function enviarEmailOficioAgora(numero, filaId)' /tmp/sisgep-hml/OficiosScripts.html
+          grep -q 'enviarOficioDaFilaAgora(numero, SISGEP_TOKEN_SESSAO, filaId || "")' /tmp/sisgep-hml/OficiosScripts.html
+          echo '--- diff FilaOficios.gs ---'
           diff -u /tmp/sisgep-hml/FilaOficios.gs.antes-hotfix /tmp/sisgep-hml/FilaOficios.gs || true
-          rm /tmp/sisgep-hml/FilaOficios.gs.antes-hotfix
+          echo '--- diff OficiosScripts.html ---'
+          diff -u /tmp/sisgep-hml/OficiosScripts.html.antes-hotfix /tmp/sisgep-hml/OficiosScripts.html || true
+          rm /tmp/sisgep-hml/*.antes-hotfix
 
       - name: Enviar estado preservado para Apps Script - HML
         shell: bash
@@ -126,9 +144,9 @@ jobs:
         run: |
           set -euo pipefail
           cd /tmp/sisgep-hml
-          clasp version "hml-hotfix-fila-${GITHUB_SHA::7}" | tee /tmp/saida-versao.txt
+          clasp version "hml-fila-id-${GITHUB_SHA::7}" | tee /tmp/saida-versao.txt
           NUM=$(grep -oE '[0-9]+' /tmp/saida-versao.txt | tail -1)
           test -n "$NUM"
-          clasp deploy --deploymentId "$DEPLOY_ID" --versionNumber "$NUM" --description "hml-hotfix-fila-${GITHUB_SHA::7}"
+          clasp deploy --deploymentId "$DEPLOY_ID" --versionNumber "$NUM" --description "hml-fila-id-${GITHUB_SHA::7}"
           echo "numero=$NUM" >> "$GITHUB_OUTPUT"
           echo "Homologacao publicada na versao $NUM."
