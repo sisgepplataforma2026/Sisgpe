@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const SCRIPT_ID = '1S_LckCVMJy0dza6tlw5w9Vq7ZqJ9RzxsrYoPMR1zl65rKXC-JgvDUSVR';
+const SCRIPT_ID = '1S_LckCVMJy0dza6tlw5w9Vq7ZqJ9RzxsrYoPMR1zI65rKXC-JgvDUSVR';
 const DEPLOYMENT_ID = 'AKfycbzOfoQ4y2yc7oM9hiz2ATvB6YztGEMDjgO1FiezQ0schgqcOJnJgROzCC3sEeV6h4n0ZA';
 const TARGETS = [
   { local: 'Comprovantes.gs', name: 'Comprovantes', type: 'SERVER_JS' },
