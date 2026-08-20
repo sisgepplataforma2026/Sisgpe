@@ -13,6 +13,16 @@ const TARGETS = [
   { local: 'RelatoriosOficios.gs', name: 'RelatoriosOficios', type: 'SERVER_JS' }
 ];
 
+function proofPath(name) {
+  const dir = path.join(ROOT, '.ci');
+  fs.mkdirSync(dir, { recursive: true });
+  return path.join(dir, name);
+}
+
+function writeJson(name, data) {
+  fs.writeFileSync(proofPath(name), JSON.stringify(data, null, 2) + '\n');
+}
+
 function oauthConfigFromClasprc(raw) {
   const rc = JSON.parse(raw);
   if (rc.tokens) {
@@ -93,9 +103,6 @@ async function main() {
   const token = await refreshAccessToken(oauthConfigFromClasprc(raw));
   const projectPath = `/projects/${SCRIPT_ID}`;
 
-  // Lê o projeto remoto antes de qualquer escrita. updateContent substitui o
-  // projeto inteiro, portanto preservamos todos os arquivos remotos e trocamos
-  // somente os três alvos auditados.
   const remote = await api(`${projectPath}/content`, token);
   if (!Array.isArray(remote.files) || !remote.files.length) {
     throw new Error('Projeto HML remoto retornou sem arquivos; abortando para evitar sobrescrita cega.');
@@ -108,7 +115,6 @@ async function main() {
     files[idx].source = localSource(target);
   }
 
-  // Manifesto obrigatório e alvo fixo de HML.
   if (!files.some(f => f.name === 'appsscript' && f.type === 'JSON')) {
     throw new Error('Manifesto appsscript remoto ausente; abortando.');
   }
@@ -118,7 +124,6 @@ async function main() {
     body: JSON.stringify({ files })
   });
 
-  // Verificação pós-escrita no HEAD remoto.
   const check = await api(`${projectPath}/content`, token);
   for (const target of TARGETS) {
     const expected = localSource(target);
@@ -162,21 +167,28 @@ async function main() {
     throw new Error(`Deployment não aponta para a versão criada (${version.versionNumber}).`);
   }
 
-  const proofDir = path.join(ROOT, '.ci');
-  fs.mkdirSync(proofDir, { recursive: true });
-  fs.writeFileSync(path.join(proofDir, 'security-documentos-hml-deploy.json'), JSON.stringify({
+  writeJson('security-documentos-hml-deploy.json', {
     ambiente: 'HOMOLOGACAO',
     scriptId: SCRIPT_ID,
     deploymentId: DEPLOYMENT_ID,
     versionNumber: version.versionNumber,
     deployedAt: new Date().toISOString(),
     files: TARGETS.map(t => t.local)
-  }, null, 2) + '\n');
+  });
 
+  try { fs.unlinkSync(proofPath('security-documentos-hml-deploy-error.json')); } catch (_) {}
   console.log(`Deploy HML confirmado na versão ${version.versionNumber}.`);
 }
 
 main().catch(err => {
-  console.error(`DEPLOY HML FALHOU: ${err.message}`);
+  const mensagem = String(err && err.message ? err.message : err).slice(0, 1000);
+  writeJson('security-documentos-hml-deploy-error.json', {
+    ambiente: 'HOMOLOGACAO',
+    failedAt: new Date().toISOString(),
+    mensagem,
+    scriptId: SCRIPT_ID,
+    deploymentId: DEPLOYMENT_ID
+  });
+  console.error(`DEPLOY HML FALHOU: ${mensagem}`);
   process.exit(1);
 });
