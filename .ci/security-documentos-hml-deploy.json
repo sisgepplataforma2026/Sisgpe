@@ -2,8 +2,8 @@
   "ambiente": "HOMOLOGACAO",
   "scriptId": "1S_LckCVMJy0dza6tlw5w9Vq7ZqJ9RzxsrYoPMR1zI65rKXC-JgvDUSVR",
   "deploymentId": "AKfycbzOfoQ4y2yc7oM9hiz2ATvB6YztGEMDjgO1FiezQ0schgqcOJnJgROzCC3sEeV6h4n0ZA",
-  "versionNumber": 18,
-  "deployedAt": "2026-08-20T15:54:30.252Z",
+  "versionNumber": 21,
+  "deployedAt": "2026-08-20T16:15:26.410Z",
   "files": [
     "Comprovantes.gs",
     "ComprovantesNF.html",
