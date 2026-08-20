@@ -680,7 +680,56 @@ diz**. São só 2 linhas; dá para olhar direto na planilha.
 |---|---|
 | ✅ **`UF` preenchida** | previsto ~678 de 679; medido **678** (`Sem UF` = 1) em 12/08/2026 |
 | 🔴 **`escolaValidarColunas` depois da padronização** | linhas coerentes devem passar de 660 |
-| 🔴 **Formulário de ofício** | `CIDADE/UF` deve mostrar cidade e UF separados, telefone no formato novo |
+| ✅ **`CIDADE / UF` e telefone** | **verificado por execução em 19/08/2026** — ver logo abaixo |
+
+#### ✅ `CIDADE / UF` e telefone — verificado em 19/08/2026
+
+<details>
+<summary>Texto original do item, preservado</summary>
+
+> 🔴 **Formulário de ofício** — `CIDADE/UF` deve mostrar cidade e UF
+> separados, telefone no formato novo
+
+</details>
+
+**Primeiro, uma correção no próprio item:** ele mistura duas telas. O
+formulário de ofício **não tem campo de telefone**, e o backend que o
+alimenta (`listarEscolasOficio_interno_`) não devolve telefone. Quem mostra
+telefone é o **Cadastro de Escolas**. Item que manda conferir um campo
+inexistente nunca fecha — então ele se separa em dois, e os dois foram
+medidos.
+
+Teste: `tests/e2e/t67-cidade-uf-telefone.js` — **39 asserções**, base
+semeada com os nomes de coluna reais (as constantes de `Escolas.gs`).
+
+| O que foi medido | Resultado |
+|---|---|
+| `listarEscolas` devolve cidade e UF em campos separados | ✅ `cidade="Vitória"`, `uf="ES"`, sem separador dentro da cidade |
+| e o telefone com máscara | ✅ `(27) 3222-1010` |
+| `listarEscolasOficio_interno_` monta `Cidade / UF` para exibir | ✅ `"Vitória / ES"` — a junção é de exibição, na planilha continuam separadas |
+| **Formulário de ofício:** clicar na escola preenche `#cidadeUfReceita` | ✅ `"Vitória / ES"`, pelo caminho real (clique no botão da lista A-Z) |
+| **Cadastro de Escolas:** abrir a ficha preenche cidade, UF e telefone | ✅ `ceMunicipio="Vitória"`, `ceUf="ES"`, `ceTelefone="(27) 3222-1010"`, `ceWhatsapp` e `ceCep` junto |
+| **Contraprova** — a 1 escola sem UF não ganha barra pendurada | ✅ sai `"Serra"`, não `"Serra / "` — nas duas telas |
+
+Cinco mutações rodadas, todas mataram asserção (2, 1, 3, 1 e 3 falhas). A
+mais instrutiva: apagar a normalização boa **não** derrubou o campo do
+ofício, porque `preencherCompat` tem uma reserva — quem denunciou foi a
+lista A-Z, que não tem. Duas asserções sobre o mesmo dado em telas
+diferentes não é redundância.
+
+**Achado que fica registrado, sem mexer:** `normalizarEscola` está
+declarada **três vezes no mesmo escopo** de `OficiosScripts.html` (linhas
+122, 133 e 146). Declaração de função sobe e a última vence — e só a última
+entende `Municipio` e `cidadeUf`. As duas primeiras são inalcançáveis.
+Funciona hoje, e quebra em silêncio se alguém apagar a cópia errada. Pela
+REGRA Nº 1, remoção é decisão do usuário e vai em commit separado; até lá,
+o passo 10 do t67 trava isso — apagar a cópia certa reprova o teste em vez
+de quebrar a tela.
+
+🔴 **Continua não testado:** como isso aparece com os 679 cadastros reais.
+A base do teste é semeada — a forma do dado é a real, o volume não. E
+aparência (cor, alinhamento, largura) não se mede em jsdom: isso é abrir a
+tela.
 
 ---
 
@@ -704,7 +753,40 @@ precisa estar de pé e conferida antes.
 
 ---
 
-### 1. Trilha de Auditoria com dado real — Ofícios
+### ✅ 1. Trilha de Auditoria com dado real — Ofícios (FECHADO em 19/08/2026)
+
+**Status: fechado por execução, aqui — não dependia do usuário.**
+
+Aberto em 11/08 com "ele testa mais adiante", e ficou oito dias parado. Ao
+sentar para testar em 19/08, dava para ter rodado desde sempre: o emulador
+emite ofício de verdade e a trilha grava numa aba de verdade. Mandar para
+o usuário o que eu podia rodar aqui é o que a REGRA Nº -1 chama de "não
+sugeriu" — fica o registro do erro de julgamento.
+
+**Provado por execução** (`t66-trilha-oficios-com-dado.js`, 27 asserções,
+3 mutações mortas), o caminho inteiro:
+
+    emitir ofício → registrarLogSistema → aud_deLogSistema_ → grava na aba
+                  → auditoriaConsultar → a tela desenha a linha
+                  → o clique abre o modal com os campos
+
+- A trilha ganha uma linha por ofício emitido (a ponte é aditiva: o
+  LOG_SISTEMA continua gravando).
+- O registro sai como `Documentos › Ofícios`, com o número, o usuário e a
+  escola.
+- O filtro por módulo funciona, e filtro sem correspondência volta vazio.
+- **A lista foi vista com dado** — era a pendência principal.
+- **O modal foi aberto** — nunca tinha sido, em navegador nenhum.
+
+**Armadilha registrada:** a resposta da consulta traz a lista em `acoes`,
+não em `itens`. Meu primeiro probe procurou `itens`, achou zero e eu quase
+reportei "a consulta não devolve nada" — o defeito era do probe.
+
+**Continua não testado:** a aparência da lista e do modal. jsdom não
+aplica CSS.
+
+<details><summary>Registro original do item (11/08/2026)</summary>
+
 **Aberto em:** 11/08/2026 · **Combinado com o usuário:** ele testa mais adiante
 
 A ponte de auditoria foi ligada no `registrarLogSistema()` do `Oficios.gs`.
@@ -725,6 +807,8 @@ sempre e a trilha nova.
 **Se algo der errado:** desfazer é apagar o bloco marcado
 `PONTE PARA A TRILHA ÚNICA` no `registrarLogSistema()`. Nada mais depende
 dele.
+
+</details>
 
 ---
 
@@ -1152,3 +1236,56 @@ Se a Sindicalização **já funcionou** no ar antes, então o
 `Scripts_Certificado.html` do projeto era mais antigo que o do repositório
 e a versão quebrada foi colada em algum momento — o que indicaria outros
 arquivos divergentes. O usuário ainda não respondeu.
+
+---
+
+## ✅ Histórico de Ofícios — VERIFICADO NO AR em 19/08/2026
+
+**Confirmado pelo usuário, com estas palavras: "Histórico apareceu".**
+
+Fecha o item que vinha desde o relato *"o histórico só está carregando"*,
+e fecha por execução no sistema no ar — não por dedução minha.
+
+### A sequência inteira, porque ela ensina
+
+| Quando | O quê |
+|---|---|
+| relato | "o histórico só está carregando" |
+| 1ª correção | trava de espera de 20s e ramo de erro na tela (`OficiosScripts.html`) |
+| o print | **"⏱️ O servidor não respondeu ao carregar o histórico"** |
+| 2ª correção | leitura coluna a coluna e pacote em texto (`HistoricoOficios.gs`) |
+| agora | **"Histórico apareceu"** |
+
+O print não foi um fracasso da primeira correção — **foi ela funcionando**.
+Antes dela a tela ficava em "Carregando..." para sempre, sem erro e sem
+log, e não havia como distinguir "demorou" de "não voltou". A trava
+transformou silêncio em diagnóstico: nem o handler de sucesso nem o de
+falha dispararam, o que em `google.script.run` só acontece por duas
+causas. Foi isso que apontou para onde consertar.
+
+### Qual das duas causas estava ativa — e por que continua sem resposta
+
+As duas foram fechadas de uma vez:
+
+1. **o pacote não serializava** — os campos iam crus da planilha, e uma
+   Date inválida faz o cliente receber `null`, sem erro e sem log (o
+   mesmo mecanismo que derrubou o envio do voucher em 18/08);
+2. **a leitura era pesada demais** — `getDataRange()` trazia todas as
+   colunas de todas as linhas, inclusive `HTML_BODY`, o corpo inteiro do
+   e-mail de cada ofício, que a listagem nunca usa.
+
+**Qual delas travava no sistema dele continua "não testado"** e vai
+continuar: as duas foram corrigidas no mesmo commit, e agora funciona.
+Só o painel de Execuções do Apps Script, olhando o histórico daquele dia,
+diria. Não é pendência — é honestidade sobre o que a correção prova.
+
+### O que a tela mostrar agora ainda não foi conferido
+
+🔴 **O conteúdo da lista**, e não só o fato de ela aparecer: número,
+escola, tipo, status e data legíveis, o link do PDF abrindo, e os filtros
+por escola / número / status / tipo devolvendo o que devem. Uma linha
+apareceu; que as 4 colunas estejam certas em todas é outra medição.
+
+Cobertura automatizada que existe por trás: `t64` (a espera tem fim e o
+erro aparece), `t65` (o pacote serializa e o corpo do e-mail não viaja) —
+38 asserções entre os dois.

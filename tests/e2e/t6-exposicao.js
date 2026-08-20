@@ -15,6 +15,13 @@
  * anônimas que o Code.gs serve. Por isso esta medição é a superfície real.
  */
 const fs = require("fs");
+/* A RAIZ SAI DO LOCAL DESTE ARQUIVO, NUNCA DE UM CAMINHO DE MÁQUINA.
+   Aqui havia "/home/user/Sisgpe" cravado. Funcionava na minha máquina e
+   estourava em qualquer outra: no runner do GitHub o repositório fica em
+   /home/runner/work/Sisgpe/Sisgpe, e todo teste que sobe o emulador
+   morria com ENOENT antes da primeira asserção. Foi o CI que achou, no
+   primeiro deploy de homologação — 19/08/2026. */
+const RAIZ_T6 = require("path").resolve(__dirname, "..", "..");
 const b = require("./base");
 const { g } = b.subir({});
 b.seedUsuarios(g);
@@ -31,8 +38,8 @@ g.solicitarReservaParqueChina({
 
 /* ── inventário das funções públicas ── */
 const publicas = [];
-fs.readdirSync("/home/user/Sisgpe").filter(f => f.endsWith(".gs")).forEach(arq => {
-  const src = fs.readFileSync("/home/user/Sisgpe/" + arq, "utf8");
+fs.readdirSync(RAIZ_T6).filter(f => f.endsWith(".gs")).forEach(arq => {
+  const src = fs.readFileSync(require("path").join(RAIZ_T6, arq), "utf8");
   const re = /^function\s+([A-Za-z0-9_]+)\s*\(/gm;
   let m;
   while ((m = re.exec(src)) !== null) {
