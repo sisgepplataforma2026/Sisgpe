@@ -122,7 +122,7 @@ const code = semCom(ler("Code.gs"));
 ok(/if\s*\(\s*p\["bingo-inscricao"\]\s*\)/.test(code),
    "Code.gs tem a rota pública ?bingo-inscricao",
    "sem ela a página existe e ninguém alcança");
-ok(/createHtmlOutputFromFile\("BingoInscricao"\)/.test(code),
+ok(/createHtmlOutputFromFile\("BingoInscricaoPublica"\)/.test(code),
    "e a rota serve o arquivo certo");
 
 const insc = ler("BingoInscricao.gs");
