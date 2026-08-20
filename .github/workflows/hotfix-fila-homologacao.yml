@@ -80,8 +80,27 @@ jobs:
           git commit -m 'fix: enviar oficio pelo id unico da fila'
           git push origin HEAD:integracao/sisgep-homologacao
 
+      # VERSAO FIXA DO CLASP — NAO TROCAR PARA "latest" SEM MEDIR.
+      #
+      # `npm install -g @google/clasp` traz a mais nova, que hoje e a 3.3.0.
+      # Este workflow foi escrito quando a corrente era 2.x, e o clasp 3
+      # mudou o esquema de configuracao. Sintoma medido em 20/08/2026, no
+      # passo `clasp pull` do run 32374268020:
+      #
+      #     Request contains an invalid argument.
+      #
+      # Nao e credencial invalida: a autenticacao FUNCIONOU e quem recusou
+      # foi a API do Google, por receber um pedido montado com o esquema
+      # errado. Um pipeline que instala "a mais nova" quebra sozinho num
+      # dia em que ninguem mexeu em nada — foi o que aconteceu aqui.
+      #
+      # A versao precisa combinar com a que gerou o ~/.clasprc.json guardado
+      # no segredo: o formato do arquivo de credencial mudou entre a 2 e a 3.
+      # Para conferir na maquina de quem fez o login:  clasp -v
       - name: Instalar clasp
-        run: npm install -g @google/clasp
+        run: |
+          npm install -g @google/clasp@2.5.0
+          echo "clasp instalado: $(clasp --version 2>&1 | head -1)"
 
       - name: Validar credenciais e alvo de homologacao
         shell: bash
