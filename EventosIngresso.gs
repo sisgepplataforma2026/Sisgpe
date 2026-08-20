@@ -4,12 +4,18 @@
  * nome, escola, categoria, número e QR seguro.
  */
 
+var COMPASSO_INGRESSO_ARTE_DRIVE_ID_PADRAO = '1I42k_AkP6MGLNVhaDKJB7hVEDn7JRJzJ';
+
 function compasso_extrairDriveFileId_(valor) {
   valor = String(valor || '').trim();
   if (!valor) return '';
   if (/^[A-Za-z0-9_-]{20,}$/.test(valor)) return valor;
   var m = valor.match(/\/d\/([A-Za-z0-9_-]{20,})/) || valor.match(/[?&]id=([A-Za-z0-9_-]{20,})/);
   return m ? m[1] : '';
+}
+
+function compasso_arteDriveId_() {
+  return PropertiesService.getScriptProperties().getProperty('COMPASSO_INGRESSO_ARTE_DRIVE_ID') || COMPASSO_INGRESSO_ARTE_DRIVE_ID_PADRAO;
 }
 
 function compasso_configurarArteBaseDrive(fileIdOuUrl) {
@@ -24,18 +30,18 @@ function compasso_configurarArteBaseDrive(fileIdOuUrl) {
 }
 
 function compasso_statusArteBase() {
-  var id = PropertiesService.getScriptProperties().getProperty('COMPASSO_INGRESSO_ARTE_DRIVE_ID');
+  var id = compasso_arteDriveId_();
   if (!id) return {configurada:false};
   try {
     var f = DriveApp.getFileById(id);
-    return {configurada:true,fileId:id,nome:f.getName(),mimeType:f.getMimeType()};
+    return {configurada:true,fileId:id,nome:f.getName(),mimeType:f.getMimeType(),origem:id===COMPASSO_INGRESSO_ARTE_DRIVE_ID_PADRAO?'PADRAO_SISGEP':'CONFIGURADA'};
   } catch(e) {
     return {configurada:false,fileId:id,erro:e.message};
   }
 }
 
 function compasso_ingressoArteDataUri_() {
-  var id = PropertiesService.getScriptProperties().getProperty('COMPASSO_INGRESSO_ARTE_DRIVE_ID');
+  var id = compasso_arteDriveId_();
   if (!id) {
     if (!emissao_modoTeste_()) throw new Error('Arte oficial do ingresso não configurada. Emissão visual bloqueada em produção.');
     return '';
@@ -153,6 +159,7 @@ function compasso_testePontaAPontaIngresso() {
     escola:dados.escola,
     categoria:dados.categoria,
     qrGerado:!!dados.qrToken,
-    arteConfigurada:compasso_statusArteBase().configurada
+    arteConfigurada:compasso_statusArteBase().configurada,
+    arteDriveId:compasso_arteDriveId_()
   };
 }
