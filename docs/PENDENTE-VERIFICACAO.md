@@ -12,6 +12,51 @@
 
 ## 🔴 ABERTO
 
+### 27. Isolamento das pastas do Drive entre produção e homologação
+**Aberto em:** 20/08/2026 · `AmbienteRecursos.gs` (novo), `Comprovantes.gs`,
+`Voucher.gs`, `RelatoriosBackend.gs`, `Recibo.gs`, `ReciboDiversos.gs`,
+`Despesas_Oficio_Fiscal.gs`, `Utils.gs`, `SistemaConfig.gs`
+
+O deploy de 20/08 levou os 219 arquivos para a homologação com os **mesmos
+IDs de pasta do Drive da produção** — o de Comprovantes era byte a byte igual
+nos dois branches. Testar Comprovantes, Recibos, Relatórios ou Voucher na
+homologação gravava dentro do acervo real do sindicato, e gravava público,
+porque esses fluxos chamam `setSharing`. Nada quebrava e nada avisava.
+
+O mecanismo de ambiente já existia (`getAmbienteAtual()` lendo a Script
+Property `SISGEP_AMBIENTE`) e já cobria a planilha e a pasta de Ofícios.
+Faltavam quatro recursos. `AmbienteRecursos.gs` estende o mesmo mecanismo a
+eles, com uma **trava**: em homologação, se a pasta resolvida for a de
+produção, a gravação estoura dizendo qual chave falta configurar — em vez de
+gravar calado.
+
+Pastas de homologação criadas em 20/08 (conferidas contra a API do Drive):
+
+| recurso | pasta de homologação |
+|---|---|
+| COMPROVANTES | `1COhM0dIacpViZPajSrTuPA9Mfwq6Xkta` |
+| RECIBOS | `1tc21Wyl4ulIxEqlXpH6LtCKnjOwssnjr` |
+| RELATORIOS | `1dIl0eav3fXD_eh_u9y-jnYquQ4UgGbQS` |
+| VOUCHER_DOCUMENTOS | `1sNj2mcvuS8Cl7nojHMmdlIFyVZProPDu` |
+
+**A pergunta que nenhum teste daqui responde:** a Script Property
+`SISGEP_AMBIENTE` está setada como `homologacao` no projeto que está no ar? Se
+não estiver, `getAmbienteAtual()` devolve `producao` por padrão e a homologação
+está lendo e gravando na **planilha de produção** — a dos ~8.000 associados —
+além das pastas. Isso não vive no repositório.
+
+Coberto por `tests/e2e/t68-ambiente-recursos.js`: 51 asserções, 5 mutações
+mortas. O que o emulador **não** prova: que a pasta certa recebeu o arquivo no
+Drive de verdade, porque Drive ali é apenas registrado.
+
+| | |
+|---|---|
+| 🔴 Rodar `diagnosticoAmbienteRecursos_()` no editor da HOMOLOGAÇÃO | tem que dizer `SISGEP_AMBIENTE: "homologacao"` e ✅ nas 4 pastas |
+| 🔴 Rodar o mesmo no editor da PRODUÇÃO | tem que dizer `producao` e ✅ nas 4 pastas |
+| 🔴 Lançar um comprovante na homologação | o arquivo tem que aparecer em `SISGEP - Comprovantes - HOMOLOGACAO`, e nenhum arquivo novo na pasta de produção |
+| 🔴 Emitir um recibo na homologação | idem, em `SISGEP - Recibos - HOMOLOGACAO` |
+| 🔴 Emitir um ofício na PRODUÇÃO (Marcela) | tem que continuar exatamente como estava — é a única operação viva |
+
 ### 26. Voucher — o registro diz em face de quem, e o relatório de duplicidade
 **Aberto em:** 14/08/2026 · `VoucherPdf.gs`, `VoucherAdmin.gs`
 

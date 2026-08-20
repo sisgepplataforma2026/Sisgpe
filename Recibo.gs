@@ -431,7 +431,9 @@ function gerarPDFRecibo(dados) {
 
   const numero   = gerarNumeroReciboSeguro();
   const codigo   = gerarCodigoVerificacao(numero);
-  const pastaAno = obterOuCriarSubpastaAno(PASTA_RECIBO_ID);
+  /* getRecursoId_ no lugar de PASTA_RECIBO_ID: aquela constante vale PRODUÇÃO
+     em qualquer ambiente. Ver AmbienteRecursos.gs. */
+  const pastaAno = obterOuCriarSubpastaAno(getRecursoId_("RECIBOS"));
 
   const nome = String(dados.nome || "").trim().toUpperCase();
 
@@ -4062,12 +4064,15 @@ function testarPermissaoDriveRecibo() {
   };
 
   try {
-    if (!PASTA_RECIBO_ID) {
-      throw new Error("PASTA_RECIBO_ID não informado.");
+    /* Esta função CRIA subpasta, então é gravação: resolve por ambiente e
+       respeita a trava. Ver AmbienteRecursos.gs. */
+    var idPastaRecibos = getRecursoId_("RECIBOS");
+    if (!idPastaRecibos) {
+      throw new Error("Pasta de recibos não informada.");
     }
 
     resultado.etapa = "acessando pasta principal";
-    var pastaPai = DriveApp.getFolderById(PASTA_RECIBO_ID);
+    var pastaPai = DriveApp.getFolderById(idPastaRecibos);
 
     resultado.etapa = "lendo nome da pasta";
     var nomePasta = pastaPai.getName();

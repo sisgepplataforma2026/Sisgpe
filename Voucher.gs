@@ -5,6 +5,10 @@
 // =============================================================================
 
 /* ================= CONFIG ================= */
+
+/* PADRÃO DE PRODUÇÃO — não leia esta constante para gravar arquivo.
+   A pasta em uso sai de getRecursoId_("VOUCHER_DOCUMENTOS")
+   (AmbienteRecursos.gs), que troca por ambiente. */
 const PASTA_VOUCHER_DOCUMENTOS_ID = "1PyMA0bm0FZuyYONlY4dNNo3pgJRiI63n";
 
 /* A LOGO É LIDA DO DRIVE E EMBUTIDA EM base64 — não é buscada por URL.
@@ -1236,7 +1240,10 @@ function registrarHistoricoVoucher_(idSolicitacao, cpf, acao, usuario, observaco
 /* ================= DOCUMENTOS NO DRIVE ================= */
 
 function obterPastaVoucherDocumentos_() {
-  const pastaId = String(PASTA_VOUCHER_DOCUMENTOS_ID || "").trim();
+  /* A pasta sai de getRecursoId_ (AmbienteRecursos.gs), que troca por ambiente
+     e trava a gravação se a homologação cair na pasta de produção.
+     PASTA_VOUCHER_DOCUMENTOS_ID, acima, é só o padrão de produção. */
+  const pastaId = String(getRecursoId_("VOUCHER_DOCUMENTOS") || "").trim();
 
   if (!pastaId) {
     throw new Error("Pasta de documentos do Voucher não configurada.");

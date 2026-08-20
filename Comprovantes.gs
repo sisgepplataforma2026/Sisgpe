@@ -33,6 +33,10 @@
 // ================================================================
 
 var ABA_COMPROVANTES       = "COMPROVANTES";
+/* PADRÃO DE PRODUÇÃO — não leia esta constante para gravar arquivo.
+   A pasta em uso sai de getRecursoId_("COMPROVANTES") (AmbienteRecursos.gs),
+   que troca por ambiente. O valor abaixo é a origem da coluna `producao`
+   daquela tabela e fica aqui como registro histórico. */
 var PASTA_COMPROVANTES_ID = "1IsHNsqHJCiMkjZiqmY3rOor_g7IoUgcv";
 var EMAIL_CONTABILIDADE_TO = "operacional02@impactocondominios.com";
 var EMAIL_CONTABILIDADE_CC = "operacional03.impactocond@gmail.com";
@@ -220,7 +224,11 @@ function criarAbasModuloComprovantes() {
 /* ================= PASTA DO MÊS ================= */
 
 function obterOuCriarPastaMesComprovantes_() {
-  var pastaRaiz = DriveApp.getFolderById(PASTA_COMPROVANTES_ID);
+  /* NÃO leia PASTA_COMPROVANTES_ID direto aqui: aquela constante é só o
+     PADRÃO DE PRODUÇÃO. Quem decide a pasta é getRecursoId_, que troca por
+     ambiente e trava a gravação se a homologação estiver apontando para a
+     pasta de produção. Ver AmbienteRecursos.gs. */
+  var pastaRaiz = DriveApp.getFolderById(getRecursoId_("COMPROVANTES"));
   var hoje = new Date();
   var tz = Session.getScriptTimeZone();
 
@@ -1231,7 +1239,9 @@ function testarModuloComprovantes() {
       ok: true,
       mensagem: "✅ Módulo Comprovantes respondendo!",
       planilhaId: PLANILHA_ID,
-      pastaComprovantes: PASTA_COMPROVANTES_ID,
+      /* semTrava: isto é diagnóstico, tem de conseguir RELATAR a pasta errada
+         em vez de estourar ao ser perguntado sobre ela. */
+      pastaComprovantes: getRecursoId_("COMPROVANTES", { semTrava: true }),
       dataTeste: new Date().toISOString(),
       timezone: Session.getScriptTimeZone()
     };

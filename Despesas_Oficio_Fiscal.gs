@@ -525,7 +525,10 @@ function enviarLoteDespesasComOficio(payload, tokenSessao) {
     var pastaOficio = null;
     try {
       var pastaId = (PropertiesService.getScriptProperties().getProperty("PASTA_DESPESAS_ID") || "").trim();
-      if (!pastaId) pastaId = (typeof PASTA_RECIBO_ID !== "undefined" ? PASTA_RECIBO_ID : "");
+      /* Antes caía em PASTA_RECIBO_ID, que vale PRODUÇÃO em qualquer ambiente.
+         getRecursoId_ troca por ambiente e trava se a homologação apontar
+         para produção — ver AmbienteRecursos.gs. */
+      if (!pastaId) pastaId = getRecursoId_("RECIBOS");
       if (pastaId) {
         var pastaRaiz = DriveApp.getFolderById(pastaId);
         var anoStr    = new Date().getFullYear().toString();

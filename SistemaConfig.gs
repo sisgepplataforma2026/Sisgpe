@@ -561,6 +561,13 @@ var TEMPLATE_OFICIO_PADRAO_ID     = TEMPLATES.OFICIO_PADRAO;
 var TEMPLATE_LIVRE_ID             = TEMPLATES.LIVRE;
 
 // â”€â”€ Pastas â”€â”€
+/* PADRÃO DE PRODUÇÃO — PASTA_RECIBO_ID e PASTA_RELATORIOS_ID valem produção em
+   QUALQUER ambiente. Não leia nenhuma das duas para gravar arquivo: use
+   getRecursoId_("RECIBOS") / getRecursoId_("RELATORIOS"), de AmbienteRecursos.gs,
+   que troca por ambiente e trava a gravação se a homologação cair na pasta de
+   produção. Elas continuam declaradas porque três arquivos ainda as consultam
+   com `typeof ... !== "undefined"` como último recurso, e porque resolver aqui
+   no TOPO do arquivo dependeria da ordem de carga dos .gs. */
 var PASTA_RECIBO_ID                    = PASTAS.RECIBOS;
 var PASTA_OFICIOS_ID                   = PASTAS.OFICIOS;
 var PASTA_OFICIOS_DESFILIACAO_ID       = PASTAS.OFICIOS_DESFILIACAO;
@@ -596,13 +603,16 @@ function getConfigSistemaCompleta() {
       taxaAssistencial: TEMPLATE_TAXA_ASSISTENCIAL_ID,
       oficio: TEMPLATE_OFICIO_PADRAO_ID, livre: TEMPLATE_LIVRE_ID
     },
+    /* semTrava nos dois abaixo: diagnóstico tem de conseguir RELATAR a pasta
+       errada, não estourar ao ser perguntado sobre ela. Ver AmbienteRecursos.gs
+       e, para o quadro completo por ambiente, diagnosticoAmbienteRecursos_(). */
     pastas: {
-      recibos:                PASTA_RECIBO_ID,
+      recibos:                getRecursoId_("RECIBOS", { semTrava: true }),
       oficios:                PASTA_OFICIOS_ID,
       oficiosDesfiliacao:     PASTA_OFICIOS_DESFILIACAO_ID,
       oficiosTaxaAssistencial:PASTA_OFICIOS_TAXA_ASSISTENCIAL_ID,
       oficiosTaxaNegocial:    PASTA_OFICIOS_TAXA_NEGOCIAL_ID,
-      relatorios:             PASTA_RELATORIOS_ID
+      relatorios:             getRecursoId_("RELATORIOS", { semTrava: true })
     },
     abas: {
       usuarios:      ABA_USUARIOS_LOGIN,

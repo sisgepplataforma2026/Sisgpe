@@ -360,7 +360,7 @@ function gerarReciboDiverso(dados, tokenSessao) {
     var params = rdMontarParamsHtml_(dados, numero, false);
     var html   = gerarHtmlReciboCompleto_(params, false);
 
-    var pastaAno = obterOuCriarSubpastaAno(PASTA_RECIBO_ID);
+    var pastaAno = obterOuCriarSubpastaAno(getRecursoId_("RECIBOS"));
     var nomeArq  = ("ReciboDiverso " + numero + " - " + params.nome)
       .replace(/[\\/:*?"<>|]/g, "-")
       .replace(/\s+/g, " ")
@@ -422,7 +422,7 @@ function gerarLoteReciboDiversos(lista, tokenSessao) {
 
     var arquivos = [];
     var erros    = [];
-    var pastaAno = obterOuCriarSubpastaAno(PASTA_RECIBO_ID);
+    var pastaAno = obterOuCriarSubpastaAno(getRecursoId_("RECIBOS"));
 
     lista.forEach(function(dados, idx) {
       try {
@@ -617,7 +617,7 @@ function salvarAnexoAssinadoDiverso(dados, tokenSessao) {
     garantirEstruturaReciboDiversos_();
 
     // Salva na mesma pasta de recibos
-    var pastaAno = obterOuCriarSubpastaAno(PASTA_RECIBO_ID);
+    var pastaAno = obterOuCriarSubpastaAno(getRecursoId_("RECIBOS"));
     var bytes    = validacaoPdf.bytes;
     var blob     = Utilities.newBlob(bytes, mimeType, nomeArq);
     var arquivo  = pastaAno.createFile(blob);
