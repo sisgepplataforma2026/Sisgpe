@@ -6,6 +6,8 @@ on:
       - integracao/sisgep-homologacao
     paths:
       - scripts/harden-drive-sharing-hml.js
+      - Comprovantes.gs
+      - RelatoriosOficios.gs
       - .github/workflows/security-drive-sharing-hml.yml
   workflow_dispatch:
 
@@ -31,32 +33,35 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Endurecer compartilhamento do legado Comprovantes
-        run: node scripts/harden-drive-sharing-hml.js --fix || test $? -eq 3
+      - name: Corrigir compartilhamentos publicos do Documentos
+        run: node scripts/harden-drive-sharing-hml.js --fix
 
-      - name: Validar P0 corrigido no arquivo alvo
+      - name: Validar P0 documental
         shell: bash
         run: |
           set -euo pipefail
-          ! grep -q 'salvo.setSharing(DriveApp.Access.ANYONE_WITH_LINK' Comprovantes.gs
-          grep -q 'salvo.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);' Comprovantes.gs
-          git --no-pager diff --check -- Comprovantes.gs
-          git --no-pager diff -- Comprovantes.gs
+          ! grep -q 'DriveApp.Access.ANYONE_WITH_LINK' Comprovantes.gs
+          ! grep -q 'DriveApp.Access.ANYONE_WITH_LINK' RelatoriosOficios.gs
+          ! grep -q 'DriveApp.Access.ANYONE[^_]' Comprovantes.gs || false
+          ! grep -q 'DriveApp.Access.ANYONE[^_]' RelatoriosOficios.gs || false
+          grep -q 'DriveApp.Access.PRIVATE, DriveApp.Permission.NONE' Comprovantes.gs
+          grep -q 'DriveApp.Access.PRIVATE, DriveApp.Permission.NONE' RelatoriosOficios.gs
+          node scripts/harden-drive-sharing-hml.js
+          git --no-pager diff --check -- Comprovantes.gs RelatoriosOficios.gs
 
       - name: Registrar correcao na branch de Homologacao
         shell: bash
         run: |
           set -euo pipefail
-          if git diff --quiet -- Comprovantes.gs; then
-            echo 'Comprovantes.gs ja estava endurecido.'
+          if git diff --quiet -- Comprovantes.gs RelatoriosOficios.gs; then
+            echo 'P0 documental ja estava endurecido.'
             exit 0
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add Comprovantes.gs
-          git commit -m 'security: manter anexos de comprovantes privados'
+          git add Comprovantes.gs RelatoriosOficios.gs
+          git commit -m 'security: remover compartilhamento publico do Documentos'
           git push origin HEAD:integracao/sisgep-homologacao
 
-      - name: Auditoria geral de compartilhamento publico
-        continue-on-error: true
+      - name: Auditoria final obrigatoria
         run: node scripts/harden-drive-sharing-hml.js
