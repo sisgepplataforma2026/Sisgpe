@@ -70,21 +70,35 @@ jobs:
         run: node scripts/harden-drive-sharing-hml.js
 
       - name: Publicar seletivamente na Web App de Homologacao
+        id: deploy_hml
+        continue-on-error: true
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
         run: node scripts/deploy-documentos-security-hml.js
 
-      - name: Registrar comprovante do deploy HML
+      - name: Registrar resultado do deploy HML
+        if: always()
         shell: bash
         run: |
           set -euo pipefail
-          test -f .ci/security-documentos-hml-deploy.json
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add .ci/security-documentos-hml-deploy.json
-          if git diff --cached --quiet; then
-            echo 'Comprovante de deploy sem alteracao.'
-            exit 0
+          shopt -s nullglob
+          arquivos=(.ci/security-documentos-hml-deploy*.json)
+          if [ ${#arquivos[@]} -eq 0 ]; then
+            echo 'Nenhum comprovante de deploy foi gerado.' >&2
+            exit 1
           fi
-          git commit -m 'ci: registrar deploy P0 Documentos HML'
-          git push origin HEAD:integracao/sisgep-homologacao
+          git add "${arquivos[@]}"
+          if git diff --cached --quiet; then
+            echo 'Resultado de deploy sem alteracao.'
+          else
+            git commit -m 'ci: registrar resultado deploy P0 Documentos HML'
+            git push origin HEAD:integracao/sisgep-homologacao
+          fi
+
+      - name: Reprovar se o deploy HML falhou
+        if: steps.deploy_hml.outcome != 'success'
+        run: |
+          echo 'Deploy seletivo da Homologacao falhou; consulte o diagnostico seguro versionado.' >&2
+          exit 1
