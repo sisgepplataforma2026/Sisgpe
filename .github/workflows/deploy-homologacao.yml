@@ -1,19 +1,12 @@
 # DEPLOY DA HOMOLOGAÇÃO
 #
-# PARA ESTE ARQUIVO FUNCIONAR ELE PRECISA ESTAR NA BRANCH PADRÃO (main).
-# O GitHub só oferece o botão "Run workflow" — e só aceita disparo pela API —
-# para workflows que existem na branch padrão. Enquanto este arquivo viveu só
-# na branch de trabalho, ele não apareceu em lugar nenhum: medido em
-# 19/08/2026, a API respondeu `total_count: 0` na lista de workflows e 404 no
-# disparo. O pipeline foi escrito em 18/08 e nunca rodou uma vez.
+# Workflow oficial para enviar uma branch de trabalho ao projeto Apps Script de HOMOLOGAÇÃO.
+# O destino vem exclusivamente dos segredos CLASP_JSON_HOMOLOG / CLASP_DEPLOYMENT_ID_HOMOLOG.
 #
-# Estando na main, o `ref` do disparo continua podendo ser a branch de
-# trabalho — é dela que o código sai. É o que a trava do `if` abaixo garante.
-#
-# ANTES DE RODAR, confirmar que existem os segredos do repositório:
-#   CLASPRC_JSON              credencial da conta Google que tem acesso
-#   CLASP_JSON_HOMOLOG        { "scriptId": "..." } do projeto de HOMOLOGAÇÃO
-#   CLASP_DEPLOYMENT_ID_HOMOLOG   (opcional — ver a nota sobre publicar)
+# Segredos necessários:
+#   CLASPRC_JSON
+#   CLASP_JSON_HOMOLOG
+#   CLASP_DEPLOYMENT_ID_HOMOLOG (opcional para atualizar a publicação web)
 
 name: Deploy Homologacao Apps Script
 
@@ -25,9 +18,8 @@ permissions:
 
 jobs:
   deploy:
-    # Trava de segurança: só a branch de trabalho serve de origem. Sem isto,
-    # qualquer branch poderia sobrescrever a homologação.
-    if: github.ref == 'refs/heads/claude/sisgep-project-analysis-h9wcy3'
+    # Trava de segurança: apenas a branch atual do Compasso 2026 pode ser enviada.
+    if: github.ref == 'refs/heads/feat/compasso-2026-hardening'
     runs-on: ubuntu-latest
 
     steps:
@@ -42,14 +34,6 @@ jobs:
       - name: Instalar clasp
         run: npm install -g @google/clasp
 
-      # A VALIDAÇÃO VEM ANTES DE TUDO — REGRA Nº -2.
-      #
-      # Um .html com <script> desbalanceado derruba o JavaScript da página
-      # inteira, e o sintoma não aponta para o culpado: todos os módulos param
-      # de responder ao mesmo tempo, sem erro visível. Subir isso para a
-      # homologação custa uma tarde de caça ao fantasma. O t46 varre sintaxe
-      # de todo .gs, sintaxe de todo bloco <script>, balanço de tags,
-      # </script> dentro de string e scriptlet em comentário.
       - name: Instalar ferramental de teste
         run: npm ci || npm install
 
@@ -86,18 +70,6 @@ jobs:
           echo "numero=$NUM" >> "$GITHUB_OUTPUT"
           echo "Versao criada: $NUM"
 
-      # PUBLICAR NÃO É SUBIR, E VERSÃO NÃO É PUBLICAÇÃO.
-      #
-      # `clasp push` sobe o código e `clasp version` congela um número — mas
-      # a URL do web app continua servindo a publicação anterior. Era o que
-      # faltava aqui: o workflow terminava verde e a homologação seguia com o
-      # código antigo. É a mesma armadilha do "salvar não basta" que já custou
-      # tempo neste projeto várias vezes.
-      #
-      # `clasp deploy` SEM deploymentId cria uma publicação NOVA, com URL
-      # NOVA — o que não serve para homologação, onde o endereço precisa ser
-      # estável. Por isso o id vem de segredo. Sem ele, o passo NÃO inventa
-      # publicação: avisa em alto e bom som que falta publicar na mão.
       - name: Publicar na URL de homologacao
         shell: bash
         env:
@@ -107,8 +79,7 @@ jobs:
           set -euo pipefail
           if [ -z "${DEPLOY_ID}" ]; then
             echo "::warning::CLASP_DEPLOYMENT_ID_HOMOLOG nao configurado."
-            echo "::warning::O CODIGO SUBIU E A VERSAO ${VERSAO} FOI CRIADA, MAS A HOMOLOGACAO AINDA SERVE A PUBLICACAO ANTERIOR."
-            echo "::warning::Publique manualmente: Apps Script > Implantar > Gerenciar implantacoes > editar > Versao ${VERSAO}."
+            echo "::warning::O codigo subiu e a versao ${VERSAO} foi criada, mas a URL de homologacao ainda serve a publicacao anterior."
             exit 0
           fi
           clasp deploy --deploymentId "${DEPLOY_ID}" --versionNumber "${VERSAO}" \
