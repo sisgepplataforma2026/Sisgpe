@@ -49,9 +49,35 @@ Coberto por `tests/e2e/t68-ambiente-recursos.js`: 51 asserções, 5 mutações
 mortas. O que o emulador **não** prova: que a pasta certa recebeu o arquivo no
 Drive de verdade, porque Drive ali é apenas registrado.
 
+**✅ A pergunta foi respondida em 20/08/2026, 13:20.** O usuário rodou
+`diagnosticoAmbienteRecursos_()` no editor da homologação e a saída veio:
+
+```
+  Script Property SISGEP_AMBIENTE : "homologacao"
+  Ambiente resolvido              : HOMOLOGACAO
+  PLANILHA
+    id em uso : 1OGtjryOUagEgKMHjFaluiEgLnzZ11Ydc-PB-IdrHLMk   ← a de homologação
+  COMPROVANTES        1COhM0dIacpViZPajSrTuPA9Mfwq6Xkta   ✅ ok
+  RECIBOS             1tc21Wyl4ulIxEqlXpH6LtCKnjOwssnjr   ✅ ok
+  RELATORIOS          1dIl0eav3fXD_eh_u9y-jnYquQ4UgGbQS   ✅ ok
+  VOUCHER_DOCUMENTOS  1sNj2mcvuS8Cl7nojHMmdlIFyVZProPDu   ✅ ok
+```
+
+Ou seja: a propriedade está setada, a planilha em uso é a de homologação (não
+a dos ~8.000 associados) e as quatro pastas resolvem para as de homologação.
+
+**O caminho até essa saída não foi direto, e vale registrado.** Na primeira
+tentativa a função não existia no projeto: `ReferenceError:
+diagnosticoAmbienteRecursos_ is not defined`. O deploy tinha terminado verde,
+mas um segundo caminho de deploy — `deploy-documentos-security-hml.js`, que
+reescrevia a lista inteira de arquivos a partir de uma leitura anterior —
+desfez a publicação 44 segundos depois. `AmbienteRecursos.gs` sumiu do projeto
+e 8 arquivos voltaram à versão velha, sem que nada acusasse. Republicado, e o
+caminho concorrente foi aposentado no mesmo dia.
+
 | | |
 |---|---|
-| 🔴 Rodar `diagnosticoAmbienteRecursos_()` no editor da HOMOLOGAÇÃO | tem que dizer `SISGEP_AMBIENTE: "homologacao"` e ✅ nas 4 pastas |
+| ✅ Rodar `diagnosticoAmbienteRecursos_()` no editor da HOMOLOGAÇÃO | **feito em 20/08 13:20** — `homologacao` e ✅ nas 4 pastas |
 | 🔴 Rodar o mesmo no editor da PRODUÇÃO | tem que dizer `producao` e ✅ nas 4 pastas |
 | 🔴 Lançar um comprovante na homologação | o arquivo tem que aparecer em `SISGEP - Comprovantes - HOMOLOGACAO`, e nenhum arquivo novo na pasta de produção |
 | 🔴 Emitir um recibo na homologação | idem, em `SISGEP - Recibos - HOMOLOGACAO` |
