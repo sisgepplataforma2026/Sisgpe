@@ -5,6 +5,7 @@ on:
     branches:
       - integracao/sisgep-homologacao
     paths:
+      - FilaOficios.gs
       - scripts/hotfix-fila-envio-agora.js
       - .github/workflows/hotfix-fila-homologacao.yml
   workflow_dispatch:
