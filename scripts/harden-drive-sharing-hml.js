@@ -7,10 +7,11 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const FIX = process.argv.includes('--fix');
 
-// Escopo P0 do módulo Documentos. Não altera módulos públicos que possam
-// depender deliberadamente de compartilhamento externo.
+// Escopo P0 do módulo Documentos. Inclui a cópia legada inerte para evitar
+// regressão por reaproveitamento de código inseguro no futuro.
 const TARGETS = [
   'Comprovantes.gs',
+  'ComprovantesNF.html',
   'RelatoriosOficios.gs'
 ];
 
@@ -31,6 +32,12 @@ function lineOf(text, index) {
   return text.slice(0, index).split('\n').length;
 }
 
+function normalizeComments(text) {
+  return text
+    .replace(/\/\/\s*✅\s*Libera acesso público ao PDF/g, '// 🔒 Mantém o PDF privado no Drive')
+    .replace(/\/\/\s*✅\s*Libera acesso para qualquer pessoa com o link/g, '// 🔒 Mantém o PDF privado no Drive');
+}
+
 function hardenTargets() {
   let total = 0;
 
@@ -40,24 +47,27 @@ function hardenTargets() {
 
     const original = fs.readFileSync(target, 'utf8');
     const matches = original.match(SET_SHARING_PUBLIC_RE) || [];
+    let updated = original;
 
-    if (!matches.length) {
+    if (matches.length) {
+      if (!FIX) {
+        console.error(`P0: ${rel} ainda possui ${matches.length} compartilhamento(s) público(s).`);
+      } else {
+        updated = updated.replace(SET_SHARING_PUBLIC_RE, SET_SHARING_PRIVATE);
+        total += matches.length;
+        console.log(`FIX: ${rel} teve ${matches.length} compartilhamento(s) alterado(s) para PRIVATE/NONE.`);
+      }
+    } else {
       console.log(`${rel}: nenhum setSharing público para corrigir.`);
-      continue;
     }
 
-    if (!FIX) {
-      console.error(`P0: ${rel} ainda possui ${matches.length} compartilhamento(s) público(s).`);
-      continue;
+    if (FIX) {
+      updated = normalizeComments(updated);
+      if (updated !== original) fs.writeFileSync(target, updated, 'utf8');
     }
-
-    const updated = original.replace(SET_SHARING_PUBLIC_RE, SET_SHARING_PRIVATE);
-    fs.writeFileSync(target, updated, 'utf8');
-    total += matches.length;
-    console.log(`FIX: ${rel} teve ${matches.length} compartilhamento(s) alterado(s) para PRIVATE/NONE.`);
   }
 
-  if (FIX) console.log(`Total de compartilhamentos públicos corrigidos: ${total}.`);
+  if (FIX) console.log(`Total de compartilhamentos públicos corrigidos nesta execução: ${total}.`);
 }
 
 function auditPublicSharing() {
@@ -87,7 +97,7 @@ function auditPublicSharing() {
     return false;
   }
 
-  console.log('\nAUDITORIA P0 OK: zero compartilhamentos públicos em Comprovantes.gs e RelatoriosOficios.gs.');
+  console.log('\nAUDITORIA P0 OK: zero compartilhamentos públicos nos fontes documentais auditados.');
   return true;
 }
 
