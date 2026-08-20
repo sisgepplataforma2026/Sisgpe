@@ -1,7 +1,7 @@
 {
-  "medidoEm": "2026-08-19",
-  "totalPublicas": 854,
-  "protegidas": 522,
+  "medidoEm": "2026-08-20",
+  "totalPublicas": 881,
+  "protegidas": 547,
   "expostas": [
     {
       "nome": "validarCPF",
@@ -31,6 +31,16 @@
     {
       "nome": "beneficiosPrepararLinkInteresse",
       "arquivo": "BeneficiosLinkInteresse.gs",
+      "escreve": false
+    },
+    {
+      "nome": "bingo_estadoPublico",
+      "arquivo": "BingoLinks.gs",
+      "escreve": false
+    },
+    {
+      "nome": "bingo_realtimeInfoPublico",
+      "arquivo": "BingoRealtime.gs",
       "escreve": false
     },
     {
