@@ -4,9 +4,17 @@
  * nome, escola, categoria, número e QR seguro.
  */
 
-function compasso_configurarArteBaseDrive(fileId) {
-  fileId = String(fileId || '').trim();
-  if (!fileId) throw new Error('Informe o ID do arquivo da arte oficial no Google Drive.');
+function compasso_extrairDriveFileId_(valor) {
+  valor = String(valor || '').trim();
+  if (!valor) return '';
+  if (/^[A-Za-z0-9_-]{20,}$/.test(valor)) return valor;
+  var m = valor.match(/\/d\/([A-Za-z0-9_-]{20,})/) || valor.match(/[?&]id=([A-Za-z0-9_-]{20,})/);
+  return m ? m[1] : '';
+}
+
+function compasso_configurarArteBaseDrive(fileIdOuUrl) {
+  var fileId = compasso_extrairDriveFileId_(fileIdOuUrl);
+  if (!fileId) throw new Error('Informe o ID ou link válido do arquivo da arte oficial no Google Drive.');
   var f = DriveApp.getFileById(fileId);
   var tipo = String(f.getMimeType() || '');
   if (tipo.indexOf('image/') !== 0) throw new Error('A arte-base precisa ser um arquivo de imagem.');
@@ -102,4 +110,49 @@ function compasso_testarIngressoPorInscricao(inscricaoId) {
   var ins = fs_get_('inscricoesEventos', String(inscricaoId || '').trim());
   if (!ins || !ins.ingressoId) throw new Error('Inscrição sem ingresso emitido.');
   return compasso_abrirIngresso(ins.ingressoId);
+}
+
+/**
+ * Teste ponta a ponta de homologação:
+ * inscrição -> validação -> emissão -> dados do ingresso.
+ * Usa CPF/pessoaId únicos por execução para não conflitar com testes anteriores.
+ */
+function compasso_testePontaAPontaIngresso() {
+  if (!emissao_modoTeste_()) throw new Error('Teste ponta a ponta permitido somente em homologação.');
+  var sufixo = String(new Date().getTime());
+  var pessoaId = 'HML-PESSOA-' + sufixo;
+  var cpf = ('00000000000' + sufixo.slice(-11)).slice(-11);
+
+  var inscricao = compasso_criarInscricaoAssociado({
+    pessoaId: pessoaId,
+    nome: 'TESTE HOMOLOGACAO COMPASSO',
+    cpf: cpf,
+    escola: 'ESCOLA TESTE HOMOLOGACAO',
+    cidade: 'VITORIA',
+    regiao: 'METROPOLITANA',
+    email: 'teste.homologacao@example.com',
+    whatsapp: '27999999999',
+    origem: 'HOMOLOGACAO'
+  });
+  if (!inscricao.ok) return {etapa:'INSCRICAO',ok:false,resultado:inscricao};
+
+  var validacao = compasso_validarDecisaoAdmin(inscricao.inscricaoId, COMPASSO_STATUS.VALIDADA, '', 'Teste automatizado de homologação');
+  if (!validacao.ok) return {etapa:'VALIDACAO',ok:false,resultado:validacao};
+
+  var emissao = compasso_emitirIngressoV2({inscricaoId: inscricao.inscricaoId});
+  if (!emissao.ok) return {etapa:'EMISSAO',ok:false,resultado:emissao,inscricaoId:inscricao.inscricaoId};
+
+  var dados = compasso_ingressoDados(emissao.id);
+  compasso_auditar_('TESTE_PONTA_A_PONTA_INGRESSO','ingresso',emissao.id,{inscricaoId:inscricao.inscricaoId,numero:emissao.numero});
+  return {
+    ok:true,
+    inscricaoId:inscricao.inscricaoId,
+    ingressoId:emissao.id,
+    numero:emissao.numero,
+    nome:dados.nome,
+    escola:dados.escola,
+    categoria:dados.categoria,
+    qrGerado:!!dados.qrToken,
+    arteConfigurada:compasso_statusArteBase().configurada
+  };
 }
