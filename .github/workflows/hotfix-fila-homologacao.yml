@@ -201,34 +201,64 @@ jobs:
             rm -f /tmp/tk /tmp/sid /tmp/resp.json
           fi
 
-          # O TOKEN DE ACESSO DURA ~1 HORA. O QUE IMPORTA E O REFRESH.
+          # RENOVAR O TOKEN NOS MESMOS, PORQUE O CLASP 3.3.0 NAO RENOVA.
           #
-          # Medido em 20/08/2026: o access_token guardado no segredo venceu
-          # em 19/08 as 20:13, e a chamada direta devolveu 401. Isso e
-          # ESPERADO — quem sustenta uma credencial em CI e o refresh_token,
-          # nao o access_token. Se o refresh funciona, o segredo dura meses;
-          # se nao funciona, ele morre em uma hora e nenhum "colar de novo"
-          # resolve por mais que algumas horas.
+          # MEDIDO em 20/08/2026, e nao suposto:
           #
-          # Este bloco testa o refresh direto no endpoint do Google e mostra
-          # o erro EXATO. Nada de token e impresso: so o codigo HTTP e os
-          # campos `error` e `error_description`, que nao contem credencial.
-          node > /tmp/ref.txt 2>&1 <<'JS' || true
+          #   expiry_date do segredo ... 19/08 20:13  (vencido)
+          #   chamada direta a API ..... HTTP 401 UNAUTHENTICATED
+          #   renovacao no endpoint .... HTTP 200, token novo, 3599s
+          #
+          # Ou seja: a credencial do segredo esta PERFEITA. O refresh_token
+          # funciona. Quem falha e o clasp 3.3.0, que sai com o access_token
+          # vencido em vez de renova-lo.
+          #
+          # Como a renovacao comprovadamente funciona, este passo a faz e
+          # reescreve o ~/.clasprc.json com um token fresco ANTES de chamar
+          # o clasp. O clasp entao nao precisa renovar nada.
+          #
+          # EFEITO COLATERAL BOM: o segredo deixa de ter validade pratica.
+          # Antes, o access_token guardado nele vencia em uma hora; agora so
+          # o refresh_token importa, e esse dura ate ser revogado.
+          #
+          # Nenhum token e impresso. So o codigo HTTP e, em caso de erro, os
+          # campos `error` e `error_description`.
+          echo "--- renovando o token antes de chamar o clasp:"
+          node > /tmp/body 2>/dev/null <<'JS'
           const fs = require("fs");
           const rc = JSON.parse(fs.readFileSync(process.env.HOME + "/.clasprc.json", "utf8"));
-          const t = (rc.tokens && (rc.tokens.default || rc.tokens[Object.keys(rc.tokens)[0]])) || rc.token || {};
-          fs.writeFileSync("/tmp/ref_body",
+          const chave = rc.tokens ? (rc.tokens.default ? "default" : Object.keys(rc.tokens)[0]) : null;
+          const t = chave ? rc.tokens[chave] : (rc.token || {});
+          process.stdout.write(
             "client_id=" + encodeURIComponent(t.client_id || "") +
             "&client_secret=" + encodeURIComponent(t.client_secret || "") +
             "&refresh_token=" + encodeURIComponent(t.refresh_token || "") +
             "&grant_type=refresh_token");
           JS
-          cat /tmp/ref.txt
-          echo "--- teste de renovacao do token:"
-          curl -s -o /tmp/ref_resp.json -w "HTTP %{http_code}\n" \
-            -X POST -d @/tmp/ref_body https://oauth2.googleapis.com/token || true
-          node -e 'const j=JSON.parse(require("fs").readFileSync("/tmp/ref_resp.json","utf8"));if(j.error){console.log("error:",j.error);console.log("error_description:",j.error_description||"(sem descricao)");}else{console.log("RENOVACAO FUNCIONOU — token novo obtido, expira em",j.expires_in,"segundos");}' || true
-          rm -f /tmp/ref_body /tmp/ref_resp.json
+          curl -s -o /tmp/novo.json -w "HTTP %{http_code}\n" \
+            -X POST -d @/tmp/body https://oauth2.googleapis.com/token
+
+          node <<'JS'
+          const fs = require("fs");
+          const r = JSON.parse(fs.readFileSync("/tmp/novo.json", "utf8"));
+          if (r.error) {
+            console.error("::error::Falha ao renovar o token: " + r.error +
+              " — " + (r.error_description || "sem descricao"));
+            console.error("::error::Se for invalid_grant, o refresh_token foi revogado:" +
+              " rode `clasp login` de novo e atualize o segredo CLASPRC_JSON.");
+            process.exit(1);
+          }
+          const caminho = process.env.HOME + "/.clasprc.json";
+          const rc = JSON.parse(fs.readFileSync(caminho, "utf8"));
+          const chave = rc.tokens ? (rc.tokens.default ? "default" : Object.keys(rc.tokens)[0]) : null;
+          const alvo = chave ? rc.tokens[chave] : rc.token;
+          alvo.access_token = r.access_token;
+          alvo.expiry_date = Date.now() + (Number(r.expires_in) || 3600) * 1000;
+          if (r.id_token) alvo.id_token = r.id_token;
+          fs.writeFileSync(caminho, JSON.stringify(rc));
+          console.log("token renovado; validade ate " + new Date(alvo.expiry_date).toISOString());
+          JS
+          rm -f /tmp/body /tmp/novo.json
 
           clasp pull
           cp FilaOficios.gs FilaOficios.gs.antes-hotfix
