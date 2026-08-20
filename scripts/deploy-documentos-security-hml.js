@@ -5,7 +5,21 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const SCRIPT_ID = '1S_LckCVMJy0dza6tlw5w9Vq7ZqJ9RzxsrYoPMR1zI65rKXC-JgvDUSVR';
+/* POSIÇÃO 41: É "I" MAIÚSCULO (U+0049), NÃO "l" MINÚSCULO (U+006C).
+ *
+ * Este arquivo nasceu com o `l` e por isso nunca conseguiu implantar uma vez
+ * — a API respondia "Request contains an invalid argument", que não diz nada
+ * sobre o ID estar errado, e manda procurar no lugar errado.
+ *
+ * É o MESMO defeito que já tinha custado um dia inteiro de depuração em
+ * 20/08/2026 e que o commit 5e30919 consertou nos workflows. As duas letras
+ * são idênticas na tela em quase toda fonte; conferir a olho não funciona —
+ * não funcionou na primeira vez nem na segunda.
+ *
+ * Quem guarda isto agora é tests/e2e/t69-scriptid-homologacao.js, que compara
+ * byte a byte todo Script ID do repositório contra o do workflow que implanta
+ * de verdade. Se precisar mexer aqui, COPIE aquele valor em vez de redigitar. */
+const SCRIPT_ID ='1S_LckCVMJy0dza6tlw5w9Vq7ZqJ9RzxsrYoPMR1zI65rKXC-JgvDUSVR';
 const DEPLOYMENT_ID = 'AKfycbzOfoQ4y2yc7oM9hiz2ATvB6YztGEMDjgO1FiezQ0schgqcOJnJgROzCC3sEeV6h4n0ZA';
 const TARGETS = [
   { local: 'Comprovantes.gs', name: 'Comprovantes', type: 'SERVER_JS' },
