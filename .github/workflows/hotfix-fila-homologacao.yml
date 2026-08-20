@@ -201,6 +201,35 @@ jobs:
             rm -f /tmp/tk /tmp/sid /tmp/resp.json
           fi
 
+          # O TOKEN DE ACESSO DURA ~1 HORA. O QUE IMPORTA E O REFRESH.
+          #
+          # Medido em 20/08/2026: o access_token guardado no segredo venceu
+          # em 19/08 as 20:13, e a chamada direta devolveu 401. Isso e
+          # ESPERADO — quem sustenta uma credencial em CI e o refresh_token,
+          # nao o access_token. Se o refresh funciona, o segredo dura meses;
+          # se nao funciona, ele morre em uma hora e nenhum "colar de novo"
+          # resolve por mais que algumas horas.
+          #
+          # Este bloco testa o refresh direto no endpoint do Google e mostra
+          # o erro EXATO. Nada de token e impresso: so o codigo HTTP e os
+          # campos `error` e `error_description`, que nao contem credencial.
+          node > /tmp/ref.txt 2>&1 <<'JS' || true
+          const fs = require("fs");
+          const rc = JSON.parse(fs.readFileSync(process.env.HOME + "/.clasprc.json", "utf8"));
+          const t = (rc.tokens && (rc.tokens.default || rc.tokens[Object.keys(rc.tokens)[0]])) || rc.token || {};
+          fs.writeFileSync("/tmp/ref_body",
+            "client_id=" + encodeURIComponent(t.client_id || "") +
+            "&client_secret=" + encodeURIComponent(t.client_secret || "") +
+            "&refresh_token=" + encodeURIComponent(t.refresh_token || "") +
+            "&grant_type=refresh_token");
+          JS
+          cat /tmp/ref.txt
+          echo "--- teste de renovacao do token:"
+          curl -s -o /tmp/ref_resp.json -w "HTTP %{http_code}\n" \
+            -X POST -d @/tmp/ref_body https://oauth2.googleapis.com/token || true
+          node -e 'const j=JSON.parse(require("fs").readFileSync("/tmp/ref_resp.json","utf8"));if(j.error){console.log("error:",j.error);console.log("error_description:",j.error_description||"(sem descricao)");}else{console.log("RENOVACAO FUNCIONOU — token novo obtido, expira em",j.expires_in,"segundos");}' || true
+          rm -f /tmp/ref_body /tmp/ref_resp.json
+
           clasp pull
           cp FilaOficios.gs FilaOficios.gs.antes-hotfix
           cp OficiosScripts.html OficiosScripts.html.antes-hotfix
