@@ -127,7 +127,10 @@ var nomeAnexo = sanitizarNomeArquivoComprovante_(
 );
 blob.setName(nomeAnexo);
 var salvo = pastaMes.createFile(blob);
-salvo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); // ✅
+// 🔒 Segurança/LGPD: anexos de comprovantes não podem ser publicados por link.
+// O arquivo permanece restrito; acesso externo deve ocorrer por fluxo autenticado
+// ou por anexo de e-mail, nunca por permissão pública no Drive.
+salvo.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
 
       ids.push(salvo.getId());
       nomes.push(salvo.getName());
