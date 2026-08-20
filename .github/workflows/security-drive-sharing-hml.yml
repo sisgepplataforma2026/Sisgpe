@@ -6,6 +6,7 @@ on:
       - integracao/sisgep-homologacao
     paths:
       - scripts/harden-drive-sharing-hml.js
+      - scripts/deploy-documentos-security-hml.js
       - Comprovantes.gs
       - ComprovantesNF.html
       - RelatoriosOficios.gs
@@ -57,13 +58,33 @@ jobs:
           set -euo pipefail
           if git diff --quiet -- Comprovantes.gs ComprovantesNF.html RelatoriosOficios.gs; then
             echo 'P0 documental ja estava endurecido.'
-            exit 0
+          else
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add Comprovantes.gs ComprovantesNF.html RelatoriosOficios.gs
+            git commit -m 'security: remover compartilhamento publico do Documentos'
+            git push origin HEAD:integracao/sisgep-homologacao
           fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add Comprovantes.gs ComprovantesNF.html RelatoriosOficios.gs
-          git commit -m 'security: remover compartilhamento publico do Documentos'
-          git push origin HEAD:integracao/sisgep-homologacao
 
       - name: Auditoria final obrigatoria
         run: node scripts/harden-drive-sharing-hml.js
+
+      - name: Publicar seletivamente na Web App de Homologacao
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node scripts/deploy-documentos-security-hml.js
+
+      - name: Registrar comprovante do deploy HML
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f .ci/security-documentos-hml-deploy.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .ci/security-documentos-hml-deploy.json
+          if git diff --cached --quiet; then
+            echo 'Comprovante de deploy sem alteracao.'
+            exit 0
+          fi
+          git commit -m 'ci: registrar deploy P0 Documentos HML'
+          git push origin HEAD:integracao/sisgep-homologacao
