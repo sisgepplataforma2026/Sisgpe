@@ -48,9 +48,26 @@ jobs:
             ! grep -q 'DriveApp.Access.ANYONE_WITH_LINK' "$f"
             ! grep -q 'DriveApp.Access.ANYONE[^_]' "$f" || false
           done
-          grep -q 'DriveApp.Access.PRIVATE, DriveApp.Permission.NONE' Comprovantes.gs
+          # A POLITICA SAIU DO TEXTO LITERAL E VIROU CHAMADA — 20/08/2026.
+          #
+          # Antes exigia-se, com grep, a string exata
+          # "DriveApp.Access.PRIVATE, DriveApp.Permission.NONE" dentro de
+          # cada arquivo. Isso amarrava a checagem a UMA forma de escrever a
+          # regra, e nao a regra em si: bastava alguem reescrever a mesma
+          # protecao de outro jeito para o CI reprovar codigo correto.
+          #
+          # Agora a decisao de compartilhamento mora em ArquivoDrive.gs, e o
+          # que se exige e o que de fato importa: os .gs chamam o helper e
+          # nenhum deles chama setSharing por conta propria.
+          grep -q 'arquivoAplicarPolitica_' Comprovantes.gs
+          grep -q 'arquivoAplicarPolitica_' RelatoriosOficios.gs
+          ! grep -q '\.setSharing(' Comprovantes.gs
+          ! grep -q '\.setSharing(' RelatoriosOficios.gs
+          # ComprovantesNF.html e a copia MORTA de Comprovantes.gs — sem tags
+          # de script, sem include, ninguem a referencia. Nao executa, e por
+          # isso nao foi migrada (REGRA Nº 1: fica, documentada). A checagem
+          # dela continua na forma antiga, que e a que o arquivo tem.
           grep -q 'DriveApp.Access.PRIVATE, DriveApp.Permission.NONE' ComprovantesNF.html
-          grep -q 'DriveApp.Access.PRIVATE, DriveApp.Permission.NONE' RelatoriosOficios.gs
           node scripts/harden-drive-sharing-hml.js
           git --no-pager diff --check -- Comprovantes.gs ComprovantesNF.html RelatoriosOficios.gs
 

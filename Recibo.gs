@@ -546,10 +546,7 @@ const textoPgto = forma === "CHEQUE"
   var pdfFile = recibo_converterHtmlParaPdf_(html, nomeArquivo, pastaAno);
 
   try {
-    pdfFile.setSharing(
-      DriveApp.Access.ANYONE_WITH_LINK,
-      DriveApp.Permission.VIEW
-    );
+    arquivoAplicarPolitica_(pdfFile, "Recibo.gs");
   } catch(e) {}
 
   const fileId = pdfFile.getId();
@@ -1707,14 +1704,16 @@ function montarMensagemEmailReciboSimples_(dados) {
 
       "<p><strong>📄 Recibo:</strong> " + recibo + "</p>" +
 
-      "<p>" +
-        "👉 <a href='" + link + "' target='_blank'>Clique aqui para acessar seu recibo</a>" +
-      "</p>" +
+      /* O PDF JÁ VAI ANEXADO (attachments: anexos, mais abaixo). O link
+         apontava para o arquivo no Drive, que era público para quem tivesse
+         a URL — 20/08/2026. Fechado o compartilhamento, ele deixaria de
+         abrir; e era redundante, porque o documento vem no anexo. */
+      "<p>📄 O recibo segue <strong>em anexo</strong> neste e-mail.</p>" +
 
       "<p><strong>📌 Para finalizar, siga os passos abaixo:</strong></p>" +
 
       "<ol style='padding-left:18px;'>" +
-        "<li>Abrir o recibo no link acima</li>" +
+        "<li>Abrir o recibo em anexo</li>" +
         "<li>Imprimir o documento</li>" +
         "<li>Assinar o recibo</li>" +
         "<li>Tirar uma foto ou escanear</li>" +
@@ -4103,10 +4102,7 @@ function testarPermissaoDriveRecibo() {
     resultado.etapa = "definindo compartilhamento";
 
     try {
-      pdfFile.setSharing(
-        DriveApp.Access.ANYONE_WITH_LINK,
-        DriveApp.Permission.VIEW
-      );
+      arquivoAplicarPolitica_(pdfFile, "Recibo.gs");
     } catch (eShare) {
       Logger.log("⚠ Não foi possível liberar compartilhamento: " + eShare.message);
     }

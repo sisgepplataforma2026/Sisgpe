@@ -401,7 +401,7 @@ function salvarHtmlComoPdfVoucher_(html, nomeArquivo) {
   const file = pasta.createFile(blobPdf);
 
   try {
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    arquivoAplicarPolitica_(file, "VoucherPdf.gs");
   } catch (e) {}
 
   return {

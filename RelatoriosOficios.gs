@@ -260,7 +260,7 @@ function relOficios_exportarPlanilhaTemporaria_(planilhaTemp, nomeArquivo, tipoE
     }).getBlob().setName(nomeArquivo + "." + formato);
 
     var arquivo = DriveApp.createFile(blob);
-    arquivo.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+    arquivoAplicarPolitica_(arquivo, "RelatoriosOficios.gs");
 
     try { DriveApp.getFileById(idTemp).setTrashed(true); } catch(e) {}
 

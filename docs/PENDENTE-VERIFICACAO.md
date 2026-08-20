@@ -12,6 +12,39 @@
 
 ## 🔴 ABERTO
 
+### 28. O acervo do Drive que já foi gravado público
+**Aberto em:** 20/08/2026 · nenhum arquivo do repositório — é operação no Drive
+
+O código parou de abrir arquivo: `ArquivoDrive.gs` centralizou a política em
+PRIVATE/NONE e os 23 `setSharing(ANYONE_WITH_LINK)` que existiam em 14 arquivos
+não existem mais. **Isso vale só daqui para a frente.**
+
+Todo PDF gravado ANTES dessa mudança continua exatamente como foi gravado:
+acessível a qualquer pessoa que tenha a URL, sem login e sem expiração. São
+recibos, comprovantes, documentos jurídicos, holerites e documentos de voucher
+— com CPF, valor e nome de associado.
+
+**Este é o item mais urgente da lista**, porque é exposição que já existe agora,
+e não risco futuro. Nenhum teste do repositório alcança: é o Drive real.
+
+Roteiro para fechar:
+
+1. Rodar uma varredura nas pastas de PRODUÇÃO (`PASTAS` em `SistemaConfig.gs`,
+   mais `PASTA_COMPROVANTES_ID` e `PASTA_VOUCHER_DOCUMENTOS_ID` em
+   `AmbienteRecursos.gs`) contando quantos arquivos têm `getSharingAccess()`
+   diferente de `PRIVATE`. **Só contar, sem alterar** — para saber o tamanho.
+2. Com o número na mão, decidir se revoga tudo de uma vez ou por pasta.
+3. Revogar com `setSharing(PRIVATE, NONE)`, em lote, com registro do que mudou.
+4. Conferir que nenhum fluxo vivo dependia daqueles links. Ofícios é o único
+   módulo em operação e **não** compartilha arquivo — conferido em 20/08.
+
+| | |
+|---|---|
+| 🔴 Contar quantos arquivos públicos existem hoje nas pastas de produção | sem alterar nada — é medição |
+| 🔴 Decidir e executar a revogação | com registro do que foi alterado |
+| 🔴 Conferir que Ofícios seguiu intacto | é a única operação viva |
+
+
 ### 27. Isolamento das pastas do Drive entre produção e homologação
 **Aberto em:** 20/08/2026 · `AmbienteRecursos.gs` (novo), `Comprovantes.gs`,
 `Voucher.gs`, `RelatoriosBackend.gs`, `Recibo.gs`, `ReciboDiversos.gs`,

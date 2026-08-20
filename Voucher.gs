@@ -1273,7 +1273,7 @@ function salvarDocumentoVoucher_(idSolicitacao, cpf, arquivo, tipoDocumento, obs
     const file = pasta.createFile(blob);
 
     try {
-      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      arquivoAplicarPolitica_(file, "Voucher.gs");
     } catch(e) {}
 
     const ss = SpreadsheetApp.openById(PLANILHA_ID);

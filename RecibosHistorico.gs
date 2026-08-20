@@ -418,10 +418,10 @@ function reenviarEmailRecibo(dados, tokenSessao) {
           "<strong>" + processo + "</strong> (" + empresa + ").</p>" +
         "<p><strong>📄 Recibo:</strong> " + numero + "</p>" +
         (valor ? "<p><strong>💰 Valor:</strong> R$ " + valor + "</p>" : "") +
-        "<p>👉 <a href='" + linkPdf + "' target='_blank'>Clique aqui para acessar seu recibo</a></p>" +
+        "<p>📄 O recibo segue <strong>em anexo</strong> neste e-mail.</p>" +
         "<p><strong>📌 Para finalizar:</strong></p>" +
         "<ol style='padding-left:18px;'>" +
-          "<li>Abrir o recibo no link acima</li>" +
+          "<li>Abrir o recibo em anexo</li>" +
           "<li>Imprimir o documento</li>" +
           "<li>Assinar o recibo</li>" +
           "<li>Tirar uma foto ou escanear</li>" +
@@ -435,11 +435,34 @@ function reenviarEmailRecibo(dados, tokenSessao) {
 
     var emailUsuario = String(sessaoDocumentos.email || sessaoDocumentos.usuario || "").trim().toLowerCase();
 
+    /* O PDF VAI ANEXADO, E NÃO POR LINK — 20/08/2026.
+       O e-mail levava só um link para o Drive, e o arquivo era público para
+       quem tivesse a URL. Fechado o compartilhamento, o link deixaria de
+       abrir — e este e-mail inteiro existe para entregar o recibo. Então o
+       documento passa a viajar anexado.
+
+       Se o anexo falhar, o envio PARA. Mandar "segue seu recibo" sem recibo
+       nenhum é pior do que não mandar: o associado espera, não cobra, e o
+       processo trava sem ninguém perceber. */
+    var anexosRecibo = [];
+    var idPdf = linkPdf.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (!idPdf) {
+      return { ok: false, mensagem: "Não reconheci o arquivo do recibo no link gravado." };
+    }
+    try {
+      anexosRecibo.push(
+        DriveApp.getFileById(idPdf[1]).getBlob().setName("Recibo " + numero + ".pdf")
+      );
+    } catch (eAnexo) {
+      return { ok: false, mensagem: "Não consegui anexar o recibo: " + eAnexo.message };
+    }
+
     MailApp.sendEmail({
       to:      email,
       subject: "Reenvio — Seu recibo está disponível — " + numero,
       htmlBody: htmlBody,
-      replyTo: emailUsuario || ""
+      replyTo: emailUsuario || "",
+      attachments: anexosRecibo
     });
 
     // Atualiza status na planilha

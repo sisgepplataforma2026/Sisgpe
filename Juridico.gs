@@ -363,7 +363,7 @@ function jurUploadDocumento(dados, tokenSessao) {
       var blob = Utilities.newBlob(bytes, tipoArq, nomeFinal);
       var pasta = jurObterPastaAnexos_();
       var arquivo = pasta.createFile(blob);
-      try { arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (eShare) {}
+      try { arquivoAplicarPolitica_(arquivo, "Juridico.gs"); } catch (eShare) {}
 
       var link = "https://drive.google.com/file/d/" + arquivo.getId() + "/view";
 
@@ -522,7 +522,7 @@ function jurAdicionarDocumento(dados, tokenSessao) {
       var blob = Utilities.newBlob(bytes, tipoArq, nomeFinal);
       var pasta = jurObterPastaAnexos_();
       var arquivo = pasta.createFile(blob);
-      try { arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (eShare) {}
+      try { arquivoAplicarPolitica_(arquivo, "Juridico.gs"); } catch (eShare) {}
 
       var link = "https://drive.google.com/file/d/" + arquivo.getId() + "/view";
       var id = "DOC-" + Utilities.getUuid().slice(0, 8).toUpperCase();

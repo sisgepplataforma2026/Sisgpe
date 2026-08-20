@@ -369,7 +369,7 @@ function gerarReciboDiverso(dados, tokenSessao) {
     var pdfFile = recibo_converterHtmlParaPdf_(html, nomeArq, pastaAno);
 
     try {
-      pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      arquivoAplicarPolitica_(pdfFile, "ReciboDiversos.gs");
     } catch(e) {}
 
     var fileId      = pdfFile.getId();
@@ -445,7 +445,7 @@ function gerarLoteReciboDiversos(lista, tokenSessao) {
           .trim();
 
         var pdfFile = recibo_converterHtmlParaPdf_(html, nomeArq, pastaAno);
-        try { pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch(e) {}
+        try { arquivoAplicarPolitica_(pdfFile, "ReciboDiversos.gs"); } catch(e) {}
 
         var fileId      = pdfFile.getId();
         var urlPreview  = "https://drive.google.com/file/d/" + fileId + "/preview";
@@ -514,7 +514,9 @@ function rdEnviarEmailIndividual_(dados, numero, urlPdf, blobPdf) {
         "<p>Prezado(a) <strong>" + nome + "</strong>,</p>" +
         "<p>Segue o Recibo Diverso Nº <strong>" + numero + "</strong>, no valor de <strong>R$ " + valor + "</strong>.</p>" +
         "<p><strong>Referente a:</strong> " + descricao + "</p>" +
-        "<p><a href='" + urlPdf + "' target='_blank'>📄 Clique aqui para acessar seu recibo</a></p>" +
+        /* O PDF vai anexado (blobPdf, no fim desta função). O link ia para
+           o Drive, que era público — 20/08/2026. */
+        "<p>📄 O recibo segue <strong>em anexo</strong>.</p>" +
         "<p>Após assinar (físico ou pelo Gov.br), por favor devolva o documento assinado por este e-mail ou WhatsApp.</p>" +
         "<p>Em caso de dúvidas, entre em contato.</p>" +
         "<p><strong>Atenciosamente,</strong><br>SINDEDUCAÇÃO-ES</p>" +
@@ -623,7 +625,7 @@ function salvarAnexoAssinadoDiverso(dados, tokenSessao) {
     var arquivo  = pastaAno.createFile(blob);
 
     try {
-      arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      arquivoAplicarPolitica_(arquivo, "ReciboDiversos.gs");
     } catch(e) {}
 
     var link = "https://drive.google.com/file/d/" + arquivo.getId() + "/preview";
@@ -737,7 +739,10 @@ function enviarReciboDiversoContabilidade(dados, tokenSessao) {
           "<p><strong>Beneficiário:</strong> " + (dados.nome || "") + "</p>" +
           "<p><strong>Valor:</strong> R$ " + (dados.valor || "") + "</p>" +
           "<p><strong>Referente a:</strong> " + (dados.descricao || "") + "</p>" +
-          (linkParaEnviar ? "<p><a href='" + linkParaEnviar + "'>📄 Abrir recibo assinado</a></p>" : "") +
+          /* O arquivo vai anexado logo abaixo, a partir deste mesmo
+             linkParaEnviar. O link no corpo apontava para o Drive, que era
+             público — 20/08/2026. */
+          "<p>📄 O recibo assinado segue <strong>em anexo</strong>.</p>" +
           "<p><strong>Atenciosamente,</strong><br>SINDEDUCAÇÃO-ES</p>" +
         "</div>";
 
@@ -826,16 +831,37 @@ function reenviarEmailReciboDiverso(dados, tokenSessao) {
         "<p>Prezado(a) <strong>" + nome + "</strong>,</p>" +
         "<p>Segue o reenvio do Recibo Diverso Nº <strong>" + numero + "</strong>, no valor de <strong>R$ " + valor + "</strong>.</p>" +
         (desc ? "<p><strong>Referente a:</strong> " + desc + "</p>" : "") +
-        "<p><a href='" + linkPdf + "' target='_blank'>📄 Abrir recibo</a></p>" +
+        "<p>O recibo segue <strong>em anexo</strong> neste e-mail.</p>" +
         "<p>Após assinar (físico ou pelo Gov.br), por favor devolva o documento assinado.</p>" +
         "<p><strong>Atenciosamente,</strong><br>SINDEDUCAÇÃO-ES</p>" +
       "</div>";
 
-    MailApp.sendEmail({
+    /* O PDF VAI ANEXADO, E NÃO POR LINK — 20/08/2026.
+       Este e-mail levava só um link para o arquivo no Drive, e o arquivo era
+       público para quem tivesse a URL. Fechado o compartilhamento, o link
+       deixaria de abrir; então o documento passa a viajar no próprio e-mail.
+       Mesmo padrão já usado no envio em lote, logo acima. */
+    var anexosReenvio = [];
+    var idPdf = linkPdf.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (idPdf) {
+      try {
+        anexosReenvio.push(
+          DriveApp.getFileById(idPdf[1]).getBlob()
+            .setName("ReciboDiverso " + numero + ".pdf")
+        );
+      } catch (eAnexo) {
+        return { ok: false, mensagem: "Não consegui anexar o recibo: " + eAnexo.message };
+      }
+    }
+
+    var opcoesReenvio = {
       to:       email,
       subject:  "Reenvio — Recibo para assinatura Nº " + numero + " — SindEducação-ES",
       htmlBody: htmlBody
-    });
+    };
+    if (anexosReenvio.length) opcoesReenvio.attachments = anexosReenvio;
+
+    MailApp.sendEmail(opcoesReenvio);
 
     rdAtualizarStatusEmail_(numero, "REENVIADO");
 

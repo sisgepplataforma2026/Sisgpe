@@ -549,7 +549,7 @@ function enviarLoteDespesasComOficio(payload, tokenSessao) {
       try {
         var htmlBlob   = Utilities.newBlob(htmlOficio, "text/html", nomeArquivoOficio + ".html");
         var fileOficio = pastaOficio.createFile(htmlBlob);
-        fileOficio.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        arquivoAplicarPolitica_(fileOficio, "Despesas_Oficio_Fiscal.gs");
         linkOficio   = fileOficio.getUrl();
         fileIdOficio = fileOficio.getId();
         Logger.log("✅ Ofício fiscal salvo: " + nomeArquivoOficio);

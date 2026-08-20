@@ -130,7 +130,7 @@ var salvo = pastaMes.createFile(blob);
 // 🔒 Segurança/LGPD: anexos de comprovantes não podem ser publicados por link.
 // O arquivo permanece restrito; acesso externo deve ocorrer por fluxo autenticado
 // ou por anexo de e-mail, nunca por permissão pública no Drive.
-salvo.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+arquivoAplicarPolitica_(salvo, "Comprovantes.gs");
 
       ids.push(salvo.getId());
       nomes.push(salvo.getName());
@@ -565,7 +565,7 @@ function gerarPdfComprovanteWeb(dados) {
     var pdfFile = converterHtmlParaPdfComprovante_(htmlDoc, nomeBase, pastaMes);
 
     // 🔒 Mantém o PDF privado no Drive
-    pdfFile.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+    arquivoAplicarPolitica_(pdfFile, "Comprovantes.gs");
 
     var pdfUrl = "https://drive.google.com/file/d/" + pdfFile.getId() + "/view";
 
@@ -854,7 +854,7 @@ function gerarComprovanteWeb(dados) {
 var pdfFile = converterHtmlParaPdfComprovante_(htmlDoc, nomeBase, pastaMes);
 
 // 🔒 Mantém o PDF privado no Drive
-pdfFile.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+arquivoAplicarPolitica_(pdfFile, "Comprovantes.gs");
 
 var pdfUrl = "https://drive.google.com/file/d/" + pdfFile.getId() + "/view";
 
@@ -1557,7 +1557,7 @@ function gerarPdfLoteComprovantes(dados) {
     );
 
     var pdfFile = converterHtmlParaPdfComprovante_(htmlDoc, nomeBase, pastaMes);
-    pdfFile.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+    arquivoAplicarPolitica_(pdfFile, "Comprovantes.gs");
     var pdfUrl = "https://drive.google.com/file/d/" + pdfFile.getId() + "/view";
 
     // ── Salva arquivos individuais dos itens e registra na aba COMPROVANTES_ITENS ──
@@ -1588,7 +1588,7 @@ function gerarPdfLoteComprovantes(dados) {
           );
           blobItem.setName(nomeItemArq);
           var arqSalvo = pastaMes.createFile(blobItem);
-          arqSalvo.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+          arquivoAplicarPolitica_(arqSalvo, "Comprovantes.gs");
           arquivoId   = arqSalvo.getId();
           arquivoNome = arqSalvo.getName();
           mimeType    = arqSalvo.getMimeType();
