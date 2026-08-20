@@ -1,0 +1,62 @@
+name: Security - Drive sharing HML
+
+on:
+  push:
+    branches:
+      - integracao/sisgep-homologacao
+    paths:
+      - scripts/harden-drive-sharing-hml.js
+      - .github/workflows/security-drive-sharing-hml.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: security-drive-sharing-hml
+  cancel-in-progress: false
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout da Homologacao
+        uses: actions/checkout@v4
+        with:
+          ref: integracao/sisgep-homologacao
+          fetch-depth: 0
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Endurecer compartilhamento do legado Comprovantes
+        run: node scripts/harden-drive-sharing-hml.js --fix || test $? -eq 3
+
+      - name: Validar P0 corrigido no arquivo alvo
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -q 'salvo.setSharing(DriveApp.Access.ANYONE_WITH_LINK' Comprovantes.gs
+          grep -q 'salvo.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);' Comprovantes.gs
+          git --no-pager diff --check -- Comprovantes.gs
+          git --no-pager diff -- Comprovantes.gs
+
+      - name: Registrar correcao na branch de Homologacao
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- Comprovantes.gs; then
+            echo 'Comprovantes.gs ja estava endurecido.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Comprovantes.gs
+          git commit -m 'security: manter anexos de comprovantes privados'
+          git push origin HEAD:integracao/sisgep-homologacao
+
+      - name: Auditoria geral de compartilhamento publico
+        continue-on-error: true
+        run: node scripts/harden-drive-sharing-hml.js
