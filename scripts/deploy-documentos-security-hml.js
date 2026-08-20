@@ -133,12 +133,79 @@ async function main() {
     throw new Error('Manifesto appsscript remoto ausente; abortando.');
   }
 
+  /* ═══════════════════════════════════════════════════════════════════════
+     TRAVA DE CORRIDA — LEU, MUDOU, ESCREVEU
+
+     O QUE ACONTECEU EM 20/08/2026, e que esta trava existe para impedir.
+
+     Este script troca 3 arquivos, mas o PUT em /content REESCREVE A LISTA
+     INTEIRA. Entre o GET da linha 120 e o PUT abaixo existe uma janela; se
+     alguém publicar nessa janela, o PUT devolve o projeto ao estado da
+     LEITURA e apaga o que entrou no meio.
+
+     Foi o que ocorreu. O workflow deploy-homologacao.yml enviou às
+     15:53:37–15:53:46; este script gravou às 15:54:30 com uma foto anterior.
+     Resultado medido pelo modo `conferir` logo depois:
+
+         repositorio: 220 arquivos      homologacao: 219
+         SERIAM CRIADOS: AmbienteRecursos.gs   ← tinha subido e sumiu
+         SERIAM ALTERADOS: 8 arquivos          ← voltaram à versão velha
+
+     Os DOIS deploys terminaram VERDES. O segundo desfez o primeiro sem que
+     nada acusasse — que é a pior forma de defeito, porque o relatório de
+     sucesso é a prova aparente de que deu certo.
+
+     A API do Apps Script não oferece ETag nem If-Match, então não há
+     escrita condicional de verdade. O que dá para fazer é reler imediatamente
+     antes do PUT e recusar se a lista de arquivos mudou. Não fecha a janela;
+     encolhe para milissegundos e, sobretudo, transforma uma reversão
+     SILENCIOSA numa recusa BARULHENTA.
+
+     Se este script abortar aqui, não insista: quem escreveu por último foi
+     outro deploy, e a resposta certa é rodar o deploy-homologacao.yml — que
+     envia o repositório inteiro — em vez de reescrever por cima dele.
+     ═══════════════════════════════════════════════════════════════════════ */
+  const assinatura = lista => lista.map(f => `${f.type}:${f.name}`).sort().join('|');
+  const antes = assinatura(remote.files);
+
+  const revalidar = await api(`${projectPath}/content`, token);
+  if (!Array.isArray(revalidar.files) || !revalidar.files.length) {
+    throw new Error('Releitura do projeto HML voltou sem arquivos; abortando.');
+  }
+  const agora = assinatura(revalidar.files);
+
+  if (antes !== agora) {
+    const nomesAntes = new Set(remote.files.map(f => `${f.type}:${f.name}`));
+    const nomesAgora = new Set(revalidar.files.map(f => `${f.type}:${f.name}`));
+    const surgiram = [...nomesAgora].filter(n => !nomesAntes.has(n));
+    const sumiram = [...nomesAntes].filter(n => !nomesAgora.has(n));
+    throw new Error(
+      'CORRIDA DETECTADA: o projeto HML mudou entre a leitura e a escrita. ' +
+      'Escrever agora apagaria o que outro deploy acabou de publicar. ' +
+      (surgiram.length ? `Surgiram: ${surgiram.join(', ')}. ` : '') +
+      (sumiram.length ? `Sumiram: ${sumiram.join(', ')}. ` : '') +
+      'Rode .github/workflows/deploy-homologacao.yml (modo publicar), que ' +
+      'envia o repositório inteiro, em vez de reescrever por cima.'
+    );
+  }
+
   await api(`${projectPath}/content`, token, {
     method: 'PUT',
     body: JSON.stringify({ files })
   });
 
   const check = await api(`${projectPath}/content`, token);
+
+  /* Verificar só os 3 alvos deixaria passar exatamente o defeito acima: os
+     alvos ficariam certos e o resto teria sido varrido. Confere-se a lista
+     inteira. */
+  if (assinatura(check.files || []) !== antes) {
+    throw new Error(
+      'Pós-escrita: a lista de arquivos do projeto HML não bate com a que ' +
+      'foi enviada. Algum arquivo foi perdido ou criado indevidamente.'
+    );
+  }
+
   for (const target of TARGETS) {
     const expected = localSource(target);
     const got = (check.files || []).find(f => f.name === target.name && f.type === target.type);
