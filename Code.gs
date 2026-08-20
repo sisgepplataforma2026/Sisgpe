@@ -281,10 +281,27 @@ if (p.portal === "associado") {
 }
 function include(nomeArquivo) {
   try {
-    return HtmlService
+    var conteudo = HtmlService
       .createTemplateFromFile(nomeArquivo)
       .evaluate()
       .getContent();
+
+    // Piloto SOFIA · AgentEscolas v0.1.
+    // A extensão visual fica isolada para que a tela principal de Escolas
+    // permaneça intacta e o rollback seja apenas remover este acoplamento.
+    if (String(nomeArquivo || "") === "CadastroEscolas") {
+      try {
+        conteudo += "\n" + HtmlService
+          .createTemplateFromFile("SofiaEscolasUI")
+          .evaluate()
+          .getContent();
+      } catch (eSofiaEscolas) {
+        // Falha da extensão não pode derrubar o módulo de Escolas.
+        Logger.log("include: SofiaEscolasUI não carregada — " + eSofiaEscolas.message);
+      }
+    }
+
+    return conteudo;
   } catch (e) {
     Logger.log("include: arquivo não encontrado — " + nomeArquivo + " — " + e.message);
     return "<!-- include falhou: " + nomeArquivo + " -->";
