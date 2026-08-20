@@ -549,7 +549,7 @@ function enviarOficioDaFilaAgora(numero, tokenSessao) {
   var dados = sh.getRange(2, 1, sh.getLastRow() - 1, totalCols).getValues();
   var linhaIdx = -1;
 
-  for (var i = 0; i < dados.length; i++) {
+  for (var i = dados.length - 1; i >= 0; i--) {
     if (String(dados[i][colNumero - 1] || "").trim() === String(numero).trim()) {
       linhaIdx = i;
       break;
