@@ -163,44 +163,6 @@ jobs:
           echo "--- chaves do .clasp.json: $(node -e 'console.log(Object.keys(JSON.parse(require("fs").readFileSync(".clasp.json","utf8"))).join(", "))')"
           echo "--- chaves do ~/.clasprc.json: $(node -e 'console.log(Object.keys(JSON.parse(require("fs").readFileSync(process.env.HOME+"/.clasprc.json","utf8"))).join(", "))')"
 
-          # PERGUNTAR DIRETO AO GOOGLE, PORQUE O CLASP ENGOLE O MOTIVO.
-          #
-          # `clasp pull` imprime so "Request contains an invalid argument."
-          # e descarta o corpo da resposta — que e justamente onde a API diz
-          # O QUE esta invalido. Este bloco refaz a mesma chamada com curl e
-          # mostra status e mensagem.
-          #
-          # NENHUM TOKEN E IMPRESSO. So o codigo HTTP e os campos `status` e
-          # `message` do erro, que nao contem credencial.
-          node > /tmp/diag.txt 2>&1 <<'JS' || true
-          const fs = require("fs");
-          const rc = JSON.parse(fs.readFileSync(process.env.HOME + "/.clasprc.json", "utf8"));
-          const cfg = JSON.parse(fs.readFileSync(".clasp.json", "utf8"));
-          // v3 guarda em tokens.default; v2 guardava em token. Cobre os dois.
-          const t = (rc.tokens && (rc.tokens.default || rc.tokens[Object.keys(rc.tokens)[0]])) || rc.token || {};
-          console.log("estrutura do token:", Object.keys(t).join(", ") || "(vazia)");
-          console.log("tem access_token:", !!t.access_token);
-          console.log("tem refresh_token:", !!t.refresh_token);
-          if (t.expiry_date) {
-            const venceu = Number(t.expiry_date) < Date.now();
-            console.log("expiry_date:", new Date(Number(t.expiry_date)).toISOString(), venceu ? "(JA VENCEU)" : "(valido)");
-          } else {
-            console.log("expiry_date: ausente");
-          }
-          fs.writeFileSync("/tmp/tk", t.access_token || "");
-          fs.writeFileSync("/tmp/sid", cfg.scriptId || "");
-          JS
-          cat /tmp/diag.txt
-
-          if [ -s /tmp/tk ] && [ -s /tmp/sid ]; then
-            echo "--- resposta crua da API do Apps Script:"
-            curl -s -o /tmp/resp.json -w "HTTP %{http_code}\n" \
-              -H "Authorization: Bearer $(cat /tmp/tk)" \
-              "https://script.googleapis.com/v1/projects/$(cat /tmp/sid)/content" || true
-            node -e 'try{const e=JSON.parse(require("fs").readFileSync("/tmp/resp.json","utf8")).error;if(e){console.log("status:",e.status);console.log("message:",e.message);(e.details||[]).forEach(d=>console.log("detalhe:",JSON.stringify(d).slice(0,300)));}else{console.log("sem bloco de erro — a chamada direta FUNCIONOU");}}catch(x){console.log("resposta nao-JSON");}' || true
-            rm -f /tmp/tk /tmp/sid /tmp/resp.json
-          fi
-
           # RENOVAR O TOKEN NOS MESMOS, PORQUE O CLASP 3.3.0 NAO RENOVA.
           #
           # MEDIDO em 20/08/2026, e nao suposto:
@@ -259,6 +221,28 @@ jobs:
           console.log("token renovado; validade ate " + new Date(alvo.expiry_date).toISOString());
           JS
           rm -f /tmp/body /tmp/novo.json
+
+          # A MEDICAO QUE SEPARA "CLASP" DE "PROJETO".
+          #
+          # A chamada direta rodava ANTES da renovacao, com o token vencido,
+          # e so conseguia devolver 401 — informacao inutil. Agora ela roda
+          # DEPOIS, com token fresco, contra o mesmo scriptId que o clasp
+          # usa. O resultado decide tudo:
+          #
+          #   HTTP 200 -> credencial, permissao e scriptId estao corretos.
+          #               O defeito e do clasp 3.3.0 montando o pedido, e a
+          #               saida e trocar o clasp por chamada direta.
+          #   HTTP 400 -> o problema e o projeto ou o acesso a ele, e nenhum
+          #               ajuste de cliente resolve.
+          #
+          # Nenhum token e impresso; do corpo saem so `status` e `message`.
+          echo "--- chamada direta COM O TOKEN NOVO:"
+          node -e 'const fs=require("fs");const rc=JSON.parse(fs.readFileSync(process.env.HOME+"/.clasprc.json","utf8"));const k=rc.tokens?(rc.tokens.default?"default":Object.keys(rc.tokens)[0]):null;const t=k?rc.tokens[k]:(rc.token||{});fs.writeFileSync("/tmp/tk",t.access_token||"");fs.writeFileSync("/tmp/sid",JSON.parse(fs.readFileSync(".clasp.json","utf8")).scriptId||"");'
+          curl -s -o /tmp/resp.json -w "HTTP %{http_code}\n" \
+            -H "Authorization: Bearer $(cat /tmp/tk)" \
+            "https://script.googleapis.com/v1/projects/$(cat /tmp/sid)/content" || true
+          node -e 'try{const j=JSON.parse(require("fs").readFileSync("/tmp/resp.json","utf8"));if(j.error){console.log("status:",j.error.status);console.log("message:",j.error.message);}else{console.log("FUNCIONOU — o projeto respondeu com",(j.files||[]).length,"arquivos");console.log("VEREDITO: credencial e scriptId corretos; o defeito e do clasp.");}}catch(x){console.log("resposta nao-JSON");}' || true
+          rm -f /tmp/tk /tmp/sid /tmp/resp.json
 
           clasp pull
           cp FilaOficios.gs FilaOficios.gs.antes-hotfix
