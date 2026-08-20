@@ -1,6 +1,54 @@
 #!/usr/bin/env node
 'use strict';
 
+// ============================================================================
+// ⚠️  APOSENTADO EM 20/08/2026 — NÃO É MAIS CHAMADO POR NENHUM WORKFLOW
+// ============================================================================
+//
+// Decisão do usuário, depois de o defeito abaixo ser medido.
+//
+// O QUE ESTE ARQUIVO FAZIA. Publicava seletivamente 3 arquivos do módulo
+// Documentos na homologação, chamando a Apps Script API. Era o segundo
+// caminho de deploy do projeto, ao lado de deploy-homologacao.yml.
+//
+// POR QUE FOI APOSENTADO. O PUT em /projects/{id}/content REESCREVE A LISTA
+// INTEIRA de arquivos. Este script lia o projeto, trocava 3 itens em memória
+// e devolvia tudo — então qualquer publicação feita entre a leitura e a
+// escrita era DESFEITA, sem aviso.
+//
+// Aconteceu de verdade:
+//
+//     15:53:46  deploy-homologacao.yml termina de enviar 219 arquivos
+//     15:54:30  este script grava, com uma foto anterior
+//     resultado: AmbienteRecursos.gs sumiu do projeto e 8 arquivos
+//               voltaram à versão velha
+//
+// Os DOIS deploys terminaram VERDES. Só apareceu quando o usuário rodou a
+// função nova no editor e recebeu "diagnosticoAmbienteRecursos_ is not
+// defined". O agravante: o workflow disparava em `push` tocando
+// Comprovantes.gs, ou seja, disputava com o deploy a cada envio.
+//
+// QUEM PUBLICA AGORA. .github/workflows/deploy-homologacao.yml, que envia o
+// repositório inteiro e já cobre estes 3 arquivos. Não há nada que este
+// caminho fizesse e ele não faça.
+//
+// POR QUE O ARQUIVO CONTINUA AQUI. REGRA Nº 1 do projeto: na dúvida entre
+// remover e manter, mantém-se documentado como legado. E há valor concreto
+// no que ele guarda — a trava de corrida escrita depois do incidente, com
+// releitura antes do PUT e conferência da lista inteira depois. Se um dia
+// se precisar de publicação seletiva outra vez, o ponto de partida é este,
+// não uma implementação nova que repita o mesmo erro.
+//
+// A GUARDA DE SEGURANÇA NÃO FOI APOSENTADA. security-drive-sharing-hml.yml
+// continua rodando harden-drive-sharing-hml.js e reprovando compartilhamento
+// público no Documentos. Era outra coisa, colada no mesmo workflow.
+//
+// COMPORTAMENTO COBERTO POR: tests/e2e/t70-deploy-corrida.js (13 asserções,
+// 2 mutações mortas). O teste continua rodando na suíte de propósito: ele é
+// a prova de que a trava funciona, e o dia em que alguém religar este
+// caminho vai querer essa prova de pé.
+// ============================================================================
+
 const fs = require('fs');
 const path = require('path');
 

@@ -6,7 +6,9 @@ on:
       - integracao/sisgep-homologacao
     paths:
       - scripts/harden-drive-sharing-hml.js
-      - scripts/deploy-documentos-security-hml.js
+      # scripts/deploy-documentos-security-hml.js saiu daqui junto com o
+      # passo de deploy: nao participa mais deste workflow, e manter o
+      # caminho faria o workflow rodar a toa ao mexer nele.
       - Comprovantes.gs
       - ComprovantesNF.html
       - RelatoriosOficios.gs
@@ -69,36 +71,35 @@ jobs:
       - name: Auditoria final obrigatoria
         run: node scripts/harden-drive-sharing-hml.js
 
-      - name: Publicar seletivamente na Web App de Homologacao
-        id: deploy_hml
-        continue-on-error: true
-        env:
-          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
-        run: node scripts/deploy-documentos-security-hml.js
-
-      - name: Registrar resultado do deploy HML
-        if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          shopt -s nullglob
-          arquivos=(.ci/security-documentos-hml-deploy*.json)
-          if [ ${#arquivos[@]} -eq 0 ]; then
-            echo 'Nenhum comprovante de deploy foi gerado.' >&2
-            exit 1
-          fi
-          git add "${arquivos[@]}"
-          if git diff --cached --quiet; then
-            echo 'Resultado de deploy sem alteracao.'
-          else
-            git commit -m 'ci: registrar resultado deploy P0 Documentos HML'
-            git push origin HEAD:integracao/sisgep-homologacao
-          fi
-
-      - name: Reprovar se o deploy HML falhou
-        if: steps.deploy_hml.outcome != 'success'
-        run: |
-          echo 'Deploy seletivo da Homologacao falhou; consulte o diagnostico seguro versionado.' >&2
-          exit 1
+      # ══════════════════════════════════════════════════════════════════
+      # O DEPLOY SAIU DAQUI EM 20/08/2026. A GUARDA ACIMA FICA.
+      #
+      # Este workflow fazia duas coisas coladas: (1) garantir que o
+      # Documentos nao tenha compartilhamento publico, e (2) PUBLICAR os
+      # 3 arquivos na homologacao. So a segunda foi aposentada.
+      #
+      # POR QUE. O deploy seletivo chamava a Apps Script API, cujo
+      # PUT /projects/{id}/content REESCREVE A LISTA INTEIRA de arquivos.
+      # Ele lia o projeto, trocava 3 itens e devolvia tudo — o que
+      # significa que qualquer publicacao feita entre a leitura e a
+      # escrita era DESFEITA.
+      #
+      # Aconteceu, medido: em 20/08/2026 o deploy-homologacao.yml enviou
+      # o repositorio inteiro as 15:53:46 e este workflow gravou as
+      # 15:54:30 com uma foto anterior. AmbienteRecursos.gs sumiu do
+      # projeto e 8 arquivos voltaram a versao velha. Os DOIS deploys
+      # terminaram verdes; o usuario so descobriu ao rodar a funcao no
+      # editor e receber "diagnosticoAmbienteRecursos_ is not defined".
+      #
+      # O agravante era o gatilho: este workflow roda em `push` tocando
+      # Comprovantes.gs — ou seja, disputava com o deploy a cada envio.
+      #
+      # QUEM PUBLICA AGORA: .github/workflows/deploy-homologacao.yml, que
+      # envia o repositorio inteiro e ja cobre estes 3 arquivos. Nao ha
+      # nada que o caminho aposentado fizesse e ele nao faca.
+      #
+      # O scripts/deploy-documentos-security-hml.js NAO foi apagado: fica
+      # como legado documentado, com a trava de corrida que se aprendeu a
+      # escrever, caso um dia se precise de publicacao seletiva de novo.
+      # Ver o cabecalho dele e tests/e2e/t70-deploy-corrida.js.
+      # ══════════════════════════════════════════════════════════════════
