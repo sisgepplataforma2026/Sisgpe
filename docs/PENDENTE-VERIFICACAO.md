@@ -12,6 +12,37 @@
 
 ## 🔴 ABERTO
 
+### 29. Bingo Online — nunca rodou em lugar nenhum
+**Aberto em:** 20/08/2026 · `Bingo*.gs`, `Bingo*.html`, `BingoInscricao.*`
+
+O módulo foi finalizado hoje: corrigido o botão morto, criada a inscrição
+pública com teto de 300, ligado no menu sob Eventos, e coberto pelo `t73`
+(30 asserções, 6 mutações mortas). **Nada disso foi executado.**
+
+O `t73` cruza CÓDIGO. Não prova comportamento. Roteiro para fechar, na ordem:
+
+1. **Configurar um evento de teste** no painel (Eventos › Bingo — painel):
+   título, convite, prêmios, `inscricoesAte`, `sorteioEm`, YouTube, limite.
+2. **Copiar o link de inscrição** e abrir numa aba anônima. Conferir que o
+   convite aparece montado a partir da configuração, e não texto cravado.
+3. **Inscrever-se com um CPF da base** — os campos devem nascer preenchidos.
+4. **Inscrever-se de novo com o mesmo CPF** — tem de devolver a MESMA cartela,
+   não um erro de duplicidade.
+5. **Baixar o limite para 2** e tentar a 3ª inscrição — tem de RECUSAR.
+6. **Pôr `inscricoesAte` no passado** — a página tem de fechar sozinha.
+7. **Rodada completa**: gerar cartelas, iniciar, sortear até alguém bater,
+   conferir que pausa, e usar o botão de expirar manifestação — que era o
+   botão morto.
+8. **Telão** em `?painel=bingo-telao`, projetado.
+
+| | |
+|---|---|
+| 🔴 O e-mail com o link da cartela chega? | não testável no emulador |
+| 🔴 O Firebase carrega dentro do HtmlService? | import de gstatic pode ser barrado pelo sandbox; há fallback por polling |
+| 🔴 `fs_set_`/`fs_get_` gravam em `evento_participantes`? | coleção que nunca teve escrita |
+| 🔴 O teto segura dois cliques simultâneos de verdade? | LockService só se prova no ar |
+
+
 ### 29. Tela genérica da Lixeira
 **Aberto em:** 20/08/2026 · aprovado pelo usuário ("tela de lixeira eu concordo")
 

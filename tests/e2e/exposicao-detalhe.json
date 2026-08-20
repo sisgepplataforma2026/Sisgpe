@@ -1,6 +1,6 @@
 {
   "medidoEm": "2026-08-20",
-  "totalPublicas": 881,
+  "totalPublicas": 884,
   "protegidas": 547,
   "expostas": [
     {
@@ -31,6 +31,21 @@
     {
       "nome": "beneficiosPrepararLinkInteresse",
       "arquivo": "BeneficiosLinkInteresse.gs",
+      "escreve": false
+    },
+    {
+      "nome": "bingo_inscricaoEstado",
+      "arquivo": "BingoInscricao.gs",
+      "escreve": false
+    },
+    {
+      "nome": "bingo_inscricaoPreencher",
+      "arquivo": "BingoInscricao.gs",
+      "escreve": false
+    },
+    {
+      "nome": "bingo_inscrever",
+      "arquivo": "BingoInscricao.gs",
       "escreve": false
     },
     {

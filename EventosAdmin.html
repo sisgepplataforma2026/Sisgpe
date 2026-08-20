@@ -4,7 +4,7 @@
 </style>
 <div class="ev-head"><div><div class="ev-title">Eventos</div><div class="ev-sub">Agenda sindical, atividades, comunicados e programações</div></div><button class="ev-btn" onclick="spIr('sofia',null,{mensagem:'Preciso planejar um evento sindical.'})">Planejar com SOFIA</button></div>
 <div class="ev-wrap">
-  <div class="ev-callout"><div><b>Operações especiais do módulo Eventos</b><span>Emissão de ingressos, check-in e Bingo são abertos pela URL oficial da homologação.</span></div><div><button class="ev-btn primary" onclick="evAbrirPainel('emissao')">Abrir emissão de ingressos →</button> <button class="ev-btn" onclick="evAbrirPainel('checkin')">🎟️ Abrir check-in →</button></div></div>
+  <div class="ev-callout"><div><b>Operações especiais do módulo Eventos</b><span>Emissão de ingressos, check-in e Bingo são abertos pela URL oficial da homologação.</span></div><div><button class="ev-btn primary" onclick="evAbrirPainel('emissao')">Abrir emissão de ingressos →</button> <button class="ev-btn" onclick="evAbrirPainel('checkin')">🎟️ Abrir check-in →</button> <button class="ev-btn bingo" onclick="evAbrirBingo()">🎲 Bingo — painel →</button> <button class="ev-btn bingo" onclick="evAbrirPainel('bingo-telao')">📺 Telão →</button> <button class="ev-btn bingo" onclick="evCopiarLinkInscricao()">🔗 Copiar link de inscrição</button></div></div>
   <div class="ev-grid"><div class="ev-card"><small>Próximos</small><strong id="evProximos">0</strong></div><div class="ev-card"><small>Hoje</small><strong id="evHoje">0</strong></div><div class="ev-card"><small>Comunicação</small><strong id="evComunicacao">0</strong></div><div class="ev-card"><small>Concluídos</small><strong id="evConcluidos">0</strong></div></div>
   <div class="ev-panel"><div class="ev-bar"><strong>Calendário operacional</strong><div><button class="ev-btn" onclick="evExportar()">Exportar CSV</button><button class="ev-btn" onclick="spIr('documentos',null,{aba:'novo'})">Gerar ofício</button></div></div>
     <div class="ev-form"><div class="ev-field"><label>Evento</label><input id="evNome" placeholder="Ex.: Bingo, assembleia, reunião ou visita"></div><div class="ev-field"><label>Data</label><input id="evData" type="date"></div><div class="ev-field"><label>Tipo</label><select id="evTipo"><option>Assembleia</option><option>Reunião</option><option>Visita</option><option>Comunicado</option><option>Bingo</option><option>Festa / Confraternização</option><option>Campanha</option><option>Evento Institucional</option><option>Outro</option></select></div><div class="ev-field"><label>Status</label><select id="evStatus"><option>Planejado</option><option>Em andamento</option><option>Concluido</option></select></div><button class="ev-btn primary" onclick="evSalvar()">Salvar</button></div>
@@ -31,6 +31,29 @@ window.evAbrirPainel=function(painel,eventoId){var token=tokenSessao();if(!token
 window.evAbrirEmissaoIngressos=function(){evAbrirPainel('emissao')};
 window.evAbrirCheckin=function(){evAbrirPainel('checkin')};
 window.evAbrirBingo=function(eventoId){evAbrirPainel('bingo',eventoId)};
+/* O LINK DE INSCRIÇÃO É PARA DIVULGAR, não para abrir aqui.
+   É ele que vai no WhatsApp e no Instagram do sindicato. Por isso a ação é
+   COPIAR, e não window.open: quem clica quer o endereço na área de
+   transferência, não mais uma aba aberta.
+
+   A rota é pública (?bingo-inscricao=<eventoId>) e NÃO leva token de sessão —
+   se levasse, o link do sindicato carregaria a credencial de quem o gerou
+   para dentro de todo grupo de WhatsApp em que fosse colado. */
+window.evCopiarLinkInscricao=function(eventoId){
+  var token=tokenSessao();
+  if(!token)return avisar('Sessão não encontrada. Entre novamente no SISGEP.','err');
+  var id=String(eventoId||prompt('ID do evento para a inscrição:')||'').trim();
+  if(!id)return;
+  google.script.run.withSuccessHandler(function(base){
+    var url=String(base||'')+'?bingo-inscricao='+encodeURIComponent(id);
+    var pronto=function(){avisar('Link copiado: '+url,'ok')};
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(pronto,function(){prompt('Copie o link:',url)});
+    }else{prompt('Copie o link:',url)}
+  }).withFailureHandler(function(e){
+    avisar('Não foi possível montar o link: '+((e&&e.message)||e),'err');
+  }).eventos_obterWebAppUrl(token);
+};
 window.initEventos=evRender;if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',evRender);else setTimeout(evRender,80);
 })();
 </script>

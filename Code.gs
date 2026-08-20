@@ -86,6 +86,21 @@ function doGet(e) {
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
 
+    // ── BINGO PÚBLICO: INSCRIÇÃO, sem login ─────────────────────────────────
+    // Vem ANTES da rota da cartela de propósito: `p.bingo` e
+    // `p["bingo-inscricao"]` são parâmetros distintos, mas quem lê o código
+    // depois entende melhor a ordem inscrição → cartela, que é a do fluxo.
+    // Toda a validação (teto de 300, prazo, CPF, termo) está no servidor, em
+    // BingoInscricao.gs. Esta rota só entrega a página.
+    if (p["bingo-inscricao"]) {
+      Logger.log("[BINGO] Inscricao publica");
+      return HtmlService.createHtmlOutputFromFile("BingoInscricao")
+        .setTitle("Inscrição — Bingo Online — SindEducação-ES")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
+
     // ── BINGO PÚBLICO: cartela por token, sem login ─────────────────────────
     if (p.bingo) {
       Logger.log("[BINGO] Cartela pública por token");
