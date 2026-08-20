@@ -1,0 +1,133 @@
+name: Hotfix seletivo Fila Oficios - HML
+
+on:
+  push:
+    branches:
+      - integracao/sisgep-homologacao
+    paths:
+      - scripts/hotfix-fila-envio-agora.js
+      - .github/workflows/hotfix-fila-homologacao.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  hotfix:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout da branch de homologacao
+        uses: actions/checkout@v4
+        with:
+          ref: integracao/sisgep-homologacao
+          fetch-depth: 0
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Aplicar hotfix no FilaOficios.gs
+        run: node scripts/hotfix-fila-envio-agora.js
+
+      - name: Validar alteracao esperada
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'var linhaIdxFallback = -1;' FilaOficios.gs
+          grep -q 'lockEnvioAgora.tryLock(15000)' FilaOficios.gs
+          grep -q '\[ENVIO_AGORA\] Selecionado' FilaOficios.gs
+          git --no-pager diff --check -- FilaOficios.gs
+          git --no-pager diff -- FilaOficios.gs
+
+      - name: Instalar dependencias de teste
+        run: npm ci || npm install
+
+      - name: Preparar caminho legado dos testes
+        shell: bash
+        run: |
+          sudo mkdir -p /home/user
+          sudo rm -rf /home/user/Sisgpe
+          sudo ln -s "$GITHUB_WORKSPACE" /home/user/Sisgpe
+
+      - name: Testar fluxo real de anexos e envio
+        run: node tests/e2e/t56-envio-anexa-ficha.js
+
+      - name: Registrar hotfix na branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- FilaOficios.gs; then
+            echo 'FilaOficios.gs ja estava ajustado.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add FilaOficios.gs
+          git commit -m 'fix: tornar envio imediato de oficios resiliente a concorrencia'
+          git push origin HEAD:integracao/sisgep-homologacao
+
+      - name: Instalar clasp
+        run: npm install -g @google/clasp
+
+      - name: Validar credenciais e alvo de homologacao
+        shell: bash
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          CLASP_JSON_HOMOLOG: ${{ secrets.CLASP_JSON_HOMOLOG }}
+          DEPLOY_ID: ${{ secrets.CLASP_DEPLOYMENT_ID_HOMOLOG }}
+        run: |
+          set -euo pipefail
+          test -n "$CLASPRC_JSON"
+          test -n "$CLASP_JSON_HOMOLOG"
+          test -n "$DEPLOY_ID"
+          mkdir -p "$HOME"
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          mkdir -p /tmp/sisgep-hml
+          printf '%s' "$CLASP_JSON_HOMOLOG" > /tmp/sisgep-hml/.clasp.json
+          node -e 'const fs=require("fs"); const j=JSON.parse(fs.readFileSync("/tmp/sisgep-hml/.clasp.json","utf8")); if(j.scriptId!=="1S_LckCVMJy0dza6tlw5w9Vq7ZqJ9RzxsrYoPMR1zl65rKXC-JgvDUSVR") { console.error("Alvo bloqueado: Script ID nao e o da Homologacao."); process.exit(1); }'
+          if [ "$DEPLOY_ID" != 'AKfycbzOfoQ4y2yc7oM9hiz2ATvB6YztGEMDjgO1FiezQ0schgqcOJnJgROzCC3sEeV6h4n0ZA' ]; then
+            echo 'Alvo bloqueado: Deployment ID nao e o da Homologacao.' >&2
+            exit 1
+          fi
+
+      - name: Puxar estado atual da Homologacao
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/sisgep-hml
+          clasp pull
+          cp FilaOficios.gs FilaOficios.gs.antes-hotfix
+
+      - name: Substituir somente FilaOficios.gs
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp "$GITHUB_WORKSPACE/FilaOficios.gs" /tmp/sisgep-hml/FilaOficios.gs
+          grep -q 'var linhaIdxFallback = -1;' /tmp/sisgep-hml/FilaOficios.gs
+          grep -q 'lockEnvioAgora.tryLock(15000)' /tmp/sisgep-hml/FilaOficios.gs
+          diff -u /tmp/sisgep-hml/FilaOficios.gs.antes-hotfix /tmp/sisgep-hml/FilaOficios.gs || true
+          rm /tmp/sisgep-hml/FilaOficios.gs.antes-hotfix
+
+      - name: Enviar estado preservado para Apps Script - HML
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/sisgep-hml
+          clasp push --force
+
+      - name: Criar versao e publicar Web App de HML
+        id: versao
+        shell: bash
+        env:
+          DEPLOY_ID: ${{ secrets.CLASP_DEPLOYMENT_ID_HOMOLOG }}
+        run: |
+          set -euo pipefail
+          cd /tmp/sisgep-hml
+          clasp version "hml-hotfix-fila-${GITHUB_SHA::7}" | tee /tmp/saida-versao.txt
+          NUM=$(grep -oE '[0-9]+' /tmp/saida-versao.txt | tail -1)
+          test -n "$NUM"
+          clasp deploy --deploymentId "$DEPLOY_ID" --versionNumber "$NUM" --description "hml-hotfix-fila-${GITHUB_SHA::7}"
+          echo "numero=$NUM" >> "$GITHUB_OUTPUT"
+          echo "Homologacao publicada na versao $NUM."
