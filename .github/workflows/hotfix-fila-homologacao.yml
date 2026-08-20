@@ -264,7 +264,15 @@ jobs:
           # tudo daqui para baixo quebra por nome. Renomear e deterministico
           # e nao custa nada: no Apps Script, .gs e .js sao o mesmo arquivo
           # de servidor, e este repositorio usa .gs.
-          n=$(ls *.js 2>/dev/null | wc -l)
+          # `ls *.js` SAI COM ERRO QUANDO NAO ACHA NADA — e nao achar nada e
+          # justamente o caso BOM. Com `set -euo pipefail`, esse "nao achei"
+          # derruba o passo inteiro: foi o que aconteceu no run 32376950132,
+          # que morreu com exit code 2 logo depois de baixar os 206 arquivos
+          # corretamente. Rede de seguranca que derruba o que deveria
+          # proteger e pior que rede nenhuma.
+          #
+          # `find` devolve lista vazia e status 0. Sem armadilha.
+          n=$(find . -maxdepth 1 -name '*.js' | wc -l)
           if [ "$n" -gt 0 ]; then
             echo "clasp trouxe $n arquivo(s) .js — renomeando para .gs"
             for f in *.js; do mv -- "$f" "${f%.js}.gs"; done
