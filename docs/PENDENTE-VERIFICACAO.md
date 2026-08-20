@@ -73,10 +73,13 @@ e não risco futuro. Nenhum teste do repositório alcança: é o Drive real.
 
 Roteiro para fechar:
 
-1. Rodar uma varredura nas pastas de PRODUÇÃO (`PASTAS` em `SistemaConfig.gs`,
-   mais `PASTA_COMPROVANTES_ID` e `PASTA_VOUCHER_DOCUMENTOS_ID` em
-   `AmbienteRecursos.gs`) contando quantos arquivos têm `getSharingAccess()`
-   diferente de `PRIVATE`. **Só contar, sem alterar** — para saber o tamanho.
+1. ✅ **FERRAMENTA PRONTA** — `AuditoriaDrive.gs`, criado em 20/08/2026.
+   No editor do Apps Script do projeto de **PRODUÇÃO**, rode
+   `auditoriaDrive_contar_()`. Ela trabalha ~4 min, grava onde parou e devolve
+   o parcial; rode de novo até o relatório dizer **CONCLUÍDO**.
+   `auditoriaDrive_status_()` mostra o andamento sem processar.
+   **Ela não altera nada** — há teste (`t74`) que reprova se qualquer chamada
+   de escrita aparecer no arquivo. **Falta rodar.**
 2. Com o número na mão, decidir se revoga tudo de uma vez ou por pasta.
 3. Revogar com `setSharing(PRIVATE, NONE)`, em lote, com registro do que mudou.
 4. Conferir que nenhum fluxo vivo dependia daqueles links. Ofícios é o único
