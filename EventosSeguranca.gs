@@ -93,15 +93,37 @@ function compasso_validarDecisaoAdmin(inscricaoId, novoStatus, motivoCodigo, obs
   if (motivoCodigo === 'OUTRO' && !String(observacao || '').trim())
     throw new Error('Descreva o motivo quando selecionar Outro.');
 
-  var ins = fs_get_('inscricoesEventos', inscricaoId);
-  if (!ins) throw new Error('Inscrição não encontrada.');
-  var anterior = ins.status || '';
-  ins.status = novoStatus;
-  ins.analisadoPor = compasso_emailUsuario_();
-  ins.analisadoEm = new Date();
-  ins.motivoCodigo = motivoCodigo || '';
-  ins.observacaoAnalise = String(observacao || '').trim();
-  fs_set_('inscricoesEventos', inscricaoId, ins);
-  compasso_auditar_('VALIDACAO_ADMINISTRATIVA','inscricao',inscricaoId,{de:anterior,para:novoStatus,motivo:motivoCodigo,observacao:observacao||''});
-  return {ok:true, inscricaoId:inscricaoId, status:novoStatus};
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var ins = fs_get_('inscricoesEventos', inscricaoId);
+    if (!ins) throw new Error('Inscrição não encontrada.');
+    var anterior = ins.status || '';
+    ins.status = novoStatus;
+    ins.analisadoPor = compasso_emailUsuario_();
+    ins.analisadoEm = new Date();
+    ins.motivoCodigo = motivoCodigo || '';
+    ins.observacaoAnalise = String(observacao || '').trim();
+
+    // Reprovação libera a vaga reservada e a chave de unicidade para eventual nova inscrição autorizada.
+    if (novoStatus === COMPASSO_STATUS.REPROVADA && ins.vagaReservada) {
+      var r = fs_get_('reservasEventos', EMISSAO_CFG.EVENTO_ID) || {eventoId:EMISSAO_CFG.EVENTO_ID,limite:EMISSAO_CFG.LIMITE_VAGAS,reservadas:0};
+      r.reservadas = Math.max(0, Number(r.reservadas || 0) - 1);
+      r.atualizadoEm = new Date();
+      fs_set_('reservasEventos', EMISSAO_CFG.EVENTO_ID, r);
+      ins.vagaReservada = false;
+      ins.vagaLiberadaEm = new Date();
+      try {
+        var chave = compasso_chavePessoaEvento_(EMISSAO_CFG.EVENTO_ID, ins.pessoaId, ins.cpf);
+        var idx = fs_get_('inscricaoUnicaEventos', chave);
+        if (idx) { idx.status='REPROVADA'; idx.atualizadoEm=new Date(); fs_set_('inscricaoUnicaEventos', chave, idx); }
+      } catch(ignore) {}
+    }
+
+    fs_set_('inscricoesEventos', inscricaoId, ins);
+    compasso_auditar_('VALIDACAO_ADMINISTRATIVA','inscricao',inscricaoId,{de:anterior,para:novoStatus,motivo:motivoCodigo,observacao:observacao||''});
+    return {ok:true, inscricaoId:inscricaoId, status:novoStatus};
+  } finally {
+    lock.releaseLock();
+  }
 }
