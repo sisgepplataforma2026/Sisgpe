@@ -1,0 +1,7 @@
+{
+  "ambiente": "HOMOLOGACAO",
+  "failedAt": "2026-08-20T15:50:35.952Z",
+  "mensagem": "Apps Script API /projects/1S_LckCVMJy0dza6tlw5w9Vq7ZqJ9RzxsrYoPMR1zl65rKXC-JgvDUSVR/content: Request contains an invalid argument.",
+  "scriptId": "1S_LckCVMJy0dza6tlw5w9Vq7ZqJ9RzxsrYoPMR1zl65rKXC-JgvDUSVR",
+  "deploymentId": "AKfycbzOfoQ4y2yc7oM9hiz2ATvB6YztGEMDjgO1FiezQ0schgqcOJnJgROzCC3sEeV6h4n0ZA"
+}
