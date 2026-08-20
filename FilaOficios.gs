@@ -548,13 +548,25 @@ function enviarOficioDaFilaAgora(numero, tokenSessao) {
   var totalCols = sh.getLastColumn();
   var dados = sh.getRange(2, 1, sh.getLastRow() - 1, totalCols).getValues();
   var linhaIdx = -1;
+  var linhaIdxFallback = -1;
+  var numeroBuscado = String(numero).trim();
 
+  // Havendo números repetidos (comum em cópia de Produção para HML),
+  // prioriza o registro mais recente que ainda pode ser enviado. Só usa um
+  // ENVIADO/CONFIRMADO como fallback quando não existe linha acionável.
   for (var i = dados.length - 1; i >= 0; i--) {
-    if (String(dados[i][colNumero - 1] || "").trim() === String(numero).trim()) {
+    if (String(dados[i][colNumero - 1] || "").trim() !== numeroBuscado) continue;
+
+    var statusCandidato = String(dados[i][colStatus - 1] || "").trim().toUpperCase();
+    if (statusCandidato === "PENDENTE" || statusCandidato === "ERRO" || statusCandidato === "PROCESSANDO") {
       linhaIdx = i;
       break;
     }
+
+    if (linhaIdxFallback === -1) linhaIdxFallback = i;
   }
+
+  if (linhaIdx === -1) linhaIdx = linhaIdxFallback;
 
   if (linhaIdx === -1) {
     return { ok: false, mensagem: "Ofício " + numero + " não encontrado na fila." };
@@ -563,6 +575,7 @@ function enviarOficioDaFilaAgora(numero, tokenSessao) {
   var linha = dados[linhaIdx];
   var linhaPlanilha = linhaIdx + 2;
   var status = String(linha[colStatus - 1] || "").trim().toUpperCase();
+  Logger.log("[ENVIO_AGORA] Selecionado ofício " + numero + " na linha " + linhaPlanilha + " com status " + status + ".");
 
   if (status === "ENVIADO") {
     return { ok: true, mensagem: "E-mail já foi enviado anteriormente." };
@@ -587,8 +600,21 @@ function enviarOficioDaFilaAgora(numero, tokenSessao) {
 
   var valoresLinha;
   var lockEnvioAgora = LockService.getScriptLock();
-  if (!lockEnvioAgora.tryLock(5000)) {
-    return { ok: false, mensagem: "Fila ocupada. Tente novamente em alguns segundos." };
+  var lockObtido = false;
+
+  // O SISGEP possui vários módulos no mesmo projeto. Um lock global curto de
+  // 5 s fazia o botão "Enviar agora" desistir durante operações paralelas,
+  // sem sequer registrar uma tentativa. Aguarda um pouco mais, mantendo a
+  // proteção contra envio duplicado.
+  try {
+    lockObtido = lockEnvioAgora.tryLock(15000);
+  } catch (eLock) {
+    Logger.log("[ENVIO_AGORA] Falha ao obter lock para o ofício " + numero + ": " + (eLock.message || eLock));
+  }
+
+  if (!lockObtido) {
+    Logger.log("[ENVIO_AGORA] Fila permaneceu ocupada para o ofício " + numero + " após 15 s.");
+    return { ok: false, mensagem: "Fila ocupada. Aguarde alguns segundos e tente novamente." };
   }
 
   try {
@@ -607,7 +633,7 @@ function enviarOficioDaFilaAgora(numero, tokenSessao) {
     sh.getRange(linhaPlanilha, 1, 1, totalCols).setValues([valoresLinha]);
     SpreadsheetApp.flush();
   } finally {
-    lockEnvioAgora.releaseLock();
+    if (lockObtido) lockEnvioAgora.releaseLock();
   }
 
   try {
