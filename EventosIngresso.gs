@@ -1,24 +1,39 @@
 /**
  * COMPASSO 2026 — Motor do ingresso oficial.
- * Usa uma arte-base fixa e sobrepõe somente dados variáveis + QR seguro.
- * Configure COMPASSO_INGRESSO_ARTE_DRIVE_ID nas Script Properties com o arquivo oficial.
+ * A arte-base oficial é armazenada no Drive e o template apenas sobrepõe
+ * nome, escola, categoria, número e QR seguro.
  */
+
+function compasso_configurarArteBaseDrive(fileId) {
+  fileId = String(fileId || '').trim();
+  if (!fileId) throw new Error('Informe o ID do arquivo da arte oficial no Google Drive.');
+  var f = DriveApp.getFileById(fileId);
+  var tipo = String(f.getMimeType() || '');
+  if (tipo.indexOf('image/') !== 0) throw new Error('A arte-base precisa ser um arquivo de imagem.');
+  PropertiesService.getScriptProperties().setProperty('COMPASSO_INGRESSO_ARTE_DRIVE_ID', fileId);
+  compasso_auditar_('CONFIGURAR_ARTE_INGRESSO','evento',EMISSAO_CFG.EVENTO_ID,{arquivoId:fileId,nome:f.getName(),mimeType:tipo});
+  return {ok:true,fileId:fileId,nome:f.getName(),mimeType:tipo};
+}
+
+function compasso_statusArteBase() {
+  var id = PropertiesService.getScriptProperties().getProperty('COMPASSO_INGRESSO_ARTE_DRIVE_ID');
+  if (!id) return {configurada:false};
+  try {
+    var f = DriveApp.getFileById(id);
+    return {configurada:true,fileId:id,nome:f.getName(),mimeType:f.getMimeType()};
+  } catch(e) {
+    return {configurada:false,fileId:id,erro:e.message};
+  }
+}
 
 function compasso_ingressoArteDataUri_() {
   var id = PropertiesService.getScriptProperties().getProperty('COMPASSO_INGRESSO_ARTE_DRIVE_ID');
-  if (!id) return '';
+  if (!id) {
+    if (!emissao_modoTeste_()) throw new Error('Arte oficial do ingresso não configurada. Emissão visual bloqueada em produção.');
+    return '';
+  }
   var blob = DriveApp.getFileById(id).getBlob();
   return 'data:' + blob.getContentType() + ';base64,' + Utilities.base64Encode(blob.getBytes());
-}
-
-function compasso_qrDataUri_(token) {
-  var qr = Charts.newQrCode()
-    .setData(String(token || ''))
-    .setDimensions(360, 360)
-    .build()
-    .getBlob()
-    .setName('qr-compasso.png');
-  return 'data:image/png;base64,' + Utilities.base64Encode(qr.getBytes());
 }
 
 function compasso_categoriaLabel_(cat) {
@@ -36,7 +51,6 @@ function compasso_ingressoDados(ingressoId) {
   if (!ing || ing.eventoId !== EMISSAO_CFG.EVENTO_ID) throw new Error('Ingresso não encontrado para o Compasso 2026.');
   if (ing.status === 'CANCELADO') throw new Error('Ingresso cancelado não pode ser apresentado ou reenviado.');
 
-  var qrToken = compasso_gerarQrToken_(ingressoId);
   return {
     ingressoId: ingressoId,
     numero: ing.numero || '',
@@ -46,8 +60,7 @@ function compasso_ingressoDados(ingressoId) {
     status: ing.status || '',
     email: ing.email || '',
     whatsapp: ing.whatsapp || '',
-    qrToken: qrToken,
-    qrDataUri: compasso_qrDataUri_(qrToken),
+    qrToken: compasso_gerarQrToken_(ingressoId),
     arteDataUri: compasso_ingressoArteDataUri_(),
     modoTeste: emissao_modoTeste_()
   };
