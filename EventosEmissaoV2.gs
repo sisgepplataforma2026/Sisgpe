@@ -4,28 +4,25 @@ function compasso_emitirIngressoV2(payload) {
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
-    var cat = String(payload.categoria || '').toLowerCase();
+    var inscricaoId = String(payload.inscricaoId || '').trim();
+    if (!inscricaoId) return {ok:false,erro:'inscricaoId é obrigatório para emissão.'};
+    var ins = fs_get_('inscricoesEventos', inscricaoId);
+    if (!ins || ins.eventoId !== EMISSAO_CFG.EVENTO_ID) return {ok:false,erro:'Inscrição não encontrada para este evento.'};
+    if (ins.status !== COMPASSO_STATUS.VALIDADA) return {ok:false,erro:'Inscrição ainda não foi validada administrativamente.'};
+    if (!ins.vagaReservada) return {ok:false,erro:'Inscrição não possui vaga reservada.'};
+    if (ins.ingressoId) return {ok:false,erro:'Esta inscrição já possui ingresso emitido.',ingressoId:ins.ingressoId};
+
+    var cat = String(ins.categoria || '').toLowerCase();
     if (['associado','convidado','acompanhante'].indexOf(cat) < 0) return {ok:false,erro:'Categoria inválida.'};
-    if (!String(payload.nome || '').trim()) return {ok:false,erro:'Nome é obrigatório.'};
-
-    // Associado somente após conferência humana obrigatória.
-    if (cat === 'associado' && payload.validacaoStatus !== COMPASSO_STATUS.VALIDADA)
-      return {ok:false,erro:'Inscrição ainda não foi validada administrativamente.'};
-    // Convidado e acompanhante são exclusivamente administrativos.
-    if ((cat === 'convidado' || cat === 'acompanhante') && payload.origem !== 'ADMIN')
+    if (!String(ins.nome || '').trim()) return {ok:false,erro:'Nome é obrigatório.'};
+    if ((cat === 'convidado' || cat === 'acompanhante') && String(ins.origem||'').indexOf('ADMIN_') !== 0)
       return {ok:false,erro:'Convidado/acompanhante somente pode ser incluído administrativamente.'};
-
-    if (!emissao_modoTeste_()) {
-      var hoje = new Date();
-      if (cat === 'associado' && (hoje < EMISSAO_CFG.PERIODO_INICIO || hoje > EMISSAO_CFG.PERIODO_FIM))
-        return {ok:false,erro:'Fora do período de inscrições dos associados.'};
-    }
 
     var c = emissao_lerContador_();
     if (c.vagasUsadas >= c.limite) return {ok:false,erro:'Vagas esgotadas ('+c.limite+'/'+c.limite+').'};
 
     var ingressoId = compasso_uuid_();
-    var identidade = compasso_reservarIdentidade_(payload, ingressoId);
+    var identidade = compasso_reservarIdentidade_(ins, ingressoId);
     if (!identidade.ok) return identidade;
 
     var novoNumero = c.ultimoNumero + 1;
@@ -34,9 +31,8 @@ function compasso_emitirIngressoV2(payload) {
     var qrTokenHash = compasso_hash_(qrToken);
     var agora = new Date();
     var valor = cat === 'acompanhante' ? EMISSAO_CFG.VALOR_ACOMPANHANTE : 0;
-    var pagamentoStatus = cat === 'acompanhante' ? String(payload.pagamentoStatus || 'PENDENTE') : '';
+    var pagamentoStatus = cat === 'acompanhante' ? String(ins.pagamentoStatus || 'PENDENTE') : '';
     if (cat === 'acompanhante' && pagamentoStatus !== 'PAGO') {
-      // desfaz reserva de identidade; nenhuma vaga foi consumida ainda.
       fs_set_('eventoIdentidades', identidade.chave, {eventoId:EMISSAO_CFG.EVENTO_ID,status:'CANCELADA',canceladaEm:agora});
       return {ok:false,erro:'Acompanhante somente pode ter ingresso emitido após confirmação do pagamento.'};
     }
@@ -45,22 +41,22 @@ function compasso_emitirIngressoV2(payload) {
       ingressoId: ingressoId,
       numero: numero,
       eventoId: EMISSAO_CFG.EVENTO_ID,
-      pessoaId: String(payload.pessoaId || ''),
-      inscricaoId: String(payload.inscricaoId || ''),
-      nome: String(payload.nome || '').trim(),
-      escola: String(payload.escola || '').trim(),
+      pessoaId: String(ins.pessoaId || ''),
+      inscricaoId: inscricaoId,
+      nome: String(ins.nome || '').trim(),
+      escola: String(ins.escola || '').trim(),
       categoria: cat,
-      cpf: String(payload.cpf || '').trim(),
-      email: String(payload.email || '').trim(),
-      whatsapp: String(payload.whatsapp || '').trim(),
-      matricula: String(payload.matricula || '').trim(),
+      cpf: String(ins.cpf || '').trim(),
+      email: String(ins.email || '').trim(),
+      whatsapp: String(ins.whatsapp || '').trim(),
+      matricula: String(ins.matricula || '').trim(),
       status: 'EMITIDO',
       valor: valor,
-      pagamentoForma: String(payload.pagamentoForma || ''),
+      pagamentoForma: String(ins.pagamentoForma || ''),
       pagamentoStatus: pagamentoStatus,
       emitidoPor: compasso_emailUsuario_(),
       emitidoEm: agora,
-      origem: String(payload.origem || 'ADMIN'),
+      origem: String(ins.origem || ''),
       qrTokenHash: qrTokenHash
     };
 
@@ -68,13 +64,14 @@ function compasso_emitirIngressoV2(payload) {
       fs_set_('ingressos', ingressoId, ingresso);
       fs_set_('qrTokens', qrTokenHash, {eventoId:EMISSAO_CFG.EVENTO_ID,ingressoId:ingressoId,status:'ATIVO',criadoEm:agora});
       fs_set_('contadores', EMISSAO_CFG.EVENTO_ID, {limite:c.limite,vagasUsadas:c.vagasUsadas+1,ultimoNumero:novoNumero});
+      ins.ingressoId=ingressoId; ins.numeroIngresso=numero; ins.ingressoEmitidoEm=agora; ins.ingressoEmitidoPor=compasso_emailUsuario_();
+      fs_set_('inscricoesEventos',inscricaoId,ins);
     } catch(e) {
       try { fs_set_('eventoIdentidades', identidade.chave, {eventoId:EMISSAO_CFG.EVENTO_ID,status:'CANCELADA',canceladaEm:new Date()}); } catch(ignore) {}
       return {ok:false,erro:'Falha na emissão segura: '+e.message};
     }
 
-    compasso_auditar_('EMISSAO_INGRESSO','ingresso',ingressoId,{numero:numero,categoria:cat,inscricaoId:payload.inscricaoId||''});
-    // Token é retornado somente no ato da emissão para geração do QR. Não deve ser exibido em relatórios/logs.
+    compasso_auditar_('EMISSAO_INGRESSO','ingresso',ingressoId,{numero:numero,categoria:cat,inscricaoId:inscricaoId});
     return {ok:true,id:ingressoId,numero:numero,nome:ingresso.nome,categoria:cat,qrToken:qrToken,restantes:c.limite-(c.vagasUsadas+1)};
   } finally { lock.releaseLock(); }
 }
@@ -97,6 +94,8 @@ function compasso_cancelarIngressoV2(ingressoId, motivo) {
       var c=emissao_lerContador_();
       fs_set_('contadores',EMISSAO_CFG.EVENTO_ID,{limite:c.limite,vagasUsadas:Math.max(0,c.vagasUsadas-1),ultimoNumero:c.ultimoNumero});
     }
+    var ins=ing.inscricaoId?fs_get_('inscricoesEventos',ing.inscricaoId):null;
+    if(ins){ins.ingressoStatus='CANCELADO';ins.ingressoCanceladoEm=new Date();fs_set_('inscricoesEventos',ing.inscricaoId,ins);}
     compasso_auditar_('CANCELAMENTO_INGRESSO','ingresso',ingressoId,{motivo:motivo,jaUsado:jaUsado});
     return {ok:true,id:ingressoId,avisoJaEntrou:jaUsado};
   } finally { lock.releaseLock(); }
