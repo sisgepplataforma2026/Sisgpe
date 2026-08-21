@@ -1,105 +1,263 @@
 <div id="eventosAdmin" style="min-height:100%;background:#f0f4f8;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#0f172a;">
-  <style>
-    #eventosAdmin *{box-sizing:border-box}.ev-head{background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));color:#fff;padding:22px 24px;display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}.ev-title{font-size:21px;font-weight:900}.ev-sub{font-size:12px;color:rgba(255,255,255,.72);margin-top:4px}.ev-wrap{padding:18px 22px 34px}.ev-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}.ev-card,.ev-panel{background:#fff;border:1px solid var(--g200,#e2e8f0);border-radius:14px;box-shadow:0 2px 10px rgba(0,20,60,.06)}.ev-card{padding:15px}.ev-card small{font-size:10px;font-weight:900;color:var(--g500,#64748b);text-transform:uppercase}.ev-card strong{display:block;font-size:28px;color:var(--navy,#001f4d);margin-top:7px}.ev-panel{overflow:hidden}.ev-bar{padding:14px 16px;border-bottom:1px solid #eef2f7;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.ev-form{display:grid;grid-template-columns:1.4fr .9fr .9fr .9fr auto;gap:10px;padding:14px 16px;background:var(--g50,#f8fafc);border-bottom:1px solid #eef2f7}.ev-field label{display:block;font-size:10px;font-weight:900;color:var(--g500,#64748b);text-transform:uppercase;margin-bottom:4px}.ev-field input,.ev-field select{width:100%;height:36px;border:1.5px solid #dbe4ef;border-radius:9px;padding:0 10px;font-family:inherit}.ev-btn{height:34px;border-radius:9px;border:1px solid var(--g300,#cbd5e1);background:#fff;color:var(--g700,#334155);font-size:12px;font-weight:800;padding:0 12px;cursor:pointer;font-family:inherit}.ev-btn.primary{background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));color:#fff;border-color:var(--blue,#1565C0)}.ev-search{padding:12px 16px;display:flex;gap:8px}.ev-search input{flex:1;height:36px;border:1.5px solid #dbe4ef;border-radius:999px;padding:0 14px}.ev-table{width:100%;border-collapse:collapse;min-width:760px}.ev-table th{background:var(--g50,#f8fafc);color:var(--g500,#64748b);font-size:10px;text-transform:uppercase;text-align:left;padding:10px}.ev-table td{font-size:12.5px;padding:11px 10px;border-top:1px solid var(--g100,#f1f5f9)}.ev-pill{border-radius:999px;padding:3px 9px;font-size:10.5px;font-weight:900}.ev-ok{background:#dcfce7;color:#166534}.ev-warn{background:var(--amber-lt,#fef3c7);color:#92400e}.ev-blue{background:#dbeafe;color:#1e40af}.ev-callout{background:#eef2ff;border:1px solid #c7d2fe;border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}.ev-callout b{display:block;font-size:13px;color:var(--g800,#1e293b)}.ev-callout span{display:block;font-size:12px;color:var(--g600,#475569);margin-top:2px;max-width:52ch}@media(max-width:1000px){.ev-grid{grid-template-columns:repeat(2,1fr)}.ev-form{grid-template-columns:1fr 1fr}}
-  </style>
-  <div class="ev-head"><div><div class="ev-title">Eventos</div><div class="ev-sub">Agenda sindical, atividades, comunicados e programacoes</div></div><button class="ev-btn" onclick="spIr('sofia',null,{mensagem:'Preciso planejar um evento sindical.'})">Planejar com SOFIA</button></div>
-  <div class="ev-wrap">
-    <div class="ev-callout"><div><b>Precisa emitir ingresso para um evento com vagas?</b><span>A agenda abaixo é só para organização interna (assembleia, reunião, comunicado). A emissão de ingressos de verdade — com controle de vagas e categorias — é outro sistema.</span></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="ev-btn primary" onclick="evAbrirEmissaoIngressos()">Abrir emissão de ingressos →</button><button class="ev-btn" onclick="evAbrirCheckin()">🎟️ Abrir check-in da entrada →</button></div></div>
-    <div class="ev-grid"><div class="ev-card"><small>Proximos</small><strong id="evProximos">0</strong></div><div class="ev-card"><small>Hoje</small><strong id="evHoje">0</strong></div><div class="ev-card"><small>Comunicacao</small><strong id="evComunicacao">0</strong></div><div class="ev-card"><small>Concluidos</small><strong id="evConcluidos">0</strong></div></div>
-    <div class="ev-panel"><div class="ev-bar"><strong>Calendario operacional</strong><div><button class="ev-btn" onclick="evExportar()">Exportar CSV</button><button class="ev-btn" onclick="spIr('documentos',null,{aba:'novo'})">Gerar oficio</button></div></div>
-      <div class="ev-form"><div class="ev-field"><label>Evento</label><input id="evNome" placeholder="Ex.: Assembleia, reuniao ou visita"></div><div class="ev-field"><label>Data</label><input id="evData" type="date"></div><div class="ev-field"><label>Tipo</label><select id="evTipo"><option>Assembleia</option><option>Reuniao</option><option>Visita</option><option>Comunicado</option><option>Outro</option></select></div><div class="ev-field"><label>Status</label><select id="evStatus"><option>Planejado</option><option>Em andamento</option><option>Concluido</option></select></div><button class="ev-btn primary" onclick="evSalvar()">Salvar</button></div>
+<style>
+#eventosAdmin *{box-sizing:border-box}.ev-head{background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));color:#fff;padding:22px 24px;display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}.ev-title{font-size:21px;font-weight:900}.ev-sub{font-size:12px;color:rgba(255,255,255,.72);margin-top:4px}.ev-wrap{padding:18px 22px 34px}.ev-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}.ev-card,.ev-panel{background:#fff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 2px 10px rgba(0,20,60,.06)}.ev-card{padding:15px}.ev-card small{font-size:10px;font-weight:900;color:#64748b;text-transform:uppercase}.ev-card strong{display:block;font-size:28px;color:#001f4d;margin-top:7px}.ev-panel{overflow:hidden}.ev-bar{padding:14px 16px;border-bottom:1px solid #eef2f7;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}.ev-form{display:grid;grid-template-columns:1.4fr .9fr .9fr .9fr auto;gap:10px;padding:14px 16px;background:#f8fafc;border-bottom:1px solid #eef2f7}.ev-field label{display:block;font-size:10px;font-weight:900;color:#64748b;text-transform:uppercase;margin-bottom:4px}.ev-field input,.ev-field select,.ev-field textarea{width:100%;border:1.5px solid #dbe4ef;border-radius:9px;padding:0 10px;font-family:inherit;color:#0f172a;background:#fff}.ev-field input,.ev-field select{height:36px}.ev-field textarea{min-height:92px;padding:10px;resize:vertical;line-height:1.5}.ev-field input:focus,.ev-field select:focus,.ev-field textarea:focus{outline:0;border-color:#1565C0;box-shadow:0 0 0 3px rgba(21,101,192,.1)}.ev-btn{height:34px;border-radius:9px;border:1px solid #cbd5e1;background:#fff;color:#334155;font-size:12px;font-weight:800;padding:0 12px;cursor:pointer;font-family:inherit}.ev-btn:hover:not(:disabled){border-color:#1565C0}.ev-btn:disabled{opacity:.48;cursor:not-allowed}.ev-btn.primary{background:linear-gradient(135deg,#001f4d,#1565C0);color:#fff;border-color:#1565C0}.ev-btn.bingo{background:#eaf7ef;color:#136c36;border-color:#b8e1c7}.ev-search{padding:12px 16px;display:flex;gap:8px}.ev-search input{flex:1;height:36px;border:1.5px solid #dbe4ef;border-radius:999px;padding:0 14px}.ev-table{width:100%;border-collapse:collapse;min-width:860px}.ev-table th{background:#f8fafc;color:#64748b;font-size:10px;text-transform:uppercase;text-align:left;padding:10px}.ev-table td{font-size:12.5px;padding:11px 10px;border-top:1px solid #f1f5f9}.ev-pill{border-radius:999px;padding:3px 9px;font-size:10.5px;font-weight:900}.ev-ok{background:#dcfce7;color:#166534}.ev-warn{background:#fef3c7;color:#92400e}.ev-blue{background:#dbeafe;color:#1e40af}.ev-gray{background:#e2e8f0;color:#475569}
+/* ── ABAS ── */
+.ev-abas{display:flex;gap:2px;padding:0 22px;background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));overflow-x:auto}.ev-aba{border:0;background:transparent;color:rgba(255,255,255,.72);font-family:inherit;font-size:13px;font-weight:800;padding:12px 16px;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}.ev-aba:hover{color:#fff}.ev-aba[aria-selected="true"]{color:#fff;border-bottom-color:var(--gold,#C9A84C)}.ev-conteudo[hidden]{display:none}
+/* ── CARDS DE AÇÃO ── */
+.ev-acoes{display:grid;gap:12px;margin-bottom:14px}.ev-acao{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:16px 18px;display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;box-shadow:0 2px 10px rgba(0,20,60,.06)}.ev-acao .txt{flex:1 1 320px;min-width:0}.ev-acao b{display:block;font-size:14px;color:#001f4d}.ev-acao span{display:block;font-size:12.5px;color:#5a6779;margin-top:3px;line-height:1.5}.ev-link{margin-top:8px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11.5px;color:#1565C0;background:#f5f8fc;border:1px solid #dbe4ef;border-radius:8px;padding:7px 10px;word-break:break-all;display:block}.ev-nota{background:#fff7ed;border:1px solid #fed7aa;color:#7c4a03;border-radius:12px;padding:12px 15px;font-size:12.5px;line-height:1.55;margin-bottom:14px}.ev-secao{font-size:11px;font-weight:900;color:#64748b;text-transform:uppercase;letter-spacing:.07em;margin:0 0 10px}
+/* ── INFORMAÇÕES DA FESTA V2 ── */
+.ev-info-top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:14px}.ev-breadcrumb{font-size:11px;color:#64748b;margin-bottom:5px}.ev-info-top h2{font-size:20px;color:#001f4d;margin:0}.ev-info-meta{font-size:12px;color:#64748b;margin-top:6px}.ev-info-actions{display:flex;gap:8px;flex-wrap:wrap}.ev-info-layout{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(270px,.75fr);gap:14px;align-items:start}.ev-info-section{background:#fff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 2px 10px rgba(0,20,60,.06);margin-bottom:12px;overflow:hidden}.ev-info-section-h{padding:13px 16px;border-bottom:1px solid #eef2f7}.ev-info-section-h b{display:block;color:#001f4d;font-size:13px}.ev-info-section-h small{color:#64748b;font-size:11px}.ev-info-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:15px 16px}.ev-info-fields .span2{grid-column:1/-1}.ev-info-preview{position:sticky;top:12px}.ev-preview-cover{height:116px;background:linear-gradient(135deg,#001f4d,#1565C0);position:relative;overflow:hidden}.ev-preview-cover img{width:100%;height:100%;object-fit:cover;display:none}.ev-preview-logo{position:absolute;left:16px;bottom:12px;width:56px;height:56px;background:#fff;border:3px solid #fff;border-radius:12px;object-fit:contain;display:none;box-shadow:0 3px 12px rgba(0,0,0,.2)}.ev-preview-body{padding:16px}.ev-preview-body h3{font-size:16px;color:#001f4d;margin:0 0 6px}.ev-preview-line{font-size:12px;color:#64748b;margin:5px 0;line-height:1.45}.ev-preview-desc{font-size:12px;color:#334155;margin-top:12px;white-space:pre-wrap;line-height:1.55}.ev-info-help{padding:13px 16px;background:#f8fafc;border-top:1px solid #eef2f7;color:#64748b;font-size:11.5px;line-height:1.5}.ev-info-loading{padding:28px;text-align:center;color:#64748b}.ev-status-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+@media(max-width:1000px){.ev-grid{grid-template-columns:repeat(2,1fr)}.ev-form{grid-template-columns:1fr 1fr}.ev-info-layout{grid-template-columns:1fr}.ev-info-preview{position:static}}@media(max-width:650px){.ev-info-fields{grid-template-columns:1fr}.ev-info-fields .span2{grid-column:auto}}
+</style>
+
+<div class="ev-head">
+  <div><div class="ev-title">Eventos</div><div class="ev-sub">Agenda sindical, inscrições, credenciamento e sorteios</div></div>
+  <button class="ev-btn" onclick="spIr('sofia',null,{mensagem:'Preciso planejar um evento sindical.'})">Planejar com SOFIA</button>
+</div>
+
+<div class="ev-abas" role="tablist">
+  <button class="ev-aba" role="tab" id="aba-calendario" aria-selected="true" onclick="evAba('calendario')">Calendário</button>
+  <button class="ev-aba" role="tab" id="aba-informacoes" aria-selected="false" onclick="evAba('informacoes')">Informações</button>
+  <button class="ev-aba" role="tab" id="aba-inscricoes" aria-selected="false" onclick="evAba('inscricoes')">Inscrições</button>
+  <button class="ev-aba" role="tab" id="aba-participantes" aria-selected="false" onclick="evAba('participantes')">Participantes</button>
+  <button class="ev-aba" role="tab" id="aba-credenciamento" aria-selected="false" onclick="evAba('credenciamento')">Credenciamento</button>
+  <button class="ev-aba" role="tab" id="aba-sorteios" aria-selected="false" onclick="evAba('sorteios')">Sorteios</button>
+</div>
+
+<div class="ev-wrap">
+  <!-- ══ CALENDÁRIO ══ -->
+  <div class="ev-conteudo" id="conteudo-calendario">
+    <div class="ev-grid">
+      <div class="ev-card"><small>Próximos</small><strong id="evProximos">0</strong></div>
+      <div class="ev-card"><small>Hoje</small><strong id="evHoje">0</strong></div>
+      <div class="ev-card"><small>Comunicação</small><strong id="evComunicacao">0</strong></div>
+      <div class="ev-card"><small>Concluídos</small><strong id="evConcluidos">0</strong></div>
+    </div>
+    <div class="ev-panel">
+      <div class="ev-bar"><strong>Calendário operacional</strong><div><button class="ev-btn" onclick="evExportar()">Exportar CSV</button> <button class="ev-btn" onclick="spIr('documentos',null,{aba:'novo'})">Gerar ofício</button></div></div>
+      <div class="ev-form">
+        <div class="ev-field"><label>Evento</label><input id="evNome" placeholder="Ex.: Bingo, assembleia, reunião ou visita"></div>
+        <div class="ev-field"><label>Data</label><input id="evData" type="date"></div>
+        <div class="ev-field"><label>Tipo</label><select id="evTipo"><option>Assembleia</option><option>Reunião</option><option>Visita</option><option>Comunicado</option><option>Bingo</option><option>Festa / Confraternização</option><option>Campanha</option><option>Evento Institucional</option><option>Outro</option></select></div>
+        <div class="ev-field"><label>Status</label><select id="evStatus"><option>Planejado</option><option>Em andamento</option><option>Concluido</option></select></div>
+        <button class="ev-btn primary" onclick="evSalvar()">Salvar</button>
+      </div>
       <div class="ev-search"><input id="evBusca" placeholder="Buscar evento, tipo ou status..." oninput="evRender()"><button class="ev-btn" onclick="evLimpar()">Limpar</button></div>
-      <div style="overflow:auto"><table class="ev-table"><thead><tr><th>Evento</th><th>Data</th><th>Tipo</th><th>Status</th><th>Acoes</th></tr></thead><tbody id="evTabela"></tbody></table></div>
+      <div style="overflow:auto"><table class="ev-table"><thead><tr><th>Evento</th><th>Data</th><th>Tipo</th><th>Status</th><th>Ações</th></tr></thead><tbody id="evTabela"></tbody></table></div>
     </div>
   </div>
-  <script>
-  (function(){
-    var EV_CACHE = [];
-    var EV_EDITANDO = "";
 
-    function g(i){ return document.getElementById(i); }
-    function esc(s){ return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]); }); }
-    function hojeISO(){ return new Date().toISOString().slice(0,10); }
-    function cls(s){ return s==="Concluido"?"ev-ok":s==="Em andamento"?"ev-warn":"ev-blue"; }
-    function tokenSessao(){ return typeof SISGEP_TOKEN_SESSAO!=="undefined" ? SISGEP_TOKEN_SESSAO : ""; }
-    function avisar(msg,tipo){ if(typeof toast==="function") toast(msg,tipo); }
+  <!-- ══ FESTA 2026 · INFORMAÇÕES V2 ══ -->
+  <div class="ev-conteudo" id="conteudo-informacoes" hidden>
+    <div class="ev-info-top">
+      <div>
+        <div class="ev-breadcrumb">Eventos › Festas › Festa Compasso da Vida 2026 › Informações do Evento</div>
+        <h2 id="evInfoTitulo">Festa Compasso da Vida 2026</h2>
+        <div class="ev-info-meta"><span id="evInfoStatus" class="ev-pill ev-gray">Rascunho</span> <span id="evInfoMeta">Identidade e informações gerais</span></div>
+      </div>
+      <div class="ev-info-actions">
+        <button class="ev-btn" type="button" disabled title="A página pública da V2 será ligada em etapa própria, sem expor dados administrativos.">Visualizar página pública</button>
+        <button class="ev-btn primary" id="evInfoSalvar" type="button" onclick="evInfoSalvar()">Salvar rascunho</button>
+        <button class="ev-btn" type="button" disabled title="Publicação será habilitada quando a página pública e a transição de status estiverem validadas.">Publicar evento</button>
+      </div>
+    </div>
 
-    function evPintar(){
-      var l=EV_CACHE, b=String((g("evBusca")||{}).value||"").toLowerCase(), h=hojeISO();
-      var f=l.filter(function(x){ return !b||[x.nome,x.tipo,x.status].join(" ").toLowerCase().indexOf(b)>=0; });
-      g("evProximos").textContent=l.filter(function(x){ return x.data>=h&&x.status!=="Concluido"; }).length;
-      g("evHoje").textContent=l.filter(function(x){ return x.data===h; }).length;
-      g("evComunicacao").textContent=l.filter(function(x){ return x.tipo==="Comunicado"; }).length;
-      g("evConcluidos").textContent=l.filter(function(x){ return x.status==="Concluido"; }).length;
-      g("evTabela").innerHTML=f.length?f.map(function(x){
-        return "<tr><td><strong>"+esc(x.nome)+"</strong></td><td>"+esc(x.data||"-")+"</td><td>"+esc(x.tipo)+"</td>"
-          +"<td><span class='ev-pill "+cls(x.status)+"'>"+esc(x.status)+"</span></td>"
-          +"<td><button class='ev-btn' onclick=\"evEditar('"+x.id+"')\">Editar</button> <button class='ev-btn' onclick=\"evExcluir('"+x.id+"')\">Excluir</button></td></tr>";
-      }).join(""):"<tr><td colspan='5' style='text-align:center;color:#94a3b8;padding:24px'>Nenhum evento cadastrado.</td></tr>";
-    }
+    <div id="evInfoCarregando" class="ev-info-section ev-info-loading">Carregando informações da Festa 2026…</div>
+    <div id="evInfoCorpo" class="ev-info-layout" hidden>
+      <div>
+        <div class="ev-info-section">
+          <div class="ev-info-section-h"><b>Identidade do evento</b><small>Fonte única para telas, ingressos, comunicação e documentos.</small></div>
+          <div class="ev-info-fields">
+            <div class="ev-field"><label>Nome do evento *</label><input id="evInfoNome" maxlength="160" oninput="evInfoPreview()"></div>
+            <div class="ev-field"><label>Edição</label><input id="evInfoEdicao" maxlength="40" oninput="evInfoPreview()"></div>
+            <div class="ev-field span2"><label>URL da logo</label><input id="evInfoLogo" type="url" placeholder="https://…" oninput="evInfoPreview()"></div>
+            <div class="ev-field span2"><label>URL da imagem de capa</label><input id="evInfoCapa" type="url" placeholder="https://…" oninput="evInfoPreview()"></div>
+          </div>
+        </div>
 
-    window.evRender=function(){
-      var tbody=g("evTabela");
-      if(tbody) tbody.innerHTML="<tr><td colspan='5' style='text-align:center;color:#94a3b8;padding:24px'>⏳ Carregando agenda...</td></tr>";
-      google.script.run
-        .withSuccessHandler(function(lista){ EV_CACHE=lista||[]; evPintar(); })
-        .withFailureHandler(function(e){
-          if(tbody) tbody.innerHTML="<tr><td colspan='5' style='text-align:center;color:#b91c1c;padding:24px'>Erro ao carregar agenda: "+esc((e&&e.message)||String(e||""))+"</td></tr>";
-        })
-        .listarEventosAgenda(tokenSessao());
-    };
+        <div class="ev-info-section">
+          <div class="ev-info-section-h"><b>Data e horários</b><small>Horários oficiais utilizados nas demais funcionalidades do evento.</small></div>
+          <div class="ev-info-fields">
+            <div class="ev-field"><label>Data do evento</label><input id="evInfoData" type="date" oninput="evInfoPreview()"></div>
+            <div class="ev-field"><label>Abertura / entrada</label><input id="evInfoAbertura" type="time" oninput="evInfoPreview()"></div>
+            <div class="ev-field"><label>Início</label><input id="evInfoInicio" type="time" oninput="evInfoPreview()"></div>
+            <div class="ev-field"><label>Encerramento / saída</label><input id="evInfoEncerramento" type="time" oninput="evInfoPreview()"></div>
+          </div>
+        </div>
 
-    window.evSalvar=function(){
-      var x={ id:EV_EDITANDO||"", nome:g("evNome").value, data:g("evData").value, tipo:g("evTipo").value, status:g("evStatus").value };
-      if(!x.nome||!x.nome.trim()){ avisar("Informe o evento.","warn"); return; }
-      google.script.run
-        .withSuccessHandler(function(r){
-          if(!r||r.ok!==true){ avisar((r&&r.mensagem)||"Erro ao salvar.","err"); return; }
-          avisar(r.mensagem||"Evento salvo!","ok");
-          evLimpar(); evRender();
-        })
-        .withFailureHandler(function(e){ avisar("Erro: "+((e&&e.message)||String(e||"")),"err"); })
-        .salvarEventoAgenda(x, tokenSessao());
-    };
+        <div class="ev-info-section">
+          <div class="ev-info-section-h"><b>Local</b><small>Informações que poderão aparecer em convites, ingressos e orientações.</small></div>
+          <div class="ev-info-fields">
+            <div class="ev-field span2"><label>Nome do local</label><input id="evInfoLocal" maxlength="180" oninput="evInfoPreview()"></div>
+            <div class="ev-field span2"><label>Endereço</label><input id="evInfoEndereco" maxlength="300" oninput="evInfoPreview()"></div>
+          </div>
+        </div>
 
-    window.evEditar=function(id){
-      var x=EV_CACHE.find(function(a){ return a.id===id; });
-      if(!x) return;
-      EV_EDITANDO=id;
-      g("evNome").value=x.nome; g("evData").value=x.data; g("evTipo").value=x.tipo; g("evStatus").value=x.status;
-    };
+        <div class="ev-info-section">
+          <div class="ev-info-section-h"><b>Conteúdo e orientações</b><small>Texto institucional canônico da Festa.</small></div>
+          <div class="ev-info-fields">
+            <div class="ev-field span2"><label>Descrição completa</label><textarea id="evInfoDescricao" maxlength="6000" oninput="evInfoPreview()" placeholder="Apresente a Festa, proposta, público e principais informações."></textarea></div>
+            <div class="ev-field span2"><label>Orientações</label><textarea id="evInfoOrientacoes" maxlength="5000" placeholder="Ex.: documentos para entrada, estacionamento, regras de acesso…"></textarea></div>
+            <div class="ev-field span2"><label>Informações importantes</label><textarea id="evInfoImportantes" maxlength="5000" placeholder="Avisos que precisam acompanhar a comunicação do evento."></textarea></div>
+          </div>
+        </div>
+      </div>
 
-    window.evExcluir=function(id){
-      if(!confirm("Excluir evento?")) return;
-      google.script.run
-        .withSuccessHandler(function(r){
-          if(!r||r.ok!==true){ avisar((r&&r.mensagem)||"Erro ao excluir.","err"); return; }
-          evRender();
-        })
-        .withFailureHandler(function(e){ avisar("Erro: "+((e&&e.message)||String(e||"")),"err"); })
-        .excluirEventoAgenda(id, tokenSessao());
-    };
+      <aside class="ev-info-preview">
+        <div class="ev-info-section">
+          <div class="ev-info-section-h"><b>Prévia pública</b><small>Somente informações institucionais — sem métricas administrativas.</small></div>
+          <div class="ev-preview-cover" id="evPreviewCover"><img id="evPreviewCapa" alt="Capa do evento"><img id="evPreviewLogo" class="ev-preview-logo" alt="Logo do evento"></div>
+          <div class="ev-preview-body">
+            <h3 id="evPreviewNome">Festa Compasso da Vida 2026</h3>
+            <div class="ev-preview-line" id="evPreviewData">Data a definir</div>
+            <div class="ev-preview-line" id="evPreviewHorario">Horário a definir</div>
+            <div class="ev-preview-line" id="evPreviewLocal">Local a definir</div>
+            <div class="ev-preview-desc" id="evPreviewDescricao">A descrição do evento aparecerá aqui.</div>
+          </div>
+          <div class="ev-info-help">Esta prévia não recebe capacidade, vagas restantes, número de inscritos, check-ins ou qualquer outro indicador administrativo.</div>
+        </div>
+        <div class="ev-info-section">
+          <div class="ev-info-section-h"><b>Estado administrativo</b><small>Controle interno da V2.</small></div>
+          <div class="ev-preview-body">
+            <div class="ev-status-row"><span>Status:</span><span id="evInfoStatusLateral" class="ev-pill ev-gray">Rascunho</span></div>
+            <div class="ev-preview-line" id="evInfoPersistencia">Ainda não salvo na V2.</div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
 
-    window.evLimpar=function(){
-      EV_EDITANDO="";
-      ["evNome","evData"].forEach(function(i){ g(i).value=""; });
-      g("evTipo").value="Assembleia"; g("evStatus").value="Planejado";
-    };
+  <!-- ══ INSCRIÇÕES ══ -->
+  <div class="ev-conteudo" id="conteudo-inscricoes" hidden>
+    <p class="ev-secao">Festa Compasso da Vida 2026 · 19 de dezembro</p>
+    <div class="ev-acoes">
+      <div class="ev-acao"><div class="txt"><b>🔗 Link público de inscrição</b><span>É este endereço que vai na lista de transmissão e no site. O associado abre, digita o CPF, e o resto do formulário nasce preenchido.</span><code class="ev-link" id="evLinkCompasso">carregando…</code></div><button class="ev-btn primary" onclick="evCopiarLinkCompasso()">Copiar link</button></div>
+      <div class="ev-acao"><div class="txt"><b>📋 Painel de inscrições</b><span>Quem se inscreveu e ainda está em análise. Aqui você valida, corrige dados, confirma pagamento de acompanhante e emite o ingresso.</span></div><button class="ev-btn primary" onclick="evAbrirPainel('compasso')">Abrir painel →</button></div>
+      <div class="ev-acao"><div class="txt"><b>✅ Central de validação</b><span>A análise detalhada de uma inscrição: aprovar, pôr em pendência com motivo, ou reprovar liberando a vaga.</span></div><button class="ev-btn" onclick="evAvisoCentral()">Como abrir</button></div>
+      <div class="ev-acao"><div class="txt"><b>🎫 Emissão avulsa</b><span>Emitir ingresso sem passar pela inscrição — modelo antigo, para casos de exceção. O QR dele não é assinado.</span></div><button class="ev-btn" onclick="evAbrirPainel('emissao')">Abrir →</button></div>
+    </div>
+  </div>
 
-    window.evExportar=function(){
-      var rows=[["Evento","Data","Tipo","Status"]].concat(EV_CACHE.map(function(x){ return [x.nome,x.data,x.tipo,x.status]; }));
-      var csv=rows.map(function(r){ return r.map(function(c){ return '"'+String(c||"").replace(/"/g,'""')+'"'; }).join(";"); }).join("\n");
-      var a=document.createElement("a");
-      a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
-      a.download="sisgep-eventos.csv"; a.click();
-    };
+  <!-- ══ PARTICIPANTES ══ -->
+  <div class="ev-conteudo" id="conteudo-participantes" hidden>
+    <p class="ev-secao">Quem já tem ingresso emitido</p>
+    <div class="ev-nota"><b>Inscrições</b> é quem pediu e ainda está sendo analisado. <b>Participantes</b> é quem já tem ingresso e vai à festa. É a mesma lista, em dois estados — e o trabalho de cada uma é diferente: numa se analisa, na outra se entrega.</div>
+    <div class="ev-acoes">
+      <div class="ev-acao"><div class="txt"><b>🎟️ Participantes confirmados</b><span>Abre o painel já filtrado por quem tem ingresso. É daqui que sai o envio por e-mail e por WhatsApp, individual ou em lote.</span></div><button class="ev-btn primary" onclick="evAbrirPainel('compasso','','participantes')">Abrir lista →</button></div>
+      <div class="ev-acao"><div class="txt"><b>📤 A enviar</b><span>Ingresso emitido que ainda não saiu para ninguém. É a fila que gera trabalho — sem ela, ingresso fica parado sem ninguém perceber.</span></div><button class="ev-btn primary" onclick="evAbrirPainel('compasso','','a-enviar')">Ver a fila →</button></div>
+    </div>
+  </div>
 
-    window.evAbrirEmissaoIngressos=function(){ var token=tokenSessao(); var base=window.location.origin+window.location.pathname; window.open(base+"?painel=emissao&sessao="+encodeURIComponent(token),"_blank"); };
-    window.evAbrirCheckin=function(){ var token=tokenSessao(); var base=window.location.origin+window.location.pathname; window.open(base+"?painel=checkin&sessao="+encodeURIComponent(token),"_blank"); };
+  <!-- ══ CREDENCIAMENTO ══ -->
+  <div class="ev-conteudo" id="conteudo-credenciamento" hidden>
+    <p class="ev-secao">Entrada do evento</p>
+    <div class="ev-nota">Abra a portaria <b>no celular que vai ficar na entrada</b>, não neste computador. Ela usa a câmera do aparelho para ler o QR.</div>
+    <div class="ev-acoes">
+      <div class="ev-acao"><div class="txt"><b>📱 Portaria — leitor de QR</b><span>Lê o QR do ingresso e libera a entrada. O mesmo QR lido duas vezes é recusado, dizendo quando e por quem a pessoa entrou.</span></div><button class="ev-btn primary" onclick="evAvisoPortaria()">Como abrir</button></div>
+      <div class="ev-acao"><div class="txt"><b>🎟️ Check-in por número</b><span>Contingência para celular descarregado ou QR danificado: busca a pessoa pelo nome, CPF ou número do ingresso.</span></div><button class="ev-btn" onclick="evAbrirPainel('checkin')">Abrir →</button></div>
+    </div>
+  </div>
 
-    window.initEventos=evRender;
-    if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",evRender);
-    else setTimeout(evRender,80);
-  })();
-  </script>
+  <!-- ══ SORTEIOS ══ -->
+  <div class="ev-conteudo" id="conteudo-sorteios" hidden>
+    <p class="ev-secao">Bingo online</p>
+    <div class="ev-acoes">
+      <div class="ev-acao"><div class="txt"><b>🎲 Painel do bingo</b><span>Configura a rodada, gera as cartelas, sorteia e acompanha quem bateu. Abre pelo botão Bingo de cada evento do calendário, ou aqui.</span></div><button class="ev-btn bingo" onclick="evAbrirBingo()">Abrir painel →</button></div>
+      <div class="ev-acao"><div class="txt"><b>📺 Telão</b><span>Tela cheia com os números sorteados, para projetar durante a transmissão.</span></div><button class="ev-btn bingo" onclick="evAbrirPainel('bingo-telao')">Abrir telão →</button></div>
+      <div class="ev-acao"><div class="txt"><b>🔗 Link de inscrição do bingo</b><span>Cada evento tem o seu. O link é público e não leva a sua sessão — pode ser colado em grupo de WhatsApp sem risco.</span></div><button class="ev-btn bingo" onclick="evCopiarLinkInscricao()">Copiar link</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+var EV_CACHE=[],EV_EDITANDO="",EV_ABAS=['calendario','informacoes','inscricoes','participantes','credenciamento','sorteios'];
+var EV_INFO_CARREGADO=false,EV_INFO_EVENTO_ID='';
+function g(i){return document.getElementById(i)}
+function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])})}
+function tokenSessao(){return typeof SISGEP_TOKEN_SESSAO!=="undefined"?SISGEP_TOKEN_SESSAO:""}
+function avisar(m,t){if(typeof toast==="function")toast(m,t)}
+function cls(s){return s==="Concluido"?"ev-ok":s==="Em andamento"?"ev-warn":"ev-blue"}
+function valor(id){var el=g(id);return el?String(el.value||'').trim():''}
+function statusRotulo(s){return({RASCUNHO:'Rascunho',PROGRAMADO:'Programado',INSCRICOES_ABERTAS:'Inscrições abertas',INSCRICOES_ENCERRADAS:'Inscrições encerradas',EM_ANDAMENTO:'Em andamento',ENCERRADO:'Encerrado',CANCELADO:'Cancelado'})[s]||s||'Rascunho'}
+function statusClasse(s){if(s==='ENCERRADO')return'ev-ok';if(s==='EM_ANDAMENTO'||s==='INSCRICOES_ABERTAS')return'ev-warn';if(s==='CANCELADO')return'ev-gray';return'ev-blue'}
+function dataBr(iso){if(!iso)return'';var p=String(iso).split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:iso}
+function urlImagem(v){v=String(v||'').trim();return /^https:\/\//i.test(v)?v:''}
+
+window.evAba=function(nome){
+  if(EV_ABAS.indexOf(nome)<0)nome='calendario';
+  EV_ABAS.forEach(function(a){var bt=g('aba-'+a),ct=g('conteudo-'+a);if(bt)bt.setAttribute('aria-selected',a===nome?'true':'false');if(ct)ct.hidden=(a!==nome)});
+  try{localStorage.setItem('sisgep_ev_aba',nome)}catch(e){}
+  if(nome==='inscricoes')evMontarLinkCompasso();
+  if(nome==='informacoes')evInfoCarregar();
+};
+function evAbaSalva(){try{return localStorage.getItem('sisgep_ev_aba')||'calendario'}catch(e){return'calendario'}}
+
+/* ── FESTA 2026 · INFORMAÇÕES V2 ── */
+function evInfoCarregar(){
+  if(EV_INFO_CARREGADO)return;
+  var token=tokenSessao();
+  if(!token){if(g('evInfoCarregando'))g('evInfoCarregando').textContent='Sessão não encontrada. Entre novamente no SISGEP.';return}
+  google.script.run.withSuccessHandler(function(r){
+    if(!r||!r.ok){if(g('evInfoCarregando'))g('evInfoCarregando').textContent=(r&&r.mensagem)||'Não foi possível carregar a Festa 2026.';return}
+    EV_INFO_CARREGADO=true;evInfoPreencher(r.evento||{},!!r.persistido);
+  }).withFailureHandler(function(e){if(g('evInfoCarregando'))g('evInfoCarregando').textContent='Erro ao carregar: '+((e&&e.message)||e)}).eventosV2Admin_obterFesta2026(token);
+}
+function evInfoPreencher(e,persistido){
+  EV_INFO_EVENTO_ID=String(e.eventoId||'');
+  var mapa={evInfoNome:e.nome,evInfoEdicao:e.edicao,evInfoLogo:e.logoUrl,evInfoCapa:e.imagemCapaUrl,evInfoData:e.dataEvento,evInfoAbertura:e.horaAbertura,evInfoInicio:e.horaInicio,evInfoEncerramento:e.horaEncerramento,evInfoLocal:e.localNome,evInfoEndereco:e.endereco,evInfoDescricao:e.descricao,evInfoOrientacoes:e.orientacoes,evInfoImportantes:e.informacoesImportantes};
+  Object.keys(mapa).forEach(function(id){if(g(id))g(id).value=mapa[id]||''});
+  var s=String(e.status||'RASCUNHO'),rot=statusRotulo(s);['evInfoStatus','evInfoStatusLateral'].forEach(function(id){var el=g(id);if(el){el.textContent=rot;el.className='ev-pill '+statusClasse(s)}});
+  if(g('evInfoPersistencia'))g('evInfoPersistencia').textContent=persistido?'Registro V2 salvo na homologação.':'Ainda não salvo na V2.';
+  if(g('evInfoCarregando'))g('evInfoCarregando').hidden=true;if(g('evInfoCorpo'))g('evInfoCorpo').hidden=false;evInfoPreview();
+}
+window.evInfoPreview=function(){
+  var nome=valor('evInfoNome')||'Festa Compasso da Vida 2026',data=valor('evInfoData'),ab=valor('evInfoAbertura'),ini=valor('evInfoInicio'),fim=valor('evInfoEncerramento'),local=valor('evInfoLocal'),end=valor('evInfoEndereco'),desc=valor('evInfoDescricao');
+  if(g('evInfoTitulo'))g('evInfoTitulo').textContent=nome;if(g('evPreviewNome'))g('evPreviewNome').textContent=nome;
+  if(g('evPreviewData'))g('evPreviewData').textContent=data?'📅 '+dataBr(data):'Data a definir';
+  var hs=[];if(ab)hs.push('entrada '+ab);if(ini)hs.push('início '+ini);if(fim)hs.push('encerramento '+fim);if(g('evPreviewHorario'))g('evPreviewHorario').textContent=hs.length?'🕐 '+hs.join(' · '):'Horário a definir';
+  if(g('evPreviewLocal'))g('evPreviewLocal').textContent=(local||end)?'📍 '+[local,end].filter(Boolean).join(' — '):'Local a definir';
+  if(g('evPreviewDescricao'))g('evPreviewDescricao').textContent=desc||'A descrição do evento aparecerá aqui.';
+  var capa=urlImagem(valor('evInfoCapa')),logo=urlImagem(valor('evInfoLogo')),imgC=g('evPreviewCapa'),imgL=g('evPreviewLogo');
+  if(imgC){imgC.style.display=capa?'block':'none';if(capa)imgC.src=capa;else imgC.removeAttribute('src')}
+  if(imgL){imgL.style.display=logo?'block':'none';if(logo)imgL.src=logo;else imgL.removeAttribute('src')}
+};
+window.evInfoSalvar=function(){
+  var token=tokenSessao();if(!token)return avisar('Sessão não encontrada. Entre novamente no SISGEP.','err');
+  var nome=valor('evInfoNome');if(!nome)return avisar('Informe o nome do evento.','warn');
+  var dados={eventoId:EV_INFO_EVENTO_ID,nome:nome,edicao:valor('evInfoEdicao'),logoUrl:valor('evInfoLogo'),imagemCapaUrl:valor('evInfoCapa'),dataEvento:valor('evInfoData'),horaAbertura:valor('evInfoAbertura'),horaInicio:valor('evInfoInicio'),horaEncerramento:valor('evInfoEncerramento'),localNome:valor('evInfoLocal'),endereco:valor('evInfoEndereco'),descricao:valor('evInfoDescricao'),orientacoes:valor('evInfoOrientacoes'),informacoesImportantes:valor('evInfoImportantes')};
+  var bt=g('evInfoSalvar');if(bt){bt.disabled=true;bt.textContent='Salvando…'}
+  google.script.run.withSuccessHandler(function(r){
+    if(bt){bt.disabled=false;bt.textContent='Salvar rascunho'}
+    if(!r||!r.ok)return avisar((r&&r.mensagem)||'Não foi possível salvar.','err');
+    EV_INFO_EVENTO_ID=String((r.evento||{}).eventoId||EV_INFO_EVENTO_ID);evInfoPreencher(r.evento||{},true);avisar(r.mensagem||'Informações salvas.','ok');
+  }).withFailureHandler(function(e){if(bt){bt.disabled=false;bt.textContent='Salvar rascunho'}avisar('Erro ao salvar: '+((e&&e.message)||e),'err')}).eventosV2Admin_salvarInformacoesFesta2026(token,dados);
+};
+
+/* ── CALENDÁRIO (fluxo legado preservado) ── */
+function pintar(){var b=String((g('evBusca')||{}).value||'').toLowerCase(),h=new Date().toISOString().slice(0,10),f=EV_CACHE.filter(function(x){return !b||[x.nome,x.tipo,x.status].join(' ').toLowerCase().indexOf(b)>=0});g('evProximos').textContent=EV_CACHE.filter(function(x){return x.data>=h&&x.status!=="Concluido"}).length;g('evHoje').textContent=EV_CACHE.filter(function(x){return x.data===h}).length;g('evComunicacao').textContent=EV_CACHE.filter(function(x){return x.tipo==='Comunicado'}).length;g('evConcluidos').textContent=EV_CACHE.filter(function(x){return x.status==='Concluido'}).length;g('evTabela').innerHTML=f.length?f.map(function(x){return "<tr><td><strong>"+esc(x.nome)+"</strong></td><td>"+esc(x.data||'-')+"</td><td>"+esc(x.tipo)+"</td><td><span class='ev-pill "+cls(x.status)+"'>"+esc(x.status)+"</span></td><td><button class='ev-btn bingo' onclick=\"evAbrirBingo('"+esc(x.id)+"')\">🎯 Bingo</button> <button class='ev-btn' onclick=\"evEditar('"+esc(x.id)+"')\">Editar</button> <button class='ev-btn' onclick=\"evExcluir('"+esc(x.id)+"')\">Excluir</button></td></tr>"}).join(''):"<tr><td colspan='5' style='text-align:center;padding:24px;color:#94a3b8'>Nenhum evento cadastrado.</td></tr>"}
+window.evRender=function(){google.script.run.withSuccessHandler(function(l){EV_CACHE=l||[];pintar()}).withFailureHandler(function(e){avisar('Erro ao carregar eventos: '+((e&&e.message)||e),'err')}).listarEventosAgenda(tokenSessao())};
+window.evSalvar=function(){var x={id:EV_EDITANDO||'',nome:g('evNome').value,data:g('evData').value,tipo:g('evTipo').value,status:g('evStatus').value};if(!x.nome.trim())return avisar('Informe o evento.','warn');google.script.run.withSuccessHandler(function(r){if(!r||!r.ok)return avisar((r&&r.mensagem)||'Erro ao salvar.','err');avisar(r.mensagem||'Evento salvo.','ok');evLimpar();evRender()}).withFailureHandler(function(e){avisar('Erro: '+((e&&e.message)||e),'err')}).salvarEventoAgenda(x,tokenSessao())};
+window.evEditar=function(id){var x=EV_CACHE.find(function(a){return a.id===id});if(!x)return;EV_EDITANDO=id;g('evNome').value=x.nome;g('evData').value=x.data;g('evTipo').value=x.tipo;g('evStatus').value=x.status};
+window.evExcluir=function(id){if(!confirm('Excluir evento?'))return;google.script.run.withSuccessHandler(function(r){if(!r||!r.ok)return avisar((r&&r.mensagem)||'Erro ao excluir.','err');evRender()}).withFailureHandler(function(e){avisar('Erro: '+((e&&e.message)||e),'err')}).excluirEventoAgenda(id,tokenSessao())};
+window.evLimpar=function(){EV_EDITANDO='';g('evNome').value='';g('evData').value='';g('evTipo').value='Assembleia';g('evStatus').value='Planejado'};
+window.evExportar=function(){var rows=[["Evento","Data","Tipo","Status"]].concat(EV_CACHE.map(function(x){return[x.nome,x.data,x.tipo,x.status]})),csv=rows.map(function(r){return r.map(function(c){return '"'+String(c||'').replace(/"/g,'""')+'"'}).join(';')}).join('\n'),a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='sisgep-eventos.csv';a.click()};
+
+/* ── PAINÉIS ── */
+window.evAbrirPainel=function(painel,eventoId,filtro){var token=tokenSessao();if(!token)return avisar('Sessão não encontrada. Entre novamente no SISGEP.','err');google.script.run.withSuccessHandler(function(base){var url=String(base||'')+'?painel='+encodeURIComponent(painel)+'&sessao='+encodeURIComponent(token);if(eventoId)url+='&evento='+encodeURIComponent(eventoId);if(filtro)url+='&filtro='+encodeURIComponent(filtro);window.open(url,'_blank')}).withFailureHandler(function(e){avisar('Não foi possível abrir o painel: '+((e&&e.message)||e),'err')}).eventos_obterWebAppUrl(token)};
+window.evAbrirEmissaoIngressos=function(){evAbrirPainel('emissao')};window.evAbrirCheckin=function(){evAbrirPainel('checkin')};window.evAbrirBingo=function(eventoId){evAbrirPainel('bingo',eventoId)};
+
+/* ── LINK PÚBLICO DO COMPASSO ── */
+var EV_LINK_COMPASSO='';
+function evMontarLinkCompasso(){if(EV_LINK_COMPASSO)return;var token=tokenSessao(),el=g('evLinkCompasso');if(!token){if(el)el.textContent='Sessão não encontrada. Entre novamente no SISGEP.';return}google.script.run.withSuccessHandler(function(base){EV_LINK_COMPASSO=String(base||'')+'?page=compasso-inscricao';if(el)el.textContent=EV_LINK_COMPASSO}).withFailureHandler(function(e){if(el)el.textContent='Não foi possível montar o link: '+((e&&e.message)||e)}).eventos_obterWebAppUrl(token)}
+window.evCopiarLinkCompasso=function(){if(!EV_LINK_COMPASSO)return avisar('O link ainda está carregando. Tente em instantes.','warn');var pronto=function(){avisar('Link de inscrição copiado.','ok')};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(EV_LINK_COMPASSO).then(pronto,function(){prompt('Copie o link:',EV_LINK_COMPASSO)})}else{prompt('Copie o link:',EV_LINK_COMPASSO)}};
+window.evAvisoCentral=function(){avisar('A Central de Validação abre pela planilha do SISGEP: menu 🎫 Eventos › Central de Validação. Ela ainda não tem endereço próprio no web app.','warn')};
+window.evAvisoPortaria=function(){avisar('A portaria abre pela planilha do SISGEP, no celular da entrada: menu 🎫 Eventos › Check-in. Ela ainda não tem endereço próprio no web app.','warn')};
+window.evCopiarLinkInscricao=function(eventoId){var token=tokenSessao();if(!token)return avisar('Sessão não encontrada. Entre novamente no SISGEP.','err');var id=String(eventoId||prompt('ID do evento para a inscrição:')||'').trim();if(!id)return;google.script.run.withSuccessHandler(function(base){var url=String(base||'')+'?bingo-inscricao='+encodeURIComponent(id),pronto=function(){avisar('Link copiado: '+url,'ok')};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(pronto,function(){prompt('Copie o link:',url)})}else{prompt('Copie o link:',url)}}).withFailureHandler(function(e){avisar('Não foi possível montar o link: '+((e&&e.message)||e),'err')}).eventos_obterWebAppUrl(token)};
+
+function evIniciar(){evAba(evAbaSalva());evRender()}
+window.initEventos=evIniciar;
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',evIniciar);else setTimeout(evIniciar,80);
+})();
+</script>
 </div>

@@ -243,6 +243,11 @@ function processarFilaEnvioOficios() {
   }
 
   var headerMap            = getHeaderMap_(sh);
+  /* colId entrou na lista de obrigatórias em 20/08/2026 (commit 731ed4e) sem
+     ser declarada aqui — só na outra função que aquele commit tocou. O efeito
+     era ReferenceError logo abaixo, ao montar `obrigatorias`: a fila de envio
+     de ofícios parava antes de processar a primeira linha. */
+  var colId                = headerMap["ID"];
   var colNumero            = headerMap["NUMERO_OFICIO"];
   var colTipo              = headerMap["TIPO"];
   var colEscola            = headerMap["ESCOLA"];
@@ -263,6 +268,7 @@ function processarFilaEnvioOficios() {
   var colStatusRecebimento = headerMap["STATUS_RECEBIMENTO"];
 
   var obrigatorias = {
+    ID: colId,
     NUMERO_OFICIO: colNumero,
     TIPO: colTipo,
     ESCOLA: colEscola,
@@ -490,7 +496,7 @@ function processarFilaEnvioOficios() {
     erros: erros
   };
 }
-function enviarOficioDaFilaAgora(numero, tokenSessao) {
+function enviarOficioDaFilaAgora(numero, tokenSessao, filaId) {
   var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   if (!numero) return { ok: false, mensagem: "Número do ofício não informado." };
 
@@ -503,6 +509,7 @@ function enviarOficioDaFilaAgora(numero, tokenSessao) {
 
   var headerMap = getHeaderMap_(sh);
 
+  var colId                  = headerMap["ID"];
   var colNumero              = headerMap["NUMERO_OFICIO"];
   var colEmailPrincipal      = headerMap["EMAIL_PRINCIPAL"];
   var colEmailsTodos         = headerMap["EMAILS_TODOS"];
@@ -548,21 +555,55 @@ function enviarOficioDaFilaAgora(numero, tokenSessao) {
   var totalCols = sh.getLastColumn();
   var dados = sh.getRange(2, 1, sh.getLastRow() - 1, totalCols).getValues();
   var linhaIdx = -1;
+  var linhaIdxFallback = -1;
+  var numeroBuscado = String(numero).trim();
+  var filaIdBuscado = String(filaId || "").trim();
 
-  for (var i = 0; i < dados.length; i++) {
-    if (String(dados[i][colNumero - 1] || "").trim() === String(numero).trim()) {
-      linhaIdx = i;
-      break;
+  // Caminho principal: o ID é único e identifica exatamente a linha criada
+  // nesta emissão. Isso elimina ambiguidades quando dois ambientes possuem o
+  // mesmo NUMERO_OFICIO (ex.: histórico de Produção copiado para HML).
+  if (filaIdBuscado) {
+    for (var i = dados.length - 1; i >= 0; i--) {
+      if (String(dados[i][colId - 1] || "").trim() === filaIdBuscado) {
+        linhaIdx = i;
+        break;
+      }
     }
-  }
 
-  if (linhaIdx === -1) {
-    return { ok: false, mensagem: "Ofício " + numero + " não encontrado na fila." };
+    if (linhaIdx === -1) {
+      return { ok: false, mensagem: "Registro da fila não encontrado para o ID informado." };
+    }
+
+    var numeroDoId = String(dados[linhaIdx][colNumero - 1] || "").trim();
+    if (numeroBuscado && numeroDoId !== numeroBuscado) {
+      return { ok: false, mensagem: "O ID da fila não corresponde ao número do ofício informado." };
+    }
+  } else {
+    // Compatibilidade com chamadas antigas: sem filaId, usa o número e
+    // prioriza o registro acionável mais recente.
+    for (var j = dados.length - 1; j >= 0; j--) {
+      if (String(dados[j][colNumero - 1] || "").trim() !== numeroBuscado) continue;
+
+      var statusCandidato = String(dados[j][colStatus - 1] || "").trim().toUpperCase();
+      if (statusCandidato === "PENDENTE" || statusCandidato === "ERRO" || statusCandidato === "PROCESSANDO") {
+        linhaIdx = j;
+        break;
+      }
+
+      if (linhaIdxFallback === -1) linhaIdxFallback = j;
+    }
+
+    if (linhaIdx === -1) linhaIdx = linhaIdxFallback;
+
+    if (linhaIdx === -1) {
+      return { ok: false, mensagem: "Ofício " + numero + " não encontrado na fila." };
+    }
   }
 
   var linha = dados[linhaIdx];
   var linhaPlanilha = linhaIdx + 2;
   var status = String(linha[colStatus - 1] || "").trim().toUpperCase();
+  Logger.log("[ENVIO_AGORA] Selecionado ofício " + numero + " na linha " + linhaPlanilha + " com status " + status + ".");
 
   if (status === "ENVIADO") {
     return { ok: true, mensagem: "E-mail já foi enviado anteriormente." };
@@ -587,8 +628,21 @@ function enviarOficioDaFilaAgora(numero, tokenSessao) {
 
   var valoresLinha;
   var lockEnvioAgora = LockService.getScriptLock();
-  if (!lockEnvioAgora.tryLock(5000)) {
-    return { ok: false, mensagem: "Fila ocupada. Tente novamente em alguns segundos." };
+  var lockObtido = false;
+
+  // O SISGEP possui vários módulos no mesmo projeto. Um lock global curto de
+  // 5 s fazia o botão "Enviar agora" desistir durante operações paralelas,
+  // sem sequer registrar uma tentativa. Aguarda um pouco mais, mantendo a
+  // proteção contra envio duplicado.
+  try {
+    lockObtido = lockEnvioAgora.tryLock(15000);
+  } catch (eLock) {
+    Logger.log("[ENVIO_AGORA] Falha ao obter lock para o ofício " + numero + ": " + (eLock.message || eLock));
+  }
+
+  if (!lockObtido) {
+    Logger.log("[ENVIO_AGORA] Fila permaneceu ocupada para o ofício " + numero + " após 15 s.");
+    return { ok: false, mensagem: "Fila ocupada. Aguarde alguns segundos e tente novamente." };
   }
 
   try {
@@ -607,7 +661,7 @@ function enviarOficioDaFilaAgora(numero, tokenSessao) {
     sh.getRange(linhaPlanilha, 1, 1, totalCols).setValues([valoresLinha]);
     SpreadsheetApp.flush();
   } finally {
-    lockEnvioAgora.releaseLock();
+    if (lockObtido) lockEnvioAgora.releaseLock();
   }
 
   try {

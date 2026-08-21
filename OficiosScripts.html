@@ -707,7 +707,12 @@ function atualizarPayloadOficio(num) {
   var inputFicha   = c.querySelector(".input-ficha-trabalhador");
   var contadorFich = c.querySelector(".ficha-contador");
   var previewFich  = c.querySelector(".ficha-preview-individual");
-  var fichasCard   = new DataTransfer();
+  /* A fila acumulada mora NO ELEMENTO, não numa variável de closure.
+     Enquanto morou só na closure, remover um arquivo pela fila não a
+     atualizava, e o anexo seguinte ressuscitava o que tinha sido
+     apagado — o pior tipo de defeito num anexo, porque o documento sai
+     com uma ficha que a pessoa jurava ter tirado. */
+  c._fichasDt = new DataTransfer();
 
   c.querySelector(".btn-remover-trabalhador-premium").onclick = function() {
     c.remove(); restaurarVazio(); renumerarTrabalhadores(); atualizarResumoTrabalhadores(); sincronizarFichasGlobais();
@@ -731,8 +736,10 @@ function atualizarPayloadOficio(num) {
         } else { inp.style.borderColor = ""; inp.style.background = ""; if (err) err.remove(); }
       }
       atualizarResumoTrabalhadores();
-      if (fichasCard && fichasCard.files && fichasCard.files.length) {
-        fichasCard = renomearFichasCard(c, fichasCard); inputFicha.files = fichasCard.files; renderizarPreviewFichaCard(previewFich, fichasCard);
+      if (c._fichasDt && c._fichasDt.files && c._fichasDt.files.length) {
+        c._fichasDt = renomearFichasCard(c, c._fichasDt);
+        inputFicha.files = c._fichasDt.files;
+        renderizarPreviewFichaCard(previewFich, c._fichasDt);
       }
       sincronizarFichasGlobais();
     };
@@ -740,15 +747,15 @@ function atualizarPayloadOficio(num) {
 
   inputFicha.onchange = function() {
     Array.from(inputFicha.files).forEach(function(f) {
-      if (fichasCard.files.length >= 25) { toast("Limite de fichas atingido.", "warn"); return; }
-      var jaExiste = Array.from(fichasCard.files).some(function(e) { return e.name === f.name; });
-      if (!jaExiste) fichasCard.items.add(f);
+      if (c._fichasDt.files.length >= 25) { toast("Limite de fichas atingido.", "warn"); return; }
+      var jaExiste = Array.from(c._fichasDt.files).some(function(e) { return e.name === f.name; });
+      if (!jaExiste) c._fichasDt.items.add(f);
     });
-    fichasCard = renomearFichasCard(c, fichasCard);
-    inputFicha.files = fichasCard.files;
-    var total = fichasCard.files.length;
+    c._fichasDt = renomearFichasCard(c, c._fichasDt);
+    inputFicha.files = c._fichasDt.files;
+    var total = c._fichasDt.files.length;
     contadorFich.textContent = total ? total + (total === 1 ? " ficha" : " fichas") : "Nenhuma ficha";
-    renderizarPreviewFichaCard(previewFich, fichasCard);
+    renderizarPreviewFichaCard(previewFich, c._fichasDt);
     sincronizarFichasGlobais();
   };
 
@@ -791,21 +798,190 @@ function renomearFichasCard(card, dt) {
   return nova;
 }
 
-function renderizarPreviewFichaCard(prev, dt) { if (prev) prev.innerHTML = ""; }
+/* ══════════════════════════════════════════════════════════════════════
+   FILA DE ARQUIVOS COM CHECK DE EXCLUIR
 
-function removerFichaCard(btn, idx) {
-  var card = btn.closest(".trabalhador-card");
+   Pedido do usuário em 19/08/2026: "o módulo de ofício não tem um check
+   para excluir as fichas em lote".
+
+   Ao levantar, o defeito era maior e mais estranho do que o relato: a
+   REMOÇÃO JÁ ESTAVA ESCRITA, e não tinha por onde ser acionada.
+   `renderizarPreviewFichaCard` e `atualizarPreviewFichas` eram cascas —
+   apagavam o container e não desenhavam nada:
+
+       function renderizarPreviewFichaCard(prev, dt) { if (prev) prev.innerHTML = ""; }
+
+   Como era ali que os botões apareceriam, `removerFicha` e
+   `removerFichaCard` ficaram com ZERO chamadas nos 125 .gs e 80 .html —
+   prontas, corretas e inalcançáveis. Numa leitura o código parecia
+   completo; só executando se via que ninguém chamava.
+
+   POR QUE ISSO IMPORTA NA OPERAÇÃO. Um <input type="file"> nativo não
+   deixa tirar UM arquivo: escolher de novo substitui o conjunto inteiro.
+   Errar um PDF em quatro custava refazer os quatro — e sem lista à vista,
+   nem dava para saber qual estava errado.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/** "142 KB", "2,1 MB" — quem confere anexo olha o tamanho antes do nome. */
+function oficioTamanhoLegivel_(bytes) {
+  var n = Number(bytes) || 0;
+  if (n < 1024) return n + " B";
+  if (n < 1024 * 1024) return Math.round(n / 1024) + " KB";
+  return (n / (1024 * 1024)).toFixed(1).replace(".", ",") + " MB";
+}
+
+/**
+ * Desenha a fila de arquivos com um check por linha e um botão que remove
+ * os marcados. `aoRemover(indices)` recebe as posições marcadas.
+ *
+ * O botão nasce DESABILITADO e diz quantos vai remover. Botão de remoção
+ * que fica sempre clicável, sem contagem, é o que se aperta por engano.
+ */
+function oficioDesenharFila_(container, arquivos, aoRemover) {
+  if (!container) return;
+  container.innerHTML = "";
+  var lista = Array.prototype.slice.call(arquivos || []);
+  if (!lista.length) return;
+
+  var caixa = document.createElement("div");
+  caixa.className = "of-fila-fichas";
+  caixa.style.cssText = "border:1px solid var(--g200);border-radius:8px;overflow:hidden;background:#fff;";
+
+  lista.forEach(function (f, i) {
+    var linha = document.createElement("label");
+    linha.style.cssText = "display:flex;align-items:center;gap:10px;padding:8px 10px;" +
+      "font-size:12.5px;cursor:pointer;" + (i ? "border-top:1px solid var(--g100);" : "");
+    var chk = document.createElement("input");
+    chk.type = "checkbox";
+    chk.className = "of-fila-chk";
+    chk.dataset.idx = String(i);
+    chk.style.cssText = "width:15px;height:15px;cursor:pointer;flex:none;";
+    var nome = document.createElement("span");
+    nome.textContent = "📄 " + f.name;
+    nome.style.cssText = "flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--g700);";
+    nome.title = f.name;
+    var tam = document.createElement("span");
+    tam.textContent = oficioTamanhoLegivel_(f.size);
+    tam.style.cssText = "flex:none;color:var(--g400);font-size:11.5px;";
+    linha.appendChild(chk); linha.appendChild(nome); linha.appendChild(tam);
+    caixa.appendChild(linha);
+  });
+
+  var rodape = document.createElement("div");
+  rodape.style.cssText = "display:flex;align-items:center;justify-content:space-between;" +
+    "gap:10px;margin-top:8px;flex-wrap:wrap;";
+  var resumo = document.createElement("span");
+  var totalBytes = lista.reduce(function (s, f) { return s + (f.size || 0); }, 0);
+  resumo.textContent = lista.length + (lista.length === 1 ? " arquivo · " : " arquivos · ") +
+    oficioTamanhoLegivel_(totalBytes);
+  resumo.style.cssText = "font-size:11.5px;color:var(--g500);";
+  var btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "btn btn-red of-fila-remover";
+  btn.disabled = true;
+  btn.textContent = "Remover marcados";
+  btn.style.cssText = "font-size:12px;padding:5px 12px;";
+
+  function marcados() {
+    return Array.prototype.slice.call(caixa.querySelectorAll(".of-fila-chk"))
+      .filter(function (c) { return c.checked; })
+      .map(function (c) { return Number(c.dataset.idx); });
+  }
+  caixa.addEventListener("change", function () {
+    var n = marcados().length;
+    btn.disabled = n === 0;
+    btn.textContent = n ? "Remover marcados (" + n + ")" : "Remover marcados";
+  });
+  btn.onclick = function () {
+    var idxs = marcados();
+    if (idxs.length && typeof aoRemover === "function") aoRemover(idxs);
+  };
+
+  rodape.appendChild(resumo); rodape.appendChild(btn);
+  container.appendChild(caixa); container.appendChild(rodape);
+}
+
+/** A fila do cartão de um trabalhador. */
+function renderizarPreviewFichaCard(prev, dt) {
+  if (!prev) return;
+  oficioDesenharFila_(prev, dt && dt.files, function (idxs) {
+    removerFichasCard(prev, idxs);
+  });
+}
+
+/**
+ * Remove do cartão os arquivos nas posições dadas.
+ *
+ * De uma vez, e não um a um em laço: apagar por índice enquanto a lista
+ * encolhe desloca tudo que vem depois, e o segundo apagado seria o
+ * arquivo errado.
+ */
+function removerFichasCard(refEl, idxs) {
+  var card = refEl.closest(".trabalhador-card");
+  if (!card) return;
   var inputFicha = card.querySelector(".input-ficha-trabalhador");
   var contador = card.querySelector(".ficha-contador");
   var preview = card.querySelector(".ficha-preview-individual");
   if (!inputFicha) return;
+
+  var fora = {};
+  (idxs || []).forEach(function (i) { fora[i] = true; });
   var nova = new DataTransfer();
-  Array.from(inputFicha.files).forEach(function(f, i) { if (i !== idx) nova.items.add(f); });
+  Array.from(inputFicha.files).forEach(function (f, i) { if (!fora[i]) nova.items.add(f); });
   inputFicha.files = nova.files;
+  /* A fila acumulada do cartão vive no elemento, e não numa variável de
+     closure: quando morava só na closure, remover aqui não a atualizava e
+     o próximo anexo ressuscitava o arquivo apagado. */
+  card._fichasDt = nova;
+
   var total = nova.files.length;
-  contador.textContent = total ? total + (total === 1 ? " ficha" : " fichas") : "Nenhuma ficha";
+  if (contador) contador.textContent = total ? total + (total === 1 ? " ficha" : " fichas") : "Nenhuma ficha";
   renderizarPreviewFichaCard(preview, nova);
   sincronizarFichasGlobais();
+}
+
+/** Um só — o caminho antigo, agora em cima do de vários. */
+function removerFichaCard(btn, idx) { removerFichasCard(btn, [idx]); }
+
+/* ── A fila das FICHAS DO OFÍCIO (o PDF único da escola) ───────────────
+ *
+ * A fonte da verdade continua sendo `input.files`, espelhado em
+ * window._fichasOficioDt. Não é preciosismo: a emissão lê exatamente
+ * `$("fichasOficioLote").files`, e se a fila vivesse num array paralelo
+ * os dois se desencontrariam — a tela mostraria uma coisa e o e-mail
+ * levaria outra. Foi um desencontro assim que segurou a ficha dentro do
+ * navegador na semana passada.
+ */
+function atualizarFilaFichasOficio() {
+  var inp = $("fichasOficioLote");
+  if (!inp) return;
+  var n = inp.files ? inp.files.length : 0;
+  var res = $("fichasOficioResumo");
+  if (res) {
+    res.textContent = n
+      ? (n === 1 ? "1 arquivo anexado ao ofício" : n + " arquivos anexados ao ofício")
+      : "";
+  }
+  oficioDesenharFila_($("fichasOficioFila"), inp.files, removerFichasOficio);
+  if (typeof atualizarResumoTrabalhadores === "function") atualizarResumoTrabalhadores();
+}
+
+/** Tira do ofício os arquivos marcados. De uma vez, pela mesma razão do cartão. */
+function removerFichasOficio(idxs) {
+  var inp = $("fichasOficioLote");
+  if (!inp) return;
+  var fora = {};
+  (idxs || []).forEach(function (i) { fora[i] = true; });
+  var nova = new DataTransfer();
+  Array.prototype.slice.call(inp.files || []).forEach(function (f, i) {
+    if (!fora[i]) nova.items.add(f);
+  });
+  window._fichasOficioDt = nova;
+  inp.files = nova.files;
+  atualizarFilaFichasOficio();
+  var quantos = (idxs || []).length;
+  toast(quantos === 1 ? "1 ficha removida do ofício."
+                      : quantos + " fichas removidas do ofício.", "ok");
 }
 
   function sincronizarFichasGlobais() {
@@ -1603,6 +1779,24 @@ function atualizarContadorFichas() {
     }
 
     var todosArquivos = [];
+
+    /* O PDF ÚNICO DO OFÍCIO ENTRA PRIMEIRO.
+     *
+     * Defeito medido em 18/08/2026, com o usuário reportando "a ficha não
+     * está indo junto ao ofício no e-mail". A varredura abaixo lia SÓ os
+     * cartões dos trabalhadores — o campo "Fichas do ofício"
+     * (#fichasOficioLote), onde ele anexa o escaneado de todas as cartas da
+     * escola, não era lido por ninguém na hora de emitir. O arquivo ficava
+     * no navegador e o e-mail saía com o ofício sozinho, sem erro nenhum.
+     *
+     * getFichasPayload() já lia esse campo, mas só alimenta o painel de
+     * revisão; quem monta o que vai para o backend é este trecho. Duas
+     * leituras do mesmo campo, uma delas sem consumidor. */
+    var inputFichasOficio = $("fichasOficioLote");
+    if (inputFichasOficio && inputFichasOficio.files) {
+      Array.from(inputFichasOficio.files).forEach(function (f) { todosArquivos.push(f); });
+    }
+
     document.querySelectorAll("#listaTrabalhadores .trabalhador-card").forEach(function(card) {
       if (card._fichasDrive && card._fichasDrive.length) {
         card._fichasDrive.forEach(function(f) { todosArquivos.push({ _isDrive: true, driveId: f.id, nome: f.nome, tipo: f.tipo }); });
@@ -1638,6 +1832,7 @@ function atualizarContadorFichas() {
     dadosGerados = dadosGerados || {};
     var urlPdf = typeof dadosGerados === "string" ? dadosGerados : (dadosGerados.url || "");
     var numero = dadosGerados.numero || "";
+    var filaId = dadosGerados.filaId || "";
     if (!urlPdf) return;
     // Desfiliação: o ofício saiu, mas o cadastro do associado pode não ter
     // sido atualizado (CPF não encontrado, ou não informado) — avisa o
@@ -1658,7 +1853,7 @@ function atualizarContadorFichas() {
         + "<div class='row-btns' style='margin-bottom:14px;'>"
         + "<button type='button' class='btn btn-outline' onclick=\"window.open('" + urlPdf + "', '_blank')\">📄 Abrir / Baixar PDF</button>"
         + "<button type='button' class='btn btn-outline' onclick=\"imprimirPdfOficioGerado('" + urlPdf + "')\">🖨 Imprimir</button>"
-        + "<button type='button' class='btn btn-navy' onclick=\"enviarEmailOficioAgora('" + numero + "')\">📧 Enviar e-mail agora</button>"
+        + "<button type='button' class='btn btn-navy' onclick=\"enviarEmailOficioAgora('" + numero + "','" + filaId + "')\">📧 Enviar e-mail agora</button>"
         + "<button type='button' class='btn btn-teal' onclick=\"enviarWhatsappOficio('" + urlPdf + "', '" + numero + "')\">💬 WhatsApp</button>"
         + "</div>"
         + "<div id='statusEnvioOficioGerado' style='display:flex;align-items:center;gap:8px;padding:11px 14px;background:var(--g50);border:1.5px solid var(--g200);border-radius:11px;font-size:12.5px;font-weight:600;color:var(--g500);'>"
@@ -1685,7 +1880,7 @@ function imprimirPdfOficioGerado(urlPdf) {
   setTimeout(function() { try { w.focus(); w.print(); } catch(e) {} }, 1200);
 }
 
-function enviarEmailOficioAgora(numero) {
+function enviarEmailOficioAgora(numero, filaId) {
   if (!numero) { toast("Número do ofício não encontrado.", "err"); return; }
   var payload = window.SISGEP_OFICIO_PAYLOAD || {};
   var escola = payload.escola || {};
@@ -1717,7 +1912,7 @@ function enviarEmailOficioAgora(numero) {
         if (btn) { btn.disabled = false; btn.innerHTML = "📨 Enviar agora"; }
         toast("Erro: " + (err.message || err), "err", 6000);
       })
-      .enviarOficioDaFilaAgora(numero, SISGEP_TOKEN_SESSAO);
+      .enviarOficioDaFilaAgora(numero, SISGEP_TOKEN_SESSAO, filaId || "");
   });
 }
 
@@ -1733,6 +1928,14 @@ function enviarWhatsappOficio(urlPdf, numero) {
     if(sel) sel.value=""; if(lista){lista.innerHTML="";restaurarVazio();}
     limpar(); contadorTrabalhadores=0;
     var inpF=$("fichas"); if(inpF) inpF.value="";
+    /* As fichas do OFÍCIO também saem. Antes não havia o que limpar — o
+       campo não guardava fila —, mas agora a fila acumula entre escolhas:
+       sem zerar aqui, o próximo ofício nasceria com os anexos do anterior,
+       e sairia para a escola errada. */
+    var inpOf=$("fichasOficioLote");
+    if(inpOf){ inpOf.value=""; try{ inpOf.files=new DataTransfer().files; }catch(e){} }
+    window._fichasOficioDt = null;
+    if (typeof atualizarFilaFichasOficio === "function") atualizarFilaFichasOficio();
     atualizarPreviewFichas();
     var area=$("areaAcoesDocumento"), btnPrev=$("btnPreview"), btnEmit=$("btnEmitir"), btnNovo=$("btnNovoDocumento"), btnDown=$("btnDownload"), btnPrint=$("btnImprimir");
     if(area) area.style.display="none"; if(btnPrev) btnPrev.style.display="inline-flex";
@@ -1765,6 +1968,15 @@ function enviarWhatsappOficio(urlPdf, numero) {
 
     window.removerFicha = removerFicha;
     window.removerFichaCard = removerFichaCard;
+    /* A fila de arquivos com check de excluir, exposta junto das demais.
+     * Vale registrar por que ela ganhou export: até 19/08/2026 as funções
+     * de remoção estavam escritas e com ZERO chamadas, porque quem as
+     * acionaria — o desenho da fila — era uma casca que só apagava o
+     * container. Expostas, dá para conferir por execução que desenham. */
+    window.renderizarPreviewFichaCard = renderizarPreviewFichaCard;
+    window.removerFichasCard = removerFichasCard;
+    window.atualizarFilaFichasOficio = atualizarFilaFichasOficio;
+    window.removerFichasOficio = removerFichasOficio;
     /* Exposta junto das demais do arquivo. Serve para diagnóstico e para o
      * teste conferir que o anexo do ofício CHEGA no payload — sem isso, o
      * campo existiria na tela e o arquivo poderia não sair junto do ofício,
@@ -1814,10 +2026,20 @@ function enviarWhatsappOficio(urlPdf, numero) {
     if (_fichasOf && !_fichasOf.dataset.bound) {
       _fichasOf.dataset.bound = "1";
       _fichasOf.addEventListener("change", function () {
-        var n = _fichasOf.files ? _fichasOf.files.length : 0;
-        var res = $("fichasOficioResumo");
-        if (res) res.textContent = n ? (n === 1 ? "1 arquivo anexado ao ofício" : n + " arquivos anexados ao ofício") : "";
-        atualizarResumoTrabalhadores();
+        /* ACUMULA em vez de substituir. O input nativo troca o conjunto
+           inteiro a cada escolha: quem digitaliza em duas levas perdia a
+           primeira sem nenhum aviso. Aqui a segunda escolha se soma, e
+           arquivo repetido pelo nome não entra duas vezes. */
+        var atual = window._fichasOficioDt || new DataTransfer();
+        Array.prototype.slice.call(_fichasOf.files || []).forEach(function (f) {
+          var jaTem = Array.prototype.slice.call(atual.files).some(function (e) {
+            return e.name === f.name && e.size === f.size;
+          });
+          if (!jaTem) { try { atual.items.add(f); } catch (e) {} }
+        });
+        window._fichasOficioDt = atual;
+        _fichasOf.files = atual.files;
+        atualizarFilaFichasOficio();
       });
     }
     blindarBotao("btnLoteAdicionarPessoa", loteAdicionarPessoa);
@@ -2895,13 +3117,57 @@ window.mostrarAbaOficio = function(aba) {
       Historico.selecionados=[]; Historico.atualizarBarraAcoes();
       Historico.initOrdenacao();
 
+      /* TRAVA DE ESPERA — a tela não pode ficar em "Carregando..." para sempre.
+       *
+       * Relato do usuário em 19/08/2026: "o histórico só está carregando".
+       * Medido no emulador, o caminho normal e o de erro conhecido chegam ao
+       * fim; o que não existia era o terceiro caso — a chamada que NÃO VOLTA.
+       * Quando nenhum dos dois handlers dispara (função ausente no projeto
+       * publicado, execução interrompida, sessão derrubada no meio), a tabela
+       * fica no "Carregando..." indefinidamente, sem erro e sem log.
+       *
+       * "Carregando" eterno é a pior mensagem possível: quem lê fica
+       * esperando em vez de agir. Passados 20 segundos a tela diz o que
+       * aconteceu e oferece o caminho. */
+      var respondeu = false;
+      var espera = setTimeout(function() {
+        if (respondeu) return;
+        if (contEl) contEl.textContent = "0 registro(s)";
+        tbody.innerHTML = '<tr><td colspan="7"><div class="of-table-empty">' +
+          '⏱️ O servidor não respondeu ao carregar o histórico.<br>' +
+          '<small>Recarregue a tela (F5). Se repetir, o painel <strong>Execuções</strong> ' +
+          'do Apps Script mostra o erro real.</small></div></td></tr>';
+      }, 20000);
+
       google.script.run
         .withSuccessHandler(function(resp) {
+          respondeu = true; clearTimeout(espera);
+          /* O ERRO DO BACKEND PRECISA APARECER. Ele volta pelo caminho de
+           * SUCESSO — { erro:true, mensagem:"...", itens:[] } —, e a versão
+           * anterior lia só `itens`. Com a aba faltando, a tela dizia
+           * "Nenhum registro encontrado": uma mentira tranquila, que faz
+           * quem lê concluir que não há ofício nenhum quando na verdade a
+           * origem dos dados sumiu. Medido no emulador em 19/08/2026. */
+          if (resp && resp.erro) {
+            if (contEl) contEl.textContent = "0 registro(s)";
+            /* Escape LOCAL, de propósito. O escapeHtml do arquivo mora no
+               primeiro IIFE (linha 20) e este bloco está no segundo — usá-lo
+               aqui daria ReferenceError e trocaria uma mensagem ausente por
+               uma tela quebrada. Peguei isso conferindo o escopo antes de
+               rodar, não depois. */
+            var seguro = String(resp.mensagem || "O servidor recusou a leitura.")
+              .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            tbody.innerHTML = '<tr><td colspan="7"><div class="of-table-empty">' +
+              '⚠️ Não foi possível carregar o histórico.<br><small>' + seguro +
+              '</small></div></td></tr>';
+            return;
+          }
           var lista = (resp && Array.isArray(resp.itens)) ? resp.itens : (Array.isArray(resp) ? resp : []);
           Historico._dadosCache = lista;
           Historico.renderLista(lista);
         })
         .withFailureHandler(function(err) {
+          respondeu = true; clearTimeout(espera);
           if(contEl) contEl.textContent="0 registro(s)";
           tbody.innerHTML='<tr><td colspan="7"><div class="of-table-empty">Erro: '+((err&&err.message)||err||"")+'</div></td></tr>';
         })

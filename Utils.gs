@@ -327,7 +327,12 @@ function buscarFichasDrive(termo) {
     const PASTA_IDS = [
       typeof PASTA_OFICIOS_ID            !== "undefined" ? PASTA_OFICIOS_ID            : null,
       typeof PASTA_OFICIOS_DESFILIACAO_ID !== "undefined" ? PASTA_OFICIOS_DESFILIACAO_ID : null,
-      typeof PASTA_RECIBO_ID             !== "undefined" ? PASTA_RECIBO_ID             : null
+      /* semTrava: isto é BUSCA, não gravação. Se a homologação ainda não tiver
+         pasta própria, é melhor a busca achar a pasta de produção do que a
+         tela estourar — o risco de ler é diferente do risco de escrever.
+         Quando a pasta de homologação estiver configurada, esta linha passa a
+         devolver a certa sozinha. Ver AmbienteRecursos.gs. */
+      getRecursoId_("RECIBOS", { semTrava: true })
     ].filter(Boolean);
 
     const resultados = [];

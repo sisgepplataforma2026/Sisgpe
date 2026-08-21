@@ -89,12 +89,11 @@
       </div>
 
       <button class="spN" data-mod="documentos" data-acordeao="docSubMenuSidebar" onclick="spAcordeao(this)">
-        <span class="spNI">📄</span><div><strong>Documentos</strong><small>Ofícios, Recibos, Certidões</small></div>
+        <span class="spNI">📄</span><div><strong>Documentos</strong><small>Ofícios e Recibos</small></div>
       </button>
       <div id="docSubMenuSidebar" class="docSubMenuSidebar" data-subs="documentos,relatorios" style="display:none;">
         <button type="button" class="docSubMenuBtn docSubMenuBtn-ativo" data-sub-mod="documentos:oficios" data-doc-sub="oficios" onclick="spIr('documentos',null,{sub:'oficios'})">📄 Ofícios</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="documentos:recibos" data-doc-sub="recibos" onclick="spIr('documentos',null,{sub:'recibos'})">🧾 Recibos</button>
-        <button type="button" class="docSubMenuBtn" data-sub-mod="documentos:certidoes" data-doc-sub="certidoes" onclick="spIr('documentos',null,{sub:'certidoes'})">📜 Certidões</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="documentos:historico" data-doc-sub="historico" onclick="spIr('documentos',null,{sub:'historico'})">📚 Histórico</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="relatorios" onclick="spIr('relatorios',null)">📊 Relatórios de Ofícios</button>
       </div>
@@ -407,11 +406,6 @@
                   <strong>Recibos</strong>
                   <small>Processos, recibos individuais, em lote e diversos</small>
                 </button>
-                <button type="button" class="docLandingCard" onclick="docMostrarSub('certidoes')">
-                  <div class="docLandingIco">📜</div>
-                  <strong>Certidões</strong>
-                  <small>Módulo em preparação</small>
-                </button>
               </div>
             </div>
           </div>
@@ -435,13 +429,26 @@
             <?!= include('Scripts_ReciboDiversos'); ?>
             <?!= include('Scripts_HistoricoRecibos'); ?>
           </div>
-<div id="docSubCertidoes" class="docSubPanel" style="display:none;">
-            <div style="text-align:center;padding:70px 20px;">
-              <div style="font-size:40px;margin-bottom:10px;">📜</div>
-              <h2 style="font-size:18px;font-weight:800;color:#0f172a;margin:0 0 6px;">Certidões</h2>
-              <p style="font-size:13px;color:#64748b;max-width:360px;margin:0 auto;">Módulo de certidões em preparação. Assim que o include estiver pronto, é só me passar o nome do arquivo que eu conecto aqui.</p>
-            </div>
-          </div>
+<!--
+  CERTIDÕES — REMOVIDO A PEDIDO DO USUÁRIO em 19/08/2026.
+
+  Saíram daqui quatro coisas que anunciavam um submódulo inexistente: o
+  botão do submenu, o card da landing de Documentos, o painel vazio e a
+  palavra no subtítulo do módulo. Também saiu a chave `certidoes` do mapa
+  DOC_SUB_PAINEIS e o termo do roteamento por texto da SOFIA.
+
+  POR QUE FICA ESTE COMENTÁRIO. Não havia, e nunca houve, arquivo de
+  Certidões — nem .gs nem .html, em commit nenhum; nem rota pública, nem
+  trigger. O que foi removido era só o LUGAR reservado, presente desde o
+  primeiro backup do repositório. Quem procurar Certidões e não achar
+  encontra aqui a explicação, em vez de reabrir a mesma investigação.
+
+  NÃO CONFUNDIR com as outras duas ocorrências da palavra no projeto, que
+  são outra coisa e continuam onde estão: o texto do estatuto em
+  EstatutoCore.gs (certidão de quitação eleitoral) e os tipos de documento
+  anexáveis ao voucher em Scripts_Certificado.html (certidão de casamento
+  e de nascimento).
+-->
 
 <div id="docSubHistorico" class="docSubPanel" style="display:none;padding:24px;">
             <div class="of-modulo-header">
@@ -1190,7 +1197,7 @@ button,input{font-family:inherit;}
 .spPHActions button:first-child{background:linear-gradient(135deg,#0ea5e9,#2563eb);border-color:rgba(14,165,233,.45);}
 #mComunicacao #cockpitInteligente{display:flex!important;margin:0!important;height:100%!important;}
 
-/* Documentos — submenu lateral interno de subcamadas (Ofícios / Recibos / Certidões) */
+/* Documentos — submenu lateral interno de subcamadas (Ofícios / Recibos) */
 /* Documentos — accordion de subcamadas dentro do menu lateral principal */
 .docSubMenuSidebar{display:flex;flex-direction:column;gap:2px;padding:2px 12px 8px 32px;}
 .docSubMenuBtn{display:flex;align-items:center;gap:8px;width:100%;height:34px;padding:0 12px;border-radius:8px;border:none;background:transparent;color:rgba(255,255,255,.62);font-size:12.5px;font-weight:600;cursor:pointer;text-align:left;font-family:'Plus Jakarta Sans',sans-serif;transition:.17s;}
@@ -1362,7 +1369,7 @@ setInterval(tick,1000);tick();
 var MODS={
   inicio:["mInicio","SOFIA","Sistema Operacional Financeiro com Inteligência Artificial"],
   sofia:["mSofia","Conversar com a SOFIA","Assistente Inteligente"],
-  documentos:["mDocumentos","Documentos","Ofícios, Recibos, Certidões"],
+  documentos:["mDocumentos","Documentos","Ofícios e Recibos"],
   beneficios:["mBeneficios","Gestão de Benefícios","Solicitações, reservas, aprovações e pagamentos"],
   aprovacoesPortal:["mAprovacoesPortal","Aprovações do Portal","Atualizações cadastrais enviadas pelo Portal do Associado"],
   fichas:["mFichasSindicais","Fichas Sindicais","Validação e Aprovação de Filiações"],
@@ -1434,14 +1441,13 @@ function focoSeguro(selector){
 }
 
 /* ══════════════════════════════════════
-   DOCUMENTOS · SUBCAMADAS (Ofícios / Recibos / Certidões)
+   DOCUMENTOS · SUBCAMADAS (Ofícios / Recibos)
    Painel interno dentro do módulo Documentos, independente do spIr principal.
 ══════════════════════════════════════ */
 var DOC_SUB_PAINEIS={
   inicio:"docSubInicio",
   oficios:"docSubOficios",
   recibos:"docSubRecibos",
-  certidoes:"docSubCertidoes",
   historico:"docSubHistorico"
 };
 var BENEF_SUB_PAINEIS = {
@@ -2222,7 +2228,11 @@ window.spCmd=function(t){
 
   var tl=txt.toLowerCase();
 
-  if(tl.match(/ofício|oficio|filia|desfilia|taxa|associad|certidão|certidao/)) return spIr("documentos",null,{aba:"novo"});
+  /* "certidão" saiu daqui em 19/08/2026, junto com o submódulo: mandava
+     quem digitasse a palavra para a tela de NOVO OFÍCIO, que não é o que
+     a pessoa pediu. Sem correspondência, a frase segue para as regras
+     abaixo em vez de abrir a tela errada com ar de acerto. */
+  if(tl.match(/ofício|oficio|filia|desfilia|taxa|associad/)) return spIr("documentos",null,{aba:"novo"});
   if(tl.match(/e-?mail|responder|comunic|inbox/)) return spIr("comunicacao",null,{acao:"emails"});
   if(tl.match(/escola|cadastro|cnpj/)) return spIr("escolas",null,{focoBusca:true});
   if(tl.match(/voucher|beneficio|benefÃ­cio|parque|china|oftalmo|oftalmologia|carteirinha|guriri|assefaz/)) return spIr("beneficios");

@@ -175,4 +175,3 @@ b.naoTestavel("O clique nos cards e nas linhas",
   "para críticas, falhas e uma linha de módulo");
 
 b.resumo();
-process.exit(0);

@@ -114,7 +114,12 @@
     google.script.run.withSuccessHandler(function(s){
       document.getElementById('vRest').textContent = s.restantes;
       document.getElementById('vLim').textContent = s.limite;
-      document.getElementById('vTeste').innerHTML = s.modoTeste ? '<span class="teste">MODO TESTE</span>' : '';
+      // A tarja carrega a ORIGEM no title: "MODO TESTE" sem causa visivel
+      // engana quem passa o olho. Passando o mouse, aparece de onde veio.
+      document.getElementById('vTeste').innerHTML = s.modoTeste
+        ? '<span class="teste" title="' + String(s.modoTesteOrigem || '').replace(/"/g, '&quot;') +
+          '">MODO TESTE</span>'
+        : '';
       var opEl = document.getElementById('operador');
       if(opEl) opEl.value = s.operador || '';
     }).withFailureHandler(function(e){

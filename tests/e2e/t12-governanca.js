@@ -178,4 +178,3 @@ b.bloqueia(() => g.govComposicao(""), "govComposicao nega token vazio");
 b.naoTestavel("Registro da próxima ata de posse", "depende da eleição acontecer");
 
 b.resumo();
-process.exit(0);

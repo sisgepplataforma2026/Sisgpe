@@ -482,7 +482,7 @@ function excluirColaboradorRH(id, tokenSessao) {
     var idsCol = sh.getRange(2, 1, sh.getLastRow() - 1, 1).getValues();
     for (var i = idsCol.length - 1; i >= 0; i--) {
       if (String(idsCol[i][0]) === id) {
-        sh.deleteRow(i + 2);
+        lixeiraMover_(sh, i + 2, { origem: "excluirColaboradorRH" });
         return { ok: true, mensagem: "Colaborador excluído com sucesso." };
       }
     }
@@ -852,7 +852,7 @@ function excluirFolhaCompetenciaRH(competencia, tokenSessao) {
           "Folha excluída da competência " + competencia);
       }
       for (var i = dados.length - 1; i >= 0; i--) {
-        if (String(dados[i][1]) === competencia) { sh.deleteRow(i + 2); removidos++; }
+        if (String(dados[i][1]) === competencia) { lixeiraMover_(sh, i + 2, { origem: "excluirFolhaCompetenciaRH" }); removidos++; }
       }
     }
 
@@ -863,7 +863,7 @@ function excluirFolhaCompetenciaRH(competencia, tokenSessao) {
       if (shRub.getLastRow() > 1) {
         var dadosRub = shRub.getRange(2, 1, shRub.getLastRow() - 1, shRub.getLastColumn()).getValues();
         for (var j = dadosRub.length - 1; j >= 0; j--) {
-          if (String(dadosRub[j][2]) === competencia) shRub.deleteRow(j + 2);
+          if (String(dadosRub[j][2]) === competencia) lixeiraMover_(shRub, j + 2, { origem: "excluirFolhaCompetenciaRH" });
         }
       }
     }

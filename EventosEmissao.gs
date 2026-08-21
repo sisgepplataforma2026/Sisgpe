@@ -14,19 +14,86 @@ var EMISSAO_CFG = {
   PERIODO_INICIO: new Date(2026, 8, 21, 0, 0, 0),    // 21/09/2026
   PERIODO_FIM:    new Date(2026, 10, 11, 23, 59, 59), // 11/11/2026
   FORMAS_PAGAMENTO: ['Cartão', 'PicPay', 'Depósito'],
-  ABA_ASSOCIADOS: 'Associados',
-  PLANILHA_ID: '1QPpsx19v4YzfskoYXK9WB89TClA7q8SWGSn55VZ040E'
+  ABA_ASSOCIADOS: 'Associados'
+  /* PLANILHA_ID saiu daqui em 21/08/2026. Estava fixo no ID de PRODUÇÃO, o
+     que fazia a busca de associado de HOMOLOGAÇÃO ler a base real de 8.000
+     pessoas. É a mesma classe de falha que o AmbienteRecursos.gs fechou para
+     as pastas do Drive. Agora resolve por getPlanilhaId(), dentro da função —
+     nunca aqui: este objeto é avaliado no carregamento do projeto, e chamar
+     função de outro arquivo nesse momento depende da ordem de avaliação. */
 };
 
-// Modo teste: ignora o período (pra ensaiar antes de 21/09). Guardado no cofre.
+/**
+ * Modo teste: ignora o período de inscrição (para ensaiar antes de 21/09).
+ *
+ * DUAS CORREÇÕES NO MESMO DIA (21/08/2026), e a segunda desfaz um erro meu.
+ *
+ * 1. O padrão era `!== 'false'`: a AUSÊNCIA da propriedade LIGAVA o modo
+ *    teste. Um projeto recém-implantado nascia com o período 21/09–11/11
+ *    desligado e sem nada em tela dizendo isso. Pior: em modo teste o
+ *    `compasso_qrSecret_` GERA um segredo sozinho em vez de recusar, então a
+ *    chave que assina todos os QR do evento nascia de acidente de
+ *    configuração. Isso tinha de acabar, e acabou.
+ *
+ * 2. Mas eu troquei por `=== 'true'` puro, e isso empurrou para a pessoa um
+ *    passo manual: ir nas Propriedades do script declarar EVENTO_MODO_TESTE
+ *    antes de conseguir testar. É exatamente o que a REGRA Nº 0.6 proíbe —
+ *    o sistema JÁ SABE em que ambiente está, pela Script Property
+ *    SISGEP_AMBIENTE que o AmbienteRecursos.gs e o SistemaConfig.gs já leem.
+ *    Fazer a pessoa contar de novo é defeito de desenho, não configuração.
+ *
+ * A ordem abaixo preserva as duas coisas:
+ *
+ *   declarado 'true'  → teste          (força ensaio onde for preciso)
+ *   declarado 'false' → produção       (força o período mesmo em homologação)
+ *   NÃO declarado     → herda o ambiente:
+ *                         homologação → teste
+ *                         produção    → produção  ← continua falhando fechado
+ *
+ * Produção sem propriedade nenhuma continua exigindo o período e continua
+ * recusando QR sem segredo configurado. O que mudou é que homologação não
+ * precisa mais ser configurada à mão para ser homologação.
+ *
+ * A tela não fica em silêncio sobre isso: `emissao_status` devolve `modoTeste`
+ * e o EventoPainel.html pinta a tarja MODO TESTE. Sugerir com origem à vista,
+ * nunca impor em silêncio.
+ */
 function emissao_modoTeste_() {
-  return PropertiesService.getScriptProperties().getProperty('EVENTO_MODO_TESTE') !== 'false';
+  var props = PropertiesService.getScriptProperties();
+
+  var declarado = String(props.getProperty('EVENTO_MODO_TESTE') || '').trim().toLowerCase();
+  if (declarado === 'true')  return true;
+  if (declarado === 'false') return false;
+
+  /* Não declarado: herda de quem já sabe. Lido direto da propriedade, e não
+     por getAmbienteAtual(), porque aquela função guarda cache em
+     getAmbienteAtual._cache — trocar o ambiente no meio de uma execução de
+     diagnóstico devolveria o valor velho. Aqui a leitura é sempre fresca. */
+  return String(props.getProperty('SISGEP_AMBIENTE') || '').trim().toUpperCase() === 'HOMOLOGACAO';
 }
-function emissao_ativarProducao() {   // trava o período de verdade
+
+/**
+ * De onde veio o modo — para a tela e para o diagnóstico poderem explicar.
+ * Sem isto, "MODO TESTE" na tela é um fato sem causa, e quem vê não sabe se
+ * alguém declarou de propósito ou se o ambiente resolveu sozinho.
+ */
+function emissao_modoTesteOrigem_() {
+  var props = PropertiesService.getScriptProperties();
+  var declarado = String(props.getProperty('EVENTO_MODO_TESTE') || '').trim().toLowerCase();
+  if (declarado === 'true')  return 'EVENTO_MODO_TESTE=true (declarado)';
+  if (declarado === 'false') return 'EVENTO_MODO_TESTE=false (declarado)';
+  var amb = String(props.getProperty('SISGEP_AMBIENTE') || '').trim();
+  return amb
+    ? 'herdado de SISGEP_AMBIENTE=' + amb
+    : 'nenhuma propriedade declarada — vale produção';
+}
+function emissao_ativarProducao(tokenSessao) {   // trava o período de verdade
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — ativar produção', true);
   PropertiesService.getScriptProperties().setProperty('EVENTO_MODO_TESTE', 'false');
   Logger.log('🚦 PRODUÇÃO ativada — período 21/09–11/11 será exigido.');
 }
-function emissao_ativarTeste() {      // libera emissão fora do período (ensaios)
+function emissao_ativarTeste(tokenSessao) {      // libera emissão fora do período (ensaios)
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — ativar modo teste', true);
   PropertiesService.getScriptProperties().setProperty('EVENTO_MODO_TESTE', 'true');
   Logger.log('🧪 MODO TESTE ativado — período ignorado.');
 }
@@ -41,7 +108,8 @@ function emissao_lerContador_() {
   return c;
 }
 
-function emissao_status() {
+function emissao_status(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — status da emissão', false);
   var c = emissao_lerContador_();
   var st = {
     limite: c.limite,
@@ -59,7 +127,10 @@ function emissao_formatarNumero_(n) {
 }
 
 // ================= EMISSÃO (núcleo atômico) =================
+/* A trava estava só em painelEmissao_emitirGrupo, o chamador. Chamar esta
+   função direto por google.script.run pulava a verificação inteira. */
 function emissao_emitirIngresso(payload, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — emitir ingresso V1', false);
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
@@ -227,7 +298,9 @@ function emissao_registrarReceitaAcompanhante_(ingresso, tokenSessao) {
 }
 
 // ================= CANCELAMENTO (libera a vaga, número não volta) =================
-function emissao_cancelarIngresso(id) {
+/* ADMIN: devolve vaga ao contador. */
+function emissao_cancelarIngresso(id, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — cancelar ingresso V1', true);
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
@@ -256,10 +329,12 @@ function emissao_cancelarIngresso(id) {
 }
 
 // ================= BUSCA DE ASSOCIADO (autocomplete p/ a Marcelha) =================
-function emissao_buscarAssociado(termo) {
+/* Lê a base de associados — nome, CPF, celular e e-mail de 8.000 pessoas. */
+function emissao_buscarAssociado(termo, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — buscar associado', false);
   termo = (termo || '').trim().toLowerCase();
   if (termo.length < 2) return [];
-  var ss = SpreadsheetApp.openById(EMISSAO_CFG.PLANILHA_ID);
+  var ss = SpreadsheetApp.openById(getPlanilhaId());
   var aba = ss.getSheetByName(EMISSAO_CFG.ABA_ASSOCIADOS);
   var dados = aba.getRange(2, 1, aba.getLastRow() - 1, 16).getValues();
   var out = [];
@@ -294,14 +369,20 @@ function emissao_fsDelete_(collection, docId) {
 }
 
 // Zera o contador e apaga docs de teste conhecidos. Use com cuidado (só na fase de ensaio).
-function emissao_limparTestes() {
+/* ADMIN + só homologação: esta função ZERA o contador de vagas do evento.
+   Rodá-la em produção com ingressos emitidos faria o próximo número repetir
+   um já entregue, e as 2.000 vagas voltariam ao início. */
+function emissao_limparTestes(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — limpar testes', true);
+  compasso_assertHomologacao_();
   ['ponte-teste'].forEach(function(id){ emissao_fsDelete_('ingressos', id); });
   fs_set_('contadores', EMISSAO_CFG.EVENTO_ID, { limite: EMISSAO_CFG.LIMITE_VAGAS, vagasUsadas: 0, ultimoNumero: 0 });
   Logger.log('🧹 Testes limpos e contador zerado.');
 }
 
 // ================= TESTES RÁPIDOS =================
-function testeEmissao_associado() {
+function testeEmissao_associado(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — teste de emissão (associado)', true);
   var r = emissao_emitirIngresso({
     categoria: 'associado',
     nome: 'Associado de Teste',
@@ -311,11 +392,12 @@ function testeEmissao_associado() {
     whatsapp: '27999999999',
     filiado: 'S',
     operador: 'Marcelha (teste)'
-  });
+  }, tokenSessao);
   Logger.log(JSON.stringify(r, null, 2));
 }
 
-function testeEmissao_acompanhanteSemPagamento() {
-  var r = emissao_emitirIngresso({ categoria: 'acompanhante', nome: 'Acompanhante Sem Pgto' });
+function testeEmissao_acompanhanteSemPagamento(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — teste de acompanhante', true);
+  var r = emissao_emitirIngresso({ categoria: 'acompanhante', nome: 'Acompanhante Sem Pgto' }, tokenSessao);
   Logger.log(JSON.stringify(r, null, 2)); // deve dar erro pedindo forma de pagamento
 }

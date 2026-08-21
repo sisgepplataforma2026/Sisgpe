@@ -155,8 +155,104 @@ b.passo("5. Nenhum scriptlet dentro de comentário HTML (REGRA Nº 0)");
 b.ok(scriptletComentado.length === 0, "nenhum scriptlet escondido em comentário",
   scriptletComentado.length ? "ACHADOS: " + scriptletComentado.join(" | ") : "comentários limpos");
 
+/* ═══════════════════════════════════════════════════════════
+   6. Os elementos HTML fecham — a tag que faltava e derrubou um módulo
+   ═══════════════════════════════════════════════════════════
+
+   ACHADO EM 19/08/2026. O usuário: "por que o módulo de sindicalização
+   está todo azul, não abre nada?".
+
+   Não era JavaScript morto nem erro de backend. Scripts_Certificado.html
+   abria `<div id="secCertificadoAdmin">` e NUNCA fechava. Como o include()
+   cola todos os arquivos num HTML só, e o Certificado entra em index.html
+   ANTES de Aprovacaocadastro, FichasSindicaisAdmin e Carteirinhaadmin,
+   esses três módulos ficavam DENTRO da seção do Certificado — escondida
+   quando ela não está ativa, e com fundo navy. Daí "todo azul".
+
+   O defeito viveu mais de 30 commits. Os passos 1 a 5 acima passavam
+   inteiros o tempo todo: sintaxe de .gs, sintaxe de <script>, balanço de
+   <script>, </script> em string e scriptlet em comentário — nenhum deles
+   olha para o balanço dos ELEMENTOS. Este passo existe por isso.
+
+   Duas armadilhas que a primeira versão desta varredura caiu, e que a
+   contagem abaixo evita:
+     - tag dentro de <script>, <style> ou comentário não conta;
+     - `<div` escrito dentro de um ATRIBUTO (o onerror de
+       Fichasindicalizacao.html monta um <div> em string) daria falso
+       positivo — por isso a contagem casa `<div` com `</div>` em vez de
+       empilhar tag a tag.
+   ═══════════════════════════════════════════════════════════ */
+b.passo("6. Os elementos HTML de bloco abrem e fecham na conta certa");
+
+/** Zera script/style/comentário preservando as quebras de linha. */
+function soMarcacao(html) {
+  const branco = (m) => m.replace(/[^\n]/g, " ");
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, branco)
+    .replace(/<style[\s\S]*?<\/style>/gi, branco)
+    .replace(/<!--[\s\S]*?-->/g, branco);
+}
+
+/* Só as tags que, sem fechar, engolem o resto da página. Um <span> ou <b>
+   solto é feio; um <div> solto derruba módulo. */
+const TAGS_DE_BLOCO = ["div", "section", "main", "table", "tbody", "form"];
+const desbalanceados = [];
+
+arquivosHtml.forEach(function (arq) {
+  const marcacao = soMarcacao(fs.readFileSync(path.join(RAIZ, arq), "utf8"));
+  TAGS_DE_BLOCO.forEach(function (tag) {
+    const abre = (marcacao.match(new RegExp("<" + tag + "\\b", "gi")) || []).length;
+    const fecha = (marcacao.match(new RegExp("</" + tag + ">", "gi")) || []).length;
+    if (abre !== fecha) {
+      desbalanceados.push(arq + ": <" + tag + "> abre " + abre + " e fecha " + fecha +
+        " (sobra " + (abre - fecha) + ")");
+    }
+  });
+});
+
+b.ok(desbalanceados.length === 0,
+  "nenhum elemento de bloco fica aberto num .html",
+  desbalanceados.length
+    ? "ACHADOS: " + desbalanceados.join(" | ")
+    : "balanço correto em " + arquivosHtml.length + " arquivos, para " +
+      TAGS_DE_BLOCO.join("/"));
+
 b.naoTestavel("Se a função faz a coisa certa",
   "sintaxe válida é o piso, não o teto — comportamento se prova nos testes de fluxo");
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   NENHUM .gs PODE TER O MESMO NOME-BASE DE UM .html
+
+   O QUE ORIGINOU, em 20/08/2026: o deploy da homologação reprovou com
+
+       A file with this name already exists in the current project: BingoInscricao
+
+   Eu tinha criado BingoInscricao.gs E BingoInscricao.html. No Apps Script o
+   nome do arquivo é único DENTRO DO PROJETO, independente do tipo — o `.gs` e
+   o `.html` são só como o clasp representa o tipo no disco, não parte do nome.
+
+   POR QUE ISTO ENTRA NO t46, e não noutro teste: a REGRA Nº -2 diz que o t46 é
+   o portão antes de qualquer arquivo sair daqui. Este defeito passou por ele
+   porque a checagem não existia — a sintaxe estava perfeita nos dois arquivos,
+   isolados. Só o PROJETO INTEIRO revela o choque, e é exatamente o tipo de
+   propriedade que este arquivo existe para guardar.
+
+   Medido na hora da correção: em 223 arquivos, nenhum par jamais conviveu.
+   O único choque da história do projeto foi o que eu acabara de criar.
+   ═══════════════════════════════════════════════════════════════════════════ */
+b.passo("nome de arquivo único no projeto");
+
+const basesGs = new Set(arquivosGs.map(f => f.slice(0, -3)));
+/* O parâmetro NÃO pode se chamar `b`: sombrearia o módulo de asserções e a
+   linha seguinte quebraria com "b.ok is not a function". */
+const chocam = arquivosHtml.map(f => f.slice(0, -5))
+                           .filter(base => basesGs.has(base));
+
+b.ok(chocam.length === 0,
+     chocam.length === 0
+       ? "nenhum .html tem o mesmo nome-base de um .gs"
+       : "CHOQUE DE NOME: " + chocam.join(", ") + " existe como .gs e como .html",
+     "o Apps Script recusa o push inteiro — e a mensagem só aparece no deploy");
 
 const c = b.resumo();
 process.exit(c.FALHOU ? 1 : 0);

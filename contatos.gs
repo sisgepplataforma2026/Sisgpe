@@ -338,7 +338,7 @@ function excluirContato(dados) {
       return { erro: true, mensagem: "Contato não encontrado para exclusão." };
     }
 
-    aba.deleteRow(idxEncontrado + 2);
+    lixeiraMover_(aba, idxEncontrado + 2, { origem: "excluirContato" });
     return { erro: false, mensagem: "Contato excluído com sucesso." };
 
   } catch (e) {
@@ -598,6 +598,41 @@ function obterContatoPorId(id) {
   }
 }
 
+
+/**
+ * Guarda no Contatos_LIXEIRA as linhas que a reescrita vai descartar.
+ *
+ * Existe porque `excluirContatos` não apaga linha a linha: ele reescreve a
+ * aba. Não há índice de linha para passar a lixeiraMover_, então as linhas
+ * são gravadas direto, com os mesmos metadados que lixeiraMover_ grava.
+ */
+function contatosGuardarNaLixeira_(aba, linhasRemovidas) {
+  if (!linhasRemovidas || !linhasRemovidas.length) return 0;
+
+  const shLix = lixeiraAba_(aba);
+  const quem  = lixeiraQuem_({});
+  const agora = new Date();
+  const destino = shLix.getLastRow() + 1;
+
+  const paraGravar = linhasRemovidas.map(function (linha) {
+    return linha.concat([
+      Utilities.getUuid(), agora, quem,
+      "Exclusão em lote de contatos", aba.getName() + " · excluirContatos"
+    ]);
+  });
+
+  shLix.getRange(destino, 1, paraGravar.length, paraGravar[0].length)
+       .setValues(paraGravar);
+
+  /* Confere ANTES de a reescrita apagar a origem — mesma ordem de
+     lixeiraMover_, pelo mesmo motivo. */
+  SpreadsheetApp.flush();
+  if (shLix.getLastRow() < destino + paraGravar.length - 1) {
+    throw new Error("a cópia não foi confirmada em " + shLix.getName());
+  }
+  return paraGravar.length;
+}
+
 function excluirContatos(ids) {
   try {
     ids = Array.isArray(ids) ? ids.map(function(id) {
@@ -620,16 +655,52 @@ function excluirContatos(ids) {
     const dados = aba.getRange(2, 1, ultimaLinha - 1, ultimaColuna).getValues();
 
     const mantidos = [];
+    const removidos = [];
     let excluidos = 0;
 
     dados.forEach(function(linha) {
       const idLinha = valorSeguroContato_(obterValorLinha_(linha, indices.id));
       if (ids.indexOf(idLinha) > -1) {
         excluidos++;
+        removidos.push(linha);
       } else {
         mantidos.push(linha);
       }
     });
+
+    /* ── ESTE CASO NÃO USA deleteRow, E POR ISSO PASSOU DESPERCEBIDO ──────
+       Aqui a exclusão acontece por REESCRITA: limpa a aba e grava de volta
+       só os `mantidos`. O `deleteRows` mais abaixo é só aparar sobra de
+       linha, não é a exclusão.
+
+       Ou seja: uma varredura por `deleteRow` classificaria este ponto como
+       inofensivo, e ele apaga contato do cadastro tão definitivamente
+       quanto os outros. As linhas removidas vão para a lixeira ANTES da
+       reescrita — depois dela não haveria mais o que copiar.
+
+       O teto de lote vale igual (REGRAS_NEGOCIO.LIMITE_EXCLUSAO_POR_LOTE):
+       recusa acima do limite, sem apagar nada. */
+    if (removidos.length) {
+      const teto = (typeof lixeiraLimiteLote_ === "function") ? lixeiraLimiteLote_() : 50;
+      if (removidos.length > teto) {
+        return {
+          erro: true,
+          mensagem: "Foram selecionados " + removidos.length + " contatos, e o limite " +
+                    "por lote é " + teto + ". NADA foi excluído — faça em lotes menores.",
+          excluidos: 0
+        };
+      }
+      try {
+        contatosGuardarNaLixeira_(aba, removidos);
+      } catch (eLix) {
+        return {
+          erro: true,
+          mensagem: "Não consegui guardar os contatos na lixeira: " + eLix.message +
+                    " NADA foi excluído.",
+          excluidos: 0
+        };
+      }
+    }
 
     aba.getRange(2, 1, Math.max(ultimaLinha - 1, 1), ultimaColuna).clearContent();
 

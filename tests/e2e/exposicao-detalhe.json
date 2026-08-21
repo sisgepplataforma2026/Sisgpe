@@ -1,7 +1,7 @@
 {
-  "medidoEm": "2026-08-17",
-  "totalPublicas": 854,
-  "protegidas": 522,
+  "medidoEm": "2026-08-21",
+  "totalPublicas": 944,
+  "protegidas": 615,
   "expostas": [
     {
       "nome": "validarCPF",
@@ -31,6 +31,31 @@
     {
       "nome": "beneficiosPrepararLinkInteresse",
       "arquivo": "BeneficiosLinkInteresse.gs",
+      "escreve": false
+    },
+    {
+      "nome": "bingo_inscricaoEstado",
+      "arquivo": "BingoInscricao.gs",
+      "escreve": false
+    },
+    {
+      "nome": "bingo_inscricaoPreencher",
+      "arquivo": "BingoInscricao.gs",
+      "escreve": false
+    },
+    {
+      "nome": "bingo_inscrever",
+      "arquivo": "BingoInscricao.gs",
+      "escreve": false
+    },
+    {
+      "nome": "bingo_estadoPublico",
+      "arquivo": "BingoLinks.gs",
+      "escreve": false
+    },
+    {
+      "nome": "bingo_realtimeInfoPublico",
+      "arquivo": "BingoRealtime.gs",
       "escreve": false
     },
     {
@@ -234,6 +259,21 @@
       "escreve": false
     },
     {
+      "nome": "compasso_inscricaoEstado",
+      "arquivo": "EventosInscricaoPublica.gs",
+      "escreve": false
+    },
+    {
+      "nome": "compasso_inscricaoPreencher",
+      "arquivo": "EventosInscricaoPublica.gs",
+      "escreve": false
+    },
+    {
+      "nome": "compasso_inscrever",
+      "arquivo": "EventosInscricaoPublica.gs",
+      "escreve": false
+    },
+    {
       "nome": "processarFilaEnvioOficios",
       "arquivo": "FilaOficios.gs",
       "escreve": true
@@ -401,6 +441,11 @@
     {
       "nome": "iaAssistente",
       "arquivo": "IACore.gs",
+      "escreve": false
+    },
+    {
+      "nome": "agenteEscolasVersao",
+      "arquivo": "IA_AgentEscolas.gs",
       "escreve": false
     },
     {
@@ -1079,5 +1124,5 @@
       "escreve": false
     }
   ],
-  "inconclusivas": 117
+  "inconclusivas": 105
 }

@@ -46,7 +46,7 @@ b.fluxo("OFÍCIOS · Padrão único: individual, lote e IA em todos os tipos");
 if (!dom.jsdomDisponivel || !dom.jsdomDisponivel()) {
   b.naoTestavel("Padrão único na tela", "jsdom não instalado (npm install)");
   b.resumo();
-  process.exit(0);
+  process.exit(process.exitCode || 0);
 }
 
 const g = b.subir({}).g;

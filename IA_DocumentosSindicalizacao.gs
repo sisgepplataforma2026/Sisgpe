@@ -538,7 +538,7 @@ function confirmarFiliacaoPapelIA(dados, tokenSessao) {
         var blobOriginal = Utilities.newBlob(bytesOriginal, dados.arquivoTipo || 'application/pdf', nomeOriginal);
         var pasta = sindAdm_pastaPDF_();
         var arquivoOriginal = pasta.createFile(blobOriginal);
-        arquivoOriginal.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        arquivoAplicarPolitica_(arquivoOriginal, "IA_DocumentosSindicalizacao.gs");
         linkOriginal = arquivoOriginal.getUrl();
       }
     } catch (eUpload) {

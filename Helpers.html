@@ -89,4 +89,116 @@ var Utils = {
     return r2 === parseInt(dig[10]);
   }
 };
+
+/* ════════════════════════════════════════════════════════════════════════
+   INÍCIO · reforço de confiabilidade da Home
+
+   InicioResumo.gs passou a devolver `statusFontes` e `atualizadoEm`. O
+   index.html legado ainda trata qualquer falha como zero. Até a refatoração
+   estrutural da Home, este helper aplica a semântica correta depois do
+   carregamento normal: zero continua sendo zero; falha vira aviso; módulo
+   sem acesso não aparece; e a hora real de atualização fica visível.
+
+   É propositalmente aditivo e reversível: não muda contratos dos módulos nem
+   interfere no fluxo de navegação. Quando carregarResumoInicio() for migrada
+   para consumir estes estados diretamente, este bloco poderá ser removido.
+════════════════════════════════════════════════════════════════════════ */
+function inicioAplicarFonteNaHome_(fonte, idValor) {
+  var el = document.getElementById(idValor);
+  if (!el) return 0;
+  var linha = el.closest ? el.closest(".spPriority") : null;
+
+  if (fonte && fonte.semAcesso) {
+    if (linha) linha.style.display = "none";
+    return 0;
+  }
+
+  if (linha) linha.style.display = "";
+
+  if (!fonte || !fonte.ok) {
+    el.textContent = "⚠";
+    el.style.color = "#f59e0b";
+    el.title = (fonte && fonte.mensagem) || "Não foi possível atualizar esta informação.";
+    if (linha) linha.title = el.title;
+    return 0;
+  }
+
+  var valor = Number(fonte.valor || 0);
+  el.textContent = valor;
+  el.title = "";
+  if (linha) linha.title = "";
+  return isFinite(valor) ? valor : 0;
+}
+
+function inicioAplicarSaudeFonte_(fonte, idSaude) {
+  var el = document.getElementById(idSaude);
+  if (!el) return;
+
+  if (!fonte || !fonte.ok) {
+    el.textContent = fonte && fonte.semAcesso ? "SEM ACESSO" : "NÃO ATUALIZADO";
+    el.className = "amber";
+    el.title = fonte && fonte.mensagem ? fonte.mensagem : "Fonte indisponível.";
+    return;
+  }
+
+  var atencao = Number(fonte.valor || 0) > 0;
+  el.textContent = atencao ? "ATENÇÃO" : "OK";
+  el.className = atencao ? "amber" : "green";
+  el.title = "";
+}
+
+function inicioMostrarAtualizacao_(dataHora) {
+  var rail = document.querySelector("#mInicio .spRightRail .spRailCard");
+  if (!rail) return;
+  var head = rail.querySelector(".spRailHead");
+  if (!head) return;
+
+  var el = document.getElementById("spInicioAtualizadoEm");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "spInicioAtualizadoEm";
+    el.style.cssText = "font-size:10px;color:rgba(255,255,255,.45);margin:-8px 0 8px 2px;";
+    head.insertAdjacentElement("afterend", el);
+  }
+  el.textContent = dataHora ? ("Atualizado em " + dataHora) : "Atualização não confirmada";
+}
+
+function inicioAtualizarResumoSeguro_() {
+  if (!(window.google && google.script && google.script.run)) return;
+  if (typeof SISGEP_TOKEN_SESSAO === "undefined" || !SISGEP_TOKEN_SESSAO) return;
+
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (!r || !r.ok) return;
+      var f = r.statusFontes || {};
+      var total = 0;
+
+      total += inicioAplicarFonteNaHome_(f.notasFiscais, "spPrioNF");
+      total += inicioAplicarFonteNaHome_(f.emails, "spPrioEmails");
+      total += inicioAplicarFonteNaHome_(f.oficios, "spPrioOficios");
+      total += inicioAplicarFonteNaHome_(f.juridico, "spPrioJuridico");
+      total += inicioAplicarFonteNaHome_(f.escolasIncompletas, "spPrioEscolas");
+
+      var totalEl = document.getElementById("spPrioridadesTotal");
+      if (totalEl) totalEl.textContent = total;
+
+      inicioAplicarSaudeFonte_(f.notasFiscais, "spSaudeFinanceiro");
+      inicioAplicarSaudeFonte_(f.escolasIncompletas, "spSaudeAdministrativo");
+      inicioAplicarSaudeFonte_(f.juridico, "spSaudeJuridico");
+      inicioAplicarSaudeFonte_(f.emails, "spSaudeComunicacao");
+
+      inicioMostrarAtualizacao_(r.atualizadoEm || "");
+    })
+    .withFailureHandler(function(e) {
+      console.error("[Início] falha na atualização segura da Home:", e);
+      inicioMostrarAtualizacao_("");
+    })
+    .getResumoInicioSISGEP(SISGEP_TOKEN_SESSAO);
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+  // O index.html também carrega o resumo ao abrir. Esperar alguns milissegundos
+  // garante que este passe de confiabilidade seja o último a refletir na UI.
+  setTimeout(inicioAtualizarResumoSeguro_, 450);
+});
 </script>
