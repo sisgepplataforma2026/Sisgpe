@@ -86,6 +86,23 @@ function doGet(e) {
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
 
+    // ── INGRESSO PÚBLICO DO COMPASSO: por token, sem login ──────────────────
+    // O associado não tem conta no SISGEP. O que ele recebe por e-mail e por
+    // WhatsApp é este link, e o token HMAC É a credencial: quem tem vê aquele
+    // ingresso e só aquele; quem não tem vê a mesma página de "não encontrado"
+    // que qualquer chute veria.
+    //
+    // Esta rota MOSTRA. Ela NÃO faz check-in — ver não é entrar. Se abrir o
+    // link consumisse o ingresso, quem conferisse o próprio ingresso em casa
+    // chegaria na portaria com ele já utilizado.
+    //
+    // Toda a validação está em EventosEntrega.gs
+    // (compasso_validarQrTokenPublico_). Esta rota só entrega a página.
+    if (p.page === "ingresso") {
+      Logger.log("[COMPASSO] Ingresso publico por token");
+      return compasso_paginaIngressoPublica_(String(p.t || ""));
+    }
+
     // ── BINGO PÚBLICO: INSCRIÇÃO, sem login ─────────────────────────────────
     // Vem ANTES da rota da cartela de propósito: `p.bingo` e
     // `p["bingo-inscricao"]` são parâmetros distintos, mas quem lê o código
