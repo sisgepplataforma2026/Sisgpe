@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    /* Tokens do Design System (OficiosStyles.html) — nada de hex solto. */
+    :root{
+      --navy:#001f4d; --navy2:#002f6c; --blue:#1565C0; --gold:#C9A84C;
+      --ok:#0f8a5f; --alerta:#d97706; --erro:#dc2626;
+      --texto:#111827; --suave:#6b7385; --linha:#d8e0ea; --fundo:#f4f7fb;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--fundo);color:var(--texto);
+         font-family:'Plus Jakarta Sans',Arial,Helvetica,sans-serif;font-size:14px}
+    .of-modulo-header{background:linear-gradient(135deg,var(--navy),var(--navy2));
+      color:#fff;padding:20px 24px;display:flex;justify-content:space-between;
+      align-items:center;flex-wrap:wrap;gap:12px}
+    .of-modulo-header h1{margin:0;font-size:21px;font-weight:800}
+    .of-modulo-header .sub{font-size:13px;opacity:.85;margin-top:3px}
+    .wrap{padding:18px 22px 60px}
+    .cards{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+    .kpi{flex:1 1 128px;background:#fff;border:1.5px solid var(--linha);border-radius:12px;
+         padding:13px 15px;cursor:pointer;transition:.12s}
+    .kpi:hover{border-color:var(--blue);transform:translateY(-1px)}
+    .kpi.on{border-color:var(--navy);background:#eef3fa}
+    .kpi .n{font-size:25px;font-weight:800;line-height:1.1;color:var(--navy)}
+    .kpi .r{font-size:11px;text-transform:uppercase;letter-spacing:.06em;
+            color:var(--suave);font-weight:700;margin-top:3px}
+    .kpi.alerta .n{color:var(--alerta)} .kpi.okc .n{color:var(--ok)}
+    .of-card{background:#fff;border:1px solid var(--linha);border-radius:14px;
+             padding:14px;margin-bottom:14px;box-shadow:0 1px 6px rgba(16,24,40,.05)}
+    .filtros{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .filtros input,.filtros select{padding:9px 11px;border:1.5px solid var(--linha);
+      border-radius:9px;font-size:14px;font-family:inherit;min-width:130px}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;
+       color:var(--suave);padding:9px 8px;border-bottom:2px solid var(--linha);white-space:nowrap}
+    td{padding:9px 8px;border-bottom:1px solid #eef2f7;vertical-align:middle}
+    tr:hover td{background:#fafcfe}
+    .selo{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}
+    .s-ok{background:#e9f7f1;color:#0b5c40} .s-al{background:#fff7ed;color:#7c4a03}
+    .s-er{background:#fef2f2;color:#7f1d1d} .s-nt{background:#eef3f9;color:#1e3a5f}
+    .acoes{display:flex;gap:5px;flex-wrap:wrap}
+    .b{border:1px solid var(--linha);background:#fff;border-radius:8px;padding:5px 9px;
+       font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;color:var(--navy)}
+    .b:hover{border-color:var(--blue)} .b:disabled{opacity:.4;cursor:default}
+    .b.p{background:var(--navy);color:#fff;border-color:var(--navy)}
+    .b.g{background:#e9f7f1;color:#0b5c40;border-color:#9fdcc4}
+    .vazio{text-align:center;color:var(--suave);padding:32px}
+    .barra{display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+           background:#eef3fa;border:1px solid #c7d7ec;border-radius:11px;
+           padding:10px 13px;margin-bottom:12px;display:none}
+    .barra b{color:var(--navy)}
+    #msg{position:fixed;right:16px;bottom:16px;max-width:400px;background:var(--navy);
+         color:#fff;padding:13px 16px;border-radius:11px;font-size:13px;display:none;
+         box-shadow:0 8px 26px rgba(0,0,0,.25);white-space:pre-wrap;z-index:50}
+  </style>
+</head>
+<body>
+
+<div class="of-modulo-header">
+  <div>
+    <h1>Inscrições — Festa Compasso da Vida 2026</h1>
+    <div class="sub" id="sub">Carregando…</div>
+  </div>
+  <div class="acoes">
+    <button class="b" onclick="copiarLink()">🔗 Copiar link de inscrição</button>
+    <button class="b" onclick="carregar()">↻ Atualizar</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- Cards de ESTADO. Cada um é um filtro (item 4 do PROMPT-MESTRE). -->
+  <div class="cards" id="cards"></div>
+
+  <div class="of-card">
+    <div class="filtros">
+      <input id="fBusca" placeholder="Nome, CPF, escola…">
+      <input id="fEscola" placeholder="Escola">
+      <input id="fCidade" placeholder="Cidade">
+      <input id="fRegiao" placeholder="Região">
+      <select id="fCategoria">
+        <option value="">Toda categoria</option>
+        <option value="associado">Associado</option>
+        <option value="convidado">Convidado</option>
+        <option value="acompanhante">Acompanhante</option>
+      </select>
+      <select id="fAssoc">
+        <option value="">Associado: todos</option>
+        <option value="ASSOCIADO">✅ É associado</option>
+        <option value="NAO_FILIADO">⚠️ Consta, não filiado</option>
+        <option value="NAO_ENCONTRADO">❌ Fora da base</option>
+      </select>
+      <button class="b p" onclick="carregar()">Filtrar</button>
+      <button class="b" onclick="limpar()">Limpar</button>
+    </div>
+  </div>
+
+  <!-- Barra de lote: só aparece quando há seleção. -->
+  <div class="barra" id="barra">
+    <b><span id="qtdSel">0</span> selecionada(s)</b>
+    <button class="b p" onclick="enviarLote()">📧 Enviar ingresso por e-mail</button>
+    <span id="capacidade" style="font-size:12px;color:var(--suave)"></span>
+  </div>
+
+  <div class="of-card" style="overflow:auto">
+    <table>
+      <thead><tr>
+        <th><input type="checkbox" id="todos" onclick="marcarTodos(this)"></th>
+        <th>Nome</th><th>CPF</th><th>Escola</th><th>Cidade</th>
+        <th>Assoc.</th><th>Status</th><th>Ingresso</th><th>Entrega</th><th></th>
+      </tr></thead>
+      <tbody id="tb"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="msg"></div>
+
+<script>
+var TOKEN = (function(){ try{
+  var m = String(location.search||'').match(/[?&]sessao=([^&]*)/);
+  return m ? decodeURIComponent(m[1]) : '';
+}catch(e){ return ''; } })();
+
+var LISTA = [], SEL = {}, FILTRO_CARD = '';
+
+function g(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function aviso(t){ var m=g('msg'); m.textContent=t; m.style.display='block';
+  clearTimeout(aviso._t); aviso._t=setTimeout(function(){m.style.display='none';},7000); }
+
+/* Dispatcher único: o token vai no fim de TODA chamada. Mesmo padrão das
+   outras telas do Compasso — um lugar só em vez de um por botão. */
+function api(fn, args, cb){
+  var r = google.script.run
+    .withSuccessHandler(cb)
+    .withFailureHandler(function(e){ aviso('Erro: ' + ((e&&e.message)||e)); });
+  r[fn].apply(r, (args||[]).concat([TOKEN]));
+}
+
+/* ── cards ── */
+var CARDS = [
+  {k:'',            r:'Total',        f:{}},
+  {k:'naoAnalisadas',r:'A analisar',  f:{status:''},                   cls:'alerta'},
+  {k:'validadas',   r:'Validadas',    f:{status:'VALIDADA_ADMINISTRATIVAMENTE'}, cls:'okc'},
+  {k:'pendentes',   r:'Pendentes',    f:{status:'PENDENTE'},           cls:'alerta'},
+  {k:'semIngresso', r:'Sem ingresso', f:{entrega:'SEM_INGRESSO'}},
+  {k:'aEnviar',     r:'A enviar',     f:{entrega:'A_ENVIAR'},          cls:'alerta'},
+  {k:'enviadas',    r:'Enviadas',     f:{entrega:'ENVIADA'},           cls:'okc'},
+  {k:'naoAssociados',r:'Fora da base',f:{situacaoAssociado:'NAO_ENCONTRADO'}}
+];
+
+function pintarCards(r){
+  g('cards').innerHTML = CARDS.map(function(c,i){
+    var n = c.k ? (r[c.k]||0) : (r.total||0);
+    return '<div class="kpi ' + (c.cls||'') + (FILTRO_CARD===String(i)?' on':'') +
+           '" onclick="clicarCard(' + i + ')">' +
+           '<div class="n">' + n + '</div><div class="r">' + c.r + '</div></div>';
+  }).join('');
+}
+function clicarCard(i){
+  FILTRO_CARD = (FILTRO_CARD === String(i)) ? '' : String(i);
+  carregar();
+}
+
+function filtros(){
+  var f = {
+    busca: g('fBusca').value, escola: g('fEscola').value,
+    cidade: g('fCidade').value, regiao: g('fRegiao').value,
+    categoria: g('fCategoria').value, situacaoAssociado: g('fAssoc').value
+  };
+  /* O card escolhido soma aos campos, não substitui: dá para ver "a enviar"
+     dentro de uma escola só, que é como a secretaria trabalha. */
+  if (FILTRO_CARD !== '') {
+    var extra = CARDS[Number(FILTRO_CARD)].f || {};
+    Object.keys(extra).forEach(function(k){ if(extra[k]!=='') f[k]=extra[k]; });
+  }
+  return f;
+}
+function limpar(){
+  ['fBusca','fEscola','fCidade','fRegiao'].forEach(function(id){ g(id).value=''; });
+  g('fCategoria').value=''; g('fAssoc').value=''; FILTRO_CARD='';
+  carregar();
+}
+
+/* ── selos ── */
+function seloAssoc(s){
+  if (s === 'ASSOCIADO')      return '<span class="selo s-ok">✅ associado</span>';
+  if (s === 'NAO_FILIADO')    return '<span class="selo s-al">⚠️ não filiado</span>';
+  if (s === 'NAO_ENCONTRADO') return '<span class="selo s-er">❌ fora da base</span>';
+  return '<span class="selo s-nt">—</span>';
+}
+function seloStatus(s){
+  if (s === 'VALIDADA_ADMINISTRATIVAMENTE') return '<span class="selo s-ok">validada</span>';
+  if (s === 'PENDENTE')  return '<span class="selo s-al">pendente</span>';
+  if (s === 'REPROVADA') return '<span class="selo s-er">reprovada</span>';
+  return '<span class="selo s-nt">a analisar</span>';
+}
+function seloEntrega(x){
+  if (!x.ingressoId) return '<span class="selo s-nt">—</span>';
+  var c = (x.entrega && x.entrega.canais) || [];
+  if (!c.length) return '<span class="selo s-al">a enviar</span>';
+  return '<span class="selo s-ok">' +
+         (c.indexOf('EMAIL')>=0?'📧':'') + (c.indexOf('WHATSAPP')>=0?'📱':'') + '</span>';
+}
+
+/* ── lista ── */
+function carregar(){
+  api('compasso_validacaoResumo', [], pintarCards);
+  api('compasso_validacaoListar', [filtros()], function(l){
+    LISTA = l || []; SEL = {}; atualizarBarra();
+    g('sub').textContent = LISTA.length + ' inscrição(ões) na lista';
+    if (!LISTA.length){
+      g('tb').innerHTML = '<tr><td colspan="10" class="vazio">Nenhuma inscrição com esses filtros.</td></tr>';
+      return;
+    }
+    g('tb').innerHTML = LISTA.map(function(x,i){
+      var temIngresso = !!x.ingressoId;
+      var podeEmitir  = !temIngresso && x.status === 'VALIDADA_ADMINISTRATIVAMENTE';
+      return '<tr>' +
+        '<td>' + (temIngresso ? '<input type="checkbox" onclick="marcar(' + i + ',this)">' : '') + '</td>' +
+        '<td><b>' + esc(x.nome) + '</b>' +
+          (x.categoria && x.categoria!=='associado'
+            ? '<div style="font-size:11px;color:var(--suave)">' + esc(x.categoria) + '</div>' : '') +
+        '</td>' +
+        '<td>' + esc(x.cpf) + '</td><td>' + esc(x.escola) + '</td><td>' + esc(x.cidade) + '</td>' +
+        '<td>' + seloAssoc(x.situacaoAssociado) + '</td>' +
+        '<td>' + seloStatus(x.status) + '</td>' +
+        '<td>' + (temIngresso ? esc(x.numeroIngresso||'emitido') : '—') + '</td>' +
+        '<td>' + seloEntrega(x) + '</td>' +
+        '<td><div class="acoes">' +
+          (podeEmitir ? '<button class="b p" onclick="emitir(' + i + ')">Emitir</button>' : '') +
+          (temIngresso ? '<button class="b g" onclick="porEmail(' + i + ')">📧</button>' +
+                         '<button class="b g" onclick="porWhats(' + i + ')">📱</button>' : '') +
+          '<button class="b" onclick="abrirValidacao()">Analisar</button>' +
+        '</div></td></tr>';
+    }).join('');
+  });
+}
+
+/* ── seleção para o lote ── */
+function marcar(i, el){ if(el.checked) SEL[i]=true; else delete SEL[i]; atualizarBarra(); }
+function marcarTodos(el){
+  SEL = {};
+  var cbs = g('tb').querySelectorAll('input[type=checkbox]');
+  for (var k=0;k<cbs.length;k++){ cbs[k].checked = el.checked; }
+  if (el.checked) LISTA.forEach(function(x,i){ if(x.ingressoId) SEL[i]=true; });
+  atualizarBarra();
+}
+function atualizarBarra(){
+  var n = Object.keys(SEL).length;
+  g('qtdSel').textContent = n;
+  g('barra').style.display = n ? 'flex' : 'none';
+  if (n) api('compasso_capacidadeEnvio', [], function(c){
+    if (c) g('capacidade').textContent = c.aviso || '';
+  });
+}
+
+/* ── ações ── */
+function emitir(i){
+  var x = LISTA[i];
+  if (!confirm('Emitir o ingresso de ' + x.nome + '?\n\nIsso consome uma das 2.000 vagas.')) return;
+  api('compasso_emitirIngressoV2', [{inscricaoId:x.inscricaoId}], function(r){
+    if (!r || !r.ok) return aviso((r&&r.erro) || 'Não foi possível emitir.');
+    aviso('Ingresso ' + r.numero + ' emitido. Agora envie por e-mail ou WhatsApp.');
+    carregar();
+  });
+}
+function porEmail(i){
+  var x = LISTA[i];
+  api('compasso_enviarIngressoEmail', [x.inscricaoId], function(r){
+    if (!r || !r.ok) return aviso((r&&r.erro) || 'Não foi possível enviar.');
+    aviso((r.mensagem||'Enviado.') + (r.aviso ? '\n\n' + r.aviso : ''));
+    carregar();
+  });
+}
+/* O WhatsApp abre a janela ANTES da chamada: navegador bloqueia window.open
+   disparado dentro de callback assíncrono. Mesmo cuidado do Parque do China. */
+function porWhats(i){
+  var x = LISTA[i];
+  var w = window.open('', '_blank');
+  api('compasso_prepararIngressoWhatsApp', [x.inscricaoId], function(r){
+    if (!r || !r.ok){ if(w) w.close(); return aviso((r&&r.erro) || 'Não foi possível preparar.'); }
+    w.location.href = 'https://wa.me/' + r.telefone + '?text=' + encodeURIComponent(r.texto);
+    /* O sistema não sabe se a pessoa apertou enviar no aplicativo — quem
+       confirma é ela. Registrar antes seria marcar entrega que talvez não
+       aconteceu. */
+    setTimeout(function(){
+      if (confirm('Você enviou a mensagem para ' + x.nome + '?\n\nSó confirme se enviou de verdade.'))
+        api('compasso_confirmarEnvioWhatsApp', [x.inscricaoId], function(){ carregar(); });
+    }, 1200);
+  });
+}
+function enviarLote(){
+  var ids = Object.keys(SEL).map(function(i){ return LISTA[i].inscricaoId; });
+  if (!ids.length) return;
+  if (!confirm('Enviar o ingresso por e-mail para ' + ids.length + ' pessoa(s)?')) return;
+  aviso('Enviando… isso pode levar alguns minutos.');
+  api('compasso_enviarLoteEmail', [ids], function(r){
+    if (!r || !r.ok) return aviso((r&&r.erro) || 'Não foi possível enviar o lote.');
+    aviso(r.mensagem || '');
+    /* O lote devolve o que faltou — continuar de onde parou, sem recomeçar. */
+    if (r.parcial && confirm(r.mensagem + '\n\nContinuar agora?')){
+      api('compasso_enviarLoteEmail', [r.restantes], function(r2){
+        aviso((r2&&r2.mensagem)||''); carregar();
+      });
+      return;
+    }
+    carregar();
+  });
+}
+function abrirValidacao(){
+  aviso('A análise (validar, pendência, reprovar, pagamento) fica na Central de Validação — abra pelo menu Eventos.');
+}
+function copiarLink(){
+  api('eventos_obterWebAppUrl', [], function(base){
+    var url = String(base||'') + '?page=compasso-inscricao';
+    /* clipboard falha em iframe sem permissão: mostrar o texto é o plano B
+       que sempre funciona. */
+    try {
+      navigator.clipboard.writeText(url).then(
+        function(){ aviso('Link copiado:\n' + url); },
+        function(){ prompt('Copie o link de inscrição:', url); });
+    } catch(e){ prompt('Copie o link de inscrição:', url); }
+  });
+}
+
+carregar();
+</script>
+</body>
+</html>

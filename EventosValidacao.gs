@@ -51,11 +51,23 @@ function compasso_validacaoListar_interno_(filtros) {
   var status=String(filtros.status||'').trim();
   var escola=String(filtros.escola||'').toLowerCase().trim();
   var cidade=String(filtros.cidade||'').toLowerCase().trim();
+  var regiao=String(filtros.regiao||'').toLowerCase().trim();
+  var categoria=String(filtros.categoria||'').toLowerCase().trim();
+  var assoc=String(filtros.situacaoAssociado||'').trim();
+  var entrega=String(filtros.entrega||'').trim();
   var docs=fs_list_('inscricoesEventos',1000).filter(function(x){return x.eventoId===EMISSAO_CFG.EVENTO_ID;});
   docs=docs.filter(function(x){
     if(status && x.status!==status) return false;
     if(escola && String(x.escola||'').toLowerCase().indexOf(escola)<0) return false;
     if(cidade && String(x.cidade||'').toLowerCase().indexOf(cidade)<0) return false;
+    if(regiao && String(x.regiao||'').toLowerCase().indexOf(regiao)<0) return false;
+    if(categoria && String(x.categoria||'').toLowerCase()!==categoria) return false;
+    if(assoc && String(x.situacaoAssociado||'')!==assoc) return false;
+    /* Entrega é derivada, não é campo: 'A_ENVIAR' é ter ingresso e não ter
+       saído ainda. É o filtro que o usuário vai usar todo dia. */
+    if(entrega==='A_ENVIAR' && !(x.ingressoId && !(x.entregaCanais||''))) return false;
+    if(entrega==='ENVIADA'  && !String(x.entregaCanais||'')) return false;
+    if(entrega==='SEM_INGRESSO' && x.ingressoId) return false;
     if(busca){
       var hay=[x.nome,x.cpf,x.escola,x.cidade,x.regiao,x.inscricaoId].join(' ').toLowerCase();
       if(hay.indexOf(busca)<0) return false;
@@ -67,19 +79,35 @@ function compasso_validacaoListar_interno_(filtros) {
     /* categoria e pagamento entram aqui em 21/08/2026: sem eles a Central não
        tem como decidir se mostra o bloco de pagamento nem o que exibir nele.
        ingressoId vai junto porque o estorno é recusado depois de emitido. */
-    return {inscricaoId:x.inscricaoId||x._docId,nome:x.nome||'',cpf:x.cpf||'',escola:x.escola||'',cidade:x.cidade||'',regiao:x.regiao||'',status:x.status||'',analisadoPor:x.analisadoPor||'',analisadoEm:x.analisadoEm||'',motivoCodigo:x.motivoCodigo||'',observacaoAnalise:x.observacaoAnalise||'',pessoaId:x.pessoaId||'',email:x.email||'',whatsapp:x.whatsapp||'',matricula:x.matricula||'',categoria:String(x.categoria||'').toLowerCase(),ingressoId:x.ingressoId||'',numeroIngresso:x.numeroIngresso||'',pagamento:compasso_pagamentoDaInscricao_(x)};
+    return {inscricaoId:x.inscricaoId||x._docId,nome:x.nome||'',cpf:x.cpf||'',escola:x.escola||'',cidade:x.cidade||'',regiao:x.regiao||'',status:x.status||'',analisadoPor:x.analisadoPor||'',analisadoEm:x.analisadoEm||'',motivoCodigo:x.motivoCodigo||'',observacaoAnalise:x.observacaoAnalise||'',pessoaId:x.pessoaId||'',email:x.email||'',whatsapp:x.whatsapp||'',matricula:x.matricula||'',categoria:String(x.categoria||'').toLowerCase(),ingressoId:x.ingressoId||'',numeroIngresso:x.numeroIngresso||'',pagamento:compasso_pagamentoDaInscricao_(x),/* o selo do painel: ASSOCIADO / NAO_FILIADO / NAO_ENCONTRADO */situacaoAssociado:String(x.situacaoAssociado||''),entrega:compasso_entregaDaInscricao_(x),origem:String(x.origem||'')};
   });
 }
 
+/**
+ * Os números dos cards do painel.
+ *
+ * Contam ESTADO, não assunto — é o item 4 do PROMPT-MESTRE. Cada card vira um
+ * filtro clicável, e o que a pessoa precisa saber ao abrir a tela é: quanta
+ * fila tem para analisar, e quanto já validado ainda não foi entregue.
+ * "A ENVIAR" é o card que gera trabalho; sem ele, ingresso emitido fica
+ * parado sem ninguém perceber.
+ */
 function compasso_validacaoResumo(tokenSessao) {
   exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — resumo da validação', false);
   var docs=compasso_validacaoListar_interno_({});
-  var r={total:docs.length,naoAnalisadas:0,validadas:0,pendentes:0,reprovadas:0};
+  var r={total:docs.length,naoAnalisadas:0,validadas:0,pendentes:0,reprovadas:0,
+         aEnviar:0,enviadas:0,semIngresso:0,naoAssociados:0};
   docs.forEach(function(x){
     if(x.status===COMPASSO_STATUS.VALIDADA) r.validadas++;
     else if(x.status===COMPASSO_STATUS.PENDENTE) r.pendentes++;
     else if(x.status===COMPASSO_STATUS.REPROVADA) r.reprovadas++;
     else r.naoAnalisadas++;
+
+    var entregue = !!(x.entrega && x.entrega.enviado);
+    if (x.ingressoId && entregue) r.enviadas++;
+    if (x.ingressoId && !entregue) r.aEnviar++;
+    if (x.status===COMPASSO_STATUS.VALIDADA && !x.ingressoId) r.semIngresso++;
+    if (x.situacaoAssociado && x.situacaoAssociado !== 'ASSOCIADO') r.naoAssociados++;
   });
   return r;
 }

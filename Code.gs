@@ -167,6 +167,23 @@ function doGet(e) {
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
+    // ── PAINEL DE INSCRIÇÕES DO COMPASSO ────────────────────────────────────
+    // É o painel que o usuário desenhou: o associado preenche pelo link e
+    // aparece aqui. Cards de estado (item 4 do PROMPT-MESTRE), filtros por
+    // escola / região / cidade, o selo de associado, e as ações de emitir e
+    // enviar — individual ou em lote.
+    if (p.painel === "compasso") {
+      var tokenComp = String(p.sessao || "").trim();
+      var sessaoComp = getSessaoUsuario(tokenComp);
+      if (!sessaoComp) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
+      exigirModulo_(tokenComp, "eventos", false);
+      return HtmlService.createHtmlOutputFromFile("CompassoInscricoes")
+        .setTitle("Inscrições — Compasso da Vida 2026")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
+
     if (p.painel === "bingo") {
       var tokenBingo = String(p.sessao || "").trim();
       var sessaoBingo = getSessaoUsuario(tokenBingo);
