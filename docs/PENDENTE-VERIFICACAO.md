@@ -10,6 +10,43 @@
 
 ---
 
+## ✅ VERIFICADO NO AR
+
+### Isolamento de ambiente — RODOU em 21/08/2026, 22:10
+
+`diagnosticoAmbienteRecursos_()` e `diagnosticoPoliticaArquivo_()` executados
+pelo usuário no editor do Apps Script da HOMOLOGAÇÃO. Saída:
+
+```
+Script Property SISGEP_AMBIENTE : "homologacao"
+Planilha em uso                 : 1OGtjry...  (homologação, não produção)
+COMPROVANTES        1COhM0dIacpViZPajSrTuPA9Mfwq6Xkta   ✅ ok
+RECIBOS             1tc21Wyl4ulIxEqlXpH6LtCKnjOwssnjr   ✅ ok
+RELATORIOS          1dIl0eav3fXD_eh_u9y-jnYquQ4UgGbQS   ✅ ok
+VOUCHER_DOCUMENTOS  1sNj2mcvuS8Cl7nojHMmdlIFyVZProPDu   ✅ ok
+Política            PRIVATE / NONE
+```
+
+**O que isto prova:** a resolução por ambiente funciona contra o
+PropertiesService real, e as quatro pastas apontam para homologação. A
+contaminação do Drive de produção está fechada na origem.
+
+**A trava não disparou** — e esse é o resultado certo. Se alguma pasta ainda
+resolvesse para produção, viria `❌ APONTA PARA PRODUÇÃO` e a gravação estaria
+bloqueada.
+
+**O que isto NÃO prova**, e segue pendente:
+
+| | |
+|---|---|
+| 🟡 gravar um arquivo e ele cair na pasta de homologação | emitir um Comprovante ou Recibo |
+| 🟡 `setSharing` aplicar PRIVATE num arquivo real | conferir o arquivo gerado no Drive |
+| 🟡 `lixeiraMover_` mover uma linha de fato | excluir um cadastro de teste |
+| 🟡 o teto recusar lote acima de 50 | tentar excluir 51 escolas |
+
+`diagnosticoLixeira_()` respondeu "nenhuma aba de lixeira criada ainda" — o
+esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
+
 ## 🔴 ABERTO
 
 ### 29. Bingo Online — nunca rodou em lugar nenhum
