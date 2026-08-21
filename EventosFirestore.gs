@@ -12,6 +12,69 @@
  * mesmo projeto cria configuração duplicada e aumenta o risco operacional.
  */
 
+/* ══════════════════════════════════════════════════════════════════════════
+   MEDIÇÃO DE CONSUMO — contagem em memória, custo zero
+   ══════════════════════════════════════════════════════════════════════════
+
+   O usuário precisa saber, com DADO REAL, quanto o fluxo consome do Firebase:
+   "preciso fazer teste... a questão de medir o consumo do Firebase, porque o
+   acesso é no dia dezenove de dezembro."
+
+   O EventosFirebaseCusto.gs ESTIMA por fórmula, e explica por que não mede:
+   "não gravamos um documento de métrica a cada operação porque isso
+   aumentaria artificialmente o próprio consumo que queremos reduzir."
+
+   A objeção está certa — gravar métrica no Firestore dobraria as escritas. A
+   saída não é deixar de medir: é contar EM MEMÓRIA, dentro da execução, e
+   reportar no fim. Uma execução do Apps Script é isolada e vive no máximo 6
+   minutos; um lote de simulação cabe inteiro nela. Nenhuma leitura, nenhuma
+   escrita, nenhum documento a mais.
+
+   O que isto NÃO substitui: o painel oficial do Firebase. Ele é a fonte de
+   verdade da cobrança. Este contador dá o que o painel não dá — o número
+   separado POR OPERAÇÃO e por etapa do fluxo, que é o que diz ONDE cortar.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+var FS_METRICAS = { ligado: false, leituras: 0, gravacoes: 0, listagens: 0,
+                    consultas: 0, docsLidos: 0, inicio: 0, rotulo: '' };
+
+/** Liga a contagem e zera. Chamar no começo da rodada que se quer medir. */
+function fs_medirIniciar_(rotulo) {
+  FS_METRICAS = { ligado: true, leituras: 0, gravacoes: 0, listagens: 0,
+                  consultas: 0, docsLidos: 0, inicio: Date.now(),
+                  rotulo: String(rotulo || 'rodada') };
+}
+
+/** Fecha a contagem e devolve o relatório, já comparado com a faixa gratuita. */
+function fs_medirFechar_() {
+  var m = FS_METRICAS;
+  FS_METRICAS = { ligado: false, leituras: 0, gravacoes: 0, listagens: 0,
+                  consultas: 0, docsLidos: 0, inicio: 0, rotulo: '' };
+
+  var teto = (typeof COMPASSO_FIREBASE_BUDGET === 'object')
+    ? COMPASSO_FIREBASE_BUDGET : { LEITURAS_DIA: 50000, GRAVACOES_DIA: 20000 };
+
+  /* O que conta para a cobrança é DOCUMENTO lido, não chamada: um fs_list_ de
+     1.000 documentos custa 1.000 leituras, não uma. Ignorar isso subestimaria
+     o consumo justo na operação mais cara. */
+  var leiturasReais = m.leituras + m.docsLidos;
+
+  return {
+    rotulo: m.rotulo,
+    segundos: m.inicio ? Math.round((Date.now() - m.inicio) / 100) / 10 : 0,
+    chamadas: { get: m.leituras, set: m.gravacoes, list: m.listagens, query: m.consultas },
+    documentosLidos: m.docsLidos,
+    leiturasCobradas: leiturasReais,
+    gravacoesCobradas: m.gravacoes,
+    percentualDoTetoDiario: {
+      leituras: Math.round(leiturasReais / teto.LEITURAS_DIA * 1000) / 10 + '%',
+      gravacoes: Math.round(m.gravacoes / teto.GRAVACOES_DIA * 1000) / 10 + '%'
+    },
+    nota: 'Contagem em memória desta execução. O painel do Firebase continua ' +
+          'sendo a fonte de verdade da cobranca.'
+  };
+}
+
 // ---------- CONFIG / CREDENCIAL ----------
 function fs_getConfig_() {
   if (typeof fb_config_ !== 'function') {
@@ -82,6 +145,7 @@ function fs_fromFields_(fields) {
 
 // ---------- GRAVAR (cria/substitui documento com ID definido) ----------
 function fs_set_(collection, docId, obj) {
+  if (FS_METRICAS.ligado) FS_METRICAS.gravacoes++;
   var url = fs_baseUrl_() + '/' + collection + '/' + encodeURIComponent(docId);
   var resp = UrlFetchApp.fetch(url, {
     method: 'patch',
@@ -97,6 +161,7 @@ function fs_set_(collection, docId, obj) {
 
 // ---------- LER (retorna objeto ou null) ----------
 function fs_get_(collection, docId) {
+  if (FS_METRICAS.ligado) FS_METRICAS.leituras++;
   var url = fs_baseUrl_() + '/' + collection + '/' + encodeURIComponent(docId);
   var resp = UrlFetchApp.fetch(url, {
     method: 'get',
@@ -111,6 +176,10 @@ function fs_get_(collection, docId) {
 
 // ---------- CONSULTAR (query estruturada por igualdade de campo) ----------
 function fs_queryEquals_(collection, campo, valor) {
+  /* Consulta de verdade (runQuery com filtro e limite 5) — custa as poucas
+     linhas que devolve, não a coleção inteira. É o caminho barato, e é o
+     que o check-in por número usa. */
+  if (typeof FS_METRICAS === 'object' && FS_METRICAS.ligado) FS_METRICAS.consultas++;
   var url = fs_baseUrl_() + ':runQuery';
   var body = {
     structuredQuery: {

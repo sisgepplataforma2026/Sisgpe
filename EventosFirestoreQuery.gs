@@ -1,5 +1,6 @@
 /** COMPASSO 2026 — consultas auxiliares Firestore. */
 function fs_list_(collection, pageSize) {
+  if (typeof FS_METRICAS === 'object' && FS_METRICAS.ligado) FS_METRICAS.listagens++;
   pageSize = Math.min(Math.max(Number(pageSize || 500), 1), 1000);
   var out = [], token = '';
   do {
@@ -18,10 +19,15 @@ function fs_list_(collection, pageSize) {
     });
     token = data.nextPageToken || '';
   } while (token);
+  /* O QUE CONTA PARA A COBRANÇA É DOCUMENTO, NÃO CHAMADA. Um fs_list_ de
+     2.000 ingressos custa 2.000 leituras. Contar só a chamada esconderia
+     justo a operação mais cara do sistema. */
+  if (typeof FS_METRICAS === 'object' && FS_METRICAS.ligado) FS_METRICAS.docsLidos += out.length;
   return out;
 }
 
 function fs_findByField_(collection, field, value, limit) {
+  if (typeof FS_METRICAS === 'object' && FS_METRICAS.ligado) FS_METRICAS.consultas++;
   var docs = fs_list_(collection, 1000), out=[];
   for (var i=0;i<docs.length && out.length<(limit||50);i++) {
     if (String(docs[i][field] == null ? '' : docs[i][field]) === String(value == null ? '' : value)) out.push(docs[i]);

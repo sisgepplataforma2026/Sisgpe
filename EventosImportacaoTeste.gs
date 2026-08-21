@@ -1,0 +1,351 @@
+// ============================================================================
+// 📥 ARQUIVO: EventosImportacaoTeste.gs
+// 🏷️  COMPASSO 2026 — Carregar a planilha do ano passado como massa de teste
+// ============================================================================
+//
+// O QUE ORIGINOU
+//
+// 21/08/2026. O usuário: "eu já tenho uma planilha do ano passado. Então quero
+// utilizar ela como base." E o motivo: "preciso fazer teste se o QR Code é
+// validado, se vai dar algum erro."
+//
+// POR QUE ESSA PLANILHA VALE MAIS QUE O SIMULADOR
+//
+// O `compasso_simularMassa` gera gente perfeita: nome limpo, CPF sequencial
+// válido, escola numerada. Uma planilha real tem o que quebra sistema de
+// verdade — nome em CAIXA ALTA e minúscula misturadas, CPF com e sem
+// pontuação, campo vazio, linha repetida, acento inconsistente, e-mail
+// inválido, telefone com e sem DDD.
+//
+// É por isso que a onda de 10/50/200 do plano deve rodar com ESTA base, e não
+// com a simulada.
+//
+// EU NÃO VEJO A SUA PLANILHA
+//
+// Não tenho acesso ao Drive do sindicato. Então o importador não pode assumir
+// colunas: ele LÊ O CABEÇALHO e descobre sozinho qual coluna é qual, por
+// nomes aproximados. E antes de importar ele MOSTRA o que entendeu.
+//
+// Conferir o mapeamento antes é o que impede a pior falha possível aqui:
+// importar 400 pessoas com a coluna errada e só descobrir quando o ingresso
+// sair com o nome da escola no lugar do nome da pessoa.
+//
+// COMO USAR (editor do Apps Script, homologação)
+//
+//   1. compasso_importarConferir("<id da planilha>")
+//      → mostra as colunas que encontrou e as 5 primeiras linhas. Não grava.
+//
+//   2. compasso_importarExecutar("<id da planilha>", 50)
+//      → importa as 50 primeiras como inscrições de teste.
+//
+//   3. compasso_importarLimpar()
+//      → apaga tudo que veio da importação. Só o que veio dela.
+//
+// TRAVAS: homologação e administrador. Isto cria inscrição de verdade.
+// ============================================================================
+
+var COMPASSO_IMPORT_ORIGEM = 'IMPORTACAO_TESTE';
+
+/**
+ * Nomes que cada campo pode ter no cabeçalho. Sem acento e em minúscula na
+ * comparação — planilha de sindicato tem "Nome", "NOME COMPLETO", "Servidor",
+ * e todas querem dizer a mesma coisa.
+ */
+var COMPASSO_IMPORT_COLUNAS = {
+  nome:     ['nome completo', 'nome', 'servidor', 'associado', 'participante', 'nome do associado'],
+  cpf:      ['cpf', 'c.p.f', 'cpf do associado', 'documento'],
+  escola:   ['escola', 'unidade', 'lotacao', 'local de trabalho', 'instituicao', 'nome fantasia'],
+  cidade:   ['cidade', 'municipio', 'cidade/municipio'],
+  email:    ['email', 'e-mail', 'e mail', 'correio eletronico'],
+  whatsapp: ['whatsapp', 'whats', 'celular', 'telefone', 'contato', 'fone', 'tel'],
+  rg:       ['rg', 'identidade', 'registro geral']
+};
+
+/** Tira acento e baixa a caixa, para comparar cabeçalho de forma tolerante. */
+function compasso_normalizarTexto_(s) {
+  return String(s || '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Descobre qual coluna é qual, lendo o cabeçalho.
+ * Devolve { campo: índice }, e a lista do que NÃO conseguiu identificar.
+ */
+function compasso_importarMapear_(cabecalho) {
+  var mapa = {}, usadas = {};
+  var normalizado = (cabecalho || []).map(compasso_normalizarTexto_);
+
+  Object.keys(COMPASSO_IMPORT_COLUNAS).forEach(function (campo) {
+    var apelidos = COMPASSO_IMPORT_COLUNAS[campo];
+    /* Passo 1: igualdade exata. É o mais confiável e roda primeiro para
+       "nome" não roubar a coluna "nome da escola". */
+    for (var i = 0; i < normalizado.length; i++) {
+      if (usadas[i]) continue;
+      if (apelidos.indexOf(normalizado[i]) >= 0) { mapa[campo] = i; usadas[i] = true; return; }
+    }
+    /* Passo 2: o cabeçalho CONTÉM o apelido. Só depois de esgotar o exato. */
+    for (var j = 0; j < normalizado.length; j++) {
+      if (usadas[j] || !normalizado[j]) continue;
+      for (var k = 0; k < apelidos.length; k++) {
+        if (normalizado[j].indexOf(apelidos[k]) >= 0) { mapa[campo] = j; usadas[j] = true; return; }
+      }
+    }
+  });
+
+  var naoAchados = Object.keys(COMPASSO_IMPORT_COLUNAS).filter(function (c) {
+    return mapa[c] === undefined;
+  });
+  return { mapa: mapa, naoAchados: naoAchados, cabecalho: cabecalho || [] };
+}
+
+/** Lê a planilha e devolve cabeçalho + linhas. Aba: a primeira, ou a nomeada. */
+function compasso_importarLer_(planilhaId, aba) {
+  var ss = SpreadsheetApp.openById(String(planilhaId || '').trim());
+  var sh = aba ? ss.getSheetByName(aba) : ss.getSheets()[0];
+  if (!sh) throw new Error('Aba não encontrada. Abas disponíveis: ' +
+    ss.getSheets().map(function (x) { return x.getName(); }).join(', '));
+  if (sh.getLastRow() < 2) throw new Error('A aba "' + sh.getName() + '" não tem linhas de dados.');
+  var dados = sh.getDataRange().getValues();
+  return { nomeAba: sh.getName(), cabecalho: dados[0], linhas: dados.slice(1) };
+}
+
+/**
+ * CONFERIR — mostra o que entendeu da planilha. Não grava nada.
+ * É o passo que impede importar 400 pessoas com a coluna trocada.
+ */
+function compasso_importarConferir(planilhaId, aba, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — conferir importação', true);
+
+  var lido, m;
+  try {
+    lido = compasso_importarLer_(planilhaId, aba);
+    m = compasso_importarMapear_(lido.cabecalho);
+  } catch (e) {
+    var erro = '❌ ' + e.message;
+    Logger.log(erro); return erro;
+  }
+
+  var L = [];
+  L.push('═══════════════════════════════════════════════════════════');
+  L.push('  CONFERÊNCIA DA PLANILHA — nada foi importado ainda');
+  L.push('═══════════════════════════════════════════════════════════');
+  L.push('  Aba    : ' + lido.nomeAba);
+  L.push('  Linhas : ' + lido.linhas.length);
+  L.push('');
+  L.push('  O QUE ENTENDI DE CADA COLUNA:');
+  Object.keys(COMPASSO_IMPORT_COLUNAS).forEach(function (campo) {
+    var i = m.mapa[campo];
+    L.push('    ' + (campo + '..........').slice(0, 10) + ' ' +
+      (i === undefined ? '❌ não encontrei'
+                       : '✅ coluna ' + (i + 1) + '  "' + lido.cabecalho[i] + '"'));
+  });
+
+  if (m.naoAchados.length) {
+    L.push('');
+    L.push('  Colunas do arquivo que não usei:');
+    lido.cabecalho.forEach(function (c, i) {
+      var usada = Object.keys(m.mapa).some(function (k) { return m.mapa[k] === i; });
+      if (!usada && String(c || '').trim()) L.push('    ' + (i + 1) + '. ' + c);
+    });
+  }
+
+  /* Amostra: é onde a coluna trocada aparece aos olhos. Um "nome" que mostra
+     escola salta na hora — nenhuma validação automática substitui isso. */
+  L.push('');
+  L.push('  AS 5 PRIMEIRAS LINHAS, COMO EU AS LERIA:');
+  var validos = 0, semNome = 0, semContato = 0;
+  lido.linhas.forEach(function (linha, idx) {
+    var p = compasso_importarLinha_(linha, m.mapa);
+    if (compasso_cpfValido_(p.cpf)) validos++;
+    if (!p.nome) semNome++;
+    if (!p.email && !p.whatsapp) semContato++;
+    if (idx < 5) {
+      L.push('    ' + (idx + 2) + '· ' + (p.nome || '(sem nome)'));
+      L.push('        CPF ' + (p.cpf || '—') +
+             (p.cpf ? (compasso_cpfValido_(p.cpf) ? ' ✅' : ' ❌ inválido') : '') +
+             ' · ' + (p.escola || '(sem escola)') + ' · ' + (p.cidade || '(sem cidade)'));
+      L.push('        ' + (p.email || '(sem e-mail)') + ' · ' + (p.whatsapp || '(sem whats)'));
+    }
+  });
+
+  L.push('');
+  L.push('  DIAGNÓSTICO DAS ' + lido.linhas.length + ' LINHAS:');
+  L.push('    CPF válido      : ' + validos + '  (' +
+         Math.round(validos / lido.linhas.length * 100) + '%)');
+  L.push('    Sem nome        : ' + semNome);
+  L.push('    Sem contato     : ' + semContato +
+         '  ← estas NÃO podem receber ingresso');
+  L.push('');
+  if (m.mapa.nome === undefined || m.mapa.cpf === undefined) {
+    L.push('  ⚠️  Sem NOME e CPF identificados não dá para importar.');
+    L.push('      Me diga o nome exato dessas colunas que eu acrescento à lista.');
+  } else {
+    L.push('  Se o mapeamento acima está certo, importe:');
+    L.push('    compasso_importarExecutar("' + planilhaId + '", 50)');
+    L.push('  Comece com 50. A onda 1 do plano é 10, 50 e 200.');
+  }
+  L.push('═══════════════════════════════════════════════════════════');
+
+  var texto = L.join('\n');
+  Logger.log(texto);
+  return texto;
+}
+
+/** Extrai uma linha conforme o mapa, já limpando o que dá para limpar. */
+function compasso_importarLinha_(linha, mapa) {
+  function v(campo) {
+    var i = mapa[campo];
+    return i === undefined ? '' : String(linha[i] == null ? '' : linha[i]).trim();
+  }
+  return {
+    nome: v('nome'), cpf: v('cpf').replace(/\D/g, ''), rg: v('rg'),
+    escola: v('escola'), cidade: v('cidade'),
+    email: v('email').toLowerCase(),
+    whatsapp: v('whatsapp').replace(/\D/g, '')
+  };
+}
+
+/**
+ * IMPORTAR — cria as inscrições de teste.
+ *
+ * Passa pelo MESMO caminho da inscrição pública
+ * (`compasso_criarInscricaoAssociado_publica_`), sem atalho: importar por
+ * outra porta provaria outra coisa, e o objetivo é justamente testar aquele
+ * caminho com dado real.
+ *
+ * @param {string} planilhaId
+ * @param {number=} limite  quantas linhas (padrão 50 — a onda 1 do plano)
+ */
+function compasso_importarExecutar(planilhaId, limite, aba, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — importar planilha de teste', true);
+  compasso_assertHomologacao_();
+
+  var lido = compasso_importarLer_(planilhaId, aba);
+  var m = compasso_importarMapear_(lido.cabecalho);
+  if (m.mapa.nome === undefined || m.mapa.cpf === undefined)
+    return '❌ Não identifiquei as colunas de NOME e CPF. Rode compasso_importarConferir primeiro.';
+
+  limite = Math.min(Math.max(Number(limite || 50), 1), 500);
+  var inicio = Date.now();
+  fs_medirIniciar_('importação de ' + limite);
+
+  var r = { criadas: 0, cpfInvalido: 0, semNome: 0, semContato: 0,
+            duplicadas: 0, erro: 0, tempoEsgotado: false };
+  var exemplos = [];
+
+  for (var i = 0; i < lido.linhas.length && r.criadas < limite; i++) {
+    if (Date.now() - inicio > 240000) { r.tempoEsgotado = true; break; }
+
+    var p = compasso_importarLinha_(lido.linhas[i], m.mapa);
+    if (!p.nome || p.nome.indexOf(' ') < 0) { r.semNome++; continue; }
+    if (!compasso_cpfValido_(p.cpf)) { r.cpfInvalido++; continue; }
+    if (!p.email && !p.whatsapp) { r.semContato++; continue; }
+
+    var res;
+    try {
+      res = compasso_criarInscricaoAssociado_publica_({
+        nome: p.nome, cpf: p.cpf, rg: p.rg,
+        escola: p.escola || '(não informada)', cidade: p.cidade || '(não informada)',
+        email: p.email, whatsapp: p.whatsapp,
+        origem: COMPASSO_IMPORT_ORIGEM,
+        situacaoAssociado: compasso_situacaoAssociado_(compasso_buscarAssociado_(p.cpf)),
+        termoVersao: 'IMPORTACAO', termoHash: '', termoAceitoEm: new Date()
+      });
+    } catch (e) { res = { ok: false, erro: e.message }; }
+
+    if (res && res.ok) {
+      r.criadas++;
+      if (exemplos.length < 3) exemplos.push(p.nome + ' · ' + res.inscricaoId);
+    } else if (res && /Já existe uma inscrição/.test(res.erro || '')) {
+      r.duplicadas++;
+    } else {
+      r.erro++;
+    }
+  }
+
+  var metrica = fs_medirFechar_();
+
+  var L = [];
+  L.push('═══════════════════════════════════════════════════════════');
+  L.push('  IMPORTAÇÃO CONCLUÍDA — ' + lido.nomeAba);
+  L.push('═══════════════════════════════════════════════════════════');
+  L.push('  Criadas          : ' + r.criadas);
+  L.push('  Duplicadas       : ' + r.duplicadas + '  (mesmo CPF já importado)');
+  L.push('  CPF inválido     : ' + r.cpfInvalido);
+  L.push('  Sem nome completo: ' + r.semNome);
+  L.push('  Sem contato      : ' + r.semContato);
+  L.push('  Erro             : ' + r.erro);
+  if (r.tempoEsgotado) L.push('  ⏱️  Parou no tempo. Rode de novo para continuar.');
+  if (exemplos.length) { L.push(''); L.push('  Exemplos criados:');
+    exemplos.forEach(function (e) { L.push('    ' + e); }); }
+  L.push('');
+  L.push('  CONSUMO MEDIDO DESTA IMPORTAÇÃO:');
+  L.push('    leituras cobradas : ' + metrica.leiturasCobradas +
+         '  (' + metrica.percentualDoTetoDiario.leituras + ' do teto diário)');
+  L.push('    gravações        : ' + metrica.gravacoesCobradas +
+         '  (' + metrica.percentualDoTetoDiario.gravacoes + ' do teto diário)');
+  if (r.criadas > 0) {
+    L.push('    por inscrição    : ' +
+      (Math.round(metrica.leiturasCobradas / r.criadas * 10) / 10) + ' leituras · ' +
+      (Math.round(metrica.gravacoesCobradas / r.criadas * 10) / 10) + ' gravações');
+  }
+  L.push('');
+  L.push('  Abra o painel para ver a lista:  ?painel=compasso');
+  L.push('  Para desfazer:  compasso_importarLimpar()');
+  L.push('═══════════════════════════════════════════════════════════');
+
+  var texto = L.join('\n');
+  Logger.log(texto);
+  return texto;
+}
+
+/**
+ * Apaga o que veio da importação — e SÓ isso.
+ *
+ * Filtra por `origem === 'IMPORTACAO_TESTE'`. Inscrição feita pela tela
+ * pública durante o teste tem origem diferente e NÃO é tocada: apagar o teste
+ * de alguém junto seria pior que não ter limpeza.
+ */
+function compasso_importarLimpar(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — limpar importação de teste', true);
+  compasso_assertHomologacao_();
+
+  var docs = fs_list_('inscricoesEventos', 1000).filter(function (x) {
+    return x.eventoId === EMISSAO_CFG.EVENTO_ID &&
+           String(x.origem || '') === COMPASSO_IMPORT_ORIGEM;
+  });
+
+  var apagadas = 0, comIngresso = 0;
+  docs.forEach(function (ins) {
+    /* Inscrição que já virou ingresso não some por aqui: o ingresso tem QR
+       emitido e vaga consumida. O caminho é cancelar o ingresso primeiro, que
+       devolve a vaga e invalida o token. */
+    if (ins.ingressoId) { comIngresso++; return; }
+    try {
+      emissao_fsDelete_('inscricoesEventos', ins.inscricaoId || ins._docId);
+      var chave = compasso_inscricaoChave_('', ins.cpf);
+      emissao_fsDelete_('inscricaoUnicaEventos', chave);
+      apagadas++;
+    } catch (e) {}
+  });
+
+  /* A reserva de vagas volta ao que era: cada inscrição apagada devolve uma. */
+  try {
+    var r = compasso_lerReservaVagas_();
+    r.reservadas = Math.max(0, Number(r.reservadas || 0) - apagadas);
+    r.atualizadoEm = new Date();
+    fs_set_('reservasEventos', EMISSAO_CFG.EVENTO_ID, r);
+  } catch (e) {}
+
+  compasso_auditar_('LIMPEZA_IMPORTACAO_TESTE', 'evento', EMISSAO_CFG.EVENTO_ID,
+                    { apagadas: apagadas, mantidasComIngresso: comIngresso });
+
+  var texto = '🧹 ' + apagadas + ' inscrição(ões) de teste apagadas. ' +
+    (comIngresso ? comIngresso + ' foram MANTIDAS porque já têm ingresso emitido — ' +
+                   'cancele o ingresso antes (compasso_cancelarIngressoV2).'
+                 : 'Nenhuma tinha ingresso emitido.') +
+    ' Vagas devolvidas ao contador.';
+  Logger.log(texto);
+  return texto;
+}
