@@ -243,6 +243,11 @@ function processarFilaEnvioOficios() {
   }
 
   var headerMap            = getHeaderMap_(sh);
+  /* colId entrou na lista de obrigatórias em 20/08/2026 (commit 731ed4e) sem
+     ser declarada aqui — só na outra função que aquele commit tocou. O efeito
+     era ReferenceError logo abaixo, ao montar `obrigatorias`: a fila de envio
+     de ofícios parava antes de processar a primeira linha. */
+  var colId                = headerMap["ID"];
   var colNumero            = headerMap["NUMERO_OFICIO"];
   var colTipo              = headerMap["TIPO"];
   var colEscola            = headerMap["ESCOLA"];
