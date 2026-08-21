@@ -16,9 +16,32 @@ var AMBIENTE_CONFIG = (typeof AMBIENTE_CONFIG === "object" && AMBIENTE_CONFIG)
       PADRAO: "producao"
     };
 
+/**
+ * A base de todo link que o sistema manda para fora.
+ *
+ * `ScriptApp.getService().getUrl()` devolve coisas DIFERENTES conforme quem
+ * chama: `/exec` quando a chamada parte do web app publicado, e `/dev` quando
+ * parte do editor. E `/dev` só abre para quem tem acesso de EDIÇÃO ao script —
+ * para o associado é erro de permissão.
+ *
+ * Isso vazou para dentro de um e-mail em 21/08/2026: o piloto do Compasso,
+ * rodado pelo editor, mandou o ingresso com o botão apontando para `/dev`.
+ * Para o dono do projeto abriu normalmente; para qualquer outra pessoa seria
+ * uma porta fechada — e o pior tipo de defeito, porque quem envia não vê.
+ *
+ * Por isso a propriedade `SISGEP_URL_BASE` tem precedência: declare nela a
+ * URL `/exec` da implantação, e todo link nasce certo, inclusive o gerado por
+ * rotina que roda no editor ou por trigger. Sem a propriedade, o
+ * comportamento é exatamente o de antes.
+ */
 function getSistemaUrlBase() {
   if (!SISTEMA_URL_BASE) {
-    SISTEMA_URL_BASE = ScriptApp.getService().getUrl();
+    var declarada = '';
+    try {
+      declarada = String(PropertiesService.getScriptProperties()
+        .getProperty('SISGEP_URL_BASE') || '').trim();
+    } catch (e) {}
+    SISTEMA_URL_BASE = declarada || ScriptApp.getService().getUrl();
   }
   return SISTEMA_URL_BASE;
 }
