@@ -49,6 +49,35 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 ## 🔴 ABERTO
 
+### 31. Compasso — pagamento do acompanhante (botão novo)
+**Aberto em:** 21/08/2026 · `EventosPagamento.gs`, `EventosValidacaoAdmin.html`
+
+Fechou um beco sem saída: a emissão V2 exigia `pagamentoStatus === 'PAGO'` e
+**ninguém no projeto escrevia PAGO** — acompanhante nunca conseguiria ingresso.
+Agora a Central de Validação tem o bloco de pagamento (Pix / Cartão), e a
+confirmação lança a receita no Financeiro.
+
+Roteiro:
+
+1. Abrir uma inscrição de **acompanhante** na Central. O bloco 💳 tem de
+   aparecer, com o valor já preenchido (R$ 500) e a origem escrita embaixo.
+2. Abrir uma de **associado**. O bloco NÃO pode aparecer.
+3. Confirmar com Pix. Conferir a mensagem: ela diz se a receita foi lançada
+   no Financeiro **ou o motivo de não ter sido** — quem valida tem o módulo
+   "eventos" e o `cadastrarReceita` exige "financeiro", então é bem possível
+   que recuse. Se recusar, a mensagem manda lançar à mão; é o esperado, não
+   um bug. **Anotar o que apareceu.**
+4. Abrir a Central Financeira › Receitas e ver se o lançamento está lá.
+5. Tentar confirmar de novo o mesmo pagamento — tem de recusar.
+6. Emitir o ingresso desse acompanhante. Antes recusava sempre; agora tem de
+   passar.
+7. Estornar (precisa de ADMIN, e pede motivo). Depois de emitido o ingresso,
+   o estorno tem de RECUSAR.
+
+Cobertura: `t77` — 23 asserções, 9 mutações mortas.
+
+---
+
 ### 30. Compasso da Vida 2026 — a trava de sessão mudou 35 assinaturas
 **Aberto em:** 21/08/2026 · `Eventos*.gs`, `EventosPortaria.html`, `EventosValidacaoAdmin.html`
 
