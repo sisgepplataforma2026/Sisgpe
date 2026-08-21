@@ -57,7 +57,11 @@ function compasso_validacaoListar_interno_(filtros) {
   var entrega=String(filtros.entrega||'').trim();
   var docs=fs_list_('inscricoesEventos',1000).filter(function(x){return x.eventoId===EMISSAO_CFG.EVENTO_ID;});
   docs=docs.filter(function(x){
-    if(status && x.status!==status) return false;
+    /* 'NAO_ANALISADA' é sentinela do painel para "ainda sem status gravado".
+       Precisa existir porque status vazio não dá para pedir por igualdade —
+       string vazia é indistinguível de "não filtrar". */
+    if(status==='NAO_ANALISADA'){ if(String(x.status||'')) return false; }
+    else if(status && x.status!==status) return false;
     if(escola && String(x.escola||'').toLowerCase().indexOf(escola)<0) return false;
     if(cidade && String(x.cidade||'').toLowerCase().indexOf(cidade)<0) return false;
     if(regiao && String(x.regiao||'').toLowerCase().indexOf(regiao)<0) return false;
@@ -68,6 +72,10 @@ function compasso_validacaoListar_interno_(filtros) {
     if(entrega==='A_ENVIAR' && !(x.ingressoId && !(x.entregaCanais||''))) return false;
     if(entrega==='ENVIADA'  && !String(x.entregaCanais||'')) return false;
     if(entrega==='SEM_INGRESSO' && x.ingressoId) return false;
+    /* COM_INGRESSO é o complemento de SEM_INGRESSO, e é o que a aba
+       "Participantes" pede: quem já tem ingresso emitido, tendo saído ou não.
+       Sem ele, "participante" só existiria como a soma de dois cards. */
+    if(entrega==='COM_INGRESSO' && !x.ingressoId) return false;
     if(busca){
       var hay=[x.nome,x.cpf,x.escola,x.cidade,x.regiao,x.inscricaoId].join(' ').toLowerCase();
       if(hay.indexOf(busca)<0) return false;

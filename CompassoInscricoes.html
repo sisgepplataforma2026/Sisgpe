@@ -76,6 +76,20 @@
   <!-- Cards de ESTADO. Cada um é um filtro (item 4 do PROMPT-MESTRE). -->
   <div class="cards" id="cards"></div>
 
+  <!-- Filtro que veio pelo endereço (aba Participantes / A enviar, na tela de
+       Eventos). Fica à vista de propósito: lista filtrada sem aviso é a que
+       faz alguém concluir que "sumiu inscrição". -->
+  <div id="chipUrl" style="display:none;margin:0 0 12px">
+    <span style="display:inline-flex;align-items:center;gap:8px;background:#fff7e0;
+                 border:1px solid var(--gold,#C9A84C);border-radius:999px;
+                 padding:6px 14px;font-size:13px;color:#6b5310">
+      <b id="chipUrlTexto"></b>
+      <button class="b" style="border:0;background:transparent;padding:0 2px;
+              cursor:pointer;font-size:15px;line-height:1" title="Remover este filtro"
+              onclick="limparFiltroUrl()">&times;</button>
+    </span>
+  </div>
+
   <div class="of-card">
     <div class="filtros">
       <input id="fBusca" placeholder="Nome, CPF, escola…">
@@ -128,6 +142,41 @@ var TOKEN = (function(){ try{
 
 var LISTA = [], SEL = {}, FILTRO_CARD = '';
 
+/* ── Filtro vindo pelo endereço ──────────────────────────────────────────────
+   A tela de Eventos abre este painel já apontado para um estado: a aba
+   Participantes chama ?filtro=participantes, e o card "a enviar" chama
+   ?filtro=a-enviar. Só entra o que está nesta tabela — parâmetro desconhecido
+   é ignorado em silêncio, e a tela abre completa, que é o comportamento certo
+   para um link velho ou digitado errado. */
+var FILTROS_URL = {
+  'participantes': { rotulo: 'Participantes — quem já tem ingresso',
+                     f: { entrega: 'COM_INGRESSO' } },
+  'a-enviar':      { rotulo: 'Ingresso emitido e ainda não enviado',
+                     f: { entrega: 'A_ENVIAR' } },
+  'sem-ingresso':  { rotulo: 'Validadas sem ingresso emitido',
+                     f: { entrega: 'SEM_INGRESSO' } },
+  'a-analisar':    { rotulo: 'Aguardando análise',
+                     f: { status: 'NAO_ANALISADA' } }
+};
+var FILTRO_URL = null;
+
+function lerFiltroUrl(){
+  var m = String(location.search||'').match(/[?&]filtro=([^&]*)/);
+  if (!m) return;
+  var chave;
+  try { chave = decodeURIComponent(m[1]); } catch(e){ chave = m[1]; }
+  var achado = FILTROS_URL[String(chave||'').toLowerCase()];
+  if (!achado) return;
+  FILTRO_URL = achado;
+  g('chipUrlTexto').textContent = achado.rotulo;
+  g('chipUrl').style.display = 'block';
+}
+function limparFiltroUrl(){
+  FILTRO_URL = null;
+  g('chipUrl').style.display = 'none';
+  carregar();
+}
+
 function g(id){ return document.getElementById(id); }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
@@ -146,7 +195,10 @@ function api(fn, args, cb){
 /* ── cards ── */
 var CARDS = [
   {k:'',            r:'Total',        f:{}},
-  {k:'naoAnalisadas',r:'A analisar',  f:{status:''},                   cls:'alerta'},
+  /* 'NAO_ANALISADA' é sentinela, não status gravado: o backend traduz para
+     "status vazio". Antes daqui este card levava f:{status:''}, e a mesclagem
+     abaixo descarta valor vazio — o card acendia e a lista continuava inteira. */
+  {k:'naoAnalisadas',r:'A analisar',  f:{status:'NAO_ANALISADA'},      cls:'alerta'},
   {k:'validadas',   r:'Validadas',    f:{status:'VALIDADA_ADMINISTRATIVAMENTE'}, cls:'okc'},
   {k:'pendentes',   r:'Pendentes',    f:{status:'PENDENTE'},           cls:'alerta'},
   {k:'semIngresso', r:'Sem ingresso', f:{entrega:'SEM_INGRESSO'}},
@@ -180,11 +232,23 @@ function filtros(){
     var extra = CARDS[Number(FILTRO_CARD)].f || {};
     Object.keys(extra).forEach(function(k){ if(extra[k]!=='') f[k]=extra[k]; });
   }
+  /* O filtro do endereço entra ANTES do card na precedência: clicar um card
+     manda mais que o link que abriu a tela. Por isso ele é aplicado primeiro
+     e só onde o card não escreveu. */
+  if (FILTRO_URL) {
+    var vindo = FILTRO_URL.f || {};
+    Object.keys(vindo).forEach(function(k){
+      if (vindo[k]!=='' && !f[k]) f[k]=vindo[k];
+    });
+  }
   return f;
 }
 function limpar(){
   ['fBusca','fEscola','fCidade','fRegiao'].forEach(function(id){ g(id).value=''; });
   g('fCategoria').value=''; g('fAssoc').value=''; FILTRO_CARD='';
+  /* "Limpar" limpa tudo, inclusive o que veio pelo endereço — senão a pessoa
+     limpa, continua vendo lista curta e não tem como saber por quê. */
+  FILTRO_URL=null; g('chipUrl').style.display='none';
   carregar();
 }
 
@@ -330,6 +394,7 @@ function copiarLink(){
   });
 }
 
+lerFiltroUrl();
 carregar();
 </script>
 </body>
