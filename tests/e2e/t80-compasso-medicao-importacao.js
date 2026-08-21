@@ -222,6 +222,43 @@ ok(/fs_medirIniciar_/.test(exec) && /fs_medirFechar_/.test(exec),
    "a importação já vem medida",
    "é a primeira carga real, e o número dela vale");
 
+/* ─── 5b. gerar os ingressos em lote ─── */
+passo("emitir vários de uma vez");
+
+const emitir = corpoDe(imp, "compasso_emitirLoteTeste").corpo;
+
+ok(/fs_list_\('inscricoesEventos'/.test(emitir),
+   "a fila sai das inscrições gravadas",
+   "sem esta âncora, trocar a fonte por uma lista vazia passaria despercebido");
+
+ok(/String\(x\.origem \|\| ''\) === COMPASSO_IMPORT_ORIGEM/.test(emitir),
+   "só emite para o que veio da importação de teste",
+   "mesma disciplina da limpeza — não toca em inscrição de verdade");
+
+ok(/compasso_validarDecisaoAdmin/.test(emitir) && /compasso_emitirIngressoV2/.test(emitir),
+   "roda validação E emissão, pelos caminhos reais",
+   "é o que o usuário precisa: 'gerar vários ingressos com os dados do ano passado'");
+
+igual(["enviarIngressoEmail", "enviarLoteEmail", "enviarEmailSISGEP_"]
+        .filter(m => emitir.indexOf(m) >= 0), [],
+      "e NÃO envia e-mail nenhum",
+      "emitir 200 é barato; mandar 200 e-mails come a cota diária do Gmail — " +
+      "enviar continua sendo escolha explícita");
+
+/* A listagem tem de ficar FORA do laço. Dentro, cada iteração custaria a
+   coleção inteira — que é o problema de custo que a medição desta semana
+   encontrou na busca da portaria. Não repetir o erro no código novo. */
+const dentroDoLaco = emitir.slice(emitir.indexOf("for (var i = 0"));
+ok(dentroDoLaco.indexOf("fs_list_") < 0,
+   "e não lista a coleção dentro do laço",
+   "N listagens de 2.000 documentos seria 2.000×N leituras");
+
+ok(/fs_medirIniciar_/.test(emitir) && /projeção p\/ 2000|projeção p\/ 2\.000/i.test(emitir),
+   "o lote já vem medido, com projeção para 2.000");
+
+ok(/Date\.now\(\) - inicio > 240000/.test(emitir),
+   "e respeita os 6 minutos, devolvendo o que faltou");
+
 /* ─── 6. a limpeza não pode levar junto o que não é dela ─── */
 passo("desfazer sem estrago");
 

@@ -301,6 +301,129 @@ function compasso_importarExecutar(planilhaId, limite, aba, tokenSessao) {
 }
 
 /**
+ * VALIDAR E EMITIR EM LOTE — só o que veio da importação de teste.
+ *
+ * O usuário: "eu vou gerar vários ingressos com os dados do ano passado de
+ * teste pra fazer essa validação."
+ *
+ * Sem isto, gerar 200 ingressos seria clicar "Emitir" 200 vezes no painel.
+ * Aqui a cadeia inteira roda de uma vez: validação administrativa → emissão
+ * do ingresso com QR assinado.
+ *
+ * O QUE ELE NÃO FAZ, DE PROPÓSITO: enviar. Emitir 200 ingressos é barato;
+ * mandar 200 e-mails come a cota diária do Gmail inteira. O envio continua
+ * sendo escolha explícita, pelo painel ou pelo `compasso_enviarLoteEmail`.
+ *
+ * O QUE ELE NÃO TOCA: inscrição que não tenha vindo da importação. Filtra por
+ * origem, mesma disciplina da limpeza.
+ *
+ * @param {number=} limite  quantos ingressos gerar (padrão 50)
+ */
+function compasso_emitirLoteTeste(limite, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — emitir lote de teste', true);
+  compasso_assertHomologacao_();
+
+  limite = Math.min(Math.max(Number(limite || 50), 1), 500);
+  var inicio = Date.now();
+  fs_medirIniciar_('emissão de ' + limite);
+
+  /* Uma listagem só, no começo. Listar dentro do laço custaria N vezes a
+     coleção inteira — que é justamente o problema de custo que a medição
+     desta semana encontrou na busca da portaria. */
+  var pendentes = fs_list_('inscricoesEventos', 1000).filter(function (x) {
+    return x.eventoId === EMISSAO_CFG.EVENTO_ID &&
+           String(x.origem || '') === COMPASSO_IMPORT_ORIGEM &&
+           !x.ingressoId;
+  });
+
+  var r = { validadas: 0, emitidas: 0, erroValidacao: 0, erroEmissao: 0,
+            semVaga: 0, tempoEsgotado: false, primeiroErro: '' };
+  var exemplo = null;
+
+  for (var i = 0; i < pendentes.length && r.emitidas < limite; i++) {
+    if (Date.now() - inicio > 240000) { r.tempoEsgotado = true; break; }
+    var ins = pendentes[i];
+
+    /* 1. validação administrativa — o mesmo caminho que a Central usa. */
+    if (String(ins.status || '') !== COMPASSO_STATUS.VALIDADA) {
+      try {
+        var v = compasso_validarDecisaoAdmin(ins.inscricaoId, COMPASSO_STATUS.VALIDADA,
+                                             '', 'Lote de teste', tokenSessao);
+        if (!v || !v.ok) { r.erroValidacao++; continue; }
+        r.validadas++;
+      } catch (e) {
+        r.erroValidacao++;
+        if (!r.primeiroErro) r.primeiroErro = 'validação: ' + e.message;
+        continue;
+      }
+    }
+
+    /* 2. emissão V2 — a segura, com QR assinado por HMAC. */
+    try {
+      var e2 = compasso_emitirIngressoV2({ inscricaoId: ins.inscricaoId }, tokenSessao);
+      if (e2 && e2.ok) {
+        r.emitidas++;
+        if (!exemplo) exemplo = { nome: ins.nome, numero: e2.numero,
+                                  url: compasso_ingressoUrlPublica_(e2.qrToken) };
+      } else if (e2 && /[Vv]agas/.test(String(e2.erro || ''))) {
+        r.semVaga++;
+      } else {
+        r.erroEmissao++;
+        if (!r.primeiroErro) r.primeiroErro = 'emissão: ' + ((e2 && e2.erro) || '?');
+      }
+    } catch (e) {
+      r.erroEmissao++;
+      if (!r.primeiroErro) r.primeiroErro = 'emissão: ' + e.message;
+    }
+  }
+
+  var m = fs_medirFechar_();
+
+  var L = [];
+  L.push('═══════════════════════════════════════════════════════════');
+  L.push('  INGRESSOS GERADOS — lote de teste');
+  L.push('═══════════════════════════════════════════════════════════');
+  L.push('  Inscrições sem ingresso : ' + pendentes.length);
+  L.push('  Validadas agora         : ' + r.validadas);
+  L.push('  INGRESSOS EMITIDOS      : ' + r.emitidas);
+  if (r.semVaga)       L.push('  Sem vaga                : ' + r.semVaga + '  ← as 2.000 acabaram');
+  if (r.erroValidacao) L.push('  Erro na validação       : ' + r.erroValidacao);
+  if (r.erroEmissao)   L.push('  Erro na emissão         : ' + r.erroEmissao);
+  if (r.primeiroErro)  L.push('  Primeiro erro           : ' + r.primeiroErro);
+  if (r.tempoEsgotado) L.push('  ⏱️  Parou no tempo. Rode de novo para continuar.');
+
+  if (exemplo) {
+    L.push('');
+    L.push('  ABRA ESTE, PARA CONFERIR O QR:');
+    L.push('    ' + exemplo.nome + ' · ' + exemplo.numero);
+    L.push('    ' + exemplo.url);
+  }
+
+  L.push('');
+  L.push('  CONSUMO MEDIDO:');
+  L.push('    leituras cobradas : ' + m.leiturasCobradas +
+         '  (' + m.percentualDoTetoDiario.leituras + ' do teto diário)');
+  L.push('    gravações        : ' + m.gravacoesCobradas +
+         '  (' + m.percentualDoTetoDiario.gravacoes + ' do teto diário)');
+  if (r.emitidas > 0) {
+    L.push('    por ingresso     : ' +
+      (Math.round(m.leiturasCobradas / r.emitidas * 10) / 10) + ' leituras · ' +
+      (Math.round(m.gravacoesCobradas / r.emitidas * 10) / 10) + ' gravações');
+    L.push('    projeção p/ 2000 : ' + Math.round(m.leiturasCobradas / r.emitidas * 2000) +
+      ' leituras · ' + Math.round(m.gravacoesCobradas / r.emitidas * 2000) + ' gravações');
+  }
+  L.push('');
+  L.push('  NÃO enviei nenhum e-mail: emitir e enviar são passos separados.');
+  L.push('  Emitir 200 e barato; mandar 200 e-mails come a cota do Gmail.');
+  L.push('  Para enviar, use o painel (?painel=compasso), filtro A ENVIAR.');
+  L.push('═══════════════════════════════════════════════════════════');
+
+  var texto = L.join('\n');
+  Logger.log(texto);
+  return texto;
+}
+
+/**
  * Apaga o que veio da importação — e SÓ isso.
  *
  * Filtra por `origem === 'IMPORTACAO_TESTE'`. Inscrição feita pela tela
