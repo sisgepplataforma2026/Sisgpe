@@ -93,37 +93,44 @@ abrindo a planilha — nada se perde, mas depende de alguém saber onde olhar.
 Segue a REGRA Nº 0.5: arquitetura e layout mostrados antes de implementar.
 
 
-### 28. O acervo do Drive público — MEDIDO, falta revogar
-**Medido em:** 21/08/2026, 22:16, no projeto de PRODUÇÃO
+### ✅ 28. O acervo do Drive público — RESOLVIDO em 21/08/2026, 22:39
 
-`auditoriaDrive_contar_()` rodou até CONCLUÍDO. Resultado:
+`auditoriaRevogar_({modo:'executar'})` rodou. **Os 28 arquivos foram fechados**,
+cada um com a permissão relida DEPOIS da alteração:
 
 ```
-PASTA                 TOTAL   PÚBLICOS
-VOUCHER_DOCUMENTOS       10         10   ← 100%
-COMPROVANTES             18         11
-OFICIOS                 348          5
-RELATORIOS                7          2
-OFICIOS_DESFILIACAO      26          0
-OFICIOS_HOMOLOGACAO       4          0
-OFICIOS_TAXA_NEGOCIAL    84          0
-RECIBOS                   —      ERRO   ← ver item 29
-─────────────────────────────────────
-TOTAL                   497         28
+COMPROVANTES        11    ANYONE_WITH_LINK → fechado (PRIVATE)
+VOUCHER_DOCUMENTOS  10    ANYONE_WITH_LINK → fechado (PRIVATE)
+OFICIOS              5    ANYONE_WITH_LINK → fechado (PRIVATE)
+RELATORIOS           2    ANYONE_WITH_LINK → fechado (PRIVATE)
+─────────────────────────────────────────────────────────────
+                    28    ✅ nenhuma falha
 ```
 
-**28 cabe numa execução só.** A ferramenta está pronta:
-`AuditoriaDriveRevogar.gs`, guardada pelo `t75` com 5 mutações mortas.
+Registrado na aba `_AUDITORIA_DRIVE_REVOGACAO`, com o acesso anterior de cada um.
+
+**O que a lista revelou, e não estava previsto.** Os 5 de OFICIOS não eram
+ofícios. Um é a logo do site; os outros quatro são anexos do JURÍDICO, gravados
+por `Juridico.gs:366` — que usa a pasta de ofícios como destino:
+
+```
+JUR_JUR-82355079_total__dos__reclamantes.pdf
+JUR_JUR-632A8085_total__dos__reclamantes.pdf
+DOC_MANUAL_..._DEP-0140-2026_1_ABELITA PEREIRA SANTOS.pdf
+DOC_MANUAL_..._DEP-0140-2026_1_Ponto agendado.pdf
+```
+
+Lista de reclamantes de processo trabalhista, aberta a quem tivesse a URL. Era
+o mais grave do conjunto — mais que os vouchers. Um voucher exposto constrange;
+uma lista de reclamantes exposta pode custar o emprego de quem está nela.
 
 | | |
 |---|---|
-| 🔴 `auditoriaRevogar_()` em PRODUÇÃO — modo conferir, não altera nada | ler a lista |
-| 🔴 `auditoriaRevogar_({modo:'executar'})` — fecha os 28 | conferir a aba `_AUDITORIA_DRIVE_REVOGACAO` |
+| 🟡 Rodar `auditoriaDrive_contar_()` de novo e confirmar 0 públicos | medição independente, com outro código |
 
-Conferido antes: a logo `sindeducacao-site-500.png`, que aparece em OFICIOS,
-**não é referenciada em lugar nenhum** do código — nem por URL nem por ID. As
-logos aqui são lidas por `getBlob()` e embutidas em base64. Revogar não quebra
-nada.
+A contagem nova é o que fecha por completo: o relatório acima é o revogador
+dizendo que fechou. Dois códigos diferentes chegando ao mesmo número é prova;
+um código confirmando a si mesmo, não.
 
 ### 29. A pasta de RECIBOS de produção não existia — CORRIGIDO em 21/08/2026
 
