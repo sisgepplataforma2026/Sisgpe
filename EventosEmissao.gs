@@ -26,18 +26,66 @@ var EMISSAO_CFG = {
 /**
  * Modo teste: ignora o período de inscrição (para ensaiar antes de 21/09).
  *
- * INVERTIDO EM 21/08/2026 — o padrão era `!== 'false'`, ou seja, a AUSÊNCIA da
- * propriedade ligava o modo teste. Um projeto recém-implantado nascia com o
- * período 21/09–11/11 desligado e sem nada em tela dizendo isso. Pior: em modo
- * teste o `compasso_qrSecret_` GERA um segredo sozinho em vez de recusar, então
- * a chave que assina todos os QR do evento nascia de um acidente de
- * configuração.
+ * DUAS CORREÇÕES NO MESMO DIA (21/08/2026), e a segunda desfaz um erro meu.
  *
- * Agora falha fechado: sem a propriedade, vale produção. Homologação declara
- * EVENTO_MODO_TESTE=true de propósito — como já declara SISGEP_AMBIENTE.
+ * 1. O padrão era `!== 'false'`: a AUSÊNCIA da propriedade LIGAVA o modo
+ *    teste. Um projeto recém-implantado nascia com o período 21/09–11/11
+ *    desligado e sem nada em tela dizendo isso. Pior: em modo teste o
+ *    `compasso_qrSecret_` GERA um segredo sozinho em vez de recusar, então a
+ *    chave que assina todos os QR do evento nascia de acidente de
+ *    configuração. Isso tinha de acabar, e acabou.
+ *
+ * 2. Mas eu troquei por `=== 'true'` puro, e isso empurrou para a pessoa um
+ *    passo manual: ir nas Propriedades do script declarar EVENTO_MODO_TESTE
+ *    antes de conseguir testar. É exatamente o que a REGRA Nº 0.6 proíbe —
+ *    o sistema JÁ SABE em que ambiente está, pela Script Property
+ *    SISGEP_AMBIENTE que o AmbienteRecursos.gs e o SistemaConfig.gs já leem.
+ *    Fazer a pessoa contar de novo é defeito de desenho, não configuração.
+ *
+ * A ordem abaixo preserva as duas coisas:
+ *
+ *   declarado 'true'  → teste          (força ensaio onde for preciso)
+ *   declarado 'false' → produção       (força o período mesmo em homologação)
+ *   NÃO declarado     → herda o ambiente:
+ *                         homologação → teste
+ *                         produção    → produção  ← continua falhando fechado
+ *
+ * Produção sem propriedade nenhuma continua exigindo o período e continua
+ * recusando QR sem segredo configurado. O que mudou é que homologação não
+ * precisa mais ser configurada à mão para ser homologação.
+ *
+ * A tela não fica em silêncio sobre isso: `emissao_status` devolve `modoTeste`
+ * e o EventoPainel.html pinta a tarja MODO TESTE. Sugerir com origem à vista,
+ * nunca impor em silêncio.
  */
 function emissao_modoTeste_() {
-  return PropertiesService.getScriptProperties().getProperty('EVENTO_MODO_TESTE') === 'true';
+  var props = PropertiesService.getScriptProperties();
+
+  var declarado = String(props.getProperty('EVENTO_MODO_TESTE') || '').trim().toLowerCase();
+  if (declarado === 'true')  return true;
+  if (declarado === 'false') return false;
+
+  /* Não declarado: herda de quem já sabe. Lido direto da propriedade, e não
+     por getAmbienteAtual(), porque aquela função guarda cache em
+     getAmbienteAtual._cache — trocar o ambiente no meio de uma execução de
+     diagnóstico devolveria o valor velho. Aqui a leitura é sempre fresca. */
+  return String(props.getProperty('SISGEP_AMBIENTE') || '').trim().toUpperCase() === 'HOMOLOGACAO';
+}
+
+/**
+ * De onde veio o modo — para a tela e para o diagnóstico poderem explicar.
+ * Sem isto, "MODO TESTE" na tela é um fato sem causa, e quem vê não sabe se
+ * alguém declarou de propósito ou se o ambiente resolveu sozinho.
+ */
+function emissao_modoTesteOrigem_() {
+  var props = PropertiesService.getScriptProperties();
+  var declarado = String(props.getProperty('EVENTO_MODO_TESTE') || '').trim().toLowerCase();
+  if (declarado === 'true')  return 'EVENTO_MODO_TESTE=true (declarado)';
+  if (declarado === 'false') return 'EVENTO_MODO_TESTE=false (declarado)';
+  var amb = String(props.getProperty('SISGEP_AMBIENTE') || '').trim();
+  return amb
+    ? 'herdado de SISGEP_AMBIENTE=' + amb
+    : 'nenhuma propriedade declarada — vale produção';
 }
 function emissao_ativarProducao(tokenSessao) {   // trava o período de verdade
   exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — ativar produção', true);

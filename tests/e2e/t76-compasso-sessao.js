@@ -45,6 +45,10 @@
  *   5. parar de concatenar o token no api() da portaria ........ 1 falha
  *   6. expor uma função nova sem trava ......................... 1 falha
  *   7. tirar a trava do check-in manual da portaria ............ 1 falha
+ *   8. ignorar o EVENTO_MODO_TESTE=false explicito ............. 1 falha
+ *   9. produção passar a herdar modo teste .................... 2 falhas
+ *  10. ignorar o EVENTO_MODO_TESTE=true explicito .............. 1 falha
+ *  11. a tela parar de receber a origem do modo ................ 1 falha
  *
  * NOTA DE MÉTODO: a primeira rodada de mutação deu 0 em tudo, inclusive na
  * linha de base. Não era o teste — era a leitura do resultado: a regex que eu
@@ -152,18 +156,66 @@ igual(semAdmin, [],
       "as 14 ações irreversíveis exigem administrador",
       "regerar QR devolve entrada válida; limparTestes zera as 2.000 vagas");
 
-/* ─── 3. o modo teste falha fechado ─── */
-passo("o padrão quando ninguém configurou nada");
+/* ─── 3. o modo teste: fecha em produção, abre sozinho em homologação ─── */
+passo("as quatro combinações de configuração");
 
 const emissao = semComentario(ler("EventosEmissao.gs"));
 
-ok(/getProperty\('EVENTO_MODO_TESTE'\)\s*===\s*'true'/.test(emissao),
-   "sem a propriedade, vale PRODUÇÃO",
-   "o padrão era !== 'false': a ausência ligava o modo teste, e em modo teste o " +
-   "compasso_qrSecret_ gera o segredo do evento sozinho em vez de recusar");
+/* Aqui o teste EXECUTA a função, em vez de varrer texto. É o único jeito de
+   provar uma tabela-verdade: quatro combinações, quatro respostas. O corpo é
+   extraído do .gs real e avaliado contra um PropertiesService de mentira. */
+function modoTesteCom(evento, ambiente) {
+  const achada = funcoesDe(emissao).find(f => f.nome === "emissao_modoTeste_");
+  if (!achada) throw new Error("emissao_modoTeste_ não encontrada");
+  /* funcoesDe fecha UMA posição depois da chave final, então o corpo vem com
+     o `}` de fechamento junto. Para as asserções de regex isso é inofensivo;
+     para new Function() é erro de sintaxe. Corta aqui, no ponto de uso, em
+     vez de mudar funcoesDe e mexer no que já passa. */
+  const corpo = { corpo: achada.corpo.replace(/\}\s*$/, "") };
+  const props = {};
+  if (evento   !== null) props.EVENTO_MODO_TESTE = evento;
+  if (ambiente !== null) props.SISGEP_AMBIENTE   = ambiente;
+  const PropertiesService = {
+    getScriptProperties: () => ({
+      getProperty: k => (k in props ? props[k] : null)
+    })
+  };
+  return new Function("PropertiesService", corpo.corpo)(PropertiesService);
+}
+
+igual(modoTesteCom(null, null), false,
+      "nada declarado → PRODUÇÃO",
+      "falha fechado: sem configuração nenhuma, o período é exigido");
+
+igual(modoTesteCom(null, "homologacao"), true,
+      "só SISGEP_AMBIENTE=homologacao → TESTE, sem mais nada a configurar",
+      "REGRA Nº 0.6 — o sistema já sabe onde está; não é a pessoa que conta de novo");
+
+igual(modoTesteCom("false", "homologacao"), false,
+      "EVENTO_MODO_TESTE=false vence a herança",
+      "dá para exigir o período dentro da homologação, se for isso que se quer testar");
+
+igual(modoTesteCom("true", null), true,
+      "EVENTO_MODO_TESTE=true vence em qualquer ambiente");
+
+/* A trava que importa: produção NÃO pode virar teste por herança. */
+igual(modoTesteCom(null, "producao"), false,
+      "SISGEP_AMBIENTE=producao nunca herda modo teste");
 
 ok(!/getProperty\('EVENTO_MODO_TESTE'\)\s*!==\s*'false'/.test(emissao),
-   "e o padrão antigo não voltou");
+   "e o padrão antigo (!== 'false') não voltou");
+
+passo("a origem do modo aparece para quem olha");
+
+ok(/function\s+emissao_modoTesteOrigem_/.test(emissao),
+   "existe função que explica DE ONDE veio o modo");
+
+ok(/modoTesteOrigem/.test(semComentario(ler("EventosPainel.gs"))),
+   "o status da tela devolve a origem junto do fato");
+
+ok(/modoTesteOrigem/.test(ler("EventoPainel.html")),
+   "e a tarja MODO TESTE carrega a origem",
+   "tarja sem causa visível engana quem passa o olho");
 
 /* ─── 4. nenhuma planilha de produção fixa ─── */
 passo("o ID da planilha");

@@ -24,6 +24,10 @@ function painelEmissao_status(tokenSessao) {
   var c = emissao_lerContador_();
   return { limite: c.limite, usadas: c.vagasUsadas, restantes: c.limite - c.vagasUsadas,
            ultimoNumero: c.ultimoNumero, modoTeste: emissao_modoTeste_(),
+           /* A ORIGEM vai junto do fato. A tarja "MODO TESTE" sozinha não diz
+              se alguém declarou de propósito ou se o ambiente resolveu — e é
+              essa diferença que a pessoa precisa para confiar no que vê. */
+           modoTesteOrigem: emissao_modoTesteOrigem_(),
            operador: sessao.nome || sessao.usuario || 'SISGEP' };
 }
 
