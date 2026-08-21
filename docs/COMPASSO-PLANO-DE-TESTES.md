@@ -49,8 +49,17 @@ check-in vivem lá. É o primeiro bloqueio a resolver.
 ### 1.2 O piloto de uma pessoa só
 
 ```
-compasso_pilotoExecutar("seu@email.com", "27999999999")
+compassoPiloto()
 ```
+
+> **Sem argumentos, de propósito.** O botão Executar do editor chama a função
+> SEM parâmetros — não existe onde digitar o e-mail. Em 21/08/2026 isso fez o
+> piloto terminar em menos de um segundo, calado, porque a recusa por e-mail
+> vazio era devolvida como valor de retorno e o editor não mostra retorno.
+> O `compassoPiloto()` usa **o e-mail de quem está executando** e diz no
+> registro de onde ele veio. Para outro endereço ou para incluir o WhatsApp,
+> declare `COMPASSO_PILOTO_EMAIL` e `COMPASSO_PILOTO_WHATSAPP` nas
+> Propriedades do script.
 
 Roda a cadeia inteira com o seu contato: inscrição → validação → emissão →
 e-mail com PDF → link. Depois:

@@ -173,14 +173,68 @@ function diagnosticoPilotoCompasso_() {
  * @param {string=} whatsapp seu WhatsApp, opcional
  * @param {string=} tokenSessao
  */
+/**
+ * ESTE é o nome que se escolhe no editor para rodar o piloto.
+ *
+ * O botão Executar do Apps Script chama a função SEM argumentos — não existe
+ * onde digitar `compasso_pilotoExecutar("seu@email.com", "27999999999")`. Em
+ * 21/08/2026 isso fez o piloto terminar em menos de um segundo, calado.
+ *
+ * O e-mail não precisa ser digitado: o sistema já sabe quem está executando.
+ * Ele nasce preenchido com a sua conta e o registro diz de onde veio — mesmo
+ * princípio das telas (REGRA Nº 0.6). Para mandar a outro endereço, ou para
+ * incluir o WhatsApp, declare nas Propriedades do script:
+ *
+ *     COMPASSO_PILOTO_EMAIL      (opcional — o padrão é quem executa)
+ *     COMPASSO_PILOTO_WHATSAPP   (opcional — só dígitos, ex.: 27999999999)
+ */
+function compassoPiloto() {
+  /* A trava vem ANTES de qualquer leitura ou retorno. A checagem de dentro do
+     compasso_pilotoExecutar não bastaria: as mensagens de recusa daqui saem
+     antes de chegar lá, e sem o `_` no fim esta função é alcançável por
+     google.script.run a partir de qualquer página, inclusive das públicas. */
+  exigirAdminOuSessao_('', 'eventos', 'Compasso — piloto pelo editor', true);
+
+  var props = PropertiesService.getScriptProperties();
+
+  var doDono = '';
+  try { doDono = String(Session.getEffectiveUser().getEmail() || '').trim(); } catch (e) {}
+
+  var declarado = String(props.getProperty('COMPASSO_PILOTO_EMAIL') || '').trim();
+  var email = declarado || doDono;
+  var origem = declarado ? 'COMPASSO_PILOTO_EMAIL' : 'conta que está executando';
+
+  if (email.indexOf('@') < 1) {
+    var semEmail = 'PILOTO NÃO RODOU: não consegui descobrir seu e-mail.\n' +
+      'Declare COMPASSO_PILOTO_EMAIL nas Propriedades do script.';
+    Logger.log(semEmail);
+    return semEmail;
+  }
+
+  var zap = String(props.getProperty('COMPASSO_PILOTO_WHATSAPP') || '').replace(/\D/g, '');
+  Logger.log('Piloto vai usar ' + email + ' (' + origem + ')' +
+             (zap ? ' · WhatsApp ' + zap : ' · sem WhatsApp'));
+
+  return compasso_pilotoExecutar(email, zap);
+}
+
 function compasso_pilotoExecutar(email, whatsapp, tokenSessao) {
   exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — piloto ponta a ponta', true);
   compasso_assertHomologacao_();
 
   email = String(email || '').trim();
-  if (email.indexOf('@') < 1)
-    return { ok: false, erro: 'Informe um e-mail REAL — o piloto existe para você ' +
-                              'abrir o e-mail e ler o QR do PDF.' };
+  if (email.indexOf('@') < 1) {
+    /* LOGAR, não só devolver. O editor do Apps Script não mostra valor de
+       retorno: em 21/08/2026 esta recusa fez a execução terminar em menos de
+       um segundo, sem uma linha no registro — silêncio indistinguível de
+       sucesso. Quem rodou não tinha como saber que faltava o e-mail. */
+    var recusa = 'PILOTO NÃO RODOU: falta o e-mail.\n\n' +
+      'Pelo botão Executar do editor não dá para passar argumentos — a função\n' +
+      'recebe tudo vazio. Use o atalho compassoPiloto(), que usa o e-mail de\n' +
+      'quem está executando.';
+    Logger.log(recusa);
+    return { ok: false, erro: recusa };
+  }
 
   var etapas = [];
   function etapa(nome, r, detalhe) {
