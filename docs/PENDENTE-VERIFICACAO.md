@@ -1648,3 +1648,72 @@ apareceu; que as 4 colunas estejam certas em todas é outra medição.
 Cobertura automatizada que existe por trás: `t64` (a espera tem fim e o
 erro aparece), `t65` (o pacote serializa e o corpo do e-mail não viaja) —
 38 asserções entre os dois.
+
+---
+
+## 21/08/2026 · 🔴 A fila de envio de ofícios estava travada — corrigida, não conferida no ar
+
+**É o item mais urgente desta lista**, porque Ofícios é o único módulo em
+uso diário.
+
+O commit `731ed4e` (20/08) adicionou `ID: colId` à lista de colunas
+obrigatórias de `processarFilaEnvioOficios`, mas declarou `var colId` só na
+outra função que aquele commit tocou. A função lançava `ReferenceError` ao
+montar o mapa de obrigatórias — **antes de processar a primeira linha da
+fila**. Corrigido em `144ac67`.
+
+**O que precisa ser conferido no sistema no ar, e só você pode:**
+
+1. **Se a fila realmente parou de enviar entre 20 e 21/08.** No painel de
+   Execuções do Apps Script, procurar `processarFilaEnvioOficios` no
+   período e ver se aparece erro. O repositório e o projeto no ar divergem
+   — pode ser que a versão publicada nem tivesse esse commit.
+2. **Se ficou ofício parado na fila** com STATUS pendente à espera. Se
+   ficou, ele sai sozinho na próxima execução do trigger (5 em 5 min)
+   depois que o arquivo corrigido subir.
+3. **Se algum ofício foi dado como erro** por causa disso e precisa ser
+   reenviado.
+
+O que já está provado: no emulador, depois da correção, a fila processa e
+envia (`processados: 1, enviados: 1`). Isso prova que a função não explode
+mais. **Não prova entrega de e-mail** — isso continua sendo teste manual.
+
+## 21/08/2026 · A suíte de testes voltou a enxergar falha
+
+Não é pendência de teste seu — é aviso sobre o que a suíte disse até
+ontem. 47 dos 84 testes terminavam com `process.exit(0)` na marra, que
+passa por cima do código de falha. Eles reprovavam na tela e devolviam
+"tudo certo" ao sistema.
+
+**Consequência prática: todo "suíte verde" dito antes de 21/08 valia menos
+do que parecia.** Dois defeitos reais estavam escondidos ali — a fila de
+ofícios acima, e o teto de exposição estourado desde 06/08.
+
+Corrigido em `c9b7736`. As medições cegas foram 215 → 217 → 220 → 229 →
+230 → 221 → 224.
+
+## 21/08/2026 · 🔴 bingo_inscricaoPreencher devolve contato sem máscara
+
+Rota pública. A partir de um CPF, devolve nome, e-mail e telefone crus.
+
+É exatamente o buraco que foi fechado no `compasso_inscricaoPreencher` em
+21/08 (máscara no contato + teto de consultas por navegador). **No bingo
+continua aberto.** Não é regressão nova, e não bloqueia o Compasso — mas é
+o único item de risco real entre as 9 funções públicas registradas no
+`exposicao-teto.json`.
+
+Enquanto não for fechado, quem tiver uma lista de CPFs consegue montar uma
+lista de contatos pelo link público do bingo.
+
+## 21/08/2026 · As cinco abas de Eventos e o filtro por link
+
+Entregue e coberto por teste executável (`t81`, 29 asserções, 8 mutações
+mortas). Falta a conferência de tela, que nenhum teste alcança:
+
+- as cinco abas trocam e a aba escolhida sobrevive a recarregar a página;
+- o link de inscrição do Compasso aparece na aba Inscrições e copia;
+- **os dois botões da aba Participantes** abrem o painel já filtrado, com
+  o chip dourado à vista dizendo qual filtro está valendo;
+- o card **"A analisar"** agora filtra de verdade — antes ele acendia e
+  devolvia a lista inteira. Vale clicar e conferir que o número do card
+  bate com o tamanho da lista.
