@@ -124,13 +124,35 @@ Lista de reclamantes de processo trabalhista, aberta a quem tivesse a URL. Era
 o mais grave do conjunto — mais que os vouchers. Um voucher exposto constrange;
 uma lista de reclamantes exposta pode custar o emprego de quem está nela.
 
-| | |
-|---|---|
-| 🟡 Rodar `auditoriaDrive_contar_()` de novo e confirmar 0 públicos | medição independente, com outro código |
+**CONFIRMADO POR MEDIÇÃO INDEPENDENTE**, 22:45:59 — `auditoriaDrive_contar_()`
+rodado de novo, com o progresso zerado antes:
 
-A contagem nova é o que fecha por completo: o relatório acima é o revogador
-dizendo que fechou. Dois códigos diferentes chegando ao mesmo número é prova;
-um código confirmando a si mesmo, não.
+```
+PASTA                    TOTAL   PÚBLICOS   DOMÍNIO   ERRO
+COMPROVANTES                18          0        0      0
+OFICIOS                    348          0        0      0
+OFICIOS_DESFILIACAO         26          0        0      0
+OFICIOS_HOMOLOGACAO          4          0        0      0
+OFICIOS_TAXA_NEGOCIAL       84          0        0      0
+RELATORIOS                   7          0        0      0
+VOUCHER_DOCUMENTOS          10          0        0      0
+──────────────────────────────────────────────────────────
+TOTAL                      497          0        0      0
+
+✅ Nenhum arquivo público encontrado nas pastas auditadas.
+```
+
+Dois códigos diferentes chegando ao mesmo número. O revogador disse que fechou;
+o contador, que não conhece o revogador, confirmou. Um código confirmando a si
+mesmo não seria prova.
+
+**Dois detalhes que a segunda contagem também mostrou:**
+
+- **RECIBOS sumiu da tabela.** Antes vinha `TOTAL 0 · ERRO 1`, porque o ID
+  apontava para pasta inexistente. Agora a pasta nova é lida sem erro e, por
+  estar vazia, nem aparece na listagem. O item 29 se confirma corrigido.
+- **Os 497 não mudaram.** A revogação alterou permissão, não removeu arquivo —
+  que é exatamente o que se esperava, e vale ter conferido.
 
 ### 29. A pasta de RECIBOS de produção não existia — CORRIGIDO em 21/08/2026
 
