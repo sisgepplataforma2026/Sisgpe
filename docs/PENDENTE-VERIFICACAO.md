@@ -49,6 +49,55 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 ## 🔴 ABERTO
 
+### 30. Compasso da Vida 2026 — a trava de sessão mudou 35 assinaturas
+**Aberto em:** 21/08/2026 · `Eventos*.gs`, `EventosPortaria.html`, `EventosValidacaoAdmin.html`
+
+A análise do módulo de festas achou **32 funções do Compasso alcançáveis por
+`google.script.run` sem trava nenhuma** — entre elas `compasso_regenerarQrToken`,
+que devolve o QR válido em texto claro, e `emissao_limparTestes`, que zera o
+contador das 2.000 vagas. Todas ganharam `exigirAdminOuSessao_` hoje.
+
+O `t76` cobre isso com 14 asserções e 7 mutações mortas, e o `t6` mediu a
+melhora **chamando** as funções sem token: a superfície anônima caiu de **230
+para 221**. Isso prova que a trava recusa. **Não prova que as telas continuam
+funcionando** — e é essa a pendência.
+
+Roteiro para fechar, na ordem:
+
+1. **Central de Validação** (planilha › diálogo): abrir. Se a lista carregar,
+   a porta dupla está aceitando a conta Google. Se der "Sessão inválida",
+   o e-mail da conta não está como ADMINISTRADOR ATIVO na aba de usuários.
+2. **Aprovar e reprovar** uma inscrição. Ao reprovar, conferir que a vaga volta.
+3. **Portaria** (diálogo, no celular): ler um QR. Depois ler o MESMO QR de novo
+   — tem de recusar com "Ingresso já utilizado".
+4. **Busca manual** na portaria e check-in manual com motivo — é a contingência
+   de celular descarregado.
+5. **Emissão** (`?painel=emissao`, com sessão): buscar associado e emitir.
+   A busca agora resolve a planilha por `getPlanilhaId()` — em homologação ela
+   tem de ler a base de HOMOLOGAÇÃO, não os 8.000 de produção. **Conferir isso
+   explicitamente**: era o bug.
+6. **Modo teste**: o padrão foi invertido para falhar fechado. Em homologação,
+   declarar `EVENTO_MODO_TESTE=true` nas Propriedades do script — **sem isso o
+   período 21/09–11/11 passa a ser exigido** e a emissão recusa fora dele.
+
+### ⚠ O que esta correção NÃO resolveu
+
+🔴 **O motor ligado na tela continua sendo o V1.** `EventosPainel.gs:43` chama
+`emissao_emitirIngresso`, cujo QR codifica só o número do ingresso
+(`FCV-2026-000123`) — falsificável por quem souber o formato. O motor V2, com
+QR assinado por HMAC, existe e só é chamado por função de teste e pelo
+simulador. Fechar o acesso não trocou o motor; essa decisão está pendente.
+
+🔴 **As telas novas não têm rota web.** `EventosPortaria.html` e
+`EventosValidacaoAdmin.html` só abrem por `showModalDialog` dentro da planilha.
+Portaria é celular na porta.
+
+🔴 **Firestore sem separação de ambiente.** Não há prefixo de coleção por
+ambiente: se homologação apontar para o mesmo `FIREBASE_PROJETO`, a massa do
+simulador cai no acervo real.
+
+---
+
 ### 29. Bingo Online — nunca rodou em lugar nenhum
 **Aberto em:** 20/08/2026 · `Bingo*.gs`, `Bingo*.html`, `BingoInscricao.*`
 

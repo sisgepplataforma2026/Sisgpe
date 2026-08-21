@@ -1,12 +1,14 @@
 /** COMPASSO 2026 — painel mobile da portaria. */
-function abrirPainelCheckinCompasso() {
+function abrirPainelCheckinCompasso(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — abrir portaria', false);
   var html=HtmlService.createHtmlOutputFromFile('EventosPortaria').setWidth(480).setHeight(760);
   SpreadsheetApp.getUi().showModalDialog(html,'Compasso 2026 — Check-in');
 }
 
-function compasso_checkinValidarToken(token, dispositivoId) { return compasso_checkin(token,dispositivoId); }
+function compasso_checkinValidarToken(token, dispositivoId, tokenSessao) { exigirAdminOuSessao_(tokenSessao,'eventos','Compasso — check-in por QR',false); return compasso_checkin_interno_(token,dispositivoId); }
 
-function compasso_checkinBuscarManual(termo) {
+function compasso_checkinBuscarManual(termo, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — busca manual na portaria', false);
   termo=String(termo||'').toLowerCase().trim();
   if(termo.length<2) return [];
   var nums=termo.replace(/\D/g,'');
@@ -17,7 +19,8 @@ function compasso_checkinBuscarManual(termo) {
   }).slice(0,20).map(function(x){return {ingressoId:x.ingressoId||x._docId,numero:x.numero||'',nome:x.nome||'',cpf:x.cpf||'',escola:x.escola||'',categoria:x.categoria||'',status:x.status||'',utilizadoEm:x.utilizadoEm||'',utilizadoPor:x.utilizadoPor||''};});
 }
 
-function compasso_checkinManual(ingressoId, dispositivoId, motivo) {
+function compasso_checkinManual(ingressoId, dispositivoId, motivo, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — check-in manual', false);
   motivo=String(motivo||'').trim();
   if(!motivo) throw new Error('Motivo obrigatório para check-in manual.');
   var ing=fs_get_('ingressos',ingressoId); if(!ing) throw new Error('Ingresso não encontrado.');

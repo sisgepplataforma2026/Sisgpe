@@ -1,5 +1,6 @@
 /** COMPASSO 2026 — Emissão segura V2. */
-function compasso_emitirIngressoV2(payload) {
+function compasso_emitirIngressoV2(payload, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — emitir ingresso V2', false);
   payload = payload || {};
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
@@ -76,7 +77,10 @@ function compasso_emitirIngressoV2(payload) {
   } finally { lock.releaseLock(); }
 }
 
-function compasso_cancelarIngressoV2(ingressoId, motivo) {
+/* ADMIN: cancelar devolve vaga ao contador e invalida o QR. É desfazer, e
+   desfazer em massa é o caminho mais curto para zerar a festa. */
+function compasso_cancelarIngressoV2(ingressoId, motivo, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — cancelar ingresso V2', true);
   motivo = String(motivo || '').trim();
   if (!motivo) throw new Error('Motivo do cancelamento é obrigatório.');
   var lock = LockService.getScriptLock();

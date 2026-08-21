@@ -11,7 +11,8 @@
 // EventosAdmin.html, que abre a URL do webapp com o token da sessão já
 // logada. Mantido só para referência; considerar remover na limpeza de
 // código morto (Fase 4).
-function abrirPainelEmissaoEventos() {
+function abrirPainelEmissaoEventos(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — abrir painel de emissão', false);
   var html = HtmlService.createHtmlOutputFromFile('EventoPainel')
     .setWidth(780).setHeight(700);
   SpreadsheetApp.getUi().showModalDialog(html, 'Emissão de Ingressos — Compasso da Vida 2026');
@@ -28,7 +29,7 @@ function painelEmissao_status(tokenSessao) {
 
 function painelEmissao_buscar(termo, tokenSessao) {
   exigirModulo_(tokenSessao, "eventos", false);
-  return emissao_buscarAssociado(termo);
+  return emissao_buscarAssociado(termo, tokenSessao);
 }
 
 // O operador vem da sessão validada, nunca do que o cliente envie —
@@ -44,15 +45,17 @@ function painelEmissao_emitirGrupo(itens, tokenSessao) {
   }
   return resultados;
 }
-function testarTelaEmissao_TEMP() {
+function testarTelaEmissao_TEMP(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — tela de emissão (teste)', true);
   var html = HtmlService.createHtmlOutputFromFile('EventoPainel').setWidth(780).setHeight(700);
-  var ss = SpreadsheetApp.openById('1QPpsx19v4YzfskoYXK9WB89TClA7q8SWGSn55VZ040E');
+  var ss = SpreadsheetApp.openById(getPlanilhaId());
   SpreadsheetApp.setActiveSpreadsheet(ss);
   ss.toast('Abra a planilha do SISGEP para ver a tela.', 'Emissão', 5);
   SpreadsheetApp.getUi().showModalDialog(html, 'Emissão de Ingressos — Teste');
 }
 // Cria o menu "Eventos" na planilha. Rode UMA vez a partir da planilha aberta.
-function criarMenuEventos() {
+function criarMenuEventos(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — criar menu Eventos', true);
   SpreadsheetApp.getUi()
     .createMenu('🎫 Eventos')
     .addItem('Emissão de Ingressos', 'abrirPainelEmissaoEventos')

@@ -15,7 +15,8 @@ var COMPASSO_FIREBASE_BUDGET = {
   CRITICO_PERCENTUAL: 0.90
 };
 
-function compasso_estimarConsumoEvento(qtdParticipantes, qtdLeiturasDuplicadas) {
+function compasso_estimarConsumoEvento(qtdParticipantes, qtdLeiturasDuplicadas, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — estimar consumo', false);
   var n = Math.max(0, Number(qtdParticipantes || 0));
   var d = Math.max(0, Number(qtdLeiturasDuplicadas || 0));
 
@@ -40,7 +41,8 @@ function compasso_estimarConsumoEvento(qtdParticipantes, qtdLeiturasDuplicadas) 
   };
 }
 
-function compasso_estimarDiaFesta(qtdParticipantes, qtdTentativasDuplicadas) {
+function compasso_estimarDiaFesta(qtdParticipantes, qtdTentativasDuplicadas, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — estimar dia da festa', false);
   var n = Math.max(0, Number(qtdParticipantes || 0));
   var d = Math.max(0, Number(qtdTentativasDuplicadas || 0));
   var leituras = n * 2 + d * 2;

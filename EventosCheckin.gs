@@ -120,7 +120,16 @@ function checkin_confirmarEntrada(codigo, tokenSessao) {
    estão na mão das escolas.
    ══════════════════════════════════════════════════════════════════════════ */
 
-function compasso_checkin(token, dispositivoId) {
+/* Wrapper com trava. O miolo virou compasso_checkin_interno_ para que a
+   portaria (compasso_checkinValidarToken) chame o motor sem pagar a
+   verificação duas vezes por leitura de QR — na fila da entrada isso é
+   latência que a pessoa sente. */
+function compasso_checkin(token, dispositivoId, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — check-in por QR', false);
+  return compasso_checkin_interno_(token, dispositivoId);
+}
+
+function compasso_checkin_interno_(token, dispositivoId) {
   token = String(token || '').trim();
   if (!token) return {ok:false, codigo:'QR_INVALIDO', mensagem:'QR Code inválido.'};
 
@@ -168,7 +177,9 @@ function compasso_checkin(token, dispositivoId) {
   } finally { lock.releaseLock(); }
 }
 
-function compasso_desfazerCheckin(ingressoId, motivo) {
+/* ADMIN: desfazer check-in reabre a entrada de um ingresso já usado. */
+function compasso_desfazerCheckin(ingressoId, motivo, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — desfazer check-in', true);
   motivo = String(motivo || '').trim();
   if (!motivo) throw new Error('Motivo obrigatório para desfazer check-in.');
   var lock = LockService.getScriptLock();

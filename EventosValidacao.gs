@@ -1,4 +1,25 @@
-/** COMPASSO 2026 — Central administrativa de validação. */
+/**
+ * COMPASSO 2026 — Central administrativa de validação.
+ *
+ * TRAVA DE SESSÃO (21/08/2026)
+ *
+ * Toda função global sem "_" no fim é alcançável por google.script.run a
+ * partir de QUALQUER página do projeto, inclusive as públicas. A auditoria de
+ * hoje encontrou 32 funções da camada Compasso nessa condição — entre elas
+ * `compasso_validarDecisaoAdmin`, que aprova inscrição, e
+ * `compasso_validacaoListar`, que devolve nome, CPF e escola de todo mundo.
+ *
+ * A trava usada é `exigirAdminOuSessao_` (AcessoModulos.gs), a porta dupla:
+ *   - com token   → vale a permissão do módulo "eventos" no SISGEP;
+ *   - sem token   → só passa o dono do projeto ou ADMINISTRADOR ATIVO,
+ *                   identificado pela conta Google (é o caso do diálogo
+ *                   aberto pela planilha, que não tem como ter token);
+ *   - anônimo     → recusa.
+ *
+ * Foi escolhida em vez de `exigirModulo_` justamente porque estas telas ainda
+ * abrem por `showModalDialog` — ali não existe tokenSessao, e uma trava que
+ * exigisse token deixaria a Central de Validação inutilizável.
+ */
 var COMPASSO_MOTIVOS_LABELS = {
   NAO_LOCALIZADO_ASSOCIADO:'Não localizado como associado',
   NAO_E_ASSOCIADO:'Não é associado',
@@ -17,7 +38,14 @@ var COMPASSO_MOTIVOS_LABELS = {
   OUTRO:'Outro'
 };
 
-function compasso_validacaoListar(filtros) {
+function compasso_validacaoListar(filtros, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — listar inscrições', false);
+  return compasso_validacaoListar_interno_(filtros);
+}
+
+/* Sem trava de propósito: só é alcançável de dentro deste arquivo, e quem
+   chama já checou. Repetir a checagem aqui faria o resumo pagar duas vezes. */
+function compasso_validacaoListar_interno_(filtros) {
   filtros=filtros||{};
   var busca=String(filtros.busca||'').toLowerCase().trim();
   var status=String(filtros.status||'').trim();
@@ -40,8 +68,9 @@ function compasso_validacaoListar(filtros) {
   });
 }
 
-function compasso_validacaoResumo() {
-  var docs=compasso_validacaoListar({});
+function compasso_validacaoResumo(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — resumo da validação', false);
+  var docs=compasso_validacaoListar_interno_({});
   var r={total:docs.length,naoAnalisadas:0,validadas:0,pendentes:0,reprovadas:0};
   docs.forEach(function(x){
     if(x.status===COMPASSO_STATUS.VALIDADA) r.validadas++;
@@ -52,7 +81,8 @@ function compasso_validacaoResumo() {
   return r;
 }
 
-function compasso_validacaoSalvarDados(inscricaoId, patch, atualizarCadastroMestre) {
+function compasso_validacaoSalvarDados(inscricaoId, patch, atualizarCadastroMestre, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — alterar dados da inscrição', false);
   var ins=fs_get_('inscricoesEventos',inscricaoId); if(!ins) throw new Error('Inscrição não encontrada.');
   var permitido=['nome','cpf','escola','cidade','regiao','email','whatsapp','matricula'];
   var alteracoes={}; patch=patch||{};
@@ -64,13 +94,15 @@ function compasso_validacaoSalvarDados(inscricaoId, patch, atualizarCadastroMest
   return {ok:true,alteracoes:alteracoes,aviso:atualizarCadastroMestre?'Atualização do cadastro mestre deve ser executada pelo serviço cadastral oficial.':''};
 }
 
-function compasso_validacaoOpcoes() {
+function compasso_validacaoOpcoes(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — opções de motivo', false);
   function opts(arr){return arr.map(function(c){return {codigo:c,label:COMPASSO_MOTIVOS_LABELS[c]||c};});}
   return {reprovacao:opts(COMPASSO_MOTIVOS_REPROVACAO),pendencia:opts(COMPASSO_MOTIVOS_PENDENCIA),usuario:compasso_emailUsuario_()};
 }
 
-function compasso_validacaoDuplicidades() {
-  var docs=compasso_validacaoListar({}), mapa={}, out=[];
+function compasso_validacaoDuplicidades(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — duplicidades', false);
+  var docs=compasso_validacaoListar_interno_({}), mapa={}, out=[];
   docs.forEach(function(x){
     if(x.status===COMPASSO_STATUS.REPROVADA) return;
     var cpf=compasso_cpfNormalizado_(x.cpf), key=x.pessoaId?('P:'+x.pessoaId):(cpf?('C:'+cpf):('N:'+String(x.nome||'').toLowerCase()+'|'+String(x.escola||'').toLowerCase()));
@@ -80,7 +112,8 @@ function compasso_validacaoDuplicidades() {
   return out;
 }
 
-function abrirCentralValidacaoCompasso() {
+function abrirCentralValidacaoCompasso(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — abrir Central de Validação', false);
   var html=HtmlService.createHtmlOutputFromFile('EventosValidacaoAdmin').setWidth(1200).setHeight(760);
   SpreadsheetApp.getUi().showModalDialog(html,'Compasso 2026 — Central de Validação');
 }

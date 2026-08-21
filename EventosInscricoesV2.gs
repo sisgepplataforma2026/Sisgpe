@@ -21,7 +21,14 @@ function compasso_liberarVagaInscricao_(inscricaoId) {
   ins.vagaReservada=false;ins.vagaLiberadaEm=new Date();fs_set_('inscricoesEventos',inscricaoId,ins);
 }
 
-function compasso_criarInscricaoAssociado(payload) {
+/* NOTA DE DESENHO (21/08/2026): a origem padrão é 'PORTAL_ASSOCIADO', mas hoje
+   nenhuma tela chama esta função — o portal público do associado ainda não tem
+   a tela de inscrição do Compasso. Enquanto não tiver, a trava é a do módulo
+   "eventos", que é o que a secretaria usa. Quando a tela pública existir, ela
+   precisa de decisão própria (token do portal x sessão SISGEP); não dá para
+   herdar esta trava, porque o associado não tem acesso ao módulo. */
+function compasso_criarInscricaoAssociado(payload, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — criar inscrição', false);
   payload=payload||{}; var lock=LockService.getScriptLock();lock.waitLock(20000);
   try {
     if(!String(payload.nome||'').trim()) return {ok:false,erro:'Nome é obrigatório.'};
@@ -38,7 +45,10 @@ function compasso_criarInscricaoAssociado(payload) {
   } finally {lock.releaseLock();}
 }
 
-function compasso_criarInclusaoAdministrativa(payload) {
+/* ADMIN: cria convidado/acompanhante fora da fila de inscrição, consumindo
+   vaga das 2.000. É concessão, não atendimento — exige administrador. */
+function compasso_criarInclusaoAdministrativa(payload, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — inclusão administrativa', true);
   payload=payload||{};var cat=String(payload.categoria||'').toLowerCase();if(['convidado','acompanhante'].indexOf(cat)<0)return {ok:false,erro:'Inclusão administrativa deve ser convidado ou acompanhante.'};
   var lock=LockService.getScriptLock();lock.waitLock(20000);
   try {
@@ -50,4 +60,7 @@ function compasso_criarInclusaoAdministrativa(payload) {
   } finally {lock.releaseLock();}
 }
 
-function compasso_reprovarInscricaoLiberandoVaga(inscricaoId,motivoCodigo,observacao){var r=compasso_validarDecisaoAdmin(inscricaoId,COMPASSO_STATUS.REPROVADA,motivoCodigo,observacao);if(r.ok)compasso_liberarVagaInscricao_(inscricaoId);return r;}
+/* Repassa o token adiante em vez de deixar compasso_validarDecisaoAdmin cair
+   no caminho da conta Google: sem o repasse, uma chamada legítima com token
+   seria checada como se viesse do editor. */
+function compasso_reprovarInscricaoLiberandoVaga(inscricaoId,motivoCodigo,observacao,tokenSessao){exigirAdminOuSessao_(tokenSessao,'eventos','Compasso — reprovar liberando vaga',false);var r=compasso_validarDecisaoAdmin(inscricaoId,COMPASSO_STATUS.REPROVADA,motivoCodigo,observacao,tokenSessao);if(r.ok)compasso_liberarVagaInscricao_(inscricaoId);return r;}

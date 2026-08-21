@@ -18,7 +18,9 @@ function compasso_arteDriveId_() {
   return PropertiesService.getScriptProperties().getProperty('COMPASSO_INGRESSO_ARTE_DRIVE_ID') || COMPASSO_INGRESSO_ARTE_DRIVE_ID_PADRAO;
 }
 
-function compasso_configurarArteBaseDrive(fileIdOuUrl) {
+/* ADMIN: troca a arte oficial que sai em TODO ingresso do evento. */
+function compasso_configurarArteBaseDrive(fileIdOuUrl, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — configurar arte do ingresso', true);
   var fileId = compasso_extrairDriveFileId_(fileIdOuUrl);
   if (!fileId) throw new Error('Informe o ID ou link válido do arquivo da arte oficial no Google Drive.');
   var f = DriveApp.getFileById(fileId);
@@ -29,7 +31,8 @@ function compasso_configurarArteBaseDrive(fileIdOuUrl) {
   return {ok:true,fileId:fileId,nome:f.getName(),mimeType:tipo};
 }
 
-function compasso_statusArteBase() {
+function compasso_statusArteBase(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — status da arte', false);
   var id = compasso_arteDriveId_();
   if (!id) return {configurada:false};
   try {
@@ -58,7 +61,11 @@ function compasso_categoriaLabel_(cat) {
   return String(cat || '').toUpperCase();
 }
 
-function compasso_ingressoDados(ingressoId) {
+/* Devolve o qrToken do ingresso: mesma sensibilidade de
+   compasso_regenerarQrToken, mas aqui é o caminho normal de apresentar o
+   ingresso ao titular, então basta acesso ao módulo. */
+function compasso_ingressoDados(ingressoId, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — dados do ingresso', false);
   ingressoId = String(ingressoId || '').trim();
   if (!ingressoId) throw new Error('ingressoId obrigatório.');
   var ing = fs_get_('ingressos', ingressoId);
@@ -80,22 +87,25 @@ function compasso_ingressoDados(ingressoId) {
   };
 }
 
-function compasso_ingressoRenderHtml(ingressoId) {
+function compasso_ingressoRenderHtml(ingressoId, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — renderizar ingresso', false);
   var t = HtmlService.createTemplateFromFile('EventosIngressoTemplate');
-  t.dados = compasso_ingressoDados(ingressoId);
+  t.dados = compasso_ingressoDados(ingressoId, tokenSessao);
   return t.evaluate().setTitle('Ingresso — Compasso da Vida 2026').getContent();
 }
 
-function compasso_abrirIngresso(ingressoId) {
+function compasso_abrirIngresso(ingressoId, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — abrir ingresso', false);
   var t = HtmlService.createTemplateFromFile('EventosIngressoTemplate');
-  t.dados = compasso_ingressoDados(ingressoId);
+  t.dados = compasso_ingressoDados(ingressoId, tokenSessao);
   return t.evaluate()
     .setTitle('Ingresso — Compasso da Vida 2026')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-function compasso_prepararReenvioIngresso(ingressoId) {
-  var d = compasso_ingressoDados(ingressoId);
+function compasso_prepararReenvioIngresso(ingressoId, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — preparar reenvio', false);
+  var d = compasso_ingressoDados(ingressoId, tokenSessao);
   compasso_auditar_('PREPARAR_REENVIO_INGRESSO', 'ingresso', ingressoId, {
     numero: d.numero,
     email: d.email ? 'PRESENTE' : 'AUSENTE',
@@ -107,15 +117,16 @@ function compasso_prepararReenvioIngresso(ingressoId) {
     nome: d.nome,
     email: d.email,
     whatsapp: d.whatsapp,
-    html: compasso_ingressoRenderHtml(ingressoId)
+    html: compasso_ingressoRenderHtml(ingressoId, tokenSessao)
   };
 }
 
-function compasso_testarIngressoPorInscricao(inscricaoId) {
+function compasso_testarIngressoPorInscricao(inscricaoId, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — teste de ingresso', true);
   if (!emissao_modoTeste_()) throw new Error('Teste de ingresso permitido somente em homologação.');
   var ins = fs_get_('inscricoesEventos', String(inscricaoId || '').trim());
   if (!ins || !ins.ingressoId) throw new Error('Inscrição sem ingresso emitido.');
-  return compasso_abrirIngresso(ins.ingressoId);
+  return compasso_abrirIngresso(ins.ingressoId, tokenSessao);
 }
 
 /**
@@ -123,7 +134,8 @@ function compasso_testarIngressoPorInscricao(inscricaoId) {
  * inscrição -> validação -> emissão -> dados do ingresso.
  * Usa CPF/pessoaId únicos por execução para não conflitar com testes anteriores.
  */
-function compasso_testePontaAPontaIngresso() {
+function compasso_testePontaAPontaIngresso(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — teste ponta a ponta', true);
   if (!emissao_modoTeste_()) throw new Error('Teste ponta a ponta permitido somente em homologação.');
   var sufixo = String(new Date().getTime());
   var pessoaId = 'HML-PESSOA-' + sufixo;
@@ -139,16 +151,16 @@ function compasso_testePontaAPontaIngresso() {
     email: 'teste.homologacao@example.com',
     whatsapp: '27999999999',
     origem: 'HOMOLOGACAO'
-  });
+  }, tokenSessao);
   if (!inscricao.ok) return {etapa:'INSCRICAO',ok:false,resultado:inscricao};
 
-  var validacao = compasso_validarDecisaoAdmin(inscricao.inscricaoId, COMPASSO_STATUS.VALIDADA, '', 'Teste automatizado de homologação');
+  var validacao = compasso_validarDecisaoAdmin(inscricao.inscricaoId, COMPASSO_STATUS.VALIDADA, '', 'Teste automatizado de homologação', tokenSessao);
   if (!validacao.ok) return {etapa:'VALIDACAO',ok:false,resultado:validacao};
 
-  var emissao = compasso_emitirIngressoV2({inscricaoId: inscricao.inscricaoId});
+  var emissao = compasso_emitirIngressoV2({inscricaoId: inscricao.inscricaoId}, tokenSessao);
   if (!emissao.ok) return {etapa:'EMISSAO',ok:false,resultado:emissao,inscricaoId:inscricao.inscricaoId};
 
-  var dados = compasso_ingressoDados(emissao.id);
+  var dados = compasso_ingressoDados(emissao.id, tokenSessao);
   compasso_auditar_('TESTE_PONTA_A_PONTA_INGRESSO','ingresso',emissao.id,{inscricaoId:inscricao.inscricaoId,numero:emissao.numero});
   return {
     ok:true,
@@ -159,7 +171,7 @@ function compasso_testePontaAPontaIngresso() {
     escola:dados.escola,
     categoria:dados.categoria,
     qrGerado:!!dados.qrToken,
-    arteConfigurada:compasso_statusArteBase().configurada,
+    arteConfigurada:compasso_statusArteBase(tokenSessao).configurada,
     arteDriveId:compasso_arteDriveId_()
   };
 }
