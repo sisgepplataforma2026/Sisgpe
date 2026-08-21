@@ -128,6 +128,7 @@ function compasso_situacaoAssociado_(busca) {
  * Estado da inscrição: se está aberta, o texto do convite, o termo.
  * SEM TRAVA DE SESSÃO, de propósito — quem abre é o associado, que não tem
  * conta no SISGEP. Toda decisão é do servidor; a tela não decide nada.
+ * Indicadores administrativos de capacidade permanecem apenas no servidor.
  */
 function compasso_inscricaoEstado() {
   var cfg = compasso_inscricaoConfig_();
@@ -137,8 +138,7 @@ function compasso_inscricaoEstado() {
     titulo: cfg.titulo,
     convite: cfg.convite,
     termo: cfg.termo,
-    termoVersao: cfg.termoVersao,
-    vagas: cfg.vagas
+    termoVersao: cfg.termoVersao
   };
 }
 
@@ -437,7 +437,6 @@ function diagnosticoInscricaoCompasso_() {
   var base = '';
   try { base = getSistemaUrlBase() || ScriptApp.getService().getUrl(); }
   catch (e) { base = ScriptApp.getService().getUrl(); }
-
   var L = [];
   L.push('═══════════════════════════════════════════════════');
   L.push('  INSCRIÇÃO PÚBLICA — COMPASSO 2026');
