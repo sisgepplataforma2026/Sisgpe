@@ -1,7 +1,7 @@
 {
   "medidoEm": "2026-08-21",
-  "totalPublicas": 918,
-  "protegidas": 547,
+  "totalPublicas": 921,
+  "protegidas": 549,
   "expostas": [
     {
       "nome": "validarCPF",
@@ -471,6 +471,11 @@
     {
       "nome": "iaAssistente",
       "arquivo": "IACore.gs",
+      "escreve": false
+    },
+    {
+      "nome": "agenteEscolasVersao",
+      "arquivo": "IA_AgentEscolas.gs",
       "escreve": false
     },
     {

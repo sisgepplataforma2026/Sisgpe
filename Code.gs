@@ -235,7 +235,30 @@ function doGet(e) {
 
 function include(nomeArquivo) {
   try {
-    return HtmlService.createTemplateFromFile(nomeArquivo).evaluate().getContent();
+    var conteudo = HtmlService.createTemplateFromFile(nomeArquivo).evaluate().getContent();
+
+    /* Piloto SOFIA · AgentEscolas v0.1 — trazido de
+       claude/sisgep-project-analysis-h9wcy3 em 21/08/2026.
+
+       A extensão visual fica ISOLADA, acoplada aqui em vez de dentro do
+       CadastroEscolas, para que a tela principal de Escolas permaneça intacta
+       e o rollback seja apenas remover este bloco.
+
+       O try/catch interno é o que importa: uma falha da extensão NÃO pode
+       derrubar o módulo de Escolas, que atende as 679 escolas da base. Se o
+       SofiaEscolasUI não carregar, a tela abre sem ele e o erro fica no log. */
+    if (String(nomeArquivo || "") === "CadastroEscolas") {
+      try {
+        conteudo += "\n" + HtmlService
+          .createTemplateFromFile("SofiaEscolasUI")
+          .evaluate()
+          .getContent();
+      } catch (eSofiaEscolas) {
+        Logger.log("include: SofiaEscolasUI não carregada — " + eSofiaEscolas.message);
+      }
+    }
+
+    return conteudo;
   } catch (e) {
     Logger.log("include: arquivo não encontrado — " + nomeArquivo + " — " + e.message);
     return "<!-- include falhou: " + nomeArquivo + " -->";
