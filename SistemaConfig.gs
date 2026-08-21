@@ -122,7 +122,16 @@ var PASTAS = {
   OFICIOS_DESFILIACAO:       "16pfKB3vxz33QRJooUGW79Ei-D3eInSyd",
   OFICIOS_TAXA_ASSISTENCIAL: "1__l7hUe3g3l6iBNvPBKJUR3eR5Kqjs93",
   OFICIOS_TAXA_NEGOCIAL:     "1OcrxiWCGErvYHLaevNTov1aaavLuI3gX",
-  RECIBOS:    "1gudfaRCd3LxScSsqbF1kJXeI796LHr9b",
+  /* ID TROCADO EM 21/08/2026. O anterior — 1gudfaRCd3LxScSsqbF1kJXeI796LHr9b —
+     NAO EXISTE. Descoberto pela auditoria de arquivos publicos: a pasta de
+     RECIBOS voltou com TOTAL 0 e ERRO 1, e o DriveApp respondeu "Requested
+     entity was not found" tanto para o script de producao quanto para acesso
+     externo. Nao era permissao — a pasta nao estava la.
+
+     Consequencia que ninguem tinha visto: gerarPDFRecibo chama
+     obterOuCriarSubpastaAno com este id e estoura. Emitir recibo em producao
+     falharia. Passou despercebido porque Recibos nao esta em operacao. */
+  RECIBOS:    "12qepZmMbx343pI4qoulNh5Mk3uUztz1Y",
   RELATORIOS: "14_ea7nIXNSrMuKe8bByZ5AaEKXbUzJZr"
 };
 

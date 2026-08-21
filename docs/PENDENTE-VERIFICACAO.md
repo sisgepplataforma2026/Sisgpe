@@ -93,41 +93,58 @@ abrindo a planilha — nada se perde, mas depende de alguém saber onde olhar.
 Segue a REGRA Nº 0.5: arquitetura e layout mostrados antes de implementar.
 
 
-### 28. O acervo do Drive que já foi gravado público
-**Aberto em:** 20/08/2026 · nenhum arquivo do repositório — é operação no Drive
+### 28. O acervo do Drive público — MEDIDO, falta revogar
+**Medido em:** 21/08/2026, 22:16, no projeto de PRODUÇÃO
 
-O código parou de abrir arquivo: `ArquivoDrive.gs` centralizou a política em
-PRIVATE/NONE e os 23 `setSharing(ANYONE_WITH_LINK)` que existiam em 14 arquivos
-não existem mais. **Isso vale só daqui para a frente.**
+`auditoriaDrive_contar_()` rodou até CONCLUÍDO. Resultado:
 
-Todo PDF gravado ANTES dessa mudança continua exatamente como foi gravado:
-acessível a qualquer pessoa que tenha a URL, sem login e sem expiração. São
-recibos, comprovantes, documentos jurídicos, holerites e documentos de voucher
-— com CPF, valor e nome de associado.
+```
+PASTA                 TOTAL   PÚBLICOS
+VOUCHER_DOCUMENTOS       10         10   ← 100%
+COMPROVANTES             18         11
+OFICIOS                 348          5
+RELATORIOS                7          2
+OFICIOS_DESFILIACAO      26          0
+OFICIOS_HOMOLOGACAO       4          0
+OFICIOS_TAXA_NEGOCIAL    84          0
+RECIBOS                   —      ERRO   ← ver item 29
+─────────────────────────────────────
+TOTAL                   497         28
+```
 
-**Este é o item mais urgente da lista**, porque é exposição que já existe agora,
-e não risco futuro. Nenhum teste do repositório alcança: é o Drive real.
-
-Roteiro para fechar:
-
-1. ✅ **FERRAMENTA PRONTA** — `AuditoriaDrive.gs`, criado em 20/08/2026.
-   No editor do Apps Script do projeto de **PRODUÇÃO**, rode
-   `auditoriaDrive_contar_()`. Ela trabalha ~4 min, grava onde parou e devolve
-   o parcial; rode de novo até o relatório dizer **CONCLUÍDO**.
-   `auditoriaDrive_status_()` mostra o andamento sem processar.
-   **Ela não altera nada** — há teste (`t74`) que reprova se qualquer chamada
-   de escrita aparecer no arquivo. **Falta rodar.**
-2. Com o número na mão, decidir se revoga tudo de uma vez ou por pasta.
-3. Revogar com `setSharing(PRIVATE, NONE)`, em lote, com registro do que mudou.
-4. Conferir que nenhum fluxo vivo dependia daqueles links. Ofícios é o único
-   módulo em operação e **não** compartilha arquivo — conferido em 20/08.
+**28 cabe numa execução só.** A ferramenta está pronta:
+`AuditoriaDriveRevogar.gs`, guardada pelo `t75` com 5 mutações mortas.
 
 | | |
 |---|---|
-| 🔴 Contar quantos arquivos públicos existem hoje nas pastas de produção | sem alterar nada — é medição |
-| 🔴 Decidir e executar a revogação | com registro do que foi alterado |
-| 🔴 Conferir que Ofícios seguiu intacto | é a única operação viva |
+| 🔴 `auditoriaRevogar_()` em PRODUÇÃO — modo conferir, não altera nada | ler a lista |
+| 🔴 `auditoriaRevogar_({modo:'executar'})` — fecha os 28 | conferir a aba `_AUDITORIA_DRIVE_REVOGACAO` |
 
+Conferido antes: a logo `sindeducacao-site-500.png`, que aparece em OFICIOS,
+**não é referenciada em lugar nenhum** do código — nem por URL nem por ID. As
+logos aqui são lidas por `getBlob()` e embutidas em base64. Revogar não quebra
+nada.
+
+### 29. A pasta de RECIBOS de produção não existia — CORRIGIDO em 21/08/2026
+
+A auditoria devolveu `RECIBOS  TOTAL 0  ERRO 1`. Investigado:
+
+```
+PASTAS.RECIBOS = "1gudfaRCd3LxScSsqbF1kJXeI796LHr9b"
+                 → "Requested entity was not found"
+```
+
+Não era permissão: a pasta não existia, nem para o script de produção nem para
+acesso externo. **Consequência que ninguém tinha visto:** `gerarPDFRecibo`
+chama `obterOuCriarSubpastaAno` com esse id e estoura — emitir recibo em
+produção falharia. Passou despercebido porque Recibos não está em operação.
+
+Criada `SISGEP - Recibos - PRODUCAO` (`12qepZmMbx343pI4qoulNh5Mk3uUztz1Y`) e
+trocado o id em `SistemaConfig.gs` e `AmbienteRecursos.gs`.
+
+| | |
+|---|---|
+| 🟡 Emitir um recibo em produção e ver o PDF cair na pasta nova | é o que fecha este item |
 
 ### 27. Isolamento das pastas do Drive entre produção e homologação
 **Aberto em:** 20/08/2026 · `AmbienteRecursos.gs` (novo), `Comprovantes.gs`,

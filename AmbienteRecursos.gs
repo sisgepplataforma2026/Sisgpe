@@ -77,7 +77,7 @@ var RECURSOS_AMBIENTE = {
   },
   RECIBOS: {
     rotulo:      "Recibos (pasta raiz, subpasta por ano)",
-    producao:    "1gudfaRCd3LxScSsqbF1kJXeI796LHr9b",
+    producao:    "12qepZmMbx343pI4qoulNh5Mk3uUztz1Y",
     homologacao: "1tc21Wyl4ulIxEqlXpH6LtCKnjOwssnjr"
   },
   RELATORIOS: {
