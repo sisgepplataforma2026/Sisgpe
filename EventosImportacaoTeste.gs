@@ -472,3 +472,108 @@ function compasso_importarLimpar(tokenSessao) {
   Logger.log(texto);
   return texto;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   OS ATALHOS QUE O EDITOR CONSEGUE EXECUTAR
+
+   As quatro funções acima pedem argumentos — `planilhaId`, `aba`, `limite`.
+   O botão Executar do Apps Script chama tudo SEM argumentos, então nenhuma
+   delas roda pelo editor. Foi a terceira vez que esse mesmo desenho apareceu
+   em 21/08/2026 (antes no diagnóstico e no piloto): eu venho escrevendo as
+   chamadas como quem escreve código, e quem usa está diante de um seletor de
+   funções, não de um console.
+
+   Aqui os dados vêm das Propriedades do script — declare uma vez, use o
+   semestre inteiro:
+
+       COMPASSO_IMPORT_PLANILHA   a planilha do ano passado (obrigatória)
+       COMPASSO_IMPORT_ABA        nome da aba (opcional; padrão: a primeira)
+       COMPASSO_IMPORT_LIMITE     quantas linhas por rodada (opcional: 10)
+
+   A planilha aceita tanto o ID quanto a URL inteira colada da barra do
+   navegador — que é o que a pessoa realmente copia.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Aceita ID puro ou URL de planilha e devolve sempre o ID.
+ * Ninguém copia o ID: copia a URL. Exigir o ID seria transformar um passo
+ * óbvio numa mensagem de erro.
+ */
+function compasso_importarIdDaPlanilha_(valor) {
+  var v = String(valor || '').trim();
+  var m = v.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  return m ? m[1] : v;
+}
+
+/** Lê as propriedades de importação, ou explica o que falta. */
+function compasso_importarConfig_() {
+  var props = PropertiesService.getScriptProperties();
+  var bruto = String(props.getProperty('COMPASSO_IMPORT_PLANILHA') || '').trim();
+  if (!bruto) {
+    throw new Error(
+      'Falta dizer qual planilha.\n\n' +
+      'Em Configurações do projeto → Propriedades do script, declare:\n' +
+      '    COMPASSO_IMPORT_PLANILHA = <ID ou URL da planilha do ano passado>\n\n' +
+      'Opcionais:\n' +
+      '    COMPASSO_IMPORT_ABA    = nome da aba (padrão: a primeira)\n' +
+      '    COMPASSO_IMPORT_LIMITE = linhas por rodada (padrão: 10)');
+  }
+  var limite = parseInt(props.getProperty('COMPASSO_IMPORT_LIMITE'), 10);
+  return {
+    planilhaId: compasso_importarIdDaPlanilha_(bruto),
+    aba: String(props.getProperty('COMPASSO_IMPORT_ABA') || '').trim(),
+    limite: (limite > 0) ? limite : 10
+  };
+}
+
+/**
+ * PASSO 1 — conferir. Não grava nada.
+ * Mostra o que entendeu de cada coluna. É o passo que impede importar 400
+ * pessoas com a coluna trocada.
+ */
+function compassoImportarConferir() {
+  exigirAdminOuSessao_('', 'eventos', 'Compasso — conferir importação (editor)', true);
+  var cfg;
+  try { cfg = compasso_importarConfig_(); }
+  catch (e) { Logger.log(e.message); return e.message; }
+  Logger.log('Conferindo a planilha ' + cfg.planilhaId +
+             (cfg.aba ? ' · aba "' + cfg.aba + '"' : ' · primeira aba'));
+  return compasso_importarConferir(cfg.planilhaId, cfg.aba);
+}
+
+/**
+ * PASSO 2 — importar de verdade, respeitando COMPASSO_IMPORT_LIMITE.
+ * Só rode depois que o passo 1 mostrar as colunas certas.
+ */
+function compassoImportarExecutar() {
+  exigirAdminOuSessao_('', 'eventos', 'Compasso — importar (editor)', true);
+  var cfg;
+  try { cfg = compasso_importarConfig_(); }
+  catch (e) { Logger.log(e.message); return e.message; }
+  Logger.log('Importando até ' + cfg.limite + ' linha(s) da planilha ' + cfg.planilhaId +
+             '. Para mudar, ajuste COMPASSO_IMPORT_LIMITE.');
+  return compasso_importarExecutar(cfg.planilhaId, cfg.limite, cfg.aba);
+}
+
+/**
+ * PASSO 3 — validar e emitir ingresso para o que foi importado.
+ * NÃO envia: emitir é barato, mandar e-mail consome cota. O envio continua
+ * sendo escolha explícita, pelo painel.
+ */
+function compassoEmitirLoteTeste() {
+  exigirAdminOuSessao_('', 'eventos', 'Compasso — emitir lote de teste (editor)', true);
+  var limite = 10;
+  try { limite = compasso_importarConfig_().limite; } catch (e) {}
+  Logger.log('Emitindo até ' + limite + ' ingresso(s) do que foi importado.');
+  return compasso_emitirLoteTeste(limite);
+}
+
+/**
+ * PASSO 4 — apagar o que veio da importação, e só isso.
+ * Inscrição feita pela tela pública durante o teste tem origem diferente e
+ * não é tocada.
+ */
+function compassoImportarLimpar() {
+  exigirAdminOuSessao_('', 'eventos', 'Compasso — limpar importação (editor)', true);
+  return compasso_importarLimpar();
+}
