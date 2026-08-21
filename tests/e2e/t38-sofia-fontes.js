@@ -362,4 +362,3 @@ b.naoTestavel("A resposta que a IA de fato dá",
   "o emulador não chama a Anthropic; o que se prova aqui é o que chega até ela");
 
 b.resumo();
-process.exit(0);

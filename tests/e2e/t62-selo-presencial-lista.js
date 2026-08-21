@@ -112,7 +112,7 @@ b.ok(situacao(linhaAssoc) !== "NAO_ASSOCIADO",
 if (!dom.jsdomDisponivel()) {
   b.naoTestavel("O selo na lista renderizada", "jsdom não instalado");
   b.resumo();
-  process.exit(0);
+  process.exit(process.exitCode || 0);
 }
 
 (async function () {

@@ -154,7 +154,7 @@ b.igual(oExemplo.telefone, undefined,
 if (!dom.jsdomDisponivel()) {
   b.naoTestavel("As duas telas", "jsdom não instalado");
   b.resumo();
-  process.exit(0);
+  process.exit(process.exitCode || 0);
 }
 
 /* ═══════════════════════════════════════════════════════════

@@ -104,4 +104,3 @@ if (duplicadas.length) {
 }
 
 b.resumo();
-process.exit(0);

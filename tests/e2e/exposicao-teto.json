@@ -1,5 +1,21 @@
 {
-  "teto": 215,
-  "medidoEm": "2026-08-06",
-  "observacao": "Teto aceito conscientemente. Baixa a cada modulo fechado; nunca sobe sem decisao registrada. Historico: 219 (medicao inicial) -> 215 (fechamento do Parque do China)."
+  "teto": 224,
+  "medidoEm": "2026-08-21",
+  "observacao": "Teto aceito conscientemente. Baixa a cada modulo fechado; nunca sobe sem decisao registrada. Historico: 219 (medicao inicial) -> 215 (fechamento do Parque do China) -> 224 (21/08/2026, ver decisao abaixo).",
+  "decisao_2026_08_21": {
+    "motivo": "O teto estava estourado desde 06/08 e ninguem foi avisado: o t6-exposicao.js terminava com process.exit(0) na marra, que passava por cima do process.exitCode=1 marcado pelo resumo(). O teste imprimia a falha na tela e devolvia 0 ao sistema, entao o run-suite.js dizia VERDE. Medicoes reais no periodo cego: 215 -> 217 -> 220 -> 229 -> 230 -> 221 -> 224. Corrigido o exit, o teto foi reconciliado com a medicao atual DEPOIS de conferir uma a uma as 9 funcoes acima de 215.",
+    "as_9_funcoes_conferidas": [
+      "bingo_inscricaoEstado (BingoInscricao.gs) - inscricao publica do bingo, sem login por desenho",
+      "bingo_inscricaoPreencher (BingoInscricao.gs) - idem; VER RESSALVA ABAIXO",
+      "bingo_inscrever (BingoInscricao.gs) - idem; grava",
+      "bingo_estadoPublico (BingoLinks.gs) - placar publico da rodada",
+      "bingo_realtimeInfoPublico (BingoRealtime.gs) - idem, atualizacao ao vivo",
+      "compasso_inscricaoEstado (EventosInscricaoPublica.gs) - inscricao publica da festa, sem login por desenho",
+      "compasso_inscricaoPreencher (EventosInscricaoPublica.gs) - idem; devolve contato MASCARADO e tem teto de consultas por navegador (t79)",
+      "compasso_inscrever (EventosInscricaoPublica.gs) - idem; grava, com CPF conferido por digito verificador e trava de duplicidade",
+      "agenteEscolasVersao (IA_AgentEscolas.gs) - devolve apenas a string de versao do agente"
+    ],
+    "ressalva_aberta": "bingo_inscricaoPreencher devolve nome/email/telefone SEM mascara a partir de um CPF, numa rota publica. E o mesmo buraco que foi fechado no compasso_inscricaoPreencher em 21/08 (mascara + teto de consultas). Continua ABERTO no bingo. Nao e regressao nova, mas e o unico item de risco real deste conjunto de 9 - os outros oito ou nao devolvem dado pessoal ou ja estao protegidos.",
+    "o_que_este_teto_nao_significa": "Nao e aprovacao das 224. E o retrato honesto de hoje, agora que o numero volta a ser verificavel. A meta continua sendo derruba-lo."
+  }
 }

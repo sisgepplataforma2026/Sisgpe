@@ -139,4 +139,3 @@ b.naoTestavel("Conteúdo do PDF do ofício e do recibo", "depende de template do
 b.naoTestavel("Entrega real do e-mail e rastreio de abertura", "depende do Gmail e do pixel em navegador real");
 
 const c = b.resumo();
-process.exit(0);

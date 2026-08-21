@@ -29,7 +29,7 @@ if (!d.jsdomDisponivel()) {
   b.fluxo("SOFIA · tela");
   b.naoTestavel("A tela da SOFIA em DOM real", "jsdom não instalado neste ambiente");
   b.resumo();
-  process.exit(0);
+  process.exit(process.exitCode || 0);
 }
 
 /* A IA encenada. `respostaIA` é trocada a cada caso para simular o que o
@@ -232,5 +232,5 @@ b.naoTestavel("A resposta que a IA de fato daria",
   "a chamada à Anthropic é encenada; o que se prova é o que a tela faz com a resposta");
 
 b.resumo();
-process.exit(0);
+process.exit(process.exitCode || 0);
 })();

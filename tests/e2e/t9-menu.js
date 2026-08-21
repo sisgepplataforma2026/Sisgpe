@@ -257,4 +257,3 @@ b.naoTestavel("Aparência, animação do acordeão e clique real", "exige navega
 b.naoTestavel("Carregamento do conteúdo de cada módulo", "depende do Apps Script servindo os includes");
 
 b.resumo();
-process.exit(0);

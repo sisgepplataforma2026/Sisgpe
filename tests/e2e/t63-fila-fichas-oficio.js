@@ -43,7 +43,7 @@ b.fluxo("OFÍCIO · Fila de fichas com check de excluir");
 if (!dom.jsdomDisponivel()) {
   b.naoTestavel("A fila de fichas", "jsdom não instalado");
   b.resumo();
-  process.exit(0);
+  process.exit(process.exitCode || 0);
 }
 
 b.seedUsuarios(g);

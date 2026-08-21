@@ -1,7 +1,7 @@
 {
   "medidoEm": "2026-08-21",
-  "totalPublicas": 921,
-  "protegidas": 595,
+  "totalPublicas": 938,
+  "protegidas": 609,
   "expostas": [
     {
       "nome": "validarCPF",
@@ -256,6 +256,21 @@
     {
       "nome": "inicializarModuloEscolas",
       "arquivo": "Escolas.gs",
+      "escreve": false
+    },
+    {
+      "nome": "compasso_inscricaoEstado",
+      "arquivo": "EventosInscricaoPublica.gs",
+      "escreve": false
+    },
+    {
+      "nome": "compasso_inscricaoPreencher",
+      "arquivo": "EventosInscricaoPublica.gs",
+      "escreve": false
+    },
+    {
+      "nome": "compasso_inscrever",
+      "arquivo": "EventosInscricaoPublica.gs",
       "escreve": false
     },
     {

@@ -41,7 +41,7 @@ b.fluxo("HISTÓRICO · O erro aparece, e a espera tem fim");
 if (!dom.jsdomDisponivel()) {
   b.naoTestavel("O histórico de ofícios", "jsdom não instalado");
   b.resumo();
-  process.exit(0);
+  process.exit(process.exitCode || 0);
 }
 
 b.seedUsuarios(g);

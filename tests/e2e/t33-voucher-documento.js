@@ -472,4 +472,3 @@ b.naoTestavel("A aparência final do PDF convertido pelo Apps Script",
   "conferir emitindo um certificado no ar e comparando com o papel do sindicato");
 
 b.resumo();
-process.exit(0);

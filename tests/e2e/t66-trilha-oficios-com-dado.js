@@ -135,7 +135,7 @@ b.igual(nada.acoes.length, 0, "filtro sem correspondência volta vazio");
 if (!dom.jsdomDisponivel()) {
   b.naoTestavel("A lista e o modal na tela", "jsdom não instalado");
   b.resumo();
-  process.exit(0);
+  process.exit(process.exitCode || 0);
 }
 
 b.fluxo("TRILHA · A tela desenha a linha e abre o modal");

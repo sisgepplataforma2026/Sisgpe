@@ -87,4 +87,3 @@ b.ok(semSessao && semSessao.ok === false, "token inválido é negado", semSessao
 b.naoTestavel("Abertura real do WhatsApp e recebimento da mensagem", "depende do navegador e do aparelho");
 
 b.resumo();
-process.exit(0);

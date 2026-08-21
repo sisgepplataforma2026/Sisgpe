@@ -125,4 +125,3 @@ b.ok(negado && negado.ok === false, "quem não tem o módulo Benefícios não ge
 b.naoTestavel("PDF do ofício de autorização com os nomes coletados", "depende de template do Google Docs");
 
 b.resumo();
-process.exit(0);
