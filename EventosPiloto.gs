@@ -147,6 +147,7 @@ function diagnosticoPilotoCompasso_() {
   L.push('  Ingresso: gerado pelo sistema, um por pessoa.');
   L.push('  ' + base + '?page=ingresso&t=<token>');
   L.push('');
+  compasso_avisoUrlDev_(base).forEach(function (l) { L.push(l); });
 
   if (falta.length) {
     L.push('───────────────────────────────────────────────────────────');
@@ -308,6 +309,36 @@ function compasso_cpfDeTesteValido_(base9) {
   return comD1 + d2;
 }
 
+/**
+ * Avisa quando os links estão saindo em /dev.
+ *
+ * /dev é o endereço do EDITOR: só abre para quem tem acesso de edição ao
+ * script. Um associado clicando recebe tela de permissão do Google. O
+ * problema é que quem envia não vê — para o dono do projeto abre normal.
+ *
+ * Aconteceu duas vezes em 21/08/2026 antes de virar este aviso, e a segunda
+ * foi logo depois de eu explicar a primeira. Defeito que depende de alguém
+ * lembrar é defeito que volta: quem tem de lembrar é o sistema.
+ */
+function compasso_avisoUrlDev_(base) {
+  if (String(base || '').indexOf('/dev') < 0) return [];
+  return [
+    '⚠️  ATENÇÃO: estes links terminam em /dev — o endereço do EDITOR.',
+    '',
+    '    /dev só abre para quem tem acesso de EDIÇÃO ao script. Para o',
+    '    associado é tela de permissão do Google. Você não percebe isso',
+    '    sozinho, porque para VOCÊ ele abre normalmente.',
+    '',
+    '    Para corrigir, declare nas Propriedades do script:',
+    '        SISGEP_URL_BASE = <a URL /exec da implantação>',
+    '',
+    '    A URL /exec está em Implantar → Gerenciar implantações. Não adianta',
+    '    trocar a palavra "dev" por "exec": os dois endereços têm IDs',
+    '    DIFERENTES.',
+    ''
+  ];
+}
+
 function compasso_pilotoRelatorio_(etapas, resultado) {
   var L = [];
   L.push('═══════════════════════════════════════════════════════════');
@@ -335,6 +366,15 @@ function compasso_pilotoRelatorio_(etapas, resultado) {
     L.push('  3. Abra este link numa aba anônima (sem login):');
     L.push('     ' + resultado.url);
     L.push('     Tem de MOSTRAR o ingresso e NÃO marcar entrada.');
+    if (String(resultado.url || '').indexOf('/dev') >= 0) {
+      L.push('');
+      L.push('     🔴 ESTE TESTE VAI FALHAR ASSIM, e não por defeito: a URL');
+      L.push('        acima é /dev, que em aba anônima pede login. Veja o');
+      L.push('        aviso no fim deste relatório.');
+      L.push('        O MESMO vale para o botão dentro do e-mail que acabou');
+      L.push('        de ser enviado: ele aponta para /dev e não abriria');
+      L.push('        para um associado.');
+    }
     L.push('');
     L.push('  4. Leia o QR na portaria. Depois leia DE NOVO:');
     L.push('     a segunda leitura tem de RECUSAR.');
@@ -345,6 +385,14 @@ function compasso_pilotoRelatorio_(etapas, resultado) {
     L.push('    compasso_cancelarIngressoV2("' + resultado.ingressoId + '", "piloto")');
   } else {
     L.push('  O piloto parou na etapa marcada com ❌. O detalhe acima diz por quê.');
+  }
+
+  if (resultado && resultado.url) {
+    var alerta = compasso_avisoUrlDev_(resultado.url);
+    if (alerta.length) {
+      L.push('───────────────────────────────────────────────────────────');
+      alerta.forEach(function (l) { L.push(l); });
+    }
   }
   L.push('═══════════════════════════════════════════════════════════');
 
