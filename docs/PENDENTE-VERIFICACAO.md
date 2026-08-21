@@ -1651,10 +1651,17 @@ erro aparece), `t65` (o pacote serializa e o corpo do e-mail não viaja) —
 
 ---
 
-## 21/08/2026 · 🔴 A fila de envio de ofícios estava travada — corrigida, não conferida no ar
+## 21/08/2026 · A fila de envio de ofícios estava travada — corrigida, a aplicar quando produção voltar
 
-**É o item mais urgente desta lista**, porque Ofícios é o único módulo em
-uso diário.
+**Urgência rebaixada no mesmo dia.** Eu tinha marcado este item como 🔴 e
+como "o mais urgente da lista", partindo do que este repositório registra:
+que Ofícios é o único módulo em operação diária. O usuário corrigiu na
+hora: *"Só estou trabalhando em homologação, produção está parado"*.
+
+Então **não é fogo**. O conserto existe, está no repositório, e entra em
+produção junto com o resto quando aquele projeto voltar a receber
+publicação. O que não muda: enquanto o arquivo corrigido não subir lá, a
+fila continua travada — o defeito não some sozinho.
 
 O commit `731ed4e` (20/08) adicionou `ID: colId` à lista de colunas
 obrigatórias de `processarFilaEnvioOficios`, mas declarou `var colId` só na

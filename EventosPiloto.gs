@@ -38,8 +38,31 @@
 // ============================================================================
 
 /**
+ * ESTE é o nome que se escolhe no editor do Apps Script.
+ *
+ * O Apps Script trata função terminada em `_` como privada: ela não aparece
+ * no seletor de execução do editor. `diagnosticoPilotoCompasso_()` era, na
+ * prática, impossível de rodar pelo botão — e o plano de testes mandava
+ * começar por ela. Descoberto em 21/08/2026, quando o usuário perguntou em
+ * que arquivo a função estava.
+ *
+ * A trava é a porta dupla, e é necessária: sem o `_` no fim, toda função
+ * global fica alcançável por `google.script.run` a partir de QUALQUER página
+ * do projeto, inclusive das públicas — e este diagnóstico conta o projeto do
+ * Firestore, o tamanho da base de associados e os links do evento.
+ *
+ * Rodando pelo editor não existe token de sessão, então a checagem cai no
+ * segundo caminho: dono do projeto ou ADMINISTRADOR ATIVO pela conta Google.
+ * É o que faz funcionar para você e recusar para o resto.
+ */
+function compassoDiagnostico() {
+  exigirAdminOuSessao_('', 'eventos', 'Compasso — diagnóstico do piloto', true);
+  return diagnosticoPilotoCompasso_();
+}
+
+/**
  * O que precisa estar de pé antes do piloto. Só lê; não escreve nada.
- * Rode pelo editor do Apps Script.
+ * Pelo editor, chame por `compassoDiagnostico()` — ver a nota acima.
  */
 function diagnosticoPilotoCompasso_() {
   var L = [], falta = [];

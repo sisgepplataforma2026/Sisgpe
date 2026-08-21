@@ -29,11 +29,18 @@ em qualquer onda vira asserção nos testes `t76`–`t79`**, para não voltar.
 
 ### 1.1 Antes de qualquer coisa
 
-No editor do Apps Script de **homologação**:
+No editor do Apps Script de **homologação**, escolha no seletor de funções:
 
 ```
-diagnosticoPilotoCompasso_()
+compassoDiagnostico()
 ```
+
+> **Por que não `diagnosticoPilotoCompasso_()`.** O Apps Script trata função
+> terminada em `_` como privada — ela **não aparece no seletor de execução**.
+> Este documento mandava rodar aquela, e não dava. `compassoDiagnostico()` é
+> o atalho executável: mesma saída, com trava de administrador (sem o `_`,
+> qualquer página pública alcançaria a função por `google.script.run`, e ela
+> conta o projeto do Firestore e o tamanho da base).
 
 Diz o que falta configurar e imprime os dois links. **Se o Firestore não
 estiver conectado, nada do Compasso funciona** — inscrição, ingresso e
