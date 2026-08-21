@@ -1,6 +1,6 @@
 {
-  "medidoEm": "2026-08-20",
-  "totalPublicas": 884,
+  "medidoEm": "2026-08-21",
+  "totalPublicas": 918,
   "protegidas": 547,
   "expostas": [
     {
@@ -256,6 +256,51 @@
     {
       "nome": "inicializarModuloEscolas",
       "arquivo": "Escolas.gs",
+      "escreve": false
+    },
+    {
+      "nome": "compasso_checkin",
+      "arquivo": "EventosCheckin.gs",
+      "escreve": false
+    },
+    {
+      "nome": "compasso_checkinValidarToken",
+      "arquivo": "EventosCheckinPainel.gs",
+      "escreve": false
+    },
+    {
+      "nome": "compasso_emitirIngressoV2",
+      "arquivo": "EventosEmissaoV2.gs",
+      "escreve": false
+    },
+    {
+      "nome": "compasso_estimarConsumoEvento",
+      "arquivo": "EventosFirebaseCusto.gs",
+      "escreve": false
+    },
+    {
+      "nome": "compasso_estimarDiaFesta",
+      "arquivo": "EventosFirebaseCusto.gs",
+      "escreve": false
+    },
+    {
+      "nome": "compasso_statusArteBase",
+      "arquivo": "EventosIngresso.gs",
+      "escreve": false
+    },
+    {
+      "nome": "compasso_criarInscricaoAssociado",
+      "arquivo": "EventosInscricoesV2.gs",
+      "escreve": false
+    },
+    {
+      "nome": "compasso_criarInclusaoAdministrativa",
+      "arquivo": "EventosInscricoesV2.gs",
+      "escreve": false
+    },
+    {
+      "nome": "compasso_validacaoOpcoes",
+      "arquivo": "EventosValidacao.gs",
       "escreve": false
     },
     {
@@ -1104,5 +1149,5 @@
       "escreve": false
     }
   ],
-  "inconclusivas": 117
+  "inconclusivas": 142
 }

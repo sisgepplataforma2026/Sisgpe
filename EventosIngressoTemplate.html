@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;background:#111827;font-family:Arial,Helvetica,sans-serif;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:14px}
+    .ticket{position:relative;width:min(1200px,100%);aspect-ratio:1634/962;overflow:hidden;box-shadow:0 16px 50px #0008;background:#071a38}
+    .art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+    .fallback{position:absolute;inset:0;background:linear-gradient(135deg,#071a38,#0b2f63 62%,#17233f)}
+    .field{position:absolute;font-weight:800;text-transform:uppercase;line-height:1.12;text-shadow:0 1px 2px #0008;overflow:hidden}
+    .main-name{left:67.35%;top:25.7%;width:10.2%;font-size:1.05vw}
+    .main-school{left:67.35%;top:34.4%;width:10.4%;font-size:1vw}
+    .main-category{left:67.35%;top:43.4%;width:10.3%;font-size:1.05vw}
+    .main-number{left:65.3%;top:49.7%;width:12.8%;height:4.6%;display:flex;align-items:center;justify-content:center;color:#111827;text-shadow:none;font-size:1.2vw;letter-spacing:.02em}
+    .qrBox{position:absolute;left:65.4%;top:57.7%;width:12.4%;aspect-ratio:1/1;background:#fff;padding:.6%;display:flex;align-items:center;justify-content:center}
+    .qrBox>div,.qrBox canvas,.qrBox img{width:100%!important;height:100%!important;display:block}
+    .stub-number{left:83.3%;top:30.5%;width:14.4%;height:4.8%;display:flex;align-items:center;justify-content:center;color:#b90f3d;text-shadow:none;font-size:1.1vw}
+    .stub-name{left:84.7%;top:46.7%;width:13.1%;color:#172033;text-shadow:none;font-size:1vw}
+    .stub-school{left:84.7%;top:58.2%;width:13.1%;color:#172033;text-shadow:none;font-size:.95vw}
+    .stub-category{left:84.7%;top:69.1%;width:13.1%;color:#172033;text-shadow:none;font-size:1vw}
+    .teste{position:absolute;left:35%;top:4%;padding:7px 14px;background:#dc2626;color:#fff;border-radius:8px;font-size:13px;font-weight:900;letter-spacing:.12em;box-shadow:0 4px 14px #0008}
+    .printbar{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:5}.printbar button{border:0;border-radius:9px;padding:10px 14px;font-weight:800;cursor:pointer}.primary{background:#fff;color:#0b2f63}
+    @media print{body{background:#fff;padding:0}.ticket{width:100%;box-shadow:none}.printbar{display:none}}
+    @media(max-width:800px){body{padding:4px}.ticket{width:100%}.field{font-size:1.7vw}.main-number,.stub-number{font-size:1.8vw}.teste{font-size:9px;padding:4px 7px}}
+  </style>
+</head>
+<body>
+  <div class="ticket" id="ticket">
+    <div class="fallback"></div>
+    <? if (dados.arteDataUri) { ?><img class="art" src="<?= dados.arteDataUri ?>" alt="Arte oficial Compasso 2026"><? } ?>
+    <? if (dados.modoTeste) { ?><div class="teste">HOMOLOGAÇÃO</div><? } ?>
+
+    <div class="field main-name"><?= dados.nome ?></div>
+    <div class="field main-school"><?= dados.escola || '-' ?></div>
+    <div class="field main-category"><?= dados.categoria ?></div>
+    <div class="field main-number"><?= dados.numero ?></div>
+    <div class="qrBox"><div id="qrcode"></div></div>
+
+    <div class="field stub-number"><?= dados.numero ?></div>
+    <div class="field stub-name"><?= dados.nome ?></div>
+    <div class="field stub-school"><?= dados.escola || '-' ?></div>
+    <div class="field stub-category"><?= dados.categoria ?></div>
+  </div>
+
+  <div class="printbar"><button class="primary" onclick="window.print()">Imprimir / Salvar PDF</button></div>
+
+  <script>
+    (function(){
+      var token = <?!= JSON.stringify(dados.qrToken) ?>;
+      var alvo = document.getElementById('qrcode');
+      if (typeof QRCode === 'undefined') {
+        alvo.innerHTML = '<div style="color:#b91c1c;background:#fff;font:700 12px Arial;padding:8px;text-align:center">QR indisponível</div>';
+        return;
+      }
+      new QRCode(alvo,{text:token,width:360,height:360,correctLevel:QRCode.CorrectLevel.M});
+    })();
+  </script>
+</body>
+</html>
