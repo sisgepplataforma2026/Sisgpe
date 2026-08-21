@@ -251,7 +251,13 @@ passo("o que a tela envia junto");
    argumento no meio, o token vira o argumento errado e a trava recusa. */
 const chamadas = ["EventosPortaria.html", "EventosValidacaoAdmin.html"]
   .reduce((n, t) => n + (ler(t).match(/api\('compasso_/g) || []).length, 0);
-igual(chamadas, 9, "as 9 chamadas das telas continuam passando pelo dispatcher");
+/* 21/08: subiu de 9 para 12 com o bloco de pagamento (pagamentoOpcoes,
+   confirmarPagamento, estornarPagamento). O número é trava proposital, e
+   funcionou: ele reprovou assim que as chamadas novas entraram, e só subiu
+   depois de eu conferir uma a uma que passam todos os argumentos
+   posicionais — sem isso o token cairia no parâmetro errado e a trava de
+   sessão recusaria a chamada legítima. */
+igual(chamadas, 12, "as 12 chamadas das telas continuam passando pelo dispatcher");
 
 /* ─── 6. o simulador mantém as duas travas ─── */
 passo("simulador: quem chama E onde está");
