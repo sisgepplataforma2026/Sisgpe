@@ -86,6 +86,24 @@ function doGet(e) {
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
 
+    // ── INSCRIÇÃO PÚBLICA DO COMPASSO: o link que vai na lista de transmissão ─
+    // É a porta de entrada do fluxo. O associado recebe este link por
+    // transmissão ou pelo site, preenche o CPF, e o resto do formulário nasce
+    // preenchido a partir da base de associados.
+    //
+    // Sem login, de propósito: o associado não tem conta no SISGEP. Toda a
+    // validação — CPF com dígito verificador, termo, duplicidade, vaga,
+    // período — está no servidor, em EventosInscricaoPublica.gs. Esta rota só
+    // entrega a página.
+    if (p.page === "compasso-inscricao") {
+      Logger.log("[COMPASSO] Inscricao publica");
+      return HtmlService.createHtmlOutputFromFile("CompassoInscricaoPublica")
+        .setTitle("Inscrição — Festa Compasso da Vida 2026")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
+
     // ── INGRESSO PÚBLICO DO COMPASSO: por token, sem login ──────────────────
     // O associado não tem conta no SISGEP. O que ele recebe por e-mail e por
     // WhatsApp é este link, e o token HMAC É a credencial: quem tem vê aquele

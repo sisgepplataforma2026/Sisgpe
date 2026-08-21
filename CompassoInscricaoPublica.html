@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    /* Design System do SISGEP (OficiosStyles.html). Tokens em vez de hex solto. */
+    :root{
+      --navy:#001f4d; --navy2:#002f6c; --blue:#1565C0; --gold:#C9A84C;
+      --ok:#0f8a5f; --alerta:#d97706; --erro:#dc2626;
+      --texto:#111827; --suave:#6b7385; --linha:#d8e0ea; --fundo:#f4f7fb;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--fundo);color:var(--texto);
+         font-family:'Plus Jakarta Sans',Arial,Helvetica,sans-serif;
+         font-size:17px;line-height:1.55}
+    .wrap{max-width:640px;margin:0 auto;padding:18px 16px 60px}
+    .topo{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;
+          border-radius:16px;padding:26px 22px;margin-bottom:18px}
+    .selo{display:inline-block;background:rgba(255,255,255,.16);border-radius:999px;
+          padding:5px 14px;font-size:13px;font-weight:600;margin-bottom:10px}
+    h1{margin:0;font-size:26px;font-weight:800;letter-spacing:-.01em}
+    .convite{margin:12px 0 0;font-size:15px;opacity:.92;white-space:pre-wrap}
+    .card{background:#fff;border:1px solid var(--linha);border-radius:14px;
+          padding:20px 18px;margin-bottom:16px;box-shadow:0 2px 10px rgba(16,24,40,.05)}
+    label{display:block;font-weight:600;font-size:14px;margin:0 0 6px;color:var(--navy)}
+    .dica{font-size:13px;color:var(--suave);margin:-2px 0 8px}
+    input,textarea{width:100%;padding:14px;border:1.5px solid var(--linha);
+          border-radius:11px;font-size:17px;font-family:inherit;background:#fff}
+    input:focus{outline:none;border-color:var(--blue)}
+    .campo{margin-bottom:16px}
+    .campo.erro input{border-color:var(--erro);background:#fff7f7}
+    .msgerro{color:var(--erro);font-size:14px;font-weight:600;margin-top:6px;display:none}
+    .campo.erro .msgerro{display:block}
+    .btn{width:100%;padding:17px;border:0;border-radius:12px;font-size:18px;
+         font-weight:800;font-family:inherit;cursor:pointer;
+         background:var(--navy);color:#fff}
+    .btn:disabled{opacity:.55;cursor:default}
+    .btn.secundario{background:#eef3f9;color:var(--navy)}
+    .achou{display:none;background:#e9f7f1;border:1px solid #9fdcc4;color:#0b5c40;
+           border-radius:11px;padding:12px 14px;font-size:14px;font-weight:600;margin-bottom:14px}
+    .naoachou{display:none;background:#fff7ed;border:1px solid #fed7aa;color:#7c4a03;
+           border-radius:11px;padding:12px 14px;font-size:14px;margin-bottom:14px}
+    #passo2{display:none}
+    .termo{background:#f7fafd;border:1px solid var(--linha);border-radius:11px;
+           padding:14px;font-size:14px;line-height:1.6;white-space:pre-wrap;
+           max-height:230px;overflow:auto;margin-bottom:12px}
+    .aceite{display:flex;gap:11px;align-items:flex-start;font-size:15px;
+            font-weight:600;cursor:pointer;padding:12px;border-radius:11px;
+            background:#fff;border:1.5px solid var(--linha)}
+    .aceite input{width:22px;height:22px;flex:0 0 auto;margin-top:1px}
+    .fim{display:none;text-align:center;padding:34px 20px}
+    .fim .tick{font-size:56px;line-height:1}
+    .fim h2{color:var(--ok);margin:12px 0 8px;font-size:23px}
+    .vagas{font-size:13px;color:var(--suave);text-align:center;margin-top:14px}
+    .fechado{background:#fff7f7;border:1px solid #fecaca;color:#7f1d1d;
+             border-radius:14px;padding:24px;text-align:center;font-weight:600}
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topo">
+    <div class="selo">🔒 Participação exclusiva para associados(as)</div>
+    <h1 id="titulo">Festa Compasso da Vida 2026</h1>
+    <div class="convite" id="convite"></div>
+  </div>
+
+  <div id="carregando" class="card" style="text-align:center;color:var(--suave)">
+    Carregando…
+  </div>
+
+  <div id="fechado" class="fechado" style="display:none"></div>
+
+  <div id="form" style="display:none">
+
+    <!-- PASSO 1 — o CPF vem primeiro: é ele que preenche o resto -->
+    <div class="card">
+      <div class="campo" id="cCpf">
+        <label for="cpf">Seu CPF</label>
+        <div class="dica">Digite o CPF e o restante do formulário será preenchido para você.</div>
+        <input id="cpf" inputmode="numeric" placeholder="000.000.000-00" maxlength="14">
+        <div class="msgerro" id="eCpf"></div>
+      </div>
+      <button class="btn" id="btnBuscar" onclick="buscar()">Continuar</button>
+    </div>
+
+    <!-- PASSO 2 — dados, já preenchidos quando o CPF está na base -->
+    <div id="passo2">
+      <div class="card">
+        <div class="achou" id="achou">
+          ✅ Encontramos seu cadastro no sindicato. <b>Confira os dados abaixo</b> e corrija o que estiver diferente.
+        </div>
+        <div class="naoachou" id="naoachou">
+          Não encontramos este CPF no nosso cadastro — pode ser que você seja
+          associado(a) recente. <b>Preencha os dados abaixo</b> e a equipe confere depois.
+        </div>
+
+        <div class="campo" id="cNome">
+          <label for="nome">Nome completo</label>
+          <input id="nome" autocomplete="name">
+          <div class="msgerro" id="eNome"></div>
+        </div>
+
+        <div class="campo" id="cRg">
+          <label for="rg">Identidade / RG <span style="font-weight:400;color:var(--suave)">(opcional)</span></label>
+          <input id="rg">
+        </div>
+
+        <div class="campo" id="cEscola">
+          <label for="escola">Escola onde trabalha</label>
+          <input id="escola">
+          <div class="msgerro" id="eEscola"></div>
+        </div>
+
+        <div class="campo" id="cCidade">
+          <label for="cidade">Cidade</label>
+          <input id="cidade">
+          <div class="msgerro" id="eCidade"></div>
+        </div>
+
+        <div class="campo" id="cEmail">
+          <label for="email">E-mail</label>
+          <div class="dica" id="dEmail">É por aqui que o ingresso chega.</div>
+          <input id="email" inputmode="email" autocomplete="email">
+          <div class="msgerro" id="eEmail"></div>
+        </div>
+
+        <div class="campo" id="cWhatsapp">
+          <label for="whatsapp">WhatsApp</label>
+          <div class="dica" id="dWhats">Com DDD. O ingresso também é enviado por aqui.</div>
+          <input id="whatsapp" inputmode="tel" placeholder="(27) 99999-9999" maxlength="15">
+          <div class="msgerro" id="eWhatsapp"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <label>Termo de ciência</label>
+        <div class="termo" id="termo"></div>
+        <label class="aceite" id="cTermo">
+          <input type="checkbox" id="termoAceito">
+          <span>Li e estou de acordo com o termo acima.</span>
+        </label>
+        <div class="msgerro" id="eTermo"></div>
+      </div>
+
+      <button class="btn" id="btnEnviar" onclick="enviar()">Confirmar minha inscrição</button>
+      <div class="vagas" id="vagas"></div>
+    </div>
+  </div>
+
+  <!-- FIM -->
+  <div id="fim" class="card fim">
+    <div class="tick">✅</div>
+    <h2>Inscrição registrada!</h2>
+    <p id="fimMsg" style="color:var(--suave)"></p>
+  </div>
+
+</div>
+
+<script>
+var CFG = null;
+
+function g(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+/* Limpa o estado de erro de todos os campos antes de cada tentativa: erro
+   velho de campo já corrigido confunde mais do que ajuda. */
+function limparErros(){
+  ['cCpf','cNome','cEscola','cCidade','cEmail','cWhatsapp','cTermo'].forEach(function(id){
+    var el = g(id); if (el) el.classList.remove('erro');
+  });
+}
+function marcarErro(campo, msg){
+  var mapa = {cpf:'cCpf',nome:'cNome',escola:'cEscola',cidade:'cCidade',
+              email:'cEmail',whatsapp:'cWhatsapp',termo:'cTermo'};
+  var box = g(mapa[campo] || 'cCpf');
+  if (box) box.classList.add('erro');
+  var msgEl = g('e' + (mapa[campo]||'cCpf').slice(1));
+  if (msgEl) msgEl.textContent = msg;
+  if (box) box.scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+/* Máscaras. Ajudam quem digita no celular e não mudam o que o servidor
+   valida — lá o CPF é conferido com dígito verificador de verdade. */
+function mascaraCpf(v){
+  v = v.replace(/\D/g,'').slice(0,11);
+  return v.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2')
+          .replace(/(\d{3})(\d{1,2})$/,'$1-$2');
+}
+function mascaraTel(v){
+  v = v.replace(/\D/g,'').slice(0,11);
+  if (v.length <= 10) return v.replace(/(\d{2})(\d)/,'($1) $2').replace(/(\d{4})(\d)/,'$1-$2');
+  return v.replace(/(\d{2})(\d)/,'($1) $2').replace(/(\d{5})(\d)/,'$1-$2');
+}
+g('cpf').addEventListener('input', function(){ this.value = mascaraCpf(this.value); });
+/* Não reformata enquanto o campo ainda contém a máscara vinda do servidor:
+   mascaraTel() joga fora tudo que não é dígito e destruiria o '(27) •••••-1234',
+   fazendo a pessoa perder o valor sem entender o que houve. */
+g('whatsapp').addEventListener('input', function(){
+  if (this.value.indexOf('\u2022') >= 0) return;
+  this.value = mascaraTel(this.value);
+});
+
+/* ── carregar o estado ── */
+google.script.run
+  .withSuccessHandler(function(r){
+    CFG = r || {};
+    g('carregando').style.display = 'none';
+    if (CFG.titulo) g('titulo').textContent = CFG.titulo;
+    if (CFG.convite) g('convite').textContent = CFG.convite;
+    if (!CFG.aberta) {
+      g('fechado').style.display = 'block';
+      g('fechado').textContent = CFG.motivoFechada || 'As inscrições estão fechadas.';
+      return;
+    }
+    g('termo').textContent = CFG.termo || '';
+    g('form').style.display = 'block';
+    if (CFG.vagas) g('vagas').textContent = CFG.vagas.restantes + ' vagas restantes';
+  })
+  .withFailureHandler(function(e){
+    g('carregando').textContent = 'Não foi possível carregar a página. Tente de novo em instantes.';
+  })
+  .compasso_inscricaoEstado();
+
+/* ── passo 1: o CPF puxa o resto ── */
+function buscar(){
+  limparErros();
+  var cpf = g('cpf').value.replace(/\D/g,'');
+  if (cpf.length !== 11) { marcarErro('cpf','Digite os 11 números do CPF.'); return; }
+
+  var btn = g('btnBuscar');
+  btn.disabled = true; btn.textContent = 'Consultando…';
+
+  google.script.run
+    .withSuccessHandler(function(r){
+      btn.disabled = false; btn.textContent = 'Continuar';
+      if (r && r.erro) { marcarErro('cpf', r.erro); }
+      if (r && r.ok) {
+        g('achou').style.display = 'block';
+        g('naoachou').style.display = 'none';
+        g('nome').value = r.nome || '';
+        g('escola').value = r.escola || '';
+        g('cidade').value = r.cidade || '';
+        /* Vem MASCARADO do servidor — ver o cabeçalho de
+           EventosInscricaoPublica.gs. Sem explicar, a pessoa acha que está
+           errado e apaga; explicando, ela reconhece e segue. E o servidor usa
+           o valor real do cadastro se ela não mexer. */
+        g('email').value = r.email || '';
+        g('whatsapp').value = r.whatsapp || '';
+        if (r.mascarado) {
+          if (r.email)
+            g('dEmail').innerHTML = 'Escondemos parte do seu e-mail por segurança. ' +
+              'Se estiver certo, <b>deixe como está</b>. Se não, digite o correto por cima.';
+          if (r.whatsapp)
+            g('dWhats').innerHTML = 'Escondemos parte do número por segurança. ' +
+              'Se estiver certo, <b>deixe como está</b>. Se não, digite o correto por cima.';
+        }
+      } else {
+        g('achou').style.display = 'none';
+        g('naoachou').style.display = 'block';
+      }
+      g('passo2').style.display = 'block';
+      g('passo2').scrollIntoView({behavior:'smooth', block:'start'});
+    })
+    .withFailureHandler(function(e){
+      btn.disabled = false; btn.textContent = 'Continuar';
+      /* Falhar a consulta não pode travar a inscrição: abre o formulário em
+         branco para a pessoa preencher à mão. */
+      g('naoachou').style.display = 'block';
+      g('passo2').style.display = 'block';
+    })
+    .compasso_inscricaoPreencher(cpf);
+}
+
+/* ── passo 2: enviar ── */
+function enviar(){
+  limparErros();
+  var btn = g('btnEnviar');
+  btn.disabled = true; btn.textContent = 'Enviando…';
+
+  google.script.run
+    .withSuccessHandler(function(r){
+      btn.disabled = false; btn.textContent = 'Confirmar minha inscrição';
+      if (!r || !r.ok) {
+        marcarErro((r && r.campo) || 'cpf', (r && r.erro) || 'Não foi possível registrar.');
+        return;
+      }
+      g('form').style.display = 'none';
+      g('fim').style.display = 'block';
+      g('fimMsg').textContent = r.mensagem || '';
+      window.scrollTo({top:0, behavior:'smooth'});
+    })
+    .withFailureHandler(function(e){
+      btn.disabled = false; btn.textContent = 'Confirmar minha inscrição';
+      marcarErro('cpf', (e && e.message) || 'Não foi possível registrar agora.');
+    })
+    .compasso_inscrever({
+      nome: g('nome').value,
+      cpf: g('cpf').value,
+      rg: g('rg').value,
+      escola: g('escola').value,
+      cidade: g('cidade').value,
+      email: g('email').value,
+      whatsapp: g('whatsapp').value,
+      termoAceito: g('termoAceito').checked
+    });
+}
+</script>
+</body>
+</html>

@@ -49,6 +49,53 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 ## 🔴 ABERTO
 
+### 32. Compasso — a inscrição pública e a entrega do ingresso
+**Aberto em:** 21/08/2026 · `EventosInscricaoPublica.gs`, `EventosEntrega.gs`,
+`CompassoInscricaoPublica.html`, rotas novas no `Code.gs`
+
+Fecha os dois buracos maiores do módulo: **não havia tela de inscrição** e o
+**ingresso nunca chegava** ao associado.
+
+**Os dois links novos** (pegue-os rodando `diagnosticoInscricaoCompasso_` no
+editor — ele imprime a URL certa do ambiente):
+
+- inscrição: `…/exec?page=compasso-inscricao` ← é o que vai na lista de
+  transmissão e no site
+- ingresso: `…/exec?page=ingresso&t=<token>` ← é o que vai no e-mail e no
+  WhatsApp, gerado pelo sistema
+
+Roteiro, na ordem que expõe problema mais rápido:
+
+1. **Abrir o link de inscrição numa aba anônima.** Tem de carregar sem login.
+2. **Digitar um CPF que está na base.** Nome, escola e cidade nascem
+   preenchidos; e-mail e WhatsApp aparecem **mascarados** (`m••••a@gmail.com`)
+   — isso é proposital, para o link público não virar porta de colheita da
+   base. **Deixar como está** e enviar.
+3. **Conferir no Firestore/tela de validação que o e-mail gravado é o REAL**,
+   não a máscara. É a parte mais fácil de dar errado.
+4. **Tentar inscrever o mesmo CPF de novo** — tem de recusar.
+5. **Digitar um CPF fora da base** — tem de abrir em branco e aceitar, não
+   recusar.
+6. **Validar a inscrição** na Central e **emitir o ingresso**.
+7. **Enviar por e-mail.** Abrir a caixa: tem de chegar com o botão do link
+   **e o PDF anexo**.
+8. 🔴 **ABRIR O PDF E LER O QR COM O CELULAR.** É o ponto mais provável de
+   falha de toda esta entrega — o template da tela gera o QR por script de
+   CDN, que não roda na conversão para PDF. Fiz um caminho separado que
+   embute o QR como imagem, mas isso só se prova lendo.
+9. **Abrir o link do ingresso numa aba anônima** — tem de mostrar, e **não**
+   pode marcar check-in.
+10. **Ler o QR na portaria.** Depois ler de novo: tem de recusar.
+11. **Enviar por WhatsApp** — abre o `wa.me` com o texto pronto; você aperta
+    enviar e depois confirma na tela.
+12. **Lote:** selecionar alguns e enviar. Conferir a mensagem de cota.
+
+Cobertura: `t78` (33 asserções, 9 mutações) e `t79` (40 asserções, 10
+mutações). A tabela-verdade do token e a trava de duplicidade são
+**executadas**, não lidas.
+
+---
+
 ### 31. Compasso — pagamento do acompanhante (botão novo)
 **Aberto em:** 21/08/2026 · `EventosPagamento.gs`, `EventosValidacaoAdmin.html`
 
