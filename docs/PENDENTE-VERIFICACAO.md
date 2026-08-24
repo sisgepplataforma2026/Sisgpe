@@ -1735,7 +1735,7 @@ o **repositório**; o que está no ar em homologação é um subconjunto.
 Nenhum destes itens bloqueia a Onda 1. Todos precisam de decisão antes de
 dezembro.
 
-### 🟠 1. `compasso_checkinBuscarManual` lê os 2.000 ingressos por busca
+### ✅ 1. `compasso_checkinBuscarManual` lê os 2.000 ingressos por busca — CORRIGIDO em 21/08
 
 `EventosCheckinPainel.gs:15` — `fs_list_('ingressos', 1000)`, filtrado em
 memória. O check-in por QR usa `fs_queryEquals_`, que é barato; **só a busca
@@ -1748,6 +1748,19 @@ fila já está travada.
 
 **A medição da Onda 2 decide se dói.** A correção, se precisar, é trocar por
 `fs_queryEquals_` sobre nome/CPF, como o caminho do QR já faz.
+
+**Feito em 21/08**, sem esperar a medição: CPF completo e número do ingresso
+passaram a usar `fs_queryEquals_` (custa o que devolve). Busca por nome, por
+escola e por CPF **parcial** continuam na listagem — o Firestore não faz
+"contém", e tirar isso quebraria a portaria. Atalho que não acha cai na
+listagem em vez de desistir.
+
+Coberto por `t83`: 27 asserções, 7 mutações, nenhuma sobrevivente. O teste
+conta LEITURAS, não só resultados — 6 das 7 mutações mantêm o resultado certo
+e só a contagem denuncia.
+
+**Continua não medido no ar:** quanto isso vale de verdade no dia. A Onda 2
+ainda decide.
 
 ### 🟠 2. Duas emissões coexistem, e a fraca ainda está ligada
 
