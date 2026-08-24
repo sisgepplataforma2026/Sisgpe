@@ -55,7 +55,13 @@ function compasso_validacaoListar_interno_(filtros) {
   var categoria=String(filtros.categoria||'').toLowerCase().trim();
   var assoc=String(filtros.situacaoAssociado||'').trim();
   var entrega=String(filtros.entrega||'').trim();
-  var docs=fs_list_('inscricoesEventos',1000).filter(function(x){return x.eventoId===EMISSAO_CFG.EVENTO_ID;});
+  /* Excluída sai de TODA listagem, e antes de qualquer filtro. O documento
+     continua no Firestore com quem excluiu e por quê — é exclusão lógica —,
+     mas para a tela e para os cards ela deixou de existir. Se esta linha
+     ficasse depois dos filtros, o card "total" contaria gente excluída. */
+  var docs=fs_list_('inscricoesEventos',1000).filter(function(x){
+    return x.eventoId===EMISSAO_CFG.EVENTO_ID && !x.excluida;
+  });
   docs=docs.filter(function(x){
     /* 'NAO_ANALISADA' é sentinela do painel para "ainda sem status gravado".
        Precisa existir porque status vazio não dá para pedir por igualdade —
@@ -136,7 +142,11 @@ function compasso_validacaoSalvarDados(inscricaoId, patch, atualizarCadastroMest
 function compasso_validacaoOpcoes(tokenSessao) {
   exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — opções de motivo', false);
   function opts(arr){return arr.map(function(c){return {codigo:c,label:COMPASSO_MOTIVOS_LABELS[c]||c};});}
-  return {reprovacao:opts(COMPASSO_MOTIVOS_REPROVACAO),pendencia:opts(COMPASSO_MOTIVOS_PENDENCIA),usuario:compasso_emailUsuario_()};
+  /* `admin` viaja aqui em vez de numa função pública própria: a tela precisa
+     dele para decidir se desenha "Excluir", e abrir mais uma porta global só
+     para responder true/false custaria uma linha na conta do t6-exposicao sem
+     entregar nada em troca. */
+  return {reprovacao:opts(COMPASSO_MOTIVOS_REPROVACAO),pendencia:opts(COMPASSO_MOTIVOS_PENDENCIA),usuario:compasso_emailUsuario_(),admin:compasso_ehAdministrador_(tokenSessao)};
 }
 
 function compasso_validacaoDuplicidades(tokenSessao) {

@@ -64,3 +64,97 @@ function compasso_criarInclusaoAdministrativa(payload, tokenSessao) {
    no caminho da conta Google: sem o repasse, uma chamada legítima com token
    seria checada como se viesse do editor. */
 function compasso_reprovarInscricaoLiberandoVaga(inscricaoId,motivoCodigo,observacao,tokenSessao){exigirAdminOuSessao_(tokenSessao,'eventos','Compasso — reprovar liberando vaga',false);var r=compasso_validarDecisaoAdmin(inscricaoId,COMPASSO_STATUS.REPROVADA,motivoCodigo,observacao,tokenSessao);if(r.ok)compasso_liberarVagaInscricao_(inscricaoId);return r;}
+
+/* ============================================================================
+ * EXCLUIR INSCRIÇÃO — só administrador
+ * ============================================================================
+ *
+ * Pedido do usuário em 24/08/2026: "deve ter sim, podendo ser excluído pelo
+ * administrador". A tela ganha o botão; aqui ficam as três travas que ele
+ * pediu sem pedir, porque são o que separa "excluir" de "perder".
+ *
+ * 1. É ADMINISTRADOR, não o módulo. Reprovar qualquer pessoa do módulo eventos
+ *    faz; excluir, não. É a única ação da tela que tira o registro de vista.
+ *
+ * 2. É EXCLUSÃO LÓGICA. O documento fica, marcado `excluida`, e some da
+ *    listagem. Não é meio-termo tímido: apagar de verdade levaria junto o
+ *    rastro de que a inscrição existiu, quem a excluiu e por quê — e é
+ *    exatamente esse rastro que alguém vai procurar quando a pessoa aparecer
+ *    na portaria dizendo que se inscreveu. O efeito na tela é o mesmo, e o
+ *    erro é reversível.
+ *
+ * 3. INGRESSO EMITIDO BARRA. Excluir com ingresso vivo deixaria um QR válido
+ *    apontando para uma inscrição que não existe mais — a portaria deixaria
+ *    entrar. Cancele o ingresso primeiro; são dois cliques, e o segundo é
+ *    consciente.
+ *
+ * A vaga volta para as 2.000, e o índice de inscrição única é liberado: sem
+ * isso a pessoa excluída não conseguiria se inscrever de novo, e ninguém
+ * entenderia por quê.
+ */
+function compasso_excluirInscricao(inscricaoId, motivo, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — excluir inscrição', true);
+
+  motivo = String(motivo || '').trim();
+  if (!motivo) return { ok:false, erro:'Descreva o motivo da exclusão.' };
+
+  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    var ins = fs_get_('inscricoesEventos', inscricaoId);
+    if (!ins) return { ok:false, erro:'Inscrição não encontrada.' };
+    if (ins.excluida) return { ok:false, erro:'Esta inscrição já foi excluída.' };
+
+    if (ins.ingressoId) return {
+      ok:false, codigo:'INGRESSO_ATIVO',
+      erro:'Esta inscrição tem ingresso emitido (' + (ins.numeroIngresso || ins.ingressoId) +
+           '). Cancele o ingresso antes de excluir — senão o QR continuaria ' +
+           'válido na portaria.'
+    };
+
+    /* A vaga volta antes de a inscrição sair de vista: se algo falhar depois,
+       o pior caso é uma vaga livre a mais, não uma vaga presa para sempre. */
+    compasso_liberarVagaInscricao_(inscricaoId);
+
+    ins = fs_get_('inscricoesEventos', inscricaoId) || ins;
+    ins.excluida = true;
+    ins.excluidaEm = new Date();
+    ins.excluidaPor = compasso_emailUsuario_();
+    ins.motivoExclusao = motivo;
+    fs_set_('inscricoesEventos', inscricaoId, ins);
+
+    /* Libera o índice de inscrição única — senão a pessoa excluída não
+       conseguiria se inscrever de novo, e a mensagem diria que ela já tem
+       inscrição, sem nenhuma inscrição à vista. */
+    try {
+      var chave = compasso_chavePessoaEvento_(EMISSAO_CFG.EVENTO_ID, ins.pessoaId, ins.cpf);
+      var idx = fs_get_('inscricaoUnicaEventos', chave);
+      if (idx) { idx.status = 'CANCELADA'; idx.atualizadoEm = new Date();
+                 fs_set_('inscricaoUnicaEventos', chave, idx); }
+    } catch (ignore) {}
+
+    compasso_auditar_('EXCLUSAO_INSCRICAO', 'inscricao', inscricaoId, {
+      motivo: motivo, nome: ins.nome || '', cpf: ins.cpf || '', status: ins.status || ''
+    });
+    return { ok:true, inscricaoId:inscricaoId };
+  } finally { lock.releaseLock(); }
+}
+
+/**
+ * A tela precisa saber se quem abriu é administrador, para não desenhar
+ * "Excluir" para quem vai levar recusa.
+ *
+ * Isto é um helper PRIVADO de propósito. A resposta viaja dentro de
+ * compasso_validacaoOpcoes, que a tela já chama e que já é protegida — uma
+ * função pública nova só para responder true/false seria mais uma porta
+ * aberta na conta do t6-exposicao, em troca de nada.
+ *
+ * Não reescreve a regra de quem é administrador: chama a mesma trava do
+ * backend e olha se ela deixou passar. Duas cópias da regra é como uma delas
+ * fica para trás.
+ */
+function compasso_ehAdministrador_(tokenSessao) {
+  try {
+    exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — checagem de administrador', true);
+    return true;
+  } catch (e) { return false; }
+}

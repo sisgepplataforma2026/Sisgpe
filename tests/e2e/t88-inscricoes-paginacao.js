@@ -59,9 +59,15 @@ fluxo("INSCRIÇÕES · a lista pagina, e a ação acerta a linha");
    Só o suficiente para o script da tela rodar: um elemento guarda o que lhe
    escrevem e devolve os checkboxes que o próprio innerHTML criou. */
 function elemento(id) {
+  const classes = new Set();
   return {
     id, innerHTML: "", textContent: "", value: "", checked: false,
-    disabled: false, hidden: false, style: {},
+    disabled: false, hidden: false, style: {}, options: [],
+    classList: {
+      add: c => classes.add(c), remove: c => classes.delete(c),
+      contains: c => classes.has(c)
+    },
+    addEventListener() {},
     querySelectorAll() {
       const n = (this.innerHTML.match(/type="checkbox"/g) || []).length;
       return Array.from({ length: n }, () => ({ checked: false }));
@@ -72,7 +78,8 @@ function elemento(id) {
 function montar() {
   const els = {};
   const doc = {
-    getElementById(id) { return (els[id] = els[id] || elemento(id)); }
+    getElementById(id) { return (els[id] = els[id] || elemento(id)); },
+    addEventListener() {}   /* a tela registra Esc para fechar a gaveta */
   };
   const chamadas = [];
   const sandbox = {
@@ -214,8 +221,7 @@ passo("recarregar depois de uma ação não tira a pessoa da página");
 
 /* carregar() sem argumento zera a página (filtro novo, lista nova);
    carregar(true) mantém — é o que emitir/enviar usam. */
-const corpoCarregar = (html.match(/function carregar\(manterPagina\)\{[\s\S]*?\n\}/) ||
-                       html.match(/function carregar\(manterPagina\)\s*\{[\s\S]*?\n\}/) || [""])[0];
+const corpoCarregar = (html.match(/function carregar\([^)]*\)\s*\{[\s\S]*?\n\}/) || [""])[0];
 ok(/if \(!manterPagina\) PAGINA = 1;/.test(corpoCarregar),
    "carregar só volta para a página 1 quando não pedem para manter");
 ok(/function recarregar\(\)\{ carregar\(true\); \}/.test(html),

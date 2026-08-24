@@ -54,6 +54,42 @@
     .paginacao .conta{font-size:12.5px;color:var(--suave)}
     .paginacao .pg-nav{display:flex;gap:8px;align-items:center;margin-left:auto}
     .paginacao button[disabled]{opacity:.4;cursor:default}
+    /* ── Gaveta ──────────────────────────────────────────────────────────
+       Tudo de uma inscrição num lugar só. Antes, analisar exigia sair do
+       painel, abrir a Central de Validação e procurar a pessoa de novo —
+       perdendo filtro, página e o lugar onde se estava. */
+    .gv-fundo{position:fixed;inset:0;background:rgba(8,17,35,.42);display:none;z-index:60}
+    .gv-fundo.on{display:block}
+    .gv{position:fixed;top:0;right:0;bottom:0;width:min(520px,100%);background:#fff;
+        box-shadow:-14px 0 40px rgba(8,17,35,.22);z-index:61;display:none;
+        flex-direction:column}
+    .gv.on{display:flex}
+    .gv-topo{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;
+             padding:16px 18px;display:flex;justify-content:space-between;
+             align-items:flex-start;gap:12px}
+    .gv-topo h2{margin:0;font-size:17px;font-weight:800;line-height:1.25}
+    .gv-topo .meta{font-size:12px;opacity:.88;margin-top:4px}
+    .gv-fechar{background:transparent;border:0;color:#fff;font-size:22px;line-height:1;
+               cursor:pointer;padding:0 2px}
+    .gv-corpo{flex:1;overflow:auto;padding:16px 18px 30px}
+    .gv-sec{border-top:1px solid var(--linha);margin-top:16px;padding-top:14px}
+    .gv-sec:first-child{border-top:0;margin-top:0;padding-top:0}
+    .gv-sec h3{margin:0 0 10px;font-size:11px;font-weight:800;letter-spacing:.07em;
+               text-transform:uppercase;color:var(--suave)}
+    .gv-grade{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .gv-grade .larga{grid-column:1 / -1}
+    .gv-campo{display:flex;flex-direction:column;gap:3px}
+    .gv-campo label{font-size:11px;color:var(--suave);font-weight:700}
+    .gv-campo input,.gv-campo select,.gv-campo textarea{
+      padding:8px 10px;border:1.5px solid var(--linha);border-radius:9px;
+      font-size:13px;font-family:inherit;width:100%}
+    .gv-acoes{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
+    .gv-nota{font-size:12px;color:var(--suave);line-height:1.5;margin-top:8px}
+    .gv-hist{font-size:12px;color:var(--suave);line-height:1.7}
+    .b.ok{background:var(--ok);color:#fff;border-color:var(--ok)}
+    .b.perigo{background:#fef2f2;color:#7f1d1d;border-color:#f3c5c5}
+    .b.perigo:hover{background:#dc2626;color:#fff;border-color:#dc2626}
+    @media(max-width:600px){ .gv-grade{grid-template-columns:1fr} }
     .barra{display:flex;gap:8px;align-items:center;flex-wrap:wrap;
            background:#eef3fa;border:1px solid #c7d7ec;border-radius:11px;
            padding:10px 13px;margin-bottom:12px;display:none}
@@ -153,6 +189,120 @@
       <span id="pgAtual" style="font-size:13px;font-weight:700"></span>
       <button class="b" id="pgProx" onclick="irPagina(PAGINA+1)">Próxima ›</button>
     </div>
+  </div>
+</div>
+
+<!-- ══ GAVETA ═══════════════════════════════════════════════════════════════
+     Uma inscrição inteira: os dados, o pagamento, a decisão, o ingresso e o
+     histórico. Cada bloco só aparece quando faz sentido para o estado em que
+     a inscrição está — botão que não pode ser clicado não deveria existir na
+     tela. -->
+<div class="gv-fundo" id="gvFundo" onclick="fecharGaveta()"></div>
+<div class="gv" id="gv" role="dialog" aria-label="Detalhes da inscrição">
+  <div class="gv-topo">
+    <div>
+      <h2 id="gvNome">—</h2>
+      <div class="meta" id="gvMeta"></div>
+    </div>
+    <button class="gv-fechar" onclick="fecharGaveta()" title="Fechar">&times;</button>
+  </div>
+
+  <div class="gv-corpo">
+
+    <!-- DADOS -->
+    <div class="gv-sec">
+      <h3>Dados</h3>
+      <div class="gv-grade">
+        <div class="gv-campo larga"><label>Nome</label><input id="dNome"></div>
+        <div class="gv-campo"><label>CPF</label><input id="dCpf"></div>
+        <div class="gv-campo"><label>Matrícula</label><input id="dMatricula"></div>
+        <div class="gv-campo larga"><label>Escola</label><input id="dEscola"></div>
+        <div class="gv-campo"><label>Cidade</label><input id="dCidade"></div>
+        <div class="gv-campo"><label>Região</label><input id="dRegiao"></div>
+        <div class="gv-campo larga"><label>E-mail</label><input id="dEmail"></div>
+        <div class="gv-campo"><label>WhatsApp</label><input id="dWhatsapp"></div>
+        <div class="gv-campo"><label>Categoria</label><input id="dCategoria" disabled></div>
+      </div>
+      <div class="gv-acoes">
+        <button class="b p" onclick="salvarDados()">Salvar dados</button>
+        <span class="gv-nota" id="dSituacao" style="margin:0;align-self:center"></span>
+      </div>
+    </div>
+
+    <!-- PAGAMENTO — só para quem paga (acompanhante). -->
+    <div class="gv-sec" id="secPagamento" hidden>
+      <h3>Pagamento</h3>
+      <div id="pgSituacao" class="gv-nota" style="margin:0 0 10px"></div>
+      <div id="pgForm">
+        <div class="gv-grade">
+          <div class="gv-campo"><label>Forma</label><select id="pgForma"></select></div>
+          <div class="gv-campo"><label>Valor</label><input id="pgValor"></div>
+          <div class="gv-campo larga"><label>Referência (nº da transação)</label><input id="pgRef"></div>
+        </div>
+        <div class="gv-nota" id="pgOrigemValor"></div>
+        <div class="gv-acoes">
+          <button class="b ok" onclick="confirmarPagamento()">✓ Confirmar recebimento</button>
+        </div>
+      </div>
+      <div class="gv-acoes" id="pgEstorno" hidden>
+        <button class="b" onclick="estornarPagamento()">Estornar</button>
+      </div>
+    </div>
+
+    <!-- ANÁLISE -->
+    <div class="gv-sec">
+      <h3>Análise</h3>
+      <div class="gv-grade">
+        <div class="gv-campo"><label>Decisão</label>
+          <select id="aStatus" onchange="montarMotivos()">
+            <option value="VALIDADA_ADMINISTRATIVAMENTE">Validar</option>
+            <option value="PENDENTE">Pendência</option>
+            <option value="REPROVADA">Reprovar</option>
+          </select>
+        </div>
+        <div class="gv-campo" id="aMotivoBox"><label>Motivo</label>
+          <select id="aMotivo"></select>
+        </div>
+        <div class="gv-campo larga"><label>Observação</label>
+          <textarea id="aObs" rows="2" placeholder="Obrigatória quando o motivo for Outro"></textarea>
+        </div>
+      </div>
+      <div class="gv-acoes">
+        <button class="b p" onclick="decidir()">Confirmar decisão</button>
+      </div>
+      <div class="gv-nota" id="aNota"></div>
+    </div>
+
+    <!-- INGRESSO -->
+    <div class="gv-sec">
+      <h3>Ingresso</h3>
+      <div class="gv-nota" id="ingSituacao" style="margin:0 0 10px"></div>
+      <div class="gv-acoes">
+        <button class="b p"  id="btEmitir"   onclick="emitirGaveta()">Emitir ingresso</button>
+        <button class="b g"  id="btEmail"    onclick="emailGaveta()">📧 Enviar por e-mail</button>
+        <button class="b g"  id="btWhats"    onclick="whatsGaveta()">📱 Enviar por WhatsApp</button>
+        <button class="b perigo" id="btCancelar" onclick="cancelarIngresso()">Cancelar ingresso</button>
+      </div>
+    </div>
+
+    <!-- HISTÓRICO -->
+    <div class="gv-sec">
+      <h3>Histórico</h3>
+      <div class="gv-hist" id="gvHistorico"></div>
+    </div>
+
+    <!-- EXCLUIR — só administrador, e só aparece para quem é. -->
+    <div class="gv-sec" id="secExcluir" hidden>
+      <h3>Excluir</h3>
+      <div class="gv-nota" style="margin:0 0 10px">
+        Tira a inscrição da lista e devolve a vaga. Fica registrado quem
+        excluiu e por quê. Ingresso emitido precisa ser cancelado antes.
+      </div>
+      <div class="gv-acoes">
+        <button class="b perigo" onclick="excluirInscricao()">Excluir inscrição</button>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -298,7 +448,7 @@ function seloEntrega(x){
 }
 
 /* ── lista ── */
-function carregar(manterPagina){
+function carregar(manterPagina, depois){
   api('compasso_validacaoResumo', [], pintarCards);
   api('compasso_validacaoListar', [filtros()], function(l){
     LISTA = l || []; SEL = {}; atualizarBarra();
@@ -308,6 +458,7 @@ function carregar(manterPagina){
     if (!manterPagina) PAGINA = 1;
     g('sub').textContent = LISTA.length + ' inscrição(ões) na lista';
     pintarLista();
+    if (depois) depois();
   });
 }
 /* Recarrega sem tirar a pessoa de onde ela estava. */
@@ -374,9 +525,14 @@ function linhaHtml(x, i){
   var podeEmitir  = !temIngresso && x.status === 'VALIDADA_ADMINISTRATIVAMENTE';
   return '<tr>' +
         '<td>' + (temIngresso ? '<input type="checkbox" onclick="marcar(' + i + ',this)">' : '') + '</td>' +
+        /* Nome com e-mail e categoria embaixo: é o que identifica a pessoa
+           sem precisar abrir. O resto dos dados fica na gaveta — 2.000 linhas
+           com quatorze colunas não se lê em tela nenhuma. */
         '<td><b>' + esc(x.nome) + '</b>' +
-          (x.categoria && x.categoria!=='associado'
-            ? '<div style="font-size:11px;color:var(--suave)">' + esc(x.categoria) + '</div>' : '') +
+          '<div style="font-size:11px;color:var(--suave)">' +
+            esc(x.email || 'sem e-mail') +
+            (x.categoria && x.categoria!=='associado' ? ' · ' + esc(x.categoria) : '') +
+          '</div>' +
         '</td>' +
         '<td>' + esc(x.cpf) + '</td><td>' + esc(x.escola) + '</td><td>' + esc(x.cidade) + '</td>' +
         '<td>' + seloAssoc(x.situacaoAssociado) + '</td>' +
@@ -387,7 +543,7 @@ function linhaHtml(x, i){
           (podeEmitir ? '<button class="b p" onclick="emitir(' + i + ')">Emitir</button>' : '') +
           (temIngresso ? '<button class="b g" onclick="porEmail(' + i + ')">📧</button>' +
                          '<button class="b g" onclick="porWhats(' + i + ')">📱</button>' : '') +
-          '<button class="b" onclick="abrirValidacao()">Analisar</button>' +
+          '<button class="b" onclick="abrirGaveta(' + i + ')">Abrir ›</button>' +
         '</div></td></tr>';
 }
 
@@ -470,8 +626,221 @@ function enviarLote(){
     recarregar();
   });
 }
-function abrirValidacao(){
-  aviso('A análise (validar, pendência, reprovar, pagamento) fica na Central de Validação — abra pelo menu Eventos.');
+/* ══ GAVETA ═══════════════════════════════════════════════════════════════
+   Antes, "Analisar" mandava a pessoa para a Central de Validação: outra tela,
+   outra busca, filtro e página perdidos. Agora tudo acontece aqui.
+
+   ABERTO guarda o índice em LISTA, não o objeto: depois de qualquer ação a
+   lista é relida, e é pelo índice que a gaveta se redesenha com o estado novo. */
+var ABERTO = -1, OPCOES = {reprovacao:[],pendencia:[]}, PG_OPCOES = null, SOU_ADMIN = false;
+
+function inscricaoAberta(){ return ABERTO >= 0 ? LISTA[ABERTO] : null; }
+
+function abrirGaveta(i){
+  ABERTO = i;
+  pintarGaveta();
+  g('gv').classList.add('on');
+  g('gvFundo').classList.add('on');
+}
+function fecharGaveta(){
+  ABERTO = -1;
+  g('gv').classList.remove('on');
+  g('gvFundo').classList.remove('on');
+}
+
+function pintarGaveta(){
+  var x = inscricaoAberta(); if (!x) return;
+
+  g('gvNome').textContent = x.nome || '(sem nome)';
+  g('gvMeta').innerHTML = [
+    rotuloStatus(x.status),
+    x.numeroIngresso ? 'ingresso ' + esc(x.numeroIngresso) : 'sem ingresso',
+    esc(x.categoria || 'associado')
+  ].join(' · ');
+
+  ['nome','cpf','escola','cidade','regiao','email','whatsapp','matricula'].forEach(function(c){
+    g('d' + c.charAt(0).toUpperCase() + c.slice(1)).value = x[c] || '';
+  });
+  g('dCategoria').value = x.categoria || 'associado';
+  g('dSituacao').innerHTML = seloAssoc(x.situacaoAssociado);
+
+  /* A decisão nasce apontando para o estado atual: reabrir uma inscrição já
+     reprovada e ver "Validar" pré-selecionado convida ao clique errado. */
+  g('aStatus').value = x.status === 'PENDENTE' ? 'PENDENTE'
+                     : x.status === 'REPROVADA' ? 'REPROVADA'
+                     : 'VALIDADA_ADMINISTRATIVAMENTE';
+  g('aObs').value = x.observacaoAnalise || '';
+  montarMotivos();
+
+  montarPagamento(x);
+  montarIngresso(x);
+  montarHistorico(x);
+  g('secExcluir').hidden = !SOU_ADMIN;
+}
+
+/* Motivo só existe para pendência e reprovação — validar não pede motivo. */
+function montarMotivos(){
+  var s = g('aStatus').value;
+  var lista = s === 'REPROVADA' ? (OPCOES.reprovacao || [])
+            : s === 'PENDENTE'  ? (OPCOES.pendencia  || []) : [];
+  g('aMotivoBox').hidden = !lista.length;
+  g('aMotivo').innerHTML = '<option value="">Selecione o motivo</option>' +
+    lista.map(function(m){
+      return '<option value="' + esc(m.codigo) + '">' + esc(m.label) + '</option>';
+    }).join('');
+  var x = inscricaoAberta();
+  if (x && x.motivoCodigo) g('aMotivo').value = x.motivoCodigo;
+  g('aNota').textContent = s === 'REPROVADA'
+    ? 'Reprovar devolve a vaga para as 2.000.' : '';
+}
+
+function montarPagamento(x){
+  var mostra = String(x.categoria || '') === 'acompanhante';
+  g('secPagamento').hidden = !mostra;
+  if (!mostra) return;
+  var pg = x.pagamento || {};
+  var pago = String(pg.status || '') === 'PAGO';
+  g('pgSituacao').textContent = pago
+    ? 'Recebido' + (pg.valor ? ' — R$ ' + pg.valor : '') + (pg.forma ? ' via ' + pg.forma : '')
+    : String(pg.status||'') === 'ESTORNADO'
+      ? 'Estornado' + (pg.estornoMotivo ? ' — ' + pg.estornoMotivo : '') + '. Pode receber de novo.'
+      : 'Ainda não recebido.';
+  g('pgForm').hidden = pago;
+  g('pgEstorno').hidden = !pago;
+  if (PG_OPCOES && PG_OPCOES.formas && !g('pgForma').options.length){
+    g('pgForma').innerHTML = PG_OPCOES.formas.map(function(f){
+      return '<option value="' + esc(f) + '">' + esc(f) + '</option>';
+    }).join('');
+  }
+  if (!pago && PG_OPCOES && PG_OPCOES.valorSugerido && !g('pgValor').value){
+    g('pgValor').value = PG_OPCOES.valorSugerido;
+    g('pgOrigemValor').textContent = 'Valor sugerido pela configuração do evento — pode ser alterado.';
+  }
+}
+
+/* Cada botão só existe no estado em que ele pode ser clicado. */
+function montarIngresso(x){
+  var tem = !!x.ingressoId;
+  var validada = x.status === 'VALIDADA_ADMINISTRATIVAMENTE';
+  g('btEmitir').hidden   = tem || !validada;
+  g('btEmail').hidden    = !tem;
+  g('btWhats').hidden    = !tem;
+  g('btCancelar').hidden = !tem;
+  g('ingSituacao').textContent = tem
+    ? 'Ingresso ' + (x.numeroIngresso || x.ingressoId) + ' emitido.'
+    : validada ? 'Validada e sem ingresso — dá para emitir.'
+               : 'Só é possível emitir depois de validar a inscrição.';
+}
+
+function montarHistorico(x){
+  var linhas = [];
+  if (x.analisadoPor)  linhas.push('Analisada por ' + esc(x.analisadoPor) +
+                                   (x.analisadoEm ? ' em ' + dataCurta(x.analisadoEm) : ''));
+  if (x.motivoCodigo)  linhas.push('Motivo: ' + esc(x.motivoCodigo));
+  if (x.observacaoAnalise) linhas.push('Observação: ' + esc(x.observacaoAnalise));
+  var canais = (x.entrega && x.entrega.canais) || [];
+  if (canais.length)   linhas.push('Entregue por ' + canais.join(' e ').toLowerCase());
+  if (x.origem)        linhas.push('Origem: ' + esc(x.origem));
+  g('gvHistorico').innerHTML = linhas.length ? linhas.join('<br>')
+                                             : 'Nada registrado ainda.';
+}
+
+function dataCurta(v){
+  try { var d = new Date(v); return isNaN(d) ? String(v) : d.toLocaleDateString('pt-BR'); }
+  catch(e){ return String(v); }
+}
+function rotuloStatus(s){
+  return s === 'VALIDADA_ADMINISTRATIVAMENTE' ? 'validada'
+       : s === 'PENDENTE' ? 'pendente'
+       : s === 'REPROVADA' ? 'reprovada'
+       : s ? String(s).toLowerCase() : 'a analisar';
+}
+
+/* ── ações da gaveta ── */
+/* Toda ação recarrega mantendo a página e redesenha a gaveta com o estado
+   novo: fechar a gaveta a cada clique obrigaria a reabrir para conferir. */
+function aposAcao(msg){
+  return function(r){
+    if (r && r.ok === false) return aviso(r.erro || 'Não foi possível concluir.');
+    if (msg) aviso(typeof msg === 'function' ? msg(r) : msg);
+    var id = (inscricaoAberta() || {}).inscricaoId;
+    carregar(true, function(){
+      if (!id) return;
+      for (var i = 0; i < LISTA.length; i++)
+        if (LISTA[i].inscricaoId === id){ ABERTO = i; pintarGaveta(); return; }
+      fecharGaveta();   /* sumiu da lista (excluída, ou o filtro não a alcança mais) */
+    });
+  };
+}
+
+function salvarDados(){
+  var x = inscricaoAberta(); if (!x) return;
+  var patch = {};
+  ['nome','cpf','escola','cidade','regiao','email','whatsapp','matricula'].forEach(function(c){
+    patch[c] = g('d' + c.charAt(0).toUpperCase() + c.slice(1)).value;
+  });
+  api('compasso_validacaoSalvarDados', [x.inscricaoId, patch, false],
+      aposAcao(function(r){ return r && r.semAlteracoes ? 'Nada mudou.' : 'Dados salvos.'; }));
+}
+
+function decidir(){
+  var x = inscricaoAberta(); if (!x) return;
+  var s = g('aStatus').value, m = g('aMotivo').value, obs = g('aObs').value;
+  if (s !== 'VALIDADA_ADMINISTRATIVAMENTE' && !m) return aviso('Selecione o motivo.');
+  /* Reprovar tem função própria porque devolve a vaga; as outras não. */
+  var fn = s === 'REPROVADA' ? 'compasso_reprovarInscricaoLiberandoVaga' : null;
+  if (fn){
+    if (!confirm('Reprovar a inscrição de ' + x.nome + '?\n\nA vaga volta para as 2.000.')) return;
+    api(fn, [x.inscricaoId, m, obs], aposAcao('Inscrição reprovada e vaga devolvida.'));
+  } else {
+    api('compasso_validarDecisaoAdmin', [x.inscricaoId, s, m, obs],
+        aposAcao(s === 'PENDENTE' ? 'Inscrição marcada como pendente.' : 'Inscrição validada.'));
+  }
+}
+
+function confirmarPagamento(){
+  var x = inscricaoAberta(); if (!x) return;
+  api('compasso_confirmarPagamento', [x.inscricaoId, {
+    forma: g('pgForma').value, valor: g('pgValor').value, referencia: g('pgRef').value
+  }], aposAcao('Pagamento confirmado.'));
+}
+function estornarPagamento(){
+  var x = inscricaoAberta(); if (!x) return;
+  var motivo = prompt('Motivo do estorno:'); if (!motivo) return;
+  api('compasso_estornarPagamento', [x.inscricaoId, motivo], aposAcao('Pagamento estornado.'));
+}
+
+function emitirGaveta(){
+  var x = inscricaoAberta(); if (!x) return;
+  if (!confirm('Emitir o ingresso de ' + x.nome + '?\n\nIsso consome uma das 2.000 vagas.')) return;
+  api('compasso_emitirIngressoV2', [{inscricaoId:x.inscricaoId}],
+      aposAcao(function(r){ return 'Ingresso ' + (r&&r.numero||'') + ' emitido.'; }));
+}
+function emailGaveta(){
+  var x = inscricaoAberta(); if (!x) return;
+  api('compasso_enviarIngressoEmail', [x.inscricaoId],
+      aposAcao(function(r){ return (r&&r.mensagem) || 'Enviado.'; }));
+}
+function whatsGaveta(){ if (ABERTO >= 0) porWhats(ABERTO); }
+
+function cancelarIngresso(){
+  var x = inscricaoAberta(); if (!x || !x.ingressoId) return;
+  var motivo = prompt('Motivo do cancelamento do ingresso ' +
+                      (x.numeroIngresso || '') + ':');
+  if (!motivo) return;
+  api('compasso_cancelarIngressoV2', [x.ingressoId, motivo],
+      aposAcao('Ingresso cancelado.'));
+}
+
+/* Excluir pede motivo E confirmação com o nome à vista: é a única ação da tela
+   que tira o registro de circulação. */
+function excluirInscricao(){
+  var x = inscricaoAberta(); if (!x) return;
+  var motivo = prompt('Motivo da exclusão da inscrição de ' + x.nome + ':');
+  if (!motivo) return;
+  if (!confirm('Excluir a inscrição de ' + x.nome + '?\n\n' +
+               'Ela sai da lista e a vaga volta para as 2.000.')) return;
+  api('compasso_excluirInscricao', [x.inscricaoId, motivo], aposAcao('Inscrição excluída.'));
 }
 function copiarLink(){
   api('eventos_obterWebAppUrl', [], function(base){
@@ -485,6 +854,21 @@ function copiarLink(){
     } catch(e){ prompt('Copie o link de inscrição:', url); }
   });
 }
+
+/* Motivos, formas de pagamento e se quem abriu é administrador. São pedidos
+   uma vez, na abertura: a gaveta precisa deles montada e não pode esperar
+   ida ao servidor a cada linha clicada. */
+api('compasso_validacaoOpcoes', [], function(r){
+  OPCOES = r || OPCOES;
+  SOU_ADMIN = !!(r && r.admin);
+  if (ABERTO >= 0) g('secExcluir').hidden = !SOU_ADMIN;
+});
+api('compasso_pagamentoOpcoes', [], function(r){ PG_OPCOES = r || null; });
+
+/* Esc fecha a gaveta — é o gesto que todo mundo tenta primeiro. */
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Escape' && ABERTO >= 0) fecharGaveta();
+});
 
 lerFiltroUrl();
 carregar();
