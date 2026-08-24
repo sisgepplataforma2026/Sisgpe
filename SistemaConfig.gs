@@ -715,3 +715,48 @@ function copiarUsuariosParaHomologacao() {
     Logger.log("Erro ao inicializar SistemaConfig: " + e.message);
   }
 })();
+
+/**
+ * A URL /exec se descobre sozinha — ninguém precisa declarar.
+ *
+ * O QUE ORIGINOU (21/08/2026)
+ *
+ * Eu pedi ao usuário para declarar `SISGEP_URL_BASE` à mão, e ele perguntou
+ * por que aquilo não tinha sido feito. A resposta que eu dei era só metade:
+ * eu não tenho acesso ao projeto Apps Script, é verdade — mas o SISTEMA tem,
+ * e eu não tinha usado isso. É a REGRA Nº 0.6 invertida: eu estava pedindo
+ * que uma pessoa digitasse um dado que o próprio sistema sabe dizer.
+ *
+ * COMO FUNCIONA
+ *
+ * `ScriptApp.getService().getUrl()` devolve `/exec` quando a chamada parte de
+ * DENTRO do web app publicado, e `/dev` quando parte do editor. O `doGet` só
+ * roda dentro do web app — então na primeira vez que qualquer pessoa abrir
+ * qualquer página, a URL correta passa por aqui e fica gravada.
+ *
+ * A partir daí, e-mail, PDF e link de ingresso nascem com `/exec`, mesmo
+ * quando gerados por rotina do editor ou por trigger, que sozinhos só
+ * enxergariam `/dev`.
+ *
+ * AS TRÊS TRAVAS
+ *
+ *   1. só grava se a URL terminar em `/exec` — abrir a página pelo `/dev`
+ *      não pode contaminar a configuração;
+ *   2. só grava se ainda não houver valor, para nunca sobrescrever uma
+ *      declaração feita à mão;
+ *   3. falha em silêncio. Isto roda no caminho de TODA página do sistema:
+ *      um erro de propriedade aqui não pode derrubar o SISGEP inteiro.
+ */
+function sisgep_aprenderUrlBase_() {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    if (String(props.getProperty('SISGEP_URL_BASE') || '').trim()) return;
+
+    var url = String(ScriptApp.getService().getUrl() || '');
+    if (url.slice(-5) !== '/exec') return;
+
+    props.setProperty('SISGEP_URL_BASE', url);
+    SISTEMA_URL_BASE = url;
+    Logger.log('[SistemaConfig] SISGEP_URL_BASE aprendida sozinha: ' + url);
+  } catch (e) { /* silencioso: roda em toda página */ }
+}

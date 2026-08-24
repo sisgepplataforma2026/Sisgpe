@@ -52,6 +52,9 @@ function doGet(e) {
     var p = e.parameter || {};
     Logger.log("[DIAGNOSTICO doGet] parâmetros recebidos: " + Object.keys(p).join(", "));
 
+    /* A URL /exec se descobre sozinha, aqui. Ver sisgep_aprenderUrlBase_(). */
+    sisgep_aprenderUrlBase_();
+
     // ── PORTAIS PÚBLICOS ────────────────────────────────────────────────────
     if (p.portal === "associado") {
       Logger.log("[PORTAL] Portal do Associado");

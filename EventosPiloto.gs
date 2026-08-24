@@ -400,3 +400,77 @@ function compasso_pilotoRelatorio_(etapas, resultado) {
   Logger.log(texto);
   return texto;
 }
+
+/**
+ * REENVIAR o ingresso mais recente — sem emitir nada novo.
+ *
+ * Pedido do usuário em 21/08/2026, depois de o piloto rodar duas vezes: ele
+ * queria o e-mail de novo para ler o QR do PDF com a câmera.
+ *
+ * POR QUE NÃO É SÓ RODAR O PILOTO OUTRA VEZ
+ *
+ * `compassoPiloto()` cria inscrição, emite ingresso NOVO e consome vaga das
+ * 2.000. Para reler o mesmo PDF isso é desperdício: queima número da sequência
+ * e vaga a cada tentativa. Esta função só REENVIA o que já existe.
+ *
+ * QUAL INGRESSO
+ *
+ * O mais recente com ingresso emitido, que é o que a pessoa acabou de gerar.
+ * Para reenviar um específico, declare `COMPASSO_REENVIAR_INSCRICAO` nas
+ * Propriedades do script com o ID da inscrição.
+ *
+ * Custa uma listagem do Firestore — aceitável numa função de teste, e é o
+ * motivo de ela não servir para uso em massa. Para vários, use o painel de
+ * inscrições, que envia em lote.
+ */
+function compassoReenviarUltimo() {
+  exigirAdminOuSessao_('', 'eventos', 'Compasso — reenviar último ingresso', true);
+
+  var props = PropertiesService.getScriptProperties();
+  var declarada = String(props.getProperty('COMPASSO_REENVIAR_INSCRICAO') || '').trim();
+
+  var alvo = null;
+  if (declarada) {
+    alvo = { inscricaoId: declarada, nome: '(declarada em COMPASSO_REENVIAR_INSCRICAO)' };
+  } else {
+    var comIngresso = fs_list_('inscricoesEventos', 1000).filter(function (x) {
+      return x.eventoId === EMISSAO_CFG.EVENTO_ID && x.ingressoId;
+    });
+    if (!comIngresso.length) {
+      var vazio = 'Nenhum ingresso emitido ainda. Rode compassoPiloto() primeiro.';
+      Logger.log(vazio); return vazio;
+    }
+    /* O mais recente pela data de emissão. Sem data, cai no último da lista —
+       melhor um palpite razoável que uma recusa. */
+    comIngresso.sort(function (a, b) {
+      return String(b.ingressoEmitidoEm || '').localeCompare(String(a.ingressoEmitidoEm || ''));
+    });
+    alvo = comIngresso[0];
+  }
+
+  Logger.log('Reenviando o ingresso ' + (alvo.numeroIngresso || '') +
+             ' da inscrição ' + alvo.inscricaoId +
+             (alvo.nome ? ' — ' + alvo.nome : ''));
+
+  var r = compasso_enviarIngressoEmail(alvo.inscricaoId);
+
+  var L = [];
+  L.push('═══════════════════════════════════════════════════════════');
+  L.push('  REENVIO DO INGRESSO');
+  L.push('═══════════════════════════════════════════════════════════');
+  L.push('  ' + (r && r.ok ? '✅' : '❌') + ' ' +
+         ((r && (r.mensagem || r.erro)) || 'sem resposta'));
+  if (r && r.aviso) L.push('  ⚠️  ' + r.aviso);
+  L.push('');
+  L.push('  AGORA, O TESTE QUE IMPORTA:');
+  L.push('  Abra o PDF anexo e aponte a câmera do celular para o QR.');
+  L.push('  Se ela ler um texto começando em "C26.", o caminho que embute');
+  L.push('  a imagem no PDF funcionou — e é o ponto mais provável de falha');
+  L.push('  de toda a entrega.');
+  L.push('');
+  L.push('  Nenhum ingresso novo foi emitido: nenhuma vaga foi consumida.');
+  L.push('═══════════════════════════════════════════════════════════');
+  var texto = L.join('\n');
+  Logger.log(texto);
+  return texto;
+}
