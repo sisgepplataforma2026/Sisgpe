@@ -116,6 +116,9 @@ function compasso_importarLer_(planilhaId, aba) {
  */
 function compasso_importarConferir(planilhaId, aba, tokenSessao) {
   exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — conferir importação', true);
+  var p = compasso_importarArgumentos_(planilhaId, aba);
+  planilhaId = p.planilhaId; aba = p.aba;
+  if (p.erro) { Logger.log(p.erro); return p.erro; }
 
   var lido, m;
   try {
@@ -220,6 +223,9 @@ function compasso_importarLinha_(linha, mapa) {
 function compasso_importarExecutar(planilhaId, limite, aba, tokenSessao) {
   exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — importar planilha de teste', true);
   compasso_assertHomologacao_();
+  var p = compasso_importarArgumentos_(planilhaId, aba, limite);
+  planilhaId = p.planilhaId; aba = p.aba; limite = p.limite;
+  if (p.erro) { Logger.log(p.erro); return p.erro; }
 
   var lido = compasso_importarLer_(planilhaId, aba);
   var m = compasso_importarMapear_(lido.cabecalho);
@@ -322,6 +328,12 @@ function compasso_importarExecutar(planilhaId, limite, aba, tokenSessao) {
 function compasso_emitirLoteTeste(limite, tokenSessao) {
   exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — emitir lote de teste', true);
   compasso_assertHomologacao_();
+  /* Sem limite (chamada pelo editor), usa COMPASSO_IMPORT_LIMITE. Não precisa
+     de planilha: este passo trabalha sobre o que já foi importado. */
+  if (!(limite > 0)) {
+    try { limite = compasso_importarConfig_().limite; } catch (e) { limite = 10; }
+    Logger.log('Sem limite informado — usando ' + limite + '.');
+  }
 
   limite = Math.min(Math.max(Number(limite || 50), 1), 500);
   var inicio = Date.now();
@@ -503,6 +515,44 @@ function compasso_importarIdDaPlanilha_(valor) {
   var v = String(valor || '').trim();
   var m = v.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
   return m ? m[1] : v;
+}
+
+/**
+ * Faz as duas formas de chamar convergirem.
+ *
+ * O QUE ORIGINOU (21/08/2026): eu criei `compassoImportarConferir` ao lado da
+ * `compasso_importarConferir` que já existia. Dois nomes quase iguais, um ao
+ * lado do outro no seletor do editor. O usuário escolheu a de cima — a que
+ * exige argumentos — e recebeu "Invalid argument: id", que não diz nada sobre
+ * o que fazer.
+ *
+ * A saída não é pedir para acertar o nome: é fazer as duas funcionarem. Quem
+ * chamar com argumentos (uma tela, um dia) usa os argumentos; quem chamar sem
+ * (o editor) cai nas Propriedades do script. Nome errado deixa de ser erro.
+ */
+function compasso_importarArgumentos_(planilhaId, aba, limite) {
+  var temPlanilha = String(planilhaId || '').trim();
+  if (temPlanilha) {
+    return {
+      planilhaId: compasso_importarIdDaPlanilha_(temPlanilha),
+      aba: String(aba || '').trim(),
+      limite: (limite > 0) ? limite : 10,
+      erro: ''
+    };
+  }
+  try {
+    var cfg = compasso_importarConfig_();
+    Logger.log('Sem planilha no argumento — usando COMPASSO_IMPORT_PLANILHA: ' +
+               cfg.planilhaId + (cfg.aba ? ' · aba "' + cfg.aba + '"' : ' · primeira aba'));
+    return {
+      planilhaId: cfg.planilhaId,
+      aba: String(aba || '').trim() || cfg.aba,
+      limite: (limite > 0) ? limite : cfg.limite,
+      erro: ''
+    };
+  } catch (e) {
+    return { planilhaId: '', aba: '', limite: 10, erro: '❌ ' + e.message };
+  }
 }
 
 /** Lê as propriedades de importação, ou explica o que falta. */
