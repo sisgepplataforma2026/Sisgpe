@@ -134,7 +134,7 @@
       <div class="ev-acao"><div class="txt"><b>🔗 Link público de inscrição</b><span>É este endereço que vai na lista de transmissão e no site. O associado abre, digita o CPF, e o resto do formulário nasce preenchido.</span><code class="ev-link" id="evLinkCompasso">carregando…</code></div><button class="ev-btn primary" onclick="evCopiarLinkCompasso()">Copiar link</button></div>
       <div class="ev-acao"><div class="txt"><b>📋 Painel de inscrições</b><span>Quem se inscreveu e ainda está em análise. Aqui você valida, corrige dados, confirma pagamento de acompanhante e emite o ingresso.</span></div><button class="ev-btn primary" onclick="evAbrirPainel('compasso')">Abrir painel →</button></div>
       <div class="ev-acao"><div class="txt"><b>✅ Central de validação</b><span>A análise detalhada de uma inscrição: aprovar, pôr em pendência com motivo, ou reprovar liberando a vaga.</span></div><button class="ev-btn" onclick="evAvisoCentral()">Como abrir</button></div>
-      <div class="ev-acao"><div class="txt"><b>🎫 Emissão avulsa</b><span>Emitir ingresso sem passar pela inscrição — modelo antigo, para casos de exceção. O QR dele não é assinado.</span></div><button class="ev-btn" onclick="evAbrirPainel('emissao')">Abrir →</button></div>
+      <div class="ev-acao"><div class="txt"><b>🚫 Emissão avulsa <span style="font-weight:400;opacity:.7">(desativada)</span></b><span>O modelo antigo saía com QR <b>não assinado</b> — dava para deduzi-lo pelo número do ingresso. Desligado em 21/08/2026. Emita pelo Painel de inscrições, acima.</span></div><button class="ev-btn" onclick="evAvisoEmissaoV1()">Por quê?</button></div>
     </div>
   </div>
 
@@ -245,7 +245,10 @@ window.evExportar=function(){var rows=[["Evento","Data","Tipo","Status"]].concat
 
 /* ── PAINÉIS ── */
 window.evAbrirPainel=function(painel,eventoId,filtro){var token=tokenSessao();if(!token)return avisar('Sessão não encontrada. Entre novamente no SISGEP.','err');google.script.run.withSuccessHandler(function(base){var url=String(base||'')+'?painel='+encodeURIComponent(painel)+'&sessao='+encodeURIComponent(token);if(eventoId)url+='&evento='+encodeURIComponent(eventoId);if(filtro)url+='&filtro='+encodeURIComponent(filtro);window.open(url,'_blank')}).withFailureHandler(function(e){avisar('Não foi possível abrir o painel: '+((e&&e.message)||e),'err')}).eventos_obterWebAppUrl(token)};
-window.evAbrirEmissaoIngressos=function(){evAbrirPainel('emissao')};window.evAbrirCheckin=function(){evAbrirPainel('checkin')};window.evAbrirBingo=function(eventoId){evAbrirPainel('bingo',eventoId)};
+window.evAvisoEmissaoV1=function(){avisar('A emissão avulsa saía com QR não assinado — dava para deduzi-lo a partir do número do ingresso. Foi desligada em 21/08/2026. Use o Painel de inscrições: lá o ingresso sai com QR assinado.','err')};
+/* Mantida porque outras telas podem chamá-la; agora abre a tela que explica a
+   desativação, em vez de um caminho que só devolve erro. */
+window.evAbrirEmissaoIngressos=function(){evAvisoEmissaoV1()};window.evAbrirCheckin=function(){evAbrirPainel('checkin')};window.evAbrirBingo=function(eventoId){evAbrirPainel('bingo',eventoId)};
 
 /* ── LINK PÚBLICO DO COMPASSO ── */
 var EV_LINK_COMPASSO='';

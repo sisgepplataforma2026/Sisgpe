@@ -126,11 +126,68 @@ function emissao_formatarNumero_(n) {
   return EMISSAO_CFG.PREFIXO + String(n).padStart(6, '0');
 }
 
-// ================= EMISSÃO (núcleo atômico) =================
-/* A trava estava só em painelEmissao_emitirGrupo, o chamador. Chamar esta
-   função direto por google.script.run pulava a verificação inteira. */
+// ================= EMISSÃO (núcleo atômico) — DESABILITADA =================
+/**
+ * 🚫 EMISSÃO V1 — DESLIGADA EM 21/08/2026, a pedido do usuário: "V1 era para
+ * ser desabilitado".
+ *
+ * POR QUE
+ *
+ * O QR desta emissão é DERIVÁVEL DO NÚMERO DO INGRESSO
+ * (`emissao_gerarQrCodeUrl_`): quem descobrir o padrão fabrica um ingresso
+ * válido sem passar por lugar nenhum. A V2 (`compasso_emitirIngressoV2`)
+ * assina o token com HMAC e guarda o hash em `qrTokens` — é o índice que
+ * prova que o ingresso foi realmente emitido.
+ *
+ * Manter as duas era manter uma porta de fechadura fraca ao lado da forte, e
+ * a festa tem 2.000 pessoas.
+ *
+ * POR QUE O ARQUIVO CONTINUA AQUI (REGRA Nº 1)
+ *
+ * Não é código morto e NÃO PODE ser removido. Este arquivo carrega:
+ *
+ *   - `EMISSAO_CFG` — evento, limite de 2.000 vagas, prefixo, período,
+ *     valor do acompanhante. O módulo INTEIRO lê daqui, V2 inclusive;
+ *   - `emissao_formatarNumero_` — usado pela emissão V2 (EventosEmissaoV2:30);
+ *   - `emissao_lerContador_`, `emissao_modoTeste_`, `emissao_buscarAssociado`
+ *     — usados pelo painel, pelo diagnóstico e pelo piloto.
+ *
+ * Apagar o arquivo derrubaria o módulo todo. O que foi desligado é ESTA
+ * função, e só ela.
+ *
+ * A RECUSA É EXPLÍCITA, NÃO SILENCIOSA
+ *
+ * Devolve o motivo e para onde ir. A tela antiga (`EventoPainel.html`)
+ * continua abrindo pela rota `?painel=emissao` — quem chegar lá por link
+ * salvo precisa entender o que aconteceu, em vez de ver "erro".
+ */
+var EMISSAO_V1_DESABILITADA_EM = '2026-08-21';
+
 function emissao_emitirIngresso(payload, tokenSessao) {
-  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — emitir ingresso V1', false);
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — emitir ingresso V1 (RECUSADO)', false);
+
+  /* Registra a tentativa: se alguém ainda depende deste caminho, é assim que
+     se descobre — por uso real, não por suposição. */
+  try {
+    if (typeof compasso_auditar_ === 'function') {
+      compasso_auditar_('EMISSAO_V1_RECUSADA', 'ingresso', '',
+        { nome: (payload && payload.nome) || '', categoria: (payload && payload.categoria) || '' });
+    }
+  } catch (e) {}
+  Logger.log('[COMPASSO] Emissão V1 recusada — desabilitada desde ' + EMISSAO_V1_DESABILITADA_EM);
+
+  return {
+    ok: false,
+    codigo: 'V1_DESABILITADA',
+    erro: 'A emissão avulsa (modelo antigo) foi desabilitada em ' +
+          EMISSAO_V1_DESABILITADA_EM + '. O QR dela não era assinado.\n\n' +
+          'Emita pelo Painel de inscrições: menu Eventos → aba Inscrições → ' +
+          '"Painel de inscrições". Lá o ingresso sai com QR assinado.'
+  };
+}
+
+/** O motor antigo, preservado para leitura e para eventual retomada. */
+function emissao_emitirIngresso_legadoV1_(payload, tokenSessao) {
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {

@@ -1762,7 +1762,7 @@ e só a contagem denuncia.
 **Continua não medido no ar:** quanto isso vale de verdade no dia. A Onda 2
 ainda decide.
 
-### 🟠 2. Duas emissões coexistem, e a fraca ainda está ligada
+### ✅ 2. Duas emissões coexistem — RESOLVIDO em 21/08 (V1 desligada)
 
 - `EventosEmissao.gs` (V1) — QR **derivável do número do ingresso**
 - `EventosEmissaoV2.gs` (V2) — QR assinado por HMAC
@@ -1773,6 +1773,26 @@ O piloto e o painel novo usam a V2. A V1 continua no projeto e alcançável.
 uma porta de fechadura fraca ao lado da forte. Precisa de decisão do usuário
 sobre qual morre — não é escolha técnica, é de operação (se alguém ainda
 emite pela tela antiga).
+
+**Resolvido no mesmo dia.** O usuário: *"V1 era para ser desabilitado"*.
+
+`emissao_emitirIngresso` passou a RECUSAR, com código `V1_DESABILITADA`,
+dizendo o motivo e para onde ir. A tentativa é auditada — se aparecer no log
+depois de dezembro, alguém tinha link salvo.
+
+**O arquivo `EventosEmissao.gs` NÃO foi apagado, e não pode ser.** Ele carrega
+`EMISSAO_CFG` (evento, 2.000 vagas, prefixo, período, valor do acompanhante),
+que o módulo inteiro lê — V2 inclusive — e o `emissao_formatarNumero_` que a
+própria V2 usa para numerar. Apagar derrubaria tudo em silêncio. Só a função
+de emissão foi desligada; o motor antigo virou
+`emissao_emitirIngresso_legadoV1_`, preservado como legado.
+
+Os dois caminhos que levavam até ela também foram tratados: a tela
+`EventoPainel.html` ganhou faixa explicando (a rota `?painel=emissao`
+continua existindo para quem tem link salvo), e o card da aba Inscrições
+passou a explicar em vez de abrir.
+
+`t84`: 23 asserções, 8 mutações, nenhuma sobrevivente.
 
 ### 🟡 3. O Firestore não separa homologação de produção
 
