@@ -203,52 +203,42 @@ function compasso_inscricaoConfig_() {
    promete, e são os dados menos sensíveis do conjunto.
    ══════════════════════════════════════════════════════════════════════════ */
 
-var COMPASSO_TETO_CONSULTAS = 12;
-var COMPASSO_JANELA_CONSULTAS_SEG = 600;   /* 10 minutos */
+/* As constantes de máscara e teto NÃO ficam mais aqui, nem como apelido.
+   Apelido apontando para o PrivacidadeCore quebrou a suíte inteira em
+   21/08/2026: no Apps Script os arquivos são avaliados em ordem, "E" vem
+   antes de "P", e `PRIV_TETO_CONSULTAS` ainda não existia quando este
+   arquivo carregava. É a mesma armadilha que tirou o PLANILHA_ID de dentro
+   do EMISSAO_CFG — e eu escrevi o comentário sobre ela aqui mesmo, e caí
+   nela na linha seguinte.
 
-/** Marca de que o campo veio mascarado e não foi tocado pela pessoa. */
-var COMPASSO_MARCA_MASCARA = '\u2022';     /* • */
+   Nenhum código deste arquivo precisava delas depois que as funções
+   passaram a delegar. Quem precisa do valor, chama a função. */
 
-function compasso_mascararEmail_(email) {
-  email = String(email || '').trim();
-  var at = email.indexOf('@');
-  if (at < 1) return '';
-  var user = email.slice(0, at), dom = email.slice(at);
-  var visivel = user.length <= 2 ? user.charAt(0)
-              : user.charAt(0) + COMPASSO_MARCA_MASCARA.repeat(Math.min(4, user.length - 2)) +
-                user.charAt(user.length - 1);
-  return visivel + dom;
-}
-
-function compasso_mascararTelefone_(tel) {
-  var d = String(tel || '').replace(/\D/g, '');
-  if (d.length < 10) return '';
-  return '(' + d.slice(0, 2) + ') ' + COMPASSO_MARCA_MASCARA.repeat(5) + '-' + d.slice(-4);
-}
+/* ── A MÁSCARA MUDOU DE CASA EM 21/08/2026 ─────────────────────────────────
+ *
+ * A regra inteira (máscara de e-mail e telefone, resolução do valor real e
+ * teto de consultas) foi para `PrivacidadeCore.gs`. O motivo não foi estética:
+ * o `bingo_inscricaoPreencher` tinha o MESMO buraco que este arquivo fechou
+ * pela manhã, e corrigir duas vezes a mesma regra é como ela volta a divergir.
+ *
+ * Os nomes `compasso_*` continuam existindo como ponte, porque são o que a
+ * tela e os testes deste módulo chamam. Eles não reimplementam nada —
+ * delegam. Quem for mexer na regra, mexe no PrivacidadeCore.
+ */
+function compasso_mascararEmail_(email)  { return priv_mascararEmail_(email); }
+function compasso_mascararTelefone_(tel) { return priv_mascararTelefone_(tel); }
 
 /**
  * Decide o que gravar: o que a pessoa digitou, ou o valor real do cadastro.
  * Se o texto ainda contém a marca da máscara, ela não mexeu — vale o cadastro.
  */
 function compasso_valorMascarado_(digitado, doCadastro) {
-  var v = String(digitado || '');
-  if (v.indexOf(COMPASSO_MARCA_MASCARA) >= 0) return String(doCadastro || '');
-  return v.trim();
+  return priv_valorMascarado_(digitado, doCadastro);
 }
 
 /** Teto de consultas por navegador, na janela. Devolve false quando estourou. */
 function compasso_podeConsultar_() {
-  try {
-    var cache = CacheService.getScriptCache();
-    var chave = 'compasso_consulta_' + (Session.getTemporaryActiveUserKey() || 'anon');
-    var n = Number(cache.get(chave) || 0) + 1;
-    cache.put(chave, String(n), COMPASSO_JANELA_CONSULTAS_SEG);
-    return n <= COMPASSO_TETO_CONSULTAS;
-  } catch (e) {
-    /* Cache indisponível não pode impedir alguém de se inscrever. A máscara,
-       que é a trava principal, continua valendo. */
-    return true;
-  }
+  return priv_podeConsultar_('compasso');
 }
 
 /**

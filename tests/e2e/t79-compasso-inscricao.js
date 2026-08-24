@@ -120,15 +120,30 @@ igual(cpfValido("111.111.111-11"), false,
 /* ─── 2. A TRAVA: o preenchimento não pode virar colheita ─── */
 passo("o que volta para uma página pública");
 
-/* A marca vem do PRÓPRIO arquivo, não escrita à mão aqui: se ela mudar no
-   .gs, o teste acompanha em vez de passar a medir um caractere que não existe
-   mais. */
-const MARCA = eval((insc.match(/COMPASSO_MARCA_MASCARA = ('[^']*')/) || [])[1] || "'\u2022'");
+/* A marca vem do arquivo, não escrita à mão aqui: se ela mudar, o teste
+   acompanha em vez de passar a medir um caractere que não existe mais.
 
-const mascararEmail = v => rodar("compasso_mascararEmail_",
-      { nomes: ["email"], valores: [v] }, { COMPASSO_MARCA_MASCARA: MARCA });
-const mascararTel   = v => rodar("compasso_mascararTelefone_",
-      { nomes: ["tel"], valores: [v] }, { COMPASSO_MARCA_MASCARA: MARCA });
+   Em 21/08/2026 ela mudou de casa: a regra inteira foi para
+   PrivacidadeCore.gs, porque o bingo tinha o mesmo buraco (ver t86). Aqui as
+   funções do Compasso passaram a DELEGAR, então o teste executa a
+   implementação real da camada comum — que é justamente o que garante que as
+   duas telas mascaram igual. */
+const core = ler("PrivacidadeCore.gs");
+const MARCA = eval((core.match(/var PRIV_MARCA = ('[^']*')/) || [])[1] || "'\u2022'");
+const priv = (nome, args) => {
+  const re = new RegExp("^function\\s+" + nome + "\\s*\\(([^)]*)\\)\\s*\\{", "m");
+  const m = re.exec(core);
+  let prof = 1, i = m.index + m[0].length;
+  while (prof > 0) { const c = core[i]; if (c === "{") prof++; else if (c === "}") prof--; i++; }
+  const corpo = core.slice(m.index + m[0].length, i - 1);
+  const nomes = ["PRIV_MARCA", "priv_repetir_"];
+  const repetir = (s, n) => { let o = ""; for (let k = 0; k < n; k++) o += s; return o; };
+  return new Function(...m[1].split(",").map(x => x.trim()).filter(Boolean), ...nomes, corpo)(
+    ...args, MARCA, repetir);
+};
+
+const mascararEmail = v => priv("priv_mascararEmail_", [v]);
+const mascararTel   = v => priv("priv_mascararTelefone_", [v]);
 
 const mEmail = mascararEmail("mariaaparecida@gmail.com");
 ok(mEmail.indexOf("mariaaparecida") < 0 && mEmail.indexOf("@gmail.com") > 0,
@@ -157,9 +172,9 @@ ok(/compasso_podeConsultar_/.test(preencher),
 /* ─── 3. a máscara nunca vira dado gravado ─── */
 passo("o que a máscara faz quando volta");
 
-const valorMascarado = (dig, cad) =>
-  rodar("compasso_valorMascarado_", { nomes: ["digitado", "doCadastro"], valores: [dig, cad] },
-        { COMPASSO_MARCA_MASCARA: MARCA });
+/* Executa a implementação REAL, da camada comum — não a ponte do Compasso.
+   A ponte só delega; o que precisa ser provado é a regra. */
+const valorMascarado = (dig, cad) => priv("priv_valorMascarado_", [dig, cad]);
 
 igual(valorMascarado("m" + MARCA + MARCA + MARCA + "a@gmail.com", "mariaaparecida@gmail.com"),
       "mariaaparecida@gmail.com",

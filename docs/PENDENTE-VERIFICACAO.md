@@ -1699,7 +1699,7 @@ ofícios acima, e o teto de exposição estourado desde 06/08.
 Corrigido em `c9b7736`. As medições cegas foram 215 → 217 → 220 → 229 →
 230 → 221 → 224.
 
-## 21/08/2026 · 🔴 bingo_inscricaoPreencher devolve contato sem máscara
+## ✅ 21/08/2026 · bingo_inscricaoPreencher devolvia contato sem máscara — FECHADO
 
 Rota pública. A partir de um CPF, devolve nome, e-mail e telefone crus.
 
@@ -1711,6 +1711,21 @@ o único item de risco real entre as 9 funções públicas registradas no
 
 Enquanto não for fechado, quem tiver uma lista de CPFs consegue montar uma
 lista de contatos pelo link público do bingo.
+
+**Fechado no mesmo dia**, com a regra indo para uma camada comum
+(`PrivacidadeCore.gs`) em vez de ser copiada — decisão do usuário. Compasso e
+Bingo delegam para lá; regra de segurança duplicada é regra que diverge.
+
+O difícil não era mascarar, era o caminho de volta: quem não mexe no campo
+manda a máscara ao servidor, e `"m••••a@gmail.com"` **passa** num teste de
+e-mail comum (• não é @ nem espaço). Sem tratar isso, o convite do sorteio
+iria para um endereço inexistente e ninguém perceberia até o dia.
+
+`t86`: 35 asserções, 9 mutações, nenhuma sobrevivente.
+
+**Não testado no ar:** abrir a tela do bingo, digitar um CPF da base e ver o
+pontinho aparecer com a explicação; deixar como está e conferir que a
+inscrição gravou o contato certo.
 
 ## 21/08/2026 · As cinco abas de Eventos e o filtro por link
 

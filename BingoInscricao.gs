@@ -120,10 +120,29 @@ function bingo_inscricaoEstado(eventoId) {
  * com este CPF?", e a página é pública. Quem decide o que fazer com o
  * cadastro é a inscrição, no servidor.
  */
+/**
+ * Preenche o formulário do bingo a partir do CPF.
+ *
+ * 🔒 ROTA PÚBLICA. Até 21/08/2026 esta função devolvia nome, e-mail e
+ * telefone CRUS a partir de um CPF — quem tivesse uma lista de CPFs montava
+ * uma lista de contatos dos 8.000 associados pelo link público do bingo.
+ *
+ * Agora usa a mesma trava do Compasso, que passou a morar em
+ * PrivacidadeCore.gs: teto de consultas por navegador e contato MASCARADO.
+ * O valor real não sai daqui — quem não mexer no campo tem o do cadastro
+ * usado pelo servidor na hora de inscrever (`priv_valorMascarado_`).
+ *
+ * O nome continua inteiro de propósito: sem ele a tela não tem como confirmar
+ * que achou a pessoa certa, e o nome sozinho, sem contato, não serve para
+ * abordar ninguém.
+ */
 function bingo_inscricaoPreencher(cpf) {
   try {
     var limpo = String(cpf || '').replace(/\D/g, '');
     if (limpo.length !== 11) return { ok: false };
+
+    if (!priv_podeConsultar_('bingo'))
+      return { ok: false, erro: priv_mensagemTeto_() };
 
     if (typeof buscarAssociadoPorCPF_ !== 'function') return { ok: false };
     var a = buscarAssociadoPorCPF_(limpo);
@@ -132,9 +151,12 @@ function bingo_inscricaoPreencher(cpf) {
     return {
       ok: true,
       nome: String(a.nome || '').trim(),
-      email: String(a.email || '').trim(),
+      email: priv_mascararEmail_(a.email),
       cidade: String(a.cidade || '').trim(),
-      whatsapp: String(a.celular || a.celular2 || '').trim(),
+      whatsapp: priv_mascararTelefone_(a.celular || a.celular2),
+      /* A tela precisa saber que veio mascarado para explicar isso a quem
+         está preenchendo — campo com pontinho e sem explicação parece erro. */
+      mascarado: true,
       origem: 'cadastro'
     };
   } catch (e) {
@@ -165,6 +187,42 @@ function bingo_inscrever(dados) {
   var escola   = String(dados.escola || '').trim();
   var cidade   = String(dados.cidade || '').trim();
   var whatsapp = String(dados.whatsapp || '').replace(/\D/g, '');
+
+  /* ── O VALOR MASCARADO VIRA O REAL AQUI, ANTES DE QUALQUER VALIDAÇÃO ─────
+   *
+   * `bingo_inscricaoPreencher` devolve contato mascarado. Quem não mexer no
+   * campo manda a máscara de volta — e ela NÃO PODE virar dado gravado.
+   *
+   * Este bloco tem de vir antes da validação porque a máscara engana as duas
+   * checagens de baixo, cada uma de um jeito:
+   *
+   *   - "m••••a@gmail.com" PASSA no teste de e-mail: o • não é @ nem espaço.
+   *     Sem este bloco, o brinde seria mandado para um endereço inexistente.
+   *   - "(27) •••••-5432" vira "275432" ao tirar não-dígitos, e a pessoa
+   *     receberia "Informe o WhatsApp com DDD" sobre um número que ela nem
+   *     digitou.
+   *
+   * O valor real nunca trafega: sai do cadastro, aqui dentro. */
+  var veioMascarado = String(dados.email || '').indexOf(PRIV_MARCA) >= 0 ||
+                      String(dados.whatsapp || '').indexOf(PRIV_MARCA) >= 0;
+  if (veioMascarado) {
+    var doCadastro = null;
+    try {
+      if (typeof buscarAssociadoPorCPF_ === 'function') doCadastro = buscarAssociadoPorCPF_(cpf);
+    } catch (eBusca) { doCadastro = null; }
+
+    if (doCadastro && doCadastro.encontrado) {
+      email    = priv_valorMascarado_(dados.email, doCadastro.email).trim().toLowerCase();
+      whatsapp = priv_valorMascarado_(dados.whatsapp,
+                   doCadastro.celular || doCadastro.celular2).replace(/\D/g, '');
+    } else {
+      /* Mascarado sem cadastro por trás não existe em fluxo normal. Zerar faz
+         a validação recusar com a mensagem do campo, em vez de gravar
+         pontinho. */
+      if (String(dados.email || '').indexOf(PRIV_MARCA) >= 0) email = '';
+      if (String(dados.whatsapp || '').indexOf(PRIV_MARCA) >= 0) whatsapp = '';
+    }
+  }
 
   /* ── Validação de forma. Mensagem por campo, não um "dados inválidos". ── */
   if (!eventoId)            return { ok: false, campo: '',         mensagem: 'Evento não informado.' };

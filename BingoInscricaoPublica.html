@@ -216,13 +216,32 @@ function preencher(){
   var cpf = el('cpf').value.replace(/\D/g,'');
   if(cpf.length !== 11) return;
   google.script.run.withSuccessHandler(function(a){
-    if(!a || !a.ok) return;
+    if(!a || !a.ok){
+      /* Teto de consultas estourado: dizer, em vez de não fazer nada. Campo
+         que simplesmente não preenche parece sistema quebrado. */
+      if(a && a.erro){ marcarErro('cpf', a.erro); }
+      return;
+    }
     ['nome','email','cidade','whatsapp'].forEach(function(k){
       var campo = el(k);
       if(campo && !campo.value && a[k]) campo.value = a[k];
     });
-    if(el('whatsapp').value) mascaraTel({target: el('whatsapp')});
+    /* CONTATO VEM MASCARADO desde 21/08/2026 (ver PrivacidadeCore.gs).
+       Duas consequências para esta tela:
+
+       1. NÃO passar o WhatsApp pela máscara de telefone daqui: ela tira os
+          não-dígitos e transformaria "(27) •••••-5432" em "(27) 5432";
+       2. EXPLICAR o pontinho. Campo com • e sem explicação parece defeito, e
+          a pessoa apaga tudo e redigita — perdendo justamente a facilidade
+          que o preenchimento existe para dar. */
+    if(!a.mascarado && el('whatsapp').value) mascaraTel({target: el('whatsapp')});
     el('dicaCpf').classList.add('on');
+    if(a.mascarado){
+      var d = el('dicaCpf');
+      if(d) d.textContent = 'Encontramos seu cadastro. E-mail e WhatsApp aparecem ' +
+        'parcialmente ocultos por segurança — se estiverem certos, é só deixar ' +
+        'como está. Para trocar, apague o campo e digite o novo.';
+    }
   }).bingo_inscricaoPreencher(cpf);
 }
 
