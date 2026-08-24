@@ -32,17 +32,34 @@
  * tentativa frustrada deixa lixo no Drive de quem operou. É a asserção do
  * `finally`, e ela roda os dois caminhos: sucesso e exceção.
  *
- * MUTAÇÕES MATADAS (21/08/2026) — 9 de 9, nenhuma sobrevivente
+ * MUTAÇÕES MATADAS (21/08/2026) — 12 de 12, nenhuma sobrevivente
  *
  *   1. a conferência passar a gravar ........................ quebra dura
  *   2. o desempate por apelido mais longo sumir ............. 4 falhas
- *  2b. o maior apelido virar o primeiro que casar ........... 2 falhas
  *   3. CPF inválido entrar na importação .................... 5 falhas
  *   4. a prévia não dizer o motivo da recusa ................ 1 falha
  *   5. o temporário do Drive não ser apagado ................ 2 falhas
  *   6. a coluna apontada pela pessoa ser ignorada ........... 2 falhas
  *   7. o limite de linhas ser ignorado ...................... 1 falha
  *   8. aceitar arquivo de qualquer extensão ................. 3 falhas
+ *   9. apelidos fracos voltarem a ter voz ................... 4 falhas
+ *  10. a primeira passada já incluir os fracos .............. 4 falhas
+ *  11. a rota voltar a createHtmlOutputFromFile ............. 1 falha
+ *  12. o botão de remover arquivo sumir ..................... 1 falha
+ *  13. remover parar de limpar a conferência anterior ....... 1 falha
+ *
+ * UMA MUTAÇÃO FOI RETIRADA, E VALE DIZER POR QUÊ
+ *
+ * Havia uma 2b — "o maior apelido virar o primeiro que casar". Ela mordia
+ * antes dos apelidos fracos, e depois deles deixou de morder: rodando as duas
+ * versões contra 5.445 combinações, os casos que ela distinguia eram
+ * justamente aqueles em que `associado` interferia — e agora `associado` não
+ * vota. Ficou equivalente na prática.
+ *
+ * O desempate por comprimento continua no código, e continua necessário: é
+ * ele que faz `escola` (6) vencer `nome` (4) em "Nome da Escola", que a
+ * mutação 2 prova. Mutação que virou equivalente sai da lista; a regra que
+ * ela cobria fica, guardada por outra.
  *
  * O QUE A MUTAÇÃO ACHOU — e não era só no teste
  *
@@ -98,7 +115,13 @@ const fn = (codigo, nome, deps) => {
 /* ── as peças reaproveitadas do arquivo antigo ── */
 const normalizar = fn(teste, "compasso_normalizarTexto_", {});
 const COLUNAS = eval("(" + (teste.match(/var COMPASSO_IMPORT_COLUNAS = (\{[\s\S]*?\n\});/) || [])[1] + ")");
-const maiorApelido = fn(teste, "compasso_importarMaiorApelido_", {});
+/* 'associado' e 'participante' dizem DE QUEM, não O QUÊ — entraram como
+   apelidos fracos em 21/08/2026, depois de a planilha real do usuário mapear
+   "E-mail do associado(a):" para o campo nome. */
+const FRACOS = eval("(" + (teste.match(/var COMPASSO_APELIDOS_FRACOS = (\[[^\]]*\]);/) || [])[1] + ")");
+const apelidoFraco = fn(teste, "compasso_apelidoFraco_", { COMPASSO_APELIDOS_FRACOS: FRACOS });
+const maiorApelido = fn(teste, "compasso_importarMaiorApelido_", {
+  compasso_apelidoFraco_: apelidoFraco });
 const campoMaisForte = fn(teste, "compasso_importarCampoMaisForte_", {
   COMPASSO_IMPORT_COLUNAS: COLUNAS, compasso_importarMaiorApelido_: maiorApelido });
 const mapear = fn(teste, "compasso_importarMapear_", {
@@ -179,6 +202,56 @@ igual(cpfTitular.mapa.cpf, 0,
       "'CPF do Associado (titular)' é o CPF, não o nome",
       "'cpf do associado' (16) tem de vencer 'associado' (9)");
 igual(cpfTitular.mapa.nome, 1, "e o nome fica com a coluna do servidor");
+
+/* ─────────────────────────────────────────────────────────────────────────
+   O CABEÇALHO REAL DA PLANILHA DO SINDICATO
+   ─────────────────────────────────────────────────────────────────────────
+   Colado do arquivo que o usuário importou em 21/08/2026 — o Sorteio de Dia
+   dos Pais, 201 linhas, exportado do Google Formulários. A tela mostrou
+   `nome → "E-mail do associado(a):"`, e ele avisou.
+
+   O desempate por apelido mais longo, criado horas antes, tinha dado a
+   vitória a `associado` (9) sobre `e-mail` (6). Formulário do sindicato
+   termina QUASE TODA coluna em "do associado(a):" — a palavra que menos
+   distingue era a que mais pesava.
+
+   Este é o cabeçalho de verdade, e ele fica aqui como teste permanente: é o
+   formato que vai voltar em toda planilha de inscrição do sindicato. */
+passo("o cabeçalho real, do formulário do sindicato");
+
+const REAL = mapear([
+  "Carimbo de data/hora",
+  "Nome completo do associado(a):",
+  "E-mail do associado(a):",
+  "CPF (Cadastro de Pessoa Física):",
+  "Escola / Instituição onde trabalha:",
+  "Cidade onde trabalha:",
+  "Telefone (WhatsApp) do associado(a):",
+  "TERMO DE COMPROMISSO DIGITAL: Inscrição–Especial de Dia dos Pais 2026|SindEducação-ES"
+]);
+
+igual(REAL.mapa.nome, 1,
+      "'Nome completo do associado(a):' é o nome",
+      "foi o que quebrou: 'associado' roubou esta coluna para outro campo");
+igual(REAL.mapa.email, 2,
+      "'E-mail do associado(a):' é o e-mail, não o nome",
+      "é o caso exato que o usuário viu na tela");
+igual(REAL.mapa.cpf, 3, "'CPF (Cadastro de Pessoa Física):' é o CPF");
+igual(REAL.mapa.escola, 4, "'Escola / Instituição onde trabalha:' é a escola");
+igual(REAL.mapa.cidade, 5, "'Cidade onde trabalha:' é a cidade");
+igual(REAL.mapa.whatsapp, 6, "'Telefone (WhatsApp) do associado(a):' é o WhatsApp");
+igual(REAL.mapa.rg, undefined,
+      "e rg fica sem coluna — esta planilha não tem",
+      "campo que não existe tem de ficar vazio, não pegar a coluna de outro");
+
+/* A regra em si, para o motivo ficar legível a quem mexer depois. */
+igual(campoMaisForte("e-mail do associado(a):"), "email",
+      "'associado' não decide nada quando há apelido forte na coluna");
+igual(campoMaisForte("telefone (whatsapp) do associado(a):"), "whatsapp",
+      "  nem aqui");
+igual(campoMaisForte("associado"), "nome",
+      "mas uma coluna chamada só 'Associado' ainda vira nome",
+      "fraco não é inútil: decide quando é o único que aparece");
 
 /* ─────────────────────────────────────────────────────────────────────────
    2. A RECUSA — o que não entra, e por quê
@@ -376,5 +449,41 @@ ok(/compassoImp_conferir/.test(html) && /compassoImp_importar/.test(html),
    "a tela chama as duas funções do backend");
 ok(/readAsDataURL/.test(html),
    "e envia o anexo pelo mesmo padrão das outras telas do projeto");
+
+/* A TELA PRECISA HERDAR O DESIGN SYSTEM — e isso depende da ROTA.
+ *
+ * 21/08/2026: o usuário abriu a importação e disse "a tela está fora do padrão
+ * do SISGEP". Ela usa include('OficiosStyles') para herdar os tokens, e a rota
+ * servia com `createHtmlOutputFromFile`, que NÃO avalia scriptlet — o include
+ * simplesmente não acontecia, e a página saía sem estilo nenhum.
+ *
+ * É a única tela do projeto que usa include; as outras trazem o CSS inline.
+ * Por isso o defeito não existia antes e ninguém tinha esbarrado nele. */
+ok(/include\('OficiosStyles'\)/.test(html),
+   "a tela herda o design system por include");
+ok(/createTemplateFromFile\("CompassoImportacao"\)\.evaluate\(\)/.test(code),
+   "e a rota a serve com createTemplateFromFile().evaluate()",
+   "createHtmlOutputFromFile não avalia scriptlet: o include não aconteceria " +
+   "e a página sairia sem estilo");
+
+/* REMOVER O ARQUIVO — o usuário pediu, e a falta prendia a tela.
+ *
+ * Sem isso não havia como trocar de planilha nem desfazer: escolhido o
+ * primeiro arquivo, a conferência dele ficava na tela para sempre. */
+passo("dá para desfazer a escolha");
+
+ok(/function removerArquivo\(\)/.test(html),
+   "existe remover arquivo");
+ok(/onclick="removerArquivo\(\)"/.test(html),
+   "  ligado a um botão visível");
+
+const corpoRemover = (html.match(/function removerArquivo\(\)\{[\s\S]*?\n\}/) ||
+                      html.match(/function removerArquivo\(\)\s*\{[\s\S]*?\n\}/) || [""])[0];
+["ORIGEM = null", "'e2'", "g('mapa').innerHTML = ''"].forEach(marca => {
+  ok(corpoRemover.indexOf(marca) >= 0,
+     "  e limpa " + (marca === "ORIGEM = null" ? "a origem" :
+                     marca === "'e2'" ? "os passos seguintes" : "a conferência anterior"),
+     "deixar a conferência antiga na tela faria a pessoa importar achando que era o novo arquivo");
+});
 
 resumo();

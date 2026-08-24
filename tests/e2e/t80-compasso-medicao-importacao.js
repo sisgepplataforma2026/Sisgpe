@@ -147,8 +147,13 @@ const normalizar = new Function(...corpoDe(imp, "compasso_normalizarTexto_").arg
                                 corpoDe(imp, "compasso_normalizarTexto_").corpo);
 /* O desempate por apelido mais longo entrou em 21/08/2026 (ver t85): sem
    estas duas, o mapeador não roda. */
-const maiorApelido = new Function("titulo", "apelidos",
-  corpoDe(imp, "compasso_importarMaiorApelido_").corpo);
+const FRACOS = eval("(" + (imp.match(/var COMPASSO_APELIDOS_FRACOS = (\[[^\]]*\]);/) || [])[1] + ")");
+const apelidoFraco = new Function("a", "COMPASSO_APELIDOS_FRACOS",
+  corpoDe(imp, "compasso_apelidoFraco_").corpo);
+const fraco = a => apelidoFraco(a, FRACOS);
+const maiorApelidoRaw = new Function("titulo", "apelidos", "incluirFracos",
+  "compasso_apelidoFraco_", corpoDe(imp, "compasso_importarMaiorApelido_").corpo);
+const maiorApelido = (t, a, inc) => maiorApelidoRaw(t, a, inc, fraco);
 const campoMaisForte = new Function("titulo", "COMPASSO_IMPORT_COLUNAS",
   "compasso_importarMaiorApelido_", corpoDe(imp, "compasso_importarCampoMaisForte_").corpo)
   .bind(null);

@@ -18,6 +18,11 @@
   .solta .t{font-weight:700;margin-top:6px;color:var(--navy)}
   .solta .s{font-size:12px;color:var(--suave,#5c6b82);margin-top:3px}
 
+  .escolhido{display:flex;align-items:center;gap:12px;margin-top:12px;padding:11px 14px;
+    background:#eef6ff;border:1px solid var(--blue,#1565C0);border-radius:10px}
+  .escolhido .nome{flex:1;font-weight:600;font-size:13.5px;color:var(--navy,#001f4d);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
   .ou{display:flex;align-items:center;gap:12px;margin:14px 0;color:var(--suave,#7b8a9e);font-size:12px}
   .ou::before,.ou::after{content:'';flex:1;height:1px;background:#e3e9f2}
 
@@ -70,6 +75,14 @@
         <div class="t">Arraste a planilha aqui, ou clique para escolher</div>
         <div class="s">.xlsx · .xls · .csv · .ods</div>
       </div>
+
+      <!-- Aparece só depois de escolher. Sem isto não havia como trocar de
+           arquivo nem desfazer: a tela ficava presa no primeiro escolhido. -->
+      <div class="escolhido" id="escolhido" hidden>
+        <span class="nome" id="escolhidoNome"></span>
+        <button class="b" onclick="removerArquivo()" title="Remover este arquivo">✕ Remover</button>
+      </div>
+
       <input type="file" id="arq" style="display:none"
              accept=".xlsx,.xls,.csv,.ods" onchange="escolheu(this.files[0])">
 
@@ -179,11 +192,28 @@ function escolheu(arquivo){
   var leitor = new FileReader();
   leitor.onload = function(){
     ORIGEM = { base64: leitor.result, nome: arquivo.name };
-    solta.querySelector('.t').textContent = '📄 ' + arquivo.name;
+    g('escolhidoNome').textContent = '📄 ' + arquivo.name;
+    g('escolhido').hidden = false;
     conferir('');
   };
   leitor.onerror = function(){ aviso('Não consegui ler o arquivo "' + arquivo.name + '".'); };
   leitor.readAsDataURL(arquivo);
+}
+
+/* Remover devolve a tela ao estado inicial — inclusive os passos 2 a 4.
+   Deixar a conferência antiga na tela depois de tirar o arquivo faria a
+   pessoa importar achando que era o novo. */
+function removerArquivo(){
+  ORIGEM = null; CONF = null; MANUAL = {};
+  g('arq').value = '';
+  g('escolhido').hidden = true;
+  g('url').value = '';
+  ['e2','e3','e4'].forEach(function(id){ g(id).classList.add('off'); });
+  g('mapa').innerHTML = ''; g('previa').innerHTML = '';
+  g('naoUsadas').textContent = ''; g('contaLinhas').textContent = '';
+  g('avisoLimite').textContent = ''; g('aba').innerHTML = '';
+  g('resultado').innerHTML = '';
+  aviso('Arquivo removido. Escolha outro ou cole um link.');
 }
 
 function lerLink(){

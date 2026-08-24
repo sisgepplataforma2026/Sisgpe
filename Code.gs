@@ -197,7 +197,12 @@ function doGet(e) {
       var sessaoImp = getSessaoUsuario(tokenImp);
       if (!sessaoImp) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
       exigirModulo_(tokenImp, "eventos", true);
-      return HtmlService.createHtmlOutputFromFile("CompassoImportacao")
+      /* createTemplateFromFile + evaluate, NÃO createHtmlOutputFromFile.
+         Esta tela usa include('OficiosStyles') para herdar o design system, e
+         `createHtmlOutputFromFile` NÃO avalia scriptlet — o include sai como
+         nada e a página aparece sem estilo nenhum. Foi o que o usuário viu em
+         21/08/2026: "a tela está fora do padrão do SISGEP". */
+      return HtmlService.createTemplateFromFile("CompassoImportacao").evaluate()
         .setTitle("Importar planilha — Compasso 2026")
         .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)

@@ -72,10 +72,34 @@ function compasso_normalizarTexto_(s) {
  * Descobre qual coluna é qual, lendo o cabeçalho.
  * Devolve { campo: índice }, e a lista do que NÃO conseguiu identificar.
  */
+/**
+ * Apelidos que dizem DE QUEM, não O QUÊ.
+ *
+ * O QUE ORIGINOU (21/08/2026): o usuário importou a planilha real do Sorteio
+ * de Dia dos Pais e a tela mostrou `nome → "E-mail do associado(a):"`. O
+ * desempate por apelido mais longo, criado horas antes, tinha dado a vitória a
+ * `associado` (9 letras) sobre `e-mail` (6) — e a coluna do e-mail virou o
+ * campo nome.
+ *
+ * O erro do desempate era tratar todos os apelidos como iguais. Não são:
+ * "e-mail", "cpf" e "telefone" dizem O QUE a coluna guarda; "associado" e
+ * "participante" só dizem de quem ela é. Num cabeçalho de formulário — que é
+ * o formato real das planilhas do sindicato — quase toda coluna termina em
+ * "do associado", e é justamente essa parte que não deve decidir nada.
+ *
+ * Estes só valem quando NENHUM apelido forte aparece no título.
+ */
+var COMPASSO_APELIDOS_FRACOS = ['associado', 'participante', 'do associado', 'documento'];
+
+function compasso_apelidoFraco_(a) {
+  return COMPASSO_APELIDOS_FRACOS.indexOf(String(a || '')) >= 0;
+}
+
 /** O apelido mais longo desta lista que aparece dentro do título. '' se nenhum. */
-function compasso_importarMaiorApelido_(titulo, apelidos) {
+function compasso_importarMaiorApelido_(titulo, apelidos, incluirFracos) {
   var melhor = '';
   for (var i = 0; i < apelidos.length; i++) {
+    if (!incluirFracos && compasso_apelidoFraco_(apelidos[i])) continue;
     if (String(titulo).indexOf(apelidos[i]) >= 0 && apelidos[i].length > melhor.length)
       melhor = apelidos[i];
   }
@@ -89,9 +113,20 @@ function compasso_importarMaiorApelido_(titulo, apelidos) {
  * não a `nome`, porque "escola" é mais longo que "nome".
  */
 function compasso_importarCampoMaisForte_(titulo) {
+  /* Primeira passada: só apelidos FORTES — os que dizem o que a coluna
+     guarda. É esta que resolve "E-mail do associado(a):", onde `associado`
+     não pode ter voz. */
   var vencedor = '', tamanho = 0;
   Object.keys(COMPASSO_IMPORT_COLUNAS).forEach(function (campo) {
-    var a = compasso_importarMaiorApelido_(titulo, COMPASSO_IMPORT_COLUNAS[campo]);
+    var a = compasso_importarMaiorApelido_(titulo, COMPASSO_IMPORT_COLUNAS[campo], false);
+    if (a.length > tamanho) { tamanho = a.length; vencedor = campo; }
+  });
+  if (vencedor) return vencedor;
+
+  /* Só se nenhum forte apareceu é que os fracos decidem — uma coluna chamada
+     apenas "Associado" ainda deve virar nome. */
+  Object.keys(COMPASSO_IMPORT_COLUNAS).forEach(function (campo) {
+    var a = compasso_importarMaiorApelido_(titulo, COMPASSO_IMPORT_COLUNAS[campo], true);
     if (a.length > tamanho) { tamanho = a.length; vencedor = campo; }
   });
   return vencedor;
