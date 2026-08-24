@@ -486,4 +486,46 @@ const corpoRemover = (html.match(/function removerArquivo\(\)\{[\s\S]*?\n\}/) ||
      "deixar a conferência antiga na tela faria a pessoa importar achando que era o novo arquivo");
 });
 
+/* DESFAZER NÃO PODE DEPENDER DE ANEXAR A PLANILHA QUE CAUSOU O ERRO.
+ *
+ * 24/08/2026: o usuário importou 122 linhas com o mapeador antigo e o e-mail
+ * entrou no lugar do nome. Para apagar aquilo, a tela exigia anexar uma
+ * planilha de novo — porque "Limpar importação" morava no passo 4, que só
+ * aparece depois de conferir um arquivo. Ou seja: desfazer o estrago pedia
+ * repetir o gesto que o causou.
+ *
+ * Emitir e apagar falam do que JÁ ESTÁ gravado, não da planilha da vez. */
+passo("apagar e emitir não dependem de ter uma planilha anexada");
+
+/* Cada bloco .etapa vai até o começo do próximo — o que estiver dentro de um
+   que nasce com a classe `off` está escondido enquanto nada foi conferido. */
+const etapas = html.split(/<div class="etapa/).slice(1)
+  .map(t => ({ escondida: /^ off"/.test(t) || /^\s+off"/.test(t), corpo: t }));
+
+["limpar()", "emitir()"].forEach(acao => {
+  const donas = etapas.filter(e => e.corpo.indexOf('onclick="' + acao + '"') >= 0);
+  ok(donas.length === 1, acao + " aparece em exatamente um bloco");
+  ok(donas.length === 1 && !donas[0].escondida,
+     "  e esse bloco está sempre visível",
+     "dentro de uma etapa `off`, desfazer exigiria anexar planilha antes");
+});
+
+ok(/id="limiteEmitir"/.test(html) && /g\('limiteEmitir'\)/.test(html),
+   "emitir lê o próprio campo, não o do passo escondido",
+   "input escondido ainda devolve valor: emitiria 10 sem a pessoa ter visto o 10");
+
+/* O NEGRITO NO MEIO DA FRASE NÃO PODE QUEBRAR LINHA.
+ *
+ * 24/08/2026, na tela de Eventos: "…uma prévia / antes / de gravar". A regra
+ * era `.ev-acao b{display:block}`, escrita para o TÍTULO do card — mas como
+ * seletor de descendente ela alcançava todo <b> dentro da descrição, e cada
+ * ênfase no meio do texto virava um parágrafo solto. */
+passo("ênfase no meio da frase continua na frase");
+
+ok(!/\.ev-acao\s+b\s*\{/.test(admin) && !/\.ev-acao\s+span\s*\{/.test(admin),
+   "o CSS do card não alcança b/span por descendência");
+ok(/\.ev-acao \.txt>b\{display:block/.test(admin) &&
+   /\.ev-acao \.txt>span\{display:block/.test(admin),
+   "  só o título e a descrição, que são filhos diretos, viram bloco");
+
 resumo();

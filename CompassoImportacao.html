@@ -134,12 +134,32 @@
       </div>
       <div class="barra" style="margin-top:14px">
         <button class="b p" onclick="importar()" id="btImportar">Importar</button>
-        <button class="b" onclick="emitir()">Emitir ingressos do que foi importado</button>
-        <button class="b" onclick="limpar()" style="margin-left:auto">Limpar importação</button>
       </div>
       <div class="conta" style="margin-top:10px">
         Começar com 10 é de propósito: importar tudo e descobrir o erro depois
-        custa uma limpeza inteira. Nada é enviado — emitir não manda e-mail.
+        custa uma limpeza inteira.
+      </div>
+    </div>
+  </div>
+
+  <!-- Sempre visível ────────────────────────────────────────────────────
+       Estas duas ações são sobre o que JÁ ESTÁ no sistema, não sobre a
+       planilha anexada. Ficavam dentro do passo 4, que só aparece depois de
+       conferir uma planilha — ou seja, para desfazer uma importação errada a
+       pessoa tinha de anexar de novo o arquivo que causou o erro. -->
+  <div class="etapa">
+    <h3>O que já foi importado</h3>
+    <div class="of-card">
+      <div class="barra">
+        <label style="font-size:13px">Emitir para até:
+          <input type="number" id="limiteEmitir" value="10" min="1" style="width:90px">
+        </label>
+        <button class="b" onclick="emitir()">Emitir ingressos do que foi importado</button>
+        <button class="b" onclick="limpar()" style="margin-left:auto">Apagar tudo que veio da importação</button>
+      </div>
+      <div class="conta" style="margin-top:10px">
+        Emitir não manda e-mail. Apagar só alcança o que entrou por esta tela —
+        inscrição feita pelo link público e as do piloto não são tocadas.
       </div>
     </div>
   </div>
@@ -326,7 +346,9 @@ function relatorio(r){
 }
 
 function emitir(){
-  var lim = Number(g('limite').value) || 10;
+  /* Campo próprio: o `limite` do passo 4 pode estar escondido, e um input
+     escondido ainda devolve valor — emitiria 10 sem a pessoa ter visto o 10. */
+  var lim = Number(g('limiteEmitir').value) || 10;
   if (!confirm('Emitir ingresso para até ' + lim + ' inscrição(ões) importada(s)?\n\nNão envia e-mail.')) return;
   aviso('Emitindo… pode levar alguns minutos.');
   api('compasso_emitirLoteTeste', [lim], function(r){
