@@ -145,9 +145,19 @@ passo("descobrir qual coluna é qual");
 const COLS = eval("(" + imp.match(/var COMPASSO_IMPORT_COLUNAS = (\{[\s\S]*?\n\});/)[1] + ")");
 const normalizar = new Function(...corpoDe(imp, "compasso_normalizarTexto_").args,
                                 corpoDe(imp, "compasso_normalizarTexto_").corpo);
+/* O desempate por apelido mais longo entrou em 21/08/2026 (ver t85): sem
+   estas duas, o mapeador não roda. */
+const maiorApelido = new Function("titulo", "apelidos",
+  corpoDe(imp, "compasso_importarMaiorApelido_").corpo);
+const campoMaisForte = new Function("titulo", "COMPASSO_IMPORT_COLUNAS",
+  "compasso_importarMaiorApelido_", corpoDe(imp, "compasso_importarCampoMaisForte_").corpo)
+  .bind(null);
+const forte = t => campoMaisForte(t, COLS, maiorApelido);
+
 const mapear = cab => new Function("cabecalho", "COMPASSO_IMPORT_COLUNAS",
-  "compasso_normalizarTexto_", corpoDe(imp, "compasso_importarMapear_").corpo
-)(cab, COLS, normalizar);
+  "compasso_normalizarTexto_", "compasso_importarMaiorApelido_",
+  "compasso_importarCampoMaisForte_", corpoDe(imp, "compasso_importarMapear_").corpo
+)(cab, COLS, normalizar, maiorApelido, forte);
 
 function conferir(rotulo, cabecalho, esperado) {
   const r = mapear(cabecalho);
@@ -182,11 +192,21 @@ conferir("ARMADILHA: 'Nome da Escola' antes de 'Nome'",
   { nome: "Nome", cpf: "CPF", escola: "Nome da Escola", cidade: "Cidade",
     email: "E-mail", whatsapp: "Fone" });
 
-const mapeador = corpoDe(imp, "compasso_importarMapear_").corpo;
-ok(mapeador.indexOf("apelidos.indexOf(normalizado[i]) >= 0") <
-   mapeador.indexOf("normalizado[j].indexOf(apelidos[k]) >= 0"),
-   "igualdade exata roda ANTES de 'contém'",
-   "é exatamente o que faz a armadilha acima não pegar");
+/* Esta asserção media a ORDEM lendo o código-fonte. Em 21/08/2026 o passo
+   "contém" foi reescrito com desempate por apelido mais longo, e a string que
+   ela procurava deixou de existir — mas o que importa nunca foi o texto do
+   código, e sim o comportamento. Agora ela EXECUTA o caso que a ordem
+   protege, em vez de descrever a implementação. */
+const exatoPrimeiro = mapear(["Nome da Escola", "Nome", "CPF"]);
+igual(exatoPrimeiro.mapa.nome, 1,
+      "igualdade exata vence 'contém': 'Nome' puro ganha de 'Nome da Escola'",
+      "é exatamente o que faz a armadilha acima não pegar");
+
+/* E o caso que a igualdade exata NÃO cobre, que só o desempate resolve. */
+const semExato = mapear(["Nome da Escola", "Nome do Servidor", "CPF"]);
+igual(semExato.mapa.nome, 1,
+      "e sem nenhuma igualdade exata, o desempate por apelido mais longo resolve",
+      "'servidor' (8) vence 'nome' (4) dentro de 'nome do servidor'");
 
 /* ─── 4. conferir antes de importar ─── */
 passo("mostrar o que entendeu antes de gravar");

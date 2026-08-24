@@ -184,6 +184,23 @@ function doGet(e) {
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
 
+    // ── IMPORTAÇÃO DE PLANILHA DO COMPASSO ──────────────────────────────────
+    // A tela que o usuário pediu em 21/08/2026 ("tem local para enviar
+    // planilha?"). Anexo ou link do Drive; nada grava antes do passo 4.
+    // A trava de homologação está no backend, não aqui: rota é entrega de
+    // página, e página bloqueada por rota ainda deixaria a função alcançável.
+    if (p.painel === "compasso-importar") {
+      var tokenImp = String(p.sessao || "").trim();
+      var sessaoImp = getSessaoUsuario(tokenImp);
+      if (!sessaoImp) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
+      exigirModulo_(tokenImp, "eventos", true);
+      return HtmlService.createHtmlOutputFromFile("CompassoImportacao")
+        .setTitle("Importar planilha — Compasso 2026")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
+
     if (p.painel === "bingo") {
       var tokenBingo = String(p.sessao || "").trim();
       var sessaoBingo = getSessaoUsuario(tokenBingo);

@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<?!= include('OficiosStyles'); ?>
+<style>
+  .wrap{max-width:900px;margin:0 auto;padding:18px}
+  .etapa{margin:0 0 18px}
+  .etapa > h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;
+    color:var(--navy);margin:0 0 10px;font-weight:800}
+  .etapa.off{opacity:.4;pointer-events:none}
+
+  .solta{border:2px dashed #c8d3e4;border-radius:14px;padding:26px 18px;text-align:center;
+    background:#fbfcfe;cursor:pointer;transition:.15s}
+  .solta:hover,.solta.sobre{border-color:var(--blue);background:#f2f7ff}
+  .solta .ic{font-size:30px;line-height:1}
+  .solta .t{font-weight:700;margin-top:6px;color:var(--navy)}
+  .solta .s{font-size:12px;color:var(--suave,#5c6b82);margin-top:3px}
+
+  .ou{display:flex;align-items:center;gap:12px;margin:14px 0;color:var(--suave,#7b8a9e);font-size:12px}
+  .ou::before,.ou::after{content:'';flex:1;height:1px;background:#e3e9f2}
+
+  .linha{display:flex;gap:8px;flex-wrap:wrap}
+  .linha input[type=text]{flex:1;min-width:240px}
+
+  table.map{width:100%;border-collapse:collapse;font-size:13px}
+  table.map td{padding:7px 8px;border-bottom:1px solid #eef2f7;vertical-align:middle}
+  table.map td.campo{font-weight:700;width:110px;color:var(--navy)}
+  table.map td.orig{color:var(--suave,#5c6b82)}
+  .selo{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700}
+  .s-ok{background:#e7f6ef;color:#0f8a5f}
+  .s-er{background:#fdecec;color:#dc2626}
+  select.col{font-size:12px;padding:4px 6px}
+
+  table.prev{width:100%;border-collapse:collapse;font-size:12px}
+  table.prev th{text-align:left;padding:6px 8px;background:#f5f8fc;color:var(--navy);font-size:11px;
+    text-transform:uppercase;letter-spacing:.04em}
+  table.prev td{padding:6px 8px;border-bottom:1px solid #f0f4f9}
+  tr.ruim td{background:#fff7f7}
+  .motivo{color:#dc2626;font-size:11px}
+
+  .barra{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+  .conta{font-size:12px;color:var(--suave,#5c6b82)}
+  #msg{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--navy);
+    color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;display:none;z-index:99;
+    max-width:90%;box-shadow:var(--sh-xl,0 10px 30px rgba(0,0,0,.2))}
+</style>
+</head>
+<body>
+
+<div class="of-modulo-header">
+  <div>
+    <h1>Importar planilha — Compasso 2026</h1>
+    <div class="sub" id="sub">Traz inscrições de uma planilha para ensaiar o fluxo.</div>
+  </div>
+  <div class="acoes">
+    <span class="selo s-er" style="font-size:12px;padding:6px 12px">HOMOLOGAÇÃO</span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- 1 ─────────────────────────────────────────────────────────────── -->
+  <div class="etapa">
+    <h3>1 · De onde vem</h3>
+    <div class="of-card">
+      <div class="solta" id="solta" onclick="document.getElementById('arq').click()">
+        <div class="ic">📄</div>
+        <div class="t">Arraste a planilha aqui, ou clique para escolher</div>
+        <div class="s">.xlsx · .xls · .csv · .ods</div>
+      </div>
+      <input type="file" id="arq" style="display:none"
+             accept=".xlsx,.xls,.csv,.ods" onchange="escolheu(this.files[0])">
+
+      <div class="ou">ou</div>
+
+      <div class="linha">
+        <input type="text" id="url" placeholder="Cole aqui o link da planilha no Drive">
+        <button class="b" onclick="lerLink()">Ler link</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 ─────────────────────────────────────────────────────────────── -->
+  <div class="etapa off" id="e2">
+    <h3>2 · O que eu entendi</h3>
+    <div class="of-card">
+      <div class="barra" style="margin:0 0 12px">
+        <label style="font-size:12px">Aba:
+          <select id="aba" onchange="reconferir()"></select>
+        </label>
+        <span class="conta" id="contaLinhas"></span>
+      </div>
+      <table class="map"><tbody id="mapa"></tbody></table>
+      <div class="conta" id="naoUsadas" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <!-- 3 ─────────────────────────────────────────────────────────────── -->
+  <div class="etapa off" id="e3">
+    <h3>3 · Prévia — as 5 primeiras linhas</h3>
+    <div class="of-card" style="overflow:auto">
+      <table class="prev">
+        <thead><tr><th>#</th><th>Nome</th><th>CPF</th><th>Escola</th><th>Cidade</th><th></th></tr></thead>
+        <tbody id="previa"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 4 ─────────────────────────────────────────────────────────────── -->
+  <div class="etapa off" id="e4">
+    <h3>4 · Importar</h3>
+    <div class="of-card">
+      <div class="barra">
+        <label style="font-size:13px">Quantas linhas:
+          <input type="number" id="limite" value="10" min="1" style="width:90px">
+        </label>
+        <button class="b" onclick="usarTodas()">usar todas</button>
+        <span class="conta" id="avisoLimite"></span>
+      </div>
+      <div class="barra" style="margin-top:14px">
+        <button class="b p" onclick="importar()" id="btImportar">Importar</button>
+        <button class="b" onclick="emitir()">Emitir ingressos do que foi importado</button>
+        <button class="b" onclick="limpar()" style="margin-left:auto">Limpar importação</button>
+      </div>
+      <div class="conta" style="margin-top:10px">
+        Começar com 10 é de propósito: importar tudo e descobrir o erro depois
+        custa uma limpeza inteira. Nada é enviado — emitir não manda e-mail.
+      </div>
+    </div>
+  </div>
+
+  <div id="resultado"></div>
+</div>
+
+<div id="msg"></div>
+
+<script>
+var TOKEN = (function(){ try{
+  var m = String(location.search||'').match(/[?&]sessao=([^&]*)/);
+  return m ? decodeURIComponent(m[1]) : '';
+}catch(e){ return ''; } })();
+
+/* A origem escolhida no passo 1. Fica aqui porque os passos 2 e 4 releem a
+   planilha — o anexo não é guardado em lugar nenhum do servidor. */
+var ORIGEM = null, CONF = null, MANUAL = {};
+var CAMPOS = ['nome','cpf','escola','cidade','email','whatsapp','rg'];
+
+function g(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function aviso(t){ var m=g('msg'); m.textContent=t; m.style.display='block';
+  clearTimeout(aviso._t); aviso._t=setTimeout(function(){m.style.display='none';},7000); }
+
+function api(fn, args, cb){
+  var r = google.script.run
+    .withSuccessHandler(cb)
+    .withFailureHandler(function(e){ aviso('Erro: ' + ((e&&e.message)||e)); });
+  r[fn].apply(r, (args||[]).concat([TOKEN]));
+}
+
+/* ── passo 1 ── */
+var solta = g('solta');
+['dragenter','dragover'].forEach(function(ev){
+  solta.addEventListener(ev, function(e){ e.preventDefault(); solta.classList.add('sobre'); });
+});
+['dragleave','drop'].forEach(function(ev){
+  solta.addEventListener(ev, function(e){ e.preventDefault(); solta.classList.remove('sobre'); });
+});
+solta.addEventListener('drop', function(e){
+  if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0])
+    escolheu(e.dataTransfer.files[0]);
+});
+
+function escolheu(arquivo){
+  if (!arquivo) return;
+  aviso('Lendo "' + arquivo.name + '"…');
+  var leitor = new FileReader();
+  leitor.onload = function(){
+    ORIGEM = { base64: leitor.result, nome: arquivo.name };
+    solta.querySelector('.t').textContent = '📄 ' + arquivo.name;
+    conferir('');
+  };
+  leitor.onerror = function(){ aviso('Não consegui ler o arquivo "' + arquivo.name + '".'); };
+  leitor.readAsDataURL(arquivo);
+}
+
+function lerLink(){
+  var u = g('url').value.trim();
+  if (!u) return aviso('Cole o link da planilha.');
+  ORIGEM = { url: u };
+  conferir('');
+}
+
+/* ── passo 2 ── */
+function conferir(aba){
+  aviso('Conferindo a planilha…');
+  api('compassoImp_conferir', [ORIGEM, aba || ''], function(r){
+    if (!r || !r.ok) return aviso((r && r.erro) || 'Não consegui ler a planilha.');
+    CONF = r; MANUAL = {};
+    g('e2').classList.remove('off');
+    g('e3').classList.remove('off');
+    g('e4').classList.remove('off');
+
+    g('aba').innerHTML = (r.abas||[]).map(function(a){
+      return '<option'+(a===r.aba?' selected':'')+'>'+esc(a)+'</option>'; }).join('');
+    g('contaLinhas').textContent = r.linhas + ' linha(s) de dados';
+    g('avisoLimite').textContent = 'a planilha tem ' + r.linhas;
+
+    pintarMapa(r); pintarPrevia(r.previa);
+    aviso('Planilha lida. Confira as colunas antes de importar.');
+  });
+}
+function reconferir(){ conferir(g('aba').value); }
+
+function pintarMapa(r){
+  g('mapa').innerHTML = CAMPOS.map(function(campo){
+    var i = r.mapa[campo];
+    var achou = (i !== undefined && i !== null);
+    var celula = achou
+      ? '<span class="selo s-ok">✅ coluna ' + (i+1) + '</span> <span class="orig">"' +
+        esc(r.cabecalho[i]||'') + '"</span>'
+      : '<span class="selo s-er">não encontrei</span> ' + seletor(campo, r);
+    return '<tr><td class="campo">' + campo + '</td><td>' + celula + '</td></tr>';
+  }).join('');
+
+  g('naoUsadas').textContent = (r.naoUsadas||[]).length
+    ? 'Colunas do arquivo que não usei: ' + r.naoUsadas.map(function(c){return c.titulo;}).join(', ')
+    : 'Todas as colunas do arquivo foram aproveitadas.';
+}
+
+/* Coluna que eu não reconheci vira ESCOLHA, não erro: a planilha do ano
+   passado pode chamar de "E-mail institucional", e apontar na hora é mais
+   barato do que editar a planilha. */
+function seletor(campo, r){
+  var ops = ['<option value="">— escolher coluna —</option>'].concat(
+    (r.cabecalho||[]).map(function(t,i){
+      return '<option value="'+i+'">'+(i+1)+'. '+esc(t||'(sem título)')+'</option>'; }));
+  return '<select class="col" onchange="apontar(\''+campo+'\',this.value)">'+ops.join('')+'</select>';
+}
+function apontar(campo, valor){
+  if (valor === '') { delete MANUAL[campo]; return; }
+  MANUAL[campo] = valor;
+  aviso('"' + campo + '" vai usar a coluna ' + (Number(valor)+1) + '.');
+}
+
+/* ── passo 3 ── */
+function pintarPrevia(previa){
+  g('previa').innerHTML = (previa||[]).map(function(p){
+    return '<tr class="' + (p.ok?'':'ruim') + '">' +
+      '<td>' + p.linha + '</td>' +
+      '<td>' + esc(p.nome) + '</td>' +
+      '<td>' + esc(p.cpf) + '</td>' +
+      '<td>' + esc(p.escola) + '</td>' +
+      '<td>' + esc(p.cidade) + '</td>' +
+      '<td>' + (p.ok ? '<span class="selo s-ok">ok</span>'
+                     : '<span class="motivo">' + esc(p.motivo) + '</span>') + '</td></tr>';
+  }).join('') || '<tr><td colspan="6">—</td></tr>';
+}
+
+/* ── passo 4 ── */
+function usarTodas(){ if (CONF) g('limite').value = CONF.linhas; }
+
+function importar(){
+  if (!ORIGEM) return aviso('Escolha a planilha primeiro.');
+  var lim = Number(g('limite').value) || 10;
+  if (!confirm('Importar ' + lim + ' linha(s)?\n\nIsso cria inscrição de verdade e consome vaga das 2.000.')) return;
+  var bt = g('btImportar'); bt.disabled = true; bt.textContent = 'Importando…';
+  api('compassoImp_importar', [ORIGEM, g('aba').value, lim, MANUAL], function(r){
+    bt.disabled = false; bt.textContent = 'Importar';
+    if (!r || !r.ok) return aviso((r && r.erro) || 'Não consegui importar.');
+    aviso(r.mensagem);
+    g('resultado').innerHTML = relatorio(r);
+  });
+}
+
+function relatorio(r){
+  var h = '<div class="of-card"><b>' + esc(r.mensagem) + '</b>';
+  if (r.ajustesDeColuna) h += '<div class="conta">' + r.ajustesDeColuna + ' coluna(s) apontada(s) por você.</div>';
+  if ((r.ignoradas||[]).length){
+    h += '<div style="margin-top:10px"><b>Ignoradas</b><table class="prev"><tbody>' +
+      r.ignoradas.map(function(x){
+        return '<tr><td>linha ' + x.linha + '</td><td>' + esc(x.nome) + '</td>' +
+               '<td class="motivo">' + esc(x.motivo) + '</td></tr>'; }).join('') +
+      '</tbody></table></div>';
+  }
+  if ((r.erros||[]).length){
+    h += '<div style="margin-top:10px"><b>Com erro</b><table class="prev"><tbody>' +
+      r.erros.map(function(x){
+        return '<tr><td>linha ' + x.linha + '</td><td>' + esc(x.nome) + '</td>' +
+               '<td class="motivo">' + esc(x.erro) + '</td></tr>'; }).join('') +
+      '</tbody></table></div>';
+  }
+  return h + '</div>';
+}
+
+function emitir(){
+  var lim = Number(g('limite').value) || 10;
+  if (!confirm('Emitir ingresso para até ' + lim + ' inscrição(ões) importada(s)?\n\nNão envia e-mail.')) return;
+  aviso('Emitindo… pode levar alguns minutos.');
+  api('compasso_emitirLoteTeste', [lim], function(r){
+    g('resultado').innerHTML = '<div class="of-card"><pre style="white-space:pre-wrap;font-size:12px">' +
+      esc(typeof r === 'string' ? r : JSON.stringify(r, null, 2)) + '</pre></div>';
+    aviso('Emissão concluída — veja o resultado abaixo.');
+  });
+}
+
+function limpar(){
+  if (!confirm('Apagar TODAS as inscrições que vieram de importação?\n\nInscrição feita pela tela pública não é tocada.')) return;
+  api('compasso_importarLimpar', [], function(r){
+    g('resultado').innerHTML = '<div class="of-card"><pre style="white-space:pre-wrap;font-size:12px">' +
+      esc(typeof r === 'string' ? r : JSON.stringify(r, null, 2)) + '</pre></div>';
+    aviso('Limpeza concluída.');
+  });
+}
+</script>
+</body>
+</html>

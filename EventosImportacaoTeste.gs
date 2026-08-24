@@ -72,6 +72,31 @@ function compasso_normalizarTexto_(s) {
  * Descobre qual coluna é qual, lendo o cabeçalho.
  * Devolve { campo: índice }, e a lista do que NÃO conseguiu identificar.
  */
+/** O apelido mais longo desta lista que aparece dentro do título. '' se nenhum. */
+function compasso_importarMaiorApelido_(titulo, apelidos) {
+  var melhor = '';
+  for (var i = 0; i < apelidos.length; i++) {
+    if (String(titulo).indexOf(apelidos[i]) >= 0 && apelidos[i].length > melhor.length)
+      melhor = apelidos[i];
+  }
+  return melhor;
+}
+
+/**
+ * De todos os campos, qual tem o apelido mais específico dentro deste título.
+ *
+ * É o desempate do passo 2 do mapeador: "nome da escola" pertence a `escola`,
+ * não a `nome`, porque "escola" é mais longo que "nome".
+ */
+function compasso_importarCampoMaisForte_(titulo) {
+  var vencedor = '', tamanho = 0;
+  Object.keys(COMPASSO_IMPORT_COLUNAS).forEach(function (campo) {
+    var a = compasso_importarMaiorApelido_(titulo, COMPASSO_IMPORT_COLUNAS[campo]);
+    if (a.length > tamanho) { tamanho = a.length; vencedor = campo; }
+  });
+  return vencedor;
+}
+
 function compasso_importarMapear_(cabecalho) {
   var mapa = {}, usadas = {};
   var normalizado = (cabecalho || []).map(compasso_normalizarTexto_);
@@ -84,12 +109,25 @@ function compasso_importarMapear_(cabecalho) {
       if (usadas[i]) continue;
       if (apelidos.indexOf(normalizado[i]) >= 0) { mapa[campo] = i; usadas[i] = true; return; }
     }
-    /* Passo 2: o cabeçalho CONTÉM o apelido. Só depois de esgotar o exato. */
+    /* Passo 2: o cabeçalho CONTÉM o apelido. Só depois de esgotar o exato.
+     *
+     * E com um desempate, sem o qual o passo 2 erra feio. "Nome da Escola"
+     * contém "nome" (de `nome`) E "escola" (de `escola`). Se a coluna da
+     * escola vier ANTES da coluna do servidor — e vem, em planilha exportada
+     * de sistema —, o campo `nome` fica com o nome da escola, e a importação
+     * inteira sai trocada.
+     *
+     * O desempate é o apelido MAIS LONGO: em "nome da escola", `escola` (6)
+     * ganha de `nome` (4); em "nome do servidor", `servidor` (8) ganha, e
+     * `servidor` é apelido de `nome` — que é o certo. Descoberto em
+     * 21/08/2026 por mutação: o teste passava porque o cabeçalho de exemplo
+     * tinha as colunas na ordem que escondia o problema. */
     for (var j = 0; j < normalizado.length; j++) {
       if (usadas[j] || !normalizado[j]) continue;
-      for (var k = 0; k < apelidos.length; k++) {
-        if (normalizado[j].indexOf(apelidos[k]) >= 0) { mapa[campo] = j; usadas[j] = true; return; }
-      }
+      var meu = compasso_importarMaiorApelido_(normalizado[j], apelidos);
+      if (!meu) continue;
+      if (compasso_importarCampoMaisForte_(normalizado[j]) !== campo) continue;
+      mapa[campo] = j; usadas[j] = true; return;
     }
   });
 
