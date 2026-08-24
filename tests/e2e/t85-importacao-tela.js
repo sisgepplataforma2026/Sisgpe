@@ -441,8 +441,23 @@ ok(/painel === "compasso-importar"/.test(code),
    "a rota ?painel=compasso-importar existe em Code.gs");
 ok(/exigirModulo_\(tokenImp, "eventos", true\)/.test(code),
    "e exige ADMINISTRADOR do módulo Eventos, não só sessão");
-ok(/evAbrirPainel\('compasso-importar'\)/.test(admin),
-   "o botão da aba Inscrições aponta para ela");
+/* O CAMINHO MUDOU DE LUGAR EM 24/08/2026, e é isto que a asserção guarda.
+   Antes a tela de Eventos tinha um card próprio chamando
+   evAbrirPainel('compasso-importar'). O usuário pediu "tudo num único lugar",
+   e a importação virou uma ABA da Central de Inscrições — que a carrega num
+   quadro apontando para a mesma rota. A rota continua sendo a única porta;
+   quem mudou foi quem a abre. */
+const painel = ler("CompassoInscricoes.html");
+ok(!/evAbrirPainel\('compasso-importar'\)/.test(admin),
+   "a tela de Eventos não tem mais um caminho separado para a importação");
+ok(/painel=compasso-importar/.test(painel),
+   "quem abre a rota agora é a Central de Inscrições");
+ok(/id="tabImportar"/.test(painel) && /irAba\('importar'\)/.test(painel),
+   "  por uma aba, no mesmo padrão do módulo de Ofícios");
+ok(/id="quadroImportar"/.test(painel),
+   "  carregada num quadro próprio",
+   "as duas telas têm funções globais de mesmo nome (api, esc, g, aviso): " +
+   "juntar os arquivos num escopo só derrubaria o JavaScript da página");
 
 const html = ler("CompassoImportacao.html");
 ok(/compassoImp_conferir/.test(html) && /compassoImp_importar/.test(html),

@@ -90,6 +90,40 @@
     .b.perigo{background:#fef2f2;color:#7f1d1d;border-color:#f3c5c5}
     .b.perigo:hover{background:#dc2626;color:#fff;border-color:#dc2626}
     @media(max-width:600px){ .gv-grade{grid-template-columns:1fr} }
+
+    /* ── Abas da Central ──────────────────────────────────────────────────
+       Mesmo padrão do módulo de Ofícios (.of-tabs/.of-tab), que é o que a
+       equipe já usa todo dia. */
+    .of-tabs{display:flex;gap:6px;flex-wrap:wrap;padding:0 22px;background:#fff;
+             border-bottom:1.5px solid var(--linha)}
+    .of-tab{background:transparent;border:0;border-bottom:3px solid transparent;
+            padding:13px 16px;font-size:13.5px;font-weight:700;font-family:inherit;
+            color:var(--suave);cursor:pointer}
+    .of-tab:hover{color:var(--navy)}
+    .of-tab.active{color:var(--navy);border-bottom-color:var(--navy)}
+    .painel[hidden]{display:none}
+    .quadro{width:100%;height:calc(100vh - 190px);min-height:520px;border:0}
+
+    /* ── Modal do ingresso emitido ────────────────────────────────────────
+       A lógica do ofício: gerou, abre um lugar com tudo o que se faz com o
+       documento — baixar, imprimir, e-mail, WhatsApp, editar. */
+    .md-fundo{position:fixed;inset:0;background:rgba(8,17,35,.5);display:none;
+              align-items:center;justify-content:center;z-index:70;padding:16px}
+    .md-fundo.on{display:flex}
+    .md{background:#fff;border-radius:16px;width:min(560px,100%);
+        box-shadow:0 24px 60px rgba(8,17,35,.3);overflow:hidden}
+    .md-topo{display:flex;gap:13px;align-items:center;padding:20px 22px 14px}
+    .md-ok{width:46px;height:46px;border-radius:13px;background:#e9f7f1;
+           border:1.5px solid #9fdcc4;display:flex;align-items:center;
+           justify-content:center;font-size:22px;flex-shrink:0}
+    .md-topo h2{margin:0;font-size:16px;font-weight:900;color:var(--navy)}
+    .md-topo .sub{font-size:12px;color:var(--suave);margin-top:3px}
+    .md-corpo{padding:0 22px 20px}
+    .md-botoes{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:13px}
+    .md-status{display:flex;gap:8px;align-items:center;padding:11px 14px;
+               background:var(--fundo);border:1.5px solid var(--linha);
+               border-radius:11px;font-size:12.5px;font-weight:600;color:var(--suave)}
+    .md-pe{display:flex;justify-content:flex-end;padding:0 22px 20px}
     .barra{display:flex;gap:8px;align-items:center;flex-wrap:wrap;
            background:#eef3fa;border:1px solid #c7d7ec;border-radius:11px;
            padding:10px 13px;margin-bottom:12px;display:none}
@@ -103,7 +137,7 @@
 
 <div class="of-modulo-header">
   <div>
-    <h1>Inscrições — Festa Compasso da Vida 2026</h1>
+    <h1>Central de Inscrições — Festa Compasso da Vida 2026</h1>
     <div class="sub" id="sub">Carregando…</div>
   </div>
   <div class="acoes">
@@ -112,6 +146,20 @@
   </div>
 </div>
 
+<!-- ══ ABAS ═══════════════════════════════════════════════════════════════
+     "Tudo num lugar só" (usuário, 24/08/2026). Antes eram três telas com três
+     caminhos diferentes na tela de Eventos: painel, importação e a Central de
+     Validação — que, aliás, mandava abrir por um item de menu da planilha que
+     nunca existiu.
+
+     O padrão é o do módulo de Ofícios (.of-tabs), que é o que a equipe já usa
+     todo dia. -->
+<div class="of-tabs">
+  <button class="of-tab active" id="tabLista"    onclick="irAba('lista')">📋 Inscrições</button>
+  <button class="of-tab"        id="tabImportar" onclick="irAba('importar')">📄 Importar planilha</button>
+</div>
+
+<div class="painel" id="painelLista">
 <div class="wrap">
 
   <!-- Cards de ESTADO. Cada um é um filtro (item 4 do PROMPT-MESTRE). -->
@@ -189,6 +237,46 @@
       <span id="pgAtual" style="font-size:13px;font-weight:700"></span>
       <button class="b" id="pgProx" onclick="irPagina(PAGINA+1)">Próxima ›</button>
     </div>
+  </div>
+</div>
+
+</div><!-- /painelLista -->
+
+<!-- A importação entra por quadro (iframe) de propósito. As duas telas têm
+     funções globais de mesmo nome — api, esc, g, aviso — e no Apps Script os
+     blocos de código de todos os arquivos incluídos viram um escopo global
+     só: fundir os dois derrubaria o JavaScript da página inteira. O quadro dá
+     o "lugar único" que o usuário pediu sem pagar esse preço. -->
+<div class="painel" id="painelImportar" hidden>
+  <iframe class="quadro" id="quadroImportar" title="Importar planilha"></iframe>
+</div>
+
+<!-- ══ MODAL DO INGRESSO EMITIDO ═════════════════════════════════════════
+     A lógica do ofício, que o usuário pediu nominalmente: gerou, abre um lugar
+     com tudo o que se faz com o documento. -->
+<div class="md-fundo" id="mdFundo">
+  <div class="md" role="dialog" aria-label="Ingresso emitido">
+    <div class="md-topo">
+      <div class="md-ok">🎟️</div>
+      <div>
+        <h2 id="mdTitulo">Ingresso emitido</h2>
+        <div class="sub" id="mdSub"></div>
+      </div>
+    </div>
+    <div class="md-corpo">
+      <div class="md-botoes">
+        <button class="b"   onclick="mdAbrir()">📄 Abrir ingresso</button>
+        <button class="b"   onclick="mdBaixar()">📥 Baixar PDF</button>
+        <button class="b"   onclick="mdImprimir()">🖨 Imprimir</button>
+        <button class="b p" onclick="mdEmail()">📧 Enviar por e-mail</button>
+        <button class="b g" onclick="mdWhats()">💬 WhatsApp</button>
+        <button class="b"   onclick="mdEditar()">✏️ Editar dados</button>
+      </div>
+      <div class="md-status" id="mdStatus">
+        <span>🕐</span><span>Emitido e ainda não enviado.</span>
+      </div>
+    </div>
+    <div class="md-pe"><button class="b" onclick="fecharModal()">Fechar</button></div>
   </div>
 </div>
 
@@ -574,15 +662,10 @@ function atualizarBarra(){
 }
 
 /* ── ações ── */
-function emitir(i){
-  var x = LISTA[i];
-  if (!confirm('Emitir o ingresso de ' + x.nome + '?\n\nIsso consome uma das 2.000 vagas.')) return;
-  api('compasso_emitirIngressoV2', [{inscricaoId:x.inscricaoId}], function(r){
-    if (!r || !r.ok) return aviso((r&&r.erro) || 'Não foi possível emitir.');
-    aviso('Ingresso ' + r.numero + ' emitido. Agora envie por e-mail ou WhatsApp.');
-    recarregar();
-  });
-}
+/* O atalho da linha passa pela gaveta: assim existe UM caminho de emissão, e
+   o modal que abre depois tem de quem falar. Dois caminhos separados foi
+   exatamente o que o usuário mandou acabar. */
+function emitir(i){ abrirGaveta(i); emitirGaveta(); }
 function porEmail(i){
   var x = LISTA[i];
   api('compasso_enviarIngressoEmail', [x.inscricaoId], function(r){
@@ -626,6 +709,99 @@ function enviarLote(){
     recarregar();
   });
 }
+/* ══ ABAS ═════════════════════════════════════════════════════════════════
+   O quadro da importação só é carregado quando a aba é aberta: um iframe que
+   nasce carregado faria toda abertura da Central pagar por uma tela que
+   ninguém pediu. */
+var ABA = 'lista', QUADRO_PRONTO = false;
+
+function irAba(nome){
+  ABA = nome;
+  g('painelLista').hidden    = (nome !== 'lista');
+  g('painelImportar').hidden = (nome !== 'importar');
+  g('tabLista').classList.toggle('active', nome === 'lista');
+  g('tabImportar').classList.toggle('active', nome === 'importar');
+  if (nome === 'importar' && !QUADRO_PRONTO) carregarQuadroImportar();
+}
+
+function carregarQuadroImportar(){
+  api('eventos_obterWebAppUrl', [], function(base){
+    var url = String(base || '') + '?painel=compasso-importar' +
+              (TOKEN ? '&sessao=' + encodeURIComponent(TOKEN) : '');
+    g('quadroImportar').src = url;
+    QUADRO_PRONTO = true;
+  });
+}
+
+/* ══ MODAL DO INGRESSO ════════════════════════════════════════════════════
+   Aberto logo depois de emitir, como no ofício. ARQUIVO guarda o PDF em
+   base64 e a URL pública: o backend é chamado UMA vez, e baixar, imprimir e
+   abrir saem daí sem nova viagem. */
+var ARQUIVO = null;
+
+function abrirModalIngresso(inscricaoId, numero, nome){
+  ARQUIVO = null;
+  g('mdTitulo').textContent = 'Ingresso ' + (numero || '') + ' emitido';
+  g('mdSub').textContent = nome || '';
+  g('mdStatus').innerHTML = '<span>🕐</span><span>Preparando o arquivo…</span>';
+  g('mdFundo').classList.add('on');
+  api('compasso_ingressoArquivo', [inscricaoId], function(r){
+    if (!r || !r.ok){
+      g('mdStatus').innerHTML = '<span>⚠️</span><span>' +
+        esc((r && r.erro) || 'Não foi possível preparar o arquivo.') + '</span>';
+      return;
+    }
+    ARQUIVO = r;
+    g('mdStatus').innerHTML = '<span>🕐</span><span>Emitido e ainda não enviado.</span>';
+  });
+}
+function fecharModal(){ g('mdFundo').classList.remove('on'); ARQUIVO = null; }
+
+function semArquivo(){
+  if (ARQUIVO) return false;
+  aviso('O arquivo ainda está sendo preparado. Um instante.');
+  return true;
+}
+function pdfDataUri(){ return 'data:application/pdf;base64,' + ARQUIVO.base64; }
+
+function mdAbrir(){
+  if (semArquivo()) return;
+  window.open(ARQUIVO.url, '_blank');
+}
+function mdBaixar(){
+  if (semArquivo()) return;
+  /* Link temporário: é o jeito que funciona dentro do iframe do Apps Script,
+     onde window.open de data: costuma ser bloqueado. */
+  var a = document.createElement('a');
+  a.href = pdfDataUri();
+  a.download = ARQUIVO.arquivo || 'ingresso.pdf';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+function mdImprimir(){
+  if (semArquivo()) return;
+  var w = window.open('', '_blank');
+  if (!w) return aviso('O navegador bloqueou a janela de impressão.');
+  w.document.write('<iframe src="' + pdfDataUri() +
+                   '" style="border:0;width:100%;height:100%" onload="this.contentWindow.print()"></iframe>');
+  w.document.close();
+}
+function mdEmail(){
+  var x = inscricaoAberta(); if (!x) return;
+  g('mdStatus').innerHTML = '<span>📧</span><span>Enviando…</span>';
+  api('compasso_enviarIngressoEmail', [x.inscricaoId], function(r){
+    if (!r || !r.ok){
+      g('mdStatus').innerHTML = '<span>⚠️</span><span>' +
+        esc((r && r.erro) || 'Não foi possível enviar.') + '</span>';
+      return;
+    }
+    g('mdStatus').innerHTML = '<span>✅</span><span>' +
+      esc(r.mensagem || 'Enviado por e-mail.') + '</span>';
+    recarregar();
+  });
+}
+function mdWhats(){ if (ABERTO >= 0) porWhats(ABERTO); }
+function mdEditar(){ fecharModal(); }   /* a gaveta já está aberta atrás */
+
 /* ══ GAVETA ═══════════════════════════════════════════════════════════════
    Antes, "Analisar" mandava a pessoa para a Central de Validação: outra tela,
    outra busca, filtro e página perdidos. Agora tudo acontece aqui.
@@ -759,17 +935,20 @@ function rotuloStatus(s){
 /* ── ações da gaveta ── */
 /* Toda ação recarrega mantendo a página e redesenha a gaveta com o estado
    novo: fechar a gaveta a cada clique obrigaria a reabrir para conferir. */
+function recarregarMantendoGaveta(){
+  var id = (inscricaoAberta() || {}).inscricaoId;
+  carregar(true, function(){
+    if (!id) return;
+    for (var i = 0; i < LISTA.length; i++)
+      if (LISTA[i].inscricaoId === id){ ABERTO = i; pintarGaveta(); return; }
+    fecharGaveta();   /* sumiu da lista (excluída, ou o filtro não a alcança mais) */
+  });
+}
 function aposAcao(msg){
   return function(r){
     if (r && r.ok === false) return aviso(r.erro || 'Não foi possível concluir.');
     if (msg) aviso(typeof msg === 'function' ? msg(r) : msg);
-    var id = (inscricaoAberta() || {}).inscricaoId;
-    carregar(true, function(){
-      if (!id) return;
-      for (var i = 0; i < LISTA.length; i++)
-        if (LISTA[i].inscricaoId === id){ ABERTO = i; pintarGaveta(); return; }
-      fecharGaveta();   /* sumiu da lista (excluída, ou o filtro não a alcança mais) */
-    });
+    recarregarMantendoGaveta();
   };
 }
 
@@ -810,11 +989,18 @@ function estornarPagamento(){
   api('compasso_estornarPagamento', [x.inscricaoId, motivo], aposAcao('Pagamento estornado.'));
 }
 
+/* Emitiu, abre o modal — é a lógica do ofício, que o usuário pediu: gerar e
+   já ter à mão baixar, imprimir, e-mail, WhatsApp e editar, sem procurar a
+   pessoa de novo na lista. */
 function emitirGaveta(){
   var x = inscricaoAberta(); if (!x) return;
   if (!confirm('Emitir o ingresso de ' + x.nome + '?\n\nIsso consome uma das 2.000 vagas.')) return;
-  api('compasso_emitirIngressoV2', [{inscricaoId:x.inscricaoId}],
-      aposAcao(function(r){ return 'Ingresso ' + (r&&r.numero||'') + ' emitido.'; }));
+  var nome = x.nome, id = x.inscricaoId;
+  api('compasso_emitirIngressoV2', [{inscricaoId:id}], function(r){
+    if (!r || !r.ok) return aviso((r && r.erro) || 'Não foi possível emitir.');
+    abrirModalIngresso(id, r.numero, nome);
+    recarregarMantendoGaveta();
+  });
 }
 function emailGaveta(){
   var x = inscricaoAberta(); if (!x) return;

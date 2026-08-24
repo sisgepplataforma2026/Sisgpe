@@ -161,6 +161,24 @@ function compasso_validacaoDuplicidades(tokenSessao) {
   return out;
 }
 
+/**
+ * LEGADO — mantida de propósito, sem caminho na tela (24/08/2026).
+ *
+ * A Central de Validação era a segunda tela: para analisar uma inscrição a
+ * pessoa saía do Painel de Inscrições, abria esta e procurava o mesmo nome de
+ * novo. O usuário pediu o contrário — "tudo em um único painel" —, e tudo o
+ * que esta tela fazia passou a existir na gaveta de CompassoInscricoes.html:
+ * editar dados, pagamento, validar, pendência, reprovar com motivo.
+ *
+ * O card que apontava para cá saiu de EventosAdmin.html. Isto aqui FICA, com
+ * o arquivo EventosValidacaoAdmin.html, para o caso de algo ter escapado da
+ * migração — voltar é um card de HTML, e apagar seria irreversível.
+ *
+ * DE QUEBRA, UM ACHADO: o aviso que a tela de Eventos dava mandava abrir esta
+ * Central pelo menu "🎫 Eventos › Central de Validação" da planilha. Esse item
+ * de menu NUNCA EXISTIU — `criarMenuEventos` (EventosPainel.gs) só cadastra
+ * "Emissão de Ingressos". Quem seguisse a instrução não encontraria nada.
+ */
 function abrirCentralValidacaoCompasso(tokenSessao) {
   exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — abrir Central de Validação', false);
   var html=HtmlService.createHtmlOutputFromFile('EventosValidacaoAdmin').setWidth(1200).setHeight(760);

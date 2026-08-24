@@ -65,7 +65,8 @@ function elemento(id) {
     disabled: false, hidden: false, style: {}, options: [],
     classList: {
       add: c => classes.add(c), remove: c => classes.delete(c),
-      contains: c => classes.has(c)
+      contains: c => classes.has(c),
+      toggle: (c, on) => on ? classes.add(c) : classes.delete(c)
     },
     addEventListener() {},
     querySelectorAll() {

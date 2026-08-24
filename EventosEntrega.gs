@@ -238,6 +238,39 @@ function compasso_ingressoPdf_(ing, qrToken) {
     .setName('Ingresso ' + String(ing.numero || '').replace(/[^\w.-]+/g, '_') + '.pdf');
 }
 
+/**
+ * O INGRESSO PRONTO PARA A TELA — baixar, imprimir, abrir.
+ *
+ * O usuário pediu a mesma lógica do ofício: gerar e abrir um lugar com
+ * emissão, envio, download, impressão, WhatsApp, e-mail e editar. No ofício o
+ * PDF já existe no Drive e tem URL; aqui não — `compasso_ingressoPdf_` monta o
+ * PDF na hora, e ele só era usado como anexo do e-mail. Sem isto, "baixar" e
+ * "imprimir" não teriam de onde tirar o arquivo.
+ *
+ * Devolve o PDF em base64 (a tela monta um link `data:` e baixa ou imprime,
+ * sem viagem extra ao servidor) e a URL pública do ingresso, que é a mesma que
+ * vai no WhatsApp.
+ *
+ * NÃO registra entrega. Baixar não é entregar — quem entrega é o e-mail ou o
+ * WhatsApp, e é lá que o registro acontece. Marcar aqui encheria o filtro
+ * "enviadas" de gente que não recebeu nada.
+ */
+function compasso_ingressoArquivo(inscricaoId, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — arquivo do ingresso', false);
+  var ctx = compasso_contextoEntrega_(inscricaoId);
+  if (!ctx.ok) return ctx;
+
+  var pdf = compasso_ingressoPdf_(ctx.ing, ctx.qrToken);
+  return {
+    ok: true,
+    numero: String(ctx.ing.numero || ''),
+    nome: String(ctx.ing.nome || ''),
+    arquivo: pdf.getName(),
+    base64: Utilities.base64Encode(pdf.getBytes()),
+    url: compasso_ingressoUrlPublica_(ctx.qrToken)
+  };
+}
+
 /** Texto do e-mail e do WhatsApp num lugar só — mudar a redação é um lugar só. */
 function compasso_textoEntrega_(ing, url) {
   return 'Olá, ' + String(ing.nome || '').split(' ')[0] + '!\n\n' +

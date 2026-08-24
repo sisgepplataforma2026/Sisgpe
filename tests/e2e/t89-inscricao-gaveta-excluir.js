@@ -237,15 +237,23 @@ function elemento(id) {
     id, innerHTML: "", textContent: "", value: "", checked: false,
     disabled: false, hidden: false, style: {}, options: [],
     classList: { add: c => classes.add(c), remove: c => classes.delete(c),
-                 contains: c => classes.has(c) },
+                 contains: c => classes.has(c),
+                 toggle: (c, on) => on ? classes.add(c) : classes.delete(c) },
     addEventListener() {}, querySelectorAll: () => []
   };
 }
 function montarTela() {
   const els = {};
+  const criados = [];
   const sandbox = {
     document: { getElementById: id => (els[id] = els[id] || elemento(id)),
-                addEventListener() {} },
+                addEventListener() {},
+                /* o download monta um <a> temporário e o clica */
+                createElement(tag){ const e = elemento("novo:" + tag);
+                                    e.tag = tag; e.click = () => e.clicado = true;
+                                    criados.push(e); return e; },
+                body: { appendChild() {}, removeChild() {} } },
+    criados,
     location: { search: "" },
     google: { script: { run: new Proxy({}, { get: (_, n) =>
       (n === "withSuccessHandler" || n === "withFailureHandler")
@@ -257,12 +265,15 @@ function montarTela() {
   const expor = `; return {
     get LISTA(){return LISTA}, set LISTA(v){LISTA=v},
     get ABERTO(){return ABERTO},
+    get ABA(){return ABA},
+    get ARQUIVO(){return ARQUIVO}, set ARQUIVO(v){ARQUIVO=v},
     set SOU_ADMIN(v){SOU_ADMIN=v},
     set OPCOES(v){OPCOES=v},
-    get MOTIVO_SELECIONADO(){return document.getElementById('aMotivo').innerHTML},
-    abrirGaveta, fecharGaveta, montarMotivos, pintarLista
+    abrirGaveta, fecharGaveta, montarMotivos, pintarLista,
+    irAba, abrirModalIngresso, fecharModal, mdBaixar
   };`;
-  return { tela: new Function(...nomes, corpo + expor)(...nomes.map(n => sandbox[n])), els };
+  return { tela: new Function(...nomes, corpo + expor)(...nomes.map(n => sandbox[n])),
+           els, sandbox };
 }
 
 const pessoa = extra => Object.assign({
@@ -387,5 +398,112 @@ ok(/maria@exemplo\.com/.test(t.els.tb.innerHTML),
 ok(/acompanhante/.test(t.els.tb.innerHTML), "e a categoria também");
 ok(/abrirGaveta\(0\)/.test(t.els.tb.innerHTML),
    "e o botão abre a gaveta, não outra tela");
+
+/* ═══ AS ABAS ═════════════════════════════════════════════════════════════
+   "Tudo num único lugar: Central de Inscrições — validação, importar
+   planilha, emissão e etc" (usuário, 24/08/2026). */
+passo("a Central abre na lista e a importação é uma aba dela");
+
+t = montarTela();
+igual(t.tela.ABA, "lista", "começa na lista");
+t.tela.irAba("lista");
+igual(t.els.painelLista.hidden, false, "  com a lista à vista");
+igual(t.els.painelImportar.hidden, true, "  e a importação escondida");
+
+t.tela.irAba("importar");
+igual(t.els.painelLista.hidden, true, "trocar de aba esconde a lista");
+igual(t.els.painelImportar.hidden, false, "  e mostra a importação");
+
+t.tela.irAba("lista");
+igual(t.els.painelLista.hidden, false, "e volta");
+
+/* ═══ O MODAL DO INGRESSO ═════════════════════════════════════════════════
+   "Gera e abre um modal para emissão, envio, download, impressão, envio zap e
+   por email e editar" — a lógica do ofício, pedida nominalmente. */
+passo("emitiu, abre o modal com tudo o que se faz com o ingresso");
+
+t = montarTela(); t.tela.LISTA = [pessoa({ status:"VALIDADA_ADMINISTRATIVAMENTE" })];
+t.tela.abrirGaveta(0);
+/* getElementById materializa o elemento no DOM de mentira — mdFundo só é
+   tocado quando o modal entra em cena. */
+const mdFundo = t.sandbox.document.getElementById("mdFundo");
+igual(mdFundo.classList.contains("on"), false, "o modal começa fechado");
+
+t.tela.abrirModalIngresso("INS-1", "FCV-2026-000123", "MARIA DA SILVA");
+igual(mdFundo.classList.contains("on"), true, "abre depois de emitir");
+ok(/FCV-2026-000123/.test(t.els.mdTitulo.textContent), "  com o número do ingresso");
+igual(t.els.mdSub.textContent, "MARIA DA SILVA", "  e de quem é");
+ok(/Preparando/.test(t.els.mdStatus.innerHTML),
+   "  e avisa que o arquivo está sendo preparado",
+   "os botões de baixar e imprimir dependem do PDF que ainda está vindo");
+
+/* Os seis botões que o usuário nomeou, um a um. */
+const htmlModal = html.slice(html.indexOf('<div class="md-fundo"'),
+                             html.indexOf('<!-- ══ GAVETA'));
+[["mdAbrir","abrir o ingresso"], ["mdBaixar","baixar o PDF"],
+ ["mdImprimir","imprimir"], ["mdEmail","enviar por e-mail"],
+ ["mdWhats","enviar por WhatsApp"], ["mdEditar","editar os dados"]].forEach(([f, oq]) => {
+  ok(htmlModal.indexOf('onclick="' + f + '()"') >= 0, "  tem botão para " + oq);
+  ok(new RegExp("function " + f + "\\(").test(html), "    e a função existe");
+});
+
+passo("baixar não inventa arquivo que não chegou");
+
+t = montarTela(); t.tela.LISTA = [pessoa()]; t.tela.abrirGaveta(0);
+t.tela.ARQUIVO = null;
+t.tela.mdBaixar();
+igual(t.sandbox.criados.length, 0,
+      "sem o PDF na mão, não monta link de download",
+      "um link para 'data:application/pdf;base64,undefined' baixaria um " +
+      "arquivo corrompido e a pessoa acharia que o ingresso saiu errado");
+
+t.tela.ARQUIVO = { base64: "QUJD", arquivo: "Ingresso FCV-1.pdf", url: "https://x/y" };
+t.tela.mdBaixar();
+igual(t.sandbox.criados.length, 1, "com o PDF, monta o link");
+igual(t.sandbox.criados[0].download, "Ingresso FCV-1.pdf",
+      "  com o nome do arquivo do ingresso");
+ok(/^data:application\/pdf;base64,QUJD$/.test(t.sandbox.criados[0].href),
+   "  e o conteúdo do PDF");
+igual(t.sandbox.criados[0].clicado, true, "  e dispara o download");
+
+passo("o backend do arquivo não entrega o que não pode");
+
+const entrega = ler("EventosEntrega.gs");
+ok(/function compasso_ingressoArquivo\(inscricaoId, tokenSessao\)/.test(entrega),
+   "compasso_ingressoArquivo existe");
+const corpoArq = corpoDe(entrega, "compasso_ingressoArquivo").corpo;
+ok(/exigirAdminOuSessao_/.test(corpoArq), "  com trava de sessão");
+ok(/compasso_contextoEntrega_/.test(corpoArq),
+   "  e passa pelo contexto de entrega, que recusa sem ingresso e cancelado");
+ok(!/compasso_registrarEntrega_/.test(corpoArq),
+   "  e NÃO registra entrega",
+   "baixar não é entregar: marcar aqui encheria o filtro 'enviadas' de gente " +
+   "que não recebeu nada");
+
+passo("emitir pela lista e pela gaveta é o mesmo caminho");
+
+ok(/function emitir\(i\)\{ abrirGaveta\(i\); emitirGaveta\(\); \}/.test(html),
+   "o atalho da linha passa pela gaveta",
+   "dois caminhos de emissão foi exatamente o que o usuário mandou acabar");
+ok(/abrirModalIngresso\(id, r\.numero, nome\)/.test(html),
+   "e emitir abre o modal, como no ofício");
+
+passo("a tela de Eventos passou a ter um caminho só");
+
+const admin2 = ler("EventosAdmin.html");
+["Central de validação", "Importar planilha (teste)", "Emissão avulsa"].forEach(txt => {
+  ok(admin2.indexOf(txt) < 0, 'o card "' + txt + '" saiu da aba Inscrições');
+});
+ok(/Central de Inscrições/.test(admin2), "e o que ficou chama-se Central de Inscrições");
+ok(!/evAvisoCentral/.test(admin2),
+   "e o aviso que mandava abrir pelo menu da planilha saiu junto",
+   "aquele menu nunca existiu: criarMenuEventos só cadastra 'Emissão de Ingressos'");
+
+/* A Central de Validação FICA no repositório — REGRA Nº 1. */
+ok(fs.existsSync(path.join(RAIZ, "EventosValidacaoAdmin.html")),
+   "o arquivo da Central de Validação continua no projeto");
+ok(/LEGADO — mantida de propósito/.test(val),
+   "  documentado como legado no cabeçalho da função que a abre",
+   "apagar seria irreversível; voltar é um card de HTML");
 
 resumo();
