@@ -49,6 +49,11 @@
     .b.p{background:var(--navy);color:#fff;border-color:var(--navy)}
     .b.g{background:#e9f7f1;color:#0b5c40;border-color:#9fdcc4}
     .vazio{text-align:center;color:var(--suave);padding:32px}
+    .paginacao{display:flex;gap:14px;align-items:center;flex-wrap:wrap;
+               margin-top:12px;padding:10px 4px}
+    .paginacao .conta{font-size:12.5px;color:var(--suave)}
+    .paginacao .pg-nav{display:flex;gap:8px;align-items:center;margin-left:auto}
+    .paginacao button[disabled]{opacity:.4;cursor:default}
     .barra{display:flex;gap:8px;align-items:center;flex-wrap:wrap;
            background:#eef3fa;border:1px solid #c7d7ec;border-radius:11px;
            padding:10px 13px;margin-bottom:12px;display:none}
@@ -129,6 +134,25 @@
       </tr></thead>
       <tbody id="tb"></tbody>
     </table>
+  </div>
+
+  <!-- Rodapé de página. Some quando tudo cabe numa página só — numeração em
+       lista de 12 linhas é ruído. -->
+  <div class="paginacao" id="paginacao" hidden>
+    <span class="conta" id="pgConta"></span>
+    <label style="font-size:12px;color:var(--suave)">Por página:
+      <select id="pgTam" onchange="trocarTamanho(this.value)">
+        <option value="25">25</option>
+        <option value="50" selected>50</option>
+        <option value="100">100</option>
+        <option value="0">todas</option>
+      </select>
+    </label>
+    <div class="pg-nav">
+      <button class="b" id="pgAnt" onclick="irPagina(PAGINA-1)">‹ Anterior</button>
+      <span id="pgAtual" style="font-size:13px;font-weight:700"></span>
+      <button class="b" id="pgProx" onclick="irPagina(PAGINA+1)">Próxima ›</button>
+    </div>
   </div>
 </div>
 
@@ -274,19 +298,81 @@ function seloEntrega(x){
 }
 
 /* ── lista ── */
-function carregar(){
+function carregar(manterPagina){
   api('compasso_validacaoResumo', [], pintarCards);
   api('compasso_validacaoListar', [filtros()], function(l){
     LISTA = l || []; SEL = {}; atualizarBarra();
+    /* Filtro novo devolve outra lista: a página 7 não quer dizer mais nada.
+       Depois de emitir ou enviar, a lista é a mesma — e jogar a pessoa de
+       volta para a página 1 a cada ingresso emitido seria insuportável. */
+    if (!manterPagina) PAGINA = 1;
     g('sub').textContent = LISTA.length + ' inscrição(ões) na lista';
-    if (!LISTA.length){
-      g('tb').innerHTML = '<tr><td colspan="10" class="vazio">Nenhuma inscrição com esses filtros.</td></tr>';
-      return;
-    }
-    g('tb').innerHTML = LISTA.map(function(x,i){
-      var temIngresso = !!x.ingressoId;
-      var podeEmitir  = !temIngresso && x.status === 'VALIDADA_ADMINISTRATIVAMENTE';
-      return '<tr>' +
+    pintarLista();
+  });
+}
+/* Recarrega sem tirar a pessoa de onde ela estava. */
+function recarregar(){ carregar(true); }
+
+/* ── página ───────────────────────────────────────────────────────────────
+   A listagem vem inteira do backend e era pintada inteira: com 124 já rolava
+   sem fim, e a festa tem 2.000 vagas. O corte é aqui, na tela — o que o
+   backend devolve não muda.
+
+   O índice que vai nos botões é sempre o índice em LISTA, nunca o da fatia:
+   emitir(3) na página 2 tem de emitir a 53ª, não a 3ª.                     */
+var PAGINA = 1, POR_PAGINA = 50;
+
+function paginas(){
+  if (!POR_PAGINA) return 1;
+  return Math.max(1, Math.ceil(LISTA.length / POR_PAGINA));
+}
+function irPagina(n){
+  var total = paginas();
+  PAGINA = Math.min(Math.max(1, n), total);
+  pintarLista();
+}
+function trocarTamanho(v){
+  POR_PAGINA = Number(v) || 0;   /* 0 = todas */
+  PAGINA = 1;
+  pintarLista();
+}
+function pintarPaginacao(){
+  var cx = g('paginacao');
+  var total = paginas();
+  /* Sem numeração quando tudo cabe numa página: seria enfeite. */
+  cx.hidden = (total <= 1);
+  if (cx.hidden) return;
+  var de  = (PAGINA - 1) * POR_PAGINA + 1;
+  var ate = Math.min(PAGINA * POR_PAGINA, LISTA.length);
+  g('pgConta').textContent  = 'Mostrando ' + de + '–' + ate + ' de ' + LISTA.length;
+  g('pgAtual').textContent  = 'Página ' + PAGINA + ' de ' + total;
+  g('pgAnt').disabled  = (PAGINA <= 1);
+  g('pgProx').disabled = (PAGINA >= total);
+}
+
+function pintarLista(){
+  if (!LISTA.length){
+    g('tb').innerHTML = '<tr><td colspan="10" class="vazio">Nenhuma inscrição com esses filtros.</td></tr>';
+    g('paginacao').hidden = true;
+    return;
+  }
+  var ini = POR_PAGINA ? (PAGINA - 1) * POR_PAGINA : 0;
+  var fim = POR_PAGINA ? ini + POR_PAGINA : LISTA.length;
+  var todos = g('todos'); if (todos) todos.checked = false;
+
+  g('tb').innerHTML = LISTA.slice(ini, fim).map(function(x, k){
+    var i = ini + k;                 /* índice real, o que as ações usam */
+    return linhaHtml(x, i);
+  }).join('');
+  pintarPaginacao();
+}
+
+/* Uma linha da tabela. Foi extraída do map para que a fatia da página possa
+   passar o índice real de LISTA em vez do índice da fatia. */
+function linhaHtml(x, i){
+  var temIngresso = !!x.ingressoId;
+  var podeEmitir  = !temIngresso && x.status === 'VALIDADA_ADMINISTRATIVAMENTE';
+  return '<tr>' +
         '<td>' + (temIngresso ? '<input type="checkbox" onclick="marcar(' + i + ',this)">' : '') + '</td>' +
         '<td><b>' + esc(x.nome) + '</b>' +
           (x.categoria && x.categoria!=='associado'
@@ -303,17 +389,23 @@ function carregar(){
                          '<button class="b g" onclick="porWhats(' + i + ')">📱</button>' : '') +
           '<button class="b" onclick="abrirValidacao()">Analisar</button>' +
         '</div></td></tr>';
-    }).join('');
-  });
 }
 
 /* ── seleção para o lote ── */
 function marcar(i, el){ if(el.checked) SEL[i]=true; else delete SEL[i]; atualizarBarra(); }
+/* Marca o que está NA PÁGINA, não a lista inteira.
+   O checkbox fica no cabeçalho da tabela, e a tabela mostra uma página — dizer
+   "todos" e selecionar 2.000 seria marcar o que a pessoa não está vendo. Para
+   alcançar a lista toda existe "todas" no seletor de tamanho de página. */
 function marcarTodos(el){
   SEL = {};
+  var ini = POR_PAGINA ? (PAGINA - 1) * POR_PAGINA : 0;
+  var fim = POR_PAGINA ? ini + POR_PAGINA : LISTA.length;
   var cbs = g('tb').querySelectorAll('input[type=checkbox]');
   for (var k=0;k<cbs.length;k++){ cbs[k].checked = el.checked; }
-  if (el.checked) LISTA.forEach(function(x,i){ if(x.ingressoId) SEL[i]=true; });
+  if (el.checked) LISTA.slice(ini, fim).forEach(function(x, k){
+    if (x.ingressoId) SEL[ini + k] = true;
+  });
   atualizarBarra();
 }
 function atualizarBarra(){
@@ -332,7 +424,7 @@ function emitir(i){
   api('compasso_emitirIngressoV2', [{inscricaoId:x.inscricaoId}], function(r){
     if (!r || !r.ok) return aviso((r&&r.erro) || 'Não foi possível emitir.');
     aviso('Ingresso ' + r.numero + ' emitido. Agora envie por e-mail ou WhatsApp.');
-    carregar();
+    recarregar();
   });
 }
 function porEmail(i){
@@ -340,7 +432,7 @@ function porEmail(i){
   api('compasso_enviarIngressoEmail', [x.inscricaoId], function(r){
     if (!r || !r.ok) return aviso((r&&r.erro) || 'Não foi possível enviar.');
     aviso((r.mensagem||'Enviado.') + (r.aviso ? '\n\n' + r.aviso : ''));
-    carregar();
+    recarregar();
   });
 }
 /* O WhatsApp abre a janela ANTES da chamada: navegador bloqueia window.open
@@ -356,7 +448,7 @@ function porWhats(i){
        aconteceu. */
     setTimeout(function(){
       if (confirm('Você enviou a mensagem para ' + x.nome + '?\n\nSó confirme se enviou de verdade.'))
-        api('compasso_confirmarEnvioWhatsApp', [x.inscricaoId], function(){ carregar(); });
+        api('compasso_confirmarEnvioWhatsApp', [x.inscricaoId], function(){ recarregar(); });
     }, 1200);
   });
 }
@@ -371,11 +463,11 @@ function enviarLote(){
     /* O lote devolve o que faltou — continuar de onde parou, sem recomeçar. */
     if (r.parcial && confirm(r.mensagem + '\n\nContinuar agora?')){
       api('compasso_enviarLoteEmail', [r.restantes], function(r2){
-        aviso((r2&&r2.mensagem)||''); carregar();
+        aviso((r2&&r2.mensagem)||''); recarregar();
       });
       return;
     }
-    carregar();
+    recarregar();
   });
 }
 function abrirValidacao(){
