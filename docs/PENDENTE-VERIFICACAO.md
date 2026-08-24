@@ -1724,3 +1724,90 @@ mortas). Falta a conferência de tela, que nenhum teste alcança:
 - o card **"A analisar"** agora filtra de verdade — antes ele acendia e
   devolvia a lista inteira. Vale clicar e conferir que o número do card
   bate com o tamanho da lista.
+
+---
+
+## 21/08/2026 · Análise do módulo Eventos — o que ficou em aberto
+
+Levantado depois que os 7 commits de arquitetura V2 chegaram (17h). Descreve
+o **repositório**; o que está no ar em homologação é um subconjunto.
+
+Nenhum destes itens bloqueia a Onda 1. Todos precisam de decisão antes de
+dezembro.
+
+### 🟠 1. `compasso_checkinBuscarManual` lê os 2.000 ingressos por busca
+
+`EventosCheckinPainel.gs:15` — `fs_list_('ingressos', 1000)`, filtrado em
+memória. O check-in por QR usa `fs_queryEquals_`, que é barato; **só a busca
+manual é cara.**
+
+Dez buscas manuais na portaria = 20.000 leituras = ~40% da faixa gratuita
+diária do Firestore, no dia 19/12. A busca manual é o caminho de contingência
+(celular descarregado, QR danificado) — ou seja, é usada exatamente quando a
+fila já está travada.
+
+**A medição da Onda 2 decide se dói.** A correção, se precisar, é trocar por
+`fs_queryEquals_` sobre nome/CPF, como o caminho do QR já faz.
+
+### 🟠 2. Duas emissões coexistem, e a fraca ainda está ligada
+
+- `EventosEmissao.gs` (V1) — QR **derivável do número do ingresso**
+- `EventosEmissaoV2.gs` (V2) — QR assinado por HMAC
+
+O piloto e o painel novo usam a V2. A V1 continua no projeto e alcançável.
+
+**É a decisão que mais importa antes de dezembro**: deixar as duas é manter
+uma porta de fechadura fraca ao lado da forte. Precisa de decisão do usuário
+sobre qual morre — não é escolha técnica, é de operação (se alguém ainda
+emite pela tela antiga).
+
+### 🟡 3. O Firestore não separa homologação de produção
+
+Zero ocorrências de prefixo por ambiente em `EventosFirestore.gs`. Hoje é o
+mesmo projeto (`sisgep-plataforma`) para os dois, mesmas coleções.
+
+Os ingressos de teste convivem com o que for real. A limpeza filtra por
+`origem === 'IMPORTACAO_TESTE'` e funciona — mas é disciplina de código, não
+separação estrutural. Um `fs_list_` sem filtro vê tudo.
+
+### 🟡 4. A arquitetura V2 nova ainda é uma ilha
+
+`EventosDominioV2` + `Repository` + `Service` + `Controller` = 714 linhas,
+consumidas **apenas** pela aba Informações. Não conversam com inscrição,
+emissão nem check-in.
+
+Não é defeito — é obra em andamento, e nasceu bem fechada (o Repository
+recusa ambiente que não seja homologação, o Service exige administrador).
+**Vira problema se ficar no meio do caminho até dezembro**, com metade do
+módulo em cada arquitetura.
+
+### 🟢 5. `PRE_VALIDADA` e `EM_ANALISE` sem transição que os produza
+
+Declarados em `EventosSeguranca.gs`, citados em `EventosValidacaoAdmin.html`,
+e nenhum caminho os grava. Cosmético; só confunde quem for ler o ciclo de
+status.
+
+### O que continua "não testado" no fluxo do Compasso
+
+Executado hoje de ponta a ponta: inscrição → validação → emissão (ingressos
+FCV-2026-000001 e 000002) → e-mail saiu do servidor.
+
+**Não provado, e nesta ordem de importância:**
+
+1. 🔴 **o QR do PDF lido por câmera** — decide se a portaria funciona, e
+   nenhum código prova;
+2. 🔴 **o link público do ingresso** — saiu `/dev` nas duas rodadas; depende
+   de declarar `SISGEP_URL_BASE`;
+3. 🔴 **dupla leitura do mesmo QR** — a trava sob `LockService` só se prova
+   com dois aparelhos (Onda 3);
+4. ⚪ entrega do e-mail na caixa de outra pessoa, WhatsApp, internet ruim.
+
+### O padrão que apareceu quatro vezes em 21/08
+
+Documentei chamadas como quem escreve código, e quem usa está diante de um
+seletor de funções: função com `_` que o editor não lista, funções que pedem
+argumentos que o botão Executar não passa, e dois nomes quase iguais lado a
+lado.
+
+Todos corrigidos, o último de forma a não depender de acertar o nome. **Se
+aparecer função nova que "não roda", suspeite disto antes do código.**
