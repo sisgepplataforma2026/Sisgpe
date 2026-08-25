@@ -710,4 +710,43 @@ igual(ev.els["sub-festa"].getAttribute("aria-selected"), "false",
       "  e a Festa deixa de estar selecionada",
       "Festa 2026 e Bingo são processos diferentes, não estados do mesmo");
 
+/* ═══ QUADRO EM BRANCO NUNCA ══════════════════════════════════════════════
+   25/08/2026. A navegação por submódulos subiu e funcionou — mas o quadro
+   ficou VAZIO, sem uma palavra. A pessoa não tem como saber se está
+   carregando, se deu erro ou se não há nada ali.
+
+   A causa mais provável é conhecida deste projeto: `ScriptApp.getService()
+   .getUrl()` devolve `/dev` quando a chamada nasce do editor, e `/dev` não
+   abre para quem não tem acesso de edição — muito menos dentro de um quadro.
+   Foi o que estragou o link do ingresso no piloto de 21/08.
+
+   Duas defesas, porque a primeira pode não bastar: preferir a URL que o
+   sistema aprendeu, e AVISAR quando o quadro não carregar. */
+passo("o quadro nunca fica em branco calado");
+
+const adminHtml = ler("EventosAdmin.html");
+ok(/id="evQuadroAviso"/.test(adminHtml), "existe uma área de aviso sobre o quadro");
+ok(/onload="evQuadroCarregou\(\)"/.test(adminHtml),
+   "e o quadro avisa quando termina de carregar",
+   "sem o onload não há como distinguir 'carregando' de 'não carregou'");
+
+const abrirQuadro = (adminHtml.match(/function evQuadroAbrir\([\s\S]*?\n\}/) || [""])[0];
+ok(/setTimeout/.test(abrirQuadro) && /evQuadroAviso/.test(abrirQuadro),
+   "  e há um prazo: passou dele sem carregar, a tela explica",
+   "área em branco sem explicação é o pior resultado possível");
+ok(/\/dev/.test(abrirQuadro),
+   "  o caso /dev é reconhecido e nomeado antes de tentar",
+   "é a causa conhecida: /dev só abre para quem edita o projeto");
+ok(/evQuadroNovaAba/.test(adminHtml.match(/function evQuadroAviso[\s\S]*?\n\}/)[0]),
+   "  e todo aviso oferece o caminho que funciona");
+
+/* A URL vem da base APRENDIDA antes de cair no getUrl(). */
+const agenda = ler("EventosAgenda.gs");
+const corpoUrl = corpoDe(agenda, "eventos_obterWebAppUrl").corpo;
+ok(/getSistemaUrlBase/.test(corpoUrl),
+   "eventos_obterWebAppUrl prefere a base aprendida (SISGEP_URL_BASE)");
+ok(corpoUrl.indexOf("getSistemaUrlBase") < corpoUrl.indexOf("ScriptApp.getService"),
+   "  e só cai no getUrl() se aquela não existir",
+   "a ordem é a correção: getUrl() é justamente quem devolve /dev");
+
 resumo();

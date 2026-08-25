@@ -13,6 +13,8 @@
 .ev-quadro-wrap{padding:0;position:relative}
 .ev-quadro{width:100%;height:calc(100vh - 210px);min-height:560px;border:0;display:block;background:#f4f7fb}
 .ev-quadro-barra{display:flex;justify-content:flex-end;gap:8px;padding:8px 22px;background:#f8fafc;border-bottom:1px solid #eef2f7}
+.ev-quadro-aviso{position:absolute;left:0;right:0;top:52px;margin:22px;padding:20px 22px;background:#fff7ed;border:1px solid #fed7aa;color:#7c4a03;border-radius:12px;font-size:13px;line-height:1.6}
+.ev-quadro-aviso b{display:block;margin-bottom:6px;color:#7c2d12}
 /* ── CARDS DE AÇÃO ── */
 .ev-acoes{display:grid;gap:12px;margin-bottom:14px}.ev-acao{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:16px 18px;display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;box-shadow:0 2px 10px rgba(0,20,60,.06)}.ev-acao .txt{flex:1 1 320px;min-width:0}.ev-acao .txt>b{display:block;font-size:14px;color:#001f4d}.ev-acao .txt>span{display:block;font-size:12.5px;color:#5a6779;margin-top:3px;line-height:1.5}.ev-link{margin-top:8px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11.5px;color:#1565C0;background:#f5f8fc;border:1px solid #dbe4ef;border-radius:8px;padding:7px 10px;word-break:break-all;display:block}.ev-nota{background:#fff7ed;border:1px solid #fed7aa;color:#7c4a03;border-radius:12px;padding:12px 15px;font-size:12.5px;line-height:1.55;margin-bottom:14px}.ev-secao{font-size:11px;font-weight:900;color:#64748b;text-transform:uppercase;letter-spacing:.07em;margin:0 0 10px}
 /* ── INFORMAÇÕES DA FESTA V2 ── */
@@ -39,7 +41,8 @@
 
      Aprovado pelo usuário em 24/08/2026. -->
 <div class="ev-abas" role="tablist">
-  <button class="ev-aba" role="tab" id="sub-programacao" aria-selected="true"  onclick="evSub('programacao')">📅 Programação</button>
+  <button class="ev-aba" role="tab" id="sub-painel"      aria-selected="true"  onclick="evSub('painel')">📊 Painel</button>
+  <button class="ev-aba" role="tab" id="sub-programacao" aria-selected="false" onclick="evSub('programacao')">📅 Programação</button>
   <button class="ev-aba" role="tab" id="sub-festa"       aria-selected="false" onclick="evSub('festa')">🎉 Festa Compasso da Vida 2026</button>
   <button class="ev-aba" role="tab" id="sub-bingo"       aria-selected="false" onclick="evSub('bingo')">🎲 Bingo Online</button>
 </div>
@@ -56,7 +59,10 @@
     <button class="ev-btn" onclick="evQuadroNovaAba()">Abrir em nova aba ↗</button>
     <button class="ev-btn" onclick="evQuadroRecarregar()">↻ Atualizar</button>
   </div>
-  <iframe class="ev-quadro" id="evQuadro" title="Painel"></iframe>
+  <iframe class="ev-quadro" id="evQuadro" title="Painel" onload="evQuadroCarregou()"></iframe>
+  <!-- Quadro em branco sem explicação é o pior resultado possível: a pessoa
+       não sabe se está carregando, se deu erro ou se não há nada. -->
+  <div class="ev-quadro-aviso" id="evQuadroAviso" hidden></div>
 </div>
 
 <div class="ev-wrap">
@@ -162,6 +168,30 @@
     </div>
   </div>
 
+  <!-- ══ PAINEL DO MÓDULO ═════════════════════════════════════════════════
+       Diretriz oficial do PROMPT-MESTRE: "todo módulo principal deve possuir
+       dashboard operacional próprio", e a regra central dele é
+
+           "o dashboard deve mostrar o que o usuário precisa fazer AGORA".
+
+       Por isso não é um quadro de números bonitos: cada linha aqui é uma FILA
+       que gera trabalho, e clicar leva direto para ela já filtrada. O que não
+       pede ação não entra. -->
+  <div class="ev-conteudo" id="conteudo-painel" hidden>
+    <p class="ev-secao">Festa Compasso da Vida 2026 · 19 de dezembro</p>
+    <div class="ev-grid">
+      <div class="ev-card"><small>Inscrições</small><strong id="pnTotal">—</strong></div>
+      <div class="ev-card"><small>A analisar</small><strong id="pnAnalisar">—</strong></div>
+      <div class="ev-card"><small>A enviar</small><strong id="pnEnviar">—</strong></div>
+      <div class="ev-card"><small>Vagas restantes</small><strong id="pnVagas">—</strong></div>
+    </div>
+    <div class="ev-acoes" id="pnFilas"></div>
+    <div class="ev-nota" id="pnVazio" hidden>
+      Nada pedindo ação agora. Quando entrar inscrição nova ou ingresso ficar
+      parado sem envio, aparece aqui.
+    </div>
+  </div>
+
   <!-- ══ INSCRIÇÕES ══ -->
   <div class="ev-conteudo" id="conteudo-inscricoes" hidden>
     <p class="ev-secao">Festa Compasso da Vida 2026 · 19 de dezembro</p>
@@ -228,6 +258,9 @@ function urlImagem(v){v=String(v||'').trim();return /^https:\/\//i.test(v)?v:''}
    isso que "Participantes" deixou de ser vizinha de "Inscrições" e virou uma
    tela do mesmo submódulo, apontando para o mesmo painel com outro filtro. */
 var EV_SUBMODULOS = {
+  painel: [
+    { id:'hoje', rotulo:'O que pede ação hoje', conteudo:'painel' }
+  ],
   programacao: [
     { id:'agenda', rotulo:'Agenda',              conteudo:'calendario' },
     { id:'festa',  rotulo:'Dados da Festa 2026', conteudo:'informacoes' }
@@ -279,7 +312,53 @@ function evTelaInterno(id){
 
   if(t.painel) evQuadroAbrir(t.painel,'',t.filtro||'');
   if(t.conteudo==='informacoes') evInfoCarregar();
+  if(t.conteudo==='painel') evPainelCarregar();
 }
+
+/* ══ PAINEL DO MÓDULO ══════════════════════════════════════════════════════
+   Números que viram fila clicável. O PROMPT-MESTRE é explícito: "cards e
+   alertas devem ser clicáveis e levar diretamente à fila"; "evite dashboards
+   decorativos". */
+function evPainelCarregar(){
+  var token=tokenSessao(); if(!token)return;
+  google.script.run.withSuccessHandler(function(r){
+    r=r||{};
+    var total=Number(r.total||0), analisar=Number(r.naoAnalisadas||0),
+        enviar=Number(r.aEnviar||0), comIngresso=Number(r.comIngresso||0);
+    g('pnTotal').textContent=total;
+    g('pnAnalisar').textContent=analisar;
+    g('pnEnviar').textContent=enviar;
+    g('pnVagas').textContent=(2000-comIngresso);
+
+    /* Só entra o que TEM trabalho pendente. Fila zerada não é notícia. */
+    var filas=[];
+    if(analisar) filas.push({n:analisar,
+      t:'Inscrições esperando análise',
+      d:'Ninguém emite ingresso antes de alguém validar. É a fila que segura todo o resto.',
+      b:'Analisar →', f:'a-analisar'});
+    if(enviar) filas.push({n:enviar,
+      t:'Ingressos emitidos e não enviados',
+      d:'Já consumiram vaga e a pessoa ainda não recebeu. Sem esta fila, ficam parados sem ninguém perceber.',
+      b:'Enviar →', f:'a-enviar'});
+
+    g('pnVazio').hidden=filas.length>0;
+    g('pnFilas').innerHTML=filas.map(function(x){
+      return '<div class="ev-acao"><div class="txt">'+
+        '<b>'+x.n+' · '+esc(x.t)+'</b><span>'+esc(x.d)+'</span></div>'+
+        '<button class="ev-btn primary" onclick="evIrParaFila(\''+x.f+'\')">'+esc(x.b)+'</button></div>';
+    }).join('');
+  }).withFailureHandler(function(){
+    g('pnFilas').innerHTML='';
+    g('pnVazio').hidden=false;
+    g('pnVazio').textContent='Não foi possível carregar os números agora.';
+  }).compasso_validacaoResumo(token);
+}
+
+/* Um clique do painel: vai para o submódulo da Festa já na fila certa. */
+window.evIrParaFila=function(filtro){
+  evSubInterno('festa');
+  evQuadroAbrir('compasso','',filtro);
+};
 /* Exposta para o onclick do HTML, mas chamada INTERNAMENTE pelo nome local:
    dentro da IIFE, depender de a função ter chegado ao objeto global é um
    acoplamento invisível — e foi o que a mutação 32 revelou. */
@@ -287,18 +366,59 @@ window.evTela=evTelaInterno;
 
 /* O painel dentro do quadro. Guarda a URL para o "abrir em nova aba" e o
    "atualizar" não precisarem pedir de novo ao servidor. */
+var EV_QUADRO_TIMER=null;
+
+function evQuadroAviso(titulo,texto){
+  var a=g('evQuadroAviso'); if(!a)return;
+  a.hidden=false;
+  a.innerHTML='<b>'+esc(titulo)+'</b>'+esc(texto)+
+    '<div style="margin-top:12px"><button class="ev-btn" onclick="evQuadroNovaAba()">'+
+    'Abrir em nova aba ↗</button></div>';
+}
+function evQuadroLimparAviso(){var a=g('evQuadroAviso');if(a){a.hidden=true;a.innerHTML=''}}
+window.evQuadroCarregou=function(){
+  if(EV_QUADRO_TIMER){clearTimeout(EV_QUADRO_TIMER);EV_QUADRO_TIMER=null}
+  evQuadroLimparAviso();
+};
+
 function evQuadroAbrir(painel,eventoId,filtro){
   var token=tokenSessao();
-  if(!token)return avisar('Sessão não encontrada. Entre novamente no SISGEP.','err');
+  if(!token){
+    evQuadroAviso('Sessão não encontrada.',
+      'Entre novamente no SISGEP e reabra este painel.');
+    return;
+  }
+  evQuadroLimparAviso();
   google.script.run.withSuccessHandler(function(base){
     var url=String(base||'')+'?painel='+encodeURIComponent(painel)+
             '&sessao='+encodeURIComponent(token);
     if(eventoId)url+='&evento='+encodeURIComponent(eventoId);
     if(filtro)url+='&filtro='+encodeURIComponent(filtro);
     EV_QUADRO_URL=url;
+
+    /* /dev não abre para quem não tem acesso de edição ao projeto, e muito
+       menos dentro de um quadro. Já foi a causa do link errado do ingresso
+       no piloto de 21/08 — dizer isso agora poupa a caça ao erro. */
+    if(url.indexOf('/dev?')>=0||/\/dev$/.test(String(base||''))){
+      evQuadroAviso('A implantação está apontando para /dev.',
+        'Esse endereço só abre para quem tem acesso de edição ao projeto, e não '+
+        'carrega dentro desta tela. Publique uma implantação nova e declare '+
+        'SISGEP_URL_BASE nas Propriedades do script com o endereço /exec.');
+      return;
+    }
+
     g('evQuadro').src=url;
+    /* Se o quadro não avisar que carregou, alguma coisa o recusou. Melhor
+       dizer isso do que deixar a área em branco. */
+    if(EV_QUADRO_TIMER)clearTimeout(EV_QUADRO_TIMER);
+    EV_QUADRO_TIMER=setTimeout(function(){
+      evQuadroAviso('O painel não abriu aqui dentro.',
+        'Pode ser bloqueio do navegador para telas embutidas. O conteúdo é o '+
+        'mesmo — use o botão abaixo.');
+    },8000);
   }).withFailureHandler(function(e){
-    avisar('Não foi possível abrir o painel: '+((e&&e.message)||e),'err');
+    evQuadroAviso('Não foi possível obter o endereço do painel.',
+      (e&&e.message)||String(e));
   }).eventos_obterWebAppUrl(token);
 }
 window.evQuadroNovaAba=function(){ if(EV_QUADRO_URL)window.open(EV_QUADRO_URL,'_blank'); };

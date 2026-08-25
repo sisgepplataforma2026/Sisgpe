@@ -200,14 +200,20 @@ ok(els.paginacao.hidden === true, "e o rodapé de página fica escondido",
 /* ───────────────────────────────────────────────────────────────────────── */
 passo("marcar todos alcança a página, não a lista inteira");
 
+/* SEM ingresso de propósito. Em 25/08/2026 o usuário marcou o checkbox do
+   cabeçalho sobre as 122 importadas e a barra de ações nem apareceu: o
+   marcar-todos ainda filtrava por ingresso, e nenhuma delas tinha. O checkbox
+   da LINHA já tinha sido corrigido; este ficou para trás. */
 ({ tela, els } = montar());
-tela.LISTA = pessoas(124, true);   /* com ingresso: é o que tem checkbox */
+tela.LISTA = pessoas(124, false);
 tela.pintarLista();
 tela.irPagina(2);
 tela.marcarTodos({ checked: true });
 
 const marcados = Object.keys(tela.SEL).map(Number).sort((a, b) => a - b);
-igual(marcados.length, 50, "marcou 50 — o tamanho da página");
+igual(marcados.length, 50,
+      "marcou 50 — o tamanho da página, mesmo sem nenhuma ter ingresso",
+      "selecionar não é decidir o que fazer: quem decide é o botão");
 igual(marcados[0], 50, "  a partir da 51ª pessoa");
 igual(marcados[49], 99,
       "  até a 100ª",

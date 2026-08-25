@@ -26,9 +26,24 @@ function agendaEventos_formatarData_(v) {
   return String(v);
 }
 
+/**
+ * A URL do web app, preferindo a que o sistema APRENDEU.
+ *
+ * `ScriptApp.getService().getUrl()` devolve `/dev` quando a chamada nasce do
+ * editor, e `/dev` não abre para quem não tem acesso de edição ao projeto —
+ * nem dentro de um quadro. Foi assim que o link do ingresso saiu errado nas
+ * duas rodadas do piloto (21/08).
+ *
+ * `getSistemaUrlBase()` lê `SISGEP_URL_BASE`, que `sisgep_aprenderUrlBase_()`
+ * grava sozinho na primeira vez que alguém abre o web app publicado. Só cai
+ * no getUrl() se aquilo ainda não existir.
+ */
 function eventos_obterWebAppUrl(tokenSessao) {
   exigirModulo_(tokenSessao, "eventos", false);
-  var url = ScriptApp.getService().getUrl();
+  var url = "";
+  try { if (typeof getSistemaUrlBase === "function") url = String(getSistemaUrlBase() || ""); }
+  catch (e) { url = ""; }
+  if (!url) url = String(ScriptApp.getService().getUrl() || "");
   if (!url) throw new Error("URL do Web App não disponível. Verifique a implantação de homologação.");
   return url;
 }

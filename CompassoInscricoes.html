@@ -653,8 +653,16 @@ function marcarTodos(el){
   var fim = POR_PAGINA ? ini + POR_PAGINA : LISTA.length;
   var cbs = g('tb').querySelectorAll('input[type=checkbox]');
   for (var k=0;k<cbs.length;k++){ cbs[k].checked = el.checked; }
+  /* Marca TODAS as linhas da página, não só as que têm ingresso.
+     25/08/2026: o usuário marcou o checkbox do cabeçalho e nada aconteceu —
+     a barra de ações nem apareceu. Eu tinha corrigido o checkbox da LINHA e
+     esquecido este, que continuava filtrando por ingresso. Como nenhuma das
+     122 importadas tinha ingresso, a seleção saía vazia.
+
+     Selecionar não é decidir o que fazer: quem decide é o botão, e cada botão
+     já sabe a que seleção ele serve. */
   if (el.checked) LISTA.slice(ini, fim).forEach(function(x, k){
-    if (x.ingressoId) SEL[ini + k] = true;
+    SEL[ini + k] = true;
   });
   atualizarBarra();
 }

@@ -123,9 +123,19 @@
         <button type="button" class="docSubMenuBtn" data-sub-mod="centralEmailIA" onclick="spIr('centralEmailIA',null)">📬 Caixa de E-mails</button>
       </div>
 
-      <button class="spN" data-mod="eventos" onclick="spIr('eventos',this)">
+      <!-- Eventos era o unico modulo grande sem subcamada no menu: clicar nele
+           abria a tela e pronto, sem mostrar o que existe dentro. Os
+           submodulos sao os do PROMPT-MESTRE §4 (Modulo → Submodulo → Tela),
+           aprovados pelo usuario em 24/08/2026. -->
+      <button class="spN" data-mod="eventos" data-acordeao="eventosSubMenuSidebar" onclick="spAcordeao(this);spIr('eventos',this)">
         <span class="spNI">📅</span><div><strong>Eventos</strong><small>Atividades e programações</small></div>
       </button>
+      <div id="eventosSubMenuSidebar" class="docSubMenuSidebar" data-subs="eventos,eventosProgramacao,eventosFesta,eventosBingo" style="display:none;">
+        <button type="button" class="docSubMenuBtn" data-sub-mod="eventos"             onclick="spIr('eventos',null)">📊 Painel</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="eventosProgramacao"  onclick="spIr('eventosProgramacao',null)">📅 Programação</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="eventosFesta"        onclick="spIr('eventosFesta',null)">🎉 Festa Compasso 2026</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="eventosBingo"        onclick="spIr('eventosBingo',null)">🎲 Bingo Online</button>
+      </div>
 
       <div class="spSec">Administração</div>
 
@@ -1400,6 +1410,12 @@ var MODS={
   comunicacao:["mComunicacao","Painel do Dia","Central de Comunicação — resumo, prioridades e ações rápidas de e-mail"],
   centralEmailIA:["mCentralEmailIA","Caixa de E-mails","Central de Comunicação — categorização inteligente, contexto SISGEP e respostas automáticas"],
   eventos:["mEventos","Eventos","Atividades e Programações"],
+  /* Os submódulos de Eventos moram no MESMO container (mEventos): o que muda
+     é qual submódulo a tela abre. Registrar container próprio para cada um
+     seria três cópias da mesma tela para manter em sincronia. */
+  eventosProgramacao:["mEventos","Programação","Agenda sindical — planejados, abertos e encerrados"],
+  eventosFesta:["mEventos","Festa Compasso da Vida 2026","Inscrições, ingressos e credenciamento"],
+  eventosBingo:["mEventos","Bingo Online","Rodada, cartelas e telão"],
   /* "relatorios" abre o MESMO div de Documentos (mDocumentos) porque o
      painel é o blocoRelatorios, incluído lá dentro. O nome antigo prometia
      "Indicadores e Análises" — indicadores do sindicato inteiro — e
@@ -2022,10 +2038,17 @@ if(mod==="beneficios"){
     return;
   }
 
-  if(mod==="eventos"){
-    return callFn("initEventos") ||
-           callFn("carregarEventos") ||
-           initModuloAssistido(mod,opts);
+  /* Eventos e seus submódulos: mesma tela, submódulo diferente. O nome do
+     submódulo é derivado do módulo escolhido no menu — sem mapa paralelo para
+     alguém esquecer de atualizar quando entrar um submódulo novo. */
+  if(mod==="eventos"||mod.indexOf("eventos")===0){
+    var subEv={eventosProgramacao:"programacao",eventosFesta:"festa",eventosBingo:"bingo"}[mod]||"";
+    var r=callFn("initEventos")||callFn("carregarEventos")||initModuloAssistido(mod,opts);
+    if(subEv&&typeof window.evSub==="function"){
+      /* Depois do init: a barra de submódulos só existe com a tela montada. */
+      setTimeout(function(){ try{ window.evSub(subEv); }catch(e){} },120);
+    }
+    return r;
   }
 
   if(mod==="relatorios") return initRelatorios(opts);
