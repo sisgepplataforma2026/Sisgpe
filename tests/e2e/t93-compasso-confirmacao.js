@@ -499,4 +499,61 @@ ok(/confirmacaoEnviadaEm:x\.confirmacaoEnviadaEm/.test(listagem) &&
 naoTestavel("o WhatsApp abre e a mensagem chega",
             "wa.me depende do navegador e do aplicativo; só o clique real prova");
 
+/* ══════════════════════════════════════════════════════════════════════════
+   13 · O PICO DA LISTA DE TRANSMISSÃO
+   ══════════════════════════════════════════════════════════════════════════
+
+   O usuário confirmou como o link chega: "link vai para a lista de
+   transmissão". Isso define o perfil de carga — todo mundo recebe no mesmo
+   instante e clica na mesma hora, sem chegada distribuída.
+
+   Cada inscrição segura a trava do script durante duas ou três chamadas ao
+   Firestore. `waitLock` LANÇA EXCEÇÃO quando não consegue a trava no prazo, e
+   até 25/08 essa exceção subia crua até a tela: erro do Apps Script, sem
+   mensagem, sem instrução. Quem vê isso preenche tudo de novo — e se a
+   primeira tentativa tiver passado, nasce a duplicidade que a trava de CPF
+   existe justamente para impedir.
+   ══════════════════════════════════════════════════════════════════════════ */
+passo("13 · quando a trava não vem a tempo");
+
+const lockOriginal = g.LockService.getScriptLock;
+g.LockService.getScriptLock = function () {
+  return {
+    waitLock: function () { throw new Error("Could not obtain lock in 20000 ms."); },
+    releaseLock: function () {},
+    tryLock: function () { return false; },
+    hasLock: function () { return false; }
+  };
+};
+
+const antesPico = g.fs_list_("inscricoesEventos").length;
+let estourou = false, rPico = null;
+try { rPico = inscrever({ cpf: cpfGerado(711111111), nome: "Fernanda Alves Pinto",
+                          email: "fernanda@exemplo.com" }); }
+catch (e) { estourou = true; }
+
+ok(!estourou,
+   "a exceção da trava NÃO sobe crua para a tela",
+   "erro do Apps Script sem mensagem é o que faz a pessoa preencher tudo de novo");
+ok(rPico && rPico.ok === false, "  volta como recusa explicada");
+ok(/NÃO foi registrada/i.test(String((rPico || {}).erro || "")),
+   "  e a mensagem diz que a inscrição não foi registrada",
+   "sem essa frase a pessoa não sabe se pode tentar de novo: " + (rPico || {}).erro);
+ok(/espere um minuto|tente/i.test(String((rPico || {}).erro || "")),
+   "  e o que fazer em seguida");
+igual(g.fs_list_("inscricoesEventos").length, antesPico,
+      "  e nada foi gravado pela metade");
+
+g.LockService.getScriptLock = lockOriginal;
+
+/* A trava continua de pé no caminho normal — a recusa acima não pode ter
+   virado "seguir sem travar". */
+const rDepois = inscrever({ cpf: cpfGerado(811111111), nome: "Marcos Vieira Luz",
+                            email: "marcos@exemplo.com" });
+ok(rDepois.ok === true, "com a trava disponível, a inscrição volta a funcionar");
+
+naoTestavel("quantas pessoas simultâneas a trava aguenta de verdade",
+            "o emulador é de uma thread só. Só a onda de carga do plano " +
+            "(1.000, 2.000 e 2.500) mede a fila real — e ela nunca foi rodada");
+
 resumo();

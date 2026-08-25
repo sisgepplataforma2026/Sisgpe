@@ -379,7 +379,35 @@ function compasso_repeticaoLiberada_() {
 
 function compasso_criarInscricaoAssociado_publica_(payload) {
   var lock = LockService.getScriptLock();
-  lock.waitLock(20000);
+
+  /* A FILA DA LISTA DE TRANSMISSÃO — 25/08/2026.
+   *
+   * O usuário confirmou como o link chega: "link vai para a lista de
+   * transmissão". Isso não é detalhe de divulgação, é o perfil de carga: todo
+   * mundo recebe no mesmo instante e clica na mesma hora. Não há chegada
+   * distribuída ao longo do dia.
+   *
+   * Cada inscrição segura a trava do script durante duas ou três chamadas ao
+   * Firestore. Para uma pessoa é instantâneo; para 500 no mesmo minuto vira
+   * fila — e `waitLock` LANÇA EXCEÇÃO quando não consegue a trava no prazo.
+   *
+   * Até aqui essa exceção subia crua: a pessoa via um erro do Apps Script, sem
+   * mensagem e sem instrução. E a reação natural é preencher tudo de novo — o
+   * que, se a primeira tentativa tiver passado, gera a duplicidade que a trava
+   * de CPF existe para impedir.
+   *
+   * Agora ela vira recusa explicada, e a mensagem diz a única coisa que
+   * importa: NÃO foi registrada. Sem essa frase a pessoa fica sem saber se
+   * pode tentar de novo. */
+  try {
+    lock.waitLock(20000);
+  } catch (eLock) {
+    return { ok: false, ocupado: true,
+             erro: 'Muita gente se inscrevendo agora e não conseguimos ' +
+                   'registrar a sua inscrição. Ela NÃO foi registrada — ' +
+                   'espere um minuto e envie de novo.' };
+  }
+
   try {
     /* UMA INSCRIÇÃO POR CPF — exceto em homologação.
      *
