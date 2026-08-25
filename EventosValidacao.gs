@@ -95,7 +95,7 @@ function compasso_validacaoListar_interno_(filtros) {
        ingressoId vai junto porque o estorno é recusado depois de emitido. */
     return {inscricaoId:x.inscricaoId||x._docId,nome:x.nome||'',cpf:x.cpf||'',escola:x.escola||'',cidade:x.cidade||'',regiao:x.regiao||'',status:x.status||'',analisadoPor:x.analisadoPor||'',analisadoEm:x.analisadoEm||'',motivoCodigo:x.motivoCodigo||'',observacaoAnalise:x.observacaoAnalise||'',pessoaId:x.pessoaId||'',email:x.email||'',whatsapp:x.whatsapp||'',matricula:x.matricula||'',categoria:String(x.categoria||'').toLowerCase(),ingressoId:x.ingressoId||'',numeroIngresso:x.numeroIngresso||'',pagamento:compasso_pagamentoDaInscricao_(x),/* o comprovante da INSCRIÇÃO — não confundir com a entrega do ingresso.
        A gaveta precisa saber se ele já saiu e por onde, para não mandar a
-       secretaria enviar de novo o que a pessoa já recebeu. */protocolo:String(x.protocolo||''),confirmacaoEnviadaEm:x.confirmacaoEnviadaEm||'',confirmacaoVia:String(x.confirmacaoVia||''),confirmacaoErro:String(x.confirmacaoErro||''),/* o selo do painel: ASSOCIADO / NAO_FILIADO / NAO_ENCONTRADO */situacaoAssociado:String(x.situacaoAssociado||''),entrega:compasso_entregaDaInscricao_(x),origem:String(x.origem||'')};
+       secretaria enviar de novo o que a pessoa já recebeu. */criadoEm:x.criadoEm||'',protocolo:String(x.protocolo||''),confirmacaoEnviadaEm:x.confirmacaoEnviadaEm||'',confirmacaoVia:String(x.confirmacaoVia||''),confirmacaoErro:String(x.confirmacaoErro||''),/* o selo do painel: ASSOCIADO / NAO_FILIADO / NAO_ENCONTRADO */situacaoAssociado:String(x.situacaoAssociado||''),entrega:compasso_entregaDaInscricao_(x),origem:String(x.origem||'')};
   });
 }
 
@@ -111,8 +111,11 @@ function compasso_validacaoListar_interno_(filtros) {
 function compasso_validacaoResumo(tokenSessao) {
   exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — resumo da validação', false);
   var docs=compasso_validacaoListar_interno_({});
+  var hoje = new Date();
   var r={total:docs.length,naoAnalisadas:0,validadas:0,pendentes:0,reprovadas:0,
-         aEnviar:0,enviadas:0,semIngresso:0,naoAssociados:0};
+         aEnviar:0,enviadas:0,semIngresso:0,naoAssociados:0,
+         chegada:compasso_chegadaVazia_()};
+  for (var d7 = 0; d7 < 7; d7++) r.chegada.porDia.push(0);
   docs.forEach(function(x){
     if(x.status===COMPASSO_STATUS.VALIDADA) r.validadas++;
     else if(x.status===COMPASSO_STATUS.PENDENTE) r.pendentes++;
@@ -124,8 +127,48 @@ function compasso_validacaoResumo(tokenSessao) {
     if (x.ingressoId && !entregue) r.aEnviar++;
     if (x.status===COMPASSO_STATUS.VALIDADA && !x.ingressoId) r.semIngresso++;
     if (x.situacaoAssociado && x.situacaoAssociado !== 'ASSOCIADO') r.naoAssociados++;
+
+    /* O RITMO DE CHEGADA sai da MESMA varredura, de propósito. Uma segunda
+       listagem dobraria as leituras do Firestore só para contar data — e o
+       consumo do dia 19/12 é justamente o que o executivo existe para vigiar. */
+    compasso_contarChegada_(r.chegada, x.criadoEm, hoje);
   });
   return r;
+}
+
+/**
+ * QUANTAS ENTRARAM, E QUANDO — 25/08/2026.
+ *
+ * O usuário decidiu mandar o link "aos poucos, não tudo de uma única vez".
+ * Operar por levas exige um número que o painel não dava: quantas chegaram
+ * desde a última leva. Sem ele, a decisão de mandar a próxima é no palpite.
+ *
+ * O que se conta e por quê:
+ *   · últimas 24h — o tamanho da leva que acabou de entrar;
+ *   · por dia, 7 dias — a curva, que mostra se o volume está subindo;
+ *   · a última — se faz uma hora ou dois dias que ninguém se inscreve.
+ */
+function compasso_chegadaVazia_() {
+  return { ultimas24h: 0, hoje: 0, porDia: [], ultimaEm: null };
+}
+
+function compasso_contarChegada_(chegada, criadoEm, hoje) {
+  if (!chegada || !criadoEm) return;
+  var d = (criadoEm instanceof Date) ? criadoEm : new Date(criadoEm);
+  if (isNaN(d.getTime())) return;
+
+  var agora = hoje.getTime();
+  if (agora - d.getTime() <= 86400000) chegada.ultimas24h++;
+
+  var meiaNoite = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+  if (d.getTime() >= meiaNoite.getTime()) chegada.hoje++;
+
+  var diasAtras = Math.floor((meiaNoite.getTime() -
+    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()) / 86400000);
+  if (diasAtras >= 0 && diasAtras <= 6) chegada.porDia[6 - diasAtras]++;
+
+  if (!chegada.ultimaEm || d.getTime() > new Date(chegada.ultimaEm).getTime())
+    chegada.ultimaEm = d;
 }
 
 function compasso_validacaoSalvarDados(inscricaoId, patch, atualizarCadastroMestre, tokenSessao) {

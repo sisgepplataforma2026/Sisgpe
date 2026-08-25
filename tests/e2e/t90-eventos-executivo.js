@@ -225,4 +225,102 @@ ok(/en\.porDia/.test(tela),
    "  e a tela mostra o RITMO, não o total",
    "o total nunca é feito de uma vez — o usuário corrigiu isso em 25/08");
 
+/* ══════════════════════════════════════════════════════════════════════════
+   O RITMO DE CHEGADA — 25/08/2026
+   ══════════════════════════════════════════════════════════════════════════
+
+   O usuário decidiu mandar o link "aos poucos, não tudo de uma única vez", e
+   isso cria uma pergunta que o painel não respondia: já dá para mandar a
+   próxima leva? Sem número, a decisão é palpite.
+
+   O que este bloco guarda, e por que cada coisa:
+
+   1. QUE O VEREDITO NÃO INVENTA TENDÊNCIA. Só existe o tamanho da fila AGORA;
+      dizer "a fila está estabilizando" seria uma leitura que o dado não
+      sustenta. Fila vazia libera, fila com gente segura — e nada além disso.
+
+   2. QUE A CONTAGEM NÃO CUSTA UMA SEGUNDA VARREDURA. Contar data numa listagem
+      extra dobraria as leituras do Firestore, justo no número que o executivo
+      existe para vigiar.
+   ══════════════════════════════════════════════════════════════════════════ */
+const bb = require("./base");
+const gg = (function(){
+  const r = bb.subir({}); bb.seedUsuarios(r.g);
+  const M = new Map(), cl = o => JSON.parse(JSON.stringify(o));
+  r.g.fs_set_ = (c,i,o) => { M.set(c+"/"+i, cl(o)); return {ok:true}; };
+  r.g.fs_get_ = (c,i) => { const v = M.get(c+"/"+i); return v ? cl(v) : null; };
+  r.g.fs_list_ = c => { const o=[]; M.forEach((v,k)=>{ if(k.indexOf(c+"/")===0) o.push(cl(v)); }); return o; };
+  r.g.fs_queryEquals_ = (c,f,v) => r.g.fs_list_(c).filter(d => String(d[f])===String(v));
+  return r.g;
+})();
+const TOK = bb.logar(gg, "wanderson");
+gg.__usuarioAtivoEmail = "wanderson@sindeducacao.com";
+
+passo("o ritmo de chegada, para decidir a próxima leva");
+
+/* Uma semana montada à mão: 3 anteontem, 5 ontem, 2 hoje. */
+const agora = new Date();
+const diasAtras = n => new Date(agora.getTime() - n * 86400000);
+let seq = 0;
+const semear = (quando, status) => {
+  const id = "INS-seed-" + (++seq);
+  gg.fs_set_("inscricoesEventos", id, {
+    inscricaoId: id, eventoId: gg.EMISSAO_CFG.EVENTO_ID, nome: "Pessoa " + seq,
+    cpf: "", escola: "E", cidade: "C", status: status || "",
+    criadoEm: quando, vagaReservada: true });
+};
+[2,2,2].forEach(d => semear(diasAtras(d), "VALIDADA_ADMINISTRATIVAMENTE"));
+[1,1,1,1,1].forEach(d => semear(diasAtras(d), "VALIDADA_ADMINISTRATIVAMENTE"));
+semear(new Date(agora.getTime() - 3600000), "");     /* 1h atrás, sem análise */
+semear(new Date(agora.getTime() - 7200000), "");     /* 2h atrás, sem análise */
+
+const resumoR = gg.compasso_validacaoResumo(TOK);
+const ch = resumoR.chegada || {};
+igual(Number(ch.hoje), 2, "conta as que entraram hoje");
+igual(Number(ch.ultimas24h), 2, "  e as das últimas 24h");
+igual(ch.porDia.length, 7, "  com a curva de 7 dias");
+igual(ch.porDia[6], 2, "  hoje é a última posição da curva");
+igual(ch.porDia[5], 5, "  ontem tem as 5");
+igual(ch.porDia[4], 3, "  e anteontem as 3");
+ok(!!ch.ultimaEm, "  e guarda quando entrou a última");
+
+const execRitmo = gg.compasso_executivoResumo(TOK);
+const rit = execRitmo.chegada || {};
+igual(Number(rit.filaDeAnalise), 2, "o veredito olha a fila de análise");
+ok(rit.liberado === false, "  com fila, NÃO libera a próxima leva");
+ok(/ainda não foi absorvida/i.test(String(rit.recado || "")),
+   "  e diz por quê: " + rit.recado);
+ok(!/estabiliz|tend[êe]ncia|caindo|subindo/i.test(String(rit.recado || "")),
+   "  sem afirmar tendência",
+   "só existe o tamanho da fila AGORA; dizer que ela está estabilizando seria " +
+   "uma leitura que o dado não sustenta");
+
+/* Analisadas as duas, a fila zera e o veredito vira. */
+gg.fs_list_("inscricoesEventos").forEach(function(x){
+  if (!x.status){ x.status = "VALIDADA_ADMINISTRATIVAMENTE";
+                  gg.fs_set_("inscricoesEventos", x.inscricaoId, x); }
+});
+const execRitmo2 = gg.compasso_executivoResumo(TOK);
+ok(execRitmo2.chegada.liberado === true, "com a fila zerada, libera a próxima leva");
+ok(/absorvida/i.test(String(execRitmo2.chegada.recado || "")),
+   "  e diz que a leva anterior foi absorvida");
+
+/* A contagem sai da mesma varredura — sem segunda listagem. */
+const fonteVal = ler("EventosValidacao.gs");
+ok(/compasso_contarChegada_\(r\.chegada, x\.criadoEm, hoje\)/.test(fonteVal),
+   "a contagem acontece dentro do laço que já existia",
+   "uma segunda listagem dobraria as leituras do Firestore");
+ok(/criadoEm:x\.criadoEm/.test(fonteVal),
+   "  e criadoEm entrou no payload da listagem, que é de onde ela lê");
+
+const telaExec = ler("EventosAdmin.html");
+ok(/id="exCheg24"/.test(telaExec) && /id="exChegFila"/.test(telaExec) &&
+   /id="exChegRecado"/.test(telaExec),
+   "a tela do executivo tem os três indicadores e o recado");
+ok(/function pintarDias\(serie\)/.test(telaExec),
+   "  e desenha a curva de 7 dias");
+ok(/n \/ maior/.test(telaExec),
+   "  com altura relativa ao maior da semana",
+   "o que interessa é comparar as levas entre si");
+
 resumo();

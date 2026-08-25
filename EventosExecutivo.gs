@@ -94,6 +94,7 @@ function compasso_executivoResumo(tokenSessao) {
     firestore: firestore,
     email: email,
     entrega: entrega,
+    chegada: compasso_ritmoDeChegada_(resumo),
     riscos: compasso_riscosDoEvento_(dias, firestore, entrega)
   };
 }
@@ -200,4 +201,47 @@ function compasso_riscosDoEvento_(dias, firestore, esforco) {
   }
 
   return out;
+}
+
+/**
+ * O RITMO DE CHEGADA — para decidir a próxima leva. 25/08/2026.
+ *
+ * O usuário decidiu mandar o link "aos poucos, não tudo de uma única vez", e
+ * essa é a medida que mais reduz o pico da inscrição — mais do que qualquer
+ * ajuste de código. Mas operar por levas exige responder uma pergunta que o
+ * painel não respondia: **já dá para mandar a próxima?**
+ *
+ * O QUE ESTE VEREDITO NÃO FAZ, e é o que o mantém honesto: ele não afirma
+ * tendência. Eu tenho o tamanho da fila AGORA, não o histórico dela — dizer
+ * "a fila está estabilizando" seria inventar uma leitura que o dado não
+ * sustenta. Então o critério é o que dá para afirmar:
+ *
+ *   fila vazia  → a leva anterior foi absorvida, pode mandar a próxima
+ *   fila com gente → ainda não foi, e o número diz quanto falta
+ *
+ * A curva de 7 dias vai junto porque ela mostra o que o número de hoje não
+ * mostra: se o volume está subindo leva a leva.
+ */
+function compasso_ritmoDeChegada_(resumo) {
+  var c = (resumo && resumo.chegada) || { ultimas24h: 0, hoje: 0, porDia: [], ultimaEm: null };
+  var fila = Number((resumo || {}).naoAnalisadas || 0);
+
+  var horas = null;
+  if (c.ultimaEm) {
+    var d = new Date(c.ultimaEm);
+    if (!isNaN(d.getTime())) horas = Math.floor((Date.now() - d.getTime()) / 3600000);
+  }
+
+  return {
+    ultimas24h: Number(c.ultimas24h || 0),
+    hoje: Number(c.hoje || 0),
+    porDia: c.porDia || [],
+    horasDesdeAUltima: horas,
+    filaDeAnalise: fila,
+    liberado: fila === 0,
+    recado: fila === 0
+      ? 'Nada esperando análise. A leva anterior foi absorvida.'
+      : fila + ' inscrição(ões) esperando análise — a leva anterior ainda não ' +
+        'foi absorvida.'
+  };
 }

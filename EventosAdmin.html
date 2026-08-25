@@ -38,6 +38,17 @@
 .ev-onde{padding:12px 22px 0;font-size:11px;font-weight:900;color:#64748b;text-transform:uppercase;letter-spacing:.07em}
 .ev-onde:empty{display:none}
 /* ── EXECUTIVO ── */
+/* A curva de 7 dias. Barra desenhada com altura em %, sem biblioteca: são
+   sete números, e trazer gráfico para isso custaria mais do que resolve. */
+.ev-dias{display:flex;gap:10px;align-items:flex-end;margin:0 0 14px;
+         background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px}
+.ev-dias .d{flex:1;text-align:center;min-width:0}
+.ev-dias .barra{height:52px;display:flex;align-items:flex-end;justify-content:center}
+.ev-dias .barra i{display:block;width:60%;min-height:3px;border-radius:4px 4px 0 0;
+                  background:linear-gradient(180deg,#1565C0,#001f4d)}
+.ev-dias .n{font-size:13px;font-weight:900;color:#001f4d;margin-top:5px}
+.ev-dias .r{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#64748b}
+.ev-dias .d.hoje .r{color:#1565C0;font-weight:900}
 .ev-exec-topo{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px}
 .ev-exec-data{font-size:19px;font-weight:900;color:#001f4d;margin-top:4px}
 .ev-relogio{background:linear-gradient(135deg,#001f4d,#1565C0);color:#fff;border-radius:14px;padding:12px 22px;text-align:center;min-width:132px}
@@ -281,6 +292,21 @@
     <p class="ev-secao">O que pode dar errado no dia 19/12</p>
     <div id="exRiscos"></div>
 
+    <!-- RITMO DE CHEGADA — 25/08/2026.
+         O usuário decidiu mandar o link "aos poucos, não tudo de uma única
+         vez". Esta seção responde a pergunta que a decisão cria: já dá para
+         mandar a próxima leva? -->
+    <p class="ev-secao">Ritmo de chegada · para decidir a próxima leva</p>
+    <div class="ev-grid" style="margin-bottom:12px">
+      <div class="ev-card"><small>Últimas 24h</small><strong id="exCheg24">—</strong></div>
+      <div class="ev-card"><small>A analisar</small><strong id="exChegFila">—</strong></div>
+      <div class="ev-card"><small>Última entrou</small><strong id="exChegUlt">—</strong></div>
+    </div>
+    <div class="ev-dias" id="exChegDias"></div>
+    <div class="ev-acao" style="margin-bottom:14px">
+      <div class="txt"><b id="exChegRecado">—</b></div>
+    </div>
+
     <p class="ev-secao">Entrega dos ingressos</p>
     <div class="ev-acao" style="margin-bottom:14px">
       <div class="txt"><b id="exEntregaT">—</b><span id="exEntregaD"></span></div>
@@ -426,6 +452,26 @@ function evTelaInterno(id){
 /* ══ EXECUTIVO ═════════════════════════════════════════════════════════════
    O relógio e o que pode parar o dia. Cada risco vem com o próximo passo:
    risco sem ação é ansiedade em forma de card. */
+/* Sete dias, o mais antigo à esquerda. A altura é relativa ao maior da
+   semana: o que interessa é comparar as levas entre si, não com uma escala
+   absoluta que não existe. */
+function pintarDias(serie){
+  var alvo = g('exChegDias'); if (!alvo) return;
+  if (!serie.length){ alvo.innerHTML = ''; return; }
+  var maior = Math.max.apply(null, serie.concat([1]));
+  var hoje = new Date();
+  var nomes = ['dom','seg','ter','qua','qui','sex','sáb'];
+  alvo.innerHTML = serie.map(function(n, i){
+    var d = new Date(hoje.getTime() - (serie.length - 1 - i) * 86400000);
+    var ehHoje = i === serie.length - 1;
+    var alt = Math.round((n / maior) * 100);
+    return '<div class="d' + (ehHoje ? ' hoje' : '') + '">' +
+           '<div class="barra"><i style="height:' + alt + '%"></i></div>' +
+           '<div class="n">' + n + '</div>' +
+           '<div class="r">' + (ehHoje ? 'hoje' : nomes[d.getDay()]) + '</div></div>';
+  }).join('');
+}
+
 function evExecutivoCarregar(){
   var token=tokenSessao(); if(!token)return;
   google.script.run.withSuccessHandler(function(r){
@@ -444,6 +490,17 @@ function evExecutivoCarregar(){
              '<span>'+esc(x.texto)+'</span>'+
              '<span class="acao">'+esc(x.acao)+'</span></div>';
     }).join('')||'<div class="ev-nota">Nada em aberto.</div>';
+
+    /* CHEGADA — o número que decide a próxima leva. */
+    var ch = r.chegada || {};
+    g('exCheg24').textContent  = ch.ultimas24h != null ? ch.ultimas24h : '—';
+    g('exChegFila').textContent = ch.filaDeAnalise != null ? ch.filaDeAnalise : '—';
+    g('exChegUlt').textContent = ch.horasDesdeAUltima == null ? '—'
+      : ch.horasDesdeAUltima < 1 ? 'agora'
+      : ch.horasDesdeAUltima < 24 ? ch.horasDesdeAUltima + 'h'
+      : Math.floor(ch.horasDesdeAUltima / 24) + 'd';
+    g('exChegRecado').textContent = ch.recado || '';
+    pintarDias(ch.porDia || []);
 
     /* Ritmo, não total: os ingressos saem um a um conforme as validações. */
     g('exEntregaT').textContent = en.quantidade
