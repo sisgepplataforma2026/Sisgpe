@@ -80,6 +80,40 @@ const semBalanco = [];
 const scriptQuebrado = [];
 const fechaNaString = [];
 const scriptletComentado = [];
+const scriptletNoJs = [];
+
+/* COMENTÁRIOS DE JAVASCRIPT, ACHADOS SEM CAIR EM STRING.
+   Um `//` dentro de "https://..." não é comentário, e um /* dentro de uma
+   string também não. Varrer com expressão regular acusaria os dois. Então
+   este pedaço anda caractere a caractere sabendo em que estado está: fora,
+   dentro de aspas, dentro de crase. É pouco código e evita falso positivo,
+   que num teste de bloqueio custa mais caro que o defeito. */
+function comentariosJs(corpo) {
+  const achados = [];
+  let i = 0;
+  while (i < corpo.length) {
+    const c = corpo[i], d = corpo[i + 1];
+    if (c === '"' || c === "'" || c === "`") {
+      const aspa = c; i++;
+      while (i < corpo.length && corpo[i] !== aspa) { if (corpo[i] === "\\") i++; i++; }
+      i++; continue;
+    }
+    if (c === "/" && d === "*") {
+      const ini = i; const fim = corpo.indexOf("*/", i + 2);
+      const ate = fim < 0 ? corpo.length : fim + 2;
+      achados.push({ texto: corpo.slice(ini, ate), index: ini });
+      i = ate; continue;
+    }
+    if (c === "/" && d === "/") {
+      const ini = i; let fim = corpo.indexOf("\n", i);
+      if (fim < 0) fim = corpo.length;
+      achados.push({ texto: corpo.slice(ini, fim), index: ini });
+      i = fim; continue;
+    }
+    i++;
+  }
+  return achados;
+}
 
 arquivosHtml.forEach(f => {
   const txt = fs.readFileSync(path.join(RAIZ, f), "utf8");
@@ -133,6 +167,35 @@ arquivosHtml.forEach(f => {
         c[0].replace(/\s+/g, " ").slice(0, 90));
     }
   }
+
+  /* REGRA Nº 0, A METADE QUE FALTAVA — 25/08/2026.
+     O passo 5 olhava só comentário HTML. Mas o template engine não conhece
+     comentário nenhum: ele avalia scriptlet em QUALQUER posição do arquivo,
+     e comentário de JavaScript dentro de <script> é posição como outra
+     qualquer.
+
+     Foi assim que a Central de Inscrições ficou em branco: um comentário meu
+     documentava a ordem de carregamento citando a chamada de include com a
+     sintaxe real. O Apps Script executou a citação, a tela passou a incluir a
+     tela que a inclui, a recursão estourou, e `include()` devolveu o comentário
+     de falha que ele devolve quando falha. Resultado na tela do usuário:
+     "Inscrições e ingressos não abrem, fica tela branca" — sem erro nenhum,
+     porque include() engole a exceção e segue.
+
+     Note que scriptlet FORA de comentário continua legítimo: PortalAssociado
+     e EventosIngressoTemplate montam valores assim, de propósito. O defeito é
+     ele estar escondido onde quem escreveu achava que estava desligado. */
+  const rBlocoJs = /<script(?:\s[^>]*)?>([\s\S]*?)<\/script\s*>/gi;
+  let bj;
+  while ((bj = rBlocoJs.exec(txt))) {
+    const base = bj.index + bj[0].indexOf(">") + 1;
+    comentariosJs(bj[1]).forEach(function (com) {
+      if (/<\?[!=]?[\s\S]*?\?>/.test(com.texto)) {
+        scriptletNoJs.push(f + " (linha " + linhaDe(txt, base + com.index) + "): " +
+          com.texto.replace(/\s+/g, " ").slice(0, 90));
+      }
+    });
+  }
 });
 
 b.passo("2. Todo bloco <script> dos .html tem sintaxe válida");
@@ -154,6 +217,14 @@ b.passo("5. Nenhum scriptlet dentro de comentário HTML (REGRA Nº 0)");
 // infinita e corrompe a página inteira, sem erro nenhum.
 b.ok(scriptletComentado.length === 0, "nenhum scriptlet escondido em comentário",
   scriptletComentado.length ? "ACHADOS: " + scriptletComentado.join(" | ") : "comentários limpos");
+
+b.passo("5b. Nem dentro de comentário de JavaScript (REGRA Nº 0)");
+// O caso de 25/08: um comentário dentro de <script> citando um include com a
+// sintaxe real. O engine executou a citação, a tela passou a se incluir, e a
+// Central de Inscrições ficou em branco — sem erro visível em lugar nenhum.
+b.ok(scriptletNoJs.length === 0, "nenhum scriptlet dentro de comentário de script",
+  scriptletNoJs.length ? "ACHADOS: " + scriptletNoJs.join(" | ")
+                       : "comentários de JavaScript limpos nos " + arquivosHtml.length + " arquivos");
 
 /* ═══════════════════════════════════════════════════════════
    6. Os elementos HTML fecham — a tag que faltava e derrubou um módulo

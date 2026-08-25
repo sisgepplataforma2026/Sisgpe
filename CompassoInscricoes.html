@@ -546,8 +546,12 @@
  * que este arquivo é lido. Dentro da SPA isso dá string vazia SEMPRE, e a
  * Central inteira respondia "Sessão inválida ou expirada":
  *
- *   index.html:663   <?!= include('EventosAdmin'); ?>   ← este script roda aqui
- *   index.html:1345  var SISGEP_TOKEN_SESSAO = "..."    ← 682 linhas depois
+ *   index.html:663   include de EventosAdmin  ← este script roda aqui
+ *   index.html:1345  var SISGEP_TOKEN_SESSAO  ← 682 linhas depois
+ *
+ * (A chamada acima está escrita em palavras de propósito. Ver REGRA Nº 0: a
+ *  sintaxe real de scriptlet dentro de comentário É EXECUTADA, e foi
+ *  exatamente o que deixou esta tela em branco em 25/08 — ver o bloco abaixo.)
  *
  * Na posição 663 a variável já foi içada pelo `var`, mas ainda não recebeu
  * valor: `typeof` devolve "undefined", a função cai no `return ''` — e o
