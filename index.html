@@ -2038,13 +2038,20 @@ if(mod==="beneficios"){
     return;
   }
 
-  /* Eventos e seus submódulos: mesma tela, submódulo diferente. O nome do
-     submódulo é derivado do módulo escolhido no menu — sem mapa paralelo para
-     alguém esquecer de atualizar quando entrar um submódulo novo. */
+  /* Eventos e seus submódulos: mesma tela, submódulo diferente.
+     O comentário aqui dizia "sem mapa paralelo para alguém esquecer de
+     atualizar" — e o que estava logo abaixo ERA um mapa paralelo, com uma
+     entrada esquecida: `eventos` (o botão Painel) não tinha correspondente, o
+     nome saía vazio, o `if` não entrava e clicar em Painel não fazia nada.
+     Descoberto pelo usuário em 25/08/2026.
+     Agora o nome é DERIVADO do próprio módulo, que é o que o comentário
+     prometia: eventosProgramacao → programacao, eventosFesta → festa,
+     eventosBingo → bingo, e `eventos` sozinho → painel, que é a raiz. */
   if(mod==="eventos"||mod.indexOf("eventos")===0){
-    var subEv={eventosProgramacao:"programacao",eventosFesta:"festa",eventosBingo:"bingo"}[mod]||"";
+    var restoEv=mod.slice("eventos".length);
+    var subEv=restoEv ? restoEv.charAt(0).toLowerCase()+restoEv.slice(1) : "painel";
     var r=callFn("initEventos")||callFn("carregarEventos")||initModuloAssistido(mod,opts);
-    if(subEv&&typeof window.evSub==="function"){
+    if(typeof window.evSub==="function"){
       /* Depois do init: a barra de submódulos só existe com a tela montada. */
       setTimeout(function(){ try{ window.evSub(subEv); }catch(e){} },120);
     }

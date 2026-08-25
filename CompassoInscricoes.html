@@ -540,12 +540,35 @@
    e da global do SISGEP quando ela está INCLUÍDA dentro do Portal — ali não
    existe `?sessao=` nenhum, e sem este segundo caminho a tela incluída não
    conseguiria falar com o backend. */
-var TOKEN = (function(){ try{
-  var m = String(location.search||'').match(/[?&]sessao=([^&]*)/);
-  if (m) return decodeURIComponent(m[1]);
-  if (typeof SISGEP_TOKEN_SESSAO !== 'undefined') return SISGEP_TOKEN_SESSAO || '';
-  return '';
-}catch(e){ return ''; } })();
+/* O TOKEN É RESOLVIDO A CADA CHAMADA, NUNCA NO CARREGAMENTO — 25/08/2026.
+ *
+ * Aqui havia `var TOKEN = (function(){...})()`, avaliado uma vez, na hora em
+ * que este arquivo é lido. Dentro da SPA isso dá string vazia SEMPRE, e a
+ * Central inteira respondia "Sessão inválida ou expirada":
+ *
+ *   index.html:663   <?!= include('EventosAdmin'); ?>   ← este script roda aqui
+ *   index.html:1345  var SISGEP_TOKEN_SESSAO = "..."    ← 682 linhas depois
+ *
+ * Na posição 663 a variável já foi içada pelo `var`, mas ainda não recebeu
+ * valor: `typeof` devolve "undefined", a função cai no `return ''` — e o
+ * TOKEN congela vazio para o resto da vida da página. Definir depois não
+ * conserta o que já foi capturado.
+ *
+ * É a mesma classe de erro do `hidden` perdendo para o `display`: o mecanismo
+ * existia e eu não conferi QUANDO ele roda. A tela de Eventos nunca teve esse
+ * problema porque usa `tokenSessao()`, uma função, resolvida no uso.
+ *
+ * A rota `?painel=compasso` (Central aberta sozinha) continua vindo pela URL,
+ * e ela tem precedência: ali não existe SPA para consultar. */
+function compassoToken(){
+  try{
+    var m = String(location.search||'').match(/[?&]sessao=([^&]*)/);
+    if (m) return decodeURIComponent(m[1]);
+    if (typeof SISGEP_TOKEN_SESSAO !== 'undefined' && SISGEP_TOKEN_SESSAO)
+      return SISGEP_TOKEN_SESSAO;
+    return '';
+  }catch(e){ return ''; }
+}
 
 var LISTA = [], SEL = {}, FILTRO_CARD = '';
 
@@ -596,7 +619,7 @@ function api(fn, args, cb){
   var r = google.script.run
     .withSuccessHandler(cb)
     .withFailureHandler(function(e){ aviso('Erro: ' + ((e&&e.message)||e)); });
-  r[fn].apply(r, (args||[]).concat([TOKEN]));
+  r[fn].apply(r, (args||[]).concat([compassoToken()]));
 }
 
 /* ── cards ── */
@@ -1012,7 +1035,7 @@ function irAba(nome){
 function carregarQuadroImportar(){
   api('eventos_obterWebAppUrl', [], function(base){
     var url = String(base || '') + '?painel=compasso-importar' +
-              (TOKEN ? '&sessao=' + encodeURIComponent(TOKEN) : '');
+              (compassoToken() ? '&sessao=' + encodeURIComponent(compassoToken()) : '');
     g('quadroImportar').src = url;
     QUADRO_PRONTO = true;
   });
@@ -1419,15 +1442,46 @@ function copiarLink(){
   });
 }
 
-/* Motivos, formas de pagamento e se quem abriu é administrador. São pedidos
-   uma vez, na abertura: a gaveta precisa deles montada e não pode esperar
-   ida ao servidor a cada linha clicada. */
-api('compasso_validacaoOpcoes', [], function(r){
-  OPCOES = r || OPCOES;
-  SOU_ADMIN = !!(r && r.admin);
-  if (ABERTO >= 0) g('secExcluir').hidden = !SOU_ADMIN;
-});
-api('compasso_pagamentoOpcoes', [], function(r){ PG_OPCOES = r || null; });
+/* ══ INÍCIO SOB DEMANDA ═══════════════════════════════════════════════════
+   UMA TELA INCLUÍDA NUMA SPA NÃO PODE TRABALHAR NA HORA EM QUE É LIDA.
+
+   Aqui estas quatro chamadas — opções, pagamento, resumo e lista — saíam no
+   carregamento do arquivo. Dentro do portal isso é cedo demais: o script roda
+   em index.html:663 e a sessão só é declarada em index.html:1345. As quatro
+   iam ao servidor com token vazio e voltavam "Sessão inválida ou expirada" —
+   que foi exatamente o que o usuário viu em 25/08/2026, com a tela em branco.
+
+   Resolver o token por função (compassoToken) foi necessário e não bastou: o
+   problema não era COMO o token era lido, era QUANDO as chamadas aconteciam.
+
+   Agora a tela só começa quando é ABERTA:
+     · sozinha, pela rota ?painel=compasso, o token vem na URL e ela já pode
+       começar na hora;
+     · dentro do portal, quem manda começar é a tela de Eventos, ao mostrar a
+       Central — e nesse instante a sessão já existe.
+
+   `INICIADA` impede que abrir a mesma tela duas vezes peça tudo de novo. */
+var INICIADA = false;
+
+function compassoIniciar(){
+  if (INICIADA) return;
+  if (!compassoToken()) return;   /* sem sessão não se bate na porta */
+  INICIADA = true;
+
+  /* Motivos, formas de pagamento e se quem abriu é administrador. São pedidos
+     uma vez: a gaveta precisa deles montada e não pode esperar ida ao
+     servidor a cada linha clicada. */
+  api('compasso_validacaoOpcoes', [], function(r){
+    OPCOES = r || OPCOES;
+    SOU_ADMIN = !!(r && r.admin);
+    if (ABERTO >= 0) g('secExcluir').hidden = !SOU_ADMIN;
+  });
+  api('compasso_pagamentoOpcoes', [], function(r){ PG_OPCOES = r || null; });
+
+  lerFiltroUrl();
+  carregar();
+}
+window.compassoIniciar = compassoIniciar;
 
 /* Esc fecha a gaveta — é o gesto que todo mundo tenta primeiro. */
 document.addEventListener('keydown', function(e){
@@ -1440,6 +1494,10 @@ document.addEventListener('keydown', function(e){
    esta tela expõe para fora, de propósito: quanto menor a superfície, menor a
    chance de alguém depender de um detalhe interno. */
 window.compassoAplicarFiltro = function(nome){
+  /* É AQUI que a Central começa a viver dentro do portal: a tela de Eventos
+     chama esta ponte ao mostrar a Central, e nesse momento a sessão existe. */
+  compassoIniciar();
+
   var achado = nome ? FILTROS_URL[String(nome).toLowerCase()] : null;
   FILTRO_URL = achado || null;
   if (achado){
@@ -1448,10 +1506,12 @@ window.compassoAplicarFiltro = function(nome){
   } else {
     g('chipUrl').style.display = 'none';
   }
-  carregar();
+  if (INICIADA) carregar();
 };
 
-lerFiltroUrl();
-carregar();
+/* Aberta sozinha (?painel=compasso&sessao=…): o token está na URL, então dá
+   para começar já. Dentro do portal isto não faz nada, e quem manda começar
+   é a ponte acima. */
+compassoIniciar();
 </script>
 </div><!-- /compassoInscricoes -->

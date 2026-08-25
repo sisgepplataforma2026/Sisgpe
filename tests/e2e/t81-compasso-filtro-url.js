@@ -286,11 +286,19 @@ const topo = (function(){
   linhas.forEach((l, i) => { if (l === "}") ultima = i; });
   return linhas.slice(ultima + 1).join("\n");
 })();
-/* A partida são as chamadas SOLTAS, sem indentação — as que rodam quando a
-   tela abre. Procurar "carregar();" em qualquer posição passou a achar o que
-   está DENTRO de compassoAplicarFiltro (a ponte criada em 25/08 para a tela
-   incluída), que vem antes no arquivo e não é partida de nada. */
-const partida = topo.split("\n").filter(l => /^[a-zA-Z]/.test(l)).join("\n");
+/* A PARTIDA MUDOU DE LUGAR EM 25/08/2026, e a regra continua a mesma.
+   Antes eram chamadas soltas no fim do arquivo. Agora estão dentro de
+   `compassoIniciar()`, porque a tela deixou de trabalhar no carregamento:
+   dentro do portal ela é lida 682 linhas antes de a sessão existir, e as
+   chamadas saíam com token vazio (ver t94).
+   O que este teste guarda não é ONDE a partida está — é a ORDEM: ler o filtro
+   antes de carregar, senão a primeira lista vem sem filtro e pisca inteira. */
+const partida = (function(){
+  const m = /function compassoIniciar\(\)\{[\s\S]*?\n\}/.exec(painel);
+  return m ? m[0] : "";
+})();
+ok(!!partida, "existe um início sob demanda (compassoIniciar)",
+   "é ele que dispara a tela quando ela é aberta, e não quando é lida");
 const posLer  = partida.indexOf("lerFiltroUrl();");
 const posCarr = partida.indexOf("carregar();");
 ok(posLer >= 0 && posCarr >= 0 && posLer < posCarr,
