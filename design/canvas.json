@@ -2,14 +2,15 @@
   "artboards": [
     { "file": "Eventos.dc.html", "x": 0, "y": 0, "w": 1440, "h": 900, "title": "1 · Eventos — a lista do módulo" },
     { "file": "Main.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 900, "title": "2 · Painel do evento" },
-    { "file": "Inscricoes.dc.html", "x": 3120, "y": 0, "w": 1440, "h": 900, "title": "3 · Inscrições — a analisar" },
-    { "file": "Ingressos.dc.html", "x": 4680, "y": 0, "w": 1440, "h": 900, "title": "4 · Ingresso a enviar" }
+    { "file": "Pessoas.dc.html", "x": 3120, "y": 0, "w": 1440, "h": 900, "title": "3 · Pessoas — uma tela só" },
+    { "file": "Inscricoes.dc.html", "x": 1560, "y": 1080, "w": 1440, "h": 900, "title": "descartada · a versão com abas por estado" },
+    { "file": "Ingressos.dc.html", "x": 3120, "y": 1080, "w": 1440, "h": 900, "title": "descartada · a fila de envio separada" }
   ],
   "annotations": [
     { "id": "nota-eventos", "x": 0, "y": -164, "w": 520, "text": "1 · EVENTOS\nClicar em Eventos no menu cai AQUI, não dentro de um evento. É a lista: Festa, Assembleia, Curso — cada um um registro. A tela que hoje não existe, e é ela que torna o módulo vendável." },
-    { "id": "nota-painel", "x": 1560, "y": -164, "w": 520, "text": "2 · PAINEL DO EVENTO\nAbriu a Festa Compasso da Vida, chega aqui. Mostra o que fazer AGORA: lotação, ritmo de chegada e quatro filas — cada card é um filtro clicável, não enfeite." },
-    { "id": "nota-inscricoes", "x": 3120, "y": -164, "w": 520, "text": "3 · INSCRIÇÕES\nA aba deixa de ser assunto e vira ESTADO. Clicar no card do painel abre a tabela renderizada aqui mesmo — sem aba nova, sem \"Abrir painel\". A gaveta traz o que o sistema já sabe pelo CPF." },
-    { "id": "nota-ingressos", "x": 4680, "y": -164, "w": 520, "text": "4 · INGRESSO A ENVIAR\nMesma tabela, outro trabalho: aqui não se analisa, se ENTREGA. A coluna vira \"por onde dá para mandar\", e a barra de lote troca de Validar para Enviar por WhatsApp (19) / e-mail (24)." }
+    { "id": "nota-painel", "x": 1560, "y": -164, "w": 520, "text": "2 · PAINEL DO EVENTO\nAbriu a Festa Compasso da Vida, chega aqui. Mostra o que fazer AGORA: lotação, ritmo de chegada e quatro filas — cada card é um filtro clicável que abre a lista já recortada." },
+    { "id": "nota-pessoas", "x": 3120, "y": -164, "w": 520, "text": "3 · PESSOAS — UMA TELA SÓ\nA mesma lista do começo ao fim. O estado deixou de ser aba e virou COLUNA, e a coluna é um BOTÃO: clicar abre reenviar, reemitir, editar, cancelar, excluir.\n\nA barra de lote é contextual — só oferece o que vale para todas as selecionadas." },
+    { "id": "nota-descartadas", "x": 1560, "y": 916, "w": 700, "text": "DESCARTADAS — ficam aqui como registro da decisão.\nEram duas telas separadas: uma para analisar, outra para enviar. O usuário viu e apontou o problema: é a mesma lista de pessoas, então trocar de aba para saber se o ingresso da Maria saiu é trabalho que o sistema está criando. Viraram a tela 3." }
   ],
-  "launch": { "view": "canvas" }
+  "launch": { "view": "focused", "file": "Pessoas.dc.html" }
 }
