@@ -1,8 +1,18 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <base target="_top">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- ESTA TELA É FRAGMENTO, NÃO PÁGINA (25/08/2026).
+     Ela continua sendo servida sozinha pela rota ?painel=compasso — navegador
+     monta html/body sozinho —, mas agora TAMBÉM é incluída dentro da tela de
+     Eventos. O usuário: "quando eu clico em inscrições, deveria aparecer uma
+     tabela renderizada, e não pedir pra abrir uma nova aba".
+
+     A tentativa anterior foi um quadro (iframe) apontando para a própria rota,
+     e ele não carregou: web app do Apps Script dentro de outro web app do Apps
+     Script é aninhamento que o navegador recusa. Incluir o arquivo resolve sem
+     depender disso.
+
+     O que permitiu incluir com segurança: os nomes globais desta tela e os do
+     index.html foram comparados um a um — ZERO colisões. Só três seletores de
+     CSS eram genéricos (body, th, tr:hover td) e foram escopados abaixo. -->
+<div id="compassoInscricoes">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
   <style>
     /* Tokens do Design System (OficiosStyles.html) — nada de hex solto. */
@@ -11,8 +21,10 @@
       --ok:#0f8a5f; --alerta:#d97706; --erro:#dc2626;
       --texto:#111827; --suave:#6b7385; --linha:#d8e0ea; --fundo:#f4f7fb;
     }
-    *{box-sizing:border-box}
-    body{margin:0;background:var(--fundo);color:var(--texto);
+    #compassoInscricoes *{box-sizing:border-box}
+    /* Era `body` — escopado para não pintar a tela inteira do SISGEP quando
+       esta tela é incluída dentro de outra. */
+    #compassoInscricoes{background:var(--fundo);color:var(--texto);
          font-family:'Plus Jakarta Sans',Arial,Helvetica,sans-serif;font-size:14px}
     .of-modulo-header{background:linear-gradient(135deg,var(--navy),var(--navy2));
       color:#fff;padding:20px 24px;display:flex;justify-content:space-between;
@@ -35,10 +47,10 @@
     .filtros input,.filtros select{padding:9px 11px;border:1.5px solid var(--linha);
       border-radius:9px;font-size:14px;font-family:inherit;min-width:130px}
     table{width:100%;border-collapse:collapse}
-    th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;
+    #compassoInscricoes th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;
        color:var(--suave);padding:9px 8px;border-bottom:2px solid var(--linha);white-space:nowrap}
     td{padding:9px 8px;border-bottom:1px solid #eef2f7;vertical-align:middle}
-    tr:hover td{background:#fafcfe}
+    #compassoInscricoes tr:hover td{background:#fafcfe}
     .selo{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}
     .s-ok{background:#e9f7f1;color:#0b5c40} .s-al{background:#fff7ed;color:#7c4a03}
     .s-er{background:#fef2f2;color:#7f1d1d} .s-nt{background:#eef3f9;color:#1e3a5f}
@@ -132,8 +144,6 @@
          color:#fff;padding:13px 16px;border-radius:11px;font-size:13px;display:none;
          box-shadow:0 8px 26px rgba(0,0,0,.25);white-space:pre-wrap;z-index:50}
   </style>
-</head>
-<body>
 
 <div class="of-modulo-header">
   <div>
@@ -398,9 +408,15 @@
 <div id="msg"></div>
 
 <script>
+/* A sessão vem da URL quando esta tela abre sozinha (rota ?painel=compasso),
+   e da global do SISGEP quando ela está INCLUÍDA dentro do Portal — ali não
+   existe `?sessao=` nenhum, e sem este segundo caminho a tela incluída não
+   conseguiria falar com o backend. */
 var TOKEN = (function(){ try{
   var m = String(location.search||'').match(/[?&]sessao=([^&]*)/);
-  return m ? decodeURIComponent(m[1]) : '';
+  if (m) return decodeURIComponent(m[1]);
+  if (typeof SISGEP_TOKEN_SESSAO !== 'undefined') return SISGEP_TOKEN_SESSAO || '';
+  return '';
 }catch(e){ return ''; } })();
 
 var LISTA = [], SEL = {}, FILTRO_CARD = '';
@@ -1099,8 +1115,24 @@ document.addEventListener('keydown', function(e){
   if (e.key === 'Escape' && ABERTO >= 0) fecharGaveta();
 });
 
+/* PONTE PARA QUEM INCLUI ESTA TELA.
+   A tela de Eventos precisa dizer "mostre só quem tem ingresso" sem recarregar
+   página nenhuma — ela está aqui dentro, não num quadro. É a única função que
+   esta tela expõe para fora, de propósito: quanto menor a superfície, menor a
+   chance de alguém depender de um detalhe interno. */
+window.compassoAplicarFiltro = function(nome){
+  var achado = nome ? FILTROS_URL[String(nome).toLowerCase()] : null;
+  FILTRO_URL = achado || null;
+  if (achado){
+    g('chipUrlTexto').textContent = achado.rotulo;
+    g('chipUrl').style.display = 'block';
+  } else {
+    g('chipUrl').style.display = 'none';
+  }
+  carregar();
+};
+
 lerFiltroUrl();
 carregar();
 </script>
-</body>
-</html>
+</div><!-- /compassoInscricoes -->

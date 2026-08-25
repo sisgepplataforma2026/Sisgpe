@@ -258,6 +258,8 @@ function montarTela() {
     google: { script: { run: new Proxy({}, { get: (_, n) =>
       (n === "withSuccessHandler" || n === "withFailureHandler")
         ? () => sandbox.google.script.run : () => {} }) } },
+    /* a tela expõe compassoAplicarFiltro para quem a inclui */
+    window: {},
     alert() {}, confirm: () => true, prompt: () => "motivo", setTimeout() {}, console
   };
   const corpo = (html.match(/<script>([\s\S]*)<\/script>/) || [])[1];
@@ -678,29 +680,52 @@ ok(!/tela-participantes/.test(ev.els.evTelas.innerHTML),
    "  e 'Participantes' não é mais uma delas",
    "era a mesma lista de Inscrições noutro estado, e virou a tela Ingressos");
 
-ok(String(ev.els.evQuadro.src).indexOf("painel=compasso") >= 0,
-   "ENTRAR NO SUBMÓDULO JÁ CARREGA A LISTA, sem tela de links no meio",
-   "o usuário pediu que clicar em Inscrições caísse no relatório");
-igual(ev.els.evQuadroWrap.hidden, false, "  com o quadro à vista");
+/* A LISTA É RENDERIZADA AQUI DENTRO — nem quadro, nem aba nova.
+   25/08/2026: a primeira tentativa foi um quadro (iframe) apontando para a
+   propria rota, e ele nao carregou — web app do Apps Script dentro de outro
+   web app do Apps Script é aninhamento que o navegador recusa. O usuário viu:
+   "quando eu clico em inscrições, deveria aparecer uma tabela renderizada, e
+   não pedir pra abrir uma nova aba". */
+igual(ev.els.evInscricoes.hidden, false,
+      "ENTRAR NO SUBMÓDULO JÁ MOSTRA A LISTA, renderizada na página",
+      "o usuário pediu que clicar em Inscrições caísse no relatório");
+igual(ev.els.evQuadroWrap.hidden, true,
+      "  e o quadro fica fora do caminho",
+      "ele sobra apenas para a importação, que ainda usa rota própria");
 
-passo("o painel abre DENTRO da tela, não em aba nova do navegador");
+const adminFonte = ler("EventosAdmin.html");
+ok(/include\('CompassoInscricoes'\)/.test(adminFonte),
+   "a Central é INCLUÍDA no arquivo, não carregada por endereço");
+
+passo("nada disso abre aba do navegador");
 
 igual(ev.abertas.length, 0,
-      "navegar entre submódulos não abriu nenhuma aba do navegador",
+      "navegar entre submódulos não abriu nenhuma aba",
       "era window.open a cada ação: analisar, ver fila, importar — cada uma " +
       "numa aba do Chrome. 'Eu não preciso abrir várias abas pra buscar uma " +
       "informação'");
-ok(/id="evQuadro"/.test(ler("EventosAdmin.html")),
-   "  existe um quadro embutido para isso");
-ok(/onclick="evQuadroNovaAba\(\)"/.test(ler("EventosAdmin.html")),
-   "  e quem quiser a aba nova ainda tem o botão",
-   "tirar a opção seria trocar um incômodo por outro");
+
+passo("a barra de submódulos não se repete dentro da tela");
+
+ok(/<div class="ev-abas" role="tablist" hidden>/.test(adminFonte),
+   "a barra horizontal de submódulos está escondida",
+   "ela repetia Painel/Programação/Festa/Bingo, que o menu lateral já mostra — " +
+   "o usuário: 'está tendo o mesmo submódulo, está com abas, está repetido'");
+ok(/id="evOnde"/.test(adminFonte),
+   "  e o nome do submódulo aparece no lugar dela",
+   "tirar a barra sem dizer onde se está deixaria a pessoa sem referência");
 
 passo("a tela Ingressos é a mesma lista, noutro estado");
 
+/* Ingressos é a MESMA lista embutida, com outro recorte — sem recarregar
+   página nenhuma: a tela já está aqui, só se pede o filtro a ela. */
+let filtroPedido = null;
+ev.win.compassoAplicarFiltro = f => { filtroPedido = f; };
 ev.win.evTela("ingressos");
-ok(String(ev.els.evQuadro.src).indexOf("filtro=participantes") >= 0,
-   "Ingressos abre o mesmo painel filtrado por quem já tem ingresso");
+igual(ev.els.evInscricoes.hidden, false, "Ingressos mostra a mesma lista");
+igual(filtroPedido, "participantes",
+      "  pedindo a ela o recorte de quem já tem ingresso",
+      "é a mesma tela noutro estado, não outra tela");
 
 passo("Bingo é submódulo próprio, não uma aba de sorteios");
 

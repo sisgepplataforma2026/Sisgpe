@@ -95,6 +95,8 @@ function montar() {
         return (...args) => { chamadas.push({ nome, args }); };
       }
     }) } },
+    /* a tela expõe compassoAplicarFiltro para quem a inclui */
+    window: {},
     alert() {}, confirm() { return true; }, setTimeout() {}, console
   };
 

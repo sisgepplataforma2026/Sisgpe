@@ -286,8 +286,13 @@ const topo = (function(){
   linhas.forEach((l, i) => { if (l === "}") ultima = i; });
   return linhas.slice(ultima + 1).join("\n");
 })();
-const posLer  = topo.indexOf("lerFiltroUrl();");
-const posCarr = topo.indexOf("carregar();");
+/* A partida são as chamadas SOLTAS, sem indentação — as que rodam quando a
+   tela abre. Procurar "carregar();" em qualquer posição passou a achar o que
+   está DENTRO de compassoAplicarFiltro (a ponte criada em 25/08 para a tela
+   incluída), que vem antes no arquivo e não é partida de nada. */
+const partida = topo.split("\n").filter(l => /^[a-zA-Z]/.test(l)).join("\n");
+const posLer  = partida.indexOf("lerFiltroUrl();");
+const posCarr = partida.indexOf("carregar();");
 ok(posLer >= 0 && posCarr >= 0 && posLer < posCarr,
    "ao abrir, o painel chama lerFiltroUrl() ANTES de carregar()",
    "se ler depois, a primeira lista vem sem filtro e pisca a lista inteira");
