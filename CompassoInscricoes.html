@@ -136,6 +136,33 @@
                background:var(--fundo);border:1.5px solid var(--linha);
                border-radius:11px;font-size:12.5px;font-weight:600;color:var(--suave)}
     .md-pe{display:flex;justify-content:flex-end;padding:0 22px 20px}
+
+    /* ── Diálogo do sistema ───────────────────────────────────────────────
+       Substitui confirm() e prompt() nativos. O CLAUDE.md proíbe os nativos
+       em letra: "nunca usar alert()/confirm() nativo". Além de feios, eles
+       anunciam o endereço cru do googleusercontent.com — o usuário viu isso
+       em 25/08 e disse, com razão: "fora do padrão SISGEP". */
+    .dg-fundo{position:fixed;inset:0;background:rgba(8,17,35,.5);display:none;
+              align-items:center;justify-content:center;z-index:80;padding:16px}
+    .dg-fundo.on{display:flex}
+    .dg{background:#fff;border-radius:16px;width:min(460px,100%);
+        box-shadow:0 24px 60px rgba(8,17,35,.3);overflow:hidden}
+    .dg-topo{display:flex;gap:13px;align-items:flex-start;padding:20px 22px 12px}
+    .dg-ic{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;
+           justify-content:center;font-size:20px;flex-shrink:0;
+           background:#eef3fa;border:1.5px solid #c7d7ec}
+    .dg-fundo.perigo .dg-ic{background:#fef2f2;border-color:#f3c5c5}
+    .dg-topo h3{margin:0;font-size:15.5px;font-weight:900;color:var(--navy);line-height:1.35}
+    .dg-topo p{margin:6px 0 0;font-size:13px;color:var(--suave);line-height:1.55;
+               white-space:pre-wrap}
+    .dg-corpo{padding:0 22px}
+    .dg-corpo label{display:block;font-size:11px;font-weight:700;color:var(--suave);
+                    margin-bottom:4px}
+    .dg-corpo input{width:100%;padding:9px 11px;border:1.5px solid var(--linha);
+                    border-radius:9px;font-size:14px;font-family:inherit}
+    .dg-corpo input:focus{outline:0;border-color:var(--blue)}
+    .dg-erro{font-size:12px;color:var(--erro);margin-top:6px;min-height:16px}
+    .dg-pe{display:flex;justify-content:flex-end;gap:8px;padding:16px 22px 20px}
     .barra{display:flex;gap:8px;align-items:center;flex-wrap:wrap;
            background:#eef3fa;border:1px solid #c7d7ec;border-radius:11px;
            padding:10px 13px;margin-bottom:12px;display:none}
@@ -143,7 +170,15 @@
     #msg{position:fixed;right:16px;bottom:16px;max-width:400px;background:var(--navy);
          color:#fff;padding:13px 16px;border-radius:11px;font-size:13px;display:none;
          box-shadow:0 8px 26px rgba(0,0,0,.25);white-space:pre-wrap;z-index:50}
-  </style>
+  
+/* `hidden` é `display:none` da folha do navegador, e QUALQUER `display` numa
+   regra de classe ganha dele. Sem estas linhas o elemento continua à vista
+   mesmo marcado como escondido — foi assim que a barra de submódulos seguiu
+   duplicada em 25/08 depois de eu "escondê-la". */
+.paginacao[hidden]{display:none}
+.gv-acoes[hidden]{display:none}
+.gv-campo[hidden]{display:none}
+</style>
 
 <div class="of-modulo-header">
   <div>
@@ -215,6 +250,10 @@
   <!-- Barra de lote: só aparece quando há seleção. -->
   <div class="barra" id="barra">
     <b><span id="qtdSel">0</span> selecionada(s)</b>
+    <!-- Marcar o cabeçalho pega a PÁGINA. Quando há mais páginas, aparece
+         aqui o atalho para a lista inteira — é o mesmo gesto do Gmail, e sem
+         ele "excluir todas" exigia trocar o tamanho da página antes. -->
+    <button class="b" id="btSelTudo" hidden onclick="selecionarTudo()"></button>
     <button class="b p" onclick="enviarLote()" id="btLoteEmail">📧 Enviar ingresso por e-mail</button>
     <button class="b perigo" onclick="excluirLote()" id="btLoteExcluir" hidden>🗑 Excluir selecionadas</button>
     <span id="capacidade" style="font-size:12px;color:var(--suave)"></span>
@@ -288,6 +327,32 @@
       </div>
     </div>
     <div class="md-pe"><button class="b" onclick="fecharModal()">Fechar</button></div>
+  </div>
+</div>
+
+<!-- ══ DIÁLOGO DO SISTEMA ════════════════════════════════════════════════
+     Um só, reaproveitado por toda ação que precisa de confirmação ou de um
+     motivo. Substitui confirm() e prompt() nativos, que além de fora do
+     padrão anunciavam "uma página incorporada em …googleusercontent.com
+     diz" — endereço cru numa caixa do navegador, no meio de uma exclusão. -->
+<div class="dg-fundo" id="dgFundo">
+  <div class="dg" role="dialog" aria-modal="true" aria-labelledby="dgTitulo">
+    <div class="dg-topo">
+      <div class="dg-ic" id="dgIcone">?</div>
+      <div>
+        <h3 id="dgTitulo">—</h3>
+        <p id="dgTexto"></p>
+      </div>
+    </div>
+    <div class="dg-corpo" id="dgCampoBox" hidden>
+      <label id="dgRotulo">Motivo</label>
+      <input id="dgCampo" autocomplete="off">
+      <div class="dg-erro" id="dgErro"></div>
+    </div>
+    <div class="dg-pe">
+      <button class="b" onclick="dgFechar()" id="dgCancelar">Cancelar</button>
+      <button class="b p" onclick="dgConfirmar()" id="dgOk">Confirmar</button>
+    </div>
   </div>
 </div>
 
@@ -692,10 +757,34 @@ function atualizarBarra(){
     return LISTA[i] && LISTA[i].ingressoId; }).length;
   g('btLoteEmail').hidden   = !comIngresso;
   g('btLoteExcluir').hidden = !SOU_ADMIN;
+
+  /* O atalho para a lista inteira só faz sentido quando a seleção parou na
+     página e ainda há mais gente fora dela. */
+  var bt = g('btSelTudo');
+  if (bt){
+    var falta = LISTA.length > n;
+    bt.hidden = !(n > 0 && falta);
+    bt.textContent = 'Selecionar todas as ' + LISTA.length + ' da lista';
+  }
   if (comIngresso) api('compasso_capacidadeEnvio', [], function(c){
     if (c) g('capacidade').textContent = c.aviso || '';
   });
   else g('capacidade').textContent = '';
+}
+
+/* Seleciona a LISTA INTEIRA, não só a página.
+   25/08/2026: o usuário marcou o cabeçalho, viu "50 selecionada(s)" e disse
+   "não tem a opção de selecionar e excluir todos". Estava certo — para
+   alcançar as 124 era preciso trocar o tamanho da página antes, o que ninguém
+   adivinha. O checkbox do cabeçalho continua sendo da página (é o que ele
+   mostra), e este botão é o passo explícito para ir além dela. */
+function selecionarTudo(){
+  SEL = {};
+  LISTA.forEach(function(x, i){ SEL[i] = true; });
+  var cbs = g('tb').querySelectorAll('input[type=checkbox]');
+  for (var k = 0; k < cbs.length; k++) cbs[k].checked = true;
+  var todos = g('todos'); if (todos) todos.checked = true;
+  atualizarBarra();
 }
 
 /* Excluir o que está selecionado. O lote herda as travas do backend inteiras —
@@ -705,18 +794,20 @@ function excluirLote(){
   var idx = Object.keys(SEL).map(Number);
   if (!idx.length) return;
   var comIngresso = idx.filter(function(i){ return LISTA[i].ingressoId; }).length;
-  var motivo = prompt('Motivo da exclusão de ' + idx.length + ' inscrição(ões):');
-  if (!motivo) return;
-  if (!confirm('Excluir ' + idx.length + ' inscrição(ões)?\n\n' +
-      'Elas saem da lista e as vagas voltam para as 2.000.' +
+  perguntar({
+    titulo: 'Excluir ' + idx.length + ' inscrição(ões)?',
+    texto: 'Elas saem da lista e as vagas voltam para as 2.000.' +
       (comIngresso ? '\n\n' + comIngresso + ' tem ingresso emitido e será recusada — ' +
-                     'cancele o ingresso antes.' : ''))) return;
-  aviso('Excluindo… pode levar alguns instantes.');
-  api('compasso_excluirInscricoesEmLote',
-      [idx.map(function(i){ return LISTA[i].inscricaoId; }), motivo], function(r){
-    if (!r || !r.ok) return aviso((r && r.erro) || 'Não foi possível excluir.');
-    aviso(r.mensagem || 'Concluído.');
-    carregar();   /* a lista encolheu: a paginação precisa ser refeita do zero */
+                     'cancele o ingresso antes.' : ''),
+    campo: true, rotulo: 'Motivo da exclusão', perigo: true, ok: 'Excluir'
+  }, function(motivo){
+    aviso('Excluindo… pode levar alguns instantes.');
+    api('compasso_excluirInscricoesEmLote',
+        [idx.map(function(i){ return LISTA[i].inscricaoId; }), motivo], function(r){
+      if (!r || !r.ok) return aviso((r && r.erro) || 'Não foi possível excluir.');
+      aviso(r.mensagem || 'Concluído.');
+      carregar();   /* a lista encolheu: a paginação precisa ser refeita do zero */
+    });
   });
 }
 
@@ -745,29 +836,101 @@ function porWhats(i){
        confirma é ela. Registrar antes seria marcar entrega que talvez não
        aconteceu. */
     setTimeout(function(){
-      if (confirm('Você enviou a mensagem para ' + x.nome + '?\n\nSó confirme se enviou de verdade.'))
+      perguntar({ titulo: 'Você enviou a mensagem para ' + x.nome + '?',
+                  texto: 'Só confirme se enviou de verdade.',
+                  ok: 'Sim, enviei' }, function(){
         api('compasso_confirmarEnvioWhatsApp', [x.inscricaoId], function(){ recarregar(); });
+      });
     }, 1200);
   });
 }
 function enviarLote(){
   var ids = Object.keys(SEL).map(function(i){ return LISTA[i].inscricaoId; });
   if (!ids.length) return;
-  if (!confirm('Enviar o ingresso por e-mail para ' + ids.length + ' pessoa(s)?')) return;
+  perguntar({ titulo: 'Enviar o ingresso por e-mail para ' + ids.length + ' pessoa(s)?',
+              ok: 'Enviar' }, function(){ enviarLoteAgora(ids); });
+}
+function enviarLoteAgora(ids){
   aviso('Enviando… isso pode levar alguns minutos.');
   api('compasso_enviarLoteEmail', [ids], function(r){
     if (!r || !r.ok) return aviso((r&&r.erro) || 'Não foi possível enviar o lote.');
     aviso(r.mensagem || '');
     /* O lote devolve o que faltou — continuar de onde parou, sem recomeçar. */
-    if (r.parcial && confirm(r.mensagem + '\n\nContinuar agora?')){
-      api('compasso_enviarLoteEmail', [r.restantes], function(r2){
-        aviso((r2&&r2.mensagem)||''); recarregar();
-      });
+    if (r.parcial){
+      perguntar({ titulo: 'Continuar o envio?', texto: r.mensagem, ok: 'Continuar' },
+        function(){
+          api('compasso_enviarLoteEmail', [r.restantes], function(r2){
+            aviso((r2&&r2.mensagem)||''); recarregar();
+          });
+        });
       return;
     }
     recarregar();
   });
 }
+/* ══ DIÁLOGO ══════════════════════════════════════════════════════════════
+   Uma função para toda pergunta que a tela faz. Assíncrona por natureza — o
+   confirm() nativo travava a página e devolvia na hora; este chama de volta.
+
+     perguntar({ titulo, texto, campo, rotulo, perigo, ok }, funcao)
+
+   `campo` liga a caixa de texto (o que era prompt) e, quando ligada, o
+   diálogo NÃO fecha com ela vazia: a mensagem de erro aparece ali dentro, em
+   vez de a ação seguir sem motivo. */
+var DG_ACAO = null;
+
+function perguntar(opcoes, aoConfirmar){
+  opcoes = opcoes || {};
+  DG_ACAO = aoConfirmar;
+  g('dgTitulo').textContent = opcoes.titulo || 'Confirmar';
+  g('dgTexto').textContent  = opcoes.texto || '';
+  g('dgTexto').style.display = opcoes.texto ? 'block' : 'none';
+  g('dgIcone').textContent  = opcoes.perigo ? '⚠️' : '❓';
+  g('dgOk').textContent     = opcoes.ok || 'Confirmar';
+  g('dgOk').className       = 'b ' + (opcoes.perigo ? 'perigo' : 'p');
+  g('dgFundo').classList.toggle('perigo', !!opcoes.perigo);
+
+  g('dgCampoBox').hidden = !opcoes.campo;
+  g('dgRotulo').textContent = opcoes.rotulo || 'Motivo';
+  g('dgCampo').value = '';
+  g('dgErro').textContent = '';
+
+  g('dgFundo').classList.add('on');
+  if (opcoes.campo) setTimeout(function(){ try{ g('dgCampo').focus(); }catch(e){} }, 60);
+}
+function dgFechar(){ g('dgFundo').classList.remove('on'); DG_ACAO = null; }
+
+/* Plano B do "copiar link": quando o navegador recusa a área de transferência
+   dentro de iframe, o link aparece num campo já selecionado — dá para copiar
+   com Ctrl+C. Antes era um prompt() nativo, que fazia o mesmo com cara de
+   erro do sistema. */
+function mostrarLink(url){
+  perguntar({ titulo: 'Link público de inscrição',
+              texto: 'O navegador não deixou copiar sozinho. Selecione e copie:',
+              campo: true, rotulo: 'Endereço', ok: 'Fechar' }, function(){});
+  g('dgCampo').value = url;
+  setTimeout(function(){ try{ g('dgCampo').select(); }catch(e){} }, 80);
+}
+function dgConfirmar(){
+  var pedeCampo = !g('dgCampoBox').hidden;
+  var valor = String(g('dgCampo').value || '').trim();
+  if (pedeCampo && !valor){
+    g('dgErro').textContent = 'Preencha antes de confirmar.';
+    try{ g('dgCampo').focus(); }catch(e){}
+    return;
+  }
+  var acao = DG_ACAO;
+  dgFechar();
+  if (acao) acao(valor);
+}
+/* Enter confirma, Esc fecha — é o que a pessoa tenta antes de procurar o
+   botão, e era o que o diálogo nativo já fazia. */
+document.addEventListener('keydown', function(e){
+  if (!g('dgFundo') || !g('dgFundo').classList.contains('on')) return;
+  if (e.key === 'Enter'){ e.preventDefault(); dgConfirmar(); }
+  if (e.key === 'Escape'){ e.preventDefault(); dgFechar(); }
+});
+
 /* ══ ABAS ═════════════════════════════════════════════════════════════════
    O quadro da importação só é carregado quando a aba é aberta: um iframe que
    nasce carregado faria toda abertura da Central pagar por uma tela que
@@ -1028,8 +1191,11 @@ function decidir(){
   /* Reprovar tem função própria porque devolve a vaga; as outras não. */
   var fn = s === 'REPROVADA' ? 'compasso_reprovarInscricaoLiberandoVaga' : null;
   if (fn){
-    if (!confirm('Reprovar a inscrição de ' + x.nome + '?\n\nA vaga volta para as 2.000.')) return;
-    api(fn, [x.inscricaoId, m, obs], aposAcao('Inscrição reprovada e vaga devolvida.'));
+    perguntar({ titulo: 'Reprovar a inscrição de ' + x.nome + '?',
+                texto: 'A vaga volta para as 2.000.',
+                perigo: true, ok: 'Reprovar' }, function(){
+      api(fn, [x.inscricaoId, m, obs], aposAcao('Inscrição reprovada e vaga devolvida.'));
+    });
   } else {
     api('compasso_validarDecisaoAdmin', [x.inscricaoId, s, m, obs],
         aposAcao(s === 'PENDENTE' ? 'Inscrição marcada como pendente.' : 'Inscrição validada.'));
@@ -1044,8 +1210,10 @@ function confirmarPagamento(){
 }
 function estornarPagamento(){
   var x = inscricaoAberta(); if (!x) return;
-  var motivo = prompt('Motivo do estorno:'); if (!motivo) return;
-  api('compasso_estornarPagamento', [x.inscricaoId, motivo], aposAcao('Pagamento estornado.'));
+  perguntar({ titulo: 'Estornar o pagamento?', campo: true, rotulo: 'Motivo do estorno',
+              perigo: true, ok: 'Estornar' }, function(motivo){
+    api('compasso_estornarPagamento', [x.inscricaoId, motivo], aposAcao('Pagamento estornado.'));
+  });
 }
 
 /* Emitiu, abre o modal — é a lógica do ofício, que o usuário pediu: gerar e
@@ -1053,12 +1221,14 @@ function estornarPagamento(){
    pessoa de novo na lista. */
 function emitirGaveta(){
   var x = inscricaoAberta(); if (!x) return;
-  if (!confirm('Emitir o ingresso de ' + x.nome + '?\n\nIsso consome uma das 2.000 vagas.')) return;
   var nome = x.nome, id = x.inscricaoId;
-  api('compasso_emitirIngressoV2', [{inscricaoId:id}], function(r){
-    if (!r || !r.ok) return aviso((r && r.erro) || 'Não foi possível emitir.');
-    abrirModalIngresso(id, r.numero, nome);
-    recarregarMantendoGaveta();
+  perguntar({ titulo: 'Emitir o ingresso de ' + nome + '?',
+              texto: 'Isso consome uma das 2.000 vagas.', ok: 'Emitir' }, function(){
+    api('compasso_emitirIngressoV2', [{inscricaoId:id}], function(r){
+      if (!r || !r.ok) return aviso((r && r.erro) || 'Não foi possível emitir.');
+      abrirModalIngresso(id, r.numero, nome);
+      recarregarMantendoGaveta();
+    });
   });
 }
 function emailGaveta(){
@@ -1070,22 +1240,25 @@ function whatsGaveta(){ if (ABERTO >= 0) porWhats(ABERTO); }
 
 function cancelarIngresso(){
   var x = inscricaoAberta(); if (!x || !x.ingressoId) return;
-  var motivo = prompt('Motivo do cancelamento do ingresso ' +
-                      (x.numeroIngresso || '') + ':');
-  if (!motivo) return;
-  api('compasso_cancelarIngressoV2', [x.ingressoId, motivo],
-      aposAcao('Ingresso cancelado.'));
+  perguntar({ titulo: 'Cancelar o ingresso ' + (x.numeroIngresso || '') + '?',
+              texto: 'O QR deixa de valer na portaria.',
+              campo: true, rotulo: 'Motivo do cancelamento',
+              perigo: true, ok: 'Cancelar ingresso' }, function(motivo){
+    api('compasso_cancelarIngressoV2', [x.ingressoId, motivo],
+        aposAcao('Ingresso cancelado.'));
+  });
 }
 
 /* Excluir pede motivo E confirmação com o nome à vista: é a única ação da tela
    que tira o registro de circulação. */
 function excluirInscricao(){
   var x = inscricaoAberta(); if (!x) return;
-  var motivo = prompt('Motivo da exclusão da inscrição de ' + x.nome + ':');
-  if (!motivo) return;
-  if (!confirm('Excluir a inscrição de ' + x.nome + '?\n\n' +
-               'Ela sai da lista e a vaga volta para as 2.000.')) return;
-  api('compasso_excluirInscricao', [x.inscricaoId, motivo], aposAcao('Inscrição excluída.'));
+  perguntar({ titulo: 'Excluir a inscrição de ' + x.nome + '?',
+              texto: 'Ela sai da lista e a vaga volta para as 2.000.',
+              campo: true, rotulo: 'Motivo da exclusão',
+              perigo: true, ok: 'Excluir' }, function(motivo){
+    api('compasso_excluirInscricao', [x.inscricaoId, motivo], aposAcao('Inscrição excluída.'));
+  });
 }
 function copiarLink(){
   api('eventos_obterWebAppUrl', [], function(base){
@@ -1095,8 +1268,8 @@ function copiarLink(){
     try {
       navigator.clipboard.writeText(url).then(
         function(){ aviso('Link copiado:\n' + url); },
-        function(){ prompt('Copie o link de inscrição:', url); });
-    } catch(e){ prompt('Copie o link de inscrição:', url); }
+        function(){ mostrarLink(url); });
+    } catch(e){ mostrarLink(url); }
   });
 }
 

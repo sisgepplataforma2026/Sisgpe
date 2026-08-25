@@ -260,6 +260,7 @@ function montarTela() {
         ? () => sandbox.google.script.run : () => {} }) } },
     /* a tela expõe compassoAplicarFiltro para quem a inclui */
     window: {},
+    /* Esc/Enter do diálogo do sistema */
     alert() {}, confirm: () => true, prompt: () => "motivo", setTimeout() {}, console
   };
   const corpo = (html.match(/<script>([\s\S]*)<\/script>/) || [])[1];
@@ -271,8 +272,9 @@ function montarTela() {
     get ARQUIVO(){return ARQUIVO}, set ARQUIVO(v){ARQUIVO=v},
     set SOU_ADMIN(v){SOU_ADMIN=v},
     set OPCOES(v){OPCOES=v},
-    abrirGaveta, fecharGaveta, montarMotivos, pintarLista,
-    irAba, abrirModalIngresso, fecharModal, mdBaixar
+    get SEL(){return SEL},
+    abrirGaveta, fecharGaveta, montarMotivos, pintarLista, marcarTodos,
+    selecionarTudo, irAba, abrirModalIngresso, fecharModal, mdBaixar
   };`;
   return { tela: new Function(...nomes, corpo + expor)(...nomes.map(n => sandbox[n])),
            els, sandbox };
@@ -773,5 +775,135 @@ ok(/getSistemaUrlBase/.test(corpoUrl),
 ok(corpoUrl.indexOf("getSistemaUrlBase") < corpoUrl.indexOf("ScriptApp.getService"),
    "  e só cai no getUrl() se aquela não existir",
    "a ordem é a correção: getUrl() é justamente quem devolve /dev");
+
+/* ═══ SEM DIÁLOGO NATIVO ══════════════════════════════════════════════════
+   25/08/2026. O usuário mandou a foto de um confirm() do navegador anunciando
+   "uma página incorporada em n-hlio7e77srckp5nxhl6gitflvadt2qapsbjnp6q-0lu-
+   script.googleusercontent.com diz", com o campo de motivo dentro. Comentário
+   dele: "fora do padrão SISGEP".
+
+   O CLAUDE.md já proibia isso em letra — "nunca usar alert()/confirm()
+   nativo". Eu tinha usado prompt() e confirm() em treze pontos desta tela. */
+passo("nenhuma pergunta usa caixa do navegador");
+
+const semNativos = html
+  .replace(/\/\*[\s\S]*?\*\//g, "")     /* comentários citam os nomes */
+  .replace(/<!--[\s\S]*?-->/g, "");
+ok(!/[^.\w]confirm\s*\(/.test(semNativos),
+   "não há confirm() nativo",
+   "além de fora do padrão, ele mostra o endereço cru do googleusercontent " +
+   "no meio de uma exclusão");
+ok(!/[^.\w]prompt\s*\(/.test(semNativos),
+   "  nem prompt()");
+ok(/function perguntar\(opcoes, aoConfirmar\)/.test(html),
+   "existe UM diálogo do sistema, reaproveitado");
+ok(/id="dgFundo"/.test(html) && /id="dgCampo"/.test(html),
+   "  com marcação própria e campo opcional");
+
+/* O campo obrigatório é validado DENTRO do diálogo. */
+const corpoConfirmar = (html.match(/function dgConfirmar\(\)\{[\s\S]*?\n\}/) || [""])[0];
+ok(/Preencha antes de confirmar/.test(corpoConfirmar),
+   "diálogo com campo não confirma vazio",
+   "sem isso a exclusão seguiria sem motivo, e o motivo é o que fica na " +
+   "auditoria");
+ok(/dgFechar\(\)/.test(corpoConfirmar) && corpoConfirmar.indexOf("acao(valor)") > 0,
+   "  e só chama a ação depois de fechar, com o valor digitado");
+
+/* As ações destrutivas pedem motivo — e o pedido está no diálogo, não fora. */
+["excluirLote", "excluirInscricao", "cancelarIngresso", "estornarPagamento"].forEach(nome => {
+  const corpo = (html.match(new RegExp("function " + nome + "\\([^)]*\\)\\{[\\s\\S]*?\\n\\}")) || [""])[0];
+  ok(/campo: true/.test(corpo), nome + " pede motivo pelo diálogo");
+  ok(/perigo: true/.test(corpo), "  e se apresenta como ação destrutiva");
+});
+
+/* ═══ SELECIONAR A LISTA INTEIRA ══════════════════════════════════════════
+   "Não tem a opção de selecionar e excluir todos" — dito com 50 marcadas na
+   tela. O checkbox do cabeçalho pega a PÁGINA, que é o que ele mostra; para
+   alcançar as 124 era preciso trocar o tamanho da página antes, e ninguém
+   adivinha isso. */
+passo("dá para pular da página para a lista inteira");
+
+t = montarTela();
+t.tela.LISTA = Array.from({ length: 124 }, (_, i) => pessoa({ inscricaoId: "INS-" + i }));
+t.tela.pintarLista();
+t.tela.marcarTodos({ checked: true });
+
+const selPagina = Object.keys(t.tela.SEL).length;
+igual(selPagina, 50, "o cabeçalho marca a página — 50");
+igual(t.els.btSelTudo.hidden, false,
+      "e aparece o atalho para a lista inteira",
+      "é o gesto do Gmail: marcou a página, ofereça o resto");
+ok(/124/.test(t.els.btSelTudo.textContent),
+   "  dizendo quantas são ao todo");
+
+t.tela.selecionarTudo();
+igual(Object.keys(t.tela.SEL).length, 124,
+      "clicar nele seleciona as 124",
+      "é o que faltava para 'excluir todos' em um gesto");
+igual(t.els.btSelTudo.hidden, true,
+      "  e o atalho some, porque não há mais o que somar");
+
+/* Com tudo cabendo numa página, o atalho não faz sentido. */
+t = montarTela();
+t.tela.LISTA = [pessoa(), pessoa({ inscricaoId: "INS-2" })];
+t.tela.pintarLista();
+t.tela.marcarTodos({ checked: true });
+igual(t.els.btSelTudo.hidden, true,
+      "lista curta não mostra o atalho",
+      "oferecer 'selecionar todas as 2' com as 2 já marcadas é ruído");
+
+/* ═══ `hidden` QUE NÃO ESCONDE ════════════════════════════════════════════
+   25/08/2026. Escondi a barra de submódulos com o atributo `hidden` e o
+   usuário respondeu "continua duplicado" — com a barra na tela.
+
+   A causa é uma regra de cascata que engana: `hidden` vale `display:none`
+   pela folha do NAVEGADOR, e qualquer `display` escrito numa regra de classe
+   ganha dela. `.ev-abas{display:flex}` mantinha a barra visível apesar do
+   atributo.
+
+   Meu teste anterior viu o `hidden` no HTML e passou. Ver o atributo não é
+   ver o efeito — por isso esta varredura cruza as duas coisas, e roda sobre
+   TODAS as telas: o mesmo engano estava em mais quatro lugares, incluindo a
+   numeração de página, que nunca sumia, e o seletor de motivo, que ficava na
+   tela mesmo ao escolher "Validar". */
+passo("todo elemento escondido está mesmo escondido");
+
+["EventosAdmin.html", "CompassoInscricoes.html", "CompassoImportacao.html"].forEach(arq => {
+  const src = ler(arq);
+  const css = [...src.matchAll(/<style>([\s\S]*?)<\/style>/g)].map(m => m[1]).join("\n");
+
+  const comDisplay = new Set();
+  [...css.matchAll(/\.([a-zA-Z0-9_-]+)\s*\{([^}]*)\}/g)]
+    .forEach(m => { if (/display\s*:/.test(m[2])) comDisplay.add(m[1]); });
+  const protegidas = new Set(
+    [...css.matchAll(/\.([a-zA-Z0-9_-]+)\[hidden\]/g)].map(m => m[1]));
+
+  /* Quem é escondido, pelas TRÊS formas — e a terceira é a que escapou na
+     primeira versão desta varredura: elemento sem id, escondido só pelo
+     atributo. Era exatamente o caso da barra de submódulos, e a mutação
+     "barra volta a aparecer" sobreviveu por causa disso. */
+  const furos = [];
+  const conferir = (classes, quem) => String(classes || "").split(/\s+/).forEach(c => {
+    if (comDisplay.has(c) && !protegidas.has(c)) furos.push(quem + " (." + c + ")");
+  });
+
+  /* 1. qualquer tag com class e o atributo hidden, com ou sem id */
+  [...src.matchAll(/<[a-z]+[^>]*class="([^"]*)"[^>]*\bhidden\b[^>]*>/g)]
+    .forEach(m => conferir(m[1], "tag hidden"));
+  [...src.matchAll(/<[a-z]+[^>]*\bhidden\b[^>]*class="([^"]*)"[^>]*>/g)]
+    .forEach(m => conferir(m[1], "tag hidden"));
+
+  /* 2. e os que o script esconde por id */
+  [...src.matchAll(/g\(.([a-zA-Z0-9_-]+).\)\.hidden/g)].map(m => m[1]).forEach(id => {
+    const re = new RegExp('id="' + id + '"[^>]*class="([^"]*)"|class="([^"]*)"[^>]*id="' + id + '"');
+    const m = re.exec(src);
+    if (m) conferir(m[1] || m[2], id);
+  });
+
+  ok(furos.length === 0,
+     arq + ": nenhum `hidden` anulado por display",
+     furos.length ? "ficam visíveis mesmo escondidos: " + furos.join(", ")
+                  : "cada classe com display próprio precisa da regra [hidden]");
+});
 
 resumo();

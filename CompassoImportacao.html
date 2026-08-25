@@ -50,6 +50,12 @@
   #msg{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--navy);
     color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;display:none;z-index:99;
     max-width:90%;box-shadow:var(--sh-xl,0 10px 30px rgba(0,0,0,.2))}
+
+/* `hidden` é `display:none` da folha do navegador, e QUALQUER `display` numa
+   regra de classe ganha dele. Sem estas linhas o elemento continua à vista
+   mesmo marcado como escondido — foi assim que a barra de submódulos seguiu
+   duplicada em 25/08 depois de eu "escondê-la". */
+.escolhido[hidden]{display:none}
 </style>
 </head>
 <body>
