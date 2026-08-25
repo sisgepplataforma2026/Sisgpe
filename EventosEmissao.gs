@@ -13,6 +13,10 @@ var EMISSAO_CFG = {
   VALOR_ACOMPANHANTE: 500,
   PERIODO_INICIO: new Date(2026, 8, 21, 0, 0, 0),    // 21/09/2026
   PERIODO_FIM:    new Date(2026, 10, 11, 23, 59, 59), // 11/11/2026
+  /* A data da festa entra aqui em 25/08/2026 porque o painel executivo conta
+     os dias que faltam, e essa contagem não pode depender da tela de
+     Informações estar preenchida — se ela estiver vazia, o relógio some. */
+  DATA_EVENTO:    new Date(2026, 11, 19, 0, 0, 0),   // 19/12/2026
   FORMAS_PAGAMENTO: ['Cartão', 'PicPay', 'Depósito'],
   ABA_ASSOCIADOS: 'Associados'
   /* PLANILHA_ID saiu daqui em 21/08/2026. Estava fixo no ID de PRODUÇÃO, o
