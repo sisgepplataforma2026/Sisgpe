@@ -3,6 +3,16 @@
 #eventosAdmin *{box-sizing:border-box}.ev-head{background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));color:#fff;padding:22px 24px;display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}.ev-title{font-size:21px;font-weight:900}.ev-sub{font-size:12px;color:rgba(255,255,255,.72);margin-top:4px}.ev-wrap{padding:18px 22px 34px}.ev-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}.ev-card,.ev-panel{background:#fff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 2px 10px rgba(0,20,60,.06)}.ev-card{padding:15px}.ev-card small{font-size:10px;font-weight:900;color:#64748b;text-transform:uppercase}.ev-card strong{display:block;font-size:28px;color:#001f4d;margin-top:7px}.ev-panel{overflow:hidden}.ev-bar{padding:14px 16px;border-bottom:1px solid #eef2f7;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}.ev-form{display:grid;grid-template-columns:1.4fr .9fr .9fr .9fr auto;gap:10px;padding:14px 16px;background:#f8fafc;border-bottom:1px solid #eef2f7}.ev-field label{display:block;font-size:10px;font-weight:900;color:#64748b;text-transform:uppercase;margin-bottom:4px}.ev-field input,.ev-field select,.ev-field textarea{width:100%;border:1.5px solid #dbe4ef;border-radius:9px;padding:0 10px;font-family:inherit;color:#0f172a;background:#fff}.ev-field input,.ev-field select{height:36px}.ev-field textarea{min-height:92px;padding:10px;resize:vertical;line-height:1.5}.ev-field input:focus,.ev-field select:focus,.ev-field textarea:focus{outline:0;border-color:#1565C0;box-shadow:0 0 0 3px rgba(21,101,192,.1)}.ev-btn{height:34px;border-radius:9px;border:1px solid #cbd5e1;background:#fff;color:#334155;font-size:12px;font-weight:800;padding:0 12px;cursor:pointer;font-family:inherit}.ev-btn:hover:not(:disabled){border-color:#1565C0}.ev-btn:disabled{opacity:.48;cursor:not-allowed}.ev-btn.primary{background:linear-gradient(135deg,#001f4d,#1565C0);color:#fff;border-color:#1565C0}.ev-btn.bingo{background:#eaf7ef;color:#136c36;border-color:#b8e1c7}.ev-search{padding:12px 16px;display:flex;gap:8px}.ev-search input{flex:1;height:36px;border:1.5px solid #dbe4ef;border-radius:999px;padding:0 14px}.ev-table{width:100%;border-collapse:collapse;min-width:860px}.ev-table th{background:#f8fafc;color:#64748b;font-size:10px;text-transform:uppercase;text-align:left;padding:10px}.ev-table td{font-size:12.5px;padding:11px 10px;border-top:1px solid #f1f5f9}.ev-pill{border-radius:999px;padding:3px 9px;font-size:10.5px;font-weight:900}.ev-ok{background:#dcfce7;color:#166534}.ev-warn{background:#fef3c7;color:#92400e}.ev-blue{background:#dbeafe;color:#1e40af}.ev-gray{background:#e2e8f0;color:#475569}
 /* ── ABAS ── */
 .ev-abas{display:flex;gap:2px;padding:0 22px;background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));overflow-x:auto}.ev-aba{border:0;background:transparent;color:rgba(255,255,255,.72);font-family:inherit;font-size:13px;font-weight:800;padding:12px 16px;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}.ev-aba:hover{color:#fff}.ev-aba[aria-selected="true"]{color:#fff;border-bottom-color:var(--gold,#C9A84C)}.ev-conteudo[hidden]{display:none}
+/* ── TELAS DO SUBMÓDULO (segunda camada) ── */
+.ev-telas{display:flex;gap:4px;padding:0 22px;background:#fff;border-bottom:1.5px solid #e2e8f0;overflow-x:auto}
+.ev-telas:empty{display:none}
+.ev-tela{border:0;background:transparent;color:#64748b;font-family:inherit;font-size:13px;font-weight:700;padding:11px 14px;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
+.ev-tela:hover{color:#001f4d}
+.ev-tela[aria-selected="true"]{color:#001f4d;border-bottom-color:#001f4d}
+/* O painel embutido: é ele que acaba com a aba nova do navegador a cada clique. */
+.ev-quadro-wrap{padding:0;position:relative}
+.ev-quadro{width:100%;height:calc(100vh - 210px);min-height:560px;border:0;display:block;background:#f4f7fb}
+.ev-quadro-barra{display:flex;justify-content:flex-end;gap:8px;padding:8px 22px;background:#f8fafc;border-bottom:1px solid #eef2f7}
 /* ── CARDS DE AÇÃO ── */
 .ev-acoes{display:grid;gap:12px;margin-bottom:14px}.ev-acao{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:16px 18px;display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;box-shadow:0 2px 10px rgba(0,20,60,.06)}.ev-acao .txt{flex:1 1 320px;min-width:0}.ev-acao .txt>b{display:block;font-size:14px;color:#001f4d}.ev-acao .txt>span{display:block;font-size:12.5px;color:#5a6779;margin-top:3px;line-height:1.5}.ev-link{margin-top:8px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11.5px;color:#1565C0;background:#f5f8fc;border:1px solid #dbe4ef;border-radius:8px;padding:7px 10px;word-break:break-all;display:block}.ev-nota{background:#fff7ed;border:1px solid #fed7aa;color:#7c4a03;border-radius:12px;padding:12px 15px;font-size:12.5px;line-height:1.55;margin-bottom:14px}.ev-secao{font-size:11px;font-weight:900;color:#64748b;text-transform:uppercase;letter-spacing:.07em;margin:0 0 10px}
 /* ── INFORMAÇÕES DA FESTA V2 ── */
@@ -15,13 +25,38 @@
   <button class="ev-btn" onclick="spIr('sofia',null,{mensagem:'Preciso planejar um evento sindical.'})">Planejar com SOFIA</button>
 </div>
 
+<!-- ══ SUBMÓDULOS ═══════════════════════════════════════════════════════════
+     Hierarquia do PROMPT-MESTRE §4: Módulo → Submódulo → Tela → Ação, com as
+     TELAS SENDO OS ESTADOS do processo. O documento de arquitetura do projeto
+     é explícito: "aba não é tela — aba agrupa assunto dentro de um
+     formulário; tela é uma fila de trabalho com ações próprias".
+
+     As seis abas antigas violavam isso de duas maneiras ao mesmo tempo:
+     Calendário/Informações/Sorteios eram ASSUNTOS, e Inscrições/Participantes/
+     Credenciamento eram ESTADOS DO MESMO PROCESSO, todos no mesmo nível.
+     "Participantes" era a mesma lista de "Inscrições" noutro estado, e estava
+     ali como se fosse outro assunto.
+
+     Aprovado pelo usuário em 24/08/2026. -->
 <div class="ev-abas" role="tablist">
-  <button class="ev-aba" role="tab" id="aba-calendario" aria-selected="true" onclick="evAba('calendario')">Calendário</button>
-  <button class="ev-aba" role="tab" id="aba-informacoes" aria-selected="false" onclick="evAba('informacoes')">Informações</button>
-  <button class="ev-aba" role="tab" id="aba-inscricoes" aria-selected="false" onclick="evAba('inscricoes')">Inscrições</button>
-  <button class="ev-aba" role="tab" id="aba-participantes" aria-selected="false" onclick="evAba('participantes')">Participantes</button>
-  <button class="ev-aba" role="tab" id="aba-credenciamento" aria-selected="false" onclick="evAba('credenciamento')">Credenciamento</button>
-  <button class="ev-aba" role="tab" id="aba-sorteios" aria-selected="false" onclick="evAba('sorteios')">Sorteios</button>
+  <button class="ev-aba" role="tab" id="sub-programacao" aria-selected="true"  onclick="evSub('programacao')">📅 Programação</button>
+  <button class="ev-aba" role="tab" id="sub-festa"       aria-selected="false" onclick="evSub('festa')">🎉 Festa Compasso da Vida 2026</button>
+  <button class="ev-aba" role="tab" id="sub-bingo"       aria-selected="false" onclick="evSub('bingo')">🎲 Bingo Online</button>
+</div>
+
+<!-- As telas do submódulo escolhido. Trocam junto com ele. -->
+<div class="ev-telas" id="evTelas"></div>
+
+<!-- O painel abre AQUI DENTRO, não em aba nova do navegador.
+     Era `window.open(url,'_blank')` em toda ação: analisar uma inscrição, ver
+     a fila de envio, importar planilha — cada uma numa aba do Chrome. O
+     usuário: "eu não preciso abrir várias abas pra buscar uma informação". -->
+<div class="ev-quadro-wrap" id="evQuadroWrap" hidden>
+  <div class="ev-quadro-barra">
+    <button class="ev-btn" onclick="evQuadroNovaAba()">Abrir em nova aba ↗</button>
+    <button class="ev-btn" onclick="evQuadroRecarregar()">↻ Atualizar</button>
+  </div>
+  <iframe class="ev-quadro" id="evQuadro" title="Painel"></iframe>
 </div>
 
 <div class="ev-wrap">
@@ -169,7 +204,7 @@
 
 <script>
 (function(){
-var EV_CACHE=[],EV_EDITANDO="",EV_ABAS=['calendario','informacoes','inscricoes','participantes','credenciamento','sorteios'];
+var EV_CACHE=[],EV_EDITANDO="";
 var EV_INFO_CARREGADO=false,EV_INFO_EVENTO_ID='';
 function g(i){return document.getElementById(i)}
 function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])})}
@@ -182,14 +217,94 @@ function statusClasse(s){if(s==='ENCERRADO')return'ev-ok';if(s==='EM_ANDAMENTO'|
 function dataBr(iso){if(!iso)return'';var p=String(iso).split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:iso}
 function urlImagem(v){v=String(v||'').trim();return /^https:\/\//i.test(v)?v:''}
 
-window.evAba=function(nome){
-  if(EV_ABAS.indexOf(nome)<0)nome='calendario';
-  EV_ABAS.forEach(function(a){var bt=g('aba-'+a),ct=g('conteudo-'+a);if(bt)bt.setAttribute('aria-selected',a===nome?'true':'false');if(ct)ct.hidden=(a!==nome)});
-  try{localStorage.setItem('sisgep_ev_aba',nome)}catch(e){}
-  if(nome==='inscricoes')evMontarLinkCompasso();
-  if(nome==='informacoes')evInfoCarregar();
+/* ══ SUBMÓDULOS E TELAS ═══════════════════════════════════════════════════
+   Módulo → Submódulo → Tela → Ação, com as telas sendo os ESTADOS.
+
+   Cada tela ou mostra um bloco que já existe na página (`conteudo`), ou abre
+   um painel DENTRO do quadro (`painel`). A segunda forma é a que acaba com a
+   aba nova do navegador a cada clique.
+
+   "Inscrições" e "Ingressos" são a MESMA lista em estados diferentes — é por
+   isso que "Participantes" deixou de ser vizinha de "Inscrições" e virou uma
+   tela do mesmo submódulo, apontando para o mesmo painel com outro filtro. */
+var EV_SUBMODULOS = {
+  programacao: [
+    { id:'agenda', rotulo:'Agenda',              conteudo:'calendario' },
+    { id:'festa',  rotulo:'Dados da Festa 2026', conteudo:'informacoes' }
+  ],
+  festa: [
+    { id:'inscricoes',     rotulo:'Inscrições',     painel:'compasso' },
+    { id:'ingressos',      rotulo:'Ingressos',      painel:'compasso', filtro:'participantes' },
+    { id:'credenciamento', rotulo:'Credenciamento', conteudo:'credenciamento' }
+  ],
+  bingo: [
+    { id:'painel', rotulo:'Painel do bingo', conteudo:'sorteios' }
+  ]
 };
-function evAbaSalva(){try{return localStorage.getItem('sisgep_ev_aba')||'calendario'}catch(e){return'calendario'}}
+var EV_SUB_ATUAL='programacao', EV_TELA_ATUAL='', EV_QUADRO_URL='';
+
+function evSubInterno(nome){
+  if(!EV_SUBMODULOS[nome])nome='programacao';
+  EV_SUB_ATUAL=nome;
+  Object.keys(EV_SUBMODULOS).forEach(function(s){
+    var bt=g('sub-'+s); if(bt)bt.setAttribute('aria-selected',s===nome?'true':'false');
+  });
+  var telas=EV_SUBMODULOS[nome];
+  g('evTelas').innerHTML=telas.map(function(t){
+    return '<button class="ev-tela" role="tab" id="tela-'+t.id+'" aria-selected="false" '+
+           'onclick="evTela(\''+t.id+'\')">'+esc(t.rotulo)+'</button>';
+  }).join('');
+  try{localStorage.setItem('sisgep_ev_sub',nome)}catch(e){}
+  /* Entrar no submódulo já abre a primeira tela: o usuário pediu que clicar
+     em Inscrições caísse na lista, e não numa página de links para a lista. */
+  evTelaInterno(telas[0].id);
+}
+window.evSub=evSubInterno;
+
+function evTelaInterno(id){
+  var telas=EV_SUBMODULOS[EV_SUB_ATUAL]||[];
+  var t=null; for(var i=0;i<telas.length;i++) if(telas[i].id===id) t=telas[i];
+  if(!t) t=telas[0]; if(!t) return;
+  EV_TELA_ATUAL=t.id;
+
+  telas.forEach(function(x){var bt=g('tela-'+x.id);
+    if(bt)bt.setAttribute('aria-selected',x.id===t.id?'true':'false')});
+  try{localStorage.setItem('sisgep_ev_tela_'+EV_SUB_ATUAL,t.id)}catch(e){}
+
+  /* Um de cada vez: ou o bloco da página, ou o quadro. */
+  ['calendario','informacoes','inscricoes','participantes','credenciamento','sorteios']
+    .forEach(function(c){var ct=g('conteudo-'+c);if(ct)ct.hidden=(c!==t.conteudo)});
+  var wrap=g('evQuadroWrap'); if(wrap)wrap.hidden=!t.painel;
+  var caixa=document.querySelector('.ev-wrap'); if(caixa)caixa.hidden=!!t.painel;
+
+  if(t.painel) evQuadroAbrir(t.painel,'',t.filtro||'');
+  if(t.conteudo==='informacoes') evInfoCarregar();
+}
+/* Exposta para o onclick do HTML, mas chamada INTERNAMENTE pelo nome local:
+   dentro da IIFE, depender de a função ter chegado ao objeto global é um
+   acoplamento invisível — e foi o que a mutação 32 revelou. */
+window.evTela=evTelaInterno;
+
+/* O painel dentro do quadro. Guarda a URL para o "abrir em nova aba" e o
+   "atualizar" não precisarem pedir de novo ao servidor. */
+function evQuadroAbrir(painel,eventoId,filtro){
+  var token=tokenSessao();
+  if(!token)return avisar('Sessão não encontrada. Entre novamente no SISGEP.','err');
+  google.script.run.withSuccessHandler(function(base){
+    var url=String(base||'')+'?painel='+encodeURIComponent(painel)+
+            '&sessao='+encodeURIComponent(token);
+    if(eventoId)url+='&evento='+encodeURIComponent(eventoId);
+    if(filtro)url+='&filtro='+encodeURIComponent(filtro);
+    EV_QUADRO_URL=url;
+    g('evQuadro').src=url;
+  }).withFailureHandler(function(e){
+    avisar('Não foi possível abrir o painel: '+((e&&e.message)||e),'err');
+  }).eventos_obterWebAppUrl(token);
+}
+window.evQuadroNovaAba=function(){ if(EV_QUADRO_URL)window.open(EV_QUADRO_URL,'_blank'); };
+window.evQuadroRecarregar=function(){ if(EV_QUADRO_URL)g('evQuadro').src=EV_QUADRO_URL; };
+
+function evSubSalvo(){try{return localStorage.getItem('sisgep_ev_sub')||'programacao'}catch(e){return'programacao'}}
 
 /* ── FESTA 2026 · INFORMAÇÕES V2 ── */
 function evInfoCarregar(){
@@ -255,7 +370,7 @@ window.evCopiarLinkCompasso=function(){if(!EV_LINK_COMPASSO)return avisar('O lin
 window.evAvisoPortaria=function(){avisar('A portaria abre pela planilha do SISGEP, no celular da entrada: menu 🎫 Eventos › Check-in. Ela ainda não tem endereço próprio no web app.','warn')};
 window.evCopiarLinkInscricao=function(eventoId){var token=tokenSessao();if(!token)return avisar('Sessão não encontrada. Entre novamente no SISGEP.','err');var id=String(eventoId||prompt('ID do evento para a inscrição:')||'').trim();if(!id)return;google.script.run.withSuccessHandler(function(base){var url=String(base||'')+'?bingo-inscricao='+encodeURIComponent(id),pronto=function(){avisar('Link copiado: '+url,'ok')};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(pronto,function(){prompt('Copie o link:',url)})}else{prompt('Copie o link:',url)}}).withFailureHandler(function(e){avisar('Não foi possível montar o link: '+((e&&e.message)||e),'err')}).eventos_obterWebAppUrl(token)};
 
-function evIniciar(){evAba(evAbaSalva());evRender()}
+function evIniciar(){evSubInterno(evSubSalvo());evRender()}
 window.initEventos=evIniciar;
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',evIniciar);else setTimeout(evIniciar,80);
 })();

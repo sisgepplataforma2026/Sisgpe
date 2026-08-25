@@ -506,4 +506,208 @@ ok(/LEGADO — mantida de propósito/.test(val),
    "  documentado como legado no cabeçalho da função que a abre",
    "apagar seria irreversível; voltar é um card de HTML");
 
+/* ═══ EXCLUIR VÁRIAS ══════════════════════════════════════════════════════
+   "As inscrições importadas não têm opção de excluir todos" (usuário,
+   24/08/2026). Ele tinha 122 linhas erradas e o único caminho era abrir uma a
+   uma.
+
+   A CAUSA não era falta do botão — era o CHECKBOX. Ele só nascia na linha de
+   quem já tinha ingresso, e nenhuma das 122 tinha. Não havia o que selecionar.
+   Um botão de lote sem seleção possível seria um botão morto. */
+passo("dá para selecionar qualquer linha, com ingresso ou sem");
+
+t = montarTela();
+t.tela.LISTA = [pessoa({ ingressoId: "" }), pessoa({ inscricaoId:"INS-2", ingressoId:"ING-2" })];
+t.tela.pintarLista();
+igual((t.els.tb.innerHTML.match(/type="checkbox"/g) || []).length, 2,
+      "as duas linhas têm caixa de seleção",
+      "sem caixa na linha sem ingresso, as 122 importadas eram inselecionáveis");
+
+/* ── o lote no backend ── */
+passo("excluir em lote herda as travas, uma a uma");
+
+function mundoLote(opcoes) {
+  opcoes = opcoes || {};
+  const base = mundo({ admin: opcoes.admin });
+  /* Duas inscrições a mais: uma limpa e uma com ingresso emitido, que tem de
+     ser recusada mesmo dentro do lote. */
+  base.banco.inscricoesEventos["INS-2"] = {
+    inscricaoId:"INS-2", eventoId:"festa-2026", nome:"JOAO", cpf:"22233344455",
+    pessoaId:"P-2", status:"", vagaReservada:true };
+  base.banco.inscricoesEventos["INS-3"] = {
+    inscricaoId:"INS-3", eventoId:"festa-2026", nome:"ANA", cpf:"33344455566",
+    pessoaId:"P-3", status:"VALIDADA_ADMINISTRATIVAMENTE", vagaReservada:true,
+    ingressoId:"ING-3", numeroIngresso:"FCV-2026-000003" };
+  base.banco.reservasEventos["festa-2026"].reservadas = 3;
+
+  const lote = fn(insc2, "compasso_excluirInscricoesEmLote", {
+    exigirAdminOuSessao_: (tok, mod, rot, exigeAdmin) => {
+      if (exigeAdmin && !opcoes.admin)
+        throw new Error("Ação permitida somente para administradores.");
+      return "secretaria@sindeducacao.org.br";
+    },
+    compasso_excluirInscricao: base.excluir,
+    compasso_auditar_: (acao, tipo, id, det) =>
+      base.auditoria.push({ acao, tipo, id, det })
+  });
+  return Object.assign(base, { lote });
+}
+
+let L = mundoLote({ admin: true });
+let rl = L.lote(["INS-1", "INS-2", "INS-3"], "limpeza da importação", "tok");
+igual(rl.ok, true, "o lote roda");
+igual(rl.excluidas, 2, "exclui as duas que podiam");
+igual(rl.recusadas.length, 1, "  e devolve a que não pôde");
+igual(rl.recusadas[0].inscricaoId, "INS-3", "  dizendo qual");
+ok(/cancele o ingresso/i.test(rl.recusadas[0].motivo || ""),
+   "  e por quê",
+   "um lote que diz só '2 excluídas' esconde a que ficou, e a pessoa só " +
+   "descobre relendo a lista");
+ok(!L.banco.inscricoesEventos["INS-3"].excluida,
+   "a que tem ingresso continua viva",
+   "a trava do ingresso vale dentro do lote igual a fora — o lote não " +
+   "reimplementa regra nenhuma");
+igual(L.banco.reservasEventos["festa-2026"].reservadas, 1,
+      "e só as vagas das excluídas voltaram");
+
+L = mundoLote({ admin: false });
+let erroLote = null;
+try { L.lote(["INS-1"], "teste", ""); } catch (e) { erroLote = String(e.message || e); }
+ok(erroLote && /administrador/i.test(erroLote),
+   "quem não é administrador não exclui em lote");
+
+L = mundoLote({ admin: true });
+igual(L.lote([], "x", "tok").ok, false, "lote vazio é recusado");
+igual(L.lote(["INS-1"], "  ", "tok").ok, false, "e sem motivo também");
+
+const audLote = L.auditoria.filter(a => a.acao === "EXCLUSAO_INSCRICAO_LOTE");
+L = mundoLote({ admin: true });
+L.lote(["INS-1", "INS-3"], "limpeza", "tok");
+igual(L.auditoria.filter(a => a.acao === "EXCLUSAO_INSCRICAO_LOTE").length, 1,
+      "o lote é auditado como lote, além de cada exclusão");
+
+/* ── o lote na tela ── */
+passo("o botão de excluir em lote só aparece para administrador");
+
+t = montarTela();
+t.tela.LISTA = [pessoa({ ingressoId: "" })];
+t.tela.pintarLista();
+t.tela.SOU_ADMIN = false;
+t.sandbox.document.getElementById("tb");   /* materializa */
+ok(/onclick="excluirLote\(\)"/.test(html), "o botão existe na barra de lote");
+ok(/function excluirLote\(\)/.test(html), "  e a função também");
+ok(/compasso_excluirInscricoesEmLote/.test(html),
+   "  chamando a função de lote do backend, não um laço na tela",
+   "laço no cliente faria N chamadas e perderia o resumo do que foi recusado");
+
+const corpoBarra = (html.match(/function atualizarBarra\(\)\{[\s\S]*?\n\}/) || [""])[0];
+ok(/g\('btLoteExcluir'\)\.hidden = !SOU_ADMIN/.test(corpoBarra),
+   "e ele só aparece para quem é administrador");
+ok(/g\('btLoteEmail'\)\.hidden   = !comIngresso/.test(corpoBarra),
+   "enquanto o de enviar depende de haver ingresso na seleção",
+   "oferecer 'enviar ingresso' para quem não tem ingresso é botão que só " +
+   "produz erro");
+
+/* ═══ A NAVEGAÇÃO POR SUBMÓDULOS ══════════════════════════════════════════
+   "Quando eu clicasse Inscrições, já caía no relatório" e "participantes
+   deveriam estar dentro de inscrições — tudo num único lugar" (usuário,
+   24/08/2026).
+
+   Este bloco EXECUTA a navegação da tela de Eventos, porque as duas coisas
+   que importam aqui são invisíveis a um teste de texto: se entrar num
+   submódulo já abre a primeira tela, e se essa tela carrega o painel EM VEZ
+   de abrir aba nova do navegador. */
+passo("entrar no submódulo já abre a primeira tela");
+
+function montarEventos() {
+  const els = {};
+  function el(id) {
+    const classes = new Set();
+    return { id, innerHTML:"", textContent:"", value:"", hidden:false, style:{},
+             src:"", attrs:{},
+             setAttribute(k,v){ this.attrs[k]=v; },
+             getAttribute(k){ return this.attrs[k]; },
+             classList:{ add:c=>classes.add(c), remove:c=>classes.delete(c),
+                         contains:c=>classes.has(c),
+                         toggle:(c,on)=>on?classes.add(c):classes.delete(c) },
+             addEventListener(){} };
+  }
+  const abertas = [];        /* window.open — o que NÃO deve acontecer */
+  const chamadas = [];
+  const win = {};
+  const sandbox = {
+    window: win,
+    document: {
+      getElementById: id => (els[id] = els[id] || el(id)),
+      querySelector: () => (els["__wrap"] = els["__wrap"] || el("__wrap")),
+      addEventListener(){}, readyState:"complete"
+    },
+    localStorage: { getItem:()=>null, setItem(){}, removeItem(){} },
+    google: { script: { run: new Proxy({}, { get: (_, n) => {
+      if (n === "withSuccessHandler") return cb => { sandbox.__ok = cb; return sandbox.google.script.run; };
+      if (n === "withFailureHandler") return () => sandbox.google.script.run;
+      return (...args) => { chamadas.push({ nome:n, args });
+                            if (sandbox.__ok) sandbox.__ok("https://exec.exemplo"); };
+    } }) } },
+    setTimeout(){}, alert(){}, confirm:()=>true, prompt:()=>"m", console,
+    spIr(){}, avisar(){},
+    /* a tela lê a sessão desta global; sem ela, evQuadroAbrir desiste antes
+       de tocar no quadro */
+    SISGEP_TOKEN_SESSAO: "TOKEN",
+    abertas
+  };
+  win.open = (u) => { abertas.push(u); };
+
+  const corpo = (ler("EventosAdmin.html").match(/<script>([\s\S]*)<\/script>/) || [])[1];
+  const nomes = Object.keys(sandbox);
+  new Function(...nomes, corpo)(...nomes.map(n => sandbox[n]));
+  return { win, els, abertas, chamadas };
+}
+
+const ev = montarEventos();
+ev.win.evSub("festa");
+
+igual(ev.els["sub-festa"].getAttribute("aria-selected"), "true",
+      "o submódulo Festa fica marcado");
+ok(/tela-inscricoes/.test(ev.els.evTelas.innerHTML),
+   "  e a barra mostra as telas dele");
+ok(/tela-ingressos/.test(ev.els.evTelas.innerHTML) &&
+   /tela-credenciamento/.test(ev.els.evTelas.innerHTML),
+   "  Inscrições, Ingressos e Credenciamento — as três do desenho aprovado");
+ok(!/tela-participantes/.test(ev.els.evTelas.innerHTML),
+   "  e 'Participantes' não é mais uma delas",
+   "era a mesma lista de Inscrições noutro estado, e virou a tela Ingressos");
+
+ok(String(ev.els.evQuadro.src).indexOf("painel=compasso") >= 0,
+   "ENTRAR NO SUBMÓDULO JÁ CARREGA A LISTA, sem tela de links no meio",
+   "o usuário pediu que clicar em Inscrições caísse no relatório");
+igual(ev.els.evQuadroWrap.hidden, false, "  com o quadro à vista");
+
+passo("o painel abre DENTRO da tela, não em aba nova do navegador");
+
+igual(ev.abertas.length, 0,
+      "navegar entre submódulos não abriu nenhuma aba do navegador",
+      "era window.open a cada ação: analisar, ver fila, importar — cada uma " +
+      "numa aba do Chrome. 'Eu não preciso abrir várias abas pra buscar uma " +
+      "informação'");
+ok(/id="evQuadro"/.test(ler("EventosAdmin.html")),
+   "  existe um quadro embutido para isso");
+ok(/onclick="evQuadroNovaAba\(\)"/.test(ler("EventosAdmin.html")),
+   "  e quem quiser a aba nova ainda tem o botão",
+   "tirar a opção seria trocar um incômodo por outro");
+
+passo("a tela Ingressos é a mesma lista, noutro estado");
+
+ev.win.evTela("ingressos");
+ok(String(ev.els.evQuadro.src).indexOf("filtro=participantes") >= 0,
+   "Ingressos abre o mesmo painel filtrado por quem já tem ingresso");
+
+passo("Bingo é submódulo próprio, não uma aba de sorteios");
+
+ev.win.evSub("bingo");
+igual(ev.els["sub-bingo"].getAttribute("aria-selected"), "true", "o submódulo existe");
+igual(ev.els["sub-festa"].getAttribute("aria-selected"), "false",
+      "  e a Festa deixa de estar selecionada",
+      "Festa 2026 e Bingo são processos diferentes, não estados do mesmo");
+
 resumo();

@@ -142,6 +142,48 @@ function compasso_excluirInscricao(inscricaoId, motivo, tokenSessao) {
 }
 
 /**
+ * EXCLUIR VÁRIAS DE UMA VEZ.
+ *
+ * Pedido do usuário em 24/08/2026: "as inscrições importadas não têm opção de
+ * excluir todos". Ele tinha 122 linhas erradas para apagar e o único caminho
+ * era abrir uma a uma.
+ *
+ * Não reimplementa nada: chama `compasso_excluirInscricao` para cada id, e
+ * portanto herda as três travas inteiras — administrador, motivo obrigatório
+ * e recusa com ingresso emitido. Uma versão "em lote" com regra própria seria
+ * a mesma armadilha das duas regras de nome de ontem.
+ *
+ * Devolve o que deu certo E o que não deu, com motivo. Um lote que diz apenas
+ * "82 excluídas" esconde as 40 que ficaram, e a pessoa só descobre relendo a
+ * lista.
+ */
+function compasso_excluirInscricoesEmLote(ids, motivo, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — excluir em lote', true);
+  ids = (ids || []).filter(function (x) { return String(x || '').trim(); });
+  if (!ids.length) return { ok:false, erro:'Selecione ao menos uma inscrição.' };
+  if (!String(motivo || '').trim()) return { ok:false, erro:'Descreva o motivo da exclusão.' };
+
+  var excluidas = 0, recusadas = [];
+  for (var i = 0; i < ids.length; i++) {
+    var r;
+    try { r = compasso_excluirInscricao(ids[i], motivo, tokenSessao); }
+    catch (e) { r = { ok:false, erro:e.message }; }
+    if (r && r.ok) excluidas++;
+    else recusadas.push({ inscricaoId: ids[i], motivo: (r && r.erro) || 'recusada' });
+  }
+
+  compasso_auditar_('EXCLUSAO_INSCRICAO_LOTE', 'inscricao', '', {
+    pedidas: ids.length, excluidas: excluidas, recusadas: recusadas.length, motivo: motivo
+  });
+
+  return {
+    ok: true, excluidas: excluidas, recusadas: recusadas,
+    mensagem: excluidas + ' inscrição(ões) excluída(s)' +
+      (recusadas.length ? ' · ' + recusadas.length + ' não pôde(puderam) ser excluída(s)' : '') + '.'
+  };
+}
+
+/**
  * A tela precisa saber se quem abriu é administrador, para não desenhar
  * "Excluir" para quem vai levar recusa.
  *

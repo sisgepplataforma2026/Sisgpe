@@ -205,7 +205,8 @@
   <!-- Barra de lote: só aparece quando há seleção. -->
   <div class="barra" id="barra">
     <b><span id="qtdSel">0</span> selecionada(s)</b>
-    <button class="b p" onclick="enviarLote()">📧 Enviar ingresso por e-mail</button>
+    <button class="b p" onclick="enviarLote()" id="btLoteEmail">📧 Enviar ingresso por e-mail</button>
+    <button class="b perigo" onclick="excluirLote()" id="btLoteExcluir" hidden>🗑 Excluir selecionadas</button>
     <span id="capacidade" style="font-size:12px;color:var(--suave)"></span>
   </div>
 
@@ -612,7 +613,12 @@ function linhaHtml(x, i){
   var temIngresso = !!x.ingressoId;
   var podeEmitir  = !temIngresso && x.status === 'VALIDADA_ADMINISTRATIVAMENTE';
   return '<tr>' +
-        '<td>' + (temIngresso ? '<input type="checkbox" onclick="marcar(' + i + ',this)">' : '') + '</td>' +
+        /* Checkbox em TODA linha, não só em quem tem ingresso.
+           24/08/2026: o usuário precisava apagar 122 importadas e não
+           conseguia selecionar nenhuma — nenhuma tinha ingresso, e o checkbox
+           só nascia para quem tinha. A seleção serve a mais de uma ação; quem
+           decide o que pode ser feito com ela é o botão, não a caixinha. */
+        '<td><input type="checkbox" onclick="marcar(' + i + ',this)"></td>' +
         /* Nome com e-mail e categoria embaixo: é o que identifica a pessoa
            sem precisar abrir. O resto dos dados fica na gaveta — 2.000 linhas
            com quatorze colunas não se lê em tela nenhuma. */
@@ -656,8 +662,37 @@ function atualizarBarra(){
   var n = Object.keys(SEL).length;
   g('qtdSel').textContent = n;
   g('barra').style.display = n ? 'flex' : 'none';
-  if (n) api('compasso_capacidadeEnvio', [], function(c){
+  /* Cada botão do lote só aparece quando a seleção serve a ele: enviar exige
+     ingresso emitido em ao menos uma; excluir exige ser administrador. */
+  var comIngresso = Object.keys(SEL).filter(function(i){
+    return LISTA[i] && LISTA[i].ingressoId; }).length;
+  g('btLoteEmail').hidden   = !comIngresso;
+  g('btLoteExcluir').hidden = !SOU_ADMIN;
+  if (comIngresso) api('compasso_capacidadeEnvio', [], function(c){
     if (c) g('capacidade').textContent = c.aviso || '';
+  });
+  else g('capacidade').textContent = '';
+}
+
+/* Excluir o que está selecionado. O lote herda as travas do backend inteiras —
+   administrador, motivo obrigatório e recusa com ingresso emitido —, então a
+   tela não precisa (nem deve) repetir a regra aqui. */
+function excluirLote(){
+  var idx = Object.keys(SEL).map(Number);
+  if (!idx.length) return;
+  var comIngresso = idx.filter(function(i){ return LISTA[i].ingressoId; }).length;
+  var motivo = prompt('Motivo da exclusão de ' + idx.length + ' inscrição(ões):');
+  if (!motivo) return;
+  if (!confirm('Excluir ' + idx.length + ' inscrição(ões)?\n\n' +
+      'Elas saem da lista e as vagas voltam para as 2.000.' +
+      (comIngresso ? '\n\n' + comIngresso + ' tem ingresso emitido e será recusada — ' +
+                     'cancele o ingresso antes.' : ''))) return;
+  aviso('Excluindo… pode levar alguns instantes.');
+  api('compasso_excluirInscricoesEmLote',
+      [idx.map(function(i){ return LISTA[i].inscricaoId; }), motivo], function(r){
+    if (!r || !r.ok) return aviso((r && r.erro) || 'Não foi possível excluir.');
+    aviso(r.mensagem || 'Concluído.');
+    carregar();   /* a lista encolheu: a paginação precisa ser refeita do zero */
   });
 }
 
