@@ -97,15 +97,15 @@ igual(amb.outbox.length, antes + 1, "  e um e-mail saiu");
 
 const msg = amb.outbox[amb.outbox.length - 1];
 igual(msg.to, "mariaaparecida@gmail.com", "  para o e-mail da pessoa");
-ok(/Confirmação de inscrição/i.test(String(msg.subject || "")),
+ok(/Inscrição recebida/i.test(String(msg.subject || "")),
    "  com assunto que diz o que é: " + msg.subject);
 
 const corpo = String(msg.body || "");
-ok(/NÃO CONSTITUI\s*\n?INGRESSO/i.test(corpo),
+ok(/Este e-mail não é o seu ingresso/i.test(corpo),
    "  e o aviso de que NÃO é o ingresso, em destaque",
    "sem esta frase alguém aparece na portaria em 19/12 com a confirmação na mão");
-ok(/QR Code será\s*\n?encaminhado por WhatsApp/i.test(corpo),
-   "  dizendo por onde o ingresso vem de verdade");
+ok(/ingresso oficial com QR Code/i.test(corpo),
+   "  dizendo o que vem depois");
 ok(/Maria/.test(corpo) && /EMEF Castelo Branco/.test(corpo) && /Vitória/.test(corpo),
    "  os dados enviados vêm para conferência");
 
@@ -237,23 +237,46 @@ ok(/19 de dezembro de 2026/.test(comFesta),
    "vem de EMISSAO_CFG.DATA_EVENTO, que existe em qualquer ambiente");
 ok(/Pavilhão de Carapina/.test(comFesta) && /Av\. Central/.test(comFesta),
    "  o local e o endereço aparecem");
-ok(/Abertura[.\s]+19h00/.test(comFesta) && /Início[.\s]+20h00/.test(comFesta),
-   "  e os dois horários");
+ok(/Abertura: 19h00 \| Início: 20h00/.test(comFesta),
+   "  e os dois horários na mesma linha");
 
-/* A regra que evita o pior desfecho deste bloco. */
+/* A REGRA QUE EVITA O PIOR DESFECHO — e o teste dela mudou de forma hoje.
+   Antes bastava apagar as propriedades para a linha sumir. Agora o local real
+   virou PADRÃO no código, então apagar propriedade não esvazia mais nada — o
+   que é justamente o comportamento desejado para esta festa.
+
+   A regra continua valendo, e continua importando: para uma edição futura sem
+   local fechado, ou para um evento novo, o campo vazio não pode virar
+   "Local: (não informado)" num e-mail para 2.000 pessoas. O teste esvazia o
+   próprio padrão para provar isso. */
 passo("7b · o que falta simplesmente não aparece");
 
-["COMPASSO_LOCAL", "COMPASSO_ENDERECO", "COMPASSO_HORA_ABERTURA", "COMPASSO_HORA_INICIO"]
-  .forEach(k => props.deleteProperty(k));
+["COMPASSO_LOCAL", "COMPASSO_ENDERECO", "COMPASSO_HORA_ABERTURA",
+ "COMPASSO_HORA_INICIO", "COMPASSO_REFERENCIA"].forEach(k => props.deleteProperty(k));
 
-inscrever({ cpf: cpfGerado(300007919), nome: "Beatriz Souza Alves", email: "beatriz@exemplo.com" });
+const padraoGuardado = {
+  local: g.COMPASSO_FESTA_PADRAO.local,
+  endereco: g.COMPASSO_FESTA_PADRAO.endereco,
+  referencia: g.COMPASSO_FESTA_PADRAO.referencia
+};
+g.COMPASSO_FESTA_PADRAO.local = "";
+g.COMPASSO_FESTA_PADRAO.endereco = "";
+g.COMPASSO_FESTA_PADRAO.referencia = "";
+
+inscrever({ cpf: cpfGerado(322222222), nome: "Beatriz Souza Alves",
+            email: "beatriz@exemplo.com" });
 const semLocal = String(amb.outbox[amb.outbox.length - 1].body || "");
-ok(semLocal.indexOf("Local") < 0 && semLocal.indexOf("Endereço") < 0,
+ok(semLocal.indexOf("Local:") < 0 && semLocal.indexOf("Endereço:") < 0,
    "sem local definido, a linha some — não vira 'Local: (não informado)'",
    "melhor faltar do que mandar campo vazio para 2.000 pessoas");
 ok(/19 de dezembro de 2026/.test(semLocal),
    "  mas a data continua, porque ela sempre existe");
-ok(/A FESTA/.test(semLocal), "  e o bloco não desaparece inteiro por causa disso");
+ok(/COMPASSO DA VIDA 2026/.test(semLocal),
+   "  e o bloco não desaparece inteiro por causa disso");
+
+g.COMPASSO_FESTA_PADRAO.local = padraoGuardado.local;
+g.COMPASSO_FESTA_PADRAO.endereco = padraoGuardado.endereco;
+g.COMPASSO_FESTA_PADRAO.referencia = padraoGuardado.referencia;
 
 /* ══════════════════════════════════════════════════════════════════════════
    8 · A CAMADA V2 CAI E O E-MAIL NÃO CAI JUNTO
@@ -282,17 +305,67 @@ g.eventosV2Repo_listar_ = repoOriginal;
 /* ══════════════════════════════════════════════════════════════════════════
    9 · O TOM
    ══════════════════════════════════════════════════════════════════════════ */
-passo("9 · correspondência do sindicato, não recado");
+passo("9 · o convite da festa, não um ofício");
 
-ok(/^Prezado\(a\) /m.test(corpo),
-   "abre com tratamento institucional");
-ok(!/Prezada |Prezado [A-Z]/.test(corpo),
-   "  em '(a)', sem deduzir tratamento pelo nome",
-   "o cadastro não guarda como a pessoa se trata, e deduzir erra com gente de verdade");
-ok(/Atenciosamente,/.test(corpo), "fecha com o encerramento de ofício");
-ok(/Sindicato dos Educadores Técnico-Administrativos/.test(corpo),
-   "e assina com o nome por extenso da entidade");
-ok(!/Olá,/.test(corpo) && !/!\n/.test(corpo.split("\n")[0]),
-   "  sem saudação informal");
+/* ESTE BLOCO ESTAVA AO CONTRÁRIO ATÉ HOJE, e a inversão é o registro de uma
+   correção do usuário. De manhã ele pediu "tom mais institucional" e eu
+   escrevi um ofício — "Prezado(a)", "procederá à conferência",
+   "Atenciosamente". À tarde ele mandou o texto que queria de verdade: festivo,
+   com emoji, fechando em "Nos vemos no Compasso da Vida 2026!".
+
+   Ele está certo, e a razão importa mais que a redação: institucional é o tom
+   de uma cobrança. Isto é o convite da festa de fim de ano, e quem lê é a
+   associada. As asserções abaixo guardam a decisão DELE — se alguém devolver
+   o ofício, elas caem. */
+ok(/^Olá, \w+! 👋/m.test(corpo),
+   "abre como convite, com o primeiro nome",
+   "decisão do usuário em 25/08, corrigindo o tom institucional que eu tinha escrito");
+ok(/Nos vemos no Compasso da Vida 2026/.test(corpo),
+   "e fecha convidando, não protocolando");
+ok(!/Prezado\(a\)/.test(corpo) && !/Atenciosamente/.test(corpo),
+   "  sem fórmula de ofício");
+ok(/🎶|🎉|📅|📍/.test(corpo),
+   "  com os marcadores visuais que ele escolheu",
+   "num e-mail em texto puro, o emoji é o que dá hierarquia — não é enfeite");
+
+/* O QUE O TOM NÃO PODE LEVAR JUNTO. Estas três sobrevivem a qualquer
+   mudança de redação, e é por isso que estão separadas do bloco acima. */
+passo("9b · o que nenhuma redação pode perder");
+
+ok(/não é o seu ingresso/i.test(corpo),
+   "o aviso de que não é o ingresso continua",
+   "sem ele alguém imprime este e-mail e vai para a portaria em 19/12");
+ok(corpo.indexOf(CPF) < 0 && corpo.indexOf("mariaaparecida@gmail.com") < 0,
+   "CPF e e-mail continuam mascarados");
+ok(corpo.indexOf(ins1.protocolo) > 0,
+   "e o protocolo continua no corpo");
+
+/* ══════════════════════════════════════════════════════════════════════════
+   10 · O LOCAL REAL COMO PADRÃO
+   ══════════════════════════════════════════════════════════════════════════ */
+passo("10 · o endereço da festa sai mesmo sem ninguém configurar");
+
+ok(/Espaço Patrick Ribeiro/.test(corpo),
+   "o local sai sem depender de propriedade declarada",
+   "a festa já tem local fechado; exigir configuração faria o e-mail sair " +
+   "sem endereço até alguém lembrar de preencher");
+ok(/Roza Helena Schorling Albuquerque/.test(corpo) && /29109-350/.test(corpo),
+   "  com endereço e CEP");
+ok(/Ao lado do Aeroporto de Vitória/.test(corpo),
+   "  e a referência de quem vai de carro",
+   "endereço de avenida sem número precisa de ponto de referência");
+ok(/sábado, 19 de dezembro/.test(corpo),
+   "  e a data traz o dia da semana",
+   "saber que cai num sábado é o que decide se a pessoa consegue ir");
+
+/* Propriedade declarada ganha do padrão — o local pode mudar sem deploy. */
+props.setProperty("COMPASSO_LOCAL", "Outro Espaço");
+inscrever({ cpf: cpfGerado(411111111), nome: "Teste Local Novo",
+            email: "local@exemplo.com" });
+const trocado = String(amb.outbox[amb.outbox.length - 1].body || "");
+ok(/Outro Espaço/.test(trocado) && !/Espaço Patrick Ribeiro/.test(trocado),
+   "propriedade declarada vence o padrão do código",
+   "trocar o local não exige deploy");
+props.deleteProperty("COMPASSO_LOCAL");
 
 resumo();
