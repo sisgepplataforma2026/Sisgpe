@@ -906,4 +906,83 @@ passo("todo elemento escondido está mesmo escondido");
                   : "cada classe com display próprio precisa da regra [hidden]");
 });
 
+/* ══════════════════════════════════════════════════════════════════════════
+   OS DOIS LINKS — 25/08/2026
+
+   Duas perguntas do usuário no mesmo dia, e as duas eram a mesma falha de
+   raciocínio minha:
+
+     "o link do ingresso não aparece também"
+     "O link da inscrição? Foi para aonde?"
+
+   O DO INGRESSO nunca existiu na tela: `compasso_ingressoArquivo` devolvia a
+   URL e o modal só tinha um botão que fazia `window.open` — bloqueado com
+   frequência dentro do iframe do Apps Script, e sem nada de onde copiar.
+
+   O DA INSCRIÇÃO existia e eu o escondi: quando a Central passou a ser
+   desenhada dentro da tela de Eventos, escondi o cabeçalho dela para não
+   empilhar dois títulos, e o cabeçalho carregava os dois botões de ação.
+
+   A lição das duas é uma só, e é a mesma da barra duplicada: esconder um
+   contêiner esconde tudo o que ele carrega. Estas asserções não conferem
+   estilo — conferem que os botões estão FORA do cabeçalho que some.
+   ══════════════════════════════════════════════════════════════════════════ */
+passo("os dois links, e o contêiner que os levou junto");
+
+const insc = ler("CompassoInscricoes.html");
+const admin = ler("EventosAdmin.html");
+
+/* ─── o link de inscrição ─── */
+const cabecalho = (insc.match(/<div class="of-modulo-header">[\s\S]*?<\/div>\s*<\/div>/) || [""])[0];
+ok(cabecalho.indexOf("copiarLink()") < 0,
+   "o botão de copiar link NÃO está mais dentro do cabeçalho do módulo",
+   "é esse cabeçalho que a tela de Eventos esconde ao embutir a Central");
+
+const linhaAbas = (insc.match(/<div class="of-tabs-linha">[\s\S]*?<\/div>\s*<\/div>/) || [""])[0];
+ok(/copiarLink\(\)/.test(linhaAbas) && /carregar\(\)/.test(linhaAbas),
+   "  e está na linha das abas, junto com o atualizar",
+   "a linha das abas aparece nos dois modos: embutida e pela rota ?painel=compasso");
+
+ok(/\.of-tabs-acoes\s*\{/.test(insc) && /\.of-tabs-linha\s*\{/.test(insc),
+   "  com estilo próprio declarado — nada herdado do cabeçalho que sumiu");
+
+/* A regra que causou tudo continua lá, e deve continuar: o que mudou é o que
+   ela alcança. Se alguém devolver os botões para o cabeçalho, esta asserção
+   acima cai — que é exatamente o ponto. */
+ok(/\.ev-embutido #compassoInscricoes>\.of-modulo-header\{display:none\}/.test(admin),
+   "a tela de Eventos continua escondendo só o cabeçalho da Central embutida");
+ok(/o link da inscrição foi para onde/i.test(admin),
+   "  e a regra carrega, em comentário, o que ela já custou",
+   "quem for mexer nela precisa ler isto antes");
+
+/* ─── o link do ingresso ─── */
+ok(/id="mdLinkBox"/.test(insc) && /id="mdLink"/.test(insc),
+   "o modal do ingresso tem campo para o link");
+ok(/mdLinkBox[\s\S]{0,40}hidden/.test(insc),
+   "  que nasce escondido",
+   "campo vazio à espera passa a impressão de que o link não existe");
+ok(/if \(r\.url\)\{[^}]*mdLink.*value = r\.url[\s\S]{0,80}hidden = false/.test(insc),
+   "  e só aparece quando o backend devolve a URL");
+ok(/readonly/.test(insc) && /onclick="this\.select\(\)"/.test(insc),
+   "  o campo é de leitura e seleciona ao clicar");
+ok(/function mdCopiarLink\(\)/.test(insc), "  há botão de copiar");
+/* A MUTAÇÃO CORRIGIU ESTA ASSERÇÃO. A primeira versão procurava "selecionar"
+   até 120 caracteres depois do writeText — e o `catch(e){ selecionar(); }`
+   logo abaixo fazia o teste passar mesmo com o tratamento de recusa removido.
+   O que precisa existir é o SEGUNDO argumento do .then: a promessa recusada é
+   o caminho comum dentro do iframe, e sem ele o botão falha em silêncio. */
+ok(/writeText\(url\)\.then\(\s*function\(\)\{[^}]*\},\s*selecionar\)/.test(insc),
+   "  com plano B na RECUSA da promessa, não só no throw",
+   "dentro do iframe a promessa costuma ser recusada, não estourar — " +
+   "o plano B seleciona o texto em vez de devolver erro");
+ok(/\.md-link\[hidden\]\{display:none\}/.test(insc),
+   "  e a regra [hidden] do campo, para o display da classe não vencer o atributo");
+
+/* A URL vem do servidor, não é montada na tela — se um dia o link mudar de
+   formato, muda num lugar só. */
+const gsEntrega = ler("EventosEntrega.gs");
+ok(/url: compasso_ingressoUrlPublica_\(ctx\.qrToken\)/.test(gsEntrega),
+   "a URL do ingresso é montada no servidor e devolvida pronta",
+   "a tela não concatena endereço — nunca fica desencontrada do que vai no e-mail");
+
 resumo();

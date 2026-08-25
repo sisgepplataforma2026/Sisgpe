@@ -21,7 +21,18 @@
 .ev-quadro-aviso{position:absolute;left:0;right:0;top:52px;margin:22px;padding:20px 22px;background:#fff7ed;border:1px solid #fed7aa;color:#7c4a03;border-radius:12px;font-size:13px;line-height:1.6}
 .ev-quadro-aviso b{display:block;margin-bottom:6px;color:#7c2d12}
 /* A Central incluída ocupa a área inteira; o cabeçalho próprio dela some,
-   porque o cabeçalho do módulo já está acima. */
+   porque o cabeçalho do módulo já está acima.
+
+   ATENÇÃO AO QUE ESTA LINHA JÁ CUSTOU (25/08/2026). Ela escondia, junto com o
+   título, os dois botões de ação da Central — "copiar link de inscrição" e
+   "atualizar" —, que moravam dentro do mesmo cabeçalho. O link de inscrição é
+   o que vai para a lista de transmissão e para o site; sem ele a Central não
+   entrega a única coisa que precisa sair dela para fora. O usuário perguntou
+   "o link da inscrição foi para onde?" e a resposta era esta regra.
+
+   Os botões foram para a linha das abas (`.of-tabs-linha`, em
+   CompassoInscricoes.html), que aparece nos dois modos. Antes de esconder
+   qualquer contêiner, olhar o que ele carrega dentro. */
 .ev-embutido[hidden]{display:none}
 .ev-embutido #compassoInscricoes>.of-modulo-header{display:none}
 .ev-onde{padding:12px 22px 0;font-size:11px;font-weight:900;color:#64748b;text-transform:uppercase;letter-spacing:.07em}

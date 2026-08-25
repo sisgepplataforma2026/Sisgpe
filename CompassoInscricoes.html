@@ -178,16 +178,35 @@
 .paginacao[hidden]{display:none}
 .gv-acoes[hidden]{display:none}
 .gv-campo[hidden]{display:none}
+
+/* A linha das abas: pílula à esquerda, ações à direita. As ações moraram no
+   cabeçalho até 25/08 e sumiam quando a Central era embutida na tela de
+   Eventos — ver o comentário na marcação. */
+.of-tabs-linha{display:flex;align-items:center;justify-content:space-between;
+               gap:12px;flex-wrap:wrap}
+.of-tabs-linha .of-tabs{margin-bottom:0}
+.of-tabs-acoes{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
+.of-tabs-linha + .painel{margin-top:20px}
+
+/* O LINK DO INGRESSO, no modal. Ele existia no objeto e não existia na tela:
+   "Abrir ingresso" fazia window.open, que o iframe do Apps Script costuma
+   bloquear — e não havia de onde copiar o endereço. Campo de leitura, com o
+   texto já selecionável, e botão de copiar com plano B. */
+.md-link{margin:0 0 13px}
+.md-link label{display:block;font-size:10.5px;font-weight:900;letter-spacing:.07em;
+               text-transform:uppercase;color:var(--suave);margin-bottom:5px}
+.md-link .cx{display:flex;gap:8px;align-items:stretch}
+.md-link input{flex:1;min-width:0;border:1px solid var(--linha);border-radius:8px;
+               padding:8px 10px;font-family:inherit;font-size:12.5px;color:var(--navy);
+               background:#f8fafc}
+.md-link input:focus{outline:2px solid var(--blue);outline-offset:-1px}
+.md-link[hidden]{display:none}
 </style>
 
 <div class="of-modulo-header">
   <div>
     <h1>Central de Inscrições — Festa Compasso da Vida 2026</h1>
     <div class="sub" id="sub">Carregando…</div>
-  </div>
-  <div class="acoes">
-    <button class="b" onclick="copiarLink()">🔗 Copiar link de inscrição</button>
-    <button class="b" onclick="carregar()">↻ Atualizar</button>
   </div>
 </div>
 
@@ -199,9 +218,25 @@
 
      O padrão é o do módulo de Ofícios (.of-tabs), que é o que a equipe já usa
      todo dia. -->
-<div class="of-tabs">
-  <button class="of-tab active" id="tabLista"    onclick="irAba('lista')">📋 Inscrições</button>
-  <button class="of-tab"        id="tabImportar" onclick="irAba('importar')">📄 Importar planilha</button>
+<!-- OS BOTÕES DE AÇÃO MORAM AQUI, E NÃO NO CABEÇALHO — 25/08/2026.
+     Eles estavam no `.of-modulo-header`. Quando esta Central passou a ser
+     desenhada DENTRO da tela de Eventos, aquele cabeçalho foi escondido para
+     não empilhar dois títulos — e levou junto o "copiar link de inscrição",
+     que é justamente o que precisa sair daqui para a lista de transmissão e
+     para o site. O usuário perguntou "o link da inscrição foi para onde?".
+
+     Na linha das abas eles aparecem nos DOIS modos: embutida na tela de
+     Eventos e sozinha pela rota ?painel=compasso. Esconder um contêiner
+     esconde tudo o que ele carrega — a lição é a mesma da barra duplicada. -->
+<div class="of-tabs-linha">
+  <div class="of-tabs">
+    <button class="of-tab active" id="tabLista"    onclick="irAba('lista')">📋 Inscrições</button>
+    <button class="of-tab"        id="tabImportar" onclick="irAba('importar')">📄 Importar planilha</button>
+  </div>
+  <div class="of-tabs-acoes">
+    <button class="b" onclick="copiarLink()">🔗 Copiar link de inscrição</button>
+    <button class="b" onclick="carregar()">↻ Atualizar</button>
+  </div>
 </div>
 
 <div class="painel" id="painelLista">
@@ -322,6 +357,18 @@
         <button class="b g" onclick="mdWhats()">💬 WhatsApp</button>
         <button class="b"   onclick="mdEditar()">✏️ Editar dados</button>
       </div>
+      <!-- Nasce escondido: só aparece quando o backend devolve a URL. Um campo
+           vazio à espera é pior do que campo nenhum — passa a impressão de que
+           o link não existe. -->
+      <div class="md-link" id="mdLinkBox" hidden>
+        <label for="mdLink">Link do ingresso</label>
+        <div class="cx">
+          <input id="mdLink" type="text" readonly onclick="this.select()"
+                 aria-label="Endereço público do ingresso">
+          <button class="b" onclick="mdCopiarLink()">🔗 Copiar</button>
+        </div>
+      </div>
+
       <div class="md-status" id="mdStatus">
         <span>🕐</span><span>Emitido e ainda não enviado.</span>
       </div>
@@ -966,6 +1013,8 @@ function abrirModalIngresso(inscricaoId, numero, nome){
   g('mdTitulo').textContent = 'Ingresso ' + (numero || '') + ' emitido';
   g('mdSub').textContent = nome || '';
   g('mdStatus').innerHTML = '<span>🕐</span><span>Preparando o arquivo…</span>';
+  g('mdLinkBox').hidden = true;
+  g('mdLink').value = '';
   g('mdFundo').classList.add('on');
   api('compasso_ingressoArquivo', [inscricaoId], function(r){
     if (!r || !r.ok){
@@ -974,10 +1023,33 @@ function abrirModalIngresso(inscricaoId, numero, nome){
       return;
     }
     ARQUIVO = r;
+    /* O link é a coisa que mais sai daqui — é ele que vai no WhatsApp. Fica à
+       vista assim que existe, e não escondido atrás de um botão que abre aba. */
+    if (r.url){ g('mdLink').value = r.url; g('mdLinkBox').hidden = false; }
     g('mdStatus').innerHTML = '<span>🕐</span><span>Emitido e ainda não enviado.</span>';
   });
 }
-function fecharModal(){ g('mdFundo').classList.remove('on'); ARQUIVO = null; }
+function fecharModal(){
+  g('mdFundo').classList.remove('on');
+  ARQUIVO = null;
+  g('mdLinkBox').hidden = true;
+}
+
+/* Copiar de dentro do iframe do Apps Script falha com frequência: a permissão
+   de área de transferência não vem. O plano B não é uma mensagem de erro — é
+   deixar o texto selecionado, que é o que a pessoa precisa para o Ctrl+C. */
+function mdCopiarLink(){
+  var campo = g('mdLink'), url = String(campo.value || '');
+  if (!url) return;
+  function selecionar(){
+    try { campo.focus(); campo.select(); campo.setSelectionRange(0, url.length); } catch(e){}
+    aviso('Link selecionado — aperte Ctrl+C para copiar.');
+  }
+  try {
+    navigator.clipboard.writeText(url).then(
+      function(){ aviso('Link do ingresso copiado.'); }, selecionar);
+  } catch(e){ selecionar(); }
+}
 
 function semArquivo(){
   if (ARQUIVO) return false;
