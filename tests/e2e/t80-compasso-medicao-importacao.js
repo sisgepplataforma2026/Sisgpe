@@ -237,8 +237,14 @@ ok(/compasso_criarInscricaoAssociado_publica_/.test(exec),
    "importa pelo MESMO caminho da inscrição pública",
    "importar por outra porta provaria outra coisa — o objetivo é testar aquele caminho");
 
-ok(/compasso_cpfValido_\(p\.cpf\)/.test(exec),
-   "e confere o CPF de cada linha");
+/* A CHECAGEM PASSOU A SER UMA SÓ, e é isto que a asserção agora guarda.
+   Até 24/08/2026 esta porta tinha a sua própria regra de nome (exigia
+   espaço) e a da tela tinha outra (só exigia não-vazio). Duas regras para a
+   mesma coisa é uma delas ficando para trás — e foi pela mais frouxa, a da
+   tela, que 122 e-mails entraram no lugar do nome. */
+ok(/compassoImp_recusar_\(p\)/.test(exec),
+   "e confere cada linha pela MESMA regra que a tela usa",
+   "duas regras para a mesma checagem é uma delas ficando para trás");
 
 ok(/compasso_assertHomologacao_/.test(exec),
    "só roda em homologação");

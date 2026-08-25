@@ -317,8 +317,14 @@ function compasso_importarExecutar(planilhaId, limite, aba, tokenSessao) {
     if (Date.now() - inicio > 240000) { r.tempoEsgotado = true; break; }
 
     var p = compasso_importarLinha_(lido.linhas[i], m.mapa);
-    if (!p.nome || p.nome.indexOf(' ') < 0) { r.semNome++; continue; }
-    if (!compasso_cpfValido_(p.cpf)) { r.cpfInvalido++; continue; }
+    /* Uma regra só para as duas portas. Antes esta linha tinha a sua própria
+       versão da checagem de nome, mais rígida que a da tela — e foi pela
+       tela, a frouxa, que 122 e-mails entraram no lugar do nome em 24/08. */
+    var recusa = compassoImp_recusar_(p);
+    if (recusa) {
+      if (/nome/i.test(recusa)) r.semNome++; else r.cpfInvalido++;
+      continue;
+    }
     if (!p.email && !p.whatsapp) { r.semContato++; continue; }
 
     var res;

@@ -264,7 +264,32 @@ igual(recusar(linhaPara(GRID[3], m.mapa)), "CPF inválido",
       "CPF de dígitos repetidos é recusado com motivo",
       "descobrir isso na portaria é tarde demais");
 igual(recusar(linhaPara(GRID[4], m.mapa)), "sem nome", "linha sem nome é recusada");
-igual(recusar({ nome: "X", cpf: "123" }), "CPF com 3 dígito(s)",
+
+/* A TRAVA QUE FALTOU EM 24/08/2026 — e que teria economizado o dia inteiro.
+ *
+ * O mapeador errou e mandou a coluna de e-mail para o campo nome. 122 linhas
+ * foram gravadas com "fulano@gmail.com" no lugar do nome, e ninguém foi
+ * avisado — porque esta função, a última porta antes de gravar, só perguntava
+ * se o nome estava vazio.
+ *
+ * Pior: a outra porta de importação (a do editor) JÁ exigia nome com espaço,
+ * e teria recusado as 122 na hora. A regra frouxa estava exatamente no
+ * caminho que a pessoa usa de verdade. Agora a regra é uma só, e vive aqui. */
+igual(recusar({ nome: "fulano@gmail.com", cpf: CPF_A }),
+      "o nome parece um e-mail — confira o mapeamento das colunas",
+      "E-MAIL NO CAMPO NOME É RECUSADO, dizendo onde está o erro",
+      "sem isto, a coluna trocada só aparece depois de 122 cadastros gravados");
+igual(recusar({ nome: "MARIA", cpf: CPF_A }), "nome sem sobrenome (MARIA)",
+      "e nome de uma palavra só também é recusado",
+      "é a mesma regra que a porta do editor já tinha; agora as duas usam esta");
+igual(recusar({ nome: "MARIA APARECIDA", cpf: CPF_A }), "",
+      "nome de gente continua passando");
+
+/* A costura: a outra porta tem de chamar ESTA função, não uma cópia. */
+ok(/compassoImp_recusar_\(p\)/.test(teste),
+   "a importação pelo editor usa a mesma recusa da tela",
+   "duas regras para a mesma checagem é uma delas ficando para trás");
+igual(recusar({ nome: "MARIA SILVA", cpf: "123" }), "CPF com 3 dígito(s)",
       "CPF curto diz QUANTOS dígitos tem",
       "'CPF inválido' genérico não ajuda quem vai corrigir a planilha");
 
@@ -371,7 +396,7 @@ igual(limitado.criadas.length, 1,
    coluna. O que ela aponta vence. */
 const GRID_SEM_EMAIL = [
   ["Nome", "CPF", "Escola", "Contato eletrônico"],
-  ["MARIA", CPF_A, "EEEFM CENTRAL", "maria@x.com"]
+  ["MARIA SILVA", CPF_A, "EEEFM CENTRAL", "maria@x.com"]
 ];
 const semApontar = importar(10, {}, GRID_SEM_EMAIL);
 igual(semApontar.criadas[0].email, "",

@@ -244,9 +244,39 @@ function compassoImp_previa_(linhas, mapa, quantas) {
 }
 
 /** O motivo pelo qual uma linha não entra — ou '' se ela entra. */
+/**
+ * O QUE ORIGINOU AS DUAS TRAVAS DE NOME (24/08/2026)
+ *
+ * O usuário importou 201 linhas e a coluna NOME da lista veio cheia de
+ * e-mail. A causa primeira foi o mapeador, já corrigida. Mas o estrago só
+ * chegou ao Firestore porque ESTA função deixou passar — e ela era a última
+ * porta antes de gravar.
+ *
+ * Havia duas regras diferentes para a mesma coisa, e ninguém tinha reparado:
+ *
+ *   compasso_importarExecutar (porta do editor)  exigia nome COM ESPAÇO
+ *   compassoImp_recusar_      (porta da tela)    exigia nome NÃO VAZIO
+ *
+ * "maria@gmail.com" não tem espaço. Pela porta do editor, as 122 linhas
+ * teriam sido recusadas na hora, com o motivo à vista. Pela porta da tela —
+ * a que a pessoa usa — passaram todas, caladas. A regra frouxa estava
+ * justamente no caminho que alguém percorre de verdade.
+ *
+ * Agora a regra é uma só, e vive aqui: as duas portas chamam esta função.
+ *
+ * A trava do arroba é o que teria economizado o dia: em vez de descobrir na
+ * lista, a PRÉVIA diria "linha 2: nome parece e-mail" antes de gravar
+ * qualquer coisa.
+ */
 function compassoImp_recusar_(d) {
-  if (!d || !String(d.nome || '').trim()) return 'sem nome';
-  var cpf = String(d.cpf || '').replace(/\D/g, '');
+  var nome = String((d && d.nome) || '').trim();
+  if (!nome) return 'sem nome';
+  if (nome.indexOf('@') >= 0)
+    return 'o nome parece um e-mail — confira o mapeamento das colunas';
+  if (nome.indexOf(' ') < 0)
+    return 'nome sem sobrenome (' + nome + ')';
+
+  var cpf = String((d && d.cpf) || '').replace(/\D/g, '');
   if (!cpf) return 'sem CPF';
   if (cpf.length !== 11) return 'CPF com ' + cpf.length + ' dígito(s)';
   if (typeof compasso_cpfValido_ === 'function' && !compasso_cpfValido_(cpf))
