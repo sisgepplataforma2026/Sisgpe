@@ -271,6 +271,86 @@ function compasso_ingressoArquivo(inscricaoId, tokenSessao) {
   };
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   O COMPROVANTE PELO WHATSAPP — 25/08/2026
+   ══════════════════════════════════════════════════════════════════════════
+
+   O usuário corrigiu a premissa: "os associados fazem inscrição pelo ZAP".
+   Confirmado o desenho — o LINK vai pela lista de transmissão e a pessoa
+   preenche a tela —, mas o contato que a maioria deixa é o WhatsApp, não o
+   e-mail. A confirmação automática que existe só alcança quem digitou e-mail;
+   para o resto, o comprovante não sai.
+
+   POR QUE ISTO NÃO É AUTOMÁTICO. O Apps Script não manda WhatsApp sozinho;
+   fazer isso exige uma API externa, com custo e cadastro de modelo de
+   mensagem. É trabalho novo, não ajuste — e o usuário escolheu, sabendo
+   disso, o caminho de um clique.
+
+   E ISSO CABE, porque o uso real não é disparo em massa: é resposta. Alguém
+   pergunta no ZAP "minha inscrição foi?" e a secretaria abre a gaveta e
+   responde na hora, com o mesmo texto que o e-mail levaria. Um clique por
+   pessoa não escala para 2.000 no pico de inscrições — e não precisa.
+
+   DUAS ETAPAS, como no ingresso: PREPARAR não é ENTREGAR. O sistema não tem
+   como saber se a pessoa apertou enviar no aplicativo. Marcar no preparar
+   encheria o painel de comprovante que talvez não tenha saído. */
+function compasso_prepararConfirmacaoWhatsApp(inscricaoId, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — comprovante por WhatsApp', false);
+
+  var ins = fs_get_('inscricoesEventos', String(inscricaoId || '').trim());
+  if (!ins || ins.eventoId !== EMISSAO_CFG.EVENTO_ID)
+    return { ok: false, erro: 'Inscrição não encontrada para este evento.' };
+
+  var fone = String(ins.whatsapp || '').replace(/\D/g, '');
+  if (fone.length === 10 || fone.length === 11) fone = '55' + fone;
+  if (fone.length < 12)
+    return { ok: false, erro: 'Esta inscrição não tem um WhatsApp válido (' +
+             (ins.whatsapp || 'vazio') + ').' };
+
+  /* O protocolo é gravado na inscrição pela confirmação por e-mail. Quem só
+     deixou WhatsApp nunca passou por lá, então ele nasce aqui — e fica
+     gravado, para a secretaria e a pessoa citarem o mesmo número depois. */
+  var protocolo = String(ins.protocolo || '') ||
+                  compasso_protocoloInscricao_(ins.inscricaoId || inscricaoId);
+  if (!ins.protocolo) {
+    ins.protocolo = protocolo;
+    fs_set_('inscricoesEventos', inscricaoId, ins);
+  }
+
+  /* MESMO TEXTO do e-mail, da mesma função. Duas redações para a mesma coisa
+     divergem no primeiro ajuste, e aí a pessoa que recebe por um canal lê
+     uma promessa diferente da do outro. */
+  return {
+    ok: true,
+    telefone: fone,
+    protocolo: protocolo,
+    nome: String(ins.nome || ''),
+    texto: compasso_textoConfirmacao_(ins, protocolo),
+    jaEnviado: !!ins.confirmacaoEnviadaEm,
+    enviadoEm: ins.confirmacaoEnviadaEm || null,
+    enviadoVia: String(ins.confirmacaoVia || '')
+  };
+}
+
+/** A segunda etapa: quem confirma que enviou é quem enviou. */
+function compasso_confirmarEnvioConfirmacao(inscricaoId, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — confirmar comprovante enviado', false);
+
+  var ins = fs_get_('inscricoesEventos', String(inscricaoId || '').trim());
+  if (!ins || ins.eventoId !== EMISSAO_CFG.EVENTO_ID)
+    return { ok: false, erro: 'Inscrição não encontrada para este evento.' };
+
+  ins.confirmacaoEnviadaEm = new Date();
+  ins.confirmacaoVia = 'WHATSAPP';
+  ins.confirmacaoPor = compasso_emailUsuario_();
+  ins.confirmacaoErro = '';
+  fs_set_('inscricoesEventos', inscricaoId, ins);
+
+  compasso_auditar_('COMPROVANTE_WHATSAPP', 'inscricao', inscricaoId,
+                    { protocolo: ins.protocolo || '' });
+  return { ok: true, enviadoEm: ins.confirmacaoEnviadaEm };
+}
+
 /** Texto do e-mail e do WhatsApp num lugar só — mudar a redação é um lugar só. */
 function compasso_textoEntrega_(ing, url) {
   return 'Olá, ' + String(ing.nome || '').split(' ')[0] + '!\n\n' +

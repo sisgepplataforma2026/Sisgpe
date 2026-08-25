@@ -93,7 +93,9 @@ function compasso_validacaoListar_interno_(filtros) {
     /* categoria e pagamento entram aqui em 21/08/2026: sem eles a Central não
        tem como decidir se mostra o bloco de pagamento nem o que exibir nele.
        ingressoId vai junto porque o estorno é recusado depois de emitido. */
-    return {inscricaoId:x.inscricaoId||x._docId,nome:x.nome||'',cpf:x.cpf||'',escola:x.escola||'',cidade:x.cidade||'',regiao:x.regiao||'',status:x.status||'',analisadoPor:x.analisadoPor||'',analisadoEm:x.analisadoEm||'',motivoCodigo:x.motivoCodigo||'',observacaoAnalise:x.observacaoAnalise||'',pessoaId:x.pessoaId||'',email:x.email||'',whatsapp:x.whatsapp||'',matricula:x.matricula||'',categoria:String(x.categoria||'').toLowerCase(),ingressoId:x.ingressoId||'',numeroIngresso:x.numeroIngresso||'',pagamento:compasso_pagamentoDaInscricao_(x),/* o selo do painel: ASSOCIADO / NAO_FILIADO / NAO_ENCONTRADO */situacaoAssociado:String(x.situacaoAssociado||''),entrega:compasso_entregaDaInscricao_(x),origem:String(x.origem||'')};
+    return {inscricaoId:x.inscricaoId||x._docId,nome:x.nome||'',cpf:x.cpf||'',escola:x.escola||'',cidade:x.cidade||'',regiao:x.regiao||'',status:x.status||'',analisadoPor:x.analisadoPor||'',analisadoEm:x.analisadoEm||'',motivoCodigo:x.motivoCodigo||'',observacaoAnalise:x.observacaoAnalise||'',pessoaId:x.pessoaId||'',email:x.email||'',whatsapp:x.whatsapp||'',matricula:x.matricula||'',categoria:String(x.categoria||'').toLowerCase(),ingressoId:x.ingressoId||'',numeroIngresso:x.numeroIngresso||'',pagamento:compasso_pagamentoDaInscricao_(x),/* o comprovante da INSCRIÇÃO — não confundir com a entrega do ingresso.
+       A gaveta precisa saber se ele já saiu e por onde, para não mandar a
+       secretaria enviar de novo o que a pessoa já recebeu. */protocolo:String(x.protocolo||''),confirmacaoEnviadaEm:x.confirmacaoEnviadaEm||'',confirmacaoVia:String(x.confirmacaoVia||''),confirmacaoErro:String(x.confirmacaoErro||''),/* o selo do painel: ASSOCIADO / NAO_FILIADO / NAO_ENCONTRADO */situacaoAssociado:String(x.situacaoAssociado||''),entrega:compasso_entregaDaInscricao_(x),origem:String(x.origem||'')};
   });
 }
 

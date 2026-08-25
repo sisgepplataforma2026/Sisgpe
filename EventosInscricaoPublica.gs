@@ -724,12 +724,14 @@ function compasso_carimbarConfirmacao_(inscricaoId, enviou, mensagem, protocolo)
   ins.protocolo = protocolo || ins.protocolo || '';
   if (enviou) {
     ins.confirmacaoEnviadaEm = new Date();
+    ins.confirmacaoVia = 'EMAIL';
     ins.confirmacaoErro = '';
   } else {
     ins.confirmacaoErro = String(mensagem || 'falha desconhecida').slice(0, 300);
   }
   fs_set_('inscricoesEventos', inscricaoId, ins);
 }
+
 
 /**
  * CPF com dígito verificador de verdade.

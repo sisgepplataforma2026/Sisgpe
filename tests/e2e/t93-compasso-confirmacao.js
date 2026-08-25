@@ -368,4 +368,135 @@ ok(/Outro Espaço/.test(trocado) && !/Espaço Patrick Ribeiro/.test(trocado),
    "trocar o local não exige deploy");
 props.deleteProperty("COMPASSO_LOCAL");
 
+/* ══════════════════════════════════════════════════════════════════════════
+   11 · O COMPROVANTE PELO WHATSAPP — a premissa corrigida em 25/08/2026
+   ══════════════════════════════════════════════════════════════════════════
+
+   "os associados fazem inscrição pelo ZAP". Confirmado depois que o LINK vai
+   pela lista de transmissão e a pessoa preenche a tela — mas o contato que a
+   maioria deixa é o WhatsApp, não o e-mail. A confirmação automática que este
+   arquivo testa acima alcança só quem digitou e-mail.
+
+   O que se prova aqui: que existe caminho para o resto, que ele usa O MESMO
+   TEXTO, e que ele respeita a regra das duas etapas.
+   ══════════════════════════════════════════════════════════════════════════ */
+passo("11 · quem só deixou WhatsApp");
+
+const ADM = b.logar(g, "wanderson");
+const rZap = inscrever({ cpf: cpfGerado(511111111), nome: "Solange Martins Rocha",
+                         email: "", whatsapp: "27994445555" });
+ok(rZap.ok === true, "inscrição só com WhatsApp é aceita");
+
+const prep = g.compasso_prepararConfirmacaoWhatsApp(rZap.inscricaoId, ADM);
+ok(prep && prep.ok === true, "o comprovante por WhatsApp é preparado",
+   prep && prep.erro);
+ok(/^55\d{10,11}$/.test(String(prep.telefone || "")),
+   "  com o telefone no formato internacional: " + prep.telefone,
+   "sem o 55 o link não abre a conversa");
+
+/* A prova de que não há duas redações para a mesma coisa. */
+ok(/Sua inscrição para a Festa Compasso da Vida 2026 foi recebida/.test(prep.texto),
+   "  e com O MESMO texto do e-mail",
+   "duas redações para a mesma coisa divergem no primeiro ajuste, e aí cada " +
+   "canal promete uma coisa diferente");
+ok(/não é o seu ingresso/i.test(prep.texto),
+   "  inclusive o aviso de que não é o ingresso");
+ok(prep.texto.indexOf("994445555") < 0,
+   "  e com o contato mascarado, como no e-mail");
+
+/* O protocolo nasce aqui para quem nunca passou pelo e-mail. */
+ok(/^[A-Z0-9]{6}$/.test(String(prep.protocolo || "")),
+   "o protocolo nasce no preparo: " + prep.protocolo,
+   "quem só deixou WhatsApp nunca passou pela confirmação por e-mail, que é " +
+   "onde ele era gravado");
+igual(g.fs_get_("inscricoesEventos", rZap.inscricaoId).protocolo, prep.protocolo,
+      "  e fica gravado, para a secretaria e a pessoa citarem o mesmo número");
+
+passo("11b · preparar não é enviar");
+
+ok(!g.fs_get_("inscricoesEventos", rZap.inscricaoId).confirmacaoEnviadaEm,
+   "abrir a conversa NÃO marca o comprovante como enviado",
+   "o sistema não sabe se a pessoa apertou enviar no aplicativo");
+
+const marcou = g.compasso_confirmarEnvioConfirmacao(rZap.inscricaoId, ADM);
+ok(marcou && marcou.ok === true, "quem enviou é quem confirma");
+const insZap = g.fs_get_("inscricoesEventos", rZap.inscricaoId);
+ok(!!insZap.confirmacaoEnviadaEm, "  aí sim fica a data");
+igual(insZap.confirmacaoVia, "WHATSAPP", "  e o canal");
+ok(!!insZap.confirmacaoPor, "  e quem registrou: " + insZap.confirmacaoPor);
+ok(g.fs_list_("auditoriaEventos").some(a => a.entidadeId === rZap.inscricaoId &&
+                                            a.acao === "COMPROVANTE_WHATSAPP"),
+   "  e a trilha registra o envio");
+
+passo("11c · as recusas");
+
+const semZap = inscrever({ cpf: cpfGerado(611111111), nome: "Paulo Henrique Dias",
+                           email: "paulo@exemplo.com", whatsapp: "" });
+const prepSemZap = g.compasso_prepararConfirmacaoWhatsApp(semZap.inscricaoId, ADM);
+ok(prepSemZap && prepSemZap.ok === false,
+   "sem WhatsApp válido, recusa com o motivo à vista", prepSemZap && prepSemZap.erro);
+
+const prepInexistente = g.compasso_prepararConfirmacaoWhatsApp("INS-nao-existe", ADM);
+ok(prepInexistente && prepInexistente.ok === false, "inscrição inexistente recusa");
+
+/* Permissão: as duas passam pela mesma porta do resto do módulo. */
+const FIN = b.logar(g, "rogerio");
+[["compasso_prepararConfirmacaoWhatsApp", [rZap.inscricaoId]],
+ ["compasso_confirmarEnvioConfirmacao",   [rZap.inscricaoId]]].forEach(([nome, args]) => {
+  let recusou = false, msg = "";
+  try { g[nome](...args, FIN); }
+  catch (e) { recusou = /permit|permiss|acesso|autoriz|sess|administrador/i.test(e.message); msg = e.message; }
+  ok(recusou, nome + " recusa quem não tem o módulo eventos", msg.slice(0, 55));
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   12 · A GAVETA
+   ══════════════════════════════════════════════════════════════════════════ */
+passo("12 · o que a tela mostra");
+
+const tela = fs.readFileSync(path.join(require("./load").RAIZ,
+  "CompassoInscricoes.html"), "utf8");
+
+ok(/id="cpvSituacao"/.test(tela) && /id="btCpvWhats"/.test(tela),
+   "a gaveta tem a seção do comprovante");
+ok(/Comprovante da inscrição/.test(tela),
+   "  nomeada de forma a não confundir com o INGRESSO",
+   "são duas coisas diferentes na mesma gaveta");
+ok(/function comprovanteWhats\(\)/.test(tela) && /function comprovanteMarcar\(\)/.test(tela),
+   "  com as duas etapas separadas em duas funções");
+
+/* ONDE AS FUNÇÕES MORAM, e por que isso virou asserção.
+   Eu as escrevi em EventosInscricaoPublica.gs, que é o arquivo PÚBLICO — e o
+   t79 quebrou na hora: ele guarda que aquele arquivo exponha EXATAMENTE as
+   três funções que a tela do associado precisa. Estava certo. Funções
+   administrativas ali dentro alargam a superfície pública de um arquivo cuja
+   regra é justamente não ter nada além do necessário.
+   Foram para EventosEntrega.gs, que já tem o mesmo par preparar/confirmar do
+   ingresso. Esta asserção existe para não voltarem. */
+const pub = fs.readFileSync(path.join(require("./load").RAIZ,
+  "EventosInscricaoPublica.gs"), "utf8");
+const entregaSrc = fs.readFileSync(path.join(require("./load").RAIZ,
+  "EventosEntrega.gs"), "utf8");
+ok(!/function compasso_prepararConfirmacaoWhatsApp/.test(pub) &&
+   !/function compasso_confirmarEnvioConfirmacao/.test(pub),
+   "as duas funções administrativas NÃO moram no arquivo público",
+   "t79 guarda que EventosInscricaoPublica.gs exponha só as três da tela");
+ok(/function compasso_prepararConfirmacaoWhatsApp/.test(entregaSrc) &&
+   /function compasso_confirmarEnvioConfirmacao/.test(entregaSrc),
+   "  e sim em EventosEntrega.gs, junto do mesmo par do ingresso");
+ok(/Você enviou o comprovante para/.test(tela),
+   "  e a pergunta de confirmação depois de abrir a conversa");
+ok(/confirmacaoErro[\s\S]{0,200}O envio automático falhou/.test(tela),
+   "a falha do envio automático aparece NA TELA",
+   "é aqui que alguém descobre que o e-mail não saiu, e ainda dá para resolver");
+
+const listagem = fs.readFileSync(path.join(require("./load").RAIZ,
+  "EventosValidacao.gs"), "utf8");
+ok(/confirmacaoEnviadaEm:x\.confirmacaoEnviadaEm/.test(listagem) &&
+   /confirmacaoVia:String\(x\.confirmacaoVia/.test(listagem),
+   "e a listagem devolve o estado do comprovante para a gaveta pintar");
+
+naoTestavel("o WhatsApp abre e a mensagem chega",
+            "wa.me depende do navegador e do aplicativo; só o clique real prova");
+
 resumo();

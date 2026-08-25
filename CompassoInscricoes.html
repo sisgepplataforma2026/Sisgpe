@@ -496,6 +496,22 @@
       </div>
     </div>
 
+    <!-- COMPROVANTE DA INSCRIÇÃO
+         Não confundir com o INGRESSO logo acima. Este é o "recebemos a sua
+         inscrição", que sai por e-mail sozinho na hora — e que, para quem só
+         deixou WhatsApp, precisa de um clique daqui.
+
+         Serve para responder, não para disparar: alguém pergunta no ZAP se a
+         inscrição foi, a secretaria abre esta gaveta e responde. -->
+    <div class="gv-sec">
+      <h3>Comprovante da inscrição</h3>
+      <div class="gv-nota" id="cpvSituacao" style="margin:0 0 10px"></div>
+      <div class="gv-acoes">
+        <button class="b g" id="btCpvWhats" onclick="comprovanteWhats()">💬 Enviar comprovante por WhatsApp</button>
+        <button class="b"   id="btCpvOk"    onclick="comprovanteMarcar()" hidden>✓ Marcar como enviado</button>
+      </div>
+    </div>
+
     <!-- HISTÓRICO -->
     <div class="gv-sec">
       <h3>Histórico</h3>
@@ -1144,6 +1160,7 @@ function pintarGaveta(){
 
   montarPagamento(x);
   montarIngresso(x);
+  montarComprovante(x);
   montarHistorico(x);
   g('secExcluir').hidden = !SOU_ADMIN;
 }
@@ -1200,6 +1217,63 @@ function montarIngresso(x){
     ? 'Ingresso ' + (x.numeroIngresso || x.ingressoId) + ' emitido.'
     : validada ? 'Validada e sem ingresso — dá para emitir.'
                : 'Só é possível emitir depois de validar a inscrição.';
+}
+
+/* O COMPROVANTE DA INSCRIÇÃO — 25/08/2026.
+   O usuário: "os associados fazem inscrição pelo ZAP". O link vai pela lista
+   de transmissão e a pessoa preenche a tela, mas o contato que a maioria deixa
+   é o WhatsApp — e a confirmação automática só alcança quem digitou e-mail.
+
+   Aqui é o caminho de responder: alguém pergunta no ZAP se a inscrição foi, e
+   a secretaria manda o mesmo texto que o e-mail levaria. */
+function montarComprovante(x){
+  var enviado = !!x.confirmacaoEnviadaEm;
+  var via = String(x.confirmacaoVia || '');
+  var temWhats = !!String(x.whatsapp || '').replace(/\D/g, '');
+
+  var partes = [];
+  if (enviado){
+    partes.push('Enviado' + (via ? ' por ' + (via === 'EMAIL' ? 'e-mail' : 'WhatsApp') : '') +
+                (x.confirmacaoEnviadaEm ? ' em ' + dataCurta(x.confirmacaoEnviadaEm) : '') + '.');
+  } else if (x.confirmacaoErro){
+    /* Falha de envio automático NÃO pode ficar só no documento: é aqui que
+       alguém descobre que o e-mail não saiu, e ainda dá para resolver. */
+    partes.push('O envio automático falhou: ' + esc(x.confirmacaoErro));
+  } else if (String(x.email || '')){
+    partes.push('Ainda não enviado.');
+  } else {
+    partes.push('Sem e-mail na inscrição — o comprovante só sai por WhatsApp.');
+  }
+  if (x.protocolo) partes.push('Protocolo ' + esc(x.protocolo) + '.');
+  g('cpvSituacao').innerHTML = partes.join(' ');
+
+  g('btCpvWhats').hidden = !temWhats;
+  g('btCpvOk').hidden = true;
+}
+
+/* Duas etapas, como no ingresso: abrir a conversa não é ter enviado. */
+function comprovanteWhats(){
+  var x = inscricaoAberta(); if (!x) return;
+  var w = window.open('', '_blank');
+  api('compasso_prepararConfirmacaoWhatsApp', [x.inscricaoId], function(r){
+    if (!r || !r.ok){ if (w) w.close(); return aviso((r && r.erro) || 'Não foi possível preparar.'); }
+    w.location.href = 'https://wa.me/' + r.telefone + '?text=' + encodeURIComponent(r.texto);
+    g('btCpvOk').hidden = false;
+    setTimeout(function(){
+      perguntar({ titulo: 'Você enviou o comprovante para ' + (x.nome || '') + '?',
+                  texto: 'Só confirme se enviou de verdade.',
+                  ok: 'Sim, enviei' }, comprovanteMarcar);
+    }, 1200);
+  });
+}
+
+function comprovanteMarcar(){
+  var x = inscricaoAberta(); if (!x) return;
+  api('compasso_confirmarEnvioConfirmacao', [x.inscricaoId], function(r){
+    if (!r || !r.ok) return aviso((r && r.erro) || 'Não foi possível registrar.');
+    aviso('Comprovante registrado como enviado.');
+    recarregar();
+  });
 }
 
 function montarHistorico(x){
