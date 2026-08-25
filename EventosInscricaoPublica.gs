@@ -331,6 +331,18 @@ function compasso_inscrever(dados) {
 
   if (!r.ok) return r;
 
+  /* O COMPROVANTE. Até 25/08 a pessoa se inscrevia, via a mensagem na tela e
+     fechava o navegador sem nada na mão — e ligava para a secretaria no dia
+     seguinte para perguntar se tinha dado certo. É trabalho que o sistema já
+     sabe evitar (REGRA Nº 0.6).
+
+     NUNCA derruba a inscrição: ela já está gravada acima, e uma falha de
+     e-mail não pode virar "não deu certo" para quem fez tudo certo. */
+  compasso_confirmarInscricaoPorEmail_(r.inscricaoId, {
+    nome: nome, cpf: cpf, escola: String(dados.escola || '').trim(),
+    cidade: String(dados.cidade || '').trim(), email: email, whatsapp: whats
+  });
+
   return {
     ok: true,
     inscricaoId: r.inscricaoId,
@@ -433,6 +445,130 @@ function compasso_criarInscricaoAssociado_publica_(payload) {
                         termoVersao: payload.termoVersao });
     return { ok: true, inscricaoId: id };
   } finally { lock.releaseLock(); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   A CONFIRMAÇÃO DA INSCRIÇÃO — 25/08/2026
+   ══════════════════════════════════════════════════════════════════════════
+
+   O que ela resolve: até aqui, quem se inscrevia recebia uma frase na tela e
+   mais nada. Fechou o navegador, acabou a prova. A auditoria do módulo listou
+   isso como lacuna G1, e é da classe que a REGRA Nº 0.6 chama de trabalho que
+   o sistema já sabe evitar — cada pessoa sem comprovante é um telefonema para
+   a secretaria.
+
+   AS QUATRO DECISÕES QUE IMPORTAM AQUI:
+
+   1. NUNCA DERRUBA A INSCRIÇÃO. A inscrição já está gravada quando esta função
+      é chamada. Falha de e-mail vira registro, nunca erro na tela de quem se
+      inscreveu — o contrário faria a pessoa se inscrever de novo e duplicar.
+
+   2. DIZ, COM DESTAQUE, QUE NÃO É O INGRESSO. Sem essa linha alguém aparece na
+      portaria em 19/12 com a confirmação impressa na mão. É o risco de UX mais
+      concreto desta mudança, e ele se resolve com uma frase.
+
+   3. O CONTATO VOLTA MASCARADO NO CORPO. O e-mail atravessa a internet e fica
+      guardado em caixa que não é nossa. Conferir "termina em @gmail.com" é o
+      suficiente para a pessoa reconhecer o próprio dado; o valor cheio não
+      precisa viajar. Mesma regra da tela pública (PrivacidadeCore.gs).
+
+   4. PASSA PELA CAMADA CENTRAL (`enviarEmailSISGEP_`), e não por MailApp
+      direto. É o que dá remetente institucional, status estruturado e registro
+      em Log_Emails_Enviados. A entrega do ingresso ainda usa MailApp direto —
+      é a lacuna I4 da auditoria —, e este caminho novo já nasce do lado certo.
+
+   O PROTOCOLO é os 6 últimos caracteres do inscricaoId, em maiúsculo. O ID
+   inteiro é um UUID: ninguém dita isso ao telefone. Seis caracteres bastam
+   para a secretaria achar a linha, e continuam apontando para o ID real. */
+function compasso_protocoloInscricao_(inscricaoId) {
+  var id = String(inscricaoId || '').replace(/[^a-zA-Z0-9]/g, '');
+  return id.slice(-6).toUpperCase();
+}
+
+/** CPF só com o começo e o fim: o bastante para reconhecer, longe do suficiente
+    para usar. O CPF cheio não precisa viajar num e-mail. */
+function compasso_cpfParcial_(cpf) {
+  var d = String(cpf || '').replace(/\D/g, '');
+  if (d.length !== 11) return '';
+  return d.slice(0, 3) + '.***.***-' + d.slice(9);
+}
+
+function compasso_textoConfirmacao_(dados, protocolo) {
+  var primeiro = String(dados.nome || '').trim().split(' ')[0] || '';
+  var contato = [];
+  if (dados.email) contato.push(compasso_mascararEmail_(dados.email));
+  if (dados.whatsapp) contato.push(compasso_mascararTelefone_(dados.whatsapp));
+
+  var L = [];
+  L.push('Olá, ' + primeiro + '!');
+  L.push('');
+  L.push('Recebemos a sua inscrição para a FESTA COMPASSO DA VIDA 2026.');
+  L.push('Protocolo: ' + protocolo);
+  L.push('');
+  L.push('CONFIRA O QUE VOCÊ ENVIOU');
+  L.push('  Nome ......... ' + String(dados.nome || ''));
+  L.push('  CPF .......... ' + compasso_cpfParcial_(dados.cpf));
+  L.push('  Escola ....... ' + String(dados.escola || ''));
+  L.push('  Cidade ....... ' + String(dados.cidade || ''));
+  L.push('  Contato ...... ' + contato.join(' · '));
+  L.push('');
+  L.push('O QUE ACONTECE AGORA');
+  L.push('A equipe do sindicato vai conferir os seus dados. Assim que a inscrição');
+  L.push('for validada, o seu ingresso com QR Code chega por WhatsApp — e também');
+  L.push('por e-mail, se você preferir.');
+  L.push('');
+  L.push('*** ESTE E-MAIL NÃO É O INGRESSO. Ele confirma que a sua inscrição foi');
+  L.push('    recebida, e não dá entrada na festa. ***');
+  L.push('');
+  L.push('Se algum dado acima estiver errado, fale com a secretaria antes da');
+  L.push('validação — depois de emitido, o ingresso já sai com esses dados.');
+  L.push('');
+  L.push('SindEducação-ES');
+  return L.join('\n');
+}
+
+/**
+ * Manda a confirmação e carimba o resultado na própria inscrição.
+ *
+ * O carimbo não é enfeite: sem ele ninguém sabe se a confirmação saiu, e a
+ * primeira notícia de que os e-mails pararam viria da fila de telefonemas.
+ */
+function compasso_confirmarInscricaoPorEmail_(inscricaoId, dados) {
+  try {
+    if (!dados || !dados.email) return { ok: false, motivo: 'SEM_EMAIL' };
+    if (typeof enviarEmailSISGEP_ !== 'function')
+      return { ok: false, motivo: 'CAMADA_DE_EMAIL_INDISPONIVEL' };
+
+    var protocolo = compasso_protocoloInscricao_(inscricaoId);
+    var r = enviarEmailSISGEP_(
+      dados.email,
+      'Inscrição recebida — Festa Compasso da Vida 2026',
+      compasso_textoConfirmacao_(dados, protocolo),
+      { origem: 'Eventos — Compasso 2026' });
+
+    compasso_carimbarConfirmacao_(inscricaoId, r && r.ok, r && r.mensagem, protocolo);
+    return { ok: !!(r && r.ok), protocolo: protocolo };
+  } catch (e) {
+    /* Chega aqui e a inscrição continua de pé — é o ponto inteiro deste
+       try/catch. O que não pode acontecer é a falha sumir: ela vai para o
+       documento e para o Logger. */
+    try { compasso_carimbarConfirmacao_(inscricaoId, false, e.message, ''); } catch (ignore) {}
+    Logger.log('[COMPASSO] confirmação de inscrição falhou: ' + e.message);
+    return { ok: false, motivo: e.message };
+  }
+}
+
+function compasso_carimbarConfirmacao_(inscricaoId, enviou, mensagem, protocolo) {
+  var ins = fs_get_('inscricoesEventos', inscricaoId);
+  if (!ins) return;
+  ins.protocolo = protocolo || ins.protocolo || '';
+  if (enviou) {
+    ins.confirmacaoEnviadaEm = new Date();
+    ins.confirmacaoErro = '';
+  } else {
+    ins.confirmacaoErro = String(mensagem || 'falha desconhecida').slice(0, 300);
+  }
+  fs_set_('inscricoesEventos', inscricaoId, ins);
 }
 
 /**
