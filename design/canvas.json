@@ -1,0 +1,13 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1440, "h": 900, "title": "Painel do evento" },
+    { "file": "Inscricoes.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 900, "title": "Inscrições — fila de trabalho" },
+    { "file": "Eventos.dc.html", "x": 3120, "y": 0, "w": 1440, "h": 900, "title": "Eventos — a entidade que falta" }
+  ],
+  "annotations": [
+    { "id": "nota-painel", "x": 0, "y": -150, "w": 500, "text": "PAINEL DO EVENTO\nO dashboard mostra o que fazer AGORA (PROMPT-MESTRE, regra 4). Lotação, ritmo de chegada e quatro filas de trabalho — cada card é um filtro clicável, não enfeite." },
+    { "id": "nota-inscricoes", "x": 1560, "y": -150, "w": 500, "text": "INSCRIÇÕES\nAqui a aba deixa de ser assunto e vira ESTADO: A analisar / Pendentes / Validadas / A enviar / Confirmados / Reprovadas. A gaveta traz o que o sistema já sabe pelo CPF — a pessoa decide, não redigita." },
+    { "id": "nota-eventos", "x": 3120, "y": -150, "w": 500, "text": "EVENTOS\nA tela que hoje não existe. Sem a entidade evento, a Festa 2026 é constante no código e o módulo não serve a um segundo evento — nem a outro sindicato." }
+  ],
+  "launch": { "view": "focused", "file": "Main.dc.html" }
+}
