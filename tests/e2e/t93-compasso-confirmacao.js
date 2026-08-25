@@ -64,6 +64,19 @@ const CPF = "11144477735";
   aba.getRange(2, 1, 1, 12).setValues([l]);
 })();
 
+/* CPFs GERADOS, não inventados. Já errei isso uma vez no t91: números
+   escritos à mão são recusados pelo dígito verificador, a inscrição nem
+   acontece, e o teste mede a coisa errada achando que mediu a certa. */
+const cpfGerado = base => {
+  const n = String(base).padStart(9, "0").slice(0, 9).split("").map(Number);
+  let s1 = 0; for (let i = 0; i < 9; i++) s1 += n[i] * (10 - i);
+  let d1 = (s1 * 10) % 11; if (d1 === 10) d1 = 0;
+  const m = n.concat([d1]);
+  let s2 = 0; for (let i = 0; i < 10; i++) s2 += m[i] * (11 - i);
+  let d2 = (s2 * 10) % 11; if (d2 === 10) d2 = 0;
+  return m.concat([d2]).join("");
+};
+
 const inscrever = (extra) => g.compasso_inscrever(Object.assign({
   nome: "Maria Aparecida da Silva", cpf: CPF, escola: "EMEF Castelo Branco",
   cidade: "Vitória", email: "mariaaparecida@gmail.com",
@@ -84,14 +97,14 @@ igual(amb.outbox.length, antes + 1, "  e um e-mail saiu");
 
 const msg = amb.outbox[amb.outbox.length - 1];
 igual(msg.to, "mariaaparecida@gmail.com", "  para o e-mail da pessoa");
-ok(/Inscrição recebida/i.test(String(msg.subject || "")),
+ok(/Confirmação de inscrição/i.test(String(msg.subject || "")),
    "  com assunto que diz o que é: " + msg.subject);
 
 const corpo = String(msg.body || "");
-ok(/NÃO É O INGRESSO/i.test(corpo),
+ok(/NÃO CONSTITUI\s*\n?INGRESSO/i.test(corpo),
    "  e o aviso de que NÃO é o ingresso, em destaque",
    "sem esta frase alguém aparece na portaria em 19/12 com a confirmação na mão");
-ok(/QR Code chega por WhatsApp/i.test(corpo),
+ok(/QR Code será\s*\n?encaminhado por WhatsApp/i.test(corpo),
    "  dizendo por onde o ingresso vem de verdade");
 ok(/Maria/.test(corpo) && /EMEF Castelo Branco/.test(corpo) && /Vitória/.test(corpo),
    "  os dados enviados vêm para conferência");
@@ -193,5 +206,93 @@ ok(carimbo, "há função própria para o carimbo, chamada nos dois desfechos");
 naoTestavel("a confirmação chega na caixa da pessoa",
             "o emulador registra o despacho; a caixa real é a única prova — " +
             "e ela depende de alguém se inscrever de verdade em homologação");
+
+/* ══════════════════════════════════════════════════════════════════════════
+   7 · QUANDO E ONDE É A FESTA — pedido do usuário em 25/08/2026
+   ══════════════════════════════════════════════════════════════════════════
+
+   "esse texto precisa ser ajustado", e o que faltava era o óbvio: o e-mail
+   confirmava inscrição para uma festa sem dizer a data. Junto veio a escolha
+   de tom institucional.
+
+   A busca desses dados tem uma armadilha que o teste guarda: a tela de
+   Informações grava pela camada V2, e `eventosV2Repo_exigirHomologacao_`
+   ESTOURA fora de homologação. Em dezembro, em produção, ler dali quebraria
+   dentro do caminho público da inscrição. Por isso a cascata — e por isso a
+   asserção que derruba a camada de propósito.
+   ══════════════════════════════════════════════════════════════════════════ */
+passo("7 · a data, o horário e o local");
+
+props.setProperty("COMPASSO_LOCAL", "Pavilhão de Carapina");
+props.setProperty("COMPASSO_ENDERECO", "Av. Central, 1000 — Serra/ES");
+props.setProperty("COMPASSO_HORA_ABERTURA", "19h00");
+props.setProperty("COMPASSO_HORA_INICIO", "20h00");
+
+const antesFesta = amb.outbox.length;
+inscrever({ cpf: cpfGerado(300000000), nome: "Carlos Eduardo Lima", email: "carlos@exemplo.com" });
+const comFesta = String(amb.outbox[amb.outbox.length - 1].body || "");
+ok(amb.outbox.length === antesFesta + 1, "saiu o e-mail com os dados da festa");
+ok(/19 de dezembro de 2026/.test(comFesta),
+   "  a data vem por extenso, como em ofício: 19 de dezembro de 2026",
+   "vem de EMISSAO_CFG.DATA_EVENTO, que existe em qualquer ambiente");
+ok(/Pavilhão de Carapina/.test(comFesta) && /Av\. Central/.test(comFesta),
+   "  o local e o endereço aparecem");
+ok(/Abertura[.\s]+19h00/.test(comFesta) && /Início[.\s]+20h00/.test(comFesta),
+   "  e os dois horários");
+
+/* A regra que evita o pior desfecho deste bloco. */
+passo("7b · o que falta simplesmente não aparece");
+
+["COMPASSO_LOCAL", "COMPASSO_ENDERECO", "COMPASSO_HORA_ABERTURA", "COMPASSO_HORA_INICIO"]
+  .forEach(k => props.deleteProperty(k));
+
+inscrever({ cpf: cpfGerado(300007919), nome: "Beatriz Souza Alves", email: "beatriz@exemplo.com" });
+const semLocal = String(amb.outbox[amb.outbox.length - 1].body || "");
+ok(semLocal.indexOf("Local") < 0 && semLocal.indexOf("Endereço") < 0,
+   "sem local definido, a linha some — não vira 'Local: (não informado)'",
+   "melhor faltar do que mandar campo vazio para 2.000 pessoas");
+ok(/19 de dezembro de 2026/.test(semLocal),
+   "  mas a data continua, porque ela sempre existe");
+ok(/A FESTA/.test(semLocal), "  e o bloco não desaparece inteiro por causa disso");
+
+/* ══════════════════════════════════════════════════════════════════════════
+   8 · A CAMADA V2 CAI E O E-MAIL NÃO CAI JUNTO
+   ══════════════════════════════════════════════════════════════════════════ */
+passo("8 · em produção a tela de Informações é bloqueada");
+
+const repoOriginal = g.eventosV2Repo_listar_;
+g.eventosV2Repo_listar_ = function () {
+  throw new Error("Eventos V2: operação bloqueada. Esta camada de persistência " +
+                  "está habilitada somente em HOMOLOGAÇÃO.");
+};
+
+const antesBloqueio = amb.outbox.length;
+const rBloq = inscrever({ cpf: cpfGerado(300015838), nome: "Rafael Mendes Costa",
+                          email: "rafael@exemplo.com" });
+ok(rBloq.ok === true,
+   "com a camada V2 recusando, a inscrição continua aceita",
+   "EventosRepositoryV2.gs:55 estoura fora de homologação — e em dezembro " +
+   "o sistema estará em produção");
+igual(amb.outbox.length, antesBloqueio + 1, "  e o e-mail sai assim mesmo");
+ok(/19 de dezembro de 2026/.test(String(amb.outbox[amb.outbox.length - 1].body || "")),
+   "  ainda com a data, que não depende daquela camada");
+
+g.eventosV2Repo_listar_ = repoOriginal;
+
+/* ══════════════════════════════════════════════════════════════════════════
+   9 · O TOM
+   ══════════════════════════════════════════════════════════════════════════ */
+passo("9 · correspondência do sindicato, não recado");
+
+ok(/^Prezado\(a\) /m.test(corpo),
+   "abre com tratamento institucional");
+ok(!/Prezada |Prezado [A-Z]/.test(corpo),
+   "  em '(a)', sem deduzir tratamento pelo nome",
+   "o cadastro não guarda como a pessoa se trata, e deduzir erra com gente de verdade");
+ok(/Atenciosamente,/.test(corpo), "fecha com o encerramento de ofício");
+ok(/Sindicato dos Educadores Técnico-Administrativos/.test(corpo),
+   "e assina com o nome por extenso da entidade");
+ok(!/Olá,/.test(corpo) && !/!\n/.test(corpo.split("\n")[0]),
+   "  sem saudação informal");
 
 resumo();

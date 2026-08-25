@@ -493,38 +493,142 @@ function compasso_cpfParcial_(cpf) {
   return d.slice(0, 3) + '.***.***-' + d.slice(9);
 }
 
+/**
+ * QUANDO E ONDE É A FESTA — e por que buscar isto é mais difícil do que parece.
+ *
+ * O e-mail confirma inscrição para uma festa; não dizer a data seria estranho.
+ * Os dados existem na tela "Festa 2026 › Informações" — local, endereço e
+ * horários. Só que aquela tela grava pela camada V2, e
+ * `eventosV2Repo_exigirHomologacao_()` (EventosRepositoryV2.gs:55) ESTOURA
+ * EXCEÇÃO fora de homologação. Em dezembro, com o sistema em produção, ler
+ * dali quebraria — e quebraria dentro do caminho público da inscrição.
+ *
+ * Daí a cascata, nesta ordem:
+ *
+ *   1. a tela de Informações, quando alcançável (é onde a pessoa preencheu,
+ *      e a REGRA Nº 0.6 manda usar o que o sistema já sabe);
+ *   2. as Propriedades do script, que funcionam nos DOIS ambientes e são onde
+ *      o Compasso já guarda título, convite e termo;
+ *   3. a data, de EMISSAO_CFG.DATA_EVENTO, que existe sempre.
+ *
+ * E a regra que fecha: LINHA VAZIA NÃO APARECE. Melhor faltar o local do que
+ * mandar "Local: (não informado)" para 2.000 pessoas.
+ */
+function compasso_dadosDaFesta_() {
+  var out = { data: null, horaAbertura: '', horaInicio: '', local: '', endereco: '' };
+
+  try { out.data = EMISSAO_CFG.DATA_EVENTO; } catch (e) {}
+
+  /* 1. A tela de Informações. Envolvida em try porque a camada V2 recusa
+        trabalhar fora de homologação — e recusar não pode virar erro aqui. */
+  try {
+    var lista = eventosV2Repo_listar_() || [];
+    for (var i = 0; i < lista.length; i++) {
+      var ev = lista[i] || {};
+      if (String(ev.tipo || '').toUpperCase() !== 'FESTA') continue;
+      if (Number(ev.ano) !== 2026) continue;
+      out.horaAbertura = String(ev.horaAbertura || '');
+      out.horaInicio   = String(ev.horaInicio || '');
+      out.local        = String(ev.localNome || '');
+      out.endereco     = String(ev.endereco || '');
+      break;
+    }
+  } catch (e) { /* produção, ou aba ainda inexistente. Segue para as props. */ }
+
+  /* 2. As Propriedades, que valem nos dois ambientes. Preenchem o que faltou;
+        não sobrescrevem o que a tela já respondeu. */
+  try {
+    var p = PropertiesService.getScriptProperties();
+    out.horaAbertura = out.horaAbertura || String(p.getProperty('COMPASSO_HORA_ABERTURA') || '');
+    out.horaInicio   = out.horaInicio   || String(p.getProperty('COMPASSO_HORA_INICIO') || '');
+    out.local        = out.local        || String(p.getProperty('COMPASSO_LOCAL') || '');
+    out.endereco     = out.endereco     || String(p.getProperty('COMPASSO_ENDERECO') || '');
+  } catch (e) {}
+
+  return out;
+}
+
+/** Data por extenso, como se escreve em ofício: "19 de dezembro de 2026". */
+function compasso_dataPorExtenso_(d) {
+  if (!d || Object.prototype.toString.call(d) !== '[object Date]' || isNaN(d.getTime())) return '';
+  var meses = ['janeiro','fevereiro','março','abril','maio','junho',
+               'julho','agosto','setembro','outubro','novembro','dezembro'];
+  return d.getDate() + ' de ' + meses[d.getMonth()] + ' de ' + d.getFullYear();
+}
+
+/** Monta "  Rótulo ..... valor", pulando o que não tem valor. */
+function compasso_linhaConfirmacao_(rotulo, valor) {
+  if (!String(valor || '').trim()) return null;
+  var pad = (rotulo + ' ').length < 14
+    ? new Array(14 - rotulo.length).join('.') : '..';
+  return '  ' + rotulo + ' ' + pad + ' ' + valor;
+}
+
+/**
+ * O TEXTO. Registro institucional, e não recado — decisão do usuário em
+ * 25/08/2026 ("tom mais institucional"). É a correspondência de um sindicato
+ * com um associado, e ela vai ficar guardada na caixa dele.
+ *
+ * "Prezado(a)" de propósito: o cadastro não guarda como a pessoa se trata, e
+ * deduzir isso do nome erra com gente de verdade.
+ */
 function compasso_textoConfirmacao_(dados, protocolo) {
-  var primeiro = String(dados.nome || '').trim().split(' ')[0] || '';
+  var festa = compasso_dadosDaFesta_();
   var contato = [];
   if (dados.email) contato.push(compasso_mascararEmail_(dados.email));
   if (dados.whatsapp) contato.push(compasso_mascararTelefone_(dados.whatsapp));
 
   var L = [];
-  L.push('Olá, ' + primeiro + '!');
+  L.push('Prezado(a) ' + String(dados.nome || '').trim() + ',');
   L.push('');
-  L.push('Recebemos a sua inscrição para a FESTA COMPASSO DA VIDA 2026.');
-  L.push('Protocolo: ' + protocolo);
+  L.push('O SindEducação-ES confirma o recebimento da sua inscrição para a');
+  L.push('FESTA COMPASSO DA VIDA 2026.');
   L.push('');
-  L.push('CONFIRA O QUE VOCÊ ENVIOU');
-  L.push('  Nome ......... ' + String(dados.nome || ''));
-  L.push('  CPF .......... ' + compasso_cpfParcial_(dados.cpf));
-  L.push('  Escola ....... ' + String(dados.escola || ''));
-  L.push('  Cidade ....... ' + String(dados.cidade || ''));
-  L.push('  Contato ...... ' + contato.join(' · '));
+  L.push('Protocolo de inscrição: ' + protocolo);
+
+  var bloco = [
+    compasso_linhaConfirmacao_('Data',     compasso_dataPorExtenso_(festa.data)),
+    compasso_linhaConfirmacao_('Abertura', festa.horaAbertura),
+    compasso_linhaConfirmacao_('Início',   festa.horaInicio),
+    compasso_linhaConfirmacao_('Local',    festa.local),
+    compasso_linhaConfirmacao_('Endereço', festa.endereco)
+  ].filter(function (x) { return !!x; });
+
+  if (bloco.length) {
+    L.push('');
+    L.push('A FESTA');
+    L = L.concat(bloco);
+  }
+
   L.push('');
-  L.push('O QUE ACONTECE AGORA');
-  L.push('A equipe do sindicato vai conferir os seus dados. Assim que a inscrição');
-  L.push('for validada, o seu ingresso com QR Code chega por WhatsApp — e também');
-  L.push('por e-mail, se você preferir.');
+  L.push('DADOS INFORMADOS');
+  L.push(compasso_linhaConfirmacao_('Nome',    String(dados.nome || '')));
+  L.push(compasso_linhaConfirmacao_('CPF',     compasso_cpfParcial_(dados.cpf)));
+  L.push(compasso_linhaConfirmacao_('Escola',  String(dados.escola || '')));
+  L.push(compasso_linhaConfirmacao_('Cidade',  String(dados.cidade || '')));
+  L.push(compasso_linhaConfirmacao_('Contato', contato.join(' · ')));
+
   L.push('');
-  L.push('*** ESTE E-MAIL NÃO É O INGRESSO. Ele confirma que a sua inscrição foi');
-  L.push('    recebida, e não dá entrada na festa. ***');
+  L.push('PRÓXIMAS ETAPAS');
+  L.push('A secretaria do sindicato procederá à conferência dos dados informados.');
+  L.push('Confirmada a validação, o ingresso individual com QR Code será');
+  L.push('encaminhado por WhatsApp e, alternativamente, por e-mail.');
   L.push('');
-  L.push('Se algum dado acima estiver errado, fale com a secretaria antes da');
-  L.push('validação — depois de emitido, o ingresso já sai com esses dados.');
+  L.push('AVISO IMPORTANTE');
+  L.push('Esta mensagem confirma o recebimento da inscrição e NÃO CONSTITUI');
+  L.push('INGRESSO. Ela não dá direito de entrada no evento.');
+  L.push('');
+  L.push('Eventuais divergências nos dados acima devem ser comunicadas à');
+  L.push('secretaria antes da validação. Após a emissão, o ingresso será');
+  L.push('expedido com as informações constantes deste registro.');
+  L.push('');
+  L.push('Atenciosamente,');
   L.push('');
   L.push('SindEducação-ES');
-  return L.join('\n');
+  L.push('Sindicato dos Educadores Técnico-Administrativos em Estabelecimentos');
+  L.push('de Ensino Particular no Estado do Espírito Santo');
+
+  return L.filter(function (x) { return x !== null; }).join('\n');
 }
 
 /**
@@ -542,7 +646,7 @@ function compasso_confirmarInscricaoPorEmail_(inscricaoId, dados) {
     var protocolo = compasso_protocoloInscricao_(inscricaoId);
     var r = enviarEmailSISGEP_(
       dados.email,
-      'Inscrição recebida — Festa Compasso da Vida 2026',
+      'Confirmação de inscrição — Festa Compasso da Vida 2026',
       compasso_textoConfirmacao_(dados, protocolo),
       { origem: 'Eventos — Compasso 2026' });
 
