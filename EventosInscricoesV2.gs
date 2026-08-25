@@ -35,7 +35,9 @@ function compasso_criarInscricaoAssociado(payload, tokenSessao) {
     var cpf=compasso_cpfNormalizado_(payload.cpf); if(!payload.pessoaId && !cpf) return {ok:false,erro:'CPF ou pessoaId é obrigatório para identificar a inscrição.'};
     if(!emissao_modoTeste_()) {var agora=new Date();if(agora<EMISSAO_CFG.PERIODO_INICIO||agora>EMISSAO_CFG.PERIODO_FIM)return {ok:false,erro:'Fora do período de inscrições.'};}
     var chave=compasso_inscricaoChave_(payload.pessoaId,cpf), indice=fs_get_('inscricaoUnicaEventos',chave);
-    if(indice && indice.status!=='CANCELADA' && indice.status!=='REPROVADA') return {ok:false,erro:'Esta pessoa já possui inscrição neste evento.',inscricaoId:indice.inscricaoId};
+    /* Mesma liberação de homologação da porta pública: as três travas de
+       unicidade afrouxam juntas, senão o teste morre na primeira que sobrar. */
+    if(indice && indice.status!=='CANCELADA' && indice.status!=='REPROVADA' && !compasso_repeticaoLiberada_()) return {ok:false,erro:'Esta pessoa já possui inscrição neste evento.',inscricaoId:indice.inscricaoId};
     var vaga=compasso_reservarVagaInscricao_(); if(!vaga.ok) return vaga;
     var id='INS-'+Utilities.getUuid(), agora2=new Date();
     var ins={inscricaoId:id,eventoId:EMISSAO_CFG.EVENTO_ID,pessoaId:String(payload.pessoaId||''),nome:String(payload.nome||'').trim(),cpf:String(payload.cpf||'').trim(),escola:String(payload.escola||'').trim(),cidade:String(payload.cidade||'').trim(),regiao:String(payload.regiao||'').trim(),email:String(payload.email||'').trim(),whatsapp:String(payload.whatsapp||'').trim(),matricula:String(payload.matricula||'').trim(),categoria:'associado',origem:String(payload.origem||'PORTAL_ASSOCIADO'),status:COMPASSO_STATUS.RECEBIDA,vagaReservada:true,criadoEm:agora2,criadoPor:compasso_emailUsuario_()};

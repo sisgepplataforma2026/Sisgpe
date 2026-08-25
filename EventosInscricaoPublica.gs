@@ -349,16 +349,49 @@ function compasso_inscrever(dados) {
  * sessão, porque quem chama é o associado. Duplicar a lógica seria pior:
  * duas regras de vaga divergindo é como se perde o controle das 2.000.
  */
+/**
+ * Só em homologação declarada é que o mesmo CPF pode se inscrever de novo.
+ *
+ * Duas propriedades precisam estar certas ao mesmo tempo — é a mesma dupla
+ * que o simulador exige. Qualquer erro de leitura devolve `false`: na dúvida,
+ * a trava fica de pé.
+ */
+function compasso_repeticaoLiberada_() {
+  try {
+    if (!emissao_modoTeste_()) return false;
+    var amb = String(PropertiesService.getScriptProperties()
+                     .getProperty('SISGEP_AMBIENTE') || '').toUpperCase();
+    return amb === 'HOMOLOGACAO';
+  } catch (e) { return false; }
+}
+
 function compasso_criarInscricaoAssociado_publica_(payload) {
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
+    /* UMA INSCRIÇÃO POR CPF — exceto em homologação.
+     *
+     * Pedido do usuário em 24/08/2026: "tira a trava de somente um pode fazer
+     * a inscrição, pois eu preciso testar e vou fazer várias vezes". Ele está
+     * certo: testar o fluxo exige repetir o fluxo, e com a trava valendo o
+     * segundo teste com o mesmo CPF morre na porta.
+     *
+     * Mas a trava não pode simplesmente sair. Em dezembro, ela é o que impede
+     * a mesma pessoa consumir duas das 2.000 vagas — por engano, por clique
+     * duplo, ou de propósito. Some em homologação, fica inteira em produção.
+     *
+     * A condição é a MESMA do simulador (EVENTO_MODO_TESTE=true e
+     * SISGEP_AMBIENTE=HOMOLOGACAO): se um dia alguém apontar a homologação
+     * para a base real, é essa dupla que precisa estar errada para o buraco
+     * abrir — não uma linha comentada que ninguém lembra de descomentar. */
     var chave = compasso_inscricaoChave_('', payload.cpf);
-    var indice = fs_get_('inscricaoUnicaEventos', chave);
-    if (indice && indice.status !== 'CANCELADA' && indice.status !== 'REPROVADA')
-      return { ok: false, campo: 'cpf',
-               erro: 'Já existe uma inscrição com este CPF. Se você não fez, ' +
-                     'fale com a secretaria do sindicato.' };
+    if (!compasso_repeticaoLiberada_()) {
+      var indice = fs_get_('inscricaoUnicaEventos', chave);
+      if (indice && indice.status !== 'CANCELADA' && indice.status !== 'REPROVADA')
+        return { ok: false, campo: 'cpf',
+                 erro: 'Já existe uma inscrição com este CPF. Se você não fez, ' +
+                       'fale com a secretaria do sindicato.' };
+    }
 
     var vaga = compasso_reservarVagaInscricao_();
     if (!vaga.ok) return { ok: false, erro: vaga.erro || 'Vagas esgotadas.' };

@@ -217,7 +217,7 @@ const criar = corpoDe(insc, "compasso_criarInscricaoAssociado_publica_");
    `false`, os textos continuavam lá e o teste continuava verde. A trava que o
    usuário pediu nominalmente ("que não tenha duplicidade") não pode depender
    de eu ter lido o código direito. */
-function mundoDeInscricao() {
+function mundoDeInscricao(repeticaoLiberada) {
   const banco = { inscricoesEventos: {}, inscricaoUnicaEventos: {}, reservasEventos: {} };
   const EMISSAO_CFG = { EVENTO_ID: "festa-compasso-2026", LIMITE_VAGAS: 2000 };
   let reservadas = 0;
@@ -238,7 +238,11 @@ function mundoDeInscricao() {
         if (reservadas >= 2000) return { ok: false, erro: "Vagas de inscrição esgotadas." };
         reservadas++;
         return { ok: true, reserva: { limite: 2000, reservadas: reservadas } };
-      }
+      },
+      /* A liberação de repetição em homologação (24/08/2026). O padrão é
+         FALSO — é assim que produção roda, e é assim que a maior parte deste
+         arquivo tem de continuar rodando. */
+      compasso_repeticaoLiberada_: () => !!repeticaoLiberada
     }
   };
 }
@@ -272,6 +276,65 @@ igual(Object.keys(m1.banco.inscricoesEventos).length, 1,
 /* CPF diferente entra normalmente — a trava é de duplicidade, não de bloqueio. */
 const outra = inscreverNoMundo(m1, "52998224725");
 ok(outra && outra.ok, "outro CPF continua entrando normalmente");
+
+/* ─────────────────────────────────────────────────────────────────────────
+   A TRAVA AFROUXA EM HOMOLOGAÇÃO — E SÓ LÁ
+
+   Pedido do usuário em 24/08/2026: "tira a trava de somente um pode fazer a
+   inscrição, pois eu preciso testar e vou fazer várias vezes". Ele está certo:
+   testar o fluxo exige repetir o fluxo.
+
+   O risco de atender esse pedido do jeito errado é grande. A trava é o que
+   impede, em dezembro, a mesma pessoa consumir duas das 2.000 vagas — por
+   engano, por clique duplo ou de propósito. Se ela sair de vez, ninguém vai
+   lembrar de recolocar.
+
+   Por isso a liberação é condicionada, e por isso as DUAS metades são testadas
+   aqui: com a liberação ligada o CPF repete; com ela desligada — que é como
+   produção roda — a recusa continua idêntica.
+   ───────────────────────────────────────────────────────────────────────*/
+passo("repetir o mesmo CPF: liberado só em homologação declarada");
+
+const mHomolog = mundoDeInscricao(true);
+const h1 = inscreverNoMundo(mHomolog, "11144477735");
+const h2 = inscreverNoMundo(mHomolog, "11144477735");
+ok(h1 && h1.ok, "em homologação, a primeira passa");
+igual(h2.ok, true,
+      "e a SEGUNDA com o mesmo CPF também",
+      "sem isto o usuário testa o fluxo uma vez e nunca mais");
+igual(Object.keys(mHomolog.banco.inscricoesEventos).length, 2,
+      "  as duas ficam gravadas, cada uma com o seu id");
+
+const mProd = mundoDeInscricao(false);
+inscreverNoMundo(mProd, "11144477735");
+const p2 = inscreverNoMundo(mProd, "11144477735");
+igual(p2.ok, false,
+      "COM A LIBERAÇÃO DESLIGADA, a recusa continua inteira",
+      "é assim que dezembro roda: a trava é o que impede a mesma pessoa " +
+      "comer duas das 2.000 vagas");
+ok(/Já existe uma inscrição com este CPF/.test(p2.erro || ""),
+   "  com a mesma mensagem de sempre");
+igual(Object.keys(mProd.banco.inscricoesEventos).length, 1,
+      "  e sem gravar a segunda");
+
+/* A condição de liberação é dupla, e falha fechada. */
+const liberar = corpoDe(insc, "compasso_repeticaoLiberada_");
+ok(/emissao_modoTeste_\(\)/.test(liberar),
+   "a liberação exige EVENTO_MODO_TESTE");
+ok(/HOMOLOGACAO/.test(liberar),
+   "  E o ambiente declarado como HOMOLOGACAO",
+   "uma condição só seria fácil demais de satisfazer por acidente");
+ok(/catch[^}]*return false/.test(liberar.replace(/\s+/g, " ")),
+   "  e qualquer erro de leitura devolve false",
+   "na dúvida a trava fica de pé — falhar aberto aqui custa vaga de gente");
+
+/* A costura: as outras duas travas de unicidade usam a MESMA função. */
+const seg = ler("EventosSeguranca.gs"), v2 = ler("EventosInscricoesV2.gs");
+ok(/compasso_repeticaoLiberada_\(\)/.test(seg),
+   "a trava de identidade da emissão usa a mesma liberação",
+   "liberar só a inscrição faria o teste morrer no passo seguinte, ao emitir");
+ok(/compasso_repeticaoLiberada_\(\)/.test(v2),
+   "e a criação administrativa também");
 
 ok(/LockService\.getScriptLock/.test(criar),
    "tudo sob LockService");
