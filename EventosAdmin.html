@@ -431,9 +431,21 @@ function evTelaInterno(id){
     if(bt)bt.setAttribute('aria-selected',x.id===t.id?'true':'false')});
   try{localStorage.setItem('sisgep_ev_tela_'+EV_SUB_ATUAL,t.id)}catch(e){}
 
-  /* Um de cada vez: ou o bloco da página, ou o quadro. */
-  ['calendario','informacoes','inscricoes','participantes','credenciamento','sorteios']
-    .forEach(function(c){var ct=g('conteudo-'+c);if(ct)ct.hidden=(c!==t.conteudo)});
+  /* Um de cada vez: ou o bloco da página, ou o quadro.
+
+     A LISTA É VARRIDA DO DOM, NÃO ESCRITA À MÃO — 25/08/2026.
+     Aqui havia um array literal com seis nomes, e faltavam DOIS: 'painel' e
+     'executivo', que são as telas do submódulo Painel. O resultado é que a
+     aba acendia e o conteúdo continuava escondido — o usuário viu a área em
+     branco e disse "clico em painel e não acontece nada".
+
+     É o mesmo defeito do mapa de submódulos do index.html, no mesmo dia: uma
+     lista paralela que alguém precisa lembrar de atualizar. Agora os blocos
+     são encontrados pela classe que todos têm, então criar um conteúdo novo
+     passa a bastar — não há segunda lista para esquecer. */
+  Array.prototype.forEach.call(
+    document.querySelectorAll('.ev-conteudo[id^="conteudo-"]'),
+    function(ct){ ct.hidden = (ct.id !== 'conteudo-' + t.conteudo); });
   var wrap=g('evQuadroWrap'); if(wrap)wrap.hidden=!t.painel;
   var emb=g('evInscricoes'); if(emb)emb.hidden=(t.embutido!=='inscricoes');
   var caixa=document.querySelector('.ev-wrap');

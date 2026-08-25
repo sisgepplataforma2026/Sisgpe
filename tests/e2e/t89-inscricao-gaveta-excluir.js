@@ -644,6 +644,15 @@ function montarEventos() {
     document: {
       getElementById: id => (els[id] = els[id] || el(id)),
       querySelector: () => (els["__wrap"] = els["__wrap"] || el("__wrap")),
+      /* `evTelaInterno` passou a varrer os blocos de conteúdo pelo DOM em
+         25/08 — antes era um array literal, e faltavam dois nomes nele. Este
+         andaime precisa devolver os mesmos blocos para o teste continuar
+         medindo o que mede. */
+      querySelectorAll: sel => (/ev-conteudo/.test(String(sel))
+        ? ["calendario","informacoes","painel","executivo","inscricoes",
+           "participantes","credenciamento","sorteios"]
+            .map(n => (els["conteudo-"+n] = els["conteudo-"+n] || el("conteudo-"+n)))
+        : []),
       addEventListener(){}, readyState:"complete"
     },
     localStorage: { getItem:()=>null, setItem(){}, removeItem(){} },
