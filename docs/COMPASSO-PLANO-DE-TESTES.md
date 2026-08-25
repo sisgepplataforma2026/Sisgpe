@@ -97,6 +97,39 @@ bater com `inscritos`. Qualquer divergência é achado, não ruído.
 
 ---
 
+## Como o link vai ser distribuído — decisão do usuário em 25/08/2026
+
+> "link vai para a lista de transmissão" · **"vou encaminhar aos poucos, não
+> tudo de uma única vez"**
+
+As duas frases juntas são o que define a carga real da inscrição, e a segunda
+é a que resolve o problema criado pela primeira.
+
+**Por que importa mais do que parece.** Cada inscrição segura a trava do script
+enquanto grava no Firestore. Para uma pessoa é instantâneo; para centenas no
+mesmo minuto vira fila, e quem espera demais recebia um erro cru do Apps
+Script — que fazia a pessoa preencher tudo de novo e criava a duplicidade que a
+trava de CPF existe para impedir. O erro virou recusa explicada em 25/08
+(`EventosInscricaoPublica.gs`, `compasso_criarInscricaoAssociado_publica_`),
+mas isso faz a fila falhar com educação; **não faz a fila ser curta.**
+
+**Enviar em levas é o que faz a fila ser curta.** É a única medida que ataca a
+causa, e ela é operacional — não tem código envolvido.
+
+Duas notas para a hora de fazer:
+
+- **não anunciar hora exata de abertura.** Hora marcada concentra o clique de
+  propósito, e desfaz o efeito das levas.
+- **esperar a leva anterior ser absorvida** antes de mandar a seguinte. O que
+  diz que foi absorvida é a fila de análise parar de crescer, não o relógio.
+
+Isto **não substitui** a onda 2 abaixo. As levas reduzem o pico esperado; a
+simulação de carga mede o que acontece quando o pico vem assim mesmo — por uma
+leva maior do que o previsto, ou porque alguém repassou o link adiante. Um link
+em lista de transmissão é reencaminhável, e não há como controlar isso.
+
+---
+
 ## ONDA 2 — Outubro · carga
 
 ```
