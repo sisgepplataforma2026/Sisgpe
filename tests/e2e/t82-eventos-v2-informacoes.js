@@ -65,9 +65,31 @@ ok(/estado.*preservado|status atual é preservado/i.test(controller), 'edição 
 
 passo('o payload usa whitelist e não carrega métricas administrativas');
 ok(/function eventosV2Admin_payloadInformacoes_/.test(controller), 'payload tem whitelist própria');
-const proibidos = ['capacidade','vagasRestantes','totalInscritos','inscritos','aprovados','pendentes','cancelados','acompanhantes','checkins','checkIns','presencas','presenças'];
+/* CAPACIDADE SAIU DA LISTA DE PROIBIDOS — 26/08/2026, e não foi para o teste
+   passar: foi uma decisão revisada, com o motivo escrito no domínio.
+
+   A distinção que faltava quando esta guarda nasceu: os outros nomes da lista
+   são INDICADORES — mudam a cada inscrição e contam a operação do evento.
+   Capacidade é PROPRIEDADE, tão estática quanto o endereço: o salão comporta
+   2.000 pessoas hoje, amanhã e em dezembro.
+
+   Sem ela no payload administrativo, o campo de lotação não teria como voltar
+   preenchido para a tela, e a lotação continuaria sendo constante no código —
+   com um evento de 300 lugares aceitando 2.000 inscrições.
+
+   O que a guarda protegia continua protegido, e agora com o alvo certo: esta
+   é a tela ADMINISTRATIVA, que exige sessão de administrador. A superfície
+   pública é outra, e a linha abaixo cobra que ela continue existindo separada. */
+const proibidos = ['vagasRestantes','totalInscritos','inscritos','aprovados','pendentes','cancelados','acompanhantes','checkins','checkIns','presencas','presenças'];
 const corpoPayload = (controller.match(/function eventosV2Admin_payloadInformacoes_\(evento\) \{[\s\S]*?\n\}/) || [''])[0];
 proibidos.forEach(campo => ok(!new RegExp('\\b' + campo + '\\b','i').test(corpoPayload), 'payload não inclui ' + campo));
+
+ok(/capacidade:\s*Number\(evento\.capacidade\)/.test(corpoPayload),
+   'payload administrativo INCLUI capacidade',
+   'é o que permite o campo de lotação voltar preenchido para a tela');
+ok(!/eventosV2Publico_/.test(controller),
+   '  e continua sem qualquer endpoint público neste arquivo',
+   'a separação que a nota de privacidade protege é entre superfícies, não entre campos');
 ok(/sem métricas administrativas/i.test(tela), 'a própria prévia declara a separação de dados administrativos');
 
 passo('as travas estruturais continuam em profundidade');

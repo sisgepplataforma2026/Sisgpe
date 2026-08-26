@@ -202,6 +202,21 @@
           </div>
         </div>
 
+        <!-- LOTAÇÃO — 26/08/2026.
+             O campo que faltava para o cadastro governar de verdade. Até
+             ontem a lotação era constante no código: mudar exigia deploy, e
+             um evento de 300 lugares aceitaria 2.000 inscrições. Agora o que
+             for digitado aqui é o que decide quando parar de aceitar. -->
+        <div class="ev-info-section">
+          <div class="ev-info-section-h"><b>Lotação</b><small>Quantas pessoas cabem. É este número que fecha as inscrições e alimenta o painel.</small></div>
+          <div class="ev-info-fields">
+            <div class="ev-field"><label>Capacidade do local</label><input id="evInfoCapacidade" type="number" min="0" step="1" placeholder="2000" oninput="evInfoPreview()"></div>
+            <div class="ev-field span2" style="align-self:end">
+              <div class="ev-nota" id="evInfoCapacidadeNota" style="margin:0">Em branco, o sistema usa 2.000 — o valor que estava fixo no código até 26/08/2026.</div>
+            </div>
+          </div>
+        </div>
+
         <div class="ev-info-section">
           <div class="ev-info-section-h"><b>Local</b><small>Informações que poderão aparecer em convites, ingressos e orientações.</small></div>
           <div class="ev-info-fields">
@@ -657,7 +672,7 @@ function evInfoCarregar(){
 }
 function evInfoPreencher(e,persistido){
   EV_INFO_EVENTO_ID=String(e.eventoId||'');
-  var mapa={evInfoNome:e.nome,evInfoEdicao:e.edicao,evInfoLogo:e.logoUrl,evInfoCapa:e.imagemCapaUrl,evInfoData:e.dataEvento,evInfoAbertura:e.horaAbertura,evInfoInicio:e.horaInicio,evInfoEncerramento:e.horaEncerramento,evInfoLocal:e.localNome,evInfoEndereco:e.endereco,evInfoDescricao:e.descricao,evInfoOrientacoes:e.orientacoes,evInfoImportantes:e.informacoesImportantes};
+  var mapa={evInfoNome:e.nome,evInfoCapacidade:(Number(e.capacidade)>0?e.capacidade:''),evInfoEdicao:e.edicao,evInfoLogo:e.logoUrl,evInfoCapa:e.imagemCapaUrl,evInfoData:e.dataEvento,evInfoAbertura:e.horaAbertura,evInfoInicio:e.horaInicio,evInfoEncerramento:e.horaEncerramento,evInfoLocal:e.localNome,evInfoEndereco:e.endereco,evInfoDescricao:e.descricao,evInfoOrientacoes:e.orientacoes,evInfoImportantes:e.informacoesImportantes};
   Object.keys(mapa).forEach(function(id){if(g(id))g(id).value=mapa[id]||''});
   var s=String(e.status||'RASCUNHO'),rot=statusRotulo(s);['evInfoStatus','evInfoStatusLateral'].forEach(function(id){var el=g(id);if(el){el.textContent=rot;el.className='ev-pill '+statusClasse(s)}});
   if(g('evInfoPersistencia'))g('evInfoPersistencia').textContent=persistido?'Registro V2 salvo na homologação.':'Ainda não salvo na V2.';
@@ -677,7 +692,7 @@ window.evInfoPreview=function(){
 window.evInfoSalvar=function(){
   var token=tokenSessao();if(!token)return avisar('Sessão não encontrada. Entre novamente no SISGEP.','err');
   var nome=valor('evInfoNome');if(!nome)return avisar('Informe o nome do evento.','warn');
-  var dados={eventoId:EV_INFO_EVENTO_ID,nome:nome,edicao:valor('evInfoEdicao'),logoUrl:valor('evInfoLogo'),imagemCapaUrl:valor('evInfoCapa'),dataEvento:valor('evInfoData'),horaAbertura:valor('evInfoAbertura'),horaInicio:valor('evInfoInicio'),horaEncerramento:valor('evInfoEncerramento'),localNome:valor('evInfoLocal'),endereco:valor('evInfoEndereco'),descricao:valor('evInfoDescricao'),orientacoes:valor('evInfoOrientacoes'),informacoesImportantes:valor('evInfoImportantes')};
+  var dados={eventoId:EV_INFO_EVENTO_ID,nome:nome,capacidade:valor('evInfoCapacidade'),edicao:valor('evInfoEdicao'),logoUrl:valor('evInfoLogo'),imagemCapaUrl:valor('evInfoCapa'),dataEvento:valor('evInfoData'),horaAbertura:valor('evInfoAbertura'),horaInicio:valor('evInfoInicio'),horaEncerramento:valor('evInfoEncerramento'),localNome:valor('evInfoLocal'),endereco:valor('evInfoEndereco'),descricao:valor('evInfoDescricao'),orientacoes:valor('evInfoOrientacoes'),informacoesImportantes:valor('evInfoImportantes')};
   var bt=g('evInfoSalvar');if(bt){bt.disabled=true;bt.textContent='Salvando…'}
   google.script.run.withSuccessHandler(function(r){
     if(bt){bt.disabled=false;bt.textContent='Salvar rascunho'}

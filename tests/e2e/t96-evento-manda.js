@@ -238,4 +238,52 @@ aviso("o evento mora em PLANILHA e as inscrições no FIRESTORE",
       "aba EVENTOS_V2 × coleção inscricoesEventos. Não é erro hoje, mas é a " +
       "razão de a lotação não poder ser conferida numa consulta só");
 
+
+/* ══════════════════════════════════════════════════════════════════════════
+   5 · O CAMINHO DA TELA: digitar a lotação e ver o painel obedecer
+   ══════════════════════════════════════════════════════════════════════════ */
+passo("5 · a lotação digitada na tela chega ao painel");
+
+/* É o caminho real: a tela de Informações chama este endpoint. */
+const salvo = g.eventosV2Admin_salvarInformacoesFesta2026(TOKEN, {
+  nome: "Festa Compasso da Vida 2026",
+  dataEvento: "2026-10-05",
+  localNome: "Espaço Patrick Ribeiro",
+  capacidade: 450
+});
+ok(salvo && salvo.ok === true, "a tela salva a lotação",
+   salvo && salvo.mensagem ? salvo.mensagem : "");
+igual(salvo && salvo.evento ? Number(salvo.evento.capacidade) : -1, 450,
+      "  e ela volta no payload da tela",
+      "sem isto o campo aparece vazio ao recarregar, e o usuário digita de novo");
+
+/* O cache é por execução; no navegador cada chamada é uma execução nova. */
+g.COMPASSO_EVENTO_CACHE_ = undefined;
+
+const exec = g.compasso_executivoResumo
+  ? g.compasso_executivoResumo(TOKEN) : null;
+if (exec && exec.evento) {
+  igual(Number(exec.evento.vagas), 450,
+        "o painel do evento passa a dizer 450",
+        "era aqui que a tela mostrava 2.000 fizesse o que fizesse");
+} else {
+  aviso("resumo executivo não respondeu neste ambiente",
+        "a lotação foi conferida pelo resolvedor, não pela tela");
+}
+
+igual(g.compasso_limiteVagas_(), 450,
+      "  e o resolvedor concorda");
+
+/* Salvar SEM tocar na lotação não pode zerá-la. */
+g.eventosV2Admin_salvarInformacoesFesta2026(TOKEN, {
+  nome: "Festa Compasso da Vida 2026",
+  dataEvento: "2026-10-05",
+  localNome: "Espaço Patrick Ribeiro",
+  capacidade: ""
+});
+g.COMPASSO_EVENTO_CACHE_ = undefined;
+igual(g.compasso_limiteVagas_(), 450,
+      "salvar a tela com o campo em branco NÃO apaga a lotação",
+      "zerar por omissão devolveria o evento aos 2.000 sem ninguém pedir");
+
 resumo();

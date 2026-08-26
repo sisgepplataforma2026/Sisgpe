@@ -71,7 +71,34 @@ function eventosV2Admin_salvarInformacoesFesta2026(tokenSessao, dados) {
     // A consulta também aplica autorização e trava de ambiente.
     var atual = null;
     var eventoId = String(dados.eventoId || '').trim();
-    if (eventoId) {
+
+    /* SEM ID, ADOTA A FESTA QUE JÁ EXISTE — 26/08/2026.
+     *
+     * Até aqui, salvar sem `eventoId` criava registro NOVO. A tela sempre
+     * manda o id, então no uso normal não aparecia; mas qualquer chamada sem
+     * ele — outra tela, um teste, uma rotina — passava a existir uma SEGUNDA
+     * Festa 2026 na base. E aí `obterFesta2026` devolve a primeira que
+     * encontrar: a tela mostra uma, a lotação vem da outra, e nada acusa.
+     *
+     * Achado ao escrever o teste do caminho da lotação, que salvou sem id e
+     * recebeu "criado com sucesso" onde deveria vir "atualizado".
+     *
+     * A busca é a MESMA regra do carregamento — tipo FESTA e ano 2026 —,
+     * porque as duas pontas precisam concordar sobre qual registro é a Festa. */
+    if (!eventoId) {
+      var lista = eventosV2Service_listar_(tokenSessao);
+      var todos = (lista && Array.isArray(lista.eventos)) ? lista.eventos : [];
+      for (var f = 0; f < todos.length; f++) {
+        var cand = todos[f] || {};
+        if (String(cand.tipo || '').toUpperCase() === 'FESTA' && Number(cand.ano) === 2026) {
+          eventoId = String(cand.eventoId || '').trim();
+          atual = cand;
+          break;
+        }
+      }
+    }
+
+    if (eventoId && !atual) {
       var busca = eventosV2Service_buscarPorId_(tokenSessao, eventoId);
       atual = busca ? busca.evento : null;
       if (!atual) {
@@ -100,6 +127,13 @@ function eventosV2Admin_salvarInformacoesFesta2026(tokenSessao, dados) {
       endereco: dados.endereco,
       orientacoes: dados.orientacoes,
       informacoesImportantes: dados.informacoesImportantes,
+      /* Campo em branco NÃO apaga a lotação já gravada — 26/08/2026.
+         A tela manda string vazia quando o administrador não digitou nada, e
+         zerar por omissão devolveria o evento à constante sem ninguém pedir.
+         Só um número explícito muda a lotação. */
+      capacidade: (String(dados.capacidade || '').trim() === '' && atual)
+                    ? atual.capacidade
+                    : dados.capacidade,
       status: atual && atual.status ? atual.status : EVENTOS_V2_STATUS.RASCUNHO
     };
 
@@ -242,6 +276,11 @@ function eventosV2Admin_payloadInformacoes_(evento) {
     endereco: String(evento.endereco || ''),
     orientacoes: String(evento.orientacoes || ''),
     informacoesImportantes: String(evento.informacoesImportantes || ''),
+    /* Capacidade entra AQUI e não no payload público — 26/08/2026.
+       Esta tela é administrativa: exige sessão de administrador com acesso ao
+       módulo. A nota de privacidade do domínio continua valendo para a página
+       pública do evento, que é outra superfície e não usa este payload. */
+    capacidade: Number(evento.capacidade) || 0,
     status: String(evento.status || EVENTOS_V2_STATUS.RASCUNHO)
   };
 }
