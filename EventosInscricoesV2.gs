@@ -52,16 +52,44 @@ function compasso_criarInscricaoAssociado(payload, tokenSessao) {
 
 /* ADMIN: cria convidado/acompanhante fora da fila de inscrição, consumindo
    vaga das 2.000. É concessão, não atendimento — exige administrador. */
+/* ══════════════════════════════════════════════════════════════════════════
+   AS DUAS CATEGORIAS QUE NÃO NASCEM DE INSCRIÇÃO PÚBLICA
+
+   Regra confirmada pelo usuário em 26/08/2026:
+     • ingresso próprio é só para ASSOCIADO;
+     • CONVIDADO é gratuito e entra por indicação da diretoria;
+     • ACOMPANHANTE é avulso, paga R$ 500, e NÃO precisa estar vinculado a um
+       associado titular — pode ser qualquer pessoa.
+
+   Por isso a função recusa `associado`: essa categoria tem porta própria (o
+   formulário público). Aqui é a porta da equipe.
+
+   ESTA FUNÇÃO FICOU SEM TELA DE 21/08 A 26/08. Entrou no commit e086213 e
+   nenhum `.html` a chamava — conferido pelos 5 passos da REGRA Nº 1: não está
+   em Code.gs, não está em rota doGet, não está em trigger, não aparece em
+   nenhum `.html`. O motor existia e a equipe não tinha como cadastrar
+   acompanhante nem convidado. A tela entrou junto com esta revisão.
+
+   `indicadoPor` nasceu aqui, e não é enfeite: se a diretoria indica o
+   convidado, o nome de quem indicou é a única resposta possível para a
+   pergunta que alguém faz em dezembro, na porta do salão, sobre por que
+   fulano está na lista. `titularId` continua aceito por compatibilidade —
+   acompanhante avulso não usa, mas apagar o campo quebraria registro antigo.
+   ══════════════════════════════════════════════════════════════════════════ */
 function compasso_criarInclusaoAdministrativa(payload, tokenSessao) {
   exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — inclusão administrativa', true);
   payload=payload||{};var cat=String(payload.categoria||'').toLowerCase();if(['convidado','acompanhante'].indexOf(cat)<0)return {ok:false,erro:'Inclusão administrativa deve ser convidado ou acompanhante.'};
   var lock=LockService.getScriptLock();lock.waitLock(20000);
   try {
     if(!String(payload.nome||'').trim()) return {ok:false,erro:'Nome é obrigatório.'};
+    /* Convidado sem quem indicou é convidado que ninguém sabe explicar. */
+    var indicadoPor = String(payload.indicadoPor||'').trim();
+    if (cat === 'convidado' && !indicadoPor)
+      return {ok:false, erro:'Convidado é por indicação da diretoria — informe quem indicou.'};
     var vaga=compasso_reservarVagaInscricao_();if(!vaga.ok)return vaga;
     var id='INS-'+Utilities.getUuid(),agora=new Date();
-    var ins={inscricaoId:id,eventoId:EMISSAO_CFG.EVENTO_ID,pessoaId:String(payload.pessoaId||compasso_uuid_()),nome:String(payload.nome||'').trim(),cpf:String(payload.cpf||'').trim(),escola:String(payload.escola||'').trim(),cidade:String(payload.cidade||'').trim(),regiao:String(payload.regiao||'').trim(),email:String(payload.email||'').trim(),whatsapp:String(payload.whatsapp||'').trim(),categoria:cat,origem:cat==='convidado'?'ADMIN_CONVIDADO':'ADMIN_ACOMPANHANTE',titularId:String(payload.titularId||''),status:COMPASSO_STATUS.VALIDADA,vagaReservada:true,criadoEm:agora,criadoPor:compasso_emailUsuario_(),analisadoPor:compasso_emailUsuario_(),analisadoEm:agora};
-    fs_set_('inscricoesEventos',id,ins);compasso_auditar_('INCLUSAO_ADMINISTRATIVA','inscricao',id,{categoria:cat,titularId:ins.titularId});return {ok:true,inscricaoId:id,status:ins.status};
+    var ins={inscricaoId:id,eventoId:EMISSAO_CFG.EVENTO_ID,pessoaId:String(payload.pessoaId||compasso_uuid_()),nome:String(payload.nome||'').trim(),cpf:String(payload.cpf||'').trim(),escola:String(payload.escola||'').trim(),cidade:String(payload.cidade||'').trim(),regiao:String(payload.regiao||'').trim(),email:String(payload.email||'').trim(),whatsapp:String(payload.whatsapp||'').trim(),categoria:cat,origem:cat==='convidado'?'ADMIN_CONVIDADO':'ADMIN_ACOMPANHANTE',titularId:String(payload.titularId||''),indicadoPor:indicadoPor,status:COMPASSO_STATUS.VALIDADA,vagaReservada:true,criadoEm:agora,criadoPor:compasso_emailUsuario_(),analisadoPor:compasso_emailUsuario_(),analisadoEm:agora};
+    fs_set_('inscricoesEventos',id,ins);compasso_auditar_('INCLUSAO_ADMINISTRATIVA','inscricao',id,{categoria:cat,indicadoPor:indicadoPor,titularId:ins.titularId});return {ok:true,inscricaoId:id,status:ins.status};
   } finally {lock.releaseLock();}
 }
 

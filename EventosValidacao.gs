@@ -234,3 +234,91 @@ function abrirCentralValidacaoCompasso(tokenSessao) {
   var html=HtmlService.createHtmlOutputFromFile('EventosValidacaoAdmin').setWidth(1200).setHeight(760);
   SpreadsheetApp.getUi().showModalDialog(html,'Compasso 2026 — Central de Validação');
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   CONFERÊNCIA DE VÍNCULO EM LOTE — 26/08/2026
+
+   A REGRA DE NEGÓCIO, dita pelo usuário: ingresso próprio é só para associado;
+   quem não é associado só entra como acompanhante pago, e esse cadastro é
+   feito pela equipe, não por conversão de inscrição pública.
+
+   Isso torna a análise da inscrição pública uma CONFERÊNCIA, não um
+   julgamento: o CPF está na base de filiados ou não está. E conferência
+   mecânica é trabalho que a REGRA Nº 0.6 manda o sistema fazer sozinho — a
+   planilha do Sorteio trouxe 201 linhas, e três campos vezes 201 é meio dia
+   de gente fazendo o que uma consulta faz.
+
+   O QUE ESTA FUNÇÃO VALIDA SOZINHA, E SÓ ISSO: as inscrições ainda não
+   analisadas cujo CPF está na base COM filiação ativa. Nada mais.
+
+   O que ela deliberadamente NÃO faz, e o motivo de cada recusa:
+
+   - NÃO reprova ninguém. Reprovar devolve a vaga e mexe no índice de inscrição
+     única; feito em massa sobre uma leitura de base que pode estar
+     desatualizada, apagaria inscrição legítima de quem se filiou semana
+     passada. Reprovação continua sendo um a um, com motivo escrito.
+   - NÃO mexe em quem consta na base sem filiação ativa (NAO_FILIADO). Esse é
+     o caso que EXIGE julgamento — pode ser inadimplência, pode ser erro de
+     cadastro, pode ser desfiliação recente.
+   - NÃO toca em inscrição já analisada. Reanalisar em lote apagaria a decisão
+     de uma pessoa sem ela saber.
+
+   A situação do vínculo é RELIDA da base, não aproveitada do que ficou
+   gravado na importação: o nome da função promete conferir contra a base, e
+   uma conferência que lê o próprio palpite anterior não é conferência.
+   ════════════════════════════════════════════════════════════════════════════ */
+function compasso_conferirVinculoEmLote(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — conferência de vínculo em lote', true);
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var docs = compasso_validacaoListar_interno_({});
+    var r = { ok: true, validadas: 0, naoFiliados: 0, foraDaBase: 0, jaAnalisadas: 0, erros: [] };
+    var quem = compasso_emailUsuario_(), agora = new Date();
+
+    docs.forEach(function (x) {
+      var status = String(x.status || '');
+      /* Já analisada é decisão de gente: não se desfaz em lote. */
+      if (status && status !== COMPASSO_STATUS.RECEBIDA) { r.jaAnalisadas++; return; }
+
+      var situacao = compasso_situacaoAssociado_(
+        compasso_buscarAssociado_(compasso_cpfNormalizado_(x.cpf)));
+
+      if (situacao === 'NAO_FILIADO')    { r.naoFiliados++; }
+      else if (situacao === 'NAO_ENCONTRADO') { r.foraDaBase++; }
+
+      try {
+        var ins = fs_get_('inscricoesEventos', x.inscricaoId);
+        if (!ins) return;
+        /* A releitura do vínculo é gravada mesmo quando não valida: é o dado
+           que a tela usa para mostrar o veredito, e deixá-lo velho faria a
+           tela contradizer a conferência que acabou de rodar. */
+        ins.situacaoAssociado = situacao;
+        if (situacao === 'ASSOCIADO') {
+          ins.status = COMPASSO_STATUS.VALIDADA;
+          ins.analisadoPor = quem;
+          ins.analisadoEm = agora;
+          ins.motivoCodigo = '';
+          ins.observacaoAnalise = 'Validada em conferência de vínculo em lote.';
+          r.validadas++;
+        }
+        fs_set_('inscricoesEventos', x.inscricaoId, ins);
+      } catch (e) {
+        r.erros.push({ inscricaoId: x.inscricaoId, nome: x.nome, erro: String(e && e.message || e) });
+      }
+    });
+
+    compasso_auditar_('CONFERENCIA_VINCULO_LOTE', 'evento', EMISSAO_CFG.EVENTO_ID, {
+      validadas: r.validadas, naoFiliados: r.naoFiliados,
+      foraDaBase: r.foraDaBase, jaAnalisadas: r.jaAnalisadas, erros: r.erros.length
+    });
+
+    r.mensagem = r.validadas + ' validada(s) automaticamente. ' +
+      'Continuam esperando decisão: ' + r.naoFiliados + ' não filiado(s) e ' +
+      r.foraDaBase + ' fora da base.';
+    return r;
+  } finally {
+    lock.releaseLock();
+  }
+}

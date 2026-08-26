@@ -97,6 +97,23 @@
       font-size:13px;font-family:inherit;width:100%}
     .gv-acoes{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
     .gv-nota{font-size:12px;color:var(--suave);line-height:1.5;margin-top:8px}
+
+    /* VEREDITO DA ANÁLISE — a cor diz o que é antes de a pessoa ler. Verde
+       segue, âmbar espera, vermelho barra. As mesmas três do selo da lista,
+       para a gaveta não contradizer a linha de onde ela foi aberta. */
+    .vd{border-radius:12px;padding:13px 15px;border:1.5px solid}
+    .vd-t{font-weight:800;font-size:13.5px;display:flex;align-items:center;gap:7px}
+    .vd-s{font-size:12px;line-height:1.55;margin-top:5px;opacity:.9}
+    .vd-ok{background:#f0fdf7;border-color:#a7e3c8;color:#0f8a5f}
+    .vd-al{background:#fffbeb;border-color:#f5d98a;color:#b45309}
+    .vd-er{background:#fef2f2;border-color:#f3c5c5;color:#b91c1c}
+    .vd-nt{background:#f5f8fc;border-color:#c7d7ec;color:var(--navy)}
+    .vd .vd-s{color:var(--texto)}
+    /* O link de escape é discreto de propósito: é a saída para o caso raro,
+       não uma quarta opção com o mesmo peso dos botões de decisão. */
+    .vd-manual{background:none;border:0;padding:0;font:inherit;font-size:12px;
+               color:var(--blue);cursor:pointer;text-decoration:underline;
+               align-self:center;margin-left:auto}
     .gv-hist{font-size:12px;color:var(--suave);line-height:1.7}
     .b.ok{background:var(--ok);color:#fff;border-color:var(--ok)}
     .b.perigo{background:#fef2f2;color:#7f1d1d;border-color:#f3c5c5}
@@ -254,6 +271,11 @@
   <div class="of-tabs-acoes" style="margin-left:0">
     <button class="b" id="btAbaLista" onclick="irAba('lista')" hidden>‹ Voltar para a lista</button>
     <button class="b" id="btAbaImportar" onclick="window.impEscolherArquivo && window.impEscolherArquivo()">📄 Importar planilha</button>
+    <!-- A porta que faltava: convidado e acompanhante não nascem do formulário
+         público, e até 26/08/2026 não havia como cadastrá-los — o backend
+         existia sem tela. Ver o cabeçalho de compasso_criarInclusaoAdministrativa. -->
+    <button class="b" onclick="abrirInclusao()">➕ Incluir inscrição</button>
+    <button class="b" onclick="conferirVinculoTodas()">🔎 Conferir contra a base</button>
     <button class="b" onclick="copiarLink()">🔗 Copiar link de inscrição</button>
     <button class="b" onclick="carregar()">↻ Atualizar</button>
   </div>
@@ -367,6 +389,58 @@
 <!-- ══ MODAL DO INGRESSO EMITIDO ═════════════════════════════════════════
      A lógica do ofício, que o usuário pediu nominalmente: gerou, abre um lugar
      com tudo o que se faz com o documento. -->
+<!-- ══ INCLUIR INSCRIÇÃO ═════════════════════════════════════════════════════
+     A PORTA QUE FALTAVA — 26/08/2026.
+
+     `compasso_criarInclusaoAdministrativa` existia desde o commit e086213 e
+     nenhuma tela a chamava (conferido pelos 5 passos da REGRA Nº 1: fora de
+     Code.gs, fora de rota doGet, fora de trigger, ausente em todo .html). A
+     equipe administrativa não tinha como cadastrar convidado nem
+     acompanhante — o motor pronto, sem porta.
+
+     Só estas DUAS categorias entram aqui. Associado tem porta própria, que é
+     o formulário público, e o backend recusa `associado` nesta função de
+     propósito: incluir associado por dentro pularia a conferência de vínculo.
+
+     Cidade, Região e Escola ficaram de fora a pedido do usuário — para
+     convidado e acompanhante, que não vêm de escola, seriam três campos
+     vazios em toda inclusão. -->
+<div class="md-fundo" id="incFundo">
+  <div class="md" role="dialog" aria-label="Incluir inscrição">
+    <div class="md-topo">
+      <div class="md-ok">➕</div>
+      <div>
+        <h2>Incluir inscrição</h2>
+        <div class="sub">Convidado e acompanhante — quem não entra pelo formulário público.</div>
+      </div>
+    </div>
+    <div class="md-corpo">
+      <div class="gv-grade">
+        <div class="gv-campo larga"><label>Categoria</label>
+          <select id="incCategoria" onchange="incTrocouCategoria()">
+            <option value="convidado">Convidado — gratuito, indicação da diretoria</option>
+            <option value="acompanhante">Acompanhante — R$ 500, avulso</option>
+          </select>
+        </div>
+        <div class="gv-campo"><label>Nome *</label><input id="incNome" autocomplete="off"></div>
+        <div class="gv-campo"><label>CPF</label><input id="incCpf" autocomplete="off"></div>
+        <div class="gv-campo"><label>E-mail</label><input id="incEmail" autocomplete="off"></div>
+        <div class="gv-campo"><label>WhatsApp</label><input id="incWhatsapp" autocomplete="off"></div>
+        <!-- Convidado sem quem indicou é convidado que ninguém sabe explicar
+             na porta do salão. O backend recusa vazio. -->
+        <div class="gv-campo larga" id="incIndicadoBox"><label>Indicado por *</label>
+          <input id="incIndicadoPor" placeholder="Nome do diretor que indicou" autocomplete="off">
+        </div>
+      </div>
+      <div class="gv-nota" id="incNota"></div>
+      <div class="gv-acoes">
+        <button class="b" onclick="fecharInclusao()">Cancelar</button>
+        <button class="b p" id="incBt" onclick="salvarInclusao()">Incluir</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="md-fundo" id="mdFundo">
   <div class="md" role="dialog" aria-label="Ingresso emitido">
     <div class="md-topo">
@@ -464,26 +538,46 @@
       </div>
     </div>
 
-    <!-- ANÁLISE -->
+    <!-- ANÁLISE ═══════════════════════════════════════════════════════════
+         O SISTEMA JÁ RESPONDEU; A PESSOA CONFIRMA — 26/08/2026.
+
+         Antes eram três campos para toda inscrição, inclusive as óbvias. Mas
+         a regra do evento não deixa margem: ingresso próprio é só para
+         associado, e o CPF já foi cruzado com os ~8.000 filiados antes de a
+         gaveta abrir — o selo de vínculo está impresso na linha da lista.
+         Pedir para a pessoa redigitar o que o sistema calculou é o que a
+         REGRA Nº 0.6 chama de defeito de desenho.
+
+         O que NÃO foi tirado: os três campos continuam inteiros, atrás de
+         "analisar manualmente". Automatizar não é decidir pela pessoa — é
+         poupar o caminho comum e deixar o incomum acessível. -->
     <div class="gv-sec">
       <h3>Análise</h3>
-      <div class="gv-grade">
-        <div class="gv-campo"><label>Decisão</label>
-          <select id="aStatus" onchange="montarMotivos()">
-            <option value="VALIDADA_ADMINISTRATIVAMENTE">Validar</option>
-            <option value="PENDENTE">Pendência</option>
-            <option value="REPROVADA">Reprovar</option>
-          </select>
+
+      <!-- Veredito e botões são desenhados por montarAnalise(), porque o que
+           aparece depende do vínculo: validar, pôr em pendência e reprovar não
+           fazem sentido ao mesmo tempo. -->
+      <div id="aVeredito"></div>
+
+      <div id="aManual" hidden>
+        <div class="gv-grade">
+          <div class="gv-campo"><label>Decisão</label>
+            <select id="aStatus" onchange="montarMotivos()">
+              <option value="VALIDADA_ADMINISTRATIVAMENTE">Validar</option>
+              <option value="PENDENTE">Pendência</option>
+              <option value="REPROVADA">Reprovar</option>
+            </select>
+          </div>
+          <div class="gv-campo" id="aMotivoBox"><label>Motivo</label>
+            <select id="aMotivo"></select>
+          </div>
+          <div class="gv-campo larga"><label>Observação</label>
+            <textarea id="aObs" rows="2" placeholder="Obrigatória quando o motivo for Outro"></textarea>
+          </div>
         </div>
-        <div class="gv-campo" id="aMotivoBox"><label>Motivo</label>
-          <select id="aMotivo"></select>
+        <div class="gv-acoes">
+          <button class="b p" onclick="decidir()">Confirmar decisão</button>
         </div>
-        <div class="gv-campo larga"><label>Observação</label>
-          <textarea id="aObs" rows="2" placeholder="Obrigatória quando o motivo for Outro"></textarea>
-        </div>
-      </div>
-      <div class="gv-acoes">
-        <button class="b p" onclick="decidir()">Confirmar decisão</button>
       </div>
       <div class="gv-nota" id="aNota"></div>
     </div>
@@ -1240,12 +1334,180 @@ function pintarGaveta(){
                      : 'VALIDADA_ADMINISTRATIVAMENTE';
   g('aObs').value = x.observacaoAnalise || '';
   montarMotivos();
+  montarAnalise(x);
 
   montarPagamento(x);
   montarIngresso(x);
   montarComprovante(x);
   montarHistorico(x);
   g('secExcluir').hidden = !SOU_ADMIN;
+}
+
+/* ══ VEREDITO DA ANÁLISE ═══════════════════════════════════════════════════
+   A regra do evento, confirmada pelo usuário em 26/08/2026: ingresso próprio
+   é só para associado. Quem não é associado entra como acompanhante pago, e
+   esse cadastro é feito pela equipe — não por conversão desta inscrição.
+
+   Logo, a análise de uma inscrição pública tem uma pergunta só, e o sistema
+   já a respondeu ao cruzar o CPF com a base. Aqui a pessoa CONFIRMA.
+
+   Por que os botões mudam conforme o vínculo, em vez de os três aparecerem
+   sempre: "validar, pôr em pendência e reprovar" ao mesmo tempo faz a tela
+   parecer neutra sobre uma questão que não é. Quem está na base valida; quem
+   está fora não pode ter ingresso próprio. Mostrar o caminho certo em
+   destaque é o que separa automatizar de decidir pela pessoa — e por isso
+   "analisar manualmente" continua ali, em toda situação. */
+function montarAnalise(x){
+  var s = String(x.situacaoAssociado || '');
+  var jaDecidiu = String(x.status||'') && String(x.status) !== 'RECEBIDA';
+  var quadro;
+
+  if (s === 'ASSOCIADO'){
+    quadro = { cor:'vd-ok', icone:'✅', titulo:'Associada — encontrada na base pelo CPF',
+      sub:'O CPF confere com um cadastro filiado. Ingresso próprio é o caminho normal.',
+      botoes:'<button class="b p" onclick="analiseValidar()">Validar inscrição</button>' };
+  } else if (s === 'NAO_FILIADO'){
+    quadro = { cor:'vd-al', icone:'⚠️', titulo:'Consta na base, mas sem filiação ativa',
+      sub:'O CPF existe no cadastro e o vínculo não está ativo. Pode ser inadimplência, desfiliação ou erro de cadastro — é o caso que precisa de gente.',
+      botoes:'<button class="b p" onclick="analisePendencia()">Pôr em pendência</button>' +
+             '<button class="b" onclick="analiseValidar()">Validar assim mesmo</button>' };
+  } else if (s === 'NAO_ENCONTRADO'){
+    quadro = { cor:'vd-er', icone:'❌', titulo:'Fora da base de associados',
+      sub:'O CPF não confere com nenhum cadastro. Ingresso próprio é só para associado — quem não é entra como acompanhante, cadastrado pela equipe em "Incluir inscrição".',
+      botoes:'<button class="b perigo" onclick="analiseReprovar()">Reprovar</button>' };
+  } else {
+    /* Sem CPF não há o que conferir — e isso não é culpa de quem analisa. */
+    quadro = { cor:'vd-nt', icone:'❔', titulo:'Vínculo não conferido',
+      sub:'Sem CPF não dá para cruzar com a base. Complete o CPF acima e salve, ou decida manualmente.',
+      botoes:'' };
+  }
+
+  g('aVeredito').innerHTML =
+    '<div class="vd ' + quadro.cor + '">' +
+      '<div class="vd-t">' + quadro.icone + ' ' + esc(quadro.titulo) + '</div>' +
+      '<div class="vd-s">' + esc(quadro.sub) + '</div>' +
+    '</div>' +
+    '<div class="gv-acoes">' + quadro.botoes +
+      '<button type="button" class="vd-manual" onclick="analiseManual()">analisar manualmente</button>' +
+    '</div>';
+
+  /* Inscrição já decidida abre com os campos à vista: aqui a pessoa não está
+     conferindo, está revendo — e esconder o que foi decidido, com que motivo,
+     obrigaria a caçar o botão para ler a própria decisão. */
+  g('aManual').hidden = !jaDecidiu;
+  g('aNota').textContent = jaDecidiu
+    ? 'Esta inscrição já foi analisada' +
+      (x.analisadoPor ? ' por ' + x.analisadoPor : '') + '. Alterar é possível.'
+    : '';
+}
+
+function analiseManual(){ g('aManual').hidden = false; montarMotivos(); }
+
+function analiseValidar(){
+  var x = inscricaoAberta(); if (!x) return;
+  api('compasso_validarDecisaoAdmin',
+      [x.inscricaoId, 'VALIDADA_ADMINISTRATIVAMENTE', '', ''],
+      aposAcao('Inscrição validada.'));
+}
+
+/* O motivo vai preenchido porque é O motivo deste caso — e continua visível e
+   trocável no "analisar manualmente", que é o que separa sugerir de impor. */
+function analisePendencia(){
+  var x = inscricaoAberta(); if (!x) return;
+  api('compasso_validarDecisaoAdmin',
+      [x.inscricaoId, 'PENDENTE', 'AGUARDANDO_CONFIRMACAO_VINCULO',
+       'Consta na base sem filiação ativa — aguardando confirmação do vínculo.'],
+      aposAcao('Inscrição marcada como pendente.'));
+}
+
+function analiseReprovar(){
+  var x = inscricaoAberta(); if (!x) return;
+  perguntar({ titulo: 'Reprovar a inscrição de ' + x.nome + '?',
+              texto: 'O CPF não está na base de associados. A vaga volta para as 2.000.',
+              perigo: true, ok: 'Reprovar' }, function(){
+    api('compasso_reprovarInscricaoLiberandoVaga',
+        [x.inscricaoId, 'NAO_E_ASSOCIADO',
+         'CPF não localizado na base de associados na conferência.'],
+        aposAcao('Inscrição reprovada e vaga devolvida.'));
+  });
+}
+
+/* ══ INCLUIR INSCRIÇÃO ═════════════════════════════════════════════════════
+   Convidado (gratuito, indicação da diretoria) e acompanhante (R$ 500,
+   avulso, sem titular vinculado) são as duas categorias que não nascem do
+   formulário público. Até 26/08/2026 não havia como cadastrá-las: o backend
+   existia sem tela.
+
+   O PAGAMENTO NÃO ESTÁ AQUI, e é decisão, não esquecimento. A gaveta já tem
+   a seção Pagamento — forma, valor, referência, confirmar, estornar — que
+   aparece sozinha para quem é acompanhante. Duplicar isso na inclusão daria
+   dois lugares para receber o mesmo dinheiro, e é assim que se recebe duas
+   vezes. O acompanhante nasce sem pagamento e a emissão do ingresso já o
+   exige (EventosEmissao.gs), então não há como escapar pelo meio. */
+function abrirInclusao(){
+  ['incNome','incCpf','incEmail','incWhatsapp','incIndicadoPor'].forEach(function(id){
+    g(id).value = '';
+  });
+  g('incCategoria').value = 'convidado';
+  incTrocouCategoria();
+  g('incFundo').classList.add('on');
+  setTimeout(function(){ try{ g('incNome').focus(); }catch(e){} }, 60);
+}
+function fecharInclusao(){ g('incFundo').classList.remove('on'); }
+
+/* O que muda entre as duas categorias fica dito na tela, não implícito: quem
+   inclui um acompanhante precisa saber, ANTES de salvar, que o ingresso não
+   sai enquanto o pagamento não entrar. */
+function incTrocouCategoria(){
+  var cat = g('incCategoria').value;
+  g('incIndicadoBox').hidden = (cat !== 'convidado');
+  g('incNota').textContent = cat === 'acompanhante'
+    ? 'O acompanhante entra pagando R$ 500. Ele nasce sem pagamento — o valor se registra na gaveta da inscrição, e o ingresso só é emitido depois de confirmado.'
+    : 'O convidado não paga. A vaga sai das 2.000 do mesmo jeito.';
+}
+
+function salvarInclusao(){
+  var cat = g('incCategoria').value;
+  var nome = String(g('incNome').value || '').trim();
+  if (!nome) return aviso('O nome é obrigatório.');
+  var indicadoPor = String(g('incIndicadoPor').value || '').trim();
+  if (cat === 'convidado' && !indicadoPor)
+    return aviso('Convidado é por indicação da diretoria — informe quem indicou.');
+
+  var bt = g('incBt'); bt.disabled = true; bt.textContent = 'Incluindo…';
+  api('compasso_criarInclusaoAdministrativa', [{
+    categoria: cat, nome: nome,
+    cpf: g('incCpf').value, email: g('incEmail').value,
+    whatsapp: g('incWhatsapp').value, indicadoPor: indicadoPor
+  }], function(r){
+    bt.disabled = false; bt.textContent = 'Incluir';
+    if (!r || !r.ok) return aviso((r && r.erro) || 'Não consegui incluir.');
+    fecharInclusao();
+    aviso(cat === 'convidado'
+      ? 'Convidado incluído e já validado.'
+      : 'Acompanhante incluído. Registre o pagamento na gaveta para poder emitir.');
+    recarregar();
+  });
+}
+
+/* ══ CONFERÊNCIA EM LOTE ═══════════════════════════════════════════════════
+   O botão que dá conta das 201 linhas da planilha importada. Ele valida
+   SOMENTE quem está na base com filiação ativa; não reprova ninguém e não
+   toca em inscrição já analisada — a explicação inteira está no cabeçalho de
+   `compasso_conferirVinculoEmLote`, em EventosValidacao.gs. O texto da
+   pergunta diz isso à pessoa, porque quem clica precisa saber o que NÃO vai
+   acontecer tanto quanto o que vai. */
+function conferirVinculoTodas(){
+  perguntar({ titulo: 'Conferir todas as inscrições contra a base?',
+              texto: 'Valida automaticamente quem está na base com filiação ativa e ainda não foi analisado. Não reprova ninguém, e não mexe no que já foi decidido.',
+              icone: '🔎', ok: 'Conferir' }, function(){
+    aviso('Conferindo contra a base… pode levar um pouco.');
+    api('compasso_conferirVinculoEmLote', [], function(r){
+      if (!r || !r.ok) return aviso((r && r.erro) || 'Não consegui conferir.');
+      aviso(r.mensagem || 'Conferência concluída.');
+      recarregar();
+    });
+  });
 }
 
 /* Motivo só existe para pendência e reprovação — validar não pede motivo. */
@@ -1368,6 +1630,9 @@ function montarHistorico(x){
   var canais = (x.entrega && x.entrega.canais) || [];
   if (canais.length)   linhas.push('Entregue por ' + canais.join(' e ').toLowerCase());
   if (x.origem)        linhas.push('Origem: ' + esc(x.origem));
+  /* Quem indicou o convidado é a única resposta possível para a pergunta que
+     alguém faz na porta do salão em dezembro. Gravado desde 26/08/2026. */
+  if (x.indicadoPor)   linhas.push('Indicado por: ' + esc(x.indicadoPor));
   g('gvHistorico').innerHTML = linhas.length ? linhas.join('<br>')
                                              : 'Nada registrado ainda.';
 }
