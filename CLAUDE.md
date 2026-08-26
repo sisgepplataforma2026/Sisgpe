@@ -29,6 +29,9 @@ Ler arquivo inteiro para achar uma função gasta contexto à toa.
 Só depois abra o arquivo — e de preferência a faixa de linhas
 (`sed -n '400,480p' Arquivo.gs`), não o arquivo todo.
 
+Para achar o módulo a partir da tarefa (e o risco conhecido dele), a skill
+`sisgep-modulos` tem a tabela de roteamento.
+
 Mexeu no código, regenere: `node tools/mapa.js`
 
 ## Antes de qualquer push
@@ -37,10 +40,15 @@ Mexeu no código, regenere: `node tools/mapa.js`
 node tools/verificar.js
 ```
 
+ou `npm test`, que é o mesmo com o teto da dívida herdada.
+
 Checa sintaxe dos `.gs` e do JS embutido nos `.html`, nomes globais duplicados,
 `google.script.run` chamando função que não existe no servidor, e segredos no
 código. Roda em ~0,2 s, sem dependências. Sai com código 1 se achar problema.
 Hoje ele acusa 22 problemas pré-existentes — veja `docs/DEBITO-TECNICO.md`.
+
+Isso roda sozinho ao fim de qualquer sessão que tenha alterado `.gs` ou `.html`
+(`tools/hook-verificar.sh`). Sessão que só leu código não paga nada.
 
 ## Regras por assunto — leia só a que interessar
 
@@ -49,6 +57,8 @@ Hoje ele acusa 22 problemas pré-existentes — veja `docs/DEBITO-TECNICO.md`.
 | qualquer `.gs` / `.html`, deploy, `clasp` | `.claude/rules/apps-script.md` |
 | login, sessão, CPF, dados pessoais, logs, permissões | `.claude/rules/seguranca-lgpd.md` |
 | cobrança, boleto, PIX, baixa, conciliação, mensalidade | `.claude/rules/financeiro.md` |
+| número de ofício/recibo/guia/protocolo, fila de envio | `.claude/rules/numeracao-e-filas.md` |
+| evento, ingresso, QR, check-in, voucher, bolsa de estudo | `.claude/rules/eventos-e-vouchers.md` |
 
 Documentação de apoio: `docs/INDEX.md`.
 

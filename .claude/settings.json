@@ -4,6 +4,9 @@
     "allow": [
       "Bash(node tools/mapa.js*)",
       "Bash(node tools/verificar.js*)",
+      "Bash(npm test)",
+      "Bash(npm run mapa)",
+      "Bash(npm run verificar)",
       "Bash(grep:*)",
       "Bash(rg:*)",
       "Bash(sed -n:*)",
@@ -17,6 +20,19 @@
       "Bash(git log:*)",
       "Bash(git show:*)",
       "Bash(git branch:*)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hook-verificar.sh"
+          }
+        ]
+      }
     ]
   }
 }

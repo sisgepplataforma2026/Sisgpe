@@ -8,7 +8,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const RAIZ = process.argv[2] || process.cwd();
+const args = process.argv.slice(2);
+const RAIZ = args.find(a => !a.startsWith('--')) || process.cwd();
 const SAIDA = path.join(RAIZ, 'docs');
 
 const arquivos = fs.readdirSync(RAIZ);
@@ -240,7 +241,7 @@ for (const d of dupNoMesmoArquivo) L.push(`| \`${d.fn}\` | \`${d.arquivo}\` (dua
 L.push('');
 
 fs.writeFileSync(path.join(SAIDA, 'MAPA.md'), L.join('\n'));
-if (process.argv.includes('--json')) fs.writeFileSync(path.join(SAIDA, 'mapa.json'), JSON.stringify({
+if (args.includes('--json')) fs.writeFileSync(path.join(SAIDA, 'mapa.json'), JSON.stringify({
   gerado: new Date().toISOString().slice(0, 10),
   arquivos: { gs: GS.length, html: HTML.length },
   funcoes: defs.size,

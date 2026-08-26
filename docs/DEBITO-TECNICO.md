@@ -96,7 +96,25 @@ faria o job falhar mesmo se a trava passasse. Isso foi trocado por
 quais branches podem publicar em homologação é decisão do time, não do
 verificador.
 
-## 5. Menores
+## 5. Protocolo e código de validação de voucher são frágeis
+
+`Voucher.gs` gera identificador com `Math.random()`, sem lock e sem conferir se
+o valor já existe na planilha — diferente das outras sete funções de numeração
+do projeto, que usam `LockService` (a tabela está em
+`.claude/rules/numeracao-e-filas.md`).
+
+| Função | Linha | Espaço de valores | Consequência |
+|---|---|---|---|
+| `gerarNumeroProtocolo_` | `Voucher.gs:63` | 900.000 | dois pedidos de bolsa podem receber o mesmo protocolo |
+| `gerarCodigoValidacaoVoucher_` | `Voucher.gs:71` | 9.000 após timestamp | código adivinhável por quem souber a hora aproximada da emissão |
+| `gerarIdPadrao_` | `Voucher.gs:57` | 900 | colisão provável em lote |
+
+O jeito certo já existe no próprio projeto: `EventosEmissao.gs:107` usa
+`Utilities.getUuid()` para o id do ingresso. Para o que precisa de **ordem**
+(protocolo visível ao associado), o padrão é numeração sequencial sob lock,
+como `gerarProximoNumeroSeguro()` em `Oficios.gs:179`.
+
+## 6. Menores
 
 - `Sem título.gs` (29 bytes) e `codigo.js` (1 byte) são arquivos vazios na raiz.
 - `Comunicacão.gs` tem acento no nome — o Apps Script aceita, mas quebra script

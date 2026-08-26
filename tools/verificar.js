@@ -9,7 +9,11 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const RAIZ = process.argv[2] || process.cwd();
+const args = process.argv.slice(2);
+const flags = new Set(args.filter(a => a.startsWith('--')));
+// tudo que nao e flag nem valor de flag e o caminho da raiz
+const posicionais = args.filter((a, i) => !a.startsWith('--') && !(i > 0 && args[i - 1] === '--max'));
+const RAIZ = posicionais[0] || process.cwd();
 const arquivos = fs.readdirSync(RAIZ);
 const GS = arquivos.filter(f => f.endsWith('.gs')).sort();
 const HTML = arquivos.filter(f => f.endsWith('.html')).sort();
@@ -53,7 +57,11 @@ for (const f of GS) {
 }
 for (const [fn, arqs] of defs) {
   const u = [...new Set(arqs)];
-  if (u.length > 1) erros.push(`global duplicado: ${fn}() definida em ${u.join(' e ')}`);
+  // Um erro por arquivo excedente, nao um por nome: assim acrescentar um
+  // terceiro arquivo a uma colisao que ja existe faz a contagem subir.
+  for (let i = 1; i < u.length; i++) {
+    erros.push(`global duplicado: ${fn}() em ${u[i]} colide com ${u[0]}`);
+  }
 }
 for (const [fn, f] of dupMesmoArquivo) erros.push(`global duplicado: ${fn}() definida duas vezes em ${f}`);
 
@@ -129,7 +137,7 @@ if (semSessao.length) {
   avisos.push(`${semSessao.length} de ${chamadasCliente.size} funcoes chamadas pelo cliente nao mostram checagem de sessao:`);
   semSessao.slice(0, 15).forEach(x => avisos.push('    ' + x));
   if (semSessao.length > 15) avisos.push(`    ... e mais ${semSessao.length - 15}. Rode com --sessoes para a lista toda.`);
-  if (process.argv.includes('--sessoes')) semSessao.slice(15).forEach(x => avisos.push('    ' + x));
+  if (flags.has('--sessoes')) semSessao.slice(15).forEach(x => avisos.push('    ' + x));
 }
 
 // ---------- 7. appsscript.json ----------
@@ -141,8 +149,8 @@ if (avisos.length) { console.log('AVISOS:'); avisos.forEach(a => console.log('  
 
 // --max N: falha so se o total passar de N. Serve para travar a divida tecnica
 // herdada num teto e barrar problema novo, sem exigir corrigir tudo de uma vez.
-const iMax = process.argv.indexOf('--max');
-const teto = iMax !== -1 ? Number(process.argv[iMax + 1]) : 0;
+const iMax = args.indexOf('--max');
+const teto = iMax !== -1 ? Number(args[iMax + 1]) || 0 : 0;
 
 if (!dedup.length) { console.log(`OK — ${GS.length} .gs e ${HTML.length} .html verificados, nada a corrigir.`); process.exit(0); }
 

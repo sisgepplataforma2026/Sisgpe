@@ -1,0 +1,10 @@
+{
+  "name": "sisgep",
+  "private": true,
+  "description": "SISGEP — ferramental de apoio. O sistema em si roda no Google Apps Script; isto aqui e so o que valida e mapeia o codigo antes do clasp push.",
+  "scripts": {
+    "test": "node tools/verificar.js --max 22",
+    "verificar": "node tools/verificar.js",
+    "mapa": "node tools/mapa.js"
+  }
+}
