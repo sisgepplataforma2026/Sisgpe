@@ -1154,14 +1154,55 @@ function enviarWhatsappOficio(urlPdf, numero) {
   /* ─────────────────────────────────────────────
      MONITORAMENTO
   ────────────────────────────────────────────── */
-function carregarMonitoramento(filtros) {
+function carregarMonitoramento(filtros, tentativa) {
   filtros = filtros || {};
+  tentativa = tentativa || 1;
+
   var painel = $("painelMonitoramento");
-  if (painel) painel.innerHTML = '<div style="text-align:center;padding:36px;color:var(--g400);font-size:13px;font-weight:500;">⏳ Carregando...</div>';
+  if (painel) painel.innerHTML = '<div style="text-align:center;padding:36px;color:var(--g400);font-size:13px;font-weight:500;">⏳ '
+    + (tentativa > 1 ? "Nova tentativa..." : "Carregando...") + '</div>';
+
   google.script.run
-    .withSuccessHandler(function(retorno) { if (retorno.erro) { toast(retorno.mensagem, "err"); return; } renderMonitoramento(retorno); })
-    .withFailureHandler(function(err) { toast("Erro ao carregar monitoramento: " + (err.message || err), "err"); })
+    .withSuccessHandler(function(retorno) {
+      if (!retorno) { renderErroMonitoramento("Resposta vazia do servidor.", filtros); return; }
+      // Erro devolvido pelo servidor: repetir não adianta, mostra o motivo.
+      if (retorno.erro) { toast(retorno.mensagem, "err", 6000); renderErroMonitoramento(retorno.mensagem, filtros); return; }
+      renderMonitoramento(retorno);
+    })
+    .withFailureHandler(function(err) {
+      var msg = (err && err.message) || String(err);
+      // A chamada não chegou ao servidor. O portal dispara dezenas de chamadas
+      // ao abrir e o Apps Script recusa as excedentes — uma segunda tentativa,
+      // depois da avalanche, costuma passar.
+      if (tentativa < 2) {
+        setTimeout(function() { carregarMonitoramento(filtros, tentativa + 1); }, 3000);
+        return;
+      }
+      toast("Erro ao carregar monitoramento: " + msg, "err", 6000);
+      renderErroMonitoramento(msg, filtros);
+    })
     .listarStatusOficios(filtros, SISGEP_TOKEN_SESSAO);
+}
+
+/**
+ * Estado de erro do painel. Antes, qualquer falha só piscava uma tarja por 4
+ * segundos e o painel ficava preso no "Carregando..." para sempre.
+ */
+function renderErroMonitoramento(mensagem, filtros) {
+  var painel = $("painelMonitoramento");
+  if (!painel) return;
+
+  painel.innerHTML =
+    '<div style="text-align:center;padding:40px 24px;">'
+    + '<div style="font-size:34px;line-height:1;">⚠️</div>'
+    + '<div style="margin-top:12px;font-size:15px;font-weight:800;color:var(--navy);">Não foi possível carregar o monitoramento</div>'
+    + '<div style="margin:8px auto 0;max-width:520px;font-size:12.5px;color:var(--g500);font-weight:500;">' + escapeHtml(mensagem || "Erro desconhecido.") + '</div>'
+    + '<div style="margin:8px auto 0;max-width:520px;font-size:11.5px;color:var(--g400);font-weight:500;">Se o portal acabou de abrir, aguarde alguns segundos: muitas chamadas simultâneas fazem o Apps Script recusar as excedentes.</div>'
+    + '<button id="btnMonTentarNovamente" style="margin-top:16px;padding:10px 18px;border-radius:10px;border:none;background:var(--navy);color:#fff;font-family:Plus Jakarta Sans,sans-serif;font-size:12.5px;font-weight:800;cursor:pointer;">🔄 Tentar novamente</button>'
+    + '</div>';
+
+  var btn = document.getElementById("btnMonTentarNovamente");
+  if (btn) btn.onclick = function() { carregarMonitoramento(filtros); };
 }
 
 function renderMonitoramento(dados) {
@@ -1350,6 +1391,7 @@ function reprocessarOficioMon(numero) {
 
 window.aplicarFiltroMonitoramento = aplicarFiltroMonitoramento;
 window.marcarStatusMon = marcarStatusMon;
+window.renderErroMonitoramento = renderErroMonitoramento;
 window.enviarOficioMon = enviarOficioMon;
 window.reprocessarOficioMon = reprocessarOficioMon;
 window.carregarMonitoramento = carregarMonitoramento;
