@@ -102,6 +102,8 @@ function verificarFuncoesOficios_(relatorio) {
     "gerarProximoNumeroSeguro",
     "criarFilaEnvioOficio_",
     "enviarOficioDaFilaAgora",
+    "reprocessarOficioDaFila",
+    "destravarOficiosProcessandoTravados",
     "listarHistoricoOficios",
     "listarStatusOficios",
     "atualizarStatusOficio",

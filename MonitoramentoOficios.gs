@@ -433,6 +433,7 @@ function listarStatusOficios(filtros, tokenSessao) {
     });
 
     var itens = Object.keys(mapa).map(function(k) { return mapa[k]; });
+    itens.forEach(MON_OFICIOS_definirAcoesEnvio_);
     var resumo = MON_OFICIOS_resumirItens_(itens);
 
     itens = MON_OFICIOS_aplicarFiltrosStatus_(itens, filtros);
@@ -558,7 +559,11 @@ function MON_OFICIOS_listarStatusControle_(ss) {
       data: MON_OFICIOS_formatarData_(dataVal),
       obs: cObs ? String(row[cObs - 1] || "").trim() : "",
       link: cLink ? String(row[cLink - 1] || "").trim() : "",
-      diasSemResposta: MON_OFICIOS_diasSemResposta_(dataVal)
+      diasSemResposta: MON_OFICIOS_diasSemResposta_(dataVal),
+      naFila: false,
+      statusFila: "",
+      tentativas: 0,
+      dataUltimaTentativa: null
     });
   });
 
@@ -578,6 +583,8 @@ function MON_OFICIOS_listarStatusFila_(ss) {
   var cData   = hm["DATA_CRIACAO"];
   var cErro   = hm["ULTIMO_ERRO"];
   var cAnexos = hm["ANEXOS_JSON"];
+  var cTent   = hm["TENTATIVAS"];
+  var cDataTent = hm["DATA_ULTIMA_TENTATIVA"];
 
   if (!cStatus || !cNumero) return [];
 
@@ -588,8 +595,8 @@ function MON_OFICIOS_listarStatusFila_(ss) {
     var numero = String(row[cNumero - 1] || "").trim();
     if (!numero) return;
 
-    var status = MON_OFICIOS_normStatus_(row[cStatus - 1]) || "PENDENTE";
-    if (status === "ERRO_PERMANENTE") status = "ERRO";
+    var statusFila = MON_OFICIOS_normStatus_(row[cStatus - 1]) || "PENDENTE";
+    var status = statusFila === "ERRO_PERMANENTE" ? "ERRO" : statusFila;
 
     var tipoRaw = cTipo ? String(row[cTipo - 1] || "").trim() : "";
     var dataVal = cData ? row[cData - 1] : null;
@@ -605,7 +612,11 @@ function MON_OFICIOS_listarStatusFila_(ss) {
       data: MON_OFICIOS_formatarData_(dataVal),
       obs: cErro ? String(row[cErro - 1] || "").trim() : "",
       link: cAnexos ? MON_OFICIOS_extrairLinkPdf_(row[cAnexos - 1]) : "",
-      diasSemResposta: MON_OFICIOS_diasSemResposta_(dataVal)
+      diasSemResposta: MON_OFICIOS_diasSemResposta_(dataVal),
+      naFila: true,
+      statusFila: statusFila,
+      tentativas: cTent ? (parseInt(row[cTent - 1], 10) || 0) : 0,
+      dataUltimaTentativa: cDataTent ? row[cDataTent - 1] : null
     });
   });
 
@@ -626,7 +637,72 @@ function MON_OFICIOS_mesclarItemStatus_(a, b) {
   });
 
   base.origem = base.origem === extra.origem ? base.origem : "Controle/Fila";
+
+  // O laço acima só preenche campo vazio, e `false`/`0` não contam como vazio.
+  // Estes campos vêm da fila e decidem se ainda dá para enviar — mescla explícita.
+  base.naFila = !!(a.naFila || b.naFila);
+  base.statusFila = a.statusFila || b.statusFila || "";
+  base.tentativas = Math.max(Number(a.tentativas) || 0, Number(b.tentativas) || 0);
+  base.dataUltimaTentativa = a.dataUltimaTentativa || b.dataUltimaTentativa || null;
+
   return base;
+}
+
+/**
+ * Diz, para cada linha do painel, o que o operador pode fazer.
+ * Só é enviável o que tem linha em FILA_ENVIO_OFICIOS: um "Pendente" que veio
+ * apenas do Controle não tem e-mail montado, não há o que disparar.
+ */
+function MON_OFICIOS_definirAcoesEnvio_(item) {
+  var maxTentativas = typeof FILA_OFICIOS_MAX_TENTATIVAS !== "undefined" ? FILA_OFICIOS_MAX_TENTATIVAS : 3;
+
+  item.podeEnviar = false;
+  item.podeReprocessar = false;
+  item.motivoBloqueio = "";
+
+  if (!item.naFila) {
+    item.motivoBloqueio = "Sem registro na fila de envio — nada a disparar por aqui.";
+    return item;
+  }
+
+  var statusFila = MON_OFICIOS_normStatus_(item.statusFila);
+  var tentativas = Number(item.tentativas) || 0;
+
+  if (statusFila === "ENVIADO") {
+    var statusPainel = MON_OFICIOS_normStatus_(item.status);
+    if (statusPainel !== "ENVIADO" && statusPainel !== "CONFIRMADO") {
+      item.motivoBloqueio = "E-mail já enviado pela fila — o status do Controle é que está desatualizado.";
+    }
+    return item;
+  }
+
+  if (statusFila === "ERRO_PERMANENTE" || tentativas >= maxTentativas) {
+    item.podeReprocessar = true;
+    item.motivoBloqueio = "Limite de " + maxTentativas + " tentativas atingido — reprocesse para voltar à fila.";
+    return item;
+  }
+
+  if (statusFila === "PROCESSANDO") {
+    var travado = typeof filaOficiosProcessandoTravado_ === "function"
+      ? filaOficiosProcessandoTravado_(item.dataUltimaTentativa)
+      : false;
+
+    if (travado) {
+      item.podeEnviar = true;
+      item.podeReprocessar = true;
+      item.motivoBloqueio = "Envio interrompido em processamento.";
+    } else {
+      item.motivoBloqueio = "Envio em processamento agora.";
+    }
+    return item;
+  }
+
+  if (statusFila === "PENDENTE" || statusFila === "ERRO") {
+    item.podeEnviar = true;
+    if (tentativas > 0) item.motivoBloqueio = "Tentativas até agora: " + tentativas + " de " + maxTentativas + ".";
+  }
+
+  return item;
 }
 
 function MON_OFICIOS_resumirItens_(itens) {

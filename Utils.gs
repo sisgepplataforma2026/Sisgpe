@@ -386,6 +386,8 @@ function _diagOficiosChecarFuncoes_(itens) {
     "buscarEscolasPorTermo",
     "processarFilaEnvioOficios",
     "enviarOficioDaFilaAgora",
+    "reprocessarOficioDaFila",
+    "destravarOficiosProcessandoTravados",
     "listarHistoricoOficios",
     "listarStatusOficios",
     "prepararFilaTaxaAssistencial",
