@@ -49,6 +49,44 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 ## 🔴 ABERTO
 
+### 34. Compasso — importação de planilha e o diálogo do sistema
+
+**Entregue em 26/08/2026.** Quatro arquivos colados pelo usuário no mesmo
+dia: `DialogoSISGEP` (**novo**), `CompassoImportacao`, `CompassoInscricoes`,
+`Code`.
+
+**Por que entrou:** o usuário anexou a planilha e nada aconteceu — regressão
+minha ao fechar a Importação numa IIFE, que tirou `escolheu` e `apontar` do
+alcance dos `onchange` inline. Depois, o print do `confirm()` nativo
+anunciando o endereço do googleusercontent: *"Ajustar essas telas para o
+padrão Sisgep"*.
+
+**O que precisa ser exercido no ar** — nesta ordem, porque a primeira falha
+esconde as outras:
+
+1. 🔴 **O arquivo novo existe?** Se `DialogoSISGEP.html` não tiver sido
+   criado no projeto, o `include()` falha em SILÊNCIO (`Code.gs:313` engole a
+   exceção) e as três perguntas somem — o botão parece morto. É o primeiro
+   sintoma a descartar.
+2. 🔴 **Anexar a planilha abre a conferência.** Era o defeito relatado.
+   Também pelo arrastar-e-soltar, que passava por outro caminho.
+3. 🔴 **Importar pergunta pelo diálogo do sistema**, faixa navy, sem citar
+   googleusercontent. Idem "Emitir ingressos" e "Apagar tudo" — este último
+   em vermelho.
+4. 🟡 **Apontar coluna manualmente** (o `rg` saiu "não encontrei" no print):
+   escolher no seletor e confirmar que a escolha é aceita. É o segundo
+   `onchange` que estava preso na IIFE, e o único que ainda não foi visto
+   funcionando.
+5. 🟡 **Um cabeçalho só.** Como aba da Central, a Importação não pode repetir
+   o título de módulo embaixo de "Festa Compasso da Vida 2026".
+6. ⚪ Botões com o desenho do sistema; selo HOMOLOGAÇÃO fora do vermelho de
+   erro.
+
+**Não coberto por teste automatizado, e por quê:** a decisão de esconder o
+cabeçalho depende de `getElementById` achar a Central numa página montada
+pelo `include()` real — o harness resolve include desde hoje, mas não aplica
+CSS, então "aparece/não aparece" continua só verificável no navegador.
+
 ### 33. Eventos — a entidade passou a mandar (Fase 1)
 
 **Entregue em 26/08/2026.** Oito `.gs` colados pelo usuário no mesmo dia:
