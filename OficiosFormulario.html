@@ -4,8 +4,18 @@
       <h2>📄 Módulo de Ofícios</h2>
       <p>Emissão, histórico e envio de ofícios sindicais</p>
     </div>
-    <div class="of-badge">SindEducação-ES</div>
+    <div style="position:relative;z-index:1;display:flex;align-items:center;gap:10px;">
+      <button type="button" id="btnAbrirDashboardExecutivo" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.35);color:#fff;font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:8px;cursor:pointer;">📊 Dashboard Executivo</button>
+      <div class="of-badge">SindEducação-ES</div>
+    </div>
   </div>
+
+<div class="of-tabs" id="ofTabsSecoes">
+  <button type="button" class="of-tab active" id="abaOficioNovo">📄 Novo Ofício</button>
+  <button type="button" class="of-tab" id="abaOficioHistorico">🕘 Histórico</button>
+  <button type="button" class="of-tab" id="abaMonitoramento">📡 Monitoramento</button>
+  <button type="button" class="of-tab" id="abaTaxaAssistencial">💰 Taxa Assistencial</button>
+</div>
 
 <div class="of-tabs" id="ofTabsPrincipal">
   <button type="button" class="of-tab active" data-tipo-oficio="Filiação">📄 Filiação</button>
@@ -35,7 +45,16 @@
               <option value="">Selecione...</option>
               <option value="Filiação">Filiação</option>
               <option value="Desfiliação">Desfiliação</option>
-              <option value="Taxa Negocial">Taxa Negocial</option>
+              <!-- A OPOSIÇÃO É TIPO PRÓPRIO desde 18/08/2026.
+                   Ela existia no backend, com texto e template próprios, mas
+                   NÃO estava na lista: só dava para chegar nela pelo caminho
+                   da IA. Quem precisava emitir uma oposição escolhia "Taxa
+                   Negocial" e recebia o ofício de COBRANÇA — o contrário do
+                   que queria mandar. O usuário descreveu exatamente isso:
+                   "eu não estou cobrando as escolas; esse ofício é ofício de
+                   oposição à taxa negocial". -->
+              <option value="Taxa Negocial">Taxa Negocial — cobrança</option>
+              <option value="Oposição à Taxa Negocial">Taxa Negocial — oposição</option>
               <option value="Taxa Assistencial">Taxa Assistencial</option>
               <option value="Ofício Livre">Ofício Livre</option>
             </select>
@@ -43,6 +62,161 @@
           <div class="fld">
             <label>STATUS DE SINCRONIZAÇÃO</label>
             <div id="statusSincronizacao" class="preview-inline" style="background:var(--g50);border-color:var(--g200);color:var(--g500);">ℹ Adicione pelo menos 1 trabalhador</div>
+          </div>
+        </div>
+
+        <!-- ═══ COMO PREENCHER — UMA linha de modos, para todos os tipos ═══
+             Antes existiam QUATRO cópias desta linha, uma dentro de cada
+             bloco de tipo. Elas divergiram: um tipo ganhava um botão que o
+             outro não tinha, e em Taxa Negocial duas linhas apareciam
+             empilhadas. Foi o que o usuário fotografou ("Pq tem esses botões
+             aqui, não deveria ter"). Uma linha só, com a visibilidade
+             decidida em oficioAtualizarPorTipo(), fecha essa porta.
+
+             Os três modos diferem em UMA coisa: onde mora a ficha.
+               Individual → uma ficha por trabalhador, no cartão
+               Em lote    → nenhuma no cartão, um PDF único no fim
+               IA         → o documento lido é a própria ficha
+             Escola, nomes, CPF, limite de 50, revisão, emissão e as quatro
+             ações finais são o mesmo caminho nos três. -->
+        <div id="blocoModosOficio" style="display:none;margin-top:14px;border:1.5px dashed var(--gold);border-radius:14px;padding:16px;background:#fffdf7;">
+          <div style="font-size:11px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.09em;margin-bottom:9px;">Como preencher</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button type="button" id="btnModoIndividual" class="btn btn-outline" style="flex:1;min-width:170px;">📝 Individual</button>
+            <button type="button" id="btnModoLote" class="btn btn-outline" style="flex:1;min-width:170px;">⇩ Em lote</button>
+            <button type="button" id="btnModoIAUnico" class="btn btn-outline" style="flex:1;min-width:170px;">✨ Extrair com IA</button>
+          </div>
+          <div id="modoOficioAjuda" style="margin-top:10px;font-size:12.5px;color:var(--g600);line-height:1.6;"></div>
+        </div>
+
+        <!-- ═══ FILIAÇÃO VIA IA — leitura de formulário de sindicalização escaneado/foto ═══
+             Só aparece quando TIPO DE OFÍCIO = Filiação. Nada aqui grava ou envia
+             nada sozinho: "Analisar formulário" só sugere; "Confirmar" só cria a
+             ficha (que ainda passa pela aprovação normal, como já acontece hoje
+             em Sindicalização > Fichas Sindicais > "Importar formulário em papel"). -->
+        <div id="blocoFiliacaoIA" style="display:none;margin-top:14px;border:1.5px dashed var(--gold,#C9A84C);border-radius:14px;padding:16px;background:#fffdf7;">
+          <div id="filIA_areaUpload" style="display:none;">
+            <div class="fld" style="margin-bottom:10px;">
+              <label>ANEXAR FORMULÁRIO DE SINDICALIZAÇÃO (PDF ou foto)</label>
+              <input type="file" id="filIA_arquivo" accept=".pdf,.jpg,.jpeg,.png">
+            </div>
+            <button type="button" class="btn btn-navy" id="filIA_btnAnalisar" onclick="filIA_analisar()">🔎 Analisar formulário</button>
+            <div id="filIA_status" style="margin-top:10px;font-size:12.5px;color:var(--g500);"></div>
+
+            <div id="filIA_revisao" style="display:none;margin-top:16px;border-top:1px solid #eee;padding-top:14px;">
+              <div style="font-size:12px;font-weight:800;color:#92400e;margin-bottom:10px;">
+                ✨ Dados sugeridos pela IA — confira e corrija antes de confirmar
+              </div>
+              <div id="filIA_alertas" style="margin-bottom:12px;"></div>
+              <div class="fld">
+                <label>TIPO</label>
+                <select id="filIA_tipo">
+                  <option value="CADASTRAMENTO">Cadastramento</option>
+                  <option value="RECADASTRAMENTO">Recadastramento</option>
+                </select>
+              </div>
+              <div class="fg fg-2" style="margin-top:8px;">
+                <div class="fld"><label>NOME DO TRABALHADOR</label><input type="text" id="filIA_nome"></div>
+                <div class="fld"><label>CPF</label><input type="text" id="filIA_cpf"></div>
+              </div>
+              <div class="fld" style="margin-top:8px;">
+                <label>ESCOLA (selecione a correspondência correta)</label>
+                <select id="filIA_escola"></select>
+              </div>
+              <div class="fg fg-2" style="margin-top:8px;">
+                <div class="fld"><label>CARGO</label><input type="text" id="filIA_cargo"></div>
+                <div class="fld"><label>CELULAR</label><input type="text" id="filIA_celular"></div>
+              </div>
+              <div class="fld" style="margin-top:8px;">
+                <label>E-MAIL</label>
+                <input type="text" id="filIA_email">
+              </div>
+              <div class="fld" style="margin-top:8px;">
+                <label>ENDEREÇO (rua, número, bairro, cidade, UF)</label>
+                <input type="text" id="filIA_endereco">
+              </div>
+              <label style="display:flex;align-items:center;gap:8px;margin-top:14px;font-size:12.5px;">
+                <input type="checkbox" id="filIA_confirmado" style="width:auto;">
+                Conferi os dados acima contra o documento original.
+              </label>
+              <div style="margin-top:14px;">
+                <button type="button" class="btn btn-navy" id="filIA_btnConfirmar" onclick="filIA_confirmar()">✅ Confirmar e registrar ficha</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ DESFILIAÇÃO VIA IA — leitura de carta escaneada/foto ═══
+             Só aparece quando TIPO DE OFÍCIO = Desfiliação. Nada aqui grava
+             ou envia nada sozinho: "Analisar carta" só sugere; "Confirmar
+             desfiliação" só age depois que o atendente revisar os campos. -->
+        <div id="blocoDesfiliacaoIA" style="display:none;margin-top:14px;border:1.5px dashed var(--gold,#C9A84C);border-radius:14px;padding:16px;background:#fffdf7;">
+          <div id="desfIA_areaUpload" style="display:none;">
+            <div class="fld" style="margin-bottom:10px;">
+              <label>ANEXAR CARTA DE DESFILIAÇÃO (PDF ou foto)</label>
+              <input type="file" id="desfIA_arquivo" accept=".pdf,.jpg,.jpeg,.png">
+            </div>
+            <button type="button" class="btn btn-navy" id="desfIA_btnAnalisar" onclick="desfIA_analisar()">🔎 Analisar carta</button>
+            <div id="desfIA_status" style="margin-top:10px;font-size:12.5px;color:var(--g500);"></div>
+
+            <div id="desfIA_revisao" style="display:none;margin-top:16px;border-top:1px solid #eee;padding-top:14px;">
+              <div style="font-size:12px;font-weight:800;color:#92400e;margin-bottom:10px;">
+                ✨ Dados sugeridos pela IA — confira e corrija antes de confirmar
+              </div>
+              <div id="desfIA_alertas" style="margin-bottom:12px;"></div>
+              <div class="fg fg-2">
+                <div class="fld"><label>NOME DO TRABALHADOR</label><input type="text" id="desfIA_nome"></div>
+                <div class="fld"><label>CPF</label><input type="text" id="desfIA_cpf"></div>
+              </div>
+              <div class="fld" style="margin-top:8px;">
+                <label>ESCOLA (selecione a correspondência correta)</label>
+                <select id="desfIA_escola"></select>
+              </div>
+              <div class="fld" style="margin-top:8px;">
+                <label>MOTIVO (informativo, não vai no ofício padrão)</label>
+                <input type="text" id="desfIA_motivo">
+              </div>
+              <div style="margin-top:14px;">
+                <button type="button" class="btn btn-navy" id="desfIA_btnConfirmar" onclick="desfIA_confirmar()">✅ Confirmar e gerar ofício de desfiliação</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ OPOSIÇÃO À TAXA NEGOCIAL VIA IA — leitura de carta escaneada/foto ═══
+             Só aparece quando TIPO DE OFÍCIO = Taxa Negocial. Nada aqui grava
+             ou envia nada sozinho: "Analisar carta" só sugere; "Confirmar
+             oposição" só age depois que o atendente revisar os campos. -->
+        <div id="blocoOposicaoTaxaIA" style="display:none;margin-top:14px;border:1.5px dashed var(--gold,#C9A84C);border-radius:14px;padding:16px;background:#fffdf7;">
+          <div id="oposIA_areaUpload" style="display:none;">
+            <div class="fld" style="margin-bottom:10px;">
+              <label>ANEXAR CARTA DE OPOSIÇÃO À TAXA NEGOCIAL (PDF ou foto)</label>
+              <input type="file" id="oposIA_arquivo" accept=".pdf,.jpg,.jpeg,.png">
+            </div>
+            <button type="button" class="btn btn-navy" id="oposIA_btnAnalisar" onclick="oposIA_analisar()">🔎 Analisar carta</button>
+            <div id="oposIA_status" style="margin-top:10px;font-size:12.5px;color:var(--g500);"></div>
+
+            <div id="oposIA_revisao" style="display:none;margin-top:16px;border-top:1px solid #eee;padding-top:14px;">
+              <div style="font-size:12px;font-weight:800;color:#92400e;margin-bottom:10px;">
+                ✨ Dados sugeridos pela IA — confira e corrija antes de confirmar
+              </div>
+              <div id="oposIA_alertas" style="margin-bottom:12px;"></div>
+              <div class="fg fg-2">
+                <div class="fld"><label>NOME DO TRABALHADOR</label><input type="text" id="oposIA_nome"></div>
+                <div class="fld"><label>CPF</label><input type="text" id="oposIA_cpf"></div>
+              </div>
+              <div class="fld" style="margin-top:8px;">
+                <label>ESCOLA (selecione a correspondência correta)</label>
+                <select id="oposIA_escola"></select>
+              </div>
+              <div class="fld" style="margin-top:8px;">
+                <label>MOTIVO (informativo, não vai no ofício padrão)</label>
+                <input type="text" id="oposIA_motivo">
+              </div>
+              <div style="margin-top:14px;">
+                <button type="button" class="btn btn-navy" id="oposIA_btnConfirmar" onclick="oposIA_confirmar()">✅ Confirmar e gerar ofício de oposição à Taxa Negocial</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -159,7 +333,7 @@
             <div class="of-step">3</div>
             <div>
               <div class="of-card-title">Trabalhadores / Associados</div>
-              <div class="of-card-sub">Cadastre os trabalhadores vinculados ao ofício (máx. 25)</div>
+              <div class="of-card-sub" id="ofSubTrabalhadores">Cadastre os trabalhadores vinculados ao ofício</div>
             </div>
           </div>
           <button type="button" id="btnAddTrabalhador" class="btn btn-navy btn-sm">+ Adicionar</button>
@@ -169,6 +343,30 @@
             <div id="listaTrabalhadores">
               <div class="worker-empty">👤 Nenhum trabalhador adicionado ainda.<br>Clique em <strong>"+ Adicionar"</strong> para começar.</div>
             </div>
+          </div>
+
+          <!-- FICHAS DO OFÍCIO — o lugar do PDF único do lote.
+               Antes só existia ficha POR CARTÃO, e um PDF com todas as fichas
+               da escola não tinha onde ser anexado: era exatamente a pergunta
+               do usuário ("e onde eu coloco o pdf das fichas do lote?").
+               Fica visível em todo tipo: anexar não é obrigatório, e um campo
+               opcional a mais custa espaço, enquanto um campo ausente custa
+               uma emissão que não dá para fazer. -->
+          <div id="blocoFichasOficio" style="display:block;margin-top:14px;padding:14px 16px;border:1.5px dashed var(--g300);border-radius:var(--rad);background:var(--g50);">
+            <div style="font-size:11px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">
+              📎 Fichas do ofício
+            </div>
+            <div style="font-size:12.5px;color:var(--g600);line-height:1.6;margin-bottom:10px;">
+              Um PDF com <strong>todas</strong> as fichas da escola — é como sai da
+              digitalização. Vale para o ofício inteiro; não precisa anexar uma por pessoa.
+            </div>
+            <input type="file" id="fichasOficioLote" multiple accept=".pdf,.jpg,.jpeg,.png">
+            <div id="fichasOficioResumo" style="margin-top:8px;font-size:12px;color:var(--g500);"></div>
+            <!-- Fila dos arquivos anexados, com um check por linha e o botao
+                 que remove os marcados. Sem ela nao havia como tirar UM
+                 arquivo: escolher de novo substitui o conjunto inteiro, e
+                 errar um PDF em quatro custava refazer os quatro. -->
+            <div id="fichasOficioFila" style="margin-top:10px;"></div>
           </div>
           <input type="file" id="fichas" multiple style="display:none;">
           <div id="contadorFichas" class="preview-inline" style="margin-top:12px;display:none;">0 / 25 fichas</div>
@@ -479,191 +677,142 @@
 </div>
 
 <!-- ═══ BLOCO: MENSALIDADES ═══ -->
-<div id="blocoMensalidades" style="display:none;">
-
-  <!-- Header -->
-  <div class="of-modulo-header">
-    <div>
-      <div class="of-modulo-header-title">💰 Controle de Mensalidade Sindical</div>
-      <div class="of-modulo-header-sub">Acompanhe confirmações de desconto e gerencie cobranças em lote</div>
-    </div>
-    <div class="of-modulo-header-badge">SindEducação-ES</div>
-  </div>
-
-  <div class="of-card">
-    <div class="of-card-head">
-      <div class="of-card-head-l">
-        <div class="of-card-ico">💰</div>
-        <div>
-          <div class="of-card-title">Mensalidade Sindical</div>
-          <div class="of-card-sub">Gerencie confirmações e cobranças de desconto em folha</div>
-        </div>
-      </div>
-      <div class="row-btns">
-        <!-- ✅ NOVO BOTÃO: Processar Relatório -->
-        <button type="button" id="btnProcessarRelatorio" class="btn btn-gold btn-sm">📎 Processar Relatório</button>
-        <button type="button" id="btnMensAtualizarAlerts" class="btn btn-ghost btn-sm">🔔 Processar Alertas</button>
-        <button type="button" id="btnMensRecarregar" class="btn btn-ghost btn-sm">↺ Atualizar</button>
-      </div>
-    </div>
-
-    <div class="of-card-body">
-
-      <!-- Cards de resumo -->
-      <div id="mensCardsResumo" style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:20px;">
-        <div class="mens-card" data-filtro="" style="background:#eff6ff;border:1.5px solid #bfdbfe;">
-          <div style="font-size:24px;font-weight:900;color:#1d4ed8;" id="mensStatTotal">—</div>
-          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-top:4px;">Total</div>
-        </div>
-        <div class="mens-card" data-filtro="CONFIRMADO" style="background:#f0fdf4;border:1.5px solid #6ee7b7;">
-          <div style="font-size:24px;font-weight:900;color:#059669;" id="mensStatConfirmados">—</div>
-          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-top:4px;">Confirmados</div>
-        </div>
-        <div class="mens-card" data-filtro="AGUARDANDO" style="background:#fffbeb;border:1.5px solid #fcd34d;">
-          <div style="font-size:24px;font-weight:900;color:#d97706;" id="mensStatAguardando">—</div>
-          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-top:4px;">Aguardando</div>
-        </div>
-        <div class="mens-card" data-filtro="PENDENTE_30D" style="background:#fef2f2;border:1.5px solid #fca5a5;">
-          <div style="font-size:24px;font-weight:900;color:#dc2626;" id="mensStatPendentes">—</div>
-          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-top:4px;">+30 dias</div>
-        </div>
-        <div class="mens-card" data-filtro="COBRANCA_ENVIADA" style="background:#ede9fe;border:1.5px solid #c4b5fd;">
-          <div style="font-size:24px;font-weight:900;color:#7c3aed;" id="mensStatCobr">—</div>
-          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-top:4px;">Cobrança Enviada</div>
-        </div>
-      </div>
-
-      <!-- Alerta crítico -->
-      <div id="mensAlertaCritico" style="display:none;margin-bottom:16px;padding:12px 16px;background:#fef2f2;border:1.5px solid #fca5a5;border-radius:12px;align-items:center;gap:10px;">
-        <span style="font-size:20px;">🔴</span>
-        <div style="flex:1;">
-          <div style="font-size:13px;font-weight:800;color:#991b1b;" id="mensAlertaTexto">Associados aguardando confirmação há mais de 30 dias</div>
-          <div style="font-size:11px;color:#b91c1c;margin-top:2px;">Clique em "Ver pendentes" para notificar as escolas.</div>
-        </div>
-        <button id="btnMensFiltrarPendentes" class="btn btn-red btn-sm">Ver pendentes</button>
-      </div>
-
-      <!-- Toolbar -->
-      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;padding:12px 14px;background:var(--g50);border:1.5px solid var(--g200);border-radius:12px;">
-        <div style="position:relative;flex:1;min-width:200px;">
-          <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:14px;opacity:.4;pointer-events:none;">🔍</span>
-          <input id="mensFiltroNome" type="text" placeholder="Buscar por nome ou CPF..." style="width:100%;min-height:40px;border:1.5px solid var(--g200);border-radius:10px;padding:0 12px 0 34px;font-family:Plus Jakarta Sans,sans-serif;font-size:13px;outline:none;box-sizing:border-box;">
-        </div>
-        <input id="mensFiltroEscola" type="text" placeholder="Filtrar por escola..." style="min-height:40px;border:1.5px solid var(--g200);border-radius:10px;padding:0 12px;font-family:Plus Jakarta Sans,sans-serif;font-size:13px;outline:none;min-width:180px;">
-        <select id="mensFiltroStatus" style="min-height:40px;border:1.5px solid var(--g200);border-radius:10px;padding:0 10px;font-family:Plus Jakarta Sans,sans-serif;font-size:13px;outline:none;background:#fff;">
-          <option value="">Todos os status</option>
-          <option value="AGUARDANDO">⏳ Aguardando</option>
-          <option value="CONFIRMADO">✅ Confirmado</option>
-          <option value="PENDENTE_30D">⚠️ +30 dias</option>
-          <option value="COBRANCA_ENVIADA">📧 Cobrança Enviada</option>
-          <option value="REGULARIZADO">🟢 Regularizado</option>
-          <option value="DESFILIADO">❌ Desfiliado</option>
-        </select>
-        <button id="btnMensLimparFiltros" class="btn btn-ghost btn-sm">✕ Limpar</button>
-        <span id="mensInfoFiltro" style="font-size:12px;color:var(--g500);font-weight:600;margin-left:auto;"></span>
-      </div>
-
-      <!-- Barra de ações em massa -->
-      <div id="mensBarraAcoes" style="display:none;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;margin-bottom:12px;">
-        <span id="mensBarraLabel" style="font-size:13px;font-weight:700;color:#1e40af;">0 selecionado(s)</span>
-        <button id="btnMensConfirmarLote" class="btn btn-sm" style="background:#f0fdf4;color:#059669;border:1.5px solid #6ee7b7;">✅ Confirmar desconto</button>
-        <button id="btnMensCobracaLote" class="btn btn-navy btn-sm">📧 Cobrança em lote</button>
-        <button id="btnMensWhatsLote" class="btn btn-sm" style="background:#f0fdf4;color:#059669;border:1.5px solid #6ee7b7;">💬 WhatsApp em massa</button>
-        <button id="btnMensDesmarcar" class="btn btn-ghost btn-sm">✕ Desmarcar</button>
-      </div>
-
-      <!-- Tabela -->
-      <div class="of-table-wrap">
-        <table class="of-table" style="table-layout:fixed;">
-          <colgroup>
-            <col style="width:36px"><col style="width:22%"><col style="width:13%">
-            <col style="width:25%"><col style="width:12%"><col style="width:8%">
-            <col style="width:10%"><col style="width:10%">
-          </colgroup>
-          <thead>
-            <tr>
-              <th style="cursor:default;"><input type="checkbox" id="mensCheckTodos"></th>
-              <th data-mens-col="nome" style="cursor:pointer;user-select:none;" title="Ordenar por nome">Nome</th>
-              <th data-mens-col="cpf" style="cursor:pointer;user-select:none;" title="Ordenar por CPF">CPF</th>
-              <th data-mens-col="escola" style="cursor:pointer;user-select:none;" title="Ordenar por escola">Escola</th>
-              <th data-mens-col="numeroOficio" style="cursor:pointer;user-select:none;" title="Ordenar por ofício">Ofício</th>
-              <th data-mens-col="diasSemConfirm" style="cursor:pointer;user-select:none;" title="Ordenar por dias">Dias</th>
-              <th data-mens-col="status" style="cursor:pointer;user-select:none;" title="Ordenar por status">Status</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody id="mensTabelaBody">
-            <tr><td colspan="8" style="text-align:center;padding:48px;color:var(--g400);font-size:13px;">⏳ Carregando...</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Paginação -->
-      <div id="mensPaginacao" style="display:none;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:14px;padding:2px 4px 0;">
-        <div id="mensPagInfo" style="font-size:12px;color:#64748b;font-weight:600;">—</div>
-        <div style="display:flex;gap:8px;">
-          <button id="mensPagAnt" style="height:36px;padding:0 14px;border:1.5px solid #e2e8f0;border-radius:10px;background:#fff;font-size:12px;font-weight:700;cursor:pointer;">← Anterior</button>
-          <button id="mensPagProx" style="height:36px;padding:0 14px;border:1.5px solid #e2e8f0;border-radius:10px;background:#fff;font-size:12px;font-weight:700;cursor:pointer;">Próximo →</button>
-        </div>
-      </div>
-      <div id="mensMsgBox" style="display:none;margin-top:12px;padding:12px 15px;border-radius:10px;font-size:13px;font-weight:600;"></div>
-
-    </div>
-  </div>
-
-  <!-- ═══ MODAL: PROCESSAR RELATÓRIO ═══ -->
-  <div id="modalProcessarRelatorio" style="display:none;position:fixed;inset:0;background:rgba(0,18,48,.65);z-index:9999;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px);">
-    <div style="background:#fff;border-radius:20px;width:100%;max-width:560px;box-shadow:0 40px 90px rgba(0,20,60,.36);overflow:hidden;">
-      <!-- Header -->
-      <div style="background:linear-gradient(135deg,#001f4d,#002f6c,#1565C0);padding:20px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <div>
-          <div style="font-size:16px;font-weight:900;color:#fff;">📎 Processar Relatório de Desconto</div>
-          <div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:3px;">A IA irá ler o documento e confirmar os associados encontrados</div>
-        </div>
-        <button onclick="fecharModalRelatorio()" style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.22);color:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;">×</button>
-      </div>
-      <!-- Body -->
-      <div style="padding:24px;display:flex;flex-direction:column;gap:16px;">
-        <!-- Escola -->
-        <div>
-          <label style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:#64748b;display:block;margin-bottom:6px;">ESCOLA</label>
-          <div style="position:relative;">
-            <input type="text" id="relEscolaBusca" placeholder="Digite o nome da escola..." style="width:100%;min-height:44px;border:1.5px solid #e2e8f0;border-radius:10px;padding:0 14px;font-family:Plus Jakarta Sans,sans-serif;font-size:13px;outline:none;box-sizing:border-box;">
-            <input type="hidden" id="relEscolaCnpj">
-            <div id="relEscolaAutoComplete" style="display:none;position:absolute;top:100%;left:0;right:0;border:1.5px solid #bfdbfe;border-top:none;border-radius:0 0 10px 10px;background:#fff;z-index:999;max-height:160px;overflow-y:auto;box-shadow:0 8px 20px rgba(0,20,60,.12);"></div>
-          </div>
-        </div>
-        <!-- Upload -->
-        <div>
-          <label style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:#64748b;display:block;margin-bottom:6px;">ARQUIVO DO RELATÓRIO (PDF ou Excel)</label>
-          <div style="border:2px dashed #e2e8f0;border-radius:12px;padding:20px;text-align:center;background:#f8fafc;cursor:pointer;transition:border-color .15s;" id="relUploadArea" onclick="document.getElementById('relArquivoInput').click()">
-            <div style="font-size:28px;margin-bottom:8px;">📄</div>
-            <div style="font-size:13px;font-weight:700;color:#334155;">Clique para selecionar o arquivo</div>
-            <div style="font-size:11px;color:#94a3b8;margin-top:4px;">PDF, Excel (.xlsx, .xls) ou imagem</div>
-            <div id="relArquivoNome" style="display:none;margin-top:10px;font-size:12px;font-weight:700;color:#059669;"></div>
-          </div>
-          <input type="file" id="relArquivoInput" accept=".pdf,.xlsx,.xls,.csv,.jpg,.jpeg,.png" style="display:none;">
-        </div>
-        <!-- Status -->
-        <div id="relStatusBox" style="display:none;padding:12px 14px;border-radius:10px;font-size:13px;font-weight:600;"></div>
-        <!-- Resultado -->
-        <div id="relResultadoBox" style="display:none;">
-          <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:#64748b;margin-bottom:10px;">RESULTADO DA ANÁLISE</div>
-          <div id="relResultadoLista" style="display:flex;flex-direction:column;gap:8px;max-height:260px;overflow-y:auto;"></div>
-          <div id="relObservacao" style="margin-top:10px;padding:10px 12px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:8px;font-size:12px;color:#1e40af;font-weight:600;display:none;"></div>
-        </div>
-      </div>
-      <!-- Footer -->
-      <div style="padding:16px 24px;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;gap:9px;background:#fafcff;">
-        <button onclick="fecharModalRelatorio()" style="height:42px;padding:0 18px;border:1.5px solid #e2e8f0;border-radius:10px;background:#fff;font-family:Plus Jakarta Sans,sans-serif;font-size:13px;font-weight:700;color:#475569;cursor:pointer;">✕ Fechar</button>
-        <button id="btnProcessarEnviar" style="height:42px;padding:0 20px;border:none;border-radius:10px;background:linear-gradient(135deg,#002f6c,#0d52b5);color:#fff;font-family:Plus Jakarta Sans,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">🤖 Processar com IA</button>
-      </div>
-    </div>
-  </div>
-
-</div><!-- /blocoMensalidades -->
 
 <!-- ═══ MODAL ENVIO ═══ -->
+<!-- ══════════════════════════════════════════════════════════════════
+     MODAL — COLAR LISTA DE TRABALHADORES (lote)
+
+     Pedido do usuário em 18/08/2026: "Hoje está cada trabalhador com sua
+     ficha, preciso que tenha um modal ou um botão para enviar por lote".
+     Para uma cobrança de taxa com 50 pessoas, criar 50 cartões na mão é
+     meia hora de trabalho que o sistema pode fazer sozinho.
+
+     Aceita colar direto de planilha (o Excel separa por TAB), ou digitado
+     com vírgula ou ponto-e-vírgula. O CPF é opcional. A prévia mostra o que
+     foi entendido ANTES de criar os cartões — erro de digitação aparece
+     aqui, e não no ofício que chega à escola.
+     ══════════════════════════════════════════════════════════════════ -->
+<div id="modalLoteTrabalhadores" class="of-modal-overlay">
+  <div class="of-modal" style="max-width:680px;">
+    <div class="of-modal-head" style="border-bottom:3px solid var(--gold);">
+      <div style="display:flex;align-items:center;gap:14px;flex:1;">
+        <div style="width:50px;height:50px;border-radius:14px;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">⇩</div>
+        <div>
+          <div class="of-modal-head-title">Ofício em lote</div>
+          <div class="of-modal-head-sub">Escolha a escola, cole os trabalhadores e anexe as fichas</div>
+        </div>
+      </div>
+      <button type="button" class="of-modal-close" id="btnFecharLoteTrabalhadores" aria-label="Fechar">✕</button>
+    </div>
+    <div class="of-modal-body">
+
+      <!-- 1. ESCOLA — usa a MESMA lista e a MESMA função de seleção da tela
+           (escolasSmartOficio / selecionarEscola), para o CNPJ, o e-mail e o
+           cartão da escola serem preenchidos pelo caminho de sempre. Uma
+           segunda implementação aqui divergiria da primeira com o tempo. -->
+      <div style="font-size:11px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.09em;margin-bottom:8px;">1 · Escola</div>
+      <div class="fld" style="margin-bottom:10px;">
+        <label for="loteEscolaBusca">Buscar escola</label>
+        <input type="text" id="loteEscolaBusca" placeholder="Digite nome, CNPJ ou cidade…" autocomplete="off">
+      </div>
+      <!-- A lista só aparece enquanto se digita. Despejar a base inteira aqui
+           empurrava as etapas 2 e 3 para fora da tela — foi o que o usuário
+           viu no primeiro desenho. -->
+      <div id="loteEscolaLista" class="escola-recentes-list" style="display:none;max-height:132px;overflow-y:auto;margin-bottom:10px;"></div>
+      <div id="loteEscolaSelecionada" style="display:none;padding:10px 12px;border-radius:var(--rad);background:var(--green-lt);border:1px solid var(--green);font-size:12.5px;color:var(--green-dk);font-weight:700;margin-bottom:18px;"></div>
+
+      <!-- 2. TRABALHADORES -->
+      <div style="font-size:11px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.09em;margin-bottom:8px;">2 · Trabalhadores</div>
+      <div style="font-size:12.5px;color:var(--g600);line-height:1.7;margin-bottom:10px;">
+        Adicione um por vez. O <strong>CPF é opcional</strong> — quem não tiver sai
+        no ofício só com o nome. Se colar várias linhas no nome, cada linha vira uma pessoa.
+      </div>
+      <div class="fg fg-3" style="align-items:end;gap:10px;margin-bottom:4px;">
+        <div class="fld fg-full">
+          <label for="loteNome">Nome completo</label>
+          <input type="text" id="loteNome" placeholder="Nome do trabalhador" autocomplete="off">
+        </div>
+        <div class="fld">
+          <label for="loteCpf">CPF (opcional)</label>
+          <input type="text" id="loteCpf" placeholder="000.000.000-00" maxlength="14" inputmode="numeric">
+        </div>
+        <div class="fld">
+          <label style="visibility:hidden;">Ação</label>
+          <button type="button" id="btnLoteAdicionarPessoa" class="btn btn-navy" style="width:100%;">+ Adicionar</button>
+        </div>
+      </div>
+      <div id="loteTrabalhadoresPreview" style="margin-top:14px;margin-bottom:18px;"></div>
+
+      <!-- 3. FICHAS — opcional, e sem exigir uma por pessoa: o escaneado
+           costuma vir num arquivo só por escola, por dia. -->
+      <div style="font-size:11px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.09em;margin-bottom:8px;">3 · Fichas <span style="font-weight:600;text-transform:none;letter-spacing:0;color:var(--g400);">(opcional)</span></div>
+      <div class="fld">
+        <label for="loteFichasInput">Anexar fichas</label>
+        <input type="file" id="loteFichasInput" multiple accept=".pdf,.jpg,.jpeg,.png">
+        <div class="fld-help">Pode ser um PDF único com todas as fichas da escola — a quantidade não precisa bater com a de pessoas.</div>
+      </div>
+      <div id="loteFichasResumo" style="margin-top:8px;font-size:12px;color:var(--g500);"></div>
+    </div>
+    <div class="of-modal-foot">
+      <button type="button" class="btn btn-outline" id="btnCancelarLoteTrabalhadores">Cancelar</button>
+      <button type="button" class="btn btn-navy" id="btnConfirmarLoteTrabalhadores" disabled>Adicionar ao ofício</button>
+    </div>
+  </div>
+</div>
+
+<!-- AVISO DE OFÍCIO REPETIDO NAS ÚLTIMAS 24H.
+     Estava saindo na caixa cinza do navegador ("Uma página incorporada em
+     ...googleusercontent.com diz"), que não é do sistema, não mostra os
+     dados separados e obriga o atendente a ler um parágrafo corrido para
+     achar o número do ofício. Aqui os campos ficam em linhas próprias e os
+     botões dizem o que fazem, no lugar de OK/Cancelar. -->
+<div id="modalDuplicataOficio" class="of-modal-overlay">
+  <div class="of-modal" style="max-width:560px;">
+    <div class="of-modal-head" style="border-bottom:3px solid var(--amber);">
+      <div style="display:flex;align-items:center;gap:14px;flex:1;">
+        <div style="width:50px;height:50px;border-radius:14px;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">⚠️</div>
+        <div>
+          <div class="of-modal-head-title">Ofício parecido nas últimas 24h</div>
+          <div class="of-modal-head-sub" id="dupSubtitulo">Confira se não é o mesmo caso</div>
+        </div>
+      </div>
+      <button type="button" class="of-modal-close" id="btnFecharDuplicata" aria-label="Fechar">✕</button>
+    </div>
+    <div class="of-modal-body">
+      <div style="font-size:13px;color:var(--g600);line-height:1.7;margin-bottom:14px;">
+        Esta escola já recebeu um ofício deste tipo há pouco. O último foi:
+      </div>
+      <div style="border:1px solid var(--g200);border-radius:var(--rad);overflow:hidden;">
+        <div style="display:flex;gap:12px;padding:11px 14px;border-bottom:1px solid var(--g100);">
+          <div style="min-width:96px;font-size:11px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.07em;padding-top:2px;">Escola</div>
+          <div id="dupEscola" style="font-size:13.5px;font-weight:700;color:var(--g900);"></div>
+        </div>
+        <div style="display:flex;gap:12px;padding:11px 14px;border-bottom:1px solid var(--g100);">
+          <div style="min-width:96px;font-size:11px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.07em;padding-top:2px;">Tipo</div>
+          <div id="dupTipo" style="font-size:13.5px;color:var(--g700);"></div>
+        </div>
+        <div style="display:flex;gap:12px;padding:11px 14px;border-bottom:1px solid var(--g100);">
+          <div style="min-width:96px;font-size:11px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.07em;padding-top:2px;">Nº do ofício</div>
+          <div id="dupNumero" style="font-size:15px;font-weight:900;color:var(--navy);letter-spacing:-.2px;"></div>
+        </div>
+        <div style="display:flex;gap:12px;padding:11px 14px;">
+          <div style="min-width:96px;font-size:11px;font-weight:800;color:var(--g500);text-transform:uppercase;letter-spacing:.07em;padding-top:2px;">Emitido em</div>
+          <div id="dupData" style="font-size:13.5px;color:var(--g700);"></div>
+        </div>
+      </div>
+      <div id="dupQuantidade" style="display:none;margin-top:10px;padding:9px 12px;border-radius:var(--rad);background:var(--amber-lt);border:1px solid var(--amber);font-size:12.5px;font-weight:700;color:#92400e;"></div>
+      <div style="margin-top:14px;font-size:12.5px;color:var(--g500);line-height:1.7;">
+        Se for o mesmo caso, cancele — o ofício que já saiu continua valendo.
+        Se for outro (remessa nova, correção), pode gerar: um número novo será usado.
+      </div>
+    </div>
+    <div class="of-modal-foot">
+      <button type="button" class="btn btn-outline" id="btnCancelarDuplicata">Cancelar emissão</button>
+      <button type="button" class="btn btn-navy" id="btnConfirmarDuplicata">Gerar mesmo assim</button>
+    </div>
+  </div>
+</div>
+
 <div id="modalEnvioOficioSISGEP" class="of-modal-overlay">
   <div class="of-modal" style="max-width:600px;">
     <div class="of-modal-head" style="border-bottom:3px solid var(--gold);">
@@ -723,9 +872,9 @@ window.modalSwitchTab = function(tab) {
 function _carregarPreviewEmail() {
   var container=document.getElementById("modalEmailPreviewContainer"); if(!container) return;
   var p=_modalPayload||{}, numero=p.numero||"???", tipo=p.tipo||"Ofício", escola=p.escola||"";
-  var textos={"Filiação":"Encaminhamos, em anexo, o <strong>Ofício de Filiação nº "+numero+"</strong>.<br><br>Nos termos da <strong>Cláusula 56ª da CCT 2025/2026</strong>, solicitamos a realização dos descontos mensais de <strong>2%</strong> sobre o salário-base, a título de Mensalidade Sindical.<br><br>Solicitamos a <strong>confirmação do recebimento</strong> respondendo a este e-mail.","Desfiliação":"Encaminhamos, em anexo, o <strong>Ofício de Desfiliação nº "+numero+"</strong>.<br><br>Nos termos da <strong>Cláusula 56ª da CCT 2025/2026</strong>, solicitamos que sejam <strong>cessados imediatamente os descontos</strong> de 2% sobre os salários-base.<br><br>Solicitamos a <strong>confirmação do recebimento</strong> respondendo a este e-mail.","Taxa Negocial":"Encaminhamos, em anexo, o <strong>Ofício nº "+numero+"</strong> referente à <strong>Taxa Negocial</strong>, conforme <strong>Cláusula 57ª da CCT 2025/2026</strong>.<br><br>Solicitamos os descontos e repasse até o <strong>10º dia útil do mês subsequente</strong>.<br><br>Solicitamos a <strong>confirmação do recebimento</strong> respondendo a este e-mail.","Taxa Assistencial":"Encaminhamos, em anexo, o <strong>Ofício nº "+numero+"</strong> referente à <strong>Taxa Assistencial – Assistência Médica</strong>, conforme previsto na CCT 2026.<br><br>O repasse deverá ser realizado em <strong>duas parcelas de 2%</strong> sobre o salário-base bruto dos colaboradores técnico-administrativos.<br><br>Solicitamos a <strong>confirmação do recebimento</strong> respondendo a este e-mail.","Ofício Livre":"Encaminhamos, em anexo, o <strong>Ofício nº "+numero+"</strong> conforme descrito no documento.<br><br>Permanecemos à disposição para quaisquer esclarecimentos.<br><br>Solicitamos a <strong>confirmação do recebimento</strong> respondendo a este e-mail."};
+  var textos={"Filiação":"Encaminhamos, em anexo, o <strong>Ofício de Filiação nº "+numero+"</strong>.<br><br>Nos termos da <strong>Cláusula 56ª da CCT 2026/2027</strong>, solicitamos a realização dos descontos mensais de <strong>2%</strong> sobre o salário-base, a título de Mensalidade Sindical.<br><br>Solicitamos a <strong>confirmação do recebimento</strong> respondendo a este e-mail.","Desfiliação":"Encaminhamos, em anexo, o <strong>Ofício de Desfiliação nº "+numero+"</strong>.<br><br>Nos termos da <strong>Cláusula 56ª da CCT 2026/2027</strong>, solicitamos que sejam <strong>cessados imediatamente os descontos</strong> de 2% sobre os salários-base.<br><br>Solicitamos a <strong>confirmação do recebimento</strong> respondendo a este e-mail.","Taxa Negocial":"Encaminhamos, em anexo, o <strong>Ofício nº "+numero+"</strong> referente à <strong>Taxa Negocial</strong>, conforme <strong>Cláusula 57ª da CCT 2026/2027</strong>.<br><br>Solicitamos os descontos e repasse até o <strong>10º dia útil do mês subsequente</strong>.<br><br>Solicitamos a <strong>confirmação do recebimento</strong> respondendo a este e-mail.","Taxa Assistencial":"Encaminhamos, em anexo, o <strong>Ofício nº "+numero+"</strong> referente à <strong>Taxa Assistencial – Assistência Médica</strong>, conforme a <strong>Cláusula 58ª da CCT 2026/2027</strong>.<br><br>O repasse deverá ser realizado em <strong>duas parcelas de 2%</strong> sobre o salário-base bruto dos colaboradores técnico-administrativos.<br><br>Solicitamos a <strong>confirmação do recebimento</strong> respondendo a este e-mail.","Ofício Livre":"Encaminhamos, em anexo, o <strong>Ofício nº "+numero+"</strong> conforme descrito no documento.<br><br>Permanecemos à disposição para quaisquer esclarecimentos.<br><br>Solicitamos a <strong>confirmação do recebimento</strong> respondendo a este e-mail."};
   var texto=textos[tipo]||textos["Ofício Livre"];
-  container.innerHTML='<div style="font-family:Segoe UI,Arial,sans-serif;max-width:580px;margin:0 auto;border-radius:8px;overflow:hidden;box-shadow:0 4px 16px rgba(0,20,60,.1);"><div style="background:linear-gradient(135deg,#001228,#001f4d,#003b82);padding:18px 22px;"><div style="font-size:18px;font-weight:900;color:#fff;">SINDEDUCAÇÃO-ES</div><div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:4px;">Sindicato dos Educadores Técnico-Administrativos em Estabelecimentos de Ensino Particular — ES</div><div style="height:1px;background:rgba(201,168,76,.25);margin:12px 0 10px;"></div><div style="display:inline-flex;background:rgba(255,255,255,.12);color:#C9A84C;font-size:10px;font-weight:800;padding:4px 12px;border-radius:999px;text-transform:uppercase;letter-spacing:.08em;">'+tipo+' · Ofício Nº '+numero+'</div></div><div style="background:#fff;padding:22px;"><p style="margin:0 0 14px;font-size:13.5px;color:#334155;">Bom dia! Tudo bem?</p>'+(escola?'<p style="margin:0 0 14px;font-size:13.5px;color:#0f172a;">Prezados(as) senhores(as) de <strong>'+escola.replace(/</g,"&lt;")+'</strong>,</p>':"")+'<p style="margin:0 0 14px;font-size:13.5px;color:#1a2233;line-height:1.75;text-align:justify;">'+texto+'</p><div style="margin:16px 0 0;padding:12px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-left:3px solid #2563eb;font-size:13px;font-weight:700;color:#1e3a8a;">⚠️ Solicitamos, por gentileza, a confirmação do recebimento respondendo a este e-mail.</div></div><div style="background:linear-gradient(135deg,#001228,#001f4d,#002f6c);padding:16px 22px;"><div style="font-size:13px;font-weight:900;color:#fff;margin-bottom:8px;">Marcelha Aline — Administrativo & Secretaria</div><div style="font-size:11px;color:rgba(255,255,255,.7);">📱 (27) 99735-8900 &nbsp;·&nbsp; ✉️ secretaria@sindeducacao.com &nbsp;·&nbsp; 📞 (27) 3222-2706</div></div></div>';
+  container.innerHTML='<div style="font-family:Segoe UI,Arial,sans-serif;max-width:580px;margin:0 auto;border-radius:8px;overflow:hidden;box-shadow:0 4px 16px rgba(0,20,60,.1);"><div style="background:linear-gradient(135deg,#001228,var(--navy,#001f4d),#003b82);padding:18px 22px;"><div style="font-size:18px;font-weight:900;color:#fff;">SINDEDUCAÇÃO-ES</div><div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:4px;">Sindicato dos Educadores Técnico-Administrativos em Estabelecimentos de Ensino Particular — ES</div><div style="height:1px;background:rgba(201,168,76,.25);margin:12px 0 10px;"></div><div style="display:inline-flex;background:rgba(255,255,255,.12);color:var(--gold,#C9A84C);font-size:10px;font-weight:800;padding:4px 12px;border-radius:999px;text-transform:uppercase;letter-spacing:.08em;">'+tipo+' · Ofício Nº '+numero+'</div></div><div style="background:#fff;padding:22px;"><p style="margin:0 0 14px;font-size:13.5px;color:#334155;">Bom dia! Tudo bem?</p>'+(escola?'<p style="margin:0 0 14px;font-size:13.5px;color:#0f172a;">Prezados(as) senhores(as) de <strong>'+escola.replace(/</g,"&lt;")+'</strong>,</p>':"")+'<p style="margin:0 0 14px;font-size:13.5px;color:#1a2233;line-height:1.75;text-align:justify;">'+texto+'</p><div style="margin:16px 0 0;padding:12px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-left:3px solid #2563eb;font-size:13px;font-weight:700;color:#1e3a8a;">⚠️ Solicitamos, por gentileza, a confirmação do recebimento respondendo a este e-mail.</div></div><div style="background:linear-gradient(135deg,#001228,var(--navy,#001f4d),var(--navy2,#002f6c));padding:16px 22px;"><div style="font-size:13px;font-weight:900;color:#fff;margin-bottom:8px;">Marcelha Aline — Administrativo & Secretaria</div><div style="font-size:11px;color:rgba(255,255,255,.7);">📱 (27) 99735-8900 &nbsp;·&nbsp; ✉️ secretaria@sindeducacao.com &nbsp;·&nbsp; 📞 (27) 3222-2706</div></div></div>';
   _modalPreviewCarregado=true;
 }
 
@@ -749,310 +898,15 @@ window.fecharModalEnvioOficioSISGEP = function() {
   _modalPreviewCarregado=false; _modalPayload=null;
 };
 
-/* ── Modal Processar Relatório ── */
-window.abrirModalRelatorio = function() {
-  var modal = document.getElementById("modalProcessarRelatorio");
-  if (modal) modal.style.display = "flex";
-  document.getElementById("relEscolaBusca").value = "";
-  document.getElementById("relEscolaCnpj").value = "";
-  document.getElementById("relArquivoInput").value = "";
-  document.getElementById("relArquivoNome").style.display = "none";
-  document.getElementById("relStatusBox").style.display = "none";
-  document.getElementById("relResultadoBox").style.display = "none";
-  var btn = document.getElementById("btnProcessarEnviar");
-  if (btn) { btn.disabled = false; btn.textContent = "🤖 Processar com IA"; }
-};
-
-window.fecharModalRelatorio = function() {
-  var modal = document.getElementById("modalProcessarRelatorio");
-  if (modal) modal.style.display = "none";
-};
-
-document.addEventListener("DOMContentLoaded", function() {
-  // Bind botão abrir modal
-  var btnAbrir = document.getElementById("btnProcessarRelatorio");
-  if (btnAbrir) btnAbrir.onclick = window.abrirModalRelatorio;
-
-  // Upload arquivo
-  var inputArq = document.getElementById("relArquivoInput");
-  if (inputArq) {
-    inputArq.onchange = function() {
-      var f = this.files[0]; if (!f) return;
-      var nomeEl = document.getElementById("relArquivoNome");
-      nomeEl.textContent = "✅ " + f.name + " (" + (f.size / 1024).toFixed(1) + " KB)";
-      nomeEl.style.display = "block";
-    };
-  }
-
-  // Autocomplete escola no modal
-  var inputEscola = document.getElementById("relEscolaBusca");
-  if (inputEscola) {
-    var timerEscola;
-    inputEscola.oninput = function() {
-      clearTimeout(timerEscola);
-      var termo = this.value.trim();
-      var ac = document.getElementById("relEscolaAutoComplete");
-      if (termo.length < 2) { ac.style.display = "none"; return; }
-      timerEscola = setTimeout(function() {
-        var lista = typeof escolasSmartOficio !== "undefined"
-          ? escolasSmartOficio.filter(function(e) {
-              return String(e.nome || "").toLowerCase().indexOf(termo.toLowerCase()) >= 0;
-            }).slice(0, 6)
-          : [];
-        if (!lista.length) { ac.style.display = "none"; return; }
-        ac.innerHTML = lista.map(function(e) {
-          return '<div style="padding:9px 13px;cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:500;background:#fff;" '
-            + 'data-nome="' + String(e.nome||"").replace(/"/g,"&quot;") + '" data-cnpj="' + (e.cnpj||"") + '">'
-            + String(e.nome||"") + (e.cnpj ? '<span style="font-size:11px;color:#94a3b8;margin-left:6px;">' + e.cnpj + '</span>' : '')
-            + '</div>';
-        }).join("");
-        ac.querySelectorAll("div").forEach(function(item) {
-          item.onmousedown = function(ev) {
-            ev.preventDefault();
-            inputEscola.value = this.dataset.nome;
-            document.getElementById("relEscolaCnpj").value = this.dataset.cnpj || "";
-            ac.style.display = "none";
-          };
-          item.onmouseover = function() { this.style.background = "#eff6ff"; };
-          item.onmouseout  = function() { this.style.background = "#fff"; };
-        });
-        ac.style.display = "block";
-      }, 250);
-    };
-    inputEscola.onblur = function() {
-      setTimeout(function() {
-        var ac = document.getElementById("relEscolaAutoComplete");
-        if (ac) ac.style.display = "none";
-      }, 200);
-    };
-  }
-
-  // Bind botão processar
-  var btnEnviar = document.getElementById("btnProcessarEnviar");
-  if (btnEnviar) btnEnviar.onclick = window.processarRelatorioEnviar;
-});
-
-window.processarRelatorioEnviar = function() {
-  var escolaNome = (document.getElementById("relEscolaBusca") || {}).value || "";
-  var inputArq   = document.getElementById("relArquivoInput");
-  var arquivo    = inputArq && inputArq.files && inputArq.files[0];
-
-  if (!escolaNome) { relStatus("Selecione a escola.", "warn"); return; }
-  if (!arquivo)    { relStatus("Selecione o arquivo do relatório.", "warn"); return; }
-
-  var btn = document.getElementById("btnProcessarEnviar");
-  btn.disabled = true; btn.textContent = "⏳ Processando...";
-  relStatus("⏳ Lendo o arquivo e enviando para análise da IA...", "info");
-  document.getElementById("relResultadoBox").style.display = "none";
-
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    var base64   = e.target.result.split(",")[1];
-    var mimeType = arquivo.type || "application/pdf";
-
-    google.script.run
-      .withSuccessHandler(function(resp) {
-        btn.disabled = false; btn.textContent = "🤖 Processar com IA";
-        if (!resp || !resp.ok) { relStatus("❌ " + (resp && resp.mensagem || "Erro ao processar."), "err"); return; }
-        relStatus("✅ " + resp.mensagem, "ok");
-        renderResultadoRelatorio(resp);
-        if (typeof window.carregarMensalidades === "function") window.carregarMensalidades();
-      })
-      .withFailureHandler(function(err) {
-        btn.disabled = false; btn.textContent = "🤖 Processar com IA";
-        relStatus("❌ Erro: " + ((err && err.message) || err), "err");
-      })
-      .processarRelatorioMensalidade({
-        escolaNome:  escolaNome,
-        base64:      base64,
-        mimeType:    mimeType,
-        nomeArquivo: arquivo.name
-      });
-  };
-  reader.onerror = function() {
-    btn.disabled = false; btn.textContent = "🤖 Processar com IA";
-    relStatus("❌ Erro ao ler o arquivo.", "err");
-  };
-  reader.readAsDataURL(arquivo);
-};
-
-function relStatus(msg, tipo) {
-  var box = document.getElementById("relStatusBox"); if (!box) return;
-  var cores = { ok:"background:#f0fdf4;border:1.5px solid #6ee7b7;color:#065f46;", err:"background:#fef2f2;border:1.5px solid #fca5a5;color:#991b1b;", warn:"background:#fffbeb;border:1.5px solid #fcd34d;color:#92400e;", info:"background:#eff6ff;border:1.5px solid #bfdbfe;color:#1d4ed8;" };
-  box.style.cssText = "display:block;padding:12px 14px;border-radius:10px;font-size:13px;font-weight:600;" + (cores[tipo] || cores.info);
-  box.textContent = msg;
-}
-
-function renderResultadoRelatorio(resp) {
-  var box   = document.getElementById("relResultadoBox");
-  var lista = document.getElementById("relResultadoLista");
-  var obs   = document.getElementById("relObservacao");
-  if (!box || !lista) return;
-  lista.innerHTML = (resp.detalhes || []).map(function(d) {
-    var enc = d.encontrado;
-    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:' + (enc ? "#f0fdf4;border:1.5px solid #6ee7b7;" : "#fef2f2;border:1.5px solid #fca5a5;") + '">'
-      + '<span style="font-size:18px;">' + (enc ? "✅" : "⚠️") + '</span>'
-      + '<div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#0f172a;">' + (d.nome||"") + '</div>'
-      + '<div style="font-size:11px;color:#64748b;">' + (d.cpf ? "CPF: " + d.cpf + " · " : "") + "Ofício: " + (d.oficio||"—") + '</div></div>'
-      + '<span style="font-size:11px;font-weight:800;' + (enc ? "color:#059669;" : "color:#dc2626;") + '">' + (enc ? "CONFIRMADO" : "NÃO ENCONTRADO") + '</span></div>';
-  }).join("");
-  if (resp.observacao) { obs.textContent = "💬 IA: " + resp.observacao; obs.style.display = "block"; } else { obs.style.display = "none"; }
-  box.style.display = "block";
-}
 </script>
 
 <style>
 .mens-card{border-radius:14px;padding:16px;text-align:center;cursor:pointer;transition:transform .15s,box-shadow .15s;user-select:none;}
 .mens-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,20,60,.10);}
 .mens-card:active{transform:translateY(0) scale(.97);}
-.mens-card.ativo{transform:translateY(-2px);box-shadow:0 0 0 3px rgba(201,168,76,.4);border-color:#C9A84C !important;}
+.mens-card.ativo{transform:translateY(-2px);box-shadow:0 0 0 3px rgba(201,168,76,.4);border-color:var(--gold,#C9A84C) !important;}
 </style>
 
-<script>
-(function(){
-var _mensSel=[],_mensFiltro="",_mensDados=[],_mensFiltrada=[];
-var _mensPag=1,_mensPagTam=50;
-var _mensSort={col:"nome",dir:"asc"};
-function $m(id){return document.getElementById(id);}
-function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
-function normStr(v){return String(v||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");}
-
-function mensMsg(txt,tipo){
-  var box=$m("mensMsgBox");if(!box)return;
-  var c={ok:"#f0fdf4|#6ee7b7|#065f46",err:"#fef2f2|#fca5a5|#991b1b",warn:"#fffbeb|#fcd34d|#92400e",info:"#eff6ff|#bfdbfe|#1d4ed8"}[tipo]||"#eff6ff|#bfdbfe|#1d4ed8";
-  var p=c.split("|");
-  box.style.cssText="display:block;margin-top:12px;padding:12px 15px;border-radius:10px;font-size:13px;font-weight:600;background:"+p[0]+";border:1.5px solid "+p[1]+";color:"+p[2]+";";
-  box.textContent=txt;
-  setTimeout(function(){box.style.display="none";},5000);
-}
-
-function badge(status){
-  var cfg={AGUARDANDO:{bg:"#fffbeb",cor:"#92400e",emoji:"⏳",label:"Aguardando"},CONFIRMADO:{bg:"#f0fdf4",cor:"#065f46",emoji:"✅",label:"Confirmado"},PENDENTE_30D:{bg:"#fef2f2",cor:"#991b1b",emoji:"⚠️",label:"+30 dias"},COBRANCA_ENVIADA:{bg:"#ede9fe",cor:"#6d28d9",emoji:"📧",label:"Cobrança Enviada"},REGULARIZADO:{bg:"#f0fdf4",cor:"#065f46",emoji:"🟢",label:"Regularizado"},DESFILIADO:{bg:"#f1f5f9",cor:"#475569",emoji:"❌",label:"Desfiliado"}};
-  var c=cfg[status]||{bg:"#f1f5f9",cor:"#475569",emoji:"•",label:status};
-  return '<span style="background:'+c.bg+';color:'+c.cor+';padding:3px 10px;border-radius:999px;font-size:10.5px;font-weight:800;white-space:nowrap;">'+c.emoji+' '+c.label+'</span>';
-}
-
-function atualizarBarra(){
-  var b=$m("mensBarraAcoes");if(!b)return;
-  b.style.display=_mensSel.length?"flex":"none";
-  var l=$m("mensBarraLabel");if(l)l.textContent=_mensSel.length+" selecionado(s)";
-  var chk=$m("mensCheckTodos");if(!chk)return;
-  var vis=Array.from(document.querySelectorAll("#mensTabelaBody .mens-check")).map(function(c){return parseInt(c.dataset.linha);});
-  chk.checked=vis.length>0&&vis.every(function(l){return _mensSel.indexOf(l)>=0;});
-  chk.indeterminate=!chk.checked&&_mensSel.length>0;
-}
-
-function renderTabela(lista){
-  _mensFiltrada=lista||[];
-  var total=_mensFiltrada.length;
-  var totalPags=Math.max(1,Math.ceil(total/_mensPagTam));
-  if(_mensPag>totalPags)_mensPag=totalPags;
-  var ini=(_mensPag-1)*_mensPagTam,fim=Math.min(ini+_mensPagTam,total);
-  var pag=_mensFiltrada.slice(ini,fim);
-  var info=$m("mensInfoFiltro");
-  if(info)info.textContent=(total<_mensDados.length?"Filtrado: "+total+" de "+_mensDados.length:"Total: "+total)+" · Página "+_mensPag+" de "+totalPags;
-  var pagEl=$m("mensPaginacao");
-  if(pagEl){pagEl.style.display=total>_mensPagTam?"flex":"none";var bAnt=$m("mensPagAnt"),bProx=$m("mensPagProx"),bInfo=$m("mensPagInfo");if(bAnt)bAnt.disabled=_mensPag<=1;if(bProx)bProx.disabled=_mensPag>=totalPags;if(bInfo)bInfo.textContent="Mostrando "+(total===0?0:ini+1)+"–"+fim+" de "+total;}
-  var tbody=$m("mensTabelaBody");if(!tbody)return;
-  if(!pag.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:48px;color:var(--g400);font-size:13px;">📭 Nenhum registro encontrado.</td></tr>';atualizarBarra();return;}
-  function corDias(d){if(d<=30)return"color:#059669;font-weight:700;";if(d<=60)return"color:#d97706;font-weight:800;";if(d<=90)return"color:#ea580c;font-weight:800;";return"color:#dc2626;font-weight:900;";}
-  tbody.innerHTML=pag.map(function(item,i){
-    var idx=ini+i;
-    var marcado=_mensSel.indexOf(item.linha)>=0;
-    var dc=corDias(item.diasSemConfirm);
-    return '<tr style="border-bottom:1px solid #f1f5f9;" data-idx="'+idx+'">'
-      +'<td style="padding:10px 13px;"><input type="checkbox" class="mens-check" data-linha="'+item.linha+'" data-cpf="'+esc(item.cpf)+'"'+(marcado?" checked":"")+'></td>'
-      +'<td style="padding:10px 13px;font-size:12.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px;" title="'+esc(item.nome)+'">'+esc(item.nome)+'</td>'
-      +'<td style="padding:10px 13px;font-size:11.5px;font-family:monospace;color:#475569;">'+esc(item.cpf)+'</td>'
-      +'<td style="padding:10px 13px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;" title="'+esc(item.escola)+'">'+esc(item.escola)+'</td>'
-      +'<td style="padding:10px 13px;font-size:11.5px;color:#475569;">'+esc(item.numeroOficio||"—")+'</td>'
-      +'<td style="padding:10px 13px;font-size:12px;'+dc+'">'+item.diasSemConfirm+'d</td>'
-      +'<td style="padding:10px 13px;">'+badge(item.status)+'</td>'
-      +'<td style="padding:10px 13px;"><div style="display:flex;gap:4px;">'
-      +'<button onclick="window._mensConfirmar('+item.linha+')" title="Confirmar" style="padding:3px 8px;border-radius:6px;background:#f0fdf4;color:#059669;border:1px solid #6ee7b7;font-size:11px;font-weight:700;cursor:pointer;">✅</button>'
-      +'<button onclick="window._mensCobrar([\''+esc(item.cpf)+'\'])" title="Cobrança" style="padding:3px 8px;border-radius:6px;background:#002f6c;color:#fff;border:none;font-size:11px;font-weight:700;cursor:pointer;">📧</button>'
-      +'<button onclick="window._mensWhats(\''+esc(item.escola)+'\',\''+esc(item.nome)+'\',\''+esc(item.numeroOficio||"")+'\')" title="WhatsApp" style="padding:3px 8px;border-radius:6px;background:#f0fdf4;color:#059669;border:1px solid #6ee7b7;font-size:11px;font-weight:700;cursor:pointer;">💬</button>'
-      +'</div></td></tr>';
-  }).join("");
-  tbody.querySelectorAll(".mens-check").forEach(function(chk){
-    chk.onchange=function(){var linha=parseInt(this.dataset.linha),idx=_mensSel.indexOf(linha);if(this.checked){if(idx<0)_mensSel.push(linha);}else{if(idx>=0)_mensSel.splice(idx,1);}atualizarBarra();};
-  });
-  atualizarBarra();
-}
-
-function aplicarFiltros(){
-  _mensPag=1;
-  var nome=normStr(($m("mensFiltroNome")||{}).value||"");
-  var escola=normStr(($m("mensFiltroEscola")||{}).value||"");
-  var status=($m("mensFiltroStatus")||{}).value||_mensFiltro||"";
-  var filtrada=_mensDados.filter(function(i){
-    if(nome&&normStr(i.nome+i.cpf).indexOf(nome)<0)return false;
-    if(escola&&normStr(i.escola).indexOf(escola)<0)return false;
-    if(status&&i.status!==status)return false;
-    return true;
-  });
-  filtrada.sort(function(a,b){var va=normStr(a[_mensSort.col]||"");var vb=normStr(b[_mensSort.col]||"");var r=va.localeCompare(vb,"pt-BR");return _mensSort.dir==="asc"?r:-r;});
-  renderTabela(filtrada);
-}
-
-function atualizarCards(r){
-  r=r||{};
-  [{id:"mensStatTotal",v:r.total},{id:"mensStatConfirmados",v:r.confirmados},{id:"mensStatAguardando",v:r.aguardando},{id:"mensStatPendentes",v:r.pendentes},{id:"mensStatCobr",v:r.cobracaEnviada}].forEach(function(x){var el=$m(x.id);if(el)el.textContent=x.v||0;});
-  var al=$m("mensAlertaCritico");
-  if(al){if(r.pendentes>0){al.style.display="flex";var txt=$m("mensAlertaTexto");if(txt)txt.textContent=r.pendentes+" associado(s) aguardam confirmação há mais de 30 dias.";}else{al.style.display="none";}}
-}
-
-window.carregarMensalidades=function(filtros){
-  var tbody=$m("mensTabelaBody");
-  if(tbody)tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:48px;color:var(--g400);font-size:13px;">⏳ Carregando...</td></tr>';
-  google.script.run.withSuccessHandler(function(resp){if(!resp||!resp.ok){mensMsg((resp&&resp.mensagem)||"Erro ao carregar.","err");return;}_mensDados=resp.itens||[];atualizarCards(resp.resumo);aplicarFiltros();}).withFailureHandler(function(err){mensMsg("Erro: "+((err&&err.message)||err),"err");}).listarMensalidadeStatus(filtros||{});
-};
-
-window._mensConfirmar=function(linha){
-  if(!confirm("Confirmar desconto para este associado?"))return;
-  google.script.run.withSuccessHandler(function(r){mensMsg(r.ok?(r.mensagem||"Confirmado."):(r.mensagem||"Erro."),r.ok?"ok":"err");if(r.ok)window.carregarMensalidades();}).withFailureHandler(function(err){mensMsg("Erro: "+((err&&err.message)||err),"err");}).atualizarStatusMensalidadePorLinha(linha,"CONFIRMADO","Confirmado manualmente pelo operador.");
-};
-
-window._mensCobrar=function(cpfs){
-  if(!cpfs||!cpfs.length){mensMsg("Nenhum associado selecionado.","warn");return;}
-  if(!confirm("Enviar cobrança para "+cpfs.length+" escola(s)?"))return;
-  var btn=$m("btnMensCobracaLote");if(btn){btn.disabled=true;btn.textContent="⏳ Enviando...";}
-  google.script.run.withSuccessHandler(function(r){if(btn){btn.disabled=false;btn.textContent="📧 Cobrança em lote";}mensMsg(r.ok?(r.mensagem||"Enviado."):(r.mensagem||"Erro."),r.ok?"ok":"err");if(r.ok){_mensSel=[];window.carregarMensalidades();}}).withFailureHandler(function(err){if(btn){btn.disabled=false;btn.textContent="📧 Cobrança em lote";}mensMsg("Erro: "+((err&&err.message)||err),"err");}).enviarCobracasMensalidade(cpfs);
-};
-
-window._mensWhats=function(escola,nome,numero){
-  var t=encodeURIComponent("Prezados, boa tarde! 👋\n\nVerificamos que, após o envio do Ofício de Filiação nº *"+numero+"* e da ficha de sindicalização do(a) colaborador(a) *"+nome+"*, não identificamos o desconto da mensalidade sindical em folha de pagamento.\n\nPoderiam verificar a situação e nos informar se o desconto já está sendo realizado?\n\nFicamos no aguardo. 🙏\n\nAtenciosamente,\nWanderson N Castelo\nFinanceiro & Cobrança – SindEducação-ES\n📞 (27) 99813-5965");
-  window.open("https://wa.me/?text="+t,"_blank");
-};
-
-document.addEventListener("DOMContentLoaded",function(){
-  document.querySelectorAll(".mens-card").forEach(function(card){card.addEventListener("click",function(){var f=card.dataset.filtro;if(_mensFiltro===f){_mensFiltro="";card.classList.remove("ativo");}else{document.querySelectorAll(".mens-card").forEach(function(c){c.classList.remove("ativo");});_mensFiltro=f;card.classList.add("ativo");}var sel=$m("mensFiltroStatus");if(sel)sel.value=_mensFiltro;aplicarFiltros();});});
-  var deb=function(fn,ms){var t;return function(){clearTimeout(t);t=setTimeout(fn,ms);};};
-  [$m("mensFiltroNome"),$m("mensFiltroEscola")].forEach(function(inp){if(inp)inp.addEventListener("input",deb(aplicarFiltros,250));});
-  var selSt=$m("mensFiltroStatus");if(selSt)selSt.addEventListener("change",function(){_mensFiltro=this.value;aplicarFiltros();});
-  var btnL=$m("btnMensLimparFiltros");
-  if(btnL)btnL.onclick=function(){_mensFiltro="";[$m("mensFiltroNome"),$m("mensFiltroEscola")].forEach(function(i){if(i)i.value="";});var s=$m("mensFiltroStatus");if(s)s.value="";document.querySelectorAll(".mens-card").forEach(function(c){c.classList.remove("ativo");});aplicarFiltros();};
-  var chkT=$m("mensCheckTodos");
-  if(chkT)chkT.onchange=function(){document.querySelectorAll("#mensTabelaBody .mens-check").forEach(function(c){c.checked=chkT.checked;var linha=parseInt(c.dataset.linha),idx=_mensSel.indexOf(linha);if(chkT.checked){if(idx<0)_mensSel.push(linha);}else{if(idx>=0)_mensSel.splice(idx,1);}});atualizarBarra();};
-  var btnConf=$m("btnMensConfirmarLote");
-  if(btnConf)btnConf.onclick=function(){if(!_mensSel.length){mensMsg("Selecione ao menos um registro.","warn");return;}if(!confirm("Confirmar para "+_mensSel.length+" associado(s)?"))return;var pend=_mensSel.slice(),ok=0;function prox(){if(!pend.length){mensMsg(ok+" confirmação(ões) registrada(s).","ok");_mensSel=[];window.carregarMensalidades();return;}var linha=pend.shift();google.script.run.withSuccessHandler(function(r){if(r.ok)ok++;prox();}).withFailureHandler(prox).atualizarStatusMensalidadePorLinha(linha,"CONFIRMADO","Confirmado em lote.");}prox();};
-  var btnCL=$m("btnMensCobracaLote");if(btnCL)btnCL.onclick=function(){window._mensCobrar(_mensSel.slice());};
-  var btnWL=$m("btnMensWhatsLote");
-  if(btnWL)btnWL.onclick=function(){if(!_mensSel.length){mensMsg("Selecione ao menos um registro.","warn");return;}_mensDados.filter(function(i){return _mensSel.indexOf(i.linha)>=0;}).forEach(function(i){window._mensWhats(i.escola,i.nome,i.numeroOficio||"");});};
-  var _mensCabTextos={};
-  document.querySelectorAll("#blocoMensalidades thead th[data-mens-col]").forEach(function(th){_mensCabTextos[th.dataset.mensCol]=th.textContent.trim();th.addEventListener("click",function(){var col=this.dataset.mensCol;if(_mensSort.col===col){_mensSort.dir=_mensSort.dir==="asc"?"desc":"asc";}else{_mensSort.col=col;_mensSort.dir="asc";}document.querySelectorAll("#blocoMensalidades thead th[data-mens-col]").forEach(function(h){h.textContent=_mensCabTextos[h.dataset.mensCol]||h.textContent.replace(/ [↑↓]$/,"");});this.textContent=(_mensCabTextos[col]||col)+(_mensSort.dir==="asc"?" ↑":" ↓");aplicarFiltros();});});
-  var bAnt=$m("mensPagAnt"),bProx=$m("mensPagProx");
-  if(bAnt)bAnt.onclick=function(){if(_mensPag>1){_mensPag--;renderTabela(_mensFiltrada);}};
-  if(bProx)bProx.onclick=function(){var tp=Math.ceil(_mensFiltrada.length/_mensPagTam);if(_mensPag<tp){_mensPag++;renderTabela(_mensFiltrada);}};
-  var btnD=$m("btnMensDesmarcar");if(btnD)btnD.onclick=function(){_mensSel=[];document.querySelectorAll("#mensTabelaBody .mens-check").forEach(function(c){c.checked=false;});atualizarBarra();};
-  var btnAtu=$m("btnMensRecarregar");if(btnAtu)btnAtu.onclick=function(){window.carregarMensalidades();};
-  var btnAl=$m("btnMensAtualizarAlerts");
-  if(btnAl)btnAl.onclick=function(){btnAl.disabled=true;btnAl.textContent="⏳ Processando...";google.script.run.withSuccessHandler(function(r){btnAl.disabled=false;btnAl.textContent="🔔 Processar Alertas";mensMsg(r.ok?(r.mensagem||"Alertas processados."):(r.mensagem||"Erro."),r.ok?"ok":"err");if(r.ok)window.carregarMensalidades();}).withFailureHandler(function(err){btnAl.disabled=false;btnAl.textContent="🔔 Processar Alertas";mensMsg("Erro: "+((err&&err.message)||err),"err");}).processarAlertasMensalidade();};
-  var btnFP=$m("btnMensFiltrarPendentes");
-  if(btnFP)btnFP.onclick=function(){_mensFiltro="PENDENTE_30D";var s=$m("mensFiltroStatus");if(s)s.value="PENDENTE_30D";document.querySelectorAll(".mens-card").forEach(function(c){c.classList.remove("ativo");});var cp=document.querySelector(".mens-card[data-filtro='PENDENTE_30D']");if(cp)cp.classList.add("ativo");aplicarFiltros();};
-});
-})();
-</script>
 
 
 <style>
@@ -1060,7 +914,7 @@ document.addEventListener("DOMContentLoaded",function(){
 .taxa-progresso-wrap {
   background: var(--color-background-primary, #fff);
   border: 1.5px solid #bfdbfe;
-  border-left: 4px solid #1565C0;
+  border-left: 4px solid var(--blue,#1565C0);
   border-radius: 0;
   padding: 18px 20px;
   margin-bottom: 18px;
@@ -1077,13 +931,13 @@ document.addEventListener("DOMContentLoaded",function(){
 .taxa-progresso-titulo {
   font-size: 13px;
   font-weight: 700;
-  color: #001f4d;
+  color: var(--navy,#001f4d);
 }
 
 .taxa-progresso-pct {
   font-size: 22px;
   font-weight: 900;
-  color: #1565C0;
+  color: var(--blue,#1565C0);
 }
 
 .taxa-progresso-bar-track {
@@ -1096,18 +950,18 @@ document.addEventListener("DOMContentLoaded",function(){
 
 .taxa-progresso-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, #1565C0, #0d52b5);
+  background: linear-gradient(90deg, var(--blue,#1565C0), #0d52b5);
   border-radius: 999px;
   transition: width .8s ease;
   min-width: 0;
 }
 
 .taxa-progresso-bar-fill.completo {
-  background: linear-gradient(90deg, #059669, #065f46);
+  background: linear-gradient(90deg, var(--green,#059669), #065f46);
 }
 
 .taxa-progresso-bar-fill.erro {
-  background: linear-gradient(90deg, #dc2626, #991b1b);
+  background: linear-gradient(90deg, var(--red,#dc2626), #991b1b);
 }
 
 .taxa-progresso-stats {

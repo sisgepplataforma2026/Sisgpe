@@ -1,0 +1,300 @@
+<div id="auditoriaCompartilhamentos" style="min-height:100%;background:#f0f4f8;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#0f172a;">
+<!--
+  Auditoria e Compliance — Compartilhamentos (item 16.6 do PROMPT-MESTRE).
+  Backend em CompartilhamentosCore.gs.
+
+  O SISGEP gera links que abrem SEM LOGIN — o fornecedor manda nota fiscal
+  por um, a contabilidade confirma pagamento por outro. Quem tem o link
+  entra. É a natureza deles, e é o que os torna úteis.
+
+  Até aqui ninguém tinha a lista. Não dava para responder quantos estão no
+  ar, para quem foram, nem — o que mais importa — como desligar aquele que
+  foi para o endereço errado.
+
+  O TOKEN NUNCA APARECE INTEIRO NESTA TELA. Só os 8 primeiros caracteres.
+  Mostrar o link completo faria desta tela uma lista de acessos prontos para
+  uso, para qualquer um que a abrisse.
+-->
+
+  <div class="of-modulo-header">
+    <div>
+      <div class="of-modulo-header-title">🔗 Compartilhamentos</div>
+      <div class="of-modulo-header-sub">Links que abrem sem login — quem recebeu, até quando vale, e como desligar</div>
+    </div>
+    <div class="of-modulo-header-badge" id="cpBadge">—</div>
+  </div>
+
+  <div id="cpCards" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px;"></div>
+
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">🔑</div>
+        <div>
+          <div class="of-card-title" id="cpResumo">Carregando…</div>
+          <div class="of-card-sub" id="cpResumoSub">—</div>
+        </div>
+      </div>
+      <div class="row-btns">
+        <select id="cpFiltro" style="height:34px;padding:0 10px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:12.5px;font-family:'Plus Jakarta Sans',sans-serif;">
+          <option value="">Todos os estados</option>
+          <option value="ATIVO">Ativos</option>
+          <option value="USADO">Usados</option>
+          <option value="EXPIRADO">Expirados</option>
+          <option value="REVOGADO">Revogados</option>
+        </select>
+        <button type="button" id="cpBtnRecarregar" class="btn btn-ghost btn-sm">↺ Atualizar</button>
+      </div>
+    </div>
+    <div class="of-card-body">
+      <div id="cpLista"></div>
+    </div>
+  </div>
+
+  <!-- ═══ REVOGAR ═══ -->
+  <div class="of-modal-overlay" id="cpModalOverlay" style="display:none;">
+    <div class="of-modal" style="max-width:560px;">
+      <div class="of-modal-head">
+        <div>
+          <div class="of-modal-title">Revogar link</div>
+          <div class="of-modal-sub" id="cpModalSub">—</div>
+        </div>
+        <button type="button" class="of-modal-x" id="cpModalFechar" aria-label="Fechar">×</button>
+      </div>
+      <div class="of-modal-body">
+        <div style="background:#fef3c7;border:1.5px solid #fcd34d;border-radius:12px;padding:13px 17px;font-size:12.5px;font-weight:600;line-height:1.6;color:#92400e;">
+          A partir de agora este link deixa de abrir. Quem estiver contando com ele —
+          o fornecedor que ia enviar a nota fiscal, por exemplo — vai encontrar a página
+          recusando o acesso, <strong>sem saber por quê</strong>. Se for o caso, avise a pessoa.
+        </div>
+        <div class="fld" style="margin-top:14px;">
+          <label for="cpMotivo">MOTIVO DA REVOGAÇÃO</label>
+          <textarea id="cpMotivo" rows="3" placeholder="Ex.: link enviado para o e-mail errado"></textarea>
+        </div>
+      </div>
+      <div class="of-modal-foot">
+        <button type="button" class="btn btn-outline" id="cpBtnCancelar">Cancelar</button>
+        <button type="button" class="btn btn-red" id="cpBtnConfirmar" disabled>Revogar o link</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>window.AUD_COMPART_MARCADOR = "bloco de script executou";</script>
+
+<script>
+(function(){
+  "use strict";
+
+  var cpVigia = null;
+  var cpTudo = [];
+  var cpAlvo = null;
+
+  function kEl(id){ return document.getElementById(id); }
+  function kEsc(t){
+    return String(t==null?"":t).replace(/[&<>"]/g,function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];
+    });
+  }
+  function kToken(){
+    var t = (typeof SISGEP_TOKEN_SESSAO !== "undefined") ? SISGEP_TOKEN_SESSAO : "";
+    return (typeof t === "string") ? t : "";
+  }
+  function kAviso(msg,tipo){
+    if(typeof window.toast==="function") return window.toast(msg,tipo||"erro",5000);
+    console.warn("[Compartilhamentos]",msg);
+  }
+  function kCaixa(texto,cor){
+    var c={erro:["#fee2e2","#fca5a5","#991b1b"],ok:["#dcfce7","#6ee7b7","#166534"],
+           alerta:["#fef3c7","#fcd34d","#92400e"],info:["#eff6ff","#bfdbfe","#1e40af"]}[cor||"info"];
+    return '<div style="background:'+c[0]+";border:1.5px solid "+c[1]+
+      ";border-radius:12px;padding:13px 17px;font-size:12.5px;font-weight:600;line-height:1.55;color:"+c[2]+
+      ';">'+texto+"</div>";
+  }
+  function kData(v){
+    if(!v) return "—";
+    var d=(v instanceof Date)?v:new Date(v);
+    if(isNaN(d.getTime())) return "—";
+    function z(n){ return (n<10?"0":"")+n; }
+    return z(d.getDate())+"/"+z(d.getMonth()+1)+"/"+d.getFullYear();
+  }
+
+  var CP_ESTADOS = {
+    ATIVO:    { rotulo:"Ativo",    icone:"✅", cor:"#0f8a5f", fundo:"#dcfce7" },
+    USADO:    { rotulo:"Usado",    icone:"👁", cor:"#1565C0", fundo:"#eff6ff" },
+    EXPIRADO: { rotulo:"Expirado", icone:"⏱", cor:"#64748b", fundo:"#f1f5f9" },
+    REVOGADO: { rotulo:"Revogado", icone:"⛔", cor:"#dc2626", fundo:"#fee2e2" }
+  };
+
+  function kCard(valor, rotulo, nota, cor){
+    return '<div class="of-card" style="padding:16px 18px;margin:0;border-left:4px solid '+cor+';">' +
+      '<div style="font-size:27px;font-weight:900;color:'+cor+';line-height:1.1;">'+valor+'</div>' +
+      '<div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-top:5px;">'+kEsc(rotulo)+'</div>' +
+      '<div style="font-size:11.5px;color:#94a3b8;font-weight:600;margin-top:3px;">'+kEsc(nota)+'</div>' +
+      '</div>';
+  }
+
+  function kRenderCards(resumo){
+    var ativos = resumo.ATIVO || 0;
+    kEl("cpCards").innerHTML =
+      kCard(ativos, "Ativos agora",
+            ativos ? "abrem sem login neste momento" : "nenhum link aberto",
+            ativos ? "#0f8a5f" : "#94a3b8") +
+      kCard(resumo.USADO || 0, "Já usados", "o destinatário abriu", "#1565C0") +
+      kCard(resumo.EXPIRADO || 0, "Expirados", "passaram da validade", "#64748b") +
+      kCard(resumo.REVOGADO || 0, "Revogados", "desligados manualmente",
+            (resumo.REVOGADO||0) ? "#dc2626" : "#94a3b8");
+  }
+
+  function kRenderLista(){
+    var f = kEl("cpFiltro").value;
+    var lista = f ? cpTudo.filter(function(x){ return x.estado === f; }) : cpTudo;
+
+    kEl("cpResumo").textContent = lista.length + (lista.length===1 ? " link" : " links");
+
+    if(!lista.length){
+      kEl("cpLista").innerHTML = kCaixa(
+        cpTudo.length
+          ? "Nenhum link neste estado."
+          : "<strong>Nenhum link registrado ainda.</strong> A lista começa a encher no próximo " +
+            "link que o sistema gerar — envio de nota fiscal a fornecedor ou confirmação de " +
+            "pagamento à contabilidade.<br><br>Links criados <em>antes</em> desta tela existir " +
+            "continuam funcionando e <strong>não aparecem aqui</strong>: não há registro deles " +
+            "em lugar nenhum para recuperar.", "info");
+      return;
+    }
+
+    kEl("cpLista").innerHTML =
+      "<div style='overflow-x:auto;'><table class='of-table' style='width:100%;'>" +
+      "<thead><tr><th style='width:22%;'>Tipo</th><th style='width:16%;'>Referência</th>" +
+      "<th style='width:14%;'>Criado</th><th style='width:14%;'>Vale até</th>" +
+      "<th style='width:13%;'>Estado</th><th style='width:11%;'>Token</th>" +
+      "<th style='width:10%;'></th></tr></thead><tbody>" +
+      lista.map(function(x, i){
+        var e = CP_ESTADOS[x.estado] || { rotulo:x.estado, icone:"•", cor:"#64748b", fundo:"#f1f5f9" };
+        var podeRevogar = x.revogavel && (x.estado === "ATIVO" || x.estado === "USADO");
+        return "<tr>" +
+          "<td><strong>"+kEsc(x.tipoRotulo)+"</strong>" +
+            "<div style='font-size:11px;color:#94a3b8;'>"+kEsc(x.quem)+"</div></td>" +
+          "<td>"+kEsc(x.referencia||"—")+"</td>" +
+          "<td>"+kEsc(kData(x.criadoEm))+"</td>" +
+          "<td>"+kEsc(kData(x.validade))+"</td>" +
+          "<td><span style='display:inline-block;padding:2px 10px;border-radius:999px;font-size:10.5px;font-weight:800;background:"+
+            e.fundo+";color:"+e.cor+";'>"+e.icone+" "+kEsc(e.rotulo)+"</span>" +
+            (x.estado==="REVOGADO" && x.motivo
+              ? "<div style='font-size:10.5px;color:#94a3b8;margin-top:3px;'>"+kEsc(x.motivo)+"</div>" : "") +
+          "</td>" +
+          "<td><code style='font-size:11px;color:#94a3b8;'>"+kEsc(x.tokenPrefixo)+"…</code></td>" +
+          "<td style='text-align:right;'>" +
+            (podeRevogar
+              ? "<button type='button' class='btn btn-outline btn-sm' data-i='"+i+"'>Revogar</button>"
+              : "<span style='color:#cbd5e1;font-size:11px;'>—</span>") +
+          "</td>" +
+        "</tr>";
+      }).join("") + "</tbody></table></div>";
+
+    Array.prototype.forEach.call(kEl("cpLista").querySelectorAll("button[data-i]"), function(btn){
+      btn.onclick = function(){ kAbrirRevogar(lista[parseInt(btn.getAttribute("data-i"),10)]); };
+    });
+  }
+
+  /* ─── REVOGAR ─── */
+  function kAbrirRevogar(x){
+    if(!x) return;
+    cpAlvo = x;
+    kEl("cpModalSub").textContent = x.tipoRotulo + " · " + (x.referencia || x.id);
+    kEl("cpMotivo").value = "";
+    kValidarMotivo();
+    kEl("cpModalOverlay").style.display = "flex";
+  }
+  function kFechar(){ kEl("cpModalOverlay").style.display = "none"; cpAlvo = null; }
+
+  // O motivo é obrigatório: revogar desliga o acesso de alguém de fora que
+  // estava contando com ele. Quem revoga deixa escrito por quê.
+  function kValidarMotivo(){
+    var v = String(kEl("cpMotivo").value || "").trim();
+    kEl("cpBtnConfirmar").disabled = v.length < 5;
+  }
+
+  function kConfirmar(){
+    if(!cpAlvo) return;
+    var btn = kEl("cpBtnConfirmar");
+    btn.disabled = true;
+    btn.textContent = "Revogando…";
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        btn.textContent = "Revogar o link";
+        if(!r || !r.ok){
+          kValidarMotivo();
+          return kAviso((r && r.mensagem) || "Não foi possível revogar.","erro");
+        }
+        kFechar();
+        kAviso(r.mensagem, "sucesso");
+        kCarregar();
+      })
+      .withFailureHandler(function(e){
+        btn.textContent = "Revogar o link";
+        kValidarMotivo();
+        kAviso("Erro ao revogar: " + (e && e.message ? e.message : e), "erro");
+      })
+      .compartRevogar(cpAlvo.id, String(kEl("cpMotivo").value||"").trim(), kToken());
+  }
+
+  /* ─── CARGA ─── */
+  function kFalhaDura(titulo, e){
+    if(cpVigia){ clearTimeout(cpVigia); cpVigia = null; }
+    kEl("cpResumo").textContent = "Não foi possível carregar";
+    kEl("cpCards").innerHTML = "";
+    kEl("cpLista").innerHTML = kCaixa("<strong>"+kEsc(titulo)+"</strong>" +
+      (e ? "<br><br><code style='font-size:11px;word-break:break-all;'>" +
+           kEsc(e && e.message ? e.message : e)+"</code>" : ""),"erro");
+    kAviso(titulo,"erro");
+  }
+
+  function kCarregar(){
+    kEl("cpResumo").textContent = "Consultando o servidor…";
+    kEl("cpLista").innerHTML = "";
+
+    if(cpVigia) clearTimeout(cpVigia);
+    cpVigia = setTimeout(function(){
+      kFalhaDura("O servidor não respondeu em 25 segundos.", null);
+    }, 25000);
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(cpVigia){ clearTimeout(cpVigia); cpVigia = null; }
+        if(!r || !r.ok) return kFalhaDura("O servidor respondeu, mas sem os links.", null);
+        try {
+          cpTudo = r.links || [];
+          kEl("cpBadge").textContent = (r.resumo && r.resumo.ATIVO)
+            ? (r.resumo.ATIVO + " ATIVO(S)") : "NENHUM ATIVO";
+          kRenderCards(r.resumo || {});
+          kRenderLista();
+          kEl("cpResumoSub").textContent = "Token exibido em prefixo — o link inteiro nunca sai desta tela";
+        } catch (err) {
+          kFalhaDura("Os links vieram, mas a tela não conseguiu desenhá-los.", err);
+        }
+      })
+      .withFailureHandler(function(e){ kFalhaDura("Erro ao carregar os links.", e); })
+      .compartListar({}, kToken());
+  }
+
+  window.initAuditoriaCompartilhamentos = function(){
+    var b;
+    b = kEl("cpBtnRecarregar"); if(b) b.onclick = kCarregar;
+    b = kEl("cpFiltro");        if(b) b.onchange = kRenderLista;
+    b = kEl("cpModalFechar");   if(b) b.onclick = kFechar;
+    b = kEl("cpBtnCancelar");   if(b) b.onclick = kFechar;
+    b = kEl("cpBtnConfirmar");  if(b) b.onclick = kConfirmar;
+    b = kEl("cpMotivo");
+    if(b){ b.oninput = kValidarMotivo; b.onkeyup = kValidarMotivo; }
+    b = kEl("cpModalOverlay");
+    if(b) b.onclick = function(ev){ if(ev.target === b) kFechar(); };
+
+    try { kCarregar(); }
+    catch (e) { kFalhaDura("Não consegui nem iniciar a consulta dos links.", e); }
+  };
+})();
+</script>

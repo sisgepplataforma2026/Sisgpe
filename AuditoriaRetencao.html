@@ -1,0 +1,330 @@
+<div id="auditoriaRetencao" style="min-height:100%;background:#f0f4f8;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#0f172a;">
+<!--
+  Auditoria e Compliance — Retenção e Descarte (item 16.10 do PROMPT-MESTRE).
+  Backend em LgpdRetencao.gs: lgpdPainelRetencao, lgpdInstalarTrigger,
+  lgpdRemoverTrigger, executarExpurgoLGPDAgora.
+
+  POR QUE ESTA TELA EXISTE
+  O gatilho de expurgo não avisa quando não está instalado. Simplesmente
+  nada é apagado — e o sindicato passa a guardar geolocalização de gente por
+  tempo indeterminado sem ninguém saber. É descumprimento de LGPD que só
+  aparece quando alguém pergunta.
+
+  Por isso o estado do gatilho é a primeira coisa da tela, antes das
+  políticas: é a única informação aqui que exige ação.
+
+  A tabela de políticas vem do código, não de cadastro editável. Política que
+  se edita à mão envelhece e passa a mentir numa fiscalização, enquanto o
+  expurgo real continua obedecendo o que está no .gs.
+-->
+
+  <div class="of-modulo-header">
+    <div>
+      <div class="of-modulo-header-title">🗑️ Retenção e Descarte</div>
+      <div class="of-modulo-header-sub">Prazo de guarda dos dados pessoais e o expurgo automático — LGPD</div>
+    </div>
+    <div class="of-modulo-header-badge" id="retBadge">—</div>
+  </div>
+
+  <!-- ═══ ESTADO DO GATILHO — o que exige ação ═══ -->
+  <div id="retEstado" style="margin-bottom:16px;"></div>
+
+  <!-- ═══ POLÍTICAS ═══ -->
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">📋</div>
+        <div>
+          <div class="of-card-title">O que é apagado, e quando</div>
+          <div class="of-card-sub">Definido no código — esta tela mostra, não edita</div>
+        </div>
+      </div>
+      <div class="row-btns">
+        <button type="button" id="retBtnRecarregar" class="btn btn-ghost btn-sm">↺ Atualizar</button>
+      </div>
+    </div>
+    <div class="of-card-body">
+      <div id="retPoliticas"></div>
+      <div style="margin-top:14px;font-size:11.5px;color:#64748b;line-height:1.55;">
+        <strong>O que NÃO é apagado:</strong> cadastro de associado, escola, ofício, recibo e
+        lançamento financeiro. São registros com obrigação de guarda própria — trabalhista,
+        contábil e sindical — e não entram no expurgo por prazo.
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ ÚLTIMO EXPURGO ═══ -->
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">🕒</div>
+        <div>
+          <div class="of-card-title">Último expurgo</div>
+          <div class="of-card-sub">Quando rodou e o que foi apagado</div>
+        </div>
+      </div>
+    </div>
+    <div class="of-card-body">
+      <div id="retUltimo"></div>
+    </div>
+  </div>
+
+  <!-- ═══ EXECUÇÃO MANUAL ═══ -->
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">⚠️</div>
+        <div>
+          <div class="of-card-title">Executar o expurgo agora</div>
+          <div class="of-card-sub">Fora do horário do gatilho, sob responsabilidade de quem executa</div>
+        </div>
+      </div>
+    </div>
+    <div class="of-card-body">
+      <div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:12px;padding:14px 18px;">
+        <div style="font-size:12.5px;font-weight:700;color:#991b1b;line-height:1.6;">
+          Apaga em definitivo os dados que já passaram do prazo de guarda.
+          <strong>Não tem como desfazer</strong> — a planilha não guarda versão anterior de célula apagada.
+        </div>
+        <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <input type="text" id="retConfirma" placeholder="digite EXPURGAR para liberar" autocomplete="off"
+                 style="height:38px;width:250px;padding:0 13px;border:1.5px solid #cbd5e1;border-radius:9px;font-size:12.5px;font-family:'Plus Jakarta Sans',sans-serif;">
+          <button type="button" id="retBtnExecutar" class="btn btn-red" disabled>Executar expurgo</button>
+        </div>
+      </div>
+      <div id="retResultado" style="margin-top:14px;"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>window.AUD_RETENCAO_MARCADOR = "bloco de script executou";</script>
+
+<script>
+(function(){
+  "use strict";
+
+  var retVigia = null;
+
+  function rEl(id){ return document.getElementById(id); }
+  function rEsc(t){
+    return String(t==null?"":t).replace(/[&<>"]/g,function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];
+    });
+  }
+  function rToken(){
+    var t = (typeof SISGEP_TOKEN_SESSAO !== "undefined") ? SISGEP_TOKEN_SESSAO : "";
+    return (typeof t === "string") ? t : "";
+  }
+  function rAviso(msg,tipo){
+    if(typeof window.toast==="function") return window.toast(msg,tipo||"erro",5000);
+    console.warn("[Retenção]",msg);
+  }
+  function rCaixa(texto,cor){
+    var c={erro:["#fee2e2","#fca5a5","#991b1b"],ok:["#dcfce7","#6ee7b7","#166534"],
+           alerta:["#fef3c7","#fcd34d","#92400e"],info:["#eff6ff","#bfdbfe","#1e40af"]}[cor||"info"];
+    return '<div style="background:'+c[0]+";border:1.5px solid "+c[1]+
+      ";border-radius:12px;padding:14px 18px;font-size:12.5px;font-weight:600;line-height:1.6;color:"+c[2]+
+      ';">'+texto+"</div>";
+  }
+  function rDataHora(iso){
+    if(!iso) return "—";
+    var d=new Date(iso);
+    if(isNaN(d.getTime())) return "—";
+    function z(n){ return (n<10?"0":"")+n; }
+    return z(d.getDate())+"/"+z(d.getMonth()+1)+"/"+d.getFullYear()+" às "+z(d.getHours())+":"+z(d.getMinutes());
+  }
+
+  /* ─── ESTADO DO GATILHO ───
+     Três estados, e cada um pede uma coisa diferente de quem está lendo. */
+  function rRenderEstado(r){
+    var badge = rEl("retBadge");
+
+    if(r.gatilhoConhecido === false){
+      badge.textContent = "INDEFINIDO";
+      rEl("retEstado").innerHTML = rCaixa(
+        "<strong>Não consegui verificar se o expurgo automático está ativo.</strong><br>" +
+        rEsc(r.mensagemGatilho || "") +
+        "<br><br>Enquanto não souber, trate como <strong>não instalado</strong> — é a suposição " +
+        "que erra para o lado seguro.", "alerta");
+      return;
+    }
+
+    if(r.gatilhoInstalado){
+      badge.textContent = "ATIVO";
+      rEl("retEstado").innerHTML =
+        rCaixa("<strong>Expurgo automático ativo.</strong> Roda todo dia às " +
+          rEsc(r.horaGatilho) + " e apaga o que passou do prazo de guarda.", "ok") +
+        '<div style="margin-top:10px;text-align:right;">' +
+        '<button type="button" id="retBtnRemover" class="btn btn-outline btn-sm">Desativar o expurgo automático</button>' +
+        "</div>";
+      var br = rEl("retBtnRemover");
+      if(br) br.onclick = rRemover;
+      return;
+    }
+
+    badge.textContent = "DESLIGADO";
+    rEl("retEstado").innerHTML =
+      rCaixa("<strong>O expurgo automático NÃO está instalado.</strong><br>" +
+        "Nenhum dado vencido está sendo apagado. Geolocalização de check-in e dados da " +
+        "Receita continuam guardados por tempo indeterminado — o que contraria a política " +
+        "de retenção registrada abaixo.", "erro") +
+      '<div style="margin-top:10px;text-align:right;">' +
+      '<button type="button" id="retBtnInstalar" class="btn btn-navy">Instalar o expurgo automático</button>' +
+      "</div>";
+    var bi = rEl("retBtnInstalar");
+    if(bi) bi.onclick = rInstalar;
+  }
+
+  function rRenderPoliticas(r){
+    var lista = r.politicas || [];
+    if(!lista.length){
+      rEl("retPoliticas").innerHTML = rCaixa("Nenhuma política de retenção definida.","alerta");
+      return;
+    }
+    rEl("retPoliticas").innerHTML =
+      "<div style='overflow-x:auto;'><table class='of-table' style='width:100%;'>" +
+      "<thead><tr><th style='width:42%;'>Dado pessoal</th><th style='width:18%;'>Onde fica</th>" +
+      "<th style='width:14%;'>Prazo</th><th>Origem da decisão</th></tr></thead><tbody>" +
+      lista.map(function(p){
+        return "<tr><td><strong>"+rEsc(p.dado)+"</strong></td>" +
+          "<td>"+rEsc(p.onde)+"</td>" +
+          "<td><strong>"+rEsc(p.anos)+" anos</strong></td>" +
+          "<td style='color:#64748b;'>"+rEsc(p.base)+"</td></tr>";
+      }).join("") + "</tbody></table></div>";
+  }
+
+  function rRenderUltimo(r){
+    var u = r.ultimoExpurgo;
+    if(!u){
+      rEl("retUltimo").innerHTML = rCaixa(
+        "<strong>Nenhum expurgo registrado até agora.</strong> Ou nunca rodou, ou rodou antes " +
+        "de o sistema passar a guardar essa informação. Numa fiscalização, a resposta honesta " +
+        "para 'quando foi o último descarte?' é que não há registro.", "alerta");
+      return;
+    }
+    function bloco(rotulo, d){
+      if(!d) return "<li>"+rEsc(rotulo)+": <span style='color:#94a3b8;'>sem resultado</span></li>";
+      if(d.ok === false) return "<li>"+rEsc(rotulo)+": <strong style='color:#991b1b;'>falhou</strong> — "+rEsc(d.mensagem||"")+"</li>";
+      var n = (d.expurgadas !== undefined) ? d.expurgadas : (d.apagados !== undefined ? d.apagados : "—");
+      return "<li>"+rEsc(rotulo)+": <strong>"+rEsc(n)+"</strong> registro(s) apagado(s)</li>";
+    }
+    rEl("retUltimo").innerHTML = rCaixa(
+      "<strong>"+rEsc(rDataHora(u.quando))+"</strong>" +
+      "<ul style='margin:8px 0 0 18px;font-weight:600;'>" +
+      bloco("Geolocalização de visitas", u.visitas) +
+      bloco("Dados da Receita Federal", u.receita) +
+      "</ul>", "info");
+  }
+
+  /* ─── AÇÕES ─── */
+  function rInstalar(){
+    rAviso("Instalando o gatilho…","info");
+    google.script.run
+      .withSuccessHandler(function(r){
+        rAviso((r && r.mensagem) || "Gatilho instalado.","sucesso");
+        rCarregar();
+      })
+      .withFailureHandler(function(e){ rAviso("Não consegui instalar: "+(e&&e.message?e.message:e),"erro"); })
+      .lgpdInstalarTrigger(rToken());
+  }
+
+  function rRemover(){
+    // Desligar o expurgo faz o sindicato voltar a guardar dado vencido, e
+    // isso não aparece em tela nenhuma do dia a dia. Confirmação explícita.
+    if(!window.confirm(
+      "Desativar o expurgo automático?\n\n" +
+      "A partir daí nenhum dado vencido será apagado, e o sistema deixa de cumprir a " +
+      "política de retenção. A ação fica registrada na trilha de auditoria.")) return;
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        rAviso((r && r.mensagem) || "Gatilho removido.","alerta");
+        rCarregar();
+      })
+      .withFailureHandler(function(e){ rAviso("Não consegui remover: "+(e&&e.message?e.message:e),"erro"); })
+      .lgpdRemoverTrigger(rToken());
+  }
+
+  function rExecutar(){
+    var btn = rEl("retBtnExecutar");
+    btn.disabled = true;
+    btn.textContent = "Executando…";
+    rEl("retResultado").innerHTML = "";
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        btn.textContent = "Executar expurgo";
+        rEl("retConfirma").value = "";
+        rValidarConfirmacao();
+        rEl("retResultado").innerHTML = rCaixa(
+          "<strong>Expurgo executado.</strong><br>" +
+          "<code style='font-size:11.5px;'>"+rEsc(JSON.stringify(r))+"</code>", "ok");
+        rCarregar();
+      })
+      .withFailureHandler(function(e){
+        btn.textContent = "Executar expurgo";
+        rValidarConfirmacao();
+        rEl("retResultado").innerHTML = rCaixa(
+          "<strong>O expurgo não foi executado.</strong><br>" +
+          rEsc(e && e.message ? e.message : e), "erro");
+      })
+      .executarExpurgoLGPDAgora(rToken());
+  }
+
+  // O botão só libera com a palavra digitada. Apagar em definitivo não pode
+  // acontecer por clique distraído.
+  function rValidarConfirmacao(){
+    var v = String(rEl("retConfirma").value || "").trim().toUpperCase();
+    rEl("retBtnExecutar").disabled = (v !== "EXPURGAR");
+  }
+
+  /* ─── CARGA ─── */
+  function rFalhaDura(titulo, e){
+    if(retVigia){ clearTimeout(retVigia); retVigia = null; }
+    rEl("retEstado").innerHTML = rCaixa(
+      "<strong>"+rEsc(titulo)+"</strong>" +
+      (e ? "<br><br><code style='font-size:11px;word-break:break-all;'>" +
+           rEsc(e && e.message ? e.message : e)+"</code>" : ""),"erro");
+    rEl("retPoliticas").innerHTML = "";
+    rEl("retUltimo").innerHTML = "";
+    rAviso(titulo,"erro");
+  }
+
+  function rCarregar(){
+    rEl("retEstado").innerHTML = rCaixa("Consultando o servidor…","info");
+
+    if(retVigia) clearTimeout(retVigia);
+    retVigia = setTimeout(function(){
+      rFalhaDura("O servidor não respondeu em 25 segundos.", null);
+    }, 25000);
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(retVigia){ clearTimeout(retVigia); retVigia = null; }
+        if(!r || !r.ok) return rFalhaDura("O servidor respondeu, mas sem o estado da retenção.", null);
+        try {
+          rRenderEstado(r);
+          rRenderPoliticas(r);
+          rRenderUltimo(r);
+        } catch (err) {
+          rFalhaDura("O estado veio, mas a tela não conseguiu desenhá-lo.", err);
+        }
+      })
+      .withFailureHandler(function(e){ rFalhaDura("Erro ao carregar a retenção.", e); })
+      .lgpdPainelRetencao(rToken());
+  }
+
+  window.initAuditoriaRetencao = function(){
+    var b;
+    b = rEl("retBtnRecarregar"); if(b) b.onclick = rCarregar;
+    b = rEl("retBtnExecutar");   if(b) b.onclick = rExecutar;
+    b = rEl("retConfirma");
+    if(b){ b.oninput = rValidarConfirmacao; b.onkeyup = rValidarConfirmacao; }
+    rValidarConfirmacao();
+
+    try { rCarregar(); }
+    catch (e) { rFalhaDura("Não consegui nem iniciar a consulta da retenção.", e); }
+  };
+})();
+</script>

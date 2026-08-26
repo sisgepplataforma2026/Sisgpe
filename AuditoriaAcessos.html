@@ -1,0 +1,230 @@
+<div id="auditoriaAcessos" style="min-height:100%;background:#f0f4f8;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#0f172a;">
+<!--
+  Auditoria e Compliance — Logs de Acesso (item 16.2 do PROMPT-MESTRE).
+  Lê a mesma trilha, filtrada por Segurança › Acesso. Sem armazenamento novo.
+
+  Backend: auditoriaConsultar em AuditoriaCore.gs; os registros entram pelos
+  ganchos em Login1.gs (entrada, senha incorreta, bloqueio) e Sessao.gs
+  (saída).
+
+  O QUE ESTA TELA NÃO TEM, E NÃO TERÁ: o endereço de quem acessou. O Apps
+  Script não entrega o IP do chamador da web app. Não é omissão — é limite da
+  plataforma. Está escrito na tela porque quem consulta um log de acesso está
+  quase sempre atrás justamente disso, e precisa saber que aqui não vai
+  encontrar.
+-->
+
+  <div class="of-modulo-header">
+    <div>
+      <div class="of-modulo-header-title">🔑 Logs de Acesso</div>
+      <div class="of-modulo-header-sub">Quem entrou, quem saiu, e quem tentou sem conseguir</div>
+    </div>
+    <div class="of-modulo-header-badge" id="acBadge">—</div>
+  </div>
+
+  <div id="acEstado" style="margin-bottom:14px;"></div>
+
+  <div id="acCards" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px;"></div>
+
+  <!-- ═══ LISTA ═══ -->
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">📜</div>
+        <div>
+          <div class="of-card-title" id="acResumo">Carregando…</div>
+          <div class="of-card-sub" id="acResumoSub">—</div>
+        </div>
+      </div>
+      <div class="row-btns">
+        <select id="acFiltro" style="height:34px;padding:0 10px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:12.5px;font-family:'Plus Jakarta Sans',sans-serif;">
+          <option value="">Tudo</option>
+          <option value="ENTRAR">Só entradas</option>
+          <option value="SENHA_INCORRETA">Só tentativas falhas</option>
+          <option value="BLOQUEIO_POR_TENTATIVAS">Só bloqueios</option>
+          <option value="SAIR">Só saídas</option>
+        </select>
+        <button type="button" id="acBtnRecarregar" class="btn btn-ghost btn-sm">↺ Atualizar</button>
+      </div>
+    </div>
+    <div class="of-card-body">
+      <div id="acLista"></div>
+      <div style="margin-top:14px;font-size:11.5px;color:#64748b;line-height:1.6;">
+        <strong>Sobre "de onde":</strong> o Google Apps Script não informa o endereço de rede de
+        quem acessa o sistema. A coluna de origem mostra por onde a ação entrou
+        (<code>LOGIN</code>, <code>PORTAL_ADMIN</code>), não localização nem máquina. Se for preciso
+        responder de qual computador partiu um acesso, o SISGEP não tem essa informação.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>window.AUD_ACESSOS_MARCADOR = "bloco de script executou";</script>
+
+<script>
+(function(){
+  "use strict";
+
+  var acVigia = null;
+  var acTudo = [];
+
+  function cEl(id){ return document.getElementById(id); }
+  function cEsc(t){
+    return String(t==null?"":t).replace(/[&<>"]/g,function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];
+    });
+  }
+  function cToken(){
+    var t = (typeof SISGEP_TOKEN_SESSAO !== "undefined") ? SISGEP_TOKEN_SESSAO : "";
+    return (typeof t === "string") ? t : "";
+  }
+  function cAviso(msg,tipo){
+    if(typeof window.toast==="function") return window.toast(msg,tipo||"erro",5000);
+    console.warn("[Acessos]",msg);
+  }
+  function cCaixa(texto,cor){
+    var c={erro:["#fee2e2","#fca5a5","#991b1b"],ok:["#dcfce7","#6ee7b7","#166534"],
+           alerta:["#fef3c7","#fcd34d","#92400e"],info:["#eff6ff","#bfdbfe","#1e40af"]}[cor||"info"];
+    return '<div style="background:'+c[0]+";border:1.5px solid "+c[1]+
+      ";border-radius:12px;padding:13px 17px;font-size:12.5px;font-weight:600;line-height:1.55;color:"+c[2]+
+      ';">'+texto+"</div>";
+  }
+  function cData(v){
+    if(!v) return null;
+    var d=(v instanceof Date)?v:new Date(v);
+    return isNaN(d.getTime())?null:d;
+  }
+  function cDataHora(v){
+    var d=cData(v); if(!d) return "—";
+    function z(n){ return (n<10?"0":"")+n; }
+    return z(d.getDate())+"/"+z(d.getMonth()+1)+" "+z(d.getHours())+":"+z(d.getMinutes());
+  }
+
+  var AC_TIPOS = {
+    ENTRAR:                  { rotulo:"Entrou",          icone:"✅", cor:"#0f8a5f" },
+    SAIR:                    { rotulo:"Saiu",            icone:"🚪", cor:"#64748b" },
+    SENHA_INCORRETA:         { rotulo:"Senha incorreta", icone:"❌", cor:"#d97706" },
+    BLOQUEIO_POR_TENTATIVAS: { rotulo:"Bloqueado",       icone:"⛔", cor:"#dc2626" }
+  };
+
+  function cCard(valor, rotulo, nota, cor){
+    return '<div class="of-card" style="padding:16px 18px;margin:0;border-left:4px solid '+cor+';">' +
+      '<div style="font-size:27px;font-weight:900;color:'+cor+';line-height:1.1;">'+valor+'</div>' +
+      '<div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-top:5px;">'+cEsc(rotulo)+'</div>' +
+      '<div style="font-size:11.5px;color:#94a3b8;font-weight:600;margin-top:3px;">'+cEsc(nota)+'</div>' +
+      '</div>';
+  }
+
+  function cRenderCards(){
+    var agora = new Date().getTime();
+    function dentro24h(a){
+      var d = cData(a.dataHora);
+      return d && (agora - d.getTime()) <= 24*3600*1000;
+    }
+    var entradas24 = acTudo.filter(function(a){ return a.acao==="ENTRAR" && dentro24h(a); }).length;
+    var falhas24   = acTudo.filter(function(a){ return a.acao==="SENHA_INCORRETA" && dentro24h(a); }).length;
+    var bloqueios  = acTudo.filter(function(a){ return a.acao==="BLOQUEIO_POR_TENTATIVAS" && dentro24h(a); }).length;
+    var pessoas    = {};
+    acTudo.forEach(function(a){ if(a.acao==="ENTRAR" && dentro24h(a)) pessoas[a.usuario]=1; });
+
+    cEl("acCards").innerHTML =
+      cCard(entradas24, "Entradas em 24h", "acessos bem-sucedidos", "#0f8a5f") +
+      cCard(Object.keys(pessoas).length, "Pessoas distintas", "entraram nas últimas 24h", "#1565C0") +
+      cCard(falhas24, "Tentativas falhas", falhas24 ? "senha incorreta em 24h" : "nenhuma em 24h",
+            falhas24 ? "#d97706" : "#94a3b8") +
+      cCard(bloqueios, "Bloqueios", bloqueios ? "contas travadas por tentativas" : "nenhum em 24h",
+            bloqueios ? "#dc2626" : "#94a3b8");
+  }
+
+  function cRenderLista(){
+    var f = cEl("acFiltro").value;
+    var lista = f ? acTudo.filter(function(a){ return a.acao === f; }) : acTudo;
+
+    cEl("acResumo").textContent = lista.length + (lista.length===1 ? " registro" : " registros");
+
+    if(!lista.length){
+      cEl("acLista").innerHTML = cCaixa(
+        acTudo.length
+          ? "Nenhum registro para este filtro."
+          : "<strong>Nenhum acesso registrado ainda.</strong> A trilha de acesso começa a " +
+            "encher no próximo login — inclusive no seu, da próxima vez que entrar.", "info");
+      return;
+    }
+
+    cEl("acLista").innerHTML =
+      "<div style='overflow-x:auto;'><table class='of-table' style='width:100%;'>" +
+      "<thead><tr><th style='width:14%;'>Quando</th><th style='width:20%;'>O que houve</th>" +
+      "<th style='width:30%;'>Quem</th><th style='width:24%;'>Detalhe</th>" +
+      "<th style='width:12%;'>Origem</th></tr></thead><tbody>" +
+      lista.map(function(a){
+        var t = AC_TIPOS[a.acao] || { rotulo:a.acao, icone:"•", cor:"#64748b" };
+        var grave = a.acao === "BLOQUEIO_POR_TENTATIVAS";
+        return "<tr"+(grave?" style='background:#fef2f2;'":"")+">" +
+          "<td style='white-space:nowrap;'>"+cEsc(cDataHora(a.dataHora))+"</td>" +
+          "<td><span style='color:"+t.cor+";font-weight:800;'>"+t.icone+" "+cEsc(t.rotulo)+"</span></td>" +
+          "<td>"+cEsc(a.usuario||"—")+"</td>" +
+          "<td style='color:#64748b;'>"+cEsc(a.justificativa||"—")+"</td>" +
+          "<td style='color:#94a3b8;font-size:11.5px;'>"+cEsc(a.origem||"—")+"</td>" +
+        "</tr>";
+      }).join("") + "</tbody></table></div>";
+  }
+
+  function cRenderEstado(r){
+    var badge = cEl("acBadge");
+    badge.textContent = (r.fonte === "FIRESTORE") ? "FIRESTORE" : "RESERVA";
+    cEl("acEstado").innerHTML = (r.fonte === "FIRESTORE") ? "" : cCaixa(
+      "<strong>Registros na planilha de reserva.</strong> Log de acesso é o primeiro lugar " +
+      "que alguém apagaria para esconder um acesso indevido — e na planilha isso não deixa " +
+      "rastro. Configurar o Firestore é o que torna este registro confiável.", "alerta");
+  }
+
+  function cFalhaDura(titulo, e){
+    if(acVigia){ clearTimeout(acVigia); acVigia = null; }
+    cEl("acResumo").textContent = "Não foi possível carregar";
+    cEl("acCards").innerHTML = "";
+    cEl("acLista").innerHTML = cCaixa("<strong>"+cEsc(titulo)+"</strong>" +
+      (e ? "<br><br><code style='font-size:11px;word-break:break-all;'>" +
+           cEsc(e && e.message ? e.message : e)+"</code>" : ""),"erro");
+    cAviso(titulo,"erro");
+  }
+
+  function cCarregar(){
+    cEl("acResumo").textContent = "Consultando o servidor…";
+    cEl("acLista").innerHTML = "";
+
+    if(acVigia) clearTimeout(acVigia);
+    acVigia = setTimeout(function(){
+      cFalhaDura("O servidor não respondeu em 25 segundos.", null);
+    }, 25000);
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(acVigia){ clearTimeout(acVigia); acVigia = null; }
+        if(!r || !r.ok) return cFalhaDura("O servidor respondeu, mas sem os acessos.", null);
+        try {
+          acTudo = r.acoes || [];
+          cRenderEstado(r);
+          cRenderCards();
+          cRenderLista();
+          cEl("acResumoSub").textContent =
+            "Fonte: " + (r.fonte === "FIRESTORE" ? "Firestore" : "planilha de reserva") +
+            (r.truncado ? " · há mais registros que os exibidos" : "");
+        } catch (err) {
+          cFalhaDura("Os acessos vieram, mas a tela não conseguiu desenhá-los.", err);
+        }
+      })
+      .withFailureHandler(function(e){ cFalhaDura("Erro ao carregar os acessos.", e); })
+      .auditoriaConsultar({ modulo: "Segurança", limite: 500 }, cToken());
+  }
+
+  window.initAuditoriaAcessos = function(){
+    var b;
+    b = cEl("acBtnRecarregar"); if(b) b.onclick = cCarregar;
+    b = cEl("acFiltro");        if(b) b.onchange = cRenderLista;
+
+    try { cCarregar(); }
+    catch (e) { cFalhaDura("Não consegui nem iniciar a consulta dos acessos.", e); }
+  };
+})();
+</script>

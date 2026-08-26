@@ -1,0 +1,317 @@
+<!--
+  ARQUIVO: VerbasAdmin.html
+  MÓDULO: Financeiro › Despesas — aba "Verbas de Diretoria"
+
+  Incluído DENTRO de DespesasAdmin.html, como painel de aba.
+
+  🚨 NUNCA escreva scriptlet do Apps Script (a sintaxe que abre com
+  menor-interrogação) neste arquivo — NEM DENTRO DE COMENTÁRIO HTML. O
+  template engine avalia scriptlet em qualquer posição, inclusive
+  comentado, e um arquivo que cita o próprio include se inclui em
+  recursão infinita, derrubando o JavaScript da tela toda. Regra nº 0
+  do CLAUDE.md.
+
+  Duas partes: o CADASTRO dos diretores (nome, cargo, valor da
+  gratificação, dia de vencimento) e a GERAÇÃO do mês, que cria as
+  despesas e as joga na fila do Controle de Pagamentos.
+
+  Reaproveita as classes de DespesasAdmin.html — não cria componente
+  nem paleta nova. Lógica em IIFE própria; o que vai para window é
+  prefixado com "verb".
+-->
+
+<div class="tab-panel" id="tab-verbas">
+
+  <!-- ══ Cadastro de diretor ══ -->
+  <div class="painel-inline" id="painel-verb-diretor">
+    <div class="painel-header"><span class="painel-header-title">👤 Diretor</span><button class="painel-close" onclick="fecharPainel('painel-verb-diretor')">✕</button></div>
+    <div class="painel-body">
+      <div class="painel-field"><label>Nome <span class="req">*</span></label><input type="text" id="verb-nome" placeholder="Nome completo"></div>
+      <div class="painel-field"><label>Cargo</label><input type="text" id="verb-cargo" placeholder="Ex.: Presidente, Diretor Financeiro"></div>
+      <div class="painel-field"><label>CPF</label><input type="text" id="verb-cpf" placeholder="000.000.000-00"></div>
+      <div class="painel-field"><label>E-mail <span class="opt">(só cadastro, não recebe cobrança)</span></label><input type="email" id="verb-email" placeholder="diretor@email.com"></div>
+      <div class="painel-field"><label>Valor da gratificação <span class="req">*</span></label><input type="text" id="verb-valor" inputmode="decimal" placeholder="0,00"></div>
+      <div class="painel-field"><label>Dia de vencimento <span class="req">*</span></label><input type="number" id="verb-dia" min="1" max="31" step="1" value="5"></div>
+      <div class="painel-field"><label>Observação</label><input type="text" id="verb-obs" placeholder="opcional"></div>
+      <div class="painel-actions">
+        <button class="btn btn-outline btn-sm" onclick="fecharPainel('painel-verb-diretor')">Cancelar</button>
+        <button class="btn btn-green btn-sm" onclick="verbSalvar()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Prévia da geração ══ -->
+  <div class="painel-inline" id="painel-verb-gerar">
+    <div class="painel-header" style="background:linear-gradient(135deg,#1e3a5f,#1565C0);"><span class="painel-header-title">📅 Gerar verbas do mês</span><button class="painel-close" onclick="fecharPainel('painel-verb-gerar')">✕</button></div>
+    <div class="painel-body">
+      <div class="painel-info" id="verb-previa-info"></div>
+      <div id="verb-previa-lista" style="max-height:300px;overflow:auto;margin-bottom:10px;"></div>
+      <div class="painel-actions">
+        <button class="btn btn-outline btn-sm" onclick="fecharPainel('painel-verb-gerar')">Cancelar</button>
+        <button class="btn btn-navy btn-sm" onclick="verbConfirmarGeracao()" id="btn-verb-gerar">📅 Gerar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Histórico ══ -->
+  <div class="painel-inline" id="painel-verb-historico">
+    <div class="painel-header" style="background:linear-gradient(135deg,#1e3a5f,#4338ca);"><span class="painel-header-title">🕘 Verbas já geradas</span><button class="painel-close" onclick="fecharPainel('painel-verb-historico')">✕</button></div>
+    <div class="painel-body"><div id="verb-historico-conteudo" style="max-height:340px;overflow:auto;"></div></div>
+  </div>
+
+  <div class="alert info" style="margin-bottom:14px;">
+    ℹ️ A gratificação é paga pelo <b>valor cheio, sem desconto de INSS/IRRF</b>. As despesas nascem marcadas como “Sem Documento” e sem e-mail, para nunca entrarem na régua que cobra nota fiscal de fornecedor.
+  </div>
+
+  <!-- ══ Geração do mês ══ -->
+  <div class="card-desp" style="margin-bottom:14px;">
+    <div class="card-desp-head">
+      <div>
+        <div class="card-desp-title">Gerar verbas da competência</div>
+        <div class="card-desp-sub">Cria uma despesa por diretor ativo. Gerar o mesmo mês duas vezes não duplica ninguém.</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;padding:0 16px 16px;">
+      <div class="painel-field" style="margin:0;min-width:170px;">
+        <label>Competência</label>
+        <input type="month" id="verb-competencia">
+      </div>
+      <button class="btn btn-navy btn-sm" onclick="verbAbrirGeracao()">📅 Preparar geração</button>
+      <button class="btn btn-outline btn-sm" onclick="verbVerHistorico()">🕘 Já geradas</button>
+    </div>
+  </div>
+
+  <!-- ══ Cadastro ══ -->
+  <div class="card-desp">
+    <div class="card-desp-head">
+      <div>
+        <div class="card-desp-title">Diretores</div>
+        <div class="card-desp-sub" id="verb-resumo">—</div>
+      </div>
+      <button class="btn btn-green btn-sm" onclick="verbNovo()">➕ Novo diretor</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Nome</th><th>Cargo</th><th>CPF</th><th style="text-align:right;">Gratificação</th><th>Vence dia</th><th>Situação</th><th>Ações</th></tr></thead>
+        <tbody id="verb-tabela"><tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:24px;">—</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var LISTA=[];
+  var EDIT_ID="";
+
+  function g(id){return document.getElementById(id);}
+  function tk(){return typeof SISGEP_TOKEN_SESSAO!=="undefined"?SISGEP_TOKEN_SESSAO:"";}
+  function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]);});}
+  var MAPA_TOAST={success:"ok",error:"err",warning:"warn",info:"info"};
+  function aviso(m,t){t=t||"info";if(typeof showToast==="function"){showToast(m,t);return;}if(typeof toast==="function"){toast(m,MAPA_TOAST[t]||t);}}
+  function num(v){var s=String(v==null?"":v).replace(/[^\d,.-]/g,"").replace(/\./g,"").replace(",",".");var n=Number(s);return isFinite(n)?n:0;}
+  function moeda(v){return Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});}
+  function compAtual(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");}
+
+  var MEUS=["painel-verb-diretor","painel-verb-gerar","painel-verb-historico"];
+  function abrir(id){
+    MEUS.forEach(function(p){var el=g(p);if(el)el.classList.remove("open");});
+    var el=g(id); if(el){el.classList.add("open");el.scrollIntoView({behavior:"smooth",block:"start"});}
+  }
+
+  /* ============ CADASTRO ============ */
+
+  window.verbCarregar=function(){
+    var tb=g("verb-tabela");
+    if(tb)tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:24px;">⏳ Carregando...</td></tr>';
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||r.ok!==true){
+          if(tb)tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:#991b1b;padding:24px;">'+esc((r&&r.mensagem)||"Erro.")+'</td></tr>';
+          return;
+        }
+        LISTA=r.diretores||[];
+        verbPintar();
+      })
+      .withFailureHandler(function(e){
+        if(tb)tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:#991b1b;padding:24px;">Erro: '+esc((e&&e.message)||e)+'</td></tr>';
+      })
+      .verbListarDiretores(tk());
+  };
+
+  function verbPintar(){
+    var tb=g("verb-tabela"); if(!tb)return;
+    var ativos=LISTA.filter(function(d){return d.ativo;});
+    var total=ativos.reduce(function(s,d){return s+Number(d.valor||0);},0);
+    if(g("verb-resumo"))g("verb-resumo").textContent=
+      ativos.length+" diretor(es) ativo(s) · "+moeda(total)+" por mês";
+
+    if(!LISTA.length){
+      tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:24px;">Nenhum diretor cadastrado ainda.</td></tr>';
+      return;
+    }
+    tb.innerHTML=LISTA.map(function(d){
+      var pill=d.ativo
+        ? '<span style="display:inline-block;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:800;color:#0f8a5f;background:#f0fdf4;">Ativo</span>'
+        : '<span style="display:inline-block;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:800;color:#64748b;background:#f1f5f9;">Inativo</span>';
+      return '<tr'+(d.ativo?'':' style="opacity:.6;"')+'>'+
+        '<td><strong>'+esc(d.nome)+'</strong></td>'+
+        '<td>'+esc(d.cargo||"—")+'</td>'+
+        '<td>'+esc(d.cpf||"—")+'</td>'+
+        '<td style="text-align:right;font-weight:800;">'+moeda(d.valor)+'</td>'+
+        '<td>'+esc(d.diaVencimento)+'</td>'+
+        '<td>'+pill+'</td>'+
+        '<td><div style="display:flex;gap:4px;flex-wrap:wrap;">'+
+          '<button class="btn btn-outline btn-sm" data-verb-editar="'+esc(d.id)+'">Editar</button>'+
+          '<button class="btn btn-outline btn-sm" data-verb-alternar="'+esc(d.id)+'">'+(d.ativo?"Inativar":"Reativar")+'</button>'+
+        '</div></td>'+
+      '</tr>';
+    }).join("");
+
+    tb.querySelectorAll("[data-verb-editar]").forEach(function(b){b.addEventListener("click",function(){verbEditar(b.getAttribute("data-verb-editar"));});});
+    tb.querySelectorAll("[data-verb-alternar]").forEach(function(b){b.addEventListener("click",function(){verbAlternar(b.getAttribute("data-verb-alternar"));});});
+  }
+
+  function achar(id){for(var i=0;i<LISTA.length;i++)if(LISTA[i].id===id)return LISTA[i];return null;}
+
+  window.verbNovo=function(){
+    EDIT_ID="";
+    ["verb-nome","verb-cargo","verb-cpf","verb-email","verb-valor","verb-obs"].forEach(function(id){if(g(id))g(id).value="";});
+    if(g("verb-dia"))g("verb-dia").value=5;
+    abrir("painel-verb-diretor");
+  };
+
+  window.verbEditar=function(id){
+    var d=achar(id); if(!d)return;
+    EDIT_ID=id;
+    if(g("verb-nome"))g("verb-nome").value=d.nome||"";
+    if(g("verb-cargo"))g("verb-cargo").value=d.cargo||"";
+    if(g("verb-cpf"))g("verb-cpf").value=d.cpf||"";
+    if(g("verb-email"))g("verb-email").value=d.email||"";
+    if(g("verb-valor"))g("verb-valor").value=Number(d.valor||0).toFixed(2).replace(".",",");
+    if(g("verb-dia"))g("verb-dia").value=d.diaVencimento||5;
+    if(g("verb-obs"))g("verb-obs").value=d.observacao||"";
+    abrir("painel-verb-diretor");
+  };
+
+  window.verbSalvar=function(){
+    var nome=String((g("verb-nome")||{}).value||"").trim();
+    if(!nome){aviso("Informe o nome.","error");return;}
+    var valor=num((g("verb-valor")||{}).value);
+    if(!(valor>0)){aviso("Informe o valor da gratificação.","error");return;}
+    fecharPainel("painel-verb-diretor");
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||r.ok!==true){aviso((r&&r.mensagem)||"Falha ao salvar.","error");return;}
+        aviso(r.mensagem,"success"); verbCarregar();
+      })
+      .withFailureHandler(function(e){aviso("Erro: "+((e&&e.message)||e),"error");})
+      .verbSalvarDiretor({
+        id:EDIT_ID, nome:nome,
+        cargo:(g("verb-cargo")||{}).value||"",
+        cpf:(g("verb-cpf")||{}).value||"",
+        email:(g("verb-email")||{}).value||"",
+        valor:valor,
+        diaVencimento:Number((g("verb-dia")||{}).value)||5,
+        observacao:(g("verb-obs")||{}).value||""
+      }, tk());
+  };
+
+  window.verbAlternar=function(id){
+    var d=achar(id); if(!d)return;
+    if(!confirm(d.ativo
+      ? "Inativar "+d.nome+"? Ele deixa de entrar nas próximas gerações. As verbas já geradas continuam como estão."
+      : "Reativar "+d.nome+"?"))return;
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||r.ok!==true){aviso((r&&r.mensagem)||"Falha.","error");return;}
+        aviso(r.mensagem,"success"); verbCarregar();
+      })
+      .withFailureHandler(function(e){aviso("Erro: "+((e&&e.message)||e),"error");})
+      .verbAlternarDiretor(id, !d.ativo, tk());
+  };
+
+  /* ============ GERAÇÃO ============ */
+
+  window.verbAbrirGeracao=function(){
+    var c=(g("verb-competencia")||{}).value||"";
+    if(!c){aviso("Escolha a competência.","error");return;}
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||r.ok!==true){aviso((r&&r.mensagem)||"Falha ao montar a prévia.","error");return;}
+        if(!r.itens||!r.itens.length){aviso("Nenhum diretor ativo cadastrado.","warning");return;}
+
+        if(g("verb-previa-info"))g("verb-previa-info").innerHTML=
+          '<strong>'+esc(r.competencia)+'</strong> — '+r.quantidadeNova+' verba(s) a gerar, total '+esc(r.totalNovoFmt)+
+          (r.quantidade-r.quantidadeNova>0?'<div style="margin-top:6px;font-size:12px;color:#92400e;">'+(r.quantidade-r.quantidadeNova)+' já foram geradas nesta competência e serão puladas.</div>':"");
+
+        var box=g("verb-previa-lista");
+        if(box)box.innerHTML=r.itens.map(function(i){
+          return '<div style="display:flex;justify-content:space-between;gap:8px;padding:7px 10px;border-bottom:1px solid #e5e7eb;'+(i.jaGerado?'opacity:.55;':'')+'">'+
+            '<div><strong>'+esc(i.nome)+'</strong>'+(i.cargo?' <span style="color:#94a3b8;">'+esc(i.cargo)+'</span>':"")+
+            '<div style="font-size:11px;color:#94a3b8;">vence '+esc(i.vencimento)+(i.jaGerado?' · já gerada':"")+'</div></div>'+
+            '<div style="font-weight:800;white-space:nowrap;">'+esc(i.valorFmt)+'</div>'+
+          '</div>';
+        }).join("");
+
+        var btn=g("btn-verb-gerar");
+        if(btn)btn.disabled=(r.quantidadeNova===0);
+        abrir("painel-verb-gerar");
+      })
+      .withFailureHandler(function(e){aviso("Erro: "+((e&&e.message)||e),"error");})
+      .verbPreviaCompetencia(c, tk());
+  };
+
+  window.verbConfirmarGeracao=function(){
+    var c=(g("verb-competencia")||{}).value||"";
+    if(!c)return;
+    var btn=g("btn-verb-gerar"); if(btn){btn.disabled=true;btn.textContent="Gerando...";}
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(btn){btn.disabled=false;btn.textContent="📅 Gerar";}
+        if(!r||r.ok!==true){aviso((r&&r.mensagem)||"Falha ao gerar.","error");return;}
+        fecharPainel("painel-verb-gerar");
+        aviso(r.mensagem, (r.falhas&&r.falhas.length)?"warning":"success");
+        if(r.falhas&&r.falhas.length)alert("Atenção:\n\n"+r.falhas.join("\n"));
+        // Atualiza a fila de pagamentos, se a aba já tiver sido aberta.
+        if(typeof window.pagCarregar==="function")window.pagCarregar();
+      })
+      .withFailureHandler(function(e){
+        if(btn){btn.disabled=false;btn.textContent="📅 Gerar";}
+        aviso("Erro: "+((e&&e.message)||e),"error");
+      })
+      .verbGerarCompetencia(c, tk());
+  };
+
+  window.verbVerHistorico=function(){
+    var c=(g("verb-competencia")||{}).value||"";
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||r.ok!==true){aviso((r&&r.mensagem)||"Falha ao ler.","error");return;}
+        var box=g("verb-historico-conteudo"); if(!box)return;
+        var h=r.historico||[];
+        box.innerHTML=h.length
+          ? h.map(function(e){
+              return '<div style="border-left:3px solid #1565C0;padding:8px 12px;margin-bottom:8px;background:#f8fafc;border-radius:0 8px 8px 0;">'+
+                '<div style="font-weight:800;color:#001f4d;font-size:12.5px;">'+esc(e.diretor)+' · '+esc(e.valorFmt)+'</div>'+
+                '<div style="font-size:11.5px;color:#475569;">competência '+esc(e.competencia)+' · gerada em '+esc(e.geradoEm)+(e.geradoPor?' por '+esc(e.geradoPor):"")+'</div>'+
+              '</div>';
+            }).join("")
+          : '<div style="color:#94a3b8;padding:16px;text-align:center;">Nenhuma verba gerada'+(c?' em '+esc(c):"")+' ainda.</div>';
+        abrir("painel-verb-historico");
+      })
+      .withFailureHandler(function(e){aviso("Erro: "+((e&&e.message)||e),"error");})
+      .verbHistoricoGeracoes(c, tk());
+  };
+
+  /* ============ INIT ============ */
+  var jaCarregou=false;
+  window.verbInit=function(){
+    if(g("verb-competencia")&&!g("verb-competencia").value)g("verb-competencia").value=compAtual();
+    if(jaCarregou){verbCarregar();return;}
+    jaCarregou=true;
+    verbCarregar();
+  };
+})();
+</script>

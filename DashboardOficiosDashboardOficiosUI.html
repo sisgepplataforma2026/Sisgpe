@@ -444,7 +444,10 @@
       </div>
       <div class="dex-badge">SindEducação-ES</div>
     </div>
-    <button class="dex-btn-ref" id="dexBtnAtualizar">↻ Atualizar</button>
+    <div style="display:flex;gap:8px;">
+      <button class="dex-btn-ref" id="dexBtnVoltar" style="background:rgba(255,255,255,.08);">← Voltar</button>
+      <button class="dex-btn-ref" id="dexBtnAtualizar">↻ Atualizar</button>
+    </div>
   </div>
 </div>
 
@@ -942,7 +945,7 @@ function carregar(){
   _loading = false;
   console.error("Falha ao carregar dashboard:", erro);
 })
-.getDashboardOficiosData({});
+.getDashboardOficiosData({}, SISGEP_TOKEN_SESSAO);
 
   google.script.run
     .withSuccessHandler(function(stats){
@@ -951,7 +954,7 @@ function carregar(){
     .withFailureHandler(function(erro){
       console.error("Falha ao carregar estatísticas de escolas:", erro);
     })
-    .obterEstatisticasEscolas();
+    .obterEstatisticasEscolas(SISGEP_TOKEN_SESSAO);
 }
 
 function renderMonitoramentoRecebimento(dados) {
@@ -1005,6 +1008,10 @@ function cardMon(ico, label, valor, bg, cor) {
 /* Bind */
 document.addEventListener("click",function(ev){
   if(ev.target.closest("#dexBtnAtualizar")){ _loading=false; garantirChartJs(carregar); }
+  if(ev.target.closest("#dexBtnVoltar")){
+    if(typeof window.mostrarNovoOficio==="function") window.mostrarNovoOficio();
+    else { var p=g("sisgepDashboardExecutivo"); if(p) p.style.display="none"; }
+  }
 });
 
 function garantirChartJs(cb){
