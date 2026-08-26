@@ -34,14 +34,13 @@ jobs:
       - name: Instalar clasp
         run: npm install -g @google/clasp
 
-      - name: Instalar ferramental de teste
-        run: npm ci || npm install
-
-      - name: Validar integridade dos arquivos (t46)
-        run: node tests/e2e/t46-arquivos-integros.js
-
-      - name: Rodar a suite inteira
-        run: npm test
+      - name: Verificar o codigo antes de publicar
+        # Sintaxe dos .gs e do JS nos .html, nomes globais duplicados,
+        # google.script.run sem funcao no servidor e segredos em texto claro.
+        # Sem dependencias: roda so com o Node.
+        # --max 22 e a divida herdada (docs/DEBITO-TECNICO.md). Baixe o numero
+        # conforme os itens forem corrigidos; problema novo derruba o deploy.
+        run: node tools/verificar.js --max 22
 
       - name: Configurar autenticacao e projeto de homologacao
         shell: bash

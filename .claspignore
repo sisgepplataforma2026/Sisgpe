@@ -1,0 +1,5 @@
+# O clasp envia .js/.gs/.html da raiz. Nada abaixo pode ir para o Apps Script.
+**/**
+!*.gs
+!*.html
+!appsscript.json
