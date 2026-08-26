@@ -378,6 +378,32 @@ function _diagOficiosItem_(itens, categoria, nome, status, mensagem, detalhes) {
   });
 }
 
+/* ================= PAGINAÇÃO (achado #9) ================= */
+// Fatia um array já filtrado/ordenado em página, só quando o chamador pede
+// (filtros.porPagina > 0). Sem porPagina, devolve tudo — comportamento
+// idêntico ao de hoje, para não quebrar telas que ainda não pedem página.
+// Uso: var pag = paginarItens_(itens, filtros); return Object.assign(pag, {...});
+function paginarItens_(itens, filtros) {
+  filtros = filtros || {};
+  var totalFiltrado = itens.length;
+  var porPagina = parseInt(filtros.porPagina, 10);
+  var pagina    = parseInt(filtros.pagina, 10);
+  var paginado  = !!porPagina && porPagina > 0;
+
+  if (!paginado) return { itens: itens, total: totalFiltrado };
+
+  if (!pagina || pagina < 1) pagina = 1;
+  var inicio = (pagina - 1) * porPagina;
+
+  return {
+    itens: itens.slice(inicio, inicio + porPagina),
+    total: totalFiltrado,
+    pagina: pagina,
+    porPagina: porPagina,
+    totalPaginas: Math.ceil(totalFiltrado / porPagina)
+  };
+}
+
 function _diagOficiosChecarFuncoes_(itens) {
   [
     "gerarOficioWeb",
