@@ -49,6 +49,40 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 ## 🔴 ABERTO
 
+### 33. Eventos — a entidade passou a mandar (Fase 1)
+
+**Entregue em 26/08/2026.** Oito `.gs` colados pelo usuário no mesmo dia:
+`EventosEmissao`, `EventosDominioV2`, `EventosRepositoryV2`,
+`EventosControllerV2`, `EventosValidacao`, `EventosInscricoesV2`,
+`EventosInscricaoPublica`, `EventosExecutivo`. Nenhum `.html`.
+
+**O que mudou:** data e lotação deixaram de sair da constante `EMISSAO_CFG` e
+passaram a vir do registro do evento (`compasso_dataEvento_` e
+`compasso_limiteVagas_`). `capacidade` entrou na entidade. Dois endpoints
+novos, ainda sem tela: `eventosV2Admin_listarEventos` e
+`eventosV2Admin_criarEvento`.
+
+**O que o emulador já provou** (t96, 16 asserções, 3 mutações mortas): o
+registro vence a constante na data, na lotação, no contador de emissão, na
+reserva de vaga e no resumo de validação.
+
+**O que só o sistema no ar pode dizer:**
+
+| | Como conferir |
+|---|---|
+| A tela de Informações da Festa continua salvando | Abrir Programação › Dados da Festa 2026, alterar um campo, salvar, recarregar |
+| A migração da aba `EVENTOS_V2` funcionou | A aba ganhou a coluna `capacidade` no fim, sem perder linha. **Este é o item de maior risco:** se a aba já existia, o código acrescenta a coluna na primeira gravação |
+| A lotação corrigida chega no painel | Gravar capacidade 300 na Festa e ver o painel do evento dizer 300, não 2.000 |
+| A data corrigida chega no e-mail | Mudar a data, fazer uma inscrição de teste e conferir a data no e-mail de confirmação |
+| Nada quebrou na emissão | Emitir um ingresso de teste e ver o número sair na sequência |
+
+**Risco declarado:** o campo `capacidade` ainda **não tem onde ser preenchido**
+— a tela de Informações não o mostra. Até a Fase 2, ele só existe se alguém
+escrever na planilha à mão. Enquanto estiver vazio, o sistema usa a constante,
+que é o comportamento de antes.
+
+---
+
 ### 32. Compasso — a inscrição pública e a entrega do ingresso
 **Aberto em:** 21/08/2026 · `EventosInscricaoPublica.gs`, `EventosEntrega.gs`,
 `CompassoInscricaoPublica.html`, rotas novas no `Code.gs`
