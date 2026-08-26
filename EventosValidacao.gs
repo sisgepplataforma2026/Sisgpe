@@ -112,8 +112,13 @@ function compasso_validacaoResumo(tokenSessao) {
   exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — resumo da validação', false);
   var docs=compasso_validacaoListar_interno_({});
   var hoje = new Date();
+  /* `capacidade` sai daqui a partir de 26/08/2026 porque a tela precisa dizer
+     "1.412 de 2.000" sem uma segunda ida ao servidor — e porque o número tem
+     de vir do REGISTRO do evento, não de constante. É o resolvedor
+     `compasso_limiteVagas_()` que decide, num lugar só. */
   var r={total:docs.length,naoAnalisadas:0,validadas:0,pendentes:0,reprovadas:0,
          aEnviar:0,enviadas:0,semIngresso:0,naoAssociados:0,
+         capacidade:compasso_limiteVagas_(),
          chegada:compasso_chegadaVazia_()};
   for (var d7 = 0; d7 < 7; d7++) r.chegada.porDia.push(0);
   docs.forEach(function(x){

@@ -24,7 +24,12 @@ var EVENTOS_V2_CABECALHOS = [
   'logoUrl', 'imagemCapaUrl', 'descricao', 'dataEvento',
   'horaAbertura', 'horaInicio', 'horaEncerramento',
   'localNome', 'endereco', 'orientacoes', 'informacoesImportantes',
-  'status', 'criadoEm', 'atualizadoEm', 'criadoPor', 'atualizadoPor'
+  'status', 'criadoEm', 'atualizadoEm', 'criadoPor', 'atualizadoPor',
+  /* Campos novos entram SEMPRE no fim: `linhaParaObjeto_` casa por posição, e
+     inserir no meio faria toda linha já gravada ler o valor da coluna errada.
+     A aba existente é migrada por `garantirAba_`, que acrescenta o cabeçalho
+     que falta em vez de recusar a gravação. */
+  'capacidade'
 ];
 
 var EVENTOS_V2_AUDITORIA_CABECALHOS = [
@@ -110,11 +115,36 @@ function eventosV2Repo_garantirAba_(ss, nome, cabecalhos) {
     return aba;
   }
 
+  /* ABA MAIS ESTREITA QUE O SCHEMA: pode ser campo novo, pode ser estrutura
+     estranha. A diferença importa.
+
+     Até 26/08/2026 os dois casos davam no mesmo: recusa. O efeito prático é
+     que acrescentar um campo à entidade QUEBRAVA toda gravação em qualquer
+     ambiente que já tivesse a aba criada — e o erro aparecia como "estrutura
+     incompatível", que não sugere a causa nem o conserto.
+
+     Agora: se o que existe é PREFIXO EXATO do que se espera, a aba é migrada
+     acrescentando as colunas que faltam. Qualquer outra diferença continua
+     recusada, porque aí não é campo novo, é aba errada. */
   if (ultimaColuna < cabecalhos.length) {
-    throw new Error(
-      'Eventos V2: estrutura da aba ' + nome +
-      ' é incompatível com o schema esperado. Nenhuma gravação foi realizada.'
-    );
+    var existentes = aba.getRange(1, 1, 1, ultimaColuna).getValues()[0]
+      .map(function (v) { return String(v || '').trim(); });
+
+    for (var p = 0; p < existentes.length; p++) {
+      if (existentes[p] !== cabecalhos[p]) {
+        throw new Error(
+          'Eventos V2: estrutura da aba ' + nome +
+          ' é incompatível com o schema esperado (coluna ' + (p + 1) +
+          ': esperado "' + cabecalhos[p] + '", encontrado "' + existentes[p] +
+          '"). Nenhuma gravação foi realizada.'
+        );
+      }
+    }
+
+    var faltantes = cabecalhos.slice(ultimaColuna);
+    aba.getRange(1, ultimaColuna + 1, 1, faltantes.length)
+      .setValues([faltantes])
+      .setFontWeight('bold');
   }
 
   var atuais = aba.getRange(1, 1, 1, cabecalhos.length).getValues()[0]

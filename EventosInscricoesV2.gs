@@ -5,13 +5,16 @@ function compasso_inscricaoChave_(pessoaId, cpf) {
 
 function compasso_lerReservaVagas_() {
   var r=fs_get_('reservasEventos',EMISSAO_CFG.EVENTO_ID);
-  if(!r) r={eventoId:EMISSAO_CFG.EVENTO_ID,limite:EMISSAO_CFG.LIMITE_VAGAS,reservadas:0};
+  if(!r) r={eventoId:EMISSAO_CFG.EVENTO_ID,limite:compasso_limiteVagas_(),reservadas:0};
+  /* O limite gravado é cache do registro do evento, não verdade própria: se a
+     lotação foi corrigida no cadastro, é ela que vale a partir de agora. */
+  r.limite = compasso_limiteVagas_();
   return r;
 }
 
 function compasso_reservarVagaInscricao_() {
   var r=compasso_lerReservaVagas_();
-  if(Number(r.reservadas||0)>=Number(r.limite||EMISSAO_CFG.LIMITE_VAGAS)) return {ok:false,erro:'Vagas de inscrição esgotadas.'};
+  if(Number(r.reservadas||0)>=Number(r.limite||compasso_limiteVagas_())) return {ok:false,erro:'Vagas de inscrição esgotadas.'};
   r.reservadas=Number(r.reservadas||0)+1;r.atualizadoEm=new Date();fs_set_('reservasEventos',EMISSAO_CFG.EVENTO_ID,r);return {ok:true,reserva:r};
 }
 

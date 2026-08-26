@@ -102,11 +102,89 @@ function emissao_ativarTeste(tokenSessao) {      // libera emissão fora do per�
   Logger.log('🧪 MODO TESTE ativado — período ignorado.');
 }
 
+/* ═══ O REGISTRO DO EVENTO MANDA; A CONSTANTE É O ÚLTIMO RECURSO ═══════════
+   26/08/2026.
+
+   A entidade Evento existe desde a V2 (`EventosDominioV2.gs`), com os sete
+   estados e persistência própria. O que ela não tinha era AUTORIDADE: a data
+   e a lotação continuavam saindo daqui, de constante, e por isso cadastrar um
+   evento era preencher tela que não mudava o comportamento de nada.
+
+   Medido antes de mexer, em `tests/e2e/t96-evento-manda.js`: gravando a festa
+   para 05/10 com 300 lugares, o sistema respondia 19/12 e 2.000.
+
+   O que estas duas funções fazem é inverter a ordem — registro primeiro,
+   constante depois. A constante FICA, e de propósito: é o que segura o
+   sistema de pé em produção, onde a camada V2 se recusa a operar (trava de
+   ambiente do `eventosV2Repo_exigirHomologacao_`), e no primeiro boot, antes
+   de existir qualquer registro gravado.
+
+   O cache é por execução (o Apps Script recria o escopo global a cada
+   chamada), e existe porque ler o registro abre a planilha: sem ele, uma
+   listagem de 300 inscrições abriria a planilha 300 vezes. */
+var COMPASSO_EVENTO_CACHE_ = undefined;
+
+function compasso_eventoRegistro_() {
+  if (COMPASSO_EVENTO_CACHE_ !== undefined) return COMPASSO_EVENTO_CACHE_;
+  COMPASSO_EVENTO_CACHE_ = null;
+  try {
+    var ev = eventosV2Repo_buscarPorId_(EMISSAO_CFG.EVENTO_ID);
+    if (ev && String(ev.eventoId || '').trim()) COMPASSO_EVENTO_CACHE_ = ev;
+  } catch (e) {
+    /* Produção, planilha indisponível ou aba ainda inexistente. Não é erro:
+       é o caminho em que a constante vale. */
+  }
+  return COMPASSO_EVENTO_CACHE_;
+}
+
+/** Lotação do evento. Registro > constante. Nunca devolve zero por engano. */
+function compasso_limiteVagas_() {
+  var ev = compasso_eventoRegistro_();
+  var n = ev ? Number(ev.capacidade || ev.limiteVagas || 0) : 0;
+  return (n > 0) ? n : Number(EMISSAO_CFG.LIMITE_VAGAS);
+}
+
+/** Data do evento. Registro > constante.
+ *
+ * O `new Date('2026-10-05')` do JavaScript lê a string como MEIA-NOITE EM UTC,
+ * e o sindicato está em UTC-3: a data volta como 4 de outubro, 21h. Um dia a
+ * menos no e-mail que o associado recebe e na contagem do painel. Por isso o
+ * formato civil é desmontado à mão antes de virar Date. */
+function compasso_dataEvento_() {
+  var ev = compasso_eventoRegistro_();
+  var bruto = ev ? ev.dataEvento : null;
+
+  if (bruto instanceof Date && !isNaN(bruto.getTime())) return bruto;
+
+  var texto = String(bruto || '').trim();
+  if (texto) {
+    var iso = texto.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+
+    var br = texto.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    if (br) return new Date(Number(br[3]), Number(br[2]) - 1, Number(br[1]));
+
+    var solto = new Date(texto);
+    if (!isNaN(solto.getTime())) return solto;
+  }
+
+  return EMISSAO_CFG.DATA_EVENTO;
+}
+
 // ================= CONTADOR (vagas + número) =================
 function emissao_lerContador_() {
   var c = fs_get_('contadores', EMISSAO_CFG.EVENTO_ID);
   if (!c) {
-    c = { limite: EMISSAO_CFG.LIMITE_VAGAS, vagasUsadas: 0, ultimoNumero: 0 };
+    c = { limite: compasso_limiteVagas_(), vagasUsadas: 0, ultimoNumero: 0 };
+    fs_set_('contadores', EMISSAO_CFG.EVENTO_ID, c);
+  }
+  /* O limite gravado é cache, não verdade: quem manda é o registro. Sem esta
+     linha, um contador criado quando a lotação era 2.000 continuaria aceitando
+     2.000 depois de o evento ser corrigido para 300 — e o erro só apareceria
+     na porta do salão. */
+  var vigente = compasso_limiteVagas_();
+  if (Number(c.limite || 0) !== vigente) {
+    c.limite = vigente;
     fs_set_('contadores', EMISSAO_CFG.EVENTO_ID, c);
   }
   return c;

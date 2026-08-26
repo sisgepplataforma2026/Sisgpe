@@ -122,6 +122,102 @@ function eventosV2Admin_salvarInformacoesFesta2026(tokenSessao, dados) {
   }
 }
 
+/* ═══ A PORTA QUE FALTAVA — 26/08/2026 ═════════════════════════════════════
+   Até aqui este arquivo só sabia da Festa 2026: dois endpoints, ambos com
+   "Festa2026" no nome. `eventosV2Service_listar_` existia e NINGUÉM o
+   chamava — ou seja, o sistema guardava eventos e não tinha como mostrá-los
+   nem como criar o segundo.
+
+   Isso é o que impedia a tela de Eventos (a lista aprovada em 25/08) e o que
+   trancava o módulo na Festa. Medido em `tests/e2e/t96-evento-manda.js`.
+
+   As duas funções abaixo são a porta. A segurança não muda de lugar: quem
+   exige administrador e sessão continua sendo o Service, e o Repository
+   continua recusando operar fora de homologação. */
+
+/**
+ * Lista os eventos do sindicato para a tela de Eventos.
+ * Devolve `{ ok, eventos: [...] }` — nunca lança para a tela.
+ */
+function eventosV2Admin_listarEventos(tokenSessao) {
+  try {
+    var resultado = eventosV2Service_listar_(tokenSessao);
+    var eventos = (resultado && Array.isArray(resultado.eventos)) ? resultado.eventos : [];
+
+    return {
+      ok: true,
+      eventos: eventos.map(eventosV2Admin_payloadLista_)
+    };
+  } catch (e) {
+    Logger.log('Eventos V2 — erro ao listar eventos: ' + e);
+    return { ok: false, eventos: [], mensagem: eventosV2Admin_mensagemErro_(e) };
+  }
+}
+
+/**
+ * Cria um evento novo — assembleia, curso, o que for.
+ *
+ * Nasce em RASCUNHO de propósito: evento recém-criado não pode aparecer como
+ * "inscrições abertas" antes de alguém conferir data, local e lotação. Quem
+ * abre as inscrições é uma decisão à parte, com auditoria própria.
+ */
+function eventosV2Admin_criarEvento(tokenSessao, dados) {
+  dados = dados || {};
+  try {
+    var salvo = eventosV2Service_salvar_(tokenSessao, {
+      /* Sem eventoId: o Service gera. Passar um id vindo da tela deixaria a
+         criação virar edição silenciosa de outro evento. */
+      tipo: dados.tipo || EVENTOS_V2_TIPOS.FESTA,
+      nome: dados.nome,
+      edicao: dados.edicao,
+      ano: dados.ano,
+      descricao: dados.descricao,
+      dataEvento: dados.dataEvento,
+      horaAbertura: dados.horaAbertura,
+      horaInicio: dados.horaInicio,
+      horaEncerramento: dados.horaEncerramento,
+      localNome: dados.localNome,
+      endereco: dados.endereco,
+      capacidade: dados.capacidade,
+      status: EVENTOS_V2_STATUS.RASCUNHO
+    });
+
+    return {
+      ok: true,
+      mensagem: 'Evento criado como rascunho.',
+      evento: eventosV2Admin_payloadLista_(salvo.evento)
+    };
+  } catch (e) {
+    Logger.log('Eventos V2 — erro ao criar evento: ' + e);
+    return {
+      ok: false,
+      mensagem: eventosV2Admin_mensagemErro_(e),
+      errosValidacao: e && e.errosValidacao ? e.errosValidacao : []
+    };
+  }
+}
+
+/**
+ * O que a tela de LISTA precisa — e só isso.
+ *
+ * Separado do payload de Informações de propósito: aquele é a ficha pública
+ * do evento e não expõe capacidade; este é administrativo, e a lotação é
+ * justamente a coluna que a lista precisa mostrar.
+ */
+function eventosV2Admin_payloadLista_(evento) {
+  evento = evento || {};
+  return {
+    eventoId: String(evento.eventoId || ''),
+    tipo: String(evento.tipo || ''),
+    nome: String(evento.nome || ''),
+    ano: Number(evento.ano) || 0,
+    dataEvento: eventosV2Admin_dataCivil_(evento.dataEvento),
+    localNome: String(evento.localNome || ''),
+    capacidade: Number(evento.capacidade) || 0,
+    status: String(evento.status || EVENTOS_V2_STATUS.RASCUNHO)
+  };
+}
+
 /**
  * Whitelist explícita do que a tela de Informações pode receber.
  * Não retorne o objeto inteiro do Repository: novos campos administrativos

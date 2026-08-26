@@ -147,7 +147,7 @@ function compasso_inscricaoConfig_() {
   var props = PropertiesService.getScriptProperties();
   var termo = props.getProperty('COMPASSO_TERMO') || COMPASSO_TERMO_PADRAO;
 
-  var reserva = { reservadas: 0, limite: EMISSAO_CFG.LIMITE_VAGAS };
+  var reserva = { reservadas: 0, limite: compasso_limiteVagas_() };
   try { reserva = compasso_lerReservaVagas_(); } catch (e) {}
   var restantes = Number(reserva.limite || 0) - Number(reserva.reservadas || 0);
 
@@ -560,7 +560,12 @@ function compasso_dadosDaFesta_() {
   var out = { data: null, horaAbertura: '', horaInicio: '', local: '',
               endereco: '', referencia: '' };
 
-  try { out.data = EMISSAO_CFG.DATA_EVENTO; } catch (e) {}
+  /* A data vem do REGISTRO do evento, e só cai na constante se não houver
+     registro (produção, ou primeiro boot). Era o contrário até 26/08/2026:
+     mudar a data no cadastro não mudava o e-mail do associado. */
+  try { out.data = compasso_dataEvento_(); } catch (e) {
+    try { out.data = EMISSAO_CFG.DATA_EVENTO; } catch (e2) {}
+  }
 
   /* 1. A tela de Informações. Envolvida em try porque a camada V2 recusa
         trabalhar fora de homologação — e recusar não pode virar erro aqui. */

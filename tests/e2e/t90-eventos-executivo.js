@@ -271,8 +271,20 @@ const semear = (quando, status) => {
 };
 [2,2,2].forEach(d => semear(diasAtras(d), "VALIDADA_ADMINISTRATIVAMENTE"));
 [1,1,1,1,1].forEach(d => semear(diasAtras(d), "VALIDADA_ADMINISTRATIVAMENTE"));
-semear(new Date(agora.getTime() - 3600000), "");     /* 1h atrás, sem análise */
-semear(new Date(agora.getTime() - 7200000), "");     /* 2h atrás, sem análise */
+/* "HOJE" TEM DE CAIR HOJE — inclusive à meia-noite e dez.
+ *
+ * Aqui estava `agora - 1h` e `agora - 2h`, e passou a reprovar em 26/08/2026
+ * às 00h20: duas horas antes das 00h20 é ONTEM, então as duas entravam no
+ * balde do dia anterior — "esperado 2, obtido 0" no hoje, e 7 no lugar de 5
+ * no ontem.
+ *
+ * A contagem do sistema estava certa; o teste é que só passava depois das
+ * 02h. Ele agora ancora na meia-noite: recua as horas pedidas, mas nunca
+ * atravessa para o dia anterior. */
+const meiaNoite = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+const aindaHoje = ms => new Date(Math.max(meiaNoite.getTime() + 1000, agora.getTime() - ms));
+semear(aindaHoje(3600000), "");     /* 1h atrás, sem análise — ou o começo do dia */
+semear(aindaHoje(7200000), "");     /* 2h atrás, sem análise — ou o começo do dia */
 
 const resumoR = gg.compasso_validacaoResumo(TOK);
 const ch = resumoR.chegada || {};

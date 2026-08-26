@@ -83,8 +83,8 @@ function compasso_executivoResumo(tokenSessao) {
       nome: 'Festa Compasso da Vida 2026',
       data: data,
       dias: dias,
-      vagas: EMISSAO_CFG.LIMITE_VAGAS,
-      vagasRestantes: Math.max(0, EMISSAO_CFG.LIMITE_VAGAS - comIngresso)
+      vagas: compasso_limiteVagas_(),
+      vagasRestantes: Math.max(0, compasso_limiteVagas_() - comIngresso)
     },
     inscricoes: {
       total: total, aAnalisar: Number(resumo.naoAnalisadas || 0),

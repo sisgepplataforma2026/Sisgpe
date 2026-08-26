@@ -78,6 +78,25 @@ function eventosV2_normalizarEvento_(dados) {
     orientacoes: eventosV2_texto_(dados.orientacoes),
     informacoesImportantes: eventosV2_texto_(dados.informacoesImportantes),
 
+    /* CAPACIDADE — 26/08/2026, e isto REVISA a nota de privacidade do topo.
+     *
+     * O cabeçalho deste arquivo dizia que capacidade não pertence à entidade,
+     * junto com vagas restantes, inscritos, aprovados e check-ins. A distinção
+     * que faltava: aqueles são INDICADORES — mudam a cada inscrição e revelam
+     * a operação. Capacidade é PROPRIEDADE do evento, tão estática quanto o
+     * endereço: o salão comporta 2.000 pessoas hoje, amanhã e em dezembro.
+     *
+     * Sem ela aqui, a lotação continua sendo constante no código, e o módulo
+     * não comporta um segundo evento — a assembleia de 300 lugares aceitaria
+     * 2.000 inscrições, e o erro só apareceria na porta do salão. Medido em
+     * `tests/e2e/t96-evento-manda.js` antes da mudança.
+     *
+     * A nota de privacidade continua valendo para o que ela realmente
+     * protegia: o payload PÚBLICO não expõe capacidade nem contagem. Quem
+     * decide o que sai para fora é `eventosV2Admin_payloadInformacoes_`, não
+     * esta entidade. */
+    capacidade: eventosV2_numeroInteiro_(dados.capacidade),
+
     // Ciclo de vida
     status: eventosV2_texto_(dados.status || EVENTOS_V2_STATUS.RASCUNHO).toUpperCase(),
 
