@@ -195,9 +195,19 @@ function reenviarOficio(registro, tokenSessao) {
       codigo:  ""
     });
 
+    // O reenvio precisa tirar o ofício de FALHA_ENTREGA e reposicionar a data de
+    // envio. Falhar aqui não invalida o e-mail, que já saiu: só registra.
+    var avisoStatus = "";
+    try {
+      MON_OFICIOS_registrarReenvio_(ss, numero, emailUsuario);
+    } catch (eStatus) {
+      avisoStatus = " (atenção: o status não pôde ser atualizado — " + eStatus.message + ")";
+      Logger.log("⚠ Reenvio concluído, mas o status não foi atualizado: " + eStatus.message);
+    }
+
     return {
       erro: false,
-      mensagem: "Ofício " + numero + " reenviado com sucesso para " + validacaoEmails.todos + ". Anexos: " + anexos.length + "."
+      mensagem: "Ofício " + numero + " reenviado com sucesso para " + validacaoEmails.todos + ". Anexos: " + anexos.length + "." + avisoStatus
     };
 
   } catch(e) {

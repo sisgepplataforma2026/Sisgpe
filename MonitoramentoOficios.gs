@@ -273,6 +273,7 @@ function verificarFalhasEntregaOficios() {
     var colNumero     = headerMap["Número do Ofício"];
     var colEmailTodos = headerMap["E-mails (todos)"] || headerMap["E-mail (principal)"];
     var colObs        = headerMap["Observações"];
+    var colDataEnvio  = headerMap["Data envio ofício"];
 
     if (!colStatus || !colNumero || !colEmailTodos) {
       Logger.log("verificarFalhasEntregaOficios: colunas não encontradas.");
@@ -292,7 +293,12 @@ function verificarFalhasEntregaOficios() {
       var emails = MON_OFICIOS_normalizarEmails_(dados[i][colEmailTodos - 1]);
       if (!emails.length) continue;
 
-      oficiosAtivos.push({ linhaReal: i + 2, numero: numero, emails: emails });
+      oficiosAtivos.push({
+        linhaReal: i + 2,
+        numero: numero,
+        emails: emails,
+        dataEnvio: colDataEnvio ? dados[i][colDataEnvio - 1] : null
+      });
     }
 
     if (!oficiosAtivos.length) {
@@ -323,14 +329,18 @@ function verificarFalhasEntregaOficios() {
       return { ok: true, falhas: 0, mensagem: "Nenhum bounce encontrado." };
     }
 
+    // Guarda a data do bounce mais recente por endereço. Sem isso, a mensagem de
+    // devolução antiga continua no Gmail dentro da janela de 90 dias e reabre a
+    // falha a cada rodada, mesmo depois de um reenvio bem-sucedido.
     var emailsComBounce = {};
     threads.forEach(function(thread) {
       thread.getMessages().forEach(function(msg) {
+        var dataMsg = msg.getDate();
         var corpo = (msg.getPlainBody() || "") + " " + (msg.getBody() || "");
         (corpo.match(/[\w.+-]+@[\w-]+\.[\w.]+/g) || []).forEach(function(email) {
           var n = String(email || "").trim().toLowerCase();
           if (!n || n.indexOf("sindeducacao.com") > -1) return;
-          emailsComBounce[n] = true;
+          if (!emailsComBounce[n] || dataMsg > emailsComBounce[n]) emailsComBounce[n] = dataMsg;
         });
       });
     });
@@ -342,10 +352,26 @@ function verificarFalhasEntregaOficios() {
 
     var totalFalhas = 0;
     var agora = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm");
+    var dataEnvioFila = MON_OFICIOS_mapaDataEnvioFila_(ss);
 
     oficiosAtivos.forEach(function(item) {
-      var teveBounce = item.emails.some(function(e) { return emailsComBounce[e] === true; });
-      if (!teveBounce) return;
+      var bounceMaisRecente = null;
+      item.emails.forEach(function(e) {
+        var d = emailsComBounce[e];
+        if (d && (!bounceMaisRecente || d > bounceMaisRecente)) bounceMaisRecente = d;
+      });
+      if (!bounceMaisRecente) return;
+
+      // A devolução anterior ao último envio se refere a uma tentativa já superada
+      // — tipicamente um reenvio depois de corrigir o cadastro. Sem data confiável
+      // dos dois lados, mantém o comportamento antigo e marca a falha.
+      var ultimoEnvio = MON_OFICIOS_dataMaisRecente_(dataEnvioFila[item.numero], item.dataEnvio);
+      if (ultimoEnvio && bounceMaisRecente <= ultimoEnvio) {
+        Logger.log("↩ Ofício " + item.numero + ": devolução de " +
+          MON_OFICIOS_formatarData_(bounceMaisRecente) + " é anterior ao envio de " +
+          MON_OFICIOS_formatarData_(ultimoEnvio) + ". Ignorada.");
+        return;
+      }
 
       shRegistro.getRange(item.linhaReal, colStatus).setValue("FALHA_ENTREGA");
 
@@ -707,6 +733,99 @@ function MON_OFICIOS_formatarData_(v) {
   } catch (e) {
     return String(v || "");
   }
+}
+
+/** Converte para Date apenas o que é data de verdade. */
+function MON_OFICIOS_paraData_(v) {
+  if (!v) return null;
+  var d = v instanceof Date ? v : new Date(v);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function MON_OFICIOS_dataMaisRecente_(a, b) {
+  var da = MON_OFICIOS_paraData_(a);
+  var db = MON_OFICIOS_paraData_(b);
+  if (!da) return db;
+  if (!db) return da;
+  return da > db ? da : db;
+}
+
+/** Número do ofício → data do último envio registrado na fila. */
+function MON_OFICIOS_mapaDataEnvioFila_(ss) {
+  var mapa = {};
+  var sh = ss.getSheetByName("FILA_ENVIO_OFICIOS");
+  if (!sh || sh.getLastRow() < 2) return mapa;
+
+  var hm      = getHeaderMap_(sh);
+  var cNumero = hm["NUMERO_OFICIO"];
+  var cEnvio  = hm["DATA_ENVIO"];
+  if (!cNumero || !cEnvio) return mapa;
+
+  sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues().forEach(function(row) {
+    var num = String(row[cNumero - 1] || "").trim();
+    if (!num) return;
+    mapa[num] = MON_OFICIOS_dataMaisRecente_(mapa[num], row[cEnvio - 1]);
+  });
+
+  return mapa;
+}
+
+/**
+ * Fecha o ciclo do reenvio: tira o ofício de FALHA_ENTREGA e passa a data de
+ * envio para agora, nos dois lados. Sem isso o painel continua mostrando falha
+ * mesmo depois de a mensagem sair, e o detector de bounce reabre a falha usando
+ * a devolução antiga.
+ */
+function MON_OFICIOS_registrarReenvio_(ss, numero, usuario) {
+  var quando = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm");
+  var nota = "Reenviado em " + quando + (usuario ? " por " + usuario : "") + ".";
+
+  var sh = ss.getSheetByName(PLANILHA_REGISTRO);
+  if (sh && sh.getLastRow() > 1) {
+    var hm      = getHeaderMap_(sh);
+    var cStatus = hm["Status"];
+    var cNumero = hm["Número do Ofício"];
+    var cObs    = hm["Observações"];
+    var cData   = hm["Data envio ofício"];
+
+    if (cStatus && cNumero) {
+      var dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+      for (var i = 0; i < dados.length; i++) {
+        if (String(dados[i][cNumero - 1] || "").trim() !== String(numero || "").trim()) continue;
+
+        // Nunca rebaixa um CONFIRMADO: quem confirmou o recebimento decidiu antes.
+        var stAtual = MON_OFICIOS_normStatus_(dados[i][cStatus - 1]);
+        if (stAtual !== "CONFIRMADO") sh.getRange(i + 2, cStatus).setValue("ENVIADO");
+        if (cData) sh.getRange(i + 2, cData).setValue(new Date());
+
+        if (cObs) {
+          var obsAtual = String(dados[i][cObs - 1] || "").trim();
+          sh.getRange(i + 2, cObs).setValue(obsAtual ? obsAtual + " | " + nota : nota);
+        }
+        break;
+      }
+    }
+  }
+
+  var shFila = ss.getSheetByName("FILA_ENVIO_OFICIOS");
+  if (shFila && shFila.getLastRow() > 1) {
+    var hmF     = getHeaderMap_(shFila);
+    var cNumF   = hmF["NUMERO_OFICIO"];
+    var cStF    = hmF["STATUS"];
+    var cEnvioF = hmF["DATA_ENVIO"];
+
+    if (cNumF && cStF) {
+      var dadosF = shFila.getRange(2, cNumF, shFila.getLastRow() - 1, 1).getValues();
+      for (var j = 0; j < dadosF.length; j++) {
+        if (String(dadosF[j][0] || "").trim() !== String(numero || "").trim()) continue;
+        shFila.getRange(j + 2, cStF).setValue("ENVIADO");
+        if (cEnvioF) shFila.getRange(j + 2, cEnvioF).setValue(new Date());
+        break;
+      }
+    }
+  }
+
+  SpreadsheetApp.flush();
 }
 
 function MON_OFICIOS_diasSemResposta_(dataVal) {
