@@ -477,8 +477,13 @@ ok(!/evAbrirPainel\('compasso-importar'\)/.test(admin),
    "a tela de Eventos não tem mais um caminho separado para a importação");
 ok(/painel=compasso-importar/.test(painel),
    "quem abre a rota agora é a Central de Inscrições");
-ok(/id="tabImportar"/.test(painel) && /irAba\('importar'\)/.test(painel),
-   "  por uma aba, no mesmo padrão do módulo de Ofícios");
+/* DEIXOU DE SER ABA EM 26/08/2026. A tela de Eventos já abre esta Central na
+   tela "Inscrições" do submódulo Festa; a aba interna com o mesmo nome deixava
+   duas "Inscrições" uma dentro da outra. Importar não é um ESTADO da lista, é
+   uma AÇÃO sobre ela — então virou botão. O que esta guarda cobra continua o
+   mesmo: que exista um caminho único para a importação, dentro da Central. */
+ok(/id="btAbaImportar"/.test(painel) && /irAba\('importar'\)/.test(painel),
+   "  por um botão de ação dentro da própria Central");
 ok(/id="quadroImportar"/.test(painel),
    "  carregada num quadro próprio",
    "as duas telas têm funções globais de mesmo nome (api, esc, g, aviso): " +

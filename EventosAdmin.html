@@ -486,9 +486,13 @@ function evTelaInterno(id){
      sozinha. Sem ida ao servidor para montar página nenhuma. */
   if(t.embutido==='inscricoes' && typeof window.compassoAplicarFiltro==='function')
     window.compassoAplicarFiltro(t.filtro||'');
-  if(alvos.indexOf('conteudo-informacoes')>=0) evInfoCarregar();
-  if(alvos.indexOf('conteudo-painel')>=0) evPainelCarregar();
-  if(alvos.indexOf('conteudo-executivo')>=0) evExecutivoCarregar();
+  /* CADA CARGA ISOLADA — 26/08/2026.
+     O Painel abre dois blocos de uma vez. Sem o try, uma exceção na primeira
+     carga impedia a segunda de sequer começar, e o segundo bloco ficava com
+     os traços do HTML — que é exatamente o que parece "não carregou". */
+  if(alvos.indexOf('conteudo-informacoes')>=0) try{ evInfoCarregar(); }catch(e){ console.error(e); }
+  if(alvos.indexOf('conteudo-painel')>=0)      try{ evPainelCarregar(); }catch(e){ console.error(e); }
+  if(alvos.indexOf('conteudo-executivo')>=0)   try{ evExecutivoCarregar(); }catch(e){ console.error(e); }
 }
 
 /* ══ EXECUTIVO ═════════════════════════════════════════════════════════════
@@ -514,18 +518,35 @@ function pintarDias(serie){
   }).join('');
 }
 
+/* Escreve num elemento sem derrubar o resto quando ele não existe. Antes,
+   um id trocado abortava a função no meio e TODOS os campos seguintes ficavam
+   com o traço do HTML — o sintoma que o usuário viu como "o executivo não
+   carrega", sem nada dizendo o que houve. */
+function evPor(id, texto){
+  var el = g(id);
+  if (el) el.textContent = texto;
+  else console.warn('Executivo: elemento ausente na tela — ' + id);
+}
+
+/* Nunca ficar em silêncio: se a carga não veio, a tela diz. */
+function evExecutivoAviso(msg){
+  var alvo = g('exRiscos');
+  if (alvo) alvo.innerHTML = '<div class="ev-nota">' + esc(msg) + '</div>';
+}
+
 function evExecutivoCarregar(){
-  var token=tokenSessao(); if(!token)return;
+  var token=tokenSessao();
+  if(!token){ return evExecutivoAviso('Sessão ainda não disponível. Atualize a página.'); }
   google.script.run.withSuccessHandler(function(r){
-    if(!r)return;
+    if(!r){ return evExecutivoAviso('O servidor respondeu sem dados do evento.'); }
     var ev=r.evento||{}, i=r.inscricoes||{}, fs=r.firestore||{}, en=r.entrega||{};
 
-    g('exDias').textContent=(ev.dias>=0?ev.dias:0);
-    g('exData').textContent=ev.nome+' · '+evDataBR(ev.data);
-    g('exTotal').textContent=i.total||0;
-    g('exIngressos').textContent=i.comIngresso||0;
-    g('exVagas').textContent=ev.vagasRestantes||0;
-    g('exFirestore').textContent=(fs.percentualLeituras!=null?fs.percentualLeituras+'%':'—');
+    evPor('exDias', (ev.dias>=0?ev.dias:0));
+    evPor('exData', (ev.nome||'') + ' · ' + evDataBR(ev.data));
+    evPor('exTotal', i.total||0);
+    evPor('exIngressos', i.comIngresso||0);
+    evPor('exVagas', ev.vagasRestantes||0);
+    evPor('exFirestore', fs.percentualLeituras!=null?fs.percentualLeituras+'%':'—');
 
     g('exRiscos').innerHTML=(r.riscos||[]).map(function(x){
       return '<div class="ev-risco '+esc(x.grau)+'"><b>'+esc(x.titulo)+'</b>'+
@@ -555,8 +576,8 @@ function evExecutivoCarregar(){
         'acumular transforma em mutirão.'
       : 'Quando houver fila, aparece aqui o ritmo necessário até 19/12.';
   }).withFailureHandler(function(e){
-    g('exRiscos').innerHTML='<div class="ev-nota">Não foi possível carregar: '+
-      esc((e&&e.message)||e)+'</div>';
+    evExecutivoAviso('Não foi possível carregar o executivo: ' +
+      ((e && e.message) || e || 'erro sem mensagem'));
   }).compasso_executivoResumo(token);
 }
 function evDataBR(v){

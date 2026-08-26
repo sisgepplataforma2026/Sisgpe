@@ -262,12 +262,19 @@
      Na linha das abas eles aparecem nos DOIS modos: embutida na tela de
      Eventos e sozinha pela rota ?painel=compasso. Esconder um contêiner
      esconde tudo o que ele carrega — a lição é a mesma da barra duplicada. -->
+<!-- INSCRIÇÕES APARECIA DUAS VEZES, UMA DENTRO DA OUTRA — 26/08/2026.
+     A tela de Eventos já abre esta Central na tela "Inscrições" do submódulo
+     Festa; aqui dentro havia OUTRA aba "Inscrições", ao lado de "Importar
+     planilha". Duas abas com o mesmo nome, uma dentro da outra, e a pessoa
+     sem saber qual das duas está olhando.
+
+     Importar planilha não é um estado da lista — é uma AÇÃO sobre ela. Então
+     virou botão, ao lado dos outros. Os ids `tabLista` e `tabImportar` saíram;
+     `irAba` continua existindo e é quem troca os painéis. -->
 <div class="of-tabs-linha">
-  <div class="of-tabs">
-    <button class="of-tab active" id="tabLista"    onclick="irAba('lista')">📋 Inscrições</button>
-    <button class="of-tab"        id="tabImportar" onclick="irAba('importar')">📄 Importar planilha</button>
-  </div>
-  <div class="of-tabs-acoes">
+  <div class="of-tabs-acoes" style="margin-left:0">
+    <button class="b" id="btAbaLista" onclick="irAba('lista')" hidden>‹ Voltar para a lista</button>
+    <button class="b" id="btAbaImportar" onclick="irAba('importar')">📄 Importar planilha</button>
     <button class="b" onclick="copiarLink()">🔗 Copiar link de inscrição</button>
     <button class="b" onclick="carregar()">↻ Atualizar</button>
   </div>
@@ -359,7 +366,10 @@
   </div>
 </div>
 
-<!-- Um menu só para a tabela inteira. Fica FORA da tabela porque menu\n     dentro de <td> herda o overflow do card e some no recorte. -->\n<div id="stMenu" onclick="event.stopPropagation()"></div>\n</div><!-- /painelLista -->
+<!-- Um menu só para a tabela inteira. Fica FORA da tabela porque menu
+     dentro de <td> herda o overflow do card e some no recorte. -->
+<div id="stMenu" onclick="event.stopPropagation()"></div>
+</div><!-- /painelLista -->
 
 <!-- A importação entra por quadro (iframe) de propósito. As duas telas têm
      funções globais de mesmo nome — api, esc, g, aviso — e no Apps Script os
@@ -1170,8 +1180,10 @@ function irAba(nome){
   ABA = nome;
   g('painelLista').hidden    = (nome !== 'lista');
   g('painelImportar').hidden = (nome !== 'importar');
-  g('tabLista').classList.toggle('active', nome === 'lista');
-  g('tabImportar').classList.toggle('active', nome === 'importar');
+  /* Sem abas: o que muda é qual botão faz sentido oferecer. Na importação, o
+     caminho de volta; na lista, o de ir importar. */
+  g('btAbaLista').hidden    = (nome === 'lista');
+  g('btAbaImportar').hidden = (nome === 'importar');
   if (nome === 'importar' && !QUADRO_PRONTO) carregarQuadroImportar();
 }
 
