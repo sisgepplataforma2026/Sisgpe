@@ -684,9 +684,11 @@ igual(ev.els["sub-festa"].getAttribute("aria-selected"), "true",
       "o submódulo Festa fica marcado");
 ok(/tela-inscricoes/.test(ev.els.evTelas.innerHTML),
    "  e a barra mostra as telas dele");
-ok(/tela-ingressos/.test(ev.els.evTelas.innerHTML) &&
-   /tela-credenciamento/.test(ev.els.evTelas.innerHTML),
-   "  Inscrições, Ingressos e Credenciamento — as três do desenho aprovado");
+/* Duas telas, não três — 26/08/2026. Ingressos deixou de ser aba (virou
+   estado dentro de Inscrições) e Credenciamento saiu para ser submódulo
+   próprio, com fila e estados seus. */
+ok(/tela-dados/.test(ev.els.evTelas.innerHTML),
+   "  Inscrições e Dados da Festa — as duas do desenho aprovado");
 ok(!/tela-participantes/.test(ev.els.evTelas.innerHTML),
    "  e 'Participantes' não é mais uma delas",
    "era a mesma lista de Inscrições noutro estado, e virou a tela Ingressos");
@@ -732,19 +734,22 @@ passo("a tela Ingressos é a mesma lista, noutro estado");
    página nenhuma: a tela já está aqui, só se pede o filtro a ela. */
 let filtroPedido = null;
 ev.win.compassoAplicarFiltro = f => { filtroPedido = f; };
-ev.win.evTela("ingressos");
-igual(ev.els.evInscricoes.hidden, false, "Ingressos mostra a mesma lista");
-igual(filtroPedido, "participantes",
-      "  pedindo a ela o recorte de quem já tem ingresso",
-      "é a mesma tela noutro estado, não outra tela");
+/* INSCRIÇÕES E INGRESSOS VIRARAM UMA TELA SÓ — 26/08/2026.
+   O usuário: "não poderia ser uma só, e você colocar essas funções de
+   reenviar em ações? Ou status?". Eram a mesma lista de pessoas em estados
+   diferentes, e trocar de aba para saber se o ingresso saiu era trabalho que
+   o sistema estava criando. O estado virou coluna dentro da própria lista. */
+igual(ev.els.evInscricoes.hidden, false, "Inscrições mostra a lista embutida");
 
-passo("Bingo é submódulo próprio, não uma aba de sorteios");
+passo("Sorteios é submódulo próprio; o bingo é um sorteio dentro dele");
 
-ev.win.evSub("bingo");
-igual(ev.els["sub-bingo"].getAttribute("aria-selected"), "true", "o submódulo existe");
+/* "Bingo Online" virou "Sorteios" na mesma arquitetura: bingo é UM sorteio,
+   não o submódulo. O dia que houver rifa, entra aqui sem menu novo. */
+ev.win.evSub("sorteios");
+igual(ev.els["sub-sorteios"].getAttribute("aria-selected"), "true", "o submódulo existe");
 igual(ev.els["sub-festa"].getAttribute("aria-selected"), "false",
       "  e a Festa deixa de estar selecionada",
-      "Festa 2026 e Bingo são processos diferentes, não estados do mesmo");
+      "Festa 2026 e Sorteios são processos diferentes, não estados do mesmo");
 
 /* ═══ QUADRO EM BRANCO NUNCA ══════════════════════════════════════════════
    25/08/2026. A navegação por submódulos subiu e funcionou — mas o quadro

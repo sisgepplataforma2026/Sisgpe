@@ -217,8 +217,12 @@ passo("a tela mostra o que o backend calculou");
 
 ok(/id="exDias"/.test(tela) && /id="exRiscos"/.test(tela),
    "o relógio e a lista de riscos existem na tela");
-ok(/id="tela-executivo"|rotulo:'Executivo'/.test(tela),
-   "  como uma tela do submódulo Painel");
+/* O executivo DEIXOU de ser aba própria em 26/08/2026 — o usuário: "eu só
+   preciso de uma tela, o que pede ação hoje, dentro do executivo". Agora o
+   Painel revela os dois blocos de uma vez, e é isso que se cobra aqui. */
+ok(/conteudo:'painel,executivo'/.test(tela),
+   "  na MESMA tela de 'o que pede ação hoje', não numa aba separada",
+   "eram duas abas mostrando o mesmo assunto");
 ok(/compasso_executivoResumo\(token\)/.test(tela),
    "  alimentada pela função do executivo");
 ok(/en\.porDia/.test(tela),

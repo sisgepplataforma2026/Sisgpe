@@ -109,8 +109,11 @@ igual(tela.chamadas.filter(c => /^compasso_/.test(c.fn)).length, 0,
   })();
   ok(!!SUBS, "o mapa de submódulos foi lido da fonte");
   const nomes = Object.keys(SUBS || {});
-  igual(nomes.slice().sort().join(","), "bingo,festa,painel,programacao",
-        "são quatro: " + nomes.join(", "));
+  /* Cinco desde 26/08/2026: Programação virou Eventos (a agenda é modo de
+     ver), Bingo Online virou Sorteios (bingo é UM sorteio) e Credenciamento
+     saiu de dentro da Festa, porque tem fila e estados próprios. */
+  igual(nomes.slice().sort().join(","), "credenciamento,festa,lista,painel,sorteios",
+        "são cinco: " + nomes.join(", "));
 
   for (const sub of nomes) {
     let estourou = "";
@@ -161,14 +164,19 @@ igual(tela.chamadas.filter(c => /^compasso_/.test(c.fn)).length, 0,
       ok(!estourou, "abrir " + rotulo + " não estoura", estourou);
 
       if (t.conteudo) {
-        const alvo = tela.win.document.getElementById("conteudo-" + t.conteudo);
-        ok(alvo && alvo.hidden === false,
-           "  " + rotulo + " revela conteudo-" + t.conteudo,
-           alvo ? "" : "o bloco conteudo-" + t.conteudo + " nem existe no HTML");
+        /* Uma tela pode revelar MAIS DE UM bloco — é o que funde "o que pede
+           ação hoje" e o executivo numa página só, como o usuário pediu. */
+        const esperados = String(t.conteudo).split(",").map(x => "conteudo-" + x.trim());
+        esperados.forEach(function (idAlvo) {
+          const alvo = tela.win.document.getElementById(idAlvo);
+          ok(alvo && alvo.hidden === false,
+             "  " + rotulo + " revela " + idAlvo,
+             alvo ? "" : "o bloco " + idAlvo + " nem existe no HTML");
+        });
 
         const intrusos = containers.filter(function (id) {
           const el = tela.win.document.getElementById(id);
-          return id !== "conteudo-" + t.conteudo && el && el.hidden === false;
+          return esperados.indexOf(id) < 0 && el && el.hidden === false;
         });
         igual(intrusos.length, 0,
               "  e esconde todos os outros",

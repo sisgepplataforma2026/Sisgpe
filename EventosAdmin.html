@@ -103,10 +103,11 @@
      menu lateral chama `evSub` ao navegar — sem eles, seria preciso espalhar
      verificação de nulo por toda a função. -->
 <div class="ev-abas" role="tablist" hidden>
-  <button class="ev-aba" role="tab" id="sub-painel"      aria-selected="true"  onclick="evSub('painel')">Painel</button>
-  <button class="ev-aba" role="tab" id="sub-programacao" aria-selected="false" onclick="evSub('programacao')">Programação</button>
-  <button class="ev-aba" role="tab" id="sub-festa"       aria-selected="false" onclick="evSub('festa')">Festa Compasso da Vida 2026</button>
-  <button class="ev-aba" role="tab" id="sub-bingo"       aria-selected="false" onclick="evSub('bingo')">Bingo Online</button>
+  <button class="ev-aba" role="tab" id="sub-painel"         aria-selected="true"  onclick="evSub('painel')">Painel</button>
+  <button class="ev-aba" role="tab" id="sub-lista"          aria-selected="false" onclick="evSub('lista')">Eventos</button>
+  <button class="ev-aba" role="tab" id="sub-festa"          aria-selected="false" onclick="evSub('festa')">Festa Compasso da Vida 2026</button>
+  <button class="ev-aba" role="tab" id="sub-credenciamento" aria-selected="false" onclick="evSub('credenciamento')">Credenciamento</button>
+  <button class="ev-aba" role="tab" id="sub-sorteios"       aria-selected="false" onclick="evSub('sorteios')">Sorteios</button>
 </div>
 
 <!-- O nome do submódulo em que se está, já que a barra saiu. -->
@@ -394,35 +395,46 @@ function urlImagem(v){v=String(v||'').trim();return /^https:\/\//i.test(v)?v:''}
    isso que "Participantes" deixou de ser vizinha de "Inscrições" e virou uma
    tela do mesmo submódulo, apontando para o mesmo painel com outro filtro. */
 var EV_SUBMODULOS = {
+  /* PAINEL — UMA TELA SÓ. O usuário: "eu só preciso de uma tela, o que pede
+     ação hoje, dentro do executivo". Eram duas abas mostrando o mesmo
+     assunto; agora o `conteudo` aceita mais de um bloco, separado por
+     vírgula, e a tela abre os dois de uma vez. */
   painel: [
-    { id:'hoje',      rotulo:'O que pede ação hoje', conteudo:'painel' },
-    { id:'executivo', rotulo:'Executivo',            conteudo:'executivo' }
+    { id:'hoje', rotulo:'O que pede ação hoje', conteudo:'painel,executivo' }
   ],
-  programacao: [
-    { id:'agenda', rotulo:'Agenda',              conteudo:'calendario' },
-    { id:'festa',  rotulo:'Dados da Festa 2026', conteudo:'informacoes' }
+  /* EVENTOS — era "Programação". A agenda é modo de ver a lista, não área. */
+  lista: [
+    { id:'agenda', rotulo:'Agenda', conteudo:'calendario' }
   ],
+  /* FESTA — os dados do evento saíram de Programação e vieram para cá: a
+     ficha pertence ao EVENTO, não à agenda. Inscrições e Ingressos viraram
+     uma tela só, com o estado como filtro dentro dela. */
   festa: [
-    /* Embutidas: a Central está incluída nesta página, não num quadro. O
-       filtro é aplicado chamando a própria tela, sem recarregar nada. */
-    { id:'inscricoes',     rotulo:'Inscrições',     embutido:'inscricoes' },
-    { id:'ingressos',      rotulo:'Ingressos',      embutido:'inscricoes', filtro:'participantes' },
-    { id:'credenciamento', rotulo:'Credenciamento', conteudo:'credenciamento' }
+    /* Inscrições PRIMEIRO: entrar na Festa é entrar no trabalho, não na
+       ficha. O usuário pediu que clicar no submódulo caísse na lista, e não
+       numa página de links para a lista. */
+    { id:'inscricoes', rotulo:'Inscrições',     embutido:'inscricoes' },
+    { id:'dados',      rotulo:'Dados da Festa', conteudo:'informacoes' }
   ],
-  bingo: [
-    { id:'painel', rotulo:'Painel do bingo', conteudo:'sorteios' }
+  credenciamento: [
+    { id:'entrada', rotulo:'Entrada do evento', conteudo:'credenciamento' }
+  ],
+  /* SORTEIOS — era "Bingo Online". Bingo é UM sorteio, não o submódulo. */
+  sorteios: [
+    { id:'bingo', rotulo:'Bingo', conteudo:'sorteios' }
   ]
 };
-var EV_SUB_ATUAL='programacao', EV_TELA_ATUAL='', EV_QUADRO_URL='';
+var EV_SUB_ATUAL='painel', EV_TELA_ATUAL='', EV_QUADRO_URL='';
 
 function evSubInterno(nome){
-  if(!EV_SUBMODULOS[nome])nome='programacao';
+  if(!EV_SUBMODULOS[nome])nome='painel';
   EV_SUB_ATUAL=nome;
   Object.keys(EV_SUBMODULOS).forEach(function(s){
     var bt=g('sub-'+s); if(bt)bt.setAttribute('aria-selected',s===nome?'true':'false');
   });
-  var rotulos={painel:'Painel',programacao:'Programação',
-               festa:'Festa Compasso da Vida 2026',bingo:'Bingo Online'};
+  var rotulos={painel:'Painel',lista:'Eventos',
+               festa:'Festa Compasso da Vida 2026',
+               credenciamento:'Credenciamento',sorteios:'Sorteios'};
   if(g('evOnde'))g('evOnde').textContent=rotulos[nome]||'';
   var telas=EV_SUBMODULOS[nome];
   g('evTelas').innerHTML=telas.map(function(t){
@@ -458,9 +470,12 @@ function evTelaInterno(id){
      lista paralela que alguém precisa lembrar de atualizar. Agora os blocos
      são encontrados pela classe que todos têm, então criar um conteúdo novo
      passa a bastar — não há segunda lista para esquecer. */
+  /* `conteudo` aceita mais de um bloco, separado por vírgula: é o que faz o
+     Painel abrir "o que pede ação hoje" e o executivo na MESMA tela. */
+  var alvos = String(t.conteudo || '').split(',').map(function(s){ return 'conteudo-' + s.trim(); });
   Array.prototype.forEach.call(
     document.querySelectorAll('.ev-conteudo[id^="conteudo-"]'),
-    function(ct){ ct.hidden = (ct.id !== 'conteudo-' + t.conteudo); });
+    function(ct){ ct.hidden = (alvos.indexOf(ct.id) < 0); });
   var wrap=g('evQuadroWrap'); if(wrap)wrap.hidden=!t.painel;
   var emb=g('evInscricoes'); if(emb)emb.hidden=(t.embutido!=='inscricoes');
   var caixa=document.querySelector('.ev-wrap');
@@ -471,9 +486,9 @@ function evTelaInterno(id){
      sozinha. Sem ida ao servidor para montar página nenhuma. */
   if(t.embutido==='inscricoes' && typeof window.compassoAplicarFiltro==='function')
     window.compassoAplicarFiltro(t.filtro||'');
-  if(t.conteudo==='informacoes') evInfoCarregar();
-  if(t.conteudo==='painel') evPainelCarregar();
-  if(t.conteudo==='executivo') evExecutivoCarregar();
+  if(alvos.indexOf('conteudo-informacoes')>=0) evInfoCarregar();
+  if(alvos.indexOf('conteudo-painel')>=0) evPainelCarregar();
+  if(alvos.indexOf('conteudo-executivo')>=0) evExecutivoCarregar();
 }
 
 /* ══ EXECUTIVO ═════════════════════════════════════════════════════════════

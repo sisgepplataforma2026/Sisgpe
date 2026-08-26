@@ -31,8 +31,12 @@ ok(/id="conteudo-informacoes"/.test(tela),
    'a tela administrativa de Informações continua na página');
 ok(/conteudo:'informacoes'/.test(tela),
    '  alcançável como tela de um submódulo');
-ok(/id="sub-programacao"/.test(tela) && /id="sub-festa"/.test(tela) && /id="sub-bingo"/.test(tela),
-   '  e a navegação é por submódulo, não por seis abas de assunto',
+/* Os nomes mudaram em 26/08/2026 com a arquitetura fechada: Programação virou
+   Eventos, Bingo Online virou Sorteios, e Credenciamento saiu de dentro da
+   Festa. O que a guarda cobra continua o mesmo — navegação por SUBMÓDULO. */
+ok(/id="sub-lista"/.test(tela) && /id="sub-festa"/.test(tela) &&
+   /id="sub-credenciamento"/.test(tela) && /id="sub-sorteios"/.test(tela),
+   '  e a navegação é por submódulo, não por abas de assunto',
    'aba não é tela: aba agrupa assunto, tela é fila de trabalho com ações');
 ok(/id="conteudo-informacoes"/.test(tela), 'há conteúdo próprio da Festa 2026');
 ok(/Calendário/.test(tela) && /Inscrições/.test(tela) && /Participantes/.test(tela) && /Credenciamento/.test(tela) && /Sorteios/.test(tela),
