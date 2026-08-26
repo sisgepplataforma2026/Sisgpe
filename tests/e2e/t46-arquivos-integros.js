@@ -325,5 +325,45 @@ b.ok(chocam.length === 0,
        : "CHOQUE DE NOME: " + chocam.join(", ") + " existe como .gs e como .html",
      "o Apps Script recusa o push inteiro — e a mensagem só aparece no deploy");
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   FRAGMENTO NÃO CARREGA TAG DE PÁGINA — 26/08/2026
+
+   Este projeto tem dois tipos de .html: PÁGINA (abre com <!DOCTYPE>/<html> e
+   é servida inteira) e FRAGMENTO (um pedaço colado dentro de outra por
+   include). Converter uma página em fragmento é operação comum aqui, e o que
+   sobra dela é sempre a mesma coisa: um `</head>` e um `<body>` órfãos no
+   meio do arquivo.
+
+   Foi o que aconteceu com CompassoImportacao.html. O navegador não reclama —
+   ele descarta as tags e segue renderizando — então o defeito não aparece
+   como erro, aparece como layout estranho que ninguém sabe explicar. Pior:
+   `</head>` no meio de um documento já aberto pode fazer o parser fechar
+   seções que estavam abertas, e aí o CSS escopado deixa de alcançar o que
+   deveria.
+
+   A regra: se o arquivo NÃO declara <html>, ele é fragmento — e fragmento não
+   tem cabeça, corpo nem raiz próprios.
+   ═══════════════════════════════════════════════════════════════════════════ */
+b.passo("fragmento não carrega tag de página");
+
+const TAGS_DE_PAGINA = [/<\/head>/i, /<body[\s>]/i, /<\/body>/i, /<\/html>/i];
+const fragmentosSujos = [];
+
+arquivosHtml.forEach(arq => {
+  const corpo = fs.readFileSync(path.join(RAIZ, arq), "utf8");
+  /* Página de verdade declara a raiz. Só o que não declara é fragmento. */
+  if (/<html[\s>]/i.test(corpo)) return;
+  const achadas = TAGS_DE_PAGINA
+    .filter(rx => rx.test(corpo))
+    .map(rx => String(rx).replace(/[/\\]|\[\\s>\]|i$/g, ""));
+  if (achadas.length) fragmentosSujos.push(arq + " (" + achadas.join(", ") + ")");
+});
+
+b.ok(fragmentosSujos.length === 0,
+     fragmentosSujos.length === 0
+       ? "nenhum fragmento tem </head>, <body> ou </html> sobrando"
+       : "SOBRA DE CONVERSÃO: " + fragmentosSujos.join(" | "),
+     "sobra de quando o arquivo era página inteira; o navegador descarta em silêncio");
+
 const c = b.resumo();
 process.exit(c.FALHOU ? 1 : 0);

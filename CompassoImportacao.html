@@ -74,17 +74,61 @@
    mesmo marcado como escondido — foi assim que a barra de submódulos seguiu
    duplicada em 25/08 depois de eu "escondê-la". */
   #compassoImportacao .escolhido[hidden]{display:none}
-</style>
-</head>
-<body>
+  #compassoImportacao #impCabecalho[hidden]{display:none}
 
-<div class="of-modulo-header">
+/* OS BOTÕES DESTA TELA SE BASTAM — 26/08/2026. Eles usavam `.b` sem que este
+   arquivo definisse `.b` em lugar nenhum: funcionavam por acidente, herdando
+   a regra de CompassoInscricoes.html, porque no Apps Script os arquivos
+   incluídos viram uma página só. Na rota que serve esta tela sozinha não há
+   Central, e os botões saíam como botão cru do navegador. O desenho abaixo é
+   o do design system (mesmo gradiente navy do `.btn-navy`), agora escopado
+   aqui e sem depender de vizinho. */
+  #compassoImportacao .b{border:1.5px solid var(--g200,#e2e8f0);background:var(--surface,#fff);
+    border-radius:10px;padding:8px 14px;font-size:12.5px;font-weight:700;font-family:inherit;
+    color:var(--g700,#334155);cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+    transition:all .18s cubic-bezier(.4,0,.2,1);white-space:nowrap}
+  #compassoImportacao .b:hover{border-color:var(--blue);color:var(--blue);
+    background:var(--blue-lt,#f2f7ff);transform:translateY(-1px)}
+  #compassoImportacao .b:disabled{opacity:.42;cursor:not-allowed;transform:none}
+  #compassoImportacao .b.p{background:linear-gradient(135deg,var(--navy2) 0%,#0d52b5 100%);
+    color:#fff;border-color:transparent;padding:10px 22px;font-size:13px;
+    box-shadow:0 4px 14px rgba(0,47,108,.26)}
+  #compassoImportacao .b.p:hover{box-shadow:0 8px 24px rgba(0,47,108,.34);color:#fff;
+    background:linear-gradient(135deg,var(--navy2) 0%,#0d52b5 100%)}
+  #compassoImportacao .b.perigo{color:#b91c1c;border-color:#f3c5c5;background:#fef2f2}
+  #compassoImportacao .b.perigo:hover{background:#dc2626;color:#fff;border-color:#dc2626}
+
+/* Campo de texto e número no padrão do sistema: os do navegador vinham com
+   canto reto e altura diferente da dos botões ao lado. */
+  #compassoImportacao input[type=text],
+  #compassoImportacao input[type=number],
+  #compassoImportacao select{border:1.5px solid var(--linha,#d8e0ea);border-radius:10px;
+    padding:8px 11px;font-size:13px;font-family:inherit;color:var(--texto,#111827);
+    background:var(--surface,#fff)}
+  #compassoImportacao input:focus,
+  #compassoImportacao select:focus{outline:0;border-color:var(--blue);
+    box-shadow:0 0 0 3px rgba(21,101,192,.12)}
+
+/* HOMOLOGAÇÃO é aviso de ambiente, não erro. Usava `.s-er`, o selo vermelho
+   de "coluna não encontrada" — mesma cor que a tela usa para defeito. */
+  #compassoImportacao .selo-ambiente{display:inline-block;padding:6px 12px;border-radius:999px;
+    font-size:11px;font-weight:800;letter-spacing:.06em;
+    background:rgba(255,255,255,.14);border:1.5px solid rgba(255,255,255,.28);color:#fff}
+</style>
+
+<!-- CABEÇALHO SÓ QUANDO A TELA É A PÁGINA — 26/08/2026.
+     Incluída como aba da Central, esta tela empilhava o próprio cabeçalho de
+     módulo embaixo do "Festa Compasso da Vida 2026", e a pessoa via dois
+     títulos de módulo, um dentro do outro. Sozinha na rota própria ele é o
+     único cabeçalho que existe, então continua. Quem decide é o init, que
+     olha se a Central está na página. -->
+<div class="of-modulo-header" id="impCabecalho">
   <div>
     <h1>Importar planilha — Compasso 2026</h1>
     <div class="sub" id="sub">Traz inscrições de uma planilha para ensaiar o fluxo.</div>
   </div>
   <div class="acoes">
-    <span class="selo s-er" style="font-size:12px;padding:6px 12px">HOMOLOGAÇÃO</span>
+    <span class="selo-ambiente">HOMOLOGAÇÃO</span>
   </div>
 </div>
 
@@ -226,6 +270,16 @@ function api(fn, args, cb){
   r[fn].apply(r, (args||[]).concat([TOKEN()]));
 }
 
+/* DOIS TÍTULOS DE MÓDULO, UM DENTRO DO OUTRO — 26/08/2026. Como aba da
+   Central, esta tela repetia o próprio cabeçalho embaixo do "Festa Compasso
+   da Vida 2026". A pergunta que decide é simples: a Central está na página?
+   Se está, ela é quem manda no cabeçalho. */
+(function(){
+  var dentroDaCentral = !!document.getElementById('compassoInscricoes');
+  var cab = g('impCabecalho');
+  if (cab && dentroDaCentral) cab.hidden = true;
+})();
+
 /* ── passo 1 ── */
 var solta = g('solta');
 ['dragenter','dragover'].forEach(function(ev){
@@ -351,13 +405,16 @@ function usarTodas(){ if (CONF) g('limite').value = CONF.linhas; }
 function importar(){
   if (!ORIGEM) return aviso('Escolha a planilha primeiro.');
   var lim = Number(g('limite').value) || 10;
-  if (!confirm('Importar ' + lim + ' linha(s)?\n\nIsso cria inscrição de verdade e consome vaga das 2.000.')) return;
-  var bt = g('btImportar'); bt.disabled = true; bt.textContent = 'Importando…';
-  api('compassoImp_importar', [ORIGEM, g('aba').value, lim, MANUAL], function(r){
-    bt.disabled = false; bt.textContent = 'Importar';
-    if (!r || !r.ok) return aviso((r && r.erro) || 'Não consegui importar.');
-    aviso(r.mensagem);
-    g('resultado').innerHTML = relatorio(r);
+  perguntar({ titulo: 'Importar ' + lim + ' linha(s)?',
+              texto: 'Isso cria inscrição de verdade e consome vaga das 2.000.',
+              icone: '📥', ok: 'Importar' }, function(){
+    var bt = g('btImportar'); bt.disabled = true; bt.textContent = 'Importando…';
+    api('compassoImp_importar', [ORIGEM, g('aba').value, lim, MANUAL], function(r){
+      bt.disabled = false; bt.textContent = 'Importar';
+      if (!r || !r.ok) return aviso((r && r.erro) || 'Não consegui importar.');
+      aviso(r.mensagem);
+      g('resultado').innerHTML = relatorio(r);
+    });
   });
 }
 
@@ -385,21 +442,29 @@ function emitir(){
   /* Campo próprio: o `limite` do passo 4 pode estar escondido, e um input
      escondido ainda devolve valor — emitiria 10 sem a pessoa ter visto o 10. */
   var lim = Number(g('limiteEmitir').value) || 10;
-  if (!confirm('Emitir ingresso para até ' + lim + ' inscrição(ões) importada(s)?\n\nNão envia e-mail.')) return;
-  aviso('Emitindo… pode levar alguns minutos.');
-  api('compasso_emitirLoteTeste', [lim], function(r){
-    g('resultado').innerHTML = '<div class="of-card"><pre style="white-space:pre-wrap;font-size:12px">' +
-      esc(typeof r === 'string' ? r : JSON.stringify(r, null, 2)) + '</pre></div>';
-    aviso('Emissão concluída — veja o resultado abaixo.');
+  perguntar({ titulo: 'Emitir ingresso para até ' + lim + ' inscrição(ões)?',
+              texto: 'Alcança só o que veio da importação. Não envia e-mail.',
+              icone: '🎫', ok: 'Emitir' }, function(){
+    aviso('Emitindo… pode levar alguns minutos.');
+    api('compasso_emitirLoteTeste', [lim], function(r){
+      g('resultado').innerHTML = '<div class="of-card"><pre style="white-space:pre-wrap;font-size:12px">' +
+        esc(typeof r === 'string' ? r : JSON.stringify(r, null, 2)) + '</pre></div>';
+      aviso('Emissão concluída — veja o resultado abaixo.');
+    });
   });
 }
 
 function limpar(){
-  if (!confirm('Apagar TODAS as inscrições que vieram de importação?\n\nInscrição feita pela tela pública não é tocada.')) return;
-  api('compasso_importarLimpar', [], function(r){
-    g('resultado').innerHTML = '<div class="of-card"><pre style="white-space:pre-wrap;font-size:12px">' +
-      esc(typeof r === 'string' ? r : JSON.stringify(r, null, 2)) + '</pre></div>';
-    aviso('Limpeza concluída.');
+  /* `perigo` porque apaga em massa e não tem desfazer. O diálogo vermelho é o
+     mesmo que a Central usa para excluir inscrição. */
+  perguntar({ titulo: 'Apagar TODAS as inscrições que vieram de importação?',
+              texto: 'Inscrição feita pela tela pública e as do piloto não são tocadas. Não há como desfazer.',
+              perigo: true, ok: 'Apagar' }, function(){
+    api('compasso_importarLimpar', [], function(r){
+      g('resultado').innerHTML = '<div class="of-card"><pre style="white-space:pre-wrap;font-size:12px">' +
+        esc(typeof r === 'string' ? r : JSON.stringify(r, null, 2)) + '</pre></div>';
+      aviso('Limpeza concluída.');
+    });
   });
 }
 

@@ -208,9 +208,16 @@ function doGet(e) {
          serve a rota avulsa é que junta os dois — e continua sendo
          createTemplate + evaluate, porque createHtmlOutputFromFile NÃO avalia
          scriptlet e a página sairia sem estilo nenhum (21/08/2026, o usuário:
-         "a tela está fora do padrão do SISGEP"). */
+         "a tela está fora do padrão do SISGEP").
+
+         O DIÁLOGO ENTRA PELA MESMA PORTA — 26/08/2026. A tela pergunta antes
+         de importar, emitir e apagar. Dentro da Central quem serve essas
+         perguntas é o componente que ela inclui; aqui não há Central, e sem
+         esta linha as três perguntas voltariam ao confirm() nativo — a caixa
+         que anuncia o endereço cru do googleusercontent.com, que o usuário
+         mandou tirar da tela. */
       return HtmlService.createTemplate(
-          "<?!= include('OficiosStyles'); ?><?!= include('CompassoImportacao'); ?>"
+          "<?!= include('OficiosStyles'); ?><?!= include('DialogoSISGEP'); ?><?!= include('CompassoImportacao'); ?>"
         ).evaluate()
         .setTitle("Importar planilha — Compasso 2026")
         .addMetaTag("viewport", "width=device-width, initial-scale=1.0")

@@ -817,13 +817,23 @@ ok(!/[^.\w]confirm\s*\(/.test(semNativos),
    "no meio de uma exclusão");
 ok(!/[^.\w]prompt\s*\(/.test(semNativos),
    "  nem prompt()");
-ok(/function perguntar\(opcoes, aoConfirmar\)/.test(html),
+/* O DIÁLOGO MUDOU DE ENDEREÇO, NÃO DE OBRIGAÇÃO — 26/08/2026.
+   Ele saiu de dentro desta tela e virou DialogoSISGEP.html, para a Importação
+   de planilha poder usar o mesmo em vez de ganhar uma cópia ou continuar no
+   confirm() nativo. A guarda continua cobrando as MESMAS três coisas — existe
+   um só, tem marcação própria, e não confirma com campo vazio —, agora
+   apontando para onde ele mora. O que mudaria o veredito é a propriedade
+   sumir, não o arquivo trocar de nome. */
+const dialogo = ler("DialogoSISGEP.html");
+ok(/include\('DialogoSISGEP'\)/.test(html),
+   "a Central traz o diálogo do sistema para a página");
+ok(/function perguntar\(opcoes, aoConfirmar\)/.test(dialogo),
    "existe UM diálogo do sistema, reaproveitado");
-ok(/id="dgFundo"/.test(html) && /id="dgCampo"/.test(html),
+ok(/id="dgFundo"/.test(dialogo) && /id="dgCampo"/.test(dialogo),
    "  com marcação própria e campo opcional");
 
 /* O campo obrigatório é validado DENTRO do diálogo. */
-const corpoConfirmar = (html.match(/function dgConfirmar\(\)\{[\s\S]*?\n\}/) || [""])[0];
+const corpoConfirmar = (dialogo.match(/function dgConfirmar\(\)\{[\s\S]*?\n\}/) || [""])[0];
 ok(/Preencha antes de confirmar/.test(corpoConfirmar),
    "diálogo com campo não confirma vazio",
    "sem isso a exclusão seguiria sem motivo, e o motivo é o que fica na " +

@@ -142,45 +142,6 @@
        em letra: "nunca usar alert()/confirm() nativo". Além de feios, eles
        anunciam o endereço cru do googleusercontent.com — o usuário viu isso
        em 25/08 e disse, com razão: "fora do padrão SISGEP". */
-    /* CONVERGIDO AO DESIGN SYSTEM — 26/08/2026. O usuário viu a caixa do
-       "copiar link" e disse: "tem que ajustar para o padrão Sisgep". Estava
-       certo: o diálogo era branco de cima a baixo, com um ícone quadrado
-       claro, enquanto todo modal do sistema abre com a faixa navy do
-       `.of-modal-head` (OficiosStyles.html:1322). Aqui os nomes de classe
-       continuam `.dg-*` porque o JS e os IDs dependem deles — o que mudou é
-       que o desenho passou a ser o mesmo do `.of-modal`: mesma faixa, mesmo
-       raio, mesma sombra, mesmo pé. */
-    .dg-fundo{position:fixed;inset:0;background:rgba(0,18,48,.65);display:none;
-              align-items:center;justify-content:center;z-index:80;padding:20px;
-              backdrop-filter:blur(6px)}
-    .dg-fundo.on{display:flex}
-    .dg{background:var(--surface);border-radius:var(--rad-xl);width:min(520px,100%);
-        box-shadow:0 40px 90px rgba(0,20,60,.36),0 8px 30px rgba(0,20,60,.16);
-        border:1px solid rgba(255,255,255,.08);overflow:hidden;
-        animation:dgSobe .22s cubic-bezier(.4,0,.2,1)}
-    @keyframes dgSobe{from{opacity:0;transform:translateY(18px) scale(.96)}to{opacity:1;transform:none}}
-    .dg-topo{display:flex;gap:14px;align-items:flex-start;padding:20px 24px;
-             color:#fff;
-             background:radial-gradient(ellipse at 90% 0%, rgba(201,168,76,.20) 0%, transparent 40%),
-                        linear-gradient(135deg, var(--navy) 0%, var(--navy2) 55%, #1058b0 100%)}
-    .dg-ic{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;
-           justify-content:center;font-size:17px;flex-shrink:0;
-           background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.22)}
-    .dg-fundo.perigo .dg-topo{background:linear-gradient(135deg,#7f1d1d 0%,#b91c1c 60%,#dc2626 100%)}
-    .dg-topo h3{margin:0;font-size:16px;font-weight:900;letter-spacing:-.2px;line-height:1.35}
-    .dg-topo p{margin:5px 0 0;font-size:11.5px;color:rgba(255,255,255,.70);line-height:1.55;
-               white-space:pre-wrap}
-    .dg-corpo{padding:20px 24px 4px}
-    .dg-corpo label{display:block;font-size:11px;font-weight:700;color:var(--suave);
-                    margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
-    .dg-corpo input{width:100%;padding:10px 12px;border:1.5px solid var(--linha);
-                    border-radius:10px;font-size:14px;font-family:inherit}
-    .dg-corpo input:focus{outline:0;border-color:var(--blue);
-                          box-shadow:0 0 0 3px rgba(21,101,192,.12)}
-    .dg-erro{font-size:12px;color:var(--erro);margin-top:6px;min-height:16px}
-    .dg-pe{display:flex;justify-content:flex-end;gap:9px;padding:16px 24px;
-           border-top:1px solid var(--g100);
-           background:linear-gradient(180deg,var(--surface) 0%,#fafcff 100%)}
     .barra{display:flex;gap:8px;align-items:center;flex-wrap:wrap;
            background:#eef3fa;border:1px solid #c7d7ec;border-radius:11px;
            padding:10px 13px;margin-bottom:12px;display:none}
@@ -444,31 +405,7 @@
   </div>
 </div>
 
-<!-- ══ DIÁLOGO DO SISTEMA ════════════════════════════════════════════════
-     Um só, reaproveitado por toda ação que precisa de confirmação ou de um
-     motivo. Substitui confirm() e prompt() nativos, que além de fora do
-     padrão anunciavam "uma página incorporada em …googleusercontent.com
-     diz" — endereço cru numa caixa do navegador, no meio de uma exclusão. -->
-<div class="dg-fundo" id="dgFundo">
-  <div class="dg" role="dialog" aria-modal="true" aria-labelledby="dgTitulo">
-    <div class="dg-topo">
-      <div class="dg-ic" id="dgIcone">?</div>
-      <div>
-        <h3 id="dgTitulo">—</h3>
-        <p id="dgTexto"></p>
-      </div>
-    </div>
-    <div class="dg-corpo" id="dgCampoBox" hidden>
-      <label id="dgRotulo">Motivo</label>
-      <input id="dgCampo" autocomplete="off">
-      <div class="dg-erro" id="dgErro"></div>
-    </div>
-    <div class="dg-pe">
-      <button class="b" onclick="dgFechar()" id="dgCancelar">Cancelar</button>
-      <button class="b p" onclick="dgConfirmar()" id="dgOk">Confirmar</button>
-    </div>
-  </div>
-</div>
+<?!= include('DialogoSISGEP'); ?>
 
 <!-- ══ GAVETA ═══════════════════════════════════════════════════════════════
      Uma inscrição inteira: os dados, o pagamento, a decisão, o ingresso e o
@@ -1130,42 +1067,6 @@ function enviarLoteAgora(ids){
     recarregar();
   });
 }
-/* ══ DIÁLOGO ══════════════════════════════════════════════════════════════
-   Uma função para toda pergunta que a tela faz. Assíncrona por natureza — o
-   confirm() nativo travava a página e devolvia na hora; este chama de volta.
-
-     perguntar({ titulo, texto, campo, rotulo, perigo, ok }, funcao)
-
-   `campo` liga a caixa de texto (o que era prompt) e, quando ligada, o
-   diálogo NÃO fecha com ela vazia: a mensagem de erro aparece ali dentro, em
-   vez de a ação seguir sem motivo. */
-var DG_ACAO = null;
-
-function perguntar(opcoes, aoConfirmar){
-  opcoes = opcoes || {};
-  DG_ACAO = aoConfirmar;
-  g('dgTitulo').textContent = opcoes.titulo || 'Confirmar';
-  g('dgTexto').textContent  = opcoes.texto || '';
-  g('dgTexto').style.display = opcoes.texto ? 'block' : 'none';
-  g('dgIcone').textContent  = opcoes.icone || (opcoes.perigo ? '⚠️' : '❓');
-  g('dgOk').textContent     = opcoes.ok || 'Confirmar';
-  g('dgOk').className       = 'b ' + (opcoes.perigo ? 'perigo' : 'p');
-  g('dgFundo').classList.toggle('perigo', !!opcoes.perigo);
-  /* Diálogo que só INFORMA não tem o que cancelar. Sem isto o link público
-     abria com "Cancelar" e "Fechar" lado a lado, dois botões para a mesma
-     coisa — que foi o que o usuário viu em 26/08. */
-  g('dgCancelar').hidden = !!opcoes.semCancelar;
-
-  g('dgCampoBox').hidden = !opcoes.campo;
-  g('dgRotulo').textContent = opcoes.rotulo || 'Motivo';
-  g('dgCampo').value = '';
-  g('dgErro').textContent = '';
-
-  g('dgFundo').classList.add('on');
-  if (opcoes.campo) setTimeout(function(){ try{ g('dgCampo').focus(); }catch(e){} }, 60);
-}
-function dgFechar(){ g('dgFundo').classList.remove('on'); DG_ACAO = null; }
-
 /* Plano B do "copiar link": quando o navegador recusa a área de transferência
    dentro de iframe, o link aparece num campo já selecionado — dá para copiar
    com Ctrl+C. Antes era um prompt() nativo, que fazia o mesmo com cara de
@@ -1178,25 +1079,6 @@ function mostrarLink(url){
   g('dgCampo').value = url;
   setTimeout(function(){ try{ g('dgCampo').select(); }catch(e){} }, 80);
 }
-function dgConfirmar(){
-  var pedeCampo = !g('dgCampoBox').hidden;
-  var valor = String(g('dgCampo').value || '').trim();
-  if (pedeCampo && !valor){
-    g('dgErro').textContent = 'Preencha antes de confirmar.';
-    try{ g('dgCampo').focus(); }catch(e){}
-    return;
-  }
-  var acao = DG_ACAO;
-  dgFechar();
-  if (acao) acao(valor);
-}
-/* Enter confirma, Esc fecha — é o que a pessoa tenta antes de procurar o
-   botão, e era o que o diálogo nativo já fazia. */
-document.addEventListener('keydown', function(e){
-  if (!g('dgFundo') || !g('dgFundo').classList.contains('on')) return;
-  if (e.key === 'Enter'){ e.preventDefault(); dgConfirmar(); }
-  if (e.key === 'Escape'){ e.preventDefault(); dgFechar(); }
-});
 
 /* ══ ABAS ═════════════════════════════════════════════════════════════════
    O quadro da importação só é carregado quando a aba é aberta: um iframe que
