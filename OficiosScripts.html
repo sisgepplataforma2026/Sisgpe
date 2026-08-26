@@ -1245,6 +1245,11 @@ function renderMonitoramento(dados) {
     + '<button id="btnMonLimparFiltro" style="padding:9px 14px;border-radius:10px;border:1.5px solid var(--g200);background:#fff;font-family:Plus Jakarta Sans,sans-serif;font-size:12px;font-weight:700;color:var(--g600);cursor:pointer;">✕ Limpar</button>'
     + '</div>';
 
+  // Índice por número: os botões passam só o número. Interpolar escola ou tipo
+  // no onclick quebraria com um apóstrofo no nome da escola.
+  window._monItensPorNumero = {};
+  itens.forEach(function(i) { window._monItensPorNumero[String(i.numero)] = i; });
+
   var htmlLinhas = itens.length === 0
     ? '<tr><td colspan="7"><div class="of-table-empty">Nenhum ofício encontrado.</div></td></tr>'
     : itens.map(function(item) {
@@ -1257,6 +1262,8 @@ function renderMonitoramento(dados) {
           acoes += '<button onclick="enviarOficioMon(\'' + escapeHtml(item.numero) + '\')" title="Enviar agora" style="padding:4px 9px;border-radius:7px;background:var(--amber-lt);color:#92400e;font-size:11px;font-weight:700;border:none;cursor:pointer;margin-right:4px;">📨</button>';
         if (item.podeReprocessar)
           acoes += '<button onclick="reprocessarOficioMon(\'' + escapeHtml(item.numero) + '\')" title="Devolver à fila de envio" style="padding:4px 9px;border-radius:7px;background:#ede9fe;color:#7c3aed;font-size:11px;font-weight:700;border:none;cursor:pointer;margin-right:4px;">🔄</button>';
+        if (item.status === "FALHA_ENTREGA" && item.link)
+          acoes += '<button onclick="reenviarOficioMon(\'' + escapeHtml(item.numero) + '\')" title="Reenviar com o e-mail cadastrado hoje" style="padding:4px 9px;border-radius:7px;background:#dbeafe;color:#1e40af;font-size:11px;font-weight:700;border:none;cursor:pointer;margin-right:4px;">✉️</button>';
         if (item.status === "ENVIADO" || item.status === "FALHA_ENTREGA" || item.status === "PENDENTE")
           acoes += '<button onclick="marcarStatusMon(\'' + escapeHtml(item.numero) + '\',\'CONFIRMADO\')" title="Confirmar" style="padding:4px 9px;border-radius:7px;background:var(--green-lt);color:var(--green-dk);font-size:11px;font-weight:700;border:none;cursor:pointer;margin-right:4px;">✅</button>';
         if (item.status !== "FALHA_ENTREGA")
@@ -1391,6 +1398,29 @@ function reprocessarOficioMon(numero) {
 
 window.aplicarFiltroMonitoramento = aplicarFiltroMonitoramento;
 window.marcarStatusMon = marcarStatusMon;
+function reenviarOficioMon(numero) {
+  var item = (window._monItensPorNumero || {})[String(numero)];
+  if (!item) { toast("Ofício não encontrado na lista. Atualize o painel.", "err"); return; }
+  if (!item.link) { toast("Este ofício não tem PDF vinculado — reenvio indisponível.", "err", 6000); return; }
+
+  var destino = item.email || "o e-mail cadastrado da escola";
+  if (!confirm("Reenviar o ofício " + numero + " para " + destino + "?\n\n"
+    + "Este ofício falhou na entrega. Se o endereço continuar incorreto, vai falhar de novo — "
+    + "corrija o cadastro da escola antes de reenviar.")) return;
+
+  toast("⏳ Reenviando ofício " + numero + "...", "info");
+  google.script.run
+    .withSuccessHandler(function(r) {
+      // reenviarOficio devolve { erro: false, mensagem } — contrato diferente do resto do painel.
+      if (r && !r.erro) toast(r.mensagem || "Ofício reenviado.", "ok", 7000);
+      else toast((r && r.mensagem) || "Não foi possível reenviar.", "err", 7000);
+      aplicarFiltroMonitoramento();
+    })
+    .withFailureHandler(function(err) { toast("Erro: " + (err.message || err), "err", 6000); })
+    .reenviarOficio({ numero: numero, url: item.link, escola: item.escola, tipo: item.tipoRaw || item.tipo }, SISGEP_TOKEN_SESSAO);
+}
+
+window.reenviarOficioMon = reenviarOficioMon;
 window.renderErroMonitoramento = renderErroMonitoramento;
 window.enviarOficioMon = enviarOficioMon;
 window.reprocessarOficioMon = reprocessarOficioMon;
