@@ -487,6 +487,104 @@ function atualizarStatusOficio(numero, novoStatus, observacao, tokenSessao) {
   }
 }
 
+/**
+ * Diagnóstico read-only: para cada ofício que o painel mostra como Pendente,
+ * diz se ele existe na fila de envio e em que estado. Responde à pergunta
+ * "os pendentes já saíram ou ainda estão para sair?".
+ *
+ * Não altera nada. Pode ser executada direto no editor do Apps Script,
+ * sem sessão web — o resultado sai no registro de execução.
+ */
+function diagnosticarPendentesOficios() {
+  var ss = MON_OFICIOS_getSS_();
+  var linhas = [];
+
+  function log(txt) { linhas.push(txt); }
+
+  /* ── Estado atual da fila de envio ── */
+  var statusFila = {};
+  var distFila = {};
+  var shFila = ss.getSheetByName("FILA_ENVIO_OFICIOS");
+
+  if (shFila && shFila.getLastRow() > 1) {
+    var hmF    = getHeaderMap_(shFila);
+    var cNumF  = hmF["NUMERO_OFICIO"];
+    var cStF   = hmF["STATUS"];
+    if (!cNumF || !cStF) throw new Error("Colunas NUMERO_OFICIO/STATUS não encontradas na fila.");
+
+    shFila.getRange(2, 1, shFila.getLastRow() - 1, shFila.getLastColumn()).getValues().forEach(function(row) {
+      var num = String(row[cNumF - 1] || "").trim();
+      if (!num) return;
+      var st = MON_OFICIOS_normStatus_(row[cStF - 1]) || "(vazio)";
+      statusFila[num] = st;
+      distFila[st] = (distFila[st] || 0) + 1;
+    });
+  }
+
+  log("FILA_ENVIO_OFICIOS — " + Object.keys(statusFila).length + " ofício(s):");
+  Object.keys(distFila).sort().forEach(function(st) { log("   " + st + ": " + distFila[st]); });
+
+  /* ── Pendentes do Controle, confrontados com a fila ── */
+  var shReg = ss.getSheetByName(PLANILHA_REGISTRO);
+  if (!shReg || shReg.getLastRow() < 2) {
+    log("Aba de Controle vazia ou não encontrada.");
+    Logger.log(linhas.join("\n"));
+    return { ok: true, relatorio: linhas };
+  }
+
+  var hmR   = getHeaderMap_(shReg);
+  var cNumR = hmR["Número do Ofício"];
+  var cStR  = hmR["Status"];
+  var cEscR = hmR["Escola (Razão Social)"] || hmR["NomeEscola"] || hmR["Escola"];
+  var cDtR  = hmR["Data envio ofício"] || hmR["DATA_CRIACAO"];
+  if (!cNumR || !cStR) throw new Error("Colunas Número do Ofício/Status não encontradas no Controle.");
+
+  var grupos = { jaEnviado: [], aguardandoFila: [], travado: [], semFila: [] };
+
+  shReg.getRange(2, 1, shReg.getLastRow() - 1, shReg.getLastColumn()).getValues().forEach(function(row) {
+    var num = String(row[cNumR - 1] || "").trim();
+    if (!num) return;
+
+    // Mesma regra do painel: Status em branco conta como PENDENTE.
+    var st = MON_OFICIOS_normStatus_(row[cStR - 1]) || "PENDENTE";
+    if (st !== "PENDENTE" && st !== "PROCESSANDO") return;
+
+    var stFila = statusFila[num];
+    var desc = num
+      + " | " + (cEscR ? String(row[cEscR - 1] || "").substring(0, 34) : "")
+      + " | " + (cDtR ? MON_OFICIOS_formatarData_(row[cDtR - 1]) : "");
+
+    if (!stFila)                                              grupos.semFila.push(desc);
+    else if (stFila === "ENVIADO" || stFila === "CONFIRMADO")  grupos.jaEnviado.push(desc + " | fila: " + stFila);
+    else if (stFila === "PENDENTE" || stFila === "ERRO")       grupos.aguardandoFila.push(desc + " | fila: " + stFila);
+    else                                                       grupos.travado.push(desc + " | fila: " + stFila);
+  });
+
+  function bloco(titulo, itens, explicacao) {
+    log("");
+    log(titulo + ": " + itens.length);
+    if (itens.length) log("   → " + explicacao);
+    itens.slice(0, 40).forEach(function(t) { log("   " + t); });
+    if (itens.length > 40) log("   ... e mais " + (itens.length - 40) + ".");
+  }
+
+  var total = grupos.jaEnviado.length + grupos.aguardandoFila.length + grupos.travado.length + grupos.semFila.length;
+  log("");
+  log("PENDENTES NO CONTROLE: " + total);
+
+  bloco("JÁ ENVIADOS", grupos.jaEnviado,
+    "O e-mail saiu pela fila. É o Status do Controle que está desatualizado.");
+  bloco("AGUARDANDO NA FILA", grupos.aguardandoFila,
+    "Ainda vão sair sozinhos: o gatilho processa 5 a cada 5 minutos.");
+  bloco("PRESOS EM PROCESSAMENTO", grupos.travado,
+    "Rode destravarOficiosProcessandoTravados() para devolvê-los à fila.");
+  bloco("SEM LINHA NA FILA", grupos.semFila,
+    "Nunca foram enfileirados: não existe e-mail montado para disparar. Precisam ser reemitidos ou ter o status corrigido.");
+
+  Logger.log(linhas.join("\n"));
+  return { ok: true, relatorio: linhas };
+}
+
 /* ============================================================================
    HELPERS PRIVADOS DO MONITORAMENTO
 ============================================================================ */
