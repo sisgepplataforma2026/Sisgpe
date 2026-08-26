@@ -82,19 +82,24 @@ O histórico mostra que isso já vinha sendo tratado caso a caso (commits
 checagem de sessão em 5 funções de Visitas"). Vale priorizar por impacto:
 primeiro o que aprova, cancela, estorna, exclui ou exporta.
 
-## 4. Deploy de homologação nunca roda
+## 4. Deploy de homologação — corrigido
 
-`.github/workflows/deploy-homologacao.yml` exige
-`github.ref == 'refs/heads/feat/compasso-2026-hardening'` — branch que não
-existe mais. O workflow é `workflow_dispatch` e a condição sempre dá falso: ele
-nunca executa.
+`.github/workflows/deploy-homologacao.yml` estava impossibilitado de rodar por
+duas razões independentes, as duas resolvidas:
 
-Os passos de teste também apontavam para arquivos ausentes
-(`tests/e2e/t46-arquivos-integros.js`, `npm test` sem `package.json`), o que
-faria o job falhar mesmo se a trava passasse. Isso foi trocado por
-`node tools/verificar.js`. **A trava de branch continua como estava** — decidir
-quais branches podem publicar em homologação é decisão do time, não do
-verificador.
+- A trava exigia `github.ref == 'refs/heads/feat/compasso-2026-hardening'`,
+  branch que não existe mais. A condição dava sempre falso.
+- Os passos de teste chamavam `node tests/e2e/t46-arquivos-integros.js` e
+  `npm test` num repositório sem pasta `tests/` e sem `package.json`.
+
+Hoje a trava permite **`main`** — a política que o commit `43e0882` já tinha
+adotado — **mais qualquer branch sob `homolog/`**. Para publicar trabalho em
+andamento em homologação sem mexer no workflow, nomeie a branch
+`homolog/<assunto>`. Para mudar a política, o bloco `if:` do job está comentado
+e é o único lugar a editar.
+
+A verificação virou `node tools/verificar.js --max 22`. Conforme os itens deste
+documento forem corrigidos, baixe o número — aí a trava passa a valer de fato.
 
 ## 5. Protocolo e código de validação de voucher são frágeis
 

@@ -28,7 +28,7 @@ automaticamente.
 | `node tools/mapa.js` | Regenera `docs/MAPA.md`. Use `--json` para também gravar `docs/mapa.json`. |
 | `node tools/verificar.js` | Verificação antes do push. `--sessoes` mostra a auditoria de sessão completa. `--max N` falha só acima do teto N. |
 | `npm test` | O verificador com o teto da dívida herdada (`--max 22`). É o que a CI roda. |
-| `tools/hook-verificar.sh` | Hook de Stop: roda o verificador ao fim da sessão, e só se algum `.gs`/`.html` mudou. |
+| `tools/hook-verificar.sh` | Hook de Stop: roda o verificador ao fim da sessão, e só se algum `.gs`/`.html` mudou (arquivo novo incluído). |
 
 ## Ainda não escrito
 
@@ -37,7 +37,7 @@ o código — use o `MAPA.md` para chegar nele:
 
 - regras sindicais (CCT, contribuições, elegibilidade) — **as únicas que não dá
   para deduzir do código; precisam vir do estatuto e das convenções**;
-- procedimento de deploy para produção;
+- procedimento de deploy para produção (o de **homologação** está no próprio `.github/workflows/deploy-homologacao.yml`: branch `main` ou `homolog/*`, disparo manual);
 - modelo de dados aba a aba;
 - fluxos de UI e padrão visual;
 - plano de testes ponta a ponta.

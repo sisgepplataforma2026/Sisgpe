@@ -18,8 +18,16 @@ permissions:
 
 jobs:
   deploy:
-    # Trava de segurança: apenas a branch atual do Compasso 2026 pode ser enviada.
-    if: github.ref == 'refs/heads/feat/compasso-2026-hardening'
+    # ── TRAVA DE BRANCH — edite aqui para mudar quem publica em homologação ──
+    # Antes apontava para feat/compasso-2026-hardening, branch que não existe
+    # mais: a condição dava sempre falso e o workflow nunca rodava.
+    #
+    # Hoje: a branch padrão, mais qualquer branch criada sob homolog/.
+    # Para testar trabalho em andamento sem mexer nesta regra, nomeie a branch
+    # como homolog/<assunto> — ex.: homolog/voucher-protocolo.
+    if: >-
+      github.ref == 'refs/heads/main' ||
+      startsWith(github.ref, 'refs/heads/homolog/')
     runs-on: ubuntu-latest
 
     steps:

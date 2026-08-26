@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # Hook de Stop: so verifica quando algum .gs ou .html mudou nesta sessao.
-# Sessao que so leu codigo ou mexeu em documentacao nao paga nada.
+# Sessao que so leu codigo, ou que mexeu so em documentacao, nao paga nada.
 set -u
 cd "${CLAUDE_PROJECT_DIR:-.}" || exit 0
 
-# Arquivos de producao alterados (working tree + staged), ignorando o resto.
-mudou=$(git diff --name-only HEAD -- '*.gs' '*.html' 2>/dev/null | head -1)
+# git status --porcelain, e nao git diff: precisa pegar tambem arquivo NOVO
+# ainda nao rastreado — um .gs recem-criado e justamente o caso mais provavel
+# de introduzir colisao de nome no escopo global.
+mudou=$(git status --porcelain -- '*.gs' '*.html' 2>/dev/null | head -1)
 [ -z "$mudou" ] && exit 0
 
 saida=$(node tools/verificar.js --max 22 2>&1)
