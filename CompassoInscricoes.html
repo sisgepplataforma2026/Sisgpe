@@ -274,7 +274,7 @@
 <div class="of-tabs-linha">
   <div class="of-tabs-acoes" style="margin-left:0">
     <button class="b" id="btAbaLista" onclick="irAba('lista')" hidden>‹ Voltar para a lista</button>
-    <button class="b" id="btAbaImportar" onclick="irAba('importar')">📄 Importar planilha</button>
+    <button class="b" id="btAbaImportar" onclick="window.impEscolherArquivo && window.impEscolherArquivo()">📄 Importar planilha</button>
     <button class="b" onclick="copiarLink()">🔗 Copiar link de inscrição</button>
     <button class="b" onclick="carregar()">↻ Atualizar</button>
   </div>
@@ -371,13 +371,18 @@
 <div id="stMenu" onclick="event.stopPropagation()"></div>
 </div><!-- /painelLista -->
 
-<!-- A importação entra por quadro (iframe) de propósito. As duas telas têm
-     funções globais de mesmo nome — api, esc, g, aviso — e no Apps Script os
-     blocos de código de todos os arquivos incluídos viram um escopo global
-     só: fundir os dois derrubaria o JavaScript da página inteira. O quadro dá
-     o "lugar único" que o usuário pediu sem pagar esse preço. -->
+<!-- A IMPORTAÇÃO DEIXOU DE SER QUADRO — 26/08/2026.
+
+     Era um iframe apontando para ?painel=compasso-importar, e web app do Apps
+     Script dentro de outro web app o navegador recusa: a área ficava em
+     branco. O usuário: "quando clico em importar planilha ele vem para essa
+     tela".
+
+     O obstáculo que existia — nomes globais iguais nas duas telas — foi
+     removido do outro lado: o script da importação passou a viver dentro de
+     uma função própria e só expõe sete nomes, todos com prefixo `imp`. -->
 <div class="painel" id="painelImportar" hidden>
-  <iframe class="quadro" id="quadroImportar" title="Importar planilha"></iframe>
+  <?!= include('CompassoImportacao'); ?>
 </div>
 
 <!-- ══ MODAL DO INGRESSO EMITIDO ═════════════════════════════════════════
@@ -1174,7 +1179,7 @@ document.addEventListener('keydown', function(e){
    O quadro da importação só é carregado quando a aba é aberta: um iframe que
    nasce carregado faria toda abertura da Central pagar por uma tela que
    ninguém pediu. */
-var ABA = 'lista', QUADRO_PRONTO = false;
+var ABA = 'lista';
 
 function irAba(nome){
   ABA = nome;
@@ -1184,17 +1189,12 @@ function irAba(nome){
      caminho de volta; na lista, o de ir importar. */
   g('btAbaLista').hidden    = (nome === 'lista');
   g('btAbaImportar').hidden = (nome === 'importar');
-  if (nome === 'importar' && !QUADRO_PRONTO) carregarQuadroImportar();
+  /* Nada a carregar: a importação está NA PÁGINA desde o início, incluída.
+     Era aqui que o quadro (iframe) era montado — e era ele que ficava em
+     branco, porque web app do Apps Script não abre dentro de outro. */
 }
 
-function carregarQuadroImportar(){
-  api('eventos_obterWebAppUrl', [], function(base){
-    var url = String(base || '') + '?painel=compasso-importar' +
-              (compassoToken() ? '&sessao=' + encodeURIComponent(compassoToken()) : '');
-    g('quadroImportar').src = url;
-    QUADRO_PRONTO = true;
-  });
-}
+
 
 /* ══ MODAL DO INGRESSO ════════════════════════════════════════════════════
    Aberto logo depois de emitir, como no ofício. ARQUIVO guarda o PDF em
@@ -1648,6 +1648,10 @@ document.addEventListener('keydown', function(e){
    página nenhuma — ela está aqui dentro, não num quadro. É a única função que
    esta tela expõe para fora, de propósito: quanto menor a superfície, menor a
    chance de alguém depender de um detalhe interno. */
+/* A importação chama isto quando a pessoa escolhe a planilha: até lá, a
+   Central continua mostrando a lista, e nenhuma tela vazia aparece. */
+window.compassoMostrarImportacao = function(){ irAba('importar'); };
+
 window.compassoAplicarFiltro = function(nome){
   /* É AQUI que a Central começa a viver dentro do portal: a tela de Eventos
      chama esta ponte ao mostrar a Central, e nesse momento a sessão existe. */

@@ -1,53 +1,71 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<base target="_top">
-<meta charset="utf-8">
-<?!= include('OficiosStyles'); ?>
+<!-- ESTA TELA É FRAGMENTO, NÃO PÁGINA — 26/08/2026.
+
+     Ela continua sendo servida sozinha pela rota ?painel=compasso-importar
+     (o navegador monta html/body sozinho), mas agora TAMBÉM é incluída dentro
+     da Central de Inscrições.
+
+     O QUE FORÇOU A MUDANÇA
+
+     A importação era um quadro (iframe) apontando para a própria rota. Web app
+     do Apps Script dentro de outro web app do Apps Script o navegador recusa —
+     e o resultado era a tela em branco que o usuário viu: "quando clico em
+     importar planilha ele vem para essa tela".
+
+     É a MESMA lição que já tinha feito a Central deixar de ser quadro. A
+     diferença é que aqui havia um obstáculo real: os nomes globais desta tela
+     colidiam com os da Central (api, esc, g, aviso, TOKEN) e, no Apps Script,
+     todos os blocos de script dos arquivos incluídos viram UM escopo global.
+     Fundir sem tratar derrubaria o JavaScript da página inteira.
+
+     O tratamento: o script inteiro passou a viver dentro de uma função que se
+     executa sozinha, e só sete nomes saem dela — todos com o prefixo `imp`.
+     Nada mais vaza. O CSS foi escopado sob #compassoImportacao pelo mesmo
+     motivo: `.wrap` e `.etapa` são genéricos demais para andarem soltos. -->
+<div id="compassoImportacao">
 <style>
-  .wrap{max-width:900px;margin:0 auto;padding:18px}
-  .etapa{margin:0 0 18px}
-  .etapa > h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;
+  #compassoImportacao .wrap{max-width:900px;margin:0 auto;padding:18px}
+  #compassoImportacao .etapa{margin:0 0 18px}
+  #compassoImportacao .etapa > h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;
     color:var(--navy);margin:0 0 10px;font-weight:800}
-  .etapa.off{opacity:.4;pointer-events:none}
+  #compassoImportacao .etapa.off{opacity:.4;pointer-events:none}
 
-  .solta{border:2px dashed #c8d3e4;border-radius:14px;padding:26px 18px;text-align:center;
+  #compassoImportacao .solta{border:2px dashed #c8d3e4;border-radius:14px;padding:26px 18px;text-align:center;
     background:#fbfcfe;cursor:pointer;transition:.15s}
-  .solta:hover,.solta.sobre{border-color:var(--blue);background:#f2f7ff}
-  .solta .ic{font-size:30px;line-height:1}
-  .solta .t{font-weight:700;margin-top:6px;color:var(--navy)}
-  .solta .s{font-size:12px;color:var(--suave,#5c6b82);margin-top:3px}
+  #compassoImportacao .solta:hover, #compassoImportacao .solta.sobre{border-color:var(--blue);background:#f2f7ff}
+  #compassoImportacao .solta .ic{font-size:30px;line-height:1}
+  #compassoImportacao .solta .t{font-weight:700;margin-top:6px;color:var(--navy)}
+  #compassoImportacao .solta .s{font-size:12px;color:var(--suave,#5c6b82);margin-top:3px}
 
-  .escolhido{display:flex;align-items:center;gap:12px;margin-top:12px;padding:11px 14px;
+  #compassoImportacao .escolhido{display:flex;align-items:center;gap:12px;margin-top:12px;padding:11px 14px;
     background:#eef6ff;border:1px solid var(--blue,#1565C0);border-radius:10px}
-  .escolhido .nome{flex:1;font-weight:600;font-size:13.5px;color:var(--navy,#001f4d);
+  #compassoImportacao .escolhido .nome{flex:1;font-weight:600;font-size:13.5px;color:var(--navy,#001f4d);
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-  .ou{display:flex;align-items:center;gap:12px;margin:14px 0;color:var(--suave,#7b8a9e);font-size:12px}
-  .ou::before,.ou::after{content:'';flex:1;height:1px;background:#e3e9f2}
+  #compassoImportacao .ou{display:flex;align-items:center;gap:12px;margin:14px 0;color:var(--suave,#7b8a9e);font-size:12px}
+  #compassoImportacao .ou::before, #compassoImportacao .ou::after{content:'';flex:1;height:1px;background:#e3e9f2}
 
-  .linha{display:flex;gap:8px;flex-wrap:wrap}
-  .linha input[type=text]{flex:1;min-width:240px}
+  #compassoImportacao .linha{display:flex;gap:8px;flex-wrap:wrap}
+  #compassoImportacao .linha input[type=text]{flex:1;min-width:240px}
 
-  table.map{width:100%;border-collapse:collapse;font-size:13px}
-  table.map td{padding:7px 8px;border-bottom:1px solid #eef2f7;vertical-align:middle}
-  table.map td.campo{font-weight:700;width:110px;color:var(--navy)}
-  table.map td.orig{color:var(--suave,#5c6b82)}
-  .selo{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700}
-  .s-ok{background:#e7f6ef;color:#0f8a5f}
-  .s-er{background:#fdecec;color:#dc2626}
-  select.col{font-size:12px;padding:4px 6px}
+  #compassoImportacao table.map{width:100%;border-collapse:collapse;font-size:13px}
+  #compassoImportacao table.map td{padding:7px 8px;border-bottom:1px solid #eef2f7;vertical-align:middle}
+  #compassoImportacao table.map td.campo{font-weight:700;width:110px;color:var(--navy)}
+  #compassoImportacao table.map td.orig{color:var(--suave,#5c6b82)}
+  #compassoImportacao .selo{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700}
+  #compassoImportacao .s-ok{background:#e7f6ef;color:#0f8a5f}
+  #compassoImportacao .s-er{background:#fdecec;color:#dc2626}
+  #compassoImportacao select.col{font-size:12px;padding:4px 6px}
 
-  table.prev{width:100%;border-collapse:collapse;font-size:12px}
-  table.prev th{text-align:left;padding:6px 8px;background:#f5f8fc;color:var(--navy);font-size:11px;
+  #compassoImportacao table.prev{width:100%;border-collapse:collapse;font-size:12px}
+  #compassoImportacao table.prev th{text-align:left;padding:6px 8px;background:#f5f8fc;color:var(--navy);font-size:11px;
     text-transform:uppercase;letter-spacing:.04em}
-  table.prev td{padding:6px 8px;border-bottom:1px solid #f0f4f9}
-  tr.ruim td{background:#fff7f7}
-  .motivo{color:#dc2626;font-size:11px}
+  #compassoImportacao table.prev td{padding:6px 8px;border-bottom:1px solid #f0f4f9}
+  #compassoImportacao tr.ruim td{background:#fff7f7}
+  #compassoImportacao .motivo{color:#dc2626;font-size:11px}
 
-  .barra{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
-  .conta{font-size:12px;color:var(--suave,#5c6b82)}
-  #msg{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--navy);
+  #compassoImportacao .barra{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+  #compassoImportacao .conta{font-size:12px;color:var(--suave,#5c6b82)}
+  #compassoImportacao #msg{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--navy);
     color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;display:none;z-index:99;
     max-width:90%;box-shadow:var(--sh-xl,0 10px 30px rgba(0,0,0,.2))}
 
@@ -55,7 +73,7 @@
    regra de classe ganha dele. Sem estas linhas o elemento continua à vista
    mesmo marcado como escondido — foi assim que a barra de submódulos seguiu
    duplicada em 25/08 depois de eu "escondê-la". */
-.escolhido[hidden]{display:none}
+  #compassoImportacao .escolhido[hidden]{display:none}
 </style>
 </head>
 <body>
@@ -86,7 +104,7 @@
            arquivo nem desfazer: a tela ficava presa no primeiro escolhido. -->
       <div class="escolhido" id="escolhido" hidden>
         <span class="nome" id="escolhidoNome"></span>
-        <button class="b" onclick="removerArquivo()" title="Remover este arquivo">✕ Remover</button>
+        <button class="b" onclick="impRemoverArquivo()" title="Remover este arquivo">✕ Remover</button>
       </div>
 
       <input type="file" id="arq" style="display:none"
@@ -96,7 +114,7 @@
 
       <div class="linha">
         <input type="text" id="url" placeholder="Cole aqui o link da planilha no Drive">
-        <button class="b" onclick="lerLink()">Ler link</button>
+        <button class="b" onclick="impLerLink()">Ler link</button>
       </div>
     </div>
   </div>
@@ -107,7 +125,7 @@
     <div class="of-card">
       <div class="barra" style="margin:0 0 12px">
         <label style="font-size:12px">Aba:
-          <select id="aba" onchange="reconferir()"></select>
+          <select id="aba" onchange="impReconferir()"></select>
         </label>
         <span class="conta" id="contaLinhas"></span>
       </div>
@@ -135,11 +153,11 @@
         <label style="font-size:13px">Quantas linhas:
           <input type="number" id="limite" value="10" min="1" style="width:90px">
         </label>
-        <button class="b" onclick="usarTodas()">usar todas</button>
+        <button class="b" onclick="impUsarTodas()">usar todas</button>
         <span class="conta" id="avisoLimite"></span>
       </div>
       <div class="barra" style="margin-top:14px">
-        <button class="b p" onclick="importar()" id="btImportar">Importar</button>
+        <button class="b p" onclick="impImportar()" id="btImportar">Importar</button>
       </div>
       <div class="conta" style="margin-top:10px">
         Começar com 10 é de propósito: importar tudo e descobrir o erro depois
@@ -160,8 +178,8 @@
         <label style="font-size:13px">Emitir para até:
           <input type="number" id="limiteEmitir" value="10" min="1" style="width:90px">
         </label>
-        <button class="b" onclick="emitir()">Emitir ingressos do que foi importado</button>
-        <button class="b" onclick="limpar()" style="margin-left:auto">Apagar tudo que veio da importação</button>
+        <button class="b" onclick="impEmitir()">Emitir ingressos do que foi importado</button>
+        <button class="b" onclick="impLimpar()" style="margin-left:auto">Apagar tudo que veio da importação</button>
       </div>
       <div class="conta" style="margin-top:10px">
         Emitir não manda e-mail. Apagar só alcança o que entrou por esta tela —
@@ -176,10 +194,19 @@
 <div id="msg"></div>
 
 <script>
-var TOKEN = (function(){ try{
-  var m = String(location.search||'').match(/[?&]sessao=([^&]*)/);
-  return m ? decodeURIComponent(m[1]) : '';
-}catch(e){ return ''; } })();
+(function(){
+/* O TOKEN É RESOLVIDO A CADA USO, NUNCA NO CARREGAMENTO — a mesma lição que a
+   Central aprendeu em 25/08. Incluída dentro do portal, esta tela roda antes
+   de `SISGEP_TOKEN_SESSAO` existir: capturar aqui congelaria vazio. */
+function TOKEN(){
+  try{
+    var m = String(location.search||'').match(/[?&]sessao=([^&]*)/);
+    if (m) return decodeURIComponent(m[1]);
+    if (typeof SISGEP_TOKEN_SESSAO !== 'undefined' && SISGEP_TOKEN_SESSAO)
+      return SISGEP_TOKEN_SESSAO;
+    return '';
+  }catch(e){ return ''; }
+}
 
 /* A origem escolhida no passo 1. Fica aqui porque os passos 2 e 4 releem a
    planilha — o anexo não é guardado em lugar nenhum do servidor. */
@@ -196,7 +223,7 @@ function api(fn, args, cb){
   var r = google.script.run
     .withSuccessHandler(cb)
     .withFailureHandler(function(e){ aviso('Erro: ' + ((e&&e.message)||e)); });
-  r[fn].apply(r, (args||[]).concat([TOKEN]));
+  r[fn].apply(r, (args||[]).concat([TOKEN()]));
 }
 
 /* ── passo 1 ── */
@@ -213,6 +240,9 @@ solta.addEventListener('drop', function(e){
 });
 
 function escolheu(arquivo){
+  /* Revela o painel de conferência: até aqui a pessoa só viu o seletor. */
+  if (typeof window.compassoMostrarImportacao === 'function')
+    window.compassoMostrarImportacao();
   if (!arquivo) return;
   aviso('Lendo "' + arquivo.name + '"…');
   var leitor = new FileReader();
@@ -372,6 +402,22 @@ function limpar(){
     aviso('Limpeza concluída.');
   });
 }
+
+/* A ÚNICA SUPERFÍCIE QUE SAI DAQUI. Sete nomes, todos com prefixo — nada de
+   `api`, `esc`, `g` ou `aviso` soltos no escopo global, que é o que colidia
+   com a Central. */
+/* ABRIR = ESCOLHER O ARQUIVO — 26/08/2026. O usuário: "não precisaria de
+   outra tela, só deveria abrir para anexar um arquivo". Então o botão da
+   Central não troca de tela: ele abre o seletor. A conferência aparece
+   depois, quando já existe planilha para conferir. */
+window.impEscolherArquivo = function(){ var i = g('arq'); if (i) i.click(); };
+window.impLerLink       = lerLink;
+window.impRemoverArquivo = removerArquivo;
+window.impUsarTodas     = usarTodas;
+window.impImportar      = importar;
+window.impEmitir        = emitir;
+window.impLimpar        = limpar;
+window.impReconferir    = reconferir;
+})();
 </script>
-</body>
-</html>
+</div><!-- /compassoImportacao -->

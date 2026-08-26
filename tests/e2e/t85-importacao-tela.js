@@ -482,10 +482,13 @@ ok(/painel=compasso-importar/.test(painel),
    duas "Inscrições" uma dentro da outra. Importar não é um ESTADO da lista, é
    uma AÇÃO sobre ela — então virou botão. O que esta guarda cobra continua o
    mesmo: que exista um caminho único para a importação, dentro da Central. */
-ok(/id="btAbaImportar"/.test(painel) && /irAba\('importar'\)/.test(painel),
-   "  por um botão de ação dentro da própria Central");
-ok(/id="quadroImportar"/.test(painel),
-   "  carregada num quadro próprio",
+/* O BOTÃO ABRE O SELETOR, NÃO UMA TELA — 26/08/2026. O usuário: "não
+   precisaria de outra tela, só deveria abrir para anexar um arquivo". A
+   conferência só aparece quando já existe planilha para conferir. */
+ok(/id="btAbaImportar"/.test(painel) && /impEscolherArquivo/.test(painel),
+   "  por um botão que abre o seletor de arquivo");
+ok(/include\('CompassoImportacao'\)/.test(painel),
+   "  e a importação vem INCLUÍDA na Central, não num quadro",
    "as duas telas têm funções globais de mesmo nome (api, esc, g, aviso): " +
    "juntar os arquivos num escopo só derrubaria o JavaScript da página");
 
@@ -504,12 +507,24 @@ ok(/readAsDataURL/.test(html),
  *
  * É a única tela do projeto que usa include; as outras trazem o CSS inline.
  * Por isso o defeito não existia antes e ninguém tinha esbarrado nele. */
-ok(/include\('OficiosStyles'\)/.test(html),
-   "a tela herda o design system por include");
-ok(/createTemplateFromFile\("CompassoImportacao"\)\.evaluate\(\)/.test(code),
-   "e a rota a serve com createTemplateFromFile().evaluate()",
+/* O include de OficiosStyles saiu quando a tela virou fragmento incluído
+   dentro da Central — o design system já está na página, e trazer de novo
+   duplicaria a folha e o toast(). Quem serve a rota avulsa é o Code.gs. */
+ok(/#compassoImportacao/.test(html),
+   "o CSS da tela é escopado, para não vazar sobre quem a inclui");
+/* A ROTA PASSOU A MONTAR OS DOIS — 26/08/2026. A tela virou fragmento para
+   poder ser incluída dentro da Central, e fragmento não traz o design system
+   por conta própria (dentro da Central ele já está na página, e incluir de
+   novo duplicaria a folha e o toast()). Então quem serve a rota avulsa junta
+   OficiosStyles + a tela. O que a guarda protege continua o mesmo: avaliação
+   por template, porque createHtmlOutputFromFile não avalia scriptlet e a
+   página sairia sem estilo. */
+ok(/createTemplate\(/.test(code) && /include\('CompassoImportacao'\)/.test(code),
+   "e a rota avulsa monta OficiosStyles + a tela, por template",
    "createHtmlOutputFromFile não avalia scriptlet: o include não aconteceria " +
    "e a página sairia sem estilo");
+ok(/include\('OficiosStyles'\)[\s\S]{0,80}include\('CompassoImportacao'\)/.test(code),
+   "  com o design system ANTES da tela");
 
 /* REMOVER O ARQUIVO — o usuário pediu, e a falta prendia a tela.
  *
@@ -519,8 +534,9 @@ passo("dá para desfazer a escolha");
 
 ok(/function removerArquivo\(\)/.test(html),
    "existe remover arquivo");
-ok(/onclick="removerArquivo\(\)"/.test(html),
-   "  ligado a um botão visível");
+ok(/onclick="impRemoverArquivo\(\)"/.test(html),
+   "  ligado a um botão visível",
+   "os nomes ganharam o prefixo `imp` quando o script virou escopo próprio");
 
 const corpoRemover = (html.match(/function removerArquivo\(\)\{[\s\S]*?\n\}/) ||
                       html.match(/function removerArquivo\(\)\s*\{[\s\S]*?\n\}/) || [""])[0];
@@ -547,7 +563,7 @@ passo("apagar e emitir não dependem de ter uma planilha anexada");
 const etapas = html.split(/<div class="etapa/).slice(1)
   .map(t => ({ escondida: /^ off"/.test(t) || /^\s+off"/.test(t), corpo: t }));
 
-["limpar()", "emitir()"].forEach(acao => {
+["impLimpar()", "impEmitir()"].forEach(acao => {
   const donas = etapas.filter(e => e.corpo.indexOf('onclick="' + acao + '"') >= 0);
   ok(donas.length === 1, acao + " aparece em exatamente um bloco");
   ok(donas.length === 1 && !donas[0].escondida,

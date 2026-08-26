@@ -197,12 +197,21 @@ function doGet(e) {
       var sessaoImp = getSessaoUsuario(tokenImp);
       if (!sessaoImp) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
       exigirModulo_(tokenImp, "eventos", true);
-      /* createTemplateFromFile + evaluate, NÃO createHtmlOutputFromFile.
-         Esta tela usa include('OficiosStyles') para herdar o design system, e
-         `createHtmlOutputFromFile` NÃO avalia scriptlet — o include sai como
-         nada e a página aparece sem estilo nenhum. Foi o que o usuário viu em
-         21/08/2026: "a tela está fora do padrão do SISGEP". */
-      return HtmlService.createTemplateFromFile("CompassoImportacao").evaluate()
+      /* O DESIGN SYSTEM ENTRA AQUI, NÃO NO ARQUIVO — 26/08/2026.
+         A tela virou FRAGMENTO para poder ser incluída dentro da Central de
+         Inscrições (antes era um quadro, e web app do Apps Script dentro de
+         outro o navegador recusa: a área ficava em branco).
+
+         Fragmento não pode trazer `include('OficiosStyles')` por conta
+         própria: dentro da Central o design system já está na página, e
+         incluir de novo duplicaria a folha e a função toast(). Então quem
+         serve a rota avulsa é que junta os dois — e continua sendo
+         createTemplate + evaluate, porque createHtmlOutputFromFile NÃO avalia
+         scriptlet e a página sairia sem estilo nenhum (21/08/2026, o usuário:
+         "a tela está fora do padrão do SISGEP"). */
+      return HtmlService.createTemplate(
+          "<?!= include('OficiosStyles'); ?><?!= include('CompassoImportacao'); ?>"
+        ).evaluate()
         .setTitle("Importar planilha — Compasso 2026")
         .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
