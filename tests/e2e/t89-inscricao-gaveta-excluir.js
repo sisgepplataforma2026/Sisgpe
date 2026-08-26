@@ -258,8 +258,9 @@ function montarTela() {
     google: { script: { run: new Proxy({}, { get: (_, n) =>
       (n === "withSuccessHandler" || n === "withFailureHandler")
         ? () => sandbox.google.script.run : () => {} }) } },
-    /* a tela expõe compassoAplicarFiltro para quem a inclui */
-    window: {},
+    /* a tela expõe compassoAplicarFiltro para quem a inclui, e registra
+       `resize` para fechar o menu de status (26/08/2026) */
+    window: { addEventListener(){} },
     /* Esc/Enter do diálogo do sistema */
     alert() {}, confirm: () => true, prompt: () => "motivo", setTimeout() {}, console
   };
@@ -400,8 +401,15 @@ ok(/maria@exemplo\.com/.test(t.els.tb.innerHTML),
    "o e-mail aparece embaixo do nome",
    "sem ele, duas Marias da mesma escola são indistinguíveis na lista");
 ok(/acompanhante/.test(t.els.tb.innerHTML), "e a categoria também");
-ok(/abrirGaveta\(0\)/.test(t.els.tb.innerHTML),
-   "e o botão abre a gaveta, não outra tela");
+/* O CONTROLE DA LINHA VIROU O STATUS — 26/08/2026. O usuário: "aí vai ter um
+   botão de status; no status você reemite, envia, edita". A linha não tem
+   mais uma coluna de ações: o próprio estado é o botão, e é dele que saem
+   emitir, enviar, editar, cancelar e excluir — todas ainda pela gaveta, que
+   continua sendo o único lugar onde se decide. */
+ok(/abrirMenuStatus\(0,/.test(t.els.tb.innerHTML),
+   "e o controle da linha é o botão de situação",
+   "coluna de ações separada obrigava a pessoa a ler duas colunas para saber " +
+   "o que dava para fazer");
 
 /* ═══ AS ABAS ═════════════════════════════════════════════════════════════
    "Tudo num único lugar: Central de Inscrições — validação, importar

@@ -96,7 +96,10 @@ function montar() {
       }
     }) } },
     /* a tela expõe compassoAplicarFiltro para quem a inclui */
-    window: {},
+    /* A tela registra `resize` para fechar o menu de status — 26/08/2026.
+       Sem isto o sandbox estoura em "window.addEventListener is not a
+       function" e o teste acusaria defeito onde não há: é falta do andaime. */
+    window: { addEventListener() {} },
     alert() {}, confirm() { return true; }, setTimeout() {}, console
   };
 
@@ -132,7 +135,12 @@ const pessoas = (n, comIngresso) => Array.from({ length: n }, (_, i) => ({
 
 const linhasDe = el => (el.innerHTML.match(/<tr>/g) || []).length;
 const nomesDe  = el => (el.innerHTML.match(/PESSOA \d+/g) || []);
-const emitirDe = el => (el.innerHTML.match(/emitir\((\d+)\)/g) || [])
+/* O ÍNDICE VEM DO BOTÃO DE SITUAÇÃO — 26/08/2026.
+   A linha não tem mais botão "Emitir": o controle passou a ser o próprio
+   status, e é dele que saem emitir, enviar, editar e excluir. O que este
+   teste guarda continua igual — que o índice da linha acompanhe a paginação,
+   para a ação não acertar a pessoa errada. */
+const emitirDe = el => (el.innerHTML.match(/abrirMenuStatus\((\d+),/g) || [])
                         .map(s => Number(s.replace(/\D/g, "")));
 
 /* ───────────────────────────────────────────────────────────────────────── */

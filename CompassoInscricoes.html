@@ -201,6 +201,40 @@
                background:#f8fafc}
 .md-link input:focus{outline:2px solid var(--blue);outline-offset:-1px}
 .md-link[hidden]{display:none}
+
+/* ── O STATUS COMO BOTÃO — 26/08/2026 ────────────────────────────────────
+   O usuário: "aí vai ter um botão de status; no status você reemite, envia,
+   edita". A coluna deixou de ser rótulo e virou o comando: o que dá para
+   fazer com a pessoa depende de onde ela está, e é ali que quem trabalha já
+   está olhando. Some com quatro colunas (status, ingresso, entrega, ações)
+   e devolve a largura para o nome e a escola. */
+.st-btn{display:inline-flex;align-items:center;gap:6px;height:29px;padding:0 11px;
+  border-radius:999px;border:1.5px solid var(--linha);background:#fff;
+  font-family:inherit;font-size:11.5px;font-weight:800;color:var(--suave);
+  cursor:pointer;white-space:nowrap}
+.st-btn:hover{border-color:var(--blue);color:var(--navy)}
+.st-btn .cx{font-size:9px;opacity:.7}
+.st-btn.ok{background:#f0fdf4;border-color:#bbf7d0;color:#15803d}
+.st-btn.al{background:#fffbf2;border-color:#f0c98a;color:#b45309}
+.st-btn.er{background:#fff5f5;border-color:#fecaca;color:#b91c1c}
+.st-btn.az{background:#eef4ff;border-color:#bfdbfe;color:#1e40af}
+.st-btn.rx{background:#f5f3ff;border-color:#ddd6fe;color:#6d28d9}
+.st-det{display:block;font-size:10.5px;font-weight:600;color:var(--suave);margin-top:3px}
+
+#stMenu{position:fixed;z-index:400;width:248px;background:#fff;border:1px solid var(--linha);
+  border-radius:13px;padding:6px;box-shadow:0 16px 48px rgba(0,20,60,.18),0 4px 16px rgba(0,20,60,.08);
+  display:none}
+#stMenu.on{display:block}
+#stMenu .cab{padding:8px 11px 9px;border-bottom:1px solid #f1f5f9;margin-bottom:4px}
+#stMenu .cab b{display:block;font-size:12.5px;color:var(--texto)}
+#stMenu .cab span{display:block;font-size:11px;color:var(--suave);margin-top:2px}
+#stMenu button{display:block;width:100%;text-align:left;border:0;background:transparent;
+  font-family:inherit;font-size:12.5px;font-weight:600;color:var(--texto);
+  padding:8px 11px;border-radius:8px;cursor:pointer}
+#stMenu button:hover{background:var(--fundo)}
+#stMenu button.g{color:#15803d;font-weight:700}
+#stMenu button.r{color:#b91c1c}
+#stMenu hr{border:0;border-top:1px solid #f1f5f9;margin:4px 8px}
 </style>
 
 <div class="of-modulo-header">
@@ -298,8 +332,8 @@
     <table>
       <thead><tr>
         <th><input type="checkbox" id="todos" onclick="marcarTodos(this)"></th>
-        <th>Nome</th><th>CPF</th><th>Escola</th><th>Cidade</th>
-        <th>Assoc.</th><th>Status</th><th>Ingresso</th><th>Entrega</th><th></th>
+        <th>Pessoa</th><th>Escola · Cidade</th><th>Contato</th>
+        <th>Vínculo</th><th>Situação</th>
       </tr></thead>
       <tbody id="tb"></tbody>
     </table>
@@ -325,7 +359,7 @@
   </div>
 </div>
 
-</div><!-- /painelLista -->
+<!-- Um menu só para a tabela inteira. Fica FORA da tabela porque menu\n     dentro de <td> herda o overflow do card e some no recorte. -->\n<div id="stMenu" onclick="event.stopPropagation()"></div>\n</div><!-- /painelLista -->
 
 <!-- A importação entra por quadro (iframe) de propósito. As duas telas têm
      funções globais de mesmo nome — api, esc, g, aviso — e no Apps Script os
@@ -763,7 +797,7 @@ function pintarPaginacao(){
 
 function pintarLista(){
   if (!LISTA.length){
-    g('tb').innerHTML = '<tr><td colspan="10" class="vazio">Nenhuma inscrição com esses filtros.</td></tr>';
+    g('tb').innerHTML = '<tr><td colspan="6" class="vazio">Nenhuma inscrição com esses filtros.</td></tr>';
     g('paginacao').hidden = true;
     return;
   }
@@ -780,9 +814,55 @@ function pintarLista(){
 
 /* Uma linha da tabela. Foi extraída do map para que a fatia da página possa
    passar o índice real de LISTA em vez do índice da fatia. */
+/* A SITUAÇÃO CONTA A HISTÓRIA, NÃO SÓ O RÓTULO — 26/08/2026.
+   "Validada" não diz se o ingresso saiu. "Ingresso #0428, não enviado há 4
+   dias" diz. Era por isso que a pessoa trocava de aba para saber se o
+   ingresso da Maria tinha ido: a informação não estava na linha dela. */
+function situacaoDe(x){
+  var tem = !!x.ingressoId;
+  var canais = (x.entrega && x.entrega.canais) || [];
+  var falhou = !!(x.entrega && x.entrega.falha);
+
+  if (x.status === 'REPROVADA')
+    return { classe:'er', rotulo:'Reprovada', detalhe: x.motivoCodigo ? rotuloMotivo(x.motivoCodigo) : '' };
+  if (x.status === 'PENDENTE')
+    return { classe:'al', rotulo:'Pendente', detalhe:'esperando o associado' };
+
+  if (tem && falhou)
+    return { classe:'er', rotulo:'Envio falhou', detalhe: String(x.entrega.falha) };
+  if (tem && canais.length)
+    return { classe:'ok', rotulo:'Enviado', detalhe: canais.map(function(c){
+      return c === 'EMAIL' ? 'e-mail' : 'WhatsApp'; }).join(' · ') +
+      (x.numeroIngresso ? ' · ' + x.numeroIngresso : '') };
+  if (tem)
+    return { classe:'az', rotulo:'Ingresso a enviar',
+             detalhe:(x.numeroIngresso || 'emitido') + ' · parado desde a emissão' };
+
+  if (x.status === 'VALIDADA_ADMINISTRATIVAMENTE')
+    return { classe:'rx', rotulo:'Validada, sem ingresso', detalhe:'falta emitir' };
+
+  return { classe:'al', rotulo:'A analisar', detalhe: idadeDe(x.criadoEm) };
+}
+
+/* Há quanto tempo espera. Um número de dias no lugar de uma data faz a fila
+   se ordenar sozinha na cabeça de quem olha. */
+function idadeDe(quando){
+  if (!quando) return '';
+  var d = new Date(quando); if (isNaN(d.getTime())) return '';
+  var h = Math.floor((Date.now() - d.getTime()) / 3600000);
+  if (h < 1)  return 'entrou agora';
+  if (h < 24) return 'esperando há ' + h + 'h';
+  var dias = Math.floor(h / 24);
+  return 'esperando há ' + dias + (dias === 1 ? ' dia' : ' dias');
+}
+
+function rotuloMotivo(cod){
+  var o = (OPCOES && OPCOES.motivos) || {};
+  return String(o[cod] || cod || '').toLowerCase();
+}
+
 function linhaHtml(x, i){
-  var temIngresso = !!x.ingressoId;
-  var podeEmitir  = !temIngresso && x.status === 'VALIDADA_ADMINISTRATIVAMENTE';
+  var sit = situacaoDe(x);
   return '<tr>' +
         /* Checkbox em TODA linha, não só em quem tem ingresso.
            24/08/2026: o usuário precisava apagar 122 importadas e não
@@ -790,26 +870,85 @@ function linhaHtml(x, i){
            só nascia para quem tinha. A seleção serve a mais de uma ação; quem
            decide o que pode ser feito com ela é o botão, não a caixinha. */
         '<td><input type="checkbox" onclick="marcar(' + i + ',this)"></td>' +
-        /* Nome com e-mail e categoria embaixo: é o que identifica a pessoa
-           sem precisar abrir. O resto dos dados fica na gaveta — 2.000 linhas
-           com quatorze colunas não se lê em tela nenhuma. */
         '<td><b>' + esc(x.nome) + '</b>' +
+          '<div style="font-size:11px;color:var(--suave)">' + esc(x.cpf) +
+          (x.categoria && x.categoria !== 'associado' ? ' · ' + esc(x.categoria) : '') +
+          '</div></td>' +
+        '<td>' + esc(x.escola) +
+          '<div style="font-size:11px;color:var(--suave)">' + esc(x.cidade) + '</div></td>' +
+        '<td style="font-size:12px">' + esc(x.email || '—') +
           '<div style="font-size:11px;color:var(--suave)">' +
-            esc(x.email || 'sem e-mail') +
-            (x.categoria && x.categoria!=='associado' ? ' · ' + esc(x.categoria) : '') +
-          '</div>' +
-        '</td>' +
-        '<td>' + esc(x.cpf) + '</td><td>' + esc(x.escola) + '</td><td>' + esc(x.cidade) + '</td>' +
+          esc(x.whatsapp || 'sem WhatsApp') + '</div></td>' +
         '<td>' + seloAssoc(x.situacaoAssociado) + '</td>' +
-        '<td>' + seloStatus(x.status) + '</td>' +
-        '<td>' + (temIngresso ? esc(x.numeroIngresso||'emitido') : '—') + '</td>' +
-        '<td>' + seloEntrega(x) + '</td>' +
-        '<td><div class="acoes">' +
-          (podeEmitir ? '<button class="b p" onclick="emitir(' + i + ')">Emitir</button>' : '') +
-          (temIngresso ? '<button class="b g" onclick="porEmail(' + i + ')">📧</button>' +
-                         '<button class="b g" onclick="porWhats(' + i + ')">📱</button>' : '') +
-          '<button class="b" onclick="abrirGaveta(' + i + ')">Abrir ›</button>' +
-        '</div></td></tr>';
+        /* O BOTÃO. Clicar abre o que dá para fazer com esta pessoa. */
+        '<td><button class="st-btn ' + sit.classe + '" ' +
+            'onclick="abrirMenuStatus(' + i + ',this,event)">' +
+            esc(sit.rotulo) + '<span class="cx">▾</span></button>' +
+          (sit.detalhe ? '<span class="st-det">' + esc(sit.detalhe) + '</span>' : '') +
+        '</td></tr>';
+}
+
+/* ── O MENU DO STATUS ─────────────────────────────────────────────────────
+   Um só menu no documento, reposicionado a cada clique: 2.000 linhas com um
+   menu cada seria 2.000 blocos de HTML esperando nunca serem abertos. */
+var MENU_I = -1;
+
+function abrirMenuStatus(i, botao, ev){
+  if (ev) ev.stopPropagation();
+  var x = LISTA[i]; if (!x) return;
+  if (MENU_I === i && g('stMenu').classList.contains('on')) return fecharMenuStatus();
+  MENU_I = i;
+
+  var sit = situacaoDe(x);
+  var tem = !!x.ingressoId;
+  var L = ['<div class="cab"><b>' + esc(sit.rotulo) + '</b>' +
+           (sit.detalhe ? '<span>' + esc(sit.detalhe) + '</span>' : '') + '</div>'];
+
+  if (tem){
+    L.push('<button class="g" onclick="menuAcao(\'whats\')">Enviar pelo WhatsApp</button>');
+    L.push('<button onclick="menuAcao(\'email\')">Enviar por e-mail</button>');
+    L.push('<button onclick="menuAcao(\'ver\')">Ver o ingresso</button>');
+  } else if (x.status === 'VALIDADA_ADMINISTRATIVAMENTE'){
+    L.push('<button class="g" onclick="menuAcao(\'emitir\')">Emitir ingresso</button>');
+  } else {
+    L.push('<button class="g" onclick="menuAcao(\'analisar\')">Analisar agora</button>');
+  }
+
+  L.push('<button onclick="menuAcao(\'editar\')">Editar dados</button>');
+  L.push('<hr>');
+  if (tem) L.push('<button class="r" onclick="menuAcao(\'cancelar\')">Cancelar ingresso</button>');
+  L.push('<button class="r" onclick="menuAcao(\'excluir\')">Excluir inscrição</button>');
+
+  var m = g('stMenu');
+  m.innerHTML = L.join('');
+  m.classList.add('on');
+
+  /* Posiciona colado no botão, e sobe quando não cabe embaixo — a última
+     linha da tabela não pode abrir um menu fora da tela. */
+  var r = botao.getBoundingClientRect();
+  var alt = m.offsetHeight || 260;
+  var topo = (r.bottom + alt + 8 > window.innerHeight) ? (r.top - alt - 6) : (r.bottom + 6);
+  m.style.top  = Math.max(8, topo) + 'px';
+  m.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 258)) + 'px';
+}
+
+function fecharMenuStatus(){ MENU_I = -1; g('stMenu').classList.remove('on'); }
+document.addEventListener('click', fecharMenuStatus);
+window.addEventListener('resize', fecharMenuStatus);
+
+/* As ações já existiam na gaveta e continuam sendo as MESMAS funções: o menu
+   só escolhe a linha e chama. Duplicar a regra aqui seria criar um segundo
+   caminho para validar, emitir e excluir — e dois caminhos divergem. */
+function menuAcao(qual){
+  var i = MENU_I; fecharMenuStatus();
+  if (i < 0 || !LISTA[i]) return;
+  if (qual === 'whats')  return porWhats(i);
+  if (qual === 'email')  return porEmail(i);
+  ABERTO = i;
+  if (qual === 'emitir') { abrirGaveta(i); return emitirGaveta(); }
+  if (qual === 'cancelar'){ abrirGaveta(i); return cancelarIngresso(); }
+  if (qual === 'excluir') { abrirGaveta(i); return excluirInscricao(); }
+  abrirGaveta(i);   /* ver, editar e analisar abrem a gaveta, que é onde se decide */
 }
 
 /* ── seleção para o lote ── */
