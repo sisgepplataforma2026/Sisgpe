@@ -433,7 +433,10 @@ function listarStatusOficios(filtros, tokenSessao) {
     });
 
     var itens = Object.keys(mapa).map(function(k) { return mapa[k]; });
-    itens.forEach(MON_OFICIOS_definirAcoesEnvio_);
+    itens.forEach(function(item) {
+      MON_OFICIOS_definirAcoesEnvio_(item);
+      MON_OFICIOS_limparCamposInternos_(item);
+    });
     var resumo = MON_OFICIOS_resumirItens_(itens);
 
     itens = MON_OFICIOS_aplicarFiltrosStatus_(itens, filtros);
@@ -702,6 +705,20 @@ function MON_OFICIOS_definirAcoesEnvio_(item) {
     if (tentativas > 0) item.motivoBloqueio = "Tentativas até agora: " + tentativas + " de " + maxTentativas + ".";
   }
 
+  return item;
+}
+
+/**
+ * Os campos que só servem para calcular as ações ficam no servidor.
+ * O google.script.run não entrega objetos Date crus da planilha ao navegador:
+ * a resposta inteira chega nula no handler de sucesso. Todo o resto do painel
+ * já trafega como string ou número — este é o único ponto que precisava disso.
+ */
+function MON_OFICIOS_limparCamposInternos_(item) {
+  delete item.naFila;
+  delete item.statusFila;
+  delete item.tentativas;
+  delete item.dataUltimaTentativa;
   return item;
 }
 
