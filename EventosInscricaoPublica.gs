@@ -552,7 +552,12 @@ var COMPASSO_FESTA_PADRAO = {
   endereco: 'Av. Roza Helena Schorling Albuquerque, s/n — Goiabeiras, ' +
             'Vitória/ES — CEP 29109-350',
   referencia: 'Ao lado do Aeroporto de Vitória.',
-  horaAbertura: '19h',
+  /* OS HORÁRIOS SÃO OS DA ARTE OFICIAL — 26/08/2026, confirmado pelo usuário.
+     `Compasso_2026_Arte_Base_Oficial.jpg` diz "abertura dos portões às 19h30,
+     início do evento às 20h00". Aqui estava 19h, e o e-mail do associado
+     divergia do que está impresso no ingresso que ele recebe no anexo —
+     duas informações diferentes na mesma mensagem. */
+  horaAbertura: '19h30',
   horaInicio: '20h'
 };
 
