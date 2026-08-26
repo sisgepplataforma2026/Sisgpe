@@ -236,8 +236,18 @@ ok(!/https?:\/\//.test(pdf),
 ok(!/cdnjs|qrcode\.min\.js|<script/.test(pdf),
    "e o HTML do PDF não tem script nenhum");
 
-ok(/UMA entrada/.test(pdf),
-   "o PDF avisa que o ingresso vale para uma entrada só");
+/* O AVISO MUDOU DE LUGAR — 26/08/2026, e por decisão do usuário.
+   O PDF passou a ser a ARTE OFICIAL do ingresso, a mesma da tela: ele: "o
+   ingresso anexado não está saindo o ingresso que foi aprovado". A arte não
+   tem onde encaixar um parágrafo de aviso — e nem deve, é um bilhete.
+   O aviso continua obrigatório; passou a viver no corpo do e-mail, que é
+   onde a pessoa lê antes de guardar o PDF. */
+const emailHtml = corpoDe(ent, "compasso_emailIngressoHtml_").corpo;
+ok(/uma entrada/i.test(emailHtml),
+   "o e-mail avisa que o ingresso vale para uma entrada só",
+   "saiu do PDF quando ele virou a arte oficial — mas não podia sumir");
+ok(/N.o compartilhe/i.test(emailHtml),
+   "  e que o link não se compartilha");
 
 /* ─── 4. a entrega fica registrada ─── */
 passo("por onde e quando o ingresso saiu");

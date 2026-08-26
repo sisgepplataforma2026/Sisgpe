@@ -192,46 +192,63 @@ function compasso_qrPngDataUri_(texto) {
  */
 function compasso_ingressoPdf_(ing, qrToken) {
   var qr = compasso_qrPngDataUri_(qrToken);
+  var arte = compasso_ingressoArteDataUri_();
   var esc = function (s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
   };
 
+  /* AS MEDIDAS SÃO AS MESMAS DO TEMPLATE, EM PIXEL.
+     `EventosIngressoTemplate.html` posiciona os campos em % sobre a arte e
+     dimensiona a fonte em `vw` — o `vw` é que não sobrevive à conversão,
+     porque o conversor não tem viewport. As porcentagens sobrevivem, desde
+     que o bilhete tenha tamanho FIXO. Então aqui o bilhete é 1634x962 (a
+     proporção da arte) e cada `Xvw` do template vira X% de 1634. */
+  var L = 1634, A = 962;
+  var px = function (vw) { return (L * vw / 100).toFixed(1) + 'px'; };
+
+  var campo = function (classe, estilo, texto) {
+    return '<div class="f ' + classe + '" style="' + estilo + '">' + esc(texto) + '</div>';
+  };
+
   var html =
     '<html><head><meta charset="utf-8"><style>' +
-    'body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:26px;color:#111827}' +
-    '.card{border:2px solid #001f4d;border-radius:12px;overflow:hidden}' +
-    '.top{background:#001f4d;color:#fff;padding:16px 20px}' +
-    '.top h1{margin:0;font-size:19px;letter-spacing:.02em}' +
-    '.top div{font-size:12px;opacity:.85;margin-top:3px}' +
-    '.body{display:table;width:100%}' +
-    '.dados,.qr{display:table-cell;vertical-align:top;padding:18px 20px}' +
-    '.qr{width:210px;text-align:center}' +
-    '.qr img{width:190px;height:190px}' +
-    '.rot{font-size:10px;color:#6b7385;text-transform:uppercase;letter-spacing:.08em}' +
-    '.val{font-size:16px;font-weight:bold;margin:2px 0 12px}' +
-    '.num{font-size:22px;font-weight:bold;color:#001f4d;letter-spacing:.04em}' +
-    '.pe{padding:12px 20px;background:#f7fafd;border-top:1px solid #d8e0ea;font-size:11px;color:#4b5563;line-height:1.5}' +
-    '.teste{background:#dc2626;color:#fff;padding:6px 12px;font-weight:bold;font-size:12px;text-align:center}' +
-    '</style></head><body>' +
-    (emissao_modoTeste_() ? '<div class="teste">MODO TESTE — INGRESSO SEM VALIDADE</div>' : '') +
-    '<div class="card">' +
-    '<div class="top"><h1>FESTA COMPASSO DA VIDA 2026</h1>' +
-    '<div>SindEducação-ES — ingresso pessoal e intransferível</div></div>' +
-    '<div class="body"><div class="dados">' +
-    '<div class="rot">Ingresso</div><div class="num">' + esc(ing.numero) + '</div>' +
-    '<div style="height:14px"></div>' +
-    '<div class="rot">Nome</div><div class="val">' + esc(ing.nome) + '</div>' +
-    '<div class="rot">Escola</div><div class="val">' + esc(ing.escola || '—') + '</div>' +
-    '<div class="rot">Categoria</div><div class="val">' +
-      esc(compasso_categoriaLabel_(ing.categoria)) + '</div>' +
-    '</div><div class="qr"><img src="' + qr + '">' +
-    '<div class="rot" style="margin-top:6px">Apresente na entrada</div></div></div>' +
-    '<div class="pe">Este QR Code é único e vale para UMA entrada. Depois de lido na ' +
-    'portaria, ele não pode ser usado de novo — não compartilhe a imagem nem o link. ' +
-    'Em caso de perda, fale com a secretaria: o ingresso pode ser reemitido, e o anterior ' +
-    'deixa de valer.</div></div></body></html>';
+    '@page{size:' + L + 'px ' + A + 'px;margin:0}' +
+    'html,body{margin:0;padding:0;background:#fff}' +
+    '.t{position:relative;width:' + L + 'px;height:' + A + 'px;overflow:hidden;background:#071a38}' +
+    '.art{position:absolute;left:0;top:0;width:' + L + 'px;height:' + A + 'px}' +
+    '.f{position:absolute;font-family:Arial,Helvetica,sans-serif;font-weight:bold;' +
+      'text-transform:uppercase;line-height:1.12;overflow:hidden;color:#fff}' +
+    '.qrBox{position:absolute;left:65.4%;top:57.7%;width:12.4%;height:' +
+      (L * 0.124).toFixed(1) + 'px;background:#fff;padding:0.6%}' +
+    '.qrBox img{width:100%;height:100%;display:block}' +
+    '.teste{position:absolute;left:35%;top:4%;padding:7px 14px;background:#dc2626;color:#fff;' +
+      'border-radius:8px;font:bold 15px Arial;letter-spacing:.12em}' +
+    '</style></head><body><div class="t">' +
+    (arte ? '<img class="art" src="' + arte + '">' : '') +
+    (emissao_modoTeste_() ? '<div class="teste">HOMOLOGAÇÃO</div>' : '') +
+
+    /* Frente do bilhete */
+    campo('', 'left:67.35%;top:25.7%;width:10.2%;font-size:' + px(1.05), ing.nome) +
+    campo('', 'left:67.35%;top:34.4%;width:10.4%;font-size:' + px(1),    ing.escola || '-') +
+    campo('', 'left:67.35%;top:43.4%;width:10.3%;font-size:' + px(1.05),
+          compasso_categoriaLabel_(ing.categoria)) +
+    campo('', 'left:65.3%;top:49.7%;width:12.8%;height:4.6%;color:#111827;font-size:' + px(1.2) +
+              ';letter-spacing:.02em;display:flex;align-items:center;justify-content:center',
+          ing.numero) +
+    '<div class="qrBox"><img src="' + qr + '"></div>' +
+
+    /* Canhoto */
+    campo('', 'left:83.3%;top:30.5%;width:14.4%;height:4.8%;color:#b90f3d;font-size:' + px(1.1) +
+              ';display:flex;align-items:center;justify-content:center', ing.numero) +
+    campo('', 'left:84.7%;top:46.7%;width:13.1%;color:#172033;font-size:' + px(1), ing.nome) +
+    campo('', 'left:84.7%;top:58.2%;width:13.1%;color:#172033;font-size:' + px(0.95),
+          ing.escola || '-') +
+    campo('', 'left:84.7%;top:69.1%;width:13.1%;color:#172033;font-size:' + px(1),
+          compasso_categoriaLabel_(ing.categoria)) +
+
+    '</div></body></html>';
 
   return Utilities.newBlob(html, 'text/html', 'ingresso.html')
     .getAs(MimeType.PDF)
@@ -368,6 +385,94 @@ function compasso_textoEntrega_(ing, url) {
  * Manda o ingresso por e-mail: link no corpo e PDF anexo.
  * Decisão do usuário em 21/08 — o link resolve na hora, o PDF serve para imprimir.
  */
+/**
+ * O E-MAIL DO INGRESSO, no padrão do sistema — 26/08/2026.
+ *
+ * O usuário, olhando o e-mail de teste: *"e-mail está fora do padrão que foi
+ * desenhado"*. Estava mesmo: o corpo era o texto puro quebrado em parágrafos,
+ * com o endereço cru do link no meio — endereço de Apps Script tem 180
+ * caracteres e o cliente de e-mail o quebra em três linhas, o que faz o
+ * ingresso parecer defeito.
+ *
+ * O que muda: cabeçalho institucional, os dados da festa que o associado
+ * precisa (data por extenso, hora e local), o número do ingresso em destaque,
+ * e o link como BOTÃO — o endereço não aparece escrito.
+ *
+ * Os dados do evento vêm de `compasso_dadosDaFesta_()`, que lê o registro do
+ * evento e só cai na constante se não houver registro. Assim, corrigir a data
+ * no cadastro corrige o e-mail.
+ */
+function compasso_emailIngressoHtml_(ing, url, temPdf) {
+  var f = compasso_dadosDaFesta_();
+  var esc = function (s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  };
+  var primeiro = String(ing.nome || '').trim().split(' ')[0] || '';
+  var quando = compasso_dataPorExtenso_(f.data);
+  var hora = f.horaInicio ? ('às ' + f.horaInicio) : '';
+  var abertura = f.horaAbertura ? ('Entrada a partir das ' + f.horaAbertura + '.') : '';
+
+  var linha = function (rot, val) {
+    if (!val) return '';
+    return '<tr><td style="padding:6px 0;font:600 12px Arial;color:#6b7385;' +
+           'text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;' +
+           'vertical-align:top">' + esc(rot) + '</td>' +
+           '<td style="padding:6px 0 6px 16px;font:15px Arial;color:#111827">' +
+           esc(val) + '</td></tr>';
+  };
+
+  return '' +
+  '<div style="background:#f0f4f9;padding:24px 12px;font-family:Arial,Helvetica,sans-serif">' +
+  '<div style="max-width:560px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;' +
+       'box-shadow:0 2px 8px rgba(0,20,60,.08)">' +
+
+    '<div style="background:#001f4d;padding:22px 26px">' +
+      '<div style="font:800 11px Arial;letter-spacing:.14em;color:#C9A84C;' +
+           'text-transform:uppercase">SindEducação-ES</div>' +
+      '<div style="font:800 20px Arial;color:#fff;margin-top:5px">' +
+        'Festa Compasso da Vida 2026</div>' +
+    '</div>' +
+
+    '<div style="padding:24px 26px">' +
+      '<p style="margin:0 0 14px;font:15px Arial;color:#111827;line-height:1.6">' +
+        'Olá, ' + esc(primeiro) + '! Sua inscrição foi validada e o seu ingresso está pronto.</p>' +
+
+      '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:11px;' +
+           'padding:16px 18px;margin:0 0 18px">' +
+        '<div style="font:600 11px Arial;color:#6b7385;text-transform:uppercase;' +
+             'letter-spacing:.07em">Ingresso</div>' +
+        '<div style="font:800 22px Arial;color:#001f4d;letter-spacing:.03em;margin-top:3px">' +
+          esc(ing.numero || '') + '</div>' +
+        '<table style="border-collapse:collapse;margin-top:10px">' +
+          linha('Quando', quando + (hora ? ' ' + hora : '')) +
+          linha('Onde', f.local) +
+          linha('Endereço', f.endereco) +
+          linha('Referência', f.referencia) +
+          linha('Nome', ing.nome) +
+        '</table>' +
+      '</div>' +
+
+      '<p style="margin:0 0 18px;text-align:center">' +
+        '<a href="' + esc(url) + '" style="display:inline-block;background:#001f4d;color:#fff;' +
+        'padding:14px 30px;border-radius:10px;text-decoration:none;font:bold 15px Arial">' +
+        'Abrir meu ingresso</a></p>' +
+
+      '<p style="margin:0 0 10px;font:14px Arial;color:#475569;line-height:1.6">' +
+        'Na entrada, basta apresentar o QR Code — pode ser na tela do celular ou impresso.' +
+        (abertura ? ' ' + esc(abertura) : '') + '</p>' +
+      (temPdf ? '<p style="margin:0 0 10px;font:14px Arial;color:#475569;line-height:1.6">' +
+        'O ingresso também vai anexado em PDF, para imprimir.</p>' : '') +
+      '<p style="margin:0;font:13px Arial;color:#6b7385;line-height:1.6">' +
+        'O ingresso é pessoal e vale para <b>uma entrada</b>. Não compartilhe o link.</p>' +
+    '</div>' +
+
+    '<div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:14px 26px;' +
+         'font:12px Arial;color:#94a3b8">SindEducação-ES · ingresso pessoal e intransferível</div>' +
+  '</div></div>';
+}
+
 function compasso_enviarIngressoEmail(inscricaoId, tokenSessao) {
   exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — enviar ingresso por e-mail', false);
 
@@ -388,13 +493,7 @@ function compasso_enviarIngressoEmail(inscricaoId, tokenSessao) {
     avisoPdf = 'O PDF não pôde ser gerado (' + ePdf.message + '). O e-mail foi enviado só com o link.';
   }
 
-  var html = '<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#111827">' +
-    texto.split('\n').map(function (l) {
-      return l.indexOf('http') === 0
-        ? '<p><a href="' + l + '" style="display:inline-block;background:#001f4d;color:#fff;' +
-          'padding:12px 22px;border-radius:9px;text-decoration:none;font-weight:bold">Abrir meu ingresso</a></p>'
-        : (l ? '<p>' + l.replace(/Abra aqui: /, '') + '</p>' : '');
-    }).join('') + '</div>';
+  var html = compasso_emailIngressoHtml_(ctx.ing, url, anexos.length > 0);
 
   var r = enviarEmailSISGEP_(
     ctx.ins.email,
