@@ -585,6 +585,100 @@ function diagnosticarPendentesOficios() {
   return { ok: true, relatorio: linhas };
 }
 
+/**
+ * Corrige no Controle o Status dos ofícios que a fila já enviou.
+ *
+ * Só toca em linha que está PENDENTE, vazia ou PROCESSANDO no Controle e que
+ * a fila dá como ENVIADO ou CONFIRMADO — nunca sobrescreve status decidido por
+ * alguém. Grava célula a célula: a sincronização antiga reescrevia a aba
+ * inteira, o que achata qualquer fórmula do Controle no valor calculado.
+ *
+ * Comece por simularSincronizacaoPendentes(), que não altera nada.
+ */
+function sincronizarStatusPendentesEnviados(aplicar) {
+  var aplicando = (aplicar === true);
+  var ss = MON_OFICIOS_getSS_();
+  var linhas = [];
+  function log(t) { linhas.push(t); }
+
+  var shFila = ss.getSheetByName("FILA_ENVIO_OFICIOS");
+  if (!shFila || shFila.getLastRow() < 2) throw new Error("Fila de envio vazia ou não encontrada.");
+
+  var hmF   = getHeaderMap_(shFila);
+  var cNumF = hmF["NUMERO_OFICIO"];
+  var cStF  = hmF["STATUS"];
+  if (!cNumF || !cStF) throw new Error("Colunas NUMERO_OFICIO/STATUS não encontradas na fila.");
+
+  var statusFila = {};
+  shFila.getRange(2, 1, shFila.getLastRow() - 1, shFila.getLastColumn()).getValues().forEach(function(row) {
+    var num = String(row[cNumF - 1] || "").trim();
+    if (!num) return;
+    var st = MON_OFICIOS_normStatus_(row[cStF - 1]);
+    if (st === "ENVIADO" || st === "CONFIRMADO") statusFila[num] = st;
+  });
+
+  var shReg = ss.getSheetByName(PLANILHA_REGISTRO);
+  if (!shReg || shReg.getLastRow() < 2) throw new Error("Aba de Controle vazia ou não encontrada.");
+
+  var hmR   = getHeaderMap_(shReg);
+  var cNumR = hmR["Número do Ofício"];
+  var cStR  = hmR["Status"];
+  if (!cNumR || !cStR) throw new Error("Colunas Número do Ofício/Status não encontradas no Controle.");
+
+  var totalLinhas = shReg.getLastRow() - 1;
+  var numeros = shReg.getRange(2, cNumR, totalLinhas, 1).getValues();
+  var status  = shReg.getRange(2, cStR,  totalLinhas, 1).getValues();
+  var correcoes = [];
+
+  for (var i = 0; i < totalLinhas; i++) {
+    var num = String(numeros[i][0] || "").trim();
+    if (!num) continue;
+
+    var stAtual = MON_OFICIOS_normStatus_(status[i][0]);
+    if (stAtual && stAtual !== "PENDENTE" && stAtual !== "PROCESSANDO") continue;
+
+    var stFila = statusFila[num];
+    if (!stFila) continue;
+
+    correcoes.push({ linha: i + 2, numero: num, de: stAtual || "(vazio)", para: stFila });
+  }
+
+  log((aplicando ? "APLICANDO" : "SIMULAÇÃO — nada foi alterado") + ".");
+  log("Ofícios a corrigir no Controle: " + correcoes.length);
+  correcoes.slice(0, 60).forEach(function(c) {
+    log("   linha " + c.linha + " | " + c.numero + " | " + c.de + " → " + c.para);
+  });
+  if (correcoes.length > 60) log("   ... e mais " + (correcoes.length - 60) + ".");
+
+  if (!aplicando) {
+    log("");
+    log("Para gravar, execute aplicarSincronizacaoPendentes().");
+    Logger.log(linhas.join("\n"));
+    return { ok: true, aplicado: false, total: correcoes.length, correcoes: correcoes };
+  }
+
+  correcoes.forEach(function(c) { shReg.getRange(c.linha, cStR).setValue(c.para); });
+  SpreadsheetApp.flush();
+
+  try {
+    registrarLogSistema({
+      usuario: "sistema",
+      numero: correcoes.length + " ofício(s) (SINCRONIZACAO STATUS CONTROLE)",
+      tipo: "", escola: "", cnpj: "", email: "", codigo: ""
+    });
+  } catch (eLog) {
+    Logger.log("⚠ Falha ao registrar log da sincronização: " + eLog.message);
+  }
+
+  log("");
+  log("✅ " + correcoes.length + " status corrigido(s) no Controle.");
+  Logger.log(linhas.join("\n"));
+  return { ok: true, aplicado: true, total: correcoes.length, correcoes: correcoes };
+}
+
+function simularSincronizacaoPendentes() { return sincronizarStatusPendentesEnviados(false); }
+function aplicarSincronizacaoPendentes() { return sincronizarStatusPendentesEnviados(true); }
+
 /* ============================================================================
    HELPERS PRIVADOS DO MONITORAMENTO
 ============================================================================ */
