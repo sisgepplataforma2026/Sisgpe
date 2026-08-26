@@ -1,0 +1,110 @@
+# AUDITORIA: PRODUÇÃO vs REPOSITÓRIO
+#
+# Baixa o código que está rodando no Apps Script de PRODUÇÃO e publica o
+# resultado num branch, para comparar com o repositório.
+#
+# Só lê o Apps Script. Nunca faz push para lá — não existe `clasp push` aqui.
+#
+# Segredo necessário: CLASPRC_JSON (o mesmo que o deploy de homologação usa).
+
+name: Auditoria Producao vs Repositorio
+
+on:
+  workflow_dispatch:
+    inputs:
+      script_id:
+        description: "ID do projeto Apps Script de PRODUCAO (Configuracoes do projeto > IDs)"
+        required: true
+        default: "1BoKA6pOOT751zmxahnvSgT2CJDgMpUPMvZj-X0HjDx_tCHLnXOqxVVqa"
+      base:
+        description: "Branch usada como base da comparacao"
+        required: true
+        default: "main"
+      branch:
+        description: "Branch que recebera o retrato da producao"
+        required: true
+        default: "auditoria/producao-vs-repo"
+
+permissions:
+  contents: write
+
+jobs:
+  auditar:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout da base
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.base }}
+          fetch-depth: 0
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar clasp
+        run: npm install -g @google/clasp
+
+      - name: Autenticar
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' '${{ secrets.CLASPRC_JSON }}' > "$HOME/.clasprc.json"
+          if [ ! -s "$HOME/.clasprc.json" ]; then
+            echo "::error::Segredo CLASPRC_JSON ausente ou vazio."
+            exit 1
+          fi
+
+      - name: Apontar para o projeto de producao
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '{"scriptId":"%s","rootDir":"."}' '${{ inputs.script_id }}' > .clasp.json
+          clasp status
+
+      - name: Baixar o codigo de producao
+        run: clasp pull
+
+      - name: Publicar o retrato no branch de auditoria
+        id: retrato
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .clasp.json "$HOME/.clasprc.json"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "${{ inputs.branch }}"
+
+          if git diff --quiet && [ -z "$(git status --porcelain)" ]; then
+            echo "vazio=1" >> "$GITHUB_OUTPUT"
+            echo "Producao e ${{ inputs.base }} estao identicos." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          git add -A
+          git commit -q -m "Retrato do Apps Script de producao em $(date -u +%Y-%m-%d\ %H:%M) UTC
+
+          Gerado por clasp pull, para comparar com a branch ${{ inputs.base }}.
+          Nao e codigo revisado: e o que esta rodando hoje em producao."
+          git push -f -u origin "${{ inputs.branch }}"
+          echo "vazio=0" >> "$GITHUB_OUTPUT"
+
+      - name: Resumo da divergencia
+        if: steps.retrato.outputs.vazio == '0'
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "## Divergencia entre producao e \`${{ inputs.base }}\`"
+            echo
+            echo "Arquivos diferentes:"
+            echo
+            echo '```'
+            git diff --stat "origin/${{ inputs.base }}" HEAD
+            echo '```'
+            echo
+            echo "Ver lado a lado: https://github.com/${{ github.repository }}/compare/${{ inputs.base }}...${{ inputs.branch }}"
+          } >> "$GITHUB_STEP_SUMMARY"
