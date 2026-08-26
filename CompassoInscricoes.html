@@ -142,27 +142,45 @@
        em letra: "nunca usar alert()/confirm() nativo". Além de feios, eles
        anunciam o endereço cru do googleusercontent.com — o usuário viu isso
        em 25/08 e disse, com razão: "fora do padrão SISGEP". */
-    .dg-fundo{position:fixed;inset:0;background:rgba(8,17,35,.5);display:none;
-              align-items:center;justify-content:center;z-index:80;padding:16px}
+    /* CONVERGIDO AO DESIGN SYSTEM — 26/08/2026. O usuário viu a caixa do
+       "copiar link" e disse: "tem que ajustar para o padrão Sisgep". Estava
+       certo: o diálogo era branco de cima a baixo, com um ícone quadrado
+       claro, enquanto todo modal do sistema abre com a faixa navy do
+       `.of-modal-head` (OficiosStyles.html:1322). Aqui os nomes de classe
+       continuam `.dg-*` porque o JS e os IDs dependem deles — o que mudou é
+       que o desenho passou a ser o mesmo do `.of-modal`: mesma faixa, mesmo
+       raio, mesma sombra, mesmo pé. */
+    .dg-fundo{position:fixed;inset:0;background:rgba(0,18,48,.65);display:none;
+              align-items:center;justify-content:center;z-index:80;padding:20px;
+              backdrop-filter:blur(6px)}
     .dg-fundo.on{display:flex}
-    .dg{background:#fff;border-radius:16px;width:min(460px,100%);
-        box-shadow:0 24px 60px rgba(8,17,35,.3);overflow:hidden}
-    .dg-topo{display:flex;gap:13px;align-items:flex-start;padding:20px 22px 12px}
-    .dg-ic{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;
-           justify-content:center;font-size:20px;flex-shrink:0;
-           background:#eef3fa;border:1.5px solid #c7d7ec}
-    .dg-fundo.perigo .dg-ic{background:#fef2f2;border-color:#f3c5c5}
-    .dg-topo h3{margin:0;font-size:15.5px;font-weight:900;color:var(--navy);line-height:1.35}
-    .dg-topo p{margin:6px 0 0;font-size:13px;color:var(--suave);line-height:1.55;
+    .dg{background:var(--surface);border-radius:var(--rad-xl);width:min(520px,100%);
+        box-shadow:0 40px 90px rgba(0,20,60,.36),0 8px 30px rgba(0,20,60,.16);
+        border:1px solid rgba(255,255,255,.08);overflow:hidden;
+        animation:dgSobe .22s cubic-bezier(.4,0,.2,1)}
+    @keyframes dgSobe{from{opacity:0;transform:translateY(18px) scale(.96)}to{opacity:1;transform:none}}
+    .dg-topo{display:flex;gap:14px;align-items:flex-start;padding:20px 24px;
+             color:#fff;
+             background:radial-gradient(ellipse at 90% 0%, rgba(201,168,76,.20) 0%, transparent 40%),
+                        linear-gradient(135deg, var(--navy) 0%, var(--navy2) 55%, #1058b0 100%)}
+    .dg-ic{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;
+           justify-content:center;font-size:17px;flex-shrink:0;
+           background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.22)}
+    .dg-fundo.perigo .dg-topo{background:linear-gradient(135deg,#7f1d1d 0%,#b91c1c 60%,#dc2626 100%)}
+    .dg-topo h3{margin:0;font-size:16px;font-weight:900;letter-spacing:-.2px;line-height:1.35}
+    .dg-topo p{margin:5px 0 0;font-size:11.5px;color:rgba(255,255,255,.70);line-height:1.55;
                white-space:pre-wrap}
-    .dg-corpo{padding:0 22px}
+    .dg-corpo{padding:20px 24px 4px}
     .dg-corpo label{display:block;font-size:11px;font-weight:700;color:var(--suave);
-                    margin-bottom:4px}
-    .dg-corpo input{width:100%;padding:9px 11px;border:1.5px solid var(--linha);
-                    border-radius:9px;font-size:14px;font-family:inherit}
-    .dg-corpo input:focus{outline:0;border-color:var(--blue)}
+                    margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
+    .dg-corpo input{width:100%;padding:10px 12px;border:1.5px solid var(--linha);
+                    border-radius:10px;font-size:14px;font-family:inherit}
+    .dg-corpo input:focus{outline:0;border-color:var(--blue);
+                          box-shadow:0 0 0 3px rgba(21,101,192,.12)}
     .dg-erro{font-size:12px;color:var(--erro);margin-top:6px;min-height:16px}
-    .dg-pe{display:flex;justify-content:flex-end;gap:8px;padding:16px 22px 20px}
+    .dg-pe{display:flex;justify-content:flex-end;gap:9px;padding:16px 24px;
+           border-top:1px solid var(--g100);
+           background:linear-gradient(180deg,var(--surface) 0%,#fafcff 100%)}
     .barra{display:flex;gap:8px;align-items:center;flex-wrap:wrap;
            background:#eef3fa;border:1px solid #c7d7ec;border-radius:11px;
            padding:10px 13px;margin-bottom:12px;display:none}
@@ -1129,10 +1147,14 @@ function perguntar(opcoes, aoConfirmar){
   g('dgTitulo').textContent = opcoes.titulo || 'Confirmar';
   g('dgTexto').textContent  = opcoes.texto || '';
   g('dgTexto').style.display = opcoes.texto ? 'block' : 'none';
-  g('dgIcone').textContent  = opcoes.perigo ? '⚠️' : '❓';
+  g('dgIcone').textContent  = opcoes.icone || (opcoes.perigo ? '⚠️' : '❓');
   g('dgOk').textContent     = opcoes.ok || 'Confirmar';
   g('dgOk').className       = 'b ' + (opcoes.perigo ? 'perigo' : 'p');
   g('dgFundo').classList.toggle('perigo', !!opcoes.perigo);
+  /* Diálogo que só INFORMA não tem o que cancelar. Sem isto o link público
+     abria com "Cancelar" e "Fechar" lado a lado, dois botões para a mesma
+     coisa — que foi o que o usuário viu em 26/08. */
+  g('dgCancelar').hidden = !!opcoes.semCancelar;
 
   g('dgCampoBox').hidden = !opcoes.campo;
   g('dgRotulo').textContent = opcoes.rotulo || 'Motivo';
@@ -1150,8 +1172,9 @@ function dgFechar(){ g('dgFundo').classList.remove('on'); DG_ACAO = null; }
    erro do sistema. */
 function mostrarLink(url){
   perguntar({ titulo: 'Link público de inscrição',
-              texto: 'O navegador não deixou copiar sozinho. Selecione e copie:',
-              campo: true, rotulo: 'Endereço', ok: 'Fechar' }, function(){});
+              texto: 'O navegador não deixou copiar sozinho. O endereço já está selecionado abaixo — use Ctrl+C.',
+              campo: true, rotulo: 'Endereço', ok: 'Fechar',
+              icone: '🔗', semCancelar: true }, function(){});
   g('dgCampo').value = url;
   setTimeout(function(){ try{ g('dgCampo').select(); }catch(e){} }, 80);
 }

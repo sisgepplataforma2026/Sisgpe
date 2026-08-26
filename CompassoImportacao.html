@@ -108,7 +108,7 @@
       </div>
 
       <input type="file" id="arq" style="display:none"
-             accept=".xlsx,.xls,.csv,.ods" onchange="escolheu(this.files[0])">
+             accept=".xlsx,.xls,.csv,.ods" onchange="impEscolheu(this.files[0])">
 
       <div class="ou">ou</div>
 
@@ -323,7 +323,7 @@ function seletor(campo, r){
   var ops = ['<option value="">— escolher coluna —</option>'].concat(
     (r.cabecalho||[]).map(function(t,i){
       return '<option value="'+i+'">'+(i+1)+'. '+esc(t||'(sem título)')+'</option>'; }));
-  return '<select class="col" onchange="apontar(\''+campo+'\',this.value)">'+ops.join('')+'</select>';
+  return '<select class="col" onchange="impApontar(\''+campo+'\',this.value)">'+ops.join('')+'</select>';
 }
 function apontar(campo, valor){
   if (valor === '') { delete MANUAL[campo]; return; }
@@ -403,9 +403,18 @@ function limpar(){
   });
 }
 
-/* A ÚNICA SUPERFÍCIE QUE SAI DAQUI. Sete nomes, todos com prefixo — nada de
+/* A ÚNICA SUPERFÍCIE QUE SAI DAQUI. Todos os nomes com prefixo — nada de
    `api`, `esc`, `g` ou `aviso` soltos no escopo global, que é o que colidia
-   com a Central. */
+   com a Central.
+
+   REGRA QUE ESTA LISTA PRECISA OBEDECER — 26/08/2026. Fechar o arquivo numa
+   IIFE tirou do alcance do HTML TODO nome que não estiver aqui embaixo, e
+   `onclick`/`onchange` inline só enxergam o escopo global. Quando isso me
+   escapou, anexar o arquivo não fazia nada: o `onchange` do seletor chamava
+   um nome que já não existia mais, e o navegador não reclama disso em lugar
+   nenhum visível. Vale para o HTML escrito à mão E para o HTML gerado por
+   string aqui dentro (o `<select>` do apontamento de coluna). O teste t97
+   passou a cobrar essa correspondência a cada commit. */
 /* ABRIR = ESCOLHER O ARQUIVO — 26/08/2026. O usuário: "não precisaria de
    outra tela, só deveria abrir para anexar um arquivo". Então o botão da
    Central não troca de tela: ele abre o seletor. A conferência aparece
@@ -418,6 +427,8 @@ window.impImportar      = importar;
 window.impEmitir        = emitir;
 window.impLimpar        = limpar;
 window.impReconferir    = reconferir;
+window.impEscolheu      = escolheu;   /* onchange do <input type="file"> */
+window.impApontar       = apontar;    /* onchange do <select> gerado em seletor() */
 })();
 </script>
 </div><!-- /compassoImportacao -->
