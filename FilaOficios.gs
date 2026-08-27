@@ -462,7 +462,15 @@ function processarFilaEnvioOficios() {
     erros: erros
   };
 }
-function enviarOficioDaFilaAgora(numero, tokenSessao) {
+/**
+ * Envia um ofício da fila.
+ * @param {string} numero            Número do ofício.
+ * @param {string} tokenSessao       Token da sessão.
+ * @param {Array|string} emailsDestino  Opcional. Lista conferida/editada na tela
+ *        de confirmação; quando informada substitui os destinatários gravados
+ *        na fila (e fica registrada na própria linha, para reenvios).
+ */
+function enviarOficioDaFilaAgora(numero, tokenSessao, emailsDestino) {
   var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
   if (!numero) return { ok: false, mensagem: "Número do ofício não informado." };
 
@@ -551,6 +559,22 @@ function enviarOficioDaFilaAgora(numero, tokenSessao) {
   var tentativas     = parseInt(linha[colTentativas - 1], 10) || 0;
   var usuarioEnvio   = "financeiro@sindeducacao.com";
 
+  // Destinatários conferidos na tela têm precedência sobre os da fila.
+  var textoDestinoInformado = Array.isArray(emailsDestino)
+    ? emailsDestino.join(", ")
+    : String(emailsDestino || "");
+  var destinoInformado = validarListaEmails_(textoDestinoInformado);
+  var ajustouDestinatarios = false;
+
+  if (destinoInformado.emails.length) {
+    if (!destinoInformado.ok) {
+      return { ok: false, mensagem: "E-mail inválido: " + destinoInformado.invalido };
+    }
+    emailsTodos = destinoInformado.todos;
+    emailPrincipal = destinoInformado.principal;
+    ajustouDestinatarios = true;
+  }
+
   var validacaoEmails = validarListaEmails_(emailsTodos || emailPrincipal || "");
 
   if (!validacaoEmails.ok || !validacaoEmails.emails.length) {
@@ -574,6 +598,10 @@ function enviarOficioDaFilaAgora(numero, tokenSessao) {
     }
 
     tentativas = parseInt(valoresLinha[colTentativas - 1], 10) || 0;
+    if (ajustouDestinatarios) {
+      valoresLinha[colEmailPrincipal - 1] = emailPrincipal;
+      valoresLinha[colEmailsTodos - 1]    = emailsTodos;
+    }
     valoresLinha[colStatus - 1] = "PROCESSANDO";
     valoresLinha[colDataUltimaTent - 1] = new Date();
     sh.getRange(linhaPlanilha, 1, 1, totalCols).setValues([valoresLinha]);
