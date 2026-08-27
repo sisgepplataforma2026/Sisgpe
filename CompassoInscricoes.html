@@ -98,6 +98,33 @@
     .gv-acoes{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
     .gv-nota{font-size:12px;color:var(--suave);line-height:1.5;margin-top:8px}
 
+    /* RESUMO — quem é a pessoa, em texto. Antes eram oito campos de digitação
+       ocupando meia tela para dizer o que cabe em três linhas. */
+    .gv-resumo{font-size:13px;line-height:1.75;color:var(--texto);
+               padding:2px 0 4px;border-bottom:1px solid var(--linha)}
+    .gv-resumo b{font-weight:700}
+    .gv-resumo .sep{color:var(--linha);margin:0 7px}
+    .gv-resumo .vazio{color:var(--suave);font-style:italic}
+
+    /* SEÇÕES RECOLHÍVEIS. O título inteiro é a área de clique — alvo grande
+       para quem usa a tela o dia todo. A seta gira em vez de trocar de
+       caractere: trocar texto faz a linha "pular" um pixel a cada clique. */
+    .gv-dobra > h3{cursor:pointer;display:flex;align-items:center;gap:8px;
+                   user-select:none;margin:0}
+    .gv-dobra > h3:hover{color:var(--blue)}
+    .gv-seta{display:inline-block;transition:transform .18s ease;font-size:10px;
+             color:var(--suave)}
+    .gv-dobra.on > h3 .gv-seta{transform:rotate(90deg)}
+    /* Fechado por padrão. `max-height` em vez de `display:none` para a
+       abertura ter animação — e `hidden` continua vencendo, para a seção de
+       excluir seguir escondida de quem não é administrador. */
+    .gv-dobra > .gv-dobra-corpo{max-height:0;overflow:hidden;
+                                transition:max-height .22s ease}
+    .gv-dobra.on > .gv-dobra-corpo{max-height:1400px}
+    /* A etiqueta ao lado do título diz o estado sem precisar abrir. */
+    .gv-dobra-tag{margin-left:auto;font-size:11px;font-weight:600;
+                  color:var(--suave);text-transform:none;letter-spacing:0}
+
     /* VEREDITO DA ANÁLISE — a cor diz o que é antes de a pessoa ler. Verde
        segue, âmbar espera, vermelho barra. As mesmas três do selo da lista,
        para a gaveta não contradizer a linha de onde ela foi aberta. */
@@ -498,9 +525,24 @@
 
   <div class="gv-corpo">
 
-    <!-- DADOS -->
-    <div class="gv-sec">
-      <h3>Dados</h3>
+    <!-- RESUMO ══════════════════════════════════════════════════════════════
+         O QUE A PESSOA VEIO FAZER FICA NO TOPO — 27/08/2026.
+
+         O usuário: "tela muita grande". Estava: oito campos de formulário
+         antes de qualquer coisa, depois análise, ingresso, comprovante,
+         histórico e excluir, todos abertos ao mesmo tempo. Seis blocos com o
+         mesmo peso visual, e a pessoa rolando para achar o que veio fazer.
+
+         O que ela veio fazer, na prática: ver QUEM é, DECIDIR, e MANDAR o
+         ingresso. Editar dado é raro; ler histórico é mais raro ainda. Então
+         quem é vira uma linha de texto — não oito campos de digitação — e o
+         resto passa a viver atrás de um clique. -->
+    <div class="gv-resumo" id="gvResumo"></div>
+
+    <!-- DADOS — recolhido: só quem vai EDITAR precisa dos campos. -->
+    <div class="gv-sec gv-dobra" id="secDados">
+      <h3 onclick="gvDobrar('secDados')"><span class="gv-seta">▸</span>Dados cadastrais</h3>
+      <div class="gv-dobra-corpo">
       <div class="gv-grade">
         <div class="gv-campo larga"><label>Nome</label><input id="dNome"></div>
         <div class="gv-campo"><label>CPF</label><input id="dCpf"></div>
@@ -515,6 +557,7 @@
       <div class="gv-acoes">
         <button class="b p" onclick="salvarDados()">Salvar dados</button>
         <span class="gv-nota" id="dSituacao" style="margin:0;align-self:center"></span>
+      </div>
       </div>
     </div>
 
@@ -583,14 +626,16 @@
     </div>
 
     <!-- INGRESSO -->
-    <div class="gv-sec">
-      <h3>Ingresso</h3>
+    <div class="gv-sec gv-dobra" id="secIngresso">
+      <h3 onclick="gvDobrar('secIngresso')"><span class="gv-seta">▸</span>Ingresso<span class="gv-dobra-tag" id="tagIngresso"></span></h3>
+      <div class="gv-dobra-corpo">
       <div class="gv-nota" id="ingSituacao" style="margin:0 0 10px"></div>
       <div class="gv-acoes">
         <button class="b p"  id="btEmitir"   onclick="emitirGaveta()">Emitir ingresso</button>
         <button class="b g"  id="btEmail"    onclick="emailGaveta()">📧 Enviar por e-mail</button>
         <button class="b g"  id="btWhats"    onclick="whatsGaveta()">📱 Enviar por WhatsApp</button>
         <button class="b perigo" id="btCancelar" onclick="cancelarIngresso()">Cancelar ingresso</button>
+      </div>
       </div>
     </div>
 
@@ -601,30 +646,36 @@
 
          Serve para responder, não para disparar: alguém pergunta no ZAP se a
          inscrição foi, a secretaria abre esta gaveta e responde. -->
-    <div class="gv-sec">
-      <h3>Comprovante da inscrição</h3>
+    <div class="gv-sec gv-dobra" id="secComprovante">
+      <h3 onclick="gvDobrar('secComprovante')"><span class="gv-seta">▸</span>Comprovante da inscrição<span class="gv-dobra-tag" id="tagComprovante"></span></h3>
+      <div class="gv-dobra-corpo">
       <div class="gv-nota" id="cpvSituacao" style="margin:0 0 10px"></div>
       <div class="gv-acoes">
         <button class="b g" id="btCpvWhats" onclick="comprovanteWhats()">💬 Enviar comprovante por WhatsApp</button>
         <button class="b"   id="btCpvOk"    onclick="comprovanteMarcar()" hidden>✓ Marcar como enviado</button>
       </div>
+      </div>
     </div>
 
     <!-- HISTÓRICO -->
-    <div class="gv-sec">
-      <h3>Histórico</h3>
+    <div class="gv-sec gv-dobra" id="secHistorico">
+      <h3 onclick="gvDobrar('secHistorico')"><span class="gv-seta">▸</span>Histórico</h3>
+      <div class="gv-dobra-corpo">
       <div class="gv-hist" id="gvHistorico"></div>
+      </div>
     </div>
 
     <!-- EXCLUIR — só administrador, e só aparece para quem é. -->
-    <div class="gv-sec" id="secExcluir" hidden>
-      <h3>Excluir</h3>
+    <div class="gv-sec gv-dobra" id="secExcluir" hidden>
+      <h3 onclick="gvDobrar('secExcluirBloco')"><span class="gv-seta">▸</span>Excluir inscrição</h3>
+      <div class="gv-dobra-corpo">
       <div class="gv-nota" style="margin:0 0 10px">
         Tira a inscrição da lista e devolve a vaga. Fica registrado quem
         excluiu e por quê. Ingresso emitido precisa ser cancelado antes.
       </div>
       <div class="gv-acoes">
         <button class="b perigo" onclick="excluirInscricao()">Excluir inscrição</button>
+      </div>
       </div>
     </div>
 
@@ -935,14 +986,14 @@ function linhaHtml(x, i){
            decide o que pode ser feito com ela é o botão, não a caixinha. */
         '<td><input type="checkbox" onclick="marcar(' + i + ',this)"></td>' +
         '<td><b>' + esc(x.nome) + '</b>' +
-          '<div style="font-size:11px;color:var(--suave)">' + esc(x.cpf) +
+          '<div style="font-size:11px;color:var(--suave)">' + esc(fmtCpf(x.cpf)) +
           (x.categoria && x.categoria !== 'associado' ? ' · ' + esc(x.categoria) : '') +
           '</div></td>' +
         '<td>' + esc(x.escola) +
           '<div style="font-size:11px;color:var(--suave)">' + esc(x.cidade) + '</div></td>' +
         '<td style="font-size:12px">' + esc(x.email || '—') +
           '<div style="font-size:11px;color:var(--suave)">' +
-          esc(x.whatsapp || 'sem WhatsApp') + '</div></td>' +
+          esc(fmtTel(x.whatsapp) || 'sem WhatsApp') + '</div></td>' +
         '<td>' + seloAssoc(x.situacaoAssociado) + '</td>' +
         /* O BOTÃO. Clicar abre o que dá para fazer com esta pessoa. */
         '<td><button class="st-btn ' + sit.classe + '" ' +
@@ -1299,8 +1350,24 @@ var ABERTO = -1, OPCOES = {reprovacao:[],pendencia:[]}, PG_OPCOES = null, SOU_AD
 
 function inscricaoAberta(){ return ABERTO >= 0 ? LISTA[ABERTO] : null; }
 
+/* MÁSCARA ENQUANTO A PESSOA DIGITA — ligada uma vez, na primeira abertura.
+   `Utils` vem de Helpers.html, tem o dígito verificador certo, e é o que o
+   CLAUDE.md manda usar em vez de reimplementar por arquivo. A trava
+   `MASCARAS_LIGADAS` existe porque abrir a gaveta cem vezes no dia registraria
+   cem ouvintes no mesmo campo. */
+var MASCARAS_LIGADAS = false;
+function ligarMascaras(){
+  if (MASCARAS_LIGADAS) return;
+  if (typeof Utils === 'undefined') return;   /* rota avulsa não carrega Helpers */
+  var cpf = g('dCpf'), tel = g('dWhatsapp');
+  if (cpf) cpf.addEventListener('input', function(){ Utils.aplicarMascaraCPF(cpf); });
+  if (tel) tel.addEventListener('input', function(){ Utils.aplicarMascaraTelefone(tel); });
+  MASCARAS_LIGADAS = true;
+}
+
 function abrirGaveta(i){
   ABERTO = i;
+  ligarMascaras();
   pintarGaveta();
   g('gv').classList.add('on');
   g('gvFundo').classList.add('on');
@@ -1324,8 +1391,19 @@ function pintarGaveta(){
   ['nome','cpf','escola','cidade','regiao','email','whatsapp','matricula'].forEach(function(c){
     g('d' + c.charAt(0).toUpperCase() + c.slice(1)).value = x[c] || '';
   });
+  /* Os campos abrem JÁ formatados, não só ao digitar: quem abre a gaveta para
+     conferir um CPF não deveria precisar tocar no campo para conseguir ler. */
+  g('dCpf').value = fmtCpf(x.cpf);
+  g('dWhatsapp').value = fmtTel(x.whatsapp);
   g('dCategoria').value = x.categoria || 'associado';
   g('dSituacao').innerHTML = seloAssoc(x.situacaoAssociado);
+
+  montarResumo(x);
+  /* Toda gaveta abre com as seções fechadas — inclusive as que ficaram
+     abertas na inscrição anterior. Sem isto, o estado de uma pessoa vaza para
+     a próxima e a tela "cresce" sozinha ao longo do dia. */
+  ['secDados','secIngresso','secComprovante','secHistorico','secExcluir']
+    .forEach(function(id){ var el=g(id); if(el) el.classList.remove('on'); });
 
   /* A decisão nasce apontando para o estado atual: reabrir uma inscrição já
      reprovada e ver "Validar" pré-selecionado convida ao clique errado. */
@@ -1375,11 +1453,21 @@ function montarAnalise(x){
     quadro = { cor:'vd-er', icone:'❌', titulo:'Fora da base de associados',
       sub:'O CPF não confere com nenhum cadastro. Ingresso próprio é só para associado — quem não é entra como acompanhante, cadastrado pela equipe em "Incluir inscrição".',
       botoes:'<button class="b perigo" onclick="analiseReprovar()">Reprovar</button>' };
-  } else {
+  } else if (!String(x.cpf||'').replace(/\D/g,'')) {
     /* Sem CPF não há o que conferir — e isso não é culpa de quem analisa. */
-    quadro = { cor:'vd-nt', icone:'❔', titulo:'Vínculo não conferido',
-      sub:'Sem CPF não dá para cruzar com a base. Complete o CPF acima e salve, ou decida manualmente.',
+    quadro = { cor:'vd-nt', icone:'❔', titulo:'Sem CPF para conferir',
+      sub:'Sem CPF não dá para cruzar com a base. Abra "Dados cadastrais", complete o CPF e salve — ou decida manualmente.',
       botoes:'' };
+  } else {
+    /* TEM CPF E NÃO TEM VEREDITO — 27/08/2026. Este caso existia e caía na
+       mensagem "Sem CPF não dá para cruzar", que era falsa: o usuário mandou
+       print com o CPF preenchido embaixo dessa frase. A causa real é outra —
+       a inscrição entrou por importação e ninguém cruzou com a base ainda.
+       Culpar um campo que está preenchido manda a pessoa procurar defeito
+       onde não há. */
+    quadro = { cor:'vd-nt', icone:'❔', titulo:'Vínculo ainda não conferido',
+      sub:'Esta inscrição não foi cruzada com a base de associados. Use "Conferir contra a base" na barra acima — ele resolve todas de uma vez.',
+      botoes:'<button class="b p" onclick="conferirVinculoTodas()">Conferir contra a base</button>' };
   }
 
   g('aVeredito').innerHTML =
@@ -1402,6 +1490,60 @@ function montarAnalise(x){
 }
 
 function analiseManual(){ g('aManual').hidden = false; montarMotivos(); }
+
+/* ══ MÁSCARA ═══════════════════════════════════════════════════════════════
+   O usuário, 27/08/2026: "esta sem mascara de telefone e CPF". Estava mesmo —
+   e não por falta de código: `Utils.aplicarMascaraCPF` e
+   `Utils.aplicarMascaraTelefone` existem em Helpers.html desde sempre, com o
+   dígito verificador certo. Esta tela simplesmente nunca as chamou.
+
+   As duas funções abaixo formatam TEXTO (para o resumo e para a lista);
+   `Utils.*` continua sendo quem cuida do campo enquanto a pessoa digita. Não
+   reimplementam validação: só desenham o que já está lá. */
+function fmtCpf(v){
+  var d = String(v||'').replace(/\D/g,'');
+  if (d.length !== 11) return String(v||'');   /* não inventa formato em dado torto */
+  return d.slice(0,3)+'.'+d.slice(3,6)+'.'+d.slice(6,9)+'-'+d.slice(9);
+}
+function fmtTel(v){
+  var d = String(v||'').replace(/\D/g,'');
+  /* A planilha importada trouxe número com o 55 do país na frente. Tirar o
+     prefixo é o que faz "5527999735890" virar um telefone legível em vez de
+     uma sequência que ninguém reconhece. */
+  if (d.length > 11 && d.indexOf('55') === 0) d = d.slice(2);
+  if (d.length === 11) return '('+d.slice(0,2)+') '+d.slice(2,7)+'-'+d.slice(7);
+  if (d.length === 10) return '('+d.slice(0,2)+') '+d.slice(2,6)+'-'+d.slice(6);
+  return String(v||'');
+}
+
+/* ══ RESUMO E SEÇÕES RECOLHÍVEIS ═══════════════════════════════════════════
+   "tela muita grande". O resumo diz quem é a pessoa em três linhas de texto,
+   no lugar de oito campos de digitação; o resto vive atrás de um clique. */
+function montarResumo(x){
+  function ou(v, falta){
+    return v ? esc(v) : '<span class="vazio">'+falta+'</span>';
+  }
+  g('gvResumo').innerHTML =
+    '<div>CPF <b>'+ou(fmtCpf(x.cpf),'sem CPF')+'</b>'+
+      (x.matricula?'<span class="sep">·</span>matrícula '+esc(x.matricula):'')+'</div>'+
+    '<div>'+ou(x.escola,'sem escola')+
+      (x.cidade?'<span class="sep">·</span>'+esc(x.cidade):'')+
+      (x.regiao?' ('+esc(x.regiao)+')':'')+'</div>'+
+    '<div>'+ou(fmtTel(x.whatsapp),'sem WhatsApp')+
+      '<span class="sep">·</span>'+ou(x.email,'sem e-mail')+'</div>';
+}
+
+function gvDobrar(id){
+  var el = g(id); if (!el) return;
+  el.classList.toggle('on');
+}
+
+/* Abre uma seção específica — usada quando a própria tela precisa levar a
+   pessoa até onde está o que falta (ex.: completar o CPF). */
+function gvAbrirDobra(id){
+  var el = g(id);
+  if (el && !el.classList.contains('on')) el.classList.add('on');
+}
 
 function analiseValidar(){
   var x = inscricaoAberta(); if (!x) return;
@@ -1562,6 +1704,11 @@ function montarIngresso(x){
     ? 'Ingresso ' + (x.numeroIngresso || x.ingressoId) + ' emitido.'
     : validada ? 'Validada e sem ingresso — dá para emitir.'
                : 'Só é possível emitir depois de validar a inscrição.';
+  /* A etiqueta no título da dobra: o estado sem precisar abrir. É o que
+     permite fechar a seção sem perder a informação de que ela existe. */
+  var tag = g('tagIngresso');
+  if (tag) tag.textContent = tem ? (x.numeroIngresso || 'emitido')
+                                 : validada ? 'a emitir' : 'aguarda validação';
 }
 
 /* O COMPROVANTE DA INSCRIÇÃO — 25/08/2026.
@@ -1591,6 +1738,9 @@ function montarComprovante(x){
   }
   if (x.protocolo) partes.push('Protocolo ' + esc(x.protocolo) + '.');
   g('cpvSituacao').innerHTML = partes.join(' ');
+  /* Etiqueta do título: dá para saber se o comprovante saiu sem abrir. */
+  var tagCpv = g('tagComprovante');
+  if (tagCpv) tagCpv.textContent = enviado ? 'enviado' : 'não enviado';
 
   g('btCpvWhats').hidden = !temWhats;
   g('btCpvOk').hidden = true;
@@ -1674,6 +1824,15 @@ function salvarDados(){
   ['nome','cpf','escola','cidade','regiao','email','whatsapp','matricula'].forEach(function(c){
     patch[c] = g('d' + c.charAt(0).toUpperCase() + c.slice(1)).value;
   });
+  /* MÁSCARA É APRESENTAÇÃO, NÃO DADO — 27/08/2026.
+     Assim que o campo passou a mostrar "069.078.297-70", este salvamento
+     começou a mandar a pontuação para o banco. O t89 pegou na hora, e o
+     estrago seria silencioso: a busca na base normaliza antes de comparar,
+     então NADA quebraria de imediato — só ficariam metade dos CPFs gravados
+     com ponto e metade sem, e o desencontro apareceria meses depois, em
+     relatório ou exportação, sem ninguém saber de onde veio. */
+  patch.cpf = String(patch.cpf || '').replace(/\D/g, '');
+  patch.whatsapp = String(patch.whatsapp || '').replace(/\D/g, '');
   api('compasso_validacaoSalvarDados', [x.inscricaoId, patch, false],
       aposAcao(function(r){ return r && r.semAlteracoes ? 'Nada mudou.' : 'Dados salvos.'; }));
 }

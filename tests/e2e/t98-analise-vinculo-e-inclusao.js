@@ -277,3 +277,80 @@ ok(/indicadoPor/.test(tela) && /Indicado por/.test(tela),
    "  e mostra isso no histórico da gaveta");
 
 resumo();
+
+/* ══════════════════════════════════════════════════════════════════════════
+   5 · A GAVETA ENCOLHEU, E O CPF FICOU LEGÍVEL — 27/08/2026
+   ══════════════════════════════════════════════════════════════════════════
+   O usuário: "Acho que pode ser melhorado, esta sem mascara de telefone e
+   CPF, tela muita grande, me de opções". Escolheu resumo no topo + tudo o
+   mais recolhido.
+   ══════════════════════════════════════════════════════════════════════════ */
+fluxo('COMPASSO · A gaveta enxuta e as máscaras');
+
+passo('5 · a formatação de CPF e telefone, executada');
+/* Rodar a função de verdade, não conferir se ela existe. É lógica pura: dá
+   para exercer no Node sem navegador nenhum, e é onde moram os casos que
+   ninguém lembra — o 55 do país que a planilha trouxe, e o dado torto. */
+const fsT = require('fs'), pathT = require('path');
+const ler = arq => fsT.readFileSync(pathT.resolve(__dirname, '..', '..', arq), 'utf8');
+const telaC = ler('CompassoInscricoes.html');
+const corpoFmt = (telaC.match(/function fmtCpf\([\s\S]*?\n\}/) || [''])[0] +
+                 (telaC.match(/function fmtTel\([\s\S]*?\n\}/) || [''])[0];
+const fmt = {};
+new Function('exports', corpoFmt + '\nexports.fmtCpf=fmtCpf;exports.fmtTel=fmtTel;')(fmt);
+
+igual(fmt.fmtCpf('06907829770'), '069.078.297-70', 'CPF cru vira CPF pontuado');
+igual(fmt.fmtCpf('069.078.297-70'), '069.078.297-70', '  e já pontuado continua igual');
+igual(fmt.fmtCpf('123'), '123',
+      'CPF torto sai como veio, sem inventar formato',
+      'pontuar 11 dígitos que não existem esconderia o erro de cadastro');
+igual(fmt.fmtCpf(''), '', '  vazio continua vazio');
+
+igual(fmt.fmtTel('27999735890'), '(27) 99973-5890', 'celular de 11 dígitos');
+igual(fmt.fmtTel('2733334444'), '(27) 3333-4444', 'fixo de 10 dígitos');
+igual(fmt.fmtTel('5527999735890'), '(27) 99973-5890',
+      'número com o 55 do país perde o prefixo',
+      'a planilha importada trouxe assim; sem isto vira uma sequência que ninguém reconhece');
+igual(fmt.fmtTel('279997358900'), '279997358900',
+      'número com dígito a mais sai como veio',
+      'é dado torto de verdade — o print do usuário tinha um desses');
+
+passo('5b · a gaveta abre enxuta');
+ok(/id="gvResumo"/.test(telaC), 'há um resumo de quem é a pessoa');
+ok(/function montarResumo\(x\)/.test(telaC) && /montarResumo\(x\);/.test(telaC),
+   '  desenhado ao abrir a gaveta');
+['secDados','secIngresso','secComprovante','secHistorico'].forEach(id =>
+  ok(new RegExp('id="' + id + '"').test(telaC) &&
+     new RegExp("gvDobrar\\('" + id + "'\\)").test(telaC),
+     '  ' + id + ' é seção recolhível'));
+ok(/\.gv-dobra > \.gv-dobra-corpo\{max-height:0/.test(telaC.replace(/\s*\n\s*/g,'')),
+   'as seções nascem FECHADAS',
+   'era isso ou continuar rolando seis blocos abertos');
+ok(/forEach\(function\(id\)\{ var el=g\(id\); if\(el\) el\.classList\.remove\('on'\); \}\)/.test(telaC),
+   'e cada inscrição abre do zero, sem herdar o que ficou aberto na anterior',
+   'sem isto o estado de uma pessoa vaza para a próxima e a tela cresce ao longo do dia');
+
+passo('5c · as máscaras usam o helper do sistema, não uma cópia');
+ok(/Utils\.aplicarMascaraCPF/.test(telaC) && /Utils\.aplicarMascaraTelefone/.test(telaC),
+   'os campos usam Utils de Helpers.html',
+   'é o que tem o dígito verificador certo — o CLAUDE.md proíbe reimplementar');
+ok(/if \(MASCARAS_LIGADAS\) return;/.test(telaC),
+   '  registrando o ouvinte uma vez só',
+   'abrir a gaveta cem vezes registraria cem ouvintes no mesmo campo');
+ok(/esc\(fmtCpf\(x\.cpf\)\)/.test(telaC) && /esc\(fmtTel\(x\.whatsapp\)/.test(telaC),
+   'a LISTA também mostra formatado',
+   'é onde a pessoa olha o dia todo, mais do que a gaveta');
+
+passo('5d · o veredito não culpa um campo que está preenchido');
+/* O print do usuário: CPF 06907829770 no campo, e embaixo "Sem CPF não dá
+   para cruzar com a base". A frase mandava procurar defeito onde não havia —
+   a causa real era não ter rodado a conferência. */
+ok(/!String\(x\.cpf\|\|''\)\.replace\(\/\\D\/g,''\)/.test(telaC),
+   'a tela distingue "sem CPF" de "ainda não conferido"');
+ok(/Vínculo ainda não conferido/.test(telaC),
+   '  e o caso comum tem frase própria');
+ok(/Conferir contra a base<\/button>/.test(telaC),
+   '  com o botão que resolve, ali mesmo',
+   'dizer o que está errado sem oferecer a saída é meio caminho');
+
+resumo();

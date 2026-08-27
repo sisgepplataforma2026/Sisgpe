@@ -255,9 +255,15 @@ function montarTela() {
                 body: { appendChild() {}, removeChild() {} } },
     criados,
     location: { search: "" },
+    /* AS CHAMADAS PASSARAM A SER REGISTRADAS — 27/08/2026. O proxy descartava
+       tudo: dava para provar que a tela DESENHA, nunca o que ela MANDA. E é no
+       que ela manda que mora o defeito caro — foi assim que a máscara de CPF
+       quase chegou ao banco sem ninguém ver. */
+    chamadas: [],
     google: { script: { run: new Proxy({}, { get: (_, n) =>
       (n === "withSuccessHandler" || n === "withFailureHandler")
-        ? () => sandbox.google.script.run : () => {} }) } },
+        ? () => sandbox.google.script.run
+        : (...args) => { sandbox.chamadas.push({ fn: n, args }); } }) } },
     /* a tela expõe compassoAplicarFiltro para quem a inclui, e registra
        `resize` para fechar o menu de status (26/08/2026) */
     window: { addEventListener(){} },
@@ -275,10 +281,11 @@ function montarTela() {
     set OPCOES(v){OPCOES=v},
     get SEL(){return SEL},
     abrirGaveta, fecharGaveta, montarMotivos, pintarLista, marcarTodos,
-    selecionarTudo, irAba, abrirModalIngresso, fecharModal, mdBaixar
+    selecionarTudo, irAba, abrirModalIngresso, fecharModal, mdBaixar,
+    salvarDados, fmtCpf, fmtTel, gvDobrar
   };`;
   return { tela: new Function(...nomes, corpo + expor)(...nomes.map(n => sandbox[n])),
-           els, sandbox };
+           els, sandbox, chamadas: sandbox.chamadas };
 }
 
 const pessoa = extra => Object.assign({
@@ -296,13 +303,39 @@ let t = montarTela();
 t.tela.LISTA = [pessoa()];
 t.tela.abrirGaveta(0);
 
-[["dNome","MARIA DA SILVA"], ["dCpf","12345678909"], ["dEscola","EMEF X"],
+/* CPF E WHATSAPP AGORA ABREM MASCARADOS — 27/08/2026. O usuário: "esta sem
+   mascara de telefone e CPF". A guarda mudou de alvo, não de rigor: antes
+   cobrava que o campo trouxesse o valor cru, que era a forma indireta de
+   garantir que o cru chegava ao banco. Agora a apresentação é mascarada e o
+   que importa — o dado que SAI da tela — é cobrado direto, logo abaixo. */
+[["dNome","MARIA DA SILVA"], ["dCpf","123.456.789-09"], ["dEscola","EMEF X"],
  ["dCidade","Vitória"], ["dRegiao","Metropolitana"],
- ["dEmail","maria@exemplo.com"], ["dWhatsapp","27999990000"],
+ ["dEmail","maria@exemplo.com"], ["dWhatsapp","(27) 99999-0000"],
  ["dMatricula","M-1"]].forEach(([campo, valor]) => {
   igual(t.els[campo].value, valor, "  " + campo.slice(1).toLowerCase());
 });
 igual(t.els.gvNome.textContent, "MARIA DA SILVA", "e o nome no topo");
+
+/* ─────────────────────────────────────────────────────────────────────────
+   O QUE A MÁSCARA NÃO PODE FAZER: chegar ao banco.
+
+   No instante em que o campo passou a mostrar "123.456.789-09", `salvarDados`
+   começou a mandar a pontuação para o servidor — e o estrago seria
+   silencioso. A busca na base normaliza antes de comparar, então nada
+   quebraria de imediato: ficariam metade dos CPFs gravados com ponto e
+   metade sem, e o desencontro apareceria meses depois numa exportação, sem
+   ninguém saber de onde veio. Esta guarda existe para a máscara continuar
+   sendo o que é — desenho de tela, não dado. */
+t.tela.salvarDados();
+const salvou = t.chamadas.filter(c => c.fn === "compasso_validacaoSalvarDados").pop();
+ok(!!salvou, "salvar dados chama o backend");
+if (salvou) {
+  igual(salvou.args[1].cpf, "12345678909",
+        "  e o CPF sai SEM pontuação",
+        "máscara é apresentação; gravá-la torna metade da base incomparável com a outra metade");
+  igual(salvou.args[1].whatsapp, "27999990000",
+        "  e o WhatsApp sai só com dígitos");
+}
 
 /* ───────────────────────────────────────────────────────────────────────── */
 passo("CADA BOTÃO SÓ APARECE ONDE PODE SER CLICADO");
