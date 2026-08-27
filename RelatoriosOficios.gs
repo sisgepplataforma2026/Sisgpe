@@ -206,7 +206,9 @@ function listaEmailsEscolaOficio_(origens) {
 
 /* ── salvarEscolaOficio ── */
 function salvarEscolaOficio(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, true);
+  // Manter os contatos da escola faz parte da rotina de quem emite ofício,
+  // então basta sessão válida no módulo — não é ação restrita a administrador.
+  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
   dados = dados || {};
 
   var ss = SpreadsheetApp.openById(PLANILHA_ID);
@@ -218,6 +220,10 @@ function salvarEscolaOficio(dados, tokenSessao) {
   var cnpjDigitos = digitosEscolaOficio_(dados.cnpj);
   var unidade     = String(dados.unidade || dados.codigoInterno || "").trim();
   var nome        = String(dados.nome || dados.razaoSocial || dados.razao || "").trim();
+
+  // Correção de CNPJ: cnpjAtual é a chave de busca e cnpj o valor a gravar.
+  // Sem isso, corrigir o número criaria uma escola nova em vez de atualizar.
+  var cnpjBusca = digitosEscolaOficio_(dados.cnpjAtual) || cnpjDigitos;
 
   if (!cnpjDigitos && !unidade && !nome) {
     throw new Error("Informe unidade, CNPJ ou nome para salvar a escola.");
@@ -262,9 +268,9 @@ function salvarEscolaOficio(dados, tokenSessao) {
   var nomeNormalizado = normalizarTextoEscolaOficio_(nome);
 
   for (var i = 1; i < values.length; i++) {
-    if (cnpjDigitos && colCnpj) {
+    if (cnpjBusca && colCnpj) {
       var cnpjLinha = digitosEscolaOficio_(values[i][colCnpj - 1]);
-      if (cnpjLinha && cnpjLinha === cnpjDigitos) { linhaEncontrada = i + 1; break; }
+      if (cnpjLinha && cnpjLinha === cnpjBusca) { linhaEncontrada = i + 1; break; }
     }
     if (linhaPorUnidade === -1 && unidade && colUnidade) {
       var unidadeLinha = String(values[i][colUnidade - 1] || "").trim();
@@ -299,14 +305,26 @@ function salvarEscolaOficio(dados, tokenSessao) {
   gravar(colUf, uf);
   gravar(colEndereco, endereco);
 
-  // E-mails adicionais: mescla o que já existe na planilha com o que veio da tela.
-  var emailsFinais = listaEmailsEscolaOficio_([
-    colEmails ? linhaValores[colEmails - 1] : "",
-    colEmail ? linhaValores[colEmail - 1] : "",
+  // E-mails: por padrão mescla com o que já está na planilha. Quando a tela
+  // gerencia a lista inteira (modal de envio, onde dá para excluir contatos),
+  // substituirEmails=true faz a lista enviada valer como está.
+  var substituir = dados.substituirEmails === true;
+  var emailsInformados = listaEmailsEscolaOficio_([
+    emailPrincipal,
     dados.emails || [],
-    dados.emailsTodos || "",
-    emailPrincipal
+    dados.emailsTodos || ""
   ]);
+  var emailsFinais = substituir
+    ? emailsInformados
+    : listaEmailsEscolaOficio_([
+        colEmails ? linhaValores[colEmails - 1] : "",
+        colEmail ? linhaValores[colEmail - 1] : "",
+        emailsInformados
+      ]);
+
+  if (substituir && !emailsFinais.length) {
+    throw new Error("Informe pelo menos um e-mail para a escola.");
+  }
 
   if (colEmails && emailsFinais.length) {
     linhaValores[colEmails - 1] = emailsFinais.join(", ");

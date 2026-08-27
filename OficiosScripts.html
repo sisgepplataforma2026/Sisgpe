@@ -260,8 +260,12 @@ function popularSelectEscolas(lista) {
     var wrap=$("escolaProfileEmails"); if(!wrap) return;
     var emails=escola.emails.length?escola.emails:[escola.emailPrincipal].filter(Boolean);
     if(!emails.length){ wrap.innerHTML='<span style="font-size:12px;color:var(--g400);">Nenhum e-mail cadastrado</span>'; return; }
-    wrap.innerHTML = emails.map(function(em,idx){
-      var princ=em===escola.emailPrincipal||idx===0, ativo=em===emailSmartSelecionado;
+    // O principal vem primeiro e é o único com ★ — antes o 1º da lista também
+    // ganhava estrela, mostrando dois "principais" ao incluir um contato.
+    var principalEscola = escola.emailPrincipal || emails[0];
+    emails = emails.slice().sort(function(a,b){ return (a===principalEscola?0:1) - (b===principalEscola?0:1); });
+    wrap.innerHTML = emails.map(function(em){
+      var princ=em===principalEscola, ativo=em===emailSmartSelecionado;
       return '<button type="button" class="email-pill '+(princ?"principal ":"")+(ativo?"ativo":"")+'" data-email="'+em+'">'+(princ?"★ ":"")+em+'</button>';
     }).join("");
     wrap.querySelectorAll(".email-pill").forEach(function(btn){ btn.onclick=function(){
@@ -539,12 +543,13 @@ window.renderDropdownEscolas = renderDropdown;
     var inp=$("novoEmailEscolaOficio"), em=txt(inp&&inp.value);
     if(!em||em.indexOf("@")<0){ toast("E-mail inválido.","err"); return; }
     if(escolaSmartSelecionada.emails.indexOf(em)<0) escolaSmartSelecionada.emails.push(em);
-    emailSmartSelecionado=em; escolaSmartSelecionada.emailPrincipal=escolaSmartSelecionada.emailPrincipal||em;
+    // O e-mail recém-incluído assume como principal do cadastro.
+    emailSmartSelecionado=em; escolaSmartSelecionada.emailPrincipal=em;
     if(inp) inp.value=""; preencherCompat(escolaSmartSelecionada); renderEmails(escolaSmartSelecionada);
     setText("escolaProfileEmailLinha","E-mail "+emailSmartSelecionado); atualizarRevisaoOficio(); autoSave();
     // ✅ autoSave() só guarda rascunho local; sem esta chamada o e-mail incluído
     // nunca chegava à aba "Escolas" e sumia no recarregamento da tela.
-    persistirEscolaOficio({ mensagemProgresso: "Salvando e-mail da escola...", mensagemSucesso: "E-mail incluído e salvo no cadastro da escola.", recarregar: false });
+    persistirEscolaOficio({ emailPrincipal: em, mensagemProgresso: "Salvando e-mail da escola...", mensagemSucesso: "E-mail incluído e definido como principal da escola.", recarregar: false });
   }
 
   /* Feedback do salvamento da escola.
@@ -586,8 +591,8 @@ window.renderDropdownEscolas = renderDropdown;
     var escolaAtual = escolaSmartSelecionada || {};
 
     // getEscolaPayload().email é o destinatário DESTA emissão. Para o cadastro
-    // vale o principal da escola — incluir um contato extra não pode promovê-lo
-    // a principal sem o usuário pedir (clicando na pílula ou editando o campo).
+    // vale o principal da escola, definido por quem chamou (inclusão de e-mail,
+    // clique na pílula ou edição do campo).
     var principalCadastro = txt(opts.emailPrincipal || escolaAtual.emailPrincipal || dados.email).toLowerCase();
     dados.email = principalCadastro;
     dados.emailPrincipal = principalCadastro;
@@ -805,9 +810,13 @@ function atualizarPayloadOficio(num) {
 
   function renumerarTrabalhadores() {
     var lista = $("listaTrabalhadores"); if (!lista) return;
-    lista.querySelectorAll(".trabalhador-card").forEach(function(c, i) {
+    var cards = lista.querySelectorAll(".trabalhador-card");
+    var noLimite = cards.length >= MAX_TRABALHADORES;
+    cards.forEach(function(c, i) {
       var n = i + 1, b = c.querySelector(".trabalhador-badge-numero"), t = c.querySelector(".trabalhador-titulo"), s = c.querySelector(".trabalhador-sub");
       if (b) b.textContent = n; if (t) t.textContent = "Trabalhador " + n; if (s) s.textContent = "Dados para emissão do ofício";
+      var rodape = c.querySelector(".trabalhador-card-rodape");
+      if (rodape) rodape.style.display = noLimite ? "none" : "flex";
     });
   }
 
@@ -839,6 +848,9 @@ function atualizarPayloadOficio(num) {
     + '<span class="ficha-contador" style="font-size:11px;color:var(--g400);">Nenhuma ficha</span>'
     + '</div>'
     + '<div class="ficha-preview-individual" style="margin-top:8px;"></div>'
+    + '</div>'
+    + '<div class="trabalhador-card-rodape" style="margin-top:10px;display:flex;justify-content:flex-end;">'
+    + '<button type="button" class="btn-add-trabalhador-card" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1.5px dashed var(--blue,#1565C0);border-radius:9px;background:var(--blue-lt,#eff6ff);color:var(--blue,#1565C0);font-family:inherit;font-size:12px;font-weight:800;cursor:pointer;">+ Adicionar trabalhador</button>'
     + '</div>';
 
   var inputFicha   = c.querySelector(".input-ficha-trabalhador");
@@ -849,6 +861,8 @@ function atualizarPayloadOficio(num) {
   c.querySelector(".btn-remover-trabalhador-premium").onclick = function() {
     c.remove(); restaurarVazio(); renumerarTrabalhadores(); atualizarResumoTrabalhadores(); sincronizarFichasGlobais();
   };
+
+  c.querySelector(".btn-add-trabalhador-card").onclick = function() { addTrabalhador(); };
 
   c.querySelectorAll("input[type=text]").forEach(function(inp) {
     inp.oninput = function() {
@@ -949,7 +963,15 @@ function removerFichaCard(btn, idx) {
     var l = $("listaTrabalhadores"); if (!l) return;
     if (l.querySelectorAll(".trabalhador-card").length >= MAX_TRABALHADORES) { toast("Limite de 25 trabalhadores.", "warn"); return; }
     var v = l.querySelector(".worker-empty"); if (v) v.remove();
-    l.appendChild(criarCardTrabalhador()); renumerarTrabalhadores(); atualizarResumoTrabalhadores();
+    var card = criarCardTrabalhador();
+    l.appendChild(card); renumerarTrabalhadores(); atualizarResumoTrabalhadores();
+    // Leva a tela até o card recém-criado e já deixa o cursor no nome.
+    try {
+      if (card.scrollIntoView) card.scrollIntoView({ behavior: "smooth", block: "center" });
+      var nome = card.querySelector(".input-nome-trabalhador");
+      if (nome) setTimeout(function(){ nome.focus(); }, 220);
+    } catch(e) {}
+    return card;
   }
 
 function atualizarContadorFichas() {

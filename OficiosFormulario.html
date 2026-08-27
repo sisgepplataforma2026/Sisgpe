@@ -684,20 +684,34 @@
     <div class="of-modal-body" style="padding:0;">
       <div id="modalPainelDados" style="padding:20px;display:flex;flex-direction:column;gap:10px;">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--g100);border-radius:14px;overflow:hidden;border:1.5px solid var(--g200);">
-          <div style="background:#fff;padding:14px 16px;"><span style="display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--g400);margin-bottom:8px;">Nº do Ofício</span><div style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,var(--navy),var(--blue));color:var(--gold2);font-size:15px;font-weight:900;padding:5px 13px;border-radius:9px;">📄 <span id="modalEnvioNumero">—</span></div></div>
-          <div style="background:#fff;padding:14px 16px;"><span style="display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--g400);margin-bottom:8px;">Tipo</span><div style="display:inline-flex;align-items:center;gap:5px;background:var(--blue-lt);color:var(--blue);font-size:12px;font-weight:800;padding:5px 12px;border-radius:999px;">📋 <span id="modalEnvioTipo">—</span></div></div>
+          <div style="background:#fff;padding:14px 16px;"><span style="display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--g400);margin-bottom:7px;">Nº do Ofício</span><div style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,var(--navy),var(--blue));color:var(--gold2);font-size:15px;font-weight:900;padding:5px 13px;border-radius:9px;">📄 <span id="modalEnvioNumero">—</span></div></div>
+          <div style="background:#fff;padding:14px 16px;"><span style="display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--g400);margin-bottom:7px;">Tipo</span><div style="display:inline-flex;align-items:center;gap:5px;background:var(--blue-lt);color:var(--blue);font-size:12px;font-weight:800;padding:5px 12px;border-radius:999px;">📋 <span id="modalEnvioTipo">—</span></div></div>
+
           <div style="background:#fff;padding:14px 16px;grid-column:1/-1;"><span style="display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--g400);margin-bottom:7px;">Escola / Destinatário</span><strong id="modalEnvioEscola" style="display:block;font-size:13.5px;font-weight:800;color:var(--g900);line-height:1.4;">—</strong></div>
-          <div style="background:#fff;padding:14px 16px;grid-column:1/-1;"><span style="display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--g400);margin-bottom:7px;">CNPJ da escola</span><div style="display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:800;color:var(--g900);">🏢 <span id="modalEnvioCnpj">—</span><span id="modalEnvioCnpjAlerta" style="display:none;font-size:11px;font-weight:800;color:#b45309;background:var(--amber-lt);border:1px solid #fcd34d;padding:2px 8px;border-radius:999px;">Confira o CNPJ</span></div></div>
+
           <div style="background:#fff;padding:14px 16px;grid-column:1/-1;">
-            <span style="display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--g400);margin-bottom:7px;">E-mails de destino</span>
+            <span style="display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--g400);margin-bottom:7px;">CNPJ da escola</span>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+              <span style="font-size:15px;flex-shrink:0;">🏢</span>
+              <input type="text" id="modalEnvioCnpj" placeholder="00.000.000/0000-00" maxlength="18" inputmode="numeric" style="flex:1;min-width:170px;padding:7px 11px;border:1.5px solid var(--g200);border-radius:9px;font-size:13.5px;font-weight:800;color:var(--g900);outline:none;">
+              <button type="button" id="btnModalConsultarCnpj" style="flex-shrink:0;padding:7px 12px;border:1.5px solid var(--g200);border-radius:9px;background:#fff;color:var(--navy2);font-size:11.5px;font-weight:800;cursor:pointer;">🔎 Consultar</button>
+              <button type="button" id="btnModalSalvarCnpj" style="flex-shrink:0;padding:7px 12px;border:none;border-radius:9px;background:var(--g100);color:var(--g500);font-size:11.5px;font-weight:800;cursor:pointer;" disabled>💾 Salvar no cadastro</button>
+            </div>
+            <div id="modalEnvioCnpjStatus" style="margin-top:7px;font-size:11.5px;font-weight:600;color:var(--g400);"></div>
+          </div>
+
+          <div style="background:#fff;padding:14px 16px;grid-column:1/-1;">
+            <span style="display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--g400);margin-bottom:7px;">Destinatários</span>
             <div id="modalEnvioEmail" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
             <div style="display:flex;gap:6px;margin-top:9px;">
               <input type="email" id="modalNovoEmailDestino" placeholder="novoemail@escola.com.br" style="flex:1;min-width:0;padding:8px 11px;border:1.5px solid var(--g200);border-radius:9px;font-size:12.5px;font-weight:600;color:var(--g900);outline:none;">
               <button type="button" id="btnModalAdicionarEmailDestino" style="flex-shrink:0;padding:8px 14px;border:none;border-radius:9px;background:linear-gradient(135deg,var(--navy),var(--blue));color:#fff;font-size:12px;font-weight:800;cursor:pointer;">+ Adicionar</button>
             </div>
             <div id="modalEnvioEmailAviso" style="margin-top:7px;font-size:11.5px;font-weight:600;color:var(--g400);">O ofício será enviado para todos os endereços listados acima.</div>
+            <div id="modalEnvioCadastroStatus" style="margin-top:5px;font-size:11px;font-weight:700;color:var(--g400);"></div>
           </div>
-          <div style="background:#fff;padding:14px 16px;grid-column:1/-1;"><span style="display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--g400);margin-bottom:9px;">Anexos</span><div id="modalEnvioAnexos" style="display:flex;gap:8px;flex-wrap:wrap;">—</div></div>
+
+          <div style="background:#fff;padding:14px 16px;grid-column:1/-1;"><span style="display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--g400);margin-bottom:7px;">Anexos</span><div id="modalEnvioAnexos" style="display:flex;gap:8px;flex-wrap:wrap;">—</div></div>
         </div>
         <div style="background:var(--amber-lt);border:1.5px solid #fcd34d;border-left:3px solid var(--amber);border-radius:0;padding:12px 14px;font-size:12px;font-weight:600;color:#92400e;display:flex;align-items:flex-start;gap:9px;"><span style="font-size:16px;flex-shrink:0;">⚠️</span><span>Após o envio, o status do ofício será atualizado automaticamente no sistema.</span></div>
         <div style="background:var(--green-lt);border:1.5px solid #6ee7b7;border-left:3px solid var(--green);border-radius:0;padding:12px 14px;font-size:12px;font-weight:600;color:var(--green-dk);display:flex;align-items:flex-start;gap:9px;"><span style="font-size:16px;flex-shrink:0;">✅</span><div><strong style="display:block;font-size:12.5px;margin-bottom:2px;">Remetente configurado</strong>financeiro@sindeducacao.com · Respostas para secretaria@sindeducacao.com</div></div>
@@ -744,10 +758,24 @@ function _carregarPreviewEmail() {
    do disparo. É ela que define para quem a fila envia o ofício.
 ───────────────────────────────────────────────────────────── */
 window.SisgepDestinatariosModal = (function() {
+  // lista[0] é sempre o destinatário principal; os demais vão como cópia.
   var lista = [];
+  var escolaNome = "";
+  var cnpjOriginal = "";   // CNPJ com que o ofício foi emitido — chave do cadastro
+  var salvando = false;
+  var salvarPendente = null;
 
+  function token() { return typeof SISGEP_TOKEN_SESSAO !== "undefined" ? SISGEP_TOKEN_SESSAO : ""; }
+  function el(id) { return document.getElementById(id); }
   function limparEmail(valor) { return String(valor || "").trim().toLowerCase(); }
   function emailValido(valor) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(limparEmail(valor)); }
+  function digitos(valor) { return String(valor || "").replace(/\D/g, ""); }
+
+  function formatarCnpj(valor) {
+    var d = digitos(valor).slice(0, 14);
+    if (d.length !== 14) return String(valor || "").trim();
+    return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+  }
 
   function normalizar(origens) {
     return [].concat(origens || [])
@@ -767,14 +795,64 @@ window.SisgepDestinatariosModal = (function() {
   }
 
   function aviso(msg, cor) {
-    var el = document.getElementById("modalEnvioEmailAviso");
-    if (!el) return;
-    el.textContent = msg;
-    el.style.color = cor || "var(--g400)";
+    var alvo = el("modalEnvioEmailAviso");
+    if (!alvo) return;
+    alvo.textContent = msg;
+    alvo.style.color = cor || "var(--g400)";
+  }
+
+  function statusCadastro(msg, cor) {
+    var alvo = el("modalEnvioCadastroStatus");
+    if (!alvo) return;
+    alvo.textContent = msg || "";
+    alvo.style.color = cor || "var(--g400)";
+  }
+
+  function statusCnpj(msg, cor) {
+    var alvo = el("modalEnvioCnpjStatus");
+    if (!alvo) return;
+    alvo.textContent = msg || "";
+    alvo.style.color = cor || "var(--g400)";
+  }
+
+  /* ── Cadastro da escola ──────────────────────────────────────
+     A lista daqui manda: substituirEmails faz o e-mail excluído
+     sair também da aba "Escolas". A chave é sempre o CNPJ com que
+     o ofício foi emitido, para não reapontar para outra escola. */
+  function persistirCadastro(msgOk) {
+    if (!cnpjOriginal || !lista.length) return;
+    if (!window.google || !window.google.script || !window.google.script.run) return;
+    // Cliques rápidos não podem empilhar gravações concorrentes; a última
+    // alteração é reenviada assim que a chamada em curso termina.
+    if (salvando) { salvarPendente = msgOk || true; return; }
+    salvando = true;
+    salvarPendente = null;
+    statusCadastro("Salvando no cadastro da escola...");
+    google.script.run
+      .withSuccessHandler(function() {
+        salvando = false;
+        statusCadastro(msgOk || "Cadastro da escola atualizado.", "var(--green-dk,#065f46)");
+        if (typeof window.carregarEscolas === "function") window.carregarEscolas();
+        if (salvarPendente) { var m = salvarPendente; salvarPendente = null; persistirCadastro(typeof m === "string" ? m : undefined); }
+      })
+      .withFailureHandler(function(err) {
+        salvando = false;
+        salvarPendente = null;
+        statusCadastro("Não foi possível salvar no cadastro: " + ((err && err.message) || err), "#b45309");
+      })
+      .salvarEscolaOficio({
+        nome: escolaNome,
+        cnpjAtual: cnpjOriginal,
+        cnpj: cnpjOriginal,
+        email: lista[0],
+        emails: lista,
+        emailsTodos: lista.join(", "),
+        substituirEmails: true
+      }, token());
   }
 
   function pintar() {
-    var wrap = document.getElementById("modalEnvioEmail");
+    var wrap = el("modalEnvioEmail");
     if (!wrap) return;
 
     if (!lista.length) {
@@ -782,26 +860,31 @@ window.SisgepDestinatariosModal = (function() {
     } else {
       wrap.innerHTML = lista.map(function(email, idx) {
         var principal = idx === 0;
-        return '<span class="modal-email-chip" data-email="' + escapar(email) + '" ' +
-          'style="display:inline-flex;align-items:center;gap:6px;background:' + (principal ? 'var(--blue-lt)' : 'var(--g50,#f5f7fa)') + ';' +
+        return '<span style="display:inline-flex;align-items:center;gap:6px;background:' + (principal ? 'var(--blue-lt)' : 'var(--g50,#f5f7fa)') + ';' +
           'border:1.5px solid ' + (principal ? '#bfdbfe' : 'var(--g200)') + ';color:' + (principal ? 'var(--blue)' : 'var(--g900)') + ';' +
-          'font-size:12.5px;font-weight:700;padding:5px 8px 5px 11px;border-radius:999px;">' +
-          (principal ? '★ ' : '✉️ ') + escapar(email) +
+          'font-size:12.5px;font-weight:700;padding:4px 7px 4px 4px;border-radius:999px;">' +
+          '<button type="button" class="modal-email-principal" data-email="' + escapar(email) + '" ' +
+          'title="' + (principal ? 'Destinatário principal' : 'Definir como principal') + '" ' +
+          'style="border:none;background:transparent;color:inherit;font:inherit;cursor:' + (principal ? 'default' : 'pointer') + ';padding:1px 5px;">' +
+          (principal ? '★ ' : '✉️ ') + escapar(email) + '</button>' +
           '<button type="button" class="modal-email-remover" data-email="' + escapar(email) + '" title="Remover destinatário" ' +
-          'style="border:none;background:transparent;color:inherit;font-size:14px;font-weight:900;line-height:1;cursor:pointer;padding:0 2px;opacity:.65;">×</button>' +
+          'style="border:none;background:transparent;color:inherit;font-size:14px;font-weight:900;line-height:1;cursor:pointer;padding:0 4px 0 0;opacity:.65;">×</button>' +
           '</span>';
       }).join("");
 
       wrap.querySelectorAll(".modal-email-remover").forEach(function(btn) {
         btn.onclick = function() { remover(btn.dataset.email); };
       });
+      wrap.querySelectorAll(".modal-email-principal").forEach(function(btn) {
+        btn.onclick = function() { definirPrincipal(btn.dataset.email); };
+      });
     }
 
-    if (lista.length > 1) aviso("O ofício será enviado para os " + lista.length + " endereços listados (o 1º é o principal).");
-    else if (lista.length === 1) aviso("O ofício será enviado para o endereço listado acima.");
+    if (lista.length > 1) aviso("Envio para " + lista.length + " endereços — ★ é o principal, os demais recebem cópia. Clique num e-mail para torná-lo principal.");
+    else if (lista.length === 1) aviso("O ofício será enviado para o endereço acima.");
     else aviso("Inclua pelo menos um e-mail de destino antes de enviar.", "var(--red,#dc2626)");
 
-    var btnEnviar = document.getElementById("btnModalEnviarOficioAgora");
+    var btnEnviar = el("btnModalEnviarOficioAgora");
     if (btnEnviar) btnEnviar.disabled = !lista.length;
   }
 
@@ -811,49 +894,131 @@ window.SisgepDestinatariosModal = (function() {
     if (lista.indexOf(email) > -1) { aviso("Este e-mail já está na lista.", "#b45309"); return false; }
     lista.push(email);
     pintar();
+    persistirCadastro("E-mail incluído no cadastro da escola.");
     return true;
   }
 
   function remover(valor) {
     var email = limparEmail(valor);
+    if (lista.length <= 1) { aviso("É preciso manter pelo menos um destinatário.", "#b45309"); return; }
     lista = lista.filter(function(e) { return e !== email; });
     pintar();
+    persistirCadastro("E-mail removido do cadastro da escola.");
+  }
+
+  function definirPrincipal(valor) {
+    var email = limparEmail(valor);
+    if (lista.indexOf(email) < 0 || lista[0] === email) return;
+    lista = [email].concat(lista.filter(function(e) { return e !== email; }));
+    pintar();
+    persistirCadastro("E-mail principal atualizado no cadastro da escola.");
+  }
+
+  /* ── CNPJ ───────────────────────────────────────────────────── */
+  function consultarCnpj() {
+    var campo = el("modalEnvioCnpj");
+    var d = digitos(campo && campo.value);
+    if (d.length !== 14) { statusCnpj("Informe um CNPJ com 14 dígitos para consultar.", "#b45309"); return; }
+    if (!window.google || !window.google.script || !window.google.script.run) { statusCnpj("Consulta disponível apenas no Apps Script.", "#b45309"); return; }
+    statusCnpj("Consultando na Receita...");
+    google.script.run
+      .withSuccessHandler(function(resp) {
+        if (!resp || resp.erro) { statusCnpj((resp && resp.mensagem) || "CNPJ não encontrado.", "var(--red,#dc2626)"); return; }
+        var partes = [resp.razaoSocial || resp.nome, resp.cidadeUf, resp.situacaoCadastral || resp.situacao].filter(Boolean);
+        statusCnpj("✅ " + partes.join(" · "), "var(--green-dk,#065f46)");
+        if (resp.email && lista.indexOf(limparEmail(resp.email)) < 0) {
+          aviso("A Receita retornou " + resp.email + " — use o campo abaixo se quiser incluí-lo.", "var(--blue)");
+        }
+      })
+      .withFailureHandler(function(err) { statusCnpj("Erro na consulta: " + ((err && err.message) || err), "var(--red,#dc2626)"); })
+      .consultarCNPJExterno(d);
+  }
+
+  function salvarCnpj() {
+    var campo = el("modalEnvioCnpj");
+    var d = digitos(campo && campo.value);
+    if (d.length !== 14) { statusCnpj("CNPJ inválido — precisa ter 14 dígitos.", "var(--red,#dc2626)"); return; }
+    if (!window.google || !window.google.script || !window.google.script.run) { statusCnpj("Disponível apenas no Apps Script.", "#b45309"); return; }
+    statusCnpj("Salvando CNPJ no cadastro...");
+    google.script.run
+      .withSuccessHandler(function() {
+        cnpjOriginal = formatarCnpj(d);
+        statusCnpj("✅ CNPJ atualizado no cadastro. O PDF já emitido mantém o CNPJ impresso.", "var(--green-dk,#065f46)");
+        atualizarBotaoSalvarCnpj();
+        if (typeof window.carregarEscolas === "function") window.carregarEscolas();
+      })
+      .withFailureHandler(function(err) { statusCnpj("Erro ao salvar: " + ((err && err.message) || err), "var(--red,#dc2626)"); })
+      .salvarEscolaOficio({
+        nome: escolaNome,
+        cnpjAtual: cnpjOriginal,   // chave da linha existente
+        cnpj: d,                   // novo valor a gravar
+        email: lista[0] || "",
+        emails: lista,
+        emailsTodos: lista.join(", ")
+      }, token());
+  }
+
+  function atualizarBotaoSalvarCnpj() {
+    var campo = el("modalEnvioCnpj");
+    var btn = el("btnModalSalvarCnpj");
+    if (!campo || !btn) return;
+    var mudou = digitos(campo.value) !== digitos(cnpjOriginal);
+    var valido = digitos(campo.value).length === 14;
+    btn.disabled = !(mudou && valido);
+    btn.style.background = btn.disabled ? "var(--g100)" : "linear-gradient(135deg,var(--navy),var(--blue))";
+    btn.style.color = btn.disabled ? "var(--g500)" : "#fff";
   }
 
   function definir(dados) {
     dados = dados || {};
     lista = normalizar([dados.emails, dados.emailsTodos, dados.email]);
-    var inp = document.getElementById("modalNovoEmailDestino");
-    if (inp) inp.value = "";
+    escolaNome = String(dados.escola || "").trim();
+    cnpjOriginal = formatarCnpj(dados.cnpj || "");
 
-    var elCnpj = document.getElementById("modalEnvioCnpj");
-    var alerta = document.getElementById("modalEnvioCnpjAlerta");
-    var cnpj = String(dados.cnpj || "").trim();
-    var digitos = cnpj.replace(/\D/g, "");
-    if (elCnpj) {
-      elCnpj.textContent = digitos.length === 14
-        ? digitos.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5")
-        : (cnpj || "Não informado");
-    }
-    // Só sinaliza quando o CNPJ está ausente ou fora do formato — a conferência
-    // do número em si é do usuário.
-    if (alerta) alerta.style.display = digitos.length === 14 ? "none" : "inline-block";
+    var inp = el("modalNovoEmailDestino");
+    if (inp) inp.value = "";
+    statusCadastro("");
+
+    var campoCnpj = el("modalEnvioCnpj");
+    if (campoCnpj) campoCnpj.value = cnpjOriginal || String(dados.cnpj || "");
+    statusCnpj(digitos(cnpjOriginal).length === 14
+      ? "Confira o CNPJ antes de enviar. Corrigir aqui atualiza o cadastro da escola — o PDF já emitido mantém o CNPJ impresso."
+      : "CNPJ ausente ou fora do formato — confira antes de enviar.",
+      digitos(cnpjOriginal).length === 14 ? "var(--g400)" : "#b45309");
+    atualizarBotaoSalvarCnpj();
 
     pintar();
   }
 
   function obter() { return lista.slice(); }
 
-  document.addEventListener("DOMContentLoaded", function() {
-    var btn = document.getElementById("btnModalAdicionarEmailDestino");
-    var inp = document.getElementById("modalNovoEmailDestino");
-    if (btn) btn.onclick = function() { if (incluir(inp && inp.value) && inp) inp.value = ""; };
+  function ligarControles() {
+    var btnAdd = el("btnModalAdicionarEmailDestino");
+    var inp = el("modalNovoEmailDestino");
+    if (btnAdd) btnAdd.onclick = function() { if (incluir(inp && inp.value) && inp) inp.value = ""; };
     if (inp) inp.onkeydown = function(ev) {
       if (ev.key === "Enter") { ev.preventDefault(); if (incluir(inp.value)) inp.value = ""; }
     };
-  });
 
-  return { definir: definir, obter: obter, incluir: incluir, remover: remover };
+    var campoCnpj = el("modalEnvioCnpj");
+    if (campoCnpj) {
+      campoCnpj.oninput = function() {
+        var d = digitos(campoCnpj.value).slice(0, 14);
+        campoCnpj.value = d.length === 14 ? formatarCnpj(d) : campoCnpj.value;
+        atualizarBotaoSalvarCnpj();
+      };
+      campoCnpj.onblur = function() { if (digitos(campoCnpj.value).length === 14) campoCnpj.value = formatarCnpj(campoCnpj.value); };
+    }
+    var btnConsulta = el("btnModalConsultarCnpj");
+    if (btnConsulta) btnConsulta.onclick = consultarCnpj;
+    var btnSalvarCnpj = el("btnModalSalvarCnpj");
+    if (btnSalvarCnpj) btnSalvarCnpj.onclick = salvarCnpj;
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", ligarControles);
+  else ligarControles();
+
+  return { definir: definir, obter: obter, incluir: incluir, remover: remover, definirPrincipal: definirPrincipal };
 })();
 
 window.abrirModalEnvioOficioSISGEP = function(dados, aoConfirmar) {
