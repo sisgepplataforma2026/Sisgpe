@@ -299,3 +299,67 @@ function eventosV2Admin_mensagemErro_(erro) {
   var mensagem = erro && erro.message ? String(erro.message) : 'Não foi possível concluir a operação.';
   return mensagem.length > 420 ? mensagem.slice(0, 417) + '...' : mensagem;
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   A SITUAÇÃO DO EVENTO — porta administrativa, 26/08/2026
+
+   O botão "Publicar evento" estava na tela desde 21/08, desligado, com o
+   aviso de que a transição não fora validada. O usuário: "Ele não deixa eu
+   publicar, é assim mesmo?". Era — e agora deixa.
+
+   O QUE NÃO ENTROU, e é decisão registrada do usuário: a trava do link
+   público. Hoje o formulário de inscrição não consulta o status do evento, e
+   perguntado se a trava deveria entrar junto, ele respondeu: "Como estou em
+   período de teste, deve estar aberto para testes". Então a transição grava e
+   governa a tela administrativa; o link continua aceitando inscrição em
+   qualquer situação. O lugar onde essa trava entraria, quando ele pedir, é
+   `compasso_criarInscricaoAssociado` — que já lê o registro V2 para pegar data
+   e capacidade, e passaria a ler `status` também.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/** Situação atual + para onde dá para ir + o que falta para publicar. */
+function eventosV2Admin_situacaoFesta2026(tokenSessao) {
+  var evento = eventosV2Admin_festaAtual_(tokenSessao);
+  if (!evento) return { ok: false, erro: 'A Festa 2026 ainda não foi criada.' };
+
+  var atual = String(evento.status || EVENTOS_V2_STATUS.RASCUNHO).toUpperCase();
+  return {
+    ok: true,
+    eventoId: String(evento.eventoId || ''),
+    status: atual,
+    rotulo: EVENTOS_V2_STATUS_ROTULO[atual] || atual,
+    /* Só os destinos ALCANÇÁVEIS daqui — a tela desenha um botão por destino,
+       e oferecer o que o Service vai recusar é convite ao clique inútil. */
+    proximos: (EVENTOS_V2_TRANSICOES[atual] || []).map(function (s) {
+      return { status: s, rotulo: EVENTOS_V2_STATUS_ROTULO[s] || s };
+    }),
+    pendenciasParaPublicar: eventosV2_pendenciasParaPublicar_(evento),
+    motivoSituacao: String(evento.motivoSituacao || '')
+  };
+}
+
+/** Muda a situação da Festa 2026. `motivo` é obrigatório no cancelamento. */
+function eventosV2Admin_mudarSituacaoFesta2026(tokenSessao, novoStatus, motivo) {
+  var evento = eventosV2Admin_festaAtual_(tokenSessao);
+  if (!evento) return { ok: false, erro: 'A Festa 2026 ainda não foi criada.' };
+  try {
+    return eventosV2Service_mudarStatus_(tokenSessao, evento.eventoId, novoStatus, motivo);
+  } catch (e) {
+    return { ok: false, erro: eventosV2Admin_mensagemErro_(e) };
+  }
+}
+
+/** O registro da Festa 2026, num lugar só — as duas funções acima precisam. */
+function eventosV2Admin_festaAtual_(tokenSessao) {
+  /* `eventosV2Service_listar_` devolve {ok, eventos}, NÃO um array. Tratá-lo
+     como array não estoura: `undefined || []` vira lista vazia e a função
+     responde "a Festa ainda não foi criada" sobre uma Festa que existe. Falha
+     silenciosa, do tipo que só o teste acha — foi o t99 que achou esta. */
+  var resposta = eventosV2Service_listar_(tokenSessao) || {};
+  var lista = resposta.eventos || [];
+  for (var i = 0; i < lista.length; i++) {
+    var e = lista[i];
+    if (String(e.tipo) === String(EVENTOS_V2_TIPOS.FESTA) && Number(e.ano) === 2026) return e;
+  }
+  return null;
+}

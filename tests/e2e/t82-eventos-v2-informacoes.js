@@ -56,7 +56,28 @@ ok(/textContent=/.test(tela), 'prévia escreve textos por textContent, não por 
 
 passo('publicar e página pública não foram liberados antes da hora');
 ok(/Visualizar página pública<\/button>/.test(tela) && /type="button" disabled/.test(tela), 'ação de página pública aparece bloqueada');
-ok(/Publicar evento<\/button>/.test(tela), 'ação de publicação aparece, mas não inventa fluxo');
+/* PUBLICAR DEIXOU DE SER BOTÃO DESLIGADO — 26/08/2026, e a guarda mudou de
+   alvo junto, não de rigor.
+
+   Ela nasceu cobrando que a ação existisse SEM inventar fluxo: o botão
+   aparecia inerte porque a transição de status não tinha regra nenhuma. O
+   usuário perguntou "Ele não deixa eu publicar, é assim mesmo?", e a resposta
+   foi construir a regra — `EVENTOS_V2_TRANSICOES` no domínio, conferida
+   dentro do lock pelo Service.
+
+   O que a guarda protegia era "não finge que publica". Isso continua sendo
+   cobrado, e agora com muito mais força: publicar precisa passar pelo
+   Controller, que passa pelo Service, que confere a transição contra o estado
+   RELIDO do repositório. O t99 percorre a máquina de estados inteira. */
+ok(/Publicar evento/.test(tela),
+   'a ação de publicação existe');
+ok(/eventosV2Admin_mudarSituacaoFesta2026/.test(tela),
+   '  e agora vai pelo Controller, com transição de verdade',
+   'não é mais um botão inerte — ver t99');
+ok(/eventosV2_transicaoPermitida_/.test(service),
+   '  que o Service confere contra a máquina de estados do domínio');
+ok(!/disabled title="Publicação será habilitada/.test(tela),
+   '  e o aviso de "ainda não validado" saiu junto com o motivo dele');
 ok(!/eventosV2Publico_/.test(controller), 'Controller não cria endpoint público V2');
 
 passo('o Controller é uma porta administrativa estreita');

@@ -164,7 +164,12 @@ function semComentarios(corpo){
               .replace(/(^|[^:'"\\])\/\/[^\n]*/g, '$1');
 }
 
-['CompassoImportacao.html', 'CompassoInscricoes.html'].forEach(arq => {
+/* EventosAdmin entrou na lista em 26/08, e não por precaução: ao ligar o
+   "Publicar evento" eu escrevi um `prompt()` nativo para pedir o motivo do
+   cancelamento — o MESMO defeito que tinha acabado de remover da Importação,
+   no mesmo dia. A varredura não pegou porque só olhava dois arquivos. Guarda
+   que vigia dois arquivos de três é guarda que dá falsa segurança. */
+['CompassoImportacao.html', 'CompassoInscricoes.html', 'EventosAdmin.html'].forEach(arq => {
   const corpo = semComentarios(ler(arq));
   /* Só o que é CHAMADA — `prompt:` como nome de propriedade não conta. */
   const nativos = (corpo.match(/(?<![\w$.])(confirm|alert|prompt)\s*\(/g) || []);

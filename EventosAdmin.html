@@ -176,8 +176,26 @@
       <div class="ev-info-actions">
         <button class="ev-btn" type="button" disabled title="A página pública da V2 será ligada em etapa própria, sem expor dados administrativos.">Visualizar página pública</button>
         <button class="ev-btn primary" id="evInfoSalvar" type="button" onclick="evInfoSalvar()">Salvar rascunho</button>
-        <button class="ev-btn" type="button" disabled title="Publicação será habilitada quando a página pública e a transição de status estiverem validadas.">Publicar evento</button>
       </div>
+    </div>
+
+    <!-- SITUAÇÃO DO EVENTO ═══════════════════════════════════════════════════
+         O botão "Publicar evento" ficava aqui em cima, desligado desde 21/08,
+         com o aviso de que a transição de status não fora validada. O usuário
+         perguntou em 26/08: "Ele não deixa eu publicar, é assim mesmo?".
+
+         Ele saiu da barra de ações e virou este cartão porque publicar não é
+         um botão solto: é uma transição dentro de um ciclo de vida de sete
+         situações. A barra tem "Salvar rascunho", que é sobre o formulário; o
+         cartão é sobre o EVENTO. Misturados, "Salvar rascunho" e "Publicar"
+         lado a lado sugerem que um desfaz o outro.
+
+         Os botões de destino são desenhados pelo backend, não fixos aqui: a
+         tela pergunta para onde dá para ir a partir da situação atual e mostra
+         só isso. Botão que existe para ser recusado é clique desperdiçado. -->
+    <div class="ev-info-section" id="evSituacaoCard">
+      <div class="ev-info-section-title">Situação do evento</div>
+      <div id="evSituacaoCorpo" class="ev-info-loading">Carregando situação…</div>
     </div>
 
     <div id="evInfoCarregando" class="ev-info-section ev-info-loading">Carregando informações da Festa 2026…</div>
@@ -704,7 +722,132 @@ function evInfoCarregar(){
   google.script.run.withSuccessHandler(function(r){
     if(!r||!r.ok){if(g('evInfoCarregando'))g('evInfoCarregando').textContent=(r&&r.mensagem)||'Não foi possível carregar a Festa 2026.';return}
     EV_INFO_CARREGADO=true;evInfoPreencher(r.evento||{},!!r.persistido);
+    evSituacaoCarregar();
   }).withFailureHandler(function(e){if(g('evInfoCarregando'))g('evInfoCarregando').textContent='Erro ao carregar: '+((e&&e.message)||e)}).eventosV2Admin_obterFesta2026(token);
+}
+
+/* ══ SITUAÇÃO DO EVENTO ═════════════════════════════════════════════════════
+   O cartão é desenhado a partir do que o backend responde, não de uma lista
+   fixa aqui. `eventosV2Admin_situacaoFesta2026` devolve a situação atual, os
+   destinos alcançáveis DAQUI e o que falta para publicar — e a tela só mostra
+   isso. Se amanhã a máquina de estados mudar, a tela acompanha sozinha; e
+   nunca aparece um botão que o Service vai recusar.
+
+   A trava real continua no Service, não aqui: esconder o botão é conveniência
+   da tela, não segurança. Quem chamar a função direto é barrado igual. */
+function evSituacaoCarregar(){
+  var alvo=g('evSituacaoCorpo');if(!alvo)return;
+  var token=tokenSessao();
+  if(!token){alvo.textContent='Sessão não encontrada.';return}
+  google.script.run.withSuccessHandler(function(r){
+    if(!r||!r.ok){alvo.textContent=(r&&r.erro)||'Não foi possível ler a situação.';return}
+    evSituacaoPintar(r);
+  }).withFailureHandler(function(e){
+    alvo.textContent='Erro ao ler a situação: '+((e&&e.message)||e);
+  }).eventosV2Admin_situacaoFesta2026(token);
+}
+
+function evSituacaoPintar(r){
+  var s=String(r.status||'RASCUNHO');
+  var partes=['<div class="ev-status-linha">'+
+    '<span class="ev-pill '+statusClasse(s)+'">'+evEsc(r.rotulo||s)+'</span>'+
+    '<span class="ev-status-texto">'+evEsc(evSituacaoExplica(s))+'</span></div>'];
+
+  /* O motivo do cancelamento é o que responde "por que a festa não aconteceu"
+     meses depois. Escondê-lo faria o registro existir sem ninguém ver. */
+  if(r.motivoSituacao)
+    partes.push('<div class="ev-status-motivo">Motivo registrado: '+evEsc(r.motivoSituacao)+'</div>');
+
+  /* Pendência é dita ANTES de a pessoa clicar e ouvir não. */
+  var faltam=r.pendenciasParaPublicar||[];
+  if(faltam.length)
+    partes.push('<div class="ev-status-falta">Para publicar, falta preencher: <b>'+
+      evEsc(faltam.join(', '))+'</b></div>');
+
+  var botoes=(r.proximos||[]).map(function(p){
+    var perigo=(p.status==='CANCELADO');
+    var trava=(p.status==='PROGRAMADO'&&faltam.length)?' disabled title="Preencha o que falta acima"':'';
+    return '<button class="ev-btn'+(perigo?'':' primary')+'" type="button"'+trava+
+           ' onclick="evSituacaoMudar(\''+p.status+'\',\''+evEsc(p.rotulo)+'\')">'+
+           (p.status==='PROGRAMADO'?'Publicar evento':evEsc(p.rotulo))+'</button>';
+  }).join('');
+  partes.push(botoes
+    ? '<div class="ev-status-acoes">'+botoes+'</div>'
+    : '<div class="ev-status-texto">Evento encerrado — não muda mais de situação.</div>');
+
+  g('evSituacaoCorpo').innerHTML=partes.join('');
+  g('evSituacaoCorpo').className='';
+}
+
+/* O que cada situação significa para quem opera — não o rótulo, a consequência. */
+function evSituacaoExplica(s){
+  return {
+    RASCUNHO:'Em preparação. Ninguém de fora vê a página do evento.',
+    PROGRAMADO:'Publicado. As inscrições ainda não foram abertas.',
+    INSCRICOES_ABERTAS:'Recebendo inscrições.',
+    INSCRICOES_ENCERRADAS:'Não recebe mais inscrição. Ingressos continuam sendo emitidos.',
+    EM_ANDAMENTO:'A festa está acontecendo.',
+    ENCERRADO:'A festa acabou.',
+    CANCELADO:'Cancelado. Pode voltar a rascunho se for remarcado.'
+  }[s]||'';
+}
+
+function evSituacaoMudar(destino,rotulo){
+  var token=tokenSessao();if(!token)return avisar('Sessão não encontrada.','err');
+  var enviar=function(motivo){
+    google.script.run.withSuccessHandler(function(r){
+      if(!r||!r.ok)return avisar((r&&r.erro)||'Não foi possível mudar a situação.','err');
+      avisar('Situação alterada para '+rotulo+'.','ok');
+      evSituacaoCarregar();
+      /* O selo do topo e o da lateral leem o mesmo estado: sem recarregar,
+         ficariam contando uma história diferente da do cartão. */
+      EV_INFO_CARREGADO=false;evInfoCarregar();
+    }).withFailureHandler(function(e){
+      avisar('Erro: '+((e&&e.message)||e),'err');
+    }).eventosV2Admin_mudarSituacaoFesta2026(token,destino,motivo||'');
+  };
+  /* Cancelar é a única que pede motivo — o backend recusa sem ele, então
+     perguntar aqui evita a ida e volta.
+
+     PELO DIÁLOGO DO SISTEMA, NÃO POR prompt(). A primeira versão desta função
+     usava prompt() nativo, que é o mesmo defeito que passei a manhã de
+     26/08 removendo da Importação: a caixa do navegador anuncia o endereço
+     cru do googleusercontent no meio de um cancelamento. `perguntar` está
+     nesta página porque EventosAdmin inclui CompassoInscricoes, que inclui
+     DialogoSISGEP — e o diálogo com `campo` já recusa confirmação vazia,
+     então a checagem de motivo em branco vive lá dentro. */
+  if(destino==='CANCELADO'){
+    return perguntar({ titulo:'Cancelar a Festa Compasso da Vida 2026?',
+                       texto:'O motivo fica registrado e é o que responde, meses depois, por que o evento não aconteceu.',
+                       campo:true, rotulo:'Motivo do cancelamento',
+                       perigo:true, ok:'Cancelar evento' }, function(motivo){
+      enviar(String(motivo||'').trim());
+    });
+  }
+  /* Publicar e as demais transições confirmam antes: são visíveis para fora e
+     mudam o que a operação pode fazer. */
+  perguntar({ titulo:'Mudar a situação para "'+rotulo+'"?',
+              texto:evSituacaoExplica(destino), icone:'🚦', ok:'Confirmar' },
+            function(){ enviar(''); });
+}
+
+function evEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+
+/* PLANO B DO "COPIAR LINK", NO PADRÃO DO SISTEMA — 26/08/2026.
+   Dentro do iframe do Apps Script o navegador costuma RECUSAR a área de
+   transferência. O plano B eram três `prompt('Copie o link:', url)` — a caixa
+   que anuncia o endereço cru do googleusercontent, exatamente o que o usuário
+   mandou tirar da Importação no mesmo dia. Aqui o link aparece no diálogo do
+   sistema, num campo já selecionado: dá para copiar com Ctrl+C. Só informa,
+   então não mostra Cancelar. */
+function evMostrarLink(url){
+  perguntar({ titulo:'Link público de inscrição',
+              texto:'O navegador não deixou copiar sozinho. O endereço já está selecionado abaixo — use Ctrl+C.',
+              campo:true, rotulo:'Endereço', ok:'Fechar',
+              icone:'🔗', semCancelar:true }, function(){});
+  var c=document.getElementById('dgCampo');
+  if(c){ c.value=url; setTimeout(function(){ try{ c.select(); }catch(e){} },80); }
 }
 function evInfoPreencher(e,persistido){
   EV_INFO_EVENTO_ID=String(e.eventoId||'');
@@ -742,7 +885,7 @@ function pintar(){var b=String((g('evBusca')||{}).value||'').toLowerCase(),h=new
 window.evRender=function(){google.script.run.withSuccessHandler(function(l){EV_CACHE=l||[];pintar()}).withFailureHandler(function(e){avisar('Erro ao carregar eventos: '+((e&&e.message)||e),'err')}).listarEventosAgenda(tokenSessao())};
 window.evSalvar=function(){var x={id:EV_EDITANDO||'',nome:g('evNome').value,data:g('evData').value,tipo:g('evTipo').value,status:g('evStatus').value};if(!x.nome.trim())return avisar('Informe o evento.','warn');google.script.run.withSuccessHandler(function(r){if(!r||!r.ok)return avisar((r&&r.mensagem)||'Erro ao salvar.','err');avisar(r.mensagem||'Evento salvo.','ok');evLimpar();evRender()}).withFailureHandler(function(e){avisar('Erro: '+((e&&e.message)||e),'err')}).salvarEventoAgenda(x,tokenSessao())};
 window.evEditar=function(id){var x=EV_CACHE.find(function(a){return a.id===id});if(!x)return;EV_EDITANDO=id;g('evNome').value=x.nome;g('evData').value=x.data;g('evTipo').value=x.tipo;g('evStatus').value=x.status};
-window.evExcluir=function(id){if(!confirm('Excluir evento?'))return;google.script.run.withSuccessHandler(function(r){if(!r||!r.ok)return avisar((r&&r.mensagem)||'Erro ao excluir.','err');evRender()}).withFailureHandler(function(e){avisar('Erro: '+((e&&e.message)||e),'err')}).excluirEventoAgenda(id,tokenSessao())};
+window.evExcluir=function(id){return perguntar({titulo:'Excluir este evento?',texto:'A exclusão não tem desfazer.',perigo:true,ok:'Excluir'},function(){google.script.run.withSuccessHandler(function(r){if(!r||!r.ok)return avisar((r&&r.mensagem)||'Erro ao excluir.','err');evRender()}).withFailureHandler(function(e){avisar('Erro: '+((e&&e.message)||e),'err')}).excluirEventoAgenda(id,tokenSessao())});};
 window.evLimpar=function(){EV_EDITANDO='';g('evNome').value='';g('evData').value='';g('evTipo').value='Assembleia';g('evStatus').value='Planejado'};
 window.evExportar=function(){var rows=[["Evento","Data","Tipo","Status"]].concat(EV_CACHE.map(function(x){return[x.nome,x.data,x.tipo,x.status]})),csv=rows.map(function(r){return r.map(function(c){return '"'+String(c||'').replace(/"/g,'""')+'"'}).join(';')}).join('\n'),a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='sisgep-eventos.csv';a.click()};
 
@@ -756,9 +899,9 @@ window.evAbrirEmissaoIngressos=function(){evAvisoEmissaoV1()};window.evAbrirChec
 /* ── LINK PÚBLICO DO COMPASSO ── */
 var EV_LINK_COMPASSO='';
 function evMontarLinkCompasso(){if(EV_LINK_COMPASSO)return;var token=tokenSessao(),el=g('evLinkCompasso');if(!token){if(el)el.textContent='Sessão não encontrada. Entre novamente no SISGEP.';return}google.script.run.withSuccessHandler(function(base){EV_LINK_COMPASSO=String(base||'')+'?page=compasso-inscricao';if(el)el.textContent=EV_LINK_COMPASSO}).withFailureHandler(function(e){if(el)el.textContent='Não foi possível montar o link: '+((e&&e.message)||e)}).eventos_obterWebAppUrl(token)}
-window.evCopiarLinkCompasso=function(){if(!EV_LINK_COMPASSO)return avisar('O link ainda está carregando. Tente em instantes.','warn');var pronto=function(){avisar('Link de inscrição copiado.','ok')};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(EV_LINK_COMPASSO).then(pronto,function(){prompt('Copie o link:',EV_LINK_COMPASSO)})}else{prompt('Copie o link:',EV_LINK_COMPASSO)}};
+window.evCopiarLinkCompasso=function(){if(!EV_LINK_COMPASSO)return avisar('O link ainda está carregando. Tente em instantes.','warn');var pronto=function(){avisar('Link de inscrição copiado.','ok')};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(EV_LINK_COMPASSO).then(pronto,function(){evMostrarLink(EV_LINK_COMPASSO)})}else{evMostrarLink(EV_LINK_COMPASSO)}};
 window.evAvisoPortaria=function(){avisar('A portaria abre pela planilha do SISGEP, no celular da entrada: menu 🎫 Eventos › Check-in. Ela ainda não tem endereço próprio no web app.','warn')};
-window.evCopiarLinkInscricao=function(eventoId){var token=tokenSessao();if(!token)return avisar('Sessão não encontrada. Entre novamente no SISGEP.','err');var id=String(eventoId||prompt('ID do evento para a inscrição:')||'').trim();if(!id)return;google.script.run.withSuccessHandler(function(base){var url=String(base||'')+'?bingo-inscricao='+encodeURIComponent(id),pronto=function(){avisar('Link copiado: '+url,'ok')};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(pronto,function(){prompt('Copie o link:',url)})}else{prompt('Copie o link:',url)}}).withFailureHandler(function(e){avisar('Não foi possível montar o link: '+((e&&e.message)||e),'err')}).eventos_obterWebAppUrl(token)};
+window.evCopiarLinkInscricao=function(eventoId){var token=tokenSessao();if(!token)return avisar('Sessão não encontrada. Entre novamente no SISGEP.','err');var id=String(eventoId||'').trim();if(!id)return avisar('Abra o evento na lista para copiar o link da inscrição.','warn');google.script.run.withSuccessHandler(function(base){var url=String(base||'')+'?bingo-inscricao='+encodeURIComponent(id),pronto=function(){avisar('Link copiado: '+url,'ok')};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(pronto,function(){evMostrarLink(url)})}else{evMostrarLink(url)}}).withFailureHandler(function(e){avisar('Não foi possível montar o link: '+((e&&e.message)||e),'err')}).eventos_obterWebAppUrl(token)};
 
 function evIniciar(){evSubInterno(evSubSalvo());evRender()}
 window.initEventos=evIniciar;

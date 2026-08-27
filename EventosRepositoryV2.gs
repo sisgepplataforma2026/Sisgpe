@@ -29,7 +29,12 @@ var EVENTOS_V2_CABECALHOS = [
      inserir no meio faria toda linha já gravada ler o valor da coluna errada.
      A aba existente é migrada por `garantirAba_`, que acrescenta o cabeçalho
      que falta em vez de recusar a gravação. */
-  'capacidade'
+  'capacidade',
+  /* 26/08/2026 — o motivo da última mudança de situação. Nasceu junto com a
+     máquina de estados: cancelar exige motivo escrito, e sem coluna o Service
+     gravava o campo que o Repository descartava em silêncio. O t99 pegou:
+     "com motivo, cancela" passava, "e o motivo fica gravado" falhava. */
+  'motivoSituacao'
 ];
 
 var EVENTOS_V2_AUDITORIA_CABECALHOS = [

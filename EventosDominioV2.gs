@@ -99,6 +99,9 @@ function eventosV2_normalizarEvento_(dados) {
 
     // Ciclo de vida
     status: eventosV2_texto_(dados.status || EVENTOS_V2_STATUS.RASCUNHO).toUpperCase(),
+    /* Motivo da última mudança de situação. Obrigatório no cancelamento — é o
+       que responde, meses depois, por que a festa não aconteceu. */
+    motivoSituacao: eventosV2_texto_(dados.motivoSituacao),
 
     // Auditoria — preenchida pela camada administrativa/persistência.
     criadoEm: dados.criadoEm || null,
@@ -193,4 +196,105 @@ function eventosV2_dataValida_(valor) {
   return d.getUTCFullYear() === ano &&
          d.getUTCMonth() === mes - 1 &&
          d.getUTCDate() === dia;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   O CICLO DE VIDA PASSA A TER REGRA — 26/08/2026
+
+   Os sete status existiam desde o começo; o que NÃO existia era dizer qual
+   pode virar qual. Sem isso o botão "Publicar evento" ficou desligado desde
+   21/08 com o aviso de que a transição não estava validada — e o usuário
+   perguntou, com razão: "Ele não deixa eu publicar, é assim mesmo?".
+
+   Enum sem máquina de estados é enum decorativo: `status` seria só um texto
+   que qualquer gravação sobrescreve. O caso que dói: um evento ENCERRADO
+   voltar para INSCRICOES_ABERTAS depois da festa, e o formulário público
+   passar a aceitar inscrição para uma coisa que já aconteceu.
+
+   O DESENHO, aprovado pelo usuário antes de virar código:
+
+     RASCUNHO → PROGRAMADO → INSCRICOES_ABERTAS → INSCRICOES_ENCERRADAS
+                     └──────────────┬───────────────────────┘
+                                    ↓
+                             EM_ANDAMENTO → ENCERRADO
+
+     Qualquer um, menos ENCERRADO, pode ir para CANCELADO.
+
+   DUAS DECISÕES QUE PARECEM DETALHE E NÃO SÃO:
+
+   1. INSCRICOES_ABERTAS volta para PROGRAMADO. Abrir inscrição cedo demais é
+      erro que acontece, e sem a volta a única saída seria cancelar o evento —
+      o que devolveria todas as vagas e mandaria a operação para o lixo.
+
+   2. ENCERRADO é terminal, inclusive para CANCELADO. Depois que a festa
+      aconteceu, cancelá-la não descreve nada do mundo real; quem precisa
+      corrigir um encerramento indevido faz pelo caminho de quem gravou
+      errado, não fingindo que o evento não ocorreu.
+   ════════════════════════════════════════════════════════════════════════════ */
+var EVENTOS_V2_TRANSICOES = Object.freeze({
+  RASCUNHO:              ['PROGRAMADO', 'CANCELADO'],
+  PROGRAMADO:            ['INSCRICOES_ABERTAS', 'EM_ANDAMENTO', 'RASCUNHO', 'CANCELADO'],
+  INSCRICOES_ABERTAS:    ['INSCRICOES_ENCERRADAS', 'PROGRAMADO', 'CANCELADO'],
+  INSCRICOES_ENCERRADAS: ['EM_ANDAMENTO', 'INSCRICOES_ABERTAS', 'CANCELADO'],
+  EM_ANDAMENTO:          ['ENCERRADO', 'CANCELADO'],
+  ENCERRADO:             [],
+  CANCELADO:             ['RASCUNHO']
+});
+
+/** Rótulos em português, num lugar só — tela e auditoria dizendo o mesmo. */
+var EVENTOS_V2_STATUS_ROTULO = Object.freeze({
+  RASCUNHO:              'Rascunho',
+  PROGRAMADO:            'Programado',
+  INSCRICOES_ABERTAS:    'Inscrições abertas',
+  INSCRICOES_ENCERRADAS: 'Inscrições encerradas',
+  EM_ANDAMENTO:          'Em andamento',
+  ENCERRADO:             'Encerrado',
+  CANCELADO:             'Cancelado'
+});
+
+/**
+ * A transição é permitida? Devolve {ok} ou {ok:false, mensagem} — mensagem que
+ * serve para mostrar à pessoa, não código de erro para o log.
+ */
+function eventosV2_transicaoPermitida_(de, para) {
+  de = eventosV2_texto_(de || EVENTOS_V2_STATUS.RASCUNHO).toUpperCase();
+  para = eventosV2_texto_(para).toUpperCase();
+
+  if (!eventosV2_valorEnum_(para, EVENTOS_V2_STATUS))
+    return { ok: false, mensagem: 'Situação desconhecida: ' + para + '.' };
+  if (de === para)
+    return { ok: false, mensagem: 'O evento já está em "' + (EVENTOS_V2_STATUS_ROTULO[para] || para) + '".' };
+
+  var permitidos = EVENTOS_V2_TRANSICOES[de] || [];
+  if (permitidos.indexOf(para) < 0) {
+    var rotDe = EVENTOS_V2_STATUS_ROTULO[de] || de;
+    var rotPara = EVENTOS_V2_STATUS_ROTULO[para] || para;
+    /* Terminal merece frase própria: "não pode ir para X" faria a pessoa
+       procurar outro caminho que também não existe. */
+    if (!permitidos.length)
+      return { ok: false, mensagem: 'Evento ' + rotDe.toLowerCase() + ' não muda mais de situação.' };
+    return { ok: false, mensagem: 'De "' + rotDe + '" não dá para ir direto para "' + rotPara + '".' };
+  }
+  return { ok: true };
+}
+
+/**
+ * O que ainda falta para o evento poder ser publicado.
+ *
+ * Devolve LISTA de pendências, não um booleano: um botão que só recusa deixa a
+ * pessoa procurando o que está errado numa tela de vinte campos. Estes quatro
+ * são o mínimo que um evento publicado precisa responder a quem lê a página —
+ * o que é, quando, onde, e para quantos.
+ */
+function eventosV2_pendenciasParaPublicar_(evento) {
+  evento = evento || {};
+  var faltam = [];
+  /* Os nomes são os do DOMÍNIO — `dataEvento` e `localNome`, não `data` e
+     `local`. Escrever o nome que a tela usa faria a checagem sempre dizer que
+     falta um campo que está preenchido, e o botão nunca publicaria nada. */
+  if (!eventosV2_texto_(evento.nome))       faltam.push('nome do evento');
+  if (!eventosV2_texto_(evento.dataEvento)) faltam.push('data');
+  if (!eventosV2_texto_(evento.localNome))  faltam.push('local');
+  if (!(Number(evento.capacidade) > 0))     faltam.push('capacidade (lotação)');
+  return faltam;
 }
