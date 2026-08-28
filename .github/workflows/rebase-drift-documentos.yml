@@ -1,0 +1,61 @@
+name: Preservar drift recente de producao em Documentos
+
+on:
+  push:
+    branches: ["correcao/documentos-ajustes-seguros"]
+    paths: [".github/workflows/rebase-drift-documentos.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: correcao/documentos-ajustes-seguros
+          fetch-depth: 0
+
+      - name: Restaurar versoes atuais e reaplicar somente ajuste necessario
+        shell: python
+        run: |
+          import subprocess
+          from pathlib import Path
+
+          subprocess.run([
+            "git", "checkout", "origin/auditoria/producao-limpa", "--",
+            "EmailOficios.js", "MonitoramentoOficios.js"
+          ], check=True)
+
+          p = Path("MonitoramentoOficios.js")
+          s = p.read_text(encoding="utf-8")
+          old = '''            texto.indexOf("ciente") > -1 ||\n            texto.indexOf("ok") > -1 ||\n            texto.indexOf("acusamos") > -1 ||\n            texto.indexOf("obrigado") > -1 ||\n            texto.indexOf("obrigada") > -1'''
+          new = '''            texto.indexOf("ciente") > -1 ||\n            texto.indexOf("acusamos o recebimento") > -1 ||\n            texto.indexOf("acuso o recebimento") > -1'''
+          if old not in s:
+            raise SystemExit("Bloco de confirmacao esperado nao encontrado na producao atual")
+          s = s.replace(old, new, 1)
+          p.write_text(s, encoding="utf-8")
+
+      - name: Validar preservacao do codigo atual
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check EmailOficios.js
+          node --check MonitoramentoOficios.js
+          git diff --check
+          ! grep -q 'texto.indexOf("ok")' MonitoramentoOficios.js
+          ! grep -q 'texto.indexOf("obrigado")' MonitoramentoOficios.js
+          grep -q 'acusamos o recebimento' MonitoramentoOficios.js
+          # EmailOficios deve ficar identico ao snapshot atual de producao.
+          git diff --quiet origin/auditoria/producao-limpa -- EmailOficios.js
+
+      - name: Commitar somente patch de monitoramento
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add EmailOficios.js MonitoramentoOficios.js
+          git commit -m "fix(documentos): preservar producao atual ao endurecer confirmacoes"
+          git push origin HEAD:correcao/documentos-ajustes-seguros
