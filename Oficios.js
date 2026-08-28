@@ -582,10 +582,10 @@ function montarDadosOficio_(dados, modo) {
   };
 }
 
-// SEM trava de modulo: mesma razao de gerarOficioWeb — a Sindicalizacao
-// monta a previa do oficio de filiacao por aqui. Sessao continua exigida.
+// A previa usa a mesma matriz de autorizacao da emissao: Filiacao/Desfiliacao
+// podem vir de Sindicalizacao; os demais tipos exigem Documentos.
 function previewOficioWeb(dados, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirAcessoOficioPorTipo_(tokenSessao, dados && dados.tipo);
   Logger.log("✅ previewOficioWeb — " + new Date());
   try {
     var proc       = montarDadosOficio_(dados, "preview");
@@ -617,18 +617,10 @@ function previewOficioWeb(dados, tokenSessao) {
   }
 }
 
-// SEM trava de modulo: a Sindicalizacao gera o oficio de filiacao e de
-// desfiliacao por aqui (SindicalizacaoOficio.gs e a leitura por IA).
-// Exigir Documentos quebraria a filiacao de quem so tem Sindicalizacao.
-// Sessao continua exigida.
-// A variavel PRECISA se chamar sessaoDocumentos. A linha de baixo le esse
-// nome, e o restante do projeto (outras 42 ocorrencias) usa o mesmo. Aqui a
-// declaracao estava como "sessao" e a leitura como "sessaoDocumentos": gerar
-// oficio devolvia "sessaoDocumentos is not defined" dentro do try, virava
-// {erro:true} e a tela mostrava a falha sem dizer a causa. Achado por teste
-// de execucao em 2026-08-05 (tests/e2e/t1-documentos.js).
+// Autorizacao por tipo: preserva o uso por Sindicalizacao apenas para
+// Filiacao/Desfiliacao e impede que essa permissao alcance Taxas/Oficio Livre.
 function gerarOficioWeb(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirAcessoOficioPorTipo_(tokenSessao, dados && dados.tipo);
   try {
     var emailUsuario = String(sessaoDocumentos.email || sessaoDocumentos.usuario || "").trim().toLowerCase();
     if (!dados || typeof dados !== "object") throw new Error("Dados inválidos.");

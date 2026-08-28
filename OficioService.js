@@ -82,7 +82,7 @@ function processarFichasParaOficio(fichas) {
  * @return {object} Resultado da geração
  */
 function gerarOficioWebComFichas(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirAcessoOficioPorTipo_(tokenSessao, dados && dados.tipo);
   try {
     var fichasProcessadas = dados.fichas
       ? processarFichasParaOficio(dados.fichas)
