@@ -1,11 +1,9 @@
-name: Patch temporario - numeracao atomica de oficios
+name: Patch numeracao atomica de oficios
 
 on:
   push:
-    branches:
-      - correcao/documentos-numeracao-atomica
-    paths:
-      - .github/workflows/patch-numeracao-documentos.yml
+    branches: ["correcao/documentos-numeracao-atomica"]
+    paths: [".github/workflows/patch-numeracao-documentos.yml"]
 
 permissions:
   contents: write
@@ -14,171 +12,38 @@ jobs:
   patch:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout da branch de correcao
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: correcao/documentos-numeracao-atomica
           fetch-depth: 0
-
-      - name: Aplicar correcao isolada em Oficios.js
+      - name: Aplicar correcao
         shell: bash
+        env:
+          REPLACEMENT_B64: "LyogPT09PT09PT09PT09PT09PT0gTlVNRVJBw4fDg08gPT09PT09PT09PT09PT09PT0gKi8KCi8qCiAqIEEgbnVtZXJhw6fDo28gb2ZpY2lhbCBwcmVjaXNhIHNlciBSRVNFUlZBREEgZW5xdWFudG8gbyBTY3JpcHRMb2NrIGFpbmRhCiAqIGVzdMOhIHNlZ3VyYWRvLiBBbnRlcyBkZXN0YSBjb3JyZcOnw6NvLCBkdWFzIGV4ZWN1w6fDtWVzIGNvbnNlZ3VpYW0gbGVyIG8gbWVzbW8KICogbWFpb3IgbsO6bWVybyBlIGFtYmFzIGRldm9sdmlhbSBvIG1lc21vIHByw7N4aW1vIG7Dum1lcm87IG8gbG9jayBlcmEgbGliZXJhZG8KICogYW50ZXMgZGUgUERGLCBmaWxhIGUgQ29udHJvbGUgc2VyZW0gZ3JhdmFkb3MuCiAqCiAqIEEgcHJvcHJpZWRhZGUgT0ZJQ0lPU19TRVFVRU5DSUFfPEFOTz4gZnVuY2lvbmEgY29tbyBjb250YWRvci9yZXNlcnZhIGFudWFsLgogKiBFbGEgbnVuY2EgZGltaW51aSBhdXRvbWF0aWNhbWVudGUuIFNlIHVtYSBlbWlzc8OjbyBmYWxoYXIgZGVwb2lzIGRhIHJlc2VydmEsCiAqIHBvZGUgZXhpc3RpciB1bSBzYWx0byBuYSBzZXF1w6puY2lhLCBtYXMgamFtYWlzIHJldXRpbGl6YcOnw6NvIHNpbGVuY2lvc2EgZG8KICogbsO6bWVybyDigJQgcGFyYSBkb2N1bWVudG8gb2ZpY2lhbCwgdW0gbsO6bWVybyBuw6NvIHV0aWxpemFkbyDDqSBtZW5vcyBncmF2ZSBxdWUKICogZG9pcyBkb2N1bWVudG9zIGRpZmVyZW50ZXMgY29tIG8gbWVzbW8gcHJvdG9jb2xvLgogKi8KZnVuY3Rpb24gb2ZpY2lvc0NoYXZlU2VxdWVuY2lhXyhhbm8pIHsKICByZXR1cm4gIk9GSUNJT1NfU0VRVUVOQ0lBXyIgKyBTdHJpbmcoYW5vIHx8ICIiKS50cmltKCk7Cn0KCmZ1bmN0aW9uIG9maWNpb3NOdW1lcm9Eb0Fub18odmFsb3IsIGFubykgewogIHZhciB0ZXh0byA9IFN0cmluZyh2YWxvciB8fCAiIikudHJpbSgpOwogIHZhciBtID0gdGV4dG8ubWF0Y2goL14oXGQrKVxzKlwvXHMqKFxkezR9KSQvKTsKICBpZiAoIW0gfHwgbVsyXSAhPT0gU3RyaW5nKGFubykpIHJldHVybiAwOwogIHZhciBuID0gcGFyc2VJbnQobVsxXSwgMTApOwogIHJldHVybiBpc05hTihuKSA/IDAgOiBuOwp9CgpmdW5jdGlvbiBvZmljaW9zTWFpb3JOdW1lcm9Db25oZWNpZG9fKHNzLCBzaGVldENvbnRyb2xlLCBjb2xOdW1lcm8sIGFubykgewogIHZhciBtYWlvciA9IFBSSU1FSVJPX09GSUNJT19QTEFUQUZPUk1BIC0gMTsKCiAgZnVuY3Rpb24gY29uc2lkZXJhcih2YWxvcikgewogICAgdmFyIG4gPSBvZmljaW9zTnVtZXJvRG9Bbm9fKHZhbG9yLCBhbm8pOwogICAgaWYgKG4gPiBtYWlvcikgbWFpb3IgPSBuOwogIH0KCiAgaWYgKHNoZWV0Q29udHJvbGUgJiYgY29sTnVtZXJvICYmIHNoZWV0Q29udHJvbGUuZ2V0TGFzdFJvdygpID4gMSkgewogICAgc2hlZXRDb250cm9sZQogICAgICAuZ2V0UmFuZ2UoMiwgY29sTnVtZXJvLCBzaGVldENvbnRyb2xlLmdldExhc3RSb3coKSAtIDEsIDEpCiAgICAgIC5nZXRWYWx1ZXMoKQogICAgICAuZm9yRWFjaChmdW5jdGlvbihyKSB7IGNvbnNpZGVyYXIoclswXSk7IH0pOwogIH0KCiAgdHJ5IHsKICAgIHZhciBzaEZpbGEgPSBzcy5nZXRTaGVldEJ5TmFtZSgiRklMQV9FTlZJT19PRklDSU9TIik7CiAgICBpZiAoc2hGaWxhICYmIHNoRmlsYS5nZXRMYXN0Um93KCkgPiAxKSB7CiAgICAgIHZhciBobUZpbGEgPSBnZXRIZWFkZXJNYXBfKHNoRmlsYSk7CiAgICAgIHZhciBjb2xGaWxhID0gaG1GaWxhWyJOVU1FUk9fT0ZJQ0lPIl07CiAgICAgIGlmIChjb2xGaWxhKSB7CiAgICAgICAgc2hGaWxhCiAgICAgICAgICAuZ2V0UmFuZ2UoMiwgY29sRmlsYSwgc2hGaWxhLmdldExhc3RSb3coKSAtIDEsIDEpCiAgICAgICAgICAuZ2V0VmFsdWVzKCkKICAgICAgICAgIC5mb3JFYWNoKGZ1bmN0aW9uKHIpIHsgY29uc2lkZXJhcihyWzBdKTsgfSk7CiAgICAgIH0KICAgIH0KICB9IGNhdGNoIChlRmlsYSkgewogICAgTG9nZ2VyLmxvZygib2ZpY2lvc01haW9yTnVtZXJvQ29uaGVjaWRvXy5maWxhOiAiICsgZUZpbGEubWVzc2FnZSk7CiAgfQoKICB2YXIgcHJvcHMgPSBQcm9wZXJ0aWVzU2VydmljZS5nZXRTY3JpcHRQcm9wZXJ0aWVzKCk7CgogIHRyeSB7CiAgICBjb25zaWRlcmFyKHByb3BzLmdldFByb3BlcnR5KCJUQVhBX0FTU0lTVEVOQ0lBTF9OVU1FUk9fT0ZJQ0lPIikpOwogIH0gY2F0Y2ggKGVUYXhhKSB7CiAgICBMb2dnZXIubG9nKCJvZmljaW9zTWFpb3JOdW1lcm9Db25oZWNpZG9fLnRheGE6ICIgKyBlVGF4YS5tZXNzYWdlKTsKICB9CgogIHRyeSB7CiAgICB2YXIgcmVzZXJ2YWRvID0gcGFyc2VJbnQocHJvcHMuZ2V0UHJvcGVydHkob2ZpY2lvc0NoYXZlU2VxdWVuY2lhXyhhbm8pKSB8fCAiMCIsIDEwKTsKICAgIGlmICghaXNOYU4ocmVzZXJ2YWRvKSAmJiByZXNlcnZhZG8gPiBtYWlvcikgbWFpb3IgPSByZXNlcnZhZG87CiAgfSBjYXRjaCAoZVNlcSkgewogICAgTG9nZ2VyLmxvZygib2ZpY2lvc01haW9yTnVtZXJvQ29uaGVjaWRvXy5zZXF1ZW5jaWE6ICIgKyBlU2VxLm1lc3NhZ2UpOwogIH0KCiAgcmV0dXJuIG1haW9yOwp9CgpmdW5jdGlvbiBwcmV2ZXJQcm94aW1vTnVtZXJvT2ZpY2lvKCkgewogIHZhciBzcyAgICA9IFNwcmVhZHNoZWV0QXBwLm9wZW5CeUlkKFBMQU5JTEhBX0lEKTsKICB2YXIgc2hlZXQgPSBzcy5nZXRTaGVldEJ5TmFtZShQTEFOSUxIQV9SRUdJU1RSTyk7CiAgaWYgKCFzaGVldCkgdGhyb3cgbmV3IEVycm9yKCJBYmEgZGUgcmVnaXN0cm8gbsOjbyBlbmNvbnRyYWRhLiIpOwoKICB2YXIgaGVhZGVyTWFwID0gZ2V0SGVhZGVyTWFwXyhzaGVldCk7CiAgdmFyIGNvbE51bWVybyA9IGhlYWRlck1hcFsiTsO6bWVybyBkbyBPZsOtY2lvIl07CiAgaWYgKCFjb2xOdW1lcm8pIHRocm93IG5ldyBFcnJvcigiQ29sdW5hICdOw7ptZXJvIGRvIE9mw61jaW8nIG7Do28gZW5jb250cmFkYS4iKTsKCiAgdmFyIGFubyA9IGFub0F0dWFsXygpOwogIHZhciBtYWlvck51bWVybyA9IG9maWNpb3NNYWlvck51bWVyb0NvbmhlY2lkb18oc3MsIHNoZWV0LCBjb2xOdW1lcm8sIGFubyk7CiAgdmFyIHByb3hpbW8gPSBTdHJpbmcobWFpb3JOdW1lcm8gKyAxKS5wYWRTdGFydCgzLCAiMCIpICsgIi8iICsgYW5vOwogIExvZ2dlci5sb2coIlByw6l2aWEgZG8gcHLDs3hpbW8gbsO6bWVybzogIiArIHByb3hpbW8pOwogIHJldHVybiBwcm94aW1vOwp9CgpmdW5jdGlvbiBnZXJhclByb3hpbW9OdW1lcm9TZWd1cm8oKSB7CiAgdmFyIHRyYXZhID0gdHJhdmFyU2lzZ2VwXygxNTAwMCk7CgogIHRyeSB7CiAgICB2YXIgc3MgICAgPSBTcHJlYWRzaGVldEFwcC5vcGVuQnlJZChQTEFOSUxIQV9JRCk7CiAgICB2YXIgc2hlZXQgPSBzcy5nZXRTaGVldEJ5TmFtZShQTEFOSUxIQV9SRUdJU1RSTyk7CiAgICB2YXIgYW5vICAgPSBhbm9BdHVhbF8oKTsKICAgIGlmICghc2hlZXQpIHRocm93IG5ldyBFcnJvcigiQWJhIGRlIHJlZ2lzdHJvIG7Do28gZW5jb250cmFkYS4iKTsKCiAgICB2YXIgaGVhZGVyTWFwID0gZ2V0SGVhZGVyTWFwXyhzaGVldCk7CiAgICB2YXIgY29sTnVtZXJvID0gaGVhZGVyTWFwWyJOw7ptZXJvIGRvIE9mw61jaW8iXTsKICAgIGlmICghY29sTnVtZXJvKSB0aHJvdyBuZXcgRXJyb3IoIkNvbHVuYSAnTsO6bWVybyBkbyBPZsOtY2lvJyBuw6NvIGVuY29udHJhZGEuIik7CgogICAgdmFyIG1haW9yTnVtZXJvID0gb2ZpY2lvc01haW9yTnVtZXJvQ29uaGVjaWRvXyhzcywgc2hlZXQsIGNvbE51bWVybywgYW5vKTsKICAgIHZhciBwcm94aW1vTnVtZXJvID0gbWFpb3JOdW1lcm8gKyAxOwoKICAgIFByb3BlcnRpZXNTZXJ2aWNlLmdldFNjcmlwdFByb3BlcnRpZXMoKQogICAgICAuc2V0UHJvcGVydHkob2ZpY2lvc0NoYXZlU2VxdWVuY2lhXyhhbm8pLCBTdHJpbmcocHJveGltb051bWVybykpOwoKICAgIHZhciBwcm94aW1vID0gU3RyaW5nKHByb3hpbW9OdW1lcm8pLnBhZFN0YXJ0KDMsICIwIikgKyAiLyIgKyBhbm87CiAgICBMb2dnZXIubG9nKCJnZXJhclByb3hpbW9OdW1lcm9TZWd1cm8gW1JFU0VSVkFET106ICIgKyBwcm94aW1vKTsKICAgIHJldHVybiBwcm94aW1vOwoKICB9IGZpbmFsbHkgewogICAgdHJhdmEubGliZXJhcigpOwogIH0KfQoK"
         run: |
           python - <<'PY'
+          import base64, os
           from pathlib import Path
-
-          path = Path("Oficios.js")
-          text = path.read_text(encoding="utf-8")
+          p = Path("Oficios.js")
+          s = p.read_text(encoding="utf-8")
           start_marker = "/* ================= NUMERAÇÃO ================= */"
           end_marker = "/* ================= LOG SISTEMA ================= */"
-          start = text.index(start_marker)
-          end = text.index(end_marker, start)
-
-          replacement = r'''/* ================= NUMERAÇÃO ================= */
-
-/*
- * A numeração oficial precisa ser RESERVADA enquanto o ScriptLock ainda
- * está segurado. Antes desta correção, duas execuções conseguiam ler o mesmo
- * maior número e ambas devolviam o mesmo próximo número; o lock era liberado
- * antes de PDF, fila e Controle serem gravados.
- *
- * A propriedade OFICIOS_SEQUENCIA_<ANO> funciona como contador/reserva anual.
- * Ela nunca diminui automaticamente. Se uma emissão falhar depois da reserva,
- * pode existir um salto na sequência, mas jamais reutilização silenciosa do
- * número — para documento oficial, um número não utilizado é menos grave que
- * dois documentos diferentes com o mesmo protocolo.
- */
-function oficiosChaveSequencia_(ano) {
-  return "OFICIOS_SEQUENCIA_" + String(ano || "").trim();
-}
-
-function oficiosNumeroDoAno_(valor, ano) {
-  var texto = String(valor || "").trim();
-  var m = texto.match(/^(\d+)\s*\/\s*(\d{4})$/);
-  if (!m || m[2] !== String(ano)) return 0;
-  var n = parseInt(m[1], 10);
-  return isNaN(n) ? 0 : n;
-}
-
-function oficiosMaiorNumeroConhecido_(ss, sheetControle, colNumero, ano) {
-  var maior = PRIMEIRO_OFICIO_PLATAFORMA - 1;
-
-  function considerar(valor) {
-    var n = oficiosNumeroDoAno_(valor, ano);
-    if (n > maior) maior = n;
-  }
-
-  if (sheetControle && colNumero && sheetControle.getLastRow() > 1) {
-    sheetControle
-      .getRange(2, colNumero, sheetControle.getLastRow() - 1, 1)
-      .getValues()
-      .forEach(function(r) { considerar(r[0]); });
-  }
-
-  try {
-    var shFila = ss.getSheetByName("FILA_ENVIO_OFICIOS");
-    if (shFila && shFila.getLastRow() > 1) {
-      var hmFila = getHeaderMap_(shFila);
-      var colFila = hmFila["NUMERO_OFICIO"];
-      if (colFila) {
-        shFila
-          .getRange(2, colFila, shFila.getLastRow() - 1, 1)
-          .getValues()
-          .forEach(function(r) { considerar(r[0]); });
-      }
-    }
-  } catch (eFila) {
-    Logger.log("oficiosMaiorNumeroConhecido_.fila: " + eFila.message);
-  }
-
-  var props = PropertiesService.getScriptProperties();
-
-  try {
-    considerar(props.getProperty("TAXA_ASSISTENCIAL_NUMERO_OFICIO"));
-  } catch (eTaxa) {
-    Logger.log("oficiosMaiorNumeroConhecido_.taxa: " + eTaxa.message);
-  }
-
-  try {
-    var reservado = parseInt(props.getProperty(oficiosChaveSequencia_(ano)) || "0", 10);
-    if (!isNaN(reservado) && reservado > maior) maior = reservado;
-  } catch (eSeq) {
-    Logger.log("oficiosMaiorNumeroConhecido_.sequencia: " + eSeq.message);
-  }
-
-  return maior;
-}
-
-function preverProximoNumeroOficio() {
-  var ss    = SpreadsheetApp.openById(PLANILHA_ID);
-  var sheet = ss.getSheetByName(PLANILHA_REGISTRO);
-  if (!sheet) throw new Error("Aba de registro não encontrada.");
-
-  var headerMap = getHeaderMap_(sheet);
-  var colNumero = headerMap["Número do Ofício"];
-  if (!colNumero) throw new Error("Coluna 'Número do Ofício' não encontrada.");
-
-  var ano = anoAtual_();
-  var maiorNumero = oficiosMaiorNumeroConhecido_(ss, sheet, colNumero, ano);
-  var proximo = String(maiorNumero + 1).padStart(3, "0") + "/" + ano;
-  Logger.log("Prévia do próximo número: " + proximo);
-  return proximo;
-}
-
-function gerarProximoNumeroSeguro() {
-  var trava = travarSisgep_(15000);
-
-  try {
-    var ss    = SpreadsheetApp.openById(PLANILHA_ID);
-    var sheet = ss.getSheetByName(PLANILHA_REGISTRO);
-    var ano   = anoAtual_();
-    if (!sheet) throw new Error("Aba de registro não encontrada.");
-
-    var headerMap = getHeaderMap_(sheet);
-    var colNumero = headerMap["Número do Ofício"];
-    if (!colNumero) throw new Error("Coluna 'Número do Ofício' não encontrada.");
-
-    var maiorNumero = oficiosMaiorNumeroConhecido_(ss, sheet, colNumero, ano);
-    var proximoNumero = maiorNumero + 1;
-
-    PropertiesService.getScriptProperties()
-      .setProperty(oficiosChaveSequencia_(ano), String(proximoNumero));
-
-    var proximo = String(proximoNumero).padStart(3, "0") + "/" + ano;
-    Logger.log("gerarProximoNumeroSeguro [RESERVADO]: " + proximo);
-    return proximo;
-
-  } finally {
-    trava.liberar();
-  }
-}
-
-'''
-
-          updated = text[:start] + replacement + text[end:]
-          if updated == text:
-              raise SystemExit("Nenhuma alteração produzida")
-          if updated.count("function gerarProximoNumeroSeguro()") != 1:
-              raise SystemExit("Quantidade inesperada de gerarProximoNumeroSeguro")
-          if "OFICIOS_SEQUENCIA_" not in updated:
-              raise SystemExit("Reserva anual não foi inserida")
-          path.write_text(updated, encoding="utf-8")
+          start = s.index(start_marker)
+          end = s.index(end_marker, start)
+          replacement = base64.b64decode(os.environ["REPLACEMENT_B64"]).decode("utf-8")
+          out = s[:start] + replacement + s[end:]
+          assert out.count("function gerarProximoNumeroSeguro()") == 1
+          assert "OFICIOS_SEQUENCIA_" in out
+          p.write_text(out, encoding="utf-8")
           PY
-
-      - name: Validar sintaxe e escopo da alteracao
+      - name: Validar e commitar
         shell: bash
         run: |
           set -euo pipefail
           node --check Oficios.js
           git diff --check
-          test "$(git diff --name-only | wc -l)" -eq 1
           test "$(git diff --name-only)" = "Oficios.js"
           grep -q 'setProperty(oficiosChaveSequencia_(ano), String(proximoNumero))' Oficios.js
-          grep -q 'gerarProximoNumeroSeguro \[RESERVADO\]' Oficios.js
-
-      - name: Commitar somente a correcao
-        shell: bash
-        run: |
-          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add Oficios.js
