@@ -1,0 +1,25 @@
+name: Validar correcao testes email Oficios
+
+on:
+  push:
+    branches: ["correcao/testes-email-oficios-hml"]
+
+permissions:
+  contents: read
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar dependencias
+        run: npm ci || npm install
+      - name: Testar envio com anexos
+        run: node tests/e2e/t56-envio-anexa-ficha.js
+      - name: Testar filaId unico
+        run: node tests/e2e/t57-envio-fila-id-unico.js
+      - name: Rodar suite completa
+        run: npm test
