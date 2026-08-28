@@ -62,7 +62,7 @@ jobs:
             if (!v) return null;
 
             // Datas vindas de <input type="date"> chegam como AAAA-MM-DD.
-            // `new Date("AAAA-MM-DD")` interpreta esse formato em UTC; no
+            // new Date("AAAA-MM-DD") interpreta esse formato em UTC; no
             // fuso de Sao Paulo ele pode virar o dia anterior. Para filtros
             // de auditoria, AAAA-MM-DD e uma DATA CIVIL LOCAL, nao um instante
             // UTC. Timestamps completos continuam seguindo o parser nativo.
