@@ -1,0 +1,79 @@
+name: Snapshot limpo da producao - Documentos
+
+on:
+  push:
+    branches: ["correcao/documentos-numeracao-atomica"]
+    paths: [".github/workflows/snapshot-producao-limpa-documentos.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout da main como base estrutural
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Configurar Node e clasp
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar clasp
+        run: npm install -g @google/clasp
+
+      - name: Remover somente fontes Apps Script existentes no checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          find . -maxdepth 1 -type f \( \
+            -name '*.gs' -o \
+            -name '*.js' -o \
+            -name '*.html' -o \
+            -name 'appsscript.json' \
+          \) -print -delete
+
+      - name: Baixar producao em modo somente leitura
+        shell: bash
+        env:
+          SCRIPT_ID: 1BoKA6pOOT751zmxahnvSgT2CJDgMpUPMvZj-X0HjDx_tCHLnXOqxVVqa
+        run: |
+          set -euo pipefail
+          printf '%s' '${{ secrets.CLASPRC_JSON }}' > "$HOME/.clasprc.json"
+          test -s "$HOME/.clasprc.json" || { echo '::error::CLASPRC_JSON ausente'; exit 1; }
+          printf '{"scriptId":"%s","rootDir":"."}' "$SCRIPT_ID" > .clasp.json
+          clasp pull
+
+      - name: Validar que o snapshot veio do Apps Script
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f appsscript.json
+          test -f Oficios.js
+          test -f SistemaConfig.js
+          node --check Oficios.js
+          node --check SistemaConfig.js
+          if find . -maxdepth 1 -type f -name '*.gs' | grep -q .; then
+            echo '::error::Snapshot limpo nao deveria conter .gs residuais do checkout.'
+            exit 1
+          fi
+
+      - name: Publicar branch de snapshot limpo
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .clasp.json "$HOME/.clasprc.json"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B auditoria/producao-limpa
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'Nenhuma divergencia para registrar.'
+            exit 0
+          fi
+          git commit -m "chore(auditoria): snapshot limpo do Apps Script de producao"
+          git push -f -u origin auditoria/producao-limpa
