@@ -657,7 +657,7 @@ function abrirWhatsAppRecibo_(numeroRecibo, telefone, nome, processo, empresa, u
   }
 
   if(!numeroLimpo){
-    alert("WhatsApp não informado.");
+    toast("WhatsApp não informado.", "warn");
     return;
   }
 
@@ -675,7 +675,7 @@ function abrirWhatsAppRecibo_(numeroRecibo, telefone, nome, processo, empresa, u
 
 function abrirVisualizacaoReciboGerado_(url, titulo, downloadUrl){
   if(!url && !downloadUrl){
-    alert("Arquivo não disponível.");
+    toast("Arquivo não disponível.", "warn");
     return;
   }
 
@@ -823,14 +823,14 @@ function gerarCorpoEmailReciboHTML_(nome, numero, processo, empresa, urlPdf){
 
 function enviarEmailReciboIndividual_(urlPdf, email, nome, numero, valor, processo, empresa, cardId){
   if(!email || !urlPdf){
-    alert("Dados insuficientes para envio.");
+    toast("Dados insuficientes para envio.", "warn");
     return;
   }
 
   var btnEl = document.getElementById(cardId + "_btnEmail");
 
   if(btnEl && btnEl.dataset.enviado === "1"){
-    alert("Este recibo já foi enviado.");
+    toast("Este recibo já foi enviado.", "warn");
     return;
   }
 
@@ -863,7 +863,7 @@ function enviarEmailReciboIndividual_(urlPdf, email, nome, numero, valor, proces
           btnEl.textContent = "📧 E-mail";
         }
 
-        alert("Erro ao enviar: " + (ret.mensagem || ""));
+        toast("Erro ao enviar: " + (ret.mensagem || ""), "err");
         return;
       }
 
@@ -877,7 +877,7 @@ function enviarEmailReciboIndividual_(urlPdf, email, nome, numero, valor, proces
         btnEl.dataset.enviado = "1";
       }
 
-      alert("✅ E-mail enviado com sucesso para " + email + "!");
+      toast("E-mail enviado com sucesso para " + email + "!", "ok");
     })
     .withFailureHandler(function(err){
       loader(false);
@@ -887,7 +887,7 @@ function enviarEmailReciboIndividual_(urlPdf, email, nome, numero, valor, proces
         btnEl.textContent = "📧 E-mail";
       }
 
-      alert("Falha ao enviar: " + ((err && err.message) || err || ""));
+      toast("Falha ao enviar: " + ((err && err.message) || err || ""), "err");
     })
     .enviarReciboManualPorEmail({
       destino: email,
@@ -994,7 +994,7 @@ function modoReciboPosGeracao(res){
       var destino = emailEl ? String(emailEl.value || "").trim() : "";
 
       if(!destino){
-        alert("Informe o e-mail no campo do processo.");
+        toast("Informe o e-mail no campo do processo.", "warn");
         if(emailEl) emailEl.focus();
         return;
       }
@@ -1002,7 +1002,7 @@ function modoReciboPosGeracao(res){
       var resultado = window.__ULTIMO_RESULTADO_RECIBO__;
 
       if(!resultado || !resultado.arquivos || !resultado.arquivos.length){
-        alert("Nenhum recibo disponível para envio.");
+        toast("Nenhum recibo disponível para envio.", "warn");
         return;
       }
 
@@ -1028,15 +1028,15 @@ function modoReciboPosGeracao(res){
           loader(false);
 
           if(ret && ret.erro){
-            alert(ret.mensagem || "Erro ao enviar e-mail.");
+            toast(ret.mensagem || "Erro ao enviar e-mail.", "err");
             return;
           }
 
-          alert((ret && ret.mensagem) || "E-mail enviado com sucesso!");
+          toast((ret && ret.mensagem) || "E-mail enviado com sucesso!", "ok");
         })
         .withFailureHandler(function(err){
           loader(false);
-          alert("Erro ao enviar e-mail: " + ((err && err.message) || err || ""));
+          toast("Erro ao enviar e-mail: " + ((err && err.message) || err || ""), "err");
         })
         .enviarReciboManualPorEmail({
           destino: destino,
@@ -1057,7 +1057,7 @@ function modoReciboPosGeracao(res){
       var resultado = window.__ULTIMO_RESULTADO_RECIBO__;
 
       if(!resultado || !resultado.arquivos || !resultado.arquivos.length){
-        alert("Nenhum recibo disponível.");
+        toast("Nenhum recibo disponível.", "warn");
         return;
       }
 
@@ -1411,30 +1411,30 @@ function montarLinhaBeneficiarioRecibo(dados){
   }
 
   function validarLinhaParaAcao(d, exigeRecibo){
-    if(!d.nome){ alert("Informe o nome do beneficiário."); nomeEl.focus(); return false; }
-    if(!d.cpf){ alert("Informe o CPF."); cpfEl.focus(); return false; }
-    if(String(d.cpf).replace(/\D/g,"").length !== 11){ alert("Informe um CPF válido."); cpfEl.focus(); return false; }
-    if(!d.valor || d.valor === "0,00"){ alert("Informe o valor."); valorEl.focus(); return false; }
+    if(!d.nome){ toast("Informe o nome do beneficiário.", "warn"); nomeEl.focus(); return false; }
+    if(!d.cpf){ toast("Informe o CPF.", "warn"); cpfEl.focus(); return false; }
+    if(String(d.cpf).replace(/\D/g,"").length !== 11){ toast("Informe um CPF válido.", "warn"); cpfEl.focus(); return false; }
+    if(!d.valor || d.valor === "0,00"){ toast("Informe o valor.", "warn"); valorEl.focus(); return false; }
 
     if(d.formaPagamento === "PIX" && !d.pix){
-      alert("Informe a chave PIX.");
+      toast("Informe a chave PIX.", "warn");
       pixEl.focus();
       return false;
     }
 
     if(d.formaPagamento === "CHEQUE"){
-      if(!d.chequeBanco){ alert("Informe o banco."); chequeBancoEl.focus(); return false; }
-      if(!d.chequeAgencia){ alert("Informe a agência."); chequeAgenciaEl.focus(); return false; }
-      if(!d.chequeSerie){ alert("Informe a série."); chequeSerieEl.focus(); return false; }
-      if(!d.chequeNumero){ alert("Informe o número do cheque."); chequeNumeroEl.focus(); return false; }
-      if(!d.chequeData){ alert("Informe a data do cheque."); chequeDataEl.focus(); return false; }
+      if(!d.chequeBanco){ toast("Informe o banco.", "warn"); chequeBancoEl.focus(); return false; }
+      if(!d.chequeAgencia){ toast("Informe a agência.", "warn"); chequeAgenciaEl.focus(); return false; }
+      if(!d.chequeSerie){ toast("Informe a série.", "warn"); chequeSerieEl.focus(); return false; }
+      if(!d.chequeNumero){ toast("Informe o número do cheque.", "warn"); chequeNumeroEl.focus(); return false; }
+      if(!d.chequeData){ toast("Informe a data do cheque.", "warn"); chequeDataEl.focus(); return false; }
     }
 
-    if(!d.processo){ alert("Informe ou selecione o processo."); return false; }
-    if(!d.empresa){ alert("Informe a empresa."); return false; }
+    if(!d.processo){ toast("Informe ou selecione o processo.", "warn"); return false; }
+    if(!d.empresa){ toast("Informe a empresa.", "warn"); return false; }
 
     if(exigeRecibo && (!div.dataset.numeroRecibo || !div.dataset.urlRecibo)){
-      alert("Emita o recibo individual antes desta ação.");
+      toast("Emita o recibo individual antes desta ação.", "warn");
       return false;
     }
 
@@ -1449,7 +1449,7 @@ function montarLinhaBeneficiarioRecibo(dados){
 
       var novaAba = window.open("", "_blank");
       if(!novaAba){
-        alert("O navegador bloqueou a pré-visualização.");
+        toast("O navegador bloqueou a pré-visualização.", "warn");
         return;
       }
 
@@ -1461,7 +1461,7 @@ function montarLinhaBeneficiarioRecibo(dados){
 
           if(!html){
             try{ novaAba.close(); }catch(_){}
-            alert("Não foi possível gerar a pré-visualização.");
+            toast("Não foi possível gerar a pré-visualização.", "err");
             return;
           }
 
@@ -1472,7 +1472,7 @@ function montarLinhaBeneficiarioRecibo(dados){
         .withFailureHandler(function(err){
           loader(false);
           try{ novaAba.close(); }catch(_){}
-          alert("Erro ao gerar pré-visualização: " + ((err && err.message) || err || ""));
+          toast("Erro ao gerar pré-visualização: " + ((err && err.message) || err || ""), "err");
         })
         .previewReciboWeb({
           nome: d.nome,
@@ -1516,7 +1516,7 @@ function montarLinhaBeneficiarioRecibo(dados){
 
           if(!res || res.erro || !res.arquivos || !res.arquivos.length){
             if(botao) botao.textContent = "📄 Emitir";
-            alert((res && res.mensagem) || "Erro ao emitir recibo individual.");
+            toast((res && res.mensagem) || "Erro ao emitir recibo individual.", "err");
             return;
           }
 
@@ -1545,7 +1545,7 @@ function montarLinhaBeneficiarioRecibo(dados){
             botao.textContent = "📄 Emitir";
           }
 
-          alert("Erro ao emitir recibo individual: " + ((err && err.message) || err || ""));
+          toast("Erro ao emitir recibo individual: " + ((err && err.message) || err || ""), "err");
         })
         .gerarReciboWeb({
           idProcesso: document.getElementById("recProcessoSelect")
@@ -1584,7 +1584,7 @@ function montarLinhaBeneficiarioRecibo(dados){
       if(!validarLinhaParaAcao(d, true)) return;
 
       if(!d.whatsapp){
-        alert("Informe o WhatsApp do beneficiário.");
+        toast("Informe o WhatsApp do beneficiário.", "warn");
         whatsEl.focus();
         return;
       }
@@ -1605,13 +1605,13 @@ function montarLinhaBeneficiarioRecibo(dados){
       if(!validarLinhaParaAcao(d, true)) return;
 
       if(!d.email){
-        alert("Informe o e-mail do beneficiário.");
+        toast("Informe o e-mail do beneficiário.", "warn");
         emailEl.focus();
         return;
       }
 
       if(!isEmailValido(d.email)){
-        alert("O e-mail informado é inválido.");
+        toast("O e-mail informado é inválido.", "warn");
         emailEl.focus();
         return;
       }
@@ -2057,7 +2057,7 @@ window.Recibo = {
     var novaAba = window.open("", "_blank");
 
     if(!novaAba){
-      alert("O navegador bloqueou a pré-visualização.");
+      toast("O navegador bloqueou a pré-visualização.", "warn");
       return;
     }
 
@@ -2177,7 +2177,7 @@ window.ReciboUI = {
     var modal  = document.getElementById("modalNovoProcessoRecibo");
 
     if(!select || !select.value){
-      alert("Selecione um processo para editar.");
+      toast("Selecione um processo para editar.", "warn");
       return;
     }
 
@@ -2207,7 +2207,7 @@ window.ReciboUI = {
     };
 
     if(!dados.processo || !dados.empresa || !dados.valorTotal){
-      alert("Preencha todos os campos obrigatórios.");
+      toast("Preencha todos os campos obrigatórios.", "warn");
       return;
     }
 
@@ -2220,20 +2220,20 @@ window.ReciboUI = {
         loader(false);
 
         if(res && res.erro){
-          alert(res.mensagem || "Erro ao salvar processo.");
+          toast(res.mensagem || "Erro ao salvar processo.", "err");
           return;
         }
 
         ReciboUI.fecharModalProcesso();
 
-        alert(dados.idProcesso ? "✏️ Atualizado!" : "✅ Cadastrado!");
+        toast(dados.idProcesso ? "Atualizado!" : "Cadastrado!", "ok");
 
         ReciboUI.carregarProcessos();
       })
       .withFailureHandler(function(err){
         loader(false);
-        alert((err && err.message) || err || "Erro ao salvar processo.");
-      })[metodo](dados);
+        toast((err && err.message) || err || "Erro ao salvar processo.", "err");
+      })[metodo](dados, SISGEP_TOKEN_SESSAO);
   },
 
   carregarProcessos: function(callback){
@@ -2293,7 +2293,7 @@ aplicarProcessoSelecionado: function(){
     var select = document.getElementById("recProcessoSelect");
 
     if(!select || !select.value){
-      alert("Selecione um processo.");
+      toast("Selecione um processo.", "warn");
       return;
     }
 
@@ -2306,11 +2306,11 @@ aplicarProcessoSelecionado: function(){
         loader(false);
 
         if(res && res.erro){
-          alert(res.mensagem || "Erro ao excluir processo.");
+          toast(res.mensagem || "Erro ao excluir processo.", "err");
           return;
         }
 
-        alert("Excluído!");
+        toast("Excluído!", "ok");
 
         ReciboUI.carregarProcessos(function(){
           limparCamposProcessoRecibo();
@@ -2319,7 +2319,7 @@ aplicarProcessoSelecionado: function(){
       })
       .withFailureHandler(function(err){
         loader(false);
-        alert((err && err.message) || err || "Erro ao excluir processo.");
+        toast((err && err.message) || err || "Erro ao excluir processo.", "err");
       })
       .excluirProcessoRecibo(select.value, SISGEP_TOKEN_SESSAO);
   }
@@ -3248,9 +3248,8 @@ function initRecibos(){
   var recValor = document.getElementById("recValor");
   if(recValor && !recValor.dataset.maskedMoney){
     recValor.addEventListener("input", function(){
-      if(typeof Utils !== "undefined" && typeof Utils.aplicarMascaraMoeda === "function"){
-        Utils.aplicarMascaraMoeda(this);
-      }
+      var v = this.value.replace(/\D/g, "");
+      this.value = v ? (parseInt(v, 10) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
       atualizarConferenciaRecibo();
     });
 
@@ -3427,52 +3426,6 @@ btnGerarRecibo: function(){
   atualizarConferenciaRecibo();
 }
 
-/* ─────────────────────────────
-   RESUMO FINANCEIRO
-───────────────────────────── */
-function carregarResumoProcessos(){
-  google.script.run
-    .withSuccessHandler(function(res){
-      if(res && res.erro){
-        console.error(res.mensagem);
-        return;
-      }
-
-      var box = document.getElementById("resumoProcessos");
-      if(!box) return;
-
-      var html = '<table style="width:100%;border-collapse:collapse;">';
-
-      html +=
-        '<tr style="background:#f1f5f9;">' +
-          '<th>Processo</th>' +
-          '<th>Total</th>' +
-          '<th>Pago</th>' +
-          '<th>Saldo</th>' +
-          '<th>%</th>' +
-        '</tr>';
-
-      (res.dados || []).forEach(function(p){
-        html +=
-          '<tr>' +
-            '<td>' + escapeHtml(p.processo || "") + '</td>' +
-            '<td>R$ ' + Number(p.total || 0).toFixed(2) + '</td>' +
-            '<td style="color:green;">R$ ' + Number(p.pago || 0).toFixed(2) + '</td>' +
-            '<td style="color:red;">R$ ' + Number(p.saldo || 0).toFixed(2) + '</td>' +
-            '<td>' + escapeHtml(p.percentual || "0") + '%</td>' +
-          '</tr>';
-      });
-
-      html += '</table>';
-
-      box.innerHTML = html;
-    })
-    .withFailureHandler(function(err){
-      console.error("Erro ao carregar resumo de processos:", err);
-    })
-    .resumoFinanceiroPorProcesso(SISGEP_TOKEN_SESSAO);
-}
-
 function atualizarResumoFinanceiroProcesso(){
   var select = document.getElementById("recProcessoSelect");
   if(!select || !select.value) return;
@@ -3503,10 +3456,10 @@ function atualizarResumoFinanceiroProcesso(){
   var _iniciado = false;
 
   function iniciarSeVisivel(){
-    var sec = document.getElementById("secRecibos");
+    var sec = document.getElementById("docSubRecibos");
     if(!sec) return;
 
-    if(sec.classList.contains("ativa") && !_iniciado){
+    if(sec.style.display !== "none" && !_iniciado){
       _iniciado = true;
       setTimeout(function(){
         initRecibos();
@@ -3515,14 +3468,14 @@ function atualizarResumoFinanceiroProcesso(){
   }
 
   function configurarObserver(){
-    var sec = document.getElementById("secRecibos");
+    var sec = document.getElementById("docSubRecibos");
     if(!sec) return;
 
     new MutationObserver(function(){
       if(!_iniciado){
         iniciarSeVisivel();
       }
-    }).observe(sec, { attributes: true, attributeFilter: ["class"] });
+    }).observe(sec, { attributes: true, attributeFilter: ["style"] });
   }
 
   if(document.readyState === "loading"){

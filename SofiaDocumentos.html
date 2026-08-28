@@ -560,7 +560,7 @@ window.sofiaDocGerarTexto = function() {
       if (loader && loader.parentNode) loader.remove();
       sofiaAlerta("Erro ao gerar texto: " + ((err && err.message) || err), "err");
     })
-    .iaAssistente(prompt);
+    .iaAssistente(prompt, SISGEP_TOKEN_SESSAO);
 };
 
 function sofiaExibirTexto(texto) {
@@ -621,7 +621,7 @@ window.sofiaDocChat = function() {
       if (loader && loader.parentNode) loader.remove();
       sofiaAlerta("Erro: " + ((err && err.message) || err), "err");
     })
-    .iaAssistente(prompt);
+    .iaAssistente(prompt, SISGEP_TOKEN_SESSAO);
 };
 
 /* ── Monitoramento automático do formulário ── */

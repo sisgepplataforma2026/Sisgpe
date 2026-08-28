@@ -14,6 +14,7 @@
   var _uploadArquivos = [];
   var _acItemFocado = -1;
   var _bannerDismissed = false;
+  var _despesasListenersProntos = false;
 
   /* ═══ HELPERS ═══ */
   function g(id){ return document.getElementById(id); }
@@ -81,6 +82,8 @@
     }
     if(nome==="nova") carregarFornecedoresCache();
     if(nome==="conciliacao" && typeof window.finConciliacaoInit==="function") window.finConciliacaoInit();
+    if(nome==="pagamentos" && typeof window.pagInit==="function") window.pagInit();
+    if(nome==="verbas" && typeof window.verbInit==="function") window.verbInit();
   }
 
   /* ═══ DASHBOARD ═══ */
@@ -91,7 +94,7 @@
     google.script.run
       .withSuccessHandler(onDashboard)
       .withFailureHandler(function(e){ if(loader) loader.style.display="none"; showToast("Erro: "+e.message,"error"); })
-      .obterResumoDespesas();
+      .obterResumoDespesas(SISGEP_TOKEN_SESSAO);
   }
 
   function onDashboard(resp){
@@ -169,7 +172,7 @@
         paginaAtual=1; aplicarFiltros();
       })
       .withFailureHandler(function(e){ if(loader) loader.style.display="none"; showToast("Erro: "+e.message,"error"); })
-      .listarDespesas({});
+      .listarDespesas({}, SISGEP_TOKEN_SESSAO);
   }
 
   function aplicarFiltros(){
@@ -179,11 +182,18 @@
         categoria=val("f-categoria"),
         tipo=val("f-tipo"),
         venc=vc?vc.value:val("f-venc");
+    var mesSel=val("f-mes"), anoSel=val("f-ano");
     despesasFiltradas=todasDespesas.filter(function(d){
       if(status && d.status!==status) return false;
       if(categoria && normText(d.categoria)!==normText(categoria)) return false;
       if(tipo && (d.tipoLancamento||"recorrente")!==tipo) return false;
       if(venc && d.statusVencimento!==venc) return false;
+      if(mesSel||anoSel){
+        var p=(d.dataVencimentoBR||"").split("/");
+        if(p.length!==3) return false;
+        if(mesSel && p[1]!==mesSel) return false;
+        if(anoSel && p[2]!==anoSel) return false;
+      }
       if(busca){ var txt=normText([d.prestadorNome,d.descricao,d.numeroDespesa,d.categoria].join(" ")); if(txt.indexOf(busca)===-1) return false; }
       return true;
     });
@@ -219,7 +229,7 @@
   }
 
   function limparFiltros(){
-    ["f-busca","f-status","f-categoria","f-tipo","f-venc","f-status-chip","f-venc-chip","f-data-ini","f-data-fim"].forEach(function(id){ var el=g(id); if(el) el.value=""; });
+    ["f-busca","f-status","f-categoria","f-tipo","f-venc","f-status-chip","f-venc-chip","f-data-ini","f-data-fim","f-mes","f-ano"].forEach(function(id){ var el=g(id); if(el) el.value=""; });
     document.querySelectorAll("#chips-status .chip").forEach(function(c,i){ c.className="chip"+(i===0?" ativo":""); });
     document.querySelectorAll("#chips-venc .chip").forEach(function(c,i){ c.className="chip"+(i===0?" ativo":""); });
     document.querySelectorAll(".chip-periodo").forEach(function(c,i){ c.classList.toggle("ativo",i===0); });
@@ -302,18 +312,32 @@
     }
     if(st==="DOC_RECEBIDO"){
       acoes+='<button class="ac-btn ac-amber" data-acao="anexar" data-idx="'+idx+'">📎 Ver Doc</button>';
-    } else if(st!=="PAGO"&&st!=="CANCELADO"&&st!=="ENVIADO_CONTABILIDADE"){
+      acoes+='<button class="ac-btn" data-acao="remover-anexo" data-idx="'+idx+'" style="height:26px;padding:0 9px;border-radius:7px;border:1.5px solid #fca5a5;background:#fef2f2;color:#991b1b;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:\'Plus Jakarta Sans\',sans-serif;" title="Remove o documento anexado e volta a despesa para Pendente">↩ Remover Anexo</button>';
+    } else if(st!=="PAGO"&&st!=="CANCELADO"&&st!=="ENVIADO_CONTABILIDADE"&&st!=="ESTORNADO"){
       acoes+='<button class="ac-btn ac-amber" data-acao="anexar" data-idx="'+idx+'">📎 Anexar</button>';
     }
-    if(st!=="PAGO"&&st!=="CANCELADO"&&st!=="ENVIADO_CONTABILIDADE"){
+    if(st==="CANCELADO"){
+      acoes+='<button class="ac-btn" data-acao="remover-anexo" data-idx="'+idx+'" style="height:26px;padding:0 9px;border-radius:7px;border:1.5px solid #86efac;background:#f0fdf4;color:#166534;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:\'Plus Jakarta Sans\',sans-serif;" title="Reativa a despesa e volta para Pendente">↺ Reativar</button>';
+    }
+    if(st!=="PAGO"&&st!=="CANCELADO"&&st!=="ENVIADO_CONTABILIDADE"&&st!=="ESTORNADO"){
       acoes+='<button class="ac-btn ac-edit" data-acao="editar" data-idx="'+idx+'">✏️</button>';
     }
-    if(st!=="PAGO"&&st!=="CANCELADO"){
-      acoes+='<button class="ac-btn ac-green" data-acao="pago" data-idx="'+idx+'">✅ Pago</button>';
+    if(st!=="PAGO"&&st!=="CANCELADO"&&st!=="ESTORNADO"){
+      if(d.aprovadoParaPagamento){
+        acoes+='<button class="ac-btn ac-green" data-acao="pago" data-idx="'+idx+'">✅ Pago</button>';
+      } else {
+        acoes+='<button class="ac-btn" data-acao="aprovar" data-idx="'+idx+'" style="height:26px;padding:0 9px;border-radius:7px;border:1.5px solid #fde68a;background:#fffbeb;color:#92400e;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:\'Plus Jakarta Sans\',sans-serif;" title="Aprovar para pagamento">🔓 Aprovar</button>';
+      }
+    }
+    if(st==="PAGO"){
+      acoes+='<button class="ac-btn" data-acao="estornar" data-idx="'+idx+'" style="height:26px;padding:0 9px;border-radius:7px;border:1.5px solid #c4b5fd;background:#f5f3ff;color:#5b21b6;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:\'Plus Jakarta Sans\',sans-serif;" title="Estornar pagamento">↩ Estornar</button>';
+    }
+    if(st==="ENVIADO_CONTABILIDADE"){
+      acoes+='<button class="ac-btn" data-acao="desfazer-envio" data-idx="'+idx+'" style="height:26px;padding:0 9px;border-radius:7px;border:1.5px solid #fca5a5;background:#fef2f2;color:#991b1b;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:\'Plus Jakarta Sans\',sans-serif;" title="Desfaz o envio à contabilidade e volta para Documento Recebido">↩ Desfazer Envio</button>';
     }
     if(st==="PENDENTE"||st==="AGUARDANDO_DOC"||st==="CANCELADO"){
       acoes+='<button class="ac-btn ac-red" data-acao="excluir" data-idx="'+idx+'">🗑️</button>';
-    } else if(st!=="PAGO"&&st!=="ENVIADO_CONTABILIDADE"){
+    } else if(st!=="PAGO"&&st!=="ENVIADO_CONTABILIDADE"&&st!=="ESTORNADO"){
       acoes+='<button class="ac-btn ac-red" data-acao="cancelar" data-idx="'+idx+'">✕</button>';
     }
     if(st!=="CANCELADO"){
@@ -332,7 +356,11 @@
         if(acao==="solicitar-nf") abrirModalSolicitarNF(d);
         if(acao==="anexar")       abrirModalUpload(d.idDespesa,d.prestadorNome,d.valor);
         if(acao==="pago")         abrirModalPago(d.idDespesa,d.prestadorNome,d.valor);
+        if(acao==="aprovar")      aprovarDespesaUI(d.idDespesa,d.prestadorNome);
+        if(acao==="estornar")     abrirModalEstornar(d.idDespesa,d.prestadorNome);
         if(acao==="cancelar")     abrirModalCancelar(d.idDespesa,d.prestadorNome);
+        if(acao==="remover-anexo") removerAnexoUI(d.idDespesa,d.prestadorNome,d.status);
+        if(acao==="desfazer-envio") desfazerEnvioContabilidadeUI(d.idDespesa,d.prestadorNome);
         if(acao==="editar")       abrirModalEditar(d);
         if(acao==="excluir")      abrirModalExcluir(d.idDespesa,d.prestadorNome,d.status);
         if(acao==="duplicar")     abrirModalDuplicar(d);
@@ -391,7 +419,7 @@
     google.script.run
       .withSuccessHandler(function(resp){ _fornecedores=(resp&&resp.ok&&resp.lista)?resp.lista:[]; })
       .withFailureHandler(function(){ showToast("Erro ao carregar prestadores.","error"); })
-      .listarPrestadoresDesp({});
+      .listarPrestadoresDesp({}, SISGEP_TOKEN_SESSAO);
   }
 
   function buscarFornecedorPorNome(nome){
@@ -468,7 +496,7 @@
   }
 
   /* ═══ NOVA DESPESA ═══ */
-  function salvarNovaDespesa(){
+  function salvarNovaDespesa(confirmarDuplicidade){
     var err=g("nova-err"),ok=g("nova-ok");
     if(err) err.classList.remove("show"); if(ok) ok.classList.remove("show");
     var isAv=g("r-avulso")&&g("r-avulso").checked;
@@ -487,18 +515,25 @@
       .withSuccessHandler(function(resp){
         if(btn){ btn.disabled=false; btn.innerHTML="💾 Salvar Despesa"; }
         if(resp&&resp.ok){ if(ok){ ok.textContent="✅ "+(resp.mensagem||"Despesa salva!"); ok.classList.add("show"); } limparFormNova(); todasDespesas=[]; window.todasDespesas=[]; carregarDashboard(); showToast("Despesa "+(resp.numeroDespesa||"")+" registrada!","success"); }
+        else if(resp&&resp.duplicado){
+          if(confirm((resp.mensagem||"Possível despesa duplicada.")+"\n\nDeseja salvar mesmo assim?")) salvarNovaDespesa(true);
+          else if(err){ err.textContent=resp.mensagem; err.classList.add("show"); }
+        }
         else { if(err){ err.textContent="Erro: "+((resp&&resp.mensagem)||"Falha."); err.classList.add("show"); } }
       })
       .withFailureHandler(function(e){ if(btn){ btn.disabled=false; btn.innerHTML="💾 Salvar Despesa"; } if(err){ err.textContent="Erro: "+e.message; err.classList.add("show"); } })
-      .registrarLancamentoDespesa({ tipoLancamento:isAv?"avulso":"recorrente", categoria:categoria, prestadorNome:nome, prestadorDoc:docF, prestadorEmail:emailF, prestadorWhats:whatsF, descricao:desc, valor:valor, dataVencimento:vencBR, quemAgendou:quem, tipoDoc:tipodoc, observacoes:obs });
+      .registrarLancamentoDespesa({ tipoLancamento:isAv?"avulso":"recorrente", categoria:categoria, prestadorNome:nome, prestadorDoc:docF, prestadorEmail:emailF, prestadorWhats:whatsF, descricao:desc, valor:valor, dataVencimento:vencBR, quemAgendou:quem, tipoDoc:tipodoc, observacoes:obs, centroCusto:val("n-centro-custo"), projetoId:val("n-projeto"), formaPagamento:val("n-forma-pagamento"), numeroNf:val("n-numero-nf"), confirmarDuplicidade:!!confirmarDuplicidade }, SISGEP_TOKEN_SESSAO);
   }
 
   function limparFormNova(){
     _fornSelecionado=null;
     if(g("n-busca-forn")) g("n-busca-forn").value="";
     var card=g("forn-selecionado-card"); if(card) card.classList.remove("visivel");
-    ["n-nome-avulso","n-doc-avulso","n-email-avulso","n-whats-avulso","n-valor","n-desc","n-obs"].forEach(function(id){ var el=g(id); if(el) el.value=""; });
+    ["n-nome-avulso","n-doc-avulso","n-email-avulso","n-whats-avulso","n-valor","n-desc","n-obs","n-numero-nf"].forEach(function(id){ var el=g(id); if(el) el.value=""; });
     if(g("n-categoria")) g("n-categoria").value="";
+    if(g("n-forma-pagamento")) g("n-forma-pagamento").value="";
+    if(g("n-centro-custo")) g("n-centro-custo").value="";
+    if(g("n-projeto")) g("n-projeto").value="";
     if(g("n-tipodoc")) g("n-tipodoc").value="NF";
     if(g("n-quem")) g("n-quem").value=g("n-quem").options[0].value;
     definirDataHoje("n-vencimento");
@@ -512,7 +547,7 @@
     var loader=g("lote-loader"),content=g("lote-content"),vazia=g("lote-vazio"),err=g("lote-err"),ok=g("lote-ok");
     if(loader) loader.style.display="flex"; if(content) content.style.display="none"; if(vazia) vazia.style.display="none";
     if(err) err.classList.remove("show"); if(ok) ok.classList.remove("show");
-    google.script.run.withSuccessHandler(onLoteRecebido).withFailureHandler(function(e){ if(loader) loader.style.display="none"; showToast("Erro: "+e.message,"error"); }).listarDespesasParaEnvioContabilidade();
+    google.script.run.withSuccessHandler(onLoteRecebido).withFailureHandler(function(e){ if(loader) loader.style.display="none"; showToast("Erro: "+e.message,"error"); }).listarDespesasParaEnvioContabilidade(SISGEP_TOKEN_SESSAO);
   }
 
   function onLoteRecebido(resp){
@@ -615,7 +650,7 @@
         else { showToast("Erro: " + ((resp && resp.mensagem) || "Falha."), "error"); }
       })
       .withFailureHandler(function(e){ showToast("Erro: " + e.message, "error"); })
-      .cancelarEnvioDespesaLote(despesa.idDespesa);
+      .cancelarEnvioDespesaLote(despesa.idDespesa, SISGEP_TOKEN_SESSAO);
   }
 
   function toggleLoteItem(i){ var cb=g("lote-cb-"+i); if(cb){ cb.checked=!cb.checked; atualizarSelecao(); } }
@@ -671,7 +706,7 @@
         if (btn) { btn.disabled = false; btn.innerHTML = "👁 Prévia do Ofício"; }
         showToast("Erro: " + e.message, "error");
       })
-      .obterPreviewOficioFiscalDesp(ids);
+      .obterPreviewOficioFiscalDesp(ids, SISGEP_TOKEN_SESSAO);
   }
 
   function abrirModalConfirmacaoEnvio() {
@@ -691,7 +726,7 @@
         if (btn) { btn.disabled = false; btn.innerHTML = "📤 Enviar Selecionadas à Contabilidade"; }
         showToast("Erro: " + e.message, "error");
       })
-      .obterPreviewOficioFiscalDesp(ids);
+      .obterPreviewOficioFiscalDesp(ids, SISGEP_TOKEN_SESSAO);
   }
 
   function renderizarModalEnvio(resp) {
@@ -782,7 +817,7 @@
         if(btnConfirmar){ btnConfirmar.disabled=false; btnConfirmar.innerHTML="📤 Confirmar Envio"; }
         showToast("Erro: "+e.message,"error");
       })
-      .enviarLoteDespesasComOficio(payload);
+      .enviarLoteDespesasComOficio(payload, SISGEP_TOKEN_SESSAO);
   }
 
   function exibirModalSucesso(r) {
@@ -809,7 +844,7 @@
   function fecharModal(id){ fecharPainel(id); }
 
   function abrirModal(id){
-    ["painel-pago","painel-cancelar","painel-solicitar-nf","painel-upload","painel-editar","painel-excluir","painel-duplicar","painel-historico"].forEach(function(pid){
+    ["painel-pago","painel-cancelar","painel-estornar","painel-solicitar-nf","painel-upload","painel-editar","painel-excluir","painel-duplicar","painel-historico"].forEach(function(pid){
       var p=g(pid); if(p) p.classList.remove("open");
     });
     var el=g(id); if(el){ el.classList.add("open"); el.scrollIntoView({behavior:"smooth",block:"start"}); }
@@ -835,7 +870,7 @@
         else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
       })
       .withFailureHandler(function(e){ showToast("Erro: "+e.message,"error"); })
-      .marcarDespesaComoPaga({ idDespesa:_idModalAtivo, dataPagamento:dataBR, observacao:(banco?"Banco: "+banco+" | ":"")+obs });
+      .marcarDespesaComoPaga({ idDespesa:_idModalAtivo, dataPagamento:dataBR, observacao:(banco?"Banco: "+banco+" | ":"")+obs }, SISGEP_TOKEN_SESSAO);
   }
 
   function abrirModalCancelar(idDespesa,nome){
@@ -854,7 +889,64 @@
         else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
       })
       .withFailureHandler(function(e){ showToast("Erro: "+e.message,"error"); })
-      .cancelarDespesa({ idDespesa:_idModalAtivo, observacao:obs||"Cancelado manualmente." });
+      .cancelarDespesa({ idDespesa:_idModalAtivo, observacao:obs||"Cancelado manualmente." }, SISGEP_TOKEN_SESSAO);
+  }
+
+  function aprovarDespesaUI(idDespesa,nome){
+    if(!confirm('Aprovar a despesa de "'+nome+'" para pagamento?')) return;
+    google.script.run
+      .withSuccessHandler(function(resp){
+        if(resp&&resp.ok){ showToast("✅ Despesa aprovada para pagamento.","success"); todasDespesas=[]; window.todasDespesas=[]; carregarLista(); }
+        else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
+      })
+      .withFailureHandler(function(e){ showToast("Erro: "+e.message,"error"); })
+      .aprovarDespesaParaPagamento({ idDespesa:idDespesa }, SISGEP_TOKEN_SESSAO);
+  }
+
+  function removerAnexoUI(idDespesa,nome,status){
+    var msg = status==="CANCELADO"
+      ? 'Reativar a despesa de "'+nome+'"? Ela volta para Pendente e qualquer anexo é removido.'
+      : 'Remover o documento anexado de "'+nome+'"? A despesa volta para Pendente, como se nada tivesse sido anexado.';
+    if(!confirm(msg)) return;
+    google.script.run
+      .withSuccessHandler(function(resp){
+        if(resp&&resp.ok){ showToast("↩ "+resp.mensagem,"success"); todasDespesas=[]; window.todasDespesas=[]; carregarLista(); carregarDashboard(); }
+        else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
+      })
+      .withFailureHandler(function(e){ showToast("Erro: "+e.message,"error"); })
+      .removerAnexoDespesa({ idDespesa:idDespesa }, SISGEP_TOKEN_SESSAO);
+  }
+
+  function desfazerEnvioContabilidadeUI(idDespesa,nome){
+    if(!confirm('Desfazer o envio à contabilidade de "'+nome+'"? Ela volta para Documento Recebido e o link já enviado deixa de funcionar.')) return;
+    google.script.run
+      .withSuccessHandler(function(resp){
+        if(resp&&resp.ok){ showToast("↩ "+resp.mensagem,"success"); todasDespesas=[]; window.todasDespesas=[]; carregarLista(); carregarDashboard(); }
+        else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
+      })
+      .withFailureHandler(function(e){ showToast("Erro: "+e.message,"error"); })
+      .cancelarEnvioContabilidadeDespesa({ idDespesa:idDespesa }, SISGEP_TOKEN_SESSAO);
+  }
+
+  function abrirModalEstornar(idDespesa,nome){
+    _idModalAtivo=idDespesa;
+    var info=g("painel-estornar-info");
+    if(info) info.innerHTML='Estornar o pagamento de <strong>'+escHtml(nome)+'</strong>? A despesa volta a ficar registrada como estornada, mas mantém o histórico de que foi paga.';
+    if(g("painel-obs-estornar")) g("painel-obs-estornar").value="";
+    abrirModal("painel-estornar");
+  }
+
+  function confirmarEstornarModal(){
+    var motivo=val("painel-obs-estornar");
+    if(!motivo){ showToast("Informe o motivo do estorno.","error"); return; }
+    fecharPainel("painel-estornar");
+    google.script.run
+      .withSuccessHandler(function(resp){
+        if(resp&&resp.ok){ showToast("↩ Despesa estornada.","success"); todasDespesas=[]; window.todasDespesas=[]; carregarLista(); carregarDashboard(); }
+        else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
+      })
+      .withFailureHandler(function(e){ showToast("Erro: "+e.message,"error"); })
+      .estornarDespesa({ idDespesa:_idModalAtivo, motivo:motivo }, SISGEP_TOKEN_SESSAO);
   }
 
   function abrirModalSolicitarNF(d){
@@ -889,7 +981,7 @@
         else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
       })
       .withFailureHandler(function(e){ if(btn){ btn.disabled=false; btn.innerHTML="📨 Enviar Solicitação"; } showToast("Erro: "+e.message,"error"); })
-      .solicitarNFDespesa({ idDespesa:_idModalAtivo, email:email, whatsapp:whats });
+      .solicitarNFDespesa({ idDespesa:_idModalAtivo, email:email, whatsapp:whats }, SISGEP_TOKEN_SESSAO);
   }
 
   function abrirModalUpload(idDespesa,nome,valor){
@@ -921,7 +1013,7 @@
             else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
           })
           .withFailureHandler(function(e){ if(pm) pm.style.display="none"; if(btn){ btn.disabled=false; btn.innerHTML="💾 Anexar Documento"; } showToast("Erro: "+e.message,"error"); })
-          .uploadDocumentoManual({ idDespesa:_idModalAtivo, arquivos:resultado, obs:obs });
+          .uploadDocumentoManual({ idDespesa:_idModalAtivo, arquivos:resultado, obs:obs }, SISGEP_TOKEN_SESSAO);
       };
       reader.readAsDataURL(arq);
     });
@@ -949,6 +1041,10 @@
     if(g("pe-categoria")) g("pe-categoria").value = d.categoria      || "";
     if(g("pe-quem"))      g("pe-quem").value      = d.quemAgendou    || "Automático";
     if(g("pe-valor"))     g("pe-valor").value     = d.valor          || "";
+    if(g("pe-centro-custo")) g("pe-centro-custo").value = d.centroCusto || "";
+    if(g("pe-projeto"))      g("pe-projeto").value      = d.projetoId   || "";
+    if(g("pe-forma-pagamento")) g("pe-forma-pagamento").value = d.formaPagamento || "";
+    if(g("pe-numero-nf"))       g("pe-numero-nf").value       = d.numeroNf       || "";
     if(g("pe-vencimento")&&d.dataVencimentoBR){
       var p=d.dataVencimentoBR.split("/");
       if(p.length===3) g("pe-vencimento").value=p[2]+"-"+p[1]+"-"+p[0];
@@ -969,7 +1065,7 @@
         else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
       })
       .withFailureHandler(function(e){ if(btn){ btn.disabled=false; btn.innerHTML="💾 Salvar Alterações"; } showToast("Erro: "+e.message,"error"); })
-      .editarDespesa({ idDespesa:_idModalAtivo, prestadorNome:val("pe-nome"), prestadorEmail:val("pe-email"), prestadorWhats:val("pe-whats"), categoria:val("pe-categoria"), tipoDoc:val("pe-tipodoc"), valor:val("pe-valor"), dataVencimento:vencBR, quemAgendou:val("pe-quem"), descricao:val("pe-desc"), observacoes:val("pe-obs") });
+      .editarDespesa({ idDespesa:_idModalAtivo, prestadorNome:val("pe-nome"), prestadorEmail:val("pe-email"), prestadorWhats:val("pe-whats"), categoria:val("pe-categoria"), tipoDoc:val("pe-tipodoc"), valor:val("pe-valor"), dataVencimento:vencBR, quemAgendou:val("pe-quem"), descricao:val("pe-desc"), observacoes:val("pe-obs"), centroCusto:val("pe-centro-custo"), projetoId:val("pe-projeto"), formaPagamento:val("pe-forma-pagamento"), numeroNf:val("pe-numero-nf") }, SISGEP_TOKEN_SESSAO);
   }
 
   function abrirModalExcluir(idDespesa,nome){
@@ -989,17 +1085,17 @@
         else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
       })
       .withFailureHandler(function(e){ showToast("Erro: "+e.message,"error"); })
-      .cancelarDespesa({ idDespesa:_idModalAtivo, observacao:obs });
+      .cancelarDespesa({ idDespesa:_idModalAtivo, observacao:obs }, SISGEP_TOKEN_SESSAO);
   }
 
   /* ═══ BADGES ═══ */
   function badgeStatus(st){
-    var mapa={ "PENDENTE":["badge-pendente","⏸ Pendente"], "AGUARDANDO_DOC":["badge-aguardando","📨 Aguardando doc"], "DOC_RECEBIDO":["badge-doc","📋 Doc recebido"], "ENVIADO_CONTABILIDADE":["badge-enviado","📤 Contabilidade"], "PAGO":["badge-pago","✅ Pago"], "CANCELADO":["badge-cancelado","✕ Cancelado"] };
+    var mapa={ "PENDENTE":["badge-pendente","⏸ Pendente"], "AGUARDANDO_DOC":["badge-aguardando","📨 Aguardando doc"], "DOC_RECEBIDO":["badge-doc","📋 Doc recebido"], "ENVIADO_CONTABILIDADE":["badge-enviado","📤 Contabilidade"], "PAGO":["badge-pago","✅ Pago"], "CANCELADO":["badge-cancelado","✕ Cancelado"], "ESTORNADO":["badge-estornado","↩ Estornado"] };
     var info=mapa[st]||["badge-pendente",st||"—"];
     return '<span class="badge '+info[0]+'">'+info[1]+'</span>';
   }
   function badgeVenc(sv,status){
-    if(status==="PAGO"||status==="CANCELADO") return "";
+    if(status==="PAGO"||status==="CANCELADO"||status==="ESTORNADO") return "";
     var mapa={"OK":["badge-venc-ok","✔ OK"],"URGENTE":["badge-venc-urgente","⏰ Urgente"],"VENCIDO":["badge-venc-vencido","⚠️ Vencido"]};
     var info=mapa[sv]; if(!info) return "";
     return '<span class="badge '+info[0]+'" style="font-size:10px;margin-top:3px;display:block;">'+info[1]+'</span>';
@@ -1017,7 +1113,7 @@
     google.script.run
       .withSuccessHandler(onRelatorioRecebido)
       .withFailureHandler(function(e){ if(loader) loader.style.display="none"; showToast("Erro: "+e.message,"error"); })
-      .listarDespesas({});
+      .listarDespesas({}, SISGEP_TOKEN_SESSAO);
   }
 
   function onRelatorioRecebido(resp) {
@@ -1109,7 +1205,7 @@
   function abrirHistorico(idDespesa, titulo) {
     var painel=g("painel-historico"),info=g("painel-historico-info"),tl=g("historico-timeline");
     if(!painel) return;
-    ["painel-pago","painel-cancelar","painel-solicitar-nf","painel-upload","painel-editar","painel-excluir","painel-duplicar"].forEach(function(pid){ var p=g(pid); if(p) p.classList.remove("open"); });
+    ["painel-pago","painel-cancelar","painel-estornar","painel-solicitar-nf","painel-upload","painel-editar","painel-excluir","painel-duplicar"].forEach(function(pid){ var p=g(pid); if(p) p.classList.remove("open"); });
     if(info) info.innerHTML='Histórico de <strong>'+escHtml(titulo)+'</strong>';
     if(tl) tl.innerHTML='<div style="text-align:center;color:#94a3b8;padding:24px;font-size:13px;"><div class="desp-spinner" style="margin:0 auto 10px;"></div>Carregando...</div>';
     painel.classList.add("open");
@@ -1122,10 +1218,23 @@
         tl.innerHTML=resp.historico.map(function(h){ var cfg=icones[h.tipo]||{cls:"editado",ico:"•"}; return '<div class="historico-item"><div class="historico-dot '+cfg.cls+'">'+cfg.ico+'</div><div class="historico-linha"><div class="historico-titulo">'+escHtml(h.titulo||h.tipo||"Alteração")+'</div>'+(h.detalhe?'<div class="historico-detalhe">'+escHtml(h.detalhe)+'</div>':'')+(h.usuario?'<div class="historico-detalhe" style="font-size:10.5px;color:#94a3b8;">Por: '+escHtml(h.usuario)+'</div>':'')+'<div class="historico-data">'+(h.data||"")+'</div></div></div>'; }).join("");
       })
       .withFailureHandler(function(e){ if(tl) tl.innerHTML='<div style="color:#dc2626;padding:16px;font-size:12px;text-align:center;">Erro: '+escHtml(e.message)+'</div>'; })
-      .obterHistoricoDespesa(idDespesa);
+      .obterHistoricoDespesa(idDespesa, SISGEP_TOKEN_SESSAO);
   }
 
   /* ═══ CHIP POR VAL ═══ */
+  /* ═══ AÇÃO RÁPIDA NOS CARDS DO DASHBOARD ═══ */
+  function irParaDespesasFiltradas(tipo){
+    mudarTab("lista");
+    setTimeout(function(){
+      if(tipo==="total"){ limparFiltros(); return; }
+      if(tipo==="vencidas"){ selecionarChipPorVal("VENCIDO","f-venc-chip"); return; }
+      if(tipo==="urgentes"){ selecionarChipPorVal("URGENTE","f-venc-chip"); return; }
+      if(tipo==="doc"){ selecionarChipPorVal("DOC_RECEBIDO","f-status-chip"); return; }
+      if(tipo==="contab"){ selecionarChipPorVal("ENVIADO_CONTABILIDADE","f-status-chip"); return; }
+      if(tipo==="pagos"){ selecionarChipPorVal("PAGO","f-status-chip"); return; }
+    }, 120);
+  }
+
   function selecionarChipPorVal(v, hiddenId) {
     var grupoId=hiddenId==="f-venc-chip"?"#chips-venc":"#chips-status";
     document.querySelectorAll(grupoId+" .chip").forEach(function(c){ c.className="chip"; if((c.dataset.val||"")===v) c.classList.add("ativo"); });
@@ -1165,7 +1274,7 @@
         else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
       })
       .withFailureHandler(function(e){ showToast("Erro: "+e.message,"error"); })
-      .duplicarDespesa({ idDespesa:_idModalAtivo, novoVencimento:vencBR });
+      .duplicarDespesa({ idDespesa:_idModalAtivo, novoVencimento:vencBR }, SISGEP_TOKEN_SESSAO);
   }
 
   /* ═══ GERAR LOTE ═══ */
@@ -1188,7 +1297,13 @@
           if(resp.gerados&&resp.gerados.length){ html+='<div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Despesas geradas ('+resp.gerados.length+')</div><div style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;">'; resp.gerados.forEach(function(d){ html+='<div style="display:flex;align-items:center;justify-content:space-between;background:#f0fdf4;border:1px solid #6ee7b7;border-radius:8px;padding:8px 12px;font-size:12px;"><span style="font-weight:700;color:#065f46;">✅ '+escHtml(d.nome)+'</span><span style="color:#059669;font-weight:700;">'+escHtml(d.numero||"")+' · '+escHtml(d.vencimento||"")+'</span></div>'; }); html+='</div>'; }
           if(resp.ignorados&&resp.ignorados.length){ html+='<details style="margin-top:10px;"><summary style="font-size:11px;font-weight:700;color:#94a3b8;cursor:pointer;">Ver ignorados ('+resp.ignorados.length+')</summary><div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;">'; resp.ignorados.forEach(function(d){ html+='<div style="font-size:11px;color:#64748b;padding:4px 8px;background:#f1f5f9;border-radius:6px;">· '+escHtml(d.nome||"?")+" — "+escHtml(d.motivo||"")+'</div>'; }); html+='</div></details>'; }
           if(resp.erros&&resp.erros.length){ html+='<div style="margin-top:8px;">'; resp.erros.forEach(function(d){ html+='<div style="font-size:11px;color:#9f1239;padding:4px 8px;background:#fee2e2;border-radius:6px;margin-bottom:4px;">⚠️ '+escHtml(d.nome||"?")+" — "+escHtml(d.erro||"")+'</div>'; }); html+='</div>'; }
-          if(resp.gerados&&resp.gerados.length){ todasDespesas=[]; window.todasDespesas=[]; carregarDashboard(); }
+          if(resp.gerados&&resp.gerados.length){
+            todasDespesas=[]; window.todasDespesas=[]; carregarDashboard();
+            if(g("f-mes")) g("f-mes").value=mes;
+            if(g("f-ano")) g("f-ano").value=ano;
+            var bl=g("btn-limpar-filtros"); if(bl) bl.style.display="";
+            carregarLista();
+          }
           showToast(resp.mensagem,"success");
         } else {
           html='<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:10px;padding:12px 14px;font-size:13px;font-weight:700;color:#9f1239;">❌ '+escHtml((resp&&resp.mensagem)||"Erro ao gerar.")+'</div>';
@@ -1197,7 +1312,7 @@
         if(content) content.innerHTML=html;
       })
       .withFailureHandler(function(e){ if(btn){ btn.disabled=false; btn.textContent="⚡ Gerar Despesas"; } showToast("Erro: "+e.message,"error"); })
-      .gerarDespesasEmLote({ mes:mes, ano:ano });
+      .gerarDespesasEmLote({ mes:mes, ano:ano }, SISGEP_TOKEN_SESSAO);
   }
 
   /* ═══ AJUSTE RECORRÊNCIA ═══ */
@@ -1210,7 +1325,7 @@
         else showToast("Erro: "+((resp&&resp.mensagem)||"Falha."),"error");
       })
       .withFailureHandler(function(e){ showToast("Erro: "+e.message,"error"); })
-      .ajustarRecorrencia({ rowIndex:rowIndex, novoValor:novoValor, aplicarPendentes:aplicar });
+      .ajustarRecorrencia({ rowIndex:rowIndex, novoValor:novoValor, aplicarPendentes:aplicar }, SISGEP_TOKEN_SESSAO);
   }
 
   /* ═══ CHIP SELECIONARR ═══ */
@@ -1232,10 +1347,27 @@
   }
 
   /* ═══ INIT ═══ */
+  function carregarCentrosCustoEProjetos(){
+    google.script.run
+      .withSuccessHandler(function(resp){
+        if(!resp||!resp.ok) return;
+        var montarOpcoes=function(lista){ return (lista||[]).map(function(o){ return '<option value="'+escHtml(o.id)+'">'+escHtml(o.nome)+'</option>'; }).join(""); };
+        var optsCC=montarOpcoes(resp.centrosCusto), optsProj=montarOpcoes(resp.projetos);
+        if(g("n-centro-custo"))  g("n-centro-custo").innerHTML  = '<option value="">Sem centro de custo</option>'+optsCC;
+        if(g("pe-centro-custo")) g("pe-centro-custo").innerHTML = '<option value="">Sem centro de custo</option>'+optsCC;
+        if(g("n-projeto"))  g("n-projeto").innerHTML  = '<option value="">Sem projeto</option>'+optsProj;
+        if(g("pe-projeto")) g("pe-projeto").innerHTML = '<option value="">Sem projeto</option>'+optsProj;
+      })
+      .withFailureHandler(function(){})
+      .finListarCentrosCustoEProjetos(SISGEP_TOKEN_SESSAO);
+  }
+
   function initDespesasAdmin(){
-    if(!document.getElementById("secDespesas")) return;
+    if(!document.getElementById("dashboard-loader")) return;
     definirDataHoje("n-vencimento"); definirDataHoje("painel-data-pago");
-    carregarDashboard(); carregarFornecedoresCache();
+    carregarDashboard(); carregarFornecedoresCache(); carregarCentrosCustoEProjetos();
+    if(_despesasListenersProntos) return;
+    _despesasListenersProntos = true;
     ["r-recorrente","r-avulso"].forEach(function(id){ var el=g(id); if(el) el.addEventListener("change",atualizarTipoLanc); });
     atualizarTipoLanc();
     var fileInput=g("painel-upload-file");
@@ -1254,6 +1386,8 @@
   window.limparFiltros               = limparFiltros;
   window.carregarLote                = carregarLote;
   window.mudarTab                    = mudarTab;
+  window.irParaDespesasFiltradas     = irParaDespesasFiltradas;
+  window.confirmarEstornarModal      = confirmarEstornarModal;
   window.selecionarTodos             = selecionarTodos;
   window.atualizarSelecao            = atualizarSelecao;
   window.irPagina                    = irPagina;

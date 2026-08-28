@@ -1,0 +1,277 @@
+<div id="auditoriaRelatorios" style="min-height:100%;background:#f0f4f8;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#0f172a;">
+<!--
+  Auditoria e Compliance — Relatórios (item 16.11). Última tela do módulo.
+  Backend em RelatoriosAuditoria.gs.
+
+  Seis relatórios prontos, sem construtor de consulta. Construtor genérico
+  parece poderoso e ninguém usa: quem precisa do relatório está com pressa e
+  não vai montar filtro. Seis perguntas concretas respondidas em um clique
+  servem mais.
+
+  O de Conformidade LGPD é o que fecha o módulo — atravessa os sete
+  submódulos e responde "estamos em dia?", com o que fazer em cada pendência.
+
+  Toda exportação daqui se registra em Exportações, como qualquer outra.
+-->
+
+  <div class="of-modulo-header">
+    <div>
+      <div class="of-modulo-header-title">📑 Relatórios de Auditoria</div>
+      <div class="of-modulo-header-sub">Seis perguntas, respondidas em um clique</div>
+    </div>
+    <div class="of-modulo-header-badge" id="raBadge">—</div>
+  </div>
+
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">🎯</div>
+        <div>
+          <div class="of-card-title">Escolha o relatório</div>
+          <div class="of-card-sub">O período vale para os que olham um intervalo de tempo</div>
+        </div>
+      </div>
+    </div>
+    <div class="of-card-body">
+      <div id="raCatalogo" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;"></div>
+
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:16px;align-items:end;">
+        <div class="fld">
+          <label for="raDe">DE</label>
+          <input type="date" id="raDe">
+        </div>
+        <div class="fld">
+          <label for="raAte">ATÉ</label>
+          <input type="date" id="raAte">
+        </div>
+        <div class="fld">
+          <label for="raRegistro">REGISTRO (só para a trilha de um registro)</label>
+          <input type="text" id="raRegistro" placeholder="041/2026, DESP-2026-0412…" autocomplete="off">
+        </div>
+        <div>
+          <button type="button" id="raBtnGerar" class="btn btn-navy" disabled style="width:100%;">Gerar relatório</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">📄</div>
+        <div>
+          <div class="of-card-title" id="raTitulo">Nenhum relatório gerado</div>
+          <div class="of-card-sub" id="raResumo">Escolha um acima e clique em Gerar</div>
+        </div>
+      </div>
+      <div class="row-btns">
+        <button type="button" id="raBtnCsv" class="btn btn-outline btn-sm" disabled>Baixar CSV</button>
+      </div>
+    </div>
+    <div class="of-card-body">
+      <div id="raAviso" style="margin-bottom:14px;"></div>
+      <div id="raResultado"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>window.AUD_REL_MARCADOR = "bloco de script executou";</script>
+
+<script>
+(function(){
+  "use strict";
+
+  var raVigia = null, raCat = null, raEscolhido = null, raAtual = null;
+
+  function rEl(id){ return document.getElementById(id); }
+  function rEsc(t){
+    return String(t==null?"":t).replace(/[&<>"]/g,function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];
+    });
+  }
+  function rTok(){
+    var t = (typeof SISGEP_TOKEN_SESSAO !== "undefined") ? SISGEP_TOKEN_SESSAO : "";
+    return (typeof t === "string") ? t : "";
+  }
+  function rAviso(msg,tipo){
+    if(typeof window.toast==="function") return window.toast(msg,tipo||"erro",5000);
+    console.warn("[Relatórios]",msg);
+  }
+  function rCaixa(texto,cor){
+    var c={erro:["#fee2e2","#fca5a5","#991b1b"],ok:["#dcfce7","#6ee7b7","#166534"],
+           alerta:["#fef3c7","#fcd34d","#92400e"],info:["#eff6ff","#bfdbfe","#1e40af"]}[cor||"info"];
+    return '<div style="background:'+c[0]+";border:1.5px solid "+c[1]+
+      ";border-radius:12px;padding:13px 17px;font-size:12.5px;font-weight:600;line-height:1.55;color:"+c[2]+
+      ';">'+texto+"</div>";
+  }
+
+  var RA_SITUACAO = {
+    "EM DIA":          { c:"#0f8a5f", f:"#dcfce7" },
+    "PENDENTE":        { c:"#dc2626", f:"#fee2e2" },
+    "ATENÇÃO":         { c:"#d97706", f:"#fef3c7" },
+    "INDETERMINADO":   { c:"#64748b", f:"#f1f5f9" },
+    "NÃO IMPLEMENTADO":{ c:"#7c3aed", f:"#f3e8ff" }
+  };
+
+  function rRenderCatalogo(cat){
+    rEl("raCatalogo").innerHTML = Object.keys(cat).map(function(k){
+      var x = cat[k];
+      return '<div class="of-card" role="button" tabindex="0" data-tipo="'+rEsc(k)+'" ' +
+        'style="cursor:pointer;padding:14px 16px;margin:0;border:2px solid transparent;">' +
+        '<div style="font-size:13px;font-weight:800;color:var(--navy,#001f4d);">'+rEsc(x.titulo)+'</div>' +
+        '<div style="font-size:11.5px;color:#64748b;font-weight:600;margin-top:5px;line-height:1.5;">'+rEsc(x.descricao)+'</div>' +
+        (x.dadoPessoal
+          ? '<div style="font-size:10.5px;color:#dc2626;font-weight:800;margin-top:7px;">🔴 contém dado pessoal</div>'
+          : '<div style="font-size:10.5px;color:#94a3b8;font-weight:700;margin-top:7px;">sem dado pessoal</div>') +
+        '</div>';
+    }).join("");
+
+    Array.prototype.forEach.call(rEl("raCatalogo").querySelectorAll("[data-tipo]"), function(el){
+      el.onclick = function(){
+        raEscolhido = el.getAttribute("data-tipo");
+        Array.prototype.forEach.call(rEl("raCatalogo").querySelectorAll("[data-tipo]"), function(o){
+          o.style.border = "2px solid transparent";
+          o.style.background = "";
+        });
+        el.style.border = "2px solid var(--blue,#1565C0)";
+        el.style.background = "#f8fbff";
+        rEl("raBtnGerar").disabled = false;
+      };
+      el.onkeypress = function(ev){ if(ev.key === "Enter") el.click(); };
+    });
+  }
+
+  function rRenderResultado(r){
+    raAtual = r;
+    rEl("raTitulo").textContent = r.titulo;
+    rEl("raResumo").textContent = r.resumo || "—";
+    rEl("raBtnCsv").disabled = !(r.linhas && r.linhas.length);
+    rEl("raBadge").textContent = r.dadoPessoal ? "🔴 DADO PESSOAL" : "SEM DADO PESSOAL";
+
+    var avisos = "";
+    if(r.mensagem) avisos += rCaixa(rEsc(r.mensagem), "alerta");
+    if(r.aviso) avisos += (avisos ? "<div style='height:10px;'></div>" : "") +
+      rCaixa("<strong>Limite deste relatório:</strong> " + rEsc(r.aviso), "info");
+    if(r.truncado) avisos += (avisos ? "<div style='height:10px;'></div>" : "") +
+      rCaixa("<strong>O resultado foi cortado no limite de 1.000 registros.</strong> " +
+        "Estreite o período antes de concluir qualquer coisa a partir deste relatório.", "alerta");
+    rEl("raAviso").innerHTML = avisos;
+
+    if(!r.linhas || !r.linhas.length){
+      rEl("raResultado").innerHTML = rCaixa("Nenhuma linha para os critérios escolhidos.", "info");
+      return;
+    }
+
+    var ehConformidade = (r.tipo === "CONFORMIDADE_LGPD");
+    rEl("raResultado").innerHTML =
+      "<div style='overflow-x:auto;'><table class='of-table' style='width:100%;'>" +
+      "<thead><tr>" + r.colunas.map(function(c){ return "<th>"+rEsc(c)+"</th>"; }).join("") +
+      "</tr></thead><tbody>" +
+      r.linhas.map(function(l){
+        return "<tr>" + l.map(function(v, i){
+          // Na conformidade, a coluna de situação vira etiqueta colorida —
+          // é o que faz a pendência saltar numa lista de seis linhas.
+          if(ehConformidade && i === 1){
+            var s = RA_SITUACAO[String(v)] || { c:"#64748b", f:"#f1f5f9" };
+            return "<td><span style='display:inline-block;padding:2px 10px;border-radius:999px;" +
+              "font-size:10.5px;font-weight:800;background:"+s.f+";color:"+s.c+";'>"+rEsc(v)+"</span></td>";
+          }
+          return "<td>"+rEsc(v)+"</td>";
+        }).join("") + "</tr>";
+      }).join("") + "</tbody></table></div>";
+  }
+
+  /* ─── CSV ─── */
+  function rCsv(){
+    if(!raAtual || !raAtual.linhas) return;
+    // Ponto e vírgula: é o que o Excel em português abre sem pedir importação.
+    function celula(v){
+      var s = String(v == null ? "" : v);
+      return (s.indexOf(";") > -1 || s.indexOf('"') > -1 || s.indexOf("\n") > -1)
+        ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }
+    var linhas = [raAtual.colunas.map(celula).join(";")]
+      .concat(raAtual.linhas.map(function(l){ return l.map(celula).join(";"); }));
+    // BOM para o Excel reconhecer acento.
+    var conteudo = "﻿" + linhas.join("\r\n");
+    var blob = new Blob([conteudo], { type: "text/csv;charset=utf-8;" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "auditoria-" + String(raAtual.tipo).toLowerCase() + "-" +
+      new Date().toISOString().slice(0,10) + ".csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    rAviso("CSV baixado. A exportação ficou registrada em Auditoria › Exportações.", "sucesso");
+  }
+
+  /* ─── GERAR ─── */
+  function rGerar(){
+    if(!raEscolhido) return;
+    var btn = rEl("raBtnGerar");
+    btn.disabled = true; btn.textContent = "Gerando…";
+    rEl("raResultado").innerHTML = "";
+    rEl("raAviso").innerHTML = "";
+    rEl("raTitulo").textContent = "Gerando…";
+
+    if(raVigia) clearTimeout(raVigia);
+    raVigia = setTimeout(function(){
+      btn.disabled = false; btn.textContent = "Gerar relatório";
+      rEl("raTitulo").textContent = "Não foi possível gerar";
+      rEl("raResultado").innerHTML = rCaixa("O servidor não respondeu em 30 segundos. " +
+        "Relatório grande demais? Estreite o período.", "erro");
+    }, 30000);
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(raVigia){ clearTimeout(raVigia); raVigia = null; }
+        btn.disabled = false; btn.textContent = "Gerar relatório";
+        if(!r || !r.ok){
+          rEl("raTitulo").textContent = "Não foi possível gerar";
+          return rAviso((r&&r.mensagem)||"Erro ao gerar.","erro");
+        }
+        try { rRenderResultado(r); }
+        catch(err){
+          rEl("raTitulo").textContent = "Não foi possível desenhar";
+          rEl("raResultado").innerHTML = rCaixa("<strong>O relatório veio, mas a tela não " +
+            "conseguiu desenhá-lo.</strong><br><code style='font-size:11px;'>" +
+            rEsc(err && err.message ? err.message : err) + "</code>", "erro");
+        }
+      })
+      .withFailureHandler(function(e){
+        if(raVigia){ clearTimeout(raVigia); raVigia = null; }
+        btn.disabled = false; btn.textContent = "Gerar relatório";
+        rEl("raTitulo").textContent = "Não foi possível gerar";
+        rEl("raResultado").innerHTML = rCaixa("<strong>Erro ao gerar o relatório.</strong>" +
+          "<br><code style='font-size:11px;'>"+rEsc(e && e.message ? e.message : e)+"</code>", "erro");
+      })
+      // relAudExportar em vez de relAudGerar: gerar já conta como exportação
+      // em potencial, e registrar na geração é o que impede alguém de ver o
+      // dado na tela sem deixar rastro nenhum.
+      .relAudExportar(raEscolhido, {
+        de: rEl("raDe").value, ate: rEl("raAte").value,
+        registroId: String(rEl("raRegistro").value||"").trim()
+      }, rTok());
+  }
+
+  window.initAuditoriaRelatorios = function(){
+    var b;
+    b = rEl("raBtnGerar"); if(b) b.onclick = rGerar;
+    b = rEl("raBtnCsv");   if(b) b.onclick = rCsv;
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r || !r.ok) return;
+        raCat = r.relatorios;
+        try { rRenderCatalogo(raCat); }
+        catch(e){ rEl("raCatalogo").innerHTML = rCaixa("Não consegui montar a lista.","erro"); }
+      })
+      .withFailureHandler(function(e){
+        rEl("raCatalogo").innerHTML = rCaixa("<strong>Não consegui carregar os relatórios.</strong>" +
+          "<br><code style='font-size:11px;'>"+rEsc(e&&e.message?e.message:e)+"</code>","erro");
+      })
+      .relAudCatalogo(rTok());
+  };
+})();
+</script>
