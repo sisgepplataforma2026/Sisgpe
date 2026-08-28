@@ -1,0 +1,56 @@
+name: Patch confirmacao de recebimento de oficios
+
+on:
+  push:
+    branches: ["correcao/documentos-numeracao-atomica"]
+    paths: [".github/workflows/patch-confirmacao-oficios.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: correcao/documentos-numeracao-atomica
+          fetch-depth: 0
+      - name: Endurecer criterios de confirmacao
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("MonitoramentoOficios.js")
+          s = p.read_text(encoding="utf-8")
+          for trecho in [
+              '            texto.indexOf("ok") > -1 ||\n',
+              '            texto.indexOf("obrigado") > -1 ||\n',
+              '            texto.indexOf("obrigada") > -1\n',
+          ]:
+              if trecho not in s:
+                  raise SystemExit("Trecho esperado não encontrado: " + trecho.strip())
+              s = s.replace(trecho, "", 1)
+          antigo = '            texto.indexOf("acusamos") > -1 ||\n'
+          novo = '            texto.indexOf("acusamos o recebimento") > -1 ||\n            texto.indexOf("acuso o recebimento") > -1\n'
+          if antigo not in s:
+              raise SystemExit("Critério 'acusamos' não encontrado")
+          s = s.replace(antigo, novo, 1)
+          p.write_text(s, encoding="utf-8")
+          PY
+      - name: Validar e commitar
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check MonitoramentoOficios.js
+          git diff --check
+          test "$(git diff --name-only)" = "MonitoramentoOficios.js"
+          ! grep -q 'texto.indexOf("ok")' MonitoramentoOficios.js
+          ! grep -q 'texto.indexOf("obrigado")' MonitoramentoOficios.js
+          ! grep -q 'texto.indexOf("obrigada")' MonitoramentoOficios.js
+          grep -q 'acusamos o recebimento' MonitoramentoOficios.js
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add MonitoramentoOficios.js
+          git commit -m "fix(documentos): tornar confirmacao de recebimento mais restritiva"
+          git push origin HEAD:correcao/documentos-numeracao-atomica
