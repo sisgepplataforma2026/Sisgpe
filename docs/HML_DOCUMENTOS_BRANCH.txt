@@ -1,0 +1,3 @@
+Branch de teste: teste/documentos-ajustes-hml
+Base: integracao/sisgep-homologacao
+Producao: fora de escopo nesta etapa.
