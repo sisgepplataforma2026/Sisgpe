@@ -55,7 +55,7 @@ var ACESSO_MODULOS_CATALOGO = [
   { chave: "sofia",            rotulo: "SOFIA (IA)",            sensivel: false },
   { chave: "sindicalizacao",   rotulo: "Sindicalização",        sensivel: true  },
   { chave: "aprovacoesPortal", rotulo: "Aprovações do Portal",  sensivel: true  },
-  { chave: "documentos",       rotulo: "Documentos",            sensivel: false },
+  { chave: "documentos",       rotulo: "Documentos",            sensivel: true  },
   { chave: "beneficios",       rotulo: "Benefícios",            sensivel: false },
   { chave: "financeiro",       rotulo: "Financeiro",            sensivel: false },
   { chave: "escolas",          rotulo: "Escolas",               sensivel: false },

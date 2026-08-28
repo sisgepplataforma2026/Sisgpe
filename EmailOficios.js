@@ -188,17 +188,84 @@ function reenviarOficio(registro, tokenSessao) {
     var idOficio = extrairIdDrive_(url);
     if (!idOficio) return { erro: true, mensagem: "Não foi possível identificar o arquivo PDF na URL informada." };
 
-    var arqOficio = DriveApp.getFileById(idOficio);
-    var anexos    = [arqOficio.getBlob().setName(arqOficio.getName())];
+    /* REENVIO PRECISA REPETIR O PACOTE DOCUMENTAL ORIGINAL.
+     *
+     * A fila grava ANEXOS_JSON com o PDF do ofício + TODAS as fichas usadas
+     * na emissão. O reenvio antigo ignorava essa fonte e olhava apenas
+     * "Link Ficha" do Controle, que comporta um único arquivo e normalmente
+     * nem é preenchido pelo fluxo atual. Resultado: reenvio podia sair só
+     * com o ofício, sem as fichas.
+     *
+     * Regra agora: ofício primeiro; depois todos os anexos da linha mais
+     * recente da fila para esse número; por fim Link Ficha como fallback
+     * legado. IDs são deduplicados para o mesmo PDF não ir duas vezes. */
+    var anexos = [];
+    var idsAnexados = {};
 
+    function adicionarArquivoDrive_(fileId, nomePreferido) {
+      fileId = String(fileId || "").trim();
+      if (!fileId || idsAnexados[fileId]) return false;
+      try {
+        var arq = DriveApp.getFileById(fileId);
+        var blob = arq.getBlob();
+        blob.setName(String(nomePreferido || arq.getName() || "anexo").trim());
+        anexos.push(blob);
+        idsAnexados[fileId] = true;
+        return true;
+      } catch (eAnexo) {
+        Logger.log("⚠ Reenvio — anexo indisponível " + fileId + ": " + eAnexo.message);
+        return false;
+      }
+    }
+
+    // O PDF oficial sempre deve estar presente, mesmo para registros legados
+    // que não tenham ANEXOS_JSON na fila.
+    adicionarArquivoDrive_(idOficio, "");
+
+    try {
+      var shFila = ss.getSheetByName("FILA_ENVIO_OFICIOS");
+      if (shFila && shFila.getLastRow() >= 2) {
+        var hf = getHeaderMap_(shFila);
+        var cfNumero = hf["NUMERO_OFICIO"];
+        var cfAnexos = hf["ANEXOS_JSON"];
+
+        if (cfNumero && cfAnexos) {
+          var df = shFila.getRange(2, 1, shFila.getLastRow() - 1, shFila.getLastColumn()).getValues();
+
+          // De baixo para cima: usa a emissão mais recente daquele número.
+          for (var q = df.length - 1; q >= 0; q--) {
+            if (String(df[q][cfNumero - 1] || "").trim() !== numero) continue;
+
+            var jsonFila = String(df[q][cfAnexos - 1] || "").trim();
+            if (!jsonFila) continue;
+
+            try {
+              var pacote = JSON.parse(jsonFila);
+              if (Array.isArray(pacote)) {
+                pacote.forEach(function(anexoInfo) {
+                  if (!anexoInfo || !anexoInfo.fileId) return;
+                  adicionarArquivoDrive_(anexoInfo.fileId, anexoInfo.nome || "");
+                });
+              }
+            } catch (eJsonFila) {
+              Logger.log("⚠ Reenvio — ANEXOS_JSON inválido para " + numero + ": " + eJsonFila.message);
+            }
+            break;
+          }
+        }
+      }
+    } catch (eFilaAnexos) {
+      Logger.log("⚠ Reenvio — não foi possível recuperar o pacote da fila: " + eFilaAnexos.message);
+    }
+
+    // Compatibilidade com ofícios antigos, anteriores ao pacote ANEXOS_JSON.
     if (linkFicha) {
       var idFicha = extrairIdDrive_(linkFicha);
-      if (idFicha) {
-        try {
-          var arqFicha = DriveApp.getFileById(idFicha);
-          anexos.push(arqFicha.getBlob().setName(arqFicha.getName()));
-        } catch (eFicha) { Logger.log("⚠ Não foi possível anexar a ficha: " + eFicha.message); }
-      }
+      if (idFicha) adicionarArquivoDrive_(idFicha, "");
+    }
+
+    if (!anexos.length) {
+      return { erro: true, mensagem: "Nenhum arquivo do ofício pôde ser recuperado para o reenvio." };
     }
 
     var htmlBody = montarEmailHTML(

@@ -2434,11 +2434,21 @@ function carregarMonitoramento(filtros, tentativa) {
     })
     .withFailureHandler(function(err) {
       var msg = (err && err.message) || String(err);
-      // A chamada não chegou ao servidor. O portal dispara dezenas de chamadas
-      // ao abrir e o Apps Script recusa as excedentes — uma segunda tentativa,
-      // depois da avalanche, costuma passar.
-      if (tentativa < 2) {
-        setTimeout(function() { carregarMonitoramento(filtros, tentativa + 1); }, 3000);
+      var msgNorm = String(msg || "").toLowerCase();
+      var erroPermanente =
+        msgNorm.indexOf("sessão") > -1 ||
+        msgNorm.indexOf("sessao") > -1 ||
+        msgNorm.indexOf("acesso") > -1 ||
+        msgNorm.indexOf("permiss") > -1 ||
+        msgNorm.indexOf("não tem acesso") > -1 ||
+        msgNorm.indexOf("nao tem acesso") > -1;
+
+      // Recusas momentâneas do Apps Script acontecem quando muitas chamadas
+      // concorrem na abertura do portal. Não fica preso em "Carregando":
+      // tenta até 3 vezes, com espera crescente. Erro de sessão/permissão
+      // aparece imediatamente porque repetir não resolveria.
+      if (!erroPermanente && tentativa < 3) {
+        setTimeout(function() { carregarMonitoramento(filtros, tentativa + 1); }, 1800 * tentativa);
         return;
       }
       toast("Erro ao carregar monitoramento: " + msg, "err", 6000);

@@ -2,7 +2,10 @@
 // ARQUIVO: OficioService.gs
 // ============================================================================
 
-var LIMITE_FICHAS_OFICIO = 25;
+/* Mantido alinhado ao núcleo Oficios.gs: o limite operacional aprovado é de
+ * até 50 fichas/pessoas por ofício. A validação de tamanho total dos anexos
+ * continua sendo uma preocupação separada do número de fichas. */
+var LIMITE_FICHAS_OFICIO = 50;
 
 /**
  * Processa lista de fichas (local ou Google Drive) e retorna base64.
@@ -79,7 +82,7 @@ function processarFichasParaOficio(fichas) {
  * @return {object} Resultado da geração
  */
 function gerarOficioWebComFichas(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirAcessoOficioPorTipo_(tokenSessao, dados && dados.tipo);
   try {
     var fichasProcessadas = dados.fichas
       ? processarFichasParaOficio(dados.fichas)

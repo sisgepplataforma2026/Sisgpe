@@ -14,7 +14,7 @@
 // ============================================================================
 
 function getDashboardOficiosData(filtros, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "documentos", false);
   filtros = filtros || {};
 
   var agoraFormatado = Utilities.formatDate(
@@ -196,7 +196,8 @@ function getDashboardOficiosDataV2(filtros, tokenSessao) {
   }
 }
 
-function consultarEscolaDashboardOficios(query) {
+function consultarEscolaDashboardOficios(query, tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
   try {
     query = String(query || "").trim();
     if (!query || query.length < 2) return [];

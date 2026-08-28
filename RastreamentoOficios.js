@@ -51,13 +51,13 @@ function registrarAberturaOficio_(idFila) {
 }
 
 function pixelTransparente_() {
-  var bytes = Utilities.base64Decode(
-    "R0lGODlhAQABAPAAAP///wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=="
-  );
-
+  /* O ContentService entrega texto, não bytes binários e não possui MimeType.GIF.
+   * O rastreamento já foi registrado por registrarAberturaOficio_ antes desta
+   * resposta. Portanto devolvemos uma resposta vazia e válida; o elemento img
+   * é invisível e não depende do corpo retornado para contabilizar o GET. */
   return ContentService
-    .createTextOutput(bytes)
-    .setMimeType(ContentService.MimeType.GIF);
+    .createTextOutput("")
+    .setMimeType(ContentService.MimeType.TEXT);
 }
 
 function gerarPixelAberturaOficio_(idFila) {
