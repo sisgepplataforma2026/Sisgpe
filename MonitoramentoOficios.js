@@ -192,10 +192,8 @@ function verificarConfirmacoesRecebimento() {
             texto.indexOf("confirmo") > -1 ||
             texto.indexOf("confirmamos") > -1 ||
             texto.indexOf("ciente") > -1 ||
-            texto.indexOf("ok") > -1 ||
-            texto.indexOf("acusamos") > -1 ||
-            texto.indexOf("obrigado") > -1 ||
-            texto.indexOf("obrigada") > -1
+            texto.indexOf("acusamos o recebimento") > -1 ||
+            texto.indexOf("acuso o recebimento") > -1
           ) {
             confirmado = true;
             break;
