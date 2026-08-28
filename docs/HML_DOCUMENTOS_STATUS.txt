@@ -1,0 +1,16 @@
+Fase 1 iniciada em 28/08/2026.
+
+Escopo atual:
+- homologacao somente;
+- escola Teste autorizada: financeiro@sindeducacao.com;
+- politica HML centralizada no EmailOficios.gs;
+- assunto com prefixo [HML];
+- sem BCC financeiro;
+- remetente institucional secretaria@sindeducacao.com validado;
+- reenvio reconstruindo ANEXOS_JSON da fila original.
+
+Pendente antes do deploy:
+- revisar diff;
+- executar CI de sintaxe/politica;
+- promover para integracao/sisgep-homologacao somente se verde;
+- rodar deploy HML em modo conferir antes de publicar.
