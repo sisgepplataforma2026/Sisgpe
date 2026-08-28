@@ -1,0 +1,98 @@
+name: Patch acesso por tipo em Documentos
+
+on:
+  push:
+    branches: ["correcao/documentos-numeracao-atomica"]
+    paths: [".github/workflows/patch-acesso-documentos.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: correcao/documentos-numeracao-atomica
+          fetch-depth: 0
+
+      - name: Aplicar controle de acesso por tipo
+        shell: python
+        run: |
+          from pathlib import Path
+
+          # 1) Nucleo de Oficios: preview e emissao passam pela regra por tipo.
+          p = Path("Oficios.js")
+          s = p.read_text(encoding="utf-8")
+
+          old_preview = '''// SEM trava de modulo: mesma razao de gerarOficioWeb — a Sindicalizacao\n// monta a previa do oficio de filiacao por aqui. Sessao continua exigida.\nfunction previewOficioWeb(dados, tokenSessao) {\n  var sessao = exigirSessaoDocumentos_(tokenSessao, false);'''
+          new_preview = '''// A previa usa a mesma matriz de autorizacao da emissao: Filiacao/Desfiliacao\n// podem vir de Sindicalizacao; os demais tipos exigem Documentos.\nfunction previewOficioWeb(dados, tokenSessao) {\n  var sessao = exigirAcessoOficioPorTipo_(tokenSessao, dados && dados.tipo);'''
+          if old_preview not in s:
+              raise SystemExit("Bloco de preview esperado nao encontrado")
+          s = s.replace(old_preview, new_preview, 1)
+
+          old_gerar = '''// SEM trava de modulo: a Sindicalizacao gera o oficio de filiacao e de\n// desfiliacao por aqui (SindicalizacaoOficio.gs e a leitura por IA).\n// Exigir Documentos quebraria a filiacao de quem so tem Sindicalizacao.\n// Sessao continua exigida.\n// A variavel PRECISA se chamar sessaoDocumentos. A linha de baixo le esse\n// nome, e o restante do projeto (outras 42 ocorrencias) usa o mesmo. Aqui a\n// declaracao estava como "sessao" e a leitura como "sessaoDocumentos": gerar\n// oficio devolvia "sessaoDocumentos is not defined" dentro do try, virava\n// {erro:true} e a tela mostrava a falha sem dizer a causa. Achado por teste\n// de execucao em 2026-08-05 (tests/e2e/t1-documentos.js).\nfunction gerarOficioWeb(dados, tokenSessao) {\n  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);'''
+          new_gerar = '''// Autorizacao por tipo: preserva o uso por Sindicalizacao apenas para\n// Filiacao/Desfiliacao e impede que essa permissao alcance Taxas/Oficio Livre.\nfunction gerarOficioWeb(dados, tokenSessao) {\n  var sessaoDocumentos = exigirAcessoOficioPorTipo_(tokenSessao, dados && dados.tipo);'''
+          if old_gerar not in s:
+              raise SystemExit("Bloco de gerarOficioWeb esperado nao encontrado")
+          s = s.replace(old_gerar, new_gerar, 1)
+          p.write_text(s, encoding="utf-8")
+
+          # 2) Wrapper de fichas: mesma autorizacao do nucleo.
+          p = Path("OficioService.js")
+          s = p.read_text(encoding="utf-8")
+          old = '''function gerarOficioWebComFichas(dados, tokenSessao) {\n  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);'''
+          new = '''function gerarOficioWebComFichas(dados, tokenSessao) {\n  var sessaoDocumentos = exigirAcessoOficioPorTipo_(tokenSessao, dados && dados.tipo);'''
+          if old not in s:
+              raise SystemExit("Wrapper de fichas esperado nao encontrado")
+          s = s.replace(old, new, 1)
+          p.write_text(s, encoding="utf-8")
+
+          # 3) Dashboard executivo: sessao valida nao basta; exige Documentos.
+          p = Path("DashboardOficios.js")
+          s = p.read_text(encoding="utf-8")
+          old = '''function getDashboardOficiosData(filtros, tokenSessao) {\n  exigirSessaoDocumentos_(tokenSessao, false);'''
+          new = '''function getDashboardOficiosData(filtros, tokenSessao) {\n  exigirModulo_(tokenSessao, "documentos", false);'''
+          if old not in s:
+              raise SystemExit("Entrada do dashboard esperada nao encontrada")
+          s = s.replace(old, new, 1)
+
+          old_consulta = '''function consultarEscolaDashboardOficios(query) {\n  try {'''
+          new_consulta = '''function consultarEscolaDashboardOficios(query, tokenSessao) {\n  exigirModulo_(tokenSessao, "documentos", false);\n  try {'''
+          if old_consulta not in s:
+              raise SystemExit("Consulta de escola do dashboard nao encontrada")
+          s = s.replace(old_consulta, new_consulta, 1)
+          p.write_text(s, encoding="utf-8")
+
+          # 4) Metadado do catalogo: Documentos passa a ser tratado como sensivel.
+          p = Path("AcessoModulos.js")
+          s = p.read_text(encoding="utf-8")
+          old = '{ chave: "documentos", rotulo: "Documentos", sensivel: false }'
+          new = '{ chave: "documentos", rotulo: "Documentos", sensivel: true }'
+          if old not in s:
+              raise SystemExit("Entrada Documentos no catalogo nao encontrada")
+          s = s.replace(old, new, 1)
+          p.write_text(s, encoding="utf-8")
+
+      - name: Validar sintaxe e escopo
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in DocumentosSeguranca.js Oficios.js OficioService.js DashboardOficios.js AcessoModulos.js; do
+            node --check "$f"
+          done
+          git diff --check
+          grep -q 'exigirAcessoOficioPorTipo_' Oficios.js
+          grep -q 'exigirModulo_(tokenSessao, "documentos", false)' DashboardOficios.js
+          grep -q 'chave: "documentos", rotulo: "Documentos", sensivel: true' AcessoModulos.js
+
+      - name: Commitar endurecimento de acesso
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Oficios.js OficioService.js DashboardOficios.js AcessoModulos.js
+          git commit -m "fix(documentos): aplicar autorizacao por tipo de oficio"
+          git push origin HEAD:correcao/documentos-numeracao-atomica
