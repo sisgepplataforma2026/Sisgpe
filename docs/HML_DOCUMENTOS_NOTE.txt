@@ -1,0 +1,1 @@
+Nenhuma alteracao desta branch deve ser promovida para producao nesta fase.
