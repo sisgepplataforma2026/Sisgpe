@@ -1,0 +1,132 @@
+name: Corrigir e validar Auditoria - datas locais
+
+on:
+  push:
+    branches:
+      - correcao/auditoria-testes-homologacao
+    paths:
+      - .github/workflows/corrigir-auditoria-datas.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: corrigir-auditoria-datas
+  cancel-in-progress: false
+
+jobs:
+  corrigir-e-testar:
+    runs-on: ubuntu-latest
+    env:
+      TZ: America/Sao_Paulo
+
+    steps:
+      - name: Checkout da branch de correcao
+        uses: actions/checkout@v4
+        with:
+          ref: correcao/auditoria-testes-homologacao
+          fetch-depth: 0
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Preparar caminho legado dos testes
+        shell: bash
+        run: |
+          sudo mkdir -p /home/user
+          sudo rm -rf /home/user/Sisgpe
+          sudo ln -s "$GITHUB_WORKSPACE" /home/user/Sisgpe
+
+      - name: Corrigir parser de data civil da Auditoria
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const caminho = 'AuditoriaCore.gs';
+          const fonte = fs.readFileSync(caminho, 'utf8');
+
+          const antigo = `function aud_paraData_(v) {
+            if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+            if (!v) return null;
+            var d = new Date(v);
+            return isNaN(d.getTime()) ? null : d;
+          }`;
+
+          const novo = `function aud_paraData_(v) {
+            if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+            if (!v) return null;
+
+            // Datas vindas de <input type="date"> chegam como AAAA-MM-DD.
+            // `new Date("AAAA-MM-DD")` interpreta esse formato em UTC; no
+            // fuso de Sao Paulo ele pode virar o dia anterior. Para filtros
+            // de auditoria, AAAA-MM-DD e uma DATA CIVIL LOCAL, nao um instante
+            // UTC. Timestamps completos continuam seguindo o parser nativo.
+            if (typeof v === "string") {
+              var texto = String(v).trim();
+              var civil = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(texto);
+              if (civil) {
+                var ano = Number(civil[1]);
+                var mes = Number(civil[2]) - 1;
+                var dia = Number(civil[3]);
+                var local = new Date(ano, mes, dia, 0, 0, 0, 0);
+
+                // O construtor Date normaliza valores impossiveis (ex. 31/02).
+                // Revalidar evita transformar entrada invalida em outro dia.
+                if (local.getFullYear() !== ano ||
+                    local.getMonth() !== mes ||
+                    local.getDate() !== dia) return null;
+                return local;
+              }
+            }
+
+            var d = new Date(v);
+            return isNaN(d.getTime()) ? null : d;
+          }`;
+
+          if (fonte.includes(novo)) {
+            console.log('Parser ja estava corrigido; nada a substituir.');
+            process.exit(0);
+          }
+          if (!fonte.includes(antigo)) {
+            console.error('::error::Bloco aud_paraData_ esperado nao foi encontrado. Abortando sem alterar arquivo.');
+            process.exit(1);
+          }
+
+          fs.writeFileSync(caminho, fonte.replace(antigo, novo));
+          console.log('aud_paraData_ corrigido para interpretar AAAA-MM-DD como data civil local.');
+          NODE
+
+      - name: Conferir diff
+        shell: bash
+        run: |
+          git --no-pager diff --check -- AuditoriaCore.gs
+          git --no-pager diff -- AuditoriaCore.gs
+          grep -q 'var civil = /^(\\d{4})-(\\d{2})-(\\d{2})$/' AuditoriaCore.gs
+
+      - name: Testar trilha de Auditoria t16
+        run: node tests/e2e/t16-auditoria-trilha.js
+
+      - name: Testar painel de Auditoria t17
+        run: node tests/e2e/t17-auditoria-painel.js
+
+      - name: Rodar suite completa
+        run: npm test
+
+      - name: Registrar correcao somente se tudo passou
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- AuditoriaCore.gs; then
+            echo 'Nenhuma alteracao pendente.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add AuditoriaCore.gs
+          git commit -m 'fix: tratar datas civis locais nos filtros de auditoria'
+          git push origin HEAD:correcao/auditoria-testes-homologacao
