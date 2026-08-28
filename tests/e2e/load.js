@@ -23,6 +23,19 @@ function carregar(opts) {
 
   const amb = gas.install(contexto, opts);
 
+  /* O envio de Ofícios exige, corretamente, que secretaria@sindeducacao.com
+     seja o usuário efetivo ou um alias Gmail autorizado. Nos testes de fluxo
+     positivo (t56/t57), o emulador precisa reproduzir essa pré-condição real;
+     caso contrário ele reprova antes de chegar ao comportamento que o teste
+     quer medir (anexos e filaId). Para testes de recusa, basta subir com
+     { gmailAliases: [] }. Isso NÃO altera a trava do código de produção. */
+  const gmailAliases = Object.prototype.hasOwnProperty.call(opts, "gmailAliases")
+    ? (Array.isArray(opts.gmailAliases) ? opts.gmailAliases.slice() : [])
+    : ["secretaria@sindeducacao.com"];
+  if (contexto.GmailApp) {
+    contexto.GmailApp.getAliases = () => gmailAliases.slice();
+  }
+
   const arquivos = fs.readdirSync(RAIZ).filter(f => f.endsWith(".gs")).sort();
   const ignorar = new Set(opts.ignorar || []);
   const carregados = [];
