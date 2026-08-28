@@ -163,6 +163,79 @@ function dashboardGraficos() {
 
 /* ================= NUMERAÇÃO ================= */
 
+/*
+ * A numeração oficial precisa ser RESERVADA enquanto o ScriptLock ainda
+ * está segurado. Antes desta correção, duas execuções conseguiam ler o mesmo
+ * maior número e ambas devolviam o mesmo próximo número; o lock era liberado
+ * antes de PDF, fila e Controle serem gravados.
+ *
+ * A propriedade OFICIOS_SEQUENCIA_<ANO> funciona como contador/reserva anual.
+ * Ela nunca diminui automaticamente. Se uma emissão falhar depois da reserva,
+ * pode existir um salto na sequência, mas jamais reutilização silenciosa do
+ * número — para documento oficial, um número não utilizado é menos grave que
+ * dois documentos diferentes com o mesmo protocolo.
+ */
+function oficiosChaveSequencia_(ano) {
+  return "OFICIOS_SEQUENCIA_" + String(ano || "").trim();
+}
+
+function oficiosNumeroDoAno_(valor, ano) {
+  var texto = String(valor || "").trim();
+  var m = texto.match(/^(\d+)\s*\/\s*(\d{4})$/);
+  if (!m || m[2] !== String(ano)) return 0;
+  var n = parseInt(m[1], 10);
+  return isNaN(n) ? 0 : n;
+}
+
+function oficiosMaiorNumeroConhecido_(ss, sheetControle, colNumero, ano) {
+  var maior = PRIMEIRO_OFICIO_PLATAFORMA - 1;
+
+  function considerar(valor) {
+    var n = oficiosNumeroDoAno_(valor, ano);
+    if (n > maior) maior = n;
+  }
+
+  if (sheetControle && colNumero && sheetControle.getLastRow() > 1) {
+    sheetControle
+      .getRange(2, colNumero, sheetControle.getLastRow() - 1, 1)
+      .getValues()
+      .forEach(function(r) { considerar(r[0]); });
+  }
+
+  try {
+    var shFila = ss.getSheetByName("FILA_ENVIO_OFICIOS");
+    if (shFila && shFila.getLastRow() > 1) {
+      var hmFila = getHeaderMap_(shFila);
+      var colFila = hmFila["NUMERO_OFICIO"];
+      if (colFila) {
+        shFila
+          .getRange(2, colFila, shFila.getLastRow() - 1, 1)
+          .getValues()
+          .forEach(function(r) { considerar(r[0]); });
+      }
+    }
+  } catch (eFila) {
+    Logger.log("oficiosMaiorNumeroConhecido_.fila: " + eFila.message);
+  }
+
+  var props = PropertiesService.getScriptProperties();
+
+  try {
+    considerar(props.getProperty("TAXA_ASSISTENCIAL_NUMERO_OFICIO"));
+  } catch (eTaxa) {
+    Logger.log("oficiosMaiorNumeroConhecido_.taxa: " + eTaxa.message);
+  }
+
+  try {
+    var reservado = parseInt(props.getProperty(oficiosChaveSequencia_(ano)) || "0", 10);
+    if (!isNaN(reservado) && reservado > maior) maior = reservado;
+  } catch (eSeq) {
+    Logger.log("oficiosMaiorNumeroConhecido_.sequencia: " + eSeq.message);
+  }
+
+  return maior;
+}
+
 function preverProximoNumeroOficio() {
   var ss    = SpreadsheetApp.openById(PLANILHA_ID);
   var sheet = ss.getSheetByName(PLANILHA_REGISTRO);
@@ -172,27 +245,14 @@ function preverProximoNumeroOficio() {
   var colNumero = headerMap["Número do Ofício"];
   if (!colNumero) throw new Error("Coluna 'Número do Ofício' não encontrada.");
 
-  var ano        = anoAtual_();
-  var maiorNumero = 0;
-
-  if (sheet.getLastRow() > 1) {
-    sheet.getRange(2, colNumero, sheet.getLastRow() - 1, 1).getValues().forEach(function(r) {
-      var texto = String(r[0] || "").trim();
-      if (!texto || texto.indexOf("/" + ano) === -1) return;
-      var num = parseInt(texto.split("/")[0].trim(), 10);
-      if (!isNaN(num) && num > maiorNumero) maiorNumero = num;
-    });
-  }
-
+  var ano = anoAtual_();
+  var maiorNumero = oficiosMaiorNumeroConhecido_(ss, sheet, colNumero, ano);
   var proximo = String(maiorNumero + 1).padStart(3, "0") + "/" + ano;
   Logger.log("Prévia do próximo número: " + proximo);
   return proximo;
 }
 
 function gerarProximoNumeroSeguro() {
-  // travarSisgep_ (TravaSisgep.gs): gerarOficioWeb chama esta função e, no
-  // ofício de desfiliação, também sindAss_desfiliar_ — que trava igual. Com
-  // LockService direto, basta alguém aninhar as duas para travar a emissão.
   var trava = travarSisgep_(15000);
 
   try {
@@ -201,32 +261,18 @@ function gerarProximoNumeroSeguro() {
     var ano   = anoAtual_();
     if (!sheet) throw new Error("Aba de registro não encontrada.");
 
-    var headerMap   = getHeaderMap_(sheet);
-    var colNumero   = headerMap["Número do Ofício"];
+    var headerMap = getHeaderMap_(sheet);
+    var colNumero = headerMap["Número do Ofício"];
     if (!colNumero) throw new Error("Coluna 'Número do Ofício' não encontrada.");
 
-    var maiorNumero = PRIMEIRO_OFICIO_PLATAFORMA - 1;
+    var maiorNumero = oficiosMaiorNumeroConhecido_(ss, sheet, colNumero, ano);
+    var proximoNumero = maiorNumero + 1;
 
-    if (sheet.getLastRow() > 1) {
-      sheet.getRange(2, colNumero, sheet.getLastRow() - 1, 1).getValues().forEach(function(r) {
-        var texto = String(r[0] || "").trim();
-        if (!texto || texto.indexOf("/" + ano) === -1) return;
-        var num = parseInt(texto.split("/")[0].trim(), 10);
-        if (!isNaN(num) && num > maiorNumero) maiorNumero = num;
-      });
-    }
+    PropertiesService.getScriptProperties()
+      .setProperty(oficiosChaveSequencia_(ano), String(proximoNumero));
 
-    try {
-      var numeroTaxa = String(PropertiesService.getScriptProperties()
-        .getProperty("TAXA_ASSISTENCIAL_NUMERO_OFICIO") || "").trim();
-      if (numeroTaxa && numeroTaxa.indexOf("/" + ano) > -1) {
-        var numTaxa = parseInt(numeroTaxa.split("/")[0].trim(), 10);
-        if (!isNaN(numTaxa) && numTaxa > maiorNumero) maiorNumero = numTaxa;
-      }
-    } catch (e) { Logger.log("[gerarProximoNumeroSeguro] " + e); }
-
-    var proximo = String(maiorNumero + 1).padStart(3, "0") + "/" + ano;
-    Logger.log("gerarProximoNumeroSeguro: " + proximo);
+    var proximo = String(proximoNumero).padStart(3, "0") + "/" + ano;
+    Logger.log("gerarProximoNumeroSeguro [RESERVADO]: " + proximo);
     return proximo;
 
   } finally {
