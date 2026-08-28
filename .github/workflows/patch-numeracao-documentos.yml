@@ -21,15 +21,15 @@ jobs:
           fetch-depth: 0
 
       - name: Aplicar correcao isolada em Oficios.js
-        shell: python
+        shell: bash
         run: |
+          python - <<'PY'
           from pathlib import Path
 
           path = Path("Oficios.js")
           text = path.read_text(encoding="utf-8")
           start_marker = "/* ================= NUMERAÇÃO ================= */"
           end_marker = "/* ================= LOG SISTEMA ================= */"
-
           start = text.index(start_marker)
           end = text.index(end_marker, start)
 
@@ -67,7 +67,6 @@ function oficiosMaiorNumeroConhecido_(ss, sheetControle, colNumero, ano) {
     if (n > maior) maior = n;
   }
 
-  // Fonte histórica/oficial: Controle.
   if (sheetControle && colNumero && sheetControle.getLastRow() > 1) {
     sheetControle
       .getRange(2, colNumero, sheetControle.getLastRow() - 1, 1)
@@ -75,8 +74,6 @@ function oficiosMaiorNumeroConhecido_(ss, sheetControle, colNumero, ano) {
       .forEach(function(r) { considerar(r[0]); });
   }
 
-  // Fonte operacional nova: fila. Incluí-la evita reutilizar número que já
-  // foi reservado e enfileirado, mas ainda não chegou ao Controle por falha.
   try {
     var shFila = ss.getSheetByName("FILA_ENVIO_OFICIOS");
     if (shFila && shFila.getLastRow() > 1) {
@@ -95,14 +92,12 @@ function oficiosMaiorNumeroConhecido_(ss, sheetControle, colNumero, ano) {
 
   var props = PropertiesService.getScriptProperties();
 
-  // Compatibilidade com o fluxo em massa da Taxa Assistencial.
   try {
     considerar(props.getProperty("TAXA_ASSISTENCIAL_NUMERO_OFICIO"));
   } catch (eTaxa) {
     Logger.log("oficiosMaiorNumeroConhecido_.taxa: " + eTaxa.message);
   }
 
-  // Reserva atômica anual. É a defesa que fecha a janela de concorrência.
   try {
     var reservado = parseInt(props.getProperty(oficiosChaveSequencia_(ano)) || "0", 10);
     if (!isNaN(reservado) && reservado > maior) maior = reservado;
@@ -145,8 +140,6 @@ function gerarProximoNumeroSeguro() {
     var maiorNumero = oficiosMaiorNumeroConhecido_(ss, sheet, colNumero, ano);
     var proximoNumero = maiorNumero + 1;
 
-    // CRÍTICO: grava a reserva ANTES de liberar o lock. Outra execução que
-    // entrar depois já enxergará este número como utilizado/reservado.
     PropertiesService.getScriptProperties()
       .setProperty(oficiosChaveSequencia_(ano), String(proximoNumero));
 
@@ -168,10 +161,10 @@ function gerarProximoNumeroSeguro() {
               raise SystemExit("Quantidade inesperada de gerarProximoNumeroSeguro")
           if "OFICIOS_SEQUENCIA_" not in updated:
               raise SystemExit("Reserva anual não foi inserida")
-
           path.write_text(updated, encoding="utf-8")
+          PY
 
-      - name: Validar sintaxe e escopo da alteração
+      - name: Validar sintaxe e escopo da alteracao
         shell: bash
         run: |
           set -euo pipefail
@@ -182,7 +175,7 @@ function gerarProximoNumeroSeguro() {
           grep -q 'setProperty(oficiosChaveSequencia_(ano), String(proximoNumero))' Oficios.js
           grep -q 'gerarProximoNumeroSeguro \[RESERVADO\]' Oficios.js
 
-      - name: Commitar somente a correção
+      - name: Commitar somente a correcao
         shell: bash
         run: |
           set -euo pipefail
