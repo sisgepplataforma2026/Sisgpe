@@ -1,0 +1,59 @@
+name: Diagnostico suite HML
+
+on:
+  push:
+    branches:
+      - diagnostico/suite-hml-28
+    paths:
+      - ".github/workflows/diagnostico-suite-hml.yml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      TZ: America/Sao_Paulo
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Rodar suite e capturar log
+        id: suite
+        shell: bash
+        run: |
+          set +e
+          set -o pipefail
+          npm test 2>&1 | tee suite.log
+          status=${PIPESTATUS[0]}
+          grep -E 'Falhou:|>>> t' suite.log | tail -n 12 > suite-resumo.txt || true
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Mostrar resumo
+        if: always()
+        run: |
+          echo '===== RESUMO DA SUITE ====='
+          cat suite-resumo.txt || true
+          echo '==========================='
+
+      - name: Salvar log da suite
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: suite-diagnostico
+          path: |
+            suite.log
+            suite-resumo.txt
+
+      - name: Falhar se a suite falhou
+        if: steps.suite.outputs.status != '0'
+        run: exit 1
