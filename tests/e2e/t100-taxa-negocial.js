@@ -12,6 +12,7 @@ const repo = ler("TaxaNegocialRepository.gs");
 const service = ler("TaxaNegocialService.gs");
 const confirmacao = ler("TaxaNegocialConfirmacao.gs");
 const comprovante = ler("TaxaNegocialComprovante.gs");
+const historico = ler("TaxaNegocialHistorico.gs");
 const api = ler("TaxaNegocialApi.gs");
 const smoke = ler("TaxaNegocialSmokeTest.gs");
 
@@ -28,7 +29,7 @@ ok(!/getSessaoUsuario\s*\(\s*\)/.test(service), "não existe fallback de sessão
 
 passo("superfície pública");
 ok(/function\s+taxaNegocialApi\s*\(/.test(api), "existe uma única fachada pública para o frontend");
-const fontesTaxa = [api, service, confirmacao, comprovante, smoke].join("\n");
+const fontesTaxa = [api, service, confirmacao, comprovante, historico, smoke].join("\n");
 const funcoesTaxa = [...fontesTaxa.matchAll(/^function\s+(taxaNegocial[A-Za-z0-9_]*|tnSmokeTestSomenteLeitura_?)\s*\(/gm)].map(m => m[1]);
 const publicasTaxa = funcoesTaxa.filter(n => !n.endsWith("_"));
 ok(publicasTaxa.length === 1 && publicasTaxa[0] === "taxaNegocialApi", "somente taxaNegocialApi fica exposta ao google.script.run", publicasTaxa.join(", "));
