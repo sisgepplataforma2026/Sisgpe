@@ -1,9 +1,10 @@
 // ============================================================================
 // SISGEP · TaxaNegocialSmokeTest.gs
 // Testes SOMENTE LEITURA para a fundação da Taxa Negocial
+// Função interna: executável no editor, não exposta ao google.script.run.
 // ============================================================================
 
-function tnSmokeTestSomenteLeitura() {
+function tnSmokeTestSomenteLeitura_() {
   var resultado = { ok: true, timestamp: tnFormatarDataHora_(new Date()), fusoEsperado: TN_CONFIG.FUSO_HORARIO, verificacoes: [] };
 
   function check(nome, fn) {
@@ -77,6 +78,5 @@ function tnSmokeTestSomenteLeitura() {
     return '600s · 5 tentativas';
   });
 
-  // Não cria registro, não envia OTP, não altera planilha, não envia ofício.
   return resultado;
 }
