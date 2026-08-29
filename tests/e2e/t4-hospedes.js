@@ -4,7 +4,20 @@ const { g } = b.subir({});
 b.seedUsuarios(g);
 const TOKEN = b.logar(g, "wanderson");
 const TOKEN_FIN = b.logar(g, "rogerio");           // sem módulo Benefícios
-const dias = n => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+
+// Datas do formulário são datas civis (AAAA-MM-DD), não instantes UTC.
+// Usar toISOString() aqui fazia o teste mudar de dia conforme o fuso do runner.
+const dataCivil = d => {
+  const ano = d.getFullYear();
+  const mes = String(d.getMonth() + 1).padStart(2, "0");
+  const dia = String(d.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
+};
+const dias = n => {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return dataCivil(d);
+};
 
 function criarReserva(cpf, pessoas, diasEntrada, diasSaida) {
   const r = g.solicitarReservaParqueChina({
