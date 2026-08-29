@@ -1,0 +1,24 @@
+SUÍTE VERMELHA — 1 de 102 arquivo(s) com problema:
+══════════════════════════════════════════════════════════════════
+
+  REPROVOU  t4-hospedes.js   (saiu com 1)
+  --------------------------------------------------------------
+  |   [31m✗[0m entrada amanhã: prazo já vencido  [90mlimite era 29/08/2026 às 00:00[0m
+  |   [31m✗[0m depois do prazo o link não grava mais  [90mLista recebida. A autorização de entrada será emitida pela secretaria.[0m
+  |   [32m✓[0m cada envio da lista vira um evento na trilha  [90m3 eventos[0m
+  |   [32m✓[0m o aceite do termo também vira evento, com o texto aceito  [90m3 aceites registrados[0m
+  |   [32m✓[0m reserva cancelada não aceita mais hóspedes  [90mEsta reserva não está mais ativa. Fale com a secretaria do sindicato.[0m
+  |   [32m✓[0m quem não tem o módulo Benefícios não gera link  [90mNão foi possível concluir a operação.[0m
+  |   [33m![0m PDF do ofício de autorização com os nomes coletados  [90mdepende de template do Google Docs[0m
+  | 
+  | [1m═══ RESUMO ═══[0m
+  |   [32mPassou:[0m 26   [31mFalhou:[0m 2   [33mAtenção:[0m 0   Não testável: 1
+  | 
+  | [31mFALHAS:[0m
+  |   • [CHINA PARK · 2ª etapa — solicitante informa os hóspedes] entrada amanhã: prazo já vencido — limite era 29/08/2026 às 00:00
+  |   • [CHINA PARK · 2ª etapa — solicitante informa os hóspedes] depois do prazo o link não grava mais — Lista recebida. A autorização de entrada será emitida pela secretaria.
+
+══════════════════════════════════════════════════════════════════
+Resumo: t4-hospedes.js
+══════════════════════════════════════════════════════════════════
+
