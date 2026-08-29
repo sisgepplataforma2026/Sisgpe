@@ -67,3 +67,24 @@ jobs:
           echo "SISGEP_SUITE::VERMELHA"
           printf 'SISGEP_FAILURES::\n%b' "$failures"
           exit 1
+
+      - name: Comparar superficie t6 com retrato versionado
+        if: always()
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const cp = require('child_process');
+          const path = 'tests/e2e/exposicao-detalhe.json';
+          const anterior = JSON.parse(cp.execSync('git show HEAD:' + path, {encoding:'utf8'}));
+          const atual = JSON.parse(fs.readFileSync(path, 'utf8'));
+          const chave = x => x.arquivo + '::' + x.nome;
+          const antes = new Set((anterior.expostas || []).map(chave));
+          const agora = new Set((atual.expostas || []).map(chave));
+          const novas = [...agora].filter(x => !antes.has(x)).sort();
+          const removidas = [...antes].filter(x => !agora.has(x)).sort();
+          console.log('SISGEP_EXPOSICAO_ANTES::' + antes.size);
+          console.log('SISGEP_EXPOSICAO_AGORA::' + agora.size);
+          console.log('SISGEP_EXPOSICAO_NOVAS::' + JSON.stringify(novas));
+          console.log('SISGEP_EXPOSICAO_REMOVIDAS::' + JSON.stringify(removidas));
+          NODE
