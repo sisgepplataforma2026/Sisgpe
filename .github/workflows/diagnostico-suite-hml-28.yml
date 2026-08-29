@@ -1,0 +1,80 @@
+name: Diagnostico Suite HML 28
+
+on:
+  push:
+    branches:
+      - correcao/suite-homologacao-28
+    paths:
+      - '.github/workflows/diagnostico-suite-hml-28.yml'
+      - 'tests/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '*.gs'
+      - '*.js'
+      - '*.html'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  diagnostico:
+    runs-on: ubuntu-latest
+    env:
+      TZ: America/Sao_Paulo
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: correcao/suite-homologacao-28
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Dependencias
+        run: npm ci
+
+      - name: Rodar suite e gerar relatorio compacto
+        id: suite
+        shell: bash
+        run: |
+          set +e
+          npm test > suite-completa.log 2>&1
+          codigo=$?
+          set -e
+
+          mkdir -p .ci
+          python3 - <<'PY'
+          from pathlib import Path
+          texto = Path('suite-completa.log').read_text(encoding='utf-8', errors='replace')
+          marcadores = ['SUÍTE VERMELHA', 'SUÍTE VERDE']
+          pos = max(texto.rfind(m) for m in marcadores)
+          if pos >= 0:
+              recorte = texto[pos:]
+          else:
+              linhas = texto.splitlines()
+              recorte = '\n'.join(linhas[-160:])
+          Path('.ci/suite-hml-28.txt').write_text(recorte + '\n', encoding='utf-8')
+          PY
+          echo "$codigo" > .ci/suite-hml-28-exit.txt
+          echo "codigo=$codigo" >> "$GITHUB_OUTPUT"
+          cat .ci/suite-hml-28.txt
+
+      - name: Gravar diagnostico na branch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .ci/suite-hml-28.txt .ci/suite-hml-28-exit.txt
+          if ! git diff --cached --quiet; then
+            git commit -m "ci: registrar diagnostico da suite HML"
+            git push origin HEAD:correcao/suite-homologacao-28
+          fi
+
+      - name: Falhar se a suite reprovou
+        shell: bash
+        run: |
+          test "${{ steps.suite.outputs.codigo }}" = "0"
