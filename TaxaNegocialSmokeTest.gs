@@ -3,7 +3,7 @@
 // Testes SOMENTE LEITURA para a fundação da Taxa Negocial
 // ============================================================================
 
-function tnSmokeTestSomenteLeitura() {
+function tnSmokeTestSomenteLeitura_() {
   const resultado = {
     ok: true,
     timestamp: tnFormatarDataHora_(new Date()),
