@@ -284,12 +284,29 @@ function taxaNegocialConfirmarOTP_(sessao, challengeId, codigo) {
       return registro;
     }
 
+    // A oposição já está definitivamente registrada neste ponto. O PDF é uma
+    // consequência documental: falhar na geração nunca desfaz a manifestação.
+    var comprovante = tnTentarGerarComprovante_(sessao, registro.dados.idOposicao, pre);
+    if (comprovante && comprovante.ok) {
+      registro.dados.comprovante = comprovante.dados;
+      registro.dados.comprovantePendente = false;
+    } else {
+      registro.dados.comprovantePendente = true;
+      registro.avisos = registro.avisos || [];
+      registro.avisos.push((comprovante && comprovante.mensagem) || 'Comprovante PDF pendente de geração.');
+    }
+
     tnOtpApagarDesafio_(id);
     tnRepoAuditar_({
       registroId: registro.dados.idOposicao,
       acao: 'OTP_VALIDADO',
       sessao: sessao,
-      valorNovo: { challengeId: id, metodo: 'OTP_EMAIL', protocolo: registro.dados.protocolo },
+      valorNovo: {
+        challengeId: id,
+        metodo: 'OTP_EMAIL',
+        protocolo: registro.dados.protocolo,
+        comprovanteGerado: registro.dados.comprovantePendente !== true
+      },
       documento: registro.dados.protocolo
     });
     return registro;
