@@ -38,6 +38,9 @@ function taxaNegocialApi(token, acao, payload) {
     gerarComprovante: function() {
       return taxaNegocialGerarComprovante_(sessao, dados.idOposicao);
     },
+    historicoTrabalhador: function() {
+      return taxaNegocialHistoricoTrabalhador_(sessao, dados.cpf);
+    },
     cancelarOposicao: function() {
       return taxaNegocialCancelarOposicao_(sessao, dados.idOposicao, dados.motivo);
     }
