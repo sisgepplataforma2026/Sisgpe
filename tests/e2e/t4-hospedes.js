@@ -4,7 +4,12 @@ const { g } = b.subir({});
 b.seedUsuarios(g);
 const TOKEN = b.logar(g, "wanderson");
 const TOKEN_FIN = b.logar(g, "rogerio");           // sem módulo Benefícios
-const dias = n => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+const dias = n => {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  const dois = v => String(v).padStart(2, "0");
+  return d.getFullYear() + "-" + dois(d.getMonth() + 1) + "-" + dois(d.getDate());
+};
 
 function criarReserva(cpf, pessoas, diasEntrada, diasSaida) {
   const r = g.solicitarReservaParqueChina({
