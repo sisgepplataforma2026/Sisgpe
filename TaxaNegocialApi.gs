@@ -32,6 +32,12 @@ function taxaNegocialApi(token, acao, payload) {
     confirmarOtp: function() {
       return taxaNegocialConfirmarOTP_(sessao, dados.challengeId, dados.codigo);
     },
+    comprovante: function() {
+      return taxaNegocialObterComprovante_(sessao, dados.idOposicao);
+    },
+    gerarComprovante: function() {
+      return taxaNegocialGerarComprovante_(sessao, dados.idOposicao);
+    },
     cancelarOposicao: function() {
       return taxaNegocialCancelarOposicao_(sessao, dados.idOposicao, dados.motivo);
     }
