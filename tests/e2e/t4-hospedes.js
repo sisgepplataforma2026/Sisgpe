@@ -4,6 +4,8 @@ const { g } = b.subir({});
 b.seedUsuarios(g);
 const TOKEN = b.logar(g, "wanderson");
 const TOKEN_FIN = b.logar(g, "rogerio");           // sem módulo Benefícios
+// Data civil local: toISOString() usa UTC e, à noite no Brasil, pode avançar
+// um dia e transformar "amanhã" em "depois de amanhã".
 const dias = n => {
   const d = new Date();
   d.setDate(d.getDate() + n);
