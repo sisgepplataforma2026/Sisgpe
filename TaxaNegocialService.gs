@@ -22,7 +22,13 @@ function tnChaveUnica_(idCampanha, cpf, escolaId) {
 }
 
 function tnHashManifestacao_(campanha, cpf, escolaId) {
-  return tnHashHex_([String(campanha.ID_CAMPANHA || ''), String(campanha.VERSAO_MANIFESTACAO || ''), tnNormalizarCpf_(cpf), String(escolaId || ''), String(campanha.TEXTO_MANIFESTACAO || '')].join('|'));
+  return tnHashHex_([
+    String(campanha.ID_CAMPANHA || ''),
+    String(campanha.VERSAO_MANIFESTACAO || ''),
+    tnNormalizarCpf_(cpf),
+    String(escolaId || ''),
+    String(campanha.TEXTO_MANIFESTACAO || '')
+  ].join('|'));
 }
 
 function tnGerarProtocoloSemLock_(ano) {
@@ -37,12 +43,14 @@ function tnGerarProtocoloSemLock_(ano) {
 function tnGerarProtocolo_(ano) {
   if (typeof travarSisgep_ !== 'function') throw new Error('Infraestrutura de trava indisponível.');
   var trava = travarSisgep_(20000);
-  try { return tnGerarProtocoloSemLock_(ano); } finally { trava.liberar(); }
+  try { return tnGerarProtocoloSemLock_(ano); }
+  finally { trava.liberar(); }
 }
 
 function tnValidarPreRegistroInterno_(payload) {
   payload = payload || {};
   tnExigirHomologacaoSegura_();
+
   var campanha = tnRepoBuscarCampanhaPorId_(payload.idCampanha) || tnRepoBuscarCampanhaAtiva_();
   tnValidarCampanhaAberta_(campanha);
 
@@ -63,60 +71,118 @@ function tnValidarPreRegistroInterno_(payload) {
   var chave = tnChaveUnica_(campanha.ID_CAMPANHA, cpfN, escolaId);
   var duplicada = tnRepoBuscarOposicaoPorChave_(chave);
   if (duplicada) {
-    return { ok: false, codigo: 'OPOSICAO_DUPLICADA', mensagem: 'Já existe oposição válida para este trabalhador, campanha e escola.', dados: { protocolo: duplicada.PROTOCOLO || '', idOposicao: duplicada.ID_OPOSICAO || '' } };
+    return {
+      ok: false,
+      codigo: 'OPOSICAO_DUPLICADA',
+      mensagem: 'Já existe oposição válida para este trabalhador, campanha e escola.',
+      dados: { protocolo: duplicada.PROTOCOLO || '', idOposicao: duplicada.ID_OPOSICAO || '' }
+    };
   }
 
   var nomeEscola = escola['Escola (Razão Social)'] || escola.NOME_FANTASIA || escola['Nome fantasia'] || '';
   var email = trabalhador['E-mail'] || trabalhador.EMAIL || '';
   return {
-    ok: true, campanha: campanha, trabalhador: trabalhador, escola: escola, cpf: cpfN,
-    escolaId: escolaId, escolaNome: nomeEscola, cnpj: escola.CNPJ || '', chaveUnica: chave,
+    ok: true,
+    campanha: campanha,
+    trabalhador: trabalhador,
+    escola: escola,
+    cpf: cpfN,
+    escolaId: escolaId,
+    escolaNome: nomeEscola,
+    cnpj: escola.CNPJ || '',
+    chaveUnica: chave,
     hashManifestacao: tnHashManifestacao_(campanha, cpfN, escolaId),
-    email: tnNormalizarTexto_(email), celular: tnNormalizarTexto_(trabalhador.Celular || trabalhador.CELULAR2 || '')
+    email: tnNormalizarTexto_(email),
+    celular: tnNormalizarTexto_(trabalhador.Celular || trabalhador.CELULAR2 || '')
   };
 }
 
 function tnPreRegistroDto_(pre) {
   if (!pre || !pre.ok) return pre;
-  return { ok: true, dados: {
-    campanha: { id: pre.campanha.ID_CAMPANHA, titulo: pre.campanha.TITULO, exercicio: pre.campanha.EXERCICIO, textoManifestacao: pre.campanha.TEXTO_MANIFESTACAO, versaoManifestacao: pre.campanha.VERSAO_MANIFESTACAO },
-    trabalhador: { nome: pre.trabalhador.Nome || '', cpf: pre.cpf, filiado: false, temEmail: !!pre.email, temCelular: !!pre.celular },
-    escola: { id: pre.escolaId, nome: pre.escolaNome, cnpj: pre.cnpj },
-    chaveUnica: pre.chaveUnica, hashManifestacao: pre.hashManifestacao
-  } };
+  return {
+    ok: true,
+    dados: {
+      campanha: {
+        id: pre.campanha.ID_CAMPANHA,
+        titulo: pre.campanha.TITULO,
+        exercicio: pre.campanha.EXERCICIO,
+        textoManifestacao: pre.campanha.TEXTO_MANIFESTACAO,
+        versaoManifestacao: pre.campanha.VERSAO_MANIFESTACAO
+      },
+      trabalhador: {
+        nome: pre.trabalhador.Nome || '',
+        cpf: pre.cpf,
+        filiado: false,
+        temEmail: !!pre.email,
+        temCelular: !!pre.celular
+      },
+      escola: { id: pre.escolaId, nome: pre.escolaNome, cnpj: pre.cnpj },
+      chaveUnica: pre.chaveUnica,
+      hashManifestacao: pre.hashManifestacao
+    }
+  };
 }
 
-function taxaNegocialObterCampanhaAtiva(token) {
-  tnSessao_(token); tnExigirHomologacaoSegura_();
+function taxaNegocialObterCampanhaAtiva_(sessao) {
+  tnExigirHomologacaoSegura_();
   return { ok: true, dados: tnRepoBuscarCampanhaAtiva_() || null };
 }
 
-function taxaNegocialBuscarContextoPorCpf(token, cpf, escolaId, cnpj) {
-  tnSessao_(token); tnExigirHomologacaoSegura_();
+function taxaNegocialBuscarContextoPorCpf_(sessao, cpf, escolaId, cnpj) {
+  tnExigirHomologacaoSegura_();
   var cpfN = tnNormalizarCpf_(cpf);
   if (!tnValidarCpfBasico_(cpfN)) return { ok: false, codigo: 'CPF_INVALIDO', mensagem: 'CPF inválido.' };
-  var trabalhador = tnRepoBuscarTrabalhadorPorCpf_(cpfN), escola = tnRepoBuscarEscola_(escolaId, cnpj), campanha = tnRepoBuscarCampanhaAtiva_();
-  return { ok: true, dados: {
-    campanha: campanha,
-    trabalhador: trabalhador ? { nome: trabalhador.Nome || '', cpf: cpfN, filiado: String(trabalhador.Filiado || '').toUpperCase() === 'S', situacaoFiliacao: trabalhador.Filiado || '', matricula: trabalhador.MATRICULA || '', temCelular: !!tnNormalizarTexto_(trabalhador.Celular || trabalhador.CELULAR2 || ''), temEmail: !!tnNormalizarTexto_(trabalhador['E-mail'] || trabalhador.EMAIL || '') } : null,
-    escola: escola ? { id: escola.EscolaID || '', nome: escola['Escola (Razão Social)'] || escola.NOME_FANTASIA || '', cnpj: escola.CNPJ || '', cidade: escola.Cidade || '', emailPrincipal: escola['E-mail (principal)'] || '' } : null
-  } };
+
+  var trabalhador = tnRepoBuscarTrabalhadorPorCpf_(cpfN);
+  var escola = tnRepoBuscarEscola_(escolaId, cnpj);
+  var campanha = tnRepoBuscarCampanhaAtiva_();
+  return {
+    ok: true,
+    dados: {
+      campanha: campanha,
+      trabalhador: trabalhador ? {
+        nome: trabalhador.Nome || '',
+        cpf: cpfN,
+        filiado: String(trabalhador.Filiado || '').toUpperCase() === 'S',
+        situacaoFiliacao: trabalhador.Filiado || '',
+        matricula: trabalhador.MATRICULA || '',
+        temCelular: !!tnNormalizarTexto_(trabalhador.Celular || trabalhador.CELULAR2 || ''),
+        temEmail: !!tnNormalizarTexto_(trabalhador['E-mail'] || trabalhador.EMAIL || '')
+      } : null,
+      escola: escola ? {
+        id: escola.EscolaID || '',
+        nome: escola['Escola (Razão Social)'] || escola.NOME_FANTASIA || '',
+        cnpj: escola.CNPJ || '',
+        cidade: escola.Cidade || '',
+        emailPrincipal: escola['E-mail (principal)'] || ''
+      } : null
+    }
+  };
 }
 
-function taxaNegocialCadastrarNaoFiliado(token, dados) {
-  var sessao = tnSessao_(token); tnExigirHomologacaoSegura_(); dados = dados || {};
+function taxaNegocialCadastrarNaoFiliado_(sessao, dados) {
+  tnExigirHomologacaoSegura_();
+  dados = dados || {};
   var cpfN = tnNormalizarCpf_(dados.cpf);
   if (!tnValidarCpfBasico_(cpfN)) return { ok: false, codigo: 'CPF_INVALIDO', mensagem: 'CPF inválido.' };
   if (!tnNormalizarTexto_(dados.nome)) return { ok: false, codigo: 'NOME_OBRIGATORIO', mensagem: 'Nome obrigatório.' };
+
   var existente = tnRepoBuscarTrabalhadorPorCpf_(cpfN);
-  if (existente) return { ok: true, codigo: 'JA_EXISTE', dados: { existente: true, filiado: String(existente.Filiado || '').toUpperCase() === 'S' } };
+  if (existente) {
+    return { ok: true, codigo: 'JA_EXISTE', dados: { existente: true, filiado: String(existente.Filiado || '').toUpperCase() === 'S' } };
+  }
+
   var criado = tnRepoCriarTrabalhadorNaoFiliado_(dados);
-  tnRepoAuditar_({ registroId: 'CPF-…' + cpfN.slice(-4), acao: 'TRABALHADOR_NAO_FILIADO_CADASTRADO', sessao: sessao, valorNovo: { filiado: 'N', origem: 'TAXA_NEGOCIAL' } });
+  tnRepoAuditar_({
+    registroId: 'CPF-…' + cpfN.slice(-4),
+    acao: 'TRABALHADOR_NAO_FILIADO_CADASTRADO',
+    sessao: sessao,
+    valorNovo: { filiado: 'N', origem: 'TAXA_NEGOCIAL' }
+  });
   return { ok: true, dados: { nome: criado.Nome || '', cpf: cpfN, filiado: false } };
 }
 
-function taxaNegocialValidarPreRegistro(token, payload) {
-  tnSessao_(token);
+function taxaNegocialValidarPreRegistro_(sessao, payload) {
   return tnPreRegistroDto_(tnValidarPreRegistroInterno_(payload));
 }
 
@@ -124,55 +190,136 @@ function tnRegistrarOposicaoConfirmada_(sessao, pre, evidencia) {
   if (!pre || !pre.ok) throw new Error('Pré-registro inválido.');
   if (!evidencia || evidencia.validadaNoServidor !== true) throw new Error('Confirmação eletrônica do servidor ausente.');
   if (typeof travarSisgep_ !== 'function') throw new Error('Infraestrutura de trava indisponível.');
+
   var trava = travarSisgep_(30000);
   try {
-    var atual = tnValidarPreRegistroInterno_({ idCampanha: pre.campanha.ID_CAMPANHA, cpf: pre.cpf, escolaId: pre.escolaId });
+    var atual = tnValidarPreRegistroInterno_({
+      idCampanha: pre.campanha.ID_CAMPANHA,
+      cpf: pre.cpf,
+      escolaId: pre.escolaId
+    });
     if (!atual.ok) return atual;
     if (String(atual.chaveUnica) !== String(pre.chaveUnica) || String(atual.hashManifestacao) !== String(pre.hashManifestacao)) {
       return { ok: false, codigo: 'MANIFESTACAO_ALTERADA', mensagem: 'Os dados da manifestação mudaram. Gere uma nova confirmação.' };
     }
 
-    var agora = new Date(), ano = Utilities.formatDate(agora, TN_CONFIG.FUSO_HORARIO, 'yyyy');
-    var protocolo = tnGerarProtocoloSemLock_(ano), idOposicao = tnGerarId_('OPOS');
+    var agora = new Date();
+    var ano = Utilities.formatDate(agora, TN_CONFIG.FUSO_HORARIO, 'yyyy');
+    var protocolo = tnGerarProtocoloSemLock_(ano);
+    var idOposicao = tnGerarId_('OPOS');
     var usuario = sessao.email || sessao.usuario || '';
     var registro = {
-      ID_OPOSICAO: idOposicao, PROTOCOLO: protocolo, ID_CAMPANHA: atual.campanha.ID_CAMPANHA,
-      CPF_NORMALIZADO: atual.cpf, NOME_SNAPSHOT: atual.trabalhador.Nome || '', FILIADO_SNAPSHOT: 'N',
-      ESCOLA_ID: atual.escolaId, CNPJ_SNAPSHOT: atual.cnpj, ESCOLA_SNAPSHOT: atual.escolaNome,
-      CHAVE_UNICA: atual.chaveUnica, DATA_HORA_OPOSICAO: agora, STATUS_OPOSICAO: 'REGISTRADA',
-      STATUS_COMUNICACAO: 'NAO_AGRUPADA', FORMA_CONFIRMACAO: evidencia.metodo || 'ELETRONICA',
+      ID_OPOSICAO: idOposicao,
+      PROTOCOLO: protocolo,
+      ID_CAMPANHA: atual.campanha.ID_CAMPANHA,
+      CPF_NORMALIZADO: atual.cpf,
+      NOME_SNAPSHOT: atual.trabalhador.Nome || '',
+      FILIADO_SNAPSHOT: 'N',
+      ESCOLA_ID: atual.escolaId,
+      CNPJ_SNAPSHOT: atual.cnpj,
+      ESCOLA_SNAPSHOT: atual.escolaNome,
+      CHAVE_UNICA: atual.chaveUnica,
+      DATA_HORA_OPOSICAO: agora,
+      STATUS_OPOSICAO: 'REGISTRADA',
+      STATUS_COMUNICACAO: 'NAO_AGRUPADA',
+      FORMA_CONFIRMACAO: evidencia.metodo || 'ELETRONICA',
       DOCUMENTO_CONFERIDO: evidencia.documentoConferido === true ? 'SIM' : 'NAO',
       TIPO_DOCUMENTO_CONFERIDO: tnNormalizarTexto_(evidencia.tipoDocumentoConferido),
-      OTP_VALIDADO: evidencia.otpValidado === true ? 'SIM' : 'NAO', HASH_MANIFESTACAO: atual.hashManifestacao,
-      HASH_PDF: '', LINK_PDF: '', ID_LOTE: '', NUMERO_OFICIO: '', ID_FILA_OFICIO: '',
-      REGISTRADO_POR: usuario, REGISTRADO_EM: agora, ATUALIZADO_POR: usuario, ATUALIZADO_EM: agora,
-      CANCELADO_POR: '', CANCELADO_EM: '', MOTIVO_CANCELAMENTO: '',
+      OTP_VALIDADO: evidencia.otpValidado === true ? 'SIM' : 'NAO',
+      HASH_MANIFESTACAO: atual.hashManifestacao,
+      HASH_PDF: '',
+      LINK_PDF: '',
+      ID_LOTE: '',
+      NUMERO_OFICIO: '',
+      ID_FILA_OFICIO: '',
+      REGISTRADO_POR: usuario,
+      REGISTRADO_EM: agora,
+      ATUALIZADO_POR: usuario,
+      ATUALIZADO_EM: agora,
+      CANCELADO_POR: '',
+      CANCELADO_EM: '',
+      MOTIVO_CANCELAMENTO: '',
       OBSERVACAO: 'Registro eletrônico — aguardando geração do comprovante PDF.'
     };
+
     var criado = tnRepoInserirOposicao_(registro);
-    tnRepoAuditar_({ registroId: idOposicao, acao: 'OPOSICAO_CONFIRMADA', sessao: sessao, valorNovo: { idCampanha: atual.campanha.ID_CAMPANHA, protocolo: protocolo, escolaId: atual.escolaId, statusOposicao: 'REGISTRADA', statusComunicacao: 'NAO_AGRUPADA', metodoConfirmacao: evidencia.metodo || 'ELETRONICA' }, documento: protocolo });
-    return { ok: true, mensagem: 'Oposição registrada com sucesso.', dados: { idOposicao: criado.ID_OPOSICAO, protocolo: criado.PROTOCOLO, dataHora: tnFormatarDataHora_(agora), statusOposicao: criado.STATUS_OPOSICAO, statusComunicacao: criado.STATUS_COMUNICACAO } };
-  } finally { trava.liberar(); }
+    tnRepoAuditar_({
+      registroId: idOposicao,
+      acao: 'OPOSICAO_CONFIRMADA',
+      sessao: sessao,
+      valorNovo: {
+        idCampanha: atual.campanha.ID_CAMPANHA,
+        protocolo: protocolo,
+        escolaId: atual.escolaId,
+        statusOposicao: 'REGISTRADA',
+        statusComunicacao: 'NAO_AGRUPADA',
+        metodoConfirmacao: evidencia.metodo || 'ELETRONICA'
+      },
+      documento: protocolo
+    });
+
+    return {
+      ok: true,
+      mensagem: 'Oposição registrada com sucesso.',
+      dados: {
+        idOposicao: criado.ID_OPOSICAO,
+        protocolo: criado.PROTOCOLO,
+        dataHora: tnFormatarDataHora_(agora),
+        statusOposicao: criado.STATUS_OPOSICAO,
+        statusComunicacao: criado.STATUS_COMUNICACAO
+      }
+    };
+  } finally {
+    trava.liberar();
+  }
 }
 
-function taxaNegocialRegistrarOposicaoConfirmada(token, payload) {
-  tnSessao_(token);
-  return { ok: false, codigo: 'CONFIRMACAO_SERVIDOR_OBRIGATORIA', mensagem: 'Use o fluxo de confirmação eletrônica do servidor antes de registrar a oposição.' };
+function taxaNegocialRegistrarOposicaoConfirmada_(sessao, payload) {
+  return {
+    ok: false,
+    codigo: 'CONFIRMACAO_SERVIDOR_OBRIGATORIA',
+    mensagem: 'Use o fluxo de confirmação eletrônica do servidor antes de registrar a oposição.'
+  };
 }
 
-function taxaNegocialCancelarOposicao(token, idOposicao, motivo) {
-  var sessao = tnSessao_(token); tnExigirHomologacaoSegura_();
+function taxaNegocialCancelarOposicao_(sessao, idOposicao, motivo) {
+  tnExigirHomologacaoSegura_();
   var justificativa = tnNormalizarTexto_(motivo);
-  if (justificativa.length < 10) return { ok: false, codigo: 'MOTIVO_OBRIGATORIO', mensagem: 'Informe uma justificativa de cancelamento com pelo menos 10 caracteres.' };
+  if (justificativa.length < 10) {
+    return { ok: false, codigo: 'MOTIVO_OBRIGATORIO', mensagem: 'Informe uma justificativa de cancelamento com pelo menos 10 caracteres.' };
+  }
   if (typeof travarSisgep_ !== 'function') throw new Error('Infraestrutura de trava indisponível.');
+
   var trava = travarSisgep_(20000);
   try {
     var atual = tnRepoBuscarOposicaoPorId_(idOposicao);
     if (!atual) return { ok: false, codigo: 'NAO_ENCONTRADA', mensagem: 'Oposição não encontrada.' };
-    if (String(atual.STATUS_OPOSICAO || '').toUpperCase() === 'CANCELADA') return { ok: true, codigo: 'JA_CANCELADA', mensagem: 'A oposição já está cancelada.' };
-    var agora = new Date(), usuario = sessao.email || sessao.usuario || '';
-    var depois = tnRepoAtualizarOposicao_(idOposicao, { STATUS_OPOSICAO: 'CANCELADA', CANCELADO_POR: usuario, CANCELADO_EM: agora, MOTIVO_CANCELAMENTO: justificativa, ATUALIZADO_POR: usuario, ATUALIZADO_EM: agora });
-    tnRepoAuditar_({ registroId: idOposicao, acao: 'OPOSICAO_CANCELADA', sessao: sessao, valorAnterior: { statusOposicao: atual.STATUS_OPOSICAO }, valorNovo: { statusOposicao: 'CANCELADA' }, justificativa: justificativa, documento: atual.PROTOCOLO || '' });
+    if (String(atual.STATUS_OPOSICAO || '').toUpperCase() === 'CANCELADA') {
+      return { ok: true, codigo: 'JA_CANCELADA', mensagem: 'A oposição já está cancelada.' };
+    }
+
+    var agora = new Date();
+    var usuario = sessao.email || sessao.usuario || '';
+    var depois = tnRepoAtualizarOposicao_(idOposicao, {
+      STATUS_OPOSICAO: 'CANCELADA',
+      CANCELADO_POR: usuario,
+      CANCELADO_EM: agora,
+      MOTIVO_CANCELAMENTO: justificativa,
+      ATUALIZADO_POR: usuario,
+      ATUALIZADO_EM: agora
+    });
+
+    tnRepoAuditar_({
+      registroId: idOposicao,
+      acao: 'OPOSICAO_CANCELADA',
+      sessao: sessao,
+      valorAnterior: { statusOposicao: atual.STATUS_OPOSICAO },
+      valorNovo: { statusOposicao: 'CANCELADA' },
+      justificativa: justificativa,
+      documento: atual.PROTOCOLO || ''
+    });
     return { ok: true, mensagem: 'Oposição cancelada mantendo a trilha de auditoria.', dados: { protocolo: depois.PROTOCOLO } };
-  } finally { trava.liberar(); }
+  } finally {
+    trava.liberar();
+  }
 }
