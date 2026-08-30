@@ -253,34 +253,36 @@
               <div id="cardEscolaOficioSelecionada" class="escola-profile escola-profile-premium" style="display:none;">
                 <div class="escola-profile-head escola-profile-head-premium">
                   <div class="escola-profile-main">
-                    <div class="escola-avatar-premium">🏫</div>
                     <div>
                       <div class="escola-profile-kicker">Escola selecionada</div>
                       <h3 id="escolaProfileNome">—</h3>
-                      <p id="escolaProfileRazao">Razão social não informada</p>
-                      <div class="escola-profile-line">
+                      <div class="escola-profile-identity">
                         <span id="escolaProfileCnpjLinha">CNPJ não informado</span>
-                        <span id="escolaProfileEmailLinha">E-mail não informado</span>
+                        <span aria-hidden="true">·</span>
+                        <strong id="escolaProfileStatus">Ativa</strong>
                       </div>
+                      <p id="escolaProfileEnderecoLinha" class="escola-profile-address" style="display:none;"></p>
                     </div>
                   </div>
                   <div class="escola-profile-actions">
-                    <button type="button" title="Editar dados" id="btnToggleEdicaoEscola">✎</button>
-                    <button type="button" title="Consultar CNPJ" id="btnConsultarCnpjSmart">🔎</button>
-                    <button type="button" title="Sincronizar dados" id="btnSincronizarCnpjSmart">↻</button>
-                    <button type="button" title="Salvar cadastro" id="btnSalvarEscolaSmart">💾</button>
+                    <button type="button" title="Editar os dados da escola" id="btnToggleEdicaoEscola">✏️ <span>Editar</span></button>
+                    <button type="button" title="Atualizar os dados pelo CNPJ" id="btnSincronizarCnpjSmart">🔄 <span>Atualizar</span></button>
+                    <button type="button" title="Remover a escola desta emissão" aria-label="Remover a escola desta emissão" id="btnRemoverEscolaSelecionada" class="danger">🗑️ <span>Remover</span></button>
+                    <button type="button" id="btnConsultarCnpjSmart" hidden aria-hidden="true" tabindex="-1">Consultar CNPJ</button>
+                    <button type="button" id="btnSalvarEscolaSmart" hidden aria-hidden="true" tabindex="-1">Salvar cadastro</button>
                   </div>
                 </div>
-                <div class="escola-profile-grid escola-profile-grid-premium">
-                  <div><span>CNPJ</span><strong id="escolaProfileCnpj">—</strong></div>
-                  <div><span>Cidade/UF</span><strong id="escolaProfileCidadeUf">—</strong></div>
-                  <div><span>Endereço</span><strong id="escolaProfileEndereco">—</strong></div>
-                  <div><span>Status</span><strong id="escolaProfileStatus">Ativa</strong></div>
+                <div class="escola-profile-compat" hidden aria-hidden="true">
+                  <span id="escolaProfileRazao"></span>
+                  <span id="escolaProfileEmailLinha"></span>
+                  <span id="escolaProfileCnpj"></span>
+                  <span id="escolaProfileCidadeUf"></span>
+                  <span id="escolaProfileEndereco"></span>
                 </div>
                 <div class="escola-email-panel escola-email-panel-premium">
                   <div class="escola-email-head">
                     <span>E-mails da escola</span>
-                    <small>Clique para definir o principal ou adicione outro contato</small>
+                    <small>Clique para definir o principal</small>
                   </div>
                   <div id="escolaProfileEmails" class="escola-email-pills"></div>
                   <div class="escola-add-email">
@@ -288,10 +290,14 @@
                     <button type="button" id="btnAdicionarEmailEscolaOficio">+ Adicionar</button>
                   </div>
                 </div>
-                <div class="escola-profile-stats escola-profile-stats-premium">
-                  <div><span>Ofícios enviados</span><strong id="escolaStatOficios">0</strong></div>
-                  <div><span>Confirmados</span><strong id="escolaStatConfirmados">0</strong></div>
-                  <div><span>Último envio</span><strong id="escolaStatUltimo">—</strong></div>
+                <div class="escola-history-summary">
+                  <span aria-hidden="true">●</span>
+                  <p id="escolaHistoricoResumo">Nenhum ofício enviado para esta escola ainda.</p>
+                  <div hidden aria-hidden="true">
+                    <strong id="escolaStatOficios">0</strong>
+                    <strong id="escolaStatConfirmados">0</strong>
+                    <strong id="escolaStatUltimo">—</strong>
+                  </div>
                 </div>
               </div>
             </div>
@@ -307,10 +313,17 @@
             <div class="fg fg-4" style="margin-bottom:12px;">
               <div class="fld"><label for="cnpj">CNPJ</label><input type="text" id="cnpj" placeholder="00.000.000/0000-00"></div>
               <div class="fld"><label for="email">E-MAIL PRINCIPAL</label><input type="email" id="email" placeholder="email@escola.com.br"></div>
-              <div class="fld fg-full"><label for="enderecoEscola">ENDEREÇO</label><input type="text" id="enderecoEscola" placeholder="Endereço completo"></div>
+              <div class="fld"><label for="logradouroEscola">LOGRADOURO</label><input type="text" id="logradouroEscola" placeholder="Rua, avenida..."></div>
+              <div class="fld"><label for="numeroEscola">NÚMERO</label><input type="text" id="numeroEscola" placeholder="120"></div>
+              <div class="fld"><label for="complementoEscola">COMPLEMENTO</label><input type="text" id="complementoEscola" placeholder="Sala, bloco..."></div>
+              <div class="fld"><label for="bairroEscola">BAIRRO</label><input type="text" id="bairroEscola" placeholder="Bairro"></div>
+              <div class="fld"><label for="cidadeEscola">CIDADE</label><input type="text" id="cidadeEscola" placeholder="Vitória"></div>
+              <div class="fld"><label for="ufEscola">UF</label><input type="text" id="ufEscola" maxlength="2" placeholder="ES"></div>
+              <div class="fld"><label for="cepEscola">CEP</label><input type="text" id="cepEscola" placeholder="29000-000"></div>
+              <input type="hidden" id="enderecoEscola">
               <div class="fld"><label for="razaoSocialReceita">RAZÃO SOCIAL RECEITA</label><input type="text" id="razaoSocialReceita" placeholder="Razão social"></div>
               <div class="fld"><label for="emailReceita">E-MAIL RECEITA</label><input type="text" id="emailReceita" placeholder="E-mail retornado"></div>
-              <div class="fld"><label for="cidadeUfReceita">CIDADE / UF</label><input type="text" id="cidadeUfReceita" placeholder="Vitória / ES"></div>
+              <div class="fld"><label for="cidadeUfReceita">CIDADE / UF (COMPATIBILIDADE)</label><input type="text" id="cidadeUfReceita" readonly placeholder="Preenchido pelos campos acima"></div>
             </div>
             <div id="secaoBotoesCnpj" class="row-btns" style="margin-top:4px;">
               <button type="button" id="btnConsultarCnpj" class="btn btn-navy btn-sm">🔎 Consultar CNPJ</button>
@@ -840,7 +853,7 @@
           <div style="background:#fff;padding:14px 16px;grid-column:1/-1;"><span style="display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--g400);margin-bottom:9px;">Anexos</span><div id="modalEnvioAnexos" style="display:flex;gap:8px;flex-wrap:wrap;">—</div></div>
         </div>
         <div style="background:var(--amber-lt);border:1.5px solid #fcd34d;border-left:3px solid var(--amber);border-radius:0;padding:12px 14px;font-size:12px;font-weight:600;color:#92400e;display:flex;align-items:flex-start;gap:9px;"><span style="font-size:16px;flex-shrink:0;">⚠️</span><span>Após o envio, o status do ofício será atualizado automaticamente no sistema.</span></div>
-        <div style="background:var(--green-lt);border:1.5px solid #6ee7b7;border-left:3px solid var(--green);border-radius:0;padding:12px 14px;font-size:12px;font-weight:600;color:var(--green-dk);display:flex;align-items:flex-start;gap:9px;"><span style="font-size:16px;flex-shrink:0;">✅</span><div><strong style="display:block;font-size:12.5px;margin-bottom:2px;">Remetente configurado</strong>financeiro@sindeducacao.com · Respostas para secretaria@sindeducacao.com</div></div>
+        <div style="background:var(--green-lt);border:1.5px solid #6ee7b7;border-left:3px solid var(--green);border-radius:0;padding:12px 14px;font-size:12px;font-weight:600;color:var(--green-dk);display:flex;align-items:flex-start;gap:9px;"><span style="font-size:16px;flex-shrink:0;">✅</span><div><strong style="display:block;font-size:12.5px;margin-bottom:2px;">Remetente configurado</strong>secretaria@sindeducacao.com · Respostas para secretaria@sindeducacao.com</div></div>
       </div>
       <div id="modalPainelPreview" style="display:none;">
         <div id="modalEmailPreviewContainer" style="background:#f0f4f9;padding:14px;min-height:300px;max-height:460px;overflow-y:auto;"><div style="text-align:center;padding:40px;color:var(--g400);font-size:13px;">Clique em "Preview do e-mail" para carregar.</div></div>
@@ -854,7 +867,6 @@
   </div>
  
 </div>
- <?!= include('SofiaDocumentos'); ?>
 <script>
 var _modalPreviewCarregado = false;
 var _modalPayload = null;
@@ -1145,7 +1157,9 @@ window.fecharModalEnvioOficioSISGEP = function() {
       .withFailureHandler(function(err) {
         console.warn("Erro ao consultar progresso da Taxa Assistencial:", err);
       })
-      .obterStatusFilaTaxaAssistencial();
+      .obterStatusFilaTaxaAssistencial(
+        typeof SISGEP_TOKEN_SESSAO !== "undefined" ? SISGEP_TOKEN_SESSAO : ""
+      );
   }
 
   function iniciarPolling() {

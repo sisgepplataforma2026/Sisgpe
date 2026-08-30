@@ -56,7 +56,7 @@ function criarFilaEnvioOficio_(dadosFila) {
   var emailsTodos       = String(dadosFila.emailsTodos || "").trim();
   var assunto           = String(dadosFila.assunto || "").trim();
   var htmlBodyOriginal  = String(dadosFila.htmlBody || "").trim();
-  var usuario           = String(dadosFila.usuario || "financeiro@sindeducacao.com").trim();
+  var usuario           = String(dadosFila.usuario || "secretaria@sindeducacao.com").trim();
   var codigoVerificacao = String(dadosFila.codigoVerificacao || "").trim();
   var anexos            = Array.isArray(dadosFila.anexos) ? dadosFila.anexos : [];
 
@@ -208,15 +208,7 @@ function processarFilaEnvioOficios() {
 
   if (typeof getAmbienteAtual === "function" &&
       getAmbienteAtual() === "homologacao") {
-    Logger.log("[HOMOLOGACAO] processarFilaEnvioOficios bloqueado: ambiente de homologação.");
-    return {
-      ok: true,
-      homologacao: true,
-      mensagem: "Envio de ofícios bloqueado em ambiente de homologação.",
-      processados: 0,
-      enviados: 0,
-      erros: 0
-    };
+    Logger.log("[HOMOLOGACAO] Fila ativa sob a política segura de destinatário único.");
   }
 
   var ss = SpreadsheetApp.openById(PLANILHA_ID);
@@ -408,22 +400,14 @@ function processarFilaEnvioOficios() {
         anexos.push(blob);
       });
 
-      var opcoes = montarOpcoesEmailSISGEP_(
+      enviarEmailOficio_(
         usuarioEnvio,
         htmlBody,
         anexos,
         assunto,
-        validacaoEmails.todos
+        validacaoEmails.todos,
+        "Segue ofício em anexo."
       );
-
-      GmailApp.sendEmail(opcoes.to, opcoes.subject, "Segue ofício em anexo.", {
-        htmlBody: opcoes.htmlBody,
-        attachments: opcoes.attachments || [],
-        name: opcoes.name,
-        from: opcoes.from,
-        replyTo: opcoes.replyTo,
-        bcc: opcoes.bcc
-      });
 
       valoresLinha[colDataEnvio - 1] = new Date();
       valoresLinha[colMensagemId - 1] = "GMAILAPP_SEM_ID";
@@ -618,7 +602,7 @@ function enviarOficioDaFilaAgora(numero, tokenSessao, filaId) {
   var emailPrincipal = String(linha[colEmailPrincipal - 1] || "").trim();
   var anexosJson     = String(linha[colAnexosJson - 1] || "").trim();
   var tentativas     = parseInt(linha[colTentativas - 1], 10) || 0;
-  var usuarioEnvio   = "financeiro@sindeducacao.com";
+  var usuarioEnvio   = "secretaria@sindeducacao.com";
 
   var validacaoEmails = validarListaEmails_(emailsTodos || emailPrincipal || "");
 
@@ -686,22 +670,14 @@ function enviarOficioDaFilaAgora(numero, tokenSessao, filaId) {
       }
     }
 
-    var opcoes = montarOpcoesEmailSISGEP_(
+    enviarEmailOficio_(
       usuarioEnvio,
       htmlBody,
       anexos,
       assunto,
-      validacaoEmails.todos
+      validacaoEmails.todos,
+      "Segue ofício em anexo."
     );
-
-    GmailApp.sendEmail(opcoes.to, opcoes.subject, "Segue ofício em anexo.", {
-      htmlBody: opcoes.htmlBody,
-      attachments: opcoes.attachments || [],
-      name: opcoes.name,
-      from: opcoes.from,
-      replyTo: opcoes.replyTo,
-      bcc: opcoes.bcc
-    });
 
     valoresLinha[colDataEnvio - 1] = new Date();
     valoresLinha[colMensagemId - 1] = "GMAILAPP_SEM_ID";
@@ -822,7 +798,8 @@ function sincronizarStatusOficiosEnviados() {
   if (naoEncontrados.length) Logger.log("⚠️ Não encontrados: " + naoEncontrados.join(", "));
 }
 
-function instalarTriggerFilaEnvioOficios() {
+function instalarTriggerFilaEnvioOficios(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, "documentos", "Instalação do gatilho da fila de Ofícios", true);
   ScriptApp.getProjectTriggers().forEach(function(t) {
     if (t.getHandlerFunction() === "processarFilaEnvioOficios") ScriptApp.deleteTrigger(t);
   });
@@ -831,7 +808,8 @@ function instalarTriggerFilaEnvioOficios() {
   return { ok: true, mensagem: "Trigger instalado com sucesso." };
 }
 
-function removerTriggerFilaEnvioOficios() {
+function removerTriggerFilaEnvioOficios(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, "documentos", "Remoção do gatilho da fila de Ofícios", true);
   ScriptApp.getProjectTriggers().forEach(function(t) {
     if (t.getHandlerFunction() === "processarFilaEnvioOficios") ScriptApp.deleteTrigger(t);
   });

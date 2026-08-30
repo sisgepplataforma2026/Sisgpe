@@ -174,6 +174,15 @@ function preverProximoNumeroOficio() {
     });
   }
 
+  try {
+    var ambientePreview = (typeof getAmbienteAtual === "function")
+      ? String(getAmbienteAtual() || "producao").toUpperCase()
+      : "PRODUCAO";
+    var reservadoPreview = parseInt(PropertiesService.getScriptProperties()
+      .getProperty("SISGEP_OFICIO_SEQ_" + ambientePreview + "_" + ano) || "0", 10);
+    if (!isNaN(reservadoPreview) && reservadoPreview > maiorNumero) maiorNumero = reservadoPreview;
+  } catch (ePreview) {}
+
   var proximo = String(maiorNumero + 1).padStart(3, "0") + "/" + ano;
   Logger.log("Prévia do próximo número: " + proximo);
   return proximo;
@@ -206,8 +215,10 @@ function gerarProximoNumeroSeguro() {
       });
     }
 
+    var propsNumero = PropertiesService.getScriptProperties();
+
     try {
-      var numeroTaxa = String(PropertiesService.getScriptProperties()
+      var numeroTaxa = String(propsNumero
         .getProperty("TAXA_ASSISTENCIAL_NUMERO_OFICIO") || "").trim();
       if (numeroTaxa && numeroTaxa.indexOf("/" + ano) > -1) {
         var numTaxa = parseInt(numeroTaxa.split("/")[0].trim(), 10);
@@ -215,8 +226,20 @@ function gerarProximoNumeroSeguro() {
       }
     } catch (e) { Logger.log("[gerarProximoNumeroSeguro] " + e); }
 
-    var proximo = String(maiorNumero + 1).padStart(3, "0") + "/" + ano;
-    Logger.log("gerarProximoNumeroSeguro: " + proximo);
+    var ambienteNumero = (typeof getAmbienteAtual === "function")
+      ? String(getAmbienteAtual() || "producao").toUpperCase()
+      : "PRODUCAO";
+    var chaveSequencia = "SISGEP_OFICIO_SEQ_" + ambienteNumero + "_" + ano;
+    var ultimoReservado = parseInt(propsNumero.getProperty(chaveSequencia) || "0", 10);
+    if (!isNaN(ultimoReservado) && ultimoReservado > maiorNumero) maiorNumero = ultimoReservado;
+
+    var sequencia = maiorNumero + 1;
+    var proximo = String(sequencia).padStart(3, "0") + "/" + ano;
+
+    // A reserva é persistida ANTES de liberar a trava. Assim, mesmo que PDF,
+    // Drive ou planilha falhem depois, outra emissão nunca reutiliza o número.
+    propsNumero.setProperty(chaveSequencia, String(sequencia));
+    Logger.log("gerarProximoNumeroSeguro: reservado " + proximo + " em " + chaveSequencia);
     return proximo;
 
   } finally {

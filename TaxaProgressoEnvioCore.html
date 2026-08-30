@@ -203,7 +203,9 @@
       .withFailureHandler(function(err) {
         console.warn("Erro ao consultar progresso da Taxa Assistencial:", err);
       })
-      .obterStatusFilaTaxaAssistencial();
+      .obterStatusFilaTaxaAssistencial(
+        typeof SISGEP_TOKEN_SESSAO !== "undefined" ? SISGEP_TOKEN_SESSAO : ""
+      );
   }
 
   function iniciarPolling() {

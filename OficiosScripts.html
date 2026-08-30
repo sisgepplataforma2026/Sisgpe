@@ -110,6 +110,11 @@ function escolaDeOption(opt) {
     cidade: opt.dataset.cidade || "",
     uf: opt.dataset.uf || "",
     endereco: opt.dataset.endereco || "",
+    logradouro: opt.dataset.logradouro || "",
+    numero: opt.dataset.numero || "",
+    complemento: opt.dataset.complemento || "",
+    bairro: opt.dataset.bairro || "",
+    cep: opt.dataset.cep || "",
     status: opt.dataset.status || "Ativa",
     emails: emails,
     emailPrincipal: opt.dataset.email || "",
@@ -118,30 +123,6 @@ function escolaDeOption(opt) {
     ultimo: opt.dataset.ultimo || "—"
   };
 }
-
-  function normalizarEscola(raw) {
-    raw = raw || {};
-    var emails = [].concat(raw.emails||[], raw.email?[raw.email]:[], raw.emailPrincipal?[raw.emailPrincipal]:[])
-      .filter(Boolean).filter(function(e,i,a){ return a.indexOf(e)===i; });
-    return { id:raw.id||raw.cnpj||raw.escola||raw.nome||raw.razaoSocial||"", nome:raw.nome||raw.escola||raw.razaoSocial||"Escola sem nome",
-      razao:raw.razaoSocial||raw.nome||"", cnpj:raw.cnpj||"", cidade:raw.cidade||"", uf:raw.uf||"",
-      endereco:raw.endereco||"", status:raw.status||"Ativa", emails:emails,
-      emailPrincipal:raw.emailPrincipal||raw.email||emails[0]||"",
-      oficios:Number(raw.oficios||0), confirmados:Number(raw.confirmados||0), ultimo:raw.ultimo||"—" };
-  }
-
-  function normalizarEscola(raw) {
-    raw = raw || {};
-    var emailsTodos = raw.emailsTodos || raw.emailTodos || "";
-    var emails = [].concat(raw.emails||[], raw.email?[raw.email]:[], raw.emailPrincipal?[raw.emailPrincipal]:[], emailsTodos ? String(emailsTodos).split(/[;,]+/) : [])
-      .map(function(e){ return txt(e); })
-      .filter(Boolean).filter(function(e,i,a){ return a.indexOf(e)===i; });
-    return { id:raw.id||raw.cnpj||raw.cnpjLimpo||raw.escola||raw.nome||raw.razaoSocial||"", nome:raw.nome||raw.escola||raw.razaoSocial||raw.fantasia||"Escola sem nome",
-      razao:raw.razaoSocial||raw.razao||raw.nome||"", cnpj:raw.cnpj||raw.cnpjLimpo||"", cidade:raw.cidade||raw.municipio||"", uf:raw.uf||"",
-      endereco:raw.enderecoCompleto||raw.endereco||"", status:raw.status||raw.situacao||"Ativa", emails:emails,
-      emailPrincipal:raw.emailPrincipal||raw.email||emails[0]||"",
-      oficios:Number(raw.oficios||0), confirmados:Number(raw.confirmados||0), ultimo:raw.ultimo||"â€”" };
-  }
 
   function normalizarEscola(raw) {
     raw = raw || {};
@@ -154,9 +135,25 @@ function escolaDeOption(opt) {
     var cidadeUf = txt(raw.cidadeUf || raw.CidadeUf || raw["Cidade / UF"] || raw["Cidade/UF"] || raw["Cidade - UF"] || [cidade, uf].filter(Boolean).join(" / "));
     if (!cidade && cidadeUf) cidade = txt(cidadeUf.split(/[\/-]/)[0]);
     if (!uf && cidadeUf && cidadeUf.indexOf("/") > -1) uf = txt(cidadeUf.split("/").pop());
+    var logradouro = txt(raw.logradouro || raw.Endereco || raw.endereco || raw["Endereço"] || "");
+    var numero = txt(raw.numero || raw.Numero || raw["Número"] || "");
+    var complemento = txt(raw.complemento || raw.Complemento || "");
+    var bairro = txt(raw.bairro || raw.Bairro || "");
+    var cep = txt(raw.cep || raw.CEP || "");
+    var enderecoCompleto = txt(raw.enderecoCompleto || raw.EnderecoCompleto || "");
+    if (!enderecoCompleto) {
+      enderecoCompleto = [
+        [logradouro, numero].filter(Boolean).join(", "),
+        complemento,
+        bairro,
+        cidadeUf,
+        cep
+      ].filter(Boolean).join(" · ");
+    }
     return { id:raw.id||raw.cnpj||raw.CNPJ||raw.cnpjLimpo||raw.escola||raw.NomeEscola||raw.nome||raw.razaoSocial||"", nome:raw.nome||raw.escola||raw.NomeEscola||raw.razaoSocial||raw["Razão Social"]||raw.fantasia||raw.Fantasia||"Escola sem nome",
       razao:raw.razaoSocial||raw.razao||raw["Razão Social"]||raw.nome||"", cnpj:raw.cnpj||raw.CNPJ||raw.cnpjLimpo||"", cidade:cidade, uf:uf, cidadeUf:cidadeUf,
-      endereco:raw.enderecoCompleto||raw.EnderecoCompleto||raw.endereco||raw.Endereco||"", status:raw.status||raw.situacao||raw.Situacao||"Ativa", emails:emails,
+      logradouro:logradouro, numero:numero, complemento:complemento, bairro:bairro, cep:cep,
+      endereco:enderecoCompleto, status:raw.status||raw.situacao||raw.Situacao||"Ativa", emails:emails,
       emailPrincipal:raw.emailPrincipal||raw.email||raw.Email||emails[0]||"",
       oficios:Number(raw.oficios||0), confirmados:Number(raw.confirmados||0), ultimo:raw.ultimo||"â€”" };
   }
@@ -190,6 +187,11 @@ function popularSelectEscolas(lista) {
       opt.dataset.cidade = e.cidade || "";
       opt.dataset.uf = e.uf || "";
       opt.dataset.endereco = e.endereco || "";
+      opt.dataset.logradouro = e.logradouro || "";
+      opt.dataset.numero = e.numero || "";
+      opt.dataset.complemento = e.complemento || "";
+      opt.dataset.bairro = e.bairro || "";
+      opt.dataset.cep = e.cep || "";
       opt.dataset.status = e.status || "Ativa";
       opt.dataset.emailFinanceiro = e.emailFinanceiro || "";
       opt.dataset.emailDp = e.emailDp || "";
@@ -217,8 +219,11 @@ function popularSelectEscolas(lista) {
     setInput("enderecoEscola",escola.endereco); setInput("razaoSocialReceita",escola.razao);
     setInput("emailReceita",emailSmartSelecionado||escola.emailPrincipal);
     setInput("cidadeUfReceita",escola.cidadeUf||[escola.cidade,escola.uf].filter(Boolean).join(" / "));
+    setInput("logradouroEscola",escola.logradouro); setInput("numeroEscola",escola.numero);
+    setInput("complementoEscola",escola.complemento); setInput("bairroEscola",escola.bairro);
+    setInput("cidadeEscola",escola.cidade); setInput("ufEscola",escola.uf); setInput("cepEscola",escola.cep);
     var sel=$("escola"); if(sel&&escola.id) sel.value=escola.id;
-    ["cnpj","email","enderecoEscola","razaoSocialReceita","emailReceita","cidadeUfReceita"].forEach(function(id){ var el=$(id); if(el) el.dispatchEvent(new Event("change",{bubbles:true})); });
+    ["cnpj","email","enderecoEscola","razaoSocialReceita","emailReceita","cidadeUfReceita","logradouroEscola","numeroEscola","complementoEscola","bairroEscola","cidadeEscola","ufEscola","cepEscola"].forEach(function(id){ var el=$(id); if(el) el.dispatchEvent(new Event("change",{bubbles:true})); });
   }
 
   function renderEmails(escola) {
@@ -244,7 +249,6 @@ function popularSelectEscolas(lista) {
       return normalizarBusca([e.nome,e.razao,e.cnpj,e.cidade,e.uf,e.cidadeUf,(e.emails||[]).join(" ")].join(" ")).indexOf(termo)>=0;
     }).slice(0,8);
     if(!lista.length){ box.innerHTML=termo?'<div class="escola-recentes-empty">Nenhuma escola encontrada.</div>':'<div class="escola-recentes-empty">A lista aparecerá após carregar a base.</div>'; return; }
-    box.innerHTML = lista.map(function(e,i){ return '<button type="button" class="escola-recente-btn" data-idx="'+i+'"><strong>'+escapeHtml(e.nome)+'</strong><span>'+[e.cnpj,e.cidade].filter(Boolean).join(" • ")+'</span></button>'; }).join("");
     box.innerHTML = lista.map(function(e,i){ return '<button type="button" class="escola-recente-btn" data-idx="'+i+'"><strong>'+escapeHtml(e.nome)+'</strong><span>'+escapeHtml([e.cnpj,e.cidadeUf||e.cidade].filter(Boolean).join(" - "))+'</span></button>'; }).join("");
     box.querySelectorAll(".escola-recente-btn").forEach(function(btn){ btn.onclick=function(){ selecionarEscola(lista[Number(btn.dataset.idx)]); }; });
   }
@@ -265,6 +269,13 @@ function popularSelectEscolas(lista) {
     setText("escolaProfileCidadeUf",e.cidadeUf||[e.cidade,e.uf].filter(Boolean).join(" / ")); setText("escolaProfileEndereco",e.endereco);
     setText("escolaProfileStatus",e.status); setText("escolaStatOficios",String(e.oficios||0));
     setText("escolaStatConfirmados",String(e.confirmados||0)); setText("escolaStatUltimo",e.ultimo||"—");
+    var enderecoLinha=$("escolaProfileEnderecoLinha");
+    if(enderecoLinha){ enderecoLinha.textContent=e.endereco||""; enderecoLinha.style.display=e.endereco?"block":"none"; }
+    var totalOficios=Number(e.oficios||0), totalConfirmados=Number(e.confirmados||0), ultimo=e.ultimo||"—";
+    var resumoHistorico=totalOficios
+      ? totalOficios+" ofício"+(totalOficios===1?"":"s")+" · "+totalConfirmados+" confirmado"+(totalConfirmados===1?"":"s")+(ultimo&&ultimo!=="—"?" · último em "+ultimo:"")
+      : "Nenhum ofício enviado para esta escola ainda.";
+    setText("escolaHistoricoResumo",resumoHistorico);
     renderEmails(e); preencherCompat(e); salvarRecente(e); atualizarRevisaoOficio(); autoSave();
   }
 
@@ -401,7 +412,7 @@ function buscarNoServidor(termo) {
         if (msg) msg.textContent = "Erro ao buscar: " + ((err && err.message) || err);
       }
     })
-    .buscarEscolasOficioSmart(termo);
+    .buscarEscolasOficioSmart(termo, SISGEP_TOKEN_SESSAO);
 }
 
 function acionarBuscaEscola(termo) {
@@ -428,7 +439,7 @@ window.renderDropdownEscolas = renderDropdown;
     if($("autocompleteEscolaSmart")) $("autocompleteEscolaSmart").style.display="none";
     if($("escolaSmartEmpty")) $("escolaSmartEmpty").style.display="none";
     var st=$("statusEscolaSelecionada"); if(st){ st.textContent="Nenhuma escola selecionada"; st.classList.remove("ok"); }
-    ["cnpj","email","enderecoEscola","razaoSocialReceita","emailReceita","cidadeUfReceita"].forEach(function(id){ setInput(id,""); });
+    ["cnpj","email","enderecoEscola","razaoSocialReceita","emailReceita","cidadeUfReceita","logradouroEscola","numeroEscola","complementoEscola","bairroEscola","cidadeEscola","ufEscola","cepEscola"].forEach(function(id){ setInput(id,""); });
     atualizarRevisaoOficio(); autoSave();
   }
 
@@ -440,8 +451,24 @@ window.renderDropdownEscolas = renderDropdown;
   function editarEscolaSelecionada() {
     if(!escolaSmartSelecionada) return;
     escolaSmartSelecionada.cnpj=txt($("cnpj")&&$("cnpj").value); escolaSmartSelecionada.emailPrincipal=txt($("email")&&$("email").value);
-    escolaSmartSelecionada.endereco=txt($("enderecoEscola")&&$("enderecoEscola").value); escolaSmartSelecionada.razao=txt($("razaoSocialReceita")&&$("razaoSocialReceita").value);
-    var cu=txt($("cidadeUfReceita")&&$("cidadeUfReceita").value); if(cu){ var p=cu.split("/"); escolaSmartSelecionada.cidade=txt(p[0]); escolaSmartSelecionada.uf=txt(p[1]); }
+    escolaSmartSelecionada.razao=txt($("razaoSocialReceita")&&$("razaoSocialReceita").value);
+    escolaSmartSelecionada.logradouro=txt($("logradouroEscola")&&$("logradouroEscola").value);
+    escolaSmartSelecionada.numero=txt($("numeroEscola")&&$("numeroEscola").value);
+    escolaSmartSelecionada.complemento=txt($("complementoEscola")&&$("complementoEscola").value);
+    escolaSmartSelecionada.bairro=txt($("bairroEscola")&&$("bairroEscola").value);
+    escolaSmartSelecionada.cidade=txt($("cidadeEscola")&&$("cidadeEscola").value);
+    escolaSmartSelecionada.uf=txt($("ufEscola")&&$("ufEscola").value).toUpperCase();
+    escolaSmartSelecionada.cep=txt($("cepEscola")&&$("cepEscola").value);
+    escolaSmartSelecionada.cidadeUf=[escolaSmartSelecionada.cidade,escolaSmartSelecionada.uf].filter(Boolean).join(" / ");
+    escolaSmartSelecionada.endereco=[
+      [escolaSmartSelecionada.logradouro,escolaSmartSelecionada.numero].filter(Boolean).join(", "),
+      escolaSmartSelecionada.complemento,
+      escolaSmartSelecionada.bairro,
+      escolaSmartSelecionada.cidadeUf,
+      escolaSmartSelecionada.cep
+    ].filter(Boolean).join(" · ");
+    setInput("enderecoEscola",escolaSmartSelecionada.endereco);
+    setInput("cidadeUfReceita",escolaSmartSelecionada.cidadeUf);
     if(escolaSmartSelecionada.emailPrincipal&&escolaSmartSelecionada.emails.indexOf(escolaSmartSelecionada.emailPrincipal)<0) escolaSmartSelecionada.emails.unshift(escolaSmartSelecionada.emailPrincipal);
     selecionarEscola(escolaSmartSelecionada); autoSave();
   }
@@ -584,7 +611,15 @@ function getTrabalhadoresPayload() {
 }
   function getEscolaPayload() {
     var sel = $("escola"), selTxt = sel && sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].textContent : "";
-    return { id: sel ? sel.value : "", nome: ($("escolaBusca")&&$("escolaBusca").value) || selTxt || "", cnpj: $("cnpj")&&$("cnpj").value || "", email: $("email")&&$("email").value || "", endereco: $("enderecoEscola")&&$("enderecoEscola").value || "", razaoSocial: $("razaoSocialReceita")&&$("razaoSocialReceita").value || "", cidadeUf: $("cidadeUfReceita")&&$("cidadeUfReceita").value || "" };
+    return {
+      id: sel ? sel.value : "", nome: ($("escolaBusca")&&$("escolaBusca").value) || selTxt || "",
+      cnpj: $("cnpj")&&$("cnpj").value || "", email: $("email")&&$("email").value || "",
+      endereco: $("enderecoEscola")&&$("enderecoEscola").value || "", razaoSocial: $("razaoSocialReceita")&&$("razaoSocialReceita").value || "",
+      logradouro: $("logradouroEscola")&&$("logradouroEscola").value || "", numero: $("numeroEscola")&&$("numeroEscola").value || "",
+      complemento: $("complementoEscola")&&$("complementoEscola").value || "", bairro: $("bairroEscola")&&$("bairroEscola").value || "",
+      cidade: $("cidadeEscola")&&$("cidadeEscola").value || "", uf: $("ufEscola")&&$("ufEscola").value || "",
+      cep: $("cepEscola")&&$("cepEscola").value || "", cidadeUf: $("cidadeUfReceita")&&$("cidadeUfReceita").value || ""
+    };
   }
 
 function atualizarPayloadOficio(num) {
@@ -1809,7 +1844,7 @@ function atualizarContadorFichas() {
     Promise.all(todosArquivos.map(function(f) {
       if (f._isDrive) {
         return new Promise(function(resolve, reject) {
-          google.script.run.withSuccessHandler(function(res) { resolve({ nome: res.nome, base64: res.base64, tipo: res.tipo, origem: "drive" }); }).withFailureHandler(function(err) { reject(err); }).obterArquivoDriveBase64(f.driveId);
+          google.script.run.withSuccessHandler(function(res) { resolve({ nome: res.nome, base64: res.base64, tipo: res.tipo, origem: "drive" }); }).withFailureHandler(function(err) { reject(err); }).obterArquivoDriveBase64(f.driveId, SISGEP_TOKEN_SESSAO);
         });
       }
       return new Promise(function(resolve, reject) {
@@ -2119,6 +2154,7 @@ function enviarWhatsappOficio(urlPdf, numero) {
       });
     }
     if($("btnLimparEscolaSelecionada")) $("btnLimparEscolaSelecionada").onclick=limpar;
+    if($("btnRemoverEscolaSelecionada")) $("btnRemoverEscolaSelecionada").onclick=limpar;
     if($("btnAdicionarEmailEscolaOficio")) $("btnAdicionarEmailEscolaOficio").onclick=adicionarEmailEscola;
     if($("btnAplicarEdicaoEscolaOficio")) $("btnAplicarEdicaoEscolaOficio").onclick=editarEscolaSelecionada;
     if($("btnToggleEdicaoEscola")) $("btnToggleEdicaoEscola").onclick=function(){ var p=$("secaoCnpjEmail"); if(p) p.style.display=p.style.display==="none"?"block":"none"; };
@@ -2987,7 +3023,7 @@ window.mostrarAbaOficio = function(aba) {
       if (termo.length < 3) return;
       results.style.display="block"; results.innerHTML='<div style="padding:10px;font-size:12px;color:var(--g400);">⏳ Buscando...</div>';
       timer = setTimeout(function() {
-        google.script.run.withSuccessHandler(function(lista){ renderizarDrive(lista||[], termo); }).withFailureHandler(function(err){ results.innerHTML='<div style="padding:9px;font-size:12px;color:var(--red);">Erro: '+((err&&err.message)||err)+'</div>'; }).buscarFichasDrive(termo);
+        google.script.run.withSuccessHandler(function(lista){ renderizarDrive(lista||[], termo); }).withFailureHandler(function(err){ results.innerHTML='<div style="padding:9px;font-size:12px;color:var(--red);">Erro: '+((err&&err.message)||err)+'</div>'; }).buscarFichasDrive(termo, SISGEP_TOKEN_SESSAO);
       }, 400);
     });
     input.addEventListener("keydown", function(e){ if(e.key==="Escape") wrap.remove(); });

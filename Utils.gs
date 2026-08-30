@@ -304,10 +304,57 @@ function formatarCnpj_(cnpj) {
   return c.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
 }
 
-// CORREÇÃO: exportar buscarFichasDrive para compatibilidade com o frontend
-function obterArquivoDriveBase64(fileId) {
+function pastasRaizDocumentosPermitidas_() {
+  var ids = [];
+  ["FILIACAO", "DESFILIACAO", "TAXA_NEGOCIAL", "TAXA_ASSISTENCIAL", "OFICIO_LIVRE"]
+    .forEach(function(tipo) {
+      try {
+        var id = String(getPastaOficiosDestinoId_(tipo) || "").trim();
+        if (id && ids.indexOf(id) === -1) ids.push(id);
+      } catch (e) {}
+    });
+  try {
+    var recibosId = String(getRecursoId_("RECIBOS") || "").trim();
+    if (recibosId && ids.indexOf(recibosId) === -1) ids.push(recibosId);
+  } catch (e2) {}
+  return ids;
+}
+
+function arquivoPertencePastasDocumentos_(arquivo, pastasPermitidas) {
+  var fila = [];
+  var visitadas = {};
+  var profundidadeMaxima = 4;
+
+  try {
+    var pais = arquivo.getParents();
+    while (pais.hasNext()) fila.push({ pasta: pais.next(), nivel: 0 });
+  } catch (e) {
+    return false;
+  }
+
+  while (fila.length) {
+    var atual = fila.shift();
+    var id = String(atual.pasta.getId() || "").trim();
+    if (!id || visitadas[id]) continue;
+    visitadas[id] = true;
+    if (pastasPermitidas.indexOf(id) !== -1) return true;
+    if (atual.nivel >= profundidadeMaxima) continue;
+    try {
+      var avos = atual.pasta.getParents();
+      while (avos.hasNext()) fila.push({ pasta: avos.next(), nivel: atual.nivel + 1 });
+    } catch (e2) {}
+  }
+  return false;
+}
+
+// Exportada para o frontend, mas limitada à sessão e às pastas de Documentos.
+function obterArquivoDriveBase64(fileId, tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
   try {
     const arquivo = DriveApp.getFileById(String(fileId).trim());
+    if (!arquivoPertencePastasDocumentos_(arquivo, pastasRaizDocumentosPermitidas_())) {
+      throw new Error("O arquivo não pertence às pastas autorizadas do módulo Documentos.");
+    }
     const blob    = arquivo.getBlob();
     return {
       nome:   arquivo.getName(),
@@ -319,21 +366,13 @@ function obterArquivoDriveBase64(fileId) {
   }
 }
 
-function buscarFichasDrive(termo) {
+function buscarFichasDrive(termo, tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
   try {
     termo = String(termo || "").trim();
     if (!termo || termo.length < 3) return [];
     const termoNorm = normalizarTexto_(termo);
-    const PASTA_IDS = [
-      typeof PASTA_OFICIOS_ID            !== "undefined" ? PASTA_OFICIOS_ID            : null,
-      typeof PASTA_OFICIOS_DESFILIACAO_ID !== "undefined" ? PASTA_OFICIOS_DESFILIACAO_ID : null,
-      /* semTrava: isto é BUSCA, não gravação. Se a homologação ainda não tiver
-         pasta própria, é melhor a busca achar a pasta de produção do que a
-         tela estourar — o risco de ler é diferente do risco de escrever.
-         Quando a pasta de homologação estiver configurada, esta linha passa a
-         devolver a certa sozinha. Ver AmbienteRecursos.gs. */
-      getRecursoId_("RECIBOS", { semTrava: true })
-    ].filter(Boolean);
+    const PASTA_IDS = pastasRaizDocumentosPermitidas_();
 
     const resultados = [];
     const vistos     = {};

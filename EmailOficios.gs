@@ -4,29 +4,17 @@
 // ============================================================================
 
 var OFICIOS_EMAIL_INSTITUCIONAL = "secretaria@sindeducacao.com";
-var OFICIOS_HML_EMAIL_PADRAO_TESTE = "financeiro@sindeducacao.com";
+var OFICIOS_HML_EMAIL_PADRAO_TESTE = "secretaria@sindeducacao.com";
 
 /**
  * Allowlist de destinatários reais autorizados em HOMOLOGAÇÃO.
  *
- * A propriedade SISGEP_HML_OFICIOS_ALLOWLIST pode acrescentar endereços,
- * separados por vírgula, ponto-e-vírgula ou quebra de linha. O endereço da
- * escola "Teste" permanece como fallback seguro para que HML nunca dependa de
- * uma propriedade ausente para bloquear destinatários reais.
+ * Por decisão operacional, HML envia exclusivamente para a Secretaria. A
+ * lista é fixa para impedir que uma propriedade antiga reautorize, sem revisão,
+ * destinatários reais ou o endereço do Financeiro.
  */
 function obterAllowlistOficiosHml_() {
-  var permitidos = [OFICIOS_HML_EMAIL_PADRAO_TESTE];
-  try {
-    var extra = String(PropertiesService.getScriptProperties()
-      .getProperty("SISGEP_HML_OFICIOS_ALLOWLIST") || "");
-    extra.split(/[;,\n]+/).forEach(function(email) {
-      email = String(email || "").trim().toLowerCase();
-      if (email && permitidos.indexOf(email) === -1) permitidos.push(email);
-    });
-  } catch (e) {
-    Logger.log("[OFICIOS_HML] Não foi possível ler allowlist adicional: " + e.message);
-  }
-  return permitidos;
+  return [OFICIOS_EMAIL_INSTITUCIONAL];
 }
 
 function validarDestinoOficioPorAmbiente_(destino) {
@@ -47,7 +35,8 @@ function validarDestinoOficioPorAmbiente_(destino) {
     if (bloqueados.length) {
       throw new Error(
         "[HML] Envio bloqueado. Destinatário não autorizado para homologação: " +
-        bloqueados.join(", ") + ". Use somente a escola de teste autorizada."
+        bloqueados.join(", ") + ". Em homologação, use somente " +
+        OFICIOS_EMAIL_INSTITUCIONAL + "."
       );
     }
   }
