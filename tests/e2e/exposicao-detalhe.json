@@ -1,6 +1,6 @@
 {
   "medidoEm": "2026-08-31",
-  "totalPublicas": 963,
+  "totalPublicas": 966,
   "protegidas": 651,
   "expostas": [
     {
@@ -775,6 +775,21 @@
     },
     {
       "nome": "gerarRecuperacaoSenha",
+      "arquivo": "Sessao.gs",
+      "escreve": true
+    },
+    {
+      "nome": "limparSessoesExpiradasDiario",
+      "arquivo": "Sessao.gs",
+      "escreve": true
+    },
+    {
+      "nome": "instalarTriggerLimpezaSessoes",
+      "arquivo": "Sessao.gs",
+      "escreve": true
+    },
+    {
+      "nome": "removerTriggerLimpezaSessoes",
       "arquivo": "Sessao.gs",
       "escreve": true
     },
