@@ -49,6 +49,27 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 ## 🔴 ABERTO
 
+### ✅ 38. Carregamento sob demanda, lote 2 — VERIFICADO em 31/08/2026
+
+**Publicado na Versão 75** (commit `5d7f892`, run #44). O usuário abriu os cinco
+módulos e confirmou: **"Todos abrem"**.
+
+Cinco telas convertidas: `EventosAdmin`, `JuridicoAdmin`, `ConfigAdmin`,
+`AcessoAdmin` e `BeneficioReservaSimplesUI`.
+
+**Duas exigiram criar ligação que não existia**, e as duas seguem o padrão que
+o projeto já usava (o `initRH` chamando o `initRHEventos`):
+
+| Tela | Ligação criada |
+|---|---|
+| `AcessoAdmin` | o `initConfig` passou a chamá-lo — ele é incluído DENTRO do `ConfigAdmin` |
+| `BeneficioReservaSimplesUI` | o ramo `beneficios` do `initModulo` chama `initBeneficioReservaSimples`; a tela abre dois painéis (Guriri Beach e Assefaz), 4 chamadas |
+
+**Acumulado: 40 → 12 chamadas por carga da Home.** Dessas 12, três são legítimas
+(sessão, módulos do usuário, resumo do Início). O `t109` guarda dez telas nos
+dois sentidos, com teto de regressão em 12.
+
+
 ### ✅ 37. Carregamento sob demanda, lote 1 — VERIFICADO em 31/08/2026
 
 **Publicado na Versão 74** (commit `0f3afa6`, run #42). O usuário abriu os três

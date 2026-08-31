@@ -1,5 +1,5 @@
 /**
- * t109 — CARREGAMENTO SOB DEMANDA (lotes 1 e 2)
+ * t109 — CARREGAMENTO SOB DEMANDA (lotes 1, 2 e 3)
  *
  * O index.html inclui as 60 telas do sistema de uma vez. Até 31/08/2026, vinte
  * delas buscavam os próprios dados no `DOMContentLoaded` — quando a PÁGINA
@@ -54,7 +54,11 @@ const LOTE = [
   { modulo: "juridico",            tela: "JuridicoAdmin.html",         chamada: "jurListarProcessos" },
   { modulo: "config",              tela: "ConfigAdmin.html",           chamada: "getConfigPainel" },
   { modulo: "config",              tela: "AcessoAdmin.html",           chamada: "acessoListarUsuarios" },
-  { modulo: "beneficios",          tela: "BeneficioReservaSimplesUI.html", chamada: "listarReservasBeneficioSimples" }
+  { modulo: "beneficios",          tela: "BeneficioReservaSimplesUI.html", chamada: "listarReservasBeneficioSimples" },
+  /* lote 3 — a Central do Compasso se auto-iniciava por uma guarda que não
+     distinguia abertura autônoma de abertura dentro do portal */
+  { modulo: "eventos",             tela: "CompassoInscricoes.html",    chamada: "compasso_validacaoOpcoes" },
+  { modulo: "eventos",             tela: "CompassoInscricoes.html",    chamada: "compasso_validacaoListar" }
 ];
 
 const esperar = ms => new Promise(r => setTimeout(r, ms));
@@ -92,7 +96,7 @@ const contar = (tela, fn) => tela.chamadas.filter(c => c.fn === fn).length;
   /* Teto de regressão. Não é meta — é o retrato de hoje, para que uma tela nova
      que volte a se auto-inicializar apareça aqui em vez de passar despercebida.
      A meta continua sendo 3: sessão, módulos do usuário e o resumo do Início. */
-  const TETO = 12;
+  const TETO = 8;
   if (total <= TETO) {
     b.ok(true, "a carga da Home cabe no teto de " + TETO + " chamadas", total + " chamadas");
   } else {
@@ -187,6 +191,26 @@ const contar = (tela, fn) => tela.chamadas.filter(c => c.fn === fn).length;
   b.ok(contar(tBen, "listarReservasBeneficioSimples") > 0,
     "abrir Benefícios dispara os painéis de reserva simples",
     contar(tBen, "listarReservasBeneficioSimples") + " chamada(s)");
+
+  b.passo("9. a Central do Compasso carrega pela ponte que o Eventos usa");
+  const tCom = abrirHome();
+  await esperar(1500);
+  /* EventosAdmin.html:505 chama window.compassoAplicarFiltro() quando mostra a
+     Central. É a ponte oficial — a única função que a tela expõe de propósito.
+     Se a correção da auto-inicialização tivesse quebrado o caminho de abertura,
+     seria aqui. */
+  tCom.win.spIr("eventos");
+  await esperar(600);
+  b.ok(typeof tCom.win.compassoAplicarFiltro === "function",
+    "a ponte compassoAplicarFiltro continua exposta no escopo global");
+  tCom.win.compassoAplicarFiltro("");
+  await esperar(1200);
+  b.ok(contar(tCom, "compasso_validacaoOpcoes") > 0,
+    "abrir a Central pela ponte dispara compasso_validacaoOpcoes",
+    contar(tCom, "compasso_validacaoOpcoes") + " chamada(s)");
+  b.ok(contar(tCom, "compasso_validacaoListar") > 0,
+    "e a lista de inscrições também",
+    contar(tCom, "compasso_validacaoListar") + " chamada(s)");
 
   b.naoTestavel(
     "se a tela fica visualmente correta ao abrir",

@@ -1998,8 +1998,19 @@ window.compassoAplicarFiltro = function(nome){
 };
 
 /* Aberta sozinha (?painel=compasso&sessao=…): o token está na URL, então dá
-   para começar já. Dentro do portal isto não faz nada, e quem manda começar
-   é a ponte acima. */
-compassoIniciar();
+   para começar já.
+
+   CORREÇÃO 31/08/2026 (auditoria M01, lote 3). O comentário original afirmava
+   que "dentro do portal isto não faz nada". Fazia: compassoToken() (linha 716)
+   cai no SISGEP_TOKEN_SESSAO quando não acha sessao= na URL, e o portal SEMPRE
+   define esse token. A guarda passava, e as quatro chamadas de abertura
+   — compasso_validacaoOpcoes, compasso_pagamentoOpcoes, e as duas do
+   carregar() — saíam em TODA carga da Home, com o Compasso fechado.
+
+   A distinção certa não é "tem token", é a ORIGEM do token: só a abertura
+   autônoma o traz na URL. Dentro do portal, quem manda começar é a ponte
+   compassoAplicarFiltro(), chamada por EventosAdmin.html:505 quando a Central
+   é mostrada — que é exatamente o que o comentário original já descrevia. */
+if (/[?&]sessao=/.test(String(location.search || ''))) compassoIniciar();
 </script>
 </div><!-- /compassoInscricoes -->
