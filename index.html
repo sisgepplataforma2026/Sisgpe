@@ -1755,6 +1755,12 @@ function initFinanceiro(opts){
   opts=opts||{};
   callFn("initFinanceiro") || callFn("carregarFinanceiro") || callFn("initDespesas") || callFn("initDespesasAdmin");
 
+  /* A Conciliação mora dentro de #mFinanceiro e, até 31/08/2026, só era
+     inicializada pelo DOMContentLoaded dela — isto é, em toda carga da página,
+     mesmo com o Financeiro fechado. Era o único caso do lote sem ponto de
+     entrada sob demanda; esta linha é esse ponto. */
+  setTimeout(function(){ callFn("finConciliacaoInit"); },150);
+
   setTimeout(function(){
     if(opts.acao==="nf" || opts.acao==="recibo" || opts.acao==="despesas"){
       callFn("mudarTab",[opts.acao==="despesas" ? "lista" : opts.acao]);
