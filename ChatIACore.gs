@@ -17,9 +17,20 @@ var CHAT_MAX_TOKENS_ = 1500;
    ENTRADA PRINCIPAL
 ═══════════════════════════════════════════════════════ */
 function chatSISGEP(payload, tokenSessao) {
-  var sessao = null;
+  /* PERMISSÃO — auditoria do Módulo 02, 31/08/2026.
+     O chat lê mensalidades, escolas e painéis de benefícios e devolve isso em
+     texto. Passava só por exigirSessaoDocumentos_: qualquer sessão válida
+     conversava, mesmo sem nenhum módulo relacionado marcado. O catálogo de
+     acesso tem a chave "sofia" justamente para poder controlar isto.
+
+     FORA do try, de propósito. Dentro, o catch devolvia
+     { ok:false, resposta:"Erro interno: ..." } — e negar acesso não é erro
+     interno: é resposta esperada do sistema. Lançar aqui alinha o chat aos
+     outros 398 usos de exigirModulo_ no projeto, e o withFailureHandler da
+     tela mostra a mensagem certa. */
+  var sessao = exigirModulo_(tokenSessao, "sofia", false);
+
   try {
-    sessao = exigirSessaoDocumentos_(tokenSessao, false);
     payload = payload || {};
     var mensagem = String(payload.mensagem || "").trim();
     var historico = Array.isArray(payload.historico) ? payload.historico : [];
@@ -634,6 +645,28 @@ function extrairTermoNome_(msg) {
     var idx = msg.indexOf(padroes[i]);
     if (idx >= 0) {
       var trecho = msg.substring(idx + padroes[i].length).split(/[?,!.]/)[0].trim();
+
+      /* DESCASCA AS PALAVRAS-GATILHO QUE SOBRARAM — auditoria do Módulo 02,
+         31/08/2026.
+         Antes, só o PRIMEIRO padrão era removido, e o resto ficava no termo:
+
+           "buscar joana pereira"            → "joana pereira"       achava
+           "buscar associado joana pereira"  → "associado joana ..." não achava
+
+         A segunda é como uma pessoa pergunta. A busca não encontrava ninguém
+         e a SOFIA respondia que não havia registros — o pior tipo de erro de
+         assistente, porque parece resposta e é falha de leitura. */
+      var mudou = true;
+      while (mudou) {
+        mudou = false;
+        for (var j = 0; j < padroes.length; j++) {
+          if (trecho.indexOf(padroes[j]) === 0) {
+            trecho = trecho.substring(padroes[j].length).trim();
+            mudou = true;
+          }
+        }
+      }
+
       if (trecho.length >= 3 && trecho.length <= 60) return trecho;
     }
   }

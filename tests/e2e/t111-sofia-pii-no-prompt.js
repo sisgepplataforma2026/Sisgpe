@@ -76,19 +76,18 @@ b.passo("1b. ACHADO — a extração do nome quebra na frase natural");
    inclusive outras palavras-gatilho. "buscar associado Fulano" — que é como
    uma pessoa pergunta — vira o termo "associado fulano" e não acha ninguém.
    Só "buscar Fulano" funciona. Achado da auditoria do Módulo 02; a correção
-   depende de aprovação, então aqui fica registrado, não corrigido. */
+   Corrigido em 31/08/2026; aqui vira guarda para não regredir. */
 const termoNatural = g.extrairTermoNome_("buscar associado joana pereira");
 const termoSimples = g.extrairTermoNome_("buscar joana pereira");
 b.ok(termoSimples === "joana pereira", "a forma simples extrai o nome certo", termoSimples);
-if (termoNatural === "joana pereira") {
-  b.ok(true, "a forma natural também extrai o nome certo", termoNatural);
-} else {
-  b.aviso(
-    "a forma natural 'buscar associado Fulano' NÃO extrai o nome",
-    "devolveu " + JSON.stringify(termoNatural) + " — a busca não encontra ninguém, " +
-    "e a SOFIA responde que não localizou registros"
-  );
-}
+/* CORRIGIDO em 31/08: extrairTermoNome_ agora descasca todas as palavras-
+   gatilho do começo, não só a primeira. Asserção firme para que não volte. */
+b.ok(
+  termoNatural === "joana pereira",
+  "a forma natural 'buscar associado Fulano' também extrai o nome",
+  termoNatural === "joana pereira" ? termoNatural
+    : "devolveu " + JSON.stringify(termoNatural) + " — a busca não acha ninguém"
+);
 
 b.passo("2. o prompt que iria para a Anthropic");
 /* Usa a frase que FUNCIONA — o objetivo deste passo é medir o que sai quando

@@ -38,8 +38,11 @@
  * caminho por onde se chega, não a autoridade sobre a ficha. Este teste
  * passou de medição a guarda: se alguém afrouxar de novo, ele acusa.
  *
- * O chat (chatSISGEP) segue com o guarda de sessão, de propósito: exigir o
- * módulo sofia nele é decisão de produto em aberto, não defeito.
+ * O chat (chatSISGEP) também passou a exigir o módulo sofia, em 31/08. Ele lê
+ * mensalidades, escolas e painéis de benefícios e devolve isso em texto —
+ * qualquer sessão válida conversava, sem nenhum módulo relacionado marcado.
+ * O catálogo de acesso tem a chave "sofia" justamente para poder controlar
+ * isso; é ela que passou a valer.
  */
 
 const b = require("./base");
@@ -171,7 +174,7 @@ const TOKEN_COM_SIND = b.logar(g, "joscimar");
 
 b.passo("4. o chat também: quem não tem o módulo sofia consegue conversar?");
 const r4 = barradoPorPermissao(() => g.chatSISGEP({ mensagem: "teste", dominio: "Geral" }, TOKEN_SEM_SOFIA));
-relatar(
+exigir(
   r4.barrou,
   "chatSISGEP barra quem não tem o módulo sofia",
   r4.erro,
@@ -179,12 +182,50 @@ relatar(
               "o que NÃO é controle de acesso: " + JSON.stringify(r4.retorno || null).slice(0, 120)
 );
 
-b.passo("5. a trilha da ação — quem confirmou o quê");
+b.passo("5. a trilha da ação — quem confirmou o quê, e quando");
+/* Corrigido em 31/08/2026. Antes, as três não gravavam nada: o rastro era a
+   coluna ORIGEM='PAPEL_IA' na ficha, que diz COMO o registro entrou, não QUEM
+   confirmou. Desfiliação afeta o vínculo sindical de uma pessoa — se ela
+   questionar meses depois, é preciso poder responder.
+
+   A trilha reaproveita registrarAuditoriaSofia_ e a aba Sofia_Auditoria que o
+   chat já alimenta: mesma aba, mesmo formato, mesma tela de consulta. */
+b.ok(
+  typeof g.docIA_registrarConfirmacao_ === "function",
+  "existe a função de trilha das confirmações"
+);
+
+/* Exercita a trilha direto, com a sessão de quem TEM o módulo: o que se prova
+   aqui é que a linha é gravada com identidade e hora — não o fluxo inteiro de
+   desfiliação, que depende de Drive e e-mail e não roda no emulador. */
+const sessaoJos = g.exigirModulo_(TOKEN_COM_SIND, "sindicalizacao", false);
+g.docIA_registrarConfirmacao_(sessaoJos, "Desfiliação",
+  "MARIA TESTE DA SILVA · Escola Teste", "Ofício OF-2026-000999", true);
+
+const abaTrilha = g.SpreadsheetApp.openById(g.PLANILHA_ID).getSheetByName("Sofia_Auditoria");
+b.ok(!!abaTrilha && abaTrilha.getLastRow() >= 2, "a linha foi gravada em Sofia_Auditoria");
+
+const linha = abaTrilha.getRange(abaTrilha.getLastRow(), 1, 1, 7).getValues()[0];
+b.ok(/^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/.test(String(linha[0])),
+  "com data e hora", String(linha[0]));
+b.ok(String(linha[2]).indexOf("joscimar") >= 0,
+  "e com o e-mail de QUEM confirmou", String(linha[2]));
+b.ok(String(linha[3]).indexOf("Desfiliação") >= 0,
+  "dizendo qual ação foi", String(linha[3]));
+b.ok(String(linha[4]).indexOf("MARIA TESTE") >= 0,
+  "e sobre quem", String(linha[4]));
+
+/* A trilha fica na mesma aba que a Home lê, filtrada por identidade — então a
+   confirmação aparece para quem a fez, e não para os outros. */
+b.ok(
+  String(linha[1] || linha[2]).length > 0,
+  "identificada, não anônima"
+);
+
 b.naoTestavel(
-  "se a confirmação por IA deixa trilha de auditoria própria",
-  "as três funções não gravam em aba de auditoria; o rastro que existe é a coluna " +
-  "ORIGEM='PAPEL_IA' na própria ficha, que diz COMO entrou mas não QUEM confirmou " +
-  "nem QUANDO. Precisa de decisão de produto antes de virar asserção."
+  "se a trilha grava no fluxo completo de desfiliação",
+  "o caminho inteiro passa por Drive e e-mail, que o emulador só registra. " +
+  "A chamada está no ponto de sucesso das três funções; conferir em homologação"
 );
 
 b.resumo();

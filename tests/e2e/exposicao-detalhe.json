@@ -1,7 +1,7 @@
 {
   "medidoEm": "2026-08-31",
   "totalPublicas": 963,
-  "protegidas": 650,
+  "protegidas": 651,
   "expostas": [
     {
       "nome": "validarCPF",
@@ -82,11 +82,6 @@
       "nome": "setupCentralFinanceiraIA",
       "arquivo": "CentralFinanceiraIA.gs",
       "escreve": true
-    },
-    {
-      "nome": "chatSISGEP",
-      "arquivo": "ChatIACore.gs",
-      "escreve": false
     },
     {
       "nome": "doPost",
