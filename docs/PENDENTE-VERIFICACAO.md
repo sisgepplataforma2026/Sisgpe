@@ -175,8 +175,25 @@ Era exatamente aqui que a Home mentia: com a resposta do index chegando por
 último, fonte que falhou virava 0, indistinguível de "está tudo em dia". O t108
 prova o mecanismo no emulador; falta ver de fora.
 
-**⚪ Não conferido ainda:** para onde cada card de prioridade leva (a diretriz
-de dashboards pede a fila filtrada, não o módulo genérico).
+**✅ MEDIDO em 31/08 — para onde cada card leva.** Não precisava de
+conferência no ar: o destino está no `onclick` e o handler é executável no
+harness (`t108`, passo 4b). O resultado, com os cinco:
+
+| Card | Destino |
+|---|---|
+| Notas fiscais aguardando envio | `financeiro` — sem filtro |
+| E-mails urgentes | `comunicacao` — sem filtro |
+| Ofícios pendentes de envio | `documentos` com `{sub:'oficios'}` — chega no submódulo certo |
+| Processos jurídicos com prazo | `juridico` — sem filtro |
+| Escolas com cadastro incompleto | `escolas` — sem filtro |
+
+**1 de 5 leva a algo mais específico que o módulo cru.** A diretriz de
+dashboards do PROMPT-MESTRE pede a FILA correspondente: clicar em "4 escolas
+com cadastro incompleto" deveria abrir as 4, não o módulo Escolas inteiro.
+
+Fica como ATENÇÃO no `t108`, e **não** foi corrigido: cada módulo de destino
+precisaria aceitar o filtro por parâmetro, o que é mudança de contrato entre
+telas e pede desenho aprovado (REGRA Nº 0.5).
 
 **Relatório completo:** https://claude.ai/code/artifact/443ffe43-6a53-4104-ab3e-c18ed32de0c7
 
@@ -805,8 +822,14 @@ Constituição`, que são referência de lei e não citação nossa.
 |---|---|
 | ✅ A linha aparece embaixo de uma resposta real | **verificado 13/08, print** — `CONSULTEI 📘 CCT · CCT 2026/2027` |
 | ✅ O aviso âmbar aparece quando deve | **verificado 13/08, print** — e pegou três citações erradas na primeira vez |
-| 🔴 Com CCT e Estatuto na mesma pergunta, os dois chips aparecem | ex.: piso da telefonista + quórum da assembleia |
-| 🔴 Pergunta de cadastro não desenha nada | "quantos associados temos" |
+| ✅ Com CCT e Estatuto na mesma pergunta, os dois chips aparecem | **fechado por teste em 31/08** — `t39`, passo 7b: dois chips, um CCT e um Estatuto, sem aviso âmbar |
+| ✅ Pergunta de cadastro não desenha nada | **fechado por teste em 31/08** — `t38` passos 8 e 15 (nenhum documento no prompt, e resposta de cadastro não dispara alerta) + `t39` passo 7 (a tela não anuncia fonte nenhuma) |
+
+**Este item está FECHADO.** Os dois pontos que restavam não precisavam de
+conferência no ar: eram comportamento de montagem de prompt e de renderização,
+os dois exercitáveis no emulador. O de dois chips era buraco real — o `t38` já
+provava que `fontesDoPrompt_` devolve os dois rótulos, mas ninguém tinha
+provado que a TELA desenha os dois. Agora prova.
 
 **O que o aviso pegou em 13/08, e vale registrar:** perguntado "quem pode
 participar da votação?" no domínio Geral, sem documento anexado, a SOFIA

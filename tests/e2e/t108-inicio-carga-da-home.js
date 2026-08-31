@@ -162,6 +162,48 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     JSON.stringify(lenta.texto("#spPrioNF"))
   );
 
+  b.passo("4b. para onde cada card de prioridade leva");
+  /* Era o "⚪ não conferido" do item 36 do PENDENTE-VERIFICACAO. Não precisava
+     de conferência no ar: o destino está no onclick e o clique é exercitável.
+
+     A diretriz de dashboards do PROMPT-MESTRE pede que "cards e alertas devem
+     ser clicáveis e levar diretamente à FILA, tela, registro ou ação
+     correspondente". O que este passo fixa é o estado de HOJE. */
+  const nav = abrirHome();
+  await esperar(ESPERA);
+
+  const idas = [];
+  const spIrOriginal = nav.win.spIr;
+  nav.win.spIr = function (mod, el, opts) { idas.push({ mod: mod, opts: opts || null }); };
+
+  /* CLICAR NÃO SERVE AQUI, e o motivo está documentado no t39: o jsdom em
+     modo `outside-only` não compila atributo de evento, então o onclick
+     inline dispara e nada acontece. O que se faz é AVALIAR o handler no
+     escopo da própria página — é execução do mesmo código que o navegador
+     rodaria, só que sem passar pelo compilador de atributos. */
+  ["spPrioNF", "spPrioEmails", "spPrioOficios", "spPrioJuridico", "spPrioEscolas"]
+    .forEach(function (id) {
+      const el = nav.doc.getElementById(id);
+      const card = el && el.closest ? el.closest(".spPriority") : null;
+      const handler = card && card.getAttribute("onclick");
+      if (handler) nav.win.eval(handler);
+    });
+  nav.win.spIr = spIrOriginal;
+
+  b.igual(idas.length, 5, "os cinco cards respondem ao clique",
+    idas.map(i => i.mod).join(", "));
+
+  const comFiltro = idas.filter(i => i.opts && Object.keys(i.opts).length > 0);
+  if (comFiltro.length === 5) {
+    b.ok(true, "todos os cards levam à fila filtrada");
+  } else {
+    b.aviso(
+      comFiltro.length + " de 5 cards levam a algo mais específico que o módulo cru",
+      "a diretriz de dashboards pede a FILA correspondente. Hoje: " +
+      idas.map(i => i.mod + (i.opts ? " " + JSON.stringify(i.opts) : " (sem filtro)")).join(" · ")
+    );
+  }
+
   b.passo("5. o indicador de saúde de Ofícios tem onde aparecer");
   // O InicioResumo.gs sempre devolveu saude.oficios; até 31/08 não havia
   // elemento para recebê-lo e o valor era calculado e descartado.
