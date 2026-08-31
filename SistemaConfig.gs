@@ -760,3 +760,133 @@ function sisgep_aprenderUrlBase_() {
     Logger.log('[SistemaConfig] SISGEP_URL_BASE aprendida sozinha: ' + url);
   } catch (e) { /* silencioso: roda em toda página */ }
 }
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   DIAGNÓSTICO DAS PROPRIEDADES DO SCRIPT
+   Acrescentado em 31/08/2026.
+
+   POR QUE EXISTE
+
+   A tela ⚙ Configurações do projeto → Propriedades do script mostra no
+   máximo 50 e é somente leitura. Este projeto passou dos 50. A própria tela
+   avisa: "Para gerenciar ou ver todas as suas propriedades, faça isso de
+   forma programática usando o serviço Properties."
+
+   Sem isto, descobrir se uma propriedade existe virou tentativa e erro — foi
+   o que aconteceu em 31/08 com a ANTHROPIC_API_KEY, que estava configurada
+   em produção e não em homologação, e só apareceu quando o chat da SOFIA
+   respondeu "Chave da API Anthropic não configurada".
+
+   A chave importa mais do que parece: NOVE arquivos dependem dela
+   (ChatIACore, CentralEmailIA, FinanceiroIA, MensalidadeCore, MemoriaCore,
+   MemoriaEvolutiva, IA_SISGEP e as duas do Jurídico com DATAJUD_API_KEY).
+   Faltando, a camada inteira de IA fica muda no ambiente.
+
+   SEGREDO NÃO SE IMPRIME POR ENGANO
+
+   diagnosticoPropriedades_() nunca mostra valor de segredo: mascara tudo que
+   pareça chave ou token. Para ver um valor inteiro — o caso real de copiar
+   uma chave de produção para homologação — existe revelarPropriedade_, que
+   se chama à mão, com o nome, e avisa para limpar o log depois. Revelar é
+   ato deliberado, não efeito colateral de um diagnóstico.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/** Nomes cujo valor NUNCA é impresso inteiro por diagnosticoPropriedades_. */
+var CFG_PADROES_SEGREDO_ = /KEY|TOKEN|SECRET|SENHA|PASSWORD|CREDENCIAL|CLIENT_ID/i;
+
+function cfg_mascarar_(nome, valor) {
+  var v = String(valor == null ? "" : valor);
+  if (!v) return "(vazio)";
+  if (!CFG_PADROES_SEGREDO_.test(String(nome))) {
+    return v.length <= 60 ? v : v.substring(0, 57) + "…";
+  }
+  /* Mostra o suficiente para conferir QUAL chave é, sem entregar a chave.
+     Sete caracteres pegam o prefixo (sk-ant-) e distinguem uma da outra. */
+  return v.substring(0, 7) + "…" + v.slice(-4) + "  (" + v.length + " caracteres)";
+}
+
+/**
+ * Lista TODAS as propriedades do script, com os segredos mascarados.
+ * Rodar no editor: Executar → diagnosticoPropriedades_ → ver o Registro.
+ */
+function diagnosticoPropriedades_() {
+  var props = PropertiesService.getScriptProperties().getProperties();
+  var nomes = Object.keys(props).sort();
+
+  var ambiente = "(não definida)";
+  try { ambiente = props["SISGEP_AMBIENTE"] || "(não definida — vale PRODUÇÃO)"; } catch (e) {}
+
+  var linhas = [];
+  linhas.push("═══════════════════════════════════════════════════════════");
+  linhas.push("  PROPRIEDADES DO SCRIPT — SISGEP");
+  linhas.push("═══════════════════════════════════════════════════════════");
+  linhas.push("  Ambiente : " + ambiente);
+  linhas.push("  Total    : " + nomes.length + " propriedades");
+  linhas.push("  (a tela do Apps Script só mostra 50 — por isto esta função existe)");
+  linhas.push("");
+
+  /* As que a camada de IA precisa vêm primeiro e com veredito explícito:
+     é o que se quer saber em noventa por cento das vezes. */
+  var ESSENCIAIS = [
+    ["ANTHROPIC_API_KEY", "IA: SOFIA, Central de E-mails, Financeiro, Mensalidade, Memória"],
+    ["DATAJUD_API_KEY",   "Jurídico: consulta processual"],
+    ["SISGEP_AMBIENTE",   "separa homologação de produção — sem ela, tudo aponta para PRODUÇÃO"]
+  ];
+  linhas.push("  ── ESSENCIAIS ──────────────────────────────────────────");
+  ESSENCIAIS.forEach(function (par) {
+    var nome = par[0];
+    var tem = Object.prototype.hasOwnProperty.call(props, nome) && String(props[nome] || "").trim();
+    linhas.push("  " + (tem ? "✅" : "❌") + "  " + nome);
+    linhas.push("        " + par[1]);
+    if (tem) linhas.push("        valor: " + cfg_mascarar_(nome, props[nome]));
+    else     linhas.push("        AUSENTE — o que depende dela não funciona neste ambiente");
+  });
+
+  linhas.push("");
+  linhas.push("  ── TODAS, em ordem ─────────────────────────────────────");
+  nomes.forEach(function (n) {
+    linhas.push("  " + n + " = " + cfg_mascarar_(n, props[n]));
+  });
+
+  linhas.push("");
+  linhas.push("  Para copiar uma chave inteira (ex.: levar de produção para");
+  linhas.push("  homologação), rode revelarPropriedade_ com o nome dela.");
+  linhas.push("═══════════════════════════════════════════════════════════");
+
+  var texto = linhas.join("\n");
+  Logger.log(texto);
+  return texto;
+}
+
+/**
+ * Mostra o valor INTEIRO de uma propriedade. Uso deliberado — o caso real é
+ * copiar uma chave de produção para homologação, que a tela truncada não
+ * permite fazer.
+ *
+ * Como usar: trocar o nome abaixo e executar a função no editor.
+ */
+function revelarPropriedade_(nome) {
+  nome = nome || "ANTHROPIC_API_KEY";
+  var valor = PropertiesService.getScriptProperties().getProperty(nome);
+
+  var linhas = [];
+  linhas.push("═══════════════════════════════════════════════════════════");
+  linhas.push("  VALOR INTEIRO DE: " + nome);
+  linhas.push("═══════════════════════════════════════════════════════════");
+  if (valor == null) {
+    linhas.push("  (a propriedade NÃO existe neste projeto)");
+  } else {
+    linhas.push(valor);
+    linhas.push("");
+    linhas.push("  ⚠️  ISTO FICOU GRAVADO NO REGISTRO DE EXECUÇÃO.");
+    linhas.push("      Depois de copiar, o histórico de execuções guarda o");
+    linhas.push("      valor. Quem tem acesso ao editor consegue lê-lo — o");
+    linhas.push("      que para um segredo é acesso a mais.");
+  }
+  linhas.push("═══════════════════════════════════════════════════════════");
+
+  var texto = linhas.join("\n");
+  Logger.log(texto);
+  return texto;
+}
