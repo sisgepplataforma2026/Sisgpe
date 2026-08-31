@@ -28,8 +28,15 @@ const b = require("./base");
 const { g } = b.subir({});
 b.seedUsuarios(g);
 
+/* Admin: enxerga todas as fontes. Este teste mede seleção de DOCUMENTO
+   (CCT/Estatuto), não permissão — quem mede permissão é o t112. */
+const SESSAO_ADMIN = g.getSessaoUsuario(b.logar(g, "wanderson"));
+
 function prompt(msg, dominio) {
-  return g.montarSystemPrompt_(g.coletarContextoSISGEP_(msg, dominio), msg);
+  /* A sessão passou a ser exigida em 31/08: o contexto filtra fonte a fonte
+     pelo módulo, e sessão ausente fecha tudo. Admin enxerga todas as fontes,
+     que é o que este teste precisa para medir seleção de DOCUMENTO. */
+  return g.montarSystemPrompt_(g.coletarContextoSISGEP_(msg, dominio, SESSAO_ADMIN), msg);
 }
 const temCCT = p => p.indexOf("=== CCT —") > -1;
 const temEst = p => p.indexOf("=== ESTATUTO —") > -1;

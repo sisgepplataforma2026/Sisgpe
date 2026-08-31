@@ -42,7 +42,7 @@ function chatSISGEP(payload, tokenSessao) {
     if (!apiKey) return { ok: false, resposta: "Chave da API Anthropic não configurada." };
 
     var contextoConversa = historico.slice(-4).map(function(h) { return String(h.content || ""); }).join("\n") + "\n" + mensagem;
-    var contexto = coletarContextoSISGEP_(contextoConversa, dominio);
+    var contexto = coletarContextoSISGEP_(contextoConversa, dominio, sessao);
     var systemPrompt = montarSystemPrompt_(contexto, mensagem);
 
     var messages = [];
@@ -369,7 +369,30 @@ function divergenciasCadastroSofia_(planilha, receita) {
   return lista;
 }
 
-function coletarContextoSISGEP_(mensagem, dominio) {
+/**
+ * PERMISSÃO POR FONTE — auditoria do Módulo 02, 31/08/2026.
+ *
+ * Ter o módulo "sofia" dava acesso a TUDO que a SOFIA alcança: mensalidades,
+ * escolas, benefícios e e-mails institucionais. Quem só devia ver escolas
+ * perguntava e recebia situação de mensalidade de gente com nome e escola.
+ *
+ * A trava é a mesma que o InicioResumo.gs já usa na Home — sessaoPodeModulo_
+ * por fonte, e não um portão único na entrada. Precedente da casa, não
+ * invenção: lá cada card do Início consulta só o que a sessão pode ver.
+ *
+ * Sessão AUSENTE fecha tudo, de propósito. Esta função é privada e só o
+ * chatSISGEP a chama em produção, sempre com sessão; um chamador novo que
+ * esqueça de passá-la recebe contexto vazio em vez de contexto completo. É o
+ * erro seguro.
+ */
+function chatPodeFonte_(sessao, modulo) {
+  if (!sessao) return false;
+  if (typeof sessaoPodeModulo_ !== "function") return true;
+  try { return !!sessaoPodeModulo_(sessao, modulo); }
+  catch (e) { return false; }
+}
+
+function coletarContextoSISGEP_(mensagem, dominio, sessao) {
   var msg = mensagem.toLowerCase();
   var contexto = {
     totalRegistros: 0,
@@ -379,7 +402,7 @@ function coletarContextoSISGEP_(mensagem, dominio) {
   };
 
   // Fontes específicas por domínio funcional. Somente leituras e resumos.
-  if (contexto.dominio === "Benefícios") {
+  if (contexto.dominio === "Benefícios" && chatPodeFonte_(sessao, "beneficios")) {
     contexto.dados.fontesBeneficios = [];
     try {
       if (typeof dashboardReservaParqueChina === "function") {
@@ -402,7 +425,7 @@ function coletarContextoSISGEP_(mensagem, dominio) {
   // ── Carrega emails das escolas (cache em memória) ──
   var mapaEmailEscolas = {};
   try {
-    var listaEsc = listarEscolasCadastro_interno_() || [];
+    var listaEsc = chatPodeFonte_(sessao, "escolas") ? (listarEscolasCadastro_interno_() || []) : [];
     listaEsc.forEach(function(e) {
       var nome = String(e[COL_NOME_ESCOLA] || e.escola || e.NomeEscola || "").trim().toLowerCase();
       var email = String(e[COL_EMAIL] || e.email || e.Email || "").trim();
@@ -425,8 +448,13 @@ function coletarContextoSISGEP_(mensagem, dominio) {
     Logger.log("coletarContexto_ escolas: " + eEsc.message);
   }
 
-  // ── Sempre busca resumo de mensalidades ──
+  /* ── Mensalidades ──
+     Era "sempre busca". Agora depende do módulo financeiro: este bloco monta
+     nome + escola + status de pessoas identificadas, e status de mensalidade
+     inclui DESFILIADO — filiação sindical, dado sensível pela LGPD art. 5º,
+     II. Quem não pode ver o Financeiro não passa a ver por aqui. */
   try {
+    if (!chatPodeFonte_(sessao, "financeiro")) throw new Error("SEM_ACESSO_FINANCEIRO");
     var statusGeral = listarMensalidadeStatus({});
     if (statusGeral && statusGeral.ok) {
       contexto.resumo = statusGeral.resumo || {};
@@ -436,7 +464,9 @@ function coletarContextoSISGEP_(mensagem, dominio) {
       var termoEscola = extrairTermoEscola_(msg);
       if (termoEscola) {
         var precisaLerAnexos = /\b(rela[cç][aã]o|nominal|anexo|arquivo|pdf|planilha|excel|lista|guia)\b/i.test(msg);
-        contexto.dados.emailsInstitucionais = buscarEmailsInstitucionaisRecentes_(termoEscola, { lerAnexos: precisaLerAnexos });
+        /* Caixa de e-mails é do módulo Comunicação. */
+        if (chatPodeFonte_(sessao, "comunicacao"))
+          contexto.dados.emailsInstitucionais = buscarEmailsInstitucionaisRecentes_(termoEscola, { lerAnexos: precisaLerAnexos });
         var filtrado = listarMensalidadeStatus({ escola: termoEscola });
         if (termoEscola === "gestão de excelencia" && (!filtrado || !filtrado.itens || !filtrado.itens.length)) {
           filtrado = listarMensalidadeStatus({ escola: "Gestão de Excelência" });
@@ -592,7 +622,15 @@ function coletarContextoSISGEP_(mensagem, dominio) {
       // Pergunta sobre CCT / legislação — não precisa de dados extras, o system prompt já tem a CCT
     }
   } catch (e) {
-    Logger.log("coletarContextoSISGEP_ erro mensalidades: " + e.message);
+    /* Recusa por permissão não é erro: é o sistema funcionando. Fica separada
+       no log para não parecer falha de leitura da planilha. */
+    if (e && e.message === "SEM_ACESSO_FINANCEIRO") {
+      contexto.dados.avisoSemFinanceiro =
+        "Esta sessão não tem acesso ao módulo Financeiro; dados de mensalidade " +
+        "não foram consultados. Não afirme nada sobre situação de pagamento.";
+    } else {
+      Logger.log("coletarContextoSISGEP_ erro mensalidades: " + e.message);
+    }
   }
 
   return contexto;

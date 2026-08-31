@@ -93,7 +93,9 @@ b.passo("2. o prompt que iria para a Anthropic");
 /* Usa a frase que FUNCIONA — o objetivo deste passo é medir o que sai quando
    a busca acontece, não repetir o defeito do passo anterior. */
 const PERGUNTA = "buscar joana pereira";
-const contexto = g.coletarContextoSISGEP_(PERGUNTA, "Geral");
+/* Sessão de admin: aqui o objetivo é medir O QUE SAI quando a busca acontece.
+   A filtragem por módulo é medida no t112. */
+const contexto = g.coletarContextoSISGEP_(PERGUNTA, "Geral", g.getSessaoUsuario(TOKEN));
 const prompt = g.montarSystemPrompt_(contexto, PERGUNTA);
 
 b.ok(
