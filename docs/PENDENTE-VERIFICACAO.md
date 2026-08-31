@@ -148,15 +148,30 @@ atrás das outras 39 chamadas que os módulos fechados disparam sozinhos. Não �
 desperdício abstrato de cota: é o painel demorando para dizer o que precisa ser
 feito hoje. **Isso eleva a prioridade da correção do leque de chamadas.**
 
-**🔴 AINDA ABERTO — o teste que prova a correção sob falha:**
+**⚠ INSTRUÇÃO ANTERIOR ESTAVA ERRADA — corrigida em 31/08/2026.**
 
-Renomear a aba de Despesas na planilha de **HOMOLOGAÇÃO** e recarregar a Home.
-O card de notas fiscais tem de mostrar **⚠** âmbar com o motivo ao passar o
-mouse — nunca `0`. **Desfazer a renomeação depois.**
+Este item mandava *"renomear a aba de Despesas e recarregar a Home; tem de
+mostrar ⚠, nunca 0"*. **Não funcionaria, e teria dado resultado enganoso.**
 
-Era exatamente aqui que a Home mentia: com a resposta do index chegando por
-último, fonte que falhou virava 0, indistinguível de "está tudo em dia". O t108
-prova o mecanismo no emulador; falta ver de fora.
+`obterAbaDesp_()` (Despesas.gs:212) chama `garantirAbaDespesas_()` quando não
+acha a aba — e essa **cria uma nova, vazia, com cabeçalho**. O mesmo vale para
+o Jurídico (`jurObterAba_`, Juridico.gs:62). As fontes se auto-curam.
+
+Então renomear produziria: aba nova vazia criada, resumo devolvido com sucesso
+e zero itens, e a Home mostrando **0** — que é justamente o que o teste queria
+denunciar. Quem fizesse concluiria que a correção falhou, e ainda ficaria com
+uma aba vazia sobrando na planilha ao lado da renomeada.
+
+**🔴 O QUE FICA, então:** o caminho "fonte falhou → ⚠" está provado no
+emulador (`t108`, com falha injetada) e **não tem como ser forçado com
+segurança na homologação** — a resiliência do próprio sistema impede. Fica
+declarado assim, e não como pendência que alguém possa tentar fechar de novo
+com a instrução errada.
+
+**✅ O QUE DÁ PARA CONFERIR, e é seguro:** o caminho de SEM ACESSO, que é
+outro ramo do mesmo desenho. Entrar com um usuário que **não tenha o módulo
+Financeiro** e olhar a Home: a linha "Notas fiscais aguardando envio" deve
+**sumir da lista** — não aparecer com zero. Zero risco, nada a desfazer.
 
 **✅ MEDIDO em 31/08 — para onde cada card leva.** Não precisava de
 conferência no ar: o destino está no `onclick` e o handler é executável no
