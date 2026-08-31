@@ -49,41 +49,41 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 ## 🔴 ABERTO
 
-### 36. Início — a auditoria do Módulo 01 (o que só o navegador responde)
+### 36. Início — correção do Módulo 01 (parcialmente VERIFICADA em 31/08)
 
-**Entregue em 31/08/2026.** Dois testes novos (`t107-inicio-resumo.js`,
-`t108-inicio-carga-da-home.js`), nenhum arquivo de sistema alterado. O módulo
-Início não tinha cobertura nenhuma até aqui.
+**Corrigido e publicado em 31/08/2026**, commit `cca3478`, Versão 73 da
+homologação, pelo workflow `deploy-homologacao.yml`. O relatório de `conferir`
+mostrou zero exclusões e zero criações: só `Helpers.html` e `index.html`.
 
-**O que já está provado por execução** (11 asserções passando): permissão por
-módulo, a separação entre "zero" e "não consegui ler", e o filtro de
-privacidade das atividades da SOFIA — dois usuários, nenhum vê a pergunta do
-outro.
-
-**O que foi medido e é defeito** (entrou como ATENÇÃO, não como falha, porque
-a correção depende de aprovação de desenho — REGRA Nº 0.5):
+**✅ VERIFICADO NO AR pelo usuário em 31/08, 14:27** — print da Home de
+homologação:
 
 | | |
 |---|---|
-| 41 chamadas ao backend numa carga da Home | a SPA inicializa todos os módulos, não só o Início |
-| 8 funções chamadas mais de uma vez | `listarPrestadoresDesp` 3×, `getResumoInicioSISGEP` 2× |
-| corrida entre `index.html` e `Helpers.html` | os dois escrevem nos mesmos 11 ids; com o index respondendo por último, fonte que falhou vira **0** em vez de **⚠** |
+| A linha "📄 Ofícios" existe e recebe valor | mostrou `ATENÇÃO` (3 ofícios pendentes) |
+| O caminho novo do Helpers assumiu | apareceu "Atualizado em 31/08/2026 14:27:19" — essa linha só é escrita pelo `inicioMostrarAtualizacao_()`, que NÃO existe no caminho de reserva do index |
+| Os números são coerentes entre si | 0+0+3+0+4 = 7, e o selo do topo diz 7 |
+| Saúde bate com o contador de cada fonte | Financeiro OK (0), Jurídico OK (0), Comunicação OK (0), Administrativo ATENÇÃO (4), Ofícios ATENÇÃO (3) — 5 de 5 |
+| A URL que dava erro do Drive | era outra implantação (`AKfycbxZISHCP...`); a oficial (`AKfycbzOfoQ...`) abre normalmente |
 
-**O que só a homologação no ar pode dizer** — nesta ordem:
+**🟡 A latência foi observada, e agora tem cara.** Entre dois prints do mesmo
+minuto, a Home saiu de tudo "—" para preenchida. O resumo chegou às 14:27:19,
+atrás das outras 39 chamadas que os módulos fechados disparam sozinhos. Não é
+desperdício abstrato de cota: é o painel demorando para dizer o que precisa ser
+feito hoje. **Isso eleva a prioridade da correção do leque de chamadas.**
 
-1. 🔴 **Quanto tempo a Home leva para ficar pronta.** As 41 chamadas foram
-   contadas no emulador, que responde instantâneo. Cronometrar do login até
-   os cards pararem de mudar.
-2. 🔴 **O que a Home mostra com um módulo fora do ar.** Renomear a aba de
-   Despesas na planilha de HOMOLOGAÇÃO, recarregar: tem de aparecer ⚠ âmbar,
-   nunca 0. É o defeito da corrida, visto de fora. **Desfazer a renomeação
-   depois.**
-3. 🟡 **Se os números piscam ao carregar.** Duas respostas escrevendo no mesmo
-   lugar produzem troca visível nos primeiros segundos.
-4. 🟡 **Para onde cada card leva.** Clicar nos cinco: caem na fila filtrada ou
-   no módulo genérico? A diretriz de dashboards pede a fila.
-5. ⚪ **A Home de um usuário restrito.** Conta sem Jurídico nem Financeiro: as
-   linhas desses módulos devem sumir, não mostrar zero.
+**🔴 AINDA ABERTO — o teste que prova a correção sob falha:**
+
+Renomear a aba de Despesas na planilha de **HOMOLOGAÇÃO** e recarregar a Home.
+O card de notas fiscais tem de mostrar **⚠** âmbar com o motivo ao passar o
+mouse — nunca `0`. **Desfazer a renomeação depois.**
+
+Era exatamente aqui que a Home mentia: com a resposta do index chegando por
+último, fonte que falhou virava 0, indistinguível de "está tudo em dia". O t108
+prova o mecanismo no emulador; falta ver de fora.
+
+**⚪ Não conferido ainda:** para onde cada card de prioridade leva (a diretriz
+de dashboards pede a fila filtrada, não o módulo genérico).
 
 **Relatório completo:** https://claude.ai/code/artifact/443ffe43-6a53-4104-ab3e-c18ed32de0c7
 
