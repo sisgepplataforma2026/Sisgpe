@@ -47,19 +47,55 @@ bloqueada.
 `diagnosticoLixeira_()` respondeu "nenhuma aba de lixeira criada ainda" — o
 esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
+## 📌 O QUE ESTÁ ABERTO — índice
+
+> Gerado em 31/08/2026. São **35 itens**. A lista completa, com o detalhe de
+> cada um, está na seção ABERTO logo abaixo — este índice existe só para não
+> ser preciso ler 2.000 linhas para saber o que cobrar.
+
+| Nº | Item |
+|---|---|
+| 42 | Tela genérica da Lixeira  ·  *(era 29 — o número estava repetido três vezes)* |
+| 41 | Bingo Online — nunca rodou em lugar nenhum  ·  *(era 29 — o número estava repetido três vezes)* |
+| 40 | Eventos — o painel executivo diz "sem dados do evento" (é o item 33) |
+| 36 | Início — correção do Módulo 01 (parcialmente VERIFICADA em 31/08) |
+| 35 | Taxa assistencial e Documentos — três dias de trabalho sem registro aqui |
+| 34 | Compasso — importação de planilha e o diálogo do sistema |
+| 33 | Eventos — a entidade passou a mandar (Fase 1) |
+| 32 | Compasso — a inscrição pública e a entrega do ingresso |
+| 31 | Compasso — pagamento do acompanhante (botão novo) |
+| 30 | Compasso da Vida 2026 — a trava de sessão mudou 35 assinaturas |
+| 27 | Isolamento das pastas do Drive entre produção e homologação |
+| 26 | Voucher — o registro diz em face de quem, e o relatório de duplicidade |
+| 25 | Voucher — corrigir o período que faltou |
+| 24 | Voucher — vários beneficiários num pedido só |
+| 23 | Voucher — as regras de quantidade, corrigidas |
+| 22 | Voucher — o papel timbrado, a redação e o período obrigatório |
+| 21 | SOFIA — a segunda leitura |
+| 20 | Layout — painel sob demanda, chips e menu recolhível |
+| 19 | SOFIA — a procedência embaixo da resposta |
+| 18 | Voucher — um por pessoa, por curso, por período (+ data do envio nas observações) |
+| 17 | Voucher — o reparo do cabeçalho de `Voucher_Solicitacoes` |
+| 16 | Voucher — o envio do certificado (e-mail, WhatsApp e trilha) |
+| 15 | Escolas Fase 4 — os vínculos passam a guardar escolaId |
+| 13 | Escolas — a padronização de formato (Etapa C) |
+| 12 | Escolas — o saneamento da base |
+| 11 | Escolas — a migração de identidade sobre a base real |
+| 10 | Relatórios — o CSV e a leitura em produção |
+| 9 | LGPD — inventário e prazo do titular |
+| 8 | Incidentes — confirmar o prazo com o jurídico |
+| 7 | Compartilhamentos — revogar no navegador |
+| 6 | Exportações — o arquivo gerado |
+| 5 | Retenção e Descarte — o gatilho de verdade |
+| 4 | Dashboard de Auditoria — o clique nos cards |
+| 3 | Telas que podem estar em branco no menu |
+| 2 | Firestore — gravação real |
+
+**Numeração:** o nº 29 estava usado três vezes. Os dois abertos viraram 41 e
+42; o 29 ficou com o de RECIBOS, que é o alvo da única referência cruzada do
+arquivo. Nenhum texto foi alterado — só o número no título.
+
 ## 🔴 ABERTO
-
-### ✅ 39. Carregamento sob demanda, lote 3 — VERIFICADO em 31/08/2026
-
-**Publicado na Versão 76** (commit `b015fe2`, run #46). O usuário abriu
-Eventos → Festa Compasso 2026 → Inscrições e a lista carregou com dado real
-(pessoas, situações "A analisar", "Ingresso a enviar", "Enviado").
-
-Isso fecha o lote 3: a Central do Compasso deixou de se auto-abrir na carga da
-Home e continua carregando pela ponte `compassoAplicarFiltro()`, chamada por
-`EventosAdmin.html:505`.
-
-**Acumulado do dia: 40 → 8 chamadas por carga da Home** (3 delas legítimas).
 
 ### 40. Eventos — o painel executivo diz "sem dados do evento" (é o item 33)
 
@@ -88,58 +124,6 @@ para nunca ficar em silêncio quando a carga não vem.
 **O que falta:** conferir a aba `EVENTOS_V2` na planilha de homologação — se
 ganhou a coluna `capacidade` e se o registro da Festa está preenchido. É o
 item de maior risco já declarado no 33.
-
-
-### ✅ 38. Carregamento sob demanda, lote 2 — VERIFICADO em 31/08/2026
-
-**Publicado na Versão 75** (commit `5d7f892`, run #44). O usuário abriu os cinco
-módulos e confirmou: **"Todos abrem"**.
-
-Cinco telas convertidas: `EventosAdmin`, `JuridicoAdmin`, `ConfigAdmin`,
-`AcessoAdmin` e `BeneficioReservaSimplesUI`.
-
-**Duas exigiram criar ligação que não existia**, e as duas seguem o padrão que
-o projeto já usava (o `initRH` chamando o `initRHEventos`):
-
-| Tela | Ligação criada |
-|---|---|
-| `AcessoAdmin` | o `initConfig` passou a chamá-lo — ele é incluído DENTRO do `ConfigAdmin` |
-| `BeneficioReservaSimplesUI` | o ramo `beneficios` do `initModulo` chama `initBeneficioReservaSimples`; a tela abre dois painéis (Guriri Beach e Assefaz), 4 chamadas |
-
-**Acumulado: 40 → 12 chamadas por carga da Home.** Dessas 12, três são legítimas
-(sessão, módulos do usuário, resumo do Início). O `t109` guarda dez telas nos
-dois sentidos, com teto de regressão em 12.
-
-
-### ✅ 37. Carregamento sob demanda, lote 1 — VERIFICADO em 31/08/2026
-
-**Publicado na Versão 74** (commit `0f3afa6`, run #42). O usuário abriu os três
-módulos alterados e confirmou: **"Todos carregaram"**.
-
-**O que mudou:** o `index.html` inclui as 60 telas de uma vez, e vinte delas
-buscavam os próprios dados no `DOMContentLoaded` — quando a PÁGINA carregava,
-não quando o MÓDULO era aberto. Medido: 40 chamadas ao backend por carga da
-Home, das quais o Início usa três.
-
-Não foi preciso construir mecanismo: o `spIr()` já terminava em `initModulo()`,
-que cobre 37 módulos. As telas faziam as duas coisas; a correção tirou a segunda.
-
-| Tela | Ponto de entrada usado |
-|---|---|
-| `RHAdmin.html` | `initModulo` → `callFn("initRH")` |
-| `CadastroPrestadores.html` | `initCadastroPrestadores` |
-| `Scripts_Despesas.html` | `initFinanceiro` já encadeava |
-| `FinanceiroConciliacao.html` | **não existia — criado no `initFinanceiro`** |
-
-Duas telas foram examinadas e **não** alteradas: `MensalidadesAdmin` (os
-listeners só ligam eventos; a busca já estava em `initMensalidades` — é o
-padrão correto) e `DespesasAdmin` (o listener não faz uma chamada sequer).
-
-**Resultado: 40 → 24 chamadas por carga.** O `t109` guarda os dois lados — que
-a Home não peça, e que o módulo carregue ao abrir pelo `spIr()`.
-
-**Meta: 3 chamadas.** Restam 24, sendo as maiores Compasso (6), Benefícios (4),
-Acesso (3) e Escolas (2).
 
 
 ### 36. Início — correção do Módulo 01 (parcialmente VERIFICADA em 31/08)
@@ -407,7 +391,7 @@ simulador cai no acervo real.
 
 ---
 
-### 29. Bingo Online — nunca rodou em lugar nenhum
+### 41. Bingo Online — nunca rodou em lugar nenhum  ·  *(era 29 — o número estava repetido três vezes)*
 **Aberto em:** 20/08/2026 · `Bingo*.gs`, `Bingo*.html`, `BingoInscricao.*`
 
 O módulo foi finalizado hoje: corrigido o botão morto, criada a inscrição
@@ -438,7 +422,7 @@ O `t73` cruza CÓDIGO. Não prova comportamento. Roteiro para fechar, na ordem:
 | 🔴 O teto segura dois cliques simultâneos de verdade? | LockService só se prova no ar |
 
 
-### 29. Tela genérica da Lixeira
+### 42. Tela genérica da Lixeira  ·  *(era 29 — o número estava repetido três vezes)*
 **Aberto em:** 20/08/2026 · aprovado pelo usuário ("tela de lixeira eu concordo")
 
 O backend da lixeira está pronto (`Lixeira.gs`) e os 21 pontos de exclusão de
@@ -450,88 +434,6 @@ abrindo a planilha — nada se perde, mas depende de alguém saber onde olhar.
 
 Segue a REGRA Nº 0.5: arquitetura e layout mostrados antes de implementar.
 
-
-### ✅ 28. O acervo do Drive público — RESOLVIDO em 21/08/2026, 22:39
-
-`auditoriaRevogar_({modo:'executar'})` rodou. **Os 28 arquivos foram fechados**,
-cada um com a permissão relida DEPOIS da alteração:
-
-```
-COMPROVANTES        11    ANYONE_WITH_LINK → fechado (PRIVATE)
-VOUCHER_DOCUMENTOS  10    ANYONE_WITH_LINK → fechado (PRIVATE)
-OFICIOS              5    ANYONE_WITH_LINK → fechado (PRIVATE)
-RELATORIOS           2    ANYONE_WITH_LINK → fechado (PRIVATE)
-─────────────────────────────────────────────────────────────
-                    28    ✅ nenhuma falha
-```
-
-Registrado na aba `_AUDITORIA_DRIVE_REVOGACAO`, com o acesso anterior de cada um.
-
-**O que a lista revelou, e não estava previsto.** Os 5 de OFICIOS não eram
-ofícios. Um é a logo do site; os outros quatro são anexos do JURÍDICO, gravados
-por `Juridico.gs:366` — que usa a pasta de ofícios como destino:
-
-```
-JUR_JUR-82355079_total__dos__reclamantes.pdf
-JUR_JUR-632A8085_total__dos__reclamantes.pdf
-DOC_MANUAL_..._DEP-0140-2026_1_ABELITA PEREIRA SANTOS.pdf
-DOC_MANUAL_..._DEP-0140-2026_1_Ponto agendado.pdf
-```
-
-Lista de reclamantes de processo trabalhista, aberta a quem tivesse a URL. Era
-o mais grave do conjunto — mais que os vouchers. Um voucher exposto constrange;
-uma lista de reclamantes exposta pode custar o emprego de quem está nela.
-
-**CONFIRMADO POR MEDIÇÃO INDEPENDENTE**, 22:45:59 — `auditoriaDrive_contar_()`
-rodado de novo, com o progresso zerado antes:
-
-```
-PASTA                    TOTAL   PÚBLICOS   DOMÍNIO   ERRO
-COMPROVANTES                18          0        0      0
-OFICIOS                    348          0        0      0
-OFICIOS_DESFILIACAO         26          0        0      0
-OFICIOS_HOMOLOGACAO          4          0        0      0
-OFICIOS_TAXA_NEGOCIAL       84          0        0      0
-RELATORIOS                   7          0        0      0
-VOUCHER_DOCUMENTOS          10          0        0      0
-──────────────────────────────────────────────────────────
-TOTAL                      497          0        0      0
-
-✅ Nenhum arquivo público encontrado nas pastas auditadas.
-```
-
-Dois códigos diferentes chegando ao mesmo número. O revogador disse que fechou;
-o contador, que não conhece o revogador, confirmou. Um código confirmando a si
-mesmo não seria prova.
-
-**Dois detalhes que a segunda contagem também mostrou:**
-
-- **RECIBOS sumiu da tabela.** Antes vinha `TOTAL 0 · ERRO 1`, porque o ID
-  apontava para pasta inexistente. Agora a pasta nova é lida sem erro e, por
-  estar vazia, nem aparece na listagem. O item 29 se confirma corrigido.
-- **Os 497 não mudaram.** A revogação alterou permissão, não removeu arquivo —
-  que é exatamente o que se esperava, e vale ter conferido.
-
-### 29. A pasta de RECIBOS de produção não existia — CORRIGIDO em 21/08/2026
-
-A auditoria devolveu `RECIBOS  TOTAL 0  ERRO 1`. Investigado:
-
-```
-PASTAS.RECIBOS = "1gudfaRCd3LxScSsqbF1kJXeI796LHr9b"
-                 → "Requested entity was not found"
-```
-
-Não era permissão: a pasta não existia, nem para o script de produção nem para
-acesso externo. **Consequência que ninguém tinha visto:** `gerarPDFRecibo`
-chama `obterOuCriarSubpastaAno` com esse id e estoura — emitir recibo em
-produção falharia. Passou despercebido porque Recibos não está em operação.
-
-Criada `SISGEP - Recibos - PRODUCAO` (`12qepZmMbx343pI4qoulNh5Mk3uUztz1Y`) e
-trocado o id em `SistemaConfig.gs` e `AmbienteRecursos.gs`.
-
-| | |
-|---|---|
-| 🟡 Emitir um recibo em produção e ver o PDF cair na pasta nova | é o que fecha este item |
 
 ### 27. Isolamento das pastas do Drive entre produção e homologação
 **Aberto em:** 20/08/2026 · `AmbienteRecursos.gs` (novo), `Comprovantes.gs`,
@@ -1351,65 +1253,6 @@ precisa estar de pé e conferida antes.
 
 ---
 
-### ✅ 1. Trilha de Auditoria com dado real — Ofícios (FECHADO em 19/08/2026)
-
-**Status: fechado por execução, aqui — não dependia do usuário.**
-
-Aberto em 11/08 com "ele testa mais adiante", e ficou oito dias parado. Ao
-sentar para testar em 19/08, dava para ter rodado desde sempre: o emulador
-emite ofício de verdade e a trilha grava numa aba de verdade. Mandar para
-o usuário o que eu podia rodar aqui é o que a REGRA Nº -1 chama de "não
-sugeriu" — fica o registro do erro de julgamento.
-
-**Provado por execução** (`t66-trilha-oficios-com-dado.js`, 27 asserções,
-3 mutações mortas), o caminho inteiro:
-
-    emitir ofício → registrarLogSistema → aud_deLogSistema_ → grava na aba
-                  → auditoriaConsultar → a tela desenha a linha
-                  → o clique abre o modal com os campos
-
-- A trilha ganha uma linha por ofício emitido (a ponte é aditiva: o
-  LOG_SISTEMA continua gravando).
-- O registro sai como `Documentos › Ofícios`, com o número, o usuário e a
-  escola.
-- O filtro por módulo funciona, e filtro sem correspondência volta vazio.
-- **A lista foi vista com dado** — era a pendência principal.
-- **O modal foi aberto** — nunca tinha sido, em navegador nenhum.
-
-**Armadilha registrada:** a resposta da consulta traz a lista em `acoes`,
-não em `itens`. Meu primeiro probe procurou `itens`, achou zero e eu quase
-reportei "a consulta não devolve nada" — o defeito era do probe.
-
-**Continua não testado:** a aparência da lista e do modal. jsdom não
-aplica CSS.
-
-<details><summary>Registro original do item (11/08/2026)</summary>
-
-**Aberto em:** 11/08/2026 · **Combinado com o usuário:** ele testa mais adiante
-
-A ponte de auditoria foi ligada no `registrarLogSistema()` do `Oficios.gs`.
-Todo ofício emitido passa a gravar em dois lugares: o `LOG_SISTEMA` de
-sempre e a trilha nova.
-
-**O que só o ambiente real prova:**
-
-| O quê | Como verificar |
-|---|---|
-| A ponte funciona em produção | Emitir um ofício. Abrir **Auditoria e Compliance › Trilha de Alterações**. O ofício tem que aparecer como `Documentos › Ofícios`. |
-| **A lista com registros** | Nunca foi vista com dado. Hoje só foi verificada vazia. |
-| **O modal dos 14 campos** | Clicar numa linha. Nunca foi aberto em navegador. |
-| A emissão não regrediu | O ofício sai normal, com o mesmo número e o mesmo PDF. |
-
-**Pré-requisito:** `Oficios.gs` colado no projeto + nova versão da implantação.
-
-**Se algo der errado:** desfazer é apagar o bloco marcado
-`PONTE PARA A TRILHA ÚNICA` no `registrarLogSistema()`. Nada mais depende
-dele.
-
-</details>
-
----
-
 ### 4. Dashboard de Auditoria — o clique nos cards
 **Aberto em:** 11/08/2026
 
@@ -1624,6 +1467,215 @@ Travado por teste: `t9-menu.js`, passos 13 e 14, varre os 71 `.html`.
 |---|---|---|
 | 10/08/2026 | Trilha abre e consulta | print do usuário |
 | 10/08/2026 | Token nas 5 telas | print do usuário |
+
+---
+
+
+<!-- Movidos da seção ABERTO em 31/08/2026: estavam marcados como
+     fechados e continuavam na lista de cobrança. Texto intacto. -->
+
+### ✅ 39. Carregamento sob demanda, lote 3 — VERIFICADO em 31/08/2026
+
+**Publicado na Versão 76** (commit `b015fe2`, run #46). O usuário abriu
+Eventos → Festa Compasso 2026 → Inscrições e a lista carregou com dado real
+(pessoas, situações "A analisar", "Ingresso a enviar", "Enviado").
+
+Isso fecha o lote 3: a Central do Compasso deixou de se auto-abrir na carga da
+Home e continua carregando pela ponte `compassoAplicarFiltro()`, chamada por
+`EventosAdmin.html:505`.
+
+**Acumulado do dia: 40 → 8 chamadas por carga da Home** (3 delas legítimas).
+
+### ✅ 38. Carregamento sob demanda, lote 2 — VERIFICADO em 31/08/2026
+
+**Publicado na Versão 75** (commit `5d7f892`, run #44). O usuário abriu os cinco
+módulos e confirmou: **"Todos abrem"**.
+
+Cinco telas convertidas: `EventosAdmin`, `JuridicoAdmin`, `ConfigAdmin`,
+`AcessoAdmin` e `BeneficioReservaSimplesUI`.
+
+**Duas exigiram criar ligação que não existia**, e as duas seguem o padrão que
+o projeto já usava (o `initRH` chamando o `initRHEventos`):
+
+| Tela | Ligação criada |
+|---|---|
+| `AcessoAdmin` | o `initConfig` passou a chamá-lo — ele é incluído DENTRO do `ConfigAdmin` |
+| `BeneficioReservaSimplesUI` | o ramo `beneficios` do `initModulo` chama `initBeneficioReservaSimples`; a tela abre dois painéis (Guriri Beach e Assefaz), 4 chamadas |
+
+**Acumulado: 40 → 12 chamadas por carga da Home.** Dessas 12, três são legítimas
+(sessão, módulos do usuário, resumo do Início). O `t109` guarda dez telas nos
+dois sentidos, com teto de regressão em 12.
+
+
+### ✅ 37. Carregamento sob demanda, lote 1 — VERIFICADO em 31/08/2026
+
+**Publicado na Versão 74** (commit `0f3afa6`, run #42). O usuário abriu os três
+módulos alterados e confirmou: **"Todos carregaram"**.
+
+**O que mudou:** o `index.html` inclui as 60 telas de uma vez, e vinte delas
+buscavam os próprios dados no `DOMContentLoaded` — quando a PÁGINA carregava,
+não quando o MÓDULO era aberto. Medido: 40 chamadas ao backend por carga da
+Home, das quais o Início usa três.
+
+Não foi preciso construir mecanismo: o `spIr()` já terminava em `initModulo()`,
+que cobre 37 módulos. As telas faziam as duas coisas; a correção tirou a segunda.
+
+| Tela | Ponto de entrada usado |
+|---|---|
+| `RHAdmin.html` | `initModulo` → `callFn("initRH")` |
+| `CadastroPrestadores.html` | `initCadastroPrestadores` |
+| `Scripts_Despesas.html` | `initFinanceiro` já encadeava |
+| `FinanceiroConciliacao.html` | **não existia — criado no `initFinanceiro`** |
+
+Duas telas foram examinadas e **não** alteradas: `MensalidadesAdmin` (os
+listeners só ligam eventos; a busca já estava em `initMensalidades` — é o
+padrão correto) e `DespesasAdmin` (o listener não faz uma chamada sequer).
+
+**Resultado: 40 → 24 chamadas por carga.** O `t109` guarda os dois lados — que
+a Home não peça, e que o módulo carregue ao abrir pelo `spIr()`.
+
+**Meta: 3 chamadas.** Restam 24, sendo as maiores Compasso (6), Benefícios (4),
+Acesso (3) e Escolas (2).
+
+
+### ✅ 28. O acervo do Drive público — RESOLVIDO em 21/08/2026, 22:39
+
+`auditoriaRevogar_({modo:'executar'})` rodou. **Os 28 arquivos foram fechados**,
+cada um com a permissão relida DEPOIS da alteração:
+
+```
+COMPROVANTES        11    ANYONE_WITH_LINK → fechado (PRIVATE)
+VOUCHER_DOCUMENTOS  10    ANYONE_WITH_LINK → fechado (PRIVATE)
+OFICIOS              5    ANYONE_WITH_LINK → fechado (PRIVATE)
+RELATORIOS           2    ANYONE_WITH_LINK → fechado (PRIVATE)
+─────────────────────────────────────────────────────────────
+                    28    ✅ nenhuma falha
+```
+
+Registrado na aba `_AUDITORIA_DRIVE_REVOGACAO`, com o acesso anterior de cada um.
+
+**O que a lista revelou, e não estava previsto.** Os 5 de OFICIOS não eram
+ofícios. Um é a logo do site; os outros quatro são anexos do JURÍDICO, gravados
+por `Juridico.gs:366` — que usa a pasta de ofícios como destino:
+
+```
+JUR_JUR-82355079_total__dos__reclamantes.pdf
+JUR_JUR-632A8085_total__dos__reclamantes.pdf
+DOC_MANUAL_..._DEP-0140-2026_1_ABELITA PEREIRA SANTOS.pdf
+DOC_MANUAL_..._DEP-0140-2026_1_Ponto agendado.pdf
+```
+
+Lista de reclamantes de processo trabalhista, aberta a quem tivesse a URL. Era
+o mais grave do conjunto — mais que os vouchers. Um voucher exposto constrange;
+uma lista de reclamantes exposta pode custar o emprego de quem está nela.
+
+**CONFIRMADO POR MEDIÇÃO INDEPENDENTE**, 22:45:59 — `auditoriaDrive_contar_()`
+rodado de novo, com o progresso zerado antes:
+
+```
+PASTA                    TOTAL   PÚBLICOS   DOMÍNIO   ERRO
+COMPROVANTES                18          0        0      0
+OFICIOS                    348          0        0      0
+OFICIOS_DESFILIACAO         26          0        0      0
+OFICIOS_HOMOLOGACAO          4          0        0      0
+OFICIOS_TAXA_NEGOCIAL       84          0        0      0
+RELATORIOS                   7          0        0      0
+VOUCHER_DOCUMENTOS          10          0        0      0
+──────────────────────────────────────────────────────────
+TOTAL                      497          0        0      0
+
+✅ Nenhum arquivo público encontrado nas pastas auditadas.
+```
+
+Dois códigos diferentes chegando ao mesmo número. O revogador disse que fechou;
+o contador, que não conhece o revogador, confirmou. Um código confirmando a si
+mesmo não seria prova.
+
+**Dois detalhes que a segunda contagem também mostrou:**
+
+- **RECIBOS sumiu da tabela.** Antes vinha `TOTAL 0 · ERRO 1`, porque o ID
+  apontava para pasta inexistente. Agora a pasta nova é lida sem erro e, por
+  estar vazia, nem aparece na listagem. O item 29 se confirma corrigido.
+- **Os 497 não mudaram.** A revogação alterou permissão, não removeu arquivo —
+  que é exatamente o que se esperava, e vale ter conferido.
+
+### 29. A pasta de RECIBOS de produção não existia — CORRIGIDO em 21/08/2026
+
+A auditoria devolveu `RECIBOS  TOTAL 0  ERRO 1`. Investigado:
+
+```
+PASTAS.RECIBOS = "1gudfaRCd3LxScSsqbF1kJXeI796LHr9b"
+                 → "Requested entity was not found"
+```
+
+Não era permissão: a pasta não existia, nem para o script de produção nem para
+acesso externo. **Consequência que ninguém tinha visto:** `gerarPDFRecibo`
+chama `obterOuCriarSubpastaAno` com esse id e estoura — emitir recibo em
+produção falharia. Passou despercebido porque Recibos não está em operação.
+
+Criada `SISGEP - Recibos - PRODUCAO` (`12qepZmMbx343pI4qoulNh5Mk3uUztz1Y`) e
+trocado o id em `SistemaConfig.gs` e `AmbienteRecursos.gs`.
+
+| | |
+|---|---|
+| 🟡 Emitir um recibo em produção e ver o PDF cair na pasta nova | é o que fecha este item |
+
+### ✅ 1. Trilha de Auditoria com dado real — Ofícios (FECHADO em 19/08/2026)
+
+**Status: fechado por execução, aqui — não dependia do usuário.**
+
+Aberto em 11/08 com "ele testa mais adiante", e ficou oito dias parado. Ao
+sentar para testar em 19/08, dava para ter rodado desde sempre: o emulador
+emite ofício de verdade e a trilha grava numa aba de verdade. Mandar para
+o usuário o que eu podia rodar aqui é o que a REGRA Nº -1 chama de "não
+sugeriu" — fica o registro do erro de julgamento.
+
+**Provado por execução** (`t66-trilha-oficios-com-dado.js`, 27 asserções,
+3 mutações mortas), o caminho inteiro:
+
+    emitir ofício → registrarLogSistema → aud_deLogSistema_ → grava na aba
+                  → auditoriaConsultar → a tela desenha a linha
+                  → o clique abre o modal com os campos
+
+- A trilha ganha uma linha por ofício emitido (a ponte é aditiva: o
+  LOG_SISTEMA continua gravando).
+- O registro sai como `Documentos › Ofícios`, com o número, o usuário e a
+  escola.
+- O filtro por módulo funciona, e filtro sem correspondência volta vazio.
+- **A lista foi vista com dado** — era a pendência principal.
+- **O modal foi aberto** — nunca tinha sido, em navegador nenhum.
+
+**Armadilha registrada:** a resposta da consulta traz a lista em `acoes`,
+não em `itens`. Meu primeiro probe procurou `itens`, achou zero e eu quase
+reportei "a consulta não devolve nada" — o defeito era do probe.
+
+**Continua não testado:** a aparência da lista e do modal. jsdom não
+aplica CSS.
+
+<details><summary>Registro original do item (11/08/2026)</summary>
+
+**Aberto em:** 11/08/2026 · **Combinado com o usuário:** ele testa mais adiante
+
+A ponte de auditoria foi ligada no `registrarLogSistema()` do `Oficios.gs`.
+Todo ofício emitido passa a gravar em dois lugares: o `LOG_SISTEMA` de
+sempre e a trilha nova.
+
+**O que só o ambiente real prova:**
+
+| O quê | Como verificar |
+|---|---|
+| A ponte funciona em produção | Emitir um ofício. Abrir **Auditoria e Compliance › Trilha de Alterações**. O ofício tem que aparecer como `Documentos › Ofícios`. |
+| **A lista com registros** | Nunca foi vista com dado. Hoje só foi verificada vazia. |
+| **O modal dos 14 campos** | Clicar numa linha. Nunca foi aberto em navegador. |
+| A emissão não regrediu | O ofício sai normal, com o mesmo número e o mesmo PDF. |
+
+**Pré-requisito:** `Oficios.gs` colado no projeto + nova versão da implantação.
+
+**Se algo der errado:** desfazer é apagar o bloco marcado
+`PONTE PARA A TRILHA ÚNICA` no `registrarLogSistema()`. Nada mais depende
+dele.
+
+</details>
 
 ---
 
