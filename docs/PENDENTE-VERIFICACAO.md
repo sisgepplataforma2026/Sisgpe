@@ -49,12 +49,13 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 ## 📌 O QUE ESTÁ ABERTO — índice
 
-> Gerado em 31/08/2026. São **34 itens**. A lista completa, com o detalhe de
+> Gerado em 31/08/2026. São **35 itens**. A lista completa, com o detalhe de
 > cada um, está na seção ABERTO logo abaixo — este índice existe só para não
 > ser preciso ler 2.000 linhas para saber o que cobrar.
 
 | Nº | Item |
 |---|---|
+| 43 | Sessões — o gatilho diário de limpeza (instalado em 31/08, 20:47) |
 | 42 | Tela genérica da Lixeira  ·  *(era 29 — o número estava repetido três vezes)* |
 | 41 | Bingo Online — nunca rodou em lugar nenhum  ·  *(era 29 — o número estava repetido três vezes)* |
 | 40 | Eventos — o painel executivo diz "sem dados do evento" (é o item 33) |
@@ -95,6 +96,46 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
+
+### 43. Sessões — o gatilho diário de limpeza (instalado em 31/08, 20:47)
+
+**O que JÁ foi verificado no ar, em 31/08/2026**, pelo usuário, no editor da
+homologação — e isto sai da conta de "não testado":
+
+| Passo | Resultado |
+|---|---|
+| Simulação, 20:42 | 62 expiradas · 6 vivas · 0 corrompidas · **0 apagadas** |
+| Execução real, 20:44 | **62 apagadas** · 6 vivas preservadas · 7 outras intactas |
+| Login depois da limpeza | pediu login e **entrou** — a autenticação continua funcionando |
+| Instalação do gatilho, 20:47:35 | `✅ Gatilho instalado — limpeza diária às 3h.` |
+
+Eram 68 sessões para 6 em uso. O print anterior mostrava 46 porque a tela de
+Propriedades corta em 50 — o acúmulo era maior do que dava para ver.
+
+O pedido de login **não foi causado pela limpeza**: ela só apaga quando
+`expiraEm <= agora` (`Sessao.gs:492`), e a sessão do usuário era das 14:27,
+com validade de 6h (`Sessao.gs:15`) — vencida às 20:27, antes da execução.
+
+**O QUE FALTA, e é o que se cobra:**
+
+1. **O gatilho disparar de fato às 3h.** Só se vê no dia seguinte, em
+   Acionadores → Execuções: procurar `limparSessoesExpiradasDiario` com
+   status Concluído. O emulador não executa `ScriptApp.newTrigger` — está
+   declarado como não testável no `t115`.
+
+2. **A contagem que não fechou.** A conferência das 20:47 mostrou **6 vivas**
+   quando o esperado era 7 (as 6 preservadas + a sessão nova do login), e as
+   "outras" subiram de 7 para 8. Duas contas mudaram e nenhuma foi explicada.
+   Não é perda de dado — nada foi apagado nessa execução —, mas é discrepância
+   por entender. Rodar `diagnosticoPropriedades_()` e conferir quantas
+   `SESSAO_SISGEP_` existem e quais são as 8 "outras".
+
+   Já descartado por leitura de código: as chaves `LOGIN_TENT_` e `LOGIN_BLOQ_`
+   ficam no **CacheService**, não nas Propriedades (`Login1.gs:104,187,204`);
+   só `LOGIN_NIVEL_` vai para Propriedades, e é apagada no login bem-sucedido
+   (`Login1.gs:244`). Ou seja: pela leitura, nenhuma dessas deveria estar
+   sobrando — e é justamente por isso que precisa ser olhado no ar.
+
 
 ### 40. Eventos — o painel executivo diz "sem dados do evento" (é o item 33)
 
