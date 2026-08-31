@@ -449,15 +449,36 @@ function coletarContextoSISGEP_(mensagem, dominio, sessao) {
   }
 
   /* ── Mensalidades ──
-     Era "sempre busca". Agora depende do módulo financeiro: este bloco monta
-     nome + escola + status de pessoas identificadas, e status de mensalidade
-     inclui DESFILIADO — filiação sindical, dado sensível pela LGPD art. 5º,
-     II. Quem não pode ver o Financeiro não passa a ver por aqui. */
+     CONTAGEM NÃO É PESSOA. Corrigido em 31/08/2026, depois de uma primeira
+     tentativa que barrava o bloco inteiro para quem não tem o módulo
+     financeiro — e deixava a SOFIA respondendo "não consultei" a perguntas
+     que ela podia responder. O usuário apontou, e estava certo.
+
+     O que é sensível pela LGPD (art. 5º, II) é filiação sindical de pessoa
+     IDENTIFICADA: nome + status. "Há 12 pendências nesta escola" não
+     identifica ninguém e não é dado pessoal.
+
+     Então o corte é este, e não no bloco:
+       contadores e totais    → qualquer sessão com o módulo sofia
+       nomes de pessoas       → só com o módulo financeiro
+
+     Assim a assistente continua útil para quem faz gestão, sem virar porta
+     lateral para a lista de quem se desfiliou. */
+  var podeVerPessoas = chatPodeFonte_(sessao, "financeiro");
+
   try {
-    if (!chatPodeFonte_(sessao, "financeiro")) throw new Error("SEM_ACESSO_FINANCEIRO");
     var statusGeral = listarMensalidadeStatus({});
     if (statusGeral && statusGeral.ok) {
       contexto.resumo = statusGeral.resumo || {};
+      if (!podeVerPessoas) {
+        /* A IA precisa saber por que não tem nomes — senão inventa que não há
+           ninguém, ou pede desculpa como se fosse falha. */
+        contexto.dados.avisoSemPessoas =
+          "Esta sessão não tem acesso ao módulo Financeiro. Os NÚMEROS abaixo " +
+          "estão completos e podem ser usados; a lista de PESSOAS não foi " +
+          "consultada. Se pedirem nomes, explique que é preciso acesso ao " +
+          "módulo Financeiro — não diga que não há registros.";
+      }
       contexto.totalRegistros = (statusGeral.itens || []).length;
 
       // Pergunta sobre escola específica
@@ -521,7 +542,10 @@ function coletarContextoSISGEP_(mensagem, dominio, sessao) {
             aguardando: aguardando,
             email: emailDaEscola,
             infoEscola: infoEscola,
-            itens: filtrado.itens.slice(0, 20).map(function(i) {
+            /* Os contadores acima vão para todo mundo; a LISTA NOMINAL, não.
+               Sem o módulo financeiro a SOFIA sabe quantos são e não sabe
+               quem são — que é exatamente a fronteira do dado pessoal. */
+            itens: !podeVerPessoas ? [] : filtrado.itens.slice(0, 20).map(function(i) {
               return {
                 nome: i.nome,
                 status: i.status,
@@ -599,7 +623,7 @@ function coletarContextoSISGEP_(mensagem, dominio, sessao) {
 
       // Associado por nome
       var termoNome = extrairTermoNome_(msg);
-      if (termoNome) {
+      if (termoNome && podeVerPessoas) {
         var porNome = listarMensalidadeStatus({ nome: termoNome });
         if (porNome && porNome.ok && porNome.itens && porNome.itens.length > 0) {
           contexto.dados.associadoBuscado = {
@@ -624,13 +648,7 @@ function coletarContextoSISGEP_(mensagem, dominio, sessao) {
   } catch (e) {
     /* Recusa por permissão não é erro: é o sistema funcionando. Fica separada
        no log para não parecer falha de leitura da planilha. */
-    if (e && e.message === "SEM_ACESSO_FINANCEIRO") {
-      contexto.dados.avisoSemFinanceiro =
-        "Esta sessão não tem acesso ao módulo Financeiro; dados de mensalidade " +
-        "não foram consultados. Não afirme nada sobre situação de pagamento.";
-    } else {
-      Logger.log("coletarContextoSISGEP_ erro mensalidades: " + e.message);
-    }
+    Logger.log("coletarContextoSISGEP_ erro mensalidades: " + e.message);
   }
 
   return contexto;
@@ -1021,6 +1039,13 @@ var prompt =
     "━━━ DADOS REAIS DO SISTEMA — " + hoje + " ━━━\n\n";
 
   // Resumo geral
+  /* O aviso vem ANTES dos números, para a IA ler a ressalva junto com o dado
+     e não depois de já ter concluído. (avisoFonteDominio, definido na coleta
+     desde antes, nunca chegou aqui — fica anotado como achado à parte.) */
+  if (contexto.dados.avisoSemPessoas) {
+    prompt += "AVISO DE ACESSO: " + contexto.dados.avisoSemPessoas + "\n\n";
+  }
+
   if (resumo.total) {
     prompt +=
       "RESUMO DE MENSALIDADES:\n" +

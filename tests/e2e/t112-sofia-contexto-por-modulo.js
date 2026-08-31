@@ -94,15 +94,33 @@ b.ok(
   pEsc.indexOf("BUSCA POR") >= 0 ? "VAZOU o bloco de busca" : "contido"
 );
 
-b.passo("3. a IA é AVISADA de que não consultou, em vez de achar que é zero");
-/* Silêncio faria a SOFIA responder "não há pendências" com a mesma confiança
-   de sempre. O aviso a instrui a não afirmar nada sobre pagamento — mesma
-   distinção entre "zero" e "não consultei" que o Módulo 01 preserva na Home. */
+b.passo("3. CONTAGEM NÃO É PESSOA — os números continuam chegando");
+/* A primeira versão desta correção barrava o bloco inteiro, e a SOFIA passava
+   a responder "não consultei" a perguntas que podia responder. O usuário
+   apontou que não tinha ficado bom, e estava certo: o que a LGPD protege é
+   filiação de pessoa IDENTIFICADA, não a contagem. */
 const ctxEsc = g.coletarContextoSISGEP_(PERGUNTA, "Geral", SESSAO_ESCOLAS);
 b.ok(
-  !!(ctxEsc.dados && ctxEsc.dados.avisoSemFinanceiro),
-  "o contexto registra que o Financeiro não foi consultado",
-  (ctxEsc.dados && ctxEsc.dados.avisoSemFinanceiro || "").substring(0, 80)
+  Number((ctxEsc.resumo || {}).total || 0) > 0,
+  "quem não tem financeiro AINDA recebe os totais de mensalidade",
+  "total = " + ((ctxEsc.resumo || {}).total || 0)
+);
+b.ok(
+  pEsc.indexOf("RESUMO DE MENSALIDADES") >= 0,
+  "e eles chegam no prompt — a assistente segue útil para gestão"
+);
+
+b.passo("3b. e a IA é avisada do porquê de não ter nomes");
+/* Silêncio faria a SOFIA concluir que não há ninguém, ou pedir desculpa como
+   se fosse falha dela. O aviso a instrui a explicar o motivo. */
+b.ok(
+  !!(ctxEsc.dados && ctxEsc.dados.avisoSemPessoas),
+  "o contexto registra que a lista de pessoas não foi consultada",
+  (ctxEsc.dados && ctxEsc.dados.avisoSemPessoas || "").substring(0, 70)
+);
+b.ok(
+  pEsc.indexOf("AVISO DE ACESSO") >= 0,
+  "e o aviso chega no prompt, ANTES dos números"
 );
 
 b.passo("4. sessão ausente fecha tudo — o erro seguro");
