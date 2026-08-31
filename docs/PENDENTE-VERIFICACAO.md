@@ -49,6 +49,57 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 ## 🔴 ABERTO
 
+### 36. Início — a auditoria do Módulo 01 (o que só o navegador responde)
+
+**Entregue em 31/08/2026.** Dois testes novos (`t107-inicio-resumo.js`,
+`t108-inicio-carga-da-home.js`), nenhum arquivo de sistema alterado. O módulo
+Início não tinha cobertura nenhuma até aqui.
+
+**O que já está provado por execução** (11 asserções passando): permissão por
+módulo, a separação entre "zero" e "não consegui ler", e o filtro de
+privacidade das atividades da SOFIA — dois usuários, nenhum vê a pergunta do
+outro.
+
+**O que foi medido e é defeito** (entrou como ATENÇÃO, não como falha, porque
+a correção depende de aprovação de desenho — REGRA Nº 0.5):
+
+| | |
+|---|---|
+| 41 chamadas ao backend numa carga da Home | a SPA inicializa todos os módulos, não só o Início |
+| 8 funções chamadas mais de uma vez | `listarPrestadoresDesp` 3×, `getResumoInicioSISGEP` 2× |
+| corrida entre `index.html` e `Helpers.html` | os dois escrevem nos mesmos 11 ids; com o index respondendo por último, fonte que falhou vira **0** em vez de **⚠** |
+
+**O que só a homologação no ar pode dizer** — nesta ordem:
+
+1. 🔴 **Quanto tempo a Home leva para ficar pronta.** As 41 chamadas foram
+   contadas no emulador, que responde instantâneo. Cronometrar do login até
+   os cards pararem de mudar.
+2. 🔴 **O que a Home mostra com um módulo fora do ar.** Renomear a aba de
+   Despesas na planilha de HOMOLOGAÇÃO, recarregar: tem de aparecer ⚠ âmbar,
+   nunca 0. É o defeito da corrida, visto de fora. **Desfazer a renomeação
+   depois.**
+3. 🟡 **Se os números piscam ao carregar.** Duas respostas escrevendo no mesmo
+   lugar produzem troca visível nos primeiros segundos.
+4. 🟡 **Para onde cada card leva.** Clicar nos cinco: caem na fila filtrada ou
+   no módulo genérico? A diretriz de dashboards pede a fila.
+5. ⚪ **A Home de um usuário restrito.** Conta sem Jurídico nem Financeiro: as
+   linhas desses módulos devem sumir, não mostrar zero.
+
+**Relatório completo:** https://claude.ai/code/artifact/443ffe43-6a53-4104-ab3e-c18ed32de0c7
+
+### 35. Taxa assistencial e Documentos — três dias de trabalho sem registro aqui
+
+**Entregue entre 29 e 31/08/2026**, commits `6c489f6` a `2884a0f`. A interface
+modular do fluxo de oposição à taxa, o gateway autenticado, a preservação de
+progresso em parcial próprio, e quatro correções em Documentos (card de
+escolas, envio sem alias institucional, controles da taxa, inclusão por ficha).
+
+Os testes automatizados foram escritos junto (`t100` a `t106`), mas pela REGRA
+Nº -1 **nada disso é "pronto"** enquanto ninguém exercer no ar. Está aqui para
+ser cobrado — o detalhamento do que conferir precisa ser escrito quando o
+usuário for testar.
+
+
 ### 34. Compasso — importação de planilha e o diálogo do sistema
 
 **Entregue em 26/08/2026.** Quatro arquivos colados pelo usuário no mesmo
