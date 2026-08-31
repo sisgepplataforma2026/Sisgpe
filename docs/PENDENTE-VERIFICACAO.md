@@ -49,7 +49,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 ## 📌 O QUE ESTÁ ABERTO — índice
 
-> Gerado em 31/08/2026. São **35 itens**. A lista completa, com o detalhe de
+> Gerado em 31/08/2026. São **34 itens**. A lista completa, com o detalhe de
 > cada um, está na seção ABERTO logo abaixo — este índice existe só para não
 > ser preciso ler 2.000 linhas para saber o que cobrar.
 
@@ -73,7 +73,6 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 | 22 | Voucher — o papel timbrado, a redação e o período obrigatório |
 | 21 | SOFIA — a segunda leitura |
 | 20 | Layout — painel sob demanda, chips e menu recolhível |
-| 19 | SOFIA — a procedência embaixo da resposta |
 | 18 | Voucher — um por pessoa, por curso, por período (+ data do envio nas observações) |
 | 17 | Voucher — o reparo do cabeçalho de `Voucher_Solicitacoes` |
 | 16 | Voucher — o envio do certificado (e-mail, WhatsApp e trilha) |
@@ -696,7 +695,7 @@ CNPJ: sob nº" é erro de digitação do original e saiu; e o ano da CCT vem de
 `NEGCOL_VIGENCIA` em vez de fixo — o papel de referência, emitido em agosto de
 2026, cita a CCT 2025/2026, que venceu em 28/02/2026.
 
-### 19. SOFIA — a procedência embaixo da resposta
+### ✅ 19. SOFIA — a procedência embaixo da resposta — FECHADO em 31/08/2026
 **Aberto em:** 13/08/2026 · `ChatIACore.gs`, `ChatSISGEP.html`
 
 Depois de responder, a SOFIA passa a dizer **de que documento a resposta
