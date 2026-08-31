@@ -49,6 +49,47 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 ## 🔴 ABERTO
 
+### ✅ 39. Carregamento sob demanda, lote 3 — VERIFICADO em 31/08/2026
+
+**Publicado na Versão 76** (commit `b015fe2`, run #46). O usuário abriu
+Eventos → Festa Compasso 2026 → Inscrições e a lista carregou com dado real
+(pessoas, situações "A analisar", "Ingresso a enviar", "Enviado").
+
+Isso fecha o lote 3: a Central do Compasso deixou de se auto-abrir na carga da
+Home e continua carregando pela ponte `compassoAplicarFiltro()`, chamada por
+`EventosAdmin.html:505`.
+
+**Acumulado do dia: 40 → 8 chamadas por carga da Home** (3 delas legítimas).
+
+### 40. Eventos — o painel executivo diz "sem dados do evento" (é o item 33)
+
+**Visto pelo usuário em 31/08, 16:32**, no Painel de Eventos. Sintomas:
+
+| Bloco | O que mostrou |
+|---|---|
+| Painel | INSCRIÇÕES 0 · A ANALISAR 0 · A ENVIAR 0 · **VAGAS RESTANTES 2000** |
+| Executivo | tudo `—` + "O servidor respondeu sem dados do evento." |
+
+**NÃO é regressão do carregamento sob demanda.** Verificado: os valores
+estáticos do HTML são todos `—` (`exDias`, `exTotal`, `exIngressos`, `exVagas`,
+`pnAnalisar`, `pnEnviar`, `pnVagas`). A tela mostrou **0** e **2000**, que são
+valores carregados — logo a inicialização rodou e as duas cargas chamaram o
+servidor. Fosse falha de inicialização, estaria tudo em `—`.
+
+**É o item 33 desta lista, agora com sintoma visível.** Aquele item já previa:
+*"Gravar capacidade 300 na Festa e ver o painel do evento dizer 300, não
+2.000"* — e 2.000 é exatamente a constante `EMISSAO_CFG`, usada quando o
+registro do evento não traz capacidade. O painel executivo depende do mesmo
+registro e, sem ele, devolve vazio.
+
+O aviso na tela é comportamento CORRETO: `evExecutivoCarregar()` foi escrito
+para nunca ficar em silêncio quando a carga não vem.
+
+**O que falta:** conferir a aba `EVENTOS_V2` na planilha de homologação — se
+ganhou a coluna `capacidade` e se o registro da Festa está preenchido. É o
+item de maior risco já declarado no 33.
+
+
 ### ✅ 38. Carregamento sob demanda, lote 2 — VERIFICADO em 31/08/2026
 
 **Publicado na Versão 75** (commit `5d7f892`, run #44). O usuário abriu os cinco
