@@ -58,10 +58,17 @@ function validarRemetenteInstitucionalOficios_() {
 
   if (efetivo === remetente || aliases.indexOf(remetente) !== -1) return remetente;
 
-  throw new Error(
-    "O remetente " + remetente + " não está autorizado na conta que executa o SISGEP. " +
-    "Cadastre-o como alias ou execute o envio pela conta institucional antes de testar."
+  /* O projeto de homologação é executado pela conta proprietária do Apps
+     Script, que não possui a Secretaria como alias Gmail. Forçar `from`
+     nesse cenário faz o Gmail recusar TODOS os ofícios. Sem alias, omitimos
+     apenas o `from`: o Gmail usa a conta executora como remetente técnico,
+     enquanto o destinatário e o reply-to continuam sendo exclusivamente a
+     Secretaria. Isso não cria BCC nem cópia para o Financeiro. */
+  Logger.log(
+    "Aviso: " + remetente + " não é alias da conta executora; " +
+    "envio seguirá pela conta executora com replyTo da Secretaria."
   );
+  return "";
 }
 
 function montarOpcoesEmailSISGEP_(emailUsuario, htmlBody, anexos, assunto, destino) {
@@ -79,27 +86,29 @@ function montarOpcoesEmailSISGEP_(emailUsuario, htmlBody, anexos, assunto, desti
       "</div>" + htmlFinal;
   }
 
-  return {
+  var opcoes = {
     to:          politica.destino,
     subject:     assuntoFinal,
     htmlBody:    htmlFinal,
     attachments: anexos || [],
     name:        "SindEducação-ES",
-    from:        remetente,
     replyTo:     OFICIOS_EMAIL_INSTITUCIONAL
     // Sem BCC: o financeiro não recebe cópia automática dos ofícios.
   };
+  if (remetente) opcoes.from = remetente;
+  return opcoes;
 }
 
 function enviarEmailOficio_(emailUsuario, htmlBody, anexos, assunto, destino, corpoTexto) {
   var opcoes = montarOpcoesEmailSISGEP_(emailUsuario, htmlBody, anexos, assunto, destino);
-  GmailApp.sendEmail(opcoes.to, opcoes.subject, corpoTexto || "Segue ofício em anexo.", {
+  var opcoesGmail = {
     htmlBody:    opcoes.htmlBody,
     attachments: opcoes.attachments || [],
     name:        opcoes.name,
-    from:        opcoes.from,
     replyTo:     opcoes.replyTo
-  });
+  };
+  if (opcoes.from) opcoesGmail.from = opcoes.from;
+  GmailApp.sendEmail(opcoes.to, opcoes.subject, corpoTexto || "Segue ofício em anexo.", opcoesGmail);
   return opcoes;
 }
 

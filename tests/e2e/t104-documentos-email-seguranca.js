@@ -11,6 +11,7 @@ const progresso = fs.readFileSync(path.join(raiz, "TaxaProgressoEnvioCore.html")
 const utils = fs.readFileSync(path.join(raiz, "Utils.gs"), "utf8");
 const busca = fs.readFileSync(path.join(raiz, "BuscaEscola.gs"), "utf8");
 const scripts = fs.readFileSync(path.join(raiz, "OficiosScripts.html"), "utf8");
+const b = require("./base");
 
 assert(!taxa.includes("financeiro@sindeducacao.com"), "Taxa Assistencial ainda referencia o financeiro");
 assert(!fila.includes("financeiro@sindeducacao.com"), "Fila de Ofícios ainda referencia o financeiro");
@@ -31,5 +32,22 @@ assert(busca.includes("function buscarEscolasOficioSmart(termo, tokenSessao)"), 
 assert(scripts.includes(".obterArquivoDriveBase64(f.driveId, SISGEP_TOKEN_SESSAO)"), "frontend não envia token ao ler arquivo");
 assert(scripts.includes(".buscarFichasDrive(termo, SISGEP_TOKEN_SESSAO)"), "frontend não envia token ao buscar fichas");
 assert(scripts.includes(".buscarEscolasOficioSmart(termo, SISGEP_TOKEN_SESSAO)"), "frontend não envia token ao buscar escola");
+
+const semAlias = b.subir({ gmailAliases: [] });
+semAlias.g.__donoDoProjetoEmail = "financeirosindecucacao@gmail.com";
+const opcoesSemAlias = semAlias.g.enviarEmailOficio_(
+  "wanderson@sindeducacao.com", "<p>Teste</p>", [], "Teste controlado",
+  "secretaria@sindeducacao.com", "Teste"
+);
+assert.strictEqual(opcoesSemAlias.to, "secretaria@sindeducacao.com", "destino deve continuar exclusivamente na Secretaria");
+assert.strictEqual(opcoesSemAlias.replyTo, "secretaria@sindeducacao.com", "reply-to deve continuar na Secretaria");
+assert(!Object.prototype.hasOwnProperty.call(opcoesSemAlias, "from"), "sem alias, o gateway deve omitir from e usar a conta executora");
+const emailSemAlias = semAlias.amb.outbox[semAlias.amb.outbox.length - 1];
+assert(emailSemAlias && emailSemAlias.to === "secretaria@sindeducacao.com", "envio sem alias deve chegar à Secretaria");
+assert(!emailSemAlias.bcc && !emailSemAlias.cc, "envio de ofício não deve criar cópia automática");
+
+const comAlias = b.subir({ gmailAliases: ["secretaria@sindeducacao.com"] });
+const opcoesComAlias = comAlias.g.montarOpcoesEmailSISGEP_("", "<p>Teste</p>", [], "Teste", "secretaria@sindeducacao.com");
+assert.strictEqual(opcoesComAlias.from, "secretaria@sindeducacao.com", "quando autorizado, o alias institucional deve ser usado como remetente");
 
 console.log("OK: segurança e política única de e-mail de Documentos validadas.");
