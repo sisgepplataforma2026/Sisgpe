@@ -798,12 +798,17 @@ visto de fato:
 
 | | |
 |---|---|
-| 🔴 Os chips cabem na barra e rolam | com o menu do Portal aberto e recolhido |
-| 🔴 A coluna da direita some mesmo | e volta quando a escola é identificada |
-| ✅ O ☰ recolhe | **verificado 13/08** — falta só confirmar que sobrevive ao F5 |
-| 🔴 A escolha sobrevive ao F5 | é `localStorage`; pode estar bloqueado no navegador |
-| 🔴 Clicar num módulo com submenu estando recolhido | deve abrir o menu e o acordeão junto |
+| 🔴 Os chips cabem na barra e rolam | com o menu do Portal aberto e recolhido — **CSS, só no navegador** |
+| 🔴 A coluna da direita some mesmo | e volta quando a escola é identificada — **CSS, só no navegador** |
+| ✅ O ☰ recolhe | **verificado 13/08** |
+| 🟡 A escolha sobrevive ao F5 | **parcial, 31/08** — o `t113` prova que gravação e restaurador usam a MESMA chave (o erro que quebraria a persistência sem quebrar teste). O F5 em si o jsdom não faz: dá armazenamento novo por janela |
+| ✅ Clicar num módulo com submenu estando recolhido | **fechado por teste em 31/08** — `t113`: abre o menu E o acordeão; e alterna normalmente depois |
+| ✅ `localStorage` bloqueado não derruba o menu | **fechado por teste em 31/08**, por acaso — o jsdom não tem localStorage, e os oito passos do acordeão passaram assim mesmo. É a promessa do `spAlternarMenu`, que estava escrita e não provada |
 | ✅ **Ofícios continua igual** | **verificado 13/08** — "ofício apareceu"; emissão inteira conferida |
+
+**Sobrou só o que é CSS.** Dos quatro 🔴 originais, dois fecharam por teste e
+um virou parcial. Os dois que restam dependem de olho no navegador porque o
+jsdom não aplica estilo — não há teste que os substitua.
 
 O último item é o que mais importa: mexi no `index.html`, que é a moldura de
 tudo. Se a emissão de ofício estiver diferente em qualquer coisa, é aqui que
