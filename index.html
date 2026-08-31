@@ -1808,6 +1808,12 @@ if(mod==="beneficios"){
       setTimeout(function(){ if(typeof window.benefAdminCarregar==="function") window.benefAdminCarregar(); },80);
     }
 
+    /* Os painéis de reserva simples (Guriri Beach e Assefaz) vivem em
+       BeneficioReservaSimplesUI.html e, até 31/08/2026, só eram inicializados
+       pelo DOMContentLoaded deles — quatro chamadas em toda carga da página,
+       com Benefícios fechado. Esta é a ligação sob demanda. */
+    setTimeout(function(){ callFn("initBeneficioReservaSimples"); },100);
+
     if(subBeneficio === "parqueChina"){
       callFn("initBeneficios") || callFn("carregarBeneficios");
     }

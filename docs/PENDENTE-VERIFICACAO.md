@@ -49,6 +49,37 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 ## 🔴 ABERTO
 
+### ✅ 37. Carregamento sob demanda, lote 1 — VERIFICADO em 31/08/2026
+
+**Publicado na Versão 74** (commit `0f3afa6`, run #42). O usuário abriu os três
+módulos alterados e confirmou: **"Todos carregaram"**.
+
+**O que mudou:** o `index.html` inclui as 60 telas de uma vez, e vinte delas
+buscavam os próprios dados no `DOMContentLoaded` — quando a PÁGINA carregava,
+não quando o MÓDULO era aberto. Medido: 40 chamadas ao backend por carga da
+Home, das quais o Início usa três.
+
+Não foi preciso construir mecanismo: o `spIr()` já terminava em `initModulo()`,
+que cobre 37 módulos. As telas faziam as duas coisas; a correção tirou a segunda.
+
+| Tela | Ponto de entrada usado |
+|---|---|
+| `RHAdmin.html` | `initModulo` → `callFn("initRH")` |
+| `CadastroPrestadores.html` | `initCadastroPrestadores` |
+| `Scripts_Despesas.html` | `initFinanceiro` já encadeava |
+| `FinanceiroConciliacao.html` | **não existia — criado no `initFinanceiro`** |
+
+Duas telas foram examinadas e **não** alteradas: `MensalidadesAdmin` (os
+listeners só ligam eventos; a busca já estava em `initMensalidades` — é o
+padrão correto) e `DespesasAdmin` (o listener não faz uma chamada sequer).
+
+**Resultado: 40 → 24 chamadas por carga.** O `t109` guarda os dois lados — que
+a Home não peça, e que o módulo carregue ao abrir pelo `spIr()`.
+
+**Meta: 3 chamadas.** Restam 24, sendo as maiores Compasso (6), Benefícios (4),
+Acesso (3) e Escolas (2).
+
+
 ### 36. Início — correção do Módulo 01 (parcialmente VERIFICADA em 31/08)
 
 **Corrigido e publicado em 31/08/2026**, commit `cca3478`, Versão 73 da

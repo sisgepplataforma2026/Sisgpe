@@ -905,7 +905,10 @@ window.evCopiarLinkInscricao=function(eventoId){var token=tokenSessao();if(!toke
 
 function evIniciar(){evSubInterno(evSubSalvo());evRender()}
 window.initEventos=evIniciar;
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',evIniciar);else setTimeout(evIniciar,80);
+/* CARREGAMENTO SOB DEMANDA (auditoria M01, lote 2 — 31/08/2026).
+   Esta tela buscava os dados no DOMContentLoaded, ou seja, em toda carga da
+   página, mesmo com o módulo fechado. Quem inicializa agora é o initModulo()
+   do index.html, pelo spIr(). */
 })();
 </script>
 </div>

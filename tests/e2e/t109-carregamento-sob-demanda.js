@@ -1,5 +1,5 @@
 /**
- * t109 — CARREGAMENTO SOB DEMANDA (lote 1)
+ * t109 — CARREGAMENTO SOB DEMANDA (lotes 1 e 2)
  *
  * O index.html inclui as 60 telas do sistema de uma vez. Até 31/08/2026, vinte
  * delas buscavam os próprios dados no `DOMContentLoaded` — quando a PÁGINA
@@ -40,14 +40,21 @@ const { g } = b.subir({});
 b.seedUsuarios(g);
 const TOKEN = b.logar(g, "wanderson"); // admin: enxerga todos os módulos
 
-/* Telas do lote 1 e a chamada que denuncia cada uma. A chamada escolhida é
+/* Telas já convertidas e a chamada que denuncia cada uma. A chamada escolhida é
    sempre uma que SÓ aquele módulo faz, para o teste não confundir origem. */
 const LOTE = [
-  { modulo: "rh",                  tela: "RHAdmin.html",             chamada: "listarFolhaRH" },
-  { modulo: "rh",                  tela: "RHEventosAdmin.html",      chamada: "rhEvListar" },
-  { modulo: "cadastroPrestadores", tela: "CadastroPrestadores.html", chamada: "listarPrestadoresDesp" },
-  { modulo: "financeiro",          tela: "Scripts_Despesas.html",    chamada: "obterResumoDespesas" },
-  { modulo: "financeiro",          tela: "FinanceiroConciliacao.html", chamada: "conc_listar" }
+  /* lote 1 */
+  { modulo: "rh",                  tela: "RHAdmin.html",               chamada: "listarFolhaRH" },
+  { modulo: "rh",                  tela: "RHEventosAdmin.html",        chamada: "rhEvListar" },
+  { modulo: "cadastroPrestadores", tela: "CadastroPrestadores.html",   chamada: "listarPrestadoresDesp" },
+  { modulo: "financeiro",          tela: "Scripts_Despesas.html",      chamada: "obterResumoDespesas" },
+  { modulo: "financeiro",          tela: "FinanceiroConciliacao.html", chamada: "conc_listar" },
+  /* lote 2 */
+  { modulo: "eventos",             tela: "EventosAdmin.html",          chamada: "listarEventosAgenda" },
+  { modulo: "juridico",            tela: "JuridicoAdmin.html",         chamada: "jurListarProcessos" },
+  { modulo: "config",              tela: "ConfigAdmin.html",           chamada: "getConfigPainel" },
+  { modulo: "config",              tela: "AcessoAdmin.html",           chamada: "acessoListarUsuarios" },
+  { modulo: "beneficios",          tela: "BeneficioReservaSimplesUI.html", chamada: "listarReservasBeneficioSimples" }
 ];
 
 const esperar = ms => new Promise(r => setTimeout(r, ms));
@@ -85,7 +92,7 @@ const contar = (tela, fn) => tela.chamadas.filter(c => c.fn === fn).length;
   /* Teto de regressão. Não é meta — é o retrato de hoje, para que uma tela nova
      que volte a se auto-inicializar apareça aqui em vez de passar despercebida.
      A meta continua sendo 3: sessão, módulos do usuário e o resumo do Início. */
-  const TETO = 24;
+  const TETO = 12;
   if (total <= TETO) {
     b.ok(true, "a carga da Home cabe no teto de " + TETO + " chamadas", total + " chamadas");
   } else {
@@ -135,6 +142,51 @@ const contar = (tela, fn) => tela.chamadas.filter(c => c.fn === fn).length;
   b.ok(contar(tPre, "listarPrestadoresDesp") > 0,
     "abrir Prestadores dispara listarPrestadoresDesp",
     contar(tPre, "listarPrestadoresDesp") + " chamada(s)");
+
+  /* ─── lote 2 ─── */
+
+  b.passo("5. abrir Eventos pelo spIr");
+  const tEv = abrirHome();
+  await esperar(1500);
+  tEv.win.spIr("eventos");
+  await esperar(1200);
+  b.ok(contar(tEv, "listarEventosAgenda") > 0,
+    "abrir Eventos dispara listarEventosAgenda",
+    contar(tEv, "listarEventosAgenda") + " chamada(s)");
+
+  b.passo("6. abrir Jurídico pelo spIr");
+  const tJur = abrirHome();
+  await esperar(1500);
+  tJur.win.spIr("juridico");
+  await esperar(1200);
+  b.ok(contar(tJur, "jurListarProcessos") > 0,
+    "abrir o Jurídico dispara jurListarProcessos",
+    contar(tJur, "jurListarProcessos") + " chamada(s)");
+
+  b.passo("7. abrir Configurações pelo spIr — e o Acesso, que é filho dela");
+  const tCfg = abrirHome();
+  await esperar(1500);
+  tCfg.win.spIr("config");
+  await esperar(1400);
+  b.ok(contar(tCfg, "getConfigPainel") > 0,
+    "abrir Configurações dispara getConfigPainel",
+    contar(tCfg, "getConfigPainel") + " chamada(s)");
+  // O AcessoAdmin é incluído DENTRO do ConfigAdmin e não tinha entrada própria.
+  // Agora o initConfig o chama — se alguém desfizer, cai aqui.
+  b.ok(contar(tCfg, "acessoListarUsuarios") > 0,
+    "e o AcessoAdmin junto, pela ligação criada no initConfig",
+    contar(tCfg, "acessoListarUsuarios") + " chamada(s)");
+
+  b.passo("8. abrir Benefícios pelo spIr");
+  const tBen = abrirHome();
+  await esperar(1500);
+  tBen.win.spIr("beneficios");
+  await esperar(1400);
+  // Esta tela abre DOIS painéis (Guriri Beach e Assefaz) e não tinha ponto de
+  // entrada; a ligação foi criada no ramo "beneficios" do initModulo.
+  b.ok(contar(tBen, "listarReservasBeneficioSimples") > 0,
+    "abrir Benefícios dispara os painéis de reserva simples",
+    contar(tBen, "listarReservasBeneficioSimples") + " chamada(s)");
 
   b.naoTestavel(
     "se a tela fica visualmente correta ao abrir",
