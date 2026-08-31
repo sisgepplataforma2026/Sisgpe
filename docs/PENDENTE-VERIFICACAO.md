@@ -49,12 +49,13 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 ## 📌 O QUE ESTÁ ABERTO — índice
 
-> Gerado em 31/08/2026. São **35 itens**. A lista completa, com o detalhe de
+> Gerado em 31/08/2026. São **36 itens**. A lista completa, com o detalhe de
 > cada um, está na seção ABERTO logo abaixo — este índice existe só para não
 > ser preciso ler 2.000 linhas para saber o que cobrar.
 
 | Nº | Item |
 |---|---|
+| 44 | Firebase — a chave privada da homologação está malformada |
 | 43 | Sessões — o gatilho diário de limpeza (instalado em 31/08, 20:47) |
 | 42 | Tela genérica da Lixeira  ·  *(era 29 — o número estava repetido três vezes)* |
 | 41 | Bingo Online — nunca rodou em lugar nenhum  ·  *(era 29 — o número estava repetido três vezes)* |
@@ -97,6 +98,51 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
+### 44. Firebase — a chave privada da homologação está malformada
+
+**Achado em 31/08/2026, 20:51**, pelo `diagnosticoPropriedades_()` — na
+primeira vez que a função rodou. Não foi procurado: apareceu.
+
+```
+FIREBASE_PRIVATE_KEY = -----BE…\n",  (1734 caracteres)
+```
+
+A máscara mostra os 7 primeiros caracteres e os **4 últimos**
+(`SistemaConfig.gs:806`). Os quatro últimos são `\n",` — barra, n, aspas,
+vírgula.
+
+Uma chave correta, guardada como o JSON a escreve, termina em
+`-----END PRIVATE KEY-----\n`, ou seja, os quatro últimos seriam `--\n`.
+Terminar em `",` significa que a cópia veio do arquivo JSON **incluindo a
+aspa de fechamento e a vírgula da linha**:
+
+```json
+"private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
+                                                                             ↑↑
+                                                              estes dois foram junto
+```
+
+**Por que quebra:** `fb_config_` (`FirebaseCore.gs:58`) troca os `\n` literais
+por quebras reais, mas não remove nada do fim. O PEM entregue ao assinador
+termina com uma linha `",` depois do `-----END PRIVATE KEY-----`, e a
+assinatura RSA falha. Todo o Firestore de Eventos depende disso
+(`EventosFirestore.gs`, `EventosPiloto.gs`).
+
+**Não testado:** se o Firestore está de fato fora do ar na homologação. A
+leitura diz que sim; confirmar rodando `firebaseTestarConexao`
+(`FirebaseCore.gs:~300`), que devolve a etapa em que falhou.
+
+**A correção acontece junto da troca da chave** — que já era necessária,
+porque o valor foi exposto numa conversa em 31/08. Ao colar a chave nova,
+colar **só o miolo**: começa em `-----BEGIN PRIVATE KEY-----\n` e termina em
+`-----END PRIVATE KEY-----\n`, sem as aspas e sem a vírgula.
+
+**Pendente de decisão:** endurecer o `fb_config_` para descascar aspas e
+vírgula sobrando, em vez de confiar na colagem. É erro previsível e silencioso
+— cai na REGRA Nº 0.6. Não foi implementado porque mexe em caminho de
+credencial e o usuário ainda não decidiu.
+
+
 ### 43. Sessões — o gatilho diário de limpeza (instalado em 31/08, 20:47)
 
 **O que JÁ foi verificado no ar, em 31/08/2026**, pelo usuário, no editor da
@@ -123,18 +169,23 @@ com validade de 6h (`Sessao.gs:15`) — vencida às 20:27, antes da execução.
    status Concluído. O emulador não executa `ScriptApp.newTrigger` — está
    declarado como não testável no `t115`.
 
-2. **A contagem que não fechou.** A conferência das 20:47 mostrou **6 vivas**
-   quando o esperado era 7 (as 6 preservadas + a sessão nova do login), e as
-   "outras" subiram de 7 para 8. Duas contas mudaram e nenhuma foi explicada.
-   Não é perda de dado — nada foi apagado nessa execução —, mas é discrepância
-   por entender. Rodar `diagnosticoPropriedades_()` e conferir quantas
-   `SESSAO_SISGEP_` existem e quais são as 8 "outras".
+2. **A contagem que não fechou — metade RESOLVIDA às 20:51.** O
+   `diagnosticoPropriedades_()` listou as 14 propriedades pelo nome. As 8
+   "outras" são `ANTHROPIC_API_KEY`, `COMPASSO_QR_SECRET`,
+   `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`, `FIREBASE_PROJETO`,
+   `SISGEP_AMBIENTE`, `SISGEP_AUDITORIA_DRIVE` e `SISGEP_URL_BASE` — todas
+   legítimas. **A oitava era a `ANTHROPIC_API_KEY`, cadastrada pelo usuário
+   entre uma execução e outra.** Nada sobrando, nada de chave de login
+   vazando para as Propriedades.
 
-   Já descartado por leitura de código: as chaves `LOGIN_TENT_` e `LOGIN_BLOQ_`
-   ficam no **CacheService**, não nas Propriedades (`Login1.gs:104,187,204`);
-   só `LOGIN_NIVEL_` vai para Propriedades, e é apagada no login bem-sucedido
-   (`Login1.gs:244`). Ou seja: pela leitura, nenhuma dessas deveria estar
-   sobrando — e é justamente por isso que precisa ser olhado no ar.
+   **Fica aberta só a contagem de sessões: são 6, e o esperado eram 7.**
+   Explicação compatível com os dados, mas não provada: uma das 6 preservadas
+   venceu entre 20:44 e 20:47 e foi apagada pelo próprio `getSessaoUsuario` ao
+   ser apresentada (ele apaga na validação), enquanto o login novo somava uma
+   — 6 − 1 + 1 = 6, e `expiradas: 0` porque a vencida já tinha saído. Para
+   fechar: imprimir `criadoEm` de cada uma das 6 e ver se há alguma das ~20:45.
+   Se houver, a conta fecha e o item some. Se NÃO houver, o login não gravou a
+   sessão nas Propriedades e aí existe defeito de verdade.
 
 
 ### 40. Eventos — o painel executivo diz "sem dados do evento" (é o item 33)
