@@ -1049,6 +1049,7 @@ body { margin: 0; padding: 0; }
 
 .trabalhador-titulo { font-size: 13px; font-weight: 800; color: var(--g800); }
 .trabalhador-sub { font-size: 11px; color: var(--g400); margin-top: 1px; font-weight: 500; }
+.trabalhador-topo-acoes { display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
 
 .trabalhador-grid {
   display: grid;
@@ -1121,6 +1122,30 @@ body { margin: 0; padding: 0; }
   border-color: var(--red);
   color: #fff;
   box-shadow: 0 3px 10px rgba(220,38,38,.28);
+}
+
+.btn-adicionar-trabalhador-card {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1.5px solid #93c5fd;
+  background: #eff6ff;
+  color: var(--navy2);
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s;
+  flex-shrink: 0;
+}
+.btn-adicionar-trabalhador-card:hover {
+  background: var(--navy2);
+  border-color: var(--navy2);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(0,47,108,.24);
 }
 
 /* ════════════════════════════════════════
@@ -1711,9 +1736,16 @@ body { margin: 0; padding: 0; }
   padding: 18px;
   align-items: center;
   gap: 16px;
+  flex-wrap: wrap;
 }
-.escola-profile-main { min-width: 0; }
-.escola-profile-main > div { min-width: 0; }
+.escola-profile-main {
+  min-width: 0;
+  flex: 1 1 280px;
+}
+.escola-profile-main > div {
+  min-width: 0;
+  width: 100%;
+}
 .escola-profile-main h3 { margin: 2px 0 3px; }
 .escola-profile-identity {
   display: flex;
@@ -1723,14 +1755,18 @@ body { margin: 0; padding: 0; }
   color: rgba(255,255,255,.78);
   font-size: 12px;
   font-weight: 700;
+  word-break: normal;
 }
+.escola-profile-identity > span,
+.escola-profile-identity > strong { white-space: nowrap; }
 .escola-profile-identity strong { color: #fff; font-size: 12px; text-transform: uppercase; }
 .escola-profile-address {
   margin: 6px 0 0;
   color: rgba(255,255,255,.68);
   font-size: 12px;
   line-height: 1.45;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 .escola-profile-actions {
   display: flex;
@@ -1738,7 +1774,10 @@ body { margin: 0; padding: 0; }
   justify-content: flex-end;
   gap: 7px;
   flex-wrap: wrap;
+  flex: 0 1 auto;
+  max-width: 100%;
 }
+.escola-profile-actions button[hidden] { display: none !important; }
 .escola-profile-actions button:not([hidden]) {
   width: auto;
   min-width: 0;

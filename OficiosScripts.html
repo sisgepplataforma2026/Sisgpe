@@ -721,7 +721,10 @@ function atualizarPayloadOficio(num) {
     + '<div><div class="trabalhador-titulo">Trabalhador ' + contadorTrabalhadores + '</div>'
     + '<div class="trabalhador-sub">Dados para emissão do ofício</div></div>'
     + '</div>'
-    + '<button type="button" class="btn-remover-trabalhador-premium" title="Remover">✕</button>'
+    + '<div class="trabalhador-topo-acoes">'
+    + '<button type="button" class="btn-adicionar-trabalhador-card" title="Adicionar trabalhador após este" aria-label="Adicionar trabalhador após este">+</button>'
+    + '<button type="button" class="btn-remover-trabalhador-premium" title="Remover trabalhador" aria-label="Remover trabalhador">✕</button>'
+    + '</div>'
     + '</div>'
     + '<div class="trabalhador-grid">'
     + '<div class="trabalhador-campo"><label>Nome completo</label>'
@@ -748,6 +751,10 @@ function atualizarPayloadOficio(num) {
      apagado — o pior tipo de defeito num anexo, porque o documento sai
      com uma ficha que a pessoa jurava ter tirado. */
   c._fichasDt = new DataTransfer();
+
+  c.querySelector(".btn-adicionar-trabalhador-card").onclick = function() {
+    adicionarTrabalhadorDepois(c);
+  };
 
   c.querySelector(".btn-remover-trabalhador-premium").onclick = function() {
     c.remove(); restaurarVazio(); renumerarTrabalhadores(); atualizarResumoTrabalhadores(); sincronizarFichasGlobais();
@@ -1601,13 +1608,24 @@ function removerFichasOficio(idxs) {
     return false;
   }
 
-  function addTrabalhador() {
+  function adicionarTrabalhadorDepois(referencia) {
     var l = $("listaTrabalhadores"); if (!l) return;
     var _tipoAtual = ($("tipo") && $("tipo").value) || "";
     var _limite = oficioLimitePessoas(_tipoAtual);
     if (l.querySelectorAll(".trabalhador-card").length >= _limite) { toast("Limite de " + _limite + " trabalhadores para este tipo de ofício.", "warn"); return; }
     var v = l.querySelector(".worker-empty"); if (v) v.remove();
-    l.appendChild(criarCardTrabalhador()); renumerarTrabalhadores(); atualizarResumoTrabalhadores();
+    var novo = criarCardTrabalhador();
+    if (referencia && referencia.parentNode === l) l.insertBefore(novo, referencia.nextSibling);
+    else l.appendChild(novo);
+    renumerarTrabalhadores();
+    atualizarResumoTrabalhadores();
+    var nome = novo.querySelector(".input-nome-trabalhador");
+    if (nome && typeof nome.focus === "function") nome.focus();
+    return novo;
+  }
+
+  function addTrabalhador() {
+    return adicionarTrabalhadorDepois(null);
   }
 
 function atualizarContadorFichas() {
