@@ -33,8 +33,13 @@
  * Esconder o botão no menu não é controle de acesso — quem chamar o endpoint
  * direto passa.
  *
- * Este teste NÃO propõe a correção. Ele mede o estado de hoje, para que a
- * decisão de corrigir seja tomada sobre fato e não sobre leitura de código.
+ * CORRIGIDO EM 31/08/2026. As três confirmações passaram a exigir o módulo
+ * sindicalizacao — que é o dono do dado que elas escrevem. A SOFIA é o
+ * caminho por onde se chega, não a autoridade sobre a ficha. Este teste
+ * passou de medição a guarda: se alguém afrouxar de novo, ele acusa.
+ *
+ * O chat (chatSISGEP) segue com o guarda de sessão, de propósito: exigir o
+ * módulo sofia nele é decisão de produto em aberto, não defeito.
  */
 
 const b = require("./base");
@@ -58,12 +63,17 @@ function aba(nome, cabecalho, linhas) {
 }
 
 /** Roda fn e diz se ela foi barrada por PERMISSÃO (e não por outro motivo). */
-/* ATENÇÃO e não FALHA: o achado é real e está medido, mas trocar o guarda de
-   um endpoint é decisão de segurança que precisa de aprovação (REGRA Nº 0.5).
-   Vira b.ok() no dia em que exigirModulo_ entrar. */
+/* As três confirmações foram corrigidas em 31/08/2026 e agora exigem
+   sindicalizacao — aqui são asserção firme, para que ninguém as afrouxe sem
+   o teste acusar. O chat segue como AVISO: exigir o módulo sofia nele é
+   decisão de produto ainda em aberto, não defeito. */
 function relatar(cond, descricao, detalheOk, detalheFalha) {
   if (cond) b.ok(true, descricao, detalheOk);
   else b.aviso(descricao.replace(/^(\S+) barra/, "$1 NÃO barra"), detalheFalha);
+}
+
+function exigir(cond, descricao, detalheOk, detalheFalha) {
+  b.ok(cond, descricao, cond ? detalheOk : detalheFalha);
 }
 
 function barradoPorPermissao(fn) {
@@ -109,12 +119,12 @@ const dadosFiliacao = {
 };
 
 const r1 = barradoPorPermissao(() => g.confirmarFiliacaoPapelIA(dadosFiliacao, TOKEN_SEM_SOFIA));
-relatar(
+exigir(
   r1.barrou,
   "confirmarFiliacaoPapelIA barra quem não tem sofia nem sindicalizacao",
   r1.erro,
   "NÃO barrou — passou com sessão de usuário 'financeiro,rh'. Retorno: " +
-              JSON.stringify(r1.retorno).slice(0, 160)
+              JSON.stringify(r1.retorno || null).slice(0, 160)
 );
 
 const dadosDesfiliacao = {
@@ -125,21 +135,39 @@ const dadosDesfiliacao = {
 };
 
 const r2 = barradoPorPermissao(() => g.confirmarDesfiliacaoIA(dadosDesfiliacao, TOKEN_SEM_SOFIA));
-relatar(
+exigir(
   r2.barrou,
   "confirmarDesfiliacaoIA barra quem não tem sofia nem sindicalizacao",
   r2.erro,
   "NÃO barrou — desfiliação alcançável por sessão sem o módulo. Retorno: " +
-              JSON.stringify(r2.retorno).slice(0, 160)
+              JSON.stringify(r2.retorno || null).slice(0, 160)
 );
 
 const r3 = barradoPorPermissao(() => g.confirmarOposicaoTaxaNegocialIA(dadosDesfiliacao, TOKEN_SEM_SOFIA));
-relatar(
+exigir(
   r3.barrou,
   "confirmarOposicaoTaxaNegocialIA barra quem não tem o módulo",
   r3.erro,
-  "NÃO barrou. Retorno: " + JSON.stringify(r3.retorno).slice(0, 160)
+  "NÃO barrou. Retorno: " + JSON.stringify(r3.retorno || null).slice(0, 160)
 );
+
+b.passo("3b. E QUEM TEM o módulo continua passando?");
+/* A metade que importa tanto quanto a outra. Apertar o guarda é fácil; apertar
+   sem trancar a porta de quem devia entrar é o trabalho. joscimar tem
+   "escolas,sindicalizacao" — é exatamente o perfil que USA estas telas. */
+const TOKEN_COM_SIND = b.logar(g, "joscimar");
+
+[["confirmarFiliacaoPapelIA", dadosFiliacao],
+ ["confirmarDesfiliacaoIA", dadosDesfiliacao],
+ ["confirmarOposicaoTaxaNegocialIA", dadosDesfiliacao]].forEach(function (par) {
+  const r = barradoPorPermissao(() => g[par[0]](par[1], TOKEN_COM_SIND));
+  b.ok(
+    !r.barrou,
+    par[0] + " NÃO barra quem tem sindicalizacao",
+    r.barrou ? "TRANCOU quem devia entrar: " + r.erro
+             : "passou do guarda (parou depois, por dado/ambiente, o que é esperado aqui)"
+  );
+});
 
 b.passo("4. o chat também: quem não tem o módulo sofia consegue conversar?");
 const r4 = barradoPorPermissao(() => g.chatSISGEP({ mensagem: "teste", dominio: "Geral" }, TOKEN_SEM_SOFIA));
@@ -148,7 +176,7 @@ relatar(
   "chatSISGEP barra quem não tem o módulo sofia",
   r4.erro,
   "NÃO barrou. Sem a chave da API a resposta é recusada por outro motivo, " +
-              "o que NÃO é controle de acesso: " + JSON.stringify(r4.retorno).slice(0, 120)
+              "o que NÃO é controle de acesso: " + JSON.stringify(r4.retorno || null).slice(0, 120)
 );
 
 b.passo("5. a trilha da ação — quem confirmou o quê");

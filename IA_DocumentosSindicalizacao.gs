@@ -244,7 +244,15 @@ function analisarCartaDesfiliacaoIA(base64, nomeArquivo, mimeType, tokenSessao) 
 // seja de Sindicalizacao. Exigir o modulo aqui deixaria um botao visivel
 // que da erro ao clicar. Sessao continua exigida.
 function confirmarDesfiliacaoIA(dados, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  /* PERMISSÃO — auditoria do Módulo 02, 31/08/2026.
+     Esta função escreve em FICHA SINDICAL. O mesmo dado é protegido com
+     exigirModulo_(..., "sindicalizacao", ...) em 17 lugares do módulo
+     Sindicalização; aqui passava só por exigirSessaoDocumentos_, que exige
+     estar logado e nada mais. Medido no t110: uma sessão de perfil
+     'financeiro,rh' atravessava o guarda e chegava na camada de dados.
+     O módulo exigido é sindicalizacao, e não sofia, porque quem manda no
+     dado é o dono dele — a SOFIA é só o caminho por onde se chega. */
+  var sessao = exigirModulo_(tokenSessao, "sindicalizacao", false);
   dados = dados || {};
   try {
     var nome = String(dados.nome || '').trim();
@@ -469,7 +477,15 @@ function analisarFormularioFiliacaoIA(base64, nomeArquivo, mimeType, tokenSessao
 // seja de Sindicalizacao. Exigir o modulo aqui deixaria um botao visivel
 // que da erro ao clicar. Sessao continua exigida.
 function confirmarFiliacaoPapelIA(dados, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  /* PERMISSÃO — auditoria do Módulo 02, 31/08/2026.
+     Esta função escreve em FICHA SINDICAL. O mesmo dado é protegido com
+     exigirModulo_(..., "sindicalizacao", ...) em 17 lugares do módulo
+     Sindicalização; aqui passava só por exigirSessaoDocumentos_, que exige
+     estar logado e nada mais. Medido no t110: uma sessão de perfil
+     'financeiro,rh' atravessava o guarda e chegava na camada de dados.
+     O módulo exigido é sindicalizacao, e não sofia, porque quem manda no
+     dado é o dono dele — a SOFIA é só o caminho por onde se chega. */
+  var sessao = exigirModulo_(tokenSessao, "sindicalizacao", false);
   dados = dados || {};
   try {
     if (!dados.confirmadoPeloAtendente) {
@@ -715,7 +731,15 @@ function analisarCartaOposicaoTaxaNegocialIA(base64, nomeArquivo, mimeType, toke
 // seja de Sindicalizacao. Exigir o modulo aqui deixaria um botao visivel
 // que da erro ao clicar. Sessao continua exigida.
 function confirmarOposicaoTaxaNegocialIA(dados, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  /* PERMISSÃO — auditoria do Módulo 02, 31/08/2026.
+     Esta função escreve em FICHA SINDICAL. O mesmo dado é protegido com
+     exigirModulo_(..., "sindicalizacao", ...) em 17 lugares do módulo
+     Sindicalização; aqui passava só por exigirSessaoDocumentos_, que exige
+     estar logado e nada mais. Medido no t110: uma sessão de perfil
+     'financeiro,rh' atravessava o guarda e chegava na camada de dados.
+     O módulo exigido é sindicalizacao, e não sofia, porque quem manda no
+     dado é o dono dele — a SOFIA é só o caminho por onde se chega. */
+  exigirModulo_(tokenSessao, "sindicalizacao", false);
   dados = dados || {};
   try {
     var nome = String(dados.nome || '').trim();
