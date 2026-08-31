@@ -1,7 +1,7 @@
 {
-  "medidoEm": "2026-08-27",
-  "totalPublicas": 960,
-  "protegidas": 631,
+  "medidoEm": "2026-08-31",
+  "totalPublicas": 963,
+  "protegidas": 650,
   "expostas": [
     {
       "nome": "validarCPF",
@@ -275,11 +275,6 @@
     },
     {
       "nome": "processarFilaEnvioOficios",
-      "arquivo": "FilaOficios.gs",
-      "escreve": true
-    },
-    {
-      "nome": "instalarTriggerFilaEnvioOficios",
       "arquivo": "FilaOficios.gs",
       "escreve": true
     },
@@ -929,31 +924,6 @@
       "escreve": false
     },
     {
-      "nome": "cancelarEnvioTaxaAssistencial",
-      "arquivo": "TaxaAssistencial.gs",
-      "escreve": true
-    },
-    {
-      "nome": "reenviarFalhasTaxaAssistencial",
-      "arquivo": "TaxaAssistencial.gs",
-      "escreve": false
-    },
-    {
-      "nome": "obterStatusFilaTaxaAssistencial",
-      "arquivo": "TaxaAssistencial.gs",
-      "escreve": false
-    },
-    {
-      "nome": "obterStatusTaxaAssistencialDashboard",
-      "arquivo": "TaxaAssistencial.gs",
-      "escreve": false
-    },
-    {
-      "nome": "previewOficioTaxaAssistencial",
-      "arquivo": "TaxaAssistencial.gs",
-      "escreve": false
-    },
-    {
       "nome": "abrirEmissaoTeste",
       "arquivo": "Teste.gs",
       "escreve": false
@@ -985,11 +955,6 @@
     },
     {
       "nome": "validarCpfComFeedback",
-      "arquivo": "Utils.gs",
-      "escreve": false
-    },
-    {
-      "nome": "obterArquivoDriveBase64",
       "arquivo": "Utils.gs",
       "escreve": false
     },
@@ -1124,5 +1089,5 @@
       "escreve": false
     }
   ],
-  "inconclusivas": 105
+  "inconclusivas": 96
 }

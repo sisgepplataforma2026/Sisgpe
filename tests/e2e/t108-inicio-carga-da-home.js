@@ -116,10 +116,12 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     );
   }
 
-  b.passo("2. os dois consumidores do resumo do Início");
+  b.passo("2. o resumo do Início tem um dono só");
   const indices = [];
   fns.forEach((f, i) => { if (f === "getResumoInicioSISGEP") indices.push(i); });
-  b.igual(indices.length, 2, "getResumoInicioSISGEP é pedido DUAS vezes por carga");
+  // GUARDA da correção de 31/08: eram DUAS chamadas (index.html e Helpers.html)
+  // escrevendo nos mesmos ids. Se voltar a dar 2, a disputa voltou.
+  b.igual(indices.length, 1, "getResumoInicioSISGEP é pedido UMA vez por carga");
 
   /* ══════════════════════════════════════════════════════════ */
   b.fluxo("MÓDULO 01 · INÍCIO — a corrida entre index.html e Helpers.html");
@@ -147,38 +149,37 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     JSON.stringify(prioNormal)
   );
 
-  b.passo("4. cold start no index: a resposta dele chega DEPOIS dos 450 ms");
-  // `atrasar` indexa pela posição GLOBAL da chamada, não pela ordem dentro da
-  // função — por isso os índices vêm da sonda do passo 1.
-  const corrida = abrirHome([
-    { indice: indices[0], ms: 1200 },  // a do index, lenta
-    { indice: indices[1], ms: 5 }      // a do Helpers, rápida
-  ]);
+  b.passo("4. resposta lenta: a verdade não pode depender do tempo de rede");
+  // Antes da correção, este era o passo que reprovava: com a resposta do
+  // index.html chegando depois do setTimeout(450) do Helpers, "⚠" virava "0".
+  // Com um dono só, o atraso deixou de poder mudar o que a Home afirma.
+  const lenta = abrirHome([{ indice: indices[0], ms: 1200 }]);
   await esperar(ESPERA + 1200);
 
-  const prioCorrida = corrida.texto("#spPrioNF");
-  if (prioCorrida === "⚠") {
-    b.ok(true, "mesmo com o index lento, fonte que falhou continua mostrando '⚠'");
-  } else {
-    b.aviso(
-      "com o index respondendo por último, fonte que falhou vira " + JSON.stringify(prioCorrida) + " em vez de '⚠'",
-      "mesma página, mesmo dado, resultado diferente só pela ordem de chegada: " +
-      "o index sobrescreve com o campo de compatibilidade e a Home passa a " +
-      "afirmar 0 sobre um módulo que ela NÃO conseguiu ler"
-    );
-  }
-
-  b.passo("5. saude.oficios é calculado no servidor e não tem onde aparecer");
   b.ok(
-    normal.doc.getElementById("spSaudeOficios") === null,
-    "não existe id spSaudeOficios em tela alguma — o backend calcula e joga fora",
-    "InicioResumo.gs monta saude.oficios; nenhum .html o lê"
+    lenta.texto("#spPrioNF") === "⚠",
+    "com a resposta lenta, fonte que falhou continua mostrando '⚠', nunca 0",
+    JSON.stringify(lenta.texto("#spPrioNF"))
+  );
+
+  b.passo("5. o indicador de saúde de Ofícios tem onde aparecer");
+  // O InicioResumo.gs sempre devolveu saude.oficios; até 31/08 não havia
+  // elemento para recebê-lo e o valor era calculado e descartado.
+  b.ok(
+    normal.doc.getElementById("spSaudeOficios") !== null,
+    "existe o elemento spSaudeOficios na Home",
+    "Ofícios é o único módulo em uso diário e faltava no painel de saúde"
+  );
+  b.ok(
+    normal.texto("#spSaudeOficios") === "OK",
+    "e ele recebe o valor vindo do servidor",
+    JSON.stringify(normal.texto("#spSaudeOficios"))
   );
 
   b.naoTestavel(
-    "o valor de 450 ms ser suficiente no Apps Script real",
-    "latência de google.script.run depende de cold start e da carga do Google; " +
-    "o jsdom mede a ordem de chegada, não o tempo real"
+    "o tempo real de carga da Home no Apps Script",
+    "o jsdom responde instantâneo; a latência de cada google.script.run depende " +
+    "de cold start e da carga do Google. Cronometrar em homologação"
   );
 
   b.resumo();

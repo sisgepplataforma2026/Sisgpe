@@ -91,18 +91,45 @@ var Utils = {
 };
 
 /* ════════════════════════════════════════════════════════════════════════
-   INÍCIO · reforço de confiabilidade da Home
+   INÍCIO · o resumo da Home, com um dono só
 
-   InicioResumo.gs passou a devolver `statusFontes` e `atualizadoEm`. O
-   index.html legado ainda trata qualquer falha como zero. Até a refatoração
-   estrutural da Home, este helper aplica a semântica correta depois do
-   carregamento normal: zero continua sendo zero; falha vira aviso; módulo
-   sem acesso não aparece; e a hora real de atualização fica visível.
+   HISTÓRICO — 31/08/2026, auditoria do Módulo 01.
 
-   É propositalmente aditivo e reversível: não muda contratos dos módulos nem
-   interfere no fluxo de navegação. Quando carregarResumoInicio() for migrada
-   para consumir estes estados diretamente, este bloco poderá ser removido.
+   Este bloco nasceu como um "passe de confiabilidade" que rodava DEPOIS do
+   index.html para corrigir a semântica dele. Eram duas chamadas ao mesmo
+   endpoint, escrevendo nos MESMOS 11 ids do DOM, com leituras que discordavam:
+
+     index.html    lia `prioridades` (compatibilidade) → fonte que falhou virava 0
+     Helpers.html  lia `statusFontes` (a verdade)      → fonte que falhou virava ⚠
+
+   Para ganhar a disputa, este arquivo usava `setTimeout(..., 450)` com o
+   comentário "garante que este passe seja o último a refletir na UI". Mas 450 ms
+   é palpite sobre a rede: quem escreve por último é quem RESPONDE por último.
+   O t108 provou por execução — com o index respondendo depois, a Home passava a
+   exibir "0" para um módulo que ela NÃO tinha conseguido ler, que é exatamente o
+   que o InicioResumo.gs foi escrito para impedir (garantia nº 2 do cabeçalho).
+
+   A correção não é ajustar o tempo: é eliminar a disputa. Agora existe um dono
+   só do resumo — este arquivo — e uma chamada só. O `carregarResumoInicio()` do
+   index.html delega para cá.
+
+   O que este bloco renderiza, a partir de UMA resposta:
+     · os cinco contadores de prioridade e o total;
+     · os cinco indicadores de saúde (inclusive Ofícios, que o servidor já
+       calculava e não tinha onde aparecer);
+     · as atividades recentes da SOFIA (vieram do index.html nesta mesma
+       correção, para não sobrar meia renderização lá);
+     · a hora real da atualização.
+
+   Semântica preservada: zero continua sendo zero; falha vira aviso âmbar com o
+   motivo no title; módulo sem acesso some da lista em vez de exibir 0.
 ════════════════════════════════════════════════════════════════════════ */
+
+/* Trava de reentrância. Sem ela, uma segunda chamada (navegação, botão de
+   atualizar que venha a existir) dispara outra ida ao servidor e recria a
+   corrida que esta correção acabou de fechar. */
+var _inicioResumoEmVoo = false;
+
 function inicioAplicarFonteNaHome_(fonte, idValor) {
   var el = document.getElementById(idValor);
   if (!el) return 0;
@@ -125,6 +152,7 @@ function inicioAplicarFonteNaHome_(fonte, idValor) {
 
   var valor = Number(fonte.valor || 0);
   el.textContent = valor;
+  el.style.color = "";
   el.title = "";
   if (linha) linha.title = "";
   return isFinite(valor) ? valor : 0;
@@ -147,6 +175,36 @@ function inicioAplicarSaudeFonte_(fonte, idSaude) {
   el.title = "";
 }
 
+/* Atividades da SOFIA. Veio do index.html na correção de 31/08 — enquanto a
+   renderização morava lá, tirar a chamada duplicada do index deixaria esta
+   caixa sem quem a preenchesse.
+
+   O filtro por identidade é do SERVIDOR (InicioResumo.gs): a aba
+   Sofia_Auditoria é global e guarda a pergunta de todos. Aqui só se desenha o
+   que já veio filtrado — nunca reabrir esse filtro na tela. */
+function inicioAplicarAtividadesSofia_(itens) {
+  var box = document.getElementById("spAtividadesSofia");
+  if (!box) return;
+
+  itens = itens || [];
+  if (!itens.length) {
+    box.innerHTML = "<div class='spAt'><p>Nenhuma interação registrada com a SOFIA ainda.</p></div>";
+    return;
+  }
+
+  box.innerHTML = itens.map(function (a) {
+    /* escapeHtml() é o utilitário único deste arquivo. O index.html tinha uma
+       função de escape própria e idêntica declarada inline — duas implementações
+       da mesma coisa é como uma delas fica para trás numa correção futura. */
+    var hora = (a.dataHora || "").split(" ")[1] || a.dataHora || "";
+    var classe = a.ok ? "ok" : "warn";
+    return "<div class='spAt'><span class='" + classe + "'>" + (a.ok ? "✓" : "!") + "</span>" +
+           "<p>[" + escapeHtml(a.dominio) + "] " + escapeHtml(a.pergunta || "(sem descrição)") + "</p>" +
+           "<time>" + escapeHtml(hora) + "</time>" +
+           "<b class='" + classe + "'>" + (a.ok ? "Concluído" : "Erro") + "</b></div>";
+  }).join("");
+}
+
 function inicioMostrarAtualizacao_(dataHora) {
   var rail = document.querySelector("#mInicio .spRightRail .spRailCard");
   if (!rail) return;
@@ -163,13 +221,29 @@ function inicioMostrarAtualizacao_(dataHora) {
   el.textContent = dataHora ? ("Atualizado em " + dataHora) : "Atualização não confirmada";
 }
 
+/**
+ * Carrega e desenha o resumo da Home. Dono único: chamado pelo
+ * carregarResumoInicio() do index.html, uma vez por carga.
+ */
 function inicioAtualizarResumoSeguro_() {
   if (!(window.google && google.script && google.script.run)) return;
   if (typeof SISGEP_TOKEN_SESSAO === "undefined" || !SISGEP_TOKEN_SESSAO) return;
+  if (_inicioResumoEmVoo) return;
+
+  _inicioResumoEmVoo = true;
 
   google.script.run
-    .withSuccessHandler(function(r) {
-      if (!r || !r.ok) return;
+    .withSuccessHandler(function (r) {
+      _inicioResumoEmVoo = false;
+
+      /* Resposta vazia ou malformada não pode passar por "carregou". Sem este
+         ramo, a Home ficaria com os valores estáticos do HTML e ninguém saberia
+         que a atualização não aconteceu. */
+      if (!r || !r.ok) {
+        inicioMostrarAtualizacao_("");
+        return;
+      }
+
       var f = r.statusFontes || {};
       var total = 0;
 
@@ -186,19 +260,27 @@ function inicioAtualizarResumoSeguro_() {
       inicioAplicarSaudeFonte_(f.escolasIncompletas, "spSaudeAdministrativo");
       inicioAplicarSaudeFonte_(f.juridico, "spSaudeJuridico");
       inicioAplicarSaudeFonte_(f.emails, "spSaudeComunicacao");
+      /* Ofícios: o servidor já devolvia saude.oficios e não havia elemento
+         para recebê-lo. É o único módulo em uso diário — justamente o que
+         fazia falta no painel. */
+      inicioAplicarSaudeFonte_(f.oficios, "spSaudeOficios");
 
+      inicioAplicarAtividadesSofia_(r.atividadesRecentes);
       inicioMostrarAtualizacao_(r.atualizadoEm || "");
     })
-    .withFailureHandler(function(e) {
-      console.error("[Início] falha na atualização segura da Home:", e);
+    .withFailureHandler(function (e) {
+      _inicioResumoEmVoo = false;
+      console.error("[Início] falha ao carregar o resumo da Home:", e);
+
+      /* Falha de rede/sessão precisa APARECER. O comportamento anterior era só
+         console.error, e a Home seguia exibindo os valores estáticos do HTML
+         como se fossem dados do dia. */
       inicioMostrarAtualizacao_("");
+      ["spSaudeFinanceiro", "spSaudeAdministrativo", "spSaudeJuridico",
+       "spSaudeComunicacao", "spSaudeOficios"].forEach(function (id) {
+        inicioAplicarSaudeFonte_(null, id);
+      });
     })
     .getResumoInicioSISGEP(SISGEP_TOKEN_SESSAO);
 }
-
-document.addEventListener("DOMContentLoaded", function() {
-  // O index.html também carrega o resumo ao abrir. Esperar alguns milissegundos
-  // garante que este passe de confiabilidade seja o último a refletir na UI.
-  setTimeout(inicioAtualizarResumoSeguro_, 450);
-});
 </script>

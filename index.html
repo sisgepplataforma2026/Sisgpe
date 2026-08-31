@@ -398,6 +398,10 @@
             <div class="spHealth"><span> Financeiro</span><b id="spSaudeFinanceiro" class="blue">—</b></div>
             <div class="spHealth"><span>🏛️ Administrativo</span><b id="spSaudeAdministrativo" class="blue">—</b></div>
             <div class="spHealth"><span>⚖️ Jurídico</span><b id="spSaudeJuridico" class="blue">—</b></div>
+            <!-- Ofícios: o InicioResumo.gs já devolvia saude.oficios e não havia
+                 elemento para recebê-lo — o indicador era calculado e descartado
+                 a cada carga. É o único módulo em uso diário. (auditoria M01, 31/08) -->
+            <div class="spHealth"><span>📄 Ofícios</span><b id="spSaudeOficios" class="blue">—</b></div>
             <div class="spHealth"><span>🏛️ Patrimônio</span><b class="blue" title="Ainda sem indicador conectado neste painel">—</b></div>
             <div class="spHealth"><span>✉️ Comunicação</span><b id="spSaudeComunicacao" class="blue">—</b></div>
           </div>
@@ -2559,11 +2563,39 @@ var ini=String(nome).trim().split(/\s+/).map(function(p){return p.charAt(0).toUp
   });
 });
 
-/* Resumo real da tela Início — substitui os números/status que antes
-   eram fixos no HTML. Best-effort no servidor (InicioResumo.gs): se
-   algum módulo falhar, o card dele mostra 0/— em vez de travar a tela. */
+/* Resumo real da tela Início.
+
+   CORREÇÃO 31/08/2026 (auditoria do Módulo 01) — a disputa foi encerrada.
+
+   Este arquivo e o Helpers.html chamavam AMBOS getResumoInicioSISGEP e escreviam
+   nos MESMOS 11 ids do DOM, com leituras que discordavam: aqui se lia
+   `prioridades` (campo de compatibilidade, onde fonte que falhou vira 0), lá se
+   lia `statusFontes` (a verdade, onde fonte que falhou vira ⚠). O Helpers tentava
+   chegar por último com setTimeout(450) — palpite sobre a rede, não garantia.
+
+   O t108 provou por execução: com a resposta daqui chegando depois, a Home
+   exibia "0" para um módulo que NÃO tinha sido lido. Era descartar de propósito
+   a distinção que o InicioResumo.gs foi escrito para preservar.
+
+   Agora há um dono só do resumo — o Helpers.html — e uma chamada só ao servidor.
+   Esta função delega.
+
+   O caminho de reserva abaixo NÃO é duplicação: include() falha em SILÊNCIO
+   (Code.gs:313). Se o Helpers não vier junto, sem esta reserva a Home ficaria
+   com os números estáticos do HTML e ninguém saberia. */
 function carregarResumoInicio(){
   if(!(window.google&&google.script&&google.script.run))return;
+
+  if(typeof inicioAtualizarResumoSeguro_==="function"){
+    inicioAtualizarResumoSeguro_();
+    return;
+  }
+
+  /* RESERVA — só roda se o include do Helpers tiver falhado. Semântica antiga
+     (fonte indisponível aparece como 0), preservada de propósito: é melhor a
+     Home mostrar número velho do que não mostrar nada. O aviso no console é o
+     rastro para descobrir que o include caiu. */
+  console.warn("[Início] Helpers.html não carregou — usando o resumo de reserva.");
   google.script.run
     .withSuccessHandler(function(r){
       if(!r||!r.ok)return;
@@ -2587,6 +2619,7 @@ function carregarResumoInicio(){
       setSaude("spSaudeAdministrativo",s.administrativo);
       setSaude("spSaudeJuridico",s.juridico);
       setSaude("spSaudeComunicacao",s.comunicacao);
+      setSaude("spSaudeOficios",s.oficios);
 
       var box=document.getElementById("spAtividadesSofia");
       if(box){
