@@ -1957,6 +1957,197 @@ function enviarWhatsappOficio(urlPdf, numero) {
   window.open("https://wa.me/?text=" + texto, "_blank");
 }
 
+  /* ─────────────────────────────────────────────
+     TAXA ASSISTENCIAL — CONTROLES DA TELA
+
+     O HTML já expunha todos os botões, mas nenhum deles chamava o backend.
+     Este bloco mantém o fluxo existente (prévia, teste, fila e envio PRO),
+     sempre com o token da sessão e com confirmação antes de um envio real.
+  ────────────────────────────────────────────── */
+  function taxaValor(id) {
+    var campo = $(id);
+    return campo ? txt(campo.value) : "";
+  }
+
+  function taxaPayloadMensagem() {
+    return {
+      assunto: taxaValor("taxaAssistencialAssunto"),
+      corpo: taxaValor("taxaAssistencialCorpo")
+    };
+  }
+
+  function taxaMensagemErro(err) {
+    return String((err && err.message) || err || "Erro não identificado.");
+  }
+
+  function taxaOcuparBotao(btn, ocupado, textoOcupado) {
+    if (!btn) return;
+    if (!btn.dataset.rotuloOriginal) btn.dataset.rotuloOriginal = btn.innerHTML;
+    btn.disabled = !!ocupado;
+    btn.innerHTML = ocupado ? (textoOcupado || "⏳ Aguarde...") : btn.dataset.rotuloOriginal;
+  }
+
+  function taxaValidarMensagem(payload) {
+    if (!payload.assunto) { toast("Informe o assunto do e-mail.", "warn"); return false; }
+    if (!payload.corpo) { toast("Informe o corpo do e-mail.", "warn"); return false; }
+    return true;
+  }
+
+  function taxaRenderStatus(resp) {
+    resp = resp || {};
+    var painel = $("painelStatusFila");
+    if (painel) painel.style.display = Number(resp.total || 0) > 0 ? "block" : "none";
+    [["statusFilaNumero", resp.numero || "—"], ["statusTotal", resp.total || 0],
+      ["statusPendente", resp.pendente || 0], ["statusEnviado", resp.enviado || resp.enviados || 0],
+      ["statusErro", resp.erro || resp.erros || 0]].forEach(function(item) {
+        var no = $(item[0]); if (no) no.textContent = String(item[1]);
+      });
+    var iniciar = $("btnIniciarEnvioTaxa");
+    if (iniciar) iniciar.disabled = !(Number(resp.pendente || 0) > 0 || resp.preparada === true);
+    if (window.taxaProgresso && typeof window.taxaProgresso.atualizar === "function") {
+      window.taxaProgresso.atualizar(resp);
+    }
+  }
+
+  function taxaConsultarStatus() {
+    google.script.run
+      .withSuccessHandler(taxaRenderStatus)
+      .withFailureHandler(function(err) { toast("Erro ao consultar a fila: " + taxaMensagemErro(err), "err", 6000); })
+      .obterStatusFilaTaxaAssistencial(SISGEP_TOKEN_SESSAO);
+  }
+
+  function taxaLerAnexo(callback) {
+    var input = $("taxaAnexoCCT");
+    var arquivo = input && input.files && input.files[0];
+    if (!arquivo) { callback(null); return; }
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      callback({ nome: arquivo.name, tipo: arquivo.type || "application/octet-stream", base64: String(ev.target.result || "").split(",")[1] || "" });
+    };
+    reader.onerror = function() { toast("Não foi possível ler o anexo selecionado.", "err"); callback(null, true); };
+    reader.readAsDataURL(arquivo);
+  }
+
+  function taxaPreview() {
+    var payload = taxaPayloadMensagem();
+    if (!taxaValidarMensagem(payload)) return;
+    var aba = window.open("", "_blank");
+    google.script.run
+      .withSuccessHandler(function(resp) {
+        if (!aba) { toast("Permita pop-ups para abrir a prévia.", "warn"); return; }
+        aba.document.open(); aba.document.write((resp && resp.html) || ""); aba.document.close();
+      })
+      .withFailureHandler(function(err) { try { if (aba) aba.close(); } catch (_) {} toast("Erro ao gerar prévia: " + taxaMensagemErro(err), "err", 6000); })
+      .previewOficioTaxaAssistencial(payload, SISGEP_TOKEN_SESSAO);
+  }
+
+  function taxaEnviarTeste() {
+    var payload = taxaPayloadMensagem();
+    payload.emailTeste = taxaValor("taxaAssistencialEmailTeste");
+    if (!taxaValidarMensagem(payload)) return;
+    if (!payload.emailTeste) { toast("Informe o e-mail de teste.", "warn"); return; }
+    var btn = $("btnEnviarTesteTaxa");
+    taxaOcuparBotao(btn, true, "⏳ Enviando teste...");
+    google.script.run
+      .withSuccessHandler(function(resp) { taxaOcuparBotao(btn, false); toast((resp && resp.mensagem) || "E-mail de teste enviado.", "ok", 6000); })
+      .withFailureHandler(function(err) { taxaOcuparBotao(btn, false); toast("Erro no teste: " + taxaMensagemErro(err), "err", 7000); })
+      .enviarTesteTaxaAssistencial(payload, SISGEP_TOKEN_SESSAO);
+  }
+
+  function taxaPrepararFila() {
+    var payload = taxaPayloadMensagem();
+    if (!taxaValidarMensagem(payload)) return;
+    var btn = $("btnPrepararFilaTaxa");
+    taxaOcuparBotao(btn, true, "⏳ Preparando...");
+    taxaLerAnexo(function(anexo, falhou) {
+      if (falhou) { taxaOcuparBotao(btn, false); return; }
+      if (anexo) payload.anexo = anexo;
+      google.script.run
+        .withSuccessHandler(function(resp) {
+          taxaOcuparBotao(btn, false);
+          taxaRenderStatus({ preparada:true, numero:resp.numero, total:resp.total, pendente:resp.validas, enviado:0, erro:Number(resp.invalidas || 0) + Number(resp.semEmail || 0) });
+          toast((resp && resp.mensagem) || "Fila preparada.", "ok", 6000);
+        })
+        .withFailureHandler(function(err) { taxaOcuparBotao(btn, false); toast("Erro ao preparar fila: " + taxaMensagemErro(err), "err", 7000); })
+        .prepararFilaTaxaAssistencial(payload, SISGEP_TOKEN_SESSAO);
+    });
+  }
+
+  function taxaIniciarEnvio() {
+    var payload = taxaPayloadMensagem();
+    if (!taxaValidarMensagem(payload)) return;
+    if (!window.confirm("Iniciar agora o envio da Taxa Assistencial para todas as escolas pendentes da fila?")) return;
+    var btn = $("btnIniciarEnvioTaxa");
+    taxaOcuparBotao(btn, true, "⏳ Enviando lote...");
+    google.script.run
+      .withSuccessHandler(function(resp) {
+        taxaOcuparBotao(btn, false); taxaConsultarStatus();
+        toast((resp && resp.mensagem) || "Lote processado.", resp && resp.erros ? "warn" : "ok", 7000);
+      })
+      .withFailureHandler(function(err) { taxaOcuparBotao(btn, false); toast("Erro no envio: " + taxaMensagemErro(err), "err", 7000); })
+      .enviarOficioTaxaAssistencialPRO(payload, SISGEP_TOKEN_SESSAO);
+  }
+
+  function taxaEnviarEscola() {
+    var payload = taxaPayloadMensagem();
+    payload.escola = taxaValor("taxaEscolaNome");
+    payload.cnpj = taxaValor("taxaEscolaCnpj");
+    payload.email = taxaValor("taxaEscolaEmail");
+    if (!taxaValidarMensagem(payload)) return;
+    if (!payload.escola || !payload.email) { toast("Selecione a escola e confira o e-mail.", "warn"); return; }
+    if (!window.confirm("Enviar o ofício de Taxa Assistencial para " + payload.escola + " (" + payload.email + ")?")) return;
+    var btn = $("btnEnviarEscolaEspecifica");
+    taxaOcuparBotao(btn, true, "⏳ Gerando e enviando...");
+    taxaLerAnexo(function(anexo, falhou) {
+      if (falhou) { taxaOcuparBotao(btn, false); return; }
+      if (anexo) payload.anexo = anexo;
+      google.script.run
+        .withSuccessHandler(function(resp) { taxaOcuparBotao(btn, false); toast((resp && resp.mensagem) || "Ofício enviado.", "ok", 7000); })
+        .withFailureHandler(function(err) { taxaOcuparBotao(btn, false); toast("Erro ao enviar: " + taxaMensagemErro(err), "err", 7000); })
+        .enviarTaxaEscolaEspecifica(payload, SISGEP_TOKEN_SESSAO);
+    });
+  }
+
+  function taxaRenderEscolas(lista) {
+    var box = $("taxaAutocompleteLista"), contador = $("taxaAutocompleteContador");
+    if (!box) return;
+    lista = Array.isArray(lista) ? lista : [];
+    if (contador) { contador.style.display = "block"; contador.textContent = lista.length + " escola(s) encontrada(s)"; }
+    if (!lista.length) { box.innerHTML = '<div class="escola-recentes-empty">Nenhuma escola encontrada.</div>'; box.style.display = "block"; return; }
+    box.innerHTML = lista.map(function(item, indice) {
+      return '<button type="button" class="taxa-escola-opcao" data-indice="' + indice + '"><strong>' + escapeHtml(item.nome || "") + '</strong><span>' + escapeHtml([item.cnpj || "", item.email || ""].filter(Boolean).join(" • ")) + '</span></button>';
+    }).join("");
+    box.style.display = "block";
+    Array.from(box.querySelectorAll(".taxa-escola-opcao")).forEach(function(botao) {
+      botao.addEventListener("click", function() {
+        var item = lista[Number(botao.dataset.indice)] || {};
+        if ($("taxaBuscaEscola")) $("taxaBuscaEscola").value = item.nome || "";
+        if ($("taxaEscolaNome")) $("taxaEscolaNome").value = item.nome || "";
+        if ($("taxaEscolaCnpj")) $("taxaEscolaCnpj").value = item.cnpj || "";
+        if ($("taxaEscolaEmail")) $("taxaEscolaEmail").value = item.email || "";
+        box.style.display = "none";
+      });
+    });
+  }
+
+  var taxaBuscaTimer = null;
+  function taxaBuscarEscolas() {
+    var termo = taxaValor("taxaBuscaEscola");
+    clearTimeout(taxaBuscaTimer);
+    taxaBuscaTimer = setTimeout(function() {
+      var chamada = google.script.run
+        .withSuccessHandler(taxaRenderEscolas)
+        .withFailureHandler(function(err) { toast("Erro ao buscar escolas: " + taxaMensagemErro(err), "err"); });
+      if (termo.length >= 2) chamada.buscarEscolaTaxa(termo, SISGEP_TOKEN_SESSAO);
+      else chamada.listarTodasEscolasTaxa(SISGEP_TOKEN_SESSAO);
+    }, 180);
+  }
+
+  function taxaLimparEscola() {
+    ["taxaBuscaEscola", "taxaEscolaNome", "taxaEscolaCnpj", "taxaEscolaEmail"].forEach(function(id) { if ($(id)) $(id).value = ""; });
+    if ($("taxaAutocompleteLista")) $("taxaAutocompleteLista").style.display = "none";
+  }
+
   function resetarFormulario(){
     ["tipo","cnpj","email","escolaBusca","enderecoEscola","razaoSocialReceita","emailReceita","cidadeUfReceita","para","cargo","assunto","corpo","emailLivreAux","emailOficioLivreCompat"].forEach(function(id){var el=$(id);if(el)el.value="";});
     var sel=$("escola"), lista=$("listaTrabalhadores");
@@ -2102,6 +2293,42 @@ function enviarWhatsappOficio(urlPdf, numero) {
     blindarBotao("btnConsultarCnpj", function(){ if(window.Oficio.consultarCnpj) window.Oficio.consultarCnpj(); });
     blindarBotao("btnSincronizarCnpj", function(){ if(window.Oficio.sincronizarCnpj) window.Oficio.sincronizarCnpj(); });
     blindarBotao("btnSalvarEscola", salvarEscolaNaPlanilha);
+    blindarBotao("btnPreviewTaxa", taxaPreview);
+    blindarBotao("btnEnviarTesteTaxa", taxaEnviarTeste);
+    blindarBotao("btnPrepararFilaTaxa", taxaPrepararFila);
+    blindarBotao("btnIniciarEnvioTaxa", taxaIniciarEnvio);
+    blindarBotao("btnContinuarEnvioTaxa", taxaIniciarEnvio);
+    blindarBotao("btnEnviarEscolaEspecifica", taxaEnviarEscola);
+    blindarBotao("btnLimparEscolaEspecifica", taxaLimparEscola);
+    blindarBotao("btnAtualizarStatusFila", taxaConsultarStatus);
+    blindarBotao("btnReenviarFalhasTaxa", function() {
+      google.script.run
+        .withSuccessHandler(function(resp) { toast((resp && resp.mensagem) || "Falhas revisadas.", "ok"); taxaConsultarStatus(); })
+        .withFailureHandler(function(err) { toast("Erro ao reenviar falhas: " + taxaMensagemErro(err), "err"); })
+        .reenviarFalhasTaxaAssistencial(SISGEP_TOKEN_SESSAO);
+    });
+    blindarBotao("btnCancelarEnvioEmAndamento", function() {
+      if (!window.confirm("Cancelar o envio automático em andamento?")) return;
+      google.script.run
+        .withSuccessHandler(function(resp) { toast((resp && resp.mensagem) || "Envio cancelado.", resp && resp.ok === false ? "err" : "ok"); taxaConsultarStatus(); })
+        .withFailureHandler(function(err) { toast("Erro ao cancelar: " + taxaMensagemErro(err), "err"); })
+        .cancelarEnvioTaxaAssistencial(SISGEP_TOKEN_SESSAO);
+    });
+
+    var taxaBusca = $("taxaBuscaEscola");
+    if (taxaBusca && !taxaBusca.dataset.taxaBound) {
+      taxaBusca.dataset.taxaBound = "1";
+      taxaBusca.addEventListener("input", taxaBuscarEscolas);
+      taxaBusca.addEventListener("focus", taxaBuscarEscolas);
+    }
+    var taxaAnexo = $("taxaAnexoCCT");
+    if (taxaAnexo && !taxaAnexo.dataset.taxaBound) {
+      taxaAnexo.dataset.taxaBound = "1";
+      taxaAnexo.addEventListener("change", function() {
+        var nome = $("taxaAnexoCCTNome"), arquivo = taxaAnexo.files && taxaAnexo.files[0];
+        if (nome) { nome.style.display = arquivo ? "block" : "none"; nome.textContent = arquivo ? ("✓ " + arquivo.name) : ""; }
+      });
+    }
 
     var fichas = $("fichas");
     if (fichas && !fichas.dataset.bound) {
