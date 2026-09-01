@@ -121,9 +121,28 @@ sentido, é o único em uso diário. Procurar defeito onde 609 asserções já o
 
 **O QUE FALTA — três frentes, nenhuma começada**
 
-**A · o que os 609 testes NÃO cobrem.** Cruzar as 51 funções públicas com o que
-é de fato exercitado e testar as vazias. É onde estaria um defeito ainda
-escondido. Não iniciado.
+**A · o que os 609 testes NÃO cobrem — MEDIDA em 01/09, e parcialmente
+fechada.** O módulo tem **59** funções públicas (não 51 — a contagem anterior
+não incluía `SindicalizacaoOficio.gs` nem as duas acrescentadas hoje).
+Cruzando com todos os testes: **47 das 59 nunca são citadas pelo nome em teste
+nenhum**. Os 609 asserções exercitam o módulo por dentro; os pontos de ENTRADA,
+que é por onde o `google.script.run` chega, ficaram de fora.
+
+Citar não é o mesmo que exercitar, e nem toda função precisa de teste. O `t120`
+cobriu as de maior risco, e **nenhum defeito apareceu** — as travas já estavam
+certas, o que faltava era o teste que impede alguém de afrouxá-las:
+
+| Coberto agora | O que se provou |
+|---|---|
+| `excluirRegistroOficio`, `excluirRegistrosOficio` | exigem admin de Documentos; sem o módulo, sem token e em lote, todas recusam. E o admin continua conseguindo, sem levar o ofício vizinho junto |
+| `verificarCodigoPublico` (rota sem sessão) | código errado não vaza escola, número nem link do Drive. Normaliza espaço e caixa, porque quem valida copia de um PDF impresso |
+| `preverProximoNumeroOficio` | respeita a sequência RESERVADA, não só o maior da planilha — ignorar isso ofereceria um número já tomado, e ofício com número repetido sai em papel timbrado |
+
+Força bruta na rota pública foi **descartada por medição**: o código é MD5
+truncado em 12 hex (48 bits), inviável de enumerar por HTTP.
+
+**Ficam sem teste 44 funções** — dashboards, relatórios, os seis instaladores
+de gatilho e os diagnósticos. Risco menor, mas a frente A não terminou.
 
 **B · o sintoma da produção, sem o dado.** O defeito de visibilidade foi
 corrigido e o relatório existe, mas ninguém rodou `oficiosQueNaoChegaram` na
