@@ -55,7 +55,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 | Nº | Item |
 |---|---|
-| 44 | Firebase — a chave privada da homologação está malformada |
+| 44 | Firebase — a chave privada está malformada nos DOIS ambientes |
 | 43 | Sessões — o gatilho diário de limpeza (instalado em 31/08, 20:47) |
 | 42 | Tela genérica da Lixeira  ·  *(era 29 — o número estava repetido três vezes)* |
 | 41 | Bingo Online — nunca rodou em lugar nenhum  ·  *(era 29 — o número estava repetido três vezes)* |
@@ -98,7 +98,7 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
-### 44. Firebase — a chave privada da homologação está malformada
+### 44. Firebase — a chave privada está malformada NOS DOIS AMBIENTES
 
 **Achado em 31/08/2026, 20:51**, pelo `diagnosticoPropriedades_()` — na
 primeira vez que a função rodou. Não foi procurado: apareceu.
@@ -131,6 +131,28 @@ assinatura RSA falha. Todo o Firestore de Eventos depende disso
 **Não testado:** se o Firestore está de fato fora do ar na homologação. A
 leitura diz que sim; confirmar rodando `firebaseTestarConexao`
 (`FirebaseCore.gs:~300`), que devolve a etapa em que falhou.
+
+**A PRODUÇÃO TAMBÉM — confirmado em 01/09/2026.** O usuário rodou a leitura
+das propriedades no projeto Apps Script de produção:
+
+```
+FIREBASE_PRIVATE_KEY = 1734 caracteres, termina em "\n","
+```
+
+Mesmo tamanho, mesmo fim. A mesma cópia errada foi colada nos dois ambientes.
+
+**E o sistema não sabe que está quebrado.** O `fb_config_` só confere se as
+três propriedades EXISTEM; não valida o PEM. Então `firebaseDisponivel_()`
+(`FirebaseCore.gs:66`) responde "sim, configurado", o código entra no caminho
+do Firestore e só falha na hora de assinar. Afirmação errada seguida de erro,
+em vez de recusa limpa.
+
+**Ainda não sabido:** se os dois ambientes usam o MESMO projeto Firebase. A
+homologação usa `sisgep-plataforma`; os valores de `FIREBASE_PROJETO` e
+`FIREBASE_CLIENT_EMAIL` da produção ainda não foram lidos. Isso decide se a
+chave nova entra nos dois ou só num — colar a chave de um projeto no outro
+quebraria o que hoje funciona. Os 1734 caracteres NÃO provam que é a mesma
+chave: toda RSA de 2048 bits dá esse tamanho.
 
 **A correção acontece junto da troca da chave** — que já era necessária,
 porque o valor foi exposto numa conversa em 31/08. Ao colar a chave nova,
