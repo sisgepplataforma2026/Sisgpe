@@ -101,6 +101,47 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
+### 52. Ofícios — quem trabalha DOCUMENTOS não consegue consertar o e-mail da escola
+
+Achado da sexta rodada da frente A, 01/09/2026, ao cobrir com teste
+(`t128`, 25 asserções) as três funções do caminho que a Marcela percorre
+quando uma escola reclama que não recebeu o ofício.
+
+**NÃO É BUG — é decisão de desenho, e é do usuário.** Está aqui porque só ele
+decide, e porque encosta direto no problema que o sindicato está vivendo.
+
+**O QUE ACONTECE.** O caminho de quem vai atrás de um ofício que não chegou é:
+
+1. abre o painel de status (`listarStatusOficios`) — pede módulo **Documentos**;
+2. vê que o ofício voltou por e-mail errado;
+3. corrige o e-mail no cadastro (`atualizarEmailEscola`) — pede módulo
+   **Sindicalização**;
+4. marca o ofício para reprocessar (`atualizarStatusOficio`) — **Documentos**.
+
+O passo 3 está atrás de outra permissão. Quem só tem Documentos vê o
+problema, sabe o conserto, e não consegue aplicar: depende de outra pessoa.
+
+**AS TRÊS OPÇÕES**, e a escolha é do usuário:
+
+| | O que muda |
+|---|---|
+| **Deixar como está** | quem trabalha ofícios pede a correção a quem tem Sindicalização |
+| Dar Sindicalização a quem trabalha ofícios | resolve, mas abre o resto do módulo junto |
+| Aceitar os dois módulos na função | `atualizarEmailEscola` passaria a aceitar Documentos **ou** Sindicalização; é mudança de uma linha, e não abre nada além do e-mail da escola |
+
+**O que o t128 provou de passagem** (e que estava sem teste nenhum até hoje):
+
+- o painel funde Controle e Fila **sem duplicar** o ofício que está nos dois,
+  e o status que prevalece é o da **Fila** — que é quem envia de verdade;
+- `atualizarStatusOficio` grava nas **duas** abas, recusa status inventado,
+  recusa número inexistente sem criar linha, e registra no log de auditoria;
+- `atualizarEmailEscola` grava nas **duas** colunas (principal e todos),
+  aceita CNPJ com máscara, e o e-mail errado não sobra em coluna nenhuma.
+
+**Continua não testado:** se o ofício reenviado depois da correção **chega**
+na caixa da escola. É a pergunta que originou tudo isto e só a produção
+responde — o emulador registra o e-mail, não entrega.
+
 ### 51. Ofícios — duas funções ESCREVIAM sem porta nenhuma (fechadas em 01/09)
 
 Quinta rodada da frente A do Módulo 03, 01/09/2026. Fechado no repositório
