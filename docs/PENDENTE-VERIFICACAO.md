@@ -56,6 +56,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 | Nº | Item |
 |---|---|
+| 58 | A tela do "Reemitir ofício" — feita (54.1 fechado), falta ver no ar |
 | 57 | Os quatro ajustes autorizados em 01/09 — falta ver no ar |
 | 56 | ✅ Frente A do Módulo 03 — COMPLETA: as 45 funções públicas têm teste |
 | 55 | Ofício fiscal — existe para o sindicato e não existe para a contabilidade |
@@ -109,6 +110,61 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
+
+### 58. A tela do "Reemitir ofício" — feita (item 54.1 FECHADO), falta ver no ar
+
+01/09/2026. Fecha o achado da sétima rodada: quando o ofício falhava depois da
+matrícula, o sistema mandava *"Use 'Reemitir ofício'"* — e o botão não existia
+em tela nenhuma.
+
+**O DESENHO NÃO FOI "UM BOTÃO A MAIS".** O estado `MATRICULADA` escondia dois
+que se comportam de forma diferente:
+
+- **com ofício** — escola comunicada;
+- **sem ofício** — matrícula emitida (não se desfaz) e escola **nunca avisada**.
+
+A tela passa a nomear os dois. O chip **⚠ Sem ofício** só aparece quando há o
+que mostrar — chip de exceção cravado em zero vira parte do cenário e para de
+ser lido.
+
+**TRÊS AÇÕES, e a diferença decide se um número oficial é queimado:**
+
+| Ação | Quando | Número |
+|---|---|---|
+| **📤 Emitir ofício** | não existe ofício | novo |
+| **📧 Reenviar** | existe, **mesma escola**, não chegou | **o mesmo** |
+| **↻ Reemitir p/ outra escola** | existe, escola errada | novo, e os dois ficam válidos |
+
+**A terceira linha foi você que apontou.** Meu primeiro desenho tinha só duas
+ações e teria feito o reenvio queimar número à toa. A regra que separa: **mudou
+o destinatário, mudou o documento.**
+
+**ONDE MORA O VÍNCULO — e por que não precisou mexer em esquema.** A ficha não
+sabe qual é o ofício dela (item 54.3). Mas o **Controle sabe a ficha**: o
+`aprovarEEncaminharFicha` grava `"Matrícula 000123 · Ficha FICHA-2026…"` na
+coluna Observações. O `sindOf_situacaoOficioDasFichas` cruza por aí. **Isso
+torna o item 54.3 desejável, não bloqueante.**
+
+**O QUE A TELA SE RECUSA A AFIRMAR.** Enquanto o cruzamento não responde, ela
+mostra *"conferindo ofício…"* — não *"sem ofício"*. E se o cruzamento **falhar**,
+continua sem afirmar. O motivo é grave: dizer "ninguém tem ofício" faria a
+secretaria emitir ofício duplicado para a base inteira, queimando numeração
+oficial em série. O backend também recusa em vez de mentir, nomeando a coluna
+que falta.
+
+**O QUE FALTA CONFERIR NO AR:**
+
+1. abrir **Fichas Sindicais**, filtrar **MATRICULADA** — o chip **Sem ofício**
+   deve aparecer com a contagem certa (e some se for zero);
+2. numa ficha sem ofício: **📤 Emitir ofício** → a escola recebe;
+3. numa ficha com ofício: **📧 Reenviar** → chega com o **MESMO** número;
+4. **↻ Reemitir p/ outra escola** → número novo, e o anterior continua no
+   Controle;
+5. o card mostra a linha `✓ Ofício NNN/AAAA · data · escola`.
+
+**Testes:** `t133` (26 asserções, o cruzamento) e `t134` (41, o contrato da
+tela). Suíte verde: 137 arquivos, 4.777 asserções. Teto de exposição estável
+em 204.
 
 ### 57. Os quatro ajustes que você autorizou (01/09/2026) — falta ver no ar
 

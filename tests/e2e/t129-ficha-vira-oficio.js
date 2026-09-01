@@ -260,27 +260,26 @@ b.passo("13. e escola sem CNPJ válido continua barrada na reemissão");
 const reemRuim = g.reemitirOficioFicha(IDF, { nome: "X", cnpj: "123" }, "W", ADM);
 b.ok(reemRuim && reemRuim.sucesso === false, "CNPJ curto é recusado");
 
-b.passo("14. O ACHADO — nenhuma tela chama reemitirOficioFicha");
-/* Cinco passos da REGRA Nº 1 rodados: cabeçalho, Code.gs e rotas, gatilhos,
-   git log e grep no projeto inteiro. Só a declaração aparece. */
+b.passo("14. O ACHADO, AGORA FECHADO — a tela existe e chama a função");
+/* Este passo já provou o contrário. Até 01/09/2026 nenhum arquivo chamava o
+   reemitirOficioFicha: a mensagem de erro mandava apertar "Reemitir ofício" e
+   esse botão não existia em lugar nenhum. A ficha ficava MATRICULADA sem
+   ofício e sem caminho pela interface.
+
+   A tela foi desenhada e implementada no mesmo dia (item 54.1, t134). O passo
+   fica, invertido, para travar o contrário: se um dia a tela sumir, a função
+   volta a ser inalcançável e ninguém percebe. */
 const arquivos = fs.readdirSync(RAIZ).filter(f => /\.(gs|html)$/.test(f));
 const chamadores = arquivos.filter(function (a) {
   const src = fs.readFileSync(path.join(RAIZ, a), "utf8");
   return /reemitirOficioFicha\s*\(/.test(src) &&
          !/function\s+reemitirOficioFicha/.test(src);
 });
-b.igual(chamadores.length, 0,
-  "confirmado: nenhum arquivo chama reemitirOficioFicha", chamadores.join(", "));
-
-b.aviso(
-  "o sistema manda apertar um botão que não existe",
-  "quando o ofício falha depois da matrícula, a mensagem diz: \"Use " +
-  "'Reemitir ofício' depois de verificar o arquivo\". A reemitirOficioFicha " +
-  "existe, tem porta e funciona (provado nos passos 12 e 13) — mas nenhuma " +
-  "tela a chama. A ficha fica MATRICULADA sem ofício e sem caminho pela " +
-  "interface. Não é código morto: é código vivo sem porta de entrada, então " +
-  "FICA. Falta a tela, e tela se desenha antes de implementar (REGRA Nº 0.5)"
-);
+b.ok(chamadores.length > 0,
+  "alguma tela chama reemitirOficioFicha — deixou de ser inalcançável",
+  chamadores.join(", ") || "NENHUMA — a função voltou a não ter porta de entrada");
+b.ok(chamadores.indexOf("FichasSindicaisAdmin.html") >= 0,
+  "e é a tela de Fichas Sindicais, que é onde a ficha vive");
 
 b.fluxo("MÓDULO 03 · quem só tem SINDICALIZAÇÃO faz o fluxo inteiro (item 54.2)");
 

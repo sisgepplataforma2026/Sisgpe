@@ -597,3 +597,127 @@ function atualizarEmailEscola(cnpj, emails, usuario, tokenSessao) {
     lock.releaseLock();
   }
 }
+
+/* ==========================================================================
+ * SITUAÇÃO DO OFÍCIO DE CADA FICHA
+ *
+ * Acrescentado em 01/09/2026 (item 54.1). Existe para tornar VISÍVEL um
+ * estado que sempre existiu e ninguém enxergava: a ficha MATRICULADA cujo
+ * ofício nunca saiu — a matrícula foi emitida (e não se desfaz) e a escola
+ * não foi comunicada.
+ *
+ * ONDE MORA O VÍNCULO. A ficha NÃO sabe qual é o ofício dela: o campo
+ * OBSERVACOES_OFICIO é gravado, mas a coluna não existe no esquema e o
+ * sindAdm_gravar_ descarta em silêncio (ver item 54.3). O caminho é o
+ * contrário: o CONTROLE sabe a ficha. O aprovarEEncaminharFicha manda
+ * "Matrícula 000123 · Ficha FICHA-20260901193652-1144" em `observacoes`, e o
+ * gerarOficioWeb grava isso na coluna Observações do Controle.
+ *
+ * Por isso este cálculo NÃO depende de mudança de esquema nenhuma.
+ *
+ * POR QUE CASAR PELO ID DA FICHA E NÃO PELO NOME: o ID tem a forma
+ * FICHA-<timestamp>-<4 dígitos>, é único e não aparece por acaso em texto
+ * livre. Nome de pessoa se repete; nome de escola idem.
+ * ========================================================================== */
+
+/**
+ * @param {string[]} idsFichas  ids das fichas a consultar
+ * @param {string} tokenSessao
+ * @return {object} { ok, situacao: { ID_FICHA: {...} | null } }
+ */
+function sindOf_situacaoOficioDasFichas(idsFichas, tokenSessao) {
+  /* Mesma porta das outras ações de ficha. Devolve dado de escola e e-mail,
+     então não pode ficar aberta — foi o buraco do buscarEscolasParaOficio,
+     fechado hoje mais cedo. */
+  exigirQualquerModulo_(tokenSessao, ["documentos", "sindicalizacao"], false);
+
+  var ids = Array.isArray(idsFichas) ? idsFichas : [];
+  var situacao = {};
+  ids.forEach(function (id) {
+    var chave = String(id || "").trim();
+    if (chave) situacao[chave] = null;
+  });
+  if (!Object.keys(situacao).length) return { ok: true, situacao: {} };
+
+  try {
+    var ss = SpreadsheetApp.openById(PLANILHA_ID);
+    var sh = ss.getSheetByName(PLANILHA_REGISTRO);
+    if (!sh || sh.getLastRow() < 2) return { ok: true, situacao: situacao };
+
+    var mapa = getHeaderMap_(sh);
+    var cNum  = mapa["Número do Ofício"];
+    var cObs  = mapa["Observações"];
+    if (!cNum || !cObs) {
+      /* Sem estas duas colunas não há como cruzar. Dizer isso é melhor que
+         devolver "nenhuma ficha tem ofício", que a tela leria como 100% de
+         pendência e mandaria emitir ofício duplicado para todo mundo. */
+      return {
+        ok: false,
+        situacao: {},
+        mensagem: "Não foi possível cruzar fichas e ofícios: falta a coluna " +
+          (cNum ? "Observações" : "Número do Ofício") + " no Controle."
+      };
+    }
+
+    var cData  = mapa["Data envio ofício"];
+    var cEsc   = mapa["Escola (Razão Social)"];
+    var cMail  = mapa["E-mails (todos)"] || mapa["E-mail (principal)"];
+    var cUrl   = mapa["Link PDF (Drive)"];
+    var cSt    = mapa["Status"];
+    var cTipo  = mapa["TIPO"] || mapa["Tipo"];
+
+    var linhas = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+
+    linhas.forEach(function (l) {
+      var numero = String(l[cNum - 1] || "").trim();
+      /* Mesma trava do dashboard: só NNN/AAAA é ofício. O Controle também
+         guarda linha que não é ofício nenhum. */
+      if (!/^\d{3}\/\d{4}$/.test(numero)) return;
+
+      var obs = String(l[cObs - 1] || "");
+      if (obs.indexOf("FICHA-") === -1) return;
+
+      Object.keys(situacao).forEach(function (idFicha) {
+        if (obs.indexOf(idFicha) === -1) return;
+
+        var registro = {
+          numero: numero,
+          data:   cData ? String(l[cData - 1] || "") : "",
+          escola: cEsc  ? String(l[cEsc - 1]  || "") : "",
+          emails: cMail ? String(l[cMail - 1] || "") : "",
+          url:    cUrl  ? String(l[cUrl - 1]  || "") : "",
+          status: cSt   ? String(l[cSt - 1]   || "") : "",
+          tipo:   cTipo ? String(l[cTipo - 1] || "") : "",
+          reemissao: /reemiss/i.test(obs)
+        };
+
+        /* Uma ficha pode ter MAIS DE UM ofício: reemitir para outra escola
+           gera um número novo e os dois ficam válidos (decisão do usuário em
+           01/09/2026). Fica o MAIS RECENTE, que é o que a tela precisa
+           mostrar — e o campo `numero` do anterior não se perde: continua no
+           Controle, que é o registro oficial. */
+        var atual = situacao[idFicha];
+        if (!atual || sindOf_oficioMaisNovo_(registro, atual)) {
+          situacao[idFicha] = registro;
+        }
+      });
+    });
+
+    return { ok: true, situacao: situacao };
+
+  } catch (e) {
+    Logger.log("sindOf_situacaoOficioDasFichas: " + e.message);
+    return { ok: false, situacao: {}, mensagem: e.message };
+  }
+}
+
+/** Compara dois ofícios da mesma ficha pelo número (NNN/AAAA): ano, depois nº. */
+function sindOf_oficioMaisNovo_(candidato, atual) {
+  function partes(reg) {
+    var p = String(reg.numero || "").split("/");
+    return { n: parseInt(p[0], 10) || 0, ano: parseInt(p[1], 10) || 0 };
+  }
+  var a = partes(candidato), b = partes(atual);
+  if (a.ano !== b.ano) return a.ano > b.ano;
+  return a.n > b.n;
+}
