@@ -88,18 +88,18 @@ jobs:
             exit 1
           fi
 
+          if find "$SNAPSHOT_DIR" -maxdepth 1 -type f -name '*.js' | grep -q .; then
+            echo "::error::O pull de producao contem .js; o clasp deveria ter gerado .gs."
+            exit 1
+          fi
+
           # Remove somente os arquivos-fonte do Apps Script que vieram da
           # branch-base. Documentação, testes e workflows permanecem intactos.
-          git ls-files -z -- ':(top)*.gs' ':(top)*.html' ':(top)appsscript.json' \
+          git ls-files -z -- ':(top)*.gs' ':(top)*.html' ':(top)*.js' ':(top)appsscript.json' \
             | xargs -0 -r rm -f --
 
           cp -a "$SNAPSHOT_DIR"/. .
           rm -rf "$SNAPSHOT_DIR"
-
-          if find . -maxdepth 1 -type f -name '*.js' | grep -q .; then
-            echo "::error::O retrato contém .js; o clasp deveria ter gerado .gs."
-            exit 1
-          fi
 
       - name: Publicar o retrato no branch de auditoria
         id: retrato
