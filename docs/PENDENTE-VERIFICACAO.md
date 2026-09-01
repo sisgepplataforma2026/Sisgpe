@@ -101,6 +101,50 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
+### 56. ✅ FRENTE A DO MÓDULO 03 — COMPLETA (01/09/2026)
+
+**As 45 funções públicas do Módulo 03 têm teste. Nenhuma ficou de fora.**
+
+Medido, não estimado: varredura de todas as `function nome(` sem `_` final nos
+12 arquivos do módulo, cruzada com todos os `tests/e2e/*.js`.
+
+| | |
+|---|---|
+| Funções públicas do módulo | **45** |
+| Sem teste nenhum | **0** |
+| Teto de exposição | 224 → **204** |
+| Suíte | 135 arquivos, 4.696 asserções, verde |
+| Homologação | **versão 90**, publicada 01/09 às 18:53 |
+
+**AS NOVE RODADAS, e o que cada uma achou:**
+
+| # | O que fechou |
+|---|---|
+| 1 | 5 gatilhos de monitoramento criavam e apagavam acionador sem porta |
+| 2 | 9 funções devolviam dado de escola sem checagem — a pior, `buscarEscolasParaOficio`, entregava razão social, CNPJ e e-mails de até 60 escolas por chamada, sem token |
+| 3 | 8 eram endpoint por acidente — `getTemplateConteudo` lia **qualquer** Google Doc por ID |
+| 4 | 2 **escreviam** sem porta: uma queimava número da numeração oficial, a outra forjava entrada no log de auditoria |
+| 5 | painel de status e conserto do e-mail da escola (item 52) |
+| 6 | a ponte ficha→ofício (item 54) |
+| 7 | **a regressão que eu causei no mesmo dia** (item 53) e mais 8 chamadas sem token, anteriores |
+| 8 | ofício fiscal de despesas (item 55) |
+| 9 | a trava que impede um teste de rodar em produção |
+
+**O QUE FICA ABERTO, e é tudo decisão sua** — itens 52, 54 e 55: qual módulo
+guarda o conserto do e-mail da escola; a tela que falta para
+`reemitirOficioFicha`; a coluna `OBSERVACOES_OFICIO`; e se o ofício fiscal
+deve ir anexado, citado, ou consumir numeração própria.
+
+**O QUE FICA ABERTO E NÃO É DECISÃO — precisa de mão na produção:** os itens
+49 (reprocessar 144/236/242), 50, 51, 53 e 55 listam cada um o que conferir
+no ar. Nada disso se prova aqui.
+
+**E O QUE ESTE FECHAMENTO NÃO SIGNIFICA.** Cobertura não é correção. "Todas
+as funções têm teste" quer dizer que cada uma foi executada ao menos uma vez
+e que a porta dela foi provada — não que o módulo esteja certo. O que se
+prova rodando de verdade, com PDF, e-mail entregue e gatilho agendado,
+continua "não testado" e está listado nos itens acima.
+
 ### 55. Ofício fiscal — existe para o sindicato e não existe para a contabilidade
 
 Oitava rodada da frente A, 01/09/2026, ao cobrir com teste (`t131`, 26
