@@ -156,10 +156,37 @@ function inicio_contarEmailsUrgentes_(tokenSessao) {
   return Number(r.indicadores.urgentes || 0);
 }
 
+/**
+ * Ofícios que NÃO chegaram ao destino.
+ *
+ * Contava só `resumo.pendentes`, e isso escondia o pior caso. Achado na
+ * auditoria do Módulo 03, 01/09/2026, a partir de um sintoma real: o
+ * acionador `processarFilaEnvioOficios` mostrava 0,26% de erro na produção.
+ *
+ * O que acontecia: esgotadas as 3 tentativas, a linha vira ERRO_PERMANENTE e
+ * a fila para de tentar de propósito (`FilaOficios.gs:304`), para não insistir
+ * em e-mail inválido. Só que ERRO_PERMANENTE não entra em `pendentes` — cai em
+ * `erros`, que é outra conta (`DashboardOficios.gs:339`). O ofício saía da
+ * fila de pendentes, nenhum indicador se mexia, e a Home dizia OK enquanto o
+ * documento nunca havia chegado a ninguém.
+ *
+ * E ninguém era avisado: `FilaOficios.gs` não manda e-mail nem alerta quando
+ * um ofício morre na fila — a única chamada de MailApp lá é a consulta de
+ * cota.
+ *
+ * A inversão que isso produzia: dos três estados, o ÚNICO que se resolve
+ * sozinho — o pendente, que o gatilho leva embora em 5 minutos — era o único
+ * que a Home mostrava. Os dois que precisam de uma pessoa eram invisíveis.
+ *
+ * Por isso os três contam. Para quem opera, "pendente", "deu erro" e "voltou
+ * do servidor" são o mesmo fato: o ofício não chegou.
+ */
 function inicio_contarOficiosPendentes_(tokenSessao) {
   var r = getDashboardOficiosData({}, tokenSessao);
   if (!r || !r.resumo) throw new Error("dashboard de ofícios indisponível");
-  return Number(r.resumo.pendentes || 0);
+  return Number(r.resumo.pendentes || 0) +
+         Number(r.resumo.erros     || 0) +
+         Number(r.resumo.falhas    || 0);
 }
 
 function inicio_contarProcessosJuridicosComPrazo_(tokenSessao) {
