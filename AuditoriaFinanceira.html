@@ -1,0 +1,275 @@
+<div id="audFin" style="min-height:100%;background:#f0f4f8;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#0f172a;">
+<!--
+  Consulta do log de alteração de valor em registros financeiros.
+
+  O backend (FinanceiroAuditoria.gs) já gravava desde a auditoria do módulo
+  Financeiro: toda vez que alguém edita o valor de uma despesa (Despesas.gs)
+  ou de um processo de recibo (Recibo.gs), fica registrado quem mudou, de
+  quanto para quanto e por quê. Só que o próprio arquivo dizia, em comentário:
+  "usado por uma futura tela de consulta — por enquanto só a função de leitura,
+  sem UI". Ou seja: auditoria que grava e ninguém lê não é controle nenhum.
+  Esta é aquela tela. Destinatário natural: Conselho Fiscal.
+-->
+  <style>
+    #audFin *{box-sizing:border-box}
+    .af-head{background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));padding:22px 24px;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+    .af-title{font-size:21px;font-weight:900;line-height:1.1}
+    .af-sub{font-size:12px;color:rgba(255,255,255,.68);margin-top:4px}
+    .af-badge{height:32px;border-radius:999px;border:1px solid rgba(201,168,76,.5);background:rgba(201,168,76,.16);color:#f8d66d;font-size:11px;font-weight:900;padding:0 14px;display:flex;align-items:center}
+    .af-wrap{padding:18px 22px 34px}
+    .af-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+    .af-card{background:#fff;border:1px solid var(--g200,#e2e8f0);border-radius:14px;padding:15px 16px;box-shadow:0 2px 10px rgba(0,20,60,.06)}
+    .af-card small{display:block;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:var(--g500,#64748b);margin-bottom:8px}
+    .af-card strong{font-size:24px;font-weight:900;color:var(--navy,#001f4d);word-break:break-word}
+    .af-card span{display:block;font-size:11px;color:var(--g400,#94a3b8);margin-top:4px}
+    .af-panel{background:#fff;border:1px solid var(--g200,#e2e8f0);border-radius:14px;box-shadow:0 2px 10px rgba(0,20,60,.06);overflow:hidden}
+    .af-panel-head{padding:14px 16px;border-bottom:1px solid #eef2f7;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+    .af-panel-title{font-size:14px;font-weight:900;color:var(--navy,#001f4d)}
+    .af-btn{height:34px;border-radius:9px;border:1px solid var(--g300,#cbd5e1);background:#fff;color:var(--g700,#334155);font-size:12px;font-weight:800;padding:0 12px;cursor:pointer;font-family:inherit}
+    .af-btn.primary{background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));border-color:var(--blue,#1565C0);color:#fff}
+    .af-search{padding:12px 16px;display:flex;gap:10px;align-items:center;background:#fff;border-bottom:1px solid #eef2f7;flex-wrap:wrap}
+    .af-search input,.af-search select{height:36px;border:1.5px solid #dbe4ef;border-radius:9px;padding:0 12px;font-family:inherit;font-size:12.5px;background:#fff}
+    .af-search input.busca{border-radius:999px;min-width:220px;flex:1}
+    .af-table-wrap{overflow-x:auto}
+    .af-table{width:100%;border-collapse:collapse;min-width:920px}
+    .af-table th{background:var(--g50,#f8fafc);color:var(--g500,#64748b);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.07em;text-align:left;padding:10px 12px;border-bottom:1px solid var(--g200,#e2e8f0)}
+    .af-table td{font-size:12.5px;color:var(--g700,#334155);padding:10px 12px;border-bottom:1px solid var(--g100,#f1f5f9);vertical-align:middle}
+    .af-table tr:hover td{background:var(--g50,#f8fafc)}
+    .af-val{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:800}
+    .af-de{color:var(--g500,#64748b);text-decoration:line-through}
+    .af-para{color:var(--navy,#001f4d)}
+    .af-delta{font-size:11px;font-weight:900;white-space:nowrap}
+    .af-delta.sobe{color:#dc2626}
+    .af-delta.desce{color:#0f8a5f}
+    .af-pill{display:inline-flex;align-items:center;height:22px;border-radius:999px;padding:0 9px;font-size:10.5px;font-weight:900}
+    .af-pill.desp{background:#dbeafe;color:#1d4ed8}
+    .af-pill.rec{background:#fef3c7;color:#92400e}
+    .af-pill.outro{background:var(--g100,#f1f5f9);color:var(--g500,#64748b)}
+    .af-sem{color:var(--g400,#94a3b8);font-style:italic}
+    .af-empty{padding:30px;text-align:center;color:var(--g400,#94a3b8);font-size:13px}
+    .af-erro{margin:0 0 14px;padding:12px 14px;border-radius:12px;background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;font-size:12.5px;font-weight:700;display:none}
+    .af-erro.show{display:block}
+    .af-nota{margin-top:14px;padding:12px 14px;border-radius:12px;background:#fff;border:1px solid var(--g200,#e2e8f0);font-size:11.5px;color:var(--g500,#64748b);line-height:1.6}
+    @media(max-width:1100px){.af-grid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:640px){.af-grid{grid-template-columns:1fr}}
+  </style>
+
+  <div class="af-head">
+    <div>
+      <div class="af-title">Auditoria de Valores</div>
+      <div class="af-sub">Toda alteração de valor em despesa ou recibo — quem mudou, de quanto para quanto e por quê</div>
+    </div>
+    <div class="af-badge">CONSELHO FISCAL</div>
+  </div>
+
+  <div class="af-wrap">
+    <div id="afErro" class="af-erro"></div>
+
+    <div class="af-grid">
+      <div class="af-card"><small>Alterações registradas</small><strong id="afTotal">0</strong><span id="afPeriodo">—</span></div>
+      <div class="af-card"><small>Valor aumentado</small><strong id="afSobe">R$ 0,00</strong><span id="afSobeQtd">0 alteração(ões)</span></div>
+      <div class="af-card"><small>Valor reduzido</small><strong id="afDesce">R$ 0,00</strong><span id="afDesceQtd">0 alteração(ões)</span></div>
+      <div class="af-card"><small>Sem motivo informado</small><strong id="afSemMotivo">0</strong><span>merecem verificação</span></div>
+    </div>
+
+    <div class="af-panel">
+      <div class="af-panel-head">
+        <div class="af-panel-title">Registro de alterações</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="af-btn" type="button" onclick="afCarregar()">Atualizar</button>
+          <button class="af-btn" type="button" onclick="afExportar()">Exportar CSV</button>
+        </div>
+      </div>
+
+      <div class="af-search">
+        <input class="busca" id="afBusca" placeholder="Buscar por registro, usuário ou motivo..." oninput="afRender()">
+        <select id="afModulo" onchange="afRender()"><option value="">Todos os módulos</option></select>
+        <select id="afOrdem" onchange="afRender()">
+          <option value="recente">Mais recentes primeiro</option>
+          <option value="variacao">Maior variação primeiro</option>
+        </select>
+      </div>
+
+      <div class="af-table-wrap">
+        <table class="af-table">
+          <thead>
+            <tr><th>Data</th><th>Módulo</th><th>Registro</th><th>Quem alterou</th><th>De</th><th>Para</th><th>Variação</th><th>Motivo</th></tr>
+          </thead>
+          <tbody id="afTabela"></tbody>
+        </table>
+      </div>
+      <div id="afVazio" class="af-empty" style="display:none;">Nenhuma alteração de valor registrada.</div>
+    </div>
+
+    <div class="af-nota">
+      O registro é gravado automaticamente sempre que o valor de uma despesa ou de um processo de recibo é editado.
+      Alterações que não mudam o valor de fato (por exemplo, "100" salvo como "100,00") não geram lançamento.
+      Este painel é somente leitura — nada aqui pode ser apagado ou editado pela tela.
+    </div>
+  </div>
+
+<script>
+(function(){
+"use strict";
+
+var AF_LISTA = [], AF_CARREGANDO = false;
+
+function g(id){ return document.getElementById(id); }
+function tokenSessao(){ return typeof SISGEP_TOKEN_SESSAO !== "undefined" ? SISGEP_TOKEN_SESSAO : ""; }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c];}); }
+function moeda(v){ return Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"}); }
+
+/* O log guarda o valor como texto, do jeito que estava no campo — pode vir
+   "1.234,56", "1234.56" ou já numérico. Normaliza os três. */
+function numero(v){
+  if (typeof v === "number") return isFinite(v) ? v : 0;
+  var s = String(v||"").trim().replace(/\s/g,"").replace("R$","");
+  if (!s) return 0;
+  if (s.indexOf(",") >= 0) s = s.replace(/\./g,"").replace(",",".");
+  var n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+
+function delta(r){ return numero(r.valorNovo) - numero(r.valorAnterior); }
+
+/* Data vem formatada dd/MM/yyyy HH:mm:ss pelo backend. */
+function dataOrd(r){
+  var m = String(r.data||"").match(/^(\d{2})\/(\d{2})\/(\d{4})[ T]?(\d{2})?:?(\d{2})?:?(\d{2})?/);
+  if (!m) return 0;
+  return new Date(+m[3], +m[2]-1, +m[1], +(m[4]||0), +(m[5]||0), +(m[6]||0)).getTime();
+}
+
+function pillModulo(m){
+  var t = String(m||"").toUpperCase();
+  if (t === "DESPESAS") return '<span class="af-pill desp">Despesas</span>';
+  if (t === "RECIBOS")  return '<span class="af-pill rec">Recibos</span>';
+  return '<span class="af-pill outro">' + esc(m||"—") + '</span>';
+}
+
+function mostrarErro(msg){
+  var el = g("afErro"); if (!el) return;
+  if (!msg) { el.className="af-erro"; el.textContent=""; return; }
+  el.className="af-erro show"; el.textContent=msg;
+}
+
+window.afCarregar = function(){
+  if (AF_CARREGANDO) return;
+  AF_CARREGANDO = true;
+  mostrarErro("");
+  google.script.run
+    .withSuccessHandler(function(lista){
+      AF_CARREGANDO = false;
+      AF_LISTA = Array.isArray(lista) ? lista : [];
+      afPopularModulos();
+      afRender();
+      afResumo();
+    })
+    .withFailureHandler(function(err){
+      AF_CARREGANDO = false;
+      AF_LISTA = [];
+      afRender();
+      mostrarErro("Não foi possível carregar o registro de alterações: " +
+                  (err && err.message ? err.message : err) + ". Se sua sessão expirou, entre novamente.");
+    })
+    .finAudListarAlteracoesValor(tokenSessao(), null);
+};
+
+function afResumo(){
+  var sobe=0, desce=0, qSobe=0, qDesce=0, semMotivo=0, min=null, max=null;
+  AF_LISTA.forEach(function(r){
+    var d = delta(r);
+    if (d > 0) { sobe += d; qSobe++; } else if (d < 0) { desce += Math.abs(d); qDesce++; }
+    if (!String(r.motivo||"").trim()) semMotivo++;
+    var t = dataOrd(r);
+    if (t) { if (min===null||t<min) min=t; if (max===null||t>max) max=t; }
+  });
+  g("afTotal").textContent      = AF_LISTA.length;
+  g("afSobe").textContent       = moeda(sobe);
+  g("afSobeQtd").textContent    = qSobe + " alteração(ões)";
+  g("afDesce").textContent      = moeda(desce);
+  g("afDesceQtd").textContent   = qDesce + " alteração(ões)";
+  g("afSemMotivo").textContent  = semMotivo;
+
+  var fmt = function(t){ var d=new Date(t); return ("0"+d.getDate()).slice(-2)+"/"+("0"+(d.getMonth()+1)).slice(-2)+"/"+d.getFullYear(); };
+  g("afPeriodo").textContent = (min && max) ? (fmt(min) + " a " + fmt(max)) : "—";
+}
+
+function afPopularModulos(){
+  var sel = g("afModulo"); if (!sel) return;
+  var atual = sel.value, mods = {};
+  AF_LISTA.forEach(function(r){ var m=String(r.modulo||"").trim(); if(m) mods[m]=1; });
+  sel.innerHTML = ['<option value="">Todos os módulos</option>']
+    .concat(Object.keys(mods).sort().map(function(m){ return '<option value="'+esc(m)+'">'+esc(m)+'</option>'; })).join("");
+  if (atual) sel.value = atual;
+}
+
+window.afRender = function(){
+  var busca = String((g("afBusca")||{}).value||"").toLowerCase().trim();
+  var fMod  = String((g("afModulo")||{}).value||"");
+  var ordem = String((g("afOrdem")||{}).value||"recente");
+
+  var lista = AF_LISTA.filter(function(r){
+    if (fMod && String(r.modulo||"") !== fMod) return false;
+    if (!busca) return true;
+    return [r.idRegistro, r.usuario, r.motivo, r.modulo].join(" ").toLowerCase().indexOf(busca) >= 0;
+  });
+
+  lista.sort(ordem === "variacao"
+    ? function(a,b){ return Math.abs(delta(b)) - Math.abs(delta(a)); }
+    : function(a,b){ return dataOrd(b) - dataOrd(a); });
+
+  var tb = g("afTabela"); if (!tb) return;
+  if (!lista.length) {
+    tb.innerHTML = "";
+    g("afVazio").style.display = "block";
+    g("afVazio").textContent = AF_LISTA.length
+      ? "Nenhuma alteração corresponde aos filtros aplicados."
+      : "Nenhuma alteração de valor registrada até agora.";
+    return;
+  }
+  g("afVazio").style.display = "none";
+
+  tb.innerHTML = lista.map(function(r){
+    var d = delta(r);
+    var cls = d > 0 ? "sobe" : (d < 0 ? "desce" : "");
+    var sinal = d > 0 ? "▲ +" : (d < 0 ? "▼ −" : "");
+    var motivo = String(r.motivo||"").trim();
+    return "<tr>" +
+      "<td>" + esc(r.data||"—") + "</td>" +
+      "<td>" + pillModulo(r.modulo) + "</td>" +
+      "<td>" + esc(r.idRegistro||"—") + "</td>" +
+      "<td>" + esc(r.usuario||"—") + "</td>" +
+      "<td class='af-val af-de'>" + moeda(numero(r.valorAnterior)) + "</td>" +
+      "<td class='af-val af-para'>" + moeda(numero(r.valorNovo)) + "</td>" +
+      "<td class='af-delta " + cls + "'>" + (sinal ? sinal + moeda(Math.abs(d)).replace("R$","").trim() : "—") + "</td>" +
+      "<td>" + (motivo ? esc(motivo) : "<span class='af-sem'>não informado</span>") + "</td>" +
+    "</tr>";
+  }).join("");
+};
+
+window.afExportar = function(){
+  if (!AF_LISTA.length) {
+    if (typeof window.toast === "function") window.toast("Nada para exportar.","warn");
+    return;
+  }
+  var cab = ["Data","Modulo","Registro","Usuario","ValorAnterior","ValorNovo","Variacao","Motivo"];
+  var linhas = [cab].concat(AF_LISTA.map(function(r){
+    return [r.data, r.modulo, r.idRegistro, r.usuario,
+            numero(r.valorAnterior).toFixed(2), numero(r.valorNovo).toFixed(2),
+            delta(r).toFixed(2), r.motivo||""];
+  }));
+  var csv = linhas.map(function(l){
+    return l.map(function(c){ return '"' + String(c==null?"":c).replace(/"/g,'""') + '"'; }).join(";");
+  }).join("\n");
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["﻿"+csv], {type:"text/csv;charset=utf-8"}));
+  a.download = "sisgep-auditoria-valores.csv";
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+window.initAuditoriaFinanceira = function(){ afCarregar(); };
+
+})();
+</script>
+</div>

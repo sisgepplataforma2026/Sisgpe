@@ -1,33 +1,44 @@
 <div id="rhAdmin" style="display:block;min-height:100%;background:#f0f4f8;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#0f172a;">
   <style>
     #rhAdmin *{box-sizing:border-box}
-    .rh-head{background:linear-gradient(135deg,#001f4d,#1565C0);padding:22px 24px;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+    .rh-head{background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));padding:22px 24px;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
     .rh-title{font-size:21px;font-weight:900;line-height:1.1}.rh-sub{font-size:12px;color:rgba(255,255,255,.68);margin-top:4px}
     .rh-badge{height:32px;border-radius:999px;border:1px solid rgba(201,168,76,.5);background:rgba(201,168,76,.16);color:#f8d66d;font-size:11px;font-weight:900;padding:0 14px;display:flex;align-items:center}
     .rh-wrap{padding:18px 22px 34px}.rh-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
-    .rh-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:15px 16px;box-shadow:0 2px 10px rgba(0,20,60,.06)}
-    .rh-card small{display:block;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-bottom:8px}.rh-card strong{font-size:28px;font-weight:900;color:#001f4d}.rh-card span{display:block;font-size:11px;color:#94a3b8;margin-top:4px}
-    .rh-panel{background:#fff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 2px 10px rgba(0,20,60,.06);overflow:hidden;margin-bottom:14px}
+    .rh-card{background:#fff;border:1px solid var(--g200,#e2e8f0);border-radius:14px;padding:15px 16px;box-shadow:0 2px 10px rgba(0,20,60,.06)}
+    .rh-card small{display:block;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:var(--g500,#64748b);margin-bottom:8px}.rh-card strong{font-size:28px;font-weight:900;color:var(--navy,#001f4d)}.rh-card span{display:block;font-size:11px;color:var(--g400,#94a3b8);margin-top:4px}
+    .rh-panel{background:#fff;border:1px solid var(--g200,#e2e8f0);border-radius:14px;box-shadow:0 2px 10px rgba(0,20,60,.06);overflow:hidden;margin-bottom:14px}
     .rh-panel-head{padding:14px 16px;border-bottom:1px solid #eef2f7;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-    .rh-panel-title{font-size:14px;font-weight:900;color:#001f4d}.rh-actions{display:flex;gap:8px;flex-wrap:wrap}
-    .rh-btn{height:34px;border-radius:9px;border:1px solid #cbd5e1;background:#fff;color:#334155;font-size:12px;font-weight:800;padding:0 12px;cursor:pointer;font-family:inherit}
-    .rh-btn.primary{background:linear-gradient(135deg,#001f4d,#1565C0);border-color:#1565C0;color:#fff}.rh-btn.gold{background:#fff7d6;border-color:#e8c870;color:#7a5a00}
-    .rh-form{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 1fr 1fr 1fr auto;gap:10px;padding:14px 16px;background:#f8fafc;border-bottom:1px solid #eef2f7}
-    .rh-field label{display:block;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:4px}
-    .rh-field input,.rh-field select{width:100%;height:36px;border:1.5px solid #dbe4ef;border-radius:9px;padding:0 10px;font-size:12.5px;font-family:inherit;background:#fff;color:#0f172a;outline:none}
-    .rh-field input:focus,.rh-field select:focus{border-color:#1565C0;box-shadow:0 0 0 3px rgba(21,101,192,.08)}
+    .rh-panel-title{font-size:14px;font-weight:900;color:var(--navy,#001f4d)}.rh-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .rh-btn{height:34px;border-radius:9px;border:1px solid var(--g300,#cbd5e1);background:#fff;color:var(--g700,#334155);font-size:12px;font-weight:800;padding:0 12px;cursor:pointer;font-family:inherit}
+    .rh-btn.primary{background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));border-color:var(--blue,#1565C0);color:#fff}.rh-btn.gold{background:#fff7d6;border-color:#e8c870;color:#7a5a00}.rh-btn.red{background:var(--red-lt,#fee2e2);border-color:#fca5a5;color:#991b1b}
+    .rh-form{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 1fr 1fr 1fr 90px auto;gap:10px;padding:14px 16px;background:var(--g50,#f8fafc);border-bottom:1px solid #eef2f7}
+    .rh-tribrow{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;margin-bottom:8px}
+    .rh-tribrow.irrf{grid-template-columns:1fr 1fr 1fr}
+    .rh-tribrow label{display:block;font-size:9.5px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;color:var(--g500,#64748b);margin-bottom:3px}
+    .rh-tribrow input{width:100%;height:32px;border:1.5px solid #dbe4ef;border-radius:8px;padding:0 8px;font-size:12px;font-family:inherit}
+    .rh-alerta{background:#fff7d6;border:1px solid #e8c870;border-radius:10px;padding:10px 14px;font-size:11.5px;color:#7a5a00;margin:0 16px 14px;font-weight:700}
+    .rh-field label{display:block;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:var(--g500,#64748b);margin-bottom:4px}
+    .rh-field input,.rh-field select{width:100%;height:36px;border:1.5px solid #dbe4ef;border-radius:9px;padding:0 10px;font-size:12.5px;font-family:inherit;background:#fff;color:var(--g900,#0f172a);outline:none}
+    .rh-field input:focus,.rh-field select:focus{border-color:var(--blue,#1565C0);box-shadow:0 0 0 3px rgba(21,101,192,.08)}
     .rh-search{padding:12px 16px;display:flex;gap:10px;align-items:center;background:#fff;border-bottom:1px solid #eef2f7}
     .rh-search input{height:36px;border:1.5px solid #dbe4ef;border-radius:999px;padding:0 14px;min-width:240px;flex:1;font-family:inherit}
     .rh-table-wrap{overflow:auto}.rh-table{width:100%;border-collapse:collapse;min-width:850px}
-    .rh-table th{background:#f8fafc;color:#64748b;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.07em;text-align:left;padding:10px 12px;border-bottom:1px solid #e2e8f0}
-    .rh-table td{font-size:12.5px;color:#334155;padding:11px 12px;border-bottom:1px solid #f1f5f9;vertical-align:middle}.rh-table tr:hover td{background:#f8fafc}
+    .rh-table th{background:var(--g50,#f8fafc);color:var(--g500,#64748b);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.07em;text-align:left;padding:10px 12px;border-bottom:1px solid var(--g200,#e2e8f0)}
+    .rh-table td{font-size:12.5px;color:var(--g700,#334155);padding:11px 12px;border-bottom:1px solid var(--g100,#f1f5f9);vertical-align:middle}.rh-table tr:hover td{background:var(--g50,#f8fafc)}
     .rh-pill{display:inline-flex;align-items:center;height:23px;border-radius:999px;padding:0 9px;font-size:10.5px;font-weight:900}
-    .rh-pill.ok{background:#dcfce7;color:#166534}.rh-pill.warn{background:#fef3c7;color:#92400e}.rh-pill.off{background:#fee2e2;color:#991b1b}.rh-pill.info{background:#dbeafe;color:#1d4ed8}
-    .rh-empty{padding:30px;text-align:center;color:#94a3b8;font-size:13px}.rh-mini{font-size:11px;color:#94a3b8}
-    .rh-paybar{padding:14px 16px;background:#f8fafc;border-bottom:1px solid #eef2f7;display:flex;gap:10px;align-items:end;flex-wrap:wrap}
+    .rh-pill.ok{background:#dcfce7;color:#166534}.rh-pill.warn{background:var(--amber-lt,#fef3c7);color:#92400e}.rh-pill.off{background:var(--red-lt,#fee2e2);color:#991b1b}.rh-pill.info{background:#dbeafe;color:#1d4ed8}
+    .rh-empty{padding:30px;text-align:center;color:var(--g400,#94a3b8);font-size:13px}.rh-mini{font-size:11px;color:var(--g400,#94a3b8)}
+    .rh-paybar{padding:14px 16px;background:var(--g50,#f8fafc);border-bottom:1px solid #eef2f7;display:flex;gap:10px;align-items:end;flex-wrap:wrap}
     .rh-paybar .rh-field{min-width:160px}.rh-totalbar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:14px 16px;background:#fff}
-    .rh-total{border:1px solid #e2e8f0;border-radius:12px;padding:12px;background:#f8fafc}.rh-total small{display:block;font-size:10px;font-weight:900;text-transform:uppercase;color:#64748b;margin-bottom:6px}.rh-total strong{font-size:20px;color:#001f4d}
+    .rh-total{border:1px solid var(--g200,#e2e8f0);border-radius:12px;padding:12px;background:var(--g50,#f8fafc)}.rh-total small{display:block;font-size:10px;font-weight:900;text-transform:uppercase;color:var(--g500,#64748b);margin-bottom:6px}.rh-total strong{font-size:20px;color:var(--navy,#001f4d)}
     @media(max-width:1100px){.rh-grid{grid-template-columns:repeat(2,1fr)}.rh-form{grid-template-columns:1fr 1fr}.rh-form .rh-actions{grid-column:1/-1}}
+    .rh-tabs{display:flex;gap:2px;background:#fff;border-bottom:1px solid var(--g200,#e2e8f0);padding:0 22px;overflow-x:auto;margin:0 -22px 16px;}
+    .rh-tab-btn{height:44px;padding:0 16px;border:none;background:transparent;color:var(--g500,#64748b);font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;border-bottom:3px solid transparent;transition:all .15s;}
+    .rh-tab-btn:hover{color:var(--navy,#001f4d)}
+    .rh-tab-btn.active{color:var(--navy,#001f4d);border-bottom-color:var(--gold,#C9A84C)}
+    .rh-tab-panel{display:none}
+    .rh-tab-panel.active{display:block}
   </style>
 
   <div class="rh-head">
@@ -42,19 +53,34 @@
     <div class="rh-grid">
       <div class="rh-card"><small>Ativos</small><strong id="rhTotalAtivos">0</strong><span>colaboradores em atividade</span></div>
       <div class="rh-card"><small>Férias próximas</small><strong id="rhFerias">0</strong><span>até 45 dias</span></div>
-      <div class="rh-card"><small>Documentos</small><strong id="rhDocs">0</strong><span>pendências cadastradas</span></div>
+      <div class="rh-card"><small>Documentos</small><strong id="rhDocs">0</strong><span>arquivos enviados</span></div>
       <div class="rh-card"><small>Aniversários</small><strong id="rhAniversarios">0</strong><span>no mês atual</span></div>
     </div>
 
+    <div class="rh-tabs">
+      <button class="rh-tab-btn active" data-rhtab="colaboradores" onclick="rhMudarTab('colaboradores')">👥 Colaboradores</button>
+      <button class="rh-tab-btn" data-rhtab="tributaria" onclick="rhMudarTab('tributaria')">🧾 Config. Tributária</button>
+      <button class="rh-tab-btn" data-rhtab="rubricas" onclick="rhMudarTab('rubricas')">🏷️ Rubricas</button>
+      <button class="rh-tab-btn" data-rhtab="folha" onclick="rhMudarTab('folha')">💰 Folha de Pagamento</button>
+      <button class="rh-tab-btn" data-rhtab="eventos" onclick="rhMudarTab('eventos')">🗓️ 13º, Férias e Rescisão</button>
+    </div>
+
+    <div class="rh-tab-panel active" id="rh-tab-colaboradores">
     <div class="rh-panel">
       <div class="rh-panel-head">
         <div>
           <div class="rh-panel-title">Cadastro rápido</div>
-          <div class="rh-mini">Os registros ficam no navegador até integrar com uma planilha do RH.</div>
+          <div class="rh-mini">Os registros ficam salvos na planilha do RH, compartilhados por toda a equipe.</div>
         </div>
         <div class="rh-actions">
           <button class="rh-btn gold" onclick="rhAbrirSofia()">Consultar SOFIA</button>
           <button class="rh-btn" onclick="rhGerarDocumento()">Gerar documento</button>
+          <button class="rh-btn gold" onclick="rhReajusteSalarial()" id="btnRhReajuste">💹 Reajuste salarial (convenção)</button>
+          <button class="rh-btn" onclick="rhVerificarQuinquenioDecenio()" id="btnRhQuinquenioDecenio">📅 Verificar Quinquênio/Decênio</button>
+          <span id="rhTriggerTempoServicoStatus" class="rh-mini" style="display:inline-flex;align-items:center;gap:5px;"><span id="rhTriggerTempoServicoDot" style="width:8px;height:8px;border-radius:50%;background:#cbd5e1;display:inline-block;"></span><span id="rhTriggerTempoServicoTxt">verificando automação…</span></span>
+          <button class="rh-btn" onclick="rhAtivarAutoQuinquenioDecenio()" id="btnRhAtivarAuto">▶️ Ativar automática</button>
+          <button class="rh-btn" onclick="rhDesativarAutoQuinquenioDecenio()" id="btnRhDesativarAuto">⏸️ Desativar</button>
+          <button class="rh-btn" onclick="rhAbrirFerramentasAdmin()">⚙️ Ferramentas administrativas</button>
         </div>
       </div>
 
@@ -67,6 +93,16 @@
         <div class="rh-field"><label>Salário base</label><input id="rhSalario" inputmode="decimal" placeholder="0,00"></div>
         <div class="rh-field"><label>Benefícios</label><input id="rhBeneficios" inputmode="decimal" placeholder="0,00"></div>
         <div class="rh-field"><label>Descontos</label><input id="rhDescontos" inputmode="decimal" placeholder="0,00"></div>
+        <div class="rh-field"><label>Dependentes</label><input id="rhDependentes" type="number" min="0" step="1" placeholder="0"></div>
+        <div class="rh-field"><label>Data de nascimento</label><input id="rhAniversario" type="date"></div>
+        <div class="rh-field"><label>E-mail</label><input id="rhEmail" type="email" placeholder="colaborador@email.com"></div>
+        <div class="rh-field"><label>Matrícula</label><input id="rhMatricula" placeholder="Ex.: 37"></div>
+        <div class="rh-field"><label>CPF</label><input id="rhCpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" oninput="Utils.aplicarMascaraCPF(this)"></div>
+        <div class="rh-field"><label>CBO</label><input id="rhCbo" placeholder="Ex.: 411005"></div>
+        <div class="rh-field"><label>Centro de custo</label><input id="rhCentroCusto" placeholder="Ex.: SindEducação/ES"></div>
+        <div class="rh-field"><label>Departamento</label><input id="rhDepartamento" placeholder="Ex.: Administração"></div>
+        <div class="rh-field"><label>Filial</label><input id="rhFilial" placeholder="Ex.: 1"></div>
+        <div class="rh-field"><label>Admissão</label><input id="rhAdmissao" type="date"></div>
         <div class="rh-actions" style="align-items:end"><button class="rh-btn primary" onclick="rhSalvar()">Salvar</button></div>
       </div>
 
@@ -84,111 +120,1001 @@
       </div>
       <div class="rh-empty" id="rhVazio" style="display:none;">Nenhum colaborador cadastrado ainda.</div>
     </div>
+    </div>
 
+    <div id="rhDocsOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,18,48,.55);z-index:9999;align-items:center;justify-content:center;padding:20px;">
+      <div style="background:#fff;border-radius:16px;width:100%;max-width:560px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 30px 70px rgba(0,20,60,.3);overflow:hidden;">
+        <div style="background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));padding:18px 22px;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+          <div>
+            <div style="font-size:15px;font-weight:900;">📎 Documentos</div>
+            <div style="font-size:11.5px;color:rgba(255,255,255,.7);margin-top:2px;" id="rhDocsColabLabel">—</div>
+          </div>
+          <button type="button" onclick="rhFecharDocs()" style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;cursor:pointer;font-size:15px;">×</button>
+        </div>
+        <div style="padding:16px 22px;border-bottom:1px solid #eef2f7;display:flex;gap:8px;flex-wrap:wrap;align-items:end;">
+          <div class="rh-field" style="min-width:150px;"><label>Categoria</label><select id="rhDocCategoria"><option>Contrato</option><option>RG/CPF</option><option>Comprovante de residência</option><option>Comprovante de escolaridade</option><option>Exame admissional</option><option>Outro</option></select></div>
+          <div class="rh-field" style="flex:1;min-width:180px;"><label>Arquivo (PDF/JPG/PNG)</label><input type="file" id="rhDocArquivo" accept=".pdf,.jpg,.jpeg,.png"></div>
+          <button class="rh-btn primary" onclick="rhEnviarDocumento()" id="btnRhDocEnviar">Enviar</button>
+        </div>
+        <div style="padding:12px 22px;overflow:auto;flex:1;">
+          <div id="rhDocsLista" class="rh-mini">Carregando...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rh-tab-panel" id="rh-tab-tributaria">
+    <div class="rh-panel">
+      <div class="rh-panel-head">
+        <div>
+          <div class="rh-panel-title">Configuração tributária (INSS / IRRF / FGTS)</div>
+          <div class="rh-mini">Usada no cálculo da folha abaixo — confira com o contador do sindicato antes de gerar a folha oficial.</div>
+        </div>
+        <div class="rh-actions">
+          <button class="rh-btn primary" onclick="rhSalvarConfigTrib()">Salvar tabelas</button>
+        </div>
+      </div>
+      <div class="rh-alerta">⚠️ Tabelas de INSS e IRRF mudam todo ano por lei. Os valores aqui são só a última tabela conhecida no momento da implementação — verifique se ainda é a vigente antes de usar em pagamento real.</div>
+      <div style="padding:0 16px 16px;display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div>
+          <div style="font-size:12px;font-weight:900;color:var(--navy,#001f4d);margin-bottom:8px;">INSS (progressivo, por faixa)</div>
+          <div id="rhInssTabela"></div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:900;color:var(--navy,#001f4d);margin-bottom:8px;">IRRF (deixe "Até" em branco na última faixa = sem limite)</div>
+          <div id="rhIrrfTabela"></div>
+        </div>
+      </div>
+      <div class="rh-paybar">
+        <div class="rh-field"><label>Dedução por dependente (IRRF)</label><input id="rhDeducaoDependente" inputmode="decimal"></div>
+        <div class="rh-field"><label>FGTS patronal (%)</label><input id="rhFgtsPct" inputmode="decimal"></div>
+      </div>
+    </div>
+    </div>
+
+    <div class="rh-tab-panel" id="rh-tab-rubricas">
+    <div class="rh-panel">
+      <div class="rh-panel-head">
+        <div>
+          <div class="rh-panel-title">Catálogo de rubricas</div>
+          <div class="rh-mini">Itens que podem ser lançados como extra na folha (hora extra, adicional noturno, vale, etc.). Desativar não apaga lançamentos já gerados.</div>
+        </div>
+      </div>
+      <div class="rh-form" style="grid-template-columns:1fr 1.6fr 140px auto;">
+        <div class="rh-field"><label>Código</label><input id="rhRubCodigo" placeholder="Ex.: HE50"></div>
+        <div class="rh-field"><label>Descrição</label><input id="rhRubDescricao" placeholder="Ex.: Hora Extra 50%"></div>
+        <div class="rh-field"><label>Tipo</label><select id="rhRubTipo"><option>Provento</option><option>Desconto</option></select></div>
+        <div class="rh-actions" style="align-items:end"><button class="rh-btn primary" onclick="rhSalvarRubrica()">Adicionar</button></div>
+      </div>
+      <div class="rh-table-wrap">
+        <table class="rh-table">
+          <thead><tr><th>Código</th><th>Descrição</th><th>Tipo</th><th>Status</th><th>Ações</th></tr></thead>
+          <tbody id="rhRubricasTabela"></tbody>
+        </table>
+      </div>
+      <div class="rh-empty" id="rhRubricasVazio" style="display:none;">Nenhuma rubrica cadastrada.</div>
+    </div>
+    </div>
+
+    <div class="rh-tab-panel" id="rh-tab-folha">
     <div class="rh-panel">
       <div class="rh-panel-head">
         <div>
           <div class="rh-panel-title">Folha de pagamento</div>
-          <div class="rh-mini">Gera uma prévia por competência com base nos colaboradores ativos.</div>
+          <div class="rh-mini">Prepare a prévia, revise os dias trabalhados de cada colaborador (importante em férias/afastamento) e confirme.</div>
         </div>
         <div class="rh-actions">
-          <button class="rh-btn primary" onclick="rhGerarFolha()">Gerar folha</button>
           <button class="rh-btn" onclick="rhExportarFolhaCSV()">Exportar folha CSV</button>
+          <button class="rh-btn" onclick="rhEnviarTodosHolerites()" id="btnRhEnviarTodos">✉️ Enviar todos por e-mail</button>
+          <button class="rh-btn" style="border-color:#f3b6b6;color:#991b1b;" onclick="rhExcluirFolhaCompetencia()">Excluir folha desta competência</button>
         </div>
       </div>
+      <div class="rh-alerta">🧪 Quer testar sem afetar dados reais? Use uma competência fictícia (ex.: 2099-01), gere a folha normalmente e depois exclua com o botão acima. Atenção: gerar folha cria automaticamente uma Despesa — excluir a folha não cancela essa despesa, cancele manualmente na tela de Despesas se necessário.</div>
       <div class="rh-paybar">
         <div class="rh-field"><label>Competência</label><input id="rhCompetencia" type="month"></div>
-        <div class="rh-field"><label>INSS/encargos (%)</label><input id="rhEncargos" inputmode="decimal" value="0"></div>
-        <div class="rh-field"><label>Observação</label><input id="rhObsFolha" placeholder="Ex.: folha mensal"></div>
+        <div class="rh-field" style="flex:1;min-width:220px;"><label>Observação</label><input id="rhObsFolha" placeholder="Ex.: folha mensal"></div>
+        <div class="rh-actions" style="align-items:end"><button class="rh-btn primary" onclick="rhPrepararFolha()">1. Preparar prévia</button></div>
       </div>
+
+      <div id="rhFolhaPreviaWrap" style="display:none;">
+        <div class="rh-table-wrap">
+          <table class="rh-table">
+            <thead><tr><th>Colaborador</th><th>Status</th><th>Salário</th><th>Dependentes</th><th>Dias trabalhados</th><th>Dias no mês</th><th>Rubricas extras</th></tr></thead>
+            <tbody id="rhFolhaPreviaTabela"></tbody>
+          </table>
+        </div>
+        <div style="padding:14px 16px;display:flex;gap:8px;">
+          <button class="rh-btn primary" onclick="rhConfirmarFolha()">2. Confirmar e gravar folha</button>
+          <button class="rh-btn" onclick="rhCancelarPreviaFolha()">Cancelar</button>
+        </div>
+      </div>
+
       <div class="rh-totalbar">
         <div class="rh-total"><small>Colaboradores</small><strong id="rhFolhaQtd">0</strong></div>
         <div class="rh-total"><small>Bruto</small><strong id="rhFolhaBruto">R$ 0,00</strong></div>
-        <div class="rh-total"><small>Descontos</small><strong id="rhFolhaDescontos">R$ 0,00</strong></div>
+        <div class="rh-total"><small>INSS + IRRF</small><strong id="rhFolhaDescontos">R$ 0,00</strong></div>
         <div class="rh-total"><small>Líquido</small><strong id="rhFolhaLiquido">R$ 0,00</strong></div>
       </div>
       <div class="rh-table-wrap">
         <table class="rh-table">
-          <thead><tr><th>Colaborador</th><th>Cargo</th><th>Salário</th><th>Benefícios</th><th>Descontos</th><th>Encargos</th><th>Líquido</th></tr></thead>
+          <thead><tr><th>Colaborador</th><th>Cargo</th><th>Salário (prorata)</th><th>Benefícios</th><th>Rubricas extras</th><th>INSS</th><th>IRRF</th><th>FGTS patronal</th><th>Líquido</th><th>Holerite</th><th>E-mail</th><th>WhatsApp</th></tr></thead>
           <tbody id="rhFolhaTabela"></tbody>
         </table>
       </div>
       <div class="rh-empty" id="rhFolhaVazio">Gere a folha para visualizar os lançamentos.</div>
+    </div>
+    </div>
+
+    <!-- 13º, férias e rescisão: o que não cabe na folha mensal. Arquivo
+         separado (RHEventosAdmin.html) porque tem regra própria e é a
+         parte do RH com maior risco trabalhista — misturar com a folha
+         mensal neste arquivo dificultaria revisar qualquer uma das duas. -->
+    <div class="rh-tab-panel" id="rh-tab-eventos">
+      <?!= include('RHEventosAdmin'); ?>
+    </div>
+  </div>
+
+  <!-- Ferramentas administrativas — ações que rodam raramente (seed inicial,
+       correções pontuais de dados reais), separadas da barra do dia a dia. -->
+  <div id="rhModalAdminOverlay" class="of-modal-overlay">
+    <div class="of-modal" style="max-width:560px;">
+      <div class="of-modal-head" style="border-bottom:3px solid var(--gold,#C9A84C);">
+        <div>
+          <div class="of-modal-head-title">⚙️ Ferramentas administrativas</div>
+          <div class="of-modal-head-sub">Ações pontuais — rodam raramente, não fazem parte do uso do dia a dia.</div>
+        </div>
+        <button type="button" class="of-modal-close" onclick="rhFecharFerramentasAdmin()">×</button>
+      </div>
+      <div class="of-modal-body" style="display:flex;flex-direction:column;gap:10px;">
+        <button class="rh-btn" style="width:100%;text-align:left;" onclick="rhImportarSeedModelo()" id="btnRhSeedModelo">🌱 Importar os 7 do modelo</button>
+        <button class="rh-btn" style="width:100%;text-align:left;" onclick="rhAtualizarExtratoJunho2026()" id="btnRhAtualizarExtrato">💳 Atualizar salário/CPF (Extrato 06/2026)</button>
+        <button class="rh-btn" style="width:100%;text-align:left;" onclick="rhAplicarRubricasFixas()" id="btnRhRubricasFixas">🏷️ Aplicar rubricas fixas (Abono CCT, Quinquênio...)</button>
+        <button class="rh-btn" style="width:100%;text-align:left;" onclick="rhAplicarCentroCustoDepartamento()" id="btnRhCentroCustoDepto">🏢 Aplicar Centro de Custo/Departamento reais</button>
+        <button class="rh-btn red" style="width:100%;text-align:left;" onclick="rhCorrigirAbonoCCT()" id="btnRhCorrigirAbono">⚠️ Corrigir Abono CCT (não é recorrente)</button>
+
+        <!-- Parabéns automático: antes só dava para ligar/desligar pelo
+             editor do Apps Script, e as funções ficavam expostas sem
+             checagem de sessão. Agora é botão com permissão de administrador. -->
+        <div style="border-top:1px solid #e5e7eb;margin-top:6px;padding-top:10px;">
+          <div class="rh-mini" style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+            <span id="rhTriggerAnivDot" style="width:8px;height:8px;border-radius:50%;background:#cbd5e1;display:inline-block;"></span>
+            <span id="rhTriggerAnivTxt">verificando parabéns automático…</span>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="rh-btn" style="flex:1;" onclick="rhAtivarAniversarios()" id="btnRhAnivAtivar">🎂 Ativar parabéns automático</button>
+            <button class="rh-btn" onclick="rhDesativarAniversarios()" id="btnRhAnivDesativar">⏸️ Desativar</button>
+          </div>
+        </div>
+      </div>
+      <div class="of-modal-foot">
+        <button class="rh-btn" onclick="rhFecharFerramentasAdmin()">Fechar</button>
+      </div>
     </div>
   </div>
 
   <script>
   (function(){
     "use strict";
-    var KEY="sisgep_rh_colaboradores_v1";
-    var FOLHA_KEY="sisgep_rh_folha_atual_v1";
+    var RH_CACHE=[];
+    var RH_FOLHA_CACHE=[];
     var editId="";
     function g(id){return document.getElementById(id);}
-    function dados(){try{return JSON.parse(localStorage.getItem(KEY)||"[]");}catch(e){return[];}}
-    function gravar(lista){localStorage.setItem(KEY,JSON.stringify(lista||[]));}
+    function tokenSessao(){return typeof SISGEP_TOKEN_SESSAO!=="undefined"?SISGEP_TOKEN_SESSAO:"";}
+    function avisar(msg,tipo){if(typeof toast==="function")toast(msg,tipo);}
     function diasAte(data){if(!data)return 9999;var h=new Date();h.setHours(0,0,0,0);var d=new Date(data+"T00:00:00");return Math.ceil((d-h)/86400000);}
     function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]);});}
     function num(v){v=String(v||"").replace(/\./g,"").replace(",",".").replace(/[^\d.-]/g,"");var n=Number(v);return isFinite(n)?n:0;}
+    // Parser simples (ponto decimal, sem separador de milhar) — usado nas tabelas
+    // tributárias, que são valores técnicos digitados/exibidos em formato plano.
+    function numPlano(v){var n=parseFloat(String(v==null?"":v).replace(",","."));return isFinite(n)?n:0;}
     function moeda(v){return Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});}
     function statusClass(s){s=String(s||"").toLowerCase();if(s==="ativo")return"ok";if(s==="férias")return"info";if(s==="afastado")return"warn";return"off";}
     function pendencia(item){var d=diasAte(item.vencimento);if(d<0)return'<span class="rh-pill off">Vencido</span>';if(d<=30)return'<span class="rh-pill warn">Atenção</span>';return'<span class="rh-pill ok">Ok</span>';}
+
     window.rhRender=function(){
-      var lista=dados(), busca=String((g("rhBusca")||{}).value||"").toLowerCase();
+      var tb=g("rhTabela"); if(!tb)return;
+      tb.innerHTML='<tr><td colspan="8" class="rh-empty">⏳ Carregando colaboradores...</td></tr>';
+      google.script.run
+        .withSuccessHandler(function(lista){ RH_CACHE=lista||[]; rhPintar(); })
+        .withFailureHandler(function(e){
+          tb.innerHTML='<tr><td colspan="8" class="rh-empty">Erro ao carregar: '+esc((e&&e.message)||String(e||""))+'</td></tr>';
+        })
+        .listarColaboradoresRH(tokenSessao());
+    };
+
+    function rhPintar(){
+      var lista=RH_CACHE, busca=String((g("rhBusca")||{}).value||"").toLowerCase();
       var filtrada=lista.filter(function(i){return !busca || [i.nome,i.cargo,i.setor,i.status].join(" ").toLowerCase().indexOf(busca)>=0;});
       var tb=g("rhTabela"), vazio=g("rhVazio"); if(!tb)return;
       tb.innerHTML=filtrada.map(function(i){
-        return '<tr><td><strong>'+esc(i.nome)+'</strong></td><td>'+esc(i.cargo)+'</td><td>'+esc(i.setor)+'</td><td><span class="rh-pill '+statusClass(i.status)+'">'+esc(i.status)+'</span></td><td>'+moeda(i.salario)+'</td><td>'+esc(i.vencimento||"-")+'</td><td>'+pendencia(i)+'</td><td><button class="rh-btn" data-rh-editar="'+esc(i.id)+'">Editar</button> <button class="rh-btn" data-rh-excluir="'+esc(i.id)+'">Excluir</button></td></tr>';
+        return '<tr><td><strong>'+esc(i.nome)+'</strong></td><td>'+esc(i.cargo)+'</td><td>'+esc(i.setor)+'</td><td><span class="rh-pill '+statusClass(i.status)+'">'+esc(i.status)+'</span></td><td>'+moeda(i.salario)+'</td><td>'+esc(i.vencimento||"-")+'</td><td>'+pendencia(i)+'</td><td><button class="rh-btn" data-rh-editar="'+esc(i.id)+'">Editar</button> <button class="rh-btn" data-rh-docs="'+esc(i.id)+'" data-rh-docs-nome="'+esc(i.nome)+'">📎 Docs</button> <button class="rh-btn" data-rh-excluir="'+esc(i.id)+'">Excluir</button></td></tr>';
       }).join("");
       tb.querySelectorAll("[data-rh-editar]").forEach(function(btn){btn.addEventListener("click",function(){rhEditar(btn.getAttribute("data-rh-editar"));});});
+      tb.querySelectorAll("[data-rh-docs]").forEach(function(btn){btn.addEventListener("click",function(){rhAbrirDocs(btn.getAttribute("data-rh-docs"),btn.getAttribute("data-rh-docs-nome"));});});
       tb.querySelectorAll("[data-rh-excluir]").forEach(function(btn){btn.addEventListener("click",function(){rhExcluir(btn.getAttribute("data-rh-excluir"));});});
       if(vazio)vazio.style.display=filtrada.length?"none":"block";
       atualizarCards(lista);
-    };
+    }
+
     function atualizarCards(lista){
       var mes=new Date().getMonth()+1;
       var ativos=lista.filter(function(i){return i.status==="Ativo";}).length;
       var ferias=lista.filter(function(i){var d=diasAte(i.vencimento);return d>=0&&d<=45;}).length;
-      var docs=lista.filter(function(i){return diasAte(i.vencimento)<=30;}).length;
       var aniv=lista.filter(function(i){return i.aniversario&&Number(i.aniversario.slice(5,7))===mes;}).length;
       if(g("rhTotalAtivos"))g("rhTotalAtivos").textContent=ativos;
       if(g("rhFerias"))g("rhFerias").textContent=ferias;
-      if(g("rhDocs"))g("rhDocs").textContent=docs;
       if(g("rhAniversarios"))g("rhAniversarios").textContent=aniv;
+      rhAtualizarCardDocs();
     }
+
+    function rhAtualizarCardDocs(){
+      google.script.run
+        .withSuccessHandler(function(n){ if(g("rhDocs"))g("rhDocs").textContent=n||0; })
+        .withFailureHandler(function(){})
+        .contarDocumentosRH(tokenSessao());
+    }
+
     window.rhSalvar=function(){
-      var item={id:editId||String(Date.now()),nome:(g("rhNome")||{}).value||"",cargo:(g("rhCargo")||{}).value||"",setor:(g("rhSetor")||{}).value||"Administrativo",status:(g("rhStatus")||{}).value||"Ativo",vencimento:(g("rhVencimento")||{}).value||"",salario:num((g("rhSalario")||{}).value),beneficios:num((g("rhBeneficios")||{}).value),descontos:num((g("rhDescontos")||{}).value)};
-      if(!item.nome.trim()){alert("Informe o nome do colaborador.");return;}
-      var lista=dados(), idx=lista.findIndex(function(i){return i.id===item.id;});
-      if(idx>=0)lista[idx]=item;else lista.push(item);
-      gravar(lista); editId=""; rhLimparForm(); rhRender();
+      var item={id:editId||"",nome:(g("rhNome")||{}).value||"",cargo:(g("rhCargo")||{}).value||"",setor:(g("rhSetor")||{}).value||"Administrativo",status:(g("rhStatus")||{}).value||"Ativo",vencimento:(g("rhVencimento")||{}).value||"",salario:num((g("rhSalario")||{}).value),beneficios:num((g("rhBeneficios")||{}).value),descontos:num((g("rhDescontos")||{}).value),dependentes:Math.max(0,parseInt((g("rhDependentes")||{}).value||"0",10)||0),aniversario:(g("rhAniversario")||{}).value||"",email:(g("rhEmail")||{}).value||"",matricula:(g("rhMatricula")||{}).value||"",cbo:(g("rhCbo")||{}).value||"",centroCusto:(g("rhCentroCusto")||{}).value||"",departamento:(g("rhDepartamento")||{}).value||"",filial:(g("rhFilial")||{}).value||"",admissao:(g("rhAdmissao")||{}).value||"",cpf:(g("rhCpf")||{}).value||""};
+      if(!item.nome.trim()){avisar("Informe o nome do colaborador.","warn");return;}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao salvar.","err");return;}
+          avisar(r.mensagem||"Colaborador salvo!","ok");
+          editId=""; rhLimparForm(); rhRender();
+        })
+        .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+        .salvarColaboradorRH(item, tokenSessao());
     };
-    window.rhEditar=function(id){var i=dados().find(function(x){return x.id===id;});if(!i)return;editId=id;g("rhNome").value=i.nome||"";g("rhCargo").value=i.cargo||"";g("rhSetor").value=i.setor||"Administrativo";g("rhStatus").value=i.status||"Ativo";g("rhVencimento").value=i.vencimento||"";g("rhSalario").value=i.salario?String(i.salario).replace(".",","):"";g("rhBeneficios").value=i.beneficios?String(i.beneficios).replace(".",","):"";g("rhDescontos").value=i.descontos?String(i.descontos).replace(".",","):"";g("rhNome").focus();};
-    window.rhExcluir=function(id){if(!confirm("Excluir este cadastro?"))return;gravar(dados().filter(function(i){return i.id!==id;}));rhRender();};
-    window.rhLimparForm=function(){editId="";["rhNome","rhCargo","rhVencimento","rhSalario","rhBeneficios","rhDescontos"].forEach(function(id){if(g(id))g(id).value="";});if(g("rhSetor"))g("rhSetor").value="Administrativo";if(g("rhStatus"))g("rhStatus").value="Ativo";};
+
+    window.rhEditar=function(id){
+      var i=RH_CACHE.find(function(x){return x.id===id;}); if(!i)return;
+      editId=id;
+      g("rhNome").value=i.nome||"";g("rhCargo").value=i.cargo||"";g("rhSetor").value=i.setor||"Administrativo";g("rhStatus").value=i.status||"Ativo";g("rhVencimento").value=i.vencimento||"";g("rhSalario").value=i.salario?String(i.salario).replace(".",","):"";g("rhBeneficios").value=i.beneficios?String(i.beneficios).replace(".",","):"";g("rhDescontos").value=i.descontos?String(i.descontos).replace(".",","):"";g("rhDependentes").value=i.dependentes||0;g("rhAniversario").value=i.aniversario||"";g("rhEmail").value=i.email||"";g("rhMatricula").value=i.matricula||"";g("rhCbo").value=i.cbo||"";g("rhCentroCusto").value=i.centroCusto||"";g("rhDepartamento").value=i.departamento||"";g("rhFilial").value=i.filial||"";g("rhAdmissao").value=i.admissao||"";g("rhCpf").value=i.cpf||"";g("rhNome").focus();
+    };
+
+    window.rhExcluir=function(id){
+      if(!confirm("Excluir este cadastro?"))return;
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao excluir.","err");return;}
+          rhRender();
+        })
+        .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+        .excluirColaboradorRH(id, tokenSessao());
+    };
+
+    window.rhImportarSeedModelo=function(){
+      if(!confirm("Importar os 7 colaboradores reais extraídos do modelo de holerite (Agatha, Alexandre, Celismar, Fabiana, Frank, Karla, Marcelha)? Quem já estiver cadastrado (mesma matrícula) é ignorado — seguro rodar mais de uma vez. Ação exige perfil administrador."))return;
+      var btn=g("btnRhSeedModelo"); if(btn){btn.disabled=true;btn.textContent="Importando...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="🌱 Importar os 7 do modelo";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao importar.","err");return;}
+          var msg="Inseridos: "+(r.inseridos.length||0)+" · Ignorados (já cadastrados): "+(r.ignorados.length||0);
+          avisar(msg,"ok");
+          rhRender();
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="🌱 Importar os 7 do modelo";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .seedColaboradoresRH_ModeloFolha2025_publico(tokenSessao());
+    };
+
+    window.rhAtualizarExtratoJunho2026=function(){
+      if(!confirm("Atualizar SALÁRIO e CPF dos 7 colaboradores reais (por matrícula) com os valores da competência 06/2026, extraídos dos extratos da contabilidade? Isso SOBRESCREVE o salário e o CPF atualmente cadastrados para esses 7 — os demais dados (cargo, CBO, admissão etc.) não são alterados. Ação exige perfil administrador."))return;
+      var btn=g("btnRhAtualizarExtrato"); if(btn){btn.disabled=true;btn.textContent="Atualizando...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="💳 Atualizar salário/CPF (Extrato 06/2026)";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao atualizar.","err");return;}
+          var msg="Atualizados: "+(r.atualizados.length||0)+" · Não encontrados: "+(r.naoEncontrados.length||0);
+          avisar(msg,"ok");
+          rhRender();
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="💳 Atualizar salário/CPF (Extrato 06/2026)";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .atualizarColaboradoresRH_ExtratoJunho2026_publico(tokenSessao());
+    };
+
+    window.rhAplicarRubricasFixas=function(){
+      if(!confirm("Aplicar as rubricas fixas reais (Abono CCT, Quinquênio, Decênio, Insalubridade, Prêmio Mérito) dos 7 colaboradores? Elas passam a entrar automaticamente em toda folha nova gerada para essas pessoas, até serem desativadas. Diferença Salarial NÃO entra aqui — continua sendo digitada na hora, por ser ajuste pontual de um mês específico. Ação exige perfil administrador."))return;
+      var btn=g("btnRhRubricasFixas"); if(btn){btn.disabled=true;btn.textContent="Aplicando...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="🏷️ Aplicar rubricas fixas (Abono CCT, Quinquênio...)";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao aplicar rubricas fixas.","err");return;}
+          var msg="Aplicadas: "+(r.aplicadas.length||0)+" · Pendências: "+(r.naoEncontradas.length||0);
+          avisar(msg,"ok");
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="🏷️ Aplicar rubricas fixas (Abono CCT, Quinquênio...)";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .aplicarRubricasFixasReaisJunho2026_publico(tokenSessao());
+    };
+
+    window.rhAplicarCentroCustoDepartamento=function(){
+      if(!confirm("Aplicar o Centro de Custo real (\"SindEducação/ES\", único para todos) e o Departamento real (Administração/Limpeza/Homologadores/Atendimento) dos 7 colaboradores? Isso sobrescreve o que estiver hoje no campo Centro de Custo. Ação exige perfil administrador."))return;
+      var btn=g("btnRhCentroCustoDepto"); if(btn){btn.disabled=true;btn.textContent="Aplicando...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="🏢 Aplicar Centro de Custo/Departamento reais";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao aplicar.","err");return;}
+          var msg="Atualizados: "+(r.atualizados.length||0)+" · Não encontrados: "+(r.naoEncontrados.length||0);
+          avisar(msg,"ok");
+          rhRender();
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="🏢 Aplicar Centro de Custo/Departamento reais";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .aplicarCentroCustoEDepartamentoReal_publico(tokenSessao());
+    };
+
+    // Reajuste salarial por convenção/dissídio — só pede o percentual e
+    // a referência; o novo salário é calculado automaticamente (salário
+    // atual × (1+percentual/100)) pra cada colaborador ativo, com salário
+    // anterior/novo registrados em RH_HISTORICO_REAJUSTES.
+    window.rhReajusteSalarial=function(){
+      var percTxt=prompt("Percentual do reajuste (ex.: 5 para 5%, -2 para redução de 2%):");
+      if(percTxt===null)return;
+      var perc=num(percTxt);
+      if(!perc){avisar("Informe um percentual válido, diferente de zero.","warn");return;}
+      var referencia=prompt("Referência do reajuste (ex.: CCT 2026, Dissídio 08/2026):");
+      if(referencia===null)return;
+      if(!referencia.trim()){avisar("Informe a referência do reajuste.","warn");return;}
+      if(!confirm("Aplicar "+perc+"% de reajuste no salário de TODOS os colaboradores ativos (\""+referencia+"\")? O novo salário é calculado automaticamente. Ação exige perfil administrador e não tem desfazer automático — o histórico fica salvo, mas a reversão seria manual."))return;
+
+      var btn=g("btnRhReajuste"); if(btn){btn.disabled=true;btn.textContent="Aplicando...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="💹 Reajuste salarial (convenção)";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao aplicar reajuste.","err");return;}
+          avisar(r.mensagem||"Reajuste aplicado.","ok");
+          rhRender();
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="💹 Reajuste salarial (convenção)";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .aplicarReajusteSalarialRH(perc, referencia.trim(), tokenSessao());
+    };
+
+    // Verifica pela data de admissão quem tem direito a Quinquênio (5-9
+    // anos) ou Decênio (10+ anos) e oferece aplicar automaticamente as
+    // divergências — regra derivada dos dados reais, ver RHTempoServico.gs.
+    window.rhVerificarQuinquenioDecenio=function(){
+      var btn=g("btnRhQuinquenioDecenio"); if(btn){btn.disabled=true;btn.textContent="Verificando...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="📅 Verificar Quinquênio/Decênio";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao verificar.","err");return;}
+          var itens=r.itens||[];
+          var divergentes=itens.filter(function(i){return i.divergente;});
+          var semAdmissao=itens.filter(function(i){return i.semAdmissao;});
+          var texto="Verificação de tempo de serviço (Quinquênio/Decênio e além, até 35 anos)\n\n";
+          if(!divergentes.length){
+            texto+="Nenhuma divergência — todo mundo já está de acordo com o tempo de serviço.";
+          }else{
+            texto+=divergentes.length+" divergência(s) encontrada(s):\n\n"+divergentes.map(function(i){
+              return "• "+i.nome+" — "+i.anosServico+" anos de admissão — hoje: "+i.situacaoAtualLabel+" → deveria ser: "+i.elegibilidadeLabel;
+            }).join("\n");
+          }
+          if(semAdmissao.length){
+            texto+="\n\n"+semAdmissao.length+" colaborador(es) sem data de admissão cadastrada, não avaliado(s): "+semAdmissao.map(function(i){return i.nome;}).join(", ");
+          }
+          alert(texto);
+          if(divergentes.length && confirm("Aplicar as "+divergentes.length+" correção(ões) acima agora? Isso ativa/desativa rubricas fixas automaticamente, com valor calculado (5% a cada 5 anos, até 35 anos)."))
+            rhAplicarQuinquenioDecenio();
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="📅 Verificar Quinquênio/Decênio";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .verificarQuinquenioDecenioRH_publico(tokenSessao());
+    };
+
+    window.rhAplicarQuinquenioDecenio=function(){
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao aplicar.","err");return;}
+          avisar(r.mensagem||"Aplicado.","ok");
+        })
+        .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+        .aplicarQuinquenioDecenioRH_publico(tokenSessao());
+    };
+
+    // A CCT (CCTCore.gs) mostra que Abono CCT é pagamento ÚNICO ("pago
+    // até 03/07/2026"), não recorrente — eu tinha aplicado como rubrica
+    // fixa por engano. Isso só desativa a recorrência, não mexe no valor
+    // já pago em junho/2026.
+    window.rhCorrigirAbonoCCT=function(){
+      if(!confirm("Desativar o Abono CCT como rubrica fixa/recorrente? A CCT mostra que é um pagamento único (prazo 03/07/2026), não algo que se repete todo mês. O valor já pago em junho/2026 não é alterado."))return;
+      var btn=g("btnRhCorrigirAbono"); if(btn){btn.disabled=true;btn.textContent="Corrigindo...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="⚠️ Corrigir Abono CCT (não é recorrente)";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao corrigir.","err");return;}
+          avisar(r.mensagem||"Corrigido.","ok");
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="⚠️ Corrigir Abono CCT (não é recorrente)";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .corrigirAbonoCCTNaoRecorrente_publico(tokenSessao());
+    };
+
+    window.rhAbrirFerramentasAdmin=function(){var el=g("rhModalAdminOverlay");if(el)el.classList.add("aberto");rhAtualizarStatusAniversarios();};
+    window.rhFecharFerramentasAdmin=function(){var el=g("rhModalAdminOverlay");if(el)el.classList.remove("aberto");};
+
+    window.rhAtualizarStatusAniversarios=function(){
+      google.script.run
+        .withSuccessHandler(function(r){
+          var dot=g("rhTriggerAnivDot"), txt=g("rhTriggerAnivTxt");
+          if(!dot||!txt)return;
+          if(r&&r.ok&&r.instalado){dot.style.background="#0f8a5f";txt.textContent="parabéns automático ativo (~8h/dia)";}
+          else{dot.style.background="#cbd5e1";txt.textContent="parabéns automático desativado";}
+        })
+        .withFailureHandler(function(){})
+        .rh_statusTriggerAniversarios_publico(tokenSessao());
+    };
+
+    window.rhAtivarAniversarios=function(){
+      if(!confirm("Ativar o envio automático de parabéns de aniversário? O sistema verifica todo dia por volta das 8h e envia o e-mail em nome do sindicato para quem tem e-mail cadastrado."))return;
+      var btn=g("btnRhAnivAtivar"); if(btn){btn.disabled=true;btn.textContent="Ativando...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="🎂 Ativar parabéns automático";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao ativar.","err");return;}
+          avisar(r.mensagem||"Ativado.","ok");
+          rhAtualizarStatusAniversarios();
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="🎂 Ativar parabéns automático";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .rh_instalarTriggerAniversarios_publico(tokenSessao());
+    };
+
+    window.rhDesativarAniversarios=function(){
+      if(!confirm("Desativar o envio automático de parabéns?"))return;
+      var btn=g("btnRhAnivDesativar"); if(btn){btn.disabled=true;btn.textContent="...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="⏸️ Desativar";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao desativar.","err");return;}
+          avisar(r.mensagem||"Desativado.","ok");
+          rhAtualizarStatusAniversarios();
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="⏸️ Desativar";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .rh_removerTriggerAniversarios_publico(tokenSessao());
+    };
+
+    window.rhAtualizarStatusTriggerTempoServico=function(){
+      google.script.run
+        .withSuccessHandler(function(r){
+          var dot=g("rhTriggerTempoServicoDot"), txt=g("rhTriggerTempoServicoTxt");
+          if(!dot||!txt)return;
+          if(r&&r.ok&&r.instalado){dot.style.background="#0f8a5f";txt.textContent="automação ativa (~9h/dia)";}
+          else{dot.style.background="#cbd5e1";txt.textContent="automação desativada";}
+        })
+        .withFailureHandler(function(){})
+        .rh_statusTriggerQuinquenioDecenio_publico(tokenSessao());
+    };
+
+    window.rhAtivarAutoQuinquenioDecenio=function(){
+      if(!confirm("Ativar a verificação automática diária de Quinquênio/Decênio? Ela aplica sozinha as mudanças (ativa/desativa rubricas fixas) quando alguém completa 5 ou 10 anos de admissão, e avisa por e-mail (financeiro@sindeducacao.com) só quando encontra alguma mudança."))return;
+      var btn=g("btnRhAtivarAuto"); if(btn){btn.disabled=true;btn.textContent="Ativando...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="▶️ Ativar verificação automática";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao ativar.","err");return;}
+          avisar(r.mensagem||"Ativado.","ok");
+          rhAtualizarStatusTriggerTempoServico();
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="▶️ Ativar verificação automática";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .rh_instalarTriggerQuinquenioDecenio_publico(tokenSessao());
+    };
+
+    window.rhDesativarAutoQuinquenioDecenio=function(){
+      if(!confirm("Desativar a verificação automática diária de Quinquênio/Decênio?"))return;
+      var btn=g("btnRhDesativarAuto"); if(btn){btn.disabled=true;btn.textContent="...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="⏸️ Desativar";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao desativar.","err");return;}
+          avisar(r.mensagem||"Desativado.","ok");
+          rhAtualizarStatusTriggerTempoServico();
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="⏸️ Desativar";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .rh_removerTriggerQuinquenioDecenio_publico(tokenSessao());
+    };
+
+    window.rhLimparForm=function(){editId="";["rhNome","rhCargo","rhVencimento","rhSalario","rhBeneficios","rhDescontos","rhDependentes","rhAniversario","rhEmail","rhMatricula","rhCbo","rhCentroCusto","rhDepartamento","rhFilial","rhAdmissao","rhCpf"].forEach(function(id){if(g(id))g(id).value="";});if(g("rhSetor"))g("rhSetor").value="Administrativo";if(g("rhStatus"))g("rhStatus").value="Ativo";};
+
     function baixarCSV(nome,rows){var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c==null?"":c).replace(/"/g,'""')+'"';}).join(";");}).join("\n");var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download=nome;a.click();}
-    window.rhExportarCSV=function(){var rows=[["Nome","Cargo","Setor","Status","Vencimento","Salario","Beneficios","Descontos"]].concat(dados().map(function(i){return[i.nome,i.cargo,i.setor,i.status,i.vencimento,i.salario||0,i.beneficios||0,i.descontos||0];}));baixarCSV("sisgep-rh.csv",rows);};
-    function folhaAtual(){try{return JSON.parse(localStorage.getItem(FOLHA_KEY)||"[]");}catch(e){return[];}}
+    window.rhExportarCSV=function(){var rows=[["Nome","Cargo","Setor","Status","Vencimento","Salario","Beneficios","Descontos","Dependentes","Aniversario","Email","Matricula","CBO","CentroCusto","Departamento","Filial","Admissao","CPF"]].concat(RH_CACHE.map(function(i){return[i.nome,i.cargo,i.setor,i.status,i.vencimento,i.salario||0,i.beneficios||0,i.descontos||0,i.dependentes||0,i.aniversario||"",i.email||"",i.matricula||"",i.cbo||"",i.centroCusto||"",i.departamento||"",i.filial||"",i.admissao||"",i.cpf||""];}));baixarCSV("sisgep-rh.csv",rows);};
+
+    /* ==== Documentos por colaborador ==== */
+    var RH_DOC_COLAB_ATUAL="";
+    var RH_DOC_CATEGORIAS_ICONE={"Contrato":"📄","RG/CPF":"🪪","Comprovante de residência":"🏠","Comprovante de escolaridade":"🎓","Exame admissional":"🩺","Outro":"📎"};
+
+    window.rhAbrirDocs=function(colaboradorId,nome){
+      RH_DOC_COLAB_ATUAL=colaboradorId;
+      if(g("rhDocsColabLabel"))g("rhDocsColabLabel").textContent=nome||"—";
+      if(g("rhDocArquivo"))g("rhDocArquivo").value="";
+      var overlay=g("rhDocsOverlay"); if(overlay)overlay.style.display="flex";
+      rhCarregarDocs();
+    };
+    window.rhFecharDocs=function(){
+      var overlay=g("rhDocsOverlay"); if(overlay)overlay.style.display="none";
+      RH_DOC_COLAB_ATUAL="";
+    };
+
+    window.rhCarregarDocs=function(){
+      var box=g("rhDocsLista"); if(!box)return;
+      box.innerHTML="Carregando...";
+      google.script.run
+        .withSuccessHandler(function(lista){
+          if(!lista||!lista.length){box.innerHTML='<div class="rh-mini">Nenhum documento enviado ainda.</div>';return;}
+          box.innerHTML=lista.map(function(d){
+            var icone=RH_DOC_CATEGORIAS_ICONE[d.categoria]||"📎";
+            return '<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #eef2f7;">'
+              +'<div><div style="font-size:12.5px;font-weight:800;color:#0f172a;">'+icone+' '+esc(d.categoria)+'</div>'
+              +'<a href="'+esc(d.link)+'" target="_blank" style="font-size:11.5px;color:var(--blue,#1565C0);text-decoration:none;">'+esc(d.nome)+'</a>'
+              +'<div style="font-size:10.5px;color:#94a3b8;">'+esc(d.enviadoPor)+' · '+esc(d.enviadoEm)+'</div></div>'
+              +'<button class="rh-btn" data-rh-doc-excluir="'+esc(d.id)+'">Excluir</button></div>';
+          }).join("");
+          box.querySelectorAll("[data-rh-doc-excluir]").forEach(function(btn){btn.addEventListener("click",function(){rhExcluirDocumento(btn.getAttribute("data-rh-doc-excluir"));});});
+        })
+        .withFailureHandler(function(e){box.innerHTML='<div class="rh-mini">Erro ao carregar: '+esc((e&&e.message)||String(e||""))+'</div>';})
+        .listarDocumentosRH(RH_DOC_COLAB_ATUAL, tokenSessao());
+    };
+
+    window.rhEnviarDocumento=function(){
+      var input=g("rhDocArquivo");
+      var arquivo=input&&input.files&&input.files[0];
+      if(!arquivo){avisar("Escolha um arquivo.","warn");return;}
+      var categoria=(g("rhDocCategoria")||{}).value||"Outro";
+      var btn=g("btnRhDocEnviar"); btn.disabled=true; btn.textContent="Enviando...";
+      var reader=new FileReader();
+      reader.onload=function(e){
+        google.script.run
+          .withSuccessHandler(function(r){
+            btn.disabled=false; btn.textContent="Enviar";
+            if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao enviar.","err");return;}
+            avisar(r.mensagem||"Documento enviado!","ok");
+            input.value="";
+            rhCarregarDocs();
+            rhAtualizarCardDocs();
+          })
+          .withFailureHandler(function(err){
+            btn.disabled=false; btn.textContent="Enviar";
+            avisar("Erro: "+((err&&err.message)||String(err||"")),"err");
+          })
+          .uploadDocumentoRH({
+            colaboradorId: RH_DOC_COLAB_ATUAL,
+            base64: e.target.result.split(",")[1],
+            nome: arquivo.name,
+            tipo: arquivo.type||"application/pdf",
+            categoria: categoria
+          }, tokenSessao());
+      };
+      reader.readAsDataURL(arquivo);
+    };
+
+    window.rhExcluirDocumento=function(id){
+      if(!confirm("Excluir este documento?"))return;
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao excluir.","err");return;}
+          rhCarregarDocs();
+          rhAtualizarCardDocs();
+        })
+        .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+        .excluirDocumentoRH(id, tokenSessao());
+    };
+
     function setText(id,v){if(g(id))g(id).textContent=v;}
-    window.rhGerarFolha=function(){
-      var comp=(g("rhCompetencia")||{}).value||new Date().toISOString().slice(0,7);
-      var perc=num((g("rhEncargos")||{}).value);
-      var linhas=dados().filter(function(i){return i.status!=="Desligado";}).map(function(i){
-        var salario=Number(i.salario||0), beneficios=Number(i.beneficios||0), descontos=Number(i.descontos||0), encargos=salario*(perc/100), bruto=salario+beneficios, liquido=bruto-descontos;
-        return {competencia:comp,nome:i.nome,cargo:i.cargo,salario:salario,beneficios:beneficios,descontos:descontos,encargos:encargos,bruto:bruto,liquido:liquido};
+
+    /* ==== Catálogo de rubricas ==== */
+    var RH_RUBRICAS_CACHE=[];
+
+    window.rhCarregarRubricas=function(){
+      google.script.run
+        .withSuccessHandler(function(lista){ RH_RUBRICAS_CACHE=lista||[]; rhPintarRubricas(); })
+        .withFailureHandler(function(e){ avisar("Erro ao carregar rubricas: "+((e&&e.message)||String(e||"")),"err"); })
+        .listarRubricasRH(tokenSessao());
+    };
+
+    function rhPintarRubricas(){
+      var tb=g("rhRubricasTabela"), vazio=g("rhRubricasVazio"); if(!tb)return;
+      tb.innerHTML=RH_RUBRICAS_CACHE.map(function(r){
+        return '<tr><td><strong>'+esc(r.codigo)+'</strong></td><td>'+esc(r.descricao)+'</td><td><span class="rh-pill '+(r.tipo==="Desconto"?"off":"ok")+'">'+esc(r.tipo)+'</span></td>'
+          +'<td><span class="rh-pill '+(r.ativo?"ok":"warn")+'">'+(r.ativo?"Ativa":"Inativa")+'</span></td>'
+          +'<td><button class="rh-btn" data-rh-rub-toggle="'+esc(r.id)+'" data-rh-rub-ativo="'+(r.ativo?"1":"0")+'">'+(r.ativo?"Desativar":"Ativar")+'</button></td></tr>';
+      }).join("");
+      tb.querySelectorAll("[data-rh-rub-toggle]").forEach(function(btn){
+        btn.addEventListener("click",function(){
+          rhAlternarRubrica(btn.getAttribute("data-rh-rub-toggle"), btn.getAttribute("data-rh-rub-ativo")!=="1");
+        });
       });
-      localStorage.setItem(FOLHA_KEY,JSON.stringify(linhas)); rhRenderFolha(linhas);
+      if(vazio)vazio.style.display=RH_RUBRICAS_CACHE.length?"none":"block";
+    }
+
+    window.rhSalvarRubrica=function(){
+      var codigo=(g("rhRubCodigo")||{}).value||"", descricao=(g("rhRubDescricao")||{}).value||"", tipo=(g("rhRubTipo")||{}).value||"Provento";
+      if(!codigo.trim()||!descricao.trim()){avisar("Informe código e descrição da rubrica.","warn");return;}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao salvar rubrica.","err");return;}
+          avisar(r.mensagem||"Rubrica salva!","ok");
+          g("rhRubCodigo").value="";g("rhRubDescricao").value="";g("rhRubTipo").value="Provento";
+          rhCarregarRubricas();
+        })
+        .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+        .salvarRubricaRH({codigo:codigo,descricao:descricao,tipo:tipo}, tokenSessao());
     };
+
+    window.rhAlternarRubrica=function(id,ativo){
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao atualizar rubrica.","err");return;}
+          rhCarregarRubricas();
+        })
+        .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+        .alternarRubricaRH(id, ativo, tokenSessao());
+    };
+
+    var RH_PREVIA_ITENS=[];
+    var RH_PREVIA_RUBRICAS_EXTRAS={};
+
+    window.rhPrepararFolha=function(){
+      var comp=(g("rhCompetencia")||{}).value||new Date().toISOString().slice(0,7);
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao preparar folha.","err");return;}
+          if(!r.itens.length){avisar("Nenhum colaborador ativo para gerar a folha.","warn");return;}
+          RH_PREVIA_ITENS=r.itens;
+          RH_PREVIA_RUBRICAS_EXTRAS={};
+          rhRenderPreviaFolha(r.itens, r.diasMes);
+        })
+        .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+        .prepararFolhaRH(comp, tokenSessao());
+    };
+
+    function rhOpcoesRubricasHtml(){
+      return RH_RUBRICAS_CACHE.filter(function(r){return r.ativo;}).map(function(r){return '<option value="'+esc(r.id)+'">'+esc(r.codigo)+' — '+esc(r.descricao)+'</option>';}).join("");
+    }
+
+    function rhRenderPreviaFolha(itens, diasMes){
+      var wrap=g("rhFolhaPreviaWrap"), tb=g("rhFolhaPreviaTabela"); if(!wrap||!tb)return;
+      var opcoes=rhOpcoesRubricasHtml();
+      tb.innerHTML=itens.map(function(i,idx){
+        var avisoStatus=(i.status==="Férias"||i.status==="Afastado")?' <span class="rh-pill warn">'+esc(i.status)+'</span>':'';
+        return '<tr><td><strong>'+esc(i.nome)+'</strong>'+avisoStatus+'</td><td>'+esc(i.status)+'</td><td>'+moeda(i.salario)+'</td><td>'+(i.dependentes||0)+'</td>'
+          +'<td><input type="number" min="0" max="'+diasMes+'" value="'+i.diasTrabalhadosSugerido+'" data-rh-dias="'+idx+'" style="width:70px;height:30px;border:1.5px solid #dbe4ef;border-radius:7px;padding:0 8px;font-family:inherit;"></td>'
+          +'<td>'+diasMes+'</td>'
+          +'<td style="min-width:220px;"><div data-rh-rubex-chips="'+idx+'" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;"></div>'
+          +'<div style="display:flex;gap:4px;"><select data-rh-rubex-sel="'+idx+'" style="height:28px;border:1.5px solid #dbe4ef;border-radius:6px;font-size:11px;font-family:inherit;max-width:120px;">'+opcoes+'</select>'
+          +'<input type="text" inputmode="decimal" placeholder="Valor" data-rh-rubex-val="'+idx+'" style="width:60px;height:28px;border:1.5px solid #dbe4ef;border-radius:6px;padding:0 6px;font-size:11px;font-family:inherit;">'
+          +'<button class="rh-btn" data-rh-rubex-add="'+idx+'" style="height:28px;padding:0 8px;">+</button></div></td></tr>';
+      }).join("");
+      tb.querySelectorAll("[data-rh-rubex-add]").forEach(function(btn){
+        btn.addEventListener("click",function(){
+          var idx=btn.getAttribute("data-rh-rubex-add");
+          var sel=document.querySelector('[data-rh-rubex-sel="'+idx+'"]');
+          var valEl=document.querySelector('[data-rh-rubex-val="'+idx+'"]');
+          var rubricaId=sel?sel.value:"";
+          var valor=numPlano(valEl?valEl.value:"");
+          if(!rubricaId||!valor){avisar("Escolha a rubrica e informe o valor.","warn");return;}
+          if(!RH_PREVIA_RUBRICAS_EXTRAS[idx])RH_PREVIA_RUBRICAS_EXTRAS[idx]=[];
+          var rub=RH_RUBRICAS_CACHE.find(function(r){return r.id===rubricaId;});
+          RH_PREVIA_RUBRICAS_EXTRAS[idx].push({rubricaId:rubricaId,valor:valor,codigo:rub?rub.codigo:"",descricao:rub?rub.descricao:""});
+          if(valEl)valEl.value="";
+          rhRenderChipsRubex(idx);
+        });
+      });
+      itens.forEach(function(i,idx){ rhRenderChipsRubex(idx); });
+      wrap.style.display="block";
+    }
+
+    function rhRenderChipsRubex(idx){
+      var box=document.querySelector('[data-rh-rubex-chips="'+idx+'"]'); if(!box)return;
+      var lista=RH_PREVIA_RUBRICAS_EXTRAS[idx]||[];
+      box.innerHTML=lista.map(function(item,i2){
+        return '<span class="rh-pill info" style="cursor:pointer;" data-rh-rubex-rm="'+idx+':'+i2+'" title="Clique para remover">'+esc(item.codigo)+' '+moeda(item.valor)+' ×</span>';
+      }).join("");
+      box.querySelectorAll("[data-rh-rubex-rm]").forEach(function(chip){
+        chip.addEventListener("click",function(){
+          var partes=chip.getAttribute("data-rh-rubex-rm").split(":");
+          RH_PREVIA_RUBRICAS_EXTRAS[partes[0]].splice(Number(partes[1]),1);
+          rhRenderChipsRubex(partes[0]);
+        });
+      });
+    }
+
+    window.rhCancelarPreviaFolha=function(){
+      var wrap=g("rhFolhaPreviaWrap"); if(wrap)wrap.style.display="none";
+      RH_PREVIA_ITENS=[];
+      RH_PREVIA_RUBRICAS_EXTRAS={};
+    };
+
+    window.rhConfirmarFolha=function(){
+      var comp=(g("rhCompetencia")||{}).value||new Date().toISOString().slice(0,7);
+      var obs=(g("rhObsFolha")||{}).value||"";
+      var itens=RH_PREVIA_ITENS.map(function(item,idx){
+        var input=document.querySelector('[data-rh-dias="'+idx+'"]');
+        var dias=input?Number(input.value):item.diasTrabalhadosSugerido;
+        var extras=(RH_PREVIA_RUBRICAS_EXTRAS[idx]||[]).map(function(e){return {rubricaId:e.rubricaId,valor:e.valor};});
+        return { colaboradorId:item.colaboradorId, diasTrabalhados:isFinite(dias)?dias:item.diasTrabalhadosSugerido, rubricasExtras:extras };
+      });
+      /* Gerar folha SUBSTITUI a competência inteira: as linhas existentes são
+         apagadas e regravadas. Sem este aviso, regerar uma folha já conferida
+         descartava o trabalho anterior sem o operador perceber. O backend
+         guarda cópia em RH_FOLHA_HISTORICO, mas o aviso vem antes — desfazer
+         é sempre mais caro do que confirmar. */
+      function dispararGeracao(){
+        google.script.run
+          .withSuccessHandler(function(r){
+            if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao gerar folha.","err");return;}
+            RH_FOLHA_CACHE=r.linhas||[];
+            rhRenderFolha(RH_FOLHA_CACHE);
+            rhCancelarPreviaFolha();
+            avisar(r.mensagem||"Folha gerada!","ok");
+          })
+          .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+          .gerarFolhaRH(comp, itens, obs, tokenSessao());
+      }
+
+      google.script.run
+        .withSuccessHandler(function(c){
+          var n = (c && Number(c.existentes)) || 0;
+          if(n > 0 && !confirm(
+              "A competência "+comp+" já tem "+n+" lançamento(s) de folha.\n\n" +
+              "Gerar de novo SUBSTITUI todos eles. Qualquer ajuste manual feito depois da " +
+              "geração anterior será perdido.\n\n" +
+              "Uma cópia do que for substituído fica guardada na aba RH_FOLHA_HISTORICO.\n\n" +
+              "Confirma a substituição?")) return;
+          dispararGeracao();
+        })
+        /* Se a contagem falhar, não trava a geração — só avisa em termos gerais. */
+        .withFailureHandler(function(){
+          if(confirm("Não consegui verificar se a competência "+comp+" já tem folha gerada.\n\n" +
+                     "Se já tiver, gerar agora substitui os lançamentos existentes.\n\nContinuar?"))
+            dispararGeracao();
+        })
+        .contarFolhaCompetenciaRH(comp, tokenSessao());
+    };
+
+    window.rhCarregarFolha=function(){
+      var comp=(g("rhCompetencia")||{}).value||new Date().toISOString().slice(0,7);
+      google.script.run
+        .withSuccessHandler(function(lista){ RH_FOLHA_CACHE=lista||[]; rhRenderFolha(RH_FOLHA_CACHE); })
+        .withFailureHandler(function(){ rhRenderFolha([]); })
+        .listarFolhaRH(comp, tokenSessao());
+    };
+
     window.rhRenderFolha=function(linhas){
-      linhas=linhas||folhaAtual(); var tb=g("rhFolhaTabela"), vazio=g("rhFolhaVazio"); if(!tb)return;
-      var totalBruto=0,totalDesc=0,totalLiq=0;
-      tb.innerHTML=linhas.map(function(i){totalBruto+=i.bruto;totalDesc+=i.descontos;totalLiq+=i.liquido;return '<tr><td><strong>'+esc(i.nome)+'</strong></td><td>'+esc(i.cargo)+'</td><td>'+moeda(i.salario)+'</td><td>'+moeda(i.beneficios)+'</td><td>'+moeda(i.descontos)+'</td><td>'+moeda(i.encargos)+'</td><td><strong>'+moeda(i.liquido)+'</strong></td></tr>';}).join("");
+      linhas=linhas||RH_FOLHA_CACHE; var tb=g("rhFolhaTabela"), vazio=g("rhFolhaVazio"); if(!tb)return;
+      var totalBruto=0,totalImpostos=0,totalLiq=0;
+      tb.innerHTML=linhas.map(function(i){
+        totalBruto+=i.bruto; totalImpostos+=(i.inss+i.irrf); totalLiq+=i.liquido;
+        var extrasLiq=(i.proventosExtra||0)-(i.descontosExtra||0);
+        var extrasTxt=extrasLiq?((extrasLiq>0?"+":"")+moeda(extrasLiq)):"-";
+        return '<tr><td><strong>'+esc(i.nome)+'</strong></td><td>'+esc(i.cargo)+'</td><td>'+moeda(i.salarioProrata)+'</td><td>'+moeda(i.beneficios)+'</td><td>'+extrasTxt+'</td><td>'+moeda(i.inss)+'</td><td>'+moeda(i.irrf)+'</td><td>'+moeda(i.fgtsPatronal)+'</td><td><strong>'+moeda(i.liquido)+'</strong></td><td><button class="rh-btn" data-rh-holerite="'+esc(i.id)+'">📄 PDF</button></td><td><button class="rh-btn" data-rh-holerite-email="'+esc(i.id)+'">✉️</button></td><td><button class="rh-btn" data-rh-holerite-zap="'+esc(i.id)+'" data-rh-holerite-zap-nome="'+esc(i.nome)+'" data-rh-holerite-zap-comp="'+esc(i.competencia)+'">📱</button></td></tr>';
+      }).join("");
+      tb.querySelectorAll("[data-rh-holerite]").forEach(function(btn){btn.addEventListener("click",function(){rhBaixarHolerite(btn.getAttribute("data-rh-holerite"),btn);});});
+      tb.querySelectorAll("[data-rh-holerite-email]").forEach(function(btn){btn.addEventListener("click",function(){rhEnviarHoleriteEmail(btn.getAttribute("data-rh-holerite-email"),btn);});});
+      tb.querySelectorAll("[data-rh-holerite-zap]").forEach(function(btn){btn.addEventListener("click",function(){rhEnviarHoleriteWhatsapp(btn.getAttribute("data-rh-holerite-zap"),btn.getAttribute("data-rh-holerite-zap-nome"),btn.getAttribute("data-rh-holerite-zap-comp"),btn);});});
       if(vazio)vazio.style.display=linhas.length?"none":"block";
-      setText("rhFolhaQtd",String(linhas.length)); setText("rhFolhaBruto",moeda(totalBruto)); setText("rhFolhaDescontos",moeda(totalDesc)); setText("rhFolhaLiquido",moeda(totalLiq));
+      setText("rhFolhaQtd",String(linhas.length)); setText("rhFolhaBruto",moeda(totalBruto)); setText("rhFolhaDescontos",moeda(totalImpostos)); setText("rhFolhaLiquido",moeda(totalLiq));
     };
-    window.rhExportarFolhaCSV=function(){var linhas=folhaAtual();if(!linhas.length)rhGerarFolha(),linhas=folhaAtual();var rows=[["Competencia","Nome","Cargo","Salario","Beneficios","Descontos","Encargos","Bruto","Liquido"]].concat(linhas.map(function(i){return[i.competencia,i.nome,i.cargo,i.salario,i.beneficios,i.descontos,i.encargos,i.bruto,i.liquido];}));baixarCSV("sisgep-folha-pagamento.csv",rows);};
-    window.rhAbrirSofia=function(){if(typeof spIr==="function")spIr("sofia",null,{mensagem:"Preciso de apoio no RH: colaboradores, documentos, férias ou vencimentos."});};
+
+    window.rhBaixarHolerite=function(idLancamento,btn){
+      if(btn){btn.disabled=true;btn.textContent="Gerando...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="📄 PDF";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao gerar holerite.","err");return;}
+          try{
+            var byteChars=atob(r.base64);
+            var byteNumbers=new Array(byteChars.length);
+            for(var i=0;i<byteChars.length;i++)byteNumbers[i]=byteChars.charCodeAt(i);
+            var blob=new Blob([new Uint8Array(byteNumbers)],{type:"application/pdf"});
+            var url=URL.createObjectURL(blob);
+            var a=document.createElement("a"); a.href=url; a.download=r.nomeArquivo||"holerite.pdf"; a.click();
+            setTimeout(function(){URL.revokeObjectURL(url);},4000);
+          }catch(e){avisar("Erro ao baixar o PDF gerado.","err");}
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="📄 PDF";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .gerarHoleritePDF(idLancamento, tokenSessao());
+    };
+
+    // O holerite tem salário líquido/IRRF — dado sensível. Por isso o PDF
+    // nunca é salvo no Drive com link público (mesma decisão já tomada em
+    // gerarHoleritePDF/rh_montarBlobHolerite_). O WhatsApp "clique para
+    // conversar" (wa.me) não tem como anexar arquivo automaticamente — é
+    // uma limitação da própria URL scheme, não dá pra contornar sem API
+    // paga do WhatsApp Business (que o sistema não usa). Então aqui:
+    // baixa o PDF localmente (mesmo fluxo de rhBaixarHolerite) e abre o
+    // WhatsApp com uma mensagem pronta — quem está enviando anexa o
+    // arquivo que acabou de baixar, manualmente, na conversa.
+    window.rhEnviarHoleriteWhatsapp=function(idLancamento,nome,competencia,btn){
+      if(btn){btn.disabled=true;btn.textContent="...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="📱";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao gerar holerite.","err");return;}
+          try{
+            var byteChars=atob(r.base64);
+            var byteNumbers=new Array(byteChars.length);
+            for(var i=0;i<byteChars.length;i++)byteNumbers[i]=byteChars.charCodeAt(i);
+            var blob=new Blob([new Uint8Array(byteNumbers)],{type:"application/pdf"});
+            var url=URL.createObjectURL(blob);
+            var a=document.createElement("a"); a.href=url; a.download=r.nomeArquivo||"holerite.pdf"; a.click();
+            setTimeout(function(){URL.revokeObjectURL(url);},4000);
+          }catch(e){avisar("Erro ao baixar o PDF gerado.","err");return;}
+          var msg="Olá, "+nome+"! Segue seu holerite da competência "+competencia+" — acabei de baixar o arquivo, é só anexar aqui nesta conversa (arquivo: "+(r.nomeArquivo||"holerite.pdf")+").";
+          window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank");
+          avisar("PDF baixado — anexe o arquivo na conversa do WhatsApp que abriu.","ok");
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="📱";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .gerarHoleritePDF(idLancamento, tokenSessao());
+    };
+
+    window.rhEnviarHoleriteEmail=function(idLancamento,btn){
+      if(btn){btn.disabled=true;btn.textContent="...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="✉️";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao enviar e-mail.","err");return;}
+          avisar(r.mensagem||"Holerite enviado!","ok");
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="✉️";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .enviarHoleritePorEmail(idLancamento, tokenSessao());
+    };
+
+    window.rhEnviarTodosHolerites=function(){
+      if(!RH_FOLHA_CACHE.length){avisar("Gere a folha da competência antes de enviar.","warn");return;}
+      var comp=(g("rhCompetencia")||{}).value||"";
+      if(!confirm("Enviar por e-mail o holerite de todos os "+RH_FOLHA_CACHE.length+" colaborador(es) da competência "+comp+"? Quem não tiver e-mail cadastrado será listado à parte."))return;
+      var btn=g("btnRhEnviarTodos"); if(btn){btn.disabled=true;btn.textContent="Enviando...";}
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="✉️ Enviar todos por e-mail";}
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao enviar holerites.","err");return;}
+          avisar(r.mensagem||"Envio concluído!","ok");
+          if(r.falhas&&r.falhas.length)console.warn("Holerites não enviados:",r.falhas);
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="✉️ Enviar todos por e-mail";}
+          avisar("Erro: "+((e&&e.message)||String(e||"")),"err");
+        })
+        .enviarTodosHoleritesPorEmail(comp, tokenSessao());
+    };
+
+    window.rhExportarFolhaCSV=function(){
+      if(!RH_FOLHA_CACHE.length){avisar("Gere a folha da competência antes de exportar.","warn");return;}
+      var rows=[["Competencia","Nome","Cargo","DiasTrabalhados","DiasMes","SalarioProrata","Beneficios","Descontos","ProventosExtra","DescontosExtra","INSS","IRRF","FGTSPatronal","Bruto","Liquido"]].concat(RH_FOLHA_CACHE.map(function(i){return[i.competencia,i.nome,i.cargo,i.diasTrabalhados,i.diasMes,i.salarioProrata,i.beneficios,i.descontos,i.proventosExtra||0,i.descontosExtra||0,i.inss,i.irrf,i.fgtsPatronal,i.bruto,i.liquido];}));
+      baixarCSV("sisgep-folha-pagamento.csv",rows);
+    };
+
+    window.rhExcluirFolhaCompetencia=function(){
+      var comp=(g("rhCompetencia")||{}).value||"";
+      if(!comp){avisar("Escolha a competência a excluir.","warn");return;}
+      if(!confirm("Excluir TODOS os lançamentos de folha da competência "+comp+"? Isso não cancela despesas já geradas — apenas exclui a folha.  Ação exige perfil administrador."))return;
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao excluir folha.","err");return;}
+          avisar(r.mensagem||"Folha excluída!","ok");
+          rhCarregarFolha();
+        })
+        .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+        .excluirFolhaCompetenciaRH(comp, tokenSessao());
+    };
+
+    window.rhAbrirSofia=function(){
+      if(typeof spIr!=="function")return;
+      var mes=new Date().getMonth()+1;
+      var ativos=RH_CACHE.filter(function(i){return i.status==="Ativo";}).length;
+      var ferias=RH_CACHE.filter(function(i){return i.status==="Férias";}).length;
+      var afastados=RH_CACHE.filter(function(i){return i.status==="Afastado";}).length;
+      var aniv=RH_CACHE.filter(function(i){return i.aniversario&&Number(i.aniversario.slice(5,7))===mes;}).length;
+      var comp=(g("rhCompetencia")||{}).value||"";
+      var folhaTxt=RH_FOLHA_CACHE.length?("A folha de "+comp+" já foi gerada, com "+RH_FOLHA_CACHE.length+" lançamento(s)."):("A folha de "+comp+" ainda não foi gerada.");
+      var msg="Contexto do RH: "+ativos+" colaborador(es) ativo(s), "+ferias+" em férias, "+afastados+" afastado(s), "+aniv+" aniversariante(s) este mês. "+folhaTxt+" Preciso de apoio no RH.";
+      spIr("sofia",null,{mensagem:msg});
+    };
     window.rhGerarDocumento=function(){if(typeof spIr==="function")spIr("documentos",null,{aba:"novo"});};
-    window.initRH=function(){var c=g("rhCompetencia");if(c&&!c.value)c.value=new Date().toISOString().slice(0,7);rhRender();rhRenderFolha();};
+
+    /* ==== Configuração tributária (INSS/IRRF/FGTS) ==== */
+    function rhLinhaInss(idx,f){
+      return '<div class="rh-tribrow"><div><label>Até (R$)</label><input type="text" inputmode="decimal" value="'+f.ate+'" data-rh-inss-ate="'+idx+'"></div><div><label>Alíquota (%)</label><input type="text" inputmode="decimal" value="'+f.aliquota+'" data-rh-inss-pct="'+idx+'"></div></div>';
+    }
+    function rhLinhaIrrf(idx,f){
+      return '<div class="rh-tribrow irrf"><div><label>Até (R$)</label><input type="text" inputmode="decimal" value="'+(f.ate===""?"":f.ate)+'" placeholder="sem limite" data-rh-irrf-ate="'+idx+'"></div><div><label>Alíquota (%)</label><input type="text" inputmode="decimal" value="'+f.aliquota+'" data-rh-irrf-pct="'+idx+'"></div><div><label>Dedução (R$)</label><input type="text" inputmode="decimal" value="'+f.deducao+'" data-rh-irrf-ded="'+idx+'"></div></div>';
+    }
+
+    window.rhCarregarConfigTrib=function(){
+      google.script.run
+        .withSuccessHandler(function(cfg){
+          if(!cfg||cfg.ok!==true)return;
+          var inssHtml=cfg.inss.map(function(f,i){return rhLinhaInss(i,f);}).join("");
+          var irrfHtml=cfg.irrf.map(function(f,i){return rhLinhaIrrf(i,f);}).join("");
+          if(g("rhInssTabela"))g("rhInssTabela").innerHTML=inssHtml;
+          if(g("rhIrrfTabela"))g("rhIrrfTabela").innerHTML=irrfHtml;
+          if(g("rhDeducaoDependente"))g("rhDeducaoDependente").value=cfg.deducaoDependente;
+          if(g("rhFgtsPct"))g("rhFgtsPct").value=cfg.fgtsPatronalPct;
+        })
+        .withFailureHandler(function(e){avisar("Erro ao carregar tabelas tributárias: "+((e&&e.message)||String(e||"")),"err");})
+        .rhObterConfigTributaria(tokenSessao());
+    };
+
+    window.rhSalvarConfigTrib=function(){
+      var inss=[]; document.querySelectorAll("[data-rh-inss-ate]").forEach(function(el){
+        var idx=el.getAttribute("data-rh-inss-ate");
+        var pctEl=document.querySelector('[data-rh-inss-pct="'+idx+'"]');
+        inss.push({ ate:numPlano(el.value), aliquota:numPlano(pctEl?pctEl.value:0) });
+      });
+      var irrf=[]; document.querySelectorAll("[data-rh-irrf-ate]").forEach(function(el){
+        var idx=el.getAttribute("data-rh-irrf-ate");
+        var pctEl=document.querySelector('[data-rh-irrf-pct="'+idx+'"]');
+        var dedEl=document.querySelector('[data-rh-irrf-ded="'+idx+'"]');
+        irrf.push({ ate: el.value.trim()===""?"":numPlano(el.value), aliquota:numPlano(pctEl?pctEl.value:0), deducao:numPlano(dedEl?dedEl.value:0) });
+      });
+      var dedDep=numPlano((g("rhDeducaoDependente")||{}).value);
+      var fgtsPct=numPlano((g("rhFgtsPct")||{}).value);
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r||r.ok!==true){avisar((r&&r.mensagem)||"Erro ao salvar tabelas.","err");return;}
+          avisar(r.mensagem||"Tabelas salvas!","ok");
+        })
+        .withFailureHandler(function(e){avisar("Erro: "+((e&&e.message)||String(e||"")),"err");})
+        .rhSalvarConfigTributaria(inss, irrf, dedDep, fgtsPct, tokenSessao());
+    };
+
+    window.rhMudarTab=function(nome){
+      document.querySelectorAll(".rh-tab-btn").forEach(function(b){b.classList.remove("active");});
+      document.querySelectorAll(".rh-tab-panel").forEach(function(p){p.classList.remove("active");});
+      var painel=g("rh-tab-"+nome); if(painel)painel.classList.add("active");
+      document.querySelectorAll(".rh-tab-btn[data-rhtab='"+nome+"']").forEach(function(b){b.classList.add("active");});
+    };
+
+    window.initRH=function(){
+      var c=g("rhCompetencia");
+      if(c&&!c.value)c.value=new Date().toISOString().slice(0,7);
+      if(c&&!c.dataset.rhBound){ c.dataset.rhBound="1"; c.addEventListener("change", window.rhCarregarFolha); }
+      rhRender();
+      rhCarregarFolha();
+      rhCarregarConfigTrib();
+      rhCarregarRubricas();
+      rhAtualizarStatusTriggerTempoServico();
+      // A aba de eventos (13º/férias/rescisão) vem de RHEventosAdmin.html,
+      // incluído aqui dentro — quem manda no ciclo de vida dela é esta tela.
+      if(typeof window.initRHEventos==="function")window.initRHEventos();
+    };
     if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",window.initRH);else setTimeout(window.initRH,80);
   })();
   </script>

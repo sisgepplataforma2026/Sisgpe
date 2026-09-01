@@ -72,15 +72,46 @@ var EMAILS_FINANCEIRO_DESPESAS = [
   "secretaria@sindeducacao.com"
 ];
 
+// LANCADO_BANCO fica ENTRE o ciclo do documento e o pagamento: é o
+// estado "o Rogério já lançou no banco, falta a assinatura do presidente
+// e a compensação". Antes ele não existia e a despesa pulava de pendente
+// direto para paga — não dava para saber o que estava a caminho.
+// ATENÇÃO ao mexer aqui: todo lugar que classifica dinheiro por status
+// precisa conhecer o status novo, senão o valor some das somas em
+// silêncio (ver o switch de obterResumoDespesas_interno_).
 var STATUS_DESPESA = {
   PENDENTE:               "PENDENTE",
   AGUARDANDO_DOC:         "AGUARDANDO_DOC",
   DOC_RECEBIDO:           "DOC_RECEBIDO",
   ENVIADO_CONTABILIDADE:  "ENVIADO_CONTABILIDADE",
+  LANCADO_BANCO:          "LANCADO_BANCO",
   PAGO:                   "PAGO",
   CANCELADO:              "CANCELADO",
-  ERRO:                   "ERRO"
+  ESTORNADO:              "ESTORNADO"
 };
+
+var COLUNAS_APROVACAO_DESP = ["APROVADO_PARA_PAGAMENTO", "APROVADO_POR", "DATA_APROVACAO"];
+var COLUNAS_ESTORNO_DESP   = ["DATA_ESTORNO", "ESTORNADO_POR", "MOTIVO_ESTORNO"];
+var COLUNAS_PAGAMENTO_DESP = ["FORMA_PAGAMENTO", "NUMERO_NF"];
+
+/**
+ * Garante as colunas de aprovação/estorno/forma de pagamento na aba
+ * DESPESAS — mesmo padrão de finGarantirColunasDespesas_
+ * (CentralFinanceiraIA.gs): só adiciona a coluna que ainda não existe,
+ * idempotente, sem exigir setup manual.
+ */
+function garantirColunasAprovacaoDesp_() {
+  var aba = obterAbaDesp_();
+  var lastCol = Math.max(aba.getLastColumn(), 1);
+  var headers = aba.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h) { return String(h || "").trim(); });
+  COLUNAS_APROVACAO_DESP.concat(COLUNAS_ESTORNO_DESP).concat(COLUNAS_PAGAMENTO_DESP).forEach(function(col) {
+    if (headers.indexOf(col) === -1) {
+      var prox = aba.getLastColumn() + 1;
+      aba.getRange(1, prox).setValue(col);
+      headers.push(col);
+    }
+  });
+}
 
 // Tipos de lançamento
 var TIPO_LANCAMENTO_DESP = {
@@ -97,6 +128,10 @@ var CATEGORIAS_DESPESA = {
   MATERIAL:         "Material de Consumo",
   SERVICO:          "Serviço Avulso",
   BENEFICIOS:       "Beneficios",
+  // Gratificação mensal dos diretores. Categoria própria de propósito:
+  // permite somar e separar essa despesa no fechamento sem confundir
+  // com fornecedor. Gerada por VerbasDiretoria.gs.
+  VERBA_DIRETORIA:  "Verba de Diretoria",
   OUTRA:            "Outra"
 };
 
@@ -281,7 +316,14 @@ function garantirAbaPrestadoresDesp_() {
 // Aliases mantidos para não quebrar chamadas antigas do módulo de despesas.
 function garantirAbaFornecedoresDesp_() { return garantirAbaPrestadoresDesp_(); }
 
-function listarPrestadoresDesp(filtros) {
+function listarPrestadoresDesp(filtros, tokenSessao) {
+  exigirModulo_(tokenSessao, "financeiro", false);
+  return listarPrestadoresDesp_(filtros);
+}
+
+// Núcleo sem checagem de sessão — usado por automações internas
+// (ex.: geração mensal de lançamentos via trigger, sem usuário logado).
+function listarPrestadoresDesp_(filtros) {
   try {
     filtros = filtros || {};
 
@@ -477,7 +519,8 @@ function listarPrestadoresDesp(filtros) {
     };
   }
 }
-function salvarPrestadorDesp(payload) {
+function salvarPrestadorDesp(payload, tokenSessao) {
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     payload = payload || {};
     var nome = String(payload.nome || "").trim();
@@ -565,14 +608,11 @@ function formatarValorDesp_(valor) {
   }
   return v;
 }
-// Alias mantido para HTML antigo que ainda chame listarFornecedoresDesp.
-function listarFornecedoresDesp(filtros) { return listarPrestadoresDesp(filtros); }
-
-
 /**
  * Inativa um prestador (soft delete).
  */
-function excluirPrestadorDesp(rowIndex) {
+function excluirPrestadorDesp(rowIndex, tokenSessao) {
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     if (!rowIndex || rowIndex < 2) return { ok: false, mensagem: "Linha inválida." };
     var aba     = garantirAbaPrestadoresDesp_();
@@ -588,13 +628,11 @@ function excluirPrestadorDesp(rowIndex) {
   }
 }
 
-// Alias mantido para HTML antigo que ainda chame excluirFornecedorDesp.
-function excluirFornecedorDesp(rowIndex) { return excluirPrestadorDesp(rowIndex); }
-
 /**
  * Salva e-mail e WhatsApp rapidamente (card "Sem E-mail").
  */
-function salvarContatoPrestadorRapido(rowIndex, email, whatsapp) {
+function salvarContatoPrestadorRapido(rowIndex, email, whatsapp, tokenSessao) {
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     if (!rowIndex || rowIndex < 2) return { ok: false, mensagem: "Linha inválida." };
     if (!email) return { ok: false, mensagem: "Informe o e-mail." };
@@ -620,17 +658,13 @@ function salvarContatoPrestadorRapido(rowIndex, email, whatsapp) {
   }
 }
 
-// Alias mantido para HTML antigo que ainda chame salvarContatoFornecedorRapido.
-function salvarContatoFornecedorRapido(rowIndex, email, whatsapp) {
-  return salvarContatoPrestadorRapido(rowIndex, email, whatsapp);
-}
-
 /**
  * Lista prestadores sem e-mail cadastrado.
  */
-function listarPrestadoresSemEmailDesp() {
+function listarPrestadoresSemEmailDesp(tokenSessao) {
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
-    var resultado = listarPrestadoresDesp({});
+    var resultado = listarPrestadoresDesp({}, tokenSessao);
     var lista = (resultado.lista || []).filter(function(p) { return !p.email; });
     return {
       ok:          true,
@@ -643,9 +677,6 @@ function listarPrestadoresSemEmailDesp() {
     return { ok: false, mensagem: e.message, lista: [] };
   }
 }
-
-// Alias mantido para HTML antigo que ainda chame listarFornecedoresSemEmailDesp.
-function listarFornecedoresSemEmailDesp() { return listarPrestadoresSemEmailDesp(); }
 
 /* ================= CACHE DE PRESTADORES ================= */
 
@@ -668,7 +699,7 @@ function listarPrestadoresAtivosComCache_() {
         if (Array.isArray(parsed)) return parsed;
       } catch (eCache) {}
     }
-    var resultado = listarPrestadoresDesp({});
+    var resultado = listarPrestadoresDesp_({});
     var lista     = resultado.lista || [];
     try { cache.put(CACHE_KEY_PRESTADORES_DESP, JSON.stringify(lista), 300); } catch (ePut) {}
     return lista;
@@ -782,14 +813,30 @@ function agoraFormatadoDesp_() {
 }
 
 function obterPastaDesp_() {
-  var pastaId = (PropertiesService.getScriptProperties().getProperty("PASTA_DESPESAS_ID") || "").trim();
-  if (!pastaId) { try { pastaId = PASTA_RECIBO_ID;  } catch(e) {} }
-  if (!pastaId) { try { pastaId = PASTA_OFICIOS_ID; } catch(e) {} }
-  if (!pastaId) throw new Error("PASTA_DESPESAS_ID não configurado. Execute configurarPastaDespesas().");
+  var props   = PropertiesService.getScriptProperties();
+  var pastaId = (props.getProperty("PASTA_DESPESAS_ID") || "").trim();
 
-  var pasta = obterOuCriarSubpastaAno(pastaId);
-  if (!pasta) throw new Error("Pasta de despesas não encontrada ou sem permissão. ID: " + pastaId);
-  return pasta;
+  if (pastaId) {
+    try {
+      return obterOuCriarSubpastaAno(pastaId);
+    } catch (e) {
+      Logger.log("obterPastaDesp_: PASTA_DESPESAS_ID configurado (" + pastaId + ") está inválido/inacessível — recriando. " + e.message);
+    }
+  }
+
+  // Sem pasta configurada, ou configuração quebrada (pasta apagada/sem permissão):
+  // cria (ou reaproveita) uma pasta "Despesas" dedicada dentro da pasta-mãe dos
+  // Ofícios e grava o ID nas Propriedades do Script para as próximas chamadas.
+  var parentId = "";
+  try { parentId = PASTA_OFICIOS_ID; } catch (e) {}
+  if (!parentId) throw new Error("Não foi possível determinar uma pasta-mãe para criar a pasta de Despesas.");
+
+  var parent          = DriveApp.getFolderById(parentId);
+  var pastasDespesas   = parent.getFoldersByName("Despesas");
+  var pastaDespesas    = pastasDespesas.hasNext() ? pastasDespesas.next() : parent.createFolder("Despesas");
+  props.setProperty("PASTA_DESPESAS_ID", pastaDespesas.getId());
+
+  return obterOuCriarSubpastaAno(pastaDespesas.getId());
 }
 
 /* ================= LOCALIZAR / ATUALIZAR LINHA ================= */
@@ -810,6 +857,203 @@ function localizarLinhaDespesaPorId_(idDespesa) {
     }
   }
   return null;
+}
+
+function parseDataFlexivelDesp_(valor) {
+  if (!valor) return null;
+  if (valor instanceof Date) return isNaN(valor.getTime()) ? null : valor;
+  var s = String(valor).trim();
+  if (!s) return null;
+  var m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}):(\d{2}))?/);
+  if (m) {
+    var d = new Date(parseInt(m[3],10), parseInt(m[2],10)-1, parseInt(m[1],10),
+      m[4]?parseInt(m[4],10):0, m[5]?parseInt(m[5],10):0, m[6]?parseInt(m[6],10):0);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  var d2 = new Date(s);
+  return isNaN(d2.getTime()) ? null : d2;
+}
+
+// Sintetiza o histórico de uma despesa a partir dos campos já gravados na
+// própria linha (não depende de uma tabela de log separada) — cobre criação,
+// anexo, envio à contabilidade, aprovação, pagamento/confirmação e estorno.
+/**
+ * TRILHA ÚNICA DA DESPESA — cadastro, documento, aprovação, banco, pagamento,
+ * comprovante, contabilidade, estorno e cancelamento, na mesma lista.
+ *
+ * POR QUE ISTO EXISTE
+ * Havia duas trilhas para o mesmo registro: uma derivada dos campos da linha
+ * (cadastro, aprovação, NF, contabilidade) e outra na aba
+ * DESPESAS_PAGAMENTOS_LOG (banco, pagamento, comprovante). Cada tela mostrava
+ * metade da vida da despesa, e nenhuma respondia "o que aconteceu com este
+ * lançamento, do começo ao fim" — que é o que o item 15 do prompt mestre pede.
+ *
+ * FORMA DO EVENTO
+ * Cada item carrega os campos das DUAS telas de propósito — `titulo`/`data`
+ * para a tela de Despesas e `evento`/`dataHora` para a de Pagamentos. Assim a
+ * unificação não exigiu mexer em nenhuma das duas telas, que é o jeito de
+ * fazer isso sem risco.
+ *
+ * DUPLICIDADE
+ * Pagamento e estorno aparecem nos dois lados. Quando o log tem o evento, ele
+ * vence — é mais rico, traz de/para status, conta e forma de pagamento. O
+ * derivado da linha entra só quando o log não tem.
+ */
+function despTrilhaDespesa_(idDespesa) {
+  var despInfo = localizarLinhaDespesaPorId_(idDespesa);
+  if (!despInfo) return null;
+
+  var row = despInfo.row, headerMap = despInfo.headerMap;
+  function get(col) { var i = (headerMap[col] || 0) - 1; return i > -1 ? row[i] : ""; }
+  function getStr(col) { return String(get(col) || "").trim(); }
+
+  var eventos = [];
+  function add(tipo, titulo, dataRaw, detalhe, usuario, extra) {
+    var d = parseDataFlexivelDesp_(dataRaw);
+    if (!d) return;
+    var e = {
+      tipo: tipo,
+      titulo: titulo,
+      evento: (extra && extra.evento) || tipo,   // a tela de Pagamentos lê isto
+      data: formatarDataHoraBRDesp_(d),
+      dataHora: formatarDataHoraBRDesp_(d),      // e isto
+      detalhe: detalhe || "",
+      usuario: usuario || "",
+      origem: (extra && extra.origem) || "REGISTRO",
+      _ts: d.getTime()
+    };
+    if (extra) {
+      ["deStatus", "paraStatus", "valor", "dataReferencia", "formaPagamento",
+       "contaBancaria", "numeroDespesa", "fornecedor"].forEach(function (k) {
+        if (extra[k] !== undefined) e[k] = extra[k];
+      });
+    }
+    eventos.push(e);
+  }
+
+  /* ── 1. o que está gravado na própria linha ── */
+  add("CRIADO", "Lançamento criado", get("DATA_CADASTRO"), getStr("DESCRICAO"), getStr("CRIADO_POR"));
+  if (getStr("DATA_RECEBIMENTO_DOC")) add("DOC", "Documento fiscal anexado", get("DATA_RECEBIMENTO_DOC"), getStr("NOME_ARQUIVO"), "");
+  if (getStr("DATA_APROVACAO"))       add("APROVADO", "Aprovado para pagamento", get("DATA_APROVACAO"), "", getStr("APROVADO_POR"));
+  if (getStr("DATA_ENVIO_CONTABILIDADE")) add("ENVIADO", "Enviado à contabilidade", get("DATA_ENVIO_CONTABILIDADE"), "", "");
+
+  /* ── 2. o que está no log de pagamentos ── */
+  var doLog = {};
+  try {
+    if (typeof pagGarantirLog_ === "function") {
+      var sh = pagGarantirLog_();
+      if (sh.getLastRow() >= 2) {
+        sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues().forEach(function (l) {
+          if (String(l[2]) !== String(idDespesa)) return;
+          var nome = String(l[5] || "");
+          doLog[nome] = true;
+          add(nome, despRotuloEvento_(nome), l[1], String(l[13] || ""), String(l[12] || ""), {
+            evento: nome, origem: "LOG",
+            deStatus: String(l[6] || ""), paraStatus: String(l[7] || ""),
+            valor: String(l[8] || ""), dataReferencia: String(l[9] || ""),
+            formaPagamento: String(l[10] || ""), contaBancaria: String(l[11] || ""),
+            numeroDespesa: String(l[3] || ""), fornecedor: String(l[4] || "")
+          });
+        });
+      }
+    }
+  } catch (e) {
+    Logger.log("despTrilhaDespesa_ — log de pagamentos indisponível: " + e);
+  }
+
+  /* ── 3. o que só existe na linha SE o log não cobriu ── */
+  if (getStr("DATA_PAGAMENTO") && !doLog["PAGAMENTO_CONFIRMADO"]) {
+    var obs = getStr("OBSERVACOES");
+    var viaContab = obs.indexOf("Confirmado pela contabilidade") > -1;
+    add("PAGO", viaContab ? "Pagamento confirmado pela contabilidade" : "Marcado como pago",
+      get("DATA_PAGAMENTO"), viaContab ? obs : "", "");
+  }
+  if (getStr("DATA_ESTORNO") && !doLog["ESTORNADO"]) {
+    add("ESTORNADO", "Pagamento estornado", get("DATA_ESTORNO"), getStr("MOTIVO_ESTORNO"), getStr("ESTORNADO_POR"));
+  }
+  if (getStr("STATUS") === STATUS_DESPESA.CANCELADO && !doLog["CANCELADO"]) {
+    add("CANCELADO", "Despesa cancelada", get("ULTIMA_ATUALIZACAO"), getStr("OBSERVACOES"), "");
+  }
+
+  eventos.sort(function (a, b) { return b._ts - a._ts; });   // mais recente primeiro
+  eventos.forEach(function (e) { delete e._ts; });
+  return eventos;
+}
+
+/** Nome técnico do log → texto que a pessoa lê. */
+function despRotuloEvento_(evento) {
+  var mapa = {
+    LANCADO_BANCO:         "Lançado no banco",
+    LANCAMENTO_DESFEITO:   "Lançamento no banco desfeito",
+    PAGAMENTO_CONFIRMADO:  "Pagamento confirmado",
+    COMPROVANTE_ANEXADO:   "Comprovante anexado",
+    ENVIADO_CONTABILIDADE: "Enviado à contabilidade",
+    ESTORNADO:             "Pagamento estornado",
+    CANCELADO:             "Despesa cancelada"
+  };
+  return mapa[String(evento || "")] || String(evento || "").replace(/_/g, " ").toLowerCase();
+}
+
+function obterHistoricoDespesa(idDespesa, tokenSessao) {
+  exigirModulo_(tokenSessao, "financeiro", false);
+  try {
+    idDespesa = String(idDespesa || "").trim();
+    if (!idDespesa) return { ok: false, mensagem: "ID da despesa não informado." };
+    var trilha = despTrilhaDespesa_(idDespesa);
+    if (!trilha) return { ok: false, mensagem: "Despesa não encontrada." };
+    return { ok: true, historico: trilha };
+  } catch (e) { return { ok: false, mensagem: e.message }; }
+}
+
+/** Mantida só para não perder a versão derivada da linha, caso o log falhe. */
+function obterHistoricoDespesaSomenteLinha_(idDespesa, tokenSessao) {
+  try {
+    idDespesa = String(idDespesa || "").trim();
+    if (!idDespesa) return { ok: false, mensagem: "ID da despesa não informado." };
+    var despInfo = localizarLinhaDespesaPorId_(idDespesa);
+    if (!despInfo) return { ok: false, mensagem: "Despesa não encontrada." };
+
+    var row = despInfo.row; var headerMap = despInfo.headerMap;
+    function get(col) { var i = (headerMap[col] || 0) - 1; return i > -1 ? row[i] : ""; }
+    function getStr(col) { return String(get(col) || "").trim(); }
+
+    var eventos = [];
+    function add(tipo, titulo, dataRaw, detalhe, usuario) {
+      var d = parseDataFlexivelDesp_(dataRaw);
+      if (!d) return;
+      eventos.push({ tipo: tipo, titulo: titulo, data: formatarDataHoraBRDesp_(d), detalhe: detalhe || "", usuario: usuario || "", _ts: d.getTime() });
+    }
+
+    add("CRIADO", "Lançamento criado", get("DATA_CADASTRO"), getStr("DESCRICAO"), getStr("CRIADO_POR"));
+
+    if (getStr("DATA_RECEBIMENTO_DOC")) {
+      add("DOC", "Documento anexado", get("DATA_RECEBIMENTO_DOC"), getStr("NOME_ARQUIVO"), "");
+    }
+    if (getStr("DATA_ENVIO_CONTABILIDADE")) {
+      add("ENVIADO", "Enviado à contabilidade", get("DATA_ENVIO_CONTABILIDADE"), "", "");
+    }
+    if (getStr("DATA_APROVACAO")) {
+      add("STATUS", "Aprovado para pagamento", get("DATA_APROVACAO"), "", getStr("APROVADO_POR"));
+    }
+    if (getStr("DATA_PAGAMENTO")) {
+      var obs = getStr("OBSERVACOES");
+      var viaContab = obs.indexOf("Confirmado pela contabilidade") > -1;
+      add(viaContab ? "CONFIRMADO" : "PAGO",
+        viaContab ? "Pagamento confirmado pela contabilidade" : "Marcado como pago",
+        get("DATA_PAGAMENTO"), viaContab ? obs : "", "");
+    }
+    if (getStr("DATA_ESTORNO")) {
+      add("CANCELADO", "Pagamento estornado", get("DATA_ESTORNO"), getStr("MOTIVO_ESTORNO"), getStr("ESTORNADO_POR"));
+    }
+    if (getStr("STATUS") === STATUS_DESPESA.CANCELADO) {
+      add("CANCELADO", "Despesa cancelada", get("ULTIMA_ATUALIZACAO"), getStr("OBSERVACOES"), "");
+    }
+
+    eventos.sort(function(a, b) { return b._ts - a._ts; });
+    eventos.forEach(function(e) { delete e._ts; });
+
+    return { ok: true, historico: eventos };
+  } catch (e) { return { ok: false, mensagem: e.message }; }
 }
 
 function atualizarCamposDespesa_(idDespesa, campos) {
@@ -837,10 +1081,23 @@ function atualizarStatusDespesa_(idDespesa, novoStatus, observacao, extras) {
 
 function gerarTokenFornecedorDespesa_(idDespesa) {
   var token = Utilities.getUuid().replace(/-/g, "");
+  var expira = new Date().getTime() + (30 * 24 * 60 * 60 * 1000);
   PropertiesService.getScriptProperties().setProperty(
     "TOKEN_FORN_DESP_" + token,
-    JSON.stringify({ idDespesa: idDespesa, criado: new Date().getTime(), expira: new Date().getTime() + (30 * 24 * 60 * 60 * 1000) })
+    JSON.stringify({ idDespesa: idDespesa, criado: new Date().getTime(), expira: expira })
   );
+
+  /* Registro do link (item 16.6). Funil único de criação — todo link de
+   * fornecedor nasce aqui, então um ponto cobre todos os pontos de envio. */
+  try {
+    if (typeof compart_registrar_ === "function") {
+      compart_registrar_({
+        token: token, tipo: "NF_FORNECEDOR", referencia: idDespesa,
+        validade: new Date(expira)
+      });
+    }
+  } catch (e) { Logger.log("[compart] registro falhou (link seguiu): " + e.message); }
+
   return token;
 }
 
@@ -850,16 +1107,44 @@ function buscarTokenFornecedorDespesa_(token) {
     if (!raw) return null;
     var dados = JSON.parse(raw);
     if (new Date().getTime() > dados.expira) return null;
+
+    /* É AQUI que a revogação vira realidade. Este é o funil por onde todo
+     * acesso público de fornecedor passa; devolver null faz o link parar de
+     * abrir. Sem esta linha, o botão "revogar" da tela mudaria um status e
+     * nada mais — controle de mentira. */
+    /* Try PRÓPRIO, e não é detalhe: dentro do try externo, uma falha aqui
+     * cairia no catch que devolve null — e TODOS os links parariam de abrir
+     * por causa de um problema de leitura da planilha. O teste t21 pegou
+     * exatamente isso: eu havia documentado que a checagem erra para o lado
+     * do acesso, e o código fazia o contrário. */
+    try {
+      if (typeof compart_revogado_ === "function" && compart_revogado_(token)) return null;
+      if (typeof compart_marcarUsado_ === "function") compart_marcarUsado_(token);
+    } catch (eRev) {
+      Logger.log("[compart] checagem de revogacao falhou — link mantido: " + eRev.message);
+    }
+
     return dados;
   } catch (e) { return null; }
 }
 
 function gerarTokenContabilidadeDespesa_(idDespesa) {
   var token = Utilities.getUuid().replace(/-/g, "");
+  var expira = new Date().getTime() + (60 * 24 * 60 * 60 * 1000);
   PropertiesService.getScriptProperties().setProperty(
     "TOKEN_CONT_DESP_" + token,
-    JSON.stringify({ idDespesa: idDespesa, criado: new Date().getTime(), expira: new Date().getTime() + (60 * 24 * 60 * 60 * 1000) })
+    JSON.stringify({ idDespesa: idDespesa, criado: new Date().getTime(), expira: expira })
   );
+
+  try {
+    if (typeof compart_registrar_ === "function") {
+      compart_registrar_({
+        token: token, tipo: "CONTABILIDADE", referencia: idDespesa,
+        validade: new Date(expira)
+      });
+    }
+  } catch (e) { Logger.log("[compart] registro falhou (link seguiu): " + e.message); }
+
   return token;
 }
 
@@ -869,6 +1154,19 @@ function buscarTokenContabilidadeDespesa_(token) {
     if (!raw) return null;
     var dados = JSON.parse(raw);
     if (new Date().getTime() > dados.expira) return null;
+
+    /* Try PRÓPRIO, e não é detalhe: dentro do try externo, uma falha aqui
+     * cairia no catch que devolve null — e TODOS os links parariam de abrir
+     * por causa de um problema de leitura da planilha. O teste t21 pegou
+     * exatamente isso: eu havia documentado que a checagem erra para o lado
+     * do acesso, e o código fazia o contrário. */
+    try {
+      if (typeof compart_revogado_ === "function" && compart_revogado_(token)) return null;
+      if (typeof compart_marcarUsado_ === "function") compart_marcarUsado_(token);
+    } catch (eRev) {
+      Logger.log("[compart] checagem de revogacao falhou — link mantido: " + eRev.message);
+    }
+
     return dados;
   } catch (e) { return null; }
 }
@@ -886,7 +1184,78 @@ function invalidarTokenDesp_(chaveCompleta) {
  *
  * Para despesa AVULSA: prestadorNome é texto livre, sem vínculo com cadastro.
  */
-function registrarLancamentoDespesa(dados) {
+/**
+ * Ponto de entrada chamado pela tela (Scripts_Despesas.html) — exige sessão
+ * válida antes de gravar qualquer despesa manual/avulsa.
+ */
+// SEM trava de modulo, de proposito: e a PONTE que o RH usa para lancar
+// a despesa da folha (rh_registrarDespesaFolha_), dos eventos de 13o/
+// ferias/rescisao e das verbas de diretoria. Exigir o modulo Financeiro
+// aqui faria a folha salvar e o lancamento sumir em silencio, porque a
+// chamada e best-effort dentro de try/catch. Sessao continua exigida.
+/**
+ * Valor de despesa tem que ser maior que zero.
+ *
+ * Zero entra na fila, aparece no relatório e não significa nada. Negativo é
+ * pior: distorce todos os totais em silêncio, porque a soma continua somando.
+ * Se o caso for devolução ou estorno, existe estornarDespesa — que registra
+ * motivo e mantém o histórico. Achado por teste em 2026-08-06.
+ *
+ * Aceita "1.234,56", "1234.56" e número, porque é isso que chega da tela.
+ */
+function despValorValido_(valor) {
+  if (valor === null || valor === undefined || valor === "") {
+    return { ok: false, mensagem: "Informe o valor da despesa." };
+  }
+  var n;
+  if (typeof valor === "number") {
+    n = valor;
+  } else {
+    var txt = String(valor).replace(/[^\d,.-]/g, "");
+    // "1.234,56" → tira o ponto de milhar e troca a vírgula por ponto.
+    if (txt.indexOf(",") > -1) txt = txt.replace(/\./g, "").replace(",", ".");
+    n = Number(txt);
+  }
+  if (!isFinite(n)) return { ok: false, mensagem: "Valor inválido." };
+  if (n === 0)      return { ok: false, mensagem: "O valor da despesa não pode ser zero." };
+  if (n < 0)        return { ok: false, mensagem: "O valor da despesa não pode ser negativo. Para devolver ou reverter um pagamento, use o estorno." };
+  return { ok: true, valor: n };
+}
+
+function registrarLancamentoDespesa(dados, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
+  dados = dados || {};
+
+  var checagemValor = despValorValido_(dados.valor);
+  if (!checagemValor.ok) return { ok: false, mensagem: checagemValor.mensagem };
+
+  // Duplicidade só é checada em lançamento manual/avulso — o recorrente
+  // automático já tem sua própria checagem (jaExisteLancamentoMesDesp_)
+  // antes de chegar aqui, e "duplicar despesa" existe justamente pra criar
+  // uma cópia de propósito, então não faz sentido bloquear ali.
+  var ehAvulso = String(dados.tipoLancamento || "").trim() === TIPO_LANCAMENTO_DESP.AVULSO;
+  if (ehAvulso && !dados.confirmarDuplicidade) {
+    var jaExiste = jaExisteLancamentoDuplicadoAvulsoDesp_(dados.prestadorNome, dados.dataVencimento, dados.valor);
+    if (jaExiste) {
+      return {
+        ok: false,
+        duplicado: true,
+        mensagem: "Já existe uma despesa com o mesmo fornecedor, valor e vencimento. Envie novamente para confirmar mesmo assim."
+      };
+    }
+  }
+
+  return registrarLancamentoDespesa_(dados);
+}
+
+/**
+ * Lógica interna de gravação — sem checagem de sessão própria, porque
+ * também é chamada por rotinas automáticas/em lote (gerarLancamentosAutomaticos_,
+ * gerarDespesasEmLote, duplicarDespesa) que já validam (ou não precisam
+ * validar, por serem disparadas por trigger) antes de chegar aqui. Nunca
+ * exponha esta função (com underscore) direto a uma tela.
+ */
+function registrarLancamentoDespesa_(dados) {
   try {
     dados = dados || {};
     function limpar(v) { return String(v || "").trim(); }
@@ -906,6 +1275,10 @@ function registrarLancamentoDespesa(dados) {
     var quemAgendou    = limpar(dados.quemAgendou);
     var tipoDoc        = limpar(dados.tipoDoc);
     var observacoes    = limpar(dados.observacoes);
+    var centroCusto    = limpar(dados.centroCusto);
+    var projetoId      = limpar(dados.projetoId);
+    var formaPagamento = limpar(dados.formaPagamento);
+    var numeroNf       = limpar(dados.numeroNf);
 
     var tokenFornecedor    = gerarTokenFornecedorDespesa_(idDespesa);
     var tokenContabilidade = gerarTokenContabilidadeDespesa_(idDespesa);
@@ -913,6 +1286,12 @@ function registrarLancamentoDespesa(dados) {
 
     var linkFornecedor    = baseUrl + "?page=pub-nf-despesa&token="       + encodeURIComponent(tokenFornecedor);
     var linkContabilidade = baseUrl + "?page=pub-contabil-despesa&token=" + encodeURIComponent(tokenContabilidade);
+
+    // Garante que as colunas de Centro de Custo/Projeto existem na aba —
+    // essa estrutura já existia (CentralFinanceiraIA.gs) mas dependia de
+    // alguém rodar setupCentralFinanceiraIA() manualmente antes. Idempotente.
+    if (typeof finGarantirColunasDespesas_ === "function") finGarantirColunasDespesas_();
+    garantirColunasAprovacaoDesp_();
 
     var aba     = obterAbaDesp_();
     var headers = aba.getRange(1, 1, 1, aba.getLastColumn()).getValues()[0];
@@ -944,6 +1323,10 @@ function registrarLancamentoDespesa(dados) {
         case "CRIADO_POR":          novaLinha.push(Session.getActiveUser().getEmail()); break;
         case "OBSERVACOES":         novaLinha.push(observacoes);    break;
         case "ULTIMA_ATUALIZACAO":  novaLinha.push(agoraFormatadoDesp_()); break;
+        case "CENTRO_CUSTO":        novaLinha.push(centroCusto);    break;
+        case "PROJETO_ID":          novaLinha.push(projetoId);      break;
+        case "FORMA_PAGAMENTO":     novaLinha.push(formaPagamento); break;
+        case "NUMERO_NF":           novaLinha.push(numeroNf);       break;
         default:                    novaLinha.push("");
       }
     });
@@ -963,7 +1346,7 @@ function registrarLancamentoDespesa(dados) {
     };
 
   } catch (erro) {
-    Logger.log("Erro registrarLancamentoDespesa: " + erro.message);
+    Logger.log("Erro registrarLancamentoDespesa_: " + erro.message);
     return { ok: false, mensagem: erro.message };
   }
 }
@@ -975,7 +1358,8 @@ function registrarLancamentoDespesa(dados) {
  * sem depender do portal do fornecedor.
  * dadosUpload: { idDespesa, arquivos: [{base64, nome, tipo}], obs: "" }
  */
-function uploadDocumentoManual(dadosUpload) {
+function uploadDocumentoManual(dadosUpload, tokenSessao) {
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     dadosUpload   = dadosUpload || {};
     var idDespesa = String(dadosUpload.idDespesa || "").trim();
@@ -998,9 +1382,10 @@ function uploadDocumentoManual(dadosUpload) {
     var numero      = get("NUMERO_DESPESA");
     var statusAtual = get("STATUS");
 
-    // Não permite sobrescrever se já enviado à contabilidade ou pago
-    if (statusAtual === STATUS_DESPESA.ENVIADO_CONTABILIDADE || statusAtual === STATUS_DESPESA.PAGO) {
-      return { ok: false, mensagem: "Despesa já enviada à contabilidade ou paga. Não é possível substituir o documento." };
+    // Não permite anexar em despesa já enviada, paga, cancelada ou estornada
+    if (statusAtual === STATUS_DESPESA.ENVIADO_CONTABILIDADE || statusAtual === STATUS_DESPESA.PAGO ||
+        statusAtual === STATUS_DESPESA.CANCELADO || statusAtual === STATUS_DESPESA.ESTORNADO) {
+      return { ok: false, mensagem: "Não é possível anexar documento a uma despesa enviada à contabilidade, paga, cancelada ou estornada." };
     }
 
     var pasta      = obterPastaDesp_();
@@ -1102,7 +1487,7 @@ function gerarLancamentosAutomaticos_() {
       var ehVariavel = !valorBruto || valorBruto.indexOf("vari") > -1 || valorBruto.indexOf("cart") > -1;
       var valor      = ehVariavel ? "variável" : String(forn.valor || "").trim();
 
-      var resultado = registrarLancamentoDespesa({
+      var resultado = registrarLancamentoDespesa_({
         tipoLancamento: TIPO_LANCAMENTO_DESP.RECORRENTE,
         categoria:      forn.categoria || CATEGORIAS_DESPESA.FORNECEDOR_FIXO,
         prestadorNome:  nome,
@@ -1150,6 +1535,38 @@ function jaExisteLancamentoMesDesp_(prestadorNome, dataVencimento) {
   } catch (e) { return false; }
 }
 
+/**
+ * Duplicidade de lançamento MANUAL/avulso: mesmo fornecedor + mesmo
+ * vencimento + mesmo valor, numa despesa ainda não cancelada. Mais
+ * rígido que jaExisteLancamentoMesDesp_ (que não olha valor) de propósito
+ * — um mesmo fornecedor pode ter mais de uma despesa legítima no mês,
+ * só não a mesma despesa duas vezes.
+ */
+function jaExisteLancamentoDuplicadoAvulsoDesp_(prestadorNome, dataVencimento, valor) {
+  try {
+    var aba = obterAbaDesp_();
+    if (aba.getLastRow() < 2) return false;
+    var dados     = aba.getDataRange().getValues();
+    var headers   = dados[0].map(function(h) { return String(h || "").trim(); });
+    var idxNome   = headers.indexOf("PRESTADOR_NOME");
+    var idxVenc   = headers.indexOf("DATA_VENCIMENTO");
+    var idxValor  = headers.indexOf("VALOR");
+    var idxStatus = headers.indexOf("STATUS");
+    var nomeNorm  = normalizarTextoDesp_(prestadorNome);
+    var dataAlvo  = formatarDataBRDesp_(dataVencimento);
+    var valorAlvo = String(valor || "").trim();
+    for (var i = 1; i < dados.length; i++) {
+      var status = String(dados[i][idxStatus] || "").trim();
+      if (status === STATUS_DESPESA.CANCELADO) continue;
+      var nomeL    = normalizarTextoDesp_(dados[i][idxNome] || "");
+      var vencNorm = formatarDataBRDesp_(String(dados[i][idxVenc] || "").trim());
+      var valorL   = String(dados[i][idxValor] || "").trim();
+      if (nomeL === nomeNorm && vencNorm === dataAlvo && valorL === valorAlvo) return true;
+    }
+    return false;
+  } catch (e) { return false; }
+}
+
 /* ================= TRIGGER D-5 ================= */
 
 function verificarEDispararAlertasD5() {
@@ -1158,6 +1575,7 @@ function verificarEDispararAlertasD5() {
 
     gerarLancamentosAutomaticos_();
     recalcularStatusVencimentosDesp_();
+    dispararAlertaVencimentoPagamentoInterno_();
 
     var aba     = obterAbaDesp_();
     var lastRow = aba.getLastRow();
@@ -1181,8 +1599,12 @@ function verificarEDispararAlertasD5() {
       var jaAlertou = String(row[(headerMap["DATA_ALERTA_D5"]  || 0) - 1] || "").trim();
 
       if (!idDesp || !venc) { ignorados++; continue; }
+      // LANCADO_BANCO também não recebe cobrança de documento: o
+      // pagamento já está no banco, mandar "envie sua nota fiscal" nesse
+      // ponto confunde o fornecedor e não muda nada no fluxo.
       if (status === STATUS_DESPESA.PAGO || status === STATUS_DESPESA.CANCELADO ||
-          status === STATUS_DESPESA.DOC_RECEBIDO || status === STATUS_DESPESA.ENVIADO_CONTABILIDADE) { ignorados++; continue; }
+          status === STATUS_DESPESA.DOC_RECEBIDO || status === STATUS_DESPESA.ENVIADO_CONTABILIDADE ||
+          status === STATUS_DESPESA.LANCADO_BANCO) { ignorados++; continue; }
 
       var precisaDoc = tipoDoc === "NF" || tipoDoc === "Cupom Fiscal / Recibo" || tipoDoc === "NF/Recibo";
       if (!precisaDoc || !email) { ignorados++; continue; }
@@ -1209,6 +1631,101 @@ function verificarEDispararAlertasD5() {
     Logger.log("✅ verificarEDispararAlertasD5: enviados=" + enviados + " ignorados=" + ignorados);
   } catch (e) {
     Logger.log("❌ verificarEDispararAlertasD5: " + e.message);
+  }
+}
+
+/**
+ * Lembrete PROATIVO pra equipe financeira interna (não pro fornecedor —
+ * isso já existe acima, verificarEDispararAlertasD5, D-5/D-3/D-1 pedindo
+ * NF) de que uma despesa vence em 3 dias e ainda não foi paga. Um só
+ * e-mail-resumo por dia (não um por despesa), pra EMAILS_FINANCEIRO_DESPESAS.
+ * Achado 🟡 da auditoria: o vencimento próximo só aparecia passivamente
+ * no dashboard, sem nenhum aviso proativo.
+ */
+function dispararAlertaVencimentoPagamentoInterno_() {
+  try {
+    var aba = obterAbaDesp_();
+    if (aba.getLastRow() < 2) return;
+
+    var colAlerta = "DATA_ALERTA_VENCIMENTO_PAGTO";
+    var headers = aba.getRange(1, 1, 1, aba.getLastColumn()).getValues()[0].map(function(h) { return String(h || "").trim(); });
+    if (headers.indexOf(colAlerta) === -1) {
+      aba.getRange(1, aba.getLastColumn() + 1).setValue(colAlerta);
+    }
+
+    var dados     = aba.getDataRange().getValues();
+    var headerMap = getHeaderMap_(aba);
+    var hoje      = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    var pendentes = [];
+    var linhasParaMarcar = [];
+
+    for (var i = 1; i < dados.length; i++) {
+      var row    = dados[i];
+      var status = String(row[(headerMap["STATUS"] || 0) - 1] || "").trim();
+      if (status === STATUS_DESPESA.PAGO || status === STATUS_DESPESA.CANCELADO || status === STATUS_DESPESA.ESTORNADO) continue;
+
+      var venc = String(row[(headerMap["DATA_VENCIMENTO"] || 0) - 1] || "").trim();
+      var dataVenc = converterDataBRParaDateDesp_(venc);
+      if (!dataVenc) continue;
+      dataVenc.setHours(0, 0, 0, 0);
+
+      var diffDias = Math.floor((dataVenc - hoje) / 86400000);
+      if (diffDias !== 3) continue;
+
+      var jaAlertou = String(row[(headerMap[colAlerta] || 0) - 1] || "").trim();
+      if (jaAlertou) {
+        var dataUltimo = converterDataBRParaDateDesp_(jaAlertou) || (jaAlertou ? new Date(jaAlertou) : null);
+        if (dataUltimo) {
+          dataUltimo.setHours(0, 0, 0, 0);
+          if (dataUltimo.getTime() === hoje.getTime()) continue;
+        }
+      }
+
+      pendentes.push({
+        nome:   String(row[(headerMap["PRESTADOR_NOME"]  || 0) - 1] || ""),
+        numero: String(row[(headerMap["NUMERO_DESPESA"]  || 0) - 1] || ""),
+        valor:  String(row[(headerMap["VALOR"]           || 0) - 1] || ""),
+        venc:   venc,
+        categoria: String(row[(headerMap["CATEGORIA"]    || 0) - 1] || "")
+      });
+      linhasParaMarcar.push(i + 1);
+    }
+
+    if (!pendentes.length) return;
+
+    var linhas = pendentes.map(function(p) {
+      return '<tr><td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;">' + p.numero + '</td>' +
+        '<td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;">' + p.nome + '</td>' +
+        '<td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;">' + p.categoria + '</td>' +
+        '<td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;">' + p.valor + '</td>' +
+        '<td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;">' + p.venc + '</td></tr>';
+    }).join('');
+
+    var html = '<div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;">' +
+      '<h2 style="color:#001f4d;">📅 Despesas vencendo em 3 dias</h2>' +
+      '<p style="color:#475569;font-size:13px;">' + pendentes.length + ' despesa(s) ainda não paga(s) vencem em 3 dias:</p>' +
+      '<table style="width:100%;border-collapse:collapse;font-size:12.5px;">' +
+      '<tr style="background:#f1f5f9;text-align:left;"><th style="padding:8px 10px;">Nº</th><th style="padding:8px 10px;">Fornecedor</th><th style="padding:8px 10px;">Categoria</th><th style="padding:8px 10px;">Valor</th><th style="padding:8px 10px;">Vencimento</th></tr>' +
+      linhas + '</table></div>';
+
+    MailApp.sendEmail({
+      to: EMAILS_FINANCEIRO_DESPESAS.join(","),
+      subject: "📅 " + pendentes.length + " despesa(s) vencendo em 3 dias — SindEducação-ES",
+      htmlBody: html,
+      name: "SISGEP · SindEducação-ES"
+    });
+
+    var agora = agoraFormatadoDesp_();
+    var colIdx = headerMap[colAlerta] || aba.getLastColumn();
+    linhasParaMarcar.forEach(function(linha) {
+      aba.getRange(linha, colIdx).setValue(agora);
+    });
+
+    Logger.log("✅ dispararAlertaVencimentoPagamentoInterno_: " + pendentes.length + " despesa(s) no resumo.");
+  } catch (e) {
+    Logger.log("❌ dispararAlertaVencimentoPagamentoInterno_: " + e.message);
   }
 }
 
@@ -1519,7 +2036,12 @@ function garantirAbaConfigEmailsDesp_() {
   return sh;
 }
 
-function listarEmailsEnvioDespesas() {
+function listarEmailsEnvioDespesas(tokenSessao) {
+  exigirModulo_(tokenSessao, "financeiro", false);
+  return listarEmailsEnvioDespesas_interno_();
+}
+
+function listarEmailsEnvioDespesas_interno_() {
   try {
     var sh = garantirAbaConfigEmailsDesp_();
     var dados = sh.getDataRange().getDisplayValues();
@@ -1585,7 +2107,8 @@ function montarAssuntoDocumentacaoFiscalDesp_(fornecedores) {
   return "📤 Documentação Fiscal - " + nomes + " - " + mesAno;
 }
 
-function obterPreviewEnvioContabilidadeDesp(idsDespesas) {
+function obterPreviewEnvioContabilidadeDesp(idsDespesas, tokenSessao) {
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     if (!Array.isArray(idsDespesas) || !idsDespesas.length) {
       return { ok: false, mensagem: "Nenhuma despesa selecionada." };
@@ -1639,7 +2162,7 @@ function obterPreviewEnvioContabilidadeDesp(idsDespesas) {
       return { ok: false, mensagem: "Nenhuma despesa válida para prévia." };
     }
 
-    var emailsResp = listarEmailsEnvioDespesas();
+    var emailsResp = listarEmailsEnvioDespesas_interno_();
     var emails = emailsResp.lista || [];
 
     var paraPadrao = emails
@@ -1672,7 +2195,8 @@ function obterPreviewEnvioContabilidadeDesp(idsDespesas) {
 }
 /* ================= ENVIO EM LOTE PARA CONTABILIDADE ================= */
 
-function enviarLoteDespesasParaContabilidade(idsDespesas) {
+function enviarLoteDespesasParaContabilidade(idsDespesas, tokenSessao) {
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     var emailUsuario = "";
     try { emailUsuario = Session.getActiveUser().getEmail() || "financeiro@sindeducacao.com"; } catch(e) { emailUsuario = "financeiro@sindeducacao.com"; }
@@ -1853,8 +2377,51 @@ function obterDadosDespesaPorTokenFornecedor(token) {
   }
 }
 
-function confirmarPagamentoDespesaPublico(token, dados) {
+/**
+ * Dados da despesa pro Portal da Contabilidade (?page=pub-contabil-despesa)
+ * — link enviado no e-mail de "Enviar à Contabilidade". Achado: essa rota
+ * nunca tinha sido cadastrada no roteador (doGet, Code.gs) nem esta função
+ * de leitura existia — só a de confirmar (confirmarPagamentoDespesaPublico)
+ * já estava pronta, sem nenhuma tela pra chamá-la.
+ */
+function obterDadosDespesaPorTokenContabilidade(token) {
   try {
+    var info = buscarTokenContabilidadeDespesa_(token);
+    if (!info) return { ok: false, mensagem: "Link inválido ou expirado. Peça um novo envio ao SindEducação-ES." };
+
+    var idDespesa = String(info.idDespesa || "").trim();
+    var despInfo  = localizarLinhaDespesaPorId_(idDespesa);
+    if (!despInfo) return { ok: false, mensagem: "Despesa não encontrada." };
+
+    var row = despInfo.row; var headerMap = despInfo.headerMap;
+    function get(col) { return String(row[(headerMap[col] || 0) - 1] || "").trim(); }
+
+    var status = get("STATUS");
+    if (status === STATUS_DESPESA.PAGO) {
+      return { ok: false, jaConfirmado: true, mensagem: "Este pagamento já foi confirmado anteriormente.", nome: get("PRESTADOR_NOME"), dataPagamento: get("DATA_PAGAMENTO") };
+    }
+    if (status === STATUS_DESPESA.CANCELADO || status === STATUS_DESPESA.ESTORNADO) {
+      return { ok: false, mensagem: "Esta despesa foi " + (status === STATUS_DESPESA.CANCELADO ? "cancelada" : "estornada") + " e não deve ser paga." };
+    }
+
+    return {
+      ok:         true,
+      nome:       get("PRESTADOR_NOME"),
+      valor:      get("VALOR"),
+      vencimento: formatarDataBRDesp_(get("DATA_VENCIMENTO")),
+      descricao:  get("DESCRICAO"),
+      numero:     get("NUMERO_DESPESA"),
+      categoria:  get("CATEGORIA")
+    };
+  } catch (e) {
+    return { ok: false, mensagem: e.message };
+  }
+}
+
+function confirmarPagamentoDespesaPublico(token, dados) {
+  var lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(15000)) return { ok: false, mensagem: "Sistema ocupado, tente novamente em instantes." };
     var info = buscarTokenContabilidadeDespesa_(token);
     if (!info) return { ok: false, mensagem: "Link inválido ou expirado. Solicite novo envio." };
 
@@ -1881,20 +2448,48 @@ function confirmarPagamentoDespesaPublico(token, dados) {
     var obsCompleta = "✅ Confirmado pela contabilidade em " + dataPagamento +
       (banco ? " | Banco: " + banco : "") + (observacao ? " | Obs: " + observacao : "");
 
-    atualizarCamposDespesa_(idDespesa, { "STATUS": STATUS_DESPESA.PAGO, "DATA_PAGAMENTO": dataPagamento, "OBSERVACOES": obsCompleta });
-
+    var notificacaoFalhou = false;
     try {
       MailApp.sendEmail({ to: EMAILS_FINANCEIRO_DESPESAS.join(","), subject: "✅ Pagamento Confirmado — " + nome + (numero ? " (" + numero + ")" : ""), htmlBody: montarHtmlConfirmacaoPagamentoDesp_(nome, valor, dataPagamento, banco, observacao, numero), name: "SISGEP · SindEducação-ES" });
-    } catch (eEmail) { Logger.log("⚠ Erro ao notificar confirmação: " + eEmail.message); }
+    } catch (eEmail) {
+      notificacaoFalhou = true;
+      Logger.log("⚠ Erro ao notificar confirmação: " + eEmail.message);
+      obsCompleta += " | ⚠ Falha ao notificar financeiro por e-mail: " + eEmail.message;
+    }
+
+    atualizarCamposDespesa_(idDespesa, { "STATUS": STATUS_DESPESA.PAGO, "DATA_PAGAMENTO": dataPagamento, "OBSERVACOES": obsCompleta });
+
+    if (typeof pagRegistrarEvento_ === "function") {
+      pagRegistrarEvento_({
+        idDespesa: idDespesa, numeroDespesa: numero, fornecedor: nome,
+        evento: "PAGAMENTO_CONFIRMADO", deStatus: statusAtual, paraStatus: STATUS_DESPESA.PAGO,
+        valor: valor, dataReferencia: dataPagamento, contaBancaria: banco,
+        usuario: "Contabilidade (link público)", detalhe: observacao
+      });
+    }
 
     invalidarTokenDesp_("TOKEN_CONT_DESP_" + token);
-    return { ok: true, nome: nome, valor: valor, numero: numero, mensagem: "Pagamento confirmado com sucesso! O financeiro do SindEducação-ES foi notificado. ✅" };
+    return {
+      ok: true, nome: nome, valor: valor, numero: numero,
+      mensagem: notificacaoFalhou
+        ? "Pagamento confirmado com sucesso! (o aviso por e-mail ao financeiro falhou — fica registrado no histórico da despesa)"
+        : "Pagamento confirmado com sucesso! O financeiro do SindEducação-ES foi notificado. ✅"
+    };
   } catch (e) { return { ok: false, mensagem: "Erro ao confirmar pagamento: " + e.message }; }
+  finally { try { lock.releaseLock(); } catch (eRel) {} }
 }
 
 /* ================= LISTAGEM E BUSCA ================= */
 
-function listarDespesas(filtros) {
+// Exposta ao navegador: exige sessão. Chamadas vindas de outros .gs devem
+// usar listarDespesas_interno_, que não revalida — a sessão já foi conferida
+// na função pública que iniciou a operação (mesmo padrão de ESCA-FIX-2).
+function listarDespesas(filtros, tokenSessao) {
+  exigirModulo_(tokenSessao, "financeiro", false);
+  return listarDespesas_interno_(filtros);
+}
+
+function listarDespesas_interno_(filtros) {
   try {
     filtros = filtros || {};
     var aba     = obterAbaDesp_();
@@ -1939,7 +2534,17 @@ function listarDespesas(filtros) {
         dataEnvioContab:    String(row[idx("DATA_ENVIO_CONTABILIDADE")] || ""),
         dataPagamento:      String(row[idx("DATA_PAGAMENTO")]          || ""),
         usuarioCadastro:    String(row[idx("CRIADO_POR")]              || ""),
-        observacoes:        String(row[idx("OBSERVACOES")]             || "")
+        observacoes:        String(row[idx("OBSERVACOES")]             || ""),
+        centroCusto:        String(row[idx("CENTRO_CUSTO")]            || ""),
+        projetoId:          String(row[idx("PROJETO_ID")]              || ""),
+        aprovadoParaPagamento: String(row[idx("APROVADO_PARA_PAGAMENTO")] || "").trim().toUpperCase() === "SIM",
+        aprovadoPor:        String(row[idx("APROVADO_POR")]            || ""),
+        dataAprovacao:      String(row[idx("DATA_APROVACAO")]          || ""),
+        dataEstorno:        String(row[idx("DATA_ESTORNO")]            || ""),
+        estornadoPor:       String(row[idx("ESTORNADO_POR")]           || ""),
+        motivoEstorno:      String(row[idx("MOTIVO_ESTORNO")]          || ""),
+        formaPagamento:     String(row[idx("FORMA_PAGAMENTO")]         || ""),
+        numeroNf:           String(row[idx("NUMERO_NF")]               || "")
       };
 
       if (filtros.status           && item.status !== filtros.status) continue;
@@ -1992,13 +2597,22 @@ function buscarDespesaPorId(idDespesa) {
   } catch (e) { return { ok: false, mensagem: e.message }; }
 }
 
-function listarDespesasParaEnvioContabilidade() { return listarDespesas({ status: STATUS_DESPESA.DOC_RECEBIDO }); }
-function listarDespesasPendentes() { return listarDespesas({ ocultarPagos: true, ocultarCancelados: true }); }
+function listarDespesasParaEnvioContabilidade(tokenSessao) {
+  exigirModulo_(tokenSessao, "financeiro", false);
+  return listarDespesas_interno_({ status: STATUS_DESPESA.DOC_RECEBIDO });
+}
+function listarDespesasPendentes(tokenSessao) {
+  exigirModulo_(tokenSessao, "financeiro", false);
+  return listarDespesas_interno_({ ocultarPagos: true, ocultarCancelados: true });
+}
 
 /* ================= AÇÕES MANUAIS ================= */
 
-function marcarDespesaComoPaga(payload) {
+function marcarDespesaComoPaga(payload, tokenSessao) {
+  exigirModulo_(tokenSessao, "financeiro", false);
+  var lock = LockService.getScriptLock();
   try {
+    if (!lock.tryLock(15000)) return { ok: false, mensagem: "Sistema ocupado, tente novamente em instantes." };
     payload = payload || {};
     var idDespesa     = String(payload.idDespesa     || "").trim();
     var dataPagamento = String(payload.dataPagamento || "").trim() || agoraFormatadoDesp_();
@@ -2006,12 +2620,110 @@ function marcarDespesaComoPaga(payload) {
     if (!idDespesa) return { ok: false, mensagem: "ID da despesa não informado." };
     var despInfo = localizarLinhaDespesaPorId_(idDespesa);
     if (!despInfo) return { ok: false, mensagem: "Despesa não encontrada." };
+    var idxStatusPg = (despInfo.headerMap["STATUS"] || 0) - 1;
+    var statusPg = idxStatusPg > -1 ? String(despInfo.row[idxStatusPg] || "").trim() : "";
+    if (statusPg === STATUS_DESPESA.PAGO) return { ok: false, mensagem: "Esta despesa já está marcada como paga." };
+    var idxAprov = (despInfo.headerMap["APROVADO_PARA_PAGAMENTO"] || 0) - 1;
+    var aprovado = idxAprov > -1 ? String(despInfo.row[idxAprov] || "").trim().toUpperCase() : "";
+    if (aprovado !== "SIM") {
+      return { ok: false, precisaAprovacao: true, mensagem: "Esta despesa ainda não foi aprovada para pagamento. Aprove antes de marcar como paga." };
+    }
     atualizarCamposDespesa_(idDespesa, { "STATUS": STATUS_DESPESA.PAGO, "DATA_PAGAMENTO": dataPagamento, "OBSERVACOES": observacao });
+
+    // Espelha na trilha do Controle de Pagamentos. Sem isto, quem paga
+    // pela tela antiga não apareceria no histórico e o extrato do mês
+    // ficaria com buraco justamente nos pagamentos mais antigos.
+    // Guardado por typeof: se PagamentosControle.gs ainda não estiver
+    // instalado, a baixa continua funcionando normalmente.
+    if (typeof pagRegistrarEvento_ === "function") {
+      pagRegistrarEvento_({
+        idDespesa: idDespesa,
+        numeroDespesa: String(despInfo.row[(despInfo.headerMap["NUMERO_DESPESA"] || 0) - 1] || ""),
+        fornecedor: String(despInfo.row[(despInfo.headerMap["PRESTADOR_NOME"] || 0) - 1] || ""),
+        evento: "PAGAMENTO_CONFIRMADO", deStatus: statusPg, paraStatus: STATUS_DESPESA.PAGO,
+        valor: String(despInfo.row[(despInfo.headerMap["VALOR"] || 0) - 1] || ""),
+        dataReferencia: dataPagamento, usuario: "Baixa manual (tela de Despesas)",
+        detalhe: observacao
+      });
+    }
+
     return { ok: true, mensagem: "Despesa marcada como paga com sucesso." };
+  } catch (e) { return { ok: false, mensagem: e.message }; }
+  finally { try { lock.releaseLock(); } catch (eRel) {} }
+}
+
+/**
+ * Aprovação de pagamento — item 🟠 da auditoria: antes, uma despesa ia
+ * direto de Pendente pra Paga sem ninguém validar. Qualquer usuário com
+ * perfil admin pode aprovar (sem restrição de autoaprovação, por decisão
+ * explícita: 1 nível, qualquer admin).
+ */
+function aprovarDespesaParaPagamento(payload, tokenSessao) {
+  var sessao = exigirModulo_(tokenSessao, "financeiro", false);
+  try {
+    payload = payload || {};
+    var idDespesa = String(payload.idDespesa || "").trim();
+    if (!idDespesa) return { ok: false, mensagem: "ID da despesa não informado." };
+    var despInfo = localizarLinhaDespesaPorId_(idDespesa);
+    if (!despInfo) return { ok: false, mensagem: "Despesa não encontrada." };
+    garantirColunasAprovacaoDesp_();
+    atualizarCamposDespesa_(idDespesa, {
+      "APROVADO_PARA_PAGAMENTO": "SIM",
+      "APROVADO_POR":            sessao.email || sessao.usuario || "SISGEP",
+      "DATA_APROVACAO":          agoraFormatadoDesp_()
+    });
+    return { ok: true, mensagem: "Despesa aprovada para pagamento." };
   } catch (e) { return { ok: false, mensagem: e.message }; }
 }
 
-function cancelarDespesa(payload) {
+/**
+ * Estorno de uma despesa já PAGA — distinto de cancelar (que só existe
+ * antes do pagamento). Mantém o histórico de que foi paga e depois
+ * estornada, com motivo obrigatório.
+ */
+function estornarDespesa(payload, tokenSessao) {
+  var sessao = exigirModulo_(tokenSessao, "financeiro", false);
+  var lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(15000)) return { ok: false, mensagem: "Sistema ocupado, tente novamente em instantes." };
+    payload = payload || {};
+    var idDespesa = String(payload.idDespesa || "").trim();
+    var motivo    = String(payload.motivo    || "").trim();
+    if (!idDespesa) return { ok: false, mensagem: "ID da despesa não informado." };
+    if (!motivo)    return { ok: false, mensagem: "Informe o motivo do estorno." };
+    var despInfo = localizarLinhaDespesaPorId_(idDespesa);
+    if (!despInfo) return { ok: false, mensagem: "Despesa não encontrada." };
+    var idxStatus = (despInfo.headerMap["STATUS"] || 0) - 1;
+    var statusAtual = idxStatus > -1 ? String(despInfo.row[idxStatus] || "").trim() : "";
+    if (statusAtual !== STATUS_DESPESA.PAGO) {
+      return { ok: false, mensagem: "Só é possível estornar uma despesa que já está paga." };
+    }
+    garantirColunasAprovacaoDesp_();
+    atualizarCamposDespesa_(idDespesa, {
+      "STATUS":         STATUS_DESPESA.ESTORNADO,
+      "DATA_ESTORNO":   agoraFormatadoDesp_(),
+      "ESTORNADO_POR":  sessao.email || sessao.usuario || "SISGEP",
+      "MOTIVO_ESTORNO": motivo
+    });
+
+    if (typeof pagRegistrarEvento_ === "function") {
+      pagRegistrarEvento_({
+        idDespesa: idDespesa,
+        numeroDespesa: String(despInfo.row[(despInfo.headerMap["NUMERO_DESPESA"] || 0) - 1] || ""),
+        fornecedor: String(despInfo.row[(despInfo.headerMap["PRESTADOR_NOME"] || 0) - 1] || ""),
+        evento: "ESTORNADO", deStatus: statusAtual, paraStatus: STATUS_DESPESA.ESTORNADO,
+        valor: String(despInfo.row[(despInfo.headerMap["VALOR"] || 0) - 1] || ""),
+        usuario: sessao.email || sessao.usuario || "SISGEP", detalhe: motivo
+      });
+    }
+
+    return { ok: true, mensagem: "Despesa estornada com sucesso." };
+  } catch (e) { return { ok: false, mensagem: e.message }; }
+  finally { try { lock.releaseLock(); } catch (eRel) {} }
+}
+
+function cancelarDespesa(payload, tokenSessao) {
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     payload = payload || {};
     var idDespesa  = String(payload.idDespesa  || "").trim();
@@ -2024,13 +2736,101 @@ function cancelarDespesa(payload) {
   } catch (e) { return { ok: false, mensagem: e.message }; }
 }
 
-function editarDespesa(payload) {
+function removerAnexoDespesa(payload, tokenSessao) {
+  var sessao = exigirModulo_(tokenSessao, "financeiro", false);
   try {
     payload = payload || {};
+    var idDespesa = String(payload.idDespesa || "").trim();
+    if (!idDespesa) return { ok: false, mensagem: "ID da despesa não informado." };
+    var despInfo = localizarLinhaDespesaPorId_(idDespesa);
+    if (!despInfo) return { ok: false, mensagem: "Despesa não encontrada." };
+    var idxStatus = (despInfo.headerMap["STATUS"] || 0) - 1;
+    var statusAtual = idxStatus > -1 ? String(despInfo.row[idxStatus] || "").trim() : "";
+    if (statusAtual === STATUS_DESPESA.PAGO || statusAtual === STATUS_DESPESA.ENVIADO_CONTABILIDADE || statusAtual === STATUS_DESPESA.ESTORNADO) {
+      return { ok: false, mensagem: "Não é possível remover o anexo de uma despesa já paga, enviada à contabilidade ou estornada." };
+    }
+    var obs = "Anexo removido por " + (sessao.email || sessao.usuario || "SISGEP") + " em " + agoraFormatadoDesp_() + ".";
+    // Volta ao zero também a aprovação: uma aprovação anterior não pode
+    // sobreviver a uma reversão para Pendente, senão a despesa pula direto
+    // para "Pago" sem passar pela aprovação de novo.
+    atualizarCamposDespesa_(idDespesa, {
+      "STATUS":                    STATUS_DESPESA.PENDENTE,
+      "LINK_DOCUMENTO":            "",
+      "FILE_ID_DOCUMENTO":         "",
+      "NOME_ARQUIVO":              "",
+      "DATA_RECEBIMENTO_DOC":      "",
+      "APROVADO_PARA_PAGAMENTO":   "",
+      "APROVADO_POR":              "",
+      "DATA_APROVACAO":            "",
+      "OBSERVACOES":               obs
+    });
+    return { ok: true, mensagem: "Anexo removido. A despesa voltou para Pendente." };
+  } catch (e) { return { ok: false, mensagem: e.message }; }
+}
+
+// Desfaz o envio de uma despesa à contabilidade (ex.: enviada por engano,
+// fornecedor/valor errado). Invalida o token público já emitido e volta a
+// despesa para DOC_RECEBIDO, mantendo o documento anexado.
+function cancelarEnvioContabilidadeDespesa(payload, tokenSessao) {
+  var sessao = exigirModulo_(tokenSessao, "financeiro", false);
+  try {
+    payload = payload || {};
+    var idDespesa = String(payload.idDespesa || "").trim();
+    if (!idDespesa) return { ok: false, mensagem: "ID da despesa não informado." };
+    var despInfo = localizarLinhaDespesaPorId_(idDespesa);
+    if (!despInfo) return { ok: false, mensagem: "Despesa não encontrada." };
+    var idxStatus = (despInfo.headerMap["STATUS"] || 0) - 1;
+    var statusAtual = idxStatus > -1 ? String(despInfo.row[idxStatus] || "").trim() : "";
+    if (statusAtual !== STATUS_DESPESA.ENVIADO_CONTABILIDADE) {
+      return { ok: false, mensagem: "Só é possível desfazer o envio de uma despesa que está com a contabilidade." };
+    }
+
+    var idxToken = (despInfo.headerMap["TOKEN_CONTABILIDADE"] || 0) - 1;
+    var tokenAtual = idxToken > -1 ? String(despInfo.row[idxToken] || "").trim() : "";
+    if (tokenAtual) invalidarTokenDesp_("TOKEN_CONT_DESP_" + tokenAtual);
+
+    var obs = "Envio à contabilidade desfeito por " + (sessao.email || sessao.usuario || "SISGEP") + " em " + agoraFormatadoDesp_() + ".";
+    atualizarCamposDespesa_(idDespesa, {
+      "STATUS":                   STATUS_DESPESA.DOC_RECEBIDO,
+      "TOKEN_CONTABILIDADE":      "",
+      "DATA_ENVIO_CONTABILIDADE": "",
+      "OBSERVACOES":              obs
+    });
+    return { ok: true, mensagem: "Envio à contabilidade desfeito. A despesa voltou para Documento Recebido." };
+  } catch (e) { return { ok: false, mensagem: e.message }; }
+}
+
+function editarDespesa(payload, tokenSessao) {
+  var sessao = exigirModulo_(tokenSessao, "financeiro", false);
+  try {
+    payload = payload || {};
+
+    // A mesma regra do cadastro: não adianta barrar zero e negativo na
+    // criação se a edição deixa passar depois.
+    if (payload.valor !== undefined && payload.valor !== null && payload.valor !== "") {
+      var checagemValor = despValorValido_(payload.valor);
+      if (!checagemValor.ok) return { ok: false, mensagem: checagemValor.mensagem };
+    }
+
+    garantirColunasAprovacaoDesp_();
     var idDespesa = String(payload.idDespesa || "").trim();
     if (!idDespesa) return { ok: false, mensagem: "ID não informado." };
     var despInfo = localizarLinhaDespesaPorId_(idDespesa);
     if (!despInfo) return { ok: false, mensagem: "Despesa não encontrada." };
+    var idxStatusEd = (despInfo.headerMap["STATUS"] || 0) - 1;
+    var statusAtualEd = idxStatusEd > -1 ? String(despInfo.row[idxStatusEd] || "").trim() : "";
+    // LANCADO_BANCO entra na lista de bloqueio junto com os demais: depois
+    // que o pagamento já foi lançado no banco, mudar valor ou vencimento
+    // aqui faria a planilha divergir do que o banco vai pagar — e ninguém
+    // perceberia. Para corrigir, desfaz-se o lançamento primeiro
+    // (pagDesfazerLancamentoBanco), o que deixa rastro no histórico.
+    if (statusAtualEd === STATUS_DESPESA.PAGO || statusAtualEd === STATUS_DESPESA.CANCELADO ||
+        statusAtualEd === STATUS_DESPESA.ENVIADO_CONTABILIDADE || statusAtualEd === STATUS_DESPESA.ESTORNADO ||
+        statusAtualEd === STATUS_DESPESA.LANCADO_BANCO) {
+      return { ok: false, mensagem: "Não é possível editar uma despesa paga, cancelada, enviada à contabilidade, estornada ou já lançada no banco. Para alterar uma despesa lançada no banco, desfaça o lançamento antes." };
+    }
+    var idxValor = (despInfo.headerMap["VALOR"] || 0) - 1;
+    var valorAnterior = idxValor > -1 ? String(despInfo.row[idxValor] || "").trim() : "";
     var campos = {};
     if (payload.tipoLancamento) campos["TIPO_LANCAMENTO"]  = String(payload.tipoLancamento).trim();
     if (payload.categoria)      campos["CATEGORIA"]        = String(payload.categoria).trim();
@@ -2047,24 +2847,43 @@ function editarDespesa(payload) {
     if (payload.quemAgendou) campos["QUEM_AGENDOU"] = String(payload.quemAgendou).trim();
     if (payload.tipoDoc)     campos["TIPO_DOC"]     = String(payload.tipoDoc).trim();
     if (payload.observacoes) campos["OBSERVACOES"]  = String(payload.observacoes).trim();
+    if (payload.centroCusto !== undefined) campos["CENTRO_CUSTO"] = String(payload.centroCusto).trim();
+    if (payload.projetoId   !== undefined) campos["PROJETO_ID"]   = String(payload.projetoId).trim();
+    if (payload.formaPagamento !== undefined) campos["FORMA_PAGAMENTO"] = String(payload.formaPagamento).trim();
+    if (payload.numeroNf       !== undefined) campos["NUMERO_NF"]       = String(payload.numeroNf).trim();
     atualizarCamposDespesa_(idDespesa, campos);
+    if (campos["VALOR"]) {
+      finAudRegistrarAlteracaoValor_("DESPESAS", idDespesa, valorAnterior, campos["VALOR"],
+        sessao.email || sessao.usuario || "SISGEP", payload.motivoAlteracaoValor || "");
+    }
     return { ok: true, mensagem: "Despesa atualizada com sucesso." };
   } catch (e) { return { ok: false, mensagem: e.message }; }
 }
 
 /* ================= DASHBOARD ================= */
 
-function obterResumoDespesas() {
+// Mesmo padrão: pública valida sessão, interna serve InicioResumo.gs e
+// FinanceiroIA.gs, que já validaram antes de chegar aqui.
+// SEM trava de modulo: alimenta a tela Inicio (InicioResumo.gs), que
+// todo usuario abre ao entrar. Travar aqui quebraria a home de quem nao
+// tem Financeiro. Sessao continua exigida.
+function obterResumoDespesas(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
+  return obterResumoDespesas_interno_();
+}
+
+function obterResumoDespesas_interno_() {
   try {
-    var resultado = listarDespesas({});
+    var resultado = listarDespesas_interno_({});
     var lista     = resultado.lista || [];
 
     var resumo = {
       total: lista.length, totalRecorrentes: 0, totalAvulsos: 0,
       totalPendentes: 0, totalAguardandoDoc: 0, totalDocRecebido: 0,
-      totalEnviadosContab: 0, totalPagos: 0, totalCancelados: 0,
+      totalEnviadosContab: 0, totalLancadosBanco: 0, totalPagos: 0,
+      totalCancelados: 0, totalEstornados: 0,
       totalVencidas: 0, totalUrgentes: 0,
-      valorTotal: 0, valorPago: 0, valorPendente: 0,
+      valorTotal: 0, valorPago: 0, valorPendente: 0, valorLancadoBanco: 0,
       porCategoria: {}
     };
 
@@ -2080,12 +2899,18 @@ function obterResumoDespesas() {
         case STATUS_DESPESA.AGUARDANDO_DOC:        resumo.totalAguardandoDoc++;  resumo.valorPendente += val; break;
         case STATUS_DESPESA.DOC_RECEBIDO:          resumo.totalDocRecebido++;    resumo.valorPendente += val; break;
         case STATUS_DESPESA.ENVIADO_CONTABILIDADE: resumo.totalEnviadosContab++; resumo.valorPendente += val; break;
+        // Lançado no banco ainda NÃO é dinheiro que saiu: conta como
+        // pendente no total geral (é desembolso a acontecer) e também
+        // separado, para a tela mostrar quanto está a caminho.
+        case STATUS_DESPESA.LANCADO_BANCO:         resumo.totalLancadosBanco++;  resumo.valorPendente += val; resumo.valorLancadoBanco += val; break;
         case STATUS_DESPESA.PAGO:                  resumo.totalPagos++;          resumo.valorPago     += val; break;
         case STATUS_DESPESA.CANCELADO:             resumo.totalCancelados++;     break;
+        case STATUS_DESPESA.ESTORNADO:             resumo.totalEstornados++;     break;
       }
 
-      if (item.statusVencimento === "VENCIDO" && item.status !== STATUS_DESPESA.PAGO && item.status !== STATUS_DESPESA.CANCELADO) resumo.totalVencidas++;
-      if (item.statusVencimento === "URGENTE" && item.status !== STATUS_DESPESA.PAGO && item.status !== STATUS_DESPESA.CANCELADO) resumo.totalUrgentes++;
+      var statusFinalizado = item.status === STATUS_DESPESA.PAGO || item.status === STATUS_DESPESA.CANCELADO || item.status === STATUS_DESPESA.ESTORNADO;
+      if (item.statusVencimento === "VENCIDO" && !statusFinalizado) resumo.totalVencidas++;
+      if (item.statusVencimento === "URGENTE" && !statusFinalizado) resumo.totalUrgentes++;
 
       var cat = item.categoria || "Outra";
       if (!resumo.porCategoria[cat]) resumo.porCategoria[cat] = { qtd: 0, valor: 0 };
@@ -2097,6 +2922,7 @@ function obterResumoDespesas() {
     resumo.valorTotalFmt    = "R$ " + fmt(resumo.valorTotal);
     resumo.valorPagoFmt     = "R$ " + fmt(resumo.valorPago);
     resumo.valorPendenteFmt = "R$ " + fmt(resumo.valorPendente);
+    resumo.valorLancadoBancoFmt = "R$ " + fmt(resumo.valorLancadoBanco);
 
     return { ok: true, resumo: resumo };
   } catch (e) { return { ok: false, mensagem: e.message }; }
@@ -2242,7 +3068,7 @@ function testeSetupModuloDespesas() {
 }
 
 function testeRegistrarLancamentoRecorrente() {
-  return registrarLancamentoDespesa({
+  return registrarLancamentoDespesa_({
     tipoLancamento: TIPO_LANCAMENTO_DESP.RECORRENTE,
     categoria:      CATEGORIAS_DESPESA.CONTA_MENSAL,
     prestadorNome:  "EDP - Sala Térreo",
@@ -2255,7 +3081,7 @@ function testeRegistrarLancamentoRecorrente() {
 }
 
 function testeRegistrarLancamentoAvulso() {
-  return registrarLancamentoDespesa({
+  return registrarLancamentoDespesa_({
     tipoLancamento: TIPO_LANCAMENTO_DESP.AVULSO,
     categoria:      CATEGORIAS_DESPESA.MATERIAL,
     prestadorNome:  "Mercado do Bairro",
@@ -2268,14 +3094,14 @@ function testeRegistrarLancamentoAvulso() {
 }
 
 function testeListarDespesas() {
-  var resultado = listarDespesas({});
+  var resultado = listarDespesas_interno_({});
   Logger.log("Total: " + resultado.total);
   if (resultado.lista.length) Logger.log(JSON.stringify(resultado.lista.slice(0, 3)));
   return resultado;
 }
 
 function testeResumoDespesas() {
-  var resultado = obterResumoDespesas();
+  var resultado = obterResumoDespesas_interno_();
   Logger.log(JSON.stringify(resultado));
   return resultado;
 }
@@ -2297,7 +3123,8 @@ function testeDisparateAlertasD5() {
  * payload: { rowIndexes: [2, 5, 10], forcarReenvio: true }
  * Gera novo token a cada envio (substitui o anterior).
  */
-function enviarLembretePrestadoresManual(payload) {
+function enviarLembretePrestadoresManual(payload, tokenSessao) {
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     payload = payload || {};
     var rowIndexes    = Array.isArray(payload.rowIndexes) ? payload.rowIndexes : [];
@@ -2305,7 +3132,7 @@ function enviarLembretePrestadoresManual(payload) {
 
     if (!rowIndexes.length) return { ok: false, mensagem: "Nenhum prestador selecionado." };
 
-    var resultado = listarPrestadoresDesp({});
+    var resultado = listarPrestadoresDesp({}, tokenSessao);
     var todos     = resultado.lista || [];
 
     var urlBase  = ScriptApp.getService().getUrl();
@@ -2474,7 +3301,7 @@ function montarHtmlConfirmacaoPrestador_(nome, valor, vencBr, numero, nomesArqs)
     '</div>'
   );
 }
-function registrarLeituraEmail(tokenPixel) {
+function despesas_registrarLeituraEmail(tokenPixel) {
   try {
     var raw = PropertiesService.getScriptProperties().getProperty("PIXEL_DOC_" + tokenPixel);
     if (!raw) return;
@@ -2490,7 +3317,8 @@ function registrarLeituraEmail(tokenPixel) {
  * Chamado pelo painel "Solicitar NF" / "Reenviar NF".
  * payload: { idDespesa, email, whatsapp }
  */
-function solicitarNFDespesa(payload) {
+function solicitarNFDespesa(payload, tokenSessao) {
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     payload = payload || {};
     var idDespesa = String(payload.idDespesa || "").trim();
@@ -2574,7 +3402,8 @@ function solicitarNFDespesa(payload) {
     return { ok: false, mensagem: e.message };
   }
 }
-function cancelarEnvioDespesaLote(idDespesa) {
+function cancelarEnvioDespesaLote(idDespesa, tokenSessao) {
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     var idDespesa = String(idDespesa || "").trim();
     if(!idDespesa) return { ok: false, mensagem: "ID não informado." };
@@ -2606,9 +3435,11 @@ function cancelarEnvioDespesaLote(idDespesa) {
    prestadores ativos. Pula quem já foi gerado naquele mês.
    payload: { mes: "06", ano: "2026" }  (strings)
    =============================================================== */
-function gerarDespesasEmLote(payload) {
+function gerarDespesasEmLote(payload, tokenSessao) {
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     payload = payload || {};
+    var pad = function(n) { return n < 10 ? "0" + n : n; };
 
     var mes = parseInt(String(payload.mes || "").trim(), 10);
     var ano = parseInt(String(payload.ano || "").trim(), 10);
@@ -2645,7 +3476,6 @@ function gerarDespesasEmLote(payload) {
         var ultimoDia = new Date(ano, mes, 0).getDate();
         var dia       = Math.min(diaNum, ultimoDia);
         var dataVencDate = new Date(ano, mes - 1, dia);
-        var pad = function(n) { return n < 10 ? "0" + n : n; };
         var dataVencStr = pad(dia) + "/" + pad(mes) + "/" + ano;
 
         if (jaExisteLancamentoMesDesp_(nome, dataVencStr)) {
@@ -2657,7 +3487,7 @@ function gerarDespesasEmLote(payload) {
         var ehVariavel = !valorBruto || valorBruto.indexOf("vari") > -1 || valorBruto.indexOf("cart") > -1;
         var valor      = ehVariavel ? "variável" : String(p.valor || "").trim();
 
-        var resultado = registrarLancamentoDespesa({
+        var resultado = registrarLancamentoDespesa_({
           tipoLancamento: TIPO_LANCAMENTO_DESP.RECORRENTE,
           categoria:      p.categoria   || CATEGORIAS_DESPESA.FORNECEDOR_FIXO,
           prestadorNome:  nome,
@@ -2706,7 +3536,8 @@ function gerarDespesasEmLote(payload) {
    Clona uma despesa existente com novo vencimento.
    payload: { idDespesa: "...", novoVencimento: "DD/MM/YYYY" }
    =============================================================== */
-function duplicarDespesa(payload) {
+function duplicarDespesa(payload, tokenSessao) {
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     payload = payload || {};
     var idOrigem      = String(payload.idDespesa      || "").trim();
@@ -2721,7 +3552,7 @@ function duplicarDespesa(payload) {
     var row = despInfo.row; var headerMap = despInfo.headerMap;
     function get(col) { return String(row[(headerMap[col] || 0) - 1] || "").trim(); }
 
-    var resultado = registrarLancamentoDespesa({
+    var resultado = registrarLancamentoDespesa_({
       tipoLancamento: get("TIPO_LANCAMENTO") || TIPO_LANCAMENTO_DESP.RECORRENTE,
       categoria:      get("CATEGORIA"),
       prestadorNome:  get("PRESTADOR_NOME"),
@@ -2762,7 +3593,8 @@ function duplicarDespesa(payload) {
      aplicarPendentes: true   // se true, atualiza despesas abertas
    }
    =============================================================== */
-function ajustarRecorrencia(payload) {
+function ajustarRecorrencia(payload, tokenSessao) {
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     payload = payload || {};
     var rowIndex          = parseInt(String(payload.rowIndex || "0"), 10);

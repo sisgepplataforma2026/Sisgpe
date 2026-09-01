@@ -181,11 +181,11 @@ function _histReenviarEmail(r){
 
   google.script.run
     .withSuccessHandler(function(res){
-      alert(res.ok ? "✅ " + res.mensagem : "❌ " + res.mensagem);
+      toast(res.mensagem, res.ok ? "ok" : "err");
       if(res.ok) _histCarregar();
     })
     .withFailureHandler(function(err){
-      alert("Erro: " + ((err && err.message) || err));
+      toast("Erro: " + ((err && err.message) || err), "err");
     })
     .reenviarEmailRecibo({
       email:   r.email,
@@ -218,14 +218,14 @@ function _histExcluir(numeroRecibo){
 
   google.script.run
     .withSuccessHandler(function(res){
-      alert(res.ok ? "✅ " + res.mensagem : "❌ " + res.mensagem);
+      toast(res.mensagem, res.ok ? "ok" : "err");
       if(res.ok){
         _histCarregarResumo();
         _histCarregar();
       }
     })
     .withFailureHandler(function(err){
-      alert("Erro: " + ((err && err.message) || err));
+      toast("Erro: " + ((err && err.message) || err), "err");
     })
     .excluirReciboHistorico({ numeroRecibo: numeroRecibo }, SISGEP_TOKEN_SESSAO);
 }

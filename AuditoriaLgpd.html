@@ -1,0 +1,448 @@
+<div id="auditoriaLgpd" style="min-height:100%;background:#f0f4f8;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#0f172a;">
+<!--
+  Auditoria e Compliance — LGPD: inventário e direitos do titular (item 16.8).
+  Backend em TitularesCore.gs.
+
+  Duas coisas na mesma tela, de propósito: quem atende um pedido de acesso
+  precisa do inventário aberto na frente, porque a resposta do art. 19 é
+  exatamente "quais dados seus eu tenho, onde, por quê e por quanto tempo".
+
+  O INVENTÁRIO SAI DO CÓDIGO, não de cadastro. Inventário mantido à mão
+  envelhece e passa a mentir numa fiscalização — enquanto o sistema continua
+  guardando o que guarda.
+
+  ESTA TELA NÃO EXECUTA O DIREITO. Marcar um pedido de exclusão como
+  respondido não apaga nada: apagar é ato humano, nas telas dos módulos. O
+  registro aqui é a prova de que foi atendido no prazo. Está escrito na tela,
+  porque prometer execução automática faria alguém marcar como respondido
+  achando que o sistema apagou.
+-->
+
+  <div class="of-modulo-header">
+    <div>
+      <div class="of-modulo-header-title">⚖️ LGPD — Dados e Direitos</div>
+      <div class="of-modulo-header-sub">Onde há dado pessoal, e o que os titulares pediram</div>
+    </div>
+    <div class="of-modulo-header-badge" id="lgBadge">—</div>
+  </div>
+
+  <div id="lgAlerta" style="margin-bottom:16px;"></div>
+
+  <!-- ═══ PEDIDOS ═══ -->
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">📨</div>
+        <div>
+          <div class="of-card-title" id="lgResumo">Carregando…</div>
+          <div class="of-card-sub" id="lgResumoSub">—</div>
+        </div>
+      </div>
+      <div class="row-btns">
+        <button type="button" id="lgBtnRecarregar" class="btn btn-ghost btn-sm">↺ Atualizar</button>
+        <button type="button" id="lgBtnNovo" class="btn btn-navy btn-sm">+ Registrar pedido</button>
+      </div>
+    </div>
+    <div class="of-card-body">
+      <div id="lgPedidos"></div>
+    </div>
+  </div>
+
+  <!-- ═══ INVENTÁRIO ═══ -->
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">🗂️</div>
+        <div>
+          <div class="of-card-title">Inventário de dados pessoais</div>
+          <div class="of-card-sub">Montado a partir do código e das abas reais — esta tela mostra, não edita</div>
+        </div>
+      </div>
+    </div>
+    <div class="of-card-body">
+      <div id="lgInventario"></div>
+    </div>
+  </div>
+
+  <!-- ═══ NOVO PEDIDO ═══ -->
+  <div class="of-modal-overlay" id="lgModalNovo" style="display:none;">
+    <div class="of-modal" style="max-width:640px;">
+      <div class="of-modal-head">
+        <div>
+          <div class="of-modal-title">Registrar pedido do titular</div>
+          <div class="of-modal-sub" id="lgNovoSub">—</div>
+        </div>
+        <button type="button" class="of-modal-x" id="lgNovoFechar" aria-label="Fechar">×</button>
+      </div>
+      <div class="of-modal-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="fld">
+            <label for="lgNovoData">RECEBIDO EM</label>
+            <input type="date" id="lgNovoData">
+          </div>
+          <div class="fld">
+            <label for="lgNovoTipo">O QUE O TITULAR PEDIU (art. 18)</label>
+            <select id="lgNovoTipo"><option value="">Selecione…</option></select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
+          <div class="fld">
+            <label for="lgNovoNome">NOME DO TITULAR</label>
+            <input type="text" id="lgNovoNome" autocomplete="off">
+          </div>
+          <div class="fld">
+            <label for="lgNovoContato">CONTATO PARA A RESPOSTA</label>
+            <input type="text" id="lgNovoContato" placeholder="e-mail ou telefone" autocomplete="off">
+          </div>
+        </div>
+        <div class="fld" style="margin-top:12px;">
+          <label for="lgNovoRef">REGISTRO RELACIONADO (opcional)</label>
+          <input type="text" id="lgNovoRef" placeholder="matrícula, nº de ofício, ID de ficha" autocomplete="off">
+          <div style="font-size:11px;color:#64748b;margin-top:4px;line-height:1.5;">
+            Se preenchido, dá para abrir a trilha desse registro em um clique. A trilha
+            <strong>não busca por CPF</strong> — ela indexa pelo identificador que cada módulo grava,
+            e hoje só Ofícios grava.
+          </div>
+        </div>
+        <div class="fld" style="margin-top:12px;">
+          <label for="lgNovoDesc">O QUE FOI PEDIDO, NAS PALAVRAS DO TITULAR</label>
+          <textarea id="lgNovoDesc" rows="3"></textarea>
+        </div>
+      </div>
+      <div class="of-modal-foot">
+        <button type="button" class="btn btn-outline" id="lgNovoCancelar">Cancelar</button>
+        <button type="button" class="btn btn-navy" id="lgNovoSalvar" disabled>Registrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ AVANÇAR ═══ -->
+  <div class="of-modal-overlay" id="lgModalAv" style="display:none;">
+    <div class="of-modal" style="max-width:620px;">
+      <div class="of-modal-head">
+        <div>
+          <div class="of-modal-title" id="lgAvTitulo">Atender</div>
+          <div class="of-modal-sub" id="lgAvSub">—</div>
+        </div>
+        <button type="button" class="of-modal-x" id="lgAvFechar" aria-label="Fechar">×</button>
+      </div>
+      <div class="of-modal-body" id="lgAvCorpo"></div>
+      <div class="of-modal-foot">
+        <button type="button" class="btn btn-outline" id="lgAvCancelar">Cancelar</button>
+        <button type="button" class="btn btn-navy" id="lgAvConfirmar">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>window.AUD_LGPD_MARCADOR = "bloco de script executou";</script>
+
+<script>
+(function(){
+  "use strict";
+
+  var lgVigia = null, lgDados = null, lgAlvo = null, lgDestino = null;
+
+  function gEl(id){ return document.getElementById(id); }
+  function gEsc(t){
+    return String(t==null?"":t).replace(/[&<>"]/g,function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];
+    });
+  }
+  function gTok(){
+    var t = (typeof SISGEP_TOKEN_SESSAO !== "undefined") ? SISGEP_TOKEN_SESSAO : "";
+    return (typeof t === "string") ? t : "";
+  }
+  function gAviso(msg,tipo){
+    if(typeof window.toast==="function") return window.toast(msg,tipo||"erro",5000);
+    console.warn("[LGPD]",msg);
+  }
+  function gCaixa(texto,cor){
+    var c={erro:["#fee2e2","#fca5a5","#991b1b"],ok:["#dcfce7","#6ee7b7","#166534"],
+           alerta:["#fef3c7","#fcd34d","#92400e"],info:["#eff6ff","#bfdbfe","#1e40af"]}[cor||"info"];
+    return '<div style="background:'+c[0]+";border:1.5px solid "+c[1]+
+      ";border-radius:12px;padding:13px 17px;font-size:12.5px;font-weight:600;line-height:1.55;color:"+c[2]+
+      ';">'+texto+"</div>";
+  }
+  function gData(v){
+    if(!v) return "—";
+    var d=(v instanceof Date)?v:new Date(v);
+    if(isNaN(d.getTime())) return "—";
+    function z(n){ return (n<10?"0":"")+n; }
+    return z(d.getDate())+"/"+z(d.getMonth()+1)+"/"+d.getFullYear();
+  }
+  function gHoje(){
+    var d=new Date(); function z(n){ return (n<10?"0":"")+n; }
+    return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate());
+  }
+
+  var LG_CORES = {
+    RECEBIDO:{c:"#dc2626",f:"#fee2e2"}, EM_ATENDIMENTO:{c:"#d97706",f:"#fef3c7"},
+    RESPONDIDO:{c:"#0f8a5f",f:"#dcfce7"}, NEGADO:{c:"#7c3aed",f:"#f3e8ff"}
+  };
+  var LG_ACAO = { EM_ATENDIMENTO:"Assumir", RESPONDIDO:"Responder", NEGADO:"Negar" };
+
+  /* ─── INVENTÁRIO ─── */
+  function gRenderInventario(lista){
+    gEl("lgInventario").innerHTML =
+      "<div style='overflow-x:auto;'><table class='of-table' style='width:100%;'>" +
+      "<thead><tr><th style='width:16%;'>Onde</th><th style='width:26%;'>Que dados</th>" +
+      "<th style='width:9%;'>Volume</th><th style='width:20%;'>Base legal</th>" +
+      "<th style='width:17%;'>Prazo de guarda</th><th>Expurgo</th></tr></thead><tbody>" +
+      (lista||[]).map(function(x){
+        return "<tr>" +
+          "<td><strong>"+gEsc(x.onde)+"</strong></td>" +
+          "<td>"+gEsc(x.dados)+"</td>" +
+          "<td>"+(x.volume===null||x.volume===undefined
+            ? "<span style='color:#94a3b8;'>n/d</span>"
+            : "<strong>"+gEsc(Number(x.volume).toLocaleString("pt-BR"))+"</strong>")+"</td>" +
+          "<td style='color:#475569;'>"+gEsc(x.base)+"</td>" +
+          "<td>"+gEsc(x.guarda)+"</td>" +
+          "<td style='color:#64748b;font-size:11.5px;'>"+gEsc(x.expurgo)+"</td>" +
+        "</tr>";
+      }).join("") + "</tbody></table></div>" +
+      "<div style='margin-top:14px;font-size:11.5px;color:#64748b;line-height:1.6;'>" +
+      "<strong>n/d</strong> onde o volume não é contável de forma barata. É resposta honesta — " +
+      "inventar um número aqui seria pior que deixar em branco, porque este é um documento que " +
+      "se apresenta.</div>";
+  }
+
+  /* ─── PEDIDOS ─── */
+  function gRenderAlerta(r){
+    var v = r.vencendo || [];
+    gEl("lgBadge").textContent = v.length ? "⛔ PRAZO" : (r.total ? r.total + " PEDIDO(S)" : "NENHUM");
+    gEl("lgAlerta").innerHTML = v.length
+      ? gCaixa("<strong>" + v.length + " pedido(s) com prazo vencendo ou vencido.</strong>" +
+          "<ul style='margin:8px 0 0 18px;'>" + v.map(function(x){
+            return "<li><strong>"+gEsc(x.id)+"</strong> — " + gEsc(x.titularNome) + " · " +
+              (x.prazo.vencido ? "VENCIDO há " + Math.abs(x.prazo.diasRestantes) + " dia(s)"
+                               : "falta(m) " + x.prazo.diasRestantes + " dia(s)") + "</li>";
+          }).join("") + "</ul>", "erro")
+      : "";
+  }
+
+  function gRenderPedidos(r){
+    var lista = r.pedidos || [];
+    gEl("lgResumo").textContent = lista.length + (lista.length===1 ? " pedido" : " pedidos");
+
+    if(!lista.length){
+      gEl("lgPedidos").innerHTML = gCaixa(
+        "<strong>Nenhum pedido registrado.</strong> Quando um associado pedir acesso, correção " +
+        "ou exclusão dos dados dele — por e-mail, telefone ou presencialmente — registre aqui. " +
+        "O prazo de " + r.prazoDias + " dias conta do pedido, não do registro.", "info");
+      return;
+    }
+
+    gEl("lgPedidos").innerHTML =
+      "<div style='overflow-x:auto;'><table class='of-table' style='width:100%;'>" +
+      "<thead><tr><th style='width:12%;'>ID</th><th style='width:11%;'>Recebido</th>" +
+      "<th style='width:18%;'>Titular</th><th style='width:22%;'>Pedido</th>" +
+      "<th style='width:13%;'>Estado</th><th style='width:12%;'>Prazo</th>" +
+      "<th style='width:12%;'></th></tr></thead><tbody>" +
+      lista.map(function(x, i){
+        var cor = LG_CORES[x.estado] || {c:"#64748b",f:"#f1f5f9"};
+        var p = x.prazo || {};
+        var prazoTxt = !p.conhecido ? "—"
+          : p.parado ? "<span style='color:#94a3b8;'>atendido</span>"
+          : p.vencido ? "<strong style='color:#dc2626;'>vencido há "+Math.abs(p.diasRestantes)+"d</strong>"
+          : p.vencendo ? "<strong style='color:#d97706;'>falta "+p.diasRestantes+"d</strong>"
+          : p.diasRestantes + " dias";
+        var botoes = (x.proximos||[]).map(function(pr){
+          return "<button type='button' class='btn "+(pr==="NEGADO"?"btn-ghost":"btn-outline")+
+            " btn-sm' data-i='"+i+"' data-para='"+pr+"'>"+gEsc(LG_ACAO[pr]||pr)+"</button>";
+        }).join(" ");
+        return "<tr"+((p.vencido||p.vencendo)?" style='background:#fef2f2;'":"")+">" +
+          "<td><strong>"+gEsc(x.id)+"</strong></td>" +
+          "<td>"+gEsc(gData(x.recebidoEm))+"</td>" +
+          "<td>"+gEsc(x.titularNome)+
+            "<div style='font-size:11px;color:#94a3b8;'>"+gEsc(x.titularContato)+"</div></td>" +
+          "<td>"+gEsc(x.tipoRotulo)+
+            (x.referencia
+              ? " <a href='javascript:void(0)' data-ref='"+gEsc(x.referencia)+
+                "' style='color:var(--blue,#1565C0);font-weight:700;font-size:11px;'>ver trilha</a>"
+              : "")+"</td>" +
+          "<td><span style='display:inline-block;padding:2px 10px;border-radius:999px;font-size:10.5px;font-weight:800;background:"+
+            cor.f+";color:"+cor.c+";'>"+gEsc(x.estadoRotulo)+"</span></td>" +
+          "<td>"+prazoTxt+"</td>" +
+          "<td style='text-align:right;'>"+(botoes || "<span style='color:#cbd5e1;font-size:11px;'>—</span>")+"</td>" +
+        "</tr>";
+      }).join("") + "</tbody></table></div>";
+
+    Array.prototype.forEach.call(gEl("lgPedidos").querySelectorAll("button[data-i]"), function(btn){
+      btn.onclick = function(){
+        gAbrirAv(lista[parseInt(btn.getAttribute("data-i"),10)], btn.getAttribute("data-para"));
+      };
+    });
+    Array.prototype.forEach.call(gEl("lgPedidos").querySelectorAll("a[data-ref]"), function(a){
+      a.onclick = function(){
+        if(typeof window.spIr !== "function") return;
+        window.spIr("auditoriaTrilha", null);
+        setTimeout(function(){
+          if(typeof window.audAplicarFiltroExterno === "function"){
+            window.audAplicarFiltroExterno({ registroId: a.getAttribute("data-ref") });
+          }
+        }, 420);
+      };
+    });
+  }
+
+  /* ─── NOVO ─── */
+  function gValidarNovo(){
+    var ok = gEl("lgNovoData").value && gEl("lgNovoTipo").value &&
+             String(gEl("lgNovoNome").value||"").trim().length >= 3 &&
+             String(gEl("lgNovoContato").value||"").trim().length > 0;
+    gEl("lgNovoSalvar").disabled = !ok;
+  }
+  function gAbrirNovo(){
+    var sel = gEl("lgNovoTipo");
+    var tipos = (lgDados && lgDados.tipos) || {};
+    sel.innerHTML = '<option value="">Selecione…</option>' +
+      Object.keys(tipos).map(function(k){
+        return '<option value="'+gEsc(k)+'">'+gEsc(tipos[k])+'</option>';
+      }).join("");
+    gEl("lgNovoData").value = gHoje();
+    gEl("lgNovoNome").value = "";
+    gEl("lgNovoContato").value = "";
+    gEl("lgNovoRef").value = "";
+    gEl("lgNovoDesc").value = "";
+    gEl("lgNovoSub").textContent = "O prazo de " +
+      ((lgDados && lgDados.prazoDias) || 15) + " dias conta da data do pedido";
+    gValidarNovo();
+    gEl("lgModalNovo").style.display = "flex";
+  }
+  function gSalvarNovo(){
+    var btn = gEl("lgNovoSalvar");
+    btn.disabled = true; btn.textContent = "Registrando…";
+    google.script.run
+      .withSuccessHandler(function(r){
+        btn.textContent = "Registrar"; gValidarNovo();
+        if(!r || !r.ok) return gAviso((r&&r.mensagem)||"Não foi possível registrar.","erro");
+        gEl("lgModalNovo").style.display = "none";
+        gAviso(r.mensagem,"sucesso");
+        gCarregar();
+      })
+      .withFailureHandler(function(e){
+        btn.textContent = "Registrar"; gValidarNovo();
+        gAviso("Erro: "+(e&&e.message?e.message:e),"erro");
+      })
+      .titRegistrar({
+        recebidoEm: gEl("lgNovoData").value,
+        tipo: gEl("lgNovoTipo").value,
+        titularNome: String(gEl("lgNovoNome").value||"").trim(),
+        titularContato: String(gEl("lgNovoContato").value||"").trim(),
+        referencia: String(gEl("lgNovoRef").value||"").trim(),
+        descricao: String(gEl("lgNovoDesc").value||"").trim()
+      }, gTok());
+  }
+
+  /* ─── AVANÇAR ─── */
+  function gAbrirAv(x, para){
+    if(!x || !para) return;
+    lgAlvo = x; lgDestino = para;
+    gEl("lgAvTitulo").textContent = LG_ACAO[para] || para;
+    gEl("lgAvSub").textContent = x.id + " · " + x.titularNome + " · " + x.tipoRotulo;
+
+    var html = "";
+    if(para === "EM_ATENDIMENTO"){
+      html = gCaixa("O pedido passa a constar como em atendimento. O prazo continua correndo.","info");
+    } else if(para === "RESPONDIDO"){
+      html = gCaixa("<strong>Marcar como respondido não executa nada.</strong> Se o pedido foi de " +
+        "exclusão ou correção, o ato tem que ser feito nas telas do módulo — aqui fica só o " +
+        "registro de que foi atendido, e quando.","alerta") +
+        '<div class="fld" style="margin-top:12px;"><label for="lgAvResp">O QUE FOI RESPONDIDO AO TITULAR</label>' +
+        '<textarea id="lgAvResp" rows="4"></textarea></div>' +
+        '<div class="fld" style="margin-top:12px;"><label for="lgAvCanal">POR ONDE A RESPOSTA FOI ENVIADA</label>' +
+        '<input type="text" id="lgAvCanal" placeholder="e-mail, telefone, presencialmente"></div>';
+    } else if(para === "NEGADO"){
+      html = gCaixa("<strong>O titular tem direito de saber por quê</strong>, e pode acionar a " +
+        "ANPD. Esta justificativa é o que o sindicato terá para apresentar.","alerta") +
+        '<div class="fld" style="margin-top:12px;"><label for="lgAvResp">MOTIVO DA NEGATIVA</label>' +
+        '<textarea id="lgAvResp" rows="4"></textarea></div>' +
+        '<div class="fld" style="margin-top:12px;"><label for="lgAvCanal">POR ONDE O TITULAR FOI COMUNICADO</label>' +
+        '<input type="text" id="lgAvCanal" placeholder="e-mail, telefone, presencialmente"></div>';
+    }
+    gEl("lgAvCorpo").innerHTML = html;
+    gEl("lgModalAv").style.display = "flex";
+  }
+
+  function gConfirmarAv(){
+    if(!lgAlvo || !lgDestino) return;
+    function val(id){ var e = gEl(id); return e ? e.value : ""; }
+    var btn = gEl("lgAvConfirmar");
+    btn.disabled = true; btn.textContent = "Salvando…";
+    google.script.run
+      .withSuccessHandler(function(r){
+        btn.disabled = false; btn.textContent = "Confirmar";
+        if(!r || !r.ok) return gAviso((r&&r.mensagem)||"Não foi possível.","erro");
+        gEl("lgModalAv").style.display = "none";
+        gAviso(r.mensagem,"sucesso");
+        gCarregar();
+      })
+      .withFailureHandler(function(e){
+        btn.disabled = false; btn.textContent = "Confirmar";
+        gAviso("Erro: "+(e&&e.message?e.message:e),"erro");
+      })
+      .titAvancar(lgAlvo.id, lgDestino,
+        { resposta: val("lgAvResp"), canal: val("lgAvCanal") }, gTok());
+  }
+
+  /* ─── CARGA ─── */
+  function gFalhaDura(titulo, e){
+    if(lgVigia){ clearTimeout(lgVigia); lgVigia = null; }
+    gEl("lgResumo").textContent = "Não foi possível carregar";
+    gEl("lgPedidos").innerHTML = gCaixa("<strong>"+gEsc(titulo)+"</strong>" +
+      (e ? "<br><br><code style='font-size:11px;word-break:break-all;'>" +
+           gEsc(e && e.message ? e.message : e)+"</code>" : ""),"erro");
+    gEl("lgInventario").innerHTML = "";
+    gAviso(titulo,"erro");
+  }
+
+  function gCarregar(){
+    gEl("lgResumo").textContent = "Consultando o servidor…";
+    if(lgVigia) clearTimeout(lgVigia);
+    lgVigia = setTimeout(function(){
+      gFalhaDura("O servidor não respondeu em 25 segundos.", null);
+    }, 25000);
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(lgVigia){ clearTimeout(lgVigia); lgVigia = null; }
+        if(!r || !r.ok) return gFalhaDura("O servidor respondeu, mas sem os dados.", null);
+        try {
+          lgDados = r;
+          gRenderAlerta(r);
+          gRenderPedidos(r);
+          gRenderInventario(r.inventario);
+          gEl("lgResumoSub").innerHTML =
+            "Prazo de resposta: <strong>" + r.prazoDias + " dias corridos</strong> do pedido " +
+            "(art. 19, II — configurável em CONFIG, chave <code>LGPD_PRAZO_TITULAR_DIAS</code>). " +
+            "Esta tela <strong>registra</strong> o atendimento; executar o direito é ato humano " +
+            "nas telas dos módulos.";
+        } catch (err) {
+          gFalhaDura("Os dados vieram, mas a tela não conseguiu desenhá-los.", err);
+        }
+      })
+      .withFailureHandler(function(e){ gFalhaDura("Erro ao carregar.", e); })
+      .titPainel(gTok());
+  }
+
+  window.initAuditoriaLgpd = function(){
+    var b;
+    b = gEl("lgBtnRecarregar"); if(b) b.onclick = gCarregar;
+    b = gEl("lgBtnNovo");       if(b) b.onclick = gAbrirNovo;
+    b = gEl("lgNovoFechar");    if(b) b.onclick = function(){ gEl("lgModalNovo").style.display="none"; };
+    b = gEl("lgNovoCancelar");  if(b) b.onclick = function(){ gEl("lgModalNovo").style.display="none"; };
+    b = gEl("lgNovoSalvar");    if(b) b.onclick = gSalvarNovo;
+    ["lgNovoData","lgNovoTipo","lgNovoNome","lgNovoContato"].forEach(function(id){
+      var e = gEl(id); if(e){ e.oninput = gValidarNovo; e.onchange = gValidarNovo; }
+    });
+    b = gEl("lgAvFechar");    if(b) b.onclick = function(){ gEl("lgModalAv").style.display="none"; };
+    b = gEl("lgAvCancelar");  if(b) b.onclick = function(){ gEl("lgModalAv").style.display="none"; };
+    b = gEl("lgAvConfirmar"); if(b) b.onclick = gConfirmarAv;
+
+    try { gCarregar(); }
+    catch (e) { gFalhaDura("Não consegui nem iniciar a consulta.", e); }
+  };
+})();
+</script>

@@ -76,9 +76,11 @@ function normalizarValorReceita_(valor) {
 /* =========================================
  * CADASTRAR RECEITA
  * ========================================= */
-function cadastrarReceita(dados) {
+function cadastrarReceita(dados, tokenSessao) {
 
   try {
+
+    exigirSessaoDocumentos_(tokenSessao, false);
 
     garantirEstruturaReceitas_();
 
@@ -129,7 +131,13 @@ function cadastrarReceita(dados) {
 /* =========================================
  * LISTAR RECEITAS
  * ========================================= */
-function listarReceitas() {
+// Não engole erro: devolver [] quando a sessão expirou faz a tela mostrar
+// "nenhuma receita" em vez de "sua sessão expirou" — num painel de dinheiro
+// isso é pior do que um erro visível. A falha sobe para o withFailureHandler.
+// Único consumidor além da tela é obterResumoReceitas (abaixo), que já trata.
+function listarReceitas(tokenSessao) {
+
+  exigirSessaoDocumentos_(tokenSessao, false);
 
   try {
 
@@ -172,11 +180,13 @@ function listarReceitas() {
 /* =========================================
  * RESUMO RECEITAS
  * ========================================= */
-function obterResumoReceitas() {
+function obterResumoReceitas(tokenSessao) {
 
   try {
 
-    const receitas = listarReceitas();
+    exigirSessaoDocumentos_(tokenSessao, false);
+
+    const receitas = listarReceitas(tokenSessao);
 
     let total = 0;
 
@@ -205,9 +215,11 @@ function obterResumoReceitas() {
 /* =========================================
  * EXCLUIR RECEITA
  * ========================================= */
-function excluirReceita(idReceita) {
+function excluirReceita(idReceita, tokenSessao) {
 
   try {
+
+    exigirSessaoDocumentos_(tokenSessao, true);
 
     garantirEstruturaReceitas_();
 
@@ -251,21 +263,3 @@ function excluirReceita(idReceita) {
 
 }
 
-/* =========================================
- * TESTE
- * ========================================= */
-function testeReceita() {
-
-  return cadastrarReceita({
-    tipo: "Taxa Assistencial",
-    categoria: "Sindical",
-    descricao: "Recebimento teste",
-    empresa: "Escola Teste",
-    cnpj: "00.000.000/0001-00",
-    valor: "1500,00",
-    formaRecebimento: "PIX",
-    competencia: "05/2026",
-    status: "RECEBIDO"
-  });
-
-}

@@ -16,8 +16,10 @@ var CHAT_MAX_TOKENS_ = 1500;
 /* ═══════════════════════════════════════════════════════
    ENTRADA PRINCIPAL
 ═══════════════════════════════════════════════════════ */
-function chatSISGEP(payload) {
+function chatSISGEP(payload, tokenSessao) {
+  var sessao = null;
   try {
+    sessao = exigirSessaoDocumentos_(tokenSessao, false);
     payload = payload || {};
     var mensagem = String(payload.mensagem || "").trim();
     var historico = Array.isArray(payload.historico) ? payload.historico : [];
@@ -47,32 +49,108 @@ function chatSISGEP(payload) {
       messages: messages
     };
 
-    var options = {
-      method: "post",
-      contentType: "application/json",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01"
-      },
-      payload: JSON.stringify(requestBody),
-      muteHttpExceptions: true
+    var perguntar = function (prompt) {
+      requestBody.system = prompt;
+      var resp = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", {
+        method: "post",
+        contentType: "application/json",
+        headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+        payload: JSON.stringify(requestBody),
+        muteHttpExceptions: true
+      });
+      return { codigo: resp.getResponseCode(), texto: resp.getContentText() };
     };
 
-    var response = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", options);
-    var respCode = response.getResponseCode();
-    var respText = response.getContentText();
-
-    if (respCode !== 200) {
-      Logger.log("chatSISGEP erro API: " + respCode + " — " + respText);
-      return { ok: false, resposta: "Erro na comunicação com a IA (código " + respCode + "). Tente novamente." };
+    var r1 = perguntar(systemPrompt);
+    if (r1.codigo !== 200) {
+      Logger.log("chatSISGEP erro API: " + r1.codigo + " — " + r1.texto);
+      return { ok: false, resposta: "Erro na comunicação com a IA (código " + r1.codigo + "). Tente novamente." };
     }
 
-    var respJson = JSON.parse(respText);
+    var respJson = JSON.parse(r1.texto);
     var textoResposta = respJson.content && respJson.content[0] ? respJson.content[0].text : "";
+
+    if (!textoResposta) {
+      registrarAuditoriaSofia_(sessao, dominio, mensagem, "", false);
+      return { ok: false, resposta: "A IA não retornou nenhum conteúdo para esta pergunta. Tente reformular." };
+    }
+
+    /* A procedência sai do prompt que foi montado, nunca de um novo cálculo —
+     * ver o comentário de fontesDoPrompt_. Se a leitura falhar por qualquer
+     * motivo, a resposta segue sem a linha de fonte: melhor a tela calada do
+     * que a tela afirmando o que não conferiu. */
+    var fontes = [];
+    var alertaFonte = "";
+    var segundaLeitura = false;
+    try {
+      fontes = fontesDoPrompt_(systemPrompt);
+      alertaFonte = alertaFonteAusente_(textoResposta, fontes);
+
+      /* ── SEGUNDA LEITURA ──────────────────────────────────────────────
+       *
+       * Avisar "confira antes de usar" é tratar o sintoma. Se a resposta
+       * cita artigo ou cláusula, a pergunta ERA sobre o documento — e o
+       * documento deveria ter entrado. O usuário disse isso com todas as
+       * letras no primeiro dia: *"mas ele deveria ser consultado"*.
+       *
+       * Então em vez de avisar, o sistema se corrige: anexa o documento que
+       * faltou e pergunta de novo. A resposta que vale é a segunda, agora
+       * com o texto à vista.
+       *
+       * POR QUE ISSO NÃO É CARO: só acontece quando a primeira resposta
+       * citou algo sem fonte — raro depois do vocabulário mais largo, e
+       * exatamente o caso em que uma chamada a mais vale muito mais que uma
+       * resposta errada. Nunca há uma terceira: se depois de anexar o
+       * documento a resposta continuar citando o que não foi consultado
+       * (por exemplo, citando cláusula quando só o Estatuto entrou), aí sim
+       * o aviso aparece — porque aí ele é a informação certa. */
+      /* Sem `if (alertaFonte)` na frente: a mutação mostrou que a guarda era
+       * REDUNDANTE — as condições abaixo são as mesmas que geram o aviso, e
+       * o teste continuava verde com ela apagada, como tinha de continuar.
+       * Guarda que não guarda nada é linha a mais para alguém entender. */
+      var faltou = {};
+      var temTipo_ = function (t) {
+        for (var i = 0; i < fontes.length; i++) if (fontes[i].tipo === t) return true;
+        return false;
+      };
+      if (citaArtigoProprio_(textoResposta) && !temTipo_("ESTATUTO") &&
+          typeof getEstatutoTexto_ === "function") faltou.estatuto = true;
+      if (/\bcl[áa]usula/i.test(textoResposta) && !temTipo_("CCT")) faltou.cct = true;
+
+      if (faltou.estatuto || faltou.cct) {
+        Logger.log("SOFIA · segunda leitura: anexando " +
+          (faltou.estatuto ? "ESTATUTO " : "") + (faltou.cct ? "CCT" : "") +
+          " porque a resposta citou sem fonte.");
+        var prompt2 = montarSystemPrompt_(contexto, mensagem, faltou);
+        var r2 = perguntar(prompt2);
+        if (r2.codigo === 200) {
+          var json2 = JSON.parse(r2.texto);
+          var texto2 = json2.content && json2.content[0] ? json2.content[0].text : "";
+          if (texto2) {
+            textoResposta = texto2;
+            systemPrompt = prompt2;
+            fontes = fontesDoPrompt_(prompt2);
+            alertaFonte = alertaFonteAusente_(texto2, fontes);
+            segundaLeitura = true;
+          }
+        } else {
+          /* Falhou a segunda: fica a primeira resposta COM o aviso. Nunca o
+           * contrário — resposta sem fonte e sem aviso é o pior dos mundos. */
+          Logger.log("SOFIA · segunda leitura falhou (" + r2.codigo + "); mantida a primeira com aviso.");
+        }
+      }
+    } catch (eFonte) {
+      Logger.log("chatSISGEP procedência: " + eFonte.message);
+    }
+
+    registrarAuditoriaSofia_(sessao, dominio, mensagem, textoResposta, true);
 
     return {
       ok: true,
       resposta: textoResposta,
+      fontes: fontes,
+      alertaFonte: alertaFonte,
+      segundaLeitura: segundaLeitura,
       contexto: {
         totalRegistros: contexto.totalRegistros,
         resumo: contexto.resumo,
@@ -82,7 +160,30 @@ function chatSISGEP(payload) {
 
   } catch (e) {
     Logger.log("chatSISGEP erro: " + e.message);
+    registrarAuditoriaSofia_(sessao, (payload || {}).dominio, (payload || {}).mensagem, "ERRO: " + e.message, false);
     return { ok: false, resposta: "Erro interno: " + e.message };
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   AUDITORIA — registra cada interação com a Sofia
+═══════════════════════════════════════════════════════ */
+function registrarAuditoriaSofia_(sessao, dominio, mensagem, resposta, ok) {
+  try {
+    var ss = SpreadsheetApp.openById(PLANILHA_ID);
+    var aba = getOrCreateSheet_(ss, "Sofia_Auditoria");
+    ensureHeaders_(aba, ["Data/Hora", "Usuário", "E-mail", "Domínio", "Pergunta", "Resposta", "OK"]);
+    aba.appendRow([
+      Utilities.formatDate(new Date(), "America/Sao_Paulo", "dd/MM/yyyy HH:mm:ss"),
+      sessao ? (sessao.nome || sessao.usuario || "") : "",
+      sessao ? (sessao.email || "") : "",
+      String(dominio || "Geral"),
+      String(mensagem || "").substring(0, 500),
+      String(resposta || "").substring(0, 1000),
+      ok === true
+    ]);
+  } catch (eLog) {
+    Logger.log("registrarAuditoriaSofia_ erro: " + eLog.message);
   }
 }
 
@@ -124,6 +225,33 @@ function extrairConteudoAnexoIA_(anexo) {
     }
   }
   return resultado;
+}
+
+/* ═══════════════════════════════════════════════════════
+   ANEXO ENVIADO PELA HOME (SOFIA) — upload direto do usuário
+═══════════════════════════════════════════════════════ */
+function analisarAnexoSofiaHome_(base64, nome, tipo, tokenSessao) {
+  try {
+    exigirSessaoDocumentos_(tokenSessao, false);
+    if (!base64) return { ok: false, mensagem: "Nenhum arquivo recebido." };
+
+    var bytes = Utilities.base64Decode(base64);
+    if (bytes.length > 12 * 1024 * 1024) {
+      return { ok: false, mensagem: "Arquivo maior que 12 MB. Envie um arquivo menor." };
+    }
+
+    var blob = Utilities.newBlob(bytes, tipo || "application/octet-stream", nome || "anexo");
+    var resultado = extrairConteudoAnexoIA_(blob);
+
+    if (!resultado.lido) {
+      return { ok: false, mensagem: resultado.erro || "Não foi possível ler este tipo de arquivo. Tipos aceitos: PDF, Excel, CSV, TXT, JSON, XML." };
+    }
+
+    return { ok: true, nome: resultado.nome, conteudo: resultado.conteudo };
+  } catch (e) {
+    Logger.log("analisarAnexoSofiaHome_ erro: " + e.message);
+    return { ok: false, mensagem: "Erro ao processar o arquivo: " + e.message };
+  }
 }
 
 function buscarEmailsInstitucionaisRecentes_(termo, opcoes) {
@@ -263,7 +391,7 @@ function coletarContextoSISGEP_(mensagem, dominio) {
   // ── Carrega emails das escolas (cache em memória) ──
   var mapaEmailEscolas = {};
   try {
-    var listaEsc = listarEscolasCadastro() || [];
+    var listaEsc = listarEscolasCadastro_interno_() || [];
     listaEsc.forEach(function(e) {
       var nome = String(e[COL_NOME_ESCOLA] || e.escola || e.NomeEscola || "").trim().toLowerCase();
       var email = String(e[COL_EMAIL] || e.email || e.Email || "").trim();
@@ -558,13 +686,248 @@ function selecionarContextoIA_(texto, consulta, limite) {
   return escolhidos.map(function(x) { return x.texto; }).join("\n\n").substring(0, limite);
 }
 
-function montarSystemPrompt_(contexto, mensagem) {
+/**
+ * Um documento longo virando bloco de contexto — COM A IDENTIFICAÇÃO PRESA.
+ *
+ * O DEFEITO QUE ISTO CORRIGE, medido em 13/08/2026 e não relatado por
+ * ninguém: `selecionarContextoIA_` escolhe os PARÁGRAFOS mais relevantes para
+ * a pergunta e descarta o resto — inclusive a primeira linha, que é onde mora
+ * "qual documento é este e desde quando ele vale".
+ *
+ * O resultado media certo e estava errado: perguntando o quórum de assembleia
+ * dentro da especialidade Estatuto, chegavam à IA os arts. 62, 66 e a seção
+ * das Assembleias Gerais — os artigos CERTOS — mas soltos, sem dizer de que
+ * documento vieram nem de que ano. Com CCT e Estatuto podendo entrar no mesmo
+ * prompt, isso é o convite para a resposta citar "art. 62" da fonte errada, e
+ * o prompt logo abaixo manda justamente NÃO trocar as fontes. Mandar não
+ * trocar sem dizer qual é qual é pedir o impossível.
+ *
+ * A identificação vai FORA do seletor, sempre. É uma linha; o corte de 60 ou
+ * 90 mil caracteres não pode escolher jogá-la fora.
+ */
+function blocoDocumentoIA_(rotulo, texto, consulta, limite) {
+  var inteiro = String(texto || "");
+  if (!inteiro) return "";
+  /* A primeira linha não vazia do documento é a identificação dele — é assim
+   * que CCTCore e EstatutoCore começam. Ler de lá em vez de repetir a
+   * vigência aqui evita a cópia que envelhece sozinha. */
+  var linhas = inteiro.split("\n");
+  var identificacao = "";
+  for (var i = 0; i < linhas.length && i < 5; i++) {
+    if (String(linhas[i]).trim()) { identificacao = linhas[i].trim(); break; }
+  }
+  var trechos = selecionarContextoIA_(inteiro, consulta, limite);
+  if (!trechos) return "";
+  return "\n=== " + rotulo + " — TRECHOS RELEVANTES ===\n" +
+         (identificacao ? identificacao + "\n" : "") +
+         "(Ao citar, diga o artigo ou a cláusula E de qual destes documentos.)\n\n" +
+         trechos + "\n";
+}
+
+/* ═══════════════════════════════════════════════════════
+   PROCEDÊNCIA — de que documento a resposta saiu
+
+   Isto é a contrapartida do bloco acima: lá o documento passou a chegar
+   identificado à IA; aqui a identificação chega a quem lê a resposta.
+
+   A REGRA DE OURO DESTE PEDAÇO: a lista de fontes NÃO é recalculada.
+   Ela é LIDA DO PROMPT que de fato foi montado. Recalcular — repetindo as
+   condições de `precisaCCT`/`precisaEstatuto` — criaria duas verdades que
+   envelhecem em separado, e a segunda seria a que aparece na tela: um dia a
+   condição muda de um lado só e a SOFIA passa a anunciar um documento que
+   não consultou. Anunciar fonte errada é pior que não anunciar nada, porque
+   dá ao leitor a confiança que ele não teria sozinho.
+
+   Lendo do prompt, a única forma de a tela dizer "consultei o Estatuto" é o
+   bloco do Estatuto estar lá dentro.
+═══════════════════════════════════════════════════════ */
+var FONTES_IA_ = {
+  CCT:      { rotulo: "CCT",      icone: "📘" },
+  ESTATUTO: { rotulo: "Estatuto", icone: "📜" }
+};
+
+/** Tira a moldura (=== , ━━━) que enfeita a primeira linha dos documentos. */
+function limparIdentificacaoFonte_(linha) {
+  return String(linha || "").replace(/^[\s=━─—*#]+/, "").replace(/[\s=━─—*#]+$/, "").trim();
+}
+
+/**
+ * Quais documentos entraram no prompt — lido do próprio prompt.
+ * Devolve [] quando nenhum entrou, que é o caso da maioria das perguntas.
+ */
+function fontesDoPrompt_(systemPrompt) {
+  var texto = String(systemPrompt || "");
+  var re = /=== ([A-ZÀ-Ú0-9 ._-]+) — TRECHOS RELEVANTES ===\n([^\n]*)/g;
+  var fontes = [];
+  var m;
+  while ((m = re.exec(texto)) !== null) {
+    var tipo = String(m[1]).trim();
+    var meta = FONTES_IA_[tipo] || { rotulo: tipo, icone: "📄" };
+    /* Documento sem primeira linha de identificação: o que vem depois do
+     * cabeçalho é a instrução de citação, e ela não é identificação de
+     * coisa nenhuma. Melhor ficar sem do que mostrar a instrução. */
+    var ident = limparIdentificacaoFonte_(m[2]);
+    if (/^\(Ao citar/i.test(ident)) ident = "";
+    fontes.push({ tipo: tipo, rotulo: meta.rotulo, icone: meta.icone, identificacao: ident });
+  }
+  return fontes;
+}
+
+/**
+ * A resposta cita artigo DE DOCUMENTO NOSSO?
+ *
+ * "Art. 477 da CLT" e "art. 8º da Constituição" não são citação do Estatuto —
+ * são referência de lei, que a IA pode fazer legitimamente sem o Estatuto
+ * anexado. Contar essas como citação faria o alerta disparar em resposta
+ * correta, e alerta que grita à toa é alerta que se aprende a ignorar.
+ */
+function citacoesDeArtigo_(texto) {
+  /* "Arts. 74, 85 e 96" É UMA CITAÇÃO DE TRÊS, não de uma.
+   *
+   * A primeira versão lia só o número colado no "art." e devolvia [74] para
+   * a linha de referência que o próprio caso real trouxe — deixando 85 e 96
+   * de fora justamente do aviso que manda conferir. Por isso a captura
+   * segue a lista inteira depois do "arts.". */
+  var re = /\bart(?:\.|igos?|s\.?)\s*(\d+(?:\s*[ºo°]?\s*(?:,|e)\s*\d+)*)/gi;
+  var achados = [];
+  var m;
+  while ((m = re.exec(String(texto || ""))) !== null) {
+    var cauda = String(texto).substr(m.index + m[0].length, 40);
+    if (/^\s*[ºo°]?\s*,?\s*(?:d[ao]s?\s+)?(?:CLT|Lei|Decreto|Constitui|C[óo]digo|CF\b)/i.test(cauda)) continue;
+    String(m[1]).split(/[^0-9]+/).forEach(function (n) {
+      if (n && achados.indexOf(n) < 0) achados.push(n);
+    });
+  }
+  return achados;
+}
+
+/** Mantida para quem só quer saber se houve citação. */
+function citaArtigoProprio_(texto) {
+  return citacoesDeArtigo_(texto).length > 0;
+}
+
+function citacoesDeClausula_(texto) {
+  var re = /\bcl[áa]usulas?\s*n?[º°]?\s*(\d+)/gi;
+  var achados = [];
+  var m;
+  while ((m = re.exec(String(texto || ""))) !== null) {
+    if (achados.indexOf(m[1]) < 0) achados.push(m[1]);
+  }
+  return achados;
+}
+
+/** "74, 85 e 96" — como se escreve, não como se programa. */
+function listarNumerosPt_(lista) {
+  if (lista.length === 1) return lista[0];
+  return lista.slice(0, -1).join(", ") + " e " + lista[lista.length - 1];
+}
+
+/**
+ * O aviso que aparece quando a resposta cita um documento que não foi lido.
+ *
+ * É o defeito que a procedência existe para pegar: a IA respondendo "conforme
+ * a cláusula 12" sem a CCT no prompt, ou "art. 62" sem o Estatuto. A resposta
+ * sai com a mesma cara de sempre e o número pode ser invenção — quem lê não
+ * tem como distinguir. Aqui tem.
+ */
+function alertaFonteAusente_(resposta, fontes) {
+  var lista = Array.isArray(fontes) ? fontes : [];
+  var temTipo = function(t) {
+    for (var i = 0; i < lista.length; i++) if (lista[i].tipo === t) return true;
+    return false;
+  };
+  var texto = String(resposta || "");
+  var partes = [];
+
+  /* A REDAÇÃO IMPORTA, e a primeira estava errada.
+   *
+   * Dizia: "Esta resposta cita artigo do Estatuto, mas o documento não foi
+   * consultado". O usuário apontou a contradição no primeiro dia de uso, e
+   * ele tem razão: se o documento não foi consultado, NÃO SE SABE que aquele
+   * número é do Estatuto. Pode ser de outro documento, de outra versão, ou
+   * de lugar nenhum. Chamar de "artigo do Estatuto" é justamente conceder a
+   * procedência que este aviso existe para negar.
+   *
+   * A frase de agora afirma só o que se sabe: qual documento não entrou, e
+   * quais números saíram sem conferência. Nomear os números também ajuda —
+   * quem for conferir já sabe o que procurar. */
+  var arts = citacoesDeArtigo_(texto);
+  if (arts.length && !temTipo("ESTATUTO")) {
+    partes.push("o Estatuto não foi consultado nesta resposta, e o" +
+      (arts.length > 1 ? "s arts. " : " art. ") + listarNumerosPt_(arts) +
+      (arts.length > 1 ? " saíram" : " saiu") + " sem conferência");
+  }
+  var claus = citacoesDeClausula_(texto);
+  if (!claus.length && /\bcl[áa]usula/i.test(texto)) claus = null; // citou sem número
+  if ((claus === null || (claus && claus.length)) && !temTipo("CCT")) {
+    partes.push("a CCT não foi consultada nesta resposta, e a" +
+      (claus && claus.length > 1 ? "s cláusulas " + listarNumerosPt_(claus) + " saíram" :
+       claus ? " cláusula " + claus[0] + " saiu" : " cláusula citada saiu") + " sem conferência");
+  }
+
+  if (!partes.length) return "";
+  var frase = partes.join(" · ") +
+    ". O número pode não corresponder ao documento — confira antes de usar.";
+  return frase.charAt(0).toUpperCase() + frase.slice(1);
+}
+
+/**
+ * @param {Object} forcar  {cct:true} / {estatuto:true} — anexa o documento
+ *        independentemente das palavras da pergunta. É o que a segunda
+ *        leitura usa quando a resposta cita um documento que não entrou.
+ */
+function montarSystemPrompt_(contexto, mensagem, forcar) {
+  forcar = forcar || {};
   var hoje = Utilities.formatDate(new Date(), "America/Sao_Paulo", "dd/MM/yyyy");
   var resumo = contexto.resumo || {};
 
     var consulta = String(mensagem || "").toLowerCase();
-  var precisaCCT = /(cct|convenção|convencao|cláusula|clausula|dissídio|dissidio|acordo coletivo)/i.test(consulta);
-  var conteudoCCT = precisaCCT ? selecionarContextoIA_(getCCTTexto_(), consulta, 90000) : "";
+
+  /* O BOTÃO "CCT" DA BARRA LATERAL NÃO CARREGAVA A CCT.
+   *
+   * A decisão de anexar o texto da convenção olhava SÓ as palavras da
+   * pergunta. Quem clicava em "CCT" na lista de especialidades e perguntava
+   * "quanto ganha um secretário escolar?" — sem escrever "CCT", "cláusula"
+   * nem "convenção" — recebia resposta SEM a convenção anexada. A IA
+   * respondia assim mesmo, do que sabia por fora, e ninguém tinha como
+   * perceber: a resposta vinha com a mesma cara de sempre.
+   *
+   * É o pior tipo de defeito num assistente: ele não erra o formato, erra a
+   * fonte. Agora o domínio escolhido também manda — quem entrou na
+   * especialidade CCT está dizendo, com todas as letras, sobre o que quer
+   * falar. */
+  var dominioAtual = String((contexto && contexto.dominio) || "").toUpperCase();
+  var precisaCCT = forcar.cct === true || dominioAtual === "CCT" ||
+    /(cct|convenção|convencao|cláusula|clausula|dissídio|dissidio|acordo coletivo|piso|reajuste)/i.test(consulta);
+  var conteudoCCT = precisaCCT
+    ? blocoDocumentoIA_("CCT", getCCTTexto_(), consulta, 90000) : "";
+  /* O ESTATUTO, pela mesma porta da CCT e com o mesmo cuidado.
+   *
+   * São documentos diferentes e não podem se substituir: a CCT rege a
+   * relação com as escolas (piso, reajuste, bolsa); o Estatuto rege o
+   * sindicato por dentro (assembleia, mandato, eleição, conselho fiscal).
+   * Responder assembleia com CCT, ou piso com Estatuto, é errar a fonte —
+   * e errar a fonte é o defeito que ninguém confere, porque a resposta sai
+   * com a mesma cara de sempre.
+   *
+   * 60.000 de teto contra os 90.000 da CCT: os dois juntos precisam caber
+   * no prompt, e a pergunta que aciona os dois ao mesmo tempo é rara. */
+  /* O VOCABULÁRIO FOI CURTO DEMAIS, e o caso real mostrou onde.
+   *
+   * "Quem pode participar da votação?" é pergunta de Estatuto para qualquer
+   * pessoa que leia — e não acionava nada, porque "votação", "voto" e
+   * "eleitor" não estavam na lista. A resposta saiu citando três artigos de
+   * memória, todos com o número errado.
+   *
+   * Lista de palavras sempre vaza; por isso ela agora é mais larga E existe
+   * a segunda leitura (ver `chatSISGEP`), que pega o que ela deixar passar.
+   * Larga sem ser indiscriminada: cada palavra aqui é de assunto que só o
+   * Estatuto rege. */
+  var precisaEstatuto = forcar.estatuto === true || dominioAtual === "ESTATUTO" ||
+    /(estatuto|estatutári|assembleia|assembléia|mandato|diretoria|conselho fiscal|elei(ção|cao|toral)|posse|quórum|quorum|destitui|filia(ção|cao)|desfilia|vot(o|ar|ação|acao|antes)|eleitor|chapa|urna|escrut[íi]nio|delegad|sindical(izad|iza)|art\.\s*\d)/i.test(consulta);
+  var conteudoEstatuto = (precisaEstatuto && typeof getEstatutoTexto_ === "function")
+    ? blocoDocumentoIA_("ESTATUTO", getEstatutoTexto_(), consulta, 60000) : "";
+
   var memoriaRelevante = selecionarContextoIA_(carregarMemoriaOrganizacional(), consulta, 30000);
 
 var prompt =
@@ -574,7 +937,13 @@ var prompt =
     "Responda sempre em português brasileiro, de forma direta e objetiva. " +
     "Use listas quando houver múltiplos itens. Seja assertivo, não especule. " +
     "Para perguntas sobre a CCT, cite o número da cláusula relevante.\n\n" +
+    "Para perguntas sobre o Estatuto, cite o número do artigo. NUNCA responda " +
+    "sobre Estatuto usando a CCT, nem sobre CCT usando o Estatuto: são " +
+    "documentos diferentes, e trocá-los produz resposta com a forma certa e a " +
+    "fonte errada.\n\n" +
     conteudoCCT +
+    "\n" +
+    conteudoEstatuto +
     "\n" +
     memoriaRelevante +
 
@@ -712,17 +1081,3 @@ var prompt =
   return prompt;
 }
 
-/* ═══════════════════════════════════════════════════════
-   SUGESTÕES PARA O FRONTEND
-═══════════════════════════════════════════════════════ */
-function chatSugestoes() {
-  return [
-    "Quem devo cobrar hoje?",
-    "Qual o resumo geral das mensalidades?",
-    "Quantos associados estão pendentes há mais de 30 dias?",
-    "Qual o status da FAESA?",
-    "Qual o prazo de repasse da mensalidade sindical?",
-    "Quais escolas estão sem email cadastrado?",
-    "O que diz a cláusula 56 da CCT?"
-  ];
-}

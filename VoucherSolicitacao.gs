@@ -16,6 +16,52 @@ function salvarCadastroESolicitacaoVoucher(payload) {
     const escolaAtual      = valorSeguroVoucher_(payload.escolaAtual || payload.escola);
     const tipoDocVinculo   = inferirTipoDocumentoVinculo_(payload);
 
+    /* PELO PORTAL, O NÃO ASSOCIADO NÃO FAZ A SOLICITAÇÃO.
+     *
+     * Regra dita pelo usuário em 14/08/2026: "quem não é associado não pode
+     * fazer a solicitação pelo site... portal". Ele vem à sede e entrega em
+     * papel.
+     *
+     * ISTO CONVIVE COM O "não pode bloquear" dito minutos antes, e a leitura
+     * das duas frases juntas é o que define este código: o que não pode é o
+     * bloqueio MUDO — a tela que recusa e não diz nada, deixando a pessoa
+     * sem saber o que fazer. A recusa em si é a regra. Por isso a resposta
+     * não é um erro seco: ela carrega `naoAssociado` e `avisoPresencial`,
+     * para a tela mostrar uma faixa que EXPLICA o caminho, e não um alerta
+     * vermelho de falha.
+     *
+     * A CONSULTA VEM ANTES DE QUALQUER GRAVAÇÃO. Recusar depois de gravar
+     * deixaria no sistema o cadastro de quem não pode usar o portal — dado
+     * pessoal guardado sem finalidade, que é o que a LGPD manda evitar.
+     *
+     * RECUSA SÓ QUEM A BASE CONFIRMA COMO NÃO FILIADO. Quem não está na base
+     * não é recusado: pode ser associado novo, ainda não lançado, e barrá-lo
+     * seria negar direito por atraso de cadastro. Esse caso segue para a
+     * fila de validação cadastral, que é pedir conferência humana — não
+     * conceder nada. */
+    const resultadoBase = consultarAssociadoNaBase_(cpf);
+    const naoAssociadoConfirmado = resultadoBase.encontrado && !resultadoBase.filiado;
+
+    if (naoAssociadoConfirmado) {
+      return {
+        ok: false,
+        naoAssociado: true,
+        /* Sem "erro", sem "não foi possível": a frase abre pelo que ele TEM,
+         * não pelo que ele deixa de poder. O benefício existe para ele. */
+        mensagem:
+          "O pedido de bolsa pelo portal é exclusivo para associados. " +
+          "O benefício é o mesmo — muda só a forma: escreva para " +
+          VOUCHER_EMAIL_SECRETARIA_ + " para receber as orientações e " +
+          "fazer a solicitação presencialmente, na sede do SindEducação-ES.",
+        emailContato: VOUCHER_EMAIL_SECRETARIA_,
+        avisoPresencial:
+          "A solicitação é entregue em papel e o voucher é retirado na sede. " +
+          "Se você já se associou recentemente e este aviso apareceu, " +
+          "escreva para " + VOUCHER_EMAIL_SECRETARIA_ + " para atualizarmos " +
+          "seu cadastro."
+      };
+    }
+
     registrarOuAtualizarCadastroVoucher({
       cpf: cpf,
       nome: nome,
@@ -30,30 +76,30 @@ function salvarCadastroESolicitacaoVoucher(payload) {
       observacoes: "Cadastro/atualização realizada pelo Portal Voucher."
     });
 
-    const resultadoBase = consultarAssociadoNaBase_(cpf);
-
     const situacaoSindicalFinal = resultadoBase.filiado
       ? "ASSOCIADO"
-      : (resultadoBase.encontrado ? "NAO_ASSOCIADO" : "PENDENTE_VALIDACAO");
+      : (naoAssociadoConfirmado ? "NAO_ASSOCIADO" : "PENDENTE_VALIDACAO");
 
     atualizarSituacaoSindicalCadastro_(cpf, situacaoSindicalFinal);
 
     const idadeBeneficiario = calcularIdade_(payload.dataNascimentoBeneficiario);
     const regra             = calcularRegraVoucher_(payload, idadeBeneficiario);
 
-    const dupCheck = verificarDuplicidadeVoucher_(
-      cpf,
-      payload.modalidade,
-      payload.periodoReferencia,
-      regra.regime
-    );
+    /* A chave é PESSOA × CURSO × JANELA, e por isso o beneficiário e o curso
+     * vão junto: sem eles, dois filhos do mesmo associado em cursos
+     * diferentes no mesmo ano se bloqueavam entre si. Ver VoucherPeriodo.gs. */
+    const dupCheck = verificarDuplicidadeVoucher_({
+      cpf: cpf,
+      nome: nome,
+      beneficiario: nomeBeneficiario || nome,
+      modalidade: payload.modalidade,
+      curso: payload.curso,
+      periodo: payload.periodoReferencia,
+      regime: regra.regime
+    });
 
     if (dupCheck.duplicado) {
-      return {
-        ok: false,
-        mensagem: "Já existe uma solicitação ativa para este benefício no período " +
-          dupCheck.periodo + ". Protocolo: " + dupCheck.protocolo + "."
-      };
+      return { ok: false, mensagem: dupCheck.mensagem };
     }
 
     const escolaInfo    = buscarEscolaPorNome_(escolaAtual);
@@ -74,7 +120,11 @@ function salvarCadastroESolicitacaoVoucher(payload) {
     } else if (resultadoBase.filiado) {
       statusSolicitacao = "PENDENTE";
       statusValidacaoSindical = "VALIDADO";
-    } else if (resultadoBase.encontrado && !resultadoBase.filiado) {
+    } else if (naoAssociadoConfirmado) {
+      /* O PEDIDO ENTRA NA FILA DO PRESENCIAL — não é recusa, é outro
+       * caminho. Ele fica visível para a secretaria, que sabe que alguém
+       * procurou e vai aparecer na sede com o papel. Bloquear aqui faria o
+       * sindicato perder o registro de que a pessoa existiu. */
       statusSolicitacao = "AGUARDANDO_ATENDIMENTO_PRESENCIAL";
       statusValidacaoSindical = "NAO_ASSOCIADO";
     }
@@ -120,12 +170,20 @@ function salvarCadastroESolicitacaoVoucher(payload) {
     setCol("PARENTESCO", parentesco);
     setCol("ENTEADO_DECLARADO_IR", valorSeguroVoucher_(payload.enteadoDeclaradoIR || "NAO").toUpperCase());
 
+    /* Instituição de ensino — onde a pessoa ESTUDA, diferente da escola onde
+     * trabalha. Opcional na gravação para não quebrar solicitações que já
+     * existem nem o portal atual, que ainda não coleta estes campos. */
+    setCol("INSTITUICAO_ENSINO", valorSeguroVoucher_(payload.instituicaoEnsino));
+    setCol("CNPJ_INSTITUICAO",   valorSeguroVoucher_(payload.cnpjInstituicao));
+    setCol("EMAIL_INSTITUICAO",  String(payload.emailInstituicao || "").trim().toLowerCase());
     setCol("MODALIDADE", String(payload.modalidade || "").toUpperCase());
     setCol("CURSO", valorSeguroVoucher_(payload.curso));
     setCol("AREA_CURSO", String(payload.areaCurso || "").toUpperCase());
     setCol("ORDEM_FILHO", valorSeguroVoucher_(payload.ordemFilho));
     setCol("REGIME", regra.regime);
-    setCol("PERIODO_REFERENCIA", valorSeguroVoucher_(payload.periodoReferencia));
+    setCol("PERIODO_REFERENCIA", (typeof voucherPeriodoParaGravar_ === "function"
+      ? voucherPeriodoParaGravar_(payload.periodoReferencia)
+      : valorSeguroVoucher_(payload.periodoReferencia)));
     setCol("PERCENTUAL_APLICADO", regra.percentual);
 
     setCol("TIPO_DOCUMENTO_VINCULO", tipoDocVinculo);
@@ -203,12 +261,28 @@ function salvarCadastroESolicitacaoVoucher(payload) {
 
     return {
       ok: true,
-      mensagem: "Solicitação registrada com sucesso!",
+      /* A MENSAGEM DE SUCESSO DIZ O QUE VEM DEPOIS.
+       *
+       * Para o não associado, "registrada com sucesso" sozinho é meia
+       * verdade que vira frustração: ele fecharia a tela esperando um
+       * e-mail com o voucher. O aviso vai junto do sucesso, não no lugar
+       * dele — o pedido foi aceito mesmo, e o que muda é por onde termina. */
+      mensagem: naoAssociadoConfirmado
+        ? "Solicitação registrada! Como você ainda não é associado, o " +
+          "atendimento é presencial: compareça à sede do SindEducação-ES " +
+          "para entregar a solicitação em papel e retirar o voucher."
+        : "Solicitação registrada com sucesso!",
+      avisoPresencial: naoAssociadoConfirmado
+        ? "O benefício é o mesmo do associado — muda só a forma de retirar. " +
+          "Traga um documento com foto e o comprovante de matrícula. " +
+          "O voucher não será enviado por e-mail."
+        : "",
       protocolo: { numeroProtocolo: protocolo },
       solicitacao: { idSolicitacao: idSolicitacao },
       percentual: regra.percentual,
       apto: regra.apto,
       status: statusSolicitacao,
+      naoAssociado: naoAssociadoConfirmado,
       situacaoSindical: situacaoSindicalFinal
     };
 
@@ -267,6 +341,14 @@ function montarObservacaoSolicitacaoVoucher_(regra, flags) {
     partes.push("Escola não localizada no cadastro de escolas.");
   }
 
+  /* ALCANÇÁVEL, e é bom que seja.
+   *
+   * Cheguei a marcar esta linha como inalcançável em 14/08/2026, quando o
+   * portal recusava o não associado. No mesmo dia o usuário corrigiu — o
+   * portal avisa, não bloqueia — e o caso voltou a passar por aqui. Fica o
+   * registro porque "código morto" declarado cedo demais é como se apaga
+   * coisa viva por engano (REGRA Nº 1): a leitura estava certa para o código
+   * daquele minuto e errada meia hora depois. */
   if (flags && flags.situacaoSindicalFinal === "NAO_ASSOCIADO") {
     partes.push("Cadastro identificado como não associado. Orientar atendimento presencial.");
   }
@@ -274,86 +356,58 @@ function montarObservacaoSolicitacaoVoucher_(regra, flags) {
   return partes.join(" | ");
 }
 
-function verificarDuplicidadeVoucher_(cpf, modalidade, periodoReferencia, regime) {
+/**
+ * A trava de duplicidade do portal — hoje só a porta, a regra mora em
+ * VoucherPeriodo.gs.
+ *
+ * ESTA FUNÇÃO TINHA A PRÓPRIA IMPLEMENTAÇÃO, e ela chaveava por CPF DO
+ * SOLICITANTE + MODALIDADE. Errava dos dois lados ao mesmo tempo: bloqueava
+ * dois filhos do mesmo associado em cursos diferentes no mesmo ano (que é o
+ * caso normal de uma família), e deixava passar a mesma pessoa em dois
+ * cursos diferentes no mesmo semestre (porque a modalidade não muda). Ver o
+ * cabeçalho de VoucherPeriodo.gs.
+ *
+ * O corpo saiu daqui em vez de ser corrigido em duas cópias porque as duas
+ * portas de entrada — a secretaria hoje, o portal quando existir — têm que
+ * recusar pelo mesmo critério e com as mesmas palavras. Duas implementações
+ * da mesma regra dariam respostas diferentes para a mesma pergunta,
+ * dependendo de onde a pessoa clicou.
+ *
+ * Aceita a forma antiga (4 argumentos posicionais) porque ela é a assinatura
+ * que já estava publicada; sem beneficiário e sem curso, porém, a chave cai
+ * para o nome do titular e para a modalidade — que é o comportamento antigo,
+ * com os defeitos antigos. Quem chama deve passar o objeto.
+ */
+function verificarDuplicidadeVoucher_(dadosOuCpf, modalidade, periodoReferencia, regime) {
   try {
-    const ss = SpreadsheetApp.openById(PLANILHA_ID);
-    const sh = ss.getSheetByName("Voucher_Solicitacoes");
+    var dados = (dadosOuCpf && typeof dadosOuCpf === "object")
+      ? dadosOuCpf
+      : { cpf: dadosOuCpf, modalidade: modalidade, periodo: periodoReferencia, regime: regime };
 
-    if (!sh || sh.getLastRow() < 2) {
-      return { duplicado: false };
-    }
+    var hist = voucherPeriodoHistorico_(dados);
+    if (!hist.bloqueado) return { duplicado: false, tipo: voucherTipoSolicitacao_(hist) };
 
-    const headers = obterHeaders_(sh);
-    const idx = function(n) { return headers.indexOf(n); };
-    const dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
-
-    const cpfNorm = normalizarCPF_(cpf);
-    const modalUp = String(modalidade || "").toUpperCase();
-    const periodoNorm = String(periodoReferencia || "").trim();
-    const regimeUp = String(regime || "ANUAL").toUpperCase();
-
-    const anoAtual = periodoNorm.substring(0, 4);
-    const semestreAtual = periodoNorm.indexOf("/") > -1 ? periodoNorm.split("/")[1] : "";
-
-    const statusBloqueantes = [
-      "PENDENTE",
-      "ANALISE",
-      "APROVADO",
-      "EMITIDO",
-      "AGUARDANDO_VALIDACAO_CADASTRAL",
-      "AGUARDANDO_ATENDIMENTO_PRESENCIAL"
-    ];
-
-    for (let i = 0; i < dados.length; i++) {
-      const cpfLinha = normalizarCPF_(dados[i][idx("CPF_SOLICITANTE")]);
-      const modalLinha = String(dados[i][idx("MODALIDADE")] || "").toUpperCase();
-      const periodoLinha = String(dados[i][idx("PERIODO_REFERENCIA")] || "").trim();
-      const statusLinha = String(dados[i][idx("STATUS_SOLICITACAO")] || "").toUpperCase();
-      const regimeLinha = String(dados[i][idx("REGIME")] || "ANUAL").toUpperCase();
-      const protocoloLinha = String(dados[i][idx("NUMERO_PROTOCOLO")] || "");
-
-      if (cpfLinha !== cpfNorm) continue;
-      if (modalLinha !== modalUp) continue;
-      if (statusBloqueantes.indexOf(statusLinha) === -1) continue;
-
-      if (regimeUp === "ANUAL" || regimeLinha === "ANUAL") {
-        const anoLinha = periodoLinha.substring(0, 4);
-
-        if (anoLinha && anoAtual && anoLinha === anoAtual) {
-          return {
-            duplicado: true,
-            protocolo: protocoloLinha,
-            periodo: periodoLinha
-          };
-        }
-      }
-
-      if (regimeUp === "SEMESTRAL" || regimeLinha === "SEMESTRAL") {
-        const anoLinha = periodoLinha.substring(0, 4);
-        const semestreLinha = periodoLinha.indexOf("/") > -1 ? periodoLinha.split("/")[1] : "";
-
-        if (
-          anoLinha &&
-          anoAtual &&
-          anoLinha === anoAtual &&
-          semestreLinha &&
-          semestreAtual &&
-          semestreLinha === semestreAtual
-        ) {
-          return {
-            duplicado: true,
-            protocolo: protocoloLinha,
-            periodo: periodoLinha
-          };
-        }
-      }
-    }
-
-    return { duplicado: false };
+    return {
+      duplicado: true,
+      protocolo: hist.bloqueio.protocolo,
+      periodo: hist.bloqueio.periodo,
+      bloqueio: hist.bloqueio,
+      mensagem: voucherPeriodoMensagemBloqueio_(hist.bloqueio, dados)
+    };
 
   } catch(e) {
     Logger.log("verificarDuplicidadeVoucher_ erro: " + e.message);
-    return { duplicado: false };
+    /* NÃO devolve "pode emitir" em cima de erro de leitura: quem chama grava
+     * logo em seguida, e um erro transitório de planilha viraria o segundo
+     * voucher emitido em silêncio. Recusar é reversível; emitir duas vezes
+     * não é. */
+    return {
+      duplicado: true,
+      protocolo: "",
+      periodo: "",
+      mensagem: "Não foi possível conferir se já existe voucher para este " +
+                "período (" + e.message + "). Tente de novo em instantes."
+    };
   }
 }
 

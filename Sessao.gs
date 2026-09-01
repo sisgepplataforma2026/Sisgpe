@@ -56,6 +56,12 @@ function salvarSessaoUsuario_(dados) {
     nome: String(dados.nome || "").trim(),
     email: String(dados.email || "").trim().toLowerCase(),
     perfil: String(dados.perfil || "Administrador").trim(),
+    // Módulos que este usuário pode abrir. "TODOS" (ou ausente) = tudo,
+    // que é o comportamento de sempre — ver AcessoModulos.gs. Fica
+    // gravado na sessão para não reler a planilha a cada chamada; por
+    // isso mudança de acesso só vale no PRÓXIMO login do usuário.
+    modulos: (dados.modulos === undefined || dados.modulos === null || dados.modulos === "")
+      ? "TODOS" : dados.modulos,
     criadoEm: agora,
     expiraEm: agora + (SESSAO_CONFIG.DURACAO_SEGUNDOS * 1000)
   };
@@ -135,11 +141,28 @@ function getSessaoUsuario(token) {
  */
 function encerrarSessaoUsuario(token) {
   token = String(token || "").trim();
+
+  /* Quem está saindo, lido ANTES de destruir a sessão — depois não há mais
+   * de onde tirar o nome. Sem isto o registro de saída seria anônimo, e a
+   * pergunta "até que horas fulano ficou no sistema" não teria resposta. */
+  var quem = "";
+  try {
+    if (token && typeof getSessaoUsuario === "function") {
+      var s = getSessaoUsuario(token);
+      if (s) quem = s.email || s.usuario || "";
+    }
+  } catch (e) {}
+
   if (token) {
     var chave = SESSAO_CONFIG.CHAVE_CACHE_SESSAO + token;
     CacheService.getScriptCache().remove(chave);
     PropertiesService.getScriptProperties().deleteProperty(chave);
   }
+
+  try {
+    if (typeof aud_deAcesso_ === "function") aud_deAcesso_("SAIR", quem, "");
+  } catch (e) { Logger.log("[acesso] ponte de auditoria falhou: " + e.message); }
+
   return { ok: true };
 }
 

@@ -206,7 +206,29 @@ function registrarTentativaFalha_(identificador) {
       cache.remove(chaveTentativas);
 
       Logger.log("🔒 Login bloqueado — identificador: " + identificador + " | nivel: " + nivel + " | duracao: " + duracaoSegundos + "s");
+
+      /* Bloqueio na trilha. É o registro mais importante desta função:
+       * cinco tentativas erradas seguidas é o que uma tentativa de invasão
+       * parece de fora. Até aqui isso só existia no Logger, que some em dias
+       * e ninguém abre. */
+      try {
+        if (typeof aud_deAcesso_ === "function") {
+          aud_deAcesso_("BLOQUEIO_POR_TENTATIVAS", identificador,
+            count + " tentativas · bloqueio nível " + nivel + " por " +
+            Math.round(duracaoSegundos / 60) + " min");
+        }
+      } catch (e) { Logger.log("[acesso] ponte de auditoria falhou: " + e.message); }
     }
+
+    /* Toda tentativa falha passa por aqui — senha errada, usuário inativo e
+     * usuário inexistente. Um ponto só cobre os três. */
+    try {
+      if (typeof aud_deAcesso_ === "function") {
+        aud_deAcesso_("SENHA_INCORRETA", identificador,
+          "tentativa " + count + " de " + LOGIN_TENTATIVAS_CONFIG.MAX_TENTATIVAS);
+      }
+    } catch (e2) { Logger.log("[acesso] ponte de auditoria falhou: " + e2.message); }
+
   } finally {
     try { lock.releaseLock(); } catch (e) {}
   }
@@ -379,12 +401,34 @@ function autenticarUsuario(login, senha) {
       // ── LOGIN NORMAL ─────────────────────────────────────
       // Captura o token da sessão para devolver ao cliente — é ele que
       // vai na URL (?sessao=token) e mantém a sessão isolada por aba/usuário.
+      // Módulos permitidos vêm da coluna MODULOS (AcessoModulos.gs).
+      // Protegido por typeof e por try/catch lá dentro: se o arquivo de
+      // acesso não estiver instalado ou a leitura falhar, o login segue
+      // normalmente com acesso total — nunca derrubar quem tenta entrar
+      // por causa de leitura de permissão.
+      var modulosUsuario = "TODOS";
+      if (typeof acessoModulosDoUsuario_ === "function") {
+        modulosUsuario = acessoModulosDoUsuario_(dados[i], cab);
+      }
+
       var tokenSessao = salvarSessaoUsuario_({
         usuario: usuario,
         nome:    String(dados[i][idxNome]   || "").trim(),
         email:   email,
-        perfil:  String(dados[i][idxPerfil] || "Administrador").trim()
+        perfil:  String(dados[i][idxPerfil] || "Administrador").trim(),
+        modulos: modulosUsuario
       });
+
+      /* Entrada bem-sucedida na trilha. Sem isto, a trilha teria só as
+       * tentativas falhas — e não daria para responder "quem estava dentro
+       * do sistema quando aquilo aconteceu", que é metade de qualquer
+       * apuração. */
+      try {
+        if (typeof aud_deAcesso_ === "function") {
+          aud_deAcesso_("ENTRAR", email || usuario,
+            String(dados[i][idxPerfil] || "").trim());
+        }
+      } catch (e) { Logger.log("[acesso] ponte de auditoria falhou: " + e.message); }
 
       return {
         ok: true,

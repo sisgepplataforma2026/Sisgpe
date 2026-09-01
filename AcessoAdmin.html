@@ -1,0 +1,255 @@
+<!--
+  ARQUIVO: AcessoAdmin.html
+  MÓDULO: Configurações — Usuários e acesso por módulo
+
+  Incluído DENTRO de ConfigAdmin.html.
+
+  🚨 NUNCA escreva scriptlet do Apps Script (a sintaxe que abre com
+  menor-interrogação) neste arquivo — NEM DENTRO DE COMENTÁRIO HTML. O
+  template engine avalia scriptlet em qualquer posição, inclusive
+  comentado; um arquivo que cita o próprio include se inclui em
+  recursão infinita e derruba o JavaScript da tela toda. Regra nº 0.
+
+  Antes desta tela, criar usuário e definir permissão só era possível
+  editando a planilha à mão — e a coluna de módulos ficava em branco
+  por esquecimento, o que significa acesso total.
+
+  Usa estilo inline porque ConfigAdmin.html é enxuto e não tem o
+  conjunto de classes das telas maiores; as cores saem dos tokens do
+  design system (--navy, --blue, --gold).
+-->
+
+<div class="cfg-section" id="cfgAcessoSection" style="margin-top:18px;">
+  <div class="cfg-head" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 16px;border-bottom:2px solid var(--gold,#C9A84C);">
+    <div>
+      <strong style="color:var(--navy,#001f4d);font-size:15px;">🔐 Usuários e acesso</strong>
+      <div style="font-size:12px;color:#64748b;margin-top:2px;">Quem entra no SISGEP e quais módulos cada um enxerga.</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="cfg-btn" onclick="acNovoUsuario()" style="background:var(--navy,#001f4d);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;">➕ Novo usuário</button>
+      <button class="cfg-btn" onclick="acCarregar()" style="background:#fff;color:var(--navy,#001f4d);border:1px solid #cbd5e1;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;">🔄 Atualizar</button>
+    </div>
+  </div>
+
+  <div style="background:#fffbeb;border:1px solid #fcd34d;color:#92400e;border-radius:10px;padding:10px 14px;margin:12px 16px;font-size:12.5px;font-weight:600;">
+    ⚠️ Usuário com <b>nenhum módulo marcado</b> enxerga <b>todos</b> — é o padrão de segurança da migração, para ninguém ficar trancado fora quando a coluna foi criada. Marque os módulos de quem deve ter acesso restrito. A mudança <b>vale no próximo login</b> da pessoa.
+  </div>
+
+  <div id="acLista" style="padding:0 16px 16px;">
+    <div style="color:#94a3b8;padding:16px;text-align:center;">Carregando...</div>
+  </div>
+</div>
+
+<!-- ══ Painel: novo usuário / editar acesso ══ -->
+<div id="acPainel" style="display:none;position:fixed;inset:0;background:rgba(0,20,60,.45);z-index:9999;align-items:flex-start;justify-content:center;padding:24px;overflow:auto;">
+  <div style="background:#fff;border-radius:16px;max-width:560px;width:100%;box-shadow:0 20px 60px rgba(0,20,60,.3);overflow:hidden;">
+    <div style="background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));padding:14px 18px;display:flex;justify-content:space-between;align-items:center;">
+      <strong id="acPainelTitulo" style="color:#fff;font-size:14px;">Usuário</strong>
+      <button onclick="acFechar()" style="background:none;border:none;color:rgba(255,255,255,.75);font-size:18px;cursor:pointer;">✕</button>
+    </div>
+    <div style="padding:16px 18px;">
+      <div id="acCamposNovo">
+        <div style="margin-bottom:10px;"><label style="display:block;font-size:12px;font-weight:700;color:#334155;margin-bottom:3px;">Nome completo *</label><input id="acNome" type="text" style="width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;"></div>
+        <div style="margin-bottom:10px;"><label style="display:block;font-size:12px;font-weight:700;color:#334155;margin-bottom:3px;">Login *</label><input id="acUsuario" type="text" placeholder="sem espaços, ex.: rogerio" style="width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;"></div>
+        <div style="margin-bottom:10px;"><label style="display:block;font-size:12px;font-weight:700;color:#334155;margin-bottom:3px;">E-mail *</label><input id="acEmail" type="email" style="width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;"></div>
+        <div style="margin-bottom:10px;"><label style="display:block;font-size:12px;font-weight:700;color:#334155;margin-bottom:3px;">Cargo / perfil</label><input id="acPerfil" type="text" placeholder="Ex.: Diretor Financeiro" style="width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;"></div>
+        <div style="margin-bottom:12px;">
+          <label style="display:block;font-size:12px;font-weight:700;color:#334155;margin-bottom:3px;">Senha provisória *</label>
+          <input id="acSenha" type="text" placeholder="mínimo 6 caracteres" style="width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;">
+          <div style="font-size:11.5px;color:#64748b;margin-top:3px;">A pessoa é obrigada a trocar no primeiro acesso. A senha é gravada já criptografada.</div>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid #e5e7eb;padding-top:12px;">
+        <div style="font-size:12px;font-weight:800;color:var(--navy,#001f4d);margin-bottom:2px;">Módulos que este usuário pode abrir</div>
+        <div style="font-size:11.5px;color:#64748b;margin-bottom:8px;">Nenhum marcado = acesso a todos.</div>
+        <div id="acModulos" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:6px;"></div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+        <button onclick="acFechar()" style="background:#fff;color:#334155;border:1px solid #cbd5e1;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;">Cancelar</button>
+        <button id="acBtnSalvar" onclick="acSalvar()" style="background:#0f8a5f;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var USUARIOS=[], CATALOGO=[], MODO="novo", ALVO="";
+
+  function g(id){return document.getElementById(id);}
+  function tk(){return typeof SISGEP_TOKEN_SESSAO!=="undefined"?SISGEP_TOKEN_SESSAO:"";}
+  function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]);});}
+  var MAPA_TOAST={success:"ok",error:"err",warning:"warn",info:"info"};
+  function aviso(m,t){t=t||"info";if(typeof toast==="function"){toast(m,MAPA_TOAST[t]||t);return;}alert(m);}
+
+  window.acCarregar=function(){
+    var box=g("acLista");
+    if(box)box.innerHTML='<div style="color:#94a3b8;padding:16px;text-align:center;">Carregando...</div>';
+    google.script.run
+      .withSuccessHandler(function(r){ CATALOGO=(r&&r.modulos)||[]; carregarUsuarios(); })
+      .withFailureHandler(function(e){
+        if(box)box.innerHTML='<div style="color:#991b1b;padding:16px;text-align:center;">'+esc((e&&e.message)||e)+'</div>';
+      })
+      .acessoListarModulos(tk());
+  };
+
+  function carregarUsuarios(){
+    google.script.run
+      .withSuccessHandler(function(r){
+        var box=g("acLista"); if(!box)return;
+        if(!r||r.ok!==true){box.innerHTML='<div style="color:#991b1b;padding:16px;text-align:center;">'+esc((r&&r.mensagem)||"Erro.")+'</div>';return;}
+        USUARIOS=r.usuarios||[];
+        pintar();
+      })
+      .withFailureHandler(function(e){
+        var box=g("acLista"); if(box)box.innerHTML='<div style="color:#991b1b;padding:16px;text-align:center;">'+esc((e&&e.message)||e)+'</div>';
+      })
+      .acessoListarUsuarios(tk());
+  }
+
+  function rotulo(chave){
+    for(var i=0;i<CATALOGO.length;i++) if(CATALOGO[i].chave===chave) return CATALOGO[i].rotulo;
+    return chave;
+  }
+
+  function pintar(){
+    var box=g("acLista"); if(!box)return;
+    if(!USUARIOS.length){box.innerHTML='<div style="color:#94a3b8;padding:16px;text-align:center;">Nenhum usuário cadastrado.</div>';return;}
+    box.innerHTML=USUARIOS.map(function(u){
+      var ativo=String(u.status||"").toUpperCase()==="ATIVO";
+      var acesso=u.todos
+        ? '<span style="color:#92400e;font-weight:800;">Todos os módulos</span>'
+        : u.modulos.map(function(m){
+            return '<span style="display:inline-block;background:#eff6ff;color:#1565C0;border-radius:6px;padding:2px 7px;font-size:11px;font-weight:700;margin:2px 3px 0 0;">'+esc(rotulo(m))+'</span>';
+          }).join("");
+      return '<div style="border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;margin-bottom:8px;'+(ativo?'':'opacity:.55;')+'">'+
+        '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start;">'+
+          '<div style="flex:1;min-width:200px;">'+
+            '<div style="font-weight:800;color:var(--navy,#001f4d);">'+esc(u.nome||u.usuario)+
+              (ativo?'':' <span style="font-size:11px;color:#991b1b;">(inativo)</span>')+'</div>'+
+            '<div style="font-size:11.5px;color:#64748b;">'+esc(u.usuario)+(u.email?' · '+esc(u.email):"")+(u.perfil?' · '+esc(u.perfil):"")+'</div>'+
+            '<div style="margin-top:6px;font-size:12px;">'+acesso+'</div>'+
+          '</div>'+
+          '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+
+            '<button data-ac-editar="'+esc(u.usuario)+'" style="background:#fff;color:var(--navy,#001f4d);border:1px solid #cbd5e1;border-radius:8px;padding:6px 12px;font-weight:700;font-size:12px;cursor:pointer;">Acesso</button>'+
+            '<button data-ac-alternar="'+esc(u.usuario)+'" style="background:#fff;color:'+(ativo?'#991b1b':'#0f8a5f')+';border:1px solid '+(ativo?'#f3b6b6':'#86efac')+';border-radius:8px;padding:6px 12px;font-weight:700;font-size:12px;cursor:pointer;">'+(ativo?"Inativar":"Reativar")+'</button>'+
+          '</div>'+
+        '</div>'+
+      '</div>';
+    }).join("");
+
+    box.querySelectorAll("[data-ac-editar]").forEach(function(b){b.addEventListener("click",function(){acEditarAcesso(b.getAttribute("data-ac-editar"));});});
+    box.querySelectorAll("[data-ac-alternar]").forEach(function(b){b.addEventListener("click",function(){acAlternar(b.getAttribute("data-ac-alternar"));});});
+  }
+
+  function achar(u){for(var i=0;i<USUARIOS.length;i++)if(USUARIOS[i].usuario===u)return USUARIOS[i];return null;}
+
+  function montarCheckboxes(marcados){
+    var box=g("acModulos"); if(!box)return;
+    var m={}; (marcados||[]).forEach(function(x){m[x]=true;});
+    box.innerHTML=CATALOGO.map(function(c){
+      return '<label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:#334155;cursor:pointer;padding:4px 6px;border-radius:6px;">'+
+        '<input type="checkbox" class="acChk" value="'+esc(c.chave)+'"'+(m[c.chave]?' checked':'')+'>'+
+        '<span>'+esc(c.rotulo)+(c.sensivel?' <span title="Guarda dado pessoal" style="color:#92400e;">•</span>':"")+'</span>'+
+      '</label>';
+    }).join("");
+  }
+
+  function marcados(){
+    var out=[];
+    document.querySelectorAll(".acChk").forEach(function(c){ if(c.checked) out.push(c.value); });
+    return out;
+  }
+
+  window.acNovoUsuario=function(){
+    MODO="novo"; ALVO="";
+    if(g("acPainelTitulo"))g("acPainelTitulo").textContent="Novo usuário";
+    if(g("acCamposNovo"))g("acCamposNovo").style.display="";
+    ["acNome","acUsuario","acEmail","acPerfil","acSenha"].forEach(function(id){if(g(id))g(id).value="";});
+    montarCheckboxes([]);
+    if(g("acPainel"))g("acPainel").style.display="flex";
+  };
+
+  window.acEditarAcesso=function(usuario){
+    var u=achar(usuario); if(!u)return;
+    MODO="acesso"; ALVO=usuario;
+    if(g("acPainelTitulo"))g("acPainelTitulo").textContent="Acesso de "+(u.nome||u.usuario);
+    // No modo acesso os campos de cadastro somem: aqui só se mexe em
+    // permissão. Trocar nome/senha é outra operação, com outro risco.
+    if(g("acCamposNovo"))g("acCamposNovo").style.display="none";
+    montarCheckboxes(u.todos?[]:u.modulos);
+    if(g("acPainel"))g("acPainel").style.display="flex";
+  };
+
+  window.acFechar=function(){ if(g("acPainel"))g("acPainel").style.display="none"; };
+
+  window.acSalvar=function(){
+    var mods=marcados();
+    var btn=g("acBtnSalvar"); if(btn){btn.disabled=true;btn.textContent="Salvando...";}
+    function fim(){ if(btn){btn.disabled=false;btn.textContent="Salvar";} }
+
+    if(MODO==="acesso"){
+      if(!mods.length && !confirm("Nenhum módulo marcado — este usuário vai enxergar TODOS os módulos. Confirma?")){fim();return;}
+      google.script.run
+        .withSuccessHandler(function(r){
+          fim();
+          if(!r||r.ok!==true){aviso((r&&r.mensagem)||"Falha.","error");return;}
+          acFechar(); aviso(r.mensagem,"success"); acCarregar();
+        })
+        .withFailureHandler(function(e){fim();aviso("Erro: "+((e&&e.message)||e),"error");})
+        .acessoDefinirModulos(ALVO, mods, tk());
+      return;
+    }
+
+    var nome=String((g("acNome")||{}).value||"").trim();
+    var usuario=String((g("acUsuario")||{}).value||"").trim();
+    var email=String((g("acEmail")||{}).value||"").trim();
+    var senha=String((g("acSenha")||{}).value||"").trim();
+    if(!nome||!usuario||!email||senha.length<6){
+      fim(); aviso("Preencha nome, login, e-mail e uma senha de pelo menos 6 caracteres.","error"); return;
+    }
+    if(!mods.length && !confirm("Nenhum módulo marcado — este usuário vai enxergar TODOS os módulos. Confirma?")){fim();return;}
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        fim();
+        if(!r||r.ok!==true){aviso((r&&r.mensagem)||"Falha.","error");return;}
+        acFechar();
+        aviso(r.mensagem,"success");
+        alert("Usuário criado.\n\nLogin: "+usuario+"\nSenha provisória: "+senha+"\n\nPasse esses dados para a pessoa. Ela é obrigada a trocar a senha no primeiro acesso.");
+        acCarregar();
+      })
+      .withFailureHandler(function(e){fim();aviso("Erro: "+((e&&e.message)||e),"error");})
+      .acessoCriarUsuario({nome:nome,usuario:usuario,email:email,perfil:(g("acPerfil")||{}).value||"",senha:senha,modulos:mods}, tk());
+  };
+
+  window.acAlternar=function(usuario){
+    var u=achar(usuario); if(!u)return;
+    var ativo=String(u.status||"").toUpperCase()==="ATIVO";
+    if(!confirm(ativo?("Inativar "+(u.nome||usuario)+"? Ele não consegue mais entrar."):("Reativar "+(u.nome||usuario)+"?")))return;
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||r.ok!==true){aviso((r&&r.mensagem)||"Falha.","error");return;}
+        aviso(r.mensagem,"success"); acCarregar();
+      })
+      .withFailureHandler(function(e){aviso("Erro: "+((e&&e.message)||e),"error");})
+      .acessoAlternarUsuario(usuario, !ativo, tk());
+  };
+
+  // Carrega quando a tela de Configurações abre. Só administrador
+  // consegue ler: para os demais a seção some, em vez de mostrar erro.
+  window.initAcessoAdmin=function(){
+    google.script.run
+      .withSuccessHandler(function(){ acCarregar(); })
+      .withFailureHandler(function(){
+        var s=g("cfgAcessoSection"); if(s)s.style.display="none";
+      })
+      .acessoListarModulos(tk());
+  };
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",function(){setTimeout(window.initAcessoAdmin,300);});
+  else setTimeout(window.initAcessoAdmin,300);
+})();
+</script>

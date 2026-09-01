@@ -3,6 +3,25 @@
 // Gerenciamento da fila de envio de ofícios
 // ============================================================================
 
+/* ── Parâmetros de envio da fila ── */
+var FILA_OFICIOS_MAX_TENTATIVAS = 3;
+var FILA_OFICIOS_TIMEOUT_PROCESSANDO_MS = 10 * 60 * 1000;
+
+/**
+ * Uma linha em PROCESSANDO só é considerada travada depois do tempo limite.
+ * O status é gravado antes do envio: se a execução morrer ali (limite de 6 min
+ * do Apps Script, cota do Gmail), o catch nunca roda e o ofício fica preso —
+ * a fila ignora (só processa PENDENTE/ERRO) e o envio manual recusa.
+ * O limite é maior que a execução máxima do Apps Script, então um envio de
+ * verdade em andamento nunca é confundido com um travado.
+ */
+function filaOficiosProcessandoTravado_(dataUltimaTentativa) {
+  if (!dataUltimaTentativa) return true;
+  var d = dataUltimaTentativa instanceof Date ? dataUltimaTentativa : new Date(dataUltimaTentativa);
+  if (isNaN(d.getTime())) return true;
+  return (new Date().getTime() - d.getTime()) > FILA_OFICIOS_TIMEOUT_PROCESSANDO_MS;
+}
+
 function obterOuCriarAbaFilaOficios_() {
   var ss = SpreadsheetApp.openById(PLANILHA_ID);
   var sh = ss.getSheetByName("FILA_ENVIO_OFICIOS");
@@ -204,7 +223,20 @@ function _gravarResultadoFila_(sh, linhaPlanilha, totalCols, valoresLinha,
 function processarFilaEnvioOficios() {
   var LIMITE_POR_EXECUCAO   = 5;
   var PAUSA_ENTRE_ENVIOS_MS = 4000;
-  var MAX_TENTATIVAS        = 3;
+  var MAX_TENTATIVAS        = FILA_OFICIOS_MAX_TENTATIVAS;
+
+  if (typeof getAmbienteAtual === "function" &&
+      getAmbienteAtual() === "homologacao") {
+    Logger.log("[HOMOLOGACAO] processarFilaEnvioOficios bloqueado: ambiente de homologação.");
+    return {
+      ok: true,
+      homologacao: true,
+      mensagem: "Envio de ofícios bloqueado em ambiente de homologação.",
+      processados: 0,
+      enviados: 0,
+      erros: 0
+    };
+  }
 
   var ss = SpreadsheetApp.openById(PLANILHA_ID);
   var sh = obterOuCriarAbaFilaOficios_();
@@ -214,7 +246,27 @@ function processarFilaEnvioOficios() {
     return { ok: true, mensagem: "Fila vazia.", processados: 0, enviados: 0, erros: 0 };
   }
 
+  // Achado #10: sem checar a cota, um pico de envio esgotava a cota diária do
+  // Gmail no meio do lote e cada ofício restante virava "ERRO" genérico —
+  // indistinguível de e-mail inválido, consumindo tentativas à toa. Se a cota
+  // não cobre nem este lote, pausa sem tocar nas linhas (nenhuma tentativa é
+  // gasta) — a próxima execução do trigger (5 em 5 min) tenta de novo.
+  var quotaRestante = MailApp.getRemainingDailyQuota();
+  if (quotaRestante < LIMITE_POR_EXECUCAO) {
+    Logger.log("⚠ processarFilaEnvioOficios: cota diária de e-mail insuficiente (" + quotaRestante + " restante(s)). Execução pausada, sem marcar erro nas linhas.");
+    return {
+      ok: true,
+      mensagem: "Cota diária de e-mail quase esgotada (" + quotaRestante + " restante(s)). Processamento pausado nesta execução — retoma sozinho quando a cota renovar.",
+      processados: 0, enviados: 0, erros: 0, cotaInsuficiente: true
+    };
+  }
+
   var headerMap            = getHeaderMap_(sh);
+  /* colId entrou na lista de obrigatórias em 20/08/2026 (commit 731ed4e) sem
+     ser declarada aqui — só na outra função que aquele commit tocou. O efeito
+     era ReferenceError logo abaixo, ao montar `obrigatorias`: a fila de envio
+     de ofícios parava antes de processar a primeira linha. */
+  var colId                = headerMap["ID"];
   var colNumero            = headerMap["NUMERO_OFICIO"];
   var colTipo              = headerMap["TIPO"];
   var colEscola            = headerMap["ESCOLA"];
@@ -235,6 +287,7 @@ function processarFilaEnvioOficios() {
   var colStatusRecebimento = headerMap["STATUS_RECEBIMENTO"];
 
   var obrigatorias = {
+    ID: colId,
     NUMERO_OFICIO: colNumero,
     TIPO: colTipo,
     ESCOLA: colEscola,
@@ -273,6 +326,12 @@ function processarFilaEnvioOficios() {
     var linhaPlanilha = i + 2;
     var status        = String(linha[colStatus - 1] || "").trim().toUpperCase();
     var tentativas    = parseInt(linha[colTentativas - 1], 10) || 0;
+
+    // PROCESSANDO parado além do tempo limite = execução interrompida antes do
+    // envio. Volta a ser elegível, senão a linha fica presa para sempre.
+    if (status === "PROCESSANDO" && filaOficiosProcessandoTravado_(linha[colDataUltimaTent - 1])) {
+      status = "ERRO";
+    }
 
     if (status === "PENDENTE" || status === "ERRO") pendentes++;
     if (status === "ERRO_PERMANENTE") continue;
@@ -320,6 +379,9 @@ function processarFilaEnvioOficios() {
     try {
       valoresLinha = sh.getRange(linhaPlanilha, 1, 1, totalCols).getValues()[0];
       var statusAtualFila = String(valoresLinha[colStatus - 1] || "").trim().toUpperCase();
+      if (statusAtualFila === "PROCESSANDO" && filaOficiosProcessandoTravado_(valoresLinha[colDataUltimaTent - 1])) {
+        statusAtualFila = "ERRO";
+      }
       if (statusAtualFila !== "PENDENTE" && statusAtualFila !== "ERRO") {
         continue;
       }
@@ -462,8 +524,8 @@ function processarFilaEnvioOficios() {
     erros: erros
   };
 }
-function enviarOficioDaFilaAgora(numero, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+function enviarOficioDaFilaAgora(numero, tokenSessao, filaId) {
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   if (!numero) return { ok: false, mensagem: "Número do ofício não informado." };
 
   var ss = SpreadsheetApp.openById(PLANILHA_ID);
@@ -475,6 +537,7 @@ function enviarOficioDaFilaAgora(numero, tokenSessao) {
 
   var headerMap = getHeaderMap_(sh);
 
+  var colId                  = headerMap["ID"];
   var colNumero              = headerMap["NUMERO_OFICIO"];
   var colEmailPrincipal      = headerMap["EMAIL_PRINCIPAL"];
   var colEmailsTodos         = headerMap["EMAILS_TODOS"];
@@ -520,21 +583,55 @@ function enviarOficioDaFilaAgora(numero, tokenSessao) {
   var totalCols = sh.getLastColumn();
   var dados = sh.getRange(2, 1, sh.getLastRow() - 1, totalCols).getValues();
   var linhaIdx = -1;
+  var linhaIdxFallback = -1;
+  var numeroBuscado = String(numero).trim();
+  var filaIdBuscado = String(filaId || "").trim();
 
-  for (var i = 0; i < dados.length; i++) {
-    if (String(dados[i][colNumero - 1] || "").trim() === String(numero).trim()) {
-      linhaIdx = i;
-      break;
+  // Caminho principal: o ID é único e identifica exatamente a linha criada
+  // nesta emissão. Isso elimina ambiguidades quando dois ambientes possuem o
+  // mesmo NUMERO_OFICIO (ex.: histórico de Produção copiado para HML).
+  if (filaIdBuscado) {
+    for (var i = dados.length - 1; i >= 0; i--) {
+      if (String(dados[i][colId - 1] || "").trim() === filaIdBuscado) {
+        linhaIdx = i;
+        break;
+      }
     }
-  }
 
-  if (linhaIdx === -1) {
-    return { ok: false, mensagem: "Ofício " + numero + " não encontrado na fila." };
+    if (linhaIdx === -1) {
+      return { ok: false, mensagem: "Registro da fila não encontrado para o ID informado." };
+    }
+
+    var numeroDoId = String(dados[linhaIdx][colNumero - 1] || "").trim();
+    if (numeroBuscado && numeroDoId !== numeroBuscado) {
+      return { ok: false, mensagem: "O ID da fila não corresponde ao número do ofício informado." };
+    }
+  } else {
+    // Compatibilidade com chamadas antigas: sem filaId, usa o número e
+    // prioriza o registro acionável mais recente.
+    for (var j = dados.length - 1; j >= 0; j--) {
+      if (String(dados[j][colNumero - 1] || "").trim() !== numeroBuscado) continue;
+
+      var statusCandidato = String(dados[j][colStatus - 1] || "").trim().toUpperCase();
+      if (statusCandidato === "PENDENTE" || statusCandidato === "ERRO" || statusCandidato === "PROCESSANDO") {
+        linhaIdx = j;
+        break;
+      }
+
+      if (linhaIdxFallback === -1) linhaIdxFallback = j;
+    }
+
+    if (linhaIdx === -1) linhaIdx = linhaIdxFallback;
+
+    if (linhaIdx === -1) {
+      return { ok: false, mensagem: "Ofício " + numero + " não encontrado na fila." };
+    }
   }
 
   var linha = dados[linhaIdx];
   var linhaPlanilha = linhaIdx + 2;
   var status = String(linha[colStatus - 1] || "").trim().toUpperCase();
+  Logger.log("[ENVIO_AGORA] Selecionado ofício " + numero + " na linha " + linhaPlanilha + " com status " + status + ".");
 
   if (status === "ENVIADO") {
     return { ok: true, mensagem: "E-mail já foi enviado anteriormente." };
@@ -559,8 +656,21 @@ function enviarOficioDaFilaAgora(numero, tokenSessao) {
 
   var valoresLinha;
   var lockEnvioAgora = LockService.getScriptLock();
-  if (!lockEnvioAgora.tryLock(5000)) {
-    return { ok: false, mensagem: "Fila ocupada. Tente novamente em alguns segundos." };
+  var lockObtido = false;
+
+  // O SISGEP possui vários módulos no mesmo projeto. Um lock global curto de
+  // 5 s fazia o botão "Enviar agora" desistir durante operações paralelas,
+  // sem sequer registrar uma tentativa. Aguarda um pouco mais, mantendo a
+  // proteção contra envio duplicado.
+  try {
+    lockObtido = lockEnvioAgora.tryLock(15000);
+  } catch (eLock) {
+    Logger.log("[ENVIO_AGORA] Falha ao obter lock para o ofício " + numero + ": " + (eLock.message || eLock));
+  }
+
+  if (!lockObtido) {
+    Logger.log("[ENVIO_AGORA] Fila permaneceu ocupada para o ofício " + numero + " após 15 s.");
+    return { ok: false, mensagem: "Fila ocupada. Aguarde alguns segundos e tente novamente." };
   }
 
   try {
@@ -569,7 +679,7 @@ function enviarOficioDaFilaAgora(numero, tokenSessao) {
     if (statusAtualEnvio === "ENVIADO") {
       return { ok: true, mensagem: "E-mail já foi enviado anteriormente." };
     }
-    if (statusAtualEnvio === "PROCESSANDO") {
+    if (statusAtualEnvio === "PROCESSANDO" && !filaOficiosProcessandoTravado_(valoresLinha[colDataUltimaTent - 1])) {
       return { ok: false, mensagem: "Este ofício já está sendo processado." };
     }
 
@@ -579,7 +689,7 @@ function enviarOficioDaFilaAgora(numero, tokenSessao) {
     sh.getRange(linhaPlanilha, 1, 1, totalCols).setValues([valoresLinha]);
     SpreadsheetApp.flush();
   } finally {
-    lockEnvioAgora.releaseLock();
+    if (lockObtido) lockEnvioAgora.releaseLock();
   }
 
   try {
@@ -681,6 +791,192 @@ function enviarOficioDaFilaAgora(numero, tokenSessao) {
     return { ok: false, mensagem: "Erro ao enviar: " + (e.message || e) };
   }
 }
+/**
+ * Devolve à fila um ofício que travou em ERRO_PERMANENTE ou estourou as
+ * tentativas. Sem isso a linha fica ignorada pela fila para sempre, porque
+ * processarFilaEnvioOficios só processa PENDENTE e ERRO.
+ */
+function reprocessarOficioDaFila(numero, tokenSessao) {
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
+  if (!numero) return { ok: false, mensagem: "Número do ofício não informado." };
+
+  var sh = obterOuCriarAbaFilaOficios_();
+  if (sh.getLastRow() < 2) return { ok: false, mensagem: "Fila de envio vazia." };
+
+  var hm            = getHeaderMap_(sh);
+  var colNumero     = hm["NUMERO_OFICIO"];
+  var colStatus     = hm["STATUS"];
+  var colTentativas = hm["TENTATIVAS"];
+  var colUltimoErro = hm["ULTIMO_ERRO"];
+  var colTipo       = hm["TIPO"];
+  var colEscola     = hm["ESCOLA"];
+
+  if (!colNumero || !colStatus || !colTentativas || !colUltimoErro) {
+    return { ok: false, mensagem: "Colunas obrigatórias não encontradas na fila." };
+  }
+
+  var lockReprocessa = LockService.getScriptLock();
+  if (!lockReprocessa.tryLock(5000)) {
+    return { ok: false, mensagem: "Fila ocupada. Tente novamente em alguns segundos." };
+  }
+
+  try {
+    var alvo  = String(numero).trim();
+    var dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+
+    for (var i = 0; i < dados.length; i++) {
+      if (String(dados[i][colNumero - 1] || "").trim() !== alvo) continue;
+
+      var status = String(dados[i][colStatus - 1] || "").trim().toUpperCase();
+      if (status === "ENVIADO") {
+        return { ok: false, mensagem: "Ofício já enviado — não há o que reprocessar." };
+      }
+
+      var emailUsuario = String(sessaoDocumentos.email || sessaoDocumentos.usuario || "operador").trim();
+      var linhaPlanilha = i + 2;
+
+      sh.getRange(linhaPlanilha, colStatus).setValue("PENDENTE");
+      sh.getRange(linhaPlanilha, colTentativas).setValue(0);
+      sh.getRange(linhaPlanilha, colUltimoErro).setValue(
+        "Reprocessado manualmente por " + emailUsuario +
+        " em " + (typeof formatarDataHoraBR_ === "function" ? formatarDataHoraBR_(new Date()) : new Date()) +
+        " (status anterior: " + (status || "vazio") + ")."
+      );
+      SpreadsheetApp.flush();
+
+      try {
+        registrarLogSistema({
+          usuario: emailUsuario,
+          numero: alvo + " (REPROCESSADO NA FILA)",
+          tipo: colTipo ? String(dados[i][colTipo - 1] || "") : "",
+          escola: colEscola ? String(dados[i][colEscola - 1] || "") : "",
+          cnpj: "",
+          email: "",
+          codigo: ""
+        });
+      } catch (eLog) {
+        Logger.log("⚠ Falha ao registrar log de reprocessamento: " + eLog.message);
+      }
+
+      return {
+        ok: true,
+        mensagem: "Ofício " + alvo + " devolvido à fila. O envio automático ocorre em até 5 minutos."
+      };
+    }
+
+    return { ok: false, mensagem: "Ofício " + alvo + " não encontrado na fila." };
+
+  } finally {
+    lockReprocessa.releaseLock();
+  }
+}
+
+/**
+ * Manutenção: devolve à fila todos os ofícios presos em PROCESSANDO.
+ * Pode ser executada direto no editor do Apps Script, sem sessão web.
+ */
+function destravarOficiosProcessandoTravados(minutos) {
+  var limiteMs = (Number(minutos) > 0 ? Number(minutos) * 60000 : FILA_OFICIOS_TIMEOUT_PROCESSANDO_MS);
+  var sh = obterOuCriarAbaFilaOficios_();
+
+  if (sh.getLastRow() < 2) {
+    Logger.log("Fila vazia.");
+    return { ok: true, destravados: 0, oficios: [] };
+  }
+
+  var hm            = getHeaderMap_(sh);
+  var colNumero     = hm["NUMERO_OFICIO"];
+  var colStatus     = hm["STATUS"];
+  var colUltimoErro = hm["ULTIMO_ERRO"];
+  var colDataTent   = hm["DATA_ULTIMA_TENTATIVA"];
+
+  if (!colNumero || !colStatus || !colUltimoErro || !colDataTent) {
+    throw new Error("Colunas obrigatórias não encontradas na fila.");
+  }
+
+  var agora    = new Date().getTime();
+  var dados    = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+  var oficios  = [];
+
+  for (var i = 0; i < dados.length; i++) {
+    if (String(dados[i][colStatus - 1] || "").trim().toUpperCase() !== "PROCESSANDO") continue;
+
+    var dataTent = dados[i][colDataTent - 1];
+    var d = dataTent instanceof Date ? dataTent : new Date(dataTent);
+    var travado = !dataTent || isNaN(d.getTime()) || (agora - d.getTime()) > limiteMs;
+    if (!travado) continue;
+
+    var linhaPlanilha = i + 2;
+    sh.getRange(linhaPlanilha, colStatus).setValue("PENDENTE");
+    sh.getRange(linhaPlanilha, colUltimoErro).setValue(
+      "Destravado automaticamente: envio interrompido em processamento."
+    );
+    oficios.push(String(dados[i][colNumero - 1] || "").trim());
+  }
+
+  if (oficios.length) SpreadsheetApp.flush();
+
+  Logger.log("✅ Ofícios destravados: " + oficios.length + (oficios.length ? " (" + oficios.join(", ") + ")" : ""));
+  return { ok: true, destravados: oficios.length, oficios: oficios };
+}
+
+/**
+ * Troca os destinatários de um ofício que ainda não saiu.
+ *
+ * O envio usa o que está gravado na linha da fila, não o que a tela mostra —
+ * então mexer na lista no modal de confirmação só tem efeito se passar por aqui
+ * antes de disparar. Recusa ofício já enviado: mudar destinatário depois do
+ * envio daria a impressão de ter mandado para quem nunca recebeu.
+ */
+function atualizarDestinatariosFilaOficio(numero, emailsTodos, tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
+  if (!numero) return { ok: false, mensagem: "Número do ofício não informado." };
+
+  var validacao = validarListaEmails_(emailsTodos);
+  if (!validacao.ok) {
+    return { ok: false, mensagem: "E-mail inválido: " + (validacao.invalido || "lista vazia") };
+  }
+
+  var sh = obterOuCriarAbaFilaOficios_();
+  if (sh.getLastRow() < 2) return { ok: false, mensagem: "Fila de envio vazia." };
+
+  var hm        = getHeaderMap_(sh);
+  var cNumero   = hm["NUMERO_OFICIO"];
+  var cStatus   = hm["STATUS"];
+  var cPrincipal= hm["EMAIL_PRINCIPAL"];
+  var cTodos    = hm["EMAILS_TODOS"];
+  if (!cNumero || !cStatus || !cPrincipal || !cTodos) {
+    return { ok: false, mensagem: "Colunas de destinatário não encontradas na fila." };
+  }
+
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return { ok: false, mensagem: "Fila ocupada. Tente novamente." };
+
+  try {
+    var alvo  = String(numero).trim();
+    var dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+
+    for (var i = 0; i < dados.length; i++) {
+      if (String(dados[i][cNumero - 1] || "").trim() !== alvo) continue;
+
+      var status = String(dados[i][cStatus - 1] || "").trim().toUpperCase();
+      if (status === "ENVIADO" || status === "CONFIRMADO") {
+        return { ok: false, mensagem: "Ofício já enviado — os destinatários não podem mais ser alterados." };
+      }
+
+      sh.getRange(i + 2, cPrincipal).setValue(validacao.principal);
+      sh.getRange(i + 2, cTodos).setValue(validacao.todos);
+      SpreadsheetApp.flush();
+
+      return { ok: true, mensagem: "Destinatários atualizados.", principal: validacao.principal, todos: validacao.todos };
+    }
+
+    return { ok: false, mensagem: "Ofício " + alvo + " não encontrado na fila." };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function sincronizarStatusOficiosEnviados() {
   var ss    = SpreadsheetApp.openById(PLANILHA_ID);
   var sh    = obterOuCriarAbaFilaOficios_();

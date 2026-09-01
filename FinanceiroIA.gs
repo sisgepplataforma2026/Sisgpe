@@ -356,10 +356,11 @@ function finAnalisarComClaude(dados) {
    Chamada pelo botão "🤖 Analisar com IA" no módulo Financeiro.
    Retorna: { ok, analise: "texto formatado" }
 ─────────────────────────────────────────────────────────────────── */
-function finGerarInsightsFinanceirosIA() {
+function finGerarInsightsFinanceirosIA(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     // Obtém resumo do período atual
-    var resumoResp = obterResumoDespesas();
+    var resumoResp = obterResumoDespesas_interno_();
     if (!resumoResp.ok) {
       return { ok: false, mensagem: "Erro ao obter resumo: " + resumoResp.mensagem };
     }
@@ -367,7 +368,7 @@ function finGerarInsightsFinanceirosIA() {
     var resumo = resumoResp.resumo || {};
 
     // Lista despesas urgentes/vencidas
-    var listaResp = listarDespesas({ ocultarPagos: true, ocultarCancelados: true });
+    var listaResp = listarDespesas_interno_({ ocultarPagos: true, ocultarCancelados: true });
     var lista     = (listaResp.lista || []).slice(0, 30); // máx 30 para não explodir o contexto
 
     var linhasDespesas = lista.map(function(d) {

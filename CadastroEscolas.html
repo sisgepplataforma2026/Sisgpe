@@ -6,35 +6,39 @@
 ═══════════════════════════════════════════════════════════ */
 #blocoEscolas *, #blocoEscolas *::before, #blocoEscolas *::after { box-sizing:border-box; margin:0; padding:0; }
 #blocoEscolas {
-  --ce-navy:  #001f4d;
-  --ce-navy2: #002f6c;
-  --ce-blue:  #1565C0;
+  /* --ce-* herdam dos tokens canonicos de OficiosStyles.html (eram os
+     mesmos valores hex duplicados aqui) — ver CLAUDE.md. Mantidos como
+     alias --ce-* porque sao usados em ~700 pontos deste arquivo; convergir
+     aqui evita reescrever cada var(--ce-*) individualmente. */
+  --ce-navy:  var(--navy, #001f4d);
+  --ce-navy2: var(--navy2, #002f6c);
+  --ce-blue:  var(--blue, #1565C0);
   --ce-blue2: #0d52b5;
-  --ce-gold:  #C9A84C;
-  --ce-gold2: #f0c843;
-  --ce-g50:   #f8fafc;
-  --ce-g100:  #f1f5f9;
-  --ce-g200:  #e2e8f0;
-  --ce-g300:  #cbd5e1;
-  --ce-g400:  #94a3b8;
-  --ce-g500:  #64748b;
-  --ce-g600:  #475569;
-  --ce-g700:  #334155;
-  --ce-g800:  #1e293b;
-  --ce-g900:  #0f172a;
-  --ce-green: #059669;
-  --ce-green-lt:#d1fae5;
+  --ce-gold:  var(--gold, #C9A84C);
+  --ce-gold2: var(--gold2, #f0c843);
+  --ce-g50:   var(--g50, #f8fafc);
+  --ce-g100:  var(--g100, #f1f5f9);
+  --ce-g200:  var(--g200, #e2e8f0);
+  --ce-g300:  var(--g300, #cbd5e1);
+  --ce-g400:  var(--g400, #94a3b8);
+  --ce-g500:  var(--g500, #64748b);
+  --ce-g600:  var(--g600, #475569);
+  --ce-g700:  var(--g700, #334155);
+  --ce-g800:  var(--g800, #1e293b);
+  --ce-g900:  var(--g900, #0f172a);
+  --ce-green: var(--green, #059669);
+  --ce-green-lt:var(--green-lt, #d1fae5);
   --ce-green-dk:#065f46;
-  --ce-amber: #d97706;
-  --ce-amber-lt:#fef3c7;
-  --ce-red:   #dc2626;
-  --ce-red-lt:#fee2e2;
-  --ce-teal:  #0d9488;
-  --ce-rad:   12px;
+  --ce-amber: var(--amber, #d97706);
+  --ce-amber-lt:var(--amber-lt, #fef3c7);
+  --ce-red:   var(--red, #dc2626);
+  --ce-red-lt:var(--red-lt, #fee2e2);
+  --ce-teal:  var(--teal, #0d9488);
+  --ce-rad:   var(--rad, 12px);
   --ce-rad-lg:18px;
-  --ce-sh-sm: 0 2px 8px rgba(0,20,60,.07),0 1px 3px rgba(0,20,60,.05);
-  --ce-sh-md: 0 6px 24px rgba(0,20,60,.10),0 2px 8px rgba(0,20,60,.06);
-  --ce-sh-lg: 0 16px 48px rgba(0,20,60,.14),0 4px 16px rgba(0,20,60,.08);
+  --ce-sh-sm: var(--sh-sm, 0 2px 8px rgba(0,20,60,.07),0 1px 3px rgba(0,20,60,.05));
+  --ce-sh-md: var(--sh-md, 0 6px 24px rgba(0,20,60,.10),0 2px 8px rgba(0,20,60,.06));
+  --ce-sh-lg: var(--sh-lg, 0 16px 48px rgba(0,20,60,.14),0 4px 16px rgba(0,20,60,.08));
   font-family:'Plus Jakarta Sans',Arial,sans-serif;
   color:var(--ce-g900);
 }
@@ -42,7 +46,7 @@
 /* ── Header ── */
 .ce-header {
   margin:-32px -24px 0;
-  background: linear-gradient(135deg, #001f4d 0%, #002f6c 50%, #1565C0 100%);
+  background: linear-gradient(135deg, var(--ce-navy) 0%, var(--ce-navy2) 50%, var(--ce-blue) 100%);
   padding:22px 24px 18px;
   display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
 }
@@ -597,6 +601,32 @@
         <button type="button" class="ce-btn ce-btn-ghost ce-btn-sm" id="btnCeMassaDesmarcar">✕ Desmarcar todas</button>
       </div>
 
+      <div id="ceEmailMassaOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,18,48,.55);z-index:9999;align-items:center;justify-content:center;padding:20px;">
+        <div style="background:#fff;border-radius:16px;width:100%;max-width:520px;box-shadow:0 30px 70px rgba(0,20,60,.3);overflow:hidden;">
+          <div style="background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));padding:18px 22px;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+            <div>
+              <div style="font-size:15px;font-weight:900;">📧 E-mail em massa</div>
+              <div style="font-size:11.5px;color:rgba(255,255,255,.7);margin-top:2px;" id="ceEmailMassaContagem">—</div>
+            </div>
+            <button type="button" onclick="ceFecharModalEmailMassa()" style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;cursor:pointer;font-size:15px;">×</button>
+          </div>
+          <div style="padding:20px 22px;display:flex;flex-direction:column;gap:14px;">
+            <div>
+              <label style="display:block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:6px;">Assunto</label>
+              <input type="text" id="ceEmailMassaAssunto" placeholder="Ex.: Comunicado SindEducação-ES" style="width:100%;height:42px;border:1.5px solid #dbe4ef;border-radius:9px;padding:0 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+            </div>
+            <div>
+              <label style="display:block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:6px;">Mensagem</label>
+              <textarea id="ceEmailMassaCorpo" placeholder="Escreva a mensagem para as escolas selecionadas..." style="width:100%;min-height:160px;border:1.5px solid #dbe4ef;border-radius:9px;padding:12px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box;"></textarea>
+            </div>
+          </div>
+          <div style="padding:14px 22px;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;gap:8px;background:#fafcff;">
+            <button type="button" class="ce-btn ce-btn-outline" onclick="ceFecharModalEmailMassa()">Cancelar</button>
+            <button type="button" class="ce-btn ce-btn-navy" id="btnCeEmailMassaEnviar" onclick="ceEnviarEmailMassa()">Enviar</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Tabela -->
       <div class="ce-table-wrap">
         <div class="ce-table-scroll">
@@ -762,7 +792,10 @@
           </div>
           <div class="ce-field">
             <label for="ceWhatsapp">WhatsApp</label>
-            <input type="text" id="ceWhatsapp" placeholder="(27) 99999-9999" maxlength="20">
+            <div style="display:flex;gap:6px;">
+              <input type="text" id="ceWhatsapp" placeholder="(27) 99999-9999" maxlength="20" style="flex:1;">
+              <button type="button" class="ce-btn ce-btn-outline ce-btn-sm" id="btnCeAbrirWhatsapp" title="Abrir conversa no WhatsApp" style="flex-shrink:0;">💬</button>
+            </div>
           </div>
           <div class="ce-field ce-full">
             <label for="ceEmail">E-mail Principal</label>
@@ -874,6 +907,81 @@
 
   </div>
 </div>
+
+<!-- Modal: Gerar Ofício IA -->
+<div id="ceOficioIaOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,18,48,.55);z-index:9999;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:16px;width:100%;max-width:520px;box-shadow:0 30px 70px rgba(0,20,60,.3);overflow:hidden;">
+    <div style="background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));padding:18px 22px;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+      <div>
+        <div style="font-size:15px;font-weight:900;">📄 Gerar Ofício IA</div>
+        <div style="font-size:11.5px;color:rgba(255,255,255,.7);margin-top:2px;" id="ceOficioIaEscolaLabel">—</div>
+      </div>
+      <button type="button" onclick="ceFecharModalOficioIA()" style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;cursor:pointer;font-size:15px;">×</button>
+    </div>
+    <div style="padding:20px 22px;display:flex;flex-direction:column;gap:14px;">
+      <div>
+        <label style="display:block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:6px;">Tipo do ofício</label>
+        <select id="ceOficioIaTipo" style="width:100%;height:42px;border:1.5px solid #dbe4ef;border-radius:9px;padding:0 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+          <option>Ofício Livre</option>
+          <option>Filiação</option>
+          <option>Desfiliação</option>
+          <option>Taxa Negocial</option>
+          <option>Taxa Assistencial</option>
+        </select>
+      </div>
+      <div>
+        <label style="display:block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:6px;">Assunto/referência (opcional)</label>
+        <input type="text" id="ceOficioIaAssunto" placeholder="Ex.: Ofício 234/2026" style="width:100%;height:42px;border:1.5px solid #dbe4ef;border-radius:9px;padding:0 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="display:block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:6px;">Instruções adicionais para a IA (opcional)</label>
+        <textarea id="ceOficioIaInstrucoes" placeholder="Ex.: mencionar prazo de 10 dias úteis para resposta" style="width:100%;min-height:100px;border:1.5px solid #dbe4ef;border-radius:9px;padding:12px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box;"></textarea>
+      </div>
+    </div>
+    <div style="padding:14px 22px;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;gap:8px;background:#fafcff;">
+      <button type="button" class="ce-btn ce-btn-outline" onclick="ceFecharModalOficioIA()">Cancelar</button>
+      <button type="button" class="ce-btn ce-btn-navy" id="btnCeOficioIaGerar" onclick="ceOficioIaSubmit()">🤖 Gerar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Responder E-mail IA -->
+<div id="ceRespostaIaOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,18,48,.55);z-index:9999;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:16px;width:100%;max-width:560px;box-shadow:0 30px 70px rgba(0,20,60,.3);overflow:hidden;">
+    <div style="background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));padding:18px 22px;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+      <div>
+        <div style="font-size:15px;font-weight:900;">📧 Responder E-mail IA</div>
+        <div style="font-size:11.5px;color:rgba(255,255,255,.7);margin-top:2px;" id="ceRespostaIaEscolaLabel">—</div>
+      </div>
+      <button type="button" onclick="ceFecharModalRespostaIA()" style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;cursor:pointer;font-size:15px;">×</button>
+    </div>
+    <div style="padding:20px 22px;display:flex;flex-direction:column;gap:14px;">
+      <div>
+        <label style="display:block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:6px;">Conteúdo do e-mail recebido</label>
+        <textarea id="ceRespostaIaEmail" placeholder="Cole aqui o conteúdo do e-mail recebido da escola..." style="width:100%;min-height:140px;border:1.5px solid #dbe4ef;border-radius:9px;padding:12px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box;"></textarea>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label style="display:block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:6px;">Assunto (opcional)</label>
+          <input type="text" id="ceRespostaIaAssunto" style="width:100%;height:42px;border:1.5px solid #dbe4ef;border-radius:9px;padding:0 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="display:block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:6px;">Remetente (opcional)</label>
+          <input type="text" id="ceRespostaIaRemetente" style="width:100%;height:42px;border:1.5px solid #dbe4ef;border-radius:9px;padding:0 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+        </div>
+      </div>
+      <div>
+        <label style="display:block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:6px;">Contexto adicional para a IA (opcional)</label>
+        <textarea id="ceRespostaIaContexto" placeholder="Ex.: escola deve confirmar recebimento do ofício 234/2026" style="width:100%;min-height:80px;border:1.5px solid #dbe4ef;border-radius:9px;padding:12px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box;"></textarea>
+      </div>
+    </div>
+    <div style="padding:14px 22px;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;gap:8px;background:#fafcff;">
+      <button type="button" class="ce-btn ce-btn-outline" onclick="ceFecharModalRespostaIA()">Cancelar</button>
+      <button type="button" class="ce-btn ce-btn-navy" id="btnCeRespostaIaGerar" onclick="ceRespostaIaSubmit()">🤖 Gerar</button>
+    </div>
+  </div>
+</div>
+
     <!-- Ações principais -->
     <div class="ce-acoes" style="margin-bottom:10px;">
       <button type="button" class="ce-btn ce-btn-gold" id="btnCeSalvar">🏫 Salvar Escola</button>
@@ -965,18 +1073,36 @@
         </ol>
       </div>
 
-      <!-- Ações avançadas -->
-      <div style="border-top:1px solid var(--ce-g200);padding-top:12px;">
-        <div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--ce-g400);margin-bottom:10px;">Ações individuais</div>
-        <div class="ce-acoes">
-          <button type="button" class="ce-btn ce-btn-ghost ce-btn-sm" id="btnCeCaptar">📥 Captar CNPJs</button>
-          <button type="button" class="ce-btn ce-btn-ghost ce-btn-sm" id="btnCeFiltrar">🎯 Filtrar Educação ES</button>
-          <button type="button" class="ce-btn ce-btn-ghost ce-btn-sm" id="btnCeComparar">🔎 Comparar com Base</button>
-          <button type="button" class="ce-btn ce-btn-ghost ce-btn-sm" id="btnCeCriarAbaExt">🏛️ Criar Aba Extração</button>
+      <div id="ceMsgReceita" class="ce-msg"></div>
+    </div>
+  </div>
+
+  <!-- Configuração de UF/CNAE -->
+  <div class="ce-card" style="margin-bottom:14px;">
+    <div class="ce-card-head">
+      <div class="ce-card-head-l">
+        <div class="ce-card-ico">⚙️</div>
+        <div>
+          <div class="ce-card-title">Filtro de Captação (UF / CNAE)</div>
+          <div class="ce-card-sub">Define quais CNPJs entram no pipeline ao processar a extração</div>
         </div>
       </div>
-
-      <div id="ceMsgReceita" class="ce-msg"></div>
+    </div>
+    <div class="ce-card-body" id="ceConfigReceitaBody">
+      <div style="display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:end;margin-bottom:12px;">
+        <div>
+          <label style="display:block;font-size:11px;font-weight:700;color:var(--ce-g600);margin-bottom:4px;">UF Alvo</label>
+          <input type="text" id="ceConfigUf" maxlength="2" placeholder="ES" style="text-transform:uppercase;width:100%;padding:8px 10px;border:1.5px solid var(--ce-g300,#cbd5e1);border-radius:8px;font-size:13px;">
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;font-weight:700;color:var(--ce-g600);margin-bottom:4px;">Códigos CNAE de Educação (separados por vírgula)</label>
+          <input type="text" id="ceConfigCnae" placeholder="85, 8511, 8512, ..." style="width:100%;padding:8px 10px;border:1.5px solid var(--ce-g300,#cbd5e1);border-radius:8px;font-size:13px;">
+        </div>
+      </div>
+      <div class="ce-acoes">
+        <button type="button" class="ce-btn ce-btn-navy" id="btnCeSalvarConfigReceita">💾 Salvar Filtro</button>
+      </div>
+      <div id="ceMsgConfigReceita" class="ce-msg"></div>
     </div>
   </div>
 
@@ -996,6 +1122,20 @@ function norm(t){ return String(t||"").toLowerCase().normalize("NFD").replace(/[
 function valCampo(obj,chaves){ for(var i=0;i<chaves.length;i++){ var v=obj[chaves[i]]; if(v!==undefined&&v!==null&&String(v).trim()!=="")return String(v).trim(); } return ""; }
 
 function mascaraCnpj(v){ var d=digits(v).slice(0,14); return d.replace(/^(\d{2})(\d)/,"$1.$2").replace(/^(\d{2})\.(\d{3})(\d)/,"$1.$2.$3").replace(/\.(\d{3})(\d)/,".$1/$2").replace(/(\d{4})(\d)/,"$1-$2"); }
+
+// Normaliza telefone/WhatsApp para o formato aceito pelo wa.me (só dígitos, com DDI 55)
+function ceWhatsappNumero_(v){
+  var d=digits(v);
+  if(!d)return "";
+  if(d.length<=11)d="55"+d; // sem DDI: assume Brasil
+  return d;
+}
+function ceAbrirWhatsapp_(numero,nome){
+  var num=ceWhatsappNumero_(numero);
+  if(!num){ if(typeof toast==="function")toast("Nenhum número de WhatsApp cadastrado.","err"); return; }
+  var msg="Olá! Aqui é do SindEducação-ES"+(nome?", entrando em contato com a escola "+nome+".":".");
+  window.open("https://wa.me/"+num+"?text="+encodeURIComponent(msg),"_blank");
+}
 function mascaraCep(v) { var d=digits(v).slice(0,8); return d.length>5?d.replace(/^(\d{5})(\d)/,"$1-$2"):d; }
 function mascaraTel(v) { var d=digits(v).slice(0,11); return d.length<=10?d.replace(/^(\d{2})(\d{4})(\d)/,"($1) $2-$3"):d.replace(/^(\d{2})(\d{5})(\d)/,"($1) $2-$3"); }
 
@@ -1275,7 +1415,7 @@ function ceMassaAtualizarSituacao(novaSituacao){
       btnReset(btn);
       ceMsg("ceMsgTabela","Erro: "+esc((err&&err.message)||String(err||"")),"err");
     })
-    .atualizarSituacaoEscolasEmLote(cnpjs,novaSituacao);
+    .atualizarSituacaoEscolasEmLote(cnpjs,novaSituacao,SISGEP_TOKEN_SESSAO);
 }
 
 function ceMassaExcluir(){
@@ -1296,8 +1436,10 @@ function ceMassaExcluir(){
       btnReset(btn);
       ceMsg("ceMsgTabela","Erro: "+esc((err&&err.message)||String(err||"")),"err");
     })
-    .excluirEscolasEmLote(cnpjs);
+    .excluirEscolasEmLote(cnpjs,SISGEP_TOKEN_SESSAO);
 }
+
+var CE_EMAIL_MASSA_DESTINATARIOS = [];
 
 function ceMassaEmail(){
   var itens=ceItensSelecionados();
@@ -1305,8 +1447,40 @@ function ceMassaEmail(){
   var emails=itens.map(function(it){ return valCampo(it,["Email","email","E-mail (principal)"]); }).filter(Boolean);
   if(!emails.length){ ceMsg("ceMsgTabela","Nenhuma das escolas selecionadas tem e-mail cadastrado.","warn"); return; }
   var semEmail=itens.length-emails.length;
-  window.open("mailto:?bcc="+encodeURIComponent(emails.join(","))+"&subject="+encodeURIComponent("SindEducação-ES"),"_blank");
-  if(semEmail>0)ceMsg("ceMsgTabela","E-mail aberto com "+emails.length+" destinatário(s). "+semEmail+" escola(s) selecionada(s) sem e-mail foram ignoradas.","warn");
+  CE_EMAIL_MASSA_DESTINATARIOS=emails;
+  g("ceEmailMassaAssunto").value="";
+  g("ceEmailMassaCorpo").value="";
+  g("ceEmailMassaContagem").textContent=emails.length+" destinatário(s)"+(semEmail>0?" · "+semEmail+" sem e-mail (ignorada(s))":"");
+  g("ceEmailMassaOverlay").style.display="flex";
+}
+
+function ceFecharModalEmailMassa(){
+  var overlay=g("ceEmailMassaOverlay");
+  if(overlay) overlay.style.display="none";
+}
+
+function ceEnviarEmailMassa(){
+  var assunto=(g("ceEmailMassaAssunto").value||"").trim();
+  var corpo=(g("ceEmailMassaCorpo").value||"").trim();
+  if(!assunto){ toast("Informe o assunto.","warn"); return; }
+  if(!corpo){ toast("Escreva a mensagem.","warn"); return; }
+  var btn=g("btnCeEmailMassaEnviar");
+  btn.disabled=true; btn.textContent="Enviando...";
+  google.script.run
+    .withSuccessHandler(function(r){
+      btn.disabled=false; btn.textContent="Enviar";
+      if(r&&r.ok){
+        toast(r.mensagem||"E-mail enviado.","ok");
+        ceFecharModalEmailMassa();
+      } else {
+        toast((r&&r.mensagem)||"Erro ao enviar.","err");
+      }
+    })
+    .withFailureHandler(function(err){
+      btn.disabled=false; btn.textContent="Enviar";
+      toast("Erro: "+((err&&err.message)||err),"err");
+    })
+    .escolasEnviarEmailMassa(CE_EMAIL_MASSA_DESTINATARIOS, assunto, corpo, SISGEP_TOKEN_SESSAO);
 }
 
 function renderTabela(){
@@ -1339,6 +1513,8 @@ function renderTabela(){
     var uf=valCampo(item,["UF","uf"]);
     var email=valCampo(item,["Email","email","E-mail (principal)"]);
     var tel=valCampo(item,["Telefone","telefone","Telefone 1"]);
+    var whats=valCampo(item,["Whatsapp","whatsapp","WhatsApp","Telefone 2"])||tel;
+    var whatsNum=ceWhatsappNumero_(whats);
     var sit=valCampo(item,["Situacao","situacao","SITUACAO_CADASTRAL"])||"ATIVA";
     var munUf=mun+(uf?" / "+uf:"");
     var av=avatarIniciais(nome);
@@ -1362,6 +1538,7 @@ function renderTabela(){
       +'<td class="no-clip"><div style="display:flex;gap:5px;">'
         +'<button class="ce-btn ce-btn-outline ce-btn-xs ce-btn-edit" data-idx="'+idx+'" title="Editar">✏️ Editar</button>'
         +(email?'<button class="ce-btn ce-btn-outline ce-btn-xs ce-btn-mail" data-email="'+esc(email)+'" data-nome="'+esc(nome)+'" title="Enviar e-mail" onclick="event.stopPropagation()">📧</button>':'')
+        +(whatsNum?'<button class="ce-btn ce-btn-outline ce-btn-xs ce-btn-whats" data-num="'+esc(whatsNum)+'" data-nome="'+esc(nome)+'" title="Abrir WhatsApp" onclick="event.stopPropagation()">💬</button>':'')
       +'</div></td>'
       +'</tr>';
   });
@@ -1407,6 +1584,12 @@ function renderTabela(){
       window.open("mailto:"+this.dataset.email+"?subject=SindEducação-ES - "+encodeURIComponent(this.dataset.nome),"_blank");
     });
   });
+
+  tbody.querySelectorAll(".ce-btn-whats").forEach(function(btn){
+    btn.addEventListener("click",function(){
+      ceAbrirWhatsapp_(this.dataset.num,this.dataset.nome);
+    });
+  });
 }
 
 /* ═══════════════════════════════════
@@ -1443,7 +1626,7 @@ function carregarLista(){
       btnReset(btn);
       ceMsg("ceMsgTabela","Erro ao carregar: "+esc((err&&err.message)||String(err||"")),"err");
     })
- .listarEscolasParaModulo();
+ .listarEscolasParaModulo(SISGEP_TOKEN_SESSAO);
 }
 
 /* ═══════════════════════════════════
@@ -1472,7 +1655,7 @@ function consultarCnpj(){
       ceCnpjStatus("✅ Dados preenchidos automaticamente pelo CNPJ.","ok");
     })
     .withFailureHandler(function(err){ btnReset(btn); ceCnpjStatus("Erro: "+esc((err&&err.message)||String(err||"")),"err"); })
-    .consultarCnpjEscola(cnpj);
+    .consultarCnpjEscola(cnpj,SISGEP_TOKEN_SESSAO);
 }
 
 function sincronizarCnpj(){
@@ -1488,7 +1671,7 @@ function sincronizarCnpj(){
       carregarLista();
     })
     .withFailureHandler(function(err){ btnReset(btn); ceCnpjStatus("Erro: "+esc((err&&err.message)||String(err||"")),"err"); })
-    .sincronizarEscolaPorCnpj(cnpj,true);
+    .sincronizarEscolaPorCnpj(cnpj,true,SISGEP_TOKEN_SESSAO);
 }
 
 /* ── CEP automático via ViaCEP ── */
@@ -1526,7 +1709,7 @@ function salvarEscola(){
       limparForm(); carregarLista();
     })
     .withFailureHandler(function(err){ btnReset(btn); ceMsg("ceMsgBox","Erro: "+esc((err&&err.message)||String(err||"")),"err"); })
-    .cadastrarEscola(dados);
+    .cadastrarEscola(dados,SISGEP_TOKEN_SESSAO);
 }
 
 /* ═══════════════════════════════════
@@ -1538,7 +1721,7 @@ function importarDeAba(){
   google.script.run
     .withSuccessHandler(function(res){ btnReset(btn); res=res||{}; ceMsg("ceMsgBox","✅ Importação concluída! Importadas: <strong>"+(res.importadas||0)+"</strong> · Atualizadas: <strong>"+(res.atualizadas||0)+"</strong> · Puladas: <strong>"+(res.puladas||0)+"</strong>","ok"); carregarLista(); })
     .withFailureHandler(function(err){ btnReset(btn); ceMsg("ceMsgBox","Erro ao importar: "+esc((err&&err.message)||String(err||"")),"err"); })
-    .importarEscolasDeAba();
+    .importarEscolasDeAba(SISGEP_TOKEN_SESSAO);
 }
 
 function analisarDup(){
@@ -1553,7 +1736,7 @@ function analisarDup(){
       ceMsg("ceMsgBox",html,resp.duplicadas>0?"warn":"ok");
     })
     .withFailureHandler(function(err){ btnReset(btn); ceMsg("ceMsgBox","Erro: "+esc((err&&err.message)||String(err||"")),"err"); })
-    .analisarEscolasDuplicadas();
+    .analisarEscolasDuplicadas(SISGEP_TOKEN_SESSAO);
 }
 
 function removerDup(){
@@ -1568,7 +1751,7 @@ function removerDup(){
       carregarLista();
     })
     .withFailureHandler(function(err){ btnReset(btn); ceMsg("ceMsgBox","Erro: "+esc((err&&err.message)||String(err||"")),"err"); })
-    .removerEscolasDuplicadas();
+    .removerEscolasDuplicadas(SISGEP_TOKEN_SESSAO);
 }
 
 function exportarCsv(){
@@ -1602,7 +1785,7 @@ function runReceita(fnName,btnId,loadingTxt,stepAtivo,successFn){
   if(stepAtivo)setPipelineStep(stepAtivo);
   google.script.run
     .withSuccessHandler(function(resp){ btnReset(btn); successFn(resp); })
-    .withFailureHandler(function(err){ btnReset(btn); ceMsg("ceMsgReceita","Erro: "+esc((err&&err.message)||String(err||"")),"err"); setPipelineStep(1); })[fnName]();
+    .withFailureHandler(function(err){ btnReset(btn); ceMsg("ceMsgReceita","Erro: "+esc((err&&err.message)||String(err||"")),"err"); setPipelineStep(1); })[fnName](SISGEP_TOKEN_SESSAO);
 }
 
 function mostrarCompBar(r){
@@ -1618,6 +1801,33 @@ function criarAbas(){ runReceita("criarAbasModuloReceita","btnCeCriarAbas","Cria
 function processarExtracao(){ runReceita("processarExtracaoOficialReceita","btnCeProcessar","Processando...",3,function(r){ if(!r||r.ok!==true){ceMsg("ceMsgReceita",(r&&r.mensagem)||"Erro.","err");setPipelineStep(3);return;} mostrarCompBar(r); ceMsg("ceMsgReceita","✅ "+esc(r.mensagem||"Processado."),"ok"); setPipelineStep(4); }); }
 function importarReceita(){ runReceita("importarNovasEscolasReceita","btnCeImportarRec","Importando...",5,function(r){ if(!r||r.ok!==true){ceMsg("ceMsgReceita",(r&&r.mensagem)||"Erro.","err");return;} ceMsg("ceMsgReceita","✅ "+esc(r.mensagem||"Importado."),"ok"); setPipelineStep(5); carregarLista(); }); }
 
+function carregarConfigReceita(){
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r||r.ok!==true)return;
+      var elUf=g("ceConfigUf"); if(elUf)elUf.value=r.uf||"";
+      var elCnae=g("ceConfigCnae"); if(elCnae)elCnae.value=r.cnaeCsv||"";
+    })
+    .withFailureHandler(function(){})
+    .escolasReceitaObterConfig(SISGEP_TOKEN_SESSAO);
+}
+
+function salvarConfigReceita(){
+  var uf=(g("ceConfigUf")&&g("ceConfigUf").value||"").trim();
+  var cnae=(g("ceConfigCnae")&&g("ceConfigCnae").value||"").trim();
+  var btn=g("btnCeSalvarConfigReceita"); btnLoad(btn,"Salvando...");
+  ceMsgClear("ceMsgConfigReceita");
+  google.script.run
+    .withSuccessHandler(function(r){
+      btnReset(btn);
+      if(!r||r.ok!==true){ ceMsg("ceMsgConfigReceita",(r&&r.mensagem)||"Erro ao salvar.","err"); return; }
+      ceMsg("ceMsgConfigReceita","✅ "+esc(r.mensagem||"Filtro salvo."),"ok");
+      if(typeof toast==="function") toast(r.mensagem||"Filtro salvo!","ok");
+    })
+    .withFailureHandler(function(err){ btnReset(btn); ceMsg("ceMsgConfigReceita","Erro: "+esc((err&&err.message)||String(err||"")),"err"); })
+    .escolasReceitaSalvarConfig(uf,cnae,SISGEP_TOKEN_SESSAO);
+}
+
 function executarPipeline(){
   var btn=g("btnCePipeline"); btnLoad(btn,"Executando pipeline...");
   ceMsgClear("ceMsgReceita"); setPipelineStep(1);
@@ -1630,13 +1840,9 @@ function executarPipeline(){
       setPipelineStep(5); carregarLista();
     })
     .withFailureHandler(function(err){ btnReset(btn); ceMsg("ceMsgReceita","Erro: "+esc((err&&err.message)||String(err||"")),"err"); setPipelineStep(1); })
-    .executarPipelineReceita();
+    .executarPipelineReceita(SISGEP_TOKEN_SESSAO);
 }
 
-function captarCnpjs()   { runReceita("captarNovasEscolasReceita","btnCeCaptar","Captando...",3,function(r){ ceMsg("ceMsgReceita",r.ok?"✅ Captadas: <strong>"+(r.gravadas||0)+"</strong>":(r.mensagem||"Erro."),"ok"); }); }
-function filtrarEscolas(){ runReceita("filtrarEscolasNovas","btnCeFiltrar","Filtrando...",3,function(r){ ceMsg("ceMsgReceita",r.ok?"✅ Filtradas: <strong>"+(r.filtradas||0)+"</strong>":(r.mensagem||"Erro."),"ok"); }); }
-function compararBase()  { runReceita("compararComBaseEscolas","btnCeComparar","Comparando...",4,function(r){ ceMsg("ceMsgReceita",r.ok?"✅ Novas: <strong>"+(r.novas||0)+"</strong> · Existentes: <strong>"+(r.existentes||0)+"</strong>":(r.mensagem||"Erro."),"ok"); mostrarCompBar(r); }); }
-function criarAbaExt()   { runReceita("criarAbaExtracaoCnpjOficial","btnCeCriarAbaExt","Criando...",1,function(r){ ceMsg("ceMsgReceita",r.ok?"✅ "+esc(r.mensagem||"Aba criada."):(r.mensagem||"Erro."),"ok"); }); }
 
 /* ═══════════════════════════════════
    BIND EVENTOS
@@ -1716,10 +1922,13 @@ function bindEventos(){
   bind("btnCeProcessar",processarExtracao);
   bind("btnCeImportarRec",importarReceita);
   bind("btnCePipeline",executarPipeline);
-  bind("btnCeCaptar",captarCnpjs);
-  bind("btnCeFiltrar",filtrarEscolas);
-  bind("btnCeComparar",compararBase);
-  bind("btnCeCriarAbaExt",criarAbaExt);
+  bind("btnCeSalvarConfigReceita",salvarConfigReceita);
+
+  bind("btnCeAbrirWhatsapp",function(){
+    var num=(g("ceWhatsapp")&&g("ceWhatsapp").value)||(g("ceTelefone")&&g("ceTelefone").value)||"";
+    var nome=(g("ceNomeEscola")&&g("ceNomeEscola").value)||"";
+    ceAbrirWhatsapp_(num,nome);
+  });
 
   // Máscaras
   mask("ceCnpj",mascaraCnpj);
@@ -1754,14 +1963,14 @@ function ceExecutarAnaliseIA() {
   var chave = cnpj || nome;
 
   if (!chave) {
-    alert('Selecione uma escola primeiro.');
+    if (typeof toast === "function") toast('Selecione uma escola primeiro.', 'err'); else alert('Selecione uma escola primeiro.');
     return;
   }
 
   var box = document.getElementById('ceIaResultado');
 
   if (!box) {
-    alert('Painel da IA não encontrado.');
+    if (typeof toast === "function") toast('Painel da IA não encontrado.', 'err'); else alert('Painel da IA não encontrado.');
     return;
   }
 
@@ -1788,7 +1997,7 @@ function ceExecutarAnaliseIA() {
         + String((erro && erro.message) || erro || 'Erro desconhecido')
         + '</div>';
     })
-    .analisarEscolaIA(chave);
+    .analisarEscolaIA(chave,SISGEP_TOKEN_SESSAO);
 }
 // ================================================================
 // PATCH CIRÚRGICO — CadastroEscolas.html
@@ -1800,44 +2009,58 @@ function ceExecutarAnaliseIA() {
 // COLE ESTE BLOCO NO LUGAR DAS DUAS FUNÇÕES ACIMA
 // ================================================================
 
-function ceGerarOficioIA() {
-  // Coleta dados do formulário da escola atualmente em edição
+// Coleta dados do formulário da escola atualmente em edição (usado pelos 2 fluxos de IA)
+function ceIaColetarDadosEscola_() {
   function v(id) {
     var el = document.getElementById(id);
     return el ? String(el.value || "").trim() : "";
   }
-
-  var dados = {
-    tipo:         "Ofício Livre",          // padrão; usuário pode alterar via instrucoes
+  return {
     escola:       v("ceNomeEscola"),
     cnpj:         v("ceCnpj"),
     email:        v("ceEmail"),
     cidade:       v("ceMunicipio"),
     uf:           v("ceUf"),
     destinatario: v("ceResponsavel"),
-    cargo:        v("ceCargoResponsavel"),
-    assunto:      "",
-    instrucoes:   ""
+    cargo:        v("ceCargoResponsavel")
   };
+}
 
-  if (!dados.escola) {
-    alert("Selecione ou preencha uma escola antes de gerar o ofício.");
+function ceGerarOficioIA() {
+  var dadosEscola = ceIaColetarDadosEscola_();
+
+  if (!dadosEscola.escola) {
+    if (typeof toast === "function") toast("Selecione ou preencha uma escola antes de gerar o ofício.", "err"); else alert("Selecione ou preencha uma escola antes de gerar o ofício.");
     return;
   }
 
-  // Solicita tipo e assunto via prompt simples
-  var tipoSel = window.prompt(
-    "Qual o tipo do ofício?\n\nOpções: Filiação | Desfiliação | Taxa Negocial | Taxa Assistencial | Ofício Livre",
-    "Ofício Livre"
-  );
-  if (tipoSel === null) return; // cancelou
-  dados.tipo = tipoSel.trim() || "Ofício Livre";
+  var lbl = document.getElementById("ceOficioIaEscolaLabel");
+  if (lbl) lbl.textContent = dadosEscola.escola;
 
-  var assuntoSel = window.prompt("Informe o assunto/referência do ofício (opcional):", "");
-  if (assuntoSel !== null) dados.assunto = assuntoSel.trim();
+  var elAssunto = document.getElementById("ceOficioIaAssunto"); if (elAssunto) elAssunto.value = "";
+  var elInstr   = document.getElementById("ceOficioIaInstrucoes"); if (elInstr) elInstr.value = "";
 
-  var instrSel = window.prompt("Instruções adicionais para a IA (opcional):", "");
-  if (instrSel !== null) dados.instrucoes = instrSel.trim();
+  var overlay = document.getElementById("ceOficioIaOverlay");
+  if (overlay) overlay.style.display = "flex";
+}
+
+function ceFecharModalOficioIA() {
+  var overlay = document.getElementById("ceOficioIaOverlay");
+  if (overlay) overlay.style.display = "none";
+}
+
+function ceOficioIaSubmit() {
+  function v(id) {
+    var el = document.getElementById(id);
+    return el ? String(el.value || "").trim() : "";
+  }
+
+  var dados = ceIaColetarDadosEscola_();
+  dados.tipo       = v("ceOficioIaTipo") || "Ofício Livre";
+  dados.assunto    = v("ceOficioIaAssunto");
+  dados.instrucoes = v("ceOficioIaInstrucoes");
+
+  ceFecharModalOficioIA();
 
   // Exibe loading no painel IA
   var box = document.getElementById("ceIaResultado");
@@ -1880,47 +2103,56 @@ function ceGerarOficioIA() {
           + '</div>';
       }
     })
-    .gerarOficioIA(dados);
+    .gerarOficioIA(dados,SISGEP_TOKEN_SESSAO);
 }
 
 
 function ceResponderEmailIA() {
-  // Coleta contexto da escola
+  var dadosEscola = ceIaColetarDadosEscola_();
+
+  var lbl = document.getElementById("ceRespostaIaEscolaLabel");
+  if (lbl) lbl.textContent = dadosEscola.escola || "—";
+
+  var elEmail = document.getElementById("ceRespostaIaEmail"); if (elEmail) elEmail.value = "";
+  var elAssunto = document.getElementById("ceRespostaIaAssunto"); if (elAssunto) elAssunto.value = "";
+  var elRemetente = document.getElementById("ceRespostaIaRemetente"); if (elRemetente) elRemetente.value = dadosEscola.escola || "";
+  var elContexto = document.getElementById("ceRespostaIaContexto"); if (elContexto) elContexto.value = "";
+
+  var overlay = document.getElementById("ceRespostaIaOverlay");
+  if (overlay) overlay.style.display = "flex";
+}
+
+function ceFecharModalRespostaIA() {
+  var overlay = document.getElementById("ceRespostaIaOverlay");
+  if (overlay) overlay.style.display = "none";
+}
+
+function ceRespostaIaSubmit() {
   function v(id) {
     var el = document.getElementById(id);
     return el ? String(el.value || "").trim() : "";
   }
 
-  var escola = v("ceNomeEscola");
-  var cnpj   = v("ceCnpj");
-
-  // Solicita o e-mail recebido via prompt
-  var emailRecebido = window.prompt(
-    "Cole aqui o conteúdo do e-mail recebido da escola:"
-  );
-  if (emailRecebido === null) return; // cancelou
-  emailRecebido = (emailRecebido || "").trim();
+  var dadosEscola = ceIaColetarDadosEscola_();
+  var emailRecebido = v("ceRespostaIaEmail");
 
   if (!emailRecebido) {
-    alert("Informe o conteúdo do e-mail para gerar uma sugestão de resposta.");
+    if (typeof toast === "function") toast("Informe o conteúdo do e-mail para gerar uma sugestão de resposta.", "err"); else alert("Informe o conteúdo do e-mail para gerar uma sugestão de resposta.");
     return;
   }
 
-  var assunto = window.prompt("Assunto do e-mail recebido (opcional):", "") || "";
-  var remetente = window.prompt("Remetente (nome ou e-mail, opcional):", escola) || escola;
-  var contexto = window.prompt(
-    "Contexto adicional para a IA (ex: 'escola deve confirmar recebimento do ofício 234/2026') (opcional):",
-    ""
-  ) || "";
+  var remetente = v("ceRespostaIaRemetente") || dadosEscola.escola;
 
   var dados = {
     emailRecebido: emailRecebido,
-    assunto:       assunto.trim(),
-    remetente:     remetente.trim(),
-    escola:        escola,
-    cnpj:          cnpj,
-    contexto:      contexto.trim()
+    assunto:       v("ceRespostaIaAssunto"),
+    remetente:     remetente,
+    escola:        dadosEscola.escola,
+    cnpj:          dadosEscola.cnpj,
+    contexto:      v("ceRespostaIaContexto")
   };
+
+  ceFecharModalRespostaIA();
 
   // Exibe loading no painel IA
   var box = document.getElementById("ceIaResultado");
@@ -1963,7 +2195,7 @@ function ceResponderEmailIA() {
           + '</div>';
       }
     })
-    .responderEmailIA(dados);
+    .responderEmailIA(dados,SISGEP_TOKEN_SESSAO);
 }
 
 
@@ -1986,7 +2218,7 @@ function copiarTextoIA() {
     document.execCommand("copy");
     if (typeof toast === "function") toast("Texto copiado!", "ok");
   } catch (e) {
-    alert("Selecione o texto manualmente e copie com Ctrl+C.");
+    if (typeof toast === "function") toast("Selecione o texto manualmente e copie com Ctrl+C.", "err"); else alert("Selecione o texto manualmente e copie com Ctrl+C.");
   }
 }
 
@@ -1999,9 +2231,92 @@ function copiarRespostaIA() {
     document.execCommand("copy");
     if (typeof toast === "function") toast("Resposta copiada!", "ok");
   } catch (e) {
-    alert("Selecione o texto manualmente e copie com Ctrl+C.");
+    if (typeof toast === "function") toast("Selecione o texto manualmente e copie com Ctrl+C.", "err"); else alert("Selecione o texto manualmente e copie com Ctrl+C.");
   }
 }
+
+/* ═══════════════════════════════════
+   PORTA DE ENTRADA VINDA DE OUTRA TELA
+═══════════════════════════════════ */
+/**
+ * Abre UMA escola direto na ficha de edição, a partir de um identificador.
+ *
+ * Quem usa: a fila de Pendências (PendenciasAdmin), no botão "Abrir no
+ * Cadastro". Antes disto ela só navegava para cá e deixava o nome digitado
+ * na busca — o usuário ainda tinha que achar a linha e clicar em Editar.
+ * Duas etapas para uma intenção só.
+ *
+ * TRÊS CHAVES, NESTA ORDEM, e a ordem importa:
+ *   1. EscolaID  — a identidade, criada na Fase 1. Nunca repete.
+ *   2. CNPJ      — pode se repetir (matriz e filial), por isso vem depois.
+ *   3. Nome exato — último recurso; é o que muda com mais frequência.
+ *
+ * A LISTA CHEGA DEPOIS DA NAVEGAÇÃO. CE_CACHE é preenchido por
+ * google.script.run, então quem vem de outra tela chega antes do dado. Daí a
+ * espera: tenta a cada 200ms, por até 5 segundos. Sem isso, o botão
+ * funcionaria só quando o cadastro já estivesse aberto — que é justamente o
+ * caso em que ninguém precisa dele.
+ *
+ * @return {boolean} true quando abriu (ou vai abrir, após a espera)
+ */
+window.ceAbrirEscolaPorChave = function(chave, tentativa){
+  chave = String(chave == null ? "" : chave).trim();
+  if(!chave) return false;
+  tentativa = tentativa || 0;
+
+  if(!CE_CACHE.length){
+    if(tentativa >= 25){
+      ceMsg("ceMsgBox","Não consegui carregar a base a tempo para abrir <strong>"
+        + esc(chave) + "</strong>. Tente pela busca.","alerta");
+      return false;
+    }
+    setTimeout(function(){ window.ceAbrirEscolaPorChave(chave, tentativa + 1); }, 200);
+    return true;
+  }
+
+  var alvoUp  = chave.toUpperCase();
+  var alvoDig = digits(chave);
+  var achado  = null;
+
+  for(var i=0;i<CE_CACHE.length && !achado;i++){
+    if(valCampo(CE_CACHE[i],["EscolaID","escolaId"]).toUpperCase() === alvoUp) achado = CE_CACHE[i];
+  }
+  /* 11 dígitos no mínimo: é o tamanho de um CPF. Menos que isso não é
+   * documento, é pedaço de número, e casaria com a escola errada. */
+  if(!achado && alvoDig.length >= 11){
+    for(var j=0;j<CE_CACHE.length && !achado;j++){
+      if(digits(valCampo(CE_CACHE[j],["CNPJ","cnpj"])) === alvoDig) achado = CE_CACHE[j];
+    }
+  }
+  if(!achado){
+    for(var k=0;k<CE_CACHE.length && !achado;k++){
+      var n = valCampo(CE_CACHE[k],["NomeEscola","escola","Escola","razaoSocial"]);
+      if(n && n.toUpperCase() === alvoUp) achado = CE_CACHE[k];
+    }
+  }
+
+  /* Não achou: em vez de não fazer nada, deixa o texto na busca e DIZ que
+   * não achou. Botão que não responde é o pior desfecho possível — foi
+   * exatamente o sintoma que originou esta função. */
+  if(!achado){
+    var campo = g("ceBusca");
+    if(campo){
+      campo.value = chave;
+      campo.dispatchEvent(new Event("input", { bubbles:true }));
+    }
+    ceMsg("ceMsgBox","Não encontrei <strong>" + esc(chave)
+      + "</strong> pelo identificador. Deixei o texto na busca.","alerta");
+    return false;
+  }
+
+  preencherForm(achado);
+  entrarEdicao(valCampo(achado,["CNPJ","cnpj"]));
+  ceMsg("ceMsgBox","Editando: <strong>"
+    + esc(valCampo(achado,["NomeEscola","escola","Escola","razaoSocial"]) || "—")
+    + "</strong>","info");
+  return true;
+};
+
 /* ═══════════════════════════════════
    INIT
 ═══════════════════════════════════ */
@@ -2011,6 +2326,7 @@ window.initCadastroEscolas = function(){
   bindEventos();
   atualizarBadgeSit();
   carregarLista();
+  carregarConfigReceita();
 };
 
 })();

@@ -112,7 +112,9 @@ var VIS_CHECKLIST = [
  * aba Escolas. Idempotente: rodar de novo nao duplica nem sobrescreve.
  * Nao altera nenhum dado existente das 681 escolas.
  */
-function configurarModuloVisitas() {
+function configurarModuloVisitas(tokenSessao) {
+  var sessao = visitas_exigirSessao_(tokenSessao);
+  if (!visitas_ehGestor_(sessao)) throw new Error('Ação permitida somente para administradores.');
   var ss = visitas_planilha_();
   var resultado = [];
 
@@ -162,7 +164,9 @@ function configurarModuloVisitas() {
  * tem status de visita. Nao sobrescreve classificacoes ja feitas a mao.
  * Executar uma vez apos configurarModuloVisitas().
  */
-function classificarEquipesEscolas() {
+function classificarEquipesEscolas(tokenSessao) {
+  var sessao = visitas_exigirSessao_(tokenSessao);
+  if (!visitas_ehGestor_(sessao)) throw new Error('Ação permitida somente para administradores.');
   var abaE = visitas_abaEscolas_();
   var ultima = abaE.getLastRow();
   if (ultima < 2) return 'Aba Escolas vazia.';
@@ -207,7 +211,19 @@ function classificarEquipesEscolas() {
 /**
  * Define a URL do web app usada para montar os QR Codes das visitas.
  */
-function definirURLWebAppVisitas(url) {
+function definirURLWebAppVisitas(url, tokenSessao) {
+  var sessao = visitas_exigirSessao_(tokenSessao);
+  if (!visitas_ehGestor_(sessao)) throw new Error('Ação permitida somente para administradores.');
+  return definirURLWebAppVisitas_interno_(url);
+}
+
+/**
+ * Implementação real, sem checagem de sessão — só para uso pelo editor
+ * (definirURLWebAppAgora, rodada manualmente por quem já tem acesso ao
+ * projeto Apps Script). definirURLWebAppVisitas é o caminho protegido
+ * pra quem chama via google.script.run/web.
+ */
+function definirURLWebAppVisitas_interno_(url) {
   var u = String(url || '').trim();
   if (u.indexOf('https://') !== 0) {
     throw new Error('Informe a URL completa do web app, comecando com https://');
@@ -225,7 +241,7 @@ function definirURLWebAppVisitas(url) {
  * filtros: { equipe, cidade, status, texto, semVisita }
  */
 function listarEscolasVisitas(filtros, tokenSessao) {
-  if (tokenSessao !== undefined) visitas_exigirSessao_(tokenSessao);
+  visitas_exigirSessao_(tokenSessao); // achado #8: era condicional (bypassável omitindo o argumento)
   return visitas_listarEscolas_(filtros);
 }
 
@@ -291,7 +307,7 @@ function visitas_listarEscolas_(filtros) {
  * sindicalizacoes originadas nela.
  */
 function obterEscola360(cnpjOuNome, tokenSessao) {
-  if (tokenSessao !== undefined) visitas_exigirSessao_(tokenSessao);
+  visitas_exigirSessao_(tokenSessao); // achado #8: era condicional (bypassável omitindo o argumento)
 
   var alvo = String(cnpjOuNome || '').trim();
   var alvoDigitos = alvo.replace(/\D/g, '');
@@ -317,7 +333,7 @@ function obterEscola360(cnpjOuNome, tokenSessao) {
 
   var fichas = [];
   try {
-    var todasFichas = listarFichasSindicalizacao({}).fichas || [];
+    var todasFichas = listarFichasSindicalizacao_interno_({}).fichas || [];
     fichas = todasFichas.filter(function (f) {
       return visitas_normalizarTexto_(f.ESCOLA) === visitas_normalizarTexto_(escola.nome);
     });
@@ -367,7 +383,7 @@ function visitas_agendar_(dados, usuario) {
       STATUS_VISITA: VIS_STATUS.AGENDADA,
       PROXIMA_VISITA: r.DATA_AGENDADA,
       DIRETOR_RESPONSAVEL: r.DIRETOR_BASE
-    });
+    }, r.CNPJ);
     visitas_limparCache_();
 
     return {
@@ -454,6 +470,7 @@ function agendarVisitasEmLote(escolas, dataAgendada, diretorBase, tokenSessao) {
       linhas.push(linha);
       criadas.push(r.ID_VISITA);
       atualizacoes[nome] = {
+        _CNPJ: r.CNPJ,
         STATUS_VISITA: VIS_STATUS.AGENDADA,
         PROXIMA_VISITA: r.DATA_AGENDADA,
         DIRETOR_RESPONSAVEL: r.DIRETOR_BASE
@@ -511,7 +528,7 @@ function registrarCheckin(idVisita, latitude, longitude, tokenSessao) {
     if (!String(r.DIRETOR_BASE || '').trim()) r.DIRETOR_BASE = sessao.nome;
     r.ATUALIZADA_EM = new Date();
     visitas_gravar_(r);
-    visitas_atualizarEscola_(r.ESCOLA, { STATUS_VISITA: VIS_STATUS.EM_ANDAMENTO });
+    visitas_atualizarEscola_(r.ESCOLA, { STATUS_VISITA: VIS_STATUS.EM_ANDAMENTO }, r.CNPJ);
     visitas_limparCache_();
 
     var link = '';
@@ -612,7 +629,7 @@ function finalizarVisita(idVisita, statusFinal, proximaVisita, observacoes, toke
       TOTAL_VISITAS: totais.visitas,
       TOTAL_SINDICALIZACOES: totais.fichas,
       DIRETOR_RESPONSAVEL: r.DIRETOR_BASE
-    });
+    }, r.CNPJ);
     visitas_limparCache_();
 
     return {
@@ -653,9 +670,78 @@ function cancelarVisita(idVisita, motivo, tokenSessao) {
     visitas_atualizarEscola_(r.ESCOLA, {
       STATUS_VISITA: totais.visitas > 0 ? VIS_STATUS.VISITADA : VIS_STATUS.PENDENTE,
       PROXIMA_VISITA: ''
-    });
+    }, r.CNPJ);
     visitas_limparCache_();
     return { sucesso: true, mensagem: 'Visita cancelada.' };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Cancela em lote todas as visitas ainda nao finalizadas (AGENDADA ou
+ * EM_ANDAMENTO) das escolas informadas — pensado pra limpar agendamentos
+ * travados/de teste sem precisar abrir escola por escola e sem precisar
+ * saber a data de cada uma. Visita ja concluida nunca e tocada (mesma
+ * regra de cancelarVisita).
+ */
+function cancelarVisitasEmLote(escolas, motivo, tokenSessao) {
+  var sessao = visitas_exigirSessao_(tokenSessao);
+  if (!Array.isArray(escolas) || !escolas.length) {
+    return { sucesso: false, mensagem: 'Nenhuma escola selecionada.' };
+  }
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var alvosCnpj = {}, alvosNome = {};
+    escolas.forEach(function (e) {
+      var cnpj = String((e && e.cnpj) || '').replace(/\D/g, '');
+      var nome = visitas_normalizarTexto_((e && e.nome) || '');
+      if (cnpj) alvosCnpj[cnpj] = true;
+      if (nome) alvosNome[nome] = true;
+    });
+
+    var todas = visitas_lerTodas_();
+    var canceladas = 0;
+    var escolasAtingidas = {}; // nome da escola -> CNPJ
+
+    todas.forEach(function (v) {
+      if (v.STATUS !== VIS_STATUS.AGENDADA && v.STATUS !== VIS_STATUS.EM_ANDAMENTO) return;
+
+      var cnpjVisita = String(v.CNPJ || '').replace(/\D/g, '');
+      var nomeVisita = visitas_normalizarTexto_(v.ESCOLA);
+      var bate = (cnpjVisita && alvosCnpj[cnpjVisita]) || alvosNome[nomeVisita];
+      if (!bate) return;
+
+      v.STATUS = VIS_STATUS.CANCELADA;
+      v.OBSERVACOES = (v.OBSERVACOES ? v.OBSERVACOES + ' | ' : '') +
+        'Cancelada em lote por ' + sessao.nome + ': ' +
+        String(motivo || 'sem motivo informado');
+      v.ATUALIZADA_EM = new Date();
+      visitas_gravar_(v);
+      canceladas++;
+      escolasAtingidas[v.ESCOLA] = v.CNPJ || '';
+    });
+
+    Object.keys(escolasAtingidas).forEach(function (nomeEscola) {
+      var totais = visitas_totaisDaEscola_(nomeEscola);
+      visitas_atualizarEscola_(nomeEscola, {
+        STATUS_VISITA: totais.visitas > 0 ? VIS_STATUS.VISITADA : VIS_STATUS.PENDENTE,
+        PROXIMA_VISITA: ''
+      }, escolasAtingidas[nomeEscola]);
+    });
+
+    visitas_limparCache_();
+
+    return {
+      sucesso: true,
+      canceladas: canceladas,
+      escolas: Object.keys(escolasAtingidas).length,
+      mensagem: canceladas
+        ? (canceladas + ' visita(s) cancelada(s) em ' + Object.keys(escolasAtingidas).length + ' escola(s).')
+        : 'Nenhuma visita agendada/em andamento encontrada nas escolas selecionadas.'
+    };
   } finally {
     lock.releaseLock();
   }
@@ -757,7 +843,7 @@ function gerarLinkRotaDoDia(data, diretorBase, tokenSessao) {
  * O QR Code e desenhado no navegador a partir desta URL.
  */
 function gerarLinkFichaDaVisita(idVisita, tokenSessao) {
-  if (tokenSessao !== undefined) visitas_exigirSessao_(tokenSessao);
+  visitas_exigirSessao_(tokenSessao); // achado #8: era condicional (bypassável omitindo o argumento)
   var r = visitas_buscarPorId_(idVisita);
   if (!r) return { sucesso: false, mensagem: 'Visita nao encontrada.' };
   return visitas_linkFicha_(r);
@@ -800,7 +886,7 @@ function cadastroRapidoNaVisita(idVisita, dados, tokenSessao) {
   dados.diretorBase = r.DIRETOR_BASE;
   dados.escola = dados.escola || r.ESCOLA;
   dados.origem = 'CADASTRO_RAPIDO_VISITA';
-  return criarPreCadastroSindicalizacao(dados);
+  return criarPreCadastroSindicalizacao(dados, tokenSessao);
 }
 
 /* ==========================================================================
@@ -811,7 +897,7 @@ function cadastroRapidoNaVisita(idVisita, dados, tokenSessao) {
  * Painel de indicadores do modulo (dashboard).
  */
 function obterIndicadoresVisitas(tokenSessao) {
-  if (tokenSessao !== undefined) visitas_exigirSessao_(tokenSessao);
+  visitas_exigirSessao_(tokenSessao); // achado #8: era condicional (bypassável omitindo o argumento)
   return visitas_indicadores_();
 }
 
@@ -913,7 +999,7 @@ function visitas_ranking_() {
  * de "VITÓRIA", que sao o mesmo municipio no cadastro.
  */
 function obterCoberturaPorMunicipio(tokenSessao) {
-  if (tokenSessao !== undefined) visitas_exigirSessao_(tokenSessao);
+  visitas_exigirSessao_(tokenSessao); // achado #8: era condicional (bypassável omitindo o argumento)
 
   var escolas = visitas_listarEscolas_({}).escolas;
   var por = {};
@@ -946,9 +1032,11 @@ function obterCoberturaPorMunicipio(tokenSessao) {
  * Exige sessao valida do SISGEP e devolve a identidade de quem opera.
  * LANCA quando a sessao nao resolve - e o guard das funcoes publicas.
  *
- * ATENCAO: esta e a segunda camada de protecao. A primeira e o login do
- * SISGEP. Enquanto BYPASS_LOGIN_TEMPORARIO estiver ligado, qualquer pessoa
- * carrega a pagina e recebe um token valido.
+ * NOTA (levantamento de 29/07/2026): este comentario mencionava antes uma
+ * flag "BYPASS_LOGIN_TEMPORARIO" como suposta primeira camada de protecao.
+ * Essa flag nao existe em nenhum arquivo do projeto hoje - confirmado que
+ * o login do SISGEP ja funciona normalmente, sem bypass. Removida a
+ * mencao para nao confundir quem ler este arquivo depois.
  */
 function visitas_exigirSessao_(tokenSessao) {
   var token = String(tokenSessao || '').trim();
@@ -967,6 +1055,16 @@ function visitas_exigirSessao_(tokenSessao) {
   if (!s || !(s.nome || s.usuario)) {
     throw new Error('Sessao invalida ou expirada. Faca login novamente.');
   }
+
+  // Visitas pertence ao modulo Escolas. Como este arquivo tem validacao
+  // propria (nao usa exigirSessaoDocumentos_), a checagem de modulo entra
+  // aqui — um ponto so, que todas as funcoes publicas ja atravessam.
+  // Protegido por typeof: se AcessoModulos.gs nao estiver instalado, o
+  // comportamento continua o de antes, so com sessao.
+  if (typeof sessaoPodeModulo_ === 'function' && !sessaoPodeModulo_(s, 'escolas')) {
+    throw new Error('Seu usuario nao tem acesso ao modulo Escolas. Fale com o administrador do SISGEP.');
+  }
+
   return {
     nome: String(s.nome || s.usuario).trim(),
     email: String(s.email || s.usuario || '').trim(),
@@ -1002,7 +1100,7 @@ function visitas_usuarioAtual_(tokenSessao) {
 
 function visitas_planilha_() {
   return SpreadsheetApp.getActiveSpreadsheet() ||
-    SpreadsheetApp.openById('1QPpsx19v4YzfskoYXK9WB89TClA7q8SWGSn55VZ040E');
+    SpreadsheetApp.openById(PLANILHA_ID);
 }
 
 function visitas_aba_() {
@@ -1087,26 +1185,94 @@ function visitas_gravar_(registro) {
   }
 }
 
-/** Atualiza campos de acompanhamento da escola, sem tocar no cadastro. */
-function visitas_atualizarEscola_(nomeEscola, campos) {
+/* ─────────────────────────────────────────────────────────────
+   RETENÇÃO LGPD — expurgo das coordenadas de geolocalização do
+   check-in (CHECKIN_LAT/CHECKIN_LNG) após 5 anos, contados a partir
+   de CHECKIN_DATA_HORA. O restante do registro de visita (histórico
+   operacional, sem dado sensível de localização precisa) é mantido.
+───────────────────────────────────────────────────────────── */
+var VIS_LGPD_RETENCAO_ANOS_ = 5;
+
+function visitas_expurgarGeolocalizacaoAntiga_() {
+  var aba = visitas_aba_();
+  var mapa = visitas_mapaCabecalho_(aba);
+  var colLat  = visitas_idxCol_(mapa, 'CHECKIN_LAT', 0);
+  var colLng  = visitas_idxCol_(mapa, 'CHECKIN_LNG', 0);
+  var colData = visitas_idxCol_(mapa, 'CHECKIN_DATA_HORA', 0);
+  if (!colLat || !colLng || !colData) {
+    return { ok: false, mensagem: 'Colunas de geolocalização não encontradas em ' + VIS_ABA_VISITAS + '.' };
+  }
+
+  var limite = new Date();
+  limite.setFullYear(limite.getFullYear() - VIS_LGPD_RETENCAO_ANOS_);
+
+  var ultima = aba.getLastRow();
+  if (ultima < 2) return { ok: true, expurgadas: 0 };
+
+  var dados = aba.getRange(2, 1, ultima - 1, aba.getLastColumn()).getValues();
+  var expurgadas = 0;
+
+  for (var i = 0; i < dados.length; i++) {
+    var linha = dados[i];
+    var lat = linha[colLat - 1];
+    var lng = linha[colLng - 1];
+    if (!lat && !lng) continue; // já sem geolocalização gravada
+
+    var dataCheckin = linha[colData - 1];
+    var dataObj = dataCheckin instanceof Date ? dataCheckin : new Date(dataCheckin);
+    if (isNaN(dataObj.getTime()) || dataObj > limite) continue; // sem data confiável ou ainda dentro do prazo
+
+    aba.getRange(i + 2, colLat).setValue('');
+    aba.getRange(i + 2, colLng).setValue('');
+    expurgadas++;
+  }
+
+  if (expurgadas) {
+    Logger.log('[LGPD] Geolocalização expurgada em ' + expurgadas + ' visita(s) com check-in anterior a ' + limite.toISOString());
+  }
+
+  return { ok: true, expurgadas: expurgadas };
+}
+
+/**
+ * Atualiza campos de acompanhamento da escola, sem tocar no cadastro.
+ *
+ * Casa por CNPJ primeiro (se informado) e só cai para nome normalizado
+ * como reserva — mesma ordem de obterEscola360. Antes casava só por
+ * nome, o que gravava na unidade errada quando duas escolas da mesma
+ * rede têm a mesma razão social em cidades diferentes.
+ */
+function visitas_atualizarEscola_(nomeEscola, campos, cnpj) {
   try {
     var abaE = visitas_abaEscolas_();
     var ultima = abaE.getLastRow();
     if (ultima < 2) return;
     var mapa = visitas_mapaCabecalho_(abaE);
     var colNome = visitas_idxCol_(mapa, 'ESCOLA (RAZÃO SOCIAL)', 2);
-    var nomes = abaE.getRange(2, colNome, ultima - 1, 1).getValues();
-    var alvo = visitas_normalizarTexto_(nomeEscola);
-    for (var i = 0; i < nomes.length; i++) {
-      if (visitas_normalizarTexto_(nomes[i][0]) === alvo) {
-        var linha = i + 2;
-        Object.keys(campos).forEach(function (k) {
-          var col = visitas_idxCol_(mapa, k, 0);
-          if (col) abaE.getRange(linha, col).setValue(campos[k]);
-        });
-        return;
+    var colCnpj = visitas_idxCol_(mapa, 'CNPJ', 3);
+    var n = ultima - 1;
+    var nomes = abaE.getRange(2, colNome, n, 1).getValues();
+    var cnpjs = colCnpj ? abaE.getRange(2, colCnpj, n, 1).getValues() : null;
+    var alvoNome = visitas_normalizarTexto_(nomeEscola);
+    var alvoCnpj = String(cnpj || '').replace(/\D/g, '');
+
+    var linha = -1;
+    if (alvoCnpj && cnpjs) {
+      for (var i = 0; i < n; i++) {
+        if (String(cnpjs[i][0] || '').replace(/\D/g, '') === alvoCnpj) { linha = i + 2; break; }
       }
     }
+    if (linha === -1) {
+      for (var j = 0; j < n; j++) {
+        if (visitas_normalizarTexto_(nomes[j][0]) === alvoNome) { linha = j + 2; break; }
+      }
+    }
+    if (linha === -1) return;
+
+    Object.keys(campos).forEach(function (k) {
+      var col = visitas_idxCol_(mapa, k, 0);
+      if (col) abaE.getRange(linha, col).setValue(campos[k]);
+    });
   } catch (e) {
     Logger.log('Atualizacao da escola falhou (' + nomeEscola + '): ' + e.message);
   }
@@ -1114,7 +1280,10 @@ function visitas_atualizarEscola_(nomeEscola, campos) {
 
 /**
  * Atualiza o acompanhamento de varias escolas numa so passada.
- * atualizacoes: { 'NOME DA ESCOLA': { COLUNA: valor, ... }, ... }
+ * atualizacoes: { 'NOME DA ESCOLA': { _CNPJ: '...', COLUNA: valor, ... }, ... }
+ * _CNPJ e opcional (usado só pra achar a linha certa, nunca é gravado
+ * como coluna) — quando informado, tem prioridade sobre o nome, mesma
+ * ordem de obterEscola360/visitas_atualizarEscola_.
  *
  * Le a aba Escolas uma vez e escreve uma vez por coluna afetada, em vez
  * de um setValue por campo por escola.
@@ -1130,21 +1299,27 @@ function visitas_atualizarEscolasEmLote_(atualizacoes) {
 
     var mapa = visitas_mapaCabecalho_(abaE);
     var colNome = visitas_idxCol_(mapa, 'ESCOLA (RAZÃO SOCIAL)', 2);
+    var colCnpj = visitas_idxCol_(mapa, 'CNPJ', 3);
     var n = ultima - 1;
     var nomes = abaE.getRange(2, colNome, n, 1).getValues();
+    var cnpjs = colCnpj ? abaE.getRange(2, colCnpj, n, 1).getValues() : null;
 
-    /* Indice normalizado nome -> primeira linha. Escolas com a mesma razao
-       social em unidades diferentes casam na primeira; e limitacao do
-       cadastro, nao deste laco. */
-    var indice = {};
+    /* Indice por CNPJ (prioridade) e por nome normalizado (reserva).
+       Escolas com a mesma razao social em unidades diferentes só ainda
+       casam na primeira se nenhuma das duas tiver CNPJ cadastrado. */
+    var indicePorCnpj = {}, indicePorNome = {};
     for (var i = 0; i < n; i++) {
-      var chave = visitas_normalizarTexto_(nomes[i][0]);
-      if (chave && indice[chave] === undefined) indice[chave] = i;
+      var chaveNome = visitas_normalizarTexto_(nomes[i][0]);
+      if (chaveNome && indicePorNome[chaveNome] === undefined) indicePorNome[chaveNome] = i;
+      if (cnpjs) {
+        var chaveCnpj = String(cnpjs[i][0] || '').replace(/\D/g, '');
+        if (chaveCnpj && indicePorCnpj[chaveCnpj] === undefined) indicePorCnpj[chaveCnpj] = i;
+      }
     }
 
     var colunas = {};
     nomesAlvo.forEach(function (nome) {
-      Object.keys(atualizacoes[nome]).forEach(function (c) { colunas[c] = true; });
+      Object.keys(atualizacoes[nome]).forEach(function (c) { if (c !== '_CNPJ') colunas[c] = true; });
     });
 
     Object.keys(colunas).forEach(function (nomeCol) {
@@ -1153,7 +1328,10 @@ function visitas_atualizarEscolasEmLote_(atualizacoes) {
       var valores = abaE.getRange(2, col, n, 1).getValues();
       var mexeu = false;
       nomesAlvo.forEach(function (nome) {
-        var idx = indice[visitas_normalizarTexto_(nome)];
+        var cnpjAlvo = String(atualizacoes[nome]._CNPJ || '').replace(/\D/g, '');
+        var idx = (cnpjAlvo && indicePorCnpj[cnpjAlvo] !== undefined)
+          ? indicePorCnpj[cnpjAlvo]
+          : indicePorNome[visitas_normalizarTexto_(nome)];
         if (idx === undefined) return;
         var novo = atualizacoes[nome][nomeCol];
         if (novo === undefined) return;
@@ -1183,7 +1361,7 @@ function visitas_totaisDaEscola_(nomeEscola) {
 /** Conta fichas de sindicalizacao originadas nesta visita. */
 function visitas_contarFichas_(idVisita) {
   try {
-    var fichas = listarFichasSindicalizacao({}).fichas || [];
+    var fichas = listarFichasSindicalizacao_interno_({}).fichas || [];
     var alvo = String(idVisita).trim();
     var n = 0;
     fichas.forEach(function (f) {
@@ -1399,17 +1577,37 @@ function diagnosticarCidadesVisitas() {
 /**
  * LIMPEZA PRE-LANCAMENTO - apaga TODAS as linhas da aba SISGEP_Visitas e
  * devolve as escolas ao estado PENDENTE, preservando a classificacao de
- * equipe. Registra no log o que foi apagado, antes de apagar.
+ * equipe. Faz backup completo da aba de visitas antes de apagar. Registra
+ * no log o que foi apagado, antes de apagar.
+ *
+ * Exige sessao de administrador/diretoria e uma confirmacao explicita
+ * (confirmacao === 'CONFIRMAR') - inclusive quando rodada pelo editor.
  *
  * Use apenas enquanto tudo que existe e dado de teste. Depois do inicio da
  * operacao, esta funcao destroi historico real.
  */
-function limparVisitasDeTeste() {
+function limparVisitasDeTeste(tokenSessao, confirmacao) {
+  var sessao = visitas_exigirSessao_(tokenSessao);
+  if (!visitas_ehGestor_(sessao)) throw new Error('Ação permitida somente para administradores.');
+  if (String(confirmacao || '') !== 'CONFIRMAR') {
+    throw new Error('Confirmação obrigatória: informe confirmacao="CONFIRMAR" para apagar todas as visitas.');
+  }
+
   var aba = visitas_aba_();
   var ultima = aba.getLastRow();
   var apagadas = 0;
+  var nomeBackup = '';
 
   if (ultima >= 2) {
+    var ss = visitas_planilha_();
+    var dadosCompletos = aba.getRange(1, 1, ultima, aba.getLastColumn()).getValues();
+    nomeBackup = 'BACKUP_VISITAS_LIMPEZA_' +
+      Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd_HHmmss');
+    var shBackup = ss.insertSheet(nomeBackup);
+    shBackup.getRange(1, 1, dadosCompletos.length, dadosCompletos[0].length).setValues(dadosCompletos);
+    shBackup.getRange(1, 1, 1, dadosCompletos[0].length).setFontWeight('bold');
+    shBackup.setFrozenRows(1);
+
     visitas_lerTodas_().forEach(function (v) {
       Logger.log('APAGANDO: ' + v.ID_VISITA + ' | ' + v.ESCOLA +
         ' | ' + v.DATA_AGENDADA + ' | ' + v.STATUS);
@@ -1444,12 +1642,15 @@ function limparVisitasDeTeste() {
 
   visitas_limparCache_();
   return apagadas + ' visita(s) apagada(s) | ' + reset +
-    ' escola(s) devolvida(s) a PENDENTE. Equipes preservadas.';
+    ' escola(s) devolvida(s) a PENDENTE. Equipes preservadas.' +
+    (nomeBackup ? ' Backup: ' + nomeBackup + '.' : '');
 }
 
 /** Atalho para registrar a URL do web app pelo editor. */
-function definirURLWebAppAgora() {
-  return definirURLWebAppVisitas(
+function definirURLWebAppAgora(tokenSessao) {
+  var sessao = visitas_exigirSessao_(tokenSessao);
+  if (!visitas_ehGestor_(sessao)) throw new Error('Ação permitida somente para administradores.');
+  return definirURLWebAppVisitas_interno_(
     'https://script.google.com/macros/s/AKfycbzgPBSSF3D2OimoEJ-qMfDNp_Dsmc95THSNdUvFgqoX7NXWcmn7ZDMzF9L-OyUbEMw_ew/exec'
   );
 }
@@ -1458,7 +1659,9 @@ function definirURLWebAppAgora() {
  * Cria 3 visitas de teste para hoje, com escolas reais da base.
  * Apague as linhas depois com limparVisitasDeTeste().
  */
-function criarVisitasDeTeste() {
+function criarVisitasDeTeste(tokenSessao) {
+  var sessao = visitas_exigirSessao_(tokenSessao);
+  if (!visitas_ehGestor_(sessao)) throw new Error('Ação permitida somente para administradores.');
   var escolas = visitas_listarEscolas_({ equipe: 'A' }).escolas.slice(0, 3);
   if (!escolas.length) throw new Error('Nenhuma escola encontrada.');
 
@@ -1485,7 +1688,9 @@ function criarVisitasDeTeste() {
 }
 
 /** Corrige o diretor das visitas de teste para o nome da sessao. */
-function corrigirDiretorVisitasTeste() {
+function corrigirDiretorVisitasTeste(tokenSessao) {
+  var sessao = visitas_exigirSessao_(tokenSessao);
+  if (!visitas_ehGestor_(sessao)) throw new Error('Ação permitida somente para administradores.');
   var aba = visitas_aba_();
   var ultima = aba.getLastRow();
   if (ultima < 2) return 'Nenhuma visita.';
@@ -1493,7 +1698,7 @@ function corrigirDiretorVisitasTeste() {
   var col = visitas_idxCol_(mapa, 'DIRETOR_BASE', 10);
   var n = ultima - 1;
   var valores = aba.getRange(2, col, n, 1).getValues();
-  var nomeCorreto = 'Wanderson N. Castelo';
+  var nomeCorreto = sessao.nome;
   var alterados = 0;
   for (var i = 0; i < n; i++) {
     if (String(valores[i][0]).indexOf('@') > 0) {
@@ -1537,7 +1742,9 @@ function testarAgendaHoje() {
  * Corrige a coluna HORA_AGENDADA: forca formato de texto e reescreve
  * as horas que o Sheets converteu em data-epoca (30/12/1899).
  */
-function corrigirHorasVisitas() {
+function corrigirHorasVisitas(tokenSessao) {
+  var sessao = visitas_exigirSessao_(tokenSessao);
+  if (!visitas_ehGestor_(sessao)) throw new Error('Ação permitida somente para administradores.');
   var aba = visitas_aba_();
   var ultima = aba.getLastRow();
   var mapa = visitas_mapaCabecalho_(aba);

@@ -206,7 +206,7 @@ function popularSelectEscolas(lista) {
 
   function carregarEscolasDaPlanilha() {
     if(!window.google||!window.google.script||!window.google.script.run){ syncFromSelect(); renderRecentes(); return; }
-    google.script.run.withSuccessHandler(popularSelectEscolas).withFailureHandler(function(err){ console.error("Erro ao carregar escolas:", err); toast("Erro ao carregar escolas: " + ((err && err.message) || err), "err", 6000); syncFromSelect(); renderRecentes(); }).listarEscolas();
+    google.script.run.withSuccessHandler(popularSelectEscolas).withFailureHandler(function(err){ console.error("Erro ao carregar escolas:", err); toast("Erro ao carregar escolas: " + ((err && err.message) || err), "err", 6000); syncFromSelect(); renderRecentes(); }).listarEscolas(SISGEP_TOKEN_SESSAO);
   }
 
   function setInput(id, v) { var el=$(id); if(el) el.value=v||""; }
@@ -265,7 +265,108 @@ function popularSelectEscolas(lista) {
     setText("escolaProfileCidadeUf",e.cidadeUf||[e.cidade,e.uf].filter(Boolean).join(" / ")); setText("escolaProfileEndereco",e.endereco);
     setText("escolaProfileStatus",e.status); setText("escolaStatOficios",String(e.oficios||0));
     setText("escolaStatConfirmados",String(e.confirmados||0)); setText("escolaStatUltimo",e.ultimo||"—");
+    montarIdentidadeEscola(e);
     renderEmails(e); preencherCompat(e); salvarRecente(e); atualizarRevisaoOficio(); autoSave();
+    carregarAvisosEscola(e);
+  }
+
+  /* Identidade em duas linhas: CNPJ e situação na primeira, endereço completo na
+     segunda. A linha do endereço só existe quando há endereço — antes, escola sem
+     endereço reservava uma coluna inteira para exibir um travessão. */
+  function montarIdentidadeEscola(e) {
+    setText("escolaProfileStatusLinha", String(e.status || "ATIVA").toUpperCase());
+
+    var partes = [];
+    var logradouro = txt(e.endereco);
+    if (logradouro) partes.push(logradouro + (txt(e.numero) ? ", " + txt(e.numero) : ""));
+    if (txt(e.bairro)) partes.push(txt(e.bairro));
+    var cidadeUf = txt(e.cidadeUf) || [txt(e.cidade), txt(e.uf)].filter(Boolean).join(" / ");
+    if (cidadeUf) partes.push(cidadeUf);
+    if (txt(e.cep)) partes.push(txt(e.cep));
+
+    var el = $("escolaProfileEnderecoLinha");
+    if (!el) return;
+    el.textContent = partes.join(" · ");
+    el.style.display = partes.length ? "block" : "none";
+  }
+
+  /* Uma consulta traz histórico, endereços que já recusaram entrega e ofício
+     repetido no período. São avisos que hoje só chegam na hora do envio — tarde
+     demais para evitar o erro. */
+  function carregarAvisosEscola(e) {
+    var caixa = $("escolaAvisosOficio");
+    var linha = $("escolaHistoricoTexto");
+    if (caixa) { caixa.innerHTML = ""; caixa.style.display = "none"; }
+    if (linha) linha.textContent = "Carregando histórico desta escola...";
+    window._escolaAvisos = null;
+
+    if (!e || !e.cnpj || !window.google || !window.google.script || !window.google.script.run) {
+      if (linha) linha.textContent = "Histórico indisponível.";
+      return;
+    }
+
+    var tipoAtual = ($("tipo") && $("tipo").value) || "";
+    google.script.run
+      .withSuccessHandler(function(r) { window._escolaAvisos = r || null; renderAvisosEscola(r); })
+      .withFailureHandler(function() { if (linha) linha.textContent = "Não foi possível carregar o histórico."; })
+      .obterAvisosEscolaOficio(e.cnpj, tipoAtual, SISGEP_TOKEN_SESSAO);
+  }
+
+  function renderAvisosEscola(r) {
+    r = r || {};
+    var linha = $("escolaHistoricoTexto");
+    if (linha) {
+      linha.textContent = (r.enviados > 0)
+        ? (r.enviados + " ofício(s) · " + (r.confirmados || 0) + " confirmado(s)" + (r.ultimo ? " · último em " + r.ultimo : "") + "  —  ver no Histórico")
+        : "Nenhum ofício enviado para esta escola ainda.";
+    }
+
+    var avisos = [];
+    var temEmail = escolaSmartSelecionada && escolaSmartSelecionada.emails && escolaSmartSelecionada.emails.length;
+    if (!temEmail) {
+      avisos.push({ classe: "escola-aviso-erro", marca: "✉️",
+        html: "<b>Esta escola não tem e-mail cadastrado.</b> O ofício será gerado, mas não há para onde enviar." });
+    }
+
+    if (r.duplicata && r.duplicata.numero) {
+      avisos.push({ classe: "escola-aviso-alerta", marca: "📄",
+        html: "<b>Já existe ofício deste tipo para esta escola neste mês</b> — nº " + escapeHtml(r.duplicata.numero)
+              + (r.duplicata.data ? ", de " + escapeHtml(r.duplicata.data) : "") + "." });
+    }
+
+    (r.emailsComFalha || []).forEach(function(f) {
+      /* O bounce fica registrado no ofício, não no endereço: com vários
+         destinatários não dá para saber qual recusou. O texto muda conforme
+         essa certeza, para não acusar endereço bom. */
+      avisos.push({ classe: "escola-aviso-alerta", marca: "⚠️",
+        html: f.certeza === "alta"
+          ? "<b>" + escapeHtml(f.email) + "</b> recusou a entrega" + (f.data ? " em " + escapeHtml(f.data) : "") + "."
+          : "<b>" + escapeHtml(f.email) + "</b> estava num envio que falhou" + (f.data ? " em " + escapeHtml(f.data) : "")
+            + ". Havia mais destinatários, então pode não ser este o endereço com problema." });
+    });
+
+    var caixa = $("escolaAvisosOficio");
+    if (!caixa) return;
+    caixa.innerHTML = avisos.map(function(a) {
+      return '<div class="escola-aviso ' + a.classe + '"><span class="escola-aviso-marca">' + a.marca + '</span><div>' + a.html + '</div></div>';
+    }).join("");
+    caixa.style.display = avisos.length ? "flex" : "none";
+
+    marcarEmailsComFalha(r.emailsComFalha || []);
+  }
+
+  /* Pinta de vermelho a ficha do e-mail que já recusou. Continua clicável: o
+     aviso informa, não decide pelo operador. */
+  function marcarEmailsComFalha(lista) {
+    var problematicos = {};
+    lista.forEach(function(f) { problematicos[String(f.email || "").toLowerCase()] = f; });
+
+    document.querySelectorAll("#escolaProfileEmails .email-pill").forEach(function(btn) {
+      var em = String(btn.dataset.email || "").toLowerCase();
+      var f = problematicos[em];
+      btn.classList.toggle("escola-email-pill-falhou", !!f);
+      if (f) btn.title = (f.certeza === "alta" ? "Recusou a entrega" : "Esteve num envio que falhou") + (f.data ? " em " + f.data : "");
+    });
   }
 
  function buscar(termo) {
@@ -444,6 +545,30 @@ window.renderDropdownEscolas = renderDropdown;
     var cu=txt($("cidadeUfReceita")&&$("cidadeUfReceita").value); if(cu){ var p=cu.split("/"); escolaSmartSelecionada.cidade=txt(p[0]); escolaSmartSelecionada.uf=txt(p[1]); }
     if(escolaSmartSelecionada.emailPrincipal&&escolaSmartSelecionada.emails.indexOf(escolaSmartSelecionada.emailPrincipal)<0) escolaSmartSelecionada.emails.unshift(escolaSmartSelecionada.emailPrincipal);
     selecionarEscola(escolaSmartSelecionada); autoSave();
+
+    /* Antes isto parava aqui: a edicao vivia so no objeto da tela e no rascunho
+       local. Quem editava via a alteracao na tela, gerava o oficio e nao
+       entendia por que o cadastro continuava o antigo. Agora persiste. */
+    persistirEdicaoEscola();
+  }
+
+  /* Grava no cadastro a escola como ela esta na tela. Falhar aqui nao desfaz a
+     edicao visual — avisa, para o operador poder tentar de novo pelo botao de
+     salvar sem perder o que digitou. */
+  function persistirEdicaoEscola() {
+    var dados = getEscolaPayload();
+    if (!dados.nome || dados.nome === "Selecione..." || !dados.cnpj) return;
+    if (!window.google || !window.google.script || !window.google.script.run) return;
+
+    google.script.run
+      .withSuccessHandler(function(resp){
+        toast((resp && resp.mensagem) || "Cadastro da escola atualizado.", "ok", 5000);
+        if (typeof carregarEscolasDaPlanilha === "function") carregarEscolasDaPlanilha();
+      })
+      .withFailureHandler(function(err){
+        toast("A edição está na tela, mas não foi gravada no cadastro: " + ((err && err.message) || err), "err", 8000);
+      })
+      .salvarEscolaOficio(dados, SISGEP_TOKEN_SESSAO);
   }
 
   function adicionarEmailEscola() {
@@ -460,8 +585,12 @@ window.renderDropdownEscolas = renderDropdown;
     var dados=getEscolaPayload();
     if(!dados.nome||dados.nome==="Selecione..."){ toast("Selecione uma escola.","warn"); return; }
     if(!dados.cnpj){ toast("Informe o CNPJ.","warn"); return; }
-    if(!confirm("Atualizar cadastro oficial na planilha?")) return;
     if(!window.google||!window.google.script||!window.google.script.run){ toast("Disponível apenas no Apps Script.","warn"); return; }
+    confirmarSISGEP({
+      titulo:"Atualizar cadastro da escola", subtitulo:"A alteração vale para os próximos ofícios", icone:"🏫",
+      texto:"Gravar os dados de "+dados.nome+" no cadastro oficial da planilha?",
+      rotulo:"Atualizar cadastro"
+    }, function(){
     var st=$("statusConsultaCnpj"); if(st){ st.style.display="flex"; st.className="info-box blue"; st.textContent="Salvando..."; }
     google.script.run.withSuccessHandler(function(resp){
       if(st){ st.style.display="flex"; st.className="info-box green"; st.textContent=(resp&&resp.mensagem)||"Escola salva."; }
@@ -469,6 +598,7 @@ window.renderDropdownEscolas = renderDropdown;
     }).withFailureHandler(function(err){
       if(st){ st.style.display="flex"; st.className="info-box amber"; st.textContent="Erro: "+((err&&err.message)||err); }
     }).salvarEscolaOficio(dados, SISGEP_TOKEN_SESSAO);
+    });
   }
 
   function bridgeClick(a,b){ var o=$(a),d=$(b); if(o&&d) o.onclick=function(){d.click();}; }
@@ -476,7 +606,56 @@ window.renderDropdownEscolas = renderDropdown;
   /* ─────────────────────────────────────────────
      TRABALHADORES & FICHAS
   ────────────────────────────────────────────── */
-  var MAX_TRABALHADORES = 25, contadorTrabalhadores = 0;
+  /* Regra por tipo de ofício.
+   *
+   * Filiação e desfiliação nascem de um documento assinado: a ficha é a
+   * prova da autorização do desconto, e o CPF identifica quem autorizou.
+   * As três taxas são cobrança prevista na CCT, incidem sobre o quadro
+   * técnico-administrativo inteiro e não têm ficha para anexar — exigir
+   * ficha e CPF ali era pedir 50 documentos para mandar uma lista de nomes.
+   *
+   * Definido pelo usuário em 18/08/2026: "pode até 50 trabalhadores, sendo
+   * o CPF não obrigatório para as três taxas e tem que sair no ofício para
+   * todas as taxas". Opcional é diferente de ausente: quando informado, o
+   * CPF sai no documento. */
+  /* CPF NÃO É OBRIGATÓRIO EM NENHUM TIPO.
+   *
+   * Decisão do usuário em 18/08/2026, com a razão junto: "pode ser opcional,
+   * mas a sugestão que eu sei falar pra quem trabalha no SISGEP é que inclua
+   * o CPF, que tem muita gente que não sabe nem o próprio CPF".
+   *
+   * Ou seja: o sistema PEDE o CPF, não exige. Travar a emissão por causa de
+   * um número que a pessoa não tem na mão na hora só faz o ofício não sair —
+   * e o ofício é o que a escola precisa receber. O que o sistema faz é dizer,
+   * na tela, o que se perde sem ele (o vínculo com o cadastro do associado),
+   * e deixar a decisão com quem está atendendo. */
+  function oficioExigeCpf() { return false; }
+  window.oficioExigeCpf = oficioExigeCpf;
+
+  /* Ficha continua sendo exigida onde ela é a prova da autorização do
+   * desconto: filiação e desfiliação nascem de um documento assinado. */
+  function oficioExigeFichaECpf(tipo) {
+    var t = String(tipo || "");
+    return t === "Filiação" || t === "Desfiliação";
+  }
+
+  /* A recomendação muda de peso conforme o tipo: em Filiação e Desfiliação o
+   * CPF é o que liga o ofício ao cadastro do associado — sem ele a
+   * desfiliação não marca ninguém. Nos demais ele só sai impresso. */
+  function atualizarRecomendacaoCpf() {
+    var tipo = ($("tipo") && $("tipo").value) || "";
+    var ligaCadastro = (tipo === "Filiação" || tipo === "Desfiliação");
+    var texto = ligaCadastro
+      ? "Sem CPF o ofício sai normalmente, mas o cadastro do associado não é atualizado."
+      : "Sem CPF o ofício sai normalmente, só sem o número impresso ao lado do nome.";
+    document.querySelectorAll("#listaTrabalhadores .cpf-recomendacao")
+      .forEach(function (el) { el.textContent = texto; });
+  }
+  window.atualizarRecomendacaoCpf = atualizarRecomendacaoCpf;
+  function oficioLimitePessoas(tipo) { return 50; }   // 50 em todos os tipos desde 18/08/2026
+  window.oficioLimitePessoas = oficioLimitePessoas;
+
+  var MAX_TRABALHADORES = 50, contadorTrabalhadores = 0;
 
   function atualizarResumoTrabalhadores() {
     var lista = $("listaTrabalhadores"), st = $("statusSincronizacao"), btn = $("btnEmitir"), tipo = $("tipo");
@@ -533,9 +712,43 @@ function getTrabalhadoresPayload() {
     return t.nome || t.cpf;
   });
 }
+  /* Dígito verificador do CNPJ. O Helpers.html só tinha máscara — sem isto, o
+     campo aceitava 14 números quaisquer. */
+  function cnpjValido(valor) {
+    var c = String(valor || "").replace(/\D/g, "");
+    if (c.length !== 14) return false;
+    if (/^(\d)\1{13}$/.test(c)) return false;
+
+    function dv(base) {
+      var peso = base.length === 12 ? 5 : 6, soma = 0;
+      for (var i = 0; i < base.length; i++) {
+        soma += Number(base[i]) * peso;
+        peso = (peso === 2) ? 9 : peso - 1;
+      }
+      var r = soma % 11;
+      return r < 2 ? 0 : 11 - r;
+    }
+
+    return dv(c.slice(0, 12)) === Number(c[12]) && dv(c.slice(0, 13)) === Number(c[13]);
+  }
+  window.cnpjValido = cnpjValido;
+
   function getEscolaPayload() {
     var sel = $("escola"), selTxt = sel && sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].textContent : "";
-    return { id: sel ? sel.value : "", nome: ($("escolaBusca")&&$("escolaBusca").value) || selTxt || "", cnpj: $("cnpj")&&$("cnpj").value || "", email: $("email")&&$("email").value || "", endereco: $("enderecoEscola")&&$("enderecoEscola").value || "", razaoSocial: $("razaoSocialReceita")&&$("razaoSocialReceita").value || "", cidadeUf: $("cidadeUfReceita")&&$("cidadeUfReceita").value || "" };
+    var principal = $("email")&&$("email").value || "";
+
+    /* A lista completa vem do que esta na tela agora, nao do cadastro: o
+       operador pode ter acabado de acrescentar um e-mail. Sem isto, o oficio
+       saia so com o principal e o backend gravava so o principal, porque
+       salvarEscolaOficio monta a coluna com [dados.emailsTodos, email]. */
+    var todos = [];
+    if (escolaSmartSelecionada && Array.isArray(escolaSmartSelecionada.emails)) todos = escolaSmartSelecionada.emails.slice();
+    if (principal && todos.indexOf(principal) < 0) todos.unshift(principal);
+    todos = todos.map(function(e){ return String(e || "").trim(); })
+                 .filter(Boolean)
+                 .filter(function(e, i, arr){ return arr.indexOf(e) === i; });
+
+    return { id: sel ? sel.value : "", nome: ($("escolaBusca")&&$("escolaBusca").value) || selTxt || "", cnpj: $("cnpj")&&$("cnpj").value || "", email: principal, emailsTodos: todos.join(", "), endereco: $("enderecoEscola")&&$("enderecoEscola").value || "", razaoSocial: $("razaoSocialReceita")&&$("razaoSocialReceita").value || "", cidadeUf: $("cidadeUfReceita")&&$("cidadeUfReceita").value || "" };
   }
 
 function atualizarPayloadOficio(num) {
@@ -590,9 +803,10 @@ function atualizarPayloadOficio(num) {
   if (!esc || esc === "Selecione...") pend.push("Selecione uma escola.");
   if (!em) pend.push("Informe o e-mail.");
   if (!bens.length && p.tipo !== "Ofício Livre") pend.push("Adicione trabalhadores.");
-  if (bens.some(function(b) { return !b.nome || !b.cpf; })) pend.push("Complete nome e CPF.");
-  if (p.tipo !== "Ofício Livre" && bens.length > 0 && fichs.length < bens.length) pend.push("Anexe pelo menos 1 ficha por trabalhador.");
-  if (fichs.length > 25) pend.push("Limite máximo de 25 fichas.");
+  if (bens.some(function(b) { return !b.nome; })) pend.push("Complete o nome do trabalhador.");
+  if (oficioExigeCpf(p.tipo) && bens.some(function(b) { return !b.cpf; })) pend.push("Complete o CPF.");
+  if (oficioExigeFichaECpf(p.tipo) && bens.length > 0 && fichs.length === 0) pend.push("Anexe ao menos uma ficha.");
+  if (bens.length > oficioLimitePessoas(p.tipo)) pend.push("Limite máximo de " + oficioLimitePessoas(p.tipo) + " trabalhadores para este tipo.");
 
   if (!p.tipo && !esc && !bens.length && !fichs.length) {
     painel.innerHTML = '<div class="revisao-empty">Preencha os dados para montar a revisão.</div>';
@@ -636,13 +850,17 @@ function atualizarPayloadOficio(num) {
     + '<div><div class="trabalhador-titulo">Trabalhador ' + contadorTrabalhadores + '</div>'
     + '<div class="trabalhador-sub">Dados para emissão do ofício</div></div>'
     + '</div>'
+    + '<div style="display:flex;gap:6px;align-items:center;">'
+    + '<button type="button" class="btn-adicionar-trabalhador-card" title="Adicionar outro trabalhador" style="width:30px;height:30px;border-radius:9px;border:1.5px solid var(--g200);background:#fff;color:var(--navy);font-size:16px;font-weight:800;line-height:1;cursor:pointer;">+</button>'
     + '<button type="button" class="btn-remover-trabalhador-premium" title="Remover">✕</button>'
+    + '</div>'
     + '</div>'
     + '<div class="trabalhador-grid">'
     + '<div class="trabalhador-campo"><label>Nome completo</label>'
     + '<input type="text" class="input-nome-trabalhador" placeholder="Nome do trabalhador"></div>'
-    + '<div class="trabalhador-campo"><label>CPF</label>'
-    + '<input type="text" class="input-cpf-trabalhador" placeholder="000.000.000-00" maxlength="14" inputmode="numeric"></div>'
+    + '<div class="trabalhador-campo"><label>CPF <span style="font-weight:600;text-transform:none;letter-spacing:0;color:var(--g400);">(opcional)</span></label>'
+    + '<input type="text" class="input-cpf-trabalhador" placeholder="000.000.000-00" maxlength="14" inputmode="numeric">'
+    + '<span class="cpf-recomendacao" style="display:block;font-size:11px;color:var(--g400);margin-top:4px;line-height:1.5;"></span></div>'
     + '</div>'
     + '<div class="trabalhador-ficha-area" style="margin-top:10px;padding:10px 12px;background:var(--g50);border-radius:8px;border:1px dashed var(--g200);">'
     + '<label style="font-size:11px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">Ficha do trabalhador</label>'
@@ -656,7 +874,22 @@ function atualizarPayloadOficio(num) {
   var inputFicha   = c.querySelector(".input-ficha-trabalhador");
   var contadorFich = c.querySelector(".ficha-contador");
   var previewFich  = c.querySelector(".ficha-preview-individual");
-  var fichasCard   = new DataTransfer();
+  /* A fila acumulada mora NO ELEMENTO, não numa variável de closure.
+     Enquanto morou só na closure, remover um arquivo pela fila não a
+     atualizava, e o anexo seguinte ressuscitava o que tinha sido
+     apagado — o pior tipo de defeito num anexo, porque o documento sai
+     com uma ficha que a pessoa jurava ter tirado. */
+  c._fichasDt = new DataTransfer();
+
+  /* O "+" do card faz o mesmo que o botao geral de adicionar: um card novo
+     entra no fim da lista. Poupa a rolagem ate o rodape quando a lista cresce. */
+  var btnAddCard = c.querySelector(".btn-adicionar-trabalhador-card");
+  if (btnAddCard) btnAddCard.onclick = function() {
+    addTrabalhador();
+    var lista = $("listaTrabalhadores");
+    var ultimo = lista && lista.querySelector(".trabalhador-card:last-child");
+    if (ultimo && ultimo.scrollIntoView) ultimo.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
 
   c.querySelector(".btn-remover-trabalhador-premium").onclick = function() {
     c.remove(); restaurarVazio(); renumerarTrabalhadores(); atualizarResumoTrabalhadores(); sincronizarFichasGlobais();
@@ -680,8 +913,10 @@ function atualizarPayloadOficio(num) {
         } else { inp.style.borderColor = ""; inp.style.background = ""; if (err) err.remove(); }
       }
       atualizarResumoTrabalhadores();
-      if (fichasCard && fichasCard.files && fichasCard.files.length) {
-        fichasCard = renomearFichasCard(c, fichasCard); inputFicha.files = fichasCard.files; renderizarPreviewFichaCard(previewFich, fichasCard);
+      if (c._fichasDt && c._fichasDt.files && c._fichasDt.files.length) {
+        c._fichasDt = renomearFichasCard(c, c._fichasDt);
+        inputFicha.files = c._fichasDt.files;
+        renderizarPreviewFichaCard(previewFich, c._fichasDt);
       }
       sincronizarFichasGlobais();
     };
@@ -689,17 +924,33 @@ function atualizarPayloadOficio(num) {
 
   inputFicha.onchange = function() {
     Array.from(inputFicha.files).forEach(function(f) {
-      if (fichasCard.files.length >= 25) { toast("Limite de fichas atingido.", "warn"); return; }
-      var jaExiste = Array.from(fichasCard.files).some(function(e) { return e.name === f.name; });
-      if (!jaExiste) fichasCard.items.add(f);
+      if (c._fichasDt.files.length >= 25) { toast("Limite de fichas atingido.", "warn"); return; }
+      var jaExiste = Array.from(c._fichasDt.files).some(function(e) { return e.name === f.name; });
+      if (!jaExiste) c._fichasDt.items.add(f);
     });
-    fichasCard = renomearFichasCard(c, fichasCard);
-    inputFicha.files = fichasCard.files;
-    var total = fichasCard.files.length;
+    c._fichasDt = renomearFichasCard(c, c._fichasDt);
+    inputFicha.files = c._fichasDt.files;
+    var total = c._fichasDt.files.length;
     contadorFich.textContent = total ? total + (total === 1 ? " ficha" : " fichas") : "Nenhuma ficha";
-    renderizarPreviewFichaCard(previewFich, fichasCard);
+    renderizarPreviewFichaCard(previewFich, c._fichasDt);
     sincronizarFichasGlobais();
   };
+
+  /* O cartão nasce já no modo em que a tela está: no lote a ficha do
+     trabalhador não aparece, e a recomendação de CPF é a do tipo escolhido.
+     Sem isto, cartão criado DEPOIS de trocar o modo saía com a ficha à
+     mostra — foi assim que uma mutação minha passou num teste anterior. */
+  var areaFicha = c.querySelector(".trabalhador-ficha-area");
+  if (areaFicha && typeof window.oficioModoAtual === "function") {
+    areaFicha.style.display = (window.oficioModoAtual() === "individual") ? "" : "none";
+  }
+  var recCpf = c.querySelector(".cpf-recomendacao");
+  if (recCpf) {
+    var _t = ($("tipo") && $("tipo").value) || "";
+    recCpf.textContent = (_t === "Filiação" || _t === "Desfiliação")
+      ? "Sem CPF o ofício sai normalmente, mas o cadastro do associado não é atualizado."
+      : "Sem CPF o ofício sai normalmente, só sem o número impresso ao lado do nome.";
+  }
 
   return c;
 }
@@ -724,21 +975,190 @@ function renomearFichasCard(card, dt) {
   return nova;
 }
 
-function renderizarPreviewFichaCard(prev, dt) { if (prev) prev.innerHTML = ""; }
+/* ══════════════════════════════════════════════════════════════════════
+   FILA DE ARQUIVOS COM CHECK DE EXCLUIR
 
-function removerFichaCard(btn, idx) {
-  var card = btn.closest(".trabalhador-card");
+   Pedido do usuário em 19/08/2026: "o módulo de ofício não tem um check
+   para excluir as fichas em lote".
+
+   Ao levantar, o defeito era maior e mais estranho do que o relato: a
+   REMOÇÃO JÁ ESTAVA ESCRITA, e não tinha por onde ser acionada.
+   `renderizarPreviewFichaCard` e `atualizarPreviewFichas` eram cascas —
+   apagavam o container e não desenhavam nada:
+
+       function renderizarPreviewFichaCard(prev, dt) { if (prev) prev.innerHTML = ""; }
+
+   Como era ali que os botões apareceriam, `removerFicha` e
+   `removerFichaCard` ficaram com ZERO chamadas nos 125 .gs e 80 .html —
+   prontas, corretas e inalcançáveis. Numa leitura o código parecia
+   completo; só executando se via que ninguém chamava.
+
+   POR QUE ISSO IMPORTA NA OPERAÇÃO. Um <input type="file"> nativo não
+   deixa tirar UM arquivo: escolher de novo substitui o conjunto inteiro.
+   Errar um PDF em quatro custava refazer os quatro — e sem lista à vista,
+   nem dava para saber qual estava errado.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/** "142 KB", "2,1 MB" — quem confere anexo olha o tamanho antes do nome. */
+function oficioTamanhoLegivel_(bytes) {
+  var n = Number(bytes) || 0;
+  if (n < 1024) return n + " B";
+  if (n < 1024 * 1024) return Math.round(n / 1024) + " KB";
+  return (n / (1024 * 1024)).toFixed(1).replace(".", ",") + " MB";
+}
+
+/**
+ * Desenha a fila de arquivos com um check por linha e um botão que remove
+ * os marcados. `aoRemover(indices)` recebe as posições marcadas.
+ *
+ * O botão nasce DESABILITADO e diz quantos vai remover. Botão de remoção
+ * que fica sempre clicável, sem contagem, é o que se aperta por engano.
+ */
+function oficioDesenharFila_(container, arquivos, aoRemover) {
+  if (!container) return;
+  container.innerHTML = "";
+  var lista = Array.prototype.slice.call(arquivos || []);
+  if (!lista.length) return;
+
+  var caixa = document.createElement("div");
+  caixa.className = "of-fila-fichas";
+  caixa.style.cssText = "border:1px solid var(--g200);border-radius:8px;overflow:hidden;background:#fff;";
+
+  lista.forEach(function (f, i) {
+    var linha = document.createElement("label");
+    linha.style.cssText = "display:flex;align-items:center;gap:10px;padding:8px 10px;" +
+      "font-size:12.5px;cursor:pointer;" + (i ? "border-top:1px solid var(--g100);" : "");
+    var chk = document.createElement("input");
+    chk.type = "checkbox";
+    chk.className = "of-fila-chk";
+    chk.dataset.idx = String(i);
+    chk.style.cssText = "width:15px;height:15px;cursor:pointer;flex:none;";
+    var nome = document.createElement("span");
+    nome.textContent = "📄 " + f.name;
+    nome.style.cssText = "flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--g700);";
+    nome.title = f.name;
+    var tam = document.createElement("span");
+    tam.textContent = oficioTamanhoLegivel_(f.size);
+    tam.style.cssText = "flex:none;color:var(--g400);font-size:11.5px;";
+    linha.appendChild(chk); linha.appendChild(nome); linha.appendChild(tam);
+    caixa.appendChild(linha);
+  });
+
+  var rodape = document.createElement("div");
+  rodape.style.cssText = "display:flex;align-items:center;justify-content:space-between;" +
+    "gap:10px;margin-top:8px;flex-wrap:wrap;";
+  var resumo = document.createElement("span");
+  var totalBytes = lista.reduce(function (s, f) { return s + (f.size || 0); }, 0);
+  resumo.textContent = lista.length + (lista.length === 1 ? " arquivo · " : " arquivos · ") +
+    oficioTamanhoLegivel_(totalBytes);
+  resumo.style.cssText = "font-size:11.5px;color:var(--g500);";
+  var btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "btn btn-red of-fila-remover";
+  btn.disabled = true;
+  btn.textContent = "Remover marcados";
+  btn.style.cssText = "font-size:12px;padding:5px 12px;";
+
+  function marcados() {
+    return Array.prototype.slice.call(caixa.querySelectorAll(".of-fila-chk"))
+      .filter(function (c) { return c.checked; })
+      .map(function (c) { return Number(c.dataset.idx); });
+  }
+  caixa.addEventListener("change", function () {
+    var n = marcados().length;
+    btn.disabled = n === 0;
+    btn.textContent = n ? "Remover marcados (" + n + ")" : "Remover marcados";
+  });
+  btn.onclick = function () {
+    var idxs = marcados();
+    if (idxs.length && typeof aoRemover === "function") aoRemover(idxs);
+  };
+
+  rodape.appendChild(resumo); rodape.appendChild(btn);
+  container.appendChild(caixa); container.appendChild(rodape);
+}
+
+/** A fila do cartão de um trabalhador. */
+function renderizarPreviewFichaCard(prev, dt) {
+  if (!prev) return;
+  oficioDesenharFila_(prev, dt && dt.files, function (idxs) {
+    removerFichasCard(prev, idxs);
+  });
+}
+
+/**
+ * Remove do cartão os arquivos nas posições dadas.
+ *
+ * De uma vez, e não um a um em laço: apagar por índice enquanto a lista
+ * encolhe desloca tudo que vem depois, e o segundo apagado seria o
+ * arquivo errado.
+ */
+function removerFichasCard(refEl, idxs) {
+  var card = refEl.closest(".trabalhador-card");
+  if (!card) return;
   var inputFicha = card.querySelector(".input-ficha-trabalhador");
   var contador = card.querySelector(".ficha-contador");
   var preview = card.querySelector(".ficha-preview-individual");
   if (!inputFicha) return;
+
+  var fora = {};
+  (idxs || []).forEach(function (i) { fora[i] = true; });
   var nova = new DataTransfer();
-  Array.from(inputFicha.files).forEach(function(f, i) { if (i !== idx) nova.items.add(f); });
+  Array.from(inputFicha.files).forEach(function (f, i) { if (!fora[i]) nova.items.add(f); });
   inputFicha.files = nova.files;
+  /* A fila acumulada do cartão vive no elemento, e não numa variável de
+     closure: quando morava só na closure, remover aqui não a atualizava e
+     o próximo anexo ressuscitava o arquivo apagado. */
+  card._fichasDt = nova;
+
   var total = nova.files.length;
-  contador.textContent = total ? total + (total === 1 ? " ficha" : " fichas") : "Nenhuma ficha";
+  if (contador) contador.textContent = total ? total + (total === 1 ? " ficha" : " fichas") : "Nenhuma ficha";
   renderizarPreviewFichaCard(preview, nova);
   sincronizarFichasGlobais();
+}
+
+/** Um só — o caminho antigo, agora em cima do de vários. */
+function removerFichaCard(btn, idx) { removerFichasCard(btn, [idx]); }
+
+/* ── A fila das FICHAS DO OFÍCIO (o PDF único da escola) ───────────────
+ *
+ * A fonte da verdade continua sendo `input.files`, espelhado em
+ * window._fichasOficioDt. Não é preciosismo: a emissão lê exatamente
+ * `$("fichasOficioLote").files`, e se a fila vivesse num array paralelo
+ * os dois se desencontrariam — a tela mostraria uma coisa e o e-mail
+ * levaria outra. Foi um desencontro assim que segurou a ficha dentro do
+ * navegador na semana passada.
+ */
+function atualizarFilaFichasOficio() {
+  var inp = $("fichasOficioLote");
+  if (!inp) return;
+  var n = inp.files ? inp.files.length : 0;
+  var res = $("fichasOficioResumo");
+  if (res) {
+    res.textContent = n
+      ? (n === 1 ? "1 arquivo anexado ao ofício" : n + " arquivos anexados ao ofício")
+      : "";
+  }
+  oficioDesenharFila_($("fichasOficioFila"), inp.files, removerFichasOficio);
+  if (typeof atualizarResumoTrabalhadores === "function") atualizarResumoTrabalhadores();
+}
+
+/** Tira do ofício os arquivos marcados. De uma vez, pela mesma razão do cartão. */
+function removerFichasOficio(idxs) {
+  var inp = $("fichasOficioLote");
+  if (!inp) return;
+  var fora = {};
+  (idxs || []).forEach(function (i) { fora[i] = true; });
+  var nova = new DataTransfer();
+  Array.prototype.slice.call(inp.files || []).forEach(function (f, i) {
+    if (!fora[i]) nova.items.add(f);
+  });
+  window._fichasOficioDt = nova;
+  inp.files = nova.files;
+  atualizarFilaFichasOficio();
+  var quantos = (idxs || []).length;
+  toast(quantos === 1 ? "1 ficha removida do ofício."
+                      : quantos + " fichas removidas do ofício.", "ok");
 }
 
   function sincronizarFichasGlobais() {
@@ -757,9 +1177,577 @@ function removerFichaCard(btn, idx) {
 
   function restaurarVazio() { var l = $("listaTrabalhadores"); if (l && !l.querySelector(".trabalhador-card")) l.innerHTML = '<div class="worker-empty">👤 Nenhum trabalhador adicionado ainda.<br>Clique em <strong>"+ Adicionar"</strong> para começar.</div>'; }
 
+  /* ══════════════════════════════════════════════════════════════════
+     LOTE — colar a lista de pessoas e anexar todas as fichas de uma vez
+
+     Pedido do usuário em 18/08/2026: "Hoje está cada trabalhador com sua
+     ficha, preciso que tenha um modal ou um botão para enviar por lote" e
+     "quando for o lote só adiciono as pessoas e coloco todas as fichas
+     comparando com a quantidade de pessoas".
+
+     São duas etapas independentes, e de propósito: a lista pode entrar sem
+     ficha nenhuma (as três taxas não têm ficha), e as fichas podem entrar
+     depois, todas juntas.
+
+     O que NÃO se faz aqui: adivinhar em silêncio. As fichas são casadas com
+     as pessoas por ORDEM, e a ordem de arquivo nem sempre é a ordem que a
+     pessoa tem na cabeça. Por isso o par nome↔arquivo aparece na tela para
+     conferência antes de emitir, e a divergência de quantidade é dita com
+     todas as letras em vez de ser resolvida por conta própria.
+     ══════════════════════════════════════════════════════════════════ */
+
+  /** Lê o texto colado e devolve {pessoas, avisos}. Não cria nada. */
+  function loteInterpretarTexto(texto) {
+    var pessoas = [], avisos = [];
+    String(texto || "").split(/\r?\n/).forEach(function (linha, i) {
+      var bruta = String(linha || "").trim();
+      if (!bruta) return;
+      /* Aceita tabulação (colado de planilha), ponto-e-vírgula e vírgula.
+         A vírgula vem por último: nome com "JÚNIOR, MARIA" é raro, mas
+         separador de planilha é tab, e testar tab primeiro evita quebrar
+         um nome que tenha vírgula. */
+      var partes = bruta.indexOf("\t") !== -1 ? bruta.split("\t")
+                 : bruta.indexOf(";")  !== -1 ? bruta.split(";")
+                 : bruta.split(",");
+      var nome = String(partes[0] || "").trim();
+      var cpfBruto = partes.length > 1 ? somenteDigitos(partes.slice(1).join("")) : "";
+      if (!nome) return;
+      if (cpfBruto && cpfBruto.length !== 11) {
+        avisos.push("Linha " + (i + 1) + " (" + nome + "): CPF com " + cpfBruto.length +
+                    " dígitos — será deixado em branco.");
+        cpfBruto = "";
+      }
+      pessoas.push({ nome: nome, cpf: cpfBruto });
+    });
+    return { pessoas: pessoas, avisos: avisos };
+  }
+
+  /* Fila do modal: a pessoa entra uma por vez, e só vira cartão no ofício
+   * quando ela confirma. Ficar criando cartão a cada nome digitado
+   * espalharia o trabalho pela tela inteira e tiraria a chance de conferir
+   * a lista antes. */
+  var lotePessoas = [];
+
+  function loteAdicionarPessoa() {
+    var iNome = $("loteNome"), iCpf = $("loteCpf");
+    var bruto = String((iNome || {}).value || "").trim();
+    if (!bruto) { toast("Informe o nome do trabalhador.", "warn"); if (iNome) iNome.focus(); return; }
+
+    /* Colar várias linhas no campo de nome adiciona todas — quem tem a lista
+     * pronta na planilha não precisa digitar de novo, e quem digita uma por
+     * vez nem percebe que isso existe. */
+    var linhas = bruto.split(/\r?\n/).map(function (t) { return t.trim(); }).filter(Boolean);
+    var cpfDigitado = somenteDigitos((iCpf || {}).value || "");
+
+    if (linhas.length > 1) {
+      var r = loteInterpretarTexto(linhas.join("\n"));
+      r.pessoas.forEach(function (p) { lotePessoas.push(p); });
+      if (r.avisos.length) toast(r.avisos[0], "warn");
+    } else {
+      if (cpfDigitado && cpfDigitado.length !== 11) {
+        toast("CPF com " + cpfDigitado.length + " dígitos. Deixe em branco ou complete.", "warn");
+        if (iCpf) iCpf.focus();
+        return;
+      }
+      lotePessoas.push({ nome: linhas[0], cpf: cpfDigitado });
+    }
+
+    if (iNome) iNome.value = "";
+    if (iCpf) iCpf.value = "";
+    loteRenderizarPrevia();
+    if (iNome) iNome.focus();
+  }
+
+  function loteRemoverPessoa(indice) {
+    lotePessoas.splice(indice, 1);
+    loteRenderizarPrevia();
+  }
+
+  function loteRenderizarPrevia() {
+    var caixa = $("loteTrabalhadoresPreview");
+    var btnOk = $("btnConfirmarLoteTrabalhadores");
+    if (!caixa) return;
+    var r = { pessoas: lotePessoas, avisos: [] };
+    var tipoAtual = ($("tipo") && $("tipo").value) || "";
+    var limite = oficioLimitePessoas(tipoAtual);
+    var jaTem = document.querySelectorAll("#listaTrabalhadores .trabalhador-card").length;
+    var totalFinal = jaTem + r.pessoas.length;
+    var comCpf = r.pessoas.filter(function (p) { return p.cpf; }).length;
+
+    if (!r.pessoas.length) {
+      caixa.innerHTML = '<div style="font-size:12.5px;color:var(--g400);">Nenhum trabalhador adicionado ainda.</div>';
+      if (btnOk) { btnOk.disabled = true; btnOk.textContent = "Adicionar"; }
+      return;
+    }
+
+    var estouro = totalFinal > limite;
+    /* Zebra igual à lista de colaboradores do próprio ofício e do cartão de
+       trabalhador — mesma linguagem visual dos dois lugares onde a pessoa já
+       vê uma lista de gente neste módulo. */
+    var linhas = r.pessoas.map(function (p, i) {
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;font-size:12.5px;' +
+        (i % 2 === 0 ? 'background:var(--g50);' : 'background:var(--surface);') + '">' +
+        '<span style="width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,var(--navy),var(--blue));color:#fff;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;flex-shrink:0;">' + (i + 1) + '</span>' +
+        '<span style="font-weight:700;color:var(--g900);">' + escaparHtmlLote(p.nome) + '</span>' +
+        (p.cpf ? '<span style="color:var(--g500);margin-left:auto;font-size:11.5px;">' + formatarCpfLote(p.cpf) + '</span>' : '<span style="margin-left:auto;"></span>') +
+        '<button type="button" class="lote-remover" data-i="' + i + '" title="Remover" ' +
+        'style="border:none;background:transparent;color:var(--g400);cursor:pointer;font-size:14px;line-height:1;padding:2px 4px;">✕</button>' +
+        '</div>';
+    }).join("");
+
+    /* Cabeçalho navy com contador dourado: o mesmo par que identifica o bloco
+       "Colaborador(es)" no ofício gerado. Quem conferir a prévia reconhece o
+       que vai sair no documento. */
+    caixa.innerHTML =
+      '<div style="border:1px solid var(--g200);border-radius:var(--rad);overflow:hidden;box-shadow:var(--sh-xs);">' +
+      '<div style="background:linear-gradient(135deg,var(--navy),var(--navy2));padding:9px 12px;display:flex;align-items:center;gap:8px;">' +
+      '<span style="font-size:11px;font-weight:900;color:rgba(255,255,255,.85);text-transform:uppercase;letter-spacing:.08em;">Vai ser adicionado</span>' +
+      '<span style="margin-left:auto;background:var(--gold);color:var(--navy);font-size:11px;font-weight:800;padding:2px 9px;border-radius:999px;">' +
+        r.pessoas.length + '</span></div>' +
+      '<div style="padding:8px 12px;font-size:11.5px;color:var(--g600);border-bottom:1px solid var(--g100);">' +
+        comCpf + ' de ' + r.pessoas.length + ' com CPF informado</div>' +
+      linhas +
+      (r.avisos.length
+        ? '<div style="padding:10px 12px;border-top:1px solid var(--g100);background:var(--amber-lt);font-size:12px;color:var(--amber);line-height:1.6;">⚠ ' +
+          r.avisos.map(escaparHtmlLote).join('<br>⚠ ') + '</div>'
+        : '') +
+      (estouro
+        ? '<div style="padding:10px 12px;border-top:1px solid var(--g100);background:var(--red-lt);font-size:12px;color:var(--red);font-weight:700;">Excede o limite: ' +
+          totalFinal + ' de ' + limite + ' para este tipo de ofício.</div>'
+        : '') +
+      '</div>';
+
+    caixa.querySelectorAll(".lote-remover").forEach(function (b) {
+      b.onclick = function () { loteRemoverPessoa(Number(b.dataset.i)); };
+    });
+
+    if (btnOk) {
+      btnOk.disabled = estouro;
+      btnOk.textContent = "Adicionar " + r.pessoas.length + (r.pessoas.length === 1 ? " ao ofício" : " ao ofício");
+    }
+  }
+
+  function escaparHtmlLote(t) {
+    return String(t == null ? "" : t).replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+  function formatarCpfLote(d) {
+    var x = somenteDigitos(d);
+    return x.length === 11 ? x.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4") : x;
+  }
+
+  /* Lista de escolas dentro do modal.
+   *
+   * Reaproveita escolasSmartOficio (a base já carregada pela tela) e
+   * selecionarEscola() (o caminho que preenche CNPJ, e-mail e o cartão da
+   * escola). Repetir essa lógica aqui criaria uma segunda verdade sobre
+   * "qual escola está escolhida", e as duas divergiriam. */
+  function loteRenderEscolas() {
+    var box = $("loteEscolaLista"); if (!box) return;
+    var termo = normalizarBusca(($("loteEscolaBusca") || {}).value || "");
+    var base = (typeof escolasSmartOficio !== "undefined" && escolasSmartOficio) ? escolasSmartOficio : [];
+
+    /* Sem busca, lista nenhuma. São centenas de escolas; despejar todas aqui
+     * empurra as etapas 2 e 3 para fora da tela e obriga a rolar antes de
+     * fazer qualquer coisa — que foi exatamente o que apareceu no primeiro
+     * desenho. Duas letras já filtram o suficiente. */
+    if (termo.length < 2) {
+      box.style.display = "none";
+      box.innerHTML = "";
+      return;
+    }
+
+    var lista = base.filter(function (e) {
+      return normalizarBusca([e.nome, e.razao, e.cnpj, e.cidade, e.uf, e.cidadeUf].join(" ")).indexOf(termo) >= 0;
+    }).slice(0, 5);
+
+    box.style.display = "";
+    if (!lista.length) {
+      box.innerHTML = '<div class="escola-recentes-empty">' +
+        (base.length ? "Nenhuma escola encontrada." : "A lista aparecerá após carregar a base.") + "</div>";
+      return;
+    }
+    box.innerHTML = lista.map(function (e, i) {
+      return '<button type="button" class="escola-recente-btn" data-idx="' + i + '">' +
+        "<strong>" + escapeHtml(e.nome) + "</strong><span>" +
+        escapeHtml([e.cnpj, e.cidadeUf || e.cidade].filter(Boolean).join(" - ")) + "</span></button>";
+    }).join("");
+    box.querySelectorAll(".escola-recente-btn").forEach(function (btn) {
+      btn.onclick = function () {
+        selecionarEscola(lista[Number(btn.dataset.idx)]);
+        loteMostrarEscolaEscolhida();
+        loteRenderizarPrevia();
+      };
+    });
+  }
+
+  function loteMostrarEscolaEscolhida() {
+    var faixa = $("loteEscolaSelecionada"); if (!faixa) return;
+    var e = (typeof escolaSmartSelecionada !== "undefined") ? escolaSmartSelecionada : null;
+    if (!e || !e.nome) { faixa.style.display = "none"; return; }
+    faixa.style.display = "block";
+    faixa.textContent = "✓ " + e.nome + (e.cnpj ? "  ·  CNPJ " + e.cnpj : "") +
+      ((emailSmartSelecionado || e.emailPrincipal) ? "  ·  " + (emailSmartSelecionado || e.emailPrincipal) : "");
+    var lista = $("loteEscolaLista"); if (lista) lista.style.display = "none";
+  }
+
+  /* Só a Taxa Assistencial precisa desta linha.
+   *
+   * Eu tinha mostrado ela também na Taxa Negocial, e o usuário viu duas
+   * linhas de modo empilhadas na tela. O motivo: "Oposição à Taxa Negocial"
+   * NÃO é um tipo próprio na aba de tipos — é uma variante da Taxa
+   * Negocial, e o bloco dela (blocoOposicaoTaxaIA) já aparece quando esse
+   * tipo é escolhido, com "Preencher manualmente", "Extrair de carta de
+   * oposição (IA)" e agora "Via lote". Ou seja, a Taxa Negocial já tinha a
+   * sua linha; quem não tinha era só a Assistencial. */
+  /** Mostra/esconde a área de ficha dos cartões conforme o tipo escolhido. */
+  /* O campo de ficha FICA, em todo tipo de ofício.
+   *
+   * Eu havia escondido nas três taxas, com o argumento de que ali não há
+   * ficha. O argumento estava incompleto e o usuário pegou: "não tem a ficha
+   * do trabalhador no modo individual, você tirou?".
+   *
+   * O furo: "Oposição à Taxa Negocial" NÃO é um tipo próprio no seletor —
+   * roda dentro de "Taxa Negocial". E na oposição existe documento: a carta
+   * de oposição, que o próprio texto do ofício cita como "conforme carta em
+   * anexo". Esconder o campo por tipo deixava a oposição sem onde anexar a
+   * prova dela.
+   *
+   * Como anexar ficha não é mais obrigatório em lugar nenhum, um campo
+   * opcional a mais custa espaço; um campo ausente custa uma emissão que não
+   * dá para fazer. Fica visível. */
+  /* ═══════════════════════════════════════════════════════════════
+     PADRÃO ÚNICO DE PREENCHIMENTO — INDIVIDUAL, LOTE E IA
+     ═══════════════════════════════════════════════════════════════
+
+     Pedido do usuário em 18/08/2026: "independente se é taxa negocial, taxa
+     assistencial, ofício livre, tem dois formatos: individual e em lote, ou
+     outro através da IA pra leitura... essa sequência é um padrão único".
+
+     A diferença entre os três é UMA só: onde mora a ficha.
+
+       individual → uma ficha por trabalhador, dentro do cartão
+       lote       → nenhuma no cartão; um PDF único no fim (o escaneado
+                    da escola costuma vir num arquivo só)
+       ia         → o documento lido é a própria prova
+
+     Escola, nomes, CPF, limite de 50, revisão, emissão, e as quatro ações
+     finais (baixar, imprimir, e-mail, WhatsApp) são o MESMO caminho nos
+     três. É isso que faz o padrão ser único de verdade, em vez de três
+     fluxos parecidos que divergem com o tempo.
+
+     No modo individual o bloco do PDF do ofício continua visível: anexar
+     nunca é obrigatório, e um campo opcional a mais custa espaço enquanto
+     um campo ausente custa uma emissão que não dá para fazer. */
+  var MODO_OFICIO_ATUAL = "individual";
+
+  function oficioModoAtual() { return MODO_OFICIO_ATUAL; }
+
+  function oficioSetModo(modo) {
+    MODO_OFICIO_ATUAL = (modo === "lote" || modo === "ia") ? modo : "individual";
+
+    var mapa = { individual: "btnModoIndividual", lote: "btnModoLote", ia: "btnModoIAUnico" };
+    Object.keys(mapa).forEach(function (m) {
+      var btn = $(mapa[m]); if (!btn) return;
+      btn.classList.toggle("btn-navy",   m === MODO_OFICIO_ATUAL);
+      btn.classList.toggle("btn-outline", m !== MODO_OFICIO_ATUAL);
+    });
+
+    var ajuda = $("modoOficioAjuda");
+    if (ajuda) {
+      ajuda.innerHTML = MODO_OFICIO_ATUAL === "lote"
+        ? "Adicione os trabalhadores um a um e anexe <strong>um PDF único</strong> com todas as fichas da escola, no fim. A quantidade de fichas não precisa bater com a de pessoas."
+        : MODO_OFICIO_ATUAL === "ia"
+        ? "Anexe o documento escaneado ou a foto. A IA <strong>sugere</strong> os dados; nada é gravado antes de você conferir."
+        : "Um cartão por trabalhador, cada um com a sua ficha. O <strong>CPF é opcional</strong>.";
+    }
+
+    /* A ficha por trabalhador só faz sentido no individual. No lote ela sai
+       de cena — foi o pedido: "em lote eu não preciso ficha". */
+    var mostrarFichaCartao = (MODO_OFICIO_ATUAL === "individual");
+    document.querySelectorAll("#listaTrabalhadores .trabalhador-ficha-area")
+      .forEach(function (a) { a.style.display = mostrarFichaCartao ? "" : "none"; });
+
+    var blocoPdf = $("blocoFichasOficio");
+    if (blocoPdf) blocoPdf.style.display = (MODO_OFICIO_ATUAL === "ia") ? "none" : "block";
+
+    /* Cada tipo tem a sua área de leitura por IA; abre só a do tipo atual. */
+    var tipo = ($("tipo") && $("tipo").value) || "";
+    var areasIA = { "Filiação": "filIA_areaUpload", "Desfiliação": "desfIA_areaUpload", "Oposição à Taxa Negocial": "oposIA_areaUpload" };
+    Object.keys(areasIA).forEach(function (t) {
+      var area = $(areasIA[t]); if (!area) return;
+      area.style.display = (MODO_OFICIO_ATUAL === "ia" && t === tipo) ? "block" : "none";
+    });
+
+    var secaoPadrao = $("secaoOficioPadrao");
+    if (secaoPadrao && tipo !== "Ofício Livre") {
+      secaoPadrao.style.display = (MODO_OFICIO_ATUAL === "ia") ? "none" : "";
+    }
+
+    if (MODO_OFICIO_ATUAL === "lote") loteAbrirModal();
+  }
+  window.oficioSetModo   = oficioSetModo;
+  window.oficioModoAtual = oficioModoAtual;
+
+  /* Ofício Livre é a exceção, e o usuário foi explícito: "vamos enviar um
+     ofício pro governo do estado, vou enviar um ofício para secretaria de
+     saúde — usa um padrão de ofício, mas o texto é livre". Papel timbrado e
+     número sequencial sim; escola, trabalhadores e os três modos, não.
+
+     Até 18/08/2026 esse tipo estava INUTILIZÁVEL: secaoOficioLivre nascia
+     display:none e nenhum arquivo do projeto a abria (procurei nos 205).
+     Quem escolhia Ofício Livre via a tela de escola, não tinha onde
+     escrever, e o backend recusava com "Destinatário é obrigatório". */
+  function oficioAtualizarPorTipo() {
+    var tipo = ($("tipo") && $("tipo").value) || "";
+    var ehLivre = (tipo === "Ofício Livre");
+
+    var secaoLivre  = $("secaoOficioLivre");
+    var secaoPadrao = $("secaoOficioPadrao");
+    var blocoModos  = $("blocoModosOficio");
+
+    if (secaoLivre)  secaoLivre.style.display  = ehLivre ? "block" : "none";
+    if (secaoPadrao) secaoPadrao.style.display = ehLivre ? "none"  : "";
+    if (blocoModos)  blocoModos.style.display  = (ehLivre || !tipo) ? "none" : "block";
+
+    /* IA só onde existe documento para ler. Em Taxa Assistencial não há
+       carta nem ficha: botão que não faz nada confunde mais do que ajuda. */
+    var btnIA = $("btnModoIAUnico");
+    if (btnIA) {
+      var temIA = (tipo === "Filiação" || tipo === "Desfiliação" || tipo === "Oposição à Taxa Negocial");
+      btnIA.style.display = temIA ? "" : "none";
+      if (!temIA && MODO_OFICIO_ATUAL === "ia") MODO_OFICIO_ATUAL = "individual";
+    }
+
+    if (!ehLivre) oficioSetModo(MODO_OFICIO_ATUAL === "lote" ? "individual" : MODO_OFICIO_ATUAL);
+    atualizarRecomendacaoCpf();
+  }
+  window.oficioAtualizarPorTipo = oficioAtualizarPorTipo;
+
+  /* Mantido para quem ainda chama pelo nome antigo. */
+  function atualizarAreasFichaPorTipo() { oficioSetModo(MODO_OFICIO_ATUAL); }
+
+  /* AVISO DE OFÍCIO REPETIDO — modal do sistema, não o confirm() do navegador.
+   *
+   * O usuário mandou a foto da caixa cinza do Chrome, com o cabeçalho "Uma
+   * página incorporada em ...googleusercontent.com diz". Além de não ser do
+   * sistema, ela despeja escola, número e data num parágrafo só: para achar
+   * o número do ofício é preciso ler a frase inteira. Aqui cada dado tem sua
+   * linha, e os botões dizem o que fazem no lugar de OK/Cancelar.
+   *
+   * Recebe a resposta crua do backend (res.duplicata + res.mensagem). Se por
+   * qualquer motivo o modal não existir na página, cai no confirm() do
+   * navegador — feio, mas emitir ofício não pode parar por causa de markup
+   * faltando. */
+  function abrirModalDuplicata(res, aoConfirmar, aoCancelar) {
+    var info    = (res && res.duplicata) || {};
+    var overlay = $("modalDuplicataOficio");
+
+    if (!overlay) {
+      var texto = (res && res.mensagem) || "Possível ofício duplicado detectado.";
+      if (window.confirm(texto + "\n\nDeseja gerar mesmo assim?")) aoConfirmar();
+      else if (aoCancelar) aoCancelar();
+      return;
+    }
+
+    function escreve(id, valor) { var e = $(id); if (e) e.textContent = valor; }
+    escreve("dupEscola", info.escola || "—");
+    escreve("dupTipo",   info.tipo   || (($("tipo") && $("tipo").value) || "—"));
+    escreve("dupNumero", info.numeroExistente || "—");
+    escreve("dupData",   info.dataExistente   || "—");
+
+    /* Quantos saíram na janela. Com três emissões no dia, saber que são três
+       muda a leitura: não é "esqueci que emiti", é "alguém está repetindo". */
+    var qtd  = Number(info.quantidade || 0);
+    var elQt = $("dupQuantidade");
+    if (elQt) {
+      if (qtd > 1) {
+        elQt.textContent = "São " + qtd + " ofícios deste tipo para esta escola nas últimas 24 horas.";
+        elQt.style.display = "block";
+      } else {
+        elQt.style.display = "none";
+      }
+    }
+    escreve("dupSubtitulo", info.escola ? info.escola : "Confira se não é o mesmo caso");
+
+    var btnOk  = $("btnConfirmarDuplicata");
+    var btnNao = $("btnCancelarDuplicata");
+    var btnX   = $("btnFecharDuplicata");
+
+    function fechar() {
+      overlay.classList.remove("aberto");
+      document.removeEventListener("keydown", aoTeclar);
+    }
+    function recusar() { fechar(); if (aoCancelar) aoCancelar(); }
+    function aceitar() { fechar(); aoConfirmar(); }
+    function aoTeclar(ev) { if (ev.key === "Escape") recusar(); }
+
+    /* onclick (e não addEventListener) de propósito: o modal é reaberto a
+       cada emissão e um listener acumulado dispararia a emissão duas vezes. */
+    if (btnOk)  btnOk.onclick  = aceitar;
+    if (btnNao) btnNao.onclick = recusar;
+    if (btnX)   btnX.onclick   = recusar;
+    overlay.onclick = function(ev) { if (ev.target === overlay) recusar(); };
+    document.addEventListener("keydown", aoTeclar);
+
+    overlay.classList.add("aberto");
+  }
+  window.abrirModalDuplicata = abrirModalDuplicata;
+
+  function loteAbrirModal() {
+    var ov = $("modalLoteTrabalhadores"); if (!ov) return;
+    lotePessoas = [];
+    var iNome = $("loteNome"); if (iNome) iNome.value = "";
+    var iCpf = $("loteCpf"); if (iCpf) iCpf.value = "";
+    var fi = $("loteFichasInput"); if (fi) fi.value = "";
+    var res = $("loteFichasResumo"); if (res) res.textContent = "";
+    var busca = $("loteEscolaBusca"); if (busca) busca.value = "";
+    var box = $("loteEscolaLista"); if (box) { box.style.display = "none"; box.innerHTML = ""; }
+    loteRenderEscolas();
+    loteMostrarEscolaEscolhida();
+    loteRenderizarPrevia();
+    ov.classList.add("aberto");
+    if (iNome) iNome.focus();
+  }
+  function loteFecharModal() {
+    var ov = $("modalLoteTrabalhadores"); if (ov) ov.classList.remove("aberto");
+  }
+
+  function loteConfirmar() {
+    var r = { pessoas: lotePessoas };
+    if (!r.pessoas.length) { toast("Adicione ao menos um trabalhador.", "warn"); return; }
+    /* Escola primeiro: sem ela o ofício não tem destinatário, e descobrir
+     * isso só na hora de emitir faria a pessoa refazer a lista.
+     *
+     * A checagem olha os CAMPOS DA TELA — os mesmos que a emissão valida —
+     * e não uma variável interna. Estado guardado em variável privada tende
+     * a divergir do que a pessoa está vendo, e aí a tela recusa mostrando
+     * uma escola escolhida na frente dela. */
+    var nomeEscolaTela = txt(($("escolaBusca") || {}).value || "");
+    var cnpjTela = somenteDigitos(($("cnpj") || {}).value || "");
+    var escolaOk = !!nomeEscolaTela && !ehOpcaoPlaceholder(nomeEscolaTela) && cnpjTela.length === 14;
+    if (!escolaOk) { toast("Escolha a escola antes de adicionar os trabalhadores.", "warn"); return; }
+    var lista = $("listaTrabalhadores"); if (!lista) return;
+    var vazio = lista.querySelector(".worker-empty"); if (vazio) vazio.remove();
+
+    /* O lote APROVEITA os cartões em branco que já estão na tela antes de
+       criar novos — sugestão do usuário em 18/08/2026: "quando for em lote
+       ele deveria mudar o card de trabalhador acima e não criar outro".
+       Ele está certo. A tela nasce com um cartão vazio; sem isto o lote
+       empilhava os nomes DEPOIS dele, e o ofício saía com um "Trabalhador 1"
+       em branco no meio da lista — ou pior, com um beneficiário sem nome
+       barrando a emissão por um cartão que a pessoa nem preencheu. */
+    function cartoesEmBranco() {
+      return Array.prototype.filter.call(
+        lista.querySelectorAll(".trabalhador-card"),
+        function (c) {
+          var n = c.querySelector(".input-nome-trabalhador");
+          var f = c.querySelector(".input-cpf-trabalhador");
+          return (!n || !txt(n.value)) && (!f || !somenteDigitos(f.value));
+        });
+    }
+    var vagos = cartoesEmBranco();
+
+    r.pessoas.forEach(function (p) {
+      var card = vagos.shift();
+      if (!card) { card = criarCardTrabalhador(); lista.appendChild(card); }
+      var iNome = card.querySelector(".input-nome-trabalhador");
+      var iCpf  = card.querySelector(".input-cpf-trabalhador");
+      if (iNome) iNome.value = p.nome;
+      if (iCpf && p.cpf) { iCpf.value = formatarCpfLote(p.cpf); }
+    });
+
+    renumerarTrabalhadores();
+    atualizarResumoTrabalhadores();
+
+    /* As fichas escolhidas no modal entram pelo mesmo caminho do botão
+     * "Fichas em lote" — inclusive a regra de distribuir uma por pessoa
+     * quando as quantidades coincidem. */
+    /* As fichas escolhidas no modal vão para o bloco do OFÍCIO, não para os
+     * cartões: o caso normal é um PDF único da escola, que não pertence a
+     * uma pessoa. Quem quiser uma ficha por pessoa continua anexando no
+     * cartão de cada uma. */
+    var fi = $("loteFichasInput");
+    var destino = $("fichasOficioLote");
+    if (fi && fi.files && fi.files.length && destino) {
+      var dt = new DataTransfer();
+      Array.prototype.slice.call(fi.files).forEach(function (f) { dt.items.add(f); });
+      destino.files = dt.files;
+      destino.dispatchEvent(new Event("change"));
+    }
+
+    loteFecharModal();
+    toast(r.pessoas.length + (r.pessoas.length === 1 ? " pessoa adicionada" : " pessoas adicionadas") +
+          ". Confira os cartões antes de emitir.", "ok");
+  }
+
+  /** Distribui as fichas escolhidas, uma por pessoa, na ordem dos cartões. */
+  function loteDistribuirFichas(arquivos) {
+    var cards = Array.prototype.slice.call(
+      document.querySelectorAll("#listaTrabalhadores .trabalhador-card"));
+    if (!cards.length) { toast("Adicione as pessoas antes de anexar as fichas.", "warn"); return; }
+
+    var lista = Array.prototype.slice.call(arquivos || []);
+    /* Ordem alfabética do NOME DO ARQUIVO. O navegador entrega os arquivos
+     * na ordem em que o sistema operacional listou, que não é confiável. */
+    lista.sort(function (a, c) { return a.name.localeCompare(c.name, "pt-BR"); });
+
+    /* A quantidade NÃO precisa bater com a de pessoas.
+     *
+     * O usuário apontou o caso real: "geralmente quando você escaneia, vem
+     * um arquivo só com todas as fichas". Exigir uma ficha por pessoa
+     * recusaria justamente o formato mais comum na secretaria. Quando as
+     * quantidades coincidem, distribui uma para cada — dá para nomear cada
+     * anexo com a pessoa certa. Quando não coincidem, todas vão para o
+     * primeiro cartão como um lote só, e o backend numera os anexos em vez
+     * de inventar de quem é cada um. */
+    if (lista.length === cards.length) {
+      cards.forEach(function (card, i) {
+        var input = card.querySelector(".input-ficha-trabalhador");
+        if (!input) return;
+        var dt = new DataTransfer();
+        dt.items.add(lista[i]);
+        input.files = dt.files;
+        /* Dispara o mesmo caminho do anexo individual — renomeia o arquivo
+         * com o nome da pessoa, atualiza o contador e sincroniza o pool
+         * global. Reaproveitar evita que os dois caminhos divirjam. */
+        input.dispatchEvent(new Event("change"));
+      });
+      toast(lista.length + " fichas distribuídas, uma por pessoa. Confira cada cartão.", "ok");
+      return;
+    }
+
+    var inputLote = cards[0].querySelector(".input-ficha-trabalhador");
+    if (!inputLote) return;
+    var dtLote = new DataTransfer();
+    lista.forEach(function (f) { dtLote.items.add(f); });
+    inputLote.files = dtLote.files;
+    inputLote.dispatchEvent(new Event("change"));
+    toast(lista.length + (lista.length === 1 ? " arquivo anexado" : " arquivos anexados") +
+          " para " + cards.length + " pessoas. Como as quantidades diferem, foram anexados " +
+          "como lote — confira antes de emitir.", "ok");
+  }
+
+  /** Existe pelo menos uma ficha anexada, em qualquer cartão? */
+  function todosArquivosTemAlgumaFicha() {
+    var oficio = $("fichasOficioLote");
+    if (oficio && oficio.files && oficio.files.length) return true;
+    var cards = document.querySelectorAll("#listaTrabalhadores .trabalhador-card");
+    for (var i = 0; i < cards.length; i++) {
+      var c = cards[i];
+      if (c._fichasDrive && c._fichasDrive.length) return true;
+      var inp = c.querySelector(".input-ficha-trabalhador");
+      if (inp && inp.files && inp.files.length) return true;
+    }
+    return false;
+  }
+
   function addTrabalhador() {
     var l = $("listaTrabalhadores"); if (!l) return;
-    if (l.querySelectorAll(".trabalhador-card").length >= MAX_TRABALHADORES) { toast("Limite de 25 trabalhadores.", "warn"); return; }
+    var _tipoAtual = ($("tipo") && $("tipo").value) || "";
+    var _limite = oficioLimitePessoas(_tipoAtual);
+    if (l.querySelectorAll(".trabalhador-card").length >= _limite) { toast("Limite de " + _limite + " trabalhadores para este tipo de ofício.", "warn"); return; }
     var v = l.querySelector(".worker-empty"); if (v) v.remove();
     l.appendChild(criarCardTrabalhador()); renumerarTrabalhadores(); atualizarResumoTrabalhadores();
   }
@@ -795,6 +1783,23 @@ function atualizarContadorFichas() {
   var cards = Array.from(lista.querySelectorAll(".trabalhador-card"));
   var trabalhadores = getTrabalhadoresPayload();
   var fichas = [];
+
+  /* Fichas do OFÍCIO — o PDF único da escola, que não pertence a ninguém em
+   * particular. Entram primeiro e sem beneficiário: o backend nomeia esses
+   * anexos por escola e data, em vez de inventar de quem é cada um. */
+  var inputOficio = $("fichasOficioLote");
+  if (inputOficio && inputOficio.files && inputOficio.files.length) {
+    Array.from(inputOficio.files).forEach(function (f) {
+      fichas.push({
+        ordem: fichas.length + 1,
+        arquivoOriginal: f.name,
+        arquivoSugerido: f.name,
+        beneficiario: "",
+        cpf: "",
+        arquivo: f
+      });
+    });
+  }
 
   cards.forEach(function(card, idxCard) {
     var trab = trabalhadores[idxCard] || {};
@@ -869,7 +1874,7 @@ function atualizarContadorFichas() {
     if(!novaAba) return toast("Pop-up bloqueado pelo navegador.","warn");
     var payload = d.tipo==="Ofício Livre"
       ? {tipo:d.tipo, para:$("para")&&$("para").value, cargo:$("cargo")&&$("cargo").value, assunto:$("assunto")&&$("assunto").value, corpo:$("corpo")&&$("corpo").value, email:$("emailLivreAux")&&$("emailLivreAux").value}
-      : {tipo:d.tipo, escola:d.escola.nome, cnpj:d.escola.cnpj, email:d.escola.email, endereco:d.escola.endereco, colaboradores:d.beneficiarios.map(function(b){return b.nome;})};
+      : {tipo:d.tipo, escola:d.escola.nome, cnpj:d.escola.cnpj, email:d.escola.email, endereco:d.escola.endereco, colaboradores:d.beneficiarios.map(function(b){return {nome:b.nome, cpf:b.cpf};})};
     google.script.run
       .withSuccessHandler(function(html){ novaAba.document.open(); novaAba.document.write(html); novaAba.document.close(); })
       .withFailureHandler(function(err){ try{novaAba.close();}catch(_){} toast("Erro ao gerar preview: "+((err&&err.message)||err),"err"); })
@@ -884,27 +1889,65 @@ function atualizarContadorFichas() {
       if(!d.escola.cnpj||somenteDigitos(d.escola.cnpj).length!==14) return toast("CNPJ inválido.","warn");
       if(!d.escola.email) return toast("Informe o e-mail.","warn");
       if(!d.beneficiarios.length) return toast("Adicione trabalhadores.","warn");
-      if(d.beneficiarios.some(function(b){return !b.nome||!b.cpf;})) return toast("Complete nome e CPF.","warn");
+      if(d.beneficiarios.some(function(b){return !b.nome;})) return toast("Complete o nome do trabalhador.","warn");
+      /* CPF NAO trava mais a emissao, em tipo nenhum. Eu havia criado
+         oficioExigeCpf() devolvendo false e esquecido de ligar aqui: a tela
+         dizia "(opcional)" no rotulo e o botao recusava com "Complete nome e
+         CPF". O usuario pegou pelo print. Vale a razao que ele deu: "muita
+         gente nao sabe nem o proprio CPF" — o oficio precisa sair. */
+      if(oficioExigeCpf(d.tipo)&&d.beneficiarios.some(function(b){return !b.cpf;})) return toast("Complete o CPF.","warn");
+      if(d.beneficiarios.length>oficioLimitePessoas(d.tipo)) return toast("Limite de "+oficioLimitePessoas(d.tipo)+" trabalhadores para este tipo.","warn");
     } else {
-      if(!$("para")&&$("para").value) return toast("Informe o destinatário.","warn");
-      if(!$("emailLivreAux")&&$("emailLivreAux").value) return toast("Informe o e-mail.","warn");
-      if(!$("corpo")&&$("corpo").value) return toast("Informe o corpo.","warn");
+      /* Guardas MORTAS até 18/08/2026: a condição era `!$("x") && $("x").value`,
+         que só seria verdadeira se o elemento não existisse — e aí o segundo
+         termo estouraria. Na prática nunca avisava nada: o atendente clicava
+         em emitir e recebia o erro cru do servidor ("Destinatário é
+         obrigatório"), sem saber qual campo faltava. */
+      var _val = function (id) { var e = $(id); return e ? String(e.value || "").trim() : ""; };
+      if(!_val("para"))          return toast("Informe o destinatário.","warn");
+      if(!_val("assunto"))       return toast("Informe o assunto do ofício.","warn");
+      if(!_val("corpo"))         return toast("Informe o corpo do ofício.","warn");
+      if(!_val("emailLivreAux")) return toast("Informe o e-mail do destinatário.","warn");
     }
 
     var btn=$("btnEmitir"), etapas=["⏳ Iniciando...","📄 Gerando...","🖨 PDF...","📧 Enviando...","💾 Registrando..."];
     var etapa=0, timer=setInterval(function(){etapa=Math.min(etapa+1,etapas.length-1);if(btn)btn.innerText=etapas[etapa];},8000);
     if(btn){btn.disabled=true;btn.innerText=etapas[0];}
 
-    function aoSucesso(res){ clearInterval(timer); if(btn){btn.disabled=false;btn.innerText="✅ Emitir Documento;"} if(res&&res.erro) return toast(res.mensagem||"Erro ao emitir.","err"); finalizarPosEmissao(res.dados || {}); }
+    function aoSucesso(res){ clearInterval(timer); if(btn){btn.disabled=false;btn.innerText="✅ Emitir Documento";} if(res&&res.erro) return toast(res.mensagem||"Erro ao emitir.","err"); finalizarPosEmissao(res.dados || {}); }
     function aoErro(err){ clearInterval(timer); if(btn){btn.disabled=false;btn.innerText="✅ Emitir Documento";} toast("Erro: "+((err&&err.message)||err),"err"); }
 
+    // Envia gerarOficioWeb; se o servidor avisar de uma possível duplicata
+    // (achado #4), pergunta ao atendente e, se confirmado, reenvia o mesmo
+    // payload com confirmarDuplicata:true (sem re-processar fichas já lidas).
+    function enviarGerarOficio(payload){
+      google.script.run.withSuccessHandler(function(res){
+        if (res && res.duplicataDetectada) {
+          window.abrirModalDuplicata(res, function() {
+            payload.confirmarDuplicata = true;
+            enviarGerarOficio(payload);
+          }, function() {
+            clearInterval(timer); if(btn){btn.disabled=false;btn.innerText="✅ Emitir Documento";}
+            toast("Emissão cancelada — ofício não gerado.","warn");
+          });
+          return;
+        }
+        aoSucesso(res);
+      }).withFailureHandler(aoErro).gerarOficioWeb(payload, SISGEP_TOKEN_SESSAO);
+    }
+
     if(d.tipo==="Ofício Livre"){
-      google.script.run.withSuccessHandler(aoSucesso).withFailureHandler(aoErro).gerarOficioWeb({ tipo:d.tipo, para:$("para")&&$("para").value, cargo:$("cargo")&&$("cargo").value, assunto:$("assunto")&&$("assunto").value, corpo:$("corpo")&&$("corpo").value, email:$("emailLivreAux")&&$("emailLivreAux").value }, SISGEP_TOKEN_SESSAO);
+      enviarGerarOficio({ tipo:d.tipo, para:$("para")&&$("para").value, cargo:$("cargo")&&$("cargo").value, assunto:$("assunto")&&$("assunto").value, corpo:$("corpo")&&$("corpo").value, email:$("emailLivreAux")&&$("emailLivreAux").value });
       return;
     }
 
+    /* Basta UMA ficha no ofício, não uma por pessoa — o escaneado costuma
+     * vir num arquivo só. Antes exigia-se ficha em cada cartão. */
     var cards = document.querySelectorAll("#listaTrabalhadores .trabalhador-card");
-    for (var i = 0; i < d.beneficiarios.length; i++) {
+    if (oficioExigeFichaECpf(d.tipo) && !todosArquivosTemAlgumaFicha()) {
+      return aoErro(new Error("Anexe ao menos uma ficha para emitir este ofício."));
+    }
+    for (var i = 0; false && i < d.beneficiarios.length; i++) {
       var card = cards[i];
       var temDrive = card && card._fichasDrive && card._fichasDrive.length > 0;
       var fichaInpCheck = card && card.querySelector(".input-ficha-trabalhador");
@@ -913,6 +1956,24 @@ function atualizarContadorFichas() {
     }
 
     var todosArquivos = [];
+
+    /* O PDF ÚNICO DO OFÍCIO ENTRA PRIMEIRO.
+     *
+     * Defeito medido em 18/08/2026, com o usuário reportando "a ficha não
+     * está indo junto ao ofício no e-mail". A varredura abaixo lia SÓ os
+     * cartões dos trabalhadores — o campo "Fichas do ofício"
+     * (#fichasOficioLote), onde ele anexa o escaneado de todas as cartas da
+     * escola, não era lido por ninguém na hora de emitir. O arquivo ficava
+     * no navegador e o e-mail saía com o ofício sozinho, sem erro nenhum.
+     *
+     * getFichasPayload() já lia esse campo, mas só alimenta o painel de
+     * revisão; quem monta o que vai para o backend é este trecho. Duas
+     * leituras do mesmo campo, uma delas sem consumidor. */
+    var inputFichasOficio = $("fichasOficioLote");
+    if (inputFichasOficio && inputFichasOficio.files) {
+      Array.from(inputFichasOficio.files).forEach(function (f) { todosArquivos.push(f); });
+    }
+
     document.querySelectorAll("#listaTrabalhadores .trabalhador-card").forEach(function(card) {
       if (card._fichasDrive && card._fichasDrive.length) {
         card._fichasDrive.forEach(function(f) { todosArquivos.push({ _isDrive: true, driveId: f.id, nome: f.nome, tipo: f.tipo }); });
@@ -935,10 +1996,12 @@ function atualizarContadorFichas() {
         reader.readAsDataURL(f);
       });
     })).then(function(fichasBase64) {
-      google.script.run.withSuccessHandler(aoSucesso).withFailureHandler(aoErro).gerarOficioWeb({
+      enviarGerarOficio({
         tipo:d.tipo, escola:d.escola.nome, cnpj:d.escola.cnpj, email:d.escola.email, endereco:d.escola.endereco,
-        colaboradores:d.beneficiarios.map(function(b){return b.nome;}), fichas:fichasBase64
-      }, SISGEP_TOKEN_SESSAO);
+        colaboradores:d.beneficiarios.map(function(b){return {nome:b.nome, cpf:b.cpf};}),
+        cpfs:d.beneficiarios.map(function(b){return b.cpf;}),
+        fichas:fichasBase64
+      });
     }).catch(function(err){ aoErro(err); });
   }
 
@@ -946,7 +2009,33 @@ function atualizarContadorFichas() {
     dadosGerados = dadosGerados || {};
     var urlPdf = typeof dadosGerados === "string" ? dadosGerados : (dadosGerados.url || "");
     var numero = dadosGerados.numero || "";
+    var filaId = dadosGerados.filaId || "";
     if (!urlPdf) return;
+    // Desfiliação: o ofício saiu, mas o cadastro do associado pode não ter
+    // sido atualizado (CPF não encontrado, ou não informado) — avisa o
+    // atendente em vez de deixar isso passar em silêncio.
+    if (Array.isArray(dadosGerados.avisosDesfiliacao) && dadosGerados.avisosDesfiliacao.length) {
+      dadosGerados.avisosDesfiliacao.forEach(function(av){ toast(av, "warn"); });
+    }
+    /* Retrato do que acabou de ser emitido, tirado antes de limpar. O modal de
+       envio precisa da escola e do e-mail deste ofício, e o payload vivo passa a
+       refletir o formulário vazio assim que a limpeza roda. */
+    var pAtual = window.SISGEP_OFICIO_PAYLOAD || {};
+    var escAtual = pAtual.escola || {};
+    window.SISGEP_OFICIO_EMITIDO = {
+      numero: numero || pAtual.numero || "",
+      tipo: pAtual.tipo || "",
+      escola: escAtual.nome || "",
+      cnpj: escAtual.cnpj || "",
+      email: escAtual.emailsTodos || escAtual.email || "",
+      fichas: Array.isArray(pAtual.fichas) ? pAtual.fichas.length : 0
+    };
+
+    /* Campos limpos assim que o oficio sai: a tela ja fica pronta para o
+       proximo. O painel do documento gerado continua abaixo, com o download e
+       o envio — por isso limpa aqui e nao com resetarFormulario, que o esconde. */
+    limparCamposOficio();
+
     var area=$("areaAcoesDocumento"), btnPrev=$("btnPreview"), btnEmit=$("btnEmitir"), btnNovo=$("btnNovoDocumento");
     if(btnPrev) btnPrev.style.display="none"; if(btnEmit) btnEmit.style.display="none"; if(btnNovo) btnNovo.style.display="inline-flex";
     if(area){
@@ -960,11 +2049,14 @@ function atualizarContadorFichas() {
         + "<div class='row-btns' style='margin-bottom:14px;'>"
         + "<button type='button' class='btn btn-outline' onclick=\"window.open('" + urlPdf + "', '_blank')\">📄 Abrir / Baixar PDF</button>"
         + "<button type='button' class='btn btn-outline' onclick=\"imprimirPdfOficioGerado('" + urlPdf + "')\">🖨 Imprimir</button>"
-        + "<button type='button' class='btn btn-navy' onclick=\"enviarEmailOficioAgora('" + numero + "')\">📧 Enviar e-mail agora</button>"
+        + "<button type='button' class='btn btn-navy' onclick=\"enviarEmailOficioAgora('" + numero + "','" + filaId + "')\">📧 Enviar e-mail agora</button>"
         + "<button type='button' class='btn btn-teal' onclick=\"enviarWhatsappOficio('" + urlPdf + "', '" + numero + "')\">💬 WhatsApp</button>"
         + "</div>"
         + "<div id='statusEnvioOficioGerado' style='display:flex;align-items:center;gap:8px;padding:11px 14px;background:var(--g50);border:1.5px solid var(--g200);border-radius:11px;font-size:12.5px;font-weight:600;color:var(--g500);'>"
-        + "<span>🕐</span><span>Aguardando confirmação de envio...</span></div>"
+        /* Nao dizer "aguardando confirmacao": no sistema, confirmacao e a
+           resposta da escola ao e-mail (status CONFIRMADO do Monitoramento).
+           Aqui nada foi enviado ainda — o texto precisa dizer isso. */
+        + "<span>📭</span><span>E-mail ainda não enviado — use <strong>Enviar e-mail agora</strong> quando quiser disparar.</span></div>"
         + "</div>";
     }
 
@@ -981,26 +2073,50 @@ function atualizarContadorFichas() {
   }
 
 function imprimirPdfOficioGerado(urlPdf) {
-  if (!urlPdf) { alert("PDF não encontrado."); return; }
+  if (!urlPdf) { toast("PDF não encontrado.", "err"); return; }
   var w = window.open(urlPdf, "_blank");
   if (!w) { toast("Pop-up bloqueado pelo navegador.", "warn"); return; }
   setTimeout(function() { try { w.focus(); w.print(); } catch(e) {} }, 1200);
 }
 
-function enviarEmailOficioAgora(numero) {
+function enviarEmailOficioAgora(numero, filaId) {
   if (!numero) { toast("Número do ofício não encontrado.", "err"); return; }
+  /* Prefere o retrato do ofício emitido; o payload vivo é reserva para quando o
+     envio é disparado sem ter passado pela emissão nesta tela. */
+  var emitido = window.SISGEP_OFICIO_EMITIDO || {};
   var payload = window.SISGEP_OFICIO_PAYLOAD || {};
   var escola = payload.escola || {};
-  var tipo = payload.tipo || "";
-  var email = escola.email || "";
-  var nomeEscola = escola.nome || "";
-  var qtdFichas = Array.isArray(payload.fichas) ? payload.fichas.length : 0;
+  var tipo = emitido.tipo || payload.tipo || "";
+  var email = emitido.email || escola.emailsTodos || escola.email || "";
+  var nomeEscola = emitido.escola || escola.nome || "";
+  var qtdFichas = emitido.fichas || (Array.isArray(payload.fichas) ? payload.fichas.length : 0);
   var descAnexos = qtdFichas > 0 ? "PDF do ofício + " + qtdFichas + " ficha(s)" : "PDF do ofício";
-  abrirModalEnvioOficioSISGEP({ numero: numero, tipo: tipo || "Ofício", escola: nomeEscola || "Não informado", email: email || "E-mail cadastrado na fila de envio", anexos: descAnexos }, function() {
+  var cnpjEscola = emitido.cnpj || escola.cnpj || "";
+
+  abrirModalEnvioOficioSISGEP({ numero: numero, tipo: tipo || "Ofício", escola: nomeEscola || "Não informado", cnpj: cnpjEscola, email: email, anexos: descAnexos }, function() {
     var status = document.getElementById("statusEnvioOficioGerado");
     var btn = document.getElementById("btnModalEnviarOficioAgora");
     if (status) { status.textContent = "⏳ Enviando e-mail..."; status.style.color = "var(--g500)"; }
     if (btn) { btn.disabled = true; btn.innerHTML = "⏳ Enviando..."; }
+
+    /* A lista editada no modal só vale se for gravada antes do disparo: o envio
+       lê os destinatários da linha da fila, não da tela. */
+    var escolhido = (typeof window.obterDadosEnvioModal === "function") ? window.obterDadosEnvioModal() : { emails: [], salvarCadastro: false };
+    var listaFinal = (escolhido.emails || []).join(", ");
+    email = listaFinal || email;
+
+    function dispararEnvio() {
+      /* Cadastro atualizado em paralelo: se falhar, o ofício sai do mesmo jeito
+         e o operador é avisado — o envio é o que não pode ficar preso. */
+      if (escolhido.salvarCadastro && listaFinal && nomeEscola && cnpjEscola) {
+        google.script.run
+          .withFailureHandler(function(err){ toast("Ofício enviado, mas o cadastro da escola não foi atualizado: " + ((err && err.message) || err), "warn", 7000); })
+          .salvarEscolaOficio({ nome: nomeEscola, cnpj: cnpjEscola, email: (escolhido.emails[0] || ""), emailsTodos: listaFinal }, SISGEP_TOKEN_SESSAO);
+      }
+      enviarAgoraNaFila();
+    }
+
+    function enviarAgoraNaFila() {
     google.script.run
       .withSuccessHandler(function(resp) {
         fecharModalEnvioOficioSISGEP();
@@ -1019,23 +2135,57 @@ function enviarEmailOficioAgora(numero) {
         if (btn) { btn.disabled = false; btn.innerHTML = "📨 Enviar agora"; }
         toast("Erro: " + (err.message || err), "err", 6000);
       })
-      .enviarOficioDaFilaAgora(numero, SISGEP_TOKEN_SESSAO);
+      .enviarOficioDaFilaAgora(numero, SISGEP_TOKEN_SESSAO, filaId || "");
+    }
+
+    if (!listaFinal) { dispararEnvio(); return; }
+
+    google.script.run
+      .withSuccessHandler(function(r) {
+        if (r && r.ok) { dispararEnvio(); return; }
+        // Destinatário recusado pelo servidor: não dispara às cegas.
+        if (status) { status.textContent = "❌ " + ((r && r.mensagem) || "Não foi possível atualizar os destinatários."); status.style.color = "var(--red)"; }
+        if (btn) { btn.disabled = false; btn.innerHTML = "📨 Enviar agora"; }
+        toast((r && r.mensagem) || "Não foi possível atualizar os destinatários.", "err", 7000);
+      })
+      .withFailureHandler(function(err) {
+        if (status) { status.textContent = "❌ Erro ao gravar destinatários: " + ((err && err.message) || err); status.style.color = "var(--red)"; }
+        if (btn) { btn.disabled = false; btn.innerHTML = "📨 Enviar agora"; }
+        toast("Erro ao gravar destinatários: " + ((err && err.message) || err), "err", 7000);
+      })
+      .atualizarDestinatariosFilaOficio(numero, listaFinal, SISGEP_TOKEN_SESSAO);
   });
 }
 
 function enviarWhatsappOficio(urlPdf, numero) {
-  if (!urlPdf) { alert("PDF não encontrado."); return; }
+  if (!urlPdf) { toast("PDF não encontrado.", "err"); return; }
   var texto = encodeURIComponent("Segue o Ofício nº " + (numero || "") + " do SindEducação-ES:\n\n" + urlPdf);
   window.open("https://wa.me/?text=" + texto, "_blank");
 }
 
-  function resetarFormulario(){
+  /* Limpa só os campos de entrada. Separado de resetarFormulario porque, ao
+     emitir, o painel do documento gerado precisa continuar na tela — é dele
+     que sai o download e o envio. */
+  function limparCamposOficio(){
     ["tipo","cnpj","email","escolaBusca","enderecoEscola","razaoSocialReceita","emailReceita","cidadeUfReceita","para","cargo","assunto","corpo","emailLivreAux","emailOficioLivreCompat"].forEach(function(id){var el=$(id);if(el)el.value="";});
     var sel=$("escola"), lista=$("listaTrabalhadores");
     if(sel) sel.value=""; if(lista){lista.innerHTML="";restaurarVazio();}
     limpar(); contadorTrabalhadores=0;
     var inpF=$("fichas"); if(inpF) inpF.value="";
+    /* As fichas do OFÍCIO também saem. Antes não havia o que limpar — o
+       campo não guardava fila —, mas agora a fila acumula entre escolhas:
+       sem zerar aqui, o próximo ofício nasceria com os anexos do anterior,
+       e sairia para a escola errada. */
+    var inpOf=$("fichasOficioLote");
+    if(inpOf){ inpOf.value=""; try{ inpOf.files=new DataTransfer().files; }catch(e){} }
+    window._fichasOficioDt = null;
+    if (typeof atualizarFilaFichasOficio === "function") atualizarFilaFichasOficio();
     atualizarPreviewFichas();
+    atualizarResumoTrabalhadores(); autoSave();
+  }
+
+  function resetarFormulario(){
+    limparCamposOficio();
     var area=$("areaAcoesDocumento"), btnPrev=$("btnPreview"), btnEmit=$("btnEmitir"), btnNovo=$("btnNovoDocumento"), btnDown=$("btnDownload"), btnPrint=$("btnImprimir");
     if(area) area.style.display="none"; if(btnPrev) btnPrev.style.display="inline-flex";
     if(btnEmit){btnEmit.style.display="inline-flex";btnEmit.disabled=true;btnEmit.innerText="✅ Emitir Documento";}
@@ -1067,6 +2217,20 @@ function enviarWhatsappOficio(urlPdf, numero) {
 
     window.removerFicha = removerFicha;
     window.removerFichaCard = removerFichaCard;
+    /* A fila de arquivos com check de excluir, exposta junto das demais.
+     * Vale registrar por que ela ganhou export: até 19/08/2026 as funções
+     * de remoção estavam escritas e com ZERO chamadas, porque quem as
+     * acionaria — o desenho da fila — era uma casca que só apagava o
+     * container. Expostas, dá para conferir por execução que desenham. */
+    window.renderizarPreviewFichaCard = renderizarPreviewFichaCard;
+    window.removerFichasCard = removerFichasCard;
+    window.atualizarFilaFichasOficio = atualizarFilaFichasOficio;
+    window.removerFichasOficio = removerFichasOficio;
+    /* Exposta junto das demais do arquivo. Serve para diagnóstico e para o
+     * teste conferir que o anexo do ofício CHEGA no payload — sem isso, o
+     * campo existiria na tela e o arquivo poderia não sair junto do ofício,
+     * que é o pior dos mundos: parece que anexou e não anexou. */
+    window.getFichasPayload = getFichasPayload;
     window.enviarEmailOficioAgora = enviarEmailOficioAgora;
     window.imprimirPdfOficioGerado = imprimirPdfOficioGerado;
     window.enviarWhatsappOficio = enviarWhatsappOficio;
@@ -1077,6 +2241,74 @@ function enviarWhatsappOficio(urlPdf, numero) {
       btn.addEventListener("click", function(ev){ ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation(); handler(); return false; }, true);
     }
 
+    /* Os três modos ficam numa linha só, valem para todos os tipos com
+     * escola, e sempre passam por oficioSetModo — inclusive o lote, que
+     * abre o mesmo modal de antes. Um caminho só, com três portas. */
+    blindarBotao("btnModoIndividual", function () { oficioSetModo("individual"); });
+    blindarBotao("btnModoLote",       function () { oficioSetModo("lote"); });
+    blindarBotao("btnModoIAUnico",    function () { oficioSetModo("ia"); });
+
+    oficioAtualizarPorTipo();
+    var _tipoSel = $("tipo");
+    if (_tipoSel && !_tipoSel.dataset.loteTaxaBound) {
+      _tipoSel.dataset.loteTaxaBound = "1";
+      _tipoSel.addEventListener("change", oficioAtualizarPorTipo);
+    }
+    blindarBotao("btnFecharLoteTrabalhadores", loteFecharModal);
+    blindarBotao("btnCancelarLoteTrabalhadores", loteFecharModal);
+    blindarBotao("btnConfirmarLoteTrabalhadores", loteConfirmar);
+    var _buscaLote = $("loteEscolaBusca");
+    if (_buscaLote && !_buscaLote.dataset.bound) {
+      _buscaLote.dataset.bound = "1";
+      _buscaLote.addEventListener("input", loteRenderEscolas);
+    }
+    var _fichasModal = $("loteFichasInput");
+    if (_fichasModal && !_fichasModal.dataset.bound) {
+      _fichasModal.dataset.bound = "1";
+      _fichasModal.addEventListener("change", function () {
+        var n = _fichasModal.files ? _fichasModal.files.length : 0;
+        var res = $("loteFichasResumo");
+        if (res) res.textContent = n ? (n === 1 ? "1 arquivo selecionado" : n + " arquivos selecionados") : "";
+      });
+    }
+    var _fichasOf = $("fichasOficioLote");
+    if (_fichasOf && !_fichasOf.dataset.bound) {
+      _fichasOf.dataset.bound = "1";
+      _fichasOf.addEventListener("change", function () {
+        /* ACUMULA em vez de substituir. O input nativo troca o conjunto
+           inteiro a cada escolha: quem digitaliza em duas levas perdia a
+           primeira sem nenhum aviso. Aqui a segunda escolha se soma, e
+           arquivo repetido pelo nome não entra duas vezes. */
+        var atual = window._fichasOficioDt || new DataTransfer();
+        Array.prototype.slice.call(_fichasOf.files || []).forEach(function (f) {
+          var jaTem = Array.prototype.slice.call(atual.files).some(function (e) {
+            return e.name === f.name && e.size === f.size;
+          });
+          if (!jaTem) { try { atual.items.add(f); } catch (e) {} }
+        });
+        window._fichasOficioDt = atual;
+        _fichasOf.files = atual.files;
+        atualizarFilaFichasOficio();
+      });
+    }
+    blindarBotao("btnLoteAdicionarPessoa", loteAdicionarPessoa);
+    var _nomeLote = $("loteNome");
+    if (_nomeLote && !_nomeLote.dataset.bound) {
+      _nomeLote.dataset.bound = "1";
+      /* Enter adiciona: quem está digitando 50 nomes não vai tirar a mão do
+       * teclado para clicar 50 vezes. */
+      _nomeLote.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") { ev.preventDefault(); loteAdicionarPessoa(); }
+      });
+    }
+    var _cpfLote = $("loteCpf");
+    if (_cpfLote && !_cpfLote.dataset.bound) {
+      _cpfLote.dataset.bound = "1";
+      _cpfLote.addEventListener("input", function () { aplicarMascaraCpf(_cpfLote); });
+      _cpfLote.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") { ev.preventDefault(); loteAdicionarPessoa(); }
+      });
+    }
     blindarBotao("btnAddTrabalhador", function(){ if(typeof Oficio !== "undefined" && typeof Oficio.adicionarTrabalhador === "function"){ Oficio.adicionarTrabalhador(); } else { addTrabalhador(); } });
     blindarBotao("btnPreview", previewOficio);
     blindarBotao("btnEmitir", gerarOficio);
@@ -1138,6 +2370,37 @@ function enviarWhatsappOficio(urlPdf, numero) {
     if($("btnLimparEscolaSelecionada")) $("btnLimparEscolaSelecionada").onclick=limpar;
     if($("btnAdicionarEmailEscolaOficio")) $("btnAdicionarEmailEscolaOficio").onclick=adicionarEmailEscola;
     if($("btnAplicarEdicaoEscolaOficio")) $("btnAplicarEdicaoEscolaOficio").onclick=editarEscolaSelecionada;
+
+    /* Histórico da escola a um clique. Antes era ir na aba e digitar o nome de
+       novo, com a escola já selecionada aqui do lado. */
+    if($("escolaHistoricoLinha")) $("escolaHistoricoLinha").onclick=function(){
+      if(!escolaSmartSelecionada) return;
+      if(typeof window.mostrarHistoricoOficios==="function") window.mostrarHistoricoOficios();
+      else { var aba=$("abaOficioHistorico"); if(aba) aba.click(); }
+      setTimeout(function(){
+        var f=$("filtroEscola");
+        if(f){ f.value=escolaSmartSelecionada.nome||""; }
+        if(typeof Historico!=="undefined" && typeof Historico.carregar==="function") Historico.carregar();
+      }, 120);
+    };
+
+    /* CNPJ conferido enquanto se digita, com dígito verificador. Antes o campo
+       aceitava qualquer sequência de 14 números e o erro só aparecia na Receita
+       ou, pior, num ofício emitido para CNPJ inexistente. */
+    var inpCnpj=$("cnpj");
+    if(inpCnpj) inpCnpj.addEventListener("input", function(){
+      var digitos=String(inpCnpj.value||"").replace(/\D/g,"");
+      var st=$("statusConsultaCnpj");
+      inpCnpj.classList.remove("escola-cnpj-invalido");
+      if(digitos.length<14){ if(st && st.dataset.origem==="cnpj"){ st.style.display="none"; st.dataset.origem=""; } return; }
+      var ok=cnpjValido(digitos);
+      inpCnpj.classList.toggle("escola-cnpj-invalido", !ok);
+      if(st){
+        st.dataset.origem="cnpj"; st.style.display="flex";
+        st.className = ok ? "info-box green" : "info-box amber";
+        st.textContent = ok ? "CNPJ válido." : "CNPJ inválido — confira os números antes de emitir.";
+      }
+    });
     if($("btnToggleEdicaoEscola")) $("btnToggleEdicaoEscola").onclick=function(){ var p=$("secaoCnpjEmail"); if(p) p.style.display=p.style.display==="none"?"block":"none"; };
     bridgeClick("btnConsultarCnpjSmart","btnConsultarCnpj"); bridgeClick("btnSincronizarCnpjSmart","btnSincronizarCnpj"); bridgeClick("btnSalvarEscolaSmart","btnSalvarEscola");
     document.addEventListener("click",function(e){ var c=document.querySelector(".escola-smart-card"),d=$("autocompleteEscolaSmart"); if(c&&d&&!c.contains(e.target)) d.style.display="none"; });
@@ -1154,14 +2417,55 @@ function enviarWhatsappOficio(urlPdf, numero) {
   /* ─────────────────────────────────────────────
      MONITORAMENTO
   ────────────────────────────────────────────── */
-function carregarMonitoramento(filtros) {
+function carregarMonitoramento(filtros, tentativa) {
   filtros = filtros || {};
+  tentativa = tentativa || 1;
+
   var painel = $("painelMonitoramento");
-  if (painel) painel.innerHTML = '<div style="text-align:center;padding:36px;color:var(--g400);font-size:13px;font-weight:500;">⏳ Carregando...</div>';
+  if (painel) painel.innerHTML = '<div style="text-align:center;padding:36px;color:var(--g400);font-size:13px;font-weight:500;">⏳ '
+    + (tentativa > 1 ? "Nova tentativa..." : "Carregando...") + '</div>';
+
   google.script.run
-    .withSuccessHandler(function(retorno) { if (retorno.erro) { toast(retorno.mensagem, "err"); return; } renderMonitoramento(retorno); })
-    .withFailureHandler(function(err) { toast("Erro ao carregar monitoramento: " + (err.message || err), "err"); })
+    .withSuccessHandler(function(retorno) {
+      if (!retorno) { renderErroMonitoramento("Resposta vazia do servidor.", filtros); return; }
+      // Erro devolvido pelo servidor: repetir não adianta, mostra o motivo.
+      if (retorno.erro) { toast(retorno.mensagem, "err", 6000); renderErroMonitoramento(retorno.mensagem, filtros); return; }
+      renderMonitoramento(retorno);
+    })
+    .withFailureHandler(function(err) {
+      var msg = (err && err.message) || String(err);
+      // A chamada não chegou ao servidor. O portal dispara dezenas de chamadas
+      // ao abrir e o Apps Script recusa as excedentes — uma segunda tentativa,
+      // depois da avalanche, costuma passar.
+      if (tentativa < 2) {
+        setTimeout(function() { carregarMonitoramento(filtros, tentativa + 1); }, 3000);
+        return;
+      }
+      toast("Erro ao carregar monitoramento: " + msg, "err", 6000);
+      renderErroMonitoramento(msg, filtros);
+    })
     .listarStatusOficios(filtros, SISGEP_TOKEN_SESSAO);
+}
+
+/**
+ * Estado de erro do painel. Antes, qualquer falha só piscava uma tarja por 4
+ * segundos e o painel ficava preso no "Carregando..." para sempre.
+ */
+function renderErroMonitoramento(mensagem, filtros) {
+  var painel = $("painelMonitoramento");
+  if (!painel) return;
+
+  painel.innerHTML =
+    '<div style="text-align:center;padding:40px 24px;">'
+    + '<div style="font-size:34px;line-height:1;">⚠️</div>'
+    + '<div style="margin-top:12px;font-size:15px;font-weight:800;color:var(--navy);">Não foi possível carregar o monitoramento</div>'
+    + '<div style="margin:8px auto 0;max-width:520px;font-size:12.5px;color:var(--g500);font-weight:500;">' + escapeHtml(mensagem || "Erro desconhecido.") + '</div>'
+    + '<div style="margin:8px auto 0;max-width:520px;font-size:11.5px;color:var(--g400);font-weight:500;">Se o portal acabou de abrir, aguarde alguns segundos: muitas chamadas simultâneas fazem o Apps Script recusar as excedentes.</div>'
+    + '<button id="btnMonTentarNovamente" style="margin-top:16px;padding:10px 18px;border-radius:10px;border:none;background:var(--navy);color:#fff;font-family:Plus Jakarta Sans,sans-serif;font-size:12.5px;font-weight:800;cursor:pointer;">🔄 Tentar novamente</button>'
+    + '</div>';
+
+  var btn = document.getElementById("btnMonTentarNovamente");
+  if (btn) btn.onclick = function() { carregarMonitoramento(filtros); };
 }
 
 function renderMonitoramento(dados) {
@@ -1204,6 +2508,11 @@ function renderMonitoramento(dados) {
     + '<button id="btnMonLimparFiltro" style="padding:9px 14px;border-radius:10px;border:1.5px solid var(--g200);background:#fff;font-family:Plus Jakarta Sans,sans-serif;font-size:12px;font-weight:700;color:var(--g600);cursor:pointer;">✕ Limpar</button>'
     + '</div>';
 
+  // Índice por número: os botões passam só o número. Interpolar escola ou tipo
+  // no onclick quebraria com um apóstrofo no nome da escola.
+  window._monItensPorNumero = {};
+  itens.forEach(function(i) { window._monItensPorNumero[String(i.numero)] = i; });
+
   var htmlLinhas = itens.length === 0
     ? '<tr><td colspan="7"><div class="of-table-empty">Nenhum ofício encontrado.</div></td></tr>'
     : itens.map(function(item) {
@@ -1212,6 +2521,12 @@ function renderMonitoramento(dados) {
           ? ' <span style="font-size:10px;background:var(--amber-lt);color:#92400e;border-radius:999px;padding:2px 7px;font-weight:800;">+' + item.diasSemResposta + 'd</span>'
           : '';
         var acoes = '';
+        if (item.podeEnviar)
+          acoes += '<button onclick="enviarOficioMon(\'' + escapeHtml(item.numero) + '\')" title="Enviar agora" style="padding:4px 9px;border-radius:7px;background:var(--amber-lt);color:#92400e;font-size:11px;font-weight:700;border:none;cursor:pointer;margin-right:4px;">📨</button>';
+        if (item.podeReprocessar)
+          acoes += '<button onclick="reprocessarOficioMon(\'' + escapeHtml(item.numero) + '\')" title="Devolver à fila de envio" style="padding:4px 9px;border-radius:7px;background:#ede9fe;color:#7c3aed;font-size:11px;font-weight:700;border:none;cursor:pointer;margin-right:4px;">🔄</button>';
+        if (item.status === "FALHA_ENTREGA" && item.link)
+          acoes += '<button onclick="reenviarOficioMon(\'' + escapeHtml(item.numero) + '\')" title="Reenviar com o e-mail cadastrado hoje" style="padding:4px 9px;border-radius:7px;background:#dbeafe;color:#1e40af;font-size:11px;font-weight:700;border:none;cursor:pointer;margin-right:4px;">✉️</button>';
         if (item.status === "ENVIADO" || item.status === "FALHA_ENTREGA" || item.status === "PENDENTE")
           acoes += '<button onclick="marcarStatusMon(\'' + escapeHtml(item.numero) + '\',\'CONFIRMADO\')" title="Confirmar" style="padding:4px 9px;border-radius:7px;background:var(--green-lt);color:var(--green-dk);font-size:11px;font-weight:700;border:none;cursor:pointer;margin-right:4px;">✅</button>';
         if (item.status !== "FALHA_ENTREGA")
@@ -1223,7 +2538,7 @@ function renderMonitoramento(dados) {
           + '<td style="padding:12px 14px;font-size:12px;">' + escapeHtml(item.tipo) + '</td>'
           + '<td style="padding:12px 14px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeHtml(item.escola) + '">' + escapeHtml(item.escola) + '</td>'
           + '<td style="padding:12px 14px;font-size:11px;color:var(--g500);">' + escapeHtml(item.email) + '</td>'
-          + '<td style="padding:12px 14px;">' + badge + alerta + '</td>'
+          + '<td style="padding:12px 14px;" title="' + escapeHtml(item.motivoBloqueio || "") + '">' + badge + alerta + '</td>'
           + '<td style="padding:12px 14px;font-size:11.5px;color:var(--g500);">' + (item.data || "—") + '</td>'
           + '<td style="padding:12px 14px;">' + acoes + '</td>'
           + '</tr>';
@@ -1317,9 +2632,594 @@ function marcarStatusMon(numero, novoStatus) {
     .atualizarStatusOficio(numero, novoStatus, obs, SISGEP_TOKEN_SESSAO);
 }
 
+function enviarOficioMon(numero) {
+  if (!numero) { toast("Número do ofício não informado.", "err"); return; }
+  confirmarSISGEP({
+    titulo:"Enviar ofício "+numero, subtitulo:"O e-mail sai imediatamente", icone:"📨",
+    texto:"Disparar agora o envio deste ofício para o destinatário cadastrado na fila?",
+    rotulo:"📨 Enviar agora"
+  }, function(){
+  toast("⏳ Enviando ofício " + numero + "...", "info");
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (r && r.ok) toast(r.mensagem || "E-mail enviado com sucesso!", "ok", 5000);
+      else toast((r && r.mensagem) || "Não foi possível enviar.", "err", 6000);
+      aplicarFiltroMonitoramento();
+    })
+    .withFailureHandler(function(err) { toast("Erro: " + (err.message || err), "err", 6000); })
+    .enviarOficioDaFilaAgora(numero, SISGEP_TOKEN_SESSAO);
+  });
+}
+
+function reprocessarOficioMon(numero) {
+  if (!numero) { toast("Número do ofício não informado.", "err"); return; }
+  confirmarSISGEP({
+    titulo:"Reprocessar ofício "+numero, subtitulo:"Volta para a fila automática", icone:"🔄",
+    texto:"Zerar as tentativas deste ofício e devolvê-lo à fila de envio?",
+    detalhe:"Se o erro anterior foi e-mail inválido, corrija o cadastro antes — senão vai falhar de novo.",
+    rotulo:"🔄 Devolver à fila"
+  }, function(){
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (r && r.ok) toast(r.mensagem || "Ofício devolvido à fila.", "ok", 6000);
+      else toast((r && r.mensagem) || "Não foi possível reprocessar.", "err", 6000);
+      aplicarFiltroMonitoramento();
+    })
+    .withFailureHandler(function(err) { toast("Erro: " + (err.message || err), "err", 6000); })
+    .reprocessarOficioDaFila(numero, SISGEP_TOKEN_SESSAO);
+  });
+}
+
 window.aplicarFiltroMonitoramento = aplicarFiltroMonitoramento;
 window.marcarStatusMon = marcarStatusMon;
+function reenviarOficioMon(numero) {
+  var item = (window._monItensPorNumero || {})[String(numero)];
+  if (!item) { toast("Ofício não encontrado na lista. Atualize o painel.", "err"); return; }
+  if (!item.link) { toast("Este ofício não tem PDF vinculado — reenvio indisponível.", "err", 6000); return; }
+
+  var destino = item.email || "o e-mail cadastrado da escola";
+  confirmarSISGEP({
+    titulo:"Reenviar ofício "+numero, subtitulo:"Este ofício falhou na entrega", icone:"✉️",
+    texto:"Reenviar para "+destino+"?",
+    detalhe:"Se o endereço continuar incorreto, vai falhar de novo — corrija o cadastro da escola antes de reenviar.",
+    rotulo:"✉️ Reenviar"
+  }, function(){
+  toast("⏳ Reenviando ofício " + numero + "...", "info");
+  google.script.run
+    .withSuccessHandler(function(r) {
+      // reenviarOficio devolve { erro: false, mensagem } — contrato diferente do resto do painel.
+      if (r && !r.erro) toast(r.mensagem || "Ofício reenviado.", "ok", 7000);
+      else toast((r && r.mensagem) || "Não foi possível reenviar.", "err", 7000);
+      aplicarFiltroMonitoramento();
+    })
+    .withFailureHandler(function(err) { toast("Erro: " + (err.message || err), "err", 6000); })
+    .reenviarOficio({ numero: numero, url: item.link, escola: item.escola, tipo: item.tipoRaw || item.tipo }, SISGEP_TOKEN_SESSAO);
+  });
+}
+
+window.reenviarOficioMon = reenviarOficioMon;
+window.renderErroMonitoramento = renderErroMonitoramento;
+window.enviarOficioMon = enviarOficioMon;
+window.reprocessarOficioMon = reprocessarOficioMon;
 window.carregarMonitoramento = carregarMonitoramento;
+
+/* ═══════════════════════════════════════════════════════
+   FILIAÇÃO VIA IA — leitura de formulário de sindicalização escaneado/foto
+   Nada aqui grava ou envia nada sozinho: "Analisar formulário" só sugere;
+   "Confirmar" só registra a ficha (que ainda passa pela aprovação normal).
+   ═══════════════════════════════════════════════════════ */
+var filIA_estado = { arquivoBase64: "", arquivoTipo: "", arquivoExtensao: "", escolas: [] };
+
+/* Só cuida da PRÓPRIA área de leitura. Quem decide se a seção de escola e
+   trabalhadores aparece é oficioSetModo/oficioAtualizarPorTipo — três
+   funções mexendo no mesmo secaoOficioPadrao era corrida garantida, e no
+   Ofício Livre a última a rodar reabria a seção que tinha acabado de sumir. */
+function filIA_setModo(modo) {
+  var areaUpload = $("filIA_areaUpload");
+  if (areaUpload) areaUpload.style.display = (modo === "ia") ? "block" : "none";
+  if (typeof window.oficioSetModo === "function") window.oficioSetModo(modo === "ia" ? "ia" : "individual");
+}
+
+function filIA_atualizarVisibilidade() {
+  var tipo = $("tipo");
+  var bloco = $("blocoFiliacaoIA");
+  if (!tipo || !bloco) return;
+  var ehFiliacao = tipo.value === "Filiação";
+  bloco.style.display = ehFiliacao ? "block" : "none";
+  if (!ehFiliacao) filIA_setModo("manual");
+}
+
+function filIA_initListener() {
+  var tipo = $("tipo");
+  if (tipo && !tipo.dataset.iaFilBound) {
+    tipo.dataset.iaFilBound = "1";
+    tipo.addEventListener("change", filIA_atualizarVisibilidade);
+  }
+}
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", filIA_initListener);
+else filIA_initListener();
+
+function filIA_analisar() {
+  var input = $("filIA_arquivo");
+  var status = $("filIA_status");
+  var btn = $("filIA_btnAnalisar");
+  if (!input || !input.files || !input.files.length) { toast("Selecione um arquivo primeiro.", "warn"); return; }
+
+  var arquivo = input.files[0];
+  var extensao = (arquivo.name.match(/\.[^.]+$/) || [".pdf"])[0];
+  if (btn) { btn.disabled = true; btn.textContent = "⏳ Lendo documento..."; }
+  if (status) status.textContent = "Fazendo OCR e extraindo dados — pode levar alguns segundos...";
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var base64 = e.target.result.split(",")[1];
+    filIA_estado.arquivoBase64 = base64;
+    filIA_estado.arquivoTipo = arquivo.type || "application/pdf";
+    filIA_estado.arquivoExtensao = extensao;
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (btn) { btn.disabled = false; btn.textContent = "🔎 Analisar formulário"; }
+        if (!res || !res.sucesso) {
+          if (status) status.textContent = "";
+          toast((res && res.mensagem) || "Não foi possível analisar o documento.", "err");
+          return;
+        }
+        filIA_renderRevisao(res);
+      })
+      .withFailureHandler(function(err) {
+        if (btn) { btn.disabled = false; btn.textContent = "🔎 Analisar formulário"; }
+        if (status) status.textContent = "";
+        toast("Erro ao analisar: " + ((err && err.message) || err), "err");
+      })
+      .analisarFormularioFiliacaoIA(base64, arquivo.name, arquivo.type || "application/pdf", SISGEP_TOKEN_SESSAO);
+  };
+  reader.onerror = function() { if (btn) { btn.disabled = false; btn.textContent = "🔎 Analisar formulário"; } toast("Erro ao ler o arquivo.", "err"); };
+  reader.readAsDataURL(arquivo);
+}
+
+function filIA_renderRevisao(res) {
+  var status = $("filIA_status");
+  if (status) status.textContent = "";
+
+  var d = res.dados || {};
+  filIA_estado.escolas = res.listaEscolas || [];
+
+  var tipoEl = $("filIA_tipo"), nomeEl = $("filIA_nome"), cpfEl = $("filIA_cpf"),
+      cargoEl = $("filIA_cargo"), celularEl = $("filIA_celular"), emailEl = $("filIA_email"),
+      enderecoEl = $("filIA_endereco"), escolaSel = $("filIA_escola"), confirmadoEl = $("filIA_confirmado");
+
+  if (tipoEl) tipoEl.value = d.tipo === "RECADASTRAMENTO" ? "RECADASTRAMENTO" : "CADASTRAMENTO";
+  if (nomeEl) nomeEl.value = d.nome || "";
+  if (cpfEl) cpfEl.value = d.cpf || res.cpfDigitos || "";
+  if (cargoEl) cargoEl.value = d.cargo || "";
+  if (celularEl) celularEl.value = d.celular || "";
+  if (emailEl) emailEl.value = d.email || "";
+  if (enderecoEl) enderecoEl.value = [d.endereco, d.numero, d.bairro, d.cidade, d.uf].filter(Boolean).join(", ");
+  if (confirmadoEl) confirmadoEl.checked = false;
+
+  if (escolaSel) {
+    escolaSel.innerHTML = "<option value=''>Selecione a escola...</option>" +
+      filIA_estado.escolas.map(function(e, i) {
+        var selecionada = res.escolaSugerida && e.nome === res.escolaSugerida ? " selected" : "";
+        return "<option value='" + i + "'" + selecionada + ">" + (e.nome || "") + " (" + (e.associados || 0) + " associados)</option>";
+      }).join("");
+  }
+
+  var alertasEl = $("filIA_alertas");
+  if (alertasEl) {
+    var alertas = res.alertas || [];
+    alertasEl.innerHTML = alertas.length
+      ? alertas.map(function(a) {
+          return "<div style='background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:12px;color:#92400e;'>⚠ " + a + "</div>";
+        }).join("")
+      : "<div style='background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:8px 12px;font-size:12px;color:#166534;'>✅ Nenhuma pendência encontrada na conferência automática.</div>";
+
+    if (d.observacoesLeitura) {
+      var obsDiv = document.createElement("div");
+      obsDiv.style.cssText = "background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 12px;margin-top:6px;font-size:12px;color:#1e3a8a;";
+      obsDiv.textContent = "📝 Observações da leitura: " + d.observacoesLeitura;
+      alertasEl.appendChild(obsDiv);
+    }
+  }
+
+  var revisao = $("filIA_revisao");
+  if (revisao) revisao.style.display = "block";
+}
+
+function filIA_confirmar() {
+  var confirmadoEl = $("filIA_confirmado");
+  if (!confirmadoEl || !confirmadoEl.checked) { toast("Marque a caixa confirmando que conferiu os dados contra o documento original.", "warn"); return; }
+
+  var tipoEl = $("filIA_tipo"), nomeEl = $("filIA_nome"), cpfEl = $("filIA_cpf"),
+      cargoEl = $("filIA_cargo"), celularEl = $("filIA_celular"), emailEl = $("filIA_email"),
+      enderecoEl = $("filIA_endereco"), escolaSel = $("filIA_escola");
+
+  var idxEscola = escolaSel ? escolaSel.value : "";
+  if (idxEscola === "") { toast("Selecione a escola antes de confirmar.", "warn"); return; }
+  var escola = filIA_estado.escolas[parseInt(idxEscola, 10)];
+  if (!escola) { toast("Escola inválida — selecione novamente.", "warn"); return; }
+
+  var enderecoPartes = String(enderecoEl ? enderecoEl.value : "").split(",").map(function(s) { return s.trim(); });
+
+  var payload = {
+    tipo: tipoEl ? tipoEl.value : "CADASTRAMENTO",
+    nome: nomeEl ? nomeEl.value : "",
+    cpf: cpfEl ? cpfEl.value : "",
+    escola: escola.nome,
+    cargo: cargoEl ? cargoEl.value : "",
+    celular: celularEl ? celularEl.value : "",
+    telefone1: celularEl ? celularEl.value : "",
+    email: emailEl ? emailEl.value : "",
+    endereco: enderecoPartes[0] || "",
+    bairro: enderecoPartes[2] || "",
+    cidade: enderecoPartes[3] || "",
+    uf: enderecoPartes[4] || "",
+    arquivoBase64: filIA_estado.arquivoBase64,
+    arquivoTipo: filIA_estado.arquivoTipo,
+    arquivoExtensao: filIA_estado.arquivoExtensao,
+    confirmadoPeloAtendente: true
+  };
+
+  var btn = $("filIA_btnConfirmar");
+  if (btn) { btn.disabled = true; btn.textContent = "⏳ Registrando..."; }
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (btn) { btn.disabled = false; btn.textContent = "✅ Confirmar e registrar ficha"; }
+      if (!res || !res.sucesso) { toast((res && res.mensagem) || "Falha ao registrar a ficha.", "err"); return; }
+      toast(res.mensagem || "Ficha registrada.", "ok");
+      var revisao = $("filIA_revisao");
+      if (revisao) revisao.style.display = "none";
+      var status = $("filIA_status");
+      if (status) status.textContent = "✅ Ficha " + (res.idFicha || "") + " registrada — use o painel de Fichas Sindicais para aprovar.";
+    })
+    .withFailureHandler(function(err) {
+      if (btn) { btn.disabled = false; btn.textContent = "✅ Confirmar e registrar ficha"; }
+      toast("Erro: " + ((err && err.message) || err), "err");
+    })
+    .confirmarFiliacaoPapelIA(payload, SISGEP_TOKEN_SESSAO);
+}
+
+window.filIA_setModo = filIA_setModo;
+window.filIA_analisar = filIA_analisar;
+window.filIA_confirmar = filIA_confirmar;
+
+/* ═══════════════════════════════════════════════════════
+   DESFILIAÇÃO VIA IA — leitura de carta escaneada/foto
+   Nada aqui grava ou envia nada sozinho: "Analisar carta" só sugere;
+   "Confirmar desfiliação" só age depois que o atendente revisar os campos.
+   ═══════════════════════════════════════════════════════ */
+var desfIA_estado = { arquivoBase64: "", arquivoTipo: "", escolas: [] };
+
+/* Só cuida da PRÓPRIA área de leitura. Quem decide se a seção de escola e
+   trabalhadores aparece é oficioSetModo/oficioAtualizarPorTipo — três
+   funções mexendo no mesmo secaoOficioPadrao era corrida garantida, e no
+   Ofício Livre a última a rodar reabria a seção que tinha acabado de sumir. */
+function desfIA_setModo(modo) {
+  var areaUpload = $("desfIA_areaUpload");
+  if (areaUpload) areaUpload.style.display = (modo === "ia") ? "block" : "none";
+  if (typeof window.oficioSetModo === "function") window.oficioSetModo(modo === "ia" ? "ia" : "individual");
+}
+
+function desfIA_atualizarVisibilidade() {
+  var tipo = $("tipo");
+  var bloco = $("blocoDesfiliacaoIA");
+  if (!tipo || !bloco) return;
+  var ehDesfiliacao = tipo.value === "Desfiliação";
+  bloco.style.display = ehDesfiliacao ? "block" : "none";
+  if (!ehDesfiliacao) desfIA_setModo("manual");
+}
+
+function desfIA_initListener() {
+  var tipo = $("tipo");
+  if (tipo && !tipo.dataset.iaDescBound) {
+    tipo.dataset.iaDescBound = "1";
+    tipo.addEventListener("change", desfIA_atualizarVisibilidade);
+  }
+}
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", desfIA_initListener);
+else desfIA_initListener();
+
+function desfIA_analisar() {
+  var input = $("desfIA_arquivo");
+  var status = $("desfIA_status");
+  var btn = $("desfIA_btnAnalisar");
+  if (!input || !input.files || !input.files.length) { toast("Selecione um arquivo primeiro.", "warn"); return; }
+
+  var arquivo = input.files[0];
+  if (btn) { btn.disabled = true; btn.textContent = "⏳ Lendo documento..."; }
+  if (status) status.textContent = "Fazendo OCR e extraindo dados — pode levar alguns segundos...";
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var base64 = e.target.result.split(",")[1];
+    desfIA_estado.arquivoBase64 = base64;
+    desfIA_estado.arquivoTipo = arquivo.type || "application/pdf";
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (btn) { btn.disabled = false; btn.textContent = "🔎 Analisar carta"; }
+        if (!res || !res.sucesso) {
+          if (status) status.textContent = "";
+          toast((res && res.mensagem) || "Não foi possível analisar o documento.", "err");
+          return;
+        }
+        desfIA_renderRevisao(res);
+      })
+      .withFailureHandler(function(err) {
+        if (btn) { btn.disabled = false; btn.textContent = "🔎 Analisar carta"; }
+        if (status) status.textContent = "";
+        toast("Erro ao analisar: " + ((err && err.message) || err), "err");
+      })
+      .analisarCartaDesfiliacaoIA(base64, arquivo.name, arquivo.type || "application/pdf", SISGEP_TOKEN_SESSAO);
+  };
+  reader.onerror = function() { if (btn) { btn.disabled = false; btn.textContent = "🔎 Analisar carta"; } toast("Erro ao ler o arquivo.", "err"); };
+  reader.readAsDataURL(arquivo);
+}
+
+function desfIA_renderRevisao(res) {
+  var status = $("desfIA_status");
+  if (status) status.textContent = "";
+
+  var d = res.dados || {};
+  desfIA_estado.escolas = res.sugestaoEscolas || [];
+
+  var nomeEl = $("desfIA_nome"), cpfEl = $("desfIA_cpf"), motivoEl = $("desfIA_motivo"), escolaSel = $("desfIA_escola");
+  if (nomeEl) nomeEl.value = d.nome || "";
+  if (cpfEl) cpfEl.value = d.cpfFormatado || d.cpf || "";
+  if (motivoEl) motivoEl.value = d.motivo || "";
+
+  if (escolaSel) {
+    escolaSel.innerHTML = "<option value=''>Selecione a escola...</option>" +
+      desfIA_estado.escolas.map(function(e, i) {
+        return "<option value='" + i + "'>" + (e.nome || "") + (e.cidade ? " — " + e.cidade : "") + "</option>";
+      }).join("");
+    if (!desfIA_estado.escolas.length && d.escolaTexto) {
+      escolaSel.innerHTML += "<option value='' disabled>Nenhuma correspondência para \"" + d.escolaTexto + "\" — busque manualmente</option>";
+    }
+  }
+
+  var alertasEl = $("desfIA_alertas");
+  if (alertasEl) {
+    var alertas = res.alertas || [];
+    alertasEl.innerHTML = alertas.length
+      ? alertas.map(function(a) {
+          return "<div style='background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:12px;color:#92400e;'>⚠ " + a + "</div>";
+        }).join("")
+      : "<div style='background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:8px 12px;font-size:12px;color:#166534;'>✅ Nenhuma pendência encontrada na conferência automática.</div>";
+
+    if (d.observacoesLeitura) {
+      var obsDiv = document.createElement("div");
+      obsDiv.style.cssText = "background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 12px;margin-top:6px;font-size:12px;color:#1e3a8a;";
+      obsDiv.textContent = "📝 Observações da leitura: " + d.observacoesLeitura;
+      alertasEl.appendChild(obsDiv);
+    }
+  }
+
+  var revisao = $("desfIA_revisao");
+  if (revisao) revisao.style.display = "block";
+}
+
+function desfIA_confirmar(confirmarDuplicata) {
+  var nomeEl = $("desfIA_nome"), cpfEl = $("desfIA_cpf"), motivoEl = $("desfIA_motivo"), escolaSel = $("desfIA_escola");
+  var idxEscola = escolaSel ? escolaSel.value : "";
+  if (idxEscola === "") { toast("Selecione a escola antes de confirmar.", "warn"); return; }
+  var escola = desfIA_estado.escolas[parseInt(idxEscola, 10)];
+  if (!escola) { toast("Escola inválida — selecione novamente.", "warn"); return; }
+
+  var payload = {
+    nome: nomeEl ? nomeEl.value : "",
+    cpf: cpfEl ? cpfEl.value : "",
+    motivo: motivoEl ? motivoEl.value : "",
+    escolaTexto: escola.nome,
+    escolaNome: escola.nome,
+    escolaCnpj: escola.cnpj,
+    escolaEmail: escola.emailPrincipal || escola.emailsTodos || "",
+    escolaUnidade: escola.unidade || "",
+    cartaBase64: desfIA_estado.arquivoBase64,
+    cartaTipo: desfIA_estado.arquivoTipo,
+    confirmarDuplicata: !!confirmarDuplicata
+  };
+
+  var btn = $("desfIA_btnConfirmar");
+  if (btn) { btn.disabled = true; btn.textContent = "⏳ Processando..."; }
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res && res.duplicataDetectada) {
+        window.abrirModalDuplicata(res, function() {
+          desfIA_confirmar(true);
+        }, function() {
+          if (btn) { btn.disabled = false; btn.textContent = "✅ Confirmar e gerar ofício de desfiliação"; }
+          toast("Confirmação cancelada.", "warn");
+        });
+        return;
+      }
+      if (btn) { btn.disabled = false; btn.textContent = "✅ Confirmar e gerar ofício de desfiliação"; }
+      if (!res || !res.sucesso) { toast((res && res.mensagem) || "Falha ao confirmar.", "err"); return; }
+      toast(res.mensagem || "Desfiliação processada.", "ok");
+      if (res.avisos && res.avisos.length) res.avisos.forEach(function(a) { toast(a, "warn"); });
+      finalizarPosEmissao({ numero: res.numeroOficio, url: res.urlOficio });
+    })
+    .withFailureHandler(function(err) {
+      if (btn) { btn.disabled = false; btn.textContent = "✅ Confirmar e gerar ofício de desfiliação"; }
+      toast("Erro: " + ((err && err.message) || err), "err");
+    })
+    .confirmarDesfiliacaoIA(payload, SISGEP_TOKEN_SESSAO);
+}
+
+window.desfIA_setModo = desfIA_setModo;
+window.desfIA_analisar = desfIA_analisar;
+window.desfIA_confirmar = desfIA_confirmar;
+
+/* ═══════════════════════════════════════════════════════
+   OPOSIÇÃO À TAXA NEGOCIAL VIA IA — leitura de carta escaneada/foto
+   Nada aqui grava ou envia nada sozinho: "Analisar carta" só sugere;
+   "Confirmar oposição" só age depois que o atendente revisar os campos.
+   ═══════════════════════════════════════════════════════ */
+var oposIA_estado = { arquivoBase64: "", arquivoTipo: "", escolas: [] };
+
+/* Só cuida da PRÓPRIA área de leitura. Quem decide se a seção de escola e
+   trabalhadores aparece é oficioSetModo/oficioAtualizarPorTipo — três
+   funções mexendo no mesmo secaoOficioPadrao era corrida garantida, e no
+   Ofício Livre a última a rodar reabria a seção que tinha acabado de sumir. */
+function oposIA_setModo(modo) {
+  var areaUpload = $("oposIA_areaUpload");
+  if (areaUpload) areaUpload.style.display = (modo === "ia") ? "block" : "none";
+  if (typeof window.oficioSetModo === "function") window.oficioSetModo(modo === "ia" ? "ia" : "individual");
+}
+
+function oposIA_atualizarVisibilidade() {
+  var tipo = $("tipo");
+  var bloco = $("blocoOposicaoTaxaIA");
+  if (!tipo || !bloco) return;
+  /* Segue o tipo PRÓPRIO da oposição, não mais a cobrança. */
+  var ehTaxaNegocial = tipo.value === "Oposição à Taxa Negocial";
+  bloco.style.display = ehTaxaNegocial ? "block" : "none";
+  if (!ehTaxaNegocial) oposIA_setModo("manual");
+}
+
+function oposIA_initListener() {
+  var tipo = $("tipo");
+  if (tipo && !tipo.dataset.iaOposBound) {
+    tipo.dataset.iaOposBound = "1";
+    tipo.addEventListener("change", oposIA_atualizarVisibilidade);
+  }
+}
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", oposIA_initListener);
+else oposIA_initListener();
+
+function oposIA_analisar() {
+  var input = $("oposIA_arquivo");
+  var status = $("oposIA_status");
+  var btn = $("oposIA_btnAnalisar");
+  if (!input || !input.files || !input.files.length) { toast("Selecione um arquivo primeiro.", "warn"); return; }
+
+  var arquivo = input.files[0];
+  if (btn) { btn.disabled = true; btn.textContent = "⏳ Lendo documento..."; }
+  if (status) status.textContent = "Fazendo OCR e extraindo dados — pode levar alguns segundos...";
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var base64 = e.target.result.split(",")[1];
+    oposIA_estado.arquivoBase64 = base64;
+    oposIA_estado.arquivoTipo = arquivo.type || "application/pdf";
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (btn) { btn.disabled = false; btn.textContent = "🔎 Analisar carta"; }
+        if (!res || !res.sucesso) {
+          if (status) status.textContent = "";
+          toast((res && res.mensagem) || "Não foi possível analisar o documento.", "err");
+          return;
+        }
+        oposIA_renderRevisao(res);
+      })
+      .withFailureHandler(function(err) {
+        if (btn) { btn.disabled = false; btn.textContent = "🔎 Analisar carta"; }
+        if (status) status.textContent = "";
+        toast("Erro ao analisar: " + ((err && err.message) || err), "err");
+      })
+      .analisarCartaOposicaoTaxaNegocialIA(base64, arquivo.name, arquivo.type || "application/pdf", SISGEP_TOKEN_SESSAO);
+  };
+  reader.onerror = function() { if (btn) { btn.disabled = false; btn.textContent = "🔎 Analisar carta"; } toast("Erro ao ler o arquivo.", "err"); };
+  reader.readAsDataURL(arquivo);
+}
+
+function oposIA_renderRevisao(res) {
+  var status = $("oposIA_status");
+  if (status) status.textContent = "";
+
+  var d = res.dados || {};
+  oposIA_estado.escolas = res.sugestaoEscolas || [];
+
+  var nomeEl = $("oposIA_nome"), cpfEl = $("oposIA_cpf"), motivoEl = $("oposIA_motivo"), escolaSel = $("oposIA_escola");
+  if (nomeEl) nomeEl.value = d.nome || "";
+  if (cpfEl) cpfEl.value = d.cpfFormatado || d.cpf || "";
+  if (motivoEl) motivoEl.value = d.motivo || "";
+
+  if (escolaSel) {
+    escolaSel.innerHTML = "<option value=''>Selecione a escola...</option>" +
+      oposIA_estado.escolas.map(function(e, i) {
+        return "<option value='" + i + "'>" + (e.nome || "") + (e.cidade ? " — " + e.cidade : "") + "</option>";
+      }).join("");
+    if (!oposIA_estado.escolas.length && d.escolaTexto) {
+      escolaSel.innerHTML += "<option value='' disabled>Nenhuma correspondência para \"" + d.escolaTexto + "\" — busque manualmente</option>";
+    }
+  }
+
+  var alertasEl = $("oposIA_alertas");
+  if (alertasEl) {
+    var alertas = res.alertas || [];
+    alertasEl.innerHTML = alertas.length
+      ? alertas.map(function(a) {
+          return "<div style='background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:12px;color:#92400e;'>⚠ " + a + "</div>";
+        }).join("")
+      : "<div style='background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:8px 12px;font-size:12px;color:#166534;'>✅ Nenhuma pendência encontrada na conferência automática.</div>";
+
+    if (d.observacoesLeitura) {
+      var obsDiv = document.createElement("div");
+      obsDiv.style.cssText = "background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 12px;margin-top:6px;font-size:12px;color:#1e3a8a;";
+      obsDiv.textContent = "📝 Observações da leitura: " + d.observacoesLeitura;
+      alertasEl.appendChild(obsDiv);
+    }
+  }
+
+  var revisao = $("oposIA_revisao");
+  if (revisao) revisao.style.display = "block";
+}
+
+function oposIA_confirmar(confirmarDuplicata) {
+  var nomeEl = $("oposIA_nome"), cpfEl = $("oposIA_cpf"), motivoEl = $("oposIA_motivo"), escolaSel = $("oposIA_escola");
+  var idxEscola = escolaSel ? escolaSel.value : "";
+  if (idxEscola === "") { toast("Selecione a escola antes de confirmar.", "warn"); return; }
+  var escola = oposIA_estado.escolas[parseInt(idxEscola, 10)];
+  if (!escola) { toast("Escola inválida — selecione novamente.", "warn"); return; }
+
+  var payload = {
+    nome: nomeEl ? nomeEl.value : "",
+    cpf: cpfEl ? cpfEl.value : "",
+    motivo: motivoEl ? motivoEl.value : "",
+    escolaTexto: escola.nome,
+    escolaNome: escola.nome,
+    escolaCnpj: escola.cnpj,
+    escolaEmail: escola.emailPrincipal || escola.emailsTodos || "",
+    escolaUnidade: escola.unidade || "",
+    cartaBase64: oposIA_estado.arquivoBase64,
+    cartaTipo: oposIA_estado.arquivoTipo,
+    confirmarDuplicata: !!confirmarDuplicata
+  };
+
+  var btn = $("oposIA_btnConfirmar");
+  if (btn) { btn.disabled = true; btn.textContent = "⏳ Processando..."; }
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res && res.duplicataDetectada) {
+        window.abrirModalDuplicata(res, function() {
+          oposIA_confirmar(true);
+        }, function() {
+          if (btn) { btn.disabled = false; btn.textContent = "✅ Confirmar e gerar ofício de oposição à Taxa Negocial"; }
+          toast("Confirmação cancelada.", "warn");
+        });
+        return;
+      }
+      if (btn) { btn.disabled = false; btn.textContent = "✅ Confirmar e gerar ofício de oposição à Taxa Negocial"; }
+      if (!res || !res.sucesso) { toast((res && res.mensagem) || "Falha ao confirmar.", "err"); return; }
+      toast(res.mensagem || "Oposição processada.", "ok");
+      finalizarPosEmissao({ numero: res.numeroOficio, url: res.urlOficio });
+    })
+    .withFailureHandler(function(err) {
+      if (btn) { btn.disabled = false; btn.textContent = "✅ Confirmar e gerar ofício de oposição à Taxa Negocial"; }
+      toast("Erro: " + ((err && err.message) || err), "err");
+    })
+    .confirmarOposicaoTaxaNegocialIA(payload, SISGEP_TOKEN_SESSAO);
+}
+
+window.oposIA_setModo = oposIA_setModo;
+window.oposIA_analisar = oposIA_analisar;
+window.oposIA_confirmar = oposIA_confirmar;
 
 })();
 </script>
@@ -1329,8 +3229,15 @@ window.carregarMonitoramento = carregarMonitoramento;
   function el(id) { return document.getElementById(id); }
 
 function esconderTodos() {
-    ["blocoOficioNovo","blocoOficioHistorico","blocoTaxaAssistencial","blocoMonitoramento","blocoMensalidades","blocoEscolas","centralEmailIA"].forEach(function(id){ if(el(id)) el(id).style.display="none"; });
-    ["abaOficioNovo","abaOficioHistorico","abaTaxaAssistencial","abaMonitoramento","abaMensalidades"].forEach(function(id){ if(el(id)) el(id).classList.remove("active"); });
+    ["blocoOficioNovo","blocoOficioHistorico","blocoTaxaAssistencial","blocoMonitoramento","blocoEscolas","centralEmailIA","sisgepDashboardExecutivo"].forEach(function(id){ if(el(id)) el(id).style.display="none"; });
+    ["abaOficioNovo","abaOficioHistorico","abaTaxaAssistencial","abaMonitoramento"].forEach(function(id){ if(el(id)) el(id).classList.remove("active"); });
+  }
+
+  function mostrarDashboardExecutivo() {
+    esconderTodos();
+    if(el("sisgepDashboardExecutivo")) el("sisgepDashboardExecutivo").style.display="block";
+    if(typeof window.DashboardExecutivo!=="object" || typeof window.DashboardExecutivo.carregar!=="function") return;
+    window.DashboardExecutivo.carregar();
   }
 
   function mostrarNovoOficio() { esconderTodos(); if(el("blocoOficioNovo")) el("blocoOficioNovo").style.display="block"; if(el("abaOficioNovo")) el("abaOficioNovo").classList.add("active"); }
@@ -1355,11 +3262,10 @@ function mostrarMonitoramento() {
     setTimeout(function() { if(typeof window.carregarMonitoramento === "function") window.carregarMonitoramento(); }, 300);
   }
 
+  /* Mensalidade virou módulo próprio no Financeiro (FIN-F5). Mantida como
+     ponte para não quebrar chamador antigo que ainda peça a aba daqui. */
   function mostrarMensalidades() {
-    esconderTodos();
-    if(el("blocoMensalidades")) el("blocoMensalidades").style.display="block";
-    if(el("abaMensalidades")) el("abaMensalidades").classList.add("active");
-    setTimeout(function() { if(typeof window.carregarMensalidades === "function") window.carregarMensalidades(); }, 300);
+    if (typeof window.spIr === "function") return window.spIr("mensalidades");
   }
 
   function iniciarAbasOficios() {
@@ -1367,15 +3273,16 @@ function mostrarMonitoramento() {
     if(el("abaOficioHistorico")) el("abaOficioHistorico").onclick=mostrarHistorico;
     if(el("abaTaxaAssistencial")) el("abaTaxaAssistencial").onclick=mostrarTaxaAssistencial;
  if(el("abaMonitoramento")) el("abaMonitoramento").onclick=mostrarMonitoramento;
-    if(el("abaMensalidades")) el("abaMensalidades").onclick=mostrarMensalidades;
     if(el("btnVoltarEmissao")) el("btnVoltarEmissao").onclick=mostrarNovoOficio;
     if(el("btnAplicarFiltroHist")) el("btnAplicarFiltroHist").onclick=function(){ if(typeof window.carregarHistoricoOficios==="function") window.carregarHistoricoOficios(); else if(typeof Historico!=="undefined") Historico.carregar(); };
     if(el("btnAtualizarMonitoramento")) el("btnAtualizarMonitoramento").onclick=mostrarMonitoramento;
+    if(el("btnAbrirDashboardExecutivo")) el("btnAbrirDashboardExecutivo").onclick=mostrarDashboardExecutivo;
     mostrarNovoOficio();
   }
 
  window.mostrarHistoricoOficio = mostrarHistorico;
   window.mostrarNovoOficio = mostrarNovoOficio;
+  window.mostrarDashboardExecutivo = mostrarDashboardExecutivo;
   window.initAbasOficios = iniciarAbasOficios;
 window.mostrarAbaOficio = function(aba) {
     if (aba === "novo")                  mostrarNovoOficio();
@@ -1383,6 +3290,7 @@ window.mostrarAbaOficio = function(aba) {
     else if (aba === "taxaAssistencial") mostrarTaxaAssistencial();
     else if (aba === "monitoramento")    mostrarMonitoramento();
     else if (aba === "mensalidades")     mostrarMensalidades();
+    else if (aba === "dashboard")        mostrarDashboardExecutivo();
     else if (aba === "escolas") {
       esconderTodos();
       var blocoEsc = el("blocoEscolas");
@@ -1608,13 +3516,57 @@ window.mostrarAbaOficio = function(aba) {
       Historico.selecionados=[]; Historico.atualizarBarraAcoes();
       Historico.initOrdenacao();
 
+      /* TRAVA DE ESPERA — a tela não pode ficar em "Carregando..." para sempre.
+       *
+       * Relato do usuário em 19/08/2026: "o histórico só está carregando".
+       * Medido no emulador, o caminho normal e o de erro conhecido chegam ao
+       * fim; o que não existia era o terceiro caso — a chamada que NÃO VOLTA.
+       * Quando nenhum dos dois handlers dispara (função ausente no projeto
+       * publicado, execução interrompida, sessão derrubada no meio), a tabela
+       * fica no "Carregando..." indefinidamente, sem erro e sem log.
+       *
+       * "Carregando" eterno é a pior mensagem possível: quem lê fica
+       * esperando em vez de agir. Passados 20 segundos a tela diz o que
+       * aconteceu e oferece o caminho. */
+      var respondeu = false;
+      var espera = setTimeout(function() {
+        if (respondeu) return;
+        if (contEl) contEl.textContent = "0 registro(s)";
+        tbody.innerHTML = '<tr><td colspan="7"><div class="of-table-empty">' +
+          '⏱️ O servidor não respondeu ao carregar o histórico.<br>' +
+          '<small>Recarregue a tela (F5). Se repetir, o painel <strong>Execuções</strong> ' +
+          'do Apps Script mostra o erro real.</small></div></td></tr>';
+      }, 20000);
+
       google.script.run
         .withSuccessHandler(function(resp) {
+          respondeu = true; clearTimeout(espera);
+          /* O ERRO DO BACKEND PRECISA APARECER. Ele volta pelo caminho de
+           * SUCESSO — { erro:true, mensagem:"...", itens:[] } —, e a versão
+           * anterior lia só `itens`. Com a aba faltando, a tela dizia
+           * "Nenhum registro encontrado": uma mentira tranquila, que faz
+           * quem lê concluir que não há ofício nenhum quando na verdade a
+           * origem dos dados sumiu. Medido no emulador em 19/08/2026. */
+          if (resp && resp.erro) {
+            if (contEl) contEl.textContent = "0 registro(s)";
+            /* Escape LOCAL, de propósito. O escapeHtml do arquivo mora no
+               primeiro IIFE (linha 20) e este bloco está no segundo — usá-lo
+               aqui daria ReferenceError e trocaria uma mensagem ausente por
+               uma tela quebrada. Peguei isso conferindo o escopo antes de
+               rodar, não depois. */
+            var seguro = String(resp.mensagem || "O servidor recusou a leitura.")
+              .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            tbody.innerHTML = '<tr><td colspan="7"><div class="of-table-empty">' +
+              '⚠️ Não foi possível carregar o histórico.<br><small>' + seguro +
+              '</small></div></td></tr>';
+            return;
+          }
           var lista = (resp && Array.isArray(resp.itens)) ? resp.itens : (Array.isArray(resp) ? resp : []);
           Historico._dadosCache = lista;
           Historico.renderLista(lista);
         })
         .withFailureHandler(function(err) {
+          respondeu = true; clearTimeout(espera);
           if(contEl) contEl.textContent="0 registro(s)";
           tbody.innerHTML='<tr><td colspan="7"><div class="of-table-empty">Erro: '+((err&&err.message)||err||"")+'</div></td></tr>';
         })
@@ -1645,7 +3597,10 @@ window.mostrarAbaOficio = function(aba) {
 
     reenviar: function(numero) {
       if(!numero) return;
-      if(!window.confirm("Reenviar o ofício "+numero+" por e-mail?")) return;
+      confirmarSISGEP({
+        titulo:"Reenviar ofício "+numero, subtitulo:"Novo e-mail com o PDF em anexo", icone:"📧",
+        texto:"Reenviar este ofício para o e-mail cadastrado da escola?", rotulo:"📧 Reenviar"
+      }, function(){
       var tr=document.querySelector("tr[data-numero='"+numero+"']");
       var url=tr?(tr.dataset.url||""):"", cells=tr?tr.querySelectorAll("td"):[];
       var tipo=cells[2]?cells[2].textContent.trim():"", escola=cells[3]?cells[3].textContent.trim():"";
@@ -1653,24 +3608,35 @@ window.mostrarAbaOficio = function(aba) {
         .withSuccessHandler(function(r){ toast((r&&!r.erro)?(r.mensagem||"Reenviado."):(r&&r.mensagem)||"Erro.", (r&&!r.erro)?"ok":"err"); })
         .withFailureHandler(function(err){ toast("Erro: "+((err&&err.message)||err), "err"); })
         .reenviarOficio({numero:numero, url:url, escola:escola, tipo:tipo}, SISGEP_TOKEN_SESSAO);
+      });
     },
 
     excluir: function(numero) {
       if(!numero) return;
-      if(!window.confirm("Excluir o registro do ofício "+numero+"?\n\nEsta ação não pode ser desfeita.")) return;
+      confirmarSISGEP({
+        titulo:"Excluir registro", subtitulo:"Ofício "+numero, icone:"🗑",
+        texto:"Excluir o registro deste ofício do histórico?",
+        detalhe:"Esta ação não pode ser desfeita.", rotulo:"🗑 Excluir", perigo:true
+      }, function(){
       google.script.run
         .withSuccessHandler(function(r){ toast((r&&r.ok)?(r.mensagem||"Excluído."):(r&&r.mensagem)||"Erro ao excluir.", (r&&r.ok)?"ok":"err"); if(r&&r.ok) Historico.carregar(); })
         .withFailureHandler(function(err){ toast("Erro: "+((err&&err.message)||err), "err"); })
         .excluirRegistroOficio(numero, SISGEP_TOKEN_SESSAO);
+      });
     },
 
     excluirSelecionados: function() {
       if(!Historico.selecionados.length){ toast("Selecione ao menos um registro.", "warn"); return; }
-      if(!window.confirm("Excluir "+Historico.selecionados.length+" registro(s)?\n\nEsta ação não pode ser desfeita.")) return;
+      confirmarSISGEP({
+        titulo:"Excluir "+Historico.selecionados.length+" registro(s)", subtitulo:"Exclusão em lote", icone:"🗑",
+        texto:"Excluir do histórico os "+Historico.selecionados.length+" registros selecionados?",
+        detalhe:"Esta ação não pode ser desfeita.", rotulo:"🗑 Excluir todos", perigo:true
+      }, function(){
       google.script.run
         .withSuccessHandler(function(r){ toast((r&&r.ok)?(r.mensagem||"Excluídos."):(r&&r.mensagem)||"Erro.", (r&&r.ok)?"ok":"err"); if(r&&r.ok) Historico.carregar(); })
         .withFailureHandler(function(err){ toast("Erro: "+((err&&err.message)||err), "err"); })
         .excluirRegistrosOficio(Historico.selecionados, SISGEP_TOKEN_SESSAO);
+      });
     },
 
     editar: function(numero) {
@@ -1694,7 +3660,7 @@ window.mostrarAbaOficio = function(aba) {
 <script id="sisgep-sidebar-js">
 (function(){
   function ativarAba(aba){
- var mapa = {novo:'abaOficioNovo',historico:'abaOficioHistorico',monitoramento:'abaMonitoramento',taxa:'abaTaxaAssistencial',mensalidades:'abaMensalidades'};
+ var mapa = {novo:'abaOficioNovo',historico:'abaOficioHistorico',monitoramento:'abaMonitoramento',taxa:'abaTaxaAssistencial'};
     var id = mapa[aba];
     if(id){var b=document.getElementById(id);if(b)b.click();}
   }
@@ -1722,7 +3688,7 @@ window.mostrarAbaOficio = function(aba) {
     });
   });
   // Sync sidebar when native tabs are clicked
- var idMap = {abaOficioNovo:'novo',abaOficioHistorico:'historico',abaMonitoramento:'monitoramento',abaTaxaAssistencial:'novo',abaMensalidades:'mensalidades'};
+ var idMap = {abaOficioNovo:'novo',abaOficioHistorico:'historico',abaMonitoramento:'monitoramento',abaTaxaAssistencial:'novo'};
   Object.keys(idMap).forEach(function(id){
     var btn = document.getElementById(id);
     if(btn) btn.addEventListener('click',function(){

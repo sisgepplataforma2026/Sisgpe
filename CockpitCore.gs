@@ -12,7 +12,8 @@
 /* ─────────────────────────────────────────────────────────────────
    FUNÇÃO PRINCIPAL — uma chamada, contexto completo
 ───────────────────────────────────────────────────────────────── */
-function getCockpit() {
+function getCockpit(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     var inicio = new Date().getTime();
 
@@ -184,10 +185,7 @@ function getCockpitIndicadores_(emails, resumoDia) {
   var oficiosPendentes   = 0;
 
   try {
-    var planilha = SpreadsheetApp.openById(
-      PropertiesService.getScriptProperties().getProperty("PLANILHA_ID") ||
-      "1QPpsx19v4YzfskoYXK9WB89TClA7q8SWGSn55VZ040E"
-    );
+    var planilha = SpreadsheetApp.openById(PLANILHA_ID);
 
     // Conta mensalidades PENDENTES
     try {
@@ -326,7 +324,8 @@ function getCockpitGreeting_(usuario, resumoDia) {
 /* ─────────────────────────────────────────────────────────────────
    INVALIDAR CACHE (chamado após arquivar/responder e-mail)
 ───────────────────────────────────────────────────────────────── */
-function cockpitInvalidarCache() {
+function cockpitInvalidarCache(tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     CacheService.getScriptCache().remove("cockpit_emails_inbox_v1");
     return { ok: true };

@@ -62,6 +62,7 @@
         <div class="vad-lote-info">
           <b id="vadLoteQtd">0</b> escola(s) selecionada(s)
           <button class="vad-link" onclick="vadLimparSelecao()">limpar seleção</button>
+          <button class="vad-link" style="color:#991b1b;" onclick="vadCancelarLote()">cancelar visitas agendadas/em andamento destas escolas</button>
         </div>
         <div class="vad-lote-campos">
           <div>
@@ -216,120 +217,122 @@
 .vad-wrap{max-width:1560px;margin:0 auto;padding:20px 24px 32px;font-family:'Plus Jakarta Sans',sans-serif;}
 
 .vad-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:10px;margin:0;}
-.vad-kpi{background:#fff;border:1.5px solid #e2e8f0;border-radius:13px;padding:14px;}
-.vad-kpi span{display:block;color:#64748b;font-size:10px;text-transform:uppercase;font-weight:800;letter-spacing:.04em;}
-.vad-kpi strong{display:block;color:#002f6c;font-size:26px;margin-top:4px;line-height:1;font-variant-numeric:tabular-nums;}
-.vad-kpi small{display:block;color:#94a3b8;font-size:10.5px;margin-top:5px;}
+.vad-kpi{background:#fff;border:1.5px solid var(--g200,#e2e8f0);border-radius:13px;padding:14px;}
+.vad-kpi span{display:block;color:var(--g500,#64748b);font-size:10px;text-transform:uppercase;font-weight:800;letter-spacing:.04em;}
+.vad-kpi strong{display:block;color:var(--navy2,#002f6c);font-size:26px;margin-top:4px;line-height:1;font-variant-numeric:tabular-nums;}
+.vad-kpi small{display:block;color:var(--g400,#94a3b8);font-size:10.5px;margin-top:5px;}
 .vad-kpi-ok{border-color:#86efac;background:#f0fdf4;}
 .vad-kpi-ok strong{color:#166534;}
-.vad-kpi-gold{border-color:#C9A84C;background:#fffdf7;}
+.vad-kpi-gold{border-color:var(--gold,#C9A84C);background:#fffdf7;}
 .vad-kpi-gold strong{color:#92400e;}
 
 .vad-grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;margin-top:16px;align-items:start;}
 
 .vad-filtros{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
-.vad-input,.vad-select{height:38px;border:1.5px solid #cbd5e1;border-radius:9px;padding:0 11px;font-size:13px;font-family:inherit;background:#fff;color:#0f172a;}
-.vad-input:focus,.vad-select:focus{outline:none;border-color:#002f6c;}
+.vad-input,.vad-select{height:38px;border:1.5px solid var(--g300,#cbd5e1);border-radius:9px;padding:0 11px;font-size:13px;font-family:inherit;background:#fff;color:var(--g900,#0f172a);}
+.vad-input:focus,.vad-select:focus{outline:none;border-color:var(--navy2,#002f6c);}
 #vadBusca{flex:1;min-width:230px;}
-.vad-check-filtro{display:flex;align-items:center;gap:7px;font-size:12.5px;color:#334155;cursor:pointer;white-space:nowrap;}
-.vad-check-filtro input{width:16px;height:16px;accent-color:#002f6c;}
-.vad-btn-sec{height:38px;border:none;border-radius:9px;padding:0 14px;background:#e2e8f0;color:#172033;font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit;}
-.vad-btn-pri{height:38px;border:none;border-radius:9px;padding:0 18px;background:#002f6c;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;align-self:flex-end;}
+.vad-check-filtro{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--g700,#334155);cursor:pointer;white-space:nowrap;}
+.vad-check-filtro input{width:16px;height:16px;accent-color:var(--navy2,#002f6c);}
+.vad-btn-sec{height:38px;border:none;border-radius:9px;padding:0 14px;background:var(--g200,#e2e8f0);color:#172033;font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit;}
+.vad-btn-pri{height:38px;border:none;border-radius:9px;padding:0 18px;background:var(--navy2,#002f6c);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;align-self:flex-end;}
 .vad-btn-pri:disabled{opacity:.5;cursor:wait;}
-.vad-link{background:none;border:none;color:#002f6c;font-size:12px;font-weight:700;text-decoration:underline;cursor:pointer;font-family:inherit;padding:2px 4px;}
+.vad-link{background:none;border:none;color:var(--navy2,#002f6c);font-size:12px;font-weight:700;text-decoration:underline;cursor:pointer;font-family:inherit;padding:2px 4px;}
 
-.vad-lote{background:#f5f8ff;border:1.5px solid #002f6c;border-radius:12px;padding:14px 16px;margin-bottom:12px;}
-.vad-lote-info{font-size:13px;color:#002f6c;margin-bottom:10px;}
+.vad-lote{background:#f5f8ff;border:1.5px solid var(--navy2,#002f6c);border-radius:12px;padding:14px 16px;margin-bottom:12px;}
+.vad-lote-info{font-size:13px;color:var(--navy2,#002f6c);margin-bottom:10px;}
 .vad-lote-info b{font-size:15px;}
 .vad-lote-campos{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
-.vad-lote-campos label{display:block;font-size:10.5px;font-weight:800;color:#002f6c;text-transform:uppercase;letter-spacing:.03em;margin-bottom:3px;}
+.vad-lote-campos label{display:block;font-size:10.5px;font-weight:800;color:var(--navy2,#002f6c);text-transform:uppercase;letter-spacing:.03em;margin-bottom:3px;}
 .vad-lote-aviso{font-size:12px;color:#92400e;margin-top:9px;}
 
-.vad-tabela-caixa{background:#fff;border:1.5px solid #e2e8f0;border-radius:13px;overflow:hidden;}
+.vad-tabela-caixa{background:#fff;border:1.5px solid var(--g200,#e2e8f0);border-radius:13px;overflow:hidden;}
 .vad-tabela-rolagem{max-height:calc(100vh - 318px);min-height:340px;overflow-y:auto;}
 .vad-tabela-rolagem::-webkit-scrollbar{width:9px;}
-.vad-tabela-rolagem::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:5px;}
-.vad-tabela-rolagem::-webkit-scrollbar-track{background:#f8fafc;}
+.vad-tabela-rolagem::-webkit-scrollbar-thumb{background:var(--g300,#cbd5e1);border-radius:5px;}
+.vad-tabela-rolagem::-webkit-scrollbar-track{background:var(--g50,#f8fafc);}
 .vad-tabela{width:100%;border-collapse:collapse;font-size:12.5px;}
-.vad-tabela thead th{position:sticky;top:0;z-index:2;background:#f8fafc;box-shadow:inset 0 -1.5px 0 #e2e8f0;padding:10px 12px;text-align:left;font-size:10.5px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.04em;}
-.vad-tabela tbody td{border-bottom:1px solid #f1f5f9;padding:10px 12px;color:#334155;vertical-align:middle;}
+.vad-tabela thead th{position:sticky;top:0;z-index:2;background:var(--g50,#f8fafc);box-shadow:inset 0 -1.5px 0 var(--g200,#e2e8f0);padding:10px 12px;text-align:left;font-size:10.5px;font-weight:800;color:var(--g500,#64748b);text-transform:uppercase;letter-spacing:.04em;}
+.vad-tabela tbody td{border-bottom:1px solid var(--g100,#f1f5f9);padding:10px 12px;color:var(--g700,#334155);vertical-align:middle;}
 .vad-tabela tbody tr:nth-child(even){background:#fcfdfe;}
-.vad-tabela tbody tr:hover{background:#f1f5f9;}
+.vad-tabela tbody tr:hover{background:var(--g100,#f1f5f9);}
 .vad-tabela tbody tr.vad-sel{background:#f5f8ff;}
-.vad-escola-nome{font-weight:700;color:#0f172a;cursor:pointer;}
+.vad-escola-nome{font-weight:700;color:var(--g900,#0f172a);cursor:pointer;}
 .vad-sublinha{font-size:11px;margin-top:2px;line-height:1.3;}
-.vad-escola-nome:hover{color:#002f6c;text-decoration:underline;}
-.vad-tabela input[type=checkbox]{width:16px;height:16px;accent-color:#002f6c;}
+.vad-escola-nome:hover{color:var(--navy2,#002f6c);text-decoration:underline;}
+.vad-tabela input[type=checkbox]{width:16px;height:16px;accent-color:var(--navy2,#002f6c);}
 .vad-num{text-align:center;font-weight:700;font-variant-numeric:tabular-nums;}
 
 .vad-tag{display:inline-block;font-size:9.5px;font-weight:800;border-radius:5px;padding:3px 8px;white-space:nowrap;}
-.vad-tag-pendente{background:#f1f5f9;color:#475569;}
+.vad-tag-pendente{background:var(--g100,#f1f5f9);color:#475569;}
 .vad-tag-agendada{background:#dbeafe;color:#1d4ed8;}
-.vad-tag-andamento{background:#fef3c7;color:#92400e;}
+.vad-tag-andamento{background:var(--amber-lt,#fef3c7);color:#92400e;}
 .vad-tag-visitada{background:#dcfce7;color:#166534;}
 .vad-tag-retornar{background:#e0e7ff;color:#3730a3;}
-.vad-tag-semcontato{background:#fee2e2;color:#991b1b;}
+.vad-tag-semcontato{background:var(--red-lt,#fee2e2);color:#991b1b;}
 
-.vad-skel{height:11px;border-radius:5px;background:linear-gradient(90deg,#eef2f7 25%,#e2e8f0 37%,#eef2f7 63%);background-size:400% 100%;animation:vadSkel 1.3s ease infinite;}
+.vad-skel{height:11px;border-radius:5px;background:linear-gradient(90deg,#eef2f7 25%,var(--g200,#e2e8f0) 37%,#eef2f7 63%);background-size:400% 100%;animation:vadSkel 1.3s ease infinite;}
 @keyframes vadSkel{0%{background-position:100% 50%;}100%{background-position:0 50%;}}
 @media(prefers-reduced-motion:reduce){.vad-skel{animation:none;}}
 .vad-paginacao{display:flex;align-items:center;gap:8px;}
-.vad-pag-btn{width:28px;height:28px;border:1.5px solid #cbd5e1;border-radius:8px;background:#fff;color:#002f6c;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;line-height:1;}
-.vad-pag-btn:hover:not(:disabled){border-color:#002f6c;background:#f5f8ff;}
+.vad-pag-btn{width:28px;height:28px;border:1.5px solid var(--g300,#cbd5e1);border-radius:8px;background:#fff;color:var(--navy2,#002f6c);font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;line-height:1;}
+.vad-pag-btn:hover:not(:disabled){border-color:var(--navy2,#002f6c);background:#f5f8ff;}
 .vad-pag-btn:disabled{opacity:.35;cursor:default;}
-#vadPagInfo{font-size:12px;font-weight:700;color:#002f6c;min-width:112px;text-align:center;font-variant-numeric:tabular-nums;}
+#vadPagInfo{font-size:12px;font-weight:700;color:var(--navy2,#002f6c);min-width:112px;text-align:center;font-variant-numeric:tabular-nums;}
 .vad-select-mini{height:28px;font-size:11.5px;padding:0 6px;border-width:1.5px;}
-.vad-vazio{padding:44px 20px;text-align:center;color:#64748b;font-size:13.5px;}
-.vad-rodape-tabela{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 14px;background:#f8fafc;border-top:1.5px solid #e2e8f0;font-size:12px;color:#64748b;font-variant-numeric:tabular-nums;}
+.vad-vazio{padding:44px 20px;text-align:center;color:var(--g500,#64748b);font-size:13.5px;}
+.vad-rodape-tabela{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 14px;background:var(--g50,#f8fafc);border-top:1.5px solid var(--g200,#e2e8f0);font-size:12px;color:var(--g500,#64748b);font-variant-numeric:tabular-nums;}
 
-.vad-card{background:#fff;border:1.5px solid #e2e8f0;border-radius:13px;padding:16px;position:sticky;top:16px;max-height:calc(100vh - 130px);display:flex;flex-direction:column;}
-.vad-card-titulo{font-size:14px;font-weight:800;color:#002f6c;}
-.vad-card-sub{font-size:11px;color:#94a3b8;margin-top:2px;margin-bottom:12px;}
+.vad-card{background:#fff;border:1.5px solid var(--g200,#e2e8f0);border-radius:13px;padding:16px;position:sticky;top:16px;max-height:calc(100vh - 130px);display:flex;flex-direction:column;}
+.vad-card-titulo{font-size:14px;font-weight:800;color:var(--navy2,#002f6c);}
+.vad-card-sub{font-size:11px;color:var(--g400,#94a3b8);margin-top:2px;margin-bottom:12px;}
 .vad-municipios{flex:1;min-height:0;overflow-y:auto;margin-right:-8px;padding-right:8px;}
 .vad-municipios::-webkit-scrollbar{width:8px;}
-.vad-municipios::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px;}
+.vad-municipios::-webkit-scrollbar-thumb{background:var(--g300,#cbd5e1);border-radius:4px;}
 .vad-municipios::-webkit-scrollbar-track{background:transparent;}
-.vad-mun{padding:9px 0;border-bottom:1px solid #f1f5f9;cursor:pointer;}
+.vad-mun{padding:9px 0;border-bottom:1px solid var(--g100,#f1f5f9);cursor:pointer;}
 .vad-mun:last-child{border-bottom:none;}
-.vad-mun:hover .vad-mun-nome{color:#002f6c;}
+.vad-mun:hover .vad-mun-nome{color:var(--navy2,#002f6c);}
 .vad-mun-linha{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
-.vad-mun-nome{font-size:12.5px;font-weight:700;color:#0f172a;}
-.vad-mun-num{font-size:11px;color:#64748b;white-space:nowrap;font-variant-numeric:tabular-nums;}
-.vad-mun-num b{color:#002f6c;font-size:12.5px;}
-.vad-mun-pe{font-size:10px;color:#94a3b8;margin-top:3px;font-variant-numeric:tabular-nums;}
-.vad-mun-barra{height:5px;background:#e2e8f0;border-radius:3px;margin-top:5px;overflow:hidden;}
-.vad-mun-barra > div{height:100%;background:#C9A84C;}
+.vad-mun-nome{font-size:12.5px;font-weight:700;color:var(--g900,#0f172a);}
+.vad-mun-num{font-size:11px;color:var(--g500,#64748b);white-space:nowrap;font-variant-numeric:tabular-nums;}
+.vad-mun-num b{color:var(--navy2,#002f6c);font-size:12.5px;}
+.vad-mun-pe{font-size:10px;color:var(--g400,#94a3b8);margin-top:3px;font-variant-numeric:tabular-nums;}
+.vad-mun-barra{height:5px;background:var(--g200,#e2e8f0);border-radius:3px;margin-top:5px;overflow:hidden;}
+.vad-mun-barra > div{height:100%;background:var(--gold,#C9A84C);}
 
 .vad-modal{display:none;position:fixed;inset:0;background:rgba(6,11,20,.65);z-index:940;padding:16px;overflow-y:auto;}
 .vad-modal.vad-aberto{display:block;}
 .vad-modal-caixa{background:#fff;border-radius:16px;max-width:800px;margin:16px auto 48px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.3);}
-.vad-modal-topo{background:#002f6c;color:#fff;padding:18px 22px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+.vad-modal-topo{background:var(--navy2,#002f6c);color:#fff;padding:18px 22px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
 .vad-modal-titulo{font-size:16px;font-weight:800;}
 .vad-modal-sub{font-size:12px;opacity:.82;margin-top:3px;}
 .vad-modal-fechar{background:rgba(255,255,255,.15);border:none;color:#fff;width:30px;height:30px;border-radius:8px;cursor:pointer;}
 .vad-modal-corpo{padding:22px;}
-.vad-secao-titulo{font-size:11px;font-weight:800;letter-spacing:.8px;color:#C9A84C;text-transform:uppercase;margin:0 0 10px;}
+.vad-secao-titulo{font-size:11px;font-weight:800;letter-spacing:.8px;color:var(--gold,#C9A84C);text-transform:uppercase;margin:0 0 10px;}
 .vad-bloco{margin-bottom:22px;}
 .vad-dados{display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;font-size:12.5px;color:#475569;}
-.vad-dados b{color:#0f172a;}
-.vad-hist{border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;}
-.vad-hist-item{padding:11px 13px;border-bottom:1px solid #f1f5f9;font-size:12.5px;}
+.vad-dados b{color:var(--g900,#0f172a);}
+.vad-hist{border:1px solid var(--g200,#e2e8f0);border-radius:10px;overflow:hidden;}
+.vad-hist-item{padding:11px 13px;border-bottom:1px solid var(--g100,#f1f5f9);font-size:12.5px;}
 .vad-hist-item:last-child{border-bottom:none;}
-.vad-hist-item b{color:#0f172a;}
-.vad-hist-item small{display:block;color:#64748b;margin-top:3px;}
-.vad-sem-dados{padding:16px;text-align:center;color:#94a3b8;font-size:12.5px;}
+.vad-hist-item b{color:var(--g900,#0f172a);}
+.vad-hist-item small{display:block;color:var(--g500,#64748b);margin-top:3px;}
+.vad-btn-cancelar{border:1px solid #f3b6b6;background:#fff;color:#991b1b;font-size:10.5px;font-weight:800;padding:4px 9px;border-radius:7px;cursor:pointer;font-family:inherit;flex-shrink:0;white-space:nowrap;}
+.vad-btn-cancelar:hover{background:#fdecec;}
+.vad-sem-dados{padding:16px;text-align:center;color:var(--g400,#94a3b8);font-size:12.5px;}
 
 
-.vad-abas{display:flex;gap:6px;margin-top:16px;border-bottom:2px solid #e2e8f0;}
-.vad-aba{border:none;background:transparent;padding:11px 18px;font-size:13px;font-weight:800;color:#64748b;cursor:pointer;font-family:inherit;border-bottom:3px solid transparent;margin-bottom:-2px;}
-.vad-aba:hover{color:#002f6c;}
-.vad-aba-ativa,.vad-aba-ativa:hover{color:#002f6c;border-bottom-color:#C9A84C;}
+.vad-abas{display:flex;gap:6px;margin-top:16px;border-bottom:2px solid var(--g200,#e2e8f0);}
+.vad-aba{border:none;background:transparent;padding:11px 18px;font-size:13px;font-weight:800;color:var(--g500,#64748b);cursor:pointer;font-family:inherit;border-bottom:3px solid transparent;margin-bottom:-2px;}
+.vad-aba:hover{color:var(--navy2,#002f6c);}
+.vad-aba-ativa,.vad-aba-ativa:hover{color:var(--navy2,#002f6c);border-bottom-color:var(--gold,#C9A84C);}
 .vad-painel{animation:vadFade .18s ease;}
 @keyframes vadFade{from{opacity:0;transform:translateY(3px);}to{opacity:1;transform:none;}}
-.vad-resumo{font-size:12.5px;font-weight:700;color:#002f6c;align-self:center;}
-.vad-nota{background:#f8fafc;border-left:3px solid #C9A84C;border-radius:0 9px 9px 0;padding:12px 14px;font-size:12.5px;color:#475569;line-height:1.55;margin:16px 0 12px;}
-.vad-barra-mini{height:5px;background:#e2e8f0;border-radius:3px;overflow:hidden;margin-top:4px;width:120px;}
-.vad-barra-mini > div{height:100%;background:#C9A84C;}
+.vad-resumo{font-size:12.5px;font-weight:700;color:var(--navy2,#002f6c);align-self:center;}
+.vad-nota{background:var(--g50,#f8fafc);border-left:3px solid var(--gold,#C9A84C);border-radius:0 9px 9px 0;padding:12px 14px;font-size:12.5px;color:#475569;line-height:1.55;margin:16px 0 12px;}
+.vad-barra-mini{height:5px;background:var(--g200,#e2e8f0);border-radius:3px;overflow:hidden;margin-top:4px;width:120px;}
+.vad-barra-mini > div{height:100%;background:var(--gold,#C9A84C);}
 
 @media(max-width:1280px){
   .vad-kpis{grid-template-columns:repeat(3,1fr);}
@@ -648,6 +651,29 @@ function vadLimparSelecao(){
   vadRender();
 }
 
+function vadCancelarLote(){
+  var sel=vadEscolasSelecionadas();
+  if(!sel.length) return;
+
+  var motivo=prompt('Motivo do cancelamento em lote (opcional):','');
+  if(motivo===null) return;
+  if(!confirm('Cancelar TODAS as visitas agendadas/em andamento das '+sel.length+' escola(s) selecionadas? Visitas ja concluidas nao sao afetadas.'))return;
+
+  var payload=sel.map(function(e){ return {cnpj:e.cnpj||'', nome:e.nome||''}; });
+
+  google.script.run.withSuccessHandler(function(r){
+    if(!vadOk(r)){
+      alert((r&&(r.mensagem||r.erro))||'Nao foi possivel cancelar as visitas.');
+      return;
+    }
+    toast(r.mensagem||'Visitas canceladas!','ok');
+    vadLimparSelecao();
+    if(typeof carregarPainelVisitas==='function') carregarPainelVisitas();
+  }).withFailureHandler(function(e){
+    alert('Erro: '+vadMsgErro(e));
+  }).cancelarVisitasEmLote(payload, motivo, vadToken());
+}
+
 function vadEscolasSelecionadas(){
   return VAD_ESCOLAS.filter(function(e){ return VAD_SELECAO[e.__idx]; });
 }
@@ -687,8 +713,8 @@ function vadAgendarLote(){
   var horaBase=(document.getElementById('vadLoteHora')||{}).value||'08:30';
   var intervalo=parseInt((document.getElementById('vadLoteIntervalo')||{}).value,10)||60;
 
-  if(!data){ alert('Informe a data da rota.'); return; }
-  if(!diretor){ alert('Informe o diretor de base responsavel.'); return; }
+  if(!data){ toast('Informe a data da rota.','warn'); return; }
+  if(!diretor){ toast('Informe o diretor de base responsavel.','warn'); return; }
 
   var partes=String(horaBase).split(':');
   var cursor=(parseInt(partes[0],10)*60)+parseInt(partes[1],10);
@@ -708,8 +734,7 @@ function vadAgendarLote(){
     if(hhU.length<2) hhU='0'+hhU;
     var mmU=String(ultimo%60);
     if(mmU.length<2) mmU='0'+mmU;
-    alert('A ultima visita cairia as '+hhU+':'+mmU+', fora do horario de funcionamento das escolas.\n\n'+
-          'Reduza a selecao, adiante o primeiro horario ou diminua o intervalo.');
+    toast('A ultima visita cairia as '+hhU+':'+mmU+', fora do horario de funcionamento das escolas. Reduza a selecao, adiante o primeiro horario ou diminua o intervalo.','warn');
     return;
   }
 
@@ -740,19 +765,19 @@ function vadAgendarLote(){
     btn.textContent='Agendar rota';
     if(vadOk(r)){
       var m=r.mensagem||'Rota agendada.';
-      if(window.mostrarSucesso) mostrarSucesso(m); else alert(m);
-      if(r.falhas && r.falhas.length) alert('Falhas:\n'+r.falhas.join('\n'));
+      if(window.mostrarSucesso) mostrarSucesso(m); else toast(m,'ok');
+      if(r.falhas && r.falhas.length) toast('Falhas: '+r.falhas.join('; '),'warn');
       vadLimparSelecao();
       carregarPainelVisitas();
     } else {
       var erro=(r&&(r.mensagem||r.erro))||'Nao foi possivel agendar.';
-      if(window.mostrarErro) mostrarErro(erro); else alert(erro);
+      if(window.mostrarErro) mostrarErro(erro); else toast(erro,'err');
     }
   }).withFailureHandler(function(e){
     btn.disabled=false;
     btn.textContent='Agendar rota';
     var msg=vadMsgErro(e);
-    if(window.mostrarErro) mostrarErro('Erro: '+msg); else alert('Erro: '+msg);
+    if(window.mostrarErro) mostrarErro('Erro: '+msg); else toast('Erro: '+msg,'err');
   }).agendarVisitasEmLote(payload, data, diretor, vadToken());
 }
 
@@ -805,9 +830,12 @@ function vadFiltrarMunicipio(idx){
 
 /* ================= Visao 360 ================= */
 
+var VAD_360_ATUAL=null;
+
 function vadAbrir360(idx){
   var e=VAD_ESCOLAS[idx];
   if(!e) return;
+  VAD_360_ATUAL=e;
 
   document.getElementById('vadModalEscola').textContent='Carregando…';
   document.getElementById('vadModalSub').textContent='';
@@ -874,10 +902,15 @@ function vadRender360(r){
   if(!r.visitas.length){
     html+='<div class="vad-hist"><div class="vad-sem-dados">Nenhuma visita registrada.</div></div>';
   } else {
+    var VAD_CANCELAVEIS=['AGENDADA','EM_ANDAMENTO'];
     html+='<div class="vad-hist">'+r.visitas.map(function(v){
+      var podeCancelar=VAD_CANCELAVEIS.indexOf(v.STATUS)>=0;
       return '<div class="vad-hist-item">'+
-        '<b>'+vadEsc(v.DATA_AGENDADA||'—')+(v.HORA_AGENDADA?' as '+vadEsc(v.HORA_AGENDADA):'')+'</b> · '+
-        vadTag(v.STATUS)+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">'+
+        '<div><b>'+vadEsc(v.DATA_AGENDADA||'—')+(v.HORA_AGENDADA?' as '+vadEsc(v.HORA_AGENDADA):'')+'</b> · '+
+        vadTag(v.STATUS)+'</div>'+
+        (podeCancelar?'<button class="vad-btn-cancelar" onclick="vadCancelarVisita(\''+vadEsc(v.ID_VISITA)+'\')">Cancelar</button>':'')+
+        '</div>'+
         '<small>Diretor: '+vadEsc(v.DIRETOR_BASE||'—')+
         (v.DURACAO_MIN?' · '+vadEsc(v.DURACAO_MIN)+' min':'')+
         (v.FICHAS_GERADAS?' · '+vadEsc(v.FICHAS_GERADAS)+' ficha(s)':'')+
@@ -915,6 +948,23 @@ function vadTagTexto(status){
 function vadFecharModal(){
   var m=document.getElementById('vadModal');
   if(m) m.classList.remove('vad-aberto');
+}
+
+function vadCancelarVisita(idVisita){
+  var motivo=prompt('Motivo do cancelamento (opcional):','');
+  if(motivo===null) return; /* usuario cancelou o prompt */
+  if(!confirm('Cancelar esta visita agendada?')) return;
+
+  google.script.run.withSuccessHandler(function(r){
+    if(!vadOk(r)){
+      alert((r&&(r.mensagem||r.erro))||'Nao foi possivel cancelar a visita.');
+      return;
+    }
+    if(VAD_360_ATUAL) vadAbrir360(VAD_ESCOLAS.indexOf(VAD_360_ATUAL));
+    if(typeof carregarPainelVisitas==='function') carregarPainelVisitas();
+  }).withFailureHandler(function(e){
+    alert('Erro: '+vadMsgErro(e));
+  }).cancelarVisita(idVisita, motivo, vadToken());
 }
 
 
