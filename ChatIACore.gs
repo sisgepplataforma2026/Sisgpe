@@ -739,23 +739,35 @@ function selecionarContextoIA_(texto, consulta, limite) {
   limite = Number(limite || 30000);
   if (!texto || texto.length <= limite) return texto;
 
-  var normalizar = function(s) {
-    return String(s || "").toLowerCase()
-      .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  };
-  var q = normalizar(consulta);
+  var q = normalizarBuscaIA_(consulta);
   var termos = q.split(/[^a-z0-9]+/).filter(function(t) {
     return t.length >= 3 && ["que","qual","quais","sobre","para","com","uma","das","dos"].indexOf(t) < 0;
   });
-  var numeroClausula = q.match(/(?:clausula|cl)\s*(\d+)/);
-  if (numeroClausula) termos.push(numeroClausula[1]);
+  /* Radical de cada termo, para "votação" alcançar "votar" — ver o comentário
+     de radicalBuscaIA_ logo abaixo. */
+  var radicais = termos.map(radicalBuscaIA_).filter(function(r, i, a) {
+    return r && r.length >= 3 && a.indexOf(r) === i;
+  });
 
-  var blocos = texto.split(/\n{2,}/);
+  /* Número citado na pergunta vale muito: quem pergunta "o que diz o art. 88"
+     está pedindo AQUELE artigo, não os que falam de assunto parecido. Antes só
+     cláusula era reconhecida; artigo ficava de fora, que é justamente a forma
+     de perguntar sobre o Estatuto. */
+  var numeros = [];
+  var mClausula = q.match(/(?:clausula|cl)\s*(\d+)/);
+  if (mClausula) numeros.push(mClausula[1]);
+  var mArtigo = q.match(/(?:artigo|art)\.?\s*(\d+)/);
+  if (mArtigo) numeros.push(mArtigo[1]);
+
+  var blocos = agruparPorArtigoIA_(texto);
   var avaliados = blocos.map(function(bloco, indice) {
-    var b = normalizar(bloco);
+    var b = normalizarBuscaIA_(bloco);
     var pontos = 0;
-    termos.forEach(function(t) {
-      if (b.indexOf(t) >= 0) pontos += /^\d+$/.test(t) ? 8 : 2;
+    termos.forEach(function(t) { if (b.indexOf(t) >= 0) pontos += 2; });
+    radicais.forEach(function(r) { if (b.indexOf(r) >= 0) pontos += 1; });
+    numeros.forEach(function(n) {
+      if (new RegExp("(art(igo)?\\.?|clausula)\\s*" + n + "\\b").test(b)) pontos += 40;
+      else if (b.indexOf(n) >= 0) pontos += 8;
     });
     return { texto: bloco, indice: indice, pontos: pontos };
   }).filter(function(x) { return x.pontos > 0; })
@@ -773,6 +785,118 @@ function selecionarContextoIA_(texto, consulta, limite) {
   });
   escolhidos.sort(function(a, b) { return a.indice - b.indice; });
   return escolhidos.map(function(x) { return x.texto; }).join("\n\n").substring(0, limite);
+}
+
+/** Minúscula e sem acento — o mesmo tratamento dos dois lados da comparação. */
+function normalizarBuscaIA_(s) {
+  return String(s || "").toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+/**
+ * RADICAL DE UMA PALAVRA, e por que isto existe.
+ *
+ * Medido em 01/09/2026, na homologação, com a chave da API já configurada.
+ * Perguntando "quem pode participar da votação?", a SOFIA citou os arts. 74,
+ * 76, 82, 94 e 96 — e afirmou, categoricamente, que "o Art. 88 não consta no
+ * Estatuto vigente". O art. 88 existe e é EXATAMENTE sobre o assunto: "a
+ * relação dos associados em condições de VOTAR".
+ *
+ * A causa não era a IA. Era esta função não existir. A pontuação usava
+ * `indexOf` do termo literal: a pergunta gera "votacao", o art. 88 diz
+ * "votar", e `indexOf("votacao")` não acha "votar". O artigo pontuou ZERO e
+ * foi filtrado fora — nunca chegou ao prompt. A IA respondeu com o que
+ * recebeu.
+ *
+ * Um documento jurídico é justamente onde isso dói: quem pergunta usa o
+ * substantivo ("votação", "eleição", "filiação") e a lei escreve o verbo
+ * ("votar", "eleger", "filiar-se").
+ *
+ * O radical vale MENOS que o termo exato (1 ponto contra 2), de propósito: ele
+ * existe para o artigo certo entrar na disputa, não para vencer de quem casou
+ * a palavra inteira.
+ */
+function radicalBuscaIA_(termo) {
+  var t = normalizarBuscaIA_(termo);
+  var sufixos = ["coes","cao","mente","ancia","encia","idade","ismo","ista",
+                 "ando","endo","indo","ados","adas","idos","idas","ado","ada",
+                 "ido","ida","ais","eis","ois","oes","ns",
+                 "ar","er","ir","al","es","os","as","s","o","a","e"];
+  for (var passe = 0; passe < 2; passe++) {
+    for (var i = 0; i < sufixos.length; i++) {
+      var suf = sufixos[i];
+      if (t.length - suf.length >= 3 && t.slice(-suf.length) === suf) {
+        t = t.slice(0, -suf.length);
+        break;
+      }
+    }
+  }
+  return t;
+}
+
+/**
+ * AGRUPA O DOCUMENTO POR ARTIGO — o parágrafo não viaja sozinho.
+ *
+ * O segundo defeito medido em 01/09/2026, e o mais grave dos dois.
+ *
+ * O texto era cortado em linha em branco. Num estatuto, "Art. 88. A relação
+ * dos associados…" e o "§1º Aos associados previstos no art. 5º…" são blocos
+ * SEPARADOS. A seleção escolhia um sem o outro, e chegava à IA um parágrafo
+ * legal SEM NÚMERO DE ARTIGO, encostado no texto de outro artigo qualquer.
+ *
+ * Na medição: 25 dos 62 blocos enviados — 40% — começavam com "§". A IA
+ * pendurava esses parágrafos no último número que enxergava. Foi assim que o
+ * §1º do art. 88 saiu na resposta como "§1º do Art. 82": ela não trocou o
+ * número, ela recebeu o texto sem número nenhum.
+ *
+ * Aqui cada unidade começa num "Art. N" (ou "Cláusula N") e leva junto TUDO
+ * o que vem depois — parágrafos, incisos, alíneas e listas sem marcador —
+ * até o próximo artigo ou um cabeçalho de estrutura. Título, capítulo e
+ * seção quebram a unidade, porque não são parte do artigo.
+ *
+ * Documento sem essa estrutura cai no comportamento antigo — cada bloco é uma
+ * unidade —, então nada que não seja lei muda de tratamento.
+ */
+var RE_ARTIGO_IA_ = /^\s*(art(?:igo)?\.?\s*\d+|cl[\u00e1a]usula\s*\d+)/i;
+var RE_CABECALHO_IA_ = /^\s*(t[\u00edi]tulo|cap[\u00edi]tulo|se[\u00e7c][\u00e3a]o|subse[\u00e7c][\u00e3a]o|anexo|pre[\u00e2a]mbulo)\b/i;
+
+function agruparPorArtigoIA_(texto) {
+  /* `\n\s*\n`, e não `\n{2,}` — no Estatuto os blocos vêm separados por
+     "\n \n \n", com espaço nas linhas em branco. `\n{2,}` exige quebras
+     coladas e não casava: a SEÇÃO seguinte ficava grudada no último parágrafo
+     do artigo anterior. Achado pelo passo 7 do t117. */
+  var blocos = String(texto || "").split(/\n\s*\n/);
+  var unidades = [];
+  var atual = null;
+
+  blocos.forEach(function (bloco) {
+    if (!String(bloco).trim()) return;
+
+    if (RE_ARTIGO_IA_.test(bloco)) {
+      if (atual !== null) unidades.push(atual);
+      atual = bloco;
+      return;
+    }
+    if (RE_CABECALHO_IA_.test(bloco)) {
+      if (atual !== null) { unidades.push(atual); atual = null; }
+      unidades.push(bloco);
+      return;
+    }
+    /* TUDO O MAIS CONTINUA O ARTIGO ABERTO — e esta é a segunda lição do t117.
+       A primeira versão listava as formas de "filho" (§, inciso romano,
+       alínea) e quebrava no que não casasse. Só que o §2º do art. 84 é
+       seguido de uma lista sem marcador nenhum ("07 (sete) Diretores da
+       executiva…"): ela não casava, fechava o artigo, e o §3º seguinte chegava
+       ÓRFÃO — exatamente o defeito que este agrupamento existe para eliminar.
+       Enumerar as formas de filho é apostar em conhecer todas. Dentro de um
+       artigo, o que fecha é o próximo artigo ou um cabeçalho de estrutura;
+       o resto é conteúdo dele. */
+    if (atual !== null) { atual += "\n\n" + bloco; return; }
+    unidades.push(bloco);
+  });
+
+  if (atual !== null) unidades.push(atual);
+  return unidades;
 }
 
 /**
@@ -809,7 +933,9 @@ function blocoDocumentoIA_(rotulo, texto, consulta, limite) {
   if (!trechos) return "";
   return "\n=== " + rotulo + " — TRECHOS RELEVANTES ===\n" +
          (identificacao ? identificacao + "\n" : "") +
-         "(Ao citar, diga o artigo ou a cláusula E de qual destes documentos.)\n\n" +
+         "(Ao citar, diga o artigo ou a cláusula E de qual destes documentos.)\n" +
+         "(Isto é uma SELEÇÃO de trechos, não o documento inteiro. Se algo não " +
+         "estiver aqui, diga que não veio nos trechos — NUNCA que não existe.)\n\n" +
          trechos + "\n";
 }
 
@@ -1030,6 +1156,15 @@ var prompt =
     "sobre Estatuto usando a CCT, nem sobre CCT usando o Estatuto: são " +
     "documentos diferentes, e trocá-los produz resposta com a forma certa e a " +
     "fonte errada.\n\n" +
+    /* Acrescentado em 01/09/2026. A SOFIA afirmou que "o Art. 88 não consta
+       no Estatuto vigente" — e ele consta: o que faltava era o trecho, não o
+       artigo. Negá-lo é pior que não achar, porque quem pergunta guarda a
+       negação como fato e para de procurar. */
+    "Os documentos chegam a você em TRECHOS selecionados pela pergunta, nunca " +
+    "inteiros. Por isso: se um artigo ou cláusula não estiver nos trechos, diga " +
+    "que ele NÃO VEIO nos trechos consultados e ofereça buscá-lo pelo número. " +
+    "NUNCA afirme que um artigo não existe, que não consta ou que o documento " +
+    "não o menciona — você não tem o documento inteiro para afirmar isso.\n\n" +
     conteudoCCT +
     "\n" +
     conteudoEstatuto +
@@ -1172,7 +1307,8 @@ var prompt =
     "4. Quando listar urgentes para cobrança, destaque os que têm email cadastrado.\n" +
     "5. Status: AGUARDANDO, CONFIRMADO, PENDENTE_30D, COBRANCA_ENVIADA, REGULARIZADO, DESFILIADO.\n" +
     "6. O usuário já está autenticado no SISGEP. Nunca pergunte quem ele é, seu cargo ou setor. Continue a tarefa usando o contexto da conversa.\n" +
-    "7. Quando relevante, mencione o prazo de repasse da Cláusula 56 (dia 10 do mês seguinte).";
+    "7. Quando relevante, mencione o prazo de repasse da Cláusula 56 (dia 10 do mês seguinte).\n" +
+    "8. CCT e Estatuto chegam em TRECHOS, nunca inteiros. Nunca diga que um artigo ou cláusula não existe: diga que não veio nos trechos e ofereça buscar pelo número.";
 
   return prompt;
 }
