@@ -101,6 +101,126 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
+### 54. Ficha → Ofício — dois achados de desenho, os dois para o usuário decidir
+
+Sétima rodada da frente A, 01/09/2026, ao cobrir com teste (`t129`, 35
+asserções) a ponte entre a Sindicalização e os Ofícios. **Nenhum dos dois é
+bug que eu deva corrigir sozinho** — os dois são política de desenho.
+
+#### 54.1 · O sistema manda apertar um botão que não existe
+
+Quando o ofício falha depois da matrícula já emitida, a mensagem diz:
+*"Use 'Reemitir ofício' depois de verificar o arquivo."*
+
+`reemitirOficioFicha` **existe, tem porta e funciona** — o t129 gera uma
+reemissão de verdade, com número próprio (não reaproveita o do primeiro). Mas
+**nenhuma tela a chama**. Os cinco passos da REGRA Nº 1 foram rodados:
+cabeçalho, `Code.gs` e rotas, gatilhos, `git log`, grep no projeto inteiro.
+Todos deram "sem chamador".
+
+Ou seja: no momento exato em que o sistema instrui a pessoa a apertar um
+botão, o botão não existe. A ficha fica MATRICULADA sem ofício, e não há
+caminho pela interface.
+
+Não é código morto — é o contrário: **código vivo sem porta de entrada**.
+Por isso fica, está coberto por teste, e o que falta é a tela. Tela se desenha
+antes de implementar (REGRA Nº 0.5), então: **quer que eu desenhe?**
+
+#### 54.2 · Aprovar uma ficha exige DOIS módulos
+
+Quem aprova ficha está fazendo trabalho de **Sindicalização**; o ofício é
+efeito colateral que o sistema gera por ela. Mas `gerarOficioWeb` pede
+**Documentos**. Sem os dois módulos, a pessoa **emite a matrícula e não
+comunica a escola** — e o retorno avisa que ficou parcial.
+
+É o mesmo formato do item 52 (o e-mail da escola atrás de outro módulo). Duas
+decisões da mesma família, e as duas são suas.
+
+Antes de hoje isso vinha ainda pior: sem o token descendo (item 53), a recusa
+aparecia como **"Sessão inválida ou expirada"** — erro que manda a pessoa
+fazer login de novo para um problema que login nenhum resolve. Agora a
+mensagem nomeia o módulo que falta.
+
+#### 54.3 · O vínculo entre a ficha e o ofício se perde sem erro nenhum
+
+`aprovarEEncaminharFicha` grava `OBSERVACOES_OFICIO` na ficha, com o número do
+ofício. Só que **a coluna não existe** no esquema que o
+`configurarAbaSindicalizacao` cria — e o `sindAdm_gravar_` **não lança erro**
+quando o campo não tem coluna: descarta em silêncio. O `catch` marcado como
+"campo opcional" nunca dispara, porque não há o que capturar.
+
+Resultado: depois de aprovada, **não há como saber qual ofício comunicou qual
+filiação**.
+
+**Não corrigi, e o motivo é a REGRA Nº 1:** acrescentar coluna é mudança de
+esquema numa aba com dado real, e o `configurarAbaSindicalizacao`
+**reescreve a linha 1 inteira** — se a planilha de produção tiver colunas
+além da lista, rodá-lo sobrescreveria o cabeçalho delas.
+
+**O que preciso de você:** a aba de fichas da produção tem a coluna
+`OBSERVACOES_OFICIO`? Se tiver, o defeito é só do esquema que o código cria e
+a correção é trivial. Se não tiver, é preciso decidir como acrescentá-la sem
+passar pelo `configurarAbaSindicalizacao`.
+
+### 53. 🚨 REGRESSÃO MINHA, DO MESMO DIA — ofício com ficha anexada parou de funcionar
+
+**Corrigida no repositório em 01/09/2026, no mesmo dia em que a causei.
+Nunca chegou a produção. Falta confirmar em homologação.**
+
+Registro aqui porque errar sem registrar é o que faz o erro voltar.
+
+**O QUE EU FIZ DE ERRADO.** Ao fechar as funções abertas do Módulo 03, pus
+porta de módulo no `processarFichasParaOficio`. Atualizei os chamadores das
+**telas** e não vi um chamador interno, em `.gs`: o `gerarOficioWebComFichas`
+(`OficioService.gs`) chamava `processarFichasParaOficio(dados.fichas)` sem
+passar token.
+
+**O ESTRAGO.** Todo ofício com ficha anexada passaria a morrer lá dentro, com
+"Sessão inválida" engolido pelo `catch` e devolvido como `{erro: true}`. É o
+caminho do **ofício de filiação com a ficha assinada** — a operação viva.
+A porta que pus para proteger o dado quebrava o uso legítimo.
+
+**POR QUE PASSOU DESPERCEBIDO.** A suíte ficou **verde**. Nenhum teste
+exercitava esse caminho, e o `catch` virava a exceção em `{erro: true}`, que
+ninguém checava. É a assinatura do defeito que este projeto mais encontra: o
+sistema para de funcionar sem que nada dê erro à vista.
+
+**A TRAVA QUE FICOU** (`t130`, 10 asserções), e ela é o que importa daqui:
+
+1. uma **varredura** de todo `.gs` procurando chamada de função com porta,
+   feita de outro `.gs`, sem passar token — pega a classe inteira do erro,
+   não só este caso;
+2. um **teste de comportamento** que gera um ofício com ficha e confere que a
+   fila recebe **dois** anexos (o ofício e a ficha). Um só significaria a
+   ficha descartada no caminho — a mesma forma do defeito do reenvio, que
+   levava o ofício e deixava a carta.
+
+Verifiquei que a trava pega: reintroduzi a regressão e os dois passos ficaram
+vermelhos; desfeita, verdes.
+
+**E MAIS OITO CHAMADAS SEM TOKEN, ESSAS ANTERIORES A HOJE.** A varredura achou
+o resto da família, e nenhuma tinha teste:
+
+| Onde | O que estava quebrado |
+|---|---|
+| `SindicalizacaoOficio.gs` (3) | `previewOficioFiliacao`, `aprovarEEncaminharFicha` e `reemitirOficioFicha` **nunca** geraram ofício — o token não descia para `gerarOficioWeb`/`previewOficioWeb` |
+| `IA_DocumentosSindicalizacao.gs` (4) | desfiliação e oposição à taxa negocial, mesma coisa |
+| `IACore.gs`, `IA_Oficios.gs` (2) | a IA analisava a escola **sem** o histórico de ofícios dela, e sem avisar que faltou |
+
+Todas corrigidas. Uma exceção fica **declarada com motivo** no t130:
+`CentralEmailIA.gs` chama de dentro de um helper privado cujos chamadores são
+legados sem token; ali a chamada degrada com aviso visível, e dar token às
+legadas é mudança maior que esta rodada carrega.
+
+**O QUE FALTA VERIFICAR NO AR:**
+
+1. **emitir um ofício de filiação com a ficha anexada** — é o caminho que eu
+   quebrei e consertei; se algo escapou, é aqui que aparece;
+2. a **desfiliação por carta analisada pela IA** e a **oposição à taxa
+   negocial** — os outros quatro chamadores corrigidos;
+3. a **análise de escola pela IA** — deve passar a trazer o histórico de
+   ofícios, que antes vinha vazio em silêncio.
+
 ### 52. Ofícios — quem trabalha DOCUMENTOS não consegue consertar o e-mail da escola
 
 Achado da sexta rodada da frente A, 01/09/2026, ao cobrir com teste

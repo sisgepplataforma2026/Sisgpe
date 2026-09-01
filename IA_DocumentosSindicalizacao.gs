@@ -181,7 +181,7 @@ function analisarCartaDesfiliacaoIA(base64, nomeArquivo, mimeType, tokenSessao) 
 
     var sugestaoEscolas = [];
     try {
-      var resultadoEscolas = buscarEscolasParaOficio('', extraido.escola || '');
+      var resultadoEscolas = buscarEscolasParaOficio('', extraido.escola || '', tokenSessao);
       sugestaoEscolas = resultadoEscolas.escolas || [];
       if (resultadoEscolas.sugerida) {
         sugestaoEscolas = [resultadoEscolas.sugerida].concat(
@@ -312,7 +312,7 @@ function confirmarDesfiliacaoIA(dados, tokenSessao) {
       fichas: anexoCarta ? [anexoCarta] : [],
       observacoes: 'Desfiliação processada com apoio de IA (leitura de carta) · ' + (dados.motivo || ''),
       confirmarDuplicata: !!dados.confirmarDuplicata
-    });
+    }, tokenSessao);
 
     if (retorno && retorno.duplicataDetectada) {
       return retorno; // devolve pro cliente perguntar/confirmar, igual ao fluxo manual
@@ -705,7 +705,7 @@ function analisarCartaOposicaoTaxaNegocialIA(base64, nomeArquivo, mimeType, toke
 
     var sugestaoEscolas = [];
     try {
-      var resultadoEscolas = buscarEscolasParaOficio('', extraido.escola || '');
+      var resultadoEscolas = buscarEscolasParaOficio('', extraido.escola || '', tokenSessao);
       sugestaoEscolas = resultadoEscolas.escolas || [];
       if (resultadoEscolas.sugerida) {
         sugestaoEscolas = [resultadoEscolas.sugerida].concat(
@@ -807,7 +807,7 @@ function confirmarOposicaoTaxaNegocialIA(dados, tokenSessao) {
       fichas: anexoCarta ? [anexoCarta] : [],
       observacoes: 'Oposição à Taxa Negocial processada com apoio de IA (leitura de carta) · ' + (dados.motivo || ''),
       confirmarDuplicata: !!dados.confirmarDuplicata
-    });
+    }, tokenSessao);
 
     if (retorno && retorno.duplicataDetectada) {
       return retorno; // devolve pro cliente perguntar/confirmar, igual ao fluxo manual

@@ -180,13 +180,16 @@ function previewOficioFiliacao(idFicha, escola, tokenSessao) {
       return { sucesso: false, mensagem: 'Selecione a escola destinatária.' };
     }
 
+    /* O token desce: o previewOficioWeb pede o modulo Documentos e esta
+       chamada nao passava nada — a previa morria em "Sessao invalida" desde
+       sempre. Defeito ANTERIOR a 01/09/2026, achado ao cobrir com teste. */
     var html = previewOficioWeb({
       tipo: 'FILIACAO',
       escola: escola.nome,
       cnpj: escola.cnpj,
       email: escola.emailPrincipal || '',
       colaboradores: [String(f.NOME_COMPLETO || '').trim()]
-    });
+    }, tokenSessao);
 
     return {
       sucesso: true,
@@ -291,7 +294,7 @@ function aprovarEEncaminharFicha(idFicha, escola, aprovadoPor, tokenSessao) {
       // Este fluxo não tem interface para perguntar ao usuário, então já confirma
       // — o aviso de duplicata (achado #4) vale para o formulário manual.
       confirmarDuplicata: true
-    });
+    }, tokenSessao);
   } catch (eOf) {
     Logger.log('gerarOficioWeb falhou: ' + eOf.message);
     return {
@@ -375,7 +378,7 @@ function reemitirOficioFicha(idFicha, escola, usuario, tokenSessao) {
     // duplicidade (achado #4) deve barrar, e este fluxo não tem interface para
     // perguntar ao usuário.
     confirmarDuplicata: true
-  });
+  }, tokenSessao);
 
   if (!retorno || retorno.erro) {
     return { sucesso: false, mensagem: (retorno && retorno.mensagem) || 'Falha ao gerar o ofício.' };
