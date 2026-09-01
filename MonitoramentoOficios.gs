@@ -11,6 +11,81 @@
 
 /* ── Confirmações de Recebimento ── */
 
+/* ==========================================================================
+   COMO SE DECIDE QUE UM OFICIO FOI RECEBIDO — e o que estava errado
+
+   Achado em 01/09/2026, puxando o fio de tres bounces reais para a FAESA
+   (oficios 144, 236 e 242, todos para thalia.ferreira@faesa.br). Na producao
+   o 144 estava marcado CONFIRMADO. A pergunta foi: confirmado por quem?
+
+   O DEFEITO ERA A PALAVRA "ok", PROCURADA COM indexOf
+
+   `indexOf` casa PEDACO de palavra. Medido contra textos reais:
+
+     "Enviado do meu Outlook"                  -> casava por "ok"
+     "Sent from Outlook for iOS"               -> casava por "ok"
+     "Nao pode ser entregue. Token invalido."  -> casava por "ok"
+     "Estou de ferias. Obrigado pelo contato." -> casava por "obrigado"
+
+   Ou seja: o oficio era dado como recebido porque alguem respondeu de um
+   Outlook, ou porque um robo de ferias agradeceu.
+
+   E A BUSCA JA ERA LARGA
+
+   A consulta ao Gmail procura pelo numero do oficio OU PELO NOME DA ESCOLA.
+   Buscar pelo nome da escola significa que qualquer e-mail trocado com
+   aquela escola, sobre qualquer assunto, entrava na conta. Somando as duas
+   coisas: qualquer conversa com a FAESA em que aparecesse "Outlook"
+   confirmava o oficio.
+
+   O QUE FICA PIOR DEPOIS: confirmado sai do filtro do verificador de bounce,
+   que so olha ENVIADO e PENDENTE. Entao o oficio que mais claramente NAO
+   chegou era justamente o que nenhuma rotina voltava a olhar.
+
+   O QUE MUDOU
+
+   1. "ok" passou a valer so como palavra inteira. "Outlook" e "token" nao
+      confirmam mais nada.
+   2. Remetente automatico — mailer-daemon, postmaster, no-reply e afins —
+      nao confirma. Antes so financeiro@ e secretaria@ eram ignorados, entao
+      um robo podia confirmar oficio.
+
+   O QUE NAO MUDOU, DE PROPOSITO: "obrigado" e "obrigada" continuam na lista.
+   Sao ambiguos de verdade — muita gente responde "obrigado, recebido" — e
+   tira-los faria o sistema deixar de reconhecer confirmacao legitima. E
+   decisao de operacao, nao de codigo, e fica registrada aqui como escolha.
+   ========================================================================== */
+
+/* Termos que confirmam. "ok" fica fora daqui porque exige limite de palavra. */
+var MON_OFICIOS_CONFIRMA_ = ["recebido", "recebemos", "confirmo", "confirmamos",
+                             "ciente", "acusamos", "obrigado", "obrigada"];
+
+var MON_OFICIOS_AUTOMATICOS_ = ["mailer-daemon", "mailerdaemon", "postmaster",
+                                "no-reply", "noreply", "nao-responda",
+                                "naoresponda", "do-not-reply", "donotreply",
+                                "automatic", "notification@", "notifications@"];
+
+/** O remetente e um robo? Robo nao confirma recebimento de oficio. */
+function MON_OFICIOS_ehRemetenteAutomatico_(from) {
+  var f = String(from || "").toLowerCase();
+  for (var i = 0; i < MON_OFICIOS_AUTOMATICOS_.length; i++) {
+    if (f.indexOf(MON_OFICIOS_AUTOMATICOS_[i]) > -1) return true;
+  }
+  return false;
+}
+
+/** O texto confirma recebimento? "ok" so vale como palavra inteira. */
+function MON_OFICIOS_textoConfirmaRecebimento_(texto) {
+  var t = String(texto || "").toLowerCase();
+  for (var i = 0; i < MON_OFICIOS_CONFIRMA_.length; i++) {
+    if (t.indexOf(MON_OFICIOS_CONFIRMA_[i]) > -1) return true;
+  }
+  /* O defeito inteiro morava aqui: "Outlook" tem "ok" dentro. */
+  return /(^|[^a-z0-9])ok([^a-z0-9]|$)/i.test(t);
+}
+
+
+
 /* ─────────────────────────────────────────────────────────────────────────
    POR QUE ESTES QUATRO GANHARAM PORTA — 01/09/2026
 
@@ -217,20 +292,13 @@ function verificarConfirmacoesRecebimento() {
 
           if (from.indexOf("financeiro@sindeducacao.com") > -1) continue;
           if (from.indexOf("secretaria@sindeducacao.com") > -1) continue;
+          /* Remetente automatico nao confirma nada — ver a nota grande acima
+             de MON_OFICIOS_CONFIRMA_. */
+          if (MON_OFICIOS_ehRemetenteAutomatico_(from)) continue;
 
           var texto = subject + " " + body;
 
-          if (
-            texto.indexOf("recebido") > -1 ||
-            texto.indexOf("recebemos") > -1 ||
-            texto.indexOf("confirmo") > -1 ||
-            texto.indexOf("confirmamos") > -1 ||
-            texto.indexOf("ciente") > -1 ||
-            texto.indexOf("ok") > -1 ||
-            texto.indexOf("acusamos") > -1 ||
-            texto.indexOf("obrigado") > -1 ||
-            texto.indexOf("obrigada") > -1
-          ) {
+          if (MON_OFICIOS_textoConfirmaRecebimento_(texto)) {
             confirmado = true;
             break;
           }
@@ -320,7 +388,20 @@ function verificarFalhasEntregaOficios() {
 
     for (var i = 0; i < dados.length; i++) {
       var status = MON_OFICIOS_normStatus_(dados[i][colStatus - 1]);
-      if (status !== "ENVIADO" && status !== "PENDENTE") continue;
+      if (status !== "ENVIADO" && status !== "PENDENTE") {
+        /* CONFIRMADO tambem entra — mas SO quando a confirmacao foi
+           AUTOMATICA. Achado em 01/09/2026: a confirmacao por palavra-chave
+           marcava oficios que na verdade quicaram (ver a nota grande sobre
+           MON_OFICIOS_CONFIRMA_), e uma vez confirmado o oficio saia deste
+           filtro para sempre — nenhuma rotina voltava a olha-lo.
+
+           O que uma PESSOA confirmou fica intocado: ela viu a resposta, e o
+           bounce de um endereco antigo nao pode desfazer isso. A distincao
+           existe porque o proprio sistema grava a origem na observacao. */
+        if (status !== "CONFIRMADO") continue;
+        var obsConf = colObs ? String(dados[i][colObs - 1] || "") : "";
+        if (!/confirma[\u00e7c][\u00e3a]o localizada automaticamente/i.test(obsConf)) continue;
+      }
 
       var numero = String(dados[i][colNumero - 1] || "").trim();
       if (!numero) continue;

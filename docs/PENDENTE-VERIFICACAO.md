@@ -49,12 +49,13 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 ## 📌 O QUE ESTÁ ABERTO — índice
 
-> Gerado em 31/08/2026. São **38 itens**  (o 21 e o 46 fecharam em 01/09). A lista completa, com o detalhe de
+> Gerado em 31/08/2026. São **39 itens**  (o 21 e o 46 fecharam em 01/09). A lista completa, com o detalhe de
 > cada um, está na seção ABERTO logo abaixo — este índice existe só para não
 > ser preciso ler 2.000 linhas para saber o que cobrar.
 
 | Nº | Item |
 |---|---|
+| 49 | Ofícios — "Outlook" confirmava recebimento; 144/236/242 a reprocessar |
 | 48 | Gmail — homologação lê a caixa de e-mail da PRODUÇÃO |
 | 47 | Módulo 03 (Ofícios) — NÃO auditado; um fio puxado, o resto aberto |
 | 45 | Firebase — homologação e produção compartilham o MESMO Firestore |
@@ -99,6 +100,68 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
+
+### 49. Ofícios — "Outlook" confirmava recebimento; 144/236/242 a reprocessar
+
+**O achado mais grave do Módulo 03**, 01/09/2026. Corrigido no repositório
+(`MonitoramentoOficios.gs`, `t122` com 28 asserções); **falta levar à produção
+e reprocessar os três ofícios**.
+
+**COMO APARECEU.** O gatilho de falhas de entrega, recém-instalado na
+homologação, achou três bounces — ofícios **144, 236 e 242**, todos para o
+mesmo endereço, `thalia.ferreira@faesa.br`. O mesmo verificador na PRODUÇÃO
+achou **zero**. A planilha explicou: na produção o 144 estava **CONFIRMADO**.
+
+**A CAUSA — `indexOf("ok")` casa pedaço de palavra.** Medido contra texto real:
+
+| Texto que chegava | Confirmava? |
+|---|---|
+| "Enviado do meu **Outl·ok**" | ✅ por `ok` |
+| "Sent from **Outl·ok** for iOS" | ✅ por `ok` |
+| "Não pode ser entregue. **T·ok·en** inválido." | ✅ por `ok` |
+| "Estou de férias. **Obrigado** pelo contato." | ✅ por `obrigado` |
+
+E a busca no Gmail já era larga: procura pelo número do ofício **ou pelo nome
+da escola**. Somando, qualquer conversa com a FAESA em que aparecesse a
+assinatura "Outlook" confirmava o ofício.
+
+**A CADEIA, e nenhum passo dela reclama:** o ofício sai → quica → alguma
+mensagem da thread menciona a escola e traz "Outlook" → CONFIRMADO → o
+verificador de bounce só olha ENVIADO e PENDENTE, e pula para sempre → a Home
+mostra tudo verde.
+
+**O ofício que mais claramente NÃO chegou era o que ficava marcado como
+recebido.**
+
+**AS TRÊS CORREÇÕES:** `ok` só como palavra inteira; remetente automático
+(mailer-daemon, postmaster, no-reply) não confirma; e o verificador de bounce
+volta a olhar o que foi confirmado **automaticamente** — nunca o que uma
+pessoa confirmou, distinção que o próprio sistema já permite porque grava
+"Confirmação localizada automaticamente no Gmail" na observação.
+
+**"obrigado" ficou na lista de propósito** — muita gente responde "obrigado,
+recebido", e tirá-lo faria o sistema deixar de reconhecer confirmação
+legítima. É decisão de operação; fica registrada como escolha.
+
+**O QUE FALTA**
+
+1. **Levar a correção para a produção** (`MonitoramentoOficios.gs`). Só lá os
+   três ofícios voltam a ser verificados.
+2. **Conferir o status de 144, 236 e 242 depois disso** — devem virar
+   `FALHA_ENTREGA`.
+3. **Corrigir o e-mail da FAESA no cadastro** antes de reenviar, senão vira o
+   quarto bounce. Três ofícios para a mesma pessoa indica contato que saiu da
+   instituição.
+4. **Quantos outros estão errados?** Ninguém mediu quantos ofícios foram
+   confirmados por "Outlook" ao longo do tempo. A correção impede novos; os
+   antigos só se descobrem reprocessando.
+
+**CORREÇÃO DE UMA AFIRMAÇÃO MINHA:** no item 47 e no commit do `t118` eu
+escrevi que "ninguém é avisado quando um ofício falha". Vale para a FILA
+(`FilaOficios.gs`, ERRO_PERMANENTE — continua sem aviso), mas é **falso para
+falha de entrega**: `notificarFalhasEntregaOficios_` manda e-mail para
+`financeiro@sindeducacao.com` sempre que detecta bounce. Eu não tinha visto.
+
 
 ### 48. Gmail — homologação lê a caixa de e-mail da PRODUÇÃO
 
