@@ -81,12 +81,76 @@ jobs:
       - name: Configurar credencial da Secretaria e travar o projeto de Producao
         shell: bash
         env:
-          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON_PRODUCAO_SECRETARIA }}
+          CLASPRC_SECRET: ${{ secrets.CLASPRC_JSON_PRODUCAO_SECRETARIA }}
         run: |
           set -euo pipefail
-          test -n "$CLASPRC_JSON"
-          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
-          node -e 'JSON.parse(require("fs").readFileSync(process.env.HOME+"/.clasprc.json","utf8"))'
+          if [ -z "${CLASPRC_SECRET:-}" ]; then
+            echo "::error::O segredo CLASPRC_JSON_PRODUCAO_SECRETARIA esta vazio ou nao foi cadastrado."
+            exit 1
+          fi
+
+          node <<'JS'
+          const fs = require("fs");
+
+          const destino = process.env.HOME + "/.clasprc.json";
+          let bruto = String(process.env.CLASPRC_SECRET || "")
+            .replace(/^\uFEFF/, "")
+            .trim();
+
+          function tentarJson(texto) {
+            try {
+              let valor = JSON.parse(texto);
+              if (typeof valor === "string") valor = JSON.parse(valor);
+              return valor;
+            } catch (_) {
+              return null;
+            }
+          }
+
+          let credencial = tentarJson(bruto);
+          let formato = "JSON";
+
+          if (!credencial) {
+            const compacto = bruto.replace(/\s+/g, "");
+            if (/^[A-Za-z0-9+/_=-]+$/.test(compacto) && compacto.length >= 16) {
+              try {
+                const normalizado = compacto.replace(/-/g, "+").replace(/_/g, "/");
+                const decodificado = Buffer.from(normalizado, "base64")
+                  .toString("utf8")
+                  .replace(/^\uFEFF/, "")
+                  .trim();
+                credencial = tentarJson(decodificado);
+                if (credencial) formato = "Base64";
+              } catch (_) {}
+            }
+          }
+
+          if (!credencial || typeof credencial !== "object" || Array.isArray(credencial)) {
+            console.error("::error::O segredo da Secretaria nao contem um .clasprc.json valido. Aceitos: JSON bruto ou Base64 do arquivo completo.");
+            process.exit(1);
+          }
+
+          let token = null;
+          if (credencial.tokens && typeof credencial.tokens === "object") {
+            const chaves = Object.keys(credencial.tokens).filter((k) => credencial.tokens[k]);
+            token = credencial.tokens.default || (chaves.length ? credencial.tokens[chaves[0]] : null);
+          } else if (credencial.token && typeof credencial.token === "object") {
+            token = credencial.token;
+          } else {
+            token = credencial;
+          }
+
+          const refreshToken = String((token && token.refresh_token) || credencial.refresh_token || "");
+          if (!refreshToken) {
+            console.error("::error::A credencial foi lida, mas nao possui refresh_token. Gere novamente com clasp login usando secretaria@sindeducacao.com.");
+            process.exit(1);
+          }
+
+          fs.writeFileSync(destino, JSON.stringify(credencial, null, 2), { mode: 0o600 });
+          fs.chmodSync(destino, 0o600);
+          console.log(`credencial da Secretaria carregada com sucesso (${formato}); conteudo mantido oculto.`);
+          JS
+
           printf '{"scriptId":"%s","rootDir":".","fileExtension":"gs"}' "$PROD_SCRIPT_ID" > .clasp.json
           node -e '
             const fs = require("fs");
