@@ -1,0 +1,8 @@
+node_modules/
+.clasp.json
+.clasprc.json
+client_secret*.json
+
+# Canvas de design gerado (2,5 MB, reconstruído a partir dos .dc.html)
+design/*.html
+!design/*.dc.html

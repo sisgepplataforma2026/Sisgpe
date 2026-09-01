@@ -136,7 +136,7 @@ const Dashboard = {
       google.script.run
         .withSuccessHandler(function(f) { Dashboard.renderFilaResumo(f); })
         .withFailureHandler(function(err) { console.warn('Fila resumo não disponível'); })
-        .dashboardFilaEnvioResumo();
+        .dashboardFilaEnvioResumo(SISGEP_TOKEN_SESSAO);
     }
   },
 

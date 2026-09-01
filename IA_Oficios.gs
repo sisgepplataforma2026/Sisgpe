@@ -8,7 +8,7 @@
 // ============================================================================
 
 function analisarEscolaIA_Oficios_(cnpjOuNome, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "documentos", false);
   cnpjOuNome = String(cnpjOuNome || "").trim();
 
   if (!cnpjOuNome) {

@@ -66,7 +66,7 @@ function rh_obterPastaDocumentos_() {
  * DOCUMENTOS DO COLABORADOR
  * ========================================= */
 function uploadDocumentoRH(dados, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "rh", false);
   try {
     dados = dados || {};
     var colaboradorId = String(dados.colaboradorId || "").trim();
@@ -90,7 +90,7 @@ function uploadDocumentoRH(dados, tokenSessao) {
     var blob = Utilities.newBlob(bytes, tipoArq, nomeFinal);
     var pasta = rh_obterPastaDocumentos_();
     var arquivo = pasta.createFile(blob);
-    try { arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (eShare) {}
+    try { arquivoAplicarPolitica_(arquivo, "RHDocumentos.gs"); } catch (eShare) {}
 
     var link = "https://drive.google.com/file/d/" + arquivo.getId() + "/view";
     var quem = sessao.nome || sessao.usuario || "SISGEP";
@@ -106,7 +106,7 @@ function uploadDocumentoRH(dados, tokenSessao) {
 }
 
 function listarDocumentosRH(colaboradorId, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "rh", false);
   try {
     colaboradorId = String(colaboradorId || "").trim();
     var sh = rh_garantirDocumentos_();
@@ -131,7 +131,7 @@ function listarDocumentosRH(colaboradorId, tokenSessao) {
 // Exclusão exige administrador — mesmo critério do cadastro de
 // colaborador (dado sensível de RH).
 function excluirDocumentoRH(id, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, true);
+  exigirModulo_(tokenSessao, "rh", true);
   try {
     id = String(id || "").trim();
     if (!id) return { ok: false, mensagem: "Documento não informado." };
@@ -147,7 +147,7 @@ function excluirDocumentoRH(id, tokenSessao) {
           try { DriveApp.getFileById(fileId).setTrashed(true); }
           catch (eTrash) { Logger.log("excluirDocumentoRH: não consegui mover pra lixeira (" + fileId + "): " + eTrash.message); }
         }
-        sh.deleteRow(i + 2);
+        lixeiraMover_(sh, i + 2, { origem: "excluirDocumentoRH" });
         return { ok: true, mensagem: "Documento excluído com sucesso." };
       }
     }
@@ -160,7 +160,7 @@ function excluirDocumentoRH(id, tokenSessao) {
 // Contagem real para o card "Documentos" do dashboard — antes reaproveitava
 // a data de vencimento de férias e não contava documento nenhum.
 function contarDocumentosRH(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "rh", false);
   try {
     var sh = rh_garantirDocumentos_();
     return Math.max(0, sh.getLastRow() - 1);
@@ -328,7 +328,7 @@ function rh_montarBlobHolerite_(idLancamento) {
 // Gera o PDF e devolve em base64 — sem salvar no Drive, sem link público.
 // Quem gerou fica só no log (dado sensível: salário líquido, IRRF).
 function gerarHoleritePDF(idLancamento, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "rh", false);
   try {
     var m = rh_montarBlobHolerite_(idLancamento);
     if (!m) return { ok: false, mensagem: "Lançamento de folha não encontrado." };
@@ -382,7 +382,7 @@ function rh_enviarHoleritePorEmail_(idLancamento, quem) {
 // existe fila/histórico de reenvio nesta fase: cada clique dispara um
 // envio imediato, best-effort (falha não desfaz nada, só devolve erro).
 function enviarHoleritePorEmail(idLancamento, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "rh", false);
   try {
     var r = rh_enviarHoleritePorEmail_(idLancamento, sessao.nome || sessao.usuario);
     if (!r.ok) return { ok: false, mensagem: "Erro ao enviar e-mail" + (r.nome ? " (" + r.nome + ")" : "") + ": " + r.mensagem };
@@ -396,7 +396,7 @@ function enviarHoleritePorEmail(idLancamento, tokenSessao) {
 // vez — best-effort por pessoa: quem não tem e-mail cadastrado ou dá
 // erro no envio é reportado separadamente, não trava os demais.
 function enviarTodosHoleritesPorEmail(competencia, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "rh", false);
   try {
     competencia = String(competencia || "").trim();
     if (!competencia) return { ok: false, mensagem: "Informe a competência." };

@@ -26,17 +26,7 @@ var PASTA_OFICIOS_LIVRE_ID         = "1MToLVFg_TmRH5DfvnlKIVPwmbmUOYTYn";
 /* ================= PASTA POR TIPO ================= */
 
 function obterPastaPorTipo_(tipoNorm) {
-  var mapa = {
-    "FILIACAO":                 PASTA_OFICIOS_FILIACAO_ID,
-    "DESFILIACAO":              PASTA_OFICIOS_DESFILIACAO_ID,
-    "TAXA_NEGOCIAL":            PASTA_OFICIOS_TAXA_NEGOCIAL_ID,
-    // Sem pasta própria ainda — reaproveita a pasta de Taxa Negocial,
-    // já que trata do mesmo assunto (Cláusula 57ª), só que em sentido oposto.
-    "OPOSICAO_TAXA_NEGOCIAL":   PASTA_OFICIOS_TAXA_NEGOCIAL_ID,
-    "TAXA_ASSISTENCIAL":        PASTA_OFICIOS_TAXA_ASSIST_ID,
-    "OFICIO_LIVRE":             PASTA_OFICIOS_LIVRE_ID
-  };
-  var id = mapa[String(tipoNorm || "").toUpperCase()] || PASTA_OFICIOS_ID;
+  var id = getPastaOficiosDestinoId_(tipoNorm);
   return obterOuCriarSubpastaAno(id);
 }
 
@@ -184,6 +174,15 @@ function preverProximoNumeroOficio() {
     });
   }
 
+  try {
+    var ambientePreview = (typeof getAmbienteAtual === "function")
+      ? String(getAmbienteAtual() || "producao").toUpperCase()
+      : "PRODUCAO";
+    var reservadoPreview = parseInt(PropertiesService.getScriptProperties()
+      .getProperty("SISGEP_OFICIO_SEQ_" + ambientePreview + "_" + ano) || "0", 10);
+    if (!isNaN(reservadoPreview) && reservadoPreview > maiorNumero) maiorNumero = reservadoPreview;
+  } catch (ePreview) {}
+
   var proximo = String(maiorNumero + 1).padStart(3, "0") + "/" + ano;
   Logger.log("Prévia do próximo número: " + proximo);
   return proximo;
@@ -216,8 +215,10 @@ function gerarProximoNumeroSeguro() {
       });
     }
 
+    var propsNumero = PropertiesService.getScriptProperties();
+
     try {
-      var numeroTaxa = String(PropertiesService.getScriptProperties()
+      var numeroTaxa = String(propsNumero
         .getProperty("TAXA_ASSISTENCIAL_NUMERO_OFICIO") || "").trim();
       if (numeroTaxa && numeroTaxa.indexOf("/" + ano) > -1) {
         var numTaxa = parseInt(numeroTaxa.split("/")[0].trim(), 10);
@@ -225,8 +226,20 @@ function gerarProximoNumeroSeguro() {
       }
     } catch (e) { Logger.log("[gerarProximoNumeroSeguro] " + e); }
 
-    var proximo = String(maiorNumero + 1).padStart(3, "0") + "/" + ano;
-    Logger.log("gerarProximoNumeroSeguro: " + proximo);
+    var ambienteNumero = (typeof getAmbienteAtual === "function")
+      ? String(getAmbienteAtual() || "producao").toUpperCase()
+      : "PRODUCAO";
+    var chaveSequencia = "SISGEP_OFICIO_SEQ_" + ambienteNumero + "_" + ano;
+    var ultimoReservado = parseInt(propsNumero.getProperty(chaveSequencia) || "0", 10);
+    if (!isNaN(ultimoReservado) && ultimoReservado > maiorNumero) maiorNumero = ultimoReservado;
+
+    var sequencia = maiorNumero + 1;
+    var proximo = String(sequencia).padStart(3, "0") + "/" + ano;
+
+    // A reserva é persistida ANTES de liberar a trava. Assim, mesmo que PDF,
+    // Drive ou planilha falhem depois, outra emissão nunca reutiliza o número.
+    propsNumero.setProperty(chaveSequencia, String(sequencia));
+    Logger.log("gerarProximoNumeroSeguro: reservado " + proximo + " em " + chaveSequencia);
     return proximo;
 
   } finally {
@@ -289,7 +302,7 @@ function protegerLogSistema_(sheet) {
 /* ================= GERAR PDF ================= */
 
 function gerarPDFOficio(templateId, numero, escola, cnpj, colaboradores, dataHoje, codigo) {
-  var pastaAno     = obterOuCriarSubpastaAno(PASTA_OFICIOS_ID);
+  var pastaAno     = obterOuCriarSubpastaAno(getPastaOficiosDestinoId_("FILIACAO"));
   var baseUrl      = ScriptApp.getService().getUrl();
   var urlValidacao = baseUrl ? baseUrl + "?codigo=" + codigo : "";
   var nomeBase     = montarNomeArquivoOficio_(numero, escola, colaboradores, new Date()).replace(/\.pdf$/i, "");
@@ -306,7 +319,7 @@ function gerarPDFOficio(templateId, numero, escola, cnpj, colaboradores, dataHoj
 }
 
 function gerarPDFOficioLivre(numero, para, cargo, assunto, corpo, dataHoje, codigo, cidadeUf) {
-  var pastaAno     = obterOuCriarSubpastaAno(PASTA_OFICIOS_LIVRE_ID);
+  var pastaAno     = obterOuCriarSubpastaAno(getPastaOficiosDestinoId_("OFICIO_LIVRE"));
   var baseUrl      = ScriptApp.getService().getUrl();
   var urlValidacao = baseUrl ? baseUrl + "?codigo=" + codigo : "";
   var nomeBase     = montarNomeArquivoOficio_(numero, para || "", []).replace(/\.pdf$/i, "");
@@ -539,7 +552,18 @@ function montarDadosOficio_(dados, modo) {
 // SEM trava de modulo: mesma razao de gerarOficioWeb — a Sindicalizacao
 // monta a previa do oficio de filiacao por aqui. Sessao continua exigida.
 function previewOficioWeb(dados, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  /* PORTA TROCADA EM 01/09/2026 — de exigirSessaoDocumentos_ para
+     exigirModulo_. A antiga (Sessao.gs:405) confere se a SESSAO e valida
+     e, quando pedido, se o perfil e administrador — mas NAO consulta os
+     modulos do usuario. Entao qualquer pessoa logada, com ou sem o modulo
+     Documentos, alcancava esta funcao por chamada direta.
+
+     Na Home isso nao aparecia porque o InicioResumo consulta
+     `sessaoPodeModulo_` ANTES de chamar a fonte — a protecao estava no
+     chamador, nao na funcao. Medido pelo t125, passo 9.
+
+     `exigirModulo_` e o padrao da casa (398 usos em 78 arquivos). */
+  var sessao = exigirModulo_(tokenSessao, "documentos", false);
   Logger.log("✅ previewOficioWeb — " + new Date());
   try {
     var proc       = montarDadosOficio_(dados, "preview");
@@ -582,7 +606,7 @@ function previewOficioWeb(dados, tokenSessao) {
 // {erro:true} e a tela mostrava a falha sem dizer a causa. Achado por teste
 // de execucao em 2026-08-05 (tests/e2e/t1-documentos.js).
 function gerarOficioWeb(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     var emailUsuario = String(sessaoDocumentos.email || sessaoDocumentos.usuario || "").trim().toLowerCase();
     if (!dados || typeof dados !== "object") throw new Error("Dados inválidos.");

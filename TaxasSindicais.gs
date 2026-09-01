@@ -116,12 +116,12 @@ function taxa_config_() {
 }
 
 function taxa_obterConfig(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   return taxa_config_();
 }
 
 function taxa_salvarConfig(config, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, true); // alterar alíquota é ato de administrador
+  exigirModulo_(tokenSessao, "financeiro", true); // alterar alíquota é ato de administrador
   try {
     config = config || {};
     var novo = taxa_config_();
@@ -154,7 +154,7 @@ function taxa_salvarConfig(config, tokenSessao) {
  * Idempotente por escola+competência+tipo: não gera duas vezes a mesma cobrança.
  */
 function taxa_gerarParcelas(payload, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
 
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(20000)) return { ok: false, mensagem: "Sistema ocupado, tente novamente em instantes." };
@@ -240,7 +240,7 @@ function taxa_gerarParcelas(payload, tokenSessao) {
 /* ================= LEITURA ================= */
 
 function taxa_listar(tokenSessao, filtros) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   filtros = filtros || {};
 
   var sh = taxa_aba_();
@@ -316,7 +316,7 @@ function taxa_resumoVazio_() {
  * Financeiro falhar, o recebimento fica gravado e o erro vai para o log.
  */
 function taxa_registrarRecebimento(payload, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
 
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(15000)) return { ok: false, mensagem: "Sistema ocupado, tente novamente em instantes." };
@@ -396,7 +396,7 @@ function taxa_registrarRecebimento(payload, tokenSessao) {
 
 /** Cancela uma parcela (erro de lançamento, escola isenta, renegociação). */
 function taxa_cancelarParcela(payload, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, true); // cancelar cobrança é ato de administrador
+  exigirModulo_(tokenSessao, "financeiro", true); // cancelar cobrança é ato de administrador
   try {
     payload = payload || {};
     var id     = String(payload.id || "").trim();
@@ -425,7 +425,7 @@ function taxa_cancelarParcela(payload, tokenSessao) {
 
 /** Competências distintas já lançadas, para o filtro da tela. */
 function taxa_competencias(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   var sh = taxa_aba_();
   if (sh.getLastRow() < 2) return [];
   var mapa = taxa_mapa_(sh);

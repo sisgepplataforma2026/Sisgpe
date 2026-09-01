@@ -22,7 +22,7 @@
  * a indisponibilidade de uma fonte vira aviso na tela, não erro geral.
  */
 function finDashboardExecutivo(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
 
   var out = {
     ok: true,

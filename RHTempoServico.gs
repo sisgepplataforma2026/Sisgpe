@@ -82,7 +82,7 @@ function rh_garantirRubricaFaixaTempoServico_(tier) {
  * ========================================= */
 
 function verificarQuinquenioDecenioRH_publico(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, true);
+  exigirModulo_(tokenSessao, "rh", true);
   try {
     return rh_verificarQuinquenioDecenio_();
   } catch (e) {
@@ -133,7 +133,7 @@ function rh_verificarQuinquenioDecenio_() {
  * ========================================= */
 
 function aplicarQuinquenioDecenioRH_publico(tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, true);
+  var sessao = exigirModulo_(tokenSessao, "rh", true);
   try {
     return rh_aplicarQuinquenioDecenio_(sessao.nome || sessao.usuario || "SISGEP");
   } catch (e) {
@@ -242,7 +242,7 @@ function rh_notificarMudancaTempoServico_(aplicados) {
 // roda rh_rotinaQuinquenioDecenioTrigger_ sozinha, mesmo padrão já
 // usado na Cobrança de Relação Nominal (cob_instalarTriggerDiario_publico).
 function rh_instalarTriggerQuinquenioDecenio_publico(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, true);
+  exigirModulo_(tokenSessao, "rh", true);
   try {
     ScriptApp.getProjectTriggers().forEach(function (t) {
       if (t.getHandlerFunction() === "rh_rotinaQuinquenioDecenioTrigger_") ScriptApp.deleteTrigger(t);
@@ -255,7 +255,7 @@ function rh_instalarTriggerQuinquenioDecenio_publico(tokenSessao) {
 }
 
 function rh_removerTriggerQuinquenioDecenio_publico(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, true);
+  exigirModulo_(tokenSessao, "rh", true);
   try {
     var removidos = 0;
     ScriptApp.getProjectTriggers().forEach(function (t) {
@@ -268,7 +268,7 @@ function rh_removerTriggerQuinquenioDecenio_publico(tokenSessao) {
 }
 
 function rh_statusTriggerQuinquenioDecenio_publico(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "rh", false);
   var instalado = ScriptApp.getProjectTriggers().some(function (t) {
     return t.getHandlerFunction() === "rh_rotinaQuinquenioDecenioTrigger_";
   });

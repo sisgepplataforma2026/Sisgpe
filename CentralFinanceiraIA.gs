@@ -210,7 +210,7 @@ function finGarantirAba_(nomeAba, cabecalho) {
  * setupCentralFinanceiraIA() nunca tiver sido rodado manualmente.
  */
 function finListarCentrosCustoEProjetos(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     finGarantirAbasBase_();
     var ss = SpreadsheetApp.openById(PLANILHA_ID);

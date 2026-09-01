@@ -15,7 +15,7 @@
    EXCLUIR RECIBO DO HISTÓRICO
 ───────────────────────────────────────────────────────────── */
 function excluirReciboHistorico(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, true);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", true);
   try {
     garantirEstruturaModuloRecibos_();
 
@@ -46,7 +46,7 @@ function excluirReciboHistorico(dados, tokenSessao) {
     for (var i = dadosPlan.length - 1; i >= 1; i--) {
       if (String(dadosPlan[i][idxNumero] || "").trim() === alvo) {
         var idProcesso = idxProcesso > -1 ? String(dadosPlan[i][idxProcesso] || "") : "";
-        sh.deleteRow(i + 1);
+        lixeiraMover_(sh, i + 1, { origem: "excluirReciboHistorico" });
         if (idProcesso) atualizarResumoProcessoRecibo_(idProcesso);
         return { erro: false, ok: true, mensagem: "Recibo excluído com sucesso." };
       }
@@ -63,7 +63,7 @@ function excluirReciboHistorico(dados, tokenSessao) {
    MARCAR RECIBO COMO ASSINADO
 ───────────────────────────────────────────────────────────── */
 function marcarReciboComoAssinado(numeroRecibo, observacao, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "documentos", false);
   try {
     garantirEstruturaModuloRecibos_();
 
@@ -112,7 +112,7 @@ function marcarReciboAssinadoRecebido(numeroRecibo, observacao, tokenSessao) {
    EDITAR BENEFICIÁRIO DO RECIBO
 ───────────────────────────────────────────────────────────── */
 function editarBeneficiarioRecibo(numeroRecibo, dadosAtualizados, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "documentos", false);
   try {
     garantirEstruturaModuloRecibos_();
 
@@ -165,7 +165,7 @@ function editarBeneficiarioRecibo(numeroRecibo, dadosAtualizados, tokenSessao) {
    ✅ Paginação: pagina, porPagina
 ───────────────────────────────────────────────────────────── */
 function listarHistoricoRecibos(filtros, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     garantirEstruturaModuloRecibos_();
 
@@ -313,7 +313,7 @@ function listarHistoricoRecibos(filtros, tokenSessao) {
    ✅ Usado pelos cards de resumo no topo da aba Histórico
 ───────────────────────────────────────────────────────────── */
 function obterResumoHistoricoRecibos(tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     garantirEstruturaModuloRecibos_();
 
@@ -396,7 +396,7 @@ function obterResumoHistoricoRecibos(tokenSessao) {
    ✅ Chamado pelo botão de reenvio na tabela do histórico
 ───────────────────────────────────────────────────────────── */
 function reenviarEmailRecibo(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     dados = dados || {};
 
@@ -418,10 +418,10 @@ function reenviarEmailRecibo(dados, tokenSessao) {
           "<strong>" + processo + "</strong> (" + empresa + ").</p>" +
         "<p><strong>📄 Recibo:</strong> " + numero + "</p>" +
         (valor ? "<p><strong>💰 Valor:</strong> R$ " + valor + "</p>" : "") +
-        "<p>👉 <a href='" + linkPdf + "' target='_blank'>Clique aqui para acessar seu recibo</a></p>" +
+        "<p>📄 O recibo segue <strong>em anexo</strong> neste e-mail.</p>" +
         "<p><strong>📌 Para finalizar:</strong></p>" +
         "<ol style='padding-left:18px;'>" +
-          "<li>Abrir o recibo no link acima</li>" +
+          "<li>Abrir o recibo em anexo</li>" +
           "<li>Imprimir o documento</li>" +
           "<li>Assinar o recibo</li>" +
           "<li>Tirar uma foto ou escanear</li>" +
@@ -435,11 +435,34 @@ function reenviarEmailRecibo(dados, tokenSessao) {
 
     var emailUsuario = String(sessaoDocumentos.email || sessaoDocumentos.usuario || "").trim().toLowerCase();
 
+    /* O PDF VAI ANEXADO, E NÃO POR LINK — 20/08/2026.
+       O e-mail levava só um link para o Drive, e o arquivo era público para
+       quem tivesse a URL. Fechado o compartilhamento, o link deixaria de
+       abrir — e este e-mail inteiro existe para entregar o recibo. Então o
+       documento passa a viajar anexado.
+
+       Se o anexo falhar, o envio PARA. Mandar "segue seu recibo" sem recibo
+       nenhum é pior do que não mandar: o associado espera, não cobra, e o
+       processo trava sem ninguém perceber. */
+    var anexosRecibo = [];
+    var idPdf = linkPdf.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (!idPdf) {
+      return { ok: false, mensagem: "Não reconheci o arquivo do recibo no link gravado." };
+    }
+    try {
+      anexosRecibo.push(
+        DriveApp.getFileById(idPdf[1]).getBlob().setName("Recibo " + numero + ".pdf")
+      );
+    } catch (eAnexo) {
+      return { ok: false, mensagem: "Não consegui anexar o recibo: " + eAnexo.message };
+    }
+
     MailApp.sendEmail({
       to:      email,
       subject: "Reenvio — Seu recibo está disponível — " + numero,
       htmlBody: htmlBody,
-      replyTo: emailUsuario || ""
+      replyTo: emailUsuario || "",
+      attachments: anexosRecibo
     });
 
     // Atualiza status na planilha
@@ -485,6 +508,6 @@ function rh_atualizarStatusEmailRecibo_(numero, novoStatus) {
    Mantido caso algo chame o nome antigo
 ───────────────────────────────────────────────────────────── */
 function listarHistoricoRecibosAvancado(filtros, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   return listarHistoricoRecibos(filtros, tokenSessao);
 }

@@ -15,7 +15,7 @@ var APROV_ABA_CARTEIRINHAS = 'Carteirinhas';
  * para aprovar ou rejeitar.
  */
 function listarSolicitacoesPendentes(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "aprovacoesPortal", false);
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sh = ss.getSheetByName(APROV_ABA_SOLICITACOES);
@@ -75,7 +75,7 @@ function aprov_garantirColunasExtras_(sh) {
  * foto (se houver) para a aba Carteirinhas.
  */
 function aprovarSolicitacaoCadastro(numeroLinha, aprovadoPor, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "aprovacoesPortal", false);
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
@@ -143,7 +143,7 @@ function aprovarSolicitacaoCadastro(numeroLinha, aprovadoPor, tokenSessao) {
  * exportar o motivo separadamente.
  */
 function rejeitarSolicitacaoCadastro(numeroLinha, motivo, usuario, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "aprovacoesPortal", false);
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {

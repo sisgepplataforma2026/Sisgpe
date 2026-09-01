@@ -90,6 +90,10 @@ function docIA_extrairJSON_(prompt) {
  *
  * @return {Object} { sucesso, dados, associado, pendencia, sugestaoEscolas, alertas, textoOcr }
  */
+// SEM trava de modulo: o botao que dispara esta funcao fica na tela de
+// OFICIOS (Documentos), onde a pessoa trabalha, embora o registro gravado
+// seja de Sindicalizacao. Exigir o modulo aqui deixaria um botao visivel
+// que da erro ao clicar. Sessao continua exigida.
 function analisarCartaDesfiliacaoIA(base64, nomeArquivo, mimeType, tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
   try {
@@ -235,8 +239,48 @@ function analisarCartaDesfiliacaoIA(base64, nomeArquivo, mimeType, tokenSessao) 
  *   escolaEmail, escolaUnidade, motivo, cartaBase64, cartaTipo,
  *   confirmarDuplicata }
  */
+// SEM trava de modulo: o botao que dispara esta funcao fica na tela de
+// OFICIOS (Documentos), onde a pessoa trabalha, embora o registro gravado
+// seja de Sindicalizacao. Exigir o modulo aqui deixaria um botao visivel
+// que da erro ao clicar. Sessao continua exigida.
+/**
+ * Trilha das confirmações por IA — auditoria do Módulo 02, 31/08/2026.
+ *
+ * O chat já gravava em Sofia_Auditoria; estas três, que são as que MEXEM em
+ * cadastro, não gravavam nada. O rastro existente era a coluna
+ * ORIGEM='PAPEL_IA' na ficha, que diz COMO o registro entrou — não QUEM
+ * confirmou nem QUANDO. Desfiliação afeta o vínculo sindical de uma pessoa:
+ * se ela questionar meses depois, era preciso poder responder.
+ *
+ * Reaproveita registrarAuditoriaSofia_ de propósito: mesma aba, mesmo
+ * formato, mesma tela de consulta. Aba nova seria arquitetura inventada para
+ * resolver problema que a existente já resolve.
+ *
+ * NÃO grava CPF. A identificação é nome + escola + número do ofício, que é o
+ * que a própria ficha carrega e basta para rastrear. O CPF continua onde
+ * sempre esteve, no cadastro — e a aba Sofia_Auditoria aparece na Home.
+ */
+function docIA_registrarConfirmacao_(sessao, acao, alvo, resultado, ok) {
+  try {
+    if (typeof registrarAuditoriaSofia_ !== 'function') return;
+    registrarAuditoriaSofia_(sessao, 'Confirmação · ' + acao, alvo, resultado, ok === true);
+  } catch (eTrilha) {
+    /* Trilha que falha não pode derrubar a ação já concluída — mas também não
+       pode sumir em silêncio: fica no log de execução do Apps Script. */
+    Logger.log('docIA_registrarConfirmacao_ falhou (' + acao + '): ' + eTrilha.message);
+  }
+}
+
 function confirmarDesfiliacaoIA(dados, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  /* PERMISSÃO — auditoria do Módulo 02, 31/08/2026.
+     Esta função escreve em FICHA SINDICAL. O mesmo dado é protegido com
+     exigirModulo_(..., "sindicalizacao", ...) em 17 lugares do módulo
+     Sindicalização; aqui passava só por exigirSessaoDocumentos_, que exige
+     estar logado e nada mais. Medido no t110: uma sessão de perfil
+     'financeiro,rh' atravessava o guarda e chegava na camada de dados.
+     O módulo exigido é sindicalizacao, e não sofia, porque quem manda no
+     dado é o dono dele — a SOFIA é só o caminho por onde se chega. */
+  var sessao = exigirModulo_(tokenSessao, "sindicalizacao", false);
   dados = dados || {};
   try {
     var nome = String(dados.nome || '').trim();
@@ -291,6 +335,10 @@ function confirmarDesfiliacaoIA(dados, tokenSessao) {
       Logger.log('confirmarDesfiliacaoIA — De-Para não registrado: ' + eDepara.message);
     }
 
+    docIA_registrarConfirmacao_(sessao, 'Desfiliação',
+      nome + ' · ' + (dados.escolaNome || cnpj),
+      'Ofício ' + retorno.dados.numero, true);
+
     return {
       sucesso: true,
       numeroOficio: retorno.dados.numero,
@@ -316,6 +364,10 @@ function confirmarDesfiliacaoIA(dados, tokenSessao) {
  * NENHUM dado é gravado aqui — só em confirmarFiliacaoPapelIA, depois que
  * o atendente revisar/corrigir os campos na tela.
  */
+// SEM trava de modulo: o botao que dispara esta funcao fica na tela de
+// OFICIOS (Documentos), onde a pessoa trabalha, embora o registro gravado
+// seja de Sindicalizacao. Exigir o modulo aqui deixaria um botao visivel
+// que da erro ao clicar. Sessao continua exigida.
 function analisarFormularioFiliacaoIA(base64, nomeArquivo, mimeType, tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
   try {
@@ -452,8 +504,20 @@ function analisarFormularioFiliacaoIA(base64, nomeArquivo, mimeType, tokenSessao
  *   pelo atendente, + arquivoBase64/arquivoTipo/arquivoExtensao (o
  *   documento original) + confirmadoPeloAtendente (obrigatório, true).
  */
+// SEM trava de modulo: o botao que dispara esta funcao fica na tela de
+// OFICIOS (Documentos), onde a pessoa trabalha, embora o registro gravado
+// seja de Sindicalizacao. Exigir o modulo aqui deixaria um botao visivel
+// que da erro ao clicar. Sessao continua exigida.
 function confirmarFiliacaoPapelIA(dados, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  /* PERMISSÃO — auditoria do Módulo 02, 31/08/2026.
+     Esta função escreve em FICHA SINDICAL. O mesmo dado é protegido com
+     exigirModulo_(..., "sindicalizacao", ...) em 17 lugares do módulo
+     Sindicalização; aqui passava só por exigirSessaoDocumentos_, que exige
+     estar logado e nada mais. Medido no t110: uma sessão de perfil
+     'financeiro,rh' atravessava o guarda e chegava na camada de dados.
+     O módulo exigido é sindicalizacao, e não sofia, porque quem manda no
+     dado é o dono dele — a SOFIA é só o caminho por onde se chega. */
+  var sessao = exigirModulo_(tokenSessao, "sindicalizacao", false);
   dados = dados || {};
   try {
     if (!dados.confirmadoPeloAtendente) {
@@ -522,7 +586,7 @@ function confirmarFiliacaoPapelIA(dados, tokenSessao) {
         var blobOriginal = Utilities.newBlob(bytesOriginal, dados.arquivoTipo || 'application/pdf', nomeOriginal);
         var pasta = sindAdm_pastaPDF_();
         var arquivoOriginal = pasta.createFile(blobOriginal);
-        arquivoOriginal.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        arquivoAplicarPolitica_(arquivoOriginal, "IA_DocumentosSindicalizacao.gs");
         linkOriginal = arquivoOriginal.getUrl();
       }
     } catch (eUpload) {
@@ -536,6 +600,10 @@ function confirmarFiliacaoPapelIA(dados, tokenSessao) {
 
     limparCacheListaSindicalizacao_();
     notificarSecretariaNovaFicha_(registro);
+
+    docIA_registrarConfirmacao_(sessao, 'Filiação (documento físico)',
+      registro.NOME_COMPLETO + ' · ' + (dados.escola || ''),
+      'Ficha ' + registro.ID_FICHA, true);
 
     return {
       sucesso: true,
@@ -565,6 +633,10 @@ function confirmarFiliacaoPapelIA(dados, tokenSessao) {
  *
  * @return {Object} { sucesso, dados, associado, sugestaoEscolas, alertas, textoOcr }
  */
+// SEM trava de modulo: o botao que dispara esta funcao fica na tela de
+// OFICIOS (Documentos), onde a pessoa trabalha, embora o registro gravado
+// seja de Sindicalizacao. Exigir o modulo aqui deixaria um botao visivel
+// que da erro ao clicar. Sessao continua exigida.
 function analisarCartaOposicaoTaxaNegocialIA(base64, nomeArquivo, mimeType, tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
   try {
@@ -690,8 +762,20 @@ function analisarCartaOposicaoTaxaNegocialIA(base64, nomeArquivo, mimeType, toke
  *   escolaEmail, escolaUnidade, motivo, cartaBase64, cartaTipo,
  *   confirmarDuplicata }
  */
+// SEM trava de modulo: o botao que dispara esta funcao fica na tela de
+// OFICIOS (Documentos), onde a pessoa trabalha, embora o registro gravado
+// seja de Sindicalizacao. Exigir o modulo aqui deixaria um botao visivel
+// que da erro ao clicar. Sessao continua exigida.
 function confirmarOposicaoTaxaNegocialIA(dados, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  /* PERMISSÃO — auditoria do Módulo 02, 31/08/2026.
+     Esta função escreve em FICHA SINDICAL. O mesmo dado é protegido com
+     exigirModulo_(..., "sindicalizacao", ...) em 17 lugares do módulo
+     Sindicalização; aqui passava só por exigirSessaoDocumentos_, que exige
+     estar logado e nada mais. Medido no t110: uma sessão de perfil
+     'financeiro,rh' atravessava o guarda e chegava na camada de dados.
+     O módulo exigido é sindicalizacao, e não sofia, porque quem manda no
+     dado é o dono dele — a SOFIA é só o caminho por onde se chega. */
+  var sessaoOposicao = exigirModulo_(tokenSessao, "sindicalizacao", false);
   dados = dados || {};
   try {
     var nome = String(dados.nome || '').trim();
@@ -741,6 +825,10 @@ function confirmarOposicaoTaxaNegocialIA(dados, tokenSessao) {
     } catch (eDepara) {
       Logger.log('confirmarOposicaoTaxaNegocialIA — De-Para não registrado: ' + eDepara.message);
     }
+
+    docIA_registrarConfirmacao_(sessaoOposicao, 'Oposição à Taxa Negocial',
+      nome + ' · ' + (dados.escolaNome || cnpj),
+      'Ofício ' + retorno.dados.numero, true);
 
     return {
       sucesso: true,

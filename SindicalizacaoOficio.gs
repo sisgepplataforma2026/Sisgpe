@@ -39,7 +39,12 @@ var SINDOF_CACHE_SEG = 600;
  * @param {string} termo       Texto digitado pela secretaria
  * @param {string} nomeNaFicha Nome da escola como veio na ficha
  */
-function buscarEscolasParaOficio(termo, nomeNaFicha) {
+function buscarEscolasParaOficio(termo, nomeNaFicha, tokenSessao) {
+  /* PORTA ACRESCENTADA EM 01/09/2026 — frente A da auditoria do Modulo 03.
+     Devolve dado de escola (razao social, CNPJ, e-mails) e nao tinha checagem
+     nenhuma. No Apps Script toda funcao global e endpoint para QUALQUER pagina
+     do projeto, inclusive as anonimas que o Code.gs serve. Ver a nota do t125. */
+  exigirModulo_(tokenSessao, "documentos", false);
   var aba = sindOf_abaEscolas_();
   var ultima = aba.getLastRow();
   if (ultima < 2) return { sucesso: true, escolas: [], sugerida: null };
@@ -456,7 +461,12 @@ function sindOf_normalizar_(v) {
 /**
  * Situação do De-Para escola↔CNPJ. Somente leitura.
  */
-function diagnosticarDeParaEscolas() {
+function diagnosticarDeParaEscolas(tokenSessao) {
+  /* PORTA ACRESCENTADA EM 01/09/2026 — frente A da auditoria do Modulo 03.
+     Devolve dado de escola (razao social, CNPJ, e-mails) e nao tinha checagem
+     nenhuma. No Apps Script toda funcao global e endpoint para QUALQUER pagina
+     do projeto, inclusive as anonimas que o Code.gs serve. Ver a nota do t125. */
+  exigirModulo_(tokenSessao, "documentos", false);
   var aba = sindOf_planilha_().getSheetByName(SINDOF_ABA_DEPARA);
   if (!aba || aba.getLastRow() < 2) {
     Logger.log('Nenhum vínculo registrado ainda. A tabela é preenchida ' +

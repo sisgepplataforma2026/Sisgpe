@@ -1,0 +1,265 @@
+/**
+ * TESTE DE TELA — A SOFIA NO NAVEGADOR (jsdom)
+ *
+ * O t38 prova o que o servidor devolve. Este prova o que a TELA faz com
+ * isso: se a linha de procedência aparece, se ela some quando não há
+ * documento, e se a coluna da direita deixou de ocupar espaço para prometer
+ * conteúdo que nunca chega.
+ *
+ * O QUE ESTE ARQUIVO NÃO PROVA, e continua "não testado" pela REGRA Nº -1:
+ * aparência. jsdom não aplica CSS — a classe `sofia-sem-painel` existe no
+ * elemento, mas quem faz a coluna sumir é a folha de estilo, e isso só se
+ * confere no navegador. Aqui se prova a LÓGICA: qual classe entra, qual
+ * elemento é criado, com que texto.
+ *
+ * A CHAMADA À ANTHROPIC É ENCENADA — e só ela. Todo o resto do caminho é
+ * real: o clique, o `google.script.run`, o `chatSISGEP` de verdade com a
+ * sessão de verdade, o prompt montado de verdade e a leitura das fontes a
+ * partir dele. O que se troca é o `UrlFetchApp.fetch`, porque a resposta da
+ * IA não é testável e não é o que está sob teste: o que está sob teste é o
+ * que a tela faz com uma resposta.
+ */
+const b = require("./base");
+const d = require("./dom");
+const { g } = b.subir({});
+b.seedUsuarios(g);
+const token = b.logar(g, "wanderson");
+
+if (!d.jsdomDisponivel()) {
+  b.fluxo("SOFIA · tela");
+  b.naoTestavel("A tela da SOFIA em DOM real", "jsdom não instalado neste ambiente");
+  b.resumo();
+  process.exit(process.exitCode || 0);
+}
+
+/* A IA encenada. `respostaIA` é trocada a cada caso para simular o que o
+ * modelo responderia — inclusive respondendo mal, que é o caso interessante. */
+let respostaIA = "Resposta qualquer.";
+/* `codigosIA` permite derrubar uma chamada específica. Serve para o caso em
+ * que a SEGUNDA leitura falha — que é quando o aviso âmbar ainda aparece na
+ * tela. Sem isso não dá para testar o aviso: com a segunda leitura
+ * funcionando, o sistema conserta sozinho e não há aviso nenhum. */
+let codigosIA = [];
+let chamadasIA = 0;
+g.PropertiesService.getScriptProperties().setProperty("ANTHROPIC_API_KEY", "sk-teste");
+g.UrlFetchApp = {
+  fetch: function () {
+    const cod = codigosIA[chamadasIA++] || 200;
+    return {
+      getResponseCode: function () { return cod; },
+      getContentText: function () {
+        return JSON.stringify({ content: [{ text: respostaIA }] });
+      }
+    };
+  }
+};
+
+const t = d.montar(g, ["ChatSISGEP.html"], { token: token });
+const doc = t.doc;
+const grade = () => doc.querySelector(".sofiaOpsGrid");
+const recolhido = () => grade().classList.contains("sofia-sem-painel");
+const fontes = () => doc.querySelectorAll(".sofia-fonte");
+const alerta = () => doc.querySelector(".sofia-alerta-fonte");
+
+/* O CLIQUE NO BOTÃO NÃO É EXERCITÁVEL AQUI — e isto precisa estar escrito.
+ *
+ * O "Enviar" chama a tela por atributo `onclick`, e o jsdom em modo
+ * `outside-only` não compila atributo de evento: o clique dispara e nada
+ * acontece. Descobri isso aqui mesmo, vendo `chamadas: []` depois de um
+ * clique que o andaime reportou como bem-sucedido.
+ *
+ * Então este arquivo entra pela função que o botão chama. O que ele prova é
+ * tudo o que vem DEPOIS disso — pedido ao servidor, resposta, DOM. O que ele
+ * NÃO prova é que o botão está ligado nessa função; isso continua
+ * "não testado" e só se confere no navegador. */
+async function perguntar(texto, codigos) {
+  codigosIA = codigos || [];
+  chamadasIA = 0;
+  t.digitar("#chatInput", texto);
+  t.win.enviarMensagemChat();
+  await t.assentar(60);
+}
+
+(async function () {
+
+/* O init() da tela roda no DOMContentLoaded, que no jsdom só dispara no
+ * tique seguinte à montagem. Sem esta espera, as asserções de estado inicial
+ * medem a tela antes de ela ter começado — e acusariam de defeito o que é
+ * pressa do teste. */
+await t.assentar(30);
+
+/* ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("SOFIA · As especialidades viraram uma linha");
+
+b.passo("1. Os 11 modos continuam todos disponíveis");
+/* Virar chip não pode ser desculpa para sumir com modo nenhum: a escolha
+ * manual é o que permite FORÇAR a fonte quando a pergunta não denuncia o
+ * assunto sozinha. */
+const chips = doc.querySelectorAll("#sofiaEspecialidades .sofia-chip");
+b.igual(chips.length, 11, "os 11 chips estão na barra");
+const rotulos = Array.prototype.map.call(chips, c => c.getAttribute("data-sofia-dominio"));
+b.ok(rotulos.indexOf("CCT") > -1 && rotulos.indexOf("Estatuto") > -1,
+  "CCT e Estatuto entre eles — são os dois que carregam documento");
+
+b.passo("2. Um modo ativo por vez, e a marca acompanha a troca");
+const ativos = () => Array.prototype.map.call(
+  doc.querySelectorAll("#sofiaEspecialidades .sofia-chip.ativo"),
+  c => c.getAttribute("data-sofia-dominio"));
+b.igual(ativos(), ["Geral"], "começa em Geral");
+t.win.selecionarDominioSofia_("Estatuto");
+b.igual(ativos(), ["Estatuto"], "clicar em Estatuto move a marca — e só ela fica");
+
+/* ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("SOFIA · O painel da direita só existe quando tem o que dizer");
+
+b.passo("3. Ele nasce recolhido");
+/* Antes ele ocupava um quinto da tela desde o primeiro segundo para dizer
+ * "Fontes serão exibidas aqui" — espaço permanente para informação
+ * eventual, que é o dashboard decorativo que o PROMPT-MESTRE proíbe. */
+b.ok(recolhido(), "a grade nasce com sofia-sem-painel");
+b.igual(t.texto("#sofiaContextoPainel"), "", "e o painel nasce sem texto de promessa");
+
+b.passo("4. Uma resposta sem escola identificada não o abre");
+respostaIA = "Temos 8.014 associados na base.";
+await perguntar("quantos associados temos?");
+b.ok(recolhido(), "continua recolhido — não havia contexto para mostrar");
+
+b.passo("5. Trocar de especialidade recolhe de novo");
+t.win.selecionarDominioSofia_("CCT");
+b.ok(recolhido(), "modo novo, painel fechado");
+
+/* ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("SOFIA · A procedência aparece embaixo da resposta");
+
+b.passo("6. Documento consultado → a linha aparece, com a identificação");
+t.win.selecionarDominioSofia_("Estatuto");
+respostaIA = "O escrutínio secreto é obrigatório (art. 62).";
+await perguntar("quem pode participar da votação?");
+b.igual(fontes().length, 1, "um chip de fonte");
+const texto1 = fontes()[0].textContent;
+b.ok(/Estatuto/.test(texto1), "diz que foi o Estatuto", texto1);
+b.ok(/17\/11\/2025/.test(texto1), "com a data que denuncia estatuto revogado");
+b.igual(alerta(), null, "e nenhum alerta — a citação tem fonte");
+
+b.passo("7. Nenhum documento consultado → nenhuma linha");
+/* Silêncio aqui é a resposta certa: a maioria das perguntas é de cadastro e
+ * não envolve documento. Desenhar "consultei: nada" seria ruído em toda
+ * conversa. */
+t.win.selecionarDominioSofia_("Geral");
+respostaIA = "São 6.203 confirmados no mês.";
+await perguntar("quantos confirmados no mês?");
+b.igual(doc.querySelectorAll(".sofia-fontes").length, 0,
+  "sem documento no prompt, a tela não anuncia fonte nenhuma");
+
+b.passo("7b. DOIS documentos na mesma pergunta → DOIS chips");
+/* Era um "🔴 só se confere no ar" do item 19 do PENDENTE-VERIFICACAO, aberto
+   em 13/08. Não precisava: o t38 já provava que fontesDoPrompt_ devolve os
+   dois rótulos quando os dois blocos estão no prompt; o que faltava era a
+   TELA desenhar os dois. É aqui que se prova, e fecha o item por teste em vez
+   de por conferência manual.
+
+   O domínio Geral é o que aceita os dois: uma pergunta que toca convenção E
+   estatuto ao mesmo tempo — piso salarial (CCT) e quórum de assembleia
+   (Estatuto).
+
+   POSIÇÃO IMPORTA. Este passo vem DEPOIS do 7 de propósito: o
+   selecionarDominioSofia_ só limpa a tela quando o domínio MUDA (ChatSISGEP
+   .html:239), e o 7 já deixou o domínio em Geral com a tela limpa. Posto
+   antes, ele anulava a limpeza do 7 e o chip desta pergunta era contado lá.
+   Custou uma reprovação para descobrir. */
+respostaIA = "O piso da cláusula 12 vale, e o quórum do art. 62 é de metade mais um.";
+await perguntar("qual o piso salarial e qual o quórum da assembleia?");
+
+const doisChips = fontes();
+b.igual(doisChips.length, 2, "os dois documentos aparecem, cada um no seu chip",
+  Array.prototype.map.call(doisChips, c => c.textContent.slice(0, 30)).join(" | "));
+
+const textoDois = Array.prototype.map.call(doisChips, c => c.textContent).join(" ");
+b.ok(/CCT/.test(textoDois), "um deles é a CCT");
+b.ok(/Estatuto/i.test(textoDois), "o outro é o Estatuto");
+b.igual(alerta(), null,
+  "e nenhum aviso âmbar — as duas citações têm fonte no prompt");
+
+b.passo("8. Citação sem documento, e sem conserto possível → o aviso âmbar");
+/* ESTE PASSO MUDOU DE SENTIDO EM 13/08, e a mudança é a melhoria.
+ *
+ * Antes, citar sem documento produzia o aviso direto. Agora o sistema tenta
+ * consertar primeiro: anexa o documento que faltou e refaz a pergunta (a
+ * segunda leitura, provada no t38). O aviso passou a ser o ÚLTIMO recurso —
+ * o que sobra quando nem a segunda tentativa deu certo.
+ *
+ * Por isso a segunda chamada aqui é derrubada de propósito. Sem derrubá-la,
+ * este teste ficou vermelho quando a segunda leitura entrou — e estava
+ * certo em ficar: a tela realmente não mostra mais aviso nesse caso, porque
+ * não há mais o que avisar. */
+respostaIA = "Conforme a cláusula 12 da convenção, o adicional é devido.";
+await perguntar("quantos associados temos em Vitória?", [200, 500]);
+const av = alerta();
+b.ok(av, "o aviso aparece");
+b.ok(av && /cl[áa]usula/i.test(av.textContent), "dizendo o que foi citado sem fonte",
+  av ? av.textContent.slice(0, 90) : "");
+
+b.passo("9. E a mesma citação COM a CCT no prompt não gera aviso");
+/* A contraprova. Sem ela, um alerta que dispara sempre passaria neste
+ * arquivo — e alerta que grita à toa se aprende a ignorar. */
+t.win.selecionarDominioSofia_("CCT");
+respostaIA = "Conforme a cláusula 04, o piso é R$ 3.721,87.";
+await perguntar("qual o piso do secretário escolar?");
+b.igual(doc.querySelectorAll(".sofia-alerta-fonte").length, 0,
+  "com a convenção consultada, nenhum aviso");
+b.ok(fontes().length >= 1, "e a fonte aparece no lugar dele");
+
+b.passo("10. Com escola identificada, o painel abre — e traz o cadastro");
+/* Aqui o servidor é encenado de propósito. Fazer o `coletarContextoSISGEP_`
+ * real devolver uma escola exigiria semear mensalidade, cadastro e Receita —
+ * e o que está sob teste não é a busca (isso é do t25/t26), é o que a TELA
+ * faz quando o contexto chega. Sem este caso, uma mutação que deixasse o
+ * painel fechado para sempre passaria despercebida: os outros passos todos
+ * esperam ele fechado. */
+const chatReal = g.chatSISGEP;
+g.chatSISGEP = function () {
+  return {
+    ok: true,
+    resposta: "A UVV tem 12 associados, 8 confirmados.",
+    fontes: [],
+    alertaFonte: "",
+    contexto: { dados: { escolaFiltrada: {
+      termo: "UVV", total: 12, confirmados: 8, pendentes: 2, aguardando: 2,
+      email: "rh@uvv.br", infoEscola: { cnpj: "31.736.435/0001-30", razaoSocial: "Universidade Vila Velha" }
+    } } }
+  };
+};
+await perguntar("status da UVV");
+b.igual(recolhido(), false, "o painel abriu");
+const painel = t.texto("#sofiaContextoPainel");
+b.ok(/UVV/.test(painel || ""), "com a escola identificada", (painel || "").slice(0, 70));
+b.ok(/12/.test(painel || ""), "e os números do cadastro");
+
+b.passo("11. Trocar de especialidade fecha o painel aberto");
+/* Este passo existe porque o anterior a ele não bastava: eu tinha a mesma
+ * asserção lá em cima, com o painel JÁ fechado — ela passava sem provar
+ * nada, e a mutação que apagava o fechamento na troca de modo sobreviveu.
+ * Só verifica fechamento quem viu abrir primeiro. */
+t.win.selecionarDominioSofia_("Escolas");
+b.ok(recolhido(), "modo novo, contexto da conversa anterior fora da tela");
+
+b.passo("12. E fecha de novo quando a resposta seguinte não tem contexto");
+/* O painel abrir é metade; a outra metade é ele não ficar aberto para
+ * sempre depois da primeira escola, ocupando a tela com dado velho. */
+await perguntar("status da UVV");
+b.igual(recolhido(), false, "reaberto para a checagem seguinte");
+g.chatSISGEP = chatReal;
+respostaIA = "São 6.203 confirmados no mês.";
+await perguntar("quantos confirmados no mês?");
+b.ok(recolhido(), "voltou a recolher — contexto velho não fica na tela");
+
+b.naoTestavel("O botão Enviar estar ligado à função que envia",
+  "handler por atributo onclick; o jsdom em outside-only não o compila");
+b.naoTestavel("Se a coluna da direita some de fato e o chip cabe na barra",
+  "jsdom não aplica CSS nem desenha — largura e visibilidade só no navegador");
+b.naoTestavel("A resposta que a IA de fato daria",
+  "a chamada à Anthropic é encenada; o que se prova é o que a tela faz com a resposta");
+
+b.resumo();
+process.exit(process.exitCode || 0);
+})();

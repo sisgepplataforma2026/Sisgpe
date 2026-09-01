@@ -123,9 +123,32 @@
         <button type="button" class="docSubMenuBtn" data-sub-mod="centralEmailIA" onclick="spIr('centralEmailIA',null)">📬 Caixa de E-mails</button>
       </div>
 
-      <button class="spN" data-mod="eventos" onclick="spIr('eventos',this)">
+      <!-- Eventos era o unico modulo grande sem subcamada no menu: clicar nele
+           abria a tela e pronto, sem mostrar o que existe dentro. Os
+           submodulos sao os do PROMPT-MESTRE §4 (Modulo → Submodulo → Tela),
+           aprovados pelo usuario em 24/08/2026. -->
+      <button class="spN" data-mod="eventos" data-acordeao="eventosSubMenuSidebar" onclick="spAcordeao(this);spIr('eventos',this)">
         <span class="spNI">📅</span><div><strong>Eventos</strong><small>Atividades e programações</small></div>
       </button>
+      <!-- OS CINCO SUBMÓDULOS DE EVENTOS — 26/08/2026.
+           A arquitetura fechada com o usuário em docs/EVENTOS-ARQUITETURA.md,
+           que o menu ainda não refletia. O que mudou de nome tem motivo:
+
+             Programação → Eventos    a agenda é MODO DE VER a lista de
+                                      eventos, não área própria;
+             Bingo Online → Sorteios  bingo é UM sorteio, não o submódulo. O
+                                      dia que houver rifa ou sorteio de brinde,
+                                      entra aqui sem menu novo;
+             Credenciamento           era tela escondida dentro da Festa, e é
+                                      submódulo: tem fila e estado próprios
+                                      (aguardando, presentes, ausentes). -->
+      <div id="eventosSubMenuSidebar" class="docSubMenuSidebar" data-subs="eventos,eventosLista,eventosFesta,eventosCredenciamento,eventosSorteios" style="display:none;">
+        <button type="button" class="docSubMenuBtn" data-sub-mod="eventos"               onclick="spIr('eventos',null)">📊 Painel</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="eventosLista"          onclick="spIr('eventosLista',null)">📅 Eventos</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="eventosFesta"          onclick="spIr('eventosFesta',null)">🎉 Festa Compasso 2026</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="eventosCredenciamento" onclick="spIr('eventosCredenciamento',null)">🎫 Credenciamento</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="eventosSorteios"       onclick="spIr('eventosSorteios',null)">🎲 Sorteios</button>
+      </div>
 
       <div class="spSec">Administração</div>
 
@@ -365,7 +388,7 @@
             <div class="spRailHead"><strong>🎯 Suas prioridades de hoje</strong><a onclick="spIr('relatorios')">Ver todas</a><span id="spPrioridadesTotal">—</span></div>
             <button class="spPriority" onclick="spIr('financeiro')"><i style="background:#ef4444;">📄</i><p>Notas fiscais aguardando envio</p><b id="spPrioNF" style="color:#ef4444;">—</b></button>
             <button class="spPriority" onclick="spIr('comunicacao')"><i style="background:#f59e0b;">✉️</i><p>E-mails urgentes para sua resposta</p><b id="spPrioEmails" style="color:#f59e0b;">—</b></button>
-            <button class="spPriority" onclick="spIr('documentos',null,{sub:'oficios'})"><i style="background:#eab308;">📋</i><p>Ofícios pendentes de envio</p><b id="spPrioOficios" style="color:#eab308;">—</b></button>
+            <button class="spPriority" onclick="spIr('documentos',null,{sub:'oficios'})"><i style="background:#eab308;">📋</i><p>Ofícios não enviados</p><b id="spPrioOficios" style="color:#eab308;">—</b></button>
             <button class="spPriority" onclick="spIr('juridico')"><i style="background:#8b5cf6;">⚖️</i><p>Processos jurídicos com prazo em 15 dias</p><b id="spPrioJuridico" style="color:#8b5cf6;">—</b></button>
             <button class="spPriority" onclick="spIr('escolas')"><i style="background:#3b82f6;">🏫</i><p>Escolas com cadastro incompleto</p><b id="spPrioEscolas" style="color:#3b82f6;">—</b></button>
           </div>
@@ -375,6 +398,10 @@
             <div class="spHealth"><span> Financeiro</span><b id="spSaudeFinanceiro" class="blue">—</b></div>
             <div class="spHealth"><span>🏛️ Administrativo</span><b id="spSaudeAdministrativo" class="blue">—</b></div>
             <div class="spHealth"><span>⚖️ Jurídico</span><b id="spSaudeJuridico" class="blue">—</b></div>
+            <!-- Ofícios: o InicioResumo.gs já devolvia saude.oficios e não havia
+                 elemento para recebê-lo — o indicador era calculado e descartado
+                 a cada carga. É o único módulo em uso diário. (auditoria M01, 31/08) -->
+            <div class="spHealth"><span>📄 Ofícios</span><b id="spSaudeOficios" class="blue">—</b></div>
             <div class="spHealth"><span>🏛️ Patrimônio</span><b class="blue" title="Ainda sem indicador conectado neste painel">—</b></div>
             <div class="spHealth"><span>✉️ Comunicação</span><b id="spSaudeComunicacao" class="blue">—</b></div>
           </div>
@@ -1400,6 +1427,13 @@ var MODS={
   comunicacao:["mComunicacao","Painel do Dia","Central de Comunicação — resumo, prioridades e ações rápidas de e-mail"],
   centralEmailIA:["mCentralEmailIA","Caixa de E-mails","Central de Comunicação — categorização inteligente, contexto SISGEP e respostas automáticas"],
   eventos:["mEventos","Eventos","Atividades e Programações"],
+  /* Os submódulos de Eventos moram no MESMO container (mEventos): o que muda
+     é qual submódulo a tela abre. Registrar container próprio para cada um
+     seria três cópias da mesma tela para manter em sincronia. */
+  eventosLista:["mEventos","Eventos","Planejados, inscrições abertas, realizados"],
+  eventosFesta:["mEventos","Festa Compasso da Vida 2026","Dados do evento e inscrições"],
+  eventosCredenciamento:["mEventos","Credenciamento","Entrada do evento — QR e check-in"],
+  eventosSorteios:["mEventos","Sorteios","Bingo, cartelas e telão"],
   /* "relatorios" abre o MESMO div de Documentos (mDocumentos) porque o
      painel é o blocoRelatorios, incluído lá dentro. O nome antigo prometia
      "Indicadores e Análises" — indicadores do sindicato inteiro — e
@@ -1721,6 +1755,12 @@ function initFinanceiro(opts){
   opts=opts||{};
   callFn("initFinanceiro") || callFn("carregarFinanceiro") || callFn("initDespesas") || callFn("initDespesasAdmin");
 
+  /* A Conciliação mora dentro de #mFinanceiro e, até 31/08/2026, só era
+     inicializada pelo DOMContentLoaded dela — isto é, em toda carga da página,
+     mesmo com o Financeiro fechado. Era o único caso do lote sem ponto de
+     entrada sob demanda; esta linha é esse ponto. */
+  setTimeout(function(){ callFn("finConciliacaoInit"); },150);
+
   setTimeout(function(){
     if(opts.acao==="nf" || opts.acao==="recibo" || opts.acao==="despesas"){
       callFn("mudarTab",[opts.acao==="despesas" ? "lista" : opts.acao]);
@@ -1767,6 +1807,12 @@ if(mod==="beneficios"){
     if(subBeneficio === "inicio"){
       setTimeout(function(){ if(typeof window.benefAdminCarregar==="function") window.benefAdminCarregar(); },80);
     }
+
+    /* Os painéis de reserva simples (Guriri Beach e Assefaz) vivem em
+       BeneficioReservaSimplesUI.html e, até 31/08/2026, só eram inicializados
+       pelo DOMContentLoaded deles — quatro chamadas em toda carga da página,
+       com Benefícios fechado. Esta é a ligação sob demanda. */
+    setTimeout(function(){ callFn("initBeneficioReservaSimples"); },100);
 
     if(subBeneficio === "parqueChina"){
       callFn("initBeneficios") || callFn("carregarBeneficios");
@@ -2022,10 +2068,24 @@ if(mod==="beneficios"){
     return;
   }
 
-  if(mod==="eventos"){
-    return callFn("initEventos") ||
-           callFn("carregarEventos") ||
-           initModuloAssistido(mod,opts);
+  /* Eventos e seus submódulos: mesma tela, submódulo diferente.
+     O comentário aqui dizia "sem mapa paralelo para alguém esquecer de
+     atualizar" — e o que estava logo abaixo ERA um mapa paralelo, com uma
+     entrada esquecida: `eventos` (o botão Painel) não tinha correspondente, o
+     nome saía vazio, o `if` não entrava e clicar em Painel não fazia nada.
+     Descoberto pelo usuário em 25/08/2026.
+     Agora o nome é DERIVADO do próprio módulo, que é o que o comentário
+     prometia: eventosProgramacao → programacao, eventosFesta → festa,
+     eventosBingo → bingo, e `eventos` sozinho → painel, que é a raiz. */
+  if(mod==="eventos"||mod.indexOf("eventos")===0){
+    var restoEv=mod.slice("eventos".length);
+    var subEv=restoEv ? restoEv.charAt(0).toLowerCase()+restoEv.slice(1) : "painel";
+    var r=callFn("initEventos")||callFn("carregarEventos")||initModuloAssistido(mod,opts);
+    if(typeof window.evSub==="function"){
+      /* Depois do init: a barra de submódulos só existe com a tela montada. */
+      setTimeout(function(){ try{ window.evSub(subEv); }catch(e){} },120);
+    }
+    return r;
   }
 
   if(mod==="relatorios") return initRelatorios(opts);
@@ -2515,11 +2575,39 @@ var ini=String(nome).trim().split(/\s+/).map(function(p){return p.charAt(0).toUp
   });
 });
 
-/* Resumo real da tela Início — substitui os números/status que antes
-   eram fixos no HTML. Best-effort no servidor (InicioResumo.gs): se
-   algum módulo falhar, o card dele mostra 0/— em vez de travar a tela. */
+/* Resumo real da tela Início.
+
+   CORREÇÃO 31/08/2026 (auditoria do Módulo 01) — a disputa foi encerrada.
+
+   Este arquivo e o Helpers.html chamavam AMBOS getResumoInicioSISGEP e escreviam
+   nos MESMOS 11 ids do DOM, com leituras que discordavam: aqui se lia
+   `prioridades` (campo de compatibilidade, onde fonte que falhou vira 0), lá se
+   lia `statusFontes` (a verdade, onde fonte que falhou vira ⚠). O Helpers tentava
+   chegar por último com setTimeout(450) — palpite sobre a rede, não garantia.
+
+   O t108 provou por execução: com a resposta daqui chegando depois, a Home
+   exibia "0" para um módulo que NÃO tinha sido lido. Era descartar de propósito
+   a distinção que o InicioResumo.gs foi escrito para preservar.
+
+   Agora há um dono só do resumo — o Helpers.html — e uma chamada só ao servidor.
+   Esta função delega.
+
+   O caminho de reserva abaixo NÃO é duplicação: include() falha em SILÊNCIO
+   (Code.gs:313). Se o Helpers não vier junto, sem esta reserva a Home ficaria
+   com os números estáticos do HTML e ninguém saberia. */
 function carregarResumoInicio(){
   if(!(window.google&&google.script&&google.script.run))return;
+
+  if(typeof inicioAtualizarResumoSeguro_==="function"){
+    inicioAtualizarResumoSeguro_();
+    return;
+  }
+
+  /* RESERVA — só roda se o include do Helpers tiver falhado. Semântica antiga
+     (fonte indisponível aparece como 0), preservada de propósito: é melhor a
+     Home mostrar número velho do que não mostrar nada. O aviso no console é o
+     rastro para descobrir que o include caiu. */
+  console.warn("[Início] Helpers.html não carregou — usando o resumo de reserva.");
   google.script.run
     .withSuccessHandler(function(r){
       if(!r||!r.ok)return;
@@ -2543,6 +2631,7 @@ function carregarResumoInicio(){
       setSaude("spSaudeAdministrativo",s.administrativo);
       setSaude("spSaudeJuridico",s.juridico);
       setSaude("spSaudeComunicacao",s.comunicacao);
+      setSaude("spSaudeOficios",s.oficios);
 
       var box=document.getElementById("spAtividadesSofia");
       if(box){

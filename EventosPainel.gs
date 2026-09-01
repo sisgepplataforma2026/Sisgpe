@@ -11,7 +11,8 @@
 // EventosAdmin.html, que abre a URL do webapp com o token da sessão já
 // logada. Mantido só para referência; considerar remover na limpeza de
 // código morto (Fase 4).
-function abrirPainelEmissaoEventos() {
+function abrirPainelEmissaoEventos(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — abrir painel de emissão', false);
   var html = HtmlService.createHtmlOutputFromFile('EventoPainel')
     .setWidth(780).setHeight(700);
   SpreadsheetApp.getUi().showModalDialog(html, 'Emissão de Ingressos — Compasso da Vida 2026');
@@ -19,22 +20,26 @@ function abrirPainelEmissaoEventos() {
 
 // --- funções chamadas pela tela (google.script.run) — exigem sessão SISGEP ---
 function painelEmissao_status(tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "eventos", false);
   var c = emissao_lerContador_();
   return { limite: c.limite, usadas: c.vagasUsadas, restantes: c.limite - c.vagasUsadas,
            ultimoNumero: c.ultimoNumero, modoTeste: emissao_modoTeste_(),
+           /* A ORIGEM vai junto do fato. A tarja "MODO TESTE" sozinha não diz
+              se alguém declarou de propósito ou se o ambiente resolveu — e é
+              essa diferença que a pessoa precisa para confiar no que vê. */
+           modoTesteOrigem: emissao_modoTesteOrigem_(),
            operador: sessao.nome || sessao.usuario || 'SISGEP' };
 }
 
 function painelEmissao_buscar(termo, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
-  return emissao_buscarAssociado(termo);
+  exigirModulo_(tokenSessao, "eventos", false);
+  return emissao_buscarAssociado(termo, tokenSessao);
 }
 
 // O operador vem da sessão validada, nunca do que o cliente envie —
 // antes era um campo de texto livre, agora é sempre quem está logado.
 function painelEmissao_emitirGrupo(itens, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "eventos", false);
   var operador = sessao.nome || sessao.usuario || 'SISGEP';
   var resultados = [];
   for (var i = 0; i < itens.length; i++) {
@@ -44,15 +49,17 @@ function painelEmissao_emitirGrupo(itens, tokenSessao) {
   }
   return resultados;
 }
-function testarTelaEmissao_TEMP() {
+function testarTelaEmissao_TEMP(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — tela de emissão (teste)', true);
   var html = HtmlService.createHtmlOutputFromFile('EventoPainel').setWidth(780).setHeight(700);
-  var ss = SpreadsheetApp.openById('1QPpsx19v4YzfskoYXK9WB89TClA7q8SWGSn55VZ040E');
+  var ss = SpreadsheetApp.openById(getPlanilhaId());
   SpreadsheetApp.setActiveSpreadsheet(ss);
   ss.toast('Abra a planilha do SISGEP para ver a tela.', 'Emissão', 5);
   SpreadsheetApp.getUi().showModalDialog(html, 'Emissão de Ingressos — Teste');
 }
 // Cria o menu "Eventos" na planilha. Rode UMA vez a partir da planilha aberta.
-function criarMenuEventos() {
+function criarMenuEventos(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — criar menu Eventos', true);
   SpreadsheetApp.getUi()
     .createMenu('🎫 Eventos')
     .addItem('Emissão de Ingressos', 'abrirPainelEmissaoEventos')

@@ -1,0 +1,1068 @@
+{
+  "medidoEm": "2026-09-01",
+  "totalPublicas": 974,
+  "protegidas": 672,
+  "expostas": [
+    {
+      "nome": "validarCPF",
+      "arquivo": "AgendOftalm.gs",
+      "escreve": false
+    },
+    {
+      "nome": "obterDataLiberadaOftalmo",
+      "arquivo": "AgendOftalm.gs",
+      "escreve": false
+    },
+    {
+      "nome": "listarHorariosOftalmoPublico",
+      "arquivo": "AgendOftalm.gs",
+      "escreve": false
+    },
+    {
+      "nome": "reservarHorarioOftalmoPublico",
+      "arquivo": "AgendOftalm.gs",
+      "escreve": false
+    },
+    {
+      "nome": "buscarAssociadosOftalmo",
+      "arquivo": "AgendOftalm.gs",
+      "escreve": false
+    },
+    {
+      "nome": "beneficiosPrepararLinkInteresse",
+      "arquivo": "BeneficiosLinkInteresse.gs",
+      "escreve": false
+    },
+    {
+      "nome": "bingo_inscricaoEstado",
+      "arquivo": "BingoInscricao.gs",
+      "escreve": false
+    },
+    {
+      "nome": "bingo_inscricaoPreencher",
+      "arquivo": "BingoInscricao.gs",
+      "escreve": false
+    },
+    {
+      "nome": "bingo_inscrever",
+      "arquivo": "BingoInscricao.gs",
+      "escreve": false
+    },
+    {
+      "nome": "bingo_estadoPublico",
+      "arquivo": "BingoLinks.gs",
+      "escreve": false
+    },
+    {
+      "nome": "bingo_realtimeInfoPublico",
+      "arquivo": "BingoRealtime.gs",
+      "escreve": false
+    },
+    {
+      "nome": "validarCarteirinhaPublico",
+      "arquivo": "CarteirinhaAdmin.gs",
+      "escreve": false
+    },
+    {
+      "nome": "sisgepListarAdiadosEmailIA_CentralLegacy",
+      "arquivo": "CentralEmailIA.gs",
+      "escreve": false
+    },
+    {
+      "nome": "instalarTriggerAdiadosEmailIA",
+      "arquivo": "CentralEmailIA.gs",
+      "escreve": true
+    },
+    {
+      "nome": "sisgepListarAdiadosEmailIA",
+      "arquivo": "CentralEmailIA.gs",
+      "escreve": false
+    },
+    {
+      "nome": "setupCentralFinanceiraIA",
+      "arquivo": "CentralFinanceiraIA.gs",
+      "escreve": true
+    },
+    {
+      "nome": "doPost",
+      "arquivo": "Code.gs",
+      "escreve": false
+    },
+    {
+      "nome": "doGet",
+      "arquivo": "Code.gs",
+      "escreve": false
+    },
+    {
+      "nome": "include",
+      "arquivo": "Code.gs",
+      "escreve": false
+    },
+    {
+      "nome": "servirFichaSindicalizacao",
+      "arquivo": "Code.gs",
+      "escreve": false
+    },
+    {
+      "nome": "criarAbasModuloComprovantes",
+      "arquivo": "Comprovantes.gs",
+      "escreve": true
+    },
+    {
+      "nome": "listarComprovantes",
+      "arquivo": "Comprovantes.gs",
+      "escreve": false
+    },
+    {
+      "nome": "previewComprovante",
+      "arquivo": "Comprovantes.gs",
+      "escreve": false
+    },
+    {
+      "nome": "gerarPdfComprovanteWeb",
+      "arquivo": "Comprovantes.gs",
+      "escreve": true
+    },
+    {
+      "nome": "enviarComprovantePorEmail",
+      "arquivo": "Comprovantes.gs",
+      "escreve": true
+    },
+    {
+      "nome": "gerarComprovanteWeb",
+      "arquivo": "Comprovantes.gs",
+      "escreve": true
+    },
+    {
+      "nome": "salvarComprovante",
+      "arquivo": "Comprovantes.gs",
+      "escreve": true
+    },
+    {
+      "nome": "excluirComprovante",
+      "arquivo": "Comprovantes.gs",
+      "escreve": true
+    },
+    {
+      "nome": "obterMetricasComprovantes",
+      "arquivo": "Comprovantes.gs",
+      "escreve": false
+    },
+    {
+      "nome": "incluirComprovantes",
+      "arquivo": "Comprovantes.gs",
+      "escreve": false
+    },
+    {
+      "nome": "testarModuloComprovantes",
+      "arquivo": "Comprovantes.gs",
+      "escreve": false
+    },
+    {
+      "nome": "previewLoteComprovantes",
+      "arquivo": "Comprovantes.gs",
+      "escreve": false
+    },
+    {
+      "nome": "gerarPdfLoteComprovantes",
+      "arquivo": "Comprovantes.gs",
+      "escreve": true
+    },
+    {
+      "nome": "enviarEmailLoteComprovantes",
+      "arquivo": "Comprovantes.gs",
+      "escreve": true
+    },
+    {
+      "nome": "setupModuloDespesas",
+      "arquivo": "Despesas.gs",
+      "escreve": true
+    },
+    {
+      "nome": "criarAbaDespesas",
+      "arquivo": "Despesas.gs",
+      "escreve": true
+    },
+    {
+      "nome": "buscarDespesaPorId",
+      "arquivo": "Despesas.gs",
+      "escreve": false
+    },
+    {
+      "nome": "instalarTriggerAlertasD5",
+      "arquivo": "Despesas.gs",
+      "escreve": true
+    },
+    {
+      "nome": "removerTriggerAlertasD5",
+      "arquivo": "Despesas.gs",
+      "escreve": true
+    },
+    {
+      "nome": "testeSetupModuloDespesas",
+      "arquivo": "Despesas.gs",
+      "escreve": false
+    },
+    {
+      "nome": "testeRegistrarLancamentoRecorrente",
+      "arquivo": "Despesas.gs",
+      "escreve": false
+    },
+    {
+      "nome": "testeRegistrarLancamentoAvulso",
+      "arquivo": "Despesas.gs",
+      "escreve": false
+    },
+    {
+      "nome": "testeListarDespesas",
+      "arquivo": "Despesas.gs",
+      "escreve": false
+    },
+    {
+      "nome": "testeResumoDespesas",
+      "arquivo": "Despesas.gs",
+      "escreve": false
+    },
+    {
+      "nome": "testeGerarLancamentosAutomaticos",
+      "arquivo": "Despesas.gs",
+      "escreve": false
+    },
+    {
+      "nome": "testeDisparateAlertasD5",
+      "arquivo": "Despesas.gs",
+      "escreve": false
+    },
+    {
+      "nome": "obterCnpjPrestadorDespesa",
+      "arquivo": "Despesas.gs",
+      "escreve": false
+    },
+    {
+      "nome": "montarEmailHTML",
+      "arquivo": "EmailOficios.gs",
+      "escreve": false
+    },
+    {
+      "nome": "inicializarModuloEscolas",
+      "arquivo": "Escolas.gs",
+      "escreve": false
+    },
+    {
+      "nome": "compasso_inscricaoEstado",
+      "arquivo": "EventosInscricaoPublica.gs",
+      "escreve": false
+    },
+    {
+      "nome": "compasso_inscricaoPreencher",
+      "arquivo": "EventosInscricaoPublica.gs",
+      "escreve": false
+    },
+    {
+      "nome": "compasso_inscrever",
+      "arquivo": "EventosInscricaoPublica.gs",
+      "escreve": false
+    },
+    {
+      "nome": "processarFilaEnvioOficios",
+      "arquivo": "FilaOficios.gs",
+      "escreve": true
+    },
+    {
+      "nome": "finClassificarDespesaIA",
+      "arquivo": "FinanceiroIA.gs",
+      "escreve": false
+    },
+    {
+      "nome": "finClassificarHibridoIA",
+      "arquivo": "FinanceiroIA.gs",
+      "escreve": false
+    },
+    {
+      "nome": "finAnalisarComClaude",
+      "arquivo": "FinanceiroIA.gs",
+      "escreve": false
+    },
+    {
+      "nome": "registrarEnvioGuiaPagamento",
+      "arquivo": "GuiasPagamento.gs",
+      "escreve": true
+    },
+    {
+      "nome": "salvarHistoricoGuia",
+      "arquivo": "GuiasPagamento.gs",
+      "escreve": true
+    },
+    {
+      "nome": "gerarPDFGuiaPagamento",
+      "arquivo": "GuiasPagamento.gs",
+      "escreve": true
+    },
+    {
+      "nome": "salvarGuiaPagamento",
+      "arquivo": "GuiasPagamento.gs",
+      "escreve": true
+    },
+    {
+      "nome": "salvarEGerarGuiaPagamento",
+      "arquivo": "GuiasPagamento.gs",
+      "escreve": true
+    },
+    {
+      "nome": "enviarGuiaPorEmailSISGEP",
+      "arquivo": "GuiasPagamento.gs",
+      "escreve": true
+    },
+    {
+      "nome": "buscarPrestadorGuiaPagamento",
+      "arquivo": "GuiasPagamento.gs",
+      "escreve": false
+    },
+    {
+      "nome": "listarRelatorioGuiasPagamento",
+      "arquivo": "GuiasPagamento.gs",
+      "escreve": false
+    },
+    {
+      "nome": "listarHistoricoGuias",
+      "arquivo": "GuiasPagamento.gs",
+      "escreve": false
+    },
+    {
+      "nome": "limparCachePrestadoresFixos",
+      "arquivo": "GuiasPagamento.gs",
+      "escreve": true
+    },
+    {
+      "nome": "cadastrarNovoPrestador",
+      "arquivo": "GuiasPagamento.gs",
+      "escreve": true
+    },
+    {
+      "nome": "marcarGuiaComoPaga",
+      "arquivo": "GuiasPagamento.gs",
+      "escreve": true
+    },
+    {
+      "nome": "cancelarGuiaPagamento",
+      "arquivo": "GuiasPagamento.gs",
+      "escreve": true
+    },
+    {
+      "nome": "obterResumoGuiasPagamento",
+      "arquivo": "GuiasPagamento.gs",
+      "escreve": false
+    },
+    {
+      "nome": "listarTodosPrestadores",
+      "arquivo": "GuiasPagamento.gs",
+      "escreve": false
+    },
+    {
+      "nome": "salvarPrestador",
+      "arquivo": "GuiasPagamento.gs",
+      "escreve": true
+    },
+    {
+      "nome": "excluirPrestador",
+      "arquivo": "GuiasPagamento.gs",
+      "escreve": true
+    },
+    {
+      "nome": "importarPrestadoresDoHistorico",
+      "arquivo": "GuiasPagamento.gs",
+      "escreve": true
+    },
+    {
+      "nome": "obterDashboardPendencias",
+      "arquivo": "GuiasPagamento.gs",
+      "escreve": false
+    },
+    {
+      "nome": "listarLembretesGuia",
+      "arquivo": "GuiasPagamento.gs",
+      "escreve": false
+    },
+    {
+      "nome": "obterResumoLembretes",
+      "arquivo": "GuiasPagamento.gs",
+      "escreve": false
+    },
+    {
+      "nome": "listarPrestadoresSemEmail",
+      "arquivo": "GuiasPagamento.gs",
+      "escreve": false
+    },
+    {
+      "nome": "salvarEmailPrestadorRapido",
+      "arquivo": "GuiasPagamento.gs",
+      "escreve": true
+    },
+    {
+      "nome": "obterStatusLeituraEmail",
+      "arquivo": "GuiasPagamento.gs",
+      "escreve": false
+    },
+    {
+      "nome": "salvarEmailETelefonePrestadorRapido",
+      "arquivo": "GuiasPagamento.gs",
+      "escreve": true
+    },
+    {
+      "nome": "invalidarCacheTemplatesOficios",
+      "arquivo": "HelperOficios.gs",
+      "escreve": false
+    },
+    {
+      "nome": "iaAssistente",
+      "arquivo": "IACore.gs",
+      "escreve": false
+    },
+    {
+      "nome": "agenteEscolasVersao",
+      "arquivo": "IA_AgentEscolas.gs",
+      "escreve": false
+    },
+    {
+      "nome": "abrirAssistenteIA",
+      "arquivo": "IA_Menu.gs",
+      "escreve": false
+    },
+    {
+      "nome": "getPromptMelhoriaTexto",
+      "arquivo": "IA_Prompts.gs",
+      "escreve": false
+    },
+    {
+      "nome": "getPromptEmail",
+      "arquivo": "IA_Prompts.gs",
+      "escreve": false
+    },
+    {
+      "nome": "getPromptOficio",
+      "arquivo": "IA_Prompts.gs",
+      "escreve": false
+    },
+    {
+      "nome": "jurInstalarTriggerAlertasPrazo",
+      "arquivo": "Juridico.gs",
+      "escreve": false
+    },
+    {
+      "nome": "jurRemoverTriggerAlertasPrazo",
+      "arquivo": "Juridico.gs",
+      "escreve": false
+    },
+    {
+      "nome": "verificarEExpurgarDadosLGPD",
+      "arquivo": "LgpdRetencao.gs",
+      "escreve": false
+    },
+    {
+      "nome": "instalarTriggerExpurgoLGPD",
+      "arquivo": "LgpdRetencao.gs",
+      "escreve": true
+    },
+    {
+      "nome": "removerTriggerExpurgoLGPD",
+      "arquivo": "LgpdRetencao.gs",
+      "escreve": true
+    },
+    {
+      "nome": "lpLimpezaDiaria",
+      "arquivo": "LimpezaPropriedades.gs",
+      "escreve": false
+    },
+    {
+      "nome": "gerarHashInicialUsuarios123456",
+      "arquivo": "Login1.gs",
+      "escreve": true
+    },
+    {
+      "nome": "inicializarMemoriaOrganizacional",
+      "arquivo": "MemoriaCore.gs",
+      "escreve": false
+    },
+    {
+      "nome": "extrairEstiloCobrancas",
+      "arquivo": "MemoriaCore.gs",
+      "escreve": false
+    },
+    {
+      "nome": "adicionarMemoriaManual",
+      "arquivo": "MemoriaCore.gs",
+      "escreve": true
+    },
+    {
+      "nome": "popularMemoriaInstitucional",
+      "arquivo": "MemoriaCore.gs",
+      "escreve": false
+    },
+    {
+      "nome": "listarMemoriaOrganizacional",
+      "arquivo": "MemoriaCore.gs",
+      "escreve": false
+    },
+    {
+      "nome": "configurarTriggerMemoriaEvolutiva",
+      "arquivo": "MemoriaEvolutiva.gs",
+      "escreve": true
+    },
+    {
+      "nome": "memoriaEvolutivaGmail",
+      "arquivo": "MemoriaEvolutiva.gs",
+      "escreve": false
+    },
+    {
+      "nome": "resetarMemoriaEvolutiva",
+      "arquivo": "MemoriaEvolutiva.gs",
+      "escreve": true
+    },
+    {
+      "nome": "testarMemoriaEvolutiva",
+      "arquivo": "MemoriaEvolutiva.gs",
+      "escreve": false
+    },
+    {
+      "nome": "registrarOficioNaMensalidade",
+      "arquivo": "MensalidadeCore.gs",
+      "escreve": true
+    },
+    {
+      "nome": "listarMensalidadeStatus",
+      "arquivo": "MensalidadeCore.gs",
+      "escreve": false
+    },
+    {
+      "nome": "atualizarStatusMensalidade",
+      "arquivo": "MensalidadeCore.gs",
+      "escreve": true
+    },
+    {
+      "nome": "atualizarStatusMensalidadePorLinha",
+      "arquivo": "MensalidadeCore.gs",
+      "escreve": true
+    },
+    {
+      "nome": "processarAlertasMensalidade",
+      "arquivo": "MensalidadeCore.gs",
+      "escreve": true
+    },
+    {
+      "nome": "enviarCobracasMensalidade",
+      "arquivo": "MensalidadeCore.gs",
+      "escreve": true
+    },
+    {
+      "nome": "configurarTriggerMensalidade",
+      "arquivo": "MensalidadeCore.gs",
+      "escreve": true
+    },
+    {
+      "nome": "importarHistoricoMensalidades",
+      "arquivo": "MensalidadeCore.gs",
+      "escreve": true
+    },
+    {
+      "nome": "processarRelatorioMensalidade",
+      "arquivo": "MensalidadeCore.gs",
+      "escreve": true
+    },
+    {
+      "nome": "processarEmailsMensalidade",
+      "arquivo": "MensalidadeCore.gs",
+      "escreve": true
+    },
+    {
+      "nome": "configurarTriggerGmail",
+      "arquivo": "MensalidadeCore.gs",
+      "escreve": true
+    },
+    {
+      "nome": "listarHistoricoRelatorios",
+      "arquivo": "MensalidadeCore.gs",
+      "escreve": false
+    },
+    {
+      "nome": "verificarConfirmacoesRecebimento",
+      "arquivo": "MonitoramentoOficios.gs",
+      "escreve": false
+    },
+    {
+      "nome": "verificarFalhasEntregaOficios",
+      "arquivo": "MonitoramentoOficios.gs",
+      "escreve": false
+    },
+    {
+      "nome": "dashboardResumo",
+      "arquivo": "Oficios.gs",
+      "escreve": false
+    },
+    {
+      "nome": "dashboardGraficos",
+      "arquivo": "Oficios.gs",
+      "escreve": false
+    },
+    {
+      "nome": "verificarCodigoPublico",
+      "arquivo": "Oficios.gs",
+      "escreve": false
+    },
+    {
+      "nome": "validarPublico",
+      "arquivo": "Oficios.gs",
+      "escreve": false
+    },
+    {
+      "nome": "getTemplateConteudo",
+      "arquivo": "Oficios.gs",
+      "escreve": false
+    },
+    {
+      "nome": "oficiosDiagnostico_diagnosticarModulo",
+      "arquivo": "OficiosDiagnostico.gs",
+      "escreve": false
+    },
+    {
+      "nome": "oficiosQueNaoChegaram",
+      "arquivo": "OficiosDiagnostico.gs",
+      "escreve": false
+    },
+    {
+      "nome": "pcHospedesPrepararLink",
+      "arquivo": "ParqueChinaHospedesCore.gs",
+      "escreve": false
+    },
+    {
+      "nome": "salvarSolicitacaoAtualizacao",
+      "arquivo": "Portalassociado.gs",
+      "escreve": true
+    },
+    {
+      "nome": "aprovarAtualizacaoCadastro",
+      "arquivo": "Portalassociado.gs",
+      "escreve": true
+    },
+    {
+      "nome": "servirPortalAssociado",
+      "arquivo": "Portalassociado.gs",
+      "escreve": false
+    },
+    {
+      "nome": "verificarDuplicata",
+      "arquivo": "PrevencaoDuplicata.gs",
+      "escreve": false
+    },
+    {
+      "nome": "verificarAniversariantesRH",
+      "arquivo": "RHAniversarios.gs",
+      "escreve": false
+    },
+    {
+      "nome": "cadastrarReceita",
+      "arquivo": "Receita.gs",
+      "escreve": true
+    },
+    {
+      "nome": "obterResumoReceitas",
+      "arquivo": "Receita.gs",
+      "escreve": false
+    },
+    {
+      "nome": "excluirReceita",
+      "arquivo": "Receita.gs",
+      "escreve": true
+    },
+    {
+      "nome": "gerarCodigoVerificacao",
+      "arquivo": "Recibo.gs",
+      "escreve": true
+    },
+    {
+      "nome": "limparProcessosReciboDuplicados",
+      "arquivo": "Recibo.gs",
+      "escreve": true
+    },
+    {
+      "nome": "buscarBeneficiariosPorEmpresa",
+      "arquivo": "Recibo.gs",
+      "escreve": false
+    },
+    {
+      "nome": "importarBeneficiariosReciboPadrao",
+      "arquivo": "Recibo.gs",
+      "escreve": true
+    },
+    {
+      "nome": "importarBeneficiariosReciboDaPlanilha",
+      "arquivo": "Recibo.gs",
+      "escreve": true
+    },
+    {
+      "nome": "gerarPlanilhaAlvara",
+      "arquivo": "Recibo.gs",
+      "escreve": true
+    },
+    {
+      "nome": "testarPermissaoDriveRecibo",
+      "arquivo": "Recibo.gs",
+      "escreve": false
+    },
+    {
+      "nome": "testarMotorTextoOficio",
+      "arquivo": "Recibo_Testes.gs",
+      "escreve": false
+    },
+    {
+      "nome": "obterResumoRelatorios",
+      "arquivo": "RelatoriosBackend.gs",
+      "escreve": false
+    },
+    {
+      "nome": "exportarControleGeralRelatorio",
+      "arquivo": "RelatoriosBackend.gs",
+      "escreve": false
+    },
+    {
+      "nome": "solicitarReservaParqueChina",
+      "arquivo": "Reservaparquechina.gs",
+      "escreve": false
+    },
+    {
+      "nome": "dashboardReservaParqueChina",
+      "arquivo": "Reservaparquechina.gs",
+      "escreve": false
+    },
+    {
+      "nome": "calcularPreviaPublicaParqueChina",
+      "arquivo": "Reservaparquechina.gs",
+      "escreve": false
+    },
+    {
+      "nome": "encerrarSessaoUsuario",
+      "arquivo": "Sessao.gs",
+      "escreve": false
+    },
+    {
+      "nome": "gerarRecuperacaoSenha",
+      "arquivo": "Sessao.gs",
+      "escreve": true
+    },
+    {
+      "nome": "limparSessoesExpiradasDiario",
+      "arquivo": "Sessao.gs",
+      "escreve": true
+    },
+    {
+      "nome": "instalarTriggerLimpezaSessoes",
+      "arquivo": "Sessao.gs",
+      "escreve": true
+    },
+    {
+      "nome": "removerTriggerLimpezaSessoes",
+      "arquivo": "Sessao.gs",
+      "escreve": true
+    },
+    {
+      "nome": "configurarAbaSindicalizacao",
+      "arquivo": "Sindicalizacao.gs",
+      "escreve": true
+    },
+    {
+      "nome": "validarOTPEAssinarFicha",
+      "arquivo": "Sindicalizacao.gs",
+      "escreve": false
+    },
+    {
+      "nome": "buscarEnderecoPorCEP",
+      "arquivo": "Sindicalizacao.gs",
+      "escreve": false
+    },
+    {
+      "nome": "limparCacheEscolasFicha",
+      "arquivo": "SindicalizacaoAssociados.gs",
+      "escreve": true
+    },
+    {
+      "nome": "listarRemetentesDisponiveis",
+      "arquivo": "SindicalizacaoEmails.gs",
+      "escreve": false
+    },
+    {
+      "nome": "enviarOTPSindicalizacao",
+      "arquivo": "SindicalizacaoEmails.gs",
+      "escreve": true
+    },
+    {
+      "nome": "listarAbasDaPlanilha",
+      "arquivo": "Sindicalizacaoadmin.gs",
+      "escreve": false
+    },
+    {
+      "nome": "definirMatriculaInicialAgora",
+      "arquivo": "Sindicalizacaoadmin.gs",
+      "escreve": true
+    },
+    {
+      "nome": "getSistemaUrlBase",
+      "arquivo": "SistemaConfig.gs",
+      "escreve": false
+    },
+    {
+      "nome": "getPlanilhaId",
+      "arquivo": "SistemaConfig.gs",
+      "escreve": false
+    },
+    {
+      "nome": "getTiposTemplatesDisponiveis",
+      "arquivo": "SistemaConfig.gs",
+      "escreve": false
+    },
+    {
+      "nome": "isPastaConfigurada",
+      "arquivo": "SistemaConfig.gs",
+      "escreve": false
+    },
+    {
+      "nome": "usuarioAutorizado",
+      "arquivo": "SistemaConfig.gs",
+      "escreve": false
+    },
+    {
+      "nome": "getUsuariosAutorizados",
+      "arquivo": "SistemaConfig.gs",
+      "escreve": false
+    },
+    {
+      "nome": "obterEmailUsuarioAtual",
+      "arquivo": "SistemaConfig.gs",
+      "escreve": false
+    },
+    {
+      "nome": "usuarioEstaLogadoEAutorizado",
+      "arquivo": "SistemaConfig.gs",
+      "escreve": false
+    },
+    {
+      "nome": "dentroDoLimite",
+      "arquivo": "SistemaConfig.gs",
+      "escreve": false
+    },
+    {
+      "nome": "statusEhValido",
+      "arquivo": "SistemaConfig.gs",
+      "escreve": false
+    },
+    {
+      "nome": "getAmbienteAtual",
+      "arquivo": "SistemaConfig.gs",
+      "escreve": false
+    },
+    {
+      "nome": "getInfoAmbiente",
+      "arquivo": "SistemaConfig.gs",
+      "escreve": false
+    },
+    {
+      "nome": "logSistema",
+      "arquivo": "SistemaConfig.gs",
+      "escreve": false
+    },
+    {
+      "nome": "getLogsRecentes",
+      "arquivo": "SistemaConfig.gs",
+      "escreve": false
+    },
+    {
+      "nome": "limparLogsMemoria",
+      "arquivo": "SistemaConfig.gs",
+      "escreve": true
+    },
+    {
+      "nome": "validarConfiguracoes",
+      "arquivo": "SistemaConfig.gs",
+      "escreve": false
+    },
+    {
+      "nome": "getConfigPublica",
+      "arquivo": "SistemaConfig.gs",
+      "escreve": false
+    },
+    {
+      "nome": "inicializarConfig",
+      "arquivo": "SistemaConfig.gs",
+      "escreve": false
+    },
+    {
+      "nome": "getConfigSistemaCompleta",
+      "arquivo": "SistemaConfig.gs",
+      "escreve": false
+    },
+    {
+      "nome": "abrirEmissaoTeste",
+      "arquivo": "Teste.gs",
+      "escreve": false
+    },
+    {
+      "nome": "dataPorExtenso",
+      "arquivo": "Utils.gs",
+      "escreve": false
+    },
+    {
+      "nome": "emailValido",
+      "arquivo": "Utils.gs",
+      "escreve": false
+    },
+    {
+      "nome": "valorPorExtenso",
+      "arquivo": "Utils.gs",
+      "escreve": false
+    },
+    {
+      "nome": "obterOuCriarSubpastaAno",
+      "arquivo": "Utils.gs",
+      "escreve": false
+    },
+    {
+      "nome": "cpfValido",
+      "arquivo": "Utils.gs",
+      "escreve": false
+    },
+    {
+      "nome": "validarCpfComFeedback",
+      "arquivo": "Utils.gs",
+      "escreve": false
+    },
+    {
+      "nome": "utils_diagnosticarModuloOficios",
+      "arquivo": "Utils.gs",
+      "escreve": false
+    },
+    {
+      "nome": "diagnosticarBuscaEscolasOficios",
+      "arquivo": "Utils.gs",
+      "escreve": false
+    },
+    {
+      "nome": "testarAgendaHoje",
+      "arquivo": "Visitas.gs",
+      "escreve": false
+    },
+    {
+      "nome": "setupVoucherModuleFase1",
+      "arquivo": "Voucher.gs",
+      "escreve": true
+    },
+    {
+      "nome": "getPortalVoucherInitData",
+      "arquivo": "Voucher.gs",
+      "escreve": false
+    },
+    {
+      "nome": "dashboardVoucher",
+      "arquivo": "Voucher.gs",
+      "escreve": false
+    },
+    {
+      "nome": "dashboardCertBolsa",
+      "arquivo": "Voucher.gs",
+      "escreve": false
+    },
+    {
+      "nome": "excluirSolicitacaoVoucher",
+      "arquivo": "Voucher.gs",
+      "escreve": true
+    },
+    {
+      "nome": "inicializarModuloCertBolsa",
+      "arquivo": "Voucher.gs",
+      "escreve": false
+    },
+    {
+      "nome": "inicializarModuloCert",
+      "arquivo": "Voucher.gs",
+      "escreve": false
+    },
+    {
+      "nome": "criarEstruturaVoucherAuditoria",
+      "arquivo": "VoucherAuditoria.gs",
+      "escreve": true
+    },
+    {
+      "nome": "gerarDocumentoVoucher",
+      "arquivo": "VoucherPdf.gs",
+      "escreve": true
+    },
+    {
+      "nome": "gerarDocumentoCertBolsa",
+      "arquivo": "VoucherPdf.gs",
+      "escreve": true
+    },
+    {
+      "nome": "criarEstruturaVoucherEmitidos",
+      "arquivo": "VoucherSetup.gs",
+      "escreve": true
+    },
+    {
+      "nome": "criarEstruturaVoucherEscolasPendentes",
+      "arquivo": "VoucherSetup.gs",
+      "escreve": true
+    },
+    {
+      "nome": "criarEstruturaCompletaVoucher",
+      "arquivo": "VoucherSetup.gs",
+      "escreve": true
+    },
+    {
+      "nome": "salvarCadastroESolicitacaoVoucher",
+      "arquivo": "VoucherSolicitacao.gs",
+      "escreve": true
+    },
+    {
+      "nome": "validarVoucherPublico",
+      "arquivo": "VoucherValidacao.gs",
+      "escreve": false
+    },
+    {
+      "nome": "adicionarContato",
+      "arquivo": "contatos.gs",
+      "escreve": true
+    },
+    {
+      "nome": "excluirContato",
+      "arquivo": "contatos.gs",
+      "escreve": true
+    },
+    {
+      "nome": "atualizarContato",
+      "arquivo": "contatos.gs",
+      "escreve": true
+    },
+    {
+      "nome": "buscarContatosFiltrados",
+      "arquivo": "contatos.gs",
+      "escreve": false
+    },
+    {
+      "nome": "obterDashboardContatos",
+      "arquivo": "contatos.gs",
+      "escreve": false
+    },
+    {
+      "nome": "obterContatoPorId",
+      "arquivo": "contatos.gs",
+      "escreve": false
+    },
+    {
+      "nome": "excluirContatos",
+      "arquivo": "contatos.gs",
+      "escreve": true
+    },
+    {
+      "nome": "organizarListasWhatsApp",
+      "arquivo": "contatos.gs",
+      "escreve": false
+    }
+  ],
+  "inconclusivas": 90
+}

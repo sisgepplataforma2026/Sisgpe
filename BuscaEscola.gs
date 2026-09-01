@@ -133,7 +133,8 @@ function buscarEscolasPorTermo_interno_(termo) {
   }
 }
 
-function buscarEscolasOficioSmart(termo) {
+function buscarEscolasOficioSmart(termo, tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
   return buscarEscolasPorTermo_interno_(termo);
 }
 

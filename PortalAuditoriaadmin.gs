@@ -1,5 +1,5 @@
 // ============================================================================
-// ARQUIVO: PortalAuditoriaAdmin.gs
+// ARQUIVO: PortalAuditoriaadmin.gs
 // Painel de leitura da aba "Portal_Auditoria" — hoje só gravada pelo Portal
 // Público (portalAuditar_, em Código.gs do repositório sisgep-portal-publico),
 // sem nenhuma tela pra equipe/diretoria consultar sem abrir a planilha.

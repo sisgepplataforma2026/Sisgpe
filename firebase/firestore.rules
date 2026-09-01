@@ -1,0 +1,22 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Estado público do Bingo: sem nome, CPF, associadoId, cartela ou token.
+    // O cliente pode ouvir um documento conhecido, mas não listar a coleção.
+    match /bingo_public_hml_rodadas/{docId} {
+      allow get: if true;
+      allow list, create, update, delete: if false;
+    }
+
+    match /bingo_public_prd_rodadas/{docId} {
+      allow get: if true;
+      allow list, create, update, delete: if false;
+    }
+
+    // Demais coleções continuam fechadas para acesso direto do navegador.
+    // O SISGEP administrativo usa conta de serviço via Apps Script.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

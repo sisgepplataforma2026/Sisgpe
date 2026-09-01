@@ -13,8 +13,21 @@
 // 4. Manter fallback seguro com zeros, sem valores fictícios.
 // ============================================================================
 
+// SEM trava de modulo: alimenta a tela Inicio (InicioResumo.gs).
+// Sessao continua exigida.
 function getDashboardOficiosData(filtros, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  /* PORTA TROCADA EM 01/09/2026 — de exigirSessaoDocumentos_ para
+     exigirModulo_. A antiga (Sessao.gs:405) confere se a SESSAO e valida
+     e, quando pedido, se o perfil e administrador — mas NAO consulta os
+     modulos do usuario. Entao qualquer pessoa logada, com ou sem o modulo
+     Documentos, alcancava esta funcao por chamada direta.
+
+     Na Home isso nao aparecia porque o InicioResumo consulta
+     `sessaoPodeModulo_` ANTES de chamar a fonte — a protecao estava no
+     chamador, nao na funcao. Medido pelo t125, passo 9.
+
+     `exigirModulo_` e o padrao da casa (398 usos em 78 arquivos). */
+  exigirModulo_(tokenSessao, "documentos", false);
   filtros = filtros || {};
 
   var agoraFormatado = Utilities.formatDate(
@@ -177,6 +190,15 @@ function getDashboardOficiosDataV2(filtros, tokenSessao) {
   try {
     return getDashboardOficiosData(filtros || {}, tokenSessao);
   } catch (e) {
+    /* RECUSA DE PERMISSAO NAO E "SEM DADOS" — corrigido em 01/09/2026.
+       Este try/catch engolia TUDO, inclusive o erro que a porta
+       (exigirSessaoDocumentos_) lanca. Quem estava sem acesso, ou com sessao
+       vencida, recebia um painel de zeros em vez de "sessao expirada" — e
+       concluia que nao havia oficio nenhum. E o mesmo defeito que a Home tinha:
+       falha virando numero, em vez de aviso. */
+    if (/sess[\u00e3a]o|permiss|autoriz|acesso|administrador/i.test(String(e && e.message || e))) {
+      throw e;
+    }
     Logger.log("getDashboardOficiosDataV2: " + e.message);
     return {
       dadosReais: false,
@@ -196,7 +218,12 @@ function getDashboardOficiosDataV2(filtros, tokenSessao) {
   }
 }
 
-function consultarEscolaDashboardOficios(query) {
+function consultarEscolaDashboardOficios(query, tokenSessao) {
+  /* PORTA ACRESCENTADA EM 01/09/2026 — frente A da auditoria do Modulo 03.
+     Devolve dado de escola (razao social, CNPJ, e-mails) e nao tinha checagem
+     nenhuma. No Apps Script toda funcao global e endpoint para QUALQUER pagina
+     do projeto, inclusive as anonimas que o Code.gs serve. Ver a nota do t125. */
+  exigirModulo_(tokenSessao, "documentos", false);
   try {
     query = String(query || "").trim();
     if (!query || query.length < 2) return [];

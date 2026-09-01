@@ -1005,7 +1005,7 @@ function chamarClaude_SISGEP(prompt, tokenSessao) {
   var autorizado = false;
   try { autorizado = eiaAcessoAutorizado_(); } catch (eAuth) { autorizado = false; }
   if (!autorizado) {
-    try { exigirSessaoDocumentos_(tokenSessao, false); autorizado = true; } catch (eSessao) { autorizado = false; }
+    try { exigirModulo_(tokenSessao, "comunicacao", false); autorizado = true; } catch (eSessao) { autorizado = false; }
   }
   if (!autorizado) throw new Error("Acesso não autorizado.");
 

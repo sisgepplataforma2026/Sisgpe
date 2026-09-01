@@ -861,29 +861,63 @@
     var btn = document.getElementById('btnAssinar');
     btn.disabled = true;
     btn.textContent = 'Assinando…';
-    google.script.run
-      .withSuccessHandler(function (r) {
-        btn.disabled = false;
-        btn.textContent = 'Assinar ficha';
-        if (r && r.sucesso) {
-          if (r.linkPdf) {
-            var a = document.getElementById('linkPdfFicha');
-            a.href = r.linkPdf;
-            a.style.display = 'inline-block';
+
+    function concluirAssinatura(infoCliente) {
+      google.script.run
+        .withSuccessHandler(function (r) {
+          btn.disabled = false;
+          btn.textContent = 'Assinar ficha';
+          if (r && r.sucesso) {
+            if (r.linkPdf) {
+              var a = document.getElementById('linkPdfFicha');
+              a.href = r.linkPdf;
+              a.style.display = 'inline-block';
+            }
+            mostrarEtapa('sucesso');
+          } else if (r && r.expirado) {
+            erro(5, r.mensagem + ' Toque em "Reenviar código".');
+          } else {
+            erro(5, (r && r.mensagem) || 'Código incorreto.');
           }
-          mostrarEtapa('sucesso');
-        } else if (r && r.expirado) {
-          erro(5, r.mensagem + ' Toque em "Reenviar código".');
-        } else {
-          erro(5, (r && r.mensagem) || 'Código incorreto.');
-        }
+        })
+        .withFailureHandler(function (e) {
+          btn.disabled = false;
+          btn.textContent = 'Assinar ficha';
+          erro(5, 'Falha de comunicação: ' + e.message);
+        })
+        .validarOTPEAssinarFicha(CONTEXTO.idFicha, codigo, infoCliente);
+    }
+
+    // Achado #3 corrigido: o Apps Script não expõe o IP do visitante em
+    // doGet/doPost, e o navegador não sabe seu próprio IP público sozinho —
+    // por isso a captura é feita aqui, perguntando a um serviço externo
+    // gratuito (ipify) ANTES de enviar a assinatura. Nunca bloqueia a
+    // assinatura por causa disso: se demorar mais de 2,5s ou falhar, segue
+    // sem IP (mesmo comportamento de antes), só com o navegador/aparelho
+    // como informação extra.
+    var infoNavegador = String(navigator.userAgent || '').substring(0, 120);
+    var jaRespondeu = false;
+    var tempoEsgotado = setTimeout(function () {
+      if (jaRespondeu) return;
+      jaRespondeu = true;
+      concluirAssinatura(infoNavegador);
+    }, 2500);
+
+    fetch('https://api.ipify.org?format=json')
+      .then(function (resposta) { return resposta.json(); })
+      .then(function (dados) {
+        if (jaRespondeu) return;
+        jaRespondeu = true;
+        clearTimeout(tempoEsgotado);
+        var ip = dados && dados.ip ? String(dados.ip).trim() : '';
+        concluirAssinatura(ip ? (ip + (infoNavegador ? ' | ' + infoNavegador : '')) : infoNavegador);
       })
-      .withFailureHandler(function (e) {
-        btn.disabled = false;
-        btn.textContent = 'Assinar ficha';
-        erro(5, 'Falha de comunicação: ' + e.message);
-      })
-      .validarOTPEAssinarFicha(CONTEXTO.idFicha, codigo, '');
+      .catch(function () {
+        if (jaRespondeu) return;
+        jaRespondeu = true;
+        clearTimeout(tempoEsgotado);
+        concluirAssinatura(infoNavegador);
+      });
   }
 </script>
 </body>

@@ -1,0 +1,2016 @@
+<!-- ESTA TELA É FRAGMENTO, NÃO PÁGINA (25/08/2026).
+     Ela continua sendo servida sozinha pela rota ?painel=compasso — navegador
+     monta html/body sozinho —, mas agora TAMBÉM é incluída dentro da tela de
+     Eventos. O usuário: "quando eu clico em inscrições, deveria aparecer uma
+     tabela renderizada, e não pedir pra abrir uma nova aba".
+
+     A tentativa anterior foi um quadro (iframe) apontando para a própria rota,
+     e ele não carregou: web app do Apps Script dentro de outro web app do Apps
+     Script é aninhamento que o navegador recusa. Incluir o arquivo resolve sem
+     depender disso.
+
+     O que permitiu incluir com segurança: os nomes globais desta tela e os do
+     index.html foram comparados um a um — ZERO colisões. Só três seletores de
+     CSS eram genéricos (body, th, tr:hover td) e foram escopados abaixo. -->
+<div id="compassoInscricoes">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    /* Tokens do Design System (OficiosStyles.html) — nada de hex solto. */
+    :root{
+      --navy:#001f4d; --navy2:#002f6c; --blue:#1565C0; --gold:#C9A84C;
+      --ok:#0f8a5f; --alerta:#d97706; --erro:#dc2626;
+      --texto:#111827; --suave:#6b7385; --linha:#d8e0ea; --fundo:#f4f7fb;
+    }
+    #compassoInscricoes *{box-sizing:border-box}
+    /* Era `body` — escopado para não pintar a tela inteira do SISGEP quando
+       esta tela é incluída dentro de outra. */
+    #compassoInscricoes{background:var(--fundo);color:var(--texto);
+         font-family:'Plus Jakarta Sans',Arial,Helvetica,sans-serif;font-size:14px}
+    .of-modulo-header{background:linear-gradient(135deg,var(--navy),var(--navy2));
+      color:#fff;padding:20px 24px;display:flex;justify-content:space-between;
+      align-items:center;flex-wrap:wrap;gap:12px}
+    .of-modulo-header h1{margin:0;font-size:21px;font-weight:800}
+    .of-modulo-header .sub{font-size:13px;opacity:.85;margin-top:3px}
+    .wrap{padding:18px 22px 60px}
+    .cards{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+    .kpi{flex:1 1 128px;background:#fff;border:1.5px solid var(--linha);border-radius:12px;
+         padding:13px 15px;cursor:pointer;transition:.12s}
+    .kpi:hover{border-color:var(--blue);transform:translateY(-1px)}
+    .kpi.on{border-color:var(--navy);background:#eef3fa}
+    .kpi .n{font-size:25px;font-weight:800;line-height:1.1;color:var(--navy)}
+    .kpi .r{font-size:11px;text-transform:uppercase;letter-spacing:.06em;
+            color:var(--suave);font-weight:700;margin-top:3px}
+    .kpi.alerta .n{color:var(--alerta)} .kpi.okc .n{color:var(--ok)}
+    .of-card{background:#fff;border:1px solid var(--linha);border-radius:14px;
+             padding:14px;margin-bottom:14px;box-shadow:0 1px 6px rgba(16,24,40,.05)}
+    .filtros{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .filtros input,.filtros select{padding:9px 11px;border:1.5px solid var(--linha);
+      border-radius:9px;font-size:14px;font-family:inherit;min-width:130px}
+    table{width:100%;border-collapse:collapse}
+    #compassoInscricoes th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;
+       color:var(--suave);padding:9px 8px;border-bottom:2px solid var(--linha);white-space:nowrap}
+    td{padding:9px 8px;border-bottom:1px solid #eef2f7;vertical-align:middle}
+    #compassoInscricoes tr:hover td{background:#fafcfe}
+    .selo{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}
+    .s-ok{background:#e9f7f1;color:#0b5c40} .s-al{background:#fff7ed;color:#7c4a03}
+    .s-er{background:#fef2f2;color:#7f1d1d} .s-nt{background:#eef3f9;color:#1e3a5f}
+    .acoes{display:flex;gap:5px;flex-wrap:wrap}
+    .b{border:1px solid var(--linha);background:#fff;border-radius:8px;padding:5px 9px;
+       font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;color:var(--navy)}
+    .b:hover{border-color:var(--blue)} .b:disabled{opacity:.4;cursor:default}
+    .b.p{background:var(--navy);color:#fff;border-color:var(--navy)}
+    .b.g{background:#e9f7f1;color:#0b5c40;border-color:#9fdcc4}
+    .vazio{text-align:center;color:var(--suave);padding:32px}
+    .paginacao{display:flex;gap:14px;align-items:center;flex-wrap:wrap;
+               margin-top:12px;padding:10px 4px}
+    .paginacao .conta{font-size:12.5px;color:var(--suave)}
+    .paginacao .pg-nav{display:flex;gap:8px;align-items:center;margin-left:auto}
+    .paginacao button[disabled]{opacity:.4;cursor:default}
+    /* ── Gaveta ──────────────────────────────────────────────────────────
+       Tudo de uma inscrição num lugar só. Antes, analisar exigia sair do
+       painel, abrir a Central de Validação e procurar a pessoa de novo —
+       perdendo filtro, página e o lugar onde se estava. */
+    .gv-fundo{position:fixed;inset:0;background:rgba(8,17,35,.42);display:none;z-index:60}
+    .gv-fundo.on{display:block}
+    .gv{position:fixed;top:0;right:0;bottom:0;width:min(520px,100%);background:#fff;
+        box-shadow:-14px 0 40px rgba(8,17,35,.22);z-index:61;display:none;
+        flex-direction:column}
+    .gv.on{display:flex}
+    .gv-topo{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;
+             padding:16px 18px;display:flex;justify-content:space-between;
+             align-items:flex-start;gap:12px}
+    .gv-topo h2{margin:0;font-size:17px;font-weight:800;line-height:1.25}
+    .gv-topo .meta{font-size:12px;opacity:.88;margin-top:4px}
+    .gv-fechar{background:transparent;border:0;color:#fff;font-size:22px;line-height:1;
+               cursor:pointer;padding:0 2px}
+    .gv-corpo{flex:1;overflow:auto;padding:16px 18px 30px}
+    .gv-sec{border-top:1px solid var(--linha);margin-top:16px;padding-top:14px}
+    .gv-sec:first-child{border-top:0;margin-top:0;padding-top:0}
+    .gv-sec h3{margin:0 0 10px;font-size:11px;font-weight:800;letter-spacing:.07em;
+               text-transform:uppercase;color:var(--suave)}
+    .gv-grade{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .gv-grade .larga{grid-column:1 / -1}
+    .gv-campo{display:flex;flex-direction:column;gap:3px}
+    .gv-campo label{font-size:11px;color:var(--suave);font-weight:700}
+    .gv-campo input,.gv-campo select,.gv-campo textarea{
+      padding:8px 10px;border:1.5px solid var(--linha);border-radius:9px;
+      font-size:13px;font-family:inherit;width:100%}
+    .gv-acoes{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
+    .gv-nota{font-size:12px;color:var(--suave);line-height:1.5;margin-top:8px}
+
+    /* RESUMO — quem é a pessoa, em texto. Antes eram oito campos de digitação
+       ocupando meia tela para dizer o que cabe em três linhas. */
+    .gv-resumo{font-size:13px;line-height:1.75;color:var(--texto);
+               padding:2px 0 4px;border-bottom:1px solid var(--linha)}
+    .gv-resumo b{font-weight:700}
+    .gv-resumo .sep{color:var(--linha);margin:0 7px}
+    .gv-resumo .vazio{color:var(--suave);font-style:italic}
+
+    /* SEÇÕES RECOLHÍVEIS. O título inteiro é a área de clique — alvo grande
+       para quem usa a tela o dia todo. A seta gira em vez de trocar de
+       caractere: trocar texto faz a linha "pular" um pixel a cada clique. */
+    .gv-dobra > h3{cursor:pointer;display:flex;align-items:center;gap:8px;
+                   user-select:none;margin:0}
+    .gv-dobra > h3:hover{color:var(--blue)}
+    .gv-seta{display:inline-block;transition:transform .18s ease;font-size:10px;
+             color:var(--suave)}
+    .gv-dobra.on > h3 .gv-seta{transform:rotate(90deg)}
+    /* Fechado por padrão. `max-height` em vez de `display:none` para a
+       abertura ter animação — e `hidden` continua vencendo, para a seção de
+       excluir seguir escondida de quem não é administrador. */
+    .gv-dobra > .gv-dobra-corpo{max-height:0;overflow:hidden;
+                                transition:max-height .22s ease}
+    .gv-dobra.on > .gv-dobra-corpo{max-height:1400px}
+    /* A etiqueta ao lado do título diz o estado sem precisar abrir. */
+    .gv-dobra-tag{margin-left:auto;font-size:11px;font-weight:600;
+                  color:var(--suave);text-transform:none;letter-spacing:0}
+
+    /* VEREDITO DA ANÁLISE — a cor diz o que é antes de a pessoa ler. Verde
+       segue, âmbar espera, vermelho barra. As mesmas três do selo da lista,
+       para a gaveta não contradizer a linha de onde ela foi aberta. */
+    .vd{border-radius:12px;padding:13px 15px;border:1.5px solid}
+    .vd-t{font-weight:800;font-size:13.5px;display:flex;align-items:center;gap:7px}
+    .vd-s{font-size:12px;line-height:1.55;margin-top:5px;opacity:.9}
+    .vd-ok{background:#f0fdf7;border-color:#a7e3c8;color:#0f8a5f}
+    .vd-al{background:#fffbeb;border-color:#f5d98a;color:#b45309}
+    .vd-er{background:#fef2f2;border-color:#f3c5c5;color:#b91c1c}
+    .vd-nt{background:#f5f8fc;border-color:#c7d7ec;color:var(--navy)}
+    .vd .vd-s{color:var(--texto)}
+    /* O link de escape é discreto de propósito: é a saída para o caso raro,
+       não uma quarta opção com o mesmo peso dos botões de decisão. */
+    .vd-manual{background:none;border:0;padding:0;font:inherit;font-size:12px;
+               color:var(--blue);cursor:pointer;text-decoration:underline;
+               align-self:center;margin-left:auto}
+    .gv-hist{font-size:12px;color:var(--suave);line-height:1.7}
+    .b.ok{background:var(--ok);color:#fff;border-color:var(--ok)}
+    .b.perigo{background:#fef2f2;color:#7f1d1d;border-color:#f3c5c5}
+    .b.perigo:hover{background:#dc2626;color:#fff;border-color:#dc2626}
+    @media(max-width:600px){ .gv-grade{grid-template-columns:1fr} }
+
+    /* ── Abas da Central ──────────────────────────────────────────────────
+       Mesmo padrão do módulo de Ofícios (.of-tabs/.of-tab), que é o que a
+       equipe já usa todo dia. */
+    .of-tabs{display:flex;gap:6px;flex-wrap:wrap;padding:0 22px;background:#fff;
+             border-bottom:1.5px solid var(--linha)}
+    .of-tab{background:transparent;border:0;border-bottom:3px solid transparent;
+            padding:13px 16px;font-size:13.5px;font-weight:700;font-family:inherit;
+            color:var(--suave);cursor:pointer}
+    .of-tab:hover{color:var(--navy)}
+    .of-tab.active{color:var(--navy);border-bottom-color:var(--navy)}
+    .painel[hidden]{display:none}
+    .quadro{width:100%;height:calc(100vh - 190px);min-height:520px;border:0}
+
+    /* ── Modal do ingresso emitido ────────────────────────────────────────
+       A lógica do ofício: gerou, abre um lugar com tudo o que se faz com o
+       documento — baixar, imprimir, e-mail, WhatsApp, editar. */
+    .md-fundo{position:fixed;inset:0;background:rgba(8,17,35,.5);display:none;
+              align-items:center;justify-content:center;z-index:70;padding:16px}
+    .md-fundo.on{display:flex}
+    .md{background:#fff;border-radius:16px;width:min(560px,100%);
+        box-shadow:0 24px 60px rgba(8,17,35,.3);overflow:hidden}
+    .md-topo{display:flex;gap:13px;align-items:center;padding:20px 22px 14px}
+    .md-ok{width:46px;height:46px;border-radius:13px;background:#e9f7f1;
+           border:1.5px solid #9fdcc4;display:flex;align-items:center;
+           justify-content:center;font-size:22px;flex-shrink:0}
+    .md-topo h2{margin:0;font-size:16px;font-weight:900;color:var(--navy)}
+    .md-topo .sub{font-size:12px;color:var(--suave);margin-top:3px}
+    .md-corpo{padding:0 22px 20px}
+    .md-botoes{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:13px}
+    .md-status{display:flex;gap:8px;align-items:center;padding:11px 14px;
+               background:var(--fundo);border:1.5px solid var(--linha);
+               border-radius:11px;font-size:12.5px;font-weight:600;color:var(--suave)}
+    .md-pe{display:flex;justify-content:flex-end;padding:0 22px 20px}
+
+    /* ── Diálogo do sistema ───────────────────────────────────────────────
+       Substitui confirm() e prompt() nativos. O CLAUDE.md proíbe os nativos
+       em letra: "nunca usar alert()/confirm() nativo". Além de feios, eles
+       anunciam o endereço cru do googleusercontent.com — o usuário viu isso
+       em 25/08 e disse, com razão: "fora do padrão SISGEP". */
+    .barra{display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+           background:#eef3fa;border:1px solid #c7d7ec;border-radius:11px;
+           padding:10px 13px;margin-bottom:12px;display:none}
+    .barra b{color:var(--navy)}
+    #msg{position:fixed;right:16px;bottom:16px;max-width:400px;background:var(--navy);
+         color:#fff;padding:13px 16px;border-radius:11px;font-size:13px;display:none;
+         box-shadow:0 8px 26px rgba(0,0,0,.25);white-space:pre-wrap;z-index:50}
+  
+/* `hidden` é `display:none` da folha do navegador, e QUALQUER `display` numa
+   regra de classe ganha dele. Sem estas linhas o elemento continua à vista
+   mesmo marcado como escondido — foi assim que a barra de submódulos seguiu
+   duplicada em 25/08 depois de eu "escondê-la". */
+.paginacao[hidden]{display:none}
+.gv-acoes[hidden]{display:none}
+.gv-campo[hidden]{display:none}
+
+/* A linha das abas: pílula à esquerda, ações à direita. As ações moraram no
+   cabeçalho até 25/08 e sumiam quando a Central era embutida na tela de
+   Eventos — ver o comentário na marcação. */
+.of-tabs-linha{display:flex;align-items:center;justify-content:space-between;
+               gap:12px;flex-wrap:wrap}
+.of-tabs-linha .of-tabs{margin-bottom:0}
+.of-tabs-acoes{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
+.of-tabs-linha + .painel{margin-top:20px}
+
+/* O LINK DO INGRESSO, no modal. Ele existia no objeto e não existia na tela:
+   "Abrir ingresso" fazia window.open, que o iframe do Apps Script costuma
+   bloquear — e não havia de onde copiar o endereço. Campo de leitura, com o
+   texto já selecionável, e botão de copiar com plano B. */
+.md-link{margin:0 0 13px}
+.md-link label{display:block;font-size:10.5px;font-weight:900;letter-spacing:.07em;
+               text-transform:uppercase;color:var(--suave);margin-bottom:5px}
+.md-link .cx{display:flex;gap:8px;align-items:stretch}
+.md-link input{flex:1;min-width:0;border:1px solid var(--linha);border-radius:8px;
+               padding:8px 10px;font-family:inherit;font-size:12.5px;color:var(--navy);
+               background:#f8fafc}
+.md-link input:focus{outline:2px solid var(--blue);outline-offset:-1px}
+.md-link[hidden]{display:none}
+
+/* ── O STATUS COMO BOTÃO — 26/08/2026 ────────────────────────────────────
+   O usuário: "aí vai ter um botão de status; no status você reemite, envia,
+   edita". A coluna deixou de ser rótulo e virou o comando: o que dá para
+   fazer com a pessoa depende de onde ela está, e é ali que quem trabalha já
+   está olhando. Some com quatro colunas (status, ingresso, entrega, ações)
+   e devolve a largura para o nome e a escola. */
+.st-btn{display:inline-flex;align-items:center;gap:6px;height:29px;padding:0 11px;
+  border-radius:999px;border:1.5px solid var(--linha);background:#fff;
+  font-family:inherit;font-size:11.5px;font-weight:800;color:var(--suave);
+  cursor:pointer;white-space:nowrap}
+.st-btn:hover{border-color:var(--blue);color:var(--navy)}
+.st-btn .cx{font-size:9px;opacity:.7}
+.st-btn.ok{background:#f0fdf4;border-color:#bbf7d0;color:#15803d}
+.st-btn.al{background:#fffbf2;border-color:#f0c98a;color:#b45309}
+.st-btn.er{background:#fff5f5;border-color:#fecaca;color:#b91c1c}
+.st-btn.az{background:#eef4ff;border-color:#bfdbfe;color:#1e40af}
+.st-btn.rx{background:#f5f3ff;border-color:#ddd6fe;color:#6d28d9}
+.st-det{display:block;font-size:10.5px;font-weight:600;color:var(--suave);margin-top:3px}
+
+#stMenu{position:fixed;z-index:400;width:248px;background:#fff;border:1px solid var(--linha);
+  border-radius:13px;padding:6px;box-shadow:0 16px 48px rgba(0,20,60,.18),0 4px 16px rgba(0,20,60,.08);
+  display:none}
+#stMenu.on{display:block}
+#stMenu .cab{padding:8px 11px 9px;border-bottom:1px solid #f1f5f9;margin-bottom:4px}
+#stMenu .cab b{display:block;font-size:12.5px;color:var(--texto)}
+#stMenu .cab span{display:block;font-size:11px;color:var(--suave);margin-top:2px}
+#stMenu button{display:block;width:100%;text-align:left;border:0;background:transparent;
+  font-family:inherit;font-size:12.5px;font-weight:600;color:var(--texto);
+  padding:8px 11px;border-radius:8px;cursor:pointer}
+#stMenu button:hover{background:var(--fundo)}
+#stMenu button.g{color:#15803d;font-weight:700}
+#stMenu button.r{color:#b91c1c}
+#stMenu hr{border:0;border-top:1px solid #f1f5f9;margin:4px 8px}
+</style>
+
+<div class="of-modulo-header">
+  <div>
+    <h1>Central de Inscrições — Festa Compasso da Vida 2026</h1>
+    <div class="sub" id="sub">Carregando…</div>
+  </div>
+</div>
+
+<!-- ══ ABAS ═══════════════════════════════════════════════════════════════
+     "Tudo num lugar só" (usuário, 24/08/2026). Antes eram três telas com três
+     caminhos diferentes na tela de Eventos: painel, importação e a Central de
+     Validação — que, aliás, mandava abrir por um item de menu da planilha que
+     nunca existiu.
+
+     O padrão é o do módulo de Ofícios (.of-tabs), que é o que a equipe já usa
+     todo dia. -->
+<!-- OS BOTÕES DE AÇÃO MORAM AQUI, E NÃO NO CABEÇALHO — 25/08/2026.
+     Eles estavam no `.of-modulo-header`. Quando esta Central passou a ser
+     desenhada DENTRO da tela de Eventos, aquele cabeçalho foi escondido para
+     não empilhar dois títulos — e levou junto o "copiar link de inscrição",
+     que é justamente o que precisa sair daqui para a lista de transmissão e
+     para o site. O usuário perguntou "o link da inscrição foi para onde?".
+
+     Na linha das abas eles aparecem nos DOIS modos: embutida na tela de
+     Eventos e sozinha pela rota ?painel=compasso. Esconder um contêiner
+     esconde tudo o que ele carrega — a lição é a mesma da barra duplicada. -->
+<!-- INSCRIÇÕES APARECIA DUAS VEZES, UMA DENTRO DA OUTRA — 26/08/2026.
+     A tela de Eventos já abre esta Central na tela "Inscrições" do submódulo
+     Festa; aqui dentro havia OUTRA aba "Inscrições", ao lado de "Importar
+     planilha". Duas abas com o mesmo nome, uma dentro da outra, e a pessoa
+     sem saber qual das duas está olhando.
+
+     Importar planilha não é um estado da lista — é uma AÇÃO sobre ela. Então
+     virou botão, ao lado dos outros. Os ids `tabLista` e `tabImportar` saíram;
+     `irAba` continua existindo e é quem troca os painéis. -->
+<div class="of-tabs-linha">
+  <div class="of-tabs-acoes" style="margin-left:0">
+    <button class="b" id="btAbaLista" onclick="irAba('lista')" hidden>‹ Voltar para a lista</button>
+    <button class="b" id="btAbaImportar" onclick="window.impEscolherArquivo && window.impEscolherArquivo()">📄 Importar planilha</button>
+    <!-- A porta que faltava: convidado e acompanhante não nascem do formulário
+         público, e até 26/08/2026 não havia como cadastrá-los — o backend
+         existia sem tela. Ver o cabeçalho de compasso_criarInclusaoAdministrativa. -->
+    <button class="b" onclick="abrirInclusao()">➕ Incluir inscrição</button>
+    <button class="b" onclick="conferirVinculoTodas()">🔎 Conferir contra a base</button>
+    <button class="b" onclick="copiarLink()">🔗 Copiar link de inscrição</button>
+    <button class="b" onclick="carregar()">↻ Atualizar</button>
+  </div>
+</div>
+
+<div class="painel" id="painelLista">
+<div class="wrap">
+
+  <!-- Cards de ESTADO. Cada um é um filtro (item 4 do PROMPT-MESTRE). -->
+  <div class="cards" id="cards"></div>
+
+  <!-- Filtro que veio pelo endereço (aba Participantes / A enviar, na tela de
+       Eventos). Fica à vista de propósito: lista filtrada sem aviso é a que
+       faz alguém concluir que "sumiu inscrição". -->
+  <div id="chipUrl" style="display:none;margin:0 0 12px">
+    <span style="display:inline-flex;align-items:center;gap:8px;background:#fff7e0;
+                 border:1px solid var(--gold,#C9A84C);border-radius:999px;
+                 padding:6px 14px;font-size:13px;color:#6b5310">
+      <b id="chipUrlTexto"></b>
+      <button class="b" style="border:0;background:transparent;padding:0 2px;
+              cursor:pointer;font-size:15px;line-height:1" title="Remover este filtro"
+              onclick="limparFiltroUrl()">&times;</button>
+    </span>
+  </div>
+
+  <div class="of-card">
+    <div class="filtros">
+      <input id="fBusca" placeholder="Nome, CPF, escola…">
+      <input id="fEscola" placeholder="Escola">
+      <input id="fCidade" placeholder="Cidade">
+      <input id="fRegiao" placeholder="Região">
+      <select id="fCategoria">
+        <option value="">Toda categoria</option>
+        <option value="associado">Associado</option>
+        <option value="convidado">Convidado</option>
+        <option value="acompanhante">Acompanhante</option>
+      </select>
+      <select id="fAssoc">
+        <option value="">Associado: todos</option>
+        <option value="ASSOCIADO">✅ É associado</option>
+        <option value="NAO_FILIADO">⚠️ Consta, não filiado</option>
+        <option value="NAO_ENCONTRADO">❌ Fora da base</option>
+      </select>
+      <button class="b p" onclick="carregar()">Filtrar</button>
+      <button class="b" onclick="limpar()">Limpar</button>
+    </div>
+  </div>
+
+  <!-- Barra de lote: só aparece quando há seleção. -->
+  <div class="barra" id="barra">
+    <b><span id="qtdSel">0</span> selecionada(s)</b>
+    <!-- Marcar o cabeçalho pega a PÁGINA. Quando há mais páginas, aparece
+         aqui o atalho para a lista inteira — é o mesmo gesto do Gmail, e sem
+         ele "excluir todas" exigia trocar o tamanho da página antes. -->
+    <button class="b" id="btSelTudo" hidden onclick="selecionarTudo()"></button>
+    <button class="b p" onclick="enviarLote()" id="btLoteEmail">📧 Enviar ingresso por e-mail</button>
+    <button class="b perigo" onclick="excluirLote()" id="btLoteExcluir" hidden>🗑 Excluir selecionadas</button>
+    <span id="capacidade" style="font-size:12px;color:var(--suave)"></span>
+  </div>
+
+  <div class="of-card" style="overflow:auto">
+    <table>
+      <thead><tr>
+        <th><input type="checkbox" id="todos" onclick="marcarTodos(this)"></th>
+        <th>Pessoa</th><th>Escola · Cidade</th><th>Contato</th>
+        <th>Vínculo</th><th>Situação</th>
+      </tr></thead>
+      <tbody id="tb"></tbody>
+    </table>
+  </div>
+
+  <!-- Rodapé de página. Some quando tudo cabe numa página só — numeração em
+       lista de 12 linhas é ruído. -->
+  <div class="paginacao" id="paginacao" hidden>
+    <span class="conta" id="pgConta"></span>
+    <label style="font-size:12px;color:var(--suave)">Por página:
+      <select id="pgTam" onchange="trocarTamanho(this.value)">
+        <option value="25">25</option>
+        <option value="50" selected>50</option>
+        <option value="100">100</option>
+        <option value="0">todas</option>
+      </select>
+    </label>
+    <div class="pg-nav">
+      <button class="b" id="pgAnt" onclick="irPagina(PAGINA-1)">‹ Anterior</button>
+      <span id="pgAtual" style="font-size:13px;font-weight:700"></span>
+      <button class="b" id="pgProx" onclick="irPagina(PAGINA+1)">Próxima ›</button>
+    </div>
+  </div>
+</div>
+
+<!-- Um menu só para a tabela inteira. Fica FORA da tabela porque menu
+     dentro de <td> herda o overflow do card e some no recorte. -->
+<div id="stMenu" onclick="event.stopPropagation()"></div>
+</div><!-- /painelLista -->
+
+<!-- A IMPORTAÇÃO DEIXOU DE SER QUADRO — 26/08/2026.
+
+     Era um iframe apontando para ?painel=compasso-importar, e web app do Apps
+     Script dentro de outro web app o navegador recusa: a área ficava em
+     branco. O usuário: "quando clico em importar planilha ele vem para essa
+     tela".
+
+     O obstáculo que existia — nomes globais iguais nas duas telas — foi
+     removido do outro lado: o script da importação passou a viver dentro de
+     uma função própria e só expõe sete nomes, todos com prefixo `imp`. -->
+<div class="painel" id="painelImportar" hidden>
+  <?!= include('CompassoImportacao'); ?>
+</div>
+
+<!-- ══ MODAL DO INGRESSO EMITIDO ═════════════════════════════════════════
+     A lógica do ofício, que o usuário pediu nominalmente: gerou, abre um lugar
+     com tudo o que se faz com o documento. -->
+<!-- ══ INCLUIR INSCRIÇÃO ═════════════════════════════════════════════════════
+     A PORTA QUE FALTAVA — 26/08/2026.
+
+     `compasso_criarInclusaoAdministrativa` existia desde o commit e086213 e
+     nenhuma tela a chamava (conferido pelos 5 passos da REGRA Nº 1: fora de
+     Code.gs, fora de rota doGet, fora de trigger, ausente em todo .html). A
+     equipe administrativa não tinha como cadastrar convidado nem
+     acompanhante — o motor pronto, sem porta.
+
+     Só estas DUAS categorias entram aqui. Associado tem porta própria, que é
+     o formulário público, e o backend recusa `associado` nesta função de
+     propósito: incluir associado por dentro pularia a conferência de vínculo.
+
+     Cidade, Região e Escola ficaram de fora a pedido do usuário — para
+     convidado e acompanhante, que não vêm de escola, seriam três campos
+     vazios em toda inclusão. -->
+<div class="md-fundo" id="incFundo">
+  <div class="md" role="dialog" aria-label="Incluir inscrição">
+    <div class="md-topo">
+      <div class="md-ok">➕</div>
+      <div>
+        <h2>Incluir inscrição</h2>
+        <div class="sub">Convidado e acompanhante — quem não entra pelo formulário público.</div>
+      </div>
+    </div>
+    <div class="md-corpo">
+      <div class="gv-grade">
+        <div class="gv-campo larga"><label>Categoria</label>
+          <select id="incCategoria" onchange="incTrocouCategoria()">
+            <option value="convidado">Convidado — gratuito, indicação da diretoria</option>
+            <option value="acompanhante">Acompanhante — R$ 500, avulso</option>
+          </select>
+        </div>
+        <div class="gv-campo"><label>Nome *</label><input id="incNome" autocomplete="off"></div>
+        <div class="gv-campo"><label>CPF</label><input id="incCpf" autocomplete="off"></div>
+        <div class="gv-campo"><label>E-mail</label><input id="incEmail" autocomplete="off"></div>
+        <div class="gv-campo"><label>WhatsApp</label><input id="incWhatsapp" autocomplete="off"></div>
+        <!-- Convidado sem quem indicou é convidado que ninguém sabe explicar
+             na porta do salão. O backend recusa vazio. -->
+        <div class="gv-campo larga" id="incIndicadoBox"><label>Indicado por *</label>
+          <input id="incIndicadoPor" placeholder="Nome do diretor que indicou" autocomplete="off">
+        </div>
+      </div>
+      <div class="gv-nota" id="incNota"></div>
+      <div class="gv-acoes">
+        <button class="b" onclick="fecharInclusao()">Cancelar</button>
+        <button class="b p" id="incBt" onclick="salvarInclusao()">Incluir</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="md-fundo" id="mdFundo">
+  <div class="md" role="dialog" aria-label="Ingresso emitido">
+    <div class="md-topo">
+      <div class="md-ok">🎟️</div>
+      <div>
+        <h2 id="mdTitulo">Ingresso emitido</h2>
+        <div class="sub" id="mdSub"></div>
+      </div>
+    </div>
+    <div class="md-corpo">
+      <div class="md-botoes">
+        <button class="b"   onclick="mdAbrir()">📄 Abrir ingresso</button>
+        <button class="b"   onclick="mdBaixar()">📥 Baixar PDF</button>
+        <button class="b"   onclick="mdImprimir()">🖨 Imprimir</button>
+        <button class="b p" onclick="mdEmail()">📧 Enviar por e-mail</button>
+        <button class="b g" onclick="mdWhats()">💬 WhatsApp</button>
+        <button class="b"   onclick="mdEditar()">✏️ Editar dados</button>
+      </div>
+      <!-- Nasce escondido: só aparece quando o backend devolve a URL. Um campo
+           vazio à espera é pior do que campo nenhum — passa a impressão de que
+           o link não existe. -->
+      <div class="md-link" id="mdLinkBox" hidden>
+        <label for="mdLink">Link do ingresso</label>
+        <div class="cx">
+          <input id="mdLink" type="text" readonly onclick="this.select()"
+                 aria-label="Endereço público do ingresso">
+          <button class="b" onclick="mdCopiarLink()">🔗 Copiar</button>
+        </div>
+      </div>
+
+      <div class="md-status" id="mdStatus">
+        <span>🕐</span><span>Emitido e ainda não enviado.</span>
+      </div>
+    </div>
+    <div class="md-pe"><button class="b" onclick="fecharModal()">Fechar</button></div>
+  </div>
+</div>
+
+<?!= include('DialogoSISGEP'); ?>
+
+<!-- ══ GAVETA ═══════════════════════════════════════════════════════════════
+     Uma inscrição inteira: os dados, o pagamento, a decisão, o ingresso e o
+     histórico. Cada bloco só aparece quando faz sentido para o estado em que
+     a inscrição está — botão que não pode ser clicado não deveria existir na
+     tela. -->
+<div class="gv-fundo" id="gvFundo" onclick="fecharGaveta()"></div>
+<div class="gv" id="gv" role="dialog" aria-label="Detalhes da inscrição">
+  <div class="gv-topo">
+    <div>
+      <h2 id="gvNome">—</h2>
+      <div class="meta" id="gvMeta"></div>
+    </div>
+    <button class="gv-fechar" onclick="fecharGaveta()" title="Fechar">&times;</button>
+  </div>
+
+  <div class="gv-corpo">
+
+    <!-- RESUMO ══════════════════════════════════════════════════════════════
+         O QUE A PESSOA VEIO FAZER FICA NO TOPO — 27/08/2026.
+
+         O usuário: "tela muita grande". Estava: oito campos de formulário
+         antes de qualquer coisa, depois análise, ingresso, comprovante,
+         histórico e excluir, todos abertos ao mesmo tempo. Seis blocos com o
+         mesmo peso visual, e a pessoa rolando para achar o que veio fazer.
+
+         O que ela veio fazer, na prática: ver QUEM é, DECIDIR, e MANDAR o
+         ingresso. Editar dado é raro; ler histórico é mais raro ainda. Então
+         quem é vira uma linha de texto — não oito campos de digitação — e o
+         resto passa a viver atrás de um clique. -->
+    <div class="gv-resumo" id="gvResumo"></div>
+
+    <!-- DADOS — recolhido: só quem vai EDITAR precisa dos campos. -->
+    <div class="gv-sec gv-dobra" id="secDados">
+      <h3 onclick="gvDobrar('secDados')"><span class="gv-seta">▸</span>Dados cadastrais</h3>
+      <div class="gv-dobra-corpo">
+      <div class="gv-grade">
+        <div class="gv-campo larga"><label>Nome</label><input id="dNome"></div>
+        <div class="gv-campo"><label>CPF</label><input id="dCpf"></div>
+        <div class="gv-campo"><label>Matrícula</label><input id="dMatricula"></div>
+        <div class="gv-campo larga"><label>Escola</label><input id="dEscola"></div>
+        <div class="gv-campo"><label>Cidade</label><input id="dCidade"></div>
+        <div class="gv-campo"><label>Região</label><input id="dRegiao"></div>
+        <div class="gv-campo larga"><label>E-mail</label><input id="dEmail"></div>
+        <div class="gv-campo"><label>WhatsApp</label><input id="dWhatsapp"></div>
+        <div class="gv-campo"><label>Categoria</label><input id="dCategoria" disabled></div>
+      </div>
+      <div class="gv-acoes">
+        <button class="b p" onclick="salvarDados()">Salvar dados</button>
+        <span class="gv-nota" id="dSituacao" style="margin:0;align-self:center"></span>
+      </div>
+      </div>
+    </div>
+
+    <!-- PAGAMENTO — só para quem paga (acompanhante). -->
+    <div class="gv-sec" id="secPagamento" hidden>
+      <h3>Pagamento</h3>
+      <div id="pgSituacao" class="gv-nota" style="margin:0 0 10px"></div>
+      <div id="pgForm">
+        <div class="gv-grade">
+          <div class="gv-campo"><label>Forma</label><select id="pgForma"></select></div>
+          <div class="gv-campo"><label>Valor</label><input id="pgValor"></div>
+          <div class="gv-campo larga"><label>Referência (nº da transação)</label><input id="pgRef"></div>
+        </div>
+        <div class="gv-nota" id="pgOrigemValor"></div>
+        <div class="gv-acoes">
+          <button class="b ok" onclick="confirmarPagamento()">✓ Confirmar recebimento</button>
+        </div>
+      </div>
+      <div class="gv-acoes" id="pgEstorno" hidden>
+        <button class="b" onclick="estornarPagamento()">Estornar</button>
+      </div>
+    </div>
+
+    <!-- ANÁLISE ═══════════════════════════════════════════════════════════
+         O SISTEMA JÁ RESPONDEU; A PESSOA CONFIRMA — 26/08/2026.
+
+         Antes eram três campos para toda inscrição, inclusive as óbvias. Mas
+         a regra do evento não deixa margem: ingresso próprio é só para
+         associado, e o CPF já foi cruzado com os ~8.000 filiados antes de a
+         gaveta abrir — o selo de vínculo está impresso na linha da lista.
+         Pedir para a pessoa redigitar o que o sistema calculou é o que a
+         REGRA Nº 0.6 chama de defeito de desenho.
+
+         O que NÃO foi tirado: os três campos continuam inteiros, atrás de
+         "analisar manualmente". Automatizar não é decidir pela pessoa — é
+         poupar o caminho comum e deixar o incomum acessível. -->
+    <div class="gv-sec">
+      <h3>Análise</h3>
+
+      <!-- Veredito e botões são desenhados por montarAnalise(), porque o que
+           aparece depende do vínculo: validar, pôr em pendência e reprovar não
+           fazem sentido ao mesmo tempo. -->
+      <div id="aVeredito"></div>
+
+      <div id="aManual" hidden>
+        <div class="gv-grade">
+          <div class="gv-campo"><label>Decisão</label>
+            <select id="aStatus" onchange="montarMotivos()">
+              <option value="VALIDADA_ADMINISTRATIVAMENTE">Validar</option>
+              <option value="PENDENTE">Pendência</option>
+              <option value="REPROVADA">Reprovar</option>
+            </select>
+          </div>
+          <div class="gv-campo" id="aMotivoBox"><label>Motivo</label>
+            <select id="aMotivo"></select>
+          </div>
+          <div class="gv-campo larga"><label>Observação</label>
+            <textarea id="aObs" rows="2" placeholder="Obrigatória quando o motivo for Outro"></textarea>
+          </div>
+        </div>
+        <div class="gv-acoes">
+          <button class="b p" onclick="decidir()">Confirmar decisão</button>
+        </div>
+      </div>
+      <div class="gv-nota" id="aNota"></div>
+    </div>
+
+    <!-- INGRESSO -->
+    <div class="gv-sec gv-dobra" id="secIngresso">
+      <h3 onclick="gvDobrar('secIngresso')"><span class="gv-seta">▸</span>Ingresso<span class="gv-dobra-tag" id="tagIngresso"></span></h3>
+      <div class="gv-dobra-corpo">
+      <div class="gv-nota" id="ingSituacao" style="margin:0 0 10px"></div>
+      <div class="gv-acoes">
+        <button class="b p"  id="btEmitir"   onclick="emitirGaveta()">Emitir ingresso</button>
+        <button class="b g"  id="btEmail"    onclick="emailGaveta()">📧 Enviar por e-mail</button>
+        <button class="b g"  id="btWhats"    onclick="whatsGaveta()">📱 Enviar por WhatsApp</button>
+        <button class="b perigo" id="btCancelar" onclick="cancelarIngresso()">Cancelar ingresso</button>
+      </div>
+      </div>
+    </div>
+
+    <!-- COMPROVANTE DA INSCRIÇÃO
+         Não confundir com o INGRESSO logo acima. Este é o "recebemos a sua
+         inscrição", que sai por e-mail sozinho na hora — e que, para quem só
+         deixou WhatsApp, precisa de um clique daqui.
+
+         Serve para responder, não para disparar: alguém pergunta no ZAP se a
+         inscrição foi, a secretaria abre esta gaveta e responde. -->
+    <div class="gv-sec gv-dobra" id="secComprovante">
+      <h3 onclick="gvDobrar('secComprovante')"><span class="gv-seta">▸</span>Comprovante da inscrição<span class="gv-dobra-tag" id="tagComprovante"></span></h3>
+      <div class="gv-dobra-corpo">
+      <div class="gv-nota" id="cpvSituacao" style="margin:0 0 10px"></div>
+      <div class="gv-acoes">
+        <button class="b g" id="btCpvWhats" onclick="comprovanteWhats()">💬 Enviar comprovante por WhatsApp</button>
+        <button class="b"   id="btCpvOk"    onclick="comprovanteMarcar()" hidden>✓ Marcar como enviado</button>
+      </div>
+      </div>
+    </div>
+
+    <!-- HISTÓRICO -->
+    <div class="gv-sec gv-dobra" id="secHistorico">
+      <h3 onclick="gvDobrar('secHistorico')"><span class="gv-seta">▸</span>Histórico</h3>
+      <div class="gv-dobra-corpo">
+      <div class="gv-hist" id="gvHistorico"></div>
+      </div>
+    </div>
+
+    <!-- EXCLUIR — só administrador, e só aparece para quem é. -->
+    <div class="gv-sec gv-dobra" id="secExcluir" hidden>
+      <h3 onclick="gvDobrar('secExcluirBloco')"><span class="gv-seta">▸</span>Excluir inscrição</h3>
+      <div class="gv-dobra-corpo">
+      <div class="gv-nota" style="margin:0 0 10px">
+        Tira a inscrição da lista e devolve a vaga. Fica registrado quem
+        excluiu e por quê. Ingresso emitido precisa ser cancelado antes.
+      </div>
+      <div class="gv-acoes">
+        <button class="b perigo" onclick="excluirInscricao()">Excluir inscrição</button>
+      </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="msg"></div>
+
+<script>
+/* A sessão vem da URL quando esta tela abre sozinha (rota ?painel=compasso),
+   e da global do SISGEP quando ela está INCLUÍDA dentro do Portal — ali não
+   existe `?sessao=` nenhum, e sem este segundo caminho a tela incluída não
+   conseguiria falar com o backend. */
+/* O TOKEN É RESOLVIDO A CADA CHAMADA, NUNCA NO CARREGAMENTO — 25/08/2026.
+ *
+ * Aqui havia `var TOKEN = (function(){...})()`, avaliado uma vez, na hora em
+ * que este arquivo é lido. Dentro da SPA isso dá string vazia SEMPRE, e a
+ * Central inteira respondia "Sessão inválida ou expirada":
+ *
+ *   index.html:663   include de EventosAdmin  ← este script roda aqui
+ *   index.html:1345  var SISGEP_TOKEN_SESSAO  ← 682 linhas depois
+ *
+ * (A chamada acima está escrita em palavras de propósito. Ver REGRA Nº 0: a
+ *  sintaxe real de scriptlet dentro de comentário É EXECUTADA, e foi
+ *  exatamente o que deixou esta tela em branco em 25/08 — ver o bloco abaixo.)
+ *
+ * Na posição 663 a variável já foi içada pelo `var`, mas ainda não recebeu
+ * valor: `typeof` devolve "undefined", a função cai no `return ''` — e o
+ * TOKEN congela vazio para o resto da vida da página. Definir depois não
+ * conserta o que já foi capturado.
+ *
+ * É a mesma classe de erro do `hidden` perdendo para o `display`: o mecanismo
+ * existia e eu não conferi QUANDO ele roda. A tela de Eventos nunca teve esse
+ * problema porque usa `tokenSessao()`, uma função, resolvida no uso.
+ *
+ * A rota `?painel=compasso` (Central aberta sozinha) continua vindo pela URL,
+ * e ela tem precedência: ali não existe SPA para consultar. */
+function compassoToken(){
+  try{
+    var m = String(location.search||'').match(/[?&]sessao=([^&]*)/);
+    if (m) return decodeURIComponent(m[1]);
+    if (typeof SISGEP_TOKEN_SESSAO !== 'undefined' && SISGEP_TOKEN_SESSAO)
+      return SISGEP_TOKEN_SESSAO;
+    return '';
+  }catch(e){ return ''; }
+}
+
+var LISTA = [], SEL = {}, FILTRO_CARD = '';
+
+/* ── Filtro vindo pelo endereço ──────────────────────────────────────────────
+   A tela de Eventos abre este painel já apontado para um estado: a aba
+   Participantes chama ?filtro=participantes, e o card "a enviar" chama
+   ?filtro=a-enviar. Só entra o que está nesta tabela — parâmetro desconhecido
+   é ignorado em silêncio, e a tela abre completa, que é o comportamento certo
+   para um link velho ou digitado errado. */
+var FILTROS_URL = {
+  'participantes': { rotulo: 'Participantes — quem já tem ingresso',
+                     f: { entrega: 'COM_INGRESSO' } },
+  'a-enviar':      { rotulo: 'Ingresso emitido e ainda não enviado',
+                     f: { entrega: 'A_ENVIAR' } },
+  'sem-ingresso':  { rotulo: 'Validadas sem ingresso emitido',
+                     f: { entrega: 'SEM_INGRESSO' } },
+  'a-analisar':    { rotulo: 'Aguardando análise',
+                     f: { status: 'NAO_ANALISADA' } }
+};
+var FILTRO_URL = null;
+
+function lerFiltroUrl(){
+  var m = String(location.search||'').match(/[?&]filtro=([^&]*)/);
+  if (!m) return;
+  var chave;
+  try { chave = decodeURIComponent(m[1]); } catch(e){ chave = m[1]; }
+  var achado = FILTROS_URL[String(chave||'').toLowerCase()];
+  if (!achado) return;
+  FILTRO_URL = achado;
+  g('chipUrlTexto').textContent = achado.rotulo;
+  g('chipUrl').style.display = 'block';
+}
+function limparFiltroUrl(){
+  FILTRO_URL = null;
+  g('chipUrl').style.display = 'none';
+  carregar();
+}
+
+function g(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function aviso(t){ var m=g('msg'); m.textContent=t; m.style.display='block';
+  clearTimeout(aviso._t); aviso._t=setTimeout(function(){m.style.display='none';},7000); }
+
+/* Dispatcher único: o token vai no fim de TODA chamada. Mesmo padrão das
+   outras telas do Compasso — um lugar só em vez de um por botão. */
+function api(fn, args, cb){
+  var r = google.script.run
+    .withSuccessHandler(cb)
+    .withFailureHandler(function(e){ aviso('Erro: ' + ((e&&e.message)||e)); });
+  r[fn].apply(r, (args||[]).concat([compassoToken()]));
+}
+
+/* ── cards ── */
+var CARDS = [
+  {k:'',            r:'Total',        f:{}},
+  /* 'NAO_ANALISADA' é sentinela, não status gravado: o backend traduz para
+     "status vazio". Antes daqui este card levava f:{status:''}, e a mesclagem
+     abaixo descarta valor vazio — o card acendia e a lista continuava inteira. */
+  {k:'naoAnalisadas',r:'A analisar',  f:{status:'NAO_ANALISADA'},      cls:'alerta'},
+  {k:'validadas',   r:'Validadas',    f:{status:'VALIDADA_ADMINISTRATIVAMENTE'}, cls:'okc'},
+  {k:'pendentes',   r:'Pendentes',    f:{status:'PENDENTE'},           cls:'alerta'},
+  {k:'semIngresso', r:'Sem ingresso', f:{entrega:'SEM_INGRESSO'}},
+  {k:'aEnviar',     r:'A enviar',     f:{entrega:'A_ENVIAR'},          cls:'alerta'},
+  {k:'enviadas',    r:'Enviadas',     f:{entrega:'ENVIADA'},           cls:'okc'},
+  {k:'naoAssociados',r:'Fora da base',f:{situacaoAssociado:'NAO_ENCONTRADO'}}
+];
+
+function pintarCards(r){
+  g('cards').innerHTML = CARDS.map(function(c,i){
+    var n = c.k ? (r[c.k]||0) : (r.total||0);
+    return '<div class="kpi ' + (c.cls||'') + (FILTRO_CARD===String(i)?' on':'') +
+           '" onclick="clicarCard(' + i + ')">' +
+           '<div class="n">' + n + '</div><div class="r">' + c.r + '</div></div>';
+  }).join('');
+}
+function clicarCard(i){
+  FILTRO_CARD = (FILTRO_CARD === String(i)) ? '' : String(i);
+  carregar();
+}
+
+function filtros(){
+  var f = {
+    busca: g('fBusca').value, escola: g('fEscola').value,
+    cidade: g('fCidade').value, regiao: g('fRegiao').value,
+    categoria: g('fCategoria').value, situacaoAssociado: g('fAssoc').value
+  };
+  /* O card escolhido soma aos campos, não substitui: dá para ver "a enviar"
+     dentro de uma escola só, que é como a secretaria trabalha. */
+  if (FILTRO_CARD !== '') {
+    var extra = CARDS[Number(FILTRO_CARD)].f || {};
+    Object.keys(extra).forEach(function(k){ if(extra[k]!=='') f[k]=extra[k]; });
+  }
+  /* O filtro do endereço entra ANTES do card na precedência: clicar um card
+     manda mais que o link que abriu a tela. Por isso ele é aplicado primeiro
+     e só onde o card não escreveu. */
+  if (FILTRO_URL) {
+    var vindo = FILTRO_URL.f || {};
+    Object.keys(vindo).forEach(function(k){
+      if (vindo[k]!=='' && !f[k]) f[k]=vindo[k];
+    });
+  }
+  return f;
+}
+function limpar(){
+  ['fBusca','fEscola','fCidade','fRegiao'].forEach(function(id){ g(id).value=''; });
+  g('fCategoria').value=''; g('fAssoc').value=''; FILTRO_CARD='';
+  /* "Limpar" limpa tudo, inclusive o que veio pelo endereço — senão a pessoa
+     limpa, continua vendo lista curta e não tem como saber por quê. */
+  FILTRO_URL=null; g('chipUrl').style.display='none';
+  carregar();
+}
+
+/* ── selos ── */
+function seloAssoc(s){
+  if (s === 'ASSOCIADO')      return '<span class="selo s-ok">✅ associado</span>';
+  if (s === 'NAO_FILIADO')    return '<span class="selo s-al">⚠️ não filiado</span>';
+  if (s === 'NAO_ENCONTRADO') return '<span class="selo s-er">❌ fora da base</span>';
+  return '<span class="selo s-nt">—</span>';
+}
+function seloStatus(s){
+  if (s === 'VALIDADA_ADMINISTRATIVAMENTE') return '<span class="selo s-ok">validada</span>';
+  if (s === 'PENDENTE')  return '<span class="selo s-al">pendente</span>';
+  if (s === 'REPROVADA') return '<span class="selo s-er">reprovada</span>';
+  return '<span class="selo s-nt">a analisar</span>';
+}
+function seloEntrega(x){
+  if (!x.ingressoId) return '<span class="selo s-nt">—</span>';
+  var c = (x.entrega && x.entrega.canais) || [];
+  if (!c.length) return '<span class="selo s-al">a enviar</span>';
+  return '<span class="selo s-ok">' +
+         (c.indexOf('EMAIL')>=0?'📧':'') + (c.indexOf('WHATSAPP')>=0?'📱':'') + '</span>';
+}
+
+/* ── lista ── */
+function carregar(manterPagina, depois){
+  api('compasso_validacaoResumo', [], pintarCards);
+  api('compasso_validacaoListar', [filtros()], function(l){
+    LISTA = l || []; SEL = {}; atualizarBarra();
+    /* Filtro novo devolve outra lista: a página 7 não quer dizer mais nada.
+       Depois de emitir ou enviar, a lista é a mesma — e jogar a pessoa de
+       volta para a página 1 a cada ingresso emitido seria insuportável. */
+    if (!manterPagina) PAGINA = 1;
+    g('sub').textContent = LISTA.length + ' inscrição(ões) na lista';
+    pintarLista();
+    if (depois) depois();
+  });
+}
+/* Recarrega sem tirar a pessoa de onde ela estava. */
+function recarregar(){ carregar(true); }
+
+/* ── página ───────────────────────────────────────────────────────────────
+   A listagem vem inteira do backend e era pintada inteira: com 124 já rolava
+   sem fim, e a festa tem 2.000 vagas. O corte é aqui, na tela — o que o
+   backend devolve não muda.
+
+   O índice que vai nos botões é sempre o índice em LISTA, nunca o da fatia:
+   emitir(3) na página 2 tem de emitir a 53ª, não a 3ª.                     */
+var PAGINA = 1, POR_PAGINA = 50;
+
+function paginas(){
+  if (!POR_PAGINA) return 1;
+  return Math.max(1, Math.ceil(LISTA.length / POR_PAGINA));
+}
+function irPagina(n){
+  var total = paginas();
+  PAGINA = Math.min(Math.max(1, n), total);
+  pintarLista();
+}
+function trocarTamanho(v){
+  POR_PAGINA = Number(v) || 0;   /* 0 = todas */
+  PAGINA = 1;
+  pintarLista();
+}
+function pintarPaginacao(){
+  var cx = g('paginacao');
+  var total = paginas();
+  /* Sem numeração quando tudo cabe numa página: seria enfeite. */
+  cx.hidden = (total <= 1);
+  if (cx.hidden) return;
+  var de  = (PAGINA - 1) * POR_PAGINA + 1;
+  var ate = Math.min(PAGINA * POR_PAGINA, LISTA.length);
+  g('pgConta').textContent  = 'Mostrando ' + de + '–' + ate + ' de ' + LISTA.length;
+  g('pgAtual').textContent  = 'Página ' + PAGINA + ' de ' + total;
+  g('pgAnt').disabled  = (PAGINA <= 1);
+  g('pgProx').disabled = (PAGINA >= total);
+}
+
+function pintarLista(){
+  if (!LISTA.length){
+    g('tb').innerHTML = '<tr><td colspan="6" class="vazio">Nenhuma inscrição com esses filtros.</td></tr>';
+    g('paginacao').hidden = true;
+    return;
+  }
+  var ini = POR_PAGINA ? (PAGINA - 1) * POR_PAGINA : 0;
+  var fim = POR_PAGINA ? ini + POR_PAGINA : LISTA.length;
+  var todos = g('todos'); if (todos) todos.checked = false;
+
+  g('tb').innerHTML = LISTA.slice(ini, fim).map(function(x, k){
+    var i = ini + k;                 /* índice real, o que as ações usam */
+    return linhaHtml(x, i);
+  }).join('');
+  pintarPaginacao();
+}
+
+/* Uma linha da tabela. Foi extraída do map para que a fatia da página possa
+   passar o índice real de LISTA em vez do índice da fatia. */
+/* A SITUAÇÃO CONTA A HISTÓRIA, NÃO SÓ O RÓTULO — 26/08/2026.
+   "Validada" não diz se o ingresso saiu. "Ingresso #0428, não enviado há 4
+   dias" diz. Era por isso que a pessoa trocava de aba para saber se o
+   ingresso da Maria tinha ido: a informação não estava na linha dela. */
+function situacaoDe(x){
+  var tem = !!x.ingressoId;
+  var canais = (x.entrega && x.entrega.canais) || [];
+  var falhou = !!(x.entrega && x.entrega.falha);
+
+  if (x.status === 'REPROVADA')
+    return { classe:'er', rotulo:'Reprovada', detalhe: x.motivoCodigo ? rotuloMotivo(x.motivoCodigo) : '' };
+  if (x.status === 'PENDENTE')
+    return { classe:'al', rotulo:'Pendente', detalhe:'esperando o associado' };
+
+  if (tem && falhou)
+    return { classe:'er', rotulo:'Envio falhou', detalhe: String(x.entrega.falha) };
+  if (tem && canais.length)
+    return { classe:'ok', rotulo:'Enviado', detalhe: canais.map(function(c){
+      return c === 'EMAIL' ? 'e-mail' : 'WhatsApp'; }).join(' · ') +
+      (x.numeroIngresso ? ' · ' + x.numeroIngresso : '') };
+  if (tem)
+    return { classe:'az', rotulo:'Ingresso a enviar',
+             detalhe:(x.numeroIngresso || 'emitido') + ' · parado desde a emissão' };
+
+  if (x.status === 'VALIDADA_ADMINISTRATIVAMENTE')
+    return { classe:'rx', rotulo:'Validada, sem ingresso', detalhe:'falta emitir' };
+
+  return { classe:'al', rotulo:'A analisar', detalhe: idadeDe(x.criadoEm) };
+}
+
+/* Há quanto tempo espera. Um número de dias no lugar de uma data faz a fila
+   se ordenar sozinha na cabeça de quem olha. */
+function idadeDe(quando){
+  if (!quando) return '';
+  var d = new Date(quando); if (isNaN(d.getTime())) return '';
+  var h = Math.floor((Date.now() - d.getTime()) / 3600000);
+  if (h < 1)  return 'entrou agora';
+  if (h < 24) return 'esperando há ' + h + 'h';
+  var dias = Math.floor(h / 24);
+  return 'esperando há ' + dias + (dias === 1 ? ' dia' : ' dias');
+}
+
+function rotuloMotivo(cod){
+  var o = (OPCOES && OPCOES.motivos) || {};
+  return String(o[cod] || cod || '').toLowerCase();
+}
+
+function linhaHtml(x, i){
+  var sit = situacaoDe(x);
+  return '<tr>' +
+        /* Checkbox em TODA linha, não só em quem tem ingresso.
+           24/08/2026: o usuário precisava apagar 122 importadas e não
+           conseguia selecionar nenhuma — nenhuma tinha ingresso, e o checkbox
+           só nascia para quem tinha. A seleção serve a mais de uma ação; quem
+           decide o que pode ser feito com ela é o botão, não a caixinha. */
+        '<td><input type="checkbox" onclick="marcar(' + i + ',this)"></td>' +
+        '<td><b>' + esc(x.nome) + '</b>' +
+          '<div style="font-size:11px;color:var(--suave)">' + esc(fmtCpf(x.cpf)) +
+          (x.categoria && x.categoria !== 'associado' ? ' · ' + esc(x.categoria) : '') +
+          '</div></td>' +
+        '<td>' + esc(x.escola) +
+          '<div style="font-size:11px;color:var(--suave)">' + esc(x.cidade) + '</div></td>' +
+        '<td style="font-size:12px">' + esc(x.email || '—') +
+          '<div style="font-size:11px;color:var(--suave)">' +
+          esc(fmtTel(x.whatsapp) || 'sem WhatsApp') + '</div></td>' +
+        '<td>' + seloAssoc(x.situacaoAssociado) + '</td>' +
+        /* O BOTÃO. Clicar abre o que dá para fazer com esta pessoa. */
+        '<td><button class="st-btn ' + sit.classe + '" ' +
+            'onclick="abrirMenuStatus(' + i + ',this,event)">' +
+            esc(sit.rotulo) + '<span class="cx">▾</span></button>' +
+          (sit.detalhe ? '<span class="st-det">' + esc(sit.detalhe) + '</span>' : '') +
+        '</td></tr>';
+}
+
+/* ── O MENU DO STATUS ─────────────────────────────────────────────────────
+   Um só menu no documento, reposicionado a cada clique: 2.000 linhas com um
+   menu cada seria 2.000 blocos de HTML esperando nunca serem abertos. */
+var MENU_I = -1;
+
+function abrirMenuStatus(i, botao, ev){
+  if (ev) ev.stopPropagation();
+  var x = LISTA[i]; if (!x) return;
+  if (MENU_I === i && g('stMenu').classList.contains('on')) return fecharMenuStatus();
+  MENU_I = i;
+
+  var sit = situacaoDe(x);
+  var tem = !!x.ingressoId;
+  var L = ['<div class="cab"><b>' + esc(sit.rotulo) + '</b>' +
+           (sit.detalhe ? '<span>' + esc(sit.detalhe) + '</span>' : '') + '</div>'];
+
+  if (tem){
+    L.push('<button class="g" onclick="menuAcao(\'whats\')">Enviar pelo WhatsApp</button>');
+    L.push('<button onclick="menuAcao(\'email\')">Enviar por e-mail</button>');
+    L.push('<button onclick="menuAcao(\'ver\')">Ver o ingresso</button>');
+  } else if (x.status === 'VALIDADA_ADMINISTRATIVAMENTE'){
+    L.push('<button class="g" onclick="menuAcao(\'emitir\')">Emitir ingresso</button>');
+  } else {
+    L.push('<button class="g" onclick="menuAcao(\'analisar\')">Analisar agora</button>');
+  }
+
+  L.push('<button onclick="menuAcao(\'editar\')">Editar dados</button>');
+  L.push('<hr>');
+  if (tem) L.push('<button class="r" onclick="menuAcao(\'cancelar\')">Cancelar ingresso</button>');
+  L.push('<button class="r" onclick="menuAcao(\'excluir\')">Excluir inscrição</button>');
+
+  var m = g('stMenu');
+  m.innerHTML = L.join('');
+  m.classList.add('on');
+
+  /* Posiciona colado no botão, e sobe quando não cabe embaixo — a última
+     linha da tabela não pode abrir um menu fora da tela. */
+  var r = botao.getBoundingClientRect();
+  var alt = m.offsetHeight || 260;
+  var topo = (r.bottom + alt + 8 > window.innerHeight) ? (r.top - alt - 6) : (r.bottom + 6);
+  m.style.top  = Math.max(8, topo) + 'px';
+  m.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 258)) + 'px';
+}
+
+function fecharMenuStatus(){ MENU_I = -1; g('stMenu').classList.remove('on'); }
+document.addEventListener('click', fecharMenuStatus);
+window.addEventListener('resize', fecharMenuStatus);
+
+/* As ações já existiam na gaveta e continuam sendo as MESMAS funções: o menu
+   só escolhe a linha e chama. Duplicar a regra aqui seria criar um segundo
+   caminho para validar, emitir e excluir — e dois caminhos divergem. */
+function menuAcao(qual){
+  var i = MENU_I; fecharMenuStatus();
+  if (i < 0 || !LISTA[i]) return;
+  if (qual === 'whats')  return porWhats(i);
+  if (qual === 'email')  return porEmail(i);
+  ABERTO = i;
+  if (qual === 'emitir') { abrirGaveta(i); return emitirGaveta(); }
+  if (qual === 'cancelar'){ abrirGaveta(i); return cancelarIngresso(); }
+  if (qual === 'excluir') { abrirGaveta(i); return excluirInscricao(); }
+  abrirGaveta(i);   /* ver, editar e analisar abrem a gaveta, que é onde se decide */
+}
+
+/* ── seleção para o lote ── */
+function marcar(i, el){ if(el.checked) SEL[i]=true; else delete SEL[i]; atualizarBarra(); }
+/* Marca o que está NA PÁGINA, não a lista inteira.
+   O checkbox fica no cabeçalho da tabela, e a tabela mostra uma página — dizer
+   "todos" e selecionar 2.000 seria marcar o que a pessoa não está vendo. Para
+   alcançar a lista toda existe "todas" no seletor de tamanho de página. */
+function marcarTodos(el){
+  SEL = {};
+  var ini = POR_PAGINA ? (PAGINA - 1) * POR_PAGINA : 0;
+  var fim = POR_PAGINA ? ini + POR_PAGINA : LISTA.length;
+  var cbs = g('tb').querySelectorAll('input[type=checkbox]');
+  for (var k=0;k<cbs.length;k++){ cbs[k].checked = el.checked; }
+  /* Marca TODAS as linhas da página, não só as que têm ingresso.
+     25/08/2026: o usuário marcou o checkbox do cabeçalho e nada aconteceu —
+     a barra de ações nem apareceu. Eu tinha corrigido o checkbox da LINHA e
+     esquecido este, que continuava filtrando por ingresso. Como nenhuma das
+     122 importadas tinha ingresso, a seleção saía vazia.
+
+     Selecionar não é decidir o que fazer: quem decide é o botão, e cada botão
+     já sabe a que seleção ele serve. */
+  if (el.checked) LISTA.slice(ini, fim).forEach(function(x, k){
+    SEL[ini + k] = true;
+  });
+  atualizarBarra();
+}
+function atualizarBarra(){
+  var n = Object.keys(SEL).length;
+  g('qtdSel').textContent = n;
+  g('barra').style.display = n ? 'flex' : 'none';
+  /* Cada botão do lote só aparece quando a seleção serve a ele: enviar exige
+     ingresso emitido em ao menos uma; excluir exige ser administrador. */
+  var comIngresso = Object.keys(SEL).filter(function(i){
+    return LISTA[i] && LISTA[i].ingressoId; }).length;
+  g('btLoteEmail').hidden   = !comIngresso;
+  g('btLoteExcluir').hidden = !SOU_ADMIN;
+
+  /* O atalho para a lista inteira só faz sentido quando a seleção parou na
+     página e ainda há mais gente fora dela. */
+  var bt = g('btSelTudo');
+  if (bt){
+    var falta = LISTA.length > n;
+    bt.hidden = !(n > 0 && falta);
+    bt.textContent = 'Selecionar todas as ' + LISTA.length + ' da lista';
+  }
+  if (comIngresso) api('compasso_capacidadeEnvio', [], function(c){
+    if (c) g('capacidade').textContent = c.aviso || '';
+  });
+  else g('capacidade').textContent = '';
+}
+
+/* Seleciona a LISTA INTEIRA, não só a página.
+   25/08/2026: o usuário marcou o cabeçalho, viu "50 selecionada(s)" e disse
+   "não tem a opção de selecionar e excluir todos". Estava certo — para
+   alcançar as 124 era preciso trocar o tamanho da página antes, o que ninguém
+   adivinha. O checkbox do cabeçalho continua sendo da página (é o que ele
+   mostra), e este botão é o passo explícito para ir além dela. */
+function selecionarTudo(){
+  SEL = {};
+  LISTA.forEach(function(x, i){ SEL[i] = true; });
+  var cbs = g('tb').querySelectorAll('input[type=checkbox]');
+  for (var k = 0; k < cbs.length; k++) cbs[k].checked = true;
+  var todos = g('todos'); if (todos) todos.checked = true;
+  atualizarBarra();
+}
+
+/* Excluir o que está selecionado. O lote herda as travas do backend inteiras —
+   administrador, motivo obrigatório e recusa com ingresso emitido —, então a
+   tela não precisa (nem deve) repetir a regra aqui. */
+function excluirLote(){
+  var idx = Object.keys(SEL).map(Number);
+  if (!idx.length) return;
+  var comIngresso = idx.filter(function(i){ return LISTA[i].ingressoId; }).length;
+  perguntar({
+    titulo: 'Excluir ' + idx.length + ' inscrição(ões)?',
+    texto: 'Elas saem da lista e as vagas voltam para as 2.000.' +
+      (comIngresso ? '\n\n' + comIngresso + ' tem ingresso emitido e será recusada — ' +
+                     'cancele o ingresso antes.' : ''),
+    campo: true, rotulo: 'Motivo da exclusão', perigo: true, ok: 'Excluir'
+  }, function(motivo){
+    aviso('Excluindo… pode levar alguns instantes.');
+    api('compasso_excluirInscricoesEmLote',
+        [idx.map(function(i){ return LISTA[i].inscricaoId; }), motivo], function(r){
+      if (!r || !r.ok) return aviso((r && r.erro) || 'Não foi possível excluir.');
+      aviso(r.mensagem || 'Concluído.');
+      carregar();   /* a lista encolheu: a paginação precisa ser refeita do zero */
+    });
+  });
+}
+
+/* ── ações ── */
+/* O atalho da linha passa pela gaveta: assim existe UM caminho de emissão, e
+   o modal que abre depois tem de quem falar. Dois caminhos separados foi
+   exatamente o que o usuário mandou acabar. */
+function emitir(i){ abrirGaveta(i); emitirGaveta(); }
+function porEmail(i){
+  var x = LISTA[i];
+  api('compasso_enviarIngressoEmail', [x.inscricaoId], function(r){
+    if (!r || !r.ok) return aviso((r&&r.erro) || 'Não foi possível enviar.');
+    aviso((r.mensagem||'Enviado.') + (r.aviso ? '\n\n' + r.aviso : ''));
+    recarregar();
+  });
+}
+/* O WhatsApp abre a janela ANTES da chamada: navegador bloqueia window.open
+   disparado dentro de callback assíncrono. Mesmo cuidado do Parque do China. */
+function porWhats(i){
+  var x = LISTA[i];
+  var w = window.open('', '_blank');
+  api('compasso_prepararIngressoWhatsApp', [x.inscricaoId], function(r){
+    if (!r || !r.ok){ if(w) w.close(); return aviso((r&&r.erro) || 'Não foi possível preparar.'); }
+    w.location.href = 'https://wa.me/' + r.telefone + '?text=' + encodeURIComponent(r.texto);
+    /* O sistema não sabe se a pessoa apertou enviar no aplicativo — quem
+       confirma é ela. Registrar antes seria marcar entrega que talvez não
+       aconteceu. */
+    setTimeout(function(){
+      perguntar({ titulo: 'Você enviou a mensagem para ' + x.nome + '?',
+                  texto: 'Só confirme se enviou de verdade.',
+                  ok: 'Sim, enviei' }, function(){
+        api('compasso_confirmarEnvioWhatsApp', [x.inscricaoId], function(){ recarregar(); });
+      });
+    }, 1200);
+  });
+}
+function enviarLote(){
+  var ids = Object.keys(SEL).map(function(i){ return LISTA[i].inscricaoId; });
+  if (!ids.length) return;
+  perguntar({ titulo: 'Enviar o ingresso por e-mail para ' + ids.length + ' pessoa(s)?',
+              ok: 'Enviar' }, function(){ enviarLoteAgora(ids); });
+}
+function enviarLoteAgora(ids){
+  aviso('Enviando… isso pode levar alguns minutos.');
+  api('compasso_enviarLoteEmail', [ids], function(r){
+    if (!r || !r.ok) return aviso((r&&r.erro) || 'Não foi possível enviar o lote.');
+    aviso(r.mensagem || '');
+    /* O lote devolve o que faltou — continuar de onde parou, sem recomeçar. */
+    if (r.parcial){
+      perguntar({ titulo: 'Continuar o envio?', texto: r.mensagem, ok: 'Continuar' },
+        function(){
+          api('compasso_enviarLoteEmail', [r.restantes], function(r2){
+            aviso((r2&&r2.mensagem)||''); recarregar();
+          });
+        });
+      return;
+    }
+    recarregar();
+  });
+}
+/* Plano B do "copiar link": quando o navegador recusa a área de transferência
+   dentro de iframe, o link aparece num campo já selecionado — dá para copiar
+   com Ctrl+C. Antes era um prompt() nativo, que fazia o mesmo com cara de
+   erro do sistema. */
+function mostrarLink(url){
+  perguntar({ titulo: 'Link público de inscrição',
+              texto: 'O navegador não deixou copiar sozinho. O endereço já está selecionado abaixo — use Ctrl+C.',
+              campo: true, rotulo: 'Endereço', ok: 'Fechar',
+              icone: '🔗', semCancelar: true }, function(){});
+  g('dgCampo').value = url;
+  setTimeout(function(){ try{ g('dgCampo').select(); }catch(e){} }, 80);
+}
+
+/* ══ ABAS ═════════════════════════════════════════════════════════════════
+   O quadro da importação só é carregado quando a aba é aberta: um iframe que
+   nasce carregado faria toda abertura da Central pagar por uma tela que
+   ninguém pediu. */
+var ABA = 'lista';
+
+function irAba(nome){
+  ABA = nome;
+  g('painelLista').hidden    = (nome !== 'lista');
+  g('painelImportar').hidden = (nome !== 'importar');
+  /* Sem abas: o que muda é qual botão faz sentido oferecer. Na importação, o
+     caminho de volta; na lista, o de ir importar. */
+  g('btAbaLista').hidden    = (nome === 'lista');
+  g('btAbaImportar').hidden = (nome === 'importar');
+  /* Nada a carregar: a importação está NA PÁGINA desde o início, incluída.
+     Era aqui que o quadro (iframe) era montado — e era ele que ficava em
+     branco, porque web app do Apps Script não abre dentro de outro. */
+}
+
+
+
+/* ══ MODAL DO INGRESSO ════════════════════════════════════════════════════
+   Aberto logo depois de emitir, como no ofício. ARQUIVO guarda o PDF em
+   base64 e a URL pública: o backend é chamado UMA vez, e baixar, imprimir e
+   abrir saem daí sem nova viagem. */
+var ARQUIVO = null;
+
+function abrirModalIngresso(inscricaoId, numero, nome){
+  ARQUIVO = null;
+  g('mdTitulo').textContent = 'Ingresso ' + (numero || '') + ' emitido';
+  g('mdSub').textContent = nome || '';
+  g('mdStatus').innerHTML = '<span>🕐</span><span>Preparando o arquivo…</span>';
+  g('mdLinkBox').hidden = true;
+  g('mdLink').value = '';
+  g('mdFundo').classList.add('on');
+  api('compasso_ingressoArquivo', [inscricaoId], function(r){
+    if (!r || !r.ok){
+      g('mdStatus').innerHTML = '<span>⚠️</span><span>' +
+        esc((r && r.erro) || 'Não foi possível preparar o arquivo.') + '</span>';
+      return;
+    }
+    ARQUIVO = r;
+    /* O link é a coisa que mais sai daqui — é ele que vai no WhatsApp. Fica à
+       vista assim que existe, e não escondido atrás de um botão que abre aba. */
+    if (r.url){ g('mdLink').value = r.url; g('mdLinkBox').hidden = false; }
+    g('mdStatus').innerHTML = '<span>🕐</span><span>Emitido e ainda não enviado.</span>';
+  });
+}
+function fecharModal(){
+  g('mdFundo').classList.remove('on');
+  ARQUIVO = null;
+  g('mdLinkBox').hidden = true;
+}
+
+/* Copiar de dentro do iframe do Apps Script falha com frequência: a permissão
+   de área de transferência não vem. O plano B não é uma mensagem de erro — é
+   deixar o texto selecionado, que é o que a pessoa precisa para o Ctrl+C. */
+function mdCopiarLink(){
+  var campo = g('mdLink'), url = String(campo.value || '');
+  if (!url) return;
+  function selecionar(){
+    try { campo.focus(); campo.select(); campo.setSelectionRange(0, url.length); } catch(e){}
+    aviso('Link selecionado — aperte Ctrl+C para copiar.');
+  }
+  try {
+    navigator.clipboard.writeText(url).then(
+      function(){ aviso('Link do ingresso copiado.'); }, selecionar);
+  } catch(e){ selecionar(); }
+}
+
+function semArquivo(){
+  if (ARQUIVO) return false;
+  aviso('O arquivo ainda está sendo preparado. Um instante.');
+  return true;
+}
+function pdfDataUri(){ return 'data:application/pdf;base64,' + ARQUIVO.base64; }
+
+function mdAbrir(){
+  if (semArquivo()) return;
+  window.open(ARQUIVO.url, '_blank');
+}
+function mdBaixar(){
+  if (semArquivo()) return;
+  /* Link temporário: é o jeito que funciona dentro do iframe do Apps Script,
+     onde window.open de data: costuma ser bloqueado. */
+  var a = document.createElement('a');
+  a.href = pdfDataUri();
+  a.download = ARQUIVO.arquivo || 'ingresso.pdf';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+function mdImprimir(){
+  if (semArquivo()) return;
+  var w = window.open('', '_blank');
+  if (!w) return aviso('O navegador bloqueou a janela de impressão.');
+  w.document.write('<iframe src="' + pdfDataUri() +
+                   '" style="border:0;width:100%;height:100%" onload="this.contentWindow.print()"></iframe>');
+  w.document.close();
+}
+function mdEmail(){
+  var x = inscricaoAberta(); if (!x) return;
+  g('mdStatus').innerHTML = '<span>📧</span><span>Enviando…</span>';
+  api('compasso_enviarIngressoEmail', [x.inscricaoId], function(r){
+    if (!r || !r.ok){
+      g('mdStatus').innerHTML = '<span>⚠️</span><span>' +
+        esc((r && r.erro) || 'Não foi possível enviar.') + '</span>';
+      return;
+    }
+    g('mdStatus').innerHTML = '<span>✅</span><span>' +
+      esc(r.mensagem || 'Enviado por e-mail.') + '</span>';
+    recarregar();
+  });
+}
+function mdWhats(){ if (ABERTO >= 0) porWhats(ABERTO); }
+function mdEditar(){ fecharModal(); }   /* a gaveta já está aberta atrás */
+
+/* ══ GAVETA ═══════════════════════════════════════════════════════════════
+   Antes, "Analisar" mandava a pessoa para a Central de Validação: outra tela,
+   outra busca, filtro e página perdidos. Agora tudo acontece aqui.
+
+   ABERTO guarda o índice em LISTA, não o objeto: depois de qualquer ação a
+   lista é relida, e é pelo índice que a gaveta se redesenha com o estado novo. */
+var ABERTO = -1, OPCOES = {reprovacao:[],pendencia:[]}, PG_OPCOES = null, SOU_ADMIN = false;
+
+function inscricaoAberta(){ return ABERTO >= 0 ? LISTA[ABERTO] : null; }
+
+/* MÁSCARA ENQUANTO A PESSOA DIGITA — ligada uma vez, na primeira abertura.
+   `Utils` vem de Helpers.html, tem o dígito verificador certo, e é o que o
+   CLAUDE.md manda usar em vez de reimplementar por arquivo. A trava
+   `MASCARAS_LIGADAS` existe porque abrir a gaveta cem vezes no dia registraria
+   cem ouvintes no mesmo campo. */
+var MASCARAS_LIGADAS = false;
+function ligarMascaras(){
+  if (MASCARAS_LIGADAS) return;
+  if (typeof Utils === 'undefined') return;   /* rota avulsa não carrega Helpers */
+  var cpf = g('dCpf'), tel = g('dWhatsapp');
+  if (cpf) cpf.addEventListener('input', function(){ Utils.aplicarMascaraCPF(cpf); });
+  if (tel) tel.addEventListener('input', function(){ Utils.aplicarMascaraTelefone(tel); });
+  MASCARAS_LIGADAS = true;
+}
+
+function abrirGaveta(i){
+  ABERTO = i;
+  ligarMascaras();
+  pintarGaveta();
+  g('gv').classList.add('on');
+  g('gvFundo').classList.add('on');
+}
+function fecharGaveta(){
+  ABERTO = -1;
+  g('gv').classList.remove('on');
+  g('gvFundo').classList.remove('on');
+}
+
+function pintarGaveta(){
+  var x = inscricaoAberta(); if (!x) return;
+
+  g('gvNome').textContent = x.nome || '(sem nome)';
+  g('gvMeta').innerHTML = [
+    rotuloStatus(x.status),
+    x.numeroIngresso ? 'ingresso ' + esc(x.numeroIngresso) : 'sem ingresso',
+    esc(x.categoria || 'associado')
+  ].join(' · ');
+
+  ['nome','cpf','escola','cidade','regiao','email','whatsapp','matricula'].forEach(function(c){
+    g('d' + c.charAt(0).toUpperCase() + c.slice(1)).value = x[c] || '';
+  });
+  /* Os campos abrem JÁ formatados, não só ao digitar: quem abre a gaveta para
+     conferir um CPF não deveria precisar tocar no campo para conseguir ler. */
+  g('dCpf').value = fmtCpf(x.cpf);
+  g('dWhatsapp').value = fmtTel(x.whatsapp);
+  g('dCategoria').value = x.categoria || 'associado';
+  g('dSituacao').innerHTML = seloAssoc(x.situacaoAssociado);
+
+  montarResumo(x);
+  /* Toda gaveta abre com as seções fechadas — inclusive as que ficaram
+     abertas na inscrição anterior. Sem isto, o estado de uma pessoa vaza para
+     a próxima e a tela "cresce" sozinha ao longo do dia. */
+  ['secDados','secIngresso','secComprovante','secHistorico','secExcluir']
+    .forEach(function(id){ var el=g(id); if(el) el.classList.remove('on'); });
+
+  /* A decisão nasce apontando para o estado atual: reabrir uma inscrição já
+     reprovada e ver "Validar" pré-selecionado convida ao clique errado. */
+  g('aStatus').value = x.status === 'PENDENTE' ? 'PENDENTE'
+                     : x.status === 'REPROVADA' ? 'REPROVADA'
+                     : 'VALIDADA_ADMINISTRATIVAMENTE';
+  g('aObs').value = x.observacaoAnalise || '';
+  montarMotivos();
+  montarAnalise(x);
+
+  montarPagamento(x);
+  montarIngresso(x);
+  montarComprovante(x);
+  montarHistorico(x);
+  g('secExcluir').hidden = !SOU_ADMIN;
+}
+
+/* ══ VEREDITO DA ANÁLISE ═══════════════════════════════════════════════════
+   A regra do evento, confirmada pelo usuário em 26/08/2026: ingresso próprio
+   é só para associado. Quem não é associado entra como acompanhante pago, e
+   esse cadastro é feito pela equipe — não por conversão desta inscrição.
+
+   Logo, a análise de uma inscrição pública tem uma pergunta só, e o sistema
+   já a respondeu ao cruzar o CPF com a base. Aqui a pessoa CONFIRMA.
+
+   Por que os botões mudam conforme o vínculo, em vez de os três aparecerem
+   sempre: "validar, pôr em pendência e reprovar" ao mesmo tempo faz a tela
+   parecer neutra sobre uma questão que não é. Quem está na base valida; quem
+   está fora não pode ter ingresso próprio. Mostrar o caminho certo em
+   destaque é o que separa automatizar de decidir pela pessoa — e por isso
+   "analisar manualmente" continua ali, em toda situação. */
+function montarAnalise(x){
+  var s = String(x.situacaoAssociado || '');
+  var jaDecidiu = String(x.status||'') && String(x.status) !== 'RECEBIDA';
+  var quadro;
+
+  if (s === 'ASSOCIADO'){
+    quadro = { cor:'vd-ok', icone:'✅', titulo:'Associada — encontrada na base pelo CPF',
+      sub:'O CPF confere com um cadastro filiado. Ingresso próprio é o caminho normal.',
+      botoes:'<button class="b p" onclick="analiseValidar()">Validar inscrição</button>' };
+  } else if (s === 'NAO_FILIADO'){
+    quadro = { cor:'vd-al', icone:'⚠️', titulo:'Consta na base, mas sem filiação ativa',
+      sub:'O CPF existe no cadastro e o vínculo não está ativo. Pode ser inadimplência, desfiliação ou erro de cadastro — é o caso que precisa de gente.',
+      botoes:'<button class="b p" onclick="analisePendencia()">Pôr em pendência</button>' +
+             '<button class="b" onclick="analiseValidar()">Validar assim mesmo</button>' };
+  } else if (s === 'NAO_ENCONTRADO'){
+    quadro = { cor:'vd-er', icone:'❌', titulo:'Fora da base de associados',
+      sub:'O CPF não confere com nenhum cadastro. Ingresso próprio é só para associado — quem não é entra como acompanhante, cadastrado pela equipe em "Incluir inscrição".',
+      botoes:'<button class="b perigo" onclick="analiseReprovar()">Reprovar</button>' };
+  } else if (!String(x.cpf||'').replace(/\D/g,'')) {
+    /* Sem CPF não há o que conferir — e isso não é culpa de quem analisa. */
+    quadro = { cor:'vd-nt', icone:'❔', titulo:'Sem CPF para conferir',
+      sub:'Sem CPF não dá para cruzar com a base. Abra "Dados cadastrais", complete o CPF e salve — ou decida manualmente.',
+      botoes:'' };
+  } else {
+    /* TEM CPF E NÃO TEM VEREDITO — 27/08/2026. Este caso existia e caía na
+       mensagem "Sem CPF não dá para cruzar", que era falsa: o usuário mandou
+       print com o CPF preenchido embaixo dessa frase. A causa real é outra —
+       a inscrição entrou por importação e ninguém cruzou com a base ainda.
+       Culpar um campo que está preenchido manda a pessoa procurar defeito
+       onde não há. */
+    quadro = { cor:'vd-nt', icone:'❔', titulo:'Vínculo ainda não conferido',
+      sub:'Esta inscrição não foi cruzada com a base de associados. Use "Conferir contra a base" na barra acima — ele resolve todas de uma vez.',
+      botoes:'<button class="b p" onclick="conferirVinculoTodas()">Conferir contra a base</button>' };
+  }
+
+  g('aVeredito').innerHTML =
+    '<div class="vd ' + quadro.cor + '">' +
+      '<div class="vd-t">' + quadro.icone + ' ' + esc(quadro.titulo) + '</div>' +
+      '<div class="vd-s">' + esc(quadro.sub) + '</div>' +
+    '</div>' +
+    '<div class="gv-acoes">' + quadro.botoes +
+      '<button type="button" class="vd-manual" onclick="analiseManual()">analisar manualmente</button>' +
+    '</div>';
+
+  /* Inscrição já decidida abre com os campos à vista: aqui a pessoa não está
+     conferindo, está revendo — e esconder o que foi decidido, com que motivo,
+     obrigaria a caçar o botão para ler a própria decisão. */
+  g('aManual').hidden = !jaDecidiu;
+  g('aNota').textContent = jaDecidiu
+    ? 'Esta inscrição já foi analisada' +
+      (x.analisadoPor ? ' por ' + x.analisadoPor : '') + '. Alterar é possível.'
+    : '';
+}
+
+function analiseManual(){ g('aManual').hidden = false; montarMotivos(); }
+
+/* ══ MÁSCARA ═══════════════════════════════════════════════════════════════
+   O usuário, 27/08/2026: "esta sem mascara de telefone e CPF". Estava mesmo —
+   e não por falta de código: `Utils.aplicarMascaraCPF` e
+   `Utils.aplicarMascaraTelefone` existem em Helpers.html desde sempre, com o
+   dígito verificador certo. Esta tela simplesmente nunca as chamou.
+
+   As duas funções abaixo formatam TEXTO (para o resumo e para a lista);
+   `Utils.*` continua sendo quem cuida do campo enquanto a pessoa digita. Não
+   reimplementam validação: só desenham o que já está lá. */
+function fmtCpf(v){
+  var d = String(v||'').replace(/\D/g,'');
+  if (d.length !== 11) return String(v||'');   /* não inventa formato em dado torto */
+  return d.slice(0,3)+'.'+d.slice(3,6)+'.'+d.slice(6,9)+'-'+d.slice(9);
+}
+function fmtTel(v){
+  var d = String(v||'').replace(/\D/g,'');
+  /* A planilha importada trouxe número com o 55 do país na frente. Tirar o
+     prefixo é o que faz "5527999735890" virar um telefone legível em vez de
+     uma sequência que ninguém reconhece. */
+  if (d.length > 11 && d.indexOf('55') === 0) d = d.slice(2);
+  if (d.length === 11) return '('+d.slice(0,2)+') '+d.slice(2,7)+'-'+d.slice(7);
+  if (d.length === 10) return '('+d.slice(0,2)+') '+d.slice(2,6)+'-'+d.slice(6);
+  return String(v||'');
+}
+
+/* ══ RESUMO E SEÇÕES RECOLHÍVEIS ═══════════════════════════════════════════
+   "tela muita grande". O resumo diz quem é a pessoa em três linhas de texto,
+   no lugar de oito campos de digitação; o resto vive atrás de um clique. */
+function montarResumo(x){
+  function ou(v, falta){
+    return v ? esc(v) : '<span class="vazio">'+falta+'</span>';
+  }
+  g('gvResumo').innerHTML =
+    '<div>CPF <b>'+ou(fmtCpf(x.cpf),'sem CPF')+'</b>'+
+      (x.matricula?'<span class="sep">·</span>matrícula '+esc(x.matricula):'')+'</div>'+
+    '<div>'+ou(x.escola,'sem escola')+
+      (x.cidade?'<span class="sep">·</span>'+esc(x.cidade):'')+
+      (x.regiao?' ('+esc(x.regiao)+')':'')+'</div>'+
+    '<div>'+ou(fmtTel(x.whatsapp),'sem WhatsApp')+
+      '<span class="sep">·</span>'+ou(x.email,'sem e-mail')+'</div>';
+}
+
+function gvDobrar(id){
+  var el = g(id); if (!el) return;
+  el.classList.toggle('on');
+}
+
+/* Abre uma seção específica — usada quando a própria tela precisa levar a
+   pessoa até onde está o que falta (ex.: completar o CPF). */
+function gvAbrirDobra(id){
+  var el = g(id);
+  if (el && !el.classList.contains('on')) el.classList.add('on');
+}
+
+function analiseValidar(){
+  var x = inscricaoAberta(); if (!x) return;
+  api('compasso_validarDecisaoAdmin',
+      [x.inscricaoId, 'VALIDADA_ADMINISTRATIVAMENTE', '', ''],
+      aposAcao('Inscrição validada.'));
+}
+
+/* O motivo vai preenchido porque é O motivo deste caso — e continua visível e
+   trocável no "analisar manualmente", que é o que separa sugerir de impor. */
+function analisePendencia(){
+  var x = inscricaoAberta(); if (!x) return;
+  api('compasso_validarDecisaoAdmin',
+      [x.inscricaoId, 'PENDENTE', 'AGUARDANDO_CONFIRMACAO_VINCULO',
+       'Consta na base sem filiação ativa — aguardando confirmação do vínculo.'],
+      aposAcao('Inscrição marcada como pendente.'));
+}
+
+function analiseReprovar(){
+  var x = inscricaoAberta(); if (!x) return;
+  perguntar({ titulo: 'Reprovar a inscrição de ' + x.nome + '?',
+              texto: 'O CPF não está na base de associados. A vaga volta para as 2.000.',
+              perigo: true, ok: 'Reprovar' }, function(){
+    api('compasso_reprovarInscricaoLiberandoVaga',
+        [x.inscricaoId, 'NAO_E_ASSOCIADO',
+         'CPF não localizado na base de associados na conferência.'],
+        aposAcao('Inscrição reprovada e vaga devolvida.'));
+  });
+}
+
+/* ══ INCLUIR INSCRIÇÃO ═════════════════════════════════════════════════════
+   Convidado (gratuito, indicação da diretoria) e acompanhante (R$ 500,
+   avulso, sem titular vinculado) são as duas categorias que não nascem do
+   formulário público. Até 26/08/2026 não havia como cadastrá-las: o backend
+   existia sem tela.
+
+   O PAGAMENTO NÃO ESTÁ AQUI, e é decisão, não esquecimento. A gaveta já tem
+   a seção Pagamento — forma, valor, referência, confirmar, estornar — que
+   aparece sozinha para quem é acompanhante. Duplicar isso na inclusão daria
+   dois lugares para receber o mesmo dinheiro, e é assim que se recebe duas
+   vezes. O acompanhante nasce sem pagamento e a emissão do ingresso já o
+   exige (EventosEmissao.gs), então não há como escapar pelo meio. */
+function abrirInclusao(){
+  ['incNome','incCpf','incEmail','incWhatsapp','incIndicadoPor'].forEach(function(id){
+    g(id).value = '';
+  });
+  g('incCategoria').value = 'convidado';
+  incTrocouCategoria();
+  g('incFundo').classList.add('on');
+  setTimeout(function(){ try{ g('incNome').focus(); }catch(e){} }, 60);
+}
+function fecharInclusao(){ g('incFundo').classList.remove('on'); }
+
+/* O que muda entre as duas categorias fica dito na tela, não implícito: quem
+   inclui um acompanhante precisa saber, ANTES de salvar, que o ingresso não
+   sai enquanto o pagamento não entrar. */
+function incTrocouCategoria(){
+  var cat = g('incCategoria').value;
+  g('incIndicadoBox').hidden = (cat !== 'convidado');
+  g('incNota').textContent = cat === 'acompanhante'
+    ? 'O acompanhante entra pagando R$ 500. Ele nasce sem pagamento — o valor se registra na gaveta da inscrição, e o ingresso só é emitido depois de confirmado.'
+    : 'O convidado não paga. A vaga sai das 2.000 do mesmo jeito.';
+}
+
+function salvarInclusao(){
+  var cat = g('incCategoria').value;
+  var nome = String(g('incNome').value || '').trim();
+  if (!nome) return aviso('O nome é obrigatório.');
+  var indicadoPor = String(g('incIndicadoPor').value || '').trim();
+  if (cat === 'convidado' && !indicadoPor)
+    return aviso('Convidado é por indicação da diretoria — informe quem indicou.');
+
+  var bt = g('incBt'); bt.disabled = true; bt.textContent = 'Incluindo…';
+  api('compasso_criarInclusaoAdministrativa', [{
+    categoria: cat, nome: nome,
+    cpf: g('incCpf').value, email: g('incEmail').value,
+    whatsapp: g('incWhatsapp').value, indicadoPor: indicadoPor
+  }], function(r){
+    bt.disabled = false; bt.textContent = 'Incluir';
+    if (!r || !r.ok) return aviso((r && r.erro) || 'Não consegui incluir.');
+    fecharInclusao();
+    aviso(cat === 'convidado'
+      ? 'Convidado incluído e já validado.'
+      : 'Acompanhante incluído. Registre o pagamento na gaveta para poder emitir.');
+    recarregar();
+  });
+}
+
+/* ══ CONFERÊNCIA EM LOTE ═══════════════════════════════════════════════════
+   O botão que dá conta das 201 linhas da planilha importada. Ele valida
+   SOMENTE quem está na base com filiação ativa; não reprova ninguém e não
+   toca em inscrição já analisada — a explicação inteira está no cabeçalho de
+   `compasso_conferirVinculoEmLote`, em EventosValidacao.gs. O texto da
+   pergunta diz isso à pessoa, porque quem clica precisa saber o que NÃO vai
+   acontecer tanto quanto o que vai. */
+function conferirVinculoTodas(){
+  perguntar({ titulo: 'Conferir todas as inscrições contra a base?',
+              texto: 'Valida automaticamente quem está na base com filiação ativa e ainda não foi analisado. Não reprova ninguém, e não mexe no que já foi decidido.',
+              icone: '🔎', ok: 'Conferir' }, function(){
+    aviso('Conferindo contra a base… pode levar um pouco.');
+    api('compasso_conferirVinculoEmLote', [], function(r){
+      if (!r || !r.ok) return aviso((r && r.erro) || 'Não consegui conferir.');
+      aviso(r.mensagem || 'Conferência concluída.');
+      recarregar();
+    });
+  });
+}
+
+/* Motivo só existe para pendência e reprovação — validar não pede motivo. */
+function montarMotivos(){
+  var s = g('aStatus').value;
+  var lista = s === 'REPROVADA' ? (OPCOES.reprovacao || [])
+            : s === 'PENDENTE'  ? (OPCOES.pendencia  || []) : [];
+  g('aMotivoBox').hidden = !lista.length;
+  g('aMotivo').innerHTML = '<option value="">Selecione o motivo</option>' +
+    lista.map(function(m){
+      return '<option value="' + esc(m.codigo) + '">' + esc(m.label) + '</option>';
+    }).join('');
+  var x = inscricaoAberta();
+  if (x && x.motivoCodigo) g('aMotivo').value = x.motivoCodigo;
+  g('aNota').textContent = s === 'REPROVADA'
+    ? 'Reprovar devolve a vaga para as 2.000.' : '';
+}
+
+function montarPagamento(x){
+  var mostra = String(x.categoria || '') === 'acompanhante';
+  g('secPagamento').hidden = !mostra;
+  if (!mostra) return;
+  var pg = x.pagamento || {};
+  var pago = String(pg.status || '') === 'PAGO';
+  g('pgSituacao').textContent = pago
+    ? 'Recebido' + (pg.valor ? ' — R$ ' + pg.valor : '') + (pg.forma ? ' via ' + pg.forma : '')
+    : String(pg.status||'') === 'ESTORNADO'
+      ? 'Estornado' + (pg.estornoMotivo ? ' — ' + pg.estornoMotivo : '') + '. Pode receber de novo.'
+      : 'Ainda não recebido.';
+  g('pgForm').hidden = pago;
+  g('pgEstorno').hidden = !pago;
+  if (PG_OPCOES && PG_OPCOES.formas && !g('pgForma').options.length){
+    g('pgForma').innerHTML = PG_OPCOES.formas.map(function(f){
+      return '<option value="' + esc(f) + '">' + esc(f) + '</option>';
+    }).join('');
+  }
+  if (!pago && PG_OPCOES && PG_OPCOES.valorSugerido && !g('pgValor').value){
+    g('pgValor').value = PG_OPCOES.valorSugerido;
+    g('pgOrigemValor').textContent = 'Valor sugerido pela configuração do evento — pode ser alterado.';
+  }
+}
+
+/* Cada botão só existe no estado em que ele pode ser clicado. */
+function montarIngresso(x){
+  var tem = !!x.ingressoId;
+  var validada = x.status === 'VALIDADA_ADMINISTRATIVAMENTE';
+  g('btEmitir').hidden   = tem || !validada;
+  g('btEmail').hidden    = !tem;
+  g('btWhats').hidden    = !tem;
+  g('btCancelar').hidden = !tem;
+  g('ingSituacao').textContent = tem
+    ? 'Ingresso ' + (x.numeroIngresso || x.ingressoId) + ' emitido.'
+    : validada ? 'Validada e sem ingresso — dá para emitir.'
+               : 'Só é possível emitir depois de validar a inscrição.';
+  /* A etiqueta no título da dobra: o estado sem precisar abrir. É o que
+     permite fechar a seção sem perder a informação de que ela existe. */
+  var tag = g('tagIngresso');
+  if (tag) tag.textContent = tem ? (x.numeroIngresso || 'emitido')
+                                 : validada ? 'a emitir' : 'aguarda validação';
+}
+
+/* O COMPROVANTE DA INSCRIÇÃO — 25/08/2026.
+   O usuário: "os associados fazem inscrição pelo ZAP". O link vai pela lista
+   de transmissão e a pessoa preenche a tela, mas o contato que a maioria deixa
+   é o WhatsApp — e a confirmação automática só alcança quem digitou e-mail.
+
+   Aqui é o caminho de responder: alguém pergunta no ZAP se a inscrição foi, e
+   a secretaria manda o mesmo texto que o e-mail levaria. */
+function montarComprovante(x){
+  var enviado = !!x.confirmacaoEnviadaEm;
+  var via = String(x.confirmacaoVia || '');
+  var temWhats = !!String(x.whatsapp || '').replace(/\D/g, '');
+
+  var partes = [];
+  if (enviado){
+    partes.push('Enviado' + (via ? ' por ' + (via === 'EMAIL' ? 'e-mail' : 'WhatsApp') : '') +
+                (x.confirmacaoEnviadaEm ? ' em ' + dataCurta(x.confirmacaoEnviadaEm) : '') + '.');
+  } else if (x.confirmacaoErro){
+    /* Falha de envio automático NÃO pode ficar só no documento: é aqui que
+       alguém descobre que o e-mail não saiu, e ainda dá para resolver. */
+    partes.push('O envio automático falhou: ' + esc(x.confirmacaoErro));
+  } else if (String(x.email || '')){
+    partes.push('Ainda não enviado.');
+  } else {
+    partes.push('Sem e-mail na inscrição — o comprovante só sai por WhatsApp.');
+  }
+  if (x.protocolo) partes.push('Protocolo ' + esc(x.protocolo) + '.');
+  g('cpvSituacao').innerHTML = partes.join(' ');
+  /* Etiqueta do título: dá para saber se o comprovante saiu sem abrir. */
+  var tagCpv = g('tagComprovante');
+  if (tagCpv) tagCpv.textContent = enviado ? 'enviado' : 'não enviado';
+
+  g('btCpvWhats').hidden = !temWhats;
+  g('btCpvOk').hidden = true;
+}
+
+/* Duas etapas, como no ingresso: abrir a conversa não é ter enviado. */
+function comprovanteWhats(){
+  var x = inscricaoAberta(); if (!x) return;
+  var w = window.open('', '_blank');
+  api('compasso_prepararConfirmacaoWhatsApp', [x.inscricaoId], function(r){
+    if (!r || !r.ok){ if (w) w.close(); return aviso((r && r.erro) || 'Não foi possível preparar.'); }
+    w.location.href = 'https://wa.me/' + r.telefone + '?text=' + encodeURIComponent(r.texto);
+    g('btCpvOk').hidden = false;
+    setTimeout(function(){
+      perguntar({ titulo: 'Você enviou o comprovante para ' + (x.nome || '') + '?',
+                  texto: 'Só confirme se enviou de verdade.',
+                  ok: 'Sim, enviei' }, comprovanteMarcar);
+    }, 1200);
+  });
+}
+
+function comprovanteMarcar(){
+  var x = inscricaoAberta(); if (!x) return;
+  api('compasso_confirmarEnvioConfirmacao', [x.inscricaoId], function(r){
+    if (!r || !r.ok) return aviso((r && r.erro) || 'Não foi possível registrar.');
+    aviso('Comprovante registrado como enviado.');
+    recarregar();
+  });
+}
+
+function montarHistorico(x){
+  var linhas = [];
+  if (x.analisadoPor)  linhas.push('Analisada por ' + esc(x.analisadoPor) +
+                                   (x.analisadoEm ? ' em ' + dataCurta(x.analisadoEm) : ''));
+  if (x.motivoCodigo)  linhas.push('Motivo: ' + esc(x.motivoCodigo));
+  if (x.observacaoAnalise) linhas.push('Observação: ' + esc(x.observacaoAnalise));
+  var canais = (x.entrega && x.entrega.canais) || [];
+  if (canais.length)   linhas.push('Entregue por ' + canais.join(' e ').toLowerCase());
+  if (x.origem)        linhas.push('Origem: ' + esc(x.origem));
+  /* Quem indicou o convidado é a única resposta possível para a pergunta que
+     alguém faz na porta do salão em dezembro. Gravado desde 26/08/2026. */
+  if (x.indicadoPor)   linhas.push('Indicado por: ' + esc(x.indicadoPor));
+  g('gvHistorico').innerHTML = linhas.length ? linhas.join('<br>')
+                                             : 'Nada registrado ainda.';
+}
+
+function dataCurta(v){
+  try { var d = new Date(v); return isNaN(d) ? String(v) : d.toLocaleDateString('pt-BR'); }
+  catch(e){ return String(v); }
+}
+function rotuloStatus(s){
+  return s === 'VALIDADA_ADMINISTRATIVAMENTE' ? 'validada'
+       : s === 'PENDENTE' ? 'pendente'
+       : s === 'REPROVADA' ? 'reprovada'
+       : s ? String(s).toLowerCase() : 'a analisar';
+}
+
+/* ── ações da gaveta ── */
+/* Toda ação recarrega mantendo a página e redesenha a gaveta com o estado
+   novo: fechar a gaveta a cada clique obrigaria a reabrir para conferir. */
+function recarregarMantendoGaveta(){
+  var id = (inscricaoAberta() || {}).inscricaoId;
+  carregar(true, function(){
+    if (!id) return;
+    for (var i = 0; i < LISTA.length; i++)
+      if (LISTA[i].inscricaoId === id){ ABERTO = i; pintarGaveta(); return; }
+    fecharGaveta();   /* sumiu da lista (excluída, ou o filtro não a alcança mais) */
+  });
+}
+function aposAcao(msg){
+  return function(r){
+    if (r && r.ok === false) return aviso(r.erro || 'Não foi possível concluir.');
+    if (msg) aviso(typeof msg === 'function' ? msg(r) : msg);
+    recarregarMantendoGaveta();
+  };
+}
+
+function salvarDados(){
+  var x = inscricaoAberta(); if (!x) return;
+  var patch = {};
+  ['nome','cpf','escola','cidade','regiao','email','whatsapp','matricula'].forEach(function(c){
+    patch[c] = g('d' + c.charAt(0).toUpperCase() + c.slice(1)).value;
+  });
+  /* MÁSCARA É APRESENTAÇÃO, NÃO DADO — 27/08/2026.
+     Assim que o campo passou a mostrar "069.078.297-70", este salvamento
+     começou a mandar a pontuação para o banco. O t89 pegou na hora, e o
+     estrago seria silencioso: a busca na base normaliza antes de comparar,
+     então NADA quebraria de imediato — só ficariam metade dos CPFs gravados
+     com ponto e metade sem, e o desencontro apareceria meses depois, em
+     relatório ou exportação, sem ninguém saber de onde veio. */
+  patch.cpf = String(patch.cpf || '').replace(/\D/g, '');
+  patch.whatsapp = String(patch.whatsapp || '').replace(/\D/g, '');
+  api('compasso_validacaoSalvarDados', [x.inscricaoId, patch, false],
+      aposAcao(function(r){ return r && r.semAlteracoes ? 'Nada mudou.' : 'Dados salvos.'; }));
+}
+
+function decidir(){
+  var x = inscricaoAberta(); if (!x) return;
+  var s = g('aStatus').value, m = g('aMotivo').value, obs = g('aObs').value;
+  if (s !== 'VALIDADA_ADMINISTRATIVAMENTE' && !m) return aviso('Selecione o motivo.');
+  /* Reprovar tem função própria porque devolve a vaga; as outras não. */
+  var fn = s === 'REPROVADA' ? 'compasso_reprovarInscricaoLiberandoVaga' : null;
+  if (fn){
+    perguntar({ titulo: 'Reprovar a inscrição de ' + x.nome + '?',
+                texto: 'A vaga volta para as 2.000.',
+                perigo: true, ok: 'Reprovar' }, function(){
+      api(fn, [x.inscricaoId, m, obs], aposAcao('Inscrição reprovada e vaga devolvida.'));
+    });
+  } else {
+    api('compasso_validarDecisaoAdmin', [x.inscricaoId, s, m, obs],
+        aposAcao(s === 'PENDENTE' ? 'Inscrição marcada como pendente.' : 'Inscrição validada.'));
+  }
+}
+
+function confirmarPagamento(){
+  var x = inscricaoAberta(); if (!x) return;
+  api('compasso_confirmarPagamento', [x.inscricaoId, {
+    forma: g('pgForma').value, valor: g('pgValor').value, referencia: g('pgRef').value
+  }], aposAcao('Pagamento confirmado.'));
+}
+function estornarPagamento(){
+  var x = inscricaoAberta(); if (!x) return;
+  perguntar({ titulo: 'Estornar o pagamento?', campo: true, rotulo: 'Motivo do estorno',
+              perigo: true, ok: 'Estornar' }, function(motivo){
+    api('compasso_estornarPagamento', [x.inscricaoId, motivo], aposAcao('Pagamento estornado.'));
+  });
+}
+
+/* Emitiu, abre o modal — é a lógica do ofício, que o usuário pediu: gerar e
+   já ter à mão baixar, imprimir, e-mail, WhatsApp e editar, sem procurar a
+   pessoa de novo na lista. */
+function emitirGaveta(){
+  var x = inscricaoAberta(); if (!x) return;
+  var nome = x.nome, id = x.inscricaoId;
+  perguntar({ titulo: 'Emitir o ingresso de ' + nome + '?',
+              texto: 'Isso consome uma das 2.000 vagas.', ok: 'Emitir' }, function(){
+    api('compasso_emitirIngressoV2', [{inscricaoId:id}], function(r){
+      if (!r || !r.ok) return aviso((r && r.erro) || 'Não foi possível emitir.');
+      abrirModalIngresso(id, r.numero, nome);
+      recarregarMantendoGaveta();
+    });
+  });
+}
+function emailGaveta(){
+  var x = inscricaoAberta(); if (!x) return;
+  api('compasso_enviarIngressoEmail', [x.inscricaoId],
+      aposAcao(function(r){ return (r&&r.mensagem) || 'Enviado.'; }));
+}
+function whatsGaveta(){ if (ABERTO >= 0) porWhats(ABERTO); }
+
+function cancelarIngresso(){
+  var x = inscricaoAberta(); if (!x || !x.ingressoId) return;
+  perguntar({ titulo: 'Cancelar o ingresso ' + (x.numeroIngresso || '') + '?',
+              texto: 'O QR deixa de valer na portaria.',
+              campo: true, rotulo: 'Motivo do cancelamento',
+              perigo: true, ok: 'Cancelar ingresso' }, function(motivo){
+    api('compasso_cancelarIngressoV2', [x.ingressoId, motivo],
+        aposAcao('Ingresso cancelado.'));
+  });
+}
+
+/* Excluir pede motivo E confirmação com o nome à vista: é a única ação da tela
+   que tira o registro de circulação. */
+function excluirInscricao(){
+  var x = inscricaoAberta(); if (!x) return;
+  perguntar({ titulo: 'Excluir a inscrição de ' + x.nome + '?',
+              texto: 'Ela sai da lista e a vaga volta para as 2.000.',
+              campo: true, rotulo: 'Motivo da exclusão',
+              perigo: true, ok: 'Excluir' }, function(motivo){
+    api('compasso_excluirInscricao', [x.inscricaoId, motivo], aposAcao('Inscrição excluída.'));
+  });
+}
+function copiarLink(){
+  api('eventos_obterWebAppUrl', [], function(base){
+    var url = String(base||'') + '?page=compasso-inscricao';
+    /* clipboard falha em iframe sem permissão: mostrar o texto é o plano B
+       que sempre funciona. */
+    try {
+      navigator.clipboard.writeText(url).then(
+        function(){ aviso('Link copiado:\n' + url); },
+        function(){ mostrarLink(url); });
+    } catch(e){ mostrarLink(url); }
+  });
+}
+
+/* ══ INÍCIO SOB DEMANDA ═══════════════════════════════════════════════════
+   UMA TELA INCLUÍDA NUMA SPA NÃO PODE TRABALHAR NA HORA EM QUE É LIDA.
+
+   Aqui estas quatro chamadas — opções, pagamento, resumo e lista — saíam no
+   carregamento do arquivo. Dentro do portal isso é cedo demais: o script roda
+   em index.html:663 e a sessão só é declarada em index.html:1345. As quatro
+   iam ao servidor com token vazio e voltavam "Sessão inválida ou expirada" —
+   que foi exatamente o que o usuário viu em 25/08/2026, com a tela em branco.
+
+   Resolver o token por função (compassoToken) foi necessário e não bastou: o
+   problema não era COMO o token era lido, era QUANDO as chamadas aconteciam.
+
+   Agora a tela só começa quando é ABERTA:
+     · sozinha, pela rota ?painel=compasso, o token vem na URL e ela já pode
+       começar na hora;
+     · dentro do portal, quem manda começar é a tela de Eventos, ao mostrar a
+       Central — e nesse instante a sessão já existe.
+
+   `INICIADA` impede que abrir a mesma tela duas vezes peça tudo de novo. */
+var INICIADA = false;
+
+function compassoIniciar(){
+  if (INICIADA) return;
+  if (!compassoToken()) return;   /* sem sessão não se bate na porta */
+  INICIADA = true;
+
+  /* Motivos, formas de pagamento e se quem abriu é administrador. São pedidos
+     uma vez: a gaveta precisa deles montada e não pode esperar ida ao
+     servidor a cada linha clicada. */
+  api('compasso_validacaoOpcoes', [], function(r){
+    OPCOES = r || OPCOES;
+    SOU_ADMIN = !!(r && r.admin);
+    if (ABERTO >= 0) g('secExcluir').hidden = !SOU_ADMIN;
+  });
+  api('compasso_pagamentoOpcoes', [], function(r){ PG_OPCOES = r || null; });
+
+  lerFiltroUrl();
+  carregar();
+}
+window.compassoIniciar = compassoIniciar;
+
+/* Esc fecha a gaveta — é o gesto que todo mundo tenta primeiro. */
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Escape' && ABERTO >= 0) fecharGaveta();
+});
+
+/* PONTE PARA QUEM INCLUI ESTA TELA.
+   A tela de Eventos precisa dizer "mostre só quem tem ingresso" sem recarregar
+   página nenhuma — ela está aqui dentro, não num quadro. É a única função que
+   esta tela expõe para fora, de propósito: quanto menor a superfície, menor a
+   chance de alguém depender de um detalhe interno. */
+/* A importação chama isto quando a pessoa escolhe a planilha: até lá, a
+   Central continua mostrando a lista, e nenhuma tela vazia aparece. */
+window.compassoMostrarImportacao = function(){ irAba('importar'); };
+
+window.compassoAplicarFiltro = function(nome){
+  /* É AQUI que a Central começa a viver dentro do portal: a tela de Eventos
+     chama esta ponte ao mostrar a Central, e nesse momento a sessão existe. */
+  compassoIniciar();
+
+  var achado = nome ? FILTROS_URL[String(nome).toLowerCase()] : null;
+  FILTRO_URL = achado || null;
+  if (achado){
+    g('chipUrlTexto').textContent = achado.rotulo;
+    g('chipUrl').style.display = 'block';
+  } else {
+    g('chipUrl').style.display = 'none';
+  }
+  if (INICIADA) carregar();
+};
+
+/* Aberta sozinha (?painel=compasso&sessao=…): o token está na URL, então dá
+   para começar já.
+
+   CORREÇÃO 31/08/2026 (auditoria M01, lote 3). O comentário original afirmava
+   que "dentro do portal isto não faz nada". Fazia: compassoToken() (linha 716)
+   cai no SISGEP_TOKEN_SESSAO quando não acha sessao= na URL, e o portal SEMPRE
+   define esse token. A guarda passava, e as quatro chamadas de abertura
+   — compasso_validacaoOpcoes, compasso_pagamentoOpcoes, e as duas do
+   carregar() — saíam em TODA carga da Home, com o Compasso fechado.
+
+   A distinção certa não é "tem token", é a ORIGEM do token: só a abertura
+   autônoma o traz na URL. Dentro do portal, quem manda começar é a ponte
+   compassoAplicarFiltro(), chamada por EventosAdmin.html:505 quando a Central
+   é mostrada — que é exatamente o que o comentário original já descrevia. */
+if (/[?&]sessao=/.test(String(location.search || ''))) compassoIniciar();
+</script>
+</div><!-- /compassoInscricoes -->

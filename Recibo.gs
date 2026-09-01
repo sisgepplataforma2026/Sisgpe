@@ -333,7 +333,7 @@ function gerarNumeroReciboSeguro() {
 
 /* ================= CONFIG RECIBO ================= */
 function buscarConfigRecibo(tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   const sheet = SpreadsheetApp
     .openById(PLANILHA_ID)
     .getSheetByName("CONFIG");
@@ -431,7 +431,9 @@ function gerarPDFRecibo(dados) {
 
   const numero   = gerarNumeroReciboSeguro();
   const codigo   = gerarCodigoVerificacao(numero);
-  const pastaAno = obterOuCriarSubpastaAno(PASTA_RECIBO_ID);
+  /* getRecursoId_ no lugar de PASTA_RECIBO_ID: aquela constante vale PRODUÇÃO
+     em qualquer ambiente. Ver AmbienteRecursos.gs. */
+  const pastaAno = obterOuCriarSubpastaAno(getRecursoId_("RECIBOS"));
 
   const nome = String(dados.nome || "").trim().toUpperCase();
 
@@ -544,10 +546,7 @@ const textoPgto = forma === "CHEQUE"
   var pdfFile = recibo_converterHtmlParaPdf_(html, nomeArquivo, pastaAno);
 
   try {
-    pdfFile.setSharing(
-      DriveApp.Access.ANYONE_WITH_LINK,
-      DriveApp.Permission.VIEW
-    );
+    arquivoAplicarPolitica_(pdfFile, "Recibo.gs");
   } catch(e) {}
 
   const fileId = pdfFile.getId();
@@ -894,7 +893,7 @@ function normalizarBeneficiarioEntradaRecibo_(b, idx, exigirPagamento) {
 }
 /* ================= SALVAR / ABRIR LOTE ================= */
 function salvarLoteRecibo(dados, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "documentos", false);
   try {
     const emailUsuario = obterEmailUsuarioAtual_() || "usuario@sisgep.local";
 
@@ -992,7 +991,7 @@ function salvarLoteRecibo(dados, tokenSessao) {
 }
 
 function abrirLoteRecibo(idProcessoOuProcesso, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     const retorno = buscarDadosProcessoRecibo(idProcessoOuProcesso, tokenSessao);
 
@@ -1023,7 +1022,7 @@ function abrirLoteRecibo(idProcessoOuProcesso, tokenSessao) {
 }
 
 function buscarCadastroBeneficiarioRecibo(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     garantirEstruturaModuloRecibos_();
 
@@ -1141,7 +1140,7 @@ function buscarCadastroBeneficiarioRecibo(dados, tokenSessao) {
 }
 /* ================= LISTAR ================= */
 function listarProcessosRecibo(tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     const emailUsuario = String(sessaoDocumentos.email || sessaoDocumentos.usuario || "").trim().toLowerCase();
 
@@ -1310,7 +1309,7 @@ function listarBeneficiariosPorProcessoRecibo(idProcesso) {
 
 /* ================= CADASTRAR PROCESSO ================= */
 function cadastrarNovoProcessoRecibo(dados, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "documentos", false);
   const emailUsuario = obterEmailUsuarioAtual_();
 
   if (!emailUsuario) {
@@ -1419,7 +1418,7 @@ function cadastrarNovoProcessoRecibo(dados, tokenSessao) {
 
 /* ================= EXCLUIR PROCESSO ================= */
 function excluirProcessoRecibo(idProcesso, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, true);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", true);
   try {
     garantirEstruturaModuloRecibos_();
 
@@ -1486,13 +1485,13 @@ function excluirProcessoRecibo(idProcesso, tokenSessao) {
       if (idxIdBen > -1) {
         for (let i = dadosBen.length - 1; i >= 1; i--) {
           if (String(dadosBen[i][idxIdBen] || "").trim() === alvo) {
-            shBen.deleteRow(i + 1);
+            lixeiraMover_(shBen, i + 1, { origem: "excluirProcessoRecibo" });
           }
         }
       }
     }
 
-    shProc.deleteRow(linhaProcesso);
+    lixeiraMover_(shProc, linhaProcesso, { origem: "excluirProcessoRecibo" });
 
     return {
       erro: false,
@@ -1705,14 +1704,16 @@ function montarMensagemEmailReciboSimples_(dados) {
 
       "<p><strong>📄 Recibo:</strong> " + recibo + "</p>" +
 
-      "<p>" +
-        "👉 <a href='" + link + "' target='_blank'>Clique aqui para acessar seu recibo</a>" +
-      "</p>" +
+      /* O PDF JÁ VAI ANEXADO (attachments: anexos, mais abaixo). O link
+         apontava para o arquivo no Drive, que era público para quem tivesse
+         a URL — 20/08/2026. Fechado o compartilhamento, ele deixaria de
+         abrir; e era redundante, porque o documento vem no anexo. */
+      "<p>📄 O recibo segue <strong>em anexo</strong> neste e-mail.</p>" +
 
       "<p><strong>📌 Para finalizar, siga os passos abaixo:</strong></p>" +
 
       "<ol style='padding-left:18px;'>" +
-        "<li>Abrir o recibo no link acima</li>" +
+        "<li>Abrir o recibo em anexo</li>" +
         "<li>Imprimir o documento</li>" +
         "<li>Assinar o recibo</li>" +
         "<li>Tirar uma foto ou escanear</li>" +
@@ -1732,7 +1733,7 @@ function montarMensagemEmailReciboSimples_(dados) {
 }
 
 function enviarReciboManualPorEmail(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     dados = dados || {};
 
@@ -1840,7 +1841,7 @@ function enviarReciboManualPorEmail(dados, tokenSessao) {
 }
 
 function gerarReciboWeb(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     const emailUsuario = String(sessaoDocumentos.email || sessaoDocumentos.usuario || "").trim().toLowerCase();
     garantirEstruturaModuloRecibos_();
@@ -2224,7 +2225,7 @@ const gerado = gerarPDFRecibo({
   }
 }
 function previewReciboWeb(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   dados = dados || {};
   const cfg = buscarConfigRecibo(tokenSessao);
 
@@ -2351,7 +2352,7 @@ const textoPgto = forma === "CHEQUE"
 }
 /* ================= BUSCAR PROCESSO ================= */
 function buscarProcessoReciboPorNumero(processo, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   garantirEstruturaModuloRecibos_();
 
   const alvo = String(processo || "").trim();
@@ -2365,7 +2366,7 @@ function buscarProcessoReciboPorNumero(processo, tokenSessao) {
 
 /* ================= BUSCAR DADOS PROCESSO ================= */
 function buscarDadosProcessoRecibo(processoOuId, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     const emailUsuario = String(sessaoDocumentos.email || sessaoDocumentos.usuario || "").trim().toLowerCase();
 
@@ -3086,7 +3087,7 @@ function importarBeneficiariosReciboDaPlanilha(planilhaId, nomeAba, processoFilt
 }
 
 function importarBeneficiariosReciboDaAbaImportacao(processoFiltro, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   return importarBeneficiariosReciboDaPlanilha(
     PLANILHA_ID,
     "IMPORTAR_RECIBOS",
@@ -3095,7 +3096,7 @@ function importarBeneficiariosReciboDaAbaImportacao(processoFiltro, tokenSessao)
 }
 /* ================= E-MAIL INDIVIDUAL SIMPLES ================= */
 function enviarReciboIndividual(dados, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "documentos", false);
   try {
     dados = dados || {};
 
@@ -3555,7 +3556,7 @@ function validarSomaBeneficiarios_(beneficiarios, valorTotalAlvara) {
 
 /* ================= IMPORTAÇÃO AUTOMÁTICA ================= */
 function importarDocumentosEGerarPlanilha(payload, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     payload = payload || {};
 
@@ -3723,7 +3724,7 @@ function importarDocumentosEGerarPlanilha(payload, tokenSessao) {
 }
 
 function importarAlvaraPDF(payload, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "documentos", false);
   try {
     payload = payload || {};
 
@@ -3782,7 +3783,7 @@ function importarAlvaraPDF(payload, tokenSessao) {
 
 /* ================= WHATSAPP ================= */
 function atualizarStatusWhatsappRecibo(numeroRecibo, novoStatus, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     garantirEstruturaModuloRecibos_();
 
@@ -3854,128 +3855,8 @@ function atualizarStatusWhatsappRecibo(numeroRecibo, novoStatus, tokenSessao) {
 }
 
 /* ================= RESUMO FINANCEIRO ================= */
-function resumoFinanceiroPorProcesso(tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
-  try {
-    const ss = SpreadsheetApp.openById(PLANILHA_ID);
-
-    const shProc = ss.getSheetByName(ABA_RECIBO_PROCESSOS);
-    const shBenef = ss.getSheetByName(ABA_RECIBO_BENEFICIARIOS);
-
-    if (!shProc || !shBenef) {
-      return {
-        erro: true,
-        mensagem: "Abas não encontradas."
-      };
-    }
-
-    const procDados = shProc.getDataRange().getValues();
-    const benefDados = shBenef.getDataRange().getValues();
-
-    const cabProc = procDados[0].map(function(h) {
-      return String(h || "").trim();
-    });
-
-    const cabBenef = benefDados[0].map(function(h) {
-      return String(h || "").trim();
-    });
-
-    const idxProcId = cabProc.indexOf("ID_PROCESSO");
-    const idxProcNome = cabProc.indexOf("PROCESSO");
-    const idxProcEmpresa = cabProc.indexOf("EMPRESA");
-    const idxProcValor = cabProc.indexOf("VALOR_TOTAL");
-
-    const idxBenefProc = cabBenef.indexOf("ID_PROCESSO");
-    const idxBenefValor = cabBenef.indexOf("VALOR");
-
-    if (
-      idxProcId === -1 ||
-      idxProcNome === -1 ||
-      idxProcEmpresa === -1 ||
-      idxProcValor === -1 ||
-      idxBenefProc === -1 ||
-      idxBenefValor === -1
-    ) {
-      return {
-        erro: true,
-        mensagem: "Colunas financeiras obrigatórias não encontradas."
-      };
-    }
-
-    function numeroBR(valor) {
-      if (valor === null || valor === undefined || valor === "") return 0;
-      if (typeof valor === "number") return valor;
-
-      var texto = String(valor)
-        .trim()
-        .replace(/\s/g, "")
-        .replace(/^R\$/i, "");
-
-      if (texto.indexOf(",") > -1 && texto.indexOf(".") > -1) {
-        texto = texto.replace(/\./g, "").replace(",", ".");
-      } else if (texto.indexOf(",") > -1) {
-        texto = texto.replace(",", ".");
-      }
-
-      var n = parseFloat(texto);
-      return isNaN(n) ? 0 : n;
-    }
-
-    let mapa = {};
-
-    for (let i = 1; i < procDados.length; i++) {
-      let id = String(procDados[i][idxProcId] || "").trim();
-
-      if (!id) continue;
-
-      mapa[id] = {
-        processo: procDados[i][idxProcNome],
-        empresa: procDados[i][idxProcEmpresa],
-        total: numeroBR(procDados[i][idxProcValor]),
-        pago: 0
-      };
-    }
-
-    for (let i = 1; i < benefDados.length; i++) {
-      let id = String(benefDados[i][idxBenefProc] || "").trim();
-      let valor = numeroBR(benefDados[i][idxBenefValor]);
-
-      if (mapa[id]) {
-        mapa[id].pago += valor;
-      }
-    }
-
-    let resultado = Object.values(mapa).map(function(p) {
-      let saldo = p.total - p.pago;
-      let perc = p.total > 0
-        ? ((p.pago / p.total) * 100).toFixed(1)
-        : "0.0";
-
-      return {
-        processo: p.processo,
-        empresa: p.empresa,
-        total: p.total,
-        pago: p.pago,
-        saldo: saldo,
-        percentual: perc
-      };
-    });
-
-    return {
-      erro: false,
-      dados: resultado
-    };
-
-  } catch (e) {
-    return {
-      erro: true,
-      mensagem: e.message
-    };
-  }
-}
-
 function obterResumoFinanceiroProcesso(idProcesso, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     garantirEstruturaModuloRecibos_();
 
@@ -4101,7 +3982,7 @@ function obterResumoFinanceiroProcesso(idProcesso, tokenSessao) {
 
 /* ================= EDITAR PROCESSO ================= */
 function editarProcessoRecibo(dados, tokenSessao) {
-  var sessaoEdicao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoEdicao = exigirModulo_(tokenSessao, "documentos", false);
   try {
     dados = dados || {};
 
@@ -4182,12 +4063,15 @@ function testarPermissaoDriveRecibo() {
   };
 
   try {
-    if (!PASTA_RECIBO_ID) {
-      throw new Error("PASTA_RECIBO_ID não informado.");
+    /* Esta função CRIA subpasta, então é gravação: resolve por ambiente e
+       respeita a trava. Ver AmbienteRecursos.gs. */
+    var idPastaRecibos = getRecursoId_("RECIBOS");
+    if (!idPastaRecibos) {
+      throw new Error("Pasta de recibos não informada.");
     }
 
     resultado.etapa = "acessando pasta principal";
-    var pastaPai = DriveApp.getFolderById(PASTA_RECIBO_ID);
+    var pastaPai = DriveApp.getFolderById(idPastaRecibos);
 
     resultado.etapa = "lendo nome da pasta";
     var nomePasta = pastaPai.getName();
@@ -4218,10 +4102,7 @@ function testarPermissaoDriveRecibo() {
     resultado.etapa = "definindo compartilhamento";
 
     try {
-      pdfFile.setSharing(
-        DriveApp.Access.ANYONE_WITH_LINK,
-        DriveApp.Permission.VIEW
-      );
+      arquivoAplicarPolitica_(pdfFile, "Recibo.gs");
     } catch (eShare) {
       Logger.log("⚠ Não foi possível liberar compartilhamento: " + eShare.message);
     }
@@ -4306,7 +4187,7 @@ function registrarBeneficiariosEmLote_(listaDeDados) {
   sh.getRange(sh.getLastRow() + 1, 1, matriz.length, headers.length).setValues(matriz);
 }
 function buscarBeneficiariosReciboPorEmpresa(empresaBusca, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   return buscarBeneficiariosPorEmpresa(empresaBusca);
 }
 function testarListarProcessos() {
@@ -4988,7 +4869,7 @@ function registrarProgressoGeracao_(progresso) {
 }
 
 function obterProgressoGeracao(tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     var val = PropertiesService.getScriptProperties().getProperty('sisgep_progresso_recibo');
     if (!val) return { status:"idle", atual:0, total:0, ultimo:"", concluido:false };
