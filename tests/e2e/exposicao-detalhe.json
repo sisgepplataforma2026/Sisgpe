@@ -1,6 +1,6 @@
 {
   "medidoEm": "2026-09-01",
-  "totalPublicas": 972,
+  "totalPublicas": 973,
   "protegidas": 656,
   "expostas": [
     {
@@ -662,6 +662,11 @@
       "nome": "instalarTriggerConfirmacoesOficios",
       "arquivo": "OficiosDiagnostico.gs",
       "escreve": true
+    },
+    {
+      "nome": "oficiosQueNaoChegaram",
+      "arquivo": "OficiosDiagnostico.gs",
+      "escreve": false
     },
     {
       "nome": "pcHospedesPrepararLink",
