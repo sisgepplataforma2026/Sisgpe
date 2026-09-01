@@ -49,13 +49,15 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 ## 📌 O QUE ESTÁ ABERTO — índice
 
-> Gerado em 31/08/2026, atualizado em 01/09. São **46 itens** (o 21 e o 46
-> fecharam em 01/09; os itens 50 a 56 nasceram na auditoria do Módulo 03). A lista completa, com o detalhe de
+> Gerado em 31/08/2026, atualizado em 01/09. São **47 itens** (o 21 e o 46
+> fecharam em 01/09; os itens 50 a 56 nasceram na auditoria do Módulo 03, e o
+> 57 ao 59 do trabalho do mesmo dia). A lista completa, com o detalhe de
 > cada um, está na seção ABERTO logo abaixo — este índice existe só para não
 > ser preciso ler 2.000 linhas para saber o que cobrar.
 
 | Nº | Item |
 |---|---|
+| 59 | A ficha em PDF no layout do papel — falta pôr um ao lado do outro |
 | 58 | A tela do "Reemitir ofício" — feita (54.1 fechado), falta ver no ar |
 | 57 | Os quatro ajustes autorizados em 01/09 — falta ver no ar |
 | 56 | ✅ Frente A do Módulo 03 — COMPLETA: as 45 funções públicas têm teste |
@@ -110,6 +112,44 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
+
+### 59. A ficha em PDF no layout do papel — falta pôr um ao lado do outro
+
+01/09/2026. Você mandou a ficha que o sistema gera e a foto do formulário
+impresso, e disse: *"Precisamos de algo que fique assim"*, *"Esse que te
+mandei é o modelo que utilizamos"*. O PDF passou a reproduzir o papel:
+moldura azul dupla, barras de seção em azul-claro, caixinhas de caractere,
+ATUALIZAÇÃO CADASTRAL, ORGÃO EMISSOR, tipo de logradouro como caixa de
+marcar, CONTATOS separado em WhatsApp/telefônico/recado, as nove opções de
+escolaridade e Colossenses 3:23 no rodapé.
+
+Suas quatro respostas de layout estão aplicadas: título/zona/seção saíram da
+ficha de cadastro; Pós-graduação, Mestrado e Doutorado entraram; o rodapé de
+controle ficou; o endereço é o completo.
+
+A logo também foi ajustada — passou a mandar pela largura (estava travada em
+40px de altura e saía com ~75px de largura), a frase "Somos todos educadores"
+deixou de aparecer duas vezes (a arte já traz a frase dentro dela) e o texto
+de emergência trocou o dourado do SISGEP pelo azul e rosa da marca.
+
+**🔴 A COBRAR DE VOCÊ — é o que o emulador não faz.** Ele prova o HTML que
+entra na conversão; não converte para PDF nem desenha página.
+
+1. Gerar uma ficha em homologação e abrir o PDF **ao lado do formulário
+   impresso**. O ponto onde a conversão do Apps Script mais costuma divergir
+   do navegador é a **largura das caixinhas** — se elas saírem espremidas ou
+   estourando a linha, é ali.
+2. Ver a **logo impressa**. O arquivo no Drive se chama `Screenshot_3.png` e
+   tem 466x247 — é recorte de tela, não arte vetorial. Em 150px de largura
+   deve passar; se sair serrilhada, a correção é trocar o arquivo por um PNG
+   grande ou um SVG, **sem mexer em código**: o ID do arquivo continua o
+   mesmo.
+3. O papel impresso ficou **defasado**: ele não tem Pós-graduação, Mestrado e
+   Doutorado, que você mandou acrescentar. Quando for reimprimir, vale
+   acertar as nove opções de uma vez.
+
+Coberto por `tests/e2e/t135-ficha-no-layout-do-papel.js` — 69 asserções, e
+duas marcadas como não testáveis, que são exatamente os itens 1 e 2 acima.
 
 ### 58. A tela do "Reemitir ofício" — feita (item 54.1 FECHADO), falta ver no ar
 
