@@ -282,15 +282,19 @@ b.aviso(
   "FICA. Falta a tela, e tela se desenha antes de implementar (REGRA Nº 0.5)"
 );
 
-b.fluxo("MÓDULO 03 · o achado de permissão, visto do outro lado");
+b.fluxo("MÓDULO 03 · quem só tem SINDICALIZAÇÃO faz o fluxo inteiro (item 54.2)");
 
-b.passo("15. quem só tem SINDICALIZAÇÃO passa da porta e para no ofício");
-/* O joscimar tem escolas+sindicalizacao. A porta de aprovarEEncaminharFicha
-   pede sindicalizacao — ele passa. Mas o gerarOficioWeb lá dentro pede
-   DOCUMENTOS, e aí ele para. Antes de 01/09/2026 essa parada era mentirosa:
-   o token não descia, e a recusa vinha como "Sessão inválida ou expirada" —
-   erro que manda a pessoa fazer login de novo para um problema que login
-   nenhum resolve. Agora a mensagem diz a verdade. */
+b.passo("15. a matrícula E o ofício saem juntos, com um módulo só");
+/* O joscimar tem escolas+sindicalizacao. Até 01/09/2026 ele emitia a matrícula
+   e a escola NÃO era comunicada: o gerarOficioWeb lá dentro pedia DOCUMENTOS.
+   E a recusa vinha mentirosa — "Sessão inválida ou expirada", erro que manda
+   a pessoa fazer login de novo para um problema que login nenhum resolve.
+
+   A correção não alargou a porta: aprovarEEncaminharFicha continua pedindo
+   Sindicalização. O que mudou é que a sessão DESCE para o
+   gerarOficioWeb_comSessao_, que não tem porta própria. A permissão foi dada
+   ao fluxo da ficha, não ao módulo de Ofícios inteiro — o passo 16 prova
+   isso. */
 (function () {
   const env2 = g.submeterFichaSindicalizacao({
     nome: "João Carlos Lima", cpf: "529.982.247-25", rg: "7654321",
@@ -306,24 +310,28 @@ b.passo("15. quem só tem SINDICALIZAÇÃO passa da porta e para no ofício");
   g.validarOTPEAssinarFicha(id2, cod2, "127.0.0.1");
 
   const r2 = g.aprovarEEncaminharFicha(id2, ESCOLA, "Joscimar", SIN);
-  b.ok(r2 && r2.parcial === true,
-    "matrícula sai, ofício não — e o retorno avisa que ficou parcial",
+  b.ok(r2 && r2.sucesso === true && !r2.parcial,
+    "conclui INTEIRO — não fica mais parcial",
     r2 && r2.mensagem ? r2.mensagem.substring(0, 58) : "");
-  b.ok(/m[óo]dulo Documentos/i.test(String(r2 && r2.mensagem || "")),
-    "E A MENSAGEM DIZ A VERDADE: falta o módulo Documentos",
-    /sess[ãa]o inv[áa]lida/i.test(String(r2 && r2.mensagem || ""))
-      ? "AINDA diz 'Sessão inválida' — a correção não pegou"
-      : "nomeia o módulo que falta");
-})();
+  b.ok(/^\d{3}\/\d{4}$/.test(String(r2 && r2.numeroOficio || "")),
+    "com número de ofício de verdade", String(r2 && r2.numeroOficio || "(vazio)"));
+  b.ok(!/sess[ãa]o inv[áa]lida/i.test(String(r2 && r2.mensagem || "")),
+    "e sem a recusa mentirosa de 'Sessão inválida'");
 
-b.aviso(
-  "aprovar uma ficha exige DOIS módulos: Sindicalização E Documentos",
-  "quem aprova ficha está fazendo trabalho de sindicalização; o ofício é " +
-  "efeito colateral que o sistema gera por ela. Hoje, sem o módulo " +
-  "Documentos, a pessoa emite a matrícula e não comunica a escola. É o mesmo " +
-  "formato do item 52 (e-mail da escola atrás de outro módulo). Não mudei: " +
-  "qual módulo guarda uma ação é política de acesso, e a decisão é do usuário"
-);
+  /* PASSO 16 — o que a correção NÃO pode ter aberto. */
+  const soOficioLivre = tentar(() => g.gerarOficioWeb({
+    tipo: "LIVRE", para: "Alguém", email: "x@y.com",
+    assunto: "Assunto", corpo: "Corpo qualquer"
+  }, SIN));
+  b.ok(!soOficioLivre.passou,
+    "16. e ele CONTINUA sem poder emitir ofício livre por chamada direta",
+    soOficioLivre.passou
+      ? "PASSOU — a porta do módulo de Ofícios foi alargada sem querer"
+      : soOficioLivre.msg.substring(0, 48));
+  b.ok(!soOficioLivre.passou && /m[óo]dulo/i.test(soOficioLivre.msg),
+    "a recusa é por módulo, e é a porta pública do gerarOficioWeb que recusa",
+    soOficioLivre.passou ? "" : soOficioLivre.msg.substring(0, 52));
+})();
 
 b.naoTestavel(
   "se o e-mail com o ofício e a ficha anexada chega na escola",

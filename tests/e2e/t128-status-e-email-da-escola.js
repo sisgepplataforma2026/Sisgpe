@@ -198,23 +198,54 @@ const naoTem = g.atualizarEmailEscola("99999999000199", "x@y.com", "x", DOCS);
 b.ok(naoTem && naoTem.sucesso === false, "recusa CNPJ desconhecido");
 b.igual(esc.getLastRow(), 2, "e o cadastro continua com uma escola só");
 
-b.fluxo("MÓDULO 03 · o achado de permissão");
+b.fluxo("MÓDULO 03 · os DOIS caminhos até o conserto (item 52, corrigido)");
 
-b.passo("14. quem tem só sindicalização consegue mexer no e-mail da escola");
-/* Não é defeito — é o desenho atual. O passo existe para deixar o desenho
-   VISÍVEL, porque o próximo passo mostra o outro lado dele. */
+b.passo("14. quem tem só SINDICALIZAÇÃO consegue — como sempre foi");
 const porSind = g.atualizarEmailEscola("12345678000199", "terceiro@alfa.com", "j", SEM);
 b.ok(porSind && porSind.sucesso === true,
-  "o joscimar (escolas,sindicalizacao) consegue corrigir");
+  "o joscimar (escolas,sindicalizacao) corrige");
 
-b.aviso(
-  "quem trabalha OFÍCIOS não pode consertar o e-mail que fez o ofício voltar",
-  "atualizarEmailEscola exige o módulo SINDICALIZAÇÃO. Quem descobre o e-mail " +
-  "errado está no módulo DOCUMENTOS, olhando um ofício que voltou — e para " +
-  "corrigir precisa de outra permissão ou de outra pessoa. É decisão de " +
-  "desenho do usuário, não correção minha: mudar qual módulo guarda uma ação " +
-  "é política de acesso, não conserto de bug"
-);
+b.passo("15. E QUEM TEM SÓ DOCUMENTOS TAMBÉM — era o buraco do item 52");
+/* O caminho real da secretaria: abre o painel de ofícios (Documentos), vê que
+   um voltou por e-mail errado, e corrige. Antes de 01/09/2026 ela parava aqui
+   e dependia de outra pessoa. */
+(function () {
+  const ss2 = g.SpreadsheetApp.openById(g.PLANILHA_ID);
+  const aba = ss2.getSheetByName(g.ABA_USUARIOS_LOGIN);
+  aba.getRange(5, 1, 1, 8).setValues([[
+    "marcela", g.gerarHashSenha_("Senha@2026"), "Marcela",
+    "marcela@sindeducacao.com", "USUARIO", "ATIVO", "NAO", "documentos"
+  ]]);
+  const SO_DOCS = b.logar(g, "marcela");
+  const porDocs = g.atualizarEmailEscola(
+    "12345678000199", "quarto@alfa.com", "marcela", SO_DOCS);
+  b.ok(porDocs && porDocs.sucesso === true,
+    "quem tem só Documentos corrige o e-mail da escola",
+    porDocs && porDocs.mensagem ? porDocs.mensagem.substring(0, 44) : "");
+  b.igual(String(esc.getRange(2, 4).getValue()), "quarto@alfa.com",
+    "e a correção dela chegou ao cadastro");
+})();
+
+b.passo("16. E A PORTA NÃO VIROU PORTA ABERTA — é o que importa checar");
+/* Aceitar dois módulos não pode virar aceitar qualquer um. O rogério tem
+   financeiro e rh: nenhum dos dois serve. */
+const semNenhum = tentar(() => g.atualizarEmailEscola(
+  "12345678000199", "invasor@x.com", "r", b.logar(g, "rogerio")));
+b.ok(!semNenhum.passou || semNenhum.valor.sucesso === false,
+  "quem não tem NENHUM dos dois módulos continua barrado",
+  semNenhum.passou ? "PASSOU — o cadastro de escolas ficou aberto"
+                   : semNenhum.msg.substring(0, 52));
+b.ok(!semNenhum.passou && /Documentos|Sindicaliza/i.test(semNenhum.msg),
+  "e a mensagem diz OS DOIS caminhos possíveis, não só um",
+  semNenhum.passou ? "" : semNenhum.msg.substring(0, 60));
+
+const semSessao4 = tentar(() => g.atualizarEmailEscola(
+  "12345678000199", "invasor@x.com", "x", ""));
+b.ok(!semSessao4.passou, "e anônimo continua barrado",
+  semSessao4.passou ? "PASSOU" : semSessao4.msg.substring(0, 40));
+
+b.igual(String(esc.getRange(2, 4).getValue()), "quarto@alfa.com",
+  "nenhuma das duas tentativas barradas mexeu no cadastro");
 
 b.naoTestavel(
   "se o ofício REENVIADO depois da correção chega na caixa da escola",

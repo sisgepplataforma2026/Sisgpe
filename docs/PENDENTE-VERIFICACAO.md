@@ -56,6 +56,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 | Nº | Item |
 |---|---|
+| 57 | Os quatro ajustes autorizados em 01/09 — falta ver no ar |
 | 56 | ✅ Frente A do Módulo 03 — COMPLETA: as 45 funções públicas têm teste |
 | 55 | Ofício fiscal — existe para o sindicato e não existe para a contabilidade |
 | 54 | Ficha → Ofício — dois achados de desenho, os dois para você decidir |
@@ -108,6 +109,59 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
+
+### 57. Os quatro ajustes que você autorizou (01/09/2026) — falta ver no ar
+
+Feitos no repositório e publicados em homologação. **Nenhum deles foi
+verificado rodando de verdade** — é o que esta lista cobra.
+
+#### O que mudou
+
+| Item | Antes | Agora |
+|---|---|---|
+| **55** | o e-mail à contabilidade não citava o número do ofício nem levava o documento | número numa faixa no topo do corpo, e o documento vai **anexado, na frente das notas** |
+| **52** | `atualizarEmailEscola` exigia só Sindicalização | aceita **Documentos OU Sindicalização** |
+| **54.2** | quem tinha só Sindicalização emitia a matrícula e **não comunicava a escola** | faz o fluxo inteiro — matrícula e ofício |
+| **54.3** | campo sem coluna era descartado **em silêncio** | o descarte vai para o log, nomeando os campos perdidos |
+
+**A numeração do ofício fiscal ficou como está**, conforme você decidiu: cada
+lote de despesa continua avançando o mesmo contador dos ofícios de filiação.
+
+#### O que eu tomei cuidado para não fazer
+
+**No item 54.2, quase alarguei demais.** A primeira versão deixava quem tem só
+*Documentos* aprovar ficha — errado: aprovar ficha é trabalho de
+Sindicalização. Corrigi antes de rodar a suíte.
+
+E a permissão foi dada ao **fluxo da ficha**, não ao módulo de Ofícios. O
+`gerarOficioWeb` foi dividido: a porta pública continua exigindo Documentos, e
+o corpo virou `gerarOficioWeb_comSessao_`, privado e sem porta, alcançável só
+por quem já passou por uma. Se eu tivesse simplesmente alargado a porta,
+**quem tem só Sindicalização passaria a emitir ofício LIVRE** — texto
+arbitrário em papel timbrado do sindicato, para qualquer e-mail. O `t129`
+passo 16 trava exatamente isso.
+
+Achado de passagem: o cabeçalho do `previewOficioWeb` já dizia *"SEM trava de
+módulo — a Sindicalização monta a prévia do ofício de filiação por aqui"*. Era
+a intenção original do autor, e a troca de porta que fiz mais cedo hoje tornou
+o comentário falso sem resolver o problema. A divisão devolve essa intenção.
+
+#### O que falta conferir no ar
+
+1. **Enviar um lote de despesas** — o e-mail à contabilidade tem que chegar
+   com o número do ofício visível no topo **e três anexos**: o ofício e as
+   duas notas. É o item 55.
+2. **Corrigir o e-mail de uma escola logado como alguém que só tem
+   Documentos** — antes era impossível. É o item 52.
+3. **Aprovar uma ficha logado como alguém que só tem Sindicalização** — tem
+   que sair matrícula **e** ofício, sem mensagem de pendência. É o 54.2.
+4. **Olhar o log depois de aprovar uma ficha** — deve aparecer
+   `SIND_ADM_CAMPO_SEM_COLUNA` avisando que `OBSERVACOES_OFICIO` foi
+   descartado. Se **não** aparecer, é porque a produção **tem** a coluna — e
+   isso responde a pergunta do item 54.3.
+
+**O item 4 é o que mais me interessa:** ele responde sozinho a pergunta que eu
+te fiz e não sabia responder.
 
 ### 56. ✅ FRENTE A DO MÓDULO 03 — COMPLETA (01/09/2026)
 

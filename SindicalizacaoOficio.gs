@@ -172,7 +172,23 @@ function sindOf_buscarDePara_(nomeNaFicha) {
  * @param {Object} escola   { nome, cnpj, emailPrincipal, emailsTodos }
  */
 function previewOficioFiliacao(idFicha, escola, tokenSessao) {
-  exigirModulo_(tokenSessao, "sindicalizacao", false);
+  /* A PORTA E DAQUI, E CONTINUA SENDO SINDICALIZACAO — 01/09/2026, item 54.2.
+
+     Quem mexe em ficha faz trabalho de SINDICALIZACAO; o oficio e efeito
+     colateral que o sistema gera por ela. Antes, exigir tambem DOCUMENTOS la
+     dentro fazia a pessoa emitir a matricula e NAO comunicar a escola — dano
+     real, porque a matricula nao se desfaz.
+
+     O que mudou nao foi a permissao desta funcao: foi a sessao passar a
+     DESCER. Ela vai para o _comSessao_ do modulo de Oficios, que nao tem
+     porta propria e confia em quem o chamou. Isso da a permissao ao FLUXO DA
+     FICHA, nao ao modulo de Oficios inteiro — quem tem so Sindicalizacao
+     continua sem poder emitir oficio livre por chamada direta.
+
+     E o modulo aqui nao virou "os dois" de proposito: aprovar ficha nao e
+     trabalho de quem cuida de oficios, e o aprovarFichaSindicalizacao,
+     chamado logo abaixo, exige Sindicalizacao de qualquer forma. */
+  var sessaoFicha = exigirModulo_(tokenSessao, "sindicalizacao", false);
   try {
     var f = sindAdm_buscarPorId_(idFicha);
     if (!f) return { sucesso: false, mensagem: 'Ficha não encontrada.' };
@@ -180,16 +196,16 @@ function previewOficioFiliacao(idFicha, escola, tokenSessao) {
       return { sucesso: false, mensagem: 'Selecione a escola destinatária.' };
     }
 
-    /* O token desce: o previewOficioWeb pede o modulo Documentos e esta
-       chamada nao passava nada — a previa morria em "Sessao invalida" desde
-       sempre. Defeito ANTERIOR a 01/09/2026, achado ao cobrir com teste. */
-    var html = previewOficioWeb({
+    /* Vai pelo interno, com a sessao que a porta acima ja validou. Antes de
+       01/09/2026 esta chamada nao passava token nenhum e a previa morria em
+       "Sessao invalida" desde sempre. */
+    var html = previewOficioWeb_comSessao_({
       tipo: 'FILIACAO',
       escola: escola.nome,
       cnpj: escola.cnpj,
       email: escola.emailPrincipal || '',
       colaboradores: [String(f.NOME_COMPLETO || '').trim()]
-    }, tokenSessao);
+    }, sessaoFicha);
 
     return {
       sucesso: true,
@@ -227,7 +243,23 @@ function previewOficioFiliacao(idFicha, escola, tokenSessao) {
  * @param {string} tokenSessao Token da sessão SISGEP do atendente que aprova
  */
 function aprovarEEncaminharFicha(idFicha, escola, aprovadoPor, tokenSessao) {
-  exigirModulo_(tokenSessao, "sindicalizacao", false);
+  /* A PORTA E DAQUI, E CONTINUA SENDO SINDICALIZACAO — 01/09/2026, item 54.2.
+
+     Quem mexe em ficha faz trabalho de SINDICALIZACAO; o oficio e efeito
+     colateral que o sistema gera por ela. Antes, exigir tambem DOCUMENTOS la
+     dentro fazia a pessoa emitir a matricula e NAO comunicar a escola — dano
+     real, porque a matricula nao se desfaz.
+
+     O que mudou nao foi a permissao desta funcao: foi a sessao passar a
+     DESCER. Ela vai para o _comSessao_ do modulo de Oficios, que nao tem
+     porta propria e confia em quem o chamou. Isso da a permissao ao FLUXO DA
+     FICHA, nao ao modulo de Oficios inteiro — quem tem so Sindicalizacao
+     continua sem poder emitir oficio livre por chamada direta.
+
+     E o modulo aqui nao virou "os dois" de proposito: aprovar ficha nao e
+     trabalho de quem cuida de oficios, e o aprovarFichaSindicalizacao,
+     chamado logo abaixo, exige Sindicalizacao de qualquer forma. */
+  var sessaoFicha = exigirModulo_(tokenSessao, "sindicalizacao", false);
   if (!escola || !escola.cnpj || sindOf_digitos_(escola.cnpj).length !== 14) {
     return { sucesso: false, mensagem: 'Selecione uma escola com CNPJ válido.' };
   }
@@ -277,7 +309,7 @@ function aprovarEEncaminharFicha(idFicha, escola, aprovadoPor, tokenSessao) {
   // 3. Ofício na numeração oficial (reaproveita o módulo de Ofícios)
   var retorno;
   try {
-    retorno = gerarOficioWeb({
+    retorno = gerarOficioWeb_comSessao_({
       tipo: 'FILIACAO',
       escola: escola.nome,
       cnpj: sindOf_digitos_(escola.cnpj),
@@ -294,7 +326,7 @@ function aprovarEEncaminharFicha(idFicha, escola, aprovadoPor, tokenSessao) {
       // Este fluxo não tem interface para perguntar ao usuário, então já confirma
       // — o aviso de duplicata (achado #4) vale para o formulário manual.
       confirmarDuplicata: true
-    }, tokenSessao);
+    }, sessaoFicha);
   } catch (eOf) {
     Logger.log('gerarOficioWeb falhou: ' + eOf.message);
     return {
@@ -347,7 +379,23 @@ function aprovarEEncaminharFicha(idFicha, escola, aprovadoPor, tokenSessao) {
  * falhou na aprovação ou quando é preciso reenviar a outra escola).
  */
 function reemitirOficioFicha(idFicha, escola, usuario, tokenSessao) {
-  exigirModulo_(tokenSessao, "sindicalizacao", false);
+  /* A PORTA E DAQUI, E CONTINUA SENDO SINDICALIZACAO — 01/09/2026, item 54.2.
+
+     Quem mexe em ficha faz trabalho de SINDICALIZACAO; o oficio e efeito
+     colateral que o sistema gera por ela. Antes, exigir tambem DOCUMENTOS la
+     dentro fazia a pessoa emitir a matricula e NAO comunicar a escola — dano
+     real, porque a matricula nao se desfaz.
+
+     O que mudou nao foi a permissao desta funcao: foi a sessao passar a
+     DESCER. Ela vai para o _comSessao_ do modulo de Oficios, que nao tem
+     porta propria e confia em quem o chamou. Isso da a permissao ao FLUXO DA
+     FICHA, nao ao modulo de Oficios inteiro — quem tem so Sindicalizacao
+     continua sem poder emitir oficio livre por chamada direta.
+
+     E o modulo aqui nao virou "os dois" de proposito: aprovar ficha nao e
+     trabalho de quem cuida de oficios, e o aprovarFichaSindicalizacao,
+     chamado logo abaixo, exige Sindicalizacao de qualquer forma. */
+  var sessaoFicha = exigirModulo_(tokenSessao, "sindicalizacao", false);
   var f = sindAdm_buscarPorId_(idFicha);
   if (!f) return { sucesso: false, mensagem: 'Ficha não encontrada.' };
   if (f.STATUS !== 'MATRICULADA') {
@@ -364,7 +412,7 @@ function reemitirOficioFicha(idFicha, escola, usuario, tokenSessao) {
   var anexo = sindOf_fichaComoAnexo_(f);
   if (!anexo) return { sucesso: false, mensagem: 'PDF da ficha não encontrado.' };
 
-  var retorno = gerarOficioWeb({
+  var retorno = gerarOficioWeb_comSessao_({
     tipo: 'FILIACAO',
     escola: escola.nome,
     cnpj: sindOf_digitos_(escola.cnpj),
@@ -378,7 +426,7 @@ function reemitirOficioFicha(idFicha, escola, usuario, tokenSessao) {
     // duplicidade (achado #4) deve barrar, e este fluxo não tem interface para
     // perguntar ao usuário.
     confirmarDuplicata: true
-  }, tokenSessao);
+  }, sessaoFicha);
 
   if (!retorno || retorno.erro) {
     return { sucesso: false, mensagem: (retorno && retorno.mensagem) || 'Falha ao gerar o ofício.' };
@@ -490,7 +538,18 @@ function diagnosticarDeParaEscolas(tokenSessao) {
  * "E-mails (todos)".
  */
 function atualizarEmailEscola(cnpj, emails, usuario, tokenSessao) {
-  exigirModulo_(tokenSessao, "sindicalizacao", false);
+  /* DOIS MODULOS ACEITOS DESDE 01/09/2026 (item 52 do PENDENTE-VERIFICACAO).
+
+     Antes exigia so SINDICALIZACAO. Mas quem descobre que o e-mail de uma
+     escola esta errado esta no modulo DOCUMENTOS, olhando um oficio que
+     voltou: via o problema, sabia o conserto, e dependia de outra pessoa para
+     aplicar. Escola sem e-mail certo e oficio que nao chega — o problema que
+     a secretaria estava vivendo.
+
+     Nao afrouxa nada: continua exigindo sessao valida e continua restrito a
+     quem tem um dos dois modulos. So reconhece que corrigir o contato da
+     escola pertence aos dois fluxos de trabalho. */
+  exigirQualquerModulo_(tokenSessao, ["documentos", "sindicalizacao"], false);
   var alvo = sindOf_digitos_(cnpj);
   if (alvo.length !== 14) return { sucesso: false, mensagem: 'CNPJ inválido.' };
 

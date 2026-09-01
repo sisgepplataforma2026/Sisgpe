@@ -173,56 +173,69 @@ b.ok(paraContab.length >= 1,
   "e-mails registrados: " + outbox.length);
 
 b.passo("10. as duas notas fiscais vão anexadas ao e-mail");
+/* Conta as NOTAS especificamente, não o total: desde a correção do item 55 o
+   ofício também vai anexado, e um total fixo faria este passo quebrar por
+   causa da outra correção, não por defeito. */
 const email = paraContab.length ? paraContab[0] : null;
 const anexosEmail = (email && email.attachments) || [];
-b.igual(anexosEmail.length, 2,
+const notas = anexosEmail.filter(
+  a => /NF-90\d\d/.test(String(a && a.getName ? a.getName() : "")));
+b.igual(notas.length, 2,
   "os dois documentos fiscais foram anexados",
-  anexosEmail.map(a => String(a && a.getName ? a.getName() : "?")).join(" + "));
+  notas.map(a => String(a.getName())).join(" + "));
 
-b.fluxo("MÓDULO 03 · O ACHADO — o ofício some no caminho até a contabilidade");
+b.fluxo("MÓDULO 03 · o ofício agora CHEGA a quem recebe (item 55, corrigido)");
 
-b.passo("11. o número oficial é gasto e registrado...");
-/* Tudo isto acontece: a numeração avança, o documento é gerado, o Controle
-   registra. Do lado do sindicato, o ofício 0NN/AAAA existe. */
+b.passo("11. o número oficial é gasto, registrado e o documento é gerado");
+/* Isto já acontecia antes da correção e continua: a numeração avança, o
+   documento é gerado, o Controle registra. Do lado do sindicato, o ofício
+   0NN/AAAA existe. O que faltava era o outro lado. */
 b.ok(/^\d{3}\/\d{4}$/.test(numeroEnv), "número oficial consumido", numeroEnv);
 b.ok(!!(env && env.fileIdOficio), "documento do ofício gerado e salvo no Drive",
   String((env && env.fileIdOficio) || "(nenhum)").substring(0, 20));
 b.igual(noControle.length, 1, "e anotado no Controle do sindicato");
 
-b.passo("12. ...MAS NADA DISSO CHEGA A QUEM RECEBE");
-/* Provado pelo código, não só pela execução: o montarHtmlEnvioContabilidadeDesp_
-   recebe (despesas, totalValor, emailRemetente) — o número do ofício não está
-   entre os argumentos, então não há como ele aparecer no corpo. E o blob do
-   ofício, criado logo acima, nunca entra em blobsAnexo. */
+b.passo("12. E AGORA O NÚMERO CHEGA JUNTO — era o buraco do item 55");
+/* Antes de 01/09/2026 o montarHtmlEnvioContabilidadeDesp_ recebia só
+   (despesas, totalValor, emailRemetente): o número não estava entre os
+   argumentos, então não havia como aparecer no corpo. Do lado do sindicato o
+   ofício existia; do lado de quem recebeu, nunca existiu. */
 const corpoEmail = String((email && email.htmlBody) || "");
-b.ok(corpoEmail.indexOf(numeroEnv) === -1,
-  "o número do ofício NÃO aparece no corpo do e-mail",
-  corpoEmail.indexOf(numeroEnv) >= 0 ? "apareceu — o achado mudou" : "ausente");
-b.ok(!anexosEmail.some(a => /Of[íi]cio|Documentacao Fiscal/i.test(
-       String(a && a.getName ? a.getName() : ""))),
-  "e o documento do ofício NÃO vai anexado",
-  anexosEmail.map(a => String(a && a.getName ? a.getName() : "?")).join(" + "));
+b.ok(corpoEmail.indexOf(numeroEnv) >= 0,
+  "o número do ofício aparece no corpo do e-mail",
+  corpoEmail.indexOf(numeroEnv) >= 0 ? numeroEnv : "AUSENTE — a correção não pegou");
+b.ok(/Of[íi]cio/i.test(corpoEmail),
+  "e vem rotulado como ofício, não solto no meio do texto");
 
-const fs = require("fs"), path = require("path");
-const RAIZ = require("./dom").RAIZ;
-const despesas = fs.readFileSync(path.join(RAIZ, "Despesas.gs"), "utf8");
-b.ok(/function montarHtmlEnvioContabilidadeDesp_\(despesas, totalValor, emailRemetente\)/
-       .test(despesas),
-  "confirmado no código: o construtor do corpo não recebe o número",
-  "assinatura tem 3 argumentos, e nenhum é o ofício");
+b.passo("13. E O DOCUMENTO VAI ANEXADO — o resto do mesmo buraco");
+/* O blob era criado, salvo no Drive, e nunca entrava em blobsAnexo: a
+   contabilidade recebia a tabela e as notas, sem o ofício que o próprio
+   e-mail dizia encaminhar. Mesma forma do defeito do reenvio, que levava o
+   ofício e deixava a carta. */
+const nomesAnexos = anexosEmail.map(
+  a => String(a && a.getName ? a.getName() : "?"));
+b.igual(anexosEmail.length, 3,
+  "três anexos: o ofício e as duas notas", nomesAnexos.join(" + "));
+b.ok(nomesAnexos.some(n => /Documentacao Fiscal|Of[íi]cio/i.test(n)),
+  "o documento do ofício está entre eles", nomesAnexos[0]);
 
-b.aviso(
-  "o ofício fiscal existe para o sindicato e não existe para a contabilidade",
-  "enviarLoteDespesasComOficio consome um número da numeração OFICIAL de " +
-  "ofícios (a mesma dos ofícios de filiação — não há sequência paralela), " +
-  "gera o documento, salva no Drive e registra no Controle. Mas o e-mail que " +
-  "chega à contabilidade não cita o número em lugar nenhum e não leva o " +
-  "documento anexado: leva só a tabela de despesas e as notas. É a mesma " +
-  "forma do defeito do reenvio, que levava o ofício e deixava a carta. NÃO " +
-  "corrigi: decidir se o ofício deve ir anexado, se o número deve constar no " +
-  "corpo, ou se a numeração oficial deveria mesmo ser consumida aqui, é " +
-  "desenho — e é decisão do usuário"
-);
+b.passo("14. e ele vem na FRENTE — é o documento que encabeça o envio");
+b.ok(/Documentacao Fiscal|Of[íi]cio/i.test(nomesAnexos[0] || ""),
+  "o ofício é o primeiro anexo, antes das notas", nomesAnexos[0] || "(nenhum)");
+
+b.passo("15. E O QUE NÃO PODIA QUEBRAR — quem manda despesa SEM ofício");
+/* O parâmetro é opcional de propósito: o Despesas.gs tem dois chamadores que
+   mandam despesa sem ofício nenhum. Se a faixa aparecesse vazia para eles, a
+   correção de um caminho estragaria o outro. */
+const semOficio = g.montarHtmlEnvioContabilidadeDesp_(
+  [{ nome: "X", valor: "10,00", vencimento: "30/09/2026", numero: "NF-1",
+     categoria: "S", linkConfirm: "#" }],
+  10, "secretaria@sindeducacao.com");
+b.ok(!/Of[íi]cio/i.test(semOficio),
+  "sem número, nenhuma faixa de ofício aparece no e-mail",
+  /Of[íi]cio/i.test(semOficio) ? "apareceu faixa vazia" : "corpo limpo");
+b.ok(semOficio.indexOf("Encaminhamento de Despesas") >= 0,
+  "e o resto do e-mail continua igual");
 
 b.naoTestavel(
   "se a contabilidade recebe os PDFs das notas anexados",

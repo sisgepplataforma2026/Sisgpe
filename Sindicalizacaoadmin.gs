@@ -493,6 +493,48 @@ function sindAdm_gravar_(registro) {
   } else {
     aba.appendRow(linhaValores);
   }
+
+  /* AVISO DE CAMPO DESCARTADO — 01/09/2026, item 54.3 do PENDENTE-VERIFICACAO.
+   *
+   * O laco acima percorre SIND_ADM_COLUNAS, nao as chaves do registro: campo
+   * que nao tem coluna simplesmente nunca e olhado. Nao lanca, nao avisa,
+   * some.
+   *
+   * Foi assim que o numero do oficio se perdeu. O aprovarEEncaminharFicha
+   * grava registro.OBSERVACOES_OFICIO com o numero que comunicou a filiacao a
+   * escola, dentro de um try cujo catch esta marcado "campo opcional" — e
+   * esse catch NUNCA disparou, porque nao havia excecao para capturar. O
+   * vinculo entre a ficha e o oficio sumia em silencio, e depois nao havia
+   * como saber qual oficio falou de qual trabalhador.
+   *
+   * Isto aqui NAO acrescenta coluna nenhuma e nao mexe no esquema: so faz o
+   * descarte aparecer no log. Acrescentar coluna e mudanca de esquema numa
+   * aba com dado real, e o configurarAbaSindicalizacao reescreve a linha 1
+   * inteira — decisao do usuario, nao minha (REGRA Nº 1).
+   *
+   * Chaves com "_" na frente sao internas (_LINHA vem do buscarPorId_) e nao
+   * contam como descarte. */
+  try {
+    var descartados = Object.keys(registro).filter(function (chave) {
+      if (chave.charAt(0) === "_") return false;
+      if (SIND_ADM_COLUNAS.indexOf(chave) > -1) return false;
+      var valor = registro[chave];
+      return valor !== undefined && valor !== null && String(valor).trim() !== "";
+    });
+    if (descartados.length) {
+      Logger.log(
+        "\u26a0 SIND_ADM_CAMPO_SEM_COLUNA — a ficha " +
+        (registro.ID_FICHA || "(sem id)") + " foi gravada, mas " +
+        descartados.length + " campo(s) foram DESCARTADOS por nao terem " +
+        "coluna na aba: " + descartados.join(", ") + ". O dado nao foi " +
+        "salvo. Se algum deles importa, a coluna precisa ser criada."
+      );
+    }
+  } catch (eAviso) {
+    /* O aviso nunca pode derrubar a gravacao: a ficha ja foi salva acima. */
+    Logger.log("sindAdm_gravar_: falha ao conferir campos descartados — " +
+      eAviso.message);
+  }
 }
 
 function sindAdm_gerarMatricula_() {

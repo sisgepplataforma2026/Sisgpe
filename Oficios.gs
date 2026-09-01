@@ -595,8 +595,19 @@ function montarDadosOficio_(dados, modo) {
   };
 }
 
-// SEM trava de modulo: mesma razao de gerarOficioWeb — a Sindicalizacao
-// monta a previa do oficio de filiacao por aqui. Sessao continua exigida.
+/* ENTRADA PUBLICA da previa. A porta fica AQUI; o trabalho fica no
+   _comSessao_ logo abaixo, que confia em quem o chamou.
+
+   Dividido em 01/09/2026 (item 54.2). O cabecalho antigo desta funcao dizia
+   "SEM trava de modulo... a Sindicalizacao monta a previa do oficio de
+   filiacao por aqui" — a intencao do autor era deixar o fluxo de fichas
+   passar. A troca de porta feita mais cedo hoje tornou esse comentario falso
+   sem resolver o problema, porque a Sindicalizacao nem token passava.
+
+   A divisao devolve a intencao original SEM abrir a porta da frente: quem
+   chega por google.script.run continua precisando do modulo Documentos; quem
+   chega pela aprovacao de ficha ja passou pela porta de Sindicalizacao no
+   chamador e entra pelo interno. */
 function previewOficioWeb(dados, tokenSessao) {
   /* PORTA TROCADA EM 01/09/2026 — de exigirSessaoDocumentos_ para
      exigirModulo_. A antiga (Sessao.gs:405) confere se a SESSAO e valida
@@ -610,6 +621,14 @@ function previewOficioWeb(dados, tokenSessao) {
 
      `exigirModulo_` e o padrao da casa (398 usos em 78 arquivos). */
   var sessao = exigirModulo_(tokenSessao, "documentos", false);
+  return previewOficioWeb_comSessao_(dados, sessao);
+}
+
+/* O corpo, inalterado. Privado de proposito: NAO tem porta, entao so pode ser
+   alcancado por quem ja passou por uma. Quem chamar daqui de dentro e
+   responsavel por ter checado permissao antes — e a unica excecao autorizada
+   e a Sindicalizacao, que checa o modulo dela. */
+function previewOficioWeb_comSessao_(dados, sessao) {
   Logger.log("✅ previewOficioWeb — " + new Date());
   try {
     var proc       = montarDadosOficio_(dados, "preview");
@@ -653,6 +672,18 @@ function previewOficioWeb(dados, tokenSessao) {
 // de execucao em 2026-08-05 (tests/e2e/t1-documentos.js).
 function gerarOficioWeb(dados, tokenSessao) {
   var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
+  return gerarOficioWeb_comSessao_(dados, sessaoDocumentos);
+}
+
+/* O corpo, inalterado. Mesma regra do previewOficioWeb_comSessao_: privado,
+   sem porta, e so alcancavel por quem ja passou por uma.
+
+   POR QUE NAO SE RESOLVEU ALARGANDO A PORTA DE gerarOficioWeb para aceitar
+   Documentos OU Sindicalizacao: quem tem so Sindicalizacao passaria a emitir
+   QUALQUER oficio por chamada direta — inclusive oficio LIVRE, que e texto
+   arbitrario em papel timbrado do sindicato, para qualquer e-mail. A divisao
+   da a permissao ao FLUXO da ficha, nao ao modulo inteiro. */
+function gerarOficioWeb_comSessao_(dados, sessaoDocumentos) {
   try {
     var emailUsuario = String(sessaoDocumentos.email || sessaoDocumentos.usuario || "").trim().toLowerCase();
     if (!dados || typeof dados !== "object") throw new Error("Dados inválidos.");
