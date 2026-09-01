@@ -45,7 +45,7 @@ jobs:
           node-version: '20'
 
       - name: Instalar clasp
-        run: npm install -g @google/clasp
+        run: npm install -g @google/clasp@3.3.0
 
       - name: Autenticar
         shell: bash
@@ -57,15 +57,49 @@ jobs:
             exit 1
           fi
 
-      - name: Apontar para o projeto de producao
+      - name: Preparar pasta limpa para o retrato
         shell: bash
         run: |
           set -euo pipefail
-          printf '{"scriptId":"%s","rootDir":"."}' '${{ inputs.script_id }}' > .clasp.json
+          mkdir -p .auditoria-producao-pull
+          printf '{"scriptId":"%s","rootDir":".auditoria-producao-pull","fileExtension":"gs"}' '${{ inputs.script_id }}' > .clasp.json
           clasp status
 
       - name: Baixar o codigo de producao
         run: clasp pull
+
+      - name: Validar e montar o retrato limpo
+        shell: bash
+        run: |
+          set -euo pipefail
+          SNAPSHOT_DIR=".auditoria-producao-pull"
+
+          # Não publica um retrato vazio ou incompleto caso o clasp mude de
+          # comportamento, a credencial expire ou o projeto esteja incorreto.
+          test -f "$SNAPSHOT_DIR/appsscript.json"
+          test -f "$SNAPSHOT_DIR/Code.gs"
+          test -f "$SNAPSHOT_DIR/SistemaConfig.gs"
+          test -f "$SNAPSHOT_DIR/Oficios.gs"
+          test -f "$SNAPSHOT_DIR/index.html"
+
+          TOTAL=$(find "$SNAPSHOT_DIR" -maxdepth 1 -type f \( -name '*.gs' -o -name '*.html' \) | wc -l)
+          if [ "$TOTAL" -lt 50 ]; then
+            echo "::error::Pull de producao incompleto: somente $TOTAL arquivos de codigo encontrados."
+            exit 1
+          fi
+
+          # Remove somente os arquivos-fonte do Apps Script que vieram da
+          # branch-base. Documentação, testes e workflows permanecem intactos.
+          git ls-files -z -- ':(top)*.gs' ':(top)*.html' ':(top)appsscript.json' \
+            | xargs -0 -r rm -f --
+
+          cp -a "$SNAPSHOT_DIR"/. .
+          rm -rf "$SNAPSHOT_DIR"
+
+          if find . -maxdepth 1 -type f -name '*.js' | grep -q .; then
+            echo "::error::O retrato contém .js; o clasp deveria ter gerado .gs."
+            exit 1
+          fi
 
       - name: Publicar o retrato no branch de auditoria
         id: retrato
