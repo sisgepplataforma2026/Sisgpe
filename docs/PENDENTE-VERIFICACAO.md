@@ -49,7 +49,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 ## 📌 O QUE ESTÁ ABERTO — índice
 
-> Gerado em 31/08/2026. São **38 itens**. A lista completa, com o detalhe de
+> Gerado em 31/08/2026. São **37 itens**  (o 21 fechou em 01/09). A lista completa, com o detalhe de
 > cada um, está na seção ABERTO logo abaixo — este índice existe só para não
 > ser preciso ler 2.000 linhas para saber o que cobrar.
 
@@ -75,7 +75,6 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 | 24 | Voucher — vários beneficiários num pedido só |
 | 23 | Voucher — as regras de quantidade, corrigidas |
 | 22 | Voucher — o papel timbrado, a redação e o período obrigatório |
-| 21 | SOFIA — a segunda leitura |
 | 20 | Layout — painel sob demanda, chips e menu recolhível |
 | 18 | Voucher — um por pessoa, por curso, por período (+ data do envio nas observações) |
 | 17 | Voucher — o reparo do cabeçalho de `Voucher_Solicitacoes` |
@@ -956,38 +955,6 @@ conteúdo citado existe, mas no **art. 88**, e quem pode votar é o **art. 4º,
 II**. Três citações, três endereços errados, nada na resposta denunciando.
 Isso gerou os itens 21 e a correção da redação do aviso.
 
-### 21. SOFIA — a segunda leitura
-**Aberto em:** 13/08/2026 · `ChatIACore.gs`
-
-Pedido do usuário depois de ver o aviso funcionando: *"mas ele deveria ser
-consultado"*. Avisar que não consultou trata o sintoma. Agora, quando a
-resposta cita artigo ou cláusula que não entrou no prompt, o sistema **anexa
-o documento que faltou e pergunta de novo** — e entrega a segunda resposta.
-
-Junto foi o vocabulário: "votação", "voto", "eleitor", "eleitoral", "chapa",
-"urna", "escrutínio", "delegado", "estatutário", "desfiliação".
-
-**Travado por teste** (`t38`, 75 asserções, 7 mutações mortas em 7): a
-segunda chamada acontece e leva o documento; a resposta entregue é a
-segunda; pergunta sem citação não gasta chamada extra; se a segunda falhar —
-por erro 500 **ou** por resposta vazia com código 200 — fica a primeira
-**com** o aviso; e o caminho da CCT vale igual.
-
-**O que só se confere no ar:**
-
-| | |
-|---|---|
-| 🔴 "quem pode participar da votação?" no Geral | agora deve vir com o chip do Estatuto e **sem** faixa âmbar |
-| 🔴 A citação passa a estar certa | conferir se cita art. 88 e art. 4º, II — e não 74/85/96 |
-| 🔴 A demora da segunda leitura é tolerável | ela só acontece quando a primeira citou sem fonte |
-
-**Cuidado ao ler o resultado:** se a resposta continuar citando artigo
-errado **com** o chip do Estatuto presente, o problema deixou de ser "não
-consultou" e passa a ser o seletor de trechos — ele escolhe parágrafos pelas
-palavras da pergunta e pode não ter trazido o artigo certo. Aí a correção é
-outra: conferência de citação (comparar os artigos citados com os que
-entraram) ou um índice do documento sempre anexado.
-
 ### 20. Layout — painel sob demanda, chips e menu recolhível
 **Aberto em:** 13/08/2026 · `ChatSISGEP.html`, `index.html`
 
@@ -1681,6 +1648,73 @@ Travado por teste: `t9-menu.js`, passos 13 e 14, varre os 71 `.html`.
 ---
 
 ## Histórico de itens fechados
+
+## ✅ 01/09/2026 · SOFIA — o item 21 FECHOU, e o caminho até ele achou dois defeitos maiores
+
+**Verificado no ar**, homologação, Versões 80 e 81, com a chave da API já
+configurada. O item 21 pedia conferir se a SOFIA cita **art. 88** ao responder
+"quem pode participar da votação?" — e não 74/85/96.
+
+**ANTES (Versão 79, 01/09 21:52):**
+
+| Pergunta | Resposta |
+|---|---|
+| "quem pode participar da votação?" | citou arts. 74, 76, **82**, 94, 96 — nenhum deles o 88 |
+| "é o 88 ou o 74?" | *"O Art. 88 **não consta** no Estatuto vigente"* |
+| "quantos artigos tem?" | *"134 artigos"* — incompatível com a resposta anterior |
+| "o que diz o art. 88?" | citou o art. 88 inteiro, e ele é sobre "a relação dos associados em condições de **votar**" |
+
+**DEPOIS (Versão 81, 01/09 22:3x):** todas as citações conferidas contra o
+documento, palavra por palavra:
+
+| Citou | Confere? |
+|---|---|
+| **Art. 88, §1º** — *"Aos associados previstos no art. 5º fica assegurado o direito de voto em separado…"* | ✅ idêntico |
+| **Art. 98** — *"Para comprovar sua identidade e o exercício do direito ao voto, o eleitor deverá apresentar qualquer documento de identificação oficial com foto."* | ✅ idêntico |
+| Relação de votantes afixada 10 dias antes (Art. 88) | ✅ |
+
+**Zero citação errada.** E o `§1º` que saía como "Art. 82" agora sai como
+"Art. 88, §1º", transcrito.
+
+**AS TRÊS CAUSAS, e nenhuma era a IA inventando** (commits `0241b80` e
+`1eebbc6`, travadas pelo `t117` com 29 asserções):
+
+1. **Pontuação por texto literal.** A pergunta gera "votacao", o art. 88
+   escreve "votar", `indexOf` não achava, o artigo pontuava ZERO e era
+   filtrado fora. Nunca chegava ao prompt. Em documento jurídico isso é
+   sistemático: quem pergunta usa o substantivo, a lei escreve o verbo.
+   Corrigido com `radicalBuscaIA_` — o radical vale 1 ponto contra 2 do termo
+   exato, para entrar na disputa sem vencer de quem casou a palavra inteira.
+
+2. **O parágrafo chegava sem o artigo.** O corte era por linha em branco, e
+   "Art. 88…" e "§1º Aos associados…" são blocos separados: **74 dos 448
+   blocos do Estatuto começam com §**. Chegava à IA um parágrafo legal SEM
+   NÚMERO, e ela o pendurava no último número visível — daí "§1º do Art. 82".
+   Ela não trocou o número: recebeu o texto sem número. `agruparPorArtigoIA_`
+   levou os 74 órfãos a **zero**.
+
+3. **Nada proibia afirmar ausência a partir de um pedaço.** Negar é pior que
+   não achar: quem pergunta guarda a negação como fato e para de procurar. O
+   prompt agora diz que os documentos chegam em TRECHOS e manda dizer "não veio
+   nos trechos", nunca "não existe".
+
+**E uma quarta, achada na própria conferência:** com o art. 4º chegando inteiro,
+ela citou *"Art. 4º, I"* para "pleno gozo dos direitos associativos" — e o
+inciso I é *"utilizar as dependências do sindicato"*. Artigo certo, algarismo
+errado, com o texto à vista. Corrigido por prompt: ao citar inciso, alínea ou
+parágrafo, **transcrever o texto entre aspas junto do número**. Quem é obrigado
+a transcrever não erra o número, porque o erro fica visível na própria frase.
+
+**O que NÃO se buscou, e é decisão consciente:** o art. 4º, II (*"votar e ser
+votado em eleições"*) não aparece na resposta final. Ele CHEGA ao prompt — o
+`t117` cobra isso —, e a IA escolheu liderar pelo art. 88, que é o artigo
+específico sobre a relação de votantes. Não é erro, é ênfase. Perseguir isso
+por prompt seria afinar a resposta para uma pergunta só.
+
+**Vale para CCT e Jurídico também**, porque é a mesma função (`ChatIACore.gs`).
+Ninguém conferiu esses dois ainda — fica como conferência futura, não como
+pendência aberta.
+
 
 | Data | Item | Como foi verificado |
 |---|---|---|
