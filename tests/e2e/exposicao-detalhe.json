@@ -1,7 +1,7 @@
 {
-  "medidoEm": "2026-08-31",
-  "totalPublicas": 966,
-  "protegidas": 651,
+  "medidoEm": "2026-09-01",
+  "totalPublicas": 972,
+  "protegidas": 656,
   "expostas": [
     {
       "nome": "validarCPF",
@@ -482,6 +482,11 @@
       "nome": "removerTriggerExpurgoLGPD",
       "arquivo": "LgpdRetencao.gs",
       "escreve": true
+    },
+    {
+      "nome": "lpLimpezaDiaria",
+      "arquivo": "LimpezaPropriedades.gs",
+      "escreve": false
     },
     {
       "nome": "gerarHashInicialUsuarios123456",
