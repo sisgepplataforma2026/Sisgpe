@@ -101,6 +101,61 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
+### 55. Ofício fiscal — existe para o sindicato e não existe para a contabilidade
+
+Oitava rodada da frente A, 01/09/2026, ao cobrir com teste (`t131`, 26
+asserções) as duas últimas funções do Módulo 03 que estavam sem teste nenhum.
+**Não corrigi — é desenho, e a decisão é sua.**
+
+**O QUE ACONTECE HOJE.** `enviarLoteDespesasComOficio` faz tudo isto, e está
+certo em cada passo isolado:
+
+1. consome um número da numeração **oficial** de ofícios — a mesma dos ofícios
+   de filiação, **não existe sequência paralela**;
+2. gera o documento do ofício e salva no Drive;
+3. registra o ofício na aba Controle do sindicato;
+4. manda o e-mail à contabilidade com a tabela de despesas e as notas fiscais
+   anexadas.
+
+**O QUE FALTA.** O e-mail que chega à contabilidade **não cita o número do
+ofício em lugar nenhum** e **não leva o documento do ofício anexado**.
+
+Do lado do sindicato o ofício 0NN/AAAA existe, está no Controle e gastou um
+número. Do lado de quem recebeu, ele nunca existiu.
+
+**Provado no código, não só na execução:**
+
+- `montarHtmlEnvioContabilidadeDesp_` (`Despesas.gs:2965`) recebe
+  `(despesas, totalValor, emailRemetente)` — o número do ofício **não está
+  entre os argumentos**, então não há como aparecer no corpo;
+- o blob do ofício é criado logo acima do envio e **nunca entra em
+  `blobsAnexo`**, que é o que vai anexado.
+
+**É a mesma forma do defeito do reenvio** que você relatou hoje: levava o
+ofício e deixava a carta.
+
+**AS TRÊS DECISÕES**, e são suas:
+
+| | Pergunta |
+|---|---|
+| 1 | O documento do ofício **deve ir anexado** ao e-mail da contabilidade? |
+| 2 | O **número** deve constar no corpo, para a contabilidade poder referenciar? |
+| 3 | Essa operação deveria mesmo **consumir a numeração oficial** de ofícios, ou merece sequência própria? |
+
+A terceira é a que mais pesa: hoje, cada lote de despesa enviado avança o
+mesmo contador dos ofícios de filiação e desfiliação.
+
+**O que o t131 provou de bom, e que estava sem teste:**
+
+- **o rename de hoje não quebrou nada** — `gerarProximoNumeroOficioFiscal_` só
+  chama `gerarProximoNumeroSeguro_`, que ficou privada na quinta rodada; roda,
+  devolve `NNN/AAAA`, e o envio completo funciona. **Esta era a verificação
+  nº 2 do item 51**, e passou;
+- a **prévia não gasta número** — duas prévias seguidas não escrevem linha
+  nenhuma no Controle. Número gasto não volta, então isso importa;
+- id inexistente é recusado, em vez de gerar um ofício fiscal com lote vazio;
+- o total soma certo e os dois documentos fiscais vão anexados.
+
 ### 54. Ficha → Ofício — dois achados de desenho, os dois para o usuário decidir
 
 Sétima rodada da frente A, 01/09/2026, ao cobrir com teste (`t129`, 35
