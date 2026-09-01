@@ -1711,9 +1711,35 @@ votado em eleições"*) não aparece na resposta final. Ele CHEGA ao prompt — 
 específico sobre a relação de votantes. Não é erro, é ênfase. Perseguir isso
 por prompt seria afinar a resposta para uma pergunta só.
 
-**Vale para CCT e Jurídico também**, porque é a mesma função (`ChatIACore.gs`).
-Ninguém conferiu esses dois ainda — fica como conferência futura, não como
-pendência aberta.
+**CORREÇÃO, medida em 01/09 logo depois de eu escrever o contrário:** eu disse
+que "vale para CCT e Jurídico também". **Não vale, e as duas pontas estavam
+erradas.**
+
+| Documento | Tamanho | Limite | O que acontece |
+|---|---|---|---|
+| CCT | 10.094 | 90.000 (`ChatIACore.gs:1118`) | vai **INTEIRA**, sem seleção |
+| Estatuto | 75.646 | 60.000 (`ChatIACore.gs:1144`) | vai **em trechos** |
+| Memória organizacional | 0 | 30.000 | vazia |
+
+Conferido por execução: para a CCT, a saída de `selecionarContextoIA_` é
+**idêntica** ao documento — `texto.length <= limite` devolve tudo antes de
+pontuar qualquer coisa. Nenhum dos defeitos deste registro pode atingi-la.
+
+E **não existe documento do Jurídico**. Só CCT e Estatuto passam pelo seletor;
+o Jurídico é um domínio do chat, não uma fonte documental. Eu juntei as duas
+coisas.
+
+**O Estatuto é o único documento que é cortado** — e é onde o defeito estava e
+foi corrigido. Se um dia a CCT passar de 90.000 caracteres, ela entra na
+seleção; aí a correção de hoje já está lá para recebê-la.
+
+**Opção considerada e NÃO adotada:** subir o limite do Estatuto para 90.000, o
+mesmo da CCT, faria ele ir inteiro e a seleção deixaria de existir para os dois
+documentos. Custa ~19 mil tokens a mais por pergunta, o que é pouco. Não foi
+feito porque troca um problema resolvido por outro: com 134 artigos no prompt,
+achar o certo passa a depender da atenção do modelo em vez da seleção — e a
+seleção acabou de ser corrigida e verificada no ar. Fica registrado como
+alternativa, caso a seleção volte a errar.
 
 
 | Data | Item | Como foi verificado |
