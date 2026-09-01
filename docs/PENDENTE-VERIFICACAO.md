@@ -49,15 +49,23 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 ## 📌 O QUE ESTÁ ABERTO — índice
 
-> Gerado em 31/08/2026. São **39 itens**  (o 21 e o 46 fecharam em 01/09). A lista completa, com o detalhe de
+> Gerado em 31/08/2026, atualizado em 01/09. São **46 itens** (o 21 e o 46
+> fecharam em 01/09; os itens 50 a 56 nasceram na auditoria do Módulo 03). A lista completa, com o detalhe de
 > cada um, está na seção ABERTO logo abaixo — este índice existe só para não
 > ser preciso ler 2.000 linhas para saber o que cobrar.
 
 | Nº | Item |
 |---|---|
+| 56 | ✅ Frente A do Módulo 03 — COMPLETA: as 45 funções públicas têm teste |
+| 55 | Ofício fiscal — existe para o sindicato e não existe para a contabilidade |
+| 54 | Ficha → Ofício — dois achados de desenho, os dois para você decidir |
+| 53 | 🚨 Regressão minha, do mesmo dia — ofício com ficha anexada (corrigida) |
+| 52 | Ofícios — quem trabalha DOCUMENTOS não conserta o e-mail da escola |
+| 51 | Ofícios — duas funções ESCREVIAM sem porta nenhuma (fechadas) |
+| 50 | Ofícios — oito funções eram endpoint por acidente (fechadas) |
 | 49 | Ofícios — "Outlook" confirmava recebimento; 144/236/242 a reprocessar |
 | 48 | Gmail — homologação lê a caixa de e-mail da PRODUÇÃO |
-| 47 | Módulo 03 (Ofícios) — NÃO auditado; um fio puxado, o resto aberto |
+| 47 | Módulo 03 — *era* "NÃO auditado"; a frente A fechou em 01/09, ver o 56 |
 | 45 | Firebase — homologação e produção compartilham o MESMO Firestore |
 | 44 | Firebase — a chave privada está malformada nos DOIS ambientes |
 | 43 | Sessões — o gatilho diário de limpeza (instalado em 31/08, 20:47) |
@@ -582,10 +590,18 @@ corrigir o cadastro bate na mesma porta.
    homologação consulta a correspondência do sindicato.
 
 
-### 47. Módulo 03 (Ofícios) — NÃO auditado; um fio puxado, o resto aberto
+### 47. Módulo 03 (Ofícios) — a frente A fechou; o resto do plano continua aberto
 
-**Estado em 01/09/2026, dito sem eufemismo pela REGRA Nº -1:** o módulo foi
-MAPEADO e teve UM defeito corrigido. Não foi auditado.
+> **ATUALIZADO EM 01/09/2026, no fim do dia.** O texto abaixo foi escrito de
+> manhã e descrevia o estado daquele momento. O que mudou desde então: a
+> **frente A fechou** — as 45 funções públicas do módulo têm teste e todas
+> ganharam porta, o teto de exposição caiu de 224 para 204, e a homologação
+> foi publicada. **Ver o item 56.** As frentes B (medir o dado real da
+> produção) e C (as 6 de 10 áreas do PROMPT-MESTRE que não existem) continuam
+> abertas, e é isso que o texto abaixo ainda descreve corretamente.
+
+**Estado na manhã de 01/09/2026, dito sem eufemismo pela REGRA Nº -1:** o
+módulo foi MAPEADO e teve UM defeito corrigido. Não foi auditado.
 
 **O QUE FICOU PRONTO**
 
