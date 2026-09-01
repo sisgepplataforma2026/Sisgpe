@@ -1165,6 +1165,17 @@ var prompt =
     "que ele NÃO VEIO nos trechos consultados e ofereça buscá-lo pelo número. " +
     "NUNCA afirme que um artigo não existe, que não consta ou que o documento " +
     "não o menciona — você não tem o documento inteiro para afirmar isso.\n\n" +
+    /* Acrescentado em 01/09/2026, na conferência da correção anterior. Com o
+       art. 4º chegando inteiro, com os cinco incisos, ela citou "Art. 4º, I"
+       para "pleno gozo dos direitos associativos" — e o inciso I é "utilizar
+       as dependências do sindicato". O artigo estava certo; o algarismo, não.
+       Quem é obrigado a transcrever o texto não erra o número, porque o erro
+       fica visível na própria frase. */
+    "Ao citar um INCISO, uma ALÍNEA ou um PARÁGRAFO, transcreva o texto dele " +
+    "junto do número, entre aspas. Se não puder transcrever porque o texto não " +
+    "está nos trechos, cite só o artigo e diga que o inciso não veio. Número de " +
+    "inciso sem o texto ao lado é o erro mais fácil de cometer e o mais difícil " +
+    "de alguém perceber.\n\n" +
     conteudoCCT +
     "\n" +
     conteudoEstatuto +
@@ -1308,7 +1319,8 @@ var prompt =
     "5. Status: AGUARDANDO, CONFIRMADO, PENDENTE_30D, COBRANCA_ENVIADA, REGULARIZADO, DESFILIADO.\n" +
     "6. O usuário já está autenticado no SISGEP. Nunca pergunte quem ele é, seu cargo ou setor. Continue a tarefa usando o contexto da conversa.\n" +
     "7. Quando relevante, mencione o prazo de repasse da Cláusula 56 (dia 10 do mês seguinte).\n" +
-    "8. CCT e Estatuto chegam em TRECHOS, nunca inteiros. Nunca diga que um artigo ou cláusula não existe: diga que não veio nos trechos e ofereça buscar pelo número.";
+    "8. CCT e Estatuto chegam em TRECHOS, nunca inteiros. Nunca diga que um artigo ou cláusula não existe: diga que não veio nos trechos e ofereça buscar pelo número.\n" +
+    "9. Ao citar inciso, alínea ou parágrafo, transcreva o texto entre aspas junto do número. Sem o texto à vista, cite só o artigo.";
 
   return prompt;
 }

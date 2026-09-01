@@ -157,6 +157,40 @@ b.ok(
   "o aviso vai junto do próprio documento, não só nas regras do fim"
 );
 
+b.fluxo("SOFIA · o inciso não pode ser citado sem o texto");
+
+b.passo("12. o artigo chega com TODOS os incisos, numa unidade só");
+/* Conferido no ar em 01/09, depois da correção anterior: com o art. 4º
+   chegando inteiro, a SOFIA citou "Art. 4º, I" para "pleno gozo dos direitos
+   associativos" — e o inciso I é "utilizar as dependências do sindicato". O
+   artigo estava certo, o algarismo não. Este passo garante a PRÉ-CONDIÇÃO: o
+   texto dos cinco incisos está no prompt. Se um dia não estiver, o erro deixa
+   de ser de precisão e volta a ser de entrega. */
+const unidade4 = porArtigo.filter(u => /^\s*Art\.\s*4º/.test(u))[0] || "";
+b.ok(!!unidade4, "existe uma unidade que começa no art. 4º");
+["utilizar as dependências", "votar e ser votado", "gozar dos benefícios",
+ "convocar Assembleias Gerais", "direito a voz e voto"].forEach(function (txt, i) {
+  b.ok(unidade4.indexOf(txt) >= 0,
+    "o inciso " + ["I","II","III","IV","V"][i] + " está na mesma unidade",
+    txt.substring(0, 30));
+});
+
+b.passo("13. e o art. 4º chega na pergunta sobre votação");
+b.ok(trecho.indexOf("Art. 4º") >= 0,
+  "o art. 4º entra no trecho — é onde está 'votar e ser votado' (inciso II)");
+
+b.passo("14. o prompt obriga a transcrever o inciso");
+/* Quem é obrigado a transcrever não erra o número: o erro fica visível na
+   própria frase que ele escreve. */
+b.ok(
+  /transcreva o texto/i.test(prompt),
+  "o prompt manda transcrever o texto do inciso junto do número"
+);
+b.ok(
+  /cite s[óo] o artigo/i.test(prompt),
+  "e dá a saída para quando o texto não veio: citar só o artigo"
+);
+
 b.naoTestavel(
   "o que a IA de fato responde depois disto",
   "o emulador não chama a Anthropic. O que se prova aqui é que o art. 88 " +
