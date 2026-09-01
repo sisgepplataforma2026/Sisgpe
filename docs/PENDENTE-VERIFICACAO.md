@@ -101,6 +101,54 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
+### 50. Ofícios — oito funções eram endpoint por acidente (fechadas em 01/09)
+
+Quarta rodada da frente A do Módulo 03, 01/09/2026. Fechado no repositório
+(`t126`, 24 asserções); **falta confirmar no ar que nada quebrou**.
+
+**O QUE ERA.** No Apps Script, toda função global é endpoint de
+`google.script.run` para qualquer página do projeto — inclusive as 14 páginas
+anônimas que o `Code.gs` serve. Sobraram oito funções públicas que nenhuma
+tela chama: são helpers internos, públicas por descuido e não por desenho.
+
+**A PIOR.** `getTemplateConteudo(templateId)` abria QUALQUER Google Doc por ID
+e devolvia o texto inteiro. A conta que roda o script tem acesso ao Drive do
+sindicato — então era leitura de documento arbitrário para quem soubesse um
+ID. Pior que o cadastro de escolas da rodada anterior, porque não se limita a
+um cadastro: alcança qualquer documento. Agora exige o módulo Documentos.
+
+**TRÊS TRATAMENTOS, e a diferença é o ponto:**
+
+| Tratamento | Funções | Por quê |
+|---|---|---|
+| Porta de módulo | `getTemplateConteudo` | lê dado; quem lê precisa ter o módulo |
+| Porta dupla | `sincronizarStatusOficiosEnviados`, `invalidarCacheTemplatesOficios` | rodam do EDITOR, onde não existe token; fechar só com token tiraria o único jeito de usá-las |
+| Privadas | `gerarPDFOficio_`, `gerarPDFOficioLivre_`, `gerarPDFUniversal_`, `dashboardResumo_`, `dashboardGraficos_` | sem chamador; virar privada fecha a porta SEM remover código |
+
+**O QUE NÃO PODIA QUEBRAR.** `gerarPDFUniversal` NÃO é legado — o
+`TaxaAssistencial.gs` a chama em dois pontos. Renomear sem atualizar os
+chamadores deixaria a taxa assistencial sem gerar PDF: trocaria um risco de
+segurança por uma função quebrada. Os dois chamadores foram atualizados e o
+t126 confere isso explicitamente.
+
+**NÃO FORAM REMOVIDAS.** Os cinco passos da REGRA Nº 1 rodaram nas oito —
+cabeçalho, `Code.gs` e rotas, gatilhos, `git log`, grep no projeto inteiro.
+Todos deram "sem chamador". Mesmo assim ficam: a regra manda, na dúvida entre
+remover e manter, manter e documentar como legado. Remoção só com pedido
+explícito, em commit separado.
+
+**O QUE FALTA VERIFICAR NO AR** (depois de publicar em homologação):
+
+1. o painel de ofícios continua carregando os números — ele usa
+   `getDashboardOficiosData`, não as duplicatas que viraram privadas;
+2. a **taxa assistencial ainda gera PDF** — é o único uso vivo do
+   `gerarPDFUniversal_`, e é o que quebraria se o rename tivesse escapado
+   um chamador;
+3. a tela de templates de ofício ainda mostra o conteúdo do modelo —
+   `getTemplateConteudo` agora pede o módulo Documentos.
+
+**Teto de exposição: 212 → 208.** Só desce; se subir, é regressão.
+
 ### 49. Ofícios — "Outlook" confirmava recebimento; 144/236/242 a reprocessar
 
 **O achado mais grave do Módulo 03**, 01/09/2026. Corrigido no repositório

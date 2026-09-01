@@ -46,7 +46,20 @@ var blob  = Utilities.newBlob(bytes, "text/html; charset=utf-8", nomeArquivo + "
 
 /* ================= DASHBOARD ================= */
 
-function dashboardResumo() {
+/* DUPLICATAS DO PAINEL — privadas em 01/09/2026, pelo mesmo criterio.
+
+   O cabecalho do DashboardOficios.gs ja mandava, desde a reescrita dele,
+   remover a duplicidade de funcoes globais de resumo e de graficos do painel.
+   As entradas que o frontend usa sao as de la — getDashboardOficiosData e
+   companhia. Estas duas aqui nao tem chamador nenhum no projeto (cinco passos
+   da REGRA Nº 1 rodados), entao ficam, viram privadas, e param de ser
+   endpoint.
+
+   Nomes citados sem parentese de proposito: comentario com sintaxe de
+   chamada e o que a varredura de chamada orfa do t126 nao consegue
+   distinguir de chamada de verdade. */
+
+function dashboardResumo_() {
   var ss  = SpreadsheetApp.openById(PLANILHA_ID);
   var sh  = ss.getSheetByName(PLANILHA_REGISTRO);
   var ano = anoAtual_();
@@ -109,7 +122,7 @@ function dashboardResumo() {
   };
 }
 
-function dashboardGraficos() {
+function dashboardGraficos_() {
   var sheet = SpreadsheetApp.openById(PLANILHA_ID).getSheetByName(PLANILHA_REGISTRO);
   var ano   = anoAtual_();
   if (!sheet || sheet.getLastRow() < 2) return { tipos: {}, status: {} };
@@ -301,13 +314,46 @@ function protegerLogSistema_(sheet) {
 
 /* ================= GERAR PDF ================= */
 
-function gerarPDFOficio(templateId, numero, escola, cnpj, colaboradores, dataHoje, codigo) {
+/* ══════════════════════════════════════════════════════════════════════════
+   CAMINHO LEGADO DE GERACAO DE PDF — mantido, documentado, e agora PRIVADO
+
+   Documentado em 01/09/2026, na frente A da auditoria do Modulo 03, DEPOIS
+   dos cinco passos da REGRA Nº 1:
+
+     1. cabecalho dos arquivos lidos;
+     2. Code.gs e rotas doGet/doPost — nenhuma referencia;
+     3. gatilhos — nenhum;
+     4. git log --follow — nenhuma decisao anterior sobre estas funcoes;
+     5. grep no projeto inteiro, .gs E .html — gerarPDFOficio e
+        gerarPDFOficioLivre aparecem SO na propria definicao.
+
+   O que a emissao usa hoje e outro caminho: `gerarOficioWeb` chama
+   `oficios_converterHtmlParaPdf_` (HTML -> PDF). A geracao por TEMPLATE do
+   Google Docs, abaixo, e a arquitetura anterior.
+
+   NAO FORAM REMOVIDAS, e isso e deliberado. A REGRA Nº 1 manda, na duvida
+   entre remover e manter, "manter e documentar como legado no cabecalho" —
+   foi o que se fez com o GuiasPagamento.gs e foi a decisao certa. Remocao so
+   com pedido explicito do usuario, em commit separado.
+
+   O QUE MUDOU: passaram a ser PRIVADAS (sufixo `_`). No Apps Script toda
+   funcao global e endpoint para qualquer pagina do projeto, inclusive as
+   anonimas — e estas CRIAM ARQUIVO no Drive do sindicato. Privadas, o codigo
+   continua ali e a porta de fora fecha. E rename, nao remocao: reversivel
+   trocando o sufixo.
+
+   ATENCAO: `gerarPDFUniversal_` NAO e legado — o TaxaAssistencial.gs a usa em
+   dois pontos. Ela ficou privada pelo mesmo motivo (cria arquivo), e os tres
+   chamadores internos foram atualizados junto.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+function gerarPDFOficio_(templateId, numero, escola, cnpj, colaboradores, dataHoje, codigo) {
   var pastaAno     = obterOuCriarSubpastaAno(getPastaOficiosDestinoId_("FILIACAO"));
   var baseUrl      = ScriptApp.getService().getUrl();
   var urlValidacao = baseUrl ? baseUrl + "?codigo=" + codigo : "";
   var nomeBase     = montarNomeArquivoOficio_(numero, escola, colaboradores, new Date()).replace(/\.pdf$/i, "");
 
-  var retorno = gerarPDFUniversal({
+  var retorno = gerarPDFUniversal_({
     templateId: templateId, nomeArquivo: nomeBase, pastaDestinoId: pastaAno.getId(),
     substituicoes: {
       "{{NUMERO}}": numero, "{{DATA}}": dataHoje, "{{ESCOLA}}": escola,
@@ -318,7 +364,7 @@ function gerarPDFOficio(templateId, numero, escola, cnpj, colaboradores, dataHoj
   return retorno.pdf;
 }
 
-function gerarPDFOficioLivre(numero, para, cargo, assunto, corpo, dataHoje, codigo, cidadeUf) {
+function gerarPDFOficioLivre_(numero, para, cargo, assunto, corpo, dataHoje, codigo, cidadeUf) {
   var pastaAno     = obterOuCriarSubpastaAno(getPastaOficiosDestinoId_("OFICIO_LIVRE"));
   var baseUrl      = ScriptApp.getService().getUrl();
   var urlValidacao = baseUrl ? baseUrl + "?codigo=" + codigo : "";
@@ -351,7 +397,7 @@ function gerarPDFOficioLivre(numero, para, cargo, assunto, corpo, dataHoje, codi
   return pdfFile;
 }
 
-function gerarPDFUniversal(config) {
+function gerarPDFUniversal_(config) {
   var copia = null;
   try {
     if (!config || !config.templateId) throw new Error("Template não informado.");
@@ -427,7 +473,7 @@ function gerarPDFUniversal(config) {
     return { pdf: pdfFile, docId: copia.getId(), pdfId: pdfFile.getId() };
 
   } catch (e) {
-    Logger.log("❌ ERRO gerarPDFUniversal: " + e.toString());
+    Logger.log("❌ ERRO gerarPDFUniversal_: " + e.toString());
     throw new Error("Erro ao gerar PDF: " + e.message);
   } finally {
     if (copia) { try { DriveApp.getFileById(copia.getId()).setTrashed(true); } catch(e) {} }
@@ -1328,7 +1374,16 @@ function excluirRegistrosOficio(numeros, tokenSessao) {
 }
 /* ================= GET TEMPLATE CONTEÚDO ================= */
 
-function getTemplateConteudo(templateId) {
+function getTemplateConteudo(templateId, tokenSessao) {
+  /* PORTA ACRESCENTADA EM 01/09/2026 — frente A do Modulo 03.
+
+     Esta funcao abre QUALQUER Google Doc por ID e devolve o texto inteiro. A
+     conta que executa o script tem acesso ao Drive do sindicato, entao sem
+     porta ela era leitura de documento arbitrario por quem soubesse um ID —
+     e no Apps Script toda funcao global e endpoint para qualquer pagina,
+     inclusive as anonimas. Nao ha chamador de tela; o parametro novo nao
+     quebra nada. */
+  exigirModulo_(tokenSessao, "documentos", false);
   try {
     var doc   = DocumentApp.openById(templateId);
     var texto = doc.getBody().getText();

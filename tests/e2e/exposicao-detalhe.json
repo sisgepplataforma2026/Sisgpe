@@ -1,7 +1,7 @@
 {
   "medidoEm": "2026-09-01",
-  "totalPublicas": 974,
-  "protegidas": 672,
+  "totalPublicas": 969,
+  "protegidas": 675,
   "expostas": [
     {
       "nome": "validarCPF",
@@ -409,11 +409,6 @@
       "escreve": true
     },
     {
-      "nome": "invalidarCacheTemplatesOficios",
-      "arquivo": "HelperOficios.gs",
-      "escreve": false
-    },
-    {
       "nome": "iaAssistente",
       "arquivo": "IACore.gs",
       "escreve": false
@@ -594,27 +589,12 @@
       "escreve": false
     },
     {
-      "nome": "dashboardResumo",
-      "arquivo": "Oficios.gs",
-      "escreve": false
-    },
-    {
-      "nome": "dashboardGraficos",
-      "arquivo": "Oficios.gs",
-      "escreve": false
-    },
-    {
       "nome": "verificarCodigoPublico",
       "arquivo": "Oficios.gs",
       "escreve": false
     },
     {
       "nome": "validarPublico",
-      "arquivo": "Oficios.gs",
-      "escreve": false
-    },
-    {
-      "nome": "getTemplateConteudo",
       "arquivo": "Oficios.gs",
       "escreve": false
     },
@@ -1064,5 +1044,5 @@
       "escreve": false
     }
   ],
-  "inconclusivas": 90
+  "inconclusivas": 86
 }

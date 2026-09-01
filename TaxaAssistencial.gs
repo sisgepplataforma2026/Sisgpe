@@ -284,7 +284,7 @@ function enviarOficioTaxaAssistencialPRO_(params) {
         ? corpoPersonalizado.replace(/\{\{ESCOLA\}\}/gi, nomeEscola)
         : "Encaminhamos, em anexo, o Ofício referente à Taxa Assistencial – Assistência Médica, conforme a Cláusula 58ª da CCT 2026/2027.";
 
-      var retorno = gerarPDFUniversal({
+      var retorno = gerarPDFUniversal_({
         templateId: templateId, pastaDestinoId: pasta.getId(),
         nomeArquivo: "Ofício " + numero + " - " + nomeEscola + " - Taxa Assistencial",
         substituicoes: {
@@ -406,7 +406,7 @@ function enviarTaxaEscolaEspecifica(params, tokenSessao) {
     var templateId = (typeof TEMPLATE_TAXA_ASSISTENCIAL_ID !== "undefined" && String(TEMPLATE_TAXA_ASSISTENCIAL_ID || "").trim())
       ? String(TEMPLATE_TAXA_ASSISTENCIAL_ID).trim() : TEMPLATE_PADRAO;
 
-    var retorno = gerarPDFUniversal({
+    var retorno = gerarPDFUniversal_({
       templateId: templateId, pastaDestinoId: obterPastaPorTipo_("TAXA_ASSISTENCIAL").getId(),
       nomeArquivo: "Ofício " + numero + " - " + escola + " - Taxa Assistencial",
       substituicoes: {

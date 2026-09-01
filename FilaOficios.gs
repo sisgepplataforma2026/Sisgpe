@@ -739,7 +739,12 @@ function enviarOficioDaFilaAgora(numero, tokenSessao, filaId) {
     return { ok: false, mensagem: "Erro ao enviar: " + (e.message || e) };
   }
 }
-function sincronizarStatusOficiosEnviados() {
+function sincronizarStatusOficiosEnviados(tokenSessao) {
+  /* PORTA DUPLA EM 01/09/2026 — frente A do Modulo 03. Escreve na planilha
+     e nao tinha checagem nenhuma. E dupla porque isto e ferramenta que se
+     roda do EDITOR, onde nao existe token: fechar so com token tiraria o
+     unico jeito de usa-la. Mesmo padrao dos gatilhos (t121). */
+  exigirAdminOuSessao_(tokenSessao, "documentos", "Sincronizacao de status dos oficios enviados", true);
   var ss    = SpreadsheetApp.openById(PLANILHA_ID);
   var sh    = obterOuCriarAbaFilaOficios_();
   var shReg = ss.getSheetByName(PLANILHA_REGISTRO);
