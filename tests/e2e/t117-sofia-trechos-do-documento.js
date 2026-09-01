@@ -47,12 +47,21 @@ const { g } = b.subir({});
 const ESTATUTO = g.getEstatutoTexto_();
 const PERGUNTA = "quem pode participar da votação?";
 
+/* ATENÇÃO AO NÚMERO: 60.000 aqui é DELIBERADO e NÃO é o valor de produção.
+   Desde 01/09/2026 o Estatuto vai com limite de 90.000 e, tendo 75.646
+   caracteres, é enviado INTEIRO — a seleção nem roda (passo 15).
+   Os passos 1 a 9 medem o MECANISMO da seleção, e para isso ele precisa
+   acontecer: com um limite acima do documento, todas aquelas asserções
+   passariam por tautologia, e o dia em que o Estatuto crescer e a seleção
+   voltar a valer ninguém teria teste dela. */
+const LIMITE_QUE_FORCA_SELECAO = 60000;
+
 b.fluxo("SOFIA · o artigo certo tem de chegar ao prompt");
 
 b.passo("1. o caso real — 'votação' precisa alcançar 'votar'");
 /* A asserção que reproduz o defeito medido no ar. Se ela cair, a SOFIA volta
    a citar 74/76/96 para uma pergunta cuja resposta é o 88. */
-const trecho = g.selecionarContextoIA_(ESTATUTO, PERGUNTA, 60000);
+const trecho = g.selecionarContextoIA_(ESTATUTO, PERGUNTA, LIMITE_QUE_FORCA_SELECAO);
 b.ok(ESTATUTO.indexOf("Art. 88") >= 0, "o art. 88 existe no documento (senão o teste não prova nada)");
 b.ok(
   trecho.indexOf("Art. 88") >= 0,
@@ -120,7 +129,7 @@ b.ok(
 b.passo("8. número citado na pergunta busca AQUELE artigo");
 /* Antes só "cláusula N" era reconhecida; "art. N" ficava de fora — e é a forma
    de perguntar sobre o Estatuto. */
-const porNumero = g.selecionarContextoIA_(ESTATUTO, "o que diz o art. 88 do Estatuto?", 60000);
+const porNumero = g.selecionarContextoIA_(ESTATUTO, "o que diz o art. 88 do Estatuto?", LIMITE_QUE_FORCA_SELECAO);
 b.ok(porNumero.indexOf("Art. 88") >= 0, "perguntar pelo número traz o artigo");
 
 b.passo("9. documento sem artigos continua sendo tratado como antes");
@@ -151,7 +160,7 @@ b.ok(
 );
 
 b.passo("11. o bloco do documento repete o aviso onde ele é lido");
-const bloco = g.blocoDocumentoIA_("ESTATUTO", ESTATUTO, PERGUNTA, 60000);
+const bloco = g.blocoDocumentoIA_("ESTATUTO", ESTATUTO, PERGUNTA, LIMITE_QUE_FORCA_SELECAO);
 b.ok(
   /NUNCA que n[ãa]o existe/i.test(bloco),
   "o aviso vai junto do próprio documento, não só nas regras do fim"
@@ -190,6 +199,37 @@ b.ok(
   /cite s[óo] o artigo/i.test(prompt),
   "e dá a saída para quando o texto não veio: citar só o artigo"
 );
+
+b.fluxo("SOFIA · em produção o Estatuto vai INTEIRO");
+
+b.passo("15. com o limite de 90.000, a seleção não chega a rodar");
+/* Decisão do usuário em 01/09/2026, depois de a correção da seleção ser
+   verificada no ar. O Estatuto tem 75.646 caracteres; com o teto em 90.000,
+   `selecionarContextoIA_` devolve o texto inteiro antes de pontuar coisa
+   alguma. A classe de defeito inteira deixa de existir: não há trecho a
+   escolher errado, nem parágrafo a separar do artigo, nem artigo de fora. */
+b.ok(ESTATUTO.length < 90000,
+  "o Estatuto cabe no limite de produção",
+  ESTATUTO.length + " de 90.000 caracteres");
+b.igual(g.selecionarContextoIA_(ESTATUTO, PERGUNTA, 90000), ESTATUTO,
+  "no limite de produção o seletor devolve o documento IDÊNTICO");
+
+b.passo("16. e o prompt real carrega o Estatuto do primeiro ao último artigo");
+const promptReal = g.montarSystemPrompt_(
+  g.coletarContextoSISGEP_(PERGUNTA, "Estatuto", null), PERGUNTA);
+b.ok(promptReal.indexOf("Art. 88") >= 0, "o art. 88 está lá");
+b.ok(promptReal.indexOf("Art. 134") >= 0,
+  "e o art. 134 também — o último do Estatuto, prova de que foi inteiro",
+  "sem ele, algo ainda estaria cortando");
+
+b.passo("17. o custo disso, medido e dito");
+/* O contrapeso da decisão fica registrado em número, não em impressão: com o
+   documento inteiro no prompt, achar o artigo certo passa a depender da
+   atenção do modelo em vez da seleção. Se este número disparar, é sinal de
+   que alguém acrescentou fonte ao prompt sem perceber o tamanho. */
+b.ok(promptReal.length < 120000,
+  "o prompt fica na casa dos 78 mil caracteres, ~21 mil tokens",
+  promptReal.length + " caracteres");
 
 b.naoTestavel(
   "o que a IA de fato responde depois disto",

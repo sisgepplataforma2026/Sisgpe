@@ -1141,7 +1141,23 @@ function montarSystemPrompt_(contexto, mensagem, forcar) {
   var precisaEstatuto = forcar.estatuto === true || dominioAtual === "ESTATUTO" ||
     /(estatuto|estatutári|assembleia|assembléia|mandato|diretoria|conselho fiscal|elei(ção|cao|toral)|posse|quórum|quorum|destitui|filia(ção|cao)|desfilia|vot(o|ar|ação|acao|antes)|eleitor|chapa|urna|escrut[íi]nio|delegad|sindical(izad|iza)|art\.\s*\d)/i.test(consulta);
   var conteudoEstatuto = (precisaEstatuto && typeof getEstatutoTexto_ === "function")
-    ? blocoDocumentoIA_("ESTATUTO", getEstatutoTexto_(), consulta, 60000) : "";
+    /* 90.000, e não 60.000 — decisão do usuário em 01/09/2026, depois de a
+       correção da seleção ser verificada no ar.
+
+       O Estatuto tem 75.646 caracteres. Com o limite em 60.000 ele era o
+       ÚNICO documento que passava pela seleção — a CCT, com 10.094 contra
+       90.000, sempre foi inteira. Subir o teto do Estatuto para o mesmo
+       valor faz `selecionarContextoIA_` devolvê-lo inteiro (`texto.length
+       <= limite` retorna antes de pontuar qualquer coisa), e a classe de
+       defeito de 01/09 deixa de existir: não há trecho a escolher errado,
+       não há parágrafo a separar do artigo, não há artigo a ficar de fora.
+
+       Custa cerca de 19 mil tokens a mais por pergunta que toque o
+       Estatuto. O contrapeso é conhecido e fica dito: com 134 artigos no
+       prompt, achar o certo passa a depender da atenção do modelo. A
+       seleção continua corrigida e testada (t117) e volta a valer sozinha
+       se o documento passar de 90.000. */
+    ? blocoDocumentoIA_("ESTATUTO", getEstatutoTexto_(), consulta, 90000) : "";
 
   var memoriaRelevante = selecionarContextoIA_(carregarMemoriaOrganizacional(), consulta, 30000);
 

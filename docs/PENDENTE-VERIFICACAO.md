@@ -1733,13 +1733,24 @@ coisas.
 foi corrigido. Se um dia a CCT passar de 90.000 caracteres, ela entra na
 seleção; aí a correção de hoje já está lá para recebê-la.
 
-**Opção considerada e NÃO adotada:** subir o limite do Estatuto para 90.000, o
-mesmo da CCT, faria ele ir inteiro e a seleção deixaria de existir para os dois
-documentos. Custa ~19 mil tokens a mais por pergunta, o que é pouco. Não foi
-feito porque troca um problema resolvido por outro: com 134 artigos no prompt,
-achar o certo passa a depender da atenção do modelo em vez da seleção — e a
-seleção acabou de ser corrigida e verificada no ar. Fica registrado como
-alternativa, caso a seleção volte a errar.
+**ADOTADO em 01/09/2026, por decisão do usuário:** o limite do Estatuto subiu
+de 60.000 para **90.000**, o mesmo da CCT. Com 75.646 caracteres, ele passa a
+ser enviado **INTEIRO** — `selecionarContextoIA_` devolve o texto antes de
+pontuar coisa alguma, e a classe de defeito deste registro deixa de existir:
+não há trecho a escolher errado, nem parágrafo a separar do artigo, nem artigo
+de fora.
+
+Eu havia recomendado o contrário. O contrapeso continua real e fica dito: o
+prompt vai a **78.416 caracteres (~21 mil tokens)**, e com 134 artigos dentro
+dele achar o certo passa a depender da atenção do modelo em vez da seleção. O
+usuário pesou isso contra o risco de a seleção errar de novo num documento
+jurídico e escolheu o documento inteiro — o que também remove a dependência de
+heurística num texto que vai para dentro de ofício.
+
+A seleção **continua corrigida e testada**: o `t117` a exercita com um limite
+menor de propósito (`LIMITE_QUE_FORCA_SELECAO`), porque com o teto de produção
+todas aquelas asserções passariam por tautologia — e o dia em que o Estatuto
+passar de 90.000 a seleção volta a valer sozinha, com teste no lugar.
 
 
 | Data | Item | Como foi verificado |
