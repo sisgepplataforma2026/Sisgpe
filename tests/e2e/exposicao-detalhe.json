@@ -1,7 +1,7 @@
 {
   "medidoEm": "2026-09-01",
-  "totalPublicas": 969,
-  "protegidas": 675,
+  "totalPublicas": 964,
+  "protegidas": 677,
   "expostas": [
     {
       "nome": "validarCPF",
@@ -236,11 +236,6 @@
     {
       "nome": "obterCnpjPrestadorDespesa",
       "arquivo": "Despesas.gs",
-      "escreve": false
-    },
-    {
-      "nome": "montarEmailHTML",
-      "arquivo": "EmailOficios.gs",
       "escreve": false
     },
     {
@@ -589,23 +584,8 @@
       "escreve": false
     },
     {
-      "nome": "verificarCodigoPublico",
-      "arquivo": "Oficios.gs",
-      "escreve": false
-    },
-    {
       "nome": "validarPublico",
       "arquivo": "Oficios.gs",
-      "escreve": false
-    },
-    {
-      "nome": "oficiosDiagnostico_diagnosticarModulo",
-      "arquivo": "OficiosDiagnostico.gs",
-      "escreve": false
-    },
-    {
-      "nome": "oficiosQueNaoChegaram",
-      "arquivo": "OficiosDiagnostico.gs",
       "escreve": false
     },
     {
@@ -1044,5 +1024,5 @@
       "escreve": false
     }
   ],
-  "inconclusivas": 86
+  "inconclusivas": 83
 }

@@ -201,6 +201,27 @@ function _gravarResultadoFila_(sh, linhaPlanilha, totalCols, valoresLinha,
 /* ============================================================
    processarFilaEnvioOficios
    ============================================================ */
+/* ══════════════════════════════════════════════════════════════════════════
+   POR QUE ESTA FICA PUBLICA E SEM PORTA — decidido em 01/09/2026, frente A
+
+   Isto e HANDLER DE GATILHO: o Apps Script chama a funcao PELO NOME, entao
+   ela nao pode virar privada. E a porta dupla, que resolveu o caso das
+   ferramentas de editor, aqui e o remedio errado: o exigirAdminOuSessao_
+   (AcessoModulos.gs:188) identifica quem executa por
+   Session.getActiveUser().getEmail(), e num gatilho por tempo esse e-mail
+   pode voltar VAZIO. Quando volta, a porta recusa — e o gatilho para.
+
+   Parar este gatilho para a operacao que esta VIVA no sindicato. Nao vale a
+   troca, e o que se ganharia e pouco: a funcao devolve so contadores (processados, enviados, erros), nao
+   devolve dado de escola nenhum, e nao permite enfileirar nada — quem
+   enfileira e o gerarOficioWeb, que tem porta. O que um anonimo
+   conseguiria e adiantar o envio de oficio que JA foi legitimamente
+   enfileirado, e a propria funcao ja protege a cota diaria de e-mail.
+
+   Fica publica, entao, e fica ANOTADA no teto de exposicao. Nao e aprovacao —
+   e o registro de uma decisao que se reabre se aparecer um jeito de
+   identificar o contexto de gatilho com seguranca.
+   ══════════════════════════════════════════════════════════════════════════ */
 function processarFilaEnvioOficios() {
   var LIMITE_POR_EXECUCAO   = 5;
   var PAUSA_ENTRE_ENVIOS_MS = 4000;
@@ -431,7 +452,7 @@ function processarFilaEnvioOficios() {
       _atualizarRegistroOficioEnviado_(ss, numeroOficio);
 
       try {
-        registrarLogSistema({
+        registrarLogSistema_({
           usuario: usuarioEnvio,
           numero: numeroOficio + " (FILA)",
           tipo: tipo,
@@ -702,7 +723,7 @@ function enviarOficioDaFilaAgora(numero, tokenSessao, filaId) {
     _atualizarRegistroOficioEnviado_(ss, numero);
 
     try {
-      registrarLogSistema({
+      registrarLogSistema_({
         usuario: usuarioEnvio,
         numero: numero,
         tipo: tipo,

@@ -112,7 +112,7 @@ function enviarEmailOficio_(emailUsuario, htmlBody, anexos, assunto, destino, co
   return opcoes;
 }
 
-function montarEmailHTML(tipo, numero, assuntoTipo, quantidade, textoPrincipalCustom) {
+function montarEmailHTML_(tipo, numero, assuntoTipo, quantidade, textoPrincipalCustom) {
   var textoPrincipal = textoPrincipalCustom || "";
 
   if (!textoPrincipal) {
@@ -540,7 +540,7 @@ function reenviarOficio(registro, tokenSessao) {
       }
     }
 
-    var htmlBody = montarEmailHTML(
+    var htmlBody = montarEmailHTML_(
       "Reenvio — " + tipo, numero, obterLabelTipoOficio_(tipo), 0,
       "Reenviamos, em anexo, o ofício Nº " + numero + " referente a " + escola + ", conforme solicitado."
     );
@@ -557,7 +557,7 @@ function reenviarOficio(registro, tokenSessao) {
        cadastrou. E necessidade legitima de operacao — mas a contrapartida e o
        registro de quem mandou para onde. Sem isto, o recurso seria uma porta
        de saida de documento sem rastro. */
-    registrarLogSistema({
+    registrarLogSistema_({
       usuario: emailUsuario,
       numero:  numero + (emailsExtras
                  ? (somenteExtras ? " (REENVIO - ENDERECO SUBSTITUIDO)"

@@ -191,7 +191,7 @@ function previewOficioFiliacao(idFicha, escola, tokenSessao) {
     return {
       sucesso: true,
       html: html,
-      proximoNumero: preverProximoNumeroOficio(),
+      proximoNumero: preverProximoNumeroOficio_(),
       trabalhador: f.NOME_COMPLETO,
       escola: escola.nome,
       emailDestino: escola.emailsTodos || escola.emailPrincipal || ''

@@ -136,7 +136,7 @@ function documentosTesteReservarNumeroHomologacao(tokenSessao) {
   );
 
   var alvo = documentosExigirHomologacaoSegura_();
-  var numero = gerarProximoNumeroSeguro();
+  var numero = gerarProximoNumeroSeguro_();
 
   return {
     ok: true,

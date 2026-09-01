@@ -5,7 +5,7 @@
 
 /* ─────────────────────────────────────────────────────────────
    HELPER: Numeração segura — mesma sequência e mesmo lock dos demais ofícios
-   (Oficios.gs / gerarProximoNumeroSeguro). Antes esta função lia só a última
+   (Oficios.gs / gerarProximoNumeroSeguro_). Antes esta função lia só a última
    linha não vazia da coluna B da aba Controle, o que podia colidir com um
    número já usado se essa linha não fosse a de maior número (reordenação,
    exclusão manual fora de ordem). Agora reaproveita a mesma função que já
@@ -13,7 +13,7 @@
    para não exigir mudança no chamador (linha ~479 deste arquivo).
    ───────────────────────────────────────────────────────────── */
 function gerarProximoNumeroOficioFiscal_() {
-  return gerarProximoNumeroSeguro();
+  return gerarProximoNumeroSeguro_();
 }
 
 /* ─────────────────────────────────────────────────────────────

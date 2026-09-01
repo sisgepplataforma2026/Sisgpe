@@ -52,7 +52,7 @@ function oficio(tipo, nomes) {
   return limpo(proc.corpoTexto);
 }
 function email(tipo, qtd) {
-  return limpo(g.montarEmailHTML(tipo, "280/2026", tipo, qtd, ""));
+  return limpo(g.montarEmailHTML_(tipo, "280/2026", tipo, qtd, ""));
 }
 
 const UM   = [{ nome: "CLARA GOMES" }];

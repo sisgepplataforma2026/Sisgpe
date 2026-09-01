@@ -101,6 +101,64 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
+### 51. Ofícios — duas funções ESCREVIAM sem porta nenhuma (fechadas em 01/09)
+
+Quinta rodada da frente A do Módulo 03, 01/09/2026. Fechado no repositório
+(`t127`, 43 asserções); **falta confirmar no ar que nada quebrou**.
+
+A rodada anterior (item 50) fechou as que **liam**. Esta fecha as que
+**escrevem** — e a diferença importa: dado lido indevidamente é vazamento, mas
+dado escrito indevidamente é registro oficial corrompido, que ninguém tem de
+onde recuperar.
+
+**AS DUAS QUE ESCREVIAM.**
+
+| Função | O que um anônimo conseguia |
+|---|---|
+| `gerarProximoNumeroSeguro` | **queimava um número da sequência oficial de ofícios a cada chamada.** Em laço, abriria buracos na numeração — e numeração de ofício com buraco é problema de auditoria do sindicato. Número gasto não volta. |
+| `registrarLogSistema` | **forjava entrada no LOG_SISTEMA**: usuário, número, tipo, escola, CNPJ, e-mail, tudo do jeito que o chamador mandasse. O log que registra quem fez o quê aceitava qualquer versão da história. |
+
+Mais três que só liam e não tinham chamador em tela viraram privadas:
+`preverProximoNumeroOficio`, `verificarCodigoPublico` e `montarEmailHTML`. A do
+meio era a mais notável — uma **segunda porta** para o mesmo dado que a rota
+pública `validarPublico` já serve com propósito.
+
+**O QUE A RENOMEAÇÃO QUASE QUEBROU EM SILÊNCIO.** São 14 chamadas em 6
+arquivos, e dois deles guardam os nomes como **string** para conferir se a
+função existe (`OficiosDiagnostico.gs` e `Reservaparquechina.gs`). String não é
+alcançada por renomeação de identificador — o sintoma seria um diagnóstico
+dizendo "função não encontrada" sobre função que está lá, apontando para o
+lugar errado. O t127 confere as strings explicitamente.
+
+**TRÊS QUE FICAM ABERTAS, DE PROPÓSITO E COM A DECISÃO ESCRITA.**
+`processarFilaEnvioOficios`, `verificarConfirmacoesRecebimento` e
+`verificarFalhasEntregaOficios` continuam públicas e sem porta. São handlers de
+gatilho: o Apps Script chama **pelo nome**, então privadas não podem ser. E a
+porta dupla é o remédio errado aqui — o `exigirAdminOuSessao_` identifica quem
+executa por `Session.getActiveUser().getEmail()`, que num gatilho por tempo
+**pode voltar vazio**; quando volta, a porta recusa e **o gatilho para**. Parar
+esse gatilho para a emissão de ofício, que é a única operação viva.
+
+O que se ganharia fechando é pouco: as três devolvem contadores, nenhuma
+devolve nome de escola ou e-mail. A decisão está escrita nos dois arquivos e
+anotada no teto de exposição — **não é aprovação, é registro**, e reabre se
+aparecer jeito confiável de identificar contexto de gatilho.
+
+**O QUE FALTA VERIFICAR NO AR** (depois de publicar em homologação):
+
+1. **emitir um ofício de ponta a ponta** — é o caminho que usa
+   `gerarProximoNumeroSeguro_` e `registrarLogSistema_`, os dois renomeados;
+   se um chamador tivesse escapado, é aqui que apareceria;
+2. **a taxa assistencial** e o **ofício de despesa fiscal** — os outros dois
+   caminhos que consomem número de ofício;
+3. **a autorização do Parque do China** — usa os dois nomes renomeados,
+   inclusive na conferência de dependências, que passaria a dizer "faltando"
+   se uma string tivesse ficado para trás;
+4. a **validação pública pelo código** (a escola confere o ofício) — a rota
+   continua aberta de propósito, e tem que continuar respondendo.
+
+**Teto de exposição: 208 → 204.**
+
 ### 50. Ofícios — oito funções eram endpoint por acidente (fechadas em 01/09)
 
 Quarta rodada da frente A do Módulo 03, 01/09/2026. Fechado no repositório

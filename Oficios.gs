@@ -166,7 +166,7 @@ function dashboardGraficos_() {
 
 /* ================= NUMERAÇÃO ================= */
 
-function preverProximoNumeroOficio() {
+function preverProximoNumeroOficio_() {
   var ss    = SpreadsheetApp.openById(PLANILHA_ID);
   var sheet = ss.getSheetByName(PLANILHA_REGISTRO);
   if (!sheet) throw new Error("Aba de registro não encontrada.");
@@ -201,7 +201,7 @@ function preverProximoNumeroOficio() {
   return proximo;
 }
 
-function gerarProximoNumeroSeguro() {
+function gerarProximoNumeroSeguro_() {
   // travarSisgep_ (TravaSisgep.gs): gerarOficioWeb chama esta função e, no
   // ofício de desfiliação, também sindAss_desfiliar_ — que trava igual. Com
   // LockService direto, basta alguém aninhar as duas para travar a emissão.
@@ -237,7 +237,7 @@ function gerarProximoNumeroSeguro() {
         var numTaxa = parseInt(numeroTaxa.split("/")[0].trim(), 10);
         if (!isNaN(numTaxa) && numTaxa > maiorNumero) maiorNumero = numTaxa;
       }
-    } catch (e) { Logger.log("[gerarProximoNumeroSeguro] " + e); }
+    } catch (e) { Logger.log("[gerarProximoNumeroSeguro_] " + e); }
 
     var ambienteNumero = (typeof getAmbienteAtual === "function")
       ? String(getAmbienteAtual() || "producao").toUpperCase()
@@ -252,7 +252,7 @@ function gerarProximoNumeroSeguro() {
     // A reserva é persistida ANTES de liberar a trava. Assim, mesmo que PDF,
     // Drive ou planilha falhem depois, outra emissão nunca reutiliza o número.
     propsNumero.setProperty(chaveSequencia, String(sequencia));
-    Logger.log("gerarProximoNumeroSeguro: reservado " + proximo + " em " + chaveSequencia);
+    Logger.log("gerarProximoNumeroSeguro_: reservado " + proximo + " em " + chaveSequencia);
     return proximo;
 
   } finally {
@@ -262,7 +262,7 @@ function gerarProximoNumeroSeguro() {
 
 /* ================= LOG SISTEMA ================= */
 
-function registrarLogSistema(dadosLog) {
+function registrarLogSistema_(dadosLog) {
   var ss       = SpreadsheetApp.openById(PLANILHA_ID);
   var logSheet = ss.getSheetByName("LOG_SISTEMA");
   if (!logSheet) {
@@ -292,7 +292,7 @@ function registrarLogSistema(dadosLog) {
   try {
     if (typeof aud_deLogSistema_ === "function") aud_deLogSistema_(dadosLog);
   } catch (e) {
-    Logger.log("registrarLogSistema — ponte de auditoria falhou (ofício seguiu): " + e);
+    Logger.log("registrarLogSistema_ — ponte de auditoria falhou (ofício seguiu): " + e);
   }
 }
 
@@ -521,7 +521,7 @@ function montarDadosOficio_(dados, modo) {
   var dataExtenso = (typeof dataPorExtenso === "function") ? dataPorExtenso() : dataHoje;
   var tipoNorm    = normalizarTipoOficio_(dados.tipo);
   var configTipo  = resolverConfigTipoOficio_(dados.tipo);
-  var numero      = modoExec === "preview" ? "Nº PRÉVIA" : gerarProximoNumeroSeguro();
+  var numero      = modoExec === "preview" ? "Nº PRÉVIA" : gerarProximoNumeroSeguro_();
 
   var codigoVerificacao = numero.replace("/", "-");
   if (modoExec !== "preview" && typeof gerarCodigoVerificacao === "function") {
@@ -878,10 +878,10 @@ function gerarOficioWeb(dados, tokenSessao) {
     var qtdFichas          = (proc.isLivre || !Array.isArray(dados.fichas)) ? 0 : dados.fichas.length;
     // Texto digitado pelo atendente (Ofício Livre) — escapado antes de entrar no
     // e-mail para não permitir injeção de HTML. Os textos padrão dos demais tipos
-    // (Filiação/Desfiliação/Taxas) são montados internamente por montarEmailHTML e
+    // (Filiação/Desfiliação/Taxas) são montados internamente por montarEmailHTML_ e
     // usam <strong> de propósito, por isso o escaping é feito aqui, não lá dentro.
     var textoPrincipalEmail = escapeHtml_(dados.textoPrincipal || dados.corpo || "");
-    var htmlBody     = montarEmailHTML(tituloEmail, proc.numero, assuntoTipo, qtdFichas, textoPrincipalEmail);
+    var htmlBody     = montarEmailHTML_(tituloEmail, proc.numero, assuntoTipo, qtdFichas, textoPrincipalEmail);
     var assuntoEmail = tituloEmail + " Nº " + proc.numero;
 
     var retornoFila = criarFilaEnvioOficio_({
@@ -919,7 +919,7 @@ function gerarOficioWeb(dados, tokenSessao) {
       "Link Ficha":            ""
     });
 
-registrarLogSistema({
+registrarLogSistema_({
       usuario: emailUsuario,
       numero:  proc.numero + " (FILA)",
       tipo:    assuntoTipo,
@@ -1196,7 +1196,7 @@ var iniciais = nomeEscola.split(/\s+/).filter(function(w){ return w.length > 2 &
 
 /* ================= VALIDAÇÃO PÚBLICA ================= */
 
-function verificarCodigoPublico(codigo) {
+function verificarCodigoPublico_(codigo) {
   var ss    = SpreadsheetApp.openById(PLANILHA_ID);
   var sheet = ss.getSheetByName(PLANILHA_REGISTRO);
   if (!sheet || sheet.getLastRow() < 2) return { status: "INVALIDO", mensagem: "Nenhum registro encontrado." };
@@ -1228,8 +1228,20 @@ function verificarCodigoPublico(codigo) {
   return { status: "INVALIDO", mensagem: "Código não encontrado." };
 }
 
+/* ROTA PUBLICA POR DESENHO — conferido em 01/09/2026, frente A do Modulo 03.
+
+   Esta e chamada pelo Code.gs na rota anonima do parametro "codigo": a escola
+   que recebeu um oficio confere ali se ele e autentico. Sem login, de
+   proposito — quem valida esta FORA do sindicato.
+
+   O que ela devolve e o registro de UM oficio, e so para quem ja tem o codigo
+   dele. Nao lista, nao busca por escola, nao aceita parcial. Fica publica.
+
+   O helper que ela usa virou privado na mesma data: era uma segunda porta
+   para o mesmo dado, e essa nao precisava existir. */
+
 function validarPublico(codigo) {
-  var resultado = verificarCodigoPublico(codigo) || {};
+  var resultado = verificarCodigoPublico_(codigo) || {};
   var esc = function(valor) { return escapeHtml_(String(valor == null ? "" : valor)); };
   var linkSeguro = String(resultado.link || "").trim();
   if (!/^https:\/\/drive\.google\.com\//i.test(linkSeguro)) linkSeguro = "";
@@ -1302,7 +1314,7 @@ function excluirRegistroOficio(numero, tokenSessao) {
     }
 
     if (excluidos > 0) {
-      registrarLogSistema({
+      registrarLogSistema_({
         usuario: sessaoDocumentos.email || sessaoDocumentos.usuario || "SISGEP",
         numero:  numero + " (EXCLUSÃO)",
         tipo:    "EXCLUSAO_OFICIO",
@@ -1358,7 +1370,7 @@ function excluirRegistrosOficio(numeros, tokenSessao) {
     }
 
     if (excluidos > 0) {
-      registrarLogSistema({
+      registrarLogSistema_({
         usuario: sessaoDocumentos.email || sessaoDocumentos.usuario || "SISGEP",
         numero:  numeros.join(", ") + " (EXCLUSÃO EM LOTE)",
         tipo:    "EXCLUSAO_OFICIO",

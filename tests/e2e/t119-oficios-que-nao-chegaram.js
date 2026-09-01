@@ -58,10 +58,27 @@ const ONTEM = new Date(HOJE.getTime() - 3 * 86400000);
   ]);
 })();
 
+/* PORTA ACRESCENTADA EM 01/09/2026 (t127): o relatório devolve NOME DE
+   ESCOLA e E-MAIL de destino, então deixou de ser endpoint anônimo. Todas
+   as chamadas daqui em diante passam token. */
+b.seedUsuarios(g);
+const TOKEN = b.logar(g, "wanderson");
+
+b.fluxo("MÓDULO 03 · a porta do relatório");
+
+b.passo("0. sem sessão e sem conta do editor, não roda");
+/* O que sairia por aqui é o cadastro de contatos das escolas. */
+g.__usuarioAtivoEmail = "";
+let recusou = false, msgRecusa = "";
+try { g.oficiosQueNaoChegaram(""); }
+catch (e) { recusou = true; msgRecusa = String(e.message || e); }
+b.ok(recusou, "anônimo é barrado",
+  recusou ? msgRecusa.substring(0, 44) : "PASSOU — escola e e-mail abertos");
+
 b.fluxo("MÓDULO 03 · o relatório troca a porcentagem por nomes");
 
 b.passo("1. roda e conta tudo");
-const r = g.oficiosQueNaoChegaram();
+const r = g.oficiosQueNaoChegaram(TOKEN);
 b.ok(r && r.ok === true, "oficiosQueNaoChegaram responde");
 b.igual(r.total, 7, "conta os 7 ofícios das duas bases",
   "2 do Controle + 5 da fila — a linha '7' de cadastro de escola fica de fora");
@@ -108,7 +125,7 @@ b.passo("7. a fila VENCE o Controle no mesmo número");
 /* Regra do dashboard: a fila reflete o estado mais recente do envio. */
 const cc = ss.getSheetByName(g.PLANILHA_REGISTRO);
 cc.getRange(4, 1, 1, 4).setValues([["022/2026", "Escola Errada", "naoexiste@x.com", "ENVIADO"]]);
-const r2 = g.oficiosQueNaoChegaram();
+const r2 = g.oficiosQueNaoChegaram(TOKEN);
 b.igual(r2.porGrupo.ERRO_PERMANENTE, 2,
   "o 022 continua em erro — a fila manda, não o Controle desatualizado");
 
@@ -117,7 +134,7 @@ b.passo("8. SÓ LÊ — nenhuma linha muda");
    para rodar. Reenviar é decisão de quem opera. */
 const antes = ss.getSheetByName("FILA_ENVIO_OFICIOS")
   .getRange(2, 1, 5, 7).getValues().map(l => l.join("|")).join("\n");
-g.oficiosQueNaoChegaram();
+g.oficiosQueNaoChegaram(TOKEN);
 const depois = ss.getSheetByName("FILA_ENVIO_OFICIOS")
   .getRange(2, 1, 5, 7).getValues().map(l => l.join("|")).join("\n");
 b.igual(depois, antes, "a fila está exatamente como estava antes de rodar");
@@ -126,7 +143,7 @@ b.passo("9. fila limpa diz isso com todas as letras");
 const f2 = ss.getSheetByName("FILA_ENVIO_OFICIOS");
 f2.getRange(2, 4, 5, 1).setValues([["ENVIADO"], ["ENVIADO"], ["ENVIADO"], ["ENVIADO"], ["ENVIADO"]]);
 cc.getRange(3, 4).setValue("ENVIADO");
-const r3 = g.oficiosQueNaoChegaram();
+const r3 = g.oficiosQueNaoChegaram(TOKEN);
 b.igual(r3.precisamDeGente, 0, "nada parado");
 b.ok(/Nenhum of[íi]cio parado/.test(r3.relatorio),
   "e o relatório afirma isso, em vez de devolver lista vazia",
