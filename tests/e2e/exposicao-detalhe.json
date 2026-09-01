@@ -1,7 +1,7 @@
 {
   "medidoEm": "2026-09-01",
   "totalPublicas": 974,
-  "protegidas": 662,
+  "protegidas": 672,
   "expostas": [
     {
       "nome": "validarCPF",
@@ -174,11 +174,6 @@
       "escreve": true
     },
     {
-      "nome": "getDashboardOficiosDataV2",
-      "arquivo": "DashboardOficios.gs",
-      "escreve": false
-    },
-    {
       "nome": "setupModuloDespesas",
       "arquivo": "Despesas.gs",
       "escreve": true
@@ -272,16 +267,6 @@
       "nome": "processarFilaEnvioOficios",
       "arquivo": "FilaOficios.gs",
       "escreve": true
-    },
-    {
-      "nome": "dashboardFilaEnvioResumo",
-      "arquivo": "FilaOficios.gs",
-      "escreve": false
-    },
-    {
-      "nome": "dashboardFilaEnvioGraficos",
-      "arquivo": "FilaOficios.gs",
-      "escreve": false
     },
     {
       "nome": "finClassificarDespesaIA",
@@ -809,11 +794,6 @@
       "escreve": true
     },
     {
-      "nome": "diagnosticarDeParaEscolas",
-      "arquivo": "SindicalizacaoOficio.gs",
-      "escreve": false
-    },
-    {
       "nome": "listarAbasDaPlanilha",
       "arquivo": "Sindicalizacaoadmin.gs",
       "escreve": false
@@ -1084,5 +1064,5 @@
       "escreve": false
     }
   ],
-  "inconclusivas": 96
+  "inconclusivas": 90
 }

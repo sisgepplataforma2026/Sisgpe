@@ -153,7 +153,12 @@ function exportarAuditoriaLog(filtros, tokenSessao) {
 }
 
 /* ── listarEscolasOficios ── */
-function listarEscolasOficios() {
+function listarEscolasOficios(tokenSessao) {
+  /* PORTA ACRESCENTADA EM 01/09/2026 — frente A da auditoria do Modulo 03.
+     Devolve dado de escola (razao social, CNPJ, e-mails) e nao tinha checagem
+     nenhuma. No Apps Script toda funcao global e endpoint para QUALQUER pagina
+     do projeto, inclusive as anonimas que o Code.gs serve. Ver a nota do t125. */
+  exigirModulo_(tokenSessao, "documentos", false);
   var ss = SpreadsheetApp.openById(PLANILHA_ID);
   var sh = ss.getSheetByName("Escolas")
           || ss.getSheetByName("ESCOLAS")

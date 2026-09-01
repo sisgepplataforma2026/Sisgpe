@@ -552,7 +552,18 @@ function montarDadosOficio_(dados, modo) {
 // SEM trava de modulo: mesma razao de gerarOficioWeb — a Sindicalizacao
 // monta a previa do oficio de filiacao por aqui. Sessao continua exigida.
 function previewOficioWeb(dados, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  /* PORTA TROCADA EM 01/09/2026 — de exigirSessaoDocumentos_ para
+     exigirModulo_. A antiga (Sessao.gs:405) confere se a SESSAO e valida
+     e, quando pedido, se o perfil e administrador — mas NAO consulta os
+     modulos do usuario. Entao qualquer pessoa logada, com ou sem o modulo
+     Documentos, alcancava esta funcao por chamada direta.
+
+     Na Home isso nao aparecia porque o InicioResumo consulta
+     `sessaoPodeModulo_` ANTES de chamar a fonte — a protecao estava no
+     chamador, nao na funcao. Medido pelo t125, passo 9.
+
+     `exigirModulo_` e o padrao da casa (398 usos em 78 arquivos). */
+  var sessao = exigirModulo_(tokenSessao, "documentos", false);
   Logger.log("✅ previewOficioWeb — " + new Date());
   try {
     var proc       = montarDadosOficio_(dados, "preview");
@@ -595,7 +606,7 @@ function previewOficioWeb(dados, tokenSessao) {
 // {erro:true} e a tela mostrava a falha sem dizer a causa. Achado por teste
 // de execucao em 2026-08-05 (tests/e2e/t1-documentos.js).
 function gerarOficioWeb(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     var emailUsuario = String(sessaoDocumentos.email || sessaoDocumentos.usuario || "").trim().toLowerCase();
     if (!dados || typeof dados !== "object") throw new Error("Dados inválidos.");

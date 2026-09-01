@@ -9,7 +9,18 @@ var ABA_FILA_OFICIOS      = "FILA_ENVIO_OFICIOS";
 // SEM trava de modulo: consultada pela Central de E-mails e pelo nucleo
 // de IA para dar contexto ao usuario. Sessao continua exigida.
 function listarHistoricoOficios(filtros, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  /* PORTA TROCADA EM 01/09/2026 — de exigirSessaoDocumentos_ para
+     exigirModulo_. A antiga (Sessao.gs:405) confere se a SESSAO e valida
+     e, quando pedido, se o perfil e administrador — mas NAO consulta os
+     modulos do usuario. Entao qualquer pessoa logada, com ou sem o modulo
+     Documentos, alcancava esta funcao por chamada direta.
+
+     Na Home isso nao aparecia porque o InicioResumo consulta
+     `sessaoPodeModulo_` ANTES de chamar a fonte — a protecao estava no
+     chamador, nao na funcao. Medido pelo t125, passo 9.
+
+     `exigirModulo_` e o padrao da casa (398 usos em 78 arquivos). */
+  var sessao = exigirModulo_(tokenSessao, "documentos", false);
   filtros = filtros || {};
 
   var ss  = SpreadsheetApp.openById(PLANILHA_ID);

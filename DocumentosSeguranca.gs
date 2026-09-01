@@ -8,7 +8,18 @@
  * Os demais tipos são exclusivos de Documentos.
  */
 function exigirAcessoOficioPorTipo_(tokenSessao, tipo) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  /* PORTA TROCADA EM 01/09/2026 — de exigirSessaoDocumentos_ para
+     exigirModulo_. A antiga (Sessao.gs:405) confere se a SESSAO e valida
+     e, quando pedido, se o perfil e administrador — mas NAO consulta os
+     modulos do usuario. Entao qualquer pessoa logada, com ou sem o modulo
+     Documentos, alcancava esta funcao por chamada direta.
+
+     Na Home isso nao aparecia porque o InicioResumo consulta
+     `sessaoPodeModulo_` ANTES de chamar a fonte — a protecao estava no
+     chamador, nao na funcao. Medido pelo t125, passo 9.
+
+     `exigirModulo_` e o padrao da casa (398 usos em 78 arquivos). */
+  var sessao = exigirModulo_(tokenSessao, "documentos", false);
   var tipoNorm = normalizarTipoOficio_(tipo);
   var podeDocumentos = (typeof sessaoPodeModulo_ === "function")
     ? sessaoPodeModulo_(sessao, "documentos")

@@ -1,7 +1,7 @@
 {
-  "teto": 216,
+  "teto": 212,
   "medidoEm": "2026-09-01",
-  "observacao": "Teto aceito conscientemente. Baixa a cada modulo fechado; nunca sobe sem decisao registrada. Historico: 219 (medicao inicial) -> 215 (fechamento do Parque do China) -> 224 (21/08/2026, ver decisao abaixo) -> 216 (01/09/2026, ver nota abaixo).",
+  "observacao": "Teto aceito conscientemente. Baixa a cada modulo fechado; nunca sobe sem decisao registrada. Historico: 219 (medicao inicial) -> 215 (fechamento do Parque do China) -> 224 (21/08/2026, ver decisao abaixo) -> 216 -> 212 (01/09/2026, duas rodadas da frente A do Modulo 03).",
   "decisao_2026_08_21": {
     "motivo": "O teto estava estourado desde 06/08 e ninguem foi avisado: o t6-exposicao.js terminava com process.exit(0) na marra, que passava por cima do process.exitCode=1 marcado pelo resumo(). O teste imprimia a falha na tela e devolvia 0 ao sistema, entao o run-suite.js dizia VERDE. Medicoes reais no periodo cego: 215 -> 217 -> 220 -> 229 -> 230 -> 221 -> 224. Corrigido o exit, o teto foi reconciliado com a medicao atual DEPOIS de conferir uma a uma as 9 funcoes acima de 215.",
     "as_9_funcoes_conferidas": [
@@ -18,5 +18,5 @@
     "ressalva_aberta": "bingo_inscricaoPreencher devolve nome/email/telefone SEM mascara a partir de um CPF, numa rota publica. E o mesmo buraco que foi fechado no compasso_inscricaoPreencher em 21/08 (mascara + teto de consultas). Continua ABERTO no bingo. Nao e regressao nova, mas e o unico item de risco real deste conjunto de 9 - os outros oito ou nao devolvem dado pessoal ou ja estao protegidos.",
     "o_que_este_teto_nao_significa": "Nao e aprovacao das 224. E o retrato honesto de hoje, agora que o numero volta a ser verificavel. A meta continua sendo derruba-lo."
   },
-  "nota": "Baixado de 224 para 216 em 01/09/2026, na frente A da auditoria do Modulo 03. Cinco funcoes de gatilho (instalar/remover confirmacoes e falhas de entrega) criavam e apagavam acionador sem porta nenhuma; ganharam exigirAdminOuSessao_, o mesmo padrao que o vizinho instalarTriggerFilaEnvioOficios ja usava. O teto so DESCE: se subir, e regressao."
+  "nota": "Baixado de 224 para 216 e depois para 212 em 01/09/2026, nas rodadas da frente A do Modulo 03. Primeiro os cinco gatilhos de monitoramento, que criavam e apagavam acionador sem porta. Depois nove funcoes que devolviam dado de escola sem checagem nenhuma — a pior delas, buscarEscolasParaOficio, entregava razao social, CNPJ e e-mails de ate 60 escolas por chamada, sem token. O teto so DESCE: se subir, e regressao."
 }
