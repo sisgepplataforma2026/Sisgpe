@@ -11,7 +11,40 @@
 
 /* ── Confirmações de Recebimento ── */
 
-function instalarTriggerConfirmacoes() {
+/* ─────────────────────────────────────────────────────────────────────────
+   POR QUE ESTES QUATRO GANHARAM PORTA — 01/09/2026
+
+   Achado na frente A da auditoria do Módulo 03, cruzando as funções públicas
+   com as que escrevem estado. Os quatro criavam e APAGAVAM gatilho sem pedir
+   permissão nenhuma, e sem sequer receber um token.
+
+   No Apps Script não existe rota para `google.script.run`: toda função global
+   é endpoint para QUALQUER página do projeto, inclusive as anônimas que o
+   `Code.gs` serve. Ou seja, um visitante qualquer podia chamar
+   `removerTriggerConfirmacoes()` e desligar, em silêncio, a verificação de
+   confirmação de recebimento e a de falha de entrega.
+
+   E desligar essas duas não dá erro nenhum: as confirmações simplesmente
+   param de ser registradas e as falhas param de ser detectadas. Ninguém liga
+   uma coisa à outra.
+
+   Isso ficou pior depois da correção da Home de hoje: o FALHA_ENTREGA passou
+   a aparecer no painel, e quem marca esse status é justamente o
+   `verificarFalhasEntregaOficios`. Sem o gatilho, o indicador fica em zero
+   dizendo que está tudo bem.
+
+   NÃO É PADRÃO NOVO — é o padrão da casa, que estes quatro não tinham. O
+   `instalarTriggerFilaEnvioOficios` (FilaOficios.gs:802), no mesmo módulo, já
+   usava `exigirAdminOuSessao_` com o mesmo rótulo e o mesmo `true`.
+
+   A porta é DUPLA de propósito: aceita o token de sessão do SISGEP e também a
+   conta Google do dono do projeto, porque estas funções são rodadas do editor,
+   onde não há token. Sem a segunda metade, a correção quebraria o único jeito
+   de instalá-las.
+   ───────────────────────────────────────────────────────────────────────── */
+
+function instalarTriggerConfirmacoes(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, "documentos", "Instalação do gatilho de confirmações de recebimento", true);
   ScriptApp.getProjectTriggers().forEach(function(trigger) {
     if (trigger.getHandlerFunction() === "verificarConfirmacoesRecebimento") {
       ScriptApp.deleteTrigger(trigger);
@@ -22,7 +55,8 @@ function instalarTriggerConfirmacoes() {
   return { ok: true, mensagem: "Trigger de confirmações instalado com sucesso." };
 }
 
-function removerTriggerConfirmacoes() {
+function removerTriggerConfirmacoes(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, "documentos", "Remoção do gatilho de confirmações de recebimento", true);
   ScriptApp.getProjectTriggers().forEach(function(trigger) {
     if (trigger.getHandlerFunction() === "verificarConfirmacoesRecebimento") {
       ScriptApp.deleteTrigger(trigger);
@@ -241,7 +275,8 @@ function verificarConfirmacoesRecebimento() {
 }
 /* ── Falhas de Entrega (Bounces) ── */
 
-function instalarTriggerFalhasEntrega() {
+function instalarTriggerFalhasEntrega(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, "documentos", "Instalação do gatilho de falhas de entrega", true);
   ScriptApp.getProjectTriggers().forEach(function(trigger) {
     if (trigger.getHandlerFunction() === "verificarFalhasEntregaOficios") {
       ScriptApp.deleteTrigger(trigger);
@@ -252,7 +287,8 @@ function instalarTriggerFalhasEntrega() {
   return { ok: true, mensagem: "Trigger instalado com sucesso." };
 }
 
-function removerTriggerFalhasEntrega() {
+function removerTriggerFalhasEntrega(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, "documentos", "Remoção do gatilho de falhas de entrega", true);
   ScriptApp.getProjectTriggers().forEach(function(trigger) {
     if (trigger.getHandlerFunction() === "verificarFalhasEntregaOficios") {
       ScriptApp.deleteTrigger(trigger);

@@ -141,8 +141,38 @@ certas, o que faltava era o teste que impede alguém de afrouxá-las:
 Força bruta na rota pública foi **descartada por medição**: o código é MD5
 truncado em 12 hex (48 bits), inviável de enumerar por HTTP.
 
-**Ficam sem teste 44 funções** — dashboards, relatórios, os seis instaladores
-de gatilho e os diagnósticos. Risco menor, mas a frente A não terminou.
+**SEGUNDA RODADA DA FRENTE A — e aqui apareceu defeito.** Cruzando as 59
+públicas com as que ESCREVEM estado: treze escreviam sem porta de permissão. A
+maioria com razão (gatilho roda sem usuário). **Cinco não tinham desculpa:**
+
+`instalarTriggerConfirmacoes`, `removerTriggerConfirmacoes`,
+`instalarTriggerFalhasEntrega`, `removerTriggerFalhasEntrega` e
+`instalarTriggerConfirmacoesOficios` criavam e **apagavam gatilho sem pedir
+nada** — sem sequer receber um token.
+
+No Apps Script toda função global é endpoint para qualquer página do projeto,
+inclusive as anônimas do `Code.gs`. Um visitante chamava
+`removerTriggerConfirmacoes()` e desligava, **em silêncio**, a verificação de
+confirmação de recebimento e a de falha de entrega. Desligar não dá erro: as
+confirmações só param de ser registradas.
+
+**E isso piorou com a correção da própria noite:** o `FALHA_ENTREGA` passou a
+aparecer na Home (t118), e quem marca esse status é o
+`verificarFalhasEntregaOficios`. Sem o gatilho, o indicador novo fica em zero
+afirmando que está tudo bem.
+
+**Não foi padrão novo:** o `instalarTriggerFilaEnvioOficios`
+(`FilaOficios.gs:802`), no mesmo módulo, já usava `exigirAdminOuSessao_` com o
+mesmo rótulo e o mesmo `true`. Copiou-se o vizinho. A porta é dupla porque
+essas funções são rodadas do editor, onde não há token — o `t121` cobra os dois
+lados, e também que nenhum `.html` as chamava (o parâmetro novo não quebra
+tela).
+
+**Superfície exposta caiu de 224 para 216**, e o teto do `t6` foi apertado para
+216 — senão uma regressão até 224 passaria batida.
+
+**Ficam sem teste 39 funções** — dashboards, relatórios e diagnósticos. Risco
+menor, mas a frente A não terminou.
 
 **B · o sintoma da produção, sem o dado.** O defeito de visibilidade foi
 corrigido e o relatório existe, mas ninguém rodou `oficiosQueNaoChegaram` na

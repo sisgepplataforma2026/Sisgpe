@@ -172,7 +172,9 @@ function verificarTriggersOficios_(relatorio) {
     addDiagOficios_(relatorio, "Triggers", "Projeto", "ERRO", e.message);
   }
 }
-function instalarTriggerConfirmacoesOficios() {
+function instalarTriggerConfirmacoesOficios(tokenSessao) {
+  /* Mesma porta dos quatro do MonitoramentoOficios.gs — ver a nota de lá. */
+  exigirAdminOuSessao_(tokenSessao, "documentos", "Instalação do gatilho de confirmações (diagnóstico)", true);
   var nomeFuncao = "verificarConfirmacoesRecebimento";
 
   var triggers = ScriptApp.getProjectTriggers();
