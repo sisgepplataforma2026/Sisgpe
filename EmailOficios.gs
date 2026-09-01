@@ -209,9 +209,98 @@ function extrairIdDriveOficio_(link) {
   return "";
 }
 
+
+/** Normaliza o nome da escola do MESMO jeito que a emissao batiza o arquivo. */
+function tokenEscolaArquivo_(escola) {
+  return String(escola || "ESCOLA")
+    .toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Z0-9\s]/g, "").trim().replace(/\s+/g, "_").slice(0, 45) || "ESCOLA";
+}
+
+/**
+ * Procura no Drive as fichas/cartas daquele oficio, para o reenvio de
+ * registros que nao tem mais ANEXOS_JSON na fila.
+ *
+ * Procura em TODAS as subpastas de ano da pasta do tipo, e nao so na do ano
+ * corrente: oficio de 2025 reenviado em 2026 tem o arquivo na pasta de 2025.
+ *
+ * PRECISAO: casa pelo token da escola. Quando a data do envio e conhecida,
+ * exige tambem a data no nome — e assim pega exatamente o lote daquele dia.
+ * Sem data, aceita o casamento por escola e devolve o que achar; o chamador
+ * registra quantos vieram.
+ */
+function recuperarAnexosDaPastaDrive_(tipo, escola, dataEnvio, jaAnexados) {
+  var achados = [];
+  var token = tokenEscolaArquivo_(escola);
+  if (!token || token === "ESCOLA") return achados;
+
+  var nomesJa = (jaAnexados || []).map(function (b) { return String(b.getName() || ""); });
+
+  var dataToken = "";
+  if (dataEnvio instanceof Date && !isNaN(dataEnvio.getTime())) {
+    dataToken = Utilities.formatDate(dataEnvio, Session.getScriptTimeZone(), "dd-MM-yyyy");
+  }
+
+  var raizId = getPastaOficiosDestinoId_(String(tipo || "").toUpperCase());
+  if (!raizId) return achados;
+
+  var pastas = [];
+  try {
+    var raiz = DriveApp.getFolderById(raizId);
+    pastas.push(raiz);
+    var subs = raiz.getFolders();
+    while (subs.hasNext()) pastas.push(subs.next());
+  } catch (ePasta) {
+    Logger.log("recuperarAnexosDaPastaDrive_: pasta inacessivel — " + ePasta.message);
+    return achados;
+  }
+
+  var comData = [], semData = [];
+  pastas.forEach(function (pasta) {
+    var arquivos = pasta.getFiles();
+    while (arquivos.hasNext()) {
+      var arq = arquivos.next();
+      var nome = String(arq.getName() || "");
+      if (!/^Fichas?_/i.test(nome)) continue;          /* so ficha/carta */
+      if (nome.indexOf(token) === -1) continue;         /* a trava da escola */
+      if (nomesJa.indexOf(nome) > -1) continue;         /* ja vai no pacote */
+      (dataToken && nome.indexOf(dataToken) > -1 ? comData : semData).push(arq);
+    }
+  });
+
+  /* Do lote do dia, quando se sabe o dia. Senao, o que houver da escola. */
+  var escolhidos = comData.length ? comData : semData;
+  escolhidos.forEach(function (arq) {
+    achados.push(arq.getBlob().setName(arq.getName()));
+  });
+  return achados;
+}
+
+
+/**
+ * Reconstroi o pacote de anexos ORIGINAL do oficio, a partir do ANEXOS_JSON
+ * da fila de envio.
+ *
+ * PASSOU A DIZER SE CONSEGUIU — 01/09/2026.
+ *
+ * Antes devolvia so a lista, e quem chamava nao tinha como saber a diferenca
+ * entre "reconstrui o pacote inteiro" e "so achei o PDF do oficio". A lista
+ * nunca vinha vazia, porque o PDF e acrescentado antes da busca — o que
+ * tornava morto o `if (!anexos.length)` do reenvio e escondia o caso ruim.
+ *
+ * A diferenca importa porque o corpo do e-mail de alguns tipos AFIRMA um
+ * anexo: "acompanhado da carta de oposicao", "acompanhado da carta de
+ * desfiliacao". Reenviar sem a carta manda um documento que promete um papel
+ * que nao vai junto — e num questionamento e o sindicato que fica sem a prova.
+ * E o mesmo defeito que o t55 fechou na emissao, reaparecendo no reenvio.
+ *
+ * @returns {{blobs: Array, reconstruido: boolean, achadosNaFila: number}}
+ */
 function obterAnexosOriginaisFilaOficio_(numero, idOficio) {
   var itens = [];
   var ids = {};
+  var achadosNaFila = 0;
+  var reconstruido = false;
 
   function adicionarArquivo_(fileId, nome) {
     fileId = String(fileId || "").trim();
@@ -240,8 +329,9 @@ function obterAnexosOriginaisFilaOficio_(numero, idOficio) {
       if (!json) break;
       var anexos = JSON.parse(json);
       if (Array.isArray(anexos)) {
+        reconstruido = true;
         anexos.forEach(function(anexo) {
-          if (anexo && anexo.fileId) adicionarArquivo_(anexo.fileId, anexo.nome || "");
+          if (anexo && anexo.fileId) { adicionarArquivo_(anexo.fileId, anexo.nome || ""); achadosNaFila++; }
         });
       }
       break;
@@ -250,7 +340,7 @@ function obterAnexosOriginaisFilaOficio_(numero, idOficio) {
     Logger.log("⚠ Reenvio: falha ao reconstruir ANEXOS_JSON: " + e.message);
   }
 
-  return itens;
+  return { blobs: itens, reconstruido: reconstruido, achadosNaFila: achadosNaFila };
 }
 
 function reenviarOficio(registro, tokenSessao) {
@@ -274,17 +364,24 @@ function reenviarOficio(registro, tokenSessao) {
     var colEmail       = h["E-mail (principal)"];
     var colEmailsTodos = h["E-mails (todos)"];
     var colLinkFicha   = h["Link Ficha"];
+    /* A data do envio entra no NOME do arquivo da carta na emissao, entao e
+       ela que permite resgatar exatamente o lote daquele dia. */
+    var colDataEnvio   = h["Data envio ofício"] || h["Data envio oficio"];
     if (!colNumero || (!colEmail && !colEmailsTodos)) {
       return { erro: true, mensagem: "Colunas necessárias não encontradas." };
     }
 
     var dados = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
-    var emailDestino = "", linkFicha = "";
+    var emailDestino = "", linkFicha = "", dataEnvioOficio = null;
     for (var i = 0; i < dados.length; i++) {
       if (String(dados[i][colNumero - 1] || "").trim() !== numero) continue;
       emailDestino = colEmailsTodos ? String(dados[i][colEmailsTodos - 1] || "").trim() : "";
       if (!emailDestino && colEmail) emailDestino = String(dados[i][colEmail - 1] || "").trim();
       if (colLinkFicha) linkFicha = String(dados[i][colLinkFicha - 1] || "").trim();
+      if (colDataEnvio) {
+        var brutoData = dados[i][colDataEnvio - 1];
+        if (brutoData instanceof Date && !isNaN(brutoData.getTime())) dataEnvioOficio = brutoData;
+      }
       break;
     }
 
@@ -300,10 +397,43 @@ function reenviarOficio(registro, tokenSessao) {
     // Primeiro tenta reconstruir exatamente o pacote original da fila:
     // PDF do ofício + TODAS as fichas/anexos. Para registros antigos, mantém
     // Link Ficha como fallback, sem duplicar arquivo já encontrado.
-    var anexos = obterAnexosOriginaisFilaOficio_(numero, idOficio);
+    var pacote = obterAnexosOriginaisFilaOficio_(numero, idOficio);
+    var anexos = pacote.blobs;
     if (!anexos.length) {
       var arqOficio = DriveApp.getFileById(idOficio);
       anexos.push(arqOficio.getBlob().setName(arqOficio.getName()));
+    }
+
+    /* RESGATE DA CARTA NO DRIVE — pedido do usuario em 01/09/2026:
+       "quando reenvio nao esta anexando os dois arquivos (oficio gerado e a
+       carta)", com escolas reclamando de nao receber.
+
+       POR QUE FALTAVA: a carta so vive no ANEXOS_JSON da linha da fila.
+       Oficio antigo, emitido antes da fila existir — ou com a linha ja
+       limpa — reenviava so o PDF. E o corpo do e-mail de oposicao e de
+       desfiliacao AFIRMA a carta em anexo: a escola recebia uma ordem para
+       nao descontar sem a prova de que alguem se opos.
+
+       POR QUE DA PARA RESGATAR: o arquivo continua no Drive. A emissao o
+       salva na subpasta do ano com nome deterministico —
+       "Fichas_<TIPO>_<ESCOLA>_<DATA>.pdf" ou "Ficha_<TIPO>_<NOME>_<ESCOLA>_
+       <DATA>.ext" (Oficios.gs:795-812). Escola e data estao no proprio nome.
+
+       A TRAVA CONTRA MANDAR A CARTA DA ESCOLA ERRADA: so entra arquivo cujo
+       nome contenha o token da escola normalizado EXATAMENTE como a emissao
+       normaliza. Anexar carta de outra escola seria pior que nao anexar
+       nenhuma. */
+    if (!pacote.reconstruido) {
+      try {
+        var resgatados = recuperarAnexosDaPastaDrive_(tipo, escola, dataEnvioOficio, anexos);
+        resgatados.forEach(function (blobResgatado) { anexos.push(blobResgatado); });
+        if (resgatados.length) {
+          Logger.log("Reenvio " + numero + ": " + resgatados.length +
+                     " anexo(s) resgatado(s) do Drive (fila sem ANEXOS_JSON).");
+        }
+      } catch (eResgate) {
+        Logger.log("Reenvio " + numero + ": resgate no Drive falhou — " + eResgate.message);
+      }
     }
 
     if (linkFicha) {
@@ -343,7 +473,12 @@ function reenviarOficio(registro, tokenSessao) {
 
     return {
       erro: false,
-      mensagem: "Ofício " + numero + " reenviado com sucesso para " + opcoes.to + ". Anexos: " + anexos.length + "."
+      /* Diz QUANTOS e DE ONDE. "Anexos: 1" num tipo que promete carta e o
+         sinal de que algo faltou — antes essa informacao nao existia. */
+      mensagem: "Ofício " + numero + " reenviado para " + opcoes.to +
+        ". Anexos: " + anexos.length +
+        (pacote.reconstruido ? " (pacote original da fila)."
+                             : " (fila sem lista de anexos; recuperados do Drive).")
     };
 
   } catch(e) {
