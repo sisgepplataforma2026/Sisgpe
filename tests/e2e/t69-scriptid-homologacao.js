@@ -133,19 +133,33 @@ if (registros.length) {
 passo("deploymentId do ferramental de deploy");
 const FORMA_DEP = /AKfycb[A-Za-z0-9_-]{60,90}/g;
 const refDep = (wf.match(FORMA_DEP) || [])[0] || "";
+const WF_PRODUCAO = ".github/workflows/deploy-producao.yml";
+const DEP_PRODUCAO =
+  "AKfycbzgPBSSF3D2OimoEJ-qMfDNp_Dsmc95THSNdUvFgqoX7NXWcmn7ZDMzF9L-OyUbEMw_ew";
 const depDivergentes = [];
+let totalDepProducao = 0;
 
 arquivos.forEach(function (p) {
   const rel = path.relative(RAIZ, p);
   if (!/^(\.github\/workflows|scripts)\//.test(rel)) return;
   const achados = fs.readFileSync(p, "utf8").match(FORMA_DEP);
   if (!achados) return;
-  achados.forEach(function (d) { if (d !== refDep) depDivergentes.push(rel + ": " + d); });
+  achados.forEach(function (d) {
+    if (rel === WF_PRODUCAO) {
+      totalDepProducao++;
+      if (d !== DEP_PRODUCAO) depDivergentes.push(rel + ": " + d);
+      return;
+    }
+    if (d !== refDep) depDivergentes.push(rel + ": " + d);
+  });
 });
 
 ok(refDep.length > 50, "o workflow tem um deploymentId de referência",
    refDep ? refDep.slice(0, 24) + "…" : "(não achado)");
+ok(totalDepProducao === 1,
+   "o workflow de Produção traz exatamente o deploymentId aprovado",
+   totalDepProducao + " ocorrência(s)");
 igual(depDivergentes, [],
-      "nenhum arquivo de deploy traz um deploymentId diferente da referência");
+      "cada workflow usa somente o deploymentId aprovado para seu ambiente");
 
 resumo();
