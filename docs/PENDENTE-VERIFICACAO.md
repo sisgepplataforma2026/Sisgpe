@@ -49,12 +49,13 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 ## 📌 O QUE ESTÁ ABERTO — índice
 
-> Gerado em 31/08/2026. São **37 itens**. A lista completa, com o detalhe de
+> Gerado em 31/08/2026. São **38 itens**. A lista completa, com o detalhe de
 > cada um, está na seção ABERTO logo abaixo — este índice existe só para não
 > ser preciso ler 2.000 linhas para saber o que cobrar.
 
 | Nº | Item |
 |---|---|
+| 46 | Produção — a faxina das sessões RODOU; falta o gatilho disparar |
 | 45 | Firebase — homologação e produção compartilham o MESMO Firestore |
 | 44 | Firebase — a chave privada está malformada nos DOIS ambientes |
 | 43 | Sessões — o gatilho diário de limpeza (instalado em 31/08, 20:47) |
@@ -98,6 +99,51 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
+
+### 46. Produção — a faxina das sessões RODOU; falta o gatilho disparar
+
+**Executado pelo usuário em 01/09/2026**, no editor do Apps Script da
+PRODUÇÃO, com o `LimpezaPropriedades.gs` colado como arquivo novo. Isto sai da
+conta de "não testado":
+
+| | antes | depois |
+|---|---|---|
+| Propriedades | 689 | **97** |
+| Espaço | 185,2 KB (37%) | **16,7 KB (3,3%)** |
+| Sessões | 593 | **1** |
+| Configuração | 96 (16,4 KB) | **96 — intactas** |
+
+592 apagadas em três lotes (200 + 200 + 192), 21:41 às 21:45. A sessão viva
+atravessou as três execuções e continuou contada como viva no censo final —
+que é a prova direta de que a limpeza não encostou em quem estava usando.
+
+**Ritmo real medido:** 200 exclusões em 22 segundos, ou 0,11 s cada. Três vezes
+mais rápido que os 0,3 s estimados a partir da homologação; as 592 caberiam
+numa execução só. O lote de 200 foi conservador, sem prejuízo.
+
+**RETIRADA UMA PREOCUPAÇÃO MINHA.** Eu levantei o `TOKEN_GUIA_` como provável
+segunda vazão. O censo por família mostrou **nenhum** na produção — as 96
+"outras" são só configuração. O defeito de código continua real
+(`GuiasPagamento.gs:2191` devolve `null` no token vencido e não apaga), mas não
+acumulou nada. Fica como observação, não como item.
+
+**O QUE FALTA:**
+
+1. **O gatilho `lpLimpezaDiaria` disparar às 3h.** Só se vê no dia seguinte, em
+   Acionadores → Execuções. Sem ele, volta a acumular a ~11 sessões/dia.
+
+2. **Um login novo na produção**, para provar o caminho de ESCRITA — gravar
+   sessão nas propriedades era exatamente o que o teto ameaçava. Se entrar, o
+   censo seguinte mostra 2 vivas.
+
+3. **Uma conta que não fecha, e não bloqueia nada.** A sessão viva foi criada
+   em **31/08 13:59** e continuava viva em **01/09 21:46** — mais de 31 horas,
+   contra as 6 h de `SESSAO_CONFIG.DURACAO_SEGUNDOS` no repositório
+   (`Sessao.gs:15`). Ou a produção tem duração bem maior (repositório e
+   produção divergem, é fato registrado no CLAUDE.md), ou algo grava sessão com
+   validade longa. Sessão longa demais é questão de segurança, não só de
+   contagem. Conferir o `SESSAO_CONFIG` do projeto de produção.
+
 
 ### 45. Firebase — homologação e produção compartilham o MESMO Firestore
 
