@@ -49,12 +49,13 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 ## 📌 O QUE ESTÁ ABERTO — índice
 
-> Gerado em 31/08/2026. São **36 itens**. A lista completa, com o detalhe de
+> Gerado em 31/08/2026. São **37 itens**. A lista completa, com o detalhe de
 > cada um, está na seção ABERTO logo abaixo — este índice existe só para não
 > ser preciso ler 2.000 linhas para saber o que cobrar.
 
 | Nº | Item |
 |---|---|
+| 45 | Firebase — homologação e produção compartilham o MESMO Firestore |
 | 44 | Firebase — a chave privada está malformada nos DOIS ambientes |
 | 43 | Sessões — o gatilho diário de limpeza (instalado em 31/08, 20:47) |
 | 42 | Tela genérica da Lixeira  ·  *(era 29 — o número estava repetido três vezes)* |
@@ -97,6 +98,45 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
+
+### 45. Firebase — homologação e produção compartilham o MESMO Firestore
+
+**Confirmado em 01/09/2026, 21:10**, lendo as propriedades dos dois projetos
+Apps Script. São idênticas:
+
+| | homologação | produção |
+|---|---|---|
+| `FIREBASE_PROJETO` | `sisgep-plataforma` | `sisgep-plataforma` |
+| `FIREBASE_CLIENT_EMAIL` | `firebase-adminsdk-fbsvc@…` | o mesmo |
+
+E o caminho dos documentos é `/databases/(default)/documents/`
+(`FirebaseCore.gs:183`), sem prefixo de ambiente — as coleções vão pelo nome
+puro (`firebaseCriar_`, `firebaseConsultar_`). **Não há separação nenhuma.**
+
+O isolamento validado em 21/08/2026 (ver a seção VERIFICADO) cobriu a planilha
+e as pastas do Drive. O Firebase ficou de fora e ninguém tinha olhado.
+
+**O QUE SEGURA O DANO HOJE É O ITEM 44.** A chave está malformada nos dois
+ambientes, então nada escreve em lugar nenhum. Um defeito está contendo o
+outro. No momento em que a chave da HOMOLOGAÇÃO for corrigida, ela passa a
+gravar no Firestore de PRODUÇÃO — e o `EventosFirestore.gs` registra um acesso
+real marcado para 19 de dezembro.
+
+**Por isso a ordem do conserto do item 44 é: produção primeiro, homologação
+só depois desta decisão.** Consertar a produção não faz nada escrever onde não
+devia; consertar a homologação, sim.
+
+**DECISÃO PENDENTE DO USUÁRIO** — não é achado técnico a resolver sozinho:
+
+1. Criar um projeto Firebase separado para homologação (isolamento de
+   verdade; envolve custo e nova conta de serviço), ou
+2. Aceitar a base compartilhada e testar Eventos sabendo disso, ou
+3. Prefixar as coleções por ambiente (`hml_…`), que é o meio-termo barato e
+   mexe em `FirebaseCore.gs`.
+
+Nenhuma foi desenhada ainda — pela REGRA Nº 0.5, o desenho vem antes do
+código, e o usuário ainda não escolheu o caminho.
+
 
 ### 44. Firebase — a chave privada está malformada NOS DOIS AMBIENTES
 
