@@ -49,12 +49,13 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 ## 📌 O QUE ESTÁ ABERTO — índice
 
-> Gerado em 31/08/2026. São **37 itens**  (o 21 fechou em 01/09). A lista completa, com o detalhe de
+> Gerado em 31/08/2026. São **38 itens**  (o 21 fechou em 01/09). A lista completa, com o detalhe de
 > cada um, está na seção ABERTO logo abaixo — este índice existe só para não
 > ser preciso ler 2.000 linhas para saber o que cobrar.
 
 | Nº | Item |
 |---|---|
+| 47 | Módulo 03 (Ofícios) — NÃO auditado; um fio puxado, o resto aberto |
 | 46 | Produção — a faxina das sessões RODOU; falta o gatilho disparar |
 | 45 | Firebase — homologação e produção compartilham o MESMO Firestore |
 | 44 | Firebase — a chave privada está malformada nos DOIS ambientes |
@@ -98,6 +99,58 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
+
+### 47. Módulo 03 (Ofícios) — NÃO auditado; um fio puxado, o resto aberto
+
+**Estado em 01/09/2026, dito sem eufemismo pela REGRA Nº -1:** o módulo foi
+MAPEADO e teve UM defeito corrigido. Não foi auditado.
+
+**O QUE FICOU PRONTO**
+
+| | |
+|---|---|
+| Mapa | 22 arquivos (~460 KB), 51 funções públicas, 4 telas |
+| Cobertura pré-existente | 23 arquivos de teste, **609 asserções**, todos verdes |
+| Achado 1 | o ofício em ERRO_PERMANENTE sumia da Home — corrigido (`t118`, commit `dd52022`, Versão 83) |
+| Ferramenta | `oficiosQueNaoChegaram` (`t119`, commit `1c9b34d`, Versão 84) |
+
+Este módulo é o oposto dos 01 e 02: lá a cobertura era rala e por isso os
+defeitos apareceram rápido. Aqui é o mais testado do sistema — o que faz
+sentido, é o único em uso diário. Procurar defeito onde 609 asserções já olham
+é o caminho de menor retorno.
+
+**O QUE FALTA — três frentes, nenhuma começada**
+
+**A · o que os 609 testes NÃO cobrem.** Cruzar as 51 funções públicas com o que
+é de fato exercitado e testar as vazias. É onde estaria um defeito ainda
+escondido. Não iniciado.
+
+**B · o sintoma da produção, sem o dado.** O defeito de visibilidade foi
+corrigido e o relatório existe, mas ninguém rodou `oficiosQueNaoChegaram` na
+produção. **Enquanto isso não acontecer, não se sabe quantos ofícios estão
+parados hoje** — e é para isso que a ferramenta foi feita. Falta também a
+decisão sobre AVISO ATIVO: hoje ninguém é notificado quando um ofício morre na
+fila (`FilaOficios.gs` só chama `MailApp` para consultar cota). Tornar visível
+não é tornar avisado.
+
+**C · seis das dez áreas do módulo não existem.** O PROMPT-MESTRE (módulo 5,
+Documentos) lista Dashboard, Ofícios, Recibos, **Certidões**, **Modelos**,
+**Assinaturas e Aprovações**, **Protocolo**, Histórico, Relatórios e
+**Configurações**. Existem quatro. Não é defeito — é escopo não construído — mas
+é decisão do usuário se vira trabalho.
+
+**TRÊS COISAS VISTAS NA TELA DE ACIONADORES DA PRODUÇÃO E NÃO INVESTIGADAS**
+
+| Gatilho | Taxa | Por que importa |
+|---|---|---|
+| `memoriaEvolutivaGmail` | **4,17%** | a maior taxa de erro da produção |
+| `processarFilaEnvioOficios` | **0,26%** | é a rotina que manda o ofício; originou o achado 1 |
+| `cob_rotinaDiariaTrigger_` | — | preso à **Versão 687**, enquanto os outros rodam o código atual. Se não for proposital, é bug consertado três vezes sem entender por que volta |
+
+**A CONFERÊNCIA QUE FECHA O ACHADO 1:** abrir a Home da homologação (Versão 83+)
+e ver o card, agora rotulado **"Ofícios não enviados"**. Se o número subir em
+relação ao que se via antes, a diferença são ofícios que estavam invisíveis.
+
 
 ### 46. Produção — a faxina das sessões RODOU; falta o gatilho disparar
 
