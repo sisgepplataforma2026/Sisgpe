@@ -49,12 +49,13 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 ## 📌 O QUE ESTÁ ABERTO — índice
 
-> Gerado em 31/08/2026. São **38 itens**  (o 21 fechou em 01/09). A lista completa, com o detalhe de
+> Gerado em 31/08/2026. São **39 itens**  (o 21 fechou em 01/09). A lista completa, com o detalhe de
 > cada um, está na seção ABERTO logo abaixo — este índice existe só para não
 > ser preciso ler 2.000 linhas para saber o que cobrar.
 
 | Nº | Item |
 |---|---|
+| 48 | Gmail — homologação lê a caixa de e-mail da PRODUÇÃO |
 | 47 | Módulo 03 (Ofícios) — NÃO auditado; um fio puxado, o resto aberto |
 | 46 | Produção — a faxina das sessões RODOU; falta o gatilho disparar |
 | 45 | Firebase — homologação e produção compartilham o MESMO Firestore |
@@ -99,6 +100,59 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
+
+### 48. Gmail — homologação lê a caixa de e-mail da PRODUÇÃO
+
+**Descoberto em 01/09/2026, 09:57**, ao instalar e rodar o gatilho de falhas de
+entrega na HOMOLOGAÇÃO. A execução encontrou três bounces:
+
+```
+❌ Bounce — Ofício 144/2026 · thalia.ferreira@faesa.br
+❌ Bounce — Ofício 236/2026 · thalia.ferreira@faesa.br
+❌ Bounce — Ofício 242/2026 · thalia.ferreira@faesa.br
+```
+
+**São bounces REAIS.** `verificarFalhasEntregaOficios` procura por
+`GmailApp.search(...)` (`MonitoramentoOficios.gs:351`) e a busca **não tem
+filtro de ambiente nenhum** — ela lê a caixa da conta que executa o script, que
+é a MESMA nos dois projetos. O mesmo vale para
+`verificarConfirmacoesRecebimento` (`MonitoramentoOficios.gs:207`), que roda em
+produção a cada 2 horas.
+
+O isolamento validado em 21/08 cobriu planilha e pastas do Drive. O Firebase
+ficou de fora (item 45) e o **Gmail também**.
+
+**O QUE NÃO ACONTECEU — conferido, não suposto:** nenhuma das duas funções
+escreve no Gmail. Sem `markRead`, sem marcador, sem mover, sem apagar. A
+homologação LÊ a caixa da produção; não a estraga.
+
+**O QUE ACONTECEU, e é o que precisa de ação:** o status `FALHA_ENTREGA` foi
+gravado na planilha da HOMOLOGAÇÃO. **Na produção, os ofícios 144, 236 e 242
+seguem marcados como ENVIADO** — três documentos que não chegaram à FAESA e
+que o sistema de lá não sabe que falharam.
+
+**O PADRÃO IMPORTA MAIS QUE OS TRÊS:** os três foram para o MESMO endereço,
+`thalia.ferreira@faesa.br`. Não é falha aleatória — é uma caixa que não aceita
+mais e-mail, provavelmente porque a pessoa saiu da instituição. Reenviar sem
+corrigir o cadastro bate na mesma porta.
+
+**O QUE FALTA**
+
+1. **Na produção:** conferir se o gatilho `verificarFalhasEntregaOficios`
+   existe em Acionadores; se não, rodar `instalarTriggerFalhasEntrega` (lá a
+   função ainda não tem porta, então roda direto). Depois rodar
+   `verificarFalhasEntregaOficios` à mão uma vez, para não esperar 3 h — a
+   produção pode ter MAIS bounces que a homologação, porque cada ambiente
+   cruza a mesma caixa com a SUA planilha.
+
+2. **Corrigir o e-mail da FAESA** no cadastro de escolas, e só então reenviar
+   pela tela (`enviarOficioDaFilaAgora`, `OficiosScripts.html:1968` — exige
+   token de sessão, não roda pelo editor).
+
+3. **Decidir sobre a fronteira**, junto do item 45: hoje a homologação lê
+   e-mail real. Não corrompe nada, mas significa que testar monitoramento na
+   homologação consulta a correspondência do sindicato.
+
 
 ### 47. Módulo 03 (Ofícios) — NÃO auditado; um fio puxado, o resto aberto
 
