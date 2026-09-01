@@ -78,10 +78,10 @@ jobs:
       - name: Rodar a suite completa
         run: npm test
 
-      - name: Configurar credencial e travar o projeto de Producao
+      - name: Configurar credencial da Secretaria e travar o projeto de Producao
         shell: bash
         env:
-          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON_PRODUCAO_SECRETARIA }}
         run: |
           set -euo pipefail
           test -n "$CLASPRC_JSON"
@@ -130,6 +130,33 @@ jobs:
           console.log("credencial renovada");
           JS
           rm -f /tmp/token-body /tmp/token-novo.json
+
+      - name: Validar identidade da conta de Producao
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACCESS_TOKEN=$(node <<'JS'
+          const fs = require("fs");
+          const rc = JSON.parse(fs.readFileSync(process.env.HOME + "/.clasprc.json", "utf8"));
+          const k = rc.tokens ? (rc.tokens.default ? "default" : Object.keys(rc.tokens)[0]) : null;
+          const t = k ? rc.tokens[k] : (rc.token || {});
+          process.stdout.write(String(t.access_token || ""));
+          JS
+          )
+          test -n "$ACCESS_TOKEN"
+          curl -sS -o /tmp/tokeninfo.json \
+            "https://oauth2.googleapis.com/tokeninfo?access_token=$ACCESS_TOKEN"
+          EMAIL=$(node -e '
+            const fs = require("fs");
+            const x = JSON.parse(fs.readFileSync("/tmp/tokeninfo.json", "utf8"));
+            process.stdout.write(String(x.email || "").trim().toLowerCase());
+          ')
+          if [ "$EMAIL" != "secretaria@sindeducacao.com" ]; then
+            echo "::error::Credencial de Producao invalida: autenticada como ${EMAIL:-desconhecida}; esperado secretaria@sindeducacao.com."
+            exit 1
+          fi
+          echo "credencial de Producao confirmada: $EMAIL"
+          rm -f /tmp/tokeninfo.json
 
       - name: Confirmar a implantacao atual e registrar rollback
         id: antes
