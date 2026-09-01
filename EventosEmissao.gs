@@ -13,35 +13,185 @@ var EMISSAO_CFG = {
   VALOR_ACOMPANHANTE: 500,
   PERIODO_INICIO: new Date(2026, 8, 21, 0, 0, 0),    // 21/09/2026
   PERIODO_FIM:    new Date(2026, 10, 11, 23, 59, 59), // 11/11/2026
+  /* A data da festa entra aqui em 25/08/2026 porque o painel executivo conta
+     os dias que faltam, e essa contagem não pode depender da tela de
+     Informações estar preenchida — se ela estiver vazia, o relógio some. */
+  DATA_EVENTO:    new Date(2026, 11, 19, 0, 0, 0),   // 19/12/2026
   FORMAS_PAGAMENTO: ['Cartão', 'PicPay', 'Depósito'],
-  ABA_ASSOCIADOS: 'Associados',
-  PLANILHA_ID: '1QPpsx19v4YzfskoYXK9WB89TClA7q8SWGSn55VZ040E'
+  ABA_ASSOCIADOS: 'Associados'
+  /* PLANILHA_ID saiu daqui em 21/08/2026. Estava fixo no ID de PRODUÇÃO, o
+     que fazia a busca de associado de HOMOLOGAÇÃO ler a base real de 8.000
+     pessoas. É a mesma classe de falha que o AmbienteRecursos.gs fechou para
+     as pastas do Drive. Agora resolve por getPlanilhaId(), dentro da função —
+     nunca aqui: este objeto é avaliado no carregamento do projeto, e chamar
+     função de outro arquivo nesse momento depende da ordem de avaliação. */
 };
 
-// Modo teste: ignora o período (pra ensaiar antes de 21/09). Guardado no cofre.
+/**
+ * Modo teste: ignora o período de inscrição (para ensaiar antes de 21/09).
+ *
+ * DUAS CORREÇÕES NO MESMO DIA (21/08/2026), e a segunda desfaz um erro meu.
+ *
+ * 1. O padrão era `!== 'false'`: a AUSÊNCIA da propriedade LIGAVA o modo
+ *    teste. Um projeto recém-implantado nascia com o período 21/09–11/11
+ *    desligado e sem nada em tela dizendo isso. Pior: em modo teste o
+ *    `compasso_qrSecret_` GERA um segredo sozinho em vez de recusar, então a
+ *    chave que assina todos os QR do evento nascia de acidente de
+ *    configuração. Isso tinha de acabar, e acabou.
+ *
+ * 2. Mas eu troquei por `=== 'true'` puro, e isso empurrou para a pessoa um
+ *    passo manual: ir nas Propriedades do script declarar EVENTO_MODO_TESTE
+ *    antes de conseguir testar. É exatamente o que a REGRA Nº 0.6 proíbe —
+ *    o sistema JÁ SABE em que ambiente está, pela Script Property
+ *    SISGEP_AMBIENTE que o AmbienteRecursos.gs e o SistemaConfig.gs já leem.
+ *    Fazer a pessoa contar de novo é defeito de desenho, não configuração.
+ *
+ * A ordem abaixo preserva as duas coisas:
+ *
+ *   declarado 'true'  → teste          (força ensaio onde for preciso)
+ *   declarado 'false' → produção       (força o período mesmo em homologação)
+ *   NÃO declarado     → herda o ambiente:
+ *                         homologação → teste
+ *                         produção    → produção  ← continua falhando fechado
+ *
+ * Produção sem propriedade nenhuma continua exigindo o período e continua
+ * recusando QR sem segredo configurado. O que mudou é que homologação não
+ * precisa mais ser configurada à mão para ser homologação.
+ *
+ * A tela não fica em silêncio sobre isso: `emissao_status` devolve `modoTeste`
+ * e o EventoPainel.html pinta a tarja MODO TESTE. Sugerir com origem à vista,
+ * nunca impor em silêncio.
+ */
 function emissao_modoTeste_() {
-  return PropertiesService.getScriptProperties().getProperty('EVENTO_MODO_TESTE') !== 'false';
+  var props = PropertiesService.getScriptProperties();
+
+  var declarado = String(props.getProperty('EVENTO_MODO_TESTE') || '').trim().toLowerCase();
+  if (declarado === 'true')  return true;
+  if (declarado === 'false') return false;
+
+  /* Não declarado: herda de quem já sabe. Lido direto da propriedade, e não
+     por getAmbienteAtual(), porque aquela função guarda cache em
+     getAmbienteAtual._cache — trocar o ambiente no meio de uma execução de
+     diagnóstico devolveria o valor velho. Aqui a leitura é sempre fresca. */
+  return String(props.getProperty('SISGEP_AMBIENTE') || '').trim().toUpperCase() === 'HOMOLOGACAO';
 }
-function emissao_ativarProducao() {   // trava o período de verdade
+
+/**
+ * De onde veio o modo — para a tela e para o diagnóstico poderem explicar.
+ * Sem isto, "MODO TESTE" na tela é um fato sem causa, e quem vê não sabe se
+ * alguém declarou de propósito ou se o ambiente resolveu sozinho.
+ */
+function emissao_modoTesteOrigem_() {
+  var props = PropertiesService.getScriptProperties();
+  var declarado = String(props.getProperty('EVENTO_MODO_TESTE') || '').trim().toLowerCase();
+  if (declarado === 'true')  return 'EVENTO_MODO_TESTE=true (declarado)';
+  if (declarado === 'false') return 'EVENTO_MODO_TESTE=false (declarado)';
+  var amb = String(props.getProperty('SISGEP_AMBIENTE') || '').trim();
+  return amb
+    ? 'herdado de SISGEP_AMBIENTE=' + amb
+    : 'nenhuma propriedade declarada — vale produção';
+}
+function emissao_ativarProducao(tokenSessao) {   // trava o período de verdade
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — ativar produção', true);
   PropertiesService.getScriptProperties().setProperty('EVENTO_MODO_TESTE', 'false');
   Logger.log('🚦 PRODUÇÃO ativada — período 21/09–11/11 será exigido.');
 }
-function emissao_ativarTeste() {      // libera emissão fora do período (ensaios)
+function emissao_ativarTeste(tokenSessao) {      // libera emissão fora do período (ensaios)
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — ativar modo teste', true);
   PropertiesService.getScriptProperties().setProperty('EVENTO_MODO_TESTE', 'true');
   Logger.log('🧪 MODO TESTE ativado — período ignorado.');
+}
+
+/* ═══ O REGISTRO DO EVENTO MANDA; A CONSTANTE É O ÚLTIMO RECURSO ═══════════
+   26/08/2026.
+
+   A entidade Evento existe desde a V2 (`EventosDominioV2.gs`), com os sete
+   estados e persistência própria. O que ela não tinha era AUTORIDADE: a data
+   e a lotação continuavam saindo daqui, de constante, e por isso cadastrar um
+   evento era preencher tela que não mudava o comportamento de nada.
+
+   Medido antes de mexer, em `tests/e2e/t96-evento-manda.js`: gravando a festa
+   para 05/10 com 300 lugares, o sistema respondia 19/12 e 2.000.
+
+   O que estas duas funções fazem é inverter a ordem — registro primeiro,
+   constante depois. A constante FICA, e de propósito: é o que segura o
+   sistema de pé em produção, onde a camada V2 se recusa a operar (trava de
+   ambiente do `eventosV2Repo_exigirHomologacao_`), e no primeiro boot, antes
+   de existir qualquer registro gravado.
+
+   O cache é por execução (o Apps Script recria o escopo global a cada
+   chamada), e existe porque ler o registro abre a planilha: sem ele, uma
+   listagem de 300 inscrições abriria a planilha 300 vezes. */
+var COMPASSO_EVENTO_CACHE_ = undefined;
+
+function compasso_eventoRegistro_() {
+  if (COMPASSO_EVENTO_CACHE_ !== undefined) return COMPASSO_EVENTO_CACHE_;
+  COMPASSO_EVENTO_CACHE_ = null;
+  try {
+    var ev = eventosV2Repo_buscarPorId_(EMISSAO_CFG.EVENTO_ID);
+    if (ev && String(ev.eventoId || '').trim()) COMPASSO_EVENTO_CACHE_ = ev;
+  } catch (e) {
+    /* Produção, planilha indisponível ou aba ainda inexistente. Não é erro:
+       é o caminho em que a constante vale. */
+  }
+  return COMPASSO_EVENTO_CACHE_;
+}
+
+/** Lotação do evento. Registro > constante. Nunca devolve zero por engano. */
+function compasso_limiteVagas_() {
+  var ev = compasso_eventoRegistro_();
+  var n = ev ? Number(ev.capacidade || ev.limiteVagas || 0) : 0;
+  return (n > 0) ? n : Number(EMISSAO_CFG.LIMITE_VAGAS);
+}
+
+/** Data do evento. Registro > constante.
+ *
+ * O `new Date('2026-10-05')` do JavaScript lê a string como MEIA-NOITE EM UTC,
+ * e o sindicato está em UTC-3: a data volta como 4 de outubro, 21h. Um dia a
+ * menos no e-mail que o associado recebe e na contagem do painel. Por isso o
+ * formato civil é desmontado à mão antes de virar Date. */
+function compasso_dataEvento_() {
+  var ev = compasso_eventoRegistro_();
+  var bruto = ev ? ev.dataEvento : null;
+
+  if (bruto instanceof Date && !isNaN(bruto.getTime())) return bruto;
+
+  var texto = String(bruto || '').trim();
+  if (texto) {
+    var iso = texto.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+
+    var br = texto.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    if (br) return new Date(Number(br[3]), Number(br[2]) - 1, Number(br[1]));
+
+    var solto = new Date(texto);
+    if (!isNaN(solto.getTime())) return solto;
+  }
+
+  return EMISSAO_CFG.DATA_EVENTO;
 }
 
 // ================= CONTADOR (vagas + número) =================
 function emissao_lerContador_() {
   var c = fs_get_('contadores', EMISSAO_CFG.EVENTO_ID);
   if (!c) {
-    c = { limite: EMISSAO_CFG.LIMITE_VAGAS, vagasUsadas: 0, ultimoNumero: 0 };
+    c = { limite: compasso_limiteVagas_(), vagasUsadas: 0, ultimoNumero: 0 };
+    fs_set_('contadores', EMISSAO_CFG.EVENTO_ID, c);
+  }
+  /* O limite gravado é cache, não verdade: quem manda é o registro. Sem esta
+     linha, um contador criado quando a lotação era 2.000 continuaria aceitando
+     2.000 depois de o evento ser corrigido para 300 — e o erro só apareceria
+     na porta do salão. */
+  var vigente = compasso_limiteVagas_();
+  if (Number(c.limite || 0) !== vigente) {
+    c.limite = vigente;
     fs_set_('contadores', EMISSAO_CFG.EVENTO_ID, c);
   }
   return c;
 }
 
-function emissao_status() {
+function emissao_status(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — status da emissão', false);
   var c = emissao_lerContador_();
   var st = {
     limite: c.limite,
@@ -58,8 +208,68 @@ function emissao_formatarNumero_(n) {
   return EMISSAO_CFG.PREFIXO + String(n).padStart(6, '0');
 }
 
-// ================= EMISSÃO (núcleo atômico) =================
+// ================= EMISSÃO (núcleo atômico) — DESABILITADA =================
+/**
+ * 🚫 EMISSÃO V1 — DESLIGADA EM 21/08/2026, a pedido do usuário: "V1 era para
+ * ser desabilitado".
+ *
+ * POR QUE
+ *
+ * O QR desta emissão é DERIVÁVEL DO NÚMERO DO INGRESSO
+ * (`emissao_gerarQrCodeUrl_`): quem descobrir o padrão fabrica um ingresso
+ * válido sem passar por lugar nenhum. A V2 (`compasso_emitirIngressoV2`)
+ * assina o token com HMAC e guarda o hash em `qrTokens` — é o índice que
+ * prova que o ingresso foi realmente emitido.
+ *
+ * Manter as duas era manter uma porta de fechadura fraca ao lado da forte, e
+ * a festa tem 2.000 pessoas.
+ *
+ * POR QUE O ARQUIVO CONTINUA AQUI (REGRA Nº 1)
+ *
+ * Não é código morto e NÃO PODE ser removido. Este arquivo carrega:
+ *
+ *   - `EMISSAO_CFG` — evento, limite de 2.000 vagas, prefixo, período,
+ *     valor do acompanhante. O módulo INTEIRO lê daqui, V2 inclusive;
+ *   - `emissao_formatarNumero_` — usado pela emissão V2 (EventosEmissaoV2:30);
+ *   - `emissao_lerContador_`, `emissao_modoTeste_`, `emissao_buscarAssociado`
+ *     — usados pelo painel, pelo diagnóstico e pelo piloto.
+ *
+ * Apagar o arquivo derrubaria o módulo todo. O que foi desligado é ESTA
+ * função, e só ela.
+ *
+ * A RECUSA É EXPLÍCITA, NÃO SILENCIOSA
+ *
+ * Devolve o motivo e para onde ir. A tela antiga (`EventoPainel.html`)
+ * continua abrindo pela rota `?painel=emissao` — quem chegar lá por link
+ * salvo precisa entender o que aconteceu, em vez de ver "erro".
+ */
+var EMISSAO_V1_DESABILITADA_EM = '2026-08-21';
+
 function emissao_emitirIngresso(payload, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — emitir ingresso V1 (RECUSADO)', false);
+
+  /* Registra a tentativa: se alguém ainda depende deste caminho, é assim que
+     se descobre — por uso real, não por suposição. */
+  try {
+    if (typeof compasso_auditar_ === 'function') {
+      compasso_auditar_('EMISSAO_V1_RECUSADA', 'ingresso', '',
+        { nome: (payload && payload.nome) || '', categoria: (payload && payload.categoria) || '' });
+    }
+  } catch (e) {}
+  Logger.log('[COMPASSO] Emissão V1 recusada — desabilitada desde ' + EMISSAO_V1_DESABILITADA_EM);
+
+  return {
+    ok: false,
+    codigo: 'V1_DESABILITADA',
+    erro: 'A emissão avulsa (modelo antigo) foi desabilitada em ' +
+          EMISSAO_V1_DESABILITADA_EM + '. O QR dela não era assinado.\n\n' +
+          'Emita pelo Painel de inscrições: menu Eventos → aba Inscrições → ' +
+          '"Painel de inscrições". Lá o ingresso sai com QR assinado.'
+  };
+}
+
+/** O motor antigo, preservado para leitura e para eventual retomada. */
+function emissao_emitirIngresso_legadoV1_(payload, tokenSessao) {
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
@@ -227,7 +437,9 @@ function emissao_registrarReceitaAcompanhante_(ingresso, tokenSessao) {
 }
 
 // ================= CANCELAMENTO (libera a vaga, número não volta) =================
-function emissao_cancelarIngresso(id) {
+/* ADMIN: devolve vaga ao contador. */
+function emissao_cancelarIngresso(id, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — cancelar ingresso V1', true);
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
@@ -256,10 +468,12 @@ function emissao_cancelarIngresso(id) {
 }
 
 // ================= BUSCA DE ASSOCIADO (autocomplete p/ a Marcelha) =================
-function emissao_buscarAssociado(termo) {
+/* Lê a base de associados — nome, CPF, celular e e-mail de 8.000 pessoas. */
+function emissao_buscarAssociado(termo, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — buscar associado', false);
   termo = (termo || '').trim().toLowerCase();
   if (termo.length < 2) return [];
-  var ss = SpreadsheetApp.openById(EMISSAO_CFG.PLANILHA_ID);
+  var ss = SpreadsheetApp.openById(getPlanilhaId());
   var aba = ss.getSheetByName(EMISSAO_CFG.ABA_ASSOCIADOS);
   var dados = aba.getRange(2, 1, aba.getLastRow() - 1, 16).getValues();
   var out = [];
@@ -294,14 +508,20 @@ function emissao_fsDelete_(collection, docId) {
 }
 
 // Zera o contador e apaga docs de teste conhecidos. Use com cuidado (só na fase de ensaio).
-function emissao_limparTestes() {
+/* ADMIN + só homologação: esta função ZERA o contador de vagas do evento.
+   Rodá-la em produção com ingressos emitidos faria o próximo número repetir
+   um já entregue, e as 2.000 vagas voltariam ao início. */
+function emissao_limparTestes(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — limpar testes', true);
+  compasso_assertHomologacao_();
   ['ponte-teste'].forEach(function(id){ emissao_fsDelete_('ingressos', id); });
   fs_set_('contadores', EMISSAO_CFG.EVENTO_ID, { limite: EMISSAO_CFG.LIMITE_VAGAS, vagasUsadas: 0, ultimoNumero: 0 });
   Logger.log('🧹 Testes limpos e contador zerado.');
 }
 
 // ================= TESTES RÁPIDOS =================
-function testeEmissao_associado() {
+function testeEmissao_associado(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — teste de emissão (associado)', true);
   var r = emissao_emitirIngresso({
     categoria: 'associado',
     nome: 'Associado de Teste',
@@ -311,11 +531,12 @@ function testeEmissao_associado() {
     whatsapp: '27999999999',
     filiado: 'S',
     operador: 'Marcelha (teste)'
-  });
+  }, tokenSessao);
   Logger.log(JSON.stringify(r, null, 2));
 }
 
-function testeEmissao_acompanhanteSemPagamento() {
-  var r = emissao_emitirIngresso({ categoria: 'acompanhante', nome: 'Acompanhante Sem Pgto' });
+function testeEmissao_acompanhanteSemPagamento(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — teste de acompanhante', true);
+  var r = emissao_emitirIngresso({ categoria: 'acompanhante', nome: 'Acompanhante Sem Pgto' }, tokenSessao);
   Logger.log(JSON.stringify(r, null, 2)); // deve dar erro pedindo forma de pagamento
 }

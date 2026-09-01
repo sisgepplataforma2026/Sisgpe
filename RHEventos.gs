@@ -999,4 +999,3 @@ function rhEvResumo(ano, tokenSessao) {
     return { ok: false, mensagem: "Erro ao montar resumo: " + e.message };
   }
 }
-

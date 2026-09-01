@@ -110,6 +110,11 @@ function escolaDeOption(opt) {
     cidade: opt.dataset.cidade || "",
     uf: opt.dataset.uf || "",
     endereco: opt.dataset.endereco || "",
+    logradouro: opt.dataset.logradouro || "",
+    numero: opt.dataset.numero || "",
+    complemento: opt.dataset.complemento || "",
+    bairro: opt.dataset.bairro || "",
+    cep: opt.dataset.cep || "",
     status: opt.dataset.status || "Ativa",
     emails: emails,
     emailPrincipal: opt.dataset.email || "",
@@ -118,30 +123,6 @@ function escolaDeOption(opt) {
     ultimo: opt.dataset.ultimo || "—"
   };
 }
-
-  function normalizarEscola(raw) {
-    raw = raw || {};
-    var emails = [].concat(raw.emails||[], raw.email?[raw.email]:[], raw.emailPrincipal?[raw.emailPrincipal]:[])
-      .filter(Boolean).filter(function(e,i,a){ return a.indexOf(e)===i; });
-    return { id:raw.id||raw.cnpj||raw.escola||raw.nome||raw.razaoSocial||"", nome:raw.nome||raw.escola||raw.razaoSocial||"Escola sem nome",
-      razao:raw.razaoSocial||raw.nome||"", cnpj:raw.cnpj||"", cidade:raw.cidade||"", uf:raw.uf||"",
-      endereco:raw.endereco||"", status:raw.status||"Ativa", emails:emails,
-      emailPrincipal:raw.emailPrincipal||raw.email||emails[0]||"",
-      oficios:Number(raw.oficios||0), confirmados:Number(raw.confirmados||0), ultimo:raw.ultimo||"—" };
-  }
-
-  function normalizarEscola(raw) {
-    raw = raw || {};
-    var emailsTodos = raw.emailsTodos || raw.emailTodos || "";
-    var emails = [].concat(raw.emails||[], raw.email?[raw.email]:[], raw.emailPrincipal?[raw.emailPrincipal]:[], emailsTodos ? String(emailsTodos).split(/[;,]+/) : [])
-      .map(function(e){ return txt(e); })
-      .filter(Boolean).filter(function(e,i,a){ return a.indexOf(e)===i; });
-    return { id:raw.id||raw.cnpj||raw.cnpjLimpo||raw.escola||raw.nome||raw.razaoSocial||"", nome:raw.nome||raw.escola||raw.razaoSocial||raw.fantasia||"Escola sem nome",
-      razao:raw.razaoSocial||raw.razao||raw.nome||"", cnpj:raw.cnpj||raw.cnpjLimpo||"", cidade:raw.cidade||raw.municipio||"", uf:raw.uf||"",
-      endereco:raw.enderecoCompleto||raw.endereco||"", status:raw.status||raw.situacao||"Ativa", emails:emails,
-      emailPrincipal:raw.emailPrincipal||raw.email||emails[0]||"",
-      oficios:Number(raw.oficios||0), confirmados:Number(raw.confirmados||0), ultimo:raw.ultimo||"â€”" };
-  }
 
   function normalizarEscola(raw) {
     raw = raw || {};
@@ -154,9 +135,25 @@ function escolaDeOption(opt) {
     var cidadeUf = txt(raw.cidadeUf || raw.CidadeUf || raw["Cidade / UF"] || raw["Cidade/UF"] || raw["Cidade - UF"] || [cidade, uf].filter(Boolean).join(" / "));
     if (!cidade && cidadeUf) cidade = txt(cidadeUf.split(/[\/-]/)[0]);
     if (!uf && cidadeUf && cidadeUf.indexOf("/") > -1) uf = txt(cidadeUf.split("/").pop());
+    var logradouro = txt(raw.logradouro || raw.Endereco || raw.endereco || raw["Endereço"] || "");
+    var numero = txt(raw.numero || raw.Numero || raw["Número"] || "");
+    var complemento = txt(raw.complemento || raw.Complemento || "");
+    var bairro = txt(raw.bairro || raw.Bairro || "");
+    var cep = txt(raw.cep || raw.CEP || "");
+    var enderecoCompleto = txt(raw.enderecoCompleto || raw.EnderecoCompleto || "");
+    if (!enderecoCompleto) {
+      enderecoCompleto = [
+        [logradouro, numero].filter(Boolean).join(", "),
+        complemento,
+        bairro,
+        cidadeUf,
+        cep
+      ].filter(Boolean).join(" · ");
+    }
     return { id:raw.id||raw.cnpj||raw.CNPJ||raw.cnpjLimpo||raw.escola||raw.NomeEscola||raw.nome||raw.razaoSocial||"", nome:raw.nome||raw.escola||raw.NomeEscola||raw.razaoSocial||raw["Razão Social"]||raw.fantasia||raw.Fantasia||"Escola sem nome",
       razao:raw.razaoSocial||raw.razao||raw["Razão Social"]||raw.nome||"", cnpj:raw.cnpj||raw.CNPJ||raw.cnpjLimpo||"", cidade:cidade, uf:uf, cidadeUf:cidadeUf,
-      endereco:raw.enderecoCompleto||raw.EnderecoCompleto||raw.endereco||raw.Endereco||"", status:raw.status||raw.situacao||raw.Situacao||"Ativa", emails:emails,
+      logradouro:logradouro, numero:numero, complemento:complemento, bairro:bairro, cep:cep,
+      endereco:enderecoCompleto, status:raw.status||raw.situacao||raw.Situacao||"Ativa", emails:emails,
       emailPrincipal:raw.emailPrincipal||raw.email||raw.Email||emails[0]||"",
       oficios:Number(raw.oficios||0), confirmados:Number(raw.confirmados||0), ultimo:raw.ultimo||"â€”" };
   }
@@ -190,6 +187,11 @@ function popularSelectEscolas(lista) {
       opt.dataset.cidade = e.cidade || "";
       opt.dataset.uf = e.uf || "";
       opt.dataset.endereco = e.endereco || "";
+      opt.dataset.logradouro = e.logradouro || "";
+      opt.dataset.numero = e.numero || "";
+      opt.dataset.complemento = e.complemento || "";
+      opt.dataset.bairro = e.bairro || "";
+      opt.dataset.cep = e.cep || "";
       opt.dataset.status = e.status || "Ativa";
       opt.dataset.emailFinanceiro = e.emailFinanceiro || "";
       opt.dataset.emailDp = e.emailDp || "";
@@ -217,8 +219,11 @@ function popularSelectEscolas(lista) {
     setInput("enderecoEscola",escola.endereco); setInput("razaoSocialReceita",escola.razao);
     setInput("emailReceita",emailSmartSelecionado||escola.emailPrincipal);
     setInput("cidadeUfReceita",escola.cidadeUf||[escola.cidade,escola.uf].filter(Boolean).join(" / "));
+    setInput("logradouroEscola",escola.logradouro); setInput("numeroEscola",escola.numero);
+    setInput("complementoEscola",escola.complemento); setInput("bairroEscola",escola.bairro);
+    setInput("cidadeEscola",escola.cidade); setInput("ufEscola",escola.uf); setInput("cepEscola",escola.cep);
     var sel=$("escola"); if(sel&&escola.id) sel.value=escola.id;
-    ["cnpj","email","enderecoEscola","razaoSocialReceita","emailReceita","cidadeUfReceita"].forEach(function(id){ var el=$(id); if(el) el.dispatchEvent(new Event("change",{bubbles:true})); });
+    ["cnpj","email","enderecoEscola","razaoSocialReceita","emailReceita","cidadeUfReceita","logradouroEscola","numeroEscola","complementoEscola","bairroEscola","cidadeEscola","ufEscola","cepEscola"].forEach(function(id){ var el=$(id); if(el) el.dispatchEvent(new Event("change",{bubbles:true})); });
   }
 
   function renderEmails(escola) {
@@ -244,7 +249,6 @@ function popularSelectEscolas(lista) {
       return normalizarBusca([e.nome,e.razao,e.cnpj,e.cidade,e.uf,e.cidadeUf,(e.emails||[]).join(" ")].join(" ")).indexOf(termo)>=0;
     }).slice(0,8);
     if(!lista.length){ box.innerHTML=termo?'<div class="escola-recentes-empty">Nenhuma escola encontrada.</div>':'<div class="escola-recentes-empty">A lista aparecerá após carregar a base.</div>'; return; }
-    box.innerHTML = lista.map(function(e,i){ return '<button type="button" class="escola-recente-btn" data-idx="'+i+'"><strong>'+escapeHtml(e.nome)+'</strong><span>'+[e.cnpj,e.cidade].filter(Boolean).join(" • ")+'</span></button>'; }).join("");
     box.innerHTML = lista.map(function(e,i){ return '<button type="button" class="escola-recente-btn" data-idx="'+i+'"><strong>'+escapeHtml(e.nome)+'</strong><span>'+escapeHtml([e.cnpj,e.cidadeUf||e.cidade].filter(Boolean).join(" - "))+'</span></button>'; }).join("");
     box.querySelectorAll(".escola-recente-btn").forEach(function(btn){ btn.onclick=function(){ selecionarEscola(lista[Number(btn.dataset.idx)]); }; });
   }
@@ -265,108 +269,14 @@ function popularSelectEscolas(lista) {
     setText("escolaProfileCidadeUf",e.cidadeUf||[e.cidade,e.uf].filter(Boolean).join(" / ")); setText("escolaProfileEndereco",e.endereco);
     setText("escolaProfileStatus",e.status); setText("escolaStatOficios",String(e.oficios||0));
     setText("escolaStatConfirmados",String(e.confirmados||0)); setText("escolaStatUltimo",e.ultimo||"—");
-    montarIdentidadeEscola(e);
+    var enderecoLinha=$("escolaProfileEnderecoLinha");
+    if(enderecoLinha){ enderecoLinha.textContent=e.endereco||""; enderecoLinha.style.display=e.endereco?"block":"none"; }
+    var totalOficios=Number(e.oficios||0), totalConfirmados=Number(e.confirmados||0), ultimo=e.ultimo||"—";
+    var resumoHistorico=totalOficios
+      ? totalOficios+" ofício"+(totalOficios===1?"":"s")+" · "+totalConfirmados+" confirmado"+(totalConfirmados===1?"":"s")+(ultimo&&ultimo!=="—"?" · último em "+ultimo:"")
+      : "Nenhum ofício enviado para esta escola ainda.";
+    setText("escolaHistoricoResumo",resumoHistorico);
     renderEmails(e); preencherCompat(e); salvarRecente(e); atualizarRevisaoOficio(); autoSave();
-    carregarAvisosEscola(e);
-  }
-
-  /* Identidade em duas linhas: CNPJ e situação na primeira, endereço completo na
-     segunda. A linha do endereço só existe quando há endereço — antes, escola sem
-     endereço reservava uma coluna inteira para exibir um travessão. */
-  function montarIdentidadeEscola(e) {
-    setText("escolaProfileStatusLinha", String(e.status || "ATIVA").toUpperCase());
-
-    var partes = [];
-    var logradouro = txt(e.endereco);
-    if (logradouro) partes.push(logradouro + (txt(e.numero) ? ", " + txt(e.numero) : ""));
-    if (txt(e.bairro)) partes.push(txt(e.bairro));
-    var cidadeUf = txt(e.cidadeUf) || [txt(e.cidade), txt(e.uf)].filter(Boolean).join(" / ");
-    if (cidadeUf) partes.push(cidadeUf);
-    if (txt(e.cep)) partes.push(txt(e.cep));
-
-    var el = $("escolaProfileEnderecoLinha");
-    if (!el) return;
-    el.textContent = partes.join(" · ");
-    el.style.display = partes.length ? "block" : "none";
-  }
-
-  /* Uma consulta traz histórico, endereços que já recusaram entrega e ofício
-     repetido no período. São avisos que hoje só chegam na hora do envio — tarde
-     demais para evitar o erro. */
-  function carregarAvisosEscola(e) {
-    var caixa = $("escolaAvisosOficio");
-    var linha = $("escolaHistoricoTexto");
-    if (caixa) { caixa.innerHTML = ""; caixa.style.display = "none"; }
-    if (linha) linha.textContent = "Carregando histórico desta escola...";
-    window._escolaAvisos = null;
-
-    if (!e || !e.cnpj || !window.google || !window.google.script || !window.google.script.run) {
-      if (linha) linha.textContent = "Histórico indisponível.";
-      return;
-    }
-
-    var tipoAtual = ($("tipo") && $("tipo").value) || "";
-    google.script.run
-      .withSuccessHandler(function(r) { window._escolaAvisos = r || null; renderAvisosEscola(r); })
-      .withFailureHandler(function() { if (linha) linha.textContent = "Não foi possível carregar o histórico."; })
-      .obterAvisosEscolaOficio(e.cnpj, tipoAtual, SISGEP_TOKEN_SESSAO);
-  }
-
-  function renderAvisosEscola(r) {
-    r = r || {};
-    var linha = $("escolaHistoricoTexto");
-    if (linha) {
-      linha.textContent = (r.enviados > 0)
-        ? (r.enviados + " ofício(s) · " + (r.confirmados || 0) + " confirmado(s)" + (r.ultimo ? " · último em " + r.ultimo : "") + "  —  ver no Histórico")
-        : "Nenhum ofício enviado para esta escola ainda.";
-    }
-
-    var avisos = [];
-    var temEmail = escolaSmartSelecionada && escolaSmartSelecionada.emails && escolaSmartSelecionada.emails.length;
-    if (!temEmail) {
-      avisos.push({ classe: "escola-aviso-erro", marca: "✉️",
-        html: "<b>Esta escola não tem e-mail cadastrado.</b> O ofício será gerado, mas não há para onde enviar." });
-    }
-
-    if (r.duplicata && r.duplicata.numero) {
-      avisos.push({ classe: "escola-aviso-alerta", marca: "📄",
-        html: "<b>Já existe ofício deste tipo para esta escola neste mês</b> — nº " + escapeHtml(r.duplicata.numero)
-              + (r.duplicata.data ? ", de " + escapeHtml(r.duplicata.data) : "") + "." });
-    }
-
-    (r.emailsComFalha || []).forEach(function(f) {
-      /* O bounce fica registrado no ofício, não no endereço: com vários
-         destinatários não dá para saber qual recusou. O texto muda conforme
-         essa certeza, para não acusar endereço bom. */
-      avisos.push({ classe: "escola-aviso-alerta", marca: "⚠️",
-        html: f.certeza === "alta"
-          ? "<b>" + escapeHtml(f.email) + "</b> recusou a entrega" + (f.data ? " em " + escapeHtml(f.data) : "") + "."
-          : "<b>" + escapeHtml(f.email) + "</b> estava num envio que falhou" + (f.data ? " em " + escapeHtml(f.data) : "")
-            + ". Havia mais destinatários, então pode não ser este o endereço com problema." });
-    });
-
-    var caixa = $("escolaAvisosOficio");
-    if (!caixa) return;
-    caixa.innerHTML = avisos.map(function(a) {
-      return '<div class="escola-aviso ' + a.classe + '"><span class="escola-aviso-marca">' + a.marca + '</span><div>' + a.html + '</div></div>';
-    }).join("");
-    caixa.style.display = avisos.length ? "flex" : "none";
-
-    marcarEmailsComFalha(r.emailsComFalha || []);
-  }
-
-  /* Pinta de vermelho a ficha do e-mail que já recusou. Continua clicável: o
-     aviso informa, não decide pelo operador. */
-  function marcarEmailsComFalha(lista) {
-    var problematicos = {};
-    lista.forEach(function(f) { problematicos[String(f.email || "").toLowerCase()] = f; });
-
-    document.querySelectorAll("#escolaProfileEmails .email-pill").forEach(function(btn) {
-      var em = String(btn.dataset.email || "").toLowerCase();
-      var f = problematicos[em];
-      btn.classList.toggle("escola-email-pill-falhou", !!f);
-      if (f) btn.title = (f.certeza === "alta" ? "Recusou a entrega" : "Esteve num envio que falhou") + (f.data ? " em " + f.data : "");
-    });
   }
 
  function buscar(termo) {
@@ -502,7 +412,7 @@ function buscarNoServidor(termo) {
         if (msg) msg.textContent = "Erro ao buscar: " + ((err && err.message) || err);
       }
     })
-    .buscarEscolasOficioSmart(termo);
+    .buscarEscolasOficioSmart(termo, SISGEP_TOKEN_SESSAO);
 }
 
 function acionarBuscaEscola(termo) {
@@ -529,7 +439,7 @@ window.renderDropdownEscolas = renderDropdown;
     if($("autocompleteEscolaSmart")) $("autocompleteEscolaSmart").style.display="none";
     if($("escolaSmartEmpty")) $("escolaSmartEmpty").style.display="none";
     var st=$("statusEscolaSelecionada"); if(st){ st.textContent="Nenhuma escola selecionada"; st.classList.remove("ok"); }
-    ["cnpj","email","enderecoEscola","razaoSocialReceita","emailReceita","cidadeUfReceita"].forEach(function(id){ setInput(id,""); });
+    ["cnpj","email","enderecoEscola","razaoSocialReceita","emailReceita","cidadeUfReceita","logradouroEscola","numeroEscola","complementoEscola","bairroEscola","cidadeEscola","ufEscola","cepEscola"].forEach(function(id){ setInput(id,""); });
     atualizarRevisaoOficio(); autoSave();
   }
 
@@ -541,34 +451,26 @@ window.renderDropdownEscolas = renderDropdown;
   function editarEscolaSelecionada() {
     if(!escolaSmartSelecionada) return;
     escolaSmartSelecionada.cnpj=txt($("cnpj")&&$("cnpj").value); escolaSmartSelecionada.emailPrincipal=txt($("email")&&$("email").value);
-    escolaSmartSelecionada.endereco=txt($("enderecoEscola")&&$("enderecoEscola").value); escolaSmartSelecionada.razao=txt($("razaoSocialReceita")&&$("razaoSocialReceita").value);
-    var cu=txt($("cidadeUfReceita")&&$("cidadeUfReceita").value); if(cu){ var p=cu.split("/"); escolaSmartSelecionada.cidade=txt(p[0]); escolaSmartSelecionada.uf=txt(p[1]); }
+    escolaSmartSelecionada.razao=txt($("razaoSocialReceita")&&$("razaoSocialReceita").value);
+    escolaSmartSelecionada.logradouro=txt($("logradouroEscola")&&$("logradouroEscola").value);
+    escolaSmartSelecionada.numero=txt($("numeroEscola")&&$("numeroEscola").value);
+    escolaSmartSelecionada.complemento=txt($("complementoEscola")&&$("complementoEscola").value);
+    escolaSmartSelecionada.bairro=txt($("bairroEscola")&&$("bairroEscola").value);
+    escolaSmartSelecionada.cidade=txt($("cidadeEscola")&&$("cidadeEscola").value);
+    escolaSmartSelecionada.uf=txt($("ufEscola")&&$("ufEscola").value).toUpperCase();
+    escolaSmartSelecionada.cep=txt($("cepEscola")&&$("cepEscola").value);
+    escolaSmartSelecionada.cidadeUf=[escolaSmartSelecionada.cidade,escolaSmartSelecionada.uf].filter(Boolean).join(" / ");
+    escolaSmartSelecionada.endereco=[
+      [escolaSmartSelecionada.logradouro,escolaSmartSelecionada.numero].filter(Boolean).join(", "),
+      escolaSmartSelecionada.complemento,
+      escolaSmartSelecionada.bairro,
+      escolaSmartSelecionada.cidadeUf,
+      escolaSmartSelecionada.cep
+    ].filter(Boolean).join(" · ");
+    setInput("enderecoEscola",escolaSmartSelecionada.endereco);
+    setInput("cidadeUfReceita",escolaSmartSelecionada.cidadeUf);
     if(escolaSmartSelecionada.emailPrincipal&&escolaSmartSelecionada.emails.indexOf(escolaSmartSelecionada.emailPrincipal)<0) escolaSmartSelecionada.emails.unshift(escolaSmartSelecionada.emailPrincipal);
     selecionarEscola(escolaSmartSelecionada); autoSave();
-
-    /* Antes isto parava aqui: a edicao vivia so no objeto da tela e no rascunho
-       local. Quem editava via a alteracao na tela, gerava o oficio e nao
-       entendia por que o cadastro continuava o antigo. Agora persiste. */
-    persistirEdicaoEscola();
-  }
-
-  /* Grava no cadastro a escola como ela esta na tela. Falhar aqui nao desfaz a
-     edicao visual — avisa, para o operador poder tentar de novo pelo botao de
-     salvar sem perder o que digitou. */
-  function persistirEdicaoEscola() {
-    var dados = getEscolaPayload();
-    if (!dados.nome || dados.nome === "Selecione..." || !dados.cnpj) return;
-    if (!window.google || !window.google.script || !window.google.script.run) return;
-
-    google.script.run
-      .withSuccessHandler(function(resp){
-        toast((resp && resp.mensagem) || "Cadastro da escola atualizado.", "ok", 5000);
-        if (typeof carregarEscolasDaPlanilha === "function") carregarEscolasDaPlanilha();
-      })
-      .withFailureHandler(function(err){
-        toast("A edição está na tela, mas não foi gravada no cadastro: " + ((err && err.message) || err), "err", 8000);
-      })
-      .salvarEscolaOficio(dados, SISGEP_TOKEN_SESSAO);
   }
 
   function adicionarEmailEscola() {
@@ -585,12 +487,8 @@ window.renderDropdownEscolas = renderDropdown;
     var dados=getEscolaPayload();
     if(!dados.nome||dados.nome==="Selecione..."){ toast("Selecione uma escola.","warn"); return; }
     if(!dados.cnpj){ toast("Informe o CNPJ.","warn"); return; }
+    if(!confirm("Atualizar cadastro oficial na planilha?")) return;
     if(!window.google||!window.google.script||!window.google.script.run){ toast("Disponível apenas no Apps Script.","warn"); return; }
-    confirmarSISGEP({
-      titulo:"Atualizar cadastro da escola", subtitulo:"A alteração vale para os próximos ofícios", icone:"🏫",
-      texto:"Gravar os dados de "+dados.nome+" no cadastro oficial da planilha?",
-      rotulo:"Atualizar cadastro"
-    }, function(){
     var st=$("statusConsultaCnpj"); if(st){ st.style.display="flex"; st.className="info-box blue"; st.textContent="Salvando..."; }
     google.script.run.withSuccessHandler(function(resp){
       if(st){ st.style.display="flex"; st.className="info-box green"; st.textContent=(resp&&resp.mensagem)||"Escola salva."; }
@@ -598,7 +496,6 @@ window.renderDropdownEscolas = renderDropdown;
     }).withFailureHandler(function(err){
       if(st){ st.style.display="flex"; st.className="info-box amber"; st.textContent="Erro: "+((err&&err.message)||err); }
     }).salvarEscolaOficio(dados, SISGEP_TOKEN_SESSAO);
-    });
   }
 
   function bridgeClick(a,b){ var o=$(a),d=$(b); if(o&&d) o.onclick=function(){d.click();}; }
@@ -712,43 +609,17 @@ function getTrabalhadoresPayload() {
     return t.nome || t.cpf;
   });
 }
-  /* Dígito verificador do CNPJ. O Helpers.html só tinha máscara — sem isto, o
-     campo aceitava 14 números quaisquer. */
-  function cnpjValido(valor) {
-    var c = String(valor || "").replace(/\D/g, "");
-    if (c.length !== 14) return false;
-    if (/^(\d)\1{13}$/.test(c)) return false;
-
-    function dv(base) {
-      var peso = base.length === 12 ? 5 : 6, soma = 0;
-      for (var i = 0; i < base.length; i++) {
-        soma += Number(base[i]) * peso;
-        peso = (peso === 2) ? 9 : peso - 1;
-      }
-      var r = soma % 11;
-      return r < 2 ? 0 : 11 - r;
-    }
-
-    return dv(c.slice(0, 12)) === Number(c[12]) && dv(c.slice(0, 13)) === Number(c[13]);
-  }
-  window.cnpjValido = cnpjValido;
-
   function getEscolaPayload() {
     var sel = $("escola"), selTxt = sel && sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].textContent : "";
-    var principal = $("email")&&$("email").value || "";
-
-    /* A lista completa vem do que esta na tela agora, nao do cadastro: o
-       operador pode ter acabado de acrescentar um e-mail. Sem isto, o oficio
-       saia so com o principal e o backend gravava so o principal, porque
-       salvarEscolaOficio monta a coluna com [dados.emailsTodos, email]. */
-    var todos = [];
-    if (escolaSmartSelecionada && Array.isArray(escolaSmartSelecionada.emails)) todos = escolaSmartSelecionada.emails.slice();
-    if (principal && todos.indexOf(principal) < 0) todos.unshift(principal);
-    todos = todos.map(function(e){ return String(e || "").trim(); })
-                 .filter(Boolean)
-                 .filter(function(e, i, arr){ return arr.indexOf(e) === i; });
-
-    return { id: sel ? sel.value : "", nome: ($("escolaBusca")&&$("escolaBusca").value) || selTxt || "", cnpj: $("cnpj")&&$("cnpj").value || "", email: principal, emailsTodos: todos.join(", "), endereco: $("enderecoEscola")&&$("enderecoEscola").value || "", razaoSocial: $("razaoSocialReceita")&&$("razaoSocialReceita").value || "", cidadeUf: $("cidadeUfReceita")&&$("cidadeUfReceita").value || "" };
+    return {
+      id: sel ? sel.value : "", nome: ($("escolaBusca")&&$("escolaBusca").value) || selTxt || "",
+      cnpj: $("cnpj")&&$("cnpj").value || "", email: $("email")&&$("email").value || "",
+      endereco: $("enderecoEscola")&&$("enderecoEscola").value || "", razaoSocial: $("razaoSocialReceita")&&$("razaoSocialReceita").value || "",
+      logradouro: $("logradouroEscola")&&$("logradouroEscola").value || "", numero: $("numeroEscola")&&$("numeroEscola").value || "",
+      complemento: $("complementoEscola")&&$("complementoEscola").value || "", bairro: $("bairroEscola")&&$("bairroEscola").value || "",
+      cidade: $("cidadeEscola")&&$("cidadeEscola").value || "", uf: $("ufEscola")&&$("ufEscola").value || "",
+      cep: $("cepEscola")&&$("cepEscola").value || "", cidadeUf: $("cidadeUfReceita")&&$("cidadeUfReceita").value || ""
+    };
   }
 
 function atualizarPayloadOficio(num) {
@@ -850,9 +721,9 @@ function atualizarPayloadOficio(num) {
     + '<div><div class="trabalhador-titulo">Trabalhador ' + contadorTrabalhadores + '</div>'
     + '<div class="trabalhador-sub">Dados para emissão do ofício</div></div>'
     + '</div>'
-    + '<div style="display:flex;gap:6px;align-items:center;">'
-    + '<button type="button" class="btn-adicionar-trabalhador-card" title="Adicionar outro trabalhador" style="width:30px;height:30px;border-radius:9px;border:1.5px solid var(--g200);background:#fff;color:var(--navy);font-size:16px;font-weight:800;line-height:1;cursor:pointer;">+</button>'
-    + '<button type="button" class="btn-remover-trabalhador-premium" title="Remover">✕</button>'
+    + '<div class="trabalhador-topo-acoes">'
+    + '<button type="button" class="btn-adicionar-trabalhador-card" title="Adicionar trabalhador após este" aria-label="Adicionar trabalhador após este">+</button>'
+    + '<button type="button" class="btn-remover-trabalhador-premium" title="Remover trabalhador" aria-label="Remover trabalhador">✕</button>'
     + '</div>'
     + '</div>'
     + '<div class="trabalhador-grid">'
@@ -881,14 +752,8 @@ function atualizarPayloadOficio(num) {
      com uma ficha que a pessoa jurava ter tirado. */
   c._fichasDt = new DataTransfer();
 
-  /* O "+" do card faz o mesmo que o botao geral de adicionar: um card novo
-     entra no fim da lista. Poupa a rolagem ate o rodape quando a lista cresce. */
-  var btnAddCard = c.querySelector(".btn-adicionar-trabalhador-card");
-  if (btnAddCard) btnAddCard.onclick = function() {
-    addTrabalhador();
-    var lista = $("listaTrabalhadores");
-    var ultimo = lista && lista.querySelector(".trabalhador-card:last-child");
-    if (ultimo && ultimo.scrollIntoView) ultimo.scrollIntoView({ behavior: "smooth", block: "center" });
+  c.querySelector(".btn-adicionar-trabalhador-card").onclick = function() {
+    adicionarTrabalhadorDepois(c);
   };
 
   c.querySelector(".btn-remover-trabalhador-premium").onclick = function() {
@@ -1743,13 +1608,24 @@ function removerFichasOficio(idxs) {
     return false;
   }
 
-  function addTrabalhador() {
+  function adicionarTrabalhadorDepois(referencia) {
     var l = $("listaTrabalhadores"); if (!l) return;
     var _tipoAtual = ($("tipo") && $("tipo").value) || "";
     var _limite = oficioLimitePessoas(_tipoAtual);
     if (l.querySelectorAll(".trabalhador-card").length >= _limite) { toast("Limite de " + _limite + " trabalhadores para este tipo de ofício.", "warn"); return; }
     var v = l.querySelector(".worker-empty"); if (v) v.remove();
-    l.appendChild(criarCardTrabalhador()); renumerarTrabalhadores(); atualizarResumoTrabalhadores();
+    var novo = criarCardTrabalhador();
+    if (referencia && referencia.parentNode === l) l.insertBefore(novo, referencia.nextSibling);
+    else l.appendChild(novo);
+    renumerarTrabalhadores();
+    atualizarResumoTrabalhadores();
+    var nome = novo.querySelector(".input-nome-trabalhador");
+    if (nome && typeof nome.focus === "function") nome.focus();
+    return novo;
+  }
+
+  function addTrabalhador() {
+    return adicionarTrabalhadorDepois(null);
   }
 
 function atualizarContadorFichas() {
@@ -1914,7 +1790,7 @@ function atualizarContadorFichas() {
     var etapa=0, timer=setInterval(function(){etapa=Math.min(etapa+1,etapas.length-1);if(btn)btn.innerText=etapas[etapa];},8000);
     if(btn){btn.disabled=true;btn.innerText=etapas[0];}
 
-    function aoSucesso(res){ clearInterval(timer); if(btn){btn.disabled=false;btn.innerText="✅ Emitir Documento";} if(res&&res.erro) return toast(res.mensagem||"Erro ao emitir.","err"); finalizarPosEmissao(res.dados || {}); }
+    function aoSucesso(res){ clearInterval(timer); if(btn){btn.disabled=false;btn.innerText="✅ Emitir Documento;"} if(res&&res.erro) return toast(res.mensagem||"Erro ao emitir.","err"); finalizarPosEmissao(res.dados || {}); }
     function aoErro(err){ clearInterval(timer); if(btn){btn.disabled=false;btn.innerText="✅ Emitir Documento";} toast("Erro: "+((err&&err.message)||err),"err"); }
 
     // Envia gerarOficioWeb; se o servidor avisar de uma possível duplicata
@@ -1986,7 +1862,7 @@ function atualizarContadorFichas() {
     Promise.all(todosArquivos.map(function(f) {
       if (f._isDrive) {
         return new Promise(function(resolve, reject) {
-          google.script.run.withSuccessHandler(function(res) { resolve({ nome: res.nome, base64: res.base64, tipo: res.tipo, origem: "drive" }); }).withFailureHandler(function(err) { reject(err); }).obterArquivoDriveBase64(f.driveId);
+          google.script.run.withSuccessHandler(function(res) { resolve({ nome: res.nome, base64: res.base64, tipo: res.tipo, origem: "drive" }); }).withFailureHandler(function(err) { reject(err); }).obterArquivoDriveBase64(f.driveId, SISGEP_TOKEN_SESSAO);
         });
       }
       return new Promise(function(resolve, reject) {
@@ -2017,25 +1893,6 @@ function atualizarContadorFichas() {
     if (Array.isArray(dadosGerados.avisosDesfiliacao) && dadosGerados.avisosDesfiliacao.length) {
       dadosGerados.avisosDesfiliacao.forEach(function(av){ toast(av, "warn"); });
     }
-    /* Retrato do que acabou de ser emitido, tirado antes de limpar. O modal de
-       envio precisa da escola e do e-mail deste ofício, e o payload vivo passa a
-       refletir o formulário vazio assim que a limpeza roda. */
-    var pAtual = window.SISGEP_OFICIO_PAYLOAD || {};
-    var escAtual = pAtual.escola || {};
-    window.SISGEP_OFICIO_EMITIDO = {
-      numero: numero || pAtual.numero || "",
-      tipo: pAtual.tipo || "",
-      escola: escAtual.nome || "",
-      cnpj: escAtual.cnpj || "",
-      email: escAtual.emailsTodos || escAtual.email || "",
-      fichas: Array.isArray(pAtual.fichas) ? pAtual.fichas.length : 0
-    };
-
-    /* Campos limpos assim que o oficio sai: a tela ja fica pronta para o
-       proximo. O painel do documento gerado continua abaixo, com o download e
-       o envio — por isso limpa aqui e nao com resetarFormulario, que o esconde. */
-    limparCamposOficio();
-
     var area=$("areaAcoesDocumento"), btnPrev=$("btnPreview"), btnEmit=$("btnEmitir"), btnNovo=$("btnNovoDocumento");
     if(btnPrev) btnPrev.style.display="none"; if(btnEmit) btnEmit.style.display="none"; if(btnNovo) btnNovo.style.display="inline-flex";
     if(area){
@@ -2053,10 +1910,7 @@ function atualizarContadorFichas() {
         + "<button type='button' class='btn btn-teal' onclick=\"enviarWhatsappOficio('" + urlPdf + "', '" + numero + "')\">💬 WhatsApp</button>"
         + "</div>"
         + "<div id='statusEnvioOficioGerado' style='display:flex;align-items:center;gap:8px;padding:11px 14px;background:var(--g50);border:1.5px solid var(--g200);border-radius:11px;font-size:12.5px;font-weight:600;color:var(--g500);'>"
-        /* Nao dizer "aguardando confirmacao": no sistema, confirmacao e a
-           resposta da escola ao e-mail (status CONFIRMADO do Monitoramento).
-           Aqui nada foi enviado ainda — o texto precisa dizer isso. */
-        + "<span>📭</span><span>E-mail ainda não enviado — use <strong>Enviar e-mail agora</strong> quando quiser disparar.</span></div>"
+        + "<span>🕐</span><span>Aguardando confirmação de envio...</span></div>"
         + "</div>";
     }
 
@@ -2073,7 +1927,7 @@ function atualizarContadorFichas() {
   }
 
 function imprimirPdfOficioGerado(urlPdf) {
-  if (!urlPdf) { toast("PDF não encontrado.", "err"); return; }
+  if (!urlPdf) { alert("PDF não encontrado."); return; }
   var w = window.open(urlPdf, "_blank");
   if (!w) { toast("Pop-up bloqueado pelo navegador.", "warn"); return; }
   setTimeout(function() { try { w.focus(); w.print(); } catch(e) {} }, 1200);
@@ -2081,42 +1935,18 @@ function imprimirPdfOficioGerado(urlPdf) {
 
 function enviarEmailOficioAgora(numero, filaId) {
   if (!numero) { toast("Número do ofício não encontrado.", "err"); return; }
-  /* Prefere o retrato do ofício emitido; o payload vivo é reserva para quando o
-     envio é disparado sem ter passado pela emissão nesta tela. */
-  var emitido = window.SISGEP_OFICIO_EMITIDO || {};
   var payload = window.SISGEP_OFICIO_PAYLOAD || {};
   var escola = payload.escola || {};
-  var tipo = emitido.tipo || payload.tipo || "";
-  var email = emitido.email || escola.emailsTodos || escola.email || "";
-  var nomeEscola = emitido.escola || escola.nome || "";
-  var qtdFichas = emitido.fichas || (Array.isArray(payload.fichas) ? payload.fichas.length : 0);
+  var tipo = payload.tipo || "";
+  var email = escola.email || "";
+  var nomeEscola = escola.nome || "";
+  var qtdFichas = Array.isArray(payload.fichas) ? payload.fichas.length : 0;
   var descAnexos = qtdFichas > 0 ? "PDF do ofício + " + qtdFichas + " ficha(s)" : "PDF do ofício";
-  var cnpjEscola = emitido.cnpj || escola.cnpj || "";
-
-  abrirModalEnvioOficioSISGEP({ numero: numero, tipo: tipo || "Ofício", escola: nomeEscola || "Não informado", cnpj: cnpjEscola, email: email, anexos: descAnexos }, function() {
+  abrirModalEnvioOficioSISGEP({ numero: numero, tipo: tipo || "Ofício", escola: nomeEscola || "Não informado", email: email || "E-mail cadastrado na fila de envio", anexos: descAnexos }, function() {
     var status = document.getElementById("statusEnvioOficioGerado");
     var btn = document.getElementById("btnModalEnviarOficioAgora");
     if (status) { status.textContent = "⏳ Enviando e-mail..."; status.style.color = "var(--g500)"; }
     if (btn) { btn.disabled = true; btn.innerHTML = "⏳ Enviando..."; }
-
-    /* A lista editada no modal só vale se for gravada antes do disparo: o envio
-       lê os destinatários da linha da fila, não da tela. */
-    var escolhido = (typeof window.obterDadosEnvioModal === "function") ? window.obterDadosEnvioModal() : { emails: [], salvarCadastro: false };
-    var listaFinal = (escolhido.emails || []).join(", ");
-    email = listaFinal || email;
-
-    function dispararEnvio() {
-      /* Cadastro atualizado em paralelo: se falhar, o ofício sai do mesmo jeito
-         e o operador é avisado — o envio é o que não pode ficar preso. */
-      if (escolhido.salvarCadastro && listaFinal && nomeEscola && cnpjEscola) {
-        google.script.run
-          .withFailureHandler(function(err){ toast("Ofício enviado, mas o cadastro da escola não foi atualizado: " + ((err && err.message) || err), "warn", 7000); })
-          .salvarEscolaOficio({ nome: nomeEscola, cnpj: cnpjEscola, email: (escolhido.emails[0] || ""), emailsTodos: listaFinal }, SISGEP_TOKEN_SESSAO);
-      }
-      enviarAgoraNaFila();
-    }
-
-    function enviarAgoraNaFila() {
     google.script.run
       .withSuccessHandler(function(resp) {
         fecharModalEnvioOficioSISGEP();
@@ -2136,37 +1966,207 @@ function enviarEmailOficioAgora(numero, filaId) {
         toast("Erro: " + (err.message || err), "err", 6000);
       })
       .enviarOficioDaFilaAgora(numero, SISGEP_TOKEN_SESSAO, filaId || "");
-    }
-
-    if (!listaFinal) { dispararEnvio(); return; }
-
-    google.script.run
-      .withSuccessHandler(function(r) {
-        if (r && r.ok) { dispararEnvio(); return; }
-        // Destinatário recusado pelo servidor: não dispara às cegas.
-        if (status) { status.textContent = "❌ " + ((r && r.mensagem) || "Não foi possível atualizar os destinatários."); status.style.color = "var(--red)"; }
-        if (btn) { btn.disabled = false; btn.innerHTML = "📨 Enviar agora"; }
-        toast((r && r.mensagem) || "Não foi possível atualizar os destinatários.", "err", 7000);
-      })
-      .withFailureHandler(function(err) {
-        if (status) { status.textContent = "❌ Erro ao gravar destinatários: " + ((err && err.message) || err); status.style.color = "var(--red)"; }
-        if (btn) { btn.disabled = false; btn.innerHTML = "📨 Enviar agora"; }
-        toast("Erro ao gravar destinatários: " + ((err && err.message) || err), "err", 7000);
-      })
-      .atualizarDestinatariosFilaOficio(numero, listaFinal, SISGEP_TOKEN_SESSAO);
   });
 }
 
 function enviarWhatsappOficio(urlPdf, numero) {
-  if (!urlPdf) { toast("PDF não encontrado.", "err"); return; }
+  if (!urlPdf) { alert("PDF não encontrado."); return; }
   var texto = encodeURIComponent("Segue o Ofício nº " + (numero || "") + " do SindEducação-ES:\n\n" + urlPdf);
   window.open("https://wa.me/?text=" + texto, "_blank");
 }
 
-  /* Limpa só os campos de entrada. Separado de resetarFormulario porque, ao
-     emitir, o painel do documento gerado precisa continuar na tela — é dele
-     que sai o download e o envio. */
-  function limparCamposOficio(){
+  /* ─────────────────────────────────────────────
+     TAXA ASSISTENCIAL — CONTROLES DA TELA
+
+     O HTML já expunha todos os botões, mas nenhum deles chamava o backend.
+     Este bloco mantém o fluxo existente (prévia, teste, fila e envio PRO),
+     sempre com o token da sessão e com confirmação antes de um envio real.
+  ────────────────────────────────────────────── */
+  function taxaValor(id) {
+    var campo = $(id);
+    return campo ? txt(campo.value) : "";
+  }
+
+  function taxaPayloadMensagem() {
+    return {
+      assunto: taxaValor("taxaAssistencialAssunto"),
+      corpo: taxaValor("taxaAssistencialCorpo")
+    };
+  }
+
+  function taxaMensagemErro(err) {
+    return String((err && err.message) || err || "Erro não identificado.");
+  }
+
+  function taxaOcuparBotao(btn, ocupado, textoOcupado) {
+    if (!btn) return;
+    if (!btn.dataset.rotuloOriginal) btn.dataset.rotuloOriginal = btn.innerHTML;
+    btn.disabled = !!ocupado;
+    btn.innerHTML = ocupado ? (textoOcupado || "⏳ Aguarde...") : btn.dataset.rotuloOriginal;
+  }
+
+  function taxaValidarMensagem(payload) {
+    if (!payload.assunto) { toast("Informe o assunto do e-mail.", "warn"); return false; }
+    if (!payload.corpo) { toast("Informe o corpo do e-mail.", "warn"); return false; }
+    return true;
+  }
+
+  function taxaRenderStatus(resp) {
+    resp = resp || {};
+    var painel = $("painelStatusFila");
+    if (painel) painel.style.display = Number(resp.total || 0) > 0 ? "block" : "none";
+    [["statusFilaNumero", resp.numero || "—"], ["statusTotal", resp.total || 0],
+      ["statusPendente", resp.pendente || 0], ["statusEnviado", resp.enviado || resp.enviados || 0],
+      ["statusErro", resp.erro || resp.erros || 0]].forEach(function(item) {
+        var no = $(item[0]); if (no) no.textContent = String(item[1]);
+      });
+    var iniciar = $("btnIniciarEnvioTaxa");
+    if (iniciar) iniciar.disabled = !(Number(resp.pendente || 0) > 0 || resp.preparada === true);
+    if (window.taxaProgresso && typeof window.taxaProgresso.atualizar === "function") {
+      window.taxaProgresso.atualizar(resp);
+    }
+  }
+
+  function taxaConsultarStatus() {
+    google.script.run
+      .withSuccessHandler(taxaRenderStatus)
+      .withFailureHandler(function(err) { toast("Erro ao consultar a fila: " + taxaMensagemErro(err), "err", 6000); })
+      .obterStatusFilaTaxaAssistencial(SISGEP_TOKEN_SESSAO);
+  }
+
+  function taxaLerAnexo(callback) {
+    var input = $("taxaAnexoCCT");
+    var arquivo = input && input.files && input.files[0];
+    if (!arquivo) { callback(null); return; }
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      callback({ nome: arquivo.name, tipo: arquivo.type || "application/octet-stream", base64: String(ev.target.result || "").split(",")[1] || "" });
+    };
+    reader.onerror = function() { toast("Não foi possível ler o anexo selecionado.", "err"); callback(null, true); };
+    reader.readAsDataURL(arquivo);
+  }
+
+  function taxaPreview() {
+    var payload = taxaPayloadMensagem();
+    if (!taxaValidarMensagem(payload)) return;
+    var aba = window.open("", "_blank");
+    google.script.run
+      .withSuccessHandler(function(resp) {
+        if (!aba) { toast("Permita pop-ups para abrir a prévia.", "warn"); return; }
+        aba.document.open(); aba.document.write((resp && resp.html) || ""); aba.document.close();
+      })
+      .withFailureHandler(function(err) { try { if (aba) aba.close(); } catch (_) {} toast("Erro ao gerar prévia: " + taxaMensagemErro(err), "err", 6000); })
+      .previewOficioTaxaAssistencial(payload, SISGEP_TOKEN_SESSAO);
+  }
+
+  function taxaEnviarTeste() {
+    var payload = taxaPayloadMensagem();
+    payload.emailTeste = taxaValor("taxaAssistencialEmailTeste");
+    if (!taxaValidarMensagem(payload)) return;
+    if (!payload.emailTeste) { toast("Informe o e-mail de teste.", "warn"); return; }
+    var btn = $("btnEnviarTesteTaxa");
+    taxaOcuparBotao(btn, true, "⏳ Enviando teste...");
+    google.script.run
+      .withSuccessHandler(function(resp) { taxaOcuparBotao(btn, false); toast((resp && resp.mensagem) || "E-mail de teste enviado.", "ok", 6000); })
+      .withFailureHandler(function(err) { taxaOcuparBotao(btn, false); toast("Erro no teste: " + taxaMensagemErro(err), "err", 7000); })
+      .enviarTesteTaxaAssistencial(payload, SISGEP_TOKEN_SESSAO);
+  }
+
+  function taxaPrepararFila() {
+    var payload = taxaPayloadMensagem();
+    if (!taxaValidarMensagem(payload)) return;
+    var btn = $("btnPrepararFilaTaxa");
+    taxaOcuparBotao(btn, true, "⏳ Preparando...");
+    taxaLerAnexo(function(anexo, falhou) {
+      if (falhou) { taxaOcuparBotao(btn, false); return; }
+      if (anexo) payload.anexo = anexo;
+      google.script.run
+        .withSuccessHandler(function(resp) {
+          taxaOcuparBotao(btn, false);
+          taxaRenderStatus({ preparada:true, numero:resp.numero, total:resp.total, pendente:resp.validas, enviado:0, erro:Number(resp.invalidas || 0) + Number(resp.semEmail || 0) });
+          toast((resp && resp.mensagem) || "Fila preparada.", "ok", 6000);
+        })
+        .withFailureHandler(function(err) { taxaOcuparBotao(btn, false); toast("Erro ao preparar fila: " + taxaMensagemErro(err), "err", 7000); })
+        .prepararFilaTaxaAssistencial(payload, SISGEP_TOKEN_SESSAO);
+    });
+  }
+
+  function taxaIniciarEnvio() {
+    var payload = taxaPayloadMensagem();
+    if (!taxaValidarMensagem(payload)) return;
+    if (!window.confirm("Iniciar agora o envio da Taxa Assistencial para todas as escolas pendentes da fila?")) return;
+    var btn = $("btnIniciarEnvioTaxa");
+    taxaOcuparBotao(btn, true, "⏳ Enviando lote...");
+    google.script.run
+      .withSuccessHandler(function(resp) {
+        taxaOcuparBotao(btn, false); taxaConsultarStatus();
+        toast((resp && resp.mensagem) || "Lote processado.", resp && resp.erros ? "warn" : "ok", 7000);
+      })
+      .withFailureHandler(function(err) { taxaOcuparBotao(btn, false); toast("Erro no envio: " + taxaMensagemErro(err), "err", 7000); })
+      .enviarOficioTaxaAssistencialPRO(payload, SISGEP_TOKEN_SESSAO);
+  }
+
+  function taxaEnviarEscola() {
+    var payload = taxaPayloadMensagem();
+    payload.escola = taxaValor("taxaEscolaNome");
+    payload.cnpj = taxaValor("taxaEscolaCnpj");
+    payload.email = taxaValor("taxaEscolaEmail");
+    if (!taxaValidarMensagem(payload)) return;
+    if (!payload.escola || !payload.email) { toast("Selecione a escola e confira o e-mail.", "warn"); return; }
+    if (!window.confirm("Enviar o ofício de Taxa Assistencial para " + payload.escola + " (" + payload.email + ")?")) return;
+    var btn = $("btnEnviarEscolaEspecifica");
+    taxaOcuparBotao(btn, true, "⏳ Gerando e enviando...");
+    taxaLerAnexo(function(anexo, falhou) {
+      if (falhou) { taxaOcuparBotao(btn, false); return; }
+      if (anexo) payload.anexo = anexo;
+      google.script.run
+        .withSuccessHandler(function(resp) { taxaOcuparBotao(btn, false); toast((resp && resp.mensagem) || "Ofício enviado.", "ok", 7000); })
+        .withFailureHandler(function(err) { taxaOcuparBotao(btn, false); toast("Erro ao enviar: " + taxaMensagemErro(err), "err", 7000); })
+        .enviarTaxaEscolaEspecifica(payload, SISGEP_TOKEN_SESSAO);
+    });
+  }
+
+  function taxaRenderEscolas(lista) {
+    var box = $("taxaAutocompleteLista"), contador = $("taxaAutocompleteContador");
+    if (!box) return;
+    lista = Array.isArray(lista) ? lista : [];
+    if (contador) { contador.style.display = "block"; contador.textContent = lista.length + " escola(s) encontrada(s)"; }
+    if (!lista.length) { box.innerHTML = '<div class="escola-recentes-empty">Nenhuma escola encontrada.</div>'; box.style.display = "block"; return; }
+    box.innerHTML = lista.map(function(item, indice) {
+      return '<button type="button" class="taxa-escola-opcao" data-indice="' + indice + '"><strong>' + escapeHtml(item.nome || "") + '</strong><span>' + escapeHtml([item.cnpj || "", item.email || ""].filter(Boolean).join(" • ")) + '</span></button>';
+    }).join("");
+    box.style.display = "block";
+    Array.from(box.querySelectorAll(".taxa-escola-opcao")).forEach(function(botao) {
+      botao.addEventListener("click", function() {
+        var item = lista[Number(botao.dataset.indice)] || {};
+        if ($("taxaBuscaEscola")) $("taxaBuscaEscola").value = item.nome || "";
+        if ($("taxaEscolaNome")) $("taxaEscolaNome").value = item.nome || "";
+        if ($("taxaEscolaCnpj")) $("taxaEscolaCnpj").value = item.cnpj || "";
+        if ($("taxaEscolaEmail")) $("taxaEscolaEmail").value = item.email || "";
+        box.style.display = "none";
+      });
+    });
+  }
+
+  var taxaBuscaTimer = null;
+  function taxaBuscarEscolas() {
+    var termo = taxaValor("taxaBuscaEscola");
+    clearTimeout(taxaBuscaTimer);
+    taxaBuscaTimer = setTimeout(function() {
+      var chamada = google.script.run
+        .withSuccessHandler(taxaRenderEscolas)
+        .withFailureHandler(function(err) { toast("Erro ao buscar escolas: " + taxaMensagemErro(err), "err"); });
+      if (termo.length >= 2) chamada.buscarEscolaTaxa(termo, SISGEP_TOKEN_SESSAO);
+      else chamada.listarTodasEscolasTaxa(SISGEP_TOKEN_SESSAO);
+    }, 180);
+  }
+
+  function taxaLimparEscola() {
+    ["taxaBuscaEscola", "taxaEscolaNome", "taxaEscolaCnpj", "taxaEscolaEmail"].forEach(function(id) { if ($(id)) $(id).value = ""; });
+    if ($("taxaAutocompleteLista")) $("taxaAutocompleteLista").style.display = "none";
+  }
+
+  function resetarFormulario(){
     ["tipo","cnpj","email","escolaBusca","enderecoEscola","razaoSocialReceita","emailReceita","cidadeUfReceita","para","cargo","assunto","corpo","emailLivreAux","emailOficioLivreCompat"].forEach(function(id){var el=$(id);if(el)el.value="";});
     var sel=$("escola"), lista=$("listaTrabalhadores");
     if(sel) sel.value=""; if(lista){lista.innerHTML="";restaurarVazio();}
@@ -2181,11 +2181,6 @@ function enviarWhatsappOficio(urlPdf, numero) {
     window._fichasOficioDt = null;
     if (typeof atualizarFilaFichasOficio === "function") atualizarFilaFichasOficio();
     atualizarPreviewFichas();
-    atualizarResumoTrabalhadores(); autoSave();
-  }
-
-  function resetarFormulario(){
-    limparCamposOficio();
     var area=$("areaAcoesDocumento"), btnPrev=$("btnPreview"), btnEmit=$("btnEmitir"), btnNovo=$("btnNovoDocumento"), btnDown=$("btnDownload"), btnPrint=$("btnImprimir");
     if(area) area.style.display="none"; if(btnPrev) btnPrev.style.display="inline-flex";
     if(btnEmit){btnEmit.style.display="inline-flex";btnEmit.disabled=true;btnEmit.innerText="✅ Emitir Documento";}
@@ -2316,6 +2311,42 @@ function enviarWhatsappOficio(urlPdf, numero) {
     blindarBotao("btnConsultarCnpj", function(){ if(window.Oficio.consultarCnpj) window.Oficio.consultarCnpj(); });
     blindarBotao("btnSincronizarCnpj", function(){ if(window.Oficio.sincronizarCnpj) window.Oficio.sincronizarCnpj(); });
     blindarBotao("btnSalvarEscola", salvarEscolaNaPlanilha);
+    blindarBotao("btnPreviewTaxa", taxaPreview);
+    blindarBotao("btnEnviarTesteTaxa", taxaEnviarTeste);
+    blindarBotao("btnPrepararFilaTaxa", taxaPrepararFila);
+    blindarBotao("btnIniciarEnvioTaxa", taxaIniciarEnvio);
+    blindarBotao("btnContinuarEnvioTaxa", taxaIniciarEnvio);
+    blindarBotao("btnEnviarEscolaEspecifica", taxaEnviarEscola);
+    blindarBotao("btnLimparEscolaEspecifica", taxaLimparEscola);
+    blindarBotao("btnAtualizarStatusFila", taxaConsultarStatus);
+    blindarBotao("btnReenviarFalhasTaxa", function() {
+      google.script.run
+        .withSuccessHandler(function(resp) { toast((resp && resp.mensagem) || "Falhas revisadas.", "ok"); taxaConsultarStatus(); })
+        .withFailureHandler(function(err) { toast("Erro ao reenviar falhas: " + taxaMensagemErro(err), "err"); })
+        .reenviarFalhasTaxaAssistencial(SISGEP_TOKEN_SESSAO);
+    });
+    blindarBotao("btnCancelarEnvioEmAndamento", function() {
+      if (!window.confirm("Cancelar o envio automático em andamento?")) return;
+      google.script.run
+        .withSuccessHandler(function(resp) { toast((resp && resp.mensagem) || "Envio cancelado.", resp && resp.ok === false ? "err" : "ok"); taxaConsultarStatus(); })
+        .withFailureHandler(function(err) { toast("Erro ao cancelar: " + taxaMensagemErro(err), "err"); })
+        .cancelarEnvioTaxaAssistencial(SISGEP_TOKEN_SESSAO);
+    });
+
+    var taxaBusca = $("taxaBuscaEscola");
+    if (taxaBusca && !taxaBusca.dataset.taxaBound) {
+      taxaBusca.dataset.taxaBound = "1";
+      taxaBusca.addEventListener("input", taxaBuscarEscolas);
+      taxaBusca.addEventListener("focus", taxaBuscarEscolas);
+    }
+    var taxaAnexo = $("taxaAnexoCCT");
+    if (taxaAnexo && !taxaAnexo.dataset.taxaBound) {
+      taxaAnexo.dataset.taxaBound = "1";
+      taxaAnexo.addEventListener("change", function() {
+        var nome = $("taxaAnexoCCTNome"), arquivo = taxaAnexo.files && taxaAnexo.files[0];
+        if (nome) { nome.style.display = arquivo ? "block" : "none"; nome.textContent = arquivo ? ("✓ " + arquivo.name) : ""; }
+      });
+    }
 
     var fichas = $("fichas");
     if (fichas && !fichas.dataset.bound) {
@@ -2368,39 +2399,9 @@ function enviarWhatsappOficio(urlPdf, numero) {
       });
     }
     if($("btnLimparEscolaSelecionada")) $("btnLimparEscolaSelecionada").onclick=limpar;
+    if($("btnRemoverEscolaSelecionada")) $("btnRemoverEscolaSelecionada").onclick=limpar;
     if($("btnAdicionarEmailEscolaOficio")) $("btnAdicionarEmailEscolaOficio").onclick=adicionarEmailEscola;
     if($("btnAplicarEdicaoEscolaOficio")) $("btnAplicarEdicaoEscolaOficio").onclick=editarEscolaSelecionada;
-
-    /* Histórico da escola a um clique. Antes era ir na aba e digitar o nome de
-       novo, com a escola já selecionada aqui do lado. */
-    if($("escolaHistoricoLinha")) $("escolaHistoricoLinha").onclick=function(){
-      if(!escolaSmartSelecionada) return;
-      if(typeof window.mostrarHistoricoOficios==="function") window.mostrarHistoricoOficios();
-      else { var aba=$("abaOficioHistorico"); if(aba) aba.click(); }
-      setTimeout(function(){
-        var f=$("filtroEscola");
-        if(f){ f.value=escolaSmartSelecionada.nome||""; }
-        if(typeof Historico!=="undefined" && typeof Historico.carregar==="function") Historico.carregar();
-      }, 120);
-    };
-
-    /* CNPJ conferido enquanto se digita, com dígito verificador. Antes o campo
-       aceitava qualquer sequência de 14 números e o erro só aparecia na Receita
-       ou, pior, num ofício emitido para CNPJ inexistente. */
-    var inpCnpj=$("cnpj");
-    if(inpCnpj) inpCnpj.addEventListener("input", function(){
-      var digitos=String(inpCnpj.value||"").replace(/\D/g,"");
-      var st=$("statusConsultaCnpj");
-      inpCnpj.classList.remove("escola-cnpj-invalido");
-      if(digitos.length<14){ if(st && st.dataset.origem==="cnpj"){ st.style.display="none"; st.dataset.origem=""; } return; }
-      var ok=cnpjValido(digitos);
-      inpCnpj.classList.toggle("escola-cnpj-invalido", !ok);
-      if(st){
-        st.dataset.origem="cnpj"; st.style.display="flex";
-        st.className = ok ? "info-box green" : "info-box amber";
-        st.textContent = ok ? "CNPJ válido." : "CNPJ inválido — confira os números antes de emitir.";
-      }
-    });
     if($("btnToggleEdicaoEscola")) $("btnToggleEdicaoEscola").onclick=function(){ var p=$("secaoCnpjEmail"); if(p) p.style.display=p.style.display==="none"?"block":"none"; };
     bridgeClick("btnConsultarCnpjSmart","btnConsultarCnpj"); bridgeClick("btnSincronizarCnpjSmart","btnSincronizarCnpj"); bridgeClick("btnSalvarEscolaSmart","btnSalvarEscola");
     document.addEventListener("click",function(e){ var c=document.querySelector(".escola-smart-card"),d=$("autocompleteEscolaSmart"); if(c&&d&&!c.contains(e.target)) d.style.display="none"; });
@@ -2417,55 +2418,14 @@ function enviarWhatsappOficio(urlPdf, numero) {
   /* ─────────────────────────────────────────────
      MONITORAMENTO
   ────────────────────────────────────────────── */
-function carregarMonitoramento(filtros, tentativa) {
+function carregarMonitoramento(filtros) {
   filtros = filtros || {};
-  tentativa = tentativa || 1;
-
   var painel = $("painelMonitoramento");
-  if (painel) painel.innerHTML = '<div style="text-align:center;padding:36px;color:var(--g400);font-size:13px;font-weight:500;">⏳ '
-    + (tentativa > 1 ? "Nova tentativa..." : "Carregando...") + '</div>';
-
+  if (painel) painel.innerHTML = '<div style="text-align:center;padding:36px;color:var(--g400);font-size:13px;font-weight:500;">⏳ Carregando...</div>';
   google.script.run
-    .withSuccessHandler(function(retorno) {
-      if (!retorno) { renderErroMonitoramento("Resposta vazia do servidor.", filtros); return; }
-      // Erro devolvido pelo servidor: repetir não adianta, mostra o motivo.
-      if (retorno.erro) { toast(retorno.mensagem, "err", 6000); renderErroMonitoramento(retorno.mensagem, filtros); return; }
-      renderMonitoramento(retorno);
-    })
-    .withFailureHandler(function(err) {
-      var msg = (err && err.message) || String(err);
-      // A chamada não chegou ao servidor. O portal dispara dezenas de chamadas
-      // ao abrir e o Apps Script recusa as excedentes — uma segunda tentativa,
-      // depois da avalanche, costuma passar.
-      if (tentativa < 2) {
-        setTimeout(function() { carregarMonitoramento(filtros, tentativa + 1); }, 3000);
-        return;
-      }
-      toast("Erro ao carregar monitoramento: " + msg, "err", 6000);
-      renderErroMonitoramento(msg, filtros);
-    })
+    .withSuccessHandler(function(retorno) { if (retorno.erro) { toast(retorno.mensagem, "err"); return; } renderMonitoramento(retorno); })
+    .withFailureHandler(function(err) { toast("Erro ao carregar monitoramento: " + (err.message || err), "err"); })
     .listarStatusOficios(filtros, SISGEP_TOKEN_SESSAO);
-}
-
-/**
- * Estado de erro do painel. Antes, qualquer falha só piscava uma tarja por 4
- * segundos e o painel ficava preso no "Carregando..." para sempre.
- */
-function renderErroMonitoramento(mensagem, filtros) {
-  var painel = $("painelMonitoramento");
-  if (!painel) return;
-
-  painel.innerHTML =
-    '<div style="text-align:center;padding:40px 24px;">'
-    + '<div style="font-size:34px;line-height:1;">⚠️</div>'
-    + '<div style="margin-top:12px;font-size:15px;font-weight:800;color:var(--navy);">Não foi possível carregar o monitoramento</div>'
-    + '<div style="margin:8px auto 0;max-width:520px;font-size:12.5px;color:var(--g500);font-weight:500;">' + escapeHtml(mensagem || "Erro desconhecido.") + '</div>'
-    + '<div style="margin:8px auto 0;max-width:520px;font-size:11.5px;color:var(--g400);font-weight:500;">Se o portal acabou de abrir, aguarde alguns segundos: muitas chamadas simultâneas fazem o Apps Script recusar as excedentes.</div>'
-    + '<button id="btnMonTentarNovamente" style="margin-top:16px;padding:10px 18px;border-radius:10px;border:none;background:var(--navy);color:#fff;font-family:Plus Jakarta Sans,sans-serif;font-size:12.5px;font-weight:800;cursor:pointer;">🔄 Tentar novamente</button>'
-    + '</div>';
-
-  var btn = document.getElementById("btnMonTentarNovamente");
-  if (btn) btn.onclick = function() { carregarMonitoramento(filtros); };
 }
 
 function renderMonitoramento(dados) {
@@ -2508,11 +2468,6 @@ function renderMonitoramento(dados) {
     + '<button id="btnMonLimparFiltro" style="padding:9px 14px;border-radius:10px;border:1.5px solid var(--g200);background:#fff;font-family:Plus Jakarta Sans,sans-serif;font-size:12px;font-weight:700;color:var(--g600);cursor:pointer;">✕ Limpar</button>'
     + '</div>';
 
-  // Índice por número: os botões passam só o número. Interpolar escola ou tipo
-  // no onclick quebraria com um apóstrofo no nome da escola.
-  window._monItensPorNumero = {};
-  itens.forEach(function(i) { window._monItensPorNumero[String(i.numero)] = i; });
-
   var htmlLinhas = itens.length === 0
     ? '<tr><td colspan="7"><div class="of-table-empty">Nenhum ofício encontrado.</div></td></tr>'
     : itens.map(function(item) {
@@ -2521,12 +2476,6 @@ function renderMonitoramento(dados) {
           ? ' <span style="font-size:10px;background:var(--amber-lt);color:#92400e;border-radius:999px;padding:2px 7px;font-weight:800;">+' + item.diasSemResposta + 'd</span>'
           : '';
         var acoes = '';
-        if (item.podeEnviar)
-          acoes += '<button onclick="enviarOficioMon(\'' + escapeHtml(item.numero) + '\')" title="Enviar agora" style="padding:4px 9px;border-radius:7px;background:var(--amber-lt);color:#92400e;font-size:11px;font-weight:700;border:none;cursor:pointer;margin-right:4px;">📨</button>';
-        if (item.podeReprocessar)
-          acoes += '<button onclick="reprocessarOficioMon(\'' + escapeHtml(item.numero) + '\')" title="Devolver à fila de envio" style="padding:4px 9px;border-radius:7px;background:#ede9fe;color:#7c3aed;font-size:11px;font-weight:700;border:none;cursor:pointer;margin-right:4px;">🔄</button>';
-        if (item.status === "FALHA_ENTREGA" && item.link)
-          acoes += '<button onclick="reenviarOficioMon(\'' + escapeHtml(item.numero) + '\')" title="Reenviar com o e-mail cadastrado hoje" style="padding:4px 9px;border-radius:7px;background:#dbeafe;color:#1e40af;font-size:11px;font-weight:700;border:none;cursor:pointer;margin-right:4px;">✉️</button>';
         if (item.status === "ENVIADO" || item.status === "FALHA_ENTREGA" || item.status === "PENDENTE")
           acoes += '<button onclick="marcarStatusMon(\'' + escapeHtml(item.numero) + '\',\'CONFIRMADO\')" title="Confirmar" style="padding:4px 9px;border-radius:7px;background:var(--green-lt);color:var(--green-dk);font-size:11px;font-weight:700;border:none;cursor:pointer;margin-right:4px;">✅</button>';
         if (item.status !== "FALHA_ENTREGA")
@@ -2538,7 +2487,7 @@ function renderMonitoramento(dados) {
           + '<td style="padding:12px 14px;font-size:12px;">' + escapeHtml(item.tipo) + '</td>'
           + '<td style="padding:12px 14px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeHtml(item.escola) + '">' + escapeHtml(item.escola) + '</td>'
           + '<td style="padding:12px 14px;font-size:11px;color:var(--g500);">' + escapeHtml(item.email) + '</td>'
-          + '<td style="padding:12px 14px;" title="' + escapeHtml(item.motivoBloqueio || "") + '">' + badge + alerta + '</td>'
+          + '<td style="padding:12px 14px;">' + badge + alerta + '</td>'
           + '<td style="padding:12px 14px;font-size:11.5px;color:var(--g500);">' + (item.data || "—") + '</td>'
           + '<td style="padding:12px 14px;">' + acoes + '</td>'
           + '</tr>';
@@ -2632,75 +2581,8 @@ function marcarStatusMon(numero, novoStatus) {
     .atualizarStatusOficio(numero, novoStatus, obs, SISGEP_TOKEN_SESSAO);
 }
 
-function enviarOficioMon(numero) {
-  if (!numero) { toast("Número do ofício não informado.", "err"); return; }
-  confirmarSISGEP({
-    titulo:"Enviar ofício "+numero, subtitulo:"O e-mail sai imediatamente", icone:"📨",
-    texto:"Disparar agora o envio deste ofício para o destinatário cadastrado na fila?",
-    rotulo:"📨 Enviar agora"
-  }, function(){
-  toast("⏳ Enviando ofício " + numero + "...", "info");
-  google.script.run
-    .withSuccessHandler(function(r) {
-      if (r && r.ok) toast(r.mensagem || "E-mail enviado com sucesso!", "ok", 5000);
-      else toast((r && r.mensagem) || "Não foi possível enviar.", "err", 6000);
-      aplicarFiltroMonitoramento();
-    })
-    .withFailureHandler(function(err) { toast("Erro: " + (err.message || err), "err", 6000); })
-    .enviarOficioDaFilaAgora(numero, SISGEP_TOKEN_SESSAO);
-  });
-}
-
-function reprocessarOficioMon(numero) {
-  if (!numero) { toast("Número do ofício não informado.", "err"); return; }
-  confirmarSISGEP({
-    titulo:"Reprocessar ofício "+numero, subtitulo:"Volta para a fila automática", icone:"🔄",
-    texto:"Zerar as tentativas deste ofício e devolvê-lo à fila de envio?",
-    detalhe:"Se o erro anterior foi e-mail inválido, corrija o cadastro antes — senão vai falhar de novo.",
-    rotulo:"🔄 Devolver à fila"
-  }, function(){
-  google.script.run
-    .withSuccessHandler(function(r) {
-      if (r && r.ok) toast(r.mensagem || "Ofício devolvido à fila.", "ok", 6000);
-      else toast((r && r.mensagem) || "Não foi possível reprocessar.", "err", 6000);
-      aplicarFiltroMonitoramento();
-    })
-    .withFailureHandler(function(err) { toast("Erro: " + (err.message || err), "err", 6000); })
-    .reprocessarOficioDaFila(numero, SISGEP_TOKEN_SESSAO);
-  });
-}
-
 window.aplicarFiltroMonitoramento = aplicarFiltroMonitoramento;
 window.marcarStatusMon = marcarStatusMon;
-function reenviarOficioMon(numero) {
-  var item = (window._monItensPorNumero || {})[String(numero)];
-  if (!item) { toast("Ofício não encontrado na lista. Atualize o painel.", "err"); return; }
-  if (!item.link) { toast("Este ofício não tem PDF vinculado — reenvio indisponível.", "err", 6000); return; }
-
-  var destino = item.email || "o e-mail cadastrado da escola";
-  confirmarSISGEP({
-    titulo:"Reenviar ofício "+numero, subtitulo:"Este ofício falhou na entrega", icone:"✉️",
-    texto:"Reenviar para "+destino+"?",
-    detalhe:"Se o endereço continuar incorreto, vai falhar de novo — corrija o cadastro da escola antes de reenviar.",
-    rotulo:"✉️ Reenviar"
-  }, function(){
-  toast("⏳ Reenviando ofício " + numero + "...", "info");
-  google.script.run
-    .withSuccessHandler(function(r) {
-      // reenviarOficio devolve { erro: false, mensagem } — contrato diferente do resto do painel.
-      if (r && !r.erro) toast(r.mensagem || "Ofício reenviado.", "ok", 7000);
-      else toast((r && r.mensagem) || "Não foi possível reenviar.", "err", 7000);
-      aplicarFiltroMonitoramento();
-    })
-    .withFailureHandler(function(err) { toast("Erro: " + (err.message || err), "err", 6000); })
-    .reenviarOficio({ numero: numero, url: item.link, escola: item.escola, tipo: item.tipoRaw || item.tipo }, SISGEP_TOKEN_SESSAO);
-  });
-}
-
-window.reenviarOficioMon = reenviarOficioMon;
-window.renderErroMonitoramento = renderErroMonitoramento;
-window.enviarOficioMon = enviarOficioMon;
-window.reprocessarOficioMon = reprocessarOficioMon;
 window.carregarMonitoramento = carregarMonitoramento;
 
 /* ═══════════════════════════════════════════════════════
@@ -3386,7 +3268,7 @@ window.mostrarAbaOficio = function(aba) {
       if (termo.length < 3) return;
       results.style.display="block"; results.innerHTML='<div style="padding:10px;font-size:12px;color:var(--g400);">⏳ Buscando...</div>';
       timer = setTimeout(function() {
-        google.script.run.withSuccessHandler(function(lista){ renderizarDrive(lista||[], termo); }).withFailureHandler(function(err){ results.innerHTML='<div style="padding:9px;font-size:12px;color:var(--red);">Erro: '+((err&&err.message)||err)+'</div>'; }).buscarFichasDrive(termo);
+        google.script.run.withSuccessHandler(function(lista){ renderizarDrive(lista||[], termo); }).withFailureHandler(function(err){ results.innerHTML='<div style="padding:9px;font-size:12px;color:var(--red);">Erro: '+((err&&err.message)||err)+'</div>'; }).buscarFichasDrive(termo, SISGEP_TOKEN_SESSAO);
       }, 400);
     });
     input.addEventListener("keydown", function(e){ if(e.key==="Escape") wrap.remove(); });
@@ -3595,48 +3477,107 @@ window.mostrarAbaOficio = function(aba) {
       else{barra.style.display="none";}
     },
 
+    /* REENVIO — deixou de ser um confirm cego em 01/09/2026.
+       O usuario reenviava sem ver para onde ia, e o caso da FAESA mostrou o
+       custo disso: tres oficios reenviados para um endereco que nao recebia
+       mais. Agora a tela MOSTRA o destino do cadastro antes de mandar, e
+       permite acrescentar outro endereco — ou substituir, quando o do
+       cadastro esta morto. */
     reenviar: function(numero) {
       if(!numero) return;
-      confirmarSISGEP({
-        titulo:"Reenviar ofício "+numero, subtitulo:"Novo e-mail com o PDF em anexo", icone:"📧",
-        texto:"Reenviar este ofício para o e-mail cadastrado da escola?", rotulo:"📧 Reenviar"
-      }, function(){
       var tr=document.querySelector("tr[data-numero='"+numero+"']");
       var url=tr?(tr.dataset.url||""):"", cells=tr?tr.querySelectorAll("td"):[];
       var tipo=cells[2]?cells[2].textContent.trim():"", escola=cells[3]?cells[3].textContent.trim():"";
+
+      Historico._reenvioCtx={numero:numero,url:url,tipo:tipo,escola:escola};
+      var g=function(id){return document.getElementById(id);};
+      if(g("histReenvNumero")) g("histReenvNumero").textContent=numero;
+      if(g("histReenvEscola")) g("histReenvEscola").textContent=escola||"—";
+      if(g("histReenvTipo"))   g("histReenvTipo").textContent=tipo||"—";
+      if(g("histReenvCadastro")) g("histReenvCadastro").value="carregando…";
+      if(g("histReenvExtra"))  g("histReenvExtra").value="";
+      if(g("histReenvSomente")) g("histReenvSomente").checked=false;
+      Historico._reenvioAtualizarAviso();
+      var ov=g("histReenvOverlay"); if(ov) ov.classList.add("aberto");
+
+      /* Busca o destino do cadastro so para MOSTRAR. E leitura; o envio
+         continua resolvendo o destino no servidor, que e onde a verdade
+         esta — a tela nao manda para onde ela acha que e. */
       google.script.run
-        .withSuccessHandler(function(r){ toast((r&&!r.erro)?(r.mensagem||"Reenviado."):(r&&r.mensagem)||"Erro.", (r&&!r.erro)?"ok":"err"); })
-        .withFailureHandler(function(err){ toast("Erro: "+((err&&err.message)||err), "err"); })
-        .reenviarOficio({numero:numero, url:url, escola:escola, tipo:tipo}, SISGEP_TOKEN_SESSAO);
-      });
+        .withSuccessHandler(function(r){
+          var campo=g("histReenvCadastro"); if(!campo) return;
+          campo.value=(r&&r.emails)?r.emails:"(nenhum e-mail no cadastro)";
+          Historico._reenvioAtualizarAviso();
+        })
+        .withFailureHandler(function(){ var c=g("histReenvCadastro"); if(c) c.value="(não foi possível ler o cadastro)"; })
+        .obterDestinoReenvioOficio(numero, SISGEP_TOKEN_SESSAO);
+    },
+
+    _reenvioCtx: null,
+
+    _reenvioAtualizarAviso: function() {
+      var g=function(id){return document.getElementById(id);};
+      var somente=g("histReenvSomente"), aviso=g("histReenvAviso"), extra=g("histReenvExtra");
+      if(!aviso) return;
+      var temExtra=!!(extra && extra.value.trim());
+      if(somente && somente.checked && temExtra){
+        aviso.style.display="block";
+        aviso.textContent="O endereço do cadastro NÃO vai receber. Use isto quando ele estiver recusando e-mail.";
+      } else if(temExtra){
+        aviso.style.display="block";
+        aviso.textContent="O ofício vai para o cadastro E para o endereço informado.";
+      } else {
+        aviso.style.display="none";
+      }
+    },
+
+    reenvioFechar: function() {
+      var ov=document.getElementById("histReenvOverlay"); if(ov) ov.classList.remove("aberto");
+      Historico._reenvioCtx=null;
+    },
+
+    reenvioConfirmar: function() {
+      var ctx=Historico._reenvioCtx; if(!ctx) return;
+      var g=function(id){return document.getElementById(id);};
+      var extra=g("histReenvExtra")?g("histReenvExtra").value.trim():"";
+      var somente=!!(g("histReenvSomente")&&g("histReenvSomente").checked);
+      if(somente && !extra){ toast("Informe o endereço antes de marcar 'somente este'.","err"); return; }
+
+      var btn=g("histReenvOk");
+      if(btn){ btn.disabled=true; btn.textContent="Enviando…"; }
+
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){ btn.disabled=false; btn.textContent="Reenviar ▸"; }
+          toast((r&&!r.erro)?(r.mensagem||"Reenviado."):(r&&r.mensagem)||"Erro.", (r&&!r.erro)?"ok":"err");
+          if(r&&!r.erro) Historico.reenvioFechar();
+        })
+        .withFailureHandler(function(err){
+          if(btn){ btn.disabled=false; btn.textContent="Reenviar ▸"; }
+          toast("Erro: "+((err&&err.message)||err), "err");
+        })
+        .reenviarOficio({
+          numero:ctx.numero, url:ctx.url, escola:ctx.escola, tipo:ctx.tipo,
+          emailsExtras:extra, somenteExtras:somente
+        }, SISGEP_TOKEN_SESSAO);
     },
 
     excluir: function(numero) {
       if(!numero) return;
-      confirmarSISGEP({
-        titulo:"Excluir registro", subtitulo:"Ofício "+numero, icone:"🗑",
-        texto:"Excluir o registro deste ofício do histórico?",
-        detalhe:"Esta ação não pode ser desfeita.", rotulo:"🗑 Excluir", perigo:true
-      }, function(){
+      if(!window.confirm("Excluir o registro do ofício "+numero+"?\n\nEsta ação não pode ser desfeita.")) return;
       google.script.run
         .withSuccessHandler(function(r){ toast((r&&r.ok)?(r.mensagem||"Excluído."):(r&&r.mensagem)||"Erro ao excluir.", (r&&r.ok)?"ok":"err"); if(r&&r.ok) Historico.carregar(); })
         .withFailureHandler(function(err){ toast("Erro: "+((err&&err.message)||err), "err"); })
         .excluirRegistroOficio(numero, SISGEP_TOKEN_SESSAO);
-      });
     },
 
     excluirSelecionados: function() {
       if(!Historico.selecionados.length){ toast("Selecione ao menos um registro.", "warn"); return; }
-      confirmarSISGEP({
-        titulo:"Excluir "+Historico.selecionados.length+" registro(s)", subtitulo:"Exclusão em lote", icone:"🗑",
-        texto:"Excluir do histórico os "+Historico.selecionados.length+" registros selecionados?",
-        detalhe:"Esta ação não pode ser desfeita.", rotulo:"🗑 Excluir todos", perigo:true
-      }, function(){
+      if(!window.confirm("Excluir "+Historico.selecionados.length+" registro(s)?\n\nEsta ação não pode ser desfeita.")) return;
       google.script.run
         .withSuccessHandler(function(r){ toast((r&&r.ok)?(r.mensagem||"Excluídos."):(r&&r.mensagem)||"Erro.", (r&&r.ok)?"ok":"err"); if(r&&r.ok) Historico.carregar(); })
         .withFailureHandler(function(err){ toast("Erro: "+((err&&err.message)||err), "err"); })
         .excluirRegistrosOficio(Historico.selecionados, SISGEP_TOKEN_SESSAO);
-      });
     },
 
     editar: function(numero) {

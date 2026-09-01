@@ -89,4 +89,3 @@ function emailCore_registrarLog_(origem, destino, assunto, status, erro) {
 
   sh.appendRow([new Date(), origem, destino || '', assunto || '', status, erro || '', usuario]);
 }
-

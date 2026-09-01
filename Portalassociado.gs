@@ -115,7 +115,7 @@ function portalAss_salvarFotoCredencial_(cpf, base64, tipo) {
     var nomeArquivo = 'FOTO_' + String(cpf || '').replace(/\D/g, '') + '_' + Date.now() + '.' + extensao;
     var blob = Utilities.newBlob(Utilities.base64Decode(b64), mime, nomeArquivo);
     var arquivo = portalAss_obterPastaFotos_().createFile(blob);
-    arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    arquivoAplicarPolitica_(arquivo, "Portalassociado.gs");
     return 'https://drive.google.com/uc?export=view&id=' + arquivo.getId();
   } catch (e) {
     Logger.log('portalAss_salvarFotoCredencial_: ' + e);
@@ -325,7 +325,6 @@ function servirPortalAssociado(params) {
     ? cartAd_emissaoAtivaPorCpf_(String(dados.cpf || '').replace(/\D/g, ''))
     : null;
   template.credencialValidade = emissaoAtiva ? emissaoAtiva.validade : '';
-  template.bannerDemo = modoDemo ? '<div style="background:#f59e0b;color:#08101f;text-align:center;padding:10px 16px;font-weight:800;font-size:13px;">MODO DE DEMONSTRAÇÃO — dados fictícios, nenhuma alteração será gravada</div>' : "";
 
   return template.evaluate()
     .setTitle("Meu SindEducação")

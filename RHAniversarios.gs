@@ -8,8 +8,19 @@
 // (não desligados) e, se tiver e-mail cadastrado, envia parabéns pela
 // Central de E-mails.
 //
-// INSTALAÇÃO (uma vez, pelo editor do Apps Script):
-//   instalarTriggerAniversariosRH()
+// INSTALAÇÃO: pelo botão "🎂 Ativar/Desativar parabéns automático" nas
+// Ferramentas administrativas do RH (RHAdmin.html). Não é mais preciso
+// abrir o editor do Apps Script.
+//
+// SEGURANÇA (achado da auditoria do módulo RH): no Apps Script QUALQUER
+// função global é chamável por google.script.run — inclusive quem só
+// tem sessão de leitura. Os instaladores de trigger ficavam expostos sem
+// nenhuma checagem, ou seja, qualquer usuário logado podia ligar ou
+// DESLIGAR o envio automático sem deixar rastro. Agora o par público é
+// rh_instalarTriggerAniversarios_publico / rh_removerTriggerAniversarios_publico
+// (exigem administrador), e as versões com "_" no fim são internas —
+// o Apps Script não as expõe ao cliente. Mesmo padrão já usado em
+// RHTempoServico.gs (rh_instalarTriggerQuinquenioDecenio_publico).
 // ================================
 
 function verificarAniversariantesRH() {
@@ -65,16 +76,19 @@ function rh_enviarEmailAniversario_(colaborador) {
 
 /* ================= TRIGGER: INSTALAR / REMOVER ================= */
 
-function instalarTriggerAniversariosRH() {
+// Núcleos internos ("_" no fim = o Apps Script não expõe a
+// google.script.run). Continuam chamáveis pelo editor do Apps Script,
+// que é o caminho de emergência quando a tela não está acessível.
+function rh_instalarTriggerAniversarios_() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
     if (t.getHandlerFunction() === "verificarAniversariantesRH") ScriptApp.deleteTrigger(t);
   });
   ScriptApp.newTrigger("verificarAniversariantesRH").timeBased().everyDays(1).atHour(8).create();
   Logger.log("✅ Trigger de aniversariantes do RH instalado — executa diariamente às 8h.");
-  return { ok: true, mensagem: "Trigger de aniversariantes instalado com sucesso — executa diariamente às 8h." };
+  return { ok: true, mensagem: "Parabéns automático ativado — o sistema verifica todo dia por volta das 8h e envia o e-mail para quem faz aniversário." };
 }
 
-function removerTriggerAniversariosRH() {
+function rh_removerTriggerAniversarios_() {
   var removidos = 0;
   ScriptApp.getProjectTriggers().forEach(function (t) {
     if (t.getHandlerFunction() === "verificarAniversariantesRH") {
@@ -82,5 +96,33 @@ function removerTriggerAniversariosRH() {
       removidos++;
     }
   });
-  return { ok: true, mensagem: removidos + " trigger(s) removido(s)." };
+  return { ok: true, mensagem: removidos ? "Parabéns automático desativado." : "Não estava ativo." };
+}
+
+// Ligar/desligar o envio automático muda o que o sindicato manda em nome
+// dele para os colaboradores — é ação de administrador.
+function rh_instalarTriggerAniversarios_publico(tokenSessao) {
+  exigirModulo_(tokenSessao, "rh", true);
+  try {
+    return rh_instalarTriggerAniversarios_();
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao ativar o parabéns automático: " + e.message };
+  }
+}
+
+function rh_removerTriggerAniversarios_publico(tokenSessao) {
+  exigirModulo_(tokenSessao, "rh", true);
+  try {
+    return rh_removerTriggerAniversarios_();
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao desativar: " + e.message };
+  }
+}
+
+function rh_statusTriggerAniversarios_publico(tokenSessao) {
+  exigirModulo_(tokenSessao, "rh", false);
+  var instalado = ScriptApp.getProjectTriggers().some(function (t) {
+    return t.getHandlerFunction() === "verificarAniversariantesRH";
+  });
+  return { ok: true, instalado: instalado };
 }

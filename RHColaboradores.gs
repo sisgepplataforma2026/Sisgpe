@@ -168,7 +168,7 @@ function rh_obterConfigTributaria_() {
 }
 
 function rhObterConfigTributaria(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "rh", false);
   var cfg = rh_obterConfigTributaria_();
   return {
     ok: true,
@@ -182,7 +182,7 @@ function rhObterConfigTributaria(tokenSessao) {
 // Alterar as tabelas tributárias exige administrador — impacta o valor
 // líquido pago a todos os colaboradores.
 function rhSalvarConfigTributaria(inss, irrf, deducaoDependente, fgtsPatronalPct, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, true);
+  exigirModulo_(tokenSessao, "rh", true);
   try {
     if (!Array.isArray(inss) || !inss.length) return { ok: false, mensagem: "Tabela de INSS inválida." };
     if (!Array.isArray(irrf) || !irrf.length) return { ok: false, mensagem: "Tabela de IRRF inválida." };
@@ -255,7 +255,7 @@ function rh_diasNoMes_(competencia) {
 // Público — exige sessão. Nunca chamar isto de dentro de uma rotina
 // disparada por trigger (sem usuário logado); use a versão _interno_.
 function listarColaboradoresRH(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "rh", false);
   return listarColaboradoresRH_interno_();
 }
 
@@ -306,7 +306,7 @@ function listarColaboradoresRH_interno_() {
 }
 
 function salvarColaboradorRH(dados, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "rh", false);
   try {
     dados = dados || {};
     var nome = String(dados.nome || "").trim();
@@ -405,7 +405,7 @@ function rh_garantirHistoricoReajustes_() {
 
 // Público — exige administrador (reajusta salário de todo mundo de uma vez).
 function aplicarReajusteSalarialRH(percentual, referencia, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, true);
+  var sessao = exigirModulo_(tokenSessao, "rh", true);
   return rh_comLock_(function () {
   try {
     percentual = Number(percentual);
@@ -471,7 +471,7 @@ function aplicarReajusteSalarialRH(percentual, referencia, tokenSessao) {
 // Exclusão exige administrador — dado sensível (salário) sem trilha de
 // recuperação, mesmo padrão de excluirReceita/excluirEscolasEmLote.
 function excluirColaboradorRH(id, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, true);
+  exigirModulo_(tokenSessao, "rh", true);
   try {
     id = String(id || "").trim();
     if (!id) return { ok: false, mensagem: "Informe o colaborador a excluir." };
@@ -482,7 +482,7 @@ function excluirColaboradorRH(id, tokenSessao) {
     var idsCol = sh.getRange(2, 1, sh.getLastRow() - 1, 1).getValues();
     for (var i = idsCol.length - 1; i >= 0; i--) {
       if (String(idsCol[i][0]) === id) {
-        sh.deleteRow(i + 2);
+        lixeiraMover_(sh, i + 2, { origem: "excluirColaboradorRH" });
         return { ok: true, mensagem: "Colaborador excluído com sucesso." };
       }
     }
@@ -502,7 +502,7 @@ function excluirColaboradorRH(id, tokenSessao) {
 // competência e sugestão de dias trabalhados (mês cheio), que quem
 // gera a folha pode ajustar antes de confirmar (férias/afastamento).
 function prepararFolhaRH(competencia, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "rh", false);
   try {
     competencia = String(competencia || "").trim();
     if (!competencia) return { ok: false, mensagem: "Informe a competência." };
@@ -587,7 +587,7 @@ function rh_arquivarFolhaSubstituida_(linhas, cabecalho, quem, motivo) {
  * para poder avisar que a folha será substituída.
  */
 function contarFolhaCompetenciaRH(competencia, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "rh", false);
   try {
     competencia = String(competencia || "").trim();
     if (!competencia) return { ok: true, existentes: 0 };
@@ -603,8 +603,8 @@ function contarFolhaCompetenciaRH(competencia, tokenSessao) {
 }
 
 function gerarFolhaRH(competencia, itens, observacao, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
-  return rh_comLock_(function () {
+  var sessao = exigirModulo_(tokenSessao, "rh", false);
+  var resultado = rh_comLock_(function () {
   try {
     competencia = String(competencia || "").trim();
     if (!competencia) return { ok: false, mensagem: "Informe a competência." };
@@ -720,19 +720,6 @@ function gerarFolhaRH(competencia, itens, observacao, tokenSessao) {
 
     var linhasObj = linhas.map(rh_linhaFolhaParaObjeto_);
 
-    // Fecha o ciclo com o Financeiro: registra o custo total da folha como
-    // despesa (Fase 4). Best-effort — a folha já está gravada nesse ponto,
-    // uma falha aqui não pode desfazer o que já foi confirmado. Reprocessar
-    // a mesma competência gera uma NOVA despesa (não substitui a anterior);
-    // se isso acontecer, cancele/estorne a duplicada na tela de Despesas.
-    if (linhasObj.length) {
-      try {
-        rh_registrarDespesaFolha_(competencia, linhasObj, tokenSessao);
-      } catch (eDesp) {
-        Logger.log("[RH] falha ao registrar despesa da folha (" + competencia + "): " + eDesp.message);
-      }
-    }
-
     return {
       ok: true,
       competencia: competencia,
@@ -743,6 +730,33 @@ function gerarFolhaRH(competencia, itens, observacao, tokenSessao) {
     return { ok: false, mensagem: "Erro ao gerar folha: " + e.message };
   }
   });
+
+  // Fecha o ciclo com o Financeiro: registra o custo total da folha como
+  // despesa (Fase 4).
+  //
+  // ⚠️ ISTO PRECISA ACONTECER FORA DO rh_comLock_ ACIMA. O caminho
+  // registrarLancamentoDespesa -> registrarLancamentoDespesa_ ->
+  // gerarNumeroDespesa_ pede o PRÓPRIO LockService.getScriptLock(). Se
+  // esta chamada ficasse dentro do nosso lock, o pedido de dentro
+  // esperaria 30s por um lock que só seria liberado quando ela mesma
+  // terminasse — a despesa nunca seria criada. E como a chamada é
+  // best-effort (try/catch com Logger), a folha salvaria normalmente e o
+  // lançamento no Financeiro sumiria em silêncio. Mesmo cuidado já
+  // tomado em ConciliacaoCore.gs.
+  //
+  // Best-effort de propósito: a folha já está gravada neste ponto, uma
+  // falha aqui não pode desfazer o que já foi confirmado. Reprocessar a
+  // mesma competência gera uma NOVA despesa (não substitui a anterior);
+  // se isso acontecer, cancele/estorne a duplicada na tela de Despesas.
+  if (resultado && resultado.ok && resultado.linhas && resultado.linhas.length) {
+    try {
+      rh_registrarDespesaFolha_(resultado.competencia, resultado.linhas, tokenSessao);
+    } catch (eDesp) {
+      Logger.log("[RH] falha ao registrar despesa da folha (" + resultado.competencia + "): " + eDesp.message);
+    }
+  }
+
+  return resultado;
 }
 
 // Custo total da folha (Fase 4): bruto de todos os colaboradores + FGTS
@@ -790,7 +804,7 @@ function rh_linhaFolhaParaObjeto_(l) {
 }
 
 function listarFolhaRH(competencia, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "rh", false);
   try {
     competencia = String(competencia || "").trim();
     var sh = rh_garantirFolha_();
@@ -819,7 +833,7 @@ function listarFolhaRH(competencia, tokenSessao) {
 // tinha uma despesa gerada, cancele/estorne manualmente na tela de
 // Despesas.
 function excluirFolhaCompetenciaRH(competencia, tokenSessao) {
-  var sessaoExcl = exigirSessaoDocumentos_(tokenSessao, true);
+  var sessaoExcl = exigirModulo_(tokenSessao, "rh", true);
   return rh_comLock_(function () {
   try {
     competencia = String(competencia || "").trim();
@@ -838,7 +852,7 @@ function excluirFolhaCompetenciaRH(competencia, tokenSessao) {
           "Folha excluída da competência " + competencia);
       }
       for (var i = dados.length - 1; i >= 0; i--) {
-        if (String(dados[i][1]) === competencia) { sh.deleteRow(i + 2); removidos++; }
+        if (String(dados[i][1]) === competencia) { lixeiraMover_(sh, i + 2, { origem: "excluirFolhaCompetenciaRH" }); removidos++; }
       }
     }
 
@@ -849,7 +863,7 @@ function excluirFolhaCompetenciaRH(competencia, tokenSessao) {
       if (shRub.getLastRow() > 1) {
         var dadosRub = shRub.getRange(2, 1, shRub.getLastRow() - 1, shRub.getLastColumn()).getValues();
         for (var j = dadosRub.length - 1; j >= 0; j--) {
-          if (String(dadosRub[j][2]) === competencia) shRub.deleteRow(j + 2);
+          if (String(dadosRub[j][2]) === competencia) lixeiraMover_(shRub, j + 2, { origem: "excluirFolhaCompetenciaRH" });
         }
       }
     }

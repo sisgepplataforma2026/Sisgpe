@@ -269,6 +269,58 @@ function escolaVincNomesDe_(achados) {
    PRÉVIA E APLICAÇÃO — o mesmo código, decidido por um parâmetro
    ══════════════════════════════════════════════════════════════════════ */
 
+/**
+ * O próximo alvo ainda não migrado, na ordem de risco.
+ *
+ * Serve para o editor do Apps Script, cujo botão Run chama a função SEM
+ * ARGUMENTO NENHUM. Em 12/08/2026 escolaVinculosPrevia foi rodada assim e
+ * recebeu chave = undefined. A trava funcionou — recusou em vez de adivinhar
+ * um alvo — mas a função ficava inutilizável fora de uma tela que não existe.
+ *
+ * É a TERCEIRA vez que esta armadilha aparece nesta migração: primeiro em
+ * escolaMigrarIds, depois no token do resumo de pendências, agora no alvo.
+ * O padrão é sempre o mesmo: eu escrevo a função pensando na tela, e a tela
+ * ainda não existe.
+ */
+function escolaVincProximoPendente_() {
+  var ss = SpreadsheetApp.openById(PLANILHA_ID);
+  var achado = null;
+  ESC_VINC_ALVOS.slice().sort(function (a, b) { return a.ordem - b.ordem; })
+    .forEach(function (a) {
+      if (achado) return;
+      var sh = ss.getSheetByName(a.aba) ||
+               (a.abaAlternativa ? ss.getSheetByName(a.abaAlternativa) : null);
+      if (!sh) return;
+      var ultima = sh.getLastRow();
+      if (ultima < 2) return;
+      var cab = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0]
+        .map(function (c) { return String(c || "").trim(); });
+      var iDest = cab.indexOf(ESC_VINC_COL_DESTINO);
+      if (iDest === -1) { achado = a; return; }
+      var vazias = 0;
+      sh.getRange(2, iDest + 1, ultima - 1, 1).getValues().forEach(function (v) {
+        if (!String(v[0] || "").trim()) vazias++;
+      });
+      if (vazias) achado = a;
+    });
+  return achado;
+}
+
+/** Os alvos com consentimento válido agora. Usado pela aplicação sem argumento. */
+function escolaVincComConsentimento_() {
+  var props = PropertiesService.getScriptProperties();
+  var agora = new Date().getTime();
+  var vivos = [];
+  ESC_VINC_ALVOS.forEach(function (a) {
+    var bruto = props.getProperty(ESC_VINC_PROP_CONSENT + a.chave);
+    if (!bruto) return;
+    var quando = 0;
+    try { quando = JSON.parse(bruto).quando || 0; } catch (e) {}
+    if (agora - quando <= ESC_VINC_MINUTOS * 60 * 1000) vivos.push(a);
+  });
+  return vivos;
+}
+
 function escolaVincAlvo_(chave) {
   var alvo = null;
   ESC_VINC_ALVOS.forEach(function (a) {
@@ -592,7 +644,23 @@ function escolaVincImprimirMapa_(r) {
  * em Associados. Uma trava genérica seria a mesma coisa que trava nenhuma.
  */
 function escolaVinculosPrevia(chave, tokenSessao) {
-  escolaExigirAdminOuSessao_(tokenSessao, "escolaVinculosPrevia " + chave, true);
+  escolaExigirAdminOuSessao_(tokenSessao, "escolaVinculosPrevia " + (chave || "(sem alvo)"), true);
+
+  /* Sem alvo — é o editor chamando sem argumento. Medir é leitura pura, então
+   * escolher o próximo pendente é seguro E é o que o log já vinha dizendo
+   * para fazer. O log abaixo diz qual foi escolhido, em voz alta: prévia de
+   * um alvo que o usuário não pediu seria pior que a recusa. */
+  if (!String(chave || "").trim()) {
+    var proximo = escolaVincProximoPendente_();
+    if (!proximo) {
+      Logger.log("Todos os alvos já estão vinculados. Nada a medir.");
+      return { ok: true, mensagem: "Todos os alvos já estão vinculados.", nada: true };
+    }
+    chave = proximo.chave;
+    Logger.log("Sem alvo informado — medindo o próximo pendente: " +
+               proximo.rotulo + " (" + proximo.chave + ")");
+  }
+
   var r = escolaVincProcessar_(chave, false);
   if (r.ok) {
     PropertiesService.getScriptProperties().setProperty(
@@ -605,7 +673,31 @@ function escolaVinculosPrevia(chave, tokenSessao) {
 
 /** APLICA — exige prévia recente do MESMO alvo, e a consome. */
 function escolaVinculosAplicar(chave, tokenSessao) {
-  escolaExigirAdminOuSessao_(tokenSessao, "escolaVinculosAplicar " + chave, true);
+  escolaExigirAdminOuSessao_(tokenSessao, "escolaVinculosAplicar " + (chave || "(sem alvo)"), true);
+
+  /* Sem alvo, a aplicação NÃO escolhe o próximo pendente — ela escolhe o que
+   * tem consentimento vivo. A diferença é toda: "próximo pendente" poderia
+   * gravar numa aba que o usuário nunca viu; "quem tem consentimento" só pode
+   * ser a aba cuja prévia ele acabou de ler. Se houver dois, recusa e nomeia
+   * os dois — adivinhar qual dos dois seria pior que perguntar. */
+  if (!String(chave || "").trim()) {
+    var vivos = escolaVincComConsentimento_();
+    if (vivos.length === 1) {
+      chave = vivos[0].chave;
+      Logger.log("Sem alvo informado — aplicando no que tem prévia recente: " +
+                 vivos[0].rotulo + " (" + vivos[0].chave + ")");
+    } else if (!vivos.length) {
+      var m = "Nenhuma prévia recente. Rode escolaVinculosPrevia antes de aplicar.";
+      Logger.log("RECUSADO: " + m);
+      return { ok: false, mensagem: m };
+    } else {
+      var nomes = vivos.map(function (a) { return a.chave; }).join(", ");
+      var m2 = "Há prévia recente de mais de um alvo (" + nomes +
+               "). Diga qual aplicar: escolaVinculosAplicar(\"" + vivos[0].chave + "\")";
+      Logger.log("RECUSADO: " + m2);
+      return { ok: false, mensagem: m2 };
+    }
+  }
 
   var alvo = escolaVincAlvo_(chave);
   if (!alvo) return { ok: false, mensagem: "Alvo desconhecido: " + chave };

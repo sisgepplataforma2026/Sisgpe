@@ -11,7 +11,115 @@
 
 /* ── Confirmações de Recebimento ── */
 
-function instalarTriggerConfirmacoes() {
+/* ==========================================================================
+   COMO SE DECIDE QUE UM OFICIO FOI RECEBIDO — e o que estava errado
+
+   Achado em 01/09/2026, puxando o fio de tres bounces reais para a FAESA
+   (oficios 144, 236 e 242, todos para thalia.ferreira@faesa.br). Na producao
+   o 144 estava marcado CONFIRMADO. A pergunta foi: confirmado por quem?
+
+   O DEFEITO ERA A PALAVRA "ok", PROCURADA COM indexOf
+
+   `indexOf` casa PEDACO de palavra. Medido contra textos reais:
+
+     "Enviado do meu Outlook"                  -> casava por "ok"
+     "Sent from Outlook for iOS"               -> casava por "ok"
+     "Nao pode ser entregue. Token invalido."  -> casava por "ok"
+     "Estou de ferias. Obrigado pelo contato." -> casava por "obrigado"
+
+   Ou seja: o oficio era dado como recebido porque alguem respondeu de um
+   Outlook, ou porque um robo de ferias agradeceu.
+
+   E A BUSCA JA ERA LARGA
+
+   A consulta ao Gmail procura pelo numero do oficio OU PELO NOME DA ESCOLA.
+   Buscar pelo nome da escola significa que qualquer e-mail trocado com
+   aquela escola, sobre qualquer assunto, entrava na conta. Somando as duas
+   coisas: qualquer conversa com a FAESA em que aparecesse "Outlook"
+   confirmava o oficio.
+
+   O QUE FICA PIOR DEPOIS: confirmado sai do filtro do verificador de bounce,
+   que so olha ENVIADO e PENDENTE. Entao o oficio que mais claramente NAO
+   chegou era justamente o que nenhuma rotina voltava a olhar.
+
+   O QUE MUDOU
+
+   1. "ok" passou a valer so como palavra inteira. "Outlook" e "token" nao
+      confirmam mais nada.
+   2. Remetente automatico — mailer-daemon, postmaster, no-reply e afins —
+      nao confirma. Antes so financeiro@ e secretaria@ eram ignorados, entao
+      um robo podia confirmar oficio.
+
+   O QUE NAO MUDOU, DE PROPOSITO: "obrigado" e "obrigada" continuam na lista.
+   Sao ambiguos de verdade — muita gente responde "obrigado, recebido" — e
+   tira-los faria o sistema deixar de reconhecer confirmacao legitima. E
+   decisao de operacao, nao de codigo, e fica registrada aqui como escolha.
+   ========================================================================== */
+
+/* Termos que confirmam. "ok" fica fora daqui porque exige limite de palavra. */
+var MON_OFICIOS_CONFIRMA_ = ["recebido", "recebemos", "confirmo", "confirmamos",
+                             "ciente", "acusamos", "obrigado", "obrigada"];
+
+var MON_OFICIOS_AUTOMATICOS_ = ["mailer-daemon", "mailerdaemon", "postmaster",
+                                "no-reply", "noreply", "nao-responda",
+                                "naoresponda", "do-not-reply", "donotreply",
+                                "automatic", "notification@", "notifications@"];
+
+/** O remetente e um robo? Robo nao confirma recebimento de oficio. */
+function MON_OFICIOS_ehRemetenteAutomatico_(from) {
+  var f = String(from || "").toLowerCase();
+  for (var i = 0; i < MON_OFICIOS_AUTOMATICOS_.length; i++) {
+    if (f.indexOf(MON_OFICIOS_AUTOMATICOS_[i]) > -1) return true;
+  }
+  return false;
+}
+
+/** O texto confirma recebimento? "ok" so vale como palavra inteira. */
+function MON_OFICIOS_textoConfirmaRecebimento_(texto) {
+  var t = String(texto || "").toLowerCase();
+  for (var i = 0; i < MON_OFICIOS_CONFIRMA_.length; i++) {
+    if (t.indexOf(MON_OFICIOS_CONFIRMA_[i]) > -1) return true;
+  }
+  /* O defeito inteiro morava aqui: "Outlook" tem "ok" dentro. */
+  return /(^|[^a-z0-9])ok([^a-z0-9]|$)/i.test(t);
+}
+
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   POR QUE ESTES QUATRO GANHARAM PORTA — 01/09/2026
+
+   Achado na frente A da auditoria do Módulo 03, cruzando as funções públicas
+   com as que escrevem estado. Os quatro criavam e APAGAVAM gatilho sem pedir
+   permissão nenhuma, e sem sequer receber um token.
+
+   No Apps Script não existe rota para `google.script.run`: toda função global
+   é endpoint para QUALQUER página do projeto, inclusive as anônimas que o
+   `Code.gs` serve. Ou seja, um visitante qualquer podia chamar
+   `removerTriggerConfirmacoes()` e desligar, em silêncio, a verificação de
+   confirmação de recebimento e a de falha de entrega.
+
+   E desligar essas duas não dá erro nenhum: as confirmações simplesmente
+   param de ser registradas e as falhas param de ser detectadas. Ninguém liga
+   uma coisa à outra.
+
+   Isso ficou pior depois da correção da Home de hoje: o FALHA_ENTREGA passou
+   a aparecer no painel, e quem marca esse status é justamente o
+   `verificarFalhasEntregaOficios`. Sem o gatilho, o indicador fica em zero
+   dizendo que está tudo bem.
+
+   NÃO É PADRÃO NOVO — é o padrão da casa, que estes quatro não tinham. O
+   `instalarTriggerFilaEnvioOficios` (FilaOficios.gs:802), no mesmo módulo, já
+   usava `exigirAdminOuSessao_` com o mesmo rótulo e o mesmo `true`.
+
+   A porta é DUPLA de propósito: aceita o token de sessão do SISGEP e também a
+   conta Google do dono do projeto, porque estas funções são rodadas do editor,
+   onde não há token. Sem a segunda metade, a correção quebraria o único jeito
+   de instalá-las.
+   ───────────────────────────────────────────────────────────────────────── */
+
+function instalarTriggerConfirmacoes(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, "documentos", "Instalação do gatilho de confirmações de recebimento", true);
   ScriptApp.getProjectTriggers().forEach(function(trigger) {
     if (trigger.getHandlerFunction() === "verificarConfirmacoesRecebimento") {
       ScriptApp.deleteTrigger(trigger);
@@ -22,7 +130,8 @@ function instalarTriggerConfirmacoes() {
   return { ok: true, mensagem: "Trigger de confirmações instalado com sucesso." };
 }
 
-function removerTriggerConfirmacoes() {
+function removerTriggerConfirmacoes(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, "documentos", "Remoção do gatilho de confirmações de recebimento", true);
   ScriptApp.getProjectTriggers().forEach(function(trigger) {
     if (trigger.getHandlerFunction() === "verificarConfirmacoesRecebimento") {
       ScriptApp.deleteTrigger(trigger);
@@ -183,20 +292,13 @@ function verificarConfirmacoesRecebimento() {
 
           if (from.indexOf("financeiro@sindeducacao.com") > -1) continue;
           if (from.indexOf("secretaria@sindeducacao.com") > -1) continue;
+          /* Remetente automatico nao confirma nada — ver a nota grande acima
+             de MON_OFICIOS_CONFIRMA_. */
+          if (MON_OFICIOS_ehRemetenteAutomatico_(from)) continue;
 
           var texto = subject + " " + body;
 
-          if (
-            texto.indexOf("recebido") > -1 ||
-            texto.indexOf("recebemos") > -1 ||
-            texto.indexOf("confirmo") > -1 ||
-            texto.indexOf("confirmamos") > -1 ||
-            texto.indexOf("ciente") > -1 ||
-            texto.indexOf("ok") > -1 ||
-            texto.indexOf("acusamos") > -1 ||
-            texto.indexOf("obrigado") > -1 ||
-            texto.indexOf("obrigada") > -1
-          ) {
+          if (MON_OFICIOS_textoConfirmaRecebimento_(texto)) {
             confirmado = true;
             break;
           }
@@ -241,7 +343,8 @@ function verificarConfirmacoesRecebimento() {
 }
 /* ── Falhas de Entrega (Bounces) ── */
 
-function instalarTriggerFalhasEntrega() {
+function instalarTriggerFalhasEntrega(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, "documentos", "Instalação do gatilho de falhas de entrega", true);
   ScriptApp.getProjectTriggers().forEach(function(trigger) {
     if (trigger.getHandlerFunction() === "verificarFalhasEntregaOficios") {
       ScriptApp.deleteTrigger(trigger);
@@ -252,7 +355,8 @@ function instalarTriggerFalhasEntrega() {
   return { ok: true, mensagem: "Trigger instalado com sucesso." };
 }
 
-function removerTriggerFalhasEntrega() {
+function removerTriggerFalhasEntrega(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, "documentos", "Remoção do gatilho de falhas de entrega", true);
   ScriptApp.getProjectTriggers().forEach(function(trigger) {
     if (trigger.getHandlerFunction() === "verificarFalhasEntregaOficios") {
       ScriptApp.deleteTrigger(trigger);
@@ -273,7 +377,6 @@ function verificarFalhasEntregaOficios() {
     var colNumero     = headerMap["Número do Ofício"];
     var colEmailTodos = headerMap["E-mails (todos)"] || headerMap["E-mail (principal)"];
     var colObs        = headerMap["Observações"];
-    var colDataEnvio  = headerMap["Data envio ofício"];
 
     if (!colStatus || !colNumero || !colEmailTodos) {
       Logger.log("verificarFalhasEntregaOficios: colunas não encontradas.");
@@ -285,7 +388,20 @@ function verificarFalhasEntregaOficios() {
 
     for (var i = 0; i < dados.length; i++) {
       var status = MON_OFICIOS_normStatus_(dados[i][colStatus - 1]);
-      if (status !== "ENVIADO" && status !== "PENDENTE") continue;
+      if (status !== "ENVIADO" && status !== "PENDENTE") {
+        /* CONFIRMADO tambem entra — mas SO quando a confirmacao foi
+           AUTOMATICA. Achado em 01/09/2026: a confirmacao por palavra-chave
+           marcava oficios que na verdade quicaram (ver a nota grande sobre
+           MON_OFICIOS_CONFIRMA_), e uma vez confirmado o oficio saia deste
+           filtro para sempre — nenhuma rotina voltava a olha-lo.
+
+           O que uma PESSOA confirmou fica intocado: ela viu a resposta, e o
+           bounce de um endereco antigo nao pode desfazer isso. A distincao
+           existe porque o proprio sistema grava a origem na observacao. */
+        if (status !== "CONFIRMADO") continue;
+        var obsConf = colObs ? String(dados[i][colObs - 1] || "") : "";
+        if (!/confirma[\u00e7c][\u00e3a]o localizada automaticamente/i.test(obsConf)) continue;
+      }
 
       var numero = String(dados[i][colNumero - 1] || "").trim();
       if (!numero) continue;
@@ -293,12 +409,7 @@ function verificarFalhasEntregaOficios() {
       var emails = MON_OFICIOS_normalizarEmails_(dados[i][colEmailTodos - 1]);
       if (!emails.length) continue;
 
-      oficiosAtivos.push({
-        linhaReal: i + 2,
-        numero: numero,
-        emails: emails,
-        dataEnvio: colDataEnvio ? dados[i][colDataEnvio - 1] : null
-      });
+      oficiosAtivos.push({ linhaReal: i + 2, numero: numero, emails: emails });
     }
 
     if (!oficiosAtivos.length) {
@@ -329,18 +440,14 @@ function verificarFalhasEntregaOficios() {
       return { ok: true, falhas: 0, mensagem: "Nenhum bounce encontrado." };
     }
 
-    // Guarda a data do bounce mais recente por endereço. Sem isso, a mensagem de
-    // devolução antiga continua no Gmail dentro da janela de 90 dias e reabre a
-    // falha a cada rodada, mesmo depois de um reenvio bem-sucedido.
     var emailsComBounce = {};
     threads.forEach(function(thread) {
       thread.getMessages().forEach(function(msg) {
-        var dataMsg = msg.getDate();
         var corpo = (msg.getPlainBody() || "") + " " + (msg.getBody() || "");
         (corpo.match(/[\w.+-]+@[\w-]+\.[\w.]+/g) || []).forEach(function(email) {
           var n = String(email || "").trim().toLowerCase();
           if (!n || n.indexOf("sindeducacao.com") > -1) return;
-          if (!emailsComBounce[n] || dataMsg > emailsComBounce[n]) emailsComBounce[n] = dataMsg;
+          emailsComBounce[n] = true;
         });
       });
     });
@@ -352,26 +459,10 @@ function verificarFalhasEntregaOficios() {
 
     var totalFalhas = 0;
     var agora = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm");
-    var dataEnvioFila = MON_OFICIOS_mapaDataEnvioFila_(ss);
 
     oficiosAtivos.forEach(function(item) {
-      var bounceMaisRecente = null;
-      item.emails.forEach(function(e) {
-        var d = emailsComBounce[e];
-        if (d && (!bounceMaisRecente || d > bounceMaisRecente)) bounceMaisRecente = d;
-      });
-      if (!bounceMaisRecente) return;
-
-      // A devolução anterior ao último envio se refere a uma tentativa já superada
-      // — tipicamente um reenvio depois de corrigir o cadastro. Sem data confiável
-      // dos dois lados, mantém o comportamento antigo e marca a falha.
-      var ultimoEnvio = MON_OFICIOS_dataMaisRecente_(dataEnvioFila[item.numero], item.dataEnvio);
-      if (ultimoEnvio && bounceMaisRecente <= ultimoEnvio) {
-        Logger.log("↩ Ofício " + item.numero + ": devolução de " +
-          MON_OFICIOS_formatarData_(bounceMaisRecente) + " é anterior ao envio de " +
-          MON_OFICIOS_formatarData_(ultimoEnvio) + ". Ignorada.");
-        return;
-      }
+      var teveBounce = item.emails.some(function(e) { return emailsComBounce[e] === true; });
+      if (!teveBounce) return;
 
       shRegistro.getRange(item.linhaReal, colStatus).setValue("FALHA_ENTREGA");
 
@@ -459,10 +550,6 @@ function listarStatusOficios(filtros, tokenSessao) {
     });
 
     var itens = Object.keys(mapa).map(function(k) { return mapa[k]; });
-    itens.forEach(function(item) {
-      MON_OFICIOS_definirAcoesEnvio_(item);
-      MON_OFICIOS_limparCamposInternos_(item);
-    });
     var resumo = MON_OFICIOS_resumirItens_(itens);
 
     itens = MON_OFICIOS_aplicarFiltrosStatus_(itens, filtros);
@@ -520,291 +607,6 @@ function atualizarStatusOficio(numero, novoStatus, observacao, tokenSessao) {
   }
 }
 
-/**
- * Diagnóstico read-only: para cada ofício que o painel mostra como Pendente,
- * diz se ele existe na fila de envio e em que estado. Responde à pergunta
- * "os pendentes já saíram ou ainda estão para sair?".
- *
- * Não altera nada. Pode ser executada direto no editor do Apps Script,
- * sem sessão web — o resultado sai no registro de execução.
- */
-function diagnosticarPendentesOficios() {
-  var ss = MON_OFICIOS_getSS_();
-  var linhas = [];
-
-  function log(txt) { linhas.push(txt); }
-
-  /* ── Estado atual da fila de envio ── */
-  var statusFila = {};
-  var distFila = {};
-  var shFila = ss.getSheetByName("FILA_ENVIO_OFICIOS");
-
-  if (shFila && shFila.getLastRow() > 1) {
-    var hmF    = getHeaderMap_(shFila);
-    var cNumF  = hmF["NUMERO_OFICIO"];
-    var cStF   = hmF["STATUS"];
-    if (!cNumF || !cStF) throw new Error("Colunas NUMERO_OFICIO/STATUS não encontradas na fila.");
-
-    shFila.getRange(2, 1, shFila.getLastRow() - 1, shFila.getLastColumn()).getValues().forEach(function(row) {
-      var num = String(row[cNumF - 1] || "").trim();
-      if (!num) return;
-      var st = MON_OFICIOS_normStatus_(row[cStF - 1]) || "(vazio)";
-      statusFila[num] = st;
-      distFila[st] = (distFila[st] || 0) + 1;
-    });
-  }
-
-  log("FILA_ENVIO_OFICIOS — " + Object.keys(statusFila).length + " ofício(s):");
-  Object.keys(distFila).sort().forEach(function(st) { log("   " + st + ": " + distFila[st]); });
-
-  /* ── Pendentes do Controle, confrontados com a fila ── */
-  var shReg = ss.getSheetByName(PLANILHA_REGISTRO);
-  if (!shReg || shReg.getLastRow() < 2) {
-    log("Aba de Controle vazia ou não encontrada.");
-    Logger.log(linhas.join("\n"));
-    return { ok: true, relatorio: linhas };
-  }
-
-  var hmR   = getHeaderMap_(shReg);
-  var cNumR = hmR["Número do Ofício"];
-  var cStR  = hmR["Status"];
-  var cEscR = hmR["Escola (Razão Social)"] || hmR["NomeEscola"] || hmR["Escola"];
-  var cDtR  = hmR["Data envio ofício"] || hmR["DATA_CRIACAO"];
-  if (!cNumR || !cStR) throw new Error("Colunas Número do Ofício/Status não encontradas no Controle.");
-
-  var grupos = { jaEnviado: [], aguardandoFila: [], travado: [], semFila: [] };
-
-  shReg.getRange(2, 1, shReg.getLastRow() - 1, shReg.getLastColumn()).getValues().forEach(function(row) {
-    var num = String(row[cNumR - 1] || "").trim();
-    if (!num) return;
-
-    // Mesma regra do painel: Status em branco conta como PENDENTE.
-    var st = MON_OFICIOS_normStatus_(row[cStR - 1]) || "PENDENTE";
-    if (st !== "PENDENTE" && st !== "PROCESSANDO") return;
-
-    var stFila = statusFila[num];
-    var desc = num
-      + " | " + (cEscR ? String(row[cEscR - 1] || "").substring(0, 34) : "")
-      + " | " + (cDtR ? MON_OFICIOS_formatarData_(row[cDtR - 1]) : "");
-
-    if (!stFila)                                              grupos.semFila.push(desc);
-    else if (stFila === "ENVIADO" || stFila === "CONFIRMADO")  grupos.jaEnviado.push(desc + " | fila: " + stFila);
-    else if (stFila === "PENDENTE" || stFila === "ERRO")       grupos.aguardandoFila.push(desc + " | fila: " + stFila);
-    else                                                       grupos.travado.push(desc + " | fila: " + stFila);
-  });
-
-  function bloco(titulo, itens, explicacao) {
-    log("");
-    log(titulo + ": " + itens.length);
-    if (itens.length) log("   → " + explicacao);
-    itens.slice(0, 40).forEach(function(t) { log("   " + t); });
-    if (itens.length > 40) log("   ... e mais " + (itens.length - 40) + ".");
-  }
-
-  var total = grupos.jaEnviado.length + grupos.aguardandoFila.length + grupos.travado.length + grupos.semFila.length;
-  log("");
-  log("PENDENTES NO CONTROLE: " + total);
-
-  bloco("JÁ ENVIADOS", grupos.jaEnviado,
-    "O e-mail saiu pela fila. É o Status do Controle que está desatualizado.");
-  bloco("AGUARDANDO NA FILA", grupos.aguardandoFila,
-    "Ainda vão sair sozinhos: o gatilho processa 5 a cada 5 minutos.");
-  bloco("PRESOS EM PROCESSAMENTO", grupos.travado,
-    "Rode destravarOficiosProcessandoTravados() para devolvê-los à fila.");
-  bloco("SEM LINHA NA FILA", grupos.semFila,
-    "Nunca foram enfileirados: não existe e-mail montado para disparar. Precisam ser reemitidos ou ter o status corrigido.");
-
-  Logger.log(linhas.join("\n"));
-  return { ok: true, relatorio: linhas };
-}
-
-/**
- * Corrige no Controle o Status dos ofícios que a fila já enviou.
- *
- * Só toca em linha que está PENDENTE, vazia ou PROCESSANDO no Controle e que
- * a fila dá como ENVIADO ou CONFIRMADO — nunca sobrescreve status decidido por
- * alguém. Grava célula a célula: a sincronização antiga reescrevia a aba
- * inteira, o que achata qualquer fórmula do Controle no valor calculado.
- *
- * Comece por simularSincronizacaoPendentes(), que não altera nada.
- */
-function sincronizarStatusPendentesEnviados(aplicar) {
-  var aplicando = (aplicar === true);
-  var ss = MON_OFICIOS_getSS_();
-  var linhas = [];
-  function log(t) { linhas.push(t); }
-
-  var shFila = ss.getSheetByName("FILA_ENVIO_OFICIOS");
-  if (!shFila || shFila.getLastRow() < 2) throw new Error("Fila de envio vazia ou não encontrada.");
-
-  var hmF   = getHeaderMap_(shFila);
-  var cNumF = hmF["NUMERO_OFICIO"];
-  var cStF  = hmF["STATUS"];
-  if (!cNumF || !cStF) throw new Error("Colunas NUMERO_OFICIO/STATUS não encontradas na fila.");
-
-  var statusFila = {};
-  shFila.getRange(2, 1, shFila.getLastRow() - 1, shFila.getLastColumn()).getValues().forEach(function(row) {
-    var num = String(row[cNumF - 1] || "").trim();
-    if (!num) return;
-    var st = MON_OFICIOS_normStatus_(row[cStF - 1]);
-    if (st === "ENVIADO" || st === "CONFIRMADO") statusFila[num] = st;
-  });
-
-  var shReg = ss.getSheetByName(PLANILHA_REGISTRO);
-  if (!shReg || shReg.getLastRow() < 2) throw new Error("Aba de Controle vazia ou não encontrada.");
-
-  var hmR   = getHeaderMap_(shReg);
-  var cNumR = hmR["Número do Ofício"];
-  var cStR  = hmR["Status"];
-  if (!cNumR || !cStR) throw new Error("Colunas Número do Ofício/Status não encontradas no Controle.");
-
-  var totalLinhas = shReg.getLastRow() - 1;
-  var numeros = shReg.getRange(2, cNumR, totalLinhas, 1).getValues();
-  var status  = shReg.getRange(2, cStR,  totalLinhas, 1).getValues();
-  var correcoes = [];
-
-  for (var i = 0; i < totalLinhas; i++) {
-    var num = String(numeros[i][0] || "").trim();
-    if (!num) continue;
-
-    var stAtual = MON_OFICIOS_normStatus_(status[i][0]);
-    if (stAtual && stAtual !== "PENDENTE" && stAtual !== "PROCESSANDO") continue;
-
-    var stFila = statusFila[num];
-    if (!stFila) continue;
-
-    correcoes.push({ linha: i + 2, numero: num, de: stAtual || "(vazio)", para: stFila });
-  }
-
-  log((aplicando ? "APLICANDO" : "SIMULAÇÃO — nada foi alterado") + ".");
-  log("Ofícios a corrigir no Controle: " + correcoes.length);
-  correcoes.slice(0, 60).forEach(function(c) {
-    log("   linha " + c.linha + " | " + c.numero + " | " + c.de + " → " + c.para);
-  });
-  if (correcoes.length > 60) log("   ... e mais " + (correcoes.length - 60) + ".");
-
-  if (!aplicando) {
-    log("");
-    log("Para gravar, execute aplicarSincronizacaoPendentes().");
-    Logger.log(linhas.join("\n"));
-    return { ok: true, aplicado: false, total: correcoes.length, correcoes: correcoes };
-  }
-
-  correcoes.forEach(function(c) { shReg.getRange(c.linha, cStR).setValue(c.para); });
-  SpreadsheetApp.flush();
-
-  try {
-    registrarLogSistema({
-      usuario: "sistema",
-      numero: correcoes.length + " ofício(s) (SINCRONIZACAO STATUS CONTROLE)",
-      tipo: "", escola: "", cnpj: "", email: "", codigo: ""
-    });
-  } catch (eLog) {
-    Logger.log("⚠ Falha ao registrar log da sincronização: " + eLog.message);
-  }
-
-  log("");
-  log("✅ " + correcoes.length + " status corrigido(s) no Controle.");
-  Logger.log(linhas.join("\n"));
-  return { ok: true, aplicado: true, total: correcoes.length, correcoes: correcoes };
-}
-
-function simularSincronizacaoPendentes() { return sincronizarStatusPendentesEnviados(false); }
-function aplicarSincronizacaoPendentes() { return sincronizarStatusPendentesEnviados(true); }
-
-/**
- * Tudo o que o card da escola precisa saber antes de emitir, numa consulta só:
- * histórico de ofícios, endereços que já recusaram entrega, e se já existe
- * ofício do mesmo tipo no período.
- *
- * A varredura do Controle é uma só — quatro chamadas separadas custariam
- * quatro leituras da mesma aba de ~1.000 linhas.
- */
-function obterAvisosEscolaOficio(cnpj, tipo, tokenSessao) {
-  exigirModulo_(tokenSessao, "documentos", false);
-
-  var vazio = { ok: true, enviados: 0, confirmados: 0, ultimo: "", emailsComFalha: [], duplicata: null };
-  var alvo = String(cnpj || "").replace(/\D/g, "");
-  if (!alvo) return vazio;
-
-  var ss = MON_OFICIOS_getSS_();
-  var sh = ss.getSheetByName(PLANILHA_REGISTRO);
-  if (!sh || sh.getLastRow() < 2) return vazio;
-
-  var hm      = getHeaderMap_(sh);
-  var cCnpj   = hm["CNPJ"];
-  var cStatus = hm["Status"];
-  var cNumero = hm["Número do Ofício"];
-  var cTipo   = hm["TIPO"] || hm["Tipo"];
-  var cData   = hm["Data envio ofício"];
-  var cEmails = hm["E-mails (todos)"] || hm["E-mail (principal)"];
-  if (!cCnpj || !cStatus) return vazio;
-
-  var tipoAlvo = MON_OFICIOS_normStatus_(tipo);
-  var agora    = new Date();
-  var res      = { ok: true, enviados: 0, confirmados: 0, ultimo: "", emailsComFalha: [], duplicata: null };
-  var falhas      = {};
-  var confirmados = {};
-  var maisRecente = null;
-
-  sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues().forEach(function(row) {
-    if (String(row[cCnpj - 1] || "").replace(/\D/g, "") !== alvo) return;
-
-    var status = MON_OFICIOS_normStatus_(row[cStatus - 1]);
-    var data   = cData ? MON_OFICIOS_paraData_(row[cData - 1]) : null;
-
-    if (status === "ENVIADO" || status === "CONFIRMADO" || status === "FALHA_ENTREGA") res.enviados++;
-    if (status === "CONFIRMADO") res.confirmados++;
-    if (data && (!maisRecente || data > maisRecente)) maisRecente = data;
-
-    // Endereços que recusaram: é o que evita repetir o erro no próximo envio.
-    // O bounce é registrado no ofício, não no endereço — se a mensagem foi para
-    // três pessoas e voltou, não dá para saber qual recusou. Por isso a certeza
-    // é alta só quando havia um único destinatário.
-    if (cEmails) {
-      var lista = MON_OFICIOS_normalizarEmails_(row[cEmails - 1]);
-
-      if (status === "CONFIRMADO") {
-        lista.forEach(function(em) { confirmados[em] = true; });
-      } else if (status === "FALHA_ENTREGA") {
-        lista.forEach(function(em) {
-          var anterior = falhas[em];
-          if (!anterior || (data && anterior.data && data > anterior.data) || (data && !anterior.data)) {
-            falhas[em] = { data: data || (anterior && anterior.data) || null, sozinho: lista.length === 1 };
-          } else if (anterior && lista.length === 1) {
-            anterior.sozinho = true;
-          }
-        });
-      }
-    }
-
-    // Mesmo tipo, mesmo mês: aviso antes de o operador preencher o resto.
-    if (tipoAlvo && data && MON_OFICIOS_normStatus_(cTipo ? row[cTipo - 1] : "") === tipoAlvo
-        && data.getMonth() === agora.getMonth() && data.getFullYear() === agora.getFullYear()
-        && status !== "ERRO" && status !== "ERRO_PERMANENTE") {
-      res.duplicata = {
-        numero: cNumero ? String(row[cNumero - 1] || "").trim() : "",
-        data: MON_OFICIOS_formatarData_(row[cData - 1])
-      };
-    }
-  });
-
-  res.ultimo = maisRecente ? MON_OFICIOS_formatarData_(maisRecente) : "";
-  /* Quem já confirmou recebimento não é o endereço quebrado: sai da lista.
-     Sem isto, um envio com três destinatários marcaria os três. */
-  res.emailsComFalha = Object.keys(falhas)
-    .filter(function(em) { return !confirmados[em]; })
-    .map(function(em) {
-      return {
-        email: em,
-        data: falhas[em].data ? MON_OFICIOS_formatarData_(falhas[em].data) : "",
-        certeza: falhas[em].sozinho ? "alta" : "baixa"
-      };
-    });
-
-  return res;
-}
-
 /* ============================================================================
    HELPERS PRIVADOS DO MONITORAMENTO
 ============================================================================ */
@@ -833,99 +635,6 @@ function MON_OFICIOS_formatarData_(v) {
   } catch (e) {
     return String(v || "");
   }
-}
-
-/** Converte para Date apenas o que é data de verdade. */
-function MON_OFICIOS_paraData_(v) {
-  if (!v) return null;
-  var d = v instanceof Date ? v : new Date(v);
-  return isNaN(d.getTime()) ? null : d;
-}
-
-function MON_OFICIOS_dataMaisRecente_(a, b) {
-  var da = MON_OFICIOS_paraData_(a);
-  var db = MON_OFICIOS_paraData_(b);
-  if (!da) return db;
-  if (!db) return da;
-  return da > db ? da : db;
-}
-
-/** Número do ofício → data do último envio registrado na fila. */
-function MON_OFICIOS_mapaDataEnvioFila_(ss) {
-  var mapa = {};
-  var sh = ss.getSheetByName("FILA_ENVIO_OFICIOS");
-  if (!sh || sh.getLastRow() < 2) return mapa;
-
-  var hm      = getHeaderMap_(sh);
-  var cNumero = hm["NUMERO_OFICIO"];
-  var cEnvio  = hm["DATA_ENVIO"];
-  if (!cNumero || !cEnvio) return mapa;
-
-  sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues().forEach(function(row) {
-    var num = String(row[cNumero - 1] || "").trim();
-    if (!num) return;
-    mapa[num] = MON_OFICIOS_dataMaisRecente_(mapa[num], row[cEnvio - 1]);
-  });
-
-  return mapa;
-}
-
-/**
- * Fecha o ciclo do reenvio: tira o ofício de FALHA_ENTREGA e passa a data de
- * envio para agora, nos dois lados. Sem isso o painel continua mostrando falha
- * mesmo depois de a mensagem sair, e o detector de bounce reabre a falha usando
- * a devolução antiga.
- */
-function MON_OFICIOS_registrarReenvio_(ss, numero, usuario) {
-  var quando = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm");
-  var nota = "Reenviado em " + quando + (usuario ? " por " + usuario : "") + ".";
-
-  var sh = ss.getSheetByName(PLANILHA_REGISTRO);
-  if (sh && sh.getLastRow() > 1) {
-    var hm      = getHeaderMap_(sh);
-    var cStatus = hm["Status"];
-    var cNumero = hm["Número do Ofício"];
-    var cObs    = hm["Observações"];
-    var cData   = hm["Data envio ofício"];
-
-    if (cStatus && cNumero) {
-      var dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
-      for (var i = 0; i < dados.length; i++) {
-        if (String(dados[i][cNumero - 1] || "").trim() !== String(numero || "").trim()) continue;
-
-        // Nunca rebaixa um CONFIRMADO: quem confirmou o recebimento decidiu antes.
-        var stAtual = MON_OFICIOS_normStatus_(dados[i][cStatus - 1]);
-        if (stAtual !== "CONFIRMADO") sh.getRange(i + 2, cStatus).setValue("ENVIADO");
-        if (cData) sh.getRange(i + 2, cData).setValue(new Date());
-
-        if (cObs) {
-          var obsAtual = String(dados[i][cObs - 1] || "").trim();
-          sh.getRange(i + 2, cObs).setValue(obsAtual ? obsAtual + " | " + nota : nota);
-        }
-        break;
-      }
-    }
-  }
-
-  var shFila = ss.getSheetByName("FILA_ENVIO_OFICIOS");
-  if (shFila && shFila.getLastRow() > 1) {
-    var hmF     = getHeaderMap_(shFila);
-    var cNumF   = hmF["NUMERO_OFICIO"];
-    var cStF    = hmF["STATUS"];
-    var cEnvioF = hmF["DATA_ENVIO"];
-
-    if (cNumF && cStF) {
-      var dadosF = shFila.getRange(2, cNumF, shFila.getLastRow() - 1, 1).getValues();
-      for (var j = 0; j < dadosF.length; j++) {
-        if (String(dadosF[j][0] || "").trim() !== String(numero || "").trim()) continue;
-        shFila.getRange(j + 2, cStF).setValue("ENVIADO");
-        if (cEnvioF) shFila.getRange(j + 2, cEnvioF).setValue(new Date());
-        break;
-      }
-    }
-  }
-
-  SpreadsheetApp.flush();
 }
 
 function MON_OFICIOS_diasSemResposta_(dataVal) {
@@ -973,11 +682,7 @@ function MON_OFICIOS_listarStatusControle_(ss) {
       data: MON_OFICIOS_formatarData_(dataVal),
       obs: cObs ? String(row[cObs - 1] || "").trim() : "",
       link: cLink ? String(row[cLink - 1] || "").trim() : "",
-      diasSemResposta: MON_OFICIOS_diasSemResposta_(dataVal),
-      naFila: false,
-      statusFila: "",
-      tentativas: 0,
-      dataUltimaTentativa: null
+      diasSemResposta: MON_OFICIOS_diasSemResposta_(dataVal)
     });
   });
 
@@ -997,8 +702,6 @@ function MON_OFICIOS_listarStatusFila_(ss) {
   var cData   = hm["DATA_CRIACAO"];
   var cErro   = hm["ULTIMO_ERRO"];
   var cAnexos = hm["ANEXOS_JSON"];
-  var cTent   = hm["TENTATIVAS"];
-  var cDataTent = hm["DATA_ULTIMA_TENTATIVA"];
 
   if (!cStatus || !cNumero) return [];
 
@@ -1009,8 +712,8 @@ function MON_OFICIOS_listarStatusFila_(ss) {
     var numero = String(row[cNumero - 1] || "").trim();
     if (!numero) return;
 
-    var statusFila = MON_OFICIOS_normStatus_(row[cStatus - 1]) || "PENDENTE";
-    var status = statusFila === "ERRO_PERMANENTE" ? "ERRO" : statusFila;
+    var status = MON_OFICIOS_normStatus_(row[cStatus - 1]) || "PENDENTE";
+    if (status === "ERRO_PERMANENTE") status = "ERRO";
 
     var tipoRaw = cTipo ? String(row[cTipo - 1] || "").trim() : "";
     var dataVal = cData ? row[cData - 1] : null;
@@ -1026,11 +729,7 @@ function MON_OFICIOS_listarStatusFila_(ss) {
       data: MON_OFICIOS_formatarData_(dataVal),
       obs: cErro ? String(row[cErro - 1] || "").trim() : "",
       link: cAnexos ? MON_OFICIOS_extrairLinkPdf_(row[cAnexos - 1]) : "",
-      diasSemResposta: MON_OFICIOS_diasSemResposta_(dataVal),
-      naFila: true,
-      statusFila: statusFila,
-      tentativas: cTent ? (parseInt(row[cTent - 1], 10) || 0) : 0,
-      dataUltimaTentativa: cDataTent ? row[cDataTent - 1] : null
+      diasSemResposta: MON_OFICIOS_diasSemResposta_(dataVal)
     });
   });
 
@@ -1051,86 +750,7 @@ function MON_OFICIOS_mesclarItemStatus_(a, b) {
   });
 
   base.origem = base.origem === extra.origem ? base.origem : "Controle/Fila";
-
-  // O laço acima só preenche campo vazio, e `false`/`0` não contam como vazio.
-  // Estes campos vêm da fila e decidem se ainda dá para enviar — mescla explícita.
-  base.naFila = !!(a.naFila || b.naFila);
-  base.statusFila = a.statusFila || b.statusFila || "";
-  base.tentativas = Math.max(Number(a.tentativas) || 0, Number(b.tentativas) || 0);
-  base.dataUltimaTentativa = a.dataUltimaTentativa || b.dataUltimaTentativa || null;
-
   return base;
-}
-
-/**
- * Diz, para cada linha do painel, o que o operador pode fazer.
- * Só é enviável o que tem linha em FILA_ENVIO_OFICIOS: um "Pendente" que veio
- * apenas do Controle não tem e-mail montado, não há o que disparar.
- */
-function MON_OFICIOS_definirAcoesEnvio_(item) {
-  var maxTentativas = typeof FILA_OFICIOS_MAX_TENTATIVAS !== "undefined" ? FILA_OFICIOS_MAX_TENTATIVAS : 3;
-
-  item.podeEnviar = false;
-  item.podeReprocessar = false;
-  item.motivoBloqueio = "";
-
-  if (!item.naFila) {
-    item.motivoBloqueio = "Sem registro na fila de envio — nada a disparar por aqui.";
-    return item;
-  }
-
-  var statusFila = MON_OFICIOS_normStatus_(item.statusFila);
-  var tentativas = Number(item.tentativas) || 0;
-
-  if (statusFila === "ENVIADO") {
-    var statusPainel = MON_OFICIOS_normStatus_(item.status);
-    if (statusPainel !== "ENVIADO" && statusPainel !== "CONFIRMADO") {
-      item.motivoBloqueio = "E-mail já enviado pela fila — o status do Controle é que está desatualizado.";
-    }
-    return item;
-  }
-
-  if (statusFila === "ERRO_PERMANENTE" || tentativas >= maxTentativas) {
-    item.podeReprocessar = true;
-    item.motivoBloqueio = "Limite de " + maxTentativas + " tentativas atingido — reprocesse para voltar à fila.";
-    return item;
-  }
-
-  if (statusFila === "PROCESSANDO") {
-    var travado = typeof filaOficiosProcessandoTravado_ === "function"
-      ? filaOficiosProcessandoTravado_(item.dataUltimaTentativa)
-      : false;
-
-    if (travado) {
-      item.podeEnviar = true;
-      item.podeReprocessar = true;
-      item.motivoBloqueio = "Envio interrompido em processamento.";
-    } else {
-      item.motivoBloqueio = "Envio em processamento agora.";
-    }
-    return item;
-  }
-
-  if (statusFila === "PENDENTE" || statusFila === "ERRO") {
-    item.podeEnviar = true;
-    if (tentativas > 0) item.motivoBloqueio = "Tentativas até agora: " + tentativas + " de " + maxTentativas + ".";
-  }
-
-  return item;
-}
-
-/**
- * Os campos que só servem para calcular as ações ficam no servidor.
- * O google.script.run não entrega objetos Date crus da planilha ao navegador:
- * a resposta inteira chega nula no handler de sucesso. Todo o resto do painel
- * já trafega como string ou número — este é o único ponto que precisava disso.
- */
-function MON_OFICIOS_limparCamposInternos_(item) {
-  delete item.naFila;
-  delete item.statusFila;
-  delete item.tentativas;
-  delete item.dataUltimaTentativa;
-  return item;
 }
 
 function MON_OFICIOS_resumirItens_(itens) {

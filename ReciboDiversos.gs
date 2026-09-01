@@ -321,7 +321,7 @@ function rdRegistrarHistorico_(dados, numero, linkPdf, statusEmail) {
    PREVIEW
 ═══════════════════════════════════════ */
 function previewReciboDiverso(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   dados = dados || {};
 
   if (!dados.pagadorNome) throw new Error("Informe o nome do beneficiário.");
@@ -339,7 +339,7 @@ function previewReciboDiverso(dados, tokenSessao) {
    GERAR RECIBO DIVERSO INDIVIDUAL
 ═══════════════════════════════════════ */
 function gerarReciboDiverso(dados, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "documentos", false);
   try {
     dados = dados || {};
 
@@ -360,7 +360,7 @@ function gerarReciboDiverso(dados, tokenSessao) {
     var params = rdMontarParamsHtml_(dados, numero, false);
     var html   = gerarHtmlReciboCompleto_(params, false);
 
-    var pastaAno = obterOuCriarSubpastaAno(PASTA_RECIBO_ID);
+    var pastaAno = obterOuCriarSubpastaAno(getRecursoId_("RECIBOS"));
     var nomeArq  = ("ReciboDiverso " + numero + " - " + params.nome)
       .replace(/[\\/:*?"<>|]/g, "-")
       .replace(/\s+/g, " ")
@@ -369,7 +369,7 @@ function gerarReciboDiverso(dados, tokenSessao) {
     var pdfFile = recibo_converterHtmlParaPdf_(html, nomeArq, pastaAno);
 
     try {
-      pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      arquivoAplicarPolitica_(pdfFile, "ReciboDiversos.gs");
     } catch(e) {}
 
     var fileId      = pdfFile.getId();
@@ -410,7 +410,7 @@ function gerarReciboDiverso(dados, tokenSessao) {
    GERAR LOTE DE RECIBOS DIVERSOS
 ═══════════════════════════════════════ */
 function gerarLoteReciboDiversos(lista, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "documentos", false);
   try {
     if (!Array.isArray(lista) || !lista.length) {
       return { erro: true, mensagem: "Lista de beneficiários vazia." };
@@ -422,7 +422,7 @@ function gerarLoteReciboDiversos(lista, tokenSessao) {
 
     var arquivos = [];
     var erros    = [];
-    var pastaAno = obterOuCriarSubpastaAno(PASTA_RECIBO_ID);
+    var pastaAno = obterOuCriarSubpastaAno(getRecursoId_("RECIBOS"));
 
     lista.forEach(function(dados, idx) {
       try {
@@ -445,7 +445,7 @@ function gerarLoteReciboDiversos(lista, tokenSessao) {
           .trim();
 
         var pdfFile = recibo_converterHtmlParaPdf_(html, nomeArq, pastaAno);
-        try { pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch(e) {}
+        try { arquivoAplicarPolitica_(pdfFile, "ReciboDiversos.gs"); } catch(e) {}
 
         var fileId      = pdfFile.getId();
         var urlPreview  = "https://drive.google.com/file/d/" + fileId + "/preview";
@@ -514,7 +514,9 @@ function rdEnviarEmailIndividual_(dados, numero, urlPdf, blobPdf) {
         "<p>Prezado(a) <strong>" + nome + "</strong>,</p>" +
         "<p>Segue o Recibo Diverso Nº <strong>" + numero + "</strong>, no valor de <strong>R$ " + valor + "</strong>.</p>" +
         "<p><strong>Referente a:</strong> " + descricao + "</p>" +
-        "<p><a href='" + urlPdf + "' target='_blank'>📄 Clique aqui para acessar seu recibo</a></p>" +
+        /* O PDF vai anexado (blobPdf, no fim desta função). O link ia para
+           o Drive, que era público — 20/08/2026. */
+        "<p>📄 O recibo segue <strong>em anexo</strong>.</p>" +
         "<p>Após assinar (físico ou pelo Gov.br), por favor devolva o documento assinado por este e-mail ou WhatsApp.</p>" +
         "<p>Em caso de dúvidas, entre em contato.</p>" +
         "<p><strong>Atenciosamente,</strong><br>SINDEDUCAÇÃO-ES</p>" +
@@ -544,7 +546,7 @@ function rdEnviarEmailIndividual_(dados, numero, urlPdf, blobPdf) {
    MARCAR RECIBO COMO ASSINADO
 ═══════════════════════════════════════ */
 function marcarReciboDiversoAssinado(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     dados = dados || {};
 
@@ -591,7 +593,7 @@ function marcarReciboDiversoAssinado(dados, tokenSessao) {
    SALVAR ANEXO ASSINADO (base64 → Drive)
 ═══════════════════════════════════════ */
 function salvarAnexoAssinadoDiverso(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     dados = dados || {};
 
@@ -617,13 +619,13 @@ function salvarAnexoAssinadoDiverso(dados, tokenSessao) {
     garantirEstruturaReciboDiversos_();
 
     // Salva na mesma pasta de recibos
-    var pastaAno = obterOuCriarSubpastaAno(PASTA_RECIBO_ID);
+    var pastaAno = obterOuCriarSubpastaAno(getRecursoId_("RECIBOS"));
     var bytes    = validacaoPdf.bytes;
     var blob     = Utilities.newBlob(bytes, mimeType, nomeArq);
     var arquivo  = pastaAno.createFile(blob);
 
     try {
-      arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      arquivoAplicarPolitica_(arquivo, "ReciboDiversos.gs");
     } catch(e) {}
 
     var link = "https://drive.google.com/file/d/" + arquivo.getId() + "/preview";
@@ -643,7 +645,7 @@ function salvarAnexoAssinadoDiverso(dados, tokenSessao) {
    SALVAR LINK ASSINADO (colar link Drive)
 ═══════════════════════════════════════ */
 function salvarLinkAssinadoDiverso(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     dados = dados || {};
 
@@ -687,7 +689,7 @@ function rdSalvarLinkAssinado_(numero, link) {
    ENVIAR PARA CONTABILIDADE (com assinado)
 ═══════════════════════════════════════ */
 function enviarReciboDiversoContabilidade(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     dados = dados || {};
 
@@ -737,7 +739,10 @@ function enviarReciboDiversoContabilidade(dados, tokenSessao) {
           "<p><strong>Beneficiário:</strong> " + (dados.nome || "") + "</p>" +
           "<p><strong>Valor:</strong> R$ " + (dados.valor || "") + "</p>" +
           "<p><strong>Referente a:</strong> " + (dados.descricao || "") + "</p>" +
-          (linkParaEnviar ? "<p><a href='" + linkParaEnviar + "'>📄 Abrir recibo assinado</a></p>" : "") +
+          /* O arquivo vai anexado logo abaixo, a partir deste mesmo
+             linkParaEnviar. O link no corpo apontava para o Drive, que era
+             público — 20/08/2026. */
+          "<p>📄 O recibo assinado segue <strong>em anexo</strong>.</p>" +
           "<p><strong>Atenciosamente,</strong><br>SINDEDUCAÇÃO-ES</p>" +
         "</div>";
 
@@ -807,7 +812,7 @@ function rdAtualizarStatusContabilidade_(numero, novoStatus) {
    REENVIAR E-MAIL DO HISTÓRICO
 ═══════════════════════════════════════ */
 function reenviarEmailReciboDiverso(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     dados = dados || {};
 
@@ -826,16 +831,37 @@ function reenviarEmailReciboDiverso(dados, tokenSessao) {
         "<p>Prezado(a) <strong>" + nome + "</strong>,</p>" +
         "<p>Segue o reenvio do Recibo Diverso Nº <strong>" + numero + "</strong>, no valor de <strong>R$ " + valor + "</strong>.</p>" +
         (desc ? "<p><strong>Referente a:</strong> " + desc + "</p>" : "") +
-        "<p><a href='" + linkPdf + "' target='_blank'>📄 Abrir recibo</a></p>" +
+        "<p>O recibo segue <strong>em anexo</strong> neste e-mail.</p>" +
         "<p>Após assinar (físico ou pelo Gov.br), por favor devolva o documento assinado.</p>" +
         "<p><strong>Atenciosamente,</strong><br>SINDEDUCAÇÃO-ES</p>" +
       "</div>";
 
-    MailApp.sendEmail({
+    /* O PDF VAI ANEXADO, E NÃO POR LINK — 20/08/2026.
+       Este e-mail levava só um link para o arquivo no Drive, e o arquivo era
+       público para quem tivesse a URL. Fechado o compartilhamento, o link
+       deixaria de abrir; então o documento passa a viajar no próprio e-mail.
+       Mesmo padrão já usado no envio em lote, logo acima. */
+    var anexosReenvio = [];
+    var idPdf = linkPdf.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (idPdf) {
+      try {
+        anexosReenvio.push(
+          DriveApp.getFileById(idPdf[1]).getBlob()
+            .setName("ReciboDiverso " + numero + ".pdf")
+        );
+      } catch (eAnexo) {
+        return { ok: false, mensagem: "Não consegui anexar o recibo: " + eAnexo.message };
+      }
+    }
+
+    var opcoesReenvio = {
       to:       email,
       subject:  "Reenvio — Recibo para assinatura Nº " + numero + " — SindEducação-ES",
       htmlBody: htmlBody
-    });
+    };
+    if (anexosReenvio.length) opcoesReenvio.attachments = anexosReenvio;
+
+    MailApp.sendEmail(opcoesReenvio);
 
     rdAtualizarStatusEmail_(numero, "REENVIADO");
 
@@ -877,7 +903,7 @@ function rdAtualizarStatusEmail_(numero, novoStatus) {
    Retorna campos de assinatura e contabilidade
 ═══════════════════════════════════════ */
 function listarHistoricoReciboDiversos(filtros, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     garantirEstruturaReciboDiversos_();
 
@@ -999,7 +1025,7 @@ function listarHistoricoReciboDiversos(filtros, tokenSessao) {
    EXCLUIR DO HISTÓRICO
 ═══════════════════════════════════════ */
 function excluirReciboDiverso(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, true);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", true);
   try {
     var numero = String((dados && dados.numero) || "").trim();
     if (!numero) return { ok: false, mensagem: "Número não informado." };
@@ -1014,7 +1040,7 @@ function excluirReciboDiverso(dados, tokenSessao) {
 
     for (var i = valores.length - 1; i >= 1; i--) {
       if (String(valores[i][idxNum] || "").trim() === numero) {
-        sh.deleteRow(i + 1);
+        lixeiraMover_(sh, i + 1, { origem: "excluirReciboDiverso" });
         return { ok: true, mensagem: "Recibo " + numero + " removido do histórico." };
       }
     }

@@ -9,7 +9,12 @@ var LIMITE_FICHAS_OFICIO = 25;
  * @param {Array} fichas - Array de objetos com {base64, nome} ou {driveId}
  * @return {Array} Array de objetos {nome, base64, tipo, origem}
  */
-function processarFichasParaOficio(fichas) {
+function processarFichasParaOficio(fichas, tokenSessao) {
+  /* PORTA ACRESCENTADA EM 01/09/2026 — frente A da auditoria do Modulo 03.
+     Devolve dado de escola (razao social, CNPJ, e-mails) e nao tinha checagem
+     nenhuma. No Apps Script toda funcao global e endpoint para QUALQUER pagina
+     do projeto, inclusive as anonimas que o Code.gs serve. Ver a nota do t125. */
+  exigirModulo_(tokenSessao, "documentos", false);
   if (!Array.isArray(fichas) || !fichas.length) return [];
 
   if (fichas.length > LIMITE_FICHAS_OFICIO) {
@@ -79,7 +84,7 @@ function processarFichasParaOficio(fichas) {
  * @return {object} Resultado da geração
  */
 function gerarOficioWebComFichas(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     var fichasProcessadas = dados.fichas
       ? processarFichasParaOficio(dados.fichas)

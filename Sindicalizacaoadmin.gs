@@ -400,7 +400,7 @@ function gerarPDFFichaSindicalizacao(idFicha) {
 
   var pasta = sindAdm_pastaPDF_();
   var arquivo = pasta.createFile(blob);
-  arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  arquivoAplicarPolitica_(arquivo, "Sindicalizacaoadmin.gs");
   return arquivo.getUrl();
 }
 

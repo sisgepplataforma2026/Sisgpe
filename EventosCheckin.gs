@@ -26,7 +26,7 @@ function checkin_normalizarNumero_(v) {
 
 // Busca o ingresso pelo número, sem alterar nada — usado para conferir antes de confirmar.
 function checkin_buscarIngresso(codigo, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "eventos", false);
   try {
     var numero = checkin_normalizarNumero_(codigo);
     if (!numero) return { ok: false, mensagem: 'Informe o número do ingresso.' };
@@ -53,7 +53,7 @@ function checkin_buscarIngresso(codigo, tokenSessao) {
 
 // Confirma a entrada: marca status='UTILIZADO'. Bloqueia dupla entrada e ingresso cancelado.
 function checkin_confirmarEntrada(codigo, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "eventos", false);
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
@@ -99,4 +99,105 @@ function checkin_confirmarEntrada(codigo, tokenSessao) {
   } finally {
     lock.releaseLock();
   }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   COMPASSO 2026 — CHECK-IN DE PORTARIA
+
+   Trazido de feat/compasso-2026-hardening em 21/08/2026, por ADIÇÃO.
+
+   POR QUE ADIÇÃO E NÃO SUBSTITUIÇÃO DO ARQUIVO. Os dois branches se separaram
+   em 29/07 e seguiram por caminhos diferentes por três semanas. Copiar o
+   arquivo inteiro do Compasso apagaria o que foi feito aqui nesse intervalo.
+   Medido antes de trazer: o Compasso SÓ ACRESCENTOU a este arquivo (+73, −0),
+   então as duas funções abaixo entram sem custo para nada que já existia.
+
+   As demais mudanças daquele branch em arquivos compartilhados NÃO vieram
+   junto, e isso foi decisão consciente: ele removia três rotas públicas do
+   Code.gs, uma delas a `?codigo=`, que é o link de validação impresso dentro
+   do PDF de todo ofício (Oficios.gs:284 e :301). Ofícios é o único módulo em
+   operação — apagar essa rota quebraria a conferência de documentos que já
+   estão na mão das escolas.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Wrapper com trava. O miolo virou compasso_checkin_interno_ para que a
+   portaria (compasso_checkinValidarToken) chame o motor sem pagar a
+   verificação duas vezes por leitura de QR — na fila da entrada isso é
+   latência que a pessoa sente. */
+function compasso_checkin(token, dispositivoId, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — check-in por QR', false);
+  return compasso_checkin_interno_(token, dispositivoId);
+}
+
+function compasso_checkin_interno_(token, dispositivoId) {
+  token = String(token || '').trim();
+  if (!token) return {ok:false, codigo:'QR_INVALIDO', mensagem:'QR Code inválido.'};
+
+  var tokenHash = compasso_hash_(token);
+  var indice = fs_get_('qrTokens', tokenHash);
+  if (!indice || indice.eventoId !== EMISSAO_CFG.EVENTO_ID)
+    return {ok:false, codigo:'QR_INVALIDO', mensagem:'Ingresso inválido ou de outro evento.'};
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var ing = fs_get_('ingressos', indice.ingressoId);
+    if (!ing) return {ok:false,codigo:'NAO_ENCONTRADO',mensagem:'Ingresso não encontrado.'};
+    if (ing.eventoId !== EMISSAO_CFG.EVENTO_ID)
+      return {ok:false,codigo:'OUTRO_EVENTO',mensagem:'Ingresso de outro evento.'};
+    if (ing.status === 'CANCELADO')
+      return {ok:false,codigo:'CANCELADO',mensagem:'Ingresso cancelado.'};
+    if (ing.status === 'UTILIZADO')
+      return {ok:false,codigo:'JA_UTILIZADO',mensagem:'Ingresso já utilizado.', utilizadoEm:ing.utilizadoEm, utilizadoPor:ing.utilizadoPor};
+    if (ing.status !== 'EMITIDO')
+      return {ok:false,codigo:'STATUS_INVALIDO',mensagem:'Ingresso não está liberado para entrada.'};
+
+    var agora = new Date();
+    var operador = compasso_emailUsuario_();
+    ing.status = 'UTILIZADO';
+    ing.utilizadoEm = agora;
+    ing.utilizadoPor = operador;
+    ing.dispositivoId = String(dispositivoId || 'nao-informado');
+    fs_set_('ingressos', indice.ingressoId, ing);
+
+    var checkinId = compasso_uuid_();
+    fs_set_('checkinsEventos', checkinId, {
+      checkinId: checkinId,
+      eventoId: EMISSAO_CFG.EVENTO_ID,
+      ingressoId: indice.ingressoId,
+      numero: ing.numero,
+      pessoaId: ing.pessoaId || '',
+      checkinEm: agora,
+      checkinPor: operador,
+      dispositivoId: String(dispositivoId || 'nao-informado'),
+      status: 'VALIDO'
+    });
+    compasso_auditar_('CHECKIN','ingresso',indice.ingressoId,{checkinId:checkinId,dispositivoId:dispositivoId||''});
+    return {ok:true,codigo:'LIBERADO',mensagem:'Entrada liberada.',nome:ing.nome,escola:ing.escola,categoria:ing.categoria,numero:ing.numero,checkinEm:agora};
+  } finally { lock.releaseLock(); }
+}
+
+/* ADMIN: desfazer check-in reabre a entrada de um ingresso já usado. */
+function compasso_desfazerCheckin(ingressoId, motivo, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — desfazer check-in', true);
+  motivo = String(motivo || '').trim();
+  if (!motivo) throw new Error('Motivo obrigatório para desfazer check-in.');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var ing = fs_get_('ingressos', ingressoId);
+    if (!ing) throw new Error('Ingresso não encontrado.');
+    if (ing.status !== 'UTILIZADO') throw new Error('Ingresso não está utilizado.');
+    var anterior = {utilizadoEm:ing.utilizadoEm, utilizadoPor:ing.utilizadoPor, dispositivoId:ing.dispositivoId};
+    ing.status = 'EMITIDO';
+    ing.checkinDesfeitoEm = new Date();
+    ing.checkinDesfeitoPor = compasso_emailUsuario_();
+    ing.checkinDesfeitoMotivo = motivo;
+    ing.utilizadoEm = '';
+    ing.utilizadoPor = '';
+    ing.dispositivoId = '';
+    fs_set_('ingressos', ingressoId, ing);
+    compasso_auditar_('DESFAZER_CHECKIN','ingresso',ingressoId,{motivo:motivo,checkinAnterior:anterior});
+    return {ok:true, ingressoId:ingressoId, status:'EMITIDO'};
+  } finally { lock.releaseLock(); }
 }

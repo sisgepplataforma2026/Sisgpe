@@ -1406,7 +1406,7 @@ function uploadDocumentoManual(dadosUpload, tokenSessao) {
 
       var blob    = Utilities.newBlob(Utilities.base64Decode(base64), tipoArq, nomeFinal);
       var arquivo = pasta.createFile(blob);
-      try { arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (eShare) {}
+      try { arquivoAplicarPolitica_(arquivo, "Despesas.gs"); } catch (eShare) {}
 
       linksArqs.push("https://drive.google.com/file/d/" + arquivo.getId() + "/view");
       nomesArqs.push(arquivo.getName());
@@ -1937,7 +1937,7 @@ function receberUploadDocFornecedor(token, dadosUpload) {
       var nomeFinal = "DOC_"+nome.replace(/[^a-zA-Z0-9\u00C0-\u00FF]/g,"_").substring(0,30)+"_"+(numero||idDespesa).replace(/\//g,"-")+"_"+(i+1)+"_"+nomeArq;
       blob.setName(nomeFinal);
       var arquivo = pasta.createFile(blob);
-      try { arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch(eShare){}
+      try { arquivoAplicarPolitica_(arquivo, "Despesas.gs"); } catch(eShare){}
       linksArqs.push("https://drive.google.com/file/d/"+arquivo.getId()+"/view");
       nomesArqs.push(arquivo.getName());
       if (!primeiroId) primeiroId = arquivo.getId();

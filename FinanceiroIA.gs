@@ -357,7 +357,7 @@ function finAnalisarComClaude(dados) {
    Retorna: { ok, analise: "texto formatado" }
 ─────────────────────────────────────────────────────────────────── */
 function finGerarInsightsFinanceirosIA(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     // Obtém resumo do período atual
     var resumoResp = obterResumoDespesas_interno_();

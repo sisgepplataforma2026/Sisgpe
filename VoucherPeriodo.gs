@@ -266,7 +266,20 @@ function voucherPeriodoHistorico_(dados, sheet) {
 
     if (voucherPeriodoChavePessoa_(v(linha, "CPF_SOLICITANTE"),
         v(linha, "NOME_BENEFICIARIO") || v(linha, "NOME_SOLICITANTE")) !== chavePessoa) continue;
-    if (voucherPeriodoChaveCurso_(v(linha, "MODALIDADE"), v(linha, "CURSO")) !== chaveCurso) continue;
+    /* O CURSO SAIU DA CHAVE — regra confirmada pelo usuário em 13/08/2026:
+     * "para ele mesmo é somente um por semestre ou ano".
+     *
+     * Era assim antes: pessoa + CURSO + janela. Duas bolsas no mesmo semestre
+     * em cursos diferentes eram duas janelas distintas, e passavam as duas.
+     * Medido no emulador: o mesmo titular criou TRÊS vouchers para 2026/2 —
+     * Pedagogia, Direito e um MBA. Ninguém barrava.
+     *
+     * O benefício é por PESSOA e por PERÍODO, não por matrícula. Quem estuda
+     * duas coisas ao mesmo tempo continua tendo direito a uma bolsa.
+     *
+     * A chave do curso não foi apagada: ela ainda serve para dizer se a bolsa
+     * é RENOVAÇÃO do mesmo curso ou bolsa de curso novo, que é informação
+     * diferente de "pode ou não pode". Ver `mesmoCurso` no registro. */
 
     var status = String(v(linha, "STATUS_SOLICITACAO") || "").trim().toUpperCase();
     if (ocupa.indexOf(status) === -1) continue;
@@ -285,6 +298,10 @@ function voucherPeriodoHistorico_(dados, sheet) {
       curso: String(v(linha, "CURSO") || "").trim(),
       modalidade: String(v(linha, "MODALIDADE") || "").trim(),
       beneficiario: String(v(linha, "NOME_BENEFICIARIO") || "").trim(),
+      /* Mesmo curso ou curso novo — não decide se pode, mas muda o que a
+       * mensagem diz: "já tem bolsa neste semestre" soa diferente de "já
+       * renovou este curso", e quem atende precisa saber qual dos dois é. */
+      mesmoCurso: voucherPeriodoChaveCurso_(v(linha, "MODALIDADE"), v(linha, "CURSO")) === chaveCurso,
       percentual: v(linha, "PERCENTUAL_APLICADO"),
       quem: String(v(linha, "USUARIO_VALIDACAO") || v(linha, "USUARIO_CADASTRO") || "").trim(),
       data: String(v(linha, "DATA_SOLICITACAO_TEXTO") || "").trim(),
@@ -337,6 +354,68 @@ function voucherTipoSolicitacao_(hist) {
  * entrada (secretaria e, mais adiante, o portal) precisam recusar com as
  * mesmas palavras.
  */
+/**
+ * QUANTOS DEPENDENTES este associado já tem na janela — o teto de três.
+ *
+ * Regra confirmada pelo usuário em 13/08/2026: "dependente é no máximo 3,
+ * para ele mesmo é somente um por semestre ou ano".
+ *
+ * POR CONTAGEM, NÃO POR ORDEM, e a diferença é a razão desta função existir.
+ * A primeira versão que escrevi hoje conferia se ORDEM_FILHO era ≤ 3 — o que
+ * deixa passar um quarto dependente cadastrado como "3º filho" com outro
+ * nome. Número escrito num campo não é contagem; contagem se faz contando.
+ *
+ * O titular NÃO entra na conta: ele tem a bolsa dele, que é barrada por outro
+ * caminho (uma por período, qualquer curso). Três filhos e o pai estudando
+ * dão quatro bolsas, e é isso mesmo.
+ */
+function voucherPeriodoDependentesNaJanela_(dados, sheet) {
+  dados = dados || {};
+  var cpf = String(dados.cpf || "").replace(/\D/g, "");
+  if (cpf.length !== 11) return { total: 0, nomes: [] };
+
+  var sh = sheet;
+  if (!sh) {
+    sh = SpreadsheetApp.openById(PLANILHA_ID).getSheetByName(VOUCHER_ABA_SOLICITACOES);
+  }
+  if (!sh || sh.getLastRow() < 2) return { total: 0, nomes: [] };
+
+  var ocupa = VOUCHER_STATUS_OCUPA_PERIODO_();
+  var tudo = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getValues();
+  var cab = tudo[0].map(function (c) { return String(c || "").trim(); });
+  function v(linha, nome) { var i = cab.indexOf(nome); return i === -1 ? "" : linha[i]; }
+
+  var vistos = {};
+  var nomes = [];
+  for (var l = 1; l < tudo.length; l++) {
+    var linha = tudo[l];
+    if (String(v(linha, "CPF_SOLICITANTE") || "").replace(/\D/g, "") !== cpf) continue;
+
+    var tipo = String(v(linha, "TIPO_BENEFICIARIO") || "").trim().toUpperCase();
+    if (!tipo || tipo === "TITULAR") continue;         // o titular não conta
+
+    if (ocupa.indexOf(String(v(linha, "STATUS_SOLICITACAO") || "").trim().toUpperCase()) === -1) continue;
+
+    /* Só a MESMA janela. Dependente do semestre passado não ocupa vaga
+     * neste — senão o teto viraria "três dependentes para sempre". */
+    if (voucherPeriodoJanelaSituacao_(dados.regime, dados.periodo,
+        v(linha, "REGIME"), v(linha, "PERIODO_REFERENCIA")) !== "CONFLITA") continue;
+
+    var protocolo = String(v(linha, "NUMERO_PROTOCOLO") || "").trim();
+    if (dados.protocoloAtual && protocolo === String(dados.protocoloAtual).trim()) continue;
+
+    /* Por NOME, não por linha: a mesma criança em duas linhas antigas é um
+     * dependente, não dois — e contar duas vezes recusaria um irmão real. */
+    var nome = String(v(linha, "NOME_BENEFICIARIO") || "").trim().toUpperCase();
+    if (!nome || vistos[nome]) continue;
+    vistos[nome] = true;
+    nomes.push(String(v(linha, "NOME_BENEFICIARIO") || "").trim());
+  }
+  return { total: nomes.length, nomes: nomes };
+}
+
+var VOUCHER_MAX_DEPENDENTES_ = 3;
+
 function voucherPeriodoMensagemBloqueio_(bloqueio, dados) {
   var b = bloqueio || {};
   /* NORMALIZADO ANTES DE VIRAR FRASE. O período vem do que está gravado, e

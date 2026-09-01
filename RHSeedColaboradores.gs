@@ -32,7 +32,7 @@
 // grava dado sensível de RH em lote). Chamado pelo botão "Importar os 7
 // do modelo" em RHAdmin.html.
 function seedColaboradoresRH_ModeloFolha2025_publico(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, true);
+  exigirModulo_(tokenSessao, "rh", true);
   try {
     return seedColaboradoresRH_ModeloFolha2025_();
   } catch (e) {
@@ -101,7 +101,7 @@ function seedColaboradoresRH_ModeloFolha2025_() {
 
 // Público — exige administrador (grava dado sensível de RH em lote).
 function atualizarColaboradoresRH_ExtratoJunho2026_publico(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, true);
+  exigirModulo_(tokenSessao, "rh", true);
   try {
     return atualizarColaboradoresRH_ExtratoJunho2026_();
   } catch (e) {
@@ -169,7 +169,7 @@ function atualizarColaboradoresRH_ExtratoJunho2026_() {
 // ================================
 
 function aplicarCentroCustoEDepartamentoReal_publico(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, true);
+  exigirModulo_(tokenSessao, "rh", true);
   try {
     return aplicarCentroCustoEDepartamentoReal_();
   } catch (e) {
@@ -228,7 +228,7 @@ function aplicarCentroCustoEDepartamentoReal_() {
 // ================================
 
 function aplicarRubricasFixasReaisJunho2026_publico(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, true);
+  exigirModulo_(tokenSessao, "rh", true);
   try {
     return aplicarRubricasFixasReaisJunho2026_();
   } catch (e) {
@@ -294,7 +294,7 @@ function aplicarRubricasFixasReaisJunho2026_() {
 // ================================
 
 function corrigirAbonoCCTNaoRecorrente_publico(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, true);
+  exigirModulo_(tokenSessao, "rh", true);
   try {
     return corrigirAbonoCCTNaoRecorrente_(tokenSessao);
   } catch (e) {

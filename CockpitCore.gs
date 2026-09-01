@@ -12,6 +12,8 @@
 /* ─────────────────────────────────────────────────────────────────
    FUNÇÃO PRINCIPAL — uma chamada, contexto completo
 ───────────────────────────────────────────────────────────────── */
+// SEM trava de modulo: alimenta a tela Inicio (InicioResumo.gs), que
+// todo usuario abre. Sessao continua exigida.
 function getCockpit(tokenSessao) {
   exigirSessaoDocumentos_(tokenSessao, false);
   try {
@@ -92,34 +94,12 @@ function getCockpitEmails_() {
     }
   } catch(e) {}
 
-  // Busca real no Gmail
+  // Busca real no Gmail — reaproveita o mesmo leitor da Caixa de E-mails
+  // (eiaBuscarEmailsGmail_, em CentralEmailIA.gs) em vez de manter uma
+  // segunda implementação independente do mapeamento thread → e-mail.
   var emails = [];
   try {
-    var threads = GmailApp.search("in:inbox newer_than:30d", 0, 30);
-    var tz = Session.getScriptTimeZone();
-
-    emails = threads.map(function(thread) {
-      var msgs    = thread.getMessages();
-      var msg     = msgs[msgs.length - 1];
-      var corpo   = msg.getPlainBody() || "";
-      var dataMsg = msg.getDate();
-      var dataStr = dataMsg ? Utilities.formatDate(new Date(dataMsg), tz, "dd/MM/yyyy HH:mm") : "";
-      var dataTs  = dataMsg ? new Date(dataMsg).getTime() : 0;
-      var remetente = msg.getFrom() || "";
-
-      return {
-        threadId:     thread.getId(),
-        messageId:    msg.getId(),
-        assunto:      msg.getSubject() || "(sem assunto)",
-        remetente:    remetente,
-        remetenteNome: remetente.replace(/<[^>]+>/g,"").replace(/"/g,"").trim() || remetente,
-        dataStr:      dataStr,
-        dataTs:       dataTs,
-        lido:         !msg.isUnread(),
-        corpo:        corpo.substring(0, 2500),
-        corpoPreview: corpo.substring(0, 200).replace(/\s+/g, " ").trim()
-      };
-    });
+    emails = eiaBuscarEmailsGmail_("in:inbox newer_than:30d", 0, 30);
 
     // Salva no cache por 30 segundos
     try {
@@ -325,7 +305,7 @@ function getCockpitGreeting_(usuario, resumoDia) {
    INVALIDAR CACHE (chamado após arquivar/responder e-mail)
 ───────────────────────────────────────────────────────────────── */
 function cockpitInvalidarCache(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "comunicacao", false);
   try {
     CacheService.getScriptCache().remove("cockpit_emails_inbox_v1");
     return { ok: true };

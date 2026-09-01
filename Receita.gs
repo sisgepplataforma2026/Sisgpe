@@ -80,7 +80,7 @@ function cadastrarReceita(dados, tokenSessao) {
 
   try {
 
-    exigirSessaoDocumentos_(tokenSessao, false);
+    exigirModulo_(tokenSessao, "financeiro", false);
 
     garantirEstruturaReceitas_();
 
@@ -137,7 +137,7 @@ function cadastrarReceita(dados, tokenSessao) {
 // Único consumidor além da tela é obterResumoReceitas (abaixo), que já trata.
 function listarReceitas(tokenSessao) {
 
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
 
   try {
 
@@ -184,7 +184,7 @@ function obterResumoReceitas(tokenSessao) {
 
   try {
 
-    exigirSessaoDocumentos_(tokenSessao, false);
+    exigirModulo_(tokenSessao, "financeiro", false);
 
     const receitas = listarReceitas(tokenSessao);
 
@@ -219,7 +219,7 @@ function excluirReceita(idReceita, tokenSessao) {
 
   try {
 
-    exigirSessaoDocumentos_(tokenSessao, true);
+    exigirModulo_(tokenSessao, "financeiro", true);
 
     garantirEstruturaReceitas_();
 
@@ -236,7 +236,7 @@ function excluirReceita(idReceita, tokenSessao) {
 
       if (String(dados[i][idxId]) === String(idReceita)) {
 
-        sh.deleteRow(i + 1);
+        lixeiraMover_(sh, i + 1, { origem: "excluirReceita" });
 
         return {
           erro: false,

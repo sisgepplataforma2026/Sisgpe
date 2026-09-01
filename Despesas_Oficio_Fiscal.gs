@@ -359,7 +359,7 @@ function gerarHtmlOficioDocumentacaoFiscal_(params, isPreview) {
    FUNÇÃO PÚBLICA: Gerar prévia do Ofício de Documentação Fiscal
    ───────────────────────────────────────────────────────────── */
 function obterPreviewOficioFiscalDesp(idsDespesas, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     if (!Array.isArray(idsDespesas) || !idsDespesas.length) {
       return { ok: false, mensagem: "Nenhuma despesa selecionada." };
@@ -440,7 +440,7 @@ function obterPreviewOficioFiscalDesp(idsDespesas, tokenSessao) {
    FUNÇÃO PÚBLICA: Enviar lote COM ofício de documentação fiscal
    ───────────────────────────────────────────────────────────── */
 function enviarLoteDespesasComOficio(payload, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "financeiro", false);
   try {
     payload = payload || {};
     var idsDespesas = Array.isArray(payload.idsDespesas) ? payload.idsDespesas : [];
@@ -525,7 +525,10 @@ function enviarLoteDespesasComOficio(payload, tokenSessao) {
     var pastaOficio = null;
     try {
       var pastaId = (PropertiesService.getScriptProperties().getProperty("PASTA_DESPESAS_ID") || "").trim();
-      if (!pastaId) pastaId = (typeof PASTA_RECIBO_ID !== "undefined" ? PASTA_RECIBO_ID : "");
+      /* Antes caía em PASTA_RECIBO_ID, que vale PRODUÇÃO em qualquer ambiente.
+         getRecursoId_ troca por ambiente e trava se a homologação apontar
+         para produção — ver AmbienteRecursos.gs. */
+      if (!pastaId) pastaId = getRecursoId_("RECIBOS");
       if (pastaId) {
         var pastaRaiz = DriveApp.getFolderById(pastaId);
         var anoStr    = new Date().getFullYear().toString();
@@ -546,7 +549,7 @@ function enviarLoteDespesasComOficio(payload, tokenSessao) {
       try {
         var htmlBlob   = Utilities.newBlob(htmlOficio, "text/html", nomeArquivoOficio + ".html");
         var fileOficio = pastaOficio.createFile(htmlBlob);
-        fileOficio.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        arquivoAplicarPolitica_(fileOficio, "Despesas_Oficio_Fiscal.gs");
         linkOficio   = fileOficio.getUrl();
         fileIdOficio = fileOficio.getId();
         Logger.log("✅ Ofício fiscal salvo: " + nomeArquivoOficio);

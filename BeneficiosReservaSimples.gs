@@ -208,32 +208,31 @@ function brsVerificarDisponibilidade_(tipo, dataEntrada, dataSaida, idExcluir) {
 }
 
 function brsEnviarEmail_(tipo, evento, reserva) {
-  try {
-    if (!reserva.email) return;
-    var cfg = brsConfig_(tipo);
-    var titulo, corpo;
-    if (evento === "APROVADA") {
-      titulo = "Reserva confirmada — " + cfg.label;
-      corpo = "<p>Olá, <b>" + reserva.nomeSolicitante + "</b>!</p>" +
-        "<p>Sua reserva em <b>" + cfg.label + "</b> foi confirmada.</p>" +
-        "<p><b>Entrada:</b> " + reserva.dataEntrada + "<br><b>Saída:</b> " + reserva.dataSaida + "</p>";
-    } else if (evento === "RECUSADA") {
-      titulo = "Solicitação não aprovada — " + cfg.label;
-      corpo = "<p>Olá, <b>" + reserva.nomeSolicitante + "</b>!</p>" +
-        "<p>Sua solicitação em <b>" + cfg.label + "</b> não pôde ser aprovada.</p>" +
-        "<p><b>Motivo:</b> " + (reserva.motivoRecusa || "Não informado") + "</p>";
-    } else if (evento === "CANCELADA") {
-      titulo = "Reserva cancelada — " + cfg.label;
-      corpo = "<p>Olá, <b>" + reserva.nomeSolicitante + "</b>!</p>" +
-        "<p>Sua reserva em <b>" + cfg.label + "</b> foi cancelada.</p>";
-    } else {
-      return;
-    }
-    GmailApp.sendEmail(reserva.email, titulo, corpo.replace(/<[^>]+>/g, ""),
-      sind_opcoesEmail_({ htmlBody: sind_emailHtml_(titulo, corpo) }));
-  } catch (e) {
-    Logger.log("brsEnviarEmail_ (" + tipo + "/" + evento + "): " + e.message);
+  if (!reserva.email) return;
+  var cfg = brsConfig_(tipo);
+  var titulo, corpo;
+  if (evento === "APROVADA") {
+    titulo = "Reserva confirmada — " + cfg.label;
+    corpo = "<p>Olá, <b>" + reserva.nomeSolicitante + "</b>!</p>" +
+      "<p>Sua reserva em <b>" + cfg.label + "</b> foi confirmada.</p>" +
+      "<p><b>Entrada:</b> " + reserva.dataEntrada + "<br><b>Saída:</b> " + reserva.dataSaida + "</p>";
+  } else if (evento === "RECUSADA") {
+    titulo = "Solicitação não aprovada — " + cfg.label;
+    corpo = "<p>Olá, <b>" + reserva.nomeSolicitante + "</b>!</p>" +
+      "<p>Sua solicitação em <b>" + cfg.label + "</b> não pôde ser aprovada.</p>" +
+      "<p><b>Motivo:</b> " + (reserva.motivoRecusa || "Não informado") + "</p>";
+  } else if (evento === "CANCELADA") {
+    titulo = "Reserva cancelada — " + cfg.label;
+    corpo = "<p>Olá, <b>" + reserva.nomeSolicitante + "</b>!</p>" +
+      "<p>Sua reserva em <b>" + cfg.label + "</b> foi cancelada.</p>";
+  } else {
+    return;
   }
+  var envio = enviarEmailSISGEP_(reserva.email, titulo, corpo.replace(/<[^>]+>/g, ""), {
+    origem: "Benefícios",
+    htmlBody: sind_emailHtml_(titulo, corpo)
+  });
+  if (!envio.ok) Logger.log("brsEnviarEmail_ (" + tipo + "/" + evento + "): " + envio.mensagem);
 }
 
 // ----------------------------------------------------------------------------
@@ -241,7 +240,7 @@ function brsEnviarEmail_(tipo, evento, reserva) {
 // ----------------------------------------------------------------------------
 
 function listarReservasBeneficioSimples(tipo, filtros, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     filtros = filtros || {};
     var aba = brsObterAba_(tipo);
@@ -270,7 +269,7 @@ function listarReservasBeneficioSimples(tipo, filtros, tokenSessao) {
 }
 
 function getDashboardBeneficioSimples(tipo, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     var cfg = brsConfig_(tipo);
     var r = listarReservasBeneficioSimples(tipo, {}, tokenSessao);
@@ -297,7 +296,7 @@ function getDashboardBeneficioSimples(tipo, tokenSessao) {
 }
 
 function consultarDisponibilidadeBeneficioSimples(tipo, dataEntrada, dataSaida, tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  exigirModulo_(tokenSessao, "beneficios", false);
   try {
     return Object.assign({ ok: true }, brsVerificarDisponibilidade_(tipo, dataEntrada, dataSaida, null));
   } catch (e) {
@@ -311,7 +310,7 @@ function consultarDisponibilidadeBeneficioSimples(tipo, dataEntrada, dataSaida, 
 // aprovação, sem checar disponibilidade ainda (a checagem acontece na hora
 // de aprovar, quando a vaga realmente precisa ser reservada).
 function criarReservaBeneficioSimples(tipo, dados, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "beneficios", false);
   try {
     dados = dados || {};
     var responsavel = sessao.nome || sessao.usuario || sessao.email;
@@ -361,7 +360,7 @@ function criarReservaBeneficioSimples(tipo, dados, tokenSessao) {
 }
 
 function aprovarReservaBeneficioSimples(tipo, idReserva, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "beneficios", false);
   try {
     var responsavel = sessao.nome || sessao.usuario || sessao.email;
 
@@ -394,7 +393,7 @@ function aprovarReservaBeneficioSimples(tipo, idReserva, tokenSessao) {
 }
 
 function recusarReservaBeneficioSimples(tipo, idReserva, motivo, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "beneficios", false);
   try {
     if (!String(motivo || "").trim()) return { ok: false, mensagem: "Informe o motivo da recusa." };
     var responsavel = sessao.nome || sessao.usuario || sessao.email;
@@ -425,7 +424,7 @@ function recusarReservaBeneficioSimples(tipo, idReserva, motivo, tokenSessao) {
 }
 
 function cancelarReservaBeneficioSimples(tipo, idReserva, motivo, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirModulo_(tokenSessao, "beneficios", false);
   try {
     if (!String(motivo || "").trim()) return { ok: false, mensagem: "Informe o motivo do cancelamento." };
     var responsavel = sessao.nome || sessao.usuario || sessao.email;
