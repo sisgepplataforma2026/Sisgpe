@@ -3477,16 +3477,89 @@ window.mostrarAbaOficio = function(aba) {
       else{barra.style.display="none";}
     },
 
+    /* REENVIO — deixou de ser um confirm cego em 01/09/2026.
+       O usuario reenviava sem ver para onde ia, e o caso da FAESA mostrou o
+       custo disso: tres oficios reenviados para um endereco que nao recebia
+       mais. Agora a tela MOSTRA o destino do cadastro antes de mandar, e
+       permite acrescentar outro endereco — ou substituir, quando o do
+       cadastro esta morto. */
     reenviar: function(numero) {
       if(!numero) return;
-      if(!window.confirm("Reenviar o ofício "+numero+" por e-mail?")) return;
       var tr=document.querySelector("tr[data-numero='"+numero+"']");
       var url=tr?(tr.dataset.url||""):"", cells=tr?tr.querySelectorAll("td"):[];
       var tipo=cells[2]?cells[2].textContent.trim():"", escola=cells[3]?cells[3].textContent.trim():"";
+
+      Historico._reenvioCtx={numero:numero,url:url,tipo:tipo,escola:escola};
+      var g=function(id){return document.getElementById(id);};
+      if(g("histReenvNumero")) g("histReenvNumero").textContent=numero;
+      if(g("histReenvEscola")) g("histReenvEscola").textContent=escola||"—";
+      if(g("histReenvTipo"))   g("histReenvTipo").textContent=tipo||"—";
+      if(g("histReenvCadastro")) g("histReenvCadastro").value="carregando…";
+      if(g("histReenvExtra"))  g("histReenvExtra").value="";
+      if(g("histReenvSomente")) g("histReenvSomente").checked=false;
+      Historico._reenvioAtualizarAviso();
+      var ov=g("histReenvOverlay"); if(ov) ov.classList.add("aberto");
+
+      /* Busca o destino do cadastro so para MOSTRAR. E leitura; o envio
+         continua resolvendo o destino no servidor, que e onde a verdade
+         esta — a tela nao manda para onde ela acha que e. */
       google.script.run
-        .withSuccessHandler(function(r){ toast((r&&!r.erro)?(r.mensagem||"Reenviado."):(r&&r.mensagem)||"Erro.", (r&&!r.erro)?"ok":"err"); })
-        .withFailureHandler(function(err){ toast("Erro: "+((err&&err.message)||err), "err"); })
-        .reenviarOficio({numero:numero, url:url, escola:escola, tipo:tipo}, SISGEP_TOKEN_SESSAO);
+        .withSuccessHandler(function(r){
+          var campo=g("histReenvCadastro"); if(!campo) return;
+          campo.value=(r&&r.emails)?r.emails:"(nenhum e-mail no cadastro)";
+          Historico._reenvioAtualizarAviso();
+        })
+        .withFailureHandler(function(){ var c=g("histReenvCadastro"); if(c) c.value="(não foi possível ler o cadastro)"; })
+        .obterDestinoReenvioOficio(numero, SISGEP_TOKEN_SESSAO);
+    },
+
+    _reenvioCtx: null,
+
+    _reenvioAtualizarAviso: function() {
+      var g=function(id){return document.getElementById(id);};
+      var somente=g("histReenvSomente"), aviso=g("histReenvAviso"), extra=g("histReenvExtra");
+      if(!aviso) return;
+      var temExtra=!!(extra && extra.value.trim());
+      if(somente && somente.checked && temExtra){
+        aviso.style.display="block";
+        aviso.textContent="O endereço do cadastro NÃO vai receber. Use isto quando ele estiver recusando e-mail.";
+      } else if(temExtra){
+        aviso.style.display="block";
+        aviso.textContent="O ofício vai para o cadastro E para o endereço informado.";
+      } else {
+        aviso.style.display="none";
+      }
+    },
+
+    reenvioFechar: function() {
+      var ov=document.getElementById("histReenvOverlay"); if(ov) ov.classList.remove("aberto");
+      Historico._reenvioCtx=null;
+    },
+
+    reenvioConfirmar: function() {
+      var ctx=Historico._reenvioCtx; if(!ctx) return;
+      var g=function(id){return document.getElementById(id);};
+      var extra=g("histReenvExtra")?g("histReenvExtra").value.trim():"";
+      var somente=!!(g("histReenvSomente")&&g("histReenvSomente").checked);
+      if(somente && !extra){ toast("Informe o endereço antes de marcar 'somente este'.","err"); return; }
+
+      var btn=g("histReenvOk");
+      if(btn){ btn.disabled=true; btn.textContent="Enviando…"; }
+
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){ btn.disabled=false; btn.textContent="Reenviar ▸"; }
+          toast((r&&!r.erro)?(r.mensagem||"Reenviado."):(r&&r.mensagem)||"Erro.", (r&&!r.erro)?"ok":"err");
+          if(r&&!r.erro) Historico.reenvioFechar();
+        })
+        .withFailureHandler(function(err){
+          if(btn){ btn.disabled=false; btn.textContent="Reenviar ▸"; }
+          toast("Erro: "+((err&&err.message)||err), "err");
+        })
+        .reenviarOficio({
+          numero:ctx.numero, url:ctx.url, escola:ctx.escola, tipo:ctx.tipo,
+          emailsExtras:extra, somenteExtras:somente
+        }, SISGEP_TOKEN_SESSAO);
     },
 
     excluir: function(numero) {

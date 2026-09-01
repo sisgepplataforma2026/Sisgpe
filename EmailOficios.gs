@@ -343,6 +343,47 @@ function obterAnexosOriginaisFilaOficio_(numero, idOficio) {
   return { blobs: itens, reconstruido: reconstruido, achadosNaFila: achadosNaFila };
 }
 
+/**
+ * Para onde o reenvio VAI, segundo o cadastro. So leitura.
+ *
+ * Existe para a tela poder MOSTRAR o destino antes de enviar. Ate 01/09/2026
+ * o reenvio era um confirm cego — a pessoa mandava sem ver para onde ia, e o
+ * caso da FAESA mostrou o custo: tres oficios reenviados para um endereco que
+ * nao recebia mais.
+ *
+ * Tem porta porque devolve e-mail de escola, que e dado de terceiro. E exige
+ * o modulo, nao admin: quem reenvia oficio ja precisa disso.
+ */
+function obterDestinoReenvioOficio(numero, tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
+  try {
+    var num = String(numero || "").trim();
+    if (!num) return { ok: false, emails: "" };
+
+    var ss    = SpreadsheetApp.openById(PLANILHA_ID);
+    var sheet = ss.getSheetByName(PLANILHA_REGISTRO);
+    if (!sheet || sheet.getLastRow() < 2) return { ok: false, emails: "" };
+
+    var h = getHeaderMap_(sheet);
+    var colNumero = h["Número do Ofício"];
+    var colTodos  = h["E-mails (todos)"];
+    var colPrinc  = h["E-mail (principal)"];
+    if (!colNumero) return { ok: false, emails: "" };
+
+    var dados = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
+    for (var i = 0; i < dados.length; i++) {
+      if (String(dados[i][colNumero - 1] || "").trim() !== num) continue;
+      var e = colTodos ? String(dados[i][colTodos - 1] || "").trim() : "";
+      if (!e && colPrinc) e = String(dados[i][colPrinc - 1] || "").trim();
+      return { ok: true, emails: e };
+    }
+    return { ok: false, emails: "" };
+  } catch (e) {
+    Logger.log("obterDestinoReenvioOficio: " + e.message);
+    return { ok: false, emails: "" };
+  }
+}
+
 function reenviarOficio(registro, tokenSessao) {
   var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
@@ -351,6 +392,17 @@ function reenviarOficio(registro, tokenSessao) {
     var escola = String(registro.escola || "").trim();
     var tipo   = String(registro.tipo   || "").trim();
     var url    = String(registro.url    || "").trim();
+
+    /* ENDERECO FORA DO CADASTRO — pedido do usuario em 01/09/2026, a partir do
+       caso da FAESA: tres oficios quicaram no mesmo endereco, e ele precisava
+       reenviar antes de o cadastro ser corrigido.
+
+       `somenteExtras` existe porque acrescentar nem sempre serve: quando o
+       endereco do cadastro nao recebe mais, mandar de novo para ele gera outro
+       bounce — que agora marca FALHA_ENTREGA mesmo tendo a copia chegado no
+       endereco novo. Nesse caso o certo e substituir. */
+    var emailsExtras  = String(registro.emailsExtras || "").trim();
+    var somenteExtras = registro.somenteExtras === true;
 
     if (!numero) return { erro: true, mensagem: "Número do ofício não informado." };
     if (!url)    return { erro: true, mensagem: "PDF não encontrado para este ofício." };
@@ -385,11 +437,50 @@ function reenviarOficio(registro, tokenSessao) {
       break;
     }
 
-    if (!emailDestino) return { erro: true, mensagem: "E-mail do destinatário não encontrado." };
-    var validacaoEmails = validarListaEmails_(emailDestino);
-    if (!validacaoEmails.ok) {
-      return { erro: true, mensagem: "Há e-mail inválido salvo neste ofício: " + (validacaoEmails.invalido || "") };
+    /* O extra e validado ANTES de qualquer coisa: um endereco malformado
+       derruba o envio inteiro no Gmail, e o operador ficaria sem saber se o
+       oficio saiu. Melhor recusar aqui, dizendo qual endereco esta errado. */
+    var validacaoExtras = null;
+    if (emailsExtras) {
+      validacaoExtras = validarListaEmails_(emailsExtras);
+      if (!validacaoExtras.ok) {
+        return { erro: true, mensagem: "Endereço informado é inválido: " +
+                 (validacaoExtras.invalido || emailsExtras) };
+      }
     }
+
+    if (somenteExtras && !emailsExtras) {
+      return { erro: true, mensagem: "Marque 'somente este endereço' apenas quando informar um endereço." };
+    }
+
+    if (!emailDestino && !emailsExtras) {
+      return { erro: true, mensagem: "E-mail do destinatário não encontrado." };
+    }
+
+    var listaFinal = [];
+    if (!somenteExtras && emailDestino) {
+      var validacaoEmails = validarListaEmails_(emailDestino);
+      if (!validacaoEmails.ok) {
+        return { erro: true, mensagem: "Há e-mail inválido salvo neste ofício: " + (validacaoEmails.invalido || "") };
+      }
+      listaFinal = String(validacaoEmails.todos || "").split(/[;,]/);
+    }
+    if (validacaoExtras) {
+      listaFinal = listaFinal.concat(String(validacaoExtras.todos || "").split(/[;,]/));
+    }
+
+    /* Sem duplicar: o mesmo endereco em cadastro e extra mandaria duas copias
+       do mesmo oficio para a mesma pessoa. */
+    var vistos = {}, destinos = [];
+    listaFinal.forEach(function (e) {
+      var n = String(e || "").trim().toLowerCase();
+      if (!n || vistos[n]) return;
+      vistos[n] = true;
+      destinos.push(n);
+    });
+    if (!destinos.length) return { erro: true, mensagem: "Nenhum destinatário válido para o reenvio." };
+
+    var validacaoEmails = { ok: true, todos: destinos.join(",") };
 
     var idOficio = extrairIdDriveOficio_(url);
     if (!idOficio) return { erro: true, mensagem: "Não foi possível identificar o arquivo PDF na URL informada." };
@@ -461,9 +552,17 @@ function reenviarOficio(registro, tokenSessao) {
       "Segue reenvio do ofício em anexo."
     );
 
+    /* A TRILHA PRECISA DIZER QUE SAIU DO CADASTRO. Este recurso permite mandar
+       um oficio, com dado pessoal dentro, para um endereco que ninguem
+       cadastrou. E necessidade legitima de operacao — mas a contrapartida e o
+       registro de quem mandou para onde. Sem isto, o recurso seria uma porta
+       de saida de documento sem rastro. */
     registrarLogSistema({
       usuario: emailUsuario,
-      numero:  numero + " (REENVIO)",
+      numero:  numero + (emailsExtras
+                 ? (somenteExtras ? " (REENVIO - ENDERECO SUBSTITUIDO)"
+                                  : " (REENVIO - ENDERECO ACRESCENTADO)")
+                 : " (REENVIO)"),
       tipo: tipo,
       escola: escola,
       cnpj: "",
@@ -476,6 +575,8 @@ function reenviarOficio(registro, tokenSessao) {
       /* Diz QUANTOS e DE ONDE. "Anexos: 1" num tipo que promete carta e o
          sinal de que algo faltou — antes essa informacao nao existia. */
       mensagem: "Ofício " + numero + " reenviado para " + opcoes.to +
+        (emailsExtras ? (somenteExtras ? " [endereço do cadastro NÃO recebeu]"
+                                       : " [inclui endereço fora do cadastro]") : "") +
         ". Anexos: " + anexos.length +
         (pacote.reconstruido ? " (pacote original da fila)."
                              : " (fila sem lista de anexos; recuperados do Drive).")
