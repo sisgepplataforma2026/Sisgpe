@@ -23,6 +23,7 @@
 
 var SINDICALIZACAO_ABA = 'SISGEP_Sindicalizacao';
 var SINDICALIZACAO_OTP_VALIDADE_SEG = 600; // 10 minutos
+var SINDICALIZACAO_OTP_MAX_TENTATIVAS = 5; // achado #4: sem isso, o código de 6 dígitos podia ser forçado por script dentro da janela de validade
 
 var SINDICALIZACAO_COLUNAS = [
   'ID_FICHA', 'TIPO', 'MATRICULA',
@@ -96,8 +97,12 @@ function configurarAbaSindicalizacao() {
  * Dispara automaticamente o link de conclusão por e-mail
  * quando houver e-mail informado.
  */
-function criarPreCadastroSindicalizacao(dados) {
-  validarSessaoSindicalizacao_();
+// SEM trava de módulo, de propósito: o pré-cadastro é feito pelo diretor
+// de base DURANTE a visita à escola (Visitas.gs:889), que é do módulo
+// Escolas. Exigir Sindicalização aqui tiraria do diretor de base
+// justamente a função que ele usa em campo. A sessão continua exigida.
+function criarPreCadastroSindicalizacao(dados, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   var cpf = limparDigitos_(dados.cpf);
   if (!validarCPFSindicalizacao_(cpf)) {
     return { sucesso: false, mensagem: 'CPF inválido.' };
@@ -243,48 +248,13 @@ function submeterFichaSindicalizacao(dados) {
  * ASSINATURA (OTP)
  * ============================================================ */
 
-/**
- * Gera e envia o código OTP de 6 dígitos para assinatura da
- * ficha. Canal: e-mail informado na ficha. Validade: 10 min.
- * Pode ser chamado novamente para reenvio.
- */
-function enviarOTPSindicalizacao(idFicha) {
-  var registro = buscarFichaPorId_(idFicha);
-  if (!registro) {
-    return { sucesso: false, mensagem: 'Ficha não encontrada.' };
-  }
-  if (registro.STATUS !== SINDICALIZACAO_STATUS.AGUARDANDO_ASSINATURA) {
-    return { sucesso: false, mensagem: 'Ficha não está aguardando assinatura.' };
-  }
-  if (!registro.EMAIL) {
-    return {
-      sucesso: false,
-      mensagem: 'Ficha sem e-mail. Informe um e-mail para receber o código.'
-    };
-  }
-  var otp = String(Math.floor(100000 + Math.random() * 900000));
-  CacheService.getScriptCache().put(
-    'SIND_OTP_' + idFicha, otp, SINDICALIZACAO_OTP_VALIDADE_SEG);
-
-  var corpo =
-    'Olá, ' + registro.NOME_COMPLETO + '!\n\n' +
-    'Seu código para assinatura eletrônica da Ficha de Sindicalização ' +
-    'do SindEducação-ES é:\n\n' +
-    '        ' + otp + '\n\n' +
-    'O código vale por 10 minutos. Ao informá-lo no formulário, você ' +
-    'assina eletronicamente a ficha e a autorização de desconto em folha ' +
-    'de 2% sobre o salário-base, nos termos do Art. 545 da CLT.\n\n' +
-    'Se você não solicitou este código, ignore este e-mail.\n\n' +
-'SindEducação-ES — Sindicato dos educadores técnico-administrativos ' +
-    'em estabelecimentos de ensino particular no Estado do Espírito Santo';
-  try {
-    GmailApp.sendEmail(registro.EMAIL,
-      'Código de assinatura — Ficha de Sindicalização', corpo);
-    return { sucesso: true, canal: 'EMAIL', mensagem: 'Código enviado.' };
-  } catch (e) {
-    return { sucesso: false, mensagem: 'Falha ao enviar e-mail: ' + e.message };
-  }
-}
+// enviarOTPSindicalizacao(idFicha) — implementação real fica em
+// SindicalizacaoEmails.gs (versão com template HTML da marca). Havia uma
+// segunda definição aqui, mais antiga (texto puro) — GAS roda tudo em um
+// único escopo global, então as duas brigavam por qual "vencia", sem
+// nenhuma forma confiável de saber qual estava ativa. Removida por ser a
+// desatualizada; o próprio cabeçalho de SindicalizacaoEmails.gs já
+// instruía essa remoção e nunca tinha sido feita.
 
 /**
  * Valida o OTP e efetiva a assinatura eletrônica: grava data/
@@ -293,8 +263,7 @@ function enviarOTPSindicalizacao(idFicha) {
  * do SindicalizacaoAdmin.gs). Notifica a secretaria.
  */
 function validarOTPEAssinarFicha(idFicha, otpInformado, ipCliente) {
-  var lock = LockService.getScriptLock();
-  lock.waitLock(20000);
+  var trava = travarSisgep_(20000);
   try {
     var registro = buscarFichaPorId_(idFicha);
     if (!registro) {
@@ -304,6 +273,7 @@ function validarOTPEAssinarFicha(idFicha, otpInformado, ipCliente) {
       return { sucesso: false, mensagem: 'Ficha não está aguardando assinatura.' };
     }
     var cache = CacheService.getScriptCache();
+    var chaveTentativas = 'SIND_OTP_TENTATIVAS_' + idFicha;
     var otpArmazenado = cache.get('SIND_OTP_' + idFicha);
     if (!otpArmazenado) {
       return {
@@ -312,9 +282,20 @@ function validarOTPEAssinarFicha(idFicha, otpInformado, ipCliente) {
       };
     }
     if (String(otpInformado).trim() !== otpArmazenado) {
+      var tentativas = (parseInt(cache.get(chaveTentativas), 10) || 0) + 1;
+      if (tentativas >= SINDICALIZACAO_OTP_MAX_TENTATIVAS) {
+        cache.remove('SIND_OTP_' + idFicha);
+        cache.remove(chaveTentativas);
+        return {
+          sucesso: false, expirado: true,
+          mensagem: 'Muitas tentativas incorretas. Por segurança, solicite um novo código.'
+        };
+      }
+      cache.put(chaveTentativas, String(tentativas), SINDICALIZACAO_OTP_VALIDADE_SEG);
       return { sucesso: false, mensagem: 'Código incorreto. Confira e tente novamente.' };
     }
     cache.remove('SIND_OTP_' + idFicha);
+    cache.remove(chaveTentativas);
 
     registro.STATUS = SINDICALIZACAO_STATUS.ASSINADA;
     registro.DATA_HORA_ASSINATURA = new Date();
@@ -342,7 +323,7 @@ function validarOTPEAssinarFicha(idFicha, otpInformado, ipCliente) {
       linkPdf: registro.LINK_PDF || ''
     };
   } finally {
-    lock.releaseLock();
+    trava.liberar();
   }
 }
 
@@ -401,12 +382,12 @@ function calcularHashFicha_(r) {
   }).join('');
 }
 
+// Mantida porque outras funções deste arquivo chamam pelo ID. Passou a
+// perguntar ao acessador único (PlanilhaSisgep.gs) em vez de trazer o ID de
+// produção escrito aqui — era isso que fazia a escrita e a leitura poderem
+// cair em planilhas diferentes quando o ambiente mudava.
 function obterIdPlanilhaSindicalizacao_() {
-  // Mesmo padrão do SistemaConfig: usa a planilha de produção.
-  if (typeof obterIdPlanilhaAtiva_ === 'function') {
-    return obterIdPlanilhaAtiva_();
-  }
-  return '1QPpsx19v4YzfskoYXK9WB89TClA7q8SWGSn55VZ040E';
+  return planilhaSisgep_().getId();
 }
 
 function obterAbaSindicalizacao_() {
@@ -482,8 +463,18 @@ function buscarFichaAtivaPorCPF_(cpf) {
  * LockService. Atualização localiza a linha pelo ID_FICHA.
  */
 function gravarRegistroSindicalizacao_(registro) {
-  var lock = LockService.getScriptLock();
-  lock.waitLock(20000);
+  // ⚠️ LOCK ANINHADO — não volte a usar LockService direto aqui.
+  //
+  // validarOTPEAssinarFicha (linha ~266) já segura a trava do script quando
+  // chama esta função. Pedir de novo com LockService faz a execução esperar
+  // os 20 segundos e morrer — o associado que acabou de digitar o código de
+  // assinatura vê erro depois de uma tela travada.
+  //
+  // travarSisgep_ (TravaSisgep.gs) conta os níveis desta execução: quem
+  // chegou aninhado não pede a trava de novo nem solta a de quem chamou.
+  //
+  // Mesma família do bug de gerarFolhaRH corrigido em 2026-08-05.
+  var trava = travarSisgep_(20000);
   try {
     var aba = obterAbaSindicalizacao_();
     var mapa = mapaColunasSindicalizacao_(aba);
@@ -500,7 +491,9 @@ function gravarRegistroSindicalizacao_(registro) {
       aba.appendRow(linhaValores);
     }
   } finally {
-    lock.releaseLock();
+    // Só solta o que esta função pegou. Soltar a trava de quem chamou faria
+    // o resto daquela função rodar sem proteção nenhuma — pior que o problema.
+    trava.liberar();
   }
 }
 
@@ -559,26 +552,6 @@ function limparCacheListaSindicalizacao_() {
     cache.remove('SIND_LISTA_COMPLETA');
     cache.remove('SIND_ADM_LISTA');
   } catch (e) { /* silencioso */ }
-}
-
-/**
- * Reaproveita a validação de sessão do módulo de Login quando
- * disponível; caso contrário retorna identificação genérica
- * sem bloquear.
- */
-function validarSessaoSindicalizacao_() {
-  if (typeof validarSessaoAtiva_ === 'function') {
-    var sessao = validarSessaoAtiva_();
-    if (!sessao || !sessao.valido) {
-      throw new Error('Sessão inválida ou expirada. Faça login novamente.');
-    }
-    return sessao.usuario || sessao.email || 'USUARIO_SISGEP';
-  }
-  try {
-    return Session.getActiveUser().getEmail() || 'PORTAL';
-  } catch (e) {
-    return 'PORTAL';
-  }
 }
 
 /* ============================================================

@@ -13,7 +13,8 @@
 // 4. Manter fallback seguro com zeros, sem valores fictícios.
 // ============================================================================
 
-function getDashboardOficiosData(filtros) {
+function getDashboardOficiosData(filtros, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   filtros = filtros || {};
 
   var agoraFormatado = Utilities.formatDate(
@@ -172,9 +173,9 @@ try {
   return JSON.parse(JSON.stringify(data));
 }
 
-function getDashboardOficiosDataV2(filtros) {
+function getDashboardOficiosDataV2(filtros, tokenSessao) {
   try {
-    return getDashboardOficiosData(filtros || {});
+    return getDashboardOficiosData(filtros || {}, tokenSessao);
   } catch (e) {
     Logger.log("getDashboardOficiosDataV2: " + e.message);
     return {
@@ -201,7 +202,7 @@ function consultarEscolaDashboardOficios(query) {
     if (!query || query.length < 2) return [];
 
     if (typeof buscarEscolasPorTermo === "function") {
-      return (buscarEscolasPorTermo(query) || []).map(function(e) {
+      return (buscarEscolasPorTermo_interno_(query) || []).map(function(e) {
         return {
           nome:     e.escola || e.nome || e.razaoSocial || "",
           cnpj:     e.cnpj || e.cnpjLimpo || "",

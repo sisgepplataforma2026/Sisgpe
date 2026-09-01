@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agendamento de Oftalmologia — SindEducação-ES</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Plus Jakarta Sans',sans-serif;background:#f4f7fb}
+  .oft-wrap{padding:22px;max-width:760px;margin:0 auto}
+  .oft-header{
+    background:linear-gradient(135deg,#0b3b75,#114e96);
+    color:#fff;padding:22px;border-radius:20px;margin-bottom:18px;
+    box-shadow:0 10px 30px rgba(11,59,117,.18);
+  }
+  .oft-title{font-size:26px;font-weight:800;margin:0 0 6px}
+  .oft-sub{opacity:.92;font-size:14px;line-height:1.6}
+  .oft-card{
+    background:#fff;border-radius:20px;padding:22px;margin-bottom:16px;
+    box-shadow:0 8px 24px rgba(15,23,42,.08);border:1px solid #e8eef6;
+  }
+  .oft-card h3{margin:0 0 14px;color:#0f172a}
+  .oft-info{background:#f8fbff;border:1px solid #dbeafe;color:#0b3b75;padding:14px;border-radius:14px;font-size:14px;line-height:1.6}
+  .oft-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:14px}
+  .oft-field label{display:block;font-size:13px;font-weight:700;color:#334155;margin-bottom:6px}
+  .oft-field input,.oft-field select{
+    width:100%;padding:12px 14px;border:1px solid #d7e0ea;border-radius:12px;
+    font-size:14px;outline:none;background:#fff;
+  }
+  .oft-tipo{display:flex;gap:18px;margin-bottom:14px;font-size:14px}
+  .oft-tipo label{display:flex;align-items:center;gap:6px;font-weight:600;color:#334155}
+  .oft-slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:8px;margin-bottom:16px}
+  .oft-slot{
+    border:1px solid #d7e0ea;border-radius:10px;padding:10px 6px;text-align:center;
+    font-weight:700;font-size:13px;cursor:pointer;background:#fff;color:#0f172a;
+  }
+  .oft-slot.ocupado{background:#f1f5f9;color:#94a3b8;cursor:not-allowed;text-decoration:line-through}
+  .oft-slot.selecionado{background:#0b3b75;color:#fff;border-color:#0b3b75}
+  .oft-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px}
+  .btn-oft{border:none;border-radius:12px;padding:12px 18px;font-weight:800;cursor:pointer}
+  .btn-primary{background:#0b3b75;color:#fff}
+  .oft-msg{margin-top:14px;padding:12px 14px;border-radius:12px;display:none;font-weight:700}
+  .ok{display:block;background:#ecfdf5;color:#166534;border:1px solid #bbf7d0}
+  .erro{display:block;background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
+  .hide{display:none}
+  @media (max-width: 620px){ .oft-row{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+
+<div class="oft-wrap">
+  <div class="oft-header">
+    <div class="oft-title">Agendamento de Oftalmologia</div>
+    <div class="oft-sub">Trabalhador e dependente acima de 12 anos. Um horário por CPF do titular.</div>
+  </div>
+
+  <div id="oftPublicoSemData" class="oft-card">
+    <div class="oft-info">Não há atendimento liberado no momento. Assim que o SindEducação-ES agendar a próxima data, ela aparece aqui.</div>
+  </div>
+
+  <div id="oftPublicoComData" class="oft-card hide">
+    <h3>Horários — <span id="oftDataAtual"></span></h3>
+    <div id="oftSlots" class="oft-slots"></div>
+
+    <div id="oftForm" class="hide">
+      <div class="oft-tipo">
+        <label><input type="radio" name="oftTipo" value="TRABALHADOR" checked onchange="oftAtualizarTipo()"> Trabalhador (titular)</label>
+        <label><input type="radio" name="oftTipo" value="DEPENDENTE" onchange="oftAtualizarTipo()"> Dependente</label>
+      </div>
+
+      <div class="oft-row">
+        <div class="oft-field">
+          <label>CPF do titular</label>
+          <input type="text" id="oftCpfTitular" placeholder="000.000.000-00">
+        </div>
+        <div class="oft-field">
+          <label>Nome do titular</label>
+          <input type="text" id="oftNomeTitular" placeholder="Nome completo">
+        </div>
+      </div>
+
+      <div id="oftSecDependente" class="oft-row hide">
+        <div class="oft-field">
+          <label>Nome do dependente</label>
+          <input type="text" id="oftNomeDependente" placeholder="Nome completo">
+        </div>
+        <div class="oft-field">
+          <label>Data de nascimento</label>
+          <input type="date" id="oftDataNascDependente">
+        </div>
+        <div class="oft-field">
+          <label>Parentesco</label>
+          <input type="text" id="oftParentesco" placeholder="Filho(a), cônjuge...">
+        </div>
+      </div>
+
+      <div class="oft-row">
+        <div class="oft-field">
+          <label>Telefone / WhatsApp</label>
+          <input type="text" id="oftTelefone" placeholder="(27) 99999-9999">
+        </div>
+        <div class="oft-field">
+          <label>E-mail</label>
+          <input type="email" id="oftEmail" placeholder="email@exemplo.com">
+        </div>
+      </div>
+
+      <div class="oft-row">
+        <div class="oft-field" style="grid-column:1/-1;">
+          <label>Escola / vínculo</label>
+          <input type="text" id="oftEscola" placeholder="Informe a escola ou vínculo">
+        </div>
+      </div>
+
+      <div class="oft-actions">
+        <button class="btn-oft btn-primary" id="oftBtnEnviar" onclick="oftEnviar()">Confirmar Agendamento</button>
+      </div>
+    </div>
+
+    <div id="oftMensagem" class="oft-msg"></div>
+  </div>
+</div>
+
+<script>
+  var OFT_DATA_LIBERADA = '';
+  var OFT_HORA_SELECIONADA = '';
+
+  function oftMsg(tipo, texto){
+    var el = document.getElementById('oftMensagem');
+    el.className = 'oft-msg ' + (tipo === 'ok' ? 'ok' : 'erro');
+    el.innerHTML = texto;
+  }
+
+  function oftFormatarCPF(v){
+    v = String(v||'').replace(/\D/g,'').slice(0,11);
+    if (v.length<=3) return v;
+    if (v.length<=6) return v.replace(/^(\d{3})(\d+)/,'$1.$2');
+    if (v.length<=9) return v.replace(/^(\d{3})(\d{3})(\d+)/,'$1.$2.$3');
+    return v.replace(/^(\d{3})(\d{3})(\d{3})(\d{1,2})$/,'$1.$2.$3-$4');
+  }
+
+  function oftFormatarTelefone(v){
+    v = String(v||'').replace(/\D/g,'').slice(0,11);
+    if (v.length<=10) return v.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, function(_,a,b,c){ return c?'('+a+') '+b+'-'+c:'('+a+') '+b; });
+    return v.replace(/^(\d{2})(\d{5})(\d{0,4}).*/, function(_,a,b,c){ return c?'('+a+') '+b+'-'+c:'('+a+') '+b; });
+  }
+
+  function oftAtualizarTipo(){
+    var r = document.querySelector('input[name="oftTipo"]:checked');
+    var sec = document.getElementById('oftSecDependente');
+    sec.classList.toggle('hide', !(r && r.value === 'DEPENDENTE'));
+  }
+
+  function oftIsoParaBr(iso){
+    if (!iso) return '';
+    var p = String(iso).split('-');
+    return p.length === 3 ? (p[2]+'/'+p[1]+'/'+p[0]) : iso;
+  }
+
+  function oftCarregarDataLiberada(){
+    google.script.run
+      .withSuccessHandler(function(r){
+        if (!r || !r.ok || !r.data) {
+          document.getElementById('oftPublicoSemData').classList.remove('hide');
+          document.getElementById('oftPublicoComData').classList.add('hide');
+          return;
+        }
+        OFT_DATA_LIBERADA = r.data;
+        document.getElementById('oftPublicoSemData').classList.add('hide');
+        document.getElementById('oftPublicoComData').classList.remove('hide');
+        document.getElementById('oftDataAtual').textContent = r.data;
+        oftCarregarHorarios();
+      })
+      .withFailureHandler(function(){
+        document.getElementById('oftPublicoSemData').classList.remove('hide');
+      })
+      .obterDataLiberadaOftalmo();
+  }
+
+  function oftCarregarHorarios(){
+    google.script.run
+      .withSuccessHandler(function(r){
+        var wrap = document.getElementById('oftSlots');
+        wrap.innerHTML = '';
+        if (!r || !r.ok) {
+          wrap.innerHTML = '<div class="oft-info">' + (r && r.erro ? r.erro : 'Não foi possível carregar os horários.') + '</div>';
+          return;
+        }
+        r.slots.forEach(function(s){
+          var d = document.createElement('div');
+          d.className = 'oft-slot' + (s.livre ? '' : ' ocupado');
+          d.textContent = s.hora;
+          if (s.livre) d.onclick = function(){ oftSelecionarHorario(s.hora, d); };
+          wrap.appendChild(d);
+        });
+      })
+      .withFailureHandler(function(){})
+      .listarHorariosOftalmoPublico(OFT_DATA_LIBERADA);
+  }
+
+  function oftSelecionarHorario(hora, elemento){
+    OFT_HORA_SELECIONADA = hora;
+    document.querySelectorAll('.oft-slot.selecionado').forEach(function(el){ el.classList.remove('selecionado'); });
+    elemento.classList.add('selecionado');
+    document.getElementById('oftForm').classList.remove('hide');
+    oftMsg('', '');
+    document.getElementById('oftMensagem').style.display = 'none';
+  }
+
+  function oftEnviar(){
+    if (!OFT_HORA_SELECIONADA) { oftMsg('erro', 'Escolha um horário.'); document.getElementById('oftMensagem').style.display='block'; return; }
+    var tipo = document.querySelector('input[name="oftTipo"]:checked').value;
+    var dados = {
+      data: OFT_DATA_LIBERADA,
+      hora: OFT_HORA_SELECIONADA,
+      tipo: tipo,
+      cpfTitular: document.getElementById('oftCpfTitular').value,
+      nomeTitular: document.getElementById('oftNomeTitular').value,
+      nomeBeneficiario: tipo === 'DEPENDENTE' ? document.getElementById('oftNomeDependente').value : document.getElementById('oftNomeTitular').value,
+      dataNasc: tipo === 'DEPENDENTE' ? oftIsoParaBr(document.getElementById('oftDataNascDependente').value) : '',
+      parentesco: tipo === 'DEPENDENTE' ? document.getElementById('oftParentesco').value : '',
+      telefone: document.getElementById('oftTelefone').value,
+      email: document.getElementById('oftEmail').value,
+      escola: document.getElementById('oftEscola').value
+    };
+
+    var btn = document.getElementById('oftBtnEnviar');
+    btn.disabled = true; btn.textContent = 'Enviando...';
+    document.getElementById('oftMensagem').style.display = 'none';
+
+    google.script.run
+      .withSuccessHandler(function(resp){
+        btn.disabled = false; btn.textContent = 'Confirmar Agendamento';
+        if (resp && resp.ok) {
+          oftMsg('ok', 'Agendamento confirmado para ' + OFT_DATA_LIBERADA + ' às ' + OFT_HORA_SELECIONADA + '.');
+          document.getElementById('oftMensagem').style.display = 'block';
+          document.getElementById('oftForm').classList.add('hide');
+          oftCarregarHorarios();
+        } else {
+          oftMsg('erro', (resp && resp.erro) ? resp.erro : 'Não foi possível agendar.');
+          document.getElementById('oftMensagem').style.display = 'block';
+          if (resp && /reservado por outra pessoa/i.test(resp.erro||'')) oftCarregarHorarios();
+        }
+      })
+      .withFailureHandler(function(err){
+        btn.disabled = false; btn.textContent = 'Confirmar Agendamento';
+        oftMsg('erro', 'Erro ao agendar: ' + (err && err.message ? err.message : err));
+        document.getElementById('oftMensagem').style.display = 'block';
+      })
+      .reservarHorarioOftalmoPublico(dados);
+  }
+
+  document.getElementById('oftCpfTitular').addEventListener('input', function(){ this.value = oftFormatarCPF(this.value); });
+  document.getElementById('oftTelefone').addEventListener('input', function(){ this.value = oftFormatarTelefone(this.value); });
+
+  oftCarregarDataLiberada();
+</script>
+</body>
+</html>

@@ -13,8 +13,8 @@ function moverArquivoParaPasta_(arquivoId, pastaDestinoId) {
   return f; 
 }
 
-function exportarPlanilhaTemporaria_(planilhaTemp, nomeArquivo, tipoExportacao) {
-  const pasta = obterPastaRelatorios_(); 
+function sistExportacao_exportarPlanilhaTemporaria_(planilhaTemp, nomeArquivo, tipoExportacao) {
+  const pasta = obterPastaRelatorios_();
   moverArquivoParaPasta_(planilhaTemp.getId(), pasta.getId());
   
   const token = ScriptApp.getOAuthToken(); 
@@ -67,7 +67,27 @@ function criarAbaAssociadosExportacao_(planilha, colaboradores, meta) {
   return aba;
 }
 
-function exportarAssociadosOficio(dados) {
+/* ============================================================================
+ * SESSÃO NAS DUAS EXPORTAÇÕES ABAIXO — acrescentada em 11/08/2026.
+ *
+ * As duas montam planilha com a coluna CPF SEM MÁSCARA e não pediam sessão
+ * nenhuma. No Apps Script, toda função global é chamável por quem tiver a URL
+ * da web app, então elas estavam abertas.
+ *
+ * O tamanho real do risco, sem exagero: as duas exportam apenas o array de
+ * colaboradores que o CHAMADOR passa. Não leem a base. Quem chamasse de fora
+ * teria que já ter os CPFs — não é caminho de vazamento, é caminho de criar
+ * arquivo no Drive do sindicato sem se identificar.
+ *
+ * A checagem dos 5 passos da REGRA Nº 1 foi feita antes de mexer: nenhum
+ * chamador em .gs ou .html, nenhuma rota doGet/doPost, nenhum trigger, e o
+ * arquivo vem do primeiro backup. Por isso exigir sessão aqui não quebra
+ * ninguém. As funções FICAM — na dúvida o arquivo fica, e remoção só com
+ * pedido explícito, em commit separado.
+ * ========================================================================== */
+
+function exportarAssociadosOficio(dados, tokenSessao) {
+  var sessaoExp = exigirModulo_(tokenSessao, "documentos", false);
   dados = dados || {}; 
   const formato = String(dados.formato || "excel").toLowerCase();
   const colaboradores = normalizarColaboradoresExportacao_(dados.colaboradores || []);
@@ -94,10 +114,23 @@ function exportarAssociadosOficio(dados) {
   if (linhas.length) aba.getRange(2,1,linhas.length,cabecalho[0].length).setValues(linhas);
   aba.autoResizeColumns(1, cabecalho[0].length); 
   
-  return exportarPlanilhaTemporaria_(planilha, nomeArquivo, formato);
+  /* dadoPessoal VERDADEIRO, sem hesitação: a coluna CPF sai sem máscara. */
+  try {
+    if (typeof aud_deExportacao_ === "function") {
+      aud_deExportacao_({
+        modulo: "Documentos", submodulo: "Exportações",
+        formato: formato, total: colaboradores.length, dadoPessoal: true,
+        filtros: { escola: meta.escola || "", oficio: meta.numeroOficio || "" },
+        sessao: sessaoExp
+      });
+    }
+  } catch (e) { Logger.log("[exportacao] ponte de auditoria falhou: " + e.message); }
+
+  return sistExportacao_exportarPlanilhaTemporaria_(planilha, nomeArquivo, formato);
 }
 
-function exportarEscolaEAssociados(dados) {
+function exportarEscolaEAssociados(dados, tokenSessao) {
+  var sessaoExp = exigirModulo_(tokenSessao, "documentos", false);
   dados = dados || {}; 
   const formato = String(dados.formato || "excel").toLowerCase();
   const colaboradores = normalizarColaboradoresExportacao_(dados.colaboradores || []); 
@@ -108,7 +141,13 @@ function exportarEscolaEAssociados(dados) {
     tipo: dados.tipo || "", 
     numeroOficio: dados.numeroOficio || "", 
     escola: escola.escola || dados.escola || "", 
-    cnpj: escola.cnpj || dados.cnpj || "", 
+    // CPF de escola de pessoa fisica sai MASCARADO no arquivo. CNPJ e
+    // publico e sai inteiro. Este arquivo circula por e-mail e fica no Drive
+    // — e a partir do momento em que a coluna CNPJ passou a aceitar CPF, ela
+    // carrega dado pessoal.
+    cnpj: (typeof escolaDocMascarado_ === "function")
+            ? escolaDocMascarado_(escola.cnpj || dados.cnpj || "")
+            : (escola.cnpj || dados.cnpj || ""), 
     data: dados.data || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm") 
   };
   const nomeArquivo = "Exportacao Completa - " + String(meta.escola || "Escola").substring(0, 80);
@@ -118,5 +157,17 @@ function exportarEscolaEAssociados(dados) {
     criarAbaEscolaExportacao_(planilha, escola);
   }
   criarAbaAssociadosExportacao_(planilha, colaboradores, meta);
-  return exportarPlanilhaTemporaria_(planilha, nomeArquivo, formato);
+  /* dadoPessoal VERDADEIRO, sem hesitação: a coluna CPF sai sem máscara. */
+  try {
+    if (typeof aud_deExportacao_ === "function") {
+      aud_deExportacao_({
+        modulo: "Documentos", submodulo: "Exportações",
+        formato: formato, total: colaboradores.length, dadoPessoal: true,
+        filtros: { escola: meta.escola || "", oficio: meta.numeroOficio || "" },
+        sessao: sessaoExp
+      });
+    }
+  } catch (e) { Logger.log("[exportacao] ponte de auditoria falhou: " + e.message); }
+
+  return sistExportacao_exportarPlanilhaTemporaria_(planilha, nomeArquivo, formato);
 }

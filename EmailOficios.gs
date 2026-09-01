@@ -23,28 +23,59 @@ function montarEmailHTML(tipo, numero, assuntoTipo, quantidade, textoPrincipalCu
     if (assuntoTipo === "Filiação") {
       textoPrincipal = quantidade === 1
         ? "Encaminhamos, em anexo, o <strong>Ofício de Filiação nº " + numero + "</strong> acompanhado da ficha de filiação do(a) colaborador(a).\n\n" +
-          "Nos termos da <strong>Cláusula 56ª da CCT 2025/2026</strong>, solicitamos a realização do desconto mensal de <strong>2% (dois por cento)</strong> sobre o salário-base do(a) trabalhador(a), a título de Mensalidade Sindical.\n\n" +
+          "Nos termos da <strong>Cláusula 56ª da CCT 2026/2027</strong>, solicitamos a realização do desconto mensal de <strong>2% (dois por cento)</strong> sobre o salário-base do(a) trabalhador(a), a título de Mensalidade Sindical.\n\n" +
           "Solicitamos, por gentileza, a <strong>confirmação do recebimento</strong> respondendo a este e-mail."
         : "Encaminhamos, em anexo, o <strong>Ofício de Filiação nº " + numero + "</strong> acompanhado das fichas de filiação dos(as) colaboradores(as) relacionados(as).\n\n" +
-          "Nos termos da <strong>Cláusula 56ª da CCT 2025/2026</strong>, solicitamos a realização dos descontos mensais de <strong>2% (dois por cento)</strong> sobre o salário-base de cada trabalhador(a), a título de Mensalidade Sindical.\n\n" +
+          "Nos termos da <strong>Cláusula 56ª da CCT 2026/2027</strong>, solicitamos a realização dos descontos mensais de <strong>2% (dois por cento)</strong> sobre o salário-base de cada trabalhador(a), a título de Mensalidade Sindical.\n\n" +
           "Solicitamos, por gentileza, a <strong>confirmação do recebimento</strong> respondendo a este e-mail.";
     } else if (assuntoTipo === "Desfiliação") {
       textoPrincipal = quantidade === 1
         ? "Encaminhamos, em anexo, o <strong>Ofício de Desfiliação nº " + numero + "</strong> acompanhado da carta de desfiliação do(a) colaborador(a).\n\n" +
-          "Nos termos da <strong>Cláusula 56ª da CCT 2025/2026</strong>, solicitamos que seja <strong>cessado imediatamente o desconto de 2% (dois por cento)</strong> sobre o salário-base.\n\n" +
+          "Nos termos da <strong>Cláusula 56ª da CCT 2026/2027</strong>, solicitamos que seja <strong>cessado imediatamente o desconto de 2% (dois por cento)</strong> sobre o salário-base.\n\n" +
           "Solicitamos, por gentileza, a <strong>confirmação do recebimento</strong> respondendo a este e-mail."
         : "Encaminhamos, em anexo, o <strong>Ofício de Desfiliação nº " + numero + "</strong> acompanhado das cartas de desfiliação dos(as) colaboradores(as) relacionados(as).\n\n" +
-          "Nos termos da <strong>Cláusula 56ª da CCT 2025/2026</strong>, solicitamos que sejam <strong>cessados imediatamente os descontos de 2% (dois por cento)</strong> sobre os salários-base.\n\n" +
+          "Nos termos da <strong>Cláusula 56ª da CCT 2026/2027</strong>, solicitamos que sejam <strong>cessados imediatamente os descontos de 2% (dois por cento)</strong> sobre os salários-base.\n\n" +
           "Solicitamos, por gentileza, a <strong>confirmação do recebimento</strong> respondendo a este e-mail.";
     } else if (assuntoTipo === "Taxa Assistencial") {
+      /* Antes o e-mail só dizia "duas parcelas de 2%". Faltavam a competência
+         e os vencimentos, que estão no ofício anexo — e quem lê o e-mail sem
+         abrir o PDF ficava sem saber QUANDO pagar. */
       textoPrincipal =
-        "Encaminhamos, em anexo, o <strong>Ofício nº " + numero + "</strong> referente à <strong>Taxa Assistencial – Assistência Médica</strong>, conforme previsto na CCT 2026.\n\n" +
-        "O repasse deverá ser realizado em <strong>duas parcelas de 2% (dois por cento)</strong> sobre o salário-base bruto dos colaboradores técnico-administrativos.\n\n" +
+        "Encaminhamos, em anexo, o <strong>Ofício nº " + numero + "</strong> referente à <strong>Taxa Assistencial – Assistência Médica</strong>, conforme a <strong>Cláusula 58ª da CCT 2026/2027</strong>.\n\n" +
+        "O valor corresponde a <strong>4% (quatro por cento)</strong> da folha de pagamento bruta da <strong>competência março/2027</strong> dos colaboradores técnico-administrativos, recolhido em <strong>duas parcelas de 2% (dois por cento)</strong>, com vencimentos em <strong>15/04/2027</strong> e <strong>15/05/2027</strong>.\n\n" +
         "Solicitamos, por gentileza, a <strong>confirmação do recebimento</strong> respondendo a este e-mail.";
     } else if (assuntoTipo === "Taxa Negocial") {
+      /* O ofício anexo já dizia 6% em três parcelas, isenção dos filiados e
+         relação nominal; o e-mail só falava do prazo. A parte da isenção é a
+         mais cara de omitir: sem ela a escola desconta de quem já paga
+         mensalidade sindical, e o sindicato devolve depois. */
       textoPrincipal =
-        "Encaminhamos, em anexo, o <strong>Ofício nº " + numero + "</strong> referente à <strong>Taxa Negocial</strong>, em conformidade com a <strong>Cláusula 57ª da CCT 2025/2026</strong>.\n\n" +
-        "Solicitamos que os descontos sejam realizados e o repasse efetuado até o <strong>10º dia útil do mês subsequente</strong>.\n\n" +
+        "Encaminhamos, em anexo, o <strong>Ofício nº " + numero + "</strong> referente à <strong>Taxa Negocial</strong>, em conformidade com a <strong>Cláusula 57ª da CCT 2026/2027</strong>.\n\n" +
+        "A contribuição corresponde a <strong>6% (seis por cento)</strong> do salário-base, descontada em <strong>três parcelas mensais e sucessivas de 2% (dois por cento)</strong>, <strong>iniciando-se na competência de setembro de 2026</strong>. <strong>Os trabalhadores filiados ao sindicato estão isentos</strong>, por já recolherem a mensalidade sindical.\n\n" +
+        "Solicitamos que os descontos sejam realizados e o repasse efetuado até o <strong>10º dia útil do mês subsequente</strong>, acompanhado da <strong>relação nominal</strong> dos trabalhadores e dos respectivos valores.\n\n" +
+        "Solicitamos, por gentileza, a <strong>confirmação do recebimento</strong> respondendo a este e-mail.";
+    } else if (assuntoTipo === "Oposição à Taxa Negocial") {
+      /* ESTE RAMO NÃO EXISTIA. Como o if/else era por assuntoTipo e não havia
+         caso para "Oposição à Taxa Negocial", textoPrincipal ficava string
+         vazia — e a escola recebia um e-mail com cabeçalho, selo do tipo e
+         assinatura, sem UMA linha de texto. Ninguém reclamou porque o PDF ia
+         anexo e o defeito não gera erro.
+
+         O conteúdo aqui é o oposto do da Taxa Negocial: pede que o desconto
+         NÃO seja feito. Repetir a cobrança seria dizer o contrário do que o
+         documento anexo determina. */
+      textoPrincipal =
+        "Encaminhamos, em anexo, o <strong>Ofício nº " + numero + "</strong> referente à <strong>oposição à Taxa Negocial</strong> prevista na <strong>Cláusula 57ª da CCT 2026/2027</strong>, acompanhado da carta de oposição.\n\n" +
+        /* Sem pedido de restituição: eu havia incluído "caso já tenha sido
+           efetuado, que o valor seja restituído", e o usuário mandou tirar em
+           18/08/2026. O ofício anexo também não pede devolução — só determina
+           que o desconto não seja feito. O e-mail agora diz a mesma coisa que
+           o documento, nem mais nem menos. */
+        /* O período vem do comunicado publicado em jornal (17/07/2026): a
+           oposição deveria ser apresentada entre 17 e 26 de agosto de 2026. */
+        (quantidade === 1
+          ? "O(a) trabalhador(a) relacionado(a) manifestou formalmente oposição ao desconto, no período de <strong>17 a 26 de agosto de 2026</strong>, em dia útil, conforme prazo publicado pelo Sindicato. Solicitamos, portanto, que <strong>o desconto da Taxa Negocial não seja realizado</strong>.\n\n"
+          : "Os(as) trabalhadores(as) relacionados(as) manifestaram formalmente oposição ao desconto, no período de <strong>17 a 26 de agosto de 2026</strong>, em dia útil, conforme prazo publicado pelo Sindicato. Solicitamos, portanto, que <strong>o desconto da Taxa Negocial não seja realizado</strong> para essas pessoas.\n\n") +
         "Solicitamos, por gentileza, a <strong>confirmação do recebimento</strong> respondendo a este e-mail.";
     } else if (assuntoTipo === "Ofício Livre") {
       textoPrincipal =
@@ -61,6 +92,9 @@ function montarEmailHTML(tipo, numero, assuntoTipo, quantidade, textoPrincipalCu
   if (assuntoTipo === "Desfiliação")       { badgeCor="rgba(185,28,28,.2)";   badgeBorda="rgba(220,38,38,.4)";   badgeTexto="#fca5a5"; }
   if (assuntoTipo === "Taxa Assistencial") { badgeCor="rgba(22,101,52,.2)";   badgeBorda="rgba(34,197,94,.35)";  badgeTexto="#86efac"; }
   if (assuntoTipo === "Taxa Negocial")     { badgeCor="rgba(3,105,161,.2)";   badgeBorda="rgba(14,165,233,.35)"; badgeTexto="#7dd3fc"; }
+  /* Cor própria: a oposição é o contrário da cobrança, e o selo não pode
+     parecer o mesmo de um ofício que manda descontar. */
+  if (assuntoTipo === "Oposição à Taxa Negocial") { badgeCor="rgba(126,34,206,.2)"; badgeBorda="rgba(168,85,247,.4)"; badgeTexto="#d8b4fe"; }
 
   return (
     "<div style='font-family:Segoe UI,Arial,sans-serif;max-width:680px;color:#0f172a;'>" +
@@ -96,7 +130,7 @@ function montarEmailHTML(tipo, numero, assuntoTipo, quantidade, textoPrincipalCu
   );
 }
 function reenviarOficio(registro, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
     var emailUsuario = String(sessaoDocumentos.email || sessaoDocumentos.usuario || "").trim().toLowerCase();
 
@@ -195,9 +229,19 @@ function reenviarOficio(registro, tokenSessao) {
       codigo:  ""
     });
 
+    // O reenvio precisa tirar o ofício de FALHA_ENTREGA e reposicionar a data de
+    // envio. Falhar aqui não invalida o e-mail, que já saiu: só registra.
+    var avisoStatus = "";
+    try {
+      MON_OFICIOS_registrarReenvio_(ss, numero, emailUsuario);
+    } catch (eStatus) {
+      avisoStatus = " (atenção: o status não pôde ser atualizado — " + eStatus.message + ")";
+      Logger.log("⚠ Reenvio concluído, mas o status não foi atualizado: " + eStatus.message);
+    }
+
     return {
       erro: false,
-      mensagem: "Ofício " + numero + " reenviado com sucesso para " + validacaoEmails.todos + ". Anexos: " + anexos.length + "."
+      mensagem: "Ofício " + numero + " reenviado com sucesso para " + validacaoEmails.todos + ". Anexos: " + anexos.length + "." + avisoStatus
     };
 
   } catch(e) {

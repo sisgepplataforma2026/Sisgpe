@@ -4,7 +4,7 @@
   <base target="_top">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SISGEP · SOFIA</title>
+  <title>Portal Administrativo · SOFIA</title>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <?!= include('OficiosStyles'); ?>
 </head>
@@ -19,7 +19,44 @@
     <div class="spLogoBox">
       <img class="spLogo" src="https://lh3.googleusercontent.com/d/1c-RHfb0W-wl_ZK1xlMjNRs9DS4ep2ov7" alt="SindEducação-ES">
     </div>
+    <div class="spPortalLabel">Portal Administrativo</div>
 
+    <!-- Recolher o menu para ícones.
+         O menu é a única coisa que responde "o que mais existe aqui dentro",
+         e com 12 módulos isso não é decoração — por isso ele se recolhe, não
+         se remove. A escolha fica gravada por pessoa (localStorage): quem
+         nunca clicar aqui não vê diferença nenhuma. -->
+    <div class="spMenuBarra">
+      <button id="spMenuToggle" type="button" class="spRecolherBtn"
+              onclick="spAlternarMenu()" aria-expanded="true"
+              title="Recolher o menu">☰<span>Recolher</span></button>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         MENU DO PORTAL ADMINISTRATIVO
+
+         HIERARQUIA (docs/PROMPT-MESTRE.md, item 4):
+             Módulo  →  Submódulo  →  Tela  →  Ação
+         Só existem DOIS níveis aqui: módulo (.spN) e submódulo
+         (.docSubMenuBtn). Tela e ação vivem DENTRO do módulo, em abas e
+         botões — nunca no menu lateral.
+
+         REGRA: nunca promover tela, botão ou ação a item de menu. Foi o
+         que estava acontecendo com "Atualização Cadastral" (é tela do
+         ciclo do associado), "Relatórios" (é tela de Ofícios) e "Rádio"
+         (não é área administrativa — é o player que já existe no rodapé).
+
+         AGRUPAMENTO: as seções são as áreas reais do sindicato, na ordem
+         em que o trabalho acontece — quem atende o associado, quem fala
+         com escola e imprensa, quem administra a casa. Não são categorias
+         técnicas.
+
+         ACORDEÃO: o módulo com submódulos declara data-acordeao (o id do
+         bloco que ele abre) e o bloco declara data-subs (os módulos que
+         vivem dentro dele). spIr() lê esses dois atributos e decide
+         sozinho o que abrir e o que acender. Não escreva mais uma função
+         toggleXAccordion por módulo — havia seis iguais.
+    ══════════════════════════════════════════════════════════════════ -->
     <div class="spNavArea">
       <button class="spN sp-ativo" data-mod="inicio" onclick="spIr('inicio',this)">
         <span class="spNI">🏠</span><div><strong>Início</strong></div>
@@ -27,107 +64,160 @@
       <button class="spN" data-mod="sofia" onclick="spIr('sofia',this)">
         <span class="spNI">💬</span><div><strong>Conversar com a SOFIA</strong></div>
       </button>
-<button class="spN" data-mod="sindicalizacao" onclick="toggleSindAccordion(this)">
-        <span class="spNI">🪪</span><div><strong>Sindicalização</strong><small>Fichas, aprovações e visitas às escolas</small></div>
-      </button>
 
-      <div id="sindSubMenuSidebar" class="docSubMenuSidebar" style="display:none;">
-        <button type="button" class="docSubMenuBtn" data-sind-sub="fichas" onclick="spIr('fichas',null)">📝 Fichas Sindicais</button>
-<button type="button" class="docSubMenuBtn" data-sind-sub="aprovacoesPortal" onclick="abrirAprovacoesPortal(null)">✅ Aprovações do Portal</button>
-        <button type="button" class="docSubMenuBtn" data-sind-sub="visitasAdmin" onclick="spIr('visitasAdmin',null)">🗺️ Gestão de Visitas</button>
+      <div class="spSec">Atendimento ao associado</div>
+
+      <button class="spN" data-mod="sindicalizacao" data-acordeao="sindSubMenuSidebar" onclick="spAcordeao(this)">
+        <span class="spNI">🪪</span><div><strong>Sindicalização</strong><small>Filiação, credencial e cadastro</small></div>
+      </button>
+      <div id="sindSubMenuSidebar" class="docSubMenuSidebar" data-subs="fichas,carteirinhas,aprovacoesPortal" style="display:none;">
+        <button type="button" class="docSubMenuBtn" data-sub-mod="fichas" onclick="spIr('fichas',null)">📝 Fichas Sindicais</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="carteirinhas" onclick="spIr('carteirinhas',null)">🪪 Carteirinhas</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="aprovacoesPortal" onclick="abrirAprovacoesPortal(null)">✅ Atualização Cadastral</button>
       </div>
-      <div class="spSec">Operações</div>
 
-      <button class="spN" data-mod="documentos" onclick="toggleDocAccordion(this)">
-        <span class="spNI">📄</span><div><strong>Documentos</strong><small>Ofícios, Recibos, Certidões</small></div>
+      <button class="spN" data-mod="beneficios" data-acordeao="beneficiosSubMenuSidebar" onclick="spAcordeao(this);spIr('beneficios',this,{sub:'inicio'})">
+        <span class="spNI">🎁</span><div><strong>Benefícios</strong><small>Solicitações, reservas e aprovações</small></div>
       </button>
-<div id="docSubMenuSidebar" class="docSubMenuSidebar" style="display:none;">
-        <button type="button" class="docSubMenuBtn docSubMenuBtn-ativo" data-doc-sub="oficios" onclick="spIr('documentos',null,{sub:'oficios'})">📄 Ofícios</button>
-        <button type="button" class="docSubMenuBtn" data-doc-sub="recibos" onclick="spIr('documentos',null,{sub:'recibos'})">🧾 Recibos</button>
-        <button type="button" class="docSubMenuBtn" data-doc-sub="certidoes" onclick="spIr('documentos',null,{sub:'certidoes'})">📜 Certidões</button>
-<button type="button" class="docSubMenuBtn" data-doc-sub="historico" onclick="spIr('documentos',null,{sub:'historico'})">📚 Histórico</button>
+      <div id="beneficiosSubMenuSidebar" class="docSubMenuSidebar" data-subs="beneficios" style="display:none;">
+        <button type="button" class="docSubMenuBtn" data-sub-mod="beneficios:parqueChina" data-benef-sub="parqueChina" onclick="spIr('beneficios',null,{sub:'parqueChina'})">🏨 China Park Eco Resort</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="beneficios:guririBeach" data-benef-sub="guririBeach" onclick="spIr('beneficios',null,{sub:'guririBeach'})">🏖 Guriri Beach Acqua Park</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="beneficios:assefaz" data-benef-sub="assefaz" onclick="spIr('beneficios',null,{sub:'assefaz'})">🏥 Pousada Club Assefaz</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="beneficios:agendaOftalmo" data-benef-sub="agendaOftalmo" onclick="spIr('beneficios',null,{sub:'agendaOftalmo'})">👁 Exame oftalmológico</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="beneficios:vouchers" data-benef-sub="vouchers" onclick="spIr('beneficios',null,{sub:'vouchers'})">🎫 Vouchers</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="beneficios:historico" data-benef-sub="historico" onclick="spIr('beneficios',null,{sub:'historico'})">📋 Central de solicitações</button>
       </div>
-<button class="spN" data-mod="beneficios" onclick="toggleBeneficiosAccordion(this);spIr('beneficios',this,{sub:'inicio'})">
-  <span class="spNI">🎁</span>
-<div>
-    <strong>Benefícios</strong>
-    <small>Gestão de Benefícios</small>
-  </div>
-</button>
 
-<div id="beneficiosSubMenuSidebar" class="docSubMenuSidebar" style="display:none;">
-  <button type="button" class="docSubMenuBtn beneficiosSubMenuBtn-ativo" data-benef-sub="parqueChina" onclick="spIr('beneficios',null,{sub:'parqueChina'})">🏨 China Park Eco Resort</button>
-  <button type="button" class="docSubMenuBtn" data-benef-sub="carteirinhas" onclick="spIr('beneficios',null,{sub:'carteirinhas'})">🪪 Carteirinhas</button>
-  <button type="button" class="docSubMenuBtn" data-benef-sub="vouchers" onclick="spIr('beneficios',null,{sub:'vouchers'})">🎫 Vouchers</button>
-  <button type="button" class="docSubMenuBtn" data-benef-sub="agendaOftalmo" onclick="spIr('beneficios',null,{sub:'agendaOftalmo'})">👁 Exame oftalmológico</button>
-  <button type="button" class="docSubMenuBtn" data-benef-sub="guririBeach" onclick="spIr('beneficios',null,{sub:'guririBeach'})">🏖 Guriri Beach Acqua Park</button>
-  <button type="button" class="docSubMenuBtn" data-benef-sub="assefaz" onclick="spIr('beneficios',null,{sub:'assefaz'})">🏥 Pousada Club Assefaz</button>
-  <button type="button" class="docSubMenuBtn" data-benef-sub="historico" onclick="spIr('beneficios',null,{sub:'historico'})">📋 Central de solicitações</button>
-</div>
-<button class="spN" data-mod="financeiro" onclick="spIr('financeiro',this)">
-        <span class="spNI">💵</span><div><strong>Financeiro</strong><small>Despesas, Lotes, Pagamentos</small></div>
+      <button class="spN" data-mod="documentos" data-acordeao="docSubMenuSidebar" onclick="spAcordeao(this)">
+        <span class="spNI">📄</span><div><strong>Documentos</strong><small>Ofícios e Recibos</small></div>
       </button>
-      <button class="spN" data-mod="escolas" onclick="spIr('escolas',this)">
-        <span class="spNI">🏫</span><div><strong>Escolas</strong><small>Cadastros e Relacionamentos</small></div>
+      <div id="docSubMenuSidebar" class="docSubMenuSidebar" data-subs="documentos,relatorios" style="display:none;">
+        <button type="button" class="docSubMenuBtn docSubMenuBtn-ativo" data-sub-mod="documentos:oficios" data-doc-sub="oficios" onclick="spIr('documentos',null,{sub:'oficios'})">📄 Ofícios</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="documentos:recibos" data-doc-sub="recibos" onclick="spIr('documentos',null,{sub:'recibos'})">🧾 Recibos</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="documentos:historico" data-doc-sub="historico" onclick="spIr('documentos',null,{sub:'historico'})">📚 Histórico</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="relatorios" onclick="spIr('relatorios',null)">📊 Relatórios de Ofícios</button>
+      </div>
+
+      <div class="spSec">Relacionamento</div>
+
+      <button class="spN" data-mod="escolas" data-acordeao="escolasSubMenuSidebar" onclick="spAcordeao(this)">
+        <span class="spNI">🏫</span><div><strong>Escolas</strong><small>Cadastro, visitas e cobrança</small></div>
       </button>
+      <div id="escolasSubMenuSidebar" class="docSubMenuSidebar" data-subs="escolas,escolasPendencias,visitas,visitasAdmin,cobranca" style="display:none;">
+        <button type="button" class="docSubMenuBtn" data-sub-mod="escolas" onclick="spIr('escolas',null)">🏫 Cadastro de Escolas</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="escolasPendencias" onclick="spIr('escolasPendencias',null)">🧾 Pendências do Cadastro</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="visitas" onclick="spIr('visitas',null)">📍 Visita à Escola (agenda do dia)</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="visitasAdmin" onclick="spIr('visitasAdmin',null)">🗺️ Gestão de Visitas</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="cobranca" onclick="spIr('cobranca',null)">📋 Cobrança de Relação Nominal</button>
+      </div>
+
+      <button class="spN" data-mod="comunicacao" data-acordeao="comunicacaoSubMenuSidebar" onclick="spAcordeao(this);spIr('comunicacao',this)">
+        <span class="spNI">✉️</span><div><strong>Comunicação</strong><small>Painel do dia e caixa de e-mails</small></div>
+      </button>
+      <!-- Cockpit e Central IA de E-mails sao a mesma caixa Gmail, com o
+           Cockpit reaproveitando as acoes da Central IA. Dois botoes de
+           primeiro nivel para praticamente a mesma coisa confundia a
+           navegacao: viraram as duas visoes de um modulo so. -->
+      <div id="comunicacaoSubMenuSidebar" class="docSubMenuSidebar" data-subs="comunicacao,centralEmailIA" style="display:none;">
+        <button type="button" class="docSubMenuBtn" data-sub-mod="comunicacao" onclick="spIr('comunicacao',null)">📊 Painel do Dia</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="centralEmailIA" onclick="spIr('centralEmailIA',null)">📬 Caixa de E-mails</button>
+      </div>
+
+      <button class="spN" data-mod="eventos" onclick="spIr('eventos',this)">
+        <span class="spNI">📅</span><div><strong>Eventos</strong><small>Atividades e programações</small></div>
+      </button>
+
+      <div class="spSec">Administração</div>
+
+      <button class="spN" data-mod="financeiro" data-acordeao="financeiroSubMenuSidebar" onclick="spAcordeao(this);spIr('financeiro',this)">
+        <span class="spNI">💵</span><div><strong>Financeiro</strong><small>Receitas, despesas e patrimônio</small></div>
+      </button>
+      <div id="financeiroSubMenuSidebar" class="docSubMenuSidebar" data-subs="financeiro,painelFin,receitas,mensalidades,taxas,cadastroPrestadores,patrimonio,auditoriaFin" style="display:none;">
+        <button type="button" class="docSubMenuBtn" data-sub-mod="painelFin" onclick="spIr('painelFin',null)">📊 Painel Executivo</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="financeiro" onclick="spIr('financeiro',null)">💸 Despesas e Pagamentos</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="receitas" onclick="spIr('receitas',null)">💰 Receitas</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="mensalidades" onclick="spIr('mensalidades',null)">🧾 Mensalidade Sindical</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="taxas" onclick="spIr('taxas',null)">📑 Taxa Negocial e Assistencial</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="cadastroPrestadores" onclick="spIr('cadastroPrestadores',null)">🧑‍🔧 Prestadores</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="patrimonio" onclick="spIr('patrimonio',null)">🏛️ Patrimônio</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="auditoriaFin" onclick="spIr('auditoriaFin',null)">🔍 Auditoria de Valores</button>
+      </div>
+
       <button class="spN" data-mod="rh" onclick="spIr('rh',this)">
-        <span class="spNI">👥</span><div><strong>RH</strong><small>Colaboradores e Documentos</small></div>
+        <span class="spNI">👥</span><div><strong>RH</strong><small>Colaboradores, folha e documentos</small></div>
       </button>
       <button class="spN" data-mod="juridico" onclick="spIr('juridico',this)">
-        <span class="spNI">️</span><div><strong>Jurídico</strong><small>Processos e Documentos</small></div>
+        <span class="spNI">⚖️</span><div><strong>Jurídico</strong><small>Processos, prazos e audiências</small></div>
       </button>
-      <button class="spN" data-mod="patrimonio" onclick="spIr('patrimonio',this)">
-        <span class="spNI">🏛️</span><div><strong>Patrimônio</strong><small>Bens e Inventário</small></div>
+      <button class="spN" data-mod="negociacao" onclick="spIr('negociacao',this)">
+        <span class="spNI">📜</span><div><strong>Negociação Coletiva</strong><small>CCT, pisos e data-base</small></div>
       </button>
-      <button class="spN" data-mod="comunicacao" onclick="spIr('comunicacao',this)">
-        <span class="spNI">✉️</span><div><strong>Comunicação</strong><small>E-mails e Mensagens</small></div>
+
+      <div class="spSec">Institucional</div>
+
+      <button class="spN" data-mod="governanca" onclick="spIr('governanca',this)">
+        <span class="spNI">🏛️</span><div><strong>Governança</strong><small>Diretoria, mandato e eleição</small></div>
       </button>
-      <button class="spN" data-mod="centralEmailIA" onclick="spIr('centralEmailIA',this)">
-        <span class="spNI">📬</span><div><strong>Central IA de E-mails</strong><small>Categorização e respostas automáticas</small></div>
-      </button>
-      <button class="spN" data-mod="eventos" onclick="spIr('eventos',this)">
-        <span class="spNI">📅</span><div><strong>Eventos</strong><small>Atividades e Programações</small></div>
-      </button>
-      <button class="spN" data-mod="relatorios" onclick="spIr('relatorios',this)">
-        <span class="spNI">📊</span><div><strong>Relatórios</strong><small>Indicadores e Análises</small></div>
+      <button class="spN" data-mod="assembleias" onclick="spIr('assembleias',this)">
+        <span class="spNI">📣</span><div><strong>Assembleias Gerais</strong><small>Convocação, quórum e deliberação</small></div>
       </button>
 
       <div class="spSec">Sistema</div>
 
+      <button class="spN" data-mod="auditoriaPainel" data-acordeao="auditoriaSubMenuSidebar" onclick="spAcordeao(this);spIr('auditoriaPainel',this)">
+        <span class="spNI">🛡️</span><div><strong>Auditoria e Compliance</strong><small>Rastreabilidade, LGPD e ações críticas</small></div>
+      </button>
+      <div id="auditoriaSubMenuSidebar" class="docSubMenuSidebar" data-subs="auditoriaPainel,auditoriaTrilha,auditoriaAcessos,auditoriaExportacoes,auditoriaCompart,auditoriaIncidentes,auditoriaLgpd,auditoriaRetencao,auditoriaRelatorios" style="display:none;">
+        <button type="button" class="docSubMenuBtn" data-sub-mod="auditoriaPainel" onclick="spIr('auditoriaPainel',null)">📊 Dashboard</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="auditoriaTrilha" onclick="spIr('auditoriaTrilha',null)">📋 Trilha de Alterações</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="auditoriaAcessos" onclick="spIr('auditoriaAcessos',null)">🔑 Logs de Acesso</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="auditoriaExportacoes" onclick="spIr('auditoriaExportacoes',null)">📤 Exportações</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="auditoriaCompart" onclick="spIr('auditoriaCompart',null)">🔗 Compartilhamentos</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="auditoriaIncidentes" onclick="spIr('auditoriaIncidentes',null)">🚨 Incidentes</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="auditoriaLgpd" onclick="spIr('auditoriaLgpd',null)">⚖️ LGPD e Direitos</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="auditoriaRetencao" onclick="spIr('auditoriaRetencao',null)">🗑️ Retenção e Descarte</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="auditoriaRelatorios" onclick="spIr('auditoriaRelatorios',null)">📑 Relatórios</button>
+      </div>
+
       <button class="spN" data-mod="config" onclick="spIr('config',this)">
-        <span class="spNI">⚙️</span><div><strong>Configurações</strong><small>Sistema e Preferências</small></div>
+        <span class="spNI">⚙️</span><div><strong>Configurações</strong><small>Sistema, acessos e auditoria</small></div>
       </button>
     </div>
 
-    <div class="spAmbiente">
-      <i class="spAmbienteIcon"></i>
-      <div>
-        <strong>Ambiente SOFIA</strong>
-        <small>Tela inteligente</small>
+    <div class="spAmbienteCompact">
+      <div class="spRadioClick" onclick="spIr('radio')" role="button" tabindex="0" onkeypress="if(event.key==='Enter')spIr('radio')" title="Abrir Rádio SindEducação">
+        <img class="spRadioThumb" src="https://lh3.googleusercontent.com/d/1T2AzStGL_Fv8zrmQ9gFJnD87teNuvbkQ" alt="">
+        <span class="spRadioInfo">
+          <strong>Rádio SindEducação</strong>
+          <small><span class="spRadioDot"></span><span class="spRadioStatusTxt">Parado</span></small>
+        </span>
       </div>
-      <div class="spWaveform">
-        <div class="spWaveBar" style="height: 20px"></div>
-        <div class="spWaveBar" style="height: 35px"></div>
-        <div class="spWaveBar" style="height: 25px"></div>
-        <div class="spWaveBar" style="height: 40px"></div>
-        <div class="spWaveBar" style="height: 30px"></div>
-        <div class="spWaveBar" style="height: 45px"></div>
-        <div class="spWaveBar" style="height: 25px"></div>
-        <div class="spWaveBar" style="height: 35px"></div>
-        <div class="spWaveBar" style="height: 20px"></div>
-        <div class="spWaveBar" style="height: 30px"></div>
-        <div class="spWaveBar" style="height: 40px"></div>
-        <div class="spWaveBar" style="height: 25px"></div>
-      </div>
-      <div class="spAudioControls">
-        <span class="spTime">01:32 / 04:15</span>
-        <button class="spCtrlBtn"><i class="fas fa-step-backward"></i></button>
-        <button class="spPlayBtn"><i class="fas fa-pause"></i></button>
-        <button class="spCtrlBtn"><i class="fas fa-step-forward"></i></button>
-        <button class="spCtrlBtn spVolume"><i class="fas fa-volume-up"></i></button>
+      <div class="spRadioCompactCtrls">
+        <button class="spPlayBtnSm" onclick="spRadioToggle()" title="Tocar/pausar Rádio SindEducação">
+          <i class="fas fa-play spRadioPlayIcon"></i>
+        </button>
+        <button class="spCtrlBtnSm spRadioMuteBtn" onclick="spRadioMute()" title="Mudo">
+          <i class="fas fa-volume-up spRadioVolIcon"></i>
+        </button>
       </div>
     </div>
+    <audio id="spRadioAudio" preload="none" src="https://stm7.xcast.com.br:9688/stream"></audio>
+
+    <div class="spCredito">Produzido por Wanderson Nascimento Castelo</div>
   </nav>
+
+  <!-- Aplica a preferência ANTES de o resto da página desenhar. Deixar para
+       o script do fim do arquivo faria o menu abrir largo e encolher na
+       frente de quem já o deixou recolhido — um pulo a cada carregamento. -->
+  <script>
+    try {
+      if (localStorage.getItem("sisgep.menuRecolhido") === "1") {
+        document.getElementById("spApp").classList.add("sp-menu-recolhido");
+        var _b = document.getElementById("spMenuToggle");
+        if (_b) { _b.title = "Expandir o menu"; _b.setAttribute("aria-expanded", "false"); }
+      }
+    } catch (e) {}
+  </script>
 
   <!-- ══════════════════════════════════════
        MAIN
@@ -214,9 +304,10 @@
             <div class="spAskBox">
               <label>O que você deseja que eu faça hoje?</label>
               <div class="spAskInputRow">
-                <button type="button" class="spIconBtn" title="Anexar documento"></button>
+                <input type="file" id="spAnexoInput" accept=".pdf,.csv,.txt,.json,.xml,.xlsx,.xls" style="display:none;" onchange="spAnexarArquivo(this)">
+                <button type="button" class="spIconBtn" id="spBtnAnexar" title="Anexar documento" onclick="document.getElementById('spAnexoInput').click()">📎</button>
                 <input id="spIn" type="text" placeholder='Digite ou fale comigo. Ex.: "Emitir um ofício de filiação para a Escola VCV"' onkeydown="if(event.key==='Enter')spCmd()">
-                <button type="button" class="spIconBtn" title="Falar com a SOFIA">🎙️</button>
+                <button type="button" class="spIconBtn" id="spBtnFalar" title="Falar com a SOFIA" onclick="spFalarComSofia()">🎙️</button>
                 <button type="button" class="spSend" onclick="spCmd()">➤</button>
               </div>
             </div>
@@ -256,11 +347,7 @@
           <section class="spBottomGrid">
             <div class="spActivity">
               <div class="spPanelTitle">Atividades recentes da SOFIA</div>
-              <div class="spAt"><span class="ok">✓</span><p>Nota fiscal da EDP enviada para contabilidade</p><time>14:45</time><b class="ok">Concluído</b></div>
-              <div class="spAt"><span class="ok">✓</span><p>E-mail respondido automaticamente para Escola XYZ</p><time>14:20</time><b class="ok">Concluído</b></div>
-              <div class="spAt"><span class="ok">✓</span><p>Ofício de cobrança gerado para 12 escolas</p><time>13:50</time><b class="ok">Concluído</b></div>
-              <div class="spAt"><span class="ok">✓</span><p>Cadastro da Escola ABC atualizado com sucesso</p><time>13:10</time><b class="ok">Concluído</b></div>
-              <div class="spAt"><span class="warn">!</span><p>Processo jurídico nº 2458 aguardando documento</p><time>12:35</time><b class="warn">Pendente</b></div>
+              <div id="spAtividadesSofia"><div class="spAt"><p>Carregando…</p></div></div>
             </div>
 
             <div class="spHighlight">
@@ -275,21 +362,21 @@
 
         <aside class="spRightRail">
           <div class="spRailCard">
-            <div class="spRailHead"><strong>🎯 Suas prioridades de hoje</strong><a onclick="spIr('relatorios')">Ver todas</a><span>37</span></div>
-            <button class="spPriority" onclick="spIr('financeiro')"><i style="background:#ef4444;">📄</i><p>Notas fiscais aguardando envio</p><b style="color:#ef4444;">4</b></button>
-            <button class="spPriority" onclick="spIr('comunicacao')"><i style="background:#f59e0b;">✉️</i><p>E-mails para sua resposta</p><b style="color:#f59e0b;">8</b></button>
-            <button class="spPriority" onclick="spIr('documentos',null,{sub:'oficios'})"><i style="background:#eab308;">📋</i><p>Ofícios aguardando assinatura</p><b style="color:#eab308;">2</b></button>
-            <button class="spPriority" onclick="spIr('juridico')"><i style="background:#8b5cf6;">⚖️</i><p>Processos jurídicos pendentes</p><b style="color:#8b5cf6;">1</b></button>
-            <button class="spPriority" onclick="spIr('escolas')"><i style="background:#3b82f6;">🏫</i><p>Escolas com cadastro incompleto</p><b style="color:#3b82f6;">3</b></button>
+            <div class="spRailHead"><strong>🎯 Suas prioridades de hoje</strong><a onclick="spIr('relatorios')">Ver todas</a><span id="spPrioridadesTotal">—</span></div>
+            <button class="spPriority" onclick="spIr('financeiro')"><i style="background:#ef4444;">📄</i><p>Notas fiscais aguardando envio</p><b id="spPrioNF" style="color:#ef4444;">—</b></button>
+            <button class="spPriority" onclick="spIr('comunicacao')"><i style="background:#f59e0b;">✉️</i><p>E-mails urgentes para sua resposta</p><b id="spPrioEmails" style="color:#f59e0b;">—</b></button>
+            <button class="spPriority" onclick="spIr('documentos',null,{sub:'oficios'})"><i style="background:#eab308;">📋</i><p>Ofícios pendentes de envio</p><b id="spPrioOficios" style="color:#eab308;">—</b></button>
+            <button class="spPriority" onclick="spIr('juridico')"><i style="background:#8b5cf6;">⚖️</i><p>Processos jurídicos com prazo em 15 dias</p><b id="spPrioJuridico" style="color:#8b5cf6;">—</b></button>
+            <button class="spPriority" onclick="spIr('escolas')"><i style="background:#3b82f6;">🏫</i><p>Escolas com cadastro incompleto</p><b id="spPrioEscolas" style="color:#3b82f6;">—</b></button>
           </div>
 
           <div class="spRailCard">
             <div class="spRailHead"><strong>❤️ Saúde do sindicato</strong><a onclick="spIr('relatorios')">Ver detalhes</a></div>
-            <div class="spHealth"><span> Financeiro</span><b class="green">SAUDÁVEL</b></div>
-            <div class="spHealth"><span>🏛️ Administrativo</span><b class="blue">ORGANIZADO</b></div>
-            <div class="spHealth"><span>⚖️ Jurídico</span><b class="amber">ATENÇÃO</b></div>
-            <div class="spHealth"><span>🏛️ Patrimônio</span><b class="green">OK</b></div>
-            <div class="spHealth"><span>✉️ Comunicação</span><b class="green">OK</b></div>
+            <div class="spHealth"><span> Financeiro</span><b id="spSaudeFinanceiro" class="blue">—</b></div>
+            <div class="spHealth"><span>🏛️ Administrativo</span><b id="spSaudeAdministrativo" class="blue">—</b></div>
+            <div class="spHealth"><span>⚖️ Jurídico</span><b id="spSaudeJuridico" class="blue">—</b></div>
+            <div class="spHealth"><span>🏛️ Patrimônio</span><b class="blue" title="Ainda sem indicador conectado neste painel">—</b></div>
+            <div class="spHealth"><span>✉️ Comunicação</span><b id="spSaudeComunicacao" class="blue">—</b></div>
           </div>
         </aside>
       </div>
@@ -319,17 +406,13 @@
                   <strong>Recibos</strong>
                   <small>Processos, recibos individuais, em lote e diversos</small>
                 </button>
-                <button type="button" class="docLandingCard" onclick="docMostrarSub('certidoes')">
-                  <div class="docLandingIco">📜</div>
-                  <strong>Certidões</strong>
-                  <small>Módulo em preparação</small>
-                </button>
               </div>
             </div>
           </div>
 
           <div id="docSubOficios" class="docSubPanel" style="display:none;">
             <?!= include('OficiosFormulario'); ?>
+            <?!= include('DashboardOficiosDashboardOficiosUI'); ?>
           </div>
 
 <div id="docSubRecibos" class="docSubPanel" style="display:none;">
@@ -346,13 +429,26 @@
             <?!= include('Scripts_ReciboDiversos'); ?>
             <?!= include('Scripts_HistoricoRecibos'); ?>
           </div>
-<div id="docSubCertidoes" class="docSubPanel" style="display:none;">
-            <div style="text-align:center;padding:70px 20px;">
-              <div style="font-size:40px;margin-bottom:10px;">📜</div>
-              <h2 style="font-size:18px;font-weight:800;color:#0f172a;margin:0 0 6px;">Certidões</h2>
-              <p style="font-size:13px;color:#64748b;max-width:360px;margin:0 auto;">Módulo de certidões em preparação. Assim que o include estiver pronto, é só me passar o nome do arquivo que eu conecto aqui.</p>
-            </div>
-          </div>
+<!--
+  CERTIDÕES — REMOVIDO A PEDIDO DO USUÁRIO em 19/08/2026.
+
+  Saíram daqui quatro coisas que anunciavam um submódulo inexistente: o
+  botão do submenu, o card da landing de Documentos, o painel vazio e a
+  palavra no subtítulo do módulo. Também saiu a chave `certidoes` do mapa
+  DOC_SUB_PAINEIS e o termo do roteamento por texto da SOFIA.
+
+  POR QUE FICA ESTE COMENTÁRIO. Não havia, e nunca houve, arquivo de
+  Certidões — nem .gs nem .html, em commit nenhum; nem rota pública, nem
+  trigger. O que foi removido era só o LUGAR reservado, presente desde o
+  primeiro backup do repositório. Quem procurar Certidões e não achar
+  encontra aqui a explicação, em vez de reabrir a mesma investigação.
+
+  NÃO CONFUNDIR com as outras duas ocorrências da palavra no projeto, que
+  são outra coisa e continuam onde estão: o texto do estatuto em
+  EstatutoCore.gs (certidão de quitação eleitoral) e os tipos de documento
+  anexáveis ao voucher em Scripts_Certificado.html (certidão de casamento
+  e de nascimento).
+-->
 
 <div id="docSubHistorico" class="docSubPanel" style="display:none;padding:24px;">
             <div class="of-modulo-header">
@@ -420,7 +516,7 @@
     <div><section class="badmin-panel"><div class="badmin-panel-head"><h3>Precisa da sua atenção</h3><button class="badmin-link" onclick="benefAdminModoFoco()">Iniciar modo foco</button></div><div id="benefAdminAtencao" class="badmin-attention"><div class="badmin-empty">Carregando prioridades…</div></div><div class="badmin-sofia"><div class="badmin-sofia-icon">✦</div><div><strong>Recomendação da SOFIA</strong><p id="benefAdminSofia">Estou consolidando os módulos para indicar a próxima melhor ação.</p></div></div></section></div>
     <section class="badmin-panel"><div class="badmin-panel-head"><h3>Módulos operacionais</h3><small>Atualizado <span id="benefAdminAtualizado">—</span></small></div><div class="badmin-benefits">
       <article class="badmin-card"><div class="badmin-card-top"><div class="badmin-icon">🏨</div><h4>China Park Eco Resort</h4></div><div class="badmin-card-meta" id="bacChina">Carregando indicadores…</div><div class="badmin-card-actions"><button onclick="benefAdminAbrir('parqueChina')">Abrir operação</button><button onclick="benefAdminNovaSolicitacao()">Nova solicitação</button></div></article>
-      <article class="badmin-card"><div class="badmin-card-top"><div class="badmin-icon">🪪</div><h4>Carteirinhas e cadastros</h4></div><div class="badmin-card-meta" id="bacCarteirinhas">Carregando indicadores…</div><div class="badmin-card-actions"><button onclick="spIr('aprovacoesPortal')">Analisar</button><button onclick="benefAdminAbrir('carteirinhas')">Abrir módulo</button></div></article>
+      <article class="badmin-card"><div class="badmin-card-top"><div class="badmin-icon">🪪</div><h4>Carteirinhas e cadastros</h4></div><div class="badmin-card-meta" id="bacCarteirinhas">Carregando indicadores…</div><div class="badmin-card-actions"><button onclick="spIr('aprovacoesPortal')">Analisar</button><button onclick="spIr('carteirinhas')">Abrir módulo</button></div></article>
       <article class="badmin-card"><div class="badmin-card-top"><div class="badmin-icon">👁</div><h4>Exame oftalmológico</h4></div><div class="badmin-card-meta"><b>Agenda operacional disponível</b><br>Gerencie horários e atendimentos.</div><div class="badmin-card-actions"><button onclick="benefAdminAbrir('agendaOftalmo')">Abrir agenda</button></div></article>
       <article class="badmin-card"><div class="badmin-card-top"><div class="badmin-icon">🎫</div><h4>Vouchers</h4></div><div class="badmin-card-meta"><b>Gestão de vouchers</b><br>Emissão e acompanhamento centralizados.</div><div class="badmin-card-actions"><button onclick="benefAdminAbrir('vouchers')">Gerenciar</button></div></article>
       <article class="badmin-card"><div class="badmin-card-top"><div class="badmin-icon">🏖</div><h4>Guriri Beach</h4></div><div class="badmin-card-meta"><b>Módulo operacional</b><br>Solicitações e disponibilidade.</div><div class="badmin-card-actions"><button onclick="benefAdminAbrir('guririBeach')">Abrir gestão</button></div></article>
@@ -451,10 +547,8 @@ function benefAdminPesquisar(){var input=document.getElementById("benefAdminBusc
             <?!= include('Parquechinaadmin'); ?>
         </div>
 
-        <div id="benefSubCarteirinhas" class="docSubPanel" style="display:none;">
-        </div>
-
         <div id="benefSubVouchers" class="docSubPanel" style="display:none;">
+            <?!= include('Scripts_Certificado'); ?>
         </div>
 
 <div id="benefSubAgendaOftalmo" class="docSubPanel" style="display:none;">
@@ -467,6 +561,8 @@ function benefAdminPesquisar(){var input=document.getElementById("benefAdminBusc
 
         <div id="benefSubAssefaz" class="docSubPanel" style="display:none;">
         </div>
+
+        <?!= include('BeneficioReservaSimplesUI'); ?>
 
         <div id="benefSubHistorico" class="docSubPanel" style="display:none;">
         </div>
@@ -489,9 +585,63 @@ function benefAdminPesquisar(){var input=document.getElementById("benefAdminBusc
         <?!= include('FinanceiroConciliacao'); ?>
         <?!= include('FinanceiroAdmin'); ?>
       </div>
+      <div id="mCadastroPrestadores" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('CadastroPrestadores'); ?>
+      </div>
+      <div id="mReceitas" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('ReceitasAdmin'); ?>
+      </div>
+      <div id="mMensalidades" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('MensalidadesAdmin'); ?>
+      </div>
+      <div id="mAuditoriaFin" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('AuditoriaFinanceira'); ?>
+      </div>
+      <div id="mTaxas" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('TaxasAdmin'); ?>
+      </div>
+      <div id="mPainelFin" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('FinanceiroPainel'); ?>
+      </div>
       
       <div id="mRH" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
         <?!= include('RHAdmin'); ?>
+      </div>
+      <div id="mNegociacao" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('NegociacaoAdmin'); ?>
+      </div>
+      <div id="mAssembleias" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('AssembleiasAdmin'); ?>
+      </div>
+      <div id="mGovernanca" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('GovernancaAdmin'); ?>
+      </div>
+      <div id="mAuditoriaPainel" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('AuditoriaPainel'); ?>
+      </div>
+      <div id="mAuditoriaTrilha" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('AuditoriaTrilha'); ?>
+      </div>
+      <div id="mAuditoriaAcessos" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('AuditoriaAcessos'); ?>
+      </div>
+      <div id="mAuditoriaExportacoes" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('AuditoriaExportacoes'); ?>
+      </div>
+      <div id="mAuditoriaCompart" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('AuditoriaCompartilhamentos'); ?>
+      </div>
+      <div id="mAuditoriaIncidentes" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('AuditoriaIncidentes'); ?>
+      </div>
+      <div id="mAuditoriaLgpd" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('AuditoriaLgpd'); ?>
+      </div>
+      <div id="mAuditoriaRelatorios" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('AuditoriaRelatorios'); ?>
+      </div>
+      <div id="mAuditoriaRetencao" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('AuditoriaRetencao'); ?>
       </div>
       <div id="mJuridico" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
         <?!= include('JuridicoAdmin'); ?>
@@ -509,6 +659,12 @@ function benefAdminPesquisar(){var input=document.getElementById("benefAdminBusc
       </div>
       <!-- FIM NOVO MÓDULO -->
 
+      <!-- Carteirinhas — movido de Benefícios para Sindicalização (remodel):
+           emissão de credencial é ciclo de vida do associado, não um benefício. -->
+      <div id="mCarteirinhas" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('Carteirinhaadmin'); ?>
+      </div>
+
 <div id="mVisitas" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
         <?!= include('VisitasCampo'); ?>
       </div>
@@ -517,6 +673,24 @@ function benefAdminPesquisar(){var input=document.getElementById("benefAdminBusc
         <?!= include('VisitasAdmin'); ?>
       </div>
 
+      <div id="mCobranca" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('CobrancaAdmin'); ?>
+      </div>
+
+      <div id="mEscolasPendencias" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('PendenciasAdmin'); ?>
+      </div>
+
+      <div id="mRadio" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('RadioSindEducacao'); ?>
+      </div>
+
+<!-- LEGADO, MANTIDO DE PROPÓSITO. Este div não é alcançável: MODS.relatorios
+     aponta para mDocumentos, porque o painel de relatórios é o blocoRelatorios
+     incluído lá dentro. Não foi removido porque remover não custa nada e
+     manter também não — e o dia em que existir um painel de indicadores do
+     sindicato inteiro (hoje não existe), é aqui que ele entra. Se for para
+     apagar, apague em commit separado. -->
 <div id="mRelatorios" class="spM spPlaceholder" style="display:none;">
         <div class="spPH"><div>REL</div><h2>Relatorios</h2><p>Indicadores, analises e dashboards executivos.</p><small>Carregando painel de relatorios...</small><div class="spPHActions"><button onclick="spIr('documentos',null,{aba:'relatorios'})">Abrir painel</button><button onclick="spIr('documentos',null,{aba:'historico'})">Historico</button></div></div>
 
@@ -531,7 +705,14 @@ function benefAdminPesquisar(){var input=document.getElementById("benefAdminBusc
             <button type="button" id="spLogout" style="height:38px;padding:0 18px;border:none;border-radius:999px;background:#fee2e2;color:#991b1b;font-size:12.5px;font-weight:800;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;display:inline-flex;align-items:center;gap:6px;">🚪 Sair do sistema</button>
           </div>
         </div>
+        <!-- ORDEM IMPORTA. Configuracoes vem antes da Auditoria porque e o
+             que a pessoa foi buscar ao clicar em "Configuracoes"; a auditoria
+             do Portal do Associado e consulta ocasional. Estava invertido, e
+             o efeito era ter que rolar uma tela inteira de log para chegar
+             aos ajustes — com dois cabecalhos azuis grandes pelo caminho,
+             o que fazia a tela parecer nao terminar nunca. -->
         <?!= include('ConfigAdmin'); ?>
+        <?!= include('PortalAuditoriaAdmin'); ?>
       </div>
     </section>
   </main>
@@ -577,6 +758,7 @@ button,input{font-family:inherit;}
 #spSidebar{width:260px;min-width:260px;height:100vh;display:flex;flex-direction:column;background:linear-gradient(180deg,#061225,#07101d);border-right:1px solid rgba(255,255,255,.07);overflow:hidden;}
 .spLogoBox{margin:16px 16px 20px;background:#fff;border-radius:12px;height:64px;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 30px rgba(0,0,0,.22);overflow:hidden;}
 .spLogo{width:200px;max-height:54px;object-fit:contain;display:block;}
+.spPortalLabel{margin:8px 16px 18px;text-align:center;font-size:12.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#8fb4ff;background:rgba(143,180,255,.12);border:1px solid rgba(143,180,255,.3);border-radius:999px;padding:6px 10px;}
 .spNavArea{flex:1;overflow-y:auto;padding:6px 12px;}
 .spN{width:100%;border:1px solid transparent;background:transparent;color:rgba(255,255,255,.72);display:flex;align-items:center;gap:12px;text-align:left;padding:12px 14px;border-radius:10px;cursor:pointer;margin:2px 0;transition:.18s;}
 .spN:hover{background:rgba(255,255,255,.06);color:#fff;}
@@ -586,119 +768,148 @@ button,input{font-family:inherit;}
 .spN small{font-size:10px;color:rgba(255,255,255,.5);display:block;margin-top:2px;line-height:1.2;}
 .spSec{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:rgba(148,163,184,.5);padding:16px 12px 8px;}
 
-/* Ambiente SOFIA - Audio Player */
-.spAmbiente{
+/* ── Menu recolhido ────────────────────────────────────────────────────
+   Recolher para ícones, não esconder: o menu continua respondendo "o que
+   existe aqui dentro" — que é a pergunta que ele existe para responder num
+   sistema de 12 módulos. A transição é de largura, então o conteúdo à
+   direita se acomoda sozinho. */
+.spMenuBarra{display:flex;justify-content:flex-end;padding:0 16px 10px;}
+.spRecolherBtn{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:rgba(255,255,255,.62);border-radius:9px;padding:6px 10px;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;transition:.17s;}
+.spRecolherBtn:hover{background:rgba(255,255,255,.12);color:#fff;}
+#spSidebar{transition:width .18s ease,min-width .18s ease;}
+#spApp.sp-menu-recolhido #spSidebar{width:70px;min-width:70px;}
+#spApp.sp-menu-recolhido .spPortalLabel,
+#spApp.sp-menu-recolhido .spSec,
+#spApp.sp-menu-recolhido .spN div,
+#spApp.sp-menu-recolhido .spRecolherBtn span,
+#spApp.sp-menu-recolhido .spAmbienteCompact,
+#spApp.sp-menu-recolhido .spCredito,
+#spApp.sp-menu-recolhido .docSubMenuSidebar{display:none!important;}
+/* O crédito e o rádio saem junto: em 70px eles não encolhem, quebram — o
+   crédito virava um bloco de sete linhas no pé da coluna. Descoberto
+   renderizando, não lendo. */
+#spApp.sp-menu-recolhido .spMenuBarra{justify-content:center;padding:0 8px 10px;}
+#spApp.sp-menu-recolhido .spRecolherBtn{padding:6px 9px;}
+#spApp.sp-menu-recolhido .spLogoBox{margin:12px 9px 14px;height:46px;}
+#spApp.sp-menu-recolhido .spLogo{width:44px;}
+#spApp.sp-menu-recolhido .spNavArea{padding:6px 9px;}
+#spApp.sp-menu-recolhido .spN{justify-content:center;padding:12px 0;gap:0;}
+#spApp.sp-menu-recolhido .spNI{width:auto;font-size:18px;}
+@media(prefers-reduced-motion:reduce){#spSidebar{transition:none;}}
+
+/* Rádio SindEducação - controle compacto na sidebar (a tela cheia,
+   com a arte oficial e os detalhes, vive no módulo "radio" via spIr). */
+.spAmbienteCompact{
+  display: flex;
+  align-items: center;
+  gap: 8px;
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.15));
-  border-radius: 16px;
-  padding: 20px;
+  border-radius: 12px;
+  padding: 9px 10px;
   margin: 16px;
   border: 1px solid rgba(59, 130, 246, 0.2);
 }
 
-.spAmbienteIcon{
-  font-size: 18px;
-  margin-bottom: 8px;
-  display: block;
+.spRadioClick{
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
 }
 
-.spAmbiente strong{
+.spRadioThumb{
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  object-fit: cover;
+  object-position: center 25%;
+  flex-shrink: 0;
+}
+
+.spRadioInfo{
+  flex: 1;
+  min-width: 0;
+}
+.spRadioInfo strong{
   display: block;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
   color: var(--txt);
-  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-
-.spAmbiente small{
-  display: block;
-  font-size: 11px;
+.spRadioInfo small{
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
   color: var(--mut);
-  margin-bottom: 16px;
+  margin-top: 2px;
 }
 
-.spWaveform{
+.spRadioDot{
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #64748b;
+  flex-shrink: 0;
+}
+.spRadioDot.on{
+  background: #ef4444;
+  animation: spRadioPulse 1.5s ease-out infinite;
+}
+@keyframes spRadioPulse{
+  0% { box-shadow: 0 0 0 0 rgba(239,68,68,.55); }
+  70% { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+  100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+}
+
+.spRadioCompactCtrls{
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.spPlayBtnSm{
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  border: none;
+  color: #fff;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  height: 40px;
-  margin-bottom: 16px;
+  font-size: 12px;
+  box-shadow: 0 3px 8px rgba(59, 130, 246, 0.4);
 }
 
-.spWaveBar{
-  width: 3px;
-  background: linear-gradient(180deg, #8b5cf6, #3b82f6);
-  border-radius: 2px;
-  animation: waveAnim 1.2s ease-in-out infinite;
-}
-
-.spWaveBar:nth-child(1){animation-delay:0s;}
-.spWaveBar:nth-child(2){animation-delay:0.1s;}
-.spWaveBar:nth-child(3){animation-delay:0.2s;}
-.spWaveBar:nth-child(4){animation-delay:0.3s;}
-.spWaveBar:nth-child(5){animation-delay:0.4s;}
-.spWaveBar:nth-child(6){animation-delay:0.5s;}
-.spWaveBar:nth-child(7){animation-delay:0.6s;}
-.spWaveBar:nth-child(8){animation-delay:0.7s;}
-.spWaveBar:nth-child(9){animation-delay:0.8s;}
-.spWaveBar:nth-child(10){animation-delay:0.9s;}
-.spWaveBar:nth-child(11){animation-delay:1s;}
-.spWaveBar:nth-child(12){animation-delay:1.1s;}
-
-@keyframes waveAnim{
-  0%, 100% { transform: scaleY(0.5); opacity: 0.6; }
-  50% { transform: scaleY(1); opacity: 1; }
-}
-
-.spAudioControls{
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.spTime{
-  font-size: 11px;
-  color: var(--mut);
-  font-weight: 500;
-}
-
-.spCtrlBtn{
+.spCtrlBtnSm{
   background: none;
   border: none;
   color: var(--mut);
   cursor: pointer;
-  font-size: 14px;
-  padding: 4px;
-  transition: all 0.2s;
+  font-size: 12px;
+  padding: 5px;
+  transition: color 0.2s;
 }
-
-.spCtrlBtn:hover{
+.spCtrlBtnSm:hover{
   color: var(--txt);
 }
-
-.spPlayBtn{
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-  border: none;
-  color: white;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  transition: transform 0.2s;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+.spRadioMuteBtn.muted{
+  color: #dc2626;
 }
 
-.spPlayBtn:hover{
-  transform: scale(1.05);
-}
-
-.spVolume{
-  margin-left: auto;
+.spCredito{
+  text-align: center;
+  font-size: 9.5px;
+  color: rgba(148,163,184,.45);
+  padding: 10px 12px 14px;
 }
 
 /* Main */
@@ -986,7 +1197,7 @@ button,input{font-family:inherit;}
 .spPHActions button:first-child{background:linear-gradient(135deg,#0ea5e9,#2563eb);border-color:rgba(14,165,233,.45);}
 #mComunicacao #cockpitInteligente{display:flex!important;margin:0!important;height:100%!important;}
 
-/* Documentos — submenu lateral interno de subcamadas (Ofícios / Recibos / Certidões) */
+/* Documentos — submenu lateral interno de subcamadas (Ofícios / Recibos) */
 /* Documentos — accordion de subcamadas dentro do menu lateral principal */
 .docSubMenuSidebar{display:flex;flex-direction:column;gap:2px;padding:2px 12px 8px 32px;}
 .docSubMenuBtn{display:flex;align-items:center;gap:8px;width:100%;height:34px;padding:0 12px;border-radius:8px;border:none;background:transparent;color:rgba(255,255,255,.62);font-size:12.5px;font-weight:600;cursor:pointer;text-align:left;font-family:'Plus Jakarta Sans',sans-serif;transition:.17s;}
@@ -1158,22 +1369,50 @@ setInterval(tick,1000);tick();
 var MODS={
   inicio:["mInicio","SOFIA","Sistema Operacional Financeiro com Inteligência Artificial"],
   sofia:["mSofia","Conversar com a SOFIA","Assistente Inteligente"],
-  documentos:["mDocumentos","Documentos","Ofícios, Recibos, Certidões"],
+  documentos:["mDocumentos","Documentos","Ofícios e Recibos"],
   beneficios:["mBeneficios","Gestão de Benefícios","Solicitações, reservas, aprovações e pagamentos"],
   aprovacoesPortal:["mAprovacoesPortal","Aprovações do Portal","Atualizações cadastrais enviadas pelo Portal do Associado"],
   fichas:["mFichasSindicais","Fichas Sindicais","Validação e Aprovação de Filiações"],
+  carteirinhas:["mCarteirinhas","Carteirinhas","Aprovação, emissão e controle de credenciais"],
   financeiro:["mFinanceiro","Financeiro","Despesas, Lotes, Pagamentos"],
+  cadastroPrestadores:["mCadastroPrestadores","Prestadores","Fornecedores e Prestadores de Serviço"],
+  receitas:["mReceitas","Receitas","Contas a receber — mensalidades, eventos, contribuições e outras entradas"],
+  mensalidades:["mMensalidades","Mensalidade Sindical","Desconto em folha dos associados — CCT cláusula 56"],
+  auditoriaFin:["mAuditoriaFin","Auditoria de Valores","Toda alteração de valor em despesa ou recibo — quem, quanto e por quê"],
+  taxas:["mTaxas","Taxa Negocial e Assistencial","Recebimento das contribuições da CCT — cláusulas 57 e 58"],
+  painelFin:["mPainelFin","Painel Executivo","Central Financeira — quanto entrou, quanto saiu e o que está pendente"],
   escolas:["mEscolas","Escolas","Cadastros e Relacionamentos"],
   rh:["mRH","RH","Colaboradores, Documentos e Vencimentos"],
   juridico:["mJuridico","Jurídico","Processos e Documentos"],
+  negociacao:["mNegociacao","Negociação Coletiva","Convenção Coletiva de Trabalho — cláusulas, pisos e vigência"],
+  assembleias:["mAssembleias","Assembleias Gerais","Convocação, instalação e deliberação — Estatuto, arts. 59 a 73"],
+  governanca:["mGovernanca","Governança e Mandatos","Composição empossada, mandato vigente e calendário eleitoral"],
+  auditoriaPainel:["mAuditoriaPainel","Auditoria e Compliance","O que aconteceu no SISGEP — e o que merece olhar agora"],
+  auditoriaTrilha:["mAuditoriaTrilha","Trilha de Alterações","Auditoria e Compliance — quem fez o quê, quando, e o que mudou"],
+  auditoriaAcessos:["mAuditoriaAcessos","Logs de Acesso","Quem entrou, quem saiu, e quem tentou sem conseguir"],
+  auditoriaExportacoes:["mAuditoriaExportacoes","Exportações","O que saiu do sistema, quanto, por quem — e se levava dado pessoal"],
+  auditoriaCompart:["mAuditoriaCompart","Compartilhamentos","Links que abrem sem login — quem recebeu, até quando vale, e como desligar"],
+  auditoriaIncidentes:["mAuditoriaIncidentes","Incidentes de Segurança","Registro, apuração e comunicação — LGPD art. 48"],
+  auditoriaLgpd:["mAuditoriaLgpd","LGPD — Dados e Direitos","Onde há dado pessoal, e o que os titulares pediram"],
+  auditoriaRelatorios:["mAuditoriaRelatorios","Relatórios de Auditoria","Seis perguntas, respondidas em um clique"],
+  auditoriaRetencao:["mAuditoriaRetencao","Retenção e Descarte","Prazo de guarda dos dados pessoais e o expurgo automático — LGPD"],
   patrimonio:["mPatrimonio","Patrimônio","Bens e Inventário"],
-  comunicacao:["mComunicacao","Comunicação","Central de E-mails Inteligente"],
-  centralEmailIA:["mCentralEmailIA","Central IA de E-mails","Categorização inteligente, contexto SISGEP e respostas automáticas"],
+  comunicacao:["mComunicacao","Painel do Dia","Central de Comunicação — resumo, prioridades e ações rápidas de e-mail"],
+  centralEmailIA:["mCentralEmailIA","Caixa de E-mails","Central de Comunicação — categorização inteligente, contexto SISGEP e respostas automáticas"],
   eventos:["mEventos","Eventos","Atividades e Programações"],
-  relatorios:["mDocumentos","Relatórios","Indicadores e Análises"],
+  /* "relatorios" abre o MESMO div de Documentos (mDocumentos) porque o
+     painel é o blocoRelatorios, incluído lá dentro. O nome antigo prometia
+     "Indicadores e Análises" — indicadores do sindicato inteiro — e
+     entregava relatório de ofício filtrado por período, tipo e escola.
+     O título agora diz o que a tela realmente é. Um painel de indicadores
+     gerenciais de verdade ainda não existe. */
+  relatorios:["mDocumentos","Relatórios de Ofícios","Emissões por período, tipo e escola — exportável em Excel ou CSV"],
 config:["mConfig","Configurações","Sistema e Preferências"],
 visitas:["mVisitas","Visitas às Escolas","Agenda do dia, check-in e captação"],
-  visitasAdmin:["mVisitasAdmin","Gestão de Visitas","Cobertura das escolas, agenda em lote e desempenho por diretor"]
+  visitasAdmin:["mVisitasAdmin","Gestão de Visitas","Cobertura das escolas, agenda em lote e desempenho por diretor"],
+  cobranca:["mCobranca","Cobrança de Relação Nominal","Acompanhamento por escola e competência para emissão das guias sindicais"],
+  escolasPendencias:["mEscolasPendencias","Pendências do Cadastro","O que está incompleto ou fora do lugar nas escolas — só leitura"],
+  radio:["mRadio","Rádio SindEducação","Informação, conteúdo educativo, música e cultura — ao vivo"]
 };
 /* Guarda funções internas dos includes antes de criar wrappers globais */
 var SISGEP_INTERNOS={
@@ -1202,20 +1441,18 @@ function focoSeguro(selector){
 }
 
 /* ══════════════════════════════════════
-   DOCUMENTOS · SUBCAMADAS (Ofícios / Recibos / Certidões)
+   DOCUMENTOS · SUBCAMADAS (Ofícios / Recibos)
    Painel interno dentro do módulo Documentos, independente do spIr principal.
 ══════════════════════════════════════ */
 var DOC_SUB_PAINEIS={
   inicio:"docSubInicio",
   oficios:"docSubOficios",
   recibos:"docSubRecibos",
-  certidoes:"docSubCertidoes",
   historico:"docSubHistorico"
 };
 var BENEF_SUB_PAINEIS = {
   inicio: "benefSubInicio",
   parqueChina: "benefSubParqueChina",
-  carteirinhas: "benefSubCarteirinhas",
   vouchers: "benefSubVouchers",
   agendaOftalmo: "benefSubAgendaOftalmo",
   guririBeach: "benefSubGuririBeach",
@@ -1227,7 +1464,6 @@ var BENEF_SUB_PAINEIS = {
 var BENEF_SUB_TITULOS = {
   inicio: ["Gestão de Benefícios", "Solicitações, reservas, aprovações e pagamentos"],
   parqueChina: ["China Park Eco Resort", "Gestão de reservas, suítes e pagamentos"],
-  carteirinhas: ["Carteirinhas", "Aprovações, emissão e controle"],
   vouchers: ["Vouchers", "Emissão, validade e acompanhamento"],
   agendaOftalmo: ["Exame oftalmológico", "Agenda e gestão de atendimentos"],
   guririBeach: ["Guriri Beach Acqua Park", "Gestão de solicitações e acessos"],
@@ -1236,36 +1472,82 @@ var BENEF_SUB_TITULOS = {
   relatorios: ["Relatórios", "Indicadores gerenciais de benefícios"],
   configuracoes: ["Configurações", "Regras, valores e automações"]
 };
-/* Clique em "Documentos" no menu só expande/recolhe o accordion — não navega.
-   A navegação de fato só acontece ao clicar num item (Ofícios, Recibos, Certidões). */
-window.toggleDocAccordion=function(){
-  var accordionDoc=document.getElementById("docSubMenuSidebar");
-  if(!accordionDoc) return;
+/* ACORDEÃO ÚNICO DO MENU.
+   Clicar num módulo com submódulos só expande/recolhe — quem navega é o
+   item de dentro (Ofícios, Recibos, Fichas, Despesas...).
 
-  var aberto = accordionDoc.style.display==="flex";
-  accordionDoc.style.display = aberto ? "none" : "flex";
+   Antes existiam SEIS funções idênticas a esta, uma por módulo, cada uma
+   com o id do seu bloco escrito no corpo. Acrescentar um submódulo exigia
+   mexer em cinco lugares diferentes, e foi assim que o acordeão de
+   Benefícios passou meses ficando aberto por cima dos outros módulos.
+   Agora o botão diz qual bloco ele abre (data-acordeao) e o bloco diz
+   quais módulos moram nele (data-subs). O resto é consequência. */
+/* ── Menu recolhido: ícones em vez de rótulos ──────────────────────────
+   Recolher, não remover. Num sistema de 12 módulos o menu é a única coisa
+   que responde "o que mais existe aqui dentro" — e essa pergunta continua
+   valendo. A escolha é de cada pessoa e fica gravada no navegador dela:
+   quem nunca clicar no ☰ não vê diferença nenhuma.
+
+   O localStorage aqui guarda PREFERÊNCIA DE TELA, não dado do sindicato —
+   é o uso certo dele. Dado de trabalho vai para a planilha, sempre. */
+var SP_MENU_CHAVE_ = "sisgep.menuRecolhido";
+
+window.spMenuRecolhido = function(){
+  var app = document.getElementById("spApp");
+  return !!(app && app.classList.contains("sp-menu-recolhido"));
 };
-window.toggleSindAccordion=function(){
-  var acc=document.getElementById("sindSubMenuSidebar");
+
+window.spAlternarMenu = function(forcar){
+  var app = document.getElementById("spApp");
+  if(!app) return;
+  var recolher = (forcar === undefined) ? !spMenuRecolhido() : !!forcar;
+  if(recolher) app.classList.add("sp-menu-recolhido");
+  else app.classList.remove("sp-menu-recolhido");
+
+  var btn = document.getElementById("spMenuToggle");
+  if(btn){
+    btn.title = recolher ? "Expandir o menu" : "Recolher o menu";
+    btn.setAttribute("aria-expanded", recolher ? "false" : "true");
+  }
+  /* Navegador com armazenamento bloqueado não pode derrubar o menu: a
+     preferência se perde, a tela continua funcionando. */
+  try { localStorage.setItem(SP_MENU_CHAVE_, recolher ? "1" : "0"); } catch(e){}
+};
+
+window.spAcordeao=function(btn){
+  var alvo = btn && btn.getAttribute("data-acordeao");
+  if(!alvo) return;
+  var acc = document.getElementById(alvo);
   if(!acc) return;
+  /* Com o menu recolhido não há largura para o submenu — clicar num módulo
+     que tem filhos abre o menu primeiro e depois o acordeão. Sem isto, o
+     clique não faria absolutamente nada e pareceria botão quebrado. */
+  if(spMenuRecolhido()){
+    spAlternarMenu(false);
+    acc.style.display = "flex";
+    return;
+  }
   acc.style.display = (acc.style.display==="flex") ? "none" : "flex";
 };
 
+/* Nomes antigos mantidos porque podem estar em uso em includes que ainda
+   não revi. Todos caem na mesma implementação. */
+function spAcordeaoPorId_(id){
+  var acc=document.getElementById(id);
+  if(!acc) return;
+  acc.style.display=(acc.style.display==="flex")?"none":"flex";
+}
+window.toggleDocAccordion        = function(){ spAcordeaoPorId_("docSubMenuSidebar"); };
+window.toggleSindAccordion       = function(){ spAcordeaoPorId_("sindSubMenuSidebar"); };
+window.toggleEscolasAccordion    = function(){ spAcordeaoPorId_("escolasSubMenuSidebar"); };
+window.toggleFinanceiroAccordion = function(){ spAcordeaoPorId_("financeiroSubMenuSidebar"); };
+window.toggleComunicacaoAccordion= function(){ spAcordeaoPorId_("comunicacaoSubMenuSidebar"); };
 window.toggleBeneficiosAccordion = function(btn){
-
-  var accordion = document.getElementById("beneficiosSubMenuSidebar");
-  if(!accordion) return;
-
-  var aberto = accordion.style.display === "flex";
-  accordion.style.display = aberto ? "none" : "flex";
-
+  spAcordeaoPorId_("beneficiosSubMenuSidebar");
   if(btn){
-    document.querySelectorAll(".spN").forEach(function(b){
-      b.classList.remove("sp-ativo");
-    });
+    document.querySelectorAll(".spN").forEach(function(b){ b.classList.remove("sp-ativo"); });
     btn.classList.add("sp-ativo");
   }
-
 };
 window.benefMostrarSub = function(sub){
   if(!BENEF_SUB_PAINEIS[sub]){
@@ -1279,14 +1561,17 @@ window.benefMostrarSub = function(sub){
     }
   });
 
-  document
-    .querySelectorAll("[data-benef-sub]")
-    .forEach(function(btn){
-      btn.classList.toggle(
-        "docSubMenuBtn-ativo",
-        btn.getAttribute("data-benef-sub")===sub
-      );
+  /* Marca pelo mesmo atributo que o spIr usa (data-sub-mod), e só dentro do
+     acordeão de Benefícios. Antes cada função marcava por um atributo
+     próprio e varria .docSubMenuBtn do menu inteiro — navegar dentro de
+     Benefícios apagava o item aceso de Documentos, e vice-versa. */
+  var accBenef=document.getElementById("beneficiosSubMenuSidebar");
+  if(accBenef){
+    accBenef.querySelectorAll("[data-sub-mod]").forEach(function(btn){
+      btn.classList.toggle("docSubMenuBtn-ativo",
+        btn.getAttribute("data-sub-mod")==="beneficios:"+sub);
     });
+  }
 };
 window.docHistoricoEscolher=function(tipo){
   if(tipo==="oficios"){
@@ -1319,9 +1604,14 @@ window.docMostrarSub=function(sub){
     if(painel) painel.style.display=(key===sub)?"block":"none";
   });
 
-  document.querySelectorAll(".docSubMenuBtn").forEach(function(btn){
-    btn.classList.toggle("docSubMenuBtn-ativo",btn.getAttribute("data-doc-sub")===sub);
-  });
+  /* Só dentro do acordeão de Documentos — ver a nota em benefMostrarSub. */
+  var accDoc=document.getElementById("docSubMenuSidebar");
+  if(accDoc){
+    accDoc.querySelectorAll("[data-sub-mod]").forEach(function(btn){
+      btn.classList.toggle("docSubMenuBtn-ativo",
+        btn.getAttribute("data-sub-mod")==="documentos:"+sub);
+    });
+  }
 
   /* Tenta inicializar o painel de Recibos na primeira exibição, sem quebrar se a função não existir */
   if(sub==="recibos"){
@@ -1456,15 +1746,6 @@ function initModuloAssistido(mod,opts){
   }
 }
 
-window.benefMostrarSub=function(sub){
-  var nomes={inicio:'Inicio',parqueChina:'ParqueChina',carteirinhas:'Carteirinhas',vouchers:'Vouchers',agendaOftalmo:'AgendaOftalmo',guririBeach:'GuririBeach',assefaz:'Assefaz',historico:'Historico',relatorios:'Relatorios',configuracoes:'Configuracoes'};
-  var alvo=document.getElementById('benefSub'+(nomes[sub]||'Inicio'));
-  if(!alvo)return false;
-  Array.prototype.forEach.call(alvo.parentElement.children,function(el){if(el.classList&&el.classList.contains('docSubPanel'))el.style.display='none';});
-  alvo.style.display='block';
-  Array.prototype.forEach.call(document.querySelectorAll('[data-benef-sub]'),function(btn){btn.classList.toggle('beneficiosSubMenuBtn-ativo',btn.getAttribute('data-benef-sub')===sub);});
-  return true;
-};
 
 function initModulo(mod,opts){
   opts=opts||{};
@@ -1491,6 +1772,10 @@ if(mod==="beneficios"){
       callFn("initBeneficios") || callFn("carregarBeneficios");
     }
 
+    if(subBeneficio === "vouchers"){
+      setTimeout(function(){ callFn("carregarLista"); },100);
+    }
+
     if(subBeneficio === "agendaOftalmo"){
       setTimeout(function(){
         if(
@@ -1509,6 +1794,10 @@ if(mod==="beneficios"){
     setTimeout(function(){ callFn("initAprovacaoCadastro"); },120);
     return;
   }
+  if(mod==="carteirinhas"){
+    setTimeout(function(){ callFn("cartCarregar"); },100);
+    return;
+  }
 // ADICIONE ESTE BLOCO:
   if(mod==="fichas"){
     initFichasSindicais(opts);
@@ -1519,6 +1808,7 @@ if(mod==="beneficios"){
   if(mod==="rh") return callFn("initRH") || callFn("carregarRH");
   if(mod==="sofia") return initSofia(opts);
   if(mod==="financeiro") return initFinanceiro(opts);
+  if(mod==="cadastroPrestadores") return callFn("initCadastroPrestadores");
 
   if(mod==="juridico"){
     return callFn("initJuridico") ||
@@ -1530,6 +1820,206 @@ if(mod==="beneficios"){
     return callFn("initPatrimonio") ||
            callFn("carregarPatrimonio") ||
            initModuloAssistido(mod,opts);
+  }
+
+  if(mod==="negociacao"){
+    setTimeout(function(){ callFn("initNegociacao"); },120);
+    return;
+  }
+
+  if(mod==="assembleias"){
+    setTimeout(function(){ callFn("initAssembleias"); },120);
+    return;
+  }
+
+  if(mod==="governanca"){
+    setTimeout(function(){ callFn("initGovernanca"); },120);
+    return;
+  }
+
+  if(mod==="auditoriaPainel"){
+    setTimeout(function(){
+      if(callFn("initAuditoriaPainel")) return;
+      var alvo = document.getElementById("apPorModulo");
+      if(alvo){
+        alvo.innerHTML =
+          '<div style="background:#fee2e2;border:1.5px solid #fca5a5;border-radius:12px;' +
+          'padding:13px 17px;font-size:12.5px;font-weight:600;line-height:1.55;color:#991b1b;">' +
+          (typeof window.AUD_PAINEL_MARCADOR === "string"
+            ? "<strong>O script do painel executou, mas quebrou no meio.</strong><br>" +
+              "Reabra o <code>AuditoriaPainel.html</code> no editor e confira se o " +
+              "conteúdo chegou inteiro. O console (F12) mostra o erro exato."
+            : "<strong>O script do painel não executou.</strong><br>" +
+              "Ou o <code>AuditoriaPainel.html</code> não está no projeto, ou a implantação " +
+              "está numa versão anterior. Teste pela URL <code>/dev</code>.") +
+          "</div>";
+      }
+    },120);
+    return;
+  }
+
+  if(mod==="auditoriaAcessos"){
+    setTimeout(function(){
+      if(callFn("initAuditoriaAcessos")) return;
+      var alvo = document.getElementById("acLista");
+      if(alvo){
+        alvo.innerHTML =
+          '<div style="background:#fee2e2;border:1.5px solid #fca5a5;border-radius:12px;' +
+          'padding:13px 17px;font-size:12.5px;font-weight:600;color:#991b1b;">' +
+          (typeof window.AUD_ACESSOS_MARCADOR === "string"
+            ? "<strong>O script da tela executou, mas quebrou no meio.</strong>"
+            : "<strong>O script desta tela nao executou.</strong> Confira se o " +
+              "<code>AuditoriaAcessos.html</code> esta no projeto e se saiu nova versao da implantacao.") +
+          "</div>";
+      }
+    },120);
+    return;
+  }
+
+  if(mod==="auditoriaExportacoes"){
+    setTimeout(function(){
+      if(callFn("initAuditoriaExportacoes")) return;
+      var alvo = document.getElementById("exLista");
+      if(alvo){
+        alvo.innerHTML =
+          '<div style="background:#fee2e2;border:1.5px solid #fca5a5;border-radius:12px;' +
+          'padding:13px 17px;font-size:12.5px;font-weight:600;color:#991b1b;">' +
+          (typeof window.AUD_EXPORT_MARCADOR === "string"
+            ? "<strong>O script da tela executou, mas quebrou no meio.</strong>"
+            : "<strong>O script desta tela nao executou.</strong> Confira se o " +
+              "<code>AuditoriaExportacoes.html</code> esta no projeto e se saiu nova versao da implantacao.") +
+          "</div>";
+      }
+    },120);
+    return;
+  }
+
+  if(mod==="auditoriaCompart"){
+    setTimeout(function(){
+      if(callFn("initAuditoriaCompartilhamentos")) return;
+      var alvo = document.getElementById("cpLista");
+      if(alvo){
+        alvo.innerHTML =
+          '<div style="background:#fee2e2;border:1.5px solid #fca5a5;border-radius:12px;' +
+          'padding:13px 17px;font-size:12.5px;font-weight:600;color:#991b1b;">' +
+          (typeof window.AUD_COMPART_MARCADOR === "string"
+            ? "<strong>O script da tela executou, mas quebrou no meio.</strong>"
+            : "<strong>O script desta tela nao executou.</strong> Confira se o " +
+              "<code>AuditoriaCompartilhamentos.html</code> esta no projeto e se saiu nova versao.") +
+          "</div>";
+      }
+    },120);
+    return;
+  }
+
+  if(mod==="auditoriaIncidentes"){
+    setTimeout(function(){
+      if(callFn("initAuditoriaIncidentes")) return;
+      var alvo = document.getElementById("inLista");
+      if(alvo){
+        alvo.innerHTML =
+          '<div style="background:#fee2e2;border:1.5px solid #fca5a5;border-radius:12px;' +
+          'padding:13px 17px;font-size:12.5px;font-weight:600;color:#991b1b;">' +
+          (typeof window.AUD_INC_MARCADOR === "string"
+            ? "<strong>O script da tela executou, mas quebrou no meio.</strong>"
+            : "<strong>O script desta tela nao executou.</strong> Confira se o " +
+              "<code>AuditoriaIncidentes.html</code> esta no projeto e se saiu nova versao.") +
+          "</div>";
+      }
+    },120);
+    return;
+  }
+
+  if(mod==="auditoriaLgpd"){
+    setTimeout(function(){
+      if(callFn("initAuditoriaLgpd")) return;
+      var alvo = document.getElementById("lgPedidos");
+      if(alvo){
+        alvo.innerHTML =
+          '<div style="background:#fee2e2;border:1.5px solid #fca5a5;border-radius:12px;' +
+          'padding:13px 17px;font-size:12.5px;font-weight:600;color:#991b1b;">' +
+          (typeof window.AUD_LGPD_MARCADOR === "string"
+            ? "<strong>O script da tela executou, mas quebrou no meio.</strong>"
+            : "<strong>O script desta tela nao executou.</strong> Confira se o " +
+              "<code>AuditoriaLgpd.html</code> esta no projeto e se saiu nova versao.") +
+          "</div>";
+      }
+    },120);
+    return;
+  }
+
+  if(mod==="auditoriaRelatorios"){
+    setTimeout(function(){
+      if(callFn("initAuditoriaRelatorios")) return;
+      var alvo = document.getElementById("raCatalogo");
+      if(alvo){
+        alvo.innerHTML =
+          '<div style="background:#fee2e2;border:1.5px solid #fca5a5;border-radius:12px;' +
+          'padding:13px 17px;font-size:12.5px;font-weight:600;color:#991b1b;">' +
+          (typeof window.AUD_REL_MARCADOR === "string"
+            ? "<strong>O script da tela executou, mas quebrou no meio.</strong>"
+            : "<strong>O script desta tela nao executou.</strong> Confira se o " +
+              "<code>AuditoriaRelatorios.html</code> esta no projeto e se saiu nova versao.") +
+          "</div>";
+      }
+    },120);
+    return;
+  }
+
+  if(mod==="auditoriaRetencao"){
+    setTimeout(function(){
+      if(callFn("initAuditoriaRetencao")) return;
+      var alvo = document.getElementById("retEstado");
+      if(alvo){
+        alvo.innerHTML =
+          '<div style="background:#fee2e2;border:1.5px solid #fca5a5;border-radius:12px;' +
+          'padding:13px 17px;font-size:12.5px;font-weight:600;line-height:1.55;color:#991b1b;">' +
+          (typeof window.AUD_RETENCAO_MARCADOR === "string"
+            ? "<strong>O script da tela executou, mas quebrou no meio.</strong>"
+            : "<strong>O script desta tela nao executou.</strong> Confira se o " +
+              "<code>AuditoriaRetencao.html</code> esta no projeto e se saiu nova versao da implantacao.") +
+          "</div>";
+      }
+    },120);
+    return;
+  }
+
+  if(mod==="auditoriaTrilha"){
+    /* callFn devolve false calado quando a função não existe — e o sintoma
+       disso é a tela parada no texto estático do HTML, sem erro em lugar
+       nenhum. Foi o que aconteceu em 10/08/2026: o arquivo da tela estava
+       salvo no projeto, mas a implantação servia uma versão anterior, e não
+       havia como saber disso olhando a tela. Agora tem. */
+    setTimeout(function(){
+      if(callFn("initAuditoriaTrilha")) return;
+
+      /* Bissecção: o AuditoriaTrilha.html tem um bloco de script mínimo, antes
+         do principal, que só marca presença. Comparar os dois separa dois
+         defeitos que produzem o mesmo sintoma. */
+      var marcador = (typeof window.AUD_TRILHA_MARCADOR === "string");
+      var diagnostico = marcador
+        ? "<strong>O script da tela executou, mas quebrou no meio.</strong><br>" +
+          "O bloco de diagnóstico rodou e a função <code>initAuditoriaTrilha</code> " +
+          "não chegou a ser criada — é erro dentro do próprio script, quase sempre " +
+          "conteúdo truncado no momento de colar. Reabra o <code>AuditoriaTrilha.html</code> " +
+          "no editor e confira se a última linha é <code>})();</code> seguida do " +
+          "fechamento do script. Abra o console (F12) para ver o erro exato."
+        : "<strong>O script desta tela não executou.</strong><br>" +
+          "Nem o bloco de diagnóstico rodou. Ou o <code>AuditoriaTrilha.html</code> " +
+          "no projeto não é o arquivo novo, ou a implantação está numa versão anterior. " +
+          "Teste pela URL <code>/dev</code>, que serve sempre o código salvo, antes de publicar.";
+
+      var alvo = document.getElementById("audLista");
+      if(alvo){
+        alvo.innerHTML =
+          '<div style="background:#fee2e2;border:1.5px solid #fca5a5;border-radius:12px;' +
+          'padding:13px 17px;font-size:12.5px;font-weight:600;line-height:1.55;color:#991b1b;">' +
+          diagnostico + "</div>";
+      }
+      var r = document.getElementById("audResumo");
+      if(r) r.textContent = "A tela não iniciou";
+    },120);
+    return;
   }
 
   if(mod==="eventos"){
@@ -1551,6 +2041,34 @@ if(mod==="visitas"){
   }
   if(mod==="visitasAdmin"){
     setTimeout(function(){ callFn("carregarPainelVisitas"); },120);
+    return;
+  }
+  if(mod==="cobranca"){
+    setTimeout(function(){ callFn("carregarPainelCobranca"); },120);
+    return;
+  }
+  if(mod==="escolasPendencias"){
+    setTimeout(function(){ callFn("initEscolasPendencias"); },120);
+    return;
+  }
+  if(mod==="receitas"){
+    setTimeout(function(){ callFn("initReceitas"); },120);
+    return;
+  }
+  if(mod==="mensalidades"){
+    setTimeout(function(){ callFn("initMensalidades"); },120);
+    return;
+  }
+  if(mod==="auditoriaFin"){
+    setTimeout(function(){ callFn("initAuditoriaFinanceira"); },120);
+    return;
+  }
+  if(mod==="painelFin"){
+    setTimeout(function(){ callFn("initFinanceiroPainel"); },120);
+    return;
+  }
+  if(mod==="taxas"){
+    setTimeout(function(){ callFn("initTaxas"); },120);
     return;
   }
   if(mod==="centralEmailIA"){
@@ -1600,27 +2118,36 @@ var flexMods={
     el.style.overflow = flexMods[mod] ? "" : "auto";
   }
 
-/* Módulos que vivem sob o acordeão Sindicalização. Como os sub-botões
-     não são .spN, quem acende no menu é o botão-pai. */
-var SIND_SUBS={fichas:1,aprovacoesPortal:1,visitasAdmin:1};
+/* ACORDEÃO E DESTAQUE DO MENU — dirigidos pelo próprio HTML.
+     Cada bloco de submenu declara data-subs com os módulos que moram nele;
+     cada botão-pai declara data-acordeao com o id desse bloco. Daí sai tudo:
+     qual acordeão fica aberto, qual pai acende e qual filho fica marcado.
 
-  var n=navEl||document.querySelector(".spN[data-mod='"+mod+"']");
-  if(!n && SIND_SUBS[mod]) n=document.querySelector(".spN[data-mod='sindicalizacao']");
+     Isto substituiu quatro mapas *_SUBS escritos à mão (SIND/ESC/FIN/COM) e
+     seis blocos de getElementById. Toda vez que um submódulo novo entrava,
+     era preciso lembrar de cinco lugares — e esquecer um deles produzia
+     exatamente o sintoma que o usuário via: item aberto sem estar na tela,
+     ou tela aberta sem o menu acender. */
+  var paiDoAcordeao=null;
+  Array.prototype.forEach.call(document.querySelectorAll("[data-subs]"),function(acc){
+    var lista=(acc.getAttribute("data-subs")||"").split(",");
+    var contem=lista.indexOf(mod)>-1;
+    acc.style.display=contem?"flex":"none";
+    if(contem && !paiDoAcordeao){
+      paiDoAcordeao=document.querySelector(".spN[data-acordeao='"+acc.id+"']");
+    }
+  });
+
+  /* Sub-botões não são .spN — quando a navegação parte de um deles, quem
+     acende no menu é o módulo-pai. */
+  var n=navEl||document.querySelector(".spN[data-mod='"+mod+"']")||paiDoAcordeao;
   if(n)n.classList.add("sp-ativo");
 
-  var accordionDoc=document.getElementById("docSubMenuSidebar");
-  if(accordionDoc) accordionDoc.style.display=(mod==="documentos"||mod==="relatorios")?"flex":"none";
-
-  var accordionSind=document.getElementById("sindSubMenuSidebar");
-  if(accordionSind) accordionSind.style.display=SIND_SUBS[mod]?"flex":"none";
-
-  /* Corrige comportamento antigo: o acordeão de Benefícios ficava aberto
-     pendurado ao navegar para Financeiro, RH e os demais módulos. */
-  var accordionBenef=document.getElementById("beneficiosSubMenuSidebar");
-  if(accordionBenef && mod!=="beneficios") accordionBenef.style.display="none";
-
-  Array.prototype.forEach.call(document.querySelectorAll("[data-sind-sub]"),function(b){
-    b.classList.toggle("docSubMenuBtn-ativo", b.getAttribute("data-sind-sub")===mod);
+  /* Benefícios marca o filho por opts.sub (o mod é sempre "beneficios");
+     os demais marcam pelo próprio mod. */
+  var chaveSub=opts.sub?(mod+":"+opts.sub):mod;
+  Array.prototype.forEach.call(document.querySelectorAll("[data-sub-mod]"),function(b){
+    b.classList.toggle("docSubMenuBtn-ativo", b.getAttribute("data-sub-mod")===chaveSub);
   });
 
   var t=document.getElementById("spTit"),s=document.getElementById("spSub");
@@ -1701,7 +2228,11 @@ window.spCmd=function(t){
 
   var tl=txt.toLowerCase();
 
-  if(tl.match(/ofício|oficio|filia|desfilia|taxa|associad|certidão|certidao/)) return spIr("documentos",null,{aba:"novo"});
+  /* "certidão" saiu daqui em 19/08/2026, junto com o submódulo: mandava
+     quem digitasse a palavra para a tela de NOVO OFÍCIO, que não é o que
+     a pessoa pediu. Sem correspondência, a frase segue para as regras
+     abaixo em vez de abrir a tela errada com ar de acerto. */
+  if(tl.match(/ofício|oficio|filia|desfilia|taxa|associad/)) return spIr("documentos",null,{aba:"novo"});
   if(tl.match(/e-?mail|responder|comunic|inbox/)) return spIr("comunicacao",null,{acao:"emails"});
   if(tl.match(/escola|cadastro|cnpj/)) return spIr("escolas",null,{focoBusca:true});
   if(tl.match(/voucher|beneficio|benefÃ­cio|parque|china|oftalmo|oftalmologia|carteirinha|guriri|assefaz/)) return spIr("beneficios");
@@ -1712,6 +2243,90 @@ window.spCmd=function(t){
   if(tl.match(/relatório|relatorio|dashboard|indicador/)) return spIr("relatorios");
 
   return spIr("sofia",null,{mensagem:txt});
+};
+
+// ══════════════════════════════════════
+// ANEXAR DOCUMENTO NA HOME → análise pela SOFIA
+// ══════════════════════════════════════
+window.spAnexarArquivo = function(input) {
+  var arquivo = input.files && input.files[0];
+  if (!arquivo) return;
+  var LIMITE = 12 * 1024 * 1024;
+  if (arquivo.size > LIMITE) {
+    if (typeof toast === "function") toast("Arquivo maior que 12 MB.", "erro"); else alert("Arquivo maior que 12 MB.");
+    input.value = "";
+    return;
+  }
+  var btn = document.getElementById("spBtnAnexar");
+  if (btn) { btn.disabled = true; btn.textContent = "⏳"; }
+  var leitor = new FileReader();
+  leitor.onload = function() {
+    var base64 = String(leitor.result || "").split(",")[1] || "";
+    google.script.run
+      .withSuccessHandler(function(resp) {
+        if (btn) { btn.disabled = false; btn.textContent = "📎"; }
+        input.value = "";
+        if (!resp || !resp.ok) {
+          var msg = (resp && resp.mensagem) ? resp.mensagem : "Não foi possível ler o arquivo.";
+          if (typeof toast === "function") toast(msg, "erro"); else alert(msg);
+          return;
+        }
+        window._sofiaAnexoPendente = { nome: resp.nome, conteudo: resp.conteudo };
+        spIr("sofia", null, { mensagem: "Analise o documento anexado (" + resp.nome + ")." });
+      })
+      .withFailureHandler(function(err) {
+        if (btn) { btn.disabled = false; btn.textContent = "📎"; }
+        input.value = "";
+        var msg = "Falha ao enviar o arquivo: " + (err && err.message ? err.message : err);
+        if (typeof toast === "function") toast(msg, "erro"); else alert(msg);
+      })
+      .analisarAnexoSofiaHome_(base64, arquivo.name, arquivo.type, (typeof SISGEP_TOKEN_SESSAO !== "undefined" ? SISGEP_TOKEN_SESSAO : ""));
+  };
+  leitor.onerror = function() {
+    if (btn) { btn.disabled = false; btn.textContent = "📎"; }
+    if (typeof toast === "function") toast("Não foi possível ler o arquivo selecionado.", "erro");
+  };
+  leitor.readAsDataURL(arquivo);
+};
+
+// ══════════════════════════════════════
+// FALAR COM A SOFIA (Web Speech API)
+// ══════════════════════════════════════
+window.spFalarComSofia = function() {
+  var Reconhecimento = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var btn = document.getElementById("spBtnFalar");
+  if (!Reconhecimento) {
+    var msgSemSuporte = "Reconhecimento de voz não é suportado neste navegador. Use o Chrome.";
+    if (typeof toast === "function") toast(msgSemSuporte, "erro"); else alert(msgSemSuporte);
+    return;
+  }
+  if (window._spReconhecimentoAtivo) return;
+
+  var rec = new Reconhecimento();
+  rec.lang = "pt-BR";
+  rec.interimResults = false;
+  rec.maxAlternatives = 1;
+  window._spReconhecimentoAtivo = true;
+  if (btn) { btn.textContent = "🔴"; btn.title = "Ouvindo... fale agora"; }
+
+  rec.onresult = function(e) {
+    var texto = (e.results && e.results[0] && e.results[0][0]) ? e.results[0][0].transcript : "";
+    var input = document.getElementById("spIn");
+    if (input && texto) { input.value = texto; input.focus(); }
+  };
+  rec.onerror = function(e) {
+    var msg = e.error === "not-allowed" ? "Permissão de microfone negada." : "Não foi possível entender. Tente novamente.";
+    if (typeof toast === "function") toast(msg, "erro"); else alert(msg);
+  };
+  rec.onend = function() {
+    window._spReconhecimentoAtivo = false;
+    if (btn) { btn.textContent = "🎙️"; btn.title = "Falar com a SOFIA"; }
+  };
+
+  try { rec.start(); } catch (eStart) {
+    window._spReconhecimentoAtivo = false;
+    if (btn) { btn.textContent = "🎙️"; btn.title = "Falar com a SOFIA"; }
+  }
 };
 
 // ══════════════════════════════════════
@@ -1749,6 +2364,81 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
+/* ===== Rádio SindEducação — player real, sem duração/skip fingidos: é um
+   stream ao vivo (stm7.xcast.com.br), então os estados só refletem o que o
+   <audio> real está fazendo (tocando/pausado/conectando/erro). O mesmo
+   <audio> (fixo na sidebar, fora de qualquer painel .spM) é controlado tanto
+   pela barra compacta quanto pela tela cheia do módulo "radio" — por isso
+   os elementos de estado são selecionados por CLASSE (podem existir em mais
+   de um lugar do DOM ao mesmo tempo), nunca por ID único. */
+function spRadioSetStatus_(texto){
+  document.querySelectorAll(".spRadioStatusTxt").forEach(function(el){ el.textContent = texto; });
+}
+function spRadioSetPlayIcon_(tocando){
+  document.querySelectorAll(".spRadioPlayIcon").forEach(function(el){
+    el.className = el.className.replace(/fa-(play|pause)/, tocando ? "fa-pause" : "fa-play");
+  });
+}
+function spRadioSetDot_(ligado){
+  document.querySelectorAll(".spRadioDot").forEach(function(el){ el.classList.toggle("on", ligado); });
+}
+function spRadioSetWave_(tocando){
+  document.querySelectorAll(".spRadioWave").forEach(function(el){ el.classList.toggle("tocando", tocando); });
+}
+
+function spRadioInit_(){
+  var audio = document.getElementById("spRadioAudio");
+  if (!audio) return;
+
+  audio.addEventListener("playing", function(){
+    spRadioSetPlayIcon_(true);
+    spRadioSetStatus_("Ao vivo");
+    spRadioSetDot_(true);
+    spRadioSetWave_(true);
+  });
+  audio.addEventListener("waiting", function(){
+    spRadioSetStatus_("Conectando…");
+  });
+  audio.addEventListener("pause", function(){
+    spRadioSetPlayIcon_(false);
+    spRadioSetStatus_("Pausado");
+    spRadioSetDot_(false);
+    spRadioSetWave_(false);
+  });
+  audio.addEventListener("error", function(){
+    spRadioSetPlayIcon_(false);
+    spRadioSetStatus_("Não foi possível conectar à rádio");
+    spRadioSetDot_(false);
+    spRadioSetWave_(false);
+  });
+}
+
+window.spRadioToggle = function(){
+  var audio = document.getElementById("spRadioAudio");
+  if (!audio) return;
+  if (audio.paused) {
+    spRadioSetStatus_("Conectando…");
+    audio.play().catch(function(){
+      spRadioSetStatus_("Não foi possível conectar à rádio");
+    });
+  } else {
+    audio.pause();
+  }
+};
+
+window.spRadioMute = function(){
+  var audio = document.getElementById("spRadioAudio");
+  if (!audio) return;
+  audio.muted = !audio.muted;
+  document.querySelectorAll(".spRadioVolIcon").forEach(function(el){
+    el.className = el.className.replace(/fa-volume-(up|mute)/, audio.muted ? "fa-volume-mute" : "fa-volume-up");
+  });
+  document.querySelectorAll(".spRadioMuteBtn").forEach(function(el){
+    el.classList.toggle("muted", audio.muted);
+    el.title = audio.muted ? "Ativar som" : "Mudo";
+  });
+};
+
 document.addEventListener("DOMContentLoaded",function(){
   if(window.google&&google.script&&google.script.run){
     google.script.run.withSuccessHandler(function(s){
@@ -1768,7 +2458,48 @@ var ini=String(nome).trim().split(/\s+/).map(function(p){return p.charAt(0).toUp
       if(pf)pf.textContent=s.perfil||"Administrador";
       if(dropdownPf)dropdownPf.textContent=s.perfil||"Administrador";
     }).getSessaoUsuario(SISGEP_TOKEN_SESSAO);
+
+    spAplicarAcessoModulos_();
+
+    carregarResumoInicio();
   }
+
+  /**
+   * Esconde do menu os módulos que o usuário não pode abrir
+   * (AcessoModulos.gs). As chaves do catálogo são as mesmas do
+   * atributo data-mod dos botões, então o casamento é direto.
+   *
+   * ⚠️ Isto é CONVENIÊNCIA, não segurança: sumir o botão não impede
+   * ninguém de alcançar a função por outro caminho. A trava real é a do
+   * servidor (exigirModulo_), aplicada nos módulos com dado de pessoa.
+   *
+   * Em caso de falha, o menu aparece inteiro de propósito — é melhor
+   * mostrar demais do que trancar fora do sistema quem tem direito.
+   */
+  function spAplicarAcessoModulos_(){
+    if(typeof google==="undefined"||!google.script||!google.script.run)return;
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||r.todos!==false||!Array.isArray(r.modulos))return;
+        var permitidos={};
+        r.modulos.forEach(function(m){permitidos[String(m)]=true;});
+        permitidos["inicio"]=true; // tela de entrada nunca some
+        document.querySelectorAll("[data-mod]").forEach(function(btn){
+          var mod=btn.getAttribute("data-mod");
+          if(permitidos[mod])return;
+          btn.style.display="none";
+          // Submenu sanfonado do módulo (Financeiro, Escolas, Benefícios,
+          // Documentos, Comunicação) fica logo depois do botão — sem
+          // isto os subitens continuariam visíveis, órfãos.
+          var prox=btn.nextElementSibling;
+          if(prox&&prox.querySelector&&prox.querySelector(".docSubMenuBtn"))prox.style.display="none";
+        });
+      })
+      .withFailureHandler(function(){})
+      .acessoMeusModulos(SISGEP_TOKEN_SESSAO);
+  }
+
+  spRadioInit_();
 
   var bl=document.getElementById("spLogout");
   if(bl)bl.addEventListener("click",function(){
@@ -1784,11 +2515,65 @@ var ini=String(nome).trim().split(/\s+/).map(function(p){return p.charAt(0).toUp
   });
 });
 
+/* Resumo real da tela Início — substitui os números/status que antes
+   eram fixos no HTML. Best-effort no servidor (InicioResumo.gs): se
+   algum módulo falhar, o card dele mostra 0/— em vez de travar a tela. */
+function carregarResumoInicio(){
+  if(!(window.google&&google.script&&google.script.run))return;
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r||!r.ok)return;
+      var p=r.prioridades||{};
+      var set=function(id,v){var el=document.getElementById(id);if(el)el.textContent=(v===undefined||v===null)?"—":v;};
+      set("spPrioNF",p.notasFiscais||0);
+      set("spPrioEmails",p.emails||0);
+      set("spPrioOficios",p.oficios||0);
+      set("spPrioJuridico",p.juridico||0);
+      set("spPrioEscolas",p.escolasIncompletas||0);
+      var total=(p.notasFiscais||0)+(p.emails||0)+(p.oficios||0)+(p.juridico||0)+(p.escolasIncompletas||0);
+      set("spPrioridadesTotal",total);
+
+      var s=r.saude||{};
+      var setSaude=function(id,v){
+        var el=document.getElementById(id);if(!el)return;
+        el.textContent=v||"—";
+        el.className=v==="ATENÇÃO"?"amber":(v==="OK"?"green":"blue");
+      };
+      setSaude("spSaudeFinanceiro",s.financeiro);
+      setSaude("spSaudeAdministrativo",s.administrativo);
+      setSaude("spSaudeJuridico",s.juridico);
+      setSaude("spSaudeComunicacao",s.comunicacao);
+
+      var box=document.getElementById("spAtividadesSofia");
+      if(box){
+        var itens=r.atividadesRecentes||[];
+        if(!itens.length){
+          box.innerHTML="<div class='spAt'><p>Nenhuma interação registrada com a SOFIA ainda.</p></div>";
+        }else{
+          box.innerHTML=itens.map(function(a){
+            var esc=function(v){return String(v==null?"":v).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]);});};
+            var hora=(a.dataHora||"").split(" ")[1]||a.dataHora||"";
+            return "<div class='spAt'><span class='"+(a.ok?"ok":"warn")+"'>"+(a.ok?"✓":"!")+"</span><p>["+esc(a.dominio)+"] "+esc(a.pergunta||"(sem descrição)")+"</p><time>"+esc(hora)+"</time><b class='"+(a.ok?"ok":"warn")+"'>"+(a.ok?"Concluído":"Erro")+"</b></div>";
+          }).join("");
+        }
+      }
+    })
+    .withFailureHandler(function(e){
+      console.error("[Início] falha ao carregar resumo real:", e);
+    })
+    .getResumoInicioSISGEP(SISGEP_TOKEN_SESSAO);
+}
+
 /* Wrappers compatíveis com botões antigos dos módulos */
 window.mostrarAbaOficio=function(aba){
   if(aba==="escolas") return spIr("escolas",null,{focoBusca:true});
-  if(aba==="mensalidades") return spIr("financeiro");
 
+  /* Mensalidade saiu de Documentos e virou módulo próprio no Financeiro
+     (FIN-F5): ofício é o instrumento de cobrança e continua em Documentos;
+     a mensalidade é a receita (CCT cl. 56) e pertence à Central Financeira.
+     "taxaAssistencial" continua em Documentos de propósito — aquela aba é o
+     ENVIO do ofício de taxa, não o controle do dinheiro. */
+  if (aba === "mensalidades") return spIr("mensalidades");
   spIr("documentos",null,{aba:aba||"novo"});
 };
 

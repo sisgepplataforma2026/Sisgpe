@@ -1,0 +1,642 @@
+<!--
+  ARQUIVO: PagamentosAdmin.html
+  MÓDULO: Financeiro › Despesas — aba "Controle de Pagamentos"
+
+  Incluído DENTRO de DespesasAdmin.html, como painel de aba.
+
+  🚨 NUNCA escreva um scriptlet do Apps Script (aquela sintaxe que abre
+  com menor-interrogação) dentro deste arquivo — NEM DENTRO DE COMENTÁRIO
+  HTML. O template engine avalia scriptlet em qualquer posição do arquivo,
+  inclusive comentado, porque roda antes do navegador ver o HTML. Um
+  arquivo que cita o próprio include no cabeçalho passa a se incluir em
+  recursão infinita e derruba o JavaScript da tela toda. Ver Regra nº 0
+  no CLAUDE.md. Se precisar citar a chamada, escreva em palavras.
+
+  Esta é a TELA DE TRABALHO de quem executa pagamento — não é relatório.
+  Por isso ela mostra fila do mês e três ações, e não o ciclo fiscal
+  completo da despesa: quem paga não precisa saber em que ponto do
+  trâmite a nota fiscal está. Os status AGUARDANDO_DOC, DOC_RECEBIDO e
+  ENVIADO_CONTABILIDADE aparecem todos como "A pagar" (o backend faz
+  esse agrupamento em pagListarControle); o status detalhado continua
+  visível no título de cada linha.
+
+  Reaproveita as classes já declaradas em DespesasAdmin.html
+  (.card-desp, .painel-inline, .btn, .table-wrap, .tab-panel) — não
+  cria paleta nem componente novo. Lógica em IIFE própria, com tudo que
+  vai para window prefixado com "pag".
+-->
+
+<div class="tab-panel" id="tab-pagamentos">
+
+  <!-- ══ Confirmar pagamento ══ -->
+  <div class="painel-inline" id="painel-pag-confirmar">
+    <div class="painel-header"><span class="painel-header-title">✅ Confirmar Pagamento</span><button class="painel-close" onclick="fecharPainel('painel-pag-confirmar')">✕</button></div>
+    <div class="painel-body">
+      <div class="painel-info" id="pag-confirmar-info"></div>
+      <div class="painel-field"><label>Data em que o pagamento saiu <span class="req">*</span></label><input type="date" id="pag-data-pagamento"></div>
+      <div class="painel-field">
+        <label>Forma de pagamento</label>
+        <select id="pag-forma">
+          <option value="">—</option>
+          <option>PIX</option><option>TED</option><option>DOC</option><option>Boleto</option>
+          <option>Débito automático</option><option>Dinheiro</option><option>Cartão</option><option>Outra</option>
+        </select>
+      </div>
+      <div class="painel-field"><label>Conta / banco de saída</label><input type="text" id="pag-conta" placeholder="Ex.: Sicoob c/c 1234-5"></div>
+      <div class="painel-field">
+        <label>Valor efetivamente pago <span class="opt">(só se diferente do previsto)</span></label>
+        <input type="text" id="pag-valor-pago" inputmode="decimal" placeholder="deixe vazio se pagou o valor cheio">
+      </div>
+      <div class="painel-field"><label>Observação <span class="opt">(opcional)</span></label><input type="text" id="pag-obs-pagamento" placeholder="Ex.: pago com desconto de pontualidade"></div>
+      <div class="painel-actions">
+        <button class="btn btn-outline btn-sm" onclick="fecharPainel('painel-pag-confirmar')">Cancelar</button>
+        <button class="btn btn-green btn-sm" onclick="pagSalvarPagamento()">✅ Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Lançar no banco ══ -->
+  <div class="painel-inline" id="painel-pag-lancar">
+    <div class="painel-header" style="background:linear-gradient(135deg,#1e3a5f,#1565C0);"><span class="painel-header-title">🏦 Lançar no Banco</span><button class="painel-close" onclick="fecharPainel('painel-pag-lancar')">✕</button></div>
+    <div class="painel-body">
+      <div class="painel-info" id="pag-lancar-info"></div>
+      <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12.5px;color:#1d4ed8;font-weight:600;">
+        ℹ️ Isto registra que o pagamento foi <b>lançado</b> no banco — ainda não que ele saiu. Quando compensar, use "Confirmar pagamento".
+      </div>
+      <div class="painel-field"><label>Data do lançamento <span class="req">*</span></label><input type="date" id="pag-data-lancamento"></div>
+      <div class="painel-field">
+        <label>Forma prevista</label>
+        <select id="pag-forma-lancamento">
+          <option value="">—</option>
+          <option>PIX</option><option>TED</option><option>DOC</option><option>Boleto</option>
+          <option>Débito automático</option><option>Dinheiro</option><option>Cartão</option><option>Outra</option>
+        </select>
+      </div>
+      <div class="painel-field"><label>Conta / banco</label><input type="text" id="pag-conta-lancamento" placeholder="Ex.: Sicoob c/c 1234-5"></div>
+      <div class="painel-field"><label>Observação <span class="opt">(opcional)</span></label><input type="text" id="pag-obs-lancamento" placeholder="Ex.: agendado para 10/08, aguardando assinatura"></div>
+      <div class="painel-actions">
+        <button class="btn btn-outline btn-sm" onclick="fecharPainel('painel-pag-lancar')">Cancelar</button>
+        <button class="btn btn-navy btn-sm" onclick="pagSalvarLancamento()">🏦 Lançar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Desfazer lançamento ══ -->
+  <div class="painel-inline" id="painel-pag-desfazer">
+    <div class="painel-header" style="background:linear-gradient(135deg,#7f1d1d,#dc2626);"><span class="painel-header-title">↩️ Desfazer Lançamento</span><button class="painel-close" onclick="fecharPainel('painel-pag-desfazer')">✕</button></div>
+    <div class="painel-body">
+      <div class="painel-info" id="pag-desfazer-info"></div>
+      <div class="painel-field"><label>Motivo <span class="req">*</span></label><input type="text" id="pag-motivo-desfazer" placeholder="Ex.: banco rejeitou, lançado em duplicidade"></div>
+      <div class="painel-actions">
+        <button class="btn btn-outline btn-sm" onclick="fecharPainel('painel-pag-desfazer')">Cancelar</button>
+        <button class="btn btn-red btn-sm" onclick="pagSalvarDesfazer()">↩️ Desfazer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Anexar comprovante ══ -->
+  <div class="painel-inline" id="painel-pag-comprovante">
+    <div class="painel-header" style="background:linear-gradient(135deg,#065f46,#0f8a5f);"><span class="painel-header-title">📎 Anexar Comprovante</span><button class="painel-close" onclick="fecharPainel('painel-pag-comprovante')">✕</button></div>
+    <div class="painel-body">
+      <div class="painel-info" id="pag-comprovante-info"></div>
+      <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12.5px;color:#065f46;font-weight:600;">
+        O comprovante fica num anexo próprio — <b>não substitui a nota fiscal</b> do fornecedor.
+      </div>
+      <div class="painel-field"><label>Arquivo <span class="req">*</span></label><input type="file" id="pag-arquivo-comprovante" accept=".pdf,.jpg,.jpeg,.png"></div>
+      <div class="painel-actions">
+        <button class="btn btn-outline btn-sm" onclick="fecharPainel('painel-pag-comprovante')">Cancelar</button>
+        <button class="btn btn-green btn-sm" onclick="pagSalvarComprovante()" id="btn-pag-comprovante">📎 Anexar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Histórico ══ -->
+  <div class="painel-inline" id="painel-pag-historico">
+    <div class="painel-header" style="background:linear-gradient(135deg,#1e3a5f,#4338ca);"><span class="painel-header-title">🕘 Histórico do Pagamento</span><button class="painel-close" onclick="fecharPainel('painel-pag-historico')">✕</button></div>
+    <div class="painel-body">
+      <div class="painel-info" id="pag-historico-info"></div>
+      <div id="pag-historico-conteudo" style="max-height:340px;overflow:auto;"></div>
+    </div>
+  </div>
+
+  <!-- ══ Barra de filtros ══ -->
+  <div class="card-desp" style="margin-bottom:14px;">
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;padding:14px 16px;">
+      <div class="painel-field" style="margin:0;min-width:170px;">
+        <label>Competência</label>
+        <select id="pag-competencia" onchange="pagCarregar()"></select>
+      </div>
+      <div class="painel-field" style="margin:0;min-width:170px;">
+        <label>Situação</label>
+        <select id="pag-situacao" onchange="pagCarregar()">
+          <option value="">Todas</option>
+          <option value="A_PAGAR">A pagar</option>
+          <option value="LANCADO_BANCO">Lançado no banco</option>
+          <option value="PAGO">Pago</option>
+          <option value="CANCELADO">Cancelado</option>
+          <option value="ESTORNADO">Estornado</option>
+        </select>
+      </div>
+      <div class="painel-field" style="margin:0;flex:1;min-width:220px;">
+        <label>Buscar</label>
+        <input type="text" id="pag-busca" placeholder="fornecedor, descrição ou número..." oninput="pagFiltrarLocal()">
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="pagCarregar()">🔄 Atualizar</button>
+      <button class="btn btn-outline btn-sm" onclick="pagVerHistoricoMes()">🕘 Histórico do mês</button>
+      <button class="btn btn-outline btn-sm" onclick="pagExportarCSV()">⬇ CSV</button>
+    </div>
+  </div>
+
+  <!-- ══ Resumo do mês — uma faixa só ══
+       Antes eram 4 cartões grandes empilhados sobre um banner de alerta,
+       o que empurrava a tabela para baixo da dobra: a pessoa rolava
+       bastante antes de chegar no trabalho. Aqui os 4 números viram uma
+       faixa de uma linha e o alerta entra na mesma faixa, à direita. -->
+  <div class="card-desp" style="margin-bottom:14px;">
+    <div id="pag-resumo" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 26px;padding:12px 16px;">
+      <div><div class="pag-lbl">Total do mês</div><div class="pag-num" id="pag-total">R$ 0,00</div><div class="pag-sub" id="pag-total-qtd">0 contas</div></div>
+      <div><div class="pag-lbl">A pagar</div><div class="pag-num" style="color:#d97706;" id="pag-apagar">R$ 0,00</div><div class="pag-sub" id="pag-apagar-qtd">0 contas</div></div>
+      <div><div class="pag-lbl">Lançado no banco</div><div class="pag-num" style="color:#1565C0;" id="pag-lancado">R$ 0,00</div><div class="pag-sub" id="pag-lancado-qtd">0 contas</div></div>
+      <div><div class="pag-lbl">Pago</div><div class="pag-num" style="color:#0f8a5f;" id="pag-pago">R$ 0,00</div><div class="pag-sub" id="pag-pago-qtd">0 contas</div></div>
+      <div id="pag-alertas" style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;"></div>
+    </div>
+  </div>
+
+  <!-- ══ Fila ══ -->
+  <div class="card-desp">
+    <div class="card-desp-head" style="padding-bottom:8px;">
+      <div>
+        <div class="card-desp-title">Fila de pagamentos</div>
+        <div class="card-desp-sub">Vencidas primeiro, em vermelho.</div>
+      </div>
+      <div class="card-desp-sub" id="pag-contador">—</div>
+    </div>
+    <div class="table-wrap">
+      <table class="pag-tab">
+        <thead><tr>
+          <th>Vencimento</th><th>Despesa</th><th>Favorecido</th>
+          <th style="text-align:right;">Valor</th><th>Situação</th><th>Compr.</th><th>Ações</th>
+        </tr></thead>
+        <tbody id="pag-tabela"><tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:24px;">—</td></tr></tbody>
+      </table>
+    </div>
+    <div id="pag-paginacao" style="display:flex;justify-content:center;align-items:center;gap:6px;padding:12px 16px;flex-wrap:wrap;"></div>
+  </div>
+</div>
+
+<style>
+  /* Escopo próprio (.pag-*) para não vazar nas outras abas de Despesas. */
+  .pag-lbl{font-size:10.5px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;}
+  .pag-num{font-size:17px;font-weight:900;color:var(--navy,#001f4d);line-height:1.25;}
+  .pag-sub{font-size:11px;color:#64748b;}
+
+  /* Contraste: o nome do favorecido e a descrição estavam herdando um
+     cinza claro do CSS da tabela e ficavam quase ilegíveis — é a
+     informação que a pessoa mais lê nesta tela. */
+  .pag-tab td{color:#0f172a;font-size:13px;vertical-align:middle;}
+  .pag-tab td .pag-forn{font-weight:700;color:#0f172a;}
+  .pag-tab td .pag-desc{font-weight:800;color:var(--navy,#001f4d);}
+  .pag-tab td .pag-meta{font-size:11px;color:#64748b;}
+  .pag-tab tbody tr:nth-child(even){background:#fbfcfe;}
+  .pag-tab tbody tr:hover{background:#f1f5f9;}
+  .pag-tab tbody tr.pag-vencida{background:#fff5f5;}
+  .pag-tab tbody tr.pag-vencida:hover{background:#ffecec;}
+
+  /* Os três botões por linha empurravam a coluna e espremiam o
+     cabeçalho. Compactados e sem quebra de linha. */
+  .pag-tab td .btn{padding:5px 9px;font-size:11.5px;white-space:nowrap;}
+  .pag-acoes{display:flex;gap:4px;flex-wrap:nowrap;}
+
+  .pag-pg{border:1px solid #cbd5e1;background:#fff;color:var(--navy,#001f4d);border-radius:7px;
+          padding:5px 11px;font-weight:700;font-size:12.5px;cursor:pointer;}
+  .pag-pg[disabled]{opacity:.4;cursor:default;}
+  .pag-pg.ativa{background:var(--navy,#001f4d);color:#fff;border-color:var(--navy,#001f4d);}
+</style>
+
+<script>
+(function(){
+  "use strict";
+  var LISTA = [];
+  var ID_ATIVO = "";
+  var PAGINA = 1;
+  var POR_PAGINA = 20;
+
+  function g(id){return document.getElementById(id);}
+  function tk(){return typeof SISGEP_TOKEN_SESSAO!=="undefined"?SISGEP_TOKEN_SESSAO:"";}
+  function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]);});}
+  // Os dois toasts do sistema falam vocabulários diferentes: o desta tela
+  // (Scripts_Despesas) usa success/error/warning, e o toast global do
+  // design system usa ok/err/warn/info. Como showToast vive dentro da
+  // IIFE de Scripts_Despesas e não é exposta em window, daqui só o global
+  // é alcançável — sem esta tradução o ícone sairia "undefined".
+  var MAPA_TOAST={success:"ok", error:"err", warning:"warn", info:"info"};
+  function aviso(m,t){
+    t=t||"info";
+    if(typeof showToast==="function"){ showToast(m,t); return; }
+    if(typeof toast==="function"){ toast(m, MAPA_TOAST[t]||t); return; }
+  }
+  function moeda(v){return Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});}
+  function num(v){var s=String(v==null?"":v).replace(/[^\d,.-]/g,"").replace(/\./g,"").replace(",",".");var n=Number(s);return isFinite(n)?n:0;}
+  function hojeISO(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+  function compAtual(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");}
+  function compRotulo(c){
+    var m=String(c||"").split("-"); if(m.length<2)return c||"";
+    var nomes=["","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+    return (nomes[Number(m[1])]||m[1])+"/"+m[0];
+  }
+
+  var ROTULO_SITUACAO = {
+    "A_PAGAR":       {txt:"A pagar",           cor:"#d97706", bg:"#fffbeb"},
+    "LANCADO_BANCO": {txt:"Lançado no banco",  cor:"#1565C0", bg:"#eff6ff"},
+    "PAGO":          {txt:"Pago",              cor:"#0f8a5f", bg:"#f0fdf4"},
+    "CANCELADO":     {txt:"Cancelado",         cor:"#64748b", bg:"#f1f5f9"},
+    "ESTORNADO":     {txt:"Estornado",         cor:"#991b1b", bg:"#fef2f2"}
+  };
+
+  /* ============ CARGA ============ */
+
+  window.pagCarregarCompetencias=function(){
+    google.script.run
+      .withSuccessHandler(function(r){
+        var sel=g("pag-competencia"); if(!sel)return;
+        var lista=(r&&r.competencias)||[];
+        var atual=compAtual();
+        if(lista.indexOf(atual)===-1)lista.unshift(atual);
+        sel.innerHTML=lista.map(function(c){return '<option value="'+esc(c)+'">'+esc(compRotulo(c))+'</option>';}).join("");
+        sel.value=atual;
+        pagCarregar();
+      })
+      .withFailureHandler(function(){ pagCarregar(); })
+      .pagListarCompetencias(tk());
+  };
+
+  window.pagCarregar=function(){
+    var filtros={
+      competencia:(g("pag-competencia")&&g("pag-competencia").value)||"",
+      situacao:(g("pag-situacao")&&g("pag-situacao").value)||""
+    };
+    var tb=g("pag-tabela");
+    if(tb)tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:24px;">⏳ Carregando...</td></tr>';
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||r.ok!==true){
+          if(tb)tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:#991b1b;padding:24px;">'+esc((r&&r.mensagem)||"Erro ao carregar.")+'</td></tr>';
+          return;
+        }
+        LISTA=r.lista||[];
+        PAGINA=1;
+        pagPintar();
+      })
+      .withFailureHandler(function(e){
+        if(tb)tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:#991b1b;padding:24px;">Erro: '+esc((e&&e.message)||e)+'</td></tr>';
+      })
+      .pagListarControle(filtros, tk());
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||r.ok!==true||!r.resumo)return;
+        var s=r.resumo;
+        if(g("pag-total"))       g("pag-total").textContent       = s.valorTotalFmt||moeda(s.valorTotal);
+        if(g("pag-apagar"))      g("pag-apagar").textContent      = s.valorAPagarFmt||moeda(s.valorAPagar);
+        if(g("pag-lancado"))     g("pag-lancado").textContent     = s.valorLancadoFmt||moeda(s.valorLancado);
+        if(g("pag-pago"))        g("pag-pago").textContent        = s.valorPagoFmt||moeda(s.valorPago);
+        if(g("pag-total-qtd"))   g("pag-total-qtd").textContent   = (s.qtdTotal||0)+" conta(s)";
+        if(g("pag-apagar-qtd"))  g("pag-apagar-qtd").textContent  = (s.qtdAPagar||0)+" conta(s)";
+        if(g("pag-lancado-qtd")) g("pag-lancado-qtd").textContent = (s.qtdLancado||0)+" conta(s)";
+        if(g("pag-pago-qtd"))    g("pag-pago-qtd").textContent    = (s.qtdPago||0)+" conta(s)";
+
+        // Alertas como etiqueta compacta na própria faixa, em vez de
+        // banner de largura inteira empurrando a tabela para baixo.
+        var av=[];
+        if(s.qtdVencidas>0)      av.push('<span style="background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;border-radius:999px;padding:5px 12px;font-weight:800;font-size:12px;white-space:nowrap;">🔴 '+s.qtdVencidas+' vencida(s)</span>');
+        if(s.qtdSemComprovante>0)av.push('<span style="background:#fffbeb;border:1px solid #fcd34d;color:#92400e;border-radius:999px;padding:5px 12px;font-weight:800;font-size:12px;white-space:nowrap;">📎 '+s.qtdSemComprovante+' sem comprovante</span>');
+        if(g("pag-alertas"))g("pag-alertas").innerHTML=av.join("");
+      })
+      .withFailureHandler(function(){})
+      .pagResumoControle(filtros.competencia, tk());
+  };
+
+  // Buscar volta para a página 1: continuar na página 5 depois de
+  // filtrar mostraria uma tela vazia sem explicação.
+  window.pagFiltrarLocal=function(){ PAGINA=1; pagPintar(); };
+
+  window.pagIrPagina=function(n){ PAGINA=Number(n)||1; pagPintar(); window.scrollTo({top:document.getElementById("pag-tabela").offsetTop-160,behavior:"smooth"}); };
+
+  /**
+   * Numeração com janela deslizante: com muitas páginas, mostrar todos
+   * os números vira outra poluição. Aparecem primeira, última, a atual
+   * e as vizinhas; o resto vira reticência.
+   */
+  function renderPaginacao(total){
+    var box=g("pag-paginacao"); if(!box)return;
+    if(total<=1){ box.innerHTML=""; return; }
+
+    var partes=[];
+    partes.push('<button class="pag-pg" data-pg="'+(PAGINA-1)+'"'+(PAGINA===1?' disabled':'')+'>‹</button>');
+
+    var nums=[];
+    for(var i=1;i<=total;i++){
+      if(i===1||i===total||Math.abs(i-PAGINA)<=1)nums.push(i);
+      else if(nums[nums.length-1]!=="...")nums.push("...");
+    }
+    nums.forEach(function(n){
+      if(n==="..."){ partes.push('<span style="color:#94a3b8;padding:0 2px;">…</span>'); return; }
+      partes.push('<button class="pag-pg'+(n===PAGINA?' ativa':'')+'" data-pg="'+n+'">'+n+'</button>');
+    });
+
+    partes.push('<button class="pag-pg" data-pg="'+(PAGINA+1)+'"'+(PAGINA===total?' disabled':'')+'>›</button>');
+    box.innerHTML=partes.join("");
+    box.querySelectorAll("[data-pg]").forEach(function(b){
+      b.addEventListener("click",function(){ if(!b.disabled)pagIrPagina(b.getAttribute("data-pg")); });
+    });
+  }
+
+  function pagPintar(){
+    var tb=g("pag-tabela"); if(!tb)return;
+    var busca=String((g("pag-busca")||{}).value||"").toLowerCase();
+    var lista=LISTA.filter(function(d){
+      return !busca || [d.fornecedor,d.descricao,d.numeroDespesa,d.categoria].join(" ").toLowerCase().indexOf(busca)>=0;
+    });
+
+    // Vencidas primeiro: é a fila de trabalho, não um relatório histórico.
+    lista.sort(function(a,b){
+      var va=(a.statusVencimento==="VENCIDO"&&a.situacao!=="PAGO")?0:1;
+      var vb=(b.statusVencimento==="VENCIDO"&&b.situacao!=="PAGO")?0:1;
+      return va-vb;
+    });
+
+    if(!lista.length){
+      tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:24px;">Nenhuma conta nesta competência.</td></tr>';
+      if(g("pag-paginacao"))g("pag-paginacao").innerHTML="";
+      if(g("pag-contador"))g("pag-contador").textContent="—";
+      return;
+    }
+
+    // Paginação: uma competência cheia passa de 40 linhas, e com três
+    // botões por linha a rolagem fica longa demais para uma fila de
+    // trabalho. O filtro e a ordenação continuam valendo sobre a lista
+    // INTEIRA — a página é só a fatia exibida.
+    var totalPag=Math.max(1,Math.ceil(lista.length/POR_PAGINA));
+    if(PAGINA>totalPag)PAGINA=totalPag;
+    if(PAGINA<1)PAGINA=1;
+    var ini=(PAGINA-1)*POR_PAGINA;
+    var fatia=lista.slice(ini,ini+POR_PAGINA);
+
+    if(g("pag-contador")){
+      g("pag-contador").textContent=lista.length+" conta(s)"+
+        (totalPag>1?" · mostrando "+(ini+1)+"–"+Math.min(ini+POR_PAGINA,lista.length):"");
+    }
+    renderPaginacao(totalPag);
+
+    tb.innerHTML=fatia.map(function(d){
+      var r=ROTULO_SITUACAO[d.situacao]||{txt:d.situacao,cor:"#334155",bg:"#f1f5f9"};
+      var vencida=(d.statusVencimento==="VENCIDO"&&d.situacao!=="PAGO"&&d.situacao!=="CANCELADO");
+      var pill='<span style="display:inline-block;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:800;color:'+r.cor+';background:'+r.bg+';">'+esc(r.txt)+'</span>';
+
+      var comp = d.temComprovante
+        ? '<a href="'+esc(d.linkComprovante)+'" target="_blank" rel="noopener" style="color:#0f8a5f;font-weight:700;">✔ Ver</a>'
+        : (d.situacao==="PAGO"
+            ? '<span style="color:#92400e;font-weight:700;">⚠ Pendente</span>'
+            : '<span style="color:#cbd5e1;">—</span>');
+
+      var acoes=[];
+      if(d.situacao==="A_PAGAR")            acoes.push('<button class="btn btn-navy btn-sm" data-pag-lancar="'+esc(d.idDespesa)+'">🏦 Lançar</button>');
+      if(d.situacao==="LANCADO_BANCO"){
+        acoes.push('<button class="btn btn-green btn-sm" data-pag-confirmar="'+esc(d.idDespesa)+'">✅ Pago</button>');
+        acoes.push('<button class="btn btn-outline btn-sm" data-pag-desfazer="'+esc(d.idDespesa)+'">↩️</button>');
+      }
+      if(d.situacao==="A_PAGAR")            acoes.push('<button class="btn btn-green btn-sm" data-pag-confirmar="'+esc(d.idDespesa)+'">✅ Pago</button>');
+      if(d.situacao==="PAGO")               acoes.push('<button class="btn btn-outline btn-sm" data-pag-comprovante="'+esc(d.idDespesa)+'">📎</button>');
+      acoes.push('<button class="btn btn-outline btn-sm" data-pag-historico="'+esc(d.idDespesa)+'">🕘</button>');
+
+      var detalheStatus = d.statusOriginal && d.situacao==="A_PAGAR" ? " · "+esc(d.statusOriginal) : "";
+      var subLinha = d.situacao==="LANCADO_BANCO" && d.dataLancamentoBanco
+        ? '<div style="font-size:11px;color:#1565C0;">lançado em '+esc(d.dataLancamentoBanco)+(d.lancadoBancoPor?" por "+esc(d.lancadoBancoPor):"")+'</div>'
+        : (d.situacao==="PAGO" && d.dataPagamento
+            ? '<div style="font-size:11px;color:#0f8a5f;">pago em '+esc(d.dataPagamento)+(d.formaPagamento?" · "+esc(d.formaPagamento):"")+'</div>'
+            : "");
+
+      return '<tr'+(vencida?' class="pag-vencida"':'')+'>'+
+        '<td'+(vencida?' style="color:#991b1b;font-weight:800;"':' style="font-weight:700;"')+'>'+esc(d.dataVencimento||"—")+'</td>'+
+        '<td><div class="pag-desc">'+esc(d.descricao||d.categoria||"—")+'</div><div class="pag-meta">'+esc(d.numeroDespesa)+detalheStatus+'</div></td>'+
+        '<td><span class="pag-forn">'+esc(d.fornecedor||"—")+'</span></td>'+
+        '<td style="text-align:right;font-weight:900;white-space:nowrap;">'+esc(d.valor||"—")+'</td>'+
+        '<td>'+pill+subLinha+'</td>'+
+        '<td>'+comp+'</td>'+
+        '<td><div class="pag-acoes">'+acoes.join("")+'</div></td>'+
+      '</tr>';
+    }).join("");
+
+    // Listeners por atributo em vez de onclick inline: o ID da despesa é
+    // um UUID que entraria dentro de uma string JS no HTML, e qualquer
+    // caractere inesperado ali quebraria a linha inteira em silêncio.
+    tb.querySelectorAll("[data-pag-lancar]").forEach(function(b){b.addEventListener("click",function(){pagAbrirLancar(b.getAttribute("data-pag-lancar"));});});
+    tb.querySelectorAll("[data-pag-confirmar]").forEach(function(b){b.addEventListener("click",function(){pagAbrirConfirmar(b.getAttribute("data-pag-confirmar"));});});
+    tb.querySelectorAll("[data-pag-desfazer]").forEach(function(b){b.addEventListener("click",function(){pagAbrirDesfazer(b.getAttribute("data-pag-desfazer"));});});
+    tb.querySelectorAll("[data-pag-comprovante]").forEach(function(b){b.addEventListener("click",function(){pagAbrirComprovante(b.getAttribute("data-pag-comprovante"));});});
+    tb.querySelectorAll("[data-pag-historico]").forEach(function(b){b.addEventListener("click",function(){pagAbrirHistorico(b.getAttribute("data-pag-historico"));});});
+  }
+
+  function achar(id){ for(var i=0;i<LISTA.length;i++) if(LISTA[i].idDespesa===id) return LISTA[i]; return null; }
+  function resumoLinha(d){ return '<strong>'+esc(d.fornecedor||"—")+'</strong> · '+esc(d.valor||"")+' · vence '+esc(d.dataVencimento||"—"); }
+  // Painel visível = classe "open" (.painel-inline.open, DespesasAdmin.html).
+  // Não dá para reaproveitar o abrirModal de Scripts_Despesas: ele não é
+  // exposto em window e fecha uma lista fixa de painéis que não inclui os
+  // desta aba. Aqui fechamos os nossos e abrimos o pedido.
+  var MEUS_PAINEIS=["painel-pag-confirmar","painel-pag-lancar","painel-pag-desfazer","painel-pag-comprovante","painel-pag-historico"];
+  function abrir(id){
+    MEUS_PAINEIS.forEach(function(p){ var el=g(p); if(el) el.classList.remove("open"); });
+    var el=g(id);
+    if(el){ el.classList.add("open"); el.scrollIntoView({behavior:"smooth",block:"start"}); }
+  }
+
+  /* ============ AÇÕES ============ */
+
+  window.pagAbrirLancar=function(id){
+    var d=achar(id); if(!d)return;
+    ID_ATIVO=id;
+    if(g("pag-lancar-info"))g("pag-lancar-info").innerHTML=resumoLinha(d);
+    if(g("pag-data-lancamento"))g("pag-data-lancamento").value=hojeISO();
+    if(g("pag-conta-lancamento"))g("pag-conta-lancamento").value=d.contaBancaria||"";
+    if(g("pag-obs-lancamento"))g("pag-obs-lancamento").value="";
+    abrir("painel-pag-lancar");
+  };
+
+  window.pagSalvarLancamento=function(){
+    var data=(g("pag-data-lancamento")||{}).value;
+    if(!data){aviso("Informe a data do lançamento.","error");return;}
+    fecharPainel("painel-pag-lancar");
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||r.ok!==true){aviso((r&&r.mensagem)||"Falha ao lançar.","error");return;}
+        aviso(r.mensagem,"success"); pagCarregar();
+      })
+      .withFailureHandler(function(e){aviso("Erro: "+((e&&e.message)||e),"error");})
+      .pagLancarNoBanco({
+        idDespesa:ID_ATIVO, dataLancamento:data,
+        formaPagamento:(g("pag-forma-lancamento")||{}).value||"",
+        contaBancaria:(g("pag-conta-lancamento")||{}).value||"",
+        observacao:(g("pag-obs-lancamento")||{}).value||""
+      }, tk());
+  };
+
+  window.pagAbrirConfirmar=function(id){
+    var d=achar(id); if(!d)return;
+    ID_ATIVO=id;
+    if(g("pag-confirmar-info"))g("pag-confirmar-info").innerHTML=resumoLinha(d);
+    if(g("pag-data-pagamento"))g("pag-data-pagamento").value=hojeISO();
+    if(g("pag-forma"))g("pag-forma").value=d.formaPagamento||"";
+    if(g("pag-conta"))g("pag-conta").value=d.contaBancaria||"";
+    if(g("pag-valor-pago"))g("pag-valor-pago").value="";
+    if(g("pag-obs-pagamento"))g("pag-obs-pagamento").value="";
+    abrir("painel-pag-confirmar");
+  };
+
+  window.pagSalvarPagamento=function(){
+    var data=(g("pag-data-pagamento")||{}).value;
+    if(!data){aviso("Informe a data em que o pagamento saiu.","error");return;}
+    var vp=String((g("pag-valor-pago")||{}).value||"").trim();
+    fecharPainel("painel-pag-confirmar");
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||r.ok!==true){aviso((r&&r.mensagem)||"Falha ao confirmar.","error");return;}
+        aviso(r.mensagem, r.semComprovante?"warning":"success");
+        pagCarregar();
+      })
+      .withFailureHandler(function(e){aviso("Erro: "+((e&&e.message)||e),"error");})
+      .pagConfirmarPagamento({
+        idDespesa:ID_ATIVO, dataPagamento:data,
+        formaPagamento:(g("pag-forma")||{}).value||"",
+        contaBancaria:(g("pag-conta")||{}).value||"",
+        valorPago: vp===""?"":num(vp),
+        observacao:(g("pag-obs-pagamento")||{}).value||""
+      }, tk());
+  };
+
+  window.pagAbrirDesfazer=function(id){
+    var d=achar(id); if(!d)return;
+    ID_ATIVO=id;
+    if(g("pag-desfazer-info"))g("pag-desfazer-info").innerHTML=resumoLinha(d)+'<div style="margin-top:6px;font-size:12px;">Lançado em '+esc(d.dataLancamentoBanco||"—")+'.</div>';
+    if(g("pag-motivo-desfazer"))g("pag-motivo-desfazer").value="";
+    abrir("painel-pag-desfazer");
+  };
+
+  window.pagSalvarDesfazer=function(){
+    var motivo=String((g("pag-motivo-desfazer")||{}).value||"").trim();
+    if(!motivo){aviso("Informe o motivo.","error");return;}
+    fecharPainel("painel-pag-desfazer");
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||r.ok!==true){aviso((r&&r.mensagem)||"Falha ao desfazer.","error");return;}
+        aviso(r.mensagem,"success"); pagCarregar();
+      })
+      .withFailureHandler(function(e){aviso("Erro: "+((e&&e.message)||e),"error");})
+      .pagDesfazerLancamentoBanco({idDespesa:ID_ATIVO, motivo:motivo}, tk());
+  };
+
+  window.pagAbrirComprovante=function(id){
+    var d=achar(id); if(!d)return;
+    ID_ATIVO=id;
+    if(g("pag-comprovante-info"))g("pag-comprovante-info").innerHTML=resumoLinha(d)+
+      (d.temComprovante?'<div style="margin-top:6px;font-size:12px;color:#92400e;">Já existe um comprovante ('+esc(d.nomeComprovante)+'). Anexar outro substitui a referência; o arquivo antigo continua no Drive.</div>':"");
+    if(g("pag-arquivo-comprovante"))g("pag-arquivo-comprovante").value="";
+    abrir("painel-pag-comprovante");
+  };
+
+  window.pagSalvarComprovante=function(){
+    var input=g("pag-arquivo-comprovante");
+    if(!input||!input.files||!input.files[0]){aviso("Selecione o arquivo.","error");return;}
+    var f=input.files[0];
+    if(f.size>10*1024*1024){aviso("O arquivo passa de 10MB.","error");return;}
+    var btn=g("btn-pag-comprovante"); if(btn){btn.disabled=true;btn.textContent="Enviando...";}
+
+    var reader=new FileReader();
+    reader.onload=function(){
+      var base64=String(reader.result||"").split(",")[1]||"";
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){btn.disabled=false;btn.textContent="📎 Anexar";}
+          if(!r||r.ok!==true){aviso((r&&r.mensagem)||"Falha ao anexar.","error");return;}
+          fecharPainel("painel-pag-comprovante");
+          aviso(r.mensagem,"success"); pagCarregar();
+        })
+        .withFailureHandler(function(e){
+          if(btn){btn.disabled=false;btn.textContent="📎 Anexar";}
+          aviso("Erro: "+((e&&e.message)||e),"error");
+        })
+        .pagAnexarComprovante({idDespesa:ID_ATIVO, nomeArquivo:f.name, mimeType:f.type, base64:base64}, tk());
+    };
+    reader.onerror=function(){ if(btn){btn.disabled=false;btn.textContent="📎 Anexar";} aviso("Não consegui ler o arquivo.","error"); };
+    reader.readAsDataURL(f);
+  };
+
+  /* ============ HISTÓRICO ============ */
+
+  function renderHistorico(lista, titulo){
+    if(g("pag-historico-info"))g("pag-historico-info").innerHTML=titulo;
+    var box=g("pag-historico-conteudo"); if(!box)return;
+    if(!lista||!lista.length){ box.innerHTML='<div style="color:#94a3b8;padding:16px;text-align:center;">Nenhum evento registrado ainda.</div>'; abrir("painel-pag-historico"); return; }
+    box.innerHTML=lista.map(function(e){
+      return '<div style="border-left:3px solid #1565C0;padding:8px 12px;margin-bottom:8px;background:#f8fafc;border-radius:0 8px 8px 0;">'+
+        '<div style="font-weight:800;color:#001f4d;font-size:12.5px;">'+esc(e.evento)+
+          (e.numeroDespesa?' · '+esc(e.numeroDespesa):"")+'</div>'+
+        '<div style="font-size:11.5px;color:#475569;">'+esc(e.dataHora)+(e.usuario?' · '+esc(e.usuario):"")+'</div>'+
+        (e.fornecedor?'<div style="font-size:11.5px;color:#475569;">'+esc(e.fornecedor)+(e.valor?' · '+esc(e.valor):"")+'</div>':"")+
+        (e.formaPagamento?'<div style="font-size:11.5px;color:#475569;">'+esc(e.formaPagamento)+(e.dataReferencia?' em '+esc(e.dataReferencia):"")+'</div>':"")+
+        (e.detalhe?'<div style="font-size:11.5px;color:#334155;margin-top:3px;">'+esc(e.detalhe)+'</div>':"")+
+      '</div>';
+    }).join("");
+    abrir("painel-pag-historico");
+  }
+
+  window.pagAbrirHistorico=function(id){
+    var d=achar(id);
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||r.ok!==true){aviso((r&&r.mensagem)||"Falha ao ler o histórico.","error");return;}
+        renderHistorico(r.historico, d?resumoLinha(d):"");
+      })
+      .withFailureHandler(function(e){aviso("Erro: "+((e&&e.message)||e),"error");})
+      .pagHistoricoDespesa(id, tk());
+  };
+
+  window.pagVerHistoricoMes=function(){
+    var c=(g("pag-competencia")||{}).value||"";
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||r.ok!==true){aviso((r&&r.mensagem)||"Falha ao ler o histórico.","error");return;}
+        renderHistorico(r.historico, '<strong>Histórico de '+esc(compRotulo(c))+'</strong> — todos os eventos de pagamento do mês.');
+      })
+      .withFailureHandler(function(e){aviso("Erro: "+((e&&e.message)||e),"error");})
+      .pagHistoricoCompetencia(c, tk());
+  };
+
+  window.pagExportarCSV=function(){
+    var rows=[["Vencimento","Numero","Descricao","Favorecido","Valor","Situacao","Lancado em","Lancado por","Pago em","Forma","Conta","Pago por","Comprovante"]]
+      .concat(LISTA.map(function(d){
+        return [d.dataVencimento,d.numeroDespesa,d.descricao,d.fornecedor,d.valor,
+                (ROTULO_SITUACAO[d.situacao]||{}).txt||d.situacao,
+                d.dataLancamentoBanco,d.lancadoBancoPor,d.dataPagamento,d.formaPagamento,
+                d.contaBancaria,d.pagoPor,d.temComprovante?"Sim":"Nao"];
+      }));
+    var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c==null?"":c).replace(/"/g,'""')+'"';}).join(";");}).join("\n");
+    var a=document.createElement("a");
+    a.href=URL.createObjectURL(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}));
+    a.download="sisgep-controle-pagamentos-"+((g("pag-competencia")||{}).value||"")+".csv";
+    a.click();
+    setTimeout(function(){URL.revokeObjectURL(a.href);},4000);
+  };
+
+  /* ============ INIT ============ */
+  // Chamado por mudarTab quando a aba abre pela primeira vez. Não carrega
+  // sozinho no load da página: são duas chamadas ao servidor que só
+  // fazem sentido quando alguém está de fato olhando esta aba.
+  var jaCarregou=false;
+  window.pagInit=function(){
+    if(jaCarregou){ pagCarregar(); return; }
+    jaCarregou=true;
+    pagCarregarCompetencias();
+  };
+})();
+</script>

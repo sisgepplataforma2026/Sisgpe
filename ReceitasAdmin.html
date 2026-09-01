@@ -1,0 +1,457 @@
+<div id="recAdmin" style="display:block;min-height:100%;background:#f0f4f8;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#0f172a;">
+  <style>
+    #recAdmin *{box-sizing:border-box}
+    .rec-head{background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));padding:22px 24px;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+    .rec-title{font-size:21px;font-weight:900;line-height:1.1}.rec-sub{font-size:12px;color:rgba(255,255,255,.68);margin-top:4px}
+    .rec-badge{height:32px;border-radius:999px;border:1px solid rgba(201,168,76,.5);background:rgba(201,168,76,.16);color:#f8d66d;font-size:11px;font-weight:900;padding:0 14px;display:flex;align-items:center}
+    .rec-wrap{padding:18px 22px 34px}
+    .rec-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+    .rec-card{background:#fff;border:1px solid var(--g200,#e2e8f0);border-radius:14px;padding:15px 16px;box-shadow:0 2px 10px rgba(0,20,60,.06)}
+    .rec-card small{display:block;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:var(--g500,#64748b);margin-bottom:8px}
+    .rec-card strong{font-size:26px;font-weight:900;color:var(--navy,#001f4d);word-break:break-word}
+    .rec-card span{display:block;font-size:11px;color:var(--g400,#94a3b8);margin-top:4px}
+    .rec-panel{background:#fff;border:1px solid var(--g200,#e2e8f0);border-radius:14px;box-shadow:0 2px 10px rgba(0,20,60,.06);overflow:hidden;margin-bottom:14px}
+    .rec-panel-head{padding:14px 16px;border-bottom:1px solid #eef2f7;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+    .rec-panel-title{font-size:14px;font-weight:900;color:var(--navy,#001f4d)}
+    .rec-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .rec-btn{height:34px;border-radius:9px;border:1px solid var(--g300,#cbd5e1);background:#fff;color:var(--g700,#334155);font-size:12px;font-weight:800;padding:0 12px;cursor:pointer;font-family:inherit}
+    .rec-btn.primary{background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));border-color:var(--blue,#1565C0);color:#fff}
+    .rec-btn.red{background:#fee2e2;border-color:#fca5a5;color:#991b1b}
+    .rec-btn:disabled{opacity:.55;cursor:not-allowed}
+    .rec-btn.mini{height:26px;padding:0 9px;font-size:10.5px;border-radius:7px}
+    .rec-form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:14px 16px;background:var(--g50,#f8fafc);border-bottom:1px solid #eef2f7}
+    .rec-field label{display:block;font-size:10px;font-weight:900;color:var(--g500,#64748b);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+    .rec-field input,.rec-field select,.rec-field textarea{width:100%;height:36px;border:1.5px solid #dbe4ef;border-radius:9px;padding:0 10px;font-family:inherit;font-size:12.5px;background:#fff}
+    .rec-field textarea{height:64px;padding:8px 10px;resize:vertical}
+    .rec-field.wide{grid-column:span 2}
+    .rec-form-acts{grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end}
+    .rec-search{padding:12px 16px;display:flex;gap:10px;align-items:center;background:#fff;border-bottom:1px solid #eef2f7;flex-wrap:wrap}
+    .rec-search input,.rec-search select{height:36px;border:1.5px solid #dbe4ef;border-radius:9px;padding:0 12px;font-family:inherit;font-size:12.5px;background:#fff}
+    .rec-search input.busca{border-radius:999px;min-width:220px;flex:1}
+    .rec-table-wrap{overflow-x:auto}
+    .rec-table{width:100%;border-collapse:collapse;min-width:1000px}
+    .rec-table th{background:var(--g50,#f8fafc);color:var(--g500,#64748b);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.07em;text-align:left;padding:10px 12px;border-bottom:1px solid var(--g200,#e2e8f0)}
+    .rec-table td{font-size:12.5px;color:var(--g700,#334155);padding:10px 12px;border-bottom:1px solid var(--g100,#f1f5f9);vertical-align:middle}
+    .rec-table tr:hover td{background:var(--g50,#f8fafc)}
+    .rec-table td.val{font-weight:900;color:#0f8a5f;white-space:nowrap;font-variant-numeric:tabular-nums}
+    .rec-pill{display:inline-flex;align-items:center;height:23px;border-radius:999px;padding:0 9px;font-size:10.5px;font-weight:900;white-space:nowrap}
+    .rec-pill.ok{background:#dcfce7;color:#166534}
+    .rec-pill.warn{background:var(--amber-lt,#fef3c7);color:#92400e}
+    .rec-pill.off{background:var(--red-lt,#fee2e2);color:#991b1b}
+    .rec-pill.info{background:#dbeafe;color:#1d4ed8}
+    .rec-pill.neutral{background:var(--g100,#f1f5f9);color:var(--g500,#64748b)}
+    .rec-empty{padding:30px;text-align:center;color:var(--g400,#94a3b8);font-size:13px}
+    .rec-erro{margin:0 0 14px;padding:12px 14px;border-radius:12px;background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;font-size:12.5px;font-weight:700;display:none}
+    .rec-erro.show{display:block}
+    .rec-origem{font-size:10.5px;color:var(--g400,#94a3b8);display:block;margin-top:2px}
+    @media(max-width:1100px){.rec-grid{grid-template-columns:repeat(2,1fr)}.rec-form{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:640px){.rec-grid{grid-template-columns:1fr}.rec-form{grid-template-columns:1fr}.rec-field.wide{grid-column:span 1}}
+  </style>
+
+  <div class="rec-head">
+    <div>
+      <div class="rec-title">Receitas</div>
+      <div class="rec-sub">Contas a receber — mensalidades, eventos, contribuições e outras entradas</div>
+    </div>
+    <div class="rec-badge">SINDEDUCAÇÃO-ES</div>
+  </div>
+
+  <div class="rec-wrap">
+    <div id="recErro" class="rec-erro"></div>
+
+    <div class="rec-grid">
+      <div class="rec-card"><small>Total recebido</small><strong id="recTotalValor">R$ 0,00</strong><span id="recTotalQtd">0 lançamento(s)</span></div>
+      <div class="rec-card"><small>Recebido no mês</small><strong id="recMesValor">R$ 0,00</strong><span id="recMesLabel">—</span></div>
+      <div class="rec-card"><small>A receber</small><strong id="recPendenteValor">R$ 0,00</strong><span id="recPendenteQtd">0 pendente(s)</span></div>
+      <div class="rec-card"><small>Maior categoria</small><strong id="recTopCat" style="font-size:17px;">—</strong><span id="recTopCatValor">—</span></div>
+    </div>
+
+    <div class="rec-panel">
+      <div class="rec-panel-head">
+        <div class="rec-panel-title">Nova receita</div>
+        <div class="rec-actions">
+          <button class="rec-btn" type="button" onclick="recToggleForm()"><span id="recToggleTxt">Abrir formulário</span></button>
+        </div>
+      </div>
+      <div id="recFormBox" style="display:none;">
+        <div class="rec-form">
+          <div class="rec-field"><label>Tipo</label>
+            <select id="recTipo">
+              <option value="Mensalidade">Mensalidade</option>
+              <option value="Taxa Assistencial">Taxa Assistencial</option>
+              <option value="Contribuição">Contribuição</option>
+              <option value="Evento">Evento</option>
+              <option value="Convênio">Convênio</option>
+              <option value="Outros">Outros</option>
+            </select>
+          </div>
+          <div class="rec-field"><label>Categoria</label><input id="recCategoria" placeholder="Ex.: Ingresso Evento"></div>
+          <div class="rec-field"><label>Valor (R$)</label><input id="recValor" placeholder="0,00" inputmode="decimal"></div>
+          <div class="rec-field"><label>Status</label>
+            <select id="recStatus">
+              <option value="RECEBIDO">Recebido</option>
+              <option value="A_RECEBER">A receber</option>
+            </select>
+          </div>
+          <div class="rec-field wide"><label>Descrição</label><input id="recDescricao" placeholder="Do que se trata esta entrada"></div>
+          <div class="rec-field"><label>Empresa / Pagador</label><input id="recEmpresa" placeholder="Escola, associado ou parceiro"></div>
+          <div class="rec-field"><label>CNPJ / CPF</label><input id="recCnpj" placeholder="Opcional"></div>
+          <div class="rec-field"><label>Forma de recebimento</label>
+            <select id="recForma">
+              <option value="">—</option>
+              <option value="PIX">PIX</option>
+              <option value="Boleto">Boleto</option>
+              <option value="Transferência">Transferência</option>
+              <option value="Dinheiro">Dinheiro</option>
+              <option value="Cartão">Cartão</option>
+              <option value="Desconto em folha">Desconto em folha</option>
+            </select>
+          </div>
+          <div class="rec-field"><label>Data de recebimento</label><input id="recDataReceb" type="date"></div>
+          <div class="rec-field"><label>Competência</label><input id="recCompetencia" placeholder="MM/AAAA"></div>
+          <div class="rec-field"><label>Link do comprovante</label><input id="recLink" placeholder="Opcional — URL do Drive"></div>
+          <div class="rec-field wide"><label>Observações</label><textarea id="recObs" placeholder="Opcional"></textarea></div>
+          <div class="rec-form-acts">
+            <button class="rec-btn" type="button" onclick="recLimparForm()">Limpar</button>
+            <button class="rec-btn primary" type="button" id="recBtnSalvar" onclick="recSalvar()">Salvar receita</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rec-panel">
+      <div class="rec-panel-head">
+        <div class="rec-panel-title">Lançamentos</div>
+        <div class="rec-actions">
+          <button class="rec-btn" type="button" onclick="recCarregar()">Atualizar</button>
+          <button class="rec-btn" type="button" onclick="recExportar()">Exportar CSV</button>
+        </div>
+      </div>
+
+      <div class="rec-search">
+        <input class="busca" id="recBusca" placeholder="Buscar por descrição, empresa, categoria..." oninput="recRender()">
+        <select id="recFiltroTipo" onchange="recRender()"><option value="">Todos os tipos</option></select>
+        <select id="recFiltroStatus" onchange="recRender()">
+          <option value="">Todos os status</option>
+          <option value="RECEBIDO">Recebido</option>
+          <option value="A_RECEBER">A receber</option>
+        </select>
+      </div>
+
+      <div class="rec-table-wrap">
+        <table class="rec-table">
+          <thead>
+            <tr>
+              <th>Data</th><th>Tipo / Categoria</th><th>Descrição</th><th>Pagador</th>
+              <th>Forma</th><th>Competência</th><th>Status</th><th style="text-align:right;">Valor</th><th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="recTabela"></tbody>
+        </table>
+      </div>
+      <div id="recVazio" class="rec-empty" style="display:none;">Nenhuma receita encontrada.</div>
+    </div>
+  </div>
+
+<script>
+(function(){
+"use strict";
+
+var REC_LISTA = [];
+var REC_CARREGANDO = false;
+
+function g(id){ return document.getElementById(id); }
+function tokenSessao(){ return typeof SISGEP_TOKEN_SESSAO !== "undefined" ? SISGEP_TOKEN_SESSAO : ""; }
+function aviso(msg, tipo){ if(typeof window.toast === "function") window.toast(msg, tipo || "info"); }
+
+function esc(s){
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
+    return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c];
+  });
+}
+
+function moeda(v){
+  return Number(v || 0).toLocaleString("pt-BR", { style:"currency", currency:"BRL" });
+}
+
+/* Aceita tanto "1.234,56" (digitado) quanto 1234.56 (vindo da planilha). */
+function numero(v){
+  if (typeof v === "number") return isFinite(v) ? v : 0;
+  var s = String(v || "").replace(/\s/g,"").replace("R$","").replace(/\./g,"").replace(",",".");
+  var n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+
+/* A planilha devolve Date para DATA_CADASTRO e às vezes string para
+   DATA_RECEBIMENTO — trata os dois sem quebrar. */
+function dataBR(v){
+  if (!v) return "—";
+  if (v instanceof Date) {
+    if (isNaN(v.getTime())) return "—";
+    return ("0"+v.getDate()).slice(-2)+"/"+("0"+(v.getMonth()+1)).slice(-2)+"/"+v.getFullYear();
+  }
+  var s = String(v).trim();
+  if (!s) return "—";
+  var iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return iso[3]+"/"+iso[2]+"/"+iso[1];
+  var d = new Date(s);
+  if (!isNaN(d.getTime())) return ("0"+d.getDate()).slice(-2)+"/"+("0"+(d.getMonth()+1)).slice(-2)+"/"+d.getFullYear();
+  return s;
+}
+
+function dataOrdenavel(r){
+  var v = r.DATA_RECEBIMENTO || r.DATA_CADASTRO;
+  if (v instanceof Date) return v.getTime();
+  var d = new Date(v);
+  return isNaN(d.getTime()) ? 0 : d.getTime();
+}
+
+function mostrarErro(msg){
+  var el = g("recErro");
+  if (!el) return;
+  if (!msg) { el.className = "rec-erro"; el.textContent = ""; return; }
+  el.className = "rec-erro show";
+  el.textContent = msg;
+}
+
+function normStatus(s){
+  var t = String(s || "").toUpperCase().replace(/\s|-/g, "_");
+  if (t === "A_RECEBER" || t === "PENDENTE" || t === "AGUARDANDO") return "A_RECEBER";
+  if (t) return t;
+  return "RECEBIDO";
+}
+
+function pillStatus(s){
+  var t = normStatus(s);
+  if (t === "RECEBIDO") return '<span class="rec-pill ok">Recebido</span>';
+  if (t === "A_RECEBER") return '<span class="rec-pill warn">A receber</span>';
+  if (t === "CANCELADO") return '<span class="rec-pill off">Cancelado</span>';
+  return '<span class="rec-pill neutral">' + esc(s) + '</span>';
+}
+
+/* ─────────── CARGA ─────────── */
+window.recCarregar = function(){
+  if (REC_CARREGANDO) return;
+  REC_CARREGANDO = true;
+  mostrarErro("");
+
+  google.script.run
+    .withSuccessHandler(function(lista){
+      REC_CARREGANDO = false;
+      REC_LISTA = Array.isArray(lista) ? lista : [];
+      recPopularFiltroTipo();
+      recRender();
+      recResumo();
+    })
+    .withFailureHandler(function(err){
+      REC_CARREGANDO = false;
+      REC_LISTA = [];
+      recRender();
+      /* Sem isto, uma sessão expirada apareceria como "nenhuma receita" —
+         que num painel de dinheiro é pior do que um erro visível. */
+      mostrarErro("Não foi possível carregar as receitas: " + (err && err.message ? err.message : err) +
+                  ". Se sua sessão expirou, entre novamente.");
+    })
+    .listarReceitas(tokenSessao());
+};
+
+function recResumo(){
+  var total = 0, pendente = 0, qtdPend = 0, mes = 0;
+  var agora = new Date();
+  var mesAtual = agora.getMonth(), anoAtual = agora.getFullYear();
+  var porCat = {};
+
+  REC_LISTA.forEach(function(r){
+    var v = numero(r.VALOR);
+    var st = normStatus(r.STATUS);
+
+    if (st === "CANCELADO") return;
+
+    if (st === "A_RECEBER") { pendente += v; qtdPend++; }
+    else {
+      total += v;
+      var d = r.DATA_RECEBIMENTO || r.DATA_CADASTRO;
+      var dt = (d instanceof Date) ? d : new Date(d);
+      if (!isNaN(dt.getTime()) && dt.getMonth() === mesAtual && dt.getFullYear() === anoAtual) mes += v;
+      var cat = String(r.CATEGORIA || r.TIPO || "Sem categoria").trim() || "Sem categoria";
+      porCat[cat] = (porCat[cat] || 0) + v;
+    }
+  });
+
+  g("recTotalValor").textContent = moeda(total);
+  g("recTotalQtd").textContent = REC_LISTA.length + " lançamento(s)";
+  g("recMesValor").textContent = moeda(mes);
+  g("recMesLabel").textContent = ("0"+(mesAtual+1)).slice(-2) + "/" + anoAtual;
+  g("recPendenteValor").textContent = moeda(pendente);
+  g("recPendenteQtd").textContent = qtdPend + " pendente(s)";
+
+  var topNome = "—", topValor = 0;
+  Object.keys(porCat).forEach(function(k){ if (porCat[k] > topValor) { topValor = porCat[k]; topNome = k; } });
+  g("recTopCat").textContent = topNome;
+  g("recTopCatValor").textContent = topValor ? moeda(topValor) : "—";
+}
+
+function recPopularFiltroTipo(){
+  var sel = g("recFiltroTipo");
+  if (!sel) return;
+  var atual = sel.value;
+  var tipos = {};
+  REC_LISTA.forEach(function(r){ var t = String(r.TIPO || "").trim(); if (t) tipos[t] = 1; });
+  var opts = ['<option value="">Todos os tipos</option>'];
+  Object.keys(tipos).sort().forEach(function(t){
+    opts.push('<option value="' + esc(t) + '">' + esc(t) + "</option>");
+  });
+  sel.innerHTML = opts.join("");
+  if (atual) sel.value = atual;
+}
+
+window.recRender = function(){
+  var busca  = String((g("recBusca") || {}).value || "").toLowerCase().trim();
+  var fTipo  = String((g("recFiltroTipo") || {}).value || "");
+  var fStat  = String((g("recFiltroStatus") || {}).value || "");
+
+  var lista = REC_LISTA.filter(function(r){
+    if (fTipo && String(r.TIPO || "") !== fTipo) return false;
+    if (fStat && normStatus(r.STATUS) !== fStat) return false;
+    if (!busca) return true;
+    return [r.DESCRICAO, r.EMPRESA, r.CATEGORIA, r.TIPO, r.CNPJ, r.OBSERVACOES, r.COMPETENCIA]
+      .join(" ").toLowerCase().indexOf(busca) >= 0;
+  });
+
+  lista.sort(function(a,b){ return dataOrdenavel(b) - dataOrdenavel(a); });
+
+  var tb = g("recTabela");
+  if (!tb) return;
+
+  if (!lista.length) {
+    tb.innerHTML = "";
+    g("recVazio").style.display = "block";
+    g("recVazio").textContent = REC_LISTA.length
+      ? "Nenhuma receita corresponde aos filtros aplicados."
+      : "Nenhuma receita lançada ainda.";
+    return;
+  }
+  g("recVazio").style.display = "none";
+
+  tb.innerHTML = lista.map(function(r){
+    var id = esc(r.ID_RECEITA || "");
+    /* Receita criada por outro módulo (ex.: ingresso de evento) — sinaliza
+       a origem para o financeiro não achar que foi digitação manual. */
+    var origem = String(r.OBSERVACOES || "").indexOf("Conciliado automaticamente") >= 0
+      ? '<span class="rec-origem">gerada automaticamente</span>' : "";
+
+    return "<tr>" +
+      "<td>" + esc(dataBR(r.DATA_RECEBIMENTO || r.DATA_CADASTRO)) + "</td>" +
+      "<td><strong>" + esc(r.TIPO || "—") + "</strong><span class='rec-origem'>" + esc(r.CATEGORIA || "") + "</span></td>" +
+      "<td>" + esc(r.DESCRICAO || "—") + origem + "</td>" +
+      "<td>" + esc(r.EMPRESA || "—") + (r.CNPJ ? "<span class='rec-origem'>" + esc(r.CNPJ) + "</span>" : "") + "</td>" +
+      "<td>" + esc(r.FORMA_RECEBIMENTO || "—") + "</td>" +
+      "<td>" + esc(r.COMPETENCIA || "—") + "</td>" +
+      "<td>" + pillStatus(r.STATUS) + "</td>" +
+      "<td class='val' style='text-align:right;'>" + moeda(numero(r.VALOR)) + "</td>" +
+      "<td><button class='rec-btn mini red' type='button' onclick=\"recExcluir('" + id + "')\">Excluir</button></td>" +
+    "</tr>";
+  }).join("");
+};
+
+/* ─────────── FORMULÁRIO ─────────── */
+window.recToggleForm = function(){
+  var box = g("recFormBox");
+  var aberto = box.style.display !== "none";
+  box.style.display = aberto ? "none" : "block";
+  g("recToggleTxt").textContent = aberto ? "Abrir formulário" : "Fechar formulário";
+};
+
+window.recLimparForm = function(){
+  ["recCategoria","recValor","recDescricao","recEmpresa","recCnpj","recDataReceb","recCompetencia","recLink","recObs"]
+    .forEach(function(id){ var el = g(id); if (el) el.value = ""; });
+  g("recTipo").value = "Mensalidade";
+  g("recStatus").value = "RECEBIDO";
+  g("recForma").value = "";
+};
+
+window.recSalvar = function(){
+  var valor = numero(g("recValor").value);
+  var descricao = String(g("recDescricao").value || "").trim();
+
+  if (!descricao) { aviso("Informe a descrição da receita.", "warn"); g("recDescricao").focus(); return; }
+  if (valor <= 0) { aviso("Informe um valor maior que zero.", "warn"); g("recValor").focus(); return; }
+
+  var btn = g("recBtnSalvar");
+  btn.disabled = true;
+  btn.textContent = "Salvando...";
+
+  var dados = {
+    tipo:             g("recTipo").value,
+    categoria:        String(g("recCategoria").value || "").trim(),
+    descricao:        descricao,
+    empresa:          String(g("recEmpresa").value || "").trim(),
+    cnpj:             String(g("recCnpj").value || "").trim(),
+    valor:            valor,
+    formaRecebimento: g("recForma").value,
+    dataRecebimento:  g("recDataReceb").value,
+    competencia:      String(g("recCompetencia").value || "").trim(),
+    status:           g("recStatus").value,
+    observacoes:      String(g("recObs").value || "").trim(),
+    linkComprovante:  String(g("recLink").value || "").trim()
+  };
+
+  google.script.run
+    .withSuccessHandler(function(res){
+      btn.disabled = false;
+      btn.textContent = "Salvar receita";
+      if (res && res.erro) { aviso(res.mensagem || "Não foi possível salvar.", "erro"); return; }
+      aviso("Receita cadastrada.", "ok");
+      recLimparForm();
+      recCarregar();
+    })
+    .withFailureHandler(function(err){
+      btn.disabled = false;
+      btn.textContent = "Salvar receita";
+      aviso("Erro ao salvar: " + (err && err.message ? err.message : err), "erro");
+    })
+    .cadastrarReceita(dados, tokenSessao());
+};
+
+window.recExcluir = function(id){
+  if (!id) return;
+  if (!window.confirm("Excluir esta receita? A ação não pode ser desfeita.")) return;
+
+  google.script.run
+    .withSuccessHandler(function(res){
+      if (res && res.erro) { aviso(res.mensagem || "Não foi possível excluir.", "erro"); return; }
+      aviso("Receita excluída.", "ok");
+      recCarregar();
+    })
+    .withFailureHandler(function(err){
+      aviso("Erro ao excluir: " + (err && err.message ? err.message : err), "erro");
+    })
+    .excluirReceita(id, tokenSessao());
+};
+
+window.recExportar = function(){
+  if (!REC_LISTA.length) { aviso("Nada para exportar.", "warn"); return; }
+  var cols = ["ID_RECEITA","DATA_CADASTRO","TIPO","CATEGORIA","DESCRICAO","EMPRESA","CNPJ","VALOR",
+              "FORMA_RECEBIMENTO","DATA_RECEBIMENTO","COMPETENCIA","STATUS","OBSERVACOES","USUARIO"];
+  var linhas = [cols].concat(REC_LISTA.map(function(r){
+    return cols.map(function(c){
+      var v = r[c];
+      if (c === "DATA_CADASTRO" || c === "DATA_RECEBIMENTO") return dataBR(v);
+      return v == null ? "" : String(v);
+    });
+  }));
+  var csv = linhas.map(function(l){
+    return l.map(function(c){ return '"' + String(c).replace(/"/g,'""') + '"'; }).join(";");
+  }).join("\n");
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type:"text/csv;charset=utf-8" }));
+  a.download = "sisgep-receitas.csv";
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+window.initReceitas = function(){ recCarregar(); };
+
+})();
+</script>
+</div>

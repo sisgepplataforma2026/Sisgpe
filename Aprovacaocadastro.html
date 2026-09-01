@@ -29,28 +29,42 @@
 </div>
 
 <style>
-.aprov-card{background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;padding:18px 20px;display:grid;grid-template-columns:80px 1fr auto;gap:16px;align-items:center;font-family:'Plus Jakarta Sans',sans-serif;}
-.aprov-foto{width:70px;height:70px;border-radius:10px;object-fit:cover;background:#f1f5f9;border:1px solid #e2e8f0;}
-.aprov-foto-vazia{width:70px;height:70px;border-radius:10px;background:#f1f5f9;border:1px dashed #cbd5e1;display:flex;align-items:center;justify-content:center;font-size:22px;color:#94a3b8;}
-.aprov-info b{display:block;font-size:14px;color:#0f172a;}
-.aprov-info small{display:block;font-size:11.5px;color:#64748b;margin-top:2px;}
-.aprov-campo{font-size:11.5px;color:#334155;margin-top:6px;}
-.aprov-campo b{color:#0f172a;font-weight:700;}
+.aprov-card{background:#fff;border:1.5px solid var(--g200,#e2e8f0);border-radius:14px;padding:18px 20px;display:grid;grid-template-columns:80px 1fr auto;gap:16px;align-items:center;font-family:'Plus Jakarta Sans',sans-serif;}
+.aprov-foto{width:70px;height:70px;border-radius:10px;object-fit:cover;background:var(--g100,#f1f5f9);border:1px solid var(--g200,#e2e8f0);}
+.aprov-foto-vazia{width:70px;height:70px;border-radius:10px;background:var(--g100,#f1f5f9);border:1px dashed var(--g300,#cbd5e1);display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--g400,#94a3b8);}
+.aprov-info b{display:block;font-size:14px;color:var(--g900,#0f172a);}
+.aprov-info small{display:block;font-size:11.5px;color:var(--g500,#64748b);margin-top:2px;}
+.aprov-campo{font-size:11.5px;color:var(--g700,#334155);margin-top:6px;}
+.aprov-campo b{color:var(--g900,#0f172a);font-weight:700;}
 .aprov-acoes{display:flex;flex-direction:column;gap:8px;}
 .aprov-btn{border:none;border-radius:8px;padding:9px 16px;font-size:12px;font-weight:800;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;white-space:nowrap;}
-.aprov-btn-aprovar{background:#16a34a;color:#fff;}
-.aprov-btn-rejeitar{background:#fee2e2;color:#991b1b;}
-.sind-secao-titulo{margin-top:34px;padding-top:22px;border-top:2px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;font-family:'Plus Jakarta Sans',sans-serif;}
-.sind-secao-titulo b{display:block;font-size:15px;color:#002f6c;}
-.sind-secao-titulo small{display:block;font-size:11.5px;color:#64748b;margin-top:2px;}
-.sind-badge{background:#C9A84C;color:#002f6c;font-weight:800;font-size:12px;border-radius:20px;padding:4px 12px;font-family:'Plus Jakarta Sans',sans-serif;}
+.aprov-btn-aprovar{background:var(--green,#059669);color:#fff;}
+.aprov-btn-rejeitar{background:var(--red-lt,#fee2e2);color:#991b1b;}
+.sind-secao-titulo{margin-top:34px;padding-top:22px;border-top:2px solid var(--g200,#e2e8f0);display:flex;align-items:center;justify-content:space-between;font-family:'Plus Jakarta Sans',sans-serif;}
+.sind-secao-titulo b{display:block;font-size:15px;color:var(--navy2,#002f6c);}
+.sind-secao-titulo small{display:block;font-size:11.5px;color:var(--g500,#64748b);margin-top:2px;}
+.sind-badge{background:var(--gold,#C9A84C);color:var(--navy2,#002f6c);font-weight:800;font-size:12px;border-radius:20px;padding:4px 12px;font-family:'Plus Jakarta Sans',sans-serif;}
 .sind-tag{display:inline-block;font-size:10px;font-weight:800;border-radius:6px;padding:2px 8px;margin-left:6px;vertical-align:middle;}
 .sind-tag-qr{background:#dbeafe;color:#1d4ed8;}
-.sind-tag-portal{background:#f1f5f9;color:#475569;}
-.sind-link-pdf{font-size:11.5px;font-weight:700;color:#002f6c;text-decoration:underline;}
+.sind-tag-portal{background:var(--g100,#f1f5f9);color:#475569;}
+.sind-link-pdf{font-size:11.5px;font-weight:700;color:var(--navy2,#002f6c);text-decoration:underline;}
 </style>
 
 <script>
+// Achado #5: nome, endereço, celular, e-mail e URL da foto vêm de uma
+// submissão PÚBLICA (Portal do Associado) — precisam ser escapados antes de
+// entrar no innerHTML, senão um valor malicioso executa no navegador de
+// quem aprova. Mesmo padrão de fsaEsc/vadEsc/vcEsc já usado no resto do SISGEP.
+function aprovEsc(v){
+  return String(v==null?'':v).replace(/[&<>"']/g,function(c){
+    return c==='&'?'&amp;':c==='<'?'&lt;':c==='>'?'&gt;':c==='"'?'&quot;':'&#39;';
+  });
+}
+
+// Ficha completa por ID_FICHA, preenchido ao renderizar a lista — evita
+// colocar texto livre (nome do trabalhador) dentro de atributos onclick.
+var APROV_FICHAS_CACHE = {};
+
 function initAprovacaoCadastro(){
   var lista=document.getElementById('aprovLista');
   var vazio=document.getElementById('aprovVazio');
@@ -68,23 +82,24 @@ function initAprovacaoCadastro(){
     itens.forEach(function(it){
       var card=document.createElement('div');
       card.className='aprov-card';
+      var numeroLinhaSeguro = parseInt(it.numeroLinha, 10) || 0;
       card.innerHTML=
-        (it.fotoUrl ? '<img class="aprov-foto" src="'+it.fotoUrl+'">' : '<div class="aprov-foto-vazia">📷</div>') +
+        (it.fotoUrl ? '<img class="aprov-foto" src="'+aprovEsc(it.fotoUrl)+'">' : '<div class="aprov-foto-vazia">📷</div>') +
         '<div class="aprov-info">' +
-          '<b>'+(it.nome||'—')+'</b>' +
-          '<small>CPF: '+(it.cpf||'—')+' · Enviado em '+(it.data||'—')+'</small>' +
-          '<div class="aprov-campo"><b>Endereço:</b> '+(it.logradouro||'—')+', '+(it.numero||'—')+' — '+(it.bairro||'—')+', '+(it.cidade||'—')+' · CEP '+(it.cep||'—')+'</div>' +
-          '<div class="aprov-campo"><b>Celular:</b> '+(it.celular||'—')+(it.celular2 ? ' / '+it.celular2 : '')+' · <b>E-mail:</b> '+(it.email||'—')+'</div>' +
+          '<b>'+aprovEsc(it.nome||'—')+'</b>' +
+          '<small>CPF: '+aprovEsc(it.cpf||'—')+' · Enviado em '+aprovEsc(it.data||'—')+'</small>' +
+          '<div class="aprov-campo"><b>Endereço:</b> '+aprovEsc(it.logradouro||'—')+', '+aprovEsc(it.numero||'—')+' — '+aprovEsc(it.bairro||'—')+', '+aprovEsc(it.cidade||'—')+' · CEP '+aprovEsc(it.cep||'—')+'</div>' +
+          '<div class="aprov-campo"><b>Celular:</b> '+aprovEsc(it.celular||'—')+(it.celular2 ? ' / '+aprovEsc(it.celular2) : '')+' · <b>E-mail:</b> '+aprovEsc(it.email||'—')+'</div>' +
         '</div>' +
         '<div class="aprov-acoes">' +
-          '<button class="aprov-btn aprov-btn-aprovar" onclick="aprovAprovar('+it.numeroLinha+')">✓ Aprovar</button>' +
-          '<button class="aprov-btn aprov-btn-rejeitar" onclick="aprovRejeitar('+it.numeroLinha+')">✕ Rejeitar</button>' +
+          '<button class="aprov-btn aprov-btn-aprovar" onclick="aprovAprovar('+numeroLinhaSeguro+')">✓ Aprovar</button>' +
+          '<button class="aprov-btn aprov-btn-rejeitar" onclick="aprovRejeitar('+numeroLinhaSeguro+')">✕ Rejeitar</button>' +
         '</div>';
       lista.appendChild(card);
     });
 }).withFailureHandler(function(erro){
     lista.innerHTML='<p style="color:#dc2626;font-size:12px;">Erro ao carregar solicitações: '+erro+'</p>';
-  }).listarSolicitacoesPendentes();
+  }).listarSolicitacoesPendentes(SISGEP_TOKEN_SESSAO);
 
   initFichasSindicalizacao();
 }
@@ -101,7 +116,7 @@ function aprovAprovar(numeroLinha){
     else { if(window.mostrarErro) mostrarErro(r.mensagem); else alert(r.mensagem); }
   }).withFailureHandler(function(erro){
     if(window.mostrarErro) mostrarErro('Erro: '+erro); else alert('Erro: '+erro);
-  }).aprovarSolicitacaoCadastro(numeroLinha, aprovNomeUsuarioAtual_());
+  }).aprovarSolicitacaoCadastro(numeroLinha, aprovNomeUsuarioAtual_(), SISGEP_TOKEN_SESSAO);
 }
 
 function aprovRejeitar(numeroLinha){
@@ -112,7 +127,7 @@ function aprovRejeitar(numeroLinha){
     else { if(window.mostrarErro) mostrarErro(r.mensagem); else alert(r.mensagem); }
 }).withFailureHandler(function(erro){
     if(window.mostrarErro) mostrarErro('Erro: '+erro); else alert('Erro: '+erro);
-  }).rejeitarSolicitacaoCadastro(numeroLinha, motivo);
+  }).rejeitarSolicitacaoCadastro(numeroLinha, motivo, aprovNomeUsuarioAtual_(), SISGEP_TOKEN_SESSAO);
 }
 
 function initFichasSindicalizacao(){
@@ -129,7 +144,15 @@ function initFichasSindicalizacao(){
     if(contador) contador.textContent=fichas.length;
     if(fichas.length===0){ vazio.style.display='block'; return; }
 
+    APROV_FICHAS_CACHE = {};
     fichas.forEach(function(f){
+      // Achado #5: NOME_COMPLETO é texto livre digitado pelo próprio
+      // trabalhador no formulário público — nunca vai dentro de um atributo
+      // onclick (mesmo escapado, é fácil errar a combinação aspa-simples/
+      // aspa-dupla). Guardamos a ficha inteira num cache e passamos só o
+      // ID_FICHA (formato interno, seguro) pro botão; sindAprovar busca o
+      // nome no cache pra montar a confirmação.
+      APROV_FICHAS_CACHE[f.ID_FICHA] = f;
       var tagOrigem = f.ORIGEM==='QR_VISITA'
         ? '<span class="sind-tag sind-tag-qr">QR VISITA</span>'
         : '<span class="sind-tag sind-tag-portal">PORTAL</span>';
@@ -138,25 +161,27 @@ function initFichasSindicalizacao(){
       card.innerHTML=
         '<div class="aprov-foto-vazia">🖊️</div>' +
         '<div class="aprov-info">' +
-          '<b>'+(f.NOME_COMPLETO||'—')+' '+tagOrigem+'</b>' +
-          '<small>CPF: '+(f.CPF||'—')+' · Assinada em '+(f.DATA_HORA_ASSINATURA||'—')+
-            (f.DIRETOR_BASE ? ' · Diretor: '+f.DIRETOR_BASE : '')+'</small>' +
-          '<div class="aprov-campo"><b>Escola:</b> '+(f.ESCOLA||'—')+' · <b>Cargo:</b> '+(f.CARGO||'—')+'</div>' +
-          '<div class="aprov-campo"><b>Contato:</b> '+(f.CELULAR||'—')+' · '+(f.EMAIL||'—')+
-            (f.LINK_PDF ? ' · <a class="sind-link-pdf" href="'+f.LINK_PDF+'" target="_blank">Ver ficha PDF</a>' : '')+'</div>' +
+          '<b>'+aprovEsc(f.NOME_COMPLETO||'—')+' '+tagOrigem+'</b>' +
+          '<small>CPF: '+aprovEsc(f.CPF||'—')+' · Assinada em '+aprovEsc(f.DATA_HORA_ASSINATURA||'—')+
+            (f.DIRETOR_BASE ? ' · Diretor: '+aprovEsc(f.DIRETOR_BASE) : '')+'</small>' +
+          '<div class="aprov-campo"><b>Escola:</b> '+aprovEsc(f.ESCOLA||'—')+' · <b>Cargo:</b> '+aprovEsc(f.CARGO||'—')+'</div>' +
+          '<div class="aprov-campo"><b>Contato:</b> '+aprovEsc(f.CELULAR||'—')+' · '+aprovEsc(f.EMAIL||'—')+
+            (f.LINK_PDF ? ' · <a class="sind-link-pdf" href="'+aprovEsc(f.LINK_PDF)+'" target="_blank">Ver ficha PDF</a>' : '')+'</div>' +
         '</div>' +
         '<div class="aprov-acoes">' +
-          '<button class="aprov-btn aprov-btn-aprovar" onclick="sindAprovar(\''+f.ID_FICHA+'\',\''+(f.NOME_COMPLETO||'').replace(/'/g,'')+'\')">✓ Aprovar e matricular</button>' +
-          '<button class="aprov-btn aprov-btn-rejeitar" onclick="sindRejeitar(\''+f.ID_FICHA+'\')">✕ Rejeitar</button>' +
+          '<button class="aprov-btn aprov-btn-aprovar" onclick="sindAprovar(\''+aprovEsc(f.ID_FICHA)+'\')">✓ Aprovar e matricular</button>' +
+          '<button class="aprov-btn aprov-btn-rejeitar" onclick="sindRejeitar(\''+aprovEsc(f.ID_FICHA)+'\')">✕ Rejeitar</button>' +
         '</div>';
       lista.appendChild(card);
     });
   }).withFailureHandler(function(erro){
     lista.innerHTML='<p style="color:#dc2626;font-size:12px;">Erro ao carregar fichas: '+erro+'</p>';
-  }).listarFichasSindicalizacao({status:'ASSINADA'});
+  }).listarFichasSindicalizacao({status:'ASSINADA'}, SISGEP_TOKEN_SESSAO);
 }
 
-function sindAprovar(idFicha, nome){
+function sindAprovar(idFicha){
+  var ficha = APROV_FICHAS_CACHE[idFicha];
+  var nome = ficha ? ficha.NOME_COMPLETO : idFicha;
   if(!confirm('Aprovar a sindicalização de '+nome+'? A matrícula sequencial será emitida e o trabalhador notificado por e-mail.')) return;
   google.script.run.withSuccessHandler(function(r){
     if(r.sucesso){
@@ -167,7 +192,7 @@ function sindAprovar(idFicha, nome){
     }
   }).withFailureHandler(function(erro){
     if(window.mostrarErro) mostrarErro('Erro: '+erro); else alert('Erro: '+erro);
-  }).aprovarFichaSindicalizacao(idFicha, aprovNomeUsuarioAtual_());
+  }).aprovarFichaSindicalizacao(idFicha, aprovNomeUsuarioAtual_(), SISGEP_TOKEN_SESSAO);
 }
 
 function sindRejeitar(idFicha){
@@ -183,6 +208,6 @@ function sindRejeitar(idFicha){
     }
   }).withFailureHandler(function(erro){
     if(window.mostrarErro) mostrarErro('Erro: '+erro); else alert('Erro: '+erro);
-  }).rejeitarFichaSindicalizacao(idFicha, motivo, aprovNomeUsuarioAtual_());
+  }).rejeitarFichaSindicalizacao(idFicha, motivo, aprovNomeUsuarioAtual_(), SISGEP_TOKEN_SESSAO);
 }
 </script>

@@ -81,8 +81,8 @@
   </div>
 
   <div class="card">
-    <label>Operador (quem está emitindo)</label>
-    <input id="operador" value="Marcelha">
+    <label>Operador (identificado pela sua sessão)</label>
+    <input id="operador" value="" readonly style="background:#f1f5f9;color:#64748b;">
     <button class="btn p" style="margin-top:12px" onclick="emitir()" id="btnEmitir">Emitir ingressos</button>
     <div class="res" id="resultado"></div>
   </div>
@@ -92,6 +92,21 @@
   var extras = [];
   var buscaTimer = null;
 
+  // ---- token de sessão: chega uma vez pela URL, some da barra de endereço depois ----
+  function ep_obterTokenSessao(){
+    try{
+      var params = new URLSearchParams(window.location.search);
+      var t = params.get('sessao') || '';
+      if(t){
+        var url = new URL(window.location.href);
+        url.searchParams.delete('sessao');
+        window.history.replaceState(null, '', url.pathname + (url.search || ''));
+      }
+      return t;
+    }catch(e){ return ''; }
+  }
+  var EP_TOKEN = ep_obterTokenSessao();
+
   function money(v){ return 'R$ ' + v.toFixed(2).replace('.', ','); }
 
   // ---- status de vagas ----
@@ -100,7 +115,11 @@
       document.getElementById('vRest').textContent = s.restantes;
       document.getElementById('vLim').textContent = s.limite;
       document.getElementById('vTeste').innerHTML = s.modoTeste ? '<span class="teste">MODO TESTE</span>' : '';
-    }).painelEmissao_status();
+      var opEl = document.getElementById('operador');
+      if(opEl) opEl.value = s.operador || '';
+    }).withFailureHandler(function(e){
+      alert('Sessão inválida ou expirada. Feche esta aba e abra novamente pelo SISGEP.');
+    }).painelEmissao_status(EP_TOKEN);
   }
 
   // ---- busca de associado ----
@@ -109,7 +128,7 @@
     clearTimeout(buscaTimer);
     if(termo.length < 2){ document.getElementById('buscaRes').style.display='none'; return; }
     buscaTimer = setTimeout(function(){
-      google.script.run.withSuccessHandler(mostrarBusca).painelEmissao_buscar(termo);
+      google.script.run.withSuccessHandler(mostrarBusca).painelEmissao_buscar(termo, EP_TOKEN);
     }, 300);
   });
 
@@ -210,17 +229,26 @@
     }).withFailureHandler(function(e){
       btn.disabled = false; btn.textContent = 'Emitir ingressos';
       alert('Erro: ' + e.message);
-    }).painelEmissao_emitirGrupo(itens, document.getElementById('operador').value);
+    }).painelEmissao_emitirGrupo(itens, EP_TOKEN);
   }
 
   function mostrarResultado(res){
     var box = document.getElementById('resultado');
     box.innerHTML = '<h3 style="color:#002f6c;font-size:13px;margin-bottom:6px">Resultado</h3>';
     res.forEach(function(r){
-      var d = document.createElement('div');
-      if(r.ok){ d.className='linha ok'; d.textContent='✅ '+r.numero+' — '+r.nome+' ('+r.categoria+')'+(r.valor?(' · '+money(r.valor)):''); }
-      else{ d.className='linha er'; d.textContent='❌ '+(r.nome||'')+' — '+r.erro; }
-      box.appendChild(d);
+      if(r.ok){
+        var d = document.createElement('div');
+        d.className='linha ok';
+        d.innerHTML = '✅ '+r.numero+' — '+r.nome+' ('+r.categoria+')'+(r.valor?(' · '+money(r.valor)):'')
+          + (r.emailEnviado ? ' · 📧 confirmação enviada' : '')
+          + (r.qrCodeUrl ? '<br><img src="'+r.qrCodeUrl+'" alt="QR do ingresso" style="width:64px;height:64px;margin-top:6px;border:1px solid #d1fae5;border-radius:6px;background:#fff;">' : '');
+        box.appendChild(d);
+      } else {
+        var d2 = document.createElement('div');
+        d2.className='linha er';
+        d2.textContent='❌ '+(r.nome||'')+' — '+r.erro;
+        box.appendChild(d2);
+      }
     });
     // limpa pra próxima emissão
     titular=null; extras=[];

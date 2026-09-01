@@ -5,15 +5,11 @@
 #secCertificadoAdmin *::after { box-sizing: border-box; }
 
 #secCertificadoAdmin {
-  --navy:  #001f4d; --navy2: #002f6c; --blue: #1565C0;
-  --gold:  #C9A84C; --gold2: #f0c843;
-  --bg:    #f0f4f8; --g50: #f8fafc; --g100: #f1f5f9;
-  --g200:  #e2e8f0; --g300: #cbd5e1; --g400: #94a3b8;
-  --g500:  #64748b; --g600: #475569; --g700: #334155;
-  --g800:  #1e293b; --g900: #0f172a;
-  --green: #059669; --green-lt: #d1fae5;
-  --amber: #d97706; --amber-lt: #fef3c7;
-  --red:   #dc2626; --red-lt: #fee2e2;
+  /* Tokens de cor herdados de :root (OficiosStyles.html) — eram
+     redeclarados aqui com os mesmos valores, exceto --navy/--navy2, que
+     usavam um tom levemente diferente (#071b38/#0b3b75) do canônico
+     (#001f4d/#002f6c). Removida a duplicata — ver CLAUDE.md.
+     --violet/--violet-lt não existem lá, mantidos como aditivo local. */
   --violet:#7c3aed; --violet-lt:#ede9fe;
   font-family: 'Plus Jakarta Sans', sans-serif;
 }
@@ -121,22 +117,144 @@
 #certModalOverlay { position: fixed; inset: 0; background: rgba(15,23,42,.52); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 9999; backdrop-filter: blur(3px); }
 #certModalOverlay.ativo { display: flex; }
 #certModalBox { width: min(820px, 100%); background: #fff; border-radius: 20px; box-shadow: 0 30px 80px rgba(0,20,60,.28); overflow: hidden; max-height: 94vh; display: flex; flex-direction: column; font-family: 'Plus Jakarta Sans', sans-serif; }
-#certModalBox .cert-modal-head { padding: 18px 22px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
-#certModalBox .cert-modal-head-l { display: flex; align-items: center; gap: 12px; }
-#certModalBox .cert-modal-ico { width: 40px; height: 40px; border-radius: 11px; background: linear-gradient(135deg, #002f6c, #1565C0); display: flex; align-items: center; justify-content: center; font-size: 18px; }
-#certModalBox .cert-modal-title { font-size: 15px; font-weight: 900; color: #0f172a; }
-#certModalBox .cert-modal-sub   { font-size: 11px; color: #64748b; margin-top: 2px; }
-#certModalBox .cert-modal-body  { padding: 20px 22px; overflow-y: auto; flex: 1; }
-#certModalBox .cert-modal-foot  { padding: 14px 22px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
-#certModalBox .cert-modal-close { width: 36px; height: 36px; border-radius: 999px; border: 1.5px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer; font-size: 17px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: all .14s; }
-#certModalBox .cert-modal-close:hover { background: #fee2e2; border-color: #dc2626; color: #dc2626; }
-#certModalBox .cert-info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
-#certModalBox .cert-info-item { display: flex; flex-direction: column; gap: 3px; }
-#certModalBox .cert-info-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
-#certModalBox .cert-info-val   { font-size: 13px; font-weight: 700; color: #1e293b; }
-#certModalBox .cert-section-title { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #94a3b8; border-bottom: 1px solid #f1f5f9; padding-bottom: 7px; margin-bottom: 12px; margin-top: 16px; }
-#certModalBox .cert-obs-area { width: 100%; min-height: 80px; border-radius: 11px; border: 1.5px solid #cbd5e1; background: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; padding: 11px 13px; outline: none; resize: vertical; line-height: 1.55; color: #1e293b; transition: border-color .16s; }
-#certModalBox .cert-obs-area:focus { border-color: #1565C0; box-shadow: 0 0 0 4px rgba(21,101,192,.09); }
+
+/* Modal de NOVA SOLICITAÇÃO. Reaproveita a caixa do modal de envio via a
+   lista de seletores compartilhada, e acrescenta só o que é próprio dele. */
+#certNovaOverlay { position: fixed; inset: 0; background: rgba(15,23,42,.52); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 10001; backdrop-filter: blur(3px); }
+#certNovaOverlay.ativo { display: flex; }
+#certNovaBox { width: min(760px, 100%); background: #fff; border-radius: 20px; box-shadow: 0 30px 80px rgba(0,20,60,.28); overflow: hidden; max-height: 94vh; display: flex; flex-direction: column; font-family: 'Plus Jakarta Sans', sans-serif; }
+#certNovaBox .cert-nv-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 14px; }
+#certNovaBox .cert-nv-campo { display: flex; flex-direction: column; gap: 4px; }
+#certNovaBox .cert-nv-lbl { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
+#certNovaBox .cert-nv-in { width: 100%; border-radius: 10px; border: 1.5px solid #cbd5e1; background: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; padding: 9px 11px; outline: none; color: #1e293b; }
+#certNovaBox .cert-nv-in:focus { border-color: #1565C0; box-shadow: 0 0 0 4px rgba(21,101,192,.09); }
+/* A ORIGEM DE CADA CAMPO PREENCHIDO. Campo que aparece cheio sem dizer de
+   onde veio passa impressão de conferido — e ninguém relê. */
+#certNovaBox .cert-nv-org { font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: 1px 6px; border-radius: 999px; align-self: flex-start; }
+#certNovaBox .cert-nv-org.hist { background: #eff6ff; color: #1565C0; }
+#certNovaBox .cert-nv-org.regra { background: #ecfdf5; color: #047857; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   O BLOCO REPETIVEL DE BENEFICIARIOS
+
+   Mesmo desenho do bloco de trabalhadores do Oficio (OficiosStyles), que e
+   o padrao que o usuario apontou: card com badge numerada, titulo, sub e o
+   X de remover no canto. Reusar o padrao vale mais que reusar a classe —
+   estes seletores vivem dentro de #certNovaBox e nao vazam para fora.
+   ══════════════════════════════════════════════════════════════════════ */
+#certNovaBox .cert-nv-benef-topo { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:18px 0 8px; }
+#certNovaBox .cert-nv-benef-sub { font-size:11.5px; color:#64748b; margin-top:2px; }
+#certNovaBox .cert-nv-benef-card { border:1.5px solid #e2e8f0; border-radius:12px; padding:12px 14px; margin-bottom:10px; background:#fff; }
+#certNovaBox .cert-nv-benef-cab { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+#certNovaBox .cert-nv-benef-ident { display:flex; align-items:center; gap:10px; }
+#certNovaBox .cert-nv-benef-num { width:26px; height:26px; border-radius:8px; background:#001f4d; color:#fff; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; flex:0 0 auto; }
+#certNovaBox .cert-nv-benef-tit { font-size:13px; font-weight:800; color:#0f172a; }
+#certNovaBox .cert-nv-benef-x { border:1.5px solid #e2e8f0; background:#fff; border-radius:8px; width:26px; height:26px; cursor:pointer; color:#64748b; font-size:13px; line-height:1; }
+#certNovaBox .cert-nv-benef-x:hover { border-color:#dc2626; color:#dc2626; }
+#certNovaBox .cert-nv-benef-vazio { border:1.5px dashed #e2e8f0; border-radius:12px; padding:14px; text-align:center; color:#94a3b8; font-size:12px; }
+/* O RESULTADO DE CADA CARD depois de salvar: protocolo em verde, motivo em
+   vermelho. Fica NO CARD, e nao numa faixa unica no topo — com tres pedidos
+   de uma vez, "um falhou" sem dizer qual nao ajuda ninguem. */
+#certNovaBox .cert-nv-benef-res { margin-top:8px; font-size:11.5px; font-weight:700; padding:6px 9px; border-radius:8px; }
+#certNovaBox .cert-nv-benef-res.ok { background:#ecfdf5; color:#047857; }
+#certNovaBox .cert-nv-benef-res.erro { background:#fef2f2; color:#b91c1c; }
+/* A FAIXA DE RENOVACAO — aparece so quando a memoria achou dependentes. */
+#certNovaBox .cert-nv-renov { border:1.5px solid #bfdbfe; background:#eff6ff; border-radius:12px; padding:12px 14px; margin:14px 0; }
+#certNovaBox .cert-nv-renov-tit { font-size:12.5px; font-weight:800; color:#1565C0; margin-bottom:8px; }
+#certNovaBox .cert-nv-renov-item { font-size:12px; color:#334155; padding:3px 0; }
+#certNovaBox .cert-nv-renov-acoes { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+#certNovaBox .cert-nv-renov-item label { display:flex; align-items:center; gap:8px; cursor:pointer; }
+#certNovaBox .cert-nv-renov-item .quem { font-weight:800; color:#0f172a; }
+#certNovaBox .cert-nv-renov-item .det { color:#64748b; }
+#certNovaBox .cert-nv-org.padrao { background: #fffbeb; color: #b45309; }
+#certNovaBox .cert-nv-org.recusa { background: #fef2f2; color: #dc2626; }
+#certNovaBox .cert-nv-aviso { background: #f8fafc; border: 1px solid #cbd5e1; border-left: 3px solid #1565C0; border-radius: 8px; padding: 8px 11px; font-size: 12px; color: #334155; margin-bottom: 7px; line-height: 1.5; }
+#certNovaBox .cert-nv-aviso.alerta { background: #fffbeb; border-color: #fcd34d; border-left-color: #d97706; color: #92400e; font-weight: 700; }
+.cert-linha-filtros th { padding: 4px 8px 8px !important; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+.cert-filtro-col { width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 7px; background: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px; padding: 4px 6px; color: #334155; outline: none; font-weight: 600; }
+.cert-filtro-col:focus { border-color: #1565C0; box-shadow: 0 0 0 3px rgba(21,101,192,.10); }
+.cert-filtro-col.ativo { border-color: #1565C0; background: #eff6ff; }
+.cert-filtro-data { display: inline-flex; align-items: center; gap: 6px; }
+.cert-filtro-lbl { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: #94a3b8; }
+.cert-input-data { padding: 7px 9px; font-size: 12px; }
+/* Barra de acao em massa: so existe quando ha selecao. Barra fixa com botao
+   vermelho permanente e convite a clique acidental. */
+.cert-barra-sel { display: none; align-items: center; gap: 12px; padding: 9px 14px; margin-bottom: 10px; border-radius: 10px; background: #eff6ff; border: 1px solid #bfdbfe; }
+.cert-barra-sel.ativo { display: flex; }
+.cert-barra-sel-txt { font-size: 12.5px; font-weight: 800; color: #1e3a8a; flex: 1; }
+#certNovaBox .cert-nv-trava { background: #fef2f2; border: 1.5px solid #fecaca; border-left: 4px solid #dc2626; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
+#certNovaBox .cert-nv-trava-tit { font-size: 13px; font-weight: 900; color: #991b1b; display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
+#certNovaBox .cert-nv-trava-l { font-size: 12px; color: #7f1d1d; line-height: 1.55; }
+#certNovaBox .cert-nv-trava-l strong { font-weight: 800; }
+#certNovaBox .cert-nv-trava-acoes { display: flex; gap: 7px; margin-top: 10px; flex-wrap: wrap; }
+#certNovaBox .cert-nv-renov { background: #eff6ff; border: 1px solid #bfdbfe; border-left: 3px solid #1565C0; border-radius: 8px; padding: 8px 11px; margin-bottom: 7px; font-size: 12px; color: #1e3a8a; line-height: 1.5; }
+.cert-tag-renov { display: inline-block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: 1px 6px; border-radius: 999px; background: #eff6ff; color: #1565C0; margin-left: 6px; vertical-align: middle; }
+/* Selo do atendimento presencial. Dourado institucional, MESMA forma do selo
+   de renovação — os dois dizem "esta linha tem uma particularidade", não
+   "esta linha tem problema". O alerta (#d97706) fica reservado para o que
+   trava, como o "sem período". */
+.cert-tag-presencial { display: inline-block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: 1px 6px; border-radius: 999px; background: #fdf6e3; color: #8a6d1f; border: 1px solid #e8d9a8; margin-left: 6px; vertical-align: middle; }
+
+/* FAIXA DO ATENDIMENTO PRESENCIAL, dentro do modal de nova solicitação.
+   Dourada e não vermelha porque não é recusa: o benefício é o mesmo, o que
+   muda é o canal. Ver o cabeçalho de calcularRegraVoucher_ em Voucher.gs. */
+#certNvPresencial { display: none; }
+#certNvPresencial.ativo { display: block; }
+.cert-nv-presencial { border: 1.5px solid #e8d9a8; background: linear-gradient(180deg,#fffdf6,#fdf6e3); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; }
+.cert-nv-presencial .cnp-tit { font-size: 12.5px; font-weight: 800; color: #6b5313; letter-spacing: .01em; margin-bottom: 4px; }
+.cert-nv-presencial .cnp-txt { font-size: 12px; color: #6b5313; line-height: 1.55; }
+.cert-nv-presencial .cnp-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap: 10px; margin-top: 10px; }
+.cert-nv-presencial .cnp-lbl { display: block; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #8a6d1f; margin-bottom: 3px; }
+.cert-nv-presencial .cnp-in { width: 100%; padding: 7px 9px; border: 1.5px solid #e8d9a8; border-radius: 8px; font-size: 12.5px; font-family: inherit; background: #fff; color: #0f172a; }
+#certNovaBox .cert-nv-sug { position: relative; }
+#certNovaBox .cert-nv-lista { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1.5px solid #cbd5e1; border-radius: 10px; box-shadow: 0 12px 30px rgba(0,20,60,.16); max-height: 190px; overflow-y: auto; z-index: 30; display: none; }
+#certNovaBox .cert-nv-lista.ativo { display: block; }
+#certNovaBox .cert-nv-item { padding: 8px 11px; font-size: 12.5px; cursor: pointer; border-bottom: 1px solid #f1f5f9; }
+#certNovaBox .cert-nv-item:hover { background: #eff6ff; }
+#certNovaBox .cert-nv-item small { color: #64748b; display: block; font-size: 11px; }
+
+/* Modal de ENVIO. z-index acima do modal de análise porque ele abre POR CIMA:
+   quem acabou de emitir continua vendo a solicitação atrás, e fechar o envio
+   devolve para onde estava. */
+#certEnvioOverlay { position: fixed; inset: 0; background: rgba(15,23,42,.52); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 10000; backdrop-filter: blur(3px); }
+#certEnvioOverlay.ativo { display: flex; }
+#certEnvioBox { width: min(640px, 100%); background: #fff; border-radius: 20px; box-shadow: 0 30px 80px rgba(0,20,60,.28); overflow: hidden; max-height: 94vh; display: flex; flex-direction: column; font-family: 'Plus Jakarta Sans', sans-serif; }
+#certEnvioBox .cert-env-campo { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+#certEnvioBox .cert-env-lbl { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
+#certEnvioBox .cert-env-input { width: 100%; border-radius: 10px; border: 1.5px solid #cbd5e1; background: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; padding: 10px 12px; outline: none; color: #1e293b; transition: border-color .16s; }
+#certEnvioBox .cert-env-input:focus { border-color: #1565C0; box-shadow: 0 0 0 4px rgba(21,101,192,.09); }
+#certEnvioBox .cert-env-input:disabled { background: #f8fafc; color: #94a3b8; }
+#certEnvioBox .cert-env-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; color: #334155; cursor: pointer; margin-bottom: 8px; }
+#certEnvioBox .cert-env-check input { accent-color: #1565C0; width: 15px; height: 15px; }
+#certEnvioBox .cert-env-dica { font-size: 11px; color: #64748b; line-height: 1.5; margin-top: 3px; }
+/* A origem do e-mail sugerido. "CADASTRO" pode estar velho e quem envia
+   precisa saber que está usando um palpite, não algo conferido. */
+#certEnvioBox .cert-env-origem { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; padding: 2px 8px; border-radius: 999px; }
+#certEnvioBox .cert-env-origem.digitado { background: #ecfdf5; color: #047857; }
+#certEnvioBox .cert-env-origem.cadastro { background: #fffbeb; color: #b45309; }
+/* O aviso de reenvio. Vai no TOPO da seção, não enterrado sob a lista:
+   quem vai reenviar precisa ver antes de clicar, não depois. */
+#certEnvioBox .cert-env-alerta { background: #fffbeb; border: 1.5px solid #fcd34d; color: #92400e; border-radius: 11px; padding: 10px 13px; font-size: 12.5px; font-weight: 800; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+#certEnvioBox .cert-env-hist { font-size: 12px; color: #475569; line-height: 1.7; }
+#certEnvioBox .cert-env-hist-linha { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid #f1f5f9; }
+#certEnvioBox .cert-env-hist-quando { color: #94a3b8; font-weight: 700; white-space: nowrap; font-size: 11px; }
+#certEnvioBox .cert-env-vazio { font-size: 12px; color: #94a3b8; font-style: italic; }
+#certModalBox .cert-modal-head, #certEnvioBox .cert-modal-head, #certNovaBox .cert-modal-head, #certExcluirBox .cert-modal-head { padding: 18px 22px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
+#certModalBox .cert-modal-head-l, #certEnvioBox .cert-modal-head-l, #certExcluirBox .cert-modal-head-l, #certNovaBox .cert-modal-head-l { display: flex; align-items: center; gap: 12px; }
+#certModalBox .cert-modal-ico, #certEnvioBox .cert-modal-ico, #certExcluirBox .cert-modal-ico, #certNovaBox .cert-modal-ico { width: 40px; height: 40px; border-radius: 11px; background: linear-gradient(135deg, #0b3b75, #1565C0); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+#certModalBox .cert-modal-title, #certEnvioBox .cert-modal-title, #certExcluirBox .cert-modal-title, #certNovaBox .cert-modal-title { font-size: 15px; font-weight: 900; color: #0f172a; }
+#certModalBox .cert-modal-sub, #certEnvioBox .cert-modal-sub, #certExcluirBox .cert-modal-sub, #certNovaBox .cert-modal-sub   { font-size: 11px; color: #64748b; margin-top: 2px; }
+#certModalBox .cert-modal-body, #certEnvioBox .cert-modal-body, #certExcluirBox .cert-modal-body, #certNovaBox .cert-modal-body  { padding: 20px 22px; overflow-y: auto; flex: 1; }
+#certModalBox .cert-modal-foot, #certEnvioBox .cert-modal-foot, #certExcluirBox .cert-modal-foot, #certNovaBox .cert-modal-foot  { padding: 14px 22px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
+#certModalBox .cert-modal-close, #certEnvioBox .cert-modal-close, #certExcluirBox .cert-modal-close, #certNovaBox .cert-modal-close { width: 36px; height: 36px; border-radius: 999px; border: 1.5px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer; font-size: 17px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: all .14s; }
+#certModalBox .cert-modal-close:hover, #certEnvioBox .cert-modal-close:hover, #certExcluirBox .cert-modal-close:hover, #certNovaBox .cert-modal-close:hover { background: #fee2e2; border-color: #dc2626; color: #dc2626; }
+#certModalBox .cert-info-grid, #certEnvioBox .cert-info-grid, #certNovaBox .cert-info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
+#certModalBox .cert-info-item, #certEnvioBox .cert-info-item, #certNovaBox .cert-info-item { display: flex; flex-direction: column; gap: 3px; }
+#certModalBox .cert-info-label, #certEnvioBox .cert-info-label, #certNovaBox .cert-info-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
+#certModalBox .cert-info-val, #certEnvioBox .cert-info-val, #certNovaBox .cert-info-val   { font-size: 13px; font-weight: 700; color: #1e293b; }
+#certModalBox .cert-section-title, #certEnvioBox .cert-section-title, #certNovaBox .cert-section-title { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #94a3b8; border-bottom: 1px solid #f1f5f9; padding-bottom: 7px; margin-bottom: 12px; margin-top: 16px; }
+#certModalBox .cert-obs-area, #certEnvioBox .cert-obs-area, #certNovaBox .cert-obs-area { width: 100%; min-height: 80px; border-radius: 11px; border: 1.5px solid #cbd5e1; background: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; padding: 11px 13px; outline: none; resize: vertical; line-height: 1.55; color: #1e293b; transition: border-color .16s; }
+#certModalBox .cert-obs-area:focus, #certEnvioBox .cert-obs-area:focus, #certNovaBox .cert-obs-area:focus { border-color: #1565C0; box-shadow: 0 0 0 4px rgba(21,101,192,.09); }
 
 @media (max-width: 900px) {
   #secCertificadoAdmin .cert-metrics-grid { grid-template-columns: repeat(3, 1fr); }
@@ -157,6 +275,7 @@
         <p>Solicitações, validação, aprovação e emissão de certificados</p>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <button type="button" class="cert-btn cert-btn-violet cert-btn-sm" id="certBtnNova">➕ Nova solicitação</button>
         <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certBtnRecarregar">↻ Atualizar</button>
         <button type="button" class="cert-btn cert-btn-gold cert-btn-sm" id="certBtnExportarCsv">📤 Exportar CSV</button>
       </div>
@@ -210,39 +329,82 @@
             <div class="cert-card-sub" id="certTabelaSub">Carregando...</div>
           </div>
         </div>
+        <!-- FAIXA DE FILTROS — o que NAO cabe numa coluna estreita.
+             Status, modalidade e periodo desceram para a linha de filtro do
+             cabecalho, junto da coluna que cada um filtra. Manter os dois
+             lugares criaria dois controles para a mesma pergunta, e a hora em
+             que eles discordassem seria a hora em que alguem concluiria que a
+             lista esta errada. -->
         <div class="cert-filtros">
           <input type="text" class="cert-input cert-busca" id="certBusca" placeholder="🔍 Nome, CPF, protocolo...">
-          <select class="cert-select" id="certFiltroStatus">
-            <option value="">Todos os status</option>
-            <option value="PENDENTE">Pendente</option>
-            <option value="ANALISE">Em Análise</option>
-            <option value="APROVADO">Aprovado</option>
-            <option value="INDEFERIDO">Indeferido</option>
-            <option value="EMITIDO">Emitido</option>
-          </select>
-          <select class="cert-select" id="certFiltroModalidade">
-            <option value="">Todas as modalidades</option>
-            <option value="CRECHE">Creche</option>
-            <option value="EDUCACAO_INFANTIL">Ed. Infantil</option>
-            <option value="ENSINO_FUNDAMENTAL">Ens. Fundamental</option>
-            <option value="ENSINO_MEDIO">Ens. Médio</option>
-            <option value="TECNICO">Técnico</option>
-            <option value="GRADUACAO">Graduação</option>
-            <option value="POS_GRADUACAO">Pós-Graduação</option>
-          </select>
+          <div class="cert-filtro-data">
+            <span class="cert-filtro-lbl">Data</span>
+            <input type="date" class="cert-input cert-input-data" id="certFiltroDataDe" title="a partir de">
+            <span class="cert-filtro-lbl">até</span>
+            <input type="date" class="cert-input cert-input-data" id="certFiltroDataAte" title="até">
+          </div>
+          <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certLimparFiltros" style="display:none;">Limpar filtros</button>
         </div>
+      <div class="cert-barra-sel" id="certBarraSel">
+        <span class="cert-barra-sel-txt" id="certBarraSelTxt">0 selecionadas</span>
+        <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certSelLimpar">Limpar seleção</button>
+        <button type="button" class="cert-btn cert-btn-danger cert-btn-sm" id="certSelExcluir">🗑 Excluir</button>
       </div>
       <div class="cert-tabela-wrap">
         <table class="cert-tabela">
           <thead>
             <tr>
+              <th style="width:34px;text-align:center;"><input type="checkbox" id="certSelTodos" title="Selecionar os desta página"></th>
               <th>Protocolo</th><th>Solicitante</th><th>Escola</th>
               <th>Modalidade</th><th>Curso</th><th>Período</th>
               <th>Status</th><th>Data</th><th style="text-align:center;">Ações</th>
             </tr>
+            <!-- FILTRO POR COLUNA, embaixo do titulo dela.
+                 Pedido do usuario em 13/08/2026 apontando a propria linha de
+                 cabecalho. Cada controle fica sob a coluna que filtra: nao ha
+                 o que decifrar, e some a duvida de "qual campo filtra o que"
+                 que uma faixa generica sempre deixa. -->
+            <tr class="cert-linha-filtros">
+              <th></th>
+              <th><input type="text" class="cert-filtro-col" id="certFiltroProtocolo" placeholder="filtrar"></th>
+              <th><input type="text" class="cert-filtro-col" id="certFiltroSolicitante" placeholder="nome ou CPF"></th>
+              <th><input type="text" class="cert-filtro-col" id="certFiltroEscola" placeholder="filtrar"></th>
+              <th>
+                <select class="cert-filtro-col" id="certFiltroModalidade">
+                  <option value="">todas</option>
+                  <option value="CRECHE">Creche</option>
+                  <option value="EDUCACAO_INFANTIL">Ed. Infantil</option>
+                  <option value="ENSINO_FUNDAMENTAL">Ens. Fundamental</option>
+                  <option value="ENSINO_MEDIO">Ens. Médio</option>
+                  <option value="TECNICO">Técnico</option>
+                  <option value="GRADUACAO">Graduação</option>
+                  <option value="POS_GRADUACAO">Pós-Graduação</option>
+                  <option value="MESTRADO">Mestrado</option>
+                  <option value="DOUTORADO">Doutorado</option>
+                </select>
+              </th>
+              <th><input type="text" class="cert-filtro-col" id="certFiltroCurso" placeholder="filtrar"></th>
+              <!-- O periodo e montado a partir do que EXISTE na lista, nunca
+                   de uma lista fixa de anos: assim nao oferece periodo vazio
+                   nem esconde um que existe. -->
+              <th><select class="cert-filtro-col" id="certFiltroPeriodo"><option value="">todos</option></select></th>
+              <th>
+                <select class="cert-filtro-col" id="certFiltroStatus">
+                  <option value="">todos</option>
+                  <option value="PENDENTE">Pendente</option>
+                  <option value="ANALISE">Em Análise</option>
+                  <option value="APROVADO">Aprovado</option>
+                  <option value="INDEFERIDO">Indeferido</option>
+                  <option value="EMITIDO">Emitido</option>
+                  <option value="CANCELADO">Cancelado</option>
+                </select>
+              </th>
+              <th></th>
+              <th></th>
+            </tr>
           </thead>
           <tbody id="certTbody">
-            <tr><td colspan="9"><div class="cert-tabela-vazia">⏳ Carregando...</div></td></tr>
+            <tr><td colspan="10"><div class="cert-tabela-vazia">⏳ Carregando...</div></td></tr>
           </tbody>
         </table>
       </div>
@@ -319,6 +481,28 @@
         <button type="button" class="cert-btn cert-btn-success cert-btn-sm"  id="certBtnAprovar">✅ Aprovar</button>
       </div>
 
+      <!-- CORRIGIR O PERIODO QUE FALTOU.
+           So aparece quando a solicitacao esta SEM periodo — e some sozinha
+           depois de corrigida. Fica ANTES da area de emissao de proposito:
+           e o que impede a emissao, entao e o que a pessoa precisa ver
+           primeiro. -->
+      <div id="certCorrPeriodo" style="display:none;margin-top:14px;padding:14px 16px;background:#fffbeb;border-radius:12px;border:1.5px solid #fcd34d;">
+        <div style="font-size:12.5px;font-weight:800;color:#b45309;margin-bottom:6px;">⚠ Esta solicitação está sem PERÍODO DE REFERÊNCIA</div>
+        <div style="font-size:12px;color:#78350f;line-height:1.5;margin-bottom:10px;">
+          Sem ele não emite: o período sai impresso no certificado e é o que
+          impede o mesmo voucher sair duas vezes para a mesma pessoa.
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <select class="cert-nv-in" id="certCorrAno" style="max-width:120px;"></select>
+          <select class="cert-nv-in" id="certCorrSem" style="max-width:150px;">
+            <option value="">semestre</option>
+            <option value="1">1º semestre</option>
+            <option value="2">2º semestre</option>
+          </select>
+          <button type="button" class="cert-btn cert-btn-navy cert-btn-sm" id="certCorrGravar">Gravar período</button>
+        </div>
+      </div>
+
       <!-- Área de emissão -->
       <div id="certModalEmissaoArea" style="display:none;margin-top:14px;padding:14px 16px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;">
         <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;margin-bottom:12px;">📄 Emissão de Documentos</div>
@@ -362,6 +546,429 @@
   </div>
 </div>
 
+<!-- ══════════════════════════════════════════════════════════════════════
+     MODAL DE ENVIO — abre depois de emitir, e também pela lista
+
+     Existe porque emitir e enviar são dois atos, e separá-los é o que
+     permite emitir hoje e mandar amanhã, reenviar quando o associado apaga
+     o e-mail, e abrir o zap quando o e-mail volta.
+
+     REENVIO É ROTINA, NÃO EXCEÇÃO. O associado perde a mensagem, a escola
+     pede de novo, o semestre vira. Por isso o histórico não é rodapé
+     decorativo: é a informação que evita a quarta cópia mandada por quem
+     achava que era a primeira.
+     ══════════════════════════════════════════════════════════════════════ -->
+<div id="certEnvioOverlay">
+  <div id="certEnvioBox">
+    <div class="cert-modal-head">
+      <div class="cert-modal-head-l">
+        <div class="cert-modal-ico">📨</div>
+        <div>
+          <div class="cert-modal-title">Enviar certificado</div>
+          <div class="cert-modal-sub" id="certEnvSub">—</div>
+        </div>
+      </div>
+      <button class="cert-modal-close" id="certEnvFechar">✕</button>
+    </div>
+
+    <div class="cert-modal-body">
+      <div class="cert-info-grid" style="grid-template-columns:repeat(2,1fr);">
+        <div class="cert-info-item"><span class="cert-info-label">Associado</span><span class="cert-info-val" id="certEnvNome">—</span></div>
+        <div class="cert-info-item"><span class="cert-info-label">Código de validação</span><span class="cert-info-val" id="certEnvCodigo">—</span></div>
+        <div class="cert-info-item"><span class="cert-info-label">Curso / período</span><span class="cert-info-val" id="certEnvCurso">—</span></div>
+        <div class="cert-info-item"><span class="cert-info-label">Emitido em</span><span class="cert-info-val" id="certEnvEmitido">—</span></div>
+      </div>
+
+      <div class="cert-section-title">E-mail</div>
+      <div class="cert-env-campo">
+        <label class="cert-env-lbl" for="certEnvPara">Para (associado)</label>
+        <input type="email" class="cert-env-input" id="certEnvPara" placeholder="e-mail do associado">
+      </div>
+
+      <label class="cert-env-check">
+        <input type="checkbox" id="certEnvCopiaAtiva" checked>
+        Enviar cópia para a instituição de ensino
+      </label>
+      <div class="cert-env-campo">
+        <input type="email" class="cert-env-input" id="certEnvCopia" placeholder="e-mail da instituição">
+        <div class="cert-env-dica" id="certEnvOrigemDica"></div>
+      </div>
+
+      <label class="cert-env-check">
+        <input type="checkbox" id="certEnvAnexo" checked>
+        Anexar o PDF à mensagem
+      </label>
+
+      <div style="display:flex;justify-content:flex-end;margin-top:12px;">
+        <button type="button" class="cert-btn cert-btn-violet cert-btn-sm" id="certEnvBtnEmail">📧 Enviar por e-mail</button>
+      </div>
+
+      <div class="cert-section-title">WhatsApp</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div>
+          <div class="cert-info-val" id="certEnvTelefone">—</div>
+          <!-- O botão diz ABRIR e não ENVIAR de propósito: o SISGEP não manda
+               zap. Não existe API de WhatsApp em nenhum arquivo do projeto —
+               o que existe, em oito telas, é um link wa.me aberto numa aba
+               nova com a mensagem já escrita, e quem aperta enviar é a
+               pessoa, no aparelho dela. Botão que promete o que não faz é
+               como se perde a confiança numa tela inteira. -->
+          <div class="cert-env-dica">O SISGEP não envia WhatsApp — abre a conversa com a mensagem pronta, e você envia.</div>
+        </div>
+        <button type="button" class="cert-btn cert-btn-success cert-btn-sm" id="certEnvBtnZap">💬 Abrir WhatsApp</button>
+      </div>
+
+      <div class="cert-section-title">Já enviado</div>
+      <div id="certEnvAlerta" style="display:none;"></div>
+      <div class="cert-env-hist" id="certEnvHistorico"></div>
+    </div>
+
+    <div class="cert-modal-foot">
+      <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certEnvFechar2">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     NOVA SOLICITAÇÃO — a secretaria transcreve o e-mail do associado
+
+     Hoje o associado pede por e-mail e o sindicato gera. Quem digita aqui
+     JÁ LEU o e-mail e os anexos — por isso existe o botão "Salvar e
+     aprovar" ao lado de "Salvar em análise": aprovar direto economiza dois
+     cliques por certificado sem perder o registro de quem aprovou.
+
+     O formulário separa ONDE TRABALHA de ONDE ESTUDA. São empresas
+     diferentes — "empregado da MULTIVIX", "junto à empresa educacional
+     IESES" — e o cadastro tinha um campo só, o que impedia mandar a cópia
+     do certificado para a faculdade certa.
+     ══════════════════════════════════════════════════════════════════════ -->
+<div id="certExcluirOverlay" style="position:fixed;inset:0;background:rgba(15,23,42,.52);display:none;align-items:center;justify-content:center;padding:16px;z-index:10002;backdrop-filter:blur(3px);">
+  <div id="certExcluirBox" style="width:min(560px,100%);background:#fff;border-radius:18px;box-shadow:0 30px 80px rgba(0,20,60,.28);overflow:hidden;max-height:90vh;display:flex;flex-direction:column;font-family:'Plus Jakarta Sans',sans-serif;">
+    <div class="cert-modal-head">
+      <div class="cert-modal-head-l">
+        <div class="cert-modal-ico" style="background:linear-gradient(135deg,#b91c1c,#dc2626);">🗑</div>
+        <div>
+          <div class="cert-modal-title">Excluir solicitações</div>
+          <div class="cert-modal-sub">Vão para a lixeira — dá para restaurar</div>
+        </div>
+      </div>
+      <button class="cert-modal-close" id="certExcluirFechar">✕</button>
+    </div>
+    <div class="cert-modal-body">
+      <div id="certExcluirLista"></div>
+      <div style="margin-top:12px;">
+        <label class="cert-nv-lbl">Motivo (opcional, fica gravado na lixeira)</label>
+        <textarea class="cert-nv-in" id="certExcluirMotivo" rows="2" style="resize:vertical;width:100%;box-sizing:border-box;" placeholder="cadastro em duplicidade, teste, digitado por engano..."></textarea>
+      </div>
+    </div>
+    <div class="cert-modal-foot">
+      <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certExcluirCancelar">Cancelar</button>
+      <button type="button" class="cert-btn cert-btn-danger cert-btn-sm" id="certExcluirConfirmar">Mover para a lixeira</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DO DOCUMENTO — prévia, geração e o que fazer depois.
+     Pedido do usuário em 13/08/2026: "tem que abrir um modal igual ao
+     ofício", "prévia e gerar", "após gerado abre para enviar e-mail e zap,
+     imprimir, baixar".
+
+     DOIS ESTADOS NO MESMO MODAL, e a diferença entre eles é o que existe:
+     antes de gerar há rascunho — dá para imprimir e conferir, mas não há o
+     que enviar, porque não existe documento nem código de validação. Depois
+     de gerar aparecem baixar e os dois envios, e o botão Gerar some: a
+     segunda emissão devolve o mesmo código, não um novo. -->
+<div id="certDocOverlay" style="position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;padding:14px;z-index:10003;backdrop-filter:blur(3px);">
+  <div id="certDocBox" style="width:min(900px,100%);height:min(92vh,100%);background:#fff;border-radius:18px;box-shadow:0 30px 80px rgba(0,20,60,.3);overflow:hidden;display:flex;flex-direction:column;font-family:'Plus Jakarta Sans',sans-serif;">
+    <div class="cert-modal-head">
+      <div class="cert-modal-head-l">
+        <div class="cert-modal-ico">🎓</div>
+        <div>
+          <div class="cert-modal-title" id="certDocTitulo">Certificado de Bolsa</div>
+          <div class="cert-modal-sub" id="certDocSub">—</div>
+        </div>
+      </div>
+      <button class="cert-modal-close" id="certDocFechar">✕</button>
+    </div>
+
+    <div style="flex:1;min-height:0;background:#e9edf3;padding:12px;overflow:auto;">
+      <div id="certDocCarregando" style="text-align:center;color:#64748b;font-size:13px;padding:40px 0;">⏳ Montando o documento...</div>
+      <iframe id="certDocFrame" title="Prévia do certificado"
+              style="display:none;width:100%;height:100%;min-height:520px;border:0;background:#fff;box-shadow:0 2px 6px rgba(15,39,71,.14),0 12px 34px rgba(15,39,71,.18);"></iframe>
+    </div>
+
+    <div class="cert-modal-foot">
+      <span id="certDocAviso" style="margin-right:auto;font-size:11.5px;color:#64748b;"></span>
+      <button type="button" id="certDocImprimir" class="cert-btn cert-btn-secondary">🖨 Imprimir</button>
+      <button type="button" id="certDocBaixar"   class="cert-btn cert-btn-secondary" style="display:none;">⬇ Baixar PDF</button>
+      <button type="button" id="certDocEnviar"   class="cert-btn cert-btn-secondary" style="display:none;">📧 E-mail / 📱 WhatsApp</button>
+      <button type="button" id="certDocGerar"    class="cert-btn cert-btn-primary">🎓 Gerar certificado</button>
+    </div>
+  </div>
+</div>
+
+<div id="certNovaOverlay">
+  <div id="certNovaBox">
+    <div class="cert-modal-head">
+      <div class="cert-modal-head-l">
+        <div class="cert-modal-ico">➕</div>
+        <div>
+          <div class="cert-modal-title">Nova solicitação de bolsa</div>
+          <div class="cert-modal-sub">Recebida por e-mail do associado</div>
+        </div>
+      </div>
+      <button class="cert-modal-close" id="certNvFechar">✕</button>
+    </div>
+
+    <div class="cert-modal-body">
+      <!-- A trava de "um voucher por pessoa, por curso, por periodo" e a
+           etiqueta de renovacao. Ficam ANTES de tudo porque a resposta que
+           elas dao muda o que fazer com o formulario inteiro: nao adianta
+           conferir CNPJ de instituicao numa solicitacao que nao pode existir. -->
+      <div id="certNvTrava"></div>
+      <div id="certNvAvisos"></div>
+
+      <!-- ATENDIMENTO PRESENCIAL. Aparece quando a situação sindical for
+           "Não associado", e some quando voltar para associado. Fica aqui em
+           cima, junto da trava e dos avisos, porque muda o que fazer com o
+           formulário inteiro: quem atende precisa saber, ANTES de digitar
+           curso e instituição, que aquele voucher não vai por e-mail.
+           Dourado institucional: não é recusa, é outro canal. -->
+      <div id="certNvPresencial">
+        <div class="cert-nv-presencial">
+          <div class="cnp-tit">🏛️ Atendimento presencial</div>
+          <div class="cnp-txt">
+            <strong>O benefício é o mesmo.</strong> Muda a forma: a solicitação
+            é entregue em papel e o voucher é retirado na sede — ele
+            <strong>não será enviado por e-mail</strong>.
+          </div>
+          <div class="cnp-grid">
+            <div>
+              <label class="cnp-lbl" for="certNvPapelData">Papel recebido em</label>
+              <input type="date" class="cnp-in" id="certNvPapelData">
+            </div>
+            <div>
+              <label class="cnp-lbl" for="certNvPapelQuem">Recebido por</label>
+              <input type="text" class="cnp-in" id="certNvPapelQuem" placeholder="quem atendeu">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cert-section-title" style="margin-top:0;">Quem pede</div>
+      <div class="cert-nv-campo cert-nv-sug" style="margin-bottom:10px;">
+        <label class="cert-nv-lbl">Buscar associado (nome ou CPF)</label>
+        <input type="text" class="cert-nv-in" id="certNvBusca" placeholder="digite ao menos 3 caracteres" autocomplete="off">
+        <div class="cert-nv-lista" id="certNvListaAssoc"></div>
+      </div>
+      <div class="cert-nv-grid">
+        <div class="cert-nv-campo"><label class="cert-nv-lbl">CPF</label><input class="cert-nv-in" id="certNvCpf"></div>
+        <div class="cert-nv-campo"><label class="cert-nv-lbl">Nome do associado</label><input class="cert-nv-in" id="certNvNome"></div>
+        <div class="cert-nv-campo"><label class="cert-nv-lbl">E-mail</label><input class="cert-nv-in" id="certNvEmail"></div>
+        <div class="cert-nv-campo"><label class="cert-nv-lbl">Telefone</label><input class="cert-nv-in" id="certNvTelefone"></div>
+        <!-- SÓ ASSOCIADO TEM DIREITO. O campo fica aqui em cima, junto de
+             quem pede, porque é a primeira coisa que decide se vale a pena
+             preencher o resto: escolher "não associado" zera o percentual e
+             mostra o motivo, antes de digitar curso e instituição. -->
+        <div class="cert-nv-campo">
+          <label class="cert-nv-lbl">Situação sindical</label>
+          <select class="cert-nv-in" id="certNvSituacao">
+            <option value="ASSOCIADO">Associado</option>
+            <option value="NAO_ASSOCIADO">Não associado</option>
+            <option value="">— não informado —</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="cert-section-title">Onde trabalha</div>
+      <!-- A escola vem da base das 679, não de texto livre. Nome digitado à
+           mão não casa com nada depois — e o escolaId, que a Fase 4 usa para
+           amarrar a solicitação à escola de verdade, nunca seria preenchido. -->
+      <div class="cert-nv-campo cert-nv-sug" style="margin-bottom:10px;">
+        <label class="cert-nv-lbl">Escola / empregador <span id="certNvOrgEscola"></span></label>
+        <input type="text" class="cert-nv-in" id="certNvEscola" placeholder="nome, CNPJ ou cidade" autocomplete="off">
+        <div class="cert-nv-lista" id="certNvListaEscola"></div>
+      </div>
+      <div class="cert-nv-grid">
+        <div class="cert-nv-campo"><label class="cert-nv-lbl">CNPJ da escola</label><input class="cert-nv-in" id="certNvCnpjEscola"></div>
+        <div class="cert-nv-campo"><label class="cert-nv-lbl">Cidade</label><input class="cert-nv-in" id="certNvCidadeEscola"></div>
+      </div>
+
+      <div class="cert-section-title">Onde estuda</div>
+      <div class="cert-nv-campo cert-nv-sug" style="margin-bottom:10px;">
+        <label class="cert-nv-lbl">Instituição de ensino <span id="certNvOrgInst"></span></label>
+        <input type="text" class="cert-nv-in" id="certNvInstituicao" autocomplete="off">
+        <div class="cert-nv-lista" id="certNvListaInst"></div>
+      </div>
+      <div class="cert-nv-grid">
+        <div class="cert-nv-campo"><label class="cert-nv-lbl">CNPJ da instituição</label><input class="cert-nv-in" id="certNvCnpjInst"></div>
+        <div class="cert-nv-campo"><label class="cert-nv-lbl">E-mail da instituição <span id="certNvOrgEmailInst"></span></label><input class="cert-nv-in" id="certNvEmailInst"></div>
+      </div>
+
+      <div class="cert-section-title">O benefício</div>
+      <div class="cert-nv-grid">
+        <!-- QUEM É O BENEFICIÁRIO decide o que aparece a seguir.
+             Com "Próprio", os campos de dependente somem: nome, idade e a
+             declaração de IR não têm o que dizer quando o beneficiário é o
+             próprio associado, e campo vazio na tela é campo que alguém
+             tenta preencher.
+             O seletor também SUBSTITUI "Parentesco" e "Ordem do filho" — os
+             dois eram deduzíveis daqui, e pedir três vezes a mesma coisa é
+             convite a contradição: filho 2 com parentesco "Cônjuge" era um
+             estado que a tela antiga permitia. -->
+        <div class="cert-nv-campo">
+          <label class="cert-nv-lbl">Beneficiário</label>
+          <select class="cert-nv-in" id="certNvQuem">
+            <option value="PROPRIO">Próprio (titular)</option>
+            <option value="CONJUGE">Cônjuge</option>
+            <option value="FILHO_1">1º filho</option>
+            <option value="FILHO_2">2º filho</option>
+            <option value="FILHO_3">3º filho</option>
+            <option value="ENTEADO">Enteado</option>
+          </select>
+        </div>
+        <div class="cert-nv-campo" id="certNvBoxNome" style="display:none;">
+          <label class="cert-nv-lbl">Nome do beneficiário</label>
+          <input class="cert-nv-in" id="certNvBeneficiario">
+        </div>
+        <div class="cert-nv-campo">
+          <label class="cert-nv-lbl">Modalidade</label>
+          <select class="cert-nv-in" id="certNvModalidade">
+            <option value="">—</option>
+            <option value="CRECHE">Creche (0–3)</option>
+            <option value="EDUCACAO_INFANTIL">Educação Infantil (4–5)</option>
+            <option value="ENSINO_FUNDAMENTAL">Ensino Fundamental</option>
+            <option value="ENSINO_MEDIO">Ensino Médio</option>
+            <option value="TECNICO">Técnico</option>
+            <option value="GRADUACAO">Graduação</option>
+            <option value="POS_GRADUACAO">Pós-Graduação</option>
+            <option value="MESTRADO">Mestrado</option>
+            <option value="DOUTORADO">Doutorado</option>
+          </select>
+        </div>
+        <div class="cert-nv-campo">
+          <label class="cert-nv-lbl">Área (graduação)</label>
+          <select class="cert-nv-in" id="certNvArea">
+            <option value="">—</option>
+            <option value="HUMANAS">Humanas</option>
+            <option value="SAUDE">Saúde</option>
+            <option value="ENGENHARIA">Engenharia / Exatas</option>
+          </select>
+        </div>
+        <div class="cert-nv-campo"><label class="cert-nv-lbl">Curso</label><input class="cert-nv-in" id="certNvCurso"></div>
+        <div class="cert-nv-campo" id="certNvBoxIdade" style="display:none;">
+          <label class="cert-nv-lbl">Idade do beneficiário</label>
+          <input class="cert-nv-in" id="certNvIdade" type="number" min="0" max="120">
+        </div>
+        <div class="cert-nv-campo" id="certNvBoxIR" style="display:none;">
+          <label class="cert-nv-lbl">Declarado no IR?</label>
+          <select class="cert-nv-in" id="certNvEnteadoIR">
+            <option value="">—</option><option value="SIM">Sim</option><option value="NAO">Não</option>
+          </select>
+        </div>
+        <!-- PERIODO EM DOIS SELETORES, e nao um campo de texto.
+             O campo livre aceitava "2026", "2026/1", "1o sem", "2026.1" — e
+             cada variacao virava uma janela diferente para a trava de "um por
+             periodo". Pior: sem o semestre, o sistema nao consegue saber se e
+             a mesma janela, e o atendimento parava por um defeito do
+             formulario. Aqui a pergunta muda com o regime: semestral pede
+             semestre, anual nao pede, porque nao existe. O valor gravado
+             continua "2026/1" e "2026" — a planilha nao muda. -->
+        <div class="cert-nv-campo">
+          <label class="cert-nv-lbl">Período de referência</label>
+          <div style="display:flex;gap:6px;">
+            <select class="cert-nv-in" id="certNvPeriodoAno" style="flex:1;"></select>
+            <select class="cert-nv-in" id="certNvPeriodoSem" style="flex:1;">
+              <option value="">semestre</option>
+              <option value="1">1º semestre</option>
+              <option value="2">2º semestre</option>
+            </select>
+          </div>
+        </div>
+        <div class="cert-nv-campo">
+          <label class="cert-nv-lbl">Percentual (%) <span id="certNvOrgPct"></span></label>
+          <input class="cert-nv-in" id="certNvPercentual" type="number" min="0" max="100">
+        </div>
+        <!-- REGIME É SELETOR, não texto livre. Só existem dois — anual e
+             semestral — e é o regime que define de quanto em quanto tempo o
+             associado volta a pedir. Digitado à mão viraria "Anual",
+             "ANUAL", "anual" e "1 ano" na mesma coluna, e qualquer contagem
+             de renovação por regime pararia de fechar.
+             A regra da convenção já devolve um sugerido (semestral para
+             graduação, anual para o resto); o seletor deixa corrigir. -->
+        <div class="cert-nv-campo">
+          <label class="cert-nv-lbl">Regime <span id="certNvOrgRegime"></span></label>
+          <select class="cert-nv-in" id="certNvRegime">
+            <option value="">—</option>
+            <option value="ANUAL">Anual</option>
+            <option value="SEMESTRAL">Semestral</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- A FAIXA DE RENOVACAO — so aparece quando a memoria acha alguem.
+           Comeca escondida e some quando nao ha o que renovar: faixa vazia
+           na tela e ruido que a pessoa aprende a ignorar, e no dia em que
+           tiver conteudo ela ja nao olha mais. -->
+      <div class="cert-nv-renov" id="certNvRenov" style="display:none;">
+        <div class="cert-nv-renov-tit" id="certNvRenovTit"></div>
+        <div id="certNvRenovLista"></div>
+        <div class="cert-nv-renov-acoes">
+          <button type="button" class="cert-btn cert-btn-navy cert-btn-sm" id="certNvRenovarBtn"></button>
+          <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certNvRenovarNao">Montar na mão</button>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           OUTROS BENEFICIARIOS — o bloco repetivel, no padrao de Oficios.
+
+           O beneficiario de cima continua sendo o numero 1 e nao mudou de
+           lugar: quem so cadastra um nao ve diferenca nenhuma. Este bloco e
+           acrescimo, e comeca vazio.
+
+           A escolha de ACRESCENTAR em vez de reestruturar o modal inteiro e
+           deliberada: a tela de cima ja funciona e ja tem teste, e mexer
+           nela para caber tres seria trocar risco por elegancia.
+           ══════════════════════════════════════════════════════════════ -->
+      <div class="cert-nv-benef-topo">
+        <div>
+          <div class="cert-section-title" style="margin:0;">Outros beneficiários</div>
+          <div class="cert-nv-benef-sub" id="certNvBenefSub">Até 3 dependentes no mesmo pedido</div>
+        </div>
+        <button type="button" class="cert-btn cert-btn-navy cert-btn-sm" id="certNvBenefAdd">+ Adicionar</button>
+      </div>
+      <div id="certNvBenefLista"></div>
+
+      <div class="cert-section-title">Observações</div>
+      <textarea class="cert-obs-area" id="certNvObs" placeholder="O que o e-mail do associado dizia, o que falta, o que foi combinado..."></textarea>
+    </div>
+
+    <div class="cert-modal-foot">
+      <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certNvCancelar">Cancelar</button>
+      <button type="button" class="cert-btn cert-btn-gold cert-btn-sm" id="certNvSalvarAnalise">Salvar em análise</button>
+      <button type="button" class="cert-btn cert-btn-success cert-btn-sm" id="certNvSalvarAprovar">Salvar e aprovar</button>
+    </div>
+  </div>
+</div>
+
+<!-- FECHA #secCertificadoAdmin, aberto lá em cima.
+
+     Ele ficou 30+ commits SEM FECHAR, e o estrago não aparecia aqui: como o
+     include() cola todos os arquivos num HTML só, e o Certificado entra em
+     index.html ANTES de Aprovacaocadastro, FichasSindicaisAdmin e
+     Carteirinhaadmin, esses tres modulos ficavam DENTRO desta secao — que
+     e escondida quando o Certificado nao esta ativo e tem fundo navy.
+
+     Sintoma relatado pelo usuario em 19/08/2026: "o modulo de
+     sindicalizacao esta todo azul, nao abre nada". Nao era erro de
+     JavaScript nem de backend: era uma tag faltando.
+
+     Fecha AQUI, no fim do arquivo, e nao logo apos a lista, de proposito:
+     assim os cinco overlays de modal continuam exatamente onde ja estavam,
+     dentro da secao. Fechar antes deles mudaria o que herda estilo e
+     visibilidade — correcao de tag nao pode virar mudanca de layout. -->
+</div>
+
 <script>
 (function(){
 'use strict';
@@ -374,10 +981,48 @@ var _buscaTimer  = null;
 var _solAtual    = null;
 
 function g(id){ return document.getElementById(id); }
+function certToken(){ return (typeof SISGEP_TOKEN_SESSAO!=='undefined') ? SISGEP_TOKEN_SESSAO : ''; }
 function escHtml(t){ return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function normTxt(t){ return String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim(); }
 
+/* A DATA VINHA CRUA — e foi ela que empurrou a coluna "Ações" para fora.
+ *
+ * O valor chega como Date do Apps Script e virava
+ * "Thu Aug 13 2026 02:21:00 GMT-0300 (Horário Padrão de Brasília)": 55
+ * caracteres numa coluna que precisa de 14. A tabela esticava, e o botão de
+ * ação — que sempre esteve lá, no cabeçalho e na linha — ficava fora da
+ * área visível. O usuário viu "não tem botão de ação"; o que havia era uma
+ * coluna espremida contra a borda.
+ *
+ * Dia e hora bastam: quem opera quer saber se entrou hoje ou semana passada,
+ * não o fuso horário. */
+function certData(v){
+  if(!v) return '—';
+  var d = (v instanceof Date) ? v : new Date(v);
+  if(isNaN(d.getTime())) return String(v).slice(0,16);
+  function dd(n){ return (n<10?'0':'')+n; }
+  return dd(d.getDate())+'/'+dd(d.getMonth()+1)+'/'+d.getFullYear()
+       + ' ' + dd(d.getHours())+':'+dd(d.getMinutes());
+}
+
 function msg(texto, tipo){
+  /* O FEEDBACK IA PARAR ATRÁS DO MODAL.
+   *
+   * `#certMsgBox` fica na área da lista. Com um modal aberto por cima, a
+   * mensagem era escrita num elemento coberto pelo overlay — e o usuário
+   * clicava em Aprovar, o backend RECUSAVA com um motivo claro, e na tela
+   * não acontecia nada. "Não está fazendo nada" era, na verdade, "recusou e
+   * você não viu".
+   *
+   * Com modal aberto, o aviso vai pelo toast(), que é fixo na tela e fica
+   * acima de tudo. O toast é o padrão de feedback do design system; usá-lo
+   * aqui não é remendo, é voltar para o caminho certo. */
+  var modalAberto = document.querySelector(
+    '#certModalOverlay.ativo, #certEnvioOverlay.ativo, #certNovaOverlay.ativo');
+  if(modalAberto && typeof toast === 'function' && texto){
+    var limpo = String(texto).replace(/<[^>]*>/g,'');
+    toast(limpo, tipo==='erro'?'erro':tipo==='warn'?'alerta':tipo==='ok'?'ok':'info', 7000);
+  }
   var box = g('certMsgBox'); if(!box) return;
   box.className = 'cert-msg ' + (tipo||'info');
   box.innerHTML = texto||'';
@@ -406,20 +1051,193 @@ function atualizarMetricas(){
 }
 
 // ── Filtros
+/* Valor de um filtro, e a marca visual de que ele está ligado.
+   Filtro ativo que não se vê é a causa nº 1 de "sumiu tudo": alguém filtrou
+   ontem, voltou hoje e concluiu que o sistema perdeu os registros. */
+function filtroVal(id){
+  var el = g(id);
+  if(!el) return '';
+  var v = String(el.value||'').trim();
+  el.classList.toggle('ativo', !!v);
+  return v;
+}
+
+/* A data da linha vem como "13/08/2026 02:21" ou como Date já formatada.
+   Comparar texto de data dá errado no primeiro dia 10 do mês; aqui vira
+   número aaaammdd, que ordena e compara certo sempre. */
+function certDataNum(txt){
+  var m = String(txt||'').match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  if(m) return Number(m[3]+m[2]+m[1]);
+  var d = new Date(txt);
+  if(!isNaN(d.getTime())) return Number(String(d.getFullYear())
+    + ('0'+(d.getMonth()+1)).slice(-2) + ('0'+d.getDate()).slice(-2));
+  return 0;
+}
+function certDataNumISO(iso){
+  var m = String(iso||'').match(/(\d{4})-(\d{2})-(\d{2})/);
+  return m ? Number(m[1]+m[2]+m[3]) : 0;
+}
+
+/* O seletor de período é montado do que EXISTE na lista, nunca de uma lista
+   fixa de anos: assim ele não oferece período vazio nem esconde um que
+   existe. Remontado a cada carga, preservando o que estava escolhido. */
+function montarFiltroPeriodo(){
+  var sel = g('certFiltroPeriodo');
+  if(!sel) return;
+  var atual = sel.value;
+  var vistos = {};
+  _lista.forEach(function(s){
+    var p = String(s.periodoReferencia||s.periodo||'').trim();
+    if(p) vistos[p] = true;
+  });
+  var chaves = Object.keys(vistos).sort().reverse();
+  sel.innerHTML = '<option value="">todos</option>'
+    + chaves.map(function(p){ return '<option value="'+escHtml(p)+'">'+escHtml(p)+'</option>'; }).join('');
+  if(atual && chaves.indexOf(atual) > -1) sel.value = atual;
+}
+
 function aplicarFiltros(){
-  var busca  = normTxt(g('certBusca')           ? g('certBusca').value           : '');
-  var status = g('certFiltroStatus')             ? g('certFiltroStatus').value     : '';
-  var mod    = g('certFiltroModalidade')         ? g('certFiltroModalidade').value : '';
+  var busca  = normTxt(filtroVal('certBusca'));
+  var status = filtroVal('certFiltroStatus');
+  var mod    = filtroVal('certFiltroModalidade');
+  var prot   = normTxt(filtroVal('certFiltroProtocolo'));
+  var quem   = normTxt(filtroVal('certFiltroSolicitante'));
+  var esc    = normTxt(filtroVal('certFiltroEscola'));
+  var curso  = normTxt(filtroVal('certFiltroCurso'));
+  var per    = filtroVal('certFiltroPeriodo');
+  var de     = certDataNumISO(filtroVal('certFiltroDataDe'));
+  var ate    = certDataNumISO(filtroVal('certFiltroDataAte'));
+
+  /* Todos se combinam com E, não com OU: cada filtro estreita o que o
+     anterior deixou. É o que a pessoa espera ao ir preenchendo campo por
+     campo — e o contador embaixo do título reflete o conjunto. */
   _filtrada = _lista.filter(function(s){
     if(status && String(s.status||'').toUpperCase() !== status) return false;
     if(mod    && String(s.nivel||s.modalidade||'').toUpperCase() !== mod) return false;
+    if(per    && String(s.periodoReferencia||s.periodo||'').trim() !== per) return false;
+    if(prot   && normTxt(s.protocolo).indexOf(prot) === -1) return false;
+    /* Solicitante procura no nome E no CPF: quem tem o CPF na mão digita o
+       CPF, e obrigar a lembrar em qual campo cada coisa vai é atrito puro. */
+    if(quem   && normTxt([s.nome, s.cpf].join(' ')).indexOf(quem) === -1) return false;
+    if(esc    && normTxt(s.escola).indexOf(esc) === -1) return false;
+    if(curso  && normTxt(s.curso).indexOf(curso) === -1) return false;
+    if(de || ate){
+      var d = certDataNum(s.data);
+      if(!d) return false;                    // sem data não dá para afirmar
+      if(de  && d < de)  return false;
+      if(ate && d > ate) return false;
+    }
     if(busca){
       var txt = normTxt([s.nome,s.cpf,s.protocolo,s.escola,s.curso,s.periodoReferencia].join(' '));
       if(txt.indexOf(busca)===-1) return false;
     }
     return true;
   });
+
+  var algum = !!(busca||status||mod||prot||quem||esc||curso||per||de||ate);
+  if(g('certLimparFiltros')) g('certLimparFiltros').style.display = algum ? '' : 'none';
+
   _paginaAtual=1; renderTabela();
+}
+
+/* ── SELEÇÃO E EXCLUSÃO ────────────────────────────────────────────────────
+   "Excluir" aqui quer dizer MOVER PARA A LIXEIRA — decisão do usuário em
+   13/08/2026. A linha sai da lista e continua inteira na aba
+   Voucher_Excluidas, com quem tirou e quando. Ver VoucherLixeira.gs. */
+var _selecionados = {};
+
+function selecionadosLista(){ return Object.keys(_selecionados); }
+
+function atualizarBarraSelecao(){
+  var n = selecionadosLista().length;
+  var barra = g('certBarraSel');
+  if(barra) barra.classList.toggle('ativo', n > 0);
+  if(g('certBarraSelTxt')){
+    g('certBarraSelTxt').textContent = n === 1 ? '1 selecionada' : n + ' selecionadas';
+  }
+  if(g('certSelExcluir')) g('certSelExcluir').innerHTML = '🗑 Excluir' + (n ? ' ('+n+')' : '');
+  /* O "marcar todos" reflete a página, não a base: marcar 8.000 registros com
+     um clique é a forma mais rápida de esvaziar a lista sem querer. */
+  var cbs = document.querySelectorAll('.cert-sel-linha');
+  var marcados = 0;
+  cbs.forEach(function(c){ if(c.checked) marcados++; });
+  var todos = g('certSelTodos');
+  if(todos){
+    todos.checked = cbs.length > 0 && marcados === cbs.length;
+    todos.indeterminate = marcados > 0 && marcados < cbs.length;
+  }
+}
+
+function limparSelecao(){
+  _selecionados = {};
+  document.querySelectorAll('.cert-sel-linha').forEach(function(c){
+    c.checked = false;
+    var tr = c.closest('tr'); if(tr) tr.style.background = '';
+  });
+  atualizarBarraSelecao();
+}
+
+function confirmarExclusao(){
+  var protos = selecionadosLista();
+  if(!protos.length){ msg('Nenhuma solicitação selecionada.','warn'); return; }
+
+  var itens = _lista.filter(function(s){ return protos.indexOf(s.protocolo) > -1; });
+  var emitidas = itens.filter(function(s){ return String(s.status||'').toUpperCase()==='EMITIDO'; });
+
+  var html = '<div style="font-size:12.5px;color:#334155;line-height:1.6;">'
+    + itens.map(function(s){
+        return '<div style="padding:4px 0;border-bottom:1px solid #f1f5f9;">'
+          + '<strong>'+escHtml(s.protocolo)+'</strong> · '+escHtml(s.nome||'—')
+          + ' · '+escHtml(s.status||'—')+'</div>';
+      }).join('')
+    + '</div>';
+
+  /* O modal LISTA os protocolos, não diz "excluir 2 registros?". Quem confirma
+     precisa ver QUAIS — número não deixa perceber que um deles é o errado. */
+  var aviso = emitidas.length
+    ? '<div class="cert-nv-aviso alerta" style="margin-top:10px;">⚠ '
+      + (emitidas.length===1 ? 'Uma delas já foi EMITIDA' : emitidas.length+' já foram EMITIDAS')
+      + ' — o certificado pode já estar com o associado e com a escola. '
+      + 'A linha vai para a lixeira e pode ser restaurada, mas o documento continua existindo lá fora.</div>'
+    : '';
+
+  if(g('certExcluirLista')) g('certExcluirLista').innerHTML = html + aviso;
+  if(g('certExcluirMotivo')) g('certExcluirMotivo').value = '';
+  var o = g('certExcluirOverlay');
+  if(o){ o.style.display='flex'; o.classList.add('ativo'); }
+}
+
+function fecharExclusao(){
+  var o = g('certExcluirOverlay');
+  if(o){ o.style.display='none'; o.classList.remove('ativo'); }
+}
+
+function executarExclusao(){
+  var protos = selecionadosLista();
+  if(!protos.length){ fecharExclusao(); return; }
+  var btn = g('certExcluirConfirmar');
+  setBtnLoad(btn,'Excluindo...');
+  google.script.run
+    .withSuccessHandler(function(r){
+      resetBtn(btn);
+      if(!r||!r.ok){ msg((r&&r.mensagem)||'Erro ao excluir.','erro'); return; }
+      fecharExclusao();
+      limparSelecao();
+      msg('🗑 '+r.mensagem+' Dá para restaurar pela lixeira.','ok');
+      carregarLista();
+    })
+    .withFailureHandler(function(err){ resetBtn(btn); msg('Erro: '+((err&&err.message)||''),'erro'); })
+    .voucherExcluirSolicitacoes(protos,
+      g('certExcluirMotivo') ? g('certExcluirMotivo').value : '', certToken());
+}
+
+function limparFiltros(){
+  ['certBusca','certFiltroProtocolo','certFiltroSolicitante','certFiltroEscola',
+   'certFiltroCurso','certFiltroDataDe','certFiltroDataAte','certFiltroStatus',
+   'certFiltroModalidade','certFiltroPeriodo'].forEach(function(id){
+    if(g(id)){ g(id).value=''; g(id).classList.remove('ativo'); }
+  });
+  aplicarFiltros();
 }
 
 window.certFiltrarPorStatus = function(status){
@@ -446,7 +1264,7 @@ function renderTabela(){
   if(!tbody) return;
   if(!_filtrada.length){
     if(sub) sub.textContent='Nenhuma solicitação encontrada';
-    tbody.innerHTML='<tr><td colspan="9"><div class="cert-tabela-vazia">📭 Nenhuma solicitação encontrada.</div></td></tr>';
+    tbody.innerHTML='<tr><td colspan="10"><div class="cert-tabela-vazia">📭 Nenhuma solicitação encontrada.</div></td></tr>';
     if(g('certPagWrap')) g('certPagWrap').style.display='none';
     return;
   }
@@ -459,33 +1277,112 @@ function renderTabela(){
   pag.forEach(function(s){
     var bs='width:28px;height:28px;border-radius:7px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;border:1px solid #e2e8f0;background:#fff;color:#475569;';
     var podeEmitir=s.status==='APROVADO'||s.status==='EMITIDO';
-    html+='<tr>'
+    var marcado = !!_selecionados[s.protocolo];
+    html+='<tr'+(marcado?' style="background:#eff6ff;"':'')+'>'
+      /* A CAIXA DE SELEÇÃO FICA NA PRIMEIRA COLUNA, e não dentro de Ações.
+         Decisão do usuário em 13/08/2026. A coluna de ações já carrega três
+         botões e é a mais apertada da tabela; uma caixa ali seria clicada por
+         engano no lugar do botão vizinho — e o vizinho emite documento. */
+      +'<td style="text-align:center;"><input type="checkbox" class="cert-sel-linha" data-prot="'+escHtml(s.protocolo||'')+'"'+(marcado?' checked':'')+'></td>'
       +'<td><strong style="font-size:12px;color:#002f6c;">'+escHtml(s.protocolo||'—')+'</strong></td>'
-      +'<td><div style="font-weight:700;font-size:12.5px;color:#0f172a;">'+escHtml(s.nome||'—')+'</div>'
+      +'<td><div style="font-weight:700;font-size:12.5px;color:#0f172a;">'+escHtml(s.nome||'—')
+        /* A etiqueta só aparece quando o dado existe. Linha antiga, gravada
+           antes da coluna TIPO_SOLICITACAO, não recebe "primeira vez" por
+           omissão — dizer isso de uma bolsa já renovada seria inventar. */
+        +(s.tipoSolicitacao==='RENOVACAO'?'<span class="cert-tag-renov">renovação</span>':'')
+        /* SELO PRESENCIAL — quem olha a fila precisa saber que aquele voucher
+           espera alguém buscar, em vez de achar que o e-mail falhou.
+           Regra de 14/08/2026: o não associado tem o MESMO benefício, mas
+           solicita em papel e retira na sede. Por isso o selo é dourado
+           institucional e não a cor de alerta: não é pendência nem erro, é
+           outro canal. A ausência dele é que seria o problema — sem selo, a
+           secretaria ligaria para a pessoa avisando de um e-mail que, por
+           decisão, nunca foi enviado. */
+        +(String(s.situacaoSindicalDeclarada||s.sindical||'').toUpperCase()==='NAO_ASSOCIADO'
+            ?'<span class="cert-tag-presencial" title="Não associado: solicitação em papel e retirada na sede. O voucher não é enviado por e-mail.">presencial</span>':'')
+        +'</div>'
         +'<div style="font-size:11px;color:#94a3b8;">'+escHtml(s.cpf||'')+'</div></td>'
       +'<td style="font-size:11.5px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(s.escola||'—')+'</td>'
       +'<td style="font-size:11.5px;">'+escHtml(s.nivel||s.modalidade||'—')+'</td>'
       +'<td style="font-size:11.5px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(s.curso||'—')+'</td>'
-      +'<td style="font-size:11.5px;">'+escHtml(s.periodoReferencia||s.periodo||'—')+'</td>'
+      /* PERÍODO VAZIO NÃO É TRAÇO, É AVISO — pedido do usuário em 13/08/2026:
+         "deveria avisar quando não estiver".
+         Duas linhas da produção estão assim, gravadas antes de o período
+         virar obrigatório. Um "—" discreto some no meio da tabela; o que a
+         pessoa precisa saber é que aquela linha NÃO EMITE, e por quê. A cor
+         é a de alerta do design system, não o dourado institucional. */
+      +'<td style="font-size:11.5px;">'
+        + ((s.periodoReferencia||s.periodo)
+            ? escHtml(s.periodoReferencia||s.periodo)
+            : '<span title="Sem período não dá para emitir: ele sai impresso no '
+              + 'certificado e é o que impede o mesmo voucher sair duas vezes." '
+              + 'style="color:#d97706;font-weight:700;white-space:nowrap;">⚠ sem período</span>')
+      +'</td>'
       +'<td>'+badgeStatus(s.status)+'</td>'
-      +'<td style="font-size:11px;color:#64748b;white-space:nowrap;">'+escHtml(s.data||'—')+'</td>'
+      +'<td style="font-size:11px;color:#64748b;white-space:nowrap;">'+escHtml(certData(s.data))+'</td>'
       +'<td style="text-align:center;"><div style="display:inline-flex;gap:5px;align-items:center;">'
-        +'<button type="button" class="cert-btn-abrir-modal" data-id="'+escHtml(s.id)+'" title="Ver / Ações" style="'+bs+'">'+icoEdit+'</button>'
-        +(podeEmitir?'<button type="button" class="cert-btn-emitir-rapido" data-id="'+escHtml(s.id)+'" title="Emitir certificado" style="'+bs+'background:#f5f0ff;border-color:#c4b5fd;color:#5b21b6;">🎓</button>':'')
+        /* O PROTOCOLO VAI JUNTO DO ID, e não é redundância.
+         O ID_SOLICITACAO pode vir vazio em linha antiga, gravada antes de a
+         coluna existir. Com o id vazio, o botão procurava a linha por um
+         valor em branco e podia não achar nada — e aí o clique não fazia
+         absolutamente nada, sem erro, sem aviso, sem log. "Não acontece nada"
+         é o pior defeito possível, porque não deixa nem por onde começar. */
+      +'<button type="button" class="cert-btn-abrir-modal" data-id="'+escHtml(s.id)+'" data-prot="'+escHtml(s.protocolo||'')+'" title="Ver / Ações" style="'+bs+'">'+icoEdit+'</button>'
+        +(podeEmitir?'<button type="button" class="cert-btn-emitir-rapido" data-id="'+escHtml(s.id)+'" data-prot="'+escHtml(s.protocolo||'')+'" title="Emitir certificado" style="'+bs+'background:#f5f0ff;border-color:#c4b5fd;color:#5b21b6;">🎓</button>':'')
+        /* Enviar só aparece em EMITIDO: antes de existir documento não há o
+           que mandar, e um botão que sempre recusa é pior que botão nenhum. */
+        +(s.status==='EMITIDO'?'<button type="button" class="cert-btn-enviar" data-prot="'+escHtml(s.protocolo||'')+'" title="Enviar / reenviar certificado" style="'+bs+'background:#eff6ff;border-color:#93c5fd;color:#1565C0;">📨</button>':'')
       +'</div></td>'
       +'</tr>';
   });
   tbody.innerHTML=html;
+  /* Acha a linha por id OU por protocolo, e RECLAMA se não achar.
+     As duas coisas nasceram do mesmo defeito relatado em 13/08/2026 — "o
+     botão de emitir não acontece nada". Procurar só pelo id falha em linha
+     antiga sem ID_SOLICITACAO, e o `if(s)` sem `else` transformava a falha
+     em silêncio: nem erro, nem aviso, nem log. */
+  function linhaDoBotao(botao){
+    var id = botao.getAttribute('data-id') || '';
+    var prot = botao.getAttribute('data-prot') || '';
+    var achada = null;
+    if(id)   achada = _lista.find(function(x){ return String(x.id||'') === id; });
+    if(!achada && prot) achada = _lista.find(function(x){ return String(x.protocolo||'') === prot; });
+    if(!achada){
+      msg('Não consegui identificar esta solicitação na lista'
+          + (prot?' ('+prot+')':'') + '. Clique em Atualizar e tente de novo.','erro');
+    }
+    return achada;
+  }
   tbody.querySelectorAll('.cert-btn-abrir-modal').forEach(function(btn){
     btn.addEventListener('click',function(){
-      var s=_lista.find(function(x){return x.id===this.getAttribute('data-id');},this);
+      var s=linhaDoBotao(this);
       if(s) abrirModal(s);
     });
   });
   tbody.querySelectorAll('.cert-btn-emitir-rapido').forEach(function(btn){
     btn.addEventListener('click',function(){
-      var s=_lista.find(function(x){return x.id===this.getAttribute('data-id');},this);
-      if(s){_solAtual=s; gerarDocumento('CERTIFICADO');}
+      var s=linhaDoBotao(this);
+      /* ABRE A PRÉVIA, NÃO EMITE. Emitir direto do botão da lista fazia um
+         clique só produzir documento definitivo, com código de validação e
+         status EMITIDO — sem ninguém ver o papel antes. Agora o clique abre
+         o modal com a prévia, e emitir é uma segunda decisão. */
+      if(s){ certDocAbrir(s); }
+    });
+  });
+  tbody.querySelectorAll('.cert-sel-linha').forEach(function(cb){
+    cb.addEventListener('change', function(){
+      var p = this.getAttribute('data-prot');
+      if(this.checked) _selecionados[p] = true; else delete _selecionados[p];
+      /* Redesenhar a tabela inteira a cada clique perderia o foco e faria a
+         lista piscar; só a linha e a barra mudam. */
+      var tr = this.closest('tr');
+      if(tr) tr.style.background = this.checked ? '#eff6ff' : '';
+      atualizarBarraSelecao();
+    });
+  });
+  tbody.querySelectorAll('.cert-btn-enviar').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      envAbrir(this.getAttribute('data-prot'));
     });
   });
   renderPaginacao(total,totalPag);
@@ -531,7 +1428,17 @@ function abrirModal(s){
   set('cmi-modalidade',  s.nivel||s.modalidade);
   set('cmi-curso',       s.curso);
   set('cmi-periodo',     s.periodoReferencia||s.periodo);
-  set('cmi-data',        s.data);
+  /* A faixa de correção acompanha o registro aberto: aparece se a linha veio
+     sem período, some se veio com. Sem isto, ela ficaria do jeito que o
+     registro ANTERIOR deixou. */
+  corrPeriodoSincronizar(s);
+  set('cmi-data',        certData(s.data));
+  /* A etiqueta de renovação, colada no curso: é ali que ela responde a
+     pergunta que se faz ao abrir o registro ("já teve antes?"). Só aparece
+     quando o dado existe — ver o comentário na listagem. */
+  if(g('cmi-curso') && s.tipoSolicitacao==='RENOVACAO'){
+    g('cmi-curso').innerHTML = escHtml(s.curso||'—') + '<span class="cert-tag-renov">renovação</span>';
+  }
   if(g('certModalObs')) g('certModalObs').value=s.observacao||'';
   if(g('certModalRg'))  g('certModalRg').value=s.rg||'';
 
@@ -584,11 +1491,1530 @@ function acao(funcaoGas,labelBtn,labelMsg){
       resetBtn(btn);
       if(!resp||!resp.ok){msg((resp&&resp.mensagem)||'Erro.','erro');return;}
       msg('✅ '+(resp.mensagem||labelMsg+' com sucesso!'),'ok');
-      fecharModal(); carregarLista();
+      carregarLista();
+
+      /* APROVAR E EMITIR VÊM COLADOS.
+       *
+       * Fechar o modal aqui obrigava a pessoa a achar a mesma linha na lista
+       * e clicar no 🎓 — dois passos para continuar o que ela já estava
+       * fazendo. E a área de emissão JÁ ESTÁ neste modal; ela só ficava
+       * escondida porque o status ainda não era APROVADO.
+       *
+       * Então o modal fica aberto e se REABRE com o registro atualizado: a
+       * área de emissão aparece, com o percentual já lá. Quem não quiser
+       * emitir agora fecha, e a aprovação continua gravada.
+       *
+       * As outras duas ações — indeferir e solicitar complementação —
+       * fecham, porque ali o trabalho realmente acabou. */
+      if(labelBtn === 'certBtnAprovar' && _solAtual){
+        var prot = _solAtual.protocolo;
+        setTimeout(function(){
+          var atualizada = _lista.find(function(x){ return x.protocolo === prot; });
+          if(atualizada) abrirModal(atualizada);
+        }, 400);
+      } else {
+        fecharModal();
+      }
     })
     .withFailureHandler(function(err){resetBtn(btn);msg('Erro: '+((err&&err.message)||''),'erro');})
-    [funcaoGas](_solAtual.protocolo, obs);
+    [funcaoGas](_solAtual.protocolo, obs, certToken());
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   ENVIO — o passo depois de emitir
+
+   `_envAtual` guarda o que o backend devolveu no preparo. É dele que saem
+   o link do zap e os e-mails sugeridos; não se remonta nada no navegador.
+
+   `_envSeq` é sequência de requisição, não bandeira de "carregando". Com
+   bandeira, um segundo pedido feito durante o primeiro é DESCARTADO — e o
+   modal fica mostrando o protocolo errado. Com sequência, o pedido novo
+   sempre vale, e a resposta atrasada do anterior é ignorada ao chegar.
+   ══════════════════════════════════════════════════════════════════════ */
+var _envAtual = null;
+var _envSeq   = 0;
+
+function envFechar(){
+  var o=g('certEnvioOverlay');
+  if(o){o.style.display='none';o.classList.remove('ativo');}
+  _envAtual=null;
+}
+
+/* Exposto no window logo na definição, e não dentro do init: quem chama de
+   fora — a lista, e o teste de tela — precisa dele assim que os scripts
+   rodam, sem depender de o init já ter acontecido. */
+function envAbrir(protocolo){
+  if(!protocolo){msg('Sem protocolo para enviar.','warn');return;}
+  var o=g('certEnvioOverlay');
+  if(o){o.style.display='flex';o.classList.add('ativo');}
+
+  /* Limpa ANTES de pedir. Sem isto o modal abre mostrando os dados do
+     protocolo anterior por um instante — e quem vê um e-mail preenchido
+     acha que é daquele associado. */
+  g('certEnvSub').textContent   = protocolo;
+  g('certEnvNome').textContent  = 'carregando...';
+  g('certEnvCodigo').textContent= '—';
+  g('certEnvCurso').textContent = '—';
+  g('certEnvEmitido').textContent='—';
+  g('certEnvPara').value  = '';
+  g('certEnvCopia').value = '';
+  g('certEnvOrigemDica').innerHTML = '';
+  g('certEnvTelefone').textContent = '—';
+  g('certEnvAlerta').style.display='none';
+  g('certEnvHistorico').innerHTML = '<span class="cert-env-vazio">carregando...</span>';
+
+  var meu = ++_envSeq;
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(meu !== _envSeq) return;            /* resposta atrasada de outro protocolo */
+      if(!r||!r.ok){
+        g('certEnvHistorico').innerHTML='';
+        /* "Não consegui preparar o envio." sozinho não dizia NADA — e foi o
+           que o usuário viu na tela em 13/08/2026, sem ter para onde ir.
+           O backend sempre manda um motivo; quando não vier nenhum, o que
+           aconteceu foi resposta vazia do servidor, e é isso que se diz,
+           com o protocolo junto para dar por onde começar. */
+        msg((r&&r.mensagem) ||
+            ('O servidor não respondeu nada ao preparar o envio de '+protocolo+
+             '. Recarregue a tela (F5) e tente de novo; se repetir, é erro de '+
+             'execução do Apps Script.'),'erro');
+        envFechar(); return;
+      }
+      _envAtual = r;
+      envPintar(r);
+    })
+    .withFailureHandler(function(err){
+      if(meu !== _envSeq) return;
+      msg('Erro ao preparar o envio: '+((err&&err.message)||''),'erro');
+      envFechar();
+    })
+    .voucherPrepararEnvio(protocolo, certToken());
+}
+
+function envPintar(r){
+  g('certEnvSub').textContent    = r.protocolo || '—';
+  g('certEnvNome').textContent   = r.nome || '—';
+  g('certEnvCodigo').textContent = r.codigo || '—';
+  g('certEnvCurso').textContent  = [r.curso, r.periodo].filter(Boolean).join(' · ') || '—';
+  g('certEnvEmitido').textContent= [r.emitidoEm, r.emitidoPor].filter(Boolean).join(' · ') || '—';
+
+  g('certEnvPara').value  = r.emailAssociado || '';
+  g('certEnvCopia').value = r.emailInstituicao || '';
+
+  /* A ORIGEM DO E-MAIL SUGERIDO, à vista.
+     "CADASTRO" é palpite do sistema e pode estar desatualizado há anos.
+     Sem dizer isso, campo preenchido passa impressão de conferido — e quem
+     envia manda o certificado de alguém para um endereço que ninguém
+     confirmou. */
+  var dica='';
+  if(r.origemEmailInstituicao === 'SOLICITACAO'){
+    dica = '<span class="cert-env-origem digitado">digitado na solicitação</span>';
+  }else if(r.origemEmailInstituicao === 'CADASTRO'){
+    dica = '<span class="cert-env-origem cadastro">achado no cadastro</span> '
+         + 'pode estar desatualizado — confira antes de enviar';
+  }else{
+    dica = 'Nenhum e-mail cadastrado para '
+         + escHtml(r.instituicao || 'a instituição') + '. Digite, ou desmarque a cópia.';
+  }
+  g('certEnvOrigemDica').innerHTML = dica;
+
+  var temTel = !!r.whatsappUrl;
+  g('certEnvTelefone').textContent = r.telefone || 'sem telefone cadastrado';
+  var btnZap = g('certEnvBtnZap');
+  if(btnZap){
+    btnZap.disabled = !temTel;
+    btnZap.style.opacity = temTel ? '' : '.4';
+    btnZap.style.cursor  = temTel ? '' : 'not-allowed';
+  }
+
+  envPintarHistorico(r.envios || []);
+  envSincronizarCopia();
+}
+
+function envPintarHistorico(envios){
+  var caixa=g('certEnvHistorico'), alerta=g('certEnvAlerta');
+  if(!envios.length){
+    caixa.innerHTML='<span class="cert-env-vazio">Nunca enviado.</span>';
+    alerta.style.display='none';
+    return;
+  }
+
+  /* O AVISO VEM ANTES DA LISTA, não depois.
+     Reenvio é rotina neste módulo, e quem abre o modal para reenviar
+     precisa saber quantas vezes já mandou ANTES de clicar. Enterrado sob a
+     lista, o número só é lido por quem já rolou a tela — ou seja, depois. */
+  var emails = envios.filter(function(e){ return String(e.canal||'')==='ENVIAR_EMAIL'; }).length;
+  if(emails >= 1){
+    alerta.innerHTML = '⚠ Este certificado já foi enviado por e-mail '
+      + emails + (emails===1 ? ' vez' : ' vezes') + '.';
+    alerta.className = 'cert-env-alerta';
+    alerta.style.display='flex';
+  }else{
+    alerta.style.display='none';
+  }
+
+  caixa.innerHTML = envios.map(function(e){
+    var ehEmail = String(e.canal||'')==='ENVIAR_EMAIL';
+    var rotulo  = ehEmail ? 'e-mail →' : 'WhatsApp aberto';
+    /* A trilha grava o canal no lugar do destino quando não há destino — é o
+       caso do WhatsApp, que não tem endereço. Sem este filtro a linha sai
+       "WhatsApp aberto WHATSAPP_ABERTO", com o nome interno da ação vazando
+       para a tela de quem opera. */
+    var destino = String(e.destino||'');
+    if(!ehEmail && destino.indexOf('@') < 0) destino = '';
+    return '<div class="cert-env-hist-linha">'
+         + '<span class="cert-env-hist-quando">'+escHtml(envQuando(e.quando))+'</span>'
+         + '<span>'+escHtml(rotulo)+(destino?' '+escHtml(destino):'')+'</span>'
+         + '<span class="cert-env-hist-quando" style="margin-left:auto;">'+escHtml(e.quem||'')+'</span>'
+         + '</div>';
+  }).join('');
+}
+
+window.certAbrirEnvio = envAbrir;
+
+function envQuando(v){
+  if(!v) return '—';
+  var d = (v instanceof Date) ? v : new Date(v);
+  if(isNaN(d.getTime())) return String(v).slice(0,16);
+  function dd(n){ return (n<10?'0':'')+n; }
+  return dd(d.getDate())+'/'+dd(d.getMonth()+1)+' '+dd(d.getHours())+':'+dd(d.getMinutes());
+}
+
+/** Desmarcar a cópia desabilita o campo — e não some com ele, para a pessoa
+    ver o endereço que deixou de usar em vez de achar que sumiu. */
+function envSincronizarCopia(){
+  var ativo = g('certEnvCopiaAtiva') ? g('certEnvCopiaAtiva').checked : true;
+  var campo = g('certEnvCopia');
+  if(campo) campo.disabled = !ativo;
+}
+
+function envEnviarEmail(){
+  if(!_envAtual){msg('Nada preparado para enviar.','warn');return;}
+  var para = String(g('certEnvPara').value||'').trim();
+  if(!para){msg('Informe o e-mail do associado.','warn');g('certEnvPara').focus();return;}
+
+  var enviarInst = g('certEnvCopiaAtiva').checked;
+  var copia = enviarInst ? String(g('certEnvCopia').value||'').trim() : '';
+  if(enviarInst && copia && copia.indexOf('@') < 1){
+    msg('O e-mail da instituição não parece válido.','warn');g('certEnvCopia').focus();return;
+  }
+
+  var btn=g('certEnvBtnEmail');
+  setBtnLoad(btn,'Enviando...');
+  var protocolo=_envAtual.protocolo;
+
+  google.script.run
+    .withSuccessHandler(function(r){
+      resetBtn(btn);
+      if(!r||!r.ok){msg((r&&r.mensagem)||'Erro ao enviar.','erro');return;}
+      msg('✅ '+(r.mensagem||'E-mail enviado.'),'ok');
+      /* Recarrega o preparo em vez de acrescentar a linha na mão: o
+         histórico passa a vir do rastro gravado, que é a fonte, e não de
+         uma cópia montada no navegador que pode divergir dela. */
+      envAbrir(protocolo);
+      carregarLista();
+    })
+    .withFailureHandler(function(err){resetBtn(btn);msg('Erro: '+((err&&err.message)||''),'erro');})
+    .voucherEnviarPorEmail(protocolo, {
+      para: para,
+      enviarInstituicao: enviarInst,
+      copia: copia,
+      anexarPdf: g('certEnvAnexo').checked
+    }, certToken());
+}
+
+function envAbrirZap(){
+  if(!_envAtual || !_envAtual.whatsappUrl){msg('Sem telefone válido para WhatsApp.','warn');return;}
+  var protocolo=_envAtual.protocolo;
+
+  /* A aba abre PRIMEIRO, no clique. Abrir dentro do withSuccessHandler faria
+     o navegador tratar como popup não pedido pelo usuário e bloquear. */
+  window.open(_envAtual.whatsappUrl,'_blank');
+
+  google.script.run
+    .withSuccessHandler(function(){ envAbrir(protocolo); })
+    .withFailureHandler(function(){ /* o zap já abriu; falhar o registro não
+        pode virar mensagem de erro para quem já está com a conversa aberta */ })
+    .voucherRegistrarAberturaWhatsApp(protocolo, certToken());
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   NOVA SOLICITAÇÃO — a tela que consome a memória
+
+   `_nvSeq` é sequência de requisição, como no modal de envio. Quem digita
+   depressa dispara várias sugestões, e sem sequência a resposta de "adm"
+   chega depois da de "administra" e sobrescreve o campo com o palpite
+   errado.
+   ══════════════════════════════════════════════════════════════════════ */
+var _nvSeq = 0;
+/* Sequência PRÓPRIA da checagem de período, separada da sugestão. As duas
+   saem no mesmo evento e voltam fora de ordem; com uma sequência só, a
+   resposta de uma cancelaria a da outra e a trava piscaria. */
+var _pdSeq = 0;
+/* O bloqueio em vigor, se houver. É o que impede o salvar — e é lido no
+   nvSalvar, não só no visual: esconder o botão sem travar a função deixaria
+   o Enter do teclado passar por cima da trava. */
+var _nvBloqueio = null;
+/* A exceção preparada nesta tela — `{justificativa}` — e se quem está logado
+   pode sequer pedi-la. As duas coisas são reconferidas no servidor; aqui elas
+   só decidem o que aparece e o que fica clicável. */
+var _nvExcecao = null;
+var _nvPodeExcecao = false;
+/* A pessoa mexeu no regime? Então a convenção para de reescrevê-lo. */
+var _nvRegimeManual = false;
+var _pdTimer = null;
+var _nvTimer = null;
+var _nvTimerInst = null;
+var _nvTimerEsc = null;
+
+/* O seletor traduzido para o que a regra da convenção entende.
+   Um lugar só: se a tradução ficasse espalhada, "3º filho" viraria ordem 3
+   num ponto e ordem "" noutro, e o percentual sairia diferente conforme o
+   caminho. */
+/* A tradução de "1º filho" para tipo + ordem, num lugar só.
+   Extraída de nvQuem em 13/08/2026 porque os cards de beneficiário extra
+   precisam da mesma tradução — e duas cópias dela é como um card acabaria
+   gravando FILHO sem ordem enquanto o de cima grava com. */
+function nvQuemDe(v){
+  v = String(v || 'PROPRIO');
+  if(v === 'PROPRIO')  return { tipo:'TITULAR', ordem:'', proprio:true,  idade:false, ir:false };
+  if(v === 'CONJUGE')  return { tipo:'CONJUGE', ordem:'', proprio:false, idade:false, ir:false };
+  if(v === 'ENTEADO')  return { tipo:'ENTEADO', ordem:'', proprio:false, idade:true,  ir:true  };
+  return { tipo:'FILHO', ordem:v.replace('FILHO_',''), proprio:false, idade:true, ir:false };
+}
+
+function nvQuem(){
+  return nvQuemDe(g('certNvQuem') ? g('certNvQuem').value : 'PROPRIO');
+}
+
+/** Mostra só o que faz sentido para quem foi escolhido. */
+function nvSincronizarBeneficiario(){
+  var q = nvQuem();
+  function ver(id, mostrar){ var el=g(id); if(el) el.style.display = mostrar ? '' : 'none'; }
+  ver('certNvBoxNome',  !q.proprio);
+  ver('certNvBoxIdade', q.idade);
+  ver('certNvBoxIR',    q.ir);
+  /* Escondeu, limpa. Campo invisível com valor dentro é o pior dos dois
+     mundos: ninguém vê e mesmo assim vai para a planilha. */
+  if(q.proprio && g('certNvBeneficiario')) g('certNvBeneficiario').value='';
+  if(!q.idade && g('certNvIdade')) g('certNvIdade').value='';
+  if(!q.ir && g('certNvEnteadoIR')) g('certNvEnteadoIR').value='';
+}
+
+/* ── A FAIXA DO ATENDIMENTO PRESENCIAL ────────────────────────────────────
+   Regra de 14/08/2026: o não associado tem o MESMO benefício, mas solicita
+   em papel e retira na sede — o voucher dele não vai por e-mail.
+
+   A faixa aparece quando a situação sindical for "Não associado" e some
+   quando voltar para associado. Some LIMPANDO os campos, pelo mesmo motivo
+   de nvSincronizarBeneficiario: campo escondido com valor dentro é o pior
+   dos dois mundos — ninguém vê e mesmo assim vai junto no payload.
+
+   REGRA Nº 0.6, automatizar é o padrão: os dois campos nascem preenchidos.
+   A data é hoje, porque o papel está na mão de quem está digitando agora; o
+   "recebido por" é quem está logado. Os dois continuam editáveis — papel
+   entregue ontem e digitado hoje existe, e quem atendeu pode não ser quem
+   digita. Sugerir com origem à vista, nunca impor em silêncio. */
+function nvPresencialAtivo(){
+  var s = g('certNvSituacao');
+  return !!s && String(s.value||'').toUpperCase() === 'NAO_ASSOCIADO';
+}
+
+function nvPresencialSincronizar(){
+  var box = g('certNvPresencial');
+  if(!box) return;
+  var ativo = nvPresencialAtivo();
+  box.classList.toggle('ativo', ativo);
+
+  if(!ativo){
+    if(g('certNvPapelData')) g('certNvPapelData').value='';
+    if(g('certNvPapelQuem')) g('certNvPapelQuem').value='';
+    return;
+  }
+
+  /* Só preenche o que estiver VAZIO. Reescrever por cima apagaria a correção
+     que a pessoa acabou de fazer — bastaria ela trocar de "não associado"
+     para "associado" e voltar. */
+  var d = g('certNvPapelData');
+  if(d && !d.value){
+    var hoje = new Date();
+    d.value = hoje.getFullYear() + '-' +
+              String(hoje.getMonth()+1).padStart(2,'0') + '-' +
+              String(hoje.getDate()).padStart(2,'0');
+  }
+  var q = g('certNvPapelQuem');
+  if(q && !q.value){
+    /* O nome de quem está logado, quando a tela souber. Sem inventar: se não
+       souber, o campo fica vazio para a pessoa escrever — melhor em branco
+       do que com um nome errado, que viraria registro falso de quem atendeu. */
+    var nome = (typeof window!=='undefined' && (window.SISGEP_USUARIO_NOME || window.SISGEP_USUARIO)) || '';
+    if(nome) q.value = nome;
+  }
+}
+
+/* O período montado a partir dos dois seletores, no formato que a planilha
+   sempre teve: "2026/1" quando há semestre, "2026" quando não há. A tela
+   mudou; o dado gravado, não — linha antiga e linha nova continuam
+   comparáveis, que é o que a trava de período depende para funcionar. */
+function nvPeriodoValor(){
+  var ano = g('certNvPeriodoAno') ? String(g('certNvPeriodoAno').value||'') : '';
+  var sem = g('certNvPeriodoSem') ? String(g('certNvPeriodoSem').value||'') : '';
+  if(!ano) return '';
+  return sem ? ano + '/' + sem : ano;
+}
+
+/* Os anos oferecidos: do anterior ao seguinte. Bolsa de dez anos atrás não se
+   cadastra, e ano digitado errado (2062) some do problema quando a lista é
+   curta. */
+function nvPeriodoMontarAnos(){
+  var sel = g('certNvPeriodoAno');
+  if(!sel || sel.options.length) return;
+  var hoje = new Date().getFullYear();
+  var html = '<option value="">ano</option>';
+  for(var a = hoje - 1; a <= hoje + 1; a++) html += '<option value="'+a+'">'+a+'</option>';
+  sel.innerHTML = html;
+}
+
+/* O semestre só é perguntado quando o regime é semestral. Numa bolsa anual
+   ele não existe — e um seletor preenchido que não devia estar ali acaba
+   virando "2026/1" numa bolsa que cobre o ano inteiro. */
+function nvPeriodoSincronizarRegime(){
+  var reg = g('certNvRegime') ? String(g('certNvRegime').value||'').toUpperCase() : '';
+  var sem = g('certNvPeriodoSem');
+  if(!sem) return;
+  var anual = reg.indexOf('ANUAL') > -1;
+  sem.style.display = anual ? 'none' : '';
+  if(anual) sem.value = '';
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   OS BENEFICIARIOS EXTRAS
+
+   O de cima e o numero 1 e continua onde estava. Estes sao do 2 em diante,
+   e cada um vira uma solicitacao propria — com protocolo e certificado
+   proprios. A tela junta; a planilha continua uma linha por pessoa.
+
+   O TETO E CONFERIDO AQUI E NO SERVIDOR. Aqui e conveniencia (o botao
+   desabilita e o toast explica); la e a regra. "A tela nao deixa" nunca foi
+   trava — o portal publico e qualquer chamada direta nao passam por esta
+   funcao.
+   ══════════════════════════════════════════════════════════════════════ */
+var NV_MAX_DEPENDENTES = 3;
+
+/* ══════════════════════════════════════════════════════════════════════
+   RENOVAR A FAMILIA
+
+   O caso comum nao e cadastrar familia nova: e o mesmo associado voltando a
+   cada semestre. Ate 13/08/2026 a tela recuperava UM beneficiario — o da
+   ultima linha —, entao um pai de tres filhos tinha dois deles redigitados
+   do zero todo semestre.
+
+   Aqui a memoria devolve a familia inteira e a pessoa CONFERE E CLICA. O que
+   ela nao pode e ser obrigada a aceitar: cada dependente tem sua caixa, e
+   "Montar na mao" fecha a faixa sem preencher nada.
+   ══════════════════════════════════════════════════════════════════════ */
+var _nvFamilia = [];
+/* O CPF cuja família já foi buscada — evita repetir a chamada a cada
+   tecla depois que o CPF ficou completo. */
+var _nvFamiliaCpf = '';
+
+/* O PERIODO CORRENTE, calculado da data — nao perguntado.
+   Janeiro e fevereiro contam como 1º semestre: matricula de fevereiro e do
+   semestre que comeca, nao do que passou. Mesma conta de
+   voucherPeriodoTexto_ no servidor, e as duas precisam continuar iguais. */
+function nvPeriodoCorrente(){
+  var d = new Date(), m = d.getMonth() + 1;
+  return { ano: String(d.getFullYear()), semestre: (m <= 6 ? '1' : '2') };
+}
+
+/* De TIPO + ORDEM de volta para o valor do seletor — o caminho inverso de
+   nvQuemDe, para a memoria conseguir remontar o card de quem ja existe. */
+function nvQuemPara(tipo, ordem){
+  tipo = String(tipo || '').toUpperCase();
+  if(tipo === 'TITULAR' || !tipo) return 'PROPRIO';
+  if(tipo === 'CONJUGE') return 'CONJUGE';
+  if(tipo === 'ENTEADO') return 'ENTEADO';
+  var n = String(ordem || '1').replace(/\D/g,'') || '1';
+  if(['1','2','3'].indexOf(n) === -1) n = '1';
+  return 'FILHO_' + n;
+}
+
+/* Desenha a faixa. Chamada quando o CPF fica completo; se nao houver
+   ninguem, a faixa some — e some MESMO, para o proximo atendimento nao
+   herdar a familia do anterior. */
+function nvFamiliaDesenhar(lista){
+  _nvFamilia = lista || [];
+  var faixa = g('certNvRenov');
+  if(!faixa) return;
+  if(!_nvFamilia.length){ faixa.style.display='none'; return; }
+
+  var p = nvPeriodoCorrente();
+  g('certNvRenovTit').textContent =
+    'Encontrei ' + _nvFamilia.length +
+    (_nvFamilia.length === 1 ? ' beneficiário deste associado' : ' beneficiários deste associado');
+
+  g('certNvRenovLista').innerHTML = _nvFamilia.map(function(d, i){
+    var quem = d.ehTitular ? 'o próprio titular'
+             : (d.ordemFilho ? d.ordemFilho + 'º filho' : String(d.tipo||'').toLowerCase());
+    var det = [d.curso || d.modalidade, d.instituicao,
+               d.percentual ? d.percentual + '%' : '',
+               d.ultimoPeriodo ? 'último: ' + d.ultimoPeriodo : ''
+              ].filter(Boolean).join(' · ');
+    return '<div class="cert-nv-renov-item"><label>'
+         +   '<input type="checkbox" class="js-renov" data-i="' + i + '" checked>'
+         +   '<span class="quem">' + escHtml(d.nome) + '</span>'
+         +   '<span class="det">' + escHtml(quem + (det ? ' · ' + det : '')) + '</span>'
+         + '</label></div>';
+  }).join('');
+
+  g('certNvRenovarBtn').textContent = 'Renovar em ' + p.ano + '/' + p.semestre;
+  faixa.style.display = '';
+}
+
+/* Marcados -> formulario. O primeiro vai para o beneficiario de cima; os
+   demais viram cards. E a ordem importa: o de cima e o indice 0 do
+   resultado, e e nele que a tela pinta o protocolo. */
+function nvFamiliaRenovar(){
+  var marcados = Array.prototype.slice
+    .call(document.querySelectorAll('#certNvRenovLista .js-renov'))
+    .filter(function(c){ return c.checked; })
+    .map(function(c){ return _nvFamilia[Number(c.getAttribute('data-i'))]; })
+    .filter(Boolean);
+
+  if(!marcados.length){ msg('Marque ao menos um beneficiário para renovar.','warn'); return; }
+
+  var dependentes = marcados.filter(function(d){ return !d.ehTitular; }).length;
+  if(dependentes > NV_MAX_DEPENDENTES){
+    msg('São ' + dependentes + ' dependentes marcados, e o máximo é ' +
+        NV_MAX_DEPENDENTES + '.','warn');
+    return;
+  }
+
+  nvBenefLimpar();
+
+  var primeiro = marcados[0];
+  if(g('certNvQuem')) g('certNvQuem').value = nvQuemPara(primeiro.tipo, primeiro.ordemFilho);
+  nvSincronizarBeneficiario();
+  if(!primeiro.ehTitular && g('certNvBeneficiario')) g('certNvBeneficiario').value = primeiro.nome;
+  [['certNvInstituicao','instituicao'],['certNvCnpjInst','cnpjInstituicao'],
+   ['certNvEmailInst','emailInstituicao'],['certNvCurso','curso'],
+   ['certNvPercentual','percentual']].forEach(function(par){
+    var el = g(par[0]);
+    if(el && primeiro[par[1]] !== undefined && primeiro[par[1]] !== '') el.value = primeiro[par[1]];
+  });
+  ['certNvModalidade','certNvArea','certNvRegime'].forEach(function(id){
+    var chave = id === 'certNvModalidade' ? 'modalidade' : id === 'certNvArea' ? 'area' : 'regime';
+    var el = g(id);
+    if(el && primeiro[chave]) el.value = primeiro[chave];
+  });
+
+  marcados.slice(1).forEach(function(d){
+    nvBenefAdicionar({
+      quem: nvQuemPara(d.tipo, d.ordemFilho),
+      nome: d.nome, instituicao: d.instituicao,
+      modalidade: d.modalidade, curso: d.curso, percentual: d.percentual
+    });
+  });
+
+  /* O PERIODO CORRENTE JA PREENCHIDO — é o campo que a pessoa ia digitar
+     igual em todos, e o sistema sabe que semestre é hoje. */
+  var p = nvPeriodoCorrente();
+  if(g('certNvPeriodoAno'))  g('certNvPeriodoAno').value  = p.ano;
+  if(g('certNvPeriodoSem'))  g('certNvPeriodoSem').value  = p.semestre;
+  nvPeriodoSincronizarRegime();
+  nvSalvarHabilitar();
+
+  g('certNvRenov').style.display = 'none';
+  msg('Preenchi ' + marcados.length + ' beneficiário' +
+      (marcados.length > 1 ? 's' : '') + ' — confira e salve.','ok');
+}
+
+
+function nvBenefCards(){
+  var l = g('certNvBenefLista');
+  return l ? Array.prototype.slice.call(l.querySelectorAll('.cert-nv-benef-card')) : [];
+}
+
+/* Quantos dependentes o pedido ja tem, contando o beneficiario de cima.
+   Se o de cima for o proprio titular, ele nao ocupa vaga de dependente —
+   e a mesma regra que o servidor aplica. */
+function nvBenefTotalDependentes(){
+  var doTopo = nvQuem().proprio ? 0 : 1;
+  return doTopo + nvBenefCards().length;
+}
+
+function nvBenefRenumerar(){
+  nvBenefCards().forEach(function(c, i){
+    var n = i + 2;                       /* o 1 e o de cima */
+    var badge = c.querySelector('.cert-nv-benef-num');
+    var tit   = c.querySelector('.cert-nv-benef-tit');
+    if(badge) badge.textContent = n;
+    if(tit)   tit.textContent = 'Beneficiário ' + n;
+  });
+  var sub = g('certNvBenefSub');
+  if(sub){
+    var t = nvBenefTotalDependentes();
+    sub.textContent = t >= NV_MAX_DEPENDENTES
+      ? 'Limite de ' + NV_MAX_DEPENDENTES + ' dependentes atingido'
+      : 'Até ' + NV_MAX_DEPENDENTES + ' dependentes no mesmo pedido' +
+        (t ? ' — ' + t + ' até agora' : '');
+  }
+  var btn = g('certNvBenefAdd');
+  if(btn) btn.disabled = nvBenefTotalDependentes() >= NV_MAX_DEPENDENTES;
+}
+
+function nvBenefAdicionar(dados){
+  var lista = g('certNvBenefLista');
+  if(!lista) return null;
+  if(nvBenefTotalDependentes() >= NV_MAX_DEPENDENTES){
+    msg('São no máximo ' + NV_MAX_DEPENDENTES + ' dependentes no mesmo pedido.','warn');
+    return null;
+  }
+  dados = dados || {};
+
+  var c = document.createElement('div');
+  c.className = 'cert-nv-benef-card';
+  c.innerHTML =
+     '<div class="cert-nv-benef-cab">'
+   +   '<div class="cert-nv-benef-ident">'
+   +     '<div class="cert-nv-benef-num"></div>'
+   +     '<div><div class="cert-nv-benef-tit"></div>'
+   +     '<div class="cert-nv-benef-sub">Dados do curso e do desconto</div></div>'
+   +   '</div>'
+   +   '<button type="button" class="cert-nv-benef-x" title="Remover">✕</button>'
+   + '</div>'
+   + '<div class="cert-nv-grid">'
+   +   '<div class="cert-nv-campo"><label class="cert-nv-lbl">Quem é</label>'
+   +     '<select class="cert-nv-in js-quem">'
+   +       '<option value="FILHO_1">1º filho</option>'
+   +       '<option value="FILHO_2">2º filho</option>'
+   +       '<option value="FILHO_3">3º filho</option>'
+   +       '<option value="CONJUGE">Cônjuge</option>'
+   +       '<option value="ENTEADO">Enteado</option>'
+   +     '</select></div>'
+   +   '<div class="cert-nv-campo"><label class="cert-nv-lbl">Nome do beneficiário</label>'
+   +     '<input class="cert-nv-in js-nome"></div>'
+   +   '<div class="cert-nv-campo"><label class="cert-nv-lbl">Instituição de ensino</label>'
+   +     '<input class="cert-nv-in js-inst"></div>'
+   +   '<div class="cert-nv-campo"><label class="cert-nv-lbl">Modalidade</label>'
+   +     '<select class="cert-nv-in js-modalidade">'
+   +       '<option value="">—</option>'
+   +       '<option value="CRECHE">Creche (0–3)</option>'
+   +       '<option value="EDUCACAO_INFANTIL">Educação Infantil (4–5)</option>'
+   +       '<option value="ENSINO_FUNDAMENTAL">Ensino Fundamental</option>'
+   +       '<option value="ENSINO_MEDIO">Ensino Médio</option>'
+   +       '<option value="TECNICO">Técnico</option>'
+   +       '<option value="GRADUACAO">Graduação</option>'
+   +       '<option value="POS_GRADUACAO">Pós-Graduação</option>'
+   +     '</select></div>'
+   +   '<div class="cert-nv-campo"><label class="cert-nv-lbl">Curso</label>'
+   +     '<input class="cert-nv-in js-curso"></div>'
+   +   '<div class="cert-nv-campo"><label class="cert-nv-lbl">Percentual (%)</label>'
+   +     '<input class="cert-nv-in js-percentual" inputmode="numeric"></div>'
+   + '</div>'
+   + '<div class="cert-nv-benef-res" style="display:none;"></div>';
+
+  c.querySelector('.cert-nv-benef-x').onclick = function(){
+    c.remove(); nvBenefRenumerar();
+    /* Removido o último card, a trava do beneficiário de cima volta a valer. */
+    nvSalvarHabilitar();
+  };
+
+  /* Preenche o que veio da memoria — e deixa editar, sempre. */
+  if(dados.quem)        c.querySelector('.js-quem').value = dados.quem;
+  if(dados.nome)        c.querySelector('.js-nome').value = dados.nome;
+  if(dados.instituicao) c.querySelector('.js-inst').value = dados.instituicao;
+  if(dados.modalidade)  c.querySelector('.js-modalidade').value = dados.modalidade;
+  if(dados.curso)       c.querySelector('.js-curso').value = dados.curso;
+  if(dados.percentual !== undefined && dados.percentual !== '')
+    c.querySelector('.js-percentual').value = dados.percentual;
+
+  lista.appendChild(c);
+  nvBenefRenumerar();
+  /* O Salvar pode estar desabilitado por uma trava do beneficiário de cima;
+     com card extra ela deixa de valer — ver nvSalvarHabilitar. */
+  nvSalvarHabilitar();
+  return c;
+}
+
+function nvBenefLimpar(){
+  var l = g('certNvBenefLista');
+  if(l) l.innerHTML = '';
+  nvBenefRenumerar();
+}
+
+/* O que cada card extra manda para o servidor. O `quem` vira tipo + ordem
+   pelo mesmo helper do beneficiario de cima — uma regra, um lugar. */
+function nvBenefPayload(){
+  return nvBenefCards().map(function(c){
+    var v = String(c.querySelector('.js-quem').value || 'FILHO_1');
+    var q = nvQuemDe(v);
+    return {
+      tipoBeneficiario: q.tipo,
+      ordemFilho: q.ordem,
+      beneficiario: c.querySelector('.js-nome').value,
+      instituicao: c.querySelector('.js-inst').value,
+      modalidade: c.querySelector('.js-modalidade').value,
+      curso: c.querySelector('.js-curso').value,
+      percentual: c.querySelector('.js-percentual').value
+    };
+  });
+}
+
+/* O resultado volta POR CARD: protocolo em verde, motivo em vermelho. */
+function nvBenefPintarResultado(resultados){
+  var cards = nvBenefCards();
+  (resultados || []).forEach(function(r){
+    /* o indice 0 e o beneficiario de cima; do 1 em diante sao os cards */
+    if(r.indice === 0) return;
+    var c = cards[r.indice - 1];
+    if(!c) return;
+    var box = c.querySelector('.cert-nv-benef-res');
+    if(!box) return;
+    box.style.display = '';
+    box.className = 'cert-nv-benef-res ' + (r.ok ? 'ok' : 'erro');
+    box.textContent = r.ok ? ('✓ ' + r.protocolo) : ('✕ ' + (r.mensagem || 'não foi criado'));
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   CORRIGIR O PERIODO QUE FALTOU
+
+   Duas linhas da base foram criadas antes de o periodo virar obrigatorio.
+   Elas nao emitem — e a trava esta certa — mas tambem nao tinham conserto
+   pelo sistema: o lapis da lista aprova e emite, nao edita campo.
+
+   A faixa so aparece quando falta o periodo. Corrigido, ela some, e o
+   registro volta a ser um registro comum.
+   ══════════════════════════════════════════════════════════════════════ */
+var _corrProtocolo = '';
+
+function corrPeriodoSincronizar(s){
+  var faixa = g('certCorrPeriodo');
+  if(!faixa) return;
+  var tem = String((s && (s.periodoReferencia || s.periodo)) || '').trim();
+  _corrProtocolo = String((s && s.protocolo) || '');
+
+  if(tem){ faixa.style.display = 'none'; return; }
+
+  /* Os anos oferecidos: do anterior ao seguinte, como na tela de nova
+     solicitacao. Bolsa de dez anos atras nao se corrige por aqui. */
+  var sel = g('certCorrAno');
+  if(sel && !sel.options.length){
+    var hoje = new Date().getFullYear();
+    var html = '<option value="">ano</option>';
+    for(var a = hoje - 1; a <= hoje + 1; a++) html += '<option value="'+a+'">'+a+'</option>';
+    sel.innerHTML = html;
+  }
+  if(sel) sel.value = '';
+  if(g('certCorrSem')) g('certCorrSem').value = '';
+  faixa.style.display = '';
+}
+
+function corrPeriodoGravar(){
+  var ano = g('certCorrAno') ? String(g('certCorrAno').value || '') : '';
+  var sem = g('certCorrSem') ? String(g('certCorrSem').value || '') : '';
+  if(!ano){ msg('Escolha o ano do período.','warn'); return; }
+  /* Sem semestre vale: bolsa anual e "2026", e o servidor entende os dois. */
+  var periodo = sem ? (ano + '/' + sem) : ano;
+
+  var btn = g('certCorrGravar');
+  setBtnLoad(btn, 'Gravando...');
+  google.script.run
+    .withSuccessHandler(function(r){
+      resetBtn(btn);
+      if(!r || !r.ok){
+        msg((r && r.mensagem) || 'Não consegui gravar o período.','erro');
+        return;
+      }
+      msg('✅ ' + r.mensagem,'ok');
+      /* A lista recarrega para o ⚠ sair da linha, e a faixa some do modal —
+         o registro deixou de ter o problema que ela existia para resolver. */
+      if(g('certCorrPeriodo')) g('certCorrPeriodo').style.display = 'none';
+      var cel = g('cmi-periodo');
+      if(cel) cel.textContent = r.periodo;
+      carregarLista();
+    })
+    .withFailureHandler(function(err){
+      resetBtn(btn);
+      msg('Erro ao gravar o período: ' + ((err && err.message) || ''),'erro');
+    })
+    .voucherCorrigirPeriodo(_corrProtocolo, periodo, certToken());
+}
+
+function nvCampos(){
+  return {
+    cpf:              g('certNvCpf').value,
+    nome:             g('certNvNome').value,
+    email:            g('certNvEmail').value,
+    telefone:         g('certNvTelefone').value,
+    situacaoSindical: g('certNvSituacao') ? g('certNvSituacao').value : '',
+    /* Quando e por quem o papel foi recebido. Só vão preenchidos no
+       atendimento presencial — nos demais a faixa está escondida e os campos
+       limpos, então seguem vazios em vez de carregar sobra da tela. */
+    papelRecebidoEm: g('certNvPapelData') ? g('certNvPapelData').value : '',
+    papelRecebidoPor: g('certNvPapelQuem') ? g('certNvPapelQuem').value : '',
+    escola:           g('certNvEscola').value,
+    cnpjEscola:       g('certNvCnpjEscola').value,
+    cidadeEscola:     g('certNvCidadeEscola') ? g('certNvCidadeEscola').value : '',
+    escolaId:         g('certNvEscola') ? (g('certNvEscola').getAttribute('data-escola-id')||'') : '',
+    instituicao:      g('certNvInstituicao').value,
+    cnpjInstituicao:  g('certNvCnpjInst').value,
+    emailInstituicao: g('certNvEmailInst').value,
+    beneficiario:     nvQuem().proprio ? g('certNvNome').value : g('certNvBeneficiario').value,
+    tipoBeneficiario: nvQuem().tipo,
+    enteadoDeclaradoIR: g('certNvEnteadoIR') ? g('certNvEnteadoIR').value : '',
+    modalidade:       g('certNvModalidade').value,
+    area:             g('certNvArea').value,
+    curso:            g('certNvCurso').value,
+    ordemFilho:       nvQuem().ordem,
+    idadeBeneficiario:g('certNvIdade').value === '' ? '' : Number(g('certNvIdade').value),
+    periodo:          nvPeriodoValor(),
+    percentual:       g('certNvPercentual').value,
+    regime:           g('certNvRegime').value,
+    observacoes:      g('certNvObs').value
+  };
+}
+
+function nvLimpar(){
+  ['certNvBusca','certNvCpf','certNvNome','certNvEmail','certNvTelefone','certNvEscola',
+   'certNvCnpjEscola','certNvInstituicao','certNvCnpjInst','certNvEmailInst',
+   'certNvBeneficiario','certNvCurso','certNvIdade','certNvPercentual',
+   'certNvObs','certNvCidadeEscola'].forEach(function(id){ if(g(id)) g(id).value=''; });
+  ['certNvModalidade','certNvArea','certNvRegime',
+   'certNvPeriodoAno','certNvPeriodoSem'].forEach(function(id){ if(g(id)) g(id).value=''; });
+  nvPeriodoMontarAnos();
+  nvPeriodoSincronizarRegime();
+  if(g('certNvQuem')) g('certNvQuem').value='PROPRIO';
+  nvSincronizarBeneficiario();
+  if(g('certNvSituacao')) g('certNvSituacao').value='ASSOCIADO';
+  /* A faixa some junto com o resto. Sem isto, o próximo atendimento abriria
+     com "atendimento presencial" no topo por causa da pessoa anterior. */
+  nvPresencialSincronizar();
+  if(g('certNvEnteadoIR')) g('certNvEnteadoIR').value='';
+  /* A trava sai junto com o resto — e o botão volta a valer. Sem isto, o
+     bloqueio de uma solicitação anterior sobreviveria ao "Cancelar" e o
+     próximo atendimento abriria com os botões travados sem explicação. */
+  _nvBloqueio = null;
+  _nvExcecao = null;
+  _nvRegimeManual = false;
+  nvBenefLimpar();          /* os cards extras saem junto — ver nvLimpar */
+  /* A faixa de renovação também: sem isto, o próximo atendimento abriria
+     com a família do associado anterior — e ela vem MARCADA. */
+  _nvFamilia = []; _nvFamiliaCpf = '';
+  if(g('certNvRenov')) g('certNvRenov').style.display='none';
+  if(g('certNvRenovLista')) g('certNvRenovLista').innerHTML='';
+  if(g('certNvTrava')) g('certNvTrava').innerHTML='';
+  nvSalvarHabilitar();
+  ['certNvOrgInst','certNvOrgEmailInst','certNvOrgPct','certNvAvisos'].forEach(function(id){
+    if(g(id)) g(id).innerHTML='';
+  });
+}
+
+function nvAbrir(){
+  nvLimpar();
+  var o=g('certNovaOverlay');
+  if(o){o.style.display='flex';o.classList.add('ativo');}
+  if(g('certNvBusca')) g('certNvBusca').focus();
+}
+function nvFechar(){
+  var o=g('certNovaOverlay');
+  if(o){o.style.display='none';o.classList.remove('ativo');}
+}
+
+/** Etiqueta de origem — o que faz "preenchido" não virar "conferido". */
+function nvOrigem(el, origem){
+  if(!el) return;
+  var mapa = {
+    ULTIMA_SOLICITACAO: ['hist','da última dele'],
+    REGRA_CCT:          ['regra','regra da convenção'],
+    REGRA_CCT_RECUSA:   ['recusa','convenção não prevê'],
+    PADRAO_DO_CURSO:    ['padrao','padrão do curso'],
+    MEMORIA_INSTITUICAO:['hist','já usada antes']
+  };
+  var m = mapa[origem];
+  el.innerHTML = m ? '<span class="cert-nv-org '+m[0]+'">'+m[1]+'</span>' : '';
+}
+
+/** Pergunta ao backend o que ele já sabe, e preenche o que ainda está vazio. */
+function nvSugerir(){
+  var meu = ++_nvSeq;
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(meu !== _nvSeq) return;          // resposta atrasada de outra digitação
+      if(!r || !r.ok) return;
+      var c = r.campos || {}, org = r.origens || {};
+
+      /* O QUE A PESSOA JÁ DIGITOU NUNCA É SOBRESCRITO.
+         A memória preenche o vazio; ela não corrige quem está digitando. O
+         percentual é a exceção deliberada: quando vem da REGRA da convenção,
+         ele manda — e continua editável, que foi a decisão do usuário. */
+      [['nome','certNvNome'],['email','certNvEmail'],['telefone','certNvTelefone'],
+       ['escola','certNvEscola'],['cnpjEscola','certNvCnpjEscola'],
+       ['instituicao','certNvInstituicao'],['cnpjInstituicao','certNvCnpjInst'],
+       ['emailInstituicao','certNvEmailInst'],['beneficiario','certNvBeneficiario'],
+       ['curso','certNvCurso']].forEach(function(par){
+        /* O NOME DO BENEFICIÁRIO NÃO É PREENCHIDO QUANDO O BENEFICIÁRIO É O
+           PRÓPRIO TITULAR. O campo está escondido nesse caso, e a memória
+           voltaria a enchê-lo logo depois de nvSincronizarBeneficiario ter
+           limpado — as duas rodam no mesmo evento. O valor invisível seguiria
+           para a planilha, e a limpeza pareceria funcionar na tela. */
+        if(par[0]==='beneficiario' && nvQuem().proprio) return;
+        var el=g(par[1]);
+        if(el && !String(el.value||'').trim() && c[par[0]]) el.value=c[par[0]];
+      });
+      ['modalidade','area','tipoBeneficiario'].forEach(function(k){
+        var el = g(k==='modalidade'?'certNvModalidade':k==='area'?'certNvArea':'certNvTipoBenef');
+        if(el && !el.value && c[k]) el.value=c[k];
+      });
+
+      /* O regime segue a mesma regra do percentual: vindo da convenção,
+         manda; vazio, preenche; digitado pela pessoa, fica. */
+      var reg=g('certNvRegime');
+      /* `_nvRegimeManual` é o que faz o seletor ser um seletor.
+         Sem ele, a convenção reescrevia a escolha da pessoa a cada
+         sugestão: escolher ANUAL numa graduação e mexer em qualquer outro
+         campo devolvia SEMESTRAL, sem aviso. O usuário pediu o seletor
+         justamente porque "tem regime que é Anual e Semestral" — se a regra
+         sempre vence, não havia escolha a fazer. */
+      if(reg && c.regime && !_nvRegimeManual && (org.percentual==='REGRA_CCT' || !reg.value)){
+        reg.value=c.regime;
+        /* O seletor de semestre acompanha o regime que a regra acabou de
+           definir — senão a convenção diz "anual" e o campo de semestre
+           continua na tela, pedindo um dado que não existe naquela bolsa. */
+        nvPeriodoSincronizarRegime();
+      }
+
+      var pct=g('certNvPercentual');
+      if(pct){
+        /* RECUSA DA CONVENÇÃO LIMPA O CAMPO — e este `REGRA_CCT_RECUSA`
+           faltava aqui.
+           Sem ele, trocar a modalidade para Mestrado deixava a etiqueta
+           dizendo "convenção não prevê" ao lado de um campo mostrando os
+           50% da área anterior. Duas informações contraditórias na mesma
+           linha, e a que vale para o que se grava é a errada: bastava
+           clicar em Salvar para conceder desconto onde não há. */
+        if(org.percentual==='REGRA_CCT' || org.percentual==='REGRA_CCT_RECUSA'
+           || !String(pct.value||'').trim()){
+          pct.value = (c.percentual===undefined||c.percentual===null) ? '' : c.percentual;
+        }
+      }
+      nvOrigem(g('certNvOrgPct'), org.percentual);
+      /* O regime vem da mesma regra que o percentual: quando a convenção diz
+         "graduação é semestral", a etiqueta mostra que aquilo não foi
+         escolha de quem digita. */
+      nvOrigem(g('certNvOrgRegime'), c.regime ? org.percentual : '');
+      nvOrigem(g('certNvOrgInst'), org.instituicao);
+      nvOrigem(g('certNvOrgEmailInst'), org.emailInstituicao);
+
+      var caixa=g('certNvAvisos');
+      if(caixa){
+        caixa.innerHTML = (r.avisos||[]).map(function(a){
+          var alerta = r.divergencia && /[úu]ltima bolsa/i.test(a);
+          return '<div class="cert-nv-aviso'+(alerta?' alerta':'')+'">'+escHtml(a)+'</div>';
+        }).join('');
+      }
+    })
+    .withFailureHandler(function(){})
+    .voucherSugerirSolicitacao(nvCampos(), certToken());
+
+}
+
+/* ── UM VOUCHER POR PESSOA, POR CURSO, POR PERÍODO ────────────────────────
+   Regra do usuário em 13/08/2026: "somente um voucher por semestre ou por
+   ano (no caso do integral)", "renovação é por curso", "não pode gerar duas
+   vezes para a mesma pessoa".
+
+   Esta checagem é CONVENIÊNCIA — avisa enquanto a pessoa preenche, para ela
+   não descobrir no fim que perdeu o trabalho. A que VALE roda no servidor,
+   dentro do lock, um instante antes de gravar. Duas abas abertas ou uma tela
+   parada há vinte minutos não podem furar a regra, e por isso a mesma
+   pergunta é feita duas vezes. */
+function nvTravaDesenhar(r){
+  var caixa = g('certNvTrava');
+  _nvBloqueio = (r && r.bloqueado) ? (r.bloqueio || {}) : null;
+  _nvPodeExcecao = !!(r && r.podeAutorizarExcecao);
+  /* Trocou o caso, a justificativa escrita antes não vale mais: ela foi
+     escrita sobre OUTRA duplicata. Carregá-la adiante gravaria um motivo que
+     não descreve o que foi autorizado. */
+  _nvExcecao = null;
+  if(!caixa) { nvSalvarHabilitar(); return; }
+
+  if(_nvBloqueio){
+    var b = _nvBloqueio;
+    var linha2 = [b.beneficiario||'', b.curso||b.modalidade||'', b.periodo||''].filter(Boolean).join(' · ');
+    var linha3 = [b.protocolo||'', b.status?b.status.toLowerCase():'', b.data?('em '+b.data):'',
+                  b.quem?('por '+b.quem):''].filter(Boolean).join(' · ');
+    caixa.innerHTML =
+      '<div class="cert-nv-trava">'
+      +'<div class="cert-nv-trava-tit">⛔ Já existe voucher para esta pessoa neste período</div>'
+      +(linha2?'<div class="cert-nv-trava-l"><strong>'+escHtml(linha2)+'</strong></div>':'')
+      +(linha3?'<div class="cert-nv-trava-l">'+escHtml(linha3)+'</div>':'')
+      +'<div class="cert-nv-trava-l" style="margin-top:5px;">'+escHtml(r.mensagem||'')+'</div>'
+      +'<div class="cert-nv-trava-acoes">'
+        +(b.protocolo?'<button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certNvVerAnterior">Abrir a anterior</button>':'')
+        /* Reenviar fica AQUI de propósito: quem cai nesta trava quase sempre
+           não quer um segundo voucher — quer o mesmo de novo, porque o
+           associado perdeu o e-mail. O atendimento termina nesta tela. */
+        +(b.protocolo&&b.status==='EMITIDO'?'<button type="button" class="cert-btn cert-btn-primary cert-btn-sm" id="certNvReenviar">📨 Reenviar por e-mail</button>':'')
+        /* O botão de exceção só existe para administrador. Esconder não é a
+           trava — o servidor reconfere o perfil — mas oferecer um botão que
+           sempre recusa é pior que não oferecer nenhum. */
+        +(_nvPodeExcecao?'<button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certNvAbrirExcecao">Autorizar exceção</button>':'')
+      +'</div>'
+      +'<div id="certNvExcecaoBox" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed #fecaca;">'
+        +'<label class="cert-nv-lbl" style="color:#991b1b;">Por que este caso é exceção?</label>'
+        +'<textarea class="cert-nv-in" id="certNvExcecaoTexto" rows="2" style="resize:vertical;" placeholder="o que faz este caso sair da regra"></textarea>'
+        +'<div class="cert-nv-trava-l" style="margin-top:5px;">Fica gravado com o seu nome, na linha e na trilha de auditoria.</div>'
+        +'<div class="cert-nv-trava-acoes">'
+          +'<button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certNvExcecaoCancelar">Cancelar</button>'
+          +'<button type="button" class="cert-btn cert-btn-danger cert-btn-sm" id="certNvExcecaoConfirmar">Confirmar exceção</button>'
+        +'</div>'
+      +'</div></div>';
+
+    var vb = g('certNvVerAnterior');
+    if(vb) vb.addEventListener('click', function(){
+      var s = _lista.find(function(x){ return x.protocolo === b.protocolo; });
+      if(s){ nvFechar(); abrirModal(s); }
+      else msg('A anterior é o protocolo '+b.protocolo+'. Procure por ele na lista.','warn');
+    });
+    var rb = g('certNvReenviar');
+    if(rb) rb.addEventListener('click', function(){ nvFechar(); envAbrir(b.protocolo); });
+
+    var ab = g('certNvAbrirExcecao');
+    if(ab) ab.addEventListener('click', function(){
+      var cx = g('certNvExcecaoBox');
+      if(cx){ cx.style.display='block'; }
+      if(g('certNvExcecaoTexto')) g('certNvExcecaoTexto').focus();
+    });
+    var cb = g('certNvExcecaoCancelar');
+    if(cb) cb.addEventListener('click', function(){
+      _nvExcecao = null;
+      if(g('certNvExcecaoBox')) g('certNvExcecaoBox').style.display='none';
+      if(g('certNvExcecaoTexto')) g('certNvExcecaoTexto').value='';
+      nvSalvarHabilitar();
+    });
+    var ok = g('certNvExcecaoConfirmar');
+    if(ok) ok.addEventListener('click', function(){
+      var txt = String((g('certNvExcecaoTexto')||{}).value||'').trim();
+      /* O mesmo mínimo do servidor. Barrar aqui é cortesia; o servidor
+         reconfere, porque a tela não é onde a regra mora. */
+      if(txt.length < 15){
+        msg('Escreva o motivo da exceção — ao menos 15 caracteres.','warn');
+        if(g('certNvExcecaoTexto')) g('certNvExcecaoTexto').focus();
+        return;
+      }
+      _nvExcecao = { justificativa: txt };
+      /* A trava CONTINUA desenhada, de propósito: a caixa vermelha some só
+         quando a solicitação for gravada. Enquanto isso, ela é o lembrete de
+         que este salvamento é uma exceção, e não uma solicitação comum. */
+      nvSalvarHabilitar();
+      msg('Exceção preparada. Agora é só salvar — o motivo vai junto.','ok');
+    });
+
+  } else if(r && r.incerto){
+    /* AMARELO, e sem travar nada. O sistema não sabe o semestre daquela linha
+       antiga e não vai fingir que sabe; quem abre o registro descobre em
+       cinco segundos. Travar aqui seria recusar atendimento por um dado que
+       falta na planilha — decisão do usuário em 13/08/2026. */
+    var i = r.incerto;
+    caixa.innerHTML =
+      '<div class="cert-nv-aviso alerta">⚠ <strong>Pode ser a mesma bolsa — não dá para saber.</strong><br>'
+      + escHtml(r.mensagemIncerteza||'')
+      + (i.protocolo?' <button type="button" class="cert-btn cert-btn-secondary cert-btn-xs" id="certNvVerIncerto">Abrir a anterior</button>':'')
+      + '</div>';
+    var vi = g('certNvVerIncerto');
+    if(vi) vi.addEventListener('click', function(){
+      var s = _lista.find(function(x){ return x.protocolo === i.protocolo; });
+      if(s){ nvFechar(); abrirModal(s); }
+      else msg('A anterior é o protocolo '+i.protocolo+'. Procure por ele na lista.','warn');
+    });
+
+  } else if(r && r.tipo === 'RENOVACAO' && r.ultima){
+    caixa.innerHTML = '<div class="cert-nv-renov">↻ <strong>Renovação</strong> — '
+      + escHtml(String(r.vezes||1)) + 'ª bolsa neste curso. Última: '
+      + escHtml([r.ultima.protocolo, r.ultima.periodo,
+                 (r.ultima.percentual||r.ultima.percentual===0)?r.ultima.percentual+'%':'']
+                .filter(Boolean).join(' · ')) + '.</div>';
+  } else {
+    caixa.innerHTML = '';
+  }
+  nvSalvarHabilitar();
+}
+
+/* Um lugar só decide se dá para salvar. Espalhar isto pelos dois botões faria
+   um deles ficar habilitado numa refatoração futura, e o botão habilitado é
+   o que grava. */
+function nvSalvarHabilitar(){
+  /* Travado = há bloqueio E não há exceção autorizada. A exceção destrava,
+     mas ela é a única coisa que destrava — e continua sendo revalidada no
+     servidor, que é onde a permissão de administrador é conferida de fato. */
+  /* COM CARDS EXTRAS, NÃO TRAVA — mesma razão do bloco em nvSalvar, e este
+     era o segundo lugar onde a trava agarrava o pedido inteiro. Ela olha o
+     beneficiário DE CIMA, que é o único que a tela consegue conferir enquanto
+     se digita; com três filhos no pedido, desabilitar o Salvar por causa de
+     um deles impede de gravar os outros dois, que estão em ordem.
+
+     Achado pelo teste de tela em 13/08/2026: o primeiro pedido do teste
+     passava, o segundo não chamava o servidor, e o motivo não era o `return`
+     que eu já tinha corrigido — era o botão desabilitado, que faz o clique
+     não acontecer. Um teste que só olhasse a função de salvar não veria. */
+  var travado = !!_nvBloqueio && !_nvExcecao && !nvBenefCards().length;
+  ['certNvSalvarAnalise','certNvSalvarAprovar'].forEach(function(id){
+    var b = g(id);
+    if(!b) return;
+    b.disabled = travado;
+    b.style.opacity = travado ? '.45' : '';
+    b.style.cursor  = travado ? 'not-allowed' : '';
+  });
+}
+
+/* A FAMÍLIA — buscada quando o CPF fica completo.
+ *
+ * FICA FORA de nvSugerir de propósito, e isso foi achado por teste: nvSugerir
+ * só é chamada ao ESCOLHER alguém na lista de busca, não ao digitar o CPF. A
+ * secretaria que digita o CPF direto — que é o caminho mais rápido e o que a
+ * pessoa usa quando já tem o número na mão — nunca via a faixa aparecer.
+ *
+ * Entra em nvChecarPeriodo porque é ela que já roda a cada tecla do CPF, com
+ * o mesmo debounce, e já espera o CPF completo para valer.
+ */
+function nvFamiliaBuscar(){
+  var cpfAgora = String((nvCampos().cpf)||'').replace(/\D/g,'');
+  if(cpfAgora.length !== 11 || cpfAgora === _nvFamiliaCpf) return;
+  _nvFamiliaCpf = cpfAgora;
+  google.script.run
+    .withSuccessHandler(function(m){
+      /* Só desenha se o CPF ainda é o mesmo: a pessoa pode ter apagado e
+         digitado outro enquanto a resposta vinha, e a família do anterior
+         apareceria como se fosse deste. */
+      if(String((nvCampos().cpf)||'').replace(/\D/g,'') !== cpfAgora) return;
+      nvFamiliaDesenhar(m && m.achou ? (m.dependentes||[]) : []);
+    })
+    .withFailureHandler(function(){})
+    .voucherMemoriaAssociado(cpfAgora, certToken());
+}
+
+function nvChecarPeriodo(){
+  nvFamiliaBuscar();
+  var d = nvCampos();
+  if(String(d.cpf||'').replace(/\D/g,'').length !== 11 || !String(d.modalidade||'').trim()){
+    nvTravaDesenhar(null); return;
+  }
+  var meu = ++_pdSeq;
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(meu !== _pdSeq) return;
+      /* ok:false é falha de LEITURA, não "pode emitir". A trava do servidor
+         continua de pé; aqui só não se afirma nada. */
+      if(!r || !r.ok) return;
+      nvTravaDesenhar(r);
+    })
+    .withFailureHandler(function(){})
+    .voucherChecarPeriodo(d, certToken());
+}
+
+/* ── A ESCOLA COMPLETA, a partir do nome que veio da base de Associados ──
+   Pedido do usuário em 13/08/2026, com a tela na mão: "quando buscar o nome
+   pelo CPF deveria vir a escola também, com todos os dados".
+
+   A base de Associados guarda só o NOME do empregador — texto digitado, sem
+   CNPJ e sem vínculo. O cadastro de Escolas é que tem CNPJ, cidade e, o que
+   mais importa adiante, o `escolaId`. Sem esta ponte, a solicitação nascia
+   com um nome solto que ninguém consegue casar depois — exatamente o que a
+   Fase 4 existe para acabar.
+
+   TRÊS RESULTADOS POSSÍVEIS, e cada um pede uma conduta diferente:
+
+     uma só, ou uma que bate exatamente  → preenche e etiqueta "do cadastro"
+     várias parecidas                    → abre a lista, quem atende escolhe
+     nenhuma                             → deixa como está, sem inventar
+
+   O que NÃO se faz é escolher a primeira de uma lista ambígua: gravaria o
+   CNPJ da escola errada num certificado, e ninguém conferiria — o campo
+   estaria preenchido. */
+function nvResolverEscola(nomeEscola){
+  var termo = String(nomeEscola||'').trim();
+  if(termo.length < 2) return;
+  nvBuscarEscolaComTermo(termo, true);
+}
+
+/* Segunda tentativa, com o PEDAÇO MAIS DISTINTIVO do nome.
+   O associado trabalha na "UVV - VILA VELHA" segundo a base de Associados; no
+   cadastro de Escolas a mesma instituição está como "SEGEX UVV". Buscar pelo
+   texto inteiro nunca casaria — sobra "- VILA VELHA", que é onde ela fica, não
+   como ela se chama. Apontado pelo usuário em 13/08/2026.
+
+   A palavra escolhida é a mais longa que não seja ruído: siglas e nomes
+   próprios ("UVV", "MULTIVIX") sobrevivem; "ESCOLA", "CENTRO", "LTDA" e afins
+   não distinguem nada e só trariam meia base de volta.
+
+   O resultado da busca por pedaço NUNCA é aplicado sozinho, mesmo quando vem
+   um só: casar por uma palavra é evidência fraca, e gravar o CNPJ da escola
+   errada num certificado é o tipo de erro que ninguém confere depois, porque
+   o campo está preenchido. Aqui a lista abre e a pessoa escolhe. */
+var NV_PALAVRAS_SEM_VALOR = [
+  'ESCOLA','COLEGIO','CENTRO','EDUCACIONAL','EDUCACAO','ENSINO','INSTITUTO',
+  'FACULDADE','UNIDADE','MUNICIPAL','ESTADUAL','PARTICULAR','LTDA','EIRELI',
+  'EPP','ME','SA','DE','DA','DO','DOS','DAS','E','INFANTIL','FUNDAMENTAL',
+  'MEDIO','CRECHE','PRE','PROFESSOR','PROFESSORA','SANTA','SANTO','SAO'
+];
+function nvPedacoDistintivo(termo){
+  var palavras = nvNormalizarTexto(termo).split(' ').filter(function(p){
+    return p.length >= 3 && NV_PALAVRAS_SEM_VALOR.indexOf(p) === -1;
+  });
+  if(!palavras.length) return '';
+  palavras.sort(function(a,b){ return b.length - a.length; });
+  return palavras[0];
+}
+
+function nvBuscarEscolaComTermo(termo, podeTentarDeNovo){
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r || !r.ok || !r.escolas || !r.escolas.length){
+        /* Antes de desistir, tenta pelo pedaço distintivo — é o caso da
+           "UVV - VILA VELHA" que no cadastro é "SEGEX UVV". */
+        var pedaco = podeTentarDeNovo ? nvPedacoDistintivo(termo) : '';
+        if(pedaco && pedaco !== nvNormalizarTexto(termo)){
+          nvBuscarEscolaComTermo(pedaco, false);
+          return;
+        }
+        /* NÃO ACHOU: dizer isso é obrigatório. Antes a função voltava calada,
+           e a tela ficava exatamente igual a quando ela nem tinha sido
+           chamada — quem atendia via o nome preenchido, CNPJ e cidade em
+           branco, e não tinha como saber se o sistema procurou, se falhou, ou
+           se aquela escola não existe no cadastro. */
+        if(g('certNvOrgEscola')){
+          g('certNvOrgEscola').innerHTML =
+            '<span class="cert-nv-org padrao">não achei no cadastro de escolas</span>';
+        }
+        return;
+      }
+
+      var alvo = nvNormalizarTexto(termo);
+      var exatas = r.escolas.filter(function(e){
+        return nvNormalizarTexto(e.nome) === alvo || nvNormalizarTexto(e.fantasia) === alvo;
+      });
+      /* Aplica sozinho só com evidência FORTE: nome idêntico, ou resultado
+         único de uma busca pelo nome inteiro.
+
+         `r.aproximada` NUNCA é aplicada sozinha, nem quando vem uma só. Ali o
+         servidor está dizendo "não achei pelo texto, isto aqui é o que se
+         parece" — e parecido não é a mesma escola. Gravar o CNPJ de uma
+         escola parecida num certificado é o erro que ninguém confere depois,
+         porque o campo está preenchido, e campo preenchido não se relê. */
+      var escolhida = r.aproximada ? null
+                    : (exatas.length === 1 ? exatas[0]
+                    : (podeTentarDeNovo && r.escolas.length === 1 ? r.escolas[0] : null));
+
+      if(!escolhida){
+        nvMostrarListaEscolas(r.escolas);
+        if(g('certNvOrgEscola')){
+          g('certNvOrgEscola').innerHTML = '<span class="cert-nv-org padrao">'
+            + (r.aproximada ? 'nome parecido — confira e escolha'
+                            : r.escolas.length + ' parecidas — escolha') + '</span>';
+        }
+        return;
+      }
+      nvAplicarEscola(escolhida, 'CADASTRO');
+    })
+    .withFailureHandler(function(){})
+    .voucherBuscarEscola(termo, certToken());
+}
+
+function nvNormalizarTexto(t){
+  return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim();
+}
+
+/* Um lugar só escreve os campos da escola — a busca por CPF e a busca manual
+   preenchem exatamente os mesmos, e é isso que garante que o `escolaId` não
+   apareça por um caminho e falte pelo outro. */
+function nvAplicarEscola(x, origem){
+  if(!x) return;
+  if(g('certNvEscola')){
+    g('certNvEscola').value = x.nome || x.fantasia || '';
+    g('certNvEscola').setAttribute('data-escola-id', x.escolaId||'');
+  }
+  if(x.cnpj && g('certNvCnpjEscola')) g('certNvCnpjEscola').value = x.cnpj;
+  if(g('certNvCidadeEscola') && (x.cidade || x.uf)){
+    g('certNvCidadeEscola').value = [x.cidade, x.uf].filter(Boolean).join(' - ');
+  }
+  if(g('certNvOrgEscola')){
+    /* O ID FICA À VISTA quando existe — é a prova de que a escola digitada é
+       a escola do cadastro, e não um nome parecido. Quando não existe, dizer
+       "sem id na base" é mais honesto que omitir: quem atende precisa saber
+       que aquele vínculo não vai casar com nada depois. */
+    g('certNvOrgEscola').innerHTML = x.escolaId
+      ? '<span class="cert-nv-org hist">'+escHtml(x.escolaId)+
+        (origem==='CADASTRO'?' · do cadastro':'')+'</span>'
+      : '<span class="cert-nv-org padrao">sem id na base</span>';
+  }
+}
+
+function nvMostrarListaEscolas(escolas){
+  var lista = g('certNvListaEscola');
+  if(!lista) return;
+  lista.innerHTML = escolas.map(function(e,i){
+    return '<div class="cert-nv-item" data-i="'+i+'">'+escHtml(e.nome||e.fantasia||'—')
+      +'<small>'+escHtml([e.cnpj, e.cidade, e.uf].filter(Boolean).join(' · '))+'</small></div>';
+  }).join('');
+  lista.classList.add('ativo');
+  lista.querySelectorAll('.cert-nv-item').forEach(function(it){
+    it.addEventListener('click', function(){
+      nvAplicarEscola(escolas[Number(this.getAttribute('data-i'))], 'CADASTRO');
+      lista.classList.remove('ativo');
+    });
+  });
+}
+
+function nvBuscarAssociado(){
+  var termo=String(g('certNvBusca').value||'').trim();
+  var lista=g('certNvListaAssoc');
+  if(termo.length<3){ lista.classList.remove('ativo'); return; }
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r||!r.ok||!r.associados.length){ lista.classList.remove('ativo'); return; }
+      lista.innerHTML = r.associados.map(function(a,i){
+        return '<div class="cert-nv-item" data-i="'+i+'">'+escHtml(a.nome)
+             + '<small>'+escHtml(a.cpfMascarado)+(a.escola?' · '+escHtml(a.escola):'')+'</small></div>';
+      }).join('');
+      lista.classList.add('ativo');
+      lista.querySelectorAll('.cert-nv-item').forEach(function(it){
+        it.addEventListener('click',function(){
+          var a=r.associados[Number(this.getAttribute('data-i'))];
+          g('certNvCpf').value=a.cpf;
+          g('certNvNome').value=a.nome;
+          if(a.email && !g('certNvEmail').value) g('certNvEmail').value=a.email;
+          if(a.telefone && !g('certNvTelefone').value) g('certNvTelefone').value=a.telefone;
+          if(a.escola && !g('certNvEscola').value) g('certNvEscola').value=a.escola;
+          lista.classList.remove('ativo');
+          g('certNvBusca').value=a.nome;
+          nvSugerir();          // é aqui que a história dele aparece
+          nvChecarPeriodo();    // e é aqui que a trava do período aparece
+          /* E a escola vai buscar a SI MESMA no cadastro das 679.
+             A base de Associados só guarda o NOME do empregador — era por
+             isso que "UVV - VILA VELHA" aparecia com CNPJ e cidade em branco,
+             e quem atende tinha que digitar a escola de novo, no campo ao
+             lado, para o certificado sair completo. */
+          if(a.escola) nvResolverEscola(a.escola);
+        });
+      });
+    })
+    .withFailureHandler(function(){ lista.classList.remove('ativo'); })
+    .voucherBuscarAssociado(termo, certToken());
+}
+
+function nvBuscarInstituicao(){
+  var termo=String(g('certNvInstituicao').value||'').trim();
+  var lista=g('certNvListaInst');
+  if(termo.length<2){ lista.classList.remove('ativo'); return; }
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r||!r.ok||!r.instituicoes.length){ lista.classList.remove('ativo'); return; }
+      lista.innerHTML = r.instituicoes.map(function(x,i){
+        return '<div class="cert-nv-item" data-i="'+i+'">'+escHtml(x.nome)
+             + '<small>'+escHtml(x.cnpj||'sem CNPJ')+' · usada '+x.vezes+'x</small></div>';
+      }).join('');
+      lista.classList.add('ativo');
+      lista.querySelectorAll('.cert-nv-item').forEach(function(it){
+        it.addEventListener('click',function(){
+          var x=r.instituicoes[Number(this.getAttribute('data-i'))];
+          g('certNvInstituicao').value=x.nome;
+          if(x.cnpj)  g('certNvCnpjInst').value=x.cnpj;
+          if(x.email) g('certNvEmailInst').value=x.email;
+          nvOrigem(g('certNvOrgInst'),'MEMORIA_INSTITUICAO');
+          nvOrigem(g('certNvOrgEmailInst'), x.email?'MEMORIA_INSTITUICAO':'');
+          lista.classList.remove('ativo');
+        });
+      });
+    })
+    .withFailureHandler(function(){ lista.classList.remove('ativo'); })
+    .voucherInstituicoesSugerir(termo, certToken());
+}
+
+function nvBuscarEscola(){
+  var termo=String(g('certNvEscola').value||'').trim();
+  var lista=g('certNvListaEscola');
+  if(termo.length<2){ lista.classList.remove('ativo'); return; }
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r||!r.ok||!r.escolas.length){ lista.classList.remove('ativo'); return; }
+      lista.innerHTML = r.escolas.map(function(x,i){
+        var linha2=[x.fantasia && x.fantasia!==x.nome ? x.fantasia : '',
+                    x.cnpj, [x.cidade,x.uf].filter(Boolean).join('/')].filter(Boolean).join(' · ');
+        return '<div class="cert-nv-item" data-i="'+i+'">'+escHtml(x.nome)
+             + '<small>'+escHtml(linha2||'sem dados adicionais')+'</small></div>';
+      }).join('');
+      lista.classList.add('ativo');
+      lista.querySelectorAll('.cert-nv-item').forEach(function(it){
+        it.addEventListener('click',function(){
+          /* Escolher aqui e ser encontrada pela busca do associado gravam
+             exatamente os mesmos campos — inclusive o escolaId, que viaja no
+             elemento e não num campo visível: é identificador de sistema, mas
+             PRECISA ir junto na gravação. Duas rotinas de preenchimento
+             divergiriam, e a que esquecesse o id só apareceria na Fase 4. */
+          nvAplicarEscola(r.escolas[Number(this.getAttribute('data-i'))], 'MANUAL');
+          lista.classList.remove('ativo');
+        });
+      });
+    })
+    .withFailureHandler(function(){ lista.classList.remove('ativo'); })
+    .voucherBuscarEscola(termo, certToken());
+}
+
+/* Marca o campo, rola até ele e avisa. Devolve `false` quando falta — para o
+   chamador poder escrever `if(!nvExigir(...)) return;` e a validação caber
+   numa linha por campo. */
+function nvExigir(id, condicao, aviso){
+  var el = g(id);
+  if(el){
+    el.style.borderColor = condicao ? '' : '#dc2626';
+    el.style.boxShadow  = condicao ? '' : '0 0 0 4px rgba(220,38,38,.10)';
+  }
+  if(condicao) return true;
+  msg(aviso, 'warn');
+  if(el){
+    if(el.scrollIntoView) el.scrollIntoView({ block: 'center' });
+    el.focus();
+  }
+  return false;
+}
+
+function nvSalvar(aprovar){
+  var btn = g(aprovar?'certNvSalvarAprovar':'certNvSalvarAnalise');
+  var dados = nvCampos();
+  dados.aprovar = !!aprovar;
+
+  /* Barrado ANTES de sair: o backend também recusa, mas deixar a ida ao
+     servidor acontecer para voltar com "falta o CPF" é meio segundo de
+     espera para dizer o que a tela já sabia. */
+  /* O CAMPO QUE FALTA FICA MARCADO, e a tela rola até ele.
+     Antes o aviso ia só para a faixa de mensagem — que fica ATRÁS do modal,
+     na área da lista. Relatado em 13/08/2026 como "não está salvando": a
+     modalidade estava em "—", o sistema recusava com a frase certa, e a
+     frase aparecia num lugar que o modal cobria. */
+  if(!nvExigir('certNvCpf',
+      String(dados.cpf||'').replace(/\D/g,'').length===11,
+      'Informe um CPF válido — é por ele que a memória reencontra o associado.')) return;
+  if(!nvExigir('certNvNome', !!String(dados.nome||'').trim(),
+      'Informe o nome do associado.')) return;
+  if(!nvExigir('certNvModalidade', !!String(dados.modalidade||'').trim(),
+      'Escolha a modalidade.')) return;
+  /* O PERÍODO ENTROU NESTA LISTA EM 13/08/2026, e não é campo cosmético:
+     é a janela que a trava de "um por pessoa, por curso, por período"
+     compara. Duas solicitações foram gravadas sem ele na tela real, e sem
+     período a mesma pessoa passa duas vezes no mesmo curso — a trava não
+     tem o que comparar. Marca o ANO, que é a parte obrigatória: em bolsa
+     anual não há semestre. */
+  if(!nvExigir('certNvPeriodoAno', !!String(dados.periodo||'').trim(),
+      'Escolha o período de referência — é ele que impede o mesmo voucher sair duas vezes.')) return;
+
+  /* A trava também barra AQUI, não só no visual. Botão desabilitado é
+     aparência; esta linha é a regra. O servidor recusa de novo depois — três
+     travas para a mesma coisa é o que se faz quando emitir duas vezes não
+     tem desfazer. */
+  /* A TRAVA DA TELA SÓ ABORTA PEDIDO DE UM BENEFICIÁRIO SÓ.
+   *
+   * Achado pelo teste de tela em 13/08/2026, e é defeito de desenho, não de
+   * digitação: com três filhos no pedido, esta linha barrava TODOS porque UM
+   * deles já tinha bolsa. O desenho aprovado diz o contrário — "recusa de um
+   * não desfaz os outros" —, e a trava da tela olha só o beneficiário de
+   * cima, que é o único que ela sabe conferir enquanto a pessoa digita.
+   *
+   * Com cards extras, quem decide é o servidor, um a um, e cada card volta
+   * marcado. A trava do servidor continua valendo para todos: o que muda
+   * aqui é só a conveniência de avisar antes. */
+  if(_nvBloqueio && !_nvExcecao && !nvBenefCards().length){
+    msg('Já existe voucher para esta pessoa neste período'
+        + (_nvBloqueio.protocolo?' — protocolo '+_nvBloqueio.protocolo:'') + '.','erro');
+    return;
+  }
+  /* A justificativa só viaja quando há um bloqueio para excetuar. Mandar
+     exceção numa solicitação que não é duplicata gravaria a coluna
+     EXCECAO_DUPLICIDADE num caso comum, e a pergunta "quantas exceções houve"
+     passaria a ter resposta errada. */
+  if(_nvBloqueio && _nvExcecao) dados.excecao = _nvExcecao;
+
+  /* ══════════════════════════════════════════════════════════════════
+     DOIS CAMINHOS, UM FORMULARIO
+
+     Sem cards extras, nada muda: continua a chamada unica de sempre, e quem
+     cadastra um beneficiario nao ve diferenca nenhuma. Com cards, vai o
+     lote — que no servidor chama a MESMA criacao uma vez por pessoa.
+
+     O `if` fica aqui e nao no servidor de proposito: um pedido de um so
+     beneficiario nao precisa carregar a estrutura de lote, nem devolver
+     resultado por card para a tela ignorar.
+     ══════════════════════════════════════════════════════════════════════ */
+  var extras = nvBenefPayload();
+  if(extras.length){
+    setBtnLoad(btn, aprovar?'Aprovando...':'Salvando...');
+    /* O beneficiario de cima e o PRIMEIRO da lista — e por isso o indice 0
+       do resultado e dele, e os cards comecam do 1. */
+    var primeiro = {
+      tipoBeneficiario: dados.tipoBeneficiario,
+      ordemFilho: dados.ordemFilho,
+      beneficiario: dados.beneficiario,
+      instituicao: dados.instituicao,
+      modalidade: dados.modalidade,
+      area: dados.area,
+      curso: dados.curso,
+      percentual: dados.percentual,
+      idadeBeneficiario: dados.idadeBeneficiario,
+      enteadoDeclaradoIR: dados.enteadoDeclaradoIR
+    };
+    google.script.run
+      .withSuccessHandler(function(r){
+        resetBtn(btn);
+        if(!r){ msg('O servidor não respondeu nada ao salvar o pedido.','erro'); return; }
+        nvBenefPintarResultado(r.resultados);
+        if(!r.ok){ msg(r.mensagem||'Nenhuma solicitação foi criada.','erro'); return; }
+        if(r.parcial){
+          /* NAO FECHA O MODAL quando e parcial: o que foi recusado esta
+             marcado no card, e fechar esconderia justamente o que a pessoa
+             precisa corrigir. */
+          msg('⚠ '+r.mensagem,'warn');
+          carregarLista();
+          return;
+        }
+        msg('✅ '+r.mensagem,'ok');
+        nvFechar();
+        carregarLista();
+      })
+      .withFailureHandler(function(err){ resetBtn(btn); msg('Erro: '+((err&&err.message)||''),'erro'); })
+      .voucherCriarSolicitacoesEmLote({
+        comuns: dados,
+        beneficiarios: [primeiro].concat(extras)
+      }, certToken());
+    return;
+  }
+
+  setBtnLoad(btn, aprovar?'Aprovando...':'Salvando...');
+  google.script.run
+    .withSuccessHandler(function(r){
+      resetBtn(btn);
+      if(!r||!r.ok){
+        /* Recusa por duplicidade não é "erro ao salvar": é a resposta certa,
+           e ela traz o protocolo anterior. Desenha a trava para a pessoa ver
+           qual é e poder reenviar aquele mesmo. */
+        if(r && r.duplicado){
+          nvTravaDesenhar({ bloqueado:true, bloqueio:r.bloqueio||{}, mensagem:r.mensagem||'' });
+          msg(r.mensagem||'Já existe voucher para esta pessoa neste período.','erro');
+          return;
+        }
+        msg((r&&r.mensagem)||'Erro ao salvar.','erro'); return;
+      }
+      msg('✅ '+r.mensagem,'ok');
+      nvFechar();
+      carregarLista();
+    })
+    .withFailureHandler(function(err){ resetBtn(btn); msg('Erro: '+((err&&err.message)||''),'erro'); })
+    .voucherCriarSolicitacao(dados, certToken());
+}
+
+window.certAbrirNovaSolicitacao = nvAbrir;
 
 function gerarDocumento(tipo){
   if(!_solAtual){msg('Nenhuma solicitação selecionada.','warn');return;}
@@ -614,25 +3040,171 @@ function gerarDocumento(tipo){
         var janela=window.open('about:blank','_blank');
         if(janela){janela.document.open();janela.document.write(resp.html);janela.document.close();}
       }
+      /* Emitir e enviar são dois atos, mas na prática vêm colados: quem
+         acabou de gerar o certificado quer mandar agora. O modal abre
+         sozinho — e como é modal, quem não quiser enviar hoje fecha e o
+         documento continua emitido, para enviar depois pela lista.
+         Só no CERTIFICADO: o comprovante é papel interno, não vai para o
+         associado nem para a escola. */
+      if(tipo === 'CERTIFICADO' && _solAtual){
+        var prot = _solAtual.protocolo;
+        setTimeout(function(){ envAbrir(prot); }, 250);
+      }
     })
     .withFailureHandler(function(err){resetBtn(btn);msg('Erro: '+((err&&err.message)||''),'erro');})
     .gerarDocumentoCertBolsaCompleto(_solAtual.protocolo, tipo, {
       rg: rg, percentual: percentual, documentos: documentos
-    });
+    }, certToken());
+}
+
+/* ══ MODAL DO DOCUMENTO ══════════════════════════════════════════════════
+   Prévia → gerar → imprimir, baixar, e-mail, WhatsApp.
+
+   POR QUE A PRÉVIA VEM ANTES: emitir grava código de validação, muda o
+   status para EMITIDO e cria o PDF no Drive. É irreversível na prática — a
+   segunda emissão devolve o mesmo código, de propósito. Um documento assim
+   não deveria nascer de um clique único num ícone da lista, sem ninguém ver
+   o papel. Agora vê-se primeiro; emitir é a segunda decisão. */
+var _docSol = null;      // a solicitação aberta no modal
+var _docEmitido = null;  // resposta da emissão, quando já houve
+
+function certDocEstado(emitido){
+  var g_ = g;
+  if(g_('certDocBaixar')) g_('certDocBaixar').style.display = emitido ? '' : 'none';
+  if(g_('certDocEnviar')) g_('certDocEnviar').style.display = emitido ? '' : 'none';
+  /* O Gerar some depois de emitido: deixá-lo aceso convidaria ao segundo
+     clique que não gera nada e parece que o sistema ignorou. */
+  if(g_('certDocGerar'))  g_('certDocGerar').style.display  = emitido ? 'none' : '';
+  if(g_('certDocAviso'))  g_('certDocAviso').textContent = emitido
+    ? 'Emitido. Código ' + ((_docEmitido && _docEmitido.codigoValidacao) || '—')
+    : 'Rascunho — nada foi emitido nem enviado ainda.';
+}
+
+function certDocMostrarHtml(html){
+  var frame = g('certDocFrame'), carreg = g('certDocCarregando');
+  if(carreg) carreg.style.display = 'none';
+  if(!frame) return;
+  frame.style.display = '';
+  /* srcdoc e não document.write: o documento tem CSS próprio (A4 em
+     milímetros, @page, marca d'água) e precisa de um contexto isolado —
+     dentro da página do portal ele herdaria o CSS do sistema e deixaria de
+     parecer o papel que vai ser impresso. */
+  frame.srcdoc = String(html || '');
+}
+
+window.certDocAbrir = function(sol){
+  _docSol = sol || null;
+  _docEmitido = null;
+  if(!_docSol){ msg('Não consegui identificar a solicitação.','erro'); return; }
+
+  var ov = g('certDocOverlay');
+  if(ov) ov.style.display = 'flex';
+  if(g('certDocTitulo')) g('certDocTitulo').textContent = 'Certificado · ' + (_docSol.protocolo || '');
+  if(g('certDocSub')) g('certDocSub').textContent =
+    [(_docSol.nome||''), (_docSol.curso||''), (_docSol.periodoReferencia||_docSol.periodo||'')]
+      .filter(Boolean).join(' · ');
+  if(g('certDocFrame')) { g('certDocFrame').style.display='none'; g('certDocFrame').srcdoc=''; }
+  if(g('certDocCarregando')) g('certDocCarregando').style.display = '';
+  certDocEstado(_docSol.status === 'EMITIDO');
+
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r || !r.ok){
+        if(g('certDocCarregando')) g('certDocCarregando').textContent =
+          '⚠️ ' + ((r && r.mensagem) || 'Não consegui montar a prévia.');
+        return;
+      }
+      /* Protocolo já emitido devolve o documento pronto em vez da prévia —
+         e nesse caso o modal já nasce no estado "emitido". */
+      if(r.reemitido){ _docEmitido = r; certDocEstado(true); }
+      certDocMostrarHtml(r.html || '');
+      if(!r.html && g('certDocCarregando')){
+        g('certDocCarregando').style.display = '';
+        g('certDocCarregando').textContent = 'Documento já emitido. Use Baixar PDF.';
+      }
+    })
+    .withFailureHandler(function(err){
+      if(g('certDocCarregando')) g('certDocCarregando').textContent =
+        '⚠️ ' + ((err && err.message) || 'Falha ao montar a prévia.');
+    })
+    /* SEM PERCENTUAL. A prévia tem que mostrar o MESMO número que o
+       certificado vai imprimir — e quem decide é a solicitação, não a tela.
+       Mandar 70 aqui fazia a prévia mentir de um jeito especialmente ruim:
+       ela era o lugar onde alguém conferia antes de emitir. */
+    .gerarDocumentoCertBolsaCompleto(_docSol.protocolo, 'PREVIA', {}, certToken());
+};
+
+function certDocFechar(){
+  var ov = g('certDocOverlay');
+  if(ov) ov.style.display = 'none';
+  if(g('certDocFrame')) g('certDocFrame').srcdoc = '';
+}
+
+function certDocImprimir(){
+  var frame = g('certDocFrame');
+  if(!frame || !frame.srcdoc){ msg('Nada para imprimir ainda.','warn'); return; }
+  try { frame.contentWindow.focus(); frame.contentWindow.print(); }
+  catch(e){ msg('O navegador bloqueou a impressão: ' + (e.message||''),'erro'); }
+}
+
+function certDocGerar(){
+  if(!_docSol) return;
+  var btn = g('certDocGerar');
+  setBtnLoad(btn,'Gerando...');
+  google.script.run
+    .withSuccessHandler(function(r){
+      resetBtn(btn);
+      if(!r || !r.ok){ msg((r && r.mensagem) || 'Erro ao gerar o certificado.','erro'); return; }
+      _docEmitido = r;
+      certDocEstado(true);
+      if(r.html) certDocMostrarHtml(r.html);
+      msg('✅ Certificado emitido. Código: <strong>'+(r.codigoValidacao||'—')+'</strong>','ok');
+      carregarLista();
+    })
+    .withFailureHandler(function(err){ resetBtn(btn); msg('Erro: '+((err&&err.message)||''),'erro'); })
+    /* ESTA LINHA MANDAVA 70 FIXO — e foi ela que imprimiu 70% num
+       certificado de Medicina, que é 50%. Achado em 17/08/2026, conferindo
+       um PDF real.
+       O percentual sai da solicitação, calculado pela regra da convenção e
+       gravado em PERCENTUAL_APLICADO. A tela não tem opinião sobre isso: ela
+       pede a emissão, o backend lê o que está guardado. */
+    .gerarDocumentoCertBolsaCompleto(_docSol.protocolo, 'CERTIFICADO', {}, certToken());
+}
+
+function certDocBaixar(){
+  var link = _docEmitido && _docEmitido.linkPdf;
+  if(!link){ msg('O PDF só existe depois de gerar.','warn'); return; }
+  window.open(link,'_blank');
+}
+
+function certDocEnviar(){
+  if(!_docSol) return;
+  if(!_docEmitido && _docSol.status !== 'EMITIDO'){
+    msg('Gere o certificado antes de enviar.','warn'); return;
+  }
+  certDocFechar();
+  envAbrir(_docSol.protocolo);
 }
 
 // ── Carregar
 function carregarLista(){
   var tbody=g('certTbody');
-  if(tbody) tbody.innerHTML='<tr><td colspan="9"><div class="cert-tabela-vazia">⏳ Carregando...</div></td></tr>';
+  if(tbody) tbody.innerHTML='<tr><td colspan="10"><div class="cert-tabela-vazia">⏳ Carregando...</div></td></tr>';
   google.script.run
     .withSuccessHandler(function(lista){
       _lista=Array.isArray(lista)?lista:[];
       _filtrada=_lista.slice();
+      /* A seleção NÃO sobrevive a uma recarga: os protocolos podem ter mudado
+         de status, saído da lista ou já terem sido excluídos por outra aba.
+         Manter marcado o que não se sabe mais o que é seria o pior estado
+         possível para uma ação destrutiva. */
+      _selecionados = {};
+      atualizarBarraSelecao();
+      montarFiltroPeriodo();
       atualizarMetricas(); aplicarFiltros();
     })
     .withFailureHandler(function(err){msg('Erro ao carregar: '+((err&&err.message)||''),'erro');})
-    .listarSolicitacoesCertBolsa();
+    .listarSolicitacoesCertBolsa(certToken());
 }
 
 function exportarCsv(){
@@ -651,9 +3223,59 @@ function exportarCsv(){
   msg('📤 CSV exportado.','ok');
 }
 
+/* Fecha ao clicar fora, sem perder formulário por seleção de texto.
+   Ver o comentário no uso, em initInterno. */
+function ligarFecharPorClique(overlay, fechar){
+  if(!overlay) return;
+  var nasceuNoOverlay = false;
+  overlay.addEventListener('mousedown', function(ev){ nasceuNoOverlay = (ev.target === this); });
+  overlay.addEventListener('click', function(ev){
+    if(ev.target === this && nasceuNoOverlay) fechar();
+    nasceuNoOverlay = false;
+  });
+}
+
 // ── Init
-function init(){
+function initInterno(){
   if(g('certBusca'))           g('certBusca').addEventListener('input',function(){clearTimeout(_buscaTimer);_buscaTimer=setTimeout(aplicarFiltros,300);});
+  /* Os filtros de coluna: texto com atraso curto, seletor e data na hora. */
+  ['certFiltroProtocolo','certFiltroSolicitante','certFiltroEscola','certFiltroCurso']
+    .forEach(function(id){
+      if(g(id)) g(id).addEventListener('input', function(){
+        clearTimeout(_buscaTimer); _buscaTimer = setTimeout(aplicarFiltros, 250);
+      });
+    });
+  ['certFiltroPeriodo','certFiltroDataDe','certFiltroDataAte'].forEach(function(id){
+    if(g(id)) g(id).addEventListener('change', aplicarFiltros);
+  });
+  if(g('certLimparFiltros')) g('certLimparFiltros').addEventListener('click', limparFiltros);
+
+  // ── modal do documento: prévia, gerar, imprimir, baixar, enviar
+  if(g('certDocFechar'))   g('certDocFechar').addEventListener('click', certDocFechar);
+  if(g('certDocImprimir')) g('certDocImprimir').addEventListener('click', certDocImprimir);
+  if(g('certDocGerar'))    g('certDocGerar').addEventListener('click', certDocGerar);
+  if(g('certDocBaixar'))   g('certDocBaixar').addEventListener('click', certDocBaixar);
+  if(g('certDocEnviar'))   g('certDocEnviar').addEventListener('click', certDocEnviar);
+  ligarFecharPorClique(g('certDocOverlay'), certDocFechar);
+
+  // ── seleção e exclusão (lixeira)
+  if(g('certSelTodos')) g('certSelTodos').addEventListener('change', function(){
+    var marcar = this.checked;
+    document.querySelectorAll('.cert-sel-linha').forEach(function(c){
+      c.checked = marcar;
+      var p = c.getAttribute('data-prot');
+      if(marcar) _selecionados[p] = true; else delete _selecionados[p];
+      var tr = c.closest('tr'); if(tr) tr.style.background = marcar ? '#eff6ff' : '';
+    });
+    atualizarBarraSelecao();
+  });
+  if(g('certSelLimpar'))       g('certSelLimpar').addEventListener('click', limparSelecao);
+  if(g('certSelExcluir'))      g('certSelExcluir').addEventListener('click', confirmarExclusao);
+  if(g('certExcluirFechar'))   g('certExcluirFechar').addEventListener('click', fecharExclusao);
+  if(g('certExcluirCancelar')) g('certExcluirCancelar').addEventListener('click', fecharExclusao);
+  if(g('certExcluirConfirmar'))g('certExcluirConfirmar').addEventListener('click', executarExclusao);
+  ligarFecharPorClique(g('certExcluirOverlay'), fecharExclusao);
+
   if(g('certFiltroStatus'))    g('certFiltroStatus').addEventListener('change',aplicarFiltros);
   if(g('certFiltroModalidade'))g('certFiltroModalidade').addEventListener('change',aplicarFiltros);
   if(g('certBtnRecarregar'))   g('certBtnRecarregar').addEventListener('click',carregarLista);
@@ -695,14 +3317,174 @@ function init(){
     });
   }
 
+  // ── modal de envio
+  if(g('certEnvFechar'))     g('certEnvFechar').addEventListener('click', envFechar);
+  if(g('certEnvFechar2'))    g('certEnvFechar2').addEventListener('click', envFechar);
+  if(g('certEnvBtnEmail'))   g('certEnvBtnEmail').addEventListener('click', envEnviarEmail);
+  if(g('certEnvBtnZap'))     g('certEnvBtnZap').addEventListener('click', envAbrirZap);
+  if(g('certEnvCopiaAtiva')) g('certEnvCopiaAtiva').addEventListener('change', envSincronizarCopia);
+
+  /* Clicar fora fecha — mas SÓ no overlay, não em qualquer clique que borbulhe
+     de dentro da caixa. Sem o teste de alvo, clicar num campo do formulário
+     fecharia o modal e perderia o que a pessoa digitou. */
+  ligarFecharPorClique(g('certEnvioOverlay'), envFechar);
+  document.addEventListener('keydown', function(ev){
+    if(ev.key === 'Escape' && g('certEnvioOverlay') &&
+       g('certEnvioOverlay').classList.contains('ativo')) envFechar();
+  });
+
+  // ── nova solicitação
+  if(g('certBtnNova'))          g('certBtnNova').addEventListener('click', nvAbrir);
+  if(g('certNvFechar'))         g('certNvFechar').addEventListener('click', nvFechar);
+  if(g('certNvCancelar'))       g('certNvCancelar').addEventListener('click', nvFechar);
+  if(g('certNvSalvarAnalise'))  g('certNvSalvarAnalise').addEventListener('click', function(){ nvSalvar(false); });
+  if(g('certNvSalvarAprovar'))  g('certNvSalvarAprovar').addEventListener('click', function(){ nvSalvar(true); });
+  /* O + Adicionar do bloco de beneficiarios. Fica aqui, junto dos outros
+     botoes do modal, e nao num bloco proprio: quem procura "quem escuta o
+     clique" olha um lugar so. */
+  if(g('certNvBenefAdd')) g('certNvBenefAdd').addEventListener('click', function(){ nvBenefAdicionar(); });
+  if(g('certNvRenovarBtn')) g('certNvRenovarBtn').addEventListener('click', nvFamiliaRenovar);
+  if(g('certCorrGravar')) g('certCorrGravar').addEventListener('click', corrPeriodoGravar);
+  if(g('certNvRenovarNao')) g('certNvRenovarNao').addEventListener('click', function(){
+    /* "Montar na mão" só fecha a faixa. Não limpa nada: quem clicou aqui
+       quer digitar, e apagar o que ele já digitou seria castigo. */
+    g('certNvRenov').style.display = 'none';
+  });
+
+  /* Debounce nas duas buscas. Sem ele, cada tecla vira uma ida ao servidor
+     e a planilha inteira é lida oito vezes para digitar "Marcelo". */
+  if(g('certNvBusca')){
+    g('certNvBusca').addEventListener('input', function(){
+      clearTimeout(_nvTimer); _nvTimer=setTimeout(nvBuscarAssociado, 320);
+    });
+  }
+  if(g('certNvInstituicao')){
+    g('certNvInstituicao').addEventListener('input', function(){
+      clearTimeout(_nvTimerInst); _nvTimerInst=setTimeout(nvBuscarInstituicao, 320);
+    });
+  }
+  if(g('certNvQuem')){
+    g('certNvQuem').addEventListener('change', function(){
+      nvSincronizarBeneficiario(); nvSugerir();
+      /* RECONTA AS VAGAS. Trocar o de cima de "Próprio" para "1º filho" muda
+         quantos dependentes o pedido tem — e sem esta linha o + Adicionar
+         continuava liberado depois de o teto já ter sido atingido. Achado
+         pelo teste de tela em 13/08/2026, num passo escrito justamente para
+         matar uma mutação que sobreviveu. */
+      nvBenefRenumerar();
+    });
+  }
+  if(g('certNvEnteadoIR')) g('certNvEnteadoIR').addEventListener('change', nvSugerir);
+
+  if(g('certNvEscola')){
+    g('certNvEscola').addEventListener('input', function(){
+      /* Digitou de novo: o id anterior não vale mais. Deixá-lo grudado
+         amarraria a solicitação a uma escola que a pessoa acabou de trocar. */
+      this.removeAttribute('data-escola-id');
+      if(g('certNvOrgEscola')) g('certNvOrgEscola').innerHTML='';
+      clearTimeout(_nvTimerEsc); _nvTimerEsc=setTimeout(nvBuscarEscola, 320);
+    });
+  }
+
+  /* Mudou modalidade, área, curso, ordem ou idade → o percentual pode mudar.
+     São exatamente os campos que a regra da convenção lê. */
+  ['certNvModalidade','certNvArea','certNvQuem','certNvSituacao'].forEach(function(id){
+    if(g(id)) g(id).addEventListener('change', nvSugerir);
+  });
+
+  /* A faixa do presencial escuta o MESMO seletor, em ouvinte próprio.
+     Pendurar no nvSugerir não serviria: ele é uma ida ao servidor, e a faixa
+     precisa aparecer no instante do clique — não depois da resposta chegar.
+     Este é o mesmo erro que a faixa de renovação teve em 13/08, quando foi
+     amarrada ao nvSugerir e só disparava ao escolher da lista de busca. */
+  if(g('certNvSituacao')) g('certNvSituacao').addEventListener('change', nvPresencialSincronizar);
+  /* A checagem de período depende de OUTROS campos que a sugestão: quem é o
+     beneficiário, qual o curso, qual o período e qual o regime. Escutar os
+     mesmos eventos da sugestão faria a trava ignorar justamente a troca do
+     período — que é o campo que decide se há bloqueio. */
+  ['certNvModalidade','certNvQuem','certNvPeriodoAno','certNvPeriodoSem'].forEach(function(id){
+    if(g(id)) g(id).addEventListener('change', nvChecarPeriodo);
+  });
+  /* O regime faz DUAS coisas: mostra ou esconde o seletor de semestre, e muda
+     a janela da trava. A ordem importa — sincronizar primeiro, porque numa
+     bolsa anual o semestre é limpo, e checar antes leria o valor que ainda
+     estava lá. */
+  if(g('certNvRegime')) g('certNvRegime').addEventListener('change', function(){
+    _nvRegimeManual = true;      // escolheu à mão: a sugestão não desfaz mais
+    nvPeriodoSincronizarRegime();
+    nvChecarPeriodo();
+  });
+  /* Os campos DIGITADOS escutam `input`, não `change`. `change` num campo de
+     texto só dispara quando a pessoa SAI dele — e quem digita o período e vai
+     direto clicar em Salvar nunca sai do campo. A trava apareceria depois de
+     a gravação já ter sido tentada, que é tarde demais para servir de aviso.
+     Daí o atraso curto: não é uma ida ao servidor por tecla. */
+  ['certNvCpf','certNvCurso','certNvBeneficiario'].forEach(function(id){
+    if(!g(id)) return;
+    g(id).addEventListener('change', nvChecarPeriodo);
+    g(id).addEventListener('input', function(){
+      clearTimeout(_pdTimer);
+      _pdTimer = setTimeout(nvChecarPeriodo, 260);
+    });
+  });
+  ['certNvCurso','certNvIdade'].forEach(function(id){
+    if(g(id)) g(id).addEventListener('change', nvSugerir);
+  });
+
+  /* MÁSCARAS — do Utils, nunca reimplementadas aqui.
+     O CLAUDE.md é explícito: máscara de CPF/telefone é do Helpers.html, uma
+     só para o sistema inteiro. Cada tela com a sua diverge no primeiro
+     ajuste, e telefone gravado em três formatos quebra a busca depois. */
+  [['certNvCpf','aplicarMascaraCPF'],
+   ['certNvTelefone','aplicarMascaraTelefone']].forEach(function(par){
+    var el=g(par[0]);
+    if(el && typeof Utils!=='undefined' && Utils[par[1]]){
+      el.addEventListener('input', function(){ Utils[par[1]](this); });
+    }
+  });
+  /* A busca também: quem digita CPF ali quer ver o número formatado, e o
+     backend normaliza para dígitos de qualquer jeito. */
+  if(g('certNvBusca') && typeof Utils!=='undefined' && Utils.aplicarMascaraCPF){
+    g('certNvBusca').addEventListener('input', function(){
+      if(/^[\d.\-]+$/.test(this.value)) Utils.aplicarMascaraCPF(this);
+    });
+  }
+
+  /* FECHAR AO CLICAR FORA — mas só quando o clique COMEÇOU fora.
+     Relatado em 13/08/2026: "quando demora a preencher ele está fechando
+     sozinho". Não era o tempo: era o gesto. Quem seleciona um texto dentro de
+     um campo e solta o mouse um pouco além da borda da caixa dispara um
+     `click` cujo alvo é o overlay — e o formulário inteiro ia embora, com
+     tudo que já tinha sido digitado. Quanto mais demorado o preenchimento,
+     mais seleção e mais chance de acontecer.
+
+     Guardar onde o clique NASCEU resolve: só fecha quando começou E terminou
+     no overlay. Vale para os dois modais, porque o gesto é o mesmo. */
+  ligarFecharPorClique(g('certNovaOverlay'), nvFechar);
+
   carregarLista();
 }
 
-window.initCertificadoAdmin = function(){
+/* A TRAVA DE INICIALIZAÇÃO ÚNICA MORA DENTRO DO init(), não no invólucro.
+ *
+ * Ela estava só aqui, e o arquivo TAMBÉM chama init() sozinho no fim (pelo
+ * DOMContentLoaded ou pelo setTimeout logo abaixo). Quem carregasse a tela e
+ * depois chamasse initCertificadoAdmin() — que é como o menu abre o módulo —
+ * rodava init() DUAS vezes, e cada addEventListener era registrado duas
+ * vezes.
+ *
+ * O efeito não é visual: é um clique em "Salvar e aprovar" gravando DUAS
+ * solicitações, uma emissão em duplicidade a cada botão. Achado por mutação
+ * no t37 em 13/08/2026, ao contar as chamadas ao backend — 2 onde devia ser
+ * 1. Nenhum teste anterior pegou porque todos liam a ÚLTIMA chamada, e a
+ * última estava correta; era a existência da penúltima que era o defeito. */
+function init(){
   if(window._certAdminInit) return;
   window._certAdminInit = true;
-  init();
-};
+  initInterno();
+}
+
+window.initCertificadoAdmin = init;
 
 if(document.readyState === 'loading'){
   document.addEventListener('DOMContentLoaded', function(){

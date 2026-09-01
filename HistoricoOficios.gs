@@ -3,121 +3,13 @@
 // ============================================================================
 
 var ABA_FILA_OFICIOS      = "FILA_ENVIO_OFICIOS";
-var ABA_HISTORICO_OFICIOS = "Oficios_Historico";
-
-/* ── Setup inicial ── */
-
-function setupHistoricoOficios() {
-  var ss   = SpreadsheetApp.openById(PLANILHA_ID);
-  var fila = ss.getSheetByName(ABA_FILA_OFICIOS);
-  if (!fila) throw new Error("Aba " + ABA_FILA_OFICIOS + " não encontrada.");
-
-  var historico = ss.getSheetByName(ABA_HISTORICO_OFICIOS);
-  if (!historico) {
-    historico = ss.insertSheet(ABA_HISTORICO_OFICIOS);
-    var cabecalho = [
-      "DATA","NUMERO_OFICIO","TIPO","ESCOLA","CNPJ","EMAIL",
-      "STATUS","USUARIO","CODIGO_VERIFICACAO","LINK_PDF","ID_FILA"
-    ];
-    historico.appendRow(cabecalho);
-    historico.setFrozenRows(1);
-    historico.getRange(1, 1, 1, cabecalho.length)
-      .setFontWeight("bold")
-      .setBackground("#002f6c")
-      .setFontColor("#ffffff");
-    historico.autoResizeColumns(1, cabecalho.length);
-  }
-
-  return sincronizarHistoricoOficios();
-}
-
-/* ── Sincronização INCREMENTAL ── */
-
-function sincronizarHistoricoOficios() {
-  var ss   = SpreadsheetApp.openById(PLANILHA_ID);
-  var fila = ss.getSheetByName(ABA_FILA_OFICIOS);
-
-  if (!fila) {
-    return { erro: true, mensagem: "Aba " + ABA_FILA_OFICIOS + " não encontrada." };
-  }
-
-  var historico = ss.getSheetByName(ABA_HISTORICO_OFICIOS);
-  if (!historico) {
-    historico = ss.insertSheet(ABA_HISTORICO_OFICIOS);
-    var cab = [
-      "DATA","NUMERO_OFICIO","TIPO","ESCOLA","CNPJ","EMAIL",
-      "STATUS","USUARIO","CODIGO_VERIFICACAO","LINK_PDF","ID_FILA"
-    ];
-    historico.appendRow(cab);
-    historico.setFrozenRows(1);
-    historico.getRange(1, 1, 1, cab.length)
-      .setFontWeight("bold")
-      .setBackground("#002f6c")
-      .setFontColor("#ffffff");
-  }
-
-  var dadosFila = fila.getDataRange().getValues();
-  if (dadosFila.length <= 1) {
-    return { ok: true, novos: 0, mensagem: "Fila vazia — nada a sincronizar." };
-  }
-
-  var cabFila = dadosFila[0].map(String);
-  var idx     = function(nome) { return cabFila.indexOf(nome); };
-  var col     = getColunasFilaOficios_(idx);
-
-  // Monta conjunto de IDs já presentes no histórico
-  var idsExistentes = {};
-  if (historico.getLastRow() > 1) {
-    var dadosHist = historico.getDataRange().getValues();
-    var cabHist   = dadosHist[0].map(String);
-    var colIdHist = cabHist.indexOf("ID_FILA");
-    if (colIdHist >= 0) {
-      for (var h = 1; h < dadosHist.length; h++) {
-        var idH = String(dadosHist[h][colIdHist] || "").trim();
-        if (idH) idsExistentes[idH] = true;
-      }
-    }
-  }
-
-  // Apenas registros com ID novo
-  var novasLinhas = [];
-  for (var i = 1; i < dadosFila.length; i++) {
-    var l  = dadosFila[i];
-    var id = String(l[col.id] || "").trim();
-    if (!id || idsExistentes[id]) continue;
-    novasLinhas.push([
-      l[col.data],
-      l[col.numero],
-      l[col.tipo],
-      l[col.escola],
-      l[col.cnpj],
-      l[col.email],
-      l[col.status] || "PENDENTE",
-      l[col.usuario],
-      l[col.codigo],
-      extrairLinkPdfOficio_(l[col.anexos]),
-      l[col.id]
-    ]);
-  }
-
-  if (novasLinhas.length > 0) {
-    historico.getRange(
-      historico.getLastRow() + 1, 1, novasLinhas.length, 11
-    ).setValues(novasLinhas);
-    // autoResizeColumns apenas no setup — removido aqui para performance
-  }
-
-  return {
-    ok: true,
-    novos: novasLinhas.length,
-    mensagem: "Sincronização concluída. " + novasLinhas.length + " novo(s) registro(s) adicionado(s)."
-  };
-}
 
 /* ── Listar histórico com filtros ── */
 
+// SEM trava de modulo: consultada pela Central de E-mails e pelo nucleo
+// de IA para dar contexto ao usuario. Sessao continua exigida.
 function listarHistoricoOficios(filtros, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
   filtros = filtros || {};
 
   var ss  = SpreadsheetApp.openById(PLANILHA_ID);
@@ -127,80 +19,89 @@ function listarHistoricoOficios(filtros, tokenSessao) {
     return { erro: true, mensagem: "Aba " + ABA_FILA_OFICIOS + " não encontrada.", itens: [] };
   }
 
-  var dados = aba.getDataRange().getValues();
-  if (dados.length <= 1) return { total: 0, itens: [] };
+  var ultimaLinha = aba.getLastRow();
+  var ultimaCol   = aba.getLastColumn();
+  if (ultimaLinha <= 1) return { total: 0, itens: [] };
 
-  var cab = dados[0].map(String);
+  var cab = aba.getRange(1, 1, 1, ultimaCol).getValues()[0].map(String);
   var idx = function(nome) { return cab.indexOf(nome); };
   var col = getColunasFilaOficios_(idx);
 
+  /* SÓ AS COLUNAS QUE O HISTÓRICO USA — e não a planilha inteira.
+   *
+   * A leitura era `getDataRange().getValues()`, que traz TODAS as colunas
+   * de TODAS as linhas. Entre elas está HTML_BODY, que guarda o corpo
+   * inteiro do e-mail de cada ofício — de longe a célula mais pesada da
+   * aba, e que esta função nunca usa. Com a fila crescendo, a listagem
+   * carregava megabytes de HTML só para descartá-los.
+   *
+   * Contexto de 19/08/2026: o usuário viu o histórico parado em
+   * "Carregando" e a trava de espera confirmou que a chamada NÃO VOLTAVA —
+   * nem sucesso, nem falha. Leitura pesada demais é uma das duas causas
+   * que produzem exatamente isso; a outra está tratada logo abaixo, no
+   * texto do pacote de retorno.
+   *
+   * Cada coluna vira uma leitura estreita. São mais chamadas, sim, e ainda
+   * assim muito menos dado — que é o que custa aqui. */
+  var nLinhas = ultimaLinha - 1;
+  var cacheCol = {};
+  function coluna(indice) {
+    if (indice === undefined || indice < 0) return null;
+    if (!cacheCol[indice]) {
+      cacheCol[indice] = aba.getRange(2, indice + 1, nLinhas, 1).getValues();
+    }
+    return cacheCol[indice];
+  }
+  function valor(indice, linha) {
+    var c = coluna(indice);
+    return c ? c[linha][0] : "";
+  }
+
   var itens = [];
-  for (var i = 1; i < dados.length; i++) {
-    var l = dados[i];
-    if (!l[col.id]) continue;
+  for (var i = 0; i < nLinhas; i++) {
+    if (!valor(col.id, i)) continue;
+    var anexosLinha = valor(col.anexos, i);
+    var link = extrairLinkPdfOficio_(anexosLinha);
+    /* TEXTO, NUNCA O VALOR CRU DA CÉLULA.
+     *
+     * google.script.run serializa o retorno para o navegador. Quando algo
+     * no pacote não serializa — e uma Date inválida, vinda de célula com
+     * conteúdo estranho, é o caso clássico —, o cliente recebe NULL: sem
+     * erro, sem log, e NENHUM dos dois handlers dispara. A tela fica no
+     * "Carregando" para sempre.
+     *
+     * Foi exatamente esse mecanismo que derrubou o envio do voucher em
+     * 18/08/2026. Aqui os campos vinham crus da planilha — qualquer um
+     * deles podia ser uma Date convertida pelo Sheets. */
     itens.push({
-      id:      l[col.id],
-      data:    formatarDataHistoricoOficio_(l[col.data]),
-      numero:  l[col.numero],
-      tipo:    l[col.tipo],
-      escola:  l[col.escola],
-      cnpj:    l[col.cnpj],
-      email:   l[col.email],
-      status:  l[col.status] || "PENDENTE",
-      usuario: l[col.usuario],
-      codigo:  l[col.codigo],
-      url:     extrairLinkPdfOficio_(l[col.anexos]),
-      linkPdf: extrairLinkPdfOficio_(l[col.anexos])
+      id:      textoHistoricoOficio_(valor(col.id, i)),
+      data:    formatarDataHistoricoOficio_(valor(col.data, i)),
+      numero:  textoHistoricoOficio_(valor(col.numero, i)),
+      tipo:    textoHistoricoOficio_(valor(col.tipo, i)),
+      escola:  textoHistoricoOficio_(valor(col.escola, i)),
+      cnpj:    textoHistoricoOficio_(valor(col.cnpj, i)),
+      email:   textoHistoricoOficio_(valor(col.email, i)),
+      status:  textoHistoricoOficio_(valor(col.status, i)) || "PENDENTE",
+      usuario: textoHistoricoOficio_(valor(col.usuario, i)),
+      codigo:  textoHistoricoOficio_(valor(col.codigo, i)),
+      url:     link,
+      linkPdf: link
     });
   }
 
   itens = aplicarFiltrosHistoricoOficios_(itens, filtros);
   itens.reverse();
 
-  return { total: itens.length, itens: itens };
-}
-
-/* ── Registrar/atualizar por ID da fila ── */
-
-function registrarHistoricoOficioPorFilaId(filaId) {
-  if (!filaId) return { erro: true, mensagem: "ID da fila não informado." };
-
-  var ss        = SpreadsheetApp.openById(PLANILHA_ID);
-  var fila      = ss.getSheetByName(ABA_FILA_OFICIOS);
-  var historico = ss.getSheetByName(ABA_HISTORICO_OFICIOS);
-
-  if (!fila) return { erro: true, mensagem: "Aba " + ABA_FILA_OFICIOS + " não encontrada." };
-  if (!historico) { setupHistoricoOficios(); historico = ss.getSheetByName(ABA_HISTORICO_OFICIOS); }
-
-  var dados = fila.getDataRange().getValues();
-  var cab   = dados[0].map(String);
-  var idx   = function(nome) { return cab.indexOf(nome); };
-  var col   = getColunasFilaOficios_(idx);
-
-  var linha = null;
-  for (var i = 1; i < dados.length; i++) {
-    if (String(dados[i][col.id]) === String(filaId)) { linha = dados[i]; break; }
-  }
-
-  if (!linha) return { erro: true, mensagem: "Registro da fila não encontrado." };
-
-  var valores = [[
-    linha[col.data],   linha[col.numero], linha[col.tipo],
-    linha[col.escola], linha[col.cnpj],   linha[col.email],
-    linha[col.status] || "PENDENTE",
-    linha[col.usuario], linha[col.codigo],
-    extrairLinkPdfOficio_(linha[col.anexos]),
-    linha[col.id]
-  ]];
-
-  var linhaExistente = localizarLinhaHistoricoPorId_(historico, filaId);
-  if (linhaExistente > 1) {
-    historico.getRange(linhaExistente, 1, 1, valores[0].length).setValues(valores);
-  } else {
-    historico.appendRow(valores[0]);
-  }
-
-  return { ok: true, mensagem: "Histórico do ofício atualizado." };
+  // Paginação opcional (achado #9) — só ativa se o chamador enviar
+  // filtros.porPagina; sem isso, devolve a lista inteira como sempre.
+  var pag = paginarItens_(itens, filtros);
+  return {
+    total:        pag.total,
+    itens:        pag.itens,
+    pagina:       pag.pagina,
+    porPagina:    pag.porPagina,
+    totalPaginas: pag.totalPaginas
+  };
 }
 
 /* ── Helpers ── */
@@ -265,22 +166,31 @@ function extrairLinkPdfOficio_(anexosJson) {
   return "";
 }
 
-function formatarDataHistoricoOficio_(v) {
-  if (!v) return "";
-  if (Object.prototype.toString.call(v) === "[object Date]") {
-    return Utilities.formatDate(v, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm");
+/**
+ * Qualquer célula vira texto que o google.script.run consegue mandar.
+ *
+ * Date válida sai legível; Date INVÁLIDA sai vazia em vez de derrubar a
+ * serialização inteira. É a mesma trava que VoucherEnvio.gs ganhou em
+ * 18/08/2026, pelo mesmo motivo: pacote que não serializa devolve NULL ao
+ * navegador, sem erro e sem log, e a tela fica esperando para sempre.
+ */
+function textoHistoricoOficio_(v) {
+  if (v === null || v === undefined || v === "") return "";
+  try {
+    if (Object.prototype.toString.call(v) === "[object Date]") {
+      if (isNaN(v.getTime())) return "";
+      return Utilities.formatDate(v, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm");
+    }
+    return String(v);
+  } catch (e) {
+    return "";
   }
-  return String(v);
 }
 
-function localizarLinhaHistoricoPorId_(aba, filaId) {
-  var valores = aba.getDataRange().getValues();
-  if (valores.length <= 1) return -1;
-  var cab   = valores[0].map(String);
-  var colId = cab.indexOf("ID_FILA");
-  if (colId < 0) return -1;
-  for (var i = 1; i < valores.length; i++) {
-    if (String(valores[i][colId]) === String(filaId)) return i + 1;
-  }
-  return -1;
+/* Delega ao conversor único. A versão anterior chamava Utilities.formatDate
+   direto numa Date sem conferir se ela era válida — e formatDate LEVANTA
+   exceção com Date inválida, o que derrubava a listagem inteira por causa
+   de uma célula. */
+function formatarDataHistoricoOficio_(v) {
+  return textoHistoricoOficio_(v);
 }

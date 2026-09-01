@@ -338,7 +338,8 @@ function previewReciboDiverso(dados, tokenSessao) {
 /* ═══════════════════════════════════════
    GERAR RECIBO DIVERSO INDIVIDUAL
 ═══════════════════════════════════════ */
-function gerarReciboDiverso(dados) {
+function gerarReciboDiverso(dados, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     dados = dados || {};
 
@@ -365,7 +366,7 @@ function gerarReciboDiverso(dados) {
       .replace(/\s+/g, " ")
       .trim();
 
-    var pdfFile = converterHtmlParaPdf_(html, nomeArq, pastaAno);
+    var pdfFile = recibo_converterHtmlParaPdf_(html, nomeArq, pastaAno);
 
     try {
       pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
@@ -408,7 +409,8 @@ function gerarReciboDiverso(dados) {
 /* ═══════════════════════════════════════
    GERAR LOTE DE RECIBOS DIVERSOS
 ═══════════════════════════════════════ */
-function gerarLoteReciboDiversos(lista) {
+function gerarLoteReciboDiversos(lista, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     if (!Array.isArray(lista) || !lista.length) {
       return { erro: true, mensagem: "Lista de beneficiários vazia." };
@@ -442,7 +444,7 @@ function gerarLoteReciboDiversos(lista) {
           .replace(/\s+/g, " ")
           .trim();
 
-        var pdfFile = converterHtmlParaPdf_(html, nomeArq, pastaAno);
+        var pdfFile = recibo_converterHtmlParaPdf_(html, nomeArq, pastaAno);
         try { pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch(e) {}
 
         var fileId      = pdfFile.getId();
@@ -1024,13 +1026,6 @@ function excluirReciboDiverso(dados, tokenSessao) {
   }
 }
 
-/* ═══════════════════════════════════════
-   ALIAS
-═══════════════════════════════════════ */
-function buscarBeneficiariosReciboPorEmpresa(empresaBusca, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
-  return buscarBeneficiariosPorEmpresa(empresaBusca);
-}
 
 /* ═══════════════════════════════════════
    TESTES

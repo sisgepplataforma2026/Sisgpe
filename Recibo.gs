@@ -541,7 +541,7 @@ const textoPgto = forma === "CHEQUE"
   .replace(/\s+/g, " ")
   .trim();
 
-  var pdfFile = converterHtmlParaPdf_(html, nomeArquivo, pastaAno);
+  var pdfFile = recibo_converterHtmlParaPdf_(html, nomeArquivo, pastaAno);
 
   try {
     pdfFile.setSharing(
@@ -893,7 +893,8 @@ function normalizarBeneficiarioEntradaRecibo_(b, idx, exigirPagamento) {
   };
 }
 /* ================= SALVAR / ABRIR LOTE ================= */
-function salvarLoteRecibo(dados) {
+function salvarLoteRecibo(dados, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     const emailUsuario = obterEmailUsuarioAtual_() || "usuario@sisgep.local";
 
@@ -1308,7 +1309,8 @@ function listarBeneficiariosPorProcessoRecibo(idProcesso) {
 }
 
 /* ================= CADASTRAR PROCESSO ================= */
-function cadastrarNovoProcessoRecibo(dados) {
+function cadastrarNovoProcessoRecibo(dados, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   const emailUsuario = obterEmailUsuarioAtual_();
 
   if (!emailUsuario) {
@@ -3092,7 +3094,8 @@ function importarBeneficiariosReciboDaAbaImportacao(processoFiltro, tokenSessao)
   );
 }
 /* ================= E-MAIL INDIVIDUAL SIMPLES ================= */
-function enviarReciboIndividual(dados) {
+function enviarReciboIndividual(dados, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     dados = dados || {};
 
@@ -3121,33 +3124,6 @@ function enviarReciboIndividual(dados) {
   } catch (e) {
     throw new Error(e.message);
   }
-}
-
-/* ================= PARSE DE VALOR ================= */
-function parseValorTexto_(valor) {
-  if (!valor) return 0;
-
-  var txt = String(valor)
-    .replace(/\s/g, "")
-    .replace(/^R\$/i, "");
-
-  if (txt.indexOf(",") > -1) {
-    txt = txt.replace(/\./g, "").replace(",", ".");
-  } else {
-    var partes = txt.split(".");
-
-    if (partes.length > 1) {
-      var ultima = partes[partes.length - 1];
-
-      txt = /^\d{1,2}$/.test(ultima)
-        ? partes.slice(0, -1).join("") + "." + ultima
-        : partes.join("");
-    }
-  }
-
-  var n = parseFloat(txt);
-
-  return isNaN(n) ? 0 : n;
 }
 
 /* ================= PJe-CALC ================= */
@@ -3746,7 +3722,8 @@ function importarDocumentosEGerarPlanilha(payload, tokenSessao) {
   }
 }
 
-function importarAlvaraPDF(payload) {
+function importarAlvaraPDF(payload, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
   try {
     payload = payload || {};
 
@@ -4123,7 +4100,8 @@ function obterResumoFinanceiroProcesso(idProcesso, tokenSessao) {
 }
 
 /* ================= EDITAR PROCESSO ================= */
-function editarProcessoRecibo(dados) {
+function editarProcessoRecibo(dados, tokenSessao) {
+  var sessaoEdicao = exigirSessaoDocumentos_(tokenSessao, false);
   try {
     dados = dados || {};
 
@@ -4167,6 +4145,7 @@ function editarProcessoRecibo(dados) {
       }
 
       var linhaAtual = sh.getRange(i + 1, 1, 1, cab.length).getValues()[0];
+      var valorAnteriorTotal = idxValorTotal > -1 ? String(linhaAtual[idxValorTotal] || "").trim() : "";
 
       linhaAtual[idxProcesso] = processo;
       linhaAtual[idxEmpresa]  = empresa;
@@ -4175,6 +4154,11 @@ function editarProcessoRecibo(dados) {
       if (idxValorTotal > -1) linhaAtual[idxValorTotal]  = valorTotal;
 
       sh.getRange(i + 1, 1, 1, cab.length).setValues([linhaAtual]);
+
+      if (idxValorTotal > -1 && valorTotal) {
+        finAudRegistrarAlteracaoValor_("RECIBOS", idProcesso, valorAnteriorTotal, valorTotal,
+          (sessaoEdicao && (sessaoEdicao.email || sessaoEdicao.usuario)) || "SISGEP", dados.motivoAlteracaoValor || "");
+      }
 
       return {
         erro: false,
@@ -4365,7 +4349,7 @@ function carregarImagensRecibo_() {
 }
 
 // ─── UTILITÁRIO: converte HTML para PDF preservando layout ───
-function converterHtmlParaPdf_(html, titulo, pasta) {
+function recibo_converterHtmlParaPdf_(html, titulo, pasta) {
 
   titulo = titulo || "Documento";
 
