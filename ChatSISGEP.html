@@ -1,18 +1,22 @@
 <div id="blocoChat" style="display:flex;margin:-20px -24px -48px;height:calc(100vh - 60px);flex-direction:column;background:#f0f4f8;font-family:'Plus Jakarta Sans',sans-serif;">
 
-  <div class="sofiaOpsGrid" style="display:grid;grid-template-columns:170px minmax(0,1fr) 260px;flex:1;min-height:0;">
-    <aside style="background:#e8eef7;border-right:1px solid #d7e0ec;padding:16px;overflow:auto;">
-      <button onclick="limparChat()" style="width:100%;background:#002f6c;color:#fff;border:0;border-radius:9px;padding:10px;font-weight:700;cursor:pointer;">＋ Nova conversa</button>
-      <div style="color:#64748b;font-size:10px;font-weight:700;text-transform:uppercase;margin:20px 0 8px;">Especialidades</div>
-      <div id="sofiaEspecialidades" style="display:grid;gap:5px;font-size:12px;color:#002f6c;"><button type="button" data-sofia-dominio="Geral" onclick="selecionarDominioSofia_('Geral')" style="text-align:left;border:0;background:transparent;color:#002f6c;border-radius:7px;padding:7px 8px;cursor:pointer;font-family:inherit;">◉ Geral</button><button type="button" data-sofia-dominio="Associados" onclick="selecionarDominioSofia_('Associados')" style="text-align:left;border:0;background:transparent;color:#002f6c;border-radius:7px;padding:7px 8px;cursor:pointer;font-family:inherit;">👥 Associados</button><button type="button" data-sofia-dominio="Financeiro" onclick="selecionarDominioSofia_('Financeiro')" style="text-align:left;border:0;background:transparent;color:#002f6c;border-radius:7px;padding:7px 8px;cursor:pointer;font-family:inherit;">💰 Financeiro</button><button type="button" data-sofia-dominio="Escolas" onclick="selecionarDominioSofia_('Escolas')" style="text-align:left;border:0;background:transparent;color:#002f6c;border-radius:7px;padding:7px 8px;cursor:pointer;font-family:inherit;">🏫 Escolas</button><button type="button" data-sofia-dominio="Comunicação" onclick="selecionarDominioSofia_('Comunicação')" style="text-align:left;border:0;background:transparent;color:#002f6c;border-radius:7px;padding:7px 8px;cursor:pointer;font-family:inherit;">✉ Comunicação</button><button type="button" data-sofia-dominio="CCT" onclick="selecionarDominioSofia_('CCT')" style="text-align:left;border:0;background:transparent;color:#002f6c;border-radius:7px;padding:7px 8px;cursor:pointer;font-family:inherit;">📘 CCT</button><button type="button" data-sofia-dominio="Jurídico" onclick="selecionarDominioSofia_('Jurídico')" style="text-align:left;border:0;background:transparent;color:#002f6c;border-radius:7px;padding:7px 8px;cursor:pointer;font-family:inherit;">⚖ Jurídico</button><button type="button" data-sofia-dominio="Documentos" onclick="selecionarDominioSofia_('Documentos')" style="text-align:left;border:0;background:transparent;color:#002f6c;border-radius:7px;padding:7px 8px;cursor:pointer;font-family:inherit;">📄 Documentos</button><button type="button" data-sofia-dominio="Benefícios" onclick="selecionarDominioSofia_('Benefícios')" style="text-align:left;border:0;background:transparent;color:#002f6c;border-radius:7px;padding:7px 8px;cursor:pointer;font-family:inherit;">🎁 Benefícios</button><button type="button" data-sofia-dominio="RH e Administrativo" onclick="selecionarDominioSofia_('RH e Administrativo')" style="text-align:left;border:0;background:transparent;color:#002f6c;border-radius:7px;padding:7px 8px;cursor:pointer;font-family:inherit;">👤 RH e Administrativo</button></div>
-      <div style="color:#64748b;font-size:10px;font-weight:700;text-transform:uppercase;margin:20px 0 8px;">Memória</div>
-      <div style="font-size:11px;color:#475569;line-height:1.5;">A SOFIA usará memórias autorizadas e o histórico desta conversa.</div>
-    </aside>
+  <div class="sofiaOpsGrid sofia-sem-painel" style="display:grid;grid-template-columns:minmax(0,1fr) 260px;flex:1;min-height:0;">
 
     <main style="display:flex;flex-direction:column;min-width:0;background:#f7f9fc;">
+    <!-- Especialidades em linha, não em coluna.
+         Elas eram uma segunda navegação vertical colada à do sistema, com a
+         mesma cara — e pedindo à pessoa uma decisão que a máquina já toma
+         sozinha: as palavras da pergunta escolhem o documento (ChatIACore,
+         precisaCCT/precisaEstatuto). Como chips, a escolha continua
+         disponível para FORÇAR o modo e manter o histórico por
+         especialidade, custando altura em vez de largura. -->
+    <div class="sofia-barra-modos">
+      <div id="sofiaEspecialidades" class="sofia-chips"><button type="button" class="sofia-chip" data-sofia-dominio="Geral" onclick="selecionarDominioSofia_('Geral')">◉ Geral</button><button type="button" class="sofia-chip" data-sofia-dominio="Associados" onclick="selecionarDominioSofia_('Associados')">👥 Associados</button><button type="button" class="sofia-chip" data-sofia-dominio="Financeiro" onclick="selecionarDominioSofia_('Financeiro')">💰 Financeiro</button><button type="button" class="sofia-chip" data-sofia-dominio="Escolas" onclick="selecionarDominioSofia_('Escolas')">🏫 Escolas</button><button type="button" class="sofia-chip" data-sofia-dominio="Comunicação" onclick="selecionarDominioSofia_('Comunicação')">✉ Comunicação</button><button type="button" class="sofia-chip" data-sofia-dominio="CCT" onclick="selecionarDominioSofia_('CCT')">📘 CCT</button><button type="button" class="sofia-chip" data-sofia-dominio="Estatuto" onclick="selecionarDominioSofia_('Estatuto')">📜 Estatuto</button><button type="button" class="sofia-chip" data-sofia-dominio="Jurídico" onclick="selecionarDominioSofia_('Jurídico')">⚖ Jurídico</button><button type="button" class="sofia-chip" data-sofia-dominio="Documentos" onclick="selecionarDominioSofia_('Documentos')">📄 Documentos</button><button type="button" class="sofia-chip" data-sofia-dominio="Benefícios" onclick="selecionarDominioSofia_('Benefícios')">🎁 Benefícios</button><button type="button" class="sofia-chip" data-sofia-dominio="RH e Administrativo" onclick="selecionarDominioSofia_('RH e Administrativo')">👤 RH e Administrativo</button></div>
+      <button type="button" class="sofia-nova" onclick="limparChat()" title="Começa uma conversa nova nesta especialidade">＋ Nova conversa</button>
+    </div>
       <div id="chatMensagens" style="flex:1;overflow-y:auto;padding:22px;display:flex;flex-direction:column;gap:12px;">
         <div class="chat-msg-ia" style="display:flex;gap:10px;align-items:flex-start;">
-          <div style="width:30px;height:30px;background:#002f6c;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">✦</div>
+          <div style="width:30px;height:30px;background:var(--navy2,#002f6c);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">✦</div>
           <div style="max-width:88%;color:#0f2747;line-height:1.6;">
             <strong>Olá, Wanderson. O que precisamos resolver agora?</strong><br>
             Posso consultar uma escola, interpretar a CCT, analisar o financeiro ou preparar uma ação.
@@ -23,27 +27,36 @@
       <div style="background:#fff;border-top:1px solid #dbe3ef;padding:12px 16px;flex-shrink:0;">
         <div id="chatSugestoes" style="display:none;"></div>
         <div style="display:flex;gap:8px;align-items:flex-end;">
-          <textarea id="chatInput" placeholder="Pergunte, peça uma análise ou diga o que precisa resolver..." rows="2" style="flex:1;border:1.5px solid #dbe3ef;border-radius:10px;padding:10px 14px;font-size:13px;font-family:inherit;resize:none;outline:none;line-height:1.5;max-height:110px;" onkeydown="chatKeyDown(event)" oninput="chatInputChange(this)" onfocus="this.style.borderColor='#002f6c'" onblur="this.style.borderColor='#dbe3ef'"></textarea>
-          <button id="chatBtnEnviar" onclick="enviarMensagemChat()" style="background:#002f6c;color:#fff;border:0;border-radius:10px;padding:10px 18px;font-weight:700;cursor:pointer;height:44px;">Enviar ➤</button>
+          <textarea id="chatInput" placeholder="Pergunte, peça uma análise ou diga o que precisa resolver..." rows="2" style="flex:1;border:1.5px solid #dbe3ef;border-radius:10px;padding:10px 14px;font-size:13px;font-family:inherit;resize:none;outline:none;line-height:1.5;max-height:110px;" onkeydown="chatKeyDown(event)" oninput="chatInputChange(this)" onfocus="this.style.borderColor='var(--navy2,#002f6c)'" onblur="this.style.borderColor='#dbe3ef'"></textarea>
+          <button id="chatBtnMic" type="button" title="Ditar por voz" onclick="chatAlternarDitado()" style="background:#eef3f9;color:var(--navy2,#002f6c);border:0;border-radius:10px;padding:10px 14px;cursor:pointer;height:44px;font-size:16px;flex:0 0 auto;">🎤</button>
+          <button id="chatBtnEnviar" onclick="enviarMensagemChat()" style="background:var(--navy2,#002f6c);color:#fff;border:0;border-radius:10px;padding:10px 18px;font-weight:700;cursor:pointer;height:44px;">Enviar ➤</button>
         </div>
-        <div style="text-align:right;color:#94a3b8;font-size:10px;margin-top:4px;">Enter para enviar · Shift+Enter para nova linha</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+          <span id="chatStatusIndicator" style="color:var(--gold,#C9A84C);font-size:10px;font-weight:700;">● Pronto para ajudar</span>
+          <span style="color:#94a3b8;font-size:10px;">Enter para enviar · Shift+Enter para nova linha <span id="chatDataIndicador" style="display:none;margin-left:6px;"></span></span>
+        </div>
       </div>
     </main>
 
-    <aside style="background:#fff;border-left:1px solid #dbe3ef;padding:16px;overflow:auto;">
-      <div style="display:flex;gap:6px;margin-bottom:16px;"><button style="background:#002f6c;color:#fff;border:0;border-radius:8px;padding:7px 9px;">Contexto</button><button style="background:#eef3f9;color:#002f6c;border:0;border-radius:8px;padding:7px 9px;">Ações</button></div>
-      <div id="sofiaContextoPainel"><strong style="color:#002f6c;">Contexto da conversa</strong><p style="font-size:12px;color:#64748b;line-height:1.5;">Quando você mencionar uma escola, documento ou processo, os dados relacionados aparecerão aqui.</p></div>
-      <div style="border-top:1px solid #e2e8f0;margin-top:18px;padding-top:14px;"><strong style="color:#002f6c;">Atividade da SOFIA</strong><div style="font-size:11px;color:#64748b;line-height:1.8;margin-top:8px;">○ Aguardando sua solicitação<br>○ Fontes serão exibidas aqui<br>○ Ações exigirão confirmação</div></div>
+    <!-- Painel de contexto: só existe quando tem o que dizer.
+         Ele passava a tela inteira ocupando um quinto dela para prometer
+         "Fontes serão exibidas aqui" e "Ações exigirão confirmação" —
+         conteúdo que nunca chegava. Espaço permanente para informação
+         eventual é o dashboard decorativo que o PROMPT-MESTRE proíbe.
+         Começa recolhido (classe sofia-sem-painel na grade) e abre quando
+         uma escola é identificada na conversa. -->
+    <aside id="sofiaPainelDireito" style="background:#fff;border-left:1px solid #dbe3ef;padding:16px;overflow:auto;">
+      <div id="sofiaContextoPainel"></div>
     </aside>
   </div>
 </div>
 
 <style>
 #sofiaContextoPainel div[style*="display:grid"] > div{display:flex!important;justify-content:space-between!important;align-items:center!important;gap:8px!important;color:#334155!important;opacity:1!important;}
-#sofiaContextoPainel div[style*="display:grid"] > div > strong{float:none!important;display:inline!important;color:#002f6c!important;opacity:1!important;font-size:13px!important;}
-#sofiaContextoPainel div[style*="display:grid"] > div:nth-child(2) > strong{color:#059669!important;}
-#sofiaContextoPainel div[style*="display:grid"] > div:nth-child(3) > strong{color:#dc2626!important;}
-#sofiaContextoPainel div[style*="display:grid"] > div:nth-child(4) > strong{color:#d97706!important;}
+#sofiaContextoPainel div[style*="display:grid"] > div > strong{float:none!important;display:inline!important;color:var(--navy2,#002f6c)!important;opacity:1!important;font-size:13px!important;}
+#sofiaContextoPainel div[style*="display:grid"] > div:nth-child(2) > strong{color:var(--green,#059669)!important;}
+#sofiaContextoPainel div[style*="display:grid"] > div:nth-child(3) > strong{color:var(--red,#dc2626)!important;}
+#sofiaContextoPainel div[style*="display:grid"] > div:nth-child(4) > strong{color:var(--amber,#d97706)!important;}
 .sofiaOpsGrid{min-height:0!important;overflow:hidden!important;}
 .sofiaOpsGrid>main{min-height:0!important;overflow:hidden!important;}
 .sofiaOpsGrid>aside{min-height:0!important;overflow-y:auto!important;overscroll-behavior:contain;}
@@ -51,31 +64,52 @@
 #chatMensagens::-webkit-scrollbar,.sofiaOpsGrid>aside::-webkit-scrollbar{width:8px;}
 #chatMensagens::-webkit-scrollbar-thumb,.sofiaOpsGrid>aside::-webkit-scrollbar-thumb{background:#b8c7da;border-radius:10px;}
 #chatMensagens::-webkit-scrollbar-track,.sofiaOpsGrid>aside::-webkit-scrollbar-track{background:#edf2f7;}
-@media(max-width:1000px){.sofiaOpsGrid{grid-template-columns:140px minmax(0,1fr)!important}.sofiaOpsGrid>aside:last-child{display:none}}
-@media(max-width:720px){.sofiaOpsGrid{grid-template-columns:1fr!important}.sofiaOpsGrid>aside{display:none}}
+@media(max-width:1000px){.sofiaOpsGrid{grid-template-columns:minmax(0,1fr)!important}.sofiaOpsGrid>aside:last-child{display:none}}
 </style>
 
 <style id="sofia-refino-v378">
-:root{--sofia-navy:#002f6c;--sofia-blue:#0757a6;--sofia-gold:#c9a84c;--sofia-bg:#f3f6fa;--sofia-line:#dce5f0;--sofia-text:#102a4c;--sofia-muted:#64748b}
+:root{--sofia-navy:var(--navy2,#002f6c);--sofia-blue:#0757a6;--sofia-gold:var(--gold,#c9a84c);--sofia-bg:#f3f6fa;--sofia-line:#dce5f0;--sofia-text:#102a4c;--sofia-muted:#64748b}
 #blocoChat{background:var(--sofia-bg)!important;color:var(--sofia-text);isolation:isolate}
-#blocoChat>div:first-child{min-height:54px;padding:10px 18px!important;background:linear-gradient(105deg,#002f6c 0%,#064b91 100%)!important;box-shadow:0 3px 14px rgba(0,47,108,.16);z-index:5}
+#blocoChat>div:first-child{min-height:54px;padding:10px 18px!important;background:linear-gradient(105deg,var(--navy2,#002f6c) 0%,#064b91 100%)!important;box-shadow:0 3px 14px rgba(0,47,108,.16);z-index:5}
 #blocoChat>div:first-child>div:first-child>div:first-child{box-shadow:0 4px 14px rgba(201,168,76,.25)}
 #blocoChat>div:first-child button{transition:background .18s ease,transform .18s ease}
 #blocoChat>div:first-child button:hover{background:rgba(255,255,255,.2)!important;transform:translateY(-1px)}
-.sofiaOpsGrid{grid-template-columns:184px minmax(440px,1fr) 276px!important;background:var(--sofia-bg)!important}
+.sofiaOpsGrid{grid-template-columns:minmax(440px,1fr) 276px!important;background:var(--sofia-bg)!important}
 .sofiaOpsGrid>aside{scrollbar-width:thin;scrollbar-color:#b8c7da transparent}
-.sofiaOpsGrid>aside:first-child{padding:14px 12px!important;background:#edf2f8!important;border-right:1px solid var(--sofia-line)!important}
-.sofiaOpsGrid>aside:first-child>button{min-height:40px;border-radius:11px!important;box-shadow:0 5px 12px rgba(0,47,108,.14);transition:transform .18s ease,box-shadow .18s ease,background .18s ease}
-.sofiaOpsGrid>aside:first-child>button:hover{background:#064b91!important;box-shadow:0 7px 16px rgba(0,47,108,.2);transform:translateY(-1px)}
-.sofiaOpsGrid>aside:first-child>div[style*="display:grid"]{gap:4px!important}
-.sofiaOpsGrid>aside:first-child>div[style*="display:grid"]>div{padding:7px 8px;border-radius:8px;font-weight:600;transition:background .16s ease,transform .16s ease}
-.sofiaOpsGrid>aside:first-child>div[style*="display:grid"]>div:hover{background:#dce8f6;transform:translateX(2px)}
+/* As seis regras da coluna de especialidades saíram com ela. Deixá-las era
+   perigoso, não só inútil: `>aside:first-child` passaria a acertar o painel
+   da direita, que agora é o único aside da grade — ele nasceria com fundo de
+   menu e borda do lado errado. */
 .sofiaOpsGrid>main{background:linear-gradient(180deg,#f8fafc 0%,#f3f6fa 100%)!important}
 #chatMensagens{padding:22px clamp(18px,3vw,38px)!important;gap:16px!important;scroll-behavior:smooth}
 .chat-msg-ia{max-width:900px;width:100%;margin-right:auto}
 .chat-msg-ia>div:first-child{box-shadow:0 4px 12px rgba(0,47,108,.16)}
 .chat-msg-ia>div:last-child{background:#fff;border:1px solid #e3eaf3;border-radius:6px 16px 16px 16px;padding:14px 16px;box-shadow:0 4px 16px rgba(15,39,71,.055);max-width:min(88%,820px)!important}
-.chat-msg-ia>div:last-child strong:first-child{color:#002f6c}
+.chat-msg-ia>div:last-child strong:first-child{color:var(--navy2,#002f6c)}
+/* Barra de especialidades — a coluna virou linha.
+   Altura fixa e rolagem horizontal no lugar de quebrar em três fileiras:
+   com 11 modos, a quebra empurraria a conversa para baixo justamente nas
+   telas menores, que é onde ela já é apertada. */
+.sofia-barra-modos{display:flex;align-items:center;gap:10px;padding:9px 14px;background:#fff;border-bottom:1px solid var(--sofia-line);flex-shrink:0}
+.sofia-chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:1px;scrollbar-width:thin;flex:1;min-width:0}
+.sofia-chips::-webkit-scrollbar{height:5px}
+.sofia-chips::-webkit-scrollbar-thumb{background:#cbd8e6;border-radius:9px}
+.sofia-chip{flex:0 0 auto;border:1px solid #d9e4f0;background:#f7faff;color:#174a7c;border-radius:999px;padding:6px 12px;font-size:11.5px;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap;transition:background .16s ease,border-color .16s ease,transform .16s ease}
+.sofia-chip:hover{background:#e5effa;border-color:#9db9d6;transform:translateY(-1px)}
+.sofia-chip.ativo{background:var(--navy2,#002f6c);border-color:var(--navy2,#002f6c);color:#fff;font-weight:700}
+.sofia-nova{flex:0 0 auto;border:0;background:var(--navy2,#002f6c);color:#fff;border-radius:9px;padding:7px 12px;font-size:11.5px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 4px 10px rgba(0,47,108,.16);transition:background .16s ease,transform .16s ease}
+.sofia-nova:hover{background:#064b91;transform:translateY(-1px)}
+@media(max-width:720px){.sofia-barra-modos{padding:7px 10px;gap:7px}.sofia-nova{padding:7px 9px}}
+
+/* Procedência da resposta — discreta por padrão, porque ela não compete com
+   o texto; só é lida por quem foi conferir. O alerta, ao contrário, precisa
+   ser visto sem procurar: ele diz que o número citado pode ser invenção. */
+.sofia-fontes{margin-top:11px;padding-top:9px;border-top:1px dashed #e3eaf3;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.sofia-fontes-rot{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#94a3b8}
+.sofia-fonte{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;line-height:1.35;color:#1e3a8a;background:#eff6ff;border:1px solid #bfdbfe;border-left:3px solid var(--blue,#1565C0);border-radius:7px;padding:4px 9px}
+.sofia-fonte b{font-weight:700}
+.sofia-fonte span{color:#475569}
+.sofia-alerta-fonte{margin-top:9px;font-size:11.5px;line-height:1.5;color:#8a4b06;background:#fffbeb;border:1px solid #fde68a;border-left:3px solid #d97706;border-radius:7px;padding:7px 10px}
 #sugestoesInicio,#chatSugestoes{gap:7px!important}
 #sugestoesInicio button,#chatSugestoes button{border:1px solid #d9e4f0!important;background:#f7faff!important;color:#174a7c!important;border-radius:999px!important;padding:7px 11px!important;transition:all .16s ease}
 #sugestoesInicio button:hover,#chatSugestoes button:hover{background:#e5effa!important;border-color:#9db9d6!important;transform:translateY(-1px)}
@@ -86,33 +120,40 @@
 #chatBtnEnviar:hover{transform:translateY(-1px);box-shadow:0 7px 17px rgba(0,47,108,.26)}
 #chatBtnEnviar:disabled{opacity:.55;transform:none;box-shadow:none}
 .sofiaOpsGrid>aside:last-child{padding:14px!important;background:#fff!important;border-left:1px solid var(--sofia-line)!important}
-.sofiaOpsGrid>aside:last-child>div:first-child{padding:3px;background:#edf3f9;border-radius:11px;display:inline-flex!important;margin-bottom:14px!important}
-.sofiaOpsGrid>aside:last-child>div:first-child button{border-radius:8px!important;min-height:32px;padding:7px 12px!important}
+/* As duas regras que ficavam aqui vestiam a barrinha decorativa
+   "Contexto | Ações" e o bloco "Atividade da SOFIA" — os dois saíram com o
+   painel sob demanda. Deixá-las era pior que inútil: `>div:first-child`
+   passaria a acertar o próprio #sofiaContextoPainel e o transformaria numa
+   pílula inline-flex. */
 #sofiaContextoPainel{padding:14px;border:1px solid #e3eaf3;border-radius:13px;background:#fbfdff}
 #sofiaContextoPainel>strong{display:block;font-size:15px;margin-bottom:4px}
 #sofiaContextoPainel p{margin:5px 0 0!important}
 #sofiaContextoPainel button{border:0!important;border-radius:8px!important;padding:7px 10px!important;font-weight:600;cursor:pointer;transition:background .16s ease,transform .16s ease}
 #sofiaContextoPainel button:hover{transform:translateY(-1px);background:#dce8f6!important}
-.sofiaOpsGrid>aside:last-child>div:last-child{padding:14px!important;border:1px solid #e8edf4!important;border-radius:13px!important;background:#fff!important;margin-top:12px!important}
-@media(max-width:1180px){.sofiaOpsGrid{grid-template-columns:160px minmax(380px,1fr) 238px!important}.sofiaOpsGrid>aside:last-child{padding:11px!important}}
-@media(max-width:980px){.sofiaOpsGrid{grid-template-columns:155px minmax(0,1fr)!important}.sofiaOpsGrid>aside:last-child{display:none!important}#chatMensagens{padding:18px 22px!important}}
-@media(max-width:720px){#blocoChat{margin:-20px -14px -48px!important}.sofiaOpsGrid{grid-template-columns:1fr!important}.sofiaOpsGrid>aside:first-child{display:none!important}#chatMensagens{padding:15px 12px!important}.chat-msg-ia>div:last-child{max-width:calc(100% - 38px)!important}.sofiaOpsGrid>main>div:last-child{padding:10px!important}#chatBtnEnviar{padding:10px 14px!important}}
+/* ── O painel só existe quando tem o que dizer ──────────────────────────
+   Especificidade (0,2,0) contra os (0,1,0) das regras de grade acima e das
+   media queries — por isso a coluna some em qualquer largura sem eu ter de
+   repetir a regra em cada breakpoint. */
+.sofiaOpsGrid.sofia-sem-painel{grid-template-columns:minmax(0,1fr)!important}
+.sofiaOpsGrid.sofia-sem-painel>aside:last-child{display:none!important}
+@media(max-width:1180px){.sofiaOpsGrid{grid-template-columns:minmax(380px,1fr) 238px!important}.sofiaOpsGrid>aside:last-child{padding:11px!important}}
+@media(max-width:980px){.sofiaOpsGrid{grid-template-columns:minmax(0,1fr)!important}.sofiaOpsGrid>aside:last-child{display:none!important}#chatMensagens{padding:18px 22px!important}}
+@media(max-width:720px){#blocoChat{margin:-20px -14px -48px!important}.sofiaOpsGrid{grid-template-columns:1fr!important}#chatMensagens{padding:15px 12px!important}.chat-msg-ia>div:last-child{max-width:calc(100% - 38px)!important}.sofiaOpsGrid>main>div:last-child{padding:10px!important}#chatBtnEnviar{padding:10px 14px!important}}
 @media(prefers-reduced-motion:reduce){#blocoChat *{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 
 #blocoChat,#blocoChat *{box-sizing:border-box}
 #blocoChat{width:auto!important;max-width:none!important;overflow:hidden!important}
 #blocoChat>div:first-child{width:100%;min-width:0}
 #blocoChat>div:first-child>div{min-width:0}
-.sofiaOpsGrid{width:100%!important;max-width:100%!important;min-width:0!important;grid-template-columns:clamp(140px,16%,176px) minmax(0,1fr) clamp(210px,23%,258px)!important}
+.sofiaOpsGrid{width:100%!important;max-width:100%!important;min-width:0!important;grid-template-columns:minmax(0,1fr) clamp(210px,23%,258px)!important}
 .sofiaOpsGrid>main,.sofiaOpsGrid>aside{min-width:0!important;max-width:100%}
 #chatMensagens{width:100%;max-width:100%;overflow-x:hidden!important}
 .chat-msg-ia,.chat-msg-ia>div:last-child{min-width:0;overflow-wrap:anywhere}
 .sofiaOpsGrid>main>div:last-child>div[style*="display:flex"]{min-width:0}
 #chatInput{min-width:0;width:100%}
 #chatBtnEnviar{flex:0 0 auto}
-@media(max-width:1060px){.sofiaOpsGrid{grid-template-columns:140px minmax(0,1fr) 210px!important}#chatMensagens{padding:18px!important}}
-@media(max-width:900px){.sofiaOpsGrid{grid-template-columns:145px minmax(0,1fr)!important}.sofiaOpsGrid>aside:last-child{display:none!important}}
-@media(max-width:680px){.sofiaOpsGrid{grid-template-columns:minmax(0,1fr)!important}.sofiaOpsGrid>aside:first-child{display:none!important}}
+@media(max-width:1060px){.sofiaOpsGrid{grid-template-columns:minmax(0,1fr) 210px!important}#chatMensagens{padding:18px!important}}
+@media(max-width:900px){.sofiaOpsGrid{grid-template-columns:minmax(0,1fr)!important}.sofiaOpsGrid>aside:last-child{display:none!important}}
 </style>
 
 <script>
@@ -134,6 +175,9 @@
 
   var SUGESTOES_POR_DOMINIO = {
     "Geral": ["Quem devo cobrar hoje?", "Resumo geral das mensalidades", "O que diz a cláusula 56?", "Status da FAESA", "Escreva e-mail de cobrança"],
+    "Estatuto": ["O que diz o art. 62?", "Qual o quórum de uma Assembleia Geral?",
+      "Quanto dura o mandato da diretoria?", "Como se convoca assembleia extraordinária?",
+      "Quem pode ser destituído e como?"],
     "Associados": ["Consulte um associado", "Liste associados de uma escola", "Quem está aguardando confirmação?", "Mostre pendências cadastrais"],
     "Financeiro": ["Quem devo cobrar hoje?", "Resumo das mensalidades", "Guias pendentes de emissão", "Pagamentos aguardando baixa"],
     "Escolas": ["Status da FAESA", "Associados da UVV", "Mostre o último contato da escola", "Busque a relação nominal mais recente"],
@@ -204,20 +248,28 @@
         container.innerHTML = _boasVindasHtml;
         if (_state.historico.length > 0) restaurarMensagensDaSessao();
       }
-      var painel = document.getElementById("sofiaContextoPainel");
-      if (painel) painel.innerHTML = "<strong style=\"color:#002f6c;\">Contexto da conversa</strong><p style=\"font-size:12px;color:#64748b;line-height:1.5;\">Novo contexto no modo " + dominio + ". Os dados relacionados aparecerão aqui.</p>";
+      /* Trocar de especialidade recomeça a conversa — e o contexto da
+       * anterior não vale mais. Antes ficava um texto prometendo que "os
+       * dados relacionados aparecerão aqui"; agora o painel simplesmente
+       * fecha e devolve a largura para a conversa. */
+      mostrarPainelContexto_(false);
       var campo = document.getElementById("chatInput");
       if (campo) { campo.value = ""; campo.style.height = "auto"; }
     } else {
       _state.dominio = dominio;
     }
 
+    /* O modo ativo é uma CLASSE, não estilo inline: como chip, ele tem
+     * fundo, borda e hover próprios, e o inline vencia todos eles. */
     var botoes = document.querySelectorAll("[data-sofia-dominio]");
     Array.prototype.forEach.call(botoes, function(btn) {
       var ativo = btn.getAttribute("data-sofia-dominio") === dominio;
-      btn.style.background = ativo ? "#002f6c" : "transparent";
-      btn.style.color = ativo ? "#ffffff" : "#002f6c";
-      btn.style.fontWeight = ativo ? "700" : "500";
+      if (ativo) btn.classList.add("ativo"); else btn.classList.remove("ativo");
+      /* O chip ativo pode estar fora da faixa visível da rolagem — sem isto,
+       * trocar de modo pelo teclado ou por código deixaria a marca invisível. */
+      if (ativo && btn.scrollIntoView) {
+        try { btn.scrollIntoView({ block: "nearest", inline: "nearest" }); } catch (e) {}
+      }
     });
     var input = document.getElementById("chatInput");
     if (input) input.placeholder = dominio === "Geral" ? "Pergunte, peça uma análise ou diga o que precisa resolver..." : "Pergunte à SOFIA no modo " + dominio + "...";
@@ -266,9 +318,9 @@
     lista.forEach(function(s) {
       var btn = document.createElement("button");
       btn.textContent = s;
-      btn.style.cssText = "background:#f0f4f8; border:1px solid #e2e8f0; border-radius:20px; padding:5px 12px; font-size:11px; color:#002f6c; cursor:pointer; font-family:inherit; transition:all 0.15s;";
-      btn.onmouseover = function() { this.style.background = "#002f6c"; this.style.color = "#fff"; };
-      btn.onmouseout  = function() { this.style.background = "#f0f4f8"; this.style.color = "#002f6c"; };
+      btn.style.cssText = "background:#f0f4f8; border:1px solid #e2e8f0; border-radius:20px; padding:5px 12px; font-size:11px; color:var(--navy2,#002f6c); cursor:pointer; font-family:inherit; transition:all 0.15s;";
+      btn.onmouseover = function() { this.style.background = "var(--navy2,#002f6c)"; this.style.color = "#fff"; };
+      btn.onmouseout  = function() { this.style.background = "#f0f4f8"; this.style.color = "var(--navy2,#002f6c)"; };
       btn.onclick = function() { enviarTexto(s); };
       container.appendChild(btn);
     });
@@ -288,6 +340,54 @@
     if (sugestoes) sugestoes.style.display = el.value.trim() ? "none" : "flex";
   };
 
+  // Ditado por voz: preenche a caixa de texto pra revisão — nunca envia
+  // sozinho. Usa o reconhecimento de fala nativo do navegador (Chrome/Edge);
+  // não depende de nenhuma chamada ao servidor.
+  var _ditadoAtivo = null;
+  window.chatAlternarDitado = function() {
+    var btn = document.getElementById("chatBtnMic");
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      toast("Seu navegador não tem suporte a ditado por voz. Use o Google Chrome.", "warn");
+      return;
+    }
+    if (_ditadoAtivo) {
+      _ditadoAtivo.stop();
+      return;
+    }
+    var reconhecimento = new SR();
+    reconhecimento.lang = "pt-BR";
+    reconhecimento.continuous = false;
+    reconhecimento.interimResults = false;
+
+    reconhecimento.onstart = function() {
+      _ditadoAtivo = reconhecimento;
+      if (btn) { btn.style.background = "var(--red,#dc2626)"; btn.style.color = "#fff"; btn.title = "Ouvindo... clique para parar"; }
+    };
+    reconhecimento.onerror = function(e) {
+      _ditadoAtivo = null;
+      if (btn) { btn.style.background = "#eef3f9"; btn.style.color = "var(--navy2,#002f6c)"; btn.title = "Ditar por voz"; }
+      if (e.error !== "aborted" && e.error !== "no-speech") {
+        toast("Não consegui captar o áudio (" + e.error + "). Verifique a permissão de microfone do navegador.", "err");
+      }
+    };
+    reconhecimento.onend = function() {
+      _ditadoAtivo = null;
+      if (btn) { btn.style.background = "#eef3f9"; btn.style.color = "var(--navy2,#002f6c)"; btn.title = "Ditar por voz"; }
+    };
+    reconhecimento.onresult = function(e) {
+      var texto = e.results[0][0].transcript;
+      var input = document.getElementById("chatInput");
+      if (!input) return;
+      var atual = input.value || "";
+      input.value = atual && !/\s$/.test(atual) ? (atual + " " + texto) : (atual + texto);
+      input.focus();
+      chatInputChange(input);
+    };
+
+    try { reconhecimento.start(); } catch (err) { toast("Não foi possível iniciar o microfone: " + err.message, "err"); }
+  };
+
   window.enviarMensagemChat = function() {
     var input = document.getElementById("chatInput");
     var texto = (input ? input.value : "").trim();
@@ -302,13 +402,25 @@
   function enviarTexto(texto) {
     if (_state.carregando) return;
     _state.carregando = true;
-    setStatus("● Pensando...", "#C9A84C");
+    setStatus("● Pensando...", "var(--gold,#C9A84C)");
     document.getElementById("chatBtnEnviar").disabled = true;
+
+    var dominioOrigem = _state.dominio;
+
+    // ✅ Se veio de um anexo enviado pela Home, o conteúdo extraído vai
+    // junto na mensagem para a IA, mas a bolha exibida ao usuário continua limpa.
+    var anexoPendente = window._sofiaAnexoPendente || null;
+    if (anexoPendente) window._sofiaAnexoPendente = null;
 
     adicionarMensagem("user", texto);
     var typing = adicionarTyping();
 
     _state.historico.push({ role: "user", content: texto });
+
+    var mensagemParaEnviar = (_state.dominio && _state.dominio !== "Geral" ? "[Domínio funcional: " + _state.dominio + "] " : "") + texto;
+    if (anexoPendente) {
+      mensagemParaEnviar += "\n\n[ANEXO: " + anexoPendente.nome + "]\n" + anexoPendente.conteudo;
+    }
 
     google.script.run
       .withSuccessHandler(function(resp) {
@@ -316,11 +428,23 @@
         _state.carregando = false;
         document.getElementById("chatBtnEnviar").disabled = false;
 
+        // ✅ Se o usuário trocou de especialidade enquanto a resposta estava
+        // a caminho, ela não pode ser renderizada nem somada à conversa
+        // visível agora — guarda no histórico do domínio de origem.
+        if (_state.dominio !== dominioOrigem) {
+          if (resp && resp.ok) {
+            if (!_state.historicosPorDominio[dominioOrigem]) _state.historicosPorDominio[dominioOrigem] = [];
+            _state.historicosPorDominio[dominioOrigem].push({ role: "assistant", content: resp.resposta });
+          }
+          return;
+        }
+
         if (resp && resp.ok) {
           var wrapper = adicionarMensagem("ia", resp.resposta);
+          renderizarProcedencia(wrapper, resp);
           _state.historico.push({ role: "assistant", content: resp.resposta });
           if (_state.historico.length > 20) _state.historico = _state.historico.slice(-20);
-          setStatus("● Pronto para ajudar", "#C9A84C");
+          setStatus("● Pronto para ajudar", "var(--gold,#C9A84C)");
           atualizarPainelContexto(resp.contexto, texto);
 
           // Detecta e-mail gerado
@@ -343,14 +467,14 @@
 
             var btnCentral = document.createElement("button");
             btnCentral.textContent = "📬 Enviar para Central IA";
-            btnCentral.style.cssText = "background:#C9A84C; color:#002f6c; border:none; border-radius:8px; padding:8px 14px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit;";
+            btnCentral.style.cssText = "background:var(--gold,#C9A84C); color:var(--navy2,#002f6c); border:none; border-radius:8px; padding:8px 14px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit;";
             btnCentral.onmouseover = function() { this.style.background = "#b8973d"; };
-            btnCentral.onmouseout  = function() { this.style.background = "#C9A84C"; };
+            btnCentral.onmouseout  = function() { this.style.background = "var(--gold,#C9A84C)"; };
             btnCentral.onclick = function() { enviarParaCentralIA(resp.resposta, texto); };
 
             var btnCopiar = document.createElement("button");
             btnCopiar.textContent = "📋 Copiar";
-            btnCopiar.style.cssText = "background:#f0f4f8; color:#002f6c; border:1px solid #e2e8f0; border-radius:8px; padding:8px 14px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit;";
+            btnCopiar.style.cssText = "background:#f0f4f8; color:var(--navy2,#002f6c); border:1px solid #e2e8f0; border-radius:8px; padding:8px 14px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit;";
             btnCopiar.onclick = function() {
               try {
                 var ta = document.createElement("textarea");
@@ -380,10 +504,11 @@
         removerTyping(typing);
         _state.carregando = false;
         document.getElementById("chatBtnEnviar").disabled = false;
+        if (_state.dominio !== dominioOrigem) return;
         adicionarMensagem("ia", "⚠️ Falha na comunicação: " + (err.message || err));
         setStatus("● Erro de conexão", "#ef4444");
       })
-      .chatSISGEP({ mensagem: (_state.dominio && _state.dominio !== "Geral" ? "[Domínio funcional: " + _state.dominio + "] " : "") + texto, dominio: _state.dominio || "Geral", historico: _state.historico.slice(0, -1).slice(-6) });
+      .chatSISGEP({ mensagem: mensagemParaEnviar, dominio: _state.dominio || "Geral", historico: _state.historico.slice(0, -1).slice(-6) }, (typeof SISGEP_TOKEN_SESSAO !== "undefined" ? SISGEP_TOKEN_SESSAO : ""));
   }
 
   // ✅ MELHORIA 3: busca email da escola automaticamente antes de enviar para Central IA
@@ -400,7 +525,7 @@
     if (!para || para === "—") {
       var termoEscola = extrairEscolaDaPergunta_(perguntaOriginal || "");
       if (termoEscola) {
-        setStatus("● Buscando email da escola...", "#C9A84C");
+        setStatus("● Buscando email da escola...", "var(--gold,#C9A84C)");
         google.script.run
           .withSuccessHandler(function(resultado) {
             var emailEscola = "";
@@ -409,7 +534,7 @@
               var item = resultado.itens[0];
               emailEscola = item.emailEscola || "";
             }
-            setStatus("● Pronto para ajudar", "#C9A84C");
+            setStatus("● Pronto para ajudar", "var(--gold,#C9A84C)");
             enviarRascunhoParaCentral_(textoCompleto, assunto, emailEscola || para);
           })
           .withFailureHandler(function() {
@@ -427,7 +552,7 @@
     if (typeof window.receberRascunhoDoChatIA === "function") {
       window.receberRascunhoDoChatIA(texto, assunto, para);
     } else {
-      alert("Central IA não encontrada. Verifique se o módulo está carregado.");
+      toast("Central IA não encontrada. Verifique se o módulo está carregado.", "err");
     }
   }
 
@@ -454,10 +579,10 @@
     var avatar = document.createElement("div");
     avatar.style.cssText = "width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0;";
     if (tipo === "user") {
-      avatar.style.background = "#C9A84C";
+      avatar.style.background = "var(--gold,#C9A84C)";
       avatar.textContent = "👤";
     } else {
-      avatar.style.background = "#002f6c";
+      avatar.style.background = "var(--navy2,#002f6c)";
       avatar.textContent = "🤖";
     }
 
@@ -465,7 +590,7 @@
     balao.style.cssText = "max-width:82%; padding:11px 15px; font-size:13px; line-height:1.65; box-shadow:0 1px 3px rgba(0,0,0,0.08);";
 
     if (tipo === "user") {
-      balao.style.cssText += "background:#002f6c; color:#fff; border-radius:12px 0 12px 12px;";
+      balao.style.cssText += "background:var(--navy2,#002f6c); color:#fff; border-radius:12px 0 12px 12px;";
       balao.textContent = texto;
     } else {
       balao.style.cssText += "background:#fff; color:#1e293b; border-radius:0 12px 12px 12px;";
@@ -479,6 +604,63 @@
     return wrapper;
   }
 
+  /**
+   * A linha de procedência, embaixo da resposta.
+   *
+   * Por que DEPOIS e não antes: escolher a especialidade antes de perguntar é
+   * palpite; dizer de onde a resposta saiu é prestação de contas — e é a única
+   * coisa que permite conferir. Um assistente que erra o formato é descoberto
+   * na primeira leitura; um que erra a FONTE não é descoberto nunca, porque a
+   * resposta sai com a mesma cara de sempre.
+   *
+   * `resp.fontes` vem do prompt que o servidor de fato montou. Vazio significa
+   * "nenhum documento foi consultado" — e aí não se desenha nada, porque a
+   * maioria das perguntas é sobre o cadastro e não tem documento nenhum
+   * envolvido. O que não pode passar calado é o caso em que a resposta CITA um
+   * documento que não foi lido: esse vem em `resp.alertaFonte`.
+   */
+  function renderizarProcedencia(wrapper, resp) {
+    if (!wrapper || !resp) return;
+    var balao = wrapper.querySelector("div:last-child");
+    if (!balao) return;
+
+    var fontes = Array.isArray(resp.fontes) ? resp.fontes : [];
+    if (fontes.length) {
+      var caixa = document.createElement("div");
+      caixa.className = "sofia-fontes";
+
+      var rot = document.createElement("span");
+      rot.className = "sofia-fontes-rot";
+      rot.textContent = "Consultei";
+      caixa.appendChild(rot);
+
+      fontes.forEach(function(f) {
+        var chip = document.createElement("span");
+        chip.className = "sofia-fonte";
+        var nome = document.createElement("b");
+        nome.textContent = (f.icone ? f.icone + " " : "") + (f.rotulo || f.tipo || "documento");
+        chip.appendChild(nome);
+        if (f.identificacao) {
+          var ident = document.createElement("span");
+          /* A identificação é a primeira linha do próprio documento — não um
+           * rótulo redigitado aqui. Redigitar seria criar uma segunda verdade
+           * que envelhece sozinha no dia em que o documento for trocado. */
+          ident.textContent = "· " + f.identificacao;
+          chip.appendChild(ident);
+        }
+        caixa.appendChild(chip);
+      });
+      balao.appendChild(caixa);
+    }
+
+    if (resp.alertaFonte) {
+      var aviso = document.createElement("div");
+      aviso.className = "sofia-alerta-fonte";
+      aviso.textContent = "⚠️ " + resp.alertaFonte;
+      balao.appendChild(aviso);
+    }
+  }
+
   function adicionarTyping() {
     var container = document.getElementById("chatMensagens");
     var wrapper = document.createElement("div");
@@ -486,15 +668,15 @@
     wrapper.id = "chatTyping";
 
     var avatar = document.createElement("div");
-    avatar.style.cssText = "width:30px; height:30px; background:#002f6c; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0;";
+    avatar.style.cssText = "width:30px; height:30px; background:var(--navy2,#002f6c); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0;";
     avatar.textContent = "🤖";
 
     var balao = document.createElement("div");
     balao.style.cssText = "background:#fff; border-radius:0 12px 12px 12px; padding:14px 18px; box-shadow:0 1px 3px rgba(0,0,0,0.08);";
     balao.innerHTML = '<span style="display:inline-flex;gap:4px;align-items:center;">' +
-      '<span style="width:7px;height:7px;background:#002f6c;border-radius:50%;animation:chatBounce 1.2s infinite 0s;"></span>' +
-      '<span style="width:7px;height:7px;background:#002f6c;border-radius:50%;animation:chatBounce 1.2s infinite 0.2s;"></span>' +
-      '<span style="width:7px;height:7px;background:#002f6c;border-radius:50%;animation:chatBounce 1.2s infinite 0.4s;"></span>' +
+      '<span style="width:7px;height:7px;background:var(--navy2,#002f6c);border-radius:50%;animation:chatBounce 1.2s infinite 0s;"></span>' +
+      '<span style="width:7px;height:7px;background:var(--navy2,#002f6c);border-radius:50%;animation:chatBounce 1.2s infinite 0.2s;"></span>' +
+      '<span style="width:7px;height:7px;background:var(--navy2,#002f6c);border-radius:50%;animation:chatBounce 1.2s infinite 0.4s;"></span>' +
       '</span>';
 
     wrapper.appendChild(avatar);
@@ -519,15 +701,15 @@
         var cab = celulas_(linhas[i]); i += 2; var rows = [];
         while (i < linhas.length && linhas[i].indexOf("|") >= 0 && linhas[i].trim()) { rows.push(celulas_(linhas[i])); i++; }
         var tabela = "<div style='overflow:auto;margin:10px 0'><table style='width:100%;border-collapse:collapse;font-size:12px;background:#fff;border:1px solid #dbe4ef'><thead><tr>";
-        cab.forEach(function(c){ tabela += "<th style='text-align:left;padding:8px;background:#eef3f9;color:#002f6c;border-bottom:1px solid #dbe4ef'>"+inline_(c)+"</th>"; });
+        cab.forEach(function(c){ tabela += "<th style='text-align:left;padding:8px;background:#eef3f9;color:var(--navy2,#002f6c);border-bottom:1px solid #dbe4ef'>"+inline_(c)+"</th>"; });
         tabela += "</tr></thead><tbody>";
         rows.forEach(function(r){ tabela += "<tr>"; r.forEach(function(c){ tabela += "<td style='padding:8px;border-bottom:1px solid #edf2f7;color:#334155'>"+inline_(c)+"</td>"; }); tabela += "</tr>"; });
         html.push(tabela + "</tbody></table></div>"); continue;
       }
-      if (/^###\s+/.test(linha)) html.push("<h4 style='margin:14px 0 6px;color:#002f6c;font-size:14px'>"+inline_(linha.replace(/^###\s+/,""))+"</h4>");
-      else if (/^##\s+/.test(linha)) html.push("<h3 style='margin:16px 0 7px;color:#002f6c;font-size:15px'>"+inline_(linha.replace(/^##\s+/,""))+"</h3>");
-      else if (/^#\s+/.test(linha)) html.push("<h2 style='margin:4px 0 12px;color:#002f6c;font-size:17px'>"+inline_(linha.replace(/^#\s+/,""))+"</h2>");
-      else if (/^[-•]\s+/.test(linha)) html.push("<div style='display:flex;gap:7px;margin:5px 0'><span style='color:#C9A84C'>●</span><span>"+inline_(linha.replace(/^[-•]\s+/,""))+"</span></div>");
+      if (/^###\s+/.test(linha)) html.push("<h4 style='margin:14px 0 6px;color:var(--navy2,#002f6c);font-size:14px'>"+inline_(linha.replace(/^###\s+/,""))+"</h4>");
+      else if (/^##\s+/.test(linha)) html.push("<h3 style='margin:16px 0 7px;color:var(--navy2,#002f6c);font-size:15px'>"+inline_(linha.replace(/^##\s+/,""))+"</h3>");
+      else if (/^#\s+/.test(linha)) html.push("<h2 style='margin:4px 0 12px;color:var(--navy2,#002f6c);font-size:17px'>"+inline_(linha.replace(/^#\s+/,""))+"</h2>");
+      else if (/^[-•]\s+/.test(linha)) html.push("<div style='display:flex;gap:7px;margin:5px 0'><span style='color:var(--gold,#C9A84C)'>●</span><span>"+inline_(linha.replace(/^[-•]\s+/,""))+"</span></div>");
       else if (linha === "---") html.push("<hr style='border:0;border-top:1px solid #e2e8f0;margin:14px 0'>");
       else if (linha) html.push("<div style='margin:5px 0'>"+inline_(linha)+"</div>");
       else html.push("<div style='height:4px'></div>");
@@ -552,24 +734,44 @@ function formatarResposta(texto) {
     return String(valor == null ? "" : valor).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
 
+  /**
+   * Abre ou fecha a coluna da direita.
+   *
+   * A coluna some da GRADE, não só do fluxo: escondendo o `aside` sozinho, a
+   * terceira faixa de 260px continuaria reservada e a conversa não ganharia
+   * nada — que era exatamente o defeito. A classe troca o
+   * `grid-template-columns` para duas colunas.
+   */
+  function mostrarPainelContexto_(abrir) {
+    var grade = document.querySelector(".sofiaOpsGrid");
+    if (!grade) return;
+    if (abrir) grade.classList.remove("sofia-sem-painel");
+    else {
+      grade.classList.add("sofia-sem-painel");
+      var p = document.getElementById("sofiaContextoPainel");
+      if (p) p.innerHTML = "";
+    }
+  }
+
   function atualizarPainelContexto(ctx, pergunta) {
     var painel = document.getElementById("sofiaContextoPainel");
     if (!painel || !ctx) return;
     var dados = ctx.dados || {};
     var escola = dados.escolaFiltrada;
-    if (!escola) {
-      painel.innerHTML = "<strong style=\"color:#002f6c;\">Contexto da conversa</strong><p style=\"font-size:12px;color:#64748b;line-height:1.5;\">A SOFIA consultou o SISGEP, mas nenhum cadastro específico foi selecionado.</p>";
-      return;
-    }
+    /* Sem escola identificada não há contexto nenhum a mostrar. Dizer "a
+     * SOFIA consultou o SISGEP, mas nenhum cadastro específico foi
+     * selecionado" gastava um quinto da tela para informar que não havia
+     * informação. */
+    if (!escola) { mostrarPainelContexto_(false); return; }
     var info = escola.infoEscola || {};
     var html = "<div style=\"font-size:11px;color:#64748b;margin-bottom:4px;\">ESCOLA IDENTIFICADA</div>" +
-      "<strong style=\"display:block;color:#002f6c;font-size:17px;margin-bottom:12px;\">🏫 " + escaparPainel_(escola.termo).toUpperCase() + "</strong>" +
+      "<strong style=\"display:block;color:var(--navy2,#002f6c);font-size:17px;margin-bottom:12px;\">🏫 " + escaparPainel_(escola.termo).toUpperCase() + "</strong>" +
       "<div style=\"display:grid;gap:8px;font-size:12px;\">" +
-      "<div><span style=\"color:#64748b;\">Associados</span><strong style=\"float:right;color:#002f6c;\">" + escaparPainel_(escola.total) + "</strong></div>" +
-      "<div><span style=\"color:#64748b;\">Confirmados</span><strong style=\"float:right;color:#059669;\">" + escaparPainel_(escola.confirmados) + "</strong></div>" +
-      "<div><span style=\"color:#64748b;\">Pendentes +30 dias</span><strong style=\"float:right;color:#dc2626;\">" + escaparPainel_(escola.pendentes) + "</strong></div>" +
-      "<div><span style=\"color:#64748b;\">Aguardando</span><strong style=\"float:right;color:#d97706;\">" + escaparPainel_(escola.aguardando) + "</strong></div>" +
-      (info.requerEscolha ? "<div style=\"border-top:1px solid #e2e8f0;padding-top:9px;\"><strong style=\"color:#002f6c;\">Escolha a instituição</strong><div id=\"sofiaOpcoesEscola\" style=\"display:grid;gap:7px;margin-top:8px;\"></div><small style=\"color:#64748b;\">Fonte: Planilha SISGEP — aba Escolas</small></div>" : "") +
+      "<div><span style=\"color:#64748b;\">Associados</span><strong style=\"float:right;color:var(--navy2,#002f6c);\">" + escaparPainel_(escola.total) + "</strong></div>" +
+      "<div><span style=\"color:#64748b;\">Confirmados</span><strong style=\"float:right;color:var(--green,#059669);\">" + escaparPainel_(escola.confirmados) + "</strong></div>" +
+      "<div><span style=\"color:#64748b;\">Pendentes +30 dias</span><strong style=\"float:right;color:var(--red,#dc2626);\">" + escaparPainel_(escola.pendentes) + "</strong></div>" +
+      "<div><span style=\"color:#64748b;\">Aguardando</span><strong style=\"float:right;color:var(--amber,#d97706);\">" + escaparPainel_(escola.aguardando) + "</strong></div>" +
+      (info.requerEscolha ? "<div style=\"border-top:1px solid #e2e8f0;padding-top:9px;\"><strong style=\"color:var(--navy2,#002f6c);\">Escolha a instituição</strong><div id=\"sofiaOpcoesEscola\" style=\"display:grid;gap:7px;margin-top:8px;\"></div><small style=\"color:#64748b;\">Fonte: Planilha SISGEP — aba Escolas</small></div>" : "") +
       (!info.requerEscolha && info.cnpj ? "<div style=\"border-top:1px solid #e2e8f0;padding-top:8px;\"><span style=\"color:#64748b;\">CNPJ</span><div>" + escaparPainel_(info.cnpj) + "</div><small style=\"color:#64748b;\">Fonte: Planilha SISGEP</small></div>" : "") +
       (!info.requerEscolha && info.razaoSocial ? "<div><span style=\"color:#64748b;\">Razão social</span><div>" + escaparPainel_(info.razaoSocial) + "</div><small style=\"color:#64748b;\">Fonte: " + escaparPainel_((info.fontes||{}).cadastro || "Planilha SISGEP") + "</small></div>" : "") +
       (!info.requerEscolha && info.situacao ? "<div><span style=\"color:#64748b;\">Situação cadastral</span><div>" + escaparPainel_(info.situacao) + "</div></div>" : "") +
@@ -581,12 +783,13 @@ function formatarResposta(texto) {
       (!info.requerEscolha && escola.email ? "<div><span style=\"color:#64748b;\">Contato da planilha</span><div style=\"word-break:break-word;\">" + escaparPainel_(escola.email) + "</div><small style=\"color:#64748b;\">Fonte: Planilha SISGEP</small></div>" : "") +
       "</div><div id=\"sofiaAcoesContextuais\" style=\"display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;\"></div>";
     painel.innerHTML = html;
+    mostrarPainelContexto_(true);
 
     var opcoes = document.getElementById("sofiaOpcoesEscola");
     if (opcoes) (info.candidatos || []).forEach(function(c) {
       var b = document.createElement("button");
       b.type = "button";
-      b.style.cssText = "text-align:left;border:1px solid #cbd5e1;background:#fff;border-radius:8px;padding:8px;cursor:pointer;color:#002f6c;";
+      b.style.cssText = "text-align:left;border:1px solid #cbd5e1;background:#fff;border-radius:8px;padding:8px;cursor:pointer;color:var(--navy2,#002f6c);";
       b.innerHTML = "<strong>" + escaparPainel_(c.razaoSocial || c.nomeCadastro) + "</strong>" + (c.cnpj ? "<small style=\"display:block;color:#475569;\">CNPJ: " + escaparPainel_(c.cnpj) + "</small>" : "") + (c.cidade ? "<small style=\"display:block;color:#64748b;\">" + escaparPainel_(c.cidade) + "</small>" : "");
       b.onclick = function(){ enviarTexto("Consultar escola " + (c.nomeCadastro || c.razaoSocial)); };
       opcoes.appendChild(b);
@@ -595,7 +798,7 @@ function formatarResposta(texto) {
     var acoes = document.getElementById("sofiaAcoesContextuais");
     if (!info.requerEscolha) {
       [["Ver pendências", "Mostre as pendências de " + escola.termo], ["Preparar e-mail", "Escreva um e-mail para " + escola.termo]].forEach(function(item) {
-        var b = document.createElement("button"); b.textContent = item[0]; b.style.cssText = "border:0;border-radius:7px;padding:7px 9px;background:#eef3f9;color:#002f6c;font-size:11px;cursor:pointer;"; b.onclick = function(){ enviarTexto(item[1]); }; acoes.appendChild(b);
+        var b = document.createElement("button"); b.textContent = item[0]; b.style.cssText = "border:0;border-radius:7px;padding:7px 9px;background:#eef3f9;color:var(--navy2,#002f6c);font-size:11px;cursor:pointer;"; b.onclick = function(){ enviarTexto(item[1]); }; acoes.appendChild(b);
       });
     }
   }
@@ -614,15 +817,16 @@ function setStatus(texto, cor) {
     var wrapper = document.createElement("div");
     wrapper.style.cssText = "display:flex; gap:10px; align-items:flex-start;";
     var avatar = document.createElement("div");
-    avatar.style.cssText = "width:30px;height:30px;background:#002f6c;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;";
+    avatar.style.cssText = "width:30px;height:30px;background:var(--navy2,#002f6c);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;";
     avatar.textContent = "🤖";
     var balao = document.createElement("div");
-    balao.style.cssText = "background:#fff;border-radius:0 12px 12px 12px;padding:12px 16px;max-width:85%;box-shadow:0 1px 3px rgba(0,0,0,0.08);color:#002f6c;font-size:13px;line-height:1.6;";
+    balao.style.cssText = "background:#fff;border-radius:0 12px 12px 12px;padding:12px 16px;max-width:85%;box-shadow:0 1px 3px rgba(0,0,0,0.08);color:var(--navy2,#002f6c);font-size:13px;line-height:1.6;";
     balao.innerHTML = "Conversa limpa! Como posso ajudar?";
     wrapper.appendChild(avatar);
     wrapper.appendChild(balao);
     container.appendChild(wrapper);
-    setStatus("● Pronto para ajudar", "#C9A84C");
+    setStatus("● Pronto para ajudar", "var(--gold,#C9A84C)");
+    mostrarPainelContexto_(false);
 
     var ind = document.getElementById("chatDataIndicador");
     if (ind) ind.style.display = "none";

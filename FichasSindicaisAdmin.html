@@ -42,6 +42,7 @@
 
   <div class="fsa-barra">
     <input id="fsaBusca" placeholder="Buscar por nome, CPF, matrícula ou escola…" oninput="fsaRender()">
+    <button class="fsa-btn-atualizar" onclick="fsaPapelAbrirModal()">📎 Importar formulário em papel</button>
     <button class="fsa-btn-atualizar" onclick="carregarFichasPendentes()">↻ Atualizar</button>
   </div>
 
@@ -126,34 +127,229 @@
   </div>
 </div>
 
+<!-- ================ MODAL IMPORTAR FORMULÁRIO EM PAPEL (via IA) ================
+     Fluxo: anexa o formulário escaneado/foto → IA extrai os campos → atendente
+     revisa e corrige tudo → confirma. Nada é gravado antes da confirmação.
+     A ficha entra como ASSINADA (assinatura física, não OTP) e ainda precisa
+     ser aprovada normalmente (mesmo botão "Aprovar e encaminhar" de sempre). -->
+<div id="fsaPapelModal" class="fsa-modal">
+  <div class="fsa-modal-caixa">
+
+    <div class="fsa-modal-topo">
+      <div>
+        <div class="fsa-modal-titulo">Importar formulário em papel</div>
+        <div class="fsa-modal-sub">Leitura por IA do Formulário de Sindicalização escaneado</div>
+      </div>
+      <button class="fsa-modal-fechar" onclick="fsaPapelFecharModal()" aria-label="Fechar">✕</button>
+    </div>
+
+    <div class="fsa-passos">
+      <span class="fsa-passo fsa-passo-ativo" id="fsaPapelPasso1">1 · Anexar</span>
+      <span class="fsa-passo" id="fsaPapelPasso2">2 · Revisar dados</span>
+      <span class="fsa-passo" id="fsaPapelPasso3">3 · Concluído</span>
+    </div>
+
+    <div class="fsa-modal-corpo">
+
+      <!-- ETAPA 1 — UPLOAD -->
+      <div id="fsaPapelEtapa1" class="fsa-etapa fsa-etapa-ativa">
+        <div class="fsa-aviso">
+          Anexe um ou mais formulários de sindicalização impressos e preenchidos (PDF escaneado
+          ou foto). Você pode selecionar vários arquivos de uma vez — a IA lê os campos de cada
+          um, mas todos ficam abertos para você conferir e corrigir antes de qualquer gravação.
+        </div>
+        <label class="fsa-label">Arquivo(s) do formulário</label>
+        <input type="file" id="fsaPapelArquivo" class="fsa-input" accept=".pdf,.jpg,.jpeg,.png" multiple onchange="fsaPapelMontarFila()">
+        <div id="fsaPapelFila"></div>
+        <div class="fsa-modal-acoes">
+          <button class="fsa-btn-pri" id="fsaPapelBtnAnalisar" onclick="fsaPapelAnalisar()">🔎 Analisar formulário</button>
+        </div>
+        <div id="fsaPapelStatus" style="margin-top:10px;font-size:12.5px;color:#64748b;"></div>
+      </div>
+
+      <!-- ETAPA 2 — REVISÃO -->
+      <div id="fsaPapelEtapa2" class="fsa-etapa">
+        <div id="fsaPapelProgresso" style="display:none;margin-bottom:10px;font-size:12px;font-weight:800;color:#002f6c;"></div>
+        <div id="fsaPapelAlertas" style="margin-bottom:12px;"></div>
+
+        <label class="fsa-label">Tipo</label>
+        <select id="fsaPapelTipo" class="fsa-input">
+          <option value="CADASTRAMENTO">Cadastramento</option>
+          <option value="RECADASTRAMENTO">Recadastramento</option>
+        </select>
+
+        <label class="fsa-label">Nome completo</label>
+        <input type="text" id="fsaPapelNome" class="fsa-input">
+
+        <div style="display:flex;gap:10px;">
+          <div style="flex:2;">
+            <label class="fsa-label">CPF</label>
+            <input type="text" id="fsaPapelCpf" class="fsa-input">
+          </div>
+          <div style="flex:1;">
+            <label class="fsa-label">Sexo</label>
+            <select id="fsaPapelSexo" class="fsa-input">
+              <option value="">—</option>
+              <option value="M">M</option>
+              <option value="F">F</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;">
+          <div style="flex:2;">
+            <label class="fsa-label">RG</label>
+            <input type="text" id="fsaPapelRg" class="fsa-input">
+          </div>
+          <div style="flex:1;">
+            <label class="fsa-label">Órgão exp.</label>
+            <input type="text" id="fsaPapelOrgaoExpedidor" class="fsa-input">
+          </div>
+          <div style="flex:1;">
+            <label class="fsa-label">UF do RG</label>
+            <input type="text" id="fsaPapelUfRg" class="fsa-input" maxlength="2">
+          </div>
+        </div>
+
+        <label class="fsa-label">Data de nascimento</label>
+        <input type="text" id="fsaPapelDataNascimento" class="fsa-input" placeholder="dd/mm/aaaa">
+
+        <label class="fsa-label">Escola (selecione a correspondência correta)</label>
+        <select id="fsaPapelEscola" class="fsa-input"></select>
+
+        <div style="display:flex;gap:10px;">
+          <div style="flex:1;">
+            <label class="fsa-label">Cargo</label>
+            <input type="text" id="fsaPapelCargo" class="fsa-input">
+          </div>
+          <div style="flex:1;">
+            <label class="fsa-label">Escolaridade</label>
+            <input type="text" id="fsaPapelEscolaridade" class="fsa-input">
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;">
+          <div style="flex:1;">
+            <label class="fsa-label">Data de admissão</label>
+            <input type="text" id="fsaPapelDataAdmissao" class="fsa-input" placeholder="dd/mm/aaaa">
+          </div>
+          <div style="flex:1;">
+            <label class="fsa-label">Cidade da escola</label>
+            <input type="text" id="fsaPapelCidadeEscola" class="fsa-input">
+          </div>
+          <div style="flex:1;">
+            <label class="fsa-label">CEP da escola</label>
+            <input type="text" id="fsaPapelCepEscola" class="fsa-input">
+          </div>
+        </div>
+
+        <label class="fsa-label">Celular / WhatsApp</label>
+        <input type="text" id="fsaPapelCelular" class="fsa-input">
+
+        <label class="fsa-label">E-mail</label>
+        <input type="text" id="fsaPapelEmail" class="fsa-input">
+
+        <label class="fsa-label" style="margin-top:14px;">Endereço residencial</label>
+        <div style="display:flex;gap:10px;">
+          <div style="flex:1;">
+            <label class="fsa-label">CEP</label>
+            <input type="text" id="fsaPapelCepResidencial" class="fsa-input">
+          </div>
+          <div style="flex:1;">
+            <label class="fsa-label">Tipo</label>
+            <select id="fsaPapelTipoLogradouro" class="fsa-input">
+              <option value="RUA">Rua</option>
+              <option value="AVENIDA">Avenida</option>
+              <option value="PRACA">Praça</option>
+            </select>
+          </div>
+        </div>
+
+        <label class="fsa-label">Logradouro</label>
+        <input type="text" id="fsaPapelEndereco" class="fsa-input">
+
+        <div style="display:flex;gap:10px;">
+          <div style="flex:1;">
+            <label class="fsa-label">Número</label>
+            <input type="text" id="fsaPapelNumero" class="fsa-input">
+          </div>
+          <div style="flex:2;">
+            <label class="fsa-label">Complemento</label>
+            <input type="text" id="fsaPapelComplemento" class="fsa-input">
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;">
+          <div style="flex:1;">
+            <label class="fsa-label">Bairro</label>
+            <input type="text" id="fsaPapelBairro" class="fsa-input">
+          </div>
+          <div style="flex:2;">
+            <label class="fsa-label">Cidade</label>
+            <input type="text" id="fsaPapelCidade" class="fsa-input">
+          </div>
+          <div style="flex:1;">
+            <label class="fsa-label">UF</label>
+            <input type="text" id="fsaPapelUf" class="fsa-input" maxlength="2">
+          </div>
+        </div>
+
+        <label class="fsa-label" style="display:flex;align-items:center;gap:8px;margin-top:14px;">
+          <input type="checkbox" id="fsaPapelConfirmado" style="width:auto;">
+          Conferi os dados acima contra o documento original.
+        </label>
+
+        <div class="fsa-modal-acoes">
+          <button class="fsa-btn-sec" onclick="fsaPapelVoltarEtapa1()">← Anexar outro arquivo</button>
+          <button class="fsa-btn-pri" id="fsaPapelBtnConfirmar" onclick="fsaPapelConfirmar()">✓ Confirmar e registrar ficha</button>
+        </div>
+      </div>
+
+      <!-- ETAPA 3 — CONCLUÍDO -->
+      <div id="fsaPapelEtapa3" class="fsa-etapa">
+        <div class="fsa-sucesso">
+          <div class="fsa-sucesso-selo">✓</div>
+          <h3>Ficha(s) registrada(s)</h3>
+          <div id="fsaPapelSucessoDados" class="fsa-sucesso-dados"></div>
+        </div>
+        <div class="fsa-modal-acoes fsa-acoes-final">
+          <button class="fsa-btn-pri" onclick="fsaPapelFecharModal(); carregarFichasPendentes();">Ver na lista de fichas</button>
+        </div>
+      </div>
+
+      <div class="fsa-msg" id="fsaPapelModalMsg"></div>
+    </div>
+  </div>
+</div>
+
 <style>
 .fsa-kpis{display:grid;grid-template-columns:repeat(6,minmax(140px,1fr));gap:10px;margin-top:20px;}
-.fsa-kpi{border:1.5px solid #e2e8f0;background:#fff;border-radius:13px;padding:14px;text-align:left;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:.15s;}
-.fsa-kpi:hover{border-color:#C9A84C;box-shadow:0 6px 16px rgba(0,20,60,.08);}
-.fsa-kpi.fsa-kpi-ativo{border-color:#002f6c;background:#f5f8ff;}
-.fsa-kpi span{display:block;color:#64748b;font-size:10px;text-transform:uppercase;font-weight:800;letter-spacing:.04em;}
-.fsa-kpi strong{display:block;color:#002f6c;font-size:24px;margin-top:5px;}
+.fsa-kpi{border:1.5px solid var(--g200,#e2e8f0);background:#fff;border-radius:13px;padding:14px;text-align:left;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:.15s;}
+.fsa-kpi:hover{border-color:var(--gold,#C9A84C);box-shadow:0 6px 16px rgba(0,20,60,.08);}
+.fsa-kpi.fsa-kpi-ativo{border-color:var(--navy2,#002f6c);background:#f5f8ff;}
+.fsa-kpi span{display:block;color:var(--g500,#64748b);font-size:10px;text-transform:uppercase;font-weight:800;letter-spacing:.04em;}
+.fsa-kpi strong{display:block;color:var(--navy2,#002f6c);font-size:24px;margin-top:5px;}
 .fsa-barra{display:flex;gap:10px;margin-top:14px;}
-.fsa-barra input{flex:1;height:42px;border:1.5px solid #cbd5e1;border-radius:10px;padding:0 14px;font-size:13px;font-family:'Plus Jakarta Sans',sans-serif;background:#fff;color:#0f172a;}
-.fsa-barra input:focus{outline:none;border-color:#002f6c;}
-.fsa-btn-atualizar{height:42px;border:none;border-radius:10px;padding:0 16px;font-weight:800;font-size:12.5px;cursor:pointer;background:#e2e8f0;color:#172033;font-family:'Plus Jakarta Sans',sans-serif;}
-.fsa-card{background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;padding:18px 20px;display:grid;grid-template-columns:56px 1fr auto;gap:16px;align-items:center;font-family:'Plus Jakarta Sans',sans-serif;}
-.fsa-icone{width:52px;height:52px;border-radius:12px;background:#f1f5f9;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;font-size:22px;}
-.fsa-info b{display:block;font-size:14px;color:#0f172a;}
-.fsa-info small{display:block;font-size:11.5px;color:#64748b;margin-top:2px;}
-.fsa-campo{font-size:11.5px;color:#334155;margin-top:6px;}
-.fsa-campo b{display:inline;color:#0f172a;font-weight:700;font-size:11.5px;}
+.fsa-barra input{flex:1;height:42px;border:1.5px solid var(--g300,#cbd5e1);border-radius:10px;padding:0 14px;font-size:13px;font-family:'Plus Jakarta Sans',sans-serif;background:#fff;color:var(--g900,#0f172a);}
+.fsa-barra input:focus{outline:none;border-color:var(--navy2,#002f6c);}
+.fsa-btn-atualizar{height:42px;border:none;border-radius:10px;padding:0 16px;font-weight:800;font-size:12.5px;cursor:pointer;background:var(--g200,#e2e8f0);color:#172033;font-family:'Plus Jakarta Sans',sans-serif;}
+.fsa-card{background:#fff;border:1.5px solid var(--g200,#e2e8f0);border-radius:14px;padding:18px 20px;display:grid;grid-template-columns:56px 1fr auto;gap:16px;align-items:center;font-family:'Plus Jakarta Sans',sans-serif;}
+.fsa-icone{width:52px;height:52px;border-radius:12px;background:var(--g100,#f1f5f9);border:1px solid var(--g200,#e2e8f0);display:flex;align-items:center;justify-content:center;font-size:22px;}
+.fsa-info b{display:block;font-size:14px;color:var(--g900,#0f172a);}
+.fsa-info small{display:block;font-size:11.5px;color:var(--g500,#64748b);margin-top:2px;}
+.fsa-campo{font-size:11.5px;color:var(--g700,#334155);margin-top:6px;}
+.fsa-campo b{display:inline;color:var(--g900,#0f172a);font-weight:700;font-size:11.5px;}
 .fsa-acoes{display:flex;flex-direction:column;gap:8px;}
 .fsa-btn{border:none;border-radius:8px;padding:9px 16px;font-size:12px;font-weight:800;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;white-space:nowrap;}
-.fsa-btn-aprovar{background:#16a34a;color:#fff;}
-.fsa-btn-rejeitar{background:#fee2e2;color:#991b1b;}
+.fsa-btn-aprovar{background:var(--green,var(--green,#059669));color:#fff;}
+.fsa-btn-rejeitar{background:var(--red-lt,#fee2e2);color:#991b1b;}
 .fsa-btn-pdf{background:#eff6ff;color:#1d4ed8;}
 .fsa-tag{display:inline-block;font-size:10px;font-weight:800;border-radius:6px;padding:2px 8px;margin-left:6px;vertical-align:middle;}
 .fsa-tag-qr{background:#dbeafe;color:#1d4ed8;}
-.fsa-tag-portal{background:#f1f5f9;color:#475569;}
+.fsa-tag-portal{background:var(--g100,#f1f5f9);color:#475569;}
 .fsa-tag-visita{background:#ede9fe;color:#5b21b6;}
 .fsa-tag-matricula{background:#dcfce7;color:#166534;}
-.fsa-tag-rejeitada{background:#fee2e2;color:#991b1b;}
+.fsa-tag-rejeitada{background:var(--red-lt,#fee2e2);color:#991b1b;}
 .fsa-tag-aguardando{background:#fef9c3;color:#854d0e;}
 .fsa-tag-precadastro{background:#ffedd5;color:#9a3412;}
 
@@ -161,56 +357,65 @@
 .fsa-modal{display:none;position:absolute;inset:0;background:rgba(6,11,20,.65);z-index:950;padding:16px;overflow-y:auto;}
 .fsa-modal.fsa-aberto{display:block;}
 .fsa-modal-caixa{background:#fff;border-radius:16px;max-width:820px;margin:16px auto 48px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.32);}
-.fsa-modal-topo{background:#002f6c;color:#fff;padding:18px 22px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.fsa-modal-topo{background:var(--navy2,#002f6c);color:#fff;padding:18px 22px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
 .fsa-modal-titulo{font-size:16px;font-weight:800;}
 .fsa-modal-sub{font-size:12px;opacity:.82;margin-top:3px;}
 .fsa-modal-fechar{background:rgba(255,255,255,.15);border:none;color:#fff;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px;flex-shrink:0;}
-.fsa-passos{display:flex;gap:0;background:#f8fafc;border-bottom:1px solid #e2e8f0;}
-.fsa-passo{flex:1;text-align:center;padding:11px 8px;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.03em;}
-.fsa-passo-ativo{color:#002f6c;box-shadow:inset 0 -3px 0 #C9A84C;}
+.fsa-passos{display:flex;gap:0;background:var(--g50,#f8fafc);border-bottom:1px solid var(--g200,#e2e8f0);}
+.fsa-passo{flex:1;text-align:center;padding:11px 8px;font-size:11px;font-weight:800;color:var(--g400,#94a3b8);text-transform:uppercase;letter-spacing:.03em;}
+.fsa-passo-ativo{color:var(--navy2,#002f6c);box-shadow:inset 0 -3px 0 var(--gold,#C9A84C);}
 .fsa-modal-corpo{padding:22px;}
 .fsa-etapa{display:none;}
 .fsa-etapa-ativa{display:block;}
 
-.fsa-aviso{background:#f8faff;border-left:4px solid #002f6c;border-radius:8px;padding:12px 14px;font-size:12.5px;color:#334155;line-height:1.5;margin-bottom:16px;}
+.fsa-aviso{background:#f8faff;border-left:4px solid var(--navy2,#002f6c);border-radius:8px;padding:12px 14px;font-size:12.5px;color:var(--g700,#334155);line-height:1.5;margin-bottom:16px;}
 .fsa-sugestao{background:#fffbeb;border:1.5px solid #fcd34d;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12.5px;color:#78350f;}
 .fsa-sugestao b{display:block;font-size:13px;margin-bottom:3px;}
-.fsa-sugestao button{margin-top:8px;border:none;border-radius:8px;padding:8px 14px;background:#002f6c;color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;}
-.fsa-label{display:block;font-size:11.5px;font-weight:700;color:#002f6c;margin-bottom:5px;}
-.fsa-input{width:100%;padding:11px 13px;font-size:14px;font-family:inherit;border:1.5px solid #cbd5e1;border-radius:9px;background:#fbfcfe;color:#1d2433;box-sizing:border-box;}
-.fsa-input:focus{outline:none;border-color:#002f6c;}
-.fsa-lista-escolas{max-height:230px;overflow-y:auto;margin-top:8px;border:1px solid #e2e8f0;border-radius:10px;display:none;}
+.fsa-sugestao button{margin-top:8px;border:none;border-radius:8px;padding:8px 14px;background:var(--navy2,#002f6c);color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;}
+.fsa-label{display:block;font-size:11.5px;font-weight:700;color:var(--navy2,#002f6c);margin-bottom:5px;}
+.fsa-input{width:100%;padding:11px 13px;font-size:14px;font-family:inherit;border:1.5px solid var(--g300,#cbd5e1);border-radius:9px;background:#fbfcfe;color:#1d2433;box-sizing:border-box;}
+.fsa-input:focus{outline:none;border-color:var(--navy2,#002f6c);}
+.fsa-fila{margin-top:10px;border:1px solid var(--g200,#e2e8f0);border-radius:10px;overflow:hidden;}
+.fsa-fila-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--g100,#f1f5f9);font-size:12.5px;color:var(--g700,#334155);background:#fff;}
+.fsa-fila-item:last-child{border-bottom:none;}
+.fsa-fila-item.fsa-fila-excluido{opacity:.45;}
+.fsa-fila-item input[type=checkbox]{width:16px;height:16px;accent-color:var(--navy2,#002f6c);flex-shrink:0;}
+.fsa-fila-item span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fsa-fila-item small{color:var(--g400,#94a3b8);flex-shrink:0;}
+.fsa-fila-remover{border:none;background:var(--red-lt,#fee2e2);color:#991b1b;border-radius:6px;width:24px;height:24px;font-size:12px;font-weight:800;cursor:pointer;flex-shrink:0;line-height:1;}
+.fsa-fila-status{display:block;font-size:11px;color:var(--g500,#64748b);padding:7px 12px;background:var(--g50,#f8fafc);}
+.fsa-lista-escolas{max-height:230px;overflow-y:auto;margin-top:8px;border:1px solid var(--g200,#e2e8f0);border-radius:10px;display:none;}
 .fsa-lista-escolas.fsa-visivel{display:block;}
-.fsa-escola-item{width:100%;border:none;border-bottom:1px solid #f1f5f9;background:#fff;text-align:left;padding:11px 13px;cursor:pointer;font-family:inherit;}
-.fsa-escola-item:hover{background:#f8fafc;}
-.fsa-escola-item b{display:block;font-size:13px;color:#0f172a;}
-.fsa-escola-item small{display:block;font-size:11px;color:#64748b;margin-top:2px;}
+.fsa-escola-item{width:100%;border:none;border-bottom:1px solid var(--g100,#f1f5f9);background:#fff;text-align:left;padding:11px 13px;cursor:pointer;font-family:inherit;}
+.fsa-escola-item:hover{background:var(--g50,#f8fafc);}
+.fsa-escola-item b{display:block;font-size:13px;color:var(--g900,#0f172a);}
+.fsa-escola-item small{display:block;font-size:11px;color:var(--g500,#64748b);margin-top:2px;}
 .fsa-selecionada{margin-top:12px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:13px 15px;font-size:12.5px;color:#166534;line-height:1.5;}
-.fsa-selecionada b{display:block;font-size:13.5px;color:#0f172a;margin-bottom:3px;}
+.fsa-selecionada b{display:block;font-size:13.5px;color:var(--g900,#0f172a);margin-bottom:3px;}
 .fsa-selecionada .fsa-sem-email{color:#991b1b;font-weight:700;}
-.fsa-dica-email{font-size:11.5px;margin-top:4px;color:#64748b;}
+.fsa-dica-email{font-size:11.5px;margin-top:4px;color:var(--g500,#64748b);}
 .fsa-dica-email.fsa-dica-ok{color:#166534;font-weight:700;}
 .fsa-dica-email.fsa-dica-erro{color:#c0392b;font-weight:700;}
-.fsa-salvar-email{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:#334155;cursor:pointer;}
-.fsa-salvar-email input{width:17px;height:17px;accent-color:#002f6c;}
+.fsa-salvar-email{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:var(--g700,#334155);cursor:pointer;}
+.fsa-salvar-email input{width:17px;height:17px;accent-color:var(--navy2,#002f6c);}
 
-.fsa-resumo-envio{background:#f8fafc;border-radius:10px;padding:13px 15px;font-size:12.5px;color:#475569;margin-bottom:14px;line-height:1.6;}
-.fsa-resumo-envio b{color:#0f172a;}
-.fsa-preview-caixa{border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden;background:#eef2f7;}
+.fsa-resumo-envio{background:var(--g50,#f8fafc);border-radius:10px;padding:13px 15px;font-size:12.5px;color:#475569;margin-bottom:14px;line-height:1.6;}
+.fsa-resumo-envio b{color:var(--g900,#0f172a);}
+.fsa-preview-caixa{border:1.5px solid var(--g200,#e2e8f0);border-radius:12px;overflow:hidden;background:#eef2f7;}
 .fsa-preview-frame{width:100%;height:520px;border:none;display:block;background:#fff;}
 
 .fsa-modal-acoes{display:flex;gap:10px;margin-top:18px;justify-content:flex-end;flex-wrap:wrap;}
-.fsa-btn-pri{border:none;border-radius:10px;padding:13px 20px;background:#002f6c;color:#fff;font-size:13.5px;font-weight:800;cursor:pointer;font-family:inherit;}
+.fsa-btn-pri{border:none;border-radius:10px;padding:13px 20px;background:var(--navy2,#002f6c);color:#fff;font-size:13.5px;font-weight:800;cursor:pointer;font-family:inherit;}
 .fsa-btn-pri:disabled{opacity:.45;cursor:not-allowed;}
-.fsa-btn-sec{border:none;border-radius:10px;padding:13px 18px;background:#eef2f7;color:#002f6c;font-size:13.5px;font-weight:800;cursor:pointer;font-family:inherit;}
+.fsa-btn-sec{border:none;border-radius:10px;padding:13px 18px;background:#eef2f7;color:var(--navy2,#002f6c);font-size:13.5px;font-weight:800;cursor:pointer;font-family:inherit;}
 .fsa-acoes-final{justify-content:center;}
 .fsa-btn-link{border:none;border-radius:10px;padding:13px 18px;background:#eff6ff;color:#1d4ed8;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;}
 
 .fsa-sucesso{text-align:center;padding:14px 4px 6px;}
-.fsa-sucesso-selo{width:62px;height:62px;border-radius:50%;background:#16a34a;color:#fff;font-size:30px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;}
-.fsa-sucesso h3{color:#002f6c;font-size:18px;margin:0 0 12px;}
-.fsa-sucesso-dados{display:inline-block;text-align:left;background:#f8fafc;border-radius:10px;padding:14px 18px;font-size:13px;color:#334155;line-height:1.9;}
-.fsa-sucesso-dados b{color:#0f172a;}
+.fsa-sucesso-selo{width:62px;height:62px;border-radius:50%;background:var(--green,var(--green,#059669));color:#fff;font-size:30px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;}
+.fsa-sucesso h3{color:var(--navy2,#002f6c);font-size:18px;margin:0 0 12px;}
+.fsa-sucesso-dados{display:inline-block;text-align:left;background:var(--g50,#f8fafc);border-radius:10px;padding:14px 18px;font-size:13px;color:var(--g700,#334155);line-height:1.9;}
+.fsa-sucesso-dados b{color:var(--g900,#0f172a);}
 
 .fsa-msg{display:none;border-radius:9px;padding:11px 13px;font-size:13px;margin-top:14px;}
 .fsa-msg.fsa-erro{display:block;background:#fdecea;color:#c0392b;}
@@ -267,7 +472,7 @@ window.carregarFichasPendentes=function(){
     fsaRender();
   }).withFailureHandler(function(erro){
     lista.innerHTML='<p style="color:#dc2626;font-size:12px;">Erro de comunicação: '+fsaEsc(erro)+'</p>';
-  }).listarFichasSindicalizacao({});
+  }).listarFichasSindicalizacao({}, SISGEP_TOKEN_SESSAO);
 };
 
 function fsaAtualizarKPIs(k){
@@ -541,7 +746,7 @@ function fsaEscolaComEmail(){
     google.script.run
       .withSuccessHandler(function(){ salvar.checked=false; })
       .withFailureHandler(function(){})
-      .atualizarEmailEscola(base.cnpj, emails, fsaUsuarioAtual_());
+      .atualizarEmailEscola(base.cnpj, emails, fsaUsuarioAtual_(), SISGEP_TOKEN_SESSAO);
   }
 
   return {
@@ -578,7 +783,7 @@ function fsaVerPreview(){
     btn.disabled=false;
     btn.textContent='Ver prévia do ofício →';
     fsaMsgModal('Erro: '+err,'erro');
-  }).previewOficioFiliacao(FSA_FICHA_ATUAL.ID_FICHA, fsaEscolaComEmail());
+  }).previewOficioFiliacao(FSA_FICHA_ATUAL.ID_FICHA, fsaEscolaComEmail(), SISGEP_TOKEN_SESSAO);
 }
 
 function fsaVoltarEtapa1(){ fsaMsgModal(''); fsaIrEtapa(1); }
@@ -609,7 +814,7 @@ function fsaConfirmarEncaminhar(){
     btn.textContent='✓ Aprovar, gerar ofício e enviar';
     fsaMsgModal('Erro: '+err,'erro');
 }).aprovarEEncaminharFicha(
-      FSA_FICHA_ATUAL.ID_FICHA, fsaEscolaComEmail(), fsaUsuarioAtual_());
+      FSA_FICHA_ATUAL.ID_FICHA, fsaEscolaComEmail(), fsaUsuarioAtual_(), SISGEP_TOKEN_SESSAO);
 }
 
 function fsaAprovarSemOficio(){
@@ -629,7 +834,7 @@ function fsaAprovarSemOficio(){
     carregarFichasPendentes();
   }).withFailureHandler(function(err){
     fsaMsgModal('Erro: '+err,'erro');
-  }).aprovarFichaSindicalizacao(FSA_FICHA_ATUAL.ID_FICHA, fsaUsuarioAtual_());
+  }).aprovarFichaSindicalizacao(FSA_FICHA_ATUAL.ID_FICHA, fsaUsuarioAtual_(), SISGEP_TOKEN_SESSAO);
 }
 
 function fsaMostrarSucesso(r){
@@ -689,6 +894,295 @@ function fsaRejeitar(idFicha){
   }).withFailureHandler(function(erro){
     if(idCarregando) esconderCarregando(idCarregando);
     if(window.mostrarErro) mostrarErro('Erro: '+erro); else alert('Erro: '+erro);
-  }).rejeitarFichaSindicalizacao(idFicha, motivo, fsaUsuarioAtual_());
+  }).rejeitarFichaSindicalizacao(idFicha, motivo, fsaUsuarioAtual_(), SISGEP_TOKEN_SESSAO);
+}
+
+/* ===================== IMPORTAR FORMULÁRIO EM PAPEL (IA) =====================
+   Nada aqui grava nada sozinho: "Analisar formulário" só sugere; "Confirmar e
+   registrar ficha" só age depois que o atendente revisar os campos e marcar
+   a caixa de conferência. A ficha criada ainda precisa ser aprovada pelo
+   fluxo normal (fsaAbrirModal / aprovarFichaSindicalizacao).
+   Suporta selecionar vários arquivos de uma vez: a fila é revisada com um
+   checkbox por item (permite excluir da rodada antes de processar) e depois
+   cada arquivo incluído passa por OCR + revisão + confirmação, um de cada vez. */
+
+var FSA_PAPEL_ARQUIVO = { base64: '', tipo: '', extensao: '' };
+var FSA_PAPEL_ESCOLAS = [];
+var FSA_PAPEL_FILA = [];        // [{file, nome, incluido}] — tudo que foi selecionado no input
+var FSA_PAPEL_FILA_ATIVA = [];  // subconjunto marcado como incluído, congelado ao iniciar a análise
+var FSA_PAPEL_INDICE = 0;
+var FSA_PAPEL_RESULTADOS = [];
+
+function fsaPapelAbrirModal(){
+  FSA_PAPEL_ARQUIVO = { base64: '', tipo: '', extensao: '' };
+  FSA_PAPEL_ESCOLAS = [];
+  FSA_PAPEL_FILA = [];
+  FSA_PAPEL_FILA_ATIVA = [];
+  FSA_PAPEL_INDICE = 0;
+  FSA_PAPEL_RESULTADOS = [];
+  var input = document.getElementById('fsaPapelArquivo'); if (input) input.value = '';
+  var status = document.getElementById('fsaPapelStatus'); if (status) status.textContent = '';
+  fsaPapelRenderFila();
+  fsaPapelIrEtapa(1);
+  document.getElementById('fsaPapelModal').classList.add('fsa-aberto');
+}
+
+function fsaPapelFecharModal(){
+  document.getElementById('fsaPapelModal').classList.remove('fsa-aberto');
+}
+
+function fsaPapelIrEtapa(n){
+  [1,2,3].forEach(function(i){
+    var et=document.getElementById('fsaPapelEtapa'+i);
+    var ps=document.getElementById('fsaPapelPasso'+i);
+    if(et) et.classList.toggle('fsa-etapa-ativa', i===n);
+    if(ps) ps.classList.toggle('fsa-passo-ativo', i===n);
+  });
+}
+
+function fsaPapelVoltarEtapa1(){
+  document.getElementById('fsaPapelModalMsg').textContent='';
+  var restantes = FSA_PAPEL_FILA_ATIVA.length - (FSA_PAPEL_INDICE + 1);
+  if (restantes > 0) { FSA_PAPEL_INDICE++; fsaPapelProcessarProximo(); return; }
+  fsaPapelIrEtapa(1);
+}
+
+function fsaPapelMontarFila(){
+  var input = document.getElementById('fsaPapelArquivo');
+  var arquivos = input && input.files ? Array.prototype.slice.call(input.files) : [];
+  FSA_PAPEL_FILA = arquivos.map(function(f){ return { file: f, nome: f.name, incluido: true }; });
+  fsaPapelRenderFila();
+}
+
+function fsaPapelRenderFila(){
+  var caixa = document.getElementById('fsaPapelFila');
+  if (!caixa) return;
+  if (!FSA_PAPEL_FILA.length) { caixa.innerHTML = ''; return; }
+  var incluidos = FSA_PAPEL_FILA.filter(function(i){ return i.incluido; }).length;
+  var html = '<div class="fsa-fila">';
+  html += '<span class="fsa-fila-status">'+incluidos+' de '+FSA_PAPEL_FILA.length+' arquivo(s) serão analisados</span>';
+  FSA_PAPEL_FILA.forEach(function(item, i){
+    html += '<div class="fsa-fila-item'+(item.incluido ? '' : ' fsa-fila-excluido')+'">'
+      + '<input type="checkbox" '+(item.incluido ? 'checked' : '')+' onchange="fsaPapelAlternarItem('+i+')" title="Incluir/excluir este arquivo da análise">'
+      + '<span>'+fsaEsc(item.nome)+'</span>'
+      + '<button type="button" class="fsa-fila-remover" onclick="fsaPapelRemoverItem('+i+')" title="Remover da fila">✕</button>'
+      + '</div>';
+  });
+  html += '</div>';
+  caixa.innerHTML = html;
+}
+
+function fsaPapelAlternarItem(i){
+  if (!FSA_PAPEL_FILA[i]) return;
+  FSA_PAPEL_FILA[i].incluido = !FSA_PAPEL_FILA[i].incluido;
+  fsaPapelRenderFila();
+}
+
+function fsaPapelRemoverItem(i){
+  FSA_PAPEL_FILA.splice(i, 1);
+  fsaPapelRenderFila();
+}
+
+function fsaPapelAnalisar(){
+  var status = document.getElementById('fsaPapelStatus');
+  FSA_PAPEL_FILA_ATIVA = FSA_PAPEL_FILA.filter(function(i){ return i.incluido; });
+  if (!FSA_PAPEL_FILA_ATIVA.length) { alert('Selecione ao menos um arquivo (mantenha marcado na fila).'); return; }
+  FSA_PAPEL_INDICE = 0;
+  FSA_PAPEL_RESULTADOS = [];
+  if (status) status.textContent = '';
+  fsaPapelProcessarProximo();
+}
+
+function fsaPapelProcessarProximo(){
+  if (FSA_PAPEL_INDICE >= FSA_PAPEL_FILA_ATIVA.length) { fsaPapelMostrarConcluido(); return; }
+
+  var arquivo = FSA_PAPEL_FILA_ATIVA[FSA_PAPEL_INDICE].file;
+  var status = document.getElementById('fsaPapelStatus');
+  var btn = document.getElementById('fsaPapelBtnAnalisar');
+  var extensao = (arquivo.name.match(/\.[^.]+$/) || ['.pdf'])[0];
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Lendo documento...'; }
+  if (status) status.textContent = 'Analisando '+(FSA_PAPEL_INDICE+1)+' de '+FSA_PAPEL_FILA_ATIVA.length+': '+arquivo.name+' — pode levar alguns segundos...';
+
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var base64 = e.target.result.split(',')[1];
+    FSA_PAPEL_ARQUIVO = { base64: base64, tipo: arquivo.type || 'application/pdf', extensao: extensao };
+
+    google.script.run
+      .withSuccessHandler(function(res){
+        if (btn) { btn.disabled = false; btn.textContent = '🔎 Analisar formulário'; }
+        if (!res || !res.sucesso) {
+          if (status) status.textContent = '';
+          alert((res && res.mensagem) || ('Não foi possível analisar "'+arquivo.name+'".'));
+          FSA_PAPEL_INDICE++;
+          fsaPapelProcessarProximo();
+          return;
+        }
+        fsaPapelRenderRevisao(res, arquivo.name);
+      })
+      .withFailureHandler(function(err){
+        if (btn) { btn.disabled = false; btn.textContent = '🔎 Analisar formulário'; }
+        if (status) status.textContent = '';
+        alert('Erro ao analisar "'+arquivo.name+'": ' + ((err && err.message) || err));
+        FSA_PAPEL_INDICE++;
+        fsaPapelProcessarProximo();
+      })
+      .analisarFormularioFiliacaoIA(base64, arquivo.name, arquivo.type || 'application/pdf', SISGEP_TOKEN_SESSAO);
+  };
+  reader.onerror = function(){
+    if (btn) { btn.disabled = false; btn.textContent = '🔎 Analisar formulário'; }
+    alert('Erro ao ler o arquivo "'+arquivo.name+'".');
+    FSA_PAPEL_INDICE++;
+    fsaPapelProcessarProximo();
+  };
+  reader.readAsDataURL(arquivo);
+}
+
+function fsaPapelRenderRevisao(res, nomeArquivo){
+  var status = document.getElementById('fsaPapelStatus'); if (status) status.textContent = '';
+  var d = res.dados || {};
+  FSA_PAPEL_ESCOLAS = res.listaEscolas || [];
+
+  document.getElementById('fsaPapelTipo').value = d.tipo === 'RECADASTRAMENTO' ? 'RECADASTRAMENTO' : 'CADASTRAMENTO';
+  document.getElementById('fsaPapelNome').value = d.nome || '';
+  document.getElementById('fsaPapelCpf').value = d.cpf || res.cpfDigitos || '';
+  document.getElementById('fsaPapelSexo').value = d.sexo === 'M' || d.sexo === 'F' ? d.sexo : '';
+  document.getElementById('fsaPapelRg').value = d.rg || '';
+  document.getElementById('fsaPapelOrgaoExpedidor').value = d.orgaoExpedidor || '';
+  document.getElementById('fsaPapelUfRg').value = d.ufRg || '';
+  document.getElementById('fsaPapelDataNascimento').value = d.dataNascimento || '';
+  document.getElementById('fsaPapelCargo').value = d.cargo || '';
+  document.getElementById('fsaPapelEscolaridade').value = d.escolaridade || '';
+  document.getElementById('fsaPapelDataAdmissao').value = d.dataAdmissao || '';
+  document.getElementById('fsaPapelCidadeEscola').value = d.cidadeEscola || '';
+  document.getElementById('fsaPapelCepEscola').value = d.cepEscola || '';
+  document.getElementById('fsaPapelCelular').value = d.celular || '';
+  document.getElementById('fsaPapelEmail').value = d.email || '';
+  document.getElementById('fsaPapelCepResidencial').value = d.cepResidencial || '';
+  document.getElementById('fsaPapelTipoLogradouro').value =
+    ['RUA', 'AVENIDA', 'PRACA'].indexOf(String(d.tipoLogradouro || '').toUpperCase()) >= 0 ?
+    String(d.tipoLogradouro).toUpperCase() : 'RUA';
+  document.getElementById('fsaPapelEndereco').value = d.endereco || '';
+  document.getElementById('fsaPapelNumero').value = d.numero || '';
+  document.getElementById('fsaPapelComplemento').value = d.complemento || '';
+  document.getElementById('fsaPapelBairro').value = d.bairro || '';
+  document.getElementById('fsaPapelCidade').value = d.cidade || '';
+  document.getElementById('fsaPapelUf').value = d.uf || '';
+  document.getElementById('fsaPapelConfirmado').checked = false;
+
+  var escolaSel = document.getElementById('fsaPapelEscola');
+  var opcoes = "<option value=''>Selecione a escola...</option>";
+  FSA_PAPEL_ESCOLAS.forEach(function(e, i){
+    var selecionada = res.escolaSugerida && e.nome === res.escolaSugerida ? ' selected' : '';
+    opcoes += "<option value='"+i+"'"+selecionada+">"+fsaEsc(e.nome)+" ("+(e.associados||0)+" associados)</option>";
+  });
+  escolaSel.innerHTML = opcoes;
+
+  var alertasEl = document.getElementById('fsaPapelAlertas');
+  var alertas = res.alertas || [];
+  var html = alertas.length
+    ? alertas.map(function(a){ return "<div class='fsa-aviso' style='background:#fef3c7;border-color:#fcd34d;color:#92400e;margin-bottom:6px;'>⚠ "+fsaEsc(a)+"</div>"; }).join('')
+    : "<div class='fsa-aviso' style='background:#dcfce7;border-color:#86efac;color:#166534;'>✅ Nenhuma pendência encontrada na conferência automática.</div>";
+  if (d.observacoesLeitura) {
+    html += "<div class='fsa-aviso' style='background:#eff6ff;border-color:#bfdbfe;color:#1e3a8a;'>📝 Observações da leitura: "+fsaEsc(d.observacoesLeitura)+"</div>";
+  }
+  alertasEl.innerHTML = html;
+
+  var progresso = document.getElementById('fsaPapelProgresso');
+  if (progresso) {
+    if (FSA_PAPEL_FILA_ATIVA.length > 1) {
+      progresso.style.display = 'block';
+      progresso.textContent = 'Arquivo '+(FSA_PAPEL_INDICE+1)+' de '+FSA_PAPEL_FILA_ATIVA.length+': '+nomeArquivo;
+    } else {
+      progresso.style.display = 'none';
+      progresso.textContent = '';
+    }
+  }
+
+  var btnVoltar = document.querySelector('#fsaPapelEtapa2 .fsa-btn-sec');
+  if (btnVoltar) {
+    var restantes = FSA_PAPEL_FILA_ATIVA.length - (FSA_PAPEL_INDICE + 1);
+    btnVoltar.textContent = restantes > 0 ? '⏭ Pular este arquivo' : '← Anexar outro arquivo';
+  }
+
+  document.getElementById('fsaPapelModalMsg').textContent='';
+  fsaPapelIrEtapa(2);
+}
+
+function fsaPapelConfirmar(){
+  var confirmado = document.getElementById('fsaPapelConfirmado').checked;
+  if (!confirmado) { alert('Marque a caixa confirmando que conferiu os dados contra o documento original.'); return; }
+
+  var idxEscola = document.getElementById('fsaPapelEscola').value;
+  if (idxEscola === '') { alert('Selecione a escola antes de confirmar.'); return; }
+  var escola = FSA_PAPEL_ESCOLAS[parseInt(idxEscola,10)];
+  if (!escola) { alert('Escola inválida — selecione novamente.'); return; }
+
+  var payload = {
+    tipo: document.getElementById('fsaPapelTipo').value,
+    nome: document.getElementById('fsaPapelNome').value,
+    sexo: document.getElementById('fsaPapelSexo').value,
+    cpf: document.getElementById('fsaPapelCpf').value,
+    rg: document.getElementById('fsaPapelRg').value,
+    orgaoExpedidor: document.getElementById('fsaPapelOrgaoExpedidor').value,
+    ufRg: document.getElementById('fsaPapelUfRg').value,
+    dataNascimento: document.getElementById('fsaPapelDataNascimento').value,
+    escola: escola.nome,
+    cargo: document.getElementById('fsaPapelCargo').value,
+    escolaridade: document.getElementById('fsaPapelEscolaridade').value,
+    dataAdmissao: document.getElementById('fsaPapelDataAdmissao').value,
+    cidadeEscola: document.getElementById('fsaPapelCidadeEscola').value,
+    cepEscola: document.getElementById('fsaPapelCepEscola').value,
+    celular: document.getElementById('fsaPapelCelular').value,
+    telefone1: document.getElementById('fsaPapelCelular').value,
+    email: document.getElementById('fsaPapelEmail').value,
+    cepResidencial: document.getElementById('fsaPapelCepResidencial').value,
+    tipoLogradouro: document.getElementById('fsaPapelTipoLogradouro').value,
+    endereco: document.getElementById('fsaPapelEndereco').value,
+    numero: document.getElementById('fsaPapelNumero').value,
+    complemento: document.getElementById('fsaPapelComplemento').value,
+    bairro: document.getElementById('fsaPapelBairro').value,
+    cidade: document.getElementById('fsaPapelCidade').value,
+    uf: document.getElementById('fsaPapelUf').value,
+    arquivoBase64: FSA_PAPEL_ARQUIVO.base64,
+    arquivoTipo: FSA_PAPEL_ARQUIVO.tipo,
+    arquivoExtensao: FSA_PAPEL_ARQUIVO.extensao,
+    confirmadoPeloAtendente: true
+  };
+
+  var btn = document.getElementById('fsaPapelBtnConfirmar');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Registrando...'; }
+
+  google.script.run
+    .withSuccessHandler(function(res){
+      if (btn) { btn.disabled = false; btn.textContent = '✓ Confirmar e registrar ficha'; }
+      if (!res || !res.sucesso) { alert((res && res.mensagem) || 'Falha ao registrar a ficha.'); return; }
+      FSA_PAPEL_RESULTADOS.push({ idFicha: res.idFicha, nome: payload.nome });
+      FSA_PAPEL_INDICE++;
+      fsaPapelProcessarProximo();
+    })
+    .withFailureHandler(function(err){
+      if (btn) { btn.disabled = false; btn.textContent = '✓ Confirmar e registrar ficha'; }
+      alert('Erro: ' + ((err && err.message) || err));
+    })
+    .confirmarFiliacaoPapelIA(payload, SISGEP_TOKEN_SESSAO);
+}
+
+function fsaPapelMostrarConcluido(){
+  var status = document.getElementById('fsaPapelStatus'); if (status) status.textContent = '';
+  var btn = document.getElementById('fsaPapelBtnAnalisar');
+  if (btn) { btn.disabled = false; btn.textContent = '🔎 Analisar formulário'; }
+  var progresso = document.getElementById('fsaPapelProgresso');
+  if (progresso) { progresso.style.display = 'none'; progresso.textContent = ''; }
+
+  var caixa = document.getElementById('fsaPapelSucessoDados');
+  if (!FSA_PAPEL_RESULTADOS.length) {
+    caixa.innerHTML = '<div class="fsa-campo">Nenhuma ficha foi registrada nesta rodada.</div>';
+  } else {
+    caixa.innerHTML = FSA_PAPEL_RESULTADOS.map(function(r){
+      return '<div class="fsa-campo"><b>'+fsaEsc(r.idFicha)+'</b> — '+fsaEsc(r.nome)+'</div>';
+    }).join('');
+  }
+  fsaPapelIrEtapa(3);
 }
 </script>

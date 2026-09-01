@@ -59,7 +59,7 @@ function emissao_formatarNumero_(n) {
 }
 
 // ================= EMISSÃO (núcleo atômico) =================
-function emissao_emitirIngresso(payload) {
+function emissao_emitirIngresso(payload, tokenSessao) {
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
@@ -137,11 +137,93 @@ function emissao_emitirIngresso(payload) {
       return { ok: false, erro: 'Falha ao gravar o ingresso: ' + e.message };
     }
 
+    // --- fecha o ciclo: QR Code, confirmação por e-mail e conciliação financeira ---
+    // Nenhuma dessas 3 ações pode derrubar a emissão já confirmada — o ingresso
+    // já está gravado e a vaga já foi reservada; falhas aqui só ficam no log.
+    var qrCodeUrl = emissao_gerarQrCodeUrl_(fcv);
+    var emailEnviado = false;
+    try {
+      emailEnviado = emissao_enviarConfirmacaoEmail_(ingresso, qrCodeUrl);
+    } catch (eEmail) {
+      Logger.log('[emissao] falha ao enviar confirmação por e-mail (' + fcv + '): ' + eEmail.message);
+    }
+
+    if (cat === 'acompanhante' && pagStatus === 'PAGO' && tokenSessao) {
+      try {
+        emissao_registrarReceitaAcompanhante_(ingresso, tokenSessao);
+      } catch (eReceita) {
+        Logger.log('[emissao] falha ao conciliar receita do acompanhante (' + fcv + '): ' + eReceita.message);
+      }
+    }
+
     return { ok: true, id: id, numero: fcv, categoria: cat, nome: ingresso.nome,
-             escola: ingresso.escola, valor: valor, restantes: c.limite - (c.vagasUsadas + 1) };
+             escola: ingresso.escola, valor: valor, restantes: c.limite - (c.vagasUsadas + 1),
+             qrCodeUrl: qrCodeUrl, emailEnviado: emailEnviado };
   } finally {
     lock.releaseLock();
   }
+}
+
+// ================= FECHAMENTO DO CICLO (Fase 4 da auditoria) =================
+
+// QR Code do ingresso: mesmo padrão já usado em Carteirinhas/Voucher
+// (quickchart.io). Encoda só o número do ingresso — a equipe na entrada
+// escaneia com a câmera do celular e cola no check-in, sem depender de
+// nenhuma rota pública que confirme entrada sozinha.
+function emissao_gerarQrCodeUrl_(numero) {
+  return 'https://quickchart.io/qr?size=200&text=' + encodeURIComponent(String(numero || ''));
+}
+
+// E-mail de confirmação com o ingresso, pela Central de E-mails (EmailCore.gs)
+// — antes disso, nenhum artefato era entregue ao titular/convidado.
+function emissao_enviarConfirmacaoEmail_(ingresso, qrCodeUrl) {
+  if (!ingresso.email) return false;
+
+  var linhas = [
+    '<p>Seu ingresso para a <b>Festa Compasso da Vida 2026</b> foi emitido com sucesso!</p>',
+    '<table style="width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;">',
+    '<tr><td style="padding:4px 0;color:#6b7385;">Nome</td><td style="padding:4px 0;font-weight:bold;">' + ingresso.nome + '</td></tr>',
+    '<tr><td style="padding:4px 0;color:#6b7385;">Categoria</td><td style="padding:4px 0;font-weight:bold;">' + ingresso.categoria + '</td></tr>',
+    ingresso.escola ? '<tr><td style="padding:4px 0;color:#6b7385;">Escola</td><td style="padding:4px 0;">' + ingresso.escola + '</td></tr>' : '',
+    ingresso.valor ? '<tr><td style="padding:4px 0;color:#6b7385;">Valor</td><td style="padding:4px 0;">R$ ' + ingresso.valor.toFixed(2).replace('.', ',') + ' (' + ingresso.pagamentoForma + ')</td></tr>' : '',
+    '</table>',
+    '<p>Apresente o QR Code abaixo na entrada do evento:</p>',
+    '<div style="text-align:center;margin:18px 0;">',
+    '<img src="' + qrCodeUrl + '" alt="QR Code do ingresso ' + ingresso.numero + '" style="width:180px;height:180px;border:1px solid #e2e8f0;border-radius:10px;padding:6px;background:#fff;">',
+    '</div>'
+  ].join('');
+
+  var destaque =
+    '<div style="text-align:center;background:#f4f6fa;border-radius:10px;padding:14px;margin-top:14px;">' +
+    '<div style="font-size:11px;color:#6b7385;text-transform:uppercase;letter-spacing:.05em;">Número do ingresso</div>' +
+    '<div style="font-size:22px;font-weight:900;color:#002f6c;letter-spacing:.02em;">' + ingresso.numero + '</div>' +
+    '</div>';
+
+  var htmlBody = sind_emailHtml_('🎟️ Ingresso confirmado — Festa Compasso da Vida 2026', linhas, destaque);
+  var corpoTexto = 'Seu ingresso ' + ingresso.numero + ' para a Festa Compasso da Vida 2026 foi emitido com sucesso. ' +
+    'Apresente este número na entrada do evento.';
+
+  var resultado = enviarEmailSISGEP_(ingresso.email, 'Seu ingresso — Festa Compasso da Vida 2026', corpoTexto, {
+    htmlBody: htmlBody,
+    origem: 'Eventos'
+  });
+
+  return !!(resultado && resultado.ok);
+}
+
+// Conciliação financeira: pagamento do acompanhante deixa de ser só a
+// palavra do operador e passa a virar uma receita real no Financeiro.
+function emissao_registrarReceitaAcompanhante_(ingresso, tokenSessao) {
+  return cadastrarReceita({
+    tipo: 'Evento',
+    categoria: 'Ingresso Evento',
+    descricao: 'Ingresso acompanhante — Festa Compasso da Vida 2026 — ' + ingresso.nome +
+      (ingresso.titularNome ? ' (titular: ' + ingresso.titularNome + ')' : ''),
+    valor: ingresso.valor,
+    formaRecebimento: ingresso.pagamentoForma,
+    status: 'RECEBIDO',
+    observacoes: 'Ingresso ' + ingresso.numero + '. Conciliado automaticamente na emissão (Fase 4 — Eventos).'
+  }, tokenSessao);
 }
 
 // ================= CANCELAMENTO (libera a vaga, número não volta) =================

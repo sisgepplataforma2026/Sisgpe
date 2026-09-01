@@ -1,0 +1,426 @@
+<div id="taxasAdmin" style="min-height:100%;background:#f0f4f8;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#0f172a;">
+<!--
+  Recebimento da Taxa Negocial (CCT cl. 57) e da Taxa Assistencial (cl. 58).
+  O sistema já sabia emitir o ofício das duas; esta tela é onde se registra
+  quem pagou — a parte que faltava para as 5 receitas do sindicato chegarem
+  todas ao Financeiro.
+-->
+  <style>
+    #taxasAdmin *{box-sizing:border-box}
+    .tx-head{background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));padding:22px 24px;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+    .tx-title{font-size:21px;font-weight:900;line-height:1.1}
+    .tx-sub{font-size:12px;color:rgba(255,255,255,.68);margin-top:4px}
+    .tx-badge{height:32px;border-radius:999px;border:1px solid rgba(201,168,76,.5);background:rgba(201,168,76,.16);color:#f8d66d;font-size:11px;font-weight:900;padding:0 14px;display:flex;align-items:center}
+    .tx-wrap{padding:18px 22px 34px}
+    .tx-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+    .tx-card{background:#fff;border:1px solid var(--g200,#e2e8f0);border-radius:14px;padding:15px 16px;box-shadow:0 2px 10px rgba(0,20,60,.06)}
+    .tx-card small{display:block;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:var(--g500,#64748b);margin-bottom:8px}
+    .tx-card strong{font-size:24px;font-weight:900;color:var(--navy,#001f4d);font-variant-numeric:tabular-nums;word-break:break-word}
+    .tx-card span{display:block;font-size:11px;color:var(--g400,#94a3b8);margin-top:4px}
+    .tx-card.ok strong{color:#0f8a5f}.tx-card.warn strong{color:#d97706}
+    .tx-panel{background:#fff;border:1px solid var(--g200,#e2e8f0);border-radius:14px;box-shadow:0 2px 10px rgba(0,20,60,.06);overflow:hidden;margin-bottom:14px}
+    .tx-panel-head{padding:14px 16px;border-bottom:1px solid #eef2f7;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+    .tx-panel-title{font-size:14px;font-weight:900;color:var(--navy,#001f4d)}
+    .tx-btn{height:34px;border-radius:9px;border:1px solid var(--g300,#cbd5e1);background:#fff;color:var(--g700,#334155);font-size:12px;font-weight:800;padding:0 12px;cursor:pointer;font-family:inherit}
+    .tx-btn.primary{background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));border-color:var(--blue,#1565C0);color:#fff}
+    .tx-btn.mini{height:26px;padding:0 9px;font-size:10.5px;border-radius:7px}
+    .tx-btn.red{background:#fee2e2;border-color:#fca5a5;color:#991b1b}
+    .tx-btn:disabled{opacity:.55;cursor:not-allowed}
+    .tx-form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:14px 16px;background:var(--g50,#f8fafc);border-bottom:1px solid #eef2f7}
+    .tx-field label{display:block;font-size:10px;font-weight:900;color:var(--g500,#64748b);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+    .tx-field input,.tx-field select{width:100%;height:36px;border:1.5px solid #dbe4ef;border-radius:9px;padding:0 10px;font-family:inherit;font-size:12.5px;background:#fff}
+    .tx-field.wide{grid-column:span 2}
+    .tx-hint{grid-column:1/-1;font-size:11.5px;color:var(--g500,#64748b);background:#eff6ff;border:1px solid #bfdbfe;border-radius:9px;padding:9px 12px;line-height:1.55}
+    .tx-form-acts{grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end;align-items:center}
+    .tx-previa{font-size:12px;font-weight:800;color:var(--navy,#001f4d);margin-right:auto}
+    .tx-search{padding:12px 16px;display:flex;gap:10px;align-items:center;background:#fff;border-bottom:1px solid #eef2f7;flex-wrap:wrap}
+    .tx-search input,.tx-search select{height:36px;border:1.5px solid #dbe4ef;border-radius:9px;padding:0 12px;font-family:inherit;font-size:12.5px;background:#fff}
+    .tx-search input.busca{border-radius:999px;min-width:200px;flex:1}
+    .tx-table-wrap{overflow-x:auto}
+    .tx-table{width:100%;border-collapse:collapse;min-width:1050px}
+    .tx-table th{background:var(--g50,#f8fafc);color:var(--g500,#64748b);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.07em;text-align:left;padding:10px 12px;border-bottom:1px solid var(--g200,#e2e8f0)}
+    .tx-table td{font-size:12.5px;color:var(--g700,#334155);padding:10px 12px;border-bottom:1px solid var(--g100,#f1f5f9);vertical-align:middle}
+    .tx-table tr:hover td{background:var(--g50,#f8fafc)}
+    .tx-val{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:800}
+    .tx-pill{display:inline-flex;align-items:center;height:22px;border-radius:999px;padding:0 9px;font-size:10.5px;font-weight:900;white-space:nowrap}
+    .tx-pill.aberta{background:var(--amber-lt,#fef3c7);color:#92400e}
+    .tx-pill.parcial{background:#dbeafe;color:#1d4ed8}
+    .tx-pill.paga{background:#dcfce7;color:#166534}
+    .tx-pill.cancelada{background:var(--g100,#f1f5f9);color:var(--g500,#64748b)}
+    .tx-tipo{display:inline-flex;align-items:center;height:20px;border-radius:6px;padding:0 7px;font-size:10px;font-weight:900}
+    .tx-tipo.neg{background:#ede9fe;color:#5b21b6}
+    .tx-tipo.ass{background:#ffedd5;color:#9a3412}
+    .tx-empty{padding:30px;text-align:center;color:var(--g400,#94a3b8);font-size:13px}
+    .tx-erro{margin:0 0 14px;padding:12px 14px;border-radius:12px;background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;font-size:12.5px;font-weight:700;display:none}
+    .tx-erro.show{display:block}
+    @media(max-width:1100px){.tx-grid{grid-template-columns:repeat(2,1fr)}.tx-form{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:640px){.tx-grid,.tx-form{grid-template-columns:1fr}.tx-field.wide{grid-column:span 1}}
+  </style>
+
+  <div class="tx-head">
+    <div>
+      <div class="tx-title">Taxa Negocial e Assistencial</div>
+      <div class="tx-sub">Recebimento das contribuições da CCT — cláusulas 57 e 58</div>
+    </div>
+    <div class="tx-badge">SINDEDUCAÇÃO-ES</div>
+  </div>
+
+  <div class="tx-wrap">
+    <div id="txErro" class="tx-erro"></div>
+
+    <div class="tx-grid">
+      <div class="tx-card"><small>Total devido</small><strong id="txDevido">R$ 0,00</strong><span id="txQtd">0 parcela(s)</span></div>
+      <div class="tx-card ok"><small>Recebido</small><strong id="txRecebido">R$ 0,00</strong><span id="txPagas">0 quitada(s)</span></div>
+      <div class="tx-card warn"><small>A receber</small><strong id="txAReceber">R$ 0,00</strong><span id="txAbertas">0 em aberto</span></div>
+      <div class="tx-card"><small>Em aberto por tipo</small><strong id="txPorTipo" style="font-size:16px;">—</strong><span>negocial · assistencial</span></div>
+    </div>
+
+    <div class="tx-panel">
+      <div class="tx-panel-head">
+        <div class="tx-panel-title">Gerar cobrança a partir do relatório da escola</div>
+        <button class="tx-btn" type="button" onclick="txToggleForm()"><span id="txToggleTxt">Abrir formulário</span></button>
+      </div>
+      <div id="txFormBox" style="display:none;">
+        <div class="tx-form">
+          <div class="tx-field wide"><label>Escola</label><input id="txEscola" placeholder="Razão social da escola"></div>
+          <div class="tx-field"><label>CNPJ</label><input id="txCnpj" placeholder="Opcional"></div>
+          <div class="tx-field"><label>Competência</label><input id="txCompetencia" placeholder="MM/AAAA"></div>
+
+          <div class="tx-field"><label>Tipo</label>
+            <select id="txTipo" onchange="txAtualizarAjuda()">
+              <option value="NEGOCIAL">Taxa Negocial (cl. 57)</option>
+              <option value="ASSISTENCIAL">Taxa Assistencial (cl. 58)</option>
+            </select>
+          </div>
+          <div class="tx-field" id="txBoxInfantil" style="display:none;"><label>Modalidade</label>
+            <select id="txInfantil" onchange="txAtualizarAjuda()">
+              <option value="">Padrão — 4% em 2 parcelas</option>
+              <option value="1">Ed. Infantil exclusiva — 2% em 2 parcelas</option>
+            </select>
+          </div>
+          <div class="tx-field"><label>Base de cálculo (R$)</label><input id="txBase" placeholder="0,00" inputmode="decimal" oninput="txAtualizarAjuda()"></div>
+          <div class="tx-field"><label>Vencimento da 1ª parcela</label><input id="txVenc1" type="date"></div>
+
+          <div class="tx-hint" id="txAjuda"></div>
+
+          <div class="tx-form-acts">
+            <div class="tx-previa" id="txPrevia">—</div>
+            <button class="tx-btn" type="button" onclick="txLimparForm()">Limpar</button>
+            <button class="tx-btn primary" type="button" id="txBtnGerar" onclick="txGerar()">Gerar parcelas</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tx-panel">
+      <div class="tx-panel-head">
+        <div class="tx-panel-title">Parcelas</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="tx-btn" type="button" onclick="txCarregar()">Atualizar</button>
+          <button class="tx-btn" type="button" onclick="txExportar()">Exportar CSV</button>
+        </div>
+      </div>
+
+      <div class="tx-search">
+        <input class="busca" id="txBusca" placeholder="Buscar escola..." oninput="txRender()">
+        <select id="txFiltroTipo" onchange="txRender()">
+          <option value="">Todos os tipos</option>
+          <option value="NEGOCIAL">Negocial</option>
+          <option value="ASSISTENCIAL">Assistencial</option>
+        </select>
+        <select id="txFiltroComp" onchange="txRender()"><option value="">Todas as competências</option></select>
+        <select id="txFiltroStatus" onchange="txRender()">
+          <option value="">Todos os status</option>
+          <option value="ABERTA">Em aberto</option>
+          <option value="PARCIAL">Parcial</option>
+          <option value="PAGA">Quitada</option>
+          <option value="CANCELADA">Cancelada</option>
+        </select>
+      </div>
+
+      <div class="tx-table-wrap">
+        <table class="tx-table">
+          <thead>
+            <tr><th>Escola</th><th>Comp.</th><th>Tipo</th><th>Parcela</th><th>Base</th><th style="text-align:right;">Devido</th><th style="text-align:right;">Recebido</th><th style="text-align:right;">Saldo</th><th>Status</th><th>Ações</th></tr>
+          </thead>
+          <tbody id="txTabela"></tbody>
+        </table>
+      </div>
+      <div id="txVazio" class="tx-empty" style="display:none;">Nenhuma parcela lançada.</div>
+    </div>
+  </div>
+
+<script>
+(function(){
+"use strict";
+
+var TX_ITENS = [], TX_CFG = null, TX_OCUPADO = false;
+
+function g(id){ return document.getElementById(id); }
+function tokenSessao(){ return typeof SISGEP_TOKEN_SESSAO !== "undefined" ? SISGEP_TOKEN_SESSAO : ""; }
+function moeda(v){ return Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"}); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c];}); }
+function txt(id,v){ var el=g(id); if(el) el.textContent=v; }
+function aviso(m,t){ if(typeof window.toast==="function") window.toast(m,t||"info"); }
+
+function numero(v){
+  if (typeof v === "number") return isFinite(v)?v:0;
+  var s = String(v||"").trim().replace(/\s/g,"").replace("R$","");
+  if (!s) return 0;
+  if (s.indexOf(",")>=0) s = s.replace(/\./g,"").replace(",",".");
+  var n = parseFloat(s);
+  return isNaN(n)?0:n;
+}
+
+function mostrarErro(msg){
+  var el=g("txErro"); if(!el) return;
+  if(!msg){ el.className="tx-erro"; el.textContent=""; return; }
+  el.className="tx-erro show"; el.textContent=msg;
+}
+
+function regraAtual(){
+  var tipo = g("txTipo").value;
+  var inf  = g("txInfantil") && g("txInfantil").value;
+  var chave = (tipo==="ASSISTENCIAL" && inf) ? "ASSISTENCIAL_INF" : tipo;
+  return (TX_CFG && TX_CFG[chave]) || null;
+}
+
+/* Explica a base de cálculo conforme o tipo — as duas taxas se calculam de
+   formas diferentes e confundir isso gera cobrança errada para escola real. */
+window.txAtualizarAjuda = function(){
+  var tipo = g("txTipo").value;
+  g("txBoxInfantil").style.display = (tipo==="ASSISTENCIAL") ? "block" : "none";
+
+  var r = regraAtual();
+  var ajuda = g("txAjuda");
+  if (tipo === "NEGOCIAL") {
+    ajuda.innerHTML = "<strong>Base:</strong> soma dos salários apenas dos empregados <strong>NÃO filiados</strong> — " +
+      "os filiados ao SindEducação-ES são isentos pela cláusula 57. Descontado do trabalhador e repassado pela escola." +
+      (r ? " Alíquota atual: <strong>"+r.aliquota+"%</strong> em "+r.parcelas+" parcela(s)." : "");
+  } else {
+    ajuda.innerHTML = "<strong>Base:</strong> folha bruta da escola. Pago pela escola, não descontado do trabalhador." +
+      (r ? " Alíquota atual: <strong>"+r.aliquota+"%</strong> em "+r.parcelas+" parcela(s)." : "");
+  }
+
+  var base = numero(g("txBase").value);
+  var prev = g("txPrevia");
+  if (r && base > 0) {
+    var total = base * (r.aliquota/100);
+    prev.textContent = "Total " + moeda(total) + " · " + r.parcelas + "× de " + moeda(total/r.parcelas);
+  } else {
+    prev.textContent = "—";
+  }
+};
+
+/* ─────────── CARGA ─────────── */
+window.txCarregar = function(){
+  mostrarErro("");
+  google.script.run
+    .withSuccessHandler(function(r){
+      TX_ITENS = (r && r.itens) || [];
+      txPopularCompetencias();
+      txRender();
+      txResumo((r && r.resumo) || null);
+    })
+    .withFailureHandler(function(err){
+      TX_ITENS = []; txRender();
+      mostrarErro("Não foi possível carregar as parcelas: " + ((err&&err.message)||err) + ". Se sua sessão expirou, entre novamente.");
+    })
+    .taxa_listar(tokenSessao(), {});
+
+  google.script.run
+    .withSuccessHandler(function(c){ TX_CFG = c || null; txAtualizarAjuda(); })
+    .withFailureHandler(function(){ TX_CFG = null; })
+    .taxa_obterConfig(tokenSessao());
+};
+
+function txResumo(r){
+  if (!r) return;
+  txt("txDevido",   moeda(r.devido));
+  txt("txQtd",      (r.total||0) + " parcela(s)");
+  txt("txRecebido", moeda(r.recebido));
+  txt("txPagas",    (r.pagas||0) + " quitada(s)");
+  txt("txAReceber", moeda(r.aReceber));
+  txt("txAbertas",  (r.abertas||0) + " em aberto");
+  txt("txPorTipo",  (r.abertasNegocial||0) + " · " + (r.abertasAssistencial||0));
+}
+
+function txPopularCompetencias(){
+  var sel = g("txFiltroComp"); if(!sel) return;
+  var atual = sel.value, comps = {};
+  TX_ITENS.forEach(function(x){ if(x.competencia) comps[x.competencia]=1; });
+  sel.innerHTML = ['<option value="">Todas as competências</option>']
+    .concat(Object.keys(comps).sort().reverse().map(function(c){ return '<option value="'+esc(c)+'">'+esc(c)+'</option>'; })).join("");
+  if (atual) sel.value = atual;
+}
+
+window.txRender = function(){
+  var busca = String((g("txBusca")||{}).value||"").toLowerCase().trim();
+  var fT = (g("txFiltroTipo")||{}).value||"";
+  var fC = (g("txFiltroComp")||{}).value||"";
+  var fS = (g("txFiltroStatus")||{}).value||"";
+
+  var lista = TX_ITENS.filter(function(x){
+    if (fT && x.tipo !== fT) return false;
+    if (fC && x.competencia !== fC) return false;
+    if (fS && x.status !== fS) return false;
+    if (busca && x.escola.toLowerCase().indexOf(busca) < 0) return false;
+    return true;
+  });
+
+  var tb = g("txTabela"); if(!tb) return;
+  if (!lista.length){
+    tb.innerHTML = "";
+    g("txVazio").style.display = "block";
+    g("txVazio").textContent = TX_ITENS.length
+      ? "Nenhuma parcela corresponde aos filtros."
+      : "Nenhuma parcela lançada ainda. Use o formulário acima a partir do relatório que a escola enviou.";
+    return;
+  }
+  g("txVazio").style.display = "none";
+
+  tb.innerHTML = lista.map(function(x){
+    var st = String(x.status||"ABERTA").toLowerCase();
+    var tipoCls = x.tipo === "NEGOCIAL" ? "neg" : "ass";
+    var tipoLbl = x.tipo === "NEGOCIAL" ? "Negocial" : "Assistencial";
+    var acoes = (x.status === "PAGA" || x.status === "CANCELADA")
+      ? (x.status === "PAGA" ? '<button class="tx-btn mini" onclick="txReceber(\''+esc(x.id)+'\')">Ajustar</button>' : '—')
+      : '<button class="tx-btn mini" onclick="txReceber(\''+esc(x.id)+'\')">Receber</button> ' +
+        '<button class="tx-btn mini red" onclick="txCancelar(\''+esc(x.id)+'\')">Cancelar</button>';
+
+    return "<tr>" +
+      "<td><strong>" + esc(x.escola) + "</strong>" + (x.modalidade==="ED_INFANTIL_EXCLUSIVA"
+        ? "<div style='font-size:10px;color:#94a3b8;'>Ed. Infantil exclusiva</div>" : "") + "</td>" +
+      "<td>" + esc(x.competencia) + "</td>" +
+      "<td><span class='tx-tipo " + tipoCls + "'>" + tipoLbl + "</span></td>" +
+      "<td>" + x.parcela + "/" + x.totalParcelas + (x.vencimento ? "<div style='font-size:10px;color:#94a3b8;'>venc " + esc(x.vencimento) + "</div>" : "") + "</td>" +
+      "<td class='tx-val' style='font-weight:600;'>" + moeda(x.baseCalculo) + "<div style='font-size:10px;color:#94a3b8;'>" + x.aliquota + "%</div></td>" +
+      "<td class='tx-val' style='text-align:right;'>" + moeda(x.valorParcela) + "</td>" +
+      "<td class='tx-val' style='text-align:right;color:#0f8a5f;'>" + moeda(x.valorRecebido) + "</td>" +
+      "<td class='tx-val' style='text-align:right;color:" + (x.saldo>0.009?"#d97706":"#94a3b8") + ";'>" + moeda(x.saldo) + "</td>" +
+      "<td><span class='tx-pill " + st + "'>" + esc(x.status) + "</span></td>" +
+      "<td style='white-space:nowrap;'>" + acoes + "</td>" +
+    "</tr>";
+  }).join("");
+};
+
+/* ─────────── GERAR ─────────── */
+window.txToggleForm = function(){
+  var b = g("txFormBox");
+  var aberto = b.style.display !== "none";
+  b.style.display = aberto ? "none" : "block";
+  g("txToggleTxt").textContent = aberto ? "Abrir formulário" : "Fechar formulário";
+  if (!aberto) txAtualizarAjuda();
+};
+
+window.txLimparForm = function(){
+  ["txEscola","txCnpj","txCompetencia","txBase","txVenc1"].forEach(function(id){ var e=g(id); if(e) e.value=""; });
+  g("txTipo").value = "NEGOCIAL";
+  if (g("txInfantil")) g("txInfantil").value = "";
+  txAtualizarAjuda();
+};
+
+window.txGerar = function(){
+  if (TX_OCUPADO) return;
+  var escola = String(g("txEscola").value||"").trim();
+  var comp   = String(g("txCompetencia").value||"").trim();
+  var base   = numero(g("txBase").value);
+
+  if (!escola) { aviso("Informe a escola.","warn"); g("txEscola").focus(); return; }
+  if (!/^\d{2}\/\d{4}$/.test(comp)) { aviso("Competência deve estar no formato MM/AAAA.","warn"); g("txCompetencia").focus(); return; }
+  if (!(base > 0)) { aviso("Informe a base de cálculo.","warn"); g("txBase").focus(); return; }
+
+  var r = regraAtual();
+  if (r && !window.confirm("Gerar " + r.parcelas + " parcela(s) de " + r.aliquota + "% sobre " + moeda(base) +
+      "?\n\nTotal: " + moeda(base * r.aliquota/100) + "\nEscola: " + escola + "\nCompetência: " + comp)) return;
+
+  TX_OCUPADO = true;
+  var btn = g("txBtnGerar"); btn.disabled = true; btn.textContent = "Gerando...";
+
+  google.script.run
+    .withSuccessHandler(function(res){
+      TX_OCUPADO = false; btn.disabled = false; btn.textContent = "Gerar parcelas";
+      if (!res || !res.ok) { aviso((res&&res.mensagem)||"Não foi possível gerar.","erro"); return; }
+      aviso(res.mensagem,"ok");
+      txLimparForm();
+      txCarregar();
+    })
+    .withFailureHandler(function(err){
+      TX_OCUPADO = false; btn.disabled = false; btn.textContent = "Gerar parcelas";
+      aviso("Erro: " + ((err&&err.message)||err),"erro");
+    })
+    .taxa_gerarParcelas({
+      escola: escola,
+      cnpj: String(g("txCnpj").value||"").trim(),
+      competencia: comp,
+      tipo: g("txTipo").value,
+      educacaoInfantilExclusiva: !!(g("txInfantil") && g("txInfantil").value),
+      baseCalculo: base,
+      vencimentos: [ g("txVenc1").value || "" ]
+    }, tokenSessao());
+};
+
+/* ─────────── RECEBER / CANCELAR ─────────── */
+window.txReceber = function(id){
+  var x = TX_ITENS.filter(function(i){ return i.id === id; })[0];
+  if (!x) return;
+
+  var v = window.prompt(
+    x.escola + " — " + (x.tipo==="NEGOCIAL"?"Negocial":"Assistencial") + " parcela " + x.parcela + "/" + x.totalParcelas +
+    "\nValor da parcela: " + moeda(x.valorParcela) +
+    (x.valorRecebido>0 ? "\nJá recebido: " + moeda(x.valorRecebido) : "") +
+    "\n\nInforme o valor TOTAL recebido nesta parcela (não o complemento):",
+    String(x.valorParcela).replace(".", ","));
+  if (v === null) return;
+
+  var valor = numero(v);
+  if (valor > x.valorParcela + 0.009) { aviso("O valor não pode ser maior que a parcela.","erro"); return; }
+
+  var forma = window.prompt("Forma de recebimento (opcional):", x.formaRecebimento || "PIX");
+  if (forma === null) forma = "";
+
+  google.script.run
+    .withSuccessHandler(function(res){
+      if (!res || !res.ok) { aviso((res&&res.mensagem)||"Erro.","erro"); return; }
+      aviso(res.mensagem + " O valor foi lançado em Receitas.","ok");
+      txCarregar();
+    })
+    .withFailureHandler(function(err){ aviso("Erro: " + ((err&&err.message)||err),"erro"); })
+    .taxa_registrarRecebimento({ id:id, valorRecebido:valor, formaRecebimento:forma }, tokenSessao());
+};
+
+window.txCancelar = function(id){
+  var motivo = window.prompt("Cancelar esta parcela. Informe o motivo (obrigatório):", "");
+  if (motivo === null) return;
+  if (!String(motivo).trim()) { aviso("O motivo é obrigatório.","warn"); return; }
+
+  google.script.run
+    .withSuccessHandler(function(res){
+      if (!res || !res.ok) { aviso((res&&res.mensagem)||"Erro.","erro"); return; }
+      aviso(res.mensagem,"ok"); txCarregar();
+    })
+    .withFailureHandler(function(err){ aviso("Erro: " + ((err&&err.message)||err),"erro"); })
+    .taxa_cancelarParcela({ id:id, motivo:motivo }, tokenSessao());
+};
+
+window.txExportar = function(){
+  if (!TX_ITENS.length) { aviso("Nada para exportar.","warn"); return; }
+  var cab = ["Escola","CNPJ","Competencia","Tipo","Modalidade","BaseCalculo","AliquotaPct","ValorTotal","Parcela","TotalParcelas","ValorParcela","Vencimento","ValorRecebido","Saldo","Status","DataRecebimento","FormaRecebimento","Observacao"];
+  var linhas = [cab].concat(TX_ITENS.map(function(x){
+    return [x.escola,x.cnpj,x.competencia,x.tipo,x.modalidade,x.baseCalculo.toFixed(2),x.aliquota,
+            x.valorTotal.toFixed(2),x.parcela,x.totalParcelas,x.valorParcela.toFixed(2),x.vencimento,
+            x.valorRecebido.toFixed(2),x.saldo.toFixed(2),x.status,x.dataRecebimento,x.formaRecebimento,x.observacao];
+  }));
+  var csv = linhas.map(function(l){ return l.map(function(c){ return '"'+String(c==null?"":c).replace(/"/g,'""')+'"'; }).join(";"); }).join("\n");
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}));
+  a.download = "sisgep-taxas-sindicais.csv";
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+window.initTaxas = function(){ txCarregar(); };
+
+})();
+</script>
+</div>

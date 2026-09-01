@@ -1,0 +1,249 @@
+<div id="auditoriaExportacoes" style="min-height:100%;background:#f0f4f8;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#0f172a;">
+<!--
+  Auditoria e Compliance — Exportações (item 16.5 do PROMPT-MESTRE).
+  Lê a mesma trilha, filtrada pela ação EXPORTAR. Sem armazenamento novo.
+
+  POR QUE ESTA TELA É DIFERENTE DAS OUTRAS DO MÓDULO
+  Toda ação registrada nas outras telas acontece DENTRO do sistema, onde a
+  permissão continua valendo. Exportação é o contrário: o dado sai, vira
+  arquivo, e a partir dali o SISGEP não controla mais nada — para onde foi,
+  quem abriu, se ainda existe. Se um vazamento acontecer, esta é a única
+  lista que responde por onde saiu.
+
+  Por isso o card de "com dado pessoal" vem primeiro e em vermelho, e a
+  linha correspondente é destacada: numa lista longa, é o que precisa saltar
+  aos olhos.
+-->
+
+  <div class="of-modulo-header">
+    <div>
+      <div class="of-modulo-header-title">📤 Exportações</div>
+      <div class="of-modulo-header-sub">O que saiu do sistema, quanto, por quem — e se levava dado pessoal</div>
+    </div>
+    <div class="of-modulo-header-badge" id="exBadge">—</div>
+  </div>
+
+  <div id="exEstado" style="margin-bottom:14px;"></div>
+
+  <div id="exCards" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px;"></div>
+
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">📄</div>
+        <div>
+          <div class="of-card-title" id="exResumo">Carregando…</div>
+          <div class="of-card-sub" id="exResumoSub">—</div>
+        </div>
+      </div>
+      <div class="row-btns">
+        <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:#334155;cursor:pointer;">
+          <input type="checkbox" id="exSoPessoal" style="width:16px;height:16px;cursor:pointer;">
+          Só com dado pessoal
+        </label>
+        <button type="button" id="exBtnRecarregar" class="btn btn-ghost btn-sm">↺ Atualizar</button>
+      </div>
+    </div>
+    <div class="of-card-body">
+      <div id="exLista"></div>
+    </div>
+  </div>
+
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">ℹ️</div>
+        <div>
+          <div class="of-card-title">O que esta lista alcança</div>
+          <div class="of-card-sub">E o que fica de fora, para não haver falsa segurança</div>
+        </div>
+      </div>
+    </div>
+    <div class="of-card-body">
+      <div style="font-size:12.5px;color:#475569;line-height:1.7;">
+        <strong>Registra:</strong> exportações feitas pelas telas do SISGEP — relatório de ofícios,
+        auditoria de ofícios, base de associados e exportação de associados por ofício.
+        <br><br>
+        <strong>NÃO registra:</strong> quem abre a planilha do Google direto, quem copia e cola de
+        uma tela, quem tira print, e quem baixa anexo do e-mail. Nenhum desses caminhos passa pelo
+        SISGEP — o sistema não tem como vê-los. Esta lista responde "o que saiu pelo sistema",
+        não "o que saiu do sindicato".
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>window.AUD_EXPORT_MARCADOR = "bloco de script executou";</script>
+
+<script>
+(function(){
+  "use strict";
+
+  var exVigia = null;
+  var exTudo = [];
+
+  function xEl(id){ return document.getElementById(id); }
+  function xEsc(t){
+    return String(t==null?"":t).replace(/[&<>"]/g,function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];
+    });
+  }
+  function xToken(){
+    var t = (typeof SISGEP_TOKEN_SESSAO !== "undefined") ? SISGEP_TOKEN_SESSAO : "";
+    return (typeof t === "string") ? t : "";
+  }
+  function xAviso(msg,tipo){
+    if(typeof window.toast==="function") return window.toast(msg,tipo||"erro",5000);
+    console.warn("[Exportações]",msg);
+  }
+  function xCaixa(texto,cor){
+    var c={erro:["#fee2e2","#fca5a5","#991b1b"],ok:["#dcfce7","#6ee7b7","#166534"],
+           alerta:["#fef3c7","#fcd34d","#92400e"],info:["#eff6ff","#bfdbfe","#1e40af"]}[cor||"info"];
+    return '<div style="background:'+c[0]+";border:1.5px solid "+c[1]+
+      ";border-radius:12px;padding:13px 17px;font-size:12.5px;font-weight:600;line-height:1.55;color:"+c[2]+
+      ';">'+texto+"</div>";
+  }
+  function xData(v){
+    if(!v) return null;
+    var d=(v instanceof Date)?v:new Date(v);
+    return isNaN(d.getTime())?null:d;
+  }
+  function xDataHora(v){
+    var d=xData(v); if(!d) return "—";
+    function z(n){ return (n<10?"0":"")+n; }
+    return z(d.getDate())+"/"+z(d.getMonth()+1)+" "+z(d.getHours())+":"+z(d.getMinutes());
+  }
+
+  // valorNovo chega como objeto (Firestore) ou texto JSON (planilha).
+  function xDetalhe(a){
+    var v = a.valorNovo;
+    if(typeof v === "string"){ try { v = JSON.parse(v); } catch(e){ v = null; } }
+    return v || {};
+  }
+  function xTemPessoal(a){ return xDetalhe(a).dadoPessoal === true; }
+  function xTotalRegistros(a){
+    var n = xDetalhe(a).total;
+    return (typeof n === "number") ? n : null;
+  }
+
+  function xCard(valor, rotulo, nota, cor){
+    return '<div class="of-card" style="padding:16px 18px;margin:0;border-left:4px solid '+cor+';">' +
+      '<div style="font-size:27px;font-weight:900;color:'+cor+';line-height:1.1;">'+valor+'</div>' +
+      '<div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-top:5px;">'+xEsc(rotulo)+'</div>' +
+      '<div style="font-size:11.5px;color:#94a3b8;font-weight:600;margin-top:3px;">'+xEsc(nota)+'</div>' +
+      '</div>';
+  }
+
+  function xRenderCards(){
+    var comPessoal = exTudo.filter(xTemPessoal);
+    // "Em massa" é acima de 500 registros: dali para cima, uma exportação
+    // deixa de ser consulta pontual e vira cópia de base.
+    var emMassa = exTudo.filter(function(a){ var n=xTotalRegistros(a); return n !== null && n > 500; });
+    var registros = exTudo.reduce(function(s,a){ var n=xTotalRegistros(a); return s + (n||0); }, 0);
+    var pessoas = {};
+    exTudo.forEach(function(a){ if(a.usuario) pessoas[a.usuario]=1; });
+
+    xEl("exCards").innerHTML =
+      xCard(comPessoal.length, "Com dado pessoal",
+            comPessoal.length ? "levaram dado que identifica alguém" : "nenhuma até agora",
+            comPessoal.length ? "#dc2626" : "#94a3b8") +
+      xCard(emMassa.length, "Em massa",
+            emMassa.length ? "acima de 500 registros" : "nenhuma acima de 500",
+            emMassa.length ? "#d97706" : "#94a3b8") +
+      xCard(exTudo.length, "Exportações", "no período consultado", "#1565C0") +
+      xCard(registros.toLocaleString("pt-BR"), "Registros exportados", "somados", "#475569");
+  }
+
+  function xRenderLista(){
+    var lista = xEl("exSoPessoal").checked ? exTudo.filter(xTemPessoal) : exTudo;
+
+    xEl("exResumo").textContent = lista.length +
+      (lista.length===1 ? " exportação" : " exportações");
+
+    if(!lista.length){
+      xEl("exLista").innerHTML = xCaixa(
+        exTudo.length
+          ? "Nenhuma exportação com dado pessoal no período."
+          : "<strong>Nenhuma exportação registrada ainda.</strong> A lista começa a encher na " +
+            "próxima vez que alguém exportar um relatório ou a base de associados.", "info");
+      return;
+    }
+
+    xEl("exLista").innerHTML =
+      "<div style='overflow-x:auto;'><table class='of-table' style='width:100%;'>" +
+      "<thead><tr><th style='width:13%;'>Quando</th><th style='width:26%;'>O quê</th>" +
+      "<th style='width:10%;'>Registros</th><th style='width:18%;'>Quem</th>" +
+      "<th>Detalhe</th></tr></thead><tbody>" +
+      lista.map(function(a){
+        var pessoal = xTemPessoal(a);
+        var n = xTotalRegistros(a);
+        var d = xDetalhe(a);
+        return "<tr"+(pessoal?" style='background:#fef2f2;'":"")+">" +
+          "<td style='white-space:nowrap;'>"+xEsc(xDataHora(a.dataHora))+"</td>" +
+          "<td>"+(pessoal?"<span title='Contém dado pessoal' style='color:#dc2626;'>🔴</span> ":"") +
+            xEsc(a.modulo||"—")+(a.submodulo?" › "+xEsc(a.submodulo):"")+"</td>" +
+          "<td><strong>"+(n===null?"—":xEsc(n.toLocaleString("pt-BR")))+"</strong>" +
+            (d.formato?" <span style='color:#94a3b8;font-size:10.5px;'>"+xEsc(d.formato)+"</span>":"")+"</td>" +
+          "<td>"+xEsc(String(a.usuario||"—").split("@")[0])+"</td>" +
+          "<td style='color:#64748b;font-size:11.5px;'>"+xEsc(a.justificativa||"—")+"</td>" +
+        "</tr>";
+      }).join("") + "</tbody></table></div>";
+  }
+
+  function xRenderEstado(r){
+    xEl("exBadge").textContent = (r.fonte === "FIRESTORE") ? "FIRESTORE" : "RESERVA";
+    xEl("exEstado").innerHTML = (r.fonte === "FIRESTORE") ? "" : xCaixa(
+      "<strong>Registros na planilha de reserva.</strong> Quem exporta indevidamente e tem acesso " +
+      "à planilha pode apagar a própria linha. Configurar o Firestore é o que impede isso.", "alerta");
+  }
+
+  function xFalhaDura(titulo, e){
+    if(exVigia){ clearTimeout(exVigia); exVigia = null; }
+    xEl("exResumo").textContent = "Não foi possível carregar";
+    xEl("exCards").innerHTML = "";
+    xEl("exLista").innerHTML = xCaixa("<strong>"+xEsc(titulo)+"</strong>" +
+      (e ? "<br><br><code style='font-size:11px;word-break:break-all;'>" +
+           xEsc(e && e.message ? e.message : e)+"</code>" : ""),"erro");
+    xAviso(titulo,"erro");
+  }
+
+  function xCarregar(){
+    xEl("exResumo").textContent = "Consultando o servidor…";
+    xEl("exLista").innerHTML = "";
+
+    if(exVigia) clearTimeout(exVigia);
+    exVigia = setTimeout(function(){
+      xFalhaDura("O servidor não respondeu em 25 segundos.", null);
+    }, 25000);
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(exVigia){ clearTimeout(exVigia); exVigia = null; }
+        if(!r || !r.ok) return xFalhaDura("O servidor respondeu, mas sem as exportações.", null);
+        try {
+          exTudo = r.acoes || [];
+          xRenderEstado(r);
+          xRenderCards();
+          xRenderLista();
+          xEl("exResumoSub").textContent =
+            "Fonte: " + (r.fonte === "FIRESTORE" ? "Firestore" : "planilha de reserva") +
+            (r.truncado ? " · há mais registros que os exibidos" : "");
+        } catch (err) {
+          xFalhaDura("As exportações vieram, mas a tela não conseguiu desenhá-las.", err);
+        }
+      })
+      .withFailureHandler(function(e){ xFalhaDura("Erro ao carregar as exportações.", e); })
+      .auditoriaConsultar({ acao: "EXPORTAR", limite: 500 }, xToken());
+  }
+
+  window.initAuditoriaExportacoes = function(){
+    var b;
+    b = xEl("exBtnRecarregar"); if(b) b.onclick = xCarregar;
+    b = xEl("exSoPessoal");     if(b) b.onchange = xRenderLista;
+
+    try { xCarregar(); }
+    catch (e) { xFalhaDura("Não consegui nem iniciar a consulta das exportações.", e); }
+  };
+})();
+</script>

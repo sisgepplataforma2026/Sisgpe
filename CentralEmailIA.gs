@@ -139,7 +139,54 @@ var EMAIL_IA_ASSINATURAS_USUARIOS = {
 
 // Usado quando o e-mail logado não está no mapa acima
 var EMAIL_IA_ASSINATURA_PADRAO = EMAIL_IA_ASSINATURAS_USUARIOS["financeiro@sindeducacao.com"];
+/**
+ * Leitura crua de e-mails do Gmail (sem checagem de autorização — quem
+ * decide se pode chamar é o caller). Extraído para eliminar a duplicidade
+ * entre a Caixa de E-mails (sisgepListarEmailsIA_CentralLegacy) e o Cockpit
+ * (getCockpitEmails_ em CockpitCore.gs), que mantinham cada um sua própria
+ * cópia quase idêntica do mapeamento thread → e-mail. A Central de E-mails
+ * é a dona natural dessa responsabilidade; o Cockpit reaproveita esta
+ * função, mas continua com seu próprio gate de sessão SISGEP — não usa a
+ * allowlist de 3 e-mails da Central, que é propositalmente mais restrita.
+ */
+function eiaBuscarEmailsGmail_(query, inicio, porPagina) {
+  var tz = Session.getScriptTimeZone();
+  var threads = GmailApp.search(query, inicio, porPagina);
+  return threads.map(function(thread) {
+    var msgs = thread.getMessages();
+    var msg = msgs[msgs.length - 1];
+    var corpo = msg.getPlainBody() || "";
+    var dataMsg = msg.getDate();
+    var dataStr = dataMsg ? Utilities.formatDate(new Date(dataMsg), tz, "dd/MM/yyyy HH:mm") : "";
+    var dataTs = dataMsg ? new Date(dataMsg).getTime() : 0;
+    var remetenteRaw = msg.getFrom() || "";
+    var destinatario = msg.getTo() || "";
+    var remetenteNome = remetenteRaw.replace(/<[^>]+>/g, "").replace(/"/g, "").trim() || remetenteRaw;
+    var anexos = msg.getAttachments({ includeInlineImages: false, includeAttachments: true }) || [];
+
+    return {
+      threadId: thread.getId(),
+      messageId: msg.getId(),
+      assunto: msg.getSubject() || "(sem assunto)",
+      remetente: remetenteRaw,
+      remetenteNome: remetenteNome,
+      destinatario: destinatario,
+      dataStr: dataStr,
+      dataTs: dataTs,
+      lido: !msg.isUnread(),
+      estrelado: msg.isStarred(),
+      temAnexo: anexos.length > 0,
+      qtdAnexos: anexos.length,
+      corpo: corpo.substring(0, 2500),
+      corpoPreview: corpo.substring(0, 220).replace(/\s+/g, " ").trim()
+    };
+  });
+}
+
 function sisgepListarEmailsIA_CentralLegacy(parametros, opcoes) {
+  if (!eiaAcessoAutorizado_()) {
+    throw new Error("Acesso não autorizado à Central de E-mails. E-mail: " + eiaEmailUsuarioAtivo_());
+  }
   try {
     var cfg = {};
     if (typeof parametros === "object" && parametros !== null) {
@@ -157,7 +204,6 @@ function sisgepListarEmailsIA_CentralLegacy(parametros, opcoes) {
     var busca = String(cfg.busca || "").trim();
     var status = String(cfg.status || "").trim();
     var ordenacao = String(cfg.ordenacao || "recentes").trim();
-    var tz = Session.getScriptTimeZone();
 
     var partes = [];
     if (caixa === "inbox" || caixa === "entrada") partes.push("in:inbox");
@@ -178,37 +224,8 @@ function sisgepListarEmailsIA_CentralLegacy(parametros, opcoes) {
 
     var query = partes.join(" ").replace(/\s+/g, " ").trim();
     var total = contarThreadsGmail_(query, 5000);
-    var threads = GmailApp.search(query, inicio, porPagina);
-    var emails = threads.map(function(thread) {
-      var msgs = thread.getMessages();
-      var msg = msgs[msgs.length - 1];
-      var corpo = msg.getPlainBody() || "";
-      var dataMsg = msg.getDate();
-      var dataStr = dataMsg ? Utilities.formatDate(new Date(dataMsg), tz, "dd/MM/yyyy HH:mm") : "";
-      var dataTs = dataMsg ? new Date(dataMsg).getTime() : 0;
-      var remetenteRaw = msg.getFrom() || "";
-      var destinatario = msg.getTo() || "";
-      var remetenteNome = remetenteRaw.replace(/<[^>]+>/g, "").replace(/"/g, "").trim() || remetenteRaw;
-      var anexos = msg.getAttachments({ includeInlineImages: false, includeAttachments: true }) || [];
-
-      return {
-        threadId: thread.getId(),
-        messageId: msg.getId(),
-        assunto: msg.getSubject() || "(sem assunto)",
-        remetente: remetenteRaw,
-        remetenteNome: remetenteNome,
-        destinatario: destinatario,
-        dataStr: dataStr,
-        dataTs: dataTs,
-        lido: !msg.isUnread(),
-        estrelado: msg.isStarred(),
-        caixa: caixa,
-        temAnexo: anexos.length > 0,
-        qtdAnexos: anexos.length,
-        corpo: corpo.substring(0, 2500),
-        corpoPreview: corpo.substring(0, 220).replace(/\s+/g, " ").trim()
-      };
-    });
+    var emails = eiaBuscarEmailsGmail_(query, inicio, porPagina);
+    emails.forEach(function(e) { e.caixa = caixa; });
 
     if (ordenacao === "antigos") emails.sort(function(a, b) { return (a.dataTs || 0) - (b.dataTs || 0); });
     if (ordenacao === "remetente") emails.sort(function(a, b) { return String(a.remetenteNome || a.remetente).localeCompare(String(b.remetenteNome || b.remetente)); });
@@ -343,6 +360,9 @@ function sisgepObterAnexoEmailIA(messageId, indice) {
    - Gera resposta personalizada
 ───────────────────────────────────────────────────────────────── */
 function sisgepAnalisarEmailIA_CentralLegacy(messageId) {
+  if (!eiaAcessoAutorizado_()) {
+    throw new Error("Acesso não autorizado à Central de E-mails. E-mail: " + eiaEmailUsuarioAtivo_());
+  }
   try {
     var msg = GmailApp.getMessageById(messageId);
     if (!msg) throw new Error("Mensagem não encontrada: " + messageId);
@@ -465,6 +485,14 @@ var blocoMemoria = eiaMontarBlocoMemoriaSofia_("", remetente);
 
     var respostaSugerida = chamarClaude_SISGEP(promptResponder);
 
+    registrarAuditoriaSofia_(
+      { nome: eiaEmailUsuarioAtivo_(), email: eiaEmailUsuarioAtivo_() },
+      "Comunicação",
+      "sisgepAnalisarEmailIA: " + assunto + " (de " + remetente + ")",
+      "Categoria: " + categoria + " | Resposta sugerida: " + String(respostaSugerida || "").substring(0, 400),
+      true
+    );
+
     return {
       // Classificação
       categoria:          categoria,
@@ -491,6 +519,12 @@ var blocoMemoria = eiaMontarBlocoMemoriaSofia_("", remetente);
 
   } catch (e) {
     Logger.log("[sisgepAnalisarEmailIA] erro: " + e.message);
+    try {
+      registrarAuditoriaSofia_(
+        { nome: eiaEmailUsuarioAtivo_(), email: eiaEmailUsuarioAtivo_() },
+        "Comunicação", "sisgepAnalisarEmailIA: " + messageId, "ERRO: " + e.message, false
+      );
+    } catch (eAudit) {}
     throw new Error("Erro ao analisar e-mail: " + e.message);
   }
 }
@@ -499,6 +533,7 @@ var blocoMemoria = eiaMontarBlocoMemoriaSofia_("", remetente);
    3. CRIAR RASCUNHO NO GMAIL
 ───────────────────────────────────────────────────────────────── */
 function sisgepCriarRascunhoRespostaIA_CentralLegacy(messageId, respostaSugerida, anexos, cc) {
+  if (!eiaAcessoAutorizado_()) return { ok: false, mensagem: "Acesso não autorizado." };
   try {
     var msg = GmailApp.getMessageById(messageId);
     if (!msg) throw new Error("Mensagem não encontrada.");
@@ -533,6 +568,7 @@ function sisgepCriarRascunhoRespostaIA_CentralLegacy(messageId, respostaSugerida
    4. ARQUIVAR E-MAIL (marcar como lido + arquivar)
 ───────────────────────────────────────────────────────────────── */
 function sisgepArquivarEmailIA_CentralLegacy(messageId) {
+  if (!eiaAcessoAutorizado_()) return { ok: false, mensagem: "Acesso não autorizado." };
   try {
     var msg = GmailApp.getMessageById(messageId);
     if (!msg) throw new Error("Mensagem não encontrada.");
@@ -554,6 +590,7 @@ function sisgepArquivarEmailIA_CentralLegacy(messageId) {
   }
 }
 function sisgepAlternarEstrelaEmailIA_CentralLegacy(messageId) {
+  if (!eiaAcessoAutorizado_()) return { ok: false, mensagem: "Acesso não autorizado." };
   try {
     var msg = GmailApp.getMessageById(messageId);
     if (!msg) throw new Error("Mensagem não encontrada.");
@@ -731,7 +768,7 @@ function buscarContextoEscolaSisgep_(escolaNome, numeroOficio, cpf) {
   // Busca escola na base
   if (escolaNome && escolaNome.length >= 3) {
     try {
-      var lista = listarEscolas() || [];
+      var lista = listarEscolasCadastro_interno_() || [];
       var resultado = eiaMelhorCorrespondenciaEscola_(lista, escolaNome, ["escola", "NomeEscola", "nome"]);
 
       if (resultado.ambiguo) {
@@ -958,7 +995,20 @@ function limparJsonIA_(texto) {
  * Chama a API da Anthropic — função central compartilhada com IACore.gs
  * (mantida aqui para caso CentralEmailIA.gs seja carregado isolado)
  */
-function chamarClaude_SISGEP(prompt) {
+function chamarClaude_SISGEP(prompt, tokenSessao) {
+  // COM-B: aceita QUALQUER uma das duas provas de autorização já usadas no
+  // projeto — conta autorizada da Central de E-mails (eiaAcessoAutorizado_)
+  // ou sessão SISGEP válida (exigirSessaoDocumentos_) — porque esta função
+  // é compartilhada por dois sistemas de login diferentes (CentralEmailIA.gs
+  // e IACore.gs/Escolas). Sem nenhuma das duas, era um proxy aberto para a
+  // API paga da Anthropic, alcançável direto via google.script.run.
+  var autorizado = false;
+  try { autorizado = eiaAcessoAutorizado_(); } catch (eAuth) { autorizado = false; }
+  if (!autorizado) {
+    try { exigirSessaoDocumentos_(tokenSessao, false); autorizado = true; } catch (eSessao) { autorizado = false; }
+  }
+  if (!autorizado) throw new Error("Acesso não autorizado.");
+
   var apiKey = PropertiesService.getScriptProperties().getProperty("ANTHROPIC_API_KEY");
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY não configurada nas Propriedades do Script.");
 
@@ -984,6 +1034,7 @@ var payload = {
   return json.content[0].text;
 }
 function sisgepPreCategorizarEmailsIA_CentralLegacy(emails) {
+  if (!eiaAcessoAutorizado_()) return {};
   try {
     if (!Array.isArray(emails) || !emails.length) return {};
     var apiKey = PropertiesService.getScriptProperties().getProperty("ANTHROPIC_API_KEY");
@@ -1057,6 +1108,7 @@ function sisgepPreCategorizarEmailsIA_CentralLegacy(emails) {
   }
 }
 function sisgepEncaminharEmailIA_CentralLegacy(messageId, para, notaAdicional, anexos, cc) {
+  if (!eiaAcessoAutorizado_()) return { ok: false, mensagem: "Acesso não autorizado." };
   try {
     var msg = GmailApp.getMessageById(messageId);
     if (!msg) throw new Error("Mensagem não encontrada.");
@@ -1095,6 +1147,7 @@ function sisgepEncaminharEmailIA(messageId, para, notaAdicional, anexos, cc) {
 }
 
 function sisgepEnviarRespostaIA_CentralLegacy(messageId, textoResposta, anexos, cc) {
+  if (!eiaAcessoAutorizado_()) return { ok: false, mensagem: "Acesso não autorizado." };
   try {
     var msg = GmailApp.getMessageById(messageId);
     if (!msg) throw new Error("Mensagem não encontrada.");
@@ -1190,6 +1243,7 @@ function sisgepParsearComprovanteMensalidade(messageId) {
 }
 
 function sisgepEnviarEmailDireto_CentralLegacy(dados) {
+  if (!eiaAcessoAutorizado_()) return { ok: false, mensagem: "Acesso não autorizado." };
   try {
     dados = dados || {};
     var para    = String(dados.para    || "").trim();
@@ -1296,6 +1350,7 @@ function eiaAdiadosUsuarioAtual_() {
 }
 
 function sisgepAdiarEmailIA_CentralLegacy(messageId, dataVoltaISO) {
+  if (!eiaAcessoAutorizado_()) return { ok: false, mensagem: "Acesso não autorizado." };
   try {
     if (!messageId) throw new Error("ID da mensagem não informado.");
     var dataVolta = new Date(dataVoltaISO);
@@ -1330,6 +1385,7 @@ function sisgepAdiarEmailIA_CentralLegacy(messageId, dataVoltaISO) {
 }
 
 function sisgepCancelarAdiamentoEmailIA_CentralLegacy(messageId) {
+  if (!eiaAcessoAutorizado_()) return { ok: false, mensagem: "Acesso não autorizado." };
   try {
     var aba = obterAbaAdiadosEmailIA_();
     var dados = aba.getDataRange().getValues();
@@ -1423,6 +1479,7 @@ function eiaLimparAdiadosAntigos_() {
   }
 }
 function sisgepListarAdiadosEmailIA_CentralLegacy() {
+  if (!eiaAcessoAutorizado_()) return { ok: false, emails: [], pagina: 1, porPagina: 25, total: 0 };
   try {
     processarAdiadosVencidosEmailIA_();
 
@@ -1525,6 +1582,7 @@ function sisgepListarAdiadosEmailIA() {
  * GmailApp.createDraft() para gerar uma mensagem totalmente nova.
  */
 function sisgepCriarRascunhoDireto_CentralLegacy(dados) {
+  if (!eiaAcessoAutorizado_()) return { ok: false, mensagem: "Acesso não autorizado." };
   try {
     dados = dados || {};
     var para    = String(dados.para    || "").trim();
@@ -1569,6 +1627,7 @@ function sisgepCriarRascunhoDireto(dados) {
  * personalizar (igual já acontece em sisgepAnalisarEmailIA_CentralLegacy).
  */
 function sisgepGerarEmailComIA_CentralLegacy(instrucao, paraTexto) {
+  if (!eiaAcessoAutorizado_()) return { ok: false, mensagem: "Acesso não autorizado." };
   try {
     instrucao = String(instrucao || "").trim();
     paraTexto = String(paraTexto || "").trim();
@@ -1621,6 +1680,16 @@ var saudacaoAtual = eiaSaudacaoPorHorario_();
       json = { assunto: "", corpo: String(respostaIA || "").trim() };
     }
 
+    try {
+      registrarAuditoriaSofia_(
+        { nome: eiaEmailUsuarioAtivo_(), email: eiaEmailUsuarioAtivo_() },
+        "Comunicação",
+        "sisgepGerarEmailComIA: " + instrucao.substring(0, 200) + (paraTexto ? " (para " + paraTexto + ")" : ""),
+        "Assunto: " + json.assunto + " | Corpo: " + String(json.corpo || "").substring(0, 400),
+        true
+      );
+    } catch (eAudit) {}
+
     return {
       ok: true,
       assunto: String(json.assunto || "").trim(),
@@ -1629,6 +1698,12 @@ var saudacaoAtual = eiaSaudacaoPorHorario_();
 
   } catch (e) {
     Logger.log("[sisgepGerarEmailComIA] erro: " + e.message);
+    try {
+      registrarAuditoriaSofia_(
+        { nome: eiaEmailUsuarioAtivo_(), email: eiaEmailUsuarioAtivo_() },
+        "Comunicação", "sisgepGerarEmailComIA: " + String(instrucao || "").substring(0, 200), "ERRO: " + e.message, false
+      );
+    } catch (eAudit) {}
     return { ok: false, mensagem: e.message };
   }
 }
@@ -1644,12 +1719,13 @@ function sisgepGerarEmailComIA(instrucao, paraTexto) {
  * em vez do e-mail direto.
  */
 function sisgepResolverEmailDestinatario_CentralLegacy(nomeOuTexto) {
+  if (!eiaAcessoAutorizado_()) return { ok: false, mensagem: "Acesso não autorizado." };
   try {
     nomeOuTexto = String(nomeOuTexto || "").trim();
     if (!nomeOuTexto) return { ok: false, mensagem: "Digite um nome para buscar." };
     if (nomeOuTexto.indexOf("@") >= 0) return { ok: true, email: nomeOuTexto, jaEraEmail: true };
 
-    var lista = listarEscolasCadastro() || [];
+    var lista = listarEscolasCadastro_interno_() || [];
     var resultado = eiaMelhorCorrespondenciaEscola_(lista, nomeOuTexto, ["escola", "NomeEscola"]);
 
     if (resultado.ambiguo) {
@@ -1695,6 +1771,7 @@ function sisgepResolverEmailDestinatario(nomeOuTexto) {
  * então não há necessidade de um botão "excluir para sempre" aqui.
  */
 function sisgepRestaurarEmailIA_CentralLegacy(messageId) {
+  if (!eiaAcessoAutorizado_()) return { ok: false, mensagem: "Acesso não autorizado." };
   try {
     var msg = GmailApp.getMessageById(messageId);
     if (!msg) throw new Error("Mensagem não encontrada.");
@@ -1910,6 +1987,7 @@ var EIA_MEMORIA_CATEGORIA = "CORRECAO_CATEGORIA_IA";
  * Organizacional do SISGEP (salvarMemoria_, de MemoriaCore.gs).
  */
 function sisgepRegistrarCorrecaoCategoriaIA_CentralLegacy(chaveEntidade, categoriaOriginal, categoriaCorrigida) {
+  if (!eiaAcessoAutorizado_()) return { ok: false, mensagem: "Acesso não autorizado." };
   try {
     chaveEntidade = String(chaveEntidade || "").trim();
     categoriaCorrigida = String(categoriaCorrigida || "").trim();

@@ -7,6 +7,22 @@
 /* ================= CONFIG ================= */
 const PASTA_VOUCHER_DOCUMENTOS_ID = "1PyMA0bm0FZuyYONlY4dNNo3pgJRiI63n";
 
+/* A LOGO É LIDA DO DRIVE E EMBUTIDA EM base64 — não é buscada por URL.
+ *
+ * O endereço abaixo continua aqui só como registro de qual arquivo é. Quem
+ * monta o documento chama `logoSindicatoVoucher_()` (VoucherPdf.gs), que faz
+ * o mesmo que já se faz com a assinatura do presidente.
+ *
+ * POR QUÊ: `getAs(MimeType.PDF)` renderiza o HTML num processo do Google que
+ * não carrega imagem por URL externa de forma confiável — às vezes vem, às
+ * vezes o PDF sai com o quadrado vazio no lugar do brasão, e não há erro
+ * nenhum no log. Foi por isso que a assinatura virou base64 em 12/08/2026; a
+ * logo tinha o mesmo risco e ficou de fora naquele dia.
+ *
+ * O sintoma é traiçoeiro: na prévia, que é HTML no navegador, a imagem
+ * aparece — o navegador busca a URL sem problema. Só no PDF é que some. Ou
+ * seja, conferir pela prévia não prova nada sobre a logo. */
+const LOGO_VOUCHER_FILE_ID = "1c-RHfb0W-wl_ZK1xlMjNRs9DS4ep2ov7";
 const LOGO_VOUCHER        = "https://lh3.googleusercontent.com/d/1c-RHfb0W-wl_ZK1xlMjNRs9DS4ep2ov7";
 const PRESIDENTE_VOUCHER  = "Leonil Dias da Silva";
 const CARGO_PRESIDENTE_V  = "Presidente Sindeducação-ES";
@@ -16,14 +32,61 @@ const SITE_SIND_V         = "www.sindeducacao.com · secretaria@sindeducacao.com
 const CCT_TEXTO_V         = "Convenção Coletiva de Trabalho 2026/2027";
 const CCT_CLAUSULA_V      = "Cláusula 5ª, § 4º";
 
+/* Assinatura do presidente, em imagem.
+ *
+ * MESMO ARQUIVO já usado pelo ofício de documentação fiscal
+ * (Despesas_Oficio_Fiscal.gs:133), onde o id está escrito direto no meio da
+ * função. Aqui ele vira constante nomeada. Os dois pontos deveriam usar uma
+ * função só — fica registrado como consolidação a fazer em commit separado,
+ * porque mexer no ofício fiscal para acrescentar assinatura ao voucher é
+ * misturar duas coisas. */
+const ASSINATURA_FILE_ID_V = "1hktAmOL6c9XjU8ckAyJ3Y4cn39ILpsoe";
+
 /* ================= HELPERS GERAIS ================= */
 
 function normalizarCPF_(cpf) {
   return String(cpf || "").replace(/\D/g, "");
 }
 
+/**
+ * CPF formatado, devolvendo o zero à esquerda que a planilha comeu.
+ *
+ * O CASO REAL (12/08/2026): o certificado saiu com "8538104780" cru, dez
+ * dígitos. Não era CPF errado no cadastro — era a planilha guardando a
+ * coluna como NÚMERO, e número não tem zero à esquerda. O CPF verdadeiro
+ * começa com 0, e o Sheets o descartou na gravação.
+ *
+ * A versão anterior desistia (`if (d.length !== 11) return cpf`) e imprimia
+ * o número cru no documento oficial. Silenciosa e feia: quem lê o
+ * certificado vê um CPF que não existe.
+ *
+ * COMO SE COMPLETA SEM CHUTAR
+ *
+ * Zeros só somem da ESQUERDA, e só na quantidade que falta para 11. Então a
+ * reconstrução é determinística: 10 dígitos = faltou um zero, 9 = faltaram
+ * dois. Mas completar não basta — é preciso PROVAR que o resultado é um CPF
+ * de verdade, e para isso existe o dígito verificador. `cpfValido`
+ * (Utils.gs:269) confere os dois dígitos.
+ *
+ * Se o CPF completado não passar na conferência, o número não era um CPF com
+ * zero perdido — era outra coisa. Aí devolve como veio, sem inventar. Um
+ * documento com o dado cru é ruim; um documento com um CPF fabricado que
+ * pertence a outra pessoa é muito pior.
+ */
 function formatarCpfVoucher_(cpf) {
-  const d = normalizarCPF_(cpf);
+  var d = normalizarCPF_(cpf);
+
+  if (d.length > 0 && d.length < 11 && d.length >= 9) {
+    var completo = ("00" + d).slice(-11);
+    var passa = true;
+    try { passa = (typeof cpfValido === "function") ? cpfValido(completo) : true; } catch (e) {}
+    if (passa) {
+      Logger.log("CPF recuperado: a planilha guardou " + d.length +
+                 " dígitos (zero à esquerda perdido por estar como número).");
+      d = completo;
+    }
+  }
+
   if (d.length !== 11) return String(cpf || "");
   return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
 }
@@ -95,33 +158,95 @@ function formatDateInput_(valor) {
   return Utilities.formatDate(data, Session.getScriptTimeZone(), "yyyy-MM-dd");
 }
 
-function formatarDataBrVoucher_(data) {
-  if (!data) return "";
+/**
+ * Lê uma data de onde ela vier: objeto Date, texto brasileiro ou ISO.
+ * Devolve um Date válido, ou null quando não dá para entender o valor.
+ *
+ * POR QUE ISTO EXISTE (medido em 18/08/2026)
+ *
+ * As quatro funções de data do voucher faziam `new Date(valor)` no texto
+ * cru. O JavaScript lê texto com barra no formato AMERICANO — mês primeiro.
+ * O resultado, medido:
+ *
+ *   "12/08/2026 10:30"  →  8 de DEZEMBRO de 2026   (dia e mês trocados)
+ *   "25/08/2026"        →  Date inválida            (não existe mês 25)
+ *
+ * Os dois estragos são diferentes e o segundo é o que o usuário viu:
+ *
+ *   - Dia até 12: a data SAI, e sai ERRADA. O certificado vai para a
+ *     instituição de ensino com outra data, e ninguém percebe, porque
+ *     08/12/2026 é uma data plausível.
+ *   - Dia de 13 em diante: a data não sai. Na lista fica em branco; no
+ *     documento saía "Vitória/ES, NaN de undefined de NaN.".
+ *
+ * O estrago pegava também a ORDENAÇÃO da lista: ela ordena por
+ * timestampSeguroVoucher_ aplicado ao texto já formatado, então toda linha
+ * com dia acima de 12 virava timestamp 0 e afundava para o fim.
+ *
+ * A ordem de leitura é deliberada: Date primeiro, depois o formato
+ * brasileiro, e só então o Date nativo. O brasileiro vem ANTES porque é o
+ * formato que este sistema grava e mostra — deixar o nativo tentar antes
+ * seria reintroduzir a troca de dia e mês.
+ */
+function voucherDataDeQualquerCoisa_(valor) {
+  if (valor === null || valor === undefined || valor === "") return null;
 
-  const dt = Object.prototype.toString.call(data) === "[object Date]" ? data : new Date(data);
-  if (isNaN(dt.getTime())) return "";
+  if (Object.prototype.toString.call(valor) === "[object Date]") {
+    return isNaN(valor.getTime()) ? null : valor;
+  }
+
+  const texto = String(valor).trim().replace(/^'/, "");
+  if (!texto) return null;
+
+  /* Formato brasileiro: dd/MM/yyyy, com hora opcional. Aceita barra ou
+     traço como separador, porque as duas coisas aparecem em planilha. */
+  const m = texto.match(
+    /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[\sT]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (m) {
+    const dia = Number(m[1]), mes = Number(m[2]), ano = Number(m[3]);
+    const hh = Number(m[4] || 0), mi = Number(m[5] || 0), ss = Number(m[6] || 0);
+    if (mes >= 1 && mes <= 12 && dia >= 1 && dia <= 31) {
+      const dt = new Date(ano, mes - 1, dia, hh, mi, ss);
+      /* Confere que a data existe de verdade: 31/02 vira 03/03 em
+         JavaScript, e uma data que "escorregou" de mês não é a data que
+         estava escrita na célula. */
+      if (dt.getFullYear() === ano && dt.getMonth() === mes - 1 && dt.getDate() === dia) {
+        return dt;
+      }
+      return null;
+    }
+    return null;
+  }
+
+  /* Só ISO daqui para baixo, e conferido por formato antes de converter.
+     O Date nativo aceita coisa demais: medido, `new Date("período 2026/2")`
+     devolve 1º de fevereiro de 2026 sem reclamar. Como o campo
+     PERIODO_REFERENCIA deste módulo é literalmente "2026/2", deixar o
+     nativo tentar qualquer texto seria transformar período em data — o
+     mesmo tipo de erro silencioso que esta função existe para impedir. */
+  if (!/^\d{4}-\d{2}-\d{2}([T\s]\d{2}:\d{2}(:\d{2})?)?/.test(texto)) return null;
+
+  const nativo = new Date(texto);
+  return isNaN(nativo.getTime()) ? null : nativo;
+}
+
+function formatarDataBrVoucher_(data) {
+  const dt = voucherDataDeQualquerCoisa_(data);
+  if (!dt) return "";
 
   return Utilities.formatDate(dt, Session.getScriptTimeZone(), "dd/MM/yyyy");
 }
 
 function formatarDataHoraBrVoucher_(data) {
-  if (!data) return "";
-
-  const dt = Object.prototype.toString.call(data) === "[object Date]" ? data : new Date(data);
-  if (isNaN(dt.getTime())) return "";
+  const dt = voucherDataDeQualquerCoisa_(data);
+  if (!dt) return "";
 
   return Utilities.formatDate(dt, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm");
 }
 
 function timestampSeguroVoucher_(valor) {
-  if (!valor) return 0;
-
-  if (Object.prototype.toString.call(valor) === "[object Date]") {
-    return isNaN(valor.getTime()) ? 0 : valor.getTime();
-  }
-
-  const dt = new Date(valor);
-  return isNaN(dt.getTime()) ? 0 : dt.getTime();
+  const dt = voucherDataDeQualquerCoisa_(valor);
+  return dt ? dt.getTime() : 0;
 }
 
 function valorSeguroVoucher_(valor) {
@@ -176,23 +301,36 @@ function percentualPorExtensoVoucher_(n) {
   return mapa[n] || n + " por cento";
 }
 
+/**
+ * A linha de local e data do documento: "Vitória/ES, 12 de Agosto de 2026.".
+ *
+ * Lê pelo voucherDataDeQualquerCoisa_ e NUNCA imprime NaN. Antes, uma célula
+ * com "25/08/2026" — texto brasileiro com dia acima de 12 — saía no
+ * certificado como "Vitória/ES, NaN de undefined de NaN.". O documento ia
+ * assim para a instituição de ensino.
+ *
+ * Quando a data não é legível de jeito nenhum, cai para hoje — que é o mesmo
+ * que já acontecia com célula vazia. ATENÇÃO: numa REEMISSÃO de certificado
+ * antigo isso data o documento com o dia de hoje. Vale rever se aparecer
+ * reemissão de documento antigo na operação.
+ */
 function dataExtensoVoucher_(data) {
-  if (!data) data = new Date();
-
+  /* MINÚSCULA, e sem ponto no fim — é assim nos dois certificados que o
+     usuário mandou em 18/08/2026 ("Vitória/ES, 18 de agosto de 2026") e é
+     assim em português: nome de mês não é nome próprio. */
   const meses = [
-    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+    "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+    "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"
   ];
 
-  const dt = data instanceof Date ? data : new Date(data);
+  const dt = voucherDataDeQualquerCoisa_(data) || new Date();
 
   return "Vitória/ES, " +
     String(dt.getDate()).padStart(2, "0") +
     " de " +
     meses[dt.getMonth()] +
     " de " +
-    dt.getFullYear() +
-    ".";
+    dt.getFullYear();
 }
 
 function escHtmlVoucher_(t) {
@@ -210,13 +348,53 @@ function getOrCreateSheet_(ss, name) {
   return sh;
 }
 
+/**
+ * Garante que a aba tenha todas as colunas da lista canônica.
+ *
+ * ⚠ ESTA FUNÇÃO JÁ DESTRUIU CABEÇALHO DE PLANILHA COM DADO REAL (12/08/2026).
+ *
+ * A versão anterior fazia isto:
+ *
+ *     headers.forEach(function (header, idx) {
+ *       if (existingHeaders.indexOf(header) === -1) {
+ *         sheet.getRange(1, idx + 1).setValue(header);   // ← posição CANÔNICA
+ *       }
+ *     });
+ *
+ * Ou seja: achou um nome faltando, escreveu ele na posição que ele ocupa na
+ * LISTA — por cima do nome que já estava naquela coluna. O dado embaixo não
+ * se mexe. Resultado: três colunas perdem o nome e passam a ser lidas com o
+ * rótulo errado, e `mapRowToObject_` devolve o valor de uma coluna sob o nome
+ * de outra. Foi assim que a data de nascimento de um beneficiário apareceu no
+ * certificado como "Instituição de ensino", e a idade (11) como "CNPJ".
+ *
+ * E PIORAVA A CADA EXECUÇÃO. Os três nomes atropelados sumiam da aba, então
+ * na rodada seguinte eles é que estavam "faltando" — e eram reescritos nas
+ * posições canônicas deles, atropelando outros três. Medido no emulador:
+ * rodada 1 perde 3 nomes, rodada 2 perde outros 3, e na 3ª estabiliza com a
+ * linha de cabeçalho inteira deslocada em relação ao dado. Como
+ * setupVoucherModuleFase1() é chamada de nove lugares, vários deles em
+ * caminho de LEITURA (VoucherPdf.gs:8, Voucher.gs:981...), bastava abrir a
+ * prévia para rodar mais uma volta.
+ *
+ * A REGRA AGORA: em aba que já tem cabeçalho, coluna nova entra SEMPRE NO
+ * FIM. A ordem da lista canônica é a ordem desejada para uma aba nova — nunca
+ * uma instrução para reposicionar coluna de aba existente. Todo o sistema lê
+ * por NOME (mapRowToObject_/obterHeaders_), então a posição não importa; o
+ * que importa é que nome e dado continuem na mesma coluna.
+ *
+ * Reordenar coluna de aba com dado é operação de migração: move o dado junto,
+ * com backup antes, em função própria e com pedido explícito. Não é algo que
+ * um "ensure" faz de passagem.
+ */
 function ensureHeaders_(sheet, headers) {
-  const currentLastCol = Math.max(sheet.getLastColumn(), headers.length, 1);
+  const currentLastCol = Math.max(sheet.getLastColumn(), 1);
   const existing = sheet.getRange(1, 1, 1, currentLastCol).getValues()[0];
   const hasContent = existing.some(function(v) {
     return String(v).trim() !== "";
   });
 
+  // Aba nova ou sem cabeçalho: aí sim vale a ordem canônica inteira.
   if (!hasContent) {
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
     return;
@@ -226,11 +404,17 @@ function ensureHeaders_(sheet, headers) {
     return String(v).trim();
   });
 
-  headers.forEach(function(header, idx) {
-    if (existingHeaders.indexOf(header) === -1) {
-      sheet.getRange(1, idx + 1).setValue(header);
-    }
+  const faltando = headers.filter(function(h) {
+    return existingHeaders.indexOf(h) === -1;
   });
+  if (!faltando.length) return;
+
+  // No fim, na ordem em que aparecem na lista canônica. Nenhuma coluna
+  // existente é tocada — o dado de ninguém muda de rótulo.
+  sheet.getRange(1, currentLastCol + 1, 1, faltando.length).setValues([faltando]);
+
+  Logger.log("ensureHeaders_ — " + sheet.getName() + ": " + faltando.length +
+             " coluna(s) acrescentada(s) NO FIM: " + faltando.join(", "));
 }
 
 function formatHeader_(sheet, numCols) {
@@ -264,6 +448,104 @@ function mapRowToObject_(headers, row) {
 
 /* ================= SETUP ================= */
 
+/**
+ * A lista canônica de colunas de Voucher_Solicitacoes, em UM lugar só.
+ *
+ * Estava inline dentro de setupVoucherModuleFase1, e o diagnóstico precisava
+ * da mesma lista para dizer o que está faltando na aba. Duas cópias de uma
+ * lista de 40 nomes divergem — e a que ia divergir era justamente a que
+ * responde "a planilha está certa?".
+ */
+function VOUCHER_COLUNAS_SOLICITACOES_() {
+  return [
+        "ID_SOLICITACAO",
+        "DATA_SOLICITACAO",
+        "DATA_SOLICITACAO_TEXTO",
+        "CPF_SOLICITANTE",
+        "NOME_SOLICITANTE",
+        "EMAIL",
+        "TELEFONE",
+        "ESCOLA_SELECIONADA",
+        "UNIDADE_ESCOLA",
+        "CNPJ_ESCOLA",
+        "CIDADE_ESCOLA",
+        /* O NOME FANTASIA, ao lado da razão social que já estava em
+         * ESCOLA_SELECIONADA. O certificado real precisa dos dois na mesma
+         * frase — "instituição MULTIVIX – VITÓRIA, mantida pela Empresa
+         * Brasileira de Ensino... EMBRAE" — e com um campo só a frase perdia
+         * metade. Os dois já existem no cadastro de Escolas; o que faltava
+         * era a solicitação guardar o par. */
+        "ESCOLA_FANTASIA",
+        /* A INSTITUIÇÃO DE ENSINO É OUTRA EMPRESA.
+         *
+         * ESCOLA_SELECIONADA é onde o associado TRABALHA; estas duas são onde
+         * ele ESTUDA. No documento em uso desde sempre elas aparecem
+         * separadas — "empregado(a) da empresa MULTIVIX" e "junto à empresa
+         * educacional IESES, CNPJ 02.213.188/0001-81" — e o cadastro tinha um
+         * campo só. Apontado pelo usuário em 12/08/2026, ao comparar o modelo
+         * gerado com o certificado real da associada.
+         *
+         * Guardar as duas importa além do texto: quando o voucher for ligado
+         * ao escolaId da Fase 4, é preciso saber QUAL das duas é a escola da
+         * base — e com um campo só a resposta era ambígua. */
+        "INSTITUICAO_ENSINO",
+        "CNPJ_INSTITUICAO",
+        /* Para onde o certificado é enviado em cópia. Guardado na
+         * solicitação, e não só buscado na hora, porque a instituição de
+         * ensino pode não estar no cadastro de Escolas — muitas faculdades
+         * não são base do sindicato — e porque quem emite pode corrigir o
+         * endereço no modal sem alterar o cadastro da escola inteira. */
+        "EMAIL_INSTITUICAO",
+        "SITUACAO_SINDICAL",
+        "STATUS_VALIDACAO_SINDICAL",
+        "TIPO_BENEFICIARIO",
+        "NOME_BENEFICIARIO",
+        "DATA_NASCIMENTO_BENEFICIARIO",
+        "IDADE_BENEFICIARIO",
+        "NOME_TITULAR_ASSOCIADO",
+        "PARENTESCO",
+        "ENTEADO_DECLARADO_IR",
+        "MODALIDADE",
+        "CURSO",
+        "AREA_CURSO",
+        "ORDEM_FILHO",
+        "REGIME",
+        "PERIODO_REFERENCIA",
+        "PERCENTUAL_APLICADO",
+        "TIPO_DOCUMENTO_VINCULO",
+        "LINK_CONTRACHEQUE",
+        "LINK_DOC_PESSOAL",
+        "STATUS_SOLICITACAO",
+        "CANAL_ENTRADA",
+        "USUARIO_CADASTRO",
+        "USUARIO_VALIDACAO",
+        "DATA_VALIDACAO",
+        "DATA_EMISSAO",
+        "OBSERVACOES",
+        "NUMERO_PROTOCOLO",
+        /* PRIMEIRA_VEZ ou RENOVACAO — deduzido na gravação a partir do que já
+         * existe para a mesma pessoa no mesmo curso (VoucherPeriodo.gs), nunca
+         * perguntado a quem digita. Fica gravado porque a dedução depende de
+         * linhas que podem ser recusadas ou canceladas depois: relida meses
+         * adiante, a mesma conta daria outra resposta. */
+        /* O RG DO TITULAR, guardado.
+         * Ele era digitado no modal na hora de emitir e ia embora com a tela:
+         * reemitir o mesmo certificado exigia digitar de novo, e o do ano
+         * seguinte também. Pior — quem esquecesse emitiria um documento sem a
+         * oração da identidade, sem aviso, porque omitir é o comportamento
+         * certo quando o dado não existe. Gravado na primeira emissão, a
+         * próxima já vem preenchida. */
+        "RG_SOLICITANTE",
+        "TIPO_SOLICITACAO",
+        /* Preenchida SÓ quando um administrador autorizou uma exceção à trava
+         * de "um por período" — guarda o protocolo da bolsa anterior. Existe
+         * como coluna, e não apenas como texto na observação, para a pergunta
+         * "quantas exceções foram autorizadas e quais" ter resposta por
+         * filtro. O que sai da regra é o que mais precisa ser encontrável. */
+        "EXCECAO_DUPLICIDADE"
+  ];
+}
+
 function setupVoucherModuleFase1() {
   const ss = SpreadsheetApp.openById(PLANILHA_ID);
 
@@ -295,46 +577,7 @@ function setupVoucherModuleFase1() {
     },
     {
       name: "Voucher_Solicitacoes",
-      headers: [
-        "ID_SOLICITACAO",
-        "DATA_SOLICITACAO",
-        "DATA_SOLICITACAO_TEXTO",
-        "CPF_SOLICITANTE",
-        "NOME_SOLICITANTE",
-        "EMAIL",
-        "TELEFONE",
-        "ESCOLA_SELECIONADA",
-        "UNIDADE_ESCOLA",
-        "CNPJ_ESCOLA",
-        "CIDADE_ESCOLA",
-        "SITUACAO_SINDICAL",
-        "STATUS_VALIDACAO_SINDICAL",
-        "TIPO_BENEFICIARIO",
-        "NOME_BENEFICIARIO",
-        "DATA_NASCIMENTO_BENEFICIARIO",
-        "IDADE_BENEFICIARIO",
-        "NOME_TITULAR_ASSOCIADO",
-        "PARENTESCO",
-        "ENTEADO_DECLARADO_IR",
-        "MODALIDADE",
-        "CURSO",
-        "AREA_CURSO",
-        "ORDEM_FILHO",
-        "REGIME",
-        "PERIODO_REFERENCIA",
-        "PERCENTUAL_APLICADO",
-        "TIPO_DOCUMENTO_VINCULO",
-        "LINK_CONTRACHEQUE",
-        "LINK_DOC_PESSOAL",
-        "STATUS_SOLICITACAO",
-        "CANAL_ENTRADA",
-        "USUARIO_CADASTRO",
-        "USUARIO_VALIDACAO",
-        "DATA_VALIDACAO",
-        "DATA_EMISSAO",
-        "OBSERVACOES",
-        "NUMERO_PROTOCOLO"
-      ]
+      headers: VOUCHER_COLUNAS_SOLICITACOES_()
     },
     {
       name: "Voucher_Protocolos",
@@ -449,33 +692,71 @@ function seedVoucherRules_() {
 
   if (existingData.length > 1) return;
 
-  const rows = [
-    ["REG001","PERCENTUAL_POR_ORDEM","EDUCACAO_INFANTIL","","1","FILHO","24","100","ANUAL","SIM","1º filho"],
-    ["REG002","PERCENTUAL_POR_ORDEM","EDUCACAO_INFANTIL","","2","FILHO","24","100","ANUAL","SIM","2º filho"],
-    ["REG003","PERCENTUAL_POR_ORDEM","EDUCACAO_INFANTIL","","3","FILHO","24","60","ANUAL","SIM","3º filho"],
-    ["REG004","PERCENTUAL_POR_ORDEM","CRECHE","","1","FILHO","24","100","ANUAL","SIM","1º filho"],
-    ["REG005","PERCENTUAL_POR_ORDEM","CRECHE","","2","FILHO","24","100","ANUAL","SIM","2º filho"],
-    ["REG006","PERCENTUAL_POR_ORDEM","CRECHE","","3","FILHO","24","60","ANUAL","SIM","3º filho"],
-    ["REG007","PERCENTUAL_POR_ORDEM","ENSINO_FUNDAMENTAL","","1","FILHO","24","100","ANUAL","SIM","1º filho"],
-    ["REG008","PERCENTUAL_POR_ORDEM","ENSINO_FUNDAMENTAL","","2","FILHO","24","100","ANUAL","SIM","2º filho"],
-    ["REG009","PERCENTUAL_POR_ORDEM","ENSINO_FUNDAMENTAL","","3","FILHO","24","60","ANUAL","SIM","3º filho"],
-    ["REG010","PERCENTUAL_POR_ORDEM","TECNICO","","1","FILHO","24","100","ANUAL","SIM","1º filho"],
-    ["REG011","PERCENTUAL_POR_ORDEM","TECNICO","","2","FILHO","24","100","ANUAL","SIM","2º filho"],
-    ["REG012","PERCENTUAL_POR_ORDEM","TECNICO","","3","FILHO","24","60","ANUAL","SIM","3º filho"],
-    ["REG013","PERCENTUAL_POR_AREA","GRADUACAO","ENGENHARIA","","TITULAR","","60","SEMESTRAL","SIM","Graduação Engenharia"],
-    ["REG014","PERCENTUAL_POR_AREA","GRADUACAO","HUMANAS","","TITULAR","","70","SEMESTRAL","SIM","Graduação Humanas"],
-    ["REG015","PERCENTUAL_POR_AREA","GRADUACAO","SAUDE","","TITULAR","","50","SEMESTRAL","SIM","Graduação Saúde"],
-    ["REG016","PERCENTUAL_POR_AREA","GRADUACAO","ENGENHARIA","","CONJUGE","","60","SEMESTRAL","SIM","Graduação Engenharia"],
-    ["REG017","PERCENTUAL_POR_AREA","GRADUACAO","HUMANAS","","CONJUGE","","70","SEMESTRAL","SIM","Graduação Humanas"],
-    ["REG018","PERCENTUAL_POR_AREA","GRADUACAO","SAUDE","","CONJUGE","","50","SEMESTRAL","SIM","Graduação Saúde"],
-    ["REG019","PERCENTUAL_POR_AREA","GRADUACAO","ENGENHARIA","","ENTEADO","24","60","SEMESTRAL","SIM","Graduação Engenharia"],
-    ["REG020","PERCENTUAL_POR_AREA","GRADUACAO","HUMANAS","","ENTEADO","24","70","SEMESTRAL","SIM","Graduação Humanas"],
-    ["REG021","PERCENTUAL_POR_AREA","GRADUACAO","SAUDE","","ENTEADO","24","50","SEMESTRAL","SIM","Graduação Saúde"],
-    ["REG022","PERCENTUAL_FIXO","POS_GRADUACAO","","","TITULAR","","70","ANUAL","SIM","Pós-graduação"],
-    ["REG023","PERCENTUAL_FIXO","POS_GRADUACAO","","","CONJUGE","","70","ANUAL","SIM","Pós-graduação"],
-    ["REG024","PERCENTUAL_FIXO","POS_GRADUACAO","","","FILHO","24","70","ANUAL","SIM","Pós-graduação"],
-    ["REG025","PERCENTUAL_FIXO","POS_GRADUACAO","","","ENTEADO","24","70","ANUAL","SIM","Pós-graduação"]
-  ];
+  /* AS REGRAS DA CONVENÇÃO COLETIVA — ditadas pelo usuário em 12/08/2026.
+   *
+   * ENSINO BÁSICO (infantil, fundamental, médio, técnico), por ordem do filho:
+   *   1º filho 100% · 2º filho 100% · 3º filho 60%
+   *
+   * O 3º FILHO É 60%, E ISSO FOI CONFERIDO. Na conversa de 12/08/2026 o
+   * usuário disse 50%, o que divergia dos 60% que já estavam semeados desde
+   * o início do módulo. Perguntei antes de mexer — percentual é dinheiro do
+   * sindicato — e ele confirmou: "o semeado está correto, eu errei".
+   * Registrado aqui para ninguém "corrigir" de volta para 50 lendo só o
+   * histórico da conversa.
+   *
+   * GRADUAÇÃO, por área:
+   *   Humanas 70% · Saúde 50% · Engenharia/Exatas 60%
+   *
+   * PÓS-GRADUAÇÃO: 70%
+   *
+   * MESTRADO e DOUTORADO: NÃO HÁ BENEFÍCIO. Entram aqui com percentual 0 e
+   * ATIVO = SIM de propósito — uma regra explícita que concede zero é
+   * diferente de regra ausente. Sem ela, o mestrado cairia no vazio e o
+   * sistema deixaria o campo em branco, e campo em branco alguém preenche
+   * na mão. Com ela, a tela pode dizer "esta modalidade não tem desconto
+   * em convenção" — que é a informação verdadeira.
+   *
+   * ATENÇÃO A QUEM FOR MEXER: este seed só roda em aba VAZIA (a linha
+   * `if (existingData.length > 1) return;` logo acima). Alterar percentual
+   * de planilha que já opera é mudança de dinheiro e exige migração
+   * própria, com prévia — nunca de passagem por um seed. */
+  const BASICO = ["EDUCACAO_INFANTIL", "CRECHE", "ENSINO_FUNDAMENTAL", "ENSINO_MEDIO", "TECNICO"];
+  const POR_ORDEM = { "1": 100, "2": 100, "3": 60 };
+  const AREAS = { "HUMANAS": 70, "SAUDE": 50, "ENGENHARIA": 60 };
+  const PARENTES = ["TITULAR", "CONJUGE", "FILHO", "ENTEADO"];
+
+  const rows = [];
+  let n = 0;
+  function id() { n++; return "REG" + ("00" + n).slice(-3); }
+
+  BASICO.forEach(function (mod) {
+    ["1", "2", "3"].forEach(function (ordem) {
+      rows.push([id(), "PERCENTUAL_POR_ORDEM", mod, "", ordem, "FILHO", "24",
+                 String(POR_ORDEM[ordem]), "ANUAL", "SIM", ordem + "º filho"]);
+    });
+  });
+
+  Object.keys(AREAS).forEach(function (area) {
+    PARENTES.forEach(function (quem) {
+      rows.push([id(), "PERCENTUAL_POR_AREA", "GRADUACAO", area, "", quem,
+                 (quem === "FILHO" || quem === "ENTEADO") ? "24" : "",
+                 String(AREAS[area]), "SEMESTRAL", "SIM", "Graduação " + area]);
+    });
+  });
+
+  PARENTES.forEach(function (quem) {
+    rows.push([id(), "PERCENTUAL_FIXO", "POS_GRADUACAO", "", "", quem,
+               (quem === "FILHO" || quem === "ENTEADO") ? "24" : "",
+               "70", "ANUAL", "SIM", "Pós-graduação"]);
+  });
+
+  /* Mestrado e doutorado: regra explícita de ZERO, não ausência de regra. */
+  ["MESTRADO", "DOUTORADO"].forEach(function (mod) {
+    PARENTES.forEach(function (quem) {
+      rows.push([id(), "SEM_BENEFICIO", mod, "", "", quem, "", "0", "ANUAL", "SIM",
+                 "Não há desconto em convenção para " + mod.toLowerCase()]);
+    });
+  });
 
   sh.getRange(2, 1, rows.length, rows[0].length).setValues(rows);
   autoResizeSafe_(sh, sh.getLastColumn());
@@ -483,29 +764,174 @@ function seedVoucherRules_() {
 
 /* ================= REGRAS DE NEGÓCIO ================= */
 
+/* O CANAL DE ATENDIMENTO, QUE NÃO SE CONFUNDE COM O DIREITO.
+ *
+ * Todo mundo tem o MESMO benefício — o percentual da convenção não olha
+ * para a carteirinha. O que muda entre associado e não associado é por
+ * ONDE o pedido entra e por onde o voucher sai:
+ *
+ *   associado      → portal ou balcão · voucher por e-mail
+ *   não associado  → só balcão, em papel · retirada presencial
+ *
+ * ISTO CORRIGE UMA REGRA MINHA, DE 12/08/2026. Naquele dia foi escrito aqui
+ * "só associado tem direito ao benefício", e a recusa acabou em QUATRO
+ * lugares: este cálculo, a aprovação, a emissão e o portal. O usuário
+ * corrigiu em 14/08: "hoje todos tem o mesmo benefício, mas o não associado
+ * a solicitação do voucher e a retirada é presencial".
+ *
+ * O efeito medido da versão errada era pior do que uma recusa a mais: o
+ * portal mandava a pessoa até a sede, ela chegava com o papel na mão, e o
+ * sistema recusava na aprovação E na emissão. O caminho presencial existia
+ * no nome dos status e terminava numa parede. Confirmado no emulador, com
+ * os dois `false` em sequência.
+ *
+ * Por que um invólucro em vez de apagar o `if`: a regra da convenção tem
+ * oito pontos de retorno, e o canal precisa aparecer em todos. Anotar num
+ * lugar só é o que garante que nenhum caminho devolva a bolsa sem dizer
+ * como ela vai ser entregue. */
+var VOUCHER_CANAL_PRESENCIAL_ = "PRESENCIAL";
+var VOUCHER_CANAL_REMOTO_ = "REMOTO";
+
+function voucherEhNaoAssociado_(situacaoSindical) {
+  var s = String(situacaoSindical || "").trim().toUpperCase();
+  /* Em branco NÃO é "não associado": quem ainda não escolheu o campo não
+   * declarou nada. Só o valor explícito conta. */
+  return !!s && s !== "ASSOCIADO";
+}
+
+/* A ÁREA DEDUZIDA DO NOME DO CURSO.
+ *
+ * A área é o que decide o percentual da graduação — Saúde 50, Engenharia 60,
+ * Humanas 70 —, e até 17/08/2026 ela era escolhida à mão num seletor. Quem
+ * marcasse "Humanas" para Medicina recebia 70% sem nenhum aviso, porque a
+ * regra obedece ao que foi marcado e não sabe o que é Medicina.
+ *
+ * Isso é a REGRA Nº 0.6: o sistema TEM como saber. Deixar a pessoa classificar
+ * curso por curso, todo semestre, é pedir para errar num campo que vale
+ * dinheiro — e o erro sai impresso num documento que a escola aceita.
+ *
+ * SUGERE, NÃO IMPÕE. Devolve a área e o motivo; quem chama decide se preenche
+ * um campo vazio ou se apenas avisa uma divergência. Curso que não casa com
+ * nenhuma lista devolve vazio, e aí a escolha continua sendo humana — inventar
+ * área para curso desconhecido seria trocar um erro visível por um invisível.
+ *
+ * A lista cobre o que aparece no dia a dia do sindicato, não o catálogo do MEC.
+ * Cobrir 90% dos casos e admitir os outros 10% é melhor do que fingir 100%. */
+function voucherAreaDoCurso_(curso) {
+  var c = normalizarTextoVoucher_(curso);
+  if (!c) return { area: "", motivo: "" };
+
+  var mapa = [
+    { area: "SAUDE", termos: [
+      "medicina", "enfermagem", "odontolog", "farmacia", "fisioterapia",
+      "nutricao", "psicolog", "biomedicina", "veterinaria", "fonoaudiolog",
+      "terapia ocupacional", "educacao fisica", "estetica", "radiolog",
+      "biolog", "obstetr" ] },
+    { area: "ENGENHARIA", termos: [
+      "engenharia", "arquitetura", "computacao", "sistemas de informacao",
+      "analise e desenvolvimento", "ciencia da computacao", "redes de computadores",
+      "matematica", "fisica", "quimica", "estatistica", "agronomia",
+      "tecnologia da informacao", "mecatronica", "eletrotecnica" ] },
+    { area: "HUMANAS", termos: [
+      "direito", "pedagog", "administrac", "contabe", "contabilidade",
+      "letras", "historia", "geografia", "filosofia", "sociolog",
+      "servico social", "jornalismo", "publicidade", "comunicacao",
+      "marketing", "recursos humanos", "gestao", "turismo", "teolog",
+      "musica", "artes", "design", "secretariado", "economia",
+      "relacoes internacionais", "logistica" ] }
+  ];
+
+  for (var i = 0; i < mapa.length; i++) {
+    for (var j = 0; j < mapa[i].termos.length; j++) {
+      if (c.indexOf(mapa[i].termos[j]) > -1) {
+        return {
+          area: mapa[i].area,
+          motivo: "deduzida do curso “" + String(curso).trim() + "”"
+        };
+      }
+    }
+  }
+
+  return { area: "", motivo: "" };
+}
+
 function calcularRegraVoucher_(dados, idadeBeneficiario) {
+  var regra = calcularRegraVoucherConvencao_(dados, idadeBeneficiario);
+  var naoAssociado = voucherEhNaoAssociado_(dados && dados.situacaoSindical);
+
+  regra.canal = naoAssociado ? VOUCHER_CANAL_PRESENCIAL_ : VOUCHER_CANAL_REMOTO_;
+  regra.presencial = naoAssociado;
+
+  /* A observação é acrescentada, nunca substitui a da convenção: se a regra
+   * recusou por idade ou por ordem de filho, esse motivo continua sendo o
+   * que a pessoa precisa ler primeiro. */
+  if (naoAssociado && regra.apto) {
+    regra.observacao = (regra.observacao ? regra.observacao + " " : "") +
+      "Não associado: mesmo benefício, solicitação em papel e retirada " +
+      "presencial na sede — o voucher não é enviado por e-mail.";
+  }
+
+  return regra;
+}
+
+function calcularRegraVoucherConvencao_(dados, idadeBeneficiario) {
   const modalidade       = String(dados.modalidade || "").trim().toUpperCase();
   const areaCurso        = String(dados.areaCurso || "").trim().toUpperCase();
   const tipoBeneficiario = String(dados.tipoBeneficiario || "").trim().toUpperCase();
   const ordemFilho       = String(dados.ordemFilho || "").trim();
   const enteadoIR        = String(dados.enteadoDeclaradoIR || "").trim().toUpperCase();
 
-  if (tipoBeneficiario === "FILHO" && (idadeBeneficiario === "" || Number(idadeBeneficiario) >= 24)) {
+  /* ATÉ TRÊS FILHOS — mesma conversa.
+   *
+   * A convenção prevê 1º, 2º e 3º. Do quarto em diante não há benefício, e
+   * a versão anterior devolvia "Ordem do filho inválida para a modalidade
+   * informada" — mensagem que faz quem lê procurar erro na MODALIDADE,
+   * quando o problema é a ordem. Recusar é certo; explicar errado custa
+   * uma ligação para o sindicato. */
+  if (tipoBeneficiario === "FILHO" || tipoBeneficiario === "ENTEADO") {
+    const n = parseInt(ordemFilho, 10);
+    if (ordemFilho && (isNaN(n) || n > 3)) {
+      return {
+        apto: false, percentual: "", regime: "",
+        observacao: "A convenção prevê desconto até o 3º filho. Informado: " +
+                    ordemFilho + "º."
+      };
+    }
+  }
+
+  /* IDADE MÁXIMA: 24 ANOS — e "até 24" inclui os 24.
+   *
+   * O código dizia `>= 24`, ou seja RECUSAVA quem tem 24 — e a mensagem ao
+   * lado dizia "até 24 anos". As duas coisas no mesmo bloco, uma negando a
+   * outra. Um dependente de 24 anos era recusado por um erro de um ano, com
+   * uma explicação que afirmava o contrário do que o código fazia; quem
+   * ligasse para o sindicato ouviria que tinha direito.
+   *
+   * Confirmado pelo usuário em 12/08/2026: "a idade máxima de solicitação é
+   * 24 anos". Agora recusa a partir de 25. */
+  if (tipoBeneficiario === "FILHO" && (idadeBeneficiario === "" || Number(idadeBeneficiario) > 24)) {
     return {
       apto: false,
       percentual: "",
       regime: "",
-      observacao: "Beneficiário filho não atende ao limite etário (até 24 anos)."
+      observacao: idadeBeneficiario === ""
+        ? "Informe a idade do beneficiário — o limite é 24 anos."
+        : "Beneficiário com " + idadeBeneficiario +
+          " anos: o limite da convenção é 24 anos."
     };
   }
 
   if (tipoBeneficiario === "ENTEADO") {
-    if (idadeBeneficiario === "" || Number(idadeBeneficiario) >= 24) {
+    /* Mesmo erro de um ano, mesma correção — enteado segue o limite do filho. */
+    if (idadeBeneficiario === "" || Number(idadeBeneficiario) > 24) {
       return {
         apto: false,
         percentual: "",
         regime: "",
-        observacao: "Beneficiário enteado não atende ao limite etário (até 24 anos)."
+        observacao: idadeBeneficiario === ""
+          ? "Informe a idade do beneficiário — o limite é 24 anos."
+          : "Beneficiário enteado com " + idadeBeneficiario +
+            " anos: o limite da convenção é 24 anos."
       };
     }
 
@@ -519,7 +945,36 @@ function calcularRegraVoucher_(dados, idadeBeneficiario) {
     }
   }
 
-  if (["EDUCACAO_INFANTIL", "CRECHE", "ENSINO_FUNDAMENTAL", "TECNICO"].indexOf(modalidade) > -1) {
+  /* MESTRADO E DOUTORADO NÃO TÊM DESCONTO EM CONVENÇÃO.
+   *
+   * Isto precisa vir ANTES de tudo, e a razão é um defeito que estava aqui:
+   * o bloco `if (tipoBeneficiario === "TITULAR")` lá embaixo é alcançado
+   * quando NENHUMA modalidade casa, e concede 100%. Ou seja, um titular
+   * pedindo bolsa de mestrado — modalidade sem regra — saía com desconto
+   * integral. O oposto exato do que a convenção diz.
+   *
+   * Recusar explicitamente é diferente de não ter regra: a resposta abaixo
+   * explica o motivo, em vez de deixar o campo em branco para alguém
+   * preencher na mão. */
+  if (["MESTRADO", "DOUTORADO"].indexOf(modalidade) > -1) {
+    return {
+      apto: false,
+      percentual: "",
+      regime: "",
+      observacao: "Não há desconto previsto em convenção para " +
+                  modalidade.toLowerCase() + "."
+    };
+  }
+
+  /* ENSINO_MEDIO ESTAVA FALTANDO NESTA LISTA.
+   *
+   * `getPortalVoucherInitData` oferece "Ensino Médio (15–17 anos)" no menu
+   * de modalidades, e quem escolhesse caía no "Modalidade não reconhecida
+   * nas regras do voucher" lá no fim — pedido recusado por um buraco no
+   * código, não por regra da convenção. Segue os mesmos 100/100/60 das
+   * demais modalidades do ensino básico. */
+  if (["EDUCACAO_INFANTIL", "CRECHE", "ENSINO_FUNDAMENTAL",
+       "ENSINO_MEDIO", "TECNICO"].indexOf(modalidade) > -1) {
     let percentual = "";
 
     if (ordemFilho === "1" || ordemFilho === "2") percentual = "100";
@@ -543,18 +998,45 @@ function calcularRegraVoucher_(dados, idadeBeneficiario) {
   }
 
   if (modalidade === "GRADUACAO") {
+    /* A ÁREA MARCADA MANDA, MAS A DEDUZIDA PREENCHE E CONFERE.
+     *
+     * Duas situações, e as duas vinham de um certificado real de Medicina
+     * que saiu com 70% (o de Humanas) em 17/08/2026:
+     *
+     *   1. Área em BRANCO → a regra recusava com "área inválida", e alguém
+     *      escolhia no chute para destravar. Agora o curso responde sozinho.
+     *   2. Área MARCADA ERRADA → passava calada. Agora a divergência entre o
+     *      que foi marcado e o que o curso diz vira aviso escrito.
+     *
+     * O marcado continua vencendo: pode haver caso legítimo que a lista de
+     * termos não conhece, e sobrescrever a escolha de quem analisou seria
+     * trocar um erro por outro. O que não pode é a divergência ser muda. */
+    var deduzida = voucherAreaDoCurso_(dados.curso);
+    var areaUsada = areaCurso || deduzida.area;
+    var avisoArea = "";
+
+    if (!areaCurso && deduzida.area) {
+      avisoArea = " Área " + deduzida.area.toLowerCase() + " " + deduzida.motivo + ".";
+    } else if (areaCurso && deduzida.area && deduzida.area !== areaCurso) {
+      avisoArea = " ATENÇÃO: a área marcada é " + areaCurso.toLowerCase() +
+                  ", mas o curso “" + String(dados.curso || "").trim() +
+                  "” costuma ser " + deduzida.area.toLowerCase() +
+                  " — confira antes de emitir.";
+    }
+
     let percentualGrad = "";
 
-    if (areaCurso === "ENGENHARIA") percentualGrad = "60";
-    if (areaCurso === "HUMANAS")    percentualGrad = "70";
-    if (areaCurso === "SAUDE")      percentualGrad = "50";
+    if (areaUsada === "ENGENHARIA") percentualGrad = "60";
+    if (areaUsada === "HUMANAS")    percentualGrad = "70";
+    if (areaUsada === "SAUDE")      percentualGrad = "50";
 
     if (!percentualGrad) {
       return {
         apto: false,
         percentual: "",
         regime: "SEMESTRAL",
-        observacao: "Área do curso inválida para graduação."
+        observacao: "Informe a área do curso para a graduação — ela é o que " +
+                    "define o percentual (saúde 50%, engenharia 60%, humanas 70%)."
       };
     }
 
@@ -562,7 +1044,8 @@ function calcularRegraVoucher_(dados, idadeBeneficiario) {
       apto: true,
       percentual: percentualGrad,
       regime: "SEMESTRAL",
-      observacao: "Solicitação enquadrada por área do curso."
+      areaDeduzida: deduzida.area || "",
+      observacao: "Solicitação enquadrada por área do curso." + avisoArea
     };
   }
 
@@ -944,103 +1427,6 @@ function getPortalVoucherInitData() {
   };
 }
 
-/* ================= PORTAL ANTIGO — COMPATIBILIDADE ================= */
-
-function salvarSolicitacaoCertBolsa(dados) {
-  dados = dados || {};
-
-  function mapBeneficiario(v) {
-    v = String(v || "").toLowerCase().trim();
-
-    if (v === "filho") return "FILHO";
-    if (v === "titular") return "TITULAR";
-    if (v === "conjuge" || v === "cônjuge") return "CONJUGE";
-    if (v === "enteado") return "ENTEADO";
-
-    return String(v || "TITULAR").toUpperCase();
-  }
-
-  function mapModalidade(v) {
-    v = String(v || "").toLowerCase().trim();
-
-    const mapa = {
-      creche: "CRECHE",
-      infantil: "EDUCACAO_INFANTIL",
-      fundamental: "ENSINO_FUNDAMENTAL",
-      medio: "ENSINO_MEDIO",
-      técnico: "TECNICO",
-      tecnico: "TECNICO",
-      prevestibular: "ENSINO_MEDIO",
-      graduacao: "GRADUACAO",
-      graduação: "GRADUACAO",
-      posgraduacao: "POS_GRADUACAO",
-      "pós-graduação": "POS_GRADUACAO",
-      pos_graduacao: "POS_GRADUACAO"
-    };
-
-    return mapa[v] || String(v || "").toUpperCase();
-  }
-
-  function mapArea(v) {
-    v = String(v || "").toLowerCase().trim();
-
-    const mapa = {
-      humanas: "HUMANAS",
-      engenharia: "ENGENHARIA",
-      saude: "SAUDE",
-      saúde: "SAUDE"
-    };
-
-    return mapa[v] || String(v || "").toUpperCase();
-  }
-
-  const tipoBeneficiario = mapBeneficiario(dados.beneficiario || dados.tipoBeneficiario);
-  const modalidade = mapModalidade(dados.nivel || dados.modalidade);
-
-  const payload = {
-    cpf: dados.cpf,
-    nome: dados.nome,
-    dataNascimento: dados.dataNascimento || "",
-    email: dados.email,
-    telefone: dados.telefone,
-    cep: dados.cep,
-    endereco: dados.endereco,
-
-    escolaAtual: dados.escola || dados.escolaAtual,
-    cargoFuncao: dados.cargoFuncao || "",
-    situacaoVinculo: dados.situacaoVinculo || "",
-
-    situacaoSindicalDeclarada: dados.situacaoSindicalDeclarada || "PENDENTE_VALIDACAO",
-
-    tipoBeneficiario: tipoBeneficiario,
-    nomeBeneficiario: tipoBeneficiario === "TITULAR"
-      ? dados.nome
-      : (dados.nomeFilho || dados.nomeBeneficiario || ""),
-
-    dataNascimentoBeneficiario: dados.dataNascimentoBeneficiario || "",
-    nomeTitularAssociado: dados.nome,
-    parentesco: tipoBeneficiario,
-    enteadoDeclaradoIR: "NAO",
-
-    modalidade: modalidade,
-    curso: dados.curso,
-    areaCurso: mapArea(dados.area || dados.areaCurso),
-    ordemFilho: dados.ordemFilho || "",
-    periodoReferencia: dados.periodoReferencia || dados.data || "",
-
-    contracheque: dados.contracheque,
-    docPessoal: dados.docPessoal
-  };
-
-  const resp = salvarCadastroESolicitacaoVoucher(payload);
-
-  if (resp && resp.ok && resp.protocolo && resp.protocolo.numeroProtocolo) {
-    resp.protocolo = resp.protocolo.numeroProtocolo;
-  }
-
-  return resp;
-}
-
 /* ================= LISTAGEM (PAINEL ADMIN) ================= */
 
 function listarSolicitacoesVoucher() {
@@ -1112,9 +1498,22 @@ function listarSolicitacoesVoucher() {
         curso: String(val(l, "CURSO") || ""),
         areaCurso: String(val(l, "AREA_CURSO", "ÁREA_CURSO", "AREA", "ÁREA") || ""),
         ordemFilho: String(val(l, "ORDEM_FILHO", "ORDEM DO FILHO") || ""),
-        periodoReferencia: String(val(l, "PERIODO_REFERENCIA", "PERÍODO_REFERENCIA", "PERIODO", "PERÍODO") || ""),
+        /* Normalizado, nunca cru: o Sheets guarda o período como Date e
+         * `String(Date)` vira "Thu Jan 01 2026 05:00:00 GMT-0300 (...)"
+         * — 55 caracteres numa coluna de 8, e o semestre perdido.
+         * Ver o cabeçalho de voucherPeriodoTexto_. */
+        periodoReferencia: (typeof voucherPeriodoTexto_ === "function"
+          ? voucherPeriodoTexto_(val(l, "PERIODO_REFERENCIA", "PERÍODO_REFERENCIA", "PERIODO", "PERÍODO"))
+          : String(val(l, "PERIODO_REFERENCIA", "PERÍODO_REFERENCIA", "PERIODO", "PERÍODO") || "")),
         percentual: String(val(l, "PERCENTUAL_APLICADO", "PERCENTUAL", "% DESCONTO", "DESCONTO") || ""),
         regime: String(val(l, "REGIME") || ""),
+        /* PRIMEIRA_VEZ ou RENOVACAO, gravado na criação (VoucherPeriodo.gs).
+         * Linha antiga vem vazia — e vazio não vira "primeira vez" aqui: a
+         * etiqueta só aparece quando o dado existe, porque afirmar "primeira
+         * vez" sobre uma bolsa que já foi renovada três vezes é pior que não
+         * dizer nada. */
+        rg: String(val(l, "RG_SOLICITANTE", "RG") || ""),
+        tipoSolicitacao: String(val(l, "TIPO_SOLICITACAO", "TIPO_SOLICITAÇÃO") || ""),
 
         status: String(val(l, "STATUS_SOLICITACAO", "STATUS_SOLICITAÇÃO", "STATUS") || "PENDENTE"),
         data: String(dataTexto || formatarDataBrVoucher_(dataSolicitacao) || ""),
@@ -1142,7 +1541,8 @@ function listarSolicitacoesVoucher() {
   }
 }
 
-function listarSolicitacoesCertBolsa() {
+function listarSolicitacoesCertBolsa(tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
   return listarSolicitacoesVoucher();
 }
 
@@ -1472,6 +1872,165 @@ function testeAprovarVoucher() {
   ));
 }
 
+/**
+ * DIAGNÓSTICO DO CABEÇALHO — só leitura, não escreve uma célula.
+ *
+ * Existe para responder uma pergunta específica depois do estrago do
+ * ensureHeaders_ antigo (ver o comentário dele acima): QUAIS colunas de
+ * Voucher_Solicitacoes estão com o nome trocado em relação ao dado?
+ *
+ * O jeito de descobrir é olhar o valor embaixo de cada nome e perguntar se
+ * ele tem cara do que o nome promete. Uma data sob "INSTITUICAO_ENSINO" e um
+ * "11" sob "CNPJ_INSTITUICAO" não deixam dúvida.
+ *
+ * O que é dado pessoal sai MASCARADO. Este log vai parar em print, e print
+ * vai parar em conversa — CPF e e-mail inteiros não precisam estar aqui para
+ * a coluna ser identificada.
+ */
+function voucherDiagnosticoColunas(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, "beneficios", "Diagnóstico de colunas do Voucher", true);
+
+  var ss = SpreadsheetApp.openById(PLANILHA_ID);
+  var sh = ss.getSheetByName("Voucher_Solicitacoes");
+  if (!sh) {
+    Logger.log("A aba Voucher_Solicitacoes não existe.");
+    return { ok: false, mensagem: "Aba Voucher_Solicitacoes não encontrada." };
+  }
+
+  var nCols = sh.getLastColumn();
+  var nLinhas = sh.getLastRow();
+  var cab = sh.getRange(1, 1, 1, nCols).getValues()[0];
+  var amostra = nLinhas >= 2 ? sh.getRange(2, 1, 1, nCols).getValues()[0] : [];
+
+  function mascarar(nome, v) {
+    var s = v instanceof Date ? v.toString() : String(v == null ? "" : v);
+    if (!s) return "(vazio)";
+    var n = String(nome || "").toUpperCase();
+    if (n.indexOf("CPF") > -1) return s.replace(/\d(?=\d{2})/g, "*");
+    if (n.indexOf("EMAIL") > -1 && s.indexOf("@") > 0) {
+      return s.charAt(0) + "***@" + s.split("@")[1];
+    }
+    if (n.indexOf("TELEFONE") > -1) return s.replace(/\d(?=\d{4})/g, "*");
+    return s.length > 42 ? s.slice(0, 42) + "…" : s;
+  }
+
+  /* O tipo aparente é o que denuncia o desalinhamento: o nome diz uma coisa,
+   * o formato do valor diz outra. */
+  function cara(v) {
+    if (v instanceof Date) return "DATA";
+    if (v === "" || v === null || v === undefined) return "vazio";
+    if (typeof v === "number") return "número";
+    var s = String(v);
+    if (/^\d{14}$/.test(s.replace(/\D/g, "")) && s.replace(/\D/g, "").length === 14) return "CNPJ?";
+    if (s.indexOf("@") > 0) return "e-mail";
+    return "texto";
+  }
+
+  Logger.log("═══ Voucher_Solicitacoes — " + nCols + " colunas · " +
+             Math.max(nLinhas - 1, 0) + " solicitações ═══");
+  Logger.log("");
+  Logger.log("col  CABEÇALHO                          tipo      1ª linha");
+  Logger.log("───────────────────────────────────────────────────────────────────");
+
+  var linhas = [];
+  for (var i = 0; i < nCols; i++) {
+    var nome = String(cab[i] || "(sem nome)");
+    var v = amostra.length ? amostra[i] : "";
+    var txt = ("" + (i + 1)).padStart(3) + "  " + (nome + "                                   ").slice(0, 34) +
+              " " + (cara(v) + "        ").slice(0, 9) + " " + mascarar(nome, v);
+    Logger.log(txt);
+    linhas.push({ coluna: i + 1, cabecalho: nome, tipo: cara(v) });
+  }
+
+  /* Duplicata é a marca registrada do estrago: o nome foi escrito por cima de
+   * outro, e agora existe duas vezes ou sumiu de vez. */
+  var vistos = {}, repetidos = [];
+  cab.forEach(function (c) {
+    var n = String(c || "").trim();
+    if (!n) return;
+    if (vistos[n]) { if (repetidos.indexOf(n) === -1) repetidos.push(n); }
+    vistos[n] = true;
+  });
+
+  var canonicas = VOUCHER_COLUNAS_SOLICITACOES_();
+  var ausentes = canonicas.filter(function (h) { return !vistos[h]; });
+
+  Logger.log("");
+  Logger.log("cabeçalhos REPETIDOS ..... " + (repetidos.length ? repetidos.join(", ") : "nenhum"));
+  Logger.log("cabeçalhos AUSENTES ...... " + (ausentes.length ? ausentes.join(", ") : "nenhum"));
+  Logger.log("");
+  Logger.log(ausentes.length || repetidos.length
+    ? "⚠ A aba está desalinhada. NÃO emitir certificado antes de corrigir."
+    : "✓ Nenhum nome ausente nem repetido.");
+
+  return { ok: true, colunas: linhas, repetidos: repetidos, ausentes: ausentes };
+}
+
+/**
+ * PRÉVIA SEGURA — gera o documento sem emitir, sem salvar PDF e SEM ENVIAR
+ * e-mail. Serve para conferir o modelo com dado real antes de valer.
+ *
+ * POR QUE ELA EXISTE, tendo testeGerarDocumentoVoucher logo abaixo
+ *
+ * Aquela chama com "CERTIFICADO", e esse caminho não é teste: gera o PDF,
+ * grava em Voucher_Emitidos e dispara enviarVoucherAssociado_ e
+ * enviarVoucherEscola_ — ou seja, manda e-mail para o associado e para a
+ * escola. O nome diz "teste", o efeito é emissão. Rodar por curiosidade
+ * custa um voucher indevido na caixa de entrada de alguém.
+ *
+ * Aqui o tipo é "PREVIA", que retorna o HTML antes de salvar e antes de
+ * enviar. Nada sai, nada é gravado.
+ *
+ * NÃO GRAVAR NÃO É NÃO VAZAR. Escrevi esta função sem trava nenhuma, para
+ * rodar pelo botão Run do editor, e o teste de exposição (t6) apontou na
+ * mesma hora: ela era a 216ª função que um anônimo alcançava sem login, e o
+ * que ela devolve é o documento inteiro de um associado real — nome,
+ * protocolo, instituição de ensino. Prévia é leitura, e leitura de dado
+ * pessoal também precisa de porta.
+ *
+ * A trava é a porta dupla: token do SISGEP quando vem da tela, conta Google
+ * do dono/administrador quando vem do editor (o botão Run não passa
+ * argumento). Anônimo não passa.
+ */
+function voucherPreviaSegura(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, "beneficios", "Prévia de voucher", false);
+
+  var lista = listarSolicitacoesVoucher() || [];
+  if (!lista.length) {
+    Logger.log("Nenhuma solicitação cadastrada. Sem protocolo, não há o que pré-visualizar.");
+    return { ok: false, mensagem: "Nenhuma solicitação cadastrada." };
+  }
+
+  var s = lista[0];
+  Logger.log("Pré-visualizando o protocolo " + s.protocolo +
+             "  (status: " + (s.status || "sem status") + ")");
+
+  var r = gerarDocumentoVoucher(s.protocolo, "PREVIA", { percentual: 70 });
+
+  if (!r || r.ok !== true) {
+    Logger.log("✗ " + ((r && r.mensagem) || "falhou sem mensagem"));
+    return r;
+  }
+
+  var h = String(r.html || "");
+  Logger.log("═══ PRÉVIA GERADA — NADA FOI EMITIDO NEM ENVIADO ═══");
+  Logger.log("tamanho do documento .......... " + h.length + " caracteres");
+  Logger.log("assinatura do presidente ...... " + (h.indexOf("height:56px") > -1 ? "presente" : "AUSENTE"));
+  Logger.log("instituição de ensino ......... " + (/Instituição de ensino/.test(h) ? "presente" : "vazia no cadastro"));
+  Logger.log("documentos conferidos ......... " +
+             (/Documentos conferidos/.test(h) ? "APARECENDO — não deveria, na via do aluno" : "oculto (correto)"));
+  Logger.log("página A4 em milímetros ....... " + (/min-height:262mm/.test(h) ? "sim" : "NÃO"));
+  Logger.log("");
+  Logger.log("Para ver o documento: copie o HTML abaixo e abra num navegador.");
+  Logger.log(h);
+  return r;
+}
+
+/* ⚠ ISTO NÃO É TESTE — É EMISSÃO.
+ *
+ * Chama com "CERTIFICADO", e nesse caminho o código gera o PDF, grava em
+ * Voucher_Emitidos e DISPARA E-MAIL para o associado e para a escola. O nome
+ * engana. Para conferir o modelo, use voucherPreviaSegura() acima. */
 function testeGerarDocumentoVoucher() {
   const lista = listarSolicitacoesVoucher().filter(function(s) {
     return String(s.status || "").toUpperCase() === "APROVADO";

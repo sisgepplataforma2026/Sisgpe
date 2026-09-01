@@ -1,5 +1,20 @@
 // =========================
 // ARQUIVO: GuiasPagamento.gs
+//
+// ⚠️ LEGADO — auditoria de arquitetura (achado confirmado por grep em todo o
+// projeto): este arquivo foi substituído por Despesas.gs/CadastroPrestadores.html
+// (comentário de Despesas.gs: "CRUD completo de prestadores integrado, migrado
+// de GuiasPagamento.gs"). Nenhum .html do sistema inclui GuiaPagamento.html ou
+// Scripts_Guias.html (removidos), e Code.gs não roteia nenhuma tela deste
+// módulo — a única exceção viva é guiasPagamento_registrarLeituraEmail(),
+// ainda chamada por Code.gs na rota ?page=pub-pixel-nf (pixel de rastreio de
+// e-mails antigos de guia de pagamento que ainda possam estar sem abrir).
+// NÃO usar cadastrarNovoPrestador/salvarPrestador/listarTodosPrestadores nem
+// nenhuma outra função deste arquivo em telas novas — a fonte de verdade de
+// prestadores é Despesas.gs. Grava na mesma aba Prestadores_Serviços com um
+// CABECALHO_PRESTADORES diferente do cabeçalho ativo (CABECALHO_PRESTADORES_DESP,
+// em Despesas.gs) — reativar qualquer CRUD daqui arrisca corromper a aba.
+//
 // ✅ EMAILS_CONTABILIDADE_GS centralizado — fonte única
 // ✅ Validação de IDs obrigatórios antes de gerar PDF
 // ✅ pdfBlob removido do retorno (não é serializável via google.script.run)
@@ -2677,52 +2692,6 @@ function receberUploadNF(token, dadosNF) {
     return { ok: false, mensagem: "Erro ao processar: " + e.message };
   }
 }
-/* ---------------------------------------------------------------
-   LEMBRETES AUTOMÁTICOS (trigger diário)
---------------------------------------------------------------- */
-function verificarEEnviarLembretesNF() {
-  try {
-    var sh      = garantirAbaGuiasPagamento_();
-    var lastRow = sh.getLastRow();
-    if (lastRow < 2) return;
-
-    var dados     = sh.getRange(2, 1, lastRow - 1, sh.getLastColumn()).getValues();
-    var headerMap = mapearCabecalhoGuia_(sh);
-    var hoje      = new Date(); hoje.setHours(0, 0, 0, 0);
-
-    dados.forEach(function(row) {
-      var id        = String(row[headerMap["ID"]]         || "").trim();
-      var status    = String(row[headerMap["Status"]]     || "").trim();
-      var tipoEnvio = String(row[headerMap["TipoEnvio"]]  || "").trim();
-      var vencimento= String(row[headerMap["Vencimento"]] || "").trim();
-      var emailPrest= String(row[headerMap["EmailPrestador"]] || "").trim();
-
-      if (!id || !vencimento || !emailPrest) return;
-      if (status === STATUS_GUIA.PAGO || status === "NF_RECEBIDA" ||
-          status === STATUS_GUIA.CANCELADO) return;
-      if (tipoEnvio !== TIPO_ENVIO_GUIA.SOLICITAR_NF) return;
-
-      var dataVenc = converterDataBRouISOEmDate_(vencimento);
-      if (isNaN(dataVenc.getTime())) return;
-      dataVenc.setHours(0, 0, 0, 0);
-
-      var diffDias = Math.floor((dataVenc - hoje) / 86400000);
-
-      var deveEnviar = DIAS_LEMBRETE_NF_ANTES.indexOf(diffDias) > -1 ||
-                       DIAS_LEMBRETE_NF_DEPOIS.indexOf(-diffDias) > -1;
-
-      if (!deveEnviar) return;
-
-      var tipo = diffDias > 0 ? "antes" : diffDias === 0 ? "hoje" : "vencido";
-      enviarLembreteNF_(id, row, headerMap, tipo, Math.abs(diffDias));
-    });
-
-    Logger.log("\u2705 Verifica\u00e7\u00e3o de lembretes de NF conclu\u00edda.");
-  } catch(e) {
-    Logger.log("\u274C Erro em verificarEEnviarLembretesNF: " + e.message);
-  }
-}
-
 function enviarLembreteNF_(idGuia, row, headerMap, tipo, dias) {
   try {
     var nome       = String(row[headerMap["Prestador"]]      || "").trim();
@@ -3199,7 +3168,7 @@ function salvarEmailPrestadorRapido(rowIndex, email) {
    PIXEL DE RASTREAMENTO DE LEITURA
    ═══════════════════════════════════════════════════════════════ */
 
-function registrarLeituraEmail(token) {
+function guiasPagamento_registrarLeituraEmail(token) {
   try {
     if (!token) return;
     var props = PropertiesService.getScriptProperties();

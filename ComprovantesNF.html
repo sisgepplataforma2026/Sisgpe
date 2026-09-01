@@ -1,4 +1,26 @@
 // ================================================================
+// ⚠️ ESTE ARQUIVO É UMA CÓPIA DE Comprovantes.gs, NUM ARQUIVO .html
+//
+// Não é uma tela. É o código-fonte do módulo de Comprovantes inteiro —
+// servidor, e-mail, PDF — colado num arquivo com extensão .html. Arquivo
+// .html não é executado pelo Apps Script: nada aqui roda. E nada o inclui:
+// verificado em 13/08/2026, `ComprovantesNF` não é pedido por nenhuma das
+// três formas de incluir HTML no Apps Script — nem pelo include, nem pelas
+// duas funções de HtmlService que abrem arquivo por nome.
+//
+// O ESTRAGO QUE ELE JÁ FEZ, e que é o motivo desta nota: procurando quem
+// chamava `incluirComprovantes()`, o grep devolveu DOIS resultados — um
+// aqui e um no .gs — e por um instante pareceu que a função tinha um
+// chamador de verdade. Cópia em arquivo inerte não é neutra: ela mente para
+// quem procura. Quem for medir uso de qualquer função de Comprovantes tem
+// que descontar este arquivo.
+//
+// FICA — REGRA Nº 1, na dúvida o arquivo fica. Mas é candidato claro a
+// remoção no dia em que o usuário decidir, e a remoção é barata: nada
+// depende dele. O original vivo é Comprovantes.gs.
+// ================================================================
+
+// ================================================================
 // 📄 ARQUIVO: Comprovantes.gs
 // Módulo de Comprovantes e Despesas Avulsas
 // ================================================================
@@ -1128,7 +1150,10 @@ if (typeof saudacaoHoraBR_ !== 'function') {
  * @return {GoogleAppsScript.HTML.HtmlOutput}
  */
 function incluirComprovantes() {
-  return HtmlService.createHtmlOutputFromFile('Index')
+  /* Pedia, pelo nome, um arquivo HTML chamado Index — que não existe no
+     projeto. Corrigido no ORIGINAL (Comprovantes.gs); aqui fica só o
+     registro, porque este arquivo não executa. */
+  return HtmlService.createHtmlOutput('Comprovantes: ver Comprovantes.gs')
     .setTitle('Comprovantes - SISGEP')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')

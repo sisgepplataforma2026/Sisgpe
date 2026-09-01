@@ -48,7 +48,7 @@ function doPost(e) {
 
     return template
       .evaluate()
-      .setTitle("SISGEP — Ofícios")
+      .setTitle("Portal Administrativo — SindEducação-ES")
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .setSandboxMode(HtmlService.SandboxMode.IFRAME);
 
@@ -71,6 +71,58 @@ if (p.portal === "associado") {
       Logger.log("[PORTAL] Redirecionando para o Portal do Associado");
       return servirPortalAssociado(p);
     }
+
+    // ── Portal público de solicitação de Voucher (Bolsa de Estudo) ──
+    // Público, sem sessão — o próprio formulário pede CPF + data de nascimento.
+    if (p.portal === "voucher") {
+      Logger.log("[PORTAL] Redirecionando para o Portal de Voucher");
+      return HtmlService.createHtmlOutputFromFile("PortalVoucher")
+        .setTitle("SindEducação-ES — Solicitação de Voucher")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
+
+    // ── Portal público de solicitação de reserva do Parque do China ──
+    // Público, sem sessão — solicitarReservaParqueChina (Reservaparquechina.gs)
+    // já é uma função pública, chamada direto por este formulário; a reserva
+    // nasce PENDENTE e a equipe aprova pelo painel administrativo.
+    if (p.portal === "chinapark") {
+      Logger.log("[PORTAL] Redirecionando para o Portal do Parque do China");
+      return HtmlService.createHtmlOutputFromFile("ReservaParqueChina")
+        .setTitle("SindEducação-ES — Reserva Parque do China")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
+
+    // ── Segunda etapa do China Park: o solicitante informa os hóspedes ──
+    // Público, sem sessão — o token da URL identifica a reserva. Precisa vir
+    // antes da checagem de sessão porque quem preenche é o associado (ou o
+    // acompanhante para quem ele repassou a mensagem), que não tem login.
+    // ParqueChinaHospedesCore.gs valida o token e recusa reserva que não esteja
+    // aprovada. O token é lido no próprio cliente, pela URL.
+    if (p.portal === "chinapark-hospedes") {
+      Logger.log("[PORTAL] Hóspedes do Parque do China");
+      return HtmlService.createHtmlOutputFromFile("ParqueChinaHospedes")
+        .setTitle("SindEducação-ES — Hóspedes da reserva")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
+
+    // ── Portal público de agendamento de Oftalmologia ──
+    // Público, sem sessão — só funciona quando a equipe libera uma data
+    // (AgendOftalmo.html, "Data liberada para o Portal"). Sem data liberada,
+    // a própria página avisa que não há atendimento no momento.
+    if (p.portal === "oftalmo") {
+      Logger.log("[PORTAL] Redirecionando para o Portal de Oftalmologia");
+      return HtmlService.createHtmlOutputFromFile("AgendaOftalmoPublica")
+        .setTitle("SindEducação-ES — Agendamento de Oftalmologia")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
 // ── Rota da tela de Emissão de Ingressos (Eventos) — protegida por sessão ──
     if (p.painel === "emissao") {
       var tokenEmissao = String(p.sessao || "").trim();
@@ -83,6 +135,22 @@ if (p.portal === "associado") {
       }
       return HtmlService.createHtmlOutputFromFile("EventoPainel")
         .setTitle("Emissão de Ingressos — Compasso da Vida")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
+// ── Rota da tela de Check-in de Ingressos (Eventos) — protegida por sessão ──
+    if (p.painel === "checkin") {
+      var tokenCheckin = String(p.sessao || "").trim();
+      var sessaoCheckin = getSessaoUsuario(tokenCheckin);
+      if (!sessaoCheckin) {
+        return HtmlService.createHtmlOutputFromFile("Login")
+          .setTitle("SISGEP — Login")
+          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+          .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+      }
+      return HtmlService.createHtmlOutputFromFile("EventoCheckin")
+        .setTitle("Check-in — Compasso da Vida")
         .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
@@ -102,6 +170,43 @@ if (p.portal === "associado") {
       return pixelTransparente_();
     }
 
+    // ── Rastreamento de abertura de e-mail (despesas / guias de NF) ──
+    // As duas funções só agem se o token pertencer ao seu próprio prefixo
+    // (PIXEL_DOC_ ou LEITURA_NF_), então é seguro chamar as duas aqui.
+    if (p.page === "pub-pixel-nf" && p.t) {
+      despesas_registrarLeituraEmail(p.t);
+      guiasPagamento_registrarLeituraEmail(p.t);
+      return pixelTransparente_();
+    }
+
+    // ── Portal público do Fornecedor: envio de nota fiscal/recibo de despesa ──
+    // Mesmo problema da rota da contabilidade abaixo: o link já era enviado
+    // nos e-mails de D-5/D-3/D-1 pedindo a NF, mas essa rota nunca tinha
+    // sido cadastrada aqui — o link do fornecedor nunca abria nada.
+    // PubNFDespesa.html injeta o token via template scriptlet (<?= token ?>).
+    if (p.page === "pub-nf-despesa" && p.token) {
+      var templateNF = HtmlService.createTemplateFromFile("PubNFDespesa");
+      templateNF.token = p.token;
+      return templateNF.evaluate()
+        .setTitle("Envio de Documento Fiscal — SindEducação-ES")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
+
+    // ── Portal público da Contabilidade: confirmação de pagamento de despesa ──
+    // Link enviado no e-mail de "Enviar à Contabilidade" — sem login, o
+    // próprio token identifica a despesa. Rota nunca tinha sido cadastrada
+    // aqui, então o link enviado por e-mail nunca abria nada.
+    // PubContabilDespesa.html lê o token da URL no próprio cliente.
+    if (p.page === "pub-contabil-despesa" && p.token) {
+      return HtmlService.createHtmlOutputFromFile("PubContabilDespesa")
+        .setTitle("Confirmação de Pagamento — SindEducação-ES")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
+
     // ── Tela de redefinição de senha via link de recuperação ──
     var temTokenRecuperacao = p.recuperar;
 
@@ -112,6 +217,23 @@ if (p.portal === "associado") {
         .setTitle("SISGEP — Recuperar senha")
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
+
+    // ── Rota pública: validação de autenticidade de ofício (link/QR impresso no PDF) ──
+    // Precisa vir ANTES da checagem de sessão: quem valida é a escola/associado
+    // que recebeu o documento, sem login no SISGEP.
+    if (p.codigo) {
+      Logger.log("[VALIDACAO] Validando código público de ofício.");
+      return validarPublico(p.codigo);
+    }
+
+    // ── Rota pública: validação da carteirinha digital (QR Code da credencial) ──
+    // Mesma ideia do ofício acima, mas para o Codigo_Validacao gravado em
+    // Carteirinhas_Emitidas — quem escaneia é qualquer pessoa com o celular,
+    // sem login no SISGEP.
+    if (p.credencial) {
+      Logger.log("[VALIDACAO] Validando código público de carteirinha.");
+      return validarCarteirinhaPublico(p.credencial);
     }
 
     // ── Checa sessão — token vem explicitamente da URL (?sessao=token) ──
@@ -137,7 +259,7 @@ if (p.portal === "associado") {
 
     return template
       .evaluate()
-      .setTitle("SISGEP — Ofícios")
+      .setTitle("Portal Administrativo — SindEducação-ES")
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .setSandboxMode(HtmlService.SandboxMode.IFRAME);
 

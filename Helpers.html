@@ -18,28 +18,10 @@ function loader(status) {
   console.log("Loader:", status);
 }
 
-/* ── toast visual (não usa alert) ── */
-function toast(msg, tipo, dur) {
-  tipo = tipo || "info";
-  dur  = dur  || 4000;
-  var box = document.getElementById("sisgepToastBox");
-  if (!box) {
-    box = document.createElement("div");
-    box.id = "sisgepToastBox";
-    box.style.cssText = "position:fixed;top:20px;right:20px;z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none;";
-    document.body.appendChild(box);
-  }
-  var el  = document.createElement("div");
-  var cor = { info:"#3b82f6", ok:"#059669", warn:"#d97706", err:"#dc2626" }[tipo] || "#3b82f6";
-  el.style.cssText = "pointer-events:auto;background:#fff;border-left:4px solid " + cor + ";padding:12px 16px;border-radius:10px;box-shadow:0 6px 20px rgba(0,20,60,.18);font-size:13px;font-weight:600;color:#0f172a;max-width:380px;";
-  el.textContent = msg;
-  box.appendChild(el);
-  setTimeout(function() {
-    el.style.opacity = "0";
-    el.style.transform = "translateX(20px)";
-    setTimeout(function() { el.remove(); }, 200);
-  }, dur);
-}
+/* toast(msg, tipo, dur) vive em OficiosStyles.html (versão "rica", com ícone e
+   barra de progresso). Havia uma segunda implementação aqui que, por ordem de
+   include() (Helpers carrega depois de OficiosStyles), sobrescrevia o toast
+   rico pela versão simples — corrigido removendo a duplicata daqui. */
 
 /* ── utilitários de string ── */
 function escapeHtml(texto) {
@@ -69,6 +51,27 @@ var Utils = {
     v = v.replace(/^(\d{3})\.(\d{3})(\d)/,  "$1.$2.$3");
     v = v.replace(/\.(\d{3})(\d)/,           ".$1-$2");
     input.value = v.substring(0, 14);
+  },
+
+  /* Telefone brasileiro, fixo ou celular.
+   *
+   * Mora aqui e não na tela porque o CLAUDE.md manda: máscara é do Utils,
+   * uma só para o sistema inteiro. Cada tela com a sua diverge no primeiro
+   * ajuste — e telefone gravado em três formatos diferentes quebra qualquer
+   * busca depois.
+   *
+   * Formata enquanto se digita, então precisa aguentar número incompleto:
+   * "(27) 9" tem que sair de "279", não esperar os onze dígitos. */
+  aplicarMascaraTelefone: function(input) {
+    if (!input) return;
+    var d = onlyDigits(input.value).substring(0, 11);
+    var v = d;
+    if (d.length > 2)  v = "(" + d.substring(0,2) + ") " + d.substring(2);
+    if (d.length > 6)  {
+      var corte = d.length > 10 ? 7 : 6;   // celular: 5 dígitos antes do traço
+      v = "(" + d.substring(0,2) + ") " + d.substring(2, corte) + "-" + d.substring(corte);
+    }
+    input.value = v;
   },
 
   /* Validação completa com dígitos verificadores */

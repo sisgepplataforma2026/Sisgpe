@@ -5,7 +5,7 @@
 
 /* ── Histórico — alias de compatibilidade ── */
 function listarHistorico(filtros, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   if (typeof listarHistoricoOficios === "function") {
     return listarHistoricoOficios(filtros || {}, tokenSessao);
   }
@@ -14,7 +14,7 @@ function listarHistorico(filtros, tokenSessao) {
 
 /* ── Exportar Relatório de Ofícios ── */
 function exportarRelatorio(filtros, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   filtros = filtros || {};
   var tipoExportacao = filtros.tipoExportacao || "excel";
   var dataInicio     = filtros.dataInicio ? new Date(filtros.dataInicio + "T00:00:00") : null;
@@ -65,12 +65,41 @@ function exportarRelatorio(filtros, tokenSessao) {
   aba.getRange(2, 1, linhas.length, linhas[0].length).setValues(linhas);
   aba.autoResizeColumns(1, cabecalho.length);
 
-  return exportarPlanilhaTemporaria_(planilhaTemp, nomeArquivo, tipoExportacao);
+  /* Exportação na trilha (item 16.5). O relatório de ofícios não leva CPF —
+   * as colunas são número, tipo, escola, CNPJ e data — por isso dadoPessoal
+   * fica falso aqui. Marcar tudo como dado pessoal esvaziaria o alerta. */
+  try {
+    if (typeof aud_deExportacao_ === "function") {
+      aud_deExportacao_({
+        modulo: "Documentos", submodulo: "Relatórios de Ofícios",
+        formato: tipoExportacao, total: linhas.length, dadoPessoal: false,
+        filtros: { tipo: tipoFiltro, escola: escolaFiltro,
+                   de: filtros.dataInicio || "", ate: filtros.dataFim || "" },
+        sessao: sessaoDocumentos
+      });
+    }
+  } catch (e) { Logger.log("[exportacao] ponte de auditoria falhou: " + e.message); }
+
+  /* Exportar a auditoria é, ele próprio, ação auditada — senão a única ação
+   * que não deixa rastro seria justamente levar o rastro embora. */
+  try {
+    if (typeof aud_deExportacao_ === "function") {
+      aud_deExportacao_({
+        modulo: "Auditoria e Compliance", submodulo: "Exportações",
+        formato: tipoExportacao, total: linhas.length, dadoPessoal: false,
+        filtros: { usuario: usuarioFiltro, tipo: tipoFiltro, escola: escolaFiltro,
+                   de: filtros.dataInicio || "", ate: filtros.dataFim || "" },
+        sessao: sessaoDocumentos
+      });
+    }
+  } catch (e) { Logger.log("[exportacao] ponte de auditoria falhou: " + e.message); }
+
+  return relOficios_exportarPlanilhaTemporaria_(planilhaTemp, nomeArquivo, tipoExportacao);
 }
 
 /* ── Exportar Auditoria (LOG_SISTEMA) ── */
 function exportarAuditoriaLog(filtros, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   filtros = filtros || {};
   var tipoExportacao = filtros.tipoExportacao || "excel";
   var dataInicio     = filtros.dataInicio ? new Date(filtros.dataInicio + "T00:00:00") : null;
@@ -120,7 +149,7 @@ function exportarAuditoriaLog(filtros, tokenSessao) {
   aba.getRange(2, 1, linhas.length, linhas[0].length).setValues(linhas);
   aba.autoResizeColumns(1, cabecalho.length);
 
-  return exportarPlanilhaTemporaria_(planilhaTemp, nomeArquivo, tipoExportacao);
+  return relOficios_exportarPlanilhaTemporaria_(planilhaTemp, nomeArquivo, tipoExportacao);
 }
 
 /* ── listarEscolasOficios ── */
@@ -163,7 +192,7 @@ function listarEscolasOficios() {
 
 /* ── salvarEscolaOficio ── */
 function salvarEscolaOficio(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, true);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", true);
   dados = dados || {};
 
   var ss = SpreadsheetApp.openById(PLANILHA_ID);
@@ -219,8 +248,8 @@ function salvarEscolaOficio(dados, tokenSessao) {
   };
 }
 
-/* ── exportarPlanilhaTemporaria_ ── */
-function exportarPlanilhaTemporaria_(planilhaTemp, nomeArquivo, tipoExportacao) {
+/* ── relOficios_exportarPlanilhaTemporaria_ ── */
+function relOficios_exportarPlanilhaTemporaria_(planilhaTemp, nomeArquivo, tipoExportacao) {
   try {
     var idTemp = planilhaTemp.getId();
     var formato = tipoExportacao === "csv" ? "csv" : "xlsx";
@@ -253,7 +282,7 @@ function exportarPlanilhaTemporaria_(planilhaTemp, nomeArquivo, tipoExportacao) 
 
 /* ── registrarOficioGerado ── */
 function registrarOficioGerado(payload, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   payload = payload || {};
 
   var escola        = payload.escola || {};

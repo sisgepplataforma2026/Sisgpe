@@ -1,0 +1,274 @@
+<div id="auditoriaPainel" style="min-height:100%;background:#f0f4f8;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#0f172a;">
+<!--
+  Auditoria e Compliance — Dashboard (item 16.1 do PROMPT-MESTRE).
+  Backend em AuditoriaCore.gs: auditoriaPainel.
+
+  DIRETRIZ DE DASHBOARD, aplicada literalmente: "o dashboard deve mostrar o
+  que o usuário precisa fazer agora" e "evite dashboards decorativos".
+
+  Aqui isso quer dizer que TODO número desta tela é clicável e abre a trilha
+  já filtrada pelo que ele representa. Card que exibe 8 e não leva às 8 ações
+  obriga a pessoa a refazer o filtro na mão — e ela para de confiar no
+  número, porque não tem como conferir.
+
+  A navegação sai por spIr("auditoriaTrilha") seguido de
+  audAplicarFiltroExterno(), que a tela da trilha expõe.
+-->
+
+  <div class="of-modulo-header">
+    <div>
+      <div class="of-modulo-header-title">🛡️ Auditoria e Compliance</div>
+      <div class="of-modulo-header-sub">O que aconteceu no SISGEP — e o que merece olhar agora</div>
+    </div>
+    <div class="of-modulo-header-badge" id="apFonteBadge">—</div>
+  </div>
+
+  <div id="apEstadoFonte" style="margin-bottom:14px;"></div>
+
+  <!-- ═══ CARDS ═══ -->
+  <div id="apCards" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px;"></div>
+
+  <!-- ═══ MOVIMENTO POR MÓDULO ═══ -->
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">📊</div>
+        <div>
+          <div class="of-card-title">Movimento por módulo</div>
+          <div class="of-card-sub">Clique numa linha para ver as ações daquele módulo</div>
+        </div>
+      </div>
+      <div class="row-btns">
+        <button type="button" id="apBtnRecarregar" class="btn btn-ghost btn-sm">↺ Atualizar</button>
+      </div>
+    </div>
+    <div class="of-card-body">
+      <div id="apPorModulo"></div>
+    </div>
+  </div>
+
+  <!-- ═══ ÚLTIMAS AÇÕES ═══ -->
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">🕒</div>
+        <div>
+          <div class="of-card-title">Últimas ações</div>
+          <div class="of-card-sub">As dez mais recentes da trilha</div>
+        </div>
+      </div>
+      <div class="row-btns">
+        <button type="button" id="apBtnTrilha" class="btn btn-navy btn-sm">Ver a trilha completa →</button>
+      </div>
+    </div>
+    <div class="of-card-body">
+      <div id="apUltimas"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>window.AUD_PAINEL_MARCADOR = "bloco de script executou";</script>
+
+<script>
+(function(){
+  "use strict";
+
+  var apVigia = null;
+
+  function pEl(id){ return document.getElementById(id); }
+  function pEsc(t){
+    return String(t==null?"":t).replace(/[&<>"]/g,function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];
+    });
+  }
+  function pToken(){
+    var t = (typeof SISGEP_TOKEN_SESSAO !== "undefined") ? SISGEP_TOKEN_SESSAO : "";
+    return (typeof t === "string") ? t : "";
+  }
+  function pAviso(msg,tipo){
+    if(typeof window.toast==="function") return window.toast(msg,tipo||"erro",5000);
+    console.warn("[Auditoria]",msg);
+  }
+  function pCaixa(texto,cor){
+    var c={erro:["#fee2e2","#fca5a5","#991b1b"],ok:["#dcfce7","#6ee7b7","#166534"],
+           alerta:["#fef3c7","#fcd34d","#92400e"],info:["#eff6ff","#bfdbfe","#1e40af"]}[cor||"info"];
+    return '<div style="background:'+c[0]+";border:1.5px solid "+c[1]+
+      ";border-radius:12px;padding:13px 17px;font-size:12.5px;font-weight:600;line-height:1.55;color:"+c[2]+
+      ';">'+texto+"</div>";
+  }
+  function pDataHora(v){
+    if(!v) return "—";
+    var d=(v instanceof Date)?v:new Date(v);
+    if(isNaN(d.getTime())) return "—";
+    function z(n){ return (n<10?"0":"")+n; }
+    return z(d.getDate())+"/"+z(d.getMonth()+1)+" "+z(d.getHours())+":"+z(d.getMinutes());
+  }
+
+  /* A navegação que faz o card valer alguma coisa. A trilha pode ainda não
+     ter sido inicializada quando se chega por aqui — daí o adiamento. */
+  window.apAbrirTrilha = function(filtro){
+    if(typeof window.spIr !== "function") return pAviso("Não consegui abrir a trilha.","erro");
+    window.spIr("auditoriaTrilha", null);
+    setTimeout(function(){
+      if(typeof window.audAplicarFiltroExterno === "function"){
+        window.audAplicarFiltroExterno(filtro || {});
+      }
+    }, 420);
+  };
+
+  function pCard(cfg){
+    return '<div class="of-card" role="button" tabindex="0" ' +
+      'onclick=\'apAbrirTrilha(' + JSON.stringify(cfg.filtro) + ')\' ' +
+      'onkeypress="if(event.key===\'Enter\')this.click()" ' +
+      'style="cursor:pointer;padding:16px 18px;margin:0;border-left:4px solid '+cfg.cor+';">' +
+      '<div style="font-size:27px;font-weight:900;color:'+cfg.cor+';line-height:1.1;">'+cfg.valor+'</div>' +
+      '<div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-top:5px;">'+pEsc(cfg.rotulo)+'</div>' +
+      '<div style="font-size:11.5px;color:#94a3b8;font-weight:600;margin-top:3px;">'+pEsc(cfg.nota)+'</div>' +
+      '<div style="font-size:11.5px;color:var(--blue,#1565C0);font-weight:800;margin-top:9px;">'+pEsc(cfg.acao)+' →</div>' +
+      '</div>';
+  }
+
+  function pRenderCards(r){
+    pEl("apCards").innerHTML =
+      pCard({ valor:r.hoje, rotulo:"Hoje", nota:"ações registradas hoje",
+              acao:"ver as de hoje", cor:"#1565C0",
+              filtro:{ de:r.dataHoje, ate:r.dataHoje } }) +
+      pCard({ valor:r.criticas, rotulo:"Ações críticas", nota:"mexem em dinheiro ou desfazem",
+              acao:"ver críticas", cor:"#C9A84C",
+              filtro:{ apenasCriticas:true } }) +
+      pCard({ valor:r.falhas, rotulo:"Falhas", nota:"a operação não se concluiu",
+              acao:"ver falhas", cor:"#dc2626",
+              filtro:{ resultado:"FALHA" } }) +
+      pCard({ valor:r.total, rotulo:"Total na trilha", nota:"desde o início do registro",
+              acao:"ver tudo", cor:"#475569", filtro:{} });
+  }
+
+  function pRenderModulos(r){
+    var chaves = Object.keys(r.porModulo || {});
+    if(!chaves.length){
+      pEl("apPorModulo").innerHTML = pCaixa(
+        "Nenhuma ação registrada ainda. A trilha começa a encher assim que os " +
+        "módulos passarem a gravar nela — hoje só a emissão de ofício está ligada.", "info");
+      return;
+    }
+
+    chaves.sort(function(a,b){ return r.porModulo[b]-r.porModulo[a]; });
+    var maior = r.porModulo[chaves[0]] || 1;
+
+    pEl("apPorModulo").innerHTML = chaves.map(function(k){
+      var n = r.porModulo[k];
+      var pct = Math.max(2, Math.round(n*100/maior));
+      return '<div role="button" tabindex="0" ' +
+        'onclick=\'apAbrirTrilha({"modulo":' + JSON.stringify(k) + '})\' ' +
+        'onkeypress="if(event.key===\'Enter\')this.click()" ' +
+        'style="cursor:pointer;padding:9px 0;border-bottom:1px solid #eef2f7;">' +
+        '<div style="display:flex;align-items:center;gap:12px;">' +
+          '<div style="width:190px;flex:none;font-size:12.5px;font-weight:700;">'+pEsc(k)+'</div>' +
+          '<div style="flex:1;height:9px;background:#e2e8f0;border-radius:999px;overflow:hidden;">' +
+            '<div style="width:'+pct+'%;height:100%;background:var(--blue,#1565C0);"></div>' +
+          '</div>' +
+          '<div style="width:64px;text-align:right;font-size:13px;font-weight:900;">'+n+'</div>' +
+        '</div></div>';
+    }).join("");
+  }
+
+  function pRenderUltimas(r){
+    var lista = r.ultimas || [];
+    if(!lista.length){
+      pEl("apUltimas").innerHTML = pCaixa("Nada registrado ainda.","info");
+      return;
+    }
+    pEl("apUltimas").innerHTML =
+      "<div style='overflow-x:auto;'><table class='of-table' style='width:100%;'>" +
+      "<thead><tr><th style='width:14%;'>Quando</th><th style='width:30%;'>Módulo</th>" +
+      "<th style='width:28%;'>Ação</th><th style='width:20%;'>Quem</th><th style='width:8%;'></th></tr></thead><tbody>" +
+      lista.map(function(a){
+        var falhou = String(a.resultado||"").toUpperCase()==="FALHA";
+        return "<tr style='cursor:pointer;"+(falhou?"background:#fef2f2;":"")+"' " +
+          "onclick='apAbrirTrilha("+JSON.stringify({registroId:a.registroId||""}).replace(/'/g,"&#39;")+")'>" +
+          "<td style='white-space:nowrap;'>" +
+            (a.critica ? "<span style='color:#dc2626;'>●</span> " : "") + pEsc(pDataHora(a.dataHora)) + "</td>" +
+          "<td>" + pEsc(a.modulo||"—") + (a.submodulo ? " › "+pEsc(a.submodulo) : "") + "</td>" +
+          "<td><strong>" + pEsc(a.acao||"—") + "</strong>" +
+            (falhou ? " <span style='display:inline-block;padding:1px 7px;border-radius:999px;font-size:9.5px;font-weight:800;background:#fee2e2;color:#991b1b;'>FALHA</span>" : "") + "</td>" +
+          "<td>" + pEsc(String(a.usuario||"—").split("@")[0]) + "</td>" +
+          "<td style='text-align:right;color:var(--blue,#1565C0);font-weight:800;'>ver</td>" +
+        "</tr>";
+      }).join("") + "</tbody></table></div>";
+  }
+
+  function pRenderFonte(r){
+    var badge = pEl("apFonteBadge");
+    if(r.avisoFirestore){
+      badge.textContent = "RESERVA";
+      pEl("apEstadoFonte").innerHTML = pCaixa(
+        "<strong>O Firestore recusou a consulta; os números vêm da planilha de reserva.</strong>" +
+        "<br><code style='font-size:11px;word-break:break-all;'>"+pEsc(r.avisoFirestore)+"</code>","erro");
+      return;
+    }
+    if(r.fonte === "FIRESTORE"){
+      badge.textContent = "FIRESTORE";
+      pEl("apEstadoFonte").innerHTML = "";
+      return;
+    }
+    badge.textContent = "RESERVA";
+    pEl("apEstadoFonte").innerHTML = pCaixa(
+      "<strong>Números vindos da planilha de reserva.</strong> O Firestore ainda não foi " +
+      "configurado, então os registros ficam na aba <code>SISGEP_Auditoria</code> — onde podem " +
+      "ser alterados por quem tem acesso à planilha.","alerta");
+  }
+
+  function pFalhaDura(titulo, e){
+    if(apVigia){ clearTimeout(apVigia); apVigia = null; }
+    pEl("apCards").innerHTML = "";
+    pEl("apPorModulo").innerHTML = pCaixa(
+      "<strong>"+pEsc(titulo)+"</strong>" +
+      (e ? "<br><br><code style='font-size:11px;word-break:break-all;'>" +
+           pEsc(e && e.message ? e.message : e)+"</code>" : ""),"erro");
+    pEl("apUltimas").innerHTML = "";
+    pAviso(titulo,"erro");
+  }
+
+  function pCarregar(){
+    pEl("apPorModulo").innerHTML = pCaixa("Consultando o servidor…","info");
+
+    if(apVigia) clearTimeout(apVigia);
+    apVigia = setTimeout(function(){
+      pFalhaDura("O servidor não respondeu em 25 segundos.", null);
+    }, 25000);
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(apVigia){ clearTimeout(apVigia); apVigia = null; }
+        if(!r || !r.ok) return pFalhaDura("O servidor respondeu, mas sem os números.", null);
+        // Exceção aqui dentro não cai no withFailureHandler.
+        try {
+          pRenderFonte(r);
+          pRenderCards(r);
+          pRenderModulos(r);
+          pRenderUltimas(r);
+
+          if(r.truncado){
+            pEl("apEstadoFonte").innerHTML += pCaixa(
+              "<strong>As contagens olham as 1.000 ações mais recentes</strong>, e a trilha tem " +
+              r.total + ". Os cards não representam o total histórico.","alerta");
+          }
+        } catch (err) {
+          pFalhaDura("Os números vieram, mas a tela não conseguiu desenhá-los.", err);
+        }
+      })
+      .withFailureHandler(function(e){ pFalhaDura("Erro ao carregar o painel.", e); })
+      .auditoriaPainel(pToken());
+  }
+
+  window.initAuditoriaPainel = function(){
+    var b;
+    b = pEl("apBtnRecarregar"); if(b) b.onclick = pCarregar;
+    b = pEl("apBtnTrilha");     if(b) b.onclick = function(){ window.apAbrirTrilha({}); };
+
+    try { pCarregar(); }
+    catch (e) { pFalhaDura("Não consegui nem iniciar a consulta do painel.", e); }
+  };
+})();
+</script>

@@ -150,8 +150,12 @@ function sindAss_normalizarNomeEscola_(textoLivre) {
  * Retorna { linha, criado, escolaVinculada, avisos: [] }
  */
 function sindAss_gravarDaFicha_(ficha) {
-  var lock = LockService.getScriptLock();
-  lock.waitLock(30000);
+  // travarSisgep_ e não LockService direto: quem chama isto é
+  // aprovarFichaSindicalizacao (Sindicalizacaoadmin.gs:160), que JÁ está
+  // segurando a trava. Com LockService direto, esta linha esperava 30s por
+  // uma trava que só quem chamou podia soltar, estourava, e o trabalhador
+  // aprovado nunca chegava à aba Associados. Ver TravaSisgep.gs.
+  var trava = travarSisgep_(30000);
   try {
     var aba = sindAss_aba_();
     var mapa = sindAss_mapaCabecalho_(aba);
@@ -238,7 +242,7 @@ function sindAss_gravarDaFicha_(ficha) {
       avisos: avisos
     };
   } finally {
-    lock.releaseLock();
+    trava.liberar();
   }
 }
 
@@ -263,11 +267,145 @@ function sindAss_montarLogradouro_(ficha) {
 }
 
 /**
+ * Marca o associado como NÃO filiado (Filiado = 'N') a partir do CPF.
+ * Usado pela Desfiliação via IA (confirmarDesfiliacaoIA, em
+ * IA_DocumentosSindicalizacao.gs) — só roda depois que o atendente já
+ * confirmou os dados na revisão humana. NÃO apaga a linha nem outros
+ * dados do associado, só atualiza o status de filiação e a data de
+ * atualização — mesmo padrão de "não apagar o que a ficha não traz" de
+ * sindAss_gravarDaFicha_.
+ *
+ * Retorna { encontrado, linha }
+ */
+// SEM trava de módulo, de propósito: quem chama isto é gerarOficioWeb
+// (Oficios.gs:671), no fluxo do ofício de DESFILIAÇÃO. Exigir o módulo
+// Sindicalização aqui quebraria a emissão de ofício para quem só tem
+// Documentos — e a desfiliação é consequência do ofício, não uma
+// operação avulsa no cadastro de associados. A sessão continua exigida.
+function sindAss_desfiliar_(cpf, usuario, tokenSessao) {
+  exigirSessaoDocumentos_(tokenSessao, false);
+  // travarSisgep_: gerarOficioWeb (Oficios.gs:683) chama isto no meio da
+  // emissão do ofício de desfiliação, e aquele fluxo também trava.
+  var trava = travarSisgep_(30000);
+  try {
+    var cpfDigitos = sindAss_digitos_(cpf);
+    if (cpfDigitos.length !== 11) throw new Error('CPF inválido.');
+
+    var aba = sindAss_aba_();
+    var mapa = sindAss_mapaCabecalho_(aba);
+    var idx = function (nome) {
+      var i = mapa[String(nome).toUpperCase()];
+      return (i === undefined ? SIND_ASS_COLUNAS.indexOf(nome) : i) + 1;
+    };
+
+    var ultima = aba.getLastRow();
+    if (ultima < 2) return { encontrado: false };
+
+    var cpfs = aba.getRange(2, idx('CPF'), ultima - 1, 1).getValues();
+    for (var i = 0; i < cpfs.length; i++) {
+      if (sindAss_digitos_(cpfs[i][0]) === cpfDigitos) {
+        var linha = i + 2;
+        aba.getRange(linha, idx('Filiado')).setValue('N');
+        aba.getRange(linha, idx('ULTIMA_ATUALIZACAO')).setValue(new Date());
+        Logger.log('sindAss_desfiliar_: CPF ' + cpfDigitos + ' desfiliado por ' + (usuario || '—'));
+        if (typeof cartAd_revogarPorDesfiliacao_ === 'function') {
+          cartAd_revogarPorDesfiliacao_(cpfDigitos, usuario);
+        }
+        return { encontrado: true, linha: linha };
+      }
+    }
+    return { encontrado: false };
+  } finally {
+    trava.liberar();
+  }
+}
+
+/**
+ * Preenche a coluna MATRICULA de todo associado que ainda não tem uma —
+ * usando o MESMO contador sequencial (SIND_ADM_PROP_MATRICULA, definido
+ * em Sindicalizacaoadmin.gs) que já é usado quando uma Ficha de
+ * Sindicalização é aprovada. Por isso não há risco de colisão: as
+ * matrículas geradas aqui continuam exatamente de onde o contador parou,
+ * e qualquer aprovação de ficha feita DEPOIS continua a partir daqui.
+ *
+ * Só preenche células vazias — nunca sobrescreve uma matrícula já
+ * existente (idempotente: rodar de novo não gera duplicata nem pula
+ * ninguém que já ficou sem matrícula por engano).
+ *
+ * Não chama sindAdm_gerarMatricula_() em loop (uma chamada por associado,
+ * ~8.000 vezes, cada uma lendo/gravando PropertiesService, estouraria o
+ * tempo de execução) — lê o contador uma vez, soma em memória, grava uma
+ * vez no fim.
+ *
+ * COMO RODAR: no editor do Apps Script, selecione esta função no menu
+ * suspenso ao lado de "Executar" e rode manualmente. Confira o resultado
+ * em "Execuções" (View → Execution log).
+ */
+function gerarMatriculasEmLote() {
+  var trava = travarSisgep_(30000);
+  try {
+    var aba = sindAss_aba_();
+    var mapa = sindAss_mapaCabecalho_(aba);
+    var idx = function (nome) {
+      var i = mapa[String(nome).toUpperCase()];
+      return (i === undefined ? SIND_ASS_COLUNAS.indexOf(nome) : i) + 1;
+    };
+    var colMatricula = idx('MATRICULA');
+
+    var ultima = aba.getLastRow();
+    if (ultima < 2) {
+      var vazio = { totalAssociados: 0, matriculasGeradas: 0 };
+      Logger.log(JSON.stringify(vazio));
+      return vazio;
+    }
+
+    var range = aba.getRange(2, colMatricula, ultima - 1, 1);
+    var valores = range.getValues();
+
+    var props = PropertiesService.getScriptProperties();
+    var atual = props.getProperty(SIND_ADM_PROP_MATRICULA);
+    if (atual === null) {
+      var maior = 0;
+      sindAdm_lerTodas_().forEach(function (r) {
+        var n = parseInt(String(r.MATRICULA).replace(/\D/g, ''), 10);
+        if (!isNaN(n) && n > maior) maior = n;
+      });
+      atual = String(maior);
+    }
+    var proximo = parseInt(atual, 10);
+
+    var geradas = 0;
+    for (var i = 0; i < valores.length; i++) {
+      var jaTem = String(valores[i][0] || '').trim();
+      if (!jaTem) {
+        proximo++;
+        valores[i][0] = sindAdm_fmtMatricula_(proximo);
+        geradas++;
+      }
+    }
+
+    range.setValues(valores);
+    props.setProperty(SIND_ADM_PROP_MATRICULA, String(proximo));
+
+    var resultado = {
+      totalAssociados: valores.length,
+      matriculasGeradas: geradas,
+      ultimaMatricula: sindAdm_fmtMatricula_(proximo)
+    };
+    Logger.log(JSON.stringify(resultado));
+    return resultado;
+  } finally {
+    trava.liberar();
+  }
+}
+
+/**
  * Consulta rápida: verifica se um CPF já consta como associado e qual a
  * situação. Útil na ficha (avisar quem já é filiado) e no painel.
  * Retorna { existe, filiado, nome, matricula, escola, linha }
  */
-function consultarAssociadoPorCPF(cpf) {
+function consultarAssociadoPorCPF(cpf, tokenSessao) {
+  exigirModulo_(tokenSessao, "sindicalizacao", false);
   var cpfDigitos = sindAss_digitos_(cpf);
   if (cpfDigitos.length !== 11) {
     return { existe: false, mensagem: 'CPF inválido.' };
@@ -356,8 +494,7 @@ function diagnosticarVinculoEscolasAssociados() {
  * ========================================================================== */
 
 function sindAss_planilha_() {
-  return SpreadsheetApp.getActiveSpreadsheet() ||
-    SpreadsheetApp.openById('1QPpsx19v4YzfskoYXK9WB89TClA7q8SWGSn55VZ040E');
+  return planilhaSisgep_();
 }
 
 function sindAss_aba_() {
