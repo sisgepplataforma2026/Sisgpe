@@ -1,0 +1,349 @@
+<!-- CONFERÊNCIA DE DESTINATÁRIOS — a tela que fica entre emitir e enviar.
+
+     Desenho aprovado pelo usuário em 02/09/2026, depois de ele pedir "um
+     seletor após a emissão e antes do envio para excluir ou incluir email" e
+     responder SEMPRE à pergunta de quando a conferência deveria acontecer.
+
+     POR QUE ARQUIVO PRÓPRIO: o OficiosScripts já tem 3.643 linhas. Tela nova
+     entra em arquivo novo; o que ela precisa do resto é só o toast() e as
+     classes do OficiosStyles, que é o CSS mestre.
+
+     O QUE A TELA DELIBERADAMENTE NÃO FAZ:
+       - não esconde o endereço que quicou. Ele fica na lista, desmarcado, e
+         com o motivo à vista;
+       - não corrige o cadastro da escola sozinho: caixa separada, desmarcada;
+       - não deixa liberar sem destinatário — o botão desabilita e explica.
+-->
+
+<style>
+  .cnf-linha{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;
+    border:1px solid #e5e7eb;border-radius:10px;margin-bottom:8px;background:#fff;}
+  .cnf-linha.alerta{border-color:#fca5a5;background:#fef2f2;}
+  .cnf-linha input[type=checkbox]{margin-top:3px;width:17px;height:17px;cursor:pointer;}
+  .cnf-mail{font-weight:600;color:var(--navy);word-break:break-all;}
+  .cnf-origem{font-size:11px;color:#6b7280;margin-top:2px;}
+  .cnf-hist{font-size:12px;margin-top:4px;}
+  .cnf-hist.mau{color:#b91c1c;font-weight:600;}
+  .cnf-hist.bom{color:#0f8a5f;font-weight:600;}
+  .cnf-hist.neutro{color:#6b7280;}
+  .cnf-sug{background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;
+    padding:10px 12px;margin:10px 0;font-size:13px;}
+  .cnf-add{display:flex;gap:8px;margin:12px 0;}
+  .cnf-add input{flex:1;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;}
+  .cnf-cad{display:flex;gap:8px;align-items:flex-start;background:#fffbeb;
+    border:1px solid #fde68a;border-radius:10px;padding:10px 12px;margin:12px 0;font-size:13px;}
+  .cnf-item{display:flex;justify-content:space-between;align-items:center;gap:12px;
+    padding:12px 14px;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:8px;background:#fff;}
+  .cnf-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;
+    background:#fef3c7;color:#92400e;white-space:nowrap;}
+</style>
+
+<div id="blocoConferencia" style="display:none;">
+  <div class="of-card">
+    <div class="of-card-head">
+      <div class="of-card-head-l">
+        <div class="of-card-ico">✅</div>
+        <div>
+          <div class="of-card-title">Conferir destinatários</div>
+          <div class="of-card-sub">Ofícios emitidos que ainda não foram enviados</div>
+        </div>
+      </div>
+      <button type="button" id="btnAtualizarConferencia" class="btn btn-ghost btn-sm">🔄 Atualizar</button>
+    </div>
+    <div class="of-card-body">
+      <div id="painelConferencia"><div class="of-table-empty">Carregando…</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="of-modal-overlay" id="cnfOverlay" style="display:none;">
+  <div class="of-modal" style="max-width:640px;">
+    <div class="of-modal-head">
+      <div>
+        <div class="of-modal-title" id="cnfTitulo">Destinatários</div>
+        <div class="of-modal-sub" id="cnfEscola"></div>
+      </div>
+      <button type="button" class="of-modal-x" id="cnfFechar">×</button>
+    </div>
+    <div class="of-modal-body" id="cnfCorpo"></div>
+    <div class="of-modal-foot">
+      <button type="button" class="btn btn-outline" id="cnfCancelar">Cancelar ofício</button>
+      <div style="flex:1;"></div>
+      <button type="button" class="btn btn-ghost" id="cnfVoltar">Voltar</button>
+      <button type="button" class="btn btn-navy" id="cnfLiberar">Liberar envio</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  function el(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+  function aviso(m, t) {
+    if (typeof toast === "function") toast(m, t || "info");
+    else if (t === "erro") alert(m);
+  }
+  function token() {
+    return (typeof TOKEN_SESSAO !== "undefined" && TOKEN_SESSAO) ||
+           (window.SISGEP && window.SISGEP.token) || "";
+  }
+  function dataBR(v) {
+    if (!v) return "";
+    var d = new Date(v);
+    if (isNaN(d.getTime())) return String(v);
+    return ("0" + d.getDate()).slice(-2) + "/" + ("0" + (d.getMonth() + 1)).slice(-2) +
+           "/" + d.getFullYear();
+  }
+
+  var atual = null;          /* o ofício aberto no seletor */
+  var acrescentados = [];    /* endereços digitados agora */
+
+  /* ── Tela A: a lista ──────────────────────────────────────────────── */
+
+  function carregar() {
+    var alvo = el("painelConferencia");
+    if (!alvo) return;
+    alvo.innerHTML = '<div class="of-table-empty">Carregando…</div>';
+
+    google.script.run
+      .withSuccessHandler(function (r) {
+        if (!r || !r.ok) {
+          alvo.innerHTML = '<div class="of-table-empty">' +
+            esc((r && r.mensagem) || "Não foi possível carregar.") + '</div>';
+          return;
+        }
+        if (!r.itens.length) {
+          alvo.innerHTML = '<div class="of-table-empty">' +
+            'Nenhum ofício aguardando conferência.</div>';
+          return;
+        }
+        var h = "";
+        r.itens.forEach(function (it) {
+          h += '<div class="cnf-item">' +
+                 '<div>' +
+                   '<div style="font-weight:700;color:var(--navy);">Ofício ' + esc(it.numero) +
+                     ' <span style="font-weight:400;color:#6b7280;">· ' + esc(it.tipo) + '</span></div>' +
+                   '<div style="font-size:13px;color:#374151;margin-top:2px;">' + esc(it.escola) + '</div>' +
+                   '<div style="font-size:11px;color:#6b7280;margin-top:2px;">' +
+                     'emitido em ' + esc(dataBR(it.criadoEm)) + ' · ' +
+                     it.destinatarios + ' destinatário(s)</div>' +
+                 '</div>' +
+                 '<div style="display:flex;align-items:center;gap:10px;">' +
+                   (it.comAlerta > 0
+                     ? '<span class="cnf-badge">⚠ ' + it.comAlerta + ' a conferir</span>' : '') +
+                   '<button type="button" class="btn btn-navy btn-sm" data-cnf-abrir="' +
+                     esc(it.id) + '">Conferir</button>' +
+                 '</div>' +
+               '</div>';
+        });
+        alvo.innerHTML = h;
+        var bts = alvo.querySelectorAll("[data-cnf-abrir]");
+        for (var i = 0; i < bts.length; i++) {
+          bts[i].onclick = function () { abrir(this.getAttribute("data-cnf-abrir")); };
+        }
+      })
+      .withFailureHandler(function (e) {
+        alvo.innerHTML = '<div class="of-table-empty">' + esc(e && e.message || e) + '</div>';
+      })
+      .oficiosAguardandoDestinatarios(token());
+  }
+
+  /* ── Tela B: o seletor ────────────────────────────────────────────── */
+
+  function abrir(filaId) {
+    acrescentados = [];
+    el("cnfCorpo").innerHTML = '<div class="of-table-empty">Carregando…</div>';
+    el("cnfOverlay").style.display = "flex";
+
+    google.script.run
+      .withSuccessHandler(function (r) {
+        if (!r || !r.ok) {
+          el("cnfCorpo").innerHTML = '<div class="of-table-empty">' +
+            esc((r && r.mensagem) || "Não foi possível carregar.") + '</div>';
+          return;
+        }
+        atual = r;
+        el("cnfTitulo").textContent = "Destinatários · Ofício " + r.numero;
+        el("cnfEscola").textContent = r.escola;
+        desenhar();
+      })
+      .withFailureHandler(function (e) { aviso(String(e && e.message || e), "erro"); })
+      .destinatariosDoOficio(filaId, token());
+  }
+
+  function desenhar() {
+    var comAlerta = atual.destinatarios.filter(function (d) { return d.falhas > 0; }).length;
+    var h = "";
+
+    if (comAlerta) {
+      h += '<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;' +
+           'padding:10px 12px;margin-bottom:12px;color:#b91c1c;font-weight:600;font-size:13px;">' +
+           '⚠ ' + comAlerta + ' endereço(s) com histórico de falha de entrega</div>';
+    }
+
+    atual.destinatarios.forEach(function (d, i) {
+      var hist, cls;
+      if (d.falhas > 0) {
+        cls = "mau";
+        hist = "❌ quicou " + d.falhas + " vez(es)" +
+               (d.ultimaFalha ? " · última em " + dataBR(d.ultimaFalha) : "");
+      } else if (d.confirmacoes > 0) {
+        cls = "bom";
+        hist = "✅ confirmou " + d.confirmacoes + " ofício(s)" +
+               (d.ultimaConfirmacao ? " · último em " + dataBR(d.ultimaConfirmacao) : "");
+      } else {
+        cls = "neutro";
+        hist = "— sem histórico" + (d.envios ? " de retorno (" + d.envios + " enviados)" : "");
+      }
+
+      h += '<div class="cnf-linha' + (d.falhas > 0 ? " alerta" : "") + '">' +
+             '<input type="checkbox" data-cnf-chk="' + i + '"' + (d.marcado ? " checked" : "") + '>' +
+             '<div style="flex:1;">' +
+               '<div class="cnf-mail">' + esc(d.email) + '</div>' +
+               '<div class="cnf-origem">' + esc(d.origem) + '</div>' +
+               '<div class="cnf-hist ' + cls + '">' + esc(hist) + '</div>' +
+             '</div>' +
+           '</div>';
+    });
+
+    acrescentados.forEach(function (e, i) {
+      h += '<div class="cnf-linha">' +
+             '<input type="checkbox" data-cnf-novo="' + i + '" checked>' +
+             '<div style="flex:1;">' +
+               '<div class="cnf-mail">' + esc(e) + '</div>' +
+               '<div class="cnf-origem">acrescentado agora por você</div>' +
+               '<div class="cnf-hist neutro">— sem histórico</div>' +
+             '</div>' +
+           '</div>';
+    });
+
+    if (atual.sugestoes && atual.sugestoes.length) {
+      h += '<div class="cnf-sug"><strong>Esta escola já confirmou por outro endereço:</strong><br>';
+      atual.sugestoes.forEach(function (s) {
+        h += '<div style="margin-top:6px;">' + esc(s.email) +
+             ' <span style="color:#6b7280;">(' + s.confirmacoes + ' confirmação(ões))</span> ' +
+             '<button type="button" class="btn btn-ghost btn-sm" data-cnf-usar="' +
+             esc(s.email) + '">usar este</button></div>';
+      });
+      h += '</div>';
+    }
+
+    h += '<div class="cnf-add">' +
+           '<input type="email" id="cnfNovoEmail" placeholder="acrescentar e-mail…">' +
+           '<button type="button" class="btn btn-outline" id="cnfBtnAdd">+ Acrescentar</button>' +
+         '</div>';
+
+    h += '<div class="cnf-cad">' +
+           '<input type="checkbox" id="cnfCorrigirCadastro" style="margin-top:2px;">' +
+           '<label for="cnfCorrigirCadastro" style="cursor:pointer;">' +
+             '<strong>Corrigir também no cadastro da escola</strong><br>' +
+             '<span style="color:#92400e;">Sem isto, a exclusão vale só para este ofício — ' +
+             'o próximo virá com os mesmos endereços.</span></label>' +
+         '</div>';
+
+    el("cnfCorpo").innerHTML = h;
+
+    var chks = el("cnfCorpo").querySelectorAll("input[type=checkbox]");
+    for (var i = 0; i < chks.length; i++) chks[i].onchange = atualizarBotao;
+
+    var usar = el("cnfCorpo").querySelectorAll("[data-cnf-usar]");
+    for (var u = 0; u < usar.length; u++) {
+      usar[u].onclick = function () { acrescentar(this.getAttribute("data-cnf-usar")); };
+    }
+    if (el("cnfBtnAdd")) {
+      el("cnfBtnAdd").onclick = function () { acrescentar((el("cnfNovoEmail") || {}).value); };
+    }
+    atualizarBotao();
+  }
+
+  function acrescentar(email) {
+    var v = String(email || "").trim();
+    if (!v) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)) return aviso("E-mail inválido: " + v, "erro");
+    var jaTem = acrescentados.indexOf(v) > -1 ||
+      atual.destinatarios.some(function (d) { return d.email.toLowerCase() === v.toLowerCase(); });
+    if (jaTem) return aviso("Este e-mail já está na lista.", "info");
+    acrescentados.push(v);
+    desenhar();
+  }
+
+  function escolhidos() {
+    var lista = [];
+    var chks = el("cnfCorpo").querySelectorAll("[data-cnf-chk]");
+    for (var i = 0; i < chks.length; i++) {
+      if (chks[i].checked) lista.push(atual.destinatarios[Number(chks[i].getAttribute("data-cnf-chk"))].email);
+    }
+    var novos = el("cnfCorpo").querySelectorAll("[data-cnf-novo]");
+    for (var n = 0; n < novos.length; n++) {
+      if (novos[n].checked) lista.push(acrescentados[Number(novos[n].getAttribute("data-cnf-novo"))]);
+    }
+    return lista;
+  }
+
+  /* Sem destinatário não há ofício. Desabilitar aqui é melhor do que deixar
+     liberar e falhar na fila três tentativas depois. */
+  function atualizarBotao() {
+    var n = escolhidos().length;
+    var b = el("cnfLiberar");
+    if (!b) return;
+    b.disabled = n === 0;
+    b.textContent = n === 0 ? "Escolha ao menos um e-mail" : "Liberar envio → " + n + " destino(s)";
+    b.style.opacity = n === 0 ? "0.5" : "1";
+    b.style.cursor = n === 0 ? "not-allowed" : "pointer";
+  }
+
+  function liberar() {
+    var lista = escolhidos();
+    if (!lista.length) return;
+    var corrigir = !!(el("cnfCorrigirCadastro") && el("cnfCorrigirCadastro").checked);
+    var b = el("cnfLiberar");
+    b.disabled = true;
+    b.textContent = "Liberando…";
+
+    google.script.run
+      .withSuccessHandler(function (r) {
+        if (!r || !r.ok) { aviso((r && r.mensagem) || "Não foi possível liberar.", "erro"); atualizarBotao(); return; }
+        aviso(r.mensagem, "sucesso");
+        fechar();
+        carregar();
+      })
+      .withFailureHandler(function (e) { aviso(String(e && e.message || e), "erro"); atualizarBotao(); })
+      .liberarEnvioOficio(atual.id, lista, corrigir, token());
+  }
+
+  function cancelar() {
+    if (!atual) return;
+    var motivo = prompt("Cancelar o ofício " + atual.numero + ". Motivo:");
+    if (motivo === null) return;
+    google.script.run
+      .withSuccessHandler(function (r) {
+        aviso((r && r.mensagem) || "Cancelado.", r && r.ok ? "sucesso" : "erro");
+        if (r && r.ok) { fechar(); carregar(); }
+      })
+      .withFailureHandler(function (e) { aviso(String(e && e.message || e), "erro"); })
+      .cancelarOficioAguardando(atual.id, motivo, token());
+  }
+
+  function fechar() {
+    el("cnfOverlay").style.display = "none";
+    atual = null;
+    acrescentados = [];
+  }
+
+  function iniciar() {
+    if (el("cnfFechar")) el("cnfFechar").onclick = fechar;
+    if (el("cnfVoltar")) el("cnfVoltar").onclick = fechar;
+    if (el("cnfLiberar")) el("cnfLiberar").onclick = liberar;
+    if (el("cnfCancelar")) el("cnfCancelar").onclick = cancelar;
+    if (el("btnAtualizarConferencia")) el("btnAtualizarConferencia").onclick = carregar;
+  }
+
+  window.carregarConferenciaDestinatarios = carregar;
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar);
+  else iniciar();
+})();
+</script>

@@ -168,11 +168,48 @@ b.passo("13. sem sessão, nenhuma delas responde");
     par[0] + " recusa sem sessão", msg);
 });
 
+b.fluxo("DESTINATÁRIOS · a tela existe e chama o backend certo");
+
+const fs141 = require("fs");
+const path141 = require("path");
+const RAIZ141 = path141.resolve(__dirname, "..", "..");
+function lerSemComentario(arq) {
+  return fs141.readFileSync(path141.join(RAIZ141, arq), "utf8")
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/\/\*[\s\S]*?\*\//g, " ");
+}
+const TELA = lerSemComentario("OficiosConferencia.html");
+
+b.passo("14. a tela chama as quatro funções, com o token");
+["oficiosAguardandoDestinatarios(token())",
+ "destinatariosDoOficio(filaId, token())",
+ "liberarEnvioOficio(atual.id, lista, corrigir, token())",
+ "cancelarOficioAguardando(atual.id, motivo, token())"
+].forEach(function (chamada) {
+  b.ok(TELA.indexOf("." + chamada) > -1, "chama " + chamada.split("(")[0]);
+});
+
+b.passo("15. e desabilita o botão quando ninguém está marcado");
+/* Sem isto a pessoa libera, o backend recusa, e ela descobre o problema depois
+   de clicar — em vez de ver antes. */
+b.ok(/b\.disabled\s*=\s*n === 0/.test(TELA), "o botão desabilita com zero escolhidos");
+b.ok(/Escolha ao menos um e-mail/.test(TELA), "e diz o que fazer");
+
+b.passo("16. a aba está ligada ao bloco, nos dois pontos que importam");
+/* Bloco que não entra no esconderTodos fica visível por cima de outra tela —
+   defeito clássico deste arquivo. */
+const SCRIPTS = lerSemComentario("OficiosScripts.html");
+b.ok(/"blocoConferencia"/.test(SCRIPTS), "blocoConferencia está no esconderTodos");
+b.ok(/"abaConferencia"/.test(SCRIPTS), "abaConferencia também");
+b.ok(/abaConferencia"\)\.onclick=mostrarConferencia/.test(SCRIPTS), "e o clique está ligado");
+b.ok(/include\('OficiosConferencia'\)/.test(lerSemComentario("index.html")),
+  "e o arquivo é incluído na página");
+
 b.naoTestavel(
-  "a tela de conferência",
-  "o backend está provado aqui. A tela ainda não existe: o desenho foi " +
-  "aprovado pelo usuário em 02/09 e o layout está no PENDENTE-VERIFICACAO. " +
-  "Sem ela, o fluxo só roda por chamada direta"
+  "a tela vista por olho humano",
+  "o emulador não renderiza. Prova-se aqui que ela chama o backend certo e " +
+  "que está ligada às abas; se ficou legível, se o alerta vermelho aparece e " +
+  "se o fluxo é confortável, só abrindo em homologação"
 );
 
 b.resumo();

@@ -3111,8 +3111,8 @@ window.oposIA_confirmar = oposIA_confirmar;
   function el(id) { return document.getElementById(id); }
 
 function esconderTodos() {
-    ["blocoOficioNovo","blocoOficioHistorico","blocoTaxaAssistencial","blocoMonitoramento","blocoEscolas","centralEmailIA","sisgepDashboardExecutivo"].forEach(function(id){ if(el(id)) el(id).style.display="none"; });
-    ["abaOficioNovo","abaOficioHistorico","abaTaxaAssistencial","abaMonitoramento"].forEach(function(id){ if(el(id)) el(id).classList.remove("active"); });
+    ["blocoOficioNovo","blocoOficioHistorico","blocoTaxaAssistencial","blocoMonitoramento","blocoConferencia","blocoEscolas","centralEmailIA","sisgepDashboardExecutivo"].forEach(function(id){ if(el(id)) el(id).style.display="none"; });
+    ["abaOficioNovo","abaOficioHistorico","abaTaxaAssistencial","abaMonitoramento","abaConferencia"].forEach(function(id){ if(el(id)) el(id).classList.remove("active"); });
   }
 
   function mostrarDashboardExecutivo() {
@@ -3137,7 +3137,17 @@ function esconderTodos() {
 
   function mostrarTaxaAssistencial() { esconderTodos(); if(el("blocoTaxaAssistencial")) el("blocoTaxaAssistencial").style.display="block"; if(el("abaTaxaAssistencial")) el("abaTaxaAssistencial").classList.add("active"); }
 
-function mostrarMonitoramento() {
+/* Conferência de destinatários — a parada entre emitir e enviar, criada em
+     02/09/2026. Fica ao lado do Monitoramento porque é a mesma pergunta em dois
+     tempos: aqui, antes de sair; lá, depois. */
+  function mostrarConferencia() {
+    esconderTodos();
+    if(el("blocoConferencia")) el("blocoConferencia").style.display="block";
+    if(el("abaConferencia")) el("abaConferencia").classList.add("active");
+    setTimeout(function() { if(typeof window.carregarConferenciaDestinatarios === "function") window.carregarConferenciaDestinatarios(); }, 300);
+  }
+
+  function mostrarMonitoramento() {
     esconderTodos();
     if(el("blocoMonitoramento")) el("blocoMonitoramento").style.display="block";
     if(el("abaMonitoramento")) el("abaMonitoramento").classList.add("active");
@@ -3155,6 +3165,7 @@ function mostrarMonitoramento() {
     if(el("abaOficioHistorico")) el("abaOficioHistorico").onclick=mostrarHistorico;
     if(el("abaTaxaAssistencial")) el("abaTaxaAssistencial").onclick=mostrarTaxaAssistencial;
  if(el("abaMonitoramento")) el("abaMonitoramento").onclick=mostrarMonitoramento;
+    if(el("abaConferencia")) el("abaConferencia").onclick=mostrarConferencia;
     if(el("btnVoltarEmissao")) el("btnVoltarEmissao").onclick=mostrarNovoOficio;
     if(el("btnAplicarFiltroHist")) el("btnAplicarFiltroHist").onclick=function(){ if(typeof window.carregarHistoricoOficios==="function") window.carregarHistoricoOficios(); else if(typeof Historico!=="undefined") Historico.carregar(); };
     if(el("btnAtualizarMonitoramento")) el("btnAtualizarMonitoramento").onclick=mostrarMonitoramento;
