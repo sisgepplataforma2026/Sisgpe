@@ -400,3 +400,48 @@ function definirDestinatariosOficio(filaId, emailsEscolhidos, tokenSessao) {
 
   return { ok: true, destinatarios: validacao.emails, mensagem: validacao.emails.length + " destinatário(s) gravado(s)." };
 }
+
+/**
+ * O remetente que o sistema VAI usar — medido, não afirmado.
+ *
+ * A tela de confirmação de envio trazia, em texto cravado no HTML:
+ *   "Remetente configurado: secretaria@sindeducacao.com"
+ *
+ * Ela dizia isso sempre, com ou sem alias. Em 02/09/2026 o usuário abriu o
+ * ofício 287/2026 na caixa da secretaria e o cabeçalho mostrava
+ * `De: financeirosindecucacao@gmail.com` — a tela afirmava uma coisa e o
+ * e-mail saía com outra. Eu mesmo li aquele rótulo como prova de que o alias
+ * funcionava, e ele não provava nada.
+ *
+ * Numa tela de confirmação de documento oficial, afirmar sem medir é pior do
+ * que não afirmar: quem lê acredita.
+ */
+function remetenteInstitucionalAtual(tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
+
+  var pretendido = (typeof OFICIOS_EMAIL_INSTITUCIONAL !== "undefined")
+    ? OFICIOS_EMAIL_INSTITUCIONAL : "secretaria@sindeducacao.com";
+
+  var efetivo = "";
+  try { efetivo = String(Session.getEffectiveUser().getEmail() || "").trim(); } catch (e) {}
+
+  var temAlias = false;
+  try {
+    temAlias = GmailApp.getAliases().map(function (a) {
+      return String(a || "").trim().toLowerCase();
+    }).indexOf(pretendido.toLowerCase()) !== -1;
+  } catch (e2) {}
+
+  var usaPretendido = temAlias || efetivo.toLowerCase() === pretendido.toLowerCase();
+
+  return {
+    ok: true,
+    /* De quem o e-mail VAI sair de verdade. */
+    remetente: usaPretendido ? pretendido : efetivo,
+    respostasPara: pretendido,
+    /* Falso aqui significa: o alias não está ativo e o e-mail sai pela conta
+       executora. A tela precisa dizer isso, não escondê-lo. */
+    comoInstitucional: usaPretendido,
+    contaExecutora: efetivo
+  };
+}

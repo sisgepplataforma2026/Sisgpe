@@ -472,3 +472,41 @@
   window.modalEnvioDestinatariosEscolhidos = escolhidos;
 })();
 </script>
+
+<script>
+/* REMETENTE MEDIDO, NÃO AFIRMADO — 02/09/2026.
+   A faixa verde do modal dizia "Remetente configurado: secretaria@..." em texto
+   fixo, com ou sem alias. O ofício 287/2026 chegou na caixa da secretaria com
+   `De: financeirosindecucacao@gmail.com`: a tela afirmava uma coisa e o e-mail
+   saía com outra. Agora ela pergunta ao backend e mostra o que vai acontecer. */
+(function () {
+  function token() {
+    return (typeof SISGEP_TOKEN_SESSAO !== "undefined" && SISGEP_TOKEN_SESSAO) ||
+           (typeof TOKEN_SESSAO !== "undefined" && TOKEN_SESSAO) || "";
+  }
+  window.modalEnvioAtualizarRemetente = function () {
+    var alvo = document.getElementById("modalEnvioRemetente");
+    if (!alvo) return;
+    var caixa = alvo.parentNode && alvo.parentNode.parentNode;
+    google.script.run
+      .withSuccessHandler(function (r) {
+        if (!r || !r.ok) { alvo.textContent = "não foi possível verificar"; return; }
+        if (r.comoInstitucional) {
+          alvo.textContent = r.remetente + " · Respostas para " + r.respostasPara;
+          return;
+        }
+        /* O caso que estava escondido: sai pela conta executora. */
+        alvo.innerHTML = "<strong>Sai como " + r.remetente + "</strong>" +
+          "<br>O alias " + r.respostasPara + " não está ativo nesta conta. " +
+          "As respostas continuam indo para " + r.respostasPara + ".";
+        if (caixa) {
+          caixa.style.background = "#fffbeb";
+          caixa.style.borderColor = "#fde68a";
+          caixa.style.color = "#92400e";
+        }
+      })
+      .withFailureHandler(function () { alvo.textContent = "não foi possível verificar"; })
+      .remetenteInstitucionalAtual(token());
+  };
+})();
+</script>

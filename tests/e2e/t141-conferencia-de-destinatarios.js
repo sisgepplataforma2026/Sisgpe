@@ -305,6 +305,65 @@ b.ok(/if \(r && r\.ok === false\)/.test(SCRIPTS),
   "e se a gravação falhar, NÃO envia às cegas para o endereço antigo",
   "a pessoa escolheu outro — precisa saber que a escolha não pegou");
 
+b.passo("25. e a mensagem de sucesso diz o destino REAL");
+/* O ofício 287/2026 foi para a secretaria — prova: a homologação só aceita
+   esse endereço, e o envio passou. Mas a tela disse "enviado com sucesso para
+   financeiro@sindeducacao.com", que era a variável antiga. Numa tela de
+   documento oficial, isso faz alguém jurar que mandou para quem não mandou. */
+b.ok(/window\.__oficioDestinoEnviado = escolhidos\.join/.test(SCRIPTS),
+  "guarda o destino realmente gravado");
+b.ok(/var destinoReal = window\.__oficioDestinoEnviado \|\| email/.test(SCRIPTS),
+  "e a mensagem de sucesso o prefere ao do cadastro");
+/* Mede a INTENÇÃO, não a vizinhança de linhas: a primeira versão exigia que a
+   limpeza fosse seguida de uma linha específica, e quebrou quando outra coisa
+   entrou no meio. Teste que depende de ordem de linhas mede formatação, não
+   comportamento. */
+b.igual((SCRIPTS.match(/window\.__oficioDestinoEnviado = null;/g) || []).length, 2,
+  "zerado em dois pontos: ao abrir o modal e depois de anunciar o sucesso",
+  "sem isso, um ofício que falhasse mostraria o destino do ofício anterior");
+
+b.fluxo("DESTINATÁRIOS · a tela mede o remetente, não o afirma");
+
+b.passo("26. o texto cravado saiu do HTML");
+/* A faixa dizia "Remetente configurado: secretaria@sindeducacao.com" em texto
+   fixo, sempre — com ou sem alias. O ofício 287/2026 chegou na caixa da
+   secretaria com De: financeirosindecucacao@gmail.com. A tela afirmava uma
+   coisa e o e-mail saía com outra, e eu li aquele rótulo como prova de que o
+   alias funcionava. Numa tela de confirmação de documento oficial, afirmar sem
+   medir é pior do que não afirmar: quem lê acredita. */
+b.ok(!/Remetente configurado<\/strong>secretaria@sindeducacao\.com/.test(FORM),
+  "o texto que afirmava o remetente saiu");
+b.ok(/id="modalEnvioRemetente"/.test(FORM), "e virou campo preenchido pelo backend");
+
+b.passo("27. e o backend responde o que VAI acontecer");
+const rem = g.remetenteInstitucionalAtual(token);
+b.ok(rem.ok === true, "responde");
+b.ok(typeof rem.comoInstitucional === "boolean",
+  "dizendo se sai como institucional ou pela conta executora");
+b.igual(rem.respostasPara, "secretaria@sindeducacao.com", "e para onde vão as respostas");
+
+b.passo("28. SEM alias, ele NÃO diz que sai como secretaria");
+/* É o caso que estava escondido, e é o de hoje na produção. */
+const semAlias141 = b.subir({ gmailAliases: [] }).g;
+b.seedUsuarios(semAlias141);
+const t2 = b.logar(semAlias141, "wanderson");
+const remSem = semAlias141.remetenteInstitucionalAtual(t2);
+b.igual(remSem.comoInstitucional, false, "avisa que o alias não está ativo");
+b.ok(remSem.remetente !== "secretaria@sindeducacao.com",
+  "e mostra o endereço que realmente vai no De", remSem.remetente);
+
+b.passo("29. COM alias, aí sim");
+const comAlias141 = b.subir({ gmailAliases: ["secretaria@sindeducacao.com"] }).g;
+b.seedUsuarios(comAlias141);
+const remCom = comAlias141.remetenteInstitucionalAtual(b.logar(comAlias141, "wanderson"));
+b.igual(remCom.comoInstitucional, true, "reconhece o alias ativo");
+b.igual(remCom.remetente, "secretaria@sindeducacao.com", "e o remetente é a Secretaria");
+
+b.passo("30. a função tem porta");
+let recRem = false;
+try { g.remetenteInstitucionalAtual(""); } catch (e) { recRem = /sess|permiss|acesso|login/i.test(String(e.message||e)); }
+b.ok(recRem, "recusa sem sessão");
+
 b.naoTestavel(
   "a tela vista por olho humano",
   "o emulador não renderiza. Prova-se aqui que ela chama o backend certo e " +

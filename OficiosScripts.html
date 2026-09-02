@@ -1955,7 +1955,11 @@ function enviarEmailOficioAgora(numero, filaId) {
       .withSuccessHandler(function(resp) {
         fecharModalEnvioOficioSISGEP();
         if (resp && resp.ok) {
-          if (status) { status.textContent = "✅ E-mail enviado com sucesso para " + (email || "o destinatário") + "."; status.style.color = "var(--green)"; }
+          /* Prefere o destino REALMENTE gravado; `email` é o do cadastro e pode ter
+             sido trocado no seletor. */
+          var destinoReal = window.__oficioDestinoEnviado || email || "o destinatário";
+          if (status) { status.textContent = "✅ E-mail enviado com sucesso para " + destinoReal + "."; status.style.color = "var(--green)"; }
+          window.__oficioDestinoEnviado = null;
           toast(resp.mensagem || "E-mail enviado com sucesso!", "ok", 5000);
         } else {
           if (status) { status.textContent = "❌ Falha no envio: " + ((resp && resp.mensagem) || "Tente novamente."); status.style.color = "var(--red)"; }
@@ -3233,6 +3237,13 @@ window.mostrarAbaOficio = function(aba) {
        As duas ficam sincronizadas de proposito enquanto a duplicata existir; o
        t141 conta as definicoes e cobra que todas montem o seletor, para que a
        proxima pessoa nao caia no mesmo buraco. */
+    /* Zera o destino do envio anterior: sem isto, um ofício que falhasse
+       mostraria o destino do ofício de antes. */
+    window.__oficioDestinoEnviado = null;
+    /* Mede o remetente em vez de afirmá-lo — ver a nota em OficiosDestinatarios.gs. */
+    if (typeof window.modalEnvioAtualizarRemetente === "function") {
+      try { window.modalEnvioAtualizarRemetente(); } catch (eRem) {}
+    }
     if (typeof window.modalEnvioMontarSeletor === "function") {
       try { window.modalEnvioMontarSeletor(dados.filaId, dados.email); } catch (eSel) {}
     }
@@ -3266,6 +3277,12 @@ window.mostrarAbaOficio = function(aba) {
               if (typeof toast === "function") toast(r.mensagem || "Não foi possível gravar os destinatários.", "err", 6000);
               return;
             }
+            /* O destino REAL, para a mensagem de sucesso não mentir. Ela
+               mostrava a variável antiga da tela: o ofício 287/2026 foi para a
+               secretaria e a tela disse "enviado para financeiro@". Numa tela
+               de documento oficial isso faz alguém jurar que mandou para quem
+               não mandou. */
+            window.__oficioDestinoEnviado = escolhidos.join(", ");
             seguir();
           })
           .withFailureHandler(function (e) {
