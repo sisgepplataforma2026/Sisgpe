@@ -106,7 +106,12 @@ function criarFilaEnvioOficio_(dadosFila) {
     "ASSUNTO": assunto,
     "HTML_BODY": htmlBody,
     "ANEXOS_JSON": JSON.stringify(anexos),
-    "STATUS": "PENDENTE",
+    /* NASCE AGUARDANDO CONFERÊNCIA — 02/09/2026, a pedido do usuário: os
+       destinatários passam a ser conferidos entre emitir e enviar, sempre.
+       A fila só processa PENDENTE e ERRO (ver o filtro mais abaixo), então
+       este status a faz ignorar a linha sem uma linha de mudança no motor de
+       envio. Quem promove para PENDENTE é o liberarEnvioOficio. */
+    "STATUS": OFDEST_STATUS_AGUARDANDO,
     "TENTATIVAS": 0,
     "ULTIMO_ERRO": "",
     "DATA_ULTIMA_TENTATIVA": "",
