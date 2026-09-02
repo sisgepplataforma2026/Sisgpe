@@ -68,6 +68,37 @@ function validarRemetenteInstitucionalOficios_() {
     "Aviso: " + remetente + " não é alias da conta executora; " +
     "envio seguirá pela conta executora com replyTo da Secretaria."
   );
+
+  /* A FALTA DO ALIAS PRECISA APARECER — 02/09/2026.
+
+     Antes isto era so um Logger.log, e ninguem le Logger.log. O resultado:
+     durante meses os oficios sairam de `financeirosindecucacao@gmail.com`
+     com replyTo da Secretaria, e ninguem soube. Foi preciso abrir um oficio
+     enviado e olhar o cabecalho para descobrir.
+
+     Agora vai para o log de sistema, com nome proprio, para aparecer na
+     auditoria. Com trava de 6 horas: a fila roda de 5 em 5 minutos e sem
+     isso a aba de log viraria uma linha por oficio enviado.
+
+     DENTRO DE try/catch, SEM EXCECAO. Este aviso nao pode, em hipotese
+     nenhuma, impedir um oficio de sair — a operacao viva vem antes do
+     alerta sobre ela. */
+  try {
+    var chaveAviso = "OFICIOS_ALIAS_AUSENTE";
+    if (!CacheService.getScriptCache().get(chaveAviso)) {
+      CacheService.getScriptCache().put(chaveAviso, "1", 6 * 60 * 60);
+      registrarLogSistema_({
+        usuario: efetivo || "(conta executora desconhecida)",
+        numero:  "-",
+        tipo:    "OFICIOS_REMETENTE_SEM_ALIAS",
+        escola:  "",
+        cnpj:    "",
+        email:   remetente,
+        codigo:  ""
+      });
+    }
+  } catch (eLog) {}
+
   return "";
 }
 
