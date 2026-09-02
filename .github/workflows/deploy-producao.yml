@@ -68,8 +68,8 @@ jobs:
           fi
           GS=$(find . -maxdepth 1 -type f -name '*.gs' | wc -l)
           HTML=$(find . -maxdepth 1 -type f -name '*.html' | wc -l)
-          test "$GS" -eq 173
-          test "$HTML" -eq 96
+          test "$GS" -eq 174
+          test "$HTML" -eq 97
           echo "codigo homologado confirmado: $GS .gs e $HTML .html"
 
       - name: Validar integridade dos arquivos
