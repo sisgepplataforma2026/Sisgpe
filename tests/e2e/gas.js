@@ -461,6 +461,30 @@ function install(g, opts) {
       const m = (typeof a === "object") ? a : Object.assign({ to: a, subject: b, body: c }, d || {});
       outbox.push({ via: "GmailApp", ...m, quando: new Date() });
     },
+    /* createDraft().send() — o caminho que o envio de ofício passou a usar em
+       02/09/2026, para a mensagem ficar em Enviados e devolver o ID real.
+       O rascunho registra no outbox só quando ENVIADO: um rascunho apagado
+       não pode aparecer como e-mail que saiu. */
+    createDraft(a, b, c, d) {
+      const m = (typeof a === "object") ? a : Object.assign({ to: a, subject: b, body: c }, d || {});
+      let apagado = false;
+      const rascunhos = g.__rascunhosGmail || (g.__rascunhosGmail = []);
+      const eu = { apagado: false, dados: m };
+      rascunhos.push(eu);
+      return {
+        send() {
+          if (apagado) throw new Error("rascunho já apagado");
+          const id = "MSG" + Date.now().toString(36) + outbox.length;
+          outbox.push({ via: "GmailApp", ...m, quando: new Date(), mensagemId: id });
+          return {
+            getId: () => id,
+            getThread: () => ({ getId: () => "TH" + id })
+          };
+        },
+        deleteDraft() { apagado = true; eu.apagado = true; },
+        getId: () => "DRAFT" + rascunhos.length
+      };
+    },
     search: () => [],
     getInboxThreads: () => [],
     getUserLabelByName: () => null,

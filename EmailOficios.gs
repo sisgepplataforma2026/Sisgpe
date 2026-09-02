@@ -130,6 +130,35 @@ function montarOpcoesEmailSISGEP_(emailUsuario, htmlBody, anexos, assunto, desti
   return opcoes;
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   POR QUE RASCUNHO-E-ENVIA, E NAO sendEmail — 02/09/2026
+
+   O usuario relatou: "foram enviados mas nao aparecem na caixa de enviados".
+   Estava certo, e o defeito era este.
+
+   `GmailApp.sendEmail()` nao devolve NADA. Duas consequencias que pareciam
+   separadas e sao a mesma:
+
+     1. O oficio nao ficava registrado na caixa de Enviados. Para o sindicato,
+        um documento oficial saia sem deixar copia no e-mail de quem mandou.
+
+     2. Sem retorno, nao havia ID de mensagem. Por isso o registro gravava o
+        texto fixo "GMAILAPP_SEM_ID" — e sem ID nao existe como, a partir da
+        linha da planilha, achar o e-mail e provar que ele saiu.
+
+   E A (2) E PARTE DA CAUSA DO ITEM 49. Sem o ID, o verificador de confirmacao
+   nao tem a thread do oficio para olhar; sobrou procurar pelo NUMERO e pelo
+   NOME DA ESCOLA em toda a caixa. Foi essa busca larga que fez a assinatura
+   "Outlook" confirmar oficio que na verdade quicou.
+
+   `createDraft(...).send()` resolve os dois: cria a mensagem na conta, envia,
+   e devolve o GmailMessage — de onde sai o ID de verdade.
+
+   O RASCUNHO NAO PODE FICAR ORFAO. Se o `send()` falhar, o rascunho ja existe
+   e ficaria na caixa de quem envia, parecendo oficio pendente. Por isso ele e
+   apagado antes de a excecao subir. O apagamento vai em try proprio: falhar
+   ao limpar nao pode mascarar o erro real do envio.
+   ══════════════════════════════════════════════════════════════════════════ */
 function enviarEmailOficio_(emailUsuario, htmlBody, anexos, assunto, destino, corpoTexto) {
   var opcoes = montarOpcoesEmailSISGEP_(emailUsuario, htmlBody, anexos, assunto, destino);
   var opcoesGmail = {
@@ -139,7 +168,23 @@ function enviarEmailOficio_(emailUsuario, htmlBody, anexos, assunto, destino, co
     replyTo:     opcoes.replyTo
   };
   if (opcoes.from) opcoesGmail.from = opcoes.from;
-  GmailApp.sendEmail(opcoes.to, opcoes.subject, corpoTexto || "Segue ofício em anexo.", opcoesGmail);
+
+  var rascunho = GmailApp.createDraft(
+    opcoes.to, opcoes.subject, corpoTexto || "Segue ofício em anexo.", opcoesGmail);
+
+  var msg;
+  try {
+    msg = rascunho.send();
+  } catch (eEnvio) {
+    /* Sem isto, cada falha de envio deixaria um rascunho na caixa — que para
+       quem olha parece ofício pendente de mandar. */
+    try { rascunho.deleteDraft(); } catch (eLimpeza) {}
+    throw eEnvio;
+  }
+
+  opcoes.mensagemId = "";
+  try { opcoes.mensagemId = String(msg.getId() || ""); } catch (eId) {}
+
   return opcoes;
 }
 

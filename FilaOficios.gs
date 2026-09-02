@@ -421,7 +421,7 @@ function processarFilaEnvioOficios() {
         anexos.push(blob);
       });
 
-      enviarEmailOficio_(
+      var envio = enviarEmailOficio_(
         usuarioEnvio,
         htmlBody,
         anexos,
@@ -431,7 +431,10 @@ function processarFilaEnvioOficios() {
       );
 
       valoresLinha[colDataEnvio - 1] = new Date();
-      valoresLinha[colMensagemId - 1] = "GMAILAPP_SEM_ID";
+      /* O ID REAL da mensagem, no lugar do texto fixo "GMAILAPP_SEM_ID" que
+         ficava aqui — ver a nota grande em EmailOficios.gs. Sem ele não havia
+         como, da linha da planilha, achar o e-mail e provar que saiu. */
+      valoresLinha[colMensagemId - 1] = (envio && envio.mensagemId) || "";
       valoresLinha[colStatusRecebimento - 1] = "ENVIADO";
 
       _gravarResultadoFila_(
@@ -691,7 +694,7 @@ function enviarOficioDaFilaAgora(numero, tokenSessao, filaId) {
       }
     }
 
-    enviarEmailOficio_(
+    var envio = enviarEmailOficio_(
       usuarioEnvio,
       htmlBody,
       anexos,
@@ -701,7 +704,8 @@ function enviarOficioDaFilaAgora(numero, tokenSessao, filaId) {
     );
 
     valoresLinha[colDataEnvio - 1] = new Date();
-    valoresLinha[colMensagemId - 1] = "GMAILAPP_SEM_ID";
+    /* O ID REAL da mensagem — ver a nota em EmailOficios.gs. */
+    valoresLinha[colMensagemId - 1] = (envio && envio.mensagemId) || "";
     valoresLinha[colStatusRecebimento - 1] = "ENVIADO";
 
     _gravarResultadoFila_(
