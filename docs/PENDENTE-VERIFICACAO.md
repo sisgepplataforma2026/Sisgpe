@@ -49,7 +49,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 ## 📌 O QUE ESTÁ ABERTO — índice
 
-> Gerado em 31/08/2026, atualizado em 01/09. São **47 itens** (o 21 e o 46
+> Gerado em 31/08/2026, atualizado em 01/09. São **48 itens** (o 21 e o 46
 > fecharam em 01/09; os itens 50 a 56 nasceram na auditoria do Módulo 03, e o
 > 57 ao 59 do trabalho do mesmo dia). A lista completa, com o detalhe de
 > cada um, está na seção ABERTO logo abaixo — este índice existe só para não
@@ -57,6 +57,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 | Nº | Item |
 |---|---|
+| 60 | Portal público — rascunho parado, e a ficha divergiu nele (levantamento) |
 | 59 | A ficha em PDF no layout do papel — falta pôr um ao lado do outro |
 | 58 | A tela do "Reemitir ofício" — feita (54.1 fechado), falta ver no ar |
 | 57 | Os quatro ajustes autorizados em 01/09 — falta ver no ar |
@@ -112,6 +113,89 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
+
+### 60. O portal público existe como rascunho — e a ficha divergiu nele
+
+02/09/2026. Levantado quando o usuário mostrou que a organização tem **dois
+repositórios**, e confirmado por ele em seguida:
+
+> *"Hoje está tudo pelo SISGEP, o portal público eu pensei nele, e ainda não
+> finalizei. (…) A ideia é eu finalizar o administrativo, o administrativo
+> estiver rodando, estiver direitinho, aí eu traria o público."*
+
+**A ORDEM É DELE E ESTÁ CERTA: administrativo primeiro, público depois.** Este
+item não é tarefa — é levantamento, para que a migração seja execução e não
+descoberta.
+
+**O QUE JÁ EXISTE**
+
+`sisgepplataforma2026/Sisgep-Portal-Publico` (privado, último commit 30/07),
+4 arquivos: `Código.gs`, `SindicalizacaoPublica.gs`, `Teste.gs`,
+`Fichasindicalizacao.html`.
+
+Ele já serve `?ficha=sindicalizacao`, `?validar=CODIGO` (credencial),
+`?politica=privacidade` e o Portal do Associado. **Não está em uso** — o
+caminho vivo é o SISGEP.
+
+**E ELE PROVA QUE A SEPARAÇÃO FUNCIONA:**
+
+| | Funções públicas |
+|---|---|
+| SISGEP | 965 no total, **204 alcançáveis sem login** |
+| Portal | **19** |
+
+Duas coisas ele já faz certo: projeto separado e **planilha compartilhada** —
+`1QPpsx19v4Yzfsko…` é o mesmo ID nos dois lados (aparece em `CentralEmailIA.gs`,
+`DiagnosticoSISGEP.gs` e `Reservaparquechina.gs`). O dado não se parte.
+
+**A DIVERGÊNCIA, que é o que não pode se perder**
+
+`gerarPDFFichaSindicalizacao(idFicha)` existe **nos dois projetos, com o mesmo
+nome e assinatura**, e os layouts se separaram:
+
+| | Onde | Layout |
+|---|---|---|
+| Portal | `SindicalizacaoPublica.gs:456` | antigo — `RECADASTRAMENTO`, sem moldura azul, sem Colossenses |
+| SISGEP | `Sindicalizacaoadmin.gs:258` | novo (01/09), o do formulário de papel |
+
+E o `Fichasindicalizacao.html` diverge em **624 linhas** (913 no SISGEP, 1035
+no portal). As mudanças de 01/09 — tirar título/zona/seção, acrescentar
+Pós-graduação, Mestrado e Doutorado — estão **só no SISGEP**. A cópia do
+portal ainda tem Zona e Seção, e não tem as três escolaridades novas.
+
+**Isso não é urgente**, porque o portal não está no ar. Vira urgente **no dia
+em que ele for ligado** — e aí, se ninguém tiver lido isto, o associado passa
+a receber a ficha no layout velho, sem as escolaridades, e o defeito aparece
+como "o sistema mudou sozinho".
+
+**AS 14 ROTAS ANÔNIMAS DO SISGEP**, que são a origem do teto de 204 (o
+`Code.gs` serve todas, e no Apps Script toda função global é endpoint para
+qualquer página do projeto):
+
+| | Rota | Situação |
+|---|---|---|
+| 1–5 | `portal=` associado, voucher, chinapark, chinapark-hospedes, oftalmo | associado já tem par no portal |
+| 6 | `page=compasso-inscricao` | |
+| 7 | `page=ingresso` (token HMAC) | |
+| 8–9 | bingo: inscrição e cartela por token | |
+| 10 | `ficha=sindicalizacao` | **duplicada** — existe nos dois |
+| 11 | `track=open` (pixel) | operação VIVA |
+| 12–14 | `pub-pixel-nf`, `pub-nf-despesa`, `pub-contabil-despesa` | operação VIVA |
+
+Seis painéis (`emissao`, `checkin`, `compasso`, `compasso-importar`, `bingo`,
+`bingo-telao`) exigem sessão e chamam `exigirModulo_` — esses não entram.
+
+**O QUE ISSO SIGNIFICA PARA O TETO.** Separar homologação de produção **não**
+derruba os 204: os dois lados ficariam com a mesma superfície dentro de cada
+um. Quem derruba é tirar as rotas anônimas do projeto administrativo. E não é
+refatoração especulativa — a rota 10 já é duplicata pura.
+
+**O tamanho real do risco hoje:** superfície grande, exposição pequena, porque
+só Ofícios está em operação. É dívida a pagar **antes** de entrar em operação,
+não incêndio de hoje.
+
+**MIGRAR POR ÚLTIMO:** as rotas 11 a 14. Quem as usa é gente de fora do
+sindicato e elas fazem parte da emissão de ofício, que é a operação viva.
 
 ### 59. A ficha em PDF no layout do papel — falta pôr um ao lado do outro
 
