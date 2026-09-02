@@ -49,7 +49,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 ## 📌 O QUE ESTÁ ABERTO — índice
 
-> Gerado em 31/08/2026, atualizado em 01/09. São **48 itens** (o 21 e o 46
+> Gerado em 31/08/2026, atualizado em 01/09. São **49 itens** (o 21 e o 46
 > fecharam em 01/09; os itens 50 a 56 nasceram na auditoria do Módulo 03, e o
 > 57 ao 59 do trabalho do mesmo dia). A lista completa, com o detalhe de
 > cada um, está na seção ABERTO logo abaixo — este índice existe só para não
@@ -57,6 +57,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 | Nº | Item |
 |---|---|
+| 61 | 🚨 Confirmação de recebimento é IMPOSSÍVEL de ver — resposta vai para outra caixa |
 | 60 | Portal público — rascunho parado, e a ficha divergiu nele (levantamento) |
 | 59 | A ficha em PDF no layout do papel — falta pôr um ao lado do outro |
 | 58 | A tela do "Reemitir ofício" — feita (54.1 fechado), falta ver no ar |
@@ -113,6 +114,71 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
+
+### 61. 🚨 A confirmação de recebimento é IMPOSSÍVEL de detectar hoje
+
+02/09/2026. O usuário relatou que os ofícios enviados em produção não geram
+retorno nenhum — nenhuma escola aparece como tendo confirmado. **Não é que
+ninguém confirmou: é que o sistema não tem como ver a confirmação.**
+
+**A CADEIA, e ela é mecânica:**
+
+1. O ofício sai com `replyTo: secretaria@sindeducacao.com`
+   (`EmailOficios.gs`, e visível no cabeçalho do ofício 487/2026).
+2. A escola clica em **Responder** → a resposta vai para
+   `secretaria@sindeducacao.com`.
+3. Esse endereço é uma caixa **da KingHost** — o MX de `sindeducacao.com`
+   aponta para `mx-vip-01.kinghost.net` (consultado no DNS em 02/09).
+4. O verificador roda `GmailApp.search(...)`
+   (`MonitoramentoOficios.gs:359`), que lê **a caixa da conta que executa o
+   script** — `financeirosindeducacao@gmail.com`.
+
+**São duas caixas, em dois provedores. A resposta nunca chega onde o sistema
+procura.**
+
+**ISSO FECHA COM O ITEM 49, e explica o que lá ficou sem explicação.** O
+verificador de bounce achou três falhas na produção e confirmação nenhuma. É
+exatamente coerente:
+
+| | Volta para | O sistema vê? |
+|---|---|---|
+| **Bounce** | o remetente técnico (a conta do Gmail) | **sim** |
+| **Resposta de gente** | o `replyTo` (KingHost) | **não** |
+
+O sistema enxerga metade do mundo. E o pouco que ele "confirmava" vinha de
+casar palavra solta em mensagem da própria thread — que foi o defeito do
+"Outlook".
+
+**DUAS SAÍDAS, AS DUAS SEM CÓDIGO**
+
+**A — o Gmail buscar a caixa da secretaria** (recomendada). Gmail →
+Configurações → Contas e importação → *Verificar e-mails de outras contas* →
+`secretaria@sindeducacao.com`, com as credenciais da KingHost (servidor de
+leitura `pop.kinghost.net`). Marcar **"Deixar uma cópia no servidor"**, para
+não sumir da caixa de quem trabalha nela. As respostas passam a chegar também
+no Gmail, o verificador as encontra, e a caixa da secretaria continua sendo a
+oficial.
+
+**B — encaminhamento na KingHost.** Regra no painel copiando tudo para o
+Gmail. Funciona igual, mas mexe na caixa de trabalho da secretaria.
+
+**Atraso esperado na opção A:** o Gmail busca por POP em intervalos que podem
+chegar a uma hora. Irrelevante aqui — o verificador roda de 3 em 3 horas.
+
+**🔴 A COBRAR DO USUÁRIO**
+
+1. **Conferir na `financeirosindeducacao@gmail.com`** se existe alguma
+   resposta de escola. Se não existir nenhuma, está confirmado. (Eu não
+   consigo verificar: o conector de Gmail desta sessão está na conta
+   **pessoal** dele, não na que executa o script.)
+2. **Escolher A ou B** e configurar.
+3. **Depois disso, rodar `verificarConfirmacoesRecebimento` uma vez** e ver
+   se algum ofício antigo passa a CONFIRMADO. É o que prova que a ponte
+   funcionou.
+
+**O que NÃO fazer:** mudar o `replyTo` para a conta do Gmail. Resolveria a
+detecção e estragaria a coisa certa — a escola deve responder para a
+secretaria, não para uma conta técnica.
 
 ### 60. O portal público existe como rascunho — e a ficha divergiu nele
 
