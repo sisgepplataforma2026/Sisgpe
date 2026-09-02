@@ -118,6 +118,91 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
+### 65. 🔴 A PRODUÇÃO FOI PUBLICADA — versão 690, e o que agora depende de você abrir
+
+02/09/2026, 23h36. A Produção passou a rodar o mesmo código da homologação
+(`4dd4acc`). Pela REGRA Nº -1 isto **não é "pronto"**: publicar é pôr no ar,
+não é provar que funciona.
+
+**O que foi medido, e não deduzido:**
+
+| | |
+|---|---|
+| Versão criada | **690** (`producao-69f0c40`) |
+| Implantação | `AKfycbzgPBSS…@690`, conferido pelo próprio workflow |
+| Rollback | versão **689**, com o projeto inteiro baixado e guardado 90 dias |
+| Diferença aplicada | 2 arquivos criados, 25 modificados, **nenhum removido** — +2.373 / −235 linhas |
+| Contagem | 173 → 174 `.gs`, 96 → 97 `.html`, batendo com os dois novos |
+| Travas que rodaram antes | `.gs`/`.html` idênticos ao commit homologado, t46, suíte completa (144 arquivos, 5.053 asserções), alvo confirmado, backup baixado |
+
+**O que estava no ar antes:** o código de 01/09 às 15:29 (`cd6d0b3`). As duas
+tentativas de promover em 02/09 falharam na suíte e **nunca escreveram nada** —
+ver o item logo abaixo sobre o t69.
+
+**A armadilha que quase passou.** O `MonitoramentoOficios.gs` colado à mão na
+Produção chamava `registrarLogSistema`; o repositório renomeou para
+`registrarLogSistema_` (fechamento de exposição). Se só um dos dois arquivos
+fosse trocado, o registro de bounce quebraria em silêncio. Conferido antes de
+publicar: `Oficios.gs` vai junto com a definição nova e não sobrou chamada ao
+nome antigo em `.gs` nem em `.html`.
+
+**O QUE PRECISA SER CONFERIDO NA PRODUÇÃO — nesta ordem:**
+
+1. 🔴 **Emitir um ofício de verdade.** É a mudança que mais mexe na rotina: o
+   ofício agora nasce em `AGUARDANDO_DESTINATARIOS` e só entra na fila depois
+   da conferência no modal. Se alguém fechar o modal sem confirmar, o ofício
+   **fica parado** — não some, mas também não sai.
+2. 🔴 **O assunto sai limpo**, sem `[HML]`. Em produção a marca não se aplica,
+   mas isso agora depende do código novo — vale olhar.
+3. 🔴 **Reenviar os 15 ofícios que nunca chegaram** (FAESA 144/168/172/203/
+   236/242/303; SEB 335/336/358/375/397/452/457/476). Os endereços novos já
+   estão na planilha e o "Outlook" já não confirma ofício que quicou. É este
+   reenvio que prova as duas coisas.
+4. 🟡 **Avisar a Marcela antes do primeiro ofício de amanhã.** A tela mudou.
+5. 🟡 **Os arquivos de diagnóstico sumiram da Produção**
+   (`DiagnosticoItem49.gs`, `DiagnosticoFilaOficios.gs`, `TrocarEmailEscola.gs`).
+   O `clasp push --force` apaga o que não está no repositório. Não há perda: a
+   correção dos e-mails está na planilha, não no código.
+
+**Como voltar atrás, se precisar:** a versão 689 continua publicável, e o
+projeto inteiro de antes está no artefato `producao-antes-10-versao-689` da
+run 33694931232.
+
+### 65b. ⚠️ DUAS PROMOÇÕES FALHARAM ANTES, E EU NÃO LI O RESULTADO
+
+Registro do erro de método, porque ele se repete se não ficar escrito.
+
+As runs 33665128437 (18h09) e 33693525709 (23h09) reprovaram, as duas no
+mesmo teste, e eu **anunciei a segunda como "está rodando agora"** sem ter
+lido o resultado. A primeira passou despercebida por horas.
+
+**A causa era o teste, não o código.** O `t69` exigia um único `deploymentId`
+em todo o ferramental de deploy; o ramo de promoção traz o
+`deploy-producao.yml`, que carrega — corretamente — o ID da Produção.
+
+É o **mesmo defeito de escopo** que o cabeçalho do próprio `t69` já
+documentava de uma vez anterior: uma asserção que acusa o comportamento certo
+não protege nada, ela só ensina a ignorar vermelho.
+
+Corrigido para medir o que de fato importa — que os dois ambientes **não se
+cruzem**:
+
+| Cenário | Estrago | Agora |
+|---|---|---|
+| Workflow de homologação com o ID da Produção | um deploy de teste sobrescreve a URL em uso diário | reprova |
+| Workflow de produção com o ID da homologação | publica por cima do teste e a Produção fica intocada sem ninguém ver | reprova |
+
+Os três cenários foram rodados à mão, inclusive os dois que devem reprovar.
+
+**O que a asserção NÃO pega, dito no cabeçalho:** erro de digitação dentro do
+próprio ID de produção. Não há segunda fonte independente desse valor no
+repositório; quem confere isso é o passo "Confirmar a implantacao atual", que
+exige o ID existir no projeto antes de publicar.
+
+**A lição de método, que é o motivo deste registro:** disparar uma run não é
+resultado. Enquanto eu não li o log, o que eu tinha era uma suposição — e eu a
+contei como se fosse fato.
+
 ### 64. ✅ VERIFICADO NO AR — o seletor, o remetente e o destino real
 
 02/09/2026, entre 17h e 19h32. Não é entrega: é o registro do que o usuário
