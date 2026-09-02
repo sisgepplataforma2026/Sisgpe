@@ -49,7 +49,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 ## 📌 O QUE ESTÁ ABERTO — índice
 
-> Gerado em 31/08/2026, atualizado em 01/09. São **51 itens** (o 21 e o 46
+> Gerado em 31/08/2026, atualizado em 01/09. São **52 itens** (o 21 e o 46
 > fecharam em 01/09; os itens 50 a 56 nasceram na auditoria do Módulo 03, e o
 > 57 ao 59 do trabalho do mesmo dia). A lista completa, com o detalhe de
 > cada um, está na seção ABERTO logo abaixo — este índice existe só para não
@@ -57,6 +57,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 | Nº | Item |
 |---|---|
+| 64 | ✅ VERIFICADO NO AR — seletor, remetente e destino real (02/09, 19h32) |
 | 63 | ⚠️ Não havia defeito — o ofício sempre esteve em Enviados (da conta que envia) |
 | 62 | 🔴 42 falhas de entrega na PRODUÇÃO — 15 são 2 contatos mortos, e o certo já está na base |
 | 61 | ⚠️ Conclusão minha CORRIGIDA — a confirmação não é impossível de ver |
@@ -116,6 +117,46 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
+
+### 64. ✅ VERIFICADO NO AR — o seletor, o remetente e o destino real
+
+02/09/2026, entre 17h e 19h32. Não é entrega: é o registro do que o usuário
+**executou** e conferiu na homologação. Pela REGRA Nº -1, é isto que tira um
+item de "não testado".
+
+**O QUE FOI PROVADO, e como:**
+
+| O quê | Prova |
+|---|---|
+| **Alias da Secretaria ativo** | tela do Gmail: *"Agora o usuário do Gmail já pode enviar e-mails como secretaria@sindeducacao.com"* |
+| **O Apps Script enxerga o alias** | a faixa do modal ficou **verde** — e ela agora MEDE (`remetenteInstitucionalAtual`), não afirma |
+| **O seletor de destinatários funciona** | ofício 287/2026 chegou na caixa da secretaria com `Para: secretaria@sindeducacao.com`, o endereço escolhido — não o do cadastro |
+| **A escolha chega na FILA** | ofício 288/2026 saiu para o escolhido; antes da correção o 286 saía para o do cadastro |
+| **A mensagem diz o destino real** | 288: *"enviado com sucesso para secretaria@sindeducacao.com"*. No 287 ela dizia `financeiro@` — a variável antiga da tela |
+| **A trava de homologação funciona E aparece** | `[HML] Envio bloqueado. Destinatário não autorizado` na faixa de status |
+| **A ficha em PDF e o layout do papel** | ainda não conferido lado a lado com o impresso — segue no item 59 |
+
+**TRÊS DEFEITOS ACHADOS PELO USO, e nenhum por teste:**
+
+1. **A função do modal existia DUAS vezes** (`OficiosFormulario.html:952` e
+   `OficiosScripts.html:3208`). Eu editei a que perde. No escopo global único
+   o segundo `window.x = function` sobrescreve o primeiro — e nada falha.
+2. **A escolha ficava numa variável da tela.** O botão chama
+   `enviarOficioDaFilaAgora`, e o backend lê o destinatário DA LINHA DA FILA.
+   Mudar `dados.email` em JavaScript não influenciava nada.
+3. **A faixa "Remetente configurado" era texto cravado.** Dizia
+   `secretaria@sindeducacao.com` sempre, com ou sem alias — e eu a citei como
+   prova de que o alias funcionava.
+
+**O QUE OS TRÊS TÊM EM COMUM, e é a lição:** em nenhum deles algo quebrou. Sem
+erro, sem log, sem teste vermelho. **Foi o usuário publicando e olhando a tela
+que achou os três.** Cada um ganhou asserção que o pega antes do ar — inclusive
+uma que CONTA as definições do modal, para uma terceira cópia não repetir o
+primeiro.
+
+**AINDA NÃO CONFERIDO:** o campo **De** do e-mail recebido. A faixa prova que o
+alias existe e que o sistema o vê; só o cabeçalho prova que ele foi usado no
+envio. E o `spf=pass`, que decide se a entrega ficou mais sólida.
 
 ### 63. ⚠️ NÃO HAVIA DEFEITO — o ofício sempre esteve em Enviados
 
