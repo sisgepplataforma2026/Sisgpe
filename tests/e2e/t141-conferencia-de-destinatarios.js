@@ -252,6 +252,59 @@ b.passo("20. o filaId chega ao modal — é o que traz o histórico");
 b.ok(/filaId: filaId/.test(lerSemComentario("OficiosScripts.html")),
   "quem abre o modal passa o filaId");
 
+b.fluxo("DESTINATÁRIOS · a escolha tem que chegar na FILA");
+
+b.passo("21. O DEFEITO QUE O 286/2026 REVELOU");
+/* A primeira versão mudava `dados.email` no JavaScript. Não adiantava nada: o
+   "Enviar agora" chama enviarOficioDaFilaAgora, e o backend lê o destinatário
+   DA LINHA DA FILA. O ofício 286 saiu para o endereço antigo com a escolha já
+   feita na tela — sem erro, porque nada estava errado: a tela não tinha como
+   influenciar o envio.
+
+   Esta asserção é a que impede isso de voltar. */
+const novoOf = g.criarFilaEnvioOficio_({
+  numeroDoOficio: "600/2026", numeroOficio: "600/2026", tipo: "Filiação",
+  escola: FAESA, cnpj: "", emailPrincipal: "thalia.ferreira@faesa.br",
+  emailsTodos: "thalia.ferreira@faesa.br", assunto: "Ofício 600/2026",
+  htmlBody: "<p>x</p>", anexos: []
+});
+const gravou = g.definirDestinatariosOficio(novoOf.id, ["luiza.stefani@faesa.br"], token);
+b.ok(gravou.ok === true, "grava os escolhidos na fila", gravou.mensagem);
+
+function emailsDaLinha(id) {
+  const d = fila.getRange(2, 1, fila.getLastRow() - 1, fila.getLastColumn()).getValues();
+  for (let i = 0; i < d.length; i++) {
+    if (String(d[i][hmF["ID"] - 1]) === id) return String(d[i][hmF["EMAILS_TODOS"] - 1]);
+  }
+  return "";
+}
+b.ok(emailsDaLinha(novoOf.id).indexOf("luiza.stefani") > -1, "o escolhido está na linha");
+b.ok(emailsDaLinha(novoOf.id).indexOf("thalia.ferreira") === -1, "e o antigo saiu dela");
+
+b.passo("22. e NÃO mexe no status — o gatilho não pode mandar junto com o clique");
+/* Se isto pusesse a linha como PENDENTE, o gatilho de 5 em 5 minutos poderia
+   enviar ao mesmo tempo que a pessoa clica. */
+const dLinha = fila.getRange(2, 1, fila.getLastRow() - 1, fila.getLastColumn()).getValues();
+let stNovo = "";
+dLinha.forEach(function (l) { if (String(l[hmF["ID"] - 1]) === novoOf.id) stNovo = String(l[hmF["STATUS"] - 1]).toUpperCase(); });
+b.igual(stNovo, "AGUARDANDO_DESTINATARIOS", "o status fica como estava");
+
+b.passo("23. depois de ENVIADO, não se troca mais o destinatário");
+/* Reescrever a linha depois do envio faria o registro mentir sobre para quem o
+   ofício foi. */
+dLinha.forEach(function (l, i) {
+  if (String(l[hmF["ID"] - 1]) === novoOf.id) fila.getRange(i + 2, hmF["STATUS"]).setValue("ENVIADO");
+});
+const depois = g.definirDestinatariosOficio(novoOf.id, ["outro@escola.br"], token);
+b.igual(depois.ok, false, "recusa trocar destinatário de ofício já enviado");
+
+b.passo("24. e a tela grava ANTES de mandar — não depois");
+b.ok(/definirDestinatariosOficio\(dados\.filaId, escolhidos, SISGEP_TOKEN_SESSAO\)/.test(SCRIPTS),
+  "o modal chama definirDestinatariosOficio");
+b.ok(/if \(r && r\.ok === false\)/.test(SCRIPTS),
+  "e se a gravação falhar, NÃO envia às cegas para o endereço antigo",
+  "a pessoa escolheu outro — precisa saber que a escolha não pegou");
+
 b.naoTestavel(
   "a tela vista por olho humano",
   "o emulador não renderiza. Prova-se aqui que ela chama o backend certo e " +

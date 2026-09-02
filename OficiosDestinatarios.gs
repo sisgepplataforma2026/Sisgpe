@@ -354,3 +354,49 @@ function ofDest_corrigirCadastro_(escola, emailsTodos) {
     return { tentado: true, ok: false, mensagem: String(e && e.message || e) };
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   GRAVAR A ESCOLHA ANTES DE ENVIAR — 02/09/2026
+
+   A primeira versao do seletor mudava `dados.email` no JavaScript da tela e
+   nao adiantava nada: o botao "Enviar agora" chama
+   `enviarOficioDaFilaAgora(numero, token, filaId)`, e o backend le o
+   destinatario DA LINHA DA FILA. O oficio 286/2026 saiu para o endereco antigo
+   com a escolha ja feita na tela — sem erro, porque nada estava errado: a tela
+   simplesmente nao tinha como influenciar o envio.
+
+   Esta funcao existe para isso e so para isso: gravar os enderecos escolhidos
+   na linha, sem mexer no STATUS. Mexer no status aqui seria pior — poria a
+   linha como PENDENTE e o gatilho de 5 em 5 minutos poderia mandar ao mesmo
+   tempo que o clique.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** Grava os destinatários escolhidos na fila. NÃO muda o status. */
+function definirDestinatariosOficio(filaId, emailsEscolhidos, tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
+
+  var escolhidos = ofDest_separar_(
+    Array.isArray(emailsEscolhidos) ? emailsEscolhidos.join(";") : emailsEscolhidos);
+  if (!escolhidos.length) {
+    return { ok: false, mensagem: "Sem destinatário não há ofício. Escolha ao menos um e-mail." };
+  }
+
+  var validacao = validarListaEmails_(escolhidos.join(";"));
+  if (!validacao.ok) return { ok: false, mensagem: "E-mail inválido: " + validacao.invalido };
+
+  var achado = ofDest_acharLinha_(filaId);
+  if (!achado.ok) return achado;
+
+  var st = String(achado.valores[achado.hm["STATUS"] - 1] || "").trim().toUpperCase();
+  /* Depois de ENVIADO nao se troca destinatario: o e-mail ja saiu, e reescrever
+     a linha faria o registro mentir sobre para quem foi. */
+  if (st === "ENVIADO" || st === "PROCESSANDO") {
+    return { ok: false, mensagem: "Este ofício já está em envio (status: " + st + ")." };
+  }
+
+  achado.sh.getRange(achado.linha, achado.hm["EMAIL_PRINCIPAL"]).setValue(validacao.principal);
+  achado.sh.getRange(achado.linha, achado.hm["EMAILS_TODOS"]).setValue(validacao.todos);
+  SpreadsheetApp.flush();
+
+  return { ok: true, destinatarios: validacao.emails, mensagem: validacao.emails.length + " destinatário(s) gravado(s)." };
+}

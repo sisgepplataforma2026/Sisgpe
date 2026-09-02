@@ -3238,17 +3238,45 @@ window.mostrarAbaOficio = function(aba) {
     }
 
     btn.onclick = function() {
-      /* O que a pessoa escolheu vence o que veio do cadastro. Se o seletor nao
-         carregou, `dados.email` continua valendo — o envio nao pode depender de
-         uma tela auxiliar ter funcionado. */
-      if (typeof window.modalEnvioDestinatariosEscolhidos === "function") {
-        try {
-          var escolhidos = window.modalEnvioDestinatariosEscolhidos();
-          if (escolhidos && escolhidos.length) dados.email = escolhidos.join("; ");
-        } catch (eEsc) {}
-      }
       btn.disabled = true; btn.innerHTML = "⏳ Enviando...";
-      if(typeof aoConfirmar==="function") aoConfirmar();
+
+      /* A ESCOLHA PRECISA IR PARA A FILA, NAO PARA UMA VARIAVEL DA TELA.
+         A primeira versao mudava `dados.email` aqui e nao adiantava nada: o
+         "Enviar agora" chama enviarOficioDaFilaAgora, e o backend le o
+         destinatario DA LINHA DA FILA. O oficio 286/2026 saiu para o endereco
+         antigo com a escolha ja feita na tela — sem erro, porque nada estava
+         errado: a tela nao tinha como influenciar o envio. */
+      var escolhidos = null;
+      if (typeof window.modalEnvioDestinatariosEscolhidos === "function") {
+        try { escolhidos = window.modalEnvioDestinatariosEscolhidos(); } catch (eEsc) {}
+      }
+
+      function seguir() {
+        if (typeof aoConfirmar === "function") aoConfirmar();
+      }
+
+      if (escolhidos && escolhidos.length && dados.filaId &&
+          typeof SISGEP_TOKEN_SESSAO !== "undefined") {
+        google.script.run
+          .withSuccessHandler(function (r) {
+            if (r && r.ok === false) {
+              /* Gravar falhou: NAO enviar as cegas para o endereco antigo — a
+                 pessoa escolheu outro e precisa saber que a escolha nao pegou. */
+              btn.disabled = false; btn.innerHTML = "📨 Enviar agora";
+              if (typeof toast === "function") toast(r.mensagem || "Não foi possível gravar os destinatários.", "err", 6000);
+              return;
+            }
+            seguir();
+          })
+          .withFailureHandler(function (e) {
+            btn.disabled = false; btn.innerHTML = "📨 Enviar agora";
+            if (typeof toast === "function") toast("Erro ao gravar destinatários: " + (e && e.message || e), "err", 6000);
+          })
+          .definirDestinatariosOficio(dados.filaId, escolhidos, SISGEP_TOKEN_SESSAO);
+        return;
+      }
+
+      seguir();
     };
     modal.classList.add("aberto");
   };
