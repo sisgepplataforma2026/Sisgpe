@@ -205,6 +205,36 @@ b.ok(/abaConferencia"\)\.onclick=mostrarConferencia/.test(SCRIPTS), "e o clique 
 b.ok(/include\('OficiosConferencia'\)/.test(lerSemComentario("index.html")),
   "e o arquivo é incluído na página");
 
+b.fluxo("DESTINATÁRIOS · o seletor no modal que JÁ existia");
+
+b.passo("17. o campo de e-mail do modal deixou de ser só leitura");
+/* O usuário apontou que a parada entre emitir e enviar já existia — o modal
+   "Confirmar envio do ofício" — e que o seletor pertencia ali, não numa aba
+   separada. A aba fica como rede para o que foi emitido e não enviado; o
+   caminho normal é este. */
+const FORM = lerSemComentario("OficiosFormulario.html");
+b.ok(/id="modalEnvioSeletor"/.test(FORM), "o modal tem o container do seletor");
+b.ok(/modalEnvioMontarSeletor\(dados\.filaId, dados\.email\)/.test(FORM),
+  "e monta o seletor ao abrir, com o filaId");
+
+b.passo("18. e o que a pessoa escolheu vence o que veio do cadastro");
+b.ok(/modalEnvioDestinatariosEscolhidos\(\)/.test(FORM),
+  "ao enviar, lê os escolhidos");
+b.ok(/_modalPayload\.email\s*=\s*escolhidos\.join/.test(FORM),
+  "e substitui o destino pelo que foi marcado");
+
+b.passo("19. mas o envio NÃO depende do seletor ter carregado");
+/* Se o seletor falhar, o ofício ainda tem que sair com o endereço do cadastro.
+   Tela auxiliar não pode derrubar a operação viva. */
+b.ok(/if\(escolhidos&&escolhidos\.length\)/.test(FORM),
+  "só substitui se houver escolha — senão mantém o do cadastro");
+b.ok(/try\{ window\.modalEnvioMontarSeletor/.test(FORM),
+  "e a montagem vai em try, para não impedir o modal de abrir");
+
+b.passo("20. o filaId chega ao modal — é o que traz o histórico");
+b.ok(/filaId: filaId/.test(lerSemComentario("OficiosScripts.html")),
+  "quem abre o modal passa o filaId");
+
 b.naoTestavel(
   "a tela vista por olho humano",
   "o emulador não renderiza. Prova-se aqui que ela chama o backend certo e " +

@@ -1942,7 +1942,11 @@ function enviarEmailOficioAgora(numero, filaId) {
   var nomeEscola = escola.nome || "";
   var qtdFichas = Array.isArray(payload.fichas) ? payload.fichas.length : 0;
   var descAnexos = qtdFichas > 0 ? "PDF do ofício + " + qtdFichas + " ficha(s)" : "PDF do ofício";
-  abrirModalEnvioOficioSISGEP({ numero: numero, tipo: tipo || "Ofício", escola: nomeEscola || "Não informado", email: email || "E-mail cadastrado na fila de envio", anexos: descAnexos }, function() {
+  /* filaId vai junto desde 02/09/2026: é ele que permite ao seletor de
+     destinatários buscar o histórico de cada endereço (quantas vezes quicou,
+     quantos ofícios confirmou). Sem ele o seletor ainda funciona — só não
+     mostra histórico. */
+  abrirModalEnvioOficioSISGEP({ numero: numero, filaId: filaId, tipo: tipo || "Ofício", escola: nomeEscola || "Não informado", email: email || "E-mail cadastrado na fila de envio", anexos: descAnexos }, function() {
     var status = document.getElementById("statusEnvioOficioGerado");
     var btn = document.getElementById("btnModalEnviarOficioAgora");
     if (status) { status.textContent = "⏳ Enviando e-mail..."; status.style.color = "var(--g500)"; }

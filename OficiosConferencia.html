@@ -347,3 +347,128 @@
   else iniciar();
 })();
 </script>
+
+<script>
+/* SELETOR DENTRO DO MODAL "Confirmar envio do ofício" — 02/09/2026.
+   O usuário apontou que a parada entre emitir e enviar JÁ EXISTE, e que o
+   seletor pertence a ela: "nessa tela eu deveria alterar email, incluir, ter um
+   seletor". A primeira versão desta funcionalidade criou uma aba separada — que
+   fica, mas como rede para o que foi emitido e não enviado. O caminho normal é
+   este modal. */
+(function () {
+  function el(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+  function token() {
+    return (typeof TOKEN_SESSAO !== "undefined" && TOKEN_SESSAO) ||
+           (window.SISGEP && window.SISGEP.token) || "";
+  }
+
+  var lista = [];        /* [{email, marcado, falhas, confirmacoes, origem}] */
+
+  function pintar() {
+    var alvo = el("modalEnvioSeletor");
+    if (!alvo) return;
+    var h = "";
+    lista.forEach(function (d, i) {
+      var cls = d.falhas > 0 ? "mau" : (d.confirmacoes > 0 ? "bom" : "neutro");
+      var hist = d.falhas > 0
+        ? "❌ quicou " + d.falhas + " vez(es) — confira antes de enviar"
+        : (d.confirmacoes > 0
+            ? "✅ confirmou " + d.confirmacoes + " ofício(s)"
+            : "— sem histórico");
+      h += '<div class="cnf-linha' + (d.falhas > 0 ? " alerta" : "") + '" style="margin-bottom:6px;">' +
+             '<input type="checkbox" data-env-chk="' + i + '"' + (d.marcado ? " checked" : "") + '>' +
+             '<div style="flex:1;">' +
+               '<div class="cnf-mail">' + esc(d.email) + '</div>' +
+               '<div class="cnf-origem">' + esc(d.origem) + '</div>' +
+               '<div class="cnf-hist ' + cls + '">' + esc(hist) + '</div>' +
+             '</div></div>';
+    });
+    h += '<div class="cnf-add" style="margin:8px 0 0;">' +
+           '<input type="email" id="modalEnvioNovoEmail" placeholder="incluir outro e-mail…">' +
+           '<button type="button" class="btn btn-outline btn-sm" id="modalEnvioAddBtn">+ Incluir</button>' +
+         '</div>';
+    alvo.innerHTML = h;
+
+    var chks = alvo.querySelectorAll("[data-env-chk]");
+    for (var i = 0; i < chks.length; i++) {
+      chks[i].onchange = function () {
+        lista[Number(this.getAttribute("data-env-chk"))].marcado = this.checked;
+        atualizarBotao();
+      };
+    }
+    if (el("modalEnvioAddBtn")) el("modalEnvioAddBtn").onclick = incluir;
+    atualizarBotao();
+  }
+
+  function incluir() {
+    var campo = el("modalEnvioNovoEmail");
+    var v = String((campo || {}).value || "").trim();
+    if (!v) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)) {
+      if (typeof toast === "function") toast("E-mail inválido: " + v, "erro");
+      return;
+    }
+    for (var i = 0; i < lista.length; i++) {
+      if (lista[i].email.toLowerCase() === v.toLowerCase()) {
+        if (typeof toast === "function") toast("Este e-mail já está na lista.", "info");
+        return;
+      }
+    }
+    lista.push({ email: v, marcado: true, falhas: 0, confirmacoes: 0,
+                 origem: "incluído agora por você" });
+    pintar();
+  }
+
+  /* Sem destinatário não há ofício: melhor desabilitar aqui do que deixar
+     enviar e falhar depois. */
+  function atualizarBotao() {
+    var n = escolhidos().length;
+    var b = el("btnModalEnviarOficioAgora");
+    if (!b) return;
+    b.disabled = n === 0;
+    b.innerHTML = n === 0 ? "Escolha ao menos um e-mail" : "📨 Enviar agora → " + n + " destino(s)";
+    b.style.opacity = n === 0 ? "0.5" : "1";
+  }
+
+  function escolhidos() {
+    return lista.filter(function (d) { return d.marcado; })
+                .map(function (d) { return d.email; });
+  }
+
+  /* Chamado pelo modal ao abrir. `emails` é o que veio da emissão. */
+  window.modalEnvioMontarSeletor = function (filaId, emails) {
+    lista = String(emails || "").split(/[;,]/)
+      .map(function (e) { return e.trim(); })
+      .filter(function (e) { return e.length > 0; })
+      .map(function (e) { return { email: e, marcado: true, falhas: 0, confirmacoes: 0,
+                                   origem: "cadastro da escola" }; });
+    pintar();
+
+    if (!filaId) return;
+    google.script.run
+      .withSuccessHandler(function (r) {
+        if (!r || !r.ok || !r.destinatarios) return;
+        var porEmail = {};
+        r.destinatarios.forEach(function (d) { porEmail[d.email.toLowerCase()] = d; });
+        lista.forEach(function (d) {
+          var h = porEmail[d.email.toLowerCase()];
+          if (!h) return;
+          d.falhas = h.falhas;
+          d.confirmacoes = h.confirmacoes;
+          /* Quem já quicou nasce DESMARCADO — mas continua visível, com o
+             motivo à vista. Sumir seria decidir pela pessoa. */
+          d.marcado = h.marcado;
+        });
+        pintar();
+      })
+      .withFailureHandler(function () { /* sem histórico, o seletor ainda serve */ })
+      .destinatariosDoOficio(filaId, token());
+  };
+
+  window.modalEnvioDestinatariosEscolhidos = escolhidos;
+})();
+</script>

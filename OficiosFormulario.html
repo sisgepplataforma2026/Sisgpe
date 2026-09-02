@@ -901,7 +901,14 @@
           <div style="background:#fff;padding:14px 16px;"><span style="display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--g400);margin-bottom:8px;">Nº do Ofício</span><div style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,var(--navy),var(--blue));color:var(--gold2);font-size:15px;font-weight:900;padding:5px 13px;border-radius:9px;">📄 <span id="modalEnvioNumero">—</span></div></div>
           <div style="background:#fff;padding:14px 16px;"><span style="display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--g400);margin-bottom:8px;">Tipo</span><div style="display:inline-flex;align-items:center;gap:5px;background:var(--blue-lt);color:var(--blue);font-size:12px;font-weight:800;padding:5px 12px;border-radius:999px;">📋 <span id="modalEnvioTipo">—</span></div></div>
           <div style="background:#fff;padding:14px 16px;grid-column:1/-1;"><span style="display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--g400);margin-bottom:7px;">Escola / Destinatário</span><strong id="modalEnvioEscola" style="display:block;font-size:13.5px;font-weight:800;color:var(--g900);line-height:1.4;">—</strong></div>
-          <div style="background:#fff;padding:14px 16px;grid-column:1/-1;"><span style="display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--g400);margin-bottom:7px;">E-mail de destino</span><div style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:var(--blue);">✉️ <span id="modalEnvioEmail">—</span></div></div>
+          <div style="background:#fff;padding:14px 16px;grid-column:1/-1;"><span style="display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--g400);margin-bottom:7px;">E-mail de destino</span><div style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:var(--blue);">✉️ <span id="modalEnvioEmail">—</span></div>
+          <!-- SELETOR DE DESTINATARIOS — 02/09/2026.
+               O campo acima era so leitura. O usuario pediu poder alterar,
+               incluir e escolher AQUI, que e onde ele ja para antes de enviar:
+               "nessa tela eu deveria alterar email, incluir, ter um seletor".
+               O historico de cada endereco vem junto, porque o sistema ja sabe
+               quem quicou e quem confirmou e nao cruzava os dois. -->
+          <div id="modalEnvioSeletor" style="margin-top:12px;"></div></div>
           <div style="background:#fff;padding:14px 16px;grid-column:1/-1;"><span style="display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--g400);margin-bottom:9px;">Anexos</span><div id="modalEnvioAnexos" style="display:flex;gap:8px;flex-wrap:wrap;">—</div></div>
         </div>
         <div style="background:var(--amber-lt);border:1.5px solid #fcd34d;border-left:3px solid var(--amber);border-radius:0;padding:12px 14px;font-size:12px;font-weight:600;color:#92400e;display:flex;align-items:flex-start;gap:9px;"><span style="font-size:16px;flex-shrink:0;">⚠️</span><span>Após o envio, o status do ofício será atualizado automaticamente no sistema.</span></div>
@@ -951,7 +958,28 @@ window.abrirModalEnvioOficioSISGEP = function(dados, aoConfirmar) {
   var anexosEl=document.getElementById("modalEnvioAnexos");
   if(anexosEl){var partes=String(dados.anexos||"PDF do ofício").split("+").map(function(p){return p.trim();}).filter(Boolean);anexosEl.innerHTML=partes.map(function(p){return '<div style="display:inline-flex;align-items:center;gap:5px;background:var(--green-lt);border:1.5px solid #6ee7b7;color:var(--green-dk);font-size:12px;font-weight:700;padding:5px 12px;border-radius:8px;">📎 '+p+'</div>';}).join("");}
   modalSwitchTab("dados"); btn.disabled=false; btn.innerHTML="📨 Enviar agora";
-  btn.onclick=function(){btn.disabled=true;btn.innerHTML="⏳ Enviando...";if(typeof aoConfirmar==="function")aoConfirmar();};
+  /* SELETOR DE DESTINATARIOS — 02/09/2026. Monta a lista com o historico de
+     cada endereco (quem quicou, quem confirmou). Quem ja quicou nasce
+     desmarcado, e o botao de enviar passa a contar quantos destinos restam. */
+  if(typeof window.modalEnvioMontarSeletor==="function"){
+    try{ window.modalEnvioMontarSeletor(dados.filaId, dados.email); }catch(eSel){}
+  }
+  btn.onclick=function(){
+    /* O que a pessoa escolheu vence o que veio do cadastro. Se o seletor nao
+       carregou, `dados.email` continua valendo — o envio nao pode depender de
+       uma tela auxiliar ter funcionado. */
+    if(typeof window.modalEnvioDestinatariosEscolhidos==="function"){
+      try{
+        var escolhidos=window.modalEnvioDestinatariosEscolhidos();
+        if(escolhidos&&escolhidos.length){
+          _modalPayload.email=escolhidos.join("; ");
+          if(typeof dados==="object")dados.email=_modalPayload.email;
+        }
+      }catch(eEsc){}
+    }
+    btn.disabled=true;btn.innerHTML="⏳ Enviando...";
+    if(typeof aoConfirmar==="function")aoConfirmar();
+  };
   modal.classList.add("aberto");
 };
 
