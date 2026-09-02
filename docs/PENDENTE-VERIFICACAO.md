@@ -49,7 +49,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 ## 📌 O QUE ESTÁ ABERTO — índice
 
-> Gerado em 31/08/2026, atualizado em 01/09. São **50 itens** (o 21 e o 46
+> Gerado em 31/08/2026, atualizado em 01/09. São **51 itens** (o 21 e o 46
 > fecharam em 01/09; os itens 50 a 56 nasceram na auditoria do Módulo 03, e o
 > 57 ao 59 do trabalho do mesmo dia). A lista completa, com o detalhe de
 > cada um, está na seção ABERTO logo abaixo — este índice existe só para não
@@ -57,6 +57,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 | Nº | Item |
 |---|---|
+| 63 | ⚠️ Não havia defeito — o ofício sempre esteve em Enviados (da conta que envia) |
 | 62 | 🔴 42 falhas de entrega na PRODUÇÃO — 15 são 2 contatos mortos, e o certo já está na base |
 | 61 | ⚠️ Conclusão minha CORRIGIDA — a confirmação não é impossível de ver |
 | 60 | Portal público — rascunho parado, e a ficha divergiu nele (levantamento) |
@@ -115,6 +116,63 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
+
+### 63. ⚠️ NÃO HAVIA DEFEITO — o ofício sempre esteve em Enviados
+
+02/09/2026. **Segunda conclusão minha desfeita pelo dado real no mesmo dia, e
+esta custou uma mudança no caminho de envio.**
+
+**A SEQUÊNCIA, porque o erro está nela e não no raciocínio:**
+
+1. O usuário relatou: *"foram enviados mas não aparecem na caixa de enviados"*.
+2. Eu tinha afirmado antes que `GmailApp.sendEmail` grava cópia em Enviados —
+   e **retratei essa afirmação** diante do relato dele.
+3. Troquei o envio por `createDraft(...).send()` para resolver o problema.
+4. Ele abriu a caixa: **os ofícios estavam lá.** Os de 01/09 (480, 481, 482) e
+   os de 02/09 pela manhã (483 a 488), todos enviados pelo `sendEmail` antigo —
+   a minha mudança só foi publicada às 15:00.
+5. Perguntei onde ele tinha olhado. Resposta: **caixa da secretaria.**
+
+**A EXPLICAÇÃO, e ela é simples:** a cópia em Enviados fica na caixa da conta
+que **executa** o script — `financeirosindeducacao@gmail.com`. A secretaria só
+recebe **respostas**, porque é para ela que aponta o `replyTo`. Nunca houve
+ofício enviado na caixa da secretaria, nem deveria haver.
+
+**E o alias não muda isso.** Ele muda o campo **De** que a escola vê. Onde a
+cópia é guardada continua sendo a caixa que executa.
+
+**O QUE EU FIZ DE ERRADO, que é diferente do primeiro engano do dia:** eu tinha
+a informação certa e a **troquei pela impressão do usuário sem pedir a
+evidência**. Bastava uma pergunta — "em qual caixa você olhou?" — antes de
+mexer em código do caminho de envio. No item 61 eu deduzi sem medir; aqui eu
+**desmedi**: abandonei um fato verificado porque um relato o contrariava.
+
+**A MUDANÇA FICOU, por decisão do usuário ("Vamos manter"), com a justificativa
+trocada.** O `createDraft().send()` devolve o **ID real da mensagem**, que o
+`sendEmail` não devolve — daí o texto fixo `GMAILAPP_SEM_ID` no registro. Sem
+ID não existe a thread do ofício para o verificador de confirmação olhar, e
+sobrou procurar pelo número e pelo nome da escola em toda a caixa. **Essa busca
+larga é a causa do item 49** — foi ela que deixou "Outlook" confirmar ofício que
+quicou. Guardar o ID destrava consertar aquilo direito.
+
+O custo, que não existia antes: o rascunho nasce antes do envio, e um `send()`
+que falhe deixaria rascunho órfão. Tratado e coberto no t140.
+
+**O comentário no `EmailOficios.gs` foi reescrito.** A primeira versão dizia que
+a troca servia para o ofício aparecer em Enviados — falso, e neste projeto as
+decisões ficam escritas no cabeçalho dos arquivos. Comentário errado ali é
+armadilha para quem ler daqui a seis meses.
+
+---
+
+**SE A SECRETARIA PRECISAR VER OS OFÍCIOS ENVIADOS**, três caminhos, nenhum
+urgente:
+
+| | O que é | Custo |
+|---|---|---|
+| **Delegação do Gmail** *(recomendado)* | na conta do financeiro: Configurações → Contas e importação → *Conceder acesso à sua conta*. Ela abre a caixa do financeiro pelo próprio Gmail | **zero código** |
+| **BCC para a secretaria** | uma linha: todo ofício sai com `bcc: secretaria@`. Chega também na KingHost, independente do Google | existe decisão registrada em `EmailOficios.gs:127` dizendo *"Sem BCC"*; e **cada BCC consome um destinatário da cota diária** — com ~40 ofícios/dia sobe para ~80 de um teto de 100 |
+| **Nada** | se ela acompanha pelo Monitoramento, a caixa é redundante | — |
 
 ### 62. 🔴 42 falhas de entrega medidas NA PRODUÇÃO — e os contatos certos já estão na base
 

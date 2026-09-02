@@ -133,31 +133,36 @@ function montarOpcoesEmailSISGEP_(emailUsuario, htmlBody, anexos, assunto, desti
 /* ══════════════════════════════════════════════════════════════════════════
    POR QUE RASCUNHO-E-ENVIA, E NAO sendEmail — 02/09/2026
 
-   O usuario relatou: "foram enviados mas nao aparecem na caixa de enviados".
-   Estava certo, e o defeito era este.
+   ATENCAO A QUEM LER DEPOIS: a primeira versao desta nota dizia que a troca
+   servia para o oficio aparecer na caixa de Enviados. ERA FALSO, e fica
+   registrado porque o engano custou uma mudanca no caminho de envio.
 
-   `GmailApp.sendEmail()` nao devolve NADA. Duas consequencias que pareciam
-   separadas e sao a mesma:
+   O QUE ACONTECEU. O usuario relatou que os oficios enviados nao apareciam em
+   Enviados. Eu troquei o `sendEmail` por rascunho-e-envia para resolver isso.
+   Depois ele mostrou a caixa: os oficios ESTAVAM la — inclusive os de 01/09 e
+   os de 02/09 pela manha, todos mandados pelo `sendEmail` antigo. Ele estava
+   olhando a caixa da SECRETARIA; a copia fica na caixa da conta que EXECUTA o
+   script, que e a do financeiro. A secretaria so recebe resposta, porque e
+   para ela que aponta o replyTo.
 
-     1. O oficio nao ficava registrado na caixa de Enviados. Para o sindicato,
-        um documento oficial saia sem deixar copia no e-mail de quem mandou.
+   Ou seja: `GmailApp.sendEmail` sempre gravou em Enviados. Nao havia defeito.
 
-     2. Sem retorno, nao havia ID de mensagem. Por isso o registro gravava o
-        texto fixo "GMAILAPP_SEM_ID" — e sem ID nao existe como, a partir da
-        linha da planilha, achar o e-mail e provar que ele saiu.
+   POR QUE A TROCA FICOU MESMO ASSIM — decisao do usuario em 02/09, com a
+   justificativa original ja desfeita:
 
-   E A (2) E PARTE DA CAUSA DO ITEM 49. Sem o ID, o verificador de confirmacao
-   nao tem a thread do oficio para olhar; sobrou procurar pelo NUMERO e pelo
-   NOME DA ESCOLA em toda a caixa. Foi essa busca larga que fez a assinatura
-   "Outlook" confirmar oficio que na verdade quicou.
+   `sendEmail` nao devolve NADA. Sem retorno nao ha ID de mensagem, e por isso
+   o registro gravava o texto fixo "GMAILAPP_SEM_ID". Sem ID nao existe a
+   thread do oficio para o verificador de confirmacao olhar; sobrou procurar
+   pelo NUMERO e pelo NOME DA ESCOLA em toda a caixa. Foi essa busca larga que
+   fez a assinatura "Outlook" confirmar oficio que na verdade quicou — o item
+   49. Guardar o ID e o que destrava consertar aquilo direito.
 
-   `createDraft(...).send()` resolve os dois: cria a mensagem na conta, envia,
-   e devolve o GmailMessage — de onde sai o ID de verdade.
+   `createDraft(...).send()` devolve o GmailMessage, e dai sai o ID.
 
-   O RASCUNHO NAO PODE FICAR ORFAO. Se o `send()` falhar, o rascunho ja existe
-   e ficaria na caixa de quem envia, parecendo oficio pendente. Por isso ele e
-   apagado antes de a excecao subir. O apagamento vai em try proprio: falhar
-   ao limpar nao pode mascarar o erro real do envio.
+   O CUSTO, que nao existia antes: o rascunho e criado ANTES do envio. Se o
+   `send()` falhar, ele ficaria na caixa parecendo oficio pendente de mandar.
+   Por isso e apagado antes de a excecao subir, e o apagamento vai em try
+   proprio — falhar ao limpar nao pode mascarar o erro real do envio.
    ══════════════════════════════════════════════════════════════════════════ */
 function enviarEmailOficio_(emailUsuario, htmlBody, anexos, assunto, destino, corpoTexto) {
   var opcoes = montarOpcoesEmailSISGEP_(emailUsuario, htmlBody, anexos, assunto, destino);
