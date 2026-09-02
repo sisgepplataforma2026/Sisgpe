@@ -3220,7 +3220,36 @@ window.mostrarAbaOficio = function(aba) {
       anexosEl.innerHTML = partes.map(function(p){ return "<div style='display:inline-flex;align-items:center;gap:5px;background:var(--green-lt);border:1.5px solid #6ee7b7;color:var(--green-dk);font-size:12px;font-weight:700;padding:5px 12px;border-radius:8px;'>📎 " + p + "</div>"; }).join("");
     }
     btn.disabled = false; btn.innerHTML = "📨 Enviar agora";
-    btn.onclick = function() { btn.disabled = true; btn.innerHTML = "⏳ Enviando..."; if(typeof aoConfirmar==="function") aoConfirmar(); };
+
+    /* SELETOR DE DESTINATARIOS — 02/09/2026.
+
+       ESTA e a definicao que vale. `abrirModalEnvioOficioSISGEP` existe DUAS
+       vezes: aqui e no OficiosFormulario.html:952. No escopo global unico do
+       Apps Script o segundo `window.x = function` sobrescreve o primeiro, e
+       este arquivo e incluido DEPOIS (index.html:758 contra 441). Eu editei a
+       do Formulario primeiro e a mudanca simplesmente nao rodava — sem erro
+       nenhum, porque a funcao existia e funcionava, so nao era esta.
+
+       As duas ficam sincronizadas de proposito enquanto a duplicata existir; o
+       t141 conta as definicoes e cobra que todas montem o seletor, para que a
+       proxima pessoa nao caia no mesmo buraco. */
+    if (typeof window.modalEnvioMontarSeletor === "function") {
+      try { window.modalEnvioMontarSeletor(dados.filaId, dados.email); } catch (eSel) {}
+    }
+
+    btn.onclick = function() {
+      /* O que a pessoa escolheu vence o que veio do cadastro. Se o seletor nao
+         carregou, `dados.email` continua valendo — o envio nao pode depender de
+         uma tela auxiliar ter funcionado. */
+      if (typeof window.modalEnvioDestinatariosEscolhidos === "function") {
+        try {
+          var escolhidos = window.modalEnvioDestinatariosEscolhidos();
+          if (escolhidos && escolhidos.length) dados.email = escolhidos.join("; ");
+        } catch (eEsc) {}
+      }
+      btn.disabled = true; btn.innerHTML = "⏳ Enviando...";
+      if(typeof aoConfirmar==="function") aoConfirmar();
+    };
     modal.classList.add("aberto");
   };
 

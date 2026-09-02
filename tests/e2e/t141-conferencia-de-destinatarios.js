@@ -231,6 +231,23 @@ b.ok(/if\(escolhidos&&escolhidos\.length\)/.test(FORM),
 b.ok(/try\{ window\.modalEnvioMontarSeletor/.test(FORM),
   "e a montagem vai em try, para não impedir o modal de abrir");
 
+b.passo("19b. TODAS as definições do modal montam o seletor");
+/* O defeito que custou uma publicação: `abrirModalEnvioOficioSISGEP` existe
+   duas vezes — OficiosFormulario.html:952 e OficiosScripts.html:3208. No
+   escopo global único do Apps Script o segundo sobrescreve o primeiro, e o
+   Scripts é incluído DEPOIS. Eu editei só a do Formulário; a mudança não
+   rodava, sem erro nenhum, porque a função existia e funcionava — só não era
+   aquela.
+
+   Esta asserção conta as definições e cobra que cada uma monte o seletor. Se
+   alguém criar uma terceira, ela falha antes de ir para o ar. */
+const defs = (FORM + " " + SCRIPTS).match(/abrirModalEnvioOficioSISGEP\s*=\s*function/g) || [];
+const montagens = (FORM + " " + SCRIPTS).match(/modalEnvioMontarSeletor\(dados\.filaId, dados\.email\)/g) || [];
+b.ok(defs.length >= 1, "o modal tem definição", defs.length + " definição(ões)");
+b.igual(montagens.length, defs.length,
+  "e CADA definição monta o seletor",
+  "duas definições e uma montagem = a que vence pode ser a errada");
+
 b.passo("20. o filaId chega ao modal — é o que traz o histórico");
 b.ok(/filaId: filaId/.test(lerSemComentario("OficiosScripts.html")),
   "quem abre o modal passa o filaId");
