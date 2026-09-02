@@ -59,7 +59,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 |---|---|
 | 64 | ✅ VERIFICADO NO AR — seletor, remetente e destino real (02/09, 19h32) |
 | 63 | ⚠️ Não havia defeito — o ofício sempre esteve em Enviados (da conta que envia) |
-| 62 | 🔴 42 falhas de entrega na PRODUÇÃO — 15 são 2 contatos mortos, e o certo já está na base |
+| 62 | 🟡 42 falhas — cadastros CORRIGIDOS em 02/09; faltam os 15 ofícios que nunca chegaram |
 | 61 | ⚠️ Conclusão minha CORRIGIDA — a confirmação não é impossível de ver |
 | 60 | Portal público — rascunho parado, e a ficha divergiu nele (levantamento) |
 | 59 | A ficha em PDF no layout do papel — falta pôr um ao lado do outro |
@@ -276,6 +276,48 @@ com a origem à vista — não decidir sozinho, mas também não deixar a pessoa
 descobrir isso lendo 347 linhas.
 
 ---
+
+
+---
+
+## ✅ CADASTROS CORRIGIDOS EM 02/09/2026 — pelo usuário, direto na planilha
+
+| Escola | Saiu | Entrou |
+|---|---|---|
+| FAESA | `thalia.ferreira@faesa.br` | `karolina.caldeira@faesa.br` + `luiza.stefani@faesa.br` |
+| SEB | `eni.neves@seb.com.br` | `carolina.ferreira@sebeducation.com` + `folhapagamento@sebsa.com.br` |
+| Creche Ping Pong | — (mantido) | `contato@cevolucao.com.br` acrescentado ao `dp1@tellescontabilidade.cnt.br` |
+
+**O SEB explicou a causa real das 8 quicadas:** não foi contato que saiu da
+instituição — **foi troca de domínio**. `carolina.ferreira@seb.com.br` virou
+`carolina.ferreira@sebeducation.com`. A mesma pessoa, endereço novo. Minha
+hipótese de "contato que saiu" estava errada, e a do usuário estava certa.
+
+**DECISÃO DA OPERAÇÃO, contra o que eu recomendei:** o `dp1@tellescontabilidade`
+da Ping Pong **fica**. Ele quicou 3 vezes (ofícios 296, 315, 365). Como **um
+endereço que quica marca o ofício INTEIRO como `FALHA_ENTREGA`**, a Ping Pong
+deve continuar aparecendo como falha no Monitoramento mesmo quando o
+`contato@cevolucao.com.br` receber. Foi avisado; registrado como escolha.
+
+**🔴 O QUE A CORREÇÃO DO CADASTRO NÃO FAZ — e é o que sobra**
+
+**Os 15 ofícios que quicaram continuam não entregues.** Corrigir o endereço faz
+os PRÓXIMOS chegarem; não reenvia os que voltaram. São documentos de filiação,
+desfiliação e oposição à taxa que a escola **nunca recebeu**:
+
+| Escola | Ofícios que nunca chegaram |
+|---|---|
+| FAESA | 144, 168, 172, 203, 236, 242, 303 |
+| SEB | 335, 336, 358, 375, 397, 452, 457, 476 |
+
+**Antes de reenviar, a correção do "Outlook" precisa estar em produção** — senão
+eles voltam a poder ser marcados como confirmados por engano, que é o item 49.
+A ordem certa é: promoção para produção → reprocessar → reenviar.
+
+**Um script de troca ficou pronto e testado**, em
+`tests/fixtures/producao/TrocarEmailEscola.gs.txt` (t142, 23 asserções). Não foi
+usado desta vez — o usuário ajustou à mão. Fica para a próxima, porque o padrão
+vai se repetir: 23 endereços distintos já quicaram.
 
 **OUTROS DEFEITOS VISÍVEIS NA MESMA TELA**, nenhum relacionado ao que se
 procurava, todos reais:
