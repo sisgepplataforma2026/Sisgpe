@@ -27,7 +27,7 @@
  */
 const fs = require("fs");
 const path = require("path");
-const { fluxo, passo, ok, igual, resumo } = require("./base");
+const { fluxo, passo, ok, igual, naoTestavel, resumo } = require("./base");
 
 const RAIZ = path.resolve(__dirname, "..", "..");
 
@@ -119,7 +119,7 @@ if (registros.length) {
      "não um alvo de deploy");
 }
 
-/* ─── o deploymentId, SÓ no ferramental de deploy ───────────────────────
+/* ─── o deploymentId: cada ambiente tem o SEU, e eles são diferentes ────
    Diferente do scriptId, um deploymentId NÃO é único no repositório: o
    sistema aponta legitimamente para outros web apps publicados. Medido:
    AKfycbzgPBSS… aparece em Visitas.gs, BeneficiosAdmin.html e
@@ -129,23 +129,78 @@ if (registros.length) {
    A primeira versão desta asserção varria o repositório inteiro e reprovava
    nesses três. Um teste que acusa o comportamento correto não protege nada:
    ou é desligado, ou ensina a ignorar vermelho. Escopo certo é o ferramental
-   que implanta na homologação — ali, sim, o valor é um só. */
-passo("deploymentId do ferramental de deploy");
+   que implanta — mas ali são DOIS alvos, não um.
+
+   O SEGUNDO ERRO, mesmo defeito de escopo (02/09/2026): a asserção exigia um
+   único deploymentId no ferramental inteiro. O ramo de promoção traz
+   `deploy-producao.yml`, que carrega — corretamente — o deploymentId da
+   Produção. A suíte ficou vermelha nas duas tentativas de promover, e o
+   vermelho era do teste, não do código. O ferramental de homologação e o de
+   produção são conjuntos separados, e o que importa é que NÃO se cruzem:
+
+     · workflow de homologação com o ID da Produção → um deploy de
+       homologação sobrescreveria a URL que a Marcela usa todo dia;
+     · workflow de produção com o ID da homologação → publicar produção
+       jogaria o código por cima do ambiente de teste, e a Produção real
+       ficaria intocada sem ninguém perceber.
+
+   As duas asserções abaixo medem exatamente isso. O que elas NÃO pegam, e
+   é honesto dizer: um erro de digitação dentro do próprio ID de produção.
+   Não existe no repositório uma segunda fonte independente desse valor para
+   comparar — a conferência dele é o passo "Confirmar a implantacao atual",
+   que exige o ID existir de fato no projeto antes de publicar. */
+passo("deploymentId de cada ambiente");
 const FORMA_DEP = /AKfycb[A-Za-z0-9_-]{60,90}/g;
 const refDep = (wf.match(FORMA_DEP) || [])[0] || "";
-const depDivergentes = [];
 
-arquivos.forEach(function (p) {
-  const rel = path.relative(RAIZ, p);
-  if (!/^(\.github\/workflows|scripts)\//.test(rel)) return;
-  const achados = fs.readFileSync(p, "utf8").match(FORMA_DEP);
-  if (!achados) return;
-  achados.forEach(function (d) { if (d !== refDep) depDivergentes.push(rel + ": " + d); });
-});
+function idsDeDeploy(filtro) {
+  const fora = [];
+  arquivos.forEach(function (p) {
+    const rel = path.relative(RAIZ, p).split(path.sep).join("/");
+    if (!/^(\.github\/workflows|scripts)\//.test(rel)) return;
+    if (!filtro(rel)) return;
+    const achados = fs.readFileSync(p, "utf8").match(FORMA_DEP);
+    if (!achados) return;
+    achados.forEach(function (d) { fora.push({ arquivo: rel, id: d }); });
+  });
+  return fora;
+}
+
+const ehProducao = function (rel) { return /producao/.test(rel); };
+const deHomologacao = idsDeDeploy(function (rel) { return !ehProducao(rel); });
+const deProducao = idsDeDeploy(ehProducao);
 
 ok(refDep.length > 50, "o workflow tem um deploymentId de referência",
    refDep ? refDep.slice(0, 24) + "…" : "(não achado)");
-igual(depDivergentes, [],
-      "nenhum arquivo de deploy traz um deploymentId diferente da referência");
+
+igual(deHomologacao.filter(function (d) { return d.id !== refDep; })
+        .map(function (d) { return d.arquivo + ": " + d.id; }),
+      [], "no ferramental de homologação, o deploymentId é um só");
+
+/* O ferramental de produção só existe no ramo de promoção. Onde ele não
+   está, dizer "não testável" é mais honesto que passar em silêncio. */
+if (!deProducao.length) {
+  naoTestavel("o ferramental de produção aponta para a Produção",
+              "este ramo não traz workflow de produção — a conferência " +
+              "acontece no ramo de promoção, que é onde ele existe");
+} else {
+  const idsProd = deProducao.map(function (d) { return d.id; });
+  const refProd = idsProd[0];
+
+  igual(deProducao.filter(function (d) { return d.id !== refProd; })
+          .map(function (d) { return d.arquivo + ": " + d.id; }),
+        [], "no ferramental de produção, o deploymentId também é um só");
+
+  ok(refProd !== refDep,
+     "e NÃO é o da homologação — os dois ambientes não se cruzam",
+     refProd === refDep
+       ? "o workflow de produção publicaria em cima da HOMOLOGAÇÃO"
+       : "produção " + refProd.slice(0, 18) + "… ≠ homologação " +
+         refDep.slice(0, 18) + "…");
+
+  ok(deHomologacao.every(function (d) { return d.id !== refProd; }),
+     "e nenhum workflow de homologação carrega o ID da Produção",
+     deHomologacao.length + " ocorrência(s) conferida(s) no lado da homologação");
+}
 
 resumo();
