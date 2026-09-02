@@ -1,0 +1,124 @@
+/**
+ * DIAGNOSTICO DO ITEM 49 — SO LEITURA. NAO ESCREVE NADA.
+ * ============================================================================
+ *
+ * ARQUIVO TEMPORARIO. Cole na PRODUCAO, rode `diagnosticoItem49`, mande o log
+ * de volta, e APAGUE o arquivo. Ele nao faz parte do sistema.
+ *
+ * POR QUE ELE EXISTE. Eu nao enxergo a producao — so o repositorio. Antes de
+ * te entregar arquivo para colar, tres coisas precisam ser medidas la, e nao
+ * aqui:
+ *
+ *   1. QUAIS FUNCOES EXISTEM. O repositorio renomeou `registrarLogSistema`
+ *      para `registrarLogSistema_` em 01/09. Se a producao ainda tiver o nome
+ *      antigo, colar o arquivo do repositorio quebra toda gravacao de log.
+ *      Esta parte diz qual dos dois esta la.
+ *
+ *   2. O ESTADO REAL DOS OFICIOS 144, 236 E 242. Sao os tres que quicaram
+ *      para thalia.ferreira@faesa.br e que na producao aparecem CONFIRMADO.
+ *
+ *   3. QUANTOS OUTROS PODEM ESTAR ERRADOS. Ninguem mediu. Todo oficio
+ *      confirmado por palavra-chave carrega "Confirmacao localizada
+ *      automaticamente" na observacao — entao da para contar.
+ *
+ * NAO ESCREVE NADA: sem setValue, sem appendRow, sem envio de e-mail. So le a
+ * aba de Registro e escreve no Logger.
+ */
+
+/** Os tres oficios do achado. Muda aqui se quiser olhar outros. */
+var DIAG49_OFICIOS = ["144", "236", "242"];
+
+/** Marca que o proprio sistema grava quando quem confirmou foi a rotina. */
+var DIAG49_MARCA_AUTOMATICA = /confirma[çc][ãa]o localizada automaticamente/i;
+
+function diagnosticoItem49() {
+  var L = [];
+  L.push("DIAGNOSTICO DO ITEM 49 — " + new Date().toISOString());
+  L.push("");
+
+  /* ── 1. quais funcoes existem neste projeto ─────────────────────────── */
+  L.push("1. FUNCOES PRESENTES NESTE PROJETO");
+  var nomes = ["registrarLogSistema", "registrarLogSistema_",
+               "exigirModulo_", "exigirAdminOuSessao_", "exigirQualquerModulo_",
+               "paginarItens_", "getHeaderMap_", "obterOuCriarAbaFilaOficios_",
+               "verificarConfirmacoesRecebimento", "verificarFalhasEntregaOficios",
+               "MON_OFICIOS_textoConfirmaRecebimento_"];
+  for (var n = 0; n < nomes.length; n++) {
+    var tem = false;
+    try { tem = (eval("typeof " + nomes[n]) === "function"); } catch (e) { tem = false; }
+    L.push("   " + (tem ? "[x] TEM     " : "[ ] NAO TEM ") + nomes[n]);
+  }
+  L.push("");
+
+  /* ── 2 e 3. o que a planilha diz ─────────────────────────────────────── */
+  var ss, sh;
+  try {
+    ss = SpreadsheetApp.openById(typeof getPlanilhaId === "function" ? getPlanilhaId() : PLANILHA_ID);
+    sh = ss.getSheetByName(PLANILHA_REGISTRO);
+  } catch (e) {
+    L.push("!! nao consegui abrir a planilha: " + e);
+    Logger.log(L.join("\n"));
+    return L.join("\n");
+  }
+  if (!sh || sh.getLastRow() < 2) {
+    L.push("!! aba de Registro vazia ou inexistente (" + PLANILHA_REGISTRO + ")");
+    Logger.log(L.join("\n"));
+    return L.join("\n");
+  }
+
+  var hm      = getHeaderMap_(sh);
+  var cNum    = hm["Número do Ofício"];
+  var cStatus = hm["Status"];
+  var cObs    = hm["Observações"];
+  var cEmail  = hm["E-mails (todos)"] || hm["E-mail (principal)"];
+
+  if (!cNum || !cStatus) {
+    L.push("!! faltam colunas obrigatorias: Número do Ofício / Status");
+    Logger.log(L.join("\n"));
+    return L.join("\n");
+  }
+  if (!cObs) L.push("   (aviso: nao existe coluna 'Observações' — o item 3 nao vai medir nada)");
+
+  var dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+
+  L.push("2. OS OFICIOS DO ACHADO");
+  for (var k = 0; k < DIAG49_OFICIOS.length; k++) {
+    var alvo = DIAG49_OFICIOS[k];
+    var achou = false;
+    for (var i = 0; i < dados.length; i++) {
+      var num = String(dados[i][cNum - 1] || "").trim();
+      /* "144" tem que casar com "144" e com "144/2026", e nao com "1440". */
+      if (num !== alvo && num.indexOf(alvo + "/") !== 0) continue;
+      achou = true;
+      var obs = cObs ? String(dados[i][cObs - 1] || "") : "";
+      L.push("   Oficio " + num + "  (linha " + (i + 2) + ")");
+      L.push("     status ....... " + String(dados[i][cStatus - 1] || "").trim());
+      L.push("     e-mail ....... " + (cEmail ? String(dados[i][cEmail - 1] || "") : "(sem coluna)"));
+      L.push("     confirmado por ROTINA? " + (DIAG49_MARCA_AUTOMATICA.test(obs) ? "SIM" : "nao"));
+      L.push("     observacao ... " + (obs.length > 180 ? obs.substring(0, 180) + "..." : obs));
+    }
+    if (!achou) L.push("   Oficio " + alvo + ": NAO ENCONTRADO na aba de Registro");
+  }
+  L.push("");
+
+  L.push("3. QUANTOS FORAM CONFIRMADOS PELA ROTINA (e nao por uma pessoa)");
+  var totalAuto = 0, porStatus = {};
+  if (cObs) {
+    for (var j = 0; j < dados.length; j++) {
+      if (!DIAG49_MARCA_AUTOMATICA.test(String(dados[j][cObs - 1] || ""))) continue;
+      totalAuto++;
+      var st = String(dados[j][cStatus - 1] || "").trim().toUpperCase() || "(vazio)";
+      porStatus[st] = (porStatus[st] || 0) + 1;
+    }
+  }
+  L.push("   total de oficios no Registro ..... " + dados.length);
+  L.push("   confirmados automaticamente ...... " + totalAuto);
+  for (var s in porStatus) L.push("     " + s + ": " + porStatus[s]);
+  L.push("");
+  L.push("   Estes " + totalAuto + " sao os candidatos a reconferencia. A correcao");
+  L.push("   impede novos; os antigos so aparecem reprocessando.");
+
+  var txt = L.join("\n");
+  Logger.log(txt);
+  return txt;
+}

@@ -67,7 +67,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 | 52 | Ofícios — quem trabalha DOCUMENTOS não conserta o e-mail da escola |
 | 51 | Ofícios — duas funções ESCREVIAM sem porta nenhuma (fechadas) |
 | 50 | Ofícios — oito funções eram endpoint por acidente (fechadas) |
-| 49 | Ofícios — "Outlook" confirmava recebimento; 144/236/242 a reprocessar |
+| 49 | Ofícios — "Outlook" confirmava; pacote de produção pronto em tests/fixtures |
 | 48 | Gmail — homologação lê a caixa de e-mail da PRODUÇÃO |
 | 47 | Módulo 03 — *era* "NÃO auditado"; a frente A fechou em 01/09, ver o 56 |
 | 45 | Firebase — homologação e produção compartilham o MESMO Firestore |
@@ -669,16 +669,52 @@ legítima. É decisão de operação; fica registrada como escolha.
 
 **O QUE FALTA**
 
-1. **Levar a correção para a produção** (`MonitoramentoOficios.gs`). Só lá os
-   três ofícios voltam a ser verificados.
-2. **Conferir o status de 144, 236 e 242 depois disso** — devem virar
-   `FALHA_ENTREGA`.
-3. **Corrigir o e-mail da FAESA no cadastro** antes de reenviar, senão vira o
-   quarto bounce. Três ofícios para a mesma pessoa indica contato que saiu da
-   instituição.
-4. **Quantos outros estão errados?** Ninguém mediu quantos ofícios foram
-   confirmados por "Outlook" ao longo do tempo. A correção impede novos; os
-   antigos só se descobrem reprocessando.
+**O pacote para a produção está no repositório**, em
+`tests/fixtures/producao/` — não em anexo de conversa, que se perde:
+
+| Arquivo | O que é |
+|---|---|
+| `DiagnosticoItem49.gs.txt` | **só leitura.** Rodar PRIMEIRO. Diz quais funções a produção tem, o estado real de 144/236/242, e quantos outros ofícios foram confirmados pela rotina |
+| `MonitoramentoOficios.gs.txt` | o arquivo a colar. Substitui o `MonitoramentoOficios.gs` da produção |
+
+**POR QUE NÃO SE COLA O ARQUIVO DO REPOSITÓRIO.** O `MonitoramentoOficios.gs`
+daqui chama `registrarLogSistema_`, **com underscore** — nome que nasceu em
+01/09/2026 (commit `b563103`). A produção ainda tem `registrarLogSistema`,
+pública. Colar o arquivo do repositório lá faria toda gravação de log estourar
+`ReferenceError` — dentro de um `catch`, em silêncio, que foi exatamente como
+a regressão do item 53 passou batida. O arquivo entregue é a base que a
+produção tem, com **só** a correção do item 49 por cima.
+
+Terminam em `.gs.txt` de propósito: o `.claspignore` ignora tudo e reabre com
+`!*.gs`; se essa negação casasse caminho aninhado, existiriam dois
+`MonitoramentoOficios` no projeto e o Apps Script **recusa o push inteiro**.
+A extensão diferente torna isso impossível, e a linha `tests/**` no
+`.claspignore` é a segunda trava.
+
+**A ORDEM, e ela importa:**
+
+1. **Rodar `diagnosticoItem49` na produção** e guardar o log. Ele não escreve
+   nada — sem `setValue`, sem e-mail, sem log de sistema; o t136 compara a
+   planilha célula a célula antes e depois para provar isso. É o que responde
+   o que eu não enxergo daqui.
+2. **Colar o `MonitoramentoOficios.gs.txt`** sobre o arquivo de produção.
+3. **Rodar `verificarFalhasEntregaOficios`** no editor. Os três devem virar
+   `FALHA_ENTREGA`, e `financeiro@sindeducacao.com` recebe o aviso.
+4. **Apagar o `DiagnosticoItem49`** da produção — é temporário.
+5. **Corrigir o e-mail da FAESA no cadastro** antes de reenviar, senão o
+   reenvio vira o quarto bounce. Três ofícios para a mesma pessoa indica
+   contato que saiu da instituição.
+
+**Coberto por `tests/e2e/t136-hotfix-producao-item49.js`** — 46 asserções, e
+elas não param no fonte: o verificador **roda** contra uma planilha semeada e
+o teste olha o que ficou escrito na célula de status. Os três viram
+`FALHA_ENTREGA`; um quarto ofício confirmado por uma **pessoa**, no mesmo
+endereço com bounce, continua `CONFIRMADO`. É o limite da correção, e está
+travado.
+
+**Quantos outros estão errados** — a seção 3 do diagnóstico conta. Todo ofício
+confirmado por palavra-chave carrega "Confirmação localizada automaticamente"
+na observação; é por isso que dá para medir.
 
 **CORREÇÃO DE UMA AFIRMAÇÃO MINHA:** no item 47 e no commit do `t118` eu
 escrevi que "ninguém é avisado quando um ofício falha". Vale para a FILA
