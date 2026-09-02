@@ -197,6 +197,26 @@ b.ok(saida.indexOf("confirmados automaticamente ...... 4") > -1,
   "e conta 4 confirmadas pela rotina — os três mais o 303",
   "é a resposta da pergunta 'quantos outros estão errados?'");
 
+b.passo("13b. o nome ANTIGO é derivado, nunca escrito por extenso");
+/* Veio do t137, que testava uma segunda cópia deste diagnóstico na raiz do
+   repositório. A cópia saiu em 02/09 porque o deploy de produção exige
+   exatamente 173 arquivos .gs e ela fazia 174 — e uma ferramenta temporária
+   não tem por que ir para a produção. As asserções que só ela cobria vivem
+   aqui agora.
+
+   POR QUE DERIVAR IMPORTA: o t127 varre o repositório atrás de referência ao
+   nome antigo, porque renomear função usada por seis arquivos quebra em
+   silêncio. Um nome velho escrito neste arquivo seria indistinguível de uma
+   chamada esquecida — e foi assim que a suíte ficou vermelha na primeira
+   versão dele. Derivando, o detector fica inteiro e o relatório ganha alcance:
+   confere os DOIS lados de toda função fechada. */
+const fonteDiag = fs.readFileSync(path.join(FIXTURES, "DiagnosticoItem49.gs.txt"), "utf8");
+b.ok(fonteDiag.indexOf("nomes[q].slice(0, -1)") > -1,
+  "ele tira o underscore do nome novo para sondar o antigo");
+b.igual((saida.match(/<- nome ANTIGO, sem underscore/g) || []).length,
+  (saida.match(/_$/gm) || []).length,
+  "e sonda um par para cada função terminada em underscore");
+
 b.passo("14. E NÃO ESCREVEU NADA — é o que autoriza rodá-lo na produção");
 /* A checagem inteira do diagnóstico vale zero se ele puder mexer no dado
    real. Aqui se compara a planilha célula a célula, antes e depois. */
