@@ -154,9 +154,30 @@ que achou os três.** Cada um ganhou asserção que o pega antes do ar — inclu
 uma que CONTA as definições do modal, para uma terceira cópia não repetir o
 primeiro.
 
-**AINDA NÃO CONFERIDO:** o campo **De** do e-mail recebido. A faixa prova que o
-alias existe e que o sistema o vê; só o cabeçalho prova que ele foi usado no
-envio. E o `spf=pass`, que decide se a entrega ficou mais sólida.
+**✅ CONFERIDO ÀS 19h32:** o ofício 288/2026 chegou na caixa da secretaria com
+
+```
+De:             SindEducação-ES <secretaria@sindeducacao.com>
+Para:           secretaria@sindeducacao.com
+Responder para: secretaria@sindeducacao.com
+```
+
+**O alias está sendo usado no envio, não só reconhecido.** É a última peça do
+que começou com um erro de servidor SMTP: o Gmail preenchia o host de
+RECEBIMENTO (`mx-vip-01.kinghost.net`) no lugar do de envio, e depois recusou o
+certificado por nome que não batia. Servidor certo: `smtp.kinghost.net`.
+
+**O `[HML]` no assunto FICA** — decisão do usuário em 02/09, depois de eu
+explicar o porquê. Ele só aparece em homologação (`EmailOficios.gs`, condição
+`ambiente === "homologacao"`); em produção o assunto sai limpo, como se vê no
+ofício 487/2026. A marca existe porque **as duas caixas são a mesma**:
+`secretaria@sindeducacao.com` recebe teste e documento oficial no mesmo lugar,
+e sem ela alguém pode responder ou dar andamento a um teste.
+
+**AINDA NÃO CONFERIDO:** o `spf=pass` no cabeçalho. Como o alias sai pelo SMTP
+da KingHost, e o SPF do domínio é `v=spf1 include:_spf.kinghost.net -all`
+(falha rígida, autoriza só a KingHost), ele deve passar — mas isso é dedução,
+não medição. Ver em "Mostrar original" de qualquer ofício novo.
 
 ### 63. ⚠️ NÃO HAVIA DEFEITO — o ofício sempre esteve em Enviados
 
