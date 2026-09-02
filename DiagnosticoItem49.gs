@@ -1,29 +1,44 @@
 /**
- * DIAGNOSTICO DO ITEM 49 — SO LEITURA. NAO ESCREVE NADA.
+ * DIAGNOSTICO DO ITEM 49 — SO LEITURA, e com porta.
  * ============================================================================
  *
- * ARQUIVO TEMPORARIO. Cole na PRODUCAO, rode `diagnosticoItem49`, mande o log
- * de volta, e APAGUE o arquivo. Ele nao faz parte do sistema.
+ * ESTA E A VERSAO DO REPOSITORIO, que vai para a HOMOLOGACAO pelo deploy.
+ * Existe uma segunda em tests/fixtures/producao/DiagnosticoItem49.gs.txt, SEM
+ * porta, e a diferenca e proposital — esta abaixo.
  *
- * POR QUE ELE EXISTE. Eu nao enxergo a producao — so o repositorio. Antes de
- * te entregar arquivo para colar, tres coisas precisam ser medidas la, e nao
- * aqui:
+ * POR QUE DUAS VERSOES
  *
- *   1. QUAIS FUNCOES EXISTEM. O repositorio renomeou `registrarLogSistema`
- *      para `registrarLogSistema_` em 01/09. Se a producao ainda tiver o nome
- *      antigo, colar o arquivo do repositorio quebra toda gravacao de log.
- *      Esta parte diz qual dos dois esta la.
+ * A porta e o `exigirAdminOuSessao_`, que so existe se o projeto ja tiver o
+ * AcessoModulos.gs numa versao recente. A homologacao tem (esta na versao 94,
+ * que veio deste repositorio). A PRODUCAO nao se sabe — e descobrir isso e
+ * justamente uma das tres perguntas que este diagnostico existe para
+ * responder. Por a porta na versao de producao seria fazer o diagnostico
+ * depender da resposta que ele foi escrito para dar.
  *
- *   2. O ESTADO REAL DOS OFICIOS 144, 236 E 242. Sao os tres que quicaram
- *      para thalia.ferreira@faesa.br e que na producao aparecem CONFIRMADO.
+ * POR QUE A PORTA AQUI, ENTAO
  *
- *   3. QUANTOS OUTROS PODEM ESTAR ERRADOS. Ninguem mediu. Todo oficio
- *      confirmado por palavra-chave carrega "Confirmacao localizada
- *      automaticamente" na observacao — entao da para contar.
+ * Sem ela esta funcao entraria na contagem de exposicao, que estava em 204 de
+ * um teto de 204 quando este arquivo nasceu (02/09/2026). Uma ferramenta
+ * temporaria nao vale gastar um teto que custou quatro rodadas para descer de
+ * 224 ate ali. A porta dupla resolve as duas pontas: o editor executa (o
+ * `Session.getActiveUser()` devolve o e-mail de quem clicou), e a rota web
+ * recusa sem sessao — entao o t6 nao a conta.
+ *
+ * O RELATORIO E O MESMO NOS DOIS ARQUIVOS, e o t137 compara os dois textos
+ * para que nao divirjam em silencio.
  *
  * NAO ESCREVE NADA: sem setValue, sem appendRow, sem envio de e-mail. So le a
  * aba de Registro e escreve no Logger.
  */
+
+/**
+ * Ferramenta de editor. Rode `diagnosticoItem49` pelo seletor de funcoes e
+ * leia o log. Depois de usada, o arquivo pode sair do projeto.
+ */
+function diagnosticoItem49(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, "documentos", "Diagnostico do item 49", true);
+  return diagnosticoItem49_relatorio_();
+}
 
 /** Os tres oficios do achado. Muda aqui se quiser olhar outros. */
 var DIAG49_OFICIOS = ["144", "236", "242"];
@@ -31,7 +46,7 @@ var DIAG49_OFICIOS = ["144", "236", "242"];
 /** Marca que o proprio sistema grava quando quem confirmou foi a rotina. */
 var DIAG49_MARCA_AUTOMATICA = /confirma[çc][ãa]o localizada automaticamente/i;
 
-function diagnosticoItem49() {
+function diagnosticoItem49_relatorio_() {
   var L = [];
   L.push("DIAGNOSTICO DO ITEM 49 — " + new Date().toISOString());
   L.push("");
