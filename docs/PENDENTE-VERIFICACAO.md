@@ -49,7 +49,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 ## 📌 O QUE ESTÁ ABERTO — índice
 
-> Gerado em 31/08/2026, atualizado em 01/09. São **49 itens** (o 21 e o 46
+> Gerado em 31/08/2026, atualizado em 01/09. São **50 itens** (o 21 e o 46
 > fecharam em 01/09; os itens 50 a 56 nasceram na auditoria do Módulo 03, e o
 > 57 ao 59 do trabalho do mesmo dia). A lista completa, com o detalhe de
 > cada um, está na seção ABERTO logo abaixo — este índice existe só para não
@@ -57,7 +57,8 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 | Nº | Item |
 |---|---|
-| 61 | 🚨 Confirmação de recebimento é IMPOSSÍVEL de ver — resposta vai para outra caixa |
+| 62 | 🔴 42 falhas de entrega na PRODUÇÃO — 15 são 2 contatos mortos, e o certo já está na base |
+| 61 | ⚠️ Conclusão minha CORRIGIDA — a confirmação não é impossível de ver |
 | 60 | Portal público — rascunho parado, e a ficha divergiu nele (levantamento) |
 | 59 | A ficha em PDF no layout do papel — falta pôr um ao lado do outro |
 | 58 | A tela do "Reemitir ofício" — feita (54.1 fechado), falta ver no ar |
@@ -115,7 +116,108 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
-### 61. 🚨 A confirmação de recebimento é IMPOSSÍVEL de detectar hoje
+### 62. 🔴 42 falhas de entrega medidas NA PRODUÇÃO — e os contatos certos já estão na base
+
+02/09/2026. O usuário abriu o **Monitoramento de Ofícios da produção**. Não é
+amostra nem homologação: é a operação viva, 347 registros.
+
+**42 ofícios com `❌ Falha de entrega`, em 23 endereços distintos.** A
+concentração é o achado:
+
+| Vezes | Endereço | Ofícios |
+|---|---|---|
+| **8×** | `carolina.ferreira@seb.com.br` | 335, 336, 358, 375, 397, 452, 457, 476 |
+| **7×** | `thalia.ferreira@faesa.br` | 144, 168, 172, 203, 236, 242, 303 |
+| 3× | `rh@afbea.org.br` | 116, 123, 124 |
+| 3× | `dp1@tellescontabilidade.cnt.br` | 296, 315, 365 |
+| 2× | `nubiabarcellar@doctum.edu.br` | 106, 149 |
+| 2× | `rh@vitoria.maplebear.com` | 110, 130 |
+
+**Quinze das 42 são dois endereços que não existem mais**, e o sistema
+continuou mandando para eles de março a setembro. O item 49 falava em três
+ofícios da FAESA — **são sete**, e o SEB é pior.
+
+**E O CONTATO CERTO JÁ ESTÁ NA BASE.** Isto é o que torna o item resolvível
+hoje, sem descobrir nada de fora:
+
+| Escola | Morto | Vivo, no próprio histórico |
+|---|---|---|
+| FAESA | `thalia.ferreira@` | **`luiza.stefani@faesa.br`** — confirmado em 250, 286, 288, 471 |
+| SEB | `carolina.ferreira@` | **`eni.neves@seb.com.br`** (099, 374, 482); `lucia.conrado@sebsa.com.br` (348) |
+| Creche Ping Pong | `dp1@tellescontabilidade` | **`secretaria@pingpong-es.com.br`** — confirmado em 201 |
+
+**🔴 A COBRAR:** corrigir esses três cadastros **antes** de reenviar. Reenviar
+para o endereço morto só produz o oitavo bounce.
+
+**UMA AUTOMAÇÃO QUE O SISTEMA DEVERIA FAZER** (REGRA Nº 0.6): quando um
+endereço acumula bounce e a mesma escola tem outro endereço com ofício
+CONFIRMADO, o sistema tem os dois dados e não cruza. Deveria sugerir a troca,
+com a origem à vista — não decidir sozinho, mas também não deixar a pessoa
+descobrir isso lendo 347 linhas.
+
+---
+
+**OUTROS DEFEITOS VISÍVEIS NA MESMA TELA**, nenhum relacionado ao que se
+procurava, todos reais:
+
+1. **Dezessete ofícios com data `31/12/1969 21:00`** — 048 a 064. É o zero do
+   Unix: campo de data vazio renderizado como data. Estão sem escola, sem
+   e-mail, tipo "Desconhecido". Provável importação incompleta.
+
+2. **Colunas escorregadas nos ofícios 045, 046 e 047** — o TIPO aparece como
+   "Desconhecido" e a coluna de E-MAIL traz "Filiação", "Desfiliação", "Taxa
+   Negocial". O conteúdo está deslocado uma coluna.
+
+3. **Dois e-mails com `>` sobrando:** `playkidsescolainfantil@gmail.com>`
+   (ofício 220) e `carolina.ferreira@seb.com.br>` (349). Sobra de cópia e cola
+   de `Nome <email>`. O `>` provavelmente não impede o envio, mas suja a
+   comparação de endereços — inclusive a do verificador de bounce.
+
+4. **`📤 Enviado +194d`** — ofícios esperando confirmação há mais de seis
+   meses, sem ninguém cobrar. O painel mostra a contagem; não existe alerta.
+
+5. **Ofício 119/2026 tem `financeiro@sindeducacao.com` como e-mail da escola**
+   (FAESA) e está CONFIRMADO. Ou é teste que ficou no meio do dado real, ou é
+   erro de cadastro — nos dois casos, dado sujo em registro oficial.
+
+### 61. ⚠️ CONCLUSÃO MINHA CORRIGIDA — a confirmação NÃO é impossível de ver
+
+02/09/2026. **Este item nasceu errado no mesmo dia e está corrigido aqui. O
+texto original fica registrado abaixo porque o raciocínio ainda serve; a
+conclusão, não.**
+
+**O QUE EU AFIRMEI:** que a confirmação de recebimento era *impossível* de
+detectar, porque o ofício sai com `replyTo: secretaria@sindeducacao.com` —
+caixa da KingHost — e o verificador roda `GmailApp.search`, que lê a caixa do
+Gmail. Duas caixas, dois provedores, resposta invisível.
+
+**O QUE O DADO REAL MOSTROU:** o usuário abriu o Monitoramento **da
+produção** e há **dezenas** de ofícios `✅ Confirmado`, vários recentes — 439,
+444, 445, 467 e 471, todos em 31/08/2026. Se fosse impossível, não haveria
+nenhum.
+
+**O QUE CONTINUA VERDADE:** o `GmailApp.search` lê a caixa da conta executora,
+e o `replyTo` aponta para outro provedor. Isso não mudou.
+
+**O QUE EU NÃO SABIA, E ERA O QUE FALTAVA:** por qual caminho as confirmações
+chegam. Há pelo menos três possíveis, e o dado não distingue:
+
+1. o Gmail já busca a caixa da secretaria (POP), e ninguém me disse;
+2. a escola responde com cópia ao remetente, e não só ao `replyTo`;
+3. **alguém marcou à mão** — a tela tem botão ✅ em cada linha não confirmada.
+
+**COMO DESCOBRIR, sem adivinhar:** o `diagnosticoItem49` (já no repositório)
+conta, na seção 3, quantos ofícios trazem *"Confirmação localizada
+automaticamente no Gmail"* na observação. Os que **não** trouxerem foram
+marcados por uma pessoa. Um número resolve a dúvida.
+
+**A LIÇÃO, que é o motivo de eu não apagar este item:** eu montei uma cadeia
+causal correta em cada elo — código, DNS, cabeçalho do ofício 487 — e conclui
+uma coisa falsa, porque nunca olhei se o efeito previsto existia. **Bastava
+uma pergunta: "existe algum ofício confirmado?"** A REGRA Nº -1 vale para
+diagnóstico, não só para código: ler o mecanismo não é medir o resultado.
+
+#### Texto original, de 02/09/2026 — CONCLUSÃO SUPERADA, raciocínio preservado
 
 02/09/2026. O usuário relatou que os ofícios enviados em produção não geram
 retorno nenhum — nenhuma escola aparece como tendo confirmado. **Não é que
