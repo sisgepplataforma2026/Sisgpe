@@ -118,6 +118,77 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
+### 66. 🔴 PRODUÇÃO NA VERSÃO 691 — o token vazio, e a `main` que parou de dizer a verdade
+
+03/09/2026, 16h18. Publicada a correção do token de sessão da aba
+"Conferir envio". Um arquivo modificado, 24 linhas; nada criado, nada
+removido. Rollback na versão 690.
+
+**O DEFEITO, achado pelo usuário abrindo a tela em produção às 12h48:**
+
+    Error: Sessão inválida ou expirada. Entre novamente no SISGEP.
+
+A sessão estava boa. Dois dos três resolvedores de token de
+`OficiosConferencia.html` procuravam `TOKEN_SESSAO` e `window.SISGEP.token`
+— nenhum dos dois existe no projeto. A página declara
+`SISGEP_TOKEN_SESSAO` (`index.html:1363`). Os dois devolviam string vazia, e
+`exigirModulo_` recusa string vazia como recusaria token falsificado.
+
+**Por que é silencioso.** `typeof X !== "undefined"` é o jeito CERTO de
+checar variável que pode não existir — e é por ser à prova de erro que ele
+engole o nome errado. Sem exceção, sem log: o `||` cai para o próximo, chega
+no `""`, e o backend responde com mensagem de autenticação. **O sintoma
+acusa a sessão do usuário; o defeito está a três arquivos de distância.**
+
+**Por que os testes não pegaram.** O t141 asserta que a tela CHAMA
+`oficiosAguardandoDestinatarios`. Ela chamava — só chamava com nada dentro.
+O teste mediu a chamada; ninguém mediu o argumento.
+
+Novo `t143`: varre os `.html` atrás de todo identificador com forma de token
+de sessão e exige que alguém o declare. Nome fantasma reprova, mesmo atrás
+de um `typeof`. Provado nos dois sentidos — contra o arquivo que estava no
+ar, reprova em 4 asserções e aponta as linhas 91, 365 e 485.
+
+**Um defeito no próprio detector, achado no caminho.** A primeira forma era
+`[A-Za-z_][A-Za-z0-9_]*TOKEN_SESSAO`, que exige ao menos um caractere de
+prefixo — e por isso nunca casava com `TOKEN_SESSAO` puro, justamente o nome
+fantasma. O teste passava verde contra o defeito que existe para pegar. Só
+apareceu porque rodei contra o arquivo defeituoso e estranhei uma asserção
+verde onde eu esperava vermelho.
+
+**A CONFERIR EM PRODUÇÃO:**
+
+1. 🔴 **A aba Conferir envio abre e lista** — é o que a correção promete.
+2. 🔴 Segue valendo tudo do item 65: emitir um ofício de verdade e reenviar
+   os 15 que nunca chegaram, olhando o `Anexos: N` de cada reenvio.
+
+### 66b. ⚠️ A `main` parou de registrar o que está em produção
+
+Levantado pelo usuário em 03/09: *"Mas não era em main?"*. Ele estava certo
+em desconfiar.
+
+**A publicação não sai da `main`, e não pode.** O `deploy-producao.yml` tem
+`if: github.ref == 'refs/heads/promocao/…'` — só roda no ramo de promoção
+nomeado, fixado a um commit homologado. É de propósito: promoção é ação
+única e travada, não "o que cair na main vai para o ar".
+
+**Mas até 01/09 cada promoção era mesclada na `main` por PR** (o último foi
+o #12, `751bd13`). Depois disso promovi duas vezes direto pelo ramo e não
+atualizei a `main`. Medido em 03/09:
+
+| | |
+|---|---|
+| `main` atrás da homologação | 140 commits |
+| Diferença de código | 27 arquivos, +2.391 / −235 linhas |
+| Workflow na `main` | ainda aponta o ramo de 01/09 e exige 173/96 |
+
+**A produção está certa; o registro dela é que envelheceu.** Quem olhar a
+`main` para saber o que está no ar vai ver o código de 01/09 — e a
+`main` é exatamente onde se olha.
+
+Pendente de decisão do usuário: trazer as promoções para a `main`, no mesmo
+padrão do PR #12, para ela voltar a dizer a verdade.
+
 ### 65. 🔴 A PRODUÇÃO FOI PUBLICADA — versão 690, e o que agora depende de você abrir
 
 02/09/2026, 23h36. A Produção passou a rodar o mesmo código da homologação
