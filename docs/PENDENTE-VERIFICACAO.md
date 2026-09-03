@@ -118,6 +118,90 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
+### 67. 🔴🔴 EXISTIA UM SEGUNDO SISTEMA RODANDO NA MESMA PLANILHA
+
+03/09/2026. **O achado mais importante desta semana, e ele reabre item que eu
+dava por fechado.**
+
+A planilha de produção tinha um Apps Script **preso a ela** —
+`SISGEP - ATIVA/PRODUÇÃO`, script id
+`1EIIRjJGU7QgZuyX1wOAXYuM8ecofCQ9DolaYTfED1Yw_wtHtXRbmb_E3` — que **não é**
+o SISGEP-OFICIOS. É uma cópia completa e antiga do sistema: `EmailOficios.gs`,
+`FilaOficios.gs`, `MonitoramentoOficios.gs`, `OficioService.gs`,
+`TaxaAssistencialOficios.gs`, além de portais públicos de NF, guia e voucher.
+
+**Nenhuma publicação nossa jamais o tocou** — publicamos no SISGEP-OFICIOS.
+Então o código dele é do dia em que foi criado, anterior a 28/08.
+
+**COMO APARECEU.** O usuário abriu o ofício 511/2026 entregue e viu
+`De: financeirosindecucacao@gmail.com` em vez da Secretaria, e duas cópias.
+O cabeçalho trazia `Bcc: financeiro@sindeducacao.com`. O repositório inteiro
+foi varrido — `.gs` e `.html`, `bcc` e `cco`: **não existe BCC no caminho do
+ofício**. O código publicado não podia ter produzido aquilo.
+
+O `montarOpcoesEmailSISGEP_` do projeto da planilha:
+
+```js
+from:     "financeiro@sindeducacao.com",
+replyTo:  "secretaria@sindeducacao.com",
+bcc:      "financeiro@sindeducacao.com"
+```
+
+Linha por linha, o cabeçalho recebido. E o `from` apontando para um endereço
+que **não é alias verificado** é o que faz o Gmail cair na conta executora —
+é daí que vinha o remetente errado.
+
+**A PROVA QUE FECHA SEM MARGEM.** O corpo do e-mail recebido cita a **CCT
+2026/2027**. O código velho escreve "CCT 2025/2026"; só o novo escreve
+2026/2027. Ou seja: **o SISGEP-OFICIOS emitiu e gravou o corpo na fila; o
+projeto da planilha pegou aquela linha e enviou com o envelope dele.** Corpo
+novo, remetente velho. Os dois tocaram o mesmo ofício.
+
+**O QUE ESTAVA RODANDO EM DUPLICATA** (medido na tela de Acionadores dos dois
+projetos, no mesmo dia):
+
+| Função | SISGEP-OFICIOS | Projeto da planilha |
+|---|---|---|
+| `processarFilaEnvioOficios` | 14:33 | **14:42** |
+| `verificarFalhasEntregaOficios` | 12:32 | 12:50 |
+| `verificarConfirmacoesRecebimento` | 13:59 | 12:58 (7,5% erro) |
+
+**ISTO REABRE O ITEM 49.** `verificarConfirmacoesRecebimento` é a função do
+"Outlook" confirmando ofício que quicou. Corrigimos e publicamos — **e a
+versão velha continuou rodando ao lado, desfazendo a correção a cada 5
+minutos.** O item 49 nunca esteve consertado na prática, só no repositório.
+É a REGRA Nº -1 cobrando de novo: publicado não é o mesmo que em operação.
+
+**O QUE FOI FEITO, e só isto.** Apagados os três gatilhos de ofício do projeto
+da planilha, depois de conferir um a um que o SISGEP-OFICIOS já roda os três
+com o código corrigido. Restaram três, que **não têm equivalente** no
+SISGEP-OFICIOS e por isso ficam: `verificarEEnviarLembretesNF`,
+`verificarEEnviarLembretesGuias` e `verificarEDispararAlertasD5`.
+
+**O PROJETO NÃO FOI APAGADO, e não deve ser sem medir antes.** Ele contém
+`PortalEnvioNF.html`, `PortalConfirmacaoGuia.html`,
+`PortalValidacaoVoucher.html` e `PubNFDespesa.html` — páginas públicas. Se
+houver web app publicado nele, há gente de fora do sindicato usando esses
+links, e quem usa não tem como avisar que quebrou. Falta ver
+**Implantar → Gerenciar implantações**.
+
+**A CONFERIR NO PRÓXIMO OFÍCIO EMITIDO EM PRODUÇÃO:**
+
+1. 🔴 chega **uma** cópia, não duas;
+2. 🔴 sem `Bcc:` no cabeçalho;
+3. 🔴 o `De` é `secretaria@sindeducacao.com` — e se não for, aí sim o problema
+   é o alias, e a investigação recomeça do lugar certo;
+4. 🟡 `verificarEEnviarLembretesGuias` está com **100% de erro** em toda
+   execução, no projeto da planilha. Não é urgente, mas está quebrado.
+
+**A LIÇÃO, que vale além deste caso.** Passei o dia inteiro atribuindo o
+remetente errado a três causas diferentes — o alias, um `catch` silencioso,
+a identidade do gatilho. Todas plausíveis, todas erradas. O que resolveu foi
+o usuário abrir a planilha e olhar. **Eu enxergo o repositório; a operação
+está no Google.** Quando o que o código diz e o que o sistema faz não batem,
+a hipótese certa quase nunca é uma leitura mais fina do código — é procurar
+o que está rodando e eu não estou vendo.
+
 ### 66. 🔴 PRODUÇÃO NA VERSÃO 691 — o token vazio, e a `main` que parou de dizer a verdade
 
 03/09/2026, 16h18. Publicada a correção do token de sessão da aba
