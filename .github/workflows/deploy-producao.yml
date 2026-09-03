@@ -1,0 +1,253 @@
+# PROMOCAO CONTROLADA PARA PRODUCAO
+#
+# Em `conferir`, autentica, testa, valida os alvos, baixa o estado atual e
+# gera o relatorio/backup. Nao escreve no Apps Script.
+# Em `publicar`, repete todas as travas e so entao atualiza a implantacao web.
+
+name: Conferir ou Publicar Producao
+
+on:
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: "conferir = nao escreve | publicar = atualiza a Producao"
+        required: true
+        default: conferir
+        type: choice
+        options:
+          - conferir
+          - publicar
+      confirmacao:
+        description: "Para publicar, digite exatamente: PUBLICAR PRODUCAO"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-producao
+  cancel-in-progress: false
+
+jobs:
+  producao:
+    if: github.ref == 'refs/heads/promocao/hml-7b46fa9-para-producao-2026-09-03'
+    runs-on: ubuntu-latest
+
+    env:
+      PROD_SCRIPT_ID: "1BoKA6pOOT751zmxahnvSgT2CJDgMpUPMvZj-X0HjDx_tCHLnXOqxVVqa"
+      PROD_DEPLOYMENT_ID: "AKfycbzgPBSSF3D2OimoEJ-qMfDNp_Dsmc95THSNdUvFgqoX7NXWcmn7ZDMzF9L-OyUbEMw_ew"
+      HML_APROVADA_SHA: "7b46fa92c8907841389bdbc8b0074068c85aaa51"
+
+    steps:
+      - name: Checkout da promocao
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Instalar clasp e testes
+        run: |
+          npm install -g @google/clasp@3.3.0
+          npm ci || npm install
+
+      - name: Confirmar que o codigo e o homologado
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e "$HML_APROVADA_SHA^{commit}"
+          if ! git diff --quiet "$HML_APROVADA_SHA" HEAD -- \
+            ':(top,glob)*.gs' ':(top,glob)*.html' ':(top,glob)appsscript.json'; then
+            echo "::error::Os arquivos do Apps Script nao sao identicos ao commit homologado $HML_APROVADA_SHA."
+            exit 1
+          fi
+          GS=$(find . -maxdepth 1 -type f -name '*.gs' | wc -l)
+          HTML=$(find . -maxdepth 1 -type f -name '*.html' | wc -l)
+          test "$GS" -eq 174
+          test "$HTML" -eq 97
+          echo "codigo homologado confirmado: $GS .gs e $HTML .html"
+
+      - name: Validar integridade dos arquivos
+        run: node tests/e2e/t46-arquivos-integros.js
+
+      - name: Rodar a suite completa
+        run: npm test
+
+      - name: Configurar credencial e travar o projeto de Producao
+        shell: bash
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          set -euo pipefail
+          test -n "$CLASPRC_JSON"
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          node -e 'JSON.parse(require("fs").readFileSync(process.env.HOME+"/.clasprc.json","utf8"))'
+          printf '{"scriptId":"%s","rootDir":".","fileExtension":"gs"}' "$PROD_SCRIPT_ID" > .clasp.json
+          node -e '
+            const fs = require("fs");
+            const j = JSON.parse(fs.readFileSync(".clasp.json", "utf8"));
+            if (j.scriptId !== process.env.PROD_SCRIPT_ID) process.exit(1);
+            console.log("alvo confirmado: projeto Apps Script de Producao");
+          '
+
+      - name: Renovar token de acesso
+        shell: bash
+        run: |
+          set -euo pipefail
+          node > /tmp/token-body 2>/dev/null <<'JS'
+          const fs = require("fs");
+          const rc = JSON.parse(fs.readFileSync(process.env.HOME + "/.clasprc.json", "utf8"));
+          const k = rc.tokens ? (rc.tokens.default ? "default" : Object.keys(rc.tokens)[0]) : null;
+          const t = k ? rc.tokens[k] : (rc.token || {});
+          process.stdout.write(
+            "client_id=" + encodeURIComponent(t.client_id || "") +
+            "&client_secret=" + encodeURIComponent(t.client_secret || "") +
+            "&refresh_token=" + encodeURIComponent(t.refresh_token || "") +
+            "&grant_type=refresh_token");
+          JS
+          curl -sS -o /tmp/token-novo.json -X POST -d @/tmp/token-body \
+            https://oauth2.googleapis.com/token
+          node <<'JS'
+          const fs = require("fs");
+          const novo = JSON.parse(fs.readFileSync("/tmp/token-novo.json", "utf8"));
+          if (novo.error || !novo.access_token) {
+            console.error("::error::Falha ao renovar a credencial do clasp: " + (novo.error || "sem access_token"));
+            process.exit(1);
+          }
+          const caminho = process.env.HOME + "/.clasprc.json";
+          const rc = JSON.parse(fs.readFileSync(caminho, "utf8"));
+          const k = rc.tokens ? (rc.tokens.default ? "default" : Object.keys(rc.tokens)[0]) : null;
+          const t = k ? rc.tokens[k] : rc.token;
+          t.access_token = novo.access_token;
+          t.expiry_date = Date.now() + (Number(novo.expires_in) || 3600) * 1000;
+          if (novo.id_token) t.id_token = novo.id_token;
+          fs.writeFileSync(caminho, JSON.stringify(rc));
+          console.log("credencial renovada");
+          JS
+          rm -f /tmp/token-body /tmp/token-novo.json
+
+      - name: Confirmar a implantacao atual e registrar rollback
+        id: antes
+        shell: bash
+        run: |
+          set -euo pipefail
+          clasp deployments | tee /tmp/deployments-antes.txt
+          LINHA=$(grep -F "$PROD_DEPLOYMENT_ID" /tmp/deployments-antes.txt | head -1 || true)
+          if [ -z "$LINHA" ]; then
+            echo "::error::A implantacao da URL atual nao pertence ao projeto informado."
+            exit 1
+          fi
+          VERSAO=$(printf '%s\n' "$LINHA" | sed -n 's/.*@\([0-9][0-9]*\).*/\1/p')
+          if [ -z "$VERSAO" ]; then
+            echo "::error::Nao foi possivel identificar a versao atual para rollback."
+            exit 1
+          fi
+          echo "versao=$VERSAO" >> "$GITHUB_OUTPUT"
+          echo "Versao atual preservada para rollback: $VERSAO" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Baixar e guardar backup anterior
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/producao-antes
+          cp .clasp.json /tmp/producao-antes/
+          cd /tmp/producao-antes
+          clasp pull
+          test -f appsscript.json
+          test -f Code.gs
+          test -f SistemaConfig.gs
+          test -f Oficios.gs
+          test -f index.html
+
+      - name: Publicar artefato de rollback
+        uses: actions/upload-artifact@v4
+        with:
+          name: producao-antes-${{ github.run_number }}-versao-${{ steps.antes.outputs.versao }}
+          path: |
+            /tmp/producao-antes
+            /tmp/deployments-antes.txt
+          retention-days: 90
+
+      - name: Relatorio do que mudaria
+        shell: bash
+        run: |
+          set -euo pipefail
+          find . -maxdepth 1 -type f \( -name '*.gs' -o -name '*.html' -o -name 'appsscript.json' \) \
+            -printf '%f\n' | sort > /tmp/repo.txt
+          find /tmp/producao-antes -maxdepth 1 -type f \( -name '*.gs' -o -name '*.html' -o -name 'appsscript.json' \) \
+            -printf '%f\n' | sort > /tmp/producao.txt
+          {
+            echo "## Previa da promocao para Producao"
+            echo
+            echo "Modo: **${{ inputs.modo }}**"
+            echo
+            echo "### Arquivos que seriam removidos"
+            echo '```'
+            comm -13 /tmp/repo.txt /tmp/producao.txt || true
+            echo '```'
+            echo "### Arquivos que seriam criados"
+            echo '```'
+            comm -23 /tmp/repo.txt /tmp/producao.txt || true
+            echo '```'
+            echo "### Arquivos que seriam modificados"
+            echo '```'
+            while read -r f; do
+              cmp -s "./$f" "/tmp/producao-antes/$f" || echo "$f"
+            done < <(comm -12 /tmp/repo.txt /tmp/producao.txt)
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validar autorizacao de publicacao
+        if: inputs.modo == 'publicar'
+        shell: bash
+        env:
+          CONFIRMACAO: ${{ inputs.confirmacao }}
+        run: |
+          set -euo pipefail
+          if [ "$CONFIRMACAO" != "PUBLICAR PRODUCAO" ]; then
+            echo "::error::Confirmacao invalida. Nada foi publicado."
+            exit 1
+          fi
+
+      - name: Enviar codigo para o projeto de Producao
+        if: inputs.modo == 'publicar'
+        run: clasp push --force
+
+      - name: Criar versao imutavel
+        id: nova
+        if: inputs.modo == 'publicar'
+        shell: bash
+        run: |
+          set -euo pipefail
+          clasp version "producao-${GITHUB_SHA::7}" | tee /tmp/versao-nova.txt
+          NUM=$(grep -oE '[0-9]+' /tmp/versao-nova.txt | tail -1)
+          test -n "$NUM"
+          echo "versao=$NUM" >> "$GITHUB_OUTPUT"
+
+      - name: Atualizar a URL atual de Producao
+        if: inputs.modo == 'publicar'
+        shell: bash
+        env:
+          NOVA_VERSAO: ${{ steps.nova.outputs.versao }}
+        run: |
+          set -euo pipefail
+          clasp deploy --deploymentId "$PROD_DEPLOYMENT_ID" --versionNumber "$NOVA_VERSAO" \
+            --description "producao-${GITHUB_SHA::7}"
+          clasp deployments | tee /tmp/deployments-depois.txt
+          grep -F "$PROD_DEPLOYMENT_ID" /tmp/deployments-depois.txt | grep -F "@$NOVA_VERSAO"
+          {
+            echo "## Producao publicada"
+            echo
+            echo "Nova versao: **$NOVA_VERSAO**"
+            echo "Versao anterior para rollback: **${{ steps.antes.outputs.versao }}**"
+            echo "Commit homologado: \`$HML_APROVADA_SHA\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Limpar credenciais locais
+        if: always()
+        run: rm -f .clasp.json "$HOME/.clasprc.json"
