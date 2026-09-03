@@ -19,7 +19,7 @@
  *
  * O caminho inteiro, do gatilho ao que a pessoa lê:
  *
- *     emitir ofício → registrarLogSistema → aud_deLogSistema_
+ *     emitir ofício → registrarLogSistema_ → aud_deLogSistema_
  *                   → grava na aba → auditoriaConsultar
  *                   → a tela desenha a linha → o modal abre com os campos
  *

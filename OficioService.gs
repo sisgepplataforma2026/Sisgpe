@@ -86,8 +86,15 @@ function processarFichasParaOficio(fichas, tokenSessao) {
 function gerarOficioWebComFichas(dados, tokenSessao) {
   var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
+    /* O TOKEN TEM DE DESCER. Em 01/09/2026 o processarFichasParaOficio
+       ganhou porta de modulo (estava aberto, devolvia dado de escola), e esta
+       chamada interna nao passava token nenhum — entao TODO oficio com ficha
+       anexada passou a morrer aqui dentro, com "Sessao invalida" engolido
+       pelo catch e devolvido como {erro:true}. E o caminho do oficio de
+       filiacao com a ficha assinada: a operacao viva do sindicato.
+       Regressao introduzida e corrigida no mesmo dia; o t130 tranca. */
     var fichasProcessadas = dados.fichas
-      ? processarFichasParaOficio(dados.fichas)
+      ? processarFichasParaOficio(dados.fichas, tokenSessao)
       : [];
 
     var payload = Object.assign({}, dados, { fichas: fichasProcessadas });

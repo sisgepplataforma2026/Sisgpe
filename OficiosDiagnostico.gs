@@ -5,7 +5,13 @@
 
 var VERSAO_DIAGNOSTICO_OFICIOS = "2026.06.23.1";
 
-function oficiosDiagnostico_diagnosticarModulo() {
+function oficiosDiagnostico_diagnosticarModulo(tokenSessao) {
+  /* PORTA DUPLA EM 01/09/2026 — frente A do Modulo 03. Sem porta, este
+     relatorio era reconhecimento do sistema para qualquer pagina: dizia quais
+     abas existem, quais colunas, quais funcoes estao carregadas e quais pastas
+     do Drive do sindicato estao acessiveis, com o nome de cada uma. Dupla
+     porque isto se roda do EDITOR, onde nao existe token. */
+  exigirAdminOuSessao_(tokenSessao, "documentos", "Diagnostico do modulo de oficios", true);
   var relatorio = {
     versao: VERSAO_DIAGNOSTICO_OFICIOS,
     dataHora: new Date(),
@@ -99,13 +105,13 @@ function verificarFuncoesOficios_(relatorio) {
     "gerarOficioWeb",
     "previewOficioWeb",
     "montarDadosOficio_",
-    "gerarProximoNumeroSeguro",
+    "gerarProximoNumeroSeguro_",
     "criarFilaEnvioOficio_",
     "enviarOficioDaFilaAgora",
     "listarHistoricoOficios",
     "listarStatusOficios",
     "atualizarStatusOficio",
-    "montarEmailHTML",
+    "montarEmailHTML_",
     "resolverConfigTipoOficio_",
     "normalizarTipoOficio_",
     "getHeaderMap_",
@@ -287,7 +293,13 @@ function ofDiag_classificar_(status) {
  * Relatório dos ofícios por situação, com a lista dos que não chegaram.
  * Rodar no editor: Executar → oficiosQueNaoChegaram → ver o Registro.
  */
-function oficiosQueNaoChegaram() {
+function oficiosQueNaoChegaram(tokenSessao) {
+  /* PORTA DUPLA EM 01/09/2026 — frente A do Modulo 03. Devolve, para cada
+     oficio que nao chegou, o NOME DA ESCOLA e o E-MAIL de destino. Sem porta,
+     era o cadastro de contatos das escolas saindo por outra porta — o mesmo
+     buraco do buscarEscolasParaOficio, fechado na rodada anterior. Dupla
+     porque isto se roda do EDITOR, onde nao existe token. */
+  exigirAdminOuSessao_(tokenSessao, "documentos", "Relatorio de oficios que nao chegaram", true);
   var ss = SpreadsheetApp.openById(PLANILHA_ID);
   var mapa = {};   /* numero -> { status, escola, email, erro, tentativas, data, origem } */
 

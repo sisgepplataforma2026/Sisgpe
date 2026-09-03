@@ -106,7 +106,12 @@ function criarFilaEnvioOficio_(dadosFila) {
     "ASSUNTO": assunto,
     "HTML_BODY": htmlBody,
     "ANEXOS_JSON": JSON.stringify(anexos),
-    "STATUS": "PENDENTE",
+    /* NASCE AGUARDANDO CONFERÊNCIA — 02/09/2026, a pedido do usuário: os
+       destinatários passam a ser conferidos entre emitir e enviar, sempre.
+       A fila só processa PENDENTE e ERRO (ver o filtro mais abaixo), então
+       este status a faz ignorar a linha sem uma linha de mudança no motor de
+       envio. Quem promove para PENDENTE é o liberarEnvioOficio. */
+    "STATUS": OFDEST_STATUS_AGUARDANDO,
     "TENTATIVAS": 0,
     "ULTIMO_ERRO": "",
     "DATA_ULTIMA_TENTATIVA": "",
@@ -201,6 +206,27 @@ function _gravarResultadoFila_(sh, linhaPlanilha, totalCols, valoresLinha,
 /* ============================================================
    processarFilaEnvioOficios
    ============================================================ */
+/* ══════════════════════════════════════════════════════════════════════════
+   POR QUE ESTA FICA PUBLICA E SEM PORTA — decidido em 01/09/2026, frente A
+
+   Isto e HANDLER DE GATILHO: o Apps Script chama a funcao PELO NOME, entao
+   ela nao pode virar privada. E a porta dupla, que resolveu o caso das
+   ferramentas de editor, aqui e o remedio errado: o exigirAdminOuSessao_
+   (AcessoModulos.gs:188) identifica quem executa por
+   Session.getActiveUser().getEmail(), e num gatilho por tempo esse e-mail
+   pode voltar VAZIO. Quando volta, a porta recusa — e o gatilho para.
+
+   Parar este gatilho para a operacao que esta VIVA no sindicato. Nao vale a
+   troca, e o que se ganharia e pouco: a funcao devolve so contadores (processados, enviados, erros), nao
+   devolve dado de escola nenhum, e nao permite enfileirar nada — quem
+   enfileira e o gerarOficioWeb, que tem porta. O que um anonimo
+   conseguiria e adiantar o envio de oficio que JA foi legitimamente
+   enfileirado, e a propria funcao ja protege a cota diaria de e-mail.
+
+   Fica publica, entao, e fica ANOTADA no teto de exposicao. Nao e aprovacao —
+   e o registro de uma decisao que se reabre se aparecer um jeito de
+   identificar o contexto de gatilho com seguranca.
+   ══════════════════════════════════════════════════════════════════════════ */
 function processarFilaEnvioOficios() {
   var LIMITE_POR_EXECUCAO   = 5;
   var PAUSA_ENTRE_ENVIOS_MS = 4000;
@@ -400,7 +426,7 @@ function processarFilaEnvioOficios() {
         anexos.push(blob);
       });
 
-      enviarEmailOficio_(
+      var envio = enviarEmailOficio_(
         usuarioEnvio,
         htmlBody,
         anexos,
@@ -410,7 +436,10 @@ function processarFilaEnvioOficios() {
       );
 
       valoresLinha[colDataEnvio - 1] = new Date();
-      valoresLinha[colMensagemId - 1] = "GMAILAPP_SEM_ID";
+      /* O ID REAL da mensagem, no lugar do texto fixo "GMAILAPP_SEM_ID" que
+         ficava aqui — ver a nota grande em EmailOficios.gs. Sem ele não havia
+         como, da linha da planilha, achar o e-mail e provar que saiu. */
+      valoresLinha[colMensagemId - 1] = (envio && envio.mensagemId) || "";
       valoresLinha[colStatusRecebimento - 1] = "ENVIADO";
 
       _gravarResultadoFila_(
@@ -431,7 +460,7 @@ function processarFilaEnvioOficios() {
       _atualizarRegistroOficioEnviado_(ss, numeroOficio);
 
       try {
-        registrarLogSistema({
+        registrarLogSistema_({
           usuario: usuarioEnvio,
           numero: numeroOficio + " (FILA)",
           tipo: tipo,
@@ -670,7 +699,7 @@ function enviarOficioDaFilaAgora(numero, tokenSessao, filaId) {
       }
     }
 
-    enviarEmailOficio_(
+    var envio = enviarEmailOficio_(
       usuarioEnvio,
       htmlBody,
       anexos,
@@ -680,7 +709,8 @@ function enviarOficioDaFilaAgora(numero, tokenSessao, filaId) {
     );
 
     valoresLinha[colDataEnvio - 1] = new Date();
-    valoresLinha[colMensagemId - 1] = "GMAILAPP_SEM_ID";
+    /* O ID REAL da mensagem — ver a nota em EmailOficios.gs. */
+    valoresLinha[colMensagemId - 1] = (envio && envio.mensagemId) || "";
     valoresLinha[colStatusRecebimento - 1] = "ENVIADO";
 
     _gravarResultadoFila_(
@@ -702,7 +732,7 @@ function enviarOficioDaFilaAgora(numero, tokenSessao, filaId) {
     _atualizarRegistroOficioEnviado_(ss, numero);
 
     try {
-      registrarLogSistema({
+      registrarLogSistema_({
         usuario: usuarioEnvio,
         numero: numero,
         tipo: tipo,
@@ -739,7 +769,12 @@ function enviarOficioDaFilaAgora(numero, tokenSessao, filaId) {
     return { ok: false, mensagem: "Erro ao enviar: " + (e.message || e) };
   }
 }
-function sincronizarStatusOficiosEnviados() {
+function sincronizarStatusOficiosEnviados(tokenSessao) {
+  /* PORTA DUPLA EM 01/09/2026 — frente A do Modulo 03. Escreve na planilha
+     e nao tinha checagem nenhuma. E dupla porque isto e ferramenta que se
+     roda do EDITOR, onde nao existe token: fechar so com token tiraria o
+     unico jeito de usa-la. Mesmo padrao dos gatilhos (t121). */
+  exigirAdminOuSessao_(tokenSessao, "documentos", "Sincronizacao de status dos oficios enviados", true);
   var ss    = SpreadsheetApp.openById(PLANILHA_ID);
   var sh    = obterOuCriarAbaFilaOficios_();
   var shReg = ss.getSheetByName(PLANILHA_REGISTRO);

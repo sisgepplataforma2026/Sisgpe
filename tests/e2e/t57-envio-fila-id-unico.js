@@ -71,7 +71,13 @@ b.ok(String((outbox[0] || {}).to || "").indexOf("novo@colegioexemplo.com.br") > 
 
 const statusAntigo = String(fila.getRange(linhaAntiga, hm.STATUS).getValue() || "").toUpperCase();
 const statusNovo = String(fila.getRange(linhaNova, hm.STATUS).getValue() || "").toUpperCase();
-b.igual(statusAntigo, "PENDENTE", "registro antigo com mesmo número não é tocado");
+/* Em 02/09/2026 a fila passou a nascer AGUARDANDO_DESTINATARIOS, e não mais
+   PENDENTE: os destinatários são conferidos entre emitir e enviar. A asserção
+   aqui nunca foi sobre o nome do status — é sobre a linha antiga NÃO SER
+   TOCADA quando o envio é endereçado por filaId. Ela passa a medir isso pelo
+   estado em que a linha nasce, que é o que "não tocada" significa. */
+b.igual(statusAntigo, g.OFDEST_STATUS_AGUARDANDO,
+  "registro antigo com mesmo número não é tocado — continua como nasceu");
 b.igual(statusNovo, "ENVIADO", "registro indicado pelo filaId vira ENVIADO");
 
 b.fluxo("TELA · filaId chega ao backend");

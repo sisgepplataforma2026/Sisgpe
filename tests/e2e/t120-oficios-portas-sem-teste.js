@@ -20,16 +20,23 @@
  *    refactor que troque `exigirModulo_(t,"documentos",true)` por `false`, ou
  *    que mova a chamada para dentro do try, passa despercebido.
  *
- * 2. A ROTA PÚBLICA. `verificarCodigoPublico` não tem sessão — de propósito,
- *    é a validação que a escola faz com o código impresso no ofício. Sem
- *    sessão, o que ela devolve é a superfície: número, tipo, ESCOLA, data e o
- *    link do PDF no Drive. O que este teste guarda é que só devolve com o
+ * 2. A ROTA PÚBLICA. A validação que a escola faz com o código impresso no
+ *    ofício não tem sessão — de propósito: quem valida está FORA do sindicato.
+ *    Sem sessão, o que ela devolve é a superfície: número, tipo, ESCOLA, data e
+ *    o link do PDF no Drive. O que este teste guarda é que só devolve com o
  *    código certo, e que errar o código não vaza nada.
+ *
+ *    CORREÇÃO DE 01/09/2026: este cabeçalho dizia que o
+ *    `verificarCodigoPublico` era a rota. Não era — a rota que o Code.gs serve
+ *    é o `validarPublico`, e o `verificarCodigoPublico` era um SEGUNDO caminho
+ *    para o mesmo dado, alcançável por qualquer página do projeto e por
+ *    nenhuma tela. Virou privado (t127). O teste abaixo continua valendo
+ *    inteiro: chama o helper direto, que é onde a regra mora.
  *
  *    (Força bruta foi descartada por medição, não por suposição: o código é
  *    MD5 truncado em 12 hex — 48 bits. Enumerar por HTTP é inviável.)
  *
- * 3. A NUMERAÇÃO. `preverProximoNumeroOficio` diz à tela qual será o próximo
+ * 3. A NUMERAÇÃO. `preverProximoNumeroOficio_` diz à tela qual será o próximo
  *    número. Se ela ignorar a sequência já reservada, duas pessoas emitindo
  *    no mesmo dia veem o mesmo número — e ofício com número repetido é
  *    problema que sai do sindicato em papel timbrado.
@@ -107,13 +114,13 @@ b.fluxo("MÓDULO 03 · a rota pública de validação");
 semearRegistro();
 
 b.passo("5. o código certo devolve o ofício");
-const ok = g.verificarCodigoPublico("A1B2C3D4E5F6");
+const ok = g.verificarCodigoPublico_("A1B2C3D4E5F6");
 b.igual(ok.status, "VALIDO", "código correto valida");
 b.igual(ok.numero, "040/" + ANO, "e devolve o número do ofício");
 b.igual(ok.escola, "Escola Alfa", "e a escola — é o que a validação precisa mostrar");
 
 b.passo("6. minúscula e espaço não quebram — quem digita do papel erra assim");
-const ok2 = g.verificarCodigoPublico("  a1b2c3d4e5f6  ");
+const ok2 = g.verificarCodigoPublico_("  a1b2c3d4e5f6  ");
 b.igual(ok2.status, "VALIDO",
   "o código é normalizado antes de comparar",
   "quem valida está copiando de um PDF impresso");
@@ -121,7 +128,7 @@ b.igual(ok2.status, "VALIDO",
 b.passo("7. CÓDIGO ERRADO NÃO VAZA NADA");
 /* A rota não tem sessão, então o que ela devolve numa falha é o que qualquer
    pessoa da internet consegue. Tem de ser só a recusa. */
-const nao = g.verificarCodigoPublico("FFFFFFFFFFFF");
+const nao = g.verificarCodigoPublico_("FFFFFFFFFFFF");
 b.igual(nao.status, "INVALIDO", "código inexistente é recusado");
 const texto = JSON.stringify(nao);
 ["Escola Alfa", "Escola Beta", "040/", "041/", "drive.google.com"].forEach(function (t) {
@@ -130,14 +137,14 @@ const texto = JSON.stringify(nao);
 });
 
 b.passo("8. código vazio também");
-b.igual(g.verificarCodigoPublico("").status, "INVALIDO", "vazio não valida nada");
-b.igual(g.verificarCodigoPublico(null).status, "INVALIDO", "nulo também não");
+b.igual(g.verificarCodigoPublico_("").status, "INVALIDO", "vazio não valida nada");
+b.igual(g.verificarCodigoPublico_(null).status, "INVALIDO", "nulo também não");
 
 b.fluxo("MÓDULO 03 · o próximo número do ofício");
 
 b.passo("9. prevê a partir do maior número do ano");
 semearRegistro();
-const prox = g.preverProximoNumeroOficio();
+const prox = g.preverProximoNumeroOficio_();
 b.ok(/^\d+\/\d{4}$/.test(String(prox)) || /^\d+$/.test(String(prox)),
   "devolve um número no formato esperado", String(prox));
 b.ok(String(prox).indexOf("42") >= 0,
@@ -154,7 +161,7 @@ const ambiente = (typeof g.getAmbienteAtual === "function")
 g.PropertiesService.getScriptProperties()
   .setProperty("SISGEP_OFICIO_SEQ_" + ambiente + "_" + ANO, "99");
 
-const proxReservado = g.preverProximoNumeroOficio();
+const proxReservado = g.preverProximoNumeroOficio_();
 b.ok(String(proxReservado).indexOf("100") >= 0,
   "com 99 reservado, a previsão pula para 100",
   "previsto: " + proxReservado + " — ignorar a reserva daria 42, um número já tomado"
@@ -164,7 +171,7 @@ b.naoTestavel(
   "duas emissões simultâneas de verdade",
   "o emulador é de execução única; concorrência real depende do LockService " +
   "do Apps Script. O que se prova aqui é que a PREVISÃO respeita a reserva — " +
-  "a trava da gravação é outro caminho (gerarProximoNumeroSeguro)"
+  "a trava da gravação é outro caminho (gerarProximoNumeroSeguro_)"
 );
 b.naoTestavel(
   "as outras 44 funções públicas sem teste",

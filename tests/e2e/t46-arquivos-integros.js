@@ -75,6 +75,39 @@ arquivosGs.forEach(f => {
 b.ok(gsQuebrados.length === 0, "os " + arquivosGs.length + " arquivos .gs parseiam",
   gsQuebrados.length ? "QUEBRADOS: " + gsQuebrados.join(" | ") : arquivosGs.length + " arquivos");
 
+
+/* ─── 1b. Os .gs que vão para OUTRO projeto Apps Script ──────────────────
+   `tests/fixtures/producao/` guarda arquivos que não fazem parte deste
+   projeto: são os que se colam no Apps Script DA PRODUÇÃO, que diverge do
+   repositório (o `registrarLogSistema_` do repositório, por exemplo, não
+   existe lá — ver o t136).
+
+   Eles ficavam fora desta varredura porque ela só lê a raiz. Um arquivo
+   quebrado ali é exatamente o que a REGRA Nº -2 existe para impedir, e com
+   agravante: a produção é o ambiente onde não se testa depois.
+
+   TERMINAM EM `.gs.txt`, NÃO EM `.gs`, DE PROPÓSITO. O `.claspignore` ignora
+   tudo e reabre com `!*.gs`; se essa negação casar caminho aninhado em alguma
+   versão de clasp, existiriam DOIS `MonitoramentoOficios` no projeto — e o
+   Apps Script recusa o push inteiro, com a mensagem aparecendo só no deploy.
+   A extensão diferente torna isso impossível; a linha `tests/**` no
+   .claspignore é a segunda trava. */
+const DIR_PRODUCAO = path.join(__dirname, "..", "fixtures", "producao");
+const gsProducao = fs.existsSync(DIR_PRODUCAO)
+  ? fs.readdirSync(DIR_PRODUCAO).filter(f => f.endsWith(".gs.txt")).sort()
+  : [];
+
+b.passo("1b. Todo arquivo destinado à PRODUÇÃO tem sintaxe válida");
+const producaoQuebrados = [];
+gsProducao.forEach(f => {
+  const erro = erroDeSintaxe(fs.readFileSync(path.join(DIR_PRODUCAO, f), "utf8"));
+  if (erro) producaoQuebrados.push(f + ": " + erro);
+});
+b.ok(producaoQuebrados.length === 0,
+  "os " + gsProducao.length + " arquivos de tests/fixtures/producao parseiam",
+  producaoQuebrados.length ? "QUEBRADOS: " + producaoQuebrados.join(" | ")
+                           : (gsProducao.join(", ") || "nenhum arquivo pendente de entrega"));
+
 /* ─── 2 a 5. Estrutura dos .html ─────────────────────────────────────── */
 const semBalanco = [];
 const scriptQuebrado = [];

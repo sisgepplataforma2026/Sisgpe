@@ -113,7 +113,7 @@ function prepararFilaTaxaAssistencial(params, tokenSessao) {
 
   var props  = PropertiesService.getScriptProperties();
   var numero = String(props.getProperty("TAXA_ASSISTENCIAL_NUMERO_OFICIO") || "").trim();
-  if (!numero) numero = gerarProximoNumeroSeguro();
+  if (!numero) numero = gerarProximoNumeroSeguro_();
 
   var codigo = numero.replace("/", "-");
   if (typeof gerarCodigoVerificacao === "function") {
@@ -284,7 +284,7 @@ function enviarOficioTaxaAssistencialPRO_(params) {
         ? corpoPersonalizado.replace(/\{\{ESCOLA\}\}/gi, nomeEscola)
         : "Encaminhamos, em anexo, o Ofício referente à Taxa Assistencial – Assistência Médica, conforme a Cláusula 58ª da CCT 2026/2027.";
 
-      var retorno = gerarPDFUniversal({
+      var retorno = gerarPDFUniversal_({
         templateId: templateId, pastaDestinoId: pasta.getId(),
         nomeArquivo: "Ofício " + numero + " - " + nomeEscola + " - Taxa Assistencial",
         substituicoes: {
@@ -320,7 +320,7 @@ function enviarOficioTaxaAssistencialPRO_(params) {
       ? corpoPersonalizado.replace(/\{\{ESCOLA\}\}/gi, nomeEscola)
       : "Encaminhamos, em anexo, o Ofício referente à Taxa Assistencial – Assistência Médica, conforme a Cláusula 58ª da CCT 2026/2027.";
 
-    var htmlBodyEscola = montarEmailHTML("Ofício de Taxa Assistencial", numero, "Taxa Assistencial", 0, corpoEscolaEmail);
+    var htmlBodyEscola = montarEmailHTML_("Ofício de Taxa Assistencial", numero, "Taxa Assistencial", 0, corpoEscolaEmail);
 
     var enviadosEscola = 0, errosEscola = [];
 
@@ -338,7 +338,7 @@ function enviarOficioTaxaAssistencialPRO_(params) {
         );
         enviados++; enviadosEscola++; emailsEnviadosHora++;
         props.setProperty("TAXA_ASSISTENCIAL_EMAILS_ENVIADOS_HORA", String(emailsEnviadosHora));
-        registrarLogSistema({ usuario: emailUsuario, numero: numero, tipo: "Taxa Assistencial",
+        registrarLogSistema_({ usuario: emailUsuario, numero: numero, tipo: "Taxa Assistencial",
           escola: nomeEscola, cnpj: cnpjEscola, email: listaEmails[j], codigo: codigoVerificacao });
         Utilities.sleep(300);
       } catch(e) {
@@ -392,7 +392,7 @@ function enviarTaxaEscolaEspecifica(params, tokenSessao) {
 
     var props_ = PropertiesService.getScriptProperties();
     var numero  = String(props_.getProperty("TAXA_ASSISTENCIAL_NUMERO_OFICIO") || "").trim();
-    if (!numero) { numero = gerarProximoNumeroSeguro(); props_.setProperty("TAXA_ASSISTENCIAL_NUMERO_OFICIO", numero); }
+    if (!numero) { numero = gerarProximoNumeroSeguro_(); props_.setProperty("TAXA_ASSISTENCIAL_NUMERO_OFICIO", numero); }
 
     var dataHoje = (typeof dataPorExtenso === "function") ? dataPorExtenso()
       : Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy");
@@ -406,7 +406,7 @@ function enviarTaxaEscolaEspecifica(params, tokenSessao) {
     var templateId = (typeof TEMPLATE_TAXA_ASSISTENCIAL_ID !== "undefined" && String(TEMPLATE_TAXA_ASSISTENCIAL_ID || "").trim())
       ? String(TEMPLATE_TAXA_ASSISTENCIAL_ID).trim() : TEMPLATE_PADRAO;
 
-    var retorno = gerarPDFUniversal({
+    var retorno = gerarPDFUniversal_({
       templateId: templateId, pastaDestinoId: obterPastaPorTipo_("TAXA_ASSISTENCIAL").getId(),
       nomeArquivo: "Ofício " + numero + " - " + escola + " - Taxa Assistencial",
       substituicoes: {
@@ -428,7 +428,7 @@ function enviarTaxaEscolaEspecifica(params, tokenSessao) {
       } catch(e) { Logger.log("⚠ Erro ao processar anexo CCT: " + e.message); }
     }
 
-    var htmlBody = montarEmailHTML("Ofício de Taxa Assistencial", numero, "Taxa Assistencial", 0, corpo);
+    var htmlBody = montarEmailHTML_("Ofício de Taxa Assistencial", numero, "Taxa Assistencial", 0, corpo);
 
     enviarEmailOficio_(
       emailUsuario,
@@ -450,7 +450,7 @@ function enviarTaxaEscolaEspecifica(params, tokenSessao) {
       "Colaborador(es)":"", "Observações":assunto, "Link PDF (Drive)":urlView, "Link Ficha":""
     });
 
-    registrarLogSistema({ usuario:emailUsuario, numero:numero, tipo:"Taxa Assistencial",
+    registrarLogSistema_({ usuario:emailUsuario, numero:numero, tipo:"Taxa Assistencial",
       escola:escola, cnpj:cnpj||"", email:validacao.todos, codigo:codigoVerificacao });
 
     return { ok:true, numero:numero, codigoVerificacao:codigoVerificacao, url:urlView,

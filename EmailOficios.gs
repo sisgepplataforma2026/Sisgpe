@@ -68,6 +68,37 @@ function validarRemetenteInstitucionalOficios_() {
     "Aviso: " + remetente + " não é alias da conta executora; " +
     "envio seguirá pela conta executora com replyTo da Secretaria."
   );
+
+  /* A FALTA DO ALIAS PRECISA APARECER — 02/09/2026.
+
+     Antes isto era so um Logger.log, e ninguem le Logger.log. O resultado:
+     durante meses os oficios sairam de `financeirosindecucacao@gmail.com`
+     com replyTo da Secretaria, e ninguem soube. Foi preciso abrir um oficio
+     enviado e olhar o cabecalho para descobrir.
+
+     Agora vai para o log de sistema, com nome proprio, para aparecer na
+     auditoria. Com trava de 6 horas: a fila roda de 5 em 5 minutos e sem
+     isso a aba de log viraria uma linha por oficio enviado.
+
+     DENTRO DE try/catch, SEM EXCECAO. Este aviso nao pode, em hipotese
+     nenhuma, impedir um oficio de sair — a operacao viva vem antes do
+     alerta sobre ela. */
+  try {
+    var chaveAviso = "OFICIOS_ALIAS_AUSENTE";
+    if (!CacheService.getScriptCache().get(chaveAviso)) {
+      CacheService.getScriptCache().put(chaveAviso, "1", 6 * 60 * 60);
+      registrarLogSistema_({
+        usuario: efetivo || "(conta executora desconhecida)",
+        numero:  "-",
+        tipo:    "OFICIOS_REMETENTE_SEM_ALIAS",
+        escola:  "",
+        cnpj:    "",
+        email:   remetente,
+        codigo:  ""
+      });
+    }
+  } catch (eLog) {}
+
   return "";
 }
 
@@ -99,6 +130,40 @@ function montarOpcoesEmailSISGEP_(emailUsuario, htmlBody, anexos, assunto, desti
   return opcoes;
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   POR QUE RASCUNHO-E-ENVIA, E NAO sendEmail — 02/09/2026
+
+   ATENCAO A QUEM LER DEPOIS: a primeira versao desta nota dizia que a troca
+   servia para o oficio aparecer na caixa de Enviados. ERA FALSO, e fica
+   registrado porque o engano custou uma mudanca no caminho de envio.
+
+   O QUE ACONTECEU. O usuario relatou que os oficios enviados nao apareciam em
+   Enviados. Eu troquei o `sendEmail` por rascunho-e-envia para resolver isso.
+   Depois ele mostrou a caixa: os oficios ESTAVAM la — inclusive os de 01/09 e
+   os de 02/09 pela manha, todos mandados pelo `sendEmail` antigo. Ele estava
+   olhando a caixa da SECRETARIA; a copia fica na caixa da conta que EXECUTA o
+   script, que e a do financeiro. A secretaria so recebe resposta, porque e
+   para ela que aponta o replyTo.
+
+   Ou seja: `GmailApp.sendEmail` sempre gravou em Enviados. Nao havia defeito.
+
+   POR QUE A TROCA FICOU MESMO ASSIM — decisao do usuario em 02/09, com a
+   justificativa original ja desfeita:
+
+   `sendEmail` nao devolve NADA. Sem retorno nao ha ID de mensagem, e por isso
+   o registro gravava o texto fixo "GMAILAPP_SEM_ID". Sem ID nao existe a
+   thread do oficio para o verificador de confirmacao olhar; sobrou procurar
+   pelo NUMERO e pelo NOME DA ESCOLA em toda a caixa. Foi essa busca larga que
+   fez a assinatura "Outlook" confirmar oficio que na verdade quicou — o item
+   49. Guardar o ID e o que destrava consertar aquilo direito.
+
+   `createDraft(...).send()` devolve o GmailMessage, e dai sai o ID.
+
+   O CUSTO, que nao existia antes: o rascunho e criado ANTES do envio. Se o
+   `send()` falhar, ele ficaria na caixa parecendo oficio pendente de mandar.
+   Por isso e apagado antes de a excecao subir, e o apagamento vai em try
+   proprio — falhar ao limpar nao pode mascarar o erro real do envio.
+   ══════════════════════════════════════════════════════════════════════════ */
 function enviarEmailOficio_(emailUsuario, htmlBody, anexos, assunto, destino, corpoTexto) {
   var opcoes = montarOpcoesEmailSISGEP_(emailUsuario, htmlBody, anexos, assunto, destino);
   var opcoesGmail = {
@@ -108,11 +173,27 @@ function enviarEmailOficio_(emailUsuario, htmlBody, anexos, assunto, destino, co
     replyTo:     opcoes.replyTo
   };
   if (opcoes.from) opcoesGmail.from = opcoes.from;
-  GmailApp.sendEmail(opcoes.to, opcoes.subject, corpoTexto || "Segue ofício em anexo.", opcoesGmail);
+
+  var rascunho = GmailApp.createDraft(
+    opcoes.to, opcoes.subject, corpoTexto || "Segue ofício em anexo.", opcoesGmail);
+
+  var msg;
+  try {
+    msg = rascunho.send();
+  } catch (eEnvio) {
+    /* Sem isto, cada falha de envio deixaria um rascunho na caixa — que para
+       quem olha parece ofício pendente de mandar. */
+    try { rascunho.deleteDraft(); } catch (eLimpeza) {}
+    throw eEnvio;
+  }
+
+  opcoes.mensagemId = "";
+  try { opcoes.mensagemId = String(msg.getId() || ""); } catch (eId) {}
+
   return opcoes;
 }
 
-function montarEmailHTML(tipo, numero, assuntoTipo, quantidade, textoPrincipalCustom) {
+function montarEmailHTML_(tipo, numero, assuntoTipo, quantidade, textoPrincipalCustom) {
   var textoPrincipal = textoPrincipalCustom || "";
 
   if (!textoPrincipal) {
@@ -540,7 +621,7 @@ function reenviarOficio(registro, tokenSessao) {
       }
     }
 
-    var htmlBody = montarEmailHTML(
+    var htmlBody = montarEmailHTML_(
       "Reenvio — " + tipo, numero, obterLabelTipoOficio_(tipo), 0,
       "Reenviamos, em anexo, o ofício Nº " + numero + " referente a " + escola + ", conforme solicitado."
     );
@@ -557,7 +638,7 @@ function reenviarOficio(registro, tokenSessao) {
        cadastrou. E necessidade legitima de operacao — mas a contrapartida e o
        registro de quem mandou para onde. Sem isto, o recurso seria uma porta
        de saida de documento sem rastro. */
-    registrarLogSistema({
+    registrarLogSistema_({
       usuario: emailUsuario,
       numero:  numero + (emailsExtras
                  ? (somenteExtras ? " (REENVIO - ENDERECO SUBSTITUIDO)"

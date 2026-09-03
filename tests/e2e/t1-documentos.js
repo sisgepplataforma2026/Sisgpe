@@ -93,7 +93,7 @@ b.ok(daEmissaoReal.length >= 1,
 
 b.passo("A. Emitir ofício grava também na trilha");
 const antesTrilha = g.auditoriaConsultar({}, TOKEN).acoes.length;
-g.registrarLogSistema({
+g.registrarLogSistema_({
   usuario: "marcelha@sindeducacao.com", numero: "099/2026", tipo: "FILIACAO",
   escola: "Escola Modelo", cnpj: "12.345.678/0001-90",
   email: "escola@exemplo.com", codigo: "ABC999"
@@ -128,7 +128,7 @@ const guardada = g.aud_deLogSistema_;
 g.aud_deLogSistema_ = function () { throw new Error("falha simulada da auditoria"); };
 let derrubou = false;
 try {
-  g.registrarLogSistema({ usuario: "marcelha@sindeducacao.com", numero: "100/2026",
+  g.registrarLogSistema_({ usuario: "marcelha@sindeducacao.com", numero: "100/2026",
     tipo: "LIVRE", escola: "Escola B", cnpj: "", email: "", codigo: "XYZ" });
 } catch (e) { derrubou = true; }
 g.aud_deLogSistema_ = guardada;

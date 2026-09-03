@@ -49,15 +49,32 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 ## 📌 O QUE ESTÁ ABERTO — índice
 
-> Gerado em 31/08/2026. São **39 itens**  (o 21 e o 46 fecharam em 01/09). A lista completa, com o detalhe de
+> Gerado em 31/08/2026, atualizado em 01/09. São **52 itens** (o 21 e o 46
+> fecharam em 01/09; os itens 50 a 56 nasceram na auditoria do Módulo 03, e o
+> 57 ao 59 do trabalho do mesmo dia). A lista completa, com o detalhe de
 > cada um, está na seção ABERTO logo abaixo — este índice existe só para não
 > ser preciso ler 2.000 linhas para saber o que cobrar.
 
 | Nº | Item |
 |---|---|
-| 49 | Ofícios — "Outlook" confirmava recebimento; 144/236/242 a reprocessar |
+| 64 | ✅ VERIFICADO NO AR — seletor, remetente e destino real (02/09, 19h32) |
+| 63 | ⚠️ Não havia defeito — o ofício sempre esteve em Enviados (da conta que envia) |
+| 62 | 🟡 42 falhas — cadastros CORRIGIDOS em 02/09; faltam os 15 ofícios que nunca chegaram |
+| 61 | ⚠️ Conclusão minha CORRIGIDA — a confirmação não é impossível de ver |
+| 60 | Portal público — rascunho parado, e a ficha divergiu nele (levantamento) |
+| 59 | A ficha em PDF no layout do papel — falta pôr um ao lado do outro |
+| 58 | A tela do "Reemitir ofício" — feita (54.1 fechado), falta ver no ar |
+| 57 | Os quatro ajustes autorizados em 01/09 — falta ver no ar |
+| 56 | ✅ Frente A do Módulo 03 — COMPLETA: as 45 funções públicas têm teste |
+| 55 | Ofício fiscal — existe para o sindicato e não existe para a contabilidade |
+| 54 | Ficha → Ofício — dois achados de desenho, os dois para você decidir |
+| 53 | 🚨 Regressão minha, do mesmo dia — ofício com ficha anexada (corrigida) |
+| 52 | Ofícios — quem trabalha DOCUMENTOS não conserta o e-mail da escola |
+| 51 | Ofícios — duas funções ESCREVIAM sem porta nenhuma (fechadas) |
+| 50 | Ofícios — oito funções eram endpoint por acidente (fechadas) |
+| 49 | Ofícios — "Outlook" confirmava; pacote de produção pronto em tests/fixtures |
 | 48 | Gmail — homologação lê a caixa de e-mail da PRODUÇÃO |
-| 47 | Módulo 03 (Ofícios) — NÃO auditado; um fio puxado, o resto aberto |
+| 47 | Módulo 03 — *era* "NÃO auditado"; a frente A fechou em 01/09, ver o 56 |
 | 45 | Firebase — homologação e produção compartilham o MESMO Firestore |
 | 44 | Firebase — a chave privada está malformada nos DOIS ambientes |
 | 43 | Sessões — o gatilho diário de limpeza (instalado em 31/08, 20:47) |
@@ -100,6 +117,1012 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
+
+### 65. 🔴 A PRODUÇÃO FOI PUBLICADA — versão 690, e o que agora depende de você abrir
+
+02/09/2026, 23h36. A Produção passou a rodar o mesmo código da homologação
+(`4dd4acc`). Pela REGRA Nº -1 isto **não é "pronto"**: publicar é pôr no ar,
+não é provar que funciona.
+
+**O que foi medido, e não deduzido:**
+
+| | |
+|---|---|
+| Versão criada | **690** (`producao-69f0c40`) |
+| Implantação | `AKfycbzgPBSS…@690`, conferido pelo próprio workflow |
+| Rollback | versão **689**, com o projeto inteiro baixado e guardado 90 dias |
+| Diferença aplicada | 2 arquivos criados, 25 modificados, **nenhum removido** — +2.373 / −235 linhas |
+| Contagem | 173 → 174 `.gs`, 96 → 97 `.html`, batendo com os dois novos |
+| Travas que rodaram antes | `.gs`/`.html` idênticos ao commit homologado, t46, suíte completa (144 arquivos, 5.053 asserções), alvo confirmado, backup baixado |
+
+**O que estava no ar antes:** o código de 01/09 às 15:29 (`cd6d0b3`). As duas
+tentativas de promover em 02/09 falharam na suíte e **nunca escreveram nada** —
+ver o item logo abaixo sobre o t69.
+
+**A armadilha que quase passou.** O `MonitoramentoOficios.gs` colado à mão na
+Produção chamava `registrarLogSistema`; o repositório renomeou para
+`registrarLogSistema_` (fechamento de exposição). Se só um dos dois arquivos
+fosse trocado, o registro de bounce quebraria em silêncio. Conferido antes de
+publicar: `Oficios.gs` vai junto com a definição nova e não sobrou chamada ao
+nome antigo em `.gs` nem em `.html`.
+
+**O QUE PRECISA SER CONFERIDO NA PRODUÇÃO — nesta ordem:**
+
+1. 🔴 **Emitir um ofício de verdade.** É a mudança que mais mexe na rotina: o
+   ofício agora nasce em `AGUARDANDO_DESTINATARIOS` e só entra na fila depois
+   da conferência no modal. Se alguém fechar o modal sem confirmar, o ofício
+   **fica parado** — não some, mas também não sai.
+2. 🔴 **O assunto sai limpo**, sem `[HML]`. Em produção a marca não se aplica,
+   mas isso agora depende do código novo — vale olhar.
+3. 🔴 **Reenviar os 15 ofícios que nunca chegaram** (FAESA 144/168/172/203/
+   236/242/303; SEB 335/336/358/375/397/452/457/476). Os endereços novos já
+   estão na planilha e o "Outlook" já não confirma ofício que quicou. É este
+   reenvio que prova as duas coisas.
+4. 🟡 **Avisar a Marcela antes do primeiro ofício de amanhã.** A tela mudou.
+5. 🟡 **Os arquivos de diagnóstico sumiram da Produção**
+   (`DiagnosticoItem49.gs`, `DiagnosticoFilaOficios.gs`, `TrocarEmailEscola.gs`).
+   O `clasp push --force` apaga o que não está no repositório. Não há perda: a
+   correção dos e-mails está na planilha, não no código.
+
+**Como voltar atrás, se precisar:** a versão 689 continua publicável, e o
+projeto inteiro de antes está no artefato `producao-antes-10-versao-689` da
+run 33694931232.
+
+### 65b. ⚠️ DUAS PROMOÇÕES FALHARAM ANTES, E EU NÃO LI O RESULTADO
+
+Registro do erro de método, porque ele se repete se não ficar escrito.
+
+As runs 33665128437 (18h09) e 33693525709 (23h09) reprovaram, as duas no
+mesmo teste, e eu **anunciei a segunda como "está rodando agora"** sem ter
+lido o resultado. A primeira passou despercebida por horas.
+
+**A causa era o teste, não o código.** O `t69` exigia um único `deploymentId`
+em todo o ferramental de deploy; o ramo de promoção traz o
+`deploy-producao.yml`, que carrega — corretamente — o ID da Produção.
+
+É o **mesmo defeito de escopo** que o cabeçalho do próprio `t69` já
+documentava de uma vez anterior: uma asserção que acusa o comportamento certo
+não protege nada, ela só ensina a ignorar vermelho.
+
+Corrigido para medir o que de fato importa — que os dois ambientes **não se
+cruzem**:
+
+| Cenário | Estrago | Agora |
+|---|---|---|
+| Workflow de homologação com o ID da Produção | um deploy de teste sobrescreve a URL em uso diário | reprova |
+| Workflow de produção com o ID da homologação | publica por cima do teste e a Produção fica intocada sem ninguém ver | reprova |
+
+Os três cenários foram rodados à mão, inclusive os dois que devem reprovar.
+
+**O que a asserção NÃO pega, dito no cabeçalho:** erro de digitação dentro do
+próprio ID de produção. Não há segunda fonte independente desse valor no
+repositório; quem confere isso é o passo "Confirmar a implantacao atual", que
+exige o ID existir no projeto antes de publicar.
+
+**A lição de método, que é o motivo deste registro:** disparar uma run não é
+resultado. Enquanto eu não li o log, o que eu tinha era uma suposição — e eu a
+contei como se fosse fato.
+
+### 64. ✅ VERIFICADO NO AR — o seletor, o remetente e o destino real
+
+02/09/2026, entre 17h e 19h32. Não é entrega: é o registro do que o usuário
+**executou** e conferiu na homologação. Pela REGRA Nº -1, é isto que tira um
+item de "não testado".
+
+**O QUE FOI PROVADO, e como:**
+
+| O quê | Prova |
+|---|---|
+| **Alias da Secretaria ativo** | tela do Gmail: *"Agora o usuário do Gmail já pode enviar e-mails como secretaria@sindeducacao.com"* |
+| **O Apps Script enxerga o alias** | a faixa do modal ficou **verde** — e ela agora MEDE (`remetenteInstitucionalAtual`), não afirma |
+| **O seletor de destinatários funciona** | ofício 287/2026 chegou na caixa da secretaria com `Para: secretaria@sindeducacao.com`, o endereço escolhido — não o do cadastro |
+| **A escolha chega na FILA** | ofício 288/2026 saiu para o escolhido; antes da correção o 286 saía para o do cadastro |
+| **A mensagem diz o destino real** | 288: *"enviado com sucesso para secretaria@sindeducacao.com"*. No 287 ela dizia `financeiro@` — a variável antiga da tela |
+| **A trava de homologação funciona E aparece** | `[HML] Envio bloqueado. Destinatário não autorizado` na faixa de status |
+| **A ficha em PDF e o layout do papel** | ainda não conferido lado a lado com o impresso — segue no item 59 |
+
+**TRÊS DEFEITOS ACHADOS PELO USO, e nenhum por teste:**
+
+1. **A função do modal existia DUAS vezes** (`OficiosFormulario.html:952` e
+   `OficiosScripts.html:3208`). Eu editei a que perde. No escopo global único
+   o segundo `window.x = function` sobrescreve o primeiro — e nada falha.
+2. **A escolha ficava numa variável da tela.** O botão chama
+   `enviarOficioDaFilaAgora`, e o backend lê o destinatário DA LINHA DA FILA.
+   Mudar `dados.email` em JavaScript não influenciava nada.
+3. **A faixa "Remetente configurado" era texto cravado.** Dizia
+   `secretaria@sindeducacao.com` sempre, com ou sem alias — e eu a citei como
+   prova de que o alias funcionava.
+
+**O QUE OS TRÊS TÊM EM COMUM, e é a lição:** em nenhum deles algo quebrou. Sem
+erro, sem log, sem teste vermelho. **Foi o usuário publicando e olhando a tela
+que achou os três.** Cada um ganhou asserção que o pega antes do ar — inclusive
+uma que CONTA as definições do modal, para uma terceira cópia não repetir o
+primeiro.
+
+**✅ CONFERIDO ÀS 19h32:** o ofício 288/2026 chegou na caixa da secretaria com
+
+```
+De:             SindEducação-ES <secretaria@sindeducacao.com>
+Para:           secretaria@sindeducacao.com
+Responder para: secretaria@sindeducacao.com
+```
+
+**O alias está sendo usado no envio, não só reconhecido.** É a última peça do
+que começou com um erro de servidor SMTP: o Gmail preenchia o host de
+RECEBIMENTO (`mx-vip-01.kinghost.net`) no lugar do de envio, e depois recusou o
+certificado por nome que não batia. Servidor certo: `smtp.kinghost.net`.
+
+**O `[HML]` no assunto FICA** — decisão do usuário em 02/09, depois de eu
+explicar o porquê. Ele só aparece em homologação (`EmailOficios.gs`, condição
+`ambiente === "homologacao"`); em produção o assunto sai limpo, como se vê no
+ofício 487/2026. A marca existe porque **as duas caixas são a mesma**:
+`secretaria@sindeducacao.com` recebe teste e documento oficial no mesmo lugar,
+e sem ela alguém pode responder ou dar andamento a um teste.
+
+**AINDA NÃO CONFERIDO:** o `spf=pass` no cabeçalho. Como o alias sai pelo SMTP
+da KingHost, e o SPF do domínio é `v=spf1 include:_spf.kinghost.net -all`
+(falha rígida, autoriza só a KingHost), ele deve passar — mas isso é dedução,
+não medição. Ver em "Mostrar original" de qualquer ofício novo.
+
+### 63. ⚠️ NÃO HAVIA DEFEITO — o ofício sempre esteve em Enviados
+
+02/09/2026. **Segunda conclusão minha desfeita pelo dado real no mesmo dia, e
+esta custou uma mudança no caminho de envio.**
+
+**A SEQUÊNCIA, porque o erro está nela e não no raciocínio:**
+
+1. O usuário relatou: *"foram enviados mas não aparecem na caixa de enviados"*.
+2. Eu tinha afirmado antes que `GmailApp.sendEmail` grava cópia em Enviados —
+   e **retratei essa afirmação** diante do relato dele.
+3. Troquei o envio por `createDraft(...).send()` para resolver o problema.
+4. Ele abriu a caixa: **os ofícios estavam lá.** Os de 01/09 (480, 481, 482) e
+   os de 02/09 pela manhã (483 a 488), todos enviados pelo `sendEmail` antigo —
+   a minha mudança só foi publicada às 15:00.
+5. Perguntei onde ele tinha olhado. Resposta: **caixa da secretaria.**
+
+**A EXPLICAÇÃO, e ela é simples:** a cópia em Enviados fica na caixa da conta
+que **executa** o script — `financeirosindeducacao@gmail.com`. A secretaria só
+recebe **respostas**, porque é para ela que aponta o `replyTo`. Nunca houve
+ofício enviado na caixa da secretaria, nem deveria haver.
+
+**E o alias não muda isso.** Ele muda o campo **De** que a escola vê. Onde a
+cópia é guardada continua sendo a caixa que executa.
+
+**O QUE EU FIZ DE ERRADO, que é diferente do primeiro engano do dia:** eu tinha
+a informação certa e a **troquei pela impressão do usuário sem pedir a
+evidência**. Bastava uma pergunta — "em qual caixa você olhou?" — antes de
+mexer em código do caminho de envio. No item 61 eu deduzi sem medir; aqui eu
+**desmedi**: abandonei um fato verificado porque um relato o contrariava.
+
+**A MUDANÇA FICOU, por decisão do usuário ("Vamos manter"), com a justificativa
+trocada.** O `createDraft().send()` devolve o **ID real da mensagem**, que o
+`sendEmail` não devolve — daí o texto fixo `GMAILAPP_SEM_ID` no registro. Sem
+ID não existe a thread do ofício para o verificador de confirmação olhar, e
+sobrou procurar pelo número e pelo nome da escola em toda a caixa. **Essa busca
+larga é a causa do item 49** — foi ela que deixou "Outlook" confirmar ofício que
+quicou. Guardar o ID destrava consertar aquilo direito.
+
+O custo, que não existia antes: o rascunho nasce antes do envio, e um `send()`
+que falhe deixaria rascunho órfão. Tratado e coberto no t140.
+
+**O comentário no `EmailOficios.gs` foi reescrito.** A primeira versão dizia que
+a troca servia para o ofício aparecer em Enviados — falso, e neste projeto as
+decisões ficam escritas no cabeçalho dos arquivos. Comentário errado ali é
+armadilha para quem ler daqui a seis meses.
+
+---
+
+**SE A SECRETARIA PRECISAR VER OS OFÍCIOS ENVIADOS**, três caminhos, nenhum
+urgente:
+
+| | O que é | Custo |
+|---|---|---|
+| **Delegação do Gmail** *(recomendado)* | na conta do financeiro: Configurações → Contas e importação → *Conceder acesso à sua conta*. Ela abre a caixa do financeiro pelo próprio Gmail | **zero código** |
+| **BCC para a secretaria** | uma linha: todo ofício sai com `bcc: secretaria@`. Chega também na KingHost, independente do Google | existe decisão registrada em `EmailOficios.gs:127` dizendo *"Sem BCC"*; e **cada BCC consome um destinatário da cota diária** — com ~40 ofícios/dia sobe para ~80 de um teto de 100 |
+| **Nada** | se ela acompanha pelo Monitoramento, a caixa é redundante | — |
+
+### 62. 🔴 42 falhas de entrega medidas NA PRODUÇÃO — e os contatos certos já estão na base
+
+02/09/2026. O usuário abriu o **Monitoramento de Ofícios da produção**. Não é
+amostra nem homologação: é a operação viva, 347 registros.
+
+**42 ofícios com `❌ Falha de entrega`, em 23 endereços distintos.** A
+concentração é o achado:
+
+| Vezes | Endereço | Ofícios |
+|---|---|---|
+| **8×** | `carolina.ferreira@seb.com.br` | 335, 336, 358, 375, 397, 452, 457, 476 |
+| **7×** | `thalia.ferreira@faesa.br` | 144, 168, 172, 203, 236, 242, 303 |
+| 3× | `rh@afbea.org.br` | 116, 123, 124 |
+| 3× | `dp1@tellescontabilidade.cnt.br` | 296, 315, 365 |
+| 2× | `nubiabarcellar@doctum.edu.br` | 106, 149 |
+| 2× | `rh@vitoria.maplebear.com` | 110, 130 |
+
+**Quinze das 42 são dois endereços que não existem mais**, e o sistema
+continuou mandando para eles de março a setembro. O item 49 falava em três
+ofícios da FAESA — **são sete**, e o SEB é pior.
+
+**E O CONTATO CERTO JÁ ESTÁ NA BASE.** Isto é o que torna o item resolvível
+hoje, sem descobrir nada de fora:
+
+| Escola | Morto | Vivo, no próprio histórico |
+|---|---|---|
+| FAESA | `thalia.ferreira@` | **`luiza.stefani@faesa.br`** — confirmado em 250, 286, 288, 471 |
+| SEB | `carolina.ferreira@` | **`eni.neves@seb.com.br`** (099, 374, 482); `lucia.conrado@sebsa.com.br` (348) |
+| Creche Ping Pong | `dp1@tellescontabilidade` | **`secretaria@pingpong-es.com.br`** — confirmado em 201 |
+
+**🔴 A COBRAR:** corrigir esses três cadastros **antes** de reenviar. Reenviar
+para o endereço morto só produz o oitavo bounce.
+
+**UMA AUTOMAÇÃO QUE O SISTEMA DEVERIA FAZER** (REGRA Nº 0.6): quando um
+endereço acumula bounce e a mesma escola tem outro endereço com ofício
+CONFIRMADO, o sistema tem os dois dados e não cruza. Deveria sugerir a troca,
+com a origem à vista — não decidir sozinho, mas também não deixar a pessoa
+descobrir isso lendo 347 linhas.
+
+---
+
+
+---
+
+## ✅ CADASTROS CORRIGIDOS EM 02/09/2026 — pelo usuário, direto na planilha
+
+| Escola | Saiu | Entrou |
+|---|---|---|
+| FAESA | `thalia.ferreira@faesa.br` | `karolina.caldeira@faesa.br` + `luiza.stefani@faesa.br` |
+| SEB | `eni.neves@seb.com.br` | `carolina.ferreira@sebeducation.com` + `folhapagamento@sebsa.com.br` |
+| Creche Ping Pong | — (mantido) | `contato@cevolucao.com.br` acrescentado ao `dp1@tellescontabilidade.cnt.br` |
+
+**O SEB explicou a causa real das 8 quicadas:** não foi contato que saiu da
+instituição — **foi troca de domínio**. `carolina.ferreira@seb.com.br` virou
+`carolina.ferreira@sebeducation.com`. A mesma pessoa, endereço novo. Minha
+hipótese de "contato que saiu" estava errada, e a do usuário estava certa.
+
+**DECISÃO DA OPERAÇÃO, contra o que eu recomendei:** o `dp1@tellescontabilidade`
+da Ping Pong **fica**. Ele quicou 3 vezes (ofícios 296, 315, 365). Como **um
+endereço que quica marca o ofício INTEIRO como `FALHA_ENTREGA`**, a Ping Pong
+deve continuar aparecendo como falha no Monitoramento mesmo quando o
+`contato@cevolucao.com.br` receber. Foi avisado; registrado como escolha.
+
+**🔴 O QUE A CORREÇÃO DO CADASTRO NÃO FAZ — e é o que sobra**
+
+**Os 15 ofícios que quicaram continuam não entregues.** Corrigir o endereço faz
+os PRÓXIMOS chegarem; não reenvia os que voltaram. São documentos de filiação,
+desfiliação e oposição à taxa que a escola **nunca recebeu**:
+
+| Escola | Ofícios que nunca chegaram |
+|---|---|
+| FAESA | 144, 168, 172, 203, 236, 242, 303 |
+| SEB | 335, 336, 358, 375, 397, 452, 457, 476 |
+
+**Antes de reenviar, a correção do "Outlook" precisa estar em produção** — senão
+eles voltam a poder ser marcados como confirmados por engano, que é o item 49.
+A ordem certa é: promoção para produção → reprocessar → reenviar.
+
+**Um script de troca ficou pronto e testado**, em
+`tests/fixtures/producao/TrocarEmailEscola.gs.txt` (t142, 23 asserções). Não foi
+usado desta vez — o usuário ajustou à mão. Fica para a próxima, porque o padrão
+vai se repetir: 23 endereços distintos já quicaram.
+
+**OUTROS DEFEITOS VISÍVEIS NA MESMA TELA**, nenhum relacionado ao que se
+procurava, todos reais:
+
+1. **Dezessete ofícios com data `31/12/1969 21:00`** — 048 a 064. É o zero do
+   Unix: campo de data vazio renderizado como data. Estão sem escola, sem
+   e-mail, tipo "Desconhecido". Provável importação incompleta.
+
+2. **Colunas escorregadas nos ofícios 045, 046 e 047** — o TIPO aparece como
+   "Desconhecido" e a coluna de E-MAIL traz "Filiação", "Desfiliação", "Taxa
+   Negocial". O conteúdo está deslocado uma coluna.
+
+3. **Dois e-mails com `>` sobrando:** `playkidsescolainfantil@gmail.com>`
+   (ofício 220) e `carolina.ferreira@seb.com.br>` (349). Sobra de cópia e cola
+   de `Nome <email>`. O `>` provavelmente não impede o envio, mas suja a
+   comparação de endereços — inclusive a do verificador de bounce.
+
+4. **`📤 Enviado +194d`** — ofícios esperando confirmação há mais de seis
+   meses, sem ninguém cobrar. O painel mostra a contagem; não existe alerta.
+
+5. **Ofício 119/2026 tem `financeiro@sindeducacao.com` como e-mail da escola**
+   (FAESA) e está CONFIRMADO. Ou é teste que ficou no meio do dado real, ou é
+   erro de cadastro — nos dois casos, dado sujo em registro oficial.
+
+### 61. ⚠️ CONCLUSÃO MINHA CORRIGIDA — a confirmação NÃO é impossível de ver
+
+02/09/2026. **Este item nasceu errado no mesmo dia e está corrigido aqui. O
+texto original fica registrado abaixo porque o raciocínio ainda serve; a
+conclusão, não.**
+
+**O QUE EU AFIRMEI:** que a confirmação de recebimento era *impossível* de
+detectar, porque o ofício sai com `replyTo: secretaria@sindeducacao.com` —
+caixa da KingHost — e o verificador roda `GmailApp.search`, que lê a caixa do
+Gmail. Duas caixas, dois provedores, resposta invisível.
+
+**O QUE O DADO REAL MOSTROU:** o usuário abriu o Monitoramento **da
+produção** e há **dezenas** de ofícios `✅ Confirmado`, vários recentes — 439,
+444, 445, 467 e 471, todos em 31/08/2026. Se fosse impossível, não haveria
+nenhum.
+
+**O QUE CONTINUA VERDADE:** o `GmailApp.search` lê a caixa da conta executora,
+e o `replyTo` aponta para outro provedor. Isso não mudou.
+
+**O QUE EU NÃO SABIA, E ERA O QUE FALTAVA:** por qual caminho as confirmações
+chegam. Há pelo menos três possíveis, e o dado não distingue:
+
+1. o Gmail já busca a caixa da secretaria (POP), e ninguém me disse;
+2. a escola responde com cópia ao remetente, e não só ao `replyTo`;
+3. **alguém marcou à mão** — a tela tem botão ✅ em cada linha não confirmada.
+
+**COMO DESCOBRIR, sem adivinhar:** o `diagnosticoItem49` (já no repositório)
+conta, na seção 3, quantos ofícios trazem *"Confirmação localizada
+automaticamente no Gmail"* na observação. Os que **não** trouxerem foram
+marcados por uma pessoa. Um número resolve a dúvida.
+
+**A LIÇÃO, que é o motivo de eu não apagar este item:** eu montei uma cadeia
+causal correta em cada elo — código, DNS, cabeçalho do ofício 487 — e conclui
+uma coisa falsa, porque nunca olhei se o efeito previsto existia. **Bastava
+uma pergunta: "existe algum ofício confirmado?"** A REGRA Nº -1 vale para
+diagnóstico, não só para código: ler o mecanismo não é medir o resultado.
+
+#### Texto original, de 02/09/2026 — CONCLUSÃO SUPERADA, raciocínio preservado
+
+02/09/2026. O usuário relatou que os ofícios enviados em produção não geram
+retorno nenhum — nenhuma escola aparece como tendo confirmado. **Não é que
+ninguém confirmou: é que o sistema não tem como ver a confirmação.**
+
+**A CADEIA, e ela é mecânica:**
+
+1. O ofício sai com `replyTo: secretaria@sindeducacao.com`
+   (`EmailOficios.gs`, e visível no cabeçalho do ofício 487/2026).
+2. A escola clica em **Responder** → a resposta vai para
+   `secretaria@sindeducacao.com`.
+3. Esse endereço é uma caixa **da KingHost** — o MX de `sindeducacao.com`
+   aponta para `mx-vip-01.kinghost.net` (consultado no DNS em 02/09).
+4. O verificador roda `GmailApp.search(...)`
+   (`MonitoramentoOficios.gs:359`), que lê **a caixa da conta que executa o
+   script** — `financeirosindeducacao@gmail.com`.
+
+**São duas caixas, em dois provedores. A resposta nunca chega onde o sistema
+procura.**
+
+**ISSO FECHA COM O ITEM 49, e explica o que lá ficou sem explicação.** O
+verificador de bounce achou três falhas na produção e confirmação nenhuma. É
+exatamente coerente:
+
+| | Volta para | O sistema vê? |
+|---|---|---|
+| **Bounce** | o remetente técnico (a conta do Gmail) | **sim** |
+| **Resposta de gente** | o `replyTo` (KingHost) | **não** |
+
+O sistema enxerga metade do mundo. E o pouco que ele "confirmava" vinha de
+casar palavra solta em mensagem da própria thread — que foi o defeito do
+"Outlook".
+
+**DUAS SAÍDAS, AS DUAS SEM CÓDIGO**
+
+**A — o Gmail buscar a caixa da secretaria** (recomendada). Gmail →
+Configurações → Contas e importação → *Verificar e-mails de outras contas* →
+`secretaria@sindeducacao.com`, com as credenciais da KingHost (servidor de
+leitura `pop.kinghost.net`). Marcar **"Deixar uma cópia no servidor"**, para
+não sumir da caixa de quem trabalha nela. As respostas passam a chegar também
+no Gmail, o verificador as encontra, e a caixa da secretaria continua sendo a
+oficial.
+
+**B — encaminhamento na KingHost.** Regra no painel copiando tudo para o
+Gmail. Funciona igual, mas mexe na caixa de trabalho da secretaria.
+
+**Atraso esperado na opção A:** o Gmail busca por POP em intervalos que podem
+chegar a uma hora. Irrelevante aqui — o verificador roda de 3 em 3 horas.
+
+**🔴 A COBRAR DO USUÁRIO**
+
+1. **Conferir na `financeirosindeducacao@gmail.com`** se existe alguma
+   resposta de escola. Se não existir nenhuma, está confirmado. (Eu não
+   consigo verificar: o conector de Gmail desta sessão está na conta
+   **pessoal** dele, não na que executa o script.)
+2. **Escolher A ou B** e configurar.
+3. **Depois disso, rodar `verificarConfirmacoesRecebimento` uma vez** e ver
+   se algum ofício antigo passa a CONFIRMADO. É o que prova que a ponte
+   funcionou.
+
+**O que NÃO fazer:** mudar o `replyTo` para a conta do Gmail. Resolveria a
+detecção e estragaria a coisa certa — a escola deve responder para a
+secretaria, não para uma conta técnica.
+
+### 60. O portal público existe como rascunho — e a ficha divergiu nele
+
+02/09/2026. Levantado quando o usuário mostrou que a organização tem **dois
+repositórios**, e confirmado por ele em seguida:
+
+> *"Hoje está tudo pelo SISGEP, o portal público eu pensei nele, e ainda não
+> finalizei. (…) A ideia é eu finalizar o administrativo, o administrativo
+> estiver rodando, estiver direitinho, aí eu traria o público."*
+
+**A ORDEM É DELE E ESTÁ CERTA: administrativo primeiro, público depois.** Este
+item não é tarefa — é levantamento, para que a migração seja execução e não
+descoberta.
+
+**O QUE JÁ EXISTE**
+
+`sisgepplataforma2026/Sisgep-Portal-Publico` (privado, último commit 30/07),
+4 arquivos: `Código.gs`, `SindicalizacaoPublica.gs`, `Teste.gs`,
+`Fichasindicalizacao.html`.
+
+Ele já serve `?ficha=sindicalizacao`, `?validar=CODIGO` (credencial),
+`?politica=privacidade` e o Portal do Associado. **Não está em uso** — o
+caminho vivo é o SISGEP.
+
+**E ELE PROVA QUE A SEPARAÇÃO FUNCIONA:**
+
+| | Funções públicas |
+|---|---|
+| SISGEP | 965 no total, **204 alcançáveis sem login** |
+| Portal | **19** |
+
+Duas coisas ele já faz certo: projeto separado e **planilha compartilhada** —
+`1QPpsx19v4Yzfsko…` é o mesmo ID nos dois lados (aparece em `CentralEmailIA.gs`,
+`DiagnosticoSISGEP.gs` e `Reservaparquechina.gs`). O dado não se parte.
+
+**A DIVERGÊNCIA, que é o que não pode se perder**
+
+`gerarPDFFichaSindicalizacao(idFicha)` existe **nos dois projetos, com o mesmo
+nome e assinatura**, e os layouts se separaram:
+
+| | Onde | Layout |
+|---|---|---|
+| Portal | `SindicalizacaoPublica.gs:456` | antigo — `RECADASTRAMENTO`, sem moldura azul, sem Colossenses |
+| SISGEP | `Sindicalizacaoadmin.gs:258` | novo (01/09), o do formulário de papel |
+
+E o `Fichasindicalizacao.html` diverge em **624 linhas** (913 no SISGEP, 1035
+no portal). As mudanças de 01/09 — tirar título/zona/seção, acrescentar
+Pós-graduação, Mestrado e Doutorado — estão **só no SISGEP**. A cópia do
+portal ainda tem Zona e Seção, e não tem as três escolaridades novas.
+
+**Isso não é urgente**, porque o portal não está no ar. Vira urgente **no dia
+em que ele for ligado** — e aí, se ninguém tiver lido isto, o associado passa
+a receber a ficha no layout velho, sem as escolaridades, e o defeito aparece
+como "o sistema mudou sozinho".
+
+**AS 14 ROTAS ANÔNIMAS DO SISGEP**, que são a origem do teto de 204 (o
+`Code.gs` serve todas, e no Apps Script toda função global é endpoint para
+qualquer página do projeto):
+
+| | Rota | Situação |
+|---|---|---|
+| 1–5 | `portal=` associado, voucher, chinapark, chinapark-hospedes, oftalmo | associado já tem par no portal |
+| 6 | `page=compasso-inscricao` | |
+| 7 | `page=ingresso` (token HMAC) | |
+| 8–9 | bingo: inscrição e cartela por token | |
+| 10 | `ficha=sindicalizacao` | **duplicada** — existe nos dois |
+| 11 | `track=open` (pixel) | operação VIVA |
+| 12–14 | `pub-pixel-nf`, `pub-nf-despesa`, `pub-contabil-despesa` | operação VIVA |
+
+Seis painéis (`emissao`, `checkin`, `compasso`, `compasso-importar`, `bingo`,
+`bingo-telao`) exigem sessão e chamam `exigirModulo_` — esses não entram.
+
+**O QUE ISSO SIGNIFICA PARA O TETO.** Separar homologação de produção **não**
+derruba os 204: os dois lados ficariam com a mesma superfície dentro de cada
+um. Quem derruba é tirar as rotas anônimas do projeto administrativo. E não é
+refatoração especulativa — a rota 10 já é duplicata pura.
+
+**O tamanho real do risco hoje:** superfície grande, exposição pequena, porque
+só Ofícios está em operação. É dívida a pagar **antes** de entrar em operação,
+não incêndio de hoje.
+
+**MIGRAR POR ÚLTIMO:** as rotas 11 a 14. Quem as usa é gente de fora do
+sindicato e elas fazem parte da emissão de ofício, que é a operação viva.
+
+### 59. A ficha em PDF no layout do papel — falta pôr um ao lado do outro
+
+01/09/2026. Você mandou a ficha que o sistema gera e a foto do formulário
+impresso, e disse: *"Precisamos de algo que fique assim"*, *"Esse que te
+mandei é o modelo que utilizamos"*. O PDF passou a reproduzir o papel:
+moldura azul dupla, barras de seção em azul-claro, caixinhas de caractere,
+ATUALIZAÇÃO CADASTRAL, ORGÃO EMISSOR, tipo de logradouro como caixa de
+marcar, CONTATOS separado em WhatsApp/telefônico/recado, as nove opções de
+escolaridade e Colossenses 3:23 no rodapé.
+
+Suas quatro respostas de layout estão aplicadas: título/zona/seção saíram da
+ficha de cadastro; Pós-graduação, Mestrado e Doutorado entraram; o rodapé de
+controle ficou; o endereço é o completo.
+
+A logo também foi ajustada — passou a mandar pela largura (estava travada em
+40px de altura e saía com ~75px de largura), a frase "Somos todos educadores"
+deixou de aparecer duas vezes (a arte já traz a frase dentro dela) e o texto
+de emergência trocou o dourado do SISGEP pelo azul e rosa da marca.
+
+**🔴 A COBRAR DE VOCÊ — é o que o emulador não faz.** Ele prova o HTML que
+entra na conversão; não converte para PDF nem desenha página.
+
+1. Gerar uma ficha em homologação e abrir o PDF **ao lado do formulário
+   impresso**. O ponto onde a conversão do Apps Script mais costuma divergir
+   do navegador é a **largura das caixinhas** — se elas saírem espremidas ou
+   estourando a linha, é ali.
+2. Ver a **logo impressa**. O arquivo no Drive se chama `Screenshot_3.png` e
+   tem 466x247 — é recorte de tela, não arte vetorial. Em 150px de largura
+   deve passar; se sair serrilhada, a correção é trocar o arquivo por um PNG
+   grande ou um SVG, **sem mexer em código**: o ID do arquivo continua o
+   mesmo.
+3. O papel impresso ficou **defasado**: ele não tem Pós-graduação, Mestrado e
+   Doutorado, que você mandou acrescentar. Quando for reimprimir, vale
+   acertar as nove opções de uma vez.
+
+Coberto por `tests/e2e/t135-ficha-no-layout-do-papel.js` — 69 asserções, e
+duas marcadas como não testáveis, que são exatamente os itens 1 e 2 acima.
+
+### 58. A tela do "Reemitir ofício" — feita (item 54.1 FECHADO), falta ver no ar
+
+01/09/2026. Fecha o achado da sétima rodada: quando o ofício falhava depois da
+matrícula, o sistema mandava *"Use 'Reemitir ofício'"* — e o botão não existia
+em tela nenhuma.
+
+**O DESENHO NÃO FOI "UM BOTÃO A MAIS".** O estado `MATRICULADA` escondia dois
+que se comportam de forma diferente:
+
+- **com ofício** — escola comunicada;
+- **sem ofício** — matrícula emitida (não se desfaz) e escola **nunca avisada**.
+
+A tela passa a nomear os dois. O chip **⚠ Sem ofício** só aparece quando há o
+que mostrar — chip de exceção cravado em zero vira parte do cenário e para de
+ser lido.
+
+**TRÊS AÇÕES, e a diferença decide se um número oficial é queimado:**
+
+| Ação | Quando | Número |
+|---|---|---|
+| **📤 Emitir ofício** | não existe ofício | novo |
+| **📧 Reenviar** | existe, **mesma escola**, não chegou | **o mesmo** |
+| **↻ Reemitir p/ outra escola** | existe, escola errada | novo, e os dois ficam válidos |
+
+**A terceira linha foi você que apontou.** Meu primeiro desenho tinha só duas
+ações e teria feito o reenvio queimar número à toa. A regra que separa: **mudou
+o destinatário, mudou o documento.**
+
+**ONDE MORA O VÍNCULO — e por que não precisou mexer em esquema.** A ficha não
+sabe qual é o ofício dela (item 54.3). Mas o **Controle sabe a ficha**: o
+`aprovarEEncaminharFicha` grava `"Matrícula 000123 · Ficha FICHA-2026…"` na
+coluna Observações. O `sindOf_situacaoOficioDasFichas` cruza por aí. **Isso
+torna o item 54.3 desejável, não bloqueante.**
+
+**O QUE A TELA SE RECUSA A AFIRMAR.** Enquanto o cruzamento não responde, ela
+mostra *"conferindo ofício…"* — não *"sem ofício"*. E se o cruzamento **falhar**,
+continua sem afirmar. O motivo é grave: dizer "ninguém tem ofício" faria a
+secretaria emitir ofício duplicado para a base inteira, queimando numeração
+oficial em série. O backend também recusa em vez de mentir, nomeando a coluna
+que falta.
+
+**O QUE FALTA CONFERIR NO AR:**
+
+1. abrir **Fichas Sindicais**, filtrar **MATRICULADA** — o chip **Sem ofício**
+   deve aparecer com a contagem certa (e some se for zero);
+2. numa ficha sem ofício: **📤 Emitir ofício** → a escola recebe;
+3. numa ficha com ofício: **📧 Reenviar** → chega com o **MESMO** número;
+4. **↻ Reemitir p/ outra escola** → número novo, e o anterior continua no
+   Controle;
+5. o card mostra a linha `✓ Ofício NNN/AAAA · data · escola`.
+
+**Testes:** `t133` (26 asserções, o cruzamento) e `t134` (41, o contrato da
+tela). Suíte verde: 137 arquivos, 4.777 asserções. Teto de exposição estável
+em 204.
+
+### 57. Os quatro ajustes que você autorizou (01/09/2026) — falta ver no ar
+
+Feitos no repositório e publicados em homologação. **Nenhum deles foi
+verificado rodando de verdade** — é o que esta lista cobra.
+
+#### O que mudou
+
+| Item | Antes | Agora |
+|---|---|---|
+| **55** | o e-mail à contabilidade não citava o número do ofício nem levava o documento | número numa faixa no topo do corpo, e o documento vai **anexado, na frente das notas** |
+| **52** | `atualizarEmailEscola` exigia só Sindicalização | aceita **Documentos OU Sindicalização** |
+| **54.2** | quem tinha só Sindicalização emitia a matrícula e **não comunicava a escola** | faz o fluxo inteiro — matrícula e ofício |
+| **54.3** | campo sem coluna era descartado **em silêncio** | o descarte vai para o log, nomeando os campos perdidos |
+
+**A numeração do ofício fiscal ficou como está**, conforme você decidiu: cada
+lote de despesa continua avançando o mesmo contador dos ofícios de filiação.
+
+#### O que eu tomei cuidado para não fazer
+
+**No item 54.2, quase alarguei demais.** A primeira versão deixava quem tem só
+*Documentos* aprovar ficha — errado: aprovar ficha é trabalho de
+Sindicalização. Corrigi antes de rodar a suíte.
+
+E a permissão foi dada ao **fluxo da ficha**, não ao módulo de Ofícios. O
+`gerarOficioWeb` foi dividido: a porta pública continua exigindo Documentos, e
+o corpo virou `gerarOficioWeb_comSessao_`, privado e sem porta, alcançável só
+por quem já passou por uma. Se eu tivesse simplesmente alargado a porta,
+**quem tem só Sindicalização passaria a emitir ofício LIVRE** — texto
+arbitrário em papel timbrado do sindicato, para qualquer e-mail. O `t129`
+passo 16 trava exatamente isso.
+
+Achado de passagem: o cabeçalho do `previewOficioWeb` já dizia *"SEM trava de
+módulo — a Sindicalização monta a prévia do ofício de filiação por aqui"*. Era
+a intenção original do autor, e a troca de porta que fiz mais cedo hoje tornou
+o comentário falso sem resolver o problema. A divisão devolve essa intenção.
+
+#### O que falta conferir no ar
+
+1. **Enviar um lote de despesas** — o e-mail à contabilidade tem que chegar
+   com o número do ofício visível no topo **e três anexos**: o ofício e as
+   duas notas. É o item 55.
+2. **Corrigir o e-mail de uma escola logado como alguém que só tem
+   Documentos** — antes era impossível. É o item 52.
+3. **Aprovar uma ficha logado como alguém que só tem Sindicalização** — tem
+   que sair matrícula **e** ofício, sem mensagem de pendência. É o 54.2.
+4. **Olhar o log depois de aprovar uma ficha** — deve aparecer
+   `SIND_ADM_CAMPO_SEM_COLUNA` avisando que `OBSERVACOES_OFICIO` foi
+   descartado. Se **não** aparecer, é porque a produção **tem** a coluna — e
+   isso responde a pergunta do item 54.3.
+
+**O item 4 é o que mais me interessa:** ele responde sozinho a pergunta que eu
+te fiz e não sabia responder.
+
+### 56. ✅ FRENTE A DO MÓDULO 03 — COMPLETA (01/09/2026)
+
+**As 45 funções públicas do Módulo 03 têm teste. Nenhuma ficou de fora.**
+
+Medido, não estimado: varredura de todas as `function nome(` sem `_` final nos
+12 arquivos do módulo, cruzada com todos os `tests/e2e/*.js`.
+
+| | |
+|---|---|
+| Funções públicas do módulo | **45** |
+| Sem teste nenhum | **0** |
+| Teto de exposição | 224 → **204** |
+| Suíte | 135 arquivos, 4.696 asserções, verde |
+| Homologação | **versão 90**, publicada 01/09 às 18:53 |
+
+**AS NOVE RODADAS, e o que cada uma achou:**
+
+| # | O que fechou |
+|---|---|
+| 1 | 5 gatilhos de monitoramento criavam e apagavam acionador sem porta |
+| 2 | 9 funções devolviam dado de escola sem checagem — a pior, `buscarEscolasParaOficio`, entregava razão social, CNPJ e e-mails de até 60 escolas por chamada, sem token |
+| 3 | 8 eram endpoint por acidente — `getTemplateConteudo` lia **qualquer** Google Doc por ID |
+| 4 | 2 **escreviam** sem porta: uma queimava número da numeração oficial, a outra forjava entrada no log de auditoria |
+| 5 | painel de status e conserto do e-mail da escola (item 52) |
+| 6 | a ponte ficha→ofício (item 54) |
+| 7 | **a regressão que eu causei no mesmo dia** (item 53) e mais 8 chamadas sem token, anteriores |
+| 8 | ofício fiscal de despesas (item 55) |
+| 9 | a trava que impede um teste de rodar em produção |
+
+**O QUE FICA ABERTO, e é tudo decisão sua** — itens 52, 54 e 55: qual módulo
+guarda o conserto do e-mail da escola; a tela que falta para
+`reemitirOficioFicha`; a coluna `OBSERVACOES_OFICIO`; e se o ofício fiscal
+deve ir anexado, citado, ou consumir numeração própria.
+
+**O QUE FICA ABERTO E NÃO É DECISÃO — precisa de mão na produção:** os itens
+49 (reprocessar 144/236/242), 50, 51, 53 e 55 listam cada um o que conferir
+no ar. Nada disso se prova aqui.
+
+**E O QUE ESTE FECHAMENTO NÃO SIGNIFICA.** Cobertura não é correção. "Todas
+as funções têm teste" quer dizer que cada uma foi executada ao menos uma vez
+e que a porta dela foi provada — não que o módulo esteja certo. O que se
+prova rodando de verdade, com PDF, e-mail entregue e gatilho agendado,
+continua "não testado" e está listado nos itens acima.
+
+### 55. Ofício fiscal — existe para o sindicato e não existe para a contabilidade
+
+Oitava rodada da frente A, 01/09/2026, ao cobrir com teste (`t131`, 26
+asserções) as duas últimas funções do Módulo 03 que estavam sem teste nenhum.
+**Não corrigi — é desenho, e a decisão é sua.**
+
+**O QUE ACONTECE HOJE.** `enviarLoteDespesasComOficio` faz tudo isto, e está
+certo em cada passo isolado:
+
+1. consome um número da numeração **oficial** de ofícios — a mesma dos ofícios
+   de filiação, **não existe sequência paralela**;
+2. gera o documento do ofício e salva no Drive;
+3. registra o ofício na aba Controle do sindicato;
+4. manda o e-mail à contabilidade com a tabela de despesas e as notas fiscais
+   anexadas.
+
+**O QUE FALTA.** O e-mail que chega à contabilidade **não cita o número do
+ofício em lugar nenhum** e **não leva o documento do ofício anexado**.
+
+Do lado do sindicato o ofício 0NN/AAAA existe, está no Controle e gastou um
+número. Do lado de quem recebeu, ele nunca existiu.
+
+**Provado no código, não só na execução:**
+
+- `montarHtmlEnvioContabilidadeDesp_` (`Despesas.gs:2965`) recebe
+  `(despesas, totalValor, emailRemetente)` — o número do ofício **não está
+  entre os argumentos**, então não há como aparecer no corpo;
+- o blob do ofício é criado logo acima do envio e **nunca entra em
+  `blobsAnexo`**, que é o que vai anexado.
+
+**É a mesma forma do defeito do reenvio** que você relatou hoje: levava o
+ofício e deixava a carta.
+
+**AS TRÊS DECISÕES**, e são suas:
+
+| | Pergunta |
+|---|---|
+| 1 | O documento do ofício **deve ir anexado** ao e-mail da contabilidade? |
+| 2 | O **número** deve constar no corpo, para a contabilidade poder referenciar? |
+| 3 | Essa operação deveria mesmo **consumir a numeração oficial** de ofícios, ou merece sequência própria? |
+
+A terceira é a que mais pesa: hoje, cada lote de despesa enviado avança o
+mesmo contador dos ofícios de filiação e desfiliação.
+
+**O que o t131 provou de bom, e que estava sem teste:**
+
+- **o rename de hoje não quebrou nada** — `gerarProximoNumeroOficioFiscal_` só
+  chama `gerarProximoNumeroSeguro_`, que ficou privada na quinta rodada; roda,
+  devolve `NNN/AAAA`, e o envio completo funciona. **Esta era a verificação
+  nº 2 do item 51**, e passou;
+- a **prévia não gasta número** — duas prévias seguidas não escrevem linha
+  nenhuma no Controle. Número gasto não volta, então isso importa;
+- id inexistente é recusado, em vez de gerar um ofício fiscal com lote vazio;
+- o total soma certo e os dois documentos fiscais vão anexados.
+
+### 54. Ficha → Ofício — dois achados de desenho, os dois para o usuário decidir
+
+Sétima rodada da frente A, 01/09/2026, ao cobrir com teste (`t129`, 35
+asserções) a ponte entre a Sindicalização e os Ofícios. **Nenhum dos dois é
+bug que eu deva corrigir sozinho** — os dois são política de desenho.
+
+#### 54.1 · O sistema manda apertar um botão que não existe
+
+Quando o ofício falha depois da matrícula já emitida, a mensagem diz:
+*"Use 'Reemitir ofício' depois de verificar o arquivo."*
+
+`reemitirOficioFicha` **existe, tem porta e funciona** — o t129 gera uma
+reemissão de verdade, com número próprio (não reaproveita o do primeiro). Mas
+**nenhuma tela a chama**. Os cinco passos da REGRA Nº 1 foram rodados:
+cabeçalho, `Code.gs` e rotas, gatilhos, `git log`, grep no projeto inteiro.
+Todos deram "sem chamador".
+
+Ou seja: no momento exato em que o sistema instrui a pessoa a apertar um
+botão, o botão não existe. A ficha fica MATRICULADA sem ofício, e não há
+caminho pela interface.
+
+Não é código morto — é o contrário: **código vivo sem porta de entrada**.
+Por isso fica, está coberto por teste, e o que falta é a tela. Tela se desenha
+antes de implementar (REGRA Nº 0.5), então: **quer que eu desenhe?**
+
+#### 54.2 · Aprovar uma ficha exige DOIS módulos
+
+Quem aprova ficha está fazendo trabalho de **Sindicalização**; o ofício é
+efeito colateral que o sistema gera por ela. Mas `gerarOficioWeb` pede
+**Documentos**. Sem os dois módulos, a pessoa **emite a matrícula e não
+comunica a escola** — e o retorno avisa que ficou parcial.
+
+É o mesmo formato do item 52 (o e-mail da escola atrás de outro módulo). Duas
+decisões da mesma família, e as duas são suas.
+
+Antes de hoje isso vinha ainda pior: sem o token descendo (item 53), a recusa
+aparecia como **"Sessão inválida ou expirada"** — erro que manda a pessoa
+fazer login de novo para um problema que login nenhum resolve. Agora a
+mensagem nomeia o módulo que falta.
+
+#### 54.3 · O vínculo entre a ficha e o ofício se perde sem erro nenhum
+
+`aprovarEEncaminharFicha` grava `OBSERVACOES_OFICIO` na ficha, com o número do
+ofício. Só que **a coluna não existe** no esquema que o
+`configurarAbaSindicalizacao` cria — e o `sindAdm_gravar_` **não lança erro**
+quando o campo não tem coluna: descarta em silêncio. O `catch` marcado como
+"campo opcional" nunca dispara, porque não há o que capturar.
+
+Resultado: depois de aprovada, **não há como saber qual ofício comunicou qual
+filiação**.
+
+**Não corrigi, e o motivo é a REGRA Nº 1:** acrescentar coluna é mudança de
+esquema numa aba com dado real, e o `configurarAbaSindicalizacao`
+**reescreve a linha 1 inteira** — se a planilha de produção tiver colunas
+além da lista, rodá-lo sobrescreveria o cabeçalho delas.
+
+**O que preciso de você:** a aba de fichas da produção tem a coluna
+`OBSERVACOES_OFICIO`? Se tiver, o defeito é só do esquema que o código cria e
+a correção é trivial. Se não tiver, é preciso decidir como acrescentá-la sem
+passar pelo `configurarAbaSindicalizacao`.
+
+### 53. 🚨 REGRESSÃO MINHA, DO MESMO DIA — ofício com ficha anexada parou de funcionar
+
+**Corrigida no repositório em 01/09/2026, no mesmo dia em que a causei.
+Nunca chegou a produção. Falta confirmar em homologação.**
+
+Registro aqui porque errar sem registrar é o que faz o erro voltar.
+
+**O QUE EU FIZ DE ERRADO.** Ao fechar as funções abertas do Módulo 03, pus
+porta de módulo no `processarFichasParaOficio`. Atualizei os chamadores das
+**telas** e não vi um chamador interno, em `.gs`: o `gerarOficioWebComFichas`
+(`OficioService.gs`) chamava `processarFichasParaOficio(dados.fichas)` sem
+passar token.
+
+**O ESTRAGO.** Todo ofício com ficha anexada passaria a morrer lá dentro, com
+"Sessão inválida" engolido pelo `catch` e devolvido como `{erro: true}`. É o
+caminho do **ofício de filiação com a ficha assinada** — a operação viva.
+A porta que pus para proteger o dado quebrava o uso legítimo.
+
+**POR QUE PASSOU DESPERCEBIDO.** A suíte ficou **verde**. Nenhum teste
+exercitava esse caminho, e o `catch` virava a exceção em `{erro: true}`, que
+ninguém checava. É a assinatura do defeito que este projeto mais encontra: o
+sistema para de funcionar sem que nada dê erro à vista.
+
+**A TRAVA QUE FICOU** (`t130`, 10 asserções), e ela é o que importa daqui:
+
+1. uma **varredura** de todo `.gs` procurando chamada de função com porta,
+   feita de outro `.gs`, sem passar token — pega a classe inteira do erro,
+   não só este caso;
+2. um **teste de comportamento** que gera um ofício com ficha e confere que a
+   fila recebe **dois** anexos (o ofício e a ficha). Um só significaria a
+   ficha descartada no caminho — a mesma forma do defeito do reenvio, que
+   levava o ofício e deixava a carta.
+
+Verifiquei que a trava pega: reintroduzi a regressão e os dois passos ficaram
+vermelhos; desfeita, verdes.
+
+**E MAIS OITO CHAMADAS SEM TOKEN, ESSAS ANTERIORES A HOJE.** A varredura achou
+o resto da família, e nenhuma tinha teste:
+
+| Onde | O que estava quebrado |
+|---|---|
+| `SindicalizacaoOficio.gs` (3) | `previewOficioFiliacao`, `aprovarEEncaminharFicha` e `reemitirOficioFicha` **nunca** geraram ofício — o token não descia para `gerarOficioWeb`/`previewOficioWeb` |
+| `IA_DocumentosSindicalizacao.gs` (4) | desfiliação e oposição à taxa negocial, mesma coisa |
+| `IACore.gs`, `IA_Oficios.gs` (2) | a IA analisava a escola **sem** o histórico de ofícios dela, e sem avisar que faltou |
+
+Todas corrigidas. Uma exceção fica **declarada com motivo** no t130:
+`CentralEmailIA.gs` chama de dentro de um helper privado cujos chamadores são
+legados sem token; ali a chamada degrada com aviso visível, e dar token às
+legadas é mudança maior que esta rodada carrega.
+
+**O QUE FALTA VERIFICAR NO AR:**
+
+1. **emitir um ofício de filiação com a ficha anexada** — é o caminho que eu
+   quebrei e consertei; se algo escapou, é aqui que aparece;
+2. a **desfiliação por carta analisada pela IA** e a **oposição à taxa
+   negocial** — os outros quatro chamadores corrigidos;
+3. a **análise de escola pela IA** — deve passar a trazer o histórico de
+   ofícios, que antes vinha vazio em silêncio.
+
+### 52. Ofícios — quem trabalha DOCUMENTOS não consegue consertar o e-mail da escola
+
+Achado da sexta rodada da frente A, 01/09/2026, ao cobrir com teste
+(`t128`, 25 asserções) as três funções do caminho que a Marcela percorre
+quando uma escola reclama que não recebeu o ofício.
+
+**NÃO É BUG — é decisão de desenho, e é do usuário.** Está aqui porque só ele
+decide, e porque encosta direto no problema que o sindicato está vivendo.
+
+**O QUE ACONTECE.** O caminho de quem vai atrás de um ofício que não chegou é:
+
+1. abre o painel de status (`listarStatusOficios`) — pede módulo **Documentos**;
+2. vê que o ofício voltou por e-mail errado;
+3. corrige o e-mail no cadastro (`atualizarEmailEscola`) — pede módulo
+   **Sindicalização**;
+4. marca o ofício para reprocessar (`atualizarStatusOficio`) — **Documentos**.
+
+O passo 3 está atrás de outra permissão. Quem só tem Documentos vê o
+problema, sabe o conserto, e não consegue aplicar: depende de outra pessoa.
+
+**AS TRÊS OPÇÕES**, e a escolha é do usuário:
+
+| | O que muda |
+|---|---|
+| **Deixar como está** | quem trabalha ofícios pede a correção a quem tem Sindicalização |
+| Dar Sindicalização a quem trabalha ofícios | resolve, mas abre o resto do módulo junto |
+| Aceitar os dois módulos na função | `atualizarEmailEscola` passaria a aceitar Documentos **ou** Sindicalização; é mudança de uma linha, e não abre nada além do e-mail da escola |
+
+**O que o t128 provou de passagem** (e que estava sem teste nenhum até hoje):
+
+- o painel funde Controle e Fila **sem duplicar** o ofício que está nos dois,
+  e o status que prevalece é o da **Fila** — que é quem envia de verdade;
+- `atualizarStatusOficio` grava nas **duas** abas, recusa status inventado,
+  recusa número inexistente sem criar linha, e registra no log de auditoria;
+- `atualizarEmailEscola` grava nas **duas** colunas (principal e todos),
+  aceita CNPJ com máscara, e o e-mail errado não sobra em coluna nenhuma.
+
+**Continua não testado:** se o ofício reenviado depois da correção **chega**
+na caixa da escola. É a pergunta que originou tudo isto e só a produção
+responde — o emulador registra o e-mail, não entrega.
+
+### 51. Ofícios — duas funções ESCREVIAM sem porta nenhuma (fechadas em 01/09)
+
+Quinta rodada da frente A do Módulo 03, 01/09/2026. Fechado no repositório
+(`t127`, 43 asserções); **falta confirmar no ar que nada quebrou**.
+
+A rodada anterior (item 50) fechou as que **liam**. Esta fecha as que
+**escrevem** — e a diferença importa: dado lido indevidamente é vazamento, mas
+dado escrito indevidamente é registro oficial corrompido, que ninguém tem de
+onde recuperar.
+
+**AS DUAS QUE ESCREVIAM.**
+
+| Função | O que um anônimo conseguia |
+|---|---|
+| `gerarProximoNumeroSeguro` | **queimava um número da sequência oficial de ofícios a cada chamada.** Em laço, abriria buracos na numeração — e numeração de ofício com buraco é problema de auditoria do sindicato. Número gasto não volta. |
+| `registrarLogSistema` | **forjava entrada no LOG_SISTEMA**: usuário, número, tipo, escola, CNPJ, e-mail, tudo do jeito que o chamador mandasse. O log que registra quem fez o quê aceitava qualquer versão da história. |
+
+Mais três que só liam e não tinham chamador em tela viraram privadas:
+`preverProximoNumeroOficio`, `verificarCodigoPublico` e `montarEmailHTML`. A do
+meio era a mais notável — uma **segunda porta** para o mesmo dado que a rota
+pública `validarPublico` já serve com propósito.
+
+**O QUE A RENOMEAÇÃO QUASE QUEBROU EM SILÊNCIO.** São 14 chamadas em 6
+arquivos, e dois deles guardam os nomes como **string** para conferir se a
+função existe (`OficiosDiagnostico.gs` e `Reservaparquechina.gs`). String não é
+alcançada por renomeação de identificador — o sintoma seria um diagnóstico
+dizendo "função não encontrada" sobre função que está lá, apontando para o
+lugar errado. O t127 confere as strings explicitamente.
+
+**TRÊS QUE FICAM ABERTAS, DE PROPÓSITO E COM A DECISÃO ESCRITA.**
+`processarFilaEnvioOficios`, `verificarConfirmacoesRecebimento` e
+`verificarFalhasEntregaOficios` continuam públicas e sem porta. São handlers de
+gatilho: o Apps Script chama **pelo nome**, então privadas não podem ser. E a
+porta dupla é o remédio errado aqui — o `exigirAdminOuSessao_` identifica quem
+executa por `Session.getActiveUser().getEmail()`, que num gatilho por tempo
+**pode voltar vazio**; quando volta, a porta recusa e **o gatilho para**. Parar
+esse gatilho para a emissão de ofício, que é a única operação viva.
+
+O que se ganharia fechando é pouco: as três devolvem contadores, nenhuma
+devolve nome de escola ou e-mail. A decisão está escrita nos dois arquivos e
+anotada no teto de exposição — **não é aprovação, é registro**, e reabre se
+aparecer jeito confiável de identificar contexto de gatilho.
+
+**O QUE FALTA VERIFICAR NO AR** (depois de publicar em homologação):
+
+1. **emitir um ofício de ponta a ponta** — é o caminho que usa
+   `gerarProximoNumeroSeguro_` e `registrarLogSistema_`, os dois renomeados;
+   se um chamador tivesse escapado, é aqui que apareceria;
+2. **a taxa assistencial** e o **ofício de despesa fiscal** — os outros dois
+   caminhos que consomem número de ofício;
+3. **a autorização do Parque do China** — usa os dois nomes renomeados,
+   inclusive na conferência de dependências, que passaria a dizer "faltando"
+   se uma string tivesse ficado para trás;
+4. a **validação pública pelo código** (a escola confere o ofício) — a rota
+   continua aberta de propósito, e tem que continuar respondendo.
+
+**Teto de exposição: 208 → 204.**
+
+### 50. Ofícios — oito funções eram endpoint por acidente (fechadas em 01/09)
+
+Quarta rodada da frente A do Módulo 03, 01/09/2026. Fechado no repositório
+(`t126`, 24 asserções); **falta confirmar no ar que nada quebrou**.
+
+**O QUE ERA.** No Apps Script, toda função global é endpoint de
+`google.script.run` para qualquer página do projeto — inclusive as 14 páginas
+anônimas que o `Code.gs` serve. Sobraram oito funções públicas que nenhuma
+tela chama: são helpers internos, públicas por descuido e não por desenho.
+
+**A PIOR.** `getTemplateConteudo(templateId)` abria QUALQUER Google Doc por ID
+e devolvia o texto inteiro. A conta que roda o script tem acesso ao Drive do
+sindicato — então era leitura de documento arbitrário para quem soubesse um
+ID. Pior que o cadastro de escolas da rodada anterior, porque não se limita a
+um cadastro: alcança qualquer documento. Agora exige o módulo Documentos.
+
+**TRÊS TRATAMENTOS, e a diferença é o ponto:**
+
+| Tratamento | Funções | Por quê |
+|---|---|---|
+| Porta de módulo | `getTemplateConteudo` | lê dado; quem lê precisa ter o módulo |
+| Porta dupla | `sincronizarStatusOficiosEnviados`, `invalidarCacheTemplatesOficios` | rodam do EDITOR, onde não existe token; fechar só com token tiraria o único jeito de usá-las |
+| Privadas | `gerarPDFOficio_`, `gerarPDFOficioLivre_`, `gerarPDFUniversal_`, `dashboardResumo_`, `dashboardGraficos_` | sem chamador; virar privada fecha a porta SEM remover código |
+
+**O QUE NÃO PODIA QUEBRAR.** `gerarPDFUniversal` NÃO é legado — o
+`TaxaAssistencial.gs` a chama em dois pontos. Renomear sem atualizar os
+chamadores deixaria a taxa assistencial sem gerar PDF: trocaria um risco de
+segurança por uma função quebrada. Os dois chamadores foram atualizados e o
+t126 confere isso explicitamente.
+
+**NÃO FORAM REMOVIDAS.** Os cinco passos da REGRA Nº 1 rodaram nas oito —
+cabeçalho, `Code.gs` e rotas, gatilhos, `git log`, grep no projeto inteiro.
+Todos deram "sem chamador". Mesmo assim ficam: a regra manda, na dúvida entre
+remover e manter, manter e documentar como legado. Remoção só com pedido
+explícito, em commit separado.
+
+**O QUE FALTA VERIFICAR NO AR** (depois de publicar em homologação):
+
+1. o painel de ofícios continua carregando os números — ele usa
+   `getDashboardOficiosData`, não as duplicatas que viraram privadas;
+2. a **taxa assistencial ainda gera PDF** — é o único uso vivo do
+   `gerarPDFUniversal_`, e é o que quebraria se o rename tivesse escapado
+   um chamador;
+3. a tela de templates de ofício ainda mostra o conteúdo do modelo —
+   `getTemplateConteudo` agora pede o módulo Documentos.
+
+**Teto de exposição: 212 → 208.** Só desce; se subir, é regressão.
 
 ### 49. Ofícios — "Outlook" confirmava recebimento; 144/236/242 a reprocessar
 
@@ -145,16 +1168,52 @@ legítima. É decisão de operação; fica registrada como escolha.
 
 **O QUE FALTA**
 
-1. **Levar a correção para a produção** (`MonitoramentoOficios.gs`). Só lá os
-   três ofícios voltam a ser verificados.
-2. **Conferir o status de 144, 236 e 242 depois disso** — devem virar
-   `FALHA_ENTREGA`.
-3. **Corrigir o e-mail da FAESA no cadastro** antes de reenviar, senão vira o
-   quarto bounce. Três ofícios para a mesma pessoa indica contato que saiu da
-   instituição.
-4. **Quantos outros estão errados?** Ninguém mediu quantos ofícios foram
-   confirmados por "Outlook" ao longo do tempo. A correção impede novos; os
-   antigos só se descobrem reprocessando.
+**O pacote para a produção está no repositório**, em
+`tests/fixtures/producao/` — não em anexo de conversa, que se perde:
+
+| Arquivo | O que é |
+|---|---|
+| `DiagnosticoItem49.gs.txt` | **só leitura.** Rodar PRIMEIRO. Diz quais funções a produção tem, o estado real de 144/236/242, e quantos outros ofícios foram confirmados pela rotina |
+| `MonitoramentoOficios.gs.txt` | o arquivo a colar. Substitui o `MonitoramentoOficios.gs` da produção |
+
+**POR QUE NÃO SE COLA O ARQUIVO DO REPOSITÓRIO.** O `MonitoramentoOficios.gs`
+daqui chama `registrarLogSistema_`, **com underscore** — nome que nasceu em
+01/09/2026 (commit `b563103`). A produção ainda tem `registrarLogSistema`,
+pública. Colar o arquivo do repositório lá faria toda gravação de log estourar
+`ReferenceError` — dentro de um `catch`, em silêncio, que foi exatamente como
+a regressão do item 53 passou batida. O arquivo entregue é a base que a
+produção tem, com **só** a correção do item 49 por cima.
+
+Terminam em `.gs.txt` de propósito: o `.claspignore` ignora tudo e reabre com
+`!*.gs`; se essa negação casasse caminho aninhado, existiriam dois
+`MonitoramentoOficios` no projeto e o Apps Script **recusa o push inteiro**.
+A extensão diferente torna isso impossível, e a linha `tests/**` no
+`.claspignore` é a segunda trava.
+
+**A ORDEM, e ela importa:**
+
+1. **Rodar `diagnosticoItem49` na produção** e guardar o log. Ele não escreve
+   nada — sem `setValue`, sem e-mail, sem log de sistema; o t136 compara a
+   planilha célula a célula antes e depois para provar isso. É o que responde
+   o que eu não enxergo daqui.
+2. **Colar o `MonitoramentoOficios.gs.txt`** sobre o arquivo de produção.
+3. **Rodar `verificarFalhasEntregaOficios`** no editor. Os três devem virar
+   `FALHA_ENTREGA`, e `financeiro@sindeducacao.com` recebe o aviso.
+4. **Apagar o `DiagnosticoItem49`** da produção — é temporário.
+5. **Corrigir o e-mail da FAESA no cadastro** antes de reenviar, senão o
+   reenvio vira o quarto bounce. Três ofícios para a mesma pessoa indica
+   contato que saiu da instituição.
+
+**Coberto por `tests/e2e/t136-hotfix-producao-item49.js`** — 46 asserções, e
+elas não param no fonte: o verificador **roda** contra uma planilha semeada e
+o teste olha o que ficou escrito na célula de status. Os três viram
+`FALHA_ENTREGA`; um quarto ofício confirmado por uma **pessoa**, no mesmo
+endereço com bounce, continua `CONFIRMADO`. É o limite da correção, e está
+travado.
+
+**Quantos outros estão errados** — a seção 3 do diagnóstico conta. Todo ofício
+confirmado por palavra-chave carrega "Confirmação localizada automaticamente"
+na observação; é por isso que dá para medir.
 
 **CORREÇÃO DE UMA AFIRMAÇÃO MINHA:** no item 47 e no commit do `t118` eu
 escrevi que "ninguém é avisado quando um ofício falha". Vale para a FILA
@@ -216,10 +1275,18 @@ corrigir o cadastro bate na mesma porta.
    homologação consulta a correspondência do sindicato.
 
 
-### 47. Módulo 03 (Ofícios) — NÃO auditado; um fio puxado, o resto aberto
+### 47. Módulo 03 (Ofícios) — a frente A fechou; o resto do plano continua aberto
 
-**Estado em 01/09/2026, dito sem eufemismo pela REGRA Nº -1:** o módulo foi
-MAPEADO e teve UM defeito corrigido. Não foi auditado.
+> **ATUALIZADO EM 01/09/2026, no fim do dia.** O texto abaixo foi escrito de
+> manhã e descrevia o estado daquele momento. O que mudou desde então: a
+> **frente A fechou** — as 45 funções públicas do módulo têm teste e todas
+> ganharam porta, o teto de exposição caiu de 224 para 204, e a homologação
+> foi publicada. **Ver o item 56.** As frentes B (medir o dado real da
+> produção) e C (as 6 de 10 áreas do PROMPT-MESTRE que não existem) continuam
+> abertas, e é isso que o texto abaixo ainda descreve corretamente.
+
+**Estado na manhã de 01/09/2026, dito sem eufemismo pela REGRA Nº -1:** o
+módulo foi MAPEADO e teve UM defeito corrigido. Não foi auditado.
 
 **O QUE FICOU PRONTO**
 

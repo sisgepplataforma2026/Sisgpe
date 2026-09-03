@@ -322,10 +322,28 @@ function blob(content, type, name) {
 }
 
 let _fileSeq = 0;
+
+/* ID DE ARQUIVO COM COMPRIMENTO REALISTA — corrigido em 01/09/2026.
+ *
+ * O id era "FILE_3": 6 caracteres. O do Drive de verdade tem 25 a 44, e
+ * codigo de producao conta com isso — o sindOf_fichaComoAnexo_
+ * (SindicalizacaoOficio.gs:403) extrai o id do link com /[-\w]{25,}/ e
+ * devolve null quando nao acha. Contra o emulador antigo, ele SEMPRE devolvia
+ * null: a ficha nunca virava anexo, e o "aprovar e encaminhar" caia direto no
+ * caminho parcial. O teste media o emulador, nao o sistema.
+ *
+ * O formato abaixo mantem o numero de sequencia visivel no comeco (para o id
+ * continuar dizendo qual arquivo e, na hora de depurar) e completa ate 33
+ * caracteres, dentro da faixa real. Deterministico de proposito: id que muda
+ * a cada execucao tira a reprodutibilidade do teste. */
+function driveFileId_(seq) {
+  return ("1FILE" + seq + "sisgepEmuladorDriveIdLongo").substring(0, 33);
+}
+
 function driveFile(name, mime, parentName) {
   _fileSeq++;
   const f = {
-    id: "FILE_" + _fileSeq, name, mime, parent: parentName || "raiz", trashed: false,
+    id: driveFileId_(_fileSeq), name, mime, parent: parentName || "raiz", trashed: false,
     getId() { return this.id; }, getName() { return this.name; },
     setName(n) { this.name = n; return this; },
     getUrl() { return "https://drive.google.com/file/d/" + this.id; },
@@ -442,6 +460,30 @@ function install(g, opts) {
     sendEmail(a, b, c, d) {
       const m = (typeof a === "object") ? a : Object.assign({ to: a, subject: b, body: c }, d || {});
       outbox.push({ via: "GmailApp", ...m, quando: new Date() });
+    },
+    /* createDraft().send() — o caminho que o envio de ofício passou a usar em
+       02/09/2026, para a mensagem ficar em Enviados e devolver o ID real.
+       O rascunho registra no outbox só quando ENVIADO: um rascunho apagado
+       não pode aparecer como e-mail que saiu. */
+    createDraft(a, b, c, d) {
+      const m = (typeof a === "object") ? a : Object.assign({ to: a, subject: b, body: c }, d || {});
+      let apagado = false;
+      const rascunhos = g.__rascunhosGmail || (g.__rascunhosGmail = []);
+      const eu = { apagado: false, dados: m };
+      rascunhos.push(eu);
+      return {
+        send() {
+          if (apagado) throw new Error("rascunho já apagado");
+          const id = "MSG" + Date.now().toString(36) + outbox.length;
+          outbox.push({ via: "GmailApp", ...m, quando: new Date(), mensagemId: id });
+          return {
+            getId: () => id,
+            getThread: () => ({ getId: () => "TH" + id })
+          };
+        },
+        deleteDraft() { apagado = true; eu.apagado = true; },
+        getId: () => "DRAFT" + rascunhos.length
+      };
     },
     search: () => [],
     getInboxThreads: () => [],

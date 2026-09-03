@@ -94,7 +94,7 @@ b.ok(/REENVIO - ENDERECO ACRESCENTADO/.test(fonte),
   "o log distingue acréscimo");
 b.ok(/REENVIO - ENDERECO SUBSTITUIDO/.test(fonte),
   "e substituição — são coisas diferentes para quem audita");
-b.ok(/registrarLogSistema/.test(fonte), "e isso vai para a trilha do sistema");
+b.ok(/registrarLogSistema_/.test(fonte), "e isso vai para a trilha do sistema");
 
 b.passo("7. o destino não duplica");
 /* O mesmo endereço no cadastro e no campo extra mandaria duas cópias do mesmo

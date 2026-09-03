@@ -84,6 +84,65 @@ function MON_OFICIOS_textoConfirmaRecebimento_(texto) {
   return /(^|[^a-z0-9])ok([^a-z0-9]|$)/i.test(t);
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   QUEM É "A PRÓPRIA CASA" — e por que isto deixou de ser lista cravada
+
+   Achado em 02/09/2026, olhando um ofício real (487/2026, enviado às 11:17).
+   O cabeçalho dizia:
+
+     De:            SindEducação-ES <financeirosindecucacao@gmail.com>
+     Responder para: secretaria@sindeducacao.com
+
+   A lista de ignorados cravava `financeiro@sindeducacao.com` e
+   `secretaria@sindeducacao.com`. NENHUM dos dois casa com
+   `financeirosindecucacao@gmail.com` — que é o endereço que realmente
+   envia. A guarda existia e não guardava nada.
+
+   NÃO DEU PROBLEMA POR SORTE. O corpo do ofício não contém nenhuma das
+   palavras de confirmação — medido, não suposto: "confirmação" não contém
+   "confirmo" nem "confirmamos". Bastaria alguém acrescentar um "Agradecemos"
+   ou um "recebido" ao modelo para TODO ofício passar a se autoconfirmar no
+   instante em que fosse enviado.
+
+   POR ISSO A LISTA PASSOU A SER PERGUNTADA, NÃO ESCRITA. A conta executora e
+   os aliases dela são exatamente quem envia; qualquer troca de conta, alias
+   novo ou mudança de domínio acompanha sozinha. Os endereços institucionais
+   ficam como piso, para o caso de a consulta falhar.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+var MON_OFICIOS_INSTITUCIONAIS_ = ["financeiro@sindeducacao.com",
+                                   "secretaria@sindeducacao.com"];
+
+/** Endereços da própria casa: a conta que executa, os aliases dela e o piso. */
+function MON_OFICIOS_enderecosProprios_() {
+  var lista = MON_OFICIOS_INSTITUCIONAIS_.slice();
+
+  try {
+    var efetivo = String(Session.getEffectiveUser().getEmail() || "").trim().toLowerCase();
+    if (efetivo) lista.push(efetivo);
+  } catch (e) {}
+
+  try {
+    GmailApp.getAliases().forEach(function (a) {
+      var v = String(a || "").trim().toLowerCase();
+      if (v) lista.push(v);
+    });
+  } catch (e2) {}
+
+  return lista;
+}
+
+/** O remetente é a própria casa? Ofício não se confirma sozinho. */
+function MON_OFICIOS_ehRemetenteProprio_(from) {
+  var f = String(from || "").toLowerCase();
+  var proprios = MON_OFICIOS_enderecosProprios_();
+  for (var i = 0; i < proprios.length; i++) {
+    if (f.indexOf(proprios[i]) > -1) return true;
+  }
+  return false;
+}
+
+
 
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -141,6 +200,24 @@ function removerTriggerConfirmacoes(tokenSessao) {
   return { ok: true, mensagem: "Trigger de confirmações removido com sucesso." };
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   POR QUE ESTA FICA PUBLICA E SEM PORTA — decidido em 01/09/2026, frente A
+
+   Isto e HANDLER DE GATILHO: o Apps Script chama a funcao PELO NOME, entao
+   ela nao pode virar privada. E a porta dupla, que resolveu o caso das
+   ferramentas de editor, aqui e o remedio errado: o exigirAdminOuSessao_
+   (AcessoModulos.gs:188) identifica quem executa por
+   Session.getActiveUser().getEmail(), e num gatilho por tempo esse e-mail
+   pode voltar VAZIO. Quando volta, a porta recusa — e o gatilho para.
+
+   Parar este gatilho para a operacao que esta VIVA no sindicato. Nao vale a
+   troca, e o que se ganharia e pouco: a funcao devolve so contadores (verificados, confirmados,
+   sincronizadosControle) — nenhum dado de escola sai por ela.
+
+   Fica publica, entao, e fica ANOTADA no teto de exposicao. Nao e aprovacao —
+   e o registro de uma decisao que se reabre se aparecer um jeito de
+   identificar o contexto de gatilho com seguranca.
+   ══════════════════════════════════════════════════════════════════════════ */
 function verificarConfirmacoesRecebimento() {
   var ss = SpreadsheetApp.openById(PLANILHA_ID);
   var sh = obterOuCriarAbaFilaOficios_();
@@ -290,8 +367,9 @@ function verificarConfirmacoesRecebimento() {
           var body = String(msg.getPlainBody() || "").toLowerCase();
           var subject = String(msg.getSubject() || "").toLowerCase();
 
-          if (from.indexOf("financeiro@sindeducacao.com") > -1) continue;
-          if (from.indexOf("secretaria@sindeducacao.com") > -1) continue;
+          /* A propria casa nao confirma o proprio oficio — ver a nota grande
+             sobre MON_OFICIOS_enderecosProprios_. */
+          if (MON_OFICIOS_ehRemetenteProprio_(from)) continue;
           /* Remetente automatico nao confirma nada — ver a nota grande acima
              de MON_OFICIOS_CONFIRMA_. */
           if (MON_OFICIOS_ehRemetenteAutomatico_(from)) continue;
@@ -366,6 +444,24 @@ function removerTriggerFalhasEntrega(tokenSessao) {
   return { ok: true, mensagem: "Trigger removido com sucesso." };
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   POR QUE ESTA FICA PUBLICA E SEM PORTA — decidido em 01/09/2026, frente A
+
+   Isto e HANDLER DE GATILHO: o Apps Script chama a funcao PELO NOME, entao
+   ela nao pode virar privada. E a porta dupla, que resolveu o caso das
+   ferramentas de editor, aqui e o remedio errado: o exigirAdminOuSessao_
+   (AcessoModulos.gs:188) identifica quem executa por
+   Session.getActiveUser().getEmail(), e num gatilho por tempo esse e-mail
+   pode voltar VAZIO. Quando volta, a porta recusa — e o gatilho para.
+
+   Parar este gatilho para a operacao que esta VIVA no sindicato. Nao vale a
+   troca, e o que se ganharia e pouco: a funcao devolve so um contador de falhas e uma mensagem curta —
+   nenhum dado de escola sai por ela.
+
+   Fica publica, entao, e fica ANOTADA no teto de exposicao. Nao e aprovacao —
+   e o registro de uma decisao que se reabre se aparecer um jeito de
+   identificar o contexto de gatilho com seguranca.
+   ══════════════════════════════════════════════════════════════════════════ */
 function verificarFalhasEntregaOficios() {
   try {
     var ss = MON_OFICIOS_getSS_();
@@ -476,7 +572,7 @@ function verificarFalhasEntregaOficios() {
 
       MON_OFICIOS_atualizarStatusNaFila_(ss, item.numero, "FALHA_ENTREGA", "Bounce detectado automaticamente em " + agora);
 
-      registrarLogSistema({
+      registrarLogSistema_({
         usuario: "sistema",
         numero: item.numero + " (FALHA_ENTREGA)",
         tipo: "Bounce",
@@ -587,7 +683,7 @@ function atualizarStatusOficio(numero, novoStatus, observacao, tokenSessao) {
     var atualizouFila     = MON_OFICIOS_atualizarStatusNaFila_(ss, alvo, novoStatus, observacao);
 
     if (atualizouControle || atualizouFila) {
-      registrarLogSistema({
+      registrarLogSistema_({
         usuario: emailUsuario,
         numero: alvo + " (STATUS → " + novoStatus + ")",
         tipo: "",

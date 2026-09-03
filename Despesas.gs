@@ -2962,7 +2962,18 @@ function montarHtmlDocRecebidoDesp_(nome, valor, vencBr, numero, nomesArqs, obs)
   );
 }
 
-function montarHtmlEnvioContabilidadeDesp_(despesas, totalValor, emailRemetente) {
+/* numeroOficio ACRESCENTADO EM 01/09/2026 (item 55 do PENDENTE-VERIFICACAO).
+
+   O enviarLoteDespesasComOficio consome um numero da numeracao OFICIAL de
+   oficios, gera o documento, salva no Drive e registra no Controle — mas o
+   e-mail que chegava a contabilidade nao citava o numero em lugar nenhum,
+   porque esta funcao nao o recebia. Do lado do sindicato o oficio existia;
+   do lado de quem recebeu, nunca existiu.
+
+   O parametro e OPCIONAL de proposito: os dois chamadores do Despesas.gs
+   mandam despesa sem oficio nenhum e continuam funcionando igual, sem
+   faixa nenhuma no e-mail. */
+function montarHtmlEnvioContabilidadeDesp_(despesas, totalValor, emailRemetente, numeroOficio) {
   var linhasDespesas = despesas.map(function(d, i) {
     var badgeLanc = d.tipoLanc === TIPO_LANCAMENTO_DESP.AVULSO
       ? '<span style="font-size:10px;background:#fef3c7;color:#92400e;border-radius:4px;padding:2px 6px;font-weight:700;">AVULSO</span>'
@@ -2979,6 +2990,19 @@ function montarHtmlEnvioContabilidadeDesp_(despesas, totalValor, emailRemetente)
     );
   }).join("");
   var mesAno = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "MM/yyyy");
+
+  /* A faixa do oficio so aparece quando ha oficio. Vem ANTES da tabela porque
+     e o que identifica o documento inteiro — a contabilidade precisa dela para
+     referenciar o envio depois. */
+  var numeroLimpo = String(numeroOficio || "").trim();
+  var faixaOficio = numeroLimpo
+    ? '<div style="background:#001f4d;border-left:4px solid #C9A84C;border-radius:8px;padding:12px 18px;margin-bottom:18px;">' +
+        '<div style="font-size:10px;color:#C9A84C;font-weight:800;letter-spacing:.1em;text-transform:uppercase;">Of\u00edcio</div>' +
+        '<div style="font-size:19px;color:#fff;font-weight:800;letter-spacing:-.01em;margin-top:2px;">N\u00ba ' + numeroLimpo + '</div>' +
+        '<div style="font-size:11.5px;color:rgba(255,255,255,.62);margin-top:4px;">Documento em anexo. Use este n\u00famero para referenciar o envio.</div>' +
+      '</div>'
+    : "";
+
   return (
     '<div style="font-family:Segoe UI,Arial,sans-serif;max-width:820px;margin:0 auto;color:#0f172a;">' +
       '<div style="background:#001f4d;padding:20px 28px;border-radius:12px 12px 0 0;border-bottom:4px solid #C9A84C;">' +
@@ -2987,6 +3011,7 @@ function montarHtmlEnvioContabilidadeDesp_(despesas, totalValor, emailRemetente)
       '</div>' +
       '<div style="background:#fff;border:1px solid #e2e8f0;border-top:none;padding:24px 28px;">' +
         '<h2 style="color:#001f4d;margin:0 0 8px;">📤 Encaminhamento de Despesas</h2>' +
+        faixaOficio +
         '<p style="color:#475569;margin:0 0 20px;line-height:1.7;">Relação de despesas de <strong>' + mesAno + '</strong> para processamento contábil. Documentos em anexo quando disponíveis.</p>' +
         '<div style="background:#f0f4f8;border-radius:10px;padding:14px 18px;margin-bottom:20px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;">' +
           '<div><span style="font-size:12px;color:#475569;">Total de despesas</span><br><strong style="font-size:22px;color:#001f4d;">' + despesas.length + '</strong></div>' +

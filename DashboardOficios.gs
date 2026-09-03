@@ -267,7 +267,7 @@ function DASH_OFICIOS_anoAtual_() {
 
 function DASH_OFICIOS_preverProximoNumero_() {
   try {
-    if (typeof preverProximoNumeroOficio === "function") return preverProximoNumeroOficio();
+    if (typeof preverProximoNumeroOficio_ === "function") return preverProximoNumeroOficio_();
   } catch (e) {}
   return "";
 }

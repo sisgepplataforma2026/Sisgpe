@@ -1,7 +1,7 @@
 {
-  "medidoEm": "2026-09-01",
-  "totalPublicas": 974,
-  "protegidas": 672,
+  "medidoEm": "2026-09-03",
+  "totalPublicas": 971,
+  "protegidas": 684,
   "expostas": [
     {
       "nome": "validarCPF",
@@ -239,11 +239,6 @@
       "escreve": false
     },
     {
-      "nome": "montarEmailHTML",
-      "arquivo": "EmailOficios.gs",
-      "escreve": false
-    },
-    {
       "nome": "inicializarModuloEscolas",
       "arquivo": "Escolas.gs",
       "escreve": false
@@ -407,11 +402,6 @@
       "nome": "salvarEmailETelefonePrestadorRapido",
       "arquivo": "GuiasPagamento.gs",
       "escreve": true
-    },
-    {
-      "nome": "invalidarCacheTemplatesOficios",
-      "arquivo": "HelperOficios.gs",
-      "escreve": false
     },
     {
       "nome": "iaAssistente",
@@ -594,38 +584,8 @@
       "escreve": false
     },
     {
-      "nome": "dashboardResumo",
-      "arquivo": "Oficios.gs",
-      "escreve": false
-    },
-    {
-      "nome": "dashboardGraficos",
-      "arquivo": "Oficios.gs",
-      "escreve": false
-    },
-    {
-      "nome": "verificarCodigoPublico",
-      "arquivo": "Oficios.gs",
-      "escreve": false
-    },
-    {
       "nome": "validarPublico",
       "arquivo": "Oficios.gs",
-      "escreve": false
-    },
-    {
-      "nome": "getTemplateConteudo",
-      "arquivo": "Oficios.gs",
-      "escreve": false
-    },
-    {
-      "nome": "oficiosDiagnostico_diagnosticarModulo",
-      "arquivo": "OficiosDiagnostico.gs",
-      "escreve": false
-    },
-    {
-      "nome": "oficiosQueNaoChegaram",
-      "arquivo": "OficiosDiagnostico.gs",
       "escreve": false
     },
     {
@@ -1064,5 +1024,5 @@
       "escreve": false
     }
   ],
-  "inconclusivas": 90
+  "inconclusivas": 83
 }
