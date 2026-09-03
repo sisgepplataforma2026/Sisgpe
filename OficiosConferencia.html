@@ -87,9 +87,15 @@
     if (typeof toast === "function") toast(m, t || "info");
     else if (t === "erro") alert(m);
   }
+  /* O NOME DA VARIAVEL E SISGEP_TOKEN_SESSAO, e so ele — declarada em
+     index.html:1363 a partir do scriptlet do template. Nao inventar
+     fallback aqui: um nome que nao existe faz `typeof` devolver
+     "undefined", o token sai vazio e o backend responde "Sessao invalida
+     ou expirada" — erro de sessao para um usuario que esta logado.
+     Foi exatamente o que aconteceu na producao em 03/09/2026. Sem
+     fallback, um nome errado quebra alto em vez de mentir. */
   function token() {
-    return (typeof TOKEN_SESSAO !== "undefined" && TOKEN_SESSAO) ||
-           (window.SISGEP && window.SISGEP.token) || "";
+    return (typeof SISGEP_TOKEN_SESSAO !== "undefined" && SISGEP_TOKEN_SESSAO) || "";
   }
   function dataBR(v) {
     if (!v) return "";
@@ -361,9 +367,15 @@
     return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
       .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
+  /* O NOME DA VARIAVEL E SISGEP_TOKEN_SESSAO, e so ele — declarada em
+     index.html:1363 a partir do scriptlet do template. Nao inventar
+     fallback aqui: um nome que nao existe faz `typeof` devolver
+     "undefined", o token sai vazio e o backend responde "Sessao invalida
+     ou expirada" — erro de sessao para um usuario que esta logado.
+     Foi exatamente o que aconteceu na producao em 03/09/2026. Sem
+     fallback, um nome errado quebra alto em vez de mentir. */
   function token() {
-    return (typeof TOKEN_SESSAO !== "undefined" && TOKEN_SESSAO) ||
-           (window.SISGEP && window.SISGEP.token) || "";
+    return (typeof SISGEP_TOKEN_SESSAO !== "undefined" && SISGEP_TOKEN_SESSAO) || "";
   }
 
   var lista = [];        /* [{email, marcado, falhas, confirmacoes, origem}] */
@@ -480,9 +492,15 @@
    `De: financeirosindecucacao@gmail.com`: a tela afirmava uma coisa e o e-mail
    saía com outra. Agora ela pergunta ao backend e mostra o que vai acontecer. */
 (function () {
+  /* O NOME DA VARIAVEL E SISGEP_TOKEN_SESSAO, e so ele — declarada em
+     index.html:1363 a partir do scriptlet do template. Nao inventar
+     fallback aqui: um nome que nao existe faz `typeof` devolver
+     "undefined", o token sai vazio e o backend responde "Sessao invalida
+     ou expirada" — erro de sessao para um usuario que esta logado.
+     Foi exatamente o que aconteceu na producao em 03/09/2026. Sem
+     fallback, um nome errado quebra alto em vez de mentir. */
   function token() {
-    return (typeof SISGEP_TOKEN_SESSAO !== "undefined" && SISGEP_TOKEN_SESSAO) ||
-           (typeof TOKEN_SESSAO !== "undefined" && TOKEN_SESSAO) || "";
+    return (typeof SISGEP_TOKEN_SESSAO !== "undefined" && SISGEP_TOKEN_SESSAO) || "";
   }
   window.modalEnvioAtualizarRemetente = function () {
     var alvo = document.getElementById("modalEnvioRemetente");
