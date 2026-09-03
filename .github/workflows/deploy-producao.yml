@@ -181,6 +181,19 @@ jobs:
             -printf '%f\n' | sort > /tmp/repo.txt
           find /tmp/producao-antes -maxdepth 1 -type f \( -name '*.gs' -o -name '*.html' -o -name 'appsscript.json' \) \
             -printf '%f\n' | sort > /tmp/producao.txt
+
+          # O relatorio ia SO para o resumo da execucao, que a API nao le. Em
+          # 03/09/2026 isso custou duas promocoes as cegas: eu nao conseguia
+          # ver o comparativo antes de publicar. Agora ele tambem vai para o
+          # stdout, que fica no log do job, e termina com um veredito
+          # explicito — ausencia de linhas nao pode significar duas coisas.
+          CRIADOS=$(comm -23 /tmp/repo.txt /tmp/producao.txt | grep -c . || true)
+          REMOVIDOS=$(comm -13 /tmp/repo.txt /tmp/producao.txt | grep -c . || true)
+          MODIFICADOS=$(while read -r f; do
+            cmp -s "./$f" "/tmp/producao-antes/$f" || echo "$f"
+          done < <(comm -12 /tmp/repo.txt /tmp/producao.txt) | grep -c . || true)
+          TOTAL_DIF=$(( CRIADOS + REMOVIDOS + MODIFICADOS ))
+
           {
             echo "## Previa da promocao para Producao"
             echo
@@ -200,7 +213,13 @@ jobs:
               cmp -s "./$f" "/tmp/producao-antes/$f" || echo "$f"
             done < <(comm -12 /tmp/repo.txt /tmp/producao.txt)
             echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+            echo "### Veredito"
+            if [ "$TOTAL_DIF" -eq 0 ]; then
+              echo "IDENTICO: a Producao ja e byte a byte o codigo deste ramo."
+            else
+              echo "DIFERENCAS: $TOTAL_DIF arquivo(s) — $CRIADOS criado(s), $REMOVIDOS removido(s), $MODIFICADOS modificado(s)."
+            fi
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Validar autorizacao de publicacao
         if: inputs.modo == 'publicar'
