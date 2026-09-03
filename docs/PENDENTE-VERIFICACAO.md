@@ -204,6 +204,17 @@ o que está rodando e eu não estou vendo.
 
 ### 66. 🔴 PRODUÇÃO NA VERSÃO 691 — o token vazio, e a `main` que parou de dizer a verdade
 
+> **CORREÇÃO (03/09, 18h12).** A produção não está na 691, e sim na **692** —
+> versão que o próprio usuário criou às 14h59, fora da promoção controlada.
+> Isso não foi problema: o `conferir` baixou a produção e comparou com o
+> código verificado, e o veredito foi **IDENTICO, byte a byte**. A 692 tem o
+> mesmo conteúdo da 691. Fica registrado porque "produção na 691" era o que
+> este item afirmava, e não era exato.
+>
+> A implantação aponta para uma **versão fixa**, não para HEAD — a trava do
+> processo continua de pé. Se apontasse para HEAD, qualquer edição no editor
+> entraria no ar sem passar por teste, e isso teria de ser desfeito na hora.
+
 03/09/2026, 16h18. Publicada a correção do token de sessão da aba
 "Conferir envio". Um arquivo modificado, 24 linhas; nada criado, nada
 removido. Rollback na versão 690.
