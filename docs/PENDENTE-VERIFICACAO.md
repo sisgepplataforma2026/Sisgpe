@@ -156,11 +156,25 @@ fantasma. O teste passava verde contra o defeito que existe para pegar. Só
 apareceu porque rodei contra o arquivo defeituoso e estranhei uma asserção
 verde onde eu esperava vermelho.
 
+**✅ VERIFICADO NO AR ÀS 13h29 (03/09/2026).** O usuário recarregou a
+produção e abriu Ofícios → Conferir envio. A tela respondeu:
+
+    Nenhum ofício aguardando conferência.
+
+**O que isso prova:** o token chega, `exigirModulo_` aceita e
+`oficiosAguardandoDestinatarios` devolve lista. A recusa de sessão acabou.
+
+**O que isso NÃO prova, e é preciso dizer:** que um ofício apareça ali e
+possa ser liberado. A fila está vazia por um motivo legítimo — os ofícios
+emitidos antes da mudança foram direto para PENDENTE e saíram. Lista vazia
+e lista funcionando têm a mesma aparência. A prova é emitir um.
+
 **A CONFERIR EM PRODUÇÃO:**
 
-1. 🔴 **A aba Conferir envio abre e lista** — é o que a correção promete.
-2. 🔴 Segue valendo tudo do item 65: emitir um ofício de verdade e reenviar
-   os 15 que nunca chegaram, olhando o `Anexos: N` de cada reenvio.
+1. 🔴 **Emitir um ofício e vê-lo aparecer na conferência** — é o passo que
+   separa "a tela responde" de "a tela serve".
+2. 🔴 Segue valendo tudo do item 65: reenviar os 15 que nunca chegaram,
+   olhando o `Anexos: N` de cada reenvio.
 
 ### 66b. ⚠️ A `main` parou de registrar o que está em produção
 
