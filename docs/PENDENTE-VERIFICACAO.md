@@ -241,6 +241,50 @@ O que isto fecha, e que até então era só emulador:
 Restam 7 dos 11. Eles continuam em falha legítima — a reconciliação do item 70
 não os toca, porque nunca foram reenviados.
 
+### 72b. 🔴 O REENVIO ATUALIZAVA UMA ABA SÓ — e a próxima preparação reofereceria o mesmo ofício
+
+04/09/2026, achado pelo uso minutos depois do 72. O usuário: *"e mesmo assim
+fica os 11, não atualizou"*.
+
+**O DEFEITO.** Duas abas guardam Status. O `Registro` é a memória do ofício; a
+`FILA_ENVIO_OFICIOS` é o que a **tela do Histórico lê** e o que o **reenvio em
+lote consulta**. O `oficio_marcarReenviado_` escrevia só no Registro.
+
+**O sintoma barato** foi a contagem: quatro ofícios saíram e a lista continuou
+marcando onze.
+
+**O estrago real** era outro: a preparação seguinte lê a fila, acharia os
+quatro AINDA em falha e os ofereceria de novo — **o mesmo documento oficial
+saindo duas vezes para a mesma escola**, sem como desfazer a segunda cópia. É
+exatamente o dano que a trava de número duplicado (item 72) evita dentro de um
+lote, e que passava por cima dela entre dois lotes.
+
+**O detector de bounce já fazia certo desde sempre** — escreve no Registro e
+chama `MON_OFICIOS_atualizarStatusNaFila_` para a fila. O reenvio só não usava.
+Corrigido no `oficio_marcarReenviado_` e também na reconciliação automática do
+item 70, que tinha o mesmo buraco.
+
+A mensagem do reenvio passa a distinguir os dois casos: "Status agora: ENVIADO"
+só quando a fila sincronizou; caso contrário diz que ainda vai aparecer como
+falha, em vez de afirmar sucesso.
+
+**E o modal fecha ao terminar** — *"quando reenviar tem que fechar"*. O
+resultado item a item vai para um painel na página, porque um toast some em
+segundos e leva junto qual falhou e por quê.
+
+**O TESTE QUE TERIA PEGO**, agora no t148: depois do envio, as linhas da FILA
+têm que estar como ENVIADO, e **uma nova preparação não pode reoferecer o que
+já saiu**. A segunda asserção é a que importa — a primeira mede o sintoma, a
+segunda mede o dano.
+
+**A CONFERIR NO AR:**
+
+1. 🔴 depois de reenviar, a faixa deve cair de 11 para 7 sem precisar recarregar;
+2. 🔴 preparar de novo **não** pode trazer os que já saíram;
+3. 🟡 os quatro já enviados (203, 236, 242, 303) ficaram com a fila
+   desatualizada pela versão 698 — a reconciliação automática do gatilho deve
+   corrigi-los sozinha depois desta publicação; se não corrigir, é bug.
+
 **A CONFERIR NO AR** — o que segue sem execução:
 
 1. 🔴 a faixa vermelha aparece no Histórico com a contagem certa de falhas;

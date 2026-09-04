@@ -678,7 +678,41 @@ function oficio_marcarReenviado_(numero) {
       }
       sh.getRange(linha, cSt).setValue("ENVIADO");
       SpreadsheetApp.flush();
-      return { ok: true, statusAnterior: statusAtual, linha: linha };
+
+      /* DUAS ABAS GUARDAM O STATUS, E ATUALIZAR UMA SÓ É PIOR DO QUE NÃO
+         ATUALIZAR NENHUMA — 04/09/2026.
+
+         O Registro é a memória do ofício; a FILA_ENVIO_OFICIOS é o que a tela
+         do Histórico LÊ e o que o reenvio em lote consulta. Este código
+         escrevia só no Registro. O usuário reenviou quatro ofícios, viu
+         "Status agora: ENVIADO" na resposta, e a lista continuou marcando os
+         onze: *"e mesmo assim fica os 11, não atualizou"*.
+
+         O estrago real não é a contagem errada na tela. É que a preparação
+         seguinte lê a fila, acharia os quatro AINDA em falha e os ofereceria
+         de novo — o mesmo documento oficial saindo duas vezes para a mesma
+         escola, sem como desfazer a segunda cópia.
+
+         O detector de bounce já fazia certo desde sempre: escreve no Registro
+         e chama esta função para a fila (MonitoramentoOficios.gs:614 e 624).
+         O reenvio só não usava.
+
+         Vai em try/catch próprio: falhar aqui não pode transformar um e-mail
+         que JÁ SAIU em erro na tela — mas o retorno diz se sincronizou, para a
+         mensagem não afirmar mais do que aconteceu. */
+      var naFila = false;
+      try {
+        if (typeof MON_OFICIOS_atualizarStatusNaFila_ === "function") {
+          naFila = MON_OFICIOS_atualizarStatusNaFila_(
+            ss, alvo, "ENVIADO",
+            "Reenviado em " + Utilities.formatDate(
+              new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm"));
+        }
+      } catch (eFila) {
+        Logger.log("oficio_marcarReenviado_ (fila): " + (eFila && eFila.message || eFila));
+      }
+
+      return { ok: true, statusAnterior: statusAtual, linha: linha, naFila: naFila };
     }
     return { ok: false, motivo: "ofício não encontrado no registro" };
   } catch (e) {
@@ -783,6 +817,17 @@ function oficio_reconciliarReenvios_(simular) {
     if (!simular) {
       if (cJa) sh.getRange(j + 2, cJa).setValue("SIM");
       sh.getRange(j + 2, cSt).setValue("ENVIADO");
+      /* A fila também, pelo mesmo motivo do oficio_marcarReenviado_: é ela que
+         a tela lê e que o reenvio em lote consulta. Reconciliar só o Registro
+         deixaria o ofício sumido do relatório e presente na lista de falhas. */
+      try {
+        if (typeof MON_OFICIOS_atualizarStatusNaFila_ === "function") {
+          MON_OFICIOS_atualizarStatusNaFila_(ss, num, "ENVIADO",
+            "Reconciliado: o log registra reenvio deste ofício");
+        }
+      } catch (eFila) {
+        Logger.log("oficio_reconciliarReenvios_ (fila): " + (eFila && eFila.message || eFila));
+      }
       ajustados++;
     }
   }
@@ -980,7 +1025,10 @@ function reenviarOficio(registro, tokenSessao) {
         (pacote.reconstruido ? " (pacote original da fila)."
                              : " (fila sem lista de anexos; recuperados do Drive).") +
         (marcado && marcado.ok
-          ? " Status agora: ENVIADO."
+          ? (marcado.naFila
+              ? " Status agora: ENVIADO."
+              : " Status agora: ENVIADO no Controle, mas a FILA não foi" +
+                " sincronizada — ele ainda vai aparecer como falha na tela.")
           : " ATENÇÃO: o status no Controle não pôde ser atualizado" +
             (marcado && marcado.motivo ? " (" + marcado.motivo + ")" : "") +
             " — o ofício vai continuar aparecendo como falha.")

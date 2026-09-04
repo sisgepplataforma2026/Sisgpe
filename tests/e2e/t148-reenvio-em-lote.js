@@ -234,6 +234,42 @@ ok(destinos.indexOf(MORTO) === -1, "e nenhuma cópia para o morto");
 ok(destinos.indexOf(SEB) === -1,
    "o do SEB não saiu — ele nunca esteve na lista aprovada");
 
+passo("o status é gravado nas DUAS abas, não só no Registro");
+
+/* O DEFEITO QUE O USO ACHOU, 04/09. O `oficio_marcarReenviado_` escrevia só no
+   Registro. A tela do Histórico e o próprio lote leem a FILA. O usuário
+   reenviou quatro ofícios, viu "Status agora: ENVIADO" e a lista continuou
+   marcando os onze: "e mesmo assim fica os 11, não atualizou".
+
+   A contagem errada na tela era o sintoma barato. O caro é o de baixo. */
+const fila = ss.getSheetByName(g.ABA_FILA_OFICIOS);
+function statusNaFila(numero) {
+  const cab = fila.getRange(1, 1, 1, fila.getLastColumn()).getValues()[0].map(String);
+  const cNum = cab.indexOf("NUMERO_OFICIO"), cSt = cab.indexOf("STATUS");
+  const linhas = fila.getRange(2, 1, fila.getLastRow() - 1, fila.getLastColumn()).getValues();
+  return linhas.filter(l => String(l[cNum]).trim() === numero).map(l => String(l[cSt]).trim());
+}
+
+igual(JSON.stringify(statusNaFila("144/2026")), JSON.stringify(["ENVIADO", "ENVIADO"]),
+      "as DUAS linhas do 144 na fila viraram ENVIADO",
+      "a fila guarda tentativas; sincronizar só uma deixaria a outra em falha");
+igual(statusNaFila("168/2026")[0], "ENVIADO", "e a do 168 também");
+
+passo("preparar de novo NÃO reoferece o que já saiu");
+
+/* Este é o estrago de verdade. Com a fila desatualizada, a preparação seguinte
+   acharia os já enviados AINDA em falha e os ofereceria de novo — o mesmo
+   documento oficial saindo duas vezes para a mesma escola, sem como desfazer a
+   segunda cópia. */
+limparCaches();
+const segunda = g.prepararReenvioLoteOficios({}, TOKEN);
+const numerosDeNovo = (segunda.prontos || []).map(x => x.numero);
+
+ok(numerosDeNovo.indexOf("144/2026") === -1,
+   "o 144, já reenviado, não volta a ser oferecido",
+   "oferecê-lo de novo mandaria o mesmo ofício duas vezes para a FAESA");
+ok(numerosDeNovo.indexOf("168/2026") === -1, "nem o 168");
+
 passo("item sem destinatário é ignorado, nunca adivinhado");
 
 const cego = g.executarReenvioLoteOficios({
@@ -320,6 +356,18 @@ ok(tela.indexOf("_loteMarcados") > -1, "e o envio manda só o que ficou marcado"
 ok(/_loteContar[\s\S]{0,400}ok\.textContent=n\?/.test(tela),
    "o botão conta o que está marcado agora",
    'dizer "Reenviar os 11" depois de desmarcar três seria a mesma mentira');
+
+/* Medir o CÓDIGO, não os comentários: o bloco que explica o conserto fica
+   entre a abertura da função e a chamada, e uma janela de N caracteres sobre o
+   texto cru mediria o tamanho do comentário. Mesmo cuidado do t135/t140. */
+const telaSemComentarios = tela
+  .replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+ok(/_loteResultado:\s*function[\s\S]{0,200}Historico\.loteFechar\(\)/.test(telaSemComentarios),
+   "o modal fecha sozinho ao terminar o envio",
+   'pedido do usuário: "quando reenviar tem que fechar"');
+ok(marcacao.indexOf("histLoteResultado") > -1,
+   "e o resultado item a item fica num painel na página",
+   "um toast some em segundos e leva junto qual falhou e por quê");
 
 ok(tela.indexOf("SEM ENDEREÇO BOM") > -1,
    "a pilha que precisa de gente aparece na tela, nomeada",

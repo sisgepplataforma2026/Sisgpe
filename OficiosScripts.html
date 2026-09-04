@@ -3959,26 +3959,40 @@ window.mostrarAbaOficio = function(aba) {
        em segundos e leva junto a unica informacao que importa depois: qual
        falhou e por que. */
     _loteResultado: function(r) {
-      var corpo=document.getElementById("histLoteCorpo");
-      var ok=document.getElementById("histLoteOk");
-      var sub=document.getElementById("histLoteSub");
-      if(ok){ ok.disabled=true; ok.textContent="Concluído"; ok.style.background=""; }
+      /* O MODAL FECHA SOZINHO — 04/09/2026, "quando reenviar tem que fechar".
+         Antes ele ficava aberto exibindo o resultado, e a lista atrás já tinha
+         sido recarregada sem ninguém ver. Agora fecha, e o resultado item a
+         item vai para um painel NA PÁGINA: um toast de "4 reenviados" some em
+         segundos e leva junto o que importa depois — qual falhou e por quê. */
       Historico._loteCtx=null;
+      Historico.loteFechar();
 
-      if(corpo && r){
-        corpo.innerHTML='<div style="font-size:13px;font-weight:800;color:'
-          +(r.falharam?"#991b1b":"#0f8a5f")+';margin-bottom:8px;">'+escapeHtml(r.mensagem||"")+'</div>'
-          +'<div style="border:1.5px solid #e2e8f0;border-radius:12px;max-height:320px;overflow-y:auto;">'
+      var painel=document.getElementById("histLoteResultado");
+      if(painel && r){
+        painel.style.display="block";
+        painel.innerHTML=
+          '<div style="border:1.5px solid '+(r.falharam?"#fca5a5":"#6ee7b7")+';border-radius:var(--rad);'
+          +'background:'+(r.falharam?"#fef2f2":"#ecfdf5")+';padding:12px 14px;">'
+          +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
+          +'<div style="font-size:13px;font-weight:800;color:'+(r.falharam?"#991b1b":"#0f8a5f")+';flex:1;">'
+          +escapeHtml(r.mensagem||"")+'</div>'
+          +'<button type="button" class="btn btn-ghost btn-sm" onclick="Historico.loteResultadoFechar()">\u2715 Fechar</button>'
+          +'</div>'
+          +'<div style="border:1.5px solid #e2e8f0;border-radius:10px;background:#fff;max-height:300px;overflow-y:auto;">'
           +(r.resultados||[]).map(function(x){
             return '<div style="padding:7px 10px;border-bottom:1px solid #f1f5f9;font-size:12px;">'
               +(x.ok?'<span style="color:#0f8a5f;font-weight:800;">\u2705</span> ':'<span style="color:#b91c1c;font-weight:800;">\u274c</span> ')
               +'<strong>'+escapeHtml(x.numero)+'</strong> — '+escapeHtml(x.mensagem||"")+'</div>';
           }).join("")
-          +'</div>';
+          +'</div></div>';
       }
-      if(sub) sub.textContent="Envio concluído. Feche para atualizar a lista.";
       toast((r&&r.mensagem)||"Lote concluído.", (r&&!r.falharam)?"ok":"err", 7000);
       Historico.carregar();
+    },
+
+    loteResultadoFechar: function() {
+      var p=document.getElementById("histLoteResultado");
+      if(p){ p.style.display="none"; p.innerHTML=""; }
     },
 
     reenvioConfirmar: function() {

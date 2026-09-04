@@ -662,6 +662,12 @@
           <button type="button" class="btn btn-navy btn-sm" id="btnHistLote" onclick="Historico.lotePreparar()">&#8635; Preparar reenvio</button>
         </div>
 
+        <!-- RESULTADO DO LOTE — 04/09/2026. "Quando reenviar tem que fechar":
+             o modal fecha ao terminar, e o resultado item a item fica AQUI, na
+             pagina. Um toast de "4 reenviados" some em segundos e leva junto a
+             unica informacao que importa depois — qual falhou e por que. -->
+        <div id="histLoteResultado" style="display:none;margin-bottom:12px;"></div>
+
         <div id="histLoteOverlay" class="of-modal-overlay">
           <div class="of-modal" style="max-width:880px;">
             <div class="of-modal-head" style="border-bottom:3px solid var(--gold,#C9A84C);">
