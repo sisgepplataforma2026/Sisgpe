@@ -255,17 +255,33 @@ function ofDest_mapaHistorico_() {
       var cEmail = hm["E-mails (todos)"] || hm["E-mail (principal)"];
       var cSt    = hm["Status"];
       var cData  = hm["Data"] || hm["DATA"];
+      /* A REPUTAÇÃO DO ENDEREÇO NÃO PODE DEPENDER DO STATUS DE HOJE —
+         04/09/2026. O reenvio passou a virar o status para ENVIADO, para o
+         ofício sair da caixa de falha. Se a contagem olhasse só o Status, cada
+         reenvio apagaria uma falha do endereço, e depois dos sete da FAESA a
+         `thalia` voltaria a aparecer com zero — nascendo marcada de novo.
+         A coluna JA_FALHOU guarda o fato de forma permanente. */
+      var cJa    = hm[typeof OFICIO_COL_JA_FALHOU !== "undefined"
+                       ? OFICIO_COL_JA_FALHOU : "JA_FALHOU"];
       if (cEmail && cSt) {
         var dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
         for (var i = 0; i < dados.length; i++) {
           var st = String(dados[i][cSt - 1] || "").trim().toUpperCase();
           var quando = cData ? dados[i][cData - 1] : "";
+          var jaFalhou = cJa &&
+            String(dados[i][cJa - 1] || "").trim().toUpperCase() === "SIM";
           ofDest_separar_(dados[i][cEmail - 1]).forEach(function (e) {
             var k = e.toLowerCase();
             if (!mapa[k]) mapa[k] = { confirmacoes: 0, falhas: 0, envios: 0, ultimaFalha: "", ultimaConfirmacao: "" };
-            if (st === "CONFIRMADO")          { mapa[k].confirmacoes++; mapa[k].ultimaConfirmacao = quando; }
-            else if (st === "FALHA_ENTREGA")  { mapa[k].falhas++;       mapa[k].ultimaFalha = quando; }
-            else if (st === "ENVIADO")        { mapa[k].envios++; }
+            /* Conta a falha UMA vez: um ofício que quicou e foi reenviado tem
+               status ENVIADO e a marca SIM — as duas coisas descrevem o mesmo
+               episódio, não dois. */
+            if (st === "FALHA_ENTREGA" || jaFalhou) {
+              mapa[k].falhas++;
+              if (!mapa[k].ultimaFalha) mapa[k].ultimaFalha = quando;
+            }
+            if (st === "CONFIRMADO")     { mapa[k].confirmacoes++; mapa[k].ultimaConfirmacao = quando; }
+            else if (st === "ENVIADO")   { mapa[k].envios++; }
           });
         }
       }
