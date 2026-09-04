@@ -310,7 +310,7 @@ function tokenEscolaArquivo_(escola) {
  * Sem data, aceita o casamento por escola e devolve o que achar; o chamador
  * registra quantos vieram.
  */
-function recuperarAnexosDaPastaDrive_(tipo, escola, dataEnvio, jaAnexados) {
+function recuperarAnexosDaPastaDrive_(tipo, escola, dataEnvio, jaAnexados, idOficio) {
   var achados = [];
   var token = tokenEscolaArquivo_(escola);
   if (!token || token === "ESCOLA") return achados;
@@ -322,19 +322,51 @@ function recuperarAnexosDaPastaDrive_(tipo, escola, dataEnvio, jaAnexados) {
     dataToken = Utilities.formatDate(dataEnvio, Session.getScriptTimeZone(), "dd-MM-yyyy");
   }
 
-  var raizId = getPastaOficiosDestinoId_(String(tipo || "").toUpperCase());
-  if (!raizId) return achados;
-
   var pastas = [];
-  try {
-    var raiz = DriveApp.getFolderById(raizId);
-    pastas.push(raiz);
-    var subs = raiz.getFolders();
-    while (subs.hasNext()) pastas.push(subs.next());
-  } catch (ePasta) {
-    Logger.log("recuperarAnexosDaPastaDrive_: pasta inacessivel — " + ePasta.message);
-    return achados;
+  var vistasPasta = {};
+  function juntarPasta(pasta) {
+    try {
+      var id = String(pasta.getId ? pasta.getId() : "");
+      if (id && vistasPasta[id]) return;
+      if (id) vistasPasta[id] = true;
+      pastas.push(pasta);
+    } catch (e) { pastas.push(pasta); }
   }
+
+  /* A PASTA DO PRÓPRIO OFÍCIO VEM PRIMEIRO — 03/09/2026.
+
+     A emissão grava o PDF do ofício e as fichas na MESMA pasta do ano
+     (`pastaAno`, em Oficios.gs). Então o lugar mais certo para achar a ficha
+     é a pasta onde o ofício está — e ela se descobre pelo próprio arquivo,
+     sem depender de configuração.
+
+     Antes a busca começava por `getPastaOficiosDestinoId_(tipo)`. Isso
+     funciona enquanto a configuração apontar para a mesma árvore; se
+     apontar para outro lugar — ou se o ofício foi movido — a busca varre a
+     pasta errada e volta vazia em silêncio, que é o pior resultado
+     possível: o ofício sai afirmando uma ficha que não foi. */
+  if (idOficio) {
+    try {
+      var pais = DriveApp.getFileById(idOficio).getParents();
+      while (pais.hasNext()) juntarPasta(pais.next());
+    } catch (ePai) {
+      Logger.log("recuperarAnexosDaPastaDrive_: pasta do ofício inacessível — " + ePai.message);
+    }
+  }
+
+  var raizId = getPastaOficiosDestinoId_(String(tipo || "").toUpperCase());
+  if (raizId) {
+    try {
+      var raiz = DriveApp.getFolderById(raizId);
+      juntarPasta(raiz);
+      var subs = raiz.getFolders();
+      while (subs.hasNext()) juntarPasta(subs.next());
+    } catch (ePasta) {
+      Logger.log("recuperarAnexosDaPastaDrive_: pasta inacessivel — " + ePasta.message);
+    }
+  }
+
+  if (!pastas.length) return achados;
 
   var comData = [], semData = [];
   pastas.forEach(function (pasta) {
@@ -435,6 +467,20 @@ function obterAnexosOriginaisFilaOficio_(numero, idOficio) {
  * Tem porta porque devolve e-mail de escola, que e dado de terceiro. E exige
  * o modulo, nao admin: quem reenvia oficio ja precisa disso.
  */
+/* LEGADO desde 03/09/2026 — substituída por `preverReenvioOficio`.
+
+   Esta função devolvia o e-mail gravado na linha do PRÓPRIO OFÍCIO, e a tela
+   o exibia sob o rótulo "Vai para (do cadastro)". O rótulo mentia: para um
+   ofício de março, ela devolve o endereço de março — inclusive um que já
+   morreu e já foi corrigido no cadastro da escola. Foi assim que o reenvio do
+   ofício 144/2026 ofereceu de volta exatamente o endereço que o fez quicar.
+
+   A substituta junta as duas origens (ofício e cadastro atual), com histórico
+   de cada endereço, e devolve também a prévia dos anexos.
+
+   POR QUE CONTINUA AQUI, sem chamador em tela: pela REGRA Nº 1, função sem
+   chamador visível não é função morta — só é função cujo uso eu não achei.
+   Remoção é pedido explícito do usuário, em commit separado. */
 function obterDestinoReenvioOficio(numero, tokenSessao) {
   exigirModulo_(tokenSessao, "documentos", false);
   try {
@@ -463,6 +509,93 @@ function obterDestinoReenvioOficio(numero, tokenSessao) {
     Logger.log("obterDestinoReenvioOficio: " + e.message);
     return { ok: false, emails: "" };
   }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   REUNIR OS ANEXOS DO REENVIO — UMA FUNÇÃO SÓ, 03/09/2026
+
+   POR QUE UMA SÓ. O usuário pediu que o modal mostrasse, ANTES de enviar, o
+   que vai em anexo — e em particular se a ficha foi encontrada. Se a prévia
+   reunisse os anexos por um caminho e o envio por outro, a prévia mentiria
+   no dia em que os dois divergissem. Prévia que mente é pior que não ter
+   prévia: ela dá confiança onde não há.
+
+   Então esta função é a ÚNICA que sabe montar o pacote, e as duas chamam.
+
+   AS TRÊS CAMADAS, na ordem em que valem:
+
+   1. o pacote original da fila (ANEXOS_JSON) — é o que de fato foi enviado;
+   2. resgate no Drive pelo nome determinístico, para ofício antigo cuja linha
+      da fila já não tem a lista. A trava é o token da escola normalizado
+      exatamente como a emissão normaliza: anexar a carta de OUTRA escola
+      seria pior que não anexar nenhuma;
+   3. `Link Ficha` legado, sem duplicar o que já entrou.
+
+   DEVOLVE TAMBÉM `itens`, com nome e origem de cada anexo. É o que a tela
+   mostra — e é medição, não promessa: são os blobs que realmente vão.
+   ══════════════════════════════════════════════════════════════════════════ */
+function reunirAnexosReenvioOficio_(numero, idOficio, tipo, escola, dataEnvio, linkFicha) {
+  var itens = [];
+  var pacote = obterAnexosOriginaisFilaOficio_(numero, idOficio);
+  var anexos = pacote.blobs || [];
+
+  anexos.forEach(function (b) {
+    itens.push({ nome: String(b.getName() || ""), origem: "pacote original da fila" });
+  });
+
+  if (!anexos.length) {
+    var arqOficio = DriveApp.getFileById(idOficio);
+    var blobOficio = arqOficio.getBlob().setName(arqOficio.getName());
+    anexos.push(blobOficio);
+    itens.push({ nome: String(blobOficio.getName() || ""), origem: "PDF do ofício, do Drive" });
+  }
+
+  if (!pacote.reconstruido) {
+    try {
+      recuperarAnexosDaPastaDrive_(tipo, escola, dataEnvio, anexos, idOficio).forEach(function (b) {
+        anexos.push(b);
+        itens.push({ nome: String(b.getName() || ""), origem: "recuperada do Drive" });
+      });
+    } catch (eResgate) {
+      Logger.log("Reenvio " + numero + ": resgate no Drive falhou — " + eResgate.message);
+    }
+  }
+
+  if (linkFicha) {
+    var idFicha = extrairIdDriveOficio_(linkFicha);
+    if (idFicha) {
+      try {
+        var nomesAtuais = anexos.map(function (b) { return String(b.getName() || ""); });
+        var arqFicha = DriveApp.getFileById(idFicha);
+        if (nomesAtuais.indexOf(arqFicha.getName()) === -1) {
+          var blobFicha = arqFicha.getBlob().setName(arqFicha.getName());
+          anexos.push(blobFicha);
+          itens.push({ nome: String(blobFicha.getName() || ""), origem: "Link Ficha (registro legado)" });
+        }
+      } catch (eFicha) {
+        Logger.log("⚠ Não foi possível anexar a ficha legada: " + eFicha.message);
+      }
+    }
+  }
+
+  return { blobs: anexos, itens: itens, reconstruido: pacote.reconstruido === true };
+}
+
+/* Quais tipos AFIRMAM no corpo que a ficha/carta segue em anexo. Mandar um
+   destes sem o documento manda uma ordem sem a prova — a escola recebe
+   instrução para descontar, ou para parar de descontar, sem o papel que a
+   sustenta. Por isso a tela avisa antes, em vez de o operador descobrir
+   depois pela reclamação da escola. */
+function tipoOficioExigeFicha_(tipo) {
+  var t = String(tipo || "").toLowerCase();
+  return t.indexOf("filia") > -1 || t.indexOf("desfilia") > -1 || t.indexOf("oposi") > -1;
+}
+
+/* Um anexo é ficha/carta quando não é o PDF do próprio ofício. A emissão
+   nomeia o ofício como "Ofício <n> <ano> - ..." e as fichas como
+   "Ficha_" / "Fichas_" (Oficios.gs:795-812). */
+function anexoEhFicha_(nome) {
+  return /^fichas?_/i.test(String(nome || "").trim());
 }
 
 function reenviarOficio(registro, tokenSessao) {
@@ -538,6 +671,30 @@ function reenviarOficio(registro, tokenSessao) {
       return { erro: true, mensagem: "E-mail do destinatário não encontrado." };
     }
 
+    /* ESCOLHA EXPLÍCITA DA TELA — 03/09/2026.
+
+       O usuário abriu o reenvio do ofício 144 e viu, no campo rotulado "do
+       cadastro", o endereço da Thalia — morto, e que ele já tinha corrigido
+       no cadastro da escola no dia anterior. O rótulo mentia: este campo
+       nunca leu o cadastro da escola, e sim a linha do PRÓPRIO OFÍCIO no
+       Registro, congelada no dia da emissão.
+
+       Agora a tela manda a lista escolhida, e ela vence tudo: nem cadastro
+       antigo, nem extras, nem `somenteExtras`. Quem escolheu foi a pessoa,
+       olhando origem e histórico de cada endereço. */
+    var escolhaExplicita = Array.isArray(registro.destinatarios)
+      ? registro.destinatarios : null;
+    if (escolhaExplicita && escolhaExplicita.length) {
+      var validacaoEscolha = validarListaEmails_(escolhaExplicita.join(";"));
+      if (!validacaoEscolha.ok) {
+        return { erro: true, mensagem: "Endereço inválido na escolha: " +
+                 (validacaoEscolha.invalido || "") };
+      }
+      emailsExtras  = "";
+      somenteExtras = false;
+      emailDestino  = validacaoEscolha.todos;
+    }
+
     var listaFinal = [];
     if (!somenteExtras && emailDestino) {
       var validacaoEmails = validarListaEmails_(emailDestino);
@@ -566,60 +723,9 @@ function reenviarOficio(registro, tokenSessao) {
     var idOficio = extrairIdDriveOficio_(url);
     if (!idOficio) return { erro: true, mensagem: "Não foi possível identificar o arquivo PDF na URL informada." };
 
-    // Primeiro tenta reconstruir exatamente o pacote original da fila:
-    // PDF do ofício + TODAS as fichas/anexos. Para registros antigos, mantém
-    // Link Ficha como fallback, sem duplicar arquivo já encontrado.
-    var pacote = obterAnexosOriginaisFilaOficio_(numero, idOficio);
-    var anexos = pacote.blobs;
-    if (!anexos.length) {
-      var arqOficio = DriveApp.getFileById(idOficio);
-      anexos.push(arqOficio.getBlob().setName(arqOficio.getName()));
-    }
-
-    /* RESGATE DA CARTA NO DRIVE — pedido do usuario em 01/09/2026:
-       "quando reenvio nao esta anexando os dois arquivos (oficio gerado e a
-       carta)", com escolas reclamando de nao receber.
-
-       POR QUE FALTAVA: a carta so vive no ANEXOS_JSON da linha da fila.
-       Oficio antigo, emitido antes da fila existir — ou com a linha ja
-       limpa — reenviava so o PDF. E o corpo do e-mail de oposicao e de
-       desfiliacao AFIRMA a carta em anexo: a escola recebia uma ordem para
-       nao descontar sem a prova de que alguem se opos.
-
-       POR QUE DA PARA RESGATAR: o arquivo continua no Drive. A emissao o
-       salva na subpasta do ano com nome deterministico —
-       "Fichas_<TIPO>_<ESCOLA>_<DATA>.pdf" ou "Ficha_<TIPO>_<NOME>_<ESCOLA>_
-       <DATA>.ext" (Oficios.gs:795-812). Escola e data estao no proprio nome.
-
-       A TRAVA CONTRA MANDAR A CARTA DA ESCOLA ERRADA: so entra arquivo cujo
-       nome contenha o token da escola normalizado EXATAMENTE como a emissao
-       normaliza. Anexar carta de outra escola seria pior que nao anexar
-       nenhuma. */
-    if (!pacote.reconstruido) {
-      try {
-        var resgatados = recuperarAnexosDaPastaDrive_(tipo, escola, dataEnvioOficio, anexos);
-        resgatados.forEach(function (blobResgatado) { anexos.push(blobResgatado); });
-        if (resgatados.length) {
-          Logger.log("Reenvio " + numero + ": " + resgatados.length +
-                     " anexo(s) resgatado(s) do Drive (fila sem ANEXOS_JSON).");
-        }
-      } catch (eResgate) {
-        Logger.log("Reenvio " + numero + ": resgate no Drive falhou — " + eResgate.message);
-      }
-    }
-
-    if (linkFicha) {
-      var idFicha = extrairIdDriveOficio_(linkFicha);
-      if (idFicha) {
-        try {
-          var nomesAtuais = anexos.map(function(b) { return String(b.getName() || ""); });
-          var arqFicha = DriveApp.getFileById(idFicha);
-          if (nomesAtuais.indexOf(arqFicha.getName()) === -1) {
-            anexos.push(arqFicha.getBlob().setName(arqFicha.getName()));
-          }
-        } catch (eFicha) { Logger.log("⚠ Não foi possível anexar a ficha legada: " + eFicha.message); }
-      }
-    }
+    var reuniao = reunirAnexosReenvioOficio_(numero, idOficio, tipo, escola, dataEnvioOficio, linkFicha);
+    var anexos  = reuniao.blobs;
+    var pacote  = { reconstruido: reuniao.reconstruido };
 
     var htmlBody = montarEmailHTML_(
       "Reenvio — " + tipo, numero, obterLabelTipoOficio_(tipo), 0,
