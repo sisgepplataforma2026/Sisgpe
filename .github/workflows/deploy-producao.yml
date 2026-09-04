@@ -257,8 +257,34 @@ jobs:
           set -euo pipefail
           clasp deploy --deploymentId "$PROD_DEPLOYMENT_ID" --versionNumber "$NOVA_VERSAO" \
             --description "producao-${GITHUB_SHA::7}"
-          clasp deployments | tee /tmp/deployments-depois.txt
-          grep -F "$PROD_DEPLOYMENT_ID" /tmp/deployments-depois.txt | grep -F "@$NOVA_VERSAO"
+
+          # A CONFERENCIA INSISTE ANTES DE REPROVAR — 04/09/2026.
+          #
+          # A publicacao da versao 693 falhou aqui: o `clasp deploy` disse
+          # "Deployed @693" e a listagem, pedida 1,3 segundo depois, ainda
+          # trazia @692. Era atraso de propagacao do Google — a mesma
+          # publicacao, repetida minutos depois, passou.
+          #
+          # Reprovar na primeira leitura transformava toda publicacao em
+          # cara-ou-coroa. Insistir NAO afrouxa a trava: se a implantacao nao
+          # mudar de verdade, as cinco tentativas falham e o job reprova
+          # igual. O que muda e nao confundir "ainda nao propagou" com "nao
+          # apontou".
+          CONFIRMADO=""
+          for TENTATIVA in 1 2 3 4 5; do
+            clasp deployments | tee /tmp/deployments-depois.txt
+            if grep -F "$PROD_DEPLOYMENT_ID" /tmp/deployments-depois.txt | grep -qF "@$NOVA_VERSAO"; then
+              CONFIRMADO="sim"
+              echo "implantacao confirmada na versao $NOVA_VERSAO (tentativa $TENTATIVA)"
+              break
+            fi
+            echo "ainda nao propagou (tentativa $TENTATIVA de 5); aguardando 6s"
+            sleep 6
+          done
+          if [ -z "$CONFIRMADO" ]; then
+            echo "::error::A implantacao nao passou para a versao $NOVA_VERSAO apos 5 leituras."
+            exit 1
+          fi
           {
             echo "## Producao publicada"
             echo
