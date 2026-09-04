@@ -317,6 +317,192 @@ function ofDest_sugerir_(escola, jaListados) {
   return sugestoes;
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   PRÉVIA DO REENVIO — destinatários E anexos, medidos antes de enviar
+
+   ORIGEM, 03/09/2026. O usuário abriu o reenvio do ofício 144/2026 e o campo
+   rotulado "Vai para (do cadastro)" mostrava `thalia.ferreira@faesa.br` — o
+   endereço morto que ele já tinha substituído no cadastro no dia anterior.
+
+   O rótulo mentia. `obterDestinoReenvioOficio` lê a linha do PRÓPRIO OFÍCIO
+   no Registro, congelada no dia da emissão; nunca leu o cadastro da escola.
+   Para um ofício de março, isso significa oferecer de volta exatamente o
+   endereço que fez o ofício quicar.
+
+   Duas coisas ele pediu, e as duas estão aqui:
+
+   1. BUSCAR O E-MAIL ATUALIZADO. A lista junta as duas origens — o que estava
+      no ofício e o que está HOJE no cadastro da escola — dizendo de onde cada
+      um veio. Quem já quicou nasce desmarcado, com o número de falhas à
+      vista; quem está no cadastro atual e não tem falha nasce marcado.
+      Sugerir com a origem à vista, nunca decidir em silêncio (REGRA Nº 0.6).
+
+   2. FICHA E OFÍCIO. A prévia devolve os anexos que REALMENTE vão, pela mesma
+      função que o envio usa. Num tipo que afirma a ficha no corpo — filiação,
+      desfiliação, oposição — a ausência dela vira aviso ANTES do clique: a
+      escola receberia ordem para descontar sem o papel que a sustenta.
+   ══════════════════════════════════════════════════════════════════════════ */
+function preverReenvioOficio(dados, tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
+  return ofDest_preverReenvio_(dados || {});
+}
+
+function ofDest_preverReenvio_(dados) {
+  var numero = String(dados.numero || "").trim();
+  if (!numero) return { ok: false, mensagem: "Número do ofício não informado." };
+
+  var registro = ofDest_lerRegistroOficio_(numero);
+  if (!registro.ok) return registro;
+
+  var escola = String(dados.escola || registro.escola || "").trim();
+  var tipo   = String(dados.tipo   || registro.tipo   || "").trim();
+
+  /* ── destinatários: as duas origens, sem duplicar ── */
+  var doOficio  = ofDest_separar_(registro.emails);
+  var doCadastro = ofDest_emailsDoCadastro_(escola);
+
+  var vistos = {}, lista = [];
+  function juntar(email, origem, noCadastro) {
+    var chave = String(email || "").trim().toLowerCase();
+    if (!chave) return;
+    if (vistos[chave]) {
+      /* Já entrou pela outra origem: soma a procedência em vez de repetir a
+         linha. Um endereço que está nos dois lugares é informação, não ruído. */
+      vistos[chave].origem = "deste ofício e do cadastro atual";
+      vistos[chave].noCadastro = vistos[chave].noCadastro || noCadastro;
+      return;
+    }
+    var h = ofDest_historico_(email);
+    var item = {
+      email: email,
+      origem: origem,
+      noCadastro: noCadastro,
+      confirmacoes: h.confirmacoes,
+      falhas: h.falhas,
+      envios: h.envios,
+      ultimaFalha: h.ultimaFalha,
+      ultimaConfirmacao: h.ultimaConfirmacao,
+      marcado: false
+    };
+    vistos[chave] = item;
+    lista.push(item);
+  }
+
+  doOficio.forEach(function (e)  { juntar(e, "deste ofício", false); });
+  doCadastro.forEach(function (e) { juntar(e, "cadastro atual da escola", true); });
+
+  /* A regra da marcação, escrita para poder ser discutida:
+     quem quicou nunca vem marcado; entre os que não quicaram, prefere-se o
+     que está no cadastro de HOJE. Se o cadastro não foi encontrado, cai para
+     "todos os do ofício sem falha" — assim a lista nunca abre vazia. */
+  var achouCadastro = doCadastro.length > 0;
+  lista.forEach(function (item) {
+    item.marcado = item.falhas === 0 && (achouCadastro ? item.noCadastro : true);
+  });
+  if (!lista.some(function (i) { return i.marcado; })) {
+    lista.forEach(function (i) { if (i.falhas === 0) i.marcado = true; });
+  }
+
+  /* ── anexos: os mesmos blobs que o envio vai mandar ── */
+  var anexos = { itens: [], temFicha: false, exigeFicha: tipoOficioExigeFicha_(tipo), erro: "" };
+  try {
+    var idOficio = extrairIdDriveOficio_(String(dados.url || ""));
+    if (!idOficio) {
+      anexos.erro = "Não foi possível identificar o PDF deste ofício no Drive.";
+    } else {
+      var reuniao = reunirAnexosReenvioOficio_(
+        numero, idOficio, tipo, escola, registro.dataEnvio, registro.linkFicha);
+      anexos.itens = reuniao.itens;
+      anexos.temFicha = reuniao.itens.some(function (i) { return anexoEhFicha_(i.nome); });
+    }
+  } catch (e) {
+    anexos.erro = String(e && e.message || e);
+  }
+
+  return {
+    ok: true,
+    numero: numero,
+    escola: escola,
+    tipo: tipo,
+    destinatarios: lista,
+    anexos: anexos
+  };
+}
+
+/** A linha do ofício no Registro: e-mails gravados, ficha legada e data. */
+function ofDest_lerRegistroOficio_(numero) {
+  try {
+    var ss = SpreadsheetApp.openById(
+      typeof getPlanilhaId === "function" ? getPlanilhaId() : PLANILHA_ID);
+    var sh = ss.getSheetByName(PLANILHA_REGISTRO);
+    if (!sh || sh.getLastRow() < 2) {
+      return { ok: false, mensagem: "Registro de ofícios vazio." };
+    }
+    var hm = getHeaderMap_(sh);
+    var cNum   = hm["Número do Ofício"];
+    var cTodos = hm["E-mails (todos)"];
+    var cPrinc = hm["E-mail (principal)"];
+    var cEsc   = hm["Escola"];
+    var cTipo  = hm["Tipo"];
+    var cFicha = hm["Link Ficha"];
+    var cData  = hm["Data envio ofício"] || hm["Data envio oficio"];
+    if (!cNum) return { ok: false, mensagem: "Coluna do número do ofício não encontrada." };
+
+    var dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+    for (var i = 0; i < dados.length; i++) {
+      if (String(dados[i][cNum - 1] || "").trim() !== numero) continue;
+      var emails = cTodos ? String(dados[i][cTodos - 1] || "").trim() : "";
+      if (!emails && cPrinc) emails = String(dados[i][cPrinc - 1] || "").trim();
+      var quando = null;
+      if (cData) {
+        var bruto = dados[i][cData - 1];
+        if (bruto instanceof Date && !isNaN(bruto.getTime())) quando = bruto;
+      }
+      return {
+        ok: true,
+        emails: emails,
+        escola: cEsc  ? String(dados[i][cEsc  - 1] || "").trim() : "",
+        tipo:   cTipo ? String(dados[i][cTipo - 1] || "").trim() : "",
+        linkFicha: cFicha ? String(dados[i][cFicha - 1] || "").trim() : "",
+        dataEnvio: quando
+      };
+    }
+    return { ok: false, mensagem: "Ofício " + numero + " não encontrado no Registro." };
+  } catch (e) {
+    return { ok: false, mensagem: String(e && e.message || e) };
+  }
+}
+
+/** Os e-mails que o CADASTRO DA ESCOLA tem hoje — não os do ofício antigo. */
+function ofDest_emailsDoCadastro_(escola) {
+  var nome = String(escola || "").trim().toUpperCase();
+  if (!nome) return [];
+  try {
+    var ss = SpreadsheetApp.openById(
+      typeof getPlanilhaId === "function" ? getPlanilhaId() : PLANILHA_ID);
+    var sh = ss.getSheetByName(typeof ABA_ESCOLAS !== "undefined" ? ABA_ESCOLAS : "Escolas");
+    if (!sh || sh.getLastRow() < 2) return [];
+
+    var hm     = getHeaderMap_(sh);
+    var cNome  = hm["Escola (Razão Social)"] || hm["Escola"] || hm["Unidade"];
+    var cTodos = hm["E-mails (todos)"];
+    var cPrinc = hm["E-mail (principal)"];
+    if (!cNome || (!cTodos && !cPrinc)) return [];
+
+    var dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+    for (var i = 0; i < dados.length; i++) {
+      if (String(dados[i][cNome - 1] || "").trim().toUpperCase() !== nome) continue;
+      var v = cTodos ? String(dados[i][cTodos - 1] || "").trim() : "";
+      if (!v && cPrinc) v = String(dados[i][cPrinc - 1] || "").trim();
+      return ofDest_separar_(v);
+    }
+    return [];
+  } catch (e) {
+    Logger.log("ofDest_emailsDoCadastro_: " + e);
+    return [];
+  }
+}
+
 /* ── helpers ───────────────────────────────────────────────────────────── */
 
 function ofDest_separar_(valor) {

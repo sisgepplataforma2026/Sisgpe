@@ -87,11 +87,19 @@ b.ok(/reconstruido = true/.test(fonteObter),
 b.passo("6. o reenvio só vai ao Drive quando NÃO reconstruiu");
 /* Buscar no Drive em todo reenvio seria lento e desnecessário: quando a fila
    tem a lista, ela é a verdade — inclusive sobre quais arquivos eram. */
-const fonteReenvio = String(g.reenviarOficio).replace(/\s+/g, " ");
-b.ok(/if \(!pacote\.reconstruido\) \{ try \{ var resgatados = recuperarAnexosDaPastaDrive_/.test(fonteReenvio),
+/* MUDOU DE LUGAR EM 03/09/2026, e a asserção seguiu junto. O ajuntamento de
+   anexos saiu de dentro do `reenviarOficio` e virou `reunirAnexosReenvioOficio_`,
+   compartilhada com a PRÉVIA do modal — se fossem duas cópias, a prévia
+   mentiria no dia em que divergissem. A regra medida aqui é a mesma de antes:
+   o resgate no Drive é exceção, e só roda quando a fila não reconstruiu. */
+const fonteReuniao = String(g.reunirAnexosReenvioOficio_).replace(/\s+/g, " ");
+b.ok(/if \(!pacote\.reconstruido\) \{ try \{ recuperarAnexosDaPastaDrive_/.test(fonteReuniao),
   "o resgate é o caminho de exceção, não o normal");
-b.ok(/dataEnvioOficio/.test(fonteReenvio),
+b.ok(/dataEnvio/.test(fonteReuniao),
   "e leva a data do envio, que é o que identifica o lote daquele dia");
+b.ok(String(g.reenviarOficio).indexOf("reunirAnexosReenvioOficio_") > -1,
+  "e o envio passou a chamar a função compartilhada",
+  "a prévia do modal chama a MESMA — prévia que mente é pior que não ter prévia");
 
 b.passo("7. o resgate procura em TODAS as pastas de ano");
 /* Ofício de 2025 reenviado em 2026 tem o arquivo na pasta de 2025. Olhar só
@@ -105,6 +113,7 @@ b.ok(/\^Fichas\?_/.test(fonteResgate),
 b.passo("8. a resposta ao operador diz de onde vieram os anexos");
 /* "Anexos: 1" num tipo que promete carta é o sinal de que algo faltou. Antes
    a mensagem não distinguia origem nenhuma. */
+const fonteReenvio = String(g.reenviarOficio).replace(/\s+/g, " ");
 b.ok(/pacote original da fila/.test(fonteReenvio) &&
      /recuperados do Drive/.test(fonteReenvio),
   "a mensagem separa pacote da fila de resgate no Drive",

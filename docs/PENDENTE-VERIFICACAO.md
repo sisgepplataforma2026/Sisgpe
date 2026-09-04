@@ -118,6 +118,216 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
+### 67. 🔴🔴 EXISTIA UM SEGUNDO SISTEMA RODANDO NA MESMA PLANILHA
+
+03/09/2026. **O achado mais importante desta semana, e ele reabre item que eu
+dava por fechado.**
+
+A planilha de produção tinha um Apps Script **preso a ela** —
+`SISGEP - ATIVA/PRODUÇÃO`, script id
+`1EIIRjJGU7QgZuyX1wOAXYuM8ecofCQ9DolaYTfED1Yw_wtHtXRbmb_E3` — que **não é**
+o SISGEP-OFICIOS. É uma cópia completa e antiga do sistema: `EmailOficios.gs`,
+`FilaOficios.gs`, `MonitoramentoOficios.gs`, `OficioService.gs`,
+`TaxaAssistencialOficios.gs`, além de portais públicos de NF, guia e voucher.
+
+**Nenhuma publicação nossa jamais o tocou** — publicamos no SISGEP-OFICIOS.
+Então o código dele é do dia em que foi criado, anterior a 28/08.
+
+**COMO APARECEU.** O usuário abriu o ofício 511/2026 entregue e viu
+`De: financeirosindecucacao@gmail.com` em vez da Secretaria, e duas cópias.
+O cabeçalho trazia `Bcc: financeiro@sindeducacao.com`. O repositório inteiro
+foi varrido — `.gs` e `.html`, `bcc` e `cco`: **não existe BCC no caminho do
+ofício**. O código publicado não podia ter produzido aquilo.
+
+O `montarOpcoesEmailSISGEP_` do projeto da planilha:
+
+```js
+from:     "financeiro@sindeducacao.com",
+replyTo:  "secretaria@sindeducacao.com",
+bcc:      "financeiro@sindeducacao.com"
+```
+
+Linha por linha, o cabeçalho recebido. E o `from` apontando para um endereço
+que **não é alias verificado** é o que faz o Gmail cair na conta executora —
+é daí que vinha o remetente errado.
+
+**A PROVA QUE FECHA SEM MARGEM.** O corpo do e-mail recebido cita a **CCT
+2026/2027**. O código velho escreve "CCT 2025/2026"; só o novo escreve
+2026/2027. Ou seja: **o SISGEP-OFICIOS emitiu e gravou o corpo na fila; o
+projeto da planilha pegou aquela linha e enviou com o envelope dele.** Corpo
+novo, remetente velho. Os dois tocaram o mesmo ofício.
+
+**O QUE ESTAVA RODANDO EM DUPLICATA** (medido na tela de Acionadores dos dois
+projetos, no mesmo dia):
+
+| Função | SISGEP-OFICIOS | Projeto da planilha |
+|---|---|---|
+| `processarFilaEnvioOficios` | 14:33 | **14:42** |
+| `verificarFalhasEntregaOficios` | 12:32 | 12:50 |
+| `verificarConfirmacoesRecebimento` | 13:59 | 12:58 (7,5% erro) |
+
+**ISTO REABRE O ITEM 49.** `verificarConfirmacoesRecebimento` é a função do
+"Outlook" confirmando ofício que quicou. Corrigimos e publicamos — **e a
+versão velha continuou rodando ao lado, desfazendo a correção a cada 5
+minutos.** O item 49 nunca esteve consertado na prática, só no repositório.
+É a REGRA Nº -1 cobrando de novo: publicado não é o mesmo que em operação.
+
+**O QUE FOI FEITO, e só isto.** Apagados os três gatilhos de ofício do projeto
+da planilha, depois de conferir um a um que o SISGEP-OFICIOS já roda os três
+com o código corrigido. Restaram três, que **não têm equivalente** no
+SISGEP-OFICIOS e por isso ficam: `verificarEEnviarLembretesNF`,
+`verificarEEnviarLembretesGuias` e `verificarEDispararAlertasD5`.
+
+**O PROJETO NÃO FOI APAGADO, e não deve ser sem medir antes.** Ele contém
+`PortalEnvioNF.html`, `PortalConfirmacaoGuia.html`,
+`PortalValidacaoVoucher.html` e `PubNFDespesa.html` — páginas públicas. Se
+houver web app publicado nele, há gente de fora do sindicato usando esses
+links, e quem usa não tem como avisar que quebrou. Falta ver
+**Implantar → Gerenciar implantações**.
+
+**✅ VERIFICADO NO AR — OFÍCIO 512/2026, 03/09/2026 às 15h22.** Emitido em
+produção depois da remoção dos gatilhos, e comparado com o 511/2026 das 14h02:
+
+| | 511 (sistema velho) | 512 (sistema certo) |
+|---|---|---|
+| **De** | `financeirosindecucacao@gmail.com` | **`secretaria@sindeducacao.com`** |
+| Cláusula citada | CCT 2025/2026 | **CCT 2026/2027** |
+| Assinatura | "Marcelha Aline" | **"Marcelha Aline Pinto Gomes"** |
+| Anexos | ofício + ficha | ofício + ficha |
+
+**O QUE ISSO PROVA, e desfaz três conclusões minhas:** o alias da Secretaria
+sempre funcionou. Eu atribuí o remetente errado a alias quebrado, depois a um
+`catch` silencioso, depois à identidade do gatilho — três hipóteses
+plausíveis, todas erradas. A causa era inteiramente o projeto paralelo.
+
+**E DESTRAVA O ITEM 49:** com o gatilho velho removido, só a versão corrigida
+de `verificarConfirmacoesRecebimento` roda. A correção do "Outlook" passa a
+valer de fato, não só no repositório.
+
+**AINDA A CONFERIR:**
+
+
+
+1. ✅ **o `De` é a Secretaria** — provado no 512/2026;
+2. ✅ **o BCC morreu junto** — verificado na caixa do financeiro. O Gmail monta
+   a linha do destinatário a partir dos cabeçalhos, e ela mudou:
+
+   | | |
+   |---|---|
+   | 511 | `para secretaria, Cco: financeiro` |
+   | 512 | `para secretaria` |
+
+   O 512 ainda aparece nessa caixa, e isso NÃO é cópia oculta: a conta Gmail
+   busca o `secretaria@sindeducacao.com`, então a mesma mensagem entregue à
+   Secretaria chega ali também. São coisas diferentes — uma é entrega
+   duplicada por configuração de caixa, a outra era um BCC cravado no código;
+3. 🟡 `verificarEEnviarLembretesGuias` está com **100% de erro** em toda
+   execução, no projeto da planilha. Não é urgente, mas está quebrado.
+
+**A LIÇÃO, que vale além deste caso.** Passei o dia inteiro atribuindo o
+remetente errado a três causas diferentes — o alias, um `catch` silencioso,
+a identidade do gatilho. Todas plausíveis, todas erradas. O que resolveu foi
+o usuário abrir a planilha e olhar. **Eu enxergo o repositório; a operação
+está no Google.** Quando o que o código diz e o que o sistema faz não batem,
+a hipótese certa quase nunca é uma leitura mais fina do código — é procurar
+o que está rodando e eu não estou vendo.
+
+### 66. 🔴 PRODUÇÃO NA VERSÃO 691 — o token vazio, e a `main` que parou de dizer a verdade
+
+> **CORREÇÃO (03/09, 18h12).** A produção não está na 691, e sim na **692** —
+> versão que o próprio usuário criou às 14h59, fora da promoção controlada.
+> Isso não foi problema: o `conferir` baixou a produção e comparou com o
+> código verificado, e o veredito foi **IDENTICO, byte a byte**. A 692 tem o
+> mesmo conteúdo da 691. Fica registrado porque "produção na 691" era o que
+> este item afirmava, e não era exato.
+>
+> A implantação aponta para uma **versão fixa**, não para HEAD — a trava do
+> processo continua de pé. Se apontasse para HEAD, qualquer edição no editor
+> entraria no ar sem passar por teste, e isso teria de ser desfeito na hora.
+
+03/09/2026, 16h18. Publicada a correção do token de sessão da aba
+"Conferir envio". Um arquivo modificado, 24 linhas; nada criado, nada
+removido. Rollback na versão 690.
+
+**O DEFEITO, achado pelo usuário abrindo a tela em produção às 12h48:**
+
+    Error: Sessão inválida ou expirada. Entre novamente no SISGEP.
+
+A sessão estava boa. Dois dos três resolvedores de token de
+`OficiosConferencia.html` procuravam `TOKEN_SESSAO` e `window.SISGEP.token`
+— nenhum dos dois existe no projeto. A página declara
+`SISGEP_TOKEN_SESSAO` (`index.html:1363`). Os dois devolviam string vazia, e
+`exigirModulo_` recusa string vazia como recusaria token falsificado.
+
+**Por que é silencioso.** `typeof X !== "undefined"` é o jeito CERTO de
+checar variável que pode não existir — e é por ser à prova de erro que ele
+engole o nome errado. Sem exceção, sem log: o `||` cai para o próximo, chega
+no `""`, e o backend responde com mensagem de autenticação. **O sintoma
+acusa a sessão do usuário; o defeito está a três arquivos de distância.**
+
+**Por que os testes não pegaram.** O t141 asserta que a tela CHAMA
+`oficiosAguardandoDestinatarios`. Ela chamava — só chamava com nada dentro.
+O teste mediu a chamada; ninguém mediu o argumento.
+
+Novo `t143`: varre os `.html` atrás de todo identificador com forma de token
+de sessão e exige que alguém o declare. Nome fantasma reprova, mesmo atrás
+de um `typeof`. Provado nos dois sentidos — contra o arquivo que estava no
+ar, reprova em 4 asserções e aponta as linhas 91, 365 e 485.
+
+**Um defeito no próprio detector, achado no caminho.** A primeira forma era
+`[A-Za-z_][A-Za-z0-9_]*TOKEN_SESSAO`, que exige ao menos um caractere de
+prefixo — e por isso nunca casava com `TOKEN_SESSAO` puro, justamente o nome
+fantasma. O teste passava verde contra o defeito que existe para pegar. Só
+apareceu porque rodei contra o arquivo defeituoso e estranhei uma asserção
+verde onde eu esperava vermelho.
+
+**✅ VERIFICADO NO AR ÀS 13h29 (03/09/2026).** O usuário recarregou a
+produção e abriu Ofícios → Conferir envio. A tela respondeu:
+
+    Nenhum ofício aguardando conferência.
+
+**O que isso prova:** o token chega, `exigirModulo_` aceita e
+`oficiosAguardandoDestinatarios` devolve lista. A recusa de sessão acabou.
+
+**O que isso NÃO prova, e é preciso dizer:** que um ofício apareça ali e
+possa ser liberado. A fila está vazia por um motivo legítimo — os ofícios
+emitidos antes da mudança foram direto para PENDENTE e saíram. Lista vazia
+e lista funcionando têm a mesma aparência. A prova é emitir um.
+
+**A CONFERIR EM PRODUÇÃO:**
+
+1. 🔴 **Emitir um ofício e vê-lo aparecer na conferência** — é o passo que
+   separa "a tela responde" de "a tela serve".
+2. 🔴 Segue valendo tudo do item 65: reenviar os 15 que nunca chegaram,
+   olhando o `Anexos: N` de cada reenvio.
+
+### 66b. ⚠️ A `main` parou de registrar o que está em produção
+
+Levantado pelo usuário em 03/09: *"Mas não era em main?"*. Ele estava certo
+em desconfiar.
+
+**A publicação não sai da `main`, e não pode.** O `deploy-producao.yml` tem
+`if: github.ref == 'refs/heads/promocao/…'` — só roda no ramo de promoção
+nomeado, fixado a um commit homologado. É de propósito: promoção é ação
+única e travada, não "o que cair na main vai para o ar".
+
+**Mas até 01/09 cada promoção era mesclada na `main` por PR** (o último foi
+o #12, `751bd13`). Depois disso promovi duas vezes direto pelo ramo e não
+atualizei a `main`. Medido em 03/09:
+
+| | |
+|---|---|
+| `main` atrás da homologação | 140 commits |
+| Diferença de código | 27 arquivos, +2.391 / −235 linhas |
+| Workflow na `main` | ainda aponta o ramo de 01/09 e exige 173/96 |
+
+**A produção está certa; o registro dela é que envelheceu.** Quem olhar a
+`main` para saber o que está no ar vai ver o código de 01/09 — e a
+`main` é exatamente onde se olha.
+
+Pendente de decisão do usuário: trazer as promoções para a `main`, no mesmo
+padrão do PR #12, para ela voltar a dizer a verdade.
+
 ### 65. 🔴 A PRODUÇÃO FOI PUBLICADA — versão 690, e o que agora depende de você abrir
 
 02/09/2026, 23h36. A Produção passou a rodar o mesmo código da homologação

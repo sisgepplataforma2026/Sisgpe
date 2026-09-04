@@ -3578,46 +3578,108 @@ window.mostrarAbaOficio = function(aba) {
       var url=tr?(tr.dataset.url||""):"", cells=tr?tr.querySelectorAll("td"):[];
       var tipo=cells[2]?cells[2].textContent.trim():"", escola=cells[3]?cells[3].textContent.trim():"";
 
-      Historico._reenvioCtx={numero:numero,url:url,tipo:tipo,escola:escola};
+      Historico._reenvioCtx={numero:numero,url:url,tipo:tipo,escola:escola,anexosOk:true};
       var g=function(id){return document.getElementById(id);};
       if(g("histReenvNumero")) g("histReenvNumero").textContent=numero;
       if(g("histReenvEscola")) g("histReenvEscola").textContent=escola||"—";
       if(g("histReenvTipo"))   g("histReenvTipo").textContent=tipo||"—";
-      if(g("histReenvCadastro")) g("histReenvCadastro").value="carregando…";
       if(g("histReenvExtra"))  g("histReenvExtra").value="";
-      if(g("histReenvSomente")) g("histReenvSomente").checked=false;
-      Historico._reenvioAtualizarAviso();
+      if(g("histReenvDestinos")) g("histReenvDestinos").innerHTML='<span style="color:#94a3b8;">carregando…</span>';
+      if(g("histReenvAnexos"))   g("histReenvAnexos").innerHTML='<span style="color:#94a3b8;">conferindo…</span>';
+      if(g("histReenvAviso"))    g("histReenvAviso").style.display="none";
       var ov=g("histReenvOverlay"); if(ov) ov.classList.add("aberto");
 
-      /* Busca o destino do cadastro so para MOSTRAR. E leitura; o envio
-         continua resolvendo o destino no servidor, que e onde a verdade
-         esta — a tela nao manda para onde ela acha que e. */
+      /* A previa MEDE: os enderecos vem das duas origens (o oficio e o
+         cadastro de hoje) e os anexos sao reunidos pela MESMA funcao que o
+         envio usa. Nao e promessa do que deveria ir — e o que vai. */
       google.script.run
-        .withSuccessHandler(function(r){
-          var campo=g("histReenvCadastro"); if(!campo) return;
-          campo.value=(r&&r.emails)?r.emails:"(nenhum e-mail no cadastro)";
-          Historico._reenvioAtualizarAviso();
+        .withSuccessHandler(function(r){ Historico._reenvioMontar(r); })
+        .withFailureHandler(function(err){
+          var d=g("histReenvDestinos");
+          if(d) d.innerHTML='<span style="color:#b91c1c;">não foi possível carregar os endereços: '+
+                            escapeHtml((err&&err.message)||String(err))+'</span>';
         })
-        .withFailureHandler(function(){ var c=g("histReenvCadastro"); if(c) c.value="(não foi possível ler o cadastro)"; })
-        .obterDestinoReenvioOficio(numero, SISGEP_TOKEN_SESSAO);
+        .preverReenvioOficio({numero:numero,url:url,tipo:tipo,escola:escola}, SISGEP_TOKEN_SESSAO);
     },
 
     _reenvioCtx: null,
 
-    _reenvioAtualizarAviso: function() {
+    /* Desenha a lista medida. Quem quicou nasce DESMARCADO, com as falhas a
+       vista: some da marcacao, nao da tela. Sumir seria decidir pela pessoa. */
+    _reenvioMontar: function(r) {
       var g=function(id){return document.getElementById(id);};
-      var somente=g("histReenvSomente"), aviso=g("histReenvAviso"), extra=g("histReenvExtra");
-      if(!aviso) return;
-      var temExtra=!!(extra && extra.value.trim());
-      if(somente && somente.checked && temExtra){
-        aviso.style.display="block";
-        aviso.textContent="O endereço do cadastro NÃO vai receber. Use isto quando ele estiver recusando e-mail.";
-      } else if(temExtra){
-        aviso.style.display="block";
-        aviso.textContent="O ofício vai para o cadastro E para o endereço informado.";
-      } else {
-        aviso.style.display="none";
+      var alvo=g("histReenvDestinos"); if(!alvo) return;
+
+      if(!r||!r.ok){
+        alvo.innerHTML='<span style="color:#b91c1c;">'+escapeHtml((r&&r.mensagem)||"não foi possível ler os endereços")+'</span>';
+        return;
       }
+
+      var lista=r.destinatarios||[];
+      if(!lista.length){
+        alvo.innerHTML='<span style="color:#b91c1c;">Nenhum endereço encontrado — nem no ofício, nem no cadastro da escola.</span>';
+      } else {
+        alvo.innerHTML=lista.map(function(d,i){
+          var marca=d.marcado?" checked":"";
+          var hist=d.falhas>0
+            ? '<span style="color:#b91c1c;font-weight:700;">❌ '+d.falhas+' falha(s) de entrega</span>'
+            : (d.confirmacoes>0
+                ? '<span style="color:#0f8a5f;font-weight:700;">✅ confirmou '+d.confirmacoes+' ofício(s)</span>'
+                : '<span style="color:#94a3b8;">— sem histórico</span>');
+          return '<label style="display:flex;gap:8px;align-items:flex-start;padding:6px 4px;cursor:pointer;">'
+            +'<input type="checkbox" class="hist-reenv-dest" data-email="'+escapeHtml(d.email)+'"'+marca+' style="margin-top:3px;">'
+            +'<span><strong>'+escapeHtml(d.email)+'</strong><br>'
+            +'<span style="color:#64748b;font-size:11px;">'+escapeHtml(d.origem||"")+'</span><br>'
+            +hist+'</span></label>';
+        }).join("");
+      }
+
+      /* ── anexos ── */
+      var cx=g("histReenvAnexos");
+      var a=r.anexos||{itens:[]};
+      Historico._reenvioCtx.anexosOk = !(a.exigeFicha && !a.temFicha);
+      if(cx){
+        if(a.erro){
+          cx.innerHTML='<span style="color:#b91c1c;">'+escapeHtml(a.erro)+'</span>';
+        } else if(!(a.itens||[]).length){
+          cx.innerHTML='<span style="color:#b91c1c;">Nenhum anexo encontrado.</span>';
+        } else {
+          cx.innerHTML=(a.itens||[]).map(function(it){
+            return '<div style="display:flex;gap:6px;align-items:flex-start;padding:2px 0;">'
+              +'<span>📎</span><span><strong>'+escapeHtml(it.nome)+'</strong><br>'
+              +'<span style="color:#64748b;font-size:11px;">'+escapeHtml(it.origem||"")+'</span></span></div>';
+          }).join("");
+        }
+      }
+
+      var aviso=g("histReenvAviso");
+      if(aviso){
+        if(a.exigeFicha && !a.temFicha){
+          aviso.style.display="block";
+          aviso.style.background="#fef2f2";
+          aviso.style.borderColor="#fecaca";
+          aviso.style.color="#991b1b";
+          aviso.innerHTML="<strong>A ficha não foi encontrada.</strong><br>"
+            +"O corpo deste ofício afirma que ela segue em anexo. Enviar assim manda "
+            +"à escola uma ordem sem o documento que a sustenta.";
+        } else {
+          aviso.style.display="none";
+        }
+      }
+    },
+
+    /** Os endereços marcados, mais o que a pessoa digitou. */
+    _reenvioEscolhidos: function() {
+      var escolhidos=[];
+      document.querySelectorAll(".hist-reenv-dest").forEach(function(cb){
+        if(cb.checked) escolhidos.push(cb.dataset.email);
+      });
+      var extra=document.getElementById("histReenvExtra");
+      String((extra&&extra.value)||"").split(/[;,]/).forEach(function(e){
+        var v=String(e||"").trim();
+        if(v && escolhidos.indexOf(v)===-1) escolhidos.push(v);
+      });
+      return escolhidos;
     },
 
     reenvioFechar: function() {
@@ -3628,26 +3690,37 @@ window.mostrarAbaOficio = function(aba) {
     reenvioConfirmar: function() {
       var ctx=Historico._reenvioCtx; if(!ctx) return;
       var g=function(id){return document.getElementById(id);};
-      var extra=g("histReenvExtra")?g("histReenvExtra").value.trim():"";
-      var somente=!!(g("histReenvSomente")&&g("histReenvSomente").checked);
-      if(somente && !extra){ toast("Informe o endereço antes de marcar 'somente este'.","err"); return; }
+
+      var escolhidos=Historico._reenvioEscolhidos();
+      if(!escolhidos.length){ toast("Marque ao menos um endereço.","err"); return; }
+
+      /* A ficha faltando NAO bloqueia — bloquear tiraria da pessoa uma decisao
+         que e dela. Mas exige um segundo clique consciente, com o custo dito
+         em palavras. */
+      if(!ctx.anexosOk && !ctx.cienteSemFicha){
+        ctx.cienteSemFicha=true;
+        var ok=g("histReenvOk");
+        if(ok){ ok.textContent="Enviar mesmo sem a ficha ▸"; ok.style.background="#b91c1c"; }
+        toast("A ficha não foi encontrada. Clique de novo para enviar assim mesmo.","err",6000);
+        return;
+      }
 
       var btn=g("histReenvOk");
       if(btn){ btn.disabled=true; btn.textContent="Enviando…"; }
 
       google.script.run
         .withSuccessHandler(function(r){
-          if(btn){ btn.disabled=false; btn.textContent="Reenviar ▸"; }
+          if(btn){ btn.disabled=false; btn.textContent="Reenviar ▸"; btn.style.background=""; }
           toast((r&&!r.erro)?(r.mensagem||"Reenviado."):(r&&r.mensagem)||"Erro.", (r&&!r.erro)?"ok":"err");
           if(r&&!r.erro) Historico.reenvioFechar();
         })
         .withFailureHandler(function(err){
-          if(btn){ btn.disabled=false; btn.textContent="Reenviar ▸"; }
+          if(btn){ btn.disabled=false; btn.textContent="Reenviar ▸"; btn.style.background=""; }
           toast("Erro: "+((err&&err.message)||err), "err");
         })
         .reenviarOficio({
           numero:ctx.numero, url:ctx.url, escola:ctx.escola, tipo:ctx.tipo,
-          emailsExtras:extra, somenteExtras:somente
+          destinatarios: escolhidos
         }, SISGEP_TOKEN_SESSAO);
     },
 

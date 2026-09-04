@@ -454,7 +454,14 @@ function install(g, opts) {
       const m = (typeof a === "object") ? a : Object.assign({ to: a, subject: b, body: c }, d || {});
       outbox.push({ via: "MailApp", ...m, quando: new Date() });
     },
-    getRemainingDailyQuota: () => 1500
+    /* A cota diária é MUTÁVEL no emulador: em 03/09/2026 a produção estourou
+       ("Serviço chamado muitas vezes no mesmo dia: gmail") e o botão de envio
+       imediato não tinha trava — tentava, apanhava do Google e queimava uma
+       tentativa. Testar isso exige poder zerar a cota. Valor de partida 1500
+       (conta Workspace); `g.__cotaEmailRestante = 0` simula a conta comum
+       esgotada. */
+    getRemainingDailyQuota: () =>
+      (g.__cotaEmailRestante !== undefined ? g.__cotaEmailRestante : 1500)
   };
   g.GmailApp = {
     sendEmail(a, b, c, d) {
