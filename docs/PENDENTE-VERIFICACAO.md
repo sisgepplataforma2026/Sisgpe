@@ -118,6 +118,80 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
+### 72. 🔴 REENVIO EM LOTE — o sistema escolhe o destino, você confere e confirma
+
+04/09/2026. Ainda **não promovido** — está na branch de homologação.
+
+**O QUE ORIGINOU.** Eu listei como tarefa do usuário: *"reenviar os 15 ofícios,
+conferindo `Anexos: N` no modal antes de confirmar"*. Ele respondeu:
+
+> **"ELE NÃO REENVIA SOZINHO? E EU SÓ IRIA CONFERIR?"**
+
+Estava certo, e a pergunta expôs uma incoerência que estava no desenho desde
+01/09. O `ofDest_preverReenvio_` já fazia o julgamento inteiro — juntava as
+duas origens de endereço, consultava o histórico de cada um, recusava quem
+quicou, preferia o cadastro de hoje, reunia os anexos — e depois devolvia UM
+clique. Quinze ofícios em falha viravam quinze aberturas de modal para
+reconfirmar quinze decisões que o sistema já tinha tomado. REGRA Nº 0.6, e fui
+eu quem furou.
+
+**O QUE FICOU AUTOMÁTICO:** achar os ofícios em falha, escolher o endereço de
+cada um, reunir os anexos, separar o que dá para mandar do que não dá.
+
+**O QUE NÃO FICOU, E POR DECISÃO DELE:** a confirmação. Propus manter o clique
+final — são documentos oficiais indo para escolas e e-mail enviado não volta —
+e ele respondeu **"confirmação manual"**. Nenhum gatilho dispara o lote; o t148
+tem uma asserção só para isso.
+
+**O LIMITE HONESTO.** Ofício cujos endereços TODOS já quicaram não entra na
+pilha que sai: ninguém sabe para onde mandar, e inventar destino é o que a
+conferência existe para impedir. Ele aparece na segunda lista, nomeado, com o
+motivo e os endereços que falharam.
+
+**DUAS FALHAS QUE EU MESMO ACHEI RELENDO O CÓDIGO ANTES DE COMMITAR**, e que
+ficam registradas porque as duas mandariam documento errado:
+
+1. **A fila guarda TENTATIVAS.** Um ofício que quicou pode ter duas linhas em
+   `FALHA_ENTREGA`. Sem trava, o lote mandaria o MESMO documento oficial duas
+   vezes para a mesma escola — e a segunda cópia não teria como ser desfeita.
+   Agora o número entra uma vez só.
+2. **Ofício sem PDF identificável estava indo para "prontos para sair".** O
+   `reenviarOficio` recusa esses; a tela prometeria um envio que já se sabia
+   que ia falhar. Foi para a pilha de quem precisa de gente.
+
+**DE QUEBRA, DUAS LEITURAS QUE SE MULTIPLICAVAM.** O `ofDest_lerRegistroOficio_`
+e o `ofDest_emailsDoCadastro_` varriam a planilha inteira A CADA CHAMADA.
+Aceitável para um ofício; no lote seria reler o Registro inteiro e as 679
+escolas quinze vezes. Os dois passaram a indexar uma vez por execução, mesmo
+padrão do `ofDest_cacheHistorico_` que já existia ali.
+
+**A REGRA DA MARCAÇÃO AGORA MORA EM UM LUGAR SÓ** (`ofDest_montarListaDestinos_`).
+Duplicá-la garantiria que as duas telas divergissem no primeiro ajuste — e
+divergir aqui significa o lote mandar para um endereço que o modal individual
+recusaria, sem ninguém perceber. O t148 mede que as duas escolhem igual.
+
+| | |
+|---|---|
+| Backend | `OficiosDestinatarios.gs` — `prepararReenvioLoteOficios`, `executarReenvioLoteOficios` |
+| Tela | faixa `histLoteBarra` + modal `histLoteOverlay` no Histórico |
+| Teto de exposição | **204/204** — os dois endpoints nasceram com `exigirModulo_` |
+| Teste | t148, 47 asserções |
+| Suíte | 150 arquivos, 5182 asserções, nenhuma falha |
+
+**A CONFERIR NO AR** — nada disto foi executado em sistema real:
+
+1. 🔴 a faixa vermelha aparece no Histórico com a contagem certa de falhas;
+2. 🔴 `Preparar reenvio` volta com as duas pilhas e leva **quanto tempo** — a
+   preparação vai ao Drive uma vez por ofício, e o limite de 6 minutos do Apps
+   Script é o que motivou o teto de 25 por rodada;
+3. 🔴 os endereços de "vai para" são os do cadastro de HOJE, não os que quicaram;
+4. 🔴 a coluna Anexos mostra ofício **e** ficha nos de filiação — se mostrar só
+   um, é o mesmo buraco do item 68 e o envio não deve ser confirmado;
+5. 🔴 depois de confirmar, o resultado item a item aparece na tela e os ofícios
+   saem da caixa de falha;
+6. 🟡 os que ficaram na segunda pilha continuam lá, e só saem com endereço novo
+   pelo reenvio individual.
+
 ### 71. 🟡 HOMOLOGAÇÃO REALINHADA COM PRODUÇÃO — versão 104
 
 04/09/2026, 14h09. Execução nº 76 do `deploy-homologacao.yml`.

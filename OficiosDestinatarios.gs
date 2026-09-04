@@ -374,50 +374,8 @@ function ofDest_preverReenvio_(dados) {
   var tipo   = String(dados.tipo   || registro.tipo   || "").trim();
 
   /* ── destinatários: as duas origens, sem duplicar ── */
-  var doOficio  = ofDest_separar_(registro.emails);
-  var doCadastro = ofDest_emailsDoCadastro_(escola);
-
-  var vistos = {}, lista = [];
-  function juntar(email, origem, noCadastro) {
-    var chave = String(email || "").trim().toLowerCase();
-    if (!chave) return;
-    if (vistos[chave]) {
-      /* Já entrou pela outra origem: soma a procedência em vez de repetir a
-         linha. Um endereço que está nos dois lugares é informação, não ruído. */
-      vistos[chave].origem = "deste ofício e do cadastro atual";
-      vistos[chave].noCadastro = vistos[chave].noCadastro || noCadastro;
-      return;
-    }
-    var h = ofDest_historico_(email);
-    var item = {
-      email: email,
-      origem: origem,
-      noCadastro: noCadastro,
-      confirmacoes: h.confirmacoes,
-      falhas: h.falhas,
-      envios: h.envios,
-      ultimaFalha: h.ultimaFalha,
-      ultimaConfirmacao: h.ultimaConfirmacao,
-      marcado: false
-    };
-    vistos[chave] = item;
-    lista.push(item);
-  }
-
-  doOficio.forEach(function (e)  { juntar(e, "deste ofício", false); });
-  doCadastro.forEach(function (e) { juntar(e, "cadastro atual da escola", true); });
-
-  /* A regra da marcação, escrita para poder ser discutida:
-     quem quicou nunca vem marcado; entre os que não quicaram, prefere-se o
-     que está no cadastro de HOJE. Se o cadastro não foi encontrado, cai para
-     "todos os do ofício sem falha" — assim a lista nunca abre vazia. */
-  var achouCadastro = doCadastro.length > 0;
-  lista.forEach(function (item) {
-    item.marcado = item.falhas === 0 && (achouCadastro ? item.noCadastro : true);
-  });
-  if (!lista.some(function (i) { return i.marcado; })) {
-    lista.forEach(function (i) { if (i.falhas === 0) i.marcado = true; });
-  }
+  var lista = ofDest_montarListaDestinos_(
+    ofDest_separar_(registro.emails), ofDest_emailsDoCadastro_(escola));
 
   /* ── anexos: os mesmos blobs que o envio vai mandar ── */
   var anexos = { itens: [], temFicha: false, exigeFicha: tipoOficioExigeFicha_(tipo), erro: "" };
@@ -447,12 +405,37 @@ function ofDest_preverReenvio_(dados) {
 
 /** A linha do ofício no Registro: e-mails gravados, ficha legada e data. */
 function ofDest_lerRegistroOficio_(numero) {
+  var fonte = ofDest_mapaRegistroOficios_();
+  if (!fonte.ok) return { ok: false, mensagem: fonte.mensagem };
+  var achado = fonte.mapa[String(numero || "").trim()];
+  if (!achado) return { ok: false, mensagem: "Ofício " + numero + " não encontrado no Registro." };
+  return achado;
+}
+
+/**
+ * O Registro inteiro indexado por número, lido UMA vez por execução.
+ *
+ * Mesmo motivo do `ofDest_mapaCadastroEscolas_`: a varredura linear era
+ * aceitável para um ofício e vira releitura da planilha inteira por item no
+ * reenvio em lote. Aqui pesa mais, porque o Registro cresce a cada ofício
+ * emitido enquanto a lista de escolas é praticamente fixa.
+ *
+ * Devolve `{ok, mensagem, mapa}` em vez de só o mapa: "Registro vazio" e
+ * "coluna faltando" são falhas de origem que precisam chegar à tela com essas
+ * palavras — trocá-las por um mapa vazio faria a tela dizer "ofício não
+ * encontrado", que é uma explicação errada para um problema de estrutura.
+ */
+function ofDest_mapaRegistroOficios_() {
+  if (ofDest_cacheRegistro_) return ofDest_cacheRegistro_;
+  var saida = { ok: false, mensagem: "", mapa: {} };
   try {
     var ss = SpreadsheetApp.openById(
       typeof getPlanilhaId === "function" ? getPlanilhaId() : PLANILHA_ID);
     var sh = ss.getSheetByName(PLANILHA_REGISTRO);
     if (!sh || sh.getLastRow() < 2) {
-      return { ok: false, mensagem: "Registro de ofícios vazio." };
+      saida.mensagem = "Registro de ofícios vazio.";
+      ofDest_cacheRegistro_ = saida;
+      return saida;
     }
     var hm = getHeaderMap_(sh);
     var cNum   = hm["Número do Ofício"];
@@ -462,11 +445,18 @@ function ofDest_lerRegistroOficio_(numero) {
     var cTipo  = hm["Tipo"];
     var cFicha = hm["Link Ficha"];
     var cData  = hm["Data envio ofício"] || hm["Data envio oficio"];
-    if (!cNum) return { ok: false, mensagem: "Coluna do número do ofício não encontrada." };
+    if (!cNum) {
+      saida.mensagem = "Coluna do número do ofício não encontrada.";
+      ofDest_cacheRegistro_ = saida;
+      return saida;
+    }
 
     var dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
     for (var i = 0; i < dados.length; i++) {
-      if (String(dados[i][cNum - 1] || "").trim() !== numero) continue;
+      var num = String(dados[i][cNum - 1] || "").trim();
+      /* Primeira linha vence, como a varredura fazia ao retornar no primeiro
+         casamento. */
+      if (!num || saida.mapa[num]) continue;
       var emails = cTodos ? String(dados[i][cTodos - 1] || "").trim() : "";
       if (!emails && cPrinc) emails = String(dados[i][cPrinc - 1] || "").trim();
       var quando = null;
@@ -474,7 +464,7 @@ function ofDest_lerRegistroOficio_(numero) {
         var bruto = dados[i][cData - 1];
         if (bruto instanceof Date && !isNaN(bruto.getTime())) quando = bruto;
       }
-      return {
+      saida.mapa[num] = {
         ok: true,
         emails: emails,
         escola: cEsc  ? String(dados[i][cEsc  - 1] || "").trim() : "",
@@ -483,41 +473,70 @@ function ofDest_lerRegistroOficio_(numero) {
         dataEnvio: quando
       };
     }
-    return { ok: false, mensagem: "Ofício " + numero + " não encontrado no Registro." };
+    saida.ok = true;
   } catch (e) {
-    return { ok: false, mensagem: String(e && e.message || e) };
+    saida.ok = false;
+    saida.mensagem = String(e && e.message || e);
   }
+  ofDest_cacheRegistro_ = saida;
+  return saida;
 }
+var ofDest_cacheRegistro_ = null;
 
 /** Os e-mails que o CADASTRO DA ESCOLA tem hoje — não os do ofício antigo. */
 function ofDest_emailsDoCadastro_(escola) {
   var nome = String(escola || "").trim().toUpperCase();
   if (!nome) return [];
+  var mapa = ofDest_mapaCadastroEscolas_();
+  return mapa[nome] || [];
+}
+
+/**
+ * A aba Escolas indexada por razão social, lida UMA vez por execução.
+ *
+ * Antes cada consulta varria a aba inteira. Num ofício só isso não aparecia;
+ * no reenvio em lote de 04/09/2026 passaria a ser uma varredura de 679 escolas
+ * POR OFÍCIO — o mesmo dado, relido quinze vezes.
+ *
+ * Mesmo padrão do `ofDest_cacheHistorico_` logo acima, com a mesma
+ * contrapartida: o mapa vale para a execução corrente. Alteração feita no
+ * cadastro no meio de uma execução só aparece na próxima — o que para uma
+ * chamada de tela é o comportamento certo, porque a lista que a pessoa está
+ * vendo não deve mudar embaixo dela.
+ *
+ * Duplicata de razão social mantém a PRIMEIRA linha, que é o que a varredura
+ * linear fazia ao retornar no primeiro casamento.
+ */
+function ofDest_mapaCadastroEscolas_() {
+  if (ofDest_cacheCadastro_) return ofDest_cacheCadastro_;
+  var mapa = {};
   try {
     var ss = SpreadsheetApp.openById(
       typeof getPlanilhaId === "function" ? getPlanilhaId() : PLANILHA_ID);
     var sh = ss.getSheetByName(typeof ABA_ESCOLAS !== "undefined" ? ABA_ESCOLAS : "Escolas");
-    if (!sh || sh.getLastRow() < 2) return [];
-
-    var hm     = getHeaderMap_(sh);
-    var cNome  = hm["Escola (Razão Social)"] || hm["Escola"] || hm["Unidade"];
-    var cTodos = hm["E-mails (todos)"];
-    var cPrinc = hm["E-mail (principal)"];
-    if (!cNome || (!cTodos && !cPrinc)) return [];
-
-    var dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
-    for (var i = 0; i < dados.length; i++) {
-      if (String(dados[i][cNome - 1] || "").trim().toUpperCase() !== nome) continue;
-      var v = cTodos ? String(dados[i][cTodos - 1] || "").trim() : "";
-      if (!v && cPrinc) v = String(dados[i][cPrinc - 1] || "").trim();
-      return ofDest_separar_(v);
+    if (sh && sh.getLastRow() > 1) {
+      var hm     = getHeaderMap_(sh);
+      var cNome  = hm["Escola (Razão Social)"] || hm["Escola"] || hm["Unidade"];
+      var cTodos = hm["E-mails (todos)"];
+      var cPrinc = hm["E-mail (principal)"];
+      if (cNome && (cTodos || cPrinc)) {
+        var dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+        for (var i = 0; i < dados.length; i++) {
+          var nome = String(dados[i][cNome - 1] || "").trim().toUpperCase();
+          if (!nome || mapa[nome]) continue;
+          var v = cTodos ? String(dados[i][cTodos - 1] || "").trim() : "";
+          if (!v && cPrinc) v = String(dados[i][cPrinc - 1] || "").trim();
+          mapa[nome] = ofDest_separar_(v);
+        }
+      }
     }
-    return [];
   } catch (e) {
-    Logger.log("ofDest_emailsDoCadastro_: " + e);
-    return [];
+    Logger.log("ofDest_mapaCadastroEscolas_: " + e);
   }
+  ofDest_cacheCadastro_ = mapa;
+  return mapa;
 }
+var ofDest_cacheCadastro_ = null;
 
 /* ── helpers ───────────────────────────────────────────────────────────── */
 
@@ -645,5 +664,351 @@ function remetenteInstitucionalAtual(tokenSessao) {
        executora. A tela precisa dizer isso, não escondê-lo. */
     comoInstitucional: usaPretendido,
     contaExecutora: efetivo
+  };
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   A REGRA DA MARCAÇÃO, EM UM LUGAR SÓ
+
+   Extraída de `ofDest_preverReenvio_` em 04/09/2026, quando o reenvio em lote
+   passou a precisar da MESMA decisão. Duplicá-la seria garantir que as duas
+   telas divergissem no primeiro ajuste — e divergir aqui significa o lote
+   mandar para um endereço que o modal individual recusaria.
+
+   A regra, escrita para poder ser discutida: quem quicou nunca vem marcado;
+   entre os que não quicaram, prefere-se o que está no cadastro de HOJE. Se o
+   cadastro não foi encontrado, cai para "todos os do ofício sem falha" — assim
+   a lista nunca abre vazia.
+
+   O caso em que NADA fica marcado é informação, não defeito: significa que
+   todos os endereços conhecidos daquele ofício já quicaram. É exatamente o
+   que separa o que o sistema pode reenviar sozinho do que precisa de gente.
+   ══════════════════════════════════════════════════════════════════════════ */
+function ofDest_montarListaDestinos_(doOficio, doCadastro) {
+  doOficio   = doOficio   || [];
+  doCadastro = doCadastro || [];
+
+  var vistos = {}, lista = [];
+  function juntar(email, origem, noCadastro) {
+    var chave = String(email || "").trim().toLowerCase();
+    if (!chave) return;
+    if (vistos[chave]) {
+      /* Já entrou pela outra origem: soma a procedência em vez de repetir a
+         linha. Um endereço que está nos dois lugares é informação, não ruído. */
+      vistos[chave].origem = "deste ofício e do cadastro atual";
+      vistos[chave].noCadastro = vistos[chave].noCadastro || noCadastro;
+      return;
+    }
+    var h = ofDest_historico_(email);
+    var item = {
+      email: email,
+      origem: origem,
+      noCadastro: noCadastro,
+      confirmacoes: h.confirmacoes,
+      falhas: h.falhas,
+      envios: h.envios,
+      ultimaFalha: h.ultimaFalha,
+      ultimaConfirmacao: h.ultimaConfirmacao,
+      marcado: false
+    };
+    vistos[chave] = item;
+    lista.push(item);
+  }
+
+  doOficio.forEach(function (e)   { juntar(e, "deste ofício", false); });
+  doCadastro.forEach(function (e) { juntar(e, "cadastro atual da escola", true); });
+
+  var achouCadastro = doCadastro.length > 0;
+  lista.forEach(function (item) {
+    item.marcado = item.falhas === 0 && (achouCadastro ? item.noCadastro : true);
+  });
+  if (!lista.some(function (i) { return i.marcado; })) {
+    lista.forEach(function (i) { if (i.falhas === 0) i.marcado = true; });
+  }
+  return lista;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   REENVIO EM LOTE — o sistema decide o destino; a pessoa confere e confirma
+
+   ORIGEM, 04/09/2026. Depois de a reconciliação de status virar automática, o
+   usuário perguntou: *"ele não reenvia sozinho? E eu só iria conferir?"*.
+
+   Ele estava certo, e a pergunta expôs uma incoerência do desenho: o
+   `ofDest_preverReenvio_` já faz o julgamento inteiro — junta as duas origens
+   de endereço, consulta o histórico de cada um, recusa quem quicou, prefere o
+   cadastro de hoje, reúne os anexos — e depois devolve UM clique. Quinze
+   ofícios em falha viravam quinze aberturas de modal para reconfirmar quinze
+   decisões que o sistema já tinha tomado. É o que a REGRA Nº 0.6 chama de
+   defeito de desenho, não de trabalho.
+
+   O QUE FICA AUTOMÁTICO: achar os ofícios em falha, escolher o endereço de
+   cada um, reunir os anexos, separar o que dá para mandar do que não dá.
+
+   O QUE NÃO FICA, E POR QUÊ: a confirmação. Não porque o sistema não saiba —
+   ele sabe —, mas porque são documentos oficiais indo para escolas e e-mail
+   enviado não volta. Um clique depois de ver a lista inteira não é trabalho: é
+   a última chance de perceber que um deles vai para o lugar errado. Decidido
+   com o usuário no mesmo dia, com estas palavras: "confirmação manual".
+
+   O LIMITE HONESTO: ofício cujos endereços TODOS já quicaram não entra na
+   pilha que sai. Ninguém sabe para onde mandar, e inventar destino seria
+   decidir pela pessoa. Ele aparece na segunda lista, nomeado, com o motivo.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Teto por preparação. Existe por dois motivos, os dois medidos e não
+   estéticos:
+
+   1. TEMPO. Cada ofício custa uma ida ao Drive para reunir os anexos. O
+      Apps Script corta a execução em 6 minutos, e uma preparação cortada no
+      meio não devolve nada — a pessoa espera e não recebe lista nenhuma.
+   2. COTA. O Gmail conta DESTINATÁRIOS por dia, não mensagens. Um lote grande
+      pode esgotar a cota no meio e transformar a segunda metade em erro.
+
+   Vinte e cinco cabe com folga nos dois. Passando disso, a preparação diz que
+   limitou e quantos ficaram para a próxima rodada — nunca corta em silêncio. */
+var OFDEST_LOTE_MAX = 25;
+
+/**
+ * Monta a conferência do reenvio em lote. NÃO ENVIA NADA.
+ *
+ * Devolve duas pilhas: `prontos` (têm ao menos um endereço sem falha) e
+ * `pendentes` (não têm — precisam de gente).
+ */
+function prepararReenvioLoteOficios(tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
+  return ofDest_prepararLote_();
+}
+
+function ofDest_prepararLote_() {
+  var ss = SpreadsheetApp.openById(
+    typeof getPlanilhaId === "function" ? getPlanilhaId() : PLANILHA_ID);
+
+  /* A FILA é a fonte que o Histórico mostra na tela. Usar o Registro aqui
+     faria o botão contar uma coisa e a lista abaixo dele mostrar outra. */
+  var nomeAba = typeof ABA_FILA_OFICIOS !== "undefined"
+    ? ABA_FILA_OFICIOS : "FILA_ENVIO_OFICIOS";
+  var aba = ss.getSheetByName(nomeAba);
+  if (!aba || aba.getLastRow() < 2) {
+    return { ok: true, total: 0, analisados: 0, limitado: false, limite: OFDEST_LOTE_MAX,
+             prontos: [], pendentes: [],
+             mensagem: "Nenhum ofício em falha de entrega." };
+  }
+
+  var cab = aba.getRange(1, 1, 1, aba.getLastColumn()).getValues()[0].map(String);
+  var idx = function (nome) { return cab.indexOf(nome); };
+  var col = getColunasFilaOficios_(idx);
+  if (col.numero < 0 || col.status < 0) {
+    return { ok: false, mensagem: "Colunas NUMERO_OFICIO/STATUS não encontradas na " + nomeAba + "." };
+  }
+
+  var linhas = aba.getRange(2, 1, aba.getLastRow() - 1, aba.getLastColumn()).getValues();
+  var falhas = [], vistosNumero = {};
+  for (var i = 0; i < linhas.length; i++) {
+    if (String(linhas[i][col.status] || "").trim().toUpperCase() !== "FALHA_ENTREGA") continue;
+    var numero = String(linhas[i][col.numero] || "").trim();
+    if (!numero) continue;
+    /* MESMO NÚMERO, DUAS LINHAS, UM OFÍCIO SÓ. A fila guarda tentativas, e um
+       ofício que quicou pode aparecer mais de uma vez em falha. Sem esta
+       trava o lote mandaria o MESMO documento oficial duas vezes para a mesma
+       escola — e a segunda cópia não teria como ser desfeita. */
+    if (vistosNumero[numero]) continue;
+    vistosNumero[numero] = true;
+    falhas.push({
+      numero: numero,
+      escola: col.escola >= 0 ? String(linhas[i][col.escola] || "").trim() : "",
+      tipo:   col.tipo   >= 0 ? String(linhas[i][col.tipo]   || "").trim() : "",
+      url:    col.anexos >= 0 ? extrairLinkPdfOficio_(linhas[i][col.anexos]) : ""
+    });
+  }
+
+  var total = falhas.length;
+  var limitado = total > OFDEST_LOTE_MAX;
+  if (limitado) falhas = falhas.slice(0, OFDEST_LOTE_MAX);
+
+  var prontos = [], pendentes = [], destinatariosTotais = 0;
+
+  for (var j = 0; j < falhas.length; j++) {
+    var f = falhas[j];
+    var registro = ofDest_lerRegistroOficio_(f.numero);
+
+    /* Ofício que a FILA conhece e o Registro não. Não é caso de enviar às
+       cegas: sem a linha do Registro não há e-mails gravados nem data de
+       envio, e a data é o que resgata a ficha daquele lote no Drive. */
+    if (!registro.ok) {
+      pendentes.push({ numero: f.numero, escola: f.escola, tipo: f.tipo,
+                       motivo: registro.mensagem || "não encontrado no Registro",
+                       enderecos: [] });
+      continue;
+    }
+
+    var escola = f.escola || registro.escola || "";
+    var tipo   = f.tipo   || registro.tipo   || "";
+    var lista  = ofDest_montarListaDestinos_(
+      ofDest_separar_(registro.emails), ofDest_emailsDoCadastro_(escola));
+
+    var escolhidos = lista.filter(function (d) { return d.marcado; })
+                          .map(function (d) { return d.email; });
+
+    if (!escolhidos.length) {
+      pendentes.push({
+        numero: f.numero, escola: escola, tipo: tipo,
+        motivo: lista.length
+          ? ("todos os " + lista.length + " endereços conhecidos já quicaram")
+          : "nenhum endereço encontrado — nem no ofício, nem no cadastro da escola",
+        enderecos: lista.map(function (d) {
+          return { email: d.email, falhas: d.falhas, origem: d.origem };
+        })
+      });
+      continue;
+    }
+
+    /* Os anexos são reunidos pela MESMA função que o envio usa — é o que vai,
+       não o que deveria ir. Guardamos só nomes e procedências: segurar os
+       blobs de 25 ofícios ao mesmo tempo não caberia na memória da execução,
+       e a tela só precisa dos nomes. */
+    /* SEM O PDF NÃO EXISTE REENVIO. O `reenviarOficio` recusa o ofício cuja
+       URL não identifica arquivo no Drive — deixá-lo em "prontos para sair"
+       seria prometer um envio que a tela já sabe que vai falhar. Vai para a
+       pilha de quem precisa de gente, que é onde ele de fato está. */
+    var idOficio = extrairIdDriveOficio_(String(f.url || ""));
+    if (!idOficio) {
+      pendentes.push({
+        numero: f.numero, escola: escola, tipo: tipo,
+        motivo: "não foi possível identificar o PDF deste ofício no Drive",
+        enderecos: []
+      });
+      continue;
+    }
+
+    var anexos = { itens: [], temFicha: false, exigeFicha: tipoOficioExigeFicha_(tipo), erro: "" };
+    try {
+      var reuniao = reunirAnexosReenvioOficio_(
+        f.numero, idOficio, tipo, escola, registro.dataEnvio, registro.linkFicha);
+      anexos.itens = reuniao.itens;
+      anexos.temFicha = reuniao.itens.some(function (it) { return anexoEhFicha_(it.nome); });
+    } catch (e) {
+      anexos.erro = String(e && e.message || e);
+    }
+
+    destinatariosTotais += escolhidos.length;
+    prontos.push({
+      numero: f.numero, escola: escola, tipo: tipo, url: f.url,
+      destinatarios: escolhidos,
+      anexos: anexos,
+      /* O aviso que o modal individual já dá, repetido item a item: tipo que
+         AFIRMA a ficha no corpo indo sem ela manda à escola uma ordem sem o
+         documento que a sustenta. */
+      semFicha: anexos.exigeFicha && !anexos.temFicha
+    });
+  }
+
+  var cota = -1;
+  try { cota = MailApp.getRemainingDailyQuota(); } catch (e2) {}
+
+  return {
+    ok: true,
+    total: total,
+    analisados: falhas.length,
+    limitado: limitado,
+    limite: OFDEST_LOTE_MAX,
+    prontos: prontos,
+    pendentes: pendentes,
+    destinatariosTotais: destinatariosTotais,
+    cota: cota,
+    /* A cota do Gmail conta DESTINATÁRIOS, não mensagens. Comparar com o
+       número de ofícios daria falsa folga num lote com vários endereços. */
+    cotaSuficiente: cota < 0 || cota >= destinatariosTotais,
+    mensagem: total === 0
+      ? "Nenhum ofício em falha de entrega."
+      : (prontos.length + " pronto(s) para sair, " + pendentes.length +
+         " sem endereço bom" + (limitado
+           ? ". Limitado a " + OFDEST_LOTE_MAX + " por rodada (" +
+             (total - OFDEST_LOTE_MAX) + " ficaram para a próxima)."
+           : "."))
+  };
+}
+
+/**
+ * Envia o lote que a pessoa confirmou na tela.
+ *
+ * Manda EXATAMENTE a lista aprovada. Não recalcula destino: quem olhou a
+ * conferência e clicou foi a pessoa, e trocar o endereço embaixo dela
+ * transformaria a confirmação em teatro. O `reenviarOficio` — o mesmo do envio
+ * individual — revalida cada endereço, reúne os anexos de novo no momento do
+ * envio, grava JA_FALHOU, vira o status e registra na trilha de auditoria.
+ */
+function executarReenvioLoteOficios(dados, tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
+
+  var itens = (dados && Array.isArray(dados.itens)) ? dados.itens : [];
+  if (!itens.length) return { ok: false, mensagem: "Nenhum ofício informado para reenvio." };
+  if (itens.length > OFDEST_LOTE_MAX) {
+    return { ok: false, mensagem: "Lote acima do limite de " + OFDEST_LOTE_MAX + " ofícios." };
+  }
+
+  var resultados = [], enviados = 0, falharam = 0, ignorados = 0;
+  var interrompidoPorCota = false;
+
+  for (var i = 0; i < itens.length; i++) {
+    var it = itens[i] || {};
+    var numero = String(it.numero || "").trim();
+    var destinos = Array.isArray(it.destinatarios) ? it.destinatarios : [];
+
+    /* Sem destino aprovado não se manda nada. Um item que chegou aqui vazio é
+       erro de tela, e adivinhar o endereço seria justamente o que a
+       conferência existe para impedir. */
+    if (!numero || !destinos.length) {
+      ignorados++;
+      resultados.push({ numero: numero || "(sem número)", ok: false,
+                        mensagem: "Ignorado: nenhum destinatário aprovado para este ofício." });
+      continue;
+    }
+
+    /* A COTA É CONFERIDA A CADA ITEM, não só no começo. Conferir uma vez só
+       deixaria o lote estourar no meio, e cada ofício restante voltaria como
+       "erro" genérico — indistinguível de endereço inválido. Assim o corte é
+       nomeado: quem saiu, saiu; quem não saiu, sabe-se por quê. */
+    var cota = -1;
+    try { cota = MailApp.getRemainingDailyQuota(); } catch (e) {}
+    if (cota >= 0 && cota < destinos.length) {
+      interrompidoPorCota = true;
+      for (var r = i; r < itens.length; r++) {
+        resultados.push({ numero: String((itens[r] || {}).numero || "(sem número)"), ok: false,
+                          mensagem: "Não enviado: cota diária de e-mail esgotada (" + cota + " restante(s))." });
+      }
+      break;
+    }
+
+    var saida;
+    try {
+      saida = reenviarOficio({
+        numero: numero, url: it.url, escola: it.escola, tipo: it.tipo,
+        destinatarios: destinos
+      }, tokenSessao);
+    } catch (e3) {
+      saida = { erro: true, mensagem: String(e3 && e3.message || e3) };
+    }
+
+    if (saida && !saida.erro) { enviados++; }
+    else { falharam++; }
+    resultados.push({
+      numero: numero,
+      ok: !!(saida && !saida.erro),
+      mensagem: (saida && saida.mensagem) || "sem resposta do envio"
+    });
+  }
+
+  return {
+    ok: true,
+    enviados: enviados,
+    falharam: falharam,
+    ignorados: ignorados,
+    interrompidoPorCota: interrompidoPorCota,
+    resultados: resultados,
+    mensagem: enviados + " ofício(s) reenviado(s)" +
+      (falharam  ? ", " + falharam  + " com erro" : "") +
+      (ignorados ? ", " + ignorados + " ignorado(s)" : "") +
+      (interrompidoPorCota ? ". Interrompido pela cota diária de e-mail." : ".")
   };
 }
