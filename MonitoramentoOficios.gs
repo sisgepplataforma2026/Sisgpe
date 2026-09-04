@@ -464,6 +464,57 @@ function removerTriggerFalhasEntrega(tokenSessao) {
    ══════════════════════════════════════════════════════════════════════════ */
 function verificarFalhasEntregaOficios() {
   try {
+    /* RECONCILIAÇÃO AUTOMÁTICA — 04/09/2026, a pedido do usuário: "tudo
+       automatizado".
+
+       Ofício reenviado ANTES de a marcação existir (produção 695, 13h14)
+       ficou com Status FALHA_ENTREGA mesmo tendo saído. Havia uma função de
+       manutenção para acertar isso, que alguém teria de lembrar de rodar —
+       e o que a pessoa precisa lembrar de fazer, ela esquece.
+
+       AQUI É O LUGAR CERTO, e não é oportunismo: esta função existe para
+       manter o status de entrega verdadeiro. Um ofício que o log diz que foi
+       reenviado e a planilha diz que falhou é justamente o status deixando de
+       ser verdadeiro.
+
+       NÃO É DECISÃO, É ESCRITURAÇÃO. Não há julgamento a fazer: o log
+       registra o reenvio, o status contradiz, e os dois não podem estar
+       certos. Por isso pode ser automático — o limite da REGRA Nº 0.6 é não
+       decidir pela pessoa, e aqui não há o que decidir.
+
+       E NÃO É EM SILÊNCIO: quando ajusta alguma coisa, grava no log de
+       sistema com nome próprio, para aparecer na auditoria.
+
+       VEM ANTES da verificação de bounce de propósito. O ofício reconciliado
+       passa a ENVIADO, e só nesse estado ele volta a ser examinado por esta
+       função — reconciliar depois deixaria a checagem dele para a próxima
+       execução, cinco minutos mais tarde. */
+    try {
+      if (typeof oficio_reconciliarReenvios_ === "function") {
+        var rec = oficio_reconciliarReenvios_(false);
+        if (rec && rec.ajustados > 0) {
+          Logger.log("verificarFalhasEntregaOficios: " + rec.ajustados +
+                     " ofício(s) reconciliado(s) — reenviados que seguiam como falha.");
+          try {
+            registrarLogSistema_({
+              usuario: "sistema",
+              numero:  rec.ajustados + " ofício(s)",
+              tipo:    "OFICIOS_REENVIO_RECONCILIADO",
+              escola:  "",
+              cnpj:    "",
+              email:   "",
+              codigo:  rec.ajustar.map(function (a) { return a.numero; }).join(", ")
+            });
+          } catch (eLog) {}
+        }
+      }
+    } catch (eRec) {
+      /* Reconciliar é conveniência; verificar bounce é a obrigação desta
+         função. Falhar na primeira não pode impedir a segunda. */
+      Logger.log("verificarFalhasEntregaOficios: reconciliação falhou — " +
+                 (eRec && eRec.message || eRec));
+    }
+
     var ss = MON_OFICIOS_getSS_();
     var shRegistro = ss.getSheetByName(PLANILHA_REGISTRO);
     if (!shRegistro || shRegistro.getLastRow() < 2) return { ok: true, falhas: 0, mensagem: "Registro vazio." };

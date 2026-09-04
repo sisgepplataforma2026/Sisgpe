@@ -711,7 +711,17 @@ function oficio_marcarReenviado_(numero) {
    aconteceu.
    ══════════════════════════════════════════════════════════════════════════ */
 function reconciliarReenviosOficios(simular, tokenSessao) {
-  exigirModulo_(tokenSessao, "documentos", false);
+  /* PORTA DUPLA. Isto é ferramenta de manutenção: roda uma vez, do EDITOR do
+     Apps Script, onde não existe token de sessão. Fechar só com token deixaria
+     a função sem lugar nenhum de onde ser chamada — foi o que eu fiz na
+     primeira versão, e o usuário descobriu ao procurá-la no seletor do editor
+     e não achar como executar.
+
+     Mesmo padrão do `sincronizarStatusOficiosEnviados` (01/09) e dos
+     handlers de gatilho: aceita sessão OU administrador identificado pela
+     conta que executa. */
+  exigirAdminOuSessao_(tokenSessao, "documentos",
+                       "Reconciliacao de reenvios de oficios", true);
   /* Simular é o padrão: só escreve quem passar `false` de propósito. */
   return oficio_reconciliarReenvios_(simular !== false);
 }

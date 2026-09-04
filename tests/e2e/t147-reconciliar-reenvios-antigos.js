@@ -112,4 +112,67 @@ igual(denovo.ajustados, 0,
       "a segunda passada não ajusta ninguém — é idempotente",
       "quem já está ENVIADO não entra na conta");
 
+passo("a porta");
+
+/* A primeira versão fechou com `exigirModulo_`, que exige token. Ferramenta de
+   manutenção que só roda do editor ficaria sem porta de entrada nenhuma — foi
+   o usuário quem percebeu, procurando-a no seletor do editor. */
+ok(/exigirAdminOuSessao_/.test(String(g.reconciliarReenviosOficios)),
+   "aceita sessão OU administrador — roda do editor e da tela",
+   "com token só, ela não rodaria em lugar nenhum");
+
+b.bloqueia(function () {
+  g.reconciliarReenviosOficios(true, "token-que-nao-existe");
+}, "e continua recusando token inválido");
+
+resumo();
+
+/* ── acrescentado depois do pedido "tudo automatizado" ─────────────────── */
+fluxo("RECONCILIAÇÃO · acontece sozinha, no gatilho que já cuida do status");
+passo("o gatilho reconcilia");
+
+/* Volta o cenário ao estado de antes: reenviado no log, falha na planilha. */
+reg.getRange(2, 3).setValue("FALHA_ENTREGA");   // 144
+reg.getRange(3, 3).setValue("FALHA_ENTREGA");   // 168
+
+igual(status("144/2026"), "FALHA_ENTREGA", "o 144 voltou a aparecer como falha");
+
+g.verificarFalhasEntregaOficios();
+
+igual(status("144/2026"), "ENVIADO",
+      "o gatilho reconciliou sozinho — ninguém precisou lembrar de rodar nada");
+igual(status("168/2026"), "ENVIADO", "e o 168 também");
+igual(status("172/2026"), "FALHA_ENTREGA",
+      "e o que nunca foi reenviado continua como falha",
+      "automatizar não pode virar esconder trabalho por fazer");
+
+passo("não é em silêncio");
+
+const logSis = ss.getSheetByName("LOG_SISTEMA");
+const linhasLog = logSis.getRange(2, 1, logSis.getLastRow() - 1, 9).getValues();
+const registro = linhasLog.filter(l => String(l[3]) === "OFICIOS_REENVIO_RECONCILIADO");
+ok(registro.length >= 1,
+   "o ajuste automático fica gravado no log de sistema",
+   "imposição em silêncio é o que a REGRA Nº 0.6 proíbe");
+ok(String(registro[0][7]).indexOf("144/2026") > -1,
+   "e diz QUAIS ofícios foram ajustados",
+   String(registro[0][7]));
+
+passo("a ordem dentro do gatilho");
+
+const fonteGatilho = String(g.verificarFalhasEntregaOficios).replace(/\s+/g, " ");
+const semCom = fonteGatilho.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+ok(semCom.indexOf("oficio_reconciliarReenvios_") < semCom.indexOf("MON_OFICIOS_getSS_"),
+   "reconcilia ANTES de verificar bounce",
+   "o ofício reconciliado vira ENVIADO, e só assim é examinado na MESMA execução");
+
+/* O que importa não é a distância em caracteres, e sim que o tratamento de
+   erro FECHE antes de a função seguir para a obrigação dela. */
+const trechoEntre = semCom.slice(
+  semCom.indexOf("oficio_reconciliarReenvios_"),
+  semCom.indexOf("MON_OFICIOS_getSS_"));
+ok(/catch\s*\(/.test(trechoEntre),
+   "e a reconciliação vai em try próprio, fechado antes do resto",
+   "falhar nela não pode impedir a verificação de bounce, que é a obrigação");
+
 resumo();
