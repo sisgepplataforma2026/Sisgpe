@@ -118,6 +118,78 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
+### 68. 🔴 PRODUÇÃO NA VERSÃO 694 — o reenvio com endereço de hoje e ficha à vista
+
+04/09/2026, 12h08. Publicada a mudança do reenvio pedida pelo usuário depois
+do caso do ofício 144/2026.
+
+**O QUE FOI PARA O AR:**
+
+| | |
+|---|---|
+| Versão | **694** (`producao-a319c05`) |
+| Rollback | versão **692** |
+| Aplicado | 4 arquivos modificados, **nenhum criado, nenhum removido** |
+| Quais | `EmailOficios.gs`, `OficiosDestinatarios.gs`, `OficiosFormulario.html`, `OficiosScripts.html` |
+
+O comparativo foi lido no log, não suposto — o veredito saiu em letras:
+`DIFERENCAS: 4 arquivo(s) — 0 criado(s), 0 removido(s), 4 modificado(s)`.
+
+**O DEFEITO QUE ORIGINOU.** O usuário abriu o reenvio do 144/2026 e o campo
+rotulado "Vai para (do cadastro)" mostrava `thalia.ferreira@faesa.br` — o
+endereço morto que fez aquele ofício quicar, e que ele já tinha substituído no
+cadastro no dia anterior. **O rótulo mentia:** a função lia a linha do próprio
+ofício no Registro, congelada na emissão, e nunca leu o cadastro da escola.
+Reenviar dali produziria o oitavo bounce.
+
+**O QUE MUDOU:**
+
+1. O modal junta as **duas origens** — o que estava no ofício e o que está hoje
+   no cadastro —, cada endereço dizendo de onde veio e com quantas falhas ou
+   confirmações tem. Quem quicou nasce desmarcado; quem está no cadastro atual
+   e não quicou nasce marcado.
+2. Os **anexos aparecem antes do clique**, reunidos pela MESMA função que o
+   envio usa. Num tipo que afirma a ficha no corpo — filiação, desfiliação,
+   oposição — a ausência dela vira alerta vermelho e exige um segundo clique.
+3. O **resgate no Drive passou a começar pela pasta em que o PDF do ofício
+   está**. A emissão grava ofício e fichas na mesma pasta do ano; antes a busca
+   partia da pasta configurada por tipo, que falha calada se apontar para outra
+   árvore.
+
+**A CONFERIR EM PRODUÇÃO — é o reenvio dos 15 que nunca chegaram:**
+
+1. 🔴 **`Anexos: 2` num ofício de Filiação** (ofício + ficha). `Anexos: 1` é
+   ficha faltando, e é o número que decide se o resgate no Drive funciona
+   contra a pasta real — o que o emulador não alcança;
+2. 🔴 o endereço oferecido é o **novo**, não o da Thalia;
+3. 🟡 o alerta vermelho aparece quando a ficha não é achada.
+
+### 68b. ⚠️ A PUBLICAÇÃO FALHOU UMA VEZ, E NÃO HAVIA NADA ERRADO COM ELA
+
+A primeira tentativa criou a versão **693** e reprovou. O `clasp deploy`
+respondeu `Deployed @693`; a listagem, pedida 1,3 segundo depois, ainda trazia
+`@692`. A conferência leu **uma vez**, não bateu, e o job reprovou.
+
+Era atraso de propagação do Google. A mesma publicação, repetida minutos
+depois, passou e virou a 694. A 693 ficou órfã no histórico — inofensiva, só
+nunca foi apontada.
+
+**A trava fez o certo:** recusou dizer "publicado" sem ver a implantação na
+versão nova. É a diferença entre "o comando não deu erro" e "o resultado é o
+esperado".
+
+**Mas ler uma vez só era defeito:** transformava toda publicação em
+cara-ou-coroa. Agora são até cinco leituras, com 6s entre elas. Não afrouxa
+nada — se a implantação não mudar de verdade, as cinco falham e o job reprova
+igual. O que muda é deixar de confundir *"ainda não propagou"* com *"não
+apontou"*.
+
+**Estado intermediário que existiu, e vale saber que existe:** entre as duas
+tentativas, o código novo já estava no projeto (o push tinha funcionado) mas a
+URL ainda servia a versão antiga. Ou seja: gatilho rodando código novo, tela
+mostrando o antigo. Durou minutos, mas é um estado real do sistema — e num
+problema futuro, é a primeira coisa a descartar.
+
 ### 67. 🔴🔴 EXISTIA UM SEGUNDO SISTEMA RODANDO NA MESMA PLANILHA
 
 03/09/2026. **O achado mais importante desta semana, e ele reabre item que eu
