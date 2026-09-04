@@ -118,7 +118,7 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
-### 72. 🔴 REENVIO EM LOTE — o sistema escolhe o destino, você confere e confirma
+### 72. ✅ REENVIO EM LOTE — o sistema escolhe o destino, você confere e confirma
 
 04/09/2026, 18h18. **No ar nos dois ambientes.**
 
@@ -195,8 +195,10 @@ recusaria, sem ninguém perceber. O t148 mede que as duas escolhem igual.
   nenhum**. É o defeito de 01/09 medido como resolvido;
 - ✅ a ficha vai junto: o 144 leva ofício + 1 ficha, o 168 leva ofício + **11
   fichas**, o 172 leva duas. Responde o "Precisa ir ficha e ofício" do item 68;
-- 🔴 **o tempo da preparação continua sem medida** — é o número que decide se o
-  teto de 25 por rodada está certo.
+- 🟡 **o tempo da preparação continua sem medida** — é o número que decide se o
+  teto de 25 por rodada está certo. Baixado de 🔴 para 🟡: duas preparações
+  reais (11 e 4 ofícios) completaram sem o usuário reclamar de demora, o que
+  descarta o cenário ruim, mas não é medição.
 
 **O DEFEITO QUE O PRIMEIRO USO ACHOU, e o conserto.** Ele marcou alguns
 ofícios na tabela, clicou em "Preparar reenvio" e vieram os onze:
@@ -216,6 +218,28 @@ pessoa confia nele. Corrigido em três frentes:
 3. dentro da conferência dá para **desmarcar item a item**, e o botão conta o
    que está marcado agora. Sem isso, tirar um ofício exigiria cancelar e
    refazer uma preparação que vai ao Drive uma vez por ofício.
+
+**✅ ENVIO REAL CONFIRMADO, 04/09 às 19h4x (versão 698).** O usuário selecionou
+quatro ofícios na tabela, preparou e confirmou. Resultado na tela, item a item:
+
+```
+✅ 203/2026 → karolina.caldeira@faesa.br, luiza.stefani@faesa.br · Anexos: 2 · ENVIADO
+✅ 236/2026 → idem · Anexos: 2 · ENVIADO
+✅ 242/2026 → idem · Anexos: 2 · ENVIADO
+✅ 303/2026 → idem · Anexos: 2 · ENVIADO
+```
+
+O que isto fecha, e que até então era só emulador:
+
+- **a seleção é honrada** — quatro marcados, quatro enviados, nenhum a mais;
+- **`pacote original da fila`** — os anexos vieram do pacote guardado na fila,
+  não reconstruídos do Drive. São os documentos originais, não uma remontagem;
+- **`Status agora: ENVIADO`** — os quatro saíram da caixa de falha, com a marca
+  `JA_FALHOU` preservando a reputação do endereço (item 69);
+- **o resultado item a item aparece na tela** e sobrevive ao fim do envio.
+
+Restam 7 dos 11. Eles continuam em falha legítima — a reconciliação do item 70
+não os toca, porque nunca foram reenviados.
 
 **A CONFERIR NO AR** — o que segue sem execução:
 
