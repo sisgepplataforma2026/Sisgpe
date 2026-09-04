@@ -184,7 +184,40 @@ recusaria, sem ninguém perceber. O t148 mede que as duas escolhem igual.
 | Teste | t148, 47 asserções |
 | Suíte | 150 arquivos, 5182 asserções, nenhuma falha |
 
-**A CONFERIR NO AR** — nada disto foi executado em sistema real:
+**O QUE O USO JÁ RESPONDEU, 04/09 às 15h52** (versão 697, produção):
+
+- ✅ a faixa apareceu com **11 ofícios em falha** — não os 15 de que se falava
+  de manhã, e com composição diferente; provável efeito da reconciliação
+  automática do item 70, mas só o log `OFICIOS_REENVIO_RECONCILIADO` confirma;
+- ✅ a preparação voltou **11 prontos, 0 sem endereço bom**;
+- ✅ o destino é o cadastro de hoje — `karolina.caldeira@` e `luiza.stefani@`;
+  a `thalia.ferreira@`, que fez esses ofícios quicarem, **não aparece em
+  nenhum**. É o defeito de 01/09 medido como resolvido;
+- ✅ a ficha vai junto: o 144 leva ofício + 1 ficha, o 168 leva ofício + **11
+  fichas**, o 172 leva duas. Responde o "Precisa ir ficha e ofício" do item 68;
+- 🔴 **o tempo da preparação continua sem medida** — é o número que decide se o
+  teto de 25 por rodada está certo.
+
+**O DEFEITO QUE O PRIMEIRO USO ACHOU, e o conserto.** Ele marcou alguns
+ofícios na tabela, clicou em "Preparar reenvio" e vieram os onze:
+*"estou selecionando alguns e ele busca todos"*. A tela oferecia caixas de
+seleção que o código ignorava.
+
+É a mesma família do rótulo "Vai para (do cadastro)" que mentia em 03/09:
+**controle que não faz nada é pior do que controle que não existe**, porque a
+pessoa confia nele. Corrigido em três frentes:
+
+1. a seleção da tabela passa a mandar — e, quando há seleção, o filtro é o
+   NÚMERO, não o status: ofício já enviado que a pessoa marcou de propósito
+   entra, porque descartá-lo em silêncio seria decidir por ela;
+2. o botão **diz antes do clique** sobre o que vai trabalhar
+   ("Preparar os 3 selecionado(s)" × "Preparar reenvio (11)") — honrar a
+   seleção não bastava, a tela precisava anunciar que ia honrá-la;
+3. dentro da conferência dá para **desmarcar item a item**, e o botão conta o
+   que está marcado agora. Sem isso, tirar um ofício exigiria cancelar e
+   refazer uma preparação que vai ao Drive uma vez por ofício.
+
+**A CONFERIR NO AR** — o que segue sem execução:
 
 1. 🔴 a faixa vermelha aparece no Histórico com a contagem certa de falhas;
 2. 🔴 `Preparar reenvio` volta com as duas pilhas e leva **quanto tempo** — a

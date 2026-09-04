@@ -101,7 +101,7 @@ fluxo("LOTE · a preparação separa o que sai do que precisa de gente");
 passo("preparar");
 
 limparCaches();
-const p = g.prepararReenvioLoteOficios(TOKEN);
+const p = g.prepararReenvioLoteOficios({}, TOKEN);
 
 ok(p && p.ok, "a preparação responde", p && p.mensagem);
 igual(p.total, 5, "conta cinco ofícios distintos em FALHA_ENTREGA",
@@ -170,6 +170,37 @@ const semComentarios = fonte
 igual((semComentarios.match(/ofDest_montarListaDestinos_\s*\(/g) || []).length, 3,
       "uma definição e dois chamadores — a regra não foi copiada",
       "definir + preverReenvio + prepararLote");
+
+passo("a seleção da tabela manda");
+
+/* O usuário marcou três ofícios, clicou em "Preparar reenvio" e vieram os
+   onze: a tela oferecia uma caixa de seleção que o código ignorava. Controle
+   que não faz nada é pior do que controle que não existe, porque a pessoa
+   confia nele — é o mesmo defeito do rótulo "Vai para (do cadastro)" que
+   mentia em 03/09. */
+limparCaches();
+const sel = g.prepararReenvioLoteOficios({ numeros: ["144/2026", "397/2026"] }, TOKEN);
+
+ok(sel && sel.ok, "a preparação por seleção responde", sel && sel.mensagem);
+igual(sel.total, 2, "vieram só os dois selecionados, não os cinco em falha");
+igual(sel.porSelecao, true, "e a resposta diz que rodou por seleção",
+      "sem isso a tela não teria como avisar de onde veio a lista");
+igual((sel.prontos || []).length, 1, "o 144 está pronto para sair");
+igual((sel.pendentes || []).length, 1, "e o 397 continua sem endereço bom");
+
+/* Com seleção o filtro é o NÚMERO, não o status: se a pessoa marcou um ofício
+   já enviado e mandou preparar, é porque quer reenviar aquele. Descartá-lo em
+   silêncio seria decidir por ela. */
+limparCaches();
+const jaEnviado = g.prepararReenvioLoteOficios({ numeros: ["250/2026"] }, TOKEN);
+igual(jaEnviado.total, 1,
+      "ofício CONFIRMADO entra quando é explicitamente selecionado",
+      "sem seleção ele nunca apareceria — o lote sozinho só olha falhas");
+
+limparCaches();
+const vazia = g.prepararReenvioLoteOficios({ numeros: [] }, TOKEN);
+igual(vazia.total, 5, "seleção vazia volta a significar 'todos os em falha'");
+igual(vazia.porSelecao, false, "e a resposta diz que não foi por seleção");
 
 passo("a cota é medida em destinatários, não em ofícios");
 
@@ -274,6 +305,21 @@ ok(/histLoteOk[\s\S]{0,200}disabled/.test(marcacao),
 
 ok(tela.indexOf("ctx.ciente") > -1,
    "enviar sem a ficha exige um segundo clique consciente, como no individual");
+
+ok(tela.indexOf("loteRotularBotao") > -1,
+   "o botão diz ANTES do clique sobre o que vai trabalhar",
+   "a seleção ser honrada não basta: a tela precisa dizer que vai honrá-la");
+ok(/Preparar os \"\+sel\+\" selecionado/.test(tela) || tela.indexOf("selecionado(s)\")") > -1,
+   "e muda de texto quando há seleção");
+ok(tela.indexOf("numeros: selecao") > -1, "a tela manda a seleção ao preparar");
+
+ok(tela.indexOf("hist-lote-item") > -1,
+   "dá para desmarcar um ofício DENTRO da conferência",
+   "a preparação vai ao Drive uma vez por ofício; refazer tudo para tirar um item seria pedágio");
+ok(tela.indexOf("_loteMarcados") > -1, "e o envio manda só o que ficou marcado");
+ok(/_loteContar[\s\S]{0,400}ok\.textContent=n\?/.test(tela),
+   "o botão conta o que está marcado agora",
+   'dizer "Reenviar os 11" depois de desmarcar três seria a mesma mentira');
 
 ok(tela.indexOf("SEM ENDEREÇO BOM") > -1,
    "a pilha que precisa de gente aparece na tela, nomeada",

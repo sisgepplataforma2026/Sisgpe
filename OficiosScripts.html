@@ -3565,10 +3565,16 @@ window.mostrarAbaOficio = function(aba) {
     },
 
     atualizarBarraAcoes: function() {
-      var barra=document.getElementById("histBarraAcoes"); if(!barra) return;
-      var qtd=Historico.selecionados.length;
-      if(qtd>0){barra.style.display="flex";var label=barra.querySelector(".hist-barra-label");if(label)label.textContent=qtd+" selecionado(s)";}
-      else{barra.style.display="none";}
+      var barra=document.getElementById("histBarraAcoes");
+      if(barra){
+        var qtd=Historico.selecionados.length;
+        if(qtd>0){barra.style.display="flex";var label=barra.querySelector(".hist-barra-label");if(label)label.textContent=qtd+" selecionado(s)";}
+        else{barra.style.display="none";}
+      }
+      /* O botao do lote muda de texto junto com a selecao. Dizer o que vai
+         fazer ANTES do clique e a parte que faltava: o usuario marcou tres
+         oficios, clicou, e vieram os onze — sem a tela ter avisado. */
+      Historico.loteRotularBotao();
     },
 
     /* REENVIO — deixou de ser um confirm cego em 01/09/2026.
@@ -3716,15 +3722,32 @@ window.mostrarAbaOficio = function(aba) {
       }).length;
       if(!qtd){ barra.style.display="none"; return; }
       barra.style.display="flex";
+      Historico._loteFalhas=qtd;
       var res=document.getElementById("histLoteResumo");
       if(res) res.textContent=qtd+" ofício(s) com falha de entrega";
-      var btn=document.getElementById("btnHistLote");
-      if(btn){ btn.disabled=false; btn.innerHTML="\u21bb Preparar reenvio ("+qtd+")"; }
+      Historico.loteRotularBotao();
+    },
+
+    _loteFalhas: 0,
+
+    /** O botao diz sobre O QUE vai trabalhar: a selecao, quando existe; a fila
+        de falhas, quando nao existe. */
+    loteRotularBotao: function() {
+      var btn=document.getElementById("btnHistLote"); if(!btn) return;
+      var sel=(Historico.selecionados||[]).length;
+      btn.disabled=false;
+      btn.innerHTML = sel
+        ? ("\u21bb Preparar os "+sel+" selecionado(s)")
+        : ("\u21bb Preparar reenvio ("+Historico._loteFalhas+")");
+      var res=document.getElementById("histLoteResumo");
+      if(res && sel) res.textContent=Historico._loteFalhas+" com falha \u00b7 "+sel+" selecionado(s) na tabela";
+      else if(res) res.textContent=Historico._loteFalhas+" ofício(s) com falha de entrega";
     },
 
     lotePreparar: function() {
       var btn=document.getElementById("btnHistLote");
       if(btn){ btn.disabled=true; btn.textContent="Preparando…"; }
+      var selecao=(Historico.selecionados||[]).slice();
 
       var corpo=document.getElementById("histLoteCorpo");
       if(corpo) corpo.innerHTML='<span style="color:#94a3b8;">preparando… '
@@ -3736,15 +3759,15 @@ window.mostrarAbaOficio = function(aba) {
 
       google.script.run
         .withSuccessHandler(function(r){
-          if(btn){ btn.disabled=false; Historico.loteAtualizarBarra(Historico._dadosCache||[]); }
+          if(btn) Historico.loteRotularBotao();
           Historico._loteMontar(r);
         })
         .withFailureHandler(function(err){
-          if(btn){ btn.disabled=false; Historico.loteAtualizarBarra(Historico._dadosCache||[]); }
+          if(btn) Historico.loteRotularBotao();
           if(corpo) corpo.innerHTML='<span style="color:#b91c1c;">Não foi possível preparar: '
             +escapeHtml((err&&err.message)||String(err))+'</span>';
         })
-        .prepararReenvioLoteOficios(SISGEP_TOKEN_SESSAO);
+        .prepararReenvioLoteOficios({ numeros: selecao }, SISGEP_TOKEN_SESSAO);
     },
 
     /* Desenha as DUAS pilhas. A segunda — a que precisa de gente — nao e
@@ -3790,6 +3813,8 @@ window.mostrarAbaOficio = function(aba) {
         html+='<div style="border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden;">'
           +'<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">'
           +'<thead><tr style="background:#f8fafc;">'
+          +'<th style="text-align:center;padding:8px 6px;width:34px;">'
+          +'<input type="checkbox" id="histLoteTodos" checked title="Marcar/desmarcar todos"></th>'
           +'<th style="text-align:left;padding:8px 10px;font-weight:800;color:#334155;">Ofício</th>'
           +'<th style="text-align:left;padding:8px 10px;font-weight:800;color:#334155;">Escola</th>'
           +'<th style="text-align:left;padding:8px 10px;font-weight:800;color:#334155;">Vai para</th>'
@@ -3807,6 +3832,8 @@ window.mostrarAbaOficio = function(aba) {
             ? '<div style="margin-top:3px;color:#991b1b;font-weight:700;">\u26a0 sem a ficha</div>'
             : '';
           return '<tr style="border-top:1px solid #e2e8f0;">'
+            +'<td style="padding:8px 6px;text-align:center;">'
+            +'<input type="checkbox" class="hist-lote-item" checked data-numero="'+escapeHtml(p.numero)+'"></td>'
             +'<td style="padding:8px 10px;font-weight:800;color:var(--navy,#001f4d);white-space:nowrap;">'+escapeHtml(p.numero)+'</td>'
             +'<td style="padding:8px 10px;">'+escapeHtml(p.escola||"—")+'</td>'
             +'<td style="padding:8px 10px;">'+destinos+'</td>'
@@ -3847,11 +3874,44 @@ window.mostrarAbaOficio = function(aba) {
       }
 
       corpo.innerHTML=html;
-      if(sub) sub.textContent="Nada foi enviado ainda. "+r.mensagem;
-      if(ok){
-        ok.disabled=!prontos.length;
-        ok.textContent=prontos.length?("Reenviar os "+prontos.length+" \u25b8"):"Nada a reenviar";
-      }
+      if(sub) sub.textContent=(r.porSelecao
+        ? "Preparado a partir da sua seleção na tabela. "
+        : "Preparado a partir de todos os que estão em falha. ")+r.mensagem;
+
+      /* Dar para DESMARCAR aqui é o que torna a conferência útil. A preparação
+         vai ao Drive uma vez por ofício; obrigar a cancelar e refazer tudo só
+         para tirar um item transformaria a conferência em pedágio. */
+      var todos=document.getElementById("histLoteTodos");
+      if(todos) todos.onchange=function(){
+        document.querySelectorAll(".hist-lote-item").forEach(function(cb){ cb.checked=todos.checked; });
+        Historico._loteContar();
+      };
+      document.querySelectorAll(".hist-lote-item").forEach(function(cb){
+        cb.onchange=Historico._loteContar;
+      });
+      Historico._loteContar();
+    },
+
+    /** Os números marcados no modal. */
+    _loteMarcados: function() {
+      var marcados=[];
+      document.querySelectorAll(".hist-lote-item").forEach(function(cb){
+        if(cb.checked) marcados.push(cb.dataset.numero);
+      });
+      return marcados;
+    },
+
+    /* O botão conta o que está marcado AGORA. Um botão que dissesse "Reenviar
+       os 11" depois de a pessoa desmarcar três seria a mesma mentira do rótulo
+       que ignorava a seleção da tabela. */
+    _loteContar: function() {
+      var ok=document.getElementById("histLoteOk"); if(!ok) return;
+      var n=Historico._loteMarcados().length;
+      var ctx=Historico._loteCtx;
+      if(ctx) ctx.ciente=false;   /* mudou a lista: o aviso da ficha recomeça */
+      ok.style.background="";
+      ok.disabled=!n;
+      ok.textContent=n?("Reenviar os "+n+" \u25b8"):"Nada marcado";
     },
 
     loteFechar: function() {
@@ -3863,13 +3923,20 @@ window.mostrarAbaOficio = function(aba) {
       var ctx=Historico._loteCtx; if(!ctx||!ctx.prontos.length) return;
       var ok=document.getElementById("histLoteOk");
 
+      var marcados=Historico._loteMarcados();
+      if(!marcados.length){ toast("Marque ao menos um ofício.","err"); return; }
+      var enviar=ctx.prontos.filter(function(p){ return marcados.indexOf(p.numero)>-1; });
+      if(!enviar.length) return;
+
       /* Mesmo guarda de dois cliques do reenvio individual: a ficha faltando
          nao bloqueia — bloquear tiraria da pessoa uma decisao que e dela —,
-         mas exige um segundo clique consciente, com o custo dito em palavras. */
-      var semFicha=ctx.prontos.filter(function(p){return p.semFicha;}).length;
+         mas exige um segundo clique consciente, com o custo dito em palavras.
+         Conta so os que estao MARCADOS: avisar sobre um item que a pessoa acabou
+         de desmarcar seria pedir consentimento para algo que nao vai acontecer. */
+      var semFicha=enviar.filter(function(p){return p.semFicha;}).length;
       if(semFicha && !ctx.ciente){
         ctx.ciente=true;
-        if(ok){ ok.textContent="Enviar mesmo sem a ficha ("+ctx.prontos.length+") \u25b8"; ok.style.background="#b91c1c"; }
+        if(ok){ ok.textContent="Enviar mesmo sem a ficha ("+enviar.length+") \u25b8"; ok.style.background="#b91c1c"; }
         toast(semFicha+" ofício(s) sairiam sem a ficha. Clique de novo para enviar assim mesmo.","err",6000);
         return;
       }
@@ -3882,7 +3949,7 @@ window.mostrarAbaOficio = function(aba) {
           if(ok){ ok.disabled=false; ok.textContent="Reenviar \u25b8"; ok.style.background=""; }
           toast("Erro no lote: "+((err&&err.message)||err),"err");
         })
-        .executarReenvioLoteOficios({ itens: ctx.prontos.map(function(p){
+        .executarReenvioLoteOficios({ itens: enviar.map(function(p){
           return { numero:p.numero, url:p.url, escola:p.escola, tipo:p.tipo,
                    destinatarios:p.destinatarios };
         }) }, SISGEP_TOKEN_SESSAO);

@@ -775,12 +775,35 @@ var OFDEST_LOTE_MAX = 25;
  * Devolve duas pilhas: `prontos` (têm ao menos um endereço sem falha) e
  * `pendentes` (não têm — precisam de gente).
  */
-function prepararReenvioLoteOficios(tokenSessao) {
+function prepararReenvioLoteOficios(dados, tokenSessao) {
   exigirModulo_(tokenSessao, "documentos", false);
-  return ofDest_prepararLote_();
+  return ofDest_prepararLote_(dados && dados.numeros);
 }
 
-function ofDest_prepararLote_() {
+/**
+ * @param {string[]=} numerosEscolhidos  Os ofícios que a pessoa marcou na
+ *   tabela. Vazio ou ausente significa "todos os que estão em falha".
+ *
+ * A SELEÇÃO DA TABELA MANDA — 04/09/2026. Na primeira versão eu ignorei as
+ * caixas de seleção que a tela já tinha: a pessoa marcava três ofícios, clicava
+ * em "Preparar reenvio" e o sistema trazia os onze. O usuário viu na primeira
+ * tentativa: *"estou selecionando alguns e ele busca todos"*.
+ *
+ * É o mesmo defeito do rótulo "Vai para (do cadastro)" que mentia em 03/09:
+ * a tela oferecendo um controle que o código não honra. Controle que não faz
+ * nada é pior do que controle que não existe, porque a pessoa confia nele.
+ *
+ * Com seleção, o filtro é o número — NÃO o status. Se ela marcou um ofício que
+ * já está como ENVIADO e mandou preparar, é porque quer reenviar aquele;
+ * descartá-lo em silêncio seria decidir por ela.
+ */
+function ofDest_prepararLote_(numerosEscolhidos) {
+  var escolhidos = {}, temSelecao = false;
+  (numerosEscolhidos || []).forEach(function (n) {
+    var v = String(n || "").trim();
+    if (v) { escolhidos[v] = true; temSelecao = true; }
+  });
+
   var ss = SpreadsheetApp.openById(
     typeof getPlanilhaId === "function" ? getPlanilhaId() : PLANILHA_ID);
 
@@ -791,7 +814,7 @@ function ofDest_prepararLote_() {
   var aba = ss.getSheetByName(nomeAba);
   if (!aba || aba.getLastRow() < 2) {
     return { ok: true, total: 0, analisados: 0, limitado: false, limite: OFDEST_LOTE_MAX,
-             prontos: [], pendentes: [],
+             porSelecao: temSelecao, prontos: [], pendentes: [],
              mensagem: "Nenhum ofício em falha de entrega." };
   }
 
@@ -805,9 +828,13 @@ function ofDest_prepararLote_() {
   var linhas = aba.getRange(2, 1, aba.getLastRow() - 1, aba.getLastColumn()).getValues();
   var falhas = [], vistosNumero = {};
   for (var i = 0; i < linhas.length; i++) {
-    if (String(linhas[i][col.status] || "").trim().toUpperCase() !== "FALHA_ENTREGA") continue;
     var numero = String(linhas[i][col.numero] || "").trim();
     if (!numero) continue;
+    if (temSelecao) {
+      if (!escolhidos[numero]) continue;
+    } else if (String(linhas[i][col.status] || "").trim().toUpperCase() !== "FALHA_ENTREGA") {
+      continue;
+    }
     /* MESMO NÚMERO, DUAS LINHAS, UM OFÍCIO SÓ. A fila guarda tentativas, e um
        ofício que quicou pode aparecer mais de uma vez em falha. Sem esta
        trava o lote mandaria o MESMO documento oficial duas vezes para a mesma
@@ -912,6 +939,9 @@ function ofDest_prepararLote_() {
     analisados: falhas.length,
     limitado: limitado,
     limite: OFDEST_LOTE_MAX,
+    /* A tela diz em qual dos dois modos rodou. Sem isto a pessoa não tem como
+       saber se o que está vendo é a seleção dela ou a fila inteira. */
+    porSelecao: temSelecao,
     prontos: prontos,
     pendentes: pendentes,
     destinatariosTotais: destinatariosTotais,
@@ -920,7 +950,8 @@ function ofDest_prepararLote_() {
        número de ofícios daria falsa folga num lote com vários endereços. */
     cotaSuficiente: cota < 0 || cota >= destinatariosTotais,
     mensagem: total === 0
-      ? "Nenhum ofício em falha de entrega."
+      ? (temSelecao ? "Nenhum dos ofícios selecionados foi encontrado na fila."
+                    : "Nenhum ofício em falha de entrega.")
       : (prontos.length + " pronto(s) para sair, " + pendentes.length +
          " sem endereço bom" + (limitado
            ? ". Limitado a " + OFDEST_LOTE_MAX + " por rodada (" +
