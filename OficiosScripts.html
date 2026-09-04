@@ -3442,6 +3442,11 @@ window.mostrarAbaOficio = function(aba) {
 
       var ordenada = Historico.ordenar(filtrada);
 
+      /* A faixa do lote conta sobre a lista INTEIRA, nao sobre a filtrada: o
+         reenvio em lote trabalha em todas as falhas, e um contador que
+         obedecesse ao filtro da tela prometeria menos do que o botao faz. */
+      Historico.loteAtualizarBarra(lista);
+
       if(contEl) contEl.textContent = ordenada.length + " registro(s) encontrado(s)";
       if(!ordenada.length){
         tbody.innerHTML = '<tr><td colspan="7"><div class="of-table-empty">Nenhum registro encontrado.</div></td></tr>';
@@ -3685,6 +3690,228 @@ window.mostrarAbaOficio = function(aba) {
     reenvioFechar: function() {
       var ov=document.getElementById("histReenvOverlay"); if(ov) ov.classList.remove("aberto");
       Historico._reenvioCtx=null;
+    },
+
+    /* ══════════════════════════════════════════════════════════════════════
+       REENVIO EM LOTE — 04/09/2026
+
+       "Ele nao reenvia sozinho? E eu so iria conferir?" — a pergunta do
+       usuario ao ver que os quinze oficios em falha continuavam a ser
+       reenviados um a um. A previa individual ja escolhia o endereco de cada
+       um; o que faltava era fazer isso quinze vezes sem pedir quinze cliques.
+
+       O que a tela NAO faz: mandar sozinha. A confirmacao continua manual, por
+       decisao dele no mesmo dia — sao documentos oficiais indo para escolas, e
+       e-mail enviado nao volta.
+       ══════════════════════════════════════════════════════════════════════ */
+
+    _loteCtx: null,
+
+    /** A faixa vermelha so existe quando ha falha. Sem falha, nao ha o que
+        oferecer, e um botao permanente viraria ruido. */
+    loteAtualizarBarra: function(lista) {
+      var barra=document.getElementById("histLoteBarra"); if(!barra) return;
+      var qtd=(lista||[]).filter(function(i){
+        return String(i.status||"").toUpperCase()==="FALHA_ENTREGA";
+      }).length;
+      if(!qtd){ barra.style.display="none"; return; }
+      barra.style.display="flex";
+      var res=document.getElementById("histLoteResumo");
+      if(res) res.textContent=qtd+" ofício(s) com falha de entrega";
+      var btn=document.getElementById("btnHistLote");
+      if(btn){ btn.disabled=false; btn.innerHTML="\u21bb Preparar reenvio ("+qtd+")"; }
+    },
+
+    lotePreparar: function() {
+      var btn=document.getElementById("btnHistLote");
+      if(btn){ btn.disabled=true; btn.textContent="Preparando…"; }
+
+      var corpo=document.getElementById("histLoteCorpo");
+      if(corpo) corpo.innerHTML='<span style="color:#94a3b8;">preparando… '
+        +'isto lê o cadastro de cada escola e confere os anexos no Drive, '
+        +'então pode levar alguns segundos.</span>';
+      var ok=document.getElementById("histLoteOk");
+      if(ok){ ok.disabled=true; ok.textContent="Reenviar \u25b8"; ok.style.background=""; }
+      var ov=document.getElementById("histLoteOverlay"); if(ov) ov.classList.add("aberto");
+
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){ btn.disabled=false; Historico.loteAtualizarBarra(Historico._dadosCache||[]); }
+          Historico._loteMontar(r);
+        })
+        .withFailureHandler(function(err){
+          if(btn){ btn.disabled=false; Historico.loteAtualizarBarra(Historico._dadosCache||[]); }
+          if(corpo) corpo.innerHTML='<span style="color:#b91c1c;">Não foi possível preparar: '
+            +escapeHtml((err&&err.message)||String(err))+'</span>';
+        })
+        .prepararReenvioLoteOficios(SISGEP_TOKEN_SESSAO);
+    },
+
+    /* Desenha as DUAS pilhas. A segunda — a que precisa de gente — nao e
+       escondida nem resumida num numero: cada oficio aparece nomeado, com o
+       motivo. Esconder o que o sistema nao conseguiu resolver e o jeito mais
+       rapido de a pessoa achar que resolveu tudo. */
+    _loteMontar: function(r) {
+      var corpo=document.getElementById("histLoteCorpo"); if(!corpo) return;
+      var ok=document.getElementById("histLoteOk");
+      var sub=document.getElementById("histLoteSub");
+
+      if(!r||!r.ok){
+        corpo.innerHTML='<span style="color:#b91c1c;">'
+          +escapeHtml((r&&r.mensagem)||"não foi possível preparar o lote")+'</span>';
+        Historico._loteCtx=null;
+        return;
+      }
+
+      Historico._loteCtx={ prontos:r.prontos||[], ciente:false };
+      var prontos=r.prontos||[], pendentes=r.pendentes||[];
+      var html="";
+
+      if(r.limitado){
+        html+='<div style="padding:9px 11px;border-radius:10px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;font-size:12px;font-weight:600;">'
+          +'São '+r.total+' ofícios em falha. Esta rodada preparou os primeiros '+r.limite
+          +' — os outros '+(r.total-r.limite)+' entram na próxima.</div>';
+      }
+
+      if(r.cotaSuficiente===false){
+        html+='<div style="padding:9px 11px;border-radius:10px;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;font-size:12px;font-weight:700;">'
+          +'A cota diária de e-mail não cobre este lote: '+r.destinatariosTotais
+          +' destinatário(s) para '+r.cota+' restante(s). O envio para quando a cota acabar, '
+          +'e a tela diz quais não saíram.</div>';
+      }
+
+      /* ── pilha 1: sai ── */
+      html+='<div><div style="font-size:12.5px;font-weight:800;color:#0f8a5f;margin-bottom:6px;">'
+        +'\u2705 PRONTOS PARA SAIR ('+prontos.length+')</div>';
+      if(!prontos.length){
+        html+='<div style="font-size:12px;color:#94a3b8;padding:6px 2px;">'
+          +'Nenhum. Todos os ofícios em falha estão sem endereço bom — veja abaixo.</div>';
+      } else {
+        html+='<div style="border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden;">'
+          +'<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">'
+          +'<thead><tr style="background:#f8fafc;">'
+          +'<th style="text-align:left;padding:8px 10px;font-weight:800;color:#334155;">Ofício</th>'
+          +'<th style="text-align:left;padding:8px 10px;font-weight:800;color:#334155;">Escola</th>'
+          +'<th style="text-align:left;padding:8px 10px;font-weight:800;color:#334155;">Vai para</th>'
+          +'<th style="text-align:left;padding:8px 10px;font-weight:800;color:#334155;">Anexos</th>'
+          +'</tr></thead><tbody>';
+        html+=prontos.map(function(p){
+          var destinos=(p.destinatarios||[]).map(function(e){return escapeHtml(e);}).join("<br>");
+          var a=p.anexos||{itens:[]};
+          var anexos=a.erro
+            ? '<span style="color:#b91c1c;">'+escapeHtml(a.erro)+'</span>'
+            : ((a.itens||[]).length
+                ? (a.itens||[]).map(function(it){return escapeHtml(it.nome);}).join("<br>")
+                : '<span style="color:#b91c1c;">nenhum anexo encontrado</span>');
+          var alerta=p.semFicha
+            ? '<div style="margin-top:3px;color:#991b1b;font-weight:700;">\u26a0 sem a ficha</div>'
+            : '';
+          return '<tr style="border-top:1px solid #e2e8f0;">'
+            +'<td style="padding:8px 10px;font-weight:800;color:var(--navy,#001f4d);white-space:nowrap;">'+escapeHtml(p.numero)+'</td>'
+            +'<td style="padding:8px 10px;">'+escapeHtml(p.escola||"—")+'</td>'
+            +'<td style="padding:8px 10px;">'+destinos+'</td>'
+            +'<td style="padding:8px 10px;color:#475569;">'+anexos+alerta+'</td>'
+            +'</tr>';
+        }).join("");
+        html+='</tbody></table></div></div>';
+      }
+      html+='</div>';
+
+      /* ── pilha 2: fica ── */
+      if(pendentes.length){
+        html+='<div><div style="font-size:12.5px;font-weight:800;color:#92400e;margin:12px 0 6px;">'
+          +'\u26a0 SEM ENDEREÇO BOM ('+pendentes.length+') — ficam para você</div>'
+          +'<div style="border:1.5px solid #fde68a;border-radius:12px;background:#fffbeb;padding:4px 2px;">';
+        html+=pendentes.map(function(p){
+          var ends=(p.enderecos||[]).map(function(e){
+            return '<div style="color:#7f1d1d;">'+escapeHtml(e.email)
+              +' <span style="font-weight:700;">\u274c '+e.falhas+' falha(s)</span></div>';
+          }).join("");
+          return '<div style="padding:7px 10px;">'
+            +'<strong style="color:var(--navy,#001f4d);">'+escapeHtml(p.numero)+'</strong> · '
+            +escapeHtml(p.escola||"—")
+            +'<div style="font-size:11.5px;color:#92400e;font-weight:600;">'+escapeHtml(p.motivo||"")+'</div>'
+            +ends+'</div>';
+        }).join("");
+        html+='</div><div style="font-size:11.5px;color:#64748b;margin-top:5px;">'
+          +'Para estes é preciso achar um endereço novo e usar o reenvio individual, '
+          +'que aceita e-mail fora do cadastro.</div></div>';
+      }
+
+      var semFicha=prontos.filter(function(p){return p.semFicha;}).length;
+      if(semFicha){
+        html+='<div style="padding:9px 11px;border-radius:10px;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;font-size:12px;">'
+          +'<strong>'+semFicha+' ofício(s) sairiam sem a ficha.</strong> '
+          +'O corpo desses tipos afirma que ela segue em anexo — enviar assim manda '
+          +'à escola uma ordem sem o documento que a sustenta.</div>';
+      }
+
+      corpo.innerHTML=html;
+      if(sub) sub.textContent="Nada foi enviado ainda. "+r.mensagem;
+      if(ok){
+        ok.disabled=!prontos.length;
+        ok.textContent=prontos.length?("Reenviar os "+prontos.length+" \u25b8"):"Nada a reenviar";
+      }
+    },
+
+    loteFechar: function() {
+      var ov=document.getElementById("histLoteOverlay"); if(ov) ov.classList.remove("aberto");
+      Historico._loteCtx=null;
+    },
+
+    loteConfirmar: function() {
+      var ctx=Historico._loteCtx; if(!ctx||!ctx.prontos.length) return;
+      var ok=document.getElementById("histLoteOk");
+
+      /* Mesmo guarda de dois cliques do reenvio individual: a ficha faltando
+         nao bloqueia — bloquear tiraria da pessoa uma decisao que e dela —,
+         mas exige um segundo clique consciente, com o custo dito em palavras. */
+      var semFicha=ctx.prontos.filter(function(p){return p.semFicha;}).length;
+      if(semFicha && !ctx.ciente){
+        ctx.ciente=true;
+        if(ok){ ok.textContent="Enviar mesmo sem a ficha ("+ctx.prontos.length+") \u25b8"; ok.style.background="#b91c1c"; }
+        toast(semFicha+" ofício(s) sairiam sem a ficha. Clique de novo para enviar assim mesmo.","err",6000);
+        return;
+      }
+
+      if(ok){ ok.disabled=true; ok.textContent="Enviando…"; }
+
+      google.script.run
+        .withSuccessHandler(function(r){ Historico._loteResultado(r); })
+        .withFailureHandler(function(err){
+          if(ok){ ok.disabled=false; ok.textContent="Reenviar \u25b8"; ok.style.background=""; }
+          toast("Erro no lote: "+((err&&err.message)||err),"err");
+        })
+        .executarReenvioLoteOficios({ itens: ctx.prontos.map(function(p){
+          return { numero:p.numero, url:p.url, escola:p.escola, tipo:p.tipo,
+                   destinatarios:p.destinatarios };
+        }) }, SISGEP_TOKEN_SESSAO);
+    },
+
+    /* O resultado fica NA TELA, item a item. Um toast de "12 reenviados" some
+       em segundos e leva junto a unica informacao que importa depois: qual
+       falhou e por que. */
+    _loteResultado: function(r) {
+      var corpo=document.getElementById("histLoteCorpo");
+      var ok=document.getElementById("histLoteOk");
+      var sub=document.getElementById("histLoteSub");
+      if(ok){ ok.disabled=true; ok.textContent="Concluído"; ok.style.background=""; }
+      Historico._loteCtx=null;
+
+      if(corpo && r){
+        corpo.innerHTML='<div style="font-size:13px;font-weight:800;color:'
+          +(r.falharam?"#991b1b":"#0f8a5f")+';margin-bottom:8px;">'+escapeHtml(r.mensagem||"")+'</div>'
+          +'<div style="border:1.5px solid #e2e8f0;border-radius:12px;max-height:320px;overflow-y:auto;">'
+          +(r.resultados||[]).map(function(x){
+            return '<div style="padding:7px 10px;border-bottom:1px solid #f1f5f9;font-size:12px;">'
+              +(x.ok?'<span style="color:#0f8a5f;font-weight:800;">\u2705</span> ':'<span style="color:#b91c1c;font-weight:800;">\u274c</span> ')
+              +'<strong>'+escapeHtml(x.numero)+'</strong> — '+escapeHtml(x.mensagem||"")+'</div>';
+          }).join("")
+          +'</div>';
+      }
+      if(sub) sub.textContent="Envio concluído. Feche para atualizar a lista.";
+      toast((r&&r.mensagem)||"Lote concluído.", (r&&!r.falharam)?"ok":"err", 7000);
+      Historico.carregar();
     },
 
     reenvioConfirmar: function() {

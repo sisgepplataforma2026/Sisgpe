@@ -645,6 +645,45 @@
           </div>
         </div>
         <div id="contadorResultados" style="font-size:12px;color:var(--g400);margin-bottom:10px;font-weight:600;"></div>
+
+        <!-- REENVIO EM LOTE — 04/09/2026.
+             O usuario perguntou: "ele nao reenvia sozinho? E eu so iria
+             conferir?". Estava certo. O sistema ja escolhia o endereco de cada
+             oficio em falha e depois pedia um clique por oficio — quinze
+             modais para reconfirmar quinze decisoes que ele ja tinha tomado.
+             Esta faixa so aparece quando HA falha de entrega, e o botao nao
+             manda nada: abre a conferencia. -->
+        <div id="histLoteBarra" style="display:none;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 14px;background:var(--red-lt,#fef2f2);border:1.5px solid #fca5a5;border-radius:var(--rad);margin-bottom:12px;">
+          <span style="font-size:20px;line-height:1;">&#10060;</span>
+          <div style="flex:1;min-width:220px;">
+            <div id="histLoteResumo" style="font-size:13px;font-weight:800;color:#991b1b;">&mdash;</div>
+            <div style="font-size:11.5px;color:#7f1d1d;margin-top:2px;">O sistema escolhe o endere&ccedil;o de cada um e mostra a lista antes de enviar. Nada sai sem a sua confirma&ccedil;&atilde;o.</div>
+          </div>
+          <button type="button" class="btn btn-navy btn-sm" id="btnHistLote" onclick="Historico.lotePreparar()">&#8635; Preparar reenvio</button>
+        </div>
+
+        <div id="histLoteOverlay" class="of-modal-overlay">
+          <div class="of-modal" style="max-width:880px;">
+            <div class="of-modal-head" style="border-bottom:3px solid var(--gold,#C9A84C);">
+              <div>
+                <div class="of-modal-head-title">&#128228; Reenvio em lote &mdash; confira antes</div>
+                <div class="of-modal-head-sub" id="histLoteSub">Nada foi enviado ainda.</div>
+              </div>
+              <button type="button" class="of-modal-close" onclick="Historico.loteFechar()">&times;</button>
+            </div>
+
+            <div class="of-modal-body" style="display:flex;flex-direction:column;gap:14px;">
+              <div id="histLoteCorpo" style="font-size:12.5px;color:#475569;">
+                <span style="color:#94a3b8;">preparando&hellip;</span>
+              </div>
+            </div>
+
+            <div class="of-modal-foot">
+              <button type="button" class="btn-outline" onclick="Historico.loteFechar()">Cancelar</button>
+              <button type="button" class="btn-navy" id="histLoteOk" onclick="Historico.loteConfirmar()" disabled>Reenviar &#9656;</button>
+            </div>
+          </div>
+        </div>
         <!-- MODAL DO REENVIO — acrescentado em 01/09/2026.
              Antes o reenvio era um window.confirm cego: a pessoa mandava sem
              ver para onde ia. O caso da FAESA mostrou o custo — tres oficios

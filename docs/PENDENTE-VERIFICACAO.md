@@ -118,6 +118,199 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
+### 72. 🔴 REENVIO EM LOTE — o sistema escolhe o destino, você confere e confirma
+
+04/09/2026. Ainda **não promovido** — está na branch de homologação.
+
+**O QUE ORIGINOU.** Eu listei como tarefa do usuário: *"reenviar os 15 ofícios,
+conferindo `Anexos: N` no modal antes de confirmar"*. Ele respondeu:
+
+> **"ELE NÃO REENVIA SOZINHO? E EU SÓ IRIA CONFERIR?"**
+
+Estava certo, e a pergunta expôs uma incoerência que estava no desenho desde
+01/09. O `ofDest_preverReenvio_` já fazia o julgamento inteiro — juntava as
+duas origens de endereço, consultava o histórico de cada um, recusava quem
+quicou, preferia o cadastro de hoje, reunia os anexos — e depois devolvia UM
+clique. Quinze ofícios em falha viravam quinze aberturas de modal para
+reconfirmar quinze decisões que o sistema já tinha tomado. REGRA Nº 0.6, e fui
+eu quem furou.
+
+**O QUE FICOU AUTOMÁTICO:** achar os ofícios em falha, escolher o endereço de
+cada um, reunir os anexos, separar o que dá para mandar do que não dá.
+
+**O QUE NÃO FICOU, E POR DECISÃO DELE:** a confirmação. Propus manter o clique
+final — são documentos oficiais indo para escolas e e-mail enviado não volta —
+e ele respondeu **"confirmação manual"**. Nenhum gatilho dispara o lote; o t148
+tem uma asserção só para isso.
+
+**O LIMITE HONESTO.** Ofício cujos endereços TODOS já quicaram não entra na
+pilha que sai: ninguém sabe para onde mandar, e inventar destino é o que a
+conferência existe para impedir. Ele aparece na segunda lista, nomeado, com o
+motivo e os endereços que falharam.
+
+**DUAS FALHAS QUE EU MESMO ACHEI RELENDO O CÓDIGO ANTES DE COMMITAR**, e que
+ficam registradas porque as duas mandariam documento errado:
+
+1. **A fila guarda TENTATIVAS.** Um ofício que quicou pode ter duas linhas em
+   `FALHA_ENTREGA`. Sem trava, o lote mandaria o MESMO documento oficial duas
+   vezes para a mesma escola — e a segunda cópia não teria como ser desfeita.
+   Agora o número entra uma vez só.
+2. **Ofício sem PDF identificável estava indo para "prontos para sair".** O
+   `reenviarOficio` recusa esses; a tela prometeria um envio que já se sabia
+   que ia falhar. Foi para a pilha de quem precisa de gente.
+
+**DE QUEBRA, DUAS LEITURAS QUE SE MULTIPLICAVAM.** O `ofDest_lerRegistroOficio_`
+e o `ofDest_emailsDoCadastro_` varriam a planilha inteira A CADA CHAMADA.
+Aceitável para um ofício; no lote seria reler o Registro inteiro e as 679
+escolas quinze vezes. Os dois passaram a indexar uma vez por execução, mesmo
+padrão do `ofDest_cacheHistorico_` que já existia ali.
+
+**A REGRA DA MARCAÇÃO AGORA MORA EM UM LUGAR SÓ** (`ofDest_montarListaDestinos_`).
+Duplicá-la garantiria que as duas telas divergissem no primeiro ajuste — e
+divergir aqui significa o lote mandar para um endereço que o modal individual
+recusaria, sem ninguém perceber. O t148 mede que as duas escolhem igual.
+
+| | |
+|---|---|
+| Backend | `OficiosDestinatarios.gs` — `prepararReenvioLoteOficios`, `executarReenvioLoteOficios` |
+| Tela | faixa `histLoteBarra` + modal `histLoteOverlay` no Histórico |
+| Teto de exposição | **204/204** — os dois endpoints nasceram com `exigirModulo_` |
+| Teste | t148, 47 asserções |
+| Suíte | 150 arquivos, 5182 asserções, nenhuma falha |
+
+**A CONFERIR NO AR** — nada disto foi executado em sistema real:
+
+1. 🔴 a faixa vermelha aparece no Histórico com a contagem certa de falhas;
+2. 🔴 `Preparar reenvio` volta com as duas pilhas e leva **quanto tempo** — a
+   preparação vai ao Drive uma vez por ofício, e o limite de 6 minutos do Apps
+   Script é o que motivou o teto de 25 por rodada;
+3. 🔴 os endereços de "vai para" são os do cadastro de HOJE, não os que quicaram;
+4. 🔴 a coluna Anexos mostra ofício **e** ficha nos de filiação — se mostrar só
+   um, é o mesmo buraco do item 68 e o envio não deve ser confirmado;
+5. 🔴 depois de confirmar, o resultado item a item aparece na tela e os ofícios
+   saem da caixa de falha;
+6. 🟡 os que ficaram na segunda pilha continuam lá, e só saem com endereço novo
+   pelo reenvio individual.
+
+### 71. 🟡 HOMOLOGAÇÃO REALINHADA COM PRODUÇÃO — versão 104
+
+04/09/2026, 14h09. Execução nº 76 do `deploy-homologacao.yml`.
+
+| | |
+|---|---|
+| Versão criada | **104** (`homolog-e1eb896`) |
+| Backup do estado anterior | artefato `homologacao-antes-76` (30 dias) |
+| Arquivos | 272 no repositório, 272 na homologação — nenhum criado, nenhum apagado |
+| Alterados | 7 |
+
+Os sete são exatamente o trabalho de reenvio e a proteção de contatos de
+escola, que estavam só em produção desde 30/08:
+
+```
+BuscaEscola.gs          MonitoramentoOficios.gs   OficiosDestinatarios.gs
+EmailOficios.gs         OficiosConferencia.html   OficiosFormulario.html
+                                                  OficiosScripts.html
+```
+
+**POR QUE ISTO IMPORTA.** Homologação existe para ensaiar antes. Enquanto ela
+roda código mais velho que produção, ela não ensaia nada — testar ali passa a
+dar falsa segurança, que é pior do que não testar. Ficou cinco dias assim.
+
+**O ENGANO DESTA MESMA EXECUÇÃO, REGISTRADO PORQUE VAI SE REPETIR.** Disparei
+o workflow sem informar o modo. O padrão dele é `conferir`: roda a suíte
+inteira, baixa a homologação, compara, imprime o relatório — **e não escreve
+nada**. Terminou verde, com os três passos de escrita marcados como pulados, e
+eu anunciei ao usuário que homologação e produção voltariam a ter o mesmo
+código. Não voltariam. É a segunda vez no mesmo dia que tomo um verde por
+resultado sem ler o que o verde diz.
+
+O padrão `conferir` está certo e não deve mudar — `clasp push --force` apaga da
+homologação o que não estiver no repositório, e uma escrita dessas nunca deve
+ser o comportamento acidental. O que falhou foi a leitura, não o workflow.
+**Verde não é veredito: o veredito é a linha `modo desta execucao:`.**
+
+**O QUE ESTA ENTREGA NÃO PROVA.** Só que o código foi escrito e publicado na
+versão 104. Nada foi exercitado na homologação: o reenvio com anexos, o
+seletor de destinatários, a coluna `JA_FALHOU` e a reconciliação automática
+continuam **não testados** ali — o que rodou foi a suíte em Node, que não
+abre tela, não manda e-mail e não dispara gatilho.
+
+**A CONFERIR NA HOMOLOGAÇÃO** (opcional, já que produção é quem opera):
+
+1. 🟡 abrir o Histórico de Ofícios e confirmar que o modal de reenvio traz o
+   seletor de destinatários e a lista de anexos;
+2. 🟡 confirmar que a URL de homologação responde na versão 104.
+
+### 70. 🔴 PRODUÇÃO NA VERSÃO 696 — a reconciliação de reenvios acontece sozinha
+
+04/09/2026, 13h50.
+
+| | |
+|---|---|
+| Versão | **696** (`producao-380aea5`) |
+| Rollback | versão **695** |
+| Aplicado | 2 arquivos modificados, nenhum criado, nenhum removido |
+| Quais | `EmailOficios.gs`, `MonitoramentoOficios.gs` |
+
+**O QUE FOI PARA O AR.** Ofício reenviado antes da versão 695 ficou com Status
+`FALHA_ENTREGA` mesmo tendo saído — a marcação não existia ainda, e nada volta
+e conserta o passado. O usuário perguntou: *"se já foi reenviado ele
+atualiza?"*. Não atualizava.
+
+O dado já existia: todo reenvio grava no `LOG_SISTEMA` com o sufixo
+`(REENVIO)`. O sistema sabia; só não usava.
+
+Primeiro escrevi uma função de manutenção. O usuário respondeu **"tudo
+automatizado"** — e tinha razão: o que a pessoa precisa lembrar de fazer, ela
+esquece. A reconciliação passou para dentro do `verificarFalhasEntregaOficios`,
+que já roda de gatilho e já existe para manter o status de entrega verdadeiro.
+
+**Por que pode ser automático:** não há julgamento. O log registra o reenvio, o
+status contradiz, e os dois não podem estar certos. É escrituração, não
+decisão — o limite da REGRA Nº 0.6 é não decidir pela pessoa, e aqui não há o
+que decidir.
+
+**E não é em silêncio:** grava `OFICIOS_REENVIO_RECONCILIADO` no log de
+auditoria, com a lista dos números.
+
+**O BOTÃO NA TELA NÃO FOI FEITO**, e é decisão consciente registrada aqui: com
+a reconciliação automática ele seria um botão que nunca teria o que fazer. Se
+um dia fizer falta — forçar na hora, sem esperar o gatilho — é acréscimo
+pequeno.
+
+**UM DEFEITO QUE O USUÁRIO ACHOU DO JEITO MAIS DIRETO POSSÍVEL.** A primeira
+versão da função manual fechava com `exigirModulo_`, que exige token. Ele foi
+procurá-la no seletor do editor do Apps Script e ela não estava lá — porque
+ainda não fora promovida — e, quando estivesse, não rodaria: o editor não passa
+token. **Eu tinha escrito uma ferramenta de manutenção sem lugar nenhum de onde
+ser chamada.** Corrigido com porta dupla, o mesmo padrão do
+`sincronizarStatusOficiosEnviados`.
+
+**A CONFERIR EM PRODUÇÃO:**
+
+1. 🔴 se algum dos sete da FAESA foi reenviado ANTES das 13h14 de hoje, ele
+   deve sair sozinho da caixa de falha na próxima execução do gatilho;
+2. 🔴 e o log de auditoria deve mostrar `OFICIOS_REENVIO_RECONCILIADO` com os
+   números ajustados;
+3. 🟡 ofício que nunca foi reenviado **continua** como falha — se algum sumir
+   da lista sem ter sido reenviado, é bug e precisa ser reportado.
+
+### 70b. ✅ A CONFERÊNCIA DE CINCO LEITURAS PAGOU NO MESMO DIA
+
+O log desta publicação traz:
+
+```
+implantacao confirmada na versao 696 (tentativa 2)
+```
+
+**Tentativa 2.** A primeira leitura ainda trazia a versão antiga — exatamente o
+atraso de propagação do Google que derrubou a publicação da versão 693 hoje de
+manhã, quando a conferência lia uma vez só.
+
+O conserto foi feito às 12h; a falha que ele evita apareceu de novo às 13h50.
+Vale registrar porque é raro poder medir tão diretamente que uma correção de
+processo valeu a pena.
+
 ### 69. 🔴 PRODUÇÃO NA VERSÃO 695 — o reenvio limpa a fila, e a base de contatos deixa de ser destrutível
 
 04/09/2026, 13h14. Duas mudanças, ambas nascidas de perguntas do usuário no
