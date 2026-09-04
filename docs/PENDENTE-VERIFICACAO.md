@@ -124,9 +124,9 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 | | |
 |---|---|
-| Produção | versão **698** (`producao-12cfe77`), rollback na **697** |
-| Homologação | versão **106** (`homolog-53ae602`) |
-| Aplicado | 697: 3 modificados · 698: 2 modificados — nas duas, exatamente o que a conferência prévia anunciou |
+| Produção | versão **699** (`producao-55152cb`), rollback na **698** |
+| Homologação | versão **107** (`homolog-9f387d4`) |
+| Aplicado | 697: 3 modificados · 698: 2 · 699: 3 — nas três, exatamente o que a conferência prévia anunciou |
 
 **O QUE ORIGINOU.** Eu listei como tarefa do usuário: *"reenviar os 15 ofícios,
 conferindo `Anexos: N` no modal antes de confirmar"*. Ele respondeu:
@@ -241,7 +241,7 @@ O que isto fecha, e que até então era só emulador:
 Restam 7 dos 11. Eles continuam em falha legítima — a reconciliação do item 70
 não os toca, porque nunca foram reenviados.
 
-### 72b. 🔴 O REENVIO ATUALIZAVA UMA ABA SÓ — e a próxima preparação reofereceria o mesmo ofício
+### 72b. 🟡 O REENVIO ATUALIZAVA UMA ABA SÓ — e a próxima preparação reofereceria o mesmo ofício
 
 04/09/2026, achado pelo uso minutos depois do 72. O usuário: *"e mesmo assim
 fica os 11, não atualizou"*.
