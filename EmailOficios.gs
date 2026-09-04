@@ -598,6 +598,95 @@ function anexoEhFicha_(nome) {
   return /^fichas?_/i.test(String(nome || "").trim());
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   O REENVIO TIRA O OFÍCIO DA CAIXA DE FALHA — SEM APAGAR A MEMÓRIA — 04/09/2026
+
+   O usuário perguntou: "quando reenvia ele não deveria sair da caixa de
+   falha?". Deveria, e não saía — `reenviarOficio` mandava o e-mail e não
+   tocava no Status. Os sete da FAESA continuariam listados como falha depois
+   de reenviados, e ele não teria como saber quais já tinha feito.
+
+   A ARMADILHA DO CONSERTO ÓBVIO. O contador de falhas por ENDEREÇO — o
+   `❌ 7 falha(s)` que aparece no seletor — é lido da MESMA coluna Status
+   (`ofDest_mapaHistorico_`). Virar o status para ENVIADO a cada reenvio faria
+   a `thalia.ferreira@faesa.br` perder uma falha por vez; depois dos sete ela
+   apareceria com ZERO, voltaria a nascer marcada, e o aviso que evitou o
+   oitavo bounce sumiria.
+
+   Duas informações diferentes estavam presas na mesma coluna:
+
+     · "este ofício ainda não chegou"     → o que falta reenviar;
+     · "este endereço já quicou 7 vezes"  → não sugerir endereço morto.
+
+   Por isso a falha vira fato PERMANENTE do ofício, numa coluna própria, antes
+   de o status ser trocado. O reenvio limpa a fila de trabalho; a reputação do
+   endereço fica.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+var OFICIO_COL_JA_FALHOU = "JA_FALHOU";
+
+/** Garante a coluna, criando-a no fim se não existir. Mesmo padrão do
+    escolaGarantirColunaId_ — acrescentar coluna não mexe em dado nenhum. */
+function oficio_garantirColunaJaFalhou_(sh) {
+  var hm = getHeaderMap_(sh);
+  if (hm[OFICIO_COL_JA_FALHOU]) return hm[OFICIO_COL_JA_FALHOU];
+  var col = sh.getLastColumn() + 1;
+  sh.getRange(1, col).setValue(OFICIO_COL_JA_FALHOU).setFontWeight("bold");
+  SpreadsheetApp.flush();
+  /* O getHeaderMap_ guarda o cabeçalho em cache com TTL. Sem esta limpeza, a
+     leitura seguinte usa o mapa antigo, não enxerga a coluna recém-criada, e
+     a contagem de falhas do endereço cai a zero — exatamente a regressão que
+     esta coluna existe para impedir. O t146 pegou isso. */
+  try { limparCacheHeader_(sh); } catch (e) {}
+  return col;
+}
+
+/**
+ * Depois de um reenvio bem-sucedido: grava que o ofício JÁ FALHOU alguma vez
+ * e coloca o status em ENVIADO.
+ *
+ * A ordem importa. A marca é gravada ANTES da troca do status, lendo o status
+ * que ainda está lá. Invertida, a informação que se quer preservar já teria
+ * sido apagada quando fôssemos lê-la.
+ *
+ * Vai inteira em try/catch: falhar em atualizar o registro não pode desfazer
+ * um e-mail que já saiu, nem transformar um reenvio bom em erro na tela.
+ */
+function oficio_marcarReenviado_(numero) {
+  try {
+    var ss = SpreadsheetApp.openById(
+      typeof getPlanilhaId === "function" ? getPlanilhaId() : PLANILHA_ID);
+    var sh = ss.getSheetByName(PLANILHA_REGISTRO);
+    if (!sh || sh.getLastRow() < 2) return { ok: false, motivo: "registro vazio" };
+
+    var hm    = getHeaderMap_(sh);
+    var cNum  = hm["Número do Ofício"];
+    var cSt   = hm["Status"];
+    if (!cNum || !cSt) return { ok: false, motivo: "colunas não encontradas" };
+
+    var cJa = oficio_garantirColunaJaFalhou_(sh);
+
+    var alvo  = String(numero || "").trim();
+    var dados = sh.getRange(2, cNum, sh.getLastRow() - 1, 1).getValues();
+    for (var i = 0; i < dados.length; i++) {
+      if (String(dados[i][0] || "").trim() !== alvo) continue;
+      var linha = i + 2;
+
+      var statusAtual = String(sh.getRange(linha, cSt).getValue() || "").trim().toUpperCase();
+      if (statusAtual === "FALHA_ENTREGA") {
+        sh.getRange(linha, cJa).setValue("SIM");
+      }
+      sh.getRange(linha, cSt).setValue("ENVIADO");
+      SpreadsheetApp.flush();
+      return { ok: true, statusAnterior: statusAtual, linha: linha };
+    }
+    return { ok: false, motivo: "ofício não encontrado no registro" };
+  } catch (e) {
+    Logger.log("oficio_marcarReenviado_: " + (e && e.message || e));
+    return { ok: false, motivo: String(e && e.message || e) };
+  }
+}
+
 function reenviarOficio(registro, tokenSessao) {
   var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
@@ -739,6 +828,9 @@ function reenviarOficio(registro, tokenSessao) {
       "Segue reenvio do ofício em anexo."
     );
 
+    /* Sai da caixa de falha, sem apagar a memória de que falhou. */
+    var marcado = oficio_marcarReenviado_(numero);
+
     /* A TRILHA PRECISA DIZER QUE SAIU DO CADASTRO. Este recurso permite mandar
        um oficio, com dado pessoal dentro, para um endereco que ninguem
        cadastrou. E necessidade legitima de operacao — mas a contrapartida e o
@@ -766,7 +858,12 @@ function reenviarOficio(registro, tokenSessao) {
                                        : " [inclui endereço fora do cadastro]") : "") +
         ". Anexos: " + anexos.length +
         (pacote.reconstruido ? " (pacote original da fila)."
-                             : " (fila sem lista de anexos; recuperados do Drive).")
+                             : " (fila sem lista de anexos; recuperados do Drive).") +
+        (marcado && marcado.ok
+          ? " Status agora: ENVIADO."
+          : " ATENÇÃO: o status no Controle não pôde ser atualizado" +
+            (marcado && marcado.motivo ? " (" + marcado.motivo + ")" : "") +
+            " — o ofício vai continuar aparecendo como falha.")
     };
 
   } catch(e) {
