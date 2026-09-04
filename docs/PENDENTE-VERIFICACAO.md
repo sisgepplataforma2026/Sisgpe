@@ -118,6 +118,88 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
+### 69. 🔴 PRODUÇÃO NA VERSÃO 695 — o reenvio limpa a fila, e a base de contatos deixa de ser destrutível
+
+04/09/2026, 13h14. Duas mudanças, ambas nascidas de perguntas do usuário no
+mesmo dia, e ambas de risco alto se ficassem como estavam.
+
+| | |
+|---|---|
+| Versão | **695** (`producao-04f0d40`) |
+| Rollback | versão **694** |
+| Aplicado | 3 arquivos modificados, **nenhum criado, nenhum removido** |
+| Quais | `BuscaEscola.gs`, `EmailOficios.gs`, `OficiosDestinatarios.gs` |
+
+Veredito lido no log: `DIFERENCAS: 3 arquivo(s) — 0 criado(s), 0 removido(s),
+3 modificado(s)`. E a implantação foi confirmada **na primeira leitura**, com
+a conferência de cinco tentativas acrescentada na promoção anterior.
+
+**1. "QUANDO REENVIA ELE NÃO DEVERIA SAIR DA CAIXA DE FALHA?"**
+
+Deveria, e não saía: `reenviarOficio` mandava o e-mail e não tocava no
+Status. Os sete da FAESA continuariam listados como falha depois de
+reenviados, sem como saber quais já tinham sido feitos.
+
+**A armadilha do conserto óbvio.** O contador de falhas por ENDEREÇO — o
+`❌ 7 falha(s)` do seletor — era lido da MESMA coluna. Virar o status para
+ENVIADO a cada reenvio faria a `thalia` perder uma falha por vez; depois dos
+sete apareceria com ZERO e voltaria a nascer MARCADA. O aviso que evitou o
+oitavo bounce sumiria por causa do conserto de outra coisa.
+
+Duas informações estavam presas na mesma coluna, e foram separadas:
+
+| Fato | Onde mora agora |
+|---|---|
+| "este ofício ainda não chegou" | `Status` — vira ENVIADO no reenvio |
+| "este endereço já quicou" | `JA_FALHOU` — permanente |
+
+A marca é gravada ANTES da troca do status; invertida, leríamos o status já
+apagado.
+
+**2. A SINCRONIZAÇÃO POR CNPJ APAGAVA A BASE DE CONTATOS**
+
+Achado ao investigar por que o cadastro da FAESA ainda tinha a Thalia. Em
+`BuscaEscola.gs`, `sincronizarEscolaPorCnpj` fazia:
+
+```js
+if (colEmail  && externo.email) valoresLinha[colEmail  - 1] = externo.email;
+if (colEmails && externo.email) valoresLinha[colEmails - 1] = ...
+```
+
+`externo.email` é o endereço na **Receita Federal** — em escola, tipicamente
+o do contador. E `sincronizarTodasEscolas` roda isso para as **679**.
+
+Um clique trocava a base inteira de contatos — cada endereço de RH e de folha
+que a secretaria levou meses achando — pelo cadastro da Receita. Sem aviso,
+sem desfazer, com o sintoma aparecendo semanas depois em ofício quicando.
+
+Agora o dado da Receita vai para `EMAILS_RECEITA`, e o contato só é
+preenchido quando está **vazio**.
+
+**UM DEFEITO QUE O TESTE PEGOU E QUE TERIA IDO AO AR.** `getHeaderMap_` guarda
+o cabeçalho em cache com TTL. Ao criar a coluna `JA_FALHOU`, a leitura
+seguinte usava o mapa antigo, não enxergava a coluna nova, e a contagem de
+falhas caía a **zero** — exatamente a regressão que a coluna existe para
+impedir. O t146 reprovou com "esperado 3, obtido 0"; corrigido invalidando o
+cache na criação.
+
+**A CONFERIR EM PRODUÇÃO:**
+
+1. 🔴 **reenviar os sete da FAESA** e ver: `Anexos: 2`, a mensagem dizendo
+   "Status agora: ENVIADO", e o ofício saindo do filtro de falha;
+2. 🔴 **depois dos sete**, reabrir o reenvio de um deles e conferir que a
+   `thalia` ainda aparece com **7 falhas** — é a prova de que a memória
+   sobreviveu;
+3. 🟡 a coluna `JA_FALHOU` nasce sozinha no Controle, no primeiro reenvio.
+   Não precisa criar à mão.
+
+**AINDA ABERTO, e é dado, não código:** a linha da FAESA na aba `Escolas`
+segue com `thalia` como principal e sem a `karolina`. O reenvio resolve os
+sete antigos; o cadastro continua errado para os próximos. E há
+`contato@escolamontealvo.com.br` — e-mail de outra escola — em colunas
+auxiliares dessa mesma linha, sintoma de desalinhamento antigo. O
+`escolaDiagnosticoColunas` mede isso sem escrever nada.
+
 ### 68. 🔴 PRODUÇÃO NA VERSÃO 694 — o reenvio com endereço de hoje e ficha à vista
 
 04/09/2026, 12h08. Publicada a mudança do reenvio pedida pelo usuário depois
