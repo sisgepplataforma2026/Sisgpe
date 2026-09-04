@@ -687,6 +687,126 @@ function oficio_marcarReenviado_(numero) {
   }
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   RECONCILIAR OS REENVIOS QUE ACONTECERAM ANTES DA MARCAÇÃO EXISTIR
+
+   ORIGEM, 04/09/2026. A marcação de reenvio (`oficio_marcarReenviado_`)
+   entrou em produção na versão 695, às 13h14. Ofício reenviado ANTES disso
+   continuou com Status FALHA_ENTREGA — nada volta e conserta o passado.
+
+   O usuário perguntou: "se já foi reenviado ele atualiza?". Não atualizava. E
+   reenviar de novo só para limpar a lista faria a escola receber duas vezes.
+
+   O DADO JÁ EXISTE. Todo reenvio grava no LOG_SISTEMA com o número e o
+   sufixo "(REENVIO)". O sistema sabe quais foram reenviados; só não estava
+   usando isso para acertar o status.
+
+   POR QUE COMEÇA SIMULANDO. Isto escreve na coluna Status do Controle, que é
+   o que decide o que aparece como falha. Rodar às cegas numa base de 347
+   ofícios é o tipo de coisa que não se desfaz. O padrão é SIMULAR: só
+   escreve quando alguém pede explicitamente `simular = false`.
+
+   O QUE ELE NÃO FAZ, de propósito: não reenvia nada, não toca em e-mail, não
+   inventa reenvio que o log não registre. Se o log não tem, para ele não
+   aconteceu.
+   ══════════════════════════════════════════════════════════════════════════ */
+function reconciliarReenviosOficios(simular, tokenSessao) {
+  /* PORTA DUPLA. Isto é ferramenta de manutenção: roda uma vez, do EDITOR do
+     Apps Script, onde não existe token de sessão. Fechar só com token deixaria
+     a função sem lugar nenhum de onde ser chamada — foi o que eu fiz na
+     primeira versão, e o usuário descobriu ao procurá-la no seletor do editor
+     e não achar como executar.
+
+     Mesmo padrão do `sincronizarStatusOficiosEnviados` (01/09) e dos
+     handlers de gatilho: aceita sessão OU administrador identificado pela
+     conta que executa. */
+  exigirAdminOuSessao_(tokenSessao, "documentos",
+                       "Reconciliacao de reenvios de oficios", true);
+  /* Simular é o padrão: só escreve quem passar `false` de propósito. */
+  return oficio_reconciliarReenvios_(simular !== false);
+}
+
+function oficio_reconciliarReenvios_(simular) {
+  var ss = SpreadsheetApp.openById(
+    typeof getPlanilhaId === "function" ? getPlanilhaId() : PLANILHA_ID);
+
+  var log = ss.getSheetByName("LOG_SISTEMA");
+  if (!log || log.getLastRow() < 2) {
+    return { ok: true, simulado: simular, reenviadosNoLog: 0, ajustar: [], ajustados: 0,
+             mensagem: "LOG_SISTEMA vazio — nenhum reenvio registrado." };
+  }
+
+  /* ── quais números o log diz que foram reenviados ── */
+  var hmLog = getHeaderMap_(log);
+  var cNumLog = hmLog["NUMERO"];
+  if (!cNumLog) {
+    return { ok: false, mensagem: "Coluna NUMERO não encontrada no LOG_SISTEMA." };
+  }
+  var linhasLog = log.getRange(2, cNumLog, log.getLastRow() - 1, 1).getValues();
+  var reenviados = {};
+  for (var i = 0; i < linhasLog.length; i++) {
+    var texto = String(linhasLog[i][0] || "");
+    if (texto.indexOf("(REENVIO") === -1) continue;
+    /* O campo é "144/2026 (REENVIO - ENDERECO SUBSTITUIDO)": o número é o que
+       vem antes do parêntese. */
+    var numero = texto.split("(")[0].trim();
+    if (numero) reenviados[numero] = true;
+  }
+
+  var sh = ss.getSheetByName(PLANILHA_REGISTRO);
+  if (!sh || sh.getLastRow() < 2) {
+    return { ok: false, mensagem: "Registro de ofícios vazio." };
+  }
+  var hm   = getHeaderMap_(sh);
+  var cNum = hm["Número do Ofício"];
+  var cSt  = hm["Status"];
+  if (!cNum || !cSt) {
+    return { ok: false, mensagem: "Colunas do Controle não encontradas." };
+  }
+
+  /* A coluna só é criada quando houver algo a gravar — simular não deve
+     alterar a estrutura da planilha. */
+  var cJa = simular ? (hm[OFICIO_COL_JA_FALHOU] || 0) : oficio_garantirColunaJaFalhou_(sh);
+
+  var dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+  var ajustar = [], ajustados = 0;
+
+  for (var j = 0; j < dados.length; j++) {
+    var num = String(dados[j][cNum - 1] || "").trim();
+    if (!num || !reenviados[num]) continue;
+
+    var st = String(dados[j][cSt - 1] || "").trim().toUpperCase();
+    if (st !== "FALHA_ENTREGA") continue;   /* já está resolvido */
+
+    ajustar.push({ numero: num, linha: j + 2, statusAtual: st });
+
+    if (!simular) {
+      if (cJa) sh.getRange(j + 2, cJa).setValue("SIM");
+      sh.getRange(j + 2, cSt).setValue("ENVIADO");
+      ajustados++;
+    }
+  }
+  if (!simular && ajustados) SpreadsheetApp.flush();
+
+  var quantosNoLog = 0;
+  for (var k in reenviados) if (reenviados.hasOwnProperty(k)) quantosNoLog++;
+
+  return {
+    ok: true,
+    simulado: simular,
+    reenviadosNoLog: quantosNoLog,
+    ajustar: ajustar,
+    ajustados: ajustados,
+    mensagem: simular
+      ? ("SIMULAÇÃO — nada foi escrito. O log registra " + quantosNoLog +
+         " ofício(s) reenviado(s); " + ajustar.length +
+         " ainda está(ão) como FALHA_ENTREGA e seria(m) ajustado(s)." +
+         (ajustar.length ? " Para aplicar, rode de novo com simular = false." : ""))
+      : (ajustados + " ofício(s) ajustado(s) para ENVIADO, com JA_FALHOU = SIM. " +
+         "A memória da falha foi preservada.")
+  };
+}
+
 function reenviarOficio(registro, tokenSessao) {
   var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   try {
