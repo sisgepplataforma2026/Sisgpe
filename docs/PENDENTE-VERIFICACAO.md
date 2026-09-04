@@ -118,6 +118,76 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
+### 70. 🔴 PRODUÇÃO NA VERSÃO 696 — a reconciliação de reenvios acontece sozinha
+
+04/09/2026, 13h50.
+
+| | |
+|---|---|
+| Versão | **696** (`producao-380aea5`) |
+| Rollback | versão **695** |
+| Aplicado | 2 arquivos modificados, nenhum criado, nenhum removido |
+| Quais | `EmailOficios.gs`, `MonitoramentoOficios.gs` |
+
+**O QUE FOI PARA O AR.** Ofício reenviado antes da versão 695 ficou com Status
+`FALHA_ENTREGA` mesmo tendo saído — a marcação não existia ainda, e nada volta
+e conserta o passado. O usuário perguntou: *"se já foi reenviado ele
+atualiza?"*. Não atualizava.
+
+O dado já existia: todo reenvio grava no `LOG_SISTEMA` com o sufixo
+`(REENVIO)`. O sistema sabia; só não usava.
+
+Primeiro escrevi uma função de manutenção. O usuário respondeu **"tudo
+automatizado"** — e tinha razão: o que a pessoa precisa lembrar de fazer, ela
+esquece. A reconciliação passou para dentro do `verificarFalhasEntregaOficios`,
+que já roda de gatilho e já existe para manter o status de entrega verdadeiro.
+
+**Por que pode ser automático:** não há julgamento. O log registra o reenvio, o
+status contradiz, e os dois não podem estar certos. É escrituração, não
+decisão — o limite da REGRA Nº 0.6 é não decidir pela pessoa, e aqui não há o
+que decidir.
+
+**E não é em silêncio:** grava `OFICIOS_REENVIO_RECONCILIADO` no log de
+auditoria, com a lista dos números.
+
+**O BOTÃO NA TELA NÃO FOI FEITO**, e é decisão consciente registrada aqui: com
+a reconciliação automática ele seria um botão que nunca teria o que fazer. Se
+um dia fizer falta — forçar na hora, sem esperar o gatilho — é acréscimo
+pequeno.
+
+**UM DEFEITO QUE O USUÁRIO ACHOU DO JEITO MAIS DIRETO POSSÍVEL.** A primeira
+versão da função manual fechava com `exigirModulo_`, que exige token. Ele foi
+procurá-la no seletor do editor do Apps Script e ela não estava lá — porque
+ainda não fora promovida — e, quando estivesse, não rodaria: o editor não passa
+token. **Eu tinha escrito uma ferramenta de manutenção sem lugar nenhum de onde
+ser chamada.** Corrigido com porta dupla, o mesmo padrão do
+`sincronizarStatusOficiosEnviados`.
+
+**A CONFERIR EM PRODUÇÃO:**
+
+1. 🔴 se algum dos sete da FAESA foi reenviado ANTES das 13h14 de hoje, ele
+   deve sair sozinho da caixa de falha na próxima execução do gatilho;
+2. 🔴 e o log de auditoria deve mostrar `OFICIOS_REENVIO_RECONCILIADO` com os
+   números ajustados;
+3. 🟡 ofício que nunca foi reenviado **continua** como falha — se algum sumir
+   da lista sem ter sido reenviado, é bug e precisa ser reportado.
+
+### 70b. ✅ A CONFERÊNCIA DE CINCO LEITURAS PAGOU NO MESMO DIA
+
+O log desta publicação traz:
+
+```
+implantacao confirmada na versao 696 (tentativa 2)
+```
+
+**Tentativa 2.** A primeira leitura ainda trazia a versão antiga — exatamente o
+atraso de propagação do Google que derrubou a publicação da versão 693 hoje de
+manhã, quando a conferência lia uma vez só.
+
+O conserto foi feito às 12h; a falha que ele evita apareceu de novo às 13h50.
+Vale registrar porque é raro poder medir tão diretamente que uma correção de
+processo valeu a pena.
+
 ### 69. 🔴 PRODUÇÃO NA VERSÃO 695 — o reenvio limpa a fila, e a base de contatos deixa de ser destrutível
 
 04/09/2026, 13h14. Duas mudanças, ambas nascidas de perguntas do usuário no
