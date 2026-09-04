@@ -185,13 +185,35 @@ houver web app publicado nele, há gente de fora do sindicato usando esses
 links, e quem usa não tem como avisar que quebrou. Falta ver
 **Implantar → Gerenciar implantações**.
 
-**A CONFERIR NO PRÓXIMO OFÍCIO EMITIDO EM PRODUÇÃO:**
+**✅ VERIFICADO NO AR — OFÍCIO 512/2026, 03/09/2026 às 15h22.** Emitido em
+produção depois da remoção dos gatilhos, e comparado com o 511/2026 das 14h02:
 
-1. 🔴 chega **uma** cópia, não duas;
-2. 🔴 sem `Bcc:` no cabeçalho;
-3. 🔴 o `De` é `secretaria@sindeducacao.com` — e se não for, aí sim o problema
-   é o alias, e a investigação recomeça do lugar certo;
-4. 🟡 `verificarEEnviarLembretesGuias` está com **100% de erro** em toda
+| | 511 (sistema velho) | 512 (sistema certo) |
+|---|---|---|
+| **De** | `financeirosindecucacao@gmail.com` | **`secretaria@sindeducacao.com`** |
+| Cláusula citada | CCT 2025/2026 | **CCT 2026/2027** |
+| Assinatura | "Marcelha Aline" | **"Marcelha Aline Pinto Gomes"** |
+| Anexos | ofício + ficha | ofício + ficha |
+
+**O QUE ISSO PROVA, e desfaz três conclusões minhas:** o alias da Secretaria
+sempre funcionou. Eu atribuí o remetente errado a alias quebrado, depois a um
+`catch` silencioso, depois à identidade do gatilho — três hipóteses
+plausíveis, todas erradas. A causa era inteiramente o projeto paralelo.
+
+**E DESTRAVA O ITEM 49:** com o gatilho velho removido, só a versão corrigida
+de `verificarConfirmacoesRecebimento` roda. A correção do "Outlook" passa a
+valer de fato, não só no repositório.
+
+**AINDA A CONFERIR:**
+
+
+
+1. ✅ **o `De` é a Secretaria** — provado no 512/2026;
+2. 🔴 **o BCC morreu junto?** O `Bcc` é invisível para quem está no `Para`, então
+   o cabeçalho do 512 não responde. A conferência é abrir a caixa do
+   **financeiro** (a conta Gmail) e ver se chegou cópia do 512. Se não chegou,
+   o BCC saiu com o projeto velho;
+3. 🟡 `verificarEEnviarLembretesGuias` está com **100% de erro** em toda
    execução, no projeto da planilha. Não é urgente, mas está quebrado.
 
 **A LIÇÃO, que vale além deste caso.** Passei o dia inteiro atribuindo o
