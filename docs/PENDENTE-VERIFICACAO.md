@@ -209,10 +209,18 @@ valer de fato, não só no repositório.
 
 
 1. ✅ **o `De` é a Secretaria** — provado no 512/2026;
-2. 🔴 **o BCC morreu junto?** O `Bcc` é invisível para quem está no `Para`, então
-   o cabeçalho do 512 não responde. A conferência é abrir a caixa do
-   **financeiro** (a conta Gmail) e ver se chegou cópia do 512. Se não chegou,
-   o BCC saiu com o projeto velho;
+2. ✅ **o BCC morreu junto** — verificado na caixa do financeiro. O Gmail monta
+   a linha do destinatário a partir dos cabeçalhos, e ela mudou:
+
+   | | |
+   |---|---|
+   | 511 | `para secretaria, Cco: financeiro` |
+   | 512 | `para secretaria` |
+
+   O 512 ainda aparece nessa caixa, e isso NÃO é cópia oculta: a conta Gmail
+   busca o `secretaria@sindeducacao.com`, então a mesma mensagem entregue à
+   Secretaria chega ali também. São coisas diferentes — uma é entrega
+   duplicada por configuração de caixa, a outra era um BCC cravado no código;
 3. 🟡 `verificarEEnviarLembretesGuias` está com **100% de erro** em toda
    execução, no projeto da planilha. Não é urgente, mas está quebrado.
 
