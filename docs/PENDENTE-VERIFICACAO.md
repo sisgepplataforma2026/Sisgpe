@@ -118,6 +118,55 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
+### 71. 🟡 HOMOLOGAÇÃO REALINHADA COM PRODUÇÃO — versão 104
+
+04/09/2026, 14h09. Execução nº 76 do `deploy-homologacao.yml`.
+
+| | |
+|---|---|
+| Versão criada | **104** (`homolog-e1eb896`) |
+| Backup do estado anterior | artefato `homologacao-antes-76` (30 dias) |
+| Arquivos | 272 no repositório, 272 na homologação — nenhum criado, nenhum apagado |
+| Alterados | 7 |
+
+Os sete são exatamente o trabalho de reenvio e a proteção de contatos de
+escola, que estavam só em produção desde 30/08:
+
+```
+BuscaEscola.gs          MonitoramentoOficios.gs   OficiosDestinatarios.gs
+EmailOficios.gs         OficiosConferencia.html   OficiosFormulario.html
+                                                  OficiosScripts.html
+```
+
+**POR QUE ISTO IMPORTA.** Homologação existe para ensaiar antes. Enquanto ela
+roda código mais velho que produção, ela não ensaia nada — testar ali passa a
+dar falsa segurança, que é pior do que não testar. Ficou cinco dias assim.
+
+**O ENGANO DESTA MESMA EXECUÇÃO, REGISTRADO PORQUE VAI SE REPETIR.** Disparei
+o workflow sem informar o modo. O padrão dele é `conferir`: roda a suíte
+inteira, baixa a homologação, compara, imprime o relatório — **e não escreve
+nada**. Terminou verde, com os três passos de escrita marcados como pulados, e
+eu anunciei ao usuário que homologação e produção voltariam a ter o mesmo
+código. Não voltariam. É a segunda vez no mesmo dia que tomo um verde por
+resultado sem ler o que o verde diz.
+
+O padrão `conferir` está certo e não deve mudar — `clasp push --force` apaga da
+homologação o que não estiver no repositório, e uma escrita dessas nunca deve
+ser o comportamento acidental. O que falhou foi a leitura, não o workflow.
+**Verde não é veredito: o veredito é a linha `modo desta execucao:`.**
+
+**O QUE ESTA ENTREGA NÃO PROVA.** Só que o código foi escrito e publicado na
+versão 104. Nada foi exercitado na homologação: o reenvio com anexos, o
+seletor de destinatários, a coluna `JA_FALHOU` e a reconciliação automática
+continuam **não testados** ali — o que rodou foi a suíte em Node, que não
+abre tela, não manda e-mail e não dispara gatilho.
+
+**A CONFERIR NA HOMOLOGAÇÃO** (opcional, já que produção é quem opera):
+
+1. 🟡 abrir o Histórico de Ofícios e confirmar que o modal de reenvio traz o
+   seletor de destinatários e a lista de anexos;
+2. 🟡 confirmar que a URL de homologação responde na versão 104.
+
 ### 70. 🔴 PRODUÇÃO NA VERSÃO 696 — a reconciliação de reenvios acontece sozinha
 
 04/09/2026, 13h50.
