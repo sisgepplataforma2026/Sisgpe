@@ -124,9 +124,9 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 | | |
 |---|---|
-| Produção | versão **697** (`producao-9e8b019`), rollback na **696** |
-| Homologação | versão **105** (`homolog-584c84d`) |
-| Aplicado | 3 modificados, 0 criados, 0 removidos — exatamente o que a conferência prévia anunciou |
+| Produção | versão **698** (`producao-12cfe77`), rollback na **697** |
+| Homologação | versão **106** (`homolog-53ae602`) |
+| Aplicado | 697: 3 modificados · 698: 2 modificados — nas duas, exatamente o que a conferência prévia anunciou |
 
 **O QUE ORIGINOU.** Eu listei como tarefa do usuário: *"reenviar os 15 ofícios,
 conferindo `Anexos: N` no modal antes de confirmar"*. Ele respondeu:
