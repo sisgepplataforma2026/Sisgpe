@@ -4,7 +4,7 @@ function fs_list_(collection, pageSize) {
   pageSize = Math.min(Math.max(Number(pageSize || 500), 1), 1000);
   var out = [], token = '';
   do {
-    var url = fs_baseUrl_() + '/' + encodeURIComponent(collection) + '?pageSize=' + pageSize;
+    var url = fs_baseUrl_() + '/' + encodeURIComponent(fs_colecao_(collection)) + '?pageSize=' + pageSize;
     if (token) url += '&pageToken=' + encodeURIComponent(token);
     var resp = UrlFetchApp.fetch(url, {
       method:'get', headers:{Authorization:'Bearer '+fs_getAccessToken_()}, muteHttpExceptions:true

@@ -118,6 +118,103 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
+### 73. 🔴 FESTA COMPASSO 2026 — três bloqueios achados na auditoria da abertura
+
+05/09/2026. O usuário pediu auditoria do módulo da festa e, no meio dela,
+informou: *"vamos abrir as inscrições na próxima semana"* e *"as inscrições
+serão gradativas"*. A segunda frase baixou o risco de concorrência e de cota; a
+primeira revelou três coisas que impediriam a abertura.
+
+#### 1. A data de abertura estava cravada no código — e o ensaio não pegaria
+
+`EMISSAO_CFG.PERIODO_INICIO` era **21/09/2026**. A semana seguinte a 05/09 cai
+antes disso: a página pública responderia *"As inscrições ainda não abriram"* e
+o `compasso_inscrever` recusaria cada tentativa.
+
+**O que torna isso grave não é a data errada — é onde ela falha.** Em
+homologação, `emissao_modoTeste_()` devolve `true` e a trava de período é
+pulada. O ensaio passaria e só a produção recusaria. Defeito que o ensaio não
+alcança é o pior formato que existe.
+
+Agora sai das Propriedades do script, com a constante como padrão:
+
+```
+COMPASSO_INSCRICAO_INICIO = 2026-09-08
+COMPASSO_INSCRICAO_FIM    = 2026-11-11
+```
+
+Data de abrir inscrição é decisão de operação — muda por assembleia, feriado,
+divulgação — e não deveria custar uma publicação nem depender de mim estar
+disponível.
+
+O parse é manual de propósito: `new Date('2026-09-08')` é lido como meia-noite
+**em UTC**, que em Brasília é 21h do dia 7. A inscrição abriria um dia antes do
+que está escrito, e ninguém entenderia por quê.
+
+Os **três** caminhos que decidem "está no período?" passaram a usar o mesmo
+resolvedor. Um lendo a constante direto divergiria dos outros no dia em que a
+propriedade mudasse — e a divergência apareceria como "abriu num lugar e não no
+outro".
+
+#### 2. O ingresso podia sair com link que o associado não abre
+
+`/dev` é o endereço do editor: só abre para quem tem acesso de **edição** ao
+script. Para o associado é tela de permissão do Google.
+
+**E quem envia nunca vê**, porque para o dono do projeto abre normal. Já
+aconteceu duas vezes em 21/08/2026 — a segunda logo depois de a primeira ter
+sido explicada. Existia um aviso, mas dentro de um diagnóstico que alguém
+precisa lembrar de rodar; defeito que depende de alguém lembrar é defeito que
+volta.
+
+Agora a entrega **PARA**, com erro que nomeia a propriedade que resolve
+(`SISGEP_URL_BASE`) e avisa que o ingresso já está emitido — para ninguém
+reemitir e duplicar. Um erro alto custa um minuto de configuração; o silêncio
+custaria 2.000 links quebrados, descobertos um a um pelo telefone.
+
+#### 3. O ensaio queimava vaga real e bloqueava CPF de verdade
+
+Homologação e produção gravavam nas **mesmas coleções** do Firestore, com o
+mesmo `EVENTO_ID` constante. Isso não era sujeira de dado:
+
+- `reservasEventos` é **um** documento com o contador das 2.000 vagas — cada
+  ensaio queimava uma vaga real;
+- `inscricaoUnicaEventos` é o índice que impede o mesmo CPF duas vezes —
+  **ensaiar com um CPF real impedia aquela pessoa de se inscrever de verdade
+  depois**, e ela descobriria no dia, sem ninguém saber por quê.
+
+A limpeza por `origem === 'IMPORTACAO_TESTE'` não alcançava: inscrição feita
+pelo formulário público de homologação nasce com `INSCRICAO_PUBLICA`, igual à
+real.
+
+Agora as coleções ganham prefixo `hml_` **em homologação apenas**. A direção é
+assimétrica de propósito: prefixar produção órfãozaria, em silêncio, tudo o que
+já está gravado — a tela abriria vazia e ninguém saberia dizer se sumiu ou se
+nunca houve. O prefixo mora nos quatro acessores (`fs_set_`, `fs_get_`,
+`fs_queryEquals_`, `fs_list_`), então os 101 pontos de chamada não mudaram.
+
+| | |
+|---|---|
+| Teste | t149, 28 asserções |
+| Suíte | 151 arquivos, 5233 asserções, nenhuma falha |
+| Teto de exposição | 204/204 — nada novo exposto |
+
+**A CONFERIR NO AR, e o item 1 é urgente:**
+
+1. 🔴 **declarar `COMPASSO_INSCRICAO_INICIO`** com a data real de abertura;
+   sem isso a inscrição só abre em 21/09;
+2. 🔴 **rodar `diagnosticoEntregaCompasso_`** no editor de PRODUÇÃO e ver se a
+   base sai `/exec`. Se sair `/dev`, declarar `SISGEP_URL_BASE` — a entrega
+   agora recusa, então o sintoma aparece na hora do primeiro envio;
+3. 🔴 **conferir `FIREBASE_PROJETO`** nos dois ambientes. O prefixo protege
+   mesmo sendo o mesmo projeto, mas saber qual é muda o plano de limpeza;
+4. 🟡 depois de publicar, ensaiar a inscrição pública em **homologação** —
+   agora é seguro, e é a primeira vez que é.
+
+**O QUE A AUDITORIA AINDA NÃO COBRIU:** emissão e QR, entrega e cota de e-mail,
+check-in na portaria, pagamento do acompanhante, e a arquitetura V2 que ficou
+pela metade (item 4 da análise de 21/08).
+
 ### 72. ✅ REENVIO EM LOTE — o sistema escolhe o destino, você confere e confirma
 
 04/09/2026, 18h18. **No ar nos dois ambientes.**

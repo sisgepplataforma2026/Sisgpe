@@ -155,9 +155,9 @@ function compasso_inscricaoConfig_() {
   if (restantes <= 0) { aberta = false; motivo = 'As vagas para esta edição se esgotaram.'; }
   if (aberta && !emissao_modoTeste_()) {
     var agora = new Date();
-    if (agora < EMISSAO_CFG.PERIODO_INICIO) {
+    if (agora < compasso_periodoInicio_()) {
       aberta = false; motivo = 'As inscrições ainda não abriram.';
-    } else if (agora > EMISSAO_CFG.PERIODO_FIM) {
+    } else if (agora > compasso_periodoFim_()) {
       aberta = false; motivo = 'O período de inscrições foi encerrado.';
     }
   }

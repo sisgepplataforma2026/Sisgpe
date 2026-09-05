@@ -11,6 +11,9 @@ var EMISSAO_CFG = {
   LIMITE_VAGAS: 2000,
   PREFIXO: 'FCV-2026-',
   VALOR_ACOMPANHANTE: 500,
+  /* PADRÃO do período. A abertura real é lida das Propriedades do script, por
+     `compasso_periodoInicio_()` / `compasso_periodoFim_()` — ver o bloco logo
+     abaixo do objeto. Estes valores só valem enquanto ninguém declarar nada. */
   PERIODO_INICIO: new Date(2026, 8, 21, 0, 0, 0),    // 21/09/2026
   PERIODO_FIM:    new Date(2026, 10, 11, 23, 59, 59), // 11/11/2026
   /* A data da festa entra aqui em 25/08/2026 porque o painel executivo conta
@@ -62,6 +65,84 @@ var EMISSAO_CFG = {
  * e o EventoPainel.html pinta a tarja MODO TESTE. Sugerir com origem à vista,
  * nunca impor em silêncio.
  */
+/* ══════════════════════════════════════════════════════════════════════════
+   O PERÍODO DE INSCRIÇÃO NÃO PODE EXIGIR UMA PUBLICAÇÃO — 05/09/2026
+
+   O usuário disse "vamos abrir as inscrições na próxima semana". A auditoria
+   mediu: `PERIODO_INICIO` estava cravado em 21/09/2026, e a semana seguinte
+   caía antes disso. A página pública responderia "As inscrições ainda não
+   abriram" e o `compasso_inscrever` recusaria cada tentativa.
+
+   E O ENSAIO NÃO PEGARIA. Em homologação, `emissao_modoTeste_()` devolve true
+   e a trava de período é pulada — o teste passaria e só a produção recusaria.
+   É o pior formato de defeito que existe: o que o ensaio não alcança.
+
+   A data de abrir inscrição é decisão de operação, não de engenharia. Ela
+   muda por motivo de sindicato — adiantar uma semana, esperar a assembleia,
+   adiar por causa do feriado — e nenhum desses motivos deveria custar uma
+   publicação de versão nem depender de mim estar disponível.
+
+   Agora sai das Propriedades do script:
+
+       COMPASSO_INSCRICAO_INICIO = 2026-09-08
+       COMPASSO_INSCRICAO_FIM    = 2026-11-11
+
+   Não declarada, vale a constante do EMISSAO_CFG — nada muda para quem não
+   mexer.
+
+   POR QUE O PARSE É MANUAL. `new Date('2026-09-08')` é lido pelo JavaScript
+   como MEIA-NOITE EM UTC, que em Brasília é 21h do dia 7. A inscrição abriria
+   um dia antes do que está escrito na propriedade, e ninguém entenderia por
+   quê. Montando a data por componentes ela nasce no fuso do script, que é o
+   fuso em que a pessoa pensou a data.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Lê uma data YYYY-MM-DD das Propriedades do script.
+ * Qualquer coisa fora desse formato devolve o padrão — data mal digitada não
+ * pode abrir nem fechar inscrição por acidente.
+ */
+function compasso_dataDeProp_(chave, padrao, fimDoDia) {
+  var bruto = '';
+  try {
+    bruto = String(PropertiesService.getScriptProperties()
+                   .getProperty(chave) || '').trim();
+  } catch (e) { return padrao; }
+  if (!bruto) return padrao;
+
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(bruto);
+  if (!m) {
+    Logger.log('compasso_dataDeProp_: ' + chave + ' = "' + bruto +
+               '" não está em YYYY-MM-DD; usando o padrão.');
+    return padrao;
+  }
+  var ano = Number(m[1]), mes = Number(m[2]), dia = Number(m[3]);
+  if (mes < 1 || mes > 12 || dia < 1 || dia > 31) return padrao;
+
+  var d = fimDoDia ? new Date(ano, mes - 1, dia, 23, 59, 59)
+                   : new Date(ano, mes - 1, dia, 0, 0, 0);
+  /* Data que não existe (31/02) rola para o mês seguinte silenciosamente.
+     Conferir os componentes de volta é o que denuncia isso. */
+  if (d.getFullYear() !== ano || d.getMonth() !== mes - 1 || d.getDate() !== dia) {
+    Logger.log('compasso_dataDeProp_: ' + chave + ' = "' + bruto +
+               '" não é uma data real; usando o padrão.');
+    return padrao;
+  }
+  return d;
+}
+
+/** Quando a inscrição abre. Propriedade primeiro, constante como padrão. */
+function compasso_periodoInicio_() {
+  return compasso_dataDeProp_('COMPASSO_INSCRICAO_INICIO',
+                              EMISSAO_CFG.PERIODO_INICIO, false);
+}
+
+/** Quando a inscrição fecha. */
+function compasso_periodoFim_() {
+  return compasso_dataDeProp_('COMPASSO_INSCRICAO_FIM',
+                              EMISSAO_CFG.PERIODO_FIM, true);
+}
+
 function emissao_modoTeste_() {
   var props = PropertiesService.getScriptProperties();
 
@@ -283,9 +364,9 @@ function emissao_emitirIngresso_legadoV1_(payload, tokenSessao) {
     // --- período (a menos que modo teste) ---
     if (!emissao_modoTeste_()) {
       var hoje = new Date();
-      if (hoje < EMISSAO_CFG.PERIODO_INICIO)
+      if (hoje < compasso_periodoInicio_())
         return { ok: false, erro: 'As inscrições ainda não abriram (começam em 21/09/2026).' };
-      if (hoje > EMISSAO_CFG.PERIODO_FIM)
+      if (hoje > compasso_periodoFim_())
         return { ok: false, erro: 'O período de inscrições foi encerrado (11/11/2026).' };
     }
 

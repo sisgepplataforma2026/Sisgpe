@@ -143,10 +143,61 @@ function fs_fromFields_(fields) {
   return obj;
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   HOMOLOGAÇÃO E PRODUÇÃO PARARAM DE ESCREVER NO MESMO LUGAR — 05/09/2026
+
+   Levantado na auditoria pedida quando o usuário disse que as inscrições
+   abrem na semana seguinte. Até aqui os dois ambientes apontavam para o mesmo
+   projeto Firebase e para as MESMAS coleções: `inscricoesEventos`,
+   `ingressos`, `reservasEventos`, `inscricaoUnicaEventos`. O `EVENTO_ID` é
+   constante (`festa-compasso-2026`), então nem ele separava.
+
+   O QUE ISSO CUSTA, e não é sujeira de dado:
+
+     · `reservasEventos` é UM documento com o contador das 2.000 vagas. Cada
+       ensaio em homologação queimava uma vaga real.
+     · `inscricaoUnicaEventos` é o índice que impede o mesmo CPF de se
+       inscrever duas vezes. Ensaiar com um CPF real BLOQUEIA aquela pessoa
+       de se inscrever de verdade depois — e ela descobre no dia, sem ninguém
+       saber por quê.
+
+   A limpeza por `origem === 'IMPORTACAO_TESTE'` não alcança isso: inscrição
+   feita pelo formulário público de homologação nasce com origem
+   `INSCRICAO_PUBLICA`, igual à de verdade. Não há como distinguir depois.
+
+   A DIREÇÃO DO PREFIXO IMPORTA, e é assimétrica de propósito:
+
+     produção   → nome da coleção INTOCADO
+     homologação → `hml_` na frente
+
+   Produção já tem dado gravado nos nomes atuais. Prefixar produção órfãozaria
+   tudo o que existe, em silêncio — a tela abriria vazia e ninguém saberia
+   dizer se sumiu ou se nunca houve. Prefixar só homologação não mexe em nada
+   que exista de verdade; o que ficar para trás em homologação é dado de
+   ensaio, que é o que se quer descartar.
+
+   A LEITURA É FRESCA, não por getAmbienteAtual(), que guarda cache em
+   `getAmbienteAtual._cache`: trocar o ambiente no meio de uma execução de
+   diagnóstico devolveria o valor velho. Mesmo motivo do `emissao_modoTeste_`.
+
+   E o padrão segue a convenção da casa: ausente ou ilegível = PRODUÇÃO. Não é
+   descuido — é o que `getAmbienteAtual()` já faz no sistema inteiro, e
+   homologação declara `SISGEP_AMBIENTE=homologacao` (provado pelo usuário em
+   21/08/2026, no diagnóstico de isolamento de ambiente).
+   ══════════════════════════════════════════════════════════════════════════ */
+function fs_colecao_(nome) {
+  var amb = '';
+  try {
+    amb = String(PropertiesService.getScriptProperties()
+                 .getProperty('SISGEP_AMBIENTE') || '').trim().toLowerCase();
+  } catch (e) { amb = ''; }
+  return amb === 'homologacao' ? ('hml_' + String(nome || '')) : String(nome || '');
+}
+
 // ---------- GRAVAR (cria/substitui documento com ID definido) ----------
 function fs_set_(collection, docId, obj) {
   if (FS_METRICAS.ligado) FS_METRICAS.gravacoes++;
-  var url = fs_baseUrl_() + '/' + collection + '/' + encodeURIComponent(docId);
+  var url = fs_baseUrl_() + '/' + fs_colecao_(collection) + '/' + encodeURIComponent(docId);
   var resp = UrlFetchApp.fetch(url, {
     method: 'patch',
     contentType: 'application/json',
@@ -162,7 +213,7 @@ function fs_set_(collection, docId, obj) {
 // ---------- LER (retorna objeto ou null) ----------
 function fs_get_(collection, docId) {
   if (FS_METRICAS.ligado) FS_METRICAS.leituras++;
-  var url = fs_baseUrl_() + '/' + collection + '/' + encodeURIComponent(docId);
+  var url = fs_baseUrl_() + '/' + fs_colecao_(collection) + '/' + encodeURIComponent(docId);
   var resp = UrlFetchApp.fetch(url, {
     method: 'get',
     headers: { Authorization: 'Bearer ' + fs_getAccessToken_() },
@@ -183,7 +234,7 @@ function fs_queryEquals_(collection, campo, valor) {
   var url = fs_baseUrl_() + ':runQuery';
   var body = {
     structuredQuery: {
-      from: [{ collectionId: collection }],
+      from: [{ collectionId: fs_colecao_(collection) }],
       where: {
         fieldFilter: {
           field: { fieldPath: campo },

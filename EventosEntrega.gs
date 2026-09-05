@@ -74,8 +74,34 @@ var COMPASSO_ENTREGA_CANAIS = { EMAIL: 'EMAIL', WHATSAPP: 'WHATSAPP' };
 /**
  * URL pública do ingresso. O token é a credencial — ver o cabeçalho.
  * Usa a mesma base do resto do sistema (eventos_obterWebAppUrl usa esta).
+ *
+ * ══════════════════════════════════════════════════════════════════════════
+ * RECUSA MANDAR COM LINK /dev — 05/09/2026
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * `/dev` é o endereço do EDITOR: só abre para quem tem acesso de EDIÇÃO ao
+ * script. Para o associado é tela de permissão do Google.
+ *
+ * O QUE TORNA ISSO PERIGOSO não é o erro em si, é quem consegue vê-lo:
+ * NINGUÉM do lado de quem envia. Para o dono do projeto o link abre normal.
+ * Só o associado vê a falha, e ele não tem a quem reclamar a não ser ligando
+ * para a secretaria. Aconteceu duas vezes em 21/08/2026 — a segunda logo
+ * depois de eu ter explicado a primeira.
+ *
+ * Existia um aviso (`compasso_avisoUrlDev_`), mas dentro de um diagnóstico
+ * que alguém precisa LEMBRAR de rodar. Defeito que depende de alguém lembrar
+ * é defeito que volta. Com a inscrição abrindo e 2.000 ingressos para
+ * entregar, o custo de esquecer é 2.000 links quebrados descobertos um a um,
+ * pelo telefone.
+ *
+ * Agora a entrega PARA. Um erro alto, aqui, custa uma configuração de um
+ * minuto; o silêncio custa a festa. O ingresso já está emitido e gravado —
+ * só a entrega falha, e reenviar depois de declarar a propriedade funciona.
+ *
+ * `permitirDev` existe para o diagnóstico: ele chama justamente para MOSTRAR
+ * a base, e não pode explodir na cara de quem foi lá conferir.
  */
-function compasso_ingressoUrlPublica_(qrToken) {
+function compasso_ingressoUrlPublica_(qrToken, permitirDev) {
   var base = '';
   try {
     base = (typeof getSistemaUrlBase === 'function' && getSistemaUrlBase())
@@ -83,7 +109,20 @@ function compasso_ingressoUrlPublica_(qrToken) {
   } catch (e) {
     base = ScriptApp.getService().getUrl();
   }
-  return String(base || '') + '?page=ingresso&t=' + encodeURIComponent(String(qrToken || ''));
+  base = String(base || '');
+
+  if (!permitirDev && base.indexOf('/dev') > -1) {
+    throw new Error(
+      'ENTREGA BLOQUEADA: o link do ingresso sairia em /dev, que só abre ' +
+      'para quem tem acesso de edição ao script — o associado veria uma tela ' +
+      'de permissão do Google. Declare SISGEP_URL_BASE nas Propriedades do ' +
+      'script com a URL /exec da implantação (Implantar → Gerenciar ' +
+      'implantações) e reenvie. Não adianta trocar "dev" por "exec" no ' +
+      'endereço: os dois têm IDs diferentes. O ingresso já está emitido; ' +
+      'nada se perdeu.');
+  }
+
+  return base + '?page=ingresso&t=' + encodeURIComponent(String(qrToken || ''));
 }
 
 /**
@@ -706,7 +745,15 @@ function diagnosticoEntregaCompasso_() {
   L.push('═══════════════════════════════════════════════════');
   L.push('  ENTREGA DO INGRESSO — COMPASSO 2026');
   L.push('═══════════════════════════════════════════════════');
-  L.push('  Base do web app : ' + compasso_ingressoUrlPublica_('EXEMPLO').split('?')[0]);
+  /* permitirDev=true: este diagnóstico existe justamente para MOSTRAR a base,
+     inclusive quando ela está errada. Explodir aqui esconderia a resposta de
+     quem veio procurá-la. */
+  var baseDiag = compasso_ingressoUrlPublica_('EXEMPLO', true).split('?')[0];
+  L.push('  Base do web app : ' + baseDiag);
+  if (baseDiag.indexOf('/dev') > -1) {
+    L.push('  ⚠️  ESTA BASE É /dev — a ENTREGA ESTÁ BLOQUEADA até declarar');
+    L.push('      SISGEP_URL_BASE com a URL /exec da implantação.');
+  }
   L.push('  Rota do ingresso: ?page=ingresso&t=<qrToken>');
   L.push('');
   L.push('  Token inventado é recusado? ' +

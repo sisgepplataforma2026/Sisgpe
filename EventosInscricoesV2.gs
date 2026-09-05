@@ -36,7 +36,7 @@ function compasso_criarInscricaoAssociado(payload, tokenSessao) {
   try {
     if(!String(payload.nome||'').trim()) return {ok:false,erro:'Nome é obrigatório.'};
     var cpf=compasso_cpfNormalizado_(payload.cpf); if(!payload.pessoaId && !cpf) return {ok:false,erro:'CPF ou pessoaId é obrigatório para identificar a inscrição.'};
-    if(!emissao_modoTeste_()) {var agora=new Date();if(agora<EMISSAO_CFG.PERIODO_INICIO||agora>EMISSAO_CFG.PERIODO_FIM)return {ok:false,erro:'Fora do período de inscrições.'};}
+    if(!emissao_modoTeste_()) {var agora=new Date();if(agora<compasso_periodoInicio_()||agora>compasso_periodoFim_())return {ok:false,erro:'Fora do período de inscrições.'};}
     var chave=compasso_inscricaoChave_(payload.pessoaId,cpf), indice=fs_get_('inscricaoUnicaEventos',chave);
     /* Mesma liberação de homologação da porta pública: as três travas de
        unicidade afrouxam juntas, senão o teste morre na primeira que sobrar. */
