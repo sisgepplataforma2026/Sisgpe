@@ -16,9 +16,32 @@ var AMBIENTE_CONFIG = (typeof AMBIENTE_CONFIG === "object" && AMBIENTE_CONFIG)
       PADRAO: "producao"
     };
 
+/**
+ * A base de todo link que o sistema manda para fora.
+ *
+ * `ScriptApp.getService().getUrl()` devolve coisas DIFERENTES conforme quem
+ * chama: `/exec` quando a chamada parte do web app publicado, e `/dev` quando
+ * parte do editor. E `/dev` só abre para quem tem acesso de EDIÇÃO ao script —
+ * para o associado é erro de permissão.
+ *
+ * Isso vazou para dentro de um e-mail em 21/08/2026: o piloto do Compasso,
+ * rodado pelo editor, mandou o ingresso com o botão apontando para `/dev`.
+ * Para o dono do projeto abriu normalmente; para qualquer outra pessoa seria
+ * uma porta fechada — e o pior tipo de defeito, porque quem envia não vê.
+ *
+ * Por isso a propriedade `SISGEP_URL_BASE` tem precedência: declare nela a
+ * URL `/exec` da implantação, e todo link nasce certo, inclusive o gerado por
+ * rotina que roda no editor ou por trigger. Sem a propriedade, o
+ * comportamento é exatamente o de antes.
+ */
 function getSistemaUrlBase() {
   if (!SISTEMA_URL_BASE) {
-    SISTEMA_URL_BASE = ScriptApp.getService().getUrl();
+    var declarada = '';
+    try {
+      declarada = String(PropertiesService.getScriptProperties()
+        .getProperty('SISGEP_URL_BASE') || '').trim();
+    } catch (e) {}
+    SISTEMA_URL_BASE = declarada || ScriptApp.getService().getUrl();
   }
   return SISTEMA_URL_BASE;
 }
@@ -122,7 +145,16 @@ var PASTAS = {
   OFICIOS_DESFILIACAO:       "16pfKB3vxz33QRJooUGW79Ei-D3eInSyd",
   OFICIOS_TAXA_ASSISTENCIAL: "1__l7hUe3g3l6iBNvPBKJUR3eR5Kqjs93",
   OFICIOS_TAXA_NEGOCIAL:     "1OcrxiWCGErvYHLaevNTov1aaavLuI3gX",
-  RECIBOS:    "1gudfaRCd3LxScSsqbF1kJXeI796LHr9b",
+  /* ID TROCADO EM 21/08/2026. O anterior — 1gudfaRCd3LxScSsqbF1kJXeI796LHr9b —
+     NAO EXISTE. Descoberto pela auditoria de arquivos publicos: a pasta de
+     RECIBOS voltou com TOTAL 0 e ERRO 1, e o DriveApp respondeu "Requested
+     entity was not found" tanto para o script de producao quanto para acesso
+     externo. Nao era permissao — a pasta nao estava la.
+
+     Consequencia que ninguem tinha visto: gerarPDFRecibo chama
+     obterOuCriarSubpastaAno com este id e estoura. Emitir recibo em producao
+     falharia. Passou despercebido porque Recibos nao esta em operacao. */
+  RECIBOS:    "12qepZmMbx343pI4qoulNh5Mk3uUztz1Y",
   RELATORIOS: "14_ea7nIXNSrMuKe8bByZ5AaEKXbUzJZr"
 };
 
@@ -141,7 +173,7 @@ function getPastaId(tipo) {
   return map[chave] || null;
 }
 
-function getPastaOficiosDestinoId(tipoNorm) {
+function getPastaOficiosDestinoId_(tipoNorm) {
   if (typeof getAmbienteAtual === "function" && getAmbienteAtual() === "homologacao") {
     return PASTAS.OFICIOS_HOMOLOGACAO;
   }
@@ -218,6 +250,11 @@ var REGRAS_NEGOCIO = {
      mesmo e-mail. 50 anexos podem estourar o limite de tamanho da mensagem —
      ver o aviso registrado em Oficios.gs. */
   LIMITE_ASSOCIADOS_POR_LOTE: 50,
+  /* Teto de exclusao em lote — pedido do usuario em 20/08/2026, ao decidir
+     sobre excluirEscolasEmLote, que podia mandar centenas de escolas de uma
+     vez. Acima do teto a operacao RECUSA e diz quantas foram pedidas: nao
+     corta em silencio. Ver Lixeira.gs. */
+  LIMITE_EXCLUSAO_POR_LOTE: 50,
   VALOR_MINIMO_RECIBO_CENTAVOS: 100,
   CPF_TAMANHO_FORMATADO: 14,
   CNPJ_TAMANHO_FORMATADO: 18,
@@ -561,6 +598,13 @@ var TEMPLATE_OFICIO_PADRAO_ID     = TEMPLATES.OFICIO_PADRAO;
 var TEMPLATE_LIVRE_ID             = TEMPLATES.LIVRE;
 
 // â”€â”€ Pastas â”€â”€
+/* PADRÃO DE PRODUÇÃO — PASTA_RECIBO_ID e PASTA_RELATORIOS_ID valem produção em
+   QUALQUER ambiente. Não leia nenhuma das duas para gravar arquivo: use
+   getRecursoId_("RECIBOS") / getRecursoId_("RELATORIOS"), de AmbienteRecursos.gs,
+   que troca por ambiente e trava a gravação se a homologação cair na pasta de
+   produção. Elas continuam declaradas porque três arquivos ainda as consultam
+   com `typeof ... !== "undefined"` como último recurso, e porque resolver aqui
+   no TOPO do arquivo dependeria da ordem de carga dos .gs. */
 var PASTA_RECIBO_ID                    = PASTAS.RECIBOS;
 var PASTA_OFICIOS_ID                   = PASTAS.OFICIOS;
 var PASTA_OFICIOS_DESFILIACAO_ID       = PASTAS.OFICIOS_DESFILIACAO;
@@ -596,13 +640,16 @@ function getConfigSistemaCompleta() {
       taxaAssistencial: TEMPLATE_TAXA_ASSISTENCIAL_ID,
       oficio: TEMPLATE_OFICIO_PADRAO_ID, livre: TEMPLATE_LIVRE_ID
     },
+    /* semTrava nos dois abaixo: diagnóstico tem de conseguir RELATAR a pasta
+       errada, não estourar ao ser perguntado sobre ela. Ver AmbienteRecursos.gs
+       e, para o quadro completo por ambiente, diagnosticoAmbienteRecursos_(). */
     pastas: {
-      recibos:                PASTA_RECIBO_ID,
+      recibos:                getRecursoId_("RECIBOS", { semTrava: true }),
       oficios:                PASTA_OFICIOS_ID,
       oficiosDesfiliacao:     PASTA_OFICIOS_DESFILIACAO_ID,
       oficiosTaxaAssistencial:PASTA_OFICIOS_TAXA_ASSISTENCIAL_ID,
       oficiosTaxaNegocial:    PASTA_OFICIOS_TAXA_NEGOCIAL_ID,
-      relatorios:             PASTA_RELATORIOS_ID
+      relatorios:             getRecursoId_("RELATORIOS", { semTrava: true })
     },
     abas: {
       usuarios:      ABA_USUARIOS_LOGIN,
@@ -668,3 +715,178 @@ function copiarUsuariosParaHomologacao() {
     Logger.log("Erro ao inicializar SistemaConfig: " + e.message);
   }
 })();
+
+/**
+ * A URL /exec se descobre sozinha — ninguém precisa declarar.
+ *
+ * O QUE ORIGINOU (21/08/2026)
+ *
+ * Eu pedi ao usuário para declarar `SISGEP_URL_BASE` à mão, e ele perguntou
+ * por que aquilo não tinha sido feito. A resposta que eu dei era só metade:
+ * eu não tenho acesso ao projeto Apps Script, é verdade — mas o SISTEMA tem,
+ * e eu não tinha usado isso. É a REGRA Nº 0.6 invertida: eu estava pedindo
+ * que uma pessoa digitasse um dado que o próprio sistema sabe dizer.
+ *
+ * COMO FUNCIONA
+ *
+ * `ScriptApp.getService().getUrl()` devolve `/exec` quando a chamada parte de
+ * DENTRO do web app publicado, e `/dev` quando parte do editor. O `doGet` só
+ * roda dentro do web app — então na primeira vez que qualquer pessoa abrir
+ * qualquer página, a URL correta passa por aqui e fica gravada.
+ *
+ * A partir daí, e-mail, PDF e link de ingresso nascem com `/exec`, mesmo
+ * quando gerados por rotina do editor ou por trigger, que sozinhos só
+ * enxergariam `/dev`.
+ *
+ * AS TRÊS TRAVAS
+ *
+ *   1. só grava se a URL terminar em `/exec` — abrir a página pelo `/dev`
+ *      não pode contaminar a configuração;
+ *   2. só grava se ainda não houver valor, para nunca sobrescrever uma
+ *      declaração feita à mão;
+ *   3. falha em silêncio. Isto roda no caminho de TODA página do sistema:
+ *      um erro de propriedade aqui não pode derrubar o SISGEP inteiro.
+ */
+function sisgep_aprenderUrlBase_() {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    if (String(props.getProperty('SISGEP_URL_BASE') || '').trim()) return;
+
+    var url = String(ScriptApp.getService().getUrl() || '');
+    if (url.slice(-5) !== '/exec') return;
+
+    props.setProperty('SISGEP_URL_BASE', url);
+    SISTEMA_URL_BASE = url;
+    Logger.log('[SistemaConfig] SISGEP_URL_BASE aprendida sozinha: ' + url);
+  } catch (e) { /* silencioso: roda em toda página */ }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   DIAGNÓSTICO DAS PROPRIEDADES DO SCRIPT
+   Acrescentado em 31/08/2026.
+
+   POR QUE EXISTE
+
+   A tela ⚙ Configurações do projeto → Propriedades do script mostra no
+   máximo 50 e é somente leitura. Este projeto passou dos 50. A própria tela
+   avisa: "Para gerenciar ou ver todas as suas propriedades, faça isso de
+   forma programática usando o serviço Properties."
+
+   Sem isto, descobrir se uma propriedade existe virou tentativa e erro — foi
+   o que aconteceu em 31/08 com a ANTHROPIC_API_KEY, que estava configurada
+   em produção e não em homologação, e só apareceu quando o chat da SOFIA
+   respondeu "Chave da API Anthropic não configurada".
+
+   A chave importa mais do que parece: NOVE arquivos dependem dela
+   (ChatIACore, CentralEmailIA, FinanceiroIA, MensalidadeCore, MemoriaCore,
+   MemoriaEvolutiva, IA_SISGEP e as duas do Jurídico com DATAJUD_API_KEY).
+   Faltando, a camada inteira de IA fica muda no ambiente.
+
+   SEGREDO NÃO SE IMPRIME POR ENGANO
+
+   diagnosticoPropriedades_() nunca mostra valor de segredo: mascara tudo que
+   pareça chave ou token. Para ver um valor inteiro — o caso real de copiar
+   uma chave de produção para homologação — existe revelarPropriedade_, que
+   se chama à mão, com o nome, e avisa para limpar o log depois. Revelar é
+   ato deliberado, não efeito colateral de um diagnóstico.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/** Nomes cujo valor NUNCA é impresso inteiro por diagnosticoPropriedades_. */
+var CFG_PADROES_SEGREDO_ = /KEY|TOKEN|SECRET|SENHA|PASSWORD|CREDENCIAL|CLIENT_ID/i;
+
+function cfg_mascarar_(nome, valor) {
+  var v = String(valor == null ? "" : valor);
+  if (!v) return "(vazio)";
+  if (!CFG_PADROES_SEGREDO_.test(String(nome))) {
+    return v.length <= 60 ? v : v.substring(0, 57) + "…";
+  }
+  /* Mostra o suficiente para conferir QUAL chave é, sem entregar a chave.
+     Sete caracteres pegam o prefixo (sk-ant-) e distinguem uma da outra. */
+  return v.substring(0, 7) + "…" + v.slice(-4) + "  (" + v.length + " caracteres)";
+}
+
+/**
+ * Lista TODAS as propriedades do script, com os segredos mascarados.
+ * Rodar no editor: Executar → diagnosticoPropriedades_ → ver o Registro.
+ */
+function diagnosticoPropriedades_() {
+  var props = PropertiesService.getScriptProperties().getProperties();
+  var nomes = Object.keys(props).sort();
+
+  var ambiente = "(não definida)";
+  try { ambiente = props["SISGEP_AMBIENTE"] || "(não definida — vale PRODUÇÃO)"; } catch (e) {}
+
+  var linhas = [];
+  linhas.push("═══════════════════════════════════════════════════════════");
+  linhas.push("  PROPRIEDADES DO SCRIPT — SISGEP");
+  linhas.push("═══════════════════════════════════════════════════════════");
+  linhas.push("  Ambiente : " + ambiente);
+  linhas.push("  Total    : " + nomes.length + " propriedades");
+  linhas.push("  (a tela do Apps Script só mostra 50 — por isto esta função existe)");
+  linhas.push("");
+
+  /* As que a camada de IA precisa vêm primeiro e com veredito explícito:
+     é o que se quer saber em noventa por cento das vezes. */
+  var ESSENCIAIS = [
+    ["ANTHROPIC_API_KEY", "IA: SOFIA, Central de E-mails, Financeiro, Mensalidade, Memória"],
+    ["DATAJUD_API_KEY",   "Jurídico: consulta processual"],
+    ["SISGEP_AMBIENTE",   "separa homologação de produção — sem ela, tudo aponta para PRODUÇÃO"]
+  ];
+  linhas.push("  ── ESSENCIAIS ──────────────────────────────────────────");
+  ESSENCIAIS.forEach(function (par) {
+    var nome = par[0];
+    var tem = Object.prototype.hasOwnProperty.call(props, nome) && String(props[nome] || "").trim();
+    linhas.push("  " + (tem ? "✅" : "❌") + "  " + nome);
+    linhas.push("        " + par[1]);
+    if (tem) linhas.push("        valor: " + cfg_mascarar_(nome, props[nome]));
+    else     linhas.push("        AUSENTE — o que depende dela não funciona neste ambiente");
+  });
+
+  linhas.push("");
+  linhas.push("  ── TODAS, em ordem ─────────────────────────────────────");
+  nomes.forEach(function (n) {
+    linhas.push("  " + n + " = " + cfg_mascarar_(n, props[n]));
+  });
+
+  linhas.push("");
+  linhas.push("  Para copiar uma chave inteira (ex.: levar de produção para");
+  linhas.push("  homologação), rode revelarPropriedade_ com o nome dela.");
+  linhas.push("═══════════════════════════════════════════════════════════");
+
+  var texto = linhas.join("\n");
+  Logger.log(texto);
+  return texto;
+}
+
+/**
+ * Mostra o valor INTEIRO de uma propriedade. Uso deliberado — o caso real é
+ * copiar uma chave de produção para homologação, que a tela truncada não
+ * permite fazer.
+ *
+ * Como usar: trocar o nome abaixo e executar a função no editor.
+ */
+function revelarPropriedade_(nome) {
+  nome = nome || "ANTHROPIC_API_KEY";
+  var valor = PropertiesService.getScriptProperties().getProperty(nome);
+
+  var linhas = [];
+  linhas.push("═══════════════════════════════════════════════════════════");
+  linhas.push("  VALOR INTEIRO DE: " + nome);
+  linhas.push("═══════════════════════════════════════════════════════════");
+  if (valor == null) {
+    linhas.push("  (a propriedade NÃO existe neste projeto)");
+  } else {
+    linhas.push(valor);
+    linhas.push("");
+    linhas.push("  ⚠️  ISTO FICOU GRAVADO NO REGISTRO DE EXECUÇÃO.");
+    linhas.push("      Depois de copiar, o histórico de execuções guarda o");
+    linhas.push("      valor. Quem tem acesso ao editor consegue lê-lo — o");
+    linhas.push("      que para um segredo é acesso a mais.");
+  }
+  linhas.push("═══════════════════════════════════════════════════════════");
+
+  var texto = linhas.join("\n");
+  Logger.log(texto);
+  return texto;
+}

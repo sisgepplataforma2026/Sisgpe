@@ -13,6 +13,7 @@
 <div class="of-tabs" id="ofTabsSecoes">
   <button type="button" class="of-tab active" id="abaOficioNovo">📄 Novo Ofício</button>
   <button type="button" class="of-tab" id="abaOficioHistorico">🕘 Histórico</button>
+  <button type="button" class="of-tab" id="abaConferencia">✅ Conferir envio</button>
   <button type="button" class="of-tab" id="abaMonitoramento">📡 Monitoramento</button>
   <button type="button" class="of-tab" id="abaTaxaAssistencial">💰 Taxa Assistencial</button>
 </div>
@@ -253,34 +254,36 @@
               <div id="cardEscolaOficioSelecionada" class="escola-profile escola-profile-premium" style="display:none;">
                 <div class="escola-profile-head escola-profile-head-premium">
                   <div class="escola-profile-main">
-                    <div class="escola-avatar-premium">🏫</div>
                     <div>
                       <div class="escola-profile-kicker">Escola selecionada</div>
                       <h3 id="escolaProfileNome">—</h3>
-                      <p id="escolaProfileRazao">Razão social não informada</p>
-                      <div class="escola-profile-line">
+                      <div class="escola-profile-identity">
                         <span id="escolaProfileCnpjLinha">CNPJ não informado</span>
-                        <span id="escolaProfileEmailLinha">E-mail não informado</span>
+                        <span aria-hidden="true">·</span>
+                        <strong id="escolaProfileStatus">Ativa</strong>
                       </div>
+                      <p id="escolaProfileEnderecoLinha" class="escola-profile-address" style="display:none;"></p>
                     </div>
                   </div>
                   <div class="escola-profile-actions">
-                    <button type="button" title="Editar dados" id="btnToggleEdicaoEscola">✎</button>
-                    <button type="button" title="Consultar CNPJ" id="btnConsultarCnpjSmart">🔎</button>
-                    <button type="button" title="Sincronizar dados" id="btnSincronizarCnpjSmart">↻</button>
-                    <button type="button" title="Salvar cadastro" id="btnSalvarEscolaSmart">💾</button>
+                    <button type="button" title="Editar os dados da escola" id="btnToggleEdicaoEscola">✏️ <span>Editar</span></button>
+                    <button type="button" title="Atualizar os dados pelo CNPJ" id="btnSincronizarCnpjSmart">🔄 <span>Atualizar</span></button>
+                    <button type="button" title="Remover a escola desta emissão" aria-label="Remover a escola desta emissão" id="btnRemoverEscolaSelecionada" class="danger">🗑️ <span>Remover</span></button>
+                    <button type="button" id="btnConsultarCnpjSmart" hidden aria-hidden="true" tabindex="-1">Consultar CNPJ</button>
+                    <button type="button" id="btnSalvarEscolaSmart" hidden aria-hidden="true" tabindex="-1">Salvar cadastro</button>
                   </div>
                 </div>
-                <div class="escola-profile-grid escola-profile-grid-premium">
-                  <div><span>CNPJ</span><strong id="escolaProfileCnpj">—</strong></div>
-                  <div><span>Cidade/UF</span><strong id="escolaProfileCidadeUf">—</strong></div>
-                  <div><span>Endereço</span><strong id="escolaProfileEndereco">—</strong></div>
-                  <div><span>Status</span><strong id="escolaProfileStatus">Ativa</strong></div>
+                <div class="escola-profile-compat" hidden aria-hidden="true">
+                  <span id="escolaProfileRazao"></span>
+                  <span id="escolaProfileEmailLinha"></span>
+                  <span id="escolaProfileCnpj"></span>
+                  <span id="escolaProfileCidadeUf"></span>
+                  <span id="escolaProfileEndereco"></span>
                 </div>
                 <div class="escola-email-panel escola-email-panel-premium">
                   <div class="escola-email-head">
                     <span>E-mails da escola</span>
-                    <small>Clique para definir o principal ou adicione outro contato</small>
+                    <small>Clique para definir o principal</small>
                   </div>
                   <div id="escolaProfileEmails" class="escola-email-pills"></div>
                   <div class="escola-add-email">
@@ -288,10 +291,14 @@
                     <button type="button" id="btnAdicionarEmailEscolaOficio">+ Adicionar</button>
                   </div>
                 </div>
-                <div class="escola-profile-stats escola-profile-stats-premium">
-                  <div><span>Ofícios enviados</span><strong id="escolaStatOficios">0</strong></div>
-                  <div><span>Confirmados</span><strong id="escolaStatConfirmados">0</strong></div>
-                  <div><span>Último envio</span><strong id="escolaStatUltimo">—</strong></div>
+                <div class="escola-history-summary">
+                  <span aria-hidden="true">●</span>
+                  <p id="escolaHistoricoResumo">Nenhum ofício enviado para esta escola ainda.</p>
+                  <div hidden aria-hidden="true">
+                    <strong id="escolaStatOficios">0</strong>
+                    <strong id="escolaStatConfirmados">0</strong>
+                    <strong id="escolaStatUltimo">—</strong>
+                  </div>
                 </div>
               </div>
             </div>
@@ -307,10 +314,17 @@
             <div class="fg fg-4" style="margin-bottom:12px;">
               <div class="fld"><label for="cnpj">CNPJ</label><input type="text" id="cnpj" placeholder="00.000.000/0000-00"></div>
               <div class="fld"><label for="email">E-MAIL PRINCIPAL</label><input type="email" id="email" placeholder="email@escola.com.br"></div>
-              <div class="fld fg-full"><label for="enderecoEscola">ENDEREÇO</label><input type="text" id="enderecoEscola" placeholder="Endereço completo"></div>
+              <div class="fld"><label for="logradouroEscola">LOGRADOURO</label><input type="text" id="logradouroEscola" placeholder="Rua, avenida..."></div>
+              <div class="fld"><label for="numeroEscola">NÚMERO</label><input type="text" id="numeroEscola" placeholder="120"></div>
+              <div class="fld"><label for="complementoEscola">COMPLEMENTO</label><input type="text" id="complementoEscola" placeholder="Sala, bloco..."></div>
+              <div class="fld"><label for="bairroEscola">BAIRRO</label><input type="text" id="bairroEscola" placeholder="Bairro"></div>
+              <div class="fld"><label for="cidadeEscola">CIDADE</label><input type="text" id="cidadeEscola" placeholder="Vitória"></div>
+              <div class="fld"><label for="ufEscola">UF</label><input type="text" id="ufEscola" maxlength="2" placeholder="ES"></div>
+              <div class="fld"><label for="cepEscola">CEP</label><input type="text" id="cepEscola" placeholder="29000-000"></div>
+              <input type="hidden" id="enderecoEscola">
               <div class="fld"><label for="razaoSocialReceita">RAZÃO SOCIAL RECEITA</label><input type="text" id="razaoSocialReceita" placeholder="Razão social"></div>
               <div class="fld"><label for="emailReceita">E-MAIL RECEITA</label><input type="text" id="emailReceita" placeholder="E-mail retornado"></div>
-              <div class="fld"><label for="cidadeUfReceita">CIDADE / UF</label><input type="text" id="cidadeUfReceita" placeholder="Vitória / ES"></div>
+              <div class="fld"><label for="cidadeUfReceita">CIDADE / UF (COMPATIBILIDADE)</label><input type="text" id="cidadeUfReceita" readonly placeholder="Preenchido pelos campos acima"></div>
             </div>
             <div id="secaoBotoesCnpj" class="row-btns" style="margin-top:4px;">
               <button type="button" id="btnConsultarCnpj" class="btn btn-navy btn-sm">🔎 Consultar CNPJ</button>
@@ -362,6 +376,11 @@
             </div>
             <input type="file" id="fichasOficioLote" multiple accept=".pdf,.jpg,.jpeg,.png">
             <div id="fichasOficioResumo" style="margin-top:8px;font-size:12px;color:var(--g500);"></div>
+            <!-- Fila dos arquivos anexados, com um check por linha e o botao
+                 que remove os marcados. Sem ela nao havia como tirar UM
+                 arquivo: escolher de novo substitui o conjunto inteiro, e
+                 errar um PDF em quatro custava refazer os quatro. -->
+            <div id="fichasOficioFila" style="margin-top:10px;"></div>
           </div>
           <input type="file" id="fichas" multiple style="display:none;">
           <div id="contadorFichas" class="preview-inline" style="margin-top:12px;display:none;">0 / 25 fichas</div>
@@ -626,6 +645,116 @@
           </div>
         </div>
         <div id="contadorResultados" style="font-size:12px;color:var(--g400);margin-bottom:10px;font-weight:600;"></div>
+
+        <!-- REENVIO EM LOTE — 04/09/2026.
+             O usuario perguntou: "ele nao reenvia sozinho? E eu so iria
+             conferir?". Estava certo. O sistema ja escolhia o endereco de cada
+             oficio em falha e depois pedia um clique por oficio — quinze
+             modais para reconfirmar quinze decisoes que ele ja tinha tomado.
+             Esta faixa so aparece quando HA falha de entrega, e o botao nao
+             manda nada: abre a conferencia. -->
+        <div id="histLoteBarra" style="display:none;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 14px;background:var(--red-lt,#fef2f2);border:1.5px solid #fca5a5;border-radius:var(--rad);margin-bottom:12px;">
+          <span style="font-size:20px;line-height:1;">&#10060;</span>
+          <div style="flex:1;min-width:220px;">
+            <div id="histLoteResumo" style="font-size:13px;font-weight:800;color:#991b1b;">&mdash;</div>
+            <div style="font-size:11.5px;color:#7f1d1d;margin-top:2px;">O sistema escolhe o endere&ccedil;o de cada um e mostra a lista antes de enviar. Nada sai sem a sua confirma&ccedil;&atilde;o.</div>
+          </div>
+          <button type="button" class="btn btn-navy btn-sm" id="btnHistLote" onclick="Historico.lotePreparar()">&#8635; Preparar reenvio</button>
+        </div>
+
+        <!-- RESULTADO DO LOTE — 04/09/2026. "Quando reenviar tem que fechar":
+             o modal fecha ao terminar, e o resultado item a item fica AQUI, na
+             pagina. Um toast de "4 reenviados" some em segundos e leva junto a
+             unica informacao que importa depois — qual falhou e por que. -->
+        <div id="histLoteResultado" style="display:none;margin-bottom:12px;"></div>
+
+        <div id="histLoteOverlay" class="of-modal-overlay">
+          <div class="of-modal" style="max-width:880px;">
+            <div class="of-modal-head" style="border-bottom:3px solid var(--gold,#C9A84C);">
+              <div>
+                <div class="of-modal-head-title">&#128228; Reenvio em lote &mdash; confira antes</div>
+                <div class="of-modal-head-sub" id="histLoteSub">Nada foi enviado ainda.</div>
+              </div>
+              <button type="button" class="of-modal-close" onclick="Historico.loteFechar()">&times;</button>
+            </div>
+
+            <div class="of-modal-body" style="display:flex;flex-direction:column;gap:14px;">
+              <div id="histLoteCorpo" style="font-size:12.5px;color:#475569;">
+                <span style="color:#94a3b8;">preparando&hellip;</span>
+              </div>
+            </div>
+
+            <div class="of-modal-foot">
+              <button type="button" class="btn-outline" onclick="Historico.loteFechar()">Cancelar</button>
+              <button type="button" class="btn-navy" id="histLoteOk" onclick="Historico.loteConfirmar()" disabled>Reenviar &#9656;</button>
+            </div>
+          </div>
+        </div>
+        <!-- MODAL DO REENVIO — acrescentado em 01/09/2026.
+             Antes o reenvio era um window.confirm cego: a pessoa mandava sem
+             ver para onde ia. O caso da FAESA mostrou o custo — tres oficios
+             reenviados para um endereco que nao recebia mais. Aqui o destino
+             do cadastro aparece ANTES, e da para acrescentar outro endereco
+             (ou substituir, quando o cadastrado esta morto). -->
+        <div id="histReenvOverlay" class="of-modal-overlay">
+          <div class="of-modal" style="max-width:520px;">
+            <div class="of-modal-head" style="border-bottom:3px solid var(--gold,#C9A84C);">
+              <div>
+                <div class="of-modal-head-title">📤 Reenviar ofício <span id="histReenvNumero"></span></div>
+                <div class="of-modal-head-sub">Confira o destino antes de enviar.</div>
+              </div>
+              <button type="button" class="of-modal-close" onclick="Historico.reenvioFechar()">×</button>
+            </div>
+
+            <div class="of-modal-body" style="display:flex;flex-direction:column;gap:12px;">
+              <div style="display:grid;grid-template-columns:64px 1fr;gap:6px 10px;font-size:12.5px;">
+                <span style="color:#64748b;">Escola</span><strong id="histReenvEscola">—</strong>
+                <span style="color:#64748b;">Tipo</span><strong id="histReenvTipo">—</strong>
+              </div>
+
+              <!-- SELETOR DE DESTINATARIOS — 03/09/2026.
+                   Antes havia aqui um campo readonly rotulado "Vai para (do
+                   cadastro)". O rotulo mentia: ele nunca leu o cadastro da
+                   escola, e sim a linha do proprio oficio, congelada na
+                   emissao. No oficio 144/2026 isso devolvia o endereco morto
+                   da Thalia, ja corrigido no cadastro no dia anterior.
+                   Agora as duas origens aparecem juntas, cada uma dizendo de
+                   onde veio, e da para desmarcar. A caixa "somente este
+                   endereco" saiu: deixou de ser necessaria quando basta
+                   desmarcar o que nao deve receber. -->
+              <div>
+                <div style="font-size:12px;font-weight:700;color:#334155;margin-bottom:6px;">Endereços</div>
+                <div id="histReenvDestinos" style="border:1.5px solid #e2e8f0;border-radius:12px;padding:8px;max-height:190px;overflow-y:auto;font-size:12.5px;">
+                  <span style="color:#94a3b8;">carregando…</span>
+                </div>
+              </div>
+
+              <label style="font-size:12px;font-weight:700;color:#334155;">
+                Incluir outro e-mail
+                <input id="histReenvExtra" type="text" placeholder="separe vários por vírgula"
+                       style="width:100%;margin-top:4px;padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:12.5px;">
+              </label>
+
+              <!-- ANEXOS — o usuario pediu em 03/09: "Precisa ir ficha e
+                   oficio". A lista abaixo NAO e promessa: sao os anexos que a
+                   mesma funcao do envio reuniu. -->
+              <div>
+                <div style="font-size:12px;font-weight:700;color:#334155;margin-bottom:6px;">Anexos deste reenvio</div>
+                <div id="histReenvAnexos" style="font-size:12px;color:#475569;">
+                  <span style="color:#94a3b8;">conferindo…</span>
+                </div>
+              </div>
+
+              <div id="histReenvAviso" style="display:none;font-size:11.5px;padding:8px 10px;border-radius:10px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;"></div>
+            </div>
+
+            <div class="of-modal-foot">
+              <button type="button" class="btn-outline" onclick="Historico.reenvioFechar()">Cancelar</button>
+              <button type="button" class="btn-navy" id="histReenvOk" onclick="Historico.reenvioConfirmar()">Reenviar &#9656;</button>
+            </div>
+          </div>
+        </div>
+
         <div id="histBarraAcoes" style="display:none;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:var(--rad);margin-bottom:10px;">
           <span class="hist-barra-label" style="font-size:13px;font-weight:700;color:#1e40af;">0 selecionado(s)</span>
           <button type="button" class="btn btn-red btn-sm" onclick="Historico.excluirSelecionados()">🗑 Excluir selecionados</button>
@@ -831,11 +960,18 @@
           <div style="background:#fff;padding:14px 16px;"><span style="display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--g400);margin-bottom:8px;">Nº do Ofício</span><div style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,var(--navy),var(--blue));color:var(--gold2);font-size:15px;font-weight:900;padding:5px 13px;border-radius:9px;">📄 <span id="modalEnvioNumero">—</span></div></div>
           <div style="background:#fff;padding:14px 16px;"><span style="display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--g400);margin-bottom:8px;">Tipo</span><div style="display:inline-flex;align-items:center;gap:5px;background:var(--blue-lt);color:var(--blue);font-size:12px;font-weight:800;padding:5px 12px;border-radius:999px;">📋 <span id="modalEnvioTipo">—</span></div></div>
           <div style="background:#fff;padding:14px 16px;grid-column:1/-1;"><span style="display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--g400);margin-bottom:7px;">Escola / Destinatário</span><strong id="modalEnvioEscola" style="display:block;font-size:13.5px;font-weight:800;color:var(--g900);line-height:1.4;">—</strong></div>
-          <div style="background:#fff;padding:14px 16px;grid-column:1/-1;"><span style="display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--g400);margin-bottom:7px;">E-mail de destino</span><div style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:var(--blue);">✉️ <span id="modalEnvioEmail">—</span></div></div>
+          <div style="background:#fff;padding:14px 16px;grid-column:1/-1;"><span style="display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--g400);margin-bottom:7px;">E-mail de destino</span><div style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:var(--blue);">✉️ <span id="modalEnvioEmail">—</span></div>
+          <!-- SELETOR DE DESTINATARIOS — 02/09/2026.
+               O campo acima era so leitura. O usuario pediu poder alterar,
+               incluir e escolher AQUI, que e onde ele ja para antes de enviar:
+               "nessa tela eu deveria alterar email, incluir, ter um seletor".
+               O historico de cada endereco vem junto, porque o sistema ja sabe
+               quem quicou e quem confirmou e nao cruzava os dois. -->
+          <div id="modalEnvioSeletor" style="margin-top:12px;"></div></div>
           <div style="background:#fff;padding:14px 16px;grid-column:1/-1;"><span style="display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--g400);margin-bottom:9px;">Anexos</span><div id="modalEnvioAnexos" style="display:flex;gap:8px;flex-wrap:wrap;">—</div></div>
         </div>
         <div style="background:var(--amber-lt);border:1.5px solid #fcd34d;border-left:3px solid var(--amber);border-radius:0;padding:12px 14px;font-size:12px;font-weight:600;color:#92400e;display:flex;align-items:flex-start;gap:9px;"><span style="font-size:16px;flex-shrink:0;">⚠️</span><span>Após o envio, o status do ofício será atualizado automaticamente no sistema.</span></div>
-        <div style="background:var(--green-lt);border:1.5px solid #6ee7b7;border-left:3px solid var(--green);border-radius:0;padding:12px 14px;font-size:12px;font-weight:600;color:var(--green-dk);display:flex;align-items:flex-start;gap:9px;"><span style="font-size:16px;flex-shrink:0;">✅</span><div><strong style="display:block;font-size:12.5px;margin-bottom:2px;">Remetente configurado</strong>financeiro@sindeducacao.com · Respostas para secretaria@sindeducacao.com</div></div>
+        <div style="background:var(--green-lt);border:1.5px solid #6ee7b7;border-left:3px solid var(--green);border-radius:0;padding:12px 14px;font-size:12px;font-weight:600;color:var(--green-dk);display:flex;align-items:flex-start;gap:9px;"><span style="font-size:16px;flex-shrink:0;">✅</span><div><strong style="display:block;font-size:12.5px;margin-bottom:2px;">Remetente</strong><span id="modalEnvioRemetente">verificando…</span></div></div>
       </div>
       <div id="modalPainelPreview" style="display:none;">
         <div id="modalEmailPreviewContainer" style="background:#f0f4f9;padding:14px;min-height:300px;max-height:460px;overflow-y:auto;"><div style="text-align:center;padding:40px;color:var(--g400);font-size:13px;">Clique em "Preview do e-mail" para carregar.</div></div>
@@ -849,7 +985,6 @@
   </div>
  
 </div>
- <?!= include('SofiaDocumentos'); ?>
 <script>
 var _modalPreviewCarregado = false;
 var _modalPayload = null;
@@ -882,7 +1017,28 @@ window.abrirModalEnvioOficioSISGEP = function(dados, aoConfirmar) {
   var anexosEl=document.getElementById("modalEnvioAnexos");
   if(anexosEl){var partes=String(dados.anexos||"PDF do ofício").split("+").map(function(p){return p.trim();}).filter(Boolean);anexosEl.innerHTML=partes.map(function(p){return '<div style="display:inline-flex;align-items:center;gap:5px;background:var(--green-lt);border:1.5px solid #6ee7b7;color:var(--green-dk);font-size:12px;font-weight:700;padding:5px 12px;border-radius:8px;">📎 '+p+'</div>';}).join("");}
   modalSwitchTab("dados"); btn.disabled=false; btn.innerHTML="📨 Enviar agora";
-  btn.onclick=function(){btn.disabled=true;btn.innerHTML="⏳ Enviando...";if(typeof aoConfirmar==="function")aoConfirmar();};
+  /* SELETOR DE DESTINATARIOS — 02/09/2026. Monta a lista com o historico de
+     cada endereco (quem quicou, quem confirmou). Quem ja quicou nasce
+     desmarcado, e o botao de enviar passa a contar quantos destinos restam. */
+  if(typeof window.modalEnvioMontarSeletor==="function"){
+    try{ window.modalEnvioMontarSeletor(dados.filaId, dados.email); }catch(eSel){}
+  }
+  btn.onclick=function(){
+    /* O que a pessoa escolheu vence o que veio do cadastro. Se o seletor nao
+       carregou, `dados.email` continua valendo — o envio nao pode depender de
+       uma tela auxiliar ter funcionado. */
+    if(typeof window.modalEnvioDestinatariosEscolhidos==="function"){
+      try{
+        var escolhidos=window.modalEnvioDestinatariosEscolhidos();
+        if(escolhidos&&escolhidos.length){
+          _modalPayload.email=escolhidos.join("; ");
+          if(typeof dados==="object")dados.email=_modalPayload.email;
+        }
+      }catch(eEsc){}
+    }
+    btn.disabled=true;btn.innerHTML="⏳ Enviando...";
+    if(typeof aoConfirmar==="function")aoConfirmar();
+  };
   modal.classList.add("aberto");
 };
 
@@ -1140,7 +1296,9 @@ window.fecharModalEnvioOficioSISGEP = function() {
       .withFailureHandler(function(err) {
         console.warn("Erro ao consultar progresso da Taxa Assistencial:", err);
       })
-      .obterStatusFilaTaxaAssistencial();
+      .obterStatusFilaTaxaAssistencial(
+        typeof SISGEP_TOKEN_SESSAO !== "undefined" ? SISGEP_TOKEN_SESSAO : ""
+      );
   }
 
   function iniciarPolling() {

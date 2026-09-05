@@ -3,6 +3,13 @@
 // Envio em massa da Taxa Assistencial
 // ============================================================================
 
+function taxaAssistencialExigirAcesso_(tokenSessao, exigirAdministrador) {
+  if (typeof exigirModulo_ !== "function") {
+    throw new Error("Infraestrutura de autorização do SISGEP indisponível.");
+  }
+  return exigirModulo_(tokenSessao, "documentos", !!exigirAdministrador);
+}
+
 function obterOuCriarAbaFilaTaxaAssistencial_() {
   var ss = SpreadsheetApp.openById(PLANILHA_ID);
   var sh = ss.getSheetByName("ENVIO_TAXA_ASSISTENCIAL");
@@ -48,13 +55,14 @@ function agendarProximoLoteTaxaAssistencial_(horas) {
 
 function executarLoteTaxaAssistencialAgendado() {
   var props = PropertiesService.getScriptProperties();
-  return enviarOficioTaxaAssistencialPRO({
+  return enviarOficioTaxaAssistencialPRO_({
     assunto: String(props.getProperty("TAXA_ASSISTENCIAL_ASSUNTO") || "").trim(),
     corpo:   String(props.getProperty("TAXA_ASSISTENCIAL_CORPO")   || "").trim()
   });
 }
 
-function cancelarEnvioTaxaAssistencial() {
+function cancelarEnvioTaxaAssistencial(tokenSessao) {
+  taxaAssistencialExigirAcesso_(tokenSessao, true);
   try {
     removerTriggersTaxaAssistencial_();
     return { ok: true, mensagem: "Triggers do envio em massa removidos com sucesso." };
@@ -63,7 +71,8 @@ function cancelarEnvioTaxaAssistencial() {
   }
 }
 
-function prepararFilaTaxaAssistencial(params) {
+function prepararFilaTaxaAssistencial(params, tokenSessao) {
+  taxaAssistencialExigirAcesso_(tokenSessao, true);
   params = params || {};
   var assunto = String(params.assunto || "").trim();
   var corpo   = String(params.corpo   || "").trim();
@@ -104,7 +113,7 @@ function prepararFilaTaxaAssistencial(params) {
 
   var props  = PropertiesService.getScriptProperties();
   var numero = String(props.getProperty("TAXA_ASSISTENCIAL_NUMERO_OFICIO") || "").trim();
-  if (!numero) numero = gerarProximoNumeroSeguro();
+  if (!numero) numero = gerarProximoNumeroSeguro_();
 
   var codigo = numero.replace("/", "-");
   if (typeof gerarCodigoVerificacao === "function") {
@@ -180,11 +189,16 @@ function prepararFilaTaxaAssistencial(params) {
     mensagem: "Fila preparada com sucesso em ordem alfabética (A-Z)." };
 }
 
-function enviarOficioTaxaAssistencialPRO(params) {
+function enviarOficioTaxaAssistencialPRO(params, tokenSessao) {
+  taxaAssistencialExigirAcesso_(tokenSessao, true);
+  return enviarOficioTaxaAssistencialPRO_(params);
+}
+
+/** Núcleo chamado somente pelo gateway autenticado ou pelo gatilho instalado. */
+function enviarOficioTaxaAssistencialPRO_(params) {
   params = params || {};
   var LIMITE_EMAILS_HORA               = 100;
   var INTERVALO_PROXIMA_EXECUCAO_HORAS = 1;
-  var REPLY_TO = "financeiro@sindeducacao.com, secretaria@sindeducacao.com";
 
   var props             = PropertiesService.getScriptProperties();
   var numero            = String(props.getProperty("TAXA_ASSISTENCIAL_NUMERO_OFICIO") || "").trim();
@@ -270,7 +284,7 @@ function enviarOficioTaxaAssistencialPRO(params) {
         ? corpoPersonalizado.replace(/\{\{ESCOLA\}\}/gi, nomeEscola)
         : "Encaminhamos, em anexo, o Ofício referente à Taxa Assistencial – Assistência Médica, conforme a Cláusula 58ª da CCT 2026/2027.";
 
-      var retorno = gerarPDFUniversal({
+      var retorno = gerarPDFUniversal_({
         templateId: templateId, pastaDestinoId: pasta.getId(),
         nomeArquivo: "Ofício " + numero + " - " + nomeEscola + " - Taxa Assistencial",
         substituicoes: {
@@ -306,22 +320,25 @@ function enviarOficioTaxaAssistencialPRO(params) {
       ? corpoPersonalizado.replace(/\{\{ESCOLA\}\}/gi, nomeEscola)
       : "Encaminhamos, em anexo, o Ofício referente à Taxa Assistencial – Assistência Médica, conforme a Cláusula 58ª da CCT 2026/2027.";
 
-    var htmlBodyEscola = montarEmailHTML("Ofício de Taxa Assistencial", numero, "Taxa Assistencial", 0, corpoEscolaEmail);
+    var htmlBodyEscola = montarEmailHTML_("Ofício de Taxa Assistencial", numero, "Taxa Assistencial", 0, corpoEscolaEmail);
 
     var enviadosEscola = 0, errosEscola = [];
 
     for (var j = 0; j < listaEmails.length; j++) {
       if (emailsEnviadosHora >= LIMITE_EMAILS_HORA) break;
       try {
-        GmailApp.sendEmail({
-          to: listaEmails[j], subject: assuntoEmail,
-          htmlBody: htmlBodyEscola,
-          body: saudacao + "!\n\n" + corpoEscolaEmail + "\n\nAtenciosamente,\n\nFinanceiro & Cobrança\nSindEducação-ES",
-          name: "SindEducação-ES", replyTo: REPLY_TO, attachments: anexosEscola
-        });
+        enviarEmailOficio_(
+          emailUsuario,
+          htmlBodyEscola,
+          anexosEscola,
+          assuntoEmail,
+          listaEmails[j],
+          saudacao + "!\n\n" + corpoEscolaEmail +
+            "\n\nAtenciosamente,\n\nSecretaria\nSindEducação-ES"
+        );
         enviados++; enviadosEscola++; emailsEnviadosHora++;
         props.setProperty("TAXA_ASSISTENCIAL_EMAILS_ENVIADOS_HORA", String(emailsEnviadosHora));
-        registrarLogSistema({ usuario: emailUsuario, numero: numero, tipo: "Taxa Assistencial",
+        registrarLogSistema_({ usuario: emailUsuario, numero: numero, tipo: "Taxa Assistencial",
           escola: nomeEscola, cnpj: cnpjEscola, email: listaEmails[j], codigo: codigoVerificacao });
         Utilities.sleep(300);
       } catch(e) {
@@ -350,14 +367,12 @@ function enviarOficioTaxaAssistencialPRO(params) {
     mensagem: "Envio finalizado com sucesso." };
 }
 
-function enviarTaxaEscolaEspecifica(params) {
+function enviarTaxaEscolaEspecifica(params, tokenSessao) {
+  var sessaoDocumentos = taxaAssistencialExigirAcesso_(tokenSessao, false);
   params = params || {};
   try {
-    var emailUsuario = (typeof obterEmailUsuarioAtual_ === "function")
-      ? String(obterEmailUsuarioAtual_() || "").trim().toLowerCase()
-      : String(Session.getActiveUser().getEmail() || "").trim().toLowerCase();
+    var emailUsuario = String(sessaoDocumentos.email || sessaoDocumentos.usuario || "").trim().toLowerCase();
     if (!emailUsuario) throw new Error("Não foi possível identificar o usuário logado.");
-    if (typeof usuarioAutorizado === "function" && !usuarioAutorizado(emailUsuario)) throw new Error("Acesso negado.");
 
     var assunto   = String(params.assunto || "").trim();
     var corpoRaw  = String(params.corpo   || "").trim();
@@ -377,7 +392,7 @@ function enviarTaxaEscolaEspecifica(params) {
 
     var props_ = PropertiesService.getScriptProperties();
     var numero  = String(props_.getProperty("TAXA_ASSISTENCIAL_NUMERO_OFICIO") || "").trim();
-    if (!numero) { numero = gerarProximoNumeroSeguro(); props_.setProperty("TAXA_ASSISTENCIAL_NUMERO_OFICIO", numero); }
+    if (!numero) { numero = gerarProximoNumeroSeguro_(); props_.setProperty("TAXA_ASSISTENCIAL_NUMERO_OFICIO", numero); }
 
     var dataHoje = (typeof dataPorExtenso === "function") ? dataPorExtenso()
       : Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy");
@@ -391,7 +406,7 @@ function enviarTaxaEscolaEspecifica(params) {
     var templateId = (typeof TEMPLATE_TAXA_ASSISTENCIAL_ID !== "undefined" && String(TEMPLATE_TAXA_ASSISTENCIAL_ID || "").trim())
       ? String(TEMPLATE_TAXA_ASSISTENCIAL_ID).trim() : TEMPLATE_PADRAO;
 
-    var retorno = gerarPDFUniversal({
+    var retorno = gerarPDFUniversal_({
       templateId: templateId, pastaDestinoId: obterPastaPorTipo_("TAXA_ASSISTENCIAL").getId(),
       nomeArquivo: "Ofício " + numero + " - " + escola + " - Taxa Assistencial",
       substituicoes: {
@@ -413,13 +428,16 @@ function enviarTaxaEscolaEspecifica(params) {
       } catch(e) { Logger.log("⚠ Erro ao processar anexo CCT: " + e.message); }
     }
 
-    var htmlBody = montarEmailHTML("Ofício de Taxa Assistencial", numero, "Taxa Assistencial", 0, corpo);
+    var htmlBody = montarEmailHTML_("Ofício de Taxa Assistencial", numero, "Taxa Assistencial", 0, corpo);
 
-    GmailApp.sendEmail({
-      to: validacao.todos, cc: "financeiro@sindeducacao.com",
-      subject: assunto || "Ofício de Taxa Assistencial Nº " + numero,
-      htmlBody: htmlBody, name: "SindEducação-ES", replyTo: "secretaria@sindeducacao.com", attachments: anexos
-    });
+    enviarEmailOficio_(
+      emailUsuario,
+      htmlBody,
+      anexos,
+      assunto || "Ofício de Taxa Assistencial Nº " + numero,
+      validacao.todos,
+      "Segue Ofício de Taxa Assistencial em anexo."
+    );
 
     var urlView = "https://drive.google.com/file/d/" + retorno.pdf.getId() + "/view";
     var ss = SpreadsheetApp.openById(PLANILHA_ID);
@@ -432,7 +450,7 @@ function enviarTaxaEscolaEspecifica(params) {
       "Colaborador(es)":"", "Observações":assunto, "Link PDF (Drive)":urlView, "Link Ficha":""
     });
 
-    registrarLogSistema({ usuario:emailUsuario, numero:numero, tipo:"Taxa Assistencial",
+    registrarLogSistema_({ usuario:emailUsuario, numero:numero, tipo:"Taxa Assistencial",
       escola:escola, cnpj:cnpj||"", email:validacao.todos, codigo:codigoVerificacao });
 
     return { ok:true, numero:numero, codigoVerificacao:codigoVerificacao, url:urlView,
@@ -443,7 +461,8 @@ function enviarTaxaEscolaEspecifica(params) {
   }
 }
 
-function reenviarFalhasTaxaAssistencial() {
+function reenviarFalhasTaxaAssistencial(tokenSessao) {
+  taxaAssistencialExigirAcesso_(tokenSessao, true);
   var ss = SpreadsheetApp.openById(PLANILHA_ID);
   var sh = ss.getSheetByName("ENVIO_TAXA_ASSISTENCIAL");
   if (!sh || sh.getLastRow() < 2) return { total: 0, ignoradosLimite: 0, mensagem: "Nenhuma fila encontrada." };
@@ -466,7 +485,8 @@ function reenviarFalhasTaxaAssistencial() {
     mensagem: total > 0 ? "Falhas remarcadas com sucesso." : "Nenhum registro com status ERRO foi encontrado." };
 }
 
-function obterStatusFilaTaxaAssistencial() {
+function obterStatusFilaTaxaAssistencial(tokenSessao) {
+  taxaAssistencialExigirAcesso_(tokenSessao, false);
   try {
     var ss     = SpreadsheetApp.openById(PLANILHA_ID);
     var sh     = ss.getSheetByName("ENVIO_TAXA_ASSISTENCIAL");
@@ -544,7 +564,8 @@ function obterStatusFilaTaxaAssistencial() {
   }
 }
 
-function obterStatusTaxaAssistencialDashboard() {
+function obterStatusTaxaAssistencialDashboard(tokenSessao) {
+  taxaAssistencialExigirAcesso_(tokenSessao, false);
   try {
     var ss     = SpreadsheetApp.openById(PLANILHA_ID);
     var sh     = ss.getSheetByName("ENVIO_TAXA_ASSISTENCIAL");
@@ -572,7 +593,8 @@ function obterStatusTaxaAssistencialDashboard() {
   }
 }
 
-function listarTodasEscolasTaxa() {
+function listarTodasEscolasTaxa(tokenSessao) {
+  taxaAssistencialExigirAcesso_(tokenSessao, false);
   try {
     var ss = SpreadsheetApp.openById(PLANILHA_ID);
     var sh = ss.getSheetByName("Escolas");
@@ -621,7 +643,8 @@ function listarTodasEscolasTaxa() {
   }
 }
 
-function buscarEscolaTaxa(termo) {
+function buscarEscolaTaxa(termo, tokenSessao) {
+  taxaAssistencialExigirAcesso_(tokenSessao, false);
   try {
     termo = String(termo || "").trim();
     if (!termo || termo.length < 2) return [];
@@ -694,7 +717,8 @@ function buscarEscolaTaxa(termo) {
   }
 }
 
-function previewOficioTaxaAssistencial(params) {
+function previewOficioTaxaAssistencial(params, tokenSessao) {
+  taxaAssistencialExigirAcesso_(tokenSessao, false);
   params = params || {};
   var assunto   = String(params.assunto || "").trim() || "Repasse da Taxa Assistencial – Assistência Médica | SindEducação-ES";
   var corpoHtml = formatarCorpoEmailHTML_(String(params.corpo || "").trim());
@@ -715,12 +739,13 @@ function previewOficioTaxaAssistencial(params) {
       + "</style></head><body><div class='card'>"
       + "<div class='th'><div class='th-nome'>SINDEDUCAÇÃO-ES</div><div class='th-assunto'>📧 " + assuntoEsc + "</div></div>"
       + "<div class='corpo'><div class='badge'>PRÉVIA DO E-MAIL</div>" + corpoHtml + "</div>"
-      + "<hr><div class='ass'><strong>Financeiro &amp; Cobrança</strong><br>SindEducação-ES<br>(27) 99813-5965 | financeiro@sindeducacao.com</div>"
+      + "<hr><div class='ass'><strong>Secretaria</strong><br>SindEducação-ES<br>secretaria@sindeducacao.com</div>"
       + "</div></body></html>"
   };
 }
 
-function enviarTesteTaxaAssistencial(params) {
+function enviarTesteTaxaAssistencial(params, tokenSessao) {
+  var sessaoDocumentos = taxaAssistencialExigirAcesso_(tokenSessao, true);
   params = params || {};
   var assunto    = String(params.assunto    || "").trim();
   var corpo      = String(params.corpo      || "").trim();
@@ -736,10 +761,14 @@ function enviarTesteTaxaAssistencial(params) {
     + "⚠ <strong>ENVIO DE TESTE</strong> — Número de ofício NÃO registrado no sistema.</div>"
     + formatarCorpoEmailHTML_(corpo) + "</div>";
 
-  GmailApp.sendEmail({
-    to: emailTeste, subject: "[TESTE] " + assunto,
-    htmlBody: htmlBody, body: "[TESTE]\n\n" + corpo, name: "SindEducação-ES (teste)"
-  });
+  enviarEmailOficio_(
+    String(sessaoDocumentos.email || sessaoDocumentos.usuario || ""),
+    htmlBody,
+    [],
+    "[TESTE] " + assunto,
+    emailTeste,
+    "[TESTE]\n\n" + corpo
+  );
 
   return { mensagem: "E-mail de teste enviado para " + emailTeste + ". Número NÃO registrado." };
 }

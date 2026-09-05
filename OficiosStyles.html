@@ -1049,6 +1049,7 @@ body { margin: 0; padding: 0; }
 
 .trabalhador-titulo { font-size: 13px; font-weight: 800; color: var(--g800); }
 .trabalhador-sub { font-size: 11px; color: var(--g400); margin-top: 1px; font-weight: 500; }
+.trabalhador-topo-acoes { display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
 
 .trabalhador-grid {
   display: grid;
@@ -1121,6 +1122,30 @@ body { margin: 0; padding: 0; }
   border-color: var(--red);
   color: #fff;
   box-shadow: 0 3px 10px rgba(220,38,38,.28);
+}
+
+.btn-adicionar-trabalhador-card {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1.5px solid #93c5fd;
+  background: #eff6ff;
+  color: var(--navy2);
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s;
+  flex-shrink: 0;
+}
+.btn-adicionar-trabalhador-card:hover {
+  background: var(--navy2);
+  border-color: var(--navy2);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(0,47,108,.24);
 }
 
 /* ════════════════════════════════════════
@@ -1700,6 +1725,96 @@ body { margin: 0; padding: 0; }
 .of-modulo-header-title { font-size: 20px; font-weight: 900; color: #fff; font-family: 'Plus Jakarta Sans', sans-serif; }
 .of-modulo-header-sub { font-size: 12px; color: rgba(255,255,255,.55); margin-top: 3px; font-family: 'Plus Jakarta Sans', sans-serif; }
 .of-modulo-header-badge { background: rgba(201,168,76,.2); border: 1px solid rgba(201,168,76,.4); color: #C9A84C; font-size: 11px; font-weight: 800; padding: 5px 14px; border-radius: 999px; }
+
+/* ── Card compacto da escola selecionada ── */
+.escola-profile-premium {
+  overflow: hidden;
+  border: 1px solid var(--g200);
+  border-radius: var(--rad-lg, 14px);
+}
+.escola-profile-head-premium {
+  padding: 18px;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.escola-profile-main {
+  min-width: 0;
+  flex: 1 1 280px;
+}
+.escola-profile-main > div {
+  min-width: 0;
+  width: 100%;
+}
+.escola-profile-main h3 { margin: 2px 0 3px; }
+.escola-profile-identity {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  color: rgba(255,255,255,.78);
+  font-size: 12px;
+  font-weight: 700;
+  word-break: normal;
+}
+.escola-profile-identity > span,
+.escola-profile-identity > strong { white-space: nowrap; }
+.escola-profile-identity strong { color: #fff; font-size: 12px; text-transform: uppercase; }
+.escola-profile-address {
+  margin: 6px 0 0;
+  color: rgba(255,255,255,.68);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+.escola-profile-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  flex-wrap: wrap;
+  flex: 0 1 auto;
+  max-width: 100%;
+}
+.escola-profile-actions button[hidden] { display: none !important; }
+.escola-profile-actions button:not([hidden]) {
+  width: auto;
+  min-width: 0;
+  height: 34px;
+  padding: 0 11px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.escola-profile-actions button.danger:hover {
+  border-color: #fca5a5;
+  background: rgba(220,38,38,.22);
+}
+.escola-email-panel-premium { padding: 15px 18px; }
+.escola-history-summary {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 18px;
+  border-top: 1px solid var(--g200);
+  color: var(--g600);
+  font-size: 12px;
+}
+.escola-history-summary > span { color: var(--g400); font-size: 7px; }
+.escola-history-summary p { margin: 0; font-weight: 650; }
+
+@media (max-width: 760px) {
+  .escola-profile-head-premium { align-items: flex-start; flex-direction: column; }
+  .escola-profile-actions { justify-content: flex-start; width: 100%; }
+  .escola-profile-actions button:not([hidden]) { flex: 1 1 auto; }
+}
 </style>
 
 <script>

@@ -1,0 +1,179 @@
+/**
+ * TROCAR O E-MAIL DE UMA ESCOLA — com conferência antes de escrever.
+ * ============================================================================
+ *
+ * ARQUIVO TEMPORARIO. Cole na PRODUCAO, rode primeiro `escolasConferirTroca`,
+ * leia o log, e so entao `escolasAplicarTroca`. Depois APAGUE o arquivo.
+ *
+ * POR QUE ELE EXISTE. Em 02/09/2026 o Monitoramento da producao mostrou 42
+ * falhas de entrega em 23 enderecos — e QUINZE delas eram dois enderecos que
+ * nao existem mais. O sistema mandou para eles de marco a setembro sem que
+ * nada parasse.
+ *
+ * POR QUE ACHA PELO E-MAIL, E NAO PELO CNPJ. A funcao do sistema
+ * (`atualizarEmailEscola`) pede CNPJ, e eu nao tenho o das escolas. O endereco
+ * atual e exato, e e justamente o que se quer trocar — entao ele identifica a
+ * linha sem margem para pegar a escola errada. E acha TODAS as linhas que o
+ * contenham: a mesma rede aparece varias vezes na base (FAESA, SEB e Multivix
+ * tem varias unidades).
+ *
+ * DUAS FUNCOES, DE PROPOSITO. `escolasConferirTroca` NAO ESCREVE NADA: mostra
+ * o que seria mudado. `escolasAplicarTroca` escreve. Numa base com ~8.000
+ * associados e 679 escolas, ver antes de escrever nao e zelo — e a diferenca
+ * entre corrigir tres cadastros e estragar trinta.
+ */
+
+/* ══ O QUE TROCAR — mexa só aqui ══════════════════════════════════════════
+
+   Cada item e uma troca. `de` e o endereco que sai; `para` sao os que entram,
+   separados por ponto-e-virgula. Os OUTROS enderecos da linha sao preservados:
+   trocar a lista inteira apagaria contatos que funcionam.
+
+   FAESA: karolina.caldeira e luiza.stefani no lugar da thalia, que quicou 7x.
+
+   SEB: carolina.ferreira volta, agora em @sebeducation.com. O SEB trocou de
+   dominio — nao era pessoa que saiu, era `seb.com.br` que deixou de existir
+   para ela. Isso explica as 8 quicadas do mesmo endereco entre agosto e
+   setembro.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+var TROCAS = [
+  { de: "thalia.ferreira@faesa.br",
+    para: "karolina.caldeira@faesa.br;luiza.stefani@faesa.br" },
+
+  { de: "eni.neves@seb.com.br",
+    para: "carolina.ferreira@sebeducation.com;folhapagamento@sebsa.com.br" }
+
+  /* PING PONG — o usuario mandou os dois em 02/09, e o dp1 FICA.
+
+     Registrado porque contraria o que eu recomendei: o dp1 quicou 3 vezes
+     (oficios 296, 315 e 365, o ultimo em 26/08). Mantendo-o, a Ping Pong deve
+     continuar aparecendo como FALHA_ENTREGA no Monitoramento mesmo quando o
+     contato@cevolucao.com.br receber — porque UM endereco que quica marca o
+     oficio inteiro. Foi avisado; a decisao e da operacao. */
+  , { de: "dp1@tellescontabilidade.cnt.br",
+      para: "dp1@tellescontabilidade.cnt.br;contato@cevolucao.com.br" }
+];
+
+/* ═════════════════════════════════════════════════════════════════════════ */
+
+function escolasConferirTroca() { return todasAsTrocas_(false); }
+function escolasAplicarTroca()  { return todasAsTrocas_(true);  }
+
+function todasAsTrocas_(escrever) {
+  var partes = [];
+  for (var t = 0; t < TROCAS.length; t++) {
+    partes.push(troca_(escrever, TROCAS[t].de, TROCAS[t].para));
+    partes.push("");
+  }
+  var txt = partes.join("\n");
+  Logger.log(txt);
+  return txt;
+}
+
+function troca_(escrever, TROCA_DE, TROCA_PARA) {
+  var L = [];
+  L.push((escrever ? "APLICANDO" : "CONFERINDO (nada sera escrito)") +
+         " — " + new Date().toISOString());
+  L.push("  de:   " + TROCA_DE);
+  L.push("  para: " + TROCA_PARA);
+  L.push("");
+
+  var novos = String(TROCA_PARA).split(/[;,]/)
+    .map(function (e) { return e.trim(); })
+    .filter(function (e) { return e.length > 0; });
+
+  if (!novos.length) {
+    L.push("!! TROCA_PARA esta vazio. Nada a fazer.");
+    return L.join("\n");
+  }
+  for (var v = 0; v < novos.length; v++) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(novos[v])) {
+      L.push("!! e-mail invalido em TROCA_PARA: " + novos[v] + " — nada foi feito.");
+      return L.join("\n");
+    }
+  }
+
+  var sh;
+  try {
+    sh = SpreadsheetApp.openById(typeof getPlanilhaId === "function" ? getPlanilhaId() : PLANILHA_ID)
+          .getSheetByName(PLANILHA_ESCOLAS);
+  } catch (e) {
+    L.push("!! nao consegui abrir a planilha: " + e);
+    return L.join("\n");
+  }
+  if (!sh || sh.getLastRow() < 2) {
+    L.push("!! aba de Escolas vazia ou inexistente (" + PLANILHA_ESCOLAS + ")");
+    return L.join("\n");
+  }
+
+  var hm      = getHeaderMap_(sh);
+  var cNome   = hm["Nome"] || hm["NOME"] || hm["Escola"] || hm["ESCOLA"];
+  var cPrinc  = hm["E-mail (principal)"] || hm["EMAIL_PRINCIPAL"] || hm["E-mail"];
+  var cTodos  = hm["E-mails (todos)"] || hm["EMAILS_TODOS"];
+
+  if (!cPrinc && !cTodos) {
+    L.push("!! nao achei coluna de e-mail. Cabecalhos: " + Object.keys(hm).join(" | "));
+    return L.join("\n");
+  }
+
+  var alvo  = String(TROCA_DE).trim().toLowerCase();
+  var dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+  var achadas = 0, alteradas = 0;
+
+  for (var i = 0; i < dados.length; i++) {
+    var principal = cPrinc ? String(dados[i][cPrinc - 1] || "") : "";
+    var todos     = cTodos ? String(dados[i][cTodos - 1] || "") : "";
+    if ((principal + " " + todos).toLowerCase().indexOf(alvo) === -1) continue;
+
+    achadas++;
+    var linha = i + 2;
+    var nome  = cNome ? String(dados[i][cNome - 1] || "") : "(sem nome)";
+
+    /* Substitui o endereco pelos novos, PRESERVANDO os outros que ja estavam
+       na linha. Trocar a lista inteira apagaria contatos que funcionam. */
+    var lista = String(todos || principal).split(/[;,]/)
+      .map(function (e) { return e.trim(); })
+      .filter(function (e) { return e.length > 0; });
+
+    var nova = [];
+    lista.forEach(function (e) {
+      if (e.toLowerCase() === alvo) {
+        novos.forEach(function (n) { if (nova.indexOf(n) === -1) nova.push(n); });
+      } else if (nova.indexOf(e) === -1) {
+        nova.push(e);
+      }
+    });
+    novos.forEach(function (n) { if (nova.indexOf(n) === -1) nova.push(n); });
+
+    L.push("  linha " + linha + " · " + nome.substring(0, 45));
+    L.push("      antes:  " + (todos || principal));
+    L.push("      depois: " + nova.join("; "));
+
+    if (escrever) {
+      if (cPrinc) sh.getRange(linha, cPrinc).setValue(nova[0]);
+      if (cTodos) sh.getRange(linha, cTodos).setValue(nova.join("; "));
+      alteradas++;
+    }
+  }
+
+  L.push("");
+  L.push("  linhas encontradas: " + achadas);
+  if (escrever) {
+    SpreadsheetApp.flush();
+    L.push("  linhas alteradas:   " + alteradas);
+    try {
+      if (typeof registrarLogSistema === "function") {
+        registrarLogSistema({
+          usuario: "sistema", numero: "-", tipo: "ESCOLA_EMAIL_TROCADO",
+          escola: alteradas + " linha(s)", cnpj: "",
+          email: TROCA_DE + " -> " + TROCA_PARA, codigo: ""
+        });
+      }
+    } catch (eLog) {}
+  } else {
+    L.push("  NADA FOI ESCRITO. Para aplicar, rode escolasAplicarTroca.");
+  }
+
+  return L.join("\n");
+}

@@ -5,7 +5,7 @@
 
 /* ─────────────────────────────────────────────────────────────
    HELPER: Numeração segura — mesma sequência e mesmo lock dos demais ofícios
-   (Oficios.gs / gerarProximoNumeroSeguro). Antes esta função lia só a última
+   (Oficios.gs / gerarProximoNumeroSeguro_). Antes esta função lia só a última
    linha não vazia da coluna B da aba Controle, o que podia colidir com um
    número já usado se essa linha não fosse a de maior número (reordenação,
    exclusão manual fora de ordem). Agora reaproveita a mesma função que já
@@ -13,7 +13,7 @@
    para não exigir mudança no chamador (linha ~479 deste arquivo).
    ───────────────────────────────────────────────────────────── */
 function gerarProximoNumeroOficioFiscal_() {
-  return gerarProximoNumeroSeguro();
+  return gerarProximoNumeroSeguro_();
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -525,7 +525,10 @@ function enviarLoteDespesasComOficio(payload, tokenSessao) {
     var pastaOficio = null;
     try {
       var pastaId = (PropertiesService.getScriptProperties().getProperty("PASTA_DESPESAS_ID") || "").trim();
-      if (!pastaId) pastaId = (typeof PASTA_RECIBO_ID !== "undefined" ? PASTA_RECIBO_ID : "");
+      /* Antes caía em PASTA_RECIBO_ID, que vale PRODUÇÃO em qualquer ambiente.
+         getRecursoId_ troca por ambiente e trava se a homologação apontar
+         para produção — ver AmbienteRecursos.gs. */
+      if (!pastaId) pastaId = getRecursoId_("RECIBOS");
       if (pastaId) {
         var pastaRaiz = DriveApp.getFolderById(pastaId);
         var anoStr    = new Date().getFullYear().toString();
@@ -546,7 +549,7 @@ function enviarLoteDespesasComOficio(payload, tokenSessao) {
       try {
         var htmlBlob   = Utilities.newBlob(htmlOficio, "text/html", nomeArquivoOficio + ".html");
         var fileOficio = pastaOficio.createFile(htmlBlob);
-        fileOficio.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        arquivoAplicarPolitica_(fileOficio, "Despesas_Oficio_Fiscal.gs");
         linkOficio   = fileOficio.getUrl();
         fileIdOficio = fileOficio.getId();
         Logger.log("✅ Ofício fiscal salvo: " + nomeArquivoOficio);
@@ -564,7 +567,10 @@ function enviarLoteDespesasComOficio(payload, tokenSessao) {
     });
 
     // Envia e-mail
-    var htmlEmail = montarHtmlEnvioContabilidadeDesp_(despesasOk, totalValorNum, emailUsuario);
+    /* ITEM 55, 01/09/2026 — o numero desce para o corpo. Antes, o oficio era
+       gasto, gerado e registrado, e o e-mail que chegava a contabilidade nao
+       o citava em lugar nenhum. */
+    var htmlEmail = montarHtmlEnvioContabilidadeDesp_(despesasOk, totalValorNum, emailUsuario, numeroOficio);
 
     var listaAnexosHtml = anexos.length
       ? '<div style="margin-top:16px;padding:12px 16px;background:#f0f4f8;border-radius:10px;border:1px solid #e2e8f0;">'
@@ -575,12 +581,38 @@ function enviarLoteDespesasComOficio(payload, tokenSessao) {
 
     var htmlEmailFinal = htmlEmail.replace('</div>\n    </div>', listaAnexosHtml + '</div>\n    </div>');
 
+    /* ITEM 55, 01/09/2026 — o documento do oficio vai ANEXADO.
+
+       O blob era criado logo acima, salvo no Drive, e nunca entrava em
+       blobsAnexo: a contabilidade recebia a tabela de despesas e as notas, e
+       nao recebia o oficio que o proprio e-mail dizia encaminhar. E a mesma
+       forma do defeito do reenvio, que levava o oficio e deixava a carta.
+
+       Vai na FRENTE das notas de proposito: e o documento que encabeca o
+       envio. E se a geracao dele falhar (o bloco acima engole a excecao e
+       deixa fileIdOficio vazio), o e-mail sai como saia antes, com as notas —
+       melhor que nao sair. */
+    var blobsFinal = blobsAnexo;
+    if (fileIdOficio) {
+      try {
+        var blobOficio = DriveApp.getFileById(fileIdOficio).getBlob()
+          .setName(nomeArquivoOficio + ".html");
+        blobsFinal = [blobOficio].concat(blobsAnexo);
+      } catch (eAnexoOficio) {
+        Logger.log("\u26a0 Oficio fiscal gerado mas nao anexado ao e-mail (" +
+          fileIdOficio + "): " + eAnexoOficio.message);
+      }
+    } else {
+      Logger.log("\u26a0 Oficio fiscal " + numeroOficio +
+        " sem arquivo no Drive — e-mail segue so com as notas.");
+    }
+
     MailApp.sendEmail({
       to:          paraEmails,
       cc:          ccEmails,
       subject:     assunto,
       htmlBody:    htmlEmailFinal,
-      attachments: blobsAnexo,
+      attachments: blobsFinal,
       name:        "SindEducação-ES",
       replyTo:     emailUsuario
     });

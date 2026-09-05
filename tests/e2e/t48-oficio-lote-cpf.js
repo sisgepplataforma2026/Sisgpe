@@ -229,7 +229,7 @@ let abaReg = ssNum.getSheetByName(g.PLANILHA_REGISTRO);
 if (!abaReg) abaReg = ssNum.insertSheet(g.PLANILHA_REGISTRO);
 abaReg.getRange(1, 1, 1, 2).setValues([["Número do Ofício", "Escola"]]);
 
-const n1 = g.gerarProximoNumeroSeguro();
+const n1 = g.gerarProximoNumeroSeguro_();
 const anoAtual = new Date().getFullYear();
 b.ok(new RegExp("^\\d+/" + anoAtual + "$").test(n1),
   "o número sai no formato NNN/ANO", n1);
@@ -237,7 +237,7 @@ b.ok(new RegExp("^\\d+/" + anoAtual + "$").test(n1),
 /* Grava o primeiro como se o ofício tivesse sido emitido e pede o próximo:
    sem gravar, o "próximo" seria sempre o mesmo. */
 abaReg.getRange(2, 1).setValue(n1);
-const n2 = g.gerarProximoNumeroSeguro();
+const n2 = g.gerarProximoNumeroSeguro_();
 const seq1 = parseInt(String(n1).split("/")[0], 10);
 const seq2 = parseInt(String(n2).split("/")[0], 10);
 b.igual(seq2, seq1 + 1, "o próximo ofício recebe o número seguinte");
@@ -249,11 +249,21 @@ b.ok(seq1 >= g.PRIMEIRO_OFICIO_PLATAFORMA,
   "primeiro da plataforma: " + g.PRIMEIRO_OFICIO_PLATAFORMA + " · gerado: " + seq1);
 
 /* Número de outro ano na planilha não pode influenciar o contador do ano
-   corrente — senão a virada de ano herdaria a sequência antiga. */
+   corrente. O número n2 já foi RESERVADO mesmo sem ser gravado na planilha:
+   isso impede que duas emissões simultâneas recebam a mesma sequência. */
 abaReg.getRange(3, 1).setValue("999/" + (anoAtual - 1));
-const n3 = g.gerarProximoNumeroSeguro();
-b.igual(parseInt(String(n3).split("/")[0], 10), seq1 + 1,
-  "ofício de ano anterior não empurra a numeração do ano corrente");
+const n3 = g.gerarProximoNumeroSeguro_();
+b.igual(parseInt(String(n3).split("/")[0], 10), seq1 + 2,
+  "a reserva anterior é respeitada e o ofício de outro ano não interfere");
+
+const n4 = g.gerarProximoNumeroSeguro_();
+b.igual(parseInt(String(n4).split("/")[0], 10), seq1 + 3,
+  "duas reservas consecutivas recebem números diferentes sem depender da planilha");
+
+const ambienteSeq = String(g.getAmbienteAtual() || "producao").toUpperCase();
+const chaveSeq = "SISGEP_OFICIO_SEQ_" + ambienteSeq + "_" + anoAtual;
+b.igual(parseInt(g.PropertiesService.getScriptProperties().getProperty(chaveSeq), 10), seq1 + 3,
+  "a última reserva fica persistida antes da liberação da trava");
 
 b.naoTestavel("Numeração sob emissão simultânea de dois usuários",
   "o emulador é de um processo só; a trava (travarSisgep_) existe no código e é exercitada, mas concorrência real exige o Apps Script");

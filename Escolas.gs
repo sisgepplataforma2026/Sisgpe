@@ -740,6 +740,28 @@ function excluirEscolasEmLote(cnpjs, tokenSessao) {
       };
     }
 
+    /* ── O TETO VEM ANTES DO BACKUP ─────────────────────────────────────
+       Pedido do usuário em 20/08/2026: "Exclusão Com limite!".
+
+       A ordem importa. Se a checagem viesse depois, uma exclusão recusada
+       ainda teria criado uma aba de backup na planilha — lixo permanente
+       gerado por uma operação que não aconteceu.
+
+       E o teto RECUSA, não corta: excluir 50 de 300 e responder "50
+       excluídas" deixaria quem pediu achando que as 300 saíram. */
+    const tetoLote = (typeof lixeiraLimiteLote_ === "function") ? lixeiraLimiteLote_() : 50;
+    if (linhasParaExcluir.length > tetoLote) {
+      return {
+        ok: false,
+        excluidas: 0,
+        ambiguos: ambiguos,
+        mensagem: "Foram selecionadas " + linhasParaExcluir.length + " escolas, e o " +
+          "limite por lote é " + tetoLote + ". NADA foi excluído — faça em lotes " +
+          "menores. O limite existe porque a base tem cadastro real, e uma " +
+          "exclusão grande feita por engano é difícil de perceber a tempo."
+      };
+    }
+
     // Backup automático — só agora, com a exclusão já decidida.
     const dadosCompletos = sh.getRange(1, 1, lastRow, sh.getLastColumn()).getValues();
     const nomeBackup = escolaNomeBackupLivre_(ss, "BACKUP_ESCOLAS_EXCLUSAO_");
@@ -748,14 +770,24 @@ function excluirEscolasEmLote(cnpjs, tokenSessao) {
     shBackup.getRange(1, 1, 1, dadosCompletos[0].length).setFontWeight("bold");
     shBackup.setFrozenRows(1);
 
-    // Exclui de baixo para cima para não deslocar índices
-    linhasParaExcluir.sort(function(a, b) { return b - a; });
-    linhasParaExcluir.forEach(function(rowNum) { sh.deleteRow(rowNum); });
+    /* EXCLUIR AQUI É MOVER PARA A LIXEIRA, NÃO APAGAR — 20/08/2026.
+       São 679 escolas reais na base. lixeiraMoverVarias_ já ordena de baixo
+       para cima (apagar de cima desloca os índices seguintes) e grava quem,
+       quando e por quê em Escolas_LIXEIRA. Ver Lixeira.gs. */
+    const quemExcluiu = String((sessaoExcl && (sessaoExcl.nome || sessaoExcl.usuario || sessaoExcl.email)) || "").trim();
+    const movidas = lixeiraMoverVarias_(sh, linhasParaExcluir, {
+      origem: "excluirEscolasEmLote",
+      quem:   quemExcluiu,
+      motivo: "Exclusão em lote de " + linhasParaExcluir.length + " escola(s)."
+    });
+    if (!movidas.ok) {
+      return { ok: false, excluidas: 0, ambiguos: ambiguos, mensagem: movidas.mensagem };
+    }
 
     SpreadsheetApp.flush();
     invalidarCacheEscolasInterno_();
 
-    const quem = String((sessaoExcl && (sessaoExcl.nome || sessaoExcl.usuario || sessaoExcl.email)) || "").trim();
+    const quem = quemExcluiu;
     escolaAuditar_("EXCLUIR", nomesExcluidos.join(" · ").slice(0, 200), "",
       "Exclusão em lote de " + linhasParaExcluir.length + " escola(s). Backup: " + nomeBackup +
       (ambiguos.length ? " | " + ambiguos.length + " CNPJ(s) ambíguos foram preservados." : ""),

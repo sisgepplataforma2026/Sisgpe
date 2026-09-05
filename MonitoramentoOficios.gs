@@ -11,7 +11,174 @@
 
 /* ── Confirmações de Recebimento ── */
 
-function instalarTriggerConfirmacoes() {
+/* ==========================================================================
+   COMO SE DECIDE QUE UM OFICIO FOI RECEBIDO — e o que estava errado
+
+   Achado em 01/09/2026, puxando o fio de tres bounces reais para a FAESA
+   (oficios 144, 236 e 242, todos para thalia.ferreira@faesa.br). Na producao
+   o 144 estava marcado CONFIRMADO. A pergunta foi: confirmado por quem?
+
+   O DEFEITO ERA A PALAVRA "ok", PROCURADA COM indexOf
+
+   `indexOf` casa PEDACO de palavra. Medido contra textos reais:
+
+     "Enviado do meu Outlook"                  -> casava por "ok"
+     "Sent from Outlook for iOS"               -> casava por "ok"
+     "Nao pode ser entregue. Token invalido."  -> casava por "ok"
+     "Estou de ferias. Obrigado pelo contato." -> casava por "obrigado"
+
+   Ou seja: o oficio era dado como recebido porque alguem respondeu de um
+   Outlook, ou porque um robo de ferias agradeceu.
+
+   E A BUSCA JA ERA LARGA
+
+   A consulta ao Gmail procura pelo numero do oficio OU PELO NOME DA ESCOLA.
+   Buscar pelo nome da escola significa que qualquer e-mail trocado com
+   aquela escola, sobre qualquer assunto, entrava na conta. Somando as duas
+   coisas: qualquer conversa com a FAESA em que aparecesse "Outlook"
+   confirmava o oficio.
+
+   O QUE FICA PIOR DEPOIS: confirmado sai do filtro do verificador de bounce,
+   que so olha ENVIADO e PENDENTE. Entao o oficio que mais claramente NAO
+   chegou era justamente o que nenhuma rotina voltava a olhar.
+
+   O QUE MUDOU
+
+   1. "ok" passou a valer so como palavra inteira. "Outlook" e "token" nao
+      confirmam mais nada.
+   2. Remetente automatico — mailer-daemon, postmaster, no-reply e afins —
+      nao confirma. Antes so financeiro@ e secretaria@ eram ignorados, entao
+      um robo podia confirmar oficio.
+
+   O QUE NAO MUDOU, DE PROPOSITO: "obrigado" e "obrigada" continuam na lista.
+   Sao ambiguos de verdade — muita gente responde "obrigado, recebido" — e
+   tira-los faria o sistema deixar de reconhecer confirmacao legitima. E
+   decisao de operacao, nao de codigo, e fica registrada aqui como escolha.
+   ========================================================================== */
+
+/* Termos que confirmam. "ok" fica fora daqui porque exige limite de palavra. */
+var MON_OFICIOS_CONFIRMA_ = ["recebido", "recebemos", "confirmo", "confirmamos",
+                             "ciente", "acusamos", "obrigado", "obrigada"];
+
+var MON_OFICIOS_AUTOMATICOS_ = ["mailer-daemon", "mailerdaemon", "postmaster",
+                                "no-reply", "noreply", "nao-responda",
+                                "naoresponda", "do-not-reply", "donotreply",
+                                "automatic", "notification@", "notifications@"];
+
+/** O remetente e um robo? Robo nao confirma recebimento de oficio. */
+function MON_OFICIOS_ehRemetenteAutomatico_(from) {
+  var f = String(from || "").toLowerCase();
+  for (var i = 0; i < MON_OFICIOS_AUTOMATICOS_.length; i++) {
+    if (f.indexOf(MON_OFICIOS_AUTOMATICOS_[i]) > -1) return true;
+  }
+  return false;
+}
+
+/** O texto confirma recebimento? "ok" so vale como palavra inteira. */
+function MON_OFICIOS_textoConfirmaRecebimento_(texto) {
+  var t = String(texto || "").toLowerCase();
+  for (var i = 0; i < MON_OFICIOS_CONFIRMA_.length; i++) {
+    if (t.indexOf(MON_OFICIOS_CONFIRMA_[i]) > -1) return true;
+  }
+  /* O defeito inteiro morava aqui: "Outlook" tem "ok" dentro. */
+  return /(^|[^a-z0-9])ok([^a-z0-9]|$)/i.test(t);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   QUEM É "A PRÓPRIA CASA" — e por que isto deixou de ser lista cravada
+
+   Achado em 02/09/2026, olhando um ofício real (487/2026, enviado às 11:17).
+   O cabeçalho dizia:
+
+     De:            SindEducação-ES <financeirosindecucacao@gmail.com>
+     Responder para: secretaria@sindeducacao.com
+
+   A lista de ignorados cravava `financeiro@sindeducacao.com` e
+   `secretaria@sindeducacao.com`. NENHUM dos dois casa com
+   `financeirosindecucacao@gmail.com` — que é o endereço que realmente
+   envia. A guarda existia e não guardava nada.
+
+   NÃO DEU PROBLEMA POR SORTE. O corpo do ofício não contém nenhuma das
+   palavras de confirmação — medido, não suposto: "confirmação" não contém
+   "confirmo" nem "confirmamos". Bastaria alguém acrescentar um "Agradecemos"
+   ou um "recebido" ao modelo para TODO ofício passar a se autoconfirmar no
+   instante em que fosse enviado.
+
+   POR ISSO A LISTA PASSOU A SER PERGUNTADA, NÃO ESCRITA. A conta executora e
+   os aliases dela são exatamente quem envia; qualquer troca de conta, alias
+   novo ou mudança de domínio acompanha sozinha. Os endereços institucionais
+   ficam como piso, para o caso de a consulta falhar.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+var MON_OFICIOS_INSTITUCIONAIS_ = ["financeiro@sindeducacao.com",
+                                   "secretaria@sindeducacao.com"];
+
+/** Endereços da própria casa: a conta que executa, os aliases dela e o piso. */
+function MON_OFICIOS_enderecosProprios_() {
+  var lista = MON_OFICIOS_INSTITUCIONAIS_.slice();
+
+  try {
+    var efetivo = String(Session.getEffectiveUser().getEmail() || "").trim().toLowerCase();
+    if (efetivo) lista.push(efetivo);
+  } catch (e) {}
+
+  try {
+    GmailApp.getAliases().forEach(function (a) {
+      var v = String(a || "").trim().toLowerCase();
+      if (v) lista.push(v);
+    });
+  } catch (e2) {}
+
+  return lista;
+}
+
+/** O remetente é a própria casa? Ofício não se confirma sozinho. */
+function MON_OFICIOS_ehRemetenteProprio_(from) {
+  var f = String(from || "").toLowerCase();
+  var proprios = MON_OFICIOS_enderecosProprios_();
+  for (var i = 0; i < proprios.length; i++) {
+    if (f.indexOf(proprios[i]) > -1) return true;
+  }
+  return false;
+}
+
+
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   POR QUE ESTES QUATRO GANHARAM PORTA — 01/09/2026
+
+   Achado na frente A da auditoria do Módulo 03, cruzando as funções públicas
+   com as que escrevem estado. Os quatro criavam e APAGAVAM gatilho sem pedir
+   permissão nenhuma, e sem sequer receber um token.
+
+   No Apps Script não existe rota para `google.script.run`: toda função global
+   é endpoint para QUALQUER página do projeto, inclusive as anônimas que o
+   `Code.gs` serve. Ou seja, um visitante qualquer podia chamar
+   `removerTriggerConfirmacoes()` e desligar, em silêncio, a verificação de
+   confirmação de recebimento e a de falha de entrega.
+
+   E desligar essas duas não dá erro nenhum: as confirmações simplesmente
+   param de ser registradas e as falhas param de ser detectadas. Ninguém liga
+   uma coisa à outra.
+
+   Isso ficou pior depois da correção da Home de hoje: o FALHA_ENTREGA passou
+   a aparecer no painel, e quem marca esse status é justamente o
+   `verificarFalhasEntregaOficios`. Sem o gatilho, o indicador fica em zero
+   dizendo que está tudo bem.
+
+   NÃO É PADRÃO NOVO — é o padrão da casa, que estes quatro não tinham. O
+   `instalarTriggerFilaEnvioOficios` (FilaOficios.gs:802), no mesmo módulo, já
+   usava `exigirAdminOuSessao_` com o mesmo rótulo e o mesmo `true`.
+
+   A porta é DUPLA de propósito: aceita o token de sessão do SISGEP e também a
+   conta Google do dono do projeto, porque estas funções são rodadas do editor,
+   onde não há token. Sem a segunda metade, a correção quebraria o único jeito
+   de instalá-las.
+   ───────────────────────────────────────────────────────────────────────── */
+
+function instalarTriggerConfirmacoes(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, "documentos", "Instalação do gatilho de confirmações de recebimento", true);
   ScriptApp.getProjectTriggers().forEach(function(trigger) {
     if (trigger.getHandlerFunction() === "verificarConfirmacoesRecebimento") {
       ScriptApp.deleteTrigger(trigger);
@@ -22,7 +189,8 @@ function instalarTriggerConfirmacoes() {
   return { ok: true, mensagem: "Trigger de confirmações instalado com sucesso." };
 }
 
-function removerTriggerConfirmacoes() {
+function removerTriggerConfirmacoes(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, "documentos", "Remoção do gatilho de confirmações de recebimento", true);
   ScriptApp.getProjectTriggers().forEach(function(trigger) {
     if (trigger.getHandlerFunction() === "verificarConfirmacoesRecebimento") {
       ScriptApp.deleteTrigger(trigger);
@@ -32,6 +200,24 @@ function removerTriggerConfirmacoes() {
   return { ok: true, mensagem: "Trigger de confirmações removido com sucesso." };
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   POR QUE ESTA FICA PUBLICA E SEM PORTA — decidido em 01/09/2026, frente A
+
+   Isto e HANDLER DE GATILHO: o Apps Script chama a funcao PELO NOME, entao
+   ela nao pode virar privada. E a porta dupla, que resolveu o caso das
+   ferramentas de editor, aqui e o remedio errado: o exigirAdminOuSessao_
+   (AcessoModulos.gs:188) identifica quem executa por
+   Session.getActiveUser().getEmail(), e num gatilho por tempo esse e-mail
+   pode voltar VAZIO. Quando volta, a porta recusa — e o gatilho para.
+
+   Parar este gatilho para a operacao que esta VIVA no sindicato. Nao vale a
+   troca, e o que se ganharia e pouco: a funcao devolve so contadores (verificados, confirmados,
+   sincronizadosControle) — nenhum dado de escola sai por ela.
+
+   Fica publica, entao, e fica ANOTADA no teto de exposicao. Nao e aprovacao —
+   e o registro de uma decisao que se reabre se aparecer um jeito de
+   identificar o contexto de gatilho com seguranca.
+   ══════════════════════════════════════════════════════════════════════════ */
 function verificarConfirmacoesRecebimento() {
   var ss = SpreadsheetApp.openById(PLANILHA_ID);
   var sh = obterOuCriarAbaFilaOficios_();
@@ -181,22 +367,16 @@ function verificarConfirmacoesRecebimento() {
           var body = String(msg.getPlainBody() || "").toLowerCase();
           var subject = String(msg.getSubject() || "").toLowerCase();
 
-          if (from.indexOf("financeiro@sindeducacao.com") > -1) continue;
-          if (from.indexOf("secretaria@sindeducacao.com") > -1) continue;
+          /* A propria casa nao confirma o proprio oficio — ver a nota grande
+             sobre MON_OFICIOS_enderecosProprios_. */
+          if (MON_OFICIOS_ehRemetenteProprio_(from)) continue;
+          /* Remetente automatico nao confirma nada — ver a nota grande acima
+             de MON_OFICIOS_CONFIRMA_. */
+          if (MON_OFICIOS_ehRemetenteAutomatico_(from)) continue;
 
           var texto = subject + " " + body;
 
-          if (
-            texto.indexOf("recebido") > -1 ||
-            texto.indexOf("recebemos") > -1 ||
-            texto.indexOf("confirmo") > -1 ||
-            texto.indexOf("confirmamos") > -1 ||
-            texto.indexOf("ciente") > -1 ||
-            texto.indexOf("ok") > -1 ||
-            texto.indexOf("acusamos") > -1 ||
-            texto.indexOf("obrigado") > -1 ||
-            texto.indexOf("obrigada") > -1
-          ) {
+          if (MON_OFICIOS_textoConfirmaRecebimento_(texto)) {
             confirmado = true;
             break;
           }
@@ -241,7 +421,8 @@ function verificarConfirmacoesRecebimento() {
 }
 /* ── Falhas de Entrega (Bounces) ── */
 
-function instalarTriggerFalhasEntrega() {
+function instalarTriggerFalhasEntrega(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, "documentos", "Instalação do gatilho de falhas de entrega", true);
   ScriptApp.getProjectTriggers().forEach(function(trigger) {
     if (trigger.getHandlerFunction() === "verificarFalhasEntregaOficios") {
       ScriptApp.deleteTrigger(trigger);
@@ -252,7 +433,8 @@ function instalarTriggerFalhasEntrega() {
   return { ok: true, mensagem: "Trigger instalado com sucesso." };
 }
 
-function removerTriggerFalhasEntrega() {
+function removerTriggerFalhasEntrega(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, "documentos", "Remoção do gatilho de falhas de entrega", true);
   ScriptApp.getProjectTriggers().forEach(function(trigger) {
     if (trigger.getHandlerFunction() === "verificarFalhasEntregaOficios") {
       ScriptApp.deleteTrigger(trigger);
@@ -262,8 +444,77 @@ function removerTriggerFalhasEntrega() {
   return { ok: true, mensagem: "Trigger removido com sucesso." };
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   POR QUE ESTA FICA PUBLICA E SEM PORTA — decidido em 01/09/2026, frente A
+
+   Isto e HANDLER DE GATILHO: o Apps Script chama a funcao PELO NOME, entao
+   ela nao pode virar privada. E a porta dupla, que resolveu o caso das
+   ferramentas de editor, aqui e o remedio errado: o exigirAdminOuSessao_
+   (AcessoModulos.gs:188) identifica quem executa por
+   Session.getActiveUser().getEmail(), e num gatilho por tempo esse e-mail
+   pode voltar VAZIO. Quando volta, a porta recusa — e o gatilho para.
+
+   Parar este gatilho para a operacao que esta VIVA no sindicato. Nao vale a
+   troca, e o que se ganharia e pouco: a funcao devolve so um contador de falhas e uma mensagem curta —
+   nenhum dado de escola sai por ela.
+
+   Fica publica, entao, e fica ANOTADA no teto de exposicao. Nao e aprovacao —
+   e o registro de uma decisao que se reabre se aparecer um jeito de
+   identificar o contexto de gatilho com seguranca.
+   ══════════════════════════════════════════════════════════════════════════ */
 function verificarFalhasEntregaOficios() {
   try {
+    /* RECONCILIAÇÃO AUTOMÁTICA — 04/09/2026, a pedido do usuário: "tudo
+       automatizado".
+
+       Ofício reenviado ANTES de a marcação existir (produção 695, 13h14)
+       ficou com Status FALHA_ENTREGA mesmo tendo saído. Havia uma função de
+       manutenção para acertar isso, que alguém teria de lembrar de rodar —
+       e o que a pessoa precisa lembrar de fazer, ela esquece.
+
+       AQUI É O LUGAR CERTO, e não é oportunismo: esta função existe para
+       manter o status de entrega verdadeiro. Um ofício que o log diz que foi
+       reenviado e a planilha diz que falhou é justamente o status deixando de
+       ser verdadeiro.
+
+       NÃO É DECISÃO, É ESCRITURAÇÃO. Não há julgamento a fazer: o log
+       registra o reenvio, o status contradiz, e os dois não podem estar
+       certos. Por isso pode ser automático — o limite da REGRA Nº 0.6 é não
+       decidir pela pessoa, e aqui não há o que decidir.
+
+       E NÃO É EM SILÊNCIO: quando ajusta alguma coisa, grava no log de
+       sistema com nome próprio, para aparecer na auditoria.
+
+       VEM ANTES da verificação de bounce de propósito. O ofício reconciliado
+       passa a ENVIADO, e só nesse estado ele volta a ser examinado por esta
+       função — reconciliar depois deixaria a checagem dele para a próxima
+       execução, cinco minutos mais tarde. */
+    try {
+      if (typeof oficio_reconciliarReenvios_ === "function") {
+        var rec = oficio_reconciliarReenvios_(false);
+        if (rec && rec.ajustados > 0) {
+          Logger.log("verificarFalhasEntregaOficios: " + rec.ajustados +
+                     " ofício(s) reconciliado(s) — reenviados que seguiam como falha.");
+          try {
+            registrarLogSistema_({
+              usuario: "sistema",
+              numero:  rec.ajustados + " ofício(s)",
+              tipo:    "OFICIOS_REENVIO_RECONCILIADO",
+              escola:  "",
+              cnpj:    "",
+              email:   "",
+              codigo:  rec.ajustar.map(function (a) { return a.numero; }).join(", ")
+            });
+          } catch (eLog) {}
+        }
+      }
+    } catch (eRec) {
+      /* Reconciliar é conveniência; verificar bounce é a obrigação desta
+         função. Falhar na primeira não pode impedir a segunda. */
+      Logger.log("verificarFalhasEntregaOficios: reconciliação falhou — " +
+                 (eRec && eRec.message || eRec));
+    }
+
     var ss = MON_OFICIOS_getSS_();
     var shRegistro = ss.getSheetByName(PLANILHA_REGISTRO);
     if (!shRegistro || shRegistro.getLastRow() < 2) return { ok: true, falhas: 0, mensagem: "Registro vazio." };
@@ -284,7 +535,20 @@ function verificarFalhasEntregaOficios() {
 
     for (var i = 0; i < dados.length; i++) {
       var status = MON_OFICIOS_normStatus_(dados[i][colStatus - 1]);
-      if (status !== "ENVIADO" && status !== "PENDENTE") continue;
+      if (status !== "ENVIADO" && status !== "PENDENTE") {
+        /* CONFIRMADO tambem entra — mas SO quando a confirmacao foi
+           AUTOMATICA. Achado em 01/09/2026: a confirmacao por palavra-chave
+           marcava oficios que na verdade quicaram (ver a nota grande sobre
+           MON_OFICIOS_CONFIRMA_), e uma vez confirmado o oficio saia deste
+           filtro para sempre — nenhuma rotina voltava a olha-lo.
+
+           O que uma PESSOA confirmou fica intocado: ela viu a resposta, e o
+           bounce de um endereco antigo nao pode desfazer isso. A distincao
+           existe porque o proprio sistema grava a origem na observacao. */
+        if (status !== "CONFIRMADO") continue;
+        var obsConf = colObs ? String(dados[i][colObs - 1] || "") : "";
+        if (!/confirma[\u00e7c][\u00e3a]o localizada automaticamente/i.test(obsConf)) continue;
+      }
 
       var numero = String(dados[i][colNumero - 1] || "").trim();
       if (!numero) continue;
@@ -359,7 +623,7 @@ function verificarFalhasEntregaOficios() {
 
       MON_OFICIOS_atualizarStatusNaFila_(ss, item.numero, "FALHA_ENTREGA", "Bounce detectado automaticamente em " + agora);
 
-      registrarLogSistema({
+      registrarLogSistema_({
         usuario: "sistema",
         numero: item.numero + " (FALHA_ENTREGA)",
         tipo: "Bounce",
@@ -470,7 +734,7 @@ function atualizarStatusOficio(numero, novoStatus, observacao, tokenSessao) {
     var atualizouFila     = MON_OFICIOS_atualizarStatusNaFila_(ss, alvo, novoStatus, observacao);
 
     if (atualizouControle || atualizouFila) {
-      registrarLogSistema({
+      registrarLogSistema_({
         usuario: emailUsuario,
         numero: alvo + " (STATUS → " + novoStatus + ")",
         tipo: "",

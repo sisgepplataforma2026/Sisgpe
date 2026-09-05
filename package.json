@@ -3,7 +3,7 @@
   "private": true,
   "description": "Só o ferramental de teste. O SISGEP em si é um projeto Google Apps Script e não usa npm.",
   "scripts": {
-    "test": "falhou=0; for f in tests/e2e/t*.js; do node \"$f\" || falhou=1; done; exit $falhou"
+    "test": "node tests/run-suite.js"
   },
   "devDependencies": {
     "jsdom": "^30.0.1"

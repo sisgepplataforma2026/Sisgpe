@@ -1,0 +1,147 @@
+<div id="blocoTaxaNegocial" aria-hidden="true">
+  <div class="tn-wrap">
+    <section class="tn-campanha" aria-label="Campanha da Taxa Negocial">
+      <div>
+        <div class="tn-campanha-kicker">Campanha ativa</div>
+        <div class="tn-campanha-titulo" id="tnCampanhaTitulo">Carregando campanha...</div>
+        <div class="tn-campanha-meta" id="tnCampanhaMeta"></div>
+      </div>
+      <div class="tn-status off" id="tnCampanhaStatus">AGUARDANDO</div>
+    </section>
+
+    <nav class="tn-subnav" aria-label="Seções da Taxa Negocial">
+      <button type="button" class="tn-subtab active" data-tn-panel="registrar">Registrar Oposição</button>
+      <button type="button" class="tn-subtab" data-tn-panel="historico">Histórico do Trabalhador</button>
+      <button type="button" class="tn-subtab" disabled title="Será conectado na próxima etapa">Lotes por Escola</button>
+      <button type="button" class="tn-subtab" disabled title="Será conectado na próxima etapa">Ofícios às Escolas</button>
+      <button type="button" class="tn-subtab" disabled title="Será conectado na próxima etapa">Relatório da Campanha</button>
+    </nav>
+
+    <section class="tn-panel active" data-tn-content="registrar">
+      <div class="tn-card" id="tnCardRegistro">
+        <div class="tn-card-head">
+          <div>
+            <div class="tn-card-title">Registro presencial da oposição</div>
+            <div class="tn-card-sub">Identificação → manifestação → confirmação eletrônica → protocolo</div>
+          </div>
+        </div>
+        <div class="tn-card-body">
+          <div class="tn-steps" id="tnSteps">
+            <div class="tn-step active" data-step="1"><b>1</b><span>Identificação</span></div>
+            <div class="tn-step" data-step="2"><b>2</b><span>Manifestação</span></div>
+            <div class="tn-step" data-step="3"><b>3</b><span>Confirmação</span></div>
+            <div class="tn-step" data-step="4"><b>4</b><span>Conclusão</span></div>
+          </div>
+
+          <div id="tnEtapa1">
+            <div class="tn-grid-3">
+              <div class="tn-field">
+                <label for="tnCpf">CPF do trabalhador</label>
+                <input id="tnCpf" type="text" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" maxlength="14">
+              </div>
+              <div class="tn-field">
+                <label for="tnEscola">Instituição empregadora</label>
+                <select id="tnEscola"><option value="">Carregando escolas...</option></select>
+              </div>
+              <div class="tn-field">
+                <label>&nbsp;</label>
+                <button type="button" class="tn-btn primary" id="tnBtnBuscar">Buscar e validar</button>
+              </div>
+            </div>
+
+            <div class="tn-alert" id="tnAlerta1"></div>
+
+            <div class="tn-resumo" id="tnResumoPessoa">
+              <div class="tn-resumo-grid">
+                <div class="tn-resumo-item"><small>Trabalhador</small><strong id="tnResumoNome">—</strong></div>
+                <div class="tn-resumo-item"><small>CPF</small><strong id="tnResumoCpf">—</strong></div>
+                <div class="tn-resumo-item"><small>Situação sindical</small><strong id="tnResumoFiliacao">—</strong></div>
+                <div class="tn-resumo-item"><small>Instituição</small><strong id="tnResumoEscola">—</strong></div>
+                <div class="tn-resumo-item"><small>CNPJ</small><strong id="tnResumoCnpj">—</strong></div>
+                <div class="tn-resumo-item"><small>Contato eletrônico</small><strong id="tnResumoContato">—</strong></div>
+              </div>
+            </div>
+
+            <div id="tnCadastroRapido" style="display:none;margin-top:14px;">
+              <div class="tn-alert show warn">CPF válido, mas o trabalhador ainda não está cadastrado. Faça o cadastro mínimo para continuar.</div>
+              <div class="tn-grid" style="margin-top:12px;">
+                <div class="tn-field"><label for="tnNovoNome">Nome completo</label><input id="tnNovoNome" type="text"></div>
+                <div class="tn-field"><label for="tnNovoEmail">E-mail</label><input id="tnNovoEmail" type="email"></div>
+                <div class="tn-field"><label for="tnNovoCelular">Celular</label><input id="tnNovoCelular" type="text"></div>
+              </div>
+              <div class="tn-actions"><button type="button" class="tn-btn primary" id="tnBtnCadastrar">Cadastrar como não filiado</button></div>
+            </div>
+
+            <div class="tn-actions" id="tnAcoesEtapa1" style="display:none;">
+              <button type="button" class="tn-btn primary" id="tnBtnIrManifestacao">Continuar para manifestação</button>
+            </div>
+          </div>
+
+          <div id="tnEtapa2" style="display:none;">
+            <div class="tn-field">
+              <label>Texto oficial da manifestação</label>
+              <div class="tn-manifestacao" id="tnTextoManifestacao">—</div>
+            </div>
+            <label class="tn-check"><input type="checkbox" id="tnAceiteManifestacao"><span>O trabalhador leu ou teve ciência do texto acima e confirma que esta manifestação corresponde à sua vontade de se opor à contribuição negocial desta campanha.</span></label>
+            <label class="tn-check"><input type="checkbox" id="tnDocumentoConferido"><span>Documento de identificação conferido presencialmente durante o atendimento.</span></label>
+            <div class="tn-field" style="max-width:300px;margin-top:10px;">
+              <label for="tnTipoDocumento">Documento conferido</label>
+              <select id="tnTipoDocumento"><option value="">Selecione...</option><option>RG</option><option>CNH</option><option>Carteira profissional</option><option>Outro documento oficial com foto</option></select>
+            </div>
+            <div class="tn-alert" id="tnAlerta2"></div>
+            <div class="tn-actions">
+              <button type="button" class="tn-btn" id="tnBtnVoltar1">Voltar</button>
+              <button type="button" class="tn-btn primary" id="tnBtnEnviarOtp">Enviar código de confirmação</button>
+            </div>
+          </div>
+
+          <div id="tnEtapa3" style="display:none;">
+            <div class="tn-alert show info" id="tnOtpInfo">Aguardando envio do código.</div>
+            <div class="tn-otp" id="tnOtpBox">
+              <div class="tn-field">
+                <label for="tnOtpCodigo">Código de 6 dígitos</label>
+                <input id="tnOtpCodigo" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000">
+              </div>
+              <div class="tn-actions">
+                <button type="button" class="tn-btn primary" id="tnBtnConfirmarOtp">Confirmar oposição</button>
+                <button type="button" class="tn-btn" id="tnBtnReenviarOtp">Reenviar código</button>
+              </div>
+            </div>
+            <div class="tn-alert" id="tnAlerta3"></div>
+            <div class="tn-actions"><button type="button" class="tn-btn" id="tnBtnVoltar2">Voltar à manifestação</button></div>
+          </div>
+
+          <div id="tnEtapa4" style="display:none;">
+            <div class="tn-sucesso show">
+              <div class="tn-sucesso-ico">✓</div>
+              <div class="tn-card-title" style="font-size:17px;">Oposição registrada</div>
+              <div class="tn-protocolo" id="tnProtocolo">—</div>
+              <div id="tnDataRegistro" style="font-size:12px;color:#667085;">—</div>
+              <div class="tn-comprovante" id="tnComprovanteResumo">Verificando comprovante...</div>
+              <div class="tn-actions" style="justify-content:center;">
+                <button type="button" class="tn-btn" id="tnBtnGerarComprovante" style="display:none;">Gerar comprovante novamente</button>
+                <button type="button" class="tn-btn primary" id="tnBtnNovoAtendimento">Novo atendimento</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tn-panel" data-tn-content="historico">
+      <div class="tn-card">
+        <div class="tn-card-head">
+          <div><div class="tn-card-title">Histórico de oposições do trabalhador</div><div class="tn-card-sub">Fonte oficial: registros da Taxa Negocial no SISGEP</div></div>
+        </div>
+        <div class="tn-card-body">
+          <div class="tn-history-search">
+            <div class="tn-field"><label for="tnHistCpf">CPF</label><input id="tnHistCpf" type="text" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></div>
+            <button type="button" class="tn-btn primary" id="tnBtnHistorico">Consultar histórico</button>
+          </div>
+          <div class="tn-alert" id="tnAlertaHistorico"></div>
+          <div class="tn-history" id="tnHistoricoLista"><div class="tn-empty">Informe um CPF para consultar.</div></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>

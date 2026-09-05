@@ -26,7 +26,7 @@ var PASTA_OFICIOS_LIVRE_ID         = "1MToLVFg_TmRH5DfvnlKIVPwmbmUOYTYn";
 /* ================= PASTA POR TIPO ================= */
 
 function obterPastaPorTipo_(tipoNorm) {
-  var id = getPastaOficiosDestinoId(tipoNorm);
+  var id = getPastaOficiosDestinoId_(tipoNorm);
   return obterOuCriarSubpastaAno(id);
 }
 
@@ -46,7 +46,20 @@ var blob  = Utilities.newBlob(bytes, "text/html; charset=utf-8", nomeArquivo + "
 
 /* ================= DASHBOARD ================= */
 
-function dashboardResumo() {
+/* DUPLICATAS DO PAINEL — privadas em 01/09/2026, pelo mesmo criterio.
+
+   O cabecalho do DashboardOficios.gs ja mandava, desde a reescrita dele,
+   remover a duplicidade de funcoes globais de resumo e de graficos do painel.
+   As entradas que o frontend usa sao as de la — getDashboardOficiosData e
+   companhia. Estas duas aqui nao tem chamador nenhum no projeto (cinco passos
+   da REGRA Nº 1 rodados), entao ficam, viram privadas, e param de ser
+   endpoint.
+
+   Nomes citados sem parentese de proposito: comentario com sintaxe de
+   chamada e o que a varredura de chamada orfa do t126 nao consegue
+   distinguir de chamada de verdade. */
+
+function dashboardResumo_() {
   var ss  = SpreadsheetApp.openById(PLANILHA_ID);
   var sh  = ss.getSheetByName(PLANILHA_REGISTRO);
   var ano = anoAtual_();
@@ -109,7 +122,7 @@ function dashboardResumo() {
   };
 }
 
-function dashboardGraficos() {
+function dashboardGraficos_() {
   var sheet = SpreadsheetApp.openById(PLANILHA_ID).getSheetByName(PLANILHA_REGISTRO);
   var ano   = anoAtual_();
   if (!sheet || sheet.getLastRow() < 2) return { tipos: {}, status: {} };
@@ -153,7 +166,7 @@ function dashboardGraficos() {
 
 /* ================= NUMERAÇÃO ================= */
 
-function preverProximoNumeroOficio() {
+function preverProximoNumeroOficio_() {
   var ss    = SpreadsheetApp.openById(PLANILHA_ID);
   var sheet = ss.getSheetByName(PLANILHA_REGISTRO);
   if (!sheet) throw new Error("Aba de registro não encontrada.");
@@ -174,12 +187,21 @@ function preverProximoNumeroOficio() {
     });
   }
 
+  try {
+    var ambientePreview = (typeof getAmbienteAtual === "function")
+      ? String(getAmbienteAtual() || "producao").toUpperCase()
+      : "PRODUCAO";
+    var reservadoPreview = parseInt(PropertiesService.getScriptProperties()
+      .getProperty("SISGEP_OFICIO_SEQ_" + ambientePreview + "_" + ano) || "0", 10);
+    if (!isNaN(reservadoPreview) && reservadoPreview > maiorNumero) maiorNumero = reservadoPreview;
+  } catch (ePreview) {}
+
   var proximo = String(maiorNumero + 1).padStart(3, "0") + "/" + ano;
   Logger.log("Prévia do próximo número: " + proximo);
   return proximo;
 }
 
-function gerarProximoNumeroSeguro() {
+function gerarProximoNumeroSeguro_() {
   // travarSisgep_ (TravaSisgep.gs): gerarOficioWeb chama esta função e, no
   // ofício de desfiliação, também sindAss_desfiliar_ — que trava igual. Com
   // LockService direto, basta alguém aninhar as duas para travar a emissão.
@@ -206,17 +228,31 @@ function gerarProximoNumeroSeguro() {
       });
     }
 
+    var propsNumero = PropertiesService.getScriptProperties();
+
     try {
-      var numeroTaxa = String(PropertiesService.getScriptProperties()
+      var numeroTaxa = String(propsNumero
         .getProperty("TAXA_ASSISTENCIAL_NUMERO_OFICIO") || "").trim();
       if (numeroTaxa && numeroTaxa.indexOf("/" + ano) > -1) {
         var numTaxa = parseInt(numeroTaxa.split("/")[0].trim(), 10);
         if (!isNaN(numTaxa) && numTaxa > maiorNumero) maiorNumero = numTaxa;
       }
-    } catch (e) { Logger.log("[gerarProximoNumeroSeguro] " + e); }
+    } catch (e) { Logger.log("[gerarProximoNumeroSeguro_] " + e); }
 
-    var proximo = String(maiorNumero + 1).padStart(3, "0") + "/" + ano;
-    Logger.log("gerarProximoNumeroSeguro: " + proximo);
+    var ambienteNumero = (typeof getAmbienteAtual === "function")
+      ? String(getAmbienteAtual() || "producao").toUpperCase()
+      : "PRODUCAO";
+    var chaveSequencia = "SISGEP_OFICIO_SEQ_" + ambienteNumero + "_" + ano;
+    var ultimoReservado = parseInt(propsNumero.getProperty(chaveSequencia) || "0", 10);
+    if (!isNaN(ultimoReservado) && ultimoReservado > maiorNumero) maiorNumero = ultimoReservado;
+
+    var sequencia = maiorNumero + 1;
+    var proximo = String(sequencia).padStart(3, "0") + "/" + ano;
+
+    // A reserva é persistida ANTES de liberar a trava. Assim, mesmo que PDF,
+    // Drive ou planilha falhem depois, outra emissão nunca reutiliza o número.
+    propsNumero.setProperty(chaveSequencia, String(sequencia));
+    Logger.log("gerarProximoNumeroSeguro_: reservado " + proximo + " em " + chaveSequencia);
     return proximo;
 
   } finally {
@@ -226,7 +262,7 @@ function gerarProximoNumeroSeguro() {
 
 /* ================= LOG SISTEMA ================= */
 
-function registrarLogSistema(dadosLog) {
+function registrarLogSistema_(dadosLog) {
   var ss       = SpreadsheetApp.openById(PLANILHA_ID);
   var logSheet = ss.getSheetByName("LOG_SISTEMA");
   if (!logSheet) {
@@ -256,7 +292,7 @@ function registrarLogSistema(dadosLog) {
   try {
     if (typeof aud_deLogSistema_ === "function") aud_deLogSistema_(dadosLog);
   } catch (e) {
-    Logger.log("registrarLogSistema — ponte de auditoria falhou (ofício seguiu): " + e);
+    Logger.log("registrarLogSistema_ — ponte de auditoria falhou (ofício seguiu): " + e);
   }
 }
 
@@ -278,13 +314,46 @@ function protegerLogSistema_(sheet) {
 
 /* ================= GERAR PDF ================= */
 
-function gerarPDFOficio(templateId, numero, escola, cnpj, colaboradores, dataHoje, codigo) {
-  var pastaAno     = obterOuCriarSubpastaAno(getPastaOficiosDestinoId("FILIACAO"));
+/* ══════════════════════════════════════════════════════════════════════════
+   CAMINHO LEGADO DE GERACAO DE PDF — mantido, documentado, e agora PRIVADO
+
+   Documentado em 01/09/2026, na frente A da auditoria do Modulo 03, DEPOIS
+   dos cinco passos da REGRA Nº 1:
+
+     1. cabecalho dos arquivos lidos;
+     2. Code.gs e rotas doGet/doPost — nenhuma referencia;
+     3. gatilhos — nenhum;
+     4. git log --follow — nenhuma decisao anterior sobre estas funcoes;
+     5. grep no projeto inteiro, .gs E .html — gerarPDFOficio e
+        gerarPDFOficioLivre aparecem SO na propria definicao.
+
+   O que a emissao usa hoje e outro caminho: `gerarOficioWeb` chama
+   `oficios_converterHtmlParaPdf_` (HTML -> PDF). A geracao por TEMPLATE do
+   Google Docs, abaixo, e a arquitetura anterior.
+
+   NAO FORAM REMOVIDAS, e isso e deliberado. A REGRA Nº 1 manda, na duvida
+   entre remover e manter, "manter e documentar como legado no cabecalho" —
+   foi o que se fez com o GuiasPagamento.gs e foi a decisao certa. Remocao so
+   com pedido explicito do usuario, em commit separado.
+
+   O QUE MUDOU: passaram a ser PRIVADAS (sufixo `_`). No Apps Script toda
+   funcao global e endpoint para qualquer pagina do projeto, inclusive as
+   anonimas — e estas CRIAM ARQUIVO no Drive do sindicato. Privadas, o codigo
+   continua ali e a porta de fora fecha. E rename, nao remocao: reversivel
+   trocando o sufixo.
+
+   ATENCAO: `gerarPDFUniversal_` NAO e legado — o TaxaAssistencial.gs a usa em
+   dois pontos. Ela ficou privada pelo mesmo motivo (cria arquivo), e os tres
+   chamadores internos foram atualizados junto.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+function gerarPDFOficio_(templateId, numero, escola, cnpj, colaboradores, dataHoje, codigo) {
+  var pastaAno     = obterOuCriarSubpastaAno(getPastaOficiosDestinoId_("FILIACAO"));
   var baseUrl      = ScriptApp.getService().getUrl();
   var urlValidacao = baseUrl ? baseUrl + "?codigo=" + codigo : "";
   var nomeBase     = montarNomeArquivoOficio_(numero, escola, colaboradores, new Date()).replace(/\.pdf$/i, "");
 
-  var retorno = gerarPDFUniversal({
+  var retorno = gerarPDFUniversal_({
     templateId: templateId, nomeArquivo: nomeBase, pastaDestinoId: pastaAno.getId(),
     substituicoes: {
       "{{NUMERO}}": numero, "{{DATA}}": dataHoje, "{{ESCOLA}}": escola,
@@ -295,8 +364,8 @@ function gerarPDFOficio(templateId, numero, escola, cnpj, colaboradores, dataHoj
   return retorno.pdf;
 }
 
-function gerarPDFOficioLivre(numero, para, cargo, assunto, corpo, dataHoje, codigo, cidadeUf) {
-  var pastaAno     = obterOuCriarSubpastaAno(getPastaOficiosDestinoId("OFICIO_LIVRE"));
+function gerarPDFOficioLivre_(numero, para, cargo, assunto, corpo, dataHoje, codigo, cidadeUf) {
+  var pastaAno     = obterOuCriarSubpastaAno(getPastaOficiosDestinoId_("OFICIO_LIVRE"));
   var baseUrl      = ScriptApp.getService().getUrl();
   var urlValidacao = baseUrl ? baseUrl + "?codigo=" + codigo : "";
   var nomeBase     = montarNomeArquivoOficio_(numero, para || "", []).replace(/\.pdf$/i, "");
@@ -328,7 +397,7 @@ function gerarPDFOficioLivre(numero, para, cargo, assunto, corpo, dataHoje, codi
   return pdfFile;
 }
 
-function gerarPDFUniversal(config) {
+function gerarPDFUniversal_(config) {
   var copia = null;
   try {
     if (!config || !config.templateId) throw new Error("Template não informado.");
@@ -404,7 +473,7 @@ function gerarPDFUniversal(config) {
     return { pdf: pdfFile, docId: copia.getId(), pdfId: pdfFile.getId() };
 
   } catch (e) {
-    Logger.log("❌ ERRO gerarPDFUniversal: " + e.toString());
+    Logger.log("❌ ERRO gerarPDFUniversal_: " + e.toString());
     throw new Error("Erro ao gerar PDF: " + e.message);
   } finally {
     if (copia) { try { DriveApp.getFileById(copia.getId()).setTrashed(true); } catch(e) {} }
@@ -452,7 +521,7 @@ function montarDadosOficio_(dados, modo) {
   var dataExtenso = (typeof dataPorExtenso === "function") ? dataPorExtenso() : dataHoje;
   var tipoNorm    = normalizarTipoOficio_(dados.tipo);
   var configTipo  = resolverConfigTipoOficio_(dados.tipo);
-  var numero      = modoExec === "preview" ? "Nº PRÉVIA" : gerarProximoNumeroSeguro();
+  var numero      = modoExec === "preview" ? "Nº PRÉVIA" : gerarProximoNumeroSeguro_();
 
   var codigoVerificacao = numero.replace("/", "-");
   if (modoExec !== "preview" && typeof gerarCodigoVerificacao === "function") {
@@ -526,10 +595,40 @@ function montarDadosOficio_(dados, modo) {
   };
 }
 
-// SEM trava de modulo: mesma razao de gerarOficioWeb — a Sindicalizacao
-// monta a previa do oficio de filiacao por aqui. Sessao continua exigida.
+/* ENTRADA PUBLICA da previa. A porta fica AQUI; o trabalho fica no
+   _comSessao_ logo abaixo, que confia em quem o chamou.
+
+   Dividido em 01/09/2026 (item 54.2). O cabecalho antigo desta funcao dizia
+   "SEM trava de modulo... a Sindicalizacao monta a previa do oficio de
+   filiacao por aqui" — a intencao do autor era deixar o fluxo de fichas
+   passar. A troca de porta feita mais cedo hoje tornou esse comentario falso
+   sem resolver o problema, porque a Sindicalizacao nem token passava.
+
+   A divisao devolve a intencao original SEM abrir a porta da frente: quem
+   chega por google.script.run continua precisando do modulo Documentos; quem
+   chega pela aprovacao de ficha ja passou pela porta de Sindicalizacao no
+   chamador e entra pelo interno. */
 function previewOficioWeb(dados, tokenSessao) {
-  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  /* PORTA TROCADA EM 01/09/2026 — de exigirSessaoDocumentos_ para
+     exigirModulo_. A antiga (Sessao.gs:405) confere se a SESSAO e valida
+     e, quando pedido, se o perfil e administrador — mas NAO consulta os
+     modulos do usuario. Entao qualquer pessoa logada, com ou sem o modulo
+     Documentos, alcancava esta funcao por chamada direta.
+
+     Na Home isso nao aparecia porque o InicioResumo consulta
+     `sessaoPodeModulo_` ANTES de chamar a fonte — a protecao estava no
+     chamador, nao na funcao. Medido pelo t125, passo 9.
+
+     `exigirModulo_` e o padrao da casa (398 usos em 78 arquivos). */
+  var sessao = exigirModulo_(tokenSessao, "documentos", false);
+  return previewOficioWeb_comSessao_(dados, sessao);
+}
+
+/* O corpo, inalterado. Privado de proposito: NAO tem porta, entao so pode ser
+   alcancado por quem ja passou por uma. Quem chamar daqui de dentro e
+   responsavel por ter checado permissao antes — e a unica excecao autorizada
+   e a Sindicalizacao, que checa o modulo dela. */
+function previewOficioWeb_comSessao_(dados, sessao) {
   Logger.log("✅ previewOficioWeb — " + new Date());
   try {
     var proc       = montarDadosOficio_(dados, "preview");
@@ -572,7 +671,19 @@ function previewOficioWeb(dados, tokenSessao) {
 // {erro:true} e a tela mostrava a falha sem dizer a causa. Achado por teste
 // de execucao em 2026-08-05 (tests/e2e/t1-documentos.js).
 function gerarOficioWeb(dados, tokenSessao) {
-  var sessaoDocumentos = exigirSessaoDocumentos_(tokenSessao, false);
+  var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
+  return gerarOficioWeb_comSessao_(dados, sessaoDocumentos);
+}
+
+/* O corpo, inalterado. Mesma regra do previewOficioWeb_comSessao_: privado,
+   sem porta, e so alcancavel por quem ja passou por uma.
+
+   POR QUE NAO SE RESOLVEU ALARGANDO A PORTA DE gerarOficioWeb para aceitar
+   Documentos OU Sindicalizacao: quem tem so Sindicalizacao passaria a emitir
+   QUALQUER oficio por chamada direta — inclusive oficio LIVRE, que e texto
+   arbitrario em papel timbrado do sindicato, para qualquer e-mail. A divisao
+   da a permissao ao FLUXO da ficha, nao ao modulo inteiro. */
+function gerarOficioWeb_comSessao_(dados, sessaoDocumentos) {
   try {
     var emailUsuario = String(sessaoDocumentos.email || sessaoDocumentos.usuario || "").trim().toLowerCase();
     if (!dados || typeof dados !== "object") throw new Error("Dados inválidos.");
@@ -737,15 +848,56 @@ function gerarOficioWeb(dados, tokenSessao) {
       dados.fichas.forEach(function(ficha, indice) {
         var extensao = obterExtensaoArquivo_(ficha.nome, ficha.tipo);
         var nomeArquivo;
+        /* O NOME DO ANEXO SEGUE O TIPO DO OFÍCIO.
+         *
+         * Até 18/08/2026 TODO anexo saía como "Ficha_Filiacao_<NOME>", em
+         * qualquer tipo. Medido: Filiação, Desfiliação e Oposição produziam
+         * exatamente o mesmo "Ficha_Filiacao_PESSOA_1.pdf".
+         *
+         * A escola recebia, num ofício de OPOSIÇÃO — que determina que o
+         * desconto NÃO seja feito —, um arquivo chamado ficha de filiação. O
+         * documento diz uma coisa e o anexo, pelo nome, diz o contrário. Numa
+         * contestação é o nome do arquivo que fica no e-mail arquivado. */
+        /* Padrão definido pelo usuário em 18/08/2026: prefixo "Ficha_" em
+           todos, com o TIPO logo depois.
+
+             Ficha_Filiacao_<NOME>      ·  Fichas_Filiacao_<ESCOLA>_<data>
+             Ficha_Desfiliacao_<NOME>   ·  Fichas_Desfiliacao_<ESCOLA>_<data>
+             Ficha_Oposicao_<NOME>      ·  Fichas_Oposicao_<ESCOLA>_<data>
+
+           Antes TODO tipo produzia "Ficha_Filiacao_<NOME>": a escola recebia,
+           num ofício de oposição — que manda NÃO descontar —, um arquivo com
+           nome de ficha de filiação. Numa contestação é o nome do arquivo que
+           fica no e-mail arquivado.
+
+           Sem acento de propósito: nome de arquivo com ç e ã atravessa Drive,
+           Gmail e o computador da escola com codificações diferentes, e o que
+           chega do outro lado costuma ser "Desfiliaa~o". */
+        var tipoArquivo = (proc.tipoNorm === "DESFILIACAO")            ? "Desfiliacao"
+                        : (proc.tipoNorm === "OPOSICAO_TAXA_NEGOCIAL") ? "Oposicao"
+                        : (proc.tipoNorm === "FILIACAO")               ? "Filiacao"
+                        : (proc.tipoNorm === "TAXA_ASSISTENCIAL")      ? "Taxa_Assistencial"
+                        : (proc.tipoNorm === "TAXA_NEGOCIAL")          ? "Taxa_Negocial"
+                        : "Documento";
         if (fichaPorPessoa) {
           var nomeFormatado = String(proc.colaboradoresArr[indice] || "ASSOCIADO")
             .toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
             .replace(/[^A-Z0-9\s]/g, "").trim().replace(/\s+/g, "_");
-          nomeArquivo = "Ficha_Filiacao_" + nomeFormatado + "." + extensao;
+          /* Nome da pessoa + escola + data, os três — decisão do usuário em
+             18/08/2026. Assim o arquivo se identifica sozinho na pasta do
+             Drive e no anexo do e-mail, sem depender de abrir nem de saber
+             de qual ofício veio.
+
+             O nome da pessoa entra cortado em 40 caracteres: nome composto
+             longo somado à escola (45) e à data passa dos limites que alguns
+             clientes de e-mail exibem, e o que interessa para reconhecer já
+             está no começo. */
+          nomeArquivo = "Ficha_" + tipoArquivo + "_" + nomeFormatado.slice(0, 40) +
+            "_" + escolaArquivo + "_" + dataArquivo + "." + extensao;
         } else {
           /* Um PDF por escola por dia: o número de ordem só entra quando há
            * mais de um arquivo, para o caso comum não ganhar um "_1" inútil. */
-          nomeArquivo = "Fichas_" + escolaArquivo + "_" + dataArquivo +
+          nomeArquivo = "Fichas_" + tipoArquivo + "_" + escolaArquivo + "_" + dataArquivo +
             (dados.fichas.length > 1 ? "_" + (indice + 1) : "") + "." + extensao;
         }
         var blob        = Utilities.newBlob(Utilities.base64Decode(ficha.base64), ficha.tipo || "application/pdf", nomeArquivo);
@@ -757,10 +909,10 @@ function gerarOficioWeb(dados, tokenSessao) {
     var qtdFichas          = (proc.isLivre || !Array.isArray(dados.fichas)) ? 0 : dados.fichas.length;
     // Texto digitado pelo atendente (Ofício Livre) — escapado antes de entrar no
     // e-mail para não permitir injeção de HTML. Os textos padrão dos demais tipos
-    // (Filiação/Desfiliação/Taxas) são montados internamente por montarEmailHTML e
+    // (Filiação/Desfiliação/Taxas) são montados internamente por montarEmailHTML_ e
     // usam <strong> de propósito, por isso o escaping é feito aqui, não lá dentro.
     var textoPrincipalEmail = escapeHtml_(dados.textoPrincipal || dados.corpo || "");
-    var htmlBody     = montarEmailHTML(tituloEmail, proc.numero, assuntoTipo, qtdFichas, textoPrincipalEmail);
+    var htmlBody     = montarEmailHTML_(tituloEmail, proc.numero, assuntoTipo, qtdFichas, textoPrincipalEmail);
     var assuntoEmail = tituloEmail + " Nº " + proc.numero;
 
     var retornoFila = criarFilaEnvioOficio_({
@@ -798,7 +950,7 @@ function gerarOficioWeb(dados, tokenSessao) {
       "Link Ficha":            ""
     });
 
-registrarLogSistema({
+registrarLogSistema_({
       usuario: emailUsuario,
       numero:  proc.numero + " (FILA)",
       tipo:    assuntoTipo,
@@ -1075,7 +1227,7 @@ var iniciais = nomeEscola.split(/\s+/).filter(function(w){ return w.length > 2 &
 
 /* ================= VALIDAÇÃO PÚBLICA ================= */
 
-function verificarCodigoPublico(codigo) {
+function verificarCodigoPublico_(codigo) {
   var ss    = SpreadsheetApp.openById(PLANILHA_ID);
   var sheet = ss.getSheetByName(PLANILHA_REGISTRO);
   if (!sheet || sheet.getLastRow() < 2) return { status: "INVALIDO", mensagem: "Nenhum registro encontrado." };
@@ -1107,8 +1259,20 @@ function verificarCodigoPublico(codigo) {
   return { status: "INVALIDO", mensagem: "Código não encontrado." };
 }
 
+/* ROTA PUBLICA POR DESENHO — conferido em 01/09/2026, frente A do Modulo 03.
+
+   Esta e chamada pelo Code.gs na rota anonima do parametro "codigo": a escola
+   que recebeu um oficio confere ali se ele e autentico. Sem login, de
+   proposito — quem valida esta FORA do sindicato.
+
+   O que ela devolve e o registro de UM oficio, e so para quem ja tem o codigo
+   dele. Nao lista, nao busca por escola, nao aceita parcial. Fica publica.
+
+   O helper que ela usa virou privado na mesma data: era uma segunda porta
+   para o mesmo dado, e essa nao precisava existir. */
+
 function validarPublico(codigo) {
-  var resultado = verificarCodigoPublico(codigo) || {};
+  var resultado = verificarCodigoPublico_(codigo) || {};
   var esc = function(valor) { return escapeHtml_(String(valor == null ? "" : valor)); };
   var linkSeguro = String(resultado.link || "").trim();
   if (!/^https:\/\/drive\.google\.com\//i.test(linkSeguro)) linkSeguro = "";
@@ -1181,7 +1345,7 @@ function excluirRegistroOficio(numero, tokenSessao) {
     }
 
     if (excluidos > 0) {
-      registrarLogSistema({
+      registrarLogSistema_({
         usuario: sessaoDocumentos.email || sessaoDocumentos.usuario || "SISGEP",
         numero:  numero + " (EXCLUSÃO)",
         tipo:    "EXCLUSAO_OFICIO",
@@ -1237,7 +1401,7 @@ function excluirRegistrosOficio(numeros, tokenSessao) {
     }
 
     if (excluidos > 0) {
-      registrarLogSistema({
+      registrarLogSistema_({
         usuario: sessaoDocumentos.email || sessaoDocumentos.usuario || "SISGEP",
         numero:  numeros.join(", ") + " (EXCLUSÃO EM LOTE)",
         tipo:    "EXCLUSAO_OFICIO",
@@ -1253,7 +1417,16 @@ function excluirRegistrosOficio(numeros, tokenSessao) {
 }
 /* ================= GET TEMPLATE CONTEÚDO ================= */
 
-function getTemplateConteudo(templateId) {
+function getTemplateConteudo(templateId, tokenSessao) {
+  /* PORTA ACRESCENTADA EM 01/09/2026 — frente A do Modulo 03.
+
+     Esta funcao abre QUALQUER Google Doc por ID e devolve o texto inteiro. A
+     conta que executa o script tem acesso ao Drive do sindicato, entao sem
+     porta ela era leitura de documento arbitrario por quem soubesse um ID —
+     e no Apps Script toda funcao global e endpoint para qualquer pagina,
+     inclusive as anonimas. Nao ha chamador de tela; o parametro novo nao
+     quebra nada. */
+  exigirModulo_(tokenSessao, "documentos", false);
   try {
     var doc   = DocumentApp.openById(templateId);
     var texto = doc.getBody().getText();

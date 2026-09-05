@@ -296,9 +296,13 @@ function brsIniciarAmbosPaineis_() {
   brsInicializarPainel("benefSubGuririBeach", "GURIRI_BEACH");
   brsInicializarPainel("benefSubAssefaz", "ASSEFAZ");
 }
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", brsIniciarAmbosPaineis_);
-} else {
-  brsIniciarAmbosPaineis_();
-}
+/* CARREGAMENTO SOB DEMANDA (auditoria M01, lote 2 — 31/08/2026).
+   Esta tela buscava os dados no DOMContentLoaded, ou seja, em toda carga da
+   página, mesmo com o módulo fechado. Quem inicializa agora é o initModulo()
+   do index.html, pelo spIr(). */
+/* Esta tela não tinha ponto de entrada sob demanda — só o DOMContentLoaded a
+   inicializava, e ela abre DOIS painéis (Guriri Beach e Assefaz), cada um com
+   duas chamadas: quatro por carga da página, com Benefícios fechado.
+   A ligação foi criada no ramo "beneficios" do initModulo. */
+window.initBeneficioReservaSimples = brsIniciarAmbosPaineis_;
 </script>

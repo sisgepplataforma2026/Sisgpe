@@ -110,6 +110,11 @@ function escolaDeOption(opt) {
     cidade: opt.dataset.cidade || "",
     uf: opt.dataset.uf || "",
     endereco: opt.dataset.endereco || "",
+    logradouro: opt.dataset.logradouro || "",
+    numero: opt.dataset.numero || "",
+    complemento: opt.dataset.complemento || "",
+    bairro: opt.dataset.bairro || "",
+    cep: opt.dataset.cep || "",
     status: opt.dataset.status || "Ativa",
     emails: emails,
     emailPrincipal: opt.dataset.email || "",
@@ -118,30 +123,6 @@ function escolaDeOption(opt) {
     ultimo: opt.dataset.ultimo || "—"
   };
 }
-
-  function normalizarEscola(raw) {
-    raw = raw || {};
-    var emails = [].concat(raw.emails||[], raw.email?[raw.email]:[], raw.emailPrincipal?[raw.emailPrincipal]:[])
-      .filter(Boolean).filter(function(e,i,a){ return a.indexOf(e)===i; });
-    return { id:raw.id||raw.cnpj||raw.escola||raw.nome||raw.razaoSocial||"", nome:raw.nome||raw.escola||raw.razaoSocial||"Escola sem nome",
-      razao:raw.razaoSocial||raw.nome||"", cnpj:raw.cnpj||"", cidade:raw.cidade||"", uf:raw.uf||"",
-      endereco:raw.endereco||"", status:raw.status||"Ativa", emails:emails,
-      emailPrincipal:raw.emailPrincipal||raw.email||emails[0]||"",
-      oficios:Number(raw.oficios||0), confirmados:Number(raw.confirmados||0), ultimo:raw.ultimo||"—" };
-  }
-
-  function normalizarEscola(raw) {
-    raw = raw || {};
-    var emailsTodos = raw.emailsTodos || raw.emailTodos || "";
-    var emails = [].concat(raw.emails||[], raw.email?[raw.email]:[], raw.emailPrincipal?[raw.emailPrincipal]:[], emailsTodos ? String(emailsTodos).split(/[;,]+/) : [])
-      .map(function(e){ return txt(e); })
-      .filter(Boolean).filter(function(e,i,a){ return a.indexOf(e)===i; });
-    return { id:raw.id||raw.cnpj||raw.cnpjLimpo||raw.escola||raw.nome||raw.razaoSocial||"", nome:raw.nome||raw.escola||raw.razaoSocial||raw.fantasia||"Escola sem nome",
-      razao:raw.razaoSocial||raw.razao||raw.nome||"", cnpj:raw.cnpj||raw.cnpjLimpo||"", cidade:raw.cidade||raw.municipio||"", uf:raw.uf||"",
-      endereco:raw.enderecoCompleto||raw.endereco||"", status:raw.status||raw.situacao||"Ativa", emails:emails,
-      emailPrincipal:raw.emailPrincipal||raw.email||emails[0]||"",
-      oficios:Number(raw.oficios||0), confirmados:Number(raw.confirmados||0), ultimo:raw.ultimo||"â€”" };
-  }
 
   function normalizarEscola(raw) {
     raw = raw || {};
@@ -154,9 +135,25 @@ function escolaDeOption(opt) {
     var cidadeUf = txt(raw.cidadeUf || raw.CidadeUf || raw["Cidade / UF"] || raw["Cidade/UF"] || raw["Cidade - UF"] || [cidade, uf].filter(Boolean).join(" / "));
     if (!cidade && cidadeUf) cidade = txt(cidadeUf.split(/[\/-]/)[0]);
     if (!uf && cidadeUf && cidadeUf.indexOf("/") > -1) uf = txt(cidadeUf.split("/").pop());
+    var logradouro = txt(raw.logradouro || raw.Endereco || raw.endereco || raw["Endereço"] || "");
+    var numero = txt(raw.numero || raw.Numero || raw["Número"] || "");
+    var complemento = txt(raw.complemento || raw.Complemento || "");
+    var bairro = txt(raw.bairro || raw.Bairro || "");
+    var cep = txt(raw.cep || raw.CEP || "");
+    var enderecoCompleto = txt(raw.enderecoCompleto || raw.EnderecoCompleto || "");
+    if (!enderecoCompleto) {
+      enderecoCompleto = [
+        [logradouro, numero].filter(Boolean).join(", "),
+        complemento,
+        bairro,
+        cidadeUf,
+        cep
+      ].filter(Boolean).join(" · ");
+    }
     return { id:raw.id||raw.cnpj||raw.CNPJ||raw.cnpjLimpo||raw.escola||raw.NomeEscola||raw.nome||raw.razaoSocial||"", nome:raw.nome||raw.escola||raw.NomeEscola||raw.razaoSocial||raw["Razão Social"]||raw.fantasia||raw.Fantasia||"Escola sem nome",
       razao:raw.razaoSocial||raw.razao||raw["Razão Social"]||raw.nome||"", cnpj:raw.cnpj||raw.CNPJ||raw.cnpjLimpo||"", cidade:cidade, uf:uf, cidadeUf:cidadeUf,
-      endereco:raw.enderecoCompleto||raw.EnderecoCompleto||raw.endereco||raw.Endereco||"", status:raw.status||raw.situacao||raw.Situacao||"Ativa", emails:emails,
+      logradouro:logradouro, numero:numero, complemento:complemento, bairro:bairro, cep:cep,
+      endereco:enderecoCompleto, status:raw.status||raw.situacao||raw.Situacao||"Ativa", emails:emails,
       emailPrincipal:raw.emailPrincipal||raw.email||raw.Email||emails[0]||"",
       oficios:Number(raw.oficios||0), confirmados:Number(raw.confirmados||0), ultimo:raw.ultimo||"â€”" };
   }
@@ -190,6 +187,11 @@ function popularSelectEscolas(lista) {
       opt.dataset.cidade = e.cidade || "";
       opt.dataset.uf = e.uf || "";
       opt.dataset.endereco = e.endereco || "";
+      opt.dataset.logradouro = e.logradouro || "";
+      opt.dataset.numero = e.numero || "";
+      opt.dataset.complemento = e.complemento || "";
+      opt.dataset.bairro = e.bairro || "";
+      opt.dataset.cep = e.cep || "";
       opt.dataset.status = e.status || "Ativa";
       opt.dataset.emailFinanceiro = e.emailFinanceiro || "";
       opt.dataset.emailDp = e.emailDp || "";
@@ -217,8 +219,11 @@ function popularSelectEscolas(lista) {
     setInput("enderecoEscola",escola.endereco); setInput("razaoSocialReceita",escola.razao);
     setInput("emailReceita",emailSmartSelecionado||escola.emailPrincipal);
     setInput("cidadeUfReceita",escola.cidadeUf||[escola.cidade,escola.uf].filter(Boolean).join(" / "));
+    setInput("logradouroEscola",escola.logradouro); setInput("numeroEscola",escola.numero);
+    setInput("complementoEscola",escola.complemento); setInput("bairroEscola",escola.bairro);
+    setInput("cidadeEscola",escola.cidade); setInput("ufEscola",escola.uf); setInput("cepEscola",escola.cep);
     var sel=$("escola"); if(sel&&escola.id) sel.value=escola.id;
-    ["cnpj","email","enderecoEscola","razaoSocialReceita","emailReceita","cidadeUfReceita"].forEach(function(id){ var el=$(id); if(el) el.dispatchEvent(new Event("change",{bubbles:true})); });
+    ["cnpj","email","enderecoEscola","razaoSocialReceita","emailReceita","cidadeUfReceita","logradouroEscola","numeroEscola","complementoEscola","bairroEscola","cidadeEscola","ufEscola","cepEscola"].forEach(function(id){ var el=$(id); if(el) el.dispatchEvent(new Event("change",{bubbles:true})); });
   }
 
   function renderEmails(escola) {
@@ -244,7 +249,6 @@ function popularSelectEscolas(lista) {
       return normalizarBusca([e.nome,e.razao,e.cnpj,e.cidade,e.uf,e.cidadeUf,(e.emails||[]).join(" ")].join(" ")).indexOf(termo)>=0;
     }).slice(0,8);
     if(!lista.length){ box.innerHTML=termo?'<div class="escola-recentes-empty">Nenhuma escola encontrada.</div>':'<div class="escola-recentes-empty">A lista aparecerá após carregar a base.</div>'; return; }
-    box.innerHTML = lista.map(function(e,i){ return '<button type="button" class="escola-recente-btn" data-idx="'+i+'"><strong>'+escapeHtml(e.nome)+'</strong><span>'+[e.cnpj,e.cidade].filter(Boolean).join(" • ")+'</span></button>'; }).join("");
     box.innerHTML = lista.map(function(e,i){ return '<button type="button" class="escola-recente-btn" data-idx="'+i+'"><strong>'+escapeHtml(e.nome)+'</strong><span>'+escapeHtml([e.cnpj,e.cidadeUf||e.cidade].filter(Boolean).join(" - "))+'</span></button>'; }).join("");
     box.querySelectorAll(".escola-recente-btn").forEach(function(btn){ btn.onclick=function(){ selecionarEscola(lista[Number(btn.dataset.idx)]); }; });
   }
@@ -265,6 +269,13 @@ function popularSelectEscolas(lista) {
     setText("escolaProfileCidadeUf",e.cidadeUf||[e.cidade,e.uf].filter(Boolean).join(" / ")); setText("escolaProfileEndereco",e.endereco);
     setText("escolaProfileStatus",e.status); setText("escolaStatOficios",String(e.oficios||0));
     setText("escolaStatConfirmados",String(e.confirmados||0)); setText("escolaStatUltimo",e.ultimo||"—");
+    var enderecoLinha=$("escolaProfileEnderecoLinha");
+    if(enderecoLinha){ enderecoLinha.textContent=e.endereco||""; enderecoLinha.style.display=e.endereco?"block":"none"; }
+    var totalOficios=Number(e.oficios||0), totalConfirmados=Number(e.confirmados||0), ultimo=e.ultimo||"—";
+    var resumoHistorico=totalOficios
+      ? totalOficios+" ofício"+(totalOficios===1?"":"s")+" · "+totalConfirmados+" confirmado"+(totalConfirmados===1?"":"s")+(ultimo&&ultimo!=="—"?" · último em "+ultimo:"")
+      : "Nenhum ofício enviado para esta escola ainda.";
+    setText("escolaHistoricoResumo",resumoHistorico);
     renderEmails(e); preencherCompat(e); salvarRecente(e); atualizarRevisaoOficio(); autoSave();
   }
 
@@ -401,7 +412,7 @@ function buscarNoServidor(termo) {
         if (msg) msg.textContent = "Erro ao buscar: " + ((err && err.message) || err);
       }
     })
-    .buscarEscolasOficioSmart(termo);
+    .buscarEscolasOficioSmart(termo, SISGEP_TOKEN_SESSAO);
 }
 
 function acionarBuscaEscola(termo) {
@@ -428,7 +439,7 @@ window.renderDropdownEscolas = renderDropdown;
     if($("autocompleteEscolaSmart")) $("autocompleteEscolaSmart").style.display="none";
     if($("escolaSmartEmpty")) $("escolaSmartEmpty").style.display="none";
     var st=$("statusEscolaSelecionada"); if(st){ st.textContent="Nenhuma escola selecionada"; st.classList.remove("ok"); }
-    ["cnpj","email","enderecoEscola","razaoSocialReceita","emailReceita","cidadeUfReceita"].forEach(function(id){ setInput(id,""); });
+    ["cnpj","email","enderecoEscola","razaoSocialReceita","emailReceita","cidadeUfReceita","logradouroEscola","numeroEscola","complementoEscola","bairroEscola","cidadeEscola","ufEscola","cepEscola"].forEach(function(id){ setInput(id,""); });
     atualizarRevisaoOficio(); autoSave();
   }
 
@@ -440,8 +451,24 @@ window.renderDropdownEscolas = renderDropdown;
   function editarEscolaSelecionada() {
     if(!escolaSmartSelecionada) return;
     escolaSmartSelecionada.cnpj=txt($("cnpj")&&$("cnpj").value); escolaSmartSelecionada.emailPrincipal=txt($("email")&&$("email").value);
-    escolaSmartSelecionada.endereco=txt($("enderecoEscola")&&$("enderecoEscola").value); escolaSmartSelecionada.razao=txt($("razaoSocialReceita")&&$("razaoSocialReceita").value);
-    var cu=txt($("cidadeUfReceita")&&$("cidadeUfReceita").value); if(cu){ var p=cu.split("/"); escolaSmartSelecionada.cidade=txt(p[0]); escolaSmartSelecionada.uf=txt(p[1]); }
+    escolaSmartSelecionada.razao=txt($("razaoSocialReceita")&&$("razaoSocialReceita").value);
+    escolaSmartSelecionada.logradouro=txt($("logradouroEscola")&&$("logradouroEscola").value);
+    escolaSmartSelecionada.numero=txt($("numeroEscola")&&$("numeroEscola").value);
+    escolaSmartSelecionada.complemento=txt($("complementoEscola")&&$("complementoEscola").value);
+    escolaSmartSelecionada.bairro=txt($("bairroEscola")&&$("bairroEscola").value);
+    escolaSmartSelecionada.cidade=txt($("cidadeEscola")&&$("cidadeEscola").value);
+    escolaSmartSelecionada.uf=txt($("ufEscola")&&$("ufEscola").value).toUpperCase();
+    escolaSmartSelecionada.cep=txt($("cepEscola")&&$("cepEscola").value);
+    escolaSmartSelecionada.cidadeUf=[escolaSmartSelecionada.cidade,escolaSmartSelecionada.uf].filter(Boolean).join(" / ");
+    escolaSmartSelecionada.endereco=[
+      [escolaSmartSelecionada.logradouro,escolaSmartSelecionada.numero].filter(Boolean).join(", "),
+      escolaSmartSelecionada.complemento,
+      escolaSmartSelecionada.bairro,
+      escolaSmartSelecionada.cidadeUf,
+      escolaSmartSelecionada.cep
+    ].filter(Boolean).join(" · ");
+    setInput("enderecoEscola",escolaSmartSelecionada.endereco);
+    setInput("cidadeUfReceita",escolaSmartSelecionada.cidadeUf);
     if(escolaSmartSelecionada.emailPrincipal&&escolaSmartSelecionada.emails.indexOf(escolaSmartSelecionada.emailPrincipal)<0) escolaSmartSelecionada.emails.unshift(escolaSmartSelecionada.emailPrincipal);
     selecionarEscola(escolaSmartSelecionada); autoSave();
   }
@@ -584,7 +611,15 @@ function getTrabalhadoresPayload() {
 }
   function getEscolaPayload() {
     var sel = $("escola"), selTxt = sel && sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].textContent : "";
-    return { id: sel ? sel.value : "", nome: ($("escolaBusca")&&$("escolaBusca").value) || selTxt || "", cnpj: $("cnpj")&&$("cnpj").value || "", email: $("email")&&$("email").value || "", endereco: $("enderecoEscola")&&$("enderecoEscola").value || "", razaoSocial: $("razaoSocialReceita")&&$("razaoSocialReceita").value || "", cidadeUf: $("cidadeUfReceita")&&$("cidadeUfReceita").value || "" };
+    return {
+      id: sel ? sel.value : "", nome: ($("escolaBusca")&&$("escolaBusca").value) || selTxt || "",
+      cnpj: $("cnpj")&&$("cnpj").value || "", email: $("email")&&$("email").value || "",
+      endereco: $("enderecoEscola")&&$("enderecoEscola").value || "", razaoSocial: $("razaoSocialReceita")&&$("razaoSocialReceita").value || "",
+      logradouro: $("logradouroEscola")&&$("logradouroEscola").value || "", numero: $("numeroEscola")&&$("numeroEscola").value || "",
+      complemento: $("complementoEscola")&&$("complementoEscola").value || "", bairro: $("bairroEscola")&&$("bairroEscola").value || "",
+      cidade: $("cidadeEscola")&&$("cidadeEscola").value || "", uf: $("ufEscola")&&$("ufEscola").value || "",
+      cep: $("cepEscola")&&$("cepEscola").value || "", cidadeUf: $("cidadeUfReceita")&&$("cidadeUfReceita").value || ""
+    };
   }
 
 function atualizarPayloadOficio(num) {
@@ -686,7 +721,10 @@ function atualizarPayloadOficio(num) {
     + '<div><div class="trabalhador-titulo">Trabalhador ' + contadorTrabalhadores + '</div>'
     + '<div class="trabalhador-sub">Dados para emissão do ofício</div></div>'
     + '</div>'
-    + '<button type="button" class="btn-remover-trabalhador-premium" title="Remover">✕</button>'
+    + '<div class="trabalhador-topo-acoes">'
+    + '<button type="button" class="btn-adicionar-trabalhador-card" title="Adicionar trabalhador após este" aria-label="Adicionar trabalhador após este">+</button>'
+    + '<button type="button" class="btn-remover-trabalhador-premium" title="Remover trabalhador" aria-label="Remover trabalhador">✕</button>'
+    + '</div>'
     + '</div>'
     + '<div class="trabalhador-grid">'
     + '<div class="trabalhador-campo"><label>Nome completo</label>'
@@ -707,7 +745,16 @@ function atualizarPayloadOficio(num) {
   var inputFicha   = c.querySelector(".input-ficha-trabalhador");
   var contadorFich = c.querySelector(".ficha-contador");
   var previewFich  = c.querySelector(".ficha-preview-individual");
-  var fichasCard   = new DataTransfer();
+  /* A fila acumulada mora NO ELEMENTO, não numa variável de closure.
+     Enquanto morou só na closure, remover um arquivo pela fila não a
+     atualizava, e o anexo seguinte ressuscitava o que tinha sido
+     apagado — o pior tipo de defeito num anexo, porque o documento sai
+     com uma ficha que a pessoa jurava ter tirado. */
+  c._fichasDt = new DataTransfer();
+
+  c.querySelector(".btn-adicionar-trabalhador-card").onclick = function() {
+    adicionarTrabalhadorDepois(c);
+  };
 
   c.querySelector(".btn-remover-trabalhador-premium").onclick = function() {
     c.remove(); restaurarVazio(); renumerarTrabalhadores(); atualizarResumoTrabalhadores(); sincronizarFichasGlobais();
@@ -731,8 +778,10 @@ function atualizarPayloadOficio(num) {
         } else { inp.style.borderColor = ""; inp.style.background = ""; if (err) err.remove(); }
       }
       atualizarResumoTrabalhadores();
-      if (fichasCard && fichasCard.files && fichasCard.files.length) {
-        fichasCard = renomearFichasCard(c, fichasCard); inputFicha.files = fichasCard.files; renderizarPreviewFichaCard(previewFich, fichasCard);
+      if (c._fichasDt && c._fichasDt.files && c._fichasDt.files.length) {
+        c._fichasDt = renomearFichasCard(c, c._fichasDt);
+        inputFicha.files = c._fichasDt.files;
+        renderizarPreviewFichaCard(previewFich, c._fichasDt);
       }
       sincronizarFichasGlobais();
     };
@@ -740,15 +789,15 @@ function atualizarPayloadOficio(num) {
 
   inputFicha.onchange = function() {
     Array.from(inputFicha.files).forEach(function(f) {
-      if (fichasCard.files.length >= 25) { toast("Limite de fichas atingido.", "warn"); return; }
-      var jaExiste = Array.from(fichasCard.files).some(function(e) { return e.name === f.name; });
-      if (!jaExiste) fichasCard.items.add(f);
+      if (c._fichasDt.files.length >= 25) { toast("Limite de fichas atingido.", "warn"); return; }
+      var jaExiste = Array.from(c._fichasDt.files).some(function(e) { return e.name === f.name; });
+      if (!jaExiste) c._fichasDt.items.add(f);
     });
-    fichasCard = renomearFichasCard(c, fichasCard);
-    inputFicha.files = fichasCard.files;
-    var total = fichasCard.files.length;
+    c._fichasDt = renomearFichasCard(c, c._fichasDt);
+    inputFicha.files = c._fichasDt.files;
+    var total = c._fichasDt.files.length;
     contadorFich.textContent = total ? total + (total === 1 ? " ficha" : " fichas") : "Nenhuma ficha";
-    renderizarPreviewFichaCard(previewFich, fichasCard);
+    renderizarPreviewFichaCard(previewFich, c._fichasDt);
     sincronizarFichasGlobais();
   };
 
@@ -791,21 +840,190 @@ function renomearFichasCard(card, dt) {
   return nova;
 }
 
-function renderizarPreviewFichaCard(prev, dt) { if (prev) prev.innerHTML = ""; }
+/* ══════════════════════════════════════════════════════════════════════
+   FILA DE ARQUIVOS COM CHECK DE EXCLUIR
 
-function removerFichaCard(btn, idx) {
-  var card = btn.closest(".trabalhador-card");
+   Pedido do usuário em 19/08/2026: "o módulo de ofício não tem um check
+   para excluir as fichas em lote".
+
+   Ao levantar, o defeito era maior e mais estranho do que o relato: a
+   REMOÇÃO JÁ ESTAVA ESCRITA, e não tinha por onde ser acionada.
+   `renderizarPreviewFichaCard` e `atualizarPreviewFichas` eram cascas —
+   apagavam o container e não desenhavam nada:
+
+       function renderizarPreviewFichaCard(prev, dt) { if (prev) prev.innerHTML = ""; }
+
+   Como era ali que os botões apareceriam, `removerFicha` e
+   `removerFichaCard` ficaram com ZERO chamadas nos 125 .gs e 80 .html —
+   prontas, corretas e inalcançáveis. Numa leitura o código parecia
+   completo; só executando se via que ninguém chamava.
+
+   POR QUE ISSO IMPORTA NA OPERAÇÃO. Um <input type="file"> nativo não
+   deixa tirar UM arquivo: escolher de novo substitui o conjunto inteiro.
+   Errar um PDF em quatro custava refazer os quatro — e sem lista à vista,
+   nem dava para saber qual estava errado.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/** "142 KB", "2,1 MB" — quem confere anexo olha o tamanho antes do nome. */
+function oficioTamanhoLegivel_(bytes) {
+  var n = Number(bytes) || 0;
+  if (n < 1024) return n + " B";
+  if (n < 1024 * 1024) return Math.round(n / 1024) + " KB";
+  return (n / (1024 * 1024)).toFixed(1).replace(".", ",") + " MB";
+}
+
+/**
+ * Desenha a fila de arquivos com um check por linha e um botão que remove
+ * os marcados. `aoRemover(indices)` recebe as posições marcadas.
+ *
+ * O botão nasce DESABILITADO e diz quantos vai remover. Botão de remoção
+ * que fica sempre clicável, sem contagem, é o que se aperta por engano.
+ */
+function oficioDesenharFila_(container, arquivos, aoRemover) {
+  if (!container) return;
+  container.innerHTML = "";
+  var lista = Array.prototype.slice.call(arquivos || []);
+  if (!lista.length) return;
+
+  var caixa = document.createElement("div");
+  caixa.className = "of-fila-fichas";
+  caixa.style.cssText = "border:1px solid var(--g200);border-radius:8px;overflow:hidden;background:#fff;";
+
+  lista.forEach(function (f, i) {
+    var linha = document.createElement("label");
+    linha.style.cssText = "display:flex;align-items:center;gap:10px;padding:8px 10px;" +
+      "font-size:12.5px;cursor:pointer;" + (i ? "border-top:1px solid var(--g100);" : "");
+    var chk = document.createElement("input");
+    chk.type = "checkbox";
+    chk.className = "of-fila-chk";
+    chk.dataset.idx = String(i);
+    chk.style.cssText = "width:15px;height:15px;cursor:pointer;flex:none;";
+    var nome = document.createElement("span");
+    nome.textContent = "📄 " + f.name;
+    nome.style.cssText = "flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--g700);";
+    nome.title = f.name;
+    var tam = document.createElement("span");
+    tam.textContent = oficioTamanhoLegivel_(f.size);
+    tam.style.cssText = "flex:none;color:var(--g400);font-size:11.5px;";
+    linha.appendChild(chk); linha.appendChild(nome); linha.appendChild(tam);
+    caixa.appendChild(linha);
+  });
+
+  var rodape = document.createElement("div");
+  rodape.style.cssText = "display:flex;align-items:center;justify-content:space-between;" +
+    "gap:10px;margin-top:8px;flex-wrap:wrap;";
+  var resumo = document.createElement("span");
+  var totalBytes = lista.reduce(function (s, f) { return s + (f.size || 0); }, 0);
+  resumo.textContent = lista.length + (lista.length === 1 ? " arquivo · " : " arquivos · ") +
+    oficioTamanhoLegivel_(totalBytes);
+  resumo.style.cssText = "font-size:11.5px;color:var(--g500);";
+  var btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "btn btn-red of-fila-remover";
+  btn.disabled = true;
+  btn.textContent = "Remover marcados";
+  btn.style.cssText = "font-size:12px;padding:5px 12px;";
+
+  function marcados() {
+    return Array.prototype.slice.call(caixa.querySelectorAll(".of-fila-chk"))
+      .filter(function (c) { return c.checked; })
+      .map(function (c) { return Number(c.dataset.idx); });
+  }
+  caixa.addEventListener("change", function () {
+    var n = marcados().length;
+    btn.disabled = n === 0;
+    btn.textContent = n ? "Remover marcados (" + n + ")" : "Remover marcados";
+  });
+  btn.onclick = function () {
+    var idxs = marcados();
+    if (idxs.length && typeof aoRemover === "function") aoRemover(idxs);
+  };
+
+  rodape.appendChild(resumo); rodape.appendChild(btn);
+  container.appendChild(caixa); container.appendChild(rodape);
+}
+
+/** A fila do cartão de um trabalhador. */
+function renderizarPreviewFichaCard(prev, dt) {
+  if (!prev) return;
+  oficioDesenharFila_(prev, dt && dt.files, function (idxs) {
+    removerFichasCard(prev, idxs);
+  });
+}
+
+/**
+ * Remove do cartão os arquivos nas posições dadas.
+ *
+ * De uma vez, e não um a um em laço: apagar por índice enquanto a lista
+ * encolhe desloca tudo que vem depois, e o segundo apagado seria o
+ * arquivo errado.
+ */
+function removerFichasCard(refEl, idxs) {
+  var card = refEl.closest(".trabalhador-card");
+  if (!card) return;
   var inputFicha = card.querySelector(".input-ficha-trabalhador");
   var contador = card.querySelector(".ficha-contador");
   var preview = card.querySelector(".ficha-preview-individual");
   if (!inputFicha) return;
+
+  var fora = {};
+  (idxs || []).forEach(function (i) { fora[i] = true; });
   var nova = new DataTransfer();
-  Array.from(inputFicha.files).forEach(function(f, i) { if (i !== idx) nova.items.add(f); });
+  Array.from(inputFicha.files).forEach(function (f, i) { if (!fora[i]) nova.items.add(f); });
   inputFicha.files = nova.files;
+  /* A fila acumulada do cartão vive no elemento, e não numa variável de
+     closure: quando morava só na closure, remover aqui não a atualizava e
+     o próximo anexo ressuscitava o arquivo apagado. */
+  card._fichasDt = nova;
+
   var total = nova.files.length;
-  contador.textContent = total ? total + (total === 1 ? " ficha" : " fichas") : "Nenhuma ficha";
+  if (contador) contador.textContent = total ? total + (total === 1 ? " ficha" : " fichas") : "Nenhuma ficha";
   renderizarPreviewFichaCard(preview, nova);
   sincronizarFichasGlobais();
+}
+
+/** Um só — o caminho antigo, agora em cima do de vários. */
+function removerFichaCard(btn, idx) { removerFichasCard(btn, [idx]); }
+
+/* ── A fila das FICHAS DO OFÍCIO (o PDF único da escola) ───────────────
+ *
+ * A fonte da verdade continua sendo `input.files`, espelhado em
+ * window._fichasOficioDt. Não é preciosismo: a emissão lê exatamente
+ * `$("fichasOficioLote").files`, e se a fila vivesse num array paralelo
+ * os dois se desencontrariam — a tela mostraria uma coisa e o e-mail
+ * levaria outra. Foi um desencontro assim que segurou a ficha dentro do
+ * navegador na semana passada.
+ */
+function atualizarFilaFichasOficio() {
+  var inp = $("fichasOficioLote");
+  if (!inp) return;
+  var n = inp.files ? inp.files.length : 0;
+  var res = $("fichasOficioResumo");
+  if (res) {
+    res.textContent = n
+      ? (n === 1 ? "1 arquivo anexado ao ofício" : n + " arquivos anexados ao ofício")
+      : "";
+  }
+  oficioDesenharFila_($("fichasOficioFila"), inp.files, removerFichasOficio);
+  if (typeof atualizarResumoTrabalhadores === "function") atualizarResumoTrabalhadores();
+}
+
+/** Tira do ofício os arquivos marcados. De uma vez, pela mesma razão do cartão. */
+function removerFichasOficio(idxs) {
+  var inp = $("fichasOficioLote");
+  if (!inp) return;
+  var fora = {};
+  (idxs || []).forEach(function (i) { fora[i] = true; });
+  var nova = new DataTransfer();
+  Array.prototype.slice.call(inp.files || []).forEach(function (f, i) {
+    if (!fora[i]) nova.items.add(f);
+  });
+  window._fichasOficioDt = nova;
+  inp.files = nova.files;
+  atualizarFilaFichasOficio();
+  var quantos = (idxs || []).length;
+  toast(quantos === 1 ? "1 ficha removida do ofício."
+                      : quantos + " fichas removidas do ofício.", "ok");
 }
 
   function sincronizarFichasGlobais() {
@@ -1390,13 +1608,24 @@ function removerFichaCard(btn, idx) {
     return false;
   }
 
-  function addTrabalhador() {
+  function adicionarTrabalhadorDepois(referencia) {
     var l = $("listaTrabalhadores"); if (!l) return;
     var _tipoAtual = ($("tipo") && $("tipo").value) || "";
     var _limite = oficioLimitePessoas(_tipoAtual);
     if (l.querySelectorAll(".trabalhador-card").length >= _limite) { toast("Limite de " + _limite + " trabalhadores para este tipo de ofício.", "warn"); return; }
     var v = l.querySelector(".worker-empty"); if (v) v.remove();
-    l.appendChild(criarCardTrabalhador()); renumerarTrabalhadores(); atualizarResumoTrabalhadores();
+    var novo = criarCardTrabalhador();
+    if (referencia && referencia.parentNode === l) l.insertBefore(novo, referencia.nextSibling);
+    else l.appendChild(novo);
+    renumerarTrabalhadores();
+    atualizarResumoTrabalhadores();
+    var nome = novo.querySelector(".input-nome-trabalhador");
+    if (nome && typeof nome.focus === "function") nome.focus();
+    return novo;
+  }
+
+  function addTrabalhador() {
+    return adicionarTrabalhadorDepois(null);
   }
 
 function atualizarContadorFichas() {
@@ -1603,6 +1832,24 @@ function atualizarContadorFichas() {
     }
 
     var todosArquivos = [];
+
+    /* O PDF ÚNICO DO OFÍCIO ENTRA PRIMEIRO.
+     *
+     * Defeito medido em 18/08/2026, com o usuário reportando "a ficha não
+     * está indo junto ao ofício no e-mail". A varredura abaixo lia SÓ os
+     * cartões dos trabalhadores — o campo "Fichas do ofício"
+     * (#fichasOficioLote), onde ele anexa o escaneado de todas as cartas da
+     * escola, não era lido por ninguém na hora de emitir. O arquivo ficava
+     * no navegador e o e-mail saía com o ofício sozinho, sem erro nenhum.
+     *
+     * getFichasPayload() já lia esse campo, mas só alimenta o painel de
+     * revisão; quem monta o que vai para o backend é este trecho. Duas
+     * leituras do mesmo campo, uma delas sem consumidor. */
+    var inputFichasOficio = $("fichasOficioLote");
+    if (inputFichasOficio && inputFichasOficio.files) {
+      Array.from(inputFichasOficio.files).forEach(function (f) { todosArquivos.push(f); });
+    }
+
     document.querySelectorAll("#listaTrabalhadores .trabalhador-card").forEach(function(card) {
       if (card._fichasDrive && card._fichasDrive.length) {
         card._fichasDrive.forEach(function(f) { todosArquivos.push({ _isDrive: true, driveId: f.id, nome: f.nome, tipo: f.tipo }); });
@@ -1615,7 +1862,7 @@ function atualizarContadorFichas() {
     Promise.all(todosArquivos.map(function(f) {
       if (f._isDrive) {
         return new Promise(function(resolve, reject) {
-          google.script.run.withSuccessHandler(function(res) { resolve({ nome: res.nome, base64: res.base64, tipo: res.tipo, origem: "drive" }); }).withFailureHandler(function(err) { reject(err); }).obterArquivoDriveBase64(f.driveId);
+          google.script.run.withSuccessHandler(function(res) { resolve({ nome: res.nome, base64: res.base64, tipo: res.tipo, origem: "drive" }); }).withFailureHandler(function(err) { reject(err); }).obterArquivoDriveBase64(f.driveId, SISGEP_TOKEN_SESSAO);
         });
       }
       return new Promise(function(resolve, reject) {
@@ -1638,6 +1885,7 @@ function atualizarContadorFichas() {
     dadosGerados = dadosGerados || {};
     var urlPdf = typeof dadosGerados === "string" ? dadosGerados : (dadosGerados.url || "");
     var numero = dadosGerados.numero || "";
+    var filaId = dadosGerados.filaId || "";
     if (!urlPdf) return;
     // Desfiliação: o ofício saiu, mas o cadastro do associado pode não ter
     // sido atualizado (CPF não encontrado, ou não informado) — avisa o
@@ -1658,7 +1906,7 @@ function atualizarContadorFichas() {
         + "<div class='row-btns' style='margin-bottom:14px;'>"
         + "<button type='button' class='btn btn-outline' onclick=\"window.open('" + urlPdf + "', '_blank')\">📄 Abrir / Baixar PDF</button>"
         + "<button type='button' class='btn btn-outline' onclick=\"imprimirPdfOficioGerado('" + urlPdf + "')\">🖨 Imprimir</button>"
-        + "<button type='button' class='btn btn-navy' onclick=\"enviarEmailOficioAgora('" + numero + "')\">📧 Enviar e-mail agora</button>"
+        + "<button type='button' class='btn btn-navy' onclick=\"enviarEmailOficioAgora('" + numero + "','" + filaId + "')\">📧 Enviar e-mail agora</button>"
         + "<button type='button' class='btn btn-teal' onclick=\"enviarWhatsappOficio('" + urlPdf + "', '" + numero + "')\">💬 WhatsApp</button>"
         + "</div>"
         + "<div id='statusEnvioOficioGerado' style='display:flex;align-items:center;gap:8px;padding:11px 14px;background:var(--g50);border:1.5px solid var(--g200);border-radius:11px;font-size:12.5px;font-weight:600;color:var(--g500);'>"
@@ -1685,7 +1933,7 @@ function imprimirPdfOficioGerado(urlPdf) {
   setTimeout(function() { try { w.focus(); w.print(); } catch(e) {} }, 1200);
 }
 
-function enviarEmailOficioAgora(numero) {
+function enviarEmailOficioAgora(numero, filaId) {
   if (!numero) { toast("Número do ofício não encontrado.", "err"); return; }
   var payload = window.SISGEP_OFICIO_PAYLOAD || {};
   var escola = payload.escola || {};
@@ -1694,7 +1942,11 @@ function enviarEmailOficioAgora(numero) {
   var nomeEscola = escola.nome || "";
   var qtdFichas = Array.isArray(payload.fichas) ? payload.fichas.length : 0;
   var descAnexos = qtdFichas > 0 ? "PDF do ofício + " + qtdFichas + " ficha(s)" : "PDF do ofício";
-  abrirModalEnvioOficioSISGEP({ numero: numero, tipo: tipo || "Ofício", escola: nomeEscola || "Não informado", email: email || "E-mail cadastrado na fila de envio", anexos: descAnexos }, function() {
+  /* filaId vai junto desde 02/09/2026: é ele que permite ao seletor de
+     destinatários buscar o histórico de cada endereço (quantas vezes quicou,
+     quantos ofícios confirmou). Sem ele o seletor ainda funciona — só não
+     mostra histórico. */
+  abrirModalEnvioOficioSISGEP({ numero: numero, filaId: filaId, tipo: tipo || "Ofício", escola: nomeEscola || "Não informado", email: email || "E-mail cadastrado na fila de envio", anexos: descAnexos }, function() {
     var status = document.getElementById("statusEnvioOficioGerado");
     var btn = document.getElementById("btnModalEnviarOficioAgora");
     if (status) { status.textContent = "⏳ Enviando e-mail..."; status.style.color = "var(--g500)"; }
@@ -1703,7 +1955,11 @@ function enviarEmailOficioAgora(numero) {
       .withSuccessHandler(function(resp) {
         fecharModalEnvioOficioSISGEP();
         if (resp && resp.ok) {
-          if (status) { status.textContent = "✅ E-mail enviado com sucesso para " + (email || "o destinatário") + "."; status.style.color = "var(--green)"; }
+          /* Prefere o destino REALMENTE gravado; `email` é o do cadastro e pode ter
+             sido trocado no seletor. */
+          var destinoReal = window.__oficioDestinoEnviado || email || "o destinatário";
+          if (status) { status.textContent = "✅ E-mail enviado com sucesso para " + destinoReal + "."; status.style.color = "var(--green)"; }
+          window.__oficioDestinoEnviado = null;
           toast(resp.mensagem || "E-mail enviado com sucesso!", "ok", 5000);
         } else {
           if (status) { status.textContent = "❌ Falha no envio: " + ((resp && resp.mensagem) || "Tente novamente."); status.style.color = "var(--red)"; }
@@ -1717,7 +1973,7 @@ function enviarEmailOficioAgora(numero) {
         if (btn) { btn.disabled = false; btn.innerHTML = "📨 Enviar agora"; }
         toast("Erro: " + (err.message || err), "err", 6000);
       })
-      .enviarOficioDaFilaAgora(numero, SISGEP_TOKEN_SESSAO);
+      .enviarOficioDaFilaAgora(numero, SISGEP_TOKEN_SESSAO, filaId || "");
   });
 }
 
@@ -1727,12 +1983,211 @@ function enviarWhatsappOficio(urlPdf, numero) {
   window.open("https://wa.me/?text=" + texto, "_blank");
 }
 
+  /* ─────────────────────────────────────────────
+     TAXA ASSISTENCIAL — CONTROLES DA TELA
+
+     O HTML já expunha todos os botões, mas nenhum deles chamava o backend.
+     Este bloco mantém o fluxo existente (prévia, teste, fila e envio PRO),
+     sempre com o token da sessão e com confirmação antes de um envio real.
+  ────────────────────────────────────────────── */
+  function taxaValor(id) {
+    var campo = $(id);
+    return campo ? txt(campo.value) : "";
+  }
+
+  function taxaPayloadMensagem() {
+    return {
+      assunto: taxaValor("taxaAssistencialAssunto"),
+      corpo: taxaValor("taxaAssistencialCorpo")
+    };
+  }
+
+  function taxaMensagemErro(err) {
+    return String((err && err.message) || err || "Erro não identificado.");
+  }
+
+  function taxaOcuparBotao(btn, ocupado, textoOcupado) {
+    if (!btn) return;
+    if (!btn.dataset.rotuloOriginal) btn.dataset.rotuloOriginal = btn.innerHTML;
+    btn.disabled = !!ocupado;
+    btn.innerHTML = ocupado ? (textoOcupado || "⏳ Aguarde...") : btn.dataset.rotuloOriginal;
+  }
+
+  function taxaValidarMensagem(payload) {
+    if (!payload.assunto) { toast("Informe o assunto do e-mail.", "warn"); return false; }
+    if (!payload.corpo) { toast("Informe o corpo do e-mail.", "warn"); return false; }
+    return true;
+  }
+
+  function taxaRenderStatus(resp) {
+    resp = resp || {};
+    var painel = $("painelStatusFila");
+    if (painel) painel.style.display = Number(resp.total || 0) > 0 ? "block" : "none";
+    [["statusFilaNumero", resp.numero || "—"], ["statusTotal", resp.total || 0],
+      ["statusPendente", resp.pendente || 0], ["statusEnviado", resp.enviado || resp.enviados || 0],
+      ["statusErro", resp.erro || resp.erros || 0]].forEach(function(item) {
+        var no = $(item[0]); if (no) no.textContent = String(item[1]);
+      });
+    var iniciar = $("btnIniciarEnvioTaxa");
+    if (iniciar) iniciar.disabled = !(Number(resp.pendente || 0) > 0 || resp.preparada === true);
+    if (window.taxaProgresso && typeof window.taxaProgresso.atualizar === "function") {
+      window.taxaProgresso.atualizar(resp);
+    }
+  }
+
+  function taxaConsultarStatus() {
+    google.script.run
+      .withSuccessHandler(taxaRenderStatus)
+      .withFailureHandler(function(err) { toast("Erro ao consultar a fila: " + taxaMensagemErro(err), "err", 6000); })
+      .obterStatusFilaTaxaAssistencial(SISGEP_TOKEN_SESSAO);
+  }
+
+  function taxaLerAnexo(callback) {
+    var input = $("taxaAnexoCCT");
+    var arquivo = input && input.files && input.files[0];
+    if (!arquivo) { callback(null); return; }
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      callback({ nome: arquivo.name, tipo: arquivo.type || "application/octet-stream", base64: String(ev.target.result || "").split(",")[1] || "" });
+    };
+    reader.onerror = function() { toast("Não foi possível ler o anexo selecionado.", "err"); callback(null, true); };
+    reader.readAsDataURL(arquivo);
+  }
+
+  function taxaPreview() {
+    var payload = taxaPayloadMensagem();
+    if (!taxaValidarMensagem(payload)) return;
+    var aba = window.open("", "_blank");
+    google.script.run
+      .withSuccessHandler(function(resp) {
+        if (!aba) { toast("Permita pop-ups para abrir a prévia.", "warn"); return; }
+        aba.document.open(); aba.document.write((resp && resp.html) || ""); aba.document.close();
+      })
+      .withFailureHandler(function(err) { try { if (aba) aba.close(); } catch (_) {} toast("Erro ao gerar prévia: " + taxaMensagemErro(err), "err", 6000); })
+      .previewOficioTaxaAssistencial(payload, SISGEP_TOKEN_SESSAO);
+  }
+
+  function taxaEnviarTeste() {
+    var payload = taxaPayloadMensagem();
+    payload.emailTeste = taxaValor("taxaAssistencialEmailTeste");
+    if (!taxaValidarMensagem(payload)) return;
+    if (!payload.emailTeste) { toast("Informe o e-mail de teste.", "warn"); return; }
+    var btn = $("btnEnviarTesteTaxa");
+    taxaOcuparBotao(btn, true, "⏳ Enviando teste...");
+    google.script.run
+      .withSuccessHandler(function(resp) { taxaOcuparBotao(btn, false); toast((resp && resp.mensagem) || "E-mail de teste enviado.", "ok", 6000); })
+      .withFailureHandler(function(err) { taxaOcuparBotao(btn, false); toast("Erro no teste: " + taxaMensagemErro(err), "err", 7000); })
+      .enviarTesteTaxaAssistencial(payload, SISGEP_TOKEN_SESSAO);
+  }
+
+  function taxaPrepararFila() {
+    var payload = taxaPayloadMensagem();
+    if (!taxaValidarMensagem(payload)) return;
+    var btn = $("btnPrepararFilaTaxa");
+    taxaOcuparBotao(btn, true, "⏳ Preparando...");
+    taxaLerAnexo(function(anexo, falhou) {
+      if (falhou) { taxaOcuparBotao(btn, false); return; }
+      if (anexo) payload.anexo = anexo;
+      google.script.run
+        .withSuccessHandler(function(resp) {
+          taxaOcuparBotao(btn, false);
+          taxaRenderStatus({ preparada:true, numero:resp.numero, total:resp.total, pendente:resp.validas, enviado:0, erro:Number(resp.invalidas || 0) + Number(resp.semEmail || 0) });
+          toast((resp && resp.mensagem) || "Fila preparada.", "ok", 6000);
+        })
+        .withFailureHandler(function(err) { taxaOcuparBotao(btn, false); toast("Erro ao preparar fila: " + taxaMensagemErro(err), "err", 7000); })
+        .prepararFilaTaxaAssistencial(payload, SISGEP_TOKEN_SESSAO);
+    });
+  }
+
+  function taxaIniciarEnvio() {
+    var payload = taxaPayloadMensagem();
+    if (!taxaValidarMensagem(payload)) return;
+    if (!window.confirm("Iniciar agora o envio da Taxa Assistencial para todas as escolas pendentes da fila?")) return;
+    var btn = $("btnIniciarEnvioTaxa");
+    taxaOcuparBotao(btn, true, "⏳ Enviando lote...");
+    google.script.run
+      .withSuccessHandler(function(resp) {
+        taxaOcuparBotao(btn, false); taxaConsultarStatus();
+        toast((resp && resp.mensagem) || "Lote processado.", resp && resp.erros ? "warn" : "ok", 7000);
+      })
+      .withFailureHandler(function(err) { taxaOcuparBotao(btn, false); toast("Erro no envio: " + taxaMensagemErro(err), "err", 7000); })
+      .enviarOficioTaxaAssistencialPRO(payload, SISGEP_TOKEN_SESSAO);
+  }
+
+  function taxaEnviarEscola() {
+    var payload = taxaPayloadMensagem();
+    payload.escola = taxaValor("taxaEscolaNome");
+    payload.cnpj = taxaValor("taxaEscolaCnpj");
+    payload.email = taxaValor("taxaEscolaEmail");
+    if (!taxaValidarMensagem(payload)) return;
+    if (!payload.escola || !payload.email) { toast("Selecione a escola e confira o e-mail.", "warn"); return; }
+    if (!window.confirm("Enviar o ofício de Taxa Assistencial para " + payload.escola + " (" + payload.email + ")?")) return;
+    var btn = $("btnEnviarEscolaEspecifica");
+    taxaOcuparBotao(btn, true, "⏳ Gerando e enviando...");
+    taxaLerAnexo(function(anexo, falhou) {
+      if (falhou) { taxaOcuparBotao(btn, false); return; }
+      if (anexo) payload.anexo = anexo;
+      google.script.run
+        .withSuccessHandler(function(resp) { taxaOcuparBotao(btn, false); toast((resp && resp.mensagem) || "Ofício enviado.", "ok", 7000); })
+        .withFailureHandler(function(err) { taxaOcuparBotao(btn, false); toast("Erro ao enviar: " + taxaMensagemErro(err), "err", 7000); })
+        .enviarTaxaEscolaEspecifica(payload, SISGEP_TOKEN_SESSAO);
+    });
+  }
+
+  function taxaRenderEscolas(lista) {
+    var box = $("taxaAutocompleteLista"), contador = $("taxaAutocompleteContador");
+    if (!box) return;
+    lista = Array.isArray(lista) ? lista : [];
+    if (contador) { contador.style.display = "block"; contador.textContent = lista.length + " escola(s) encontrada(s)"; }
+    if (!lista.length) { box.innerHTML = '<div class="escola-recentes-empty">Nenhuma escola encontrada.</div>'; box.style.display = "block"; return; }
+    box.innerHTML = lista.map(function(item, indice) {
+      return '<button type="button" class="taxa-escola-opcao" data-indice="' + indice + '"><strong>' + escapeHtml(item.nome || "") + '</strong><span>' + escapeHtml([item.cnpj || "", item.email || ""].filter(Boolean).join(" • ")) + '</span></button>';
+    }).join("");
+    box.style.display = "block";
+    Array.from(box.querySelectorAll(".taxa-escola-opcao")).forEach(function(botao) {
+      botao.addEventListener("click", function() {
+        var item = lista[Number(botao.dataset.indice)] || {};
+        if ($("taxaBuscaEscola")) $("taxaBuscaEscola").value = item.nome || "";
+        if ($("taxaEscolaNome")) $("taxaEscolaNome").value = item.nome || "";
+        if ($("taxaEscolaCnpj")) $("taxaEscolaCnpj").value = item.cnpj || "";
+        if ($("taxaEscolaEmail")) $("taxaEscolaEmail").value = item.email || "";
+        box.style.display = "none";
+      });
+    });
+  }
+
+  var taxaBuscaTimer = null;
+  function taxaBuscarEscolas() {
+    var termo = taxaValor("taxaBuscaEscola");
+    clearTimeout(taxaBuscaTimer);
+    taxaBuscaTimer = setTimeout(function() {
+      var chamada = google.script.run
+        .withSuccessHandler(taxaRenderEscolas)
+        .withFailureHandler(function(err) { toast("Erro ao buscar escolas: " + taxaMensagemErro(err), "err"); });
+      if (termo.length >= 2) chamada.buscarEscolaTaxa(termo, SISGEP_TOKEN_SESSAO);
+      else chamada.listarTodasEscolasTaxa(SISGEP_TOKEN_SESSAO);
+    }, 180);
+  }
+
+  function taxaLimparEscola() {
+    ["taxaBuscaEscola", "taxaEscolaNome", "taxaEscolaCnpj", "taxaEscolaEmail"].forEach(function(id) { if ($(id)) $(id).value = ""; });
+    if ($("taxaAutocompleteLista")) $("taxaAutocompleteLista").style.display = "none";
+  }
+
   function resetarFormulario(){
     ["tipo","cnpj","email","escolaBusca","enderecoEscola","razaoSocialReceita","emailReceita","cidadeUfReceita","para","cargo","assunto","corpo","emailLivreAux","emailOficioLivreCompat"].forEach(function(id){var el=$(id);if(el)el.value="";});
     var sel=$("escola"), lista=$("listaTrabalhadores");
     if(sel) sel.value=""; if(lista){lista.innerHTML="";restaurarVazio();}
     limpar(); contadorTrabalhadores=0;
     var inpF=$("fichas"); if(inpF) inpF.value="";
+    /* As fichas do OFÍCIO também saem. Antes não havia o que limpar — o
+       campo não guardava fila —, mas agora a fila acumula entre escolhas:
+       sem zerar aqui, o próximo ofício nasceria com os anexos do anterior,
+       e sairia para a escola errada. */
+    var inpOf=$("fichasOficioLote");
+    if(inpOf){ inpOf.value=""; try{ inpOf.files=new DataTransfer().files; }catch(e){} }
+    window._fichasOficioDt = null;
+    if (typeof atualizarFilaFichasOficio === "function") atualizarFilaFichasOficio();
     atualizarPreviewFichas();
     var area=$("areaAcoesDocumento"), btnPrev=$("btnPreview"), btnEmit=$("btnEmitir"), btnNovo=$("btnNovoDocumento"), btnDown=$("btnDownload"), btnPrint=$("btnImprimir");
     if(area) area.style.display="none"; if(btnPrev) btnPrev.style.display="inline-flex";
@@ -1765,6 +2220,15 @@ function enviarWhatsappOficio(urlPdf, numero) {
 
     window.removerFicha = removerFicha;
     window.removerFichaCard = removerFichaCard;
+    /* A fila de arquivos com check de excluir, exposta junto das demais.
+     * Vale registrar por que ela ganhou export: até 19/08/2026 as funções
+     * de remoção estavam escritas e com ZERO chamadas, porque quem as
+     * acionaria — o desenho da fila — era uma casca que só apagava o
+     * container. Expostas, dá para conferir por execução que desenham. */
+    window.renderizarPreviewFichaCard = renderizarPreviewFichaCard;
+    window.removerFichasCard = removerFichasCard;
+    window.atualizarFilaFichasOficio = atualizarFilaFichasOficio;
+    window.removerFichasOficio = removerFichasOficio;
     /* Exposta junto das demais do arquivo. Serve para diagnóstico e para o
      * teste conferir que o anexo do ofício CHEGA no payload — sem isso, o
      * campo existiria na tela e o arquivo poderia não sair junto do ofício,
@@ -1814,10 +2278,20 @@ function enviarWhatsappOficio(urlPdf, numero) {
     if (_fichasOf && !_fichasOf.dataset.bound) {
       _fichasOf.dataset.bound = "1";
       _fichasOf.addEventListener("change", function () {
-        var n = _fichasOf.files ? _fichasOf.files.length : 0;
-        var res = $("fichasOficioResumo");
-        if (res) res.textContent = n ? (n === 1 ? "1 arquivo anexado ao ofício" : n + " arquivos anexados ao ofício") : "";
-        atualizarResumoTrabalhadores();
+        /* ACUMULA em vez de substituir. O input nativo troca o conjunto
+           inteiro a cada escolha: quem digitaliza em duas levas perdia a
+           primeira sem nenhum aviso. Aqui a segunda escolha se soma, e
+           arquivo repetido pelo nome não entra duas vezes. */
+        var atual = window._fichasOficioDt || new DataTransfer();
+        Array.prototype.slice.call(_fichasOf.files || []).forEach(function (f) {
+          var jaTem = Array.prototype.slice.call(atual.files).some(function (e) {
+            return e.name === f.name && e.size === f.size;
+          });
+          if (!jaTem) { try { atual.items.add(f); } catch (e) {} }
+        });
+        window._fichasOficioDt = atual;
+        _fichasOf.files = atual.files;
+        atualizarFilaFichasOficio();
       });
     }
     blindarBotao("btnLoteAdicionarPessoa", loteAdicionarPessoa);
@@ -1845,6 +2319,42 @@ function enviarWhatsappOficio(urlPdf, numero) {
     blindarBotao("btnConsultarCnpj", function(){ if(window.Oficio.consultarCnpj) window.Oficio.consultarCnpj(); });
     blindarBotao("btnSincronizarCnpj", function(){ if(window.Oficio.sincronizarCnpj) window.Oficio.sincronizarCnpj(); });
     blindarBotao("btnSalvarEscola", salvarEscolaNaPlanilha);
+    blindarBotao("btnPreviewTaxa", taxaPreview);
+    blindarBotao("btnEnviarTesteTaxa", taxaEnviarTeste);
+    blindarBotao("btnPrepararFilaTaxa", taxaPrepararFila);
+    blindarBotao("btnIniciarEnvioTaxa", taxaIniciarEnvio);
+    blindarBotao("btnContinuarEnvioTaxa", taxaIniciarEnvio);
+    blindarBotao("btnEnviarEscolaEspecifica", taxaEnviarEscola);
+    blindarBotao("btnLimparEscolaEspecifica", taxaLimparEscola);
+    blindarBotao("btnAtualizarStatusFila", taxaConsultarStatus);
+    blindarBotao("btnReenviarFalhasTaxa", function() {
+      google.script.run
+        .withSuccessHandler(function(resp) { toast((resp && resp.mensagem) || "Falhas revisadas.", "ok"); taxaConsultarStatus(); })
+        .withFailureHandler(function(err) { toast("Erro ao reenviar falhas: " + taxaMensagemErro(err), "err"); })
+        .reenviarFalhasTaxaAssistencial(SISGEP_TOKEN_SESSAO);
+    });
+    blindarBotao("btnCancelarEnvioEmAndamento", function() {
+      if (!window.confirm("Cancelar o envio automático em andamento?")) return;
+      google.script.run
+        .withSuccessHandler(function(resp) { toast((resp && resp.mensagem) || "Envio cancelado.", resp && resp.ok === false ? "err" : "ok"); taxaConsultarStatus(); })
+        .withFailureHandler(function(err) { toast("Erro ao cancelar: " + taxaMensagemErro(err), "err"); })
+        .cancelarEnvioTaxaAssistencial(SISGEP_TOKEN_SESSAO);
+    });
+
+    var taxaBusca = $("taxaBuscaEscola");
+    if (taxaBusca && !taxaBusca.dataset.taxaBound) {
+      taxaBusca.dataset.taxaBound = "1";
+      taxaBusca.addEventListener("input", taxaBuscarEscolas);
+      taxaBusca.addEventListener("focus", taxaBuscarEscolas);
+    }
+    var taxaAnexo = $("taxaAnexoCCT");
+    if (taxaAnexo && !taxaAnexo.dataset.taxaBound) {
+      taxaAnexo.dataset.taxaBound = "1";
+      taxaAnexo.addEventListener("change", function() {
+        var nome = $("taxaAnexoCCTNome"), arquivo = taxaAnexo.files && taxaAnexo.files[0];
+        if (nome) { nome.style.display = arquivo ? "block" : "none"; nome.textContent = arquivo ? ("✓ " + arquivo.name) : ""; }
+      });
+    }
 
     var fichas = $("fichas");
     if (fichas && !fichas.dataset.bound) {
@@ -1897,6 +2407,7 @@ function enviarWhatsappOficio(urlPdf, numero) {
       });
     }
     if($("btnLimparEscolaSelecionada")) $("btnLimparEscolaSelecionada").onclick=limpar;
+    if($("btnRemoverEscolaSelecionada")) $("btnRemoverEscolaSelecionada").onclick=limpar;
     if($("btnAdicionarEmailEscolaOficio")) $("btnAdicionarEmailEscolaOficio").onclick=adicionarEmailEscola;
     if($("btnAplicarEdicaoEscolaOficio")) $("btnAplicarEdicaoEscolaOficio").onclick=editarEscolaSelecionada;
     if($("btnToggleEdicaoEscola")) $("btnToggleEdicaoEscola").onclick=function(){ var p=$("secaoCnpjEmail"); if(p) p.style.display=p.style.display==="none"?"block":"none"; };
@@ -2608,8 +3119,8 @@ window.oposIA_confirmar = oposIA_confirmar;
   function el(id) { return document.getElementById(id); }
 
 function esconderTodos() {
-    ["blocoOficioNovo","blocoOficioHistorico","blocoTaxaAssistencial","blocoMonitoramento","blocoEscolas","centralEmailIA","sisgepDashboardExecutivo"].forEach(function(id){ if(el(id)) el(id).style.display="none"; });
-    ["abaOficioNovo","abaOficioHistorico","abaTaxaAssistencial","abaMonitoramento"].forEach(function(id){ if(el(id)) el(id).classList.remove("active"); });
+    ["blocoOficioNovo","blocoOficioHistorico","blocoTaxaAssistencial","blocoMonitoramento","blocoConferencia","blocoEscolas","centralEmailIA","sisgepDashboardExecutivo"].forEach(function(id){ if(el(id)) el(id).style.display="none"; });
+    ["abaOficioNovo","abaOficioHistorico","abaTaxaAssistencial","abaMonitoramento","abaConferencia"].forEach(function(id){ if(el(id)) el(id).classList.remove("active"); });
   }
 
   function mostrarDashboardExecutivo() {
@@ -2634,7 +3145,17 @@ function esconderTodos() {
 
   function mostrarTaxaAssistencial() { esconderTodos(); if(el("blocoTaxaAssistencial")) el("blocoTaxaAssistencial").style.display="block"; if(el("abaTaxaAssistencial")) el("abaTaxaAssistencial").classList.add("active"); }
 
-function mostrarMonitoramento() {
+/* Conferência de destinatários — a parada entre emitir e enviar, criada em
+     02/09/2026. Fica ao lado do Monitoramento porque é a mesma pergunta em dois
+     tempos: aqui, antes de sair; lá, depois. */
+  function mostrarConferencia() {
+    esconderTodos();
+    if(el("blocoConferencia")) el("blocoConferencia").style.display="block";
+    if(el("abaConferencia")) el("abaConferencia").classList.add("active");
+    setTimeout(function() { if(typeof window.carregarConferenciaDestinatarios === "function") window.carregarConferenciaDestinatarios(); }, 300);
+  }
+
+  function mostrarMonitoramento() {
     esconderTodos();
     if(el("blocoMonitoramento")) el("blocoMonitoramento").style.display="block";
     if(el("abaMonitoramento")) el("abaMonitoramento").classList.add("active");
@@ -2652,6 +3173,7 @@ function mostrarMonitoramento() {
     if(el("abaOficioHistorico")) el("abaOficioHistorico").onclick=mostrarHistorico;
     if(el("abaTaxaAssistencial")) el("abaTaxaAssistencial").onclick=mostrarTaxaAssistencial;
  if(el("abaMonitoramento")) el("abaMonitoramento").onclick=mostrarMonitoramento;
+    if(el("abaConferencia")) el("abaConferencia").onclick=mostrarConferencia;
     if(el("btnVoltarEmissao")) el("btnVoltarEmissao").onclick=mostrarNovoOficio;
     if(el("btnAplicarFiltroHist")) el("btnAplicarFiltroHist").onclick=function(){ if(typeof window.carregarHistoricoOficios==="function") window.carregarHistoricoOficios(); else if(typeof Historico!=="undefined") Historico.carregar(); };
     if(el("btnAtualizarMonitoramento")) el("btnAtualizarMonitoramento").onclick=mostrarMonitoramento;
@@ -2702,7 +3224,77 @@ window.mostrarAbaOficio = function(aba) {
       anexosEl.innerHTML = partes.map(function(p){ return "<div style='display:inline-flex;align-items:center;gap:5px;background:var(--green-lt);border:1.5px solid #6ee7b7;color:var(--green-dk);font-size:12px;font-weight:700;padding:5px 12px;border-radius:8px;'>📎 " + p + "</div>"; }).join("");
     }
     btn.disabled = false; btn.innerHTML = "📨 Enviar agora";
-    btn.onclick = function() { btn.disabled = true; btn.innerHTML = "⏳ Enviando..."; if(typeof aoConfirmar==="function") aoConfirmar(); };
+
+    /* SELETOR DE DESTINATARIOS — 02/09/2026.
+
+       ESTA e a definicao que vale. `abrirModalEnvioOficioSISGEP` existe DUAS
+       vezes: aqui e no OficiosFormulario.html:952. No escopo global unico do
+       Apps Script o segundo `window.x = function` sobrescreve o primeiro, e
+       este arquivo e incluido DEPOIS (index.html:758 contra 441). Eu editei a
+       do Formulario primeiro e a mudanca simplesmente nao rodava — sem erro
+       nenhum, porque a funcao existia e funcionava, so nao era esta.
+
+       As duas ficam sincronizadas de proposito enquanto a duplicata existir; o
+       t141 conta as definicoes e cobra que todas montem o seletor, para que a
+       proxima pessoa nao caia no mesmo buraco. */
+    /* Zera o destino do envio anterior: sem isto, um ofício que falhasse
+       mostraria o destino do ofício de antes. */
+    window.__oficioDestinoEnviado = null;
+    /* Mede o remetente em vez de afirmá-lo — ver a nota em OficiosDestinatarios.gs. */
+    if (typeof window.modalEnvioAtualizarRemetente === "function") {
+      try { window.modalEnvioAtualizarRemetente(); } catch (eRem) {}
+    }
+    if (typeof window.modalEnvioMontarSeletor === "function") {
+      try { window.modalEnvioMontarSeletor(dados.filaId, dados.email); } catch (eSel) {}
+    }
+
+    btn.onclick = function() {
+      btn.disabled = true; btn.innerHTML = "⏳ Enviando...";
+
+      /* A ESCOLHA PRECISA IR PARA A FILA, NAO PARA UMA VARIAVEL DA TELA.
+         A primeira versao mudava `dados.email` aqui e nao adiantava nada: o
+         "Enviar agora" chama enviarOficioDaFilaAgora, e o backend le o
+         destinatario DA LINHA DA FILA. O oficio 286/2026 saiu para o endereco
+         antigo com a escolha ja feita na tela — sem erro, porque nada estava
+         errado: a tela nao tinha como influenciar o envio. */
+      var escolhidos = null;
+      if (typeof window.modalEnvioDestinatariosEscolhidos === "function") {
+        try { escolhidos = window.modalEnvioDestinatariosEscolhidos(); } catch (eEsc) {}
+      }
+
+      function seguir() {
+        if (typeof aoConfirmar === "function") aoConfirmar();
+      }
+
+      if (escolhidos && escolhidos.length && dados.filaId &&
+          typeof SISGEP_TOKEN_SESSAO !== "undefined") {
+        google.script.run
+          .withSuccessHandler(function (r) {
+            if (r && r.ok === false) {
+              /* Gravar falhou: NAO enviar as cegas para o endereco antigo — a
+                 pessoa escolheu outro e precisa saber que a escolha nao pegou. */
+              btn.disabled = false; btn.innerHTML = "📨 Enviar agora";
+              if (typeof toast === "function") toast(r.mensagem || "Não foi possível gravar os destinatários.", "err", 6000);
+              return;
+            }
+            /* O destino REAL, para a mensagem de sucesso não mentir. Ela
+               mostrava a variável antiga da tela: o ofício 287/2026 foi para a
+               secretaria e a tela disse "enviado para financeiro@". Numa tela
+               de documento oficial isso faz alguém jurar que mandou para quem
+               não mandou. */
+            window.__oficioDestinoEnviado = escolhidos.join(", ");
+            seguir();
+          })
+          .withFailureHandler(function (e) {
+            btn.disabled = false; btn.innerHTML = "📨 Enviar agora";
+            if (typeof toast === "function") toast("Erro ao gravar destinatários: " + (e && e.message || e), "err", 6000);
+          })
+          .definirDestinatariosOficio(dados.filaId, escolhidos, SISGEP_TOKEN_SESSAO);
+        return;
+      }
+
+      seguir();
+    };
     modal.classList.add("aberto");
   };
 
@@ -2765,7 +3357,7 @@ window.mostrarAbaOficio = function(aba) {
       if (termo.length < 3) return;
       results.style.display="block"; results.innerHTML='<div style="padding:10px;font-size:12px;color:var(--g400);">⏳ Buscando...</div>';
       timer = setTimeout(function() {
-        google.script.run.withSuccessHandler(function(lista){ renderizarDrive(lista||[], termo); }).withFailureHandler(function(err){ results.innerHTML='<div style="padding:9px;font-size:12px;color:var(--red);">Erro: '+((err&&err.message)||err)+'</div>'; }).buscarFichasDrive(termo);
+        google.script.run.withSuccessHandler(function(lista){ renderizarDrive(lista||[], termo); }).withFailureHandler(function(err){ results.innerHTML='<div style="padding:9px;font-size:12px;color:var(--red);">Erro: '+((err&&err.message)||err)+'</div>'; }).buscarFichasDrive(termo, SISGEP_TOKEN_SESSAO);
       }, 400);
     });
     input.addEventListener("keydown", function(e){ if(e.key==="Escape") wrap.remove(); });
@@ -2850,6 +3442,11 @@ window.mostrarAbaOficio = function(aba) {
 
       var ordenada = Historico.ordenar(filtrada);
 
+      /* A faixa do lote conta sobre a lista INTEIRA, nao sobre a filtrada: o
+         reenvio em lote trabalha em todas as falhas, e um contador que
+         obedecesse ao filtro da tela prometeria menos do que o botao faz. */
+      Historico.loteAtualizarBarra(lista);
+
       if(contEl) contEl.textContent = ordenada.length + " registro(s) encontrado(s)";
       if(!ordenada.length){
         tbody.innerHTML = '<tr><td colspan="7"><div class="of-table-empty">Nenhum registro encontrado.</div></td></tr>';
@@ -2895,13 +3492,57 @@ window.mostrarAbaOficio = function(aba) {
       Historico.selecionados=[]; Historico.atualizarBarraAcoes();
       Historico.initOrdenacao();
 
+      /* TRAVA DE ESPERA — a tela não pode ficar em "Carregando..." para sempre.
+       *
+       * Relato do usuário em 19/08/2026: "o histórico só está carregando".
+       * Medido no emulador, o caminho normal e o de erro conhecido chegam ao
+       * fim; o que não existia era o terceiro caso — a chamada que NÃO VOLTA.
+       * Quando nenhum dos dois handlers dispara (função ausente no projeto
+       * publicado, execução interrompida, sessão derrubada no meio), a tabela
+       * fica no "Carregando..." indefinidamente, sem erro e sem log.
+       *
+       * "Carregando" eterno é a pior mensagem possível: quem lê fica
+       * esperando em vez de agir. Passados 20 segundos a tela diz o que
+       * aconteceu e oferece o caminho. */
+      var respondeu = false;
+      var espera = setTimeout(function() {
+        if (respondeu) return;
+        if (contEl) contEl.textContent = "0 registro(s)";
+        tbody.innerHTML = '<tr><td colspan="7"><div class="of-table-empty">' +
+          '⏱️ O servidor não respondeu ao carregar o histórico.<br>' +
+          '<small>Recarregue a tela (F5). Se repetir, o painel <strong>Execuções</strong> ' +
+          'do Apps Script mostra o erro real.</small></div></td></tr>';
+      }, 20000);
+
       google.script.run
         .withSuccessHandler(function(resp) {
+          respondeu = true; clearTimeout(espera);
+          /* O ERRO DO BACKEND PRECISA APARECER. Ele volta pelo caminho de
+           * SUCESSO — { erro:true, mensagem:"...", itens:[] } —, e a versão
+           * anterior lia só `itens`. Com a aba faltando, a tela dizia
+           * "Nenhum registro encontrado": uma mentira tranquila, que faz
+           * quem lê concluir que não há ofício nenhum quando na verdade a
+           * origem dos dados sumiu. Medido no emulador em 19/08/2026. */
+          if (resp && resp.erro) {
+            if (contEl) contEl.textContent = "0 registro(s)";
+            /* Escape LOCAL, de propósito. O escapeHtml do arquivo mora no
+               primeiro IIFE (linha 20) e este bloco está no segundo — usá-lo
+               aqui daria ReferenceError e trocaria uma mensagem ausente por
+               uma tela quebrada. Peguei isso conferindo o escopo antes de
+               rodar, não depois. */
+            var seguro = String(resp.mensagem || "O servidor recusou a leitura.")
+              .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            tbody.innerHTML = '<tr><td colspan="7"><div class="of-table-empty">' +
+              '⚠️ Não foi possível carregar o histórico.<br><small>' + seguro +
+              '</small></div></td></tr>';
+            return;
+          }
           var lista = (resp && Array.isArray(resp.itens)) ? resp.itens : (Array.isArray(resp) ? resp : []);
           Historico._dadosCache = lista;
           Historico.renderLista(lista);
         })
         .withFailureHandler(function(err) {
+          respondeu = true; clearTimeout(espera);
           if(contEl) contEl.textContent="0 registro(s)";
           tbody.innerHTML='<tr><td colspan="7"><div class="of-table-empty">Erro: '+((err&&err.message)||err||"")+'</div></td></tr>';
         })
@@ -2924,22 +3565,471 @@ window.mostrarAbaOficio = function(aba) {
     },
 
     atualizarBarraAcoes: function() {
-      var barra=document.getElementById("histBarraAcoes"); if(!barra) return;
-      var qtd=Historico.selecionados.length;
-      if(qtd>0){barra.style.display="flex";var label=barra.querySelector(".hist-barra-label");if(label)label.textContent=qtd+" selecionado(s)";}
-      else{barra.style.display="none";}
+      var barra=document.getElementById("histBarraAcoes");
+      if(barra){
+        var qtd=Historico.selecionados.length;
+        if(qtd>0){barra.style.display="flex";var label=barra.querySelector(".hist-barra-label");if(label)label.textContent=qtd+" selecionado(s)";}
+        else{barra.style.display="none";}
+      }
+      /* O botao do lote muda de texto junto com a selecao. Dizer o que vai
+         fazer ANTES do clique e a parte que faltava: o usuario marcou tres
+         oficios, clicou, e vieram os onze — sem a tela ter avisado. */
+      Historico.loteRotularBotao();
     },
 
+    /* REENVIO — deixou de ser um confirm cego em 01/09/2026.
+       O usuario reenviava sem ver para onde ia, e o caso da FAESA mostrou o
+       custo disso: tres oficios reenviados para um endereco que nao recebia
+       mais. Agora a tela MOSTRA o destino do cadastro antes de mandar, e
+       permite acrescentar outro endereco — ou substituir, quando o do
+       cadastro esta morto. */
     reenviar: function(numero) {
       if(!numero) return;
-      if(!window.confirm("Reenviar o ofício "+numero+" por e-mail?")) return;
       var tr=document.querySelector("tr[data-numero='"+numero+"']");
       var url=tr?(tr.dataset.url||""):"", cells=tr?tr.querySelectorAll("td"):[];
       var tipo=cells[2]?cells[2].textContent.trim():"", escola=cells[3]?cells[3].textContent.trim():"";
+
+      Historico._reenvioCtx={numero:numero,url:url,tipo:tipo,escola:escola,anexosOk:true};
+      var g=function(id){return document.getElementById(id);};
+      if(g("histReenvNumero")) g("histReenvNumero").textContent=numero;
+      if(g("histReenvEscola")) g("histReenvEscola").textContent=escola||"—";
+      if(g("histReenvTipo"))   g("histReenvTipo").textContent=tipo||"—";
+      if(g("histReenvExtra"))  g("histReenvExtra").value="";
+      if(g("histReenvDestinos")) g("histReenvDestinos").innerHTML='<span style="color:#94a3b8;">carregando…</span>';
+      if(g("histReenvAnexos"))   g("histReenvAnexos").innerHTML='<span style="color:#94a3b8;">conferindo…</span>';
+      if(g("histReenvAviso"))    g("histReenvAviso").style.display="none";
+      var ov=g("histReenvOverlay"); if(ov) ov.classList.add("aberto");
+
+      /* A previa MEDE: os enderecos vem das duas origens (o oficio e o
+         cadastro de hoje) e os anexos sao reunidos pela MESMA funcao que o
+         envio usa. Nao e promessa do que deveria ir — e o que vai. */
       google.script.run
-        .withSuccessHandler(function(r){ toast((r&&!r.erro)?(r.mensagem||"Reenviado."):(r&&r.mensagem)||"Erro.", (r&&!r.erro)?"ok":"err"); })
-        .withFailureHandler(function(err){ toast("Erro: "+((err&&err.message)||err), "err"); })
-        .reenviarOficio({numero:numero, url:url, escola:escola, tipo:tipo}, SISGEP_TOKEN_SESSAO);
+        .withSuccessHandler(function(r){ Historico._reenvioMontar(r); })
+        .withFailureHandler(function(err){
+          var d=g("histReenvDestinos");
+          if(d) d.innerHTML='<span style="color:#b91c1c;">não foi possível carregar os endereços: '+
+                            escapeHtml((err&&err.message)||String(err))+'</span>';
+        })
+        .preverReenvioOficio({numero:numero,url:url,tipo:tipo,escola:escola}, SISGEP_TOKEN_SESSAO);
+    },
+
+    _reenvioCtx: null,
+
+    /* Desenha a lista medida. Quem quicou nasce DESMARCADO, com as falhas a
+       vista: some da marcacao, nao da tela. Sumir seria decidir pela pessoa. */
+    _reenvioMontar: function(r) {
+      var g=function(id){return document.getElementById(id);};
+      var alvo=g("histReenvDestinos"); if(!alvo) return;
+
+      if(!r||!r.ok){
+        alvo.innerHTML='<span style="color:#b91c1c;">'+escapeHtml((r&&r.mensagem)||"não foi possível ler os endereços")+'</span>';
+        return;
+      }
+
+      var lista=r.destinatarios||[];
+      if(!lista.length){
+        alvo.innerHTML='<span style="color:#b91c1c;">Nenhum endereço encontrado — nem no ofício, nem no cadastro da escola.</span>';
+      } else {
+        alvo.innerHTML=lista.map(function(d,i){
+          var marca=d.marcado?" checked":"";
+          var hist=d.falhas>0
+            ? '<span style="color:#b91c1c;font-weight:700;">❌ '+d.falhas+' falha(s) de entrega</span>'
+            : (d.confirmacoes>0
+                ? '<span style="color:#0f8a5f;font-weight:700;">✅ confirmou '+d.confirmacoes+' ofício(s)</span>'
+                : '<span style="color:#94a3b8;">— sem histórico</span>');
+          return '<label style="display:flex;gap:8px;align-items:flex-start;padding:6px 4px;cursor:pointer;">'
+            +'<input type="checkbox" class="hist-reenv-dest" data-email="'+escapeHtml(d.email)+'"'+marca+' style="margin-top:3px;">'
+            +'<span><strong>'+escapeHtml(d.email)+'</strong><br>'
+            +'<span style="color:#64748b;font-size:11px;">'+escapeHtml(d.origem||"")+'</span><br>'
+            +hist+'</span></label>';
+        }).join("");
+      }
+
+      /* ── anexos ── */
+      var cx=g("histReenvAnexos");
+      var a=r.anexos||{itens:[]};
+      Historico._reenvioCtx.anexosOk = !(a.exigeFicha && !a.temFicha);
+      if(cx){
+        if(a.erro){
+          cx.innerHTML='<span style="color:#b91c1c;">'+escapeHtml(a.erro)+'</span>';
+        } else if(!(a.itens||[]).length){
+          cx.innerHTML='<span style="color:#b91c1c;">Nenhum anexo encontrado.</span>';
+        } else {
+          cx.innerHTML=(a.itens||[]).map(function(it){
+            return '<div style="display:flex;gap:6px;align-items:flex-start;padding:2px 0;">'
+              +'<span>📎</span><span><strong>'+escapeHtml(it.nome)+'</strong><br>'
+              +'<span style="color:#64748b;font-size:11px;">'+escapeHtml(it.origem||"")+'</span></span></div>';
+          }).join("");
+        }
+      }
+
+      var aviso=g("histReenvAviso");
+      if(aviso){
+        if(a.exigeFicha && !a.temFicha){
+          aviso.style.display="block";
+          aviso.style.background="#fef2f2";
+          aviso.style.borderColor="#fecaca";
+          aviso.style.color="#991b1b";
+          aviso.innerHTML="<strong>A ficha não foi encontrada.</strong><br>"
+            +"O corpo deste ofício afirma que ela segue em anexo. Enviar assim manda "
+            +"à escola uma ordem sem o documento que a sustenta.";
+        } else {
+          aviso.style.display="none";
+        }
+      }
+    },
+
+    /** Os endereços marcados, mais o que a pessoa digitou. */
+    _reenvioEscolhidos: function() {
+      var escolhidos=[];
+      document.querySelectorAll(".hist-reenv-dest").forEach(function(cb){
+        if(cb.checked) escolhidos.push(cb.dataset.email);
+      });
+      var extra=document.getElementById("histReenvExtra");
+      String((extra&&extra.value)||"").split(/[;,]/).forEach(function(e){
+        var v=String(e||"").trim();
+        if(v && escolhidos.indexOf(v)===-1) escolhidos.push(v);
+      });
+      return escolhidos;
+    },
+
+    reenvioFechar: function() {
+      var ov=document.getElementById("histReenvOverlay"); if(ov) ov.classList.remove("aberto");
+      Historico._reenvioCtx=null;
+    },
+
+    /* ══════════════════════════════════════════════════════════════════════
+       REENVIO EM LOTE — 04/09/2026
+
+       "Ele nao reenvia sozinho? E eu so iria conferir?" — a pergunta do
+       usuario ao ver que os quinze oficios em falha continuavam a ser
+       reenviados um a um. A previa individual ja escolhia o endereco de cada
+       um; o que faltava era fazer isso quinze vezes sem pedir quinze cliques.
+
+       O que a tela NAO faz: mandar sozinha. A confirmacao continua manual, por
+       decisao dele no mesmo dia — sao documentos oficiais indo para escolas, e
+       e-mail enviado nao volta.
+       ══════════════════════════════════════════════════════════════════════ */
+
+    _loteCtx: null,
+
+    /** A faixa vermelha so existe quando ha falha. Sem falha, nao ha o que
+        oferecer, e um botao permanente viraria ruido. */
+    loteAtualizarBarra: function(lista) {
+      var barra=document.getElementById("histLoteBarra"); if(!barra) return;
+      var qtd=(lista||[]).filter(function(i){
+        return String(i.status||"").toUpperCase()==="FALHA_ENTREGA";
+      }).length;
+      if(!qtd){ barra.style.display="none"; return; }
+      barra.style.display="flex";
+      Historico._loteFalhas=qtd;
+      var res=document.getElementById("histLoteResumo");
+      if(res) res.textContent=qtd+" ofício(s) com falha de entrega";
+      Historico.loteRotularBotao();
+    },
+
+    _loteFalhas: 0,
+
+    /** O botao diz sobre O QUE vai trabalhar: a selecao, quando existe; a fila
+        de falhas, quando nao existe. */
+    loteRotularBotao: function() {
+      var btn=document.getElementById("btnHistLote"); if(!btn) return;
+      var sel=(Historico.selecionados||[]).length;
+      btn.disabled=false;
+      btn.innerHTML = sel
+        ? ("\u21bb Preparar os "+sel+" selecionado(s)")
+        : ("\u21bb Preparar reenvio ("+Historico._loteFalhas+")");
+      var res=document.getElementById("histLoteResumo");
+      if(res && sel) res.textContent=Historico._loteFalhas+" com falha \u00b7 "+sel+" selecionado(s) na tabela";
+      else if(res) res.textContent=Historico._loteFalhas+" ofício(s) com falha de entrega";
+    },
+
+    lotePreparar: function() {
+      var btn=document.getElementById("btnHistLote");
+      if(btn){ btn.disabled=true; btn.textContent="Preparando…"; }
+      var selecao=(Historico.selecionados||[]).slice();
+
+      var corpo=document.getElementById("histLoteCorpo");
+      if(corpo) corpo.innerHTML='<span style="color:#94a3b8;">preparando… '
+        +'isto lê o cadastro de cada escola e confere os anexos no Drive, '
+        +'então pode levar alguns segundos.</span>';
+      var ok=document.getElementById("histLoteOk");
+      if(ok){ ok.disabled=true; ok.textContent="Reenviar \u25b8"; ok.style.background=""; }
+      var ov=document.getElementById("histLoteOverlay"); if(ov) ov.classList.add("aberto");
+
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn) Historico.loteRotularBotao();
+          Historico._loteMontar(r);
+        })
+        .withFailureHandler(function(err){
+          if(btn) Historico.loteRotularBotao();
+          if(corpo) corpo.innerHTML='<span style="color:#b91c1c;">Não foi possível preparar: '
+            +escapeHtml((err&&err.message)||String(err))+'</span>';
+        })
+        .prepararReenvioLoteOficios({ numeros: selecao }, SISGEP_TOKEN_SESSAO);
+    },
+
+    /* Desenha as DUAS pilhas. A segunda — a que precisa de gente — nao e
+       escondida nem resumida num numero: cada oficio aparece nomeado, com o
+       motivo. Esconder o que o sistema nao conseguiu resolver e o jeito mais
+       rapido de a pessoa achar que resolveu tudo. */
+    _loteMontar: function(r) {
+      var corpo=document.getElementById("histLoteCorpo"); if(!corpo) return;
+      var ok=document.getElementById("histLoteOk");
+      var sub=document.getElementById("histLoteSub");
+
+      if(!r||!r.ok){
+        corpo.innerHTML='<span style="color:#b91c1c;">'
+          +escapeHtml((r&&r.mensagem)||"não foi possível preparar o lote")+'</span>';
+        Historico._loteCtx=null;
+        return;
+      }
+
+      Historico._loteCtx={ prontos:r.prontos||[], ciente:false };
+      var prontos=r.prontos||[], pendentes=r.pendentes||[];
+      var html="";
+
+      if(r.limitado){
+        html+='<div style="padding:9px 11px;border-radius:10px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;font-size:12px;font-weight:600;">'
+          +'São '+r.total+' ofícios em falha. Esta rodada preparou os primeiros '+r.limite
+          +' — os outros '+(r.total-r.limite)+' entram na próxima.</div>';
+      }
+
+      if(r.cotaSuficiente===false){
+        html+='<div style="padding:9px 11px;border-radius:10px;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;font-size:12px;font-weight:700;">'
+          +'A cota diária de e-mail não cobre este lote: '+r.destinatariosTotais
+          +' destinatário(s) para '+r.cota+' restante(s). O envio para quando a cota acabar, '
+          +'e a tela diz quais não saíram.</div>';
+      }
+
+      /* ── pilha 1: sai ── */
+      html+='<div><div style="font-size:12.5px;font-weight:800;color:#0f8a5f;margin-bottom:6px;">'
+        +'\u2705 PRONTOS PARA SAIR ('+prontos.length+')</div>';
+      if(!prontos.length){
+        html+='<div style="font-size:12px;color:#94a3b8;padding:6px 2px;">'
+          +'Nenhum. Todos os ofícios em falha estão sem endereço bom — veja abaixo.</div>';
+      } else {
+        html+='<div style="border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden;">'
+          +'<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">'
+          +'<thead><tr style="background:#f8fafc;">'
+          +'<th style="text-align:center;padding:8px 6px;width:34px;">'
+          +'<input type="checkbox" id="histLoteTodos" checked title="Marcar/desmarcar todos"></th>'
+          +'<th style="text-align:left;padding:8px 10px;font-weight:800;color:#334155;">Ofício</th>'
+          +'<th style="text-align:left;padding:8px 10px;font-weight:800;color:#334155;">Escola</th>'
+          +'<th style="text-align:left;padding:8px 10px;font-weight:800;color:#334155;">Vai para</th>'
+          +'<th style="text-align:left;padding:8px 10px;font-weight:800;color:#334155;">Anexos</th>'
+          +'</tr></thead><tbody>';
+        html+=prontos.map(function(p){
+          var destinos=(p.destinatarios||[]).map(function(e){return escapeHtml(e);}).join("<br>");
+          var a=p.anexos||{itens:[]};
+          var anexos=a.erro
+            ? '<span style="color:#b91c1c;">'+escapeHtml(a.erro)+'</span>'
+            : ((a.itens||[]).length
+                ? (a.itens||[]).map(function(it){return escapeHtml(it.nome);}).join("<br>")
+                : '<span style="color:#b91c1c;">nenhum anexo encontrado</span>');
+          var alerta=p.semFicha
+            ? '<div style="margin-top:3px;color:#991b1b;font-weight:700;">\u26a0 sem a ficha</div>'
+            : '';
+          return '<tr style="border-top:1px solid #e2e8f0;">'
+            +'<td style="padding:8px 6px;text-align:center;">'
+            +'<input type="checkbox" class="hist-lote-item" checked data-numero="'+escapeHtml(p.numero)+'"></td>'
+            +'<td style="padding:8px 10px;font-weight:800;color:var(--navy,#001f4d);white-space:nowrap;">'+escapeHtml(p.numero)+'</td>'
+            +'<td style="padding:8px 10px;">'+escapeHtml(p.escola||"—")+'</td>'
+            +'<td style="padding:8px 10px;">'+destinos+'</td>'
+            +'<td style="padding:8px 10px;color:#475569;">'+anexos+alerta+'</td>'
+            +'</tr>';
+        }).join("");
+        html+='</tbody></table></div></div>';
+      }
+      html+='</div>';
+
+      /* ── pilha 2: fica ── */
+      if(pendentes.length){
+        html+='<div><div style="font-size:12.5px;font-weight:800;color:#92400e;margin:12px 0 6px;">'
+          +'\u26a0 SEM ENDEREÇO BOM ('+pendentes.length+') — ficam para você</div>'
+          +'<div style="border:1.5px solid #fde68a;border-radius:12px;background:#fffbeb;padding:4px 2px;">';
+        html+=pendentes.map(function(p){
+          var ends=(p.enderecos||[]).map(function(e){
+            return '<div style="color:#7f1d1d;">'+escapeHtml(e.email)
+              +' <span style="font-weight:700;">\u274c '+e.falhas+' falha(s)</span></div>';
+          }).join("");
+          return '<div style="padding:7px 10px;">'
+            +'<strong style="color:var(--navy,#001f4d);">'+escapeHtml(p.numero)+'</strong> · '
+            +escapeHtml(p.escola||"—")
+            +'<div style="font-size:11.5px;color:#92400e;font-weight:600;">'+escapeHtml(p.motivo||"")+'</div>'
+            +ends+'</div>';
+        }).join("");
+        html+='</div><div style="font-size:11.5px;color:#64748b;margin-top:5px;">'
+          +'Para estes é preciso achar um endereço novo e usar o reenvio individual, '
+          +'que aceita e-mail fora do cadastro.</div></div>';
+      }
+
+      var semFicha=prontos.filter(function(p){return p.semFicha;}).length;
+      if(semFicha){
+        html+='<div style="padding:9px 11px;border-radius:10px;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;font-size:12px;">'
+          +'<strong>'+semFicha+' ofício(s) sairiam sem a ficha.</strong> '
+          +'O corpo desses tipos afirma que ela segue em anexo — enviar assim manda '
+          +'à escola uma ordem sem o documento que a sustenta.</div>';
+      }
+
+      corpo.innerHTML=html;
+      if(sub) sub.textContent=(r.porSelecao
+        ? "Preparado a partir da sua seleção na tabela. "
+        : "Preparado a partir de todos os que estão em falha. ")+r.mensagem;
+
+      /* Dar para DESMARCAR aqui é o que torna a conferência útil. A preparação
+         vai ao Drive uma vez por ofício; obrigar a cancelar e refazer tudo só
+         para tirar um item transformaria a conferência em pedágio. */
+      var todos=document.getElementById("histLoteTodos");
+      if(todos) todos.onchange=function(){
+        document.querySelectorAll(".hist-lote-item").forEach(function(cb){ cb.checked=todos.checked; });
+        Historico._loteContar();
+      };
+      document.querySelectorAll(".hist-lote-item").forEach(function(cb){
+        cb.onchange=Historico._loteContar;
+      });
+      Historico._loteContar();
+    },
+
+    /** Os números marcados no modal. */
+    _loteMarcados: function() {
+      var marcados=[];
+      document.querySelectorAll(".hist-lote-item").forEach(function(cb){
+        if(cb.checked) marcados.push(cb.dataset.numero);
+      });
+      return marcados;
+    },
+
+    /* O botão conta o que está marcado AGORA. Um botão que dissesse "Reenviar
+       os 11" depois de a pessoa desmarcar três seria a mesma mentira do rótulo
+       que ignorava a seleção da tabela. */
+    _loteContar: function() {
+      var ok=document.getElementById("histLoteOk"); if(!ok) return;
+      var n=Historico._loteMarcados().length;
+      var ctx=Historico._loteCtx;
+      if(ctx) ctx.ciente=false;   /* mudou a lista: o aviso da ficha recomeça */
+      ok.style.background="";
+      ok.disabled=!n;
+      ok.textContent=n?("Reenviar os "+n+" \u25b8"):"Nada marcado";
+    },
+
+    loteFechar: function() {
+      var ov=document.getElementById("histLoteOverlay"); if(ov) ov.classList.remove("aberto");
+      Historico._loteCtx=null;
+    },
+
+    loteConfirmar: function() {
+      var ctx=Historico._loteCtx; if(!ctx||!ctx.prontos.length) return;
+      var ok=document.getElementById("histLoteOk");
+
+      var marcados=Historico._loteMarcados();
+      if(!marcados.length){ toast("Marque ao menos um ofício.","err"); return; }
+      var enviar=ctx.prontos.filter(function(p){ return marcados.indexOf(p.numero)>-1; });
+      if(!enviar.length) return;
+
+      /* Mesmo guarda de dois cliques do reenvio individual: a ficha faltando
+         nao bloqueia — bloquear tiraria da pessoa uma decisao que e dela —,
+         mas exige um segundo clique consciente, com o custo dito em palavras.
+         Conta so os que estao MARCADOS: avisar sobre um item que a pessoa acabou
+         de desmarcar seria pedir consentimento para algo que nao vai acontecer. */
+      var semFicha=enviar.filter(function(p){return p.semFicha;}).length;
+      if(semFicha && !ctx.ciente){
+        ctx.ciente=true;
+        if(ok){ ok.textContent="Enviar mesmo sem a ficha ("+enviar.length+") \u25b8"; ok.style.background="#b91c1c"; }
+        toast(semFicha+" ofício(s) sairiam sem a ficha. Clique de novo para enviar assim mesmo.","err",6000);
+        return;
+      }
+
+      if(ok){ ok.disabled=true; ok.textContent="Enviando…"; }
+
+      google.script.run
+        .withSuccessHandler(function(r){ Historico._loteResultado(r); })
+        .withFailureHandler(function(err){
+          if(ok){ ok.disabled=false; ok.textContent="Reenviar \u25b8"; ok.style.background=""; }
+          toast("Erro no lote: "+((err&&err.message)||err),"err");
+        })
+        .executarReenvioLoteOficios({ itens: enviar.map(function(p){
+          return { numero:p.numero, url:p.url, escola:p.escola, tipo:p.tipo,
+                   destinatarios:p.destinatarios };
+        }) }, SISGEP_TOKEN_SESSAO);
+    },
+
+    /* O resultado fica NA TELA, item a item. Um toast de "12 reenviados" some
+       em segundos e leva junto a unica informacao que importa depois: qual
+       falhou e por que. */
+    _loteResultado: function(r) {
+      /* O MODAL FECHA SOZINHO — 04/09/2026, "quando reenviar tem que fechar".
+         Antes ele ficava aberto exibindo o resultado, e a lista atrás já tinha
+         sido recarregada sem ninguém ver. Agora fecha, e o resultado item a
+         item vai para um painel NA PÁGINA: um toast de "4 reenviados" some em
+         segundos e leva junto o que importa depois — qual falhou e por quê. */
+      Historico._loteCtx=null;
+      Historico.loteFechar();
+
+      var painel=document.getElementById("histLoteResultado");
+      if(painel && r){
+        painel.style.display="block";
+        painel.innerHTML=
+          '<div style="border:1.5px solid '+(r.falharam?"#fca5a5":"#6ee7b7")+';border-radius:var(--rad);'
+          +'background:'+(r.falharam?"#fef2f2":"#ecfdf5")+';padding:12px 14px;">'
+          +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
+          +'<div style="font-size:13px;font-weight:800;color:'+(r.falharam?"#991b1b":"#0f8a5f")+';flex:1;">'
+          +escapeHtml(r.mensagem||"")+'</div>'
+          +'<button type="button" class="btn btn-ghost btn-sm" onclick="Historico.loteResultadoFechar()">\u2715 Fechar</button>'
+          +'</div>'
+          +'<div style="border:1.5px solid #e2e8f0;border-radius:10px;background:#fff;max-height:300px;overflow-y:auto;">'
+          +(r.resultados||[]).map(function(x){
+            return '<div style="padding:7px 10px;border-bottom:1px solid #f1f5f9;font-size:12px;">'
+              +(x.ok?'<span style="color:#0f8a5f;font-weight:800;">\u2705</span> ':'<span style="color:#b91c1c;font-weight:800;">\u274c</span> ')
+              +'<strong>'+escapeHtml(x.numero)+'</strong> — '+escapeHtml(x.mensagem||"")+'</div>';
+          }).join("")
+          +'</div></div>';
+      }
+      toast((r&&r.mensagem)||"Lote concluído.", (r&&!r.falharam)?"ok":"err", 7000);
+      Historico.carregar();
+    },
+
+    loteResultadoFechar: function() {
+      var p=document.getElementById("histLoteResultado");
+      if(p){ p.style.display="none"; p.innerHTML=""; }
+    },
+
+    reenvioConfirmar: function() {
+      var ctx=Historico._reenvioCtx; if(!ctx) return;
+      var g=function(id){return document.getElementById(id);};
+
+      var escolhidos=Historico._reenvioEscolhidos();
+      if(!escolhidos.length){ toast("Marque ao menos um endereço.","err"); return; }
+
+      /* A ficha faltando NAO bloqueia — bloquear tiraria da pessoa uma decisao
+         que e dela. Mas exige um segundo clique consciente, com o custo dito
+         em palavras. */
+      if(!ctx.anexosOk && !ctx.cienteSemFicha){
+        ctx.cienteSemFicha=true;
+        var ok=g("histReenvOk");
+        if(ok){ ok.textContent="Enviar mesmo sem a ficha ▸"; ok.style.background="#b91c1c"; }
+        toast("A ficha não foi encontrada. Clique de novo para enviar assim mesmo.","err",6000);
+        return;
+      }
+
+      var btn=g("histReenvOk");
+      if(btn){ btn.disabled=true; btn.textContent="Enviando…"; }
+
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){ btn.disabled=false; btn.textContent="Reenviar ▸"; btn.style.background=""; }
+          toast((r&&!r.erro)?(r.mensagem||"Reenviado."):(r&&r.mensagem)||"Erro.", (r&&!r.erro)?"ok":"err");
+          if(r&&!r.erro) Historico.reenvioFechar();
+        })
+        .withFailureHandler(function(err){
+          if(btn){ btn.disabled=false; btn.textContent="Reenviar ▸"; btn.style.background=""; }
+          toast("Erro: "+((err&&err.message)||err), "err");
+        })
+        .reenviarOficio({
+          numero:ctx.numero, url:ctx.url, escola:ctx.escola, tipo:ctx.tipo,
+          destinatarios: escolhidos
+        }, SISGEP_TOKEN_SESSAO);
     },
 
     excluir: function(numero) {

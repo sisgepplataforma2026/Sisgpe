@@ -1,5 +1,32 @@
 {
-  "teto": 215,
-  "medidoEm": "2026-08-06",
-  "observacao": "Teto aceito conscientemente. Baixa a cada modulo fechado; nunca sobe sem decisao registrada. Historico: 219 (medicao inicial) -> 215 (fechamento do Parque do China)."
+  "teto": 204,
+  "medidoEm": "2026-09-01",
+  "observacao": "Teto aceito conscientemente. Baixa a cada modulo fechado; nunca sobe sem decisao registrada. Historico: 219 (medicao inicial) -> 215 (fechamento do Parque do China) -> 224 (21/08/2026, ver decisao abaixo) -> 216 -> 212 -> 208 -> 204 (01/09/2026, quatro rodadas da frente A do Modulo 03).",
+  "decisao_2026_08_21": {
+    "motivo": "O teto estava estourado desde 06/08 e ninguem foi avisado: o t6-exposicao.js terminava com process.exit(0) na marra, que passava por cima do process.exitCode=1 marcado pelo resumo(). O teste imprimia a falha na tela e devolvia 0 ao sistema, entao o run-suite.js dizia VERDE. Medicoes reais no periodo cego: 215 -> 217 -> 220 -> 229 -> 230 -> 221 -> 224. Corrigido o exit, o teto foi reconciliado com a medicao atual DEPOIS de conferir uma a uma as 9 funcoes acima de 215.",
+    "as_9_funcoes_conferidas": [
+      "bingo_inscricaoEstado (BingoInscricao.gs) - inscricao publica do bingo, sem login por desenho",
+      "bingo_inscricaoPreencher (BingoInscricao.gs) - idem; VER RESSALVA ABAIXO",
+      "bingo_inscrever (BingoInscricao.gs) - idem; grava",
+      "bingo_estadoPublico (BingoLinks.gs) - placar publico da rodada",
+      "bingo_realtimeInfoPublico (BingoRealtime.gs) - idem, atualizacao ao vivo",
+      "compasso_inscricaoEstado (EventosInscricaoPublica.gs) - inscricao publica da festa, sem login por desenho",
+      "compasso_inscricaoPreencher (EventosInscricaoPublica.gs) - idem; devolve contato MASCARADO e tem teto de consultas por navegador (t79)",
+      "compasso_inscrever (EventosInscricaoPublica.gs) - idem; grava, com CPF conferido por digito verificador e trava de duplicidade",
+      "agenteEscolasVersao (IA_AgentEscolas.gs) - devolve apenas a string de versao do agente"
+    ],
+    "ressalva_aberta": "bingo_inscricaoPreencher devolve nome/email/telefone SEM mascara a partir de um CPF, numa rota publica. E o mesmo buraco que foi fechado no compasso_inscricaoPreencher em 21/08 (mascara + teto de consultas). Continua ABERTO no bingo. Nao e regressao nova, mas e o unico item de risco real deste conjunto de 9 - os outros oito ou nao devolvem dado pessoal ou ja estao protegidos.",
+    "o_que_este_teto_nao_significa": "Nao e aprovacao das 224. E o retrato honesto de hoje, agora que o numero volta a ser verificavel. A meta continua sendo derruba-lo."
+  },
+  "nota": "Baixado de 224 para 216, depois 212 e depois 208 em 01/09/2026, nas rodadas da frente A do Modulo 03. Primeiro os cinco gatilhos de monitoramento, que criavam e apagavam acionador sem porta. Depois nove funcoes que devolviam dado de escola sem checagem nenhuma - a pior delas, buscarEscolasParaOficio, entregava razao social, CNPJ e e-mails de ate 60 escolas por chamada, sem token. Por ultimo as oito que eram endpoint por acidente: getTemplateConteudo ganhou porta de modulo (lia QUALQUER Google Doc por ID), duas ferramentas de editor ganharam porta dupla e cinco helpers sem chamador viraram privados. Por fim as que ESCREVIAM sem porta nenhuma: gerarProximoNumeroSeguro_, que queimava um numero da sequencia oficial de oficios a cada chamada, e registrarLogSistema_, que aceitava entrada forjada no log de auditoria. Junto com elas, tres que so liam e nao tinham chamador em tela. O teto so DESCE: se subir, e regressao.",
+  "decisao_2026_09_01_handlers_de_gatilho": {
+    "quais": [
+      "processarFilaEnvioOficios (FilaOficios.gs)",
+      "verificarConfirmacoesRecebimento (MonitoramentoOficios.gs)",
+      "verificarFalhasEntregaOficios (MonitoramentoOficios.gs)"
+    ],
+    "motivo": "Ficam publicas e sem porta, de propria decisao, e por isso contam no teto. Sao handlers de gatilho: o Apps Script chama pelo NOME, entao privadas nao podem ser. E a porta dupla e o remedio errado aqui — o exigirAdminOuSessao_ identifica quem executa por Session.getActiveUser().getEmail(), que num gatilho por tempo pode voltar VAZIO; quando volta, a porta recusa e o gatilho para. Parar esse gatilho para a emissao de oficio, que e a unica operacao viva do sindicato.",
+    "o_que_se_ganharia_fechando": "Pouco. As tres devolvem contadores e mensagens curtas — nenhuma devolve nome de escola ou e-mail. O maximo que um anonimo consegue com a fila e adiantar o envio de oficio que JA foi legitimamente enfileirado (enfileirar exige o gerarOficioWeb, que tem porta), e a propria funcao ja protege a cota diaria de e-mail.",
+    "quando_reabrir": "Se aparecer jeito confiavel de identificar contexto de gatilho, as tres ganham porta. O t127 registra isso como 'nao testavel' de proposito: o emulador nao reproduz contexto de gatilho do Apps Script, entao a premissa so se prova la."
+  }
 }

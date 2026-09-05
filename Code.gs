@@ -1,6 +1,6 @@
 // ============================================================================
 // ARQUIVO: Code.gs
-// VERSÃO ATUALIZADA COM ROTEAMENTO DO PORTAL DO ASSOCIADO
+// ROTEAMENTO CENTRAL DO WEBAPP SISGEP
 // ============================================================================
 function doPost(e) {
   try {
@@ -10,27 +10,22 @@ function doPost(e) {
     if (["abrirSessao", "loginDireto"].indexOf(acao) === -1) return doGet(e);
 
     var token = "";
-
     if (acao === "loginDireto") {
       var autenticacao = autenticarUsuario(String(p.usuario || ""), String(p.senha || ""));
       Logger.log("[DIAGNOSTICO doPost] autenticação concluída: " + !!(autenticacao && autenticacao.ok));
-
       if (!autenticacao || !autenticacao.ok || autenticacao.primeiroAcesso) {
         return HtmlService.createHtmlOutputFromFile("Login")
           .setTitle("SISGEP — Login")
           .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
           .setSandboxMode(HtmlService.SandboxMode.IFRAME);
       }
-
       token = String(autenticacao.token || "").trim();
-
       Logger.log("[DIAGNOSTICO doPost] sessão recebida: " + (token ? "sim" : "não"));
     } else {
       token = String(p.sessao || "").trim();
     }
 
     var sessao = getSessaoUsuario(token);
-
     if (!sessao) {
       return HtmlService.createHtmlOutputFromFile("Login")
         .setTitle("SISGEP — Login")
@@ -38,23 +33,16 @@ function doPost(e) {
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
 
-    // Serve o sistema direto nesta mesma resposta do POST — sem redirect
-    // via JavaScript. O redirect anterior (window.location.replace) era
-    // bloqueado pelo navegador por rodar sem gesto do usuário dentro de
-    // um iframe sandboxed — por isso o login validava e voltava sozinho
-    // pro Login (ou dava tela branca).
     var template = HtmlService.createTemplateFromFile("index");
     template.tokenSessao = sessao.token;
-
-    return template
-      .evaluate()
+    return template.evaluate()
       .setTitle("Portal Administrativo — SindEducação-ES")
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .setSandboxMode(HtmlService.SandboxMode.IFRAME);
-
   } catch (erro) {
-    Logger.log("Erro no doPost SISGEP-OFICIOS: " + erro);
-    return HtmlService.createHtmlOutput("<h2>Não foi possível abrir o SISGEP.</h2><p>Atualize a página e tente novamente.</p>").setTitle("SISGEP — Erro");
+    Logger.log("Erro no doPost SISGEP: " + erro);
+    return HtmlService.createHtmlOutput("<h2>Não foi possível abrir o SISGEP.</h2><p>Atualize a página e tente novamente.</p>")
+      .setTitle("SISGEP — Erro");
   }
 }
 
@@ -62,128 +50,221 @@ function doGet(e) {
   try {
     e = e || {};
     var p = e.parameter || {};
-
     Logger.log("[DIAGNOSTICO doGet] parâmetros recebidos: " + Object.keys(p).join(", "));
 
-    // ── NOVO: Rota do Portal do Associado (MEU SINDEDUCAÇÃO) ──
-    // Deve vir ANTES da verificação de sessão de administrador
-if (p.portal === "associado") {
-      Logger.log("[PORTAL] Redirecionando para o Portal do Associado");
+    /* A URL /exec se descobre sozinha, aqui. Ver sisgep_aprenderUrlBase_(). */
+    sisgep_aprenderUrlBase_();
+
+    // ── PORTAIS PÚBLICOS ────────────────────────────────────────────────────
+    if (p.portal === "associado") {
+      Logger.log("[PORTAL] Portal do Associado");
       return servirPortalAssociado(p);
     }
-
-    // ── Portal público de solicitação de Voucher (Bolsa de Estudo) ──
-    // Público, sem sessão — o próprio formulário pede CPF + data de nascimento.
     if (p.portal === "voucher") {
-      Logger.log("[PORTAL] Redirecionando para o Portal de Voucher");
       return HtmlService.createHtmlOutputFromFile("PortalVoucher")
         .setTitle("SindEducação-ES — Solicitação de Voucher")
         .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
-
-    // ── Portal público de solicitação de reserva do Parque do China ──
-    // Público, sem sessão — solicitarReservaParqueChina (Reservaparquechina.gs)
-    // já é uma função pública, chamada direto por este formulário; a reserva
-    // nasce PENDENTE e a equipe aprova pelo painel administrativo.
     if (p.portal === "chinapark") {
-      Logger.log("[PORTAL] Redirecionando para o Portal do Parque do China");
       return HtmlService.createHtmlOutputFromFile("ReservaParqueChina")
         .setTitle("SindEducação-ES — Reserva Parque do China")
         .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
-
-    // ── Segunda etapa do China Park: o solicitante informa os hóspedes ──
-    // Público, sem sessão — o token da URL identifica a reserva. Precisa vir
-    // antes da checagem de sessão porque quem preenche é o associado (ou o
-    // acompanhante para quem ele repassou a mensagem), que não tem login.
-    // ParqueChinaHospedesCore.gs valida o token e recusa reserva que não esteja
-    // aprovada. O token é lido no próprio cliente, pela URL.
     if (p.portal === "chinapark-hospedes") {
-      Logger.log("[PORTAL] Hóspedes do Parque do China");
       return HtmlService.createHtmlOutputFromFile("ParqueChinaHospedes")
         .setTitle("SindEducação-ES — Hóspedes da reserva")
         .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
-
-    // ── Portal público de agendamento de Oftalmologia ──
-    // Público, sem sessão — só funciona quando a equipe libera uma data
-    // (AgendOftalmo.html, "Data liberada para o Portal"). Sem data liberada,
-    // a própria página avisa que não há atendimento no momento.
     if (p.portal === "oftalmo") {
-      Logger.log("[PORTAL] Redirecionando para o Portal de Oftalmologia");
       return HtmlService.createHtmlOutputFromFile("AgendaOftalmoPublica")
         .setTitle("SindEducação-ES — Agendamento de Oftalmologia")
         .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
-// ── Rota da tela de Emissão de Ingressos (Eventos) — protegida por sessão ──
+
+    // ── INSCRIÇÃO PÚBLICA DO COMPASSO: o link que vai na lista de transmissão ─
+    // É a porta de entrada do fluxo. O associado recebe este link por
+    // transmissão ou pelo site, preenche o CPF, e o resto do formulário nasce
+    // preenchido a partir da base de associados.
+    //
+    // Sem login, de propósito: o associado não tem conta no SISGEP. Toda a
+    // validação — CPF com dígito verificador, termo, duplicidade, vaga,
+    // período — está no servidor, em EventosInscricaoPublica.gs. Esta rota só
+    // entrega a página.
+    if (p.page === "compasso-inscricao") {
+      Logger.log("[COMPASSO] Inscricao publica");
+      return HtmlService.createHtmlOutputFromFile("CompassoInscricaoPublica")
+        .setTitle("Inscrição — Festa Compasso da Vida 2026")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
+
+    // ── INGRESSO PÚBLICO DO COMPASSO: por token, sem login ──────────────────
+    // O associado não tem conta no SISGEP. O que ele recebe por e-mail e por
+    // WhatsApp é este link, e o token HMAC É a credencial: quem tem vê aquele
+    // ingresso e só aquele; quem não tem vê a mesma página de "não encontrado"
+    // que qualquer chute veria.
+    //
+    // Esta rota MOSTRA. Ela NÃO faz check-in — ver não é entrar. Se abrir o
+    // link consumisse o ingresso, quem conferisse o próprio ingresso em casa
+    // chegaria na portaria com ele já utilizado.
+    //
+    // Toda a validação está em EventosEntrega.gs
+    // (compasso_validarQrTokenPublico_). Esta rota só entrega a página.
+    if (p.page === "ingresso") {
+      Logger.log("[COMPASSO] Ingresso publico por token");
+      return compasso_paginaIngressoPublica_(String(p.t || ""));
+    }
+
+    // ── BINGO PÚBLICO: INSCRIÇÃO, sem login ─────────────────────────────────
+    // Vem ANTES da rota da cartela de propósito: `p.bingo` e
+    // `p["bingo-inscricao"]` são parâmetros distintos, mas quem lê o código
+    // depois entende melhor a ordem inscrição → cartela, que é a do fluxo.
+    // Toda a validação (teto de 300, prazo, CPF, termo) está no servidor, em
+    // BingoInscricao.gs. Esta rota só entrega a página.
+    if (p["bingo-inscricao"]) {
+      Logger.log("[BINGO] Inscricao publica");
+      return HtmlService.createHtmlOutputFromFile("BingoInscricaoPublica")
+        .setTitle("Inscrição — Bingo Online — SindEducação-ES")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
+
+    // ── BINGO PÚBLICO: cartela por token, sem login ─────────────────────────
+    if (p.bingo) {
+      Logger.log("[BINGO] Cartela pública por token");
+      return HtmlService.createHtmlOutputFromFile("BingoAssociado")
+        .setTitle("Bingo Online — SindEducação")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0, maximum-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
+
+    // ── PAINÉIS PROTEGIDOS DE EVENTOS ───────────────────────────────────────
     if (p.painel === "emissao") {
       var tokenEmissao = String(p.sessao || "").trim();
       var sessaoEmissao = getSessaoUsuario(tokenEmissao);
-      if (!sessaoEmissao) {
-        return HtmlService.createHtmlOutputFromFile("Login")
-          .setTitle("SISGEP — Login")
-          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-          .setSandboxMode(HtmlService.SandboxMode.IFRAME);
-      }
+      if (!sessaoEmissao) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
       return HtmlService.createHtmlOutputFromFile("EventoPainel")
         .setTitle("Emissão de Ingressos — Compasso da Vida")
         .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
-// ── Rota da tela de Check-in de Ingressos (Eventos) — protegida por sessão ──
     if (p.painel === "checkin") {
       var tokenCheckin = String(p.sessao || "").trim();
       var sessaoCheckin = getSessaoUsuario(tokenCheckin);
-      if (!sessaoCheckin) {
-        return HtmlService.createHtmlOutputFromFile("Login")
-          .setTitle("SISGEP — Login")
-          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-          .setSandboxMode(HtmlService.SandboxMode.IFRAME);
-      }
+      if (!sessaoCheckin) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
       return HtmlService.createHtmlOutputFromFile("EventoCheckin")
         .setTitle("Check-in — Compasso da Vida")
         .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
-    // ── Rota pública: Ficha de Sindicalização (QR Code das visitas) ──
-    // Precisa vir ANTES da checagem de sessão: o trabalhador na escola
-    // não tem login no SISGEP.
+    // ── PAINEL DE INSCRIÇÕES DO COMPASSO ────────────────────────────────────
+    // É o painel que o usuário desenhou: o associado preenche pelo link e
+    // aparece aqui. Cards de estado (item 4 do PROMPT-MESTRE), filtros por
+    // escola / região / cidade, o selo de associado, e as ações de emitir e
+    // enviar — individual ou em lote.
+    if (p.painel === "compasso") {
+      var tokenComp = String(p.sessao || "").trim();
+      var sessaoComp = getSessaoUsuario(tokenComp);
+      if (!sessaoComp) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
+      exigirModulo_(tokenComp, "eventos", false);
+      return HtmlService.createHtmlOutputFromFile("CompassoInscricoes")
+        .setTitle("Inscrições — Compasso da Vida 2026")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
+
+    // ── IMPORTAÇÃO DE PLANILHA DO COMPASSO ──────────────────────────────────
+    // A tela que o usuário pediu em 21/08/2026 ("tem local para enviar
+    // planilha?"). Anexo ou link do Drive; nada grava antes do passo 4.
+    // A trava de homologação está no backend, não aqui: rota é entrega de
+    // página, e página bloqueada por rota ainda deixaria a função alcançável.
+    if (p.painel === "compasso-importar") {
+      var tokenImp = String(p.sessao || "").trim();
+      var sessaoImp = getSessaoUsuario(tokenImp);
+      if (!sessaoImp) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
+      exigirModulo_(tokenImp, "eventos", true);
+      /* O DESIGN SYSTEM ENTRA AQUI, NÃO NO ARQUIVO — 26/08/2026.
+         A tela virou FRAGMENTO para poder ser incluída dentro da Central de
+         Inscrições (antes era um quadro, e web app do Apps Script dentro de
+         outro o navegador recusa: a área ficava em branco).
+
+         Fragmento não pode trazer `include('OficiosStyles')` por conta
+         própria: dentro da Central o design system já está na página, e
+         incluir de novo duplicaria a folha e a função toast(). Então quem
+         serve a rota avulsa é que junta os dois — e continua sendo
+         createTemplate + evaluate, porque createHtmlOutputFromFile NÃO avalia
+         scriptlet e a página sairia sem estilo nenhum (21/08/2026, o usuário:
+         "a tela está fora do padrão do SISGEP").
+
+         O DIÁLOGO ENTRA PELA MESMA PORTA — 26/08/2026. A tela pergunta antes
+         de importar, emitir e apagar. Dentro da Central quem serve essas
+         perguntas é o componente que ela inclui; aqui não há Central, e sem
+         esta linha as três perguntas voltariam ao confirm() nativo — a caixa
+         que anuncia o endereço cru do googleusercontent.com, que o usuário
+         mandou tirar da tela. */
+      return HtmlService.createTemplate(
+          "<?!= include('OficiosStyles'); ?><?!= include('DialogoSISGEP'); ?><?!= include('CompassoImportacao'); ?>"
+        ).evaluate()
+        .setTitle("Importar planilha — Compasso 2026")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
+
+    if (p.painel === "bingo") {
+      var tokenBingo = String(p.sessao || "").trim();
+      var sessaoBingo = getSessaoUsuario(tokenBingo);
+      if (!sessaoBingo) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
+      exigirModulo_(tokenBingo, "eventos", false);
+      return HtmlService.createHtmlOutputFromFile("BingoAdmin")
+        .setTitle("Bingo Online — SISGEP")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
+    if (p.painel === "bingo-telao") {
+      var tokenTelao = String(p.sessao || "").trim();
+      var sessaoTelao = getSessaoUsuario(tokenTelao);
+      if (!sessaoTelao) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
+      exigirModulo_(tokenTelao, "eventos", false);
+      return HtmlService.createHtmlOutputFromFile("BingoTelao")
+        .setTitle("Bingo Online — Telão")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
+
+    // ── FICHA PÚBLICA DE SINDICALIZAÇÃO ────────────────────────────────────
     if (p.ficha === "sindicalizacao") {
-      Logger.log("[FICHA] Servindo ficha de sindicalização. Visita: " +
-        (p.idVisita || "(sem visita)"));
       return servirFichaSindicalizacao(p);
     }
 
-    // ── Rastreamento de abertura de e-mail/ofício ──
+    // ── RASTREAMENTO ────────────────────────────────────────────────────────
     if (p.track === "open" && p.id) {
       registrarAberturaOficio_(p.id);
       return pixelTransparente_();
     }
-
-    // ── Rastreamento de abertura de e-mail (despesas / guias de NF) ──
-    // As duas funções só agem se o token pertencer ao seu próprio prefixo
-    // (PIXEL_DOC_ ou LEITURA_NF_), então é seguro chamar as duas aqui.
     if (p.page === "pub-pixel-nf" && p.t) {
       despesas_registrarLeituraEmail(p.t);
       guiasPagamento_registrarLeituraEmail(p.t);
       return pixelTransparente_();
     }
 
-    // ── Portal público do Fornecedor: envio de nota fiscal/recibo de despesa ──
-    // Mesmo problema da rota da contabilidade abaixo: o link já era enviado
-    // nos e-mails de D-5/D-3/D-1 pedindo a NF, mas essa rota nunca tinha
-    // sido cadastrada aqui — o link do fornecedor nunca abria nada.
-    // PubNFDespesa.html injeta o token via template scriptlet (<?= token ?>).
+    // ── PORTAIS PÚBLICOS FINANCEIROS ───────────────────────────────────────
     if (p.page === "pub-nf-despesa" && p.token) {
       var templateNF = HtmlService.createTemplateFromFile("PubNFDespesa");
       templateNF.token = p.token;
@@ -193,12 +274,6 @@ if (p.portal === "associado") {
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
-
-    // ── Portal público da Contabilidade: confirmação de pagamento de despesa ──
-    // Link enviado no e-mail de "Enviar à Contabilidade" — sem login, o
-    // próprio token identifica a despesa. Rota nunca tinha sido cadastrada
-    // aqui, então o link enviado por e-mail nunca abria nada.
-    // PubContabilDespesa.html lê o token da URL no próprio cliente.
     if (p.page === "pub-contabil-despesa" && p.token) {
       return HtmlService.createHtmlOutputFromFile("PubContabilDespesa")
         .setTitle("Confirmação de Pagamento — SindEducação-ES")
@@ -207,102 +282,85 @@ if (p.portal === "associado") {
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
 
-    // ── Tela de redefinição de senha via link de recuperação ──
-    var temTokenRecuperacao = p.recuperar;
-
-    if (temTokenRecuperacao) {
-      Logger.log("[DIAGNOSTICO doGet] indo para fluxo de recuperacao de senha");
-      return HtmlService
-        .createHtmlOutputFromFile("Login")
+    // ── RECUPERAÇÃO DE SENHA ────────────────────────────────────────────────
+    if (p.recuperar) {
+      return HtmlService.createHtmlOutputFromFile("Login")
         .setTitle("SISGEP — Recuperar senha")
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
 
-    // ── Rota pública: validação de autenticidade de ofício (link/QR impresso no PDF) ──
-    // Precisa vir ANTES da checagem de sessão: quem valida é a escola/associado
-    // que recebeu o documento, sem login no SISGEP.
-    if (p.codigo) {
-      Logger.log("[VALIDACAO] Validando código público de ofício.");
-      return validarPublico(p.codigo);
-    }
+    // ── VALIDAÇÕES PÚBLICAS ─────────────────────────────────────────────────
+    if (p.codigo) return validarPublico(p.codigo);
+    if (p.credencial) return validarCarteirinhaPublico(p.credencial);
 
-    // ── Rota pública: validação da carteirinha digital (QR Code da credencial) ──
-    // Mesma ideia do ofício acima, mas para o Codigo_Validacao gravado em
-    // Carteirinhas_Emitidas — quem escaneia é qualquer pessoa com o celular,
-    // sem login no SISGEP.
-    if (p.credencial) {
-      Logger.log("[VALIDACAO] Validando código público de carteirinha.");
-      return validarCarteirinhaPublico(p.credencial);
-    }
-
-    // ── Checa sessão — token vem explicitamente da URL (?sessao=token) ──
+    // ── SISTEMA ADMINISTRATIVO ──────────────────────────────────────────────
     var tokenSessao = String(p.sessao || "").trim();
     Logger.log("[DIAGNOSTICO doGet] sessão recebida: " + (tokenSessao ? "sim" : "não"));
-
     var sessao = getSessaoUsuario(tokenSessao);
     Logger.log("[DIAGNOSTICO doGet] sessão válida: " + !!sessao);
 
     if (!sessao) {
-      Logger.log("[DIAGNOSTICO doGet] sessao NULA -> servindo tela de Login");
-      return HtmlService
-        .createHtmlOutputFromFile("Login")
+      return HtmlService.createHtmlOutputFromFile("Login")
         .setTitle("SISGEP — Login")
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
 
-    // ── Usuário autenticado: serve o sistema normalmente ──
-    Logger.log("[DIAGNOSTICO doGet] sessao valida -> servindo index.html para: " + sessao.nome);
     var template = HtmlService.createTemplateFromFile("index");
     template.tokenSessao = sessao.token;
-
-    return template
-      .evaluate()
+    return template.evaluate()
       .setTitle("Portal Administrativo — SindEducação-ES")
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .setSandboxMode(HtmlService.SandboxMode.IFRAME);
-
   } catch (erro) {
-    Logger.log("Erro no doGet SISGEP-OFICIOS: " + erro);
-
-    return HtmlService
-      .createHtmlOutput(
-        "<div style='font-family:sans-serif;padding:40px;background:#fff;color:#111;'>" +
-        "<h2 style='color:#c00;'>Erro ao abrir o módulo de Ofícios</h2>" +
-        "<pre style='white-space:pre-wrap;background:#f5f5f5;padding:16px;border-radius:8px;'>" +
-        (erro && erro.stack ? erro.stack : (erro && erro.message ? erro.message : String(erro))) +
-        "</pre>" +
-        "</div>"
-      )
-      .setTitle("Erro — SISGEP Ofícios")
+    Logger.log("Erro no doGet SISGEP: " + erro);
+    return HtmlService.createHtmlOutput(
+      "<div style='font-family:sans-serif;padding:40px;background:#fff;color:#111;'>" +
+      "<h2 style='color:#c00;'>Erro ao abrir o SISGEP</h2>" +
+      "<pre style='white-space:pre-wrap;background:#f5f5f5;padding:16px;border-radius:8px;'>" +
+      (erro && erro.stack ? erro.stack : (erro && erro.message ? erro.message : String(erro))) +
+      "</pre></div>")
+      .setTitle("Erro — SISGEP")
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 }
+
 function include(nomeArquivo) {
   try {
-    return HtmlService
-      .createTemplateFromFile(nomeArquivo)
-      .evaluate()
-      .getContent();
+    var conteudo = HtmlService.createTemplateFromFile(nomeArquivo).evaluate().getContent();
+
+    /* Piloto SOFIA · AgentEscolas v0.1 — trazido de
+       claude/sisgep-project-analysis-h9wcy3 em 21/08/2026.
+
+       A extensão visual fica ISOLADA, acoplada aqui em vez de dentro do
+       CadastroEscolas, para que a tela principal de Escolas permaneça intacta
+       e o rollback seja apenas remover este bloco.
+
+       O try/catch interno é o que importa: uma falha da extensão NÃO pode
+       derrubar o módulo de Escolas, que atende as 679 escolas da base. Se o
+       SofiaEscolasUI não carregar, a tela abre sem ele e o erro fica no log. */
+    if (String(nomeArquivo || "") === "CadastroEscolas") {
+      try {
+        conteudo += "\n" + HtmlService
+          .createTemplateFromFile("SofiaEscolasUI")
+          .evaluate()
+          .getContent();
+      } catch (eSofiaEscolas) {
+        Logger.log("include: SofiaEscolasUI não carregada — " + eSofiaEscolas.message);
+      }
+    }
+
+    return conteudo;
   } catch (e) {
     Logger.log("include: arquivo não encontrado — " + nomeArquivo + " — " + e.message);
     return "<!-- include falhou: " + nomeArquivo + " -->";
   }
 }
-/**
- * Serve a Ficha de Sindicalização pública (acesso sem login).
- * Os parâmetros da visita (idVisita, diretorBase, escola) são lidos no
- * cliente via google.script.url — por isso o arquivo é servido como
- * HtmlOutput simples, sem template.
- *
- * addMetaTag('viewport') é obrigatório: o GAS remove as meta tags do
- * HTML original, e sem isso o formulário fica minúsculo no celular.
- */
+
 function servirFichaSindicalizacao(p) {
   try {
-    return HtmlService
-      .createHtmlOutputFromFile("Fichasindicalizacao")
+    return HtmlService.createHtmlOutputFromFile("Fichasindicalizacao")
       .setTitle("Ficha de Sindicalização — SindEducação/ES")
       .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
@@ -312,7 +370,7 @@ function servirFichaSindicalizacao(p) {
     return HtmlService.createHtmlOutput(
       "<div style='font-family:sans-serif;padding:40px;text-align:center;'>" +
       "<h2>Não foi possível abrir a ficha</h2>" +
-      "<p>Tente novamente em alguns instantes ou procure o SindEducação/ES.</p>" +
-      "</div>").setTitle("Ficha de Sindicalização");
+      "<p>Tente novamente em alguns instantes ou procure o SindEducação/ES.</p></div>")
+      .setTitle("Ficha de Sindicalização");
   }
 }

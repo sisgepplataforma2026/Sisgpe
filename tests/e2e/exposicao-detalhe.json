@@ -1,7 +1,7 @@
 {
-  "medidoEm": "2026-08-17",
-  "totalPublicas": 854,
-  "protegidas": 522,
+  "medidoEm": "2026-09-05",
+  "totalPublicas": 975,
+  "protegidas": 688,
   "expostas": [
     {
       "nome": "validarCPF",
@@ -34,6 +34,31 @@
       "escreve": false
     },
     {
+      "nome": "bingo_inscricaoEstado",
+      "arquivo": "BingoInscricao.gs",
+      "escreve": false
+    },
+    {
+      "nome": "bingo_inscricaoPreencher",
+      "arquivo": "BingoInscricao.gs",
+      "escreve": false
+    },
+    {
+      "nome": "bingo_inscrever",
+      "arquivo": "BingoInscricao.gs",
+      "escreve": false
+    },
+    {
+      "nome": "bingo_estadoPublico",
+      "arquivo": "BingoLinks.gs",
+      "escreve": false
+    },
+    {
+      "nome": "bingo_realtimeInfoPublico",
+      "arquivo": "BingoRealtime.gs",
+      "escreve": false
+    },
+    {
       "nome": "validarCarteirinhaPublico",
       "arquivo": "CarteirinhaAdmin.gs",
       "escreve": false
@@ -57,11 +82,6 @@
       "nome": "setupCentralFinanceiraIA",
       "arquivo": "CentralFinanceiraIA.gs",
       "escreve": true
-    },
-    {
-      "nome": "chatSISGEP",
-      "arquivo": "ChatIACore.gs",
-      "escreve": false
     },
     {
       "nome": "doPost",
@@ -154,11 +174,6 @@
       "escreve": true
     },
     {
-      "nome": "getDashboardOficiosDataV2",
-      "arquivo": "DashboardOficios.gs",
-      "escreve": false
-    },
-    {
       "nome": "setupModuloDespesas",
       "arquivo": "Despesas.gs",
       "escreve": true
@@ -224,34 +239,29 @@
       "escreve": false
     },
     {
-      "nome": "montarEmailHTML",
-      "arquivo": "EmailOficios.gs",
+      "nome": "inicializarModuloEscolas",
+      "arquivo": "Escolas.gs",
       "escreve": false
     },
     {
-      "nome": "inicializarModuloEscolas",
-      "arquivo": "Escolas.gs",
+      "nome": "compasso_inscricaoEstado",
+      "arquivo": "EventosInscricaoPublica.gs",
+      "escreve": false
+    },
+    {
+      "nome": "compasso_inscricaoPreencher",
+      "arquivo": "EventosInscricaoPublica.gs",
+      "escreve": false
+    },
+    {
+      "nome": "compasso_inscrever",
+      "arquivo": "EventosInscricaoPublica.gs",
       "escreve": false
     },
     {
       "nome": "processarFilaEnvioOficios",
       "arquivo": "FilaOficios.gs",
       "escreve": true
-    },
-    {
-      "nome": "instalarTriggerFilaEnvioOficios",
-      "arquivo": "FilaOficios.gs",
-      "escreve": true
-    },
-    {
-      "nome": "dashboardFilaEnvioResumo",
-      "arquivo": "FilaOficios.gs",
-      "escreve": false
-    },
-    {
-      "nome": "dashboardFilaEnvioGraficos",
-      "arquivo": "FilaOficios.gs",
-      "escreve": false
     },
     {
       "nome": "finClassificarDespesaIA",
@@ -394,13 +404,13 @@
       "escreve": true
     },
     {
-      "nome": "invalidarCacheTemplatesOficios",
-      "arquivo": "HelperOficios.gs",
+      "nome": "iaAssistente",
+      "arquivo": "IACore.gs",
       "escreve": false
     },
     {
-      "nome": "iaAssistente",
-      "arquivo": "IACore.gs",
+      "nome": "agenteEscolasVersao",
+      "arquivo": "IA_AgentEscolas.gs",
       "escreve": false
     },
     {
@@ -447,6 +457,11 @@
       "nome": "removerTriggerExpurgoLGPD",
       "arquivo": "LgpdRetencao.gs",
       "escreve": true
+    },
+    {
+      "nome": "lpLimpezaDiaria",
+      "arquivo": "LimpezaPropriedades.gs",
+      "escreve": false
     },
     {
       "nome": "gerarHashInicialUsuarios123456",
@@ -559,29 +574,9 @@
       "escreve": false
     },
     {
-      "nome": "instalarTriggerConfirmacoes",
-      "arquivo": "MonitoramentoOficios.gs",
-      "escreve": true
-    },
-    {
-      "nome": "removerTriggerConfirmacoes",
-      "arquivo": "MonitoramentoOficios.gs",
-      "escreve": true
-    },
-    {
       "nome": "verificarConfirmacoesRecebimento",
       "arquivo": "MonitoramentoOficios.gs",
       "escreve": false
-    },
-    {
-      "nome": "instalarTriggerFalhasEntrega",
-      "arquivo": "MonitoramentoOficios.gs",
-      "escreve": true
-    },
-    {
-      "nome": "removerTriggerFalhasEntrega",
-      "arquivo": "MonitoramentoOficios.gs",
-      "escreve": true
     },
     {
       "nome": "verificarFalhasEntregaOficios",
@@ -589,39 +584,9 @@
       "escreve": false
     },
     {
-      "nome": "dashboardResumo",
-      "arquivo": "Oficios.gs",
-      "escreve": false
-    },
-    {
-      "nome": "dashboardGraficos",
-      "arquivo": "Oficios.gs",
-      "escreve": false
-    },
-    {
-      "nome": "verificarCodigoPublico",
-      "arquivo": "Oficios.gs",
-      "escreve": false
-    },
-    {
       "nome": "validarPublico",
       "arquivo": "Oficios.gs",
       "escreve": false
-    },
-    {
-      "nome": "getTemplateConteudo",
-      "arquivo": "Oficios.gs",
-      "escreve": false
-    },
-    {
-      "nome": "oficiosDiagnostico_diagnosticarModulo",
-      "arquivo": "OficiosDiagnostico.gs",
-      "escreve": false
-    },
-    {
-      "nome": "instalarTriggerConfirmacoesOficios",
-      "arquivo": "OficiosDiagnostico.gs",
-      "escreve": true
     },
     {
       "nome": "pcHospedesPrepararLink",
@@ -744,6 +709,21 @@
       "escreve": true
     },
     {
+      "nome": "limparSessoesExpiradasDiario",
+      "arquivo": "Sessao.gs",
+      "escreve": true
+    },
+    {
+      "nome": "instalarTriggerLimpezaSessoes",
+      "arquivo": "Sessao.gs",
+      "escreve": true
+    },
+    {
+      "nome": "removerTriggerLimpezaSessoes",
+      "arquivo": "Sessao.gs",
+      "escreve": true
+    },
+    {
       "nome": "configurarAbaSindicalizacao",
       "arquivo": "Sindicalizacao.gs",
       "escreve": true
@@ -772,11 +752,6 @@
       "nome": "enviarOTPSindicalizacao",
       "arquivo": "SindicalizacaoEmails.gs",
       "escreve": true
-    },
-    {
-      "nome": "diagnosticarDeParaEscolas",
-      "arquivo": "SindicalizacaoOficio.gs",
-      "escreve": false
     },
     {
       "nome": "listarAbasDaPlanilha",
@@ -884,31 +859,6 @@
       "escreve": false
     },
     {
-      "nome": "cancelarEnvioTaxaAssistencial",
-      "arquivo": "TaxaAssistencial.gs",
-      "escreve": true
-    },
-    {
-      "nome": "reenviarFalhasTaxaAssistencial",
-      "arquivo": "TaxaAssistencial.gs",
-      "escreve": false
-    },
-    {
-      "nome": "obterStatusFilaTaxaAssistencial",
-      "arquivo": "TaxaAssistencial.gs",
-      "escreve": false
-    },
-    {
-      "nome": "obterStatusTaxaAssistencialDashboard",
-      "arquivo": "TaxaAssistencial.gs",
-      "escreve": false
-    },
-    {
-      "nome": "previewOficioTaxaAssistencial",
-      "arquivo": "TaxaAssistencial.gs",
-      "escreve": false
-    },
-    {
       "nome": "abrirEmissaoTeste",
       "arquivo": "Teste.gs",
       "escreve": false
@@ -940,11 +890,6 @@
     },
     {
       "nome": "validarCpfComFeedback",
-      "arquivo": "Utils.gs",
-      "escreve": false
-    },
-    {
-      "nome": "obterArquivoDriveBase64",
       "arquivo": "Utils.gs",
       "escreve": false
     },
@@ -1079,5 +1024,5 @@
       "escreve": false
     }
   ],
-  "inconclusivas": 117
+  "inconclusivas": 83
 }
