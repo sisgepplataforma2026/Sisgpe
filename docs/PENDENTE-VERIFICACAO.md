@@ -195,6 +195,7 @@ nunca houve. O prefixo mora nos quatro acessores (`fs_set_`, `fs_get_`,
 
 | | |
 |---|---|
+| No ar | produção **700** (`producao-4c200c9`), rollback na 699 · homologação **108** (`homolog-fa0d0e0`) |
 | Teste | t149, 28 asserções |
 | Suíte | 151 arquivos, 5233 asserções, nenhuma falha |
 | Teto de exposição | 204/204 — nada novo exposto |
