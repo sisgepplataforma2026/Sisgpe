@@ -174,6 +174,7 @@ festa. Oito por dia, ~240 por mês.
 
 | | |
 |---|---|
+| No ar | produção **701**, rollback na 700 · homologação **109** (`homolog-8d5c380`) |
 | Teste | t150, 22 asserções |
 | Suíte | 152 arquivos, 5255 asserções, nenhuma falha |
 | Teto de exposição | 204/204 |
@@ -186,9 +187,26 @@ festa. Oito por dia, ~240 por mês.
    dele no corpo**;
 4. 🟡 a coluna `REENVIADO_EM` nasce sozinha no primeiro reenvio depois desta
    versão;
-5. 🟡 os ofícios que hoje estão marcados por engano continuam marcados — o
-   conserto impede novos, não desfaz o passado. Reenviá-los agora resolve, e
-   desta vez eles ficam.
+5. 🟡 os ofícios hoje marcados por engano continuam marcados — o conserto
+   impede novos, não desfaz o passado.
+
+**CORREÇÃO DO QUE EU TINHA ESCRITO AQUI.** Eu disse "reenviá-los agora
+resolve". **Está errado.** O usuário confirmou: *"os ofícios foram enviados às
+escolas"*. Reenviar mandaria de novo um documento oficial que a escola já tem.
+
+O caminho certo é **Monitoramento → filtro Falha de entrega → botão ✅**, que
+chama `atualizarStatusOficio(numero, "CONFIRMADO", ...)`. Ele:
+
+- grava nas **duas** abas (Controle e Fila) — não tem o defeito do item 72b;
+- **não manda e-mail nenhum**;
+- e tira o ofício do alcance do gatilho **para sempre**: o detector só reabre um
+  CONFIRMADO cuja observação diga *"confirmação localizada automaticamente"*, e
+  a marcação manual grava *"Confirmado manualmente pelo operador."*
+
+Essa distinção já existia desde 01/09, com o comentário que a explica: *"O que
+uma PESSOA confirmou fica intocado: ela viu a resposta, e o bounce de um
+endereço antigo não pode desfazer isso."* Serve para os 9 hoje, sem depender do
+conserto desta versão.
 
 ### 73. 🔴 FESTA COMPASSO 2026 — três bloqueios achados na auditoria da abertura
 
