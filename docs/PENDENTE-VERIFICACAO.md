@@ -118,6 +118,78 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
+### 74. 🔴 O DETECTOR DE BOUNCE ESTAVA DESFAZENDO O REENVIO
+
+08/09/2026. O usuário mandou o print da caixa de entrada: o **mesmo** alerta
+*"⚠️ SISGEP — 9 ofício(s) com falha de entrega"*, de três em três horas, dias
+seguidos. E já tinha criado o rótulo **`SISGEP_Ignorado`** para varrê-los da
+vista.
+
+**Esse rótulo é a medida do defeito.** Alerta que se repete vira ruído, ruído é
+filtrado, e o alerta seguinte — o que importa — cai na mesma pasta. O aviso não
+ficou só inútil: ficou pior que não existir, porque dava a impressão de que
+alguém estava vigiando.
+
+Depois veio a frase que fechou o diagnóstico: **"esses ofícios foram
+enviados"**. Não era o alerta com defeito — era a detecção marcando como falha
+o que tinha chegado.
+
+**O CICLO, que se fechava sozinho a cada 3 horas:**
+
+```
+1. ofício quica        → Status = FALHA_ENTREGA
+2. alguém reenvia      → Status volta a ENVIADO          (versão 695+)
+3. o gatilho roda      → ENVIADO está na lista de ativos
+4. o Registro ainda guarda o endereço MORTO em "E-mails (todos)"
+5. a busca é newer_than:90d — o bounce de março continua no Gmail
+6. casa por ENDEREÇO   → marca FALHA_ENTREGA de novo → alerta
+                        └────────── volta ao 2 ──────────┘
+```
+
+Três coisas se somavam: a detecção casava por **endereço** e não por envio; o
+reenvio **não gravava quando aconteceu**; e o bounce sobrevive 90 dias no
+Gmail. Guardar `emailsComBounce[n] = true` jogava fora justamente o dado que
+separa "quicou agora" de "quicou em março".
+
+**A ironia:** o reenvio em lote dos itens 72/72b funcionava, e este gatilho o
+desfazia em até três horas. As duas coisas estavam certas isoladamente.
+
+**OS TRÊS CONSERTOS:**
+
+1. **Bounce velho não condena envio novo.** O detector passa a guardar a
+   **data** do bounce mais recente por endereço e só marca falha se ela for
+   posterior ao último envio do ofício. Sem data utilizável, o caminho é
+   conservador e depende de ter falhado antes: ofício que nunca falhou ainda é
+   marcado (é a única informação que existe); ofício já reenviado **não** é
+   reaberto sem prova nova.
+2. **O reenvio grava `REENVIADO_EM`.** Sem essa data o passo 1 não tem contra o
+   que comparar.
+3. **O alerta só avisa o que é novo**, e passa a **nomear** os ofícios. O
+   conjunto já avisado fica guardado; quando um ofício sai da lista e volta,
+   vira notícia outra vez.
+
+**Custo lateral que ninguém contava:** cada alerta gastava um destinatário da
+cota diária do Gmail — a **mesma** que vai entregar os 2.000 ingressos da
+festa. Oito por dia, ~240 por mês.
+
+| | |
+|---|---|
+| Teste | t150, 22 asserções |
+| Suíte | 152 arquivos, 5255 asserções, nenhuma falha |
+| Teto de exposição | 204/204 |
+
+**A CONFERIR NO AR:**
+
+1. 🔴 os alertas de três em três horas **param**;
+2. 🔴 os ofícios reenviados **ficam** como ENVIADO em vez de voltar à falha;
+3. 🔴 quando um ofício novo quicar de verdade, o alerta volta — **com o número
+   dele no corpo**;
+4. 🟡 a coluna `REENVIADO_EM` nasce sozinha no primeiro reenvio depois desta
+   versão;
+5. 🟡 os ofícios que hoje estão marcados por engano continuam marcados — o
+   conserto impede novos, não desfaz o passado. Reenviá-los agora resolve, e
+   desta vez eles ficam.
+
 ### 73. 🔴 FESTA COMPASSO 2026 — três bloqueios achados na auditoria da abertura
 
 05/09/2026. O usuário pediu auditoria do módulo da festa e, no meio dela,

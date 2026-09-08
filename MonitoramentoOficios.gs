@@ -524,6 +524,13 @@ function verificarFalhasEntregaOficios() {
     var colNumero     = headerMap["Número do Ofício"];
     var colEmailTodos = headerMap["E-mails (todos)"] || headerMap["E-mail (principal)"];
     var colObs        = headerMap["Observações"];
+    /* Para separar bounce velho de bounce novo. Ausentes, a comparação cai
+       num caminho conservador — ver `MON_OFICIOS_ultimoEnvio_`. */
+    var colDataEnvio  = headerMap["Data envio ofício"] || headerMap["Data envio oficio"];
+    var colReenvEm    = headerMap[typeof OFICIO_COL_REENVIADO_EM !== "undefined"
+                                    ? OFICIO_COL_REENVIADO_EM : "REENVIADO_EM"];
+    var colJaFalhou   = headerMap[typeof OFICIO_COL_JA_FALHOU !== "undefined"
+                                    ? OFICIO_COL_JA_FALHOU : "JA_FALHOU"];
 
     if (!colStatus || !colNumero || !colEmailTodos) {
       Logger.log("verificarFalhasEntregaOficios: colunas não encontradas.");
@@ -556,7 +563,13 @@ function verificarFalhasEntregaOficios() {
       var emails = MON_OFICIOS_normalizarEmails_(dados[i][colEmailTodos - 1]);
       if (!emails.length) continue;
 
-      oficiosAtivos.push({ linhaReal: i + 2, numero: numero, emails: emails });
+      oficiosAtivos.push({
+        linhaReal: i + 2, numero: numero, emails: emails,
+        dataEnvio:   colDataEnvio ? dados[i][colDataEnvio - 1] : null,
+        reenviadoEm: colReenvEm   ? dados[i][colReenvEm   - 1] : null,
+        jaFalhou: colJaFalhou &&
+          String(dados[i][colJaFalhou - 1] || "").trim().toUpperCase() === "SIM"
+      });
     }
 
     if (!oficiosAtivos.length) {
@@ -587,14 +600,52 @@ function verificarFalhasEntregaOficios() {
       return { ok: true, falhas: 0, mensagem: "Nenhum bounce encontrado." };
     }
 
+    /* ══════════════════════════════════════════════════════════════════════
+       BOUNCE VELHO NÃO CONDENA ENVIO NOVO — 08/09/2026
+
+       O usuário mandou o print da caixa de entrada: o MESMO alerta
+       "9 ofício(s) com falha de entrega", de três em três horas, dias
+       seguidos. E ele já tinha criado um rótulo `SISGEP_Ignorado` para
+       varrê-los da vista — que é a prova do estrago. Alerta que se repete
+       vira ruído, ruído é filtrado, e o alerta seguinte, o de verdade, cai
+       na mesma pasta e ninguém vê.
+
+       Depois disse a frase que fechou o diagnóstico: **"esses ofícios foram
+       enviados"**. Não era o alerta que estava com defeito — era a detecção
+       marcando como falha o que tinha chegado.
+
+       O CICLO, que se fechava sozinho:
+
+         1. ofício quica            → Status = FALHA_ENTREGA
+         2. alguém reenvia          → Status volta a ENVIADO
+         3. este gatilho roda       → ENVIADO está na lista de ativos
+         4. o Registro ainda guarda o endereço MORTO em "E-mails (todos)"
+         5. a busca é newer_than:90d — o bounce de março ainda está no Gmail
+         6. casa por ENDEREÇO       → marca FALHA_ENTREGA de novo → alerta
+                                     └── volta ao 2, a cada três horas ──┘
+
+       Três coisas se somavam: a detecção casava por endereço e não por
+       envio; o reenvio não gravava quando aconteceu; e o bounce sobrevive
+       90 dias. Guardar só `true` jogava fora justamente o dado que separa
+       "quicou agora" de "quicou em março".
+
+       Agora guarda a data do bounce mais recente por endereço, e a
+       comparação com a data do último envio decide. Um bounce anterior ao
+       reenvio não diz nada sobre ele.
+       ══════════════════════════════════════════════════════════════════════ */
     var emailsComBounce = {};
     threads.forEach(function(thread) {
       thread.getMessages().forEach(function(msg) {
+        var quando = null;
+        try { quando = msg.getDate(); } catch (eData) { quando = null; }
         var corpo = (msg.getPlainBody() || "") + " " + (msg.getBody() || "");
         (corpo.match(/[\w.+-]+@[\w-]+\.[\w.]+/g) || []).forEach(function(email) {
           var n = String(email || "").trim().toLowerCase();
           if (!n || n.indexOf("sindeducacao.com") > -1) return;
-          emailsComBounce[n] = true;
+          /* Fica o bounce MAIS RECENTE do endereço: é o único que pode ser
+             posterior ao último envio. */
+          var atual = emailsComBounce[n];
+          if (!atual || (quando && atual < quando)) emailsComBounce[n] = quando || new Date(0);
         });
       });
     });
@@ -604,11 +655,27 @@ function verificarFalhasEntregaOficios() {
       return { ok: true, falhas: 0, mensagem: "Nenhum e-mail de bounce extraído." };
     }
 
-    var totalFalhas = 0;
+    var totalFalhas = 0, numerosComFalha = [];
     var agora = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm");
 
     oficiosAtivos.forEach(function(item) {
-      var teveBounce = item.emails.some(function(e) { return emailsComBounce[e] === true; });
+      /* O bounce só vale se for POSTERIOR ao último envio deste ofício. Antes
+         a comparação era `=== true`, o que dava o mesmo peso a um bounce de
+         março e a um de hoje — e era o que devolvia à falha, de três em três
+         horas, ofício que já tinha sido reenviado e entregue. */
+      var envio = MON_OFICIOS_ultimoEnvio_(item);
+      var teveBounce = item.emails.some(function(e) {
+        var quandoQuicou = emailsComBounce[e];
+        if (!quandoQuicou) return false;
+        if (!envio) {
+          /* Sem data de envio não dá para comparar. Para ofício que NUNCA
+             falhou, o bounce vale — é a única informação que existe. Para o
+             que JÁ foi reenviado, não: reabri-lo sem prova nova é exatamente
+             o ciclo que este conserto existe para quebrar. */
+          return !item.jaFalhou;
+        }
+        return quandoQuicou > envio;
+      });
       if (!teveBounce) return;
 
       shRegistro.getRange(item.linhaReal, colStatus).setValue("FALHA_ENTREGA");
@@ -634,10 +701,12 @@ function verificarFalhasEntregaOficios() {
       });
 
       Logger.log("❌ Bounce — Ofício " + item.numero + " · " + item.emails.join(", "));
+      numerosComFalha.push(item.numero);
       totalFalhas++;
     });
 
-    if (totalFalhas > 0) notificarFalhasEntregaOficios_(totalFalhas);
+    /* Avisa só o que é NOVO. Ver o bloco em notificarFalhasEntregaOficios_. */
+    if (totalFalhas > 0) notificarFalhasEntregaOficios_(numerosComFalha);
     return { ok: true, falhas: totalFalhas, mensagem: totalFalhas + " falha(s) registrada(s)." };
 
   } catch (e) {
@@ -646,17 +715,112 @@ function verificarFalhasEntregaOficios() {
   }
 }
 
-function notificarFalhasEntregaOficios_(totalFalhas) {
+/**
+ * Quando este ofício saiu pela última vez.
+ *
+ * O reenvio vale mais que a emissão: é o envio mais recente, e é contra ele
+ * que um bounce precisa ser comparado. Devolve null quando nenhuma das duas
+ * datas é utilizável — data inválida na planilha não pode virar 1970 e fazer
+ * todo bounce parecer novo.
+ */
+function MON_OFICIOS_ultimoEnvio_(item) {
+  var candidatas = [item.reenviadoEm, item.dataEnvio];
+  var melhor = null;
+  for (var i = 0; i < candidatas.length; i++) {
+    var d = candidatas[i];
+    if (d instanceof Date && !isNaN(d.getTime())) {
+      if (!melhor || d > melhor) melhor = d;
+    }
+  }
+  return melhor;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   O ALERTA AVISA O QUE É NOVO — 08/09/2026
+
+   O usuário mandou o print: o mesmo "9 ofício(s) com falha de entrega", de
+   três em três horas, dias a fio. E já tinha criado o rótulo
+   `SISGEP_Ignorado` para tirá-los da frente.
+
+   Esse rótulo é a medida do defeito. **Alerta que se repete vira ruído,
+   ruído é filtrado, e o próximo alerta — o que importa — cai na mesma pasta
+   e ninguém vê.** O aviso não fica só inútil: fica pior que não existir,
+   porque dá a impressão de que alguém está vigiando.
+
+   Havia ainda um custo lateral que ninguém contava: cada alerta gasta um
+   destinatário da cota diária do Gmail, a MESMA que vai entregar os 2.000
+   ingressos da festa. Oito por dia, duzentos e quarenta por mês.
+
+   Agora o conjunto já avisado fica guardado, e só sai e-mail quando entra
+   ofício que ainda não foi. Quando a lista esvazia, o registro zera — se o
+   mesmo ofício voltar a falhar depois de resolvido, é notícia de novo.
+   ══════════════════════════════════════════════════════════════════════════ */
+var MON_OFICIOS_PROP_ALERTADOS = "SISGEP_OFICIOS_FALHA_ALERTADOS";
+
+function MON_OFICIOS_lerAlertados_() {
+  try {
+    var bruto = PropertiesService.getScriptProperties()
+                  .getProperty(MON_OFICIOS_PROP_ALERTADOS);
+    var lista = bruto ? JSON.parse(bruto) : [];
+    return Array.isArray(lista) ? lista : [];
+  } catch (e) { return []; }
+}
+
+function MON_OFICIOS_gravarAlertados_(numeros) {
+  try {
+    PropertiesService.getScriptProperties()
+      .setProperty(MON_OFICIOS_PROP_ALERTADOS, JSON.stringify(numeros || []));
+  } catch (e) {
+    Logger.log("⚠ Não foi possível guardar os alertados: " + e.message);
+  }
+}
+
+function notificarFalhasEntregaOficios_(numerosComFalha) {
+  /* Compatível com o formato antigo (só o total). Sem os números não há como
+     saber o que é novo — então avisa, que é o comportamento conservador. */
+  var lista = Array.isArray(numerosComFalha) ? numerosComFalha : null;
+  var totalFalhas = lista ? lista.length : Number(numerosComFalha || 0);
+  if (!totalFalhas) return;
+
+  var novos = lista;
+  if (lista) {
+    var jaAvisados = MON_OFICIOS_lerAlertados_();
+    novos = lista.filter(function (n) { return jaAvisados.indexOf(n) < 0; });
+    /* O registro passa a ser a lista ATUAL, não a união: ofício que saiu da
+       falha some daqui e, se voltar, vira notícia outra vez. */
+    MON_OFICIOS_gravarAlertados_(lista);
+    if (!novos.length) {
+      Logger.log("Falhas de entrega: " + totalFalhas +
+                 " ofício(s), nenhum novo desde o último aviso — e-mail não enviado.");
+      return;
+    }
+  }
+
   try {
     var htmlBody = "<div style='font-family:Arial,sans-serif;padding:20px;max-width:600px;'>" +
       "<div style='background:#fef2f2;border:1px solid #fecaca;border-left:4px solid #dc2626;border-radius:10px;padding:16px 20px;margin-bottom:16px;'>" +
       "<strong style='color:#991b1b;font-size:15px;'>⚠️ Falhas de entrega detectadas</strong>" +
-      "<p style='margin:8px 0 0;font-size:13px;color:#7f1d1d;'>" + totalFalhas + " ofício(s) com bounce. Acesse o painel SISGEP para verificar.</p></div>" +
-      "<p style='font-size:13px;color:#334155;'>Este e-mail foi gerado automaticamente pelo SISGEP.</p></div>";
+      "<p style='margin:8px 0 0;font-size:13px;color:#7f1d1d;'>" +
+        (novos ? novos.length + " ofício(s) NOVO(S) com bounce" : totalFalhas + " ofício(s) com bounce") +
+        ". Acesse o painel SISGEP para verificar.</p>" +
+      /* NOMEAR os ofícios. "9 com falha" não diz o que fazer nem permite
+         perceber que é sempre a mesma lista — foi assim que o aviso virou
+         rótulo de ignorados. Com os números, dá para agir sem abrir o painel. */
+      (novos && novos.length
+        ? "<p style='margin:10px 0 0;font-size:13px;color:#7f1d1d;'><strong>Novos:</strong> " +
+          novos.join(", ") + "</p>"
+        : "") +
+      (novos && totalFalhas > novos.length
+        ? "<p style='margin:6px 0 0;font-size:12px;color:#9a3412;'>Outros " +
+          (totalFalhas - novos.length) + " já avisados continuam em falha.</p>"
+        : "") +
+      "</div>" +
+      "<p style='font-size:13px;color:#334155;'>Este e-mail foi gerado automaticamente pelo SISGEP. " +
+      "Você só recebe este aviso quando aparece ofício novo em falha.</p></div>";
 
     GmailApp.sendEmail(
       "financeiro@sindeducacao.com",
-      "⚠️ SISGEP — " + totalFalhas + " ofício(s) com falha de entrega",
+      "⚠️ SISGEP — " + (novos ? novos.length : totalFalhas) + " ofício(s) com falha de entrega",
       "Falhas de entrega detectadas. Acesse o painel SISGEP.",
       { htmlBody: htmlBody, name: "SISGEP — Alerta Automático" }
     );

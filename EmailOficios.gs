@@ -625,13 +625,19 @@ function anexoEhFicha_(nome) {
 
 var OFICIO_COL_JA_FALHOU = "JA_FALHOU";
 
+/* QUANDO o reenvio aconteceu. Sem esta data não existe como distinguir um
+   bounce ANTIGO — de antes do reenvio — de um bounce novo, e foi exatamente
+   isso que fez os ofícios reenviados voltarem sozinhos para a caixa de falha
+   a cada três horas. Ver o bloco grande em MonitoramentoOficios.gs. */
+var OFICIO_COL_REENVIADO_EM = "REENVIADO_EM";
+
 /** Garante a coluna, criando-a no fim se não existir. Mesmo padrão do
     escolaGarantirColunaId_ — acrescentar coluna não mexe em dado nenhum. */
-function oficio_garantirColunaJaFalhou_(sh) {
+function oficio_garantirColuna_(sh, nome) {
   var hm = getHeaderMap_(sh);
-  if (hm[OFICIO_COL_JA_FALHOU]) return hm[OFICIO_COL_JA_FALHOU];
+  if (hm[nome]) return hm[nome];
   var col = sh.getLastColumn() + 1;
-  sh.getRange(1, col).setValue(OFICIO_COL_JA_FALHOU).setFontWeight("bold");
+  sh.getRange(1, col).setValue(nome).setFontWeight("bold");
   SpreadsheetApp.flush();
   /* O getHeaderMap_ guarda o cabeçalho em cache com TTL. Sem esta limpeza, a
      leitura seguinte usa o mapa antigo, não enxerga a coluna recém-criada, e
@@ -639,6 +645,10 @@ function oficio_garantirColunaJaFalhou_(sh) {
      esta coluna existe para impedir. O t146 pegou isso. */
   try { limparCacheHeader_(sh); } catch (e) {}
   return col;
+}
+
+function oficio_garantirColunaJaFalhou_(sh) {
+  return oficio_garantirColuna_(sh, OFICIO_COL_JA_FALHOU);
 }
 
 /**
@@ -677,6 +687,20 @@ function oficio_marcarReenviado_(numero) {
         sh.getRange(linha, cJa).setValue("SIM");
       }
       sh.getRange(linha, cSt).setValue("ENVIADO");
+
+      /* A HORA DO REENVIO, e ela é o que quebra o ciclo. O detector de bounce
+         volta a olhar o ofício assim que o status vira ENVIADO; sem saber
+         QUANDO o reenvio aconteceu, ele reencontra o bounce velho — que fica
+         no Gmail por 90 dias — e devolve o ofício para a falha. A cada três
+         horas, para sempre. Com a data, um bounce anterior ao reenvio deixa de
+         dizer qualquer coisa sobre ele. */
+      try {
+        var cReenv = oficio_garantirColuna_(sh, OFICIO_COL_REENVIADO_EM);
+        if (cReenv) sh.getRange(linha, cReenv).setValue(new Date());
+      } catch (eData) {
+        Logger.log("oficio_marcarReenviado_ (data): " + (eData && eData.message || eData));
+      }
+
       SpreadsheetApp.flush();
 
       /* DUAS ABAS GUARDAM O STATUS, E ATUALIZAR UMA SÓ É PIOR DO QUE NÃO
