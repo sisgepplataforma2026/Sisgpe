@@ -564,6 +564,21 @@ function MON_OFICIOS_verificarConfirmacoes_(filtroNumeros) {
    `exigirAdminOuSessao_`, que cai na conta Google de quem executa.
    ══════════════════════════════════════════════════════════════════════════ */
 
+/**
+ * O MESMO, MAS PROCURANDO TAMBÉM PELO NÚMERO DO OFÍCIO.
+ *
+ * Existe porque o botão Executar do editor não passa argumento: sem esta,
+ * não haveria como pedir o modo completo de dentro do editor. Mesmo motivo
+ * de `compassoPiloto` existir ao lado de `compasso_pilotoExecutar`.
+ *
+ * É a que responde "quais NÃO estão em Enviados?" para a fila INTEIRA — e não
+ * só para os 3 que têm id. Custa uma busca no Gmail por ofício, então é
+ * retomável: roda, para no bloco, e continua na próxima execução.
+ */
+function conferirOficiosNaCaixaDeEnviadosCompleto() {
+  return conferirOficiosNaCaixaDeEnviados(true, false, "");
+}
+
 var OFICIO_COL_COMPROVACAO     = "COMPROVACAO_ENVIO";
 var OFICIO_COL_COMPROVACAO_EM  = "COMPROVACAO_EM";
 var OFICIO_PROP_COMPROV_CURSOR = "SISGEP_COMPROVACAO_CURSOR";
@@ -580,7 +595,7 @@ var OFICIO_COMPROVACAO_BLOCO = 150;
  *
  * @param {boolean=} recomecar  true zera o cursor e confere tudo de novo.
  */
-function conferirOficiosNaCaixaDeEnviados(recomecar, tokenSessao) {
+function conferirOficiosNaCaixaDeEnviados(buscarPorNumero, recomecar, tokenSessao) {
   exigirAdminOuSessao_(tokenSessao, "documentos",
                        "Conferência de ofícios na caixa de Enviados", false);
 
@@ -616,9 +631,11 @@ function conferirOficiosNaCaixaDeEnviados(recomecar, tokenSessao) {
   var agora  = new Date();
 
   var r = {
-    ok: true, conferidos: 0, emEnviados: 0,
-    naoEncontrados: [], naLixeira: [], semIdVerificar: [], semIdAntigos: 0,
-    consultasAoGmail: 0, parou: false, restam: 0
+    ok: true, conferidos: 0, emEnviados: 0, emEnviadosPorNumero: 0,
+    naoEncontrados: [], naLixeira: [], semIdVerificar: [],
+    semIdAntigos: 0, semIdSemData: 0,
+    consultasAoGmail: 0, parou: false, restam: 0,
+    modo: buscarPorNumero === true ? "COMPLETO (id + busca por número)" : "SÓ POR ID"
   };
 
   var i = inicio;
@@ -639,9 +656,46 @@ function conferirOficiosNaCaixaDeEnviados(recomecar, tokenSessao) {
     var veredito;
 
     if (!id || id === "GMAILAPP_SEM_ID") {
-      var antigo = (quando instanceof Date && !isNaN(quando.getTime()) && quando < VIRADA);
-      if (antigo) { veredito = "SEM ID (envio antigo)"; r.semIdAntigos++; }
-      else        { veredito = "SEM ID (verificar)";    r.semIdVerificar.push(ref); }
+      /* SEM ID: PROCURA PELO NÚMERO — 09/09/2026, depois da primeira rodada real.
+         ══════════════════════════════════════════════════════════════════════
+         A primeira rodada em produção conferiu 362 ofícios e fez 3 consultas:
+         só 3 tinham id. O id só começou a ser gravado em 02/09, então para 359
+         ofícios o sistema não tinha recibo nenhum — e a pergunta dele ("quais
+         NÃO estão em Enviados?") ficava sem resposta para 99% da fila.
+
+         Sem id ainda dá para procurar: pelo NÚMERO DO OFÍCIO na caixa de
+         Enviados. É mais caro (uma busca por ofício) e menos preciso que o id,
+         mas responde — e responder mal é melhor que não responder, desde que
+         a diferença fique escrita no veredito, e fica: "POR NUMERO".
+
+         E UM ERRO MEU QUE A RODADA EXPÔS. A classificação anterior mandava
+         para "verificar" todo ofício sem DATA_ENVIO, porque a comparação com a
+         data da virada falhava e caía no else. Deu 179 falsos achados — os
+         números 119, 120, 122… sequenciais e baixos, registros antigos sem
+         data. Sem data não dá para dizer se é antigo ou recente: agora isso
+         tem veredito próprio, e a busca por número resolve os dois casos. */
+      if (buscarPorNumero) {
+        r.consultasAoGmail++;
+        try {
+          var achados = GmailApp.search(
+            'in:sent "' + numero.replace(/"/g, "") + '"', 0, 3);
+          if (achados && achados.length) {
+            veredito = "EM ENVIADOS (por numero)";
+            r.emEnviadosPorNumero++;
+          } else {
+            veredito = "NAO ENCONTRADO (por numero)";
+            r.naoEncontrados.push(ref);
+          }
+        } catch (eB) {
+          veredito = "SEM ID (busca falhou)";
+          r.semIdVerificar.push(ref);
+        }
+      } else {
+        var temData = (quando instanceof Date && !isNaN(quando.getTime()));
+        if (!temData)               { veredito = "SEM ID (sem data)";      r.semIdSemData++; }
+        else if (quando < VIRADA)   { veredito = "SEM ID (envio antigo)";  r.semIdAntigos++; }
+        else                        { veredito = "SEM ID (verificar)";     r.semIdVerificar.push(ref); }
+      }
     } else {
       /* AQUI está a consulta — e é o que torna a resposta certeira em vez de
          deduzida. */
@@ -688,7 +742,11 @@ function conferirOficiosNaCaixaDeEnviados(recomecar, tokenSessao) {
   L.push("  Conferidos nesta execução : " + r.conferidos);
   L.push("  Consultas ao Gmail        : " + r.consultasAoGmail);
   L.push("");
-  L.push("  ✅ EM ENVIADOS            : " + r.emEnviados);
+  L.push("  Modo                      : " + r.modo);
+  L.push("");
+  L.push("  ✅ EM ENVIADOS (por id)   : " + r.emEnviados);
+  if (buscarPorNumero === true)
+    L.push("  ✅ EM ENVIADOS (por nº)   : " + r.emEnviadosPorNumero);
   L.push("  ❌ NÃO ENCONTRADO         : " + r.naoEncontrados.length +
          (r.naoEncontrados.length ? "  → " + nomes(r.naoEncontrados) : ""));
   L.push("  🗑️  NA LIXEIRA             : " + r.naLixeira.length +
@@ -697,6 +755,16 @@ function conferirOficiosNaCaixaDeEnviados(recomecar, tokenSessao) {
          (r.semIdVerificar.length ? "  → " + nomes(r.semIdVerificar) : ""));
   L.push("  ⚪ SEM ID (envio antigo)  : " + r.semIdAntigos +
          "  (anterior a 02/09 — ausência esperada)");
+  L.push("  ⚪ SEM ID (sem data)      : " + r.semIdSemData +
+         "  (sem DATA_ENVIO não dá para dizer se é antigo)");
+  if (buscarPorNumero !== true && (r.semIdVerificar.length + r.semIdAntigos + r.semIdSemData) > 0) {
+    L.push("");
+    L.push("  ℹ️  " + (r.semIdVerificar.length + r.semIdAntigos + r.semIdSemData) +
+           " ofício(s) não têm id — o sistema só passou a gravá-lo em 02/09.");
+    L.push("     Para saber deles, rode com busca por NÚMERO:");
+    L.push("         conferirOficiosNaCaixaDeEnviadosCompleto()");
+    L.push("     Custa uma busca no Gmail por ofício, e é retomável.");
+  }
   L.push("");
   if (r.parou) {
     L.push("  ⏸️  PAROU NO BLOCO DE " + OFICIO_COMPROVACAO_BLOCO + ".");

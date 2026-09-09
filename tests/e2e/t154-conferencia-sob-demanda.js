@@ -87,7 +87,7 @@ g.GmailApp.getMessageById = function (id) {
   return null;                       /* MSG-503 e quaisquer outros: sumiram */
 };
 
-const r = g.conferirOficiosNaCaixaDeEnviados(true, TOKEN);
+const r = g.conferirOficiosNaCaixaDeEnviados(false, true, TOKEN);
 ok(r.ok === true, "a conferência roda", r.mensagem);
 ok(r.consultasAoGmail > 0,
    "e consulta o Gmail de fato: " + r.consultasAoGmail + " consulta(s)",
@@ -149,7 +149,10 @@ passo("roda pelo editor, sem argumento nenhum");
    do editor não passa argumento. Ela teria recusado justamente quem precisa
    rodá-la. É a armadilha que este projeto já registrou quatro vezes. */
 const monFonte = fs.readFileSync(path.join(RAIZ, "MonitoramentoOficios.gs"), "utf8");
-const trechoConf = monFonte.slice(monFonte.indexOf("function conferirOficiosNaCaixaDeEnviados"));
+/* ATENÇÃO AO PREFIXO: "conferirOficiosNaCaixaDeEnviados" também casa com
+   "...Completo", e o indexOf acharia a errada. O parêntese desambigua. */
+const trechoConf = monFonte.slice(
+  monFonte.indexOf("function conferirOficiosNaCaixaDeEnviados(buscarPorNumero"));
 ok(/exigirAdminOuSessao_/.test(trechoConf.slice(0, 400)),
    "usa exigirAdminOuSessao_, que cai na conta Google de quem executa",
    "com exigirModulo_ ela recusaria a própria pessoa que precisa rodá-la");
@@ -161,6 +164,63 @@ ok(!/conferirOficiosNaCaixaDeEnviados\b/.test(
    true,
    "e o nome não termina em _ — o seletor do editor a lista",
    "função com underscore no fim não aparece no seletor; foi erro meu duas vezes");
+
+/* ══════════════════════════════════════════════════════════════════════════
+   O MODO COMPLETO — 09/09/2026, depois da PRIMEIRA RODADA REAL
+   ══════════════════════════════════════════════════════════════════════════
+
+   A rodada em produção conferiu 362 ofícios e fez 3 consultas: só 3 tinham id.
+   O id só passou a ser gravado em 02/09. Ou seja, a pergunta dele — "quais NÃO
+   estão em Enviados?" — ficava sem resposta para 359 ofícios, 99% da fila.
+
+   Sem id ainda dá para procurar: pelo NÚMERO, na caixa de Enviados. Mais caro
+   e menos preciso, mas responde. A diferença fica escrita no veredito.
+
+   E a rodada expôs um erro meu: 179 ofícios foram para "verificar" só porque
+   não tinham DATA_ENVIO — a comparação com a data da virada falhava e caía no
+   else. Números 119, 120, 122… sequenciais e baixos, registros antigos. Sem
+   data não dá para dizer se é antigo: agora tem veredito próprio. */
+passo("modo completo: procura pelo NÚMERO quando não há id");
+
+g.GmailApp.search = function (q) {
+  /* 504 aparece na caixa quando procurado pelo número; 506 não. */
+  if (/504\/2026/.test(q)) return [{}];
+  return [];
+};
+
+const rc = g.conferirOficiosNaCaixaDeEnviados(true, true, TOKEN);
+ok(rc.consultasAoGmail > r.consultasAoGmail,
+   "o modo completo consulta mais: " + rc.consultasAoGmail + " contra " + r.consultasAoGmail,
+   "é o preço de responder pelos que não têm id");
+igual(rc.emEnviadosPorNumero, 1,
+      "o 504, sem id, é ACHADO pelo número",
+      "sem isso ele ficaria eternamente como 'não dá para saber'");
+ok(rc.naoEncontrados.some(x => x.numero === "506/2026"),
+   "e o 506, que não aparece nem pelo número, entra em NÃO ENCONTRADO",
+   "é a resposta que ele pediu, agora valendo para quem não tem id");
+
+passo("sem data deixou de ser falso achado");
+
+/* Era o erro: sem DATA_ENVIO ia para "verificar". Deu 179 falsos na produção. */
+fila.getRange(7, 1, 1, CAB.length).setValues([
+  ["507/2026", "EMEF Eta", "h@h.com", "h@h.com", "ENVIADO", "", "", "", ""]
+]);
+const rd = g.conferirOficiosNaCaixaDeEnviados(false, true, TOKEN);
+igual(rd.semIdSemData, 1,
+      "ofício sem DATA_ENVIO tem veredito próprio, não vira achado",
+      "119, 120, 122… eram registros antigos sem data, não ofícios perdidos");
+ok(!rd.semIdVerificar.some(x => x.numero === "507/2026"),
+   "  e sai da lista de 'verificar'");
+
+passo("o atalho do editor existe");
+
+/* O botão Executar não passa argumento — sem esta função não haveria como
+   pedir o modo completo de dentro do editor. */
+ok(typeof g.conferirOficiosNaCaixaDeEnviadosCompleto === "function",
+   "conferirOficiosNaCaixaDeEnviadosCompleto existe para o editor",
+   "mesmo motivo de compassoPiloto existir ao lado de compasso_pilotoExecutar");
+ok(!/conferirOficiosNaCaixaDeEnviadosCompleto_\s*=/.test(monFonte),
+   "  e não termina em _ — o seletor do editor a lista");
 
 passo("retomável: não recomeça do zero");
 
