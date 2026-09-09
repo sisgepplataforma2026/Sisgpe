@@ -57,6 +57,14 @@ const { fluxo, passo, ok, igual, aviso, naoTestavel, resumo } = b;
 const { g, amb } = b.subir({});
 b.seedUsuarios(g);
 
+/* O E-MAIL NASCE DESLIGADO DESDE 09/09/2026 — decisão do usuário: a entrega
+   da festa é pelo WhatsApp, e nada sai sozinho. Este teste mede o MECANISMO
+   do e-mail, que continua inteiro e precisa continuar funcionando para quem
+   não tem WhatsApp. Por isso liga o interruptor explicitamente: sem isto ele
+   mediria a política, que já é medida no t151. */
+g.PropertiesService.getScriptProperties()
+  .setProperty(g.COMPASSO_PROP_EMAIL_LIGADO, "true");
+
 const ADM = b.logar(g, "wanderson");           // ADMINISTRADOR
 const FIN = b.logar(g, "rogerio");             // financeiro,rh — NÃO tem eventos
 

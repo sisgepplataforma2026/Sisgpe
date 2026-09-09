@@ -512,8 +512,59 @@ function compasso_emailIngressoHtml_(ing, url, temPdf) {
   '</div></div>';
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   A ENTREGA É PELO WHATSAPP — 09/09/2026
+
+   Decisão do usuário, nestas palavras: *"os ingressos serão enviados pelo zap
+   / somente por esse caminho"*, e antes disso *"não é enviado nada sozinho"*.
+
+   POR QUE UM INTERRUPTOR E NÃO UM `return` CRAVADO. É a mesma lição da data de
+   abertura da inscrição, aprendida quatro dias antes: decisão de operação não
+   pode custar uma publicação de versão. Se um dia a conta virar Workspace, ou
+   se um associado sem WhatsApp precisar do ingresso por e-mail, quem decide é
+   quem opera — não quem tem acesso ao editor.
+
+   O PADRÃO É DESLIGADO. Ausente a propriedade, o e-mail não sai. Ligar é ato
+   deliberado, com nome e valor explícitos:
+
+       COMPASSO_EMAIL_LIGADO = true
+
+   O QUE ISTO NÃO FAZ: apagar o caminho de e-mail. Ele continua inteiro,
+   testado e pronto — só recusa executar. Apagar seria jogar fora a única saída
+   para quem não tem WhatsApp, e essa gente existe.
+   ══════════════════════════════════════════════════════════════════════════ */
+var COMPASSO_PROP_EMAIL_LIGADO = 'COMPASSO_EMAIL_LIGADO';
+
+/** O e-mail está autorizado? Padrão: NÃO. */
+function compasso_emailLigado_() {
+  try {
+    return String(PropertiesService.getScriptProperties()
+                  .getProperty(COMPASSO_PROP_EMAIL_LIGADO) || '')
+             .trim().toLowerCase() === 'true';
+  } catch (e) { return false; }
+}
+
+/** A recusa, dita de um jeito que explica o que fazer em vez de só negar. */
+function compasso_recusaEmail_(oQue) {
+  return {
+    ok: false,
+    codigo: 'ENTREGA_SOMENTE_WHATSAPP',
+    erro: oQue + ' por e-mail está desligado: a entrega desta festa é pelo ' +
+          'WhatsApp. Use o botão de WhatsApp na linha da inscrição. Se for ' +
+          'mesmo necessário mandar por e-mail, declare ' +
+          COMPASSO_PROP_EMAIL_LIGADO + ' = true nas Propriedades do script.'
+  };
+}
+
 function compasso_enviarIngressoEmail(inscricaoId, tokenSessao) {
   exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — enviar ingresso por e-mail', false);
+  if (!compasso_emailLigado_()) {
+    try {
+      compasso_auditar_('ENTREGA_EMAIL_RECUSADA', 'inscricao', String(inscricaoId || ''),
+                        { motivo: 'COMPASSO_EMAIL_LIGADO != true' });
+    } catch (eAud) {}
+    return compasso_recusaEmail_('O envio do ingresso');
+  }
 
   var ctx = compasso_contextoEntrega_(inscricaoId);
   if (!ctx.ok) return ctx;
@@ -695,6 +746,15 @@ function compasso_capacidadeEnvio(tokenSessao) {
  */
 function compasso_enviarLoteEmail(inscricaoIds, tokenSessao) {
   exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — enviar lote por e-mail', false);
+
+  if (!compasso_emailLigado_()) {
+    try {
+      compasso_auditar_('ENTREGA_EMAIL_LOTE_RECUSADA', 'evento', EMISSAO_CFG.EVENTO_ID,
+                        { motivo: 'COMPASSO_EMAIL_LIGADO != true',
+                          quantidade: (inscricaoIds || []).length });
+    } catch (eAud) {}
+    return compasso_recusaEmail_('O envio em lote');
+  }
 
   var fila = (inscricaoIds || []).map(function (x) { return String(x || '').trim(); })
                                  .filter(function (x) { return !!x; });

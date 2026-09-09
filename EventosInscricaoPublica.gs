@@ -733,6 +733,27 @@ function compasso_textoConfirmacao_(dados, protocolo) {
  */
 function compasso_confirmarInscricaoPorEmail_(inscricaoId, dados) {
   try {
+    /* O COMPROVANTE TAMBÉM NÃO SAI SOZINHO — 09/09/2026.
+     *
+     * O usuário: *"não é enviado nada sozinho"*, e depois, direto: o
+     * comprovante de inscrição também não sai por e-mail. A entrega desta
+     * festa é pelo WhatsApp, e WhatsApp aqui é `wa.me` — alguém aperta enviar.
+     *
+     * MAS O PROTOCOLO É GRAVADO DO MESMO JEITO. Se saísse daqui sem carimbar,
+     * a equipe perderia o rastro de quem se inscreveu e ainda não recebeu
+     * aviso nenhum — que é justamente a lista que precisa ser trabalhada no
+     * zap. Não enviar é a decisão; esquecer não é.
+     *
+     * Mesmo interruptor da entrega do ingresso (COMPASSO_EMAIL_LIGADO), para
+     * a decisão ser uma só e mudar num lugar só. */
+    var protocoloSemEnvio = compasso_protocoloInscricao_(inscricaoId);
+    if (typeof compasso_emailLigado_ === 'function' && !compasso_emailLigado_()) {
+      compasso_carimbarConfirmacao_(inscricaoId, false,
+        'E-mail desligado — comprovante deve ser enviado pelo WhatsApp.',
+        protocoloSemEnvio);
+      return { ok: false, motivo: 'EMAIL_DESLIGADO', protocolo: protocoloSemEnvio };
+    }
+
     if (!dados || !dados.email) return { ok: false, motivo: 'SEM_EMAIL' };
     if (typeof enviarEmailSISGEP_ !== 'function')
       return { ok: false, motivo: 'CAMADA_DE_EMAIL_INDISPONIVEL' };
