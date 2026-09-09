@@ -57,6 +57,8 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 | Nº | Item |
 |---|---|
+| 76 | 🔴 `getAmbienteAtual` decidia o ambiente pela CAIXA da propriedade — corrigido |
+| 75 | 🔴 O ingresso da festa agora vira arquivo guardado no Drive, com nome nominal |
 | 64 | ✅ VERIFICADO NO AR — seletor, remetente e destino real (02/09, 19h32) |
 | 63 | ⚠️ Não havia defeito — o ofício sempre esteve em Enviados (da conta que envia) |
 | 62 | 🟡 42 falhas — cadastros CORRIGIDOS em 02/09; faltam os 15 ofícios que nunca chegaram |
@@ -117,6 +119,118 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
+
+### 76. 🔴 `getAmbienteAtual` DECIDIA O AMBIENTE PELA CAIXA DA PROPRIEDADE
+
+09/09/2026. Achado ao montar o acervo de ingressos (item 75).
+
+A comparação era crua:
+
+```js
+var resultado = ambiente === "homologacao" ? "homologacao" : "producao";
+```
+
+Então `HOMOLOGACAO`, `Homologacao` ou ` homologacao` com um espaço colado ao
+copiar **resolviam para PRODUÇÃO**, calados.
+
+**Por que isso era pior do que parece.** A trava do `AmbienteRecursos.gs` só
+dispara quando o ambiente É homologação. Com a propriedade em maiúsculas, a
+homologação se declarava produção — e a trava não tinha o que barrar. O
+projeto de homologação gravaria Comprovante, Recibo, Relatório, Voucher e
+(agora) ingresso da festa dentro das pastas **reais**, sem nada avisar. É
+exatamente o defeito que aquele arquivo foi escrito para impedir, entrando
+por outra porta.
+
+E não era hipótese: **quatro testes do próprio repositório** declaravam
+`"HOMOLOGACAO"` em maiúsculas e vinham rodando como produção — dizendo, no
+título, que testavam homologação. O `t92` chegou a registrar o defeito
+afirmando o comportamento errado como esperado.
+
+**Corrigido:** `getAmbienteAtual` normaliza com `trim()` + minúsculas
+(`SistemaConfig.gs`). Valor desconhecido continua caindo em produção —
+homologação se declara, que é a convenção do sistema (t149).
+
+**O que falta você fazer:** nada, se a propriedade já está em minúsculas — e
+o `compassoDiagnostico()` que você rodou mostrou `ambiente homologacao`, então
+está. Este item fica registrado porque a correção muda comportamento em quem
+tiver a propriedade escrita de outro jeito, e porque vale conferir a de
+**produção** na próxima vez que abrir o projeto.
+
+---
+
+### 75. 🔴 O INGRESSO DA FESTA AGORA VIRA ARQUIVO GUARDADO NO DRIVE
+
+09/09/2026. Você descreveu a operação inteira por voz, e uma etapa dela não
+existia no sistema:
+
+> inscrição no SISGEP → comprovante → análise individual → validação →
+> **ingresso gerado e salvo em pasta nominal** → envio pelo zap, em novembro
+
+E depois: *"Deve ser salvo nominal, com data e categoria"*, *"Associado,
+acomapnahnte ou convidado"*.
+
+**O que o código fazia.** `compasso_ingressoPdf_` montava o PDF na hora e o
+entregava direto como anexo. O arquivo nunca tocava o Drive — o comentário do
+próprio arquivo dizia, sem perceber o problema: *"No ofício o PDF já existe no
+Drive e tem URL; aqui não"*.
+
+**Por que isso quebrava a sua operação.** O ingresso é emitido em setembro e
+entregue em novembro. Entre uma coisa e outra o ingresso não existia em lugar
+nenhum: não dava para conferir, imprimir em lote nem reenviar sem gerar de
+novo. E o que sairia em novembro não seria o arquivo conferido em setembro —
+seria um arquivo novo, montado de novo, dependendo de novo do quickchart.io
+responder e do conversor de PDF do Google se comportar igual, dois meses
+depois, 2.000 vezes.
+
+**O nome do arquivo**, que é a interface do acervo — não há tela, você vai
+abrir a pasta e procurar:
+
+```
+FCV-2026-000341 - MARIA DA SILVA SANTOS - ASSOCIADO - 09-09-2026.pdf
+└─ número ─────┘   └─ nominal ────────┘   └ categoria ┘  └─ data ─┘
+```
+
+Pasta única, não subpasta por categoria: a categoria já está no nome, e
+dividir em três obrigaria a saber a categoria **antes** de procurar a pessoa —
+o contrário de como a secretaria trabalha.
+
+**As pastas** (IDs que você mandou), em `RECURSOS_AMBIENTE.INGRESSOS_FESTA`:
+
+| Ambiente | ID |
+|---|---|
+| produção | `1bNDz0F3VoKbYmU8YyfzEvbXgStWCHdOs` |
+| homologação | `1fK5Kdi8-Fk339iQSv2YUWbdXjm8f2UMa` |
+
+**O que roda sozinho a partir de agora:** a emissão grava o arquivo; baixar,
+imprimir e anexar no e-mail passam a puxar **do acervo**, não a gerar de novo;
+arquivar duas vezes não cria duas cópias; e falhar no Drive **não desfaz a
+emissão** — o ingresso continua válido e a primeira entrega grava o que faltou.
+
+**Testado no emulador** (`t152`, 43 asserções): pasta certa por ambiente, nome
+com as três informações, data da emissão e não a de hoje, idempotência,
+cancelado fora do acervo, porta na varredura, e a gravação acontecendo **fora
+do lock** da emissão.
+
+**🔴 O QUE FALTA VOCÊ FAZER — nesta ordem:**
+
+1. **Publicar.** O commit `eb9cfa4` (comprovante/ingresso) e este ainda não
+   estão em nenhum dos dois ambientes.
+2. **Rodar `compassoDiagnostico()`** na homologação. Ele ganhou a linha
+   **"Pasta dos ingressos"** — é ela que responde se o Drive aceita a pasta.
+   Se vier ❌, o ingresso continua sendo emitido, mas **não fica gravado**.
+3. **Emitir um ingresso de teste** e conferir o arquivo na pasta
+   `INGRESSOS_FESTA_HOMOLOGACAO`: nome, e o PDF abrindo.
+4. **Ler o QR desse PDF com a câmera do celular.** Continua sendo o item que
+   decide se a portaria funciona em 19/12, e nenhum código prova.
+5. **Rodar `compassoArquivarIngressosPendentes()`** se já houver ingresso
+   emitido antes de hoje — ele grava o que ficou para trás, 100 por vez.
+
+**Não testado**, pela REGRA Nº -1: se a pasta real aceita a escrita, se o PDF
+gravado abre, se o QR sai legível no papel, e se 2.000 arquivos numa pasta só
+continuam fáceis de achar. O emulador registra a chamada e devolve um arquivo
+de mentira — quem responde isso é a pasta real.
+
+---
 
 ### 74. 🔴 O DETECTOR DE BOUNCE ESTAVA DESFAZENDO O REENVIO
 

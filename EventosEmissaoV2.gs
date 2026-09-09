@@ -1,7 +1,34 @@
-/** COMPASSO 2026 — Emissão segura V2. */
+/** COMPASSO 2026 — Emissão segura V2.
+ *
+ * ══════════════════════════════════════════════════════════════════════════
+ * POR QUE O ARQUIVAMENTO ACONTECE DEPOIS DO `finally`, E NÃO DENTRO DELE
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * 09/09/2026. O ingresso passou a ser gravado em PDF na pasta do Drive, na
+ * emissão (EventosArquivoIngresso.gs). Gravar é buscar o QR por HTTP,
+ * converter para PDF e escrever no Drive: alguns segundos, com rede no meio.
+ *
+ * Dentro do lock isso custaria caro. O lock é do SCRIPT INTEIRO, não da
+ * inscrição: enquanto ele estiver preso, toda inscrição que chegar espera. Com
+ * a inscrição aberta e as pessoas entrando aos poucos, é exatamente o momento
+ * em que não se pode segurar o lock por rede.
+ *
+ * Então o bloco travado faz só o que precisa ser atômico — número, vaga,
+ * identidade, QR, Firestore — e solta. O arquivo vem depois, já sem lock.
+ *
+ * As saídas de recusa continuam com `return` DE DENTRO do try: o `finally`
+ * solta o lock e a função termina ali, sem passar pelo arquivamento. Só o
+ * caminho de sucesso chega embaixo.
+ *
+ * E o arquivamento não pode derrubar a emissão: ela já terminou, o número já
+ * foi consumido. Por isso `compasso_arquivarSeguro_`, que registra a falha e
+ * devolve — nunca estoura. Ingresso sem arquivo se conserta depois; ingresso
+ * emitido duas vezes porque a tela mostrou erro, não.
+ */
 function compasso_emitirIngressoV2(payload, tokenSessao) {
   exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — emitir ingresso V2', false);
   payload = payload || {};
+  var emitido = null;
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
@@ -73,8 +100,18 @@ function compasso_emitirIngressoV2(payload, tokenSessao) {
     }
 
     compasso_auditar_('EMISSAO_INGRESSO','ingresso',ingressoId,{numero:numero,categoria:cat,inscricaoId:inscricaoId});
-    return {ok:true,id:ingressoId,numero:numero,nome:ingresso.nome,categoria:cat,qrToken:qrToken,restantes:c.limite-(c.vagasUsadas+1)};
+    emitido = {ok:true,id:ingressoId,numero:numero,nome:ingresso.nome,categoria:cat,qrToken:qrToken,restantes:c.limite-(c.vagasUsadas+1)};
   } finally { lock.releaseLock(); }
+
+  /* ── FORA DO LOCK: o ingresso vira arquivo na pasta do Drive ────────────
+     O ingresso já está emitido neste ponto. `compasso_arquivarSeguro_` não
+     estoura: se o Drive falhar, o campo `arquivo.ok` volta false e a emissão
+     segue válida. A primeira entrega grava o que faltou.                    */
+  emitido.arquivo = compasso_arquivarSeguro_(
+    fs_get_('ingressos', emitido.id) || {ingressoId: emitido.id},
+    emitido.qrToken
+  );
+  return emitido;
 }
 
 /* ADMIN: cancelar devolve vaga ao contador e invalida o QR. É desfazer, e

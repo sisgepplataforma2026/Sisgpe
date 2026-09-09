@@ -133,6 +133,18 @@ function diagnosticoPilotoCompasso_() {
                                  : 'fechadas — ' + cfg.motivoFechada, cfg.aberta,
         'Inscrições fechadas: a tela pública vai mostrar o aviso em vez do formulário.');
 
+  /* 8. pasta do acervo — onde o ingresso emitido fica gravado (09/09/2026).
+     A trava de AmbienteRecursos.gs bloqueia gravação quando a homologação cai
+     na pasta de produção; se o bloqueio existir, é aqui que ele aparece ANTES
+     de alguém emitir 2.000 ingressos e descobrir na pasta errada. */
+  var acervo = compasso_diagnosticoAcervo_();
+  linha('Pasta dos ingressos', acervo.ok ? acervo.pasta + ' (' + acervo.pastaId + ')'
+                                         : acervo.erro, acervo.ok,
+        'A pasta do acervo não resolve neste ambiente. O ingresso continua sendo ' +
+        'emitido, mas NÃO fica gravado em arquivo — e a entrega de novembro ' +
+        'depende dele. Corrija em RECURSOS_AMBIENTE.INGRESSOS_FESTA ou na ' +
+        'Script Property SISGEP_PASTA_INGRESSOS_FESTA.');
+
   var base = '';
   try { base = getSistemaUrlBase() || ScriptApp.getService().getUrl(); }
   catch (e) { base = ScriptApp.getService().getUrl(); }

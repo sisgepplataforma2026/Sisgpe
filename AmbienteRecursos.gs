@@ -89,6 +89,20 @@ var RECURSOS_AMBIENTE = {
     rotulo:      "Documentos anexados ao voucher/bolsa",
     producao:    "1PyMA0bm0FZuyYONlY4dNNo3pgJRiI63n",
     homologacao: "1sNj2mcvuS8Cl7nojHMmdlIFyVZProPDu"
+  },
+
+  /* Acervo dos ingressos da Festa Compasso da Vida 2026 — 09/09/2026.
+     IDs informados pelo usuário: as pastas INGRESSOS_FESTA_PRODUCAO e
+     INGRESSOS_FESTA_HOMOLOGACAO que ele criou no Drive do sindicato.
+     Copiados dos links que ele mandou, não redigitados — ver a nota do
+     cabeçalho sobre `I` e `l`.
+
+     A separação aqui é o que impede o ensaio de homologação gravar ingresso
+     de teste no meio dos 2.000 de verdade. Ver EventosArquivoIngresso.gs. */
+  INGRESSOS_FESTA: {
+    rotulo:      "Ingressos emitidos — Festa Compasso da Vida 2026",
+    producao:    "1bNDz0F3VoKbYmU8YyfzEvbXgStWCHdOs",
+    homologacao: "1fK5Kdi8-Fk339iQSv2YUWbdXjm8f2UMa"
   }
 };
 

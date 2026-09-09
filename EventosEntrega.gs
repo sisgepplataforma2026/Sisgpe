@@ -316,7 +316,11 @@ function compasso_ingressoArquivo(inscricaoId, tokenSessao) {
   var ctx = compasso_contextoEntrega_(inscricaoId);
   if (!ctx.ok) return ctx;
 
-  var pdf = compasso_ingressoPdf_(ctx.ing, ctx.qrToken);
+  /* Do ACERVO (EventosArquivoIngresso.gs), não gerado na hora: o que se baixa
+     e o que se imprime tem que ser o mesmo arquivo que a portaria vai ver.
+     Se ainda não estiver gravado, grava — arquivar não é entregar, então a
+     ressalva acima sobre não registrar entrega continua valendo. */
+  var pdf = compasso_ingressoPdfDoAcervo_(ctx.ing, ctx.qrToken);
   return {
     ok: true,
     numero: String(ctx.ing.numero || ''),
@@ -616,7 +620,8 @@ function compasso_enviarIngressoEmail(inscricaoId, tokenSessao) {
   var anexos = [];
   var avisoPdf = '';
   try {
-    anexos.push(compasso_ingressoPdf_(ctx.ing, ctx.qrToken));
+    /* Do acervo — o anexo é o arquivo conferido, não uma segunda geração. */
+    anexos.push(compasso_ingressoPdfDoAcervo_(ctx.ing, ctx.qrToken));
   } catch (ePdf) {
     /* O PDF é o extra; o link é o essencial. Se a conversão falhar, o e-mail
        sai mesmo assim — mas a pessoa fica sabendo que foi sem anexo. */
