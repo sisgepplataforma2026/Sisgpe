@@ -421,6 +421,16 @@ function verificarConfirmacoesRecebimento() {
 }
 /* ── Falhas de Entrega (Bounces) ── */
 
+/* O TEXTO QUE VAI PARA A PLANILHA E PARA O AVISO — em português.
+   09/09/2026. O usuário perguntou "esse bounce é o que?" e depois: "podemos
+   ajustar esse termo em inglês". Ele tem razão — quem lê a coluna OBSERVAÇÕES
+   é a secretaria, não um programador. "Bounce" é o nome técnico do aviso que o
+   servidor devolve quando o e-mail não pôde ser entregue; na tela isso tem de
+   estar escrito em palavras que se entendem sem tradução.
+   Os NOMES DE FUNÇÃO seguem como estão: renomear função em produção é risco
+   sem retorno, e ninguém que opera o sistema lê nome de função. */
+var MON_OFICIOS_TEXTO_NAO_CHEGOU = "E-mail não chegou ao destino — devolvido pelo servidor em ";
+
 function instalarTriggerFalhasEntrega(tokenSessao) {
   exigirAdminOuSessao_(tokenSessao, "documentos", "Instalação do gatilho de falhas de entrega", true);
   ScriptApp.getProjectTriggers().forEach(function(trigger) {
@@ -428,9 +438,29 @@ function instalarTriggerFalhasEntrega(tokenSessao) {
       ScriptApp.deleteTrigger(trigger);
     }
   });
-  ScriptApp.newTrigger("verificarFalhasEntregaOficios").timeBased().everyHours(3).create();
-  Logger.log("✅ Trigger de falhas de entrega instalado — executa a cada 3 horas.");
-  return { ok: true, mensagem: "Trigger instalado com sucesso." };
+  /* UMA VEZ POR DIA, DE MADRUGADA — decisão do usuário em 09/09/2026.
+     ══════════════════════════════════════════════════════════════════════
+     Era de 3 em 3 horas: 8 rodadas por dia, TODAS em horário de expediente,
+     disputando com o envio de ofício o mesmo orçamento de operações do Gmail.
+
+     Foi o que estourou hoje. Ele reenviou o ofício 407 e nada saiu; o log
+     trazia "Service invoked too many times for one day: gmail". Em 04/09 os
+     reenvios tinham saído normalmente — o que mudou não foi o código, foi o
+     acúmulo de leituras.
+
+     Às 3h ninguém está enviando ofício, então esta varredura não tira cota de
+     ninguém. E ele chega de manhã já sabendo o que não chegou, que é o que
+     esta rotina existe para responder.
+
+     POR QUE ESTA CONTINUA AUTOMÁTICA, e a conferência de recebimento não:
+     é o único aviso que precisa chegar SEM alguém pedir. Ofício que não chegou
+     e ninguém percebeu é o pior desfecho — a escola fica sem o documento e o
+     sindicato não sabe. Conferir se a escola respondeu pode esperar um clique;
+     descobrir que o e-mail voltou, não. */
+  ScriptApp.newTrigger("verificarFalhasEntregaOficios")
+    .timeBased().everyDays(1).atHour(3).create();
+  Logger.log("✅ Gatilho de e-mails que não chegaram instalado — roda 1x por dia, às 3h.");
+  return { ok: true, mensagem: "Gatilho instalado — roda uma vez por dia, de madrugada." };
 }
 
 function removerTriggerFalhasEntrega(tokenSessao) {
@@ -591,13 +621,13 @@ function verificarFalhasEntregaOficios() {
     try {
       threads = GmailApp.search("(" + queryBounce + ") newer_than:90d", 0, 50);
     } catch (eSearch) {
-      Logger.log("⚠ Erro ao buscar bounces: " + eSearch.message);
+      Logger.log("⚠ Erro ao buscar avisos de não entrega: " + eSearch.message);
       return { ok: false, mensagem: eSearch.message };
     }
 
     if (!threads.length) {
-      Logger.log("verificarFalhasEntregaOficios: nenhum bounce encontrado.");
-      return { ok: true, falhas: 0, mensagem: "Nenhum bounce encontrado." };
+      Logger.log("verificarFalhasEntregaOficios: nenhum aviso de não entrega encontrado.");
+      return { ok: true, falhas: 0, mensagem: "Nenhum aviso de e-mail não entregue encontrado." };
     }
 
     /* ══════════════════════════════════════════════════════════════════════
@@ -651,8 +681,8 @@ function verificarFalhasEntregaOficios() {
     });
 
     if (!Object.keys(emailsComBounce).length) {
-      Logger.log("verificarFalhasEntregaOficios: nenhum e-mail de bounce extraído.");
-      return { ok: true, falhas: 0, mensagem: "Nenhum e-mail de bounce extraído." };
+      Logger.log("verificarFalhasEntregaOficios: nenhum endereço extraído dos avisos.");
+      return { ok: true, falhas: 0, mensagem: "Nenhum endereço extraído dos avisos de não entrega." };
     }
 
     var totalFalhas = 0, numerosComFalha = [];
@@ -683,24 +713,24 @@ function verificarFalhasEntregaOficios() {
       if (colObs) {
         var obsAtual = String(shRegistro.getRange(item.linhaReal, colObs).getValue() || "").trim();
         var novaObs = obsAtual
-          ? obsAtual + " | Bounce detectado automaticamente em " + agora
-          : "Bounce detectado automaticamente em " + agora;
+          ? obsAtual + " | " + MON_OFICIOS_TEXTO_NAO_CHEGOU + agora
+          : MON_OFICIOS_TEXTO_NAO_CHEGOU + agora;
         shRegistro.getRange(item.linhaReal, colObs).setValue(novaObs);
       }
 
-      MON_OFICIOS_atualizarStatusNaFila_(ss, item.numero, "FALHA_ENTREGA", "Bounce detectado automaticamente em " + agora);
+      MON_OFICIOS_atualizarStatusNaFila_(ss, item.numero, "FALHA_ENTREGA", MON_OFICIOS_TEXTO_NAO_CHEGOU + agora);
 
       registrarLogSistema_({
         usuario: "sistema",
         numero: item.numero + " (FALHA_ENTREGA)",
-        tipo: "Bounce",
+        tipo: "E-mail não chegou",
         escola: item.emails.join(", "),
         cnpj: "",
         email: item.emails.join(", "),
         codigo: ""
       });
 
-      Logger.log("❌ Bounce — Ofício " + item.numero + " · " + item.emails.join(", "));
+      Logger.log("❌ Não chegou — Ofício " + item.numero + " · " + item.emails.join(", "));
       numerosComFalha.push(item.numero);
       totalFalhas++;
     });
@@ -801,7 +831,8 @@ function notificarFalhasEntregaOficios_(numerosComFalha) {
       "<div style='background:#fef2f2;border:1px solid #fecaca;border-left:4px solid #dc2626;border-radius:10px;padding:16px 20px;margin-bottom:16px;'>" +
       "<strong style='color:#991b1b;font-size:15px;'>⚠️ Falhas de entrega detectadas</strong>" +
       "<p style='margin:8px 0 0;font-size:13px;color:#7f1d1d;'>" +
-        (novos ? novos.length + " ofício(s) NOVO(S) com bounce" : totalFalhas + " ofício(s) com bounce") +
+        (novos ? novos.length + " ofício(s) NOVO(S) que não chegaram ao destino"
+               : totalFalhas + " ofício(s) que não chegaram ao destino") +
         ". Acesse o painel SISGEP para verificar.</p>" +
       /* NOMEAR os ofícios. "9 com falha" não diz o que fazer nem permite
          perceber que é sempre a mesma lista — foi assim que o aviso virou
