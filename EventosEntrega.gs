@@ -573,9 +573,44 @@ function compasso_propLigada_(nome, padrao) {
 /** O COMPROVANTE de inscrição sai por e-mail? Padrão: SIM.
     É uma mensagem curta, ~32 por dia, e sem ela a pessoa fica sem nada na
     mão — que é o problema que o comprovante existe para resolver. */
+/**
+ * O COMPROVANTE sai por e-mail? Padrão: NÃO. Nada desta festa sai por e-mail.
+ *
+ * ══════════════════════════════════════════════════════════════════════════
+ * POR QUE ISTO MUDOU DE LIGADO PARA DESLIGADO — 09/09/2026
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Nasceu LIGADO na madrugada de hoje (commit eb9cfa4, "o comprovante sai por
+ * e-mail, o ingresso sai pelo zap"), porque o usuário tinha dito: "Comprovante
+ * de inscrição não sai - É UMA MENSAGEM E DEVE sair".
+ *
+ * Eu li "DEVE sair" como "deve sair POR E-MAIL". Não era: era "a pessoa tem de
+ * receber alguma coisa". Duas coisas provaram isso no mesmo dia —
+ *
+ *   1. o envio falhou de verdade, no ar, no primeiro teste:
+ *      "Service invoked too many times for one day: gmail". Ninguém recebeu
+ *      comprovante nenhum, e a tela ainda prometia um e-mail;
+ *
+ *   2. ele repetiu, direto: "não sairá nenhum convite por email e todos serão
+ *      pelo zap enviados" e "tira esse comprovante".
+ *
+ * O QUE SUBSTITUI O E-MAIL, e é o que torna esta mudança segura: o PROTOCOLO
+ * agora aparece na própria tela de inscrição, grande, para a pessoa fotografar
+ * (CompassoInscricaoPublica.html). Ela sai da inscrição com número na mão, na
+ * hora, sem depender de cota, de caixa de spam ou de ter e-mail. O "DEVE sair"
+ * continua cumprido — só que na tela, e não no Gmail.
+ *
+ * PADRÃO NO CÓDIGO, E NÃO SÓ PROPRIEDADE NO AMBIENTE. Uma propriedade resolve
+ * onde alguém lembrar de declará-la; produção continuaria ligada até isso
+ * acontecer. Padrão errado é o que volta sozinho.
+ *
+ * O interruptor CONTINUA existindo: declarar COMPASSO_EMAIL_COMPROVANTE = true
+ * religa, sem publicar versão. Se a conta virar Workspace, ou se aparecer um
+ * público que só tem e-mail, a decisão é de quem opera.
+ */
 function compasso_emailComprovanteLigado_() {
   return compasso_propLigada_(COMPASSO_PROP_EMAIL_COMPROVANTE,
-         compasso_propLigada_(COMPASSO_PROP_EMAIL_LIGADO, true));
+         compasso_propLigada_(COMPASSO_PROP_EMAIL_LIGADO, false));
 }
 
 /** O INGRESSO sai por e-mail? Padrão: NÃO — a entrega é pelo WhatsApp. */

@@ -60,13 +60,13 @@ function inscrever(extra) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════ */
-fluxo("FESTA · a pessoa sai da inscrição com um número na mão");
+fluxo("FESTA · a inscrição fica identificada, com ou sem e-mail");
 passo("com e-mail");
 
 const comEmail = inscrever({ cpf: "11144477735", email: "a@exemplo.com", whatsapp: "27998877665" });
 ok(comEmail.ok === true, "a inscrição é aceita", comEmail.erro || comEmail.inscricaoId);
-ok(!!comEmail.protocolo, "e devolve o protocolo para a tela: " + comEmail.protocolo,
-   "sem ele a pessoa não tem como perguntar 'e a minha?' nos meses até a festa");
+ok(!!comEmail.protocolo, "e a inscrição fica com protocolo: " + comEmail.protocolo,
+   "é como a equipe identifica a inscrição na fila do zap — a TELA não o mostra");
 
 passo("SEM e-mail — o caso que estava quebrado");
 
@@ -75,12 +75,11 @@ passo("SEM e-mail — o caso que estava quebrado");
 const semEmail = inscrever({ cpf: "52998224725", email: "", whatsapp: "27991112222" });
 ok(semEmail.ok === true, "inscrição só com WhatsApp é aceita");
 ok(!!semEmail.protocolo,
-   "e TAMBÉM devolve protocolo: " + semEmail.protocolo,
-   "é a maioria das pessoas desta festa — não pode ser o caso sem número");
+   "e TAMBÉM fica com protocolo: " + semEmail.protocolo,
+   "é a maioria das pessoas desta festa — não pode ser o caso sem identificação");
 
 igual(g.fs_get_("inscricoesEventos", semEmail.inscricaoId).protocolo, semEmail.protocolo,
-      "e o protocolo gravado é o mesmo que a tela mostrou",
-      "divergir aqui faria a secretaria procurar por um número que a pessoa não tem");
+      "e o gravado é o mesmo que a função devolveu");
 
 passo("o protocolo é estável — não muda se alguém reprocessar");
 
@@ -101,11 +100,34 @@ ok(/não é preciso fazer nada|conferir/i.test(msg),
    "e diz que a pessoa não precisa fazer mais nada agora",
    "sem isso ela fica esperando um passo que não existe");
 
+passo("é uma mensagem simples, não um número para decorar");
+
+/* O usuário cortou a caixa de protocolo que eu tinha posto na tela: "não é
+   protocolo e sim uma mensagem simples de inscrição realizada". Esta tela
+   existe para quem tem pouca prática com computador — um código destacado faz
+   a pessoa achar que precisa fazer alguma coisa com ele. */
+ok(!/protocolo/i.test(msg),
+   "a mensagem NÃO joga um número de protocolo na cara da pessoa");
+const telaHtml = ler("CompassoInscricaoPublica.html");
+ok(!/fimProtocolo/.test(telaHtml),
+   "e a tela não tem mais a caixa de protocolo",
+   "o protocolo continua gravado para a equipe; só não é mais assunto do associado");
+
+passo("o texto é ajustável sem publicar versão");
+
+/* "podemos até ajustar esse texto" — e ajustar texto não pode custar deploy.
+   Mesma regra que já vale para o convite e para o termo. */
+props.setProperty("COMPASSO_MSG_CONCLUSAO", "Deu tudo certo, viu!");
+const custom = inscrever({ cpf: "98765432100", email: "", whatsapp: "27995556666" });
+igual(custom.mensagem, "Deu tudo certo, viu!",
+      "a propriedade COMPASSO_MSG_CONCLUSAO troca o texto na hora");
+props.setProperty("COMPASSO_MSG_CONCLUSAO", "");
+
 passo("quem não deixou WhatsApp é avisado do que fazer");
 
 const semNada = inscrever({ cpf: "39053344705", email: "c@exemplo.com", whatsapp: "" });
-ok(/protocolo|secretaria/i.test(String(semNada.mensagem || "")),
-   "sem WhatsApp, a mensagem manda guardar o protocolo e procurar a secretaria",
+ok(/secretaria/i.test(String(semNada.mensagem || "")),
+   "sem WhatsApp, a mensagem manda procurar a secretaria",
    "é a única pessoa que o zap não alcança — precisa de outro caminho");
 
 /* ══════════════════════════════════════════════════════════════════════════ */
@@ -137,6 +159,11 @@ passo("falha de verdade continua sendo erro");
 
 /* Foi o que aconteceu no ar em 09/09: o Gmail recusou por cota. Isso É para
    alguém olhar — e tem de se distinguir de quem simplesmente não tem e-mail. */
+/* Liga o comprovante de propósito: o padrão é DESLIGADO (t151), e desligado
+   nunca chega no envio. O que se mede aqui é o que acontece quando o envio é
+   TENTADO e falha — que é o caso real de hoje, e tem de continuar sendo erro
+   para quem religar o e-mail um dia. */
+props.setProperty(g.COMPASSO_PROP_EMAIL_COMPROVANTE, "true");
 const envioOriginal = g.enviarEmailSISGEP_;
 g.enviarEmailSISGEP_ = () => ({ ok: false, mensagem: "Service invoked too many times for one day: gmail." });
 const falhou = inscrever({ cpf: "12345678909", email: "e@exemplo.com", whatsapp: "27994445555" });
@@ -149,6 +176,7 @@ ok(!!falhou.protocolo,
    "  mas o protocolo sai assim mesmo: " + falhou.protocolo,
    "foi o defeito central: sem isso a inscrição de hoje teria ficado sem identificação");
 g.enviarEmailSISGEP_ = envioOriginal;
+props.setProperty(g.COMPASSO_PROP_EMAIL_COMPROVANTE, "");
 
 /* ══════════════════════════════════════════════════════════════════════════ */
 fluxo("FESTA · a portaria tem endereço");

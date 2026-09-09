@@ -40,41 +40,50 @@ function limparProps() {
 fluxo("FESTA · duas decisões, dois interruptores");
 passo("os padrões seguem a operação");
 
-/* O usuário descreveu a operação e ela separa as duas coisas: comprovante sai
-   na hora para todo mundo (~32/dia, cabe nos 100); ingresso só depois da
-   validação, guardado, e enviado a partir de novembro PELO ZAP. Um interruptor
-   só forçaria as duas a andarem juntas. */
+/* CORRIGIDO EM 09/09/2026, DEPOIS DE RODAR NO AR.
+   Este teste nasceu de manhã afirmando que o comprovante nascia LIGADO, porque
+   eu tinha lido o "É UMA MENSAGEM E DEVE sair" do usuário como "deve sair por
+   e-mail". Duas coisas derrubaram isso no mesmo dia: o envio falhou de verdade
+   na homologação ("Service invoked too many times for one day: gmail"), e ele
+   foi direto — "tira esse comprovante, todos os ingressos são solicitados pelo
+   zap e enviados".
+
+   O "DEVE sair" continua cumprido, e melhor: o PROTOCOLO aparece na tela de
+   inscrição, na hora, sem depender de cota nem de a pessoa ter e-mail (t153).
+
+   Os dois interruptores continuam separados — é o que permite religar só um. */
 limparProps();
-igual(g.compasso_emailComprovanteLigado_(), true,
-      "o COMPROVANTE nasce LIGADO",
-      "sem ele a pessoa fica sem nada na mão — é o problema que ele resolve");
+igual(g.compasso_emailComprovanteLigado_(), false,
+      "o COMPROVANTE nasce DESLIGADO",
+      "nada desta festa sai por e-mail; a pessoa leva o protocolo da tela");
 igual(g.compasso_emailIngressoLigado_(), false,
       "o INGRESSO nasce DESLIGADO",
       "a entrega da festa é pelo WhatsApp, aos poucos, a partir de novembro");
 
 passo("cada um obedece só ao seu");
 
-props.setProperty(PROP_COMP, "false");
-igual(g.compasso_emailComprovanteLigado_(), false, "desligar o comprovante funciona");
+props.setProperty(PROP_COMP, "true");
+igual(g.compasso_emailComprovanteLigado_(), true, "religar o comprovante funciona");
 igual(g.compasso_emailIngressoLigado_(), false, "e não liga o ingresso por tabela");
 
 limparProps();
 props.setProperty(PROP, "true");
 igual(g.compasso_emailIngressoLigado_(), true, "ligar o ingresso funciona");
-igual(g.compasso_emailComprovanteLigado_(), true, "e o comprovante segue ligado");
+igual(g.compasso_emailComprovanteLigado_(), false, "e o comprovante segue desligado");
 
 passo("a chave única antiga ainda vale, para os dois");
 
 /* Ela existiu por algumas horas hoje. Se alguém a declarou no ambiente, tem
    de continuar valendo — senão o comportamento muda sem ninguém mexer. */
 limparProps();
-props.setProperty(PROP_ANTIGA, "false");
-igual(g.compasso_emailComprovanteLigado_(), false, "a chave antiga desliga o comprovante");
-igual(g.compasso_emailIngressoLigado_(), false, "e o ingresso");
+props.setProperty(PROP_ANTIGA, "true");
+igual(g.compasso_emailComprovanteLigado_(), true, "a chave antiga liga o comprovante");
+igual(g.compasso_emailIngressoLigado_(), true, "e o ingresso");
 
 limparProps();
-props.setProperty(PROP_ANTIGA, "true");
-igual(g.compasso_emailIngressoLigado_(), true, "e liga os dois quando true");
+props.setProperty(PROP_ANTIGA, "false");
+igual(g.compasso_emailIngressoLigado_(), false, "e desliga os dois quando false");
+igual(g.compasso_emailComprovanteLigado_(), false, "  os dois mesmo");
 
 passo("valor estranho cai no padrão de cada um");
 
@@ -83,7 +92,7 @@ limparProps();
   props.setProperty(PROP, v);
   props.setProperty(PROP_COMP, v);
   igual(g.compasso_emailIngressoLigado_(), false, 'ingresso: "' + v + '" → desligado');
-  igual(g.compasso_emailComprovanteLigado_(), true, 'comprovante: "' + v + '" → ligado');
+  igual(g.compasso_emailComprovanteLigado_(), false, 'comprovante: "' + v + '" → desligado');
 });
 limparProps();
 

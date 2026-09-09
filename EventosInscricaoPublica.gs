@@ -368,13 +368,55 @@ function compasso_inscrever(dados) {
   return {
     ok: true,
     inscricaoId: r.inscricaoId,
-    protocolo: protocolo,
-    mensagem: 'A equipe do sindicato vai conferir seus dados. O seu ingresso ' +
-              'será enviado pelo WhatsApp mais perto da festa — não é preciso ' +
-              'fazer nada até lá.' +
-              (whats ? '' : ' Como você não informou WhatsApp, guarde o número ' +
-                            'de protocolo abaixo e procure a secretaria.')
+    protocolo: protocolo,          /* gravado e devolvido para a equipe; a tela
+                                      pública não mostra — ver a mensagem */
+    mensagem: compasso_mensagemConclusao_(whats)
   };
+}
+
+/**
+ * A mensagem que a pessoa lê ao terminar a inscrição.
+ *
+ * ══════════════════════════════════════════════════════════════════════════
+ * É A ÚNICA COISA QUE ELA RECEBE — 09/09/2026
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Palavras do usuário, fechando a decisão: "nada por email, ele só recebe uma
+ * mensagem quando finaliza a inscrição pelo link". Então esta mensagem não é
+ * um detalhe da tela: é o comprovante inteiro.
+ *
+ * O QUE ELA NÃO FAZ MAIS. A versão anterior dizia "o ingresso será enviado
+ * para o seu e-mail e WhatsApp". Prometia um e-mail que está desligado por
+ * decisão dele e que, no teste de hoje, nem teria saído — o Gmail recusou por
+ * cota. Promessa que o sistema não cumpre vira ligação para a secretaria,
+ * multiplicada por 2.000.
+ *
+ * POR QUE EM PROPRIEDADE, E NÃO CRAVADA AQUI. Ele disse "podemos até ajustar
+ * esse texto". Texto que a diretoria quer mudar não pode custar uma publicação
+ * de versão — é a mesma regra que já vale para o convite e para o termo, no
+ * topo deste arquivo. Declare COMPASSO_MSG_CONCLUSAO e ela passa a valer na
+ * hora, sem deploy.
+ *
+ * @param {string} whats  WhatsApp informado. Sem ele, o zap não alcança a
+ *                        pessoa e a mensagem precisa dizer o que fazer.
+ */
+function compasso_mensagemConclusao_(whats) {
+  var props = PropertiesService.getScriptProperties();
+  var texto = String(props.getProperty('COMPASSO_MSG_CONCLUSAO') || '').trim();
+
+  if (!texto) {
+    texto = 'Recebemos a sua inscrição. A equipe do sindicato vai conferir ' +
+            'os seus dados e o seu ingresso será enviado pelo WhatsApp mais ' +
+            'perto da festa. Não é preciso fazer mais nada agora.';
+  }
+
+  /* Quem não deixou WhatsApp é a única pessoa que a entrega não alcança.
+     Dizer isso aqui é mais barato que descobrir na véspera do evento. */
+  if (!whats) {
+    texto += ' Como você não informou um WhatsApp, procure a secretaria do ' +
+             'sindicato para combinar a entrega do seu ingresso.';
+  }
+  return texto;
 }
 
 /**

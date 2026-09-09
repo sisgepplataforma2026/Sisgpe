@@ -39,12 +39,21 @@ const { g, amb } = b.subir({});
 b.seedUsuarios(g);
 
 /* O E-MAIL DO INGRESSO NASCE DESLIGADO DESDE 09/09/2026 — a entrega da festa
-   é pelo WhatsApp, aos poucos, a partir de novembro. O COMPROVANTE continua
-   ligado por padrão e não precisa de nada aqui. Este teste mede o MECANISMO do
-   e-mail do ingresso, que segue inteiro para quem não tem WhatsApp — por isso
-   liga o interruptor explicitamente. A política já é medida no t151. */
+   é pelo WhatsApp, aos poucos, a partir de novembro.
+
+   ATUALIZADO EM 09/09/2026: o COMPROVANTE também passou a nascer DESLIGADO.
+   O usuário, depois de ver o envio falhar no ar por cota: "tira esse
+   comprovante, todos os ingressos são solicitados pelo zap e enviados" e
+   "nada por email, ele só recebe uma mensagem quando finaliza a inscrição
+   pelo link" — essa mensagem é o protocolo na tela (ver t153).
+
+   Este teste mede o MECANISMO dos dois e-mails, que continua inteiro para
+   quem precisar religá-los. Por isso liga os dois interruptores aqui. A
+   POLÍTICA — o que vem ligado de fábrica — é medida no t151. */
 g.PropertiesService.getScriptProperties()
   .setProperty(g.COMPASSO_PROP_EMAIL_INGRESSO, "true");
+g.PropertiesService.getScriptProperties()
+  .setProperty(g.COMPASSO_PROP_EMAIL_COMPROVANTE, "true");
 
 /* ─── Firestore em memória (mesmo desvio do t91, mesma honestidade) ─── */
 const BANCO = new Map();
