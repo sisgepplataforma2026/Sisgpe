@@ -3742,6 +3742,71 @@ window.mostrarAbaOficio = function(aba) {
       var res=document.getElementById("histLoteResumo");
       if(res && sel) res.textContent=Historico._loteFalhas+" com falha \u00b7 "+sel+" selecionado(s) na tabela";
       else if(res) res.textContent=Historico._loteFalhas+" ofício(s) com falha de entrega";
+      Historico._confRotular();
+    },
+
+    /* A BARRA DE CONFERENCIA SO EXISTE COM SELECAO — 09/09/2026.
+       Sem seleção não há o que conferir, e uma barra vazia na tela é convite
+       para alguém clicar e varrer tudo, que é exatamente o gasto que desligar
+       o gatilho evitou. */
+    _confRotular: function() {
+      var barra=document.getElementById("histConfBarra");
+      var btn=document.getElementById("btnHistConf");
+      var res=document.getElementById("histConfResumo");
+      var sel=(Historico.selecionados||[]).length;
+      if(!barra) return;
+      barra.style.display = sel ? "flex" : "none";
+      if(btn){ btn.disabled=!sel; btn.innerHTML="\u2705 Conferir recebimento ("+sel+")"; }
+      if(res) res.textContent = sel+" of\u00edcio(s) selecionado(s) \u00b7 custo: "+sel+" consulta(s) ao Gmail";
+    },
+
+    /* CONFERIR SO O QUE ESTA MARCADO.
+       O botão diz o custo ANTES do clique e o resultado repete DEPOIS. Sem
+       isso, um botão de conferência é um relógio disfarçado: a pessoa clica em
+       300 sem perceber que gastou o mesmo que o gatilho que ela desligou. */
+    conferirRecebimento: function() {
+      var numeros=(Historico.selecionados||[]).slice();
+      if(!numeros.length){ toast("Marque ao menos um ofício na tabela.","err"); return; }
+
+      var btn=document.getElementById("btnHistConf");
+      if(btn){ btn.disabled=true; btn.textContent="Conferindo\u2026"; }
+      var cx=document.getElementById("histConfResultado");
+      if(cx){
+        cx.style.display="block";
+        cx.style.background="#f8fafc"; cx.style.border="1.5px solid #e2e8f0"; cx.style.color="#334155";
+        cx.textContent="Procurando no Gmail a resposta de "+numeros.length+" of\u00edcio(s)\u2026 "
+          +"cada um \u00e9 uma consulta, ent\u00e3o pode levar alguns segundos.";
+      }
+
+      google.script.run
+        .withSuccessHandler(function(r){
+          Historico._confRotular();
+          if(!r || r.ok===false){
+            if(cx){
+              cx.style.background="#fef2f2"; cx.style.border="1.5px solid #fca5a5"; cx.style.color="#991b1b";
+              cx.textContent=(r && r.mensagem) || "N\u00e3o foi poss\u00edvel conferir.";
+            }
+            return;
+          }
+          var houve=Number(r.confirmados||0)>0;
+          if(cx){
+            cx.style.background = houve ? "#ecfdf5" : "#f8fafc";
+            cx.style.border = "1.5px solid " + (houve ? "#a7f3d0" : "#e2e8f0");
+            cx.style.color = houve ? "#065f46" : "#334155";
+            cx.textContent=(houve?"\u2705 ":"")+r.mensagem;
+          }
+          toast(r.mensagem, houve?"ok":"info", 6000);
+          /* Recarrega para os status novos aparecerem na tabela. */
+          if(typeof Historico.carregar==="function") Historico.carregar();
+        })
+        .withFailureHandler(function(e){
+          Historico._confRotular();
+          if(cx){
+            cx.style.background="#fef2f2"; cx.style.border="1.5px solid #fca5a5"; cx.style.color="#991b1b";
+            cx.textContent=(e && e.message) || "Falha ao conferir.";
+          }
+        })
+        .conferirRecebimentoOficios(numeros, SISGEP_TOKEN_SESSAO);
     },
 
     lotePreparar: function() {

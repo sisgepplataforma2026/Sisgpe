@@ -218,7 +218,91 @@ function removerTriggerConfirmacoes(tokenSessao) {
    e o registro de uma decisao que se reabre se aparecer um jeito de
    identificar o contexto de gatilho com seguranca.
    ══════════════════════════════════════════════════════════════════════════ */
+/**
+ * HANDLER DO GATILHO. Fica pública e sem porta de propósito — o Apps Script
+ * chama pelo NOME, e `exigirAdminOuSessao_` recusaria num gatilho por tempo,
+ * onde Session.getActiveUser() pode voltar vazio. Ver a decisão registrada em
+ * tests/e2e/exposicao-teto.json.
+ *
+ * SEM ARGUMENTO ela varre a fila inteira, como sempre fez.
+ */
 function verificarConfirmacoesRecebimento() {
+  return MON_OFICIOS_verificarConfirmacoes_(null);
+}
+
+/**
+ * CONFERIR SÓ O QUE VOCÊ ESCOLHEU — 09/09/2026.
+ *
+ * ══════════════════════════════════════════════════════════════════════════
+ * POR QUE ESTE BOTÃO EXISTE
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * A varredura automática rodava a cada 2 horas — 12x por dia — e faz UMA
+ * busca no Gmail POR OFÍCIO PENDENTE, sem teto. Ler e enviar saem do mesmo
+ * orçamento de operações do Gmail, então ela comia a cota do envio. Foi o que
+ * derrubou o reenvio do ofício 407 em 09/09.
+ *
+ * Palavras do usuário: "se ficar puxando automático toda vez ele vai bater na
+ * cota de e-mails" e "quem envia é você, quem confere é você".
+ *
+ * E há um segundo motivo, independente da cota: a varredura automática é
+ * justamente a que confirmava ofício errado. A busca é larga — casa pelo
+ * número OU pelo nome da escola — e foi ela que deixou uma resposta automática
+ * de Outlook confirmar um ofício que tinha quicado (item 49). Conferir só o
+ * que alguém escolheu não conserta a largura da busca, mas reduz a quantas
+ * pessoas ela é aplicada, e põe um humano olhando o resultado.
+ *
+ * O CUSTO VAI NO RETORNO. `consultas` diz quantas idas ao Gmail aquele clique
+ * gastou. Sem isso o botão seria um relógio disfarçado de botão: a pessoa
+ * clicaria em 300 sem perceber que é o mesmo gasto que ela acabou de desligar.
+ *
+ * @param {Array<string>} numeros  Números dos ofícios a conferir.
+ * @param {string} tokenSessao
+ */
+function conferirRecebimentoOficios(numeros, tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
+
+  var lista = (numeros || []).map(function (n) {
+    return String(n || "").trim();
+  }).filter(function (n) { return !!n; });
+
+  if (!lista.length) {
+    return { ok: false, mensagem: "Selecione ao menos um ofício para conferir." };
+  }
+
+  /* TETO POR CLIQUE. Cada ofício é uma consulta ao Gmail; um clique em 500
+     recriaria, de uma vez, o gasto que desligar o gatilho evitou. */
+  if (lista.length > MON_OFICIOS_MAX_CONFERENCIA) {
+    return {
+      ok: false,
+      mensagem: "Selecione no máximo " + MON_OFICIOS_MAX_CONFERENCIA +
+                " ofícios por vez — cada um é uma consulta ao Gmail. " +
+                "Você marcou " + lista.length + "."
+    };
+  }
+
+  return MON_OFICIOS_verificarConfirmacoes_(lista);
+}
+
+/** Teto de ofícios por clique. Ver o cabeçalho de conferirRecebimentoOficios. */
+var MON_OFICIOS_MAX_CONFERENCIA = 60;
+
+/**
+ * O NÚCLEO, usado pelo gatilho E pelo botão.
+ *
+ * Uma regra só. Se o botão tivesse cópia própria da lógica de confirmação, as
+ * duas divergiriam — e o sistema passaria a ter duas respostas diferentes para
+ * "esse ofício foi confirmado?", dependendo de quem perguntou.
+ *
+ * @param {Array<string>=} filtroNumeros  null = fila inteira (gatilho).
+ */
+function MON_OFICIOS_verificarConfirmacoes_(filtroNumeros) {
+  var somenteEstes = null;
+  if (filtroNumeros && filtroNumeros.length) {
+    somenteEstes = {};
+    filtroNumeros.forEach(function (n) { somenteEstes[String(n).trim()] = true; });
+  }
+
   var ss = SpreadsheetApp.openById(PLANILHA_ID);
   var sh = obterOuCriarAbaFilaOficios_();
 
@@ -311,6 +395,10 @@ function verificarConfirmacoesRecebimento() {
     var dataEnvio = linha[colDataEnvio - 1];
 
     if (!numero) return;
+    /* O FILTRO VEM ANTES DE TUDO: é o que faz o clique gastar só o que foi
+       escolhido. Depois desta linha já há leitura de planilha e busca no
+       Gmail. */
+    if (somenteEstes && !somenteEstes[numero]) return;
     if (status !== "ENVIADO") return;
     if (statusReceb === "CONFIRMADO") return;
 
@@ -408,17 +496,158 @@ function verificarConfirmacoesRecebimento() {
 
   SpreadsheetApp.flush();
 
+  /* `verificados` é exatamente o número de buscas no Gmail: uma por ofício que
+     passou pelos filtros. Dizer isso na tela é o que impede o botão de virar
+     um relógio disfarçado. */
+  var pendentes = verificados - confirmados + sincronizadosControle;
   var retorno = {
     ok: true,
-    mensagem: "Verificação concluída.",
+    mensagem: verificados === 0
+      ? "Nenhum ofício elegível para conferência entre os escolhidos."
+      : (confirmados + " confirmado(s) de " + verificados + " conferido(s)" +
+         (pendentes > 0 ? "; " + Math.max(0, verificados - confirmados) +
+                          " continua(m) aguardando resposta" : "") +
+         ". Custo: " + verificados + " consulta(s) ao Gmail."),
     verificados: verificados,
     confirmados: confirmados,
+    consultas: verificados,
     sincronizadosControle: sincronizadosControle
   };
 
   Logger.log(JSON.stringify(retorno, null, 2));
   return retorno;
 }
+/* ══════════════════════════════════════════════════════════════════════════
+   "TODOS OS E-MAILS ENVIADOS ESTÃO NA CAIXA DE ENVIADOS?" — 09/09/2026
+   ══════════════════════════════════════════════════════════════════════════
+
+   Pergunta do usuário, depois de reenviar o ofício 407 e não achar o e-mail.
+
+   A RESPOSTA CUSTA ZERO CONSULTA AO GMAIL, e é por um detalhe do caminho de
+   envio: `enviarEmailOficio_` usa `createDraft(...).send()`, e o `send()` só
+   DEVOLVE um GmailMessage quando o envio deu certo. Se falhar, a exceção sobe
+   e nada é gravado.
+
+   Ou seja: MENSAGEM_ID preenchido É a prova de que a mensagem existe na caixa
+   de Enviados. Não é preciso perguntar ao Gmail — bastaria perguntar duas
+   vezes a mesma coisa, gastando a cota que este projeto passou o dia inteiro
+   tentando economizar.
+
+   O QUE ESTA FUNÇÃO PROCURA, ENTÃO, é o contrário: ofício marcado ENVIADO e
+   SEM id. Esses são os que merecem olhar, e há dois motivos possíveis:
+
+     1. foi enviado ANTES de 02/09/2026, quando o caminho ainda era
+        `GmailApp.sendEmail`, que não devolve nada. O id nunca existiu, e a
+        ausência dele não diz nada sobre a entrega;
+     2. foi enviado depois, e aí é achado de verdade.
+
+   A data de envio separa os dois, e é por isso que ela vai no relatório.
+
+   A CONFERÊNCIA NO GMAIL É OPCIONAL E TEM TETO. Ela existe para o caso de
+   alguém desconfiar do próprio id — e aí sim custa uma consulta por ofício.
+   Fora disso, não se usa.
+
+   Pública com porta: ela lista número de ofício e escola de toda a fila. */
+function conferirOficiosNaCaixaDeEnviados(conferirNoGmail, tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
+
+  var sh = obterOuCriarAbaFilaOficios_();
+  if (!sh || sh.getLastRow() < 2) {
+    return { ok: true, total: 0, mensagem: "A fila de ofícios está vazia." };
+  }
+
+  var hm    = getHeaderMap_(sh);
+  var cNum  = hm["NUMERO_OFICIO"];
+  var cEsc  = hm["ESCOLA"];
+  var cSt   = hm["STATUS"];
+  var cData = hm["DATA_ENVIO"];
+  var cMsg  = hm["MENSAGEM_ID"];
+
+  if (!cNum || !cSt || !cMsg) {
+    return { ok: false, mensagem: "A fila não tem as colunas NUMERO_OFICIO, STATUS e MENSAGEM_ID." };
+  }
+
+  /* A data em que o caminho passou a devolver id. Antes dela, ausência de id
+     é o comportamento esperado — não achado. */
+  var VIRADA = new Date(2026, 8, 2);   /* 02/09/2026 */
+
+  var linhas = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+  var comProva = 0, semProvaAntigos = [], semProvaRecentes = [], naoEnviados = 0;
+
+  linhas.forEach(function (l) {
+    var numero = String(l[cNum - 1] || "").trim();
+    if (!numero) return;
+
+    var status = String(l[cSt - 1] || "").trim().toUpperCase();
+    if (status !== "ENVIADO" && status !== "CONFIRMADO") { naoEnviados++; return; }
+
+    var id = String(l[cMsg - 1] || "").trim();
+    if (id && id !== "GMAILAPP_SEM_ID") { comProva++; return; }
+
+    var quando = l[cData - 1];
+    var item = {
+      numero: numero,
+      escola: String(l[cEsc - 1] || "").trim(),
+      enviadoEm: (quando instanceof Date && !isNaN(quando.getTime()))
+        ? Utilities.formatDate(quando, Session.getScriptTimeZone(), "dd/MM/yyyy")
+        : "(sem data)"
+    };
+
+    if (quando instanceof Date && !isNaN(quando.getTime()) && quando < VIRADA) {
+      semProvaAntigos.push(item);
+    } else {
+      semProvaRecentes.push(item);
+    }
+  });
+
+  var r = {
+    ok: true,
+    comProva: comProva,
+    semProvaAntigos: semProvaAntigos.length,
+    semProvaRecentes: semProvaRecentes,
+    naoEnviados: naoEnviados,
+    consultasAoGmail: 0
+  };
+
+  /* A conferência opcional, com teto. Só para quem desconfiar do próprio id. */
+  if (conferirNoGmail === true) {
+    var amostra = Math.min(comProva, 20);
+    var checados = 0, sumidos = [];
+    for (var i = 0; i < linhas.length && checados < amostra; i++) {
+      var idc = String(linhas[i][cMsg - 1] || "").trim();
+      if (!idc || idc === "GMAILAPP_SEM_ID") continue;
+      checados++;
+      try {
+        var m = GmailApp.getMessageById(idc);
+        if (!m) sumidos.push(String(linhas[i][cNum - 1] || "").trim());
+      } catch (e) {
+        sumidos.push(String(linhas[i][cNum - 1] || "").trim());
+      }
+    }
+    r.consultasAoGmail = checados;
+    r.amostraChecada = checados;
+    r.naoEncontradosNoGmail = sumidos;
+  }
+
+  r.mensagem =
+    comProva + " ofício(s) com comprovação de envio (o ID da mensagem está gravado — " +
+    "ele só é devolvido quando o envio dá certo, então a mensagem ESTÁ em Enviados). " +
+    (semProvaRecentes.length
+      ? "⚠️ " + semProvaRecentes.length + " enviado(s) depois de 02/09 SEM id — " +
+        "esses merecem olhar: " +
+        semProvaRecentes.slice(0, 10).map(function (x) { return x.numero; }).join(", ") +
+        (semProvaRecentes.length > 10 ? "…" : "") + ". "
+      : "Nenhum ofício recente ficou sem comprovação. ") +
+    (semProvaAntigos.length
+      ? semProvaAntigos.length + " são anteriores a 02/09, quando o envio ainda não " +
+        "devolvia id — a ausência ali é esperada e não diz nada sobre a entrega. "
+      : "") +
+    "Custo desta conferência: " + r.consultasAoGmail + " consulta(s) ao Gmail.";
+
+  Logger.log(r.mensagem);
+  return r;
+}
+
 /* ── Falhas de Entrega (Bounces) ── */
 
 /* O TEXTO QUE VAI PARA A PLANILHA E PARA O AVISO — em português.

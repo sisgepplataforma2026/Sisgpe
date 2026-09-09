@@ -662,6 +662,26 @@
           <button type="button" class="btn btn-navy btn-sm" id="btnHistLote" onclick="Historico.lotePreparar()">&#8635; Preparar reenvio</button>
         </div>
 
+        <!-- CONFERIR RECEBIMENTO, SOB DEMANDA — 09/09/2026.
+             Antes isto rodava sozinho de 2 em 2 horas, e cada rodada faz UMA
+             busca no Gmail POR OFICIO PENDENTE. Ler e enviar saem do mesmo
+             orcamento, entao a conferencia comia a cota do envio de oficio —
+             foi o que derrubou o reenvio do 407.
+             Decisao do usuario: "quem envia e voce, quem confere e voce".
+             Barra propria, e nao junto da de reenvio: aquela so aparece quando
+             ha FALHA, e conferir recebimento e o contrario disso — sao oficios
+             que sairam e estao esperando resposta. -->
+        <div id="histConfBarra" style="display:none;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 14px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:var(--rad);margin-bottom:12px;">
+          <span style="font-size:20px;line-height:1;">&#9989;</span>
+          <div style="flex:1;min-width:220px;">
+            <div id="histConfResumo" style="font-size:13px;font-weight:800;color:#1e40af;">&mdash;</div>
+            <div style="font-size:11.5px;color:#1e3a8a;margin-top:2px;">Procura no Gmail a resposta de cada escola. Cada of&iacute;cio marcado &eacute; uma consulta &mdash; por isso confere s&oacute; o que voc&ecirc; escolher.</div>
+          </div>
+          <button type="button" class="btn btn-outline btn-sm" id="btnHistConf" onclick="Historico.conferirRecebimento()">&#9989; Conferir recebimento</button>
+        </div>
+
+        <div id="histConfResultado" style="display:none;margin-bottom:12px;padding:12px 14px;border-radius:var(--rad);font-size:13px;"></div>
+
         <!-- RESULTADO DO LOTE — 04/09/2026. "Quando reenviar tem que fechar":
              o modal fecha ao terminar, e o resultado item a item fica AQUI, na
              pagina. Um toast de "4 reenviados" some em segundos e leva junto a
