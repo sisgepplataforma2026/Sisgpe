@@ -230,6 +230,72 @@ ok(/OFICIO_PROP_COMPROV_CURSOR/.test(trechoConf),
 ok(/OFICIO_COMPROVACAO_BLOCO/.test(trechoConf),
    "  e processa por blocos, para não estourar cota nem os 6 minutos");
 
+/* ══════════════════════════════════════════════════════════════════════════
+   COTA ESTOURADA NÃO PODE VIRAR VEREDITO — 09/09/2026
+   ══════════════════════════════════════════════════════════════════════════
+
+   O modo completo custa uma busca POR OFÍCIO: 359 na fila real. E a cota de
+   operações do Gmail desta conta acabou HOJE às 11:56 (item 77). É o uso mais
+   provável de bater no teto que existe no sistema — então o que acontece ao
+   bater precisa ser testado, não suposto.
+
+   Sem a trava, cada exceção era tratada como notícia sobre AQUELE ofício:
+   "NAO ENCONTRADO" no caminho do id — a pergunta dele respondida ao contrário
+   — e 150 "busca falhou" seguidos no caminho do número, com o cursor
+   avançando. Em três rodadas a fila inteira ficaria carimbada por um apagão
+   de cota, com a data de hoje ao lado, parecendo veredito. */
+passo("o limite do Gmail para a rodada, e não condena o ofício");
+
+const buscaBoa = g.GmailApp.search;
+const idBom    = g.GmailApp.getMessageById;
+const ERRO_COTA = () => {
+  throw new Error("Service invoked too many times for one day: gmail");
+};
+
+g.GmailApp.search = ERRO_COTA;
+const rq = g.conferirOficiosNaCaixaDeEnviados(true, true, TOKEN);
+
+igual(rq.cotaAcabou, true, "a rodada reconhece que foi a cota, não o ofício");
+igual(rq.parou, true, "  e para — não varre o resto gastando o que não tem");
+/* O 503 continua em NÃO ENCONTRADO, e é o resultado certo: ele tem id, e a
+   consulta POR ID respondeu normalmente antes de a busca por número bater no
+   teto. O que não pode aparecer é ofício condenado PELA COTA. */
+ok(rq.naoEncontrados.every(x => x.numero === "503/2026"),
+   "o único 'não encontrado' é o que uma consulta bem-sucedida respondeu",
+   "não dá para dizer que a mensagem sumiu quando não deu nem para perguntar");
+igual(rq.semIdVerificar.length, 0,
+      "nenhum ofício vira 'busca falhou' por causa do apagão de cota");
+igual(rq.conferidos, 3,
+      "e a rodada para na 1ª linha sem id — 3 conferidas, o resto intocado",
+      "sem a trava seriam 150 carimbos seguidos, e o cursor passando por cima");
+ok(/limite diário do Gmail/i.test(rq.relatorio),
+   "o relatório diz que foi o limite do Gmail",
+   '"parou no bloco" mandaria rodar de novo agora, gastando o que resta');
+ok(/AMANHÃ/i.test(rq.relatorio), "  e diz quando voltar");
+
+passo("o mesmo vale no caminho do id, onde o estrago seria pior");
+
+g.GmailApp.search = buscaBoa;
+g.GmailApp.getMessageById = ERRO_COTA;
+const rq2 = g.conferirOficiosNaCaixaDeEnviados(false, true, TOKEN);
+
+igual(rq2.cotaAcabou, true, "reconhece a cota também aqui");
+igual(rq2.naoEncontrados.length, 0,
+      "e o 501 NÃO é acusado de ter sumido da caixa de Enviados",
+      "era o pior caso: falso alarme exatamente na pergunta que ele faz");
+
+passo("o cursor fica onde parou");
+
+ok(g.PropertiesService.getScriptProperties()
+     .getProperty(g.OFICIO_PROP_COMPROV_CURSOR) !== null,
+   "a rodada seguinte continua de onde a cota interrompeu",
+   "sem isso, amanhã recomeçaria do zero e gastaria tudo de novo");
+
+/* Devolve os stubs bons e zera o cursor: os testes seguintes contam com a
+   fila inteira disponível. */
+g.GmailApp.getMessageById = idBom;
+g.conferirOficiosNaCaixaDeEnviados(false, true, TOKEN);
+
 /* ══════════════════════════════════════════════════════════════════════════ */
 fluxo("OFÍCIOS · conferir recebimento é botão, não relógio");
 passo("confere só o que foi escolhido");

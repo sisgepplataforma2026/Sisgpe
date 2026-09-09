@@ -1135,10 +1135,7 @@ function oficio_explicarFalhaDeEnvio_(e, numero) {
   var bruto = String((e && e.message) || e || "");
   var oficio = String(numero || "").trim();
 
-  /* O Google escreve esta em inglês e ela cobre os dois limites — o de
-     destinatários por dia e o de chamadas ao serviço. Casar pelo trecho é o
-     que dá para fazer: não há código de erro para checar. */
-  if (/too many times for one day|limite de uso|quota|Service invoked/i.test(bruto)) {
+  if (oficio_ehLimiteDoGmail_(e)) {
     return "O ofício " + (oficio ? oficio + " " : "") + "NÃO foi enviado: o " +
            "limite diário de e-mail do Google se esgotou na conta que envia. " +
            "O ofício continua intacto e segue marcado como pendente — não é " +
@@ -1148,6 +1145,22 @@ function oficio_explicarFalhaDeEnvio_(e, numero) {
   }
 
   return "Erro ao reenviar: " + bruto;
+}
+
+/* O MESMO LIMITE APARECE EM DOIS LUGARES, E A REGRA TEM DE SER UMA SÓ.
+   09/09/2026, ao publicar a conferência da caixa de Enviados. Quem envia
+   ofício e quem confere ofício batem no mesmo teto de chamadas ao Gmail, e
+   pelo mesmo motivo: "ler e enviar saem do mesmo orçamento" (item 77). Se
+   cada lado tivesse sua própria lista de trechos para reconhecer a falha, um
+   deles reconheceria e o outro não — e o que não reconhecesse trataria um
+   apagão de cota como se fosse notícia sobre UM ofício.
+
+   O Google escreve a mensagem em inglês e ela cobre os dois limites — o de
+   destinatários por dia e o de chamadas ao serviço. Casar pelo trecho é o que
+   dá para fazer: não existe código de erro a checar. */
+function oficio_ehLimiteDoGmail_(e) {
+  var bruto = String((e && e.message) || e || "");
+  return /too many times for one day|limite de uso|quota|Service invoked/i.test(bruto);
 }
 
 /* ── Helpers de formatação de corpo ── */

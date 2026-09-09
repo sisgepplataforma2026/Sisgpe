@@ -57,6 +57,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 | Nº | Item |
 |---|---|
+| 79 | 🔴 PRODUÇÃO NA 705 — a conferência responde pelos 362, e uma conclusão minha CORRIGIDA |
 | 78 | 🔴 PRODUÇÃO NA 702 — dois gatilhos precisam ser reinstalados NO EDITOR |
 | 77 | 🔴 A cota do Gmail — o monitoramento comia o orçamento do envio de ofício |
 | 76 | 🔴 `getAmbienteAtual` decidia o ambiente pela CAIXA da propriedade — corrigido |
@@ -121,6 +122,87 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
+
+### 79. 🔴 PRODUÇÃO NA 705 — E UMA CONCLUSÃO MINHA QUE ESTAVA ERRADA
+
+09/09/2026, 19h03 (22h03 UTC). Três publicações depois da 702, todas verdes:
+
+| Versão | Commit | O que levou |
+|---|---|---|
+| 703 | `7414dda` | conferir recebimento vira botão; "está em Enviados?" custa zero |
+| 704 | `8252c43` | a conferência PERGUNTA ao Gmail e grava o veredito na planilha |
+| **705** | `a5e66b4` | e passa a responder também por quem **não tem id**, pelo número |
+
+Rollback na **704**. Homologação na **116** (`a5e66b4`, o mesmo código).
+Suíte 156 arquivos / 5.427 asserções, `t46` verde, contagem 175 `.gs` e
+97 `.html` inalterada.
+
+**🔴 CORREÇÃO DO QUE EU ESCREVI NA MENSAGEM DO COMMIT `a5e66b4`.** Ali está,
+em letras, como "achado ainda sem explicação":
+
+> os ofícios 513, 514 e 515 saíram em 04/09 (…). Deviam ter id e não têm.
+
+**Está errado, e a planilha que você mandou desmente.** Os três são
+exatamente os únicos com `MENSAGEM_ID` real na fila inteira:
+
+| Ofício | MENSAGEM_ID | COMPROVACAO_ENVIO |
+|---|---|---|
+| 513/2026 | `1a06df76da28c73c` | EM ENVIADOS |
+| 514/2026 | `1a06dff6834b0a9f` | EM ENVIADOS |
+| 515/2026 | `1a06e056ff4cacb0` | EM ENVIADOS |
+
+E fecha com o relatório da primeira rodada, que é medida da máquina e não
+leitura minha: `EM ENVIADOS: 3`, `Consultas ao Gmail: 3`. Só três ofícios
+tinham id; os três eram esses; os três estão na caixa. `GMAILAPP_SEM_ID` não
+conta como id (`MonitoramentoOficios.gs:658`), então não há um quarto
+candidato escondido.
+
+**Não há defeito a perseguir.** O mecanismo passou a gravar entre o ofício
+510 (02/09) e o 513 (04/09) e gravou **3 de 3** desde então. O buraco é
+histórico, não corrente.
+
+**A ressalva, pela REGRA Nº -1:** três envios é amostra pequena. Isso é
+**consistente, não provado** — o que prova é o quarto, o quinto e o décimo
+ofício saindo com id. Fica aqui para ser cobrado no próximo envio real.
+
+**🔴 O QUE FALTA VOCÊ FAZER — no editor de PRODUÇÃO:**
+
+```
+conferirOficiosNaCaixaDeEnviadosCompleto()
+```
+
+É o que responde a sua pergunta pelos **362**, e não só pelos 3. Procura cada
+ofício pelo NÚMERO na caixa de Enviados quando não há id.
+
+**O custo, dito antes e não depois:** uma busca no Gmail por ofício, ~359
+buscas. Roda em blocos de 150 e é retomável — são **três execuções**, e ela
+continua de onde parou sozinha.
+
+**E é provável que hoje não dê.** A cota de operações desta conta acabou às
+11:56 (item 77) e não se sabe quando renova. Se bater no limite, a rodada
+agora **PARA e diz isso** — ver abaixo. Antes desta correção ela teria
+carimbado a fila inteira de `NAO ENCONTRADO`.
+
+**A TRAVA QUE ENTROU DEPOIS DA 705 — e que ainda NÃO ESTÁ NO AR.** Achada ao
+reler o laço antes de você rodar: a exceção de cota era tratada como notícia
+sobre AQUELE ofício. No caminho do id virava `NAO ENCONTRADO` — a sua
+pergunta respondida ao contrário; no caminho da busca por número, 150
+`SEM ID (busca falhou)` seguidos com o cursor avançando por cima. Em três
+execuções a fila inteira ficaria carimbada por um apagão de cota, com a data
+de hoje ao lado, parecendo veredito.
+
+Agora a rodada para, deixa as linhas **sem veredito** e manda voltar amanhã —
+silêncio honesto vale mais que um "não encontrado" que faz alguém procurar
+um ofício que está lá. A regra de reconhecer o limite virou função única
+(`oficio_ehLimiteDoGmail_`), porque envio e conferência batem no mesmo teto e
+duas listas de trechos divergiriam. `t154`, 53 asserções; suíte verde.
+
+**Precisa de publicação** — commitado, não publicado. Se você rodar a
+conferência ANTES de publicar isto e a cota estiver esgotada, o sintoma é
+`NAO ENCONTRADO` ou `busca falhou` em massa: isso é a cota, não ofício
+sumido. Nesse caso, rode de novo depois de publicar, com a fila zerada.
+
+---
 
 ### 78. 🔴 PRODUÇÃO NA 702 — E DOIS GATILHOS ESPERANDO VOCÊ NO EDITOR
 

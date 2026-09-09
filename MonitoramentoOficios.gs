@@ -634,7 +634,7 @@ function conferirOficiosNaCaixaDeEnviados(buscarPorNumero, recomecar, tokenSessa
     ok: true, conferidos: 0, emEnviados: 0, emEnviadosPorNumero: 0,
     naoEncontrados: [], naLixeira: [], semIdVerificar: [],
     semIdAntigos: 0, semIdSemData: 0,
-    consultasAoGmail: 0, parou: false, restam: 0,
+    consultasAoGmail: 0, parou: false, restam: 0, cotaAcabou: false,
     modo: buscarPorNumero === true ? "COMPLETO (id + busca por número)" : "SÓ POR ID"
   };
 
@@ -687,6 +687,9 @@ function conferirOficiosNaCaixaDeEnviados(buscarPorNumero, recomecar, tokenSessa
             r.naoEncontrados.push(ref);
           }
         } catch (eB) {
+          /* COTA ESTOURADA NÃO É NOTÍCIA SOBRE ESTE OFÍCIO — ver o comentário
+             logo abaixo do laço. Para aqui, sem gravar nada nesta linha. */
+          if (oficio_ehLimiteDoGmail_(eB)) { r.cotaAcabou = true; r.parou = true; break; }
           veredito = "SEM ID (busca falhou)";
           r.semIdVerificar.push(ref);
         }
@@ -706,6 +709,7 @@ function conferirOficiosNaCaixaDeEnviados(buscarPorNumero, recomecar, tokenSessa
         else if (msg.isInTrash()) { veredito = "NA LIXEIRA"; r.naLixeira.push(ref); }
         else { veredito = "EM ENVIADOS"; r.emEnviados++; }
       } catch (e) {
+        if (oficio_ehLimiteDoGmail_(e)) { r.cotaAcabou = true; r.parou = true; break; }
         veredito = "NAO ENCONTRADO";
         r.naoEncontrados.push(ref);
       }
@@ -723,6 +727,28 @@ function conferirOficiosNaCaixaDeEnviados(buscarPorNumero, recomecar, tokenSessa
 
   SpreadsheetApp.flush();
 
+  /* POR QUE A COTA PARA A RODADA INTEIRA, E NÃO SÓ AQUELE OFÍCIO.
+     ══════════════════════════════════════════════════════════════════════
+     09/09/2026, antes da primeira rodada no modo completo. Sem esta trava, o
+     dia em que a cota do Gmail acabasse a conferência responderia ERRADO, e
+     de um jeito que ninguém teria como perceber:
+
+       - no caminho do id, a exceção caía em "NAO ENCONTRADO" — ou seja, o
+         sistema afirmaria que o ofício NÃO está em Enviados. É exatamente a
+         pergunta que ele quer responder, respondida ao contrário;
+       - no caminho da busca por número, viravam 150 "SEM ID (busca falhou)"
+         seguidos, o cursor avançava, e rodar de novo marcava os 150 seguintes.
+         Em três rodadas a fila inteira ficaria carimbada por um apagão de
+         cota, com a data de hoje ao lado, como se fosse veredito.
+
+     E não é hipótese: a cota desta conta acabou HOJE às 11:56 (item 77), e o
+     modo completo custa uma busca POR OFÍCIO — 359 delas nesta fila. É o uso
+     mais provável de bater no teto que existe no sistema.
+
+     Cota estourada não diz nada sobre o ofício: diz que não deu para
+     perguntar. Então a linha fica SEM veredito, o cursor fica onde parou, e o
+     relatório manda voltar amanhã. Silêncio honesto vale mais que um "não
+     encontrado" que dispara busca por um ofício que está lá. */
   if (r.parou) {
     props.setProperty(OFICIO_PROP_COMPROV_CURSOR, String(i));
     r.restam = Math.max(0, linhas.length - i);
@@ -766,7 +792,14 @@ function conferirOficiosNaCaixaDeEnviados(buscarPorNumero, recomecar, tokenSessa
     L.push("     Custa uma busca no Gmail por ofício, e é retomável.");
   }
   L.push("");
-  if (r.parou) {
+  if (r.cotaAcabou) {
+    L.push("  🛑 O LIMITE DIÁRIO DO GMAIL ACABOU — parei aqui, de propósito.");
+    L.push("      Faltam ~" + r.restam + " linha(s), e elas ficaram SEM veredito:");
+    L.push("      nenhum ofício foi marcado como 'não encontrado' por causa");
+    L.push("      disto. Não dá para saber se a mensagem está lá quando não dá");
+    L.push("      nem para perguntar.");
+    L.push("      RODE DE NOVO AMANHÃ: continua de onde parou, não recomeça.");
+  } else if (r.parou) {
     L.push("  ⏸️  PAROU NO BLOCO DE " + OFICIO_COMPROVACAO_BLOCO + ".");
     L.push("      Faltam ~" + r.restam + " linha(s). RODE DE NOVO para continuar");
     L.push("      de onde parou — não recomeça.");
@@ -782,7 +815,9 @@ function conferirOficiosNaCaixaDeEnviados(buscarPorNumero, recomecar, tokenSessa
   r.mensagem  = r.emEnviados + " em Enviados, " + r.naoEncontrados.length +
                 " não encontrado(s), " + r.naLixeira.length + " na lixeira, " +
                 r.semIdVerificar.length + " sem id a verificar." +
-                (r.parou ? " Rode de novo para continuar." : "");
+                (r.cotaAcabou
+                   ? " PAREI: o limite diário do Gmail acabou. Rode de novo amanhã."
+                   : r.parou ? " Rode de novo para continuar." : "");
   Logger.log(r.relatorio);
   return r;
 }
