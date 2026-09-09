@@ -29,39 +29,75 @@ const { fluxo, passo, ok, igual, naoTestavel, resumo } = require("./base");
 
 const TOKEN = b.logar(g, "wanderson");
 const props = g.PropertiesService.getScriptProperties();
-const PROP = g.COMPASSO_PROP_EMAIL_LIGADO;
+const PROP = g.COMPASSO_PROP_EMAIL_INGRESSO;
+const PROP_COMP = g.COMPASSO_PROP_EMAIL_COMPROVANTE;
+const PROP_ANTIGA = g.COMPASSO_PROP_EMAIL_LIGADO;
 
-fluxo("FESTA · o e-mail nasce desligado");
-passo("o padrão");
+function limparProps() {
+  [PROP, PROP_COMP, PROP_ANTIGA].forEach(k => props.setProperty(k, ""));
+}
 
-props.setProperty(PROP, "");
-igual(g.compasso_emailLigado_(), false,
-      "sem a propriedade, o e-mail está DESLIGADO",
-      "ausência não pode significar 'pode mandar' — nada sai sozinho");
+fluxo("FESTA · duas decisões, dois interruptores");
+passo("os padrões seguem a operação");
 
-["false", "FALSE", "nao", "0", "qualquer coisa"].forEach(v => {
-  props.setProperty(PROP, v);
-  igual(g.compasso_emailLigado_(), false, 'valor "' + v + '" mantém desligado');
-});
+/* O usuário descreveu a operação e ela separa as duas coisas: comprovante sai
+   na hora para todo mundo (~32/dia, cabe nos 100); ingresso só depois da
+   validação, guardado, e enviado a partir de novembro PELO ZAP. Um interruptor
+   só forçaria as duas a andarem juntas. */
+limparProps();
+igual(g.compasso_emailComprovanteLigado_(), true,
+      "o COMPROVANTE nasce LIGADO",
+      "sem ele a pessoa fica sem nada na mão — é o problema que ele resolve");
+igual(g.compasso_emailIngressoLigado_(), false,
+      "o INGRESSO nasce DESLIGADO",
+      "a entrega da festa é pelo WhatsApp, aos poucos, a partir de novembro");
 
+passo("cada um obedece só ao seu");
+
+props.setProperty(PROP_COMP, "false");
+igual(g.compasso_emailComprovanteLigado_(), false, "desligar o comprovante funciona");
+igual(g.compasso_emailIngressoLigado_(), false, "e não liga o ingresso por tabela");
+
+limparProps();
 props.setProperty(PROP, "true");
-igual(g.compasso_emailLigado_(), true,
-      'só o "true" explícito liga',
-      "ligar é ato deliberado, com nome e valor");
-props.setProperty(PROP, "TRUE");
-igual(g.compasso_emailLigado_(), true, "maiúsculas também");
+igual(g.compasso_emailIngressoLigado_(), true, "ligar o ingresso funciona");
+igual(g.compasso_emailComprovanteLigado_(), true, "e o comprovante segue ligado");
+
+passo("a chave única antiga ainda vale, para os dois");
+
+/* Ela existiu por algumas horas hoje. Se alguém a declarou no ambiente, tem
+   de continuar valendo — senão o comportamento muda sem ninguém mexer. */
+limparProps();
+props.setProperty(PROP_ANTIGA, "false");
+igual(g.compasso_emailComprovanteLigado_(), false, "a chave antiga desliga o comprovante");
+igual(g.compasso_emailIngressoLigado_(), false, "e o ingresso");
+
+limparProps();
+props.setProperty(PROP_ANTIGA, "true");
+igual(g.compasso_emailIngressoLigado_(), true, "e liga os dois quando true");
+
+passo("valor estranho cai no padrão de cada um");
+
+limparProps();
+["nao", "0", "qualquer coisa"].forEach(v => {
+  props.setProperty(PROP, v);
+  props.setProperty(PROP_COMP, v);
+  igual(g.compasso_emailIngressoLigado_(), false, 'ingresso: "' + v + '" → desligado');
+  igual(g.compasso_emailComprovanteLigado_(), true, 'comprovante: "' + v + '" → ligado');
+});
+limparProps();
 
 fluxo("FESTA · a entrega por e-mail recusa, e explica o que fazer");
 passo("individual");
 
-props.setProperty(PROP, "");
+limparProps();
 const um = g.compasso_enviarIngressoEmail("qualquer-id", TOKEN);
 igual(um.ok, false, "o envio individual por e-mail é recusado");
 igual(um.codigo, "ENTREGA_SOMENTE_WHATSAPP", "com código nomeado, não erro genérico");
 ok(String(um.erro).indexOf("WhatsApp") > -1,
    "e a mensagem diz por onde é a entrega",
    "recusa que não diz o caminho vira chamado para o suporte");
-ok(String(um.erro).indexOf("COMPASSO_EMAIL_LIGADO") > -1,
+ok(String(um.erro).indexOf("COMPASSO_EMAIL_INGRESSO") > -1,
    "e nomeia a propriedade que reabre, se for mesmo necessário");
 
 passo("lote");
@@ -99,7 +135,8 @@ ok(seguiuAdiante,
 fluxo("FESTA · o comprovante não sai, mas o protocolo fica");
 passo("desligado");
 
-props.setProperty(PROP, "");
+limparProps();
+props.setProperty(PROP_COMP, "false");
 const fonte = require("fs").readFileSync(
   require("path").join(__dirname, "..", "..", "EventosInscricaoPublica.gs"), "utf8");
 const semComentarios = fonte
@@ -110,9 +147,9 @@ ok(semComentarios.indexOf("EMAIL_DESLIGADO") > -1,
 ok(/compasso_carimbarConfirmacao_\([\s\S]{0,200}protocoloSemEnvio/.test(semComentarios),
    "e ele CARIMBA o protocolo mesmo sem enviar",
    "sem o carimbo a equipe perderia a lista de quem ainda não recebeu aviso nenhum");
-ok(semComentarios.indexOf("compasso_emailLigado_()") > -1,
-   "usa o MESMO interruptor da entrega",
-   "duas chaves para a mesma decisão divergem no primeiro ajuste");
+ok(semComentarios.indexOf("compasso_emailComprovanteLigado_()") > -1,
+   "o comprovante usa o interruptor DELE",
+   "amarrado ao do ingresso, desligar a entrega calaria a confirmação junto");
 
 passo("a ordem importa");
 
@@ -137,7 +174,7 @@ ok(typeof g.compasso_enviarIngressoEmail === "function",
    "e o e-mail NÃO foi apagado, só desligado",
    "apagar jogaria fora a única saída para quem não tem WhatsApp");
 
-props.setProperty(PROP, "");
+limparProps();
 
 naoTestavel("se a mensagem chega de fato no WhatsApp",
   "o wa.me abre o aplicativo e quem aperta enviar é gente. O emulador não " +

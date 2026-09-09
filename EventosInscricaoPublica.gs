@@ -747,7 +747,8 @@ function compasso_confirmarInscricaoPorEmail_(inscricaoId, dados) {
      * Mesmo interruptor da entrega do ingresso (COMPASSO_EMAIL_LIGADO), para
      * a decisão ser uma só e mudar num lugar só. */
     var protocoloSemEnvio = compasso_protocoloInscricao_(inscricaoId);
-    if (typeof compasso_emailLigado_ === 'function' && !compasso_emailLigado_()) {
+    if (typeof compasso_emailComprovanteLigado_ === 'function' &&
+        !compasso_emailComprovanteLigado_()) {
       compasso_carimbarConfirmacao_(inscricaoId, false,
         'E-mail desligado — comprovante deve ser enviado pelo WhatsApp.',
         protocoloSemEnvio);

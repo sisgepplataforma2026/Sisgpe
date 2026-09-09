@@ -38,13 +38,13 @@ const { fluxo, passo, ok, igual, naoTestavel, resumo } = b;
 const { g, amb } = b.subir({});
 b.seedUsuarios(g);
 
-/* O E-MAIL NASCE DESLIGADO DESDE 09/09/2026 — decisão do usuário: a entrega
-   da festa é pelo WhatsApp, e nada sai sozinho. Este teste mede o MECANISMO
-   do e-mail, que continua inteiro e precisa continuar funcionando para quem
-   não tem WhatsApp. Por isso liga o interruptor explicitamente: sem isto ele
-   mediria a política, que já é medida no t151. */
+/* O E-MAIL DO INGRESSO NASCE DESLIGADO DESDE 09/09/2026 — a entrega da festa
+   é pelo WhatsApp, aos poucos, a partir de novembro. O COMPROVANTE continua
+   ligado por padrão e não precisa de nada aqui. Este teste mede o MECANISMO do
+   e-mail do ingresso, que segue inteiro para quem não tem WhatsApp — por isso
+   liga o interruptor explicitamente. A política já é medida no t151. */
 g.PropertiesService.getScriptProperties()
-  .setProperty(g.COMPASSO_PROP_EMAIL_LIGADO, "true");
+  .setProperty(g.COMPASSO_PROP_EMAIL_INGRESSO, "true");
 
 /* ─── Firestore em memória (mesmo desvio do t91, mesma honestidade) ─── */
 const BANCO = new Map();

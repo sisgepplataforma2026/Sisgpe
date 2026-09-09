@@ -533,16 +533,56 @@ function compasso_emailIngressoHtml_(ing, url, temPdf) {
    testado e pronto — só recusa executar. Apagar seria jogar fora a única saída
    para quem não tem WhatsApp, e essa gente existe.
    ══════════════════════════════════════════════════════════════════════════ */
+/* DOIS INTERRUPTORES, PORQUE SÃO DUAS DECISÕES DIFERENTES — 09/09/2026.
+ *
+ * O usuário descreveu a operação inteira e ela separa as duas coisas:
+ *
+ *   COMPROVANTE — sai na hora, por e-mail, para TODO mundo que se inscrever.
+ *     "ele faz a inscrição, recebe uma confirmação: sua inscrição foi
+ *      recebida com sucesso, aguarde a equipe do SindEducação". São ~2.000
+ *      ao longo de setembro e outubro, ~32 por dia. Cabe nos 100 da cota.
+ *
+ *   INGRESSO — só depois da validação individual, guardado, e enviado a
+ *     partir de novembro PELO WHATSAPP, aos poucos: "ninguém vai enviar
+ *     duzentos, trezentos, quinhentos ingressos no mesmo dia".
+ *
+ * Um interruptor só forçaria as duas a andarem juntas, e elas não andam.
+ * Por isso cada uma tem o seu, com o padrão que a operação pede. */
+var COMPASSO_PROP_EMAIL_COMPROVANTE = 'COMPASSO_EMAIL_COMPROVANTE';
+var COMPASSO_PROP_EMAIL_INGRESSO    = 'COMPASSO_EMAIL_INGRESSO';
+
+/* Mantido por compatibilidade: quem já tiver declarado a chave única continua
+   valendo, para as duas. Não é legado morto — é a chave que existiu por
+   algumas horas hoje, e alguém pode tê-la posto no ambiente. */
 var COMPASSO_PROP_EMAIL_LIGADO = 'COMPASSO_EMAIL_LIGADO';
 
-/** O e-mail está autorizado? Padrão: NÃO. */
-function compasso_emailLigado_() {
+function compasso_propLigada_(nome, padrao) {
   try {
-    return String(PropertiesService.getScriptProperties()
-                  .getProperty(COMPASSO_PROP_EMAIL_LIGADO) || '')
-             .trim().toLowerCase() === 'true';
-  } catch (e) { return false; }
+    var v = String(PropertiesService.getScriptProperties()
+                   .getProperty(nome) || '').trim().toLowerCase();
+    if (v === 'true')  return true;
+    if (v === 'false') return false;
+    return padrao;
+  } catch (e) { return padrao; }
 }
+
+/** O COMPROVANTE de inscrição sai por e-mail? Padrão: SIM.
+    É uma mensagem curta, ~32 por dia, e sem ela a pessoa fica sem nada na
+    mão — que é o problema que o comprovante existe para resolver. */
+function compasso_emailComprovanteLigado_() {
+  return compasso_propLigada_(COMPASSO_PROP_EMAIL_COMPROVANTE,
+         compasso_propLigada_(COMPASSO_PROP_EMAIL_LIGADO, true));
+}
+
+/** O INGRESSO sai por e-mail? Padrão: NÃO — a entrega é pelo WhatsApp. */
+function compasso_emailIngressoLigado_() {
+  return compasso_propLigada_(COMPASSO_PROP_EMAIL_INGRESSO,
+         compasso_propLigada_(COMPASSO_PROP_EMAIL_LIGADO, false));
+}
+
+/* Nome antigo, preservado para quem já chamava. Responde pelo INGRESSO, que
+   era o caso de uso que o criou. */
+function compasso_emailLigado_() { return compasso_emailIngressoLigado_(); }
 
 /** A recusa, dita de um jeito que explica o que fazer em vez de só negar. */
 function compasso_recusaEmail_(oQue) {
@@ -552,16 +592,16 @@ function compasso_recusaEmail_(oQue) {
     erro: oQue + ' por e-mail está desligado: a entrega desta festa é pelo ' +
           'WhatsApp. Use o botão de WhatsApp na linha da inscrição. Se for ' +
           'mesmo necessário mandar por e-mail, declare ' +
-          COMPASSO_PROP_EMAIL_LIGADO + ' = true nas Propriedades do script.'
+          COMPASSO_PROP_EMAIL_INGRESSO + ' = true nas Propriedades do script.'
   };
 }
 
 function compasso_enviarIngressoEmail(inscricaoId, tokenSessao) {
   exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — enviar ingresso por e-mail', false);
-  if (!compasso_emailLigado_()) {
+  if (!compasso_emailIngressoLigado_()) {
     try {
       compasso_auditar_('ENTREGA_EMAIL_RECUSADA', 'inscricao', String(inscricaoId || ''),
-                        { motivo: 'COMPASSO_EMAIL_LIGADO != true' });
+                        { motivo: COMPASSO_PROP_EMAIL_INGRESSO + ' != true' });
     } catch (eAud) {}
     return compasso_recusaEmail_('O envio do ingresso');
   }
@@ -747,10 +787,10 @@ function compasso_capacidadeEnvio(tokenSessao) {
 function compasso_enviarLoteEmail(inscricaoIds, tokenSessao) {
   exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — enviar lote por e-mail', false);
 
-  if (!compasso_emailLigado_()) {
+  if (!compasso_emailIngressoLigado_()) {
     try {
       compasso_auditar_('ENTREGA_EMAIL_LOTE_RECUSADA', 'evento', EMISSAO_CFG.EVENTO_ID,
-                        { motivo: 'COMPASSO_EMAIL_LIGADO != true',
+                        { motivo: COMPASSO_PROP_EMAIL_INGRESSO + ' != true',
                           quantidade: (inscricaoIds || []).length });
     } catch (eAud) {}
     return compasso_recusaEmail_('O envio em lote');
