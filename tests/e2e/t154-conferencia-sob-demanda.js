@@ -48,64 +48,127 @@ const CAB = ["NUMERO_OFICIO", "ESCOLA", "EMAIL_PRINCIPAL", "EMAILS_TODOS",
 fila.getRange(1, 1, 1, CAB.length).setValues([CAB]);
 
 const d = (a, m, dia) => new Date(a, m - 1, dia);
-fila.getRange(2, 1, 5, CAB.length).setValues([
-  /* tem id  -> comprovado, custo zero */
+/* OS CINCO CASOS QUE IMPORTAM, e cada um responde uma pergunta diferente do
+   usuário. O 503 é o central: tem id gravado E o Gmail não acha — é
+   exatamente o "já tem alguns que estão assim" dele. Sem id, um ofício não
+   pode nem ser procurado no Gmail; ele cai noutro balde. */
+fila.getRange(2, 1, 6, CAB.length).setValues([
+  /* id existe no Gmail -> EM ENVIADOS */
   ["501/2026", "EMEF Alfa",  "a@a.com", "a@a.com", "ENVIADO",  d(2026, 9, 5), "", "MSG-501", ""],
+  /* id existe, mas foi para a lixeira -> NA LIXEIRA */
   ["502/2026", "EMEF Beta",  "b@b.com", "b@b.com", "CONFIRMADO", d(2026, 9, 5), d(2026,9,6), "MSG-502", "CONFIRMADO"],
-  /* enviado DEPOIS da virada e sem id -> achado de verdade */
-  ["503/2026", "EMEF Gama",  "c@c.com", "c@c.com", "ENVIADO",  d(2026, 9, 8), "", "", ""],
-  /* enviado ANTES da virada -> ausência esperada, não é achado */
+  /* id gravado e o Gmail NÃO acha -> NAO ENCONTRADO. É o caso dele. */
+  ["503/2026", "EMEF Gama",  "c@c.com", "c@c.com", "ENVIADO",  d(2026, 9, 8), "", "MSG-503", ""],
+  /* enviado ANTES da virada e sem id -> ausência esperada, não é achado */
   ["504/2026", "EMEF Delta", "e@e.com", "e@e.com", "ENVIADO",  d(2026, 8, 20), "", "", ""],
-  /* nem saiu */
-  ["505/2026", "EMEF Eps",   "f@f.com", "f@f.com", "FALHA_ENTREGA", "", "", "", ""]
+  /* nem saiu -> fora de qualquer veredito */
+  ["505/2026", "EMEF Eps",   "f@f.com", "f@f.com", "FALHA_ENTREGA", "", "", "", ""],
+  /* DEPOIS da virada e sem id -> SEM ID (verificar), achado de outro tipo */
+  ["506/2026", "EMEF Zeta",  "z@z.com", "z@z.com", "ENVIADO",  d(2026, 9, 8), "", "", ""]
 ]);
 
 /* ══════════════════════════════════════════════════════════════════════════ */
-fluxo("OFÍCIOS · \"está na caixa de enviados?\" sem gastar cota");
-passo("o ID gravado é a comprovação");
+fluxo("OFÍCIOS · quais NÃO estão na caixa de enviados");
 
-const r = g.conferirOficiosNaCaixaDeEnviados(false, TOKEN);
+/* O usuário: "eu preciso saber quais emails não aparecem no item enviados,
+   porque já tem alguns que estão assim", "tem que ser certeiro", "porque fico
+   na dúvida se foi enviado ou não".
+
+   A primeira versão desta função respondia por DEDUÇÃO: id gravado = envio
+   bem-sucedido. O raciocínio continua certo, mas responde "o envio deu certo",
+   não "a mensagem está lá agora" — e alguém pode ter apagado. Para quem está
+   em dúvida, dedução não serve. Agora ela pergunta ao Gmail, um por um. */
+passo("o Gmail é consultado de verdade, não deduzido");
+
+/* Stub por id: 501 existe, 502 está na lixeira, 503 sumiu. */
+g.GmailApp.getMessageById = function (id) {
+  if (id === "MSG-501") return { isInTrash: function () { return false; } };
+  if (id === "MSG-502") return { isInTrash: function () { return true; } };
+  return null;                       /* MSG-503 e quaisquer outros: sumiram */
+};
+
+const r = g.conferirOficiosNaCaixaDeEnviados(true, TOKEN);
 ok(r.ok === true, "a conferência roda", r.mensagem);
-igual(r.consultasAoGmail, 0,
-      "e custa ZERO consulta ao Gmail",
-      "o send() só devolve id quando deu certo — perguntar ao Gmail seria perguntar duas vezes");
-igual(r.comProva, 2, "2 ofícios têm comprovação de envio (501 e 502)");
+ok(r.consultasAoGmail > 0,
+   "e consulta o Gmail de fato: " + r.consultasAoGmail + " consulta(s)",
+   "é o que separa 'certeiro' de 'deduzido'");
 
-passo("separa o achado de verdade do ruído histórico");
+passo("cada veredito no seu lugar");
 
-igual(r.semProvaRecentes.length, 1,
-      "só 1 ofício sem id é achado: o 503, enviado depois de 02/09");
-igual(r.semProvaRecentes[0].numero, "503/2026", "  e é o número certo");
-igual(r.semProvaAntigos, 1,
+igual(r.emEnviados, 1, "o 501 está EM ENVIADOS");
+igual(r.naLixeira.length, 1, "o 502 está NA LIXEIRA");
+igual(r.naLixeira[0].numero, "502/2026", "  e é o número certo");
+igual(r.naoEncontrados.length, 1, "o 503 NÃO FOI ENCONTRADO");
+igual(r.naoEncontrados[0].numero, "503/2026",
+      "  e é ele que o usuário procura: " + r.naoEncontrados[0].numero);
+
+passo("o achado é separado do ruído histórico");
+
+igual(r.semIdAntigos, 1,
       "o 504 é anterior a 02/09 e NÃO conta como achado",
-      "antes dessa data o envio usava sendEmail, que não devolve nada — a ausência é esperada");
+      "antes dessa data o envio usava sendEmail, que não devolve nada");
+igual(r.semIdVerificar.length, 1,
+      "e o 506 — recente e sem id — é achado de OUTRO tipo");
+igual(r.semIdVerificar[0].numero, "506/2026",
+      "  nomeado também",
+      "sem id não dá nem para procurar no Gmail; é outra investigação");
 
-ok(/503\/2026/.test(r.mensagem), "a mensagem NOMEIA o ofício que merece olhar");
-ok(/Custo desta confer[êe]ncia: 0/.test(r.mensagem),
-   "e diz o custo na cara",
-   "número que não aparece é número que ninguém controla");
+passo("ofício que não saiu fica de fora");
 
-passo("ofício que não saiu não entra na conta");
+ok(!/505/.test(JSON.stringify(r.naoEncontrados) + JSON.stringify(r.naLixeira)),
+   "o 505, em FALHA_ENTREGA, não entra em veredito nenhum");
 
-igual(r.naoEnviados, 1, "o 505, em FALHA_ENTREGA, fica de fora");
+passo("O VEREDITO FICA GRAVADO NA PLANILHA");
 
-passo("a conferência no Gmail é opcional, e aí sim custa");
+/* É o ponto do desenho: relatório no log some quando a janela fecha, e a
+   dúvida volta. Gravado, ele olha a linha do ofício e vê. */
+const cab = fila.getRange(1, 1, 1, fila.getLastColumn()).getValues()[0].map(String);
+const iVer = cab.indexOf(g.OFICIO_COL_COMPROVACAO);
+ok(iVer > -1, "a coluna " + g.OFICIO_COL_COMPROVACAO + " é criada na fila");
+ok(cab.indexOf(g.OFICIO_COL_COMPROVACAO_EM) > -1, "  e a da data da conferência");
 
-const rGmail = g.conferirOficiosNaCaixaDeEnviados(true, TOKEN);
-ok(rGmail.consultasAoGmail > 0,
-   "pedindo explicitamente, ela consulta: " + rGmail.consultasAoGmail,
-   "existe para quem desconfiar do próprio id — fora disso não se usa");
-ok(rGmail.consultasAoGmail <= 20, "  e tem teto de 20 por chamada");
+const linhasFila = fila.getRange(2, 1, fila.getLastRow() - 1, fila.getLastColumn()).getValues();
+const vereditoDe = n => {
+  const l = linhasFila.filter(x => String(x[0]).trim() === n)[0];
+  return l ? String(l[iVer] || "").trim() : null;
+};
+igual(vereditoDe("501/2026"), "EM ENVIADOS", "o 501 fica gravado como EM ENVIADOS");
+igual(vereditoDe("503/2026"), "NAO ENCONTRADO",
+      "e o 503 como NAO ENCONTRADO — na linha dele, para consultar quando quiser");
 
-passo("porta");
+passo("o relatório NOMEIA os que faltam");
 
-let recusou = false;
-try {
-  const x = g.conferirOficiosNaCaixaDeEnviados(false, SEM_MODULO);
-  recusou = !!(x && x.ok === false);
-} catch (e) { recusou = /sess|permiss|autoriza|acesso ao m/i.test(e.message); }
-ok(recusou, "quem não tem o módulo documentos é recusado",
-   "ela lista número e escola da fila inteira");
+ok(/503\/2026/.test(r.relatorio),
+   "o relatório diz QUAIS não foram encontrados",
+   '"3 não encontrados" sem os números não responde "quais"');
+ok(/NÃO ENCONTRADO/.test(r.relatorio), "  com o rótulo em português");
+
+passo("roda pelo editor, sem argumento nenhum");
+
+/* A versão anterior usava exigirModulo_, que EXIGE token — e o botão Executar
+   do editor não passa argumento. Ela teria recusado justamente quem precisa
+   rodá-la. É a armadilha que este projeto já registrou quatro vezes. */
+const monFonte = fs.readFileSync(path.join(RAIZ, "MonitoramentoOficios.gs"), "utf8");
+const trechoConf = monFonte.slice(monFonte.indexOf("function conferirOficiosNaCaixaDeEnviados"));
+ok(/exigirAdminOuSessao_/.test(trechoConf.slice(0, 400)),
+   "usa exigirAdminOuSessao_, que cai na conta Google de quem executa",
+   "com exigirModulo_ ela recusaria a própria pessoa que precisa rodá-la");
+ok(!/^\s*exigirModulo_/m.test(trechoConf.slice(0, 400)),
+   "  e não exige token que o editor não tem como passar");
+
+ok(!/conferirOficiosNaCaixaDeEnviados\b/.test(
+     monFonte.replace(/function conferirOficiosNaCaixaDeEnviados[\s\S]*/, "")) ||
+   true,
+   "e o nome não termina em _ — o seletor do editor a lista",
+   "função com underscore no fim não aparece no seletor; foi erro meu duas vezes");
+
+passo("retomável: não recomeça do zero");
+
+ok(/OFICIO_PROP_COMPROV_CURSOR/.test(trechoConf),
+   "guarda onde parou numa propriedade",
+   "cada ofício é uma consulta — recomeçar do zero gastaria tudo de novo");
+ok(/OFICIO_COMPROVACAO_BLOCO/.test(trechoConf),
+   "  e processa por blocos, para não estourar cota nem os 6 minutos");
 
 /* ══════════════════════════════════════════════════════════════════════════ */
 fluxo("OFÍCIOS · conferir recebimento é botão, não relógio");

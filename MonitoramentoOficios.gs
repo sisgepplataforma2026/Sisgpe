@@ -518,42 +518,75 @@ function MON_OFICIOS_verificarConfirmacoes_(filtroNumeros) {
   return retorno;
 }
 /* ══════════════════════════════════════════════════════════════════════════
-   "TODOS OS E-MAILS ENVIADOS ESTÃO NA CAIXA DE ENVIADOS?" — 09/09/2026
+   "QUAIS E-MAILS NÃO APARECEM EM ENVIADOS?" — 09/09/2026
    ══════════════════════════════════════════════════════════════════════════
 
-   Pergunta do usuário, depois de reenviar o ofício 407 e não achar o e-mail.
+   O usuário, depois de reenviar o ofício 407 e não achar o e-mail:
 
-   A RESPOSTA CUSTA ZERO CONSULTA AO GMAIL, e é por um detalhe do caminho de
-   envio: `enviarEmailOficio_` usa `createDraft(...).send()`, e o `send()` só
-   DEVOLVE um GmailMessage quando o envio deu certo. Se falhar, a exceção sobe
-   e nada é gravado.
+       "eu preciso saber quais emails não aparecem no item enviados,
+        porque já tem alguns que estão assim"
+       "tem que ser certeiro"
+       "porque fico na dúvida se foi enviado ou não"
 
-   Ou seja: MENSAGEM_ID preenchido É a prova de que a mensagem existe na caixa
-   de Enviados. Não é preciso perguntar ao Gmail — bastaria perguntar duas
-   vezes a mesma coisa, gastando a cota que este projeto passou o dia inteiro
-   tentando economizar.
+   ISSO MUDOU O DESENHO. A primeira versão desta função respondia por dedução:
+   MENSAGEM_ID gravado = envio bem-sucedido, porque `createDraft().send()` só
+   devolve um GmailMessage quando dá certo. O raciocínio continua correto — mas
+   ele responde "o envio deu certo", e NÃO responde "a mensagem está lá agora".
+   São coisas diferentes: alguém pode ter apagado.
 
-   O QUE ESTA FUNÇÃO PROCURA, ENTÃO, é o contrário: ofício marcado ENVIADO e
-   SEM id. Esses são os que merecem olhar, e há dois motivos possíveis:
+   E ele já viu ofícios assim. Dedução não serve para quem está em dúvida.
+   Então esta versão PERGUNTA AO GMAIL, um por um, e não estima.
 
-     1. foi enviado ANTES de 02/09/2026, quando o caminho ainda era
-        `GmailApp.sendEmail`, que não devolve nada. O id nunca existiu, e a
-        ausência dele não diz nada sobre a entrega;
-     2. foi enviado depois, e aí é achado de verdade.
+   ONDE A RESPOSTA FICA. Na PLANILHA, ao lado do ofício, em duas colunas novas
+   (COMPROVACAO_ENVIO e COMPROVACAO_EM). Um relatório no Logger some quando a
+   janela fecha, e aí a dúvida volta. Gravado, ele olha a linha do ofício e vê.
 
-   A data de envio separa os dois, e é por isso que ela vai no relatório.
+   OS QUATRO VEREDITOS, e cada um quer dizer uma coisa diferente:
 
-   A CONFERÊNCIA NO GMAIL É OPCIONAL E TEM TETO. Ela existe para o caso de
-   alguém desconfiar do próprio id — e aí sim custa uma consulta por ofício.
-   Fora disso, não se usa.
+     EM ENVIADOS            a mensagem existe. Fim da dúvida.
+     NAO ENCONTRADO         o id está gravado e o Gmail não acha. É o que ele
+                            procura — provavelmente apagada da caixa.
+     NA LIXEIRA             existe, mas foi para a lixeira. Recuperável.
+     SEM ID (envio antigo)  anterior a 02/09, quando o envio usava sendEmail,
+                            que não devolve nada. A ausência é esperada e não
+                            diz nada sobre a entrega — não é achado.
+     SEM ID (verificar)     posterior a 02/09 e sem id. Achado de verdade.
 
-   Pública com porta: ela lista número de ofício e escola de toda a fila. */
-function conferirOficiosNaCaixaDeEnviados(conferirNoGmail, tokenSessao) {
-  exigirModulo_(tokenSessao, "documentos", false);
+   POR BLOCOS, E RETOMÁVEL. Cada ofício é uma consulta ao Gmail, e foi
+   exatamente o excesso disso que esgotou a cota hoje. Ela processa um bloco
+   por execução, guarda onde parou, e continua na próxima. Rodar de novo
+   continua; não recomeça.
+
+   PORTA QUE FUNCIONA NO EDITOR. A primeira versão usava `exigirModulo_`, que
+   EXIGE token — e o botão Executar do editor não passa argumento nenhum. Ela
+   teria recusado a própria pessoa que precisa rodá-la. É a armadilha que este
+   projeto já registrou quatro vezes (ver PENDENTE-VERIFICACAO). Agora usa
+   `exigirAdminOuSessao_`, que cai na conta Google de quem executa.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+var OFICIO_COL_COMPROVACAO     = "COMPROVACAO_ENVIO";
+var OFICIO_COL_COMPROVACAO_EM  = "COMPROVACAO_EM";
+var OFICIO_PROP_COMPROV_CURSOR = "SISGEP_COMPROVACAO_CURSOR";
+
+/** Quantos ofícios por execução. Cada um é uma consulta ao Gmail. */
+var OFICIO_COMPROVACAO_BLOCO = 150;
+
+/**
+ * Confere, um por um, se a mensagem de cada ofício está no Gmail, e grava o
+ * veredito na planilha.
+ *
+ * Rode pelo editor, sem argumento. Se a fila for grande ela para no bloco e
+ * avisa — rode de novo para continuar de onde parou.
+ *
+ * @param {boolean=} recomecar  true zera o cursor e confere tudo de novo.
+ */
+function conferirOficiosNaCaixaDeEnviados(recomecar, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, "documentos",
+                       "Conferência de ofícios na caixa de Enviados", false);
 
   var sh = obterOuCriarAbaFilaOficios_();
   if (!sh || sh.getLastRow() < 2) {
-    return { ok: true, total: 0, mensagem: "A fila de ofícios está vazia." };
+    return { ok: true, mensagem: "A fila de ofícios está vazia." };
   }
 
   var hm    = getHeaderMap_(sh);
@@ -564,87 +597,125 @@ function conferirOficiosNaCaixaDeEnviados(conferirNoGmail, tokenSessao) {
   var cMsg  = hm["MENSAGEM_ID"];
 
   if (!cNum || !cSt || !cMsg) {
-    return { ok: false, mensagem: "A fila não tem as colunas NUMERO_OFICIO, STATUS e MENSAGEM_ID." };
+    return { ok: false, mensagem: "A fila não tem NUMERO_OFICIO, STATUS e MENSAGEM_ID." };
   }
 
-  /* A data em que o caminho passou a devolver id. Antes dela, ausência de id
-     é o comportamento esperado — não achado. */
-  var VIRADA = new Date(2026, 8, 2);   /* 02/09/2026 */
+  var cVer = oficio_garantirColuna_(sh, OFICIO_COL_COMPROVACAO);
+  var cVerEm = oficio_garantirColuna_(sh, OFICIO_COL_COMPROVACAO_EM);
 
-  var linhas = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
-  var comProva = 0, semProvaAntigos = [], semProvaRecentes = [], naoEnviados = 0;
+  var props = PropertiesService.getScriptProperties();
+  if (recomecar === true) props.deleteProperty(OFICIO_PROP_COMPROV_CURSOR);
+  var inicio = Number(props.getProperty(OFICIO_PROP_COMPROV_CURSOR) || 0) || 0;
 
-  linhas.forEach(function (l) {
-    var numero = String(l[cNum - 1] || "").trim();
-    if (!numero) return;
+  var ultima  = sh.getLastRow();
+  var totalLn = ultima - 1;
+  var linhas  = sh.getRange(2, 1, totalLn, sh.getLastColumn()).getValues();
 
-    var status = String(l[cSt - 1] || "").trim().toUpperCase();
-    if (status !== "ENVIADO" && status !== "CONFIRMADO") { naoEnviados++; return; }
-
-    var id = String(l[cMsg - 1] || "").trim();
-    if (id && id !== "GMAILAPP_SEM_ID") { comProva++; return; }
-
-    var quando = l[cData - 1];
-    var item = {
-      numero: numero,
-      escola: String(l[cEsc - 1] || "").trim(),
-      enviadoEm: (quando instanceof Date && !isNaN(quando.getTime()))
-        ? Utilities.formatDate(quando, Session.getScriptTimeZone(), "dd/MM/yyyy")
-        : "(sem data)"
-    };
-
-    if (quando instanceof Date && !isNaN(quando.getTime()) && quando < VIRADA) {
-      semProvaAntigos.push(item);
-    } else {
-      semProvaRecentes.push(item);
-    }
-  });
+  /* 02/09/2026: a partir daí o envio passou a devolver id. Antes, não. */
+  var VIRADA = new Date(2026, 8, 2);
+  var agora  = new Date();
 
   var r = {
-    ok: true,
-    comProva: comProva,
-    semProvaAntigos: semProvaAntigos.length,
-    semProvaRecentes: semProvaRecentes,
-    naoEnviados: naoEnviados,
-    consultasAoGmail: 0
+    ok: true, conferidos: 0, emEnviados: 0,
+    naoEncontrados: [], naLixeira: [], semIdVerificar: [], semIdAntigos: 0,
+    consultasAoGmail: 0, parou: false, restam: 0
   };
 
-  /* A conferência opcional, com teto. Só para quem desconfiar do próprio id. */
-  if (conferirNoGmail === true) {
-    var amostra = Math.min(comProva, 20);
-    var checados = 0, sumidos = [];
-    for (var i = 0; i < linhas.length && checados < amostra; i++) {
-      var idc = String(linhas[i][cMsg - 1] || "").trim();
-      if (!idc || idc === "GMAILAPP_SEM_ID") continue;
-      checados++;
+  var i = inicio;
+  for (; i < linhas.length; i++) {
+    if (r.consultasAoGmail >= OFICIO_COMPROVACAO_BLOCO) { r.parou = true; break; }
+
+    var l = linhas[i];
+    var numero = String(l[cNum - 1] || "").trim();
+    if (!numero) continue;
+
+    var status = String(l[cSt - 1] || "").trim().toUpperCase();
+    if (status !== "ENVIADO" && status !== "CONFIRMADO") continue;
+
+    var escola = String(l[cEsc - 1] || "").trim();
+    var quando = l[cData - 1];
+    var ref    = { numero: numero, escola: escola };
+    var id     = String(l[cMsg - 1] || "").trim();
+    var veredito;
+
+    if (!id || id === "GMAILAPP_SEM_ID") {
+      var antigo = (quando instanceof Date && !isNaN(quando.getTime()) && quando < VIRADA);
+      if (antigo) { veredito = "SEM ID (envio antigo)"; r.semIdAntigos++; }
+      else        { veredito = "SEM ID (verificar)";    r.semIdVerificar.push(ref); }
+    } else {
+      /* AQUI está a consulta — e é o que torna a resposta certeira em vez de
+         deduzida. */
+      r.consultasAoGmail++;
       try {
-        var m = GmailApp.getMessageById(idc);
-        if (!m) sumidos.push(String(linhas[i][cNum - 1] || "").trim());
+        var msg = GmailApp.getMessageById(id);
+        if (!msg) { veredito = "NAO ENCONTRADO"; r.naoEncontrados.push(ref); }
+        else if (msg.isInTrash()) { veredito = "NA LIXEIRA"; r.naLixeira.push(ref); }
+        else { veredito = "EM ENVIADOS"; r.emEnviados++; }
       } catch (e) {
-        sumidos.push(String(linhas[i][cNum - 1] || "").trim());
+        veredito = "NAO ENCONTRADO";
+        r.naoEncontrados.push(ref);
       }
     }
-    r.consultasAoGmail = checados;
-    r.amostraChecada = checados;
-    r.naoEncontradosNoGmail = sumidos;
+
+    r.conferidos++;
+    try {
+      sh.getRange(i + 2, cVer).setValue(veredito);
+      sh.getRange(i + 2, cVerEm).setValue(agora);
+    } catch (eGrav) {
+      Logger.log("Comprovação: não consegui gravar o veredito do " + numero +
+                 " — " + (eGrav && eGrav.message || eGrav));
+    }
   }
 
-  r.mensagem =
-    comProva + " ofício(s) com comprovação de envio (o ID da mensagem está gravado — " +
-    "ele só é devolvido quando o envio dá certo, então a mensagem ESTÁ em Enviados). " +
-    (semProvaRecentes.length
-      ? "⚠️ " + semProvaRecentes.length + " enviado(s) depois de 02/09 SEM id — " +
-        "esses merecem olhar: " +
-        semProvaRecentes.slice(0, 10).map(function (x) { return x.numero; }).join(", ") +
-        (semProvaRecentes.length > 10 ? "…" : "") + ". "
-      : "Nenhum ofício recente ficou sem comprovação. ") +
-    (semProvaAntigos.length
-      ? semProvaAntigos.length + " são anteriores a 02/09, quando o envio ainda não " +
-        "devolvia id — a ausência ali é esperada e não diz nada sobre a entrega. "
-      : "") +
-    "Custo desta conferência: " + r.consultasAoGmail + " consulta(s) ao Gmail.";
+  SpreadsheetApp.flush();
 
-  Logger.log(r.mensagem);
+  if (r.parou) {
+    props.setProperty(OFICIO_PROP_COMPROV_CURSOR, String(i));
+    r.restam = Math.max(0, linhas.length - i);
+  } else {
+    props.deleteProperty(OFICIO_PROP_COMPROV_CURSOR);
+  }
+
+  var nomes = function (lista) {
+    return lista.slice(0, 15).map(function (x) { return x.numero; }).join(", ") +
+           (lista.length > 15 ? " …e mais " + (lista.length - 15) : "");
+  };
+
+  var L = [];
+  L.push("═══════════════════════════════════════════════════════════");
+  L.push("  OS OFÍCIOS ESTÃO NA CAIXA DE ENVIADOS?");
+  L.push("═══════════════════════════════════════════════════════════");
+  L.push("  Conferidos nesta execução : " + r.conferidos);
+  L.push("  Consultas ao Gmail        : " + r.consultasAoGmail);
+  L.push("");
+  L.push("  ✅ EM ENVIADOS            : " + r.emEnviados);
+  L.push("  ❌ NÃO ENCONTRADO         : " + r.naoEncontrados.length +
+         (r.naoEncontrados.length ? "  → " + nomes(r.naoEncontrados) : ""));
+  L.push("  🗑️  NA LIXEIRA             : " + r.naLixeira.length +
+         (r.naLixeira.length ? "  → " + nomes(r.naLixeira) : ""));
+  L.push("  ⚠️  SEM ID (verificar)     : " + r.semIdVerificar.length +
+         (r.semIdVerificar.length ? "  → " + nomes(r.semIdVerificar) : ""));
+  L.push("  ⚪ SEM ID (envio antigo)  : " + r.semIdAntigos +
+         "  (anterior a 02/09 — ausência esperada)");
+  L.push("");
+  if (r.parou) {
+    L.push("  ⏸️  PAROU NO BLOCO DE " + OFICIO_COMPROVACAO_BLOCO + ".");
+    L.push("      Faltam ~" + r.restam + " linha(s). RODE DE NOVO para continuar");
+    L.push("      de onde parou — não recomeça.");
+  } else {
+    L.push("  ✅ Fila inteira conferida.");
+  }
+  L.push("");
+  L.push("  O veredito de cada ofício ficou gravado na fila, nas colunas");
+  L.push("  " + OFICIO_COL_COMPROVACAO + " e " + OFICIO_COL_COMPROVACAO_EM + ".");
+  L.push("═══════════════════════════════════════════════════════════");
+
+  r.relatorio = L.join("\n");
+  r.mensagem  = r.emEnviados + " em Enviados, " + r.naoEncontrados.length +
+                " não encontrado(s), " + r.naLixeira.length + " na lixeira, " +
+                r.semIdVerificar.length + " sem id a verificar." +
+                (r.parou ? " Rode de novo para continuar." : "");
+  Logger.log(r.relatorio);
   return r;
 }
 
