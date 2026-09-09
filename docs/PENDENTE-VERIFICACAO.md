@@ -57,6 +57,8 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 | Nº | Item |
 |---|---|
+| 78 | 🔴 PRODUÇÃO NA 702 — dois gatilhos precisam ser reinstalados NO EDITOR |
+| 77 | 🔴 A cota do Gmail — o monitoramento comia o orçamento do envio de ofício |
 | 76 | 🔴 `getAmbienteAtual` decidia o ambiente pela CAIXA da propriedade — corrigido |
 | 75 | 🔴 O ingresso da festa agora vira arquivo guardado no Drive, com nome nominal |
 | 64 | ✅ VERIFICADO NO AR — seletor, remetente e destino real (02/09, 19h32) |
@@ -119,6 +121,90 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
+
+### 78. 🔴 PRODUÇÃO NA 702 — E DOIS GATILHOS ESPERANDO VOCÊ NO EDITOR
+
+09/09/2026, 17h31 (14h31 BRT). Publicado nos dois:
+
+| Ambiente | Versão | Confirmação no log |
+|---|---|---|
+| Homologação | **113** | `Homologacao publicada na versao 113.` |
+| Produção | **702** (era 701) | `implantacao confirmada na versao 702` |
+
+Travas de produção cumpridas: código byte a byte idêntico ao SHA homologado
+`50ffec0`, contagem 175 `.gs` / 97 `.html`, `t46` verde, suíte completa verde,
+artefato de rollback guardado ANTES de qualquer escrita.
+
+**🔴 O QUE SÓ VOCÊ PODE FAZER — no editor de PRODUÇÃO:**
+
+```
+instalarTriggerFalhasEntrega     ← OBRIGATÓRIO
+removerTriggerConfirmacoes       ← devolve a maior parte da cota
+```
+
+**Por que o primeiro é obrigatório e não acontece sozinho:** gatilho é estado do
+PROJETO, não do código. Publicar mudou o que a função faz, mas o acionador que
+já existe segue marcado "a cada 3 horas" até alguém reinstalar. Depois de rodar,
+confira em **Acionadores** que a linha do `verificarFalhasEntregaOficios` diz
+**"Dia"** e não "Horas". Se continuar "Horas", não pegou — e o problema da cota
+volta amanhã.
+
+**O segundo** desliga as 12 rodadas/dia da conferência de recebimento. Fica sem
+substituto até o botão manual existir (ver o item 77).
+
+---
+
+### 77. 🔴 A COTA DO GMAIL — O MONITORAMENTO COMIA O ORÇAMENTO DO ENVIO
+
+09/09/2026. Começou com o usuário: *"eu reenviei o ofício 407 e nada aparece"*.
+Ele tem acesso às caixas do financeiro e da secretaria, olhou nas duas, e o
+e-mail não estava em nenhuma.
+
+**A causa.** A conta que executa o script esgotou o limite de OPERAÇÕES do
+Gmail. O log do sistema, às 11:56: `Service invoked too many times for one day:
+gmail`. Isso derruba o `createDraft().send()` e o ofício não sai. O código já
+fazia o certo — a exceção sobe, o status NÃO vira ENVIADO, e o 407 continua na
+fila esperando.
+
+**Quem gastava.** `verificarConfirmacoesRecebimento` faz UMA busca no Gmail POR
+OFÍCIO PENDENTE, sem teto, e lê cada mensagem de cada thread. Rodava a cada 2
+horas — 12×/dia. A de não-entrega rodava a cada 3 — 8×/dia. **Ler e enviar saem
+do mesmo orçamento.** O monitoramento, que existe para vigiar os ofícios, comia
+o orçamento de enviá-los.
+
+**Descartada regressão de código:** o diff de `EmailOficios.gs` entre a promoção
+de 04/09 (quando os reenvios saíram: 242, 236, 203, 172, 168, 144) e a de 08/09
+toca só o que acontece DEPOIS do envio. `enviarEmailOficio_` intacto, e o número
+de `GmailApp.search` igual antes e depois. Não foi mudança minha — foi acúmulo.
+
+**E o medidor mentia.** Às 11:53 o diagnóstico dizia `Cota de e-mail ✅ 96
+restantes`. `MailApp.getRemainingDailyQuota()` conta DESTINATÁRIOS; o que
+estourou foi o limite de CHAMADAS ao serviço. Medimos um e gastamos os dois.
+
+**O que foi para produção na 702:**
+
+- varredura de não-entrega: de 8×/dia para **1×/dia às 3h**, fora do horário de envio;
+- a falha de cota deixou de chegar em inglês e diz que o ofício está intacto e
+  que basta tentar amanhã;
+- o reenvio guarda o ID da mensagem em `MENSAGEM_ID_REENVIO` — sem ele o
+  verificador caía na busca larga que causou o item 49;
+- "bounce" saiu de tudo que a secretaria lê.
+
+**🔴 O QUE FALTA — e é o buraco que a decisão dele abriu:**
+
+Ele decidiu que a conferência de recebimento vira **botão**: *"quem envia é
+você, quem confere é você"*. **Esse botão NÃO EXISTE.** A aba `✅ Conferir
+envio` abre a conferência de DESTINATÁRIOS, não fala com o Gmail. Enquanto ele
+não for construído, desligar `removerTriggerConfirmacoes` deixa a conferência
+sem nenhum caminho.
+
+Desenho já aprovado por ele: botão na barra do reenvio em lote, confere só os
+ofícios marcados, e mostra o custo em consultas. **Precisa de nova publicação.**
+
+**Não testado:** o reenvio do 407 depois que o limite zerar (amanhã), e se o
+gatilho reinstalado aparece como "Dia" em Acionadores.
+
+---
 
 ### 76. 🔴 `getAmbienteAtual` DECIDIA O AMBIENTE PELA CAIXA DA PROPRIEDADE
 
