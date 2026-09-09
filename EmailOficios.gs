@@ -631,6 +631,11 @@ var OFICIO_COL_JA_FALHOU = "JA_FALHOU";
    a cada três horas. Ver o bloco grande em MonitoramentoOficios.gs. */
 var OFICIO_COL_REENVIADO_EM = "REENVIADO_EM";
 
+/* O ID da mensagem do Gmail gerada pelo REENVIO. Coluna própria, e não a
+   MENSAGEM_ID do envio original: sobrescrever a original apagaria o rastro da
+   primeira tentativa, que é o que prova que houve uma. */
+var OFICIO_COL_MENSAGEM_ID_REENVIO = "MENSAGEM_ID_REENVIO";
+
 /** Garante a coluna, criando-a no fim se não existir. Mesmo padrão do
     escolaGarantirColunaId_ — acrescentar coluna não mexe em dado nenhum. */
 function oficio_garantirColuna_(sh, nome) {
@@ -662,7 +667,7 @@ function oficio_garantirColunaJaFalhou_(sh) {
  * Vai inteira em try/catch: falhar em atualizar o registro não pode desfazer
  * um e-mail que já saiu, nem transformar um reenvio bom em erro na tela.
  */
-function oficio_marcarReenviado_(numero) {
+function oficio_marcarReenviado_(numero, mensagemId) {
   try {
     var ss = SpreadsheetApp.openById(
       typeof getPlanilhaId === "function" ? getPlanilhaId() : PLANILHA_ID);
@@ -699,6 +704,35 @@ function oficio_marcarReenviado_(numero) {
         if (cReenv) sh.getRange(linha, cReenv).setValue(new Date());
       } catch (eData) {
         Logger.log("oficio_marcarReenviado_ (data): " + (eData && eData.message || eData));
+      }
+
+      /* O ID DA MENSAGEM DO REENVIO — 09/09/2026.
+         ══════════════════════════════════════════════════════════════════
+         O usuario perguntou por que o oficio reenviado nao aparecia em
+         Enviados. O caminho de envio e o MESMO do envio normal
+         (createDraft().send(), que grava em Enviados), mas o sistema nao
+         tinha COMO PROVAR isso: `enviarEmailOficio_` devolve o ID real da
+         mensagem e o reenvio jogava fora.
+
+         Duas consequencias, e a segunda e a grave:
+
+         1. "esta em Enviados?" so se respondia cacando na caixa;
+
+         2. o verificador de confirmacao procura a THREAD pelo ID. Sem ID, ele
+            cai na busca larga por numero e nome de escola — que foi
+            exatamente o que fez uma resposta automatica do Outlook confirmar
+            um oficio que tinha quicado (item 49). Ou seja: todo reenvio
+            devolvia o oficio para a condicao que originou aquele defeito.
+
+         A troca de `sendEmail` por rascunho-e-envia em 02/09 foi feita PARA
+         ter esse ID. Descarta-lo no reenvio desfazia o motivo da troca. */
+      if (mensagemId) {
+        try {
+          var cMsg = oficio_garantirColuna_(sh, OFICIO_COL_MENSAGEM_ID_REENVIO);
+          if (cMsg) sh.getRange(linha, cMsg).setValue(String(mensagemId));
+        } catch (eMsg) {
+          Logger.log("oficio_marcarReenviado_ (id): " + (eMsg && eMsg.message || eMsg));
+        }
       }
 
       SpreadsheetApp.flush();
@@ -1017,8 +1051,10 @@ function reenviarOficio(registro, tokenSessao) {
       "Segue reenvio do ofício em anexo."
     );
 
-    /* Sai da caixa de falha, sem apagar a memória de que falhou. */
-    var marcado = oficio_marcarReenviado_(numero);
+    /* Sai da caixa de falha, sem apagar a memória de que falhou. O ID da
+       mensagem vai junto: é a prova de que o reenvio chegou ao Gmail, e é o
+       que o verificador de confirmação usa para achar a thread certa. */
+    var marcado = oficio_marcarReenviado_(numero, opcoes && opcoes.mensagemId);
 
     /* A TRILHA PRECISA DIZER QUE SAIU DO CADASTRO. Este recurso permite mandar
        um oficio, com dado pessoal dentro, para um endereco que ninguem

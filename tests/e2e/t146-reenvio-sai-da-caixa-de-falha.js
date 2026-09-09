@@ -123,4 +123,53 @@ ok(corpo.indexOf('cJa).setValue("SIM")') < corpo.indexOf('cSt).setValue("ENVIADO
 ok(/oficio_marcarReenviado_/.test(String(g.reenviarOficio)),
    "e o reenvio chama isso de fato");
 
+/* ══════════════════════════════════════════════════════════════════════════
+   O ID DA MENSAGEM DO REENVIO — 09/09/2026
+   ══════════════════════════════════════════════════════════════════════════
+
+   O usuário: "os ofícios que estão sendo reenviados não vão para o item
+   enviados do email, pq?".
+
+   O caminho de envio é o MESMO do envio normal — `enviarEmailOficio_`, que usa
+   createDraft().send() e portanto grava em Enviados. Mas o sistema não tinha
+   como PROVAR isso: a função devolve o ID real da mensagem do Gmail, e o
+   reenvio descartava.
+
+   O estrago maior não é a dúvida — é o verificador de confirmação. Ele acha a
+   thread pelo ID; sem ID, cai na busca larga por número e nome de escola, que
+   foi o que fez uma resposta automática do Outlook confirmar um ofício que
+   tinha quicado (item 49). Cada reenvio devolvia o ofício àquela condição.
+
+   A troca de sendEmail por rascunho-e-envia em 02/09 foi feita PARA ter esse
+   ID. Descartá-lo no reenvio desfazia o motivo da troca. */
+passo("o reenvio guarda o ID da mensagem do Gmail");
+
+function colunaDe(numero, coluna) {
+  const cab = reg.getRange(1, 1, 1, reg.getLastColumn()).getValues()[0].map(String);
+  const iNum = cab.indexOf("Número do Ofício");
+  const iCol = cab.indexOf(coluna);
+  if (iCol < 0) return null;
+  const d = reg.getRange(2, 1, reg.getLastRow() - 1, reg.getLastColumn()).getValues();
+  for (const linha of d) {
+    if (String(linha[iNum]).trim() === numero) return String(linha[iCol] || "").trim();
+  }
+  return null;
+}
+
+const idGravado = colunaDe("144/2026", g.OFICIO_COL_MENSAGEM_ID_REENVIO);
+ok(idGravado !== null,
+   "a coluna " + g.OFICIO_COL_MENSAGEM_ID_REENVIO + " é criada no Registro",
+   "é onde a prova de que o reenvio chegou ao Gmail fica");
+ok(!!idGravado,
+   "e o ID da mensagem fica gravado: " + idGravado,
+   'responde "está em Enviados?" pelo sistema, sem caçar na caixa');
+
+ok(colunaDe("144/2026", "MENSAGEM_ID") !== idGravado ||
+   colunaDe("144/2026", "MENSAGEM_ID") === null,
+   "em coluna PRÓPRIA, não sobre a do envio original",
+   "sobrescrever apagaria o rastro da primeira tentativa — que é o que prova que houve uma");
+
+ok(/mensagemId/.test(String(g.reenviarOficio)),
+   "e o reenvio passa o ID adiante em vez de descartar");
+
 resumo();
