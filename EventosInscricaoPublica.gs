@@ -338,18 +338,42 @@ function compasso_inscrever(dados) {
 
      NUNCA derruba a inscrição: ela já está gravada acima, e uma falha de
      e-mail não pode virar "não deu certo" para quem fez tudo certo. */
-  compasso_confirmarInscricaoPorEmail_(r.inscricaoId, {
+  var conf = compasso_confirmarInscricaoPorEmail_(r.inscricaoId, {
     nome: nome, cpf: cpf, escola: String(dados.escola || '').trim(),
     cidade: String(dados.cidade || '').trim(), email: email, whatsapp: whats
   });
 
+  /* O PROTOCOLO VOLTA PARA A TELA, E A MENSAGEM PARA DE PROMETER E-MAIL.
+     ══════════════════════════════════════════════════════════════════════
+     09/09/2026. O usuário, pela terceira vez: "não sairá nenhum convite por
+     email e todos serão pelo zap enviados".
+
+     A mensagem antiga dizia "o ingresso será enviado para o seu e-mail e
+     WhatsApp". Duas coisas erradas ao mesmo tempo, multiplicadas por 2.000:
+
+     1. PROMETIA E-MAIL. A entrega do ingresso por e-mail está desligada desde
+        08/09 (COMPASSO_EMAIL_INGRESSO). Seriam 2.000 pessoas esperando um
+        e-mail que não vem, e ligando para a secretaria por causa disso.
+
+     2. NÃO ENTREGAVA NADA NA MÃO. O protocolo era gerado e carimbado no
+        registro, e nunca voltava para a tela. No mesmo dia o Gmail recusou o
+        envio por cota — então a pessoa saía da inscrição sem número nenhum,
+        em lugar nenhum.
+
+     Agora o protocolo aparece na tela, e a mensagem diz o que de fato vai
+     acontecer: a equipe confere, e o ingresso chega pelo WhatsApp mais perto
+     da festa. Prometer menos e cumprir é melhor que o contrário. */
+  var protocolo = (conf && conf.protocolo) || compasso_protocoloInscricao_(r.inscricaoId);
+
   return {
     ok: true,
     inscricaoId: r.inscricaoId,
-    mensagem: 'Inscrição registrada! A equipe do sindicato vai conferir seus dados ' +
-              'e o ingresso será enviado ' +
-              (email && whats ? 'para o seu e-mail e WhatsApp.'
-                              : (email ? 'para o seu e-mail.' : 'pelo seu WhatsApp.'))
+    protocolo: protocolo,
+    mensagem: 'A equipe do sindicato vai conferir seus dados. O seu ingresso ' +
+              'será enviado pelo WhatsApp mais perto da festa — não é preciso ' +
+              'fazer nada até lá.' +
+              (whats ? '' : ' Como você não informou WhatsApp, guarde o número ' +
+                            'de protocolo abaixo e procure a secretaria.')
   };
 }
 
@@ -746,20 +770,43 @@ function compasso_confirmarInscricaoPorEmail_(inscricaoId, dados) {
      *
      * Mesmo interruptor da entrega do ingresso (COMPASSO_EMAIL_LIGADO), para
      * a decisão ser uma só e mudar num lugar só. */
-    var protocoloSemEnvio = compasso_protocoloInscricao_(inscricaoId);
+    /* O PROTOCOLO VEM PRIMEIRO, E VEM PARA TODO MUNDO — 09/09/2026.
+     *
+     * Antes ele nascia dentro do caminho do e-mail: quem não tinha e-mail
+     * batia no `return {motivo:'SEM_EMAIL'}` da linha de cima e saía SEM
+     * protocolo nenhum. Ou seja, justamente quem só tem WhatsApp — que pela
+     * descrição do usuário é a maioria — ficava sem o número que identifica a
+     * própria inscrição.
+     *
+     * E hoje o defeito saiu do papel: o Gmail recusou o envio
+     * ("Service invoked too many times for one day"), e o comprovante não saiu
+     * para ninguém. Se o protocolo dependesse do e-mail, a inscrição teria
+     * ficado sem identificação.
+     *
+     * Ele é derivado do inscricaoId (últimos 6), então calcular aqui dá o
+     * mesmo valor de calcular em qualquer outro lugar. */
+    var protocolo = compasso_protocoloInscricao_(inscricaoId);
+
     if (typeof compasso_emailComprovanteLigado_ === 'function' &&
         !compasso_emailComprovanteLigado_()) {
       compasso_carimbarConfirmacao_(inscricaoId, false,
         'E-mail desligado — comprovante deve ser enviado pelo WhatsApp.',
-        protocoloSemEnvio);
-      return { ok: false, motivo: 'EMAIL_DESLIGADO', protocolo: protocoloSemEnvio };
+        protocolo, true);
+      return { ok: false, motivo: 'EMAIL_DESLIGADO', protocolo: protocolo };
     }
 
-    if (!dados || !dados.email) return { ok: false, motivo: 'SEM_EMAIL' };
-    if (typeof enviarEmailSISGEP_ !== 'function')
-      return { ok: false, motivo: 'CAMADA_DE_EMAIL_INDISPONIVEL' };
+    if (!dados || !dados.email) {
+      compasso_carimbarConfirmacao_(inscricaoId, false,
+        'Sem e-mail no cadastro — comprovante deve ser enviado pelo WhatsApp.',
+        protocolo, true);
+      return { ok: false, motivo: 'SEM_EMAIL', protocolo: protocolo };
+    }
+    if (typeof enviarEmailSISGEP_ !== 'function') {
+      compasso_carimbarConfirmacao_(inscricaoId, false,
+        'Camada de e-mail indisponível.', protocolo);
+      return { ok: false, motivo: 'CAMADA_DE_EMAIL_INDISPONIVEL', protocolo: protocolo };
+    }
 
-    var protocolo = compasso_protocoloInscricao_(inscricaoId);
     var r = enviarEmailSISGEP_(
       dados.email,
       'Inscrição recebida — Festa Compasso da Vida 2026 🎶',
@@ -778,17 +825,50 @@ function compasso_confirmarInscricaoPorEmail_(inscricaoId, dados) {
   }
 }
 
-function compasso_carimbarConfirmacao_(inscricaoId, enviou, mensagem, protocolo) {
+/**
+ * Carimba na inscrição o que aconteceu com o comprovante.
+ *
+ * TRÊS ESTADOS, NÃO DOIS — 09/09/2026.
+ *
+ * A função tinha só `enviou` sim ou não, e tudo que não fosse "enviou" virava
+ * `confirmacaoErro`. Isso junta duas coisas que a operação precisa separar:
+ *
+ *   ENVIADO         o e-mail saiu.
+ *   PENDENTE        não saiu, e está certo não ter saído — a pessoa não deixou
+ *                   e-mail, ou o comprovante por e-mail está desligado. É a
+ *                   FILA DO WHATSAPP: gente para a equipe avisar, não defeito.
+ *   ERRO            tentamos e falhou. Aí sim é para alguém olhar.
+ *
+ * O t93 pegou isto: "marcar erro aqui encheria o painel de falso alarme". Com
+ * a entrega desta festa sendo toda pelo zap, quase TODA inscrição cairia no
+ * segundo caso — e o painel de erro nasceria com 2.000 falsos alarmes, o que é
+ * o mesmo que não ter painel.
+ *
+ * @param {boolean} enviou       o e-mail saiu de fato.
+ * @param {string}  mensagem     o porquê, quando não saiu.
+ * @param {string}  protocolo    número que identifica a inscrição.
+ * @param {boolean=} porDesenho  true quando NÃO enviar é o comportamento
+ *                               correto. Vira pendência, não erro.
+ */
+function compasso_carimbarConfirmacao_(inscricaoId, enviou, mensagem, protocolo, porDesenho) {
   var ins = fs_get_('inscricoesEventos', inscricaoId);
   if (!ins) return;
   ins.protocolo = protocolo || ins.protocolo || '';
+
   if (enviou) {
     ins.confirmacaoEnviadaEm = new Date();
     ins.confirmacaoVia = 'EMAIL';
     ins.confirmacaoErro = '';
+    ins.confirmacaoPendente = '';
+  } else if (porDesenho) {
+    /* Não é falha. É gente esperando um zap. */
+    ins.confirmacaoErro = '';
+    ins.confirmacaoPendente = String(mensagem || 'Avisar pelo WhatsApp.').slice(0, 300);
   } else {
     ins.confirmacaoErro = String(mensagem || 'falha desconhecida').slice(0, 300);
+    ins.confirmacaoPendente = '';
   }
+
   fs_set_('inscricoesEventos', inscricaoId, ins);
 }
 

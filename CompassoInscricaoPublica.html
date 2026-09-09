@@ -154,6 +154,24 @@
   <div id="fim" class="card fim">
     <div class="tick">✅</div>
     <h2>Inscrição registrada!</h2>
+
+    <!-- O PROTOCOLO É A ÚNICA COISA QUE A PESSOA LEVA DAQUI — 09/09/2026.
+         A entrega desta festa é pelo WhatsApp, e o ingresso só sai perto do
+         evento. Entre a inscrição e ele há meses. Sem um número na mão, a
+         pessoa não tem como perguntar "e a minha?" e a secretaria não tem
+         como achá-la sem o CPF. Fica grande e destacado de propósito: é para
+         ser fotografado. -->
+    <div id="fimProtocoloBox" style="display:none;margin:14px 0;padding:14px;
+         border:2px dashed var(--gold,#C9A84C);border-radius:12px;text-align:center">
+      <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;
+                  color:var(--suave)">Seu número de protocolo</div>
+      <div id="fimProtocolo" style="font-size:30px;font-weight:800;
+                  letter-spacing:.08em;margin:4px 0;font-variant-numeric:tabular-nums"></div>
+      <div style="font-size:12px;color:var(--suave)">
+        Guarde ou tire um print. É por ele que a secretaria acha a sua inscrição.
+      </div>
+    </div>
+
     <p id="fimMsg" style="color:var(--suave)"></p>
   </div>
 
@@ -290,6 +308,10 @@ function enviar(){
       }
       g('form').style.display = 'none';
       g('fim').style.display = 'block';
+      if (r.protocolo) {
+        g('fimProtocolo').textContent = r.protocolo;
+        g('fimProtocoloBox').style.display = 'block';
+      }
       g('fimMsg').textContent = r.mensagem || '';
       window.scrollTo({top:0, behavior:'smooth'});
     })

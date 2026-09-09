@@ -160,6 +160,33 @@ function doGet(e) {
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
+    /* ── A PORTARIA, POR URL — 09/09/2026 ──────────────────────────────────
+       A tela de leitura de QR (EventosPortaria.html) existia e funcionava, mas
+       o ÚNICO jeito de abri-la era `abrirPainelCheckinCompasso`, que a mostra
+       como caixa de diálogo DENTRO da planilha (`SpreadsheetApp.getUi()`).
+
+       Isso não serve para a porta. Quem vai conferir ingresso na entrada
+       precisa de um endereço para abrir no aparelho — não de "abra a planilha,
+       ache o menu, e espere a câmera funcionar dentro de um diálogo". Pior:
+       `getUi()` só existe no contexto da planilha; pelo app publicado a função
+       nem roda.
+
+       Achado quando o usuário testou o QR em 09/09 e disse: "a câmera
+       reconhece o QR code mas não acontece nada". Não era o QR — era não haver
+       para onde levá-lo.
+
+       Mesma trava do painel de check-in logo abaixo: sem sessão válida, cai no
+       Login. O token vem na URL porque é assim que os outros painéis fazem. */
+    if (p.painel === "portaria") {
+      var tokenPortaria = String(p.sessao || "").trim();
+      var sessaoPortaria = getSessaoUsuario(tokenPortaria);
+      if (!sessaoPortaria) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
+      return HtmlService.createHtmlOutputFromFile("EventosPortaria")
+        .setTitle("Portaria — Compasso da Vida")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
     if (p.painel === "checkin") {
       var tokenCheckin = String(p.sessao || "").trim();
       var sessaoCheckin = getSessaoUsuario(tokenCheckin);

@@ -144,7 +144,11 @@ const semComentarios = fonte
 
 ok(semComentarios.indexOf("EMAIL_DESLIGADO") > -1,
    "o comprovante tem um caminho de saída quando o e-mail está desligado");
-ok(/compasso_carimbarConfirmacao_\([\s\S]{0,200}protocoloSemEnvio/.test(semComentarios),
+/* Mede o COMPORTAMENTO, não o nome da variável. A asserção anterior casava
+   com `protocoloSemEnvio` literal e quebrou quando a variável passou a se
+   chamar `protocolo` — sem que nada do comportamento mudasse. Teste que
+   depende de nome de variável reprova refatoração e não pega defeito. */
+ok(/compasso_carimbarConfirmacao_\([\s\S]{0,200}protocolo[\s\S]{0,40}\)/.test(semComentarios),
    "e ele CARIMBA o protocolo mesmo sem enviar",
    "sem o carimbo a equipe perderia a lista de quem ainda não recebeu aviso nenhum");
 ok(semComentarios.indexOf("compasso_emailComprovanteLigado_()") > -1,
