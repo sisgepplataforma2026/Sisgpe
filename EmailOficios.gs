@@ -1095,8 +1095,59 @@ function reenviarOficio(registro, tokenSessao) {
     };
 
   } catch(e) {
-    return { erro: true, mensagem: "Erro ao reenviar: " + e.message };
+    return { erro: true, mensagem: oficio_explicarFalhaDeEnvio_(e, numero) };
   }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   O ERRO QUE O OPERADOR PRECISA ENTENDER — 09/09/2026
+   ══════════════════════════════════════════════════════════════════════════
+
+   O usuário reenviou o ofício 407 e nada apareceu em Enviados, nem na caixa do
+   financeiro nem na da secretaria. Em 04/09 os reenvios saíram normalmente —
+   242, 236, 203, 172, 168 e 144, todos com assunto "Reenvio:". Hoje, não.
+
+   O QUE MUDOU está no log do próprio sistema, às 11:56 de hoje:
+
+       Service invoked too many times for one day: gmail
+
+   A conta que executa o script esgotou o limite de operações do Gmail. Isso
+   derruba o createDraft().send(), e o ofício simplesmente não sai. O código já
+   fazia a coisa certa — a exceção sobe, o status NÃO vira ENVIADO, o rascunho
+   é apagado. O que ele fazia errado era CONTAR isso ao operador como
+
+       "Erro ao reenviar: Service invoked too many times for one day: gmail"
+
+   Uma frase em inglês, sobre um limite do Google, para quem quer mandar um
+   ofício. Não diz que o problema passa sozinho, não diz quando tentar de novo,
+   e não diz que o ofício continua intacto — então a reação natural é tentar de
+   novo agora, o que só gasta mais.
+
+   E há uma armadilha a mais, que é o motivo de isto virar função própria: o
+   medidor NÃO PREVÊ essa falha. Às 11:53, três minutos antes, o diagnóstico
+   dizia "Cota de e-mail: 96 restantes". `MailApp.getRemainingDailyQuota()`
+   conta DESTINATÁRIOS; o que estourou foi o limite de CHAMADAS ao serviço
+   Gmail — outro contador, que o gatilho de monitoramento consome varrendo a
+   caixa de três em três horas. Medimos um e gastamos o outro.
+
+   Por isso a mensagem diz o que fazer, e não só o que houve. */
+function oficio_explicarFalhaDeEnvio_(e, numero) {
+  var bruto = String((e && e.message) || e || "");
+  var oficio = String(numero || "").trim();
+
+  /* O Google escreve esta em inglês e ela cobre os dois limites — o de
+     destinatários por dia e o de chamadas ao serviço. Casar pelo trecho é o
+     que dá para fazer: não há código de erro para checar. */
+  if (/too many times for one day|limite de uso|quota|Service invoked/i.test(bruto)) {
+    return "O ofício " + (oficio ? oficio + " " : "") + "NÃO foi enviado: o " +
+           "limite diário de e-mail do Google se esgotou na conta que envia. " +
+           "O ofício continua intacto e segue marcado como pendente — não é " +
+           "preciso refazer nada. Tente de novo amanhã, quando o limite zera. " +
+           "Tentar agora só gasta o que ainda resta. " +
+           "(Mensagem do Google: " + bruto + ")";
+  }
+
+  return "Erro ao reenviar: " + bruto;
 }
 
 /* ── Helpers de formatação de corpo ── */

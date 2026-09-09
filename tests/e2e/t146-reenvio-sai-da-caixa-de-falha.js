@@ -172,4 +172,47 @@ ok(colunaDe("144/2026", "MENSAGEM_ID") !== idGravado ||
 ok(/mensagemId/.test(String(g.reenviarOficio)),
    "e o reenvio passa o ID adiante em vez de descartar");
 
+/* ══════════════════════════════════════════════════════════════════════════
+   O ERRO DE COTA DITO EM PORTUGUÊS — 09/09/2026
+   ══════════════════════════════════════════════════════════════════════════
+
+   O usuário reenviou o ofício 407 e nada apareceu em Enviados — nem na caixa
+   do financeiro nem na da secretaria. Em 04/09 os reenvios saíram normalmente
+   (242, 236, 203, 172, 168 e 144, todos com assunto "Reenvio:"). Hoje, não.
+
+   O log do próprio sistema, às 11:56 de hoje, tem a explicação:
+   "Service invoked too many times for one day: gmail".
+
+   O CÓDIGO JÁ FAZIA A COISA CERTA: a exceção sobe, o status NÃO vira ENVIADO,
+   o rascunho é apagado. O que ele fazia errado era CONTAR isso ao operador
+   como "Erro ao reenviar: Service invoked too many times for one day: gmail" —
+   uma frase em inglês, sobre um limite do Google, para quem só quer mandar um
+   ofício. A reação natural é tentar de novo agora, o que só gasta mais. */
+passo("a falha de cota diz o que é e o que fazer");
+
+const msgCota = g.oficio_explicarFalhaDeEnvio_(
+  new Error("Service invoked too many times for one day: gmail."), "407/2026");
+
+ok(msgCota.indexOf("407/2026") > -1, "a mensagem nomeia o ofício");
+ok(/NÃO foi enviado/.test(msgCota),
+   "diz que o ofício NÃO foi enviado",
+   "sem isso a pessoa não sabe se saiu ou não — e é a primeira coisa que ela precisa saber");
+ok(/limite diário/i.test(msgCota), "diz que é limite diário do Google, não defeito");
+ok(/amanhã/i.test(msgCota),
+   "e diz QUANDO tentar de novo",
+   "sem prazo, a pessoa tenta agora e gasta o que ainda resta");
+ok(/continua intacto|não é preciso refazer/i.test(msgCota),
+   "e que o ofício continua intacto",
+   "o medo de ter perdido o documento é o que faz alguém refazer trabalho à toa");
+ok(msgCota.indexOf("Service invoked too many times") > -1,
+   "sem esconder a mensagem original do Google",
+   "quem for depurar precisa do texto cru");
+
+passo("erro que não é de cota continua sendo mostrado como está");
+
+const msgOutro = g.oficio_explicarFalhaDeEnvio_(new Error("Arquivo não encontrado"), "500/2026");
+igual(msgOutro, "Erro ao reenviar: Arquivo não encontrado",
+      "outro erro qualquer não é reescrito",
+      "adivinhar a causa de um erro desconhecido esconderia o problema real");
+
 resumo();
