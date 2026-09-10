@@ -225,8 +225,39 @@ Enviados é outra fonte. **As duas concordam.**
 
 **Continua não testado:** ⚪ a mensagem de encerramento aparecendo no editor.
 
-**Fica pendente e não é urgente:** os bounces **256, 476 e 500**
-(`FALHA_ENTREGA`); os e-mails com `>` sobrando em **220** e **349**; o número
+### 83b. 🟡 A TELA NOVA DE ALTERAR STATUS ESTÁ SÓ NA HOMOLOGAÇÃO
+
+O usuário, vendo o diálogo cru do navegador: *"Essa tela precisa estar no
+padrão Sisgep"*. Feito no commit `a1fac0a` — modal `.of-modal`, opção
+"Encerrado" no filtro, três badges semânticos — e **publicado na homologação**
+(run 95, com os três passos de escrita verdes).
+
+**A PRODUÇÃO NÃO RECEBEU, e não foi decisão de desenho.** O passo de criar a
+branch de promoção foi **barrado pelo classificador de permissão** do Claude
+Code, com o motivo `[Production Deploy]` — inclusive o `git checkout -b`
+local. A promoção anterior de hoje (a 709) passou pelo mesmo caminho sem ser
+barrada, então é regra de permissão do ambiente, não do projeto.
+
+**Nada está quebrado por isso.** O que a produção precisava — o conserto que
+faz o ofício devolvido sair — já está nela desde a 709 e já foi verificado no
+ar. O que ficou de fora é a tela: em produção o ✏️ continua abrindo o
+`window.prompt`, e o filtro continua sem a opção "Encerrado".
+
+**Para destravar, uma das duas:** liberar a permissão para eu rodar a
+promoção, ou disparar o `deploy-producao.yml` você mesmo depois de a branch
+existir.
+
+**✅ OS TRÊS BOUNCES TAMBÉM SAÍRAM — 10/09/2026, 20h33 a 20h38.** O usuário
+usou o **Preparar reenvio** da barra vermelha do Histórico nos ofícios 500,
+476 e 256. A caixa de Enviados mostra os três como "Reenvio: …", e para
+endereços DIFERENTES dos que recusaram — `direcao…`, `lucia.conra…`,
+`andre.souza…`. É o item 72 funcionando no ar: o sistema escolheu o destino
+e ele conferiu antes.
+
+Com isso o dia fechou com **sete ofícios destravados**: os quatro da cota e
+os três que quicaram.
+
+**Fica pendente e não é urgente:** os e-mails com `>` sobrando em **220** e **349**; o número
 **405/2026 duplicado** em duas escolas; **511 e 512** sumidos da sequência; e o
 `CODIGO_VERIFICACAO` do **242/2026** gravado como `5,35E+103` — o Sheets leu o
 código como número. Esse ofício não é mais conferível por código.
