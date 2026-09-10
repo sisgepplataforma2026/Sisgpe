@@ -1477,9 +1477,23 @@ esta custou uma mudança no caminho de envio.**
 5. Perguntei onde ele tinha olhado. Resposta: **caixa da secretaria.**
 
 **A EXPLICAÇÃO, e ela é simples:** a cópia em Enviados fica na caixa da conta
-que **executa** o script — `financeirosindeducacao@gmail.com`. A secretaria só
+que **executa** o script — `financeirosindecucacao@gmail.com`. A secretaria só
 recebe **respostas**, porque é para ela que aponta o `replyTo`. Nunca houve
 ofício enviado na caixa da secretaria, nem deveria haver.
+
+> **CORREÇÃO DE 10/09/2026 — e ela vale mais que o resto do item.** Este
+> parágrafo trazia o endereço escrito **errado**: `financeirosind`**`e`**`ducacao@`,
+> com "d". A conta real é `financeirosind`**`e`**`c`**`ucacao@`**, com **C** —
+> "cucacao", não "ducacao". Confirmado no log de execução do editor de
+> produção em 10/09, às 14h13: *"execução pelo dono do projeto:
+> financeirosindecucacao@gmail.com"*.
+>
+> **Por que isto importa mais do que um erro de digitação.** Este item existe
+> para responder "onde estão os ofícios enviados?", e a resposta apontava para
+> uma caixa que não é a que guarda. Quem seguisse esta linha procuraria no
+> lugar errado e concluiria de novo que os ofícios sumiram — exatamente o
+> susto de 02/09 que o item foi escrito para não repetir. O `.gs` sempre teve
+> a grafia certa (`SistemaConfig.gs:203`); o erro era só meu, aqui.
 
 **E o alias não muda isso.** Ele muda o campo **De** que a escola vê. Onde a
 cópia é guardada continua sendo a caixa que executa.
@@ -1676,7 +1690,7 @@ ninguém confirmou: é que o sistema não tem como ver a confirmação.**
    aponta para `mx-vip-01.kinghost.net` (consultado no DNS em 02/09).
 4. O verificador roda `GmailApp.search(...)`
    (`MonitoramentoOficios.gs:359`), que lê **a caixa da conta que executa o
-   script** — `financeirosindeducacao@gmail.com`.
+   script** — `financeirosindecucacao@gmail.com`.
 
 **São duas caixas, em dois provedores. A resposta nunca chega onde o sistema
 procura.**
@@ -1712,7 +1726,7 @@ chegar a uma hora. Irrelevante aqui — o verificador roda de 3 em 3 horas.
 
 **🔴 A COBRAR DO USUÁRIO**
 
-1. **Conferir na `financeirosindeducacao@gmail.com`** se existe alguma
+1. **Conferir na `financeirosindecucacao@gmail.com`** se existe alguma
    resposta de escola. Se não existir nenhuma, está confirmado. (Eu não
    consigo verificar: o conector de Gmail desta sessão está na conta
    **pessoal** dele, não na que executa o script.)
