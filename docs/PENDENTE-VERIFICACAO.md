@@ -187,18 +187,22 @@ por GitHub Actions neste repositório desde 20/08, e eu operei como se só
 tivesse o repositório. O `CLAUDE.md` diz "só o repositório GitHub" e eu li
 isso como "não consigo publicar" — não é a mesma coisa. Publicar é comigo.
 
+**PUBLICADO NA PRODUÇÃO — versão 709**, 10/09/2026 22:36 (run 41), pela branch
+`promocao/hml-5757db8-para-producao-2026-09-10`. O `conferir` (run 40) foi
+lido antes: **0 criados, 0 removidos, 2 modificados**. A versão **708** ficou
+guardada para rollback, com a produção inteira baixada no artefato
+`producao-antes-41-versao-708` (90 dias).
+
+Três pinos subiram junto com o SHA na promoção, e o terceiro não é
+formalidade: o contador de `.gs` foi de 174 para **176**. Ele existe para
+barrar promoção que perdeu arquivo pelo caminho.
+
 **NÃO TESTADO (REGRA Nº -1)** — e é isto que eu vou cobrar:
 
-1. 🔴 **PRODUÇÃO NÃO RECEBEU.** Homologação e produção são projetos Apps
-   Script diferentes, e Ofícios roda na produção. A promoção é o
-   `deploy-producao.yml`, que exige branch `promocao/...` própria, o SHA
-   homologado no `if:` e a confirmação digitada `PUBLICAR PRODUCAO`. O
-   workflow ainda aponta para `8d5c380` (08/09) e confere `174 .gs` — o
-   repositório está em **176**. Os dois números precisam subir junto com o SHA;
-2. 🔴 **devolver 517, 518, 519 e 520 para `PENDENTE` pelo Histórico** e
+1. 🔴 **devolver 517, 518, 519 e 520 para `PENDENTE` pelo Histórico** e
    confirmar que os quatro saem na rodada seguinte. É a asserção que fecha o
-   pedido, e só a produção responde;
-3. ⚪ a mensagem de encerramento aparecendo no editor.
+   pedido, e nem o emulador nem a suíte alcançam: quem responde é a tela;
+2. ⚪ a mensagem de encerramento aparecendo no editor.
 
 **Fica pendente e não é urgente:** os bounces **256, 476 e 500**
 (`FALHA_ENTREGA`); os e-mails com `>` sobrando em **220** e **349**; o número
