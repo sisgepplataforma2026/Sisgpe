@@ -57,6 +57,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 | Nº | Item |
 |---|---|
+| 80 | 🔴 A cota deixa de condenar o ofício, e nasce o comprovante de envio |
 | 79 | 🔴 PRODUÇÃO NA 705 — a conferência responde pelos 362, e uma conclusão minha CORRIGIDA |
 | 78 | 🔴 PRODUÇÃO NA 702 — dois gatilhos precisam ser reinstalados NO EDITOR |
 | 77 | 🔴 A cota do Gmail — o monitoramento comia o orçamento do envio de ofício |
@@ -122,6 +123,67 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
+
+### 80. 🔴 A COTA DEIXA DE CONDENAR O OFÍCIO, E NASCE O COMPROVANTE DE ENVIO
+
+10/09/2026. Produção publicada na **706** (rollback na 705, `7a5f367`) com o
+conserto da conferência. Depois disso vieram três commits que **ainda não
+estão em ambiente nenhum**: `9b14db4`, `a4cb456` e `fd2cd08`.
+
+#### 1. A cota não pode queimar as tentativas do ofício
+
+Você disse: *"Se a cota estourou ele deve aparecer quando for iniciada"*. Está
+certo, e o sistema **não fazia isso**. A trava existia mas media o contador
+errado — `MailApp.getRemainingDailyQuota()` conta destinatários, e o que
+estoura é o limite de chamadas. Passava pela trava, o envio morria, e:
+
+```
+erro genérico → soma tentativa → gatilho de 5 min → MAX_TENTATIVAS = 3
+        ⇒ em QUINZE MINUTOS o ofício virava ERRO_PERMANENTE
+        ⇒ no dia seguinte, cota renovada, NÃO era reenviado
+```
+
+Agora o limite tem veredito próprio e a linha fica intacta — nem status, nem
+tentativa, nem último erro — e a rodada para. **O defeito que o teste pegou no
+meu próprio conserto**, e que teria ido ao ar: a linha é marcada `PROCESSANDO`
+antes do envio, e só sair do laço a deixaria travada ali para sempre, porque o
+filtro só aceita PENDENTE e ERRO. O status passou a ser devolvido.
+
+#### 2. Comprovante de envio — sem pedir nada à escola
+
+Nasceu de *"como vou provar que foi enviado"*, e o desenho é seu: eu propus
+protocolo de recebimento e você derrubou com *"não vai burocratizar? Já que o
+email é pessoal"*. Estava certo — protocolo faz a **escola** trabalhar, e uma
+lista de "aguardando protocolo" que nunca esvazia é o item 74 outra vez.
+
+Escopo que você fechou: *"Só preciso da confirmação do email enviado."*
+
+O documento declara a **força de cada evidência**, e é isso que o torna
+utilizável: conferido em Enviados é prova forte; ausência de devolução é
+indício, não prova; confirmação **automática** vale menos que a de uma pessoa
+(foi a varredura que deixou "Outlook" confirmar ofício que quicou — item 49);
+e o rodapé diz que e-mail não prova leitura.
+
+Fica no **Histórico**, terceira ação sobre a mesma seleção. Dois botões:
+imprimir (janela própria) e arquivar em `RELATORIOS/<ano>`, idempotente.
+
+**🔴 O QUE FALTA VOCÊ FAZER:**
+
+1. **Decidir se publico.** São três commits fora do ar. O da cota é o que
+   evita ofício perdido no próximo dia de limite estourado.
+2. **Depois de publicar, abrir o Histórico**, marcar um ofício e conferir:
+   a barra roxa aparece, o modal abre, o comprovante renderiza.
+3. **Imprimir um** e ver se sai formatado no papel.
+4. **Arquivar um** e conferir o PDF na pasta de Relatórios do ano.
+5. E os **dois gatilhos do item 78**, que continuam esperando no editor.
+
+**NÃO TESTADO**, pela REGRA Nº -1: tudo do item 2 ao 4. O emulador não abre
+navegador, não converte HTML em PDF e devolve um arquivo de mentira no Drive.
+O que está provado é o conteúdo do comprovante, o peso de cada evidência, a
+idempotência, a fiação da tela ao backend e o comportamento da fila quando a
+cota estoura. `t155` (25) e `t156` (49); suíte 158 arquivos, 5.501 asserções.
+
+---
 
 ### 79. 🔴 PRODUÇÃO NA 705 — E UMA CONCLUSÃO MINHA QUE ESTAVA ERRADA
 
