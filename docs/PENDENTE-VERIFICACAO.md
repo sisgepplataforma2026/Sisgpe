@@ -181,6 +181,28 @@ confirma a ausência. Duas fontes, mesma conclusão.
 2. Ver se as `DATA_ENVIO` se agrupam em duas janelas. Se agruparem, fecha a
    história e dá para dizer que dia foi.
 
+#### ✅ CONFIRMADO NO AR EM 10/09, 18h48 — o aviso de retomada
+
+O usuário rodou o `...Completo()` com o cursor parado em 151 e o relatório
+abriu com:
+
+```
+↩️  CONTINUANDO de onde uma execução anterior parou (linha 151).
+    As 151 primeiras linhas NÃO foram conferidas agora
+```
+
+Era o único ponto do commit `6471477` (produção **708**) que estava "não
+testado". Fecha.
+
+Duas coisas a mais que a repetição rendeu:
+
+- **a fila foi conferida de ponta a ponta DUAS vezes**, com resultado idêntico:
+  os mesmos 26 ausentes, os mesmos blocos, na mesma ordem. Os blocos do meio
+  saíram iguais três vezes. Não é artefato de busca nem de timing;
+- 🟡 **imprecisão de redação a corrigir na próxima publicação:** o `(linha N)`
+  é a posição na FILA, não o número da linha da planilha — que é N+2. A
+  contagem de linhas puladas está certa; só o rótulo é ambíguo.
+
 **NÃO rodar a conferência de novo sem motivo:** ao terminar, o cursor é
 apagado e a próxima execução refaz as 370 do zero — 370 consultas ao Gmail,
 o mesmo gasto que derrubou o envio do 407. Para reconferir alguns, marcar na
