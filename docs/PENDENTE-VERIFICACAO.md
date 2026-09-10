@@ -57,6 +57,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 | Nº | Item |
 |---|---|
+| 81 | ✅ VERIFICADO NO AR — o remetente é a Secretaria, e onde a cópia fica é estrutural |
 | 80 | 🔴 A cota deixa de condenar o ofício, e nasce o comprovante de envio |
 | 79 | 🔴 PRODUÇÃO NA 705 — a conferência responde pelos 362, e uma conclusão minha CORRIGIDA |
 | 78 | 🔴 PRODUÇÃO NA 702 — dois gatilhos precisam ser reinstalados NO EDITOR |
@@ -123,6 +124,82 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
+
+### 81. ✅ VERIFICADO NO AR — O REMETENTE É A SECRETARIA
+
+10/09/2026, com o usuário abrindo a caixa e mandando os prints. Fecha uma
+dúvida que arrastava desde 02/09 e **desfaz três conclusões minhas erradas do
+mesmo dia** — as três registradas aqui porque cada uma teria mandado alguém
+procurar no lugar errado.
+
+#### O que ficou provado, com evidência
+
+**O ofício 516/2026, enviado hoje às 10h18, saiu assim:**
+
+```
+SindEducação-ES <secretaria@sindeducacao.com>
+para: rh.colatina@…, cgsouza@…
+```
+
+O remetente **é** a Secretaria. O pedido do usuário — *"deixar de vir para
+esse email e ficar somente em secretaria@sindeducacao.com"* — está cumprido
+para todo ofício novo. O alias existe no Gmail da conta executora
+(`SindEducação/ES <secretaria@sindeducacao.com>`, via smtp.kinghost.net), o
+`GmailApp.getAliases()` o enxerga e o `from` é aplicado.
+
+**E os ofícios estão guardados.** A busca na caixa devolveu `1-100 de muitos`,
+com o 516/2026 no topo. Nunca houve ofício perdido por falta de arquivamento.
+
+#### As três correções minhas, do mesmo dia
+
+1. **O endereço da caixa.** Eu escrevia `financeirosind`**`ed`**`ucacao@`. É
+   `financeirosind`**`ec`**`ucacao@`, com C. Corrigido em três pontos deste
+   arquivo — inclusive dentro do item 63, que existe justamente para dizer
+   onde os ofícios ficam.
+2. **"Falta o alias no Gmail."** Falso — o alias está lá, terceiro da lista
+   de "Enviar e-mail como".
+3. **"O `createDraft().send()` ignora o `from`."** Falso. O `From:` do
+   516/2026 prova que aplica.
+
+Nas três eu deduzi a partir do código e do que já estava escrito, em vez de
+pedir a evidência. É a REGRA Nº -1 cobrada de outro jeito: ler não é ver.
+
+#### O FATO ESTRUTURAL, que muda o que é possível
+
+**`secretaria@sindeducacao.com` não é conta Google** — é caixa KingHost, por
+webmail Roundcube. Apps Script só executa como conta Google. Disso decorre:
+
+- **o script nunca poderá executar como a Secretaria.** A ideia de "transferir
+  o dono do projeto" que eu levantei não é cara: é impossível;
+- **a cópia enviada nunca vai aparecer no Enviados do webmail.** O Gmail usa o
+  `smtp.kinghost.net` apenas como relé de entrega; a cópia é arquivada no
+  Enviados **do Gmail**, sempre. Os 15.737 do webmail são a correspondência
+  que a Secretaria escreveu à mão.
+
+Para a cópia existir na caixa da Secretaria só haveria BCC — que gasta um
+destinatário da cota por ofício e reverteria a decisão escrita em
+`EmailOficios.gs:127` (*"Sem BCC"*). **O arquivamento no Drive (item 80)
+resolve melhor:** não gasta cota, não depende de caixa nenhuma, e a pasta é do
+sindicato.
+
+#### O que ainda vai acontecer, e não é defeito
+
+Resposta de escola continuará caindo na conta gmail por um tempo: quem
+responde, responde para o endereço que **recebeu**, e ofício de junho ou julho
+saiu antes de o remetente estar certo. Isso seca sozinho.
+
+#### Dois achados de tabela, para conferir
+
+1. 🟡 **Rascunho órfão do ofício 362/2026**, de 04/09, com anexo, entre os 30
+   rascunhos da conta. O envio cria rascunho e apaga se falhar — rascunho
+   parado pode ser ofício que não saiu. **Conferir o status do 362 na fila.**
+2. ✅ **Os alertas de falha pararam.** A busca mostra oito
+   `⚠️ SISGEP — 9 ofício(s) com falha de entrega` em 7 e 8 de setembro, todos
+   sob o rótulo `SISGEP_Ignorado` que o usuário criou para escondê-los — e
+   **nenhum depois de 08/09**, que é quando a correção do item 74 subiu.
+   Confirma o item 1 da lista "A CONFERIR NO AR" daquele item.
+
+---
 
 ### 80. 🔴 A COTA DEIXA DE CONDENAR O OFÍCIO, E NASCE O COMPROVANTE DE ENVIO
 
