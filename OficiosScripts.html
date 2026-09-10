@@ -3456,7 +3456,8 @@ window.mostrarAbaOficio = function(aba) {
 
       tbody.innerHTML = ordenada.map(function(item) {
         var status=String(item.status||"").toUpperCase().trim();
-        var badgeClass=status==="CONFIRMADO"?"hist-confirmado":status==="ENVIADO"?"hist-enviado":"hist-pendente";
+        var badgeClass=Historico.statusClasse(status);
+        var badgeTxt=Historico.statusRotulo(status);
         var url=String(item.url||item.linkPdf||"").trim();
         var num=String(item.numero||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
         var abrirBtn=url?'<button type="button" class="btn btn-outline btn-sm" onclick="window.open(\''+url+'\',\'_blank\')">📥 PDF</button>':'<button type="button" class="btn btn-ghost btn-sm" disabled>Sem link</button>';
@@ -3466,7 +3467,7 @@ window.mostrarAbaOficio = function(aba) {
           +'<td>'+String(item.tipo||"").replace(/</g,"&lt;")+'</td>'
           +'<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+String(item.escola||"").replace(/"/g,"&quot;")+'">'+String(item.escola||"").replace(/</g,"&lt;")+'</td>'
           +'<td>'+String(item.data||"")+'</td>'
-          +'<td><span class="hist-badge '+badgeClass+'">'+status+'</span></td>'
+          +'<td><span class="hist-badge '+badgeClass+'">'+badgeTxt+'</span></td>'
           +'<td><div class="row-btns">'+abrirBtn
           +'<button type="button" class="btn btn-outline btn-sm" onclick="Historico.editar(\''+num+'\')" title="Editar status">✏️</button>'
           +'<button type="button" class="btn btn-teal btn-sm" onclick="Historico.reenviar(\''+num+'\')" title="Reenviar">📧</button>'
@@ -4247,15 +4248,135 @@ window.mostrarAbaOficio = function(aba) {
         .excluirRegistrosOficio(Historico.selecionados, SISGEP_TOKEN_SESSAO);
     },
 
+    /* ALTERAR STATUS — eram dois window.prompt em sequencia. Ver a nota do
+       modal em OficiosFormulario. O que o dialogo do navegador nao tinha como
+       fazer, e e o motivo real desta troca: mostrar de onde o oficio vem. */
+    _statusItem: null,
+
+    statusRotulo: function(st) {
+      return st === "ERRO_PERMANENTE" ? "ENCERRADO" : (st || "—");
+    },
+
+    statusClasse: function(st) {
+      if (st === "CONFIRMADO")      return "hist-confirmado";
+      if (st === "ENVIADO")         return "hist-enviado";
+      if (st === "FALHA_ENTREGA")   return "hist-falha";
+      if (st === "ERRO")            return "hist-erro";
+      if (st === "ERRO_PERMANENTE") return "hist-encerrado";
+      return "hist-pendente";
+    },
+
     editar: function(numero) {
-      var novoStatus=window.prompt("Ofício "+numero+"\n\nAlterar status para:\n1 - ENVIADO\n2 - CONFIRMADO\n3 - PENDENTE\n4 - FALHA_ENTREGA\n5 - ERRO\n\nDigite o número:");
-      var mapa={"1":"ENVIADO","2":"CONFIRMADO","3":"PENDENTE","4":"FALHA_ENTREGA","5":"ERRO"};
-      var status=mapa[String(novoStatus||"").trim()]; if(!status){ toast("Opção inválida.","warn"); return; }
-      var obs=window.prompt("Observação (opcional):")||"Alterado manualmente.";
+      var alvo = String(numero || "").trim(), item = null;
+      (Historico._dadosCache || []).forEach(function(i) {
+        if (String(i.numero || "").trim() === alvo) item = i;
+      });
+      if (!item) { toast("Ofício não encontrado na lista carregada.", "warn"); return; }
+      Historico._statusItem = item;
+
+      var st = String(item.status || "").toUpperCase().trim();
+      var sub = document.getElementById("histStatusSub");
+      if (sub) sub.textContent = "Ofício " + alvo + " · " + (item.tipo || "—") + " · " + (item.escola || "—");
+
+      var badge = document.getElementById("histStatusAtual");
+      if (badge) {
+        badge.textContent = Historico.statusRotulo(st);
+        badge.className = "hist-badge " + Historico.statusClasse(st);
+      }
+
+      /* O MOTIVO A VISTA. "Devolver para a fila" tem consequencias opostas
+         conforme o que parou o oficio: com a cota do Google ele sai na
+         proxima rodada; com um endereco que nao existe ele so vai quicar de
+         novo. Quem separa os dois casos e o ULTIMO_ERRO — e ele nao cabia num
+         window.prompt. */
+      var motivo = document.getElementById("histStatusMotivo");
+      var txt = String(item.ultimoErro || "").trim();
+      if (motivo) { motivo.textContent = txt; motivo.style.display = txt ? "block" : "none"; }
+
+      var obs = document.getElementById("histStatusObs");
+      if (obs) obs.value = "";
+
+      var radios = document.querySelectorAll('input[name="histStatusOpcao"]');
+      Array.prototype.forEach.call(radios, function(r) {
+        r.checked = false;
+        if (r.parentNode && r.parentNode.classList) r.parentNode.classList.remove("sel");
+        if (!r.dataset.bSt) { r.dataset.bSt = "1"; r.addEventListener("change", Historico.statusMarcou); }
+      });
+
+      Historico.statusAviso("");
+      var ov = document.getElementById("histStatusOverlay");
+      if (ov) ov.classList.add("aberto");
+    },
+
+    statusMarcou: function() {
+      var escolhido = "";
+      Array.prototype.forEach.call(document.querySelectorAll('input[name="histStatusOpcao"]'), function(r) {
+        if (r.parentNode && r.parentNode.classList) r.parentNode.classList.toggle("sel", r.checked);
+        if (r.checked) escolhido = r.value;
+      });
+
+      /* A COMBINACAO QUE O USUARIO QUASE FEZ, em 10/09/2026: abriu o oficio
+         500, que quicou, para devolver a fila. Devolver manda para o MESMO
+         endereco que ja recusou — quica de novo e some do radar outra vez.
+         Avisa e nao bloqueia: as vezes o endereco foi corrigido no cadastro e
+         a pessoa sabe disso. */
+      var atual = String((Historico._statusItem || {}).status || "").toUpperCase().trim();
+      if (atual === "FALHA_ENTREGA" && escolhido === "PENDENTE") {
+        Historico.statusAviso("Este endereço já recusou a entrega. Devolver para a fila manda " +
+          "de novo para o MESMO endereço. Para trocar o destino, use ↻ Preparar reenvio na " +
+          "barra vermelha do Histórico.");
+      } else {
+        Historico.statusAviso("");
+      }
+    },
+
+    statusAviso: function(msg) {
+      var el = document.getElementById("histStatusAviso");
+      if (!el) return;
+      el.textContent = msg || "";
+      el.style.display = msg ? "block" : "none";
+    },
+
+    statusFechar: function() {
+      var ov = document.getElementById("histStatusOverlay");
+      if (ov) ov.classList.remove("aberto");
+      Historico._statusItem = null;
+    },
+
+    statusConfirmar: function() {
+      var item = Historico._statusItem;
+      if (!item) { Historico.statusFechar(); return; }
+
+      var escolhido = "";
+      Array.prototype.forEach.call(document.querySelectorAll('input[name="histStatusOpcao"]'), function(r) {
+        if (r.checked) escolhido = r.value;
+      });
+      if (!escolhido) { toast("Escolha para qual status alterar.", "warn"); return; }
+
+      var numero = String(item.numero || "").trim();
+      var obsEl = document.getElementById("histStatusObs");
+      var obs = obsEl ? String(obsEl.value || "").trim() : "";
+      if (!obs) obs = "Alterado manualmente.";
+
+      var btn = document.getElementById("histStatusOk");
+      if (btn) { btn.disabled = true; btn.textContent = "Salvando…"; }
+
+      function liberar() {
+        if (btn) { btn.disabled = false; btn.textContent = "Confirmar"; }
+      }
+
       google.script.run
-        .withSuccessHandler(function(r){ toast((r&&!r.erro)?(r.mensagem||"Atualizado."):(r&&r.mensagem)||"Erro.", (r&&!r.erro)?"ok":"err"); if(!r||!r.erro) Historico.carregar(); })
-        .withFailureHandler(function(err){ toast("Erro: "+((err&&err.message)||err),"err"); })
-        .atualizarStatusOficio(numero, status, obs, SISGEP_TOKEN_SESSAO);
+        .withSuccessHandler(function(r) {
+          liberar();
+          var ok = r && !r.erro;
+          toast(ok ? (r.mensagem || "Atualizado.") : ((r && r.mensagem) || "Erro."), ok ? "ok" : "err");
+          if (ok) { Historico.statusFechar(); Historico.carregar(); }
+        })
+        .withFailureHandler(function(err) {
+          liberar();
+          toast("Erro: " + ((err && err.message) || err), "err");
+        })
+        .atualizarStatusOficio(numero, escolhido, obs, SISGEP_TOKEN_SESSAO);
     }
   };
 

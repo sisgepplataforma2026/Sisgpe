@@ -630,6 +630,12 @@
               <option value="PENDENTE">Pendente</option>
               <option value="ERRO">Erro</option>
               <option value="FALHA_ENTREGA">Falha de entrega</option>
+              <!-- ERRO_PERMANENTE nao era opcao, e a comparacao dos dois
+                   filtros (servidor e tela) e exata: nem "Erro" alcancava.
+                   Os oficios que mais precisam de gente eram os unicos que a
+                   lista nao sabia mostrar. Achado em 10/09/2026, com o
+                   usuario procurando os quatro que a cota derrubou. -->
+              <option value="ERRO_PERMANENTE">Encerrado (esgotou tentativas)</option>
             </select>
           </div>
           <div class="fld">
@@ -825,6 +831,95 @@
             <div class="of-modal-foot">
               <button type="button" class="btn-outline" onclick="Historico.reenvioFechar()">Cancelar</button>
               <button type="button" class="btn-navy" id="histReenvOk" onclick="Historico.reenvioConfirmar()">Reenviar &#9656;</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ALTERAR STATUS — 10/09/2026, no padrao SISGEP.
+             O usuario, vendo o dialogo do navegador: "Essa tela precisa estar
+             no padrao Sisgep". Eram DOIS window.prompt em sequencia, com o
+             "Uma pagina incorporada em ...googleusercontent.com diz" em cima,
+             pedindo para DIGITAR um numero de 1 a 5 de cabeca.
+
+             O que muda alem da aparencia, e importa mais: o dialogo do
+             navegador nao tinha como mostrar o estado atual. A pessoa
+             escolhia sem ver de onde o oficio estava vindo nem por que tinha
+             parado - e as consequencias sao opostas conforme o motivo.
+             Aqui o status atual e o ultimo erro ficam a vista, cada opcao diz
+             o que faz, e a combinacao perigosa (endereco que recusou +
+             devolver para a fila) avisa antes. -->
+        <div id="histStatusOverlay" class="of-modal-overlay">
+          <div class="of-modal" style="max-width:560px;">
+            <div class="of-modal-head" style="border-bottom:3px solid var(--navy,#001f4d);">
+              <div>
+                <div class="of-modal-head-title">&#9999;&#65039; Alterar status</div>
+                <div class="of-modal-head-sub" id="histStatusSub">&mdash;</div>
+              </div>
+              <button type="button" class="of-modal-close" onclick="Historico.statusFechar()">&times;</button>
+            </div>
+
+            <div class="of-modal-body" style="display:flex;flex-direction:column;gap:14px;">
+
+              <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:12px;background:#f8fafc;">
+                <div style="font-size:11.5px;font-weight:800;color:#64748b;letter-spacing:.4px;padding-top:3px;">ATUAL</div>
+                <div style="flex:1;min-width:0;">
+                  <span class="hist-badge hist-pendente" id="histStatusAtual">&mdash;</span>
+                  <div id="histStatusMotivo" style="display:none;font-size:12px;color:#475569;margin-top:6px;line-height:1.45;"></div>
+                </div>
+              </div>
+
+              <div>
+                <div style="font-size:12px;font-weight:700;color:#334155;margin-bottom:8px;">Alterar para</div>
+                <label class="hist-st-op" data-valor="PENDENTE">
+                  <input type="radio" name="histStatusOpcao" value="PENDENTE">
+                  <span class="hist-st-op-txt">
+                    <b>🕐 PENDENTE &mdash; devolver para a fila</b>
+                    <i>As tentativas voltam a zero e o ofício sai na próxima rodada, em até 5 minutos.</i>
+                  </span>
+                </label>
+                <label class="hist-st-op" data-valor="ENVIADO">
+                  <input type="radio" name="histStatusOpcao" value="ENVIADO">
+                  <span class="hist-st-op-txt">
+                    <b>📤 ENVIADO</b>
+                    <i>Registra que saiu. Não envia nada.</i>
+                  </span>
+                </label>
+                <label class="hist-st-op" data-valor="CONFIRMADO">
+                  <input type="radio" name="histStatusOpcao" value="CONFIRMADO">
+                  <span class="hist-st-op-txt">
+                    <b>✅ CONFIRMADO</b>
+                    <i>A escola respondeu.</i>
+                  </span>
+                </label>
+                <label class="hist-st-op" data-valor="FALHA_ENTREGA">
+                  <input type="radio" name="histStatusOpcao" value="FALHA_ENTREGA">
+                  <span class="hist-st-op-txt">
+                    <b>❌ FALHA DE ENTREGA</b>
+                    <i>O endereço recusou. A fila não tenta de novo.</i>
+                  </span>
+                </label>
+                <label class="hist-st-op" data-valor="ERRO">
+                  <input type="radio" name="histStatusOpcao" value="ERRO">
+                  <span class="hist-st-op-txt">
+                    <b>⚠️ ERRO</b>
+                    <i>Falhou, e a fila tenta de novo na próxima rodada.</i>
+                  </span>
+                </label>
+              </div>
+
+              <div id="histStatusAviso" style="display:none;font-size:12px;padding:10px 12px;border-radius:10px;background:#fffbeb;border:1.5px solid #fde68a;color:#92400e;line-height:1.5;"></div>
+
+              <label style="font-size:12px;font-weight:700;color:#334155;">
+                Observa&ccedil;&atilde;o
+                <input id="histStatusObs" type="text" placeholder="por que est&aacute; alterando"
+                       style="width:100%;margin-top:5px;padding:9px 11px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:12.5px;font-weight:500;">
+              </label>
+
+            </div>
+
+            <div class="of-modal-foot">
+              <button type="button" class="btn-outline" onclick="Historico.statusFechar()">Cancelar</button>
+              <button type="button" class="btn-navy" id="histStatusOk" onclick="Historico.statusConfirmar()">Confirmar</button>
             </div>
           </div>
         </div>

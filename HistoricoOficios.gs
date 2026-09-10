@@ -95,6 +95,8 @@ function listarHistoricoOficios(filtros, tokenSessao) {
       status:  textoHistoricoOficio_(valor(col.status, i)) || "PENDENTE",
       usuario: textoHistoricoOficio_(valor(col.usuario, i)),
       codigo:  textoHistoricoOficio_(valor(col.codigo, i)),
+      ultimoErro: textoHistoricoOficio_(valor(col.ultimoErro, i)),
+      tentativas: parseInt(valor(col.tentativas, i), 10) || 0,
       url:     link,
       linkPdf: link
     });
@@ -129,7 +131,15 @@ function getColunasFilaOficios_(idx) {
     anexos:  idx("ANEXOS_JSON"),
     status:  idx("STATUS"),
     usuario: idx("USUARIO"),
-    codigo:  idx("CODIGO_VERIFICACAO")
+    codigo:  idx("CODIGO_VERIFICACAO"),
+    /* ULTIMO_ERRO E TENTATIVAS SAO DA TELA DE ALTERAR STATUS - 10/09/2026.
+       Quem vai devolver um oficio para a fila precisa ver POR QUE ele parou
+       antes de decidir. Sem isso a pessoa escolhe no escuro: "PENDENTE" tem
+       consequencias diferentes se o motivo foi a cota do Google ou um
+       endereco que recusou a entrega. Sao duas colunas estreitas a mais numa
+       leitura que ja e por coluna. */
+    ultimoErro: idx("ULTIMO_ERRO"),
+    tentativas: idx("TENTATIVAS")
   };
 }
 
