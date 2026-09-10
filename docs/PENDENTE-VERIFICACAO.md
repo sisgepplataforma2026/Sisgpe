@@ -57,7 +57,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 | Nº | Item |
 |---|---|
-| 83 | 🔴 Devolver o ofício para a fila não o fazia sair — e os 26 têm explicação |
+| 83 | ✅ VERIFICADO NO AR — 517 a 520 saíram; devolver para a fila zera as tentativas |
 | 82 | ✅ VERIFICADO NO AR — 344 dos 370 ofícios estão em Enviados; os 26 que faltam têm forma |
 | 81 | ✅ VERIFICADO NO AR — o remetente é a Secretaria, e onde a cópia fica é estrutural |
 | 80 | 🔴 A cota deixa de condenar o ofício, e nasce o comprovante de envio |
@@ -127,7 +127,7 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
-### 83. 🔴 DEVOLVER O OFÍCIO PARA A FILA NÃO O FAZIA SAIR — e os 26 têm explicação
+### 83. ✅ VERIFICADO NO AR — OS QUATRO SAÍRAM, E OS 26 TÊM EXPLICAÇÃO
 
 10/09/2026. O usuário colou a aba `FILA_ENVIO_OFICIOS` inteira. Ela fechou a
 pergunta do item 82 e abriu uma pior.
@@ -197,12 +197,33 @@ Três pinos subiram junto com o SHA na promoção, e o terceiro não é
 formalidade: o contador de `.gs` foi de 174 para **176**. Ele existe para
 barrar promoção que perdeu arquivo pelo caminho.
 
-**NÃO TESTADO (REGRA Nº -1)** — e é isto que eu vou cobrar:
+## ✅ RODOU — 10/09/2026, ~22h50
 
-1. 🔴 **devolver 517, 518, 519 e 520 para `PENDENTE` pelo Histórico** e
-   confirmar que os quatro saem na rodada seguinte. É a asserção que fecha o
-   pedido, e nem o emulador nem a suíte alcançam: quem responde é a tela;
-2. ⚪ a mensagem de encerramento aparecendo no editor.
+O usuário devolveu os quatro para `PENDENTE` pelo Histórico e, na rodada
+seguinte do gatilho, **os quatro ficaram `ENVIADO`**: 517, 518, 519 e 520.
+
+Isso prova a cadeia inteira em produção, e não por dedução — cada elo tem
+consequência observável:
+
+| Elo | Como se sabe |
+|---|---|
+| A 709 está servindo | se não estivesse, teriam voltado a `ERRO_PERMANENTE` |
+| Devolver zera as tentativas | senão a fila re-condenava antes de tentar |
+| A fila pega o devolvido | mudaram de status sozinhos |
+| O e-mail sai | `ENVIADO` nos quatro |
+
+As quatro escolas — Colégio Marista, Centro Educacional de Ensino Sudeste,
+Associação de Educação São Vicente e Junta de Educação da Convenção —
+receberam o ofício de Filiação que estava parado desde a manhã.
+
+**E há SEGUNDA medição, independente da primeira.** O usuário abriu a caixa
+de Enviados: os quatro e-mails estão lá, às 20h23 e 20h24, com destinatário
+real — `vda.vilavel.` (517), `contabilida., rh` (518), `tesouraria` (519) e
+`dp` (520). A planilha diz `ENVIADO` e o Gmail mostra a mensagem. Status
+escrito pelo próprio sistema é afirmação dele sobre si mesmo; a caixa de
+Enviados é outra fonte. **As duas concordam.**
+
+**Continua não testado:** ⚪ a mensagem de encerramento aparecendo no editor.
 
 **Fica pendente e não é urgente:** os bounces **256, 476 e 500**
 (`FALHA_ENTREGA`); os e-mails com `>` sobrando em **220** e **349**; o número
