@@ -222,6 +222,50 @@ ok(typeof g.conferirOficiosNaCaixaDeEnviadosCompleto === "function",
 ok(!/conferirOficiosNaCaixaDeEnviadosCompleto_\s*=/.test(monFonte),
    "  e não termina em _ — o seletor do editor a lista");
 
+passo("RETOMAR NUNCA É SILENCIOSO — 10/09/2026");
+
+/* Nasceu de um acidente do usuário: ele terminou a fila (370 ofícios, três
+   execuções) e rodou mais uma vez. O cursor é apagado ao completar, então a
+   execução recomeçou do zero, gastou 150 consultas reescrevendo vereditos
+   idênticos e PAROU no meio — deixando o cursor em 150.
+
+   O estrago não é o gasto. É que a próxima execução, semanas depois,
+   continuaria da linha 150 sem ninguém ter pedido, e o relatório diria
+   "conferidos: 150" — que a pessoa leria como "a fila toda". */
+g.GmailApp.search = () => [];
+g.PropertiesService.getScriptProperties()
+  .setProperty(g.OFICIO_PROP_COMPROV_CURSOR, "3");
+
+const rr = g.conferirOficiosNaCaixaDeEnviados(true, false, TOKEN);
+igual(rr.comecouEm, 3, "a execução sabe que começou no meio");
+ok(/CONTINUANDO/.test(rr.relatorio),
+   "e o relatório ANUNCIA que está retomando",
+   "sem isso, continuar do meio parece ter conferido tudo");
+ok(/NÃO foram conferidas/.test(rr.relatorio),
+   "  dizendo quantas linhas ficaram de fora desta execução");
+ok(/conferirOficiosNaCaixaDeEnviadosRecomecar/.test(rr.relatorio),
+   "  e oferece o caminho para conferir tudo do zero");
+
+passo("e dá para pedir 'esquece o cursor' pelo editor");
+
+ok(typeof g.conferirOficiosNaCaixaDeEnviadosRecomecar === "function",
+   "conferirOficiosNaCaixaDeEnviadosRecomecar existe",
+   "o botão Executar não passa argumento; sem esta função não há como pedir");
+
+g.PropertiesService.getScriptProperties()
+  .setProperty(g.OFICIO_PROP_COMPROV_CURSOR, "3");
+/* Sem token, como o botão Executar do editor chama: quem responde é a conta
+   Google de quem executa — o dono do projeto. */
+const usuarioAntes = g.__usuarioAtivoEmail;
+const donoAntes    = g.__donoDoProjetoEmail;
+g.__usuarioAtivoEmail = g.__donoDoProjetoEmail = "financeirosindecucacao@gmail.com";
+const rz = g.conferirOficiosNaCaixaDeEnviadosRecomecar();
+g.__usuarioAtivoEmail = usuarioAntes;
+g.__donoDoProjetoEmail = donoAntes;
+igual(rz.comecouEm, 0, "ela zera o cursor e começa da primeira linha");
+ok(!/CONTINUANDO/.test(rz.relatorio),
+   "  e aí o relatório não fala em retomada");
+
 passo("retomável: não recomeça do zero");
 
 ok(/OFICIO_PROP_COMPROV_CURSOR/.test(trechoConf),

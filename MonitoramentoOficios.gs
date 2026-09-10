@@ -579,6 +579,32 @@ function conferirOficiosNaCaixaDeEnviadosCompleto() {
   return conferirOficiosNaCaixaDeEnviados(true, false, "");
 }
 
+/**
+ * ESQUECE ONDE PAROU E CONFERE A FILA INTEIRA DE NOVO.
+ *
+ * 10/09/2026, e nasceu de um acidente do usuário. Ele tinha acabado de
+ * terminar a fila (370 ofícios, três execuções) e rodou mais uma vez. Como o
+ * cursor é apagado ao completar, a execução recomeçou do zero e gastou 150
+ * consultas para reescrever vereditos idênticos — e parou no meio, deixando o
+ * cursor em 150.
+ *
+ * O ESTRAGO NÃO É O GASTO, É O QUE VEM DEPOIS. Daqui a um mês, quem rodar o
+ * `...Completo()` vai CONTINUAR da linha 150, pulando as 150 primeiras, sem
+ * ter pedido isso e sem ter como saber. O relatório diria "conferidos: 150"
+ * e a pessoa leria como "a fila toda".
+ *
+ * Duas coisas resolvem, e as duas estão aqui: esta função, para poder pedir
+ * "esquece o cursor" pelo botão Executar do editor — que não passa argumento;
+ * e o aviso de retomada no relatório, logo abaixo, para que continuar do meio
+ * nunca seja silencioso.
+ *
+ * Mesmo motivo de `compassoPiloto` existir ao lado de
+ * `compasso_pilotoExecutar`.
+ */
+function conferirOficiosNaCaixaDeEnviadosRecomecar() {
+  return conferirOficiosNaCaixaDeEnviados(true, true, "");
+}
+
 var OFICIO_COL_COMPROVACAO     = "COMPROVACAO_ENVIO";
 var OFICIO_COL_COMPROVACAO_EM  = "COMPROVACAO_EM";
 var OFICIO_PROP_COMPROV_CURSOR = "SISGEP_COMPROVACAO_CURSOR";
@@ -635,6 +661,7 @@ function conferirOficiosNaCaixaDeEnviados(buscarPorNumero, recomecar, tokenSessa
     naoEncontrados: [], naLixeira: [], semIdVerificar: [],
     semIdAntigos: 0, semIdSemData: 0,
     consultasAoGmail: 0, parou: false, restam: 0, cotaAcabou: false,
+    comecouEm: inicio,
     modo: buscarPorNumero === true ? "COMPLETO (id + busca por número)" : "SÓ POR ID"
   };
 
@@ -767,6 +794,19 @@ function conferirOficiosNaCaixaDeEnviados(buscarPorNumero, recomecar, tokenSessa
   L.push("═══════════════════════════════════════════════════════════");
   L.push("  Conferidos nesta execução : " + r.conferidos);
   L.push("  Consultas ao Gmail        : " + r.consultasAoGmail);
+  /* RETOMAR NUNCA PODE SER SILENCIOSO. Sem esta linha, quem roda semanas
+     depois continua do meio da fila achando que conferiu tudo — e o relatório
+     confirmaria a impressão errada, porque os números batem com o que ELE
+     fez, não com o que a pessoa queria. */
+  if (r.comecouEm > 0) {
+    L.push("");
+    L.push("  ↩️  CONTINUANDO de onde uma execução anterior parou (linha " +
+           r.comecouEm + ").");
+    L.push("      As " + r.comecouEm + " primeiras linhas NÃO foram conferidas");
+    L.push("      agora — o veredito delas é o da execução anterior.");
+    L.push("      Para conferir a fila inteira do zero:");
+    L.push("          conferirOficiosNaCaixaDeEnviadosRecomecar()");
+  }
   L.push("");
   L.push("  Modo                      : " + r.modo);
   L.push("");
