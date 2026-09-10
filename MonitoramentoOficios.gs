@@ -1610,6 +1610,38 @@ function MON_OFICIOS_atualizarStatusNoControle_(ss, numero, novoStatus, observac
   return atualizou;
 }
 
+/* DEVOLVER PARA A FILA PRECISA ZERAR A TENTATIVA - 10/09/2026
+   ==========================================================================
+
+   O usuario, depois de ver os oficios 517 a 520 parados desde a manha:
+   *"Vamos ajustar para o que os pendentes vao para o destinatario"*.
+
+   DEVOLVER O STATUS PARA PENDENTE NAO DEVOLVIA O OFICIO PARA A FILA. Esta
+   funcao escrevia STATUS e nao encostava em TENTATIVAS. O processador olha
+   TENTATIVAS: com o contador em 3, a rodada seguinte re-condenava a linha em
+   ERRO_PERMANENTE antes de tentar qualquer coisa.
+
+   E o pior era o SILENCIO. A tela respondia "Status atualizado para
+   PENDENTE", a pessoa ia embora achando que resolveu, e cinco minutos depois
+   o oficio estava condenado de novo - com a rodada devolvendo
+   "Processamento concluido.", zero erros. Nada, em lugar nenhum, dizia que a
+   devolucao tinha sido desfeita.
+
+   Isso importa mais aqui do que pareceria, porque a fila NAO TEM outro
+   caminho: o "Enviar agora" so existe dentro do modal que aparece logo depois
+   da emissao. Passado esse momento, devolver o status pelo Historico e a
+   unica porta - e era a porta que nao abria.
+
+   POR ISSO O CONTADOR ACOMPANHA O STATUS. Quem devolve para PENDENTE ou ERRO
+   esta pedindo uma rodada nova, e rodada nova comeca do zero. So nesses dois:
+   sao os unicos que o processador aceita de volta. Em ENVIADO ou CONFIRMADO o
+   contador nao quer dizer mais nada, e mexer nele seria inventar historia.
+
+   A MEMORIA NAO SE PERDE, e nao e detalhe: quantas tentativas foram zeradas e
+   qual era o erro anterior ficam escritos em ULTIMO_ERRO. Sem isso um
+   endereco realmente ruim voltaria para a fila indefinidamente, cada volta
+   apagando o rastro da anterior, e ninguem conseguiria distinguir "o Google
+   estava fora do ar" de "este e-mail nao existe". */
 function MON_OFICIOS_atualizarStatusNaFila_(ss, numero, novoStatus, observacao) {
   var sh = ss.getSheetByName("FILA_ENVIO_OFICIOS");
   if (!sh || sh.getLastRow() < 2) return false;
@@ -1619,7 +1651,13 @@ function MON_OFICIOS_atualizarStatusNaFila_(ss, numero, novoStatus, observacao) 
   var cNumero = hm["NUMERO_OFICIO"];
   var cErro   = hm["ULTIMO_ERRO"];
   var cData   = hm["DATA_ULTIMA_TENTATIVA"];
+  var cTent   = hm["TENTATIVAS"];
   if (!cStatus || !cNumero) return false;
+
+  /* Os dois unicos status que o processarFilaEnvioOficios aceita de volta.
+     Se essa lista mudar la, muda aqui - sao a mesma regra vista de dois
+     lados, e divergir significa devolver um oficio que a fila nao pega. */
+  var voltaParaAFila = (novoStatus === "PENDENTE" || novoStatus === "ERRO");
 
   var totalCols = sh.getLastColumn();
   var dados = sh.getRange(2, 1, sh.getLastRow() - 1, totalCols).getValues();
@@ -1628,15 +1666,55 @@ function MON_OFICIOS_atualizarStatusNaFila_(ss, numero, novoStatus, observacao) 
   for (var i = 0; i < dados.length; i++) {
     if (String(dados[i][cNumero - 1] || "").trim() !== String(numero || "").trim()) continue;
 
-    var row = dados[i].slice();
+    var row  = dados[i].slice();
+    var nota = String(observacao || "").trim();
+
+    if (voltaParaAFila && cTent) {
+      var gastas = parseInt(row[cTent - 1], 10) || 0;
+      if (gastas > 0) {
+        var erroAnterior = cErro ? MON_OFICIOS_erroOriginal_(row[cErro - 1]) : "";
+        row[cTent - 1] = 0;
+        nota = MON_OFICIOS_notaDeDevolucao_(nota, gastas, erroAnterior);
+      }
+    }
+
     row[cStatus - 1] = novoStatus;
-    if (cErro && observacao) row[cErro - 1] = String(observacao || "").trim();
+    if (cErro && nota) row[cErro - 1] = nota;
     if (cData) row[cData - 1] = new Date();
     sh.getRange(i + 2, 1, 1, totalCols).setValues([row]);
     atualizou = true;
   }
 
   return atualizou;
+}
+
+/* A celula e lida por gente, na planilha, meses depois - e na ordem em que a
+   pergunta aparece: "por que isto voltou?", "quantas vezes ja tentou?",
+   "falhou por que?". */
+function MON_OFICIOS_notaDeDevolucao_(observacao, tentativasZeradas, erroAnterior) {
+  var partes = [];
+  if (observacao) partes.push(observacao);
+  partes.push("Devolvido a fila em " + MON_OFICIOS_formatarData_(new Date()) +
+              " - " + tentativasZeradas + " tentativa(s) zerada(s).");
+  if (erroAnterior) partes.push("Antes: " + erroAnterior);
+  return partes.join(" ");
+}
+
+/* Desembrulha o erro de VERDADE de dentro de uma nota de devolucao anterior.
+   Sem isto, a segunda devolucao citaria a primeira, a terceira citaria a
+   segunda, e em quatro voltas a celula seria um novelo onde o motivo original
+   - a unica coisa que importa ali - estaria enterrado no fim. */
+function MON_OFICIOS_erroOriginal_(valor) {
+  var t = String(valor || "").trim();
+  if (!t) return "";
+
+  var marca = t.lastIndexOf("Antes: ");
+  if (marca > -1) return t.slice(marca + "Antes: ".length).trim();
+
+  var corte = t.indexOf("Devolvido a fila em ");
+  if (corte > -1) return t.slice(0, corte).trim();
+
+  return t;
 }
 
 function MON_OFICIOS_extrairLinkPdf_(anexosJson) {

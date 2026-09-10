@@ -354,6 +354,13 @@ function processarFilaEnvioOficios() {
   var erros        = 0;
   var pendentes    = 0;
   var cotaAcabou   = false;
+  /* A RODADA NAO ENCERRA UM OFICIO EM SILENCIO - 10/09/2026.
+     Esgotar as tentativas e a morte do oficio: a partir dali a fila nao tenta
+     mais sozinha, nunca. Isso acontecia sem aparecer em lugar nenhum - a
+     rodada devolvia "Processamento concluido." e zero erros, porque condenar
+     nao contava como erro. Quem lia o retorno concluia que nao havia nada
+     para fazer, exatamente quando havia. */
+  var condenados   = 0;
 
   for (var i = 0; i < dados.length; i++) {
     var linha         = dados[i];
@@ -382,6 +389,7 @@ function processarFilaEnvioOficios() {
         "Máximo de " + MAX_TENTATIVAS + " tentativas atingido."
       );
 
+      condenados++;
       continue;
     }
 
@@ -414,6 +422,7 @@ function processarFilaEnvioOficios() {
       tentativas = parseInt(valoresLinha[colTentativas - 1], 10) || 0;
       if (tentativas >= MAX_TENTATIVAS) {
         _gravarResultadoFila_(sh, linhaPlanilha, totalCols, valoresLinha, colStatus, colTentativas, colUltimoErro, colDataUltimaTent, "ERRO_PERMANENTE", tentativas, "Máximo de " + MAX_TENTATIVAS + " tentativas atingido.");
+        condenados++;
         continue;
       }
 
@@ -569,17 +578,31 @@ function processarFilaEnvioOficios() {
   SpreadsheetApp.flush();
   _atualizarBadgeMonitoramento_(pendentes);
 
+  var mensagem = cotaAcabou
+    ? "O limite diário de e-mail do Google se esgotou na conta que envia. " +
+      "Os ofícios que faltam continuam intactos na fila, sem nenhuma " +
+      "tentativa gasta — a fila retoma sozinha quando o limite zerar, " +
+      "amanhã. Não é preciso refazer nada."
+    : "Processamento concluído.";
+
+  /* O aviso diz o que fazer, e nao so o que aconteceu: encerrado nao volta
+     sozinho, e a pessoa precisa saber que existe uma acao dela do outro lado
+     disto. Sem a segunda frase, "encerrado" se le como "acabou", e o oficio
+     fica parado esperando uma fila que nunca mais vai pega-lo. */
+  if (condenados > 0) {
+    mensagem += " ATENÇÃO: " + condenados + " ofício(s) esgotaram as " +
+      MAX_TENTATIVAS + " tentativas e foram encerrados. A fila não tenta mais " +
+      "sozinha. Para reenviar, devolva o status para PENDENTE no Histórico — " +
+      "as tentativas voltam a zero e o ofício sai na próxima rodada.";
+  }
+
   return {
     ok: true,
-    mensagem: cotaAcabou
-      ? "O limite diário de e-mail do Google se esgotou na conta que envia. " +
-        "Os ofícios que faltam continuam intactos na fila, sem nenhuma " +
-        "tentativa gasta — a fila retoma sozinha quando o limite zerar, " +
-        "amanhã. Não é preciso refazer nada."
-      : "Processamento concluído.",
+    mensagem: mensagem,
     processados: processados,
     enviados: enviados,
     erros: erros,
+    condenados: condenados,
     cotaAcabou: cotaAcabou
   };
 }

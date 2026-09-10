@@ -57,6 +57,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 | Nº | Item |
 |---|---|
+| 83 | 🔴 Devolver o ofício para a fila não o fazia sair — e os 26 têm explicação |
 | 82 | ✅ VERIFICADO NO AR — 344 dos 370 ofícios estão em Enviados; os 26 que faltam têm forma |
 | 81 | ✅ VERIFICADO NO AR — o remetente é a Secretaria, e onde a cópia fica é estrutural |
 | 80 | 🔴 A cota deixa de condenar o ofício, e nasce o comprovante de envio |
@@ -125,6 +126,70 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
+
+### 83. 🔴 DEVOLVER O OFÍCIO PARA A FILA NÃO O FAZIA SAIR — e os 26 têm explicação
+
+10/09/2026. O usuário colou a aba `FILA_ENVIO_OFICIOS` inteira. Ela fechou a
+pergunta do item 82 e abriu uma pior.
+
+**OS 26 DO ITEM 82 SÃO ALARME FALSO.** No bloco de 09/06 a 23/06 o
+`CODIGO_VERIFICACAO` está em outro formato — `211-2026-IGELE42T` em vez dos
+doze caracteres de sempre (`32DBDC8156D6`). A conferência procura o número
+dentro do texto e não reconhece esse embrulho. **A prova de que chegou:**
+215, 216 e 221 estão nesse mesmo bloco com `CONFIRMADO` e data de
+confirmação real. Escola não responde e-mail que não recebeu.
+
+Falharam de verdade três, e os três já foram cobertos por reenvio com outro
+número: **419 e 420** pelo **432/2026** (28/08, 13 aberturas) e **349** pelo
+**350/2026** (25/08, `CONFIRMADO`, 26 aberturas).
+
+**O QUE A PLANILHA MOSTROU E NINGUÉM TINHA VISTO:** 517, 518, 519 e 520 em
+`ERRO_PERMANENTE`, "Máximo de 3 tentativas atingido", todos de 10/09. É o
+apagão de cota do item 77 outra vez — o 516, do mesmo dia, precisou das três
+e saiu por pouco. O conserto do item 80 impede o próximo; não desfaz estes.
+
+**A ARMADILHA, medida no emulador antes de consertar.** O usuário: *"Vamos
+ajustar para o que os pendentes vão para o destinatário"*.
+
+```
+Histórico > editar > 3 - PENDENTE
+  tela responde  -> "Status atualizado para PENDENTE."
+  TENTATIVAS     -> continua 3
+  próxima rodada -> ERRO_PERMANENTE de novo
+  retorno        -> { enviados: 0, erros: 0, "Processamento concluído." }
+```
+
+A tela escrevia `STATUS` e não encostava em `TENTATIVAS`; o processador decide
+por `TENTATIVAS`. E re-condenar não contava como erro — então nada, em lugar
+nenhum, dizia que a devolução tinha sido desfeita. **E a fila não tem outra
+porta:** o "Enviar agora" só existe dentro do modal que aparece logo depois da
+emissão. Passado aquele momento, devolver o status pelo Histórico era o único
+caminho — e era o caminho que não abria.
+
+**O conserto, em dois arquivos:**
+
+- `MonitoramentoOficios.gs` — devolver para `PENDENTE` ou `ERRO` zera as
+  tentativas (só esses dois: são os que o processador aceita de volta). A
+  memória fica em `ULTIMO_ERRO`: quantas foram zeradas e qual era o erro
+  anterior, sem empilhar a cada volta.
+- `FilaOficios.gs` — a rodada conta quantos encerrou (`condenados`) e diz na
+  mensagem que a fila não tenta mais sozinha e o que fazer a respeito.
+
+`t157`: 23 asserções. Suíte: 159 arquivos, 5.531 asserções, verde. t46 verde.
+
+**NÃO TESTADO (REGRA Nº -1)** — e é isto que eu vou cobrar:
+
+1. 🔴 **colar os dois `.gs` no Apps Script** — sem isso nada disto está no ar;
+2. 🔴 **devolver 517, 518, 519 e 520 para `PENDENTE` pelo Histórico** e
+   confirmar que os quatro saem na rodada seguinte. É a asserção que fecha o
+   pedido, e só a produção responde;
+3. ⚪ a mensagem de encerramento aparecendo no editor.
+
+**Fica pendente e não é urgente:** os bounces **256, 476 e 500**
+(`FALHA_ENTREGA`); os e-mails com `>` sobrando em **220** e **349**; o número
+**405/2026 duplicado** em duas escolas; **511 e 512** sumidos da sequência; e o
+`CODIGO_VERIFICACAO` do **242/2026** gravado como `5,35E+103` — o Sheets leu o
+código como número. Esse ofício não é mais conferível por código.
 
 ### 82. ✅ VERIFICADO NO AR — A FILA INTEIRA CONFERIDA: 344 DE 370
 
