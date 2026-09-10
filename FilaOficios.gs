@@ -148,7 +148,41 @@ function normalizarOrigemFilaOficio_(tipo) {
   return "OFICIO";
 }
 
+/* LIMITE DO GMAIL NÃO É ERRO DO OFÍCIO — 10/09/2026
+   ══════════════════════════════════════════════════════════════════════════
+
+   O usuário: *"Se a cota estourou ele deve aparecer quando for iniciada"*.
+   Está certo, e o sistema não fazia isso. A intenção existia — a trava de
+   cota logo abaixo pausa sem gastar tentativa — mas ela mede o contador
+   ERRADO, e por isso nunca protegeu contra a falha que de fato acontece.
+
+   `MailApp.getRemainingDailyQuota()` conta DESTINATÁRIOS. O que estourou em
+   09/09 foi o limite de CHAMADAS ao serviço Gmail. Às 11h53 o medidor dizia
+   "96 restantes"; às 11h56 o envio morreu (item 77). A trava deixava passar,
+   o `send()` levantava exceção, e a partir daí:
+
+     1. classificarErroEnvio_ não conhecia a mensagem -> devolvia "ERRO";
+     2. "ERRO" soma UMA TENTATIVA;
+     3. o gatilho roda de 5 em 5 minutos e MAX_TENTATIVAS é 3;
+     4. em QUINZE MINUTOS o ofício queimava as três e virava ERRO_PERMANENTE;
+     5. no dia seguinte, com a cota renovada, ele NÃO era reenviado.
+
+   Um apagão de quinze minutos condenava o ofício para sempre. E em silêncio:
+   a linha fica com "Máximo de 3 tentativas atingido", que descreve o sintoma
+   e esconde a causa — quem lê procura e-mail inválido, não limite do Google.
+
+   POR ISSO O LIMITE TEM VEREDITO PRÓPRIO, "COTA", e ele não é um terceiro
+   tipo de erro: é a AUSÊNCIA de veredito. Não se aprendeu nada sobre este
+   ofício, então nada muda na linha dele — nem status, nem tentativa, nem
+   último erro. Ele continua exatamente como estava, esperando a cota voltar.
+
+   Mesma regra que a conferência da caixa de Enviados passou a seguir ontem, e
+   o mesmo reconhecedor (oficio_ehLimiteDoGmail_): ler e enviar saem do mesmo
+   orçamento, e os dois lados precisam chamar a mesma coisa pelo mesmo nome. */
 function classificarErroEnvio_(mensagemErro) {
+  if (typeof oficio_ehLimiteDoGmail_ === "function" &&
+      oficio_ehLimiteDoGmail_(mensagemErro)) return "COTA";
+
   var msg = String(mensagemErro || "").toLowerCase();
   var permanentes = [
     "invalid email", "e-mail inválido", "user unknown", "no such user",
@@ -319,6 +353,7 @@ function processarFilaEnvioOficios() {
   var enviados     = 0;
   var erros        = 0;
   var pendentes    = 0;
+  var cotaAcabou   = false;
 
   for (var i = 0; i < dados.length; i++) {
     var linha         = dados[i];
@@ -479,6 +514,39 @@ function processarFilaEnvioOficios() {
     } catch (e) {
       var tipoErro = classificarErroEnvio_(e.message);
 
+      /* COTA: a linha fica INTACTA e a rodada para aqui. Ver a nota em
+         classificarErroEnvio_. Gravar seria registrar sobre este ofício um
+         fato que é do dia inteiro; e seguir para os próximos quatro só
+         gastaria as tentativas deles pelo mesmo motivo. */
+      if (tipoErro === "COTA") {
+        cotaAcabou = true;
+
+        /* DEVOLVER O STATUS É O QUE FAZ A RETOMADA EXISTIR — e foi o teste que
+           me obrigou a escrever isto. A linha foi marcada PROCESSANDO antes do
+           envio, sob lock. Só sair do laço deixaria ela ali; e o filtro de
+           elegibilidade (logo acima) só aceita PENDENTE e ERRO. PROCESSANDO
+           nunca mais seria tentado: o ofício ficaria parado para sempre, que é
+           exatamente o dano que este conserto existe para impedir — trocado de
+           roupa.
+
+           Volta para o status que a linha TINHA (PENDENTE ou ERRO), não para
+           um valor fixo: um ofício que já falhara antes continua ERRO, com o
+           histórico dele preservado. TENTATIVAS e ULTIMO_ERRO não se tocam. */
+        try {
+          var vRestaura = sh.getRange(linhaPlanilha, 1, 1, totalCols).getValues()[0];
+          vRestaura[colStatus - 1] = statusAtualFila || "PENDENTE";
+          sh.getRange(linhaPlanilha, 1, 1, totalCols).setValues([vRestaura]);
+          SpreadsheetApp.flush();
+        } catch (eRestaura) {
+          Logger.log("⚠ Não consegui devolver a linha " + linhaPlanilha +
+                     " para " + statusAtualFila + ": " + eRestaura.message);
+        }
+
+        Logger.log("⏸ Limite diário do Gmail atingido na linha " + linhaPlanilha +
+                   ". Nenhuma tentativa gasta; a fila retoma quando a cota renovar.");
+        break;
+      }
+
       _gravarResultadoFila_(
         sh,
         linhaPlanilha,
@@ -503,10 +571,16 @@ function processarFilaEnvioOficios() {
 
   return {
     ok: true,
-    mensagem: "Processamento concluído.",
+    mensagem: cotaAcabou
+      ? "O limite diário de e-mail do Google se esgotou na conta que envia. " +
+        "Os ofícios que faltam continuam intactos na fila, sem nenhuma " +
+        "tentativa gasta — a fila retoma sozinha quando o limite zerar, " +
+        "amanhã. Não é preciso refazer nada."
+      : "Processamento concluído.",
     processados: processados,
     enviados: enviados,
-    erros: erros
+    erros: erros,
+    cotaAcabou: cotaAcabou
   };
 }
 function enviarOficioDaFilaAgora(numero, tokenSessao, filaId) {
@@ -749,6 +823,36 @@ function enviarOficioDaFilaAgora(numero, tokenSessao, filaId) {
 
   } catch (e) {
     var tipoErro = classificarErroEnvio_(e.message);
+
+    /* COTA: nada é gravado — nem status, nem tentativa. Aqui tem gente
+       olhando a tela, então a mensagem precisa dizer as três coisas que
+       decidem o que ela faz em seguida: o ofício NÃO saiu, ele está
+       intacto, e tentar de novo agora só gasta o que ainda resta. */
+    if (tipoErro === "COTA") {
+      /* Mesma devolução do laço: a linha está em PROCESSANDO desde antes do
+         envio, e PROCESSANDO é o único status que nem o gatilho nem o botão
+         voltam a tentar. Sem isto, o ofício ficaria travado — e o botão diria
+         "já está sendo processado" para sempre. */
+      try {
+        var vDevolve = sh.getRange(linhaPlanilha, 1, 1, totalCols).getValues()[0];
+        vDevolve[colStatus - 1] = statusAtualEnvio || "PENDENTE";
+        sh.getRange(linhaPlanilha, 1, 1, totalCols).setValues([vDevolve]);
+        SpreadsheetApp.flush();
+      } catch (eDevolve) {
+        Logger.log("⚠ Não consegui devolver o ofício " + numero +
+                   " para " + statusAtualEnvio + ": " + eDevolve.message);
+      }
+
+      return {
+        ok: false,
+        cotaAcabou: true,
+        mensagem: "O ofício " + numero + " NÃO foi enviado: o limite diário " +
+                  "de e-mail do Google se esgotou na conta que envia. Ele " +
+                  "continua intacto na fila e nenhuma tentativa foi gasta — " +
+                  "tente de novo amanhã, quando o limite zera. Tentar agora " +
+                  "só gasta o que ainda resta."
+      };
+    }
 
     _gravarResultadoFila_(
       sh,
