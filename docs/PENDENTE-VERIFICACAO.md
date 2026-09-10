@@ -177,9 +177,24 @@ caminho — e era o caminho que não abria.
 
 `t157`: 23 asserções. Suíte: 159 arquivos, 5.531 asserções, verde. t46 verde.
 
+**PUBLICADO NA HOMOLOGAÇÃO — versão 120**, 10/09/2026 22:24 (run 93). O
+`conferir` (run 92) foi lido antes: 274 arquivos dos dois lados, nenhum
+apagado, nenhum criado, dois alterados — `FilaOficios.gs` e
+`MonitoramentoOficios.gs`. t46 e a suíte passaram no CI antes da escrita.
+
+**E EU TINHA MANDADO OS ARQUIVOS PARA ELE COLAR À MÃO.** Errado: existe deploy
+por GitHub Actions neste repositório desde 20/08, e eu operei como se só
+tivesse o repositório. O `CLAUDE.md` diz "só o repositório GitHub" e eu li
+isso como "não consigo publicar" — não é a mesma coisa. Publicar é comigo.
+
 **NÃO TESTADO (REGRA Nº -1)** — e é isto que eu vou cobrar:
 
-1. 🔴 **colar os dois `.gs` no Apps Script** — sem isso nada disto está no ar;
+1. 🔴 **PRODUÇÃO NÃO RECEBEU.** Homologação e produção são projetos Apps
+   Script diferentes, e Ofícios roda na produção. A promoção é o
+   `deploy-producao.yml`, que exige branch `promocao/...` própria, o SHA
+   homologado no `if:` e a confirmação digitada `PUBLICAR PRODUCAO`. O
+   workflow ainda aponta para `8d5c380` (08/09) e confere `174 .gs` — o
+   repositório está em **176**. Os dois números precisam subir junto com o SHA;
 2. 🔴 **devolver 517, 518, 519 e 520 para `PENDENTE` pelo Histórico** e
    confirmar que os quatro saem na rodada seguinte. É a asserção que fecha o
    pedido, e só a produção responde;
