@@ -3758,6 +3758,138 @@ window.mostrarAbaOficio = function(aba) {
       barra.style.display = sel ? "flex" : "none";
       if(btn){ btn.disabled=!sel; btn.innerHTML="\u2705 Conferir recebimento ("+sel+")"; }
       if(res) res.textContent = sel+" of\u00edcio(s) selecionado(s) \u00b7 custo: "+sel+" consulta(s) ao Gmail";
+      Historico._compRotular();
+    },
+
+    /* A BARRA DO COMPROVANTE — 10/09/2026.
+       Mesma regra das outras duas: so aparece com selecao. A diferenca e que
+       esta NAO tem custo, e o rotulo diz isso — a pessoa acabou de aprender,
+       na barra de cima, que conferir gasta cota, e sem uma palavra aqui ela
+       supoe que este botao gasta tambem, e deixa de usar. */
+    _compRotular: function() {
+      var barra=document.getElementById("histCompBarra");
+      var btn=document.getElementById("btnHistComp");
+      var res=document.getElementById("histCompResumo");
+      var sel=(Historico.selecionados||[]).length;
+      if(!barra) return;
+      barra.style.display = sel ? "flex" : "none";
+      if(btn){ btn.disabled=!sel; btn.innerHTML="\uD83D\uDCC4 Comprovante de envio ("+sel+")"; }
+      if(res) res.textContent = sel+" of\u00edcio(s) selecionado(s) \u00b7 sem custo de consulta";
+    },
+
+    /* ── COMPROVANTE DE ENVIO ────────────────────────────────────────────
+       "como vou provar que foi enviado se nao tenho a prova que a escola
+       recebeu". Isto nao prova recebimento — prova ENVIO, com a forca de
+       cada evidencia declarada linha a linha, e o proprio documento diz o
+       que nao prova. Ver o cabecalho de OficiosComprovante.gs. */
+    _comp: { lista: [], i: 0, html: {} },
+
+    comprovante: function() {
+      var numeros=(Historico.selecionados||[]).slice();
+      if(!numeros.length){ toast("Marque ao menos um of\u00edcio na tabela.","err"); return; }
+
+      Historico._comp = { lista: numeros, i: 0, html: {} };
+      var ov=document.getElementById("histCompOverlay"); if(ov) ov.classList.add("aberto");
+      var arq=document.getElementById("histCompArquivo"); if(arq) arq.style.display="none";
+
+      var nav=document.getElementById("histCompNav");
+      if(nav) nav.style.display = numeros.length>1 ? "flex" : "none";
+
+      Historico._compCarregar();
+    },
+
+    _compCarregar: function() {
+      var c=Historico._comp;
+      var numero=c.lista[c.i];
+      var corpo=document.getElementById("histCompCorpo");
+      var pos=document.getElementById("histCompPos");
+      var sub=document.getElementById("histCompSub");
+      if(pos) pos.textContent="Of\u00edcio "+numero+"  \u00b7  "+(c.i+1)+" de "+c.lista.length;
+      if(sub) sub.textContent="Of\u00edcio "+numero;
+      var arq=document.getElementById("histCompArquivo"); if(arq) arq.style.display="none";
+
+      /* Ja buscado? Nao pede de novo — trocar de seta nao pode custar uma
+         ida ao servidor por clique. */
+      if(c.html[numero]){ if(corpo) corpo.innerHTML=c.html[numero]; return; }
+
+      if(corpo) corpo.innerHTML='<span style="color:#94a3b8;">montando o comprovante do of\u00edcio '+numero+'\u2026</span>';
+
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r || r.ok===false){
+            if(corpo) corpo.innerHTML='<div style="color:#991b1b;font-size:13px;">'
+              +((r && r.mensagem) || "N\u00e3o foi poss\u00edvel montar o comprovante.")+'</div>';
+            return;
+          }
+          c.html[r.numero]=r.html;
+          if(c.lista[c.i]===r.numero && corpo) corpo.innerHTML=r.html;
+        })
+        .withFailureHandler(function(e){
+          if(corpo) corpo.innerHTML='<div style="color:#991b1b;font-size:13px;">'
+            +((e && e.message) || "Falha ao montar o comprovante.")+'</div>';
+        })
+        .comprovanteDeEnvioOficio(numero, SISGEP_TOKEN_SESSAO);
+    },
+
+    compIr: function(passo) {
+      var c=Historico._comp;
+      if(!c.lista.length) return;
+      c.i = (c.i + passo + c.lista.length) % c.lista.length;
+      Historico._compCarregar();
+    },
+
+    compFechar: function() {
+      var ov=document.getElementById("histCompOverlay"); if(ov) ov.classList.remove("aberto");
+    },
+
+    /* IMPRIMIR — janela propria com SO o comprovante.
+       window.print() na pagina imprimiria o Historico inteiro por baixo do
+       modal. E o documento que vai ser mostrado a alguem: sair com a tela do
+       sistema em volta o desqualifica. */
+    compImprimir: function() {
+      var c=Historico._comp;
+      var html=c.html[c.lista[c.i]];
+      if(!html){ toast("O comprovante ainda est\u00e1 sendo montado.","info"); return; }
+
+      var j=window.open("", "_blank", "width=820,height=980");
+      if(!j){ toast("O navegador bloqueou a janela de impress\u00e3o.","err"); return; }
+      j.document.open();
+      j.document.write('<!doctype html><html><head><meta charset="utf-8">'
+        +'<title>Comprovante '+c.lista[c.i]+'</title></head><body>'+html+'</body></html>');
+      j.document.close();
+      /* O onload garante que o CSS embutido ja foi aplicado quando o dialogo
+         abre; imprimir antes disso sai sem formatacao. */
+      j.onload=function(){ j.focus(); j.print(); };
+    },
+
+    compArquivar: function() {
+      var c=Historico._comp;
+      var numero=c.lista[c.i];
+      var btn=document.getElementById("btnCompArquivar");
+      if(btn){ btn.disabled=true; btn.textContent="Arquivando\u2026"; }
+      var cx=document.getElementById("histCompArquivo");
+
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){ btn.disabled=false; btn.innerHTML="\uD83D\uDCBE Arquivar no Drive"; }
+          if(!cx) return;
+          cx.style.display="block";
+          if(!r || r.ok===false){
+            cx.style.color="#991b1b";
+            cx.textContent=(r && r.mensagem) || "N\u00e3o foi poss\u00edvel arquivar.";
+            return;
+          }
+          cx.style.color="#065f46";
+          cx.innerHTML=(r.jaExistia ? "\u2139\uFE0F " : "\u2705 ")+r.mensagem
+            +' <a href="'+r.url+'" target="_blank" rel="noopener" style="color:var(--blue,#1565C0);font-weight:700;">abrir no Drive</a>';
+          toast(r.mensagem, "ok", 5000);
+        })
+        .withFailureHandler(function(e){
+          if(btn){ btn.disabled=false; btn.innerHTML="\uD83D\uDCBE Arquivar no Drive"; }
+          if(cx){ cx.style.display="block"; cx.style.color="#991b1b";
+                  cx.textContent=(e && e.message) || "Falha ao arquivar."; }
+        })
+        .arquivarComprovanteDeEnvioOficio(numero, SISGEP_TOKEN_SESSAO);
     },
 
     /* CONFERIR SO O QUE ESTA MARCADO.

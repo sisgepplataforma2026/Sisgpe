@@ -192,6 +192,117 @@ passo("ofício que não existe");
 const rX = g.comprovanteDeEnvioOficio("999/2026", TOKEN);
 igual(rX.ok, false, "número inexistente devolve recusa, não comprovante vazio");
 
+/* ══════════════════════════════════════════════════════════════════════════
+   O ARQUIVAMENTO NO DRIVE — 10/09/2026
+   ══════════════════════════════════════════════════════════════════════════
+
+   "Imprimir ou arquivar no Drive? Os dois." Resolvem coisas diferentes:
+   imprimir serve para mostrar agora, arquivar serve para mostrar de novo
+   daqui a um ano, sem depender de a fila ainda ter a linha nem de o Gmail
+   ainda ter a mensagem. */
+fluxo("OFÍCIOS · comprovante arquivado no Drive");
+
+passo("a porta, de novo");
+
+let recusouArq = false;
+try {
+  const r = g.arquivarComprovanteDeEnvioOficio("701/2026", SEM_MODULO);
+  recusouArq = !!(r && r.ok === false);
+} catch (e) { recusouArq = /sess|permiss|autoriza|acesso ao m/i.test(e.message); }
+ok(recusouArq, "arquivar também exige o módulo documentos");
+
+passo("arquiva e devolve onde ficou");
+
+const a1 = g.arquivarComprovanteDeEnvioOficio("701/2026", TOKEN);
+igual(a1.ok, true, "o comprovante do 701 é arquivado", a1.mensagem);
+igual(a1.jaExistia, false, "  e da primeira vez é criado");
+ok(!!a1.url, "devolve a URL do arquivo",
+   "sem link, arquivar é o mesmo que sumir com ele");
+
+passo("IDEMPOTENTE — clicar duas vezes não cria duas provas");
+
+/* Duas cópias de um documento que serve para provar algo cria dúvida sobre
+   qual vale, que é o oposto do que ele existe para fazer. */
+const a2 = g.arquivarComprovanteDeEnvioOficio("701/2026", TOKEN);
+igual(a2.ok, true, "arquivar de novo funciona");
+igual(a2.jaExistia, true, "  e devolve o que já estava lá");
+igual(a2.url, a1.url, "  o MESMO arquivo, não uma segunda cópia");
+
+passo("o nome do arquivo é a interface do acervo");
+
+/* Não há tela para o acervo: alguém vai abrir a pasta e procurar. Então o
+   nome tem de trazer número, escola e data. */
+ok(/701-2026/.test(a1.nome), "o número está no nome");
+ok(/Monte Alvo/.test(a1.nome), "  a escola também");
+ok(!/\//.test(a1.nome),
+   "  e a barra do 701/2026 não vai para o nome do arquivo",
+   "barra é separador de caminho — o Drive trataria como subpasta");
+
+passo("ofício inexistente não gera arquivo");
+
+const aX = g.arquivarComprovanteDeEnvioOficio("999/2026", TOKEN);
+igual(aX.ok, false, "número que não existe recusa antes de escrever no Drive");
+
+/* ══════════════════════════════════════════════════════════════════════════ */
+fluxo("OFÍCIOS · a tela do comprovante");
+
+const fs2 = require("fs");
+const path2 = require("path");
+const RAIZ2 = path2.resolve(__dirname, "..", "..");
+const tela = fs2.readFileSync(path2.join(RAIZ2, "OficiosFormulario.html"), "utf8");
+const js2  = fs2.readFileSync(path2.join(RAIZ2, "OficiosScripts.html"), "utf8");
+
+passo("existe onde o usuário decidiu: no Histórico");
+
+ok(/id="histCompBarra"/.test(tela), "a barra existe na tela do Histórico");
+ok(/id="btnHistComp"/.test(tela), "  com o botão");
+ok(/id="histCompOverlay"/.test(tela), "  e o modal");
+ok(/of-modal-overlay/.test(tela.slice(tela.indexOf('id="histCompOverlay"') - 60,
+                                      tela.indexOf('id="histCompOverlay"') + 60)),
+   "  reaproveitando .of-modal-overlay do Design System",
+   "modal novo do zero seria a sexta variação de modal do sistema");
+
+passo("a barra só aparece com seleção");
+
+ok(/histCompBarra[\s\S]{0,200}display:none/.test(tela),
+   "nasce escondida",
+   "barra vazia é convite para clicar sem escolher nada");
+ok(/_compRotular[\s\S]{0,400}barra\.style\.display = sel \? "flex" : "none"/.test(js2),
+   "  e acompanha a seleção, como as outras duas");
+
+passo("o rótulo diz que NÃO custa cota");
+
+/* A pessoa acabou de ler, na barra de cima, que conferir gasta consulta ao
+   Gmail. Sem uma palavra aqui ela supõe que este botão gasta também. */
+ok(/sem custo de consulta/.test(js2),
+   "o resumo diz que este botão não gasta consulta");
+ok(/N&atilde;o consulta o Gmail/.test(tela),
+   "  e a barra explica isso antes do clique");
+
+passo("os dois caminhos que ele pediu");
+
+ok(/id="btnCompImprimir"/.test(tela) && /id="btnCompArquivar"/.test(tela),
+   "imprimir E arquivar, os dois no rodapé do modal");
+ok(/comprovanteDeEnvioOficio\(numero, SISGEP_TOKEN_SESSAO\)/.test(js2),
+   "a tela chama o backend com o token certo",
+   "nome errado da variável viraria recusa silenciosa de sessão");
+ok(/arquivarComprovanteDeEnvioOficio\(numero, SISGEP_TOKEN_SESSAO\)/.test(js2),
+   "  e o arquivamento também");
+
+passo("imprimir abre janela própria");
+
+/* window.print() na página levaria o Histórico inteiro junto, por baixo do
+   modal — e um comprovante com a tela do sistema em volta se desqualifica. */
+ok(/window\.open\(""/.test(js2) && /j\.print\(\)/.test(js2),
+   "a impressão sai numa janela só com o comprovante",
+   "imprimir a página levaria a tela do sistema junto");
+
+passo("trocar de ofício não custa uma ida ao servidor por clique");
+
+ok(/if\(c\.html\[numero\]\)/.test(js2),
+   "o que já foi montado fica guardado",
+   "com 20 selecionados, ir e voltar nas setas seriam 40 chamadas");
+
 /* ══════════════════════════════════════════════════════════════════════════ */
 naoTestavel("se o PDF impresso sai legível",
   "o emulador não converte HTML em PDF. O que se prova aqui é o conteúdo e o " +

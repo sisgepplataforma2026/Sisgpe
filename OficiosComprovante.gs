@@ -379,3 +379,78 @@ function comprovanteDeEnvioOficio(numero, tokenSessao) {
     })
   };
 }
+
+/**
+ * ARQUIVAR O COMPROVANTE NO DRIVE
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * 10/09/2026. O usuário pediu os dois caminhos — "Imprimir ou arquivar no
+ * Drive? Os dois" — e eles resolvem coisas diferentes: imprimir serve para
+ * mostrar agora; arquivar serve para poder mostrar de novo daqui a um ano,
+ * sem depender de a fila ainda ter a linha e de o Gmail ainda ter a mensagem.
+ *
+ * PASTA: RELATORIOS, que já existe nos DOIS ambientes e foi verificada no ar
+ * em 21/08 (item 27). Não criei chave nova em RECURSOS_AMBIENTE de propósito:
+ * uma chave sem ID de homologação faria a trava barrar — corretamente — e o
+ * arquivamento nasceria quebrado no único ambiente onde dá para ensaiar.
+ *
+ * A TRAVA DE AMBIENTE VEM DE GRAÇA: getRecursoId_ recusa gravar na pasta de
+ * produção quando o ambiente é homologação. É o que impede o ensaio sujar o
+ * acervo real.
+ *
+ * IDEMPOTENTE POR NOME: arquivar duas vezes o mesmo ofício no mesmo dia
+ * devolve o arquivo que já existe. Sem isso, clicar duas vezes deixaria duas
+ * cópias de um documento que serve para provar algo — e a dúvida sobre qual
+ * vale é o oposto do que ele existe para fazer.
+ */
+function oficioComprovante_nomeArquivo_(d) {
+  var quando = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy");
+  /* Barra é separador de caminho e não pode ir para nome de arquivo — o
+     número do ofício tem uma (519/2026). */
+  var num = String(d.numero || "").replace(/\//g, "-");
+  var escola = String(d.escola || "sem escola").replace(/[\\\/:*?"<>|]/g, "-").trim();
+  return "Comprovante " + num + " - " + escola + " - " + quando;
+}
+
+function arquivarComprovanteDeEnvioOficio(numero, tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
+
+  var d = oficioComprovante_dados_(numero);
+  if (!d) {
+    return { ok: false, mensagem: "Ofício " + numero + " não encontrado na fila de envio." };
+  }
+
+  var nome = oficioComprovante_nomeArquivo_(d);
+
+  try {
+    var pasta = obterOuCriarSubpastaAno(getRecursoId_("RELATORIOS"));
+
+    /* Já existe? Devolve o que está lá. */
+    var existentes = pasta.getFilesByName(nome + ".pdf");
+    if (existentes.hasNext()) {
+      var jaTem = existentes.next();
+      return {
+        ok: true, jaExistia: true, numero: d.numero,
+        nome: jaTem.getName(), url: jaTem.getUrl(),
+        mensagem: "O comprovante do ofício " + d.numero + " já estava arquivado hoje."
+      };
+    }
+
+    var arq = oficios_converterHtmlParaPdf_(oficioComprovante_html_(d), nome, pasta);
+    return {
+      ok: true, jaExistia: false, numero: d.numero,
+      nome: arq.getName(), url: arq.getUrl(),
+      mensagem: "Comprovante do ofício " + d.numero + " arquivado."
+    };
+
+  } catch (e) {
+    /* A mensagem da trava de ambiente é longa e explica o que configurar —
+       vale mais que qualquer texto meu por cima dela. */
+    Logger.log("❌ arquivarComprovanteDeEnvioOficio " + d.numero + ": " + (e.message || e));
+    return {
+      ok: false, numero: d.numero,
+      mensagem: "Não consegui arquivar o comprovante do ofício " + d.numero +
+                ": " + (e.message || e)
+    };
+  }
+}

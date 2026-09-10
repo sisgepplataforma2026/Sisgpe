@@ -680,6 +680,21 @@
           <button type="button" class="btn btn-outline btn-sm" id="btnHistConf" onclick="Historico.conferirRecebimento()">&#9989; Conferir recebimento</button>
         </div>
 
+        <!-- COMPROVANTE DE ENVIO — 10/09/2026.
+             "como vou provar que foi enviado". Terceira acao sobre a MESMA
+             selecao, ao lado do reenvio em lote e da conferencia — e nao uma
+             tela nova: procurar o oficio duas vezes, num lugar e depois no
+             outro, e o que a barra unica evita.
+             Nao consulta o Gmail: le so o que a fila ja guarda. -->
+        <div id="histCompBarra" style="display:none;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 14px;background:#f5f3ff;border:1.5px solid #ddd6fe;border-radius:var(--rad);margin-bottom:12px;">
+          <span style="font-size:20px;line-height:1;">&#128196;</span>
+          <div style="flex:1;min-width:220px;">
+            <div id="histCompResumo" style="font-size:13px;font-weight:800;color:#5b21b6;">&mdash;</div>
+            <div style="font-size:11.5px;color:#4c1d95;margin-top:2px;">Monta a prova de envio a partir do que o sistema registrou. N&atilde;o consulta o Gmail e n&atilde;o gasta cota.</div>
+          </div>
+          <button type="button" class="btn btn-outline btn-sm" id="btnHistComp" onclick="Historico.comprovante()">&#128196; Comprovante de envio</button>
+        </div>
+
         <div id="histConfResultado" style="display:none;margin-bottom:12px;padding:12px 14px;border-radius:var(--rad);font-size:13px;"></div>
 
         <!-- RESULTADO DO LOTE — 04/09/2026. "Quando reenviar tem que fechar":
@@ -687,6 +702,45 @@
              pagina. Um toast de "4 reenviados" some em segundos e leva junto a
              unica informacao que importa depois — qual falhou e por que. -->
         <div id="histLoteResultado" style="display:none;margin-bottom:12px;"></div>
+
+        <!-- MODAL DO COMPROVANTE — 10/09/2026.
+             Dois botoes no rodape porque o usuario pediu os dois caminhos e
+             eles resolvem coisas diferentes: IMPRIMIR serve para mostrar
+             agora; ARQUIVAR serve para poder mostrar de novo daqui a um ano,
+             sem depender de a fila ainda ter a linha. -->
+        <div id="histCompOverlay" class="of-modal-overlay">
+          <div class="of-modal" style="max-width:820px;">
+            <div class="of-modal-head" style="border-bottom:3px solid var(--navy,#001f4d);">
+              <div>
+                <div class="of-modal-head-title">&#128196; Comprovante de envio</div>
+                <div class="of-modal-head-sub" id="histCompSub">&mdash;</div>
+              </div>
+              <button type="button" class="of-modal-close" onclick="Historico.compFechar()">&times;</button>
+            </div>
+
+            <div class="of-modal-body" style="display:flex;flex-direction:column;gap:12px;">
+              <!-- Navegacao entre os selecionados. Fica escondida quando ha um
+                   so — seta que nao leva a lugar nenhum e ruido. -->
+              <div id="histCompNav" style="display:none;align-items:center;justify-content:center;gap:14px;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="Historico.compIr(-1)">&#9664;</button>
+                <span id="histCompPos" style="font-size:12.5px;font-weight:700;color:#334155;">&mdash;</span>
+                <button type="button" class="btn btn-outline btn-sm" onclick="Historico.compIr(1)">&#9654;</button>
+              </div>
+
+              <div id="histCompCorpo" style="border:1px solid #e5e7eb;border-radius:10px;padding:16px;background:#fff;max-height:52vh;overflow:auto;">
+                <span style="color:#94a3b8;">montando&hellip;</span>
+              </div>
+
+              <div id="histCompArquivo" style="display:none;font-size:12.5px;"></div>
+            </div>
+
+            <div class="of-modal-foot">
+              <button type="button" class="btn-outline" onclick="Historico.compFechar()">Fechar</button>
+              <button type="button" class="btn-outline" id="btnCompArquivar" onclick="Historico.compArquivar()">&#128190; Arquivar no Drive</button>
+              <button type="button" class="btn-navy" id="btnCompImprimir" onclick="Historico.compImprimir()">&#128424; Imprimir</button>
+            </div>
+          </div>
+        </div>
 
         <div id="histLoteOverlay" class="of-modal-overlay">
           <div class="of-modal" style="max-width:880px;">
