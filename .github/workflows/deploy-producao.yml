@@ -32,13 +32,13 @@ concurrency:
 
 jobs:
   producao:
-    if: github.ref == 'refs/heads/promocao/hml-8d5c380-para-producao-2026-09-08'
+    if: github.ref == 'refs/heads/promocao/hml-6471477-para-producao-2026-09-10b'
     runs-on: ubuntu-latest
 
     env:
       PROD_SCRIPT_ID: "1BoKA6pOOT751zmxahnvSgT2CJDgMpUPMvZj-X0HjDx_tCHLnXOqxVVqa"
       PROD_DEPLOYMENT_ID: "AKfycbzgPBSSF3D2OimoEJ-qMfDNp_Dsmc95THSNdUvFgqoX7NXWcmn7ZDMzF9L-OyUbEMw_ew"
-      HML_APROVADA_SHA: "8d5c380eb67affa9b3d7662051b735935092c34c"
+      HML_APROVADA_SHA: "647147798920a536c6e2ac88655b898f967c7b93"
 
     steps:
       - name: Checkout da promocao
@@ -68,7 +68,7 @@ jobs:
           fi
           GS=$(find . -maxdepth 1 -type f -name '*.gs' | wc -l)
           HTML=$(find . -maxdepth 1 -type f -name '*.html' | wc -l)
-          test "$GS" -eq 174
+          test "$GS" -eq 176
           test "$HTML" -eq 97
           echo "codigo homologado confirmado: $GS .gs e $HTML .html"
 
