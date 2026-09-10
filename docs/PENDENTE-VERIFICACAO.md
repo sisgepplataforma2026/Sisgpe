@@ -57,6 +57,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 | Nº | Item |
 |---|---|
+| 82 | ✅ VERIFICADO NO AR — 344 dos 370 ofícios estão em Enviados; os 26 que faltam têm forma |
 | 81 | ✅ VERIFICADO NO AR — o remetente é a Secretaria, e onde a cópia fica é estrutural |
 | 80 | 🔴 A cota deixa de condenar o ofício, e nasce o comprovante de envio |
 | 79 | 🔴 PRODUÇÃO NA 705 — a conferência responde pelos 362, e uma conclusão minha CORRIGIDA |
@@ -124,6 +125,68 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
+
+### 82. ✅ VERIFICADO NO AR — A FILA INTEIRA CONFERIDA: 344 DE 370
+
+10/09/2026, 18h25 a 18h30. O usuário rodou
+`conferirOficiosNaCaixaDeEnviadosCompleto()` três vezes em produção (707),
+até `✅ Fila inteira conferida`. **É a primeira vez que a pergunta "os ofícios
+foram enviados?" tem número em vez de suposição.**
+
+| | |
+|---|---|
+| Conferidos | **370** |
+| **Em Enviados** | **344 — 93%** (4 por id + 340 por número) |
+| **Não encontrados** | **26 — 7%** |
+| Na lixeira | 0 |
+
+**Os 4 por id vieram todos EM ENVIADOS** — 513, 514, 515 e o 516 de hoje. O
+mecanismo que grava o `MENSAGEM_ID` está em **4 de 4**. Segue amostra pequena,
+mas é a segunda medição independente dando certo (a primeira foi 3 de 3).
+
+#### OS 26 NÃO SÃO ALEATÓRIOS — e a forma deles é o achado
+
+```
+211 a 227   (19, bloco contíguo)
+349         (1, isolado)
+419 a 424   (6, bloco contíguo)
+```
+
+Dois blocos de numeração seguida. Se fossem falhas independentes estariam
+espalhados de 119 a 516; não estão.
+
+**Bloco contíguo é a impressão digital da cota estourando no meio de um
+lote:** a cota morre, todo ofício seguinte falha em sequência, cada um soma
+tentativa, e em quinze minutos (gatilho de 5 min × MAX_TENTATIVAS 3) vira
+`ERRO_PERMANENTE` — sem nunca mais ser tentado, nem no dia seguinte.
+
+É exatamente o defeito consertado hoje (item 80). **Eu o consertei a partir de
+uma frase do usuário — *"se a cota estourou ele deve aparecer quando for
+iniciada"* — sem nenhuma medida de que já tivesse acontecido. Agora há prova de
+que aconteceu ao menos duas vezes.**
+
+**E há corroboração independente:** na planilha, o `419/2026` estava com
+`TENTATIVAS = 3` e o `420/2026` com `TENTATIVAS = 2`, ambos `AGUARDANDO` e com
+zero aberturas. A fila registrou a tentativa fracassada; a caixa de Enviados
+confirma a ausência. Duas fontes, mesma conclusão.
+
+#### 🔴 O QUE FALTA — e é leitura de planilha, não código
+
+1. Filtrar `COMPROVACAO_ENVIO = NAO ENCONTRADO (por numero)` e ler o `STATUS`,
+   a `DATA_ENVIO` e o `USUARIO` dos 26.
+   - `AGUARDANDO` / `ERRO` / `ERRO_PERMANENTE` → nunca chegou à escola, e o
+     reenvio agora é seguro (não queima tentativa se a cota estourar);
+   - `ENVIADO` → **contradição**, e precisa ser investigada antes de qualquer
+     reenvio.
+2. Ver se as `DATA_ENVIO` se agrupam em duas janelas. Se agruparem, fecha a
+   história e dá para dizer que dia foi.
+
+**NÃO rodar a conferência de novo sem motivo:** ao terminar, o cursor é
+apagado e a próxima execução refaz as 370 do zero — 370 consultas ao Gmail,
+o mesmo gasto que derrubou o envio do 407. Para reconferir alguns, marcar na
+tabela e usar o botão do Histórico.
+
+---
 
 ### 81. ✅ VERIFICADO NO AR — O REMETENTE É A SECRETARIA
 
