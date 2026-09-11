@@ -534,6 +534,211 @@ function obterDestinoReenvioOficio(numero, tokenSessao) {
    DEVOLVE TAMBÉM `itens`, com nome e origem de cada anexo. É o que a tela
    mostra — e é medição, não promessa: são os blobs que realmente vão.
    ══════════════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════════════
+   ANEXO ACRESCENTADO NA HORA DO REENVIO — 11/09/2026
+
+   DE ONDE VEIO. O usuário abriu o reenvio do ofício 388/2026 (Oposição à Taxa
+   Negocial, Centro Educacional Linus Pauling) e a tela mostrou o aviso
+   vermelho: a carta de oposição não foi encontrada, e o corpo do ofício afirma
+   que ela segue em anexo. O sistema detectava certo e avisava certo — e não
+   oferecia jeito nenhum de resolver. A pessoa só podia mandar assim mesmo ou
+   cancelar e ir caçar o arquivo por fora.
+
+   Pedido dele, textual: *"Para todos, a possibilidade de anexar quando
+   precisar reenviar e assim não precisaria fazer novamente"* — e, logo
+   depois, *"todos até mesmo o enviado"*. Vale para qualquer ofício e qualquer
+   status, não só para os que exigem ficha e não só para os que falharam.
+
+   POR QUE COLUNA PRÓPRIA, E NÃO DENTRO DO ANEXOS_JSON. Aquela coluna da fila é
+   o registro do que DE FATO SAIU na emissão — é dela que o comprovante e a
+   reconstrução do pacote dependem. Escrever ali um arquivo que não estava no
+   envio original faria a planilha mentir sobre o passado, e o próximo que
+   fosse auditar o ofício 388 leria a carta como se ela tivesse ido junto no
+   dia 27/08. Não foi.
+
+   Então o acrescentado mora em coluna separada do Controle, com QUEM e
+   QUANDO. As duas verdades ficam preservadas: o que saiu na origem, e o que
+   foi anexado depois — cada uma no seu lugar, e as duas à vista na tela.
+
+   E É PERMANENTE DE PROPÓSITO. Guardado uma vez, todo reenvio seguinte já
+   encontra — que é exatamente o "não precisaria fazer novamente" do pedido.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+var OFICIO_COL_ANEXOS_EXTRAS = "ANEXOS_EXTRAS_JSON";
+
+/* Tetos. O Gmail recusa mensagem acima de ~25 MB, e a recusa chega como falha
+   de envio genérica — o operador veria "erro ao reenviar" sem saber que o
+   motivo foi tamanho. Barrar aqui permite dizer a frase certa. */
+var OFICIO_ANEXO_EXTRA_MAX_MB       = 10;
+var OFICIO_ANEXO_EXTRA_MAX_TOTAL_MB = 20;
+
+/* Documento, não qualquer arquivo. A lista segue o que a tela de ficha do
+   trabalhador já aceita, mais os formatos de planilha e texto que o Financeiro
+   usa em relação nominal. */
+var OFICIO_ANEXO_EXTRA_EXTENSOES = ["pdf","jpg","jpeg","png","doc","docx","xls","xlsx"];
+
+function oficio_extensaoDe_(nome) {
+  var m = String(nome || "").trim().toLowerCase().match(/\.([a-z0-9]+)$/);
+  return m ? m[1] : "";
+}
+
+/* Nome de arquivo não pode carregar caminho: o Drive aceita, e depois ninguém
+   acha o arquivo pelo nome que a tela mostrou. */
+function oficio_nomeArquivoSeguro_(nome) {
+  var limpo = String(nome || "").trim().replace(/[\/\\]+/g, "-").replace(/\s+/g, " ");
+  return limpo.slice(0, 180) || "anexo";
+}
+
+/** A linha do ofício no Controle, com o mapa de cabeçalho. Null se não achar. */
+function oficio_linhaNoControle_(numero) {
+  var alvo = String(numero || "").trim();
+  if (!alvo) return null;
+  var ss = SpreadsheetApp.openById(PLANILHA_ID);
+  var sh = ss.getSheetByName(PLANILHA_REGISTRO);
+  if (!sh || sh.getLastRow() < 2) return null;
+  var hm = getHeaderMap_(sh);
+  var cNum = hm["Número do Ofício"];
+  if (!cNum) return null;
+  var col = sh.getRange(2, cNum, sh.getLastRow() - 1, 1).getValues();
+  for (var i = 0; i < col.length; i++) {
+    if (String(col[i][0] || "").trim() === alvo) {
+      return { sh: sh, hm: hm, linha: i + 2 };
+    }
+  }
+  return null;
+}
+
+/**
+ * Os anexos que alguém acrescentou a este ofício em reenvios anteriores.
+ *
+ * Devolve sempre lista — JSON corrompido vira lista vazia e um aviso no log,
+ * nunca exceção: um acréscimo ilegível não pode impedir o ofício de sair.
+ */
+function oficio_lerAnexosExtras_(numero) {
+  try {
+    var alvo = oficio_linhaNoControle_(numero);
+    if (!alvo) return [];
+    var col = alvo.hm[OFICIO_COL_ANEXOS_EXTRAS];
+    if (!col) return [];
+    var texto = String(alvo.sh.getRange(alvo.linha, col).getValue() || "").trim();
+    if (!texto) return [];
+    var lista = JSON.parse(texto);
+    return Array.isArray(lista) ? lista : [];
+  } catch (e) {
+    Logger.log("⚠ ANEXOS_EXTRAS_JSON ilegível no ofício " + numero + ": " + e.message);
+    return [];
+  }
+}
+
+/**
+ * Guarda no Drive os arquivos que a pessoa acrescentou e registra no Controle.
+ *
+ * Chamado ANTES de reunir o pacote, para o arquivo entrar no envio desta vez
+ * pelo mesmo caminho por onde entrará nas próximas — uma origem só, como manda
+ * a nota do `reunirAnexosReenvioOficio_`.
+ *
+ * @param {Array} novos  [{nome, tipo, base64}]
+ * @return {{guardados:Array, avisos:Array}}
+ */
+function oficio_guardarAnexosExtras_(numero, tipo, novos, quem) {
+  var guardados = [], avisos = [];
+  if (!Array.isArray(novos) || !novos.length) return { guardados: guardados, avisos: avisos };
+
+  var totalBytes = 0;
+  var limiteArquivo = OFICIO_ANEXO_EXTRA_MAX_MB * 1024 * 1024;
+  var limiteTotal   = OFICIO_ANEXO_EXTRA_MAX_TOTAL_MB * 1024 * 1024;
+
+  var preparados = [];
+  for (var i = 0; i < novos.length; i++) {
+    var item = novos[i] || {};
+    var nome = oficio_nomeArquivoSeguro_(item.nome);
+    var b64  = String(item.base64 || "");
+    if (!b64) { avisos.push(nome + ": arquivo vazio."); continue; }
+
+    var ext = oficio_extensaoDe_(nome);
+    if (OFICIO_ANEXO_EXTRA_EXTENSOES.indexOf(ext) === -1) {
+      avisos.push(nome + ": tipo de arquivo não aceito (aceitos: " +
+                  OFICIO_ANEXO_EXTRA_EXTENSOES.join(", ") + ").");
+      continue;
+    }
+
+    /* base64 carrega ~4 caracteres por 3 bytes. Medir aqui evita decodificar
+       um arquivo gigante só para descobrir que ele não cabe. */
+    var bytes = Math.floor(b64.length * 3 / 4);
+    if (bytes > limiteArquivo) {
+      avisos.push(nome + ": tem mais de " + OFICIO_ANEXO_EXTRA_MAX_MB + " MB.");
+      continue;
+    }
+    totalBytes += bytes;
+    if (totalBytes > limiteTotal) {
+      avisos.push(nome + ": o total passa de " + OFICIO_ANEXO_EXTRA_MAX_TOTAL_MB +
+                  " MB e o Gmail recusaria a mensagem.");
+      break;
+    }
+    preparados.push({ nome: nome, tipo: String(item.tipo || "application/octet-stream"), base64: b64 });
+  }
+
+  if (!preparados.length) return { guardados: guardados, avisos: avisos };
+
+  var alvo = oficio_linhaNoControle_(numero);
+  if (!alvo) {
+    avisos.push("Ofício " + numero + " não encontrado no Controle — o anexo não pôde ser guardado.");
+    return { guardados: guardados, avisos: avisos };
+  }
+
+  var pasta;
+  try {
+    pasta = obterPastaPorTipo_(normalizarTipoOficio_(tipo));
+  } catch (ePasta) {
+    avisos.push("Pasta do Drive indisponível: " + (ePasta.message || ePasta));
+    return { guardados: guardados, avisos: avisos };
+  }
+
+  var quando = new Date();
+  preparados.forEach(function (a) {
+    try {
+      var blob = Utilities.newBlob(Utilities.base64Decode(a.base64), a.tipo, a.nome);
+      var arq  = pasta.createFile(blob);
+      guardados.push({
+        fileId: arq.getId(),
+        nome:   a.nome,
+        quem:   String(quem || "").trim(),
+        quando: Utilities.formatDate(quando, Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm")
+      });
+    } catch (eArq) {
+      avisos.push(a.nome + ": falhou ao guardar no Drive — " + (eArq.message || eArq));
+    }
+  });
+
+  if (!guardados.length) return { guardados: guardados, avisos: avisos };
+
+  var col = oficio_garantirColuna_(alvo.sh, OFICIO_COL_ANEXOS_EXTRAS);
+  var antes = oficio_lerAnexosExtras_(numero);
+  alvo.sh.getRange(alvo.linha, col).setValue(JSON.stringify(antes.concat(guardados)));
+
+  try {
+    registrarLogSistema_({
+      usuario: String(quem || "").trim(),
+      numero:  numero + " (ANEXO ACRESCENTADO)",
+      tipo:    "OFICIOS_ANEXO_ACRESCENTADO",
+      escola:  "",
+      cnpj:    "",
+      email:   "",
+      codigo:  guardados.map(function (x) { return x.nome; }).join(", ")
+    });
+  } catch (eLog) {}
+
+  return { guardados: guardados, avisos: avisos };
+}
+
+/** "acrescentada em 11/09 por fulano@" — o que a tela mostra como origem. */
+function oficio_origemAnexoExtra_(extra) {
+  var quando = String((extra && extra.quando) || "").trim();
+  var dia = quando ? quando.slice(8, 10) + "/" + quando.slice(5, 7) : "";
+  var quem = String((extra && extra.quem) || "").trim();
+  return "acrescentada" + (dia ? " em " + dia : "") + (quem ? " por " + quem : "");
+}
+
 function reunirAnexosReenvioOficio_(numero, idOficio, tipo, escola, dataEnvio, linkFicha) {
   var itens = [];
   var pacote = obterAnexosOriginaisFilaOficio_(numero, idOficio);
@@ -577,6 +782,28 @@ function reunirAnexosReenvioOficio_(numero, idOficio, tipo, escola, dataEnvio, l
       }
     }
   }
+
+  /* 4ª CAMADA — o que alguém acrescentou a este ofício num reenvio anterior.
+
+     Vem POR ÚLTIMO de propósito: se o mesmo documento já entrou pelo pacote
+     original ou pelo resgate no Drive, ele não precisa entrar de novo, e a
+     deduplicação por nome evita mandar a mesma carta duas vezes. */
+  oficio_lerAnexosExtras_(numero).forEach(function (extra) {
+    if (!extra || !extra.fileId) return;
+    try {
+      var nomesAtuais = anexos.map(function (b) { return String(b.getName() || ""); });
+      var arq = DriveApp.getFileById(String(extra.fileId));
+      var nomeArq = String(extra.nome || arq.getName() || "").trim();
+      if (nomesAtuais.indexOf(nomeArq) > -1) return;
+      anexos.push(arq.getBlob().setName(nomeArq));
+      itens.push({ nome: nomeArq, origem: oficio_origemAnexoExtra_(extra) });
+    } catch (eExtra) {
+      /* Arquivo apagado do Drive depois de acrescentado. Não pode derrubar o
+         reenvio — o ofício ainda tem o que mandar. */
+      Logger.log("⚠ Anexo acrescentado indisponível no ofício " + numero + ": " +
+                 (eExtra.message || eExtra));
+    }
+  });
 
   return { blobs: anexos, itens: itens, reconstruido: pacote.reconstruido === true };
 }
@@ -1069,6 +1296,27 @@ function reenviarOficio(registro, tokenSessao) {
     var idOficio = extrairIdDriveOficio_(url);
     if (!idOficio) return { erro: true, mensagem: "Não foi possível identificar o arquivo PDF na URL informada." };
 
+    /* GUARDAR ANTES DE REUNIR — 11/09/2026.
+
+       O arquivo que a pessoa acabou de escolher é salvo no Drive e registrado
+       no Controle ANTES do pacote ser montado, para entrar no envio de hoje
+       pelo MESMO caminho por onde entrará nos próximos reenvios. Se fosse
+       concatenado direto aqui, o envio de hoje e a prévia de amanhã veriam
+       listas diferentes — que é justamente o que a nota do
+       `reunirAnexosReenvioOficio_` existe para impedir.
+
+       E persiste mesmo que o envio falhe depois: o anexo passa a fazer parte
+       do ofício de qualquer jeito, que é o pedido do usuário — não ter de
+       anexar de novo na próxima tentativa. */
+    var avisosAnexo = [];
+    if (Array.isArray(registro.anexosNovos) && registro.anexosNovos.length) {
+      var guarda = oficio_guardarAnexosExtras_(numero, tipo, registro.anexosNovos, emailUsuario);
+      avisosAnexo = guarda.avisos || [];
+      if (!guarda.guardados.length && avisosAnexo.length) {
+        return { erro: true, mensagem: "Nenhum anexo pôde ser guardado. " + avisosAnexo.join(" ") };
+      }
+    }
+
     var reuniao = reunirAnexosReenvioOficio_(numero, idOficio, tipo, escola, dataEnvioOficio, linkFicha);
     var anexos  = reuniao.blobs;
     var pacote  = { reconstruido: reuniao.reconstruido };
@@ -1125,7 +1373,11 @@ function reenviarOficio(registro, tokenSessao) {
                 " sincronizada — ele ainda vai aparecer como falha na tela.")
           : " ATENÇÃO: o status no Controle não pôde ser atualizado" +
             (marcado && marcado.motivo ? " (" + marcado.motivo + ")" : "") +
-            " — o ofício vai continuar aparecendo como falha.")
+            " — o ofício vai continuar aparecendo como falha.") +
+        /* Arquivo recusado não pode sumir numa mensagem de sucesso: a pessoa
+           anexou pensando que ia, e o ofício saiu sem ele. */
+        (avisosAnexo.length ? " ATENÇÃO, anexo(s) não incluído(s): " +
+                              avisosAnexo.join(" ") : "")
     };
 
   } catch(e) {

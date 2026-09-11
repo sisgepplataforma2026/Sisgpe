@@ -823,6 +823,24 @@
                 <div id="histReenvAnexos" style="font-size:12px;color:#475569;">
                   <span style="color:#94a3b8;">conferindo…</span>
                 </div>
+
+                <!-- ANEXAR NA HORA — 11/09, "para todos, a possibilidade de
+                     anexar quando precisar reenviar e assim nao precisaria
+                     fazer novamente". O arquivo escolhido aqui e guardado no
+                     oficio: o proximo reenvio ja encontra sozinho. -->
+                <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                  <input id="histReenvArquivo" type="file" multiple
+                         accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                         style="display:none;"
+                         onchange="Historico.anexoEscolher(this)">
+                  <button type="button" class="btn btn-outline btn-sm"
+                          onclick="document.getElementById('histReenvArquivo').click()">
+                    &#43; Anexar documento
+                  </button>
+                  <span style="font-size:11px;color:#64748b;">
+                    fica guardado neste ofício — o próximo reenvio já encontra
+                  </span>
+                </div>
               </div>
 
               <div id="histReenvAviso" style="display:none;font-size:11.5px;padding:8px 10px;border-radius:10px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;"></div>

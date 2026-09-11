@@ -387,7 +387,21 @@ function ofDest_preverReenvio_(dados) {
       var reuniao = reunirAnexosReenvioOficio_(
         numero, idOficio, tipo, escola, registro.dataEnvio, registro.linkFicha);
       anexos.itens = reuniao.itens;
-      anexos.temFicha = reuniao.itens.some(function (i) { return anexoEhFicha_(i.nome); });
+
+      /* OS QUE A PESSOA ACABOU DE ESCOLHER, ainda não enviados — 11/09/2026.
+
+         A tela manda os NOMES dos arquivos que estão na mão dela para o
+         veredito de ficha ser recalculado aqui, no mesmo lugar onde ele
+         sempre foi decidido. Repetir a regra `anexoEhFicha_` no JavaScript da
+         tela faria o aviso vermelho e o envio discordarem no primeiro ajuste
+         — e é o aviso que a pessoa lê para decidir se manda. */
+      (Array.isArray(dados.nomesExtras) ? dados.nomesExtras : []).forEach(function (nome) {
+        var n = String(nome || "").trim();
+        if (!n) return;
+        anexos.itens.push({ nome: n, origem: "escolhida agora, ainda não enviada" });
+      });
+
+      anexos.temFicha = anexos.itens.some(function (i) { return anexoEhFicha_(i.nome); });
     }
   } catch (e) {
     anexos.erro = String(e && e.message || e);

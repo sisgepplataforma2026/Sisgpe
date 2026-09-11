@@ -3590,12 +3590,13 @@ window.mostrarAbaOficio = function(aba) {
       var url=tr?(tr.dataset.url||""):"", cells=tr?tr.querySelectorAll("td"):[];
       var tipo=cells[2]?cells[2].textContent.trim():"", escola=cells[3]?cells[3].textContent.trim():"";
 
-      Historico._reenvioCtx={numero:numero,url:url,tipo:tipo,escola:escola,anexosOk:true};
+      Historico._reenvioCtx={numero:numero,url:url,tipo:tipo,escola:escola,anexosOk:true,novos:[]};
       var g=function(id){return document.getElementById(id);};
       if(g("histReenvNumero")) g("histReenvNumero").textContent=numero;
       if(g("histReenvEscola")) g("histReenvEscola").textContent=escola||"—";
       if(g("histReenvTipo"))   g("histReenvTipo").textContent=tipo||"—";
       if(g("histReenvExtra"))  g("histReenvExtra").value="";
+      if(g("histReenvArquivo")) g("histReenvArquivo").value="";
       if(g("histReenvDestinos")) g("histReenvDestinos").innerHTML='<span style="color:#94a3b8;">carregando…</span>';
       if(g("histReenvAnexos"))   g("histReenvAnexos").innerHTML='<span style="color:#94a3b8;">conferindo…</span>';
       if(g("histReenvAviso"))    g("histReenvAviso").style.display="none";
@@ -3604,6 +3605,15 @@ window.mostrarAbaOficio = function(aba) {
       /* A previa MEDE: os enderecos vem das duas origens (o oficio e o
          cadastro de hoje) e os anexos sao reunidos pela MESMA funcao que o
          envio usa. Nao e promessa do que deveria ir — e o que vai. */
+      Historico._reenvioPrever();
+    },
+
+    /** A prévia, sempre pelo mesmo caminho — abrindo o modal ou depois de
+     *  anexar. Manda os NOMES do que está na mão para o veredito de ficha ser
+     *  recalculado no backend, onde a regra mora. */
+    _reenvioPrever: function() {
+      var ctx=Historico._reenvioCtx; if(!ctx) return;
+      var g=function(id){return document.getElementById(id);};
       google.script.run
         .withSuccessHandler(function(r){ Historico._reenvioMontar(r); })
         .withFailureHandler(function(err){
@@ -3611,7 +3621,50 @@ window.mostrarAbaOficio = function(aba) {
           if(d) d.innerHTML='<span style="color:#b91c1c;">não foi possível carregar os endereços: '+
                             escapeHtml((err&&err.message)||String(err))+'</span>';
         })
-        .preverReenvioOficio({numero:numero,url:url,tipo:tipo,escola:escola}, SISGEP_TOKEN_SESSAO);
+        .preverReenvioOficio({
+          numero:ctx.numero, url:ctx.url, tipo:ctx.tipo, escola:ctx.escola,
+          nomesExtras:(ctx.novos||[]).map(function(a){return a.nome;})
+        }, SISGEP_TOKEN_SESSAO);
+    },
+
+    /* ANEXAR NA HORA — 11/09/2026.
+
+       O arquivo é lido para base64 aqui e só sobe no envio. A prévia é
+       refeita a cada escolha porque é ela que decide o aviso vermelho: quem
+       anexa a carta que faltava precisa ver o aviso sumir, senão não sabe se
+       resolveu. */
+    anexoEscolher: function(input) {
+      var ctx=Historico._reenvioCtx; if(!ctx) return;
+      var arquivos=(input&&input.files)?Array.prototype.slice.call(input.files):[];
+      if(!arquivos.length) return;
+      ctx.novos=ctx.novos||[];
+
+      var restantes=arquivos.length;
+      arquivos.forEach(function(arq){
+        var reader=new FileReader();
+        reader.onload=function(ev){
+          var jaTem=ctx.novos.some(function(a){return a.nome===arq.name;});
+          if(!jaTem){
+            ctx.novos.push({
+              nome: arq.name,
+              tipo: arq.type||"application/octet-stream",
+              base64: String(ev.target.result||"").split(",")[1]||""
+            });
+          }
+          if(--restantes===0){ input.value=""; Historico._reenvioPrever(); }
+        };
+        reader.onerror=function(){
+          toast("Não foi possível ler "+arq.name+".","err");
+          if(--restantes===0){ input.value=""; Historico._reenvioPrever(); }
+        };
+        reader.readAsDataURL(arq);
+      });
+    },
+
+    anexoRemover: function(nome) {
+      var ctx=Historico._reenvioCtx; if(!ctx||!ctx.novos) return;
+      ctx.novos=ctx.novos.filter(function(a){return a.nome!==String(nome||"");});
+      Historico._reenvioPrever();
     },
 
     _reenvioCtx: null,
@@ -3657,9 +3710,19 @@ window.mostrarAbaOficio = function(aba) {
           cx.innerHTML='<span style="color:#b91c1c;">Nenhum anexo encontrado.</span>';
         } else {
           cx.innerHTML=(a.itens||[]).map(function(it){
+            /* O que a pessoa acabou de escolher ainda pode sair da lista; o
+               que ja esta no oficio, nao — tirar exigiria apagar do Drive, que
+               e outra decisao. */
+            var pendente=String(it.origem||"").indexOf("escolhida agora")===0;
+            var x=pendente
+              ? '<button type="button" class="btn btn-ghost btn-sm" title="Tirar este anexo"'
+                +' onclick="Historico.anexoRemover(\''+escapeHtml(it.nome).replace(/'/g,"\\'")+'\')"'
+                +' style="margin-left:auto;color:#b91c1c;">&times;</button>'
+              : '';
             return '<div style="display:flex;gap:6px;align-items:flex-start;padding:2px 0;">'
               +'<span>📎</span><span><strong>'+escapeHtml(it.nome)+'</strong><br>'
-              +'<span style="color:#64748b;font-size:11px;">'+escapeHtml(it.origem||"")+'</span></span></div>';
+              +'<span style="color:#64748b;font-size:11px;">'+escapeHtml(it.origem||"")+'</span></span>'
+              +x+'</div>';
           }).join("");
         }
       }
@@ -3677,6 +3740,16 @@ window.mostrarAbaOficio = function(aba) {
         } else {
           aviso.style.display="none";
         }
+      }
+
+      /* ANEXOU O QUE FALTAVA: o botao volta ao normal. Sem isto, quem clicou
+         uma vez, viu o alerta, anexou a carta e clicou de novo continuaria
+         lendo "Enviar mesmo sem a ficha" — e mandaria achando que estava
+         abrindo mao de alguma coisa. */
+      if(Historico._reenvioCtx && Historico._reenvioCtx.anexosOk){
+        Historico._reenvioCtx.cienteSemFicha=false;
+        var btnOk=g("histReenvOk");
+        if(btnOk){ btnOk.textContent="Reenviar \u25B8"; btnOk.style.background=""; }
       }
     },
 
@@ -4226,7 +4299,8 @@ window.mostrarAbaOficio = function(aba) {
         })
         .reenviarOficio({
           numero:ctx.numero, url:ctx.url, escola:ctx.escola, tipo:ctx.tipo,
-          destinatarios: escolhidos
+          destinatarios: escolhidos,
+          anexosNovos: ctx.novos||[]
         }, SISGEP_TOKEN_SESSAO);
     },
 
