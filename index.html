@@ -155,12 +155,13 @@
       <button class="spN" data-mod="financeiro" data-acordeao="financeiroSubMenuSidebar" onclick="spAcordeao(this);spIr('financeiro',this)">
         <span class="spNI">💵</span><div><strong>Financeiro</strong><small>Receitas, despesas e patrimônio</small></div>
       </button>
-      <div id="financeiroSubMenuSidebar" class="docSubMenuSidebar" data-subs="financeiro,painelFin,receitas,mensalidades,taxas,cadastroPrestadores,patrimonio,auditoriaFin" style="display:none;">
+      <div id="financeiroSubMenuSidebar" class="docSubMenuSidebar" data-subs="financeiro,painelFin,receitas,mensalidades,taxas,comunicacaoTN,cadastroPrestadores,patrimonio,auditoriaFin" style="display:none;">
         <button type="button" class="docSubMenuBtn" data-sub-mod="painelFin" onclick="spIr('painelFin',null)">📊 Painel Executivo</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="financeiro" onclick="spIr('financeiro',null)">💸 Despesas e Pagamentos</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="receitas" onclick="spIr('receitas',null)">💰 Receitas</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="mensalidades" onclick="spIr('mensalidades',null)">🧾 Mensalidade Sindical</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="taxas" onclick="spIr('taxas',null)">📑 Taxa Negocial e Assistencial</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="comunicacaoTN" onclick="spIr('comunicacaoTN',null)">📣 Comunicação da Taxa Negocial</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="cadastroPrestadores" onclick="spIr('cadastroPrestadores',null)">🧑‍🔧 Prestadores</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="patrimonio" onclick="spIr('patrimonio',null)">🏛️ Patrimônio</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="auditoriaFin" onclick="spIr('auditoriaFin',null)">🔍 Auditoria de Valores</button>
@@ -627,6 +628,9 @@ function benefAdminPesquisar(){var input=document.getElementById("benefAdminBusc
       </div>
       <div id="mTaxas" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
         <?!= include('TaxasAdmin'); ?>
+      </div>
+      <div id="mComunicacaoTN" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('ComunicacaoTNAdmin'); ?>
       </div>
       <div id="mPainelFin" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
         <?!= include('FinanceiroPainel'); ?>
@@ -1408,6 +1412,7 @@ var MODS={
   mensalidades:["mMensalidades","Mensalidade Sindical","Desconto em folha dos associados — CCT cláusula 56"],
   auditoriaFin:["mAuditoriaFin","Auditoria de Valores","Toda alteração de valor em despesa ou recibo — quem, quanto e por quê"],
   taxas:["mTaxas","Taxa Negocial e Assistencial","Recebimento das contribuições da CCT — cláusulas 57 e 58"],
+  comunicacaoTN:["mComunicacaoTN","Comunicação da Taxa Negocial","Ofício informativo às escolas — escalonado e respeitando a cota de e-mail"],
   painelFin:["mPainelFin","Painel Executivo","Central Financeira — quanto entrou, quanto saiu e o que está pendente"],
   escolas:["mEscolas","Escolas","Cadastros e Relacionamentos"],
   rh:["mRH","RH","Colaboradores, Documentos e Vencimentos"],
@@ -2130,6 +2135,10 @@ if(mod==="visitas"){
   }
   if(mod==="taxas"){
     setTimeout(function(){ callFn("initTaxas"); },120);
+    return;
+  }
+  if(mod==="comunicacaoTN"){
+    setTimeout(function(){ callFn("initComunicacaoTN"); },120);
     return;
   }
   if(mod==="centralEmailIA"){

@@ -210,6 +210,61 @@ igual(st.aCorrigir, 1, "a escola sem e-mail aparece em 'a corrigir', separada da
 ok(st.remetente.ok === true, "e mostra o remetente medido");
 
 /* ══════════════════════════════════════════════════════════════════════ */
+fluxo("A porta única, e o que ela recusa");
+
+/* O google.script.run só alcança função global SEM underline, então a tela
+   precisa de uma porta. UMA, não oito: o teto de exposição do projeto está em
+   204 e o exposicao-teto.json diz que ele só desce.
+
+   E a porta NÃO custou teto — o t6 conta função que devolve dado real SEM
+   token, e esta recusa antes de qualquer coisa. Eu quase subi o teto por
+   engano achando que toda global conta; está registrado no proprio json. */
+
+passo("sem token");
+b.bloqueia(() => g.comunicacaoTaxaNegocial("status", {}, ""),
+   "recusa sem sessão");
+
+passo("com sessão sem o módulo Documentos");
+const tokenSemModulo = b.logar(g, "joscimar");   /* escolas,sindicalizacao */
+b.bloqueia(() => g.comunicacaoTaxaNegocial("status", {}, tokenSemModulo),
+   "recusa quem não tem o módulo Documentos");
+
+passo("o que MUDA estado exige administrador");
+const tokenUsuario = b.logar(g, "rogerio");      /* financeiro,rh — não é admin */
+b.bloqueia(() => g.comunicacaoTaxaNegocial("liberar", {}, tokenUsuario),
+   "liberar exige administrador — decide o que 679 escolas recebem");
+b.bloqueia(() => g.comunicacaoTaxaNegocial("preparar", {}, tokenUsuario),
+   "preparar também");
+
+passo("ação desconhecida não explode nem faz nada");
+const tokenAdmin = b.logar(g, "wanderson");
+const bobo = g.comunicacaoTaxaNegocial("apagar_tudo", {}, tokenAdmin);
+igual(bobo.ok, false, "recusa ação que não existe");
+ok(String(bobo.mensagem).indexOf("desconhecida") > -1,
+   "dizendo que não conhece, em vez de cair em algum caminho por acidente",
+   bobo.mensagem);
+
+passo("o laço e o gatilho continuam FORA da porta");
+igual(typeof g.tnCom_enviarLote_, "function", "o laço existe");
+ok(String(g.tnCom_enviarLote_.name).slice(-1) === "_",
+   "e é privado — um anônimo não dispara 679 e-mails");
+ok(String(g.tnCom_loteAgendado_.name).slice(-1) === "_",
+   "o handler de gatilho também, e funciona assim no Apps Script");
+
+/* ══════════════════════════════════════════════════════════════════════ */
+fluxo("A tela está ligada ao Portal");
+
+const fs = require("fs");
+const idx = fs.readFileSync(require("./load").RAIZ + "/index.html", "utf8");
+
+ok(idx.indexOf("ComunicacaoTNAdmin") > -1, "o arquivo da tela é incluído no index");
+ok(idx.indexOf('id="mComunicacaoTN"') > -1, "existe o container da página");
+ok(idx.indexOf('data-sub-mod="comunicacaoTN"') > -1, "existe o botão no submenu do Financeiro");
+ok(/data-subs="[^"]*comunicacaoTN/.test(idx), "e ele está na lista de submódulos do grupo");
+ok(idx.indexOf('comunicacaoTN:["mComunicacaoTN"') > -1, "a página está registrada");
+ok(idx.indexOf("initComunicacaoTN") > -1, "e o gancho que inicializa a tela existe");
+
+/* ══════════════════════════════════════════════════════════════════════ */
 fluxo("O que continua sem cobertura");
 
 naoTestavel("O PDF nominal e a CCT anexa",

@@ -735,3 +735,108 @@ function tnCom_status_() {
     porStatus: c
   };
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   A ÚNICA PORTA PÚBLICA DESTE MÓDULO — 11/09/2026
+
+   POR QUE UMA SÓ, E POR QUE ELA EXISTE. O `google.script.run` só alcança
+   função global SEM underline, então a tela precisa de pelo menos uma. E o
+   teto de exposição do projeto estava em 204 de 204, com o
+   `exposicao-teto.json` dizendo que ele só desce.
+
+   Oito operações atrás de uma porta é o melhor negócio disponível: o teto sobe
+   UM, não oito. O usuário autorizou a subida em 11/09/2026, e ela está
+   registrada no exposicao-teto.json — o arquivo exige decisão escrita, não
+   basta o número mudar.
+
+   A PORTA CONFERE ANTES DE DESPACHAR, e não depois. `exigirModulo_` roda na
+   primeira linha, para toda ação: não existe caminho aqui dentro que execute
+   antes da checagem. E as que MUDAM alguma coisa exigem administrador —
+   preparar, liberar e ajustar teto decidem o que 679 escolas recebem.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+function comunicacaoTaxaNegocial(acao, params, tokenSessao) {
+  var a = String(acao || "").trim().toLowerCase();
+
+  /* Só `status` dispensa administrador: é leitura de contadores, e a tela
+     precisa dela para desenhar antes de qualquer decisão. */
+  var exigeAdmin = (a !== "status");
+  var sessao = exigirModulo_(tokenSessao, "documentos", exigeAdmin);
+  var quem = String(sessao.email || sessao.usuario || "").trim().toLowerCase();
+
+  try {
+    switch (a) {
+      case "status":   return tnCom_status_();
+      case "preparar": return tnCom_preparar_(params || {}, quem);
+      case "liberar":  return tnCom_liberar_();
+      case "pausar":   return tnCom_pausar_();
+      case "teto":     return tnCom_ajustarTeto_((params || {}).teto);
+      case "linhas":   return tnCom_listar_((params || {}).filtro);
+      default:
+        return { ok: false, mensagem: "Ação desconhecida: " + acao };
+    }
+  } catch (e) {
+    /* A tela precisa da MENSAGEM, não de uma exceção que o google.script.run
+       entrega como objeto vazio no withFailureHandler. */
+    return { ok: false, mensagem: String(e && e.message || e) };
+  }
+}
+
+/**
+ * As linhas da campanha para a tabela, já filtradas.
+ *
+ * Os estados que eu tinha proposto como telas separadas viraram FILTRO aqui —
+ * o usuário não opera o sistema ainda e a campanha roda uma vez por ano; cinco
+ * telas para isso é custo sem retorno. É o mesmo desenho do Histórico de
+ * Ofícios, que ele já usa assim.
+ */
+function tnCom_listar_(filtro) {
+  var f = tnCom_linhas_();
+  if (!f.dados.length) return { ok: true, itens: [] };
+
+  var iEsc = f.hm["ESCOLA"], iEmail = f.hm["EMAIL"], iSt = f.hm["STATUS"],
+      iErro = f.hm["ERRO"], iData = f.hm["DATA_HORA"];
+
+  var querido = String(filtro || "todas").trim().toLowerCase();
+  var itens = [];
+
+  /* Uma linha por escola na TELA, mesmo a fila sendo por endereço: a pessoa
+     pensa em escola. O contador de endereços vai junto, e o status da escola é
+     o pior dos seus endereços — dizer "comunicada" quando um dos três falhou
+     seria a tela mentindo por arredondamento. */
+  var porEscola = {};
+  f.dados.forEach(function (r) {
+    var nome = String(r[iEsc] || "").trim();
+    if (!nome) return;
+    if (!porEscola[nome]) {
+      porEscola[nome] = { escola: nome, enderecos: 0, status: "", quando: "", erro: "" };
+    }
+    var e = porEscola[nome];
+    if (String(r[iEmail] || "").trim()) e.enderecos++;
+
+    var st = String(r[iSt] || "").trim().toUpperCase() || "PENDENTE";
+    var peso = { ENVIADO: 0, PENDENTE: 1, ERRO: 2, EMAIL_INVALIDO: 3,
+                 ERRO_PERMANENTE: 4, SEM_EMAIL: 5 };
+    if (!e.status || (peso[st] || 9) > (peso[e.status] || 0)) e.status = st;
+    if (String(r[iErro] || "").trim()) e.erro = String(r[iErro]).slice(0, 160);
+    var q = r[iData];
+    if (q instanceof Date && !isNaN(q.getTime())) {
+      e.quando = Utilities.formatDate(q, Session.getScriptTimeZone(), "dd/MM HH:mm");
+    }
+  });
+
+  Object.keys(porEscola).sort(function (a, b) {
+    return a.localeCompare(b, "pt-BR", { sensitivity: "base" });
+  }).forEach(function (k) {
+    var e = porEscola[k];
+    var passa =
+      querido === "todas" ? true :
+      querido === "comunicadas" ? e.status === "ENVIADO" :
+      querido === "nafila"      ? (e.status === "PENDENTE" || e.status === "ERRO") :
+      querido === "sememail"    ? (e.status === "SEM_EMAIL" || e.status === "EMAIL_INVALIDO") :
+      querido === "falhas"      ? (e.status === "ERRO" || e.status === "ERRO_PERMANENTE") : true;
+    if (passa) itens.push(e);
+  });
+
+  return { ok: true, itens: itens, filtro: querido };
+}
