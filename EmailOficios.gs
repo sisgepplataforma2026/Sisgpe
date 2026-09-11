@@ -675,7 +675,8 @@ function oficio_guardarAnexosExtras_(numero, tipo, novos, quem) {
                   " MB e o Gmail recusaria a mensagem.");
       break;
     }
-    preparados.push({ nome: nome, tipo: String(item.tipo || "application/octet-stream"), base64: b64 });
+    preparados.push({ nome: nome, tipo: String(item.tipo || "application/octet-stream"),
+                      base64: b64, ehFicha: item.ehFicha === true });
   }
 
   if (!preparados.length) return { guardados: guardados, avisos: avisos };
@@ -702,6 +703,12 @@ function oficio_guardarAnexosExtras_(numero, tipo, novos, quem) {
       guardados.push({
         fileId: arq.getId(),
         nome:   a.nome,
+        /* A DECLARACAO VIAJA COM O ARQUIVO — 11/09/2026.
+
+           Sem guardar isto, o reenvio seguinte perderia a informacao e o aviso
+           vermelho voltaria para um oficio que ja tem a carta: a pessoa
+           resolveria o mesmo problema toda vez. Guardado, vale para sempre. */
+        ehFicha: a.ehFicha === true,
         quem:   String(quem || "").trim(),
         quando: Utilities.formatDate(quando, Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm")
       });
@@ -736,7 +743,8 @@ function oficio_origemAnexoExtra_(extra) {
   var quando = String((extra && extra.quando) || "").trim();
   var dia = quando ? quando.slice(8, 10) + "/" + quando.slice(5, 7) : "";
   var quem = String((extra && extra.quem) || "").trim();
-  return "acrescentada" + (dia ? " em " + dia : "") + (quem ? " por " + quem : "");
+  return "acrescentada" + (dia ? " em " + dia : "") + (quem ? " por " + quem : "") +
+         (extra && extra.ehFicha === true ? " · marcada como ficha/carta" : "");
 }
 
 function reunirAnexosReenvioOficio_(numero, idOficio, tipo, escola, dataEnvio, linkFicha) {
@@ -796,7 +804,8 @@ function reunirAnexosReenvioOficio_(numero, idOficio, tipo, escola, dataEnvio, l
       var nomeArq = String(extra.nome || arq.getName() || "").trim();
       if (nomesAtuais.indexOf(nomeArq) > -1) return;
       anexos.push(arq.getBlob().setName(nomeArq));
-      itens.push({ nome: nomeArq, origem: oficio_origemAnexoExtra_(extra) });
+      itens.push({ nome: nomeArq, origem: oficio_origemAnexoExtra_(extra),
+                   ehFicha: extra.ehFicha === true });
     } catch (eExtra) {
       /* Arquivo apagado do Drive depois de acrescentado. Não pode derrubar o
          reenvio — o ofício ainda tem o que mandar. */

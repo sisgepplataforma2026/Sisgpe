@@ -390,18 +390,46 @@ function ofDest_preverReenvio_(dados) {
 
       /* OS QUE A PESSOA ACABOU DE ESCOLHER, ainda não enviados — 11/09/2026.
 
-         A tela manda os NOMES dos arquivos que estão na mão dela para o
-         veredito de ficha ser recalculado aqui, no mesmo lugar onde ele
-         sempre foi decidido. Repetir a regra `anexoEhFicha_` no JavaScript da
-         tela faria o aviso vermelho e o envio discordarem no primeiro ajuste
-         — e é o aviso que a pessoa lê para decidir se manda. */
-      (Array.isArray(dados.nomesExtras) ? dados.nomesExtras : []).forEach(function (nome) {
-        var n = String(nome || "").trim();
+         A tela manda o que está na mão dela para o veredito de ficha ser
+         recalculado aqui, no mesmo lugar onde ele sempre foi decidido.
+         Repetir a regra no JavaScript da tela faria o aviso vermelho e o
+         envio discordarem no primeiro ajuste — e é o aviso que a pessoa lê
+         para decidir se manda. */
+      (Array.isArray(dados.extras) ? dados.extras : []).forEach(function (x) {
+        var n = String((x && x.nome) || "").trim();
         if (!n) return;
-        anexos.itens.push({ nome: n, origem: "escolhida agora, ainda não enviada" });
+        anexos.itens.push({
+          nome: n,
+          origem: "escolhida agora, ainda não enviada",
+          ehFicha: !!(x && x.ehFicha)
+        });
       });
 
-      anexos.temFicha = anexos.itens.some(function (i) { return anexoEhFicha_(i.nome); });
+      /* ══════════════════════════════════════════════════════════════════
+         NOME DE ARQUIVO NÃO JULGA O QUE UMA PESSOA ESCOLHEU — 11/09/2026
+
+         O `anexoEhFicha_` reconhece ficha por um padrão de nome (`Ficha_`,
+         `Fichas_`) que a EMISSÃO cria. Ele funciona para o que o sistema
+         gerou e não funciona para nada que uma pessoa anexa à mão: foto de
+         WhatsApp, digitalização, PDF salvo do e-mail — nenhum casa.
+
+         O caso que mostrou isso: o usuário anexou a carta de oposição do
+         ofício 388/2026 como `WhatsApp Image 2026-09-09 at 16.34.21.jpeg`, e
+         o aviso vermelho continuou dizendo que a ficha não foi encontrada.
+         Aviso que grita depois de o problema ter sido resolvido é pior do que
+         aviso nenhum: em pouco tempo ninguém olha mais para ele.
+
+         Então o sistema para de adivinhar e passa a aceitar a DECLARAÇÃO de
+         quem anexou, que é quem sabe. As duas regras valem juntas: o padrão
+         de nome continua reconhecendo sozinho o que a emissão gerou, e a
+         declaração cobre o que veio de fora. A declaração fica guardada com
+         o arquivo (ver `oficio_guardarAnexosExtras_`) e aparece na origem,
+         com quem e quando — sugerir com origem à vista, nunca impor em
+         silêncio.
+         ══════════════════════════════════════════════════════════════════ */
+      anexos.temFicha = anexos.itens.some(function (i) {
+        return anexoEhFicha_(i.nome) || i.ehFicha === true;
+      });
     }
   } catch (e) {
     anexos.erro = String(e && e.message || e);

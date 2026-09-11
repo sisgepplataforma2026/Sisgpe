@@ -3623,7 +3623,9 @@ window.mostrarAbaOficio = function(aba) {
         })
         .preverReenvioOficio({
           numero:ctx.numero, url:ctx.url, tipo:ctx.tipo, escola:ctx.escola,
-          nomesExtras:(ctx.novos||[]).map(function(a){return a.nome;})
+          extras:(ctx.novos||[]).map(function(a){
+            return {nome:a.nome, ehFicha:a.ehFicha===true};
+          })
         }, SISGEP_TOKEN_SESSAO);
     },
 
@@ -3648,7 +3650,13 @@ window.mostrarAbaOficio = function(aba) {
             ctx.novos.push({
               nome: arq.name,
               tipo: arq.type||"application/octet-stream",
-              base64: String(ev.target.result||"").split(",")[1]||""
+              base64: String(ev.target.result||"").split(",")[1]||"",
+              /* NASCE MARCADA QUANDO O AVISO ESTAVA LIGADO. Quem anexa no
+                 momento em que a tela diz "a ficha nao foi encontrada" esta
+                 respondendo aquele aviso — pedir mais um clique para confirmar
+                 o obvio e friccao. Continua editavel: a caixa fica a vista e
+                 desmarcar devolve o aviso. */
+              ehFicha: ctx.anexosOk===false
             });
           }
           if(--restantes===0){ input.value=""; Historico._reenvioPrever(); }
@@ -3659,6 +3667,14 @@ window.mostrarAbaOficio = function(aba) {
         };
         reader.readAsDataURL(arq);
       });
+    },
+
+    anexoMarcarFicha: function(nome, marcado) {
+      var ctx=Historico._reenvioCtx; if(!ctx||!ctx.novos) return;
+      ctx.novos.forEach(function(a){ if(a.nome===String(nome||"")) a.ehFicha=!!marcado; });
+      /* Refaz a previa em vez de decidir aqui: o veredito de ficha mora no
+         backend, e duas cabecas decidindo a mesma coisa divergem. */
+      Historico._reenvioPrever();
     },
 
     anexoRemover: function(nome) {
@@ -3714,15 +3730,33 @@ window.mostrarAbaOficio = function(aba) {
                que ja esta no oficio, nao — tirar exigiria apagar do Drive, que
                e outra decisao. */
             var pendente=String(it.origem||"").indexOf("escolhida agora")===0;
+            var nomeJs=escapeHtml(it.nome).replace(/'/g,"\\'");
             var x=pendente
               ? '<button type="button" class="btn btn-ghost btn-sm" title="Tirar este anexo"'
-                +' onclick="Historico.anexoRemover(\''+escapeHtml(it.nome).replace(/'/g,"\\'")+'\')"'
+                +' onclick="Historico.anexoRemover(\''+nomeJs+'\')"'
                 +' style="margin-left:auto;color:#b91c1c;">&times;</button>'
               : '';
-            return '<div style="display:flex;gap:6px;align-items:flex-start;padding:2px 0;">'
+
+            /* A CAIXA SO APARECE ONDE FAZ DIFERENCA — 11/09/2026.
+
+               Em tipo que nao promete ficha no corpo, perguntar seria ruido.
+               E em anexo que o proprio sistema gerou (`Fichas_...`) o nome ja
+               responde — pedir confirmacao do que ele mesmo sabe ensinaria a
+               pessoa a clicar sem ler. */
+            var perguntar = pendente && a.exigeFicha && !/^fichas?_/i.test(it.nome);
+            var caixa = perguntar
+              ? '<label style="display:flex;gap:6px;align-items:center;margin:2px 0 0 22px;'
+                +'font-size:11px;color:#334155;cursor:pointer;">'
+                +'<input type="checkbox"'+(it.ehFicha?' checked':'')
+                +' onchange="Historico.anexoMarcarFicha(\''+nomeJs+'\', this.checked)">'
+                +'é a ficha/carta deste ofício</label>'
+              : '';
+
+            return '<div style="padding:2px 0;">'
+              +'<div style="display:flex;gap:6px;align-items:flex-start;">'
               +'<span>📎</span><span><strong>'+escapeHtml(it.nome)+'</strong><br>'
               +'<span style="color:#64748b;font-size:11px;">'+escapeHtml(it.origem||"")+'</span></span>'
-              +x+'</div>';
+              +x+'</div>'+caixa+'</div>';
           }).join("");
         }
       }

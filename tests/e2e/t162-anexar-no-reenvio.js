@@ -68,10 +68,10 @@ fila.getRange(2, 1, 1, CAB_FILA.length).setValues([[
   "388/2026", ANEXOS_JSON_ORIGINAL, "ENVIADO", 1, ""
 ]]);
 
-const prever = (nomesExtras) => g.preverReenvioOficio({
+const prever = (extras) => g.preverReenvioOficio({
   numero: "388/2026", url: URL_PDF, tipo: "Oposição à Taxa Negocial",
   escola: "CENTRO EDUCACIONAL LINUS PAULING",
-  nomesExtras: nomesExtras || []
+  extras: extras || []
 }, token);
 
 const reenviar = (anexosNovos) => g.reenviarOficio({
@@ -110,7 +110,7 @@ ok((antes.anexos.itens || []).every(i => !/^fichas?_/i.test(i.nome)),
 fluxo("A pessoa escolhe a carta, e a prévia recalcula antes de enviar");
 
 passo("prévia com o nome do arquivo que está na mão dela");
-const comEscolha = prever(["Fichas_Linus_Pauling_27-08-2026.pdf"]);
+const comEscolha = prever([{ nome: "Fichas_Linus_Pauling_27-08-2026.pdf" }]);
 
 ok(comEscolha.anexos.temFicha === true,
    "o aviso vermelho some assim que ela escolhe a carta");
@@ -223,6 +223,66 @@ const anexosMisto = ((amb.outbox[0] && amb.outbox[0].attachments) || [])
 igual(anexosMisto.length, 3,
    "o e-mail leva ofício + carta + planilha — todo arquivo aceito vai junto",
    anexosMisto.join(" | "));
+
+/* ══════════════════════════════════════════════════════════════════════ */
+fluxo("Nome de arquivo não julga o que uma pessoa escolheu");
+
+/* O CASO REAL, 11/09/2026. O usuário anexou a carta de oposição do 388/2026 e
+   o aviso vermelho continuou ligado. O arquivo chamava
+   `WhatsApp Image 2026-09-09 at 16.34.21.jpeg` — e o `anexoEhFicha_` só
+   reconhece o padrão `Ficha_`/`Fichas_` que a EMISSÃO cria. Nenhum arquivo que
+   uma pessoa escolhe do computador casa com ele.
+
+   Aviso que grita depois de o problema ter sido resolvido é pior do que aviso
+   nenhum: em pouco tempo ninguém olha mais. */
+const FOTO = "WhatsApp Image 2026-09-09 at 16.34.21.jpeg";
+
+/* Limpa o que os fluxos acima guardaram. Sem isto a carta `Fichas_...` ja
+   gravada responderia pelo veredito e a assercao abaixo passaria por engano —
+   provando o contrario do que se quer provar. */
+(function limparExtras() {
+  const hm = g.getHeaderMap_(reg);
+  const c = hm[g.OFICIO_COL_ANEXOS_EXTRAS];
+  if (c) reg.getRange(2, c).setValue("");
+})();
+
+passo("o arquivo de fora, SEM declaração — o defeito que ele viu");
+const semDeclarar = prever([{ nome: FOTO, ehFicha: false }]);
+ok(semDeclarar.anexos.temFicha === false,
+   "o padrão de nome sozinho não reconhece — era isto que mantinha o alerta",
+   FOTO);
+
+passo("o mesmo arquivo, declarado pela pessoa que o anexou");
+const declarado = prever([{ nome: FOTO, ehFicha: true }]);
+ok(declarado.anexos.temFicha === true,
+   "declarada, o aviso vermelho sai — quem anexou é quem sabe");
+
+passo("a declaração não vale para tipo que não promete ficha");
+const semExigencia = g.preverReenvioOficio({
+  numero: "388/2026", url: URL_PDF, tipo: "Ofício Livre",
+  escola: "CENTRO EDUCACIONAL LINUS PAULING", extras: []
+}, token);
+ok(semExigencia.anexos.exigeFicha === false,
+   "Ofício Livre não afirma anexo no corpo, então não há o que avisar");
+
+passo("enviada declarada, a declaração fica guardada com o arquivo");
+amb.outbox.length = 0;
+const envFoto = reenviar([{
+  nome: FOTO, tipo: "image/jpeg", base64: b64("a carta fotografada"), ehFicha: true
+}]);
+ok(envFoto.erro === false, "o reenvio saiu");
+ok(colunaExtras().indexOf('"ehFicha":true') > -1,
+   "a declaração foi gravada junto do arquivo, não só usada na hora");
+
+passo("e o próximo reenvio não pede de novo");
+const depoisDaFoto = prever();
+ok(depoisDaFoto.anexos.temFicha === true,
+   "o aviso continua desligado sem ninguém declarar nada outra vez — " +
+   "sem isso, a pessoa resolveria o mesmo problema a cada reenvio");
+ok((depoisDaFoto.anexos.itens || []).some(i =>
+     i.nome === FOTO && String(i.origem).indexOf("marcada como ficha") > -1),
+   "e a origem mostra que foi marcada, com quem e quando",
+   (depoisDaFoto.anexos.itens || []).map(i => i.origem).join(" | "));
 
 /* ══════════════════════════════════════════════════════════════════════ */
 fluxo("O que continua sem cobertura");
