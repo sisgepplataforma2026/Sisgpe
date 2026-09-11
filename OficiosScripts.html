@@ -3465,7 +3465,12 @@ window.mostrarAbaOficio = function(aba) {
           +'<td><input type="checkbox" class="hist-check" data-numero="'+num+'"></td>'
           +'<td style="font-weight:700;">'+num+'</td>'
           +'<td>'+String(item.tipo||"").replace(/</g,"&lt;")+'</td>'
-          +'<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+String(item.escola||"").replace(/"/g,"&quot;")+'">'+String(item.escola||"").replace(/</g,"&lt;")+'</td>'
+          +'<td style="max-width:240px;"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+String(item.escola||"").replace(/"/g,"&quot;")+'">'+String(item.escola||"").replace(/</g,"&lt;")+'</div>'
+          /* OS NOMES A VISTA, nao so pesquisaveis: quando a escola tem varios
+             oficios, e o nome que diz qual e o certo — sem isso a busca acha e
+             a pessoa ainda precisa abrir para conferir. */
+          +(item.colaboradores?'<div style="font-size:11px;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+String(item.colaboradores).replace(/"/g,"&quot;")+'">'+String(item.colaboradores).replace(/</g,"&lt;")+'</div>':'')
+          +'</td>'
           +'<td>'+String(item.data||"")+'</td>'
           +'<td><span class="hist-badge '+badgeClass+'">'+badgeTxt+'</span></td>'
           +'<td><div class="row-btns">'+abrirBtn
@@ -3488,6 +3493,7 @@ window.mostrarAbaOficio = function(aba) {
       var fNumero = (document.getElementById("filtroNumero")||{}).value||"";
       var fStatus = ((document.getElementById("filtroStatus")||{}).value||"").toUpperCase();
       var fTipo   = ((document.getElementById("filtroTipo")||{}).value||"").toLowerCase();
+      var fPessoa = (document.getElementById("filtroPessoa")||{}).value||"";
       if(!tbody) return;
       tbody.innerHTML='<tr><td colspan="7"><div class="of-table-empty">⏳ Carregando...</div></td></tr>';
       Historico.selecionados=[]; Historico.atualizarBarraAcoes();
@@ -3547,15 +3553,16 @@ window.mostrarAbaOficio = function(aba) {
           if(contEl) contEl.textContent="0 registro(s)";
           tbody.innerHTML='<tr><td colspan="7"><div class="of-table-empty">Erro: '+((err&&err.message)||err||"")+'</div></td></tr>';
         })
-        .listarHistoricoOficios({ escola: fEscola, numero: fNumero, status: fStatus, tipo: fTipo }, SISGEP_TOKEN_SESSAO);
+        .listarHistoricoOficios({ escola: fEscola, numero: fNumero, status: fStatus,
+                                  tipo: fTipo, pessoa: fPessoa }, SISGEP_TOKEN_SESSAO);
     },
 
     bindFiltros: function() {
       var btnAplicar=document.getElementById("btnAplicarFiltroHist"), btnLimpar=document.getElementById("btnLimparFiltros");
-      var fEscola=document.getElementById("filtroEscola"), fNumero=document.getElementById("filtroNumero"), fStatus=document.getElementById("filtroStatus"), fTipo=document.getElementById("filtroTipo");
+      var fEscola=document.getElementById("filtroEscola"), fNumero=document.getElementById("filtroNumero"), fStatus=document.getElementById("filtroStatus"), fTipo=document.getElementById("filtroTipo"), fPessoa=document.getElementById("filtroPessoa");
       if(btnAplicar&&!btnAplicar.dataset.bH){btnAplicar.dataset.bH="1";btnAplicar.addEventListener("click",Historico.carregar);}
-      if(btnLimpar&&!btnLimpar.dataset.bH){btnLimpar.dataset.bH="1";btnLimpar.addEventListener("click",function(){[fEscola,fNumero,fStatus,fTipo].forEach(function(el){if(el)el.value="";});Historico.carregar();});}
-      [fEscola,fNumero].forEach(function(el){if(el&&!el.dataset.bH){el.dataset.bH="1";el.addEventListener("keyup",function(e){if(e.key==="Enter")Historico.carregar();});}});
+      if(btnLimpar&&!btnLimpar.dataset.bH){btnLimpar.dataset.bH="1";btnLimpar.addEventListener("click",function(){[fEscola,fNumero,fStatus,fTipo,fPessoa].forEach(function(el){if(el)el.value="";});Historico.carregar();});}
+      [fEscola,fNumero,fPessoa].forEach(function(el){if(el&&!el.dataset.bH){el.dataset.bH="1";el.addEventListener("keyup",function(e){if(e.key==="Enter")Historico.carregar();});}});
       [fStatus,fTipo].forEach(function(el){if(el&&!el.dataset.bH){el.dataset.bH="1";el.addEventListener("change",function(){ Historico.renderLista(Historico._dadosCache); });}});
     },
 

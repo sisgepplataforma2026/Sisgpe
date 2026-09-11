@@ -68,6 +68,8 @@ function listarHistoricoOficios(filtros, tokenSessao) {
     return c ? c[linha][0] : "";
   }
 
+  var mapaQuem = histOficios_mapaColaboradores_();
+
   var itens = [];
   for (var i = 0; i < nLinhas; i++) {
     if (!valor(col.id, i)) continue;
@@ -97,6 +99,8 @@ function listarHistoricoOficios(filtros, tokenSessao) {
       codigo:  textoHistoricoOficio_(valor(col.codigo, i)),
       ultimoErro: textoHistoricoOficio_(valor(col.ultimoErro, i)),
       tentativas: parseInt(valor(col.tentativas, i), 10) || 0,
+      colaboradores: textoHistoricoOficio_(
+        mapaQuem[String(valor(col.numero, i) || "").trim()] || ""),
       url:     link,
       linkPdf: link
     });
@@ -115,6 +119,70 @@ function listarHistoricoOficios(filtros, tokenSessao) {
     porPagina:    pag.porPagina,
     totalPaginas: pag.totalPaginas
   };
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   QUEM ESTA NO OFICIO — 11/09/2026
+
+   DE ONDE VEIO, nas palavras do usuario: *"a gente encaminha o oficio pra
+   escola, a escola fala 'ah, eu nao recebi o oficio do nome de fulano, voce
+   consegue reenviar?'. Em vez de ficar olhando um por um..."*
+
+   O nome ja existe no sistema — a emissao grava em `Colaborador(es)` no
+   Controle (Oficios.gs:947), para todo tipo que nao seja Oficio Livre. O que
+   faltava era alcance: o Historico le a FILA_ENVIO_OFICIOS, cujas 24 colunas
+   nao tem campo de pessoa nenhum, e o filtro so sabia procurar escola, numero,
+   status e tipo.
+
+   ENTAO E CRUZAMENTO, NAO COLUNA NOVA. Ler o Controle e casar pelo numero
+   resolve para TODO oficio ja emitido, sem migracao e sem preencher coluna
+   nenhuma retroativamente. Oficio antigo fica pesquisavel no mesmo instante em
+   que isto sobe.
+
+   DUAS COLUNAS, NAO A PLANILHA. Mesma razao que a nota grande do
+   listarHistoricoOficios: o Controle tem colunas pesadas e uma leitura larga
+   aqui devolveria a tela ao "Carregando" que o usuario ja viu em 19/08.
+
+   FALHAR AQUI NAO PODE DERRUBAR O HISTORICO. Se o Controle estiver fora do ar
+   ou sem a coluna, o mapa volta vazio: a busca por pessoa nao acha nada e a
+   listagem continua funcionando inteira. Perder o filtro novo e aceitavel;
+   perder o Historico, nao.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+var histOficios_cacheColaboradores_ = null;
+
+function histOficios_mapaColaboradores_() {
+  if (histOficios_cacheColaboradores_) return histOficios_cacheColaboradores_;
+
+  var mapa = {};
+  try {
+    var ss = SpreadsheetApp.openById(PLANILHA_ID);
+    var sh = ss.getSheetByName(PLANILHA_REGISTRO);
+    if (!sh || sh.getLastRow() < 2) { histOficios_cacheColaboradores_ = mapa; return mapa; }
+
+    var hm    = getHeaderMap_(sh);
+    var cNum  = hm["Número do Ofício"];
+    var cCol  = hm["Colaborador(es)"];
+    if (!cNum || !cCol) { histOficios_cacheColaboradores_ = mapa; return mapa; }
+
+    var n     = sh.getLastRow() - 1;
+    var nums  = sh.getRange(2, cNum, n, 1).getValues();
+    var nomes = sh.getRange(2, cCol, n, 1).getValues();
+
+    for (var i = 0; i < n; i++) {
+      var numero = String(nums[i][0] || "").trim();
+      var quem   = String(nomes[i][0] || "").trim();
+      if (!numero || !quem) continue;
+      /* Mesmo numero em mais de uma linha: junta em vez de a ultima vencer.
+         Acontece em remessa que gerou linhas separadas por escola. */
+      mapa[numero] = mapa[numero] ? (mapa[numero] + "; " + quem) : quem;
+    }
+  } catch (e) {
+    Logger.log("⚠ Historico: mapa de colaboradores indisponivel — " + (e.message || e));
+  }
+
+  histOficios_cacheColaboradores_ = mapa;
+  return mapa;
 }
 
 /* ── Helpers ── */
@@ -169,6 +237,14 @@ function aplicarFiltrosHistoricoOficios_(itens, filtros) {
   if (filtros.tipo) {
     var qT = normalizar(filtros.tipo);
     saida = saida.filter(function(i) { return normalizar(i.tipo).indexOf(qT) > -1; });
+  }
+
+  /* POR PEDACO DO NOME, sem acento e sem caixa — como os outros filtros.
+     Quem atende o telefone ouve "fulano de tal" e digita o que entendeu:
+     exigir o nome completo e exato transformaria a busca em adivinhacao. */
+  if (filtros.pessoa) {
+    var qP = normalizar(filtros.pessoa);
+    saida = saida.filter(function(i) { return normalizar(i.colaboradores).indexOf(qP) > -1; });
   }
 
   return saida;
