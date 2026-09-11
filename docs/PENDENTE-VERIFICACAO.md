@@ -138,7 +138,35 @@ da produção: **6 arquivos — 1 criado, 0 removidos, 5 modificados**.
 
 Três entregas, e as três estão **NÃO TESTADAS** no ar.
 
-#### 1. 🔴 Anexar documento no reenvio — o que pedir para ele conferir
+#### 1. ✅ VERIFICADO NO AR — 11/09/2026: os dois anexos chegaram
+
+O usuário rodou na produção 711: abriu o reenvio do 388/2026, desmarcou os
+três endereços da escola, anexou a carta de oposição (uma foto de WhatsApp) e
+mandou para `secretaria@sindeducacao.com`. Palavras dele: *"Chegou sim, os
+dois arquivos."*
+
+Fica provado o que nenhum teste alcançava: o arquivo escolhido à mão é
+guardado, entra no pacote e **chega junto do PDF do ofício**.
+
+**O que dessa entrega ainda NÃO foi verificado:** reabrir o mesmo reenvio sem
+anexar nada e ver a carta aparecer sozinha, marcada como *"acrescentada em
+11/09 por …"*. É o *"não precisaria fazer novamente"* do pedido, e é um clique
+— abrir o 📧 do 388/2026 e olhar a lista de anexos.
+
+#### 1b. 🔴 O aviso de ficha faltando mentia — corrigido, e ainda não no ar
+
+No mesmo teste apareceu o defeito: o aviso vermelho **continuou ligado** com a
+carta já anexada. O `anexoEhFicha_` reconhece ficha por padrão de nome
+(`Ficha_`, `Fichas_`) que a emissão cria, e o arquivo dele chamava
+`WhatsApp Image 2026-09-09 at 16.34.21.jpeg`. Nenhum arquivo escolhido por uma
+pessoa casa com esse padrão.
+
+Corrigido no commit `76b2c46`: a caixa `☑ é a ficha/carta deste ofício`, que
+nasce marcada quando a pessoa anexa com o aviso ligado, e cuja declaração fica
+guardada com o arquivo. **Conferir depois de publicar:** anexar um arquivo de
+nome qualquer e ver o vermelho sumir sem precisar do segundo clique.
+
+#### 1c. O pedido original, para contexto
 
 O usuário abriu o reenvio do **388/2026** (Oposição à Taxa Negocial, Centro
 Educacional Linus Pauling) e viu o aviso vermelho: a carta de oposição não foi
