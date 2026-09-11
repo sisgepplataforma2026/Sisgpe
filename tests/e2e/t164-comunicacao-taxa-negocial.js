@@ -210,6 +210,71 @@ igual(st.aCorrigir, 1, "a escola sem e-mail aparece em 'a corrigir', separada da
 ok(st.remetente.ok === true, "e mostra o remetente medido");
 
 /* ══════════════════════════════════════════════════════════════════════ */
+fluxo("Testar com uma escola ESCOLHIDA");
+
+/* Pedido do usuario: "eu quero escolher uma escola para testar". Antes o unico
+   jeito de ver um oficio antes de soltar a base era por o teto em 1 e liberar
+   — e quem recebia era a primeira linha da fila, que segue a ordem da aba
+   Escolas. Escolher importa: ele quer mandar para uma escola que conhece. */
+
+/* Refaz a fila limpa para este fluxo. O cabecalho volta na mao de proposito:
+   o tnCom_aba_ so escreve cabecalho quando CRIA a aba, entao limpar sem
+   reescrever deixaria o mapa de colunas vazio — e foi exatamente o que
+   aconteceu na primeira rodada deste teste. */
+(function limparFila() {
+  const sh = ss.getSheetByName(ABA);
+  sh.clearContents();
+  sh.getRange(1, 1, 1, g.TN_COM_CAB.length).setValues([g.TN_COM_CAB]);
+})();
+montarEscolas(false);
+comAlias();
+g.tnCom_preparar_({ competencia: "setembro/2026", dataAlvo: "2026-09-30" }, "wanderson@sindeducacao.com");
+g.__cotaEmailRestante = 1500;
+
+passo("texto curto demais");
+igual(g.tnCom_testar_("al", "wanderson@x").ok, false,
+   "recusa menos de 3 letras — evita casar com meia base por engano");
+
+passo("nome que não existe");
+const semEscola = g.tnCom_testar_("colegio inexistente", "wanderson@x");
+igual(semEscola.ok, false, "recusa escola que não está pendente");
+ok(String(semEscola.mensagem).indexOf("Nenhuma escola") > -1,
+   "dizendo isso em palavras", semEscola.mensagem);
+
+passo("texto que casa com mais de uma");
+const varias = g.tnCom_testar_("colegio", "wanderson@x");
+igual(varias.ok, false, "não escolhe pela pessoa");
+ok(Array.isArray(varias.varias) && varias.varias.length === 2,
+   "devolve as opções — quem decide qual escola recebe documento oficial é ela",
+   (varias.varias || []).join(" · "));
+
+passo("a escola escolhida, com seus TRÊS endereços");
+amb.outbox.length = 0; pdfsGerados = [];
+const teste = g.tnCom_testar_("ALFA", "wanderson@sindeducacao.com");
+
+ok(teste.ok === true, "envia", String(teste.mensagem).slice(0, 80));
+igual(teste.escola, "COLEGIO ALFA", "para a escola certa");
+igual(teste.enviados.length, 3,
+   "para os TRÊS endereços dela — meia escola é o estado que este arquivo existe para não criar");
+igual(pdfsGerados.length, 1, "com um PDF só, nominal, reaproveitado nos três");
+ok(String(teste.linkPdf).indexOf("drive.google.com") > -1,
+   "e devolve o link do PDF para conferir sem abrir o e-mail");
+
+passo("ela não recebe de novo no envio geral");
+ok(String(teste.mensagem).indexOf("não receberá de novo") > -1,
+   "a mensagem avisa que conta como comunicada");
+const aindaPendenteAlfa = filaLinhas().filter(
+  r => String(r[2]) === "COLEGIO ALFA" && String(r[5]) === "PENDENTE");
+igual(aindaPendenteAlfa.length, 0,
+   "e nenhuma linha da ALFA continua pendente");
+
+passo("sem o alias, nem testa");
+semAlias();
+igual(g.tnCom_testar_("BETA", "wanderson@x").ok, false,
+   "a trava do remetente vale para o teste também — é onde ela mais importa");
+comAlias();
+
+/* ══════════════════════════════════════════════════════════════════════ */
 fluxo("A tela precisa saber o que está GUARDADO, não o que está selecionado");
 
 /* DE ONDE VEIO, 11/09/2026, na producao. O usuario trocou a CCT .docx por um

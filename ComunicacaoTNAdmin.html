@@ -80,6 +80,24 @@
         <div id="ctnResumoPrep" style="font-size:12.5px;color:#334155;line-height:1.6;margin-bottom:12px;"></div>
         <div id="ctnAviso" style="display:none;font-size:12.5px;line-height:1.5;padding:10px 12px;border:1.5px solid;border-radius:10px;margin-bottom:12px;"></div>
 
+        <!-- TESTAR COM UMA ESCOLA ESCOLHIDA — pedido de 11/09: "eu quero
+             escolher uma escola para testar". Antes so dava para por o teto
+             em 1 e liberar, e quem recebia era a primeira linha da fila. -->
+        <div style="border:1.5px dashed #cbd5e1;border-radius:12px;padding:13px 15px;margin-bottom:12px;background:#f8fafc;">
+          <div style="font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:8px;">
+            Testar com uma escola
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <input type="text" id="ctnEscolaTeste" placeholder="parte do nome da escola"
+                   style="flex:1;min-width:220px;height:38px;border:1.5px solid #cbd5e1;border-radius:9px;padding:0 11px;font-size:13px;font-family:inherit;">
+            <button type="button" class="ctn-btn" onclick="ctnTestar()">Enviar só para ela ▸</button>
+          </div>
+          <div style="font-size:11px;color:#64748b;margin-top:7px;">
+            Manda o ofício de verdade para todos os e-mails dessa escola. Ela passa a contar
+            como comunicada e não recebe de novo no envio geral.
+          </div>
+        </div>
+
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button type="button" class="ctn-btn" onclick="ctnPreparar()">Preparar fila</button>
           <button type="button" class="ctn-btn primary" id="ctnBtnLiberar" onclick="ctnLiberar()" disabled>Liberar envio ▸</button>
@@ -341,6 +359,25 @@ function ctnPrepararEnviar(params) {
       if (c && r.tetoSugerido) c.textContent = r.tetoSugerido.conta;
       var t = document.getElementById("ctnTeto");
       if (t && !t.value && r.tetoSugerido) t.value = r.tetoSugerido.teto;
+    }
+    ctnCarregar();
+  });
+}
+
+function ctnTestar() {
+  var campo = document.getElementById("ctnEscolaTeste");
+  var termo = (campo && campo.value || "").trim();
+  if (termo.length < 3) { ctnAviso("Digite ao menos 3 letras do nome da escola.", "err"); return; }
+  if (!window.confirm("Enviar o ofício de verdade para a escola que casar com \"" + termo + "\"?\n\nEla passa a contar como comunicada e não recebe de novo.")) return;
+
+  ctnAviso("Enviando para \"" + termo + "\"… gerando o PDF nominal.", "info");
+  ctnChamar("testar", { escola: termo }, function (r) {
+    if (r && r.ok) {
+      ctnAviso(r.mensagem, "ok");
+    } else if (r && r.varias) {
+      /* Escolher pela pessoa seria adivinhar qual escola recebe um documento
+         oficial. Mostra as opcoes e deixa ela decidir. */
+      ctnAviso(r.mensagem + "  →  " + r.varias.join(" · "), "err");
     }
     ctnCarregar();
   });

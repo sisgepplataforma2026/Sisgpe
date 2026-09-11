@@ -778,6 +778,7 @@ function comunicacaoTaxaNegocial(acao, params, tokenSessao) {
       case "pausar":   return tnCom_pausar_();
       case "teto":     return tnCom_ajustarTeto_((params || {}).teto);
       case "linhas":   return tnCom_listar_((params || {}).filtro);
+      case "testar":   return tnCom_testar_((params || {}).escola, quem);
       default:
         return { ok: false, mensagem: "Ação desconhecida: " + acao };
     }
@@ -845,4 +846,146 @@ function tnCom_listar_(filtro) {
   });
 
   return { ok: true, itens: itens, filtro: querido };
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   TESTAR COM UMA ESCOLA ESCOLHIDA — 11/09/2026
+
+   Pedido do usuario: *"Eu quero escolher uma escola para testar"*. Antes disso
+   o unico jeito de ver um oficio antes de soltar a base era por o teto em 1 e
+   liberar — e aí quem recebia era a primeira linha da fila, que segue a ordem
+   da aba Escolas e nao a alfabetica (eu disse alfabetica antes e estava
+   errado). Escolher importa: ele quer mandar para uma escola que conhece, e
+   poder ligar perguntando se chegou direito.
+
+   TRES DECISOES, e cada uma tem um porque:
+
+   1. NAO EXIGE A CAMPANHA LIBERADA. O teste existe justamente para acontecer
+      ANTES de liberar. Exigir liberacao inverteria a ordem do cuidado.
+
+   2. MANDA PARA A ESCOLA INTEIRA, todos os enderecos pendentes dela. Mandar
+      para um so deixaria a escola pela metade na fila — e meia escola e
+      exatamente o estado que este arquivo inteiro foi escrito para nao
+      existir.
+
+   3. CONTA COMO COMUNICADA. Nao e um envio de mentira: e o oficio de verdade,
+      e a escola nao precisa receber duas vezes. A cota e debitada, o log e
+      gravado e as linhas viram ENVIADO. Se o documento sair errado, o
+      reenvio do Historico conserta.
+
+   O TETO DO DIA NAO SE APLICA, mas a RESERVA sim. O teto governa o ritmo da
+   campanha; isto e uma acao deliberada de uma pessoa. Ja a reserva protege o
+   resto do SISGEP e vale sempre.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+function tnCom_testar_(termo, quem) {
+  var busca = String(termo || "").trim().toLowerCase();
+  if (busca.length < 3) {
+    return { ok: false, mensagem: "Digite ao menos 3 letras do nome da escola." };
+  }
+
+  var rem = tnCom_remetente_();
+  if (!rem.ok) return { ok: false, remetente: rem, mensagem: rem.mensagem };
+
+  var f = tnCom_linhas_();
+  if (!f.dados.length) return { ok: false, mensagem: "A fila está vazia. Prepare antes de testar." };
+
+  var iSt = f.hm["STATUS"], iEmail = f.hm["EMAIL"], iEsc = f.hm["ESCOLA"],
+      iCnpj = f.hm["CNPJ"], iErro = f.hm["ERRO"], iData = f.hm["DATA_HORA"],
+      iPdf = f.hm["PDF_FILE_ID"];
+
+  function normal(t) {
+    return String(t || "").toLowerCase().normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  }
+
+  /* Quais escolas casam com o que ele digitou, entre as que ainda tem
+     endereco pendente. */
+  var candidatas = {}, linhasPorEscola = {};
+  for (var i = 0; i < f.dados.length; i++) {
+    var st = String(f.dados[i][iSt] || "").trim().toUpperCase();
+    if (st !== "PENDENTE" && st !== "ERRO") continue;
+    var nome = String(f.dados[i][iEsc] || "").trim();
+    if (!nome || normal(nome).indexOf(normal(busca)) === -1) continue;
+    candidatas[nome] = true;
+    (linhasPorEscola[nome] = linhasPorEscola[nome] || []).push(i);
+  }
+
+  var nomes = Object.keys(candidatas);
+  if (!nomes.length) {
+    return { ok: false, mensagem: "Nenhuma escola pendente com \"" + termo + "\" no nome." };
+  }
+  if (nomes.length > 1) {
+    /* Escolher pela pessoa seria adivinhar QUAL escola recebe um documento
+       oficial. Devolve as opcoes e deixa ela decidir. */
+    return { ok: false, varias: nomes.slice(0, 12), total: nomes.length,
+             mensagem: nomes.length + " escolas casam com esse texto. Seja mais específico." };
+  }
+
+  var escola = nomes[0];
+  var linhas = linhasPorEscola[escola];
+
+  var orc = cotaEmail_quantosCabem_(TN_COM_CAMPANHA, linhas.length, 0);
+  if (orc.cabem < linhas.length) {
+    return { ok: false, orcamento: orc,
+             mensagem: "Não há cota para os " + linhas.length + " endereço(s) desta escola agora. " + orc.mensagem };
+  }
+
+  var props = tnCom_props_();
+  var numero = String(props.getProperty(TN_COM_PROP.NUMERO) || "").trim();
+  var codigo = String(props.getProperty(TN_COM_PROP.CODIGO) || "").trim();
+  var cnpj   = String(f.dados[linhas[0]][iCnpj] || "").trim();
+
+  var blobCct = null;
+  var cctId = String(props.getProperty(TN_COM_PROP.CCT_ID) || "").trim();
+  if (cctId) {
+    try {
+      blobCct = DriveApp.getFileById(cctId).getBlob()
+                  .setName(String(props.getProperty(TN_COM_PROP.CCT_NOME) || "CCT.pdf"));
+    } catch (eB) { Logger.log("⚠ CCT indisponível no teste: " + (eB.message || eB)); }
+  }
+
+  var pdf;
+  try {
+    pdf = tnCom_gerarPdf_(numero, codigo, escola, cnpj);
+  } catch (ePdf) {
+    return { ok: false, mensagem: "Falhou ao gerar o PDF: " + (ePdf.message || ePdf) };
+  }
+
+  var anexos = [pdf.blob];
+  if (blobCct) anexos.push(blobCct);
+
+  var enviados = [], falhas = [];
+  linhas.forEach(function (li) {
+    var linhaReal = li + 2;
+    var email = String(f.dados[li][iEmail] || "").trim();
+    if (!email) return;
+    try {
+      tnCom_enviar_(rem.real, email, escola, numero, anexos);
+      cotaEmail_registrarEnvio_(TN_COM_CAMPANHA, 1);
+      enviados.push(email);
+      f.sh.getRange(linhaReal, iSt + 1).setValue("ENVIADO");
+      f.sh.getRange(linhaReal, iErro + 1).setValue("");
+      f.sh.getRange(linhaReal, iData + 1).setValue(new Date());
+      if (iPdf !== undefined) f.sh.getRange(linhaReal, iPdf + 1).setValue(pdf.fileId);
+      registrarLogSistema_({
+        usuario: quem, numero: numero, tipo: "Comunicação Taxa Negocial (TESTE)",
+        escola: escola, cnpj: cnpj, email: email, codigo: codigo
+      });
+      Utilities.sleep(300);
+    } catch (e) {
+      falhas.push(email + ": " + String(e.message || e));
+    }
+  });
+
+  return {
+    ok: enviados.length > 0,
+    escola: escola, enviados: enviados, falhas: falhas,
+    linkPdf: "https://drive.google.com/file/d/" + pdf.fileId + "/view",
+    mensagem: enviados.length
+      ? "Ofício " + numero + " enviado para " + escola + " (" + enviados.join(", ") + "). " +
+        "Esta escola já conta como comunicada e não receberá de novo." +
+        (falhas.length ? " Falhas: " + falhas.join(" | ") : "")
+      : "Nenhum envio saiu. " + falhas.join(" | ")
+  };
 }
