@@ -32,13 +32,13 @@ concurrency:
 
 jobs:
   producao:
-    if: github.ref == 'refs/heads/promocao/hml-46d589b-para-producao-2026-09-11'
+    if: github.ref == 'refs/heads/promocao/hml-d5c97b2-para-producao-2026-09-11'
     runs-on: ubuntu-latest
 
     env:
       PROD_SCRIPT_ID: "1BoKA6pOOT751zmxahnvSgT2CJDgMpUPMvZj-X0HjDx_tCHLnXOqxVVqa"
       PROD_DEPLOYMENT_ID: "AKfycbzgPBSSF3D2OimoEJ-qMfDNp_Dsmc95THSNdUvFgqoX7NXWcmn7ZDMzF9L-OyUbEMw_ew"
-      HML_APROVADA_SHA: "46d589b1cf1500c9586a07ec0b6f41d69529134f"
+      HML_APROVADA_SHA: "d5c97b2ac72c6520dfd6be957e46638319a1df48"
 
     steps:
       - name: Checkout da promocao
