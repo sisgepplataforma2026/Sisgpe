@@ -87,14 +87,13 @@
           <div style="font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:8px;">
             Testar com uma escola
           </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-            <input type="text" id="ctnEscolaTeste" placeholder="parte do nome da escola"
-                   style="flex:1;min-width:220px;height:38px;border:1.5px solid #cbd5e1;border-radius:9px;padding:0 11px;font-size:13px;font-family:inherit;">
-            <button type="button" class="ctn-btn" onclick="ctnTestar()">Enviar só para ela ▸</button>
-          </div>
+          <input type="text" id="ctnEscolaTeste" placeholder="digite o nome da escola"
+                 oninput="ctnBuscarEscola()"
+                 style="width:100%;height:38px;border:1.5px solid #cbd5e1;border-radius:9px;padding:0 11px;font-size:13px;font-family:inherit;">
+          <div id="ctnResultados" style="margin-top:8px;"></div>
           <div style="font-size:11px;color:#64748b;margin-top:7px;">
-            Manda o ofício de verdade para todos os e-mails dessa escola. Ela passa a contar
-            como comunicada e não recebe de novo no envio geral.
+            Clique na escola para enviar o ofício de verdade a todos os e-mails dela.
+            Ela passa a contar como comunicada e não recebe de novo no envio geral.
           </div>
         </div>
 
@@ -364,19 +363,74 @@ function ctnPrepararEnviar(params) {
   });
 }
 
-function ctnTestar() {
-  var campo = document.getElementById("ctnEscolaTeste");
-  var termo = (campo && campo.value || "").trim();
-  if (termo.length < 3) { ctnAviso("Digite ao menos 3 letras do nome da escola.", "err"); return; }
-  if (!window.confirm("Enviar o ofício de verdade para a escola que casar com \"" + termo + "\"?\n\nEla passa a contar como comunicada e não recebe de novo.")) return;
+/* BUSCA QUE MOSTRA O QUE ACHOU — 11/09/2026.
 
-  ctnAviso("Enviando para \"" + termo + "\"… gerando o PDF nominal.", "info");
-  ctnChamar("testar", { escola: termo }, function (r) {
+   Antes a tela pedia um pedaco do nome e ja perguntava "envio o oficio de
+   verdade para a escola que casar com isso?". Confirmar as cegas nao protege
+   ninguem: a pessoa dizia sim para um nome que ainda nao tinha visto. Pior,
+   empurrava para um caminho ruim — sem ver a lista, o usuario acabou criando
+   uma escola FALSA na base de 679 reais so para conseguir testar.
+
+   Agora ele digita, ve quem casou com quantos enderecos, e CLICA na certa. */
+var CTN_BUSCA_TIMER = null;
+
+function ctnBuscarEscola() {
+  clearTimeout(CTN_BUSCA_TIMER);
+  /* Espera a pessoa parar de digitar: uma chamada por tecla faria 20 idas ao
+     servidor para escrever "linus pauling". */
+  CTN_BUSCA_TIMER = setTimeout(ctnBuscarEscolaAgora, 350);
+}
+
+function ctnBuscarEscolaAgora() {
+  var campo = document.getElementById("ctnEscolaTeste");
+  var caixa = document.getElementById("ctnResultados");
+  if (!caixa) return;
+  var termo = (campo && campo.value || "").trim();
+
+  if (termo.length < 2) { caixa.innerHTML = ""; return; }
+  caixa.innerHTML = '<div style="font-size:12px;color:#94a3b8;padding:6px 2px;">procurando…</div>';
+
+  ctnChamar("buscar", { termo: termo }, function (r) {
+    var itens = (r && r.itens) || [];
+    if (!itens.length) {
+      caixa.innerHTML = '<div style="font-size:12px;color:#b91c1c;padding:6px 2px;">'
+        + ctnEsc((r && r.mensagem) || "Nada encontrado.") + "</div>";
+      return;
+    }
+    caixa.innerHTML =
+      '<div style="font-size:11px;color:#64748b;margin-bottom:5px;">' + ctnEsc(r.mensagem) + "</div>"
+      + '<div style="max-height:230px;overflow:auto;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">'
+      + itens.map(function (i) {
+          var nomeJs = ctnEsc(i.escola).replace(/'/g, "\\'");
+          return '<div onclick="ctnEnviarPara(\'' + nomeJs + '\')"'
+            + ' style="padding:9px 12px;border-bottom:1px solid #f1f5f9;cursor:pointer;display:flex;'
+            + 'justify-content:space-between;gap:10px;align-items:center;"'
+            + ' onmouseover="this.style.background=\'#f1f5f9\'"'
+            + ' onmouseout="this.style.background=\'#fff\'">'
+            + '<span><strong style="font-size:12.5px;">' + ctnEsc(i.escola) + "</strong>"
+            + (i.cnpj ? '<br><span style="font-size:11px;color:#94a3b8;">CNPJ ' + ctnEsc(i.cnpj) + "</span>" : "")
+            + "</span>"
+            + '<span style="font-size:11px;color:#64748b;white-space:nowrap;">'
+            + i.emails.length + " e-mail(s) ▸</span></div>";
+        }).join("")
+      + "</div>";
+  });
+}
+
+/* Agora a confirmacao tem conteudo: o nome que ela CLICOU. */
+function ctnEnviarPara(escola) {
+  if (!window.confirm("Enviar o ofício da Taxa Negocial para:\n\n" + escola +
+      "\n\nVai para todos os e-mails dessa escola. Ela passa a contar como comunicada e não recebe de novo.")) return;
+
+  ctnAviso("Enviando para " + escola + "… gerando o PDF nominal.", "info");
+  ctnChamar("testar", { escola: escola }, function (r) {
     if (r && r.ok) {
       ctnAviso(r.mensagem, "ok");
+      var caixa = document.getElementById("ctnResultados");
+      var campo = document.getElementById("ctnEscolaTeste");
+      if (caixa) caixa.innerHTML = "";
+      if (campo) campo.value = "";
     } else if (r && r.varias) {
-      /* Escolher pela pessoa seria adivinhar qual escola recebe um documento
-         oficial. Mostra as opcoes e deixa ela decidir. */
       ctnAviso(r.mensagem + "  →  " + r.varias.join(" · "), "err");
     }
     ctnCarregar();

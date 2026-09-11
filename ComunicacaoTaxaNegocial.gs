@@ -778,6 +778,7 @@ function comunicacaoTaxaNegocial(acao, params, tokenSessao) {
       case "pausar":   return tnCom_pausar_();
       case "teto":     return tnCom_ajustarTeto_((params || {}).teto);
       case "linhas":   return tnCom_listar_((params || {}).filtro);
+      case "buscar":   return tnCom_buscarEscolas_((params || {}).termo);
       case "testar":   return tnCom_testar_((params || {}).escola, quem);
       default:
         return { ok: false, mensagem: "Ação desconhecida: " + acao };
@@ -912,6 +913,17 @@ function tnCom_testar_(termo, quem) {
   }
 
   var nomes = Object.keys(candidatas);
+
+  /* NOME EXATO VENCE — 11/09/2026. Quando a pessoa CLICA num item da busca, a
+     tela manda o nome inteiro. Se ele existe tal e qual, nao ha ambiguidade a
+     resolver: e aquela escola, escolhida por ela. Sem isto, clicar em
+     "COLEGIO ALFA" ainda cairia na recusa por "varias casam" se existisse um
+     "COLEGIO ALFA II". */
+  var exato = nomes.filter(function (n) {
+    return tnCom_normalizarNome_(n) === tnCom_normalizarNome_(termo);
+  });
+  if (exato.length === 1) nomes = exato;
+
   if (!nomes.length) {
     return { ok: false, mensagem: "Nenhuma escola pendente com \"" + termo + "\" no nome." };
   }
@@ -987,5 +999,66 @@ function tnCom_testar_(termo, quem) {
         "Esta escola já conta como comunicada e não receberá de novo." +
         (falhas.length ? " Falhas: " + falhas.join(" | ") : "")
       : "Nenhum envio saiu. " + falhas.join(" | ")
+  };
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   BUSCAR A ESCOLA, E MOSTRAR O QUE ACHOU — 11/09/2026
+
+   *"Tinha que abrir uma busca por nome da escola."* Ele tem razao, e o que eu
+   tinha feito era pior do que nao ter: a tela pedia um pedaco do nome e ja
+   perguntava "envio o oficio de verdade para a escola que casar com isso?" —
+   uma confirmacao sobre um nome que a pessoa ainda nao tinha visto. Confirmar
+   as cegas nao protege ninguem; so transfere a culpa.
+
+   E ainda empurrava para um caminho pior: sem ver a lista, ele acabou criando
+   uma escola FALSA chamada "Teste" dentro da base de 679 reais so para
+   conseguir testar. O sistema obrigou isso. Era defeito meu, nao dele.
+
+   Esta funcao so LE. Devolve quem casou, com quantos enderecos cada uma, para
+   a tela mostrar e a pessoa clicar. Quem decide qual escola recebe um
+   documento oficial e ela, olhando o nome — nao um `indexOf` no escuro.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+function tnCom_normalizarNome_(t) {
+  return String(t || "").toLowerCase().normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "").trim();
+}
+
+function tnCom_buscarEscolas_(termo) {
+  var busca = tnCom_normalizarNome_(termo);
+  if (busca.length < 2) return { ok: true, itens: [], mensagem: "Digite ao menos 2 letras." };
+
+  var f = tnCom_linhas_();
+  if (!f.dados.length) return { ok: true, itens: [], mensagem: "A fila está vazia." };
+
+  var iSt = f.hm["STATUS"], iEsc = f.hm["ESCOLA"], iEmail = f.hm["EMAIL"],
+      iCnpj = f.hm["CNPJ"];
+
+  var achadas = {};
+  f.dados.forEach(function (r) {
+    var st = String(r[iSt] || "").trim().toUpperCase();
+    if (st !== "PENDENTE" && st !== "ERRO") return;
+    var nome = String(r[iEsc] || "").trim();
+    if (!nome || tnCom_normalizarNome_(nome).indexOf(busca) === -1) return;
+    if (!achadas[nome]) {
+      achadas[nome] = { escola: nome, cnpj: String(r[iCnpj] || "").trim(), emails: [] };
+    }
+    var em = String(r[iEmail] || "").trim();
+    if (em) achadas[nome].emails.push(em);
+  });
+
+  var itens = Object.keys(achadas).sort(function (a, b) {
+    return a.localeCompare(b, "pt-BR", { sensitivity: "base" });
+  }).map(function (k) { return achadas[k]; });
+
+  /* Teto de 25 para a lista nao virar a base inteira numa busca de duas
+     letras. Quem tem mais que isso refina o texto. */
+  var total = itens.length;
+  return {
+    ok: true, itens: itens.slice(0, 25), total: total,
+    mensagem: total ? (total + " escola(s) pendente(s) com esse texto" +
+                       (total > 25 ? " — mostrando as 25 primeiras" : ""))
+                    : "Nenhuma escola pendente com \"" + termo + "\" no nome."
   };
 }

@@ -248,6 +248,30 @@ ok(Array.isArray(varias.varias) && varias.varias.length === 2,
    "devolve as opções — quem decide qual escola recebe documento oficial é ela",
    (varias.varias || []).join(" · "));
 
+/* A BUSCA QUE MOSTRA O QUE ACHOU — 11/09/2026.
+
+   "Tinha que abrir uma busca por nome da escola." A versao anterior pedia um
+   pedaco do nome e ja perguntava se podia mandar o oficio de verdade — uma
+   confirmacao sobre um nome que a pessoa ainda nao tinha visto. E empurrou
+   para pior: sem ver a lista, ele criou uma escola FALSA na base de 679 reais
+   so para conseguir testar. */
+passo("a busca lista quem casou, sem enviar nada");
+amb.outbox.length = 0;
+const busca = g.tnCom_buscarEscolas_("colegio");
+igual(busca.ok, true, "a busca responde");
+igual(busca.itens.length, 2, "achou as duas escolas que casam");
+igual(busca.itens[0].escola, "COLEGIO ALFA", "em ordem alfabética");
+igual(busca.itens[0].emails.length, 3, "com quantos endereços cada uma tem");
+ok(!!busca.itens[0].cnpj, "e o CNPJ, para distinguir escolas de nome parecido");
+igual(amb.outbox.length, 0, "e NADA foi enviado — busca só lê");
+
+passo("busca curta demais não varre a base inteira");
+igual(g.tnCom_buscarEscolas_("c").itens.length, 0, "menos de 2 letras devolve vazio");
+
+passo("nome exato vence a ambiguidade — é o clique na lista");
+const exato = g.tnCom_buscarEscolas_("COLEGIO ALFA");
+igual(exato.itens.length, 1, "o nome inteiro acha uma só");
+
 passo("a escola escolhida, com seus TRÊS endereços");
 amb.outbox.length = 0; pdfsGerados = [];
 const teste = g.tnCom_testar_("ALFA", "wanderson@sindeducacao.com");
