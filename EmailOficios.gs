@@ -828,21 +828,45 @@ function oficio_reconciliarReenvios_(simular) {
              mensagem: "LOG_SISTEMA vazio — nenhum reenvio registrado." };
   }
 
-  /* ── quais números o log diz que foram reenviados ── */
+  /* ── QUAIS números o log diz que foram reenviados, E QUANDO ──────────────
+     O "quando" é o conserto de 11/09/2026, e ele é o que quebra um laço que
+     rodava 8 vezes por dia havia uma semana.
+
+     Guardar só `true` bastava para virar o status, e era o que se fazia. Só
+     que quem vem depois — a verificação de bounce, na MESMA execução — decide
+     comparando a data do bounce com a do último envio conhecido. Sem
+     REENVIADO_EM, o último envio conhecido era o ORIGINAL, de maio; o bounce
+     guardado no Gmail era de setembro; setembro é maior que maio, e o ofício
+     voltava para FALHA_ENTREGA doze segundos depois de ser reconciliado.
+
+     A data certa é a do LOG, não a de agora: ela diz quando o reenvio
+     aconteceu de verdade. Gravar "agora" quebraria o laço do mesmo jeito e
+     mentiria sobre a data — e essa data é exatamente o que alguém vai olhar
+     para decidir se um bounce novo é notícia. */
   var hmLog = getHeaderMap_(log);
   var cNumLog = hmLog["NUMERO"];
+  var cDataLog = hmLog["DATA_HORA"];
   if (!cNumLog) {
     return { ok: false, mensagem: "Coluna NUMERO não encontrada no LOG_SISTEMA." };
   }
-  var linhasLog = log.getRange(2, cNumLog, log.getLastRow() - 1, 1).getValues();
+  var totalColsLog = Math.max(cNumLog, cDataLog || 0);
+  var linhasLog = log.getRange(2, 1, log.getLastRow() - 1, totalColsLog).getValues();
   var reenviados = {};
   for (var i = 0; i < linhasLog.length; i++) {
-    var texto = String(linhasLog[i][0] || "");
+    var texto = String(linhasLog[i][cNumLog - 1] || "");
     if (texto.indexOf("(REENVIO") === -1) continue;
     /* O campo é "144/2026 (REENVIO - ENDERECO SUBSTITUIDO)": o número é o que
        vem antes do parêntese. */
     var numero = texto.split("(")[0].trim();
-    if (numero) reenviados[numero] = true;
+    if (!numero) continue;
+    var quando = cDataLog ? linhasLog[i][cDataLog - 1] : null;
+    if (!(quando instanceof Date) || isNaN(quando.getTime())) quando = null;
+    /* Fica o reenvio MAIS RECENTE: é ele que um bounce precisa superar. */
+    var jaTinha = reenviados[numero];
+    if (!jaTinha || (quando && jaTinha instanceof Date && quando > jaTinha) ||
+        (quando && !(jaTinha instanceof Date))) {
+      reenviados[numero] = quando || true;
+    }
   }
 
   var sh = ss.getSheetByName(PLANILHA_REGISTRO);
@@ -859,6 +883,8 @@ function oficio_reconciliarReenvios_(simular) {
   /* A coluna só é criada quando houver algo a gravar — simular não deve
      alterar a estrutura da planilha. */
   var cJa = simular ? (hm[OFICIO_COL_JA_FALHOU] || 0) : oficio_garantirColunaJaFalhou_(sh);
+  var cReenv = simular ? (hm[OFICIO_COL_REENVIADO_EM] || 0)
+                       : oficio_garantirColuna_(sh, OFICIO_COL_REENVIADO_EM);
 
   var dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
   var ajustar = [], ajustados = 0;
@@ -874,6 +900,14 @@ function oficio_reconciliarReenvios_(simular) {
 
     if (!simular) {
       if (cJa) sh.getRange(j + 2, cJa).setValue("SIM");
+      /* SEM ESTA LINHA O STATUS VOLTA SOZINHO. Ver a nota grande acima: é a
+         data que a verificação de bounce compara para saber se a falha é
+         notícia nova ou eco de um endereço já aposentado. Só grava quando o
+         log soube dizer quando — data inventada aqui vira decisão errada
+         depois. */
+      if (cReenv && reenviados[num] instanceof Date) {
+        sh.getRange(j + 2, cReenv).setValue(reenviados[num]);
+      }
       sh.getRange(j + 2, cSt).setValue("ENVIADO");
       /* A fila também, pelo mesmo motivo do oficio_marcarReenviado_: é ela que
          a tela lê e que o reenvio em lote consulta. Reconciliar só o Registro
