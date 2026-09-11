@@ -57,6 +57,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 | Nº | Item |
 |---|---|
+| 84 | 🔴 O laço reconciliar↔re-condenar — 8×/dia há uma semana, consertado |
 | 83 | ✅ VERIFICADO NO AR — 517 a 520 saíram; devolver para a fila zera as tentativas |
 | 82 | ✅ VERIFICADO NO AR — 344 dos 370 ofícios estão em Enviados; os 26 que faltam têm forma |
 | 81 | ✅ VERIFICADO NO AR — o remetente é a Secretaria, e onde a cópia fica é estrutural |
@@ -126,6 +127,64 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
+
+### 84. 🔴 O LAÇO: RECONCILIAR E RE-CONDENAR, 8 VEZES POR DIA HÁ UMA SEMANA
+
+11/09/2026. O usuário abriu o Histórico filtrado em falha de entrega e viu
+**sete ofícios da MESMA escola** — FAESA —, de 07/05 a 20/08. No dia anterior
+eram outros três. E perguntou a coisa certa antes de agir: *"Posso reenviar?
+Ontem não estava com falha."*
+
+**A resposta era NÃO**, e o `LOG_SISTEMA` provou:
+
+```
+04/09 05:39      144/2026 (REENVIO)  →  luiza.stefani@, karolina.caldeira@
+04/09 17:33:30   OFICIOS_REENVIO_RECONCILIADO   9 ofício(s)
+04/09 17:33:42   144/2026 (FALHA_ENTREGA)  thalia.ferreira@faesa.br
+                 └─ DOZE SEGUNDOS depois
+```
+
+Os sete já tinham sido reenviados em 04/09, para endereços **novos** — o
+cadastro já estava corrigido. O que aparecia na tela era status velho sendo
+reescrito às 02:33, 05:33, 08:33, 11:33, 14:33, 17:33, 20:33 e 23:33. **Oito
+vezes por dia, sete dias.**
+
+**O LAÇO CABE NUMA FUNÇÃO SÓ**, e a ordem é deliberada: o
+`verificarFalhasEntregaOficios` reconcilia ANTES de checar bounce, para o
+ofício reconciliado ser reexaminado no mesmo passe. A intenção é boa. O que
+ela não previu:
+
+1. a reconciliação grava `Status` e `JA_FALHOU`, e **não** grava `REENVIADO_EM`;
+2. sem ele, o "último envio conhecido" continua sendo o original — maio;
+3. o bounce sobrevive 90 dias no Gmail e é de setembro;
+4. setembro > maio → a falha "é nova" → `FALHA_ENTREGA` de novo.
+
+Cada peça certa sozinha. Juntas, se desfaziam para sempre.
+
+**O CUSTO NÃO ERA SÓ O STATUS ERRADO:** 8 varreduras de Gmail por dia, no
+MESMO orçamento que entrega ofício. É o item 77 outra vez — e foi parte do que
+faltou para os 517 a 520 saírem em 10/09.
+
+**O conserto** (`a5e12e8`): a reconciliação lê o `DATA_HORA` do log e grava
+`REENVIADO_EM` com ele. A data do log, não a de agora — "agora" quebraria o
+laço igual e mentiria sobre quando o reenvio aconteceu, e é essa data que
+alguém vai olhar para decidir se um bounce novo é notícia.
+
+`t159`, 8 asserções, com a forma exata da produção. **Uma delas importa tanto
+quanto o conserto:** bounce POSTERIOR ao reenvio continua marcando falha.
+Trocar alarme falso por silêncio seria pior que o defeito.
+
+**Publicado na homologação** (run 97). **A PRODUÇÃO NÃO RECEBEU** — mesmo
+bloqueio do item 83b.
+
+**NÃO TESTADO (REGRA Nº -1):** o laço parando no ar. Só se vê quando a rotina
+das 3 em 3 horas rodar com este código na produção e os oito ofícios ficarem
+como estão. **Enquanto isso, ele continua rodando** — a última passagem foi
+10/09 às 23:02.
+
+**E fica uma pergunta sem resposta:** o **365/2026** (Creche Ping Pong) saiu do
+grupo sozinho em 08/09 — a lista foi de 9 para 8 ofícios. Não sei por quê, e
+não vou deduzir. Se voltar, é sinal de outra coisa.
 
 ### 83. ✅ VERIFICADO NO AR — OS QUATRO SAÍRAM, E OS 26 TÊM EXPLICAÇÃO
 
@@ -258,15 +317,18 @@ lida quando a sessão começa. Serve para a próxima.
 **OS PASSOS, PRONTOS PARA AMANHÃ** — tudo pelo GitHub, sem depender de
 permissão nenhuma:
 
+**Uma promoção só leva os DOIS consertos** — a tela do item 83b e o laço do
+item 84. Por isso o SHA abaixo é o mais recente, e não o de ontem.
+
 1. Criar a branch, a partir de `integracao/sisgep-homologacao`:
-   `promocao/hml-2badcb2-para-producao-2026-09-10`
+   `promocao/hml-a5e12e8-para-producao-2026-09-11`
 
 2. Nessa branch, em `.github/workflows/deploy-producao.yml`, três trocas:
 
    | De | Para |
    |---|---|
-   | `hml-8d5c380-para-producao-2026-09-08` | `hml-2badcb2-para-producao-2026-09-10` |
-   | `"8d5c380eb67affa9b3d7662051b735935092c34c"` | `"2badcb228e994789c5facb5a1cae43e8f0533c08"` |
+   | `hml-8d5c380-para-producao-2026-09-08` | `hml-a5e12e8-para-producao-2026-09-11` |
+   | `"8d5c380eb67affa9b3d7662051b735935092c34c"` | `"a5e12e852d05ada329896a8b3fee8417c1cb8243"` |
    | `test "$GS" -eq 174` | `test "$GS" -eq 176` |
 
 3. Actions → **Conferir ou Publicar Producao** → Run workflow, na branch nova,
