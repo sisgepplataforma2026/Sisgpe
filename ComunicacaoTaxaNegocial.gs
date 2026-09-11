@@ -731,6 +731,12 @@ function tnCom_status_() {
     total: total, comunicadas: comunicadas, naFila: naFila, aCorrigir: aCorrigir,
     percentual: total ? Math.round((comunicadas / total) * 100) : 0,
     tetoDia: teto, enviadoHoje: orc.jaEnviadoHoje, orcamento: orc,
+    /* O QUE ESTA GUARDADO, nao o que esta selecionado na tela. O usuario
+       trocou a CCT por um PDF, viu o nome no campo e achou que ja valia — o
+       campo mostra a ESCOLHA, e so o Preparar grava. A tela precisa poder
+       dizer qual arquivo esta de fato no oficio. */
+    cctGuardada: String(props.getProperty(TN_COM_PROP.CCT_NOME) || ""),
+    competencia: String(props.getProperty(TN_COM_PROP.COMPETENCIA) || ""),
     previsaoUltima: previsao,
     porStatus: c
   };

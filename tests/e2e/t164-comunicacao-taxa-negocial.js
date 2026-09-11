@@ -210,6 +210,31 @@ igual(st.aCorrigir, 1, "a escola sem e-mail aparece em 'a corrigir', separada da
 ok(st.remetente.ok === true, "e mostra o remetente medido");
 
 /* ══════════════════════════════════════════════════════════════════════ */
+fluxo("A tela precisa saber o que está GUARDADO, não o que está selecionado");
+
+/* DE ONDE VEIO, 11/09/2026, na producao. O usuario trocou a CCT .docx por um
+   PDF, viu o nome no campo de arquivo e entendeu que ja valia. Nao valia: o
+   campo mostra a ESCOLHA do navegador, e o arquivo so e gravado quando
+   "Preparar fila" roda. Ele chegou a um clique de mandar 100 oficios com a
+   CCT antiga.
+
+   O status passa a devolver o que esta de fato no oficio, para a tela poder
+   dizer — em vez de a pessoa so descobrir abrindo um e-mail ja enviado. */
+
+passo("depois de preparar com uma CCT");
+g.PropertiesService.getScriptProperties()
+  .setProperty("TN_COM_CCT_NOME", "CCT-SindEducacao-2026-2027.pdf");
+const stCct = g.tnCom_status_();
+igual(stCct.cctGuardada, "CCT-SindEducacao-2026-2027.pdf",
+   "o status diz QUAL arquivo está guardado no ofício");
+ok(stCct.tetoDia > 0, "e qual teto está valendo de verdade", "teto=" + stCct.tetoDia);
+
+passo("sem CCT nenhuma");
+g.PropertiesService.getScriptProperties().deleteProperty("TN_COM_CCT_NOME");
+igual(g.tnCom_status_().cctGuardada, "",
+   "devolve vazio — a tela mostra 'nenhuma anexada' em vermelho, sem inventar");
+
+/* ══════════════════════════════════════════════════════════════════════ */
 fluxo("A porta única, e o que ela recusa");
 
 /* O google.script.run só alcança função global SEM underline, então a tela

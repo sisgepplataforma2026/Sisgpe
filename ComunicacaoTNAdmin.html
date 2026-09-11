@@ -78,6 +78,7 @@
         </label>
 
         <div id="ctnResumoPrep" style="font-size:12.5px;color:#334155;line-height:1.6;margin-bottom:12px;"></div>
+        <div id="ctnAviso" style="display:none;font-size:12.5px;line-height:1.5;padding:10px 12px;border:1.5px solid;border-radius:10px;margin-bottom:12px;"></div>
 
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button type="button" class="ctn-btn" onclick="ctnPreparar()">Preparar fila</button>
@@ -134,12 +135,12 @@ var CTN = { filtro: "todas", status: null };
 function ctnChamar(acao, params, aoVoltar) {
   google.script.run
     .withSuccessHandler(function (r) {
-      if (r && r.ok === false && r.mensagem) toast(r.mensagem, "err", 7000);
+      if (r && r.ok === false && r.mensagem) ctnAviso(r.mensagem, "err");
       if (aoVoltar) aoVoltar(r || {});
     })
     .withFailureHandler(function (e) {
       var msg = (e && e.message) || String(e);
-      toast("Erro: " + msg, "err", 7000);
+      ctnAviso("Erro: " + msg, "err");
       /* Sem isto a tela fica em "conferindo o remetente..." para sempre quando
          a chamada falha — e quem olha nao sabe se esta lento ou quebrado. */
       var card = document.getElementById("ctnRemetente");
@@ -149,6 +150,32 @@ function ctnChamar(acao, params, aoVoltar) {
       }
     })
     .comunicacaoTaxaNegocial(acao, params || {}, SISGEP_TOKEN_SESSAO);
+}
+
+/* AVISO PROPRIO — 11/09/2026, e nasceu de um defeito meu.
+
+   O `toast()` deste projeto vive DENTRO de um IIFE no OficiosScripts.html e
+   NAO e global: por isso toda tela do sistema chama com guarda
+   (`typeof window.toast === "function"`). Eu chamei direto, e em
+   ctnPrepararEnviar o toast era a PRIMEIRA instrucao — entao "Preparar fila"
+   estourava ReferenceError e o backend nunca era chamado. O usuario clicou
+   varias vezes, nada acontecia, e nao havia erro na tela.
+
+   E o aviso passa a ficar NA PAGINA, nao so num toast que some: ele reclamou,
+   com razao, que nao dava para saber se o clique tinha funcionado. Mensagem
+   sobre uma acao que desaparece em seis segundos nao serve para conferir. */
+function ctnAviso(msg, tipo) {
+  var el = document.getElementById("ctnAviso");
+  if (el) {
+    var cor   = { ok: "#065f46", err: "#991b1b", info: "#1e3a8a" }[tipo || "info"];
+    var fundo = { ok: "#ecfdf5", err: "#fef2f2", info: "#eff6ff" }[tipo || "info"];
+    el.style.display = "block";
+    el.style.color = cor;
+    el.style.background = fundo;
+    el.style.borderColor = cor + "55";
+    el.textContent = msg;
+  }
+  if (typeof window.toast === "function") window.toast(msg, tipo || "info", 6000);
 }
 
 function initComunicacaoTN() { ctnCarregar(); }
@@ -192,9 +219,21 @@ function ctnDesenharPreparo(s) {
   var pode = !!(s.remetente && s.remetente.ok) && s.naFila > 0;
   if (g("ctnBtnLiberar")) g("ctnBtnLiberar").disabled = !pode;
   if (g("ctnResumoPrep")) {
+    /* MOSTRA O QUE ESTA GUARDADO, nao o que esta selecionado nos campos.
+       O usuario trocou a CCT por um PDF, viu o nome aparecer no campo de
+       arquivo e entendeu que ja valia. O campo mostra a ESCOLHA; so o
+       Preparar grava. Sem esta linha, a unica forma de saber qual CCT vai
+       para as escolas era mandar uma e abrir o e-mail. */
     g("ctnResumoPrep").innerHTML = s.total
       ? "<strong>" + s.total + "</strong> endereço(s) na fila · <strong>" + s.naFila
         + "</strong> a enviar · <strong>" + s.aCorrigir + "</strong> sem e-mail no cadastro."
+        + '<div style="margin-top:8px;padding-top:8px;border-top:1px solid #eef2f7;font-size:12px;color:#475569;">'
+        + "<strong>Guardado no ofício agora:</strong> teto de <strong>" + (s.tetoDia || 0)
+        + "</strong> por dia · CCT "
+        + (s.cctGuardada
+            ? "<strong>" + ctnEsc(s.cctGuardada) + "</strong>"
+            : '<span style="color:#b91c1c;">nenhuma anexada</span>')
+        + "</div>"
       : "Nenhuma fila preparada ainda. Confira a competência e a data-alvo e clique em <strong>Preparar fila</strong>.";
   }
   if (g("ctnTeto") && s.tetoDia && !g("ctnTeto").value) g("ctnTeto").value = s.tetoDia;
@@ -289,15 +328,15 @@ function ctnPreparar() {
     };
     ctnPrepararEnviar(params);
   };
-  reader.onerror = function () { toast("Não foi possível ler a CCT selecionada.", "err"); };
+  reader.onerror = function () { ctnAviso("Não foi possível ler a CCT selecionada.", "err"); };
   reader.readAsDataURL(arq);
 }
 
 function ctnPrepararEnviar(params) {
-  toast("Preparando a fila…", "info", 3000);
+  ctnAviso("Preparando a fila… isso pode levar alguns segundos com a CCT anexa.", "info");
   ctnChamar("preparar", params, function (r) {
     if (r && r.ok) {
-      toast(r.mensagem, "ok", 6000);
+      ctnAviso(r.mensagem, "ok");
       var c = document.getElementById("ctnContaTeto");
       if (c && r.tetoSugerido) c.textContent = r.tetoSugerido.conta;
       var t = document.getElementById("ctnTeto");
@@ -310,14 +349,14 @@ function ctnPrepararEnviar(params) {
 function ctnLiberar() {
   if (!window.confirm("Liberar o envio?\n\nO primeiro lote sai agora e a campanha continua sozinha, respeitando o teto do dia.")) return;
   ctnChamar("liberar", {}, function (r) {
-    if (r && r.ok) toast(r.mensagem, "ok", 7000);
+    if (r && r.ok) ctnAviso(r.mensagem, "ok");
     ctnCarregar();
   });
 }
 
 function ctnPausar() {
   ctnChamar("pausar", {}, function (r) {
-    if (r && r.ok) toast(r.mensagem, "ok", 5000);
+    if (r && r.ok) ctnAviso(r.mensagem, "ok");
     ctnCarregar();
   });
 }
@@ -327,7 +366,7 @@ function ctnAumentarTeto() {
   var novo = window.prompt("Novo teto de endereços por dia:", String(atual));
   if (novo === null) return;
   ctnChamar("teto", { teto: novo }, function (r) {
-    if (r && r.ok) toast(r.mensagem, "ok", 5000);
+    if (r && r.ok) ctnAviso(r.mensagem, "ok");
     ctnCarregar();
   });
 }
