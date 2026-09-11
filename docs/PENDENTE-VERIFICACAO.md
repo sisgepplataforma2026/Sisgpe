@@ -57,6 +57,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 | Nº | Item |
 |---|---|
+| 85 | 🔴 NA PRODUÇÃO (711) — anexar no reenvio, e a virada de lote que duplicava |
 | 84 | 🟡 NA PRODUÇÃO (710) — o laço reconciliar↔re-condenar; falta ver ele parar |
 | 83 | ✅ VERIFICADO NO AR — 517 a 520 saíram; devolver para a fila zera as tentativas |
 | 82 | ✅ VERIFICADO NO AR — 344 dos 370 ofícios estão em Enviados; os 26 que faltam têm forma |
@@ -127,6 +128,66 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
+
+### 85. 🔴 NA PRODUÇÃO (711) — ANEXAR NO REENVIO, E A VIRADA DE LOTE QUE DUPLICAVA
+
+11/09/2026. Homologação na **123**, produção na **711** (rollback na 710,
+artefato `producao-antes-46-versao-710`, 90 dias). Commit homologado
+`a760bf9`, promoção `promocao/hml-a760bf9-para-producao-2026-09-11`. Relatório
+da produção: **6 arquivos — 1 criado, 0 removidos, 5 modificados**.
+
+Três entregas, e as três estão **NÃO TESTADAS** no ar.
+
+#### 1. 🔴 Anexar documento no reenvio — o que pedir para ele conferir
+
+O usuário abriu o reenvio do **388/2026** (Oposição à Taxa Negocial, Centro
+Educacional Linus Pauling) e viu o aviso vermelho: a carta de oposição não foi
+encontrada, e o corpo do ofício afirma que ela segue em anexo. O sistema
+detectava certo e não oferecia como resolver.
+
+**O roteiro, e ele leva cinco minutos:** abrir o Histórico, clicar no 📧 do
+388/2026, usar "+ Anexar documento", escolher a carta, e conferir três coisas
+— o aviso vermelho sumir, o botão continuar dizendo "Reenviar" (e NÃO "Enviar
+mesmo sem a ficha"), e **no e-mail recebido os DOIS PDFs**.
+
+Depois, reabrir o mesmo reenvio SEM anexar nada: a carta tem de aparecer
+sozinha, marcada como *"acrescentada em 11/09 por …"*. É o *"não precisaria
+fazer novamente"* do pedido.
+
+O que os testes não alcançam e por isso está aqui: o arquivo chegar íntegro. O
+emulador guarda o blob e devolve por id, mas não valida conteúdo, permissão de
+pasta do Drive nem entrega de e-mail.
+
+#### 2. 🔴 A virada de lote não duplica mais
+
+Reproduzido no emulador antes do conserto: fila de 3 endereços, limite virando
+no meio da primeira escola, resultado **4 envios para 3 endereços** — o
+primeiro endereço recebeu o mesmo número de ofício duas vezes, e a tela dizia
+"restam 2 escolas pendentes" contando a que já tinha recebido.
+
+Só se vê na produção quando uma campanha em massa rodar de verdade
+(Assistencial ou a Negocial que vem). Até lá, continua não testado.
+
+**Conferência barata que vale fazer antes:** se alguma campanha de Taxa
+Assistencial já rodou completa, procurar no `LOG_SISTEMA` o mesmo número de
+ofício com o mesmo e-mail de destino em duas linhas. Par repetido = este bug
+já mordeu.
+
+#### 3. 🔴 O governador de cota (`CotaEmail.gs`) nunca rodou
+
+Foi para a produção junto, mas **nenhuma campanha o chama ainda** — ele entra
+em uso quando a Comunicação da Taxa Negocial for escrita. Está no ar e
+inerte; não muda comportamento de nada hoje.
+
+#### Achado que continua aberto, e não é deste laço
+
+`enviarAlerteLimiteDiario` é chamada **duas vezes** no `TaxaAssistencial.gs`
+(linhas 358 e 365) e **não existe em lugar nenhum do projeto** — `typeof`
+devolve `undefined`, e as duas chamadas estão dentro de `try/catch` que
+engole. O aviso de "a campanha pausou / terminou" nunca disparou, desde
+sempre. Vai ser escrito na campanha nova; registrado aqui para não se perder.
+
+---
 
 ### 84. 🟡 NA PRODUÇÃO (710) — O LAÇO: RECONCILIAR E RE-CONDENAR, 8×/DIA HÁ UMA SEMANA
 
