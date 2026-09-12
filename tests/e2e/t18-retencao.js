@@ -124,4 +124,3 @@ b.naoTestavel("O apagamento real das células de geolocalização e da Receita",
   "depende das abas de produção; aqui as abas do emulador estão vazias");
 
 b.resumo();
-process.exit(0);

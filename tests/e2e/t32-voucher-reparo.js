@@ -335,4 +335,3 @@ b.igual(g.PropertiesService.getScriptProperties().getProperty(g.VOUCHER_REPARO_P
   "e mesmo assim o consentimento foi queimado — nova tentativa exige nova prévia");
 
 b.resumo();
-process.exit(0);

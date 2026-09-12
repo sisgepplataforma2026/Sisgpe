@@ -2,3 +2,12 @@
 !*.gs
 !*.html
 !appsscript.json
+
+# Nada de tests/ vai para o Apps Script. O `**/**` acima ja deveria
+# bastar, mas `!*.gs` e negacao e a semantica de caminho aninhado varia por
+# versao de clasp. Em 02/09/2026 nasceram os primeiros .gs fora da raiz
+# (tests/fixtures/producao, que se colam na PRODUCAO). Se um deles vazasse
+# para o push, existiriam dois arquivos de mesmo nome-base no projeto e o
+# Apps Script recusa o push INTEIRO — com a mensagem aparecendo so no deploy.
+# Por isso duas travas: esta linha, e a extensao .gs.txt nos arquivos.
+tests/**

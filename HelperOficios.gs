@@ -401,7 +401,12 @@ function carregarImagensOficio_() {
 
 /* ── Invalida cache de templates ── */
 
-function invalidarCacheTemplatesOficios(templateId) {
+function invalidarCacheTemplatesOficios(templateId, tokenSessao) {
+  /* PORTA DUPLA EM 01/09/2026 — frente A do Modulo 03. Escreve na planilha
+     e nao tinha checagem nenhuma. E dupla porque isto e ferramenta que se
+     roda do EDITOR, onde nao existe token: fechar so com token tiraria o
+     unico jeito de usa-la. Mesmo padrao dos gatilhos (t121). */
+  exigirAdminOuSessao_(tokenSessao, "documentos", "Invalidacao do cache de templates de oficio", true);
   Logger.log("ℹ Sistema utiliza templates internos em código.");
   return { ok: true, mensagem: "Sistema utilizando templates internos. Nenhum cache necessário." };
 }

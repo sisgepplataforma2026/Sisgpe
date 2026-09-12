@@ -1,0 +1,493 @@
+<div id="comunicacaoTN" style="min-height:100%;background:#f0f4f8;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#0f172a;">
+<!--
+  Comunicação da Taxa Negocial às escolas — fase 1, informativa.
+  Duas telas por estado, no mesmo arquivo: PREPARAR (enquanto a campanha não
+  foi liberada) e ACOMPANHAR (depois). Os estados "sem e-mail" e "falhas" são
+  filtro na tabela, não tela separada — mesma escolha do Histórico de Ofícios.
+  O backend é o ComunicacaoTaxaNegocial.gs, por uma porta só.
+-->
+  <style>
+    #comunicacaoTN *{box-sizing:border-box}
+                #comunicacaoTN .ctn-num{height:32px;border-radius:999px;border:1px solid rgba(201,168,76,.5);background:rgba(201,168,76,.16);color:#f8d66d;font-size:11px;font-weight:900;padding:0 14px;display:flex;align-items:center}
+    #comunicacaoTN .ctn-wrap{padding:18px 22px 34px}
+    #comunicacaoTN .ctn-card{background:#fff;border:1px solid var(--g200,#e2e8f0);border-radius:14px;padding:16px;box-shadow:0 2px 10px rgba(0,20,60,.06);margin-bottom:14px}
+    #comunicacaoTN .ctn-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}
+    #comunicacaoTN .ctn-kpi{background:#fff;border:1px solid var(--g200,#e2e8f0);border-radius:14px;padding:15px 16px;box-shadow:0 2px 10px rgba(0,20,60,.06)}
+    #comunicacaoTN .ctn-kpi small{display:block;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:var(--g500,#64748b);margin-bottom:8px}
+    #comunicacaoTN .ctn-kpi strong{font-size:24px;font-weight:900;color:var(--navy,#001f4d);font-variant-numeric:tabular-nums}
+    #comunicacaoTN .ctn-kpi span{display:block;font-size:11px;color:var(--g400,#94a3b8);margin-top:4px}
+    #comunicacaoTN .ctn-kpi.ok strong{color:#0f8a5f}
+    #comunicacaoTN .ctn-kpi.warn strong{color:#d97706}
+    #comunicacaoTN .ctn-rem{border-radius:12px;padding:13px 15px;font-size:12.5px;line-height:1.5;margin-bottom:14px;border:1.5px solid}
+    #comunicacaoTN .ctn-rem.ok{background:#ecfdf5;border-color:#a7f3d0;color:#065f46}
+    #comunicacaoTN .ctn-rem.nao{background:#fef2f2;border-color:#fecaca;color:#991b1b}
+    #comunicacaoTN .ctn-barra{height:10px;background:#e8f0fe;border-radius:999px;overflow:hidden;margin:10px 0 8px}
+    #comunicacaoTN .ctn-barra i{display:block;height:100%;background:linear-gradient(90deg,var(--blue,#1565C0),#0f8a5f);transition:width .4s}
+    #comunicacaoTN .ctn-pausa{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.5;margin-bottom:12px}
+    #comunicacaoTN .ctn-fld{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:var(--g500,#64748b)}
+    #comunicacaoTN .ctn-fld input{height:38px;border:1.5px solid var(--g300,#cbd5e1);border-radius:9px;padding:0 11px;font-size:13px;font-family:inherit;font-weight:400;text-transform:none;letter-spacing:0;color:#0f172a}
+    #comunicacaoTN .ctn-linha{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:12px}
+    #comunicacaoTN .ctn-conta{font-size:11px;color:var(--g500,#64748b);margin-top:4px;font-weight:400;text-transform:none;letter-spacing:0}
+    #comunicacaoTN .ctn-btn{height:36px;border-radius:9px;border:1px solid var(--g300,#cbd5e1);background:#fff;color:var(--g700,#334155);font-size:12.5px;font-weight:800;padding:0 14px;cursor:pointer;font-family:inherit}
+    #comunicacaoTN .ctn-btn.primary{background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));border-color:var(--blue,#1565C0);color:#fff}
+    #comunicacaoTN .ctn-btn:disabled{opacity:.45;cursor:not-allowed}
+    #comunicacaoTN .ctn-filtros{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+    #comunicacaoTN .ctn-fbtn{height:30px;border-radius:999px;border:1px solid var(--g300,#cbd5e1);background:#fff;color:var(--g700,#334155);font-size:11.5px;font-weight:800;padding:0 13px;cursor:pointer;font-family:inherit}
+    #comunicacaoTN .ctn-fbtn.on{background:var(--navy,#001f4d);border-color:var(--navy,#001f4d);color:#fff}
+    #comunicacaoTN table{width:100%;border-collapse:collapse;font-size:12.5px}
+    #comunicacaoTN th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--g500,#64748b);padding:8px 10px;border-bottom:1px solid #eef2f7}
+    #comunicacaoTN td{padding:9px 10px;border-bottom:1px solid #f1f5f9}
+    #comunicacaoTN .ctn-pill{display:inline-block;font-size:10.5px;font-weight:900;padding:3px 9px;border-radius:999px}
+    #comunicacaoTN .p-env{background:#dcfce7;color:#166534}
+    #comunicacaoTN .p-fila{background:#e0e7ff;color:#3730a3}
+    #comunicacaoTN .p-sem{background:#fef3c7;color:#92400e}
+    #comunicacaoTN .p-err{background:#fee2e2;color:#991b1b}
+    @media(max-width:900px){#comunicacaoTN .ctn-grid,#comunicacaoTN .ctn-linha{grid-template-columns:1fr 1fr}}
+    @media(max-width:560px){#comunicacaoTN .ctn-grid,#comunicacaoTN .ctn-linha{grid-template-columns:1fr}}
+  </style>
+
+  <div class="ctn-wrap">
+    <!-- CABECALHO PROPRIO REMOVIDO em 11/09/2026: o Portal ja escreve titulo e
+         subtitulo a partir do registro de paginas do index, e o bloco daqui
+         repetia os dois com outras palavras. Sobrou so o numero do oficio,
+         que o Portal nao tem como saber. -->
+    <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+      <span class="ctn-num" id="ctnNumero" style="background:rgba(21,101,192,.1);border-color:rgba(21,101,192,.3);color:var(--navy,#001f4d);">sem número ainda</span>
+    </div>
+
+    <div id="ctnRemetente" class="ctn-rem ok">conferindo o remetente…</div>
+
+    <!-- ═══ TELA 1 — PREPARAR E LIBERAR ═══ -->
+    <div id="ctnPreparar" style="display:none;">
+      <div class="ctn-card">
+        <div class="ctn-linha">
+          <label class="ctn-fld">Competência
+            <input type="text" id="ctnCompetencia" value="setembro/2026">
+          </label>
+          <label class="ctn-fld">Todas comunicadas até
+            <input type="date" id="ctnAlvo" value="2026-09-30">
+          </label>
+          <label class="ctn-fld">Teto por dia
+            <input type="number" id="ctnTeto" min="1" placeholder="calculado">
+            <span class="ctn-conta" id="ctnContaTeto">o sistema calcula a partir da data acima</span>
+          </label>
+        </div>
+
+        <label class="ctn-fld" style="margin-bottom:12px;">Cópia da CCT (anexo do ofício)
+          <input type="file" id="ctnCct" accept=".pdf">
+        </label>
+
+        <div id="ctnResumoPrep" style="font-size:12.5px;color:#334155;line-height:1.6;margin-bottom:12px;"></div>
+        <div id="ctnAviso" style="display:none;font-size:12.5px;line-height:1.5;padding:10px 12px;border:1.5px solid;border-radius:10px;margin-bottom:12px;"></div>
+
+        <!-- TESTAR COM UMA ESCOLA ESCOLHIDA — pedido de 11/09: "eu quero
+             escolher uma escola para testar". Antes so dava para por o teto
+             em 1 e liberar, e quem recebia era a primeira linha da fila. -->
+        <div style="border:1.5px dashed #cbd5e1;border-radius:12px;padding:13px 15px;margin-bottom:12px;background:#f8fafc;">
+          <div style="font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:8px;">
+            Testar com uma escola
+          </div>
+          <input type="text" id="ctnEscolaTeste" placeholder="digite o nome da escola"
+                 oninput="ctnBuscarEscola()"
+                 style="width:100%;height:38px;border:1.5px solid #cbd5e1;border-radius:9px;padding:0 11px;font-size:13px;font-family:inherit;">
+          <div id="ctnResultados" style="margin-top:8px;"></div>
+          <div style="font-size:11px;color:#64748b;margin-top:7px;">
+            Clique na escola para enviar o ofício de verdade a todos os e-mails dela.
+            Ela passa a contar como comunicada e não recebe de novo no envio geral.
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button type="button" class="ctn-btn" onclick="ctnPreparar()">Preparar fila</button>
+          <button type="button" class="ctn-btn primary" id="ctnBtnLiberar" onclick="ctnLiberar()" disabled>Liberar envio ▸</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ TELA 2 — ACOMPANHAR ═══ -->
+    <div id="ctnAcompanhar" style="display:none;">
+      <div class="ctn-grid">
+        <div class="ctn-kpi"><small>Endereços</small><strong id="ctnKTotal">—</strong><span id="ctnKEscolas"></span></div>
+        <div class="ctn-kpi ok"><small>Comunicados</small><strong id="ctnKFeito">—</strong><span id="ctnKPct"></span></div>
+        <div class="ctn-kpi"><small>Hoje</small><strong id="ctnKHoje">—</strong><span>do teto do dia</span></div>
+        <div class="ctn-kpi warn"><small>A corrigir</small><strong id="ctnKCorrigir">—</strong><span>sem e-mail no cadastro</span></div>
+      </div>
+
+      <div class="ctn-card">
+        <div class="ctn-barra"><i id="ctnBarra" style="width:0%"></i></div>
+        <div style="font-size:12.5px;color:#334155;" id="ctnPrevisao"></div>
+        <div id="ctnPausa" class="ctn-pausa" style="display:none;margin-top:12px;"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+          <button type="button" class="ctn-btn" onclick="ctnPausar()">Pausar</button>
+          <button type="button" class="ctn-btn" onclick="ctnAumentarTeto()">Aumentar teto de hoje</button>
+          <button type="button" class="ctn-btn" onclick="ctnCarregar()">Atualizar</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ═══ A FILA INTEIRA — VISIVEL SEMPRE ═══
+         Ate 12/09/2026 esta tabela vivia dentro do bloco ACOMPANHAR, que so
+         aparece depois de Liberar envio. Quem ainda estava testando ANTES de
+         liberar — que e a ordem certa de trabalhar — nao tinha como ver a
+         situacao de escola nenhuma: a unica janela para a fila era a busca, e
+         a busca escondia justamente quem ja tinha recebido. A tabela e so
+         leitura; nao ha motivo para esconder. -->
+    <div id="ctnFila" style="display:none;">
+      <div style="font-size:12px;color:#64748b;margin:0 0 8px;">Todas as escolas da fila e a situação de cada uma.</div>
+      <div class="ctn-card">
+        <div class="ctn-filtros" id="ctnFiltros">
+          <button type="button" class="ctn-fbtn on" data-f="todas" onclick="ctnFiltrar('todas',this)">Todas</button>
+          <button type="button" class="ctn-fbtn" data-f="comunicadas" onclick="ctnFiltrar('comunicadas',this)">Comunicadas</button>
+          <button type="button" class="ctn-fbtn" data-f="nafila" onclick="ctnFiltrar('nafila',this)">Na fila</button>
+          <button type="button" class="ctn-fbtn" data-f="sememail" onclick="ctnFiltrar('sememail',this)">Sem e-mail</button>
+          <button type="button" class="ctn-fbtn" data-f="falhas" onclick="ctnFiltrar('falhas',this)">Falhas</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>Escola</th><th>Endereços</th><th>Situação</th><th>Quando</th></tr></thead>
+            <tbody id="ctnCorpo"><tr><td colspan="4" style="color:#94a3b8;padding:16px;">carregando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Comunicação da Taxa Negocial — a tela.
+   Uma porta só no backend: comunicacaoTaxaNegocial(acao, params, token).
+   Toda decisão de estado vem de lá; aqui só se desenha o que foi medido. */
+var CTN = { filtro: "todas", status: null };
+
+function ctnChamar(acao, params, aoVoltar) {
+  google.script.run
+    .withSuccessHandler(function (r) {
+      if (r && r.ok === false && r.mensagem) ctnAviso(r.mensagem, "err");
+      if (aoVoltar) aoVoltar(r || {});
+    })
+    .withFailureHandler(function (e) {
+      var msg = (e && e.message) || String(e);
+      ctnAviso("Erro: " + msg, "err");
+      /* Sem isto a tela fica em "conferindo o remetente..." para sempre quando
+         a chamada falha — e quem olha nao sabe se esta lento ou quebrado. */
+      var card = document.getElementById("ctnRemetente");
+      if (card && String(card.textContent || "").indexOf("conferindo") > -1) {
+        card.className = "ctn-rem nao";
+        card.innerHTML = "<strong>Não foi possível carregar a campanha.</strong><br>" + ctnEsc(msg);
+      }
+    })
+    .comunicacaoTaxaNegocial(acao, params || {}, SISGEP_TOKEN_SESSAO);
+}
+
+/* AVISO PROPRIO — 11/09/2026, e nasceu de um defeito meu.
+
+   O `toast()` deste projeto vive DENTRO de um IIFE no OficiosScripts.html e
+   NAO e global: por isso toda tela do sistema chama com guarda
+   (`typeof window.toast === "function"`). Eu chamei direto, e em
+   ctnPrepararEnviar o toast era a PRIMEIRA instrucao — entao "Preparar fila"
+   estourava ReferenceError e o backend nunca era chamado. O usuario clicou
+   varias vezes, nada acontecia, e nao havia erro na tela.
+
+   E o aviso passa a ficar NA PAGINA, nao so num toast que some: ele reclamou,
+   com razao, que nao dava para saber se o clique tinha funcionado. Mensagem
+   sobre uma acao que desaparece em seis segundos nao serve para conferir. */
+function ctnAviso(msg, tipo) {
+  var el = document.getElementById("ctnAviso");
+  if (el) {
+    var cor   = { ok: "#065f46", err: "#991b1b", info: "#1e3a8a" }[tipo || "info"];
+    var fundo = { ok: "#ecfdf5", err: "#fef2f2", info: "#eff6ff" }[tipo || "info"];
+    el.style.display = "block";
+    el.style.color = cor;
+    el.style.background = fundo;
+    el.style.borderColor = cor + "55";
+    el.textContent = msg;
+  }
+  if (typeof window.toast === "function") window.toast(msg, tipo || "info", 6000);
+}
+
+function initComunicacaoTN() { ctnCarregar(); }
+
+function ctnCarregar() {
+  ctnChamar("status", {}, function (s) {
+    if (!s || s.ok === false) return;
+    CTN.status = s;
+    ctnDesenharRemetente(s);
+    var g = function (id) { return document.getElementById(id); };
+    if (g("ctnNumero")) g("ctnNumero").textContent = s.numero || "sem número ainda";
+
+    /* O ESTADO DECIDE A TELA, e o estado vem do backend. Duas telas, não
+       cinco: os demais estados viraram filtro na tabela. */
+    var emAndamento = !!s.liberada;
+    if (g("ctnPreparar"))   g("ctnPreparar").style.display   = emAndamento ? "none" : "block";
+    if (g("ctnAcompanhar")) g("ctnAcompanhar").style.display = emAndamento ? "block" : "none";
+
+    if (emAndamento) ctnDesenharPainel(s); else ctnDesenharPreparo(s);
+
+    /* A TABELA NAO DEPENDE DE TER LIBERADO. Ela existe desde que haja fila, e
+       e justamente ANTES de liberar que a pessoa precisa conferir o que a
+       fila tem dentro. */
+    if (g("ctnFila")) g("ctnFila").style.display = (s.total > 0) ? "block" : "none";
+    if (s.total > 0) ctnListar();
+  });
+}
+
+/* O REMETENTE É MEDIDO, NÃO AFIRMADO. Este projeto pagou duas vezes por tela
+   que dizia de quem o e-mail saía sem ter perguntado ao Gmail. Aqui, além de
+   mostrar, o card BARRA: sem o alias, o botão de liberar não habilita. */
+function ctnDesenharRemetente(s) {
+  var el = document.getElementById("ctnRemetente");
+  if (!el || !s.remetente) return;
+  var r = s.remetente;
+  el.className = "ctn-rem " + (r.ok ? "ok" : "nao");
+  el.innerHTML = r.ok
+    ? "<strong>✅ As escolas vão ver: " + ctnEsc(r.pretendido) + "</strong><br>"
+      + "alias ativo nesta conta · entrega por smtp.kinghost.net"
+    : "<strong>⚠ O alias " + ctnEsc(r.pretendido) + " não está ativo.</strong><br>"
+      + "Do jeito que está, o ofício sairia de <strong>" + ctnEsc(r.real || "conta desconhecida")
+      + "</strong>. Cadastre em Gmail → Contas e importação → Enviar e-mail como.";
+}
+
+function ctnDesenharPreparo(s) {
+  var g = function (id) { return document.getElementById(id); };
+  var pode = !!(s.remetente && s.remetente.ok) && s.naFila > 0;
+  if (g("ctnBtnLiberar")) g("ctnBtnLiberar").disabled = !pode;
+  if (g("ctnResumoPrep")) {
+    /* MOSTRA O QUE ESTA GUARDADO, nao o que esta selecionado nos campos.
+       O usuario trocou a CCT por um PDF, viu o nome aparecer no campo de
+       arquivo e entendeu que ja valia. O campo mostra a ESCOLHA; so o
+       Preparar grava. Sem esta linha, a unica forma de saber qual CCT vai
+       para as escolas era mandar uma e abrir o e-mail. */
+    g("ctnResumoPrep").innerHTML = s.total
+      ? "<strong>" + s.total + "</strong> endereço(s) na fila · <strong>" + s.naFila
+        + "</strong> a enviar · <strong>" + s.aCorrigir + "</strong> sem e-mail no cadastro."
+        + '<div style="margin-top:8px;padding-top:8px;border-top:1px solid #eef2f7;font-size:12px;color:#475569;">'
+        + "<strong>Guardado no ofício agora:</strong> teto de <strong>" + (s.tetoDia || 0)
+        + "</strong> por dia · CCT "
+        + (s.cctGuardada
+            ? "<strong>" + ctnEsc(s.cctGuardada) + "</strong>"
+            : '<span style="color:#b91c1c;">nenhuma anexada</span>')
+        + "</div>"
+      : "Nenhuma fila preparada ainda. Confira a competência e a data-alvo e clique em <strong>Preparar fila</strong>.";
+  }
+  if (g("ctnTeto") && s.tetoDia && !g("ctnTeto").value) g("ctnTeto").value = s.tetoDia;
+}
+
+function ctnDesenharPainel(s) {
+  var g = function (id) { return document.getElementById(id); };
+  g("ctnKTotal").textContent    = s.total;
+  g("ctnKFeito").textContent    = s.comunicadas;
+  g("ctnKPct").textContent      = s.percentual + "% da base";
+  g("ctnKHoje").textContent     = (s.enviadoHoje || 0) + " / " + (s.tetoDia || 0);
+  g("ctnKCorrigir").textContent = s.aCorrigir;
+  g("ctnBarra").style.width     = s.percentual + "%";
+
+  g("ctnPrevisao").textContent = s.previsaoUltima
+    ? "Neste ritmo, a última escola recebe em " + s.previsaoUltima + "."
+    : (s.naFila === 0 ? "Todas as escolas com e-mail já foram comunicadas." : "");
+
+  /* A faixa só aparece quando a campanha PAROU, e o texto vem do CotaEmail.gs
+     — que distingue "a cota do Google acabou" de "o teto que você definiu foi
+     atingido", porque a ação é diferente em cada caso. */
+  var pausa = g("ctnPausa");
+  var parou = s.pausada || (s.orcamento && s.orcamento.disponivel <= 0 && s.naFila > 0);
+  if (parou) {
+    pausa.style.display = "block";
+    pausa.innerHTML = s.pausada
+      ? "<strong>⏸ Campanha pausada por você.</strong> Nada sai até liberar de novo."
+      : "<strong>⏸ Parou por hoje.</strong> " + ctnEsc((s.orcamento && s.orcamento.mensagem) || "");
+  } else { pausa.style.display = "none"; }
+}
+
+function ctnFiltrar(f, botao) {
+  CTN.filtro = f;
+  document.querySelectorAll("#ctnFiltros .ctn-fbtn").forEach(function (b) { b.classList.remove("on"); });
+  if (botao) botao.classList.add("on");
+  ctnListar();
+}
+
+function ctnListar() {
+  var corpo = document.getElementById("ctnCorpo");
+  if (!corpo) return;
+  corpo.innerHTML = '<tr><td colspan="4" style="color:#94a3b8;padding:16px;">carregando…</td></tr>';
+  ctnChamar("linhas", { filtro: CTN.filtro }, function (r) {
+    var itens = (r && r.itens) || [];
+    if (!itens.length) {
+      corpo.innerHTML = '<tr><td colspan="4" style="color:#94a3b8;padding:16px;">nenhuma escola neste filtro.</td></tr>';
+      return;
+    }
+    corpo.innerHTML = itens.map(function (i) {
+      return "<tr><td><strong>" + ctnEsc(i.escola) + "</strong>"
+        + (i.erro ? '<br><span style="font-size:11px;color:#b91c1c;">' + ctnEsc(i.erro) + "</span>" : "")
+        + "</td><td>" + i.enderecos + "</td><td>" + ctnPill(i.status)
+        + "</td><td>" + ctnEsc(i.quando || "—") + "</td></tr>";
+    }).join("");
+  });
+}
+
+function ctnPill(st) {
+  var m = {
+    ENVIADO:        ["p-env",  "Comunicada"],
+    PENDENTE:       ["p-fila", "Na fila"],
+    ERRO:           ["p-err",  "Falhou"],
+    ERRO_PERMANENTE:["p-err",  "Encerrada"],
+    SEM_EMAIL:      ["p-sem",  "Sem e-mail"],
+    EMAIL_INVALIDO: ["p-sem",  "E-mail inválido"]
+  }[String(st || "").toUpperCase()] || ["p-fila", st || "—"];
+  return '<span class="ctn-pill ' + m[0] + '">' + ctnEsc(m[1]) + "</span>";
+}
+
+function ctnEsc(t) {
+  return String(t == null ? "" : t)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function ctnPreparar() {
+  var g = function (id) { return document.getElementById(id); };
+  var params = {
+    competencia: (g("ctnCompetencia") || {}).value || "",
+    dataAlvo:    (g("ctnAlvo") || {}).value || "",
+    tetoDia:     (g("ctnTeto") || {}).value || ""
+  };
+  var arq = (g("ctnCct") || {}).files && g("ctnCct").files[0];
+  if (!arq) { ctnPrepararEnviar(params); return; }
+
+  var reader = new FileReader();
+  reader.onload = function (ev) {
+    params.anexo = {
+      nome: arq.name, tipo: arq.type || "application/pdf",
+      base64: String(ev.target.result || "").split(",")[1] || ""
+    };
+    ctnPrepararEnviar(params);
+  };
+  reader.onerror = function () { ctnAviso("Não foi possível ler a CCT selecionada.", "err"); };
+  reader.readAsDataURL(arq);
+}
+
+function ctnPrepararEnviar(params) {
+  ctnAviso("Preparando a fila… isso pode levar alguns segundos com a CCT anexa.", "info");
+  ctnChamar("preparar", params, function (r) {
+    if (r && r.ok) {
+      ctnAviso(r.mensagem, "ok");
+      var c = document.getElementById("ctnContaTeto");
+      if (c && r.tetoSugerido) c.textContent = r.tetoSugerido.conta;
+      var t = document.getElementById("ctnTeto");
+      if (t && !t.value && r.tetoSugerido) t.value = r.tetoSugerido.teto;
+    }
+    ctnCarregar();
+  });
+}
+
+/* BUSCA QUE MOSTRA O QUE ACHOU — 11/09/2026.
+
+   Antes a tela pedia um pedaco do nome e ja perguntava "envio o oficio de
+   verdade para a escola que casar com isso?". Confirmar as cegas nao protege
+   ninguem: a pessoa dizia sim para um nome que ainda nao tinha visto. Pior,
+   empurrava para um caminho ruim — sem ver a lista, o usuario acabou criando
+   uma escola FALSA na base de 679 reais so para conseguir testar.
+
+   Agora ele digita, ve quem casou com quantos enderecos, e CLICA na certa. */
+var CTN_BUSCA_TIMER = null;
+
+function ctnBuscarEscola() {
+  clearTimeout(CTN_BUSCA_TIMER);
+  /* Espera a pessoa parar de digitar: uma chamada por tecla faria 20 idas ao
+     servidor para escrever "linus pauling". */
+  CTN_BUSCA_TIMER = setTimeout(ctnBuscarEscolaAgora, 350);
+}
+
+function ctnBuscarEscolaAgora() {
+  var campo = document.getElementById("ctnEscolaTeste");
+  var caixa = document.getElementById("ctnResultados");
+  if (!caixa) return;
+  var termo = (campo && campo.value || "").trim();
+
+  if (termo.length < 2) { caixa.innerHTML = ""; return; }
+  caixa.innerHTML = '<div style="font-size:12px;color:#94a3b8;padding:6px 2px;">procurando…</div>';
+
+  ctnChamar("buscar", { termo: termo }, function (r) {
+    var itens = (r && r.itens) || [];
+    if (!itens.length) {
+      caixa.innerHTML = '<div style="font-size:12px;color:#b91c1c;padding:6px 2px;">'
+        + ctnEsc((r && r.mensagem) || "Nada encontrado.") + "</div>";
+      return;
+    }
+    /* QUEM JA RECEBEU APARECE, em cinza e sem clique. A lista so com
+       pendentes fazia a tela responder "nao achei" para escola que existia e
+       estava certa — e a pessoa ia procurar defeito no cadastro. */
+    caixa.innerHTML =
+      '<div style="font-size:11px;color:#64748b;margin-bottom:5px;">' + ctnEsc(r.mensagem) + "</div>"
+      + '<div style="max-height:230px;overflow:auto;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">'
+      + itens.map(function (i) {
+          var nomeJs = ctnEsc(i.escola).replace(/'/g, "\\'");
+          var pode = !!i.podeEnviar;
+
+          var abre = pode
+            ? '<div onclick="ctnEnviarPara(\'' + nomeJs + '\')"'
+              + ' onmouseover="this.style.background=\'#f1f5f9\'"'
+              + ' onmouseout="this.style.background=\'#fff\'"'
+              + ' style="cursor:pointer;background:#fff;'
+            : '<div title="Esta escola não pode receber agora."'
+              + ' style="cursor:not-allowed;background:#f8fafc;opacity:.72;';
+
+          return abre
+            + 'padding:9px 12px;border-bottom:1px solid #f1f5f9;display:flex;'
+            + 'justify-content:space-between;gap:10px;align-items:center;">'
+            + '<span><strong style="font-size:12.5px;">' + ctnEsc(i.escola) + "</strong>"
+            + (i.cnpj ? '<br><span style="font-size:11px;color:#94a3b8;">CNPJ ' + ctnEsc(i.cnpj) + "</span>" : "")
+            + (pode ? "" : '<br><span style="font-size:11px;color:#b45309;">' + ctnEsc(i.motivo || "") + "</span>")
+            + "</span>"
+            + '<span style="font-size:11px;color:#64748b;white-space:nowrap;">'
+            + (pode ? i.emails.length + " e-mail(s) \u25b8"
+                    : ctnPill(i.status))
+            + "</span></div>";
+        }).join("")
+      + "</div>";
+  });
+}
+
+/* Agora a confirmacao tem conteudo: o nome que ela CLICOU. */
+function ctnEnviarPara(escola) {
+  if (!window.confirm("Enviar o ofício da Taxa Negocial para:\n\n" + escola +
+      "\n\nVai para todos os e-mails dessa escola. Ela passa a contar como comunicada e não recebe de novo.")) return;
+
+  ctnAviso("Enviando para " + escola + "… gerando o PDF nominal.", "info");
+  ctnChamar("testar", { escola: escola }, function (r) {
+    if (r && r.ok) {
+      ctnAviso(r.mensagem, "ok");
+      var caixa = document.getElementById("ctnResultados");
+      var campo = document.getElementById("ctnEscolaTeste");
+      if (caixa) caixa.innerHTML = "";
+      if (campo) campo.value = "";
+    } else if (r && r.varias) {
+      ctnAviso(r.mensagem + "  →  " + r.varias.join(" · "), "err");
+    }
+    ctnCarregar();
+  });
+}
+
+function ctnLiberar() {
+  if (!window.confirm("Liberar o envio?\n\nO primeiro lote sai agora e a campanha continua sozinha, respeitando o teto do dia.")) return;
+  ctnChamar("liberar", {}, function (r) {
+    if (r && r.ok) ctnAviso(r.mensagem, "ok");
+    ctnCarregar();
+  });
+}
+
+function ctnPausar() {
+  ctnChamar("pausar", {}, function (r) {
+    if (r && r.ok) ctnAviso(r.mensagem, "ok");
+    ctnCarregar();
+  });
+}
+
+function ctnAumentarTeto() {
+  var atual = (CTN.status && CTN.status.tetoDia) || 0;
+  var novo = window.prompt("Novo teto de endereços por dia:", String(atual));
+  if (novo === null) return;
+  ctnChamar("teto", { teto: novo }, function (r) {
+    if (r && r.ok) ctnAviso(r.mensagem, "ok");
+    ctnCarregar();
+  });
+}
+</script>

@@ -19,7 +19,7 @@ const dom = require("./dom");
 if (!dom.jsdomDisponivel()) {
   b.fluxo("VOUCHER · Bloco de beneficiários");
   b.naoTestavel("bloco de beneficiários", "jsdom não instalado");
-  b.resumo(); process.exit(0);
+  b.resumo(); process.exit(process.exitCode || 0);
 }
 
 const { g } = b.subir({});
@@ -372,5 +372,5 @@ function campo(card, classe) { return card.querySelector("." + classe); }
     "e a lista foi esvaziada, não só escondida");
 
   b.resumo();
-  process.exit(0);
+  process.exit(process.exitCode || 0);
 })();

@@ -1,0 +1,337 @@
+<script>
+/* ========================================================================== */
+/* SISGEP · Taxa Negocial · Frontend modular                                  */
+/* Única API própria chamada pelo navegador: taxaNegocialApi(...)             */
+/* ========================================================================== */
+(function(){
+  'use strict';
+
+  var state = {
+    campanha: null,
+    escolas: [],
+    contexto: null,
+    pre: null,
+    challengeId: '',
+    idOposicao: '',
+    initialized: false
+  };
+
+  function el(id){ return document.getElementById(id); }
+  function txt(v){ return String(v == null ? '' : v).trim(); }
+  function token(){ return typeof SISGEP_TOKEN_SESSAO !== 'undefined' ? SISGEP_TOKEN_SESSAO : ''; }
+  function cpfLimpo(v){ return txt(v).replace(/\D/g,'').slice(0,11); }
+  function cnpjLimpo(v){ return txt(v).replace(/\D/g,'').slice(0,14); }
+  function esc(v){ return String(v == null ? '' : v).replace(/[&<>"']/g,function(c){ return c==='&'?'&amp;':c==='<'?'&lt;':c==='>'?'&gt;':c==='"'?'&quot;':'&#39;'; }); }
+  function maskCpf(v){ var d=cpfLimpo(v); if(d.length!==11) return d; return d.slice(0,3)+'.'+d.slice(3,6)+'.'+d.slice(6,9)+'-'+d.slice(9); }
+  function maskCnpj(v){ var d=cnpjLimpo(v); if(d.length!==14) return txt(v); return d.slice(0,2)+'.'+d.slice(2,5)+'.'+d.slice(5,8)+'/'+d.slice(8,12)+'-'+d.slice(12); }
+  function dataBr(v){ if(!v) return ''; var d=new Date(v); if(isNaN(d.getTime())) return txt(v); return d.toLocaleDateString('pt-BR'); }
+
+  function alertar(id, tipo, mensagem){
+    var a=el(id); if(!a) return;
+    a.className='tn-alert'+(mensagem?' show '+(tipo||'info'):'');
+    a.textContent=mensagem||'';
+  }
+
+  function ocupado(container, sim){ var c=el(container); if(c) c.classList.toggle('tn-loading',!!sim); }
+
+  function api(acao,payload,onOk,onErr){
+    if(!window.google || !google.script || !google.script.run){ if(onErr) onErr(new Error('Conexão com o Apps Script indisponível.')); return; }
+    google.script.run
+      .withSuccessHandler(function(r){ if(onOk) onOk(r||{}); })
+      .withFailureHandler(function(e){ if(onErr) onErr(e||new Error('Falha na comunicação com o servidor.')); })
+      .taxaNegocialApi(token(),acao,payload||{});
+  }
+
+  function irEtapa(n){
+    [1,2,3,4].forEach(function(i){
+      var box=el('tnEtapa'+i); if(box) box.style.display=i===n?'block':'none';
+      var step=document.querySelector('#tnSteps .tn-step[data-step="'+i+'"]');
+      if(step){ step.classList.toggle('active',i===n); step.classList.toggle('done',i<n); }
+    });
+  }
+
+  function limparAtendimento(){
+    state.contexto=null; state.pre=null; state.challengeId=''; state.idOposicao='';
+    ['tnCpf','tnNovoNome','tnNovoEmail','tnNovoCelular','tnOtpCodigo'].forEach(function(id){ if(el(id)) el(id).value=''; });
+    if(el('tnAceiteManifestacao')) el('tnAceiteManifestacao').checked=false;
+    if(el('tnDocumentoConferido')) el('tnDocumentoConferido').checked=false;
+    if(el('tnTipoDocumento')) el('tnTipoDocumento').value='';
+    if(el('tnCadastroRapido')) el('tnCadastroRapido').style.display='none';
+    if(el('tnAcoesEtapa1')) el('tnAcoesEtapa1').style.display='none';
+    if(el('tnResumoPessoa')) el('tnResumoPessoa').classList.remove('show');
+    if(el('tnOtpBox')) el('tnOtpBox').classList.remove('show');
+    if(el('tnBtnGerarComprovante')) el('tnBtnGerarComprovante').style.display='none';
+    ['tnAlerta1','tnAlerta2','tnAlerta3'].forEach(function(id){ alertar(id,'info',''); });
+    irEtapa(1);
+  }
+
+  function renderCampanha(c){
+    state.campanha=c||null;
+    var titulo=el('tnCampanhaTitulo'), meta=el('tnCampanhaMeta'), status=el('tnCampanhaStatus');
+    if(!c){
+      if(titulo) titulo.textContent='Nenhuma campanha ativa';
+      if(meta) meta.textContent='Cadastre ou ative uma campanha para registrar oposições.';
+      if(status){ status.textContent='SEM CAMPANHA'; status.classList.add('off'); }
+      return;
+    }
+    if(titulo) titulo.textContent=txt(c.TITULO||c.EXERCICIO||c.ID_CAMPANHA||'Taxa Negocial');
+    if(meta){
+      var partes=[];
+      if(c.EXERCICIO) partes.push('Exercício: '+c.EXERCICIO);
+      if(c.INICIO_OPOSICAO||c.FIM_OPOSICAO) partes.push('Período: '+dataBr(c.INICIO_OPOSICAO)+' a '+dataBr(c.FIM_OPOSICAO));
+      if(c.LOCAL_ATENDIMENTO) partes.push('Local: '+c.LOCAL_ATENDIMENTO);
+      meta.textContent=partes.join(' • ');
+    }
+    if(status){ status.textContent=txt(c.STATUS||'ATIVA'); status.classList.toggle('off',txt(c.STATUS).toUpperCase()!=='ATIVA'); }
+  }
+
+  function carregarCampanha(){
+    api('campanhaAtiva',{},function(r){
+      if(!r.ok){ renderCampanha(null); return; }
+      renderCampanha(r.dados||null);
+    },function(){ renderCampanha(null); });
+  }
+
+  function normalizarEscola(raw){
+    raw=raw||{};
+    return {
+      id:txt(raw.id||raw.EscolaID||raw.escolaId||raw.cnpj||raw.CNPJ),
+      nome:txt(raw.nome||raw.escola||raw.NomeEscola||raw['Escola (Razão Social)']||raw.razaoSocial||raw['Razão Social']||raw.fantasia||raw.NOME_FANTASIA),
+      cnpj:txt(raw.cnpj||raw.CNPJ||raw.cnpjLimpo)
+    };
+  }
+
+  function popularEscolas(lista){
+    var sel=el('tnEscola'); if(!sel) return;
+    state.escolas=(Array.isArray(lista)?lista:[]).map(normalizarEscola).filter(function(e){return e.id&&e.nome;});
+    state.escolas.sort(function(a,b){return a.nome.localeCompare(b.nome,'pt-BR',{sensitivity:'base'});});
+    sel.innerHTML='<option value="">Selecione a escola...</option>'+state.escolas.map(function(e){return '<option value="'+esc(e.id)+'" data-cnpj="'+esc(e.cnpj)+'">'+esc(e.nome)+(e.cnpj?' — '+esc(maskCnpj(e.cnpj)):'')+'</option>';}).join('');
+  }
+
+  function carregarEscolas(){
+    var sel=el('tnEscola'); if(sel) sel.innerHTML='<option value="">Carregando escolas...</option>';
+    if(!window.google||!google.script||!google.script.run){ popularEscolas([]); return; }
+    google.script.run
+      .withSuccessHandler(function(r){ popularEscolas(Array.isArray(r)?r:(r&&r.dados)||[]); })
+      .withFailureHandler(function(){ if(sel) sel.innerHTML='<option value="">Falha ao carregar escolas</option>'; })
+      .listarEscolas(token());
+  }
+
+  function escolaSelecionada(){
+    var sel=el('tnEscola'); if(!sel||!sel.value) return null;
+    var id=sel.value;
+    return state.escolas.find(function(e){return String(e.id)===String(id);})||{id:id,nome:sel.options[sel.selectedIndex].textContent,cnpj:sel.options[sel.selectedIndex].dataset.cnpj||''};
+  }
+
+  function renderContexto(ctx){
+    var t=ctx&&ctx.trabalhador, e=ctx&&ctx.escola;
+    if(!t) return;
+    if(el('tnResumoNome')) el('tnResumoNome').textContent=t.nome||'—';
+    if(el('tnResumoCpf')) el('tnResumoCpf').textContent=maskCpf(t.cpf||el('tnCpf').value);
+    if(el('tnResumoFiliacao')) el('tnResumoFiliacao').textContent=t.filiado?'Filiado — requer verificação':'Não filiado';
+    if(el('tnResumoEscola')) el('tnResumoEscola').textContent=e&&e.nome||'—';
+    if(el('tnResumoCnpj')) el('tnResumoCnpj').textContent=e&&e.cnpj?maskCnpj(e.cnpj):'—';
+    if(el('tnResumoContato')) el('tnResumoContato').textContent=(t.temEmail?'E-mail cadastrado':'Sem e-mail')+(t.temCelular?' • celular cadastrado':'');
+    if(el('tnResumoPessoa')) el('tnResumoPessoa').classList.add('show');
+  }
+
+  function validarPreRegistro(){
+    var escSel=escolaSelecionada();
+    var payload={idCampanha:state.campanha&&state.campanha.ID_CAMPANHA,cpf:cpfLimpo(el('tnCpf').value),escolaId:escSel&&escSel.id,cnpj:escSel&&escSel.cnpj};
+    api('validarPreRegistro',payload,function(r){
+      ocupado('tnCardRegistro',false);
+      if(!r.ok){ alertar('tnAlerta1','err',r.mensagem||'Não foi possível validar o registro.'); if(el('tnAcoesEtapa1')) el('tnAcoesEtapa1').style.display='none'; return; }
+      state.pre=r.dados;
+      if(el('tnTextoManifestacao')) el('tnTextoManifestacao').textContent=(r.dados.campanha&&r.dados.campanha.textoManifestacao)||'';
+      if(el('tnAcoesEtapa1')) el('tnAcoesEtapa1').style.display='flex';
+      alertar('tnAlerta1','ok','Dados validados. O atendimento pode continuar.');
+    },function(e){ ocupado('tnCardRegistro',false); alertar('tnAlerta1','err','Erro ao validar: '+(e.message||e)); });
+  }
+
+  function buscar(){
+    alertar('tnAlerta1','info','');
+    if(el('tnCadastroRapido')) el('tnCadastroRapido').style.display='none';
+    if(el('tnAcoesEtapa1')) el('tnAcoesEtapa1').style.display='none';
+    if(el('tnResumoPessoa')) el('tnResumoPessoa').classList.remove('show');
+    var cpf=cpfLimpo(el('tnCpf').value), escola=escolaSelecionada();
+    if(cpf.length!==11){ alertar('tnAlerta1','warn','Informe um CPF válido.'); return; }
+    if(!escola){ alertar('tnAlerta1','warn','Selecione a instituição empregadora.'); return; }
+    ocupado('tnCardRegistro',true);
+    api('buscarContexto',{cpf:cpf,escolaId:escola.id,cnpj:escola.cnpj},function(r){
+      if(!r.ok){ ocupado('tnCardRegistro',false); alertar('tnAlerta1','err',r.mensagem||'Falha na busca.'); return; }
+      state.contexto=r.dados||{};
+      if(r.dados&&r.dados.campanha) renderCampanha(r.dados.campanha);
+      if(!r.dados||!r.dados.trabalhador){
+        ocupado('tnCardRegistro',false);
+        if(el('tnCadastroRapido')) el('tnCadastroRapido').style.display='block';
+        alertar('tnAlerta1','warn','Trabalhador ainda não cadastrado. Use o cadastro mínimo abaixo.');
+        return;
+      }
+      renderContexto(r.dados);
+      if(r.dados.trabalhador.filiado){ ocupado('tnCardRegistro',false); alertar('tnAlerta1','warn','O trabalhador consta como filiado. Verifique a situação cadastral antes de registrar oposição.'); return; }
+      validarPreRegistro();
+    },function(e){ ocupado('tnCardRegistro',false); alertar('tnAlerta1','err','Erro na busca: '+(e.message||e)); });
+  }
+
+  function cadastrarNaoFiliado(){
+    var escola=escolaSelecionada(), cpf=cpfLimpo(el('tnCpf').value), nome=txt(el('tnNovoNome').value), email=txt(el('tnNovoEmail').value), celular=txt(el('tnNovoCelular').value);
+    if(!nome){ alertar('tnAlerta1','warn','Informe o nome completo.'); return; }
+    if(!email){ alertar('tnAlerta1','warn','Informe um e-mail válido para a confirmação eletrônica.'); return; }
+    ocupado('tnCardRegistro',true);
+    api('cadastrarNaoFiliado',{cpf:cpf,nome:nome,email:email,celular:celular,escolaNome:escola&&escola.nome},function(r){
+      ocupado('tnCardRegistro',false);
+      if(!r.ok){ alertar('tnAlerta1','err',r.mensagem||'Não foi possível cadastrar.'); return; }
+      if(r.dados&&r.dados.filiado){ alertar('tnAlerta1','warn','O CPF já existe como filiado. Verifique o cadastro.'); return; }
+      if(el('tnCadastroRapido')) el('tnCadastroRapido').style.display='none';
+      alertar('tnAlerta1','ok','Cadastro mínimo realizado. Validando o atendimento...');
+      buscar();
+    },function(e){ ocupado('tnCardRegistro',false); alertar('tnAlerta1','err','Erro no cadastro: '+(e.message||e)); });
+  }
+
+  function irManifestacao(){
+    if(!state.pre){ alertar('tnAlerta1','warn','Valide os dados antes de continuar.'); return; }
+    irEtapa(2);
+  }
+
+  function payloadOtp(){
+    var escola=escolaSelecionada();
+    return {
+      idCampanha:state.pre&&state.pre.campanha&&state.pre.campanha.id,
+      cpf:cpfLimpo(el('tnCpf').value),
+      escolaId:escola&&escola.id,
+      cnpj:escola&&escola.cnpj,
+      documentoConferido:!!(el('tnDocumentoConferido')&&el('tnDocumentoConferido').checked),
+      tipoDocumentoConferido:el('tnTipoDocumento')&&el('tnTipoDocumento').value||''
+    };
+  }
+
+  function solicitarOtp(){
+    alertar('tnAlerta2','info','');
+    if(!el('tnAceiteManifestacao').checked){ alertar('tnAlerta2','warn','Confirme que o trabalhador tomou ciência da manifestação.'); return; }
+    if(!el('tnDocumentoConferido').checked){ alertar('tnAlerta2','warn','Confirme a conferência presencial do documento.'); return; }
+    if(!el('tnTipoDocumento').value){ alertar('tnAlerta2','warn','Selecione o tipo de documento conferido.'); return; }
+    ocupado('tnCardRegistro',true);
+    api('solicitarOtp',payloadOtp(),function(r){
+      ocupado('tnCardRegistro',false);
+      if(!r.ok){ alertar('tnAlerta2','err',r.mensagem||'Não foi possível enviar o código.'); return; }
+      state.challengeId=r.dados&&r.dados.challengeId||'';
+      irEtapa(3);
+      if(el('tnOtpInfo')) el('tnOtpInfo').textContent='Código enviado para '+((r.dados&&r.dados.destinoMascarado)||'o e-mail cadastrado')+'. Validade: '+Math.round(((r.dados&&r.dados.expiraEmSegundos)||600)/60)+' minutos.';
+      if(el('tnOtpBox')) el('tnOtpBox').classList.add('show');
+      if(el('tnOtpCodigo')){ el('tnOtpCodigo').value=''; el('tnOtpCodigo').focus(); }
+    },function(e){ ocupado('tnCardRegistro',false); alertar('tnAlerta2','err','Erro no envio do código: '+(e.message||e)); });
+  }
+
+  function renderComprovante(comp, pendente){
+    var box=el('tnComprovanteResumo'), btn=el('tnBtnGerarComprovante'); if(!box) return;
+    if(pendente || !comp || comp.gerado===false){
+      box.innerHTML='<strong>Comprovante:</strong> pendente de geração. A oposição já está registrada e não será perdida.';
+      if(btn) btn.style.display='inline-flex';
+      return;
+    }
+    box.innerHTML='<strong>Comprovante eletrônico:</strong> gerado e armazenado de forma privada.<br>'+ 
+      (comp.codigoAutenticidade?'<strong>Autenticidade:</strong> '+esc(comp.codigoAutenticidade)+'<br>':'')+
+      (comp.hashPdfCurto?'<strong>SHA-256:</strong> '+esc(comp.hashPdfCurto):'');
+    if(btn) btn.style.display='none';
+  }
+
+  function confirmarOtp(){
+    var codigo=txt(el('tnOtpCodigo').value).replace(/\D/g,'');
+    if(!state.challengeId){ alertar('tnAlerta3','warn','Solicite um código antes de confirmar.'); return; }
+    if(codigo.length!==6){ alertar('tnAlerta3','warn','Informe os 6 dígitos recebidos por e-mail.'); return; }
+    ocupado('tnCardRegistro',true);
+    api('confirmarOtp',{challengeId:state.challengeId,codigo:codigo},function(r){
+      ocupado('tnCardRegistro',false);
+      if(!r.ok){ alertar('tnAlerta3','err',r.mensagem||'Código não confirmado.'); return; }
+      state.idOposicao=r.dados&&r.dados.idOposicao||'';
+      irEtapa(4);
+      if(el('tnProtocolo')) el('tnProtocolo').textContent=r.dados&&r.dados.protocolo||'—';
+      if(el('tnDataRegistro')) el('tnDataRegistro').textContent=r.dados&&r.dados.dataHora?'Registrado em '+r.dados.dataHora:'Registro concluído.';
+      renderComprovante(r.dados&&r.dados.comprovante,r.dados&&r.dados.comprovantePendente===true);
+      if(el('tnHistCpf')) el('tnHistCpf').value=maskCpf(el('tnCpf').value);
+    },function(e){ ocupado('tnCardRegistro',false); alertar('tnAlerta3','err','Erro na confirmação: '+(e.message||e)); });
+  }
+
+  function gerarComprovante(){
+    if(!state.idOposicao) return;
+    var btn=el('tnBtnGerarComprovante'); if(btn) btn.disabled=true;
+    api('gerarComprovante',{idOposicao:state.idOposicao},function(r){
+      if(btn) btn.disabled=false;
+      if(!r.ok){ if(el('tnComprovanteResumo')) el('tnComprovanteResumo').textContent=r.mensagem||'Comprovante ainda pendente.'; return; }
+      renderComprovante(r.dados,false);
+    },function(e){ if(btn) btn.disabled=false; if(el('tnComprovanteResumo')) el('tnComprovanteResumo').textContent='Falha ao gerar comprovante: '+(e.message||e); });
+  }
+
+  function consultarHistorico(){
+    var cpf=cpfLimpo(el('tnHistCpf').value||el('tnCpf').value);
+    alertar('tnAlertaHistorico','info','');
+    if(cpf.length!==11){ alertar('tnAlertaHistorico','warn','Informe um CPF válido.'); return; }
+    var lista=el('tnHistoricoLista'); if(lista) lista.innerHTML='<div class="tn-empty">Consultando...</div>';
+    api('historicoTrabalhador',{cpf:cpf},function(r){
+      if(!r.ok){ if(lista) lista.innerHTML=''; alertar('tnAlertaHistorico','err',r.mensagem||'Não foi possível consultar.'); return; }
+      var d=r.dados||{}, itens=d.oposicoes||[];
+      alertar('tnAlertaHistorico','ok',(d.trabalhador&&d.trabalhador.nome?d.trabalhador.nome+' — ':'')+itens.length+' registro(s) encontrado(s).');
+      if(!lista) return;
+      if(!itens.length){ lista.innerHTML='<div class="tn-empty">Nenhuma oposição registrada para este trabalhador.</div>'; return; }
+      lista.innerHTML=itens.map(function(o){
+        return '<div class="tn-history-item"><div><strong>'+esc(o.protocolo||'Sem protocolo')+' — '+esc(o.escola||'Escola não informada')+'</strong><small>'+esc(o.dataHora||'')+(o.cnpj?' • '+esc(maskCnpj(o.cnpj)):'')+'</small><small>Oposição: '+esc(o.statusOposicao||'—')+' • Comunicação: '+esc(o.statusComunicacao||'—')+(o.codigoAutenticidade?' • Autenticidade: '+esc(o.codigoAutenticidade):'')+'</small></div><span class="tn-pill">'+(o.comprovanteGerado?'PDF GERADO':'PDF PENDENTE')+'</span></div>';
+      }).join('');
+    },function(e){ if(lista) lista.innerHTML=''; alertar('tnAlertaHistorico','err','Erro na consulta: '+(e.message||e)); });
+  }
+
+  function subpanel(nome){
+    document.querySelectorAll('#blocoTaxaNegocial .tn-subtab[data-tn-panel]').forEach(function(b){b.classList.toggle('active',b.dataset.tnPanel===nome);});
+    document.querySelectorAll('#blocoTaxaNegocial .tn-panel[data-tn-content]').forEach(function(p){p.classList.toggle('active',p.dataset.tnContent===nome);});
+    if(nome==='historico'&&el('tnHistCpf')&&!el('tnHistCpf').value&&el('tnCpf')) el('tnHistCpf').value=el('tnCpf').value;
+  }
+
+  function esconderTaxaNegocial(){
+    var bloco=el('blocoTaxaNegocial'); if(bloco){bloco.style.display='none';bloco.setAttribute('aria-hidden','true');}
+    var aba=el('abaTaxaNegocialFluxo'); if(aba) aba.classList.remove('active');
+  }
+
+  function abrirTaxaNegocial(){
+    ['blocoOficioNovo','blocoOficioHistorico','blocoTaxaAssistencial','blocoMonitoramento','sisgepDashboardExecutivo'].forEach(function(id){var n=el(id);if(n)n.style.display='none';});
+    var tabs=el('ofTabsSecoes'); if(tabs) tabs.querySelectorAll('.of-tab').forEach(function(b){b.classList.remove('active');});
+    var aba=el('abaTaxaNegocialFluxo'); if(aba) aba.classList.add('active');
+    var bloco=el('blocoTaxaNegocial'); if(bloco){bloco.style.display='block';bloco.setAttribute('aria-hidden','false');}
+    carregarCampanha();
+  }
+
+  function instalarNoModulo(){
+    var bloco=el('blocoTaxaNegocial'), doc=el('docSubOficios');
+    if(bloco&&doc&&bloco.parentNode!==doc) doc.appendChild(bloco);
+    var tabs=el('ofTabsSecoes');
+    if(tabs&&!el('abaTaxaNegocialFluxo')){
+      var btn=document.createElement('button'); btn.type='button'; btn.className='of-tab'; btn.id='abaTaxaNegocialFluxo'; btn.textContent='📋 Taxa Negocial';
+      var ref=el('abaTaxaAssistencial'); if(ref&&ref.parentNode===tabs) ref.insertAdjacentElement('afterend',btn); else tabs.appendChild(btn);
+      btn.addEventListener('click',abrirTaxaNegocial);
+    }
+    ['abaOficioNovo','abaOficioHistorico','abaMonitoramento','abaTaxaAssistencial','btnAbrirDashboardExecutivo'].forEach(function(id){var b=el(id);if(b)b.addEventListener('click',esconderTaxaNegocial);});
+  }
+
+  function bind(){
+    if(state.initialized) return; state.initialized=true;
+    instalarNoModulo();
+    document.querySelectorAll('#blocoTaxaNegocial .tn-subtab[data-tn-panel]').forEach(function(b){b.addEventListener('click',function(){subpanel(b.dataset.tnPanel);});});
+    if(el('tnBtnBuscar')) el('tnBtnBuscar').addEventListener('click',buscar);
+    if(el('tnBtnCadastrar')) el('tnBtnCadastrar').addEventListener('click',cadastrarNaoFiliado);
+    if(el('tnBtnIrManifestacao')) el('tnBtnIrManifestacao').addEventListener('click',irManifestacao);
+    if(el('tnBtnVoltar1')) el('tnBtnVoltar1').addEventListener('click',function(){irEtapa(1);});
+    if(el('tnBtnEnviarOtp')) el('tnBtnEnviarOtp').addEventListener('click',solicitarOtp);
+    if(el('tnBtnVoltar2')) el('tnBtnVoltar2').addEventListener('click',function(){irEtapa(2);});
+    if(el('tnBtnConfirmarOtp')) el('tnBtnConfirmarOtp').addEventListener('click',confirmarOtp);
+    if(el('tnBtnReenviarOtp')) el('tnBtnReenviarOtp').addEventListener('click',solicitarOtp);
+    if(el('tnBtnGerarComprovante')) el('tnBtnGerarComprovante').addEventListener('click',gerarComprovante);
+    if(el('tnBtnNovoAtendimento')) el('tnBtnNovoAtendimento').addEventListener('click',limparAtendimento);
+    if(el('tnBtnHistorico')) el('tnBtnHistorico').addEventListener('click',consultarHistorico);
+    if(el('tnCpf')) el('tnCpf').addEventListener('input',function(){this.value=maskCpf(this.value);});
+    if(el('tnHistCpf')) el('tnHistCpf').addEventListener('input',function(){this.value=maskCpf(this.value);});
+    if(el('tnOtpCodigo')) el('tnOtpCodigo').addEventListener('input',function(){this.value=this.value.replace(/\D/g,'').slice(0,6);});
+    carregarCampanha(); carregarEscolas(); limparAtendimento();
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',bind); else bind();
+  window.TaxaNegocialUI={abrir:abrirTaxaNegocial,fechar:esconderTaxaNegocial,recarregarCampanha:carregarCampanha};
+})();
+</script>

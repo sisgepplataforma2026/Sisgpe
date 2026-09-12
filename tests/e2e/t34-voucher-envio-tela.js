@@ -27,7 +27,7 @@ if (!dom.jsdomDisponivel()) {
   b.fluxo("VOUCHER · Modal de envio");
   b.naoTestavel("tela do modal de envio", "jsdom não instalado — rode: npm install jsdom");
   b.resumo();
-  process.exit(0);
+  process.exit(process.exitCode || 0);
 }
 
 const { g } = b.subir({});
@@ -303,5 +303,5 @@ function el(id) { return doc.getElementById(id); }
     "modal continua aberto ao clicar num campo");
 
   b.resumo();
-  process.exit(0);
+  process.exit(process.exitCode || 0);
 })();

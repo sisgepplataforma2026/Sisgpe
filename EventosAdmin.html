@@ -1,105 +1,914 @@
 <div id="eventosAdmin" style="min-height:100%;background:#f0f4f8;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#0f172a;">
-  <style>
-    #eventosAdmin *{box-sizing:border-box}.ev-head{background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));color:#fff;padding:22px 24px;display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}.ev-title{font-size:21px;font-weight:900}.ev-sub{font-size:12px;color:rgba(255,255,255,.72);margin-top:4px}.ev-wrap{padding:18px 22px 34px}.ev-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}.ev-card,.ev-panel{background:#fff;border:1px solid var(--g200,#e2e8f0);border-radius:14px;box-shadow:0 2px 10px rgba(0,20,60,.06)}.ev-card{padding:15px}.ev-card small{font-size:10px;font-weight:900;color:var(--g500,#64748b);text-transform:uppercase}.ev-card strong{display:block;font-size:28px;color:var(--navy,#001f4d);margin-top:7px}.ev-panel{overflow:hidden}.ev-bar{padding:14px 16px;border-bottom:1px solid #eef2f7;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.ev-form{display:grid;grid-template-columns:1.4fr .9fr .9fr .9fr auto;gap:10px;padding:14px 16px;background:var(--g50,#f8fafc);border-bottom:1px solid #eef2f7}.ev-field label{display:block;font-size:10px;font-weight:900;color:var(--g500,#64748b);text-transform:uppercase;margin-bottom:4px}.ev-field input,.ev-field select{width:100%;height:36px;border:1.5px solid #dbe4ef;border-radius:9px;padding:0 10px;font-family:inherit}.ev-btn{height:34px;border-radius:9px;border:1px solid var(--g300,#cbd5e1);background:#fff;color:var(--g700,#334155);font-size:12px;font-weight:800;padding:0 12px;cursor:pointer;font-family:inherit}.ev-btn.primary{background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));color:#fff;border-color:var(--blue,#1565C0)}.ev-search{padding:12px 16px;display:flex;gap:8px}.ev-search input{flex:1;height:36px;border:1.5px solid #dbe4ef;border-radius:999px;padding:0 14px}.ev-table{width:100%;border-collapse:collapse;min-width:760px}.ev-table th{background:var(--g50,#f8fafc);color:var(--g500,#64748b);font-size:10px;text-transform:uppercase;text-align:left;padding:10px}.ev-table td{font-size:12.5px;padding:11px 10px;border-top:1px solid var(--g100,#f1f5f9)}.ev-pill{border-radius:999px;padding:3px 9px;font-size:10.5px;font-weight:900}.ev-ok{background:#dcfce7;color:#166534}.ev-warn{background:var(--amber-lt,#fef3c7);color:#92400e}.ev-blue{background:#dbeafe;color:#1e40af}.ev-callout{background:#eef2ff;border:1px solid #c7d2fe;border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}.ev-callout b{display:block;font-size:13px;color:var(--g800,#1e293b)}.ev-callout span{display:block;font-size:12px;color:var(--g600,#475569);margin-top:2px;max-width:52ch}@media(max-width:1000px){.ev-grid{grid-template-columns:repeat(2,1fr)}.ev-form{grid-template-columns:1fr 1fr}}
-  </style>
-  <div class="ev-head"><div><div class="ev-title">Eventos</div><div class="ev-sub">Agenda sindical, atividades, comunicados e programacoes</div></div><button class="ev-btn" onclick="spIr('sofia',null,{mensagem:'Preciso planejar um evento sindical.'})">Planejar com SOFIA</button></div>
-  <div class="ev-wrap">
-    <div class="ev-callout"><div><b>Precisa emitir ingresso para um evento com vagas?</b><span>A agenda abaixo é só para organização interna (assembleia, reunião, comunicado). A emissão de ingressos de verdade — com controle de vagas e categorias — é outro sistema.</span></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="ev-btn primary" onclick="evAbrirEmissaoIngressos()">Abrir emissão de ingressos →</button><button class="ev-btn" onclick="evAbrirCheckin()">🎟️ Abrir check-in da entrada →</button></div></div>
-    <div class="ev-grid"><div class="ev-card"><small>Proximos</small><strong id="evProximos">0</strong></div><div class="ev-card"><small>Hoje</small><strong id="evHoje">0</strong></div><div class="ev-card"><small>Comunicacao</small><strong id="evComunicacao">0</strong></div><div class="ev-card"><small>Concluidos</small><strong id="evConcluidos">0</strong></div></div>
-    <div class="ev-panel"><div class="ev-bar"><strong>Calendario operacional</strong><div><button class="ev-btn" onclick="evExportar()">Exportar CSV</button><button class="ev-btn" onclick="spIr('documentos',null,{aba:'novo'})">Gerar oficio</button></div></div>
-      <div class="ev-form"><div class="ev-field"><label>Evento</label><input id="evNome" placeholder="Ex.: Assembleia, reuniao ou visita"></div><div class="ev-field"><label>Data</label><input id="evData" type="date"></div><div class="ev-field"><label>Tipo</label><select id="evTipo"><option>Assembleia</option><option>Reuniao</option><option>Visita</option><option>Comunicado</option><option>Outro</option></select></div><div class="ev-field"><label>Status</label><select id="evStatus"><option>Planejado</option><option>Em andamento</option><option>Concluido</option></select></div><button class="ev-btn primary" onclick="evSalvar()">Salvar</button></div>
+<style>
+#eventosAdmin *{box-sizing:border-box}.ev-head{background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));color:#fff;padding:22px 24px;display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}.ev-title{font-size:21px;font-weight:900}.ev-sub{font-size:12px;color:rgba(255,255,255,.72);margin-top:4px}.ev-wrap{padding:18px 22px 34px}.ev-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}.ev-card,.ev-panel{background:#fff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 2px 10px rgba(0,20,60,.06)}.ev-card{padding:15px}.ev-card small{font-size:10px;font-weight:900;color:#64748b;text-transform:uppercase}.ev-card strong{display:block;font-size:28px;color:#001f4d;margin-top:7px}.ev-panel{overflow:hidden}.ev-bar{padding:14px 16px;border-bottom:1px solid #eef2f7;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}.ev-form{display:grid;grid-template-columns:1.4fr .9fr .9fr .9fr auto;gap:10px;padding:14px 16px;background:#f8fafc;border-bottom:1px solid #eef2f7}.ev-field label{display:block;font-size:10px;font-weight:900;color:#64748b;text-transform:uppercase;margin-bottom:4px}.ev-field input,.ev-field select,.ev-field textarea{width:100%;border:1.5px solid #dbe4ef;border-radius:9px;padding:0 10px;font-family:inherit;color:#0f172a;background:#fff}.ev-field input,.ev-field select{height:36px}.ev-field textarea{min-height:92px;padding:10px;resize:vertical;line-height:1.5}.ev-field input:focus,.ev-field select:focus,.ev-field textarea:focus{outline:0;border-color:#1565C0;box-shadow:0 0 0 3px rgba(21,101,192,.1)}.ev-btn{height:34px;border-radius:9px;border:1px solid #cbd5e1;background:#fff;color:#334155;font-size:12px;font-weight:800;padding:0 12px;cursor:pointer;font-family:inherit}.ev-btn:hover:not(:disabled){border-color:#1565C0}.ev-btn:disabled{opacity:.48;cursor:not-allowed}.ev-btn.primary{background:linear-gradient(135deg,#001f4d,#1565C0);color:#fff;border-color:#1565C0}.ev-btn.bingo{background:#eaf7ef;color:#136c36;border-color:#b8e1c7}.ev-search{padding:12px 16px;display:flex;gap:8px}.ev-search input{flex:1;height:36px;border:1.5px solid #dbe4ef;border-radius:999px;padding:0 14px}.ev-table{width:100%;border-collapse:collapse;min-width:860px}.ev-table th{background:#f8fafc;color:#64748b;font-size:10px;text-transform:uppercase;text-align:left;padding:10px}.ev-table td{font-size:12.5px;padding:11px 10px;border-top:1px solid #f1f5f9}.ev-pill{border-radius:999px;padding:3px 9px;font-size:10.5px;font-weight:900}.ev-ok{background:#dcfce7;color:#166534}.ev-warn{background:#fef3c7;color:#92400e}.ev-blue{background:#dbeafe;color:#1e40af}.ev-gray{background:#e2e8f0;color:#475569}
+/* ── ABAS ── */
+.ev-abas{display:flex;gap:2px;padding:0 22px;background:linear-gradient(135deg,var(--navy,#001f4d),var(--blue,#1565C0));overflow-x:auto}
+/* O atributo `hidden` esconde por `display:none` da folha do navegador — que
+   PERDE para qualquer `display` escrito numa regra de classe. Sem esta linha,
+   a barra continuava à vista mesmo marcada como escondida, e foi o que o
+   usuário viu: "continua duplicado". */
+.ev-abas[hidden]{display:none}.ev-aba{border:0;background:transparent;color:rgba(255,255,255,.72);font-family:inherit;font-size:13px;font-weight:800;padding:12px 16px;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}.ev-aba:hover{color:#fff}.ev-aba[aria-selected="true"]{color:#fff;border-bottom-color:var(--gold,#C9A84C)}.ev-conteudo[hidden]{display:none}
+/* ── TELAS DO SUBMÓDULO (segunda camada) ── */
+.ev-telas{display:flex;gap:4px;padding:0 22px;background:#fff;border-bottom:1.5px solid #e2e8f0;overflow-x:auto}
+.ev-telas:empty{display:none}
+.ev-tela{border:0;background:transparent;color:#64748b;font-family:inherit;font-size:13px;font-weight:700;padding:11px 14px;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
+.ev-tela:hover{color:#001f4d}
+.ev-tela[aria-selected="true"]{color:#001f4d;border-bottom-color:#001f4d}
+/* O painel embutido: é ele que acaba com a aba nova do navegador a cada clique. */
+.ev-quadro-wrap{padding:0;position:relative}
+.ev-quadro{width:100%;height:calc(100vh - 210px);min-height:560px;border:0;display:block;background:#f4f7fb}
+.ev-quadro-barra{display:flex;justify-content:flex-end;gap:8px;padding:8px 22px;background:#f8fafc;border-bottom:1px solid #eef2f7}
+.ev-quadro-aviso{position:absolute;left:0;right:0;top:52px;margin:22px;padding:20px 22px;background:#fff7ed;border:1px solid #fed7aa;color:#7c4a03;border-radius:12px;font-size:13px;line-height:1.6}
+.ev-quadro-aviso b{display:block;margin-bottom:6px;color:#7c2d12}
+/* A Central incluída ocupa a área inteira; o cabeçalho próprio dela some,
+   porque o cabeçalho do módulo já está acima.
+
+   ATENÇÃO AO QUE ESTA LINHA JÁ CUSTOU (25/08/2026). Ela escondia, junto com o
+   título, os dois botões de ação da Central — "copiar link de inscrição" e
+   "atualizar" —, que moravam dentro do mesmo cabeçalho. O link de inscrição é
+   o que vai para a lista de transmissão e para o site; sem ele a Central não
+   entrega a única coisa que precisa sair dela para fora. O usuário perguntou
+   "o link da inscrição foi para onde?" e a resposta era esta regra.
+
+   Os botões foram para a linha das abas (`.of-tabs-linha`, em
+   CompassoInscricoes.html), que aparece nos dois modos. Antes de esconder
+   qualquer contêiner, olhar o que ele carrega dentro. */
+.ev-embutido[hidden]{display:none}
+.ev-embutido #compassoInscricoes>.of-modulo-header{display:none}
+.ev-onde{padding:12px 22px 0;font-size:11px;font-weight:900;color:#64748b;text-transform:uppercase;letter-spacing:.07em}
+.ev-onde:empty{display:none}
+/* ── EXECUTIVO ── */
+/* A curva de 7 dias. Barra desenhada com altura em %, sem biblioteca: são
+   sete números, e trazer gráfico para isso custaria mais do que resolve. */
+.ev-dias{display:flex;gap:10px;align-items:flex-end;margin:0 0 14px;
+         background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px}
+.ev-dias .d{flex:1;text-align:center;min-width:0}
+.ev-dias .barra{height:52px;display:flex;align-items:flex-end;justify-content:center}
+.ev-dias .barra i{display:block;width:60%;min-height:3px;border-radius:4px 4px 0 0;
+                  background:linear-gradient(180deg,#1565C0,#001f4d)}
+.ev-dias .n{font-size:13px;font-weight:900;color:#001f4d;margin-top:5px}
+.ev-dias .r{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#64748b}
+.ev-dias .d.hoje .r{color:#1565C0;font-weight:900}
+.ev-exec-topo{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+.ev-exec-data{font-size:19px;font-weight:900;color:#001f4d;margin-top:4px}
+.ev-relogio{background:linear-gradient(135deg,#001f4d,#1565C0);color:#fff;border-radius:14px;padding:12px 22px;text-align:center;min-width:132px}
+.ev-relogio strong{display:block;font-size:32px;font-weight:900;line-height:1}
+.ev-relogio small{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;opacity:.8}
+.ev-risco{background:#fff;border:1px solid #e2e8f0;border-left:5px solid #94a3b8;border-radius:12px;padding:14px 16px;margin-bottom:10px;box-shadow:0 2px 10px rgba(0,20,60,.06)}
+.ev-risco.alto{border-left-color:#dc2626}
+.ev-risco.medio{border-left-color:#d97706}
+.ev-risco b{display:block;font-size:13.5px;color:#001f4d;margin-bottom:4px}
+.ev-risco span{display:block;font-size:12.5px;color:#5a6779;line-height:1.55}
+.ev-risco .acao{display:block;margin-top:8px;font-size:12.5px;color:#0f172a;font-weight:700}
+.ev-risco .acao::before{content:"→ ";color:#1565C0}
+/* ── CARDS DE AÇÃO ── */
+.ev-acoes{display:grid;gap:12px;margin-bottom:14px}.ev-acao{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:16px 18px;display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;box-shadow:0 2px 10px rgba(0,20,60,.06)}.ev-acao .txt{flex:1 1 320px;min-width:0}.ev-acao .txt>b{display:block;font-size:14px;color:#001f4d}.ev-acao .txt>span{display:block;font-size:12.5px;color:#5a6779;margin-top:3px;line-height:1.5}.ev-link{margin-top:8px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11.5px;color:#1565C0;background:#f5f8fc;border:1px solid #dbe4ef;border-radius:8px;padding:7px 10px;word-break:break-all;display:block}.ev-nota{background:#fff7ed;border:1px solid #fed7aa;color:#7c4a03;border-radius:12px;padding:12px 15px;font-size:12.5px;line-height:1.55;margin-bottom:14px}.ev-secao{font-size:11px;font-weight:900;color:#64748b;text-transform:uppercase;letter-spacing:.07em;margin:0 0 10px}
+/* ── INFORMAÇÕES DA FESTA V2 ── */
+.ev-info-top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:14px}.ev-breadcrumb{font-size:11px;color:#64748b;margin-bottom:5px}.ev-info-top h2{font-size:20px;color:#001f4d;margin:0}.ev-info-meta{font-size:12px;color:#64748b;margin-top:6px}.ev-info-actions{display:flex;gap:8px;flex-wrap:wrap}.ev-info-layout{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(270px,.75fr);gap:14px;align-items:start}.ev-info-section{background:#fff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 2px 10px rgba(0,20,60,.06);margin-bottom:12px;overflow:hidden}.ev-info-section-h{padding:13px 16px;border-bottom:1px solid #eef2f7}.ev-info-section-h b{display:block;color:#001f4d;font-size:13px}.ev-info-section-h small{color:#64748b;font-size:11px}.ev-info-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:15px 16px}.ev-info-fields .span2{grid-column:1/-1}.ev-info-preview{position:sticky;top:12px}.ev-preview-cover{height:116px;background:linear-gradient(135deg,#001f4d,#1565C0);position:relative;overflow:hidden}.ev-preview-cover img{width:100%;height:100%;object-fit:cover;display:none}.ev-preview-logo{position:absolute;left:16px;bottom:12px;width:56px;height:56px;background:#fff;border:3px solid #fff;border-radius:12px;object-fit:contain;display:none;box-shadow:0 3px 12px rgba(0,0,0,.2)}.ev-preview-body{padding:16px}.ev-preview-body h3{font-size:16px;color:#001f4d;margin:0 0 6px}.ev-preview-line{font-size:12px;color:#64748b;margin:5px 0;line-height:1.45}.ev-preview-desc{font-size:12px;color:#334155;margin-top:12px;white-space:pre-wrap;line-height:1.55}.ev-info-help{padding:13px 16px;background:#f8fafc;border-top:1px solid #eef2f7;color:#64748b;font-size:11.5px;line-height:1.5}.ev-info-loading{padding:28px;text-align:center;color:#64748b}.ev-status-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+@media(max-width:1000px){.ev-grid{grid-template-columns:repeat(2,1fr)}.ev-form{grid-template-columns:1fr 1fr}.ev-info-layout{grid-template-columns:1fr}.ev-info-preview{position:static}}@media(max-width:650px){.ev-info-fields{grid-template-columns:1fr}.ev-info-fields .span2{grid-column:auto}}
+
+/* `hidden` é `display:none` da folha do navegador, e QUALQUER `display` numa
+   regra de classe ganha dele. Sem estas linhas o elemento continua à vista
+   mesmo marcado como escondido — foi assim que a barra de submódulos seguiu
+   duplicada em 25/08 depois de eu "escondê-la". */
+.ev-info-layout[hidden]{display:none}
+</style>
+
+<div class="ev-head">
+  <div><div class="ev-title">Eventos</div><div class="ev-sub">Agenda sindical, inscrições, credenciamento e sorteios</div></div>
+  <button class="ev-btn" onclick="spIr('sofia',null,{mensagem:'Preciso planejar um evento sindical.'})">Planejar com SOFIA</button>
+</div>
+
+<!-- ══ SUBMÓDULOS ═══════════════════════════════════════════════════════════
+     Hierarquia do PROMPT-MESTRE §4: Módulo → Submódulo → Tela → Ação, com as
+     TELAS SENDO OS ESTADOS do processo. O documento de arquitetura do projeto
+     é explícito: "aba não é tela — aba agrupa assunto dentro de um
+     formulário; tela é uma fila de trabalho com ações próprias".
+
+     As seis abas antigas violavam isso de duas maneiras ao mesmo tempo:
+     Calendário/Informações/Sorteios eram ASSUNTOS, e Inscrições/Participantes/
+     Credenciamento eram ESTADOS DO MESMO PROCESSO, todos no mesmo nível.
+     "Participantes" era a mesma lista de "Inscrições" noutro estado, e estava
+     ali como se fosse outro assunto.
+
+     Aprovado pelo usuário em 24/08/2026. -->
+<!-- A barra horizontal de submódulos SAIU em 25/08/2026.
+     Ela repetia, dentro da tela, exatamente o que o menu lateral já mostra:
+     Painel · Programação · Festa · Bingo nos dois lugares. O usuário viu na
+     hora — "está tendo o mesmo submódulo, está com abas, está repetido".
+
+     Quem escolhe SUBMÓDULO é o menu lateral. Dentro da tela fica só a
+     escolha de TELA, que é o nível seguinte. Os botões continuam existindo
+     como elementos escondidos porque `evSub` marca o selecionado neles e o
+     menu lateral chama `evSub` ao navegar — sem eles, seria preciso espalhar
+     verificação de nulo por toda a função. -->
+<div class="ev-abas" role="tablist" hidden>
+  <button class="ev-aba" role="tab" id="sub-painel"         aria-selected="true"  onclick="evSub('painel')">Painel</button>
+  <button class="ev-aba" role="tab" id="sub-lista"          aria-selected="false" onclick="evSub('lista')">Eventos</button>
+  <button class="ev-aba" role="tab" id="sub-festa"          aria-selected="false" onclick="evSub('festa')">Festa Compasso da Vida 2026</button>
+  <button class="ev-aba" role="tab" id="sub-credenciamento" aria-selected="false" onclick="evSub('credenciamento')">Credenciamento</button>
+  <button class="ev-aba" role="tab" id="sub-sorteios"       aria-selected="false" onclick="evSub('sorteios')">Sorteios</button>
+</div>
+
+<!-- O nome do submódulo em que se está, já que a barra saiu. -->
+<div class="ev-onde" id="evOnde"></div>
+
+<!-- As telas do submódulo escolhido. Trocam junto com ele. -->
+<div class="ev-telas" id="evTelas"></div>
+
+<!-- O painel abre AQUI DENTRO, não em aba nova do navegador.
+     Era `window.open(url,'_blank')` em toda ação: analisar uma inscrição, ver
+     a fila de envio, importar planilha — cada uma numa aba do Chrome. O
+     usuário: "eu não preciso abrir várias abas pra buscar uma informação". -->
+<div class="ev-quadro-wrap" id="evQuadroWrap" hidden>
+  <div class="ev-quadro-barra">
+    <button class="ev-btn" onclick="evQuadroNovaAba()">Abrir em nova aba ↗</button>
+    <button class="ev-btn" onclick="evQuadroRecarregar()">↻ Atualizar</button>
+  </div>
+  <iframe class="ev-quadro" id="evQuadro" title="Painel" onload="evQuadroCarregou()"></iframe>
+  <!-- Quadro em branco sem explicação é o pior resultado possível: a pessoa
+       não sabe se está carregando, se deu erro ou se não há nada. -->
+  <div class="ev-quadro-aviso" id="evQuadroAviso" hidden></div>
+</div>
+
+<!-- ══ A CENTRAL DE INSCRIÇÕES, AQUI DENTRO ═══════════════════════════════
+     Não é quadro nem aba nova: é o arquivo incluído. O usuário: "quando eu
+     clico em inscrições, deveria aparecer uma tabela renderizada, e não pedir
+     pra abrir uma nova aba".
+
+     O quadro acima continua servindo a importação de planilha, que é a única
+     que ainda depende dele. -->
+<div class="ev-embutido" id="evInscricoes" hidden>
+  <?!= include('CompassoInscricoes'); ?>
+</div>
+
+<div class="ev-wrap">
+  <!-- ══ CALENDÁRIO ══ -->
+  <div class="ev-conteudo" id="conteudo-calendario">
+    <div class="ev-grid">
+      <div class="ev-card"><small>Próximos</small><strong id="evProximos">0</strong></div>
+      <div class="ev-card"><small>Hoje</small><strong id="evHoje">0</strong></div>
+      <div class="ev-card"><small>Comunicação</small><strong id="evComunicacao">0</strong></div>
+      <div class="ev-card"><small>Concluídos</small><strong id="evConcluidos">0</strong></div>
+    </div>
+    <div class="ev-panel">
+      <div class="ev-bar"><strong>Calendário operacional</strong><div><button class="ev-btn" onclick="evExportar()">Exportar CSV</button> <button class="ev-btn" onclick="spIr('documentos',null,{aba:'novo'})">Gerar ofício</button></div></div>
+      <div class="ev-form">
+        <div class="ev-field"><label>Evento</label><input id="evNome" placeholder="Ex.: Bingo, assembleia, reunião ou visita"></div>
+        <div class="ev-field"><label>Data</label><input id="evData" type="date"></div>
+        <div class="ev-field"><label>Tipo</label><select id="evTipo"><option>Assembleia</option><option>Reunião</option><option>Visita</option><option>Comunicado</option><option>Bingo</option><option>Festa / Confraternização</option><option>Campanha</option><option>Evento Institucional</option><option>Outro</option></select></div>
+        <div class="ev-field"><label>Status</label><select id="evStatus"><option>Planejado</option><option>Em andamento</option><option>Concluido</option></select></div>
+        <button class="ev-btn primary" onclick="evSalvar()">Salvar</button>
+      </div>
       <div class="ev-search"><input id="evBusca" placeholder="Buscar evento, tipo ou status..." oninput="evRender()"><button class="ev-btn" onclick="evLimpar()">Limpar</button></div>
-      <div style="overflow:auto"><table class="ev-table"><thead><tr><th>Evento</th><th>Data</th><th>Tipo</th><th>Status</th><th>Acoes</th></tr></thead><tbody id="evTabela"></tbody></table></div>
+      <div style="overflow:auto"><table class="ev-table"><thead><tr><th>Evento</th><th>Data</th><th>Tipo</th><th>Status</th><th>Ações</th></tr></thead><tbody id="evTabela"></tbody></table></div>
     </div>
   </div>
-  <script>
-  (function(){
-    var EV_CACHE = [];
-    var EV_EDITANDO = "";
 
-    function g(i){ return document.getElementById(i); }
-    function esc(s){ return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]); }); }
-    function hojeISO(){ return new Date().toISOString().slice(0,10); }
-    function cls(s){ return s==="Concluido"?"ev-ok":s==="Em andamento"?"ev-warn":"ev-blue"; }
-    function tokenSessao(){ return typeof SISGEP_TOKEN_SESSAO!=="undefined" ? SISGEP_TOKEN_SESSAO : ""; }
-    function avisar(msg,tipo){ if(typeof toast==="function") toast(msg,tipo); }
+  <!-- ══ FESTA 2026 · INFORMAÇÕES V2 ══ -->
+  <div class="ev-conteudo" id="conteudo-informacoes" hidden>
+    <div class="ev-info-top">
+      <div>
+        <div class="ev-breadcrumb">Eventos › Festas › Festa Compasso da Vida 2026 › Informações do Evento</div>
+        <h2 id="evInfoTitulo">Festa Compasso da Vida 2026</h2>
+        <div class="ev-info-meta"><span id="evInfoStatus" class="ev-pill ev-gray">Rascunho</span> <span id="evInfoMeta">Identidade e informações gerais</span></div>
+      </div>
+      <div class="ev-info-actions">
+        <button class="ev-btn" type="button" disabled title="A página pública da V2 será ligada em etapa própria, sem expor dados administrativos.">Visualizar página pública</button>
+        <button class="ev-btn primary" id="evInfoSalvar" type="button" onclick="evInfoSalvar()">Salvar rascunho</button>
+      </div>
+    </div>
 
-    function evPintar(){
-      var l=EV_CACHE, b=String((g("evBusca")||{}).value||"").toLowerCase(), h=hojeISO();
-      var f=l.filter(function(x){ return !b||[x.nome,x.tipo,x.status].join(" ").toLowerCase().indexOf(b)>=0; });
-      g("evProximos").textContent=l.filter(function(x){ return x.data>=h&&x.status!=="Concluido"; }).length;
-      g("evHoje").textContent=l.filter(function(x){ return x.data===h; }).length;
-      g("evComunicacao").textContent=l.filter(function(x){ return x.tipo==="Comunicado"; }).length;
-      g("evConcluidos").textContent=l.filter(function(x){ return x.status==="Concluido"; }).length;
-      g("evTabela").innerHTML=f.length?f.map(function(x){
-        return "<tr><td><strong>"+esc(x.nome)+"</strong></td><td>"+esc(x.data||"-")+"</td><td>"+esc(x.tipo)+"</td>"
-          +"<td><span class='ev-pill "+cls(x.status)+"'>"+esc(x.status)+"</span></td>"
-          +"<td><button class='ev-btn' onclick=\"evEditar('"+x.id+"')\">Editar</button> <button class='ev-btn' onclick=\"evExcluir('"+x.id+"')\">Excluir</button></td></tr>";
-      }).join(""):"<tr><td colspan='5' style='text-align:center;color:#94a3b8;padding:24px'>Nenhum evento cadastrado.</td></tr>";
+    <!-- SITUAÇÃO DO EVENTO ═══════════════════════════════════════════════════
+         O botão "Publicar evento" ficava aqui em cima, desligado desde 21/08,
+         com o aviso de que a transição de status não fora validada. O usuário
+         perguntou em 26/08: "Ele não deixa eu publicar, é assim mesmo?".
+
+         Ele saiu da barra de ações e virou este cartão porque publicar não é
+         um botão solto: é uma transição dentro de um ciclo de vida de sete
+         situações. A barra tem "Salvar rascunho", que é sobre o formulário; o
+         cartão é sobre o EVENTO. Misturados, "Salvar rascunho" e "Publicar"
+         lado a lado sugerem que um desfaz o outro.
+
+         Os botões de destino são desenhados pelo backend, não fixos aqui: a
+         tela pergunta para onde dá para ir a partir da situação atual e mostra
+         só isso. Botão que existe para ser recusado é clique desperdiçado. -->
+    <div class="ev-info-section" id="evSituacaoCard">
+      <div class="ev-info-section-title">Situação do evento</div>
+      <div id="evSituacaoCorpo" class="ev-info-loading">Carregando situação…</div>
+    </div>
+
+    <div id="evInfoCarregando" class="ev-info-section ev-info-loading">Carregando informações da Festa 2026…</div>
+    <div id="evInfoCorpo" class="ev-info-layout" hidden>
+      <div>
+        <div class="ev-info-section">
+          <div class="ev-info-section-h"><b>Identidade do evento</b><small>Fonte única para telas, ingressos, comunicação e documentos.</small></div>
+          <div class="ev-info-fields">
+            <div class="ev-field"><label>Nome do evento *</label><input id="evInfoNome" maxlength="160" oninput="evInfoPreview()"></div>
+            <div class="ev-field"><label>Edição</label><input id="evInfoEdicao" maxlength="40" oninput="evInfoPreview()"></div>
+            <div class="ev-field span2"><label>URL da logo</label><input id="evInfoLogo" type="url" placeholder="https://…" oninput="evInfoPreview()"></div>
+            <div class="ev-field span2"><label>URL da imagem de capa</label><input id="evInfoCapa" type="url" placeholder="https://…" oninput="evInfoPreview()"></div>
+          </div>
+        </div>
+
+        <div class="ev-info-section">
+          <div class="ev-info-section-h"><b>Data e horários</b><small>Horários oficiais utilizados nas demais funcionalidades do evento.</small></div>
+          <div class="ev-info-fields">
+            <div class="ev-field"><label>Data do evento</label><input id="evInfoData" type="date" oninput="evInfoPreview()"></div>
+            <div class="ev-field"><label>Abertura / entrada</label><input id="evInfoAbertura" type="time" oninput="evInfoPreview()"></div>
+            <div class="ev-field"><label>Início</label><input id="evInfoInicio" type="time" oninput="evInfoPreview()"></div>
+            <div class="ev-field"><label>Encerramento / saída</label><input id="evInfoEncerramento" type="time" oninput="evInfoPreview()"></div>
+          </div>
+        </div>
+
+        <!-- LOTAÇÃO — 26/08/2026.
+             O campo que faltava para o cadastro governar de verdade. Até
+             ontem a lotação era constante no código: mudar exigia deploy, e
+             um evento de 300 lugares aceitaria 2.000 inscrições. Agora o que
+             for digitado aqui é o que decide quando parar de aceitar. -->
+        <div class="ev-info-section">
+          <div class="ev-info-section-h"><b>Lotação</b><small>Quantas pessoas cabem. É este número que fecha as inscrições e alimenta o painel.</small></div>
+          <div class="ev-info-fields">
+            <div class="ev-field"><label>Capacidade do local</label><input id="evInfoCapacidade" type="number" min="0" step="1" placeholder="2000" oninput="evInfoPreview()"></div>
+            <div class="ev-field span2" style="align-self:end">
+              <div class="ev-nota" id="evInfoCapacidadeNota" style="margin:0">Em branco, o sistema usa 2.000 — o valor que estava fixo no código até 26/08/2026.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ev-info-section">
+          <div class="ev-info-section-h"><b>Local</b><small>Informações que poderão aparecer em convites, ingressos e orientações.</small></div>
+          <div class="ev-info-fields">
+            <div class="ev-field span2"><label>Nome do local</label><input id="evInfoLocal" maxlength="180" oninput="evInfoPreview()"></div>
+            <div class="ev-field span2"><label>Endereço</label><input id="evInfoEndereco" maxlength="300" oninput="evInfoPreview()"></div>
+          </div>
+        </div>
+
+        <div class="ev-info-section">
+          <div class="ev-info-section-h"><b>Conteúdo e orientações</b><small>Texto institucional canônico da Festa.</small></div>
+          <div class="ev-info-fields">
+            <div class="ev-field span2"><label>Descrição completa</label><textarea id="evInfoDescricao" maxlength="6000" oninput="evInfoPreview()" placeholder="Apresente a Festa, proposta, público e principais informações."></textarea></div>
+            <div class="ev-field span2"><label>Orientações</label><textarea id="evInfoOrientacoes" maxlength="5000" placeholder="Ex.: documentos para entrada, estacionamento, regras de acesso…"></textarea></div>
+            <div class="ev-field span2"><label>Informações importantes</label><textarea id="evInfoImportantes" maxlength="5000" placeholder="Avisos que precisam acompanhar a comunicação do evento."></textarea></div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="ev-info-preview">
+        <div class="ev-info-section">
+          <div class="ev-info-section-h"><b>Prévia pública</b><small>Somente informações institucionais — sem métricas administrativas.</small></div>
+          <div class="ev-preview-cover" id="evPreviewCover"><img id="evPreviewCapa" alt="Capa do evento"><img id="evPreviewLogo" class="ev-preview-logo" alt="Logo do evento"></div>
+          <div class="ev-preview-body">
+            <h3 id="evPreviewNome">Festa Compasso da Vida 2026</h3>
+            <div class="ev-preview-line" id="evPreviewData">Data a definir</div>
+            <div class="ev-preview-line" id="evPreviewHorario">Horário a definir</div>
+            <div class="ev-preview-line" id="evPreviewLocal">Local a definir</div>
+            <div class="ev-preview-desc" id="evPreviewDescricao">A descrição do evento aparecerá aqui.</div>
+          </div>
+          <div class="ev-info-help">Esta prévia não recebe capacidade, vagas restantes, número de inscritos, check-ins ou qualquer outro indicador administrativo.</div>
+        </div>
+        <div class="ev-info-section">
+          <div class="ev-info-section-h"><b>Estado administrativo</b><small>Controle interno da V2.</small></div>
+          <div class="ev-preview-body">
+            <div class="ev-status-row"><span>Status:</span><span id="evInfoStatusLateral" class="ev-pill ev-gray">Rascunho</span></div>
+            <div class="ev-preview-line" id="evInfoPersistencia">Ainda não salvo na V2.</div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- ══ PAINEL DO MÓDULO ═════════════════════════════════════════════════
+       Diretriz oficial do PROMPT-MESTRE: "todo módulo principal deve possuir
+       dashboard operacional próprio", e a regra central dele é
+
+           "o dashboard deve mostrar o que o usuário precisa fazer AGORA".
+
+       Por isso não é um quadro de números bonitos: cada linha aqui é uma FILA
+       que gera trabalho, e clicar leva direto para ela já filtrada. O que não
+       pede ação não entra. -->
+  <div class="ev-conteudo" id="conteudo-painel" hidden>
+    <p class="ev-secao">Festa Compasso da Vida 2026 · 19 de dezembro</p>
+    <div class="ev-grid">
+      <div class="ev-card"><small>Inscrições</small><strong id="pnTotal">—</strong></div>
+      <div class="ev-card"><small>A analisar</small><strong id="pnAnalisar">—</strong></div>
+      <div class="ev-card"><small>A enviar</small><strong id="pnEnviar">—</strong></div>
+      <div class="ev-card"><small>Vagas restantes</small><strong id="pnVagas">—</strong></div>
+    </div>
+    <div class="ev-acoes" id="pnFilas"></div>
+    <div class="ev-nota" id="pnVazio" hidden>
+      Nada pedindo ação agora. Quando entrar inscrição nova ou ingresso ficar
+      parado sem envio, aparece aqui.
+    </div>
+  </div>
+
+  <!-- ══ EXECUTIVO DO MÓDULO ══════════════════════════════════════════════
+       Nível 2 do PROMPT-MESTRE. Responde o que o operacional não responde:
+       quanto tempo falta, e o que pode parar o dia da festa. -->
+  <div class="ev-conteudo" id="conteudo-executivo" hidden>
+    <div class="ev-exec-topo">
+      <div>
+        <p class="ev-secao" style="margin:0">Festa Compasso da Vida 2026</p>
+        <div class="ev-exec-data" id="exData">—</div>
+      </div>
+      <div class="ev-relogio" id="exRelogio">
+        <strong id="exDias">—</strong><small>dias para a festa</small>
+      </div>
+    </div>
+
+    <div class="ev-grid">
+      <div class="ev-card"><small>Inscrições</small><strong id="exTotal">—</strong></div>
+      <div class="ev-card"><small>Com ingresso</small><strong id="exIngressos">—</strong></div>
+      <div class="ev-card"><small>Vagas restantes</small><strong id="exVagas">—</strong></div>
+      <div class="ev-card"><small>Firestore no dia</small><strong id="exFirestore">—</strong></div>
+    </div>
+
+    <p class="ev-secao">O que pode dar errado no dia 19/12</p>
+    <div id="exRiscos"></div>
+
+    <!-- RITMO DE CHEGADA — 25/08/2026.
+         O usuário decidiu mandar o link "aos poucos, não tudo de uma única
+         vez". Esta seção responde a pergunta que a decisão cria: já dá para
+         mandar a próxima leva? -->
+    <p class="ev-secao">Ritmo de chegada · para decidir a próxima leva</p>
+    <div class="ev-grid" style="margin-bottom:12px">
+      <div class="ev-card"><small>Últimas 24h</small><strong id="exCheg24">—</strong></div>
+      <div class="ev-card"><small>A analisar</small><strong id="exChegFila">—</strong></div>
+      <div class="ev-card"><small>Última entrou</small><strong id="exChegUlt">—</strong></div>
+    </div>
+    <div class="ev-dias" id="exChegDias"></div>
+    <div class="ev-acao" style="margin-bottom:14px">
+      <div class="txt"><b id="exChegRecado">—</b></div>
+    </div>
+
+    <p class="ev-secao">Entrega dos ingressos</p>
+    <div class="ev-acao" style="margin-bottom:14px">
+      <div class="txt"><b id="exEntregaT">—</b><span id="exEntregaD"></span></div>
+    </div>
+  </div>
+
+  <!-- ══ INSCRIÇÕES ══ -->
+  <div class="ev-conteudo" id="conteudo-inscricoes" hidden>
+    <p class="ev-secao">Festa Compasso da Vida 2026 · 19 de dezembro</p>
+    <div class="ev-acoes">
+      <div class="ev-acao"><div class="txt"><b>🔗 Link público de inscrição</b><span>É este endereço que vai na lista de transmissão e no site. O associado abre, digita o CPF, e o resto do formulário nasce preenchido.</span><code class="ev-link" id="evLinkCompasso">carregando…</code></div><button class="ev-btn primary" onclick="evCopiarLinkCompasso()">Copiar link</button></div>
+      <div class="ev-acao"><div class="txt"><b>📋 Central de Inscrições</b><span>Um lugar só: a lista com filtros, a análise (validar, pendência, reprovar com motivo), pagamento de acompanhante, emissão do ingresso, envio por e-mail e WhatsApp, cancelamento, exclusão e a importação de planilha.</span></div><button class="ev-btn primary" onclick="evAbrirPainel('compasso')">Abrir painel →</button></div>
+    </div>
+  </div>
+
+  <!-- ══ PARTICIPANTES ══ -->
+  <div class="ev-conteudo" id="conteudo-participantes" hidden>
+    <p class="ev-secao">Quem já tem ingresso emitido</p>
+    <div class="ev-nota"><b>Inscrições</b> é quem pediu e ainda está sendo analisado. <b>Participantes</b> é quem já tem ingresso e vai à festa. É a mesma lista, em dois estados — e o trabalho de cada uma é diferente: numa se analisa, na outra se entrega.</div>
+    <div class="ev-acoes">
+      <div class="ev-acao"><div class="txt"><b>🎟️ Participantes confirmados</b><span>Abre o painel já filtrado por quem tem ingresso. É daqui que sai o envio por e-mail e por WhatsApp, individual ou em lote.</span></div><button class="ev-btn primary" onclick="evAbrirPainel('compasso','','participantes')">Abrir lista →</button></div>
+      <div class="ev-acao"><div class="txt"><b>📤 A enviar</b><span>Ingresso emitido que ainda não saiu para ninguém. É a fila que gera trabalho — sem ela, ingresso fica parado sem ninguém perceber.</span></div><button class="ev-btn primary" onclick="evAbrirPainel('compasso','','a-enviar')">Ver a fila →</button></div>
+    </div>
+  </div>
+
+  <!-- ══ CREDENCIAMENTO ══ -->
+  <div class="ev-conteudo" id="conteudo-credenciamento" hidden>
+    <p class="ev-secao">Entrada do evento</p>
+    <div class="ev-nota">Abra a portaria <b>no celular que vai ficar na entrada</b>, não neste computador. Ela usa a câmera do aparelho para ler o QR.</div>
+    <div class="ev-acoes">
+      <div class="ev-acao"><div class="txt"><b>📱 Portaria — leitor de QR</b><span>Lê o QR do ingresso e libera a entrada. O mesmo QR lido duas vezes é recusado, dizendo quando e por quem a pessoa entrou.</span></div><button class="ev-btn primary" onclick="evAvisoPortaria()">Como abrir</button></div>
+      <div class="ev-acao"><div class="txt"><b>🎟️ Check-in por número</b><span>Contingência para celular descarregado ou QR danificado: busca a pessoa pelo nome, CPF ou número do ingresso.</span></div><button class="ev-btn" onclick="evAbrirPainel('checkin')">Abrir →</button></div>
+    </div>
+  </div>
+
+  <!-- ══ SORTEIOS ══ -->
+  <div class="ev-conteudo" id="conteudo-sorteios" hidden>
+    <p class="ev-secao">Bingo online</p>
+    <div class="ev-acoes">
+      <div class="ev-acao"><div class="txt"><b>🎲 Painel do bingo</b><span>Configura a rodada, gera as cartelas, sorteia e acompanha quem bateu. Abre pelo botão Bingo de cada evento do calendário, ou aqui.</span></div><button class="ev-btn bingo" onclick="evAbrirBingo()">Abrir painel →</button></div>
+      <div class="ev-acao"><div class="txt"><b>📺 Telão</b><span>Tela cheia com os números sorteados, para projetar durante a transmissão.</span></div><button class="ev-btn bingo" onclick="evAbrirPainel('bingo-telao')">Abrir telão →</button></div>
+      <div class="ev-acao"><div class="txt"><b>🔗 Link de inscrição do bingo</b><span>Cada evento tem o seu. O link é público e não leva a sua sessão — pode ser colado em grupo de WhatsApp sem risco.</span></div><button class="ev-btn bingo" onclick="evCopiarLinkInscricao()">Copiar link</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+var EV_CACHE=[],EV_EDITANDO="";
+var EV_INFO_CARREGADO=false,EV_INFO_EVENTO_ID='';
+function g(i){return document.getElementById(i)}
+function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])})}
+function tokenSessao(){return typeof SISGEP_TOKEN_SESSAO!=="undefined"?SISGEP_TOKEN_SESSAO:""}
+function avisar(m,t){if(typeof toast==="function")toast(m,t)}
+function cls(s){return s==="Concluido"?"ev-ok":s==="Em andamento"?"ev-warn":"ev-blue"}
+function valor(id){var el=g(id);return el?String(el.value||'').trim():''}
+function statusRotulo(s){return({RASCUNHO:'Rascunho',PROGRAMADO:'Programado',INSCRICOES_ABERTAS:'Inscrições abertas',INSCRICOES_ENCERRADAS:'Inscrições encerradas',EM_ANDAMENTO:'Em andamento',ENCERRADO:'Encerrado',CANCELADO:'Cancelado'})[s]||s||'Rascunho'}
+function statusClasse(s){if(s==='ENCERRADO')return'ev-ok';if(s==='EM_ANDAMENTO'||s==='INSCRICOES_ABERTAS')return'ev-warn';if(s==='CANCELADO')return'ev-gray';return'ev-blue'}
+function dataBr(iso){if(!iso)return'';var p=String(iso).split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:iso}
+function urlImagem(v){v=String(v||'').trim();return /^https:\/\//i.test(v)?v:''}
+
+/* ══ SUBMÓDULOS E TELAS ═══════════════════════════════════════════════════
+   Módulo → Submódulo → Tela → Ação, com as telas sendo os ESTADOS.
+
+   Cada tela ou mostra um bloco que já existe na página (`conteudo`), ou abre
+   um painel DENTRO do quadro (`painel`). A segunda forma é a que acaba com a
+   aba nova do navegador a cada clique.
+
+   "Inscrições" e "Ingressos" são a MESMA lista em estados diferentes — é por
+   isso que "Participantes" deixou de ser vizinha de "Inscrições" e virou uma
+   tela do mesmo submódulo, apontando para o mesmo painel com outro filtro. */
+var EV_SUBMODULOS = {
+  /* PAINEL — UMA TELA SÓ. O usuário: "eu só preciso de uma tela, o que pede
+     ação hoje, dentro do executivo". Eram duas abas mostrando o mesmo
+     assunto; agora o `conteudo` aceita mais de um bloco, separado por
+     vírgula, e a tela abre os dois de uma vez. */
+  painel: [
+    { id:'hoje', rotulo:'O que pede ação hoje', conteudo:'painel,executivo' }
+  ],
+  /* EVENTOS — era "Programação". A agenda é modo de ver a lista, não área. */
+  lista: [
+    { id:'agenda', rotulo:'Agenda', conteudo:'calendario' }
+  ],
+  /* FESTA — os dados do evento saíram de Programação e vieram para cá: a
+     ficha pertence ao EVENTO, não à agenda. Inscrições e Ingressos viraram
+     uma tela só, com o estado como filtro dentro dela. */
+  festa: [
+    /* Inscrições PRIMEIRO: entrar na Festa é entrar no trabalho, não na
+       ficha. O usuário pediu que clicar no submódulo caísse na lista, e não
+       numa página de links para a lista. */
+    { id:'inscricoes', rotulo:'Inscrições',     embutido:'inscricoes' },
+    { id:'dados',      rotulo:'Dados da Festa', conteudo:'informacoes' }
+  ],
+  credenciamento: [
+    { id:'entrada', rotulo:'Entrada do evento', conteudo:'credenciamento' }
+  ],
+  /* SORTEIOS — era "Bingo Online". Bingo é UM sorteio, não o submódulo. */
+  sorteios: [
+    { id:'bingo', rotulo:'Bingo', conteudo:'sorteios' }
+  ]
+};
+var EV_SUB_ATUAL='painel', EV_TELA_ATUAL='', EV_QUADRO_URL='';
+
+function evSubInterno(nome){
+  if(!EV_SUBMODULOS[nome])nome='painel';
+  EV_SUB_ATUAL=nome;
+  Object.keys(EV_SUBMODULOS).forEach(function(s){
+    var bt=g('sub-'+s); if(bt)bt.setAttribute('aria-selected',s===nome?'true':'false');
+  });
+  var rotulos={painel:'Painel',lista:'Eventos',
+               festa:'Festa Compasso da Vida 2026',
+               credenciamento:'Credenciamento',sorteios:'Sorteios'};
+  if(g('evOnde'))g('evOnde').textContent=rotulos[nome]||'';
+  var telas=EV_SUBMODULOS[nome];
+  g('evTelas').innerHTML=telas.map(function(t){
+    return '<button class="ev-tela" role="tab" id="tela-'+t.id+'" aria-selected="false" '+
+           'onclick="evTela(\''+t.id+'\')">'+esc(t.rotulo)+'</button>';
+  }).join('');
+  try{localStorage.setItem('sisgep_ev_sub',nome)}catch(e){}
+  /* Entrar no submódulo já abre a primeira tela: o usuário pediu que clicar
+     em Inscrições caísse na lista, e não numa página de links para a lista. */
+  evTelaInterno(telas[0].id);
+}
+window.evSub=evSubInterno;
+
+function evTelaInterno(id){
+  var telas=EV_SUBMODULOS[EV_SUB_ATUAL]||[];
+  var t=null; for(var i=0;i<telas.length;i++) if(telas[i].id===id) t=telas[i];
+  if(!t) t=telas[0]; if(!t) return;
+  EV_TELA_ATUAL=t.id;
+
+  telas.forEach(function(x){var bt=g('tela-'+x.id);
+    if(bt)bt.setAttribute('aria-selected',x.id===t.id?'true':'false')});
+  try{localStorage.setItem('sisgep_ev_tela_'+EV_SUB_ATUAL,t.id)}catch(e){}
+
+  /* Um de cada vez: ou o bloco da página, ou o quadro.
+
+     A LISTA É VARRIDA DO DOM, NÃO ESCRITA À MÃO — 25/08/2026.
+     Aqui havia um array literal com seis nomes, e faltavam DOIS: 'painel' e
+     'executivo', que são as telas do submódulo Painel. O resultado é que a
+     aba acendia e o conteúdo continuava escondido — o usuário viu a área em
+     branco e disse "clico em painel e não acontece nada".
+
+     É o mesmo defeito do mapa de submódulos do index.html, no mesmo dia: uma
+     lista paralela que alguém precisa lembrar de atualizar. Agora os blocos
+     são encontrados pela classe que todos têm, então criar um conteúdo novo
+     passa a bastar — não há segunda lista para esquecer. */
+  /* `conteudo` aceita mais de um bloco, separado por vírgula: é o que faz o
+     Painel abrir "o que pede ação hoje" e o executivo na MESMA tela. */
+  var alvos = String(t.conteudo || '').split(',').map(function(s){ return 'conteudo-' + s.trim(); });
+  Array.prototype.forEach.call(
+    document.querySelectorAll('.ev-conteudo[id^="conteudo-"]'),
+    function(ct){ ct.hidden = (alvos.indexOf(ct.id) < 0); });
+  var wrap=g('evQuadroWrap'); if(wrap)wrap.hidden=!t.painel;
+  var emb=g('evInscricoes'); if(emb)emb.hidden=(t.embutido!=='inscricoes');
+  var caixa=document.querySelector('.ev-wrap');
+  if(caixa)caixa.hidden=!!(t.painel||t.embutido);
+
+  if(t.painel) evQuadroAbrir(t.painel,'',t.filtro||'');
+  /* A tela embutida já está na página: só se pede o recorte e ela recarrega
+     sozinha. Sem ida ao servidor para montar página nenhuma. */
+  if(t.embutido==='inscricoes' && typeof window.compassoAplicarFiltro==='function')
+    window.compassoAplicarFiltro(t.filtro||'');
+  /* CADA CARGA ISOLADA — 26/08/2026.
+     O Painel abre dois blocos de uma vez. Sem o try, uma exceção na primeira
+     carga impedia a segunda de sequer começar, e o segundo bloco ficava com
+     os traços do HTML — que é exatamente o que parece "não carregou". */
+  if(alvos.indexOf('conteudo-informacoes')>=0) try{ evInfoCarregar(); }catch(e){ console.error(e); }
+  if(alvos.indexOf('conteudo-painel')>=0)      try{ evPainelCarregar(); }catch(e){ console.error(e); }
+  if(alvos.indexOf('conteudo-executivo')>=0)   try{ evExecutivoCarregar(); }catch(e){ console.error(e); }
+}
+
+/* ══ EXECUTIVO ═════════════════════════════════════════════════════════════
+   O relógio e o que pode parar o dia. Cada risco vem com o próximo passo:
+   risco sem ação é ansiedade em forma de card. */
+/* Sete dias, o mais antigo à esquerda. A altura é relativa ao maior da
+   semana: o que interessa é comparar as levas entre si, não com uma escala
+   absoluta que não existe. */
+function pintarDias(serie){
+  var alvo = g('exChegDias'); if (!alvo) return;
+  if (!serie.length){ alvo.innerHTML = ''; return; }
+  var maior = Math.max.apply(null, serie.concat([1]));
+  var hoje = new Date();
+  var nomes = ['dom','seg','ter','qua','qui','sex','sáb'];
+  alvo.innerHTML = serie.map(function(n, i){
+    var d = new Date(hoje.getTime() - (serie.length - 1 - i) * 86400000);
+    var ehHoje = i === serie.length - 1;
+    var alt = Math.round((n / maior) * 100);
+    return '<div class="d' + (ehHoje ? ' hoje' : '') + '">' +
+           '<div class="barra"><i style="height:' + alt + '%"></i></div>' +
+           '<div class="n">' + n + '</div>' +
+           '<div class="r">' + (ehHoje ? 'hoje' : nomes[d.getDay()]) + '</div></div>';
+  }).join('');
+}
+
+/* Escreve num elemento sem derrubar o resto quando ele não existe. Antes,
+   um id trocado abortava a função no meio e TODOS os campos seguintes ficavam
+   com o traço do HTML — o sintoma que o usuário viu como "o executivo não
+   carrega", sem nada dizendo o que houve. */
+function evPor(id, texto){
+  var el = g(id);
+  if (el) el.textContent = texto;
+  else console.warn('Executivo: elemento ausente na tela — ' + id);
+}
+
+/* Nunca ficar em silêncio: se a carga não veio, a tela diz. */
+function evExecutivoAviso(msg){
+  var alvo = g('exRiscos');
+  if (alvo) alvo.innerHTML = '<div class="ev-nota">' + esc(msg) + '</div>';
+}
+
+function evExecutivoCarregar(){
+  var token=tokenSessao();
+  if(!token){ return evExecutivoAviso('Sessão ainda não disponível. Atualize a página.'); }
+  google.script.run.withSuccessHandler(function(r){
+    if(!r){ return evExecutivoAviso('O servidor respondeu sem dados do evento.'); }
+    var ev=r.evento||{}, i=r.inscricoes||{}, fs=r.firestore||{}, en=r.entrega||{};
+
+    evPor('exDias', (ev.dias>=0?ev.dias:0));
+    evPor('exData', (ev.nome||'') + ' · ' + evDataBR(ev.data));
+    evPor('exTotal', i.total||0);
+    evPor('exIngressos', i.comIngresso||0);
+    evPor('exVagas', ev.vagasRestantes||0);
+    evPor('exFirestore', fs.percentualLeituras!=null?fs.percentualLeituras+'%':'—');
+
+    g('exRiscos').innerHTML=(r.riscos||[]).map(function(x){
+      return '<div class="ev-risco '+esc(x.grau)+'"><b>'+esc(x.titulo)+'</b>'+
+             '<span>'+esc(x.texto)+'</span>'+
+             '<span class="acao">'+esc(x.acao)+'</span></div>';
+    }).join('')||'<div class="ev-nota">Nada em aberto.</div>';
+
+    /* CHEGADA — o número que decide a próxima leva. */
+    var ch = r.chegada || {};
+    g('exCheg24').textContent  = ch.ultimas24h != null ? ch.ultimas24h : '—';
+    g('exChegFila').textContent = ch.filaDeAnalise != null ? ch.filaDeAnalise : '—';
+    g('exChegUlt').textContent = ch.horasDesdeAUltima == null ? '—'
+      : ch.horasDesdeAUltima < 1 ? 'agora'
+      : ch.horasDesdeAUltima < 24 ? ch.horasDesdeAUltima + 'h'
+      : Math.floor(ch.horasDesdeAUltima / 24) + 'd';
+    g('exChegRecado').textContent = ch.recado || '';
+    pintarDias(ch.porDia || []);
+
+    /* Ritmo, não total: os ingressos saem um a um conforme as validações. */
+    g('exEntregaT').textContent = en.quantidade
+      ? en.quantidade+' na fila · cerca de '+en.porDia+' por dia ('+
+        en.minutosPorDia+' min/dia) até a festa'
+      : 'Nenhum ingresso esperando envio.';
+    g('exEntregaD').textContent = en.quantidade
+      ? 'Envio por '+en.canal+', um a um, cerca de '+en.segundosPorEnvio+
+        ' segundos cada. Enviar conforme valida mantém isso em minutos por dia; '+
+        'acumular transforma em mutirão.'
+      : 'Quando houver fila, aparece aqui o ritmo necessário até 19/12.';
+  }).withFailureHandler(function(e){
+    evExecutivoAviso('Não foi possível carregar o executivo: ' +
+      ((e && e.message) || e || 'erro sem mensagem'));
+  }).compasso_executivoResumo(token);
+}
+function evDataBR(v){
+  try{var d=new Date(v);return isNaN(d)?String(v):d.toLocaleDateString('pt-BR',
+    {day:'2-digit',month:'long',year:'numeric'})}catch(e){return String(v)}
+}
+
+/* ══ PAINEL DO MÓDULO ══════════════════════════════════════════════════════
+   Números que viram fila clicável. O PROMPT-MESTRE é explícito: "cards e
+   alertas devem ser clicáveis e levar diretamente à fila"; "evite dashboards
+   decorativos". */
+function evPainelCarregar(){
+  var token=tokenSessao(); if(!token)return;
+  google.script.run.withSuccessHandler(function(r){
+    r=r||{};
+    var total=Number(r.total||0), analisar=Number(r.naoAnalisadas||0),
+        enviar=Number(r.aEnviar||0), comIngresso=Number(r.comIngresso||0);
+    g('pnTotal').textContent=total;
+    g('pnAnalisar').textContent=analisar;
+    g('pnEnviar').textContent=enviar;
+    g('pnVagas').textContent=(2000-comIngresso);
+
+    /* Só entra o que TEM trabalho pendente. Fila zerada não é notícia. */
+    var filas=[];
+    if(analisar) filas.push({n:analisar,
+      t:'Inscrições esperando análise',
+      d:'Ninguém emite ingresso antes de alguém validar. É a fila que segura todo o resto.',
+      b:'Analisar →', f:'a-analisar'});
+    if(enviar) filas.push({n:enviar,
+      t:'Ingressos emitidos e não enviados',
+      d:'Já consumiram vaga e a pessoa ainda não recebeu. Sem esta fila, ficam parados sem ninguém perceber.',
+      b:'Enviar →', f:'a-enviar'});
+
+    g('pnVazio').hidden=filas.length>0;
+    g('pnFilas').innerHTML=filas.map(function(x){
+      return '<div class="ev-acao"><div class="txt">'+
+        '<b>'+x.n+' · '+esc(x.t)+'</b><span>'+esc(x.d)+'</span></div>'+
+        '<button class="ev-btn primary" onclick="evIrParaFila(\''+x.f+'\')">'+esc(x.b)+'</button></div>';
+    }).join('');
+  }).withFailureHandler(function(){
+    g('pnFilas').innerHTML='';
+    g('pnVazio').hidden=false;
+    g('pnVazio').textContent='Não foi possível carregar os números agora.';
+  }).compasso_validacaoResumo(token);
+}
+
+/* Um clique do painel: vai para o submódulo da Festa já na fila certa. */
+window.evIrParaFila=function(filtro){
+  evSubInterno('festa');
+  evQuadroAbrir('compasso','',filtro);
+};
+/* Exposta para o onclick do HTML, mas chamada INTERNAMENTE pelo nome local:
+   dentro da IIFE, depender de a função ter chegado ao objeto global é um
+   acoplamento invisível — e foi o que a mutação 32 revelou. */
+window.evTela=evTelaInterno;
+
+/* O painel dentro do quadro. Guarda a URL para o "abrir em nova aba" e o
+   "atualizar" não precisarem pedir de novo ao servidor. */
+var EV_QUADRO_TIMER=null;
+
+function evQuadroAviso(titulo,texto){
+  var a=g('evQuadroAviso'); if(!a)return;
+  a.hidden=false;
+  a.innerHTML='<b>'+esc(titulo)+'</b>'+esc(texto)+
+    '<div style="margin-top:12px"><button class="ev-btn" onclick="evQuadroNovaAba()">'+
+    'Abrir em nova aba ↗</button></div>';
+}
+function evQuadroLimparAviso(){var a=g('evQuadroAviso');if(a){a.hidden=true;a.innerHTML=''}}
+window.evQuadroCarregou=function(){
+  if(EV_QUADRO_TIMER){clearTimeout(EV_QUADRO_TIMER);EV_QUADRO_TIMER=null}
+  evQuadroLimparAviso();
+};
+
+function evQuadroAbrir(painel,eventoId,filtro){
+  var token=tokenSessao();
+  if(!token){
+    evQuadroAviso('Sessão não encontrada.',
+      'Entre novamente no SISGEP e reabra este painel.');
+    return;
+  }
+  evQuadroLimparAviso();
+  google.script.run.withSuccessHandler(function(base){
+    var url=String(base||'')+'?painel='+encodeURIComponent(painel)+
+            '&sessao='+encodeURIComponent(token);
+    if(eventoId)url+='&evento='+encodeURIComponent(eventoId);
+    if(filtro)url+='&filtro='+encodeURIComponent(filtro);
+    EV_QUADRO_URL=url;
+
+    /* /dev não abre para quem não tem acesso de edição ao projeto, e muito
+       menos dentro de um quadro. Já foi a causa do link errado do ingresso
+       no piloto de 21/08 — dizer isso agora poupa a caça ao erro. */
+    if(url.indexOf('/dev?')>=0||/\/dev$/.test(String(base||''))){
+      evQuadroAviso('A implantação está apontando para /dev.',
+        'Esse endereço só abre para quem tem acesso de edição ao projeto, e não '+
+        'carrega dentro desta tela. Publique uma implantação nova e declare '+
+        'SISGEP_URL_BASE nas Propriedades do script com o endereço /exec.');
+      return;
     }
 
-    window.evRender=function(){
-      var tbody=g("evTabela");
-      if(tbody) tbody.innerHTML="<tr><td colspan='5' style='text-align:center;color:#94a3b8;padding:24px'>⏳ Carregando agenda...</td></tr>";
-      google.script.run
-        .withSuccessHandler(function(lista){ EV_CACHE=lista||[]; evPintar(); })
-        .withFailureHandler(function(e){
-          if(tbody) tbody.innerHTML="<tr><td colspan='5' style='text-align:center;color:#b91c1c;padding:24px'>Erro ao carregar agenda: "+esc((e&&e.message)||String(e||""))+"</td></tr>";
-        })
-        .listarEventosAgenda(tokenSessao());
-    };
+    g('evQuadro').src=url;
+    /* Se o quadro não avisar que carregou, alguma coisa o recusou. Melhor
+       dizer isso do que deixar a área em branco. */
+    if(EV_QUADRO_TIMER)clearTimeout(EV_QUADRO_TIMER);
+    EV_QUADRO_TIMER=setTimeout(function(){
+      evQuadroAviso('O painel não abriu aqui dentro.',
+        'Pode ser bloqueio do navegador para telas embutidas. O conteúdo é o '+
+        'mesmo — use o botão abaixo.');
+    },8000);
+  }).withFailureHandler(function(e){
+    evQuadroAviso('Não foi possível obter o endereço do painel.',
+      (e&&e.message)||String(e));
+  }).eventos_obterWebAppUrl(token);
+}
+window.evQuadroNovaAba=function(){ if(EV_QUADRO_URL)window.open(EV_QUADRO_URL,'_blank'); };
+window.evQuadroRecarregar=function(){ if(EV_QUADRO_URL)g('evQuadro').src=EV_QUADRO_URL; };
 
-    window.evSalvar=function(){
-      var x={ id:EV_EDITANDO||"", nome:g("evNome").value, data:g("evData").value, tipo:g("evTipo").value, status:g("evStatus").value };
-      if(!x.nome||!x.nome.trim()){ avisar("Informe o evento.","warn"); return; }
-      google.script.run
-        .withSuccessHandler(function(r){
-          if(!r||r.ok!==true){ avisar((r&&r.mensagem)||"Erro ao salvar.","err"); return; }
-          avisar(r.mensagem||"Evento salvo!","ok");
-          evLimpar(); evRender();
-        })
-        .withFailureHandler(function(e){ avisar("Erro: "+((e&&e.message)||String(e||"")),"err"); })
-        .salvarEventoAgenda(x, tokenSessao());
-    };
+function evSubSalvo(){try{return localStorage.getItem('sisgep_ev_sub')||'programacao'}catch(e){return'programacao'}}
 
-    window.evEditar=function(id){
-      var x=EV_CACHE.find(function(a){ return a.id===id; });
-      if(!x) return;
-      EV_EDITANDO=id;
-      g("evNome").value=x.nome; g("evData").value=x.data; g("evTipo").value=x.tipo; g("evStatus").value=x.status;
-    };
+/* ── FESTA 2026 · INFORMAÇÕES V2 ── */
+function evInfoCarregar(){
+  if(EV_INFO_CARREGADO)return;
+  var token=tokenSessao();
+  if(!token){if(g('evInfoCarregando'))g('evInfoCarregando').textContent='Sessão não encontrada. Entre novamente no SISGEP.';return}
+  google.script.run.withSuccessHandler(function(r){
+    if(!r||!r.ok){if(g('evInfoCarregando'))g('evInfoCarregando').textContent=(r&&r.mensagem)||'Não foi possível carregar a Festa 2026.';return}
+    EV_INFO_CARREGADO=true;evInfoPreencher(r.evento||{},!!r.persistido);
+    evSituacaoCarregar();
+  }).withFailureHandler(function(e){if(g('evInfoCarregando'))g('evInfoCarregando').textContent='Erro ao carregar: '+((e&&e.message)||e)}).eventosV2Admin_obterFesta2026(token);
+}
 
-    window.evExcluir=function(id){
-      if(!confirm("Excluir evento?")) return;
-      google.script.run
-        .withSuccessHandler(function(r){
-          if(!r||r.ok!==true){ avisar((r&&r.mensagem)||"Erro ao excluir.","err"); return; }
-          evRender();
-        })
-        .withFailureHandler(function(e){ avisar("Erro: "+((e&&e.message)||String(e||"")),"err"); })
-        .excluirEventoAgenda(id, tokenSessao());
-    };
+/* ══ SITUAÇÃO DO EVENTO ═════════════════════════════════════════════════════
+   O cartão é desenhado a partir do que o backend responde, não de uma lista
+   fixa aqui. `eventosV2Admin_situacaoFesta2026` devolve a situação atual, os
+   destinos alcançáveis DAQUI e o que falta para publicar — e a tela só mostra
+   isso. Se amanhã a máquina de estados mudar, a tela acompanha sozinha; e
+   nunca aparece um botão que o Service vai recusar.
 
-    window.evLimpar=function(){
-      EV_EDITANDO="";
-      ["evNome","evData"].forEach(function(i){ g(i).value=""; });
-      g("evTipo").value="Assembleia"; g("evStatus").value="Planejado";
-    };
+   A trava real continua no Service, não aqui: esconder o botão é conveniência
+   da tela, não segurança. Quem chamar a função direto é barrado igual. */
+function evSituacaoCarregar(){
+  var alvo=g('evSituacaoCorpo');if(!alvo)return;
+  var token=tokenSessao();
+  if(!token){alvo.textContent='Sessão não encontrada.';return}
+  google.script.run.withSuccessHandler(function(r){
+    if(!r||!r.ok){alvo.textContent=(r&&r.erro)||'Não foi possível ler a situação.';return}
+    evSituacaoPintar(r);
+  }).withFailureHandler(function(e){
+    alvo.textContent='Erro ao ler a situação: '+((e&&e.message)||e);
+  }).eventosV2Admin_situacaoFesta2026(token);
+}
 
-    window.evExportar=function(){
-      var rows=[["Evento","Data","Tipo","Status"]].concat(EV_CACHE.map(function(x){ return [x.nome,x.data,x.tipo,x.status]; }));
-      var csv=rows.map(function(r){ return r.map(function(c){ return '"'+String(c||"").replace(/"/g,'""')+'"'; }).join(";"); }).join("\n");
-      var a=document.createElement("a");
-      a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
-      a.download="sisgep-eventos.csv"; a.click();
-    };
+function evSituacaoPintar(r){
+  var s=String(r.status||'RASCUNHO');
+  var partes=['<div class="ev-status-linha">'+
+    '<span class="ev-pill '+statusClasse(s)+'">'+evEsc(r.rotulo||s)+'</span>'+
+    '<span class="ev-status-texto">'+evEsc(evSituacaoExplica(s))+'</span></div>'];
 
-    window.evAbrirEmissaoIngressos=function(){ var token=tokenSessao(); var base=window.location.origin+window.location.pathname; window.open(base+"?painel=emissao&sessao="+encodeURIComponent(token),"_blank"); };
-    window.evAbrirCheckin=function(){ var token=tokenSessao(); var base=window.location.origin+window.location.pathname; window.open(base+"?painel=checkin&sessao="+encodeURIComponent(token),"_blank"); };
+  /* O motivo do cancelamento é o que responde "por que a festa não aconteceu"
+     meses depois. Escondê-lo faria o registro existir sem ninguém ver. */
+  if(r.motivoSituacao)
+    partes.push('<div class="ev-status-motivo">Motivo registrado: '+evEsc(r.motivoSituacao)+'</div>');
 
-    window.initEventos=evRender;
-    if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",evRender);
-    else setTimeout(evRender,80);
-  })();
-  </script>
+  /* Pendência é dita ANTES de a pessoa clicar e ouvir não. */
+  var faltam=r.pendenciasParaPublicar||[];
+  if(faltam.length)
+    partes.push('<div class="ev-status-falta">Para publicar, falta preencher: <b>'+
+      evEsc(faltam.join(', '))+'</b></div>');
+
+  var botoes=(r.proximos||[]).map(function(p){
+    var perigo=(p.status==='CANCELADO');
+    var trava=(p.status==='PROGRAMADO'&&faltam.length)?' disabled title="Preencha o que falta acima"':'';
+    return '<button class="ev-btn'+(perigo?'':' primary')+'" type="button"'+trava+
+           ' onclick="evSituacaoMudar(\''+p.status+'\',\''+evEsc(p.rotulo)+'\')">'+
+           (p.status==='PROGRAMADO'?'Publicar evento':evEsc(p.rotulo))+'</button>';
+  }).join('');
+  partes.push(botoes
+    ? '<div class="ev-status-acoes">'+botoes+'</div>'
+    : '<div class="ev-status-texto">Evento encerrado — não muda mais de situação.</div>');
+
+  g('evSituacaoCorpo').innerHTML=partes.join('');
+  g('evSituacaoCorpo').className='';
+}
+
+/* O que cada situação significa para quem opera — não o rótulo, a consequência. */
+function evSituacaoExplica(s){
+  return {
+    RASCUNHO:'Em preparação. Ninguém de fora vê a página do evento.',
+    PROGRAMADO:'Publicado. As inscrições ainda não foram abertas.',
+    INSCRICOES_ABERTAS:'Recebendo inscrições.',
+    INSCRICOES_ENCERRADAS:'Não recebe mais inscrição. Ingressos continuam sendo emitidos.',
+    EM_ANDAMENTO:'A festa está acontecendo.',
+    ENCERRADO:'A festa acabou.',
+    CANCELADO:'Cancelado. Pode voltar a rascunho se for remarcado.'
+  }[s]||'';
+}
+
+function evSituacaoMudar(destino,rotulo){
+  var token=tokenSessao();if(!token)return avisar('Sessão não encontrada.','err');
+  var enviar=function(motivo){
+    google.script.run.withSuccessHandler(function(r){
+      if(!r||!r.ok)return avisar((r&&r.erro)||'Não foi possível mudar a situação.','err');
+      avisar('Situação alterada para '+rotulo+'.','ok');
+      evSituacaoCarregar();
+      /* O selo do topo e o da lateral leem o mesmo estado: sem recarregar,
+         ficariam contando uma história diferente da do cartão. */
+      EV_INFO_CARREGADO=false;evInfoCarregar();
+    }).withFailureHandler(function(e){
+      avisar('Erro: '+((e&&e.message)||e),'err');
+    }).eventosV2Admin_mudarSituacaoFesta2026(token,destino,motivo||'');
+  };
+  /* Cancelar é a única que pede motivo — o backend recusa sem ele, então
+     perguntar aqui evita a ida e volta.
+
+     PELO DIÁLOGO DO SISTEMA, NÃO POR prompt(). A primeira versão desta função
+     usava prompt() nativo, que é o mesmo defeito que passei a manhã de
+     26/08 removendo da Importação: a caixa do navegador anuncia o endereço
+     cru do googleusercontent no meio de um cancelamento. `perguntar` está
+     nesta página porque EventosAdmin inclui CompassoInscricoes, que inclui
+     DialogoSISGEP — e o diálogo com `campo` já recusa confirmação vazia,
+     então a checagem de motivo em branco vive lá dentro. */
+  if(destino==='CANCELADO'){
+    return perguntar({ titulo:'Cancelar a Festa Compasso da Vida 2026?',
+                       texto:'O motivo fica registrado e é o que responde, meses depois, por que o evento não aconteceu.',
+                       campo:true, rotulo:'Motivo do cancelamento',
+                       perigo:true, ok:'Cancelar evento' }, function(motivo){
+      enviar(String(motivo||'').trim());
+    });
+  }
+  /* Publicar e as demais transições confirmam antes: são visíveis para fora e
+     mudam o que a operação pode fazer. */
+  perguntar({ titulo:'Mudar a situação para "'+rotulo+'"?',
+              texto:evSituacaoExplica(destino), icone:'🚦', ok:'Confirmar' },
+            function(){ enviar(''); });
+}
+
+function evEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+
+/* PLANO B DO "COPIAR LINK", NO PADRÃO DO SISTEMA — 26/08/2026.
+   Dentro do iframe do Apps Script o navegador costuma RECUSAR a área de
+   transferência. O plano B eram três `prompt('Copie o link:', url)` — a caixa
+   que anuncia o endereço cru do googleusercontent, exatamente o que o usuário
+   mandou tirar da Importação no mesmo dia. Aqui o link aparece no diálogo do
+   sistema, num campo já selecionado: dá para copiar com Ctrl+C. Só informa,
+   então não mostra Cancelar. */
+function evMostrarLink(url){
+  perguntar({ titulo:'Link público de inscrição',
+              texto:'O navegador não deixou copiar sozinho. O endereço já está selecionado abaixo — use Ctrl+C.',
+              campo:true, rotulo:'Endereço', ok:'Fechar',
+              icone:'🔗', semCancelar:true }, function(){});
+  var c=document.getElementById('dgCampo');
+  if(c){ c.value=url; setTimeout(function(){ try{ c.select(); }catch(e){} },80); }
+}
+function evInfoPreencher(e,persistido){
+  EV_INFO_EVENTO_ID=String(e.eventoId||'');
+  var mapa={evInfoNome:e.nome,evInfoCapacidade:(Number(e.capacidade)>0?e.capacidade:''),evInfoEdicao:e.edicao,evInfoLogo:e.logoUrl,evInfoCapa:e.imagemCapaUrl,evInfoData:e.dataEvento,evInfoAbertura:e.horaAbertura,evInfoInicio:e.horaInicio,evInfoEncerramento:e.horaEncerramento,evInfoLocal:e.localNome,evInfoEndereco:e.endereco,evInfoDescricao:e.descricao,evInfoOrientacoes:e.orientacoes,evInfoImportantes:e.informacoesImportantes};
+  Object.keys(mapa).forEach(function(id){if(g(id))g(id).value=mapa[id]||''});
+  var s=String(e.status||'RASCUNHO'),rot=statusRotulo(s);['evInfoStatus','evInfoStatusLateral'].forEach(function(id){var el=g(id);if(el){el.textContent=rot;el.className='ev-pill '+statusClasse(s)}});
+  if(g('evInfoPersistencia'))g('evInfoPersistencia').textContent=persistido?'Registro V2 salvo na homologação.':'Ainda não salvo na V2.';
+  if(g('evInfoCarregando'))g('evInfoCarregando').hidden=true;if(g('evInfoCorpo'))g('evInfoCorpo').hidden=false;evInfoPreview();
+}
+window.evInfoPreview=function(){
+  var nome=valor('evInfoNome')||'Festa Compasso da Vida 2026',data=valor('evInfoData'),ab=valor('evInfoAbertura'),ini=valor('evInfoInicio'),fim=valor('evInfoEncerramento'),local=valor('evInfoLocal'),end=valor('evInfoEndereco'),desc=valor('evInfoDescricao');
+  if(g('evInfoTitulo'))g('evInfoTitulo').textContent=nome;if(g('evPreviewNome'))g('evPreviewNome').textContent=nome;
+  if(g('evPreviewData'))g('evPreviewData').textContent=data?'📅 '+dataBr(data):'Data a definir';
+  var hs=[];if(ab)hs.push('entrada '+ab);if(ini)hs.push('início '+ini);if(fim)hs.push('encerramento '+fim);if(g('evPreviewHorario'))g('evPreviewHorario').textContent=hs.length?'🕐 '+hs.join(' · '):'Horário a definir';
+  if(g('evPreviewLocal'))g('evPreviewLocal').textContent=(local||end)?'📍 '+[local,end].filter(Boolean).join(' — '):'Local a definir';
+  if(g('evPreviewDescricao'))g('evPreviewDescricao').textContent=desc||'A descrição do evento aparecerá aqui.';
+  var capa=urlImagem(valor('evInfoCapa')),logo=urlImagem(valor('evInfoLogo')),imgC=g('evPreviewCapa'),imgL=g('evPreviewLogo');
+  if(imgC){imgC.style.display=capa?'block':'none';if(capa)imgC.src=capa;else imgC.removeAttribute('src')}
+  if(imgL){imgL.style.display=logo?'block':'none';if(logo)imgL.src=logo;else imgL.removeAttribute('src')}
+};
+window.evInfoSalvar=function(){
+  var token=tokenSessao();if(!token)return avisar('Sessão não encontrada. Entre novamente no SISGEP.','err');
+  var nome=valor('evInfoNome');if(!nome)return avisar('Informe o nome do evento.','warn');
+  var dados={eventoId:EV_INFO_EVENTO_ID,nome:nome,capacidade:valor('evInfoCapacidade'),edicao:valor('evInfoEdicao'),logoUrl:valor('evInfoLogo'),imagemCapaUrl:valor('evInfoCapa'),dataEvento:valor('evInfoData'),horaAbertura:valor('evInfoAbertura'),horaInicio:valor('evInfoInicio'),horaEncerramento:valor('evInfoEncerramento'),localNome:valor('evInfoLocal'),endereco:valor('evInfoEndereco'),descricao:valor('evInfoDescricao'),orientacoes:valor('evInfoOrientacoes'),informacoesImportantes:valor('evInfoImportantes')};
+  var bt=g('evInfoSalvar');if(bt){bt.disabled=true;bt.textContent='Salvando…'}
+  google.script.run.withSuccessHandler(function(r){
+    if(bt){bt.disabled=false;bt.textContent='Salvar rascunho'}
+    if(!r||!r.ok)return avisar((r&&r.mensagem)||'Não foi possível salvar.','err');
+    EV_INFO_EVENTO_ID=String((r.evento||{}).eventoId||EV_INFO_EVENTO_ID);evInfoPreencher(r.evento||{},true);avisar(r.mensagem||'Informações salvas.','ok');
+  }).withFailureHandler(function(e){if(bt){bt.disabled=false;bt.textContent='Salvar rascunho'}avisar('Erro ao salvar: '+((e&&e.message)||e),'err')}).eventosV2Admin_salvarInformacoesFesta2026(token,dados);
+};
+
+/* ── CALENDÁRIO (fluxo legado preservado) ── */
+function pintar(){var b=String((g('evBusca')||{}).value||'').toLowerCase(),h=new Date().toISOString().slice(0,10),f=EV_CACHE.filter(function(x){return !b||[x.nome,x.tipo,x.status].join(' ').toLowerCase().indexOf(b)>=0});g('evProximos').textContent=EV_CACHE.filter(function(x){return x.data>=h&&x.status!=="Concluido"}).length;g('evHoje').textContent=EV_CACHE.filter(function(x){return x.data===h}).length;g('evComunicacao').textContent=EV_CACHE.filter(function(x){return x.tipo==='Comunicado'}).length;g('evConcluidos').textContent=EV_CACHE.filter(function(x){return x.status==='Concluido'}).length;g('evTabela').innerHTML=f.length?f.map(function(x){return "<tr><td><strong>"+esc(x.nome)+"</strong></td><td>"+esc(x.data||'-')+"</td><td>"+esc(x.tipo)+"</td><td><span class='ev-pill "+cls(x.status)+"'>"+esc(x.status)+"</span></td><td><button class='ev-btn bingo' onclick=\"evAbrirBingo('"+esc(x.id)+"')\">🎯 Bingo</button> <button class='ev-btn' onclick=\"evEditar('"+esc(x.id)+"')\">Editar</button> <button class='ev-btn' onclick=\"evExcluir('"+esc(x.id)+"')\">Excluir</button></td></tr>"}).join(''):"<tr><td colspan='5' style='text-align:center;padding:24px;color:#94a3b8'>Nenhum evento cadastrado.</td></tr>"}
+window.evRender=function(){google.script.run.withSuccessHandler(function(l){EV_CACHE=l||[];pintar()}).withFailureHandler(function(e){avisar('Erro ao carregar eventos: '+((e&&e.message)||e),'err')}).listarEventosAgenda(tokenSessao())};
+window.evSalvar=function(){var x={id:EV_EDITANDO||'',nome:g('evNome').value,data:g('evData').value,tipo:g('evTipo').value,status:g('evStatus').value};if(!x.nome.trim())return avisar('Informe o evento.','warn');google.script.run.withSuccessHandler(function(r){if(!r||!r.ok)return avisar((r&&r.mensagem)||'Erro ao salvar.','err');avisar(r.mensagem||'Evento salvo.','ok');evLimpar();evRender()}).withFailureHandler(function(e){avisar('Erro: '+((e&&e.message)||e),'err')}).salvarEventoAgenda(x,tokenSessao())};
+window.evEditar=function(id){var x=EV_CACHE.find(function(a){return a.id===id});if(!x)return;EV_EDITANDO=id;g('evNome').value=x.nome;g('evData').value=x.data;g('evTipo').value=x.tipo;g('evStatus').value=x.status};
+window.evExcluir=function(id){return perguntar({titulo:'Excluir este evento?',texto:'A exclusão não tem desfazer.',perigo:true,ok:'Excluir'},function(){google.script.run.withSuccessHandler(function(r){if(!r||!r.ok)return avisar((r&&r.mensagem)||'Erro ao excluir.','err');evRender()}).withFailureHandler(function(e){avisar('Erro: '+((e&&e.message)||e),'err')}).excluirEventoAgenda(id,tokenSessao())});};
+window.evLimpar=function(){EV_EDITANDO='';g('evNome').value='';g('evData').value='';g('evTipo').value='Assembleia';g('evStatus').value='Planejado'};
+window.evExportar=function(){var rows=[["Evento","Data","Tipo","Status"]].concat(EV_CACHE.map(function(x){return[x.nome,x.data,x.tipo,x.status]})),csv=rows.map(function(r){return r.map(function(c){return '"'+String(c||'').replace(/"/g,'""')+'"'}).join(';')}).join('\n'),a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='sisgep-eventos.csv';a.click()};
+
+/* ── PAINÉIS ── */
+window.evAbrirPainel=function(painel,eventoId,filtro){var token=tokenSessao();if(!token)return avisar('Sessão não encontrada. Entre novamente no SISGEP.','err');google.script.run.withSuccessHandler(function(base){var url=String(base||'')+'?painel='+encodeURIComponent(painel)+'&sessao='+encodeURIComponent(token);if(eventoId)url+='&evento='+encodeURIComponent(eventoId);if(filtro)url+='&filtro='+encodeURIComponent(filtro);window.open(url,'_blank')}).withFailureHandler(function(e){avisar('Não foi possível abrir o painel: '+((e&&e.message)||e),'err')}).eventos_obterWebAppUrl(token)};
+window.evAvisoEmissaoV1=function(){avisar('A emissão avulsa saía com QR não assinado — dava para deduzi-lo a partir do número do ingresso. Foi desligada em 21/08/2026. Use o Painel de inscrições: lá o ingresso sai com QR assinado.','err')};
+/* Mantida porque outras telas podem chamá-la; agora abre a tela que explica a
+   desativação, em vez de um caminho que só devolve erro. */
+window.evAbrirEmissaoIngressos=function(){evAvisoEmissaoV1()};window.evAbrirCheckin=function(){evAbrirPainel('checkin')};window.evAbrirBingo=function(eventoId){evAbrirPainel('bingo',eventoId)};
+
+/* ── LINK PÚBLICO DO COMPASSO ── */
+var EV_LINK_COMPASSO='';
+function evMontarLinkCompasso(){if(EV_LINK_COMPASSO)return;var token=tokenSessao(),el=g('evLinkCompasso');if(!token){if(el)el.textContent='Sessão não encontrada. Entre novamente no SISGEP.';return}google.script.run.withSuccessHandler(function(base){EV_LINK_COMPASSO=String(base||'')+'?page=compasso-inscricao';if(el)el.textContent=EV_LINK_COMPASSO}).withFailureHandler(function(e){if(el)el.textContent='Não foi possível montar o link: '+((e&&e.message)||e)}).eventos_obterWebAppUrl(token)}
+window.evCopiarLinkCompasso=function(){if(!EV_LINK_COMPASSO)return avisar('O link ainda está carregando. Tente em instantes.','warn');var pronto=function(){avisar('Link de inscrição copiado.','ok')};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(EV_LINK_COMPASSO).then(pronto,function(){evMostrarLink(EV_LINK_COMPASSO)})}else{evMostrarLink(EV_LINK_COMPASSO)}};
+window.evAvisoPortaria=function(){avisar('A portaria abre pela planilha do SISGEP, no celular da entrada: menu 🎫 Eventos › Check-in. Ela ainda não tem endereço próprio no web app.','warn')};
+window.evCopiarLinkInscricao=function(eventoId){var token=tokenSessao();if(!token)return avisar('Sessão não encontrada. Entre novamente no SISGEP.','err');var id=String(eventoId||'').trim();if(!id)return avisar('Abra o evento na lista para copiar o link da inscrição.','warn');google.script.run.withSuccessHandler(function(base){var url=String(base||'')+'?bingo-inscricao='+encodeURIComponent(id),pronto=function(){avisar('Link copiado: '+url,'ok')};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(pronto,function(){evMostrarLink(url)})}else{evMostrarLink(url)}}).withFailureHandler(function(e){avisar('Não foi possível montar o link: '+((e&&e.message)||e),'err')}).eventos_obterWebAppUrl(token)};
+
+function evIniciar(){evSubInterno(evSubSalvo());evRender()}
+window.initEventos=evIniciar;
+/* CARREGAMENTO SOB DEMANDA (auditoria M01, lote 2 — 31/08/2026).
+   Esta tela buscava os dados no DOMContentLoaded, ou seja, em toda carga da
+   página, mesmo com o módulo fechado. Quem inicializa agora é o initModulo()
+   do index.html, pelo spIr(). */
+})();
+</script>
 </div>

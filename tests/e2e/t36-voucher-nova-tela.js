@@ -19,7 +19,7 @@ const dom = require("./dom");
 if (!dom.jsdomDisponivel()) {
   b.fluxo("VOUCHER · Tela de nova solicitação");
   b.naoTestavel("tela de nova solicitação", "jsdom não instalado");
-  b.resumo(); process.exit(0);
+  b.resumo(); process.exit(process.exitCode || 0);
 }
 
 const { g } = b.subir({});
@@ -700,5 +700,5 @@ function el(id) { return doc.getElementById(id); }
   b.igual(quantosAvisos, 1, "e só naquela linha");
 
   b.resumo();
-  process.exit(0);
+  process.exit(process.exitCode || 0);
 })();

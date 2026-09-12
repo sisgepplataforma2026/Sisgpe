@@ -311,6 +311,27 @@ function aud_bate_(valor, condicao) {
 function aud_paraData_(v) {
   if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
   if (!v) return null;
+
+  // Datas de <input type="date"> chegam como AAAA-MM-DD.
+  // O parser nativo trata esse formato como UTC; em Sao Paulo isso
+  // pode deslocar o limite do filtro para o dia anterior. Aqui,
+  // AAAA-MM-DD e uma data civil local. Timestamps completos seguem
+  // usando o parser nativo.
+  if (typeof v === "string") {
+    var texto = String(v).trim();
+    var civil = /^(\d{4})-(\d{2})-(\d{2})$/.exec(texto);
+    if (civil) {
+      var ano = Number(civil[1]);
+      var mes = Number(civil[2]) - 1;
+      var dia = Number(civil[3]);
+      var local = new Date(ano, mes, dia, 0, 0, 0, 0);
+      if (local.getFullYear() !== ano ||
+          local.getMonth() !== mes ||
+          local.getDate() !== dia) return null;
+      return local;
+    }
+  }
+
   var d = new Date(v);
   return isNaN(d.getTime()) ? null : d;
 }

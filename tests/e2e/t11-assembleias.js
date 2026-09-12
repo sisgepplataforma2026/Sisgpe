@@ -276,4 +276,3 @@ b.naoTestavel("Publicação do edital em jornal e no Diário Oficial", "ato exte
 b.naoTestavel("Contagem de votos em urna e lavratura da ata", "acontece na sala, com gente");
 
 b.resumo();
-process.exit(0);

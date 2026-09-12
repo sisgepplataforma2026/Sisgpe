@@ -153,7 +153,12 @@ function exportarAuditoriaLog(filtros, tokenSessao) {
 }
 
 /* ── listarEscolasOficios ── */
-function listarEscolasOficios() {
+function listarEscolasOficios(tokenSessao) {
+  /* PORTA ACRESCENTADA EM 01/09/2026 — frente A da auditoria do Modulo 03.
+     Devolve dado de escola (razao social, CNPJ, e-mails) e nao tinha checagem
+     nenhuma. No Apps Script toda funcao global e endpoint para QUALQUER pagina
+     do projeto, inclusive as anonimas que o Code.gs serve. Ver a nota do t125. */
+  exigirModulo_(tokenSessao, "documentos", false);
   var ss = SpreadsheetApp.openById(PLANILHA_ID);
   var sh = ss.getSheetByName("Escolas")
           || ss.getSheetByName("ESCOLAS")
@@ -224,6 +229,37 @@ function salvarEscolaOficio(dados, tokenSessao) {
   var colNome  = h["NomeEscola"] || h["Escola (Razão Social)"] || h["Escola"] || 2;
   var colEmail = h["Email"]      || h["E-mail (principal)"]    || 4;
 
+  function colunaEscola_(nomes) {
+    for (var n = 0; n < nomes.length; n++) if (h[nomes[n]]) return h[nomes[n]];
+    var desejados = nomes.map(function(nome) {
+      return String(nome || "").toLowerCase().normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+    });
+    var chaves = Object.keys(h);
+    for (var c = 0; c < chaves.length; c++) {
+      var normalizada = String(chaves[c] || "").toLowerCase().normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+      if (desejados.indexOf(normalizada) !== -1) return h[chaves[c]];
+    }
+    return 0;
+  }
+
+  var camposEndereco = [
+    { col: colunaEscola_(["Endereço", "Endereco", "Logradouro"]), valor: dados.logradouro || dados.endereco || "" },
+    { col: colunaEscola_(["Número", "Numero"]), valor: dados.numero || "" },
+    { col: colunaEscola_(["Complemento"]), valor: dados.complemento || "" },
+    { col: colunaEscola_(["Bairro"]), valor: dados.bairro || "" },
+    { col: colunaEscola_(["Cidade", "Município", "Municipio"]), valor: dados.cidade || "" },
+    { col: colunaEscola_(["UF", "Estado"]), valor: String(dados.uf || "").toUpperCase() },
+    { col: colunaEscola_(["CEP"]), valor: dados.cep || "" }
+  ];
+
+  function aplicarEndereco_(linha) {
+    camposEndereco.forEach(function(campo) {
+      if (campo.col > 0) linha[campo.col - 1] = campo.valor;
+    });
+  }
+
   if (linhaEncontrada > -1) {
     var totalCols    = sh.getLastColumn();
     var valoresAtual = sh.getRange(linhaEncontrada, 1, 1, totalCols).getValues()[0];
@@ -231,6 +267,7 @@ function salvarEscolaOficio(dados, tokenSessao) {
     valoresAtual[colNome    - 1] = dados.nome || dados.razaoSocial || dados.razao || "";
     valoresAtual[colCnpj    - 1] = dados.cnpj || "";
     valoresAtual[colEmail   - 1] = dados.email || dados.emailPrincipal || "";
+    aplicarEndereco_(valoresAtual);
     sh.getRange(linhaEncontrada, 1, 1, totalCols).setValues([valoresAtual]);
   } else {
     var novaLinha = new Array(sh.getLastColumn()).fill("");
@@ -238,6 +275,7 @@ function salvarEscolaOficio(dados, tokenSessao) {
     novaLinha[colNome    - 1] = dados.nome || dados.razaoSocial || dados.razao || "";
     novaLinha[colCnpj    - 1] = dados.cnpj || "";
     novaLinha[colEmail   - 1] = dados.email || dados.emailPrincipal || "";
+    aplicarEndereco_(novaLinha);
     sh.appendRow(novaLinha);
   }
 
@@ -260,7 +298,7 @@ function relOficios_exportarPlanilhaTemporaria_(planilhaTemp, nomeArquivo, tipoE
     }).getBlob().setName(nomeArquivo + "." + formato);
 
     var arquivo = DriveApp.createFile(blob);
-    arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    arquivoAplicarPolitica_(arquivo, "RelatoriosOficios.gs");
 
     try { DriveApp.getFileById(idTemp).setTrashed(true); } catch(e) {}
 

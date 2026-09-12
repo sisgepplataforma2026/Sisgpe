@@ -197,4 +197,3 @@ b.naoTestavel("Feriados no cálculo do prazo",
   "dia a mais do que a ANPD consideraria — aperta o prazo, não afrouxa");
 
 b.resumo();
-process.exit(0);

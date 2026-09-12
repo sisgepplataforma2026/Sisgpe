@@ -174,7 +174,13 @@ const htmlTitular = g.gerarHtmlDocumentoVoucher_({
 });
 b.ok(!/dependente de/.test(htmlTitular),
   "quando o beneficiário é o próprio titular, a oração some");
-b.ok(/semestre letivo de 2026\/1/.test(htmlTitular), "e semestral diz 'semestre letivo'");
+/* O papel do TITULAR escreve o período mais curto que o do dependente:
+   "do Curso de X semestre 2026/1", sem o "letivo de". Confirmado nos dois
+   modelos que o usuário mandou em 18/08/2026 — ver t61. */
+b.ok(/semestre 2026\/1/.test(htmlTitular),
+  "e o titular semestral diz 'semestre 2026/1', como no papel dele");
+b.ok(!/semestre letivo de 2026\/1/.test(htmlTitular),
+  "sem o 'letivo de', que é a forma do papel do dependente");
 b.ok(/instituição <strong>MULTIVIX<\/strong>/.test(htmlTitular),
   "a instituição é o NOME FANTASIA");
 b.ok(/mantida pela <strong>EMBRAE S\/A<\/strong>/.test(htmlTitular),
@@ -466,4 +472,3 @@ b.naoTestavel("A aparência final do PDF convertido pelo Apps Script",
   "conferir emitindo um certificado no ar e comparando com o papel do sindicato");
 
 b.resumo();
-process.exit(0);

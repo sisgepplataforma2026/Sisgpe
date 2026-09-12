@@ -163,4 +163,3 @@ b.naoTestavel("A tela AuditoriaAcessos.html",
   "linhas aparecem em Auditoria e Compliance › Logs de Acesso");
 
 b.resumo();
-process.exit(0);

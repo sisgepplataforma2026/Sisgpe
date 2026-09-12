@@ -133,7 +133,8 @@ function buscarEscolasPorTermo_interno_(termo) {
   }
 }
 
-function buscarEscolasOficioSmart(termo) {
+function buscarEscolasOficioSmart(termo, tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
   return buscarEscolasPorTermo_interno_(termo);
 }
 
@@ -354,6 +355,7 @@ var colCnpj   = colOuNovo_(h, "CNPJ",         ["CNPJ"]);
     var colUf     = colOuNovo_(h, "UF",            ["UF"]);
     var colBairro = colOuNovo_(h, "Bairro",        ["Bairro"]);
     var colCep    = colOuNovo_(h, "CEP",           ["CEP"]);
+    var colEmailReceita = colOuNovo_(h, "EMAILS_RECEITA", ["EMAILS_RECEITA", "Emails Receita"]);
 
     if (!colCnpj) return { erro: true, mensagem: "Coluna CNPJ não encontrada." };
 
@@ -370,8 +372,33 @@ var row = i + 2;
 
       if (colNome   && externo.razaoSocial)  valoresLinha[colNome   - 1] = externo.razaoSocial;
       if (colFant   && externo.fantasia)     valoresLinha[colFant   - 1] = externo.fantasia;
-      if (colEmail  && externo.email)        valoresLinha[colEmail  - 1] = externo.email;
-      if (colEmails && externo.email)        valoresLinha[colEmails - 1] = normalizarEmailsBuscaEscola_(externo.email);
+      /* O E-MAIL DA RECEITA NÃO SOBRESCREVE O CONTATO REAL — 04/09/2026.
+
+         Até aqui estas duas linhas gravavam `externo.email` sem olhar o que
+         havia antes. O `externo.email` é o endereço registrado na Receita
+         Federal, que em escola costuma ser o do contador — e o que estava na
+         coluna era o contato que a secretaria levou meses achando: o RH, a
+         folha de pagamento, a pessoa que responde.
+
+         `sincronizarTodasEscolas` roda isso para as 679. Um clique trocava a
+         base inteira de contatos pelo cadastro da Receita, sem aviso e sem
+         desfazer — e o sintoma só apareceria semanas depois, em ofício
+         quicando.
+
+         Agora: o dado da Receita vai para a coluna dele (`EMAILS_RECEITA`, que
+         já existe no esquema, em ESC_COLUNAS_RECEITA), e o contato só é
+         preenchido quando está VAZIO. Escola sem contato nenhum ganha um ponto
+         de partida; escola com contato conhecido não perde o que tem. */
+      if (colEmailReceita && externo.email) valoresLinha[colEmailReceita - 1] = externo.email;
+
+      if (colEmail && externo.email &&
+          !String(valoresLinha[colEmail - 1] || "").trim()) {
+        valoresLinha[colEmail - 1] = externo.email;
+      }
+      if (colEmails && externo.email &&
+          !String(valoresLinha[colEmails - 1] || "").trim()) {
+        valoresLinha[colEmails - 1] = normalizarEmailsBuscaEscola_(externo.email);
+      }
       if (colEnd    && externo.endereco)     valoresLinha[colEnd    - 1] = externo.endereco;
       if (colNum    && externo.numero)       valoresLinha[colNum    - 1] = externo.numero;
       if (colComp   && externo.complemento)  valoresLinha[colComp   - 1] = externo.complemento;
@@ -395,6 +422,9 @@ var row = i + 2;
       if (colCnpj)   novaLinha[colCnpj - 1]   = formatarCNPJ_(digits);
       if (colEmail)  novaLinha[colEmail - 1]  = externo.email || "";
       if (colEmails) novaLinha[colEmails - 1] = normalizarEmailsBuscaEscola_(externo.email || "");
+      /* Linha nova: a coluna de contato nasce vazia, entao preenche-la nao
+         apaga nada. Mas a origem do dado fica registrada mesmo assim. */
+      if (colEmailReceita) novaLinha[colEmailReceita - 1] = externo.email || "";
       if (colEnd)    novaLinha[colEnd - 1]    = externo.endereco || "";
       if (colNum)    novaLinha[colNum - 1]    = externo.numero || "";
       if (colComp)   novaLinha[colComp - 1]   = externo.complemento || "";
