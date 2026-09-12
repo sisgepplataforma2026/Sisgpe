@@ -124,6 +124,17 @@
         </div>
       </div>
 
+    </div>
+
+    <!-- ═══ A FILA INTEIRA — VISIVEL SEMPRE ═══
+         Ate 12/09/2026 esta tabela vivia dentro do bloco ACOMPANHAR, que so
+         aparece depois de Liberar envio. Quem ainda estava testando ANTES de
+         liberar — que e a ordem certa de trabalhar — nao tinha como ver a
+         situacao de escola nenhuma: a unica janela para a fila era a busca, e
+         a busca escondia justamente quem ja tinha recebido. A tabela e so
+         leitura; nao ha motivo para esconder. -->
+    <div id="ctnFila" style="display:none;">
+      <div style="font-size:12px;color:#64748b;margin:0 0 8px;">Todas as escolas da fila e a situação de cada uma.</div>
       <div class="ctn-card">
         <div class="ctn-filtros" id="ctnFiltros">
           <button type="button" class="ctn-fbtn on" data-f="todas" onclick="ctnFiltrar('todas',this)">Todas</button>
@@ -212,6 +223,12 @@ function ctnCarregar() {
     if (g("ctnAcompanhar")) g("ctnAcompanhar").style.display = emAndamento ? "block" : "none";
 
     if (emAndamento) ctnDesenharPainel(s); else ctnDesenharPreparo(s);
+
+    /* A TABELA NAO DEPENDE DE TER LIBERADO. Ela existe desde que haja fila, e
+       e justamente ANTES de liberar que a pessoa precisa conferir o que a
+       fila tem dentro. */
+    if (g("ctnFila")) g("ctnFila").style.display = (s.total > 0) ? "block" : "none";
+    if (s.total > 0) ctnListar();
   });
 }
 
@@ -280,8 +297,6 @@ function ctnDesenharPainel(s) {
       ? "<strong>⏸ Campanha pausada por você.</strong> Nada sai até liberar de novo."
       : "<strong>⏸ Parou por hoje.</strong> " + ctnEsc((s.orcamento && s.orcamento.mensagem) || "");
   } else { pausa.style.display = "none"; }
-
-  ctnListar();
 }
 
 function ctnFiltrar(f, botao) {
@@ -397,21 +412,35 @@ function ctnBuscarEscolaAgora() {
         + ctnEsc((r && r.mensagem) || "Nada encontrado.") + "</div>";
       return;
     }
+    /* QUEM JA RECEBEU APARECE, em cinza e sem clique. A lista so com
+       pendentes fazia a tela responder "nao achei" para escola que existia e
+       estava certa — e a pessoa ia procurar defeito no cadastro. */
     caixa.innerHTML =
       '<div style="font-size:11px;color:#64748b;margin-bottom:5px;">' + ctnEsc(r.mensagem) + "</div>"
       + '<div style="max-height:230px;overflow:auto;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">'
       + itens.map(function (i) {
           var nomeJs = ctnEsc(i.escola).replace(/'/g, "\\'");
-          return '<div onclick="ctnEnviarPara(\'' + nomeJs + '\')"'
-            + ' style="padding:9px 12px;border-bottom:1px solid #f1f5f9;cursor:pointer;display:flex;'
-            + 'justify-content:space-between;gap:10px;align-items:center;"'
-            + ' onmouseover="this.style.background=\'#f1f5f9\'"'
-            + ' onmouseout="this.style.background=\'#fff\'">'
+          var pode = !!i.podeEnviar;
+
+          var abre = pode
+            ? '<div onclick="ctnEnviarPara(\'' + nomeJs + '\')"'
+              + ' onmouseover="this.style.background=\'#f1f5f9\'"'
+              + ' onmouseout="this.style.background=\'#fff\'"'
+              + ' style="cursor:pointer;background:#fff;'
+            : '<div title="Esta escola não pode receber agora."'
+              + ' style="cursor:not-allowed;background:#f8fafc;opacity:.72;';
+
+          return abre
+            + 'padding:9px 12px;border-bottom:1px solid #f1f5f9;display:flex;'
+            + 'justify-content:space-between;gap:10px;align-items:center;">'
             + '<span><strong style="font-size:12.5px;">' + ctnEsc(i.escola) + "</strong>"
             + (i.cnpj ? '<br><span style="font-size:11px;color:#94a3b8;">CNPJ ' + ctnEsc(i.cnpj) + "</span>" : "")
+            + (pode ? "" : '<br><span style="font-size:11px;color:#b45309;">' + ctnEsc(i.motivo || "") + "</span>")
             + "</span>"
             + '<span style="font-size:11px;color:#64748b;white-space:nowrap;">'
-            + i.emails.length + " e-mail(s) ▸</span></div>";
+            + (pode ? i.emails.length + " e-mail(s) \u25b8"
+                    : ctnPill(i.status))
+            + "</span></div>";
         }).join("")
       + "</div>";
   });

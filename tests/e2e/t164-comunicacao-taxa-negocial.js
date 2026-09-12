@@ -292,6 +292,58 @@ const aindaPendenteAlfa = filaLinhas().filter(
 igual(aindaPendenteAlfa.length, 0,
    "e nenhuma linha da ALFA continua pendente");
 
+/* A BUSCA MOSTRA QUEM JA RECEBEU — 12/09/2026.
+
+   Ele cadastrou uma escola "Teste", correta e completa, buscou por ela e a
+   tela respondeu "nenhuma escola pendente com TESTE no nome". A escola
+   existia, estava na fila e estava certa: so ja tinha sido comunicada. A
+   busca escondia ENVIADO, entao tres situacoes diferentes — nao existe / ja
+   recebeu / sem e-mail — sairam pela mesma frase, e ele passou uma hora
+   procurando defeito no cadastro, que nao tinha defeito nenhum.
+
+   A partir daqui, quem ja recebeu APARECE, com o motivo escrito e sem poder
+   ser clicada. */
+passo("a escola já comunicada continua aparecendo na busca");
+amb.outbox.length = 0;
+const jaFoi = g.tnCom_buscarEscolas_("ALFA");
+igual(jaFoi.itens.length, 1, "ela não some da busca só porque já recebeu");
+igual(jaFoi.itens[0].status, "ENVIADO", "e a busca diz em que situação ela está");
+igual(jaFoi.itens[0].podeEnviar, false, "marcada como não-clicável — não recebe duas vezes");
+ok(String(jaFoi.itens[0].motivo).indexOf("já comunicada") > -1,
+   "com o motivo em palavras, não em silêncio", jaFoi.itens[0].motivo);
+ok(String(jaFoi.itens[0].motivo).indexOf("/") > -1,
+   "e a data em que recebeu, que é o que a pessoa quer saber", jaFoi.itens[0].motivo);
+igual(amb.outbox.length, 0, "e continua sem enviar nada — busca só lê");
+
+passo("quem ainda pode receber segue clicável");
+const beta = g.tnCom_buscarEscolas_("BETA");
+igual(beta.itens.length, 1, "achou");
+igual(beta.itens[0].podeEnviar, true, "e essa pode ser clicada");
+ok(beta.itens[0].emails.length > 0, "com os endereços que receberiam agora");
+
+passo("a contagem separa quem pode de quem não pode");
+const todosCol = g.tnCom_buscarEscolas_("colegio");
+igual(todosCol.total, 2, "as duas continuam na lista");
+igual(todosCol.podem, 1, "mas só uma pode receber agora");
+ok(String(todosCol.mensagem).indexOf("pode(m) receber agora") > -1,
+   "e a tela recebe isso escrito", todosCol.mensagem);
+
+passo("nome que não está na fila manda para o botão que resolve");
+const fora = g.tnCom_buscarEscolas_("escola que nunca existiu");
+igual(fora.itens.length, 0, "não inventa resultado");
+ok(String(fora.mensagem).indexOf("Preparar fila") > -1,
+   "e diz o que fazer: a fila é uma fotografia, quem foi cadastrado depois não está nela",
+   fora.mensagem);
+ok(String(fora.mensagem).indexOf("não apaga nem duplica") > -1,
+   "avisando que o botão é seguro — senão ninguém clica");
+
+passo("tentar enviar para quem já recebeu explica o motivo");
+const denovo = g.tnCom_testar_("COLEGIO ALFA", "wanderson@sindeducacao.com");
+igual(denovo.ok, false, "recusa o segundo envio");
+ok(String(denovo.mensagem).indexOf("já comunicada") > -1,
+   "dizendo que ela já foi comunicada, não um 'não achei' seco", denovo.mensagem);
+igual(amb.outbox.length, 0, "e nada saiu");
+
 passo("sem o alias, nem testa");
 semAlias();
 igual(g.tnCom_testar_("BETA", "wanderson@x").ok, false,
@@ -377,6 +429,36 @@ ok(idx.indexOf('data-sub-mod="comunicacaoTN"') > -1, "existe o botão no submenu
 ok(/data-subs="[^"]*comunicacaoTN/.test(idx), "e ele está na lista de submódulos do grupo");
 ok(idx.indexOf('comunicacaoTN:["mComunicacaoTN"') > -1, "a página está registrada");
 ok(idx.indexOf("initComunicacaoTN") > -1, "e o gancho que inicializa a tela existe");
+
+/* ══════════════════════════════════════════════════════════════════════ */
+fluxo("A tabela da fila não fica trancada atrás do Liberar");
+
+/* Ate 12/09/2026 a tabela com TODAS as escolas e a situacao de cada uma
+   vivia dentro do bloco ACOMPANHAR, que so aparece depois de Liberar envio.
+   Quem estava testando ANTES de liberar — a ordem certa de trabalhar — nao
+   tinha como ver a situacao de escola nenhuma. A unica janela para a fila era
+   a busca, e a busca escondia quem ja havia recebido. Resultado: uma escola
+   correta ficou invisivel por duas portas ao mesmo tempo. */
+const tela = fs.readFileSync(require("./load").RAIZ + "/ComunicacaoTNAdmin.html", "utf8");
+
+const iFila  = tela.indexOf('id="ctnFila"');
+const iAcomp = tela.indexOf('id="ctnAcompanhar"');
+const iCorpo = tela.indexOf('id="ctnCorpo"');
+
+ok(iFila > -1, "existe um bloco próprio para a fila");
+ok(iCorpo > iFila, "e a tabela mora dentro dele");
+ok(iAcomp > -1 && iAcomp < iFila && iCorpo > iAcomp,
+   "fora do bloco de acompanhamento, que só aparece depois de liberar");
+ok(tela.indexOf('g("ctnFila").style.display = (s.total > 0)') > -1,
+   "e quem manda nela é TER FILA, não ter liberado");
+ok(tela.indexOf("if (s.total > 0) ctnListar();") > -1,
+   "a tabela carrega sempre que houver fila");
+
+/* A lista da busca precisa distinguir quem pode receber de quem nao pode —
+   senao o cinza da tela nao teria de onde vir. */
+ok(tela.indexOf("i.podeEnviar") > -1, "a lista da busca lê o podeEnviar do backend");
+ok(tela.indexOf("cursor:not-allowed") > -1, "e quem não pode não convida ao clique");
+ok(tela.indexOf("i.motivo") > -1, "mostrando o motivo, em vez de um cinza sem explicação");
 
 /* ══════════════════════════════════════════════════════════════════════ */
 fluxo("O que continua sem cobertura");

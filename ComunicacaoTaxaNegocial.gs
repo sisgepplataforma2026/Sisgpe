@@ -925,7 +925,22 @@ function tnCom_testar_(termo, quem) {
   if (exato.length === 1) nomes = exato;
 
   if (!nomes.length) {
-    return { ok: false, mensagem: "Nenhuma escola pendente com \"" + termo + "\" no nome." };
+    /* DIZER O MOTIVO, nao so o "nao". A recusa seca mandava a pessoa procurar
+       erro no cadastro de uma escola que estava certa e ja tinha recebido. */
+    var achou = tnCom_buscarEscolas_(termo);
+    var casam = (achou && achou.itens) || [];
+    if (casam.length === 1) {
+      return { ok: false, mensagem: "A escola \"" + casam[0].escola + "\" está na fila, mas " +
+                                    casam[0].motivo + "." };
+    }
+    if (casam.length > 1) {
+      return { ok: false, varias: casam.slice(0, 12).map(function (i) { return i.escola; }),
+               total: casam.length,
+               mensagem: casam.length + " escolas casam com \"" + termo +
+                         "\", e nenhuma tem endereço por enviar." };
+    }
+    return { ok: false, mensagem: (achou && achou.mensagem) ||
+                                  ("Nenhuma escola com \"" + termo + "\" no nome está na fila.") };
   }
   if (nomes.length > 1) {
     /* Escolher pela pessoa seria adivinhar QUAL escola recebe um documento
@@ -1030,35 +1045,104 @@ function tnCom_buscarEscolas_(termo) {
   if (busca.length < 2) return { ok: true, itens: [], mensagem: "Digite ao menos 2 letras." };
 
   var f = tnCom_linhas_();
-  if (!f.dados.length) return { ok: true, itens: [], mensagem: "A fila está vazia." };
+  if (!f.dados.length) {
+    return { ok: true, itens: [], mensagem: "A fila está vazia. Clique em Preparar fila antes de testar." };
+  }
 
   var iSt = f.hm["STATUS"], iEsc = f.hm["ESCOLA"], iEmail = f.hm["EMAIL"],
-      iCnpj = f.hm["CNPJ"];
+      iCnpj = f.hm["CNPJ"], iData = f.hm["DATA_HORA"];
 
+  /* TODA escola que casa entra na lista, inclusive quem ja recebeu.
+     ─────────────────────────────────────────────────────────────────────────
+     Ate 12/09/2026 esta busca pulava tudo que nao fosse PENDENTE ou ERRO. O
+     efeito foi uma tela que respondia "nenhuma escola pendente com TESTE no
+     nome" para uma escola que existia, estava cadastrada certa, estava na
+     fila — e so ja tinha sido comunicada. Tres situacoes diferentes (nao
+     existe / ja recebeu / sem e-mail) sairam pela mesma frase, e a pessoa
+     passou uma hora procurando defeito no cadastro, que estava correto.
+     Esconder o que o sistema sabe nao e proteger ninguem.
+     Agora quem ja recebeu APARECE, dizendo quando, e nao pode ser clicada. */
   var achadas = {};
   f.dados.forEach(function (r) {
-    var st = String(r[iSt] || "").trim().toUpperCase();
-    if (st !== "PENDENTE" && st !== "ERRO") return;
     var nome = String(r[iEsc] || "").trim();
     if (!nome || tnCom_normalizarNome_(nome).indexOf(busca) === -1) return;
+
     if (!achadas[nome]) {
-      achadas[nome] = { escola: nome, cnpj: String(r[iCnpj] || "").trim(), emails: [] };
+      achadas[nome] = { escola: nome, cnpj: "", emails: [], enderecos: 0,
+                        status: "", quando: "", podeEnviar: false };
     }
+    var a = achadas[nome];
+    if (!a.cnpj) a.cnpj = String(r[iCnpj] || "").trim();
+
+    var st = String(r[iSt] || "").trim().toUpperCase() || "PENDENTE";
     var em = String(r[iEmail] || "").trim();
-    if (em) achadas[nome].emails.push(em);
+    if (em) a.enderecos++;
+
+    /* O que SAIRIA agora se ela fosse clicada — so o que ainda esta por
+       enviar. E a mesma regra que o tnCom_testar_ usa para escolher as
+       linhas, para a lista nao prometer um envio que o backend recusaria. */
+    if (em && (st === "PENDENTE" || st === "ERRO")) a.emails.push(em);
+
+    /* O status da escola e o PIOR dos seus enderecos, igual a tabela de
+       acompanhamento: dizer "comunicada" com um endereco ainda na fila seria
+       a tela mentindo por arredondamento. */
+    var peso = { ENVIADO: 0, PENDENTE: 1, ERRO: 2, EMAIL_INVALIDO: 3,
+                 ERRO_PERMANENTE: 4, SEM_EMAIL: 5 };
+    if (!a.status || (peso[st] || 9) > (peso[a.status] || 0)) a.status = st;
+
+    var q = r[iData];
+    if (q instanceof Date && !isNaN(q.getTime())) {
+      a.quando = Utilities.formatDate(q, Session.getScriptTimeZone(), "dd/MM HH:mm");
+    }
   });
 
   var itens = Object.keys(achadas).sort(function (a, b) {
     return a.localeCompare(b, "pt-BR", { sensitivity: "base" });
-  }).map(function (k) { return achadas[k]; });
+  }).map(function (k) {
+    var a = achadas[k];
+    /* CLICAVEL e quem tem endereco por enviar — nao quem tem status bonito. */
+    a.podeEnviar = a.emails.length > 0;
+    a.motivo = a.podeEnviar ? "" : tnCom_motivoNaoEnvia_(a);
+    return a;
+  });
+
+  if (!itens.length) {
+    /* A escola pode existir no cadastro e nao estar na fila: a fila e uma
+       fotografia tirada no Preparar. Dizer so "nao achei" manda a pessoa
+       procurar erro no cadastro dela, que e onde o erro NAO esta. */
+    return {
+      ok: true, itens: [], total: 0,
+      mensagem: "Nenhuma escola com \"" + termo + "\" no nome está na fila desta campanha. " +
+                "Se ela foi cadastrada depois de você preparar a fila, clique em Preparar fila " +
+                "— o botão só acrescenta o que falta, não apaga nem duplica nada."
+    };
+  }
 
   /* Teto de 25 para a lista nao virar a base inteira numa busca de duas
      letras. Quem tem mais que isso refina o texto. */
   var total = itens.length;
+  var podem = itens.filter(function (i) { return i.podeEnviar; }).length;
   return {
-    ok: true, itens: itens.slice(0, 25), total: total,
-    mensagem: total ? (total + " escola(s) pendente(s) com esse texto" +
-                       (total > 25 ? " — mostrando as 25 primeiras" : ""))
-                    : "Nenhuma escola pendente com \"" + termo + "\" no nome."
+    ok: true, itens: itens.slice(0, 25), total: total, podem: podem,
+    mensagem: total + " escola(s) com esse texto" +
+              (podem < total ? " · " + podem + " pode(m) receber agora" : "") +
+              (total > 25 ? " — mostrando as 25 primeiras" : "")
   };
+}
+
+/* Por que esta escola nao pode ser clicada, em palavras que dizem o que fazer.
+   Sem isto a lista mostraria a escola em cinza sem explicar o cinza. */
+function tnCom_motivoNaoEnvia_(a) {
+  switch (a.status) {
+    case "ENVIADO":
+      return "já comunicada" + (a.quando ? " em " + a.quando : "") + " — não recebe de novo";
+    case "SEM_EMAIL":
+      return "sem e-mail no cadastro — corrija a escola e prepare a fila de novo";
+    case "EMAIL_INVALIDO":
+      return "e-mail inválido no cadastro — corrija a escola e prepare a fila de novo";
+    case "ERRO_PERMANENTE":
+      return "envio encerrado após falhas seguidas — veja a coluna de erro na fila";
+    default:
+      return "sem endereço por enviar";
+  }
 }
