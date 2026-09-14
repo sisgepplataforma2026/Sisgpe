@@ -5450,6 +5450,9 @@ homologação **132**.
 
 ### 🔴 O QUE DEPENDE DE ALGUÉM OLHAR — não há teste que substitua
 
+> **Ele disse em 14/09/2026 que testaria mais tarde.** Data registrada;
+> cobrar uma linha no começo da próxima sessão, sem insistir.
+
 1. 🔴 **O PDF gerado.** `DocumentApp` não é emulado: a suíte prova qual
    documento foi pedido e quais marcadores foram enviados, **não** o que sai no
    papel. Foi exatamente aqui que o erro passou oito publicações. Conferir:
