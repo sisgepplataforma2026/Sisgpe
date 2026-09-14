@@ -509,8 +509,17 @@ ok(String(subs["{{CORPO}}"]).indexOf("três parcelas") > -1,
    "incluindo as três parcelas de 2%");
 ok(String(subs["{{CORPO}}"]).indexOf("não seja efetuado") === -1,
    "e SEM o texto do ofício de oposição, que foi o que a escola recebeu em 11/09");
-igual(subs["{{ESCOLA}}"], "COLEGIO BETA", "a escola vai nominal");
+ok(String(subs["{{ESCOLA}}"]).indexOf("COLEGIO BETA") === 0, "a escola vai nominal");
 ok(!!subs["{{CNPJ}}"], "com o CNPJ dela");
+
+/* O CNPJ TEM QUE APARECER NO PAPEL. O modelo so tem "PARA: {{ESCOLA}}" e nao
+   tem marcador de CNPJ — mandar {{CNPJ}} sozinho nao bastava, porque marcador
+   que o documento nao tem simplesmente nao aparece. */
+passo("o CNPJ vai junto do destinatario, onde o modelo consegue imprimir");
+ok(String(subs["{{ESCOLA}}"]).indexOf("CNPJ") > -1,
+   "o destinatário carrega o CNPJ", subs["{{ESCOLA}}"]);
+ok(String(subs["{{ESCOLA}}"]).indexOf(String(subs["{{CNPJ}}"])) > -1,
+   "e é o CNPJ daquela escola, não outro");
 
 /* TODO MARCADOR QUE O DOCUMENTO TEM PRECISA SER MANDADO. O que ninguem manda
    nao da erro — sai impresso cru no papel, que foi o destino do

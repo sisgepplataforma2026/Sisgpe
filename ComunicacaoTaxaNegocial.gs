@@ -644,7 +644,16 @@ function tnCom_gerarPdf_(numero, codigo, escola, cnpj) {
       "{{NUMERO}}":    numero,
       "{{DATA}}":      (typeof dataPorExtenso === "function") ? dataPorExtenso() : "",
       "{{CIDADE_UF}}": (typeof CIDADE_UF !== "undefined" && CIDADE_UF) ? CIDADE_UF : "Vitória/ES",
-      "{{ESCOLA}}":    escola,
+      /* O CNPJ VAI NA LINHA DO DESTINATARIO — 14/09/2026.
+
+         O modelo tem "PARA: {{ESCOLA}}" e nao tem marcador de CNPJ. Como o
+         conector do Drive so edita titulo e pasta, eu nao consigo acrescentar
+         uma linha no Doc; entao o destinatario leva razao social e CNPJ
+         juntos, que e como oficio se endereca de qualquer forma.
+
+         SE alguem acrescentar "CNPJ: {{CNPJ}}" no documento, TIRE a
+         concatenacao daqui — senao o numero sai duas vezes. */
+      "{{ESCOLA}}":    escola + (cnpj ? " — CNPJ " + cnpj : ""),
       "{{CNPJ}}":      cnpj,
       /* O DOCUMENTO TEM {{ASSUNTO}} — e sem esta linha ele sairia impresso cru,
          exatamente como o {{COLABORADORES}} saiu no oficio 524/2026. Marcador
