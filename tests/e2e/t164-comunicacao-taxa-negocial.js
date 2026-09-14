@@ -521,6 +521,12 @@ ok(String(subs["{{ESCOLA}}"]).indexOf("CNPJ") > -1,
 ok(String(subs["{{ESCOLA}}"]).indexOf(String(subs["{{CNPJ}}"])) > -1,
    "e é o CNPJ daquela escola, não outro");
 
+/* A frase de fechamento prometia prazo, e ele decidiu que esta campanha nao
+   fixa prazo — "nem todas entregam no prazo". Corrigido POR ELE dentro do Doc
+   em 14/09/2026 15:45, conferido no Drive. Texto fixo do oficio mora no
+   documento: mudar ali nao pede publicacao nenhuma, e por isso nao ha
+   substituicao no codigo para isso. */
+
 /* TODO MARCADOR QUE O DOCUMENTO TEM PRECISA SER MANDADO. O que ninguem manda
    nao da erro — sai impresso cru no papel, que foi o destino do
    {{COLABORADORES}} no oficio 524/2026. O modelo da campanha e copia do
