@@ -32,7 +32,7 @@ concurrency:
 
 jobs:
   producao:
-    if: github.ref == 'refs/heads/promocao/hml-6d26899-para-producao-2026-09-11'
+    if: github.ref == 'refs/heads/promocao/hml-9a2b019-para-producao-2026-09-14'
     runs-on: ubuntu-latest
 
     env:
