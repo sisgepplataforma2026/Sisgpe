@@ -135,12 +135,16 @@ const pessoas = (n, comIngresso) => Array.from({ length: n }, (_, i) => ({
 
 const linhasDe = el => (el.innerHTML.match(/<tr>/g) || []).length;
 const nomesDe  = el => (el.innerHTML.match(/PESSOA \d+/g) || []);
-/* O ÍNDICE VEM DO BOTÃO DE SITUAÇÃO — 26/08/2026.
-   A linha não tem mais botão "Emitir": o controle passou a ser o próprio
-   status, e é dele que saem emitir, enviar, editar e excluir. O que este
-   teste guarda continua igual — que o índice da linha acompanhe a paginação,
-   para a ação não acertar a pessoa errada. */
-const emitirDe = el => (el.innerHTML.match(/abrirMenuStatus\((\d+),/g) || [])
+/* O ÍNDICE VEM DOS BOTÕES DA LINHA.
+   A origem dele já mudou duas vezes e o que este teste guarda nunca mudou:
+   que o índice acompanhe a PAGINAÇÃO, para a ação não acertar a pessoa
+   errada. Era o botão "Emitir" da linha; em 26/08 virou o botão de situação,
+   com menu suspenso; em 14/09 virou a coluna de Ações, a pedido do usuário
+   ("um do lado do outro", no molde da tela de Despesas).
+   Lê-se pelo botão de EDITAR porque ele é o único que existe em TODOS os
+   estados e aparece uma vez só por linha — os outros mudam com a situação, e
+   contar todos devolveria o mesmo índice várias vezes. */
+const emitirDe = el => (el.innerHTML.match(/acaoLinha\((\d+),&quot;editar&quot;\)/g) || [])
                         .map(s => Number(s.replace(/\D/g, "")));
 
 /* ───────────────────────────────────────────────────────────────────────── */

@@ -225,18 +225,24 @@
 .md-link input:focus{outline:2px solid var(--blue);outline-offset:-1px}
 .md-link[hidden]{display:none}
 
-/* ── O STATUS COMO BOTÃO — 26/08/2026 ────────────────────────────────────
-   O usuário: "aí vai ter um botão de status; no status você reemite, envia,
-   edita". A coluna deixou de ser rótulo e virou o comando: o que dá para
-   fazer com a pessoa depende de onde ela está, e é ali que quem trabalha já
-   está olhando. Some com quatro colunas (status, ingresso, entrega, ações)
-   e devolve a largura para o nome e a escola. */
+/* ── A SITUAÇÃO É RÓTULO; A AÇÃO TEM COLUNA — 14/09/2026 ─────────────────
+   Em 26/08 a pílula de situação virou botão e concentrou tudo num menu
+   suspenso. Funcionava, e mesmo assim estava errado: o usuário olhou a tela
+   pronta e disse o que faltava — "deveria ter um campo de ações: quando o
+   cara fez a inscrição, para eu emitir, eu reenviar, eu cancelar. Um do lado
+   do outro" —, apontando a tela de Despesas como modelo.
+
+   Ele tem razão pelo motivo que a tela de Despesas já provou: menu suspenso
+   economiza pixel e cobra um clique TODA vez que alguém precisa saber o que é
+   possível. Aqui a fila é de 2.000 pessoas e a mesma decisão se repete o dia
+   inteiro. Botão à vista ganha de menu escondido quando o gesto é repetitivo.
+
+   As classes abaixo são as do financeiro (DespesasAdmin.html:121-128), de
+   propósito e por ordem do Design System: reaproveitar, nunca recriar. */
 .st-btn{display:inline-flex;align-items:center;gap:6px;height:29px;padding:0 11px;
   border-radius:999px;border:1.5px solid var(--linha);background:#fff;
   font-family:inherit;font-size:11.5px;font-weight:800;color:var(--suave);
-  cursor:pointer;white-space:nowrap}
-.st-btn:hover{border-color:var(--blue);color:var(--navy)}
-.st-btn .cx{font-size:9px;opacity:.7}
+  white-space:nowrap}
 .st-btn.ok{background:#f0fdf4;border-color:#bbf7d0;color:#15803d}
 .st-btn.al{background:#fffbf2;border-color:#f0c98a;color:#b45309}
 .st-btn.er{background:#fff5f5;border-color:#fecaca;color:#b91c1c}
@@ -244,21 +250,24 @@
 .st-btn.rx{background:#f5f3ff;border-color:#ddd6fe;color:#6d28d9}
 .st-det{display:block;font-size:10.5px;font-weight:600;color:var(--suave);margin-top:3px}
 
-#stMenu{position:fixed;z-index:400;width:248px;background:#fff;border:1px solid var(--linha);
-  border-radius:13px;padding:6px;box-shadow:0 16px 48px rgba(0,20,60,.18),0 4px 16px rgba(0,20,60,.08);
-  display:none}
-#stMenu.on{display:block}
-#stMenu .cab{padding:8px 11px 9px;border-bottom:1px solid #f1f5f9;margin-bottom:4px}
-#stMenu .cab b{display:block;font-size:12.5px;color:var(--texto)}
-#stMenu .cab span{display:block;font-size:11px;color:var(--suave);margin-top:2px}
-#stMenu button{display:block;width:100%;text-align:left;border:0;background:transparent;
-  font-family:inherit;font-size:12.5px;font-weight:600;color:var(--texto);
-  padding:8px 11px;border-radius:8px;cursor:pointer}
-#stMenu button:hover{background:var(--fundo)}
-#stMenu button.g{color:#15803d;font-weight:700}
-#stMenu button.a{color:#b45309}
-#stMenu button.r{color:#b91c1c}
-#stMenu hr{border:0;border-top:1px solid #f1f5f9;margin:4px 8px}
+.acoes-cell{display:flex;gap:4px;flex-wrap:wrap;align-items:flex-start;padding-top:1px}
+.ac-btn{height:26px;padding:0 9px;border-radius:7px;border:1.5px solid var(--linha);
+  background:#fff;color:var(--suave);font-family:inherit;font-size:11px;font-weight:700;
+  cursor:pointer;white-space:nowrap;transition:all .12s;
+  display:inline-flex;align-items:center;gap:3px}
+.ac-btn:hover{border-color:var(--blue);color:var(--navy)}
+.ac-primary{background:#eff6ff;color:#1565C0;border-color:#93c5fd}
+.ac-primary:hover{background:#1565C0;color:#fff;border-color:#1565C0}
+.ac-green{background:#f0fdf4;color:#059669;border-color:#6ee7b7}
+.ac-green:hover{background:#059669;color:#fff;border-color:#059669}
+.ac-amber{background:#fffbeb;color:#d97706;border-color:#fcd34d}
+.ac-amber:hover{background:#d97706;color:#fff;border-color:#d97706}
+.ac-reenviar{background:#fef3c7;color:#92400e;border-color:#fcd34d}
+.ac-reenviar:hover{background:#d97706;color:#fff;border-color:#d97706}
+.ac-red{background:#fff5f5;color:#dc2626;border-color:#fca5a5}
+.ac-red:hover{background:#dc2626;color:#fff;border-color:#dc2626}
+.ac-edit{background:#f0f4ff;color:#4338ca;border-color:#a5b4fc}
+.ac-edit:hover{background:#4338ca;color:#fff;border-color:#4338ca}
 </style>
 
 <div class="of-modulo-header">
@@ -331,7 +340,7 @@
 
   <div class="of-card">
     <div class="filtros">
-      <input id="fBusca" placeholder="Nome, CPF, escola…">
+      <input id="fBusca" placeholder="Nome, CPF, escola, telefone…">
       <input id="fEscola" placeholder="Escola">
       <input id="fCidade" placeholder="Cidade">
       <input id="fRegiao" placeholder="Região">
@@ -369,7 +378,7 @@
       <thead><tr>
         <th><input type="checkbox" id="todos" onclick="marcarTodos(this)"></th>
         <th>Pessoa</th><th>Escola · Cidade</th><th>Contato</th>
-        <th>Vínculo</th><th>Situação</th>
+        <th>Vínculo</th><th>Situação</th><th>Ações</th>
       </tr></thead>
       <tbody id="tb"></tbody>
     </table>
@@ -397,7 +406,6 @@
 
 <!-- Um menu só para a tabela inteira. Fica FORA da tabela porque menu
      dentro de <td> herda o overflow do card e some no recorte. -->
-<div id="stMenu" onclick="event.stopPropagation()"></div>
 </div><!-- /painelLista -->
 
 <!-- A IMPORTAÇÃO DEIXOU DE SER QUADRO — 26/08/2026.
@@ -913,7 +921,7 @@ function pintarPaginacao(){
 
 function pintarLista(){
   if (!LISTA.length){
-    g('tb').innerHTML = '<tr><td colspan="6" class="vazio">Nenhuma inscrição com esses filtros.</td></tr>';
+    g('tb').innerHTML = '<tr><td colspan="7" class="vazio">Nenhuma inscrição com esses filtros.</td></tr>';
     g('paginacao').hidden = true;
     return;
   }
@@ -996,93 +1004,91 @@ function linhaHtml(x, i){
           '<div style="font-size:11px;color:var(--suave)">' +
           esc(fmtTel(x.whatsapp) || 'sem WhatsApp') + '</div></td>' +
         '<td>' + seloAssoc(x.situacaoAssociado) + '</td>' +
-        /* O BOTÃO. Clicar abre o que dá para fazer com esta pessoa. */
-        '<td><button class="st-btn ' + sit.classe + '" ' +
-            'onclick="abrirMenuStatus(' + i + ',this,event)">' +
-            esc(sit.rotulo) + '<span class="cx">▾</span></button>' +
+        /* A situação diz ONDE a pessoa está; a coluna ao lado diz o que dá
+           para fazer com ela. Separar as duas foi o pedido de 14/09. */
+        '<td><span class="st-btn ' + sit.classe + '">' + esc(sit.rotulo) + '</span>' +
           (sit.detalhe ? '<span class="st-det">' + esc(sit.detalhe) + '</span>' : '') +
-        '</td></tr>';
+        '</td>' +
+        '<td><div class="acoes-cell">' + acoesDaLinha(x, i) + '</div></td></tr>';
 }
 
-/* ── O MENU DO STATUS ─────────────────────────────────────────────────────
-   Um só menu no documento, reposicionado a cada clique: 2.000 linhas com um
-   menu cada seria 2.000 blocos de HTML esperando nunca serem abertos. */
-var MENU_I = -1;
+/* ── AS AÇÕES, NA LINHA ───────────────────────────────────────────────────
+   14/09/2026. O usuário mandou o print da tela de Despesas e disse, com todas
+   as letras, o que queria: *"deveria ter um campo de ações. Quando o cara fez
+   a inscrição, para eu emitir, eu reenviar, eu cancelar. Um do lado do outro.
+   E não é o que está acontecendo."*
 
-function abrirMenuStatus(i, botao, ev){
-  if (ev) ev.stopPropagation();
-  var x = LISTA[i]; if (!x) return;
-  if (MENU_I === i && g('stMenu').classList.contains('on')) return fecharMenuStatus();
-  MENU_I = i;
+   O que havia era um menu suspenso pendurado na pílula de situação. A ação
+   existia — escondida atrás de um clique, e a linha não dizia o que era
+   possível fazer com aquela pessoa sem que alguém abrisse o menu para
+   descobrir. Numa fila de 2.000 inscrições, onde a mesma decisão se repete o
+   dia inteiro, isso é um clique cobrado toda vez.
 
+   A REGRA QUE ESTE ARQUIVO GUARDA: quem decide quais botões aparecem é
+   `situacaoDe(x)` — a MESMA função que pinta a pílula ao lado. Se fossem duas
+   leituras separadas do mesmo registro, a linha poderia dizer "Enviado" e
+   oferecer "Emitir" no botão vizinho. Uma fonte de verdade só. */
+function acoesDaLinha(x, i){
   var sit = situacaoDe(x);
   var tem = !!x.ingressoId;
-  var L = ['<div class="cab"><b>' + esc(sit.rotulo) + '</b>' +
-           (sit.detalhe ? '<span>' + esc(sit.detalhe) + '</span>' : '') + '</div>'];
-
-  if (tem){
-    L.push('<button class="g" onclick="menuAcao(\'whats\')">Enviar pelo WhatsApp</button>');
-    L.push('<button onclick="menuAcao(\'email\')">Enviar por e-mail</button>');
-    L.push('<button onclick="menuAcao(\'ver\')">Ver o ingresso</button>');
-    L.push('<button onclick="menuAcao(\'reemitir\')">Reemitir ingresso</button>');
-  } else if (x.status === 'VALIDADA_ADMINISTRATIVAMENTE'){
-    L.push('<button class="g" onclick="menuAcao(\'emitir\')">Emitir ingresso</button>');
-  } else {
-    /* A DECISÃO SAI DA GAVETA — 14/09/2026.
-       Antes, "A analisar" oferecia só "Analisar agora", que abria a gaveta
-       para escolher num seletor. O caminho comum — validar — custava quatro
-       cliques e uma tela inteira.
-       Pendência e reprovação continuam na gaveta DE PROPÓSITO: as duas exigem
-       motivo de uma lista fechada, e escolher motivo por ela seria impor. */
-    L.push('<button class="g" onclick="menuAcao(\'validar\')">Validar e emitir ingresso</button>');
-    L.push('<button class="a" onclick="menuAcao(\'pendencia\')">Marcar pendência…</button>');
-    L.push('<button class="r" onclick="menuAcao(\'reprovar\')">Reprovar…</button>');
+  var b = [];
+  function bt(classe, rotulo, acao, titulo){
+    b.push('<button class="ac-btn ' + classe + '" title="' + esc(titulo) + '" ' +
+           'onclick="acaoLinha(' + i + ',&quot;' + acao + '&quot;)">' +
+           esc(rotulo) + '</button>');
   }
 
-  L.push('<button onclick="menuAcao(\'editar\')">Editar dados</button>');
-  L.push('<hr>');
-  if (tem) L.push('<button class="r" onclick="menuAcao(\'cancelar\')">Cancelar ingresso</button>');
-  L.push('<button class="r" onclick="menuAcao(\'excluir\')">Excluir inscrição</button>');
+  if (tem){
+    /* A ENTREGA VEM PRIMEIRO, E É PELO WHATSAPP — decisão dele em 09/09. O
+       ingresso nasce guardado; nada sai sozinho. E o rótulo muda para
+       "Reenviar" depois da primeira entrega, para ninguém mandar duas vezes
+       achando que a primeira não foi. */
+    var jaFoi = !!(((x.entrega || {}).canais) || []).length;
+    bt('ac-green',    jaFoi ? '📲 Reenviar' : '📲 WhatsApp', 'whats',
+       'Abre o WhatsApp com a mensagem pronta');
+    bt('ac-primary',  '✉️ E-mail',   'email',    'Envia o ingresso por e-mail');
+    bt('',            '👁 Ver',      'ver',      'Abre a ficha com o ingresso emitido');
+    bt('ac-reenviar', '🔁 Reemitir', 'reemitir', 'Gera o ingresso de novo — o anterior deixa de valer');
+    bt('ac-red',      '✕ Cancelar',  'cancelar', 'Cancela o ingresso e devolve a vaga ao público');
+  } else if (x.status === 'VALIDADA_ADMINISTRATIVAMENTE'){
+    bt('ac-primary', '🎟 Emitir ingresso', 'emitir',
+       'Emite o ingresso — consome uma das 2.000 vagas');
+  } else {
+    /* O caminho comum da fila resolve em UM clique. Pendência e reprovação
+       levam à pergunta do motivo, e as reticências avisam isso antes do
+       clique: o motivo sai de lista fechada e escolher por ela seria impor,
+       não automatizar. */
+    bt('ac-green', '✅ Validar e emitir', 'validar',
+       'Valida a inscrição e emite o ingresso');
+    if (x.status !== 'PENDENTE')
+      bt('ac-amber', '⏸ Pendência…', 'pendencia', 'Marca pendência, com o motivo');
+    if (x.status !== 'REPROVADA')
+      bt('ac-red', '✕ Reprovar…', 'reprovar', 'Reprova a inscrição, com o motivo');
+  }
 
-  var m = g('stMenu');
-  m.innerHTML = L.join('');
-  m.classList.add('on');
-
-  /* Posiciona colado no botão, e sobe quando não cabe embaixo — a última
-     linha da tabela não pode abrir um menu fora da tela. */
-  var r = botao.getBoundingClientRect();
-  var alt = m.offsetHeight || 260;
-  var topo = (r.bottom + alt + 8 > window.innerHeight) ? (r.top - alt - 6) : (r.bottom + 6);
-  m.style.top  = Math.max(8, topo) + 'px';
-  m.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 258)) + 'px';
+  bt('ac-edit', '✏️', 'editar',  'Editar os dados da inscrição');
+  bt('ac-red',  '🗑️', 'excluir', 'Excluir a inscrição');
+  return b.join('');
 }
 
-function fecharMenuStatus(){ MENU_I = -1; g('stMenu').classList.remove('on'); }
-document.addEventListener('click', fecharMenuStatus);
-window.addEventListener('resize', fecharMenuStatus);
-
-/* As ações já existiam na gaveta e continuam sendo as MESMAS funções: o menu
-   só escolhe a linha e chama. Duplicar a regra aqui seria criar um segundo
-   caminho para validar, emitir e excluir — e dois caminhos divergem. */
-function menuAcao(qual){
-  var i = MENU_I; fecharMenuStatus();
-  if (i < 0 || !LISTA[i]) return;
+/* O DESPACHANTE. As ações já existiam na gaveta e continuam sendo as MESMAS
+   funções: aqui só se escolhe a linha e se chama. Reescrever a regra neste
+   ponto criaria um segundo lugar para consertar quando ela mudar. */
+function acaoLinha(i, qual){
+  var x = LISTA[i]; if (!x) return;
   if (qual === 'whats')  return porWhats(i);
   if (qual === 'email')  return porEmail(i);
   ABERTO = i;
-  if (qual === 'validar')   return validarEEmitirDoMenu(i);
+  if (qual === 'validar')   return validarEEmitir(i);
   if (qual === 'reemitir')  { abrirGaveta(i); return gvAbrirDobra('secIngresso'); }
-  if (qual === 'pendencia' || qual === 'reprovar') {
-    /* Leva ate a decisao com o motivo a escolher. As reticencias no rotulo
-       avisam que ainda vem uma pergunta — botao que promete acao imediata e
-       abre formulario quebra a confianca no resto do menu. */
+  if (qual === 'pendencia' || qual === 'reprovar'){
     abrirGaveta(i);
     return setTimeout(analiseManual, 0);
   }
-  if (qual === 'emitir') { abrirGaveta(i); return emitirGaveta(); }
+  if (qual === 'emitir')  { abrirGaveta(i); return emitirGaveta(); }
   if (qual === 'cancelar'){ abrirGaveta(i); return cancelarIngresso(); }
   if (qual === 'excluir') { abrirGaveta(i); return excluirInscricao(); }
-  abrirGaveta(i);   /* ver, editar e analisar abrem a gaveta, que é onde se decide */
+  abrirGaveta(i);   /* ver e editar abrem a gaveta, que é onde se lê a ficha */
 }
 
 /* ══ VALIDAR E EMITIR, DE UM CLIQUE ════════════════════════════════════════
@@ -1097,7 +1103,7 @@ function menuAcao(qual){
    EMITIR NÃO É ENTREGAR. O ingresso nasce e fica guardado; a entrega é o
    clique seguinte, pelo WhatsApp. Foi a decisão dele em 09/09 — nada sai
    sozinho — e o texto do aviso diz isso antes de confirmar, não depois. */
-function validarEEmitirDoMenu(i){
+function validarEEmitir(i){
   var x = LISTA[i]; if (!x) return;
   var nome = x.nome, id = x.inscricaoId;
 
@@ -1115,7 +1121,7 @@ function validarEEmitirDoMenu(i){
         if (!r2 || !r2.ok){
           recarregar();
           return aviso('Inscrição de ' + nome + ' VALIDADA, mas o ingresso não saiu: ' +
-                       ((r2 && r2.erro) || 'erro') + '. Use "Emitir ingresso" no menu dela.');
+                       ((r2 && r2.erro) || 'erro') + '. Use "Emitir ingresso" na linha dela.');
         }
         abrirModalIngresso(id, r2.numero, nome);
         recarregar();

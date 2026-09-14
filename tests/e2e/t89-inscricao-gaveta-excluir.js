@@ -434,15 +434,25 @@ ok(/maria@exemplo\.com/.test(t.els.tb.innerHTML),
    "o e-mail aparece embaixo do nome",
    "sem ele, duas Marias da mesma escola são indistinguíveis na lista");
 ok(/acompanhante/.test(t.els.tb.innerHTML), "e a categoria também");
-/* O CONTROLE DA LINHA VIROU O STATUS — 26/08/2026. O usuário: "aí vai ter um
-   botão de status; no status você reemite, envia, edita". A linha não tem
-   mais uma coluna de ações: o próprio estado é o botão, e é dele que saem
-   emitir, enviar, editar, cancelar e excluir — todas ainda pela gaveta, que
-   continua sendo o único lugar onde se decide. */
-ok(/abrirMenuStatus\(0,/.test(t.els.tb.innerHTML),
-   "e o controle da linha é o botão de situação",
-   "coluna de ações separada obrigava a pessoa a ler duas colunas para saber " +
-   "o que dava para fazer");
+/* A DECISÃO DE 26/08 FOI REVERTIDA PELO USUÁRIO EM 14/09 — e fica registrado
+   aqui porque as duas são dele, e a segunda não apaga a primeira.
+
+   Em 26/08 ele pediu o contrário do que está no arquivo hoje: "aí vai ter um
+   botão de status; no status você reemite, envia, edita". A linha perdeu a
+   coluna de ações e o estado virou o comando.
+
+   Em 14/09, olhando a tela pronta com a fila real, ele mandou o print do
+   financeiro e disse: "deveria ter um campo de ações. Quando o cara fez a
+   inscrição, para eu emitir, eu reenviar, eu cancelar. Um do lado do outro. E
+   não é o que está acontecendo."
+
+   O que mudou entre uma e outra não foi a opinião: foi ver a fila funcionando.
+   Menu suspenso cobra um clique toda vez que alguém precisa saber o que é
+   possível — e numa fila de 2.000 a mesma decisão se repete o dia inteiro. */
+ok(/acaoLinha\(0,&quot;editar&quot;\)/.test(t.els.tb.innerHTML),
+   "e as ações da linha estão na própria linha",
+   "escondidas num menu, a pessoa precisava abrir uma a uma para descobrir " +
+   "o que dava para fazer com cada inscrição");
 
 /* ═══ AS ABAS ═════════════════════════════════════════════════════════════
    "Tudo num único lugar: Central de Inscrições — validação, importar

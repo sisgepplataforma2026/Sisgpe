@@ -1,30 +1,34 @@
 /**
- * TESTE — O MENU DA COLUNA SITUAÇÃO DECIDE, EM VEZ DE SÓ ABRIR A GAVETA
+ * TESTE — AS AÇÕES FICAM NA LINHA, UMA DO LADO DA OUTRA
  *
- * O QUE ORIGINOU, 14/09/2026. O usuário olhou a fila e viu a inscrição da
- * Marcelha oferecendo um único botão, "Reprovar", e um link "analisar
- * manualmente". Para ACEITAR alguém — o caminho comum da fila — era preciso
- * abrir a gaveta, achar a seção de análise, escolher num seletor e confirmar.
+ * O QUE ORIGINOU, 14/09/2026. Ele mandou o print da tela de Despesas e disse
+ * o que queria, sem deixar margem:
  *
- * O menu de situação já existia desde 01/09 e já mudava conforme o estado.
- * O que faltava era justamente o estado mais frequente: "A analisar" oferecia
- * só "Analisar agora", que era uma porta para a gaveta — o menu prometia
- * decidir e devolvia um desvio.
+ *   "Deveria ter um campo de ações. Quando o cara fez a inscrição, para eu
+ *    emitir, eu reenviar, eu cancelar. Um do lado do outro. E não é o que
+ *    está acontecendo."
  *
- * A REGRA QUE ESTE TESTE GUARDA: o menu resolve o caminho comum em um clique,
- * e manda para a gaveta SÓ o que precisa de escolha — pendência e reprovação
- * exigem motivo de uma lista fechada, e escolher motivo pela pessoa seria
- * impor, não automatizar.
+ * O QUE HAVIA. Em 26/08 a pílula de situação virou botão e concentrou as
+ * ações num menu suspenso. A capacidade existia — escondida. A linha não
+ * dizia o que era possível fazer com aquela pessoa; era preciso abrir o menu
+ * para descobrir, uma pessoa de cada vez, numa fila de 2.000.
  *
- * E guarda a segunda metade, que é onde mora o defeito caro: validar e emitir
- * são DUAS chamadas ao servidor. Se a segunda falhar, a inscrição já está
- * validada — e a mensagem tem de dizer isso, senão a pessoa valida de novo e
- * acha que o sistema não obedece.
+ * Esta versão do arquivo trocou o menu pela COLUNA AÇÕES, no molde do
+ * financeiro (`Scripts_Despesas.html:307`), com as mesmas classes.
  *
- * O QUE NÃO ALCANÇA: se o menu aparece na tela, se abre para cima quando não
- * cabe embaixo, e se o texto cabe no cartão. Aqui não há CSS nem layout — o
- * que se prova é QUAL ação é oferecida em cada estado e O QUE ela manda ao
- * servidor.
+ * A REGRA QUE ESTE TESTE GUARDA, e que sobreviveu à troca de desenho:
+ *
+ *   1. quais ações existem em cada ESTADO — e quais NÃO existem, que é o que
+ *      impede a linha de oferecer "Emitir" para quem já tem ingresso;
+ *   2. que os botões e a pílula leem a MESMA `situacaoDe(x)`, e por isso não
+ *      podem se contradizer;
+ *   3. que validar e emitir são DUAS chamadas ao servidor, e que, se a
+ *      segunda falhar, a mensagem diz que a primeira passou — senão a pessoa
+ *      valida de novo e acha que o sistema não obedece.
+ *
+ * O QUE NÃO ALCANÇA: se os botões cabem na largura da coluna, se quebram bem
+ * em duas linhas, e se os ícones aparecem. Aqui não há CSS nem layout — o que
+ * se prova é QUAL botão nasce em cada estado e O QUE ele manda ao servidor.
  */
 const fs = require("fs");
 const { fluxo, passo, ok, igual, naoTestavel, resumo } = require("./base");
@@ -42,11 +46,6 @@ function elemento(id) {
     addEventListener() {}, querySelectorAll: () => []
   };
 }
-
-/** Um botão de linha, com a medida que o posicionador do menu consulta. */
-const botaoFalso = () => ({
-  getBoundingClientRect: () => ({ top: 200, bottom: 230, left: 400 })
-});
 
 function montarTela() {
   const els = {};
@@ -81,7 +80,7 @@ function montarTela() {
   const nomes = Object.keys(sandbox);
   const expor = `; return {
     set LISTA(v){LISTA=v}, get LISTA(){return LISTA},
-    abrirMenuStatus, menuAcao, situacaoDe, abrirGaveta
+    acoesDaLinha, acaoLinha, situacaoDe, linhaHtml, abrirGaveta
   };`;
   const tela = new Function(...nomes, corpo + expor)(...nomes.map(n => sandbox[n]));
   return { tela, els, chamadas, perguntas,
@@ -96,48 +95,69 @@ const pessoa = extra => Object.assign({
   entrega: { canais: [] }, pagamento: {}, criadoEm: new Date().toISOString()
 }, extra || {});
 
-/** Abre o menu da primeira linha e devolve o HTML dele. */
-function menuDe(registro) {
+/** Os botões da coluna Ações para um registro. */
+function acoesDe(registro) {
   const t = montarTela();
   t.tela.LISTA = [registro];
-  t.tela.abrirMenuStatus(0, botaoFalso(), null);
-  return { html: t.els.stMenu.innerHTML, t };
+  return { html: t.tela.acoesDaLinha(registro, 0), t };
 }
 
 /* ══════════════════════════════════════════════════════════════════════ */
-fluxo("A analisar — o estado mais frequente decide no próprio menu");
+fluxo("A coluna existe na tabela, não num menu que precisa ser aberto");
 
-const mA = menuDe(pessoa()).html;
+passo("o cabeçalho tem a coluna");
+ok(/<th>Ações<\/th>/.test(html), "a coluna Ações está no cabeçalho",
+   "sem ela os botões não teriam onde morar");
 
-passo("o caminho comum virou um clique");
-ok(/Validar e emitir ingresso/.test(mA),
-   "o menu oferece validar e emitir direto",
+passo("e a linha desenha os botões lado a lado");
+ok(/acoes-cell/.test(html), "a célula usa .acoes-cell",
+   "é a mesma classe do financeiro — o Design System manda reaproveitar");
+ok(/\.acoes-cell\{[^}]*display:flex/.test(html),
+   "que põe os botões em linha", "um do lado do outro, como ele pediu");
+
+passo("o menu suspenso não existe mais");
+ok(!/abrirMenuStatus|stMenu/.test(html),
+   "nenhum resquício do menu antigo",
+   "deixar os dois seria a mesma ação em dois lugares — o que ele reclamou");
+
+passo("a linha vazia atravessa a coluna nova");
+ok(/colspan="7"/.test(html), "colspan 7",
+   "com 6 a mensagem 'nenhuma inscrição' pararia antes da última coluna");
+
+/* ══════════════════════════════════════════════════════════════════════ */
+fluxo("A analisar — o estado mais frequente decide na própria linha");
+
+const mA = acoesDe(pessoa()).html;
+
+passo("o caminho comum é um clique");
+ok(/Validar e emitir/.test(mA), "o botão valida e emite direto",
    "era o que custava abrir a gaveta, achar a seção e escolher num seletor");
-ok(!/Analisar agora/.test(mA),
-   "e não oferece mais 'Analisar agora'",
-   "prometer decidir e devolver um desvio para outra tela é pior que não prometer");
 
 passo("pendência e reprovação continuam pedindo motivo");
-ok(/Marcar pendência…/.test(mA), "pendência está no menu, com reticências");
+ok(/Pendência…/.test(mA), "pendência tem botão, com reticências");
 ok(/Reprovar…/.test(mA), "reprovar também");
-ok(/menuAcao\('pendencia'\)/.test(mA) && /menuAcao\('reprovar'\)/.test(mA),
-   "as duas têm ação própria — não caem no mesmo 'analisar' genérico");
+ok(/acaoLinha\(0,&quot;pendencia&quot;\)/.test(mA) &&
+   /acaoLinha\(0,&quot;reprovar&quot;\)/.test(mA),
+   "as duas têm ação própria — não caem num 'analisar' genérico");
 
-/* As reticências não são enfeite: elas são a diferença entre um botão que
-   executa e um que abre pergunta. Sem isso, quem clica em "Reprovar"
-   esperando resolver leva um formulário na cara. */
-ok(/Validar e emitir ingresso<\/button>/.test(mA),
+/* As reticências não são enfeite: são a diferença entre um botão que executa
+   e um que abre pergunta. Sem isso, quem clica em "Reprovar" esperando
+   resolver leva um formulário na cara. */
+ok(/✅ Validar e emitir<\/button>/.test(mA),
    "e validar NÃO tem reticências — essa resolve na hora");
 
-passo("o cabeçalho do menu diz a situação antes de qualquer ação");
-ok(/A analisar/.test(mA), "o rótulo do estado");
-ok(/esperando h|entrou agora/.test(mA),
-   "e há quanto tempo espera — é o que ordena a fila na cabeça de quem olha");
+passo("editar e excluir fecham a linha, em qualquer estado");
+ok(/acaoLinha\(0,&quot;editar&quot;\)/.test(mA), "editar");
+ok(/acaoLinha\(0,&quot;excluir&quot;\)/.test(mA), "excluir");
+
+passo("e não oferece o que não faz sentido aqui");
+ok(!/Emitir ingresso/.test(mA), "não oferece emitir para quem não foi validada");
+ok(!/Cancelar/.test(mA), "nem cancelar um ingresso que não existe");
 
 /* ══════════════════════════════════════════════════════════════════════ */
 fluxo("Validada sem ingresso — falta emitir, e é só isso");
 
-const mV = menuDe(pessoa({ status: "VALIDADA_ADMINISTRATIVAMENTE" })).html;
+const mV = acoesDe(pessoa({ status: "VALIDADA_ADMINISTRATIVAMENTE" })).html;
 ok(/Emitir ingresso/.test(mV), "oferece emitir");
 ok(!/Validar e emitir/.test(mV), "e não repete o validar de quem já foi validada");
 ok(!/Reemitir/.test(mV), "nem reemitir — não há o que reemitir ainda");
@@ -145,14 +165,39 @@ ok(!/Reemitir/.test(mV), "nem reemitir — não há o que reemitir ainda");
 /* ══════════════════════════════════════════════════════════════════════ */
 fluxo("Com ingresso — entregar vem primeiro, e reemitir passa a existir");
 
-const mI = menuDe(pessoa({ status: "VALIDADA_ADMINISTRATIVAMENTE",
-                           ingressoId: "ING-1", numeroIngresso: "FCV-2026-000428" })).html;
-ok(/Enviar pelo WhatsApp/.test(mI), "WhatsApp está no menu");
-ok(mI.indexOf("Enviar pelo WhatsApp") < mI.indexOf("Enviar por e-mail"),
+const mI = acoesDe(pessoa({ status: "VALIDADA_ADMINISTRATIVAMENTE",
+                            ingressoId: "ING-1",
+                            numeroIngresso: "FCV-2026-000428" })).html;
+ok(/WhatsApp/.test(mI), "WhatsApp está na linha");
+ok(mI.indexOf("WhatsApp") < mI.indexOf("E-mail"),
    "e vem ANTES do e-mail — a entrega é pelo zap, decisão dele em 09/09");
-ok(/Reemitir ingresso/.test(mI),
-   "reemitir passa a aparecer — existia no backend e faltava no menu");
-ok(/Cancelar ingresso/.test(mI), "e cancelar, que devolve a vaga");
+ok(/Reemitir/.test(mI), "reemitir aparece — existia no backend e faltava na tela");
+ok(/Cancelar/.test(mI), "e cancelar, que devolve a vaga");
+ok(!/Validar e emitir/.test(mI), "e some o validar — a decisão já foi tomada");
+
+passo("depois de entregue, o botão passa a dizer Reenviar");
+const mE = acoesDe(pessoa({ status: "VALIDADA_ADMINISTRATIVAMENTE",
+                            ingressoId: "ING-1", numeroIngresso: "FCV-2026-000428",
+                            entrega: { canais: ["WHATSAPP"] } })).html;
+ok(/Reenviar/.test(mE), "diz Reenviar",
+   "mandar 'Enviar' de novo faria a secretaria achar que a primeira não foi");
+
+/* ══════════════════════════════════════════════════════════════════════ */
+fluxo("A pílula e os botões leem o MESMO estado");
+
+/* Se fossem duas leituras separadas, a linha poderia dizer "Enviado" e
+   oferecer "Emitir" no botão ao lado. */
+const comIngresso = pessoa({ status: "VALIDADA_ADMINISTRATIVAMENTE",
+                             ingressoId: "ING-1", numeroIngresso: "FCV-2026-000428" });
+const t0 = montarTela();
+t0.tela.LISTA = [comIngresso];
+const linha = t0.tela.linhaHtml(comIngresso, 0);
+igual(t0.tela.situacaoDe(comIngresso).rotulo, "Ingresso a enviar",
+      "a situação lida uma vez");
+ok(linha.indexOf("Ingresso a enviar") > -1, "  aparece na pílula");
+ok(linha.indexOf("Reemitir") > -1, "  e os botões são os desse estado");
+ok(linha.indexOf("Emitir ingresso") < 0,
+   "  sem oferecer emitir para quem já emitiu");
 
 /* ══════════════════════════════════════════════════════════════════════ */
 fluxo("Validar e emitir — as duas chamadas, e o que acontece se a segunda falhar");
@@ -160,8 +205,7 @@ fluxo("Validar e emitir — as duas chamadas, e o que acontece se a segunda falh
 passo("avisa o que vai acontecer ANTES de fazer");
 let t = montarTela();
 t.tela.LISTA = [pessoa()];
-t.tela.abrirMenuStatus(0, botaoFalso(), null);
-t.tela.menuAcao("validar");
+t.tela.acaoLinha(0, "validar");
 
 igual(t.perguntas.length, 1, "pergunta antes");
 ok(/2\.000 vagas/.test(t.perguntas[0].texto),
@@ -183,8 +227,7 @@ igual(t.chamadas[1].args[0].inscricaoId, "INS-1", "para a inscrição certa");
 passo("se a validação falhar, o ingresso NÃO é emitido");
 t = montarTela();
 t.tela.LISTA = [pessoa()];
-t.tela.abrirMenuStatus(0, botaoFalso(), null);
-t.tela.menuAcao("validar");
+t.tela.acaoLinha(0, "validar");
 t.responder({ ok: false, erro: "Sessão inválida" });
 igual(t.chamadas.length, 1, "parou na primeira");
 ok(/não foi possível validar/i.test(t.els.msg.textContent),
@@ -193,14 +236,12 @@ ok(/não foi possível validar/i.test(t.els.msg.textContent),
 passo("se a EMISSÃO falhar, a tela diz que a inscrição já foi validada");
 t = montarTela();
 t.tela.LISTA = [pessoa()];
-t.tela.abrirMenuStatus(0, botaoFalso(), null);
-t.tela.menuAcao("validar");
-t.responder({ ok: true });            /* validou */
+t.tela.acaoLinha(0, "validar");
+t.responder({ ok: true });                            /* validou */
 t.responder({ ok: false, erro: "Vagas esgotadas" });  /* não emitiu */
 
 const msg = t.els.msg.textContent;
-ok(/VALIDADA/.test(msg),
-   "a mensagem avisa que a validação passou", msg);
+ok(/VALIDADA/.test(msg), "a mensagem avisa que a validação passou", msg);
 ok(/Vagas esgotadas/.test(msg), "e diz o que impediu a emissão");
 ok(/Emitir ingresso/.test(msg),
    "apontando o caminho para terminar — sem isso a pessoa valida de novo achando que nada aconteceu");
@@ -208,8 +249,9 @@ ok(/Emitir ingresso/.test(msg),
 /* ══════════════════════════════════════════════════════════════════════ */
 fluxo("O que continua sem cobertura");
 
-naoTestavel("O menu aparecendo na tela",
-  "não há CSS nem layout aqui. Se o cartão abre para cima quando não cabe " +
-  "embaixo, e se o texto cabe na largura, só o navegador responde.");
+naoTestavel("Os botões cabendo na coluna",
+  "não há CSS nem layout aqui. Se os seis botões da linha com ingresso cabem " +
+  "na largura, se quebram bem em duas fileiras e se os ícones aparecem, só o " +
+  "navegador responde.");
 
 resumo();
