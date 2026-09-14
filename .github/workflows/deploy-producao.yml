@@ -38,7 +38,7 @@ jobs:
     env:
       PROD_SCRIPT_ID: "1BoKA6pOOT751zmxahnvSgT2CJDgMpUPMvZj-X0HjDx_tCHLnXOqxVVqa"
       PROD_DEPLOYMENT_ID: "AKfycbzgPBSSF3D2OimoEJ-qMfDNp_Dsmc95THSNdUvFgqoX7NXWcmn7ZDMzF9L-OyUbEMw_ew"
-      HML_APROVADA_SHA: "6d26899743fd5318cd21aaf70600ad2a6b969055"
+      HML_APROVADA_SHA: "9a2b019f05b6ec54d895474b4ab82a6e03a2ff01"
 
     steps:
       - name: Checkout da promocao
