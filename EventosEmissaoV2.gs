@@ -136,7 +136,13 @@ function compasso_cancelarIngressoV2(ingressoId, motivo, tokenSessao) {
       fs_set_('contadores',EMISSAO_CFG.EVENTO_ID,{limite:c.limite,vagasUsadas:Math.max(0,c.vagasUsadas-1),ultimoNumero:c.ultimoNumero});
     }
     var ins=ing.inscricaoId?fs_get_('inscricoesEventos',ing.inscricaoId):null;
-    if(ins){ins.ingressoStatus='CANCELADO';ins.ingressoCanceladoEm=new Date();fs_set_('inscricoesEventos',ing.inscricaoId,ins);}
+    if(ins){
+      ins.ingressoStatus='CANCELADO'; ins.ingressoCanceladoEm=new Date();
+      /* A VAGA DA INSCRIÇÃO tambem volta. Antes so o contador de ingressos
+         baixava, e a pagina publica continuava vendo a cadeira ocupada. */
+      if (!jaUsado) compasso_liberarReservaDaInscricao_(ins, 'CANCELADA');
+      fs_set_('inscricoesEventos',ing.inscricaoId,ins);
+    }
     compasso_auditar_('CANCELAMENTO_INGRESSO','ingresso',ingressoId,{motivo:motivo,jaUsado:jaUsado});
     return {ok:true,id:ingressoId,avisoJaEntrou:jaUsado};
   } finally { lock.releaseLock(); }
