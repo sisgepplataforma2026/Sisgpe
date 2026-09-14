@@ -5482,3 +5482,55 @@ homologação **132**.
 esse documento "é de oposição". Se estiver certo, o tipo `TAXA_NEGOCIAL` do
 módulo de Ofícios — que a Marcela usa — também emite o texto errado. É operação
 viva: **conferir com ele antes de tocar.**
+
+---
+
+## COMPASSO — a fila de inscrições, 14/09/2026
+
+Entregue e publicado em homologação. Nada aqui foi visto num navegador: o
+emulador não tem CSS, layout nem o serializador do Apps Script.
+
+### 🔴 O ENSAIO DA COLUNA DE AÇÕES
+
+Ele pediu, mandando o print da tela de Despesas: *"deveria ter um campo de
+ações. Quando o cara fez a inscrição, para eu emitir, eu reenviar, eu
+cancelar. Um do lado do outro."*
+
+1. 🔴 **Os botões cabem na linha?** A linha com ingresso tem seis: WhatsApp,
+   E-mail, Ver, Reemitir, Cancelar, Editar, Excluir. Eles quebram em duas
+   fileiras quando falta largura — se ficar feio ou ilegível, é decisão dele
+   quais recolher.
+2. 🔴 **O filtro por telefone acha?** Digitar `(27) 99916-1454` **e**
+   `99916-1454` — os dois têm de achar a Marcelha. O número está gravado sem
+   pontuação; quem faz a ponte é a comparação por dígitos.
+3. 🔴 **Validar e emitir, de um clique.** Numa inscrição "A analisar": o
+   ingresso sai e o modal abre. Se a emissão falhar, a mensagem precisa dizer
+   que a inscrição **já foi validada** — senão a pessoa valida de novo.
+
+### 🔴 O PAINEL, DEPOIS DO CONSERTO DE SERIALIZAÇÃO
+
+O painel mostrava `0` inscrições com três na lista, e o bloco executivo dizia
+*"O servidor respondeu sem dados do evento"*. Eram o mesmo defeito: um objeto
+`Date` no retorno faz o `google.script.run` entregar **NULL** ao navegador, sem
+erro e sem log. O executivo **nunca** carregou desde que foi escrito.
+
+4. 🔴 **Abrir Eventos → Painel.** Os quatro cards têm de mostrar os números
+   reais (não zero), e o bloco de baixo tem de mostrar o relógio, a data por
+   extenso e os riscos — não a mensagem de "sem dados".
+5. 🔴 **Se voltar a falhar**, agora a tela mostra traços e diz que a carga
+   falhou, em vez de pintar zero. Zero passou dias parecendo calmaria.
+
+### 🔴 AINDA ABERTO DE ANTES
+
+6. 🔴 **Ingresso em modelo único** (v134): abrir o da Marcelha pelo link e
+   baixar o PDF — os dois têm de sair **iguais**.
+7. 🔴 **Cancelamento devolve a vaga**: anotar as vagas na página pública →
+   emitir → cancelar → recarregar. O número tem de **subir**. E o QR cancelado
+   tem de ser recusado na portaria.
+
+### ⚪ Decisão registrada
+
+**A coluna de ações reverte o desenho de 26/08**, quando ele mesmo pediu o
+contrário ("o status é o botão"). As duas decisões são dele; a segunda veio de
+ver a fila real funcionando. Fica anotada no `t89` para não ser reaberta como
+achado novo.
