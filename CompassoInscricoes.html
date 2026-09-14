@@ -256,6 +256,7 @@
   padding:8px 11px;border-radius:8px;cursor:pointer}
 #stMenu button:hover{background:var(--fundo)}
 #stMenu button.g{color:#15803d;font-weight:700}
+#stMenu button.a{color:#b45309}
 #stMenu button.r{color:#b91c1c}
 #stMenu hr{border:0;border-top:1px solid #f1f5f9;margin:4px 8px}
 </style>
@@ -1023,10 +1024,19 @@ function abrirMenuStatus(i, botao, ev){
     L.push('<button class="g" onclick="menuAcao(\'whats\')">Enviar pelo WhatsApp</button>');
     L.push('<button onclick="menuAcao(\'email\')">Enviar por e-mail</button>');
     L.push('<button onclick="menuAcao(\'ver\')">Ver o ingresso</button>');
+    L.push('<button onclick="menuAcao(\'reemitir\')">Reemitir ingresso</button>');
   } else if (x.status === 'VALIDADA_ADMINISTRATIVAMENTE'){
     L.push('<button class="g" onclick="menuAcao(\'emitir\')">Emitir ingresso</button>');
   } else {
-    L.push('<button class="g" onclick="menuAcao(\'analisar\')">Analisar agora</button>');
+    /* A DECISÃO SAI DA GAVETA — 14/09/2026.
+       Antes, "A analisar" oferecia só "Analisar agora", que abria a gaveta
+       para escolher num seletor. O caminho comum — validar — custava quatro
+       cliques e uma tela inteira.
+       Pendência e reprovação continuam na gaveta DE PROPÓSITO: as duas exigem
+       motivo de uma lista fechada, e escolher motivo por ela seria impor. */
+    L.push('<button class="g" onclick="menuAcao(\'validar\')">Validar e emitir ingresso</button>');
+    L.push('<button class="a" onclick="menuAcao(\'pendencia\')">Marcar pendência…</button>');
+    L.push('<button class="r" onclick="menuAcao(\'reprovar\')">Reprovar…</button>');
   }
 
   L.push('<button onclick="menuAcao(\'editar\')">Editar dados</button>');
@@ -1060,10 +1070,58 @@ function menuAcao(qual){
   if (qual === 'whats')  return porWhats(i);
   if (qual === 'email')  return porEmail(i);
   ABERTO = i;
+  if (qual === 'validar')   return validarEEmitirDoMenu(i);
+  if (qual === 'reemitir')  { abrirGaveta(i); return gvAbrirDobra('secIngresso'); }
+  if (qual === 'pendencia' || qual === 'reprovar') {
+    /* Leva ate a decisao com o motivo a escolher. As reticencias no rotulo
+       avisam que ainda vem uma pergunta — botao que promete acao imediata e
+       abre formulario quebra a confianca no resto do menu. */
+    abrirGaveta(i);
+    return setTimeout(analiseManual, 0);
+  }
   if (qual === 'emitir') { abrirGaveta(i); return emitirGaveta(); }
   if (qual === 'cancelar'){ abrirGaveta(i); return cancelarIngresso(); }
   if (qual === 'excluir') { abrirGaveta(i); return excluirInscricao(); }
   abrirGaveta(i);   /* ver, editar e analisar abrem a gaveta, que é onde se decide */
+}
+
+/* ══ VALIDAR E EMITIR, DE UM CLIQUE ════════════════════════════════════════
+   O caminho comum da fila é "esta pessoa está na base, pode ir". Ele custava
+   abrir a gaveta, achar a seção de análise, escolher no seletor e confirmar.
+
+   AS DUAS CHAMADAS SÃO SEPARADAS E A SEGUNDA PODE FALHAR — sem vaga, sem
+   Drive, sem cota. Se isso acontecer, a inscrição JÁ FOI validada, e a
+   mensagem diz exatamente isso: esconder a metade que deu certo faria a
+   pessoa validar de novo e achar que o sistema não obedece.
+
+   EMITIR NÃO É ENTREGAR. O ingresso nasce e fica guardado; a entrega é o
+   clique seguinte, pelo WhatsApp. Foi a decisão dele em 09/09 — nada sai
+   sozinho — e o texto do aviso diz isso antes de confirmar, não depois. */
+function validarEEmitirDoMenu(i){
+  var x = LISTA[i]; if (!x) return;
+  var nome = x.nome, id = x.inscricaoId;
+
+  perguntar({ titulo: 'Validar e emitir o ingresso de ' + nome + '?',
+              texto: 'A inscrição é validada e o ingresso é emitido — isso consome ' +
+                     'uma das 2.000 vagas. A entrega continua sendo pelo WhatsApp, ' +
+                     'num segundo passo.',
+              ok: 'Validar e emitir' }, function(){
+    api('compasso_validarDecisaoAdmin',
+        [id, 'VALIDADA_ADMINISTRATIVAMENTE', '', ''], function(r){
+      if (!r || r.ok === false)
+        return aviso('Não foi possível validar: ' + ((r && (r.erro || r.mensagem)) || 'erro'));
+
+      api('compasso_emitirIngressoV2', [{ inscricaoId: id }], function(r2){
+        if (!r2 || !r2.ok){
+          recarregar();
+          return aviso('Inscrição de ' + nome + ' VALIDADA, mas o ingresso não saiu: ' +
+                       ((r2 && r2.erro) || 'erro') + '. Use "Emitir ingresso" no menu dela.');
+        }
+        abrirModalIngresso(id, r2.numero, nome);
+        recarregar();
+      });
+    });
+  });
 }
 
 /* ── seleção para o lote ── */
