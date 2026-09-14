@@ -62,6 +62,7 @@ const semAlias = () => { g.GmailApp.getAliases = () => ["secretaria@sindeducacao
 /* O documento PROPRIO da campanha. Vazio no repositorio ate ele existir de
    verdade no Drive; aqui se liga e desliga para provar a trava dos dois lados. */
 const DOC_CAMPANHA = "DOC-DA-CAMPANHA-TN";
+const DOC_REAL = g.TEMPLATES.TAXA_NEGOCIAL_CAMPANHA;
 const comDocumento = () => { g.TEMPLATES.TAXA_NEGOCIAL_CAMPANHA = DOC_CAMPANHA; };
 const semDocumento = () => { g.TEMPLATES.TAXA_NEGOCIAL_CAMPANHA = ""; };
 comDocumento();
@@ -510,6 +511,24 @@ ok(String(subs["{{CORPO}}"]).indexOf("não seja efetuado") === -1,
    "e SEM o texto do ofício de oposição, que foi o que a escola recebeu em 11/09");
 igual(subs["{{ESCOLA}}"], "COLEGIO BETA", "a escola vai nominal");
 ok(!!subs["{{CNPJ}}"], "com o CNPJ dela");
+
+/* TODO MARCADOR QUE O DOCUMENTO TEM PRECISA SER MANDADO. O que ninguem manda
+   nao da erro — sai impresso cru no papel, que foi o destino do
+   {{COLABORADORES}} no oficio 524/2026. O modelo da campanha e copia do
+   generico da casa, entao a lista abaixo e a dele. */
+passo("nenhum marcador do modelo fica sem valor");
+["{{CIDADE_UF}}", "{{DATA}}", "{{NUMERO}}", "{{ESCOLA}}", "{{ASSUNTO}}", "{{CORPO}}"]
+  .forEach(function (marca) {
+    ok(typeof subs[marca] === "string" && subs[marca].length > 0,
+       "manda " + marca, String(subs[marca] || "(VAZIO)").slice(0, 45));
+  });
+ok(String(subs["{{ASSUNTO}}"]).indexOf("Taxa Negocial") > -1,
+   "e o assunto fala da Taxa Negocial");
+
+passo("o documento configurado e o da campanha, nao o da oposicao");
+ok(!!DOC_REAL, "a constante está preenchida no repositório", DOC_REAL);
+ok(DOC_REAL !== g.TEMPLATES.TAXA,
+   "e é um documento diferente do TEMPLATES.TAXA, que é o de oposição");
 
 passo("sem documento proprio, NADA sai");
 semDocumento();

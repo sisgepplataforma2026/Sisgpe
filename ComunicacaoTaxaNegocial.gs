@@ -108,6 +108,8 @@ var TN_COM_ASSINATURA = {
   contato: "(27) 99813-5965 • financeiro@sindeducacao.com"
 };
 
+var TN_COM_ASSUNTO = "Taxa Negocial 2026 — recolhimento e relação de não associados";
+
 function tnCom_remetente_() {
   var pretendido = TN_COM_REMETENTE_PRETENDIDO;
   var efetivo = "", aliases = [];
@@ -644,6 +646,10 @@ function tnCom_gerarPdf_(numero, codigo, escola, cnpj) {
       "{{CIDADE_UF}}": (typeof CIDADE_UF !== "undefined" && CIDADE_UF) ? CIDADE_UF : "Vitória/ES",
       "{{ESCOLA}}":    escola,
       "{{CNPJ}}":      cnpj,
+      /* O DOCUMENTO TEM {{ASSUNTO}} — e sem esta linha ele sairia impresso cru,
+         exatamente como o {{COLABORADORES}} saiu no oficio 524/2026. Marcador
+         que o Doc tem e ninguem manda nao da erro: aparece no papel. */
+      "{{ASSUNTO}}":   TN_COM_ASSUNTO,
       "{{CORPO}}":     tnCom_corpo_(),
       "{{CODIGO}}":    codigo,
       "{{LINK_VALIDACAO}}": base ? (base + "?codigo=" + codigo) : ""

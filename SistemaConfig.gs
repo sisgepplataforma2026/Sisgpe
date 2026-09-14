@@ -118,7 +118,7 @@ var TEMPLATES = {
      para aquele Doc foi o que fez o oficio 524/2026 sair dizendo o contrario
      do que a campanha existe para dizer. Enquanto esta constante estiver
      vazia, liberar e testar recusam — ver ComunicacaoTaxaNegocial.gs. */
-  TAXA_NEGOCIAL_CAMPANHA: "",
+  TAXA_NEGOCIAL_CAMPANHA: "1LcEvGXUtdDw0JwOkJYykZ68v2qzzbPyqEOlqxst5byM",
   RECIBO: "1sfpKSySoY1kRWSIuVh819Qqjb7c1o_LepVSs2Cdtcuo",
   LIVRE: "11W2FEgT4gPkCxkuQnhkbJpKd2NFIX_XI",
   TAXA_ASSISTENCIAL: "1Awpat0OhOSadMYni7696JVLGXU40dP6mCwBpWXoqJgs",
