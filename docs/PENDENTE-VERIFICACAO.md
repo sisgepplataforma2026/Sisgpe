@@ -5416,3 +5416,66 @@ lado.
 
 Todos corrigidos, o último de forma a não depender de acertar o nome. **Se
 aparecer função nova que "não roda", suspeite disto antes do código.**
+
+---
+
+## 14/09/2026 · Comunicação da Taxa Negocial — o ofício saía com o texto de OUTRO ofício
+
+O que aconteceu, para não se repetir: a campanha foi construída, testada com
+110 asserções e publicada **oito vezes** em produção sem que ninguém — eu —
+tivesse aberto o documento que ela gerava.
+
+O ofício 524/2026 chegou à escola dizendo:
+
+> "solicitamos que **não seja efetuado** o desconto da Taxa Negocial"
+
+O oposto do que a campanha existe para dizer. Junto: `{{COLABORADORES}}`
+impresso cru, "Cláusula 57ª da CCT 2025/2026" enquanto a CCT anexa era a
+2026/2027, e "competência setembro/2024".
+
+**Causa.** `tnCom_gerarPdf_` apontava para `TEMPLATES.TAXA`, que é o ofício de
+**oposição**. E como `gerarPDFUniversal_` só substitui marcador que EXISTE no
+documento, o `{{CORPO}}` da campanha era descartado em silêncio — o texto que o
+usuário revisou nunca chegou a documento nenhum.
+
+**Por que nenhum teste pegou.** O dublê de `gerarPDFUniversal_` guardava só o
+NOME do arquivo. Qual documento foi pedido e quais marcadores foram enviados,
+que era exatamente o que estava errado, não era afirmado em lugar nenhum.
+
+**Corrigido:** documento próprio (`TEMPLATES.TAXA_NEGOCIAL_CAMPANHA`), trava
+que recusa liberar/testar sem ele, `{{ASSUNTO}}` preenchido (sairia cru
+também), CNPJ na linha do destinatário, rodapé do e-mail com os dados do
+financeiro, corpo do e-mail com o texto do ofício. Produção **719**,
+homologação **132**.
+
+### 🔴 O QUE DEPENDE DE ALGUÉM OLHAR — não há teste que substitua
+
+1. 🔴 **O PDF gerado.** `DocumentApp` não é emulado: a suíte prova qual
+   documento foi pedido e quais marcadores foram enviados, **não** o que sai no
+   papel. Foi exatamente aqui que o erro passou oito publicações. Conferir:
+   texto informativo (recolher, não "não descontar"); `PARA:` com razão social
+   **e CNPJ**; assunto preenchido; fechamento **sem** promessa de prazo;
+   assinatura do Presidente.
+2. 🔴 **O e-mail.** Rodapé `WANDERSON N CASTELO · Financeiro & Cobrança ·
+   (27) 99813-5965 · financeiro@sindeducacao.com` — e **não** o da secretaria.
+   Corpo com o texto completo do ofício, não "segue em anexo". CCT anexada.
+3. 🔴 **O envio em lote de verdade.** Teto, cota, reagendamento e o aviso de
+   parada nunca rodaram no ar nesta campanha.
+
+### ⚪ Registrado, sem ação pendente
+
+- **A escola "Teste" fica na base**, por decisão dele em 14/09 — é onde ele
+  testa antes de mandar para escola real. O e-mail dela é interno
+  (`financeiro@`), então receber a campanha não vaza nada para fora. Consta
+  como comunicada desde 11/09; para reusá-la num teste, a linha dela na
+  `COMUNICACAO_TAXA_NEGOCIAL` precisa voltar para PENDENTE.
+- **Texto fixo do ofício mora no Doc**, não no código: mudar ali não pede
+  publicação nenhuma. Ele próprio corrigiu a frase do prazo em 14/09 15:45.
+
+### 🟡 Achado aberto, em módulo de uso diário — NÃO mexi
+
+`HelperOficios.gs:60` e `:64` mapeiam **o mesmo** `TEMPLATES.TAXA` para
+`TAXA_NEGOCIAL` e para `OPOSICAO_TAXA_NEGOCIAL`. O usuário afirmou em 14/09 que
+esse documento "é de oposição". Se estiver certo, o tipo `TAXA_NEGOCIAL` do
+módulo de Ofícios — que a Marcela usa — também emite o texto errado. É operação
+viva: **conferir com ele antes de tocar.**
