@@ -81,7 +81,13 @@ function compasso_executivoResumo(tokenSessao) {
   return {
     evento: {
       nome: 'Festa Compasso da Vida 2026',
-      data: data,
+      /* ISO, não o Date. Este campo é o motivo de o bloco executivo nunca ter
+         carregado: EMISSAO_CFG.DATA_EVENTO é um Date literal, ia inteiro no
+         retorno, e o google.script.run entregava NULL ao navegador — o que a
+         tela mostrava como "O servidor respondeu sem dados do evento".
+         Diferente do painel, aqui o defeito era PERMANENTE: não dependia de
+         haver inscrição nenhuma. A tela faz `new Date(v)` e formata. */
+      data: data.toISOString(),
       dias: dias,
       vagas: compasso_limiteVagas_(),
       vagasRestantes: Math.max(0, compasso_limiteVagas_() - comIngresso)

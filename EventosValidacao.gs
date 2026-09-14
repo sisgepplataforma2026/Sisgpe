@@ -187,8 +187,22 @@ function compasso_contarChegada_(chegada, criadoEm, hoje) {
     new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()) / 86400000);
   if (diasAtras >= 0 && diasAtras <= 6) chegada.porDia[6 - diasAtras]++;
 
+  /* TEXTO, NUNCA O OBJETO Date — 14/09/2026.
+     Esta linha guardava `d`, um Date recém-criado, e ele viajava dentro do
+     retorno de compasso_validacaoResumo. O google.script.run serializa o
+     retorno para o navegador e, quando algo no pacote não serializa, o
+     cliente recebe NULL: sem erro, sem log, sem handler de falha. É o mesmo
+     mecanismo que derrubou o envio do voucher em 18/08 (VoucherEnvio.gs:173)
+     e a listagem do histórico (HistoricoOficios.gs:80).
+
+     O detalhe cruel: com a base VAZIA, ultimaEm ficava nulo e tudo
+     funcionava. Bastava UMA inscrição existir para os cards do painel irem a
+     zero — e zero, ali, parece calmaria, não defeito.
+
+     Tudo que vem do Firestore já é texto (fs_fromFields_ devolve
+     timestampValue como string), então o ISO mantém o formato do resto. */
   if (!chegada.ultimaEm || d.getTime() > new Date(chegada.ultimaEm).getTime())
-    chegada.ultimaEm = d;
+    chegada.ultimaEm = d.toISOString();
 }
 
 function compasso_validacaoSalvarDados(inscricaoId, patch, atualizarCadastroMestre, tokenSessao) {

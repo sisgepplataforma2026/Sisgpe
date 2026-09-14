@@ -610,7 +610,23 @@ function evDataBR(v){
 function evPainelCarregar(){
   var token=tokenSessao(); if(!token)return;
   google.script.run.withSuccessHandler(function(r){
-    r=r||{};
+    /* ZERO É UMA INFORMAÇÃO; "NÃO VEIO" É OUTRA — 14/09/2026.
+       O `r||{}` que estava aqui transformava resposta nula em 0 inscrições,
+       0 a analisar e 2.000 vagas livres. Um painel que mente com cara de
+       calmaria. Ele abriu a tela com três inscrições na fila e leu zero em
+       tudo, sem uma linha dizendo que a carga falhou.
+       O bloco executivo, ao lado, avisava — e foi por ele que o defeito
+       apareceu. Silêncio não é estado do sistema: é ausência de resposta. */
+    if(!r){
+      ['pnTotal','pnAnalisar','pnEnviar','pnVagas'].forEach(function(id){
+        var el=g(id); if(el) el.textContent='—';
+      });
+      g('pnFilas').innerHTML='';
+      g('pnVazio').hidden=false;
+      g('pnVazio').textContent=
+        'O servidor respondeu sem os números do evento. Atualize a página.';
+      return;
+    }
     var total=Number(r.total||0), analisar=Number(r.naoAnalisadas||0),
         enviar=Number(r.aEnviar||0), comIngresso=Number(r.comIngresso||0);
     g('pnTotal').textContent=total;
