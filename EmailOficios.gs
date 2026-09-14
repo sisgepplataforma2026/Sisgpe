@@ -193,7 +193,16 @@ function enviarEmailOficio_(emailUsuario, htmlBody, anexos, assunto, destino, co
   return opcoes;
 }
 
-function montarEmailHTML_(tipo, numero, assuntoTipo, quantidade, textoPrincipalCustom) {
+/* A ASSINATURA E PARAMETRO — 14/09/2026.
+
+   O rodape era fixo: Marcela / Administrativo & Secretaria / secretaria@. Na
+   campanha de Taxa Negocial isso virou contradicao — o e-mail SAI de
+   financeiro@ (exigencia do usuario) e se ASSINAVA como secretaria@. A escola
+   que respondesse ou ligasse ia para a pessoa errada.
+
+   O padrao continua sendo a Marcela: quem nao passa nada recebe exatamente o
+   rodape de antes, e os oficios que ela emite todo dia nao mudam em nada. */
+function montarEmailHTML_(tipo, numero, assuntoTipo, quantidade, textoPrincipalCustom, assinatura) {
   var textoPrincipal = textoPrincipalCustom || "";
 
   if (!textoPrincipal) {
@@ -240,6 +249,17 @@ function montarEmailHTML_(tipo, numero, assuntoTipo, quantidade, textoPrincipalC
 
   var textoPrincipalHtml = formatarCorpoEmailHTML_(textoPrincipal);
   var saudacao = saudacaoHoraBR_();
+
+  /* Sem parametro, o rodape de sempre — nenhum oficio em uso muda. */
+  var assina = assinatura && assinatura.nome ? {
+    nome:    String(assinatura.nome || ""),
+    cargo:   String(assinatura.cargo || ""),
+    contato: String(assinatura.contato || "")
+  } : {
+    nome:    "MARCELHA ALINE PINTO GOMES",
+    cargo:   "Administrativo &amp; Secretaria — SindEducação-ES",
+    contato: "(27) 99735-8900 • secretaria@sindeducacao.com"
+  };
   var badgeCor = "rgba(201,168,76,.15)", badgeBorda = "rgba(201,168,76,.35)", badgeTexto = "#C9A84C";
   if (assuntoTipo === "Filiação")          { badgeCor="rgba(217,119,6,.15)";  badgeBorda="rgba(217,119,6,.4)";   badgeTexto="#fbbf24"; }
   if (assuntoTipo === "Desfiliação")       { badgeCor="rgba(185,28,28,.2)";   badgeBorda="rgba(220,38,38,.4)";   badgeTexto="#fca5a5"; }
@@ -267,12 +287,12 @@ function montarEmailHTML_(tipo, numero, assuntoTipo, quantidade, textoPrincipalC
     "⚠️ Solicitamos, por gentileza, a confirmação do recebimento respondendo a este e-mail.</div></div>" +
     "<div style='background:linear-gradient(135deg,#001228 0%,#001f4d 60%,#002f6c 100%);border-radius:0 0 8px 8px;padding:22px 28px;text-align:center;'>" +
     "<div style='height:3px;background:linear-gradient(90deg,#C9A84C,#f0c843,#C9A84C);margin-bottom:18px;'></div>" +
-    "<div style='font-size:16px;font-weight:900;color:#fff;'>MARCELHA ALINE PINTO GOMES</div>" +
-    "<div style='font-size:12px;color:#C9A84C;font-weight:700;margin-top:3px;'>Administrativo & Secretaria — SindEducação-ES</div>" +
+    "<div style='font-size:16px;font-weight:900;color:#fff;'>" + assina.nome + "</div>" +
+    "<div style='font-size:12px;color:#C9A84C;font-weight:700;margin-top:3px;'>" + assina.cargo + "</div>" +
     "<div style='margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.10);font-size:11px;color:rgba(255,255,255,.75);line-height:1.7;'>" +
     "Av. Nossa Senhora dos Navegantes, 755 - Salas 707/708<br>" +
     "Enseada do Suá - Vitória/ES - CEP 29.050-355<br>" +
-    "(27) 99735-8900 • secretaria@sindeducacao.com • www.sindeducacao.com.br" +
+    assina.contato + " • www.sindeducacao.com.br" +
     "</div>" +
     "<div style='margin-top:12px;font-size:10px;color:rgba(255,255,255,.25);'>Documento gerado pelo SISGEP · SindEducação-ES</div>" +
     "</div></div>"

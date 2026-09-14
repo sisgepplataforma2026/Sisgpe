@@ -535,6 +535,53 @@ ok(tela.indexOf("s.documento && s.documento.ok") > -1,
 comDocumento();
 
 /* ══════════════════════════════════════════════════════════════════════ */
+fluxo("O e-mail: quem assina e o que ele diz");
+
+/* O oficio saiu DE financeiro@ e se ASSINAVA como secretaria@ / Marcela — a
+   escola que respondesse ou ligasse caia na pessoa errada. E o corpo era uma
+   frase so ("segue em anexo"), entao quem abrisse no celular nao lia nada do
+   que estava sendo pedido. */
+/* Fila limpa: os blocos anteriores ja comunicaram a ALFA, e escola comunicada
+   nao recebe de novo — que e justamente a regra provada acima. */
+(() => {
+  const sh = ss.getSheetByName(ABA);
+  sh.clearContents();
+  sh.getRange(1, 1, 1, g.TN_COM_CAB.length).setValues([g.TN_COM_CAB]);
+})();
+montarEscolas(false);
+g.tnCom_preparar_({ competencia: "setembro/2026", dataAlvo: "2026-09-30" }, "wanderson@x");
+g.__cotaEmailRestante = 1500;
+
+passo("a assinatura do e-mail e a do financeiro, nao a da secretaria");
+let htmlCapturado = "";
+const criarDraftOriginal = g.GmailApp.createDraft;
+g.GmailApp.createDraft = function (para, assunto, corpo, opts) {
+  htmlCapturado = String((opts && opts.htmlBody) || "");
+  return criarDraftOriginal.call(g.GmailApp, para, assunto, corpo, opts);
+};
+amb.outbox.length = 0;
+const envAss = g.tnCom_testar_("ALFA", "wanderson@sindeducacao.com");
+igual(envAss.ok, true, "enviou", String(envAss.mensagem).slice(0, 120));
+ok(htmlCapturado.indexOf("WANDERSON N CASTELO") > -1, "o rodapé traz quem assina");
+ok(htmlCapturado.indexOf("financeiro@sindeducacao.com") > -1,
+   "com o contato do financeiro, que é de onde o e-mail sai");
+ok(htmlCapturado.indexOf("MARCELHA") === -1,
+   "e NÃO a secretaria — era a contradição: sai de um, assina outro");
+
+passo("o corpo leva o texto do oficio, nao um 'segue em anexo'");
+ok(htmlCapturado.indexOf("Taxa Negocial 2026") > -1, "fala da Taxa Negocial 2026");
+ok(htmlCapturado.indexOf("três parcelas") > -1, "com as três parcelas");
+ok(htmlCapturado.indexOf("não associados") > -1, "e o pedido da relação de não associados");
+
+passo("os oficios da Marcela NAO mudam");
+const htmlPadrao = g.montarEmailHTML_("Ofício de Filiação", "100/2026", "Filiação", 1, "Texto qualquer.");
+ok(htmlPadrao.indexOf("MARCELHA ALINE PINTO GOMES") > -1,
+   "quem não passa assinatura continua com o rodapé de sempre");
+ok(htmlPadrao.indexOf("secretaria@sindeducacao.com") > -1, "e o contato dela");
+ok(htmlPadrao.indexOf("WANDERSON") === -1, "sem vazar a assinatura da campanha");
+g.GmailApp.createDraft = criarDraftOriginal;
+
+/* ══════════════════════════════════════════════════════════════════════ */
 fluxo("A tela abre com UMA leitura da fila, nao duas");
 
 /* "Demorandooo" — 14/09/2026. Quando a tabela passou a aparecer sempre, abrir

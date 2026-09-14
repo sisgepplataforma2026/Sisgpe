@@ -100,6 +100,14 @@ function tnCom_linhas_() {
 
 var TN_COM_REMETENTE_PRETENDIDO = "financeiro@sindeducacao.com";
 
+/* Os dados vieram do proprio sistema, nao de invencao minha: e a assinatura
+   que ele ja usa na cobranca de mensalidade (MensalidadesAdmin.html:310). */
+var TN_COM_ASSINATURA = {
+  nome:    "WANDERSON N CASTELO",
+  cargo:   "Financeiro &amp; Cobrança — SindEducação-ES",
+  contato: "(27) 99813-5965 • financeiro@sindeducacao.com"
+};
+
 function tnCom_remetente_() {
   var pretendido = TN_COM_REMETENTE_PRETENDIDO;
   var efetivo = "", aliases = [];
@@ -678,9 +686,18 @@ function tnCom_corpo_() {
 
 function tnCom_enviar_(remetente, destino, escola, numero, anexos) {
   var assunto = "Ofício " + numero + " — Taxa Negocial 2026 — " + escola;
+  /* O CORPO DO E-MAIL LEVA O TEXTO, nao so um "segue em anexo". Quem abre no
+     celular fecha sem baixar PDF; a escola precisa poder ler o que foi pedido
+     na propria mensagem. E o mesmo texto do oficio, sem segunda redacao para
+     sair de sincronia.
+
+     E A ASSINATURA E A DO FINANCEIRO. O e-mail sai de financeiro@ e se
+     assinava como secretaria@ — a escola que respondesse caia na pessoa
+     errada. Os oficios da Marcela seguem com o rodape dela; so esta campanha
+     muda. */
   var html = (typeof montarEmailHTML_ === "function")
     ? montarEmailHTML_("Ofício de Taxa Negocial", numero, "Taxa Negocial", 0,
-        "Encaminhamos, em anexo, o ofício referente à Taxa Negocial 2026 e a cópia da CCT vigente.")
+        tnCom_corpo_(), TN_COM_ASSINATURA)
     : "";
 
   var opcoes = {
