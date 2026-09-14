@@ -111,6 +111,14 @@ var TEMPLATES = {
   FILIACAO: "1TzI9RheOqO1tnsq9hDwrIFxHv3CB9jGpA3EpMhWKKRM",
   DESFILIACAO: "1T9vo_-4zB-j5uShElpCZqcKzmVqSGp10OsJyr6T4rUE",
   TAXA: "1flP0xsAaTjhACQWzlroM8RGmRtsMHCORmXU27J39AAA",
+  /* CAMPANHA INFORMATIVA DE TAXA NEGOCIAL — documento PROPRIO.
+     Vazio de proposito ate existir. O TEMPLATES.TAXA acima e o oficio de
+     OPOSICAO (pede para NAO descontar, e lista pessoas em {{COLABORADORES}});
+     a campanha informa a escola de que ela DEVE recolher. Apontar a campanha
+     para aquele Doc foi o que fez o oficio 524/2026 sair dizendo o contrario
+     do que a campanha existe para dizer. Enquanto esta constante estiver
+     vazia, liberar e testar recusam — ver ComunicacaoTaxaNegocial.gs. */
+  TAXA_NEGOCIAL_CAMPANHA: "",
   RECIBO: "1sfpKSySoY1kRWSIuVh819Qqjb7c1o_LepVSs2Cdtcuo",
   LIVRE: "11W2FEgT4gPkCxkuQnhkbJpKd2NFIX_XI",
   TAXA_ASSISTENCIAL: "1Awpat0OhOSadMYni7696JVLGXU40dP6mCwBpWXoqJgs",

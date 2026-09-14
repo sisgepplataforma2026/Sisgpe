@@ -38,9 +38,15 @@ const props = g.PropertiesService.getScriptProperties();
 
 /* ── dublês: o que o emulador não alcança e não é o objeto do teste ────── */
 let pdfsGerados = [];
+let pedidosPdf = [];
 g.obterPastaPorTipo_ = function () { return { getId: () => "PASTA-TN" }; };
 g.gerarPDFUniversal_ = function (cfg) {
   pdfsGerados.push(cfg.nomeArquivo);
+  /* GUARDA O PEDIDO INTEIRO, nao so o nome do arquivo. O duble antigo so
+     registrava o nome — e por isso passou verde enquanto a campanha mandava o
+     oficio de OPOSICAO com {{COLABORADORES}} cru. Qual documento e quais
+     marcadores foram pedidos e exatamente o que precisava ser afirmado. */
+  pedidosPdf.push({ templateId: cfg.templateId, subs: cfg.substituicoes || {} });
   return { pdf: { getBlob: () => ({ nome: cfg.nomeArquivo }), getId: () => "PDF-" + pdfsGerados.length } };
 };
 let agendou = 0, removeu = 0;
@@ -52,6 +58,13 @@ const ABA = "COMUNICACAO_TAXA_NEGOCIAL";
 const comAlias = () => { g.GmailApp.getAliases = () => ["secretaria@sindeducacao.com",
                                                         "financeiro@sindeducacao.com"]; };
 const semAlias = () => { g.GmailApp.getAliases = () => ["secretaria@sindeducacao.com"]; };
+
+/* O documento PROPRIO da campanha. Vazio no repositorio ate ele existir de
+   verdade no Drive; aqui se liga e desliga para provar a trava dos dois lados. */
+const DOC_CAMPANHA = "DOC-DA-CAMPANHA-TN";
+const comDocumento = () => { g.TEMPLATES.TAXA_NEGOCIAL_CAMPANHA = DOC_CAMPANHA; };
+const semDocumento = () => { g.TEMPLATES.TAXA_NEGOCIAL_CAMPANHA = ""; };
+comDocumento();
 
 /** A base de escolas: uma com 3 contatos, uma com 1, uma sem nenhum. */
 function montarEscolas(comContatoNovo) {
@@ -459,6 +472,67 @@ ok(tela.indexOf("if (s.total > 0) ctnListar();") > -1,
 ok(tela.indexOf("i.podeEnviar") > -1, "a lista da busca lê o podeEnviar do backend");
 ok(tela.indexOf("cursor:not-allowed") > -1, "e quem não pode não convida ao clique");
 ok(tela.indexOf("i.motivo") > -1, "mostrando o motivo, em vez de um cinza sem explicação");
+
+/* ══════════════════════════════════════════════════════════════════════ */
+fluxo("O DOCUMENTO da campanha — o erro que passou por oito publicacoes");
+
+/* O oficio 524/2026 chegou a escola dizendo o CONTRARIO do que a campanha
+   existe para dizer: "solicitamos que NAO seja efetuado o desconto", com
+   {{COLABORADORES}} impresso cru e datas de 2024.
+
+   Causa: tnCom_gerarPdf_ apontava para TEMPLATES.TAXA, que e o oficio de
+   OPOSICAO. E como o gerarPDFUniversal_ so substitui marcador que EXISTE no
+   documento, o {{CORPO}} que eu mandava era descartado em silencio.
+
+   Nenhum teste pegou porque o duble de PDF so guardava o NOME do arquivo.
+   Qual documento e quais marcadores era justamente o que precisava ser
+   afirmado — e e o que se afirma daqui em diante. */
+passo("o PDF sai do documento DA CAMPANHA, nunca do oficio de oposicao");
+comAlias(); comDocumento();
+pedidosPdf = []; amb.outbox.length = 0;
+const envTN = g.tnCom_testar_("BETA", "wanderson@sindeducacao.com");
+igual(envTN.ok, true, "enviou", String(envTN.mensagem).slice(0, 60));
+igual(pedidosPdf.length, 1, "gerou um PDF");
+igual(pedidosPdf[0].templateId, DOC_CAMPANHA,
+   "e pediu o documento da campanha");
+ok(pedidosPdf[0].templateId !== g.TEMPLATES.TAXA,
+   "que NÃO é o TEMPLATES.TAXA — aquele é o ofício de oposição",
+   "usou: " + pedidosPdf[0].templateId);
+
+passo("e manda o texto da campanha no marcador certo");
+const subs = pedidosPdf[0].subs;
+ok(!!subs["{{CORPO}}"], "o {{CORPO}} vai preenchido");
+ok(String(subs["{{CORPO}}"]).indexOf("Taxa Negocial 2026") > -1,
+   "com o texto da campanha dentro");
+ok(String(subs["{{CORPO}}"]).indexOf("três parcelas") > -1,
+   "incluindo as três parcelas de 2%");
+ok(String(subs["{{CORPO}}"]).indexOf("não seja efetuado") === -1,
+   "e SEM o texto do ofício de oposição, que foi o que a escola recebeu em 11/09");
+igual(subs["{{ESCOLA}}"], "COLEGIO BETA", "a escola vai nominal");
+ok(!!subs["{{CNPJ}}"], "com o CNPJ dela");
+
+passo("sem documento proprio, NADA sai");
+semDocumento();
+pedidosPdf = []; amb.outbox.length = 0;
+const travTeste = g.tnCom_testar_("ALFA", "wanderson@sindeducacao.com");
+igual(travTeste.ok, false, "o teste recusa");
+ok(String(travTeste.mensagem).indexOf("documento próprio") > -1,
+   "dizendo o que falta", String(travTeste.mensagem).slice(0, 70));
+igual(pedidosPdf.length, 0, "nenhum PDF foi gerado");
+igual(amb.outbox.length, 0, "e nenhum e-mail saiu");
+
+const travLib = g.tnCom_liberar_();
+igual(travLib.ok, false, "liberar recusa também — é aqui que 679 escolas seriam atingidas");
+ok(String(travLib.mensagem).indexOf("documento próprio") > -1, "com o mesmo motivo");
+
+passo("a tela mostra a trava em vez de deixar clicar");
+const stTrava = g.tnCom_status_();
+igual(stTrava.documento.ok, false, "o status conta que falta documento");
+ok(tela.indexOf("ctnDesenharDocumento") > -1, "a tela desenha esse aviso");
+ok(tela.indexOf("s.documento && s.documento.ok") > -1,
+   "e o botão de liberar só habilita com documento");
+
+comDocumento();
 
 /* ══════════════════════════════════════════════════════════════════════ */
 fluxo("A tela abre com UMA leitura da fila, nao duas");

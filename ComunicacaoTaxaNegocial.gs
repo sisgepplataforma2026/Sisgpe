@@ -359,6 +359,16 @@ function tnCom_liberar_() {
   var rem = tnCom_remetente_();
   if (!rem.ok) return { ok: false, remetente: rem, mensagem: rem.mensagem };
 
+  /* SEM DOCUMENTO PROPRIO, NAO LIBERA. Esta e a trava que faltava em 11/09:
+     a campanha gerou e enviou um oficio com o texto de outro.
+
+     VEM ANTES DA FILA de proposito. Faltar documento e defeito de configuracao
+     e nao muda com o estado da fila; se a checagem viesse depois, uma fila
+     vazia esconderia o motivo de verdade atras de "prepare a fila antes" — e a
+     pessoa iria preparar a fila achando que era isso. */
+  var docCampanha = tnCom_documento_();
+  if (!docCampanha.ok) return { ok: false, documento: docCampanha, mensagem: docCampanha.mensagem };
+
   var c = tnCom_contar_();
   if (!(c.PENDENTE > 0)) {
     return { ok: false, mensagem: "Não há endereço pendente. Prepare a fila antes de liberar." };
@@ -566,14 +576,58 @@ function tnCom_enviarLote_() {
 
 /* ── O documento e o envio ─────────────────────────────────────────────── */
 
+/* ══════════════════════════════════════════════════════════════════════════
+   O DOCUMENTO DA CAMPANHA — 14/09/2026
+
+   O oficio 524/2026 saiu dizendo o CONTRARIO do que esta campanha existe para
+   dizer. Eu apontei o gerador para o TEMPLATES.TAXA, que e o oficio de
+   OPOSICAO: ele pede a escola para NAO descontar e lista pessoas em
+   {{COLABORADORES}}. A campanha informa a escola de que ela DEVE recolher.
+
+   E o texto que eu mandava nao aparecia em lugar nenhum: o gerarPDFUniversal_
+   so substitui marcador que EXISTE no documento, e aquele Doc nao tem
+   {{CORPO}}. Meu texto era descartado em silencio e o {{COLABORADORES}}, que
+   eu nao mandava, saia impresso cru.
+
+   A campanha irma resolve isso do jeito certo — TaxaAssistencial.gs:320 manda
+   {{CORPO}} para um Doc que TEM {{CORPO}}. E essa a forma que falta aqui.
+
+   ENQUANTO NAO EXISTIR ESSE DOCUMENTO, NADA SAI. Liberar e testar recusam. Um
+   PDF errado para 679 escolas nao tem desfazer, e o botao de liberar esta ali
+   do lado. Preferir o "nao envia" ao "envia errado" e a unica escolha
+   defensavel enquanto falta o documento.
+   ══════════════════════════════════════════════════════════════════════════ */
+function tnCom_documento_() {
+  var id = "";
+  try {
+    if (typeof TEMPLATES !== "undefined" && TEMPLATES && TEMPLATES.TAXA_NEGOCIAL_CAMPANHA) {
+      id = String(TEMPLATES.TAXA_NEGOCIAL_CAMPANHA).trim();
+    }
+  } catch (e) {}
+
+  if (!id) {
+    return {
+      ok: false, id: "",
+      mensagem: "A campanha ainda não tem documento próprio. O ofício 524/2026 saiu " +
+                "com o texto do ofício de OPOSIÇÃO, que pede à escola para NÃO descontar " +
+                "— o contrário do que esta campanha informa. Crie um Google Docs para a " +
+                "campanha (com o marcador {{CORPO}}, como o da Taxa Assistencial) e " +
+                "registre o ID em TEMPLATES.TAXA_NEGOCIAL_CAMPANHA. Enquanto isso, nada é enviado."
+    };
+  }
+  return { ok: true, id: id, mensagem: "" };
+}
+
 function tnCom_gerarPdf_(numero, codigo, escola, cnpj) {
+  var doc = tnCom_documento_();
+  if (!doc.ok) throw new Error(doc.mensagem);
+
   var pasta = obterPastaPorTipo_("TAXA_NEGOCIAL");
   var base = "";
   try { base = ScriptApp.getService().getUrl(); } catch (e) {}
 
   var retorno = gerarPDFUniversal_({
-    templateId: (typeof TEMPLATE_TAXA_ID !== "undefined" && TEMPLATE_TAXA_ID)
-                  ? TEMPLATE_TAXA_ID : "",
+    templateId: doc.id,
     pastaDestinoId: pasta.getId(),
     nomeArquivo: "Ofício " + numero + " - " + escola + " - Taxa Negocial",
     substituicoes: {
@@ -740,6 +794,7 @@ function tnCom_status_() {
     liberada: props.getProperty(TN_COM_PROP.LIBERADA) === "1",
     pausada: props.getProperty(TN_COM_PROP.PAUSADA) === "1",
     remetente: tnCom_remetente_(),
+    documento: tnCom_documento_(),
     total: total, comunicadas: comunicadas, naFila: naFila, aCorrigir: aCorrigir,
     percentual: total ? Math.round((comunicadas / total) * 100) : 0,
     tetoDia: teto, enviadoHoje: orc.jaEnviadoHoje, orcamento: orc,
@@ -901,6 +956,11 @@ function tnCom_testar_(termo, quem) {
 
   var rem = tnCom_remetente_();
   if (!rem.ok) return { ok: false, remetente: rem, mensagem: rem.mensagem };
+
+  /* O teste manda oficio DE VERDADE para uma escola de verdade. Sem documento
+     proprio ele mandaria o oficio de oposicao — foi o que aconteceu em 11/09. */
+  var docCampanha = tnCom_documento_();
+  if (!docCampanha.ok) return { ok: false, documento: docCampanha, mensagem: docCampanha.mensagem };
 
   var f = tnCom_linhas_();
   if (!f.dados.length) return { ok: false, mensagem: "A fila está vazia. Prepare antes de testar." };

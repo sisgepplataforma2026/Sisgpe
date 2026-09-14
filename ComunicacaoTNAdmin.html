@@ -56,6 +56,9 @@
     </div>
 
     <div id="ctnRemetente" class="ctn-rem ok">conferindo o remetente…</div>
+    <!-- A trava do documento. Fica escondida enquanto estiver tudo certo:
+         aviso que aparece sempre vira paisagem e ninguem le. -->
+    <div id="ctnDocumento" class="ctn-rem nao" style="display:none;"></div>
 
     <!-- ═══ TELA 1 — PREPARAR E LIBERAR ═══ -->
     <div id="ctnPreparar" style="display:none;">
@@ -213,6 +216,7 @@ function ctnCarregar() {
     if (!s || s.ok === false) return;
     CTN.status = s;
     ctnDesenharRemetente(s);
+    ctnDesenharDocumento(s);
     var g = function (id) { return document.getElementById(id); };
     if (g("ctnNumero")) g("ctnNumero").textContent = s.numero || "sem número ainda";
 
@@ -249,9 +253,26 @@ function ctnDesenharRemetente(s) {
       + "</strong>. Cadastre em Gmail → Contas e importação → Enviar e-mail como.";
 }
 
+/* O DOCUMENTO DA CAMPANHA, medido como o remetente. Em 11/09 o oficio saiu com
+   o texto do de OPOSICAO — pedindo a escola para NAO descontar — porque a
+   campanha nao tinha documento proprio e ninguem na tela podia saber disso. */
+function ctnDesenharDocumento(s) {
+  var el = document.getElementById("ctnDocumento");
+  if (!el) return;
+  var d = s.documento;
+  if (!d || d.ok) { el.style.display = "none"; return; }
+  el.style.display = "block";
+  el.innerHTML = "<strong>⛔ A campanha está travada: falta o documento do ofício.</strong><br>"
+    + ctnEsc(d.mensagem || "");
+}
+
 function ctnDesenharPreparo(s) {
   var g = function (id) { return document.getElementById(id); };
-  var pode = !!(s.remetente && s.remetente.ok) && s.naFila > 0;
+  /* Sem documento proprio nao se libera — a trava esta no backend, e a tela
+     so nao convida ao clique. */
+  var pode = !!(s.remetente && s.remetente.ok)
+          && !!(s.documento && s.documento.ok)
+          && s.naFila > 0;
   if (g("ctnBtnLiberar")) g("ctnBtnLiberar").disabled = !pode;
   if (g("ctnResumoPrep")) {
     /* MOSTRA O QUE ESTA GUARDADO, nao o que esta selecionado nos campos.
