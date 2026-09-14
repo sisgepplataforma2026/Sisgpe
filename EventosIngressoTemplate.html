@@ -7,24 +7,38 @@
   <style>
     *{box-sizing:border-box}
     body{margin:0;background:#111827;font-family:Arial,Helvetica,sans-serif;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:14px}
-    .ticket{position:relative;width:min(1200px,100%);aspect-ratio:1634/962;overflow:hidden;box-shadow:0 16px 50px #0008;background:#071a38}
+        /* UM MODELO SO, EM QUALQUER CENARIO — 14/09/2026.
+       As caixas eram medidas pelo INGRESSO (%) e a fonte pela JANELA (vw).
+       Numa janela larga o ingresso trava em 1200px e a fonte continua
+       crescendo: o nome nao cabia mais na caixa, quebrava em quatro linhas
+       e invadia a escola. Na impressao a proporcao voltava a bater por
+       acidente — e era esse acidente que fazia o PDF parecer certo.
+       Agora o proprio ingresso e a referencia: `cqw` mede a largura DELE,
+       entao a proporcao aprovada vale em tela, no PDF e no celular.
+       O `vw` fica como primeira declaracao, para navegador antigo que nao
+       entende container query cair no comportamento de antes, e nao em
+       tamanho nenhum. */
+    .ticket{position:relative;width:min(1200px,100%);aspect-ratio:1634/962;overflow:hidden;box-shadow:0 16px 50px #0008;background:#071a38;container-type:inline-size}
     .art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
     .fallback{position:absolute;inset:0;background:linear-gradient(135deg,#071a38,#0b2f63 62%,#17233f)}
     .field{position:absolute;font-weight:800;text-transform:uppercase;line-height:1.12;text-shadow:0 1px 2px #0008;overflow:hidden}
-    .main-name{left:67.35%;top:25.7%;width:10.2%;font-size:1.05vw}
-    .main-school{left:67.35%;top:34.4%;width:10.4%;font-size:1vw}
-    .main-category{left:67.35%;top:43.4%;width:10.3%;font-size:1.05vw}
-    .main-number{left:65.3%;top:49.7%;width:12.8%;height:4.6%;display:flex;align-items:center;justify-content:center;color:#111827;text-shadow:none;font-size:1.2vw;letter-spacing:.02em}
+    .main-name{left:67.35%;top:25.7%;width:10.2%;height:7.6%;font-size:1.05vw;font-size:1.05cqw}
+    .main-school{left:67.35%;top:34.4%;width:10.4%;height:7.8%;font-size:1vw;font-size:1cqw}
+    .main-category{left:67.35%;top:43.4%;width:10.3%;height:5.4%;font-size:1.05vw;font-size:1.05cqw}
+    .main-number{left:65.3%;top:49.7%;width:12.8%;height:4.6%;display:flex;align-items:center;justify-content:center;color:#111827;text-shadow:none;font-size:1.2vw;font-size:1.2cqw;letter-spacing:.02em}
     .qrBox{position:absolute;left:65.4%;top:57.7%;width:12.4%;aspect-ratio:1/1;background:#fff;padding:.6%;display:flex;align-items:center;justify-content:center}
     .qrBox>div,.qrBox canvas,.qrBox img{width:100%!important;height:100%!important;display:block}
-    .stub-number{left:83.3%;top:30.5%;width:14.4%;height:4.8%;display:flex;align-items:center;justify-content:center;color:#b90f3d;text-shadow:none;font-size:1.1vw}
-    .stub-name{left:84.7%;top:46.7%;width:13.1%;color:#172033;text-shadow:none;font-size:1vw}
-    .stub-school{left:84.7%;top:58.2%;width:13.1%;color:#172033;text-shadow:none;font-size:.95vw}
-    .stub-category{left:84.7%;top:69.1%;width:13.1%;color:#172033;text-shadow:none;font-size:1vw}
-    .teste{position:absolute;left:35%;top:4%;padding:7px 14px;background:#dc2626;color:#fff;border-radius:8px;font-size:13px;font-weight:900;letter-spacing:.12em;box-shadow:0 4px 14px #0008}
+    .stub-number{left:83.3%;top:30.5%;width:14.4%;height:4.8%;display:flex;align-items:center;justify-content:center;color:#b90f3d;text-shadow:none;font-size:1.1vw;font-size:1.1cqw}
+    .stub-name{left:84.7%;top:46.7%;width:13.1%;height:9.8%;color:#172033;text-shadow:none;font-size:1vw;font-size:1cqw}
+    .stub-school{left:84.7%;top:58.2%;width:13.1%;height:9.4%;color:#172033;text-shadow:none;font-size:.95vw;font-size:.95cqw}
+    .stub-category{left:84.7%;top:69.1%;width:13.1%;height:7.5%;color:#172033;text-shadow:none;font-size:1vw;font-size:1cqw}
+    .teste{position:absolute;left:35%;top:4%;padding:7px 14px;background:#dc2626;color:#fff;border-radius:8px;font-size:1.1vw;font-size:1.1cqw;font-weight:900;letter-spacing:.12em;box-shadow:0 4px 14px #0008}
     .printbar{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:5}.printbar button{border:0;border-radius:9px;padding:10px 14px;font-weight:800;cursor:pointer}.primary{background:#fff;color:#0b2f63}
     @media print{body{background:#fff;padding:0}.ticket{width:100%;box-shadow:none}.printbar{display:none}}
-    @media(max-width:800px){body{padding:4px}.ticket{width:100%}.field{font-size:1.7vw}.main-number,.stub-number{font-size:1.8vw}.teste{font-size:9px;padding:4px 7px}}
+    /* O bloco de celular MUDAVA O TAMANHO DA LETRA e, com isso, mudava o
+       modelo: o mesmo ingresso saia diferente no telefone. Com `cqw` o texto
+       ja acompanha o ingresso sozinho, entao aqui so sobra a largura. */
+    @media(max-width:800px){body{padding:4px}.ticket{width:100%}}
   </style>
 </head>
 <body>
@@ -48,6 +62,59 @@
   <div class="printbar"><button class="primary" onclick="window.print()">Imprimir / Salvar PDF</button></div>
 
   <script>
+    /* ══ O NOME QUE NAO CABE ═══════════════════════════════════════════════
+       "Se for muito longo, diminui a fonte ou coloque em duas linhas."
+
+       CSS nao mede texto. A caixa tem largura e altura fixas em % do ingresso,
+       e `overflow:hidden` antes CORTAVA em silencio — pior que transbordar,
+       porque some sem avisar e ninguem descobre ate a portaria.
+
+       Aqui o texto e MEDIDO depois de desenhado: se a altura do conteudo passa
+       da caixa, a fonte desce de 5% em 5% ate caber, com piso em 55% do
+       tamanho original. Duas linhas acontecem sozinhas — a caixa tem largura e
+       o texto quebra; o que se garante e que o que quebrou continua DENTRO.
+
+       Roda de novo quando a janela muda porque a medida e em `cqw`: mudou a
+       largura do ingresso, mudou o tamanho da letra, e o ajuste anterior
+       deixou de valer. */
+    (function(){
+      var CAMPOS = ['main-name','main-school','main-category',
+                    'stub-name','stub-school','stub-category'];
+
+      function caber(el){
+        var base = parseFloat(el.dataset.base || '0');
+        if (!base) return;
+        var k = 1;
+        el.style.fontSize = base + 'cqw';
+        /* 10 passos de 5% chegam a 60%; o piso de 0.55 para antes disso. */
+        for (var i = 0; i < 10 && el.scrollHeight > el.clientHeight + 1; i++){
+          k -= 0.05;
+          if (k < 0.55) { k = 0.55; el.style.fontSize = (base*k) + 'cqw'; break; }
+          el.style.fontSize = (base*k) + 'cqw';
+        }
+      }
+
+      function ajustar(){
+        CAMPOS.forEach(function(c){
+          var el = document.querySelector('.' + c);
+          if (!el) return;
+          if (!el.dataset.base){
+            /* O tamanho de partida vem do CSS, nao de numero repetido aqui:
+               duas fontes de verdade para a mesma medida divergem no primeiro
+               ajuste de layout que alguem fizer. */
+            var cq = document.getElementById('ticket').clientWidth / 100;
+            el.dataset.base = cq ? (parseFloat(getComputedStyle(el).fontSize) / cq).toFixed(3) : '1';
+          }
+          caber(el);
+        });
+      }
+
+      ajustar();
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(ajustar);
+      window.addEventListener('resize', ajustar);
+      window.addEventListener('beforeprint', ajustar);
+    })();
+
     (function(){
       var token = <?!= JSON.stringify(dados.qrToken) ?>;
       var alvo = document.getElementById('qrcode');
