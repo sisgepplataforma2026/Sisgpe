@@ -158,7 +158,7 @@
 /* Comunicação da Taxa Negocial — a tela.
    Uma porta só no backend: comunicacaoTaxaNegocial(acao, params, token).
    Toda decisão de estado vem de lá; aqui só se desenha o que foi medido. */
-var CTN = { filtro: "todas", status: null };
+var CTN = { filtro: "todas", status: null, itens: [] };
 
 function ctnChamar(acao, params, aoVoltar) {
   google.script.run
@@ -227,6 +227,7 @@ function ctnCarregar() {
     /* A TABELA NAO DEPENDE DE TER LIBERADO. Ela existe desde que haja fila, e
        e justamente ANTES de liberar que a pessoa precisa conferir o que a
        fila tem dentro. */
+    CTN.itens = s.itens || [];
     if (g("ctnFila")) g("ctnFila").style.display = (s.total > 0) ? "block" : "none";
     if (s.total > 0) ctnListar();
   });
@@ -309,20 +310,30 @@ function ctnFiltrar(f, botao) {
 function ctnListar() {
   var corpo = document.getElementById("ctnCorpo");
   if (!corpo) return;
-  corpo.innerHTML = '<tr><td colspan="4" style="color:#94a3b8;padding:16px;">carregando…</td></tr>';
-  ctnChamar("linhas", { filtro: CTN.filtro }, function (r) {
-    var itens = (r && r.itens) || [];
-    if (!itens.length) {
-      corpo.innerHTML = '<tr><td colspan="4" style="color:#94a3b8;padding:16px;">nenhuma escola neste filtro.</td></tr>';
-      return;
-    }
-    corpo.innerHTML = itens.map(function (i) {
-      return "<tr><td><strong>" + ctnEsc(i.escola) + "</strong>"
-        + (i.erro ? '<br><span style="font-size:11px;color:#b91c1c;">' + ctnEsc(i.erro) + "</span>" : "")
-        + "</td><td>" + i.enderecos + "</td><td>" + ctnPill(i.status)
-        + "</td><td>" + ctnEsc(i.quando || "—") + "</td></tr>";
-    }).join("");
+
+  /* SEM IDA AO SERVIDOR — 14/09/2026. A tabela inteira ja veio no `status`,
+     numa leitura so. Filtrar aqui e instantaneo; filtrar no servidor era mais
+     uma varredura das 1311 linhas por clique. */
+  var f = CTN.filtro || "todas";
+  var itens = (CTN.itens || []).filter(function (i) {
+    var st = String(i.status || "").toUpperCase();
+    return f === "todas"       ? true :
+           f === "comunicadas" ? st === "ENVIADO" :
+           f === "nafila"      ? (st === "PENDENTE" || st === "ERRO") :
+           f === "sememail"    ? (st === "SEM_EMAIL" || st === "EMAIL_INVALIDO") :
+           f === "falhas"      ? (st === "ERRO" || st === "ERRO_PERMANENTE") : true;
   });
+
+  if (!itens.length) {
+    corpo.innerHTML = '<tr><td colspan="4" style="color:#94a3b8;padding:16px;">nenhuma escola neste filtro.</td></tr>';
+    return;
+  }
+  corpo.innerHTML = itens.map(function (i) {
+    return "<tr><td><strong>" + ctnEsc(i.escola) + "</strong>"
+      + (i.erro ? '<br><span style="font-size:11px;color:#b91c1c;">' + ctnEsc(i.erro) + "</span>" : "")
+      + "</td><td>" + i.enderecos + "</td><td>" + ctnPill(i.status)
+      + "</td><td>" + ctnEsc(i.quando || "—") + "</td></tr>";
+  }).join("");
 }
 
 function ctnPill(st) {

@@ -461,6 +461,35 @@ ok(tela.indexOf("cursor:not-allowed") > -1, "e quem não pode não convida ao cl
 ok(tela.indexOf("i.motivo") > -1, "mostrando o motivo, em vez de um cinza sem explicação");
 
 /* ══════════════════════════════════════════════════════════════════════ */
+fluxo("A tela abre com UMA leitura da fila, nao duas");
+
+/* "Demorandooo" — 14/09/2026. Quando a tabela passou a aparecer sempre, abrir
+   a tela virou duas idas ao servidor EM SEQUENCIA: `status` e, so depois que
+   ele voltava, `linhas`. Cada uma abria a planilha e varria as 1311 linhas,
+   entao a tela ficava em branco o dobro do tempo. A contagem e a tabela agora
+   saem da mesma leitura. */
+comAlias();
+const stUma = g.tnCom_status_();
+ok(Array.isArray(stUma.itens), "o status ja traz a tabela junto");
+ok(stUma.itens.length > 0, "com as escolas dentro", stUma.itens.length + " escola(s)");
+igual(stUma.itens.length, g.tnCom_listar_("todas").itens.length,
+   "e ela é a mesma coisa que o listar devolveria — uma fonte, não duas");
+
+passo("a contagem aceita a leitura ja feita, em vez de reler");
+const lido = g.tnCom_linhas_();
+igual(JSON.stringify(g.tnCom_contar_(lido)), JSON.stringify(g.tnCom_contar_()),
+   "contar com a leitura pronta dá o mesmo que contar relendo");
+igual(g.tnCom_listar_("todas", lido).itens.length, stUma.itens.length,
+   "e listar com a leitura pronta também");
+
+passo("a tela filtra do lado dela, sem voltar ao servidor");
+ok(tela.indexOf("CTN.itens = s.itens") > -1, "a tela guarda o que veio no status");
+ok(tela.indexOf('(CTN.itens || []).filter') > -1,
+   "e o filtro roda em cima do que já está na memória");
+ok(tela.indexOf('ctnChamar("linhas"') === -1,
+   "nenhuma chamada de linhas sobrou na tela — era ela que dobrava a espera");
+
+/* ══════════════════════════════════════════════════════════════════════ */
 fluxo("O que continua sem cobertura");
 
 naoTestavel("O PDF nominal e a CCT anexa",

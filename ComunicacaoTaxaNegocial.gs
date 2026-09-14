@@ -331,8 +331,11 @@ function tnCom_preparar_(params, quem) {
 }
 
 /** Quantos em cada status. Uma varredura só. */
-function tnCom_contar_() {
-  var f = tnCom_linhas_();
+function tnCom_contar_(jaLido) {
+  /* Aceita uma leitura ja feita para quem precisa de contagem E tabela na
+     mesma execucao — abrir a planilha e varrer 1311 linhas duas vezes era o
+     que fazia a tela demorar para aparecer. */
+  var f = jaLido || tnCom_linhas_();
   var c = {};
   if (!f.dados.length) return c;
   var iSt = f.hm["STATUS"];
@@ -699,7 +702,16 @@ function tnCom_avisar_(o) {
 
 function tnCom_status_() {
   var props = tnCom_props_();
-  var c = tnCom_contar_();
+
+  /* UMA LEITURA SO — 14/09/2026. Quando a tabela da fila passou a aparecer
+     sempre, a tela ficou fazendo duas idas ao servidor em sequencia: `status`
+     e, so depois que ele voltava, `linhas`. Cada uma abria a planilha e varria
+     as 1311 linhas. O usuario viu a tela em branco por muito tempo e escreveu
+     "Demorandooo" — com razao, e a culpa era dessa duplicacao. Agora a
+     contagem e a tabela saem da mesma leitura, e os filtros da tela viraram
+     locais: trocar de filtro nao fala mais com o servidor. */
+  var f = tnCom_linhas_();
+  var c = tnCom_contar_(f);
   var total = 0;
   Object.keys(c).forEach(function (k) { total += c[k]; });
 
@@ -738,7 +750,9 @@ function tnCom_status_() {
     cctGuardada: String(props.getProperty(TN_COM_PROP.CCT_NOME) || ""),
     competencia: String(props.getProperty(TN_COM_PROP.COMPETENCIA) || ""),
     previsaoUltima: previsao,
-    porStatus: c
+    porStatus: c,
+    /* A tabela inteira vem junto; a tela filtra do lado dela. */
+    itens: tnCom_listar_("todas", f).itens
   };
 }
 
@@ -798,8 +812,8 @@ function comunicacaoTaxaNegocial(acao, params, tokenSessao) {
  * telas para isso é custo sem retorno. É o mesmo desenho do Histórico de
  * Ofícios, que ele já usa assim.
  */
-function tnCom_listar_(filtro) {
-  var f = tnCom_linhas_();
+function tnCom_listar_(filtro, jaLido) {
+  var f = jaLido || tnCom_linhas_();
   if (!f.dados.length) return { ok: true, itens: [] };
 
   var iEsc = f.hm["ESCOLA"], iEmail = f.hm["EMAIL"], iSt = f.hm["STATUS"],
