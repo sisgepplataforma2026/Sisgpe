@@ -245,7 +245,8 @@ passo("o que a tela envia junto");
    A portaria não tinha esse plano B, e por isso dizia "sem sessão" no celular.
    Agora a rota injeta o token conferido. O que este teste cobra continua
    idêntico: que exista UM dispatcher e que ele mande o token em toda chamada.
-   De onde o token vem é outro assunto — e quem guarda isso é o t175. */
+   De onde o token vem é outro assunto, e quem guarda isso é o t153, no bloco
+   da rota da portaria. */
 [["EventosPortaria.html", "TOKEN"],
  ["EventosValidacaoAdmin.html", "COMPASSO_TOKEN"]].forEach(([tela, nome]) => {
   const html = ler(tela);
