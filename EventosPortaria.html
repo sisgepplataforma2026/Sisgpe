@@ -1,11 +1,261 @@
-<!DOCTYPE html><html><head><base target="_top"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font-family:Arial,sans-serif;background:#071a2f;color:#fff;margin:0}.top{padding:16px;background:#052f63}.wrap{padding:14px}.card{background:#fff;color:#152033;border-radius:14px;padding:14px;margin-bottom:12px}.btn{width:100%;padding:13px;border:0;border-radius:10px;font-weight:800;font-size:16px;cursor:pointer}.primary{background:#0b63ce;color:#fff}.secondary{background:#e8eef6;color:#17365f}.ok{background:#16794a;color:#fff}.danger{background:#b42318;color:#fff}.result{padding:18px;border-radius:14px;text-align:center;font-weight:800;display:none;margin-bottom:12px}.r-ok{background:#d9f8e8;color:#11613c}.r-err{background:#fde2df;color:#8f1d16}video{width:100%;border-radius:12px;background:#000;max-height:360px}.small{font-size:12px;color:#64748b}.row{display:flex;gap:8px}input{width:100%;padding:11px;border:1px solid #ccd5e0;border-radius:9px;font-size:16px;box-sizing:border-box}.list button{margin-top:8px;text-align:left}.hidden{display:none}</style></head><body><div class="top"><b>Compasso 2026 — Portaria</b><div id="device" style="font-size:11px;opacity:.8"></div></div><div class="wrap"><div id="res" class="result"></div><div class="card"><video id="video" playsinline muted></video><button id="start" class="btn primary" onclick="iniciar()">Ler QR Code</button><div class="small" id="scannerMsg" style="margin-top:8px">Use a câmera traseira. A leitura reinicia após cada validação.</div></div><div class="card"><b>Busca manual</b><div class="small">Para celular descarregado, QR danificado ou contingência.</div><div class="row" style="margin-top:8px"><input id="q" placeholder="Nome, CPF ou nº do ingresso"><button class="btn secondary" style="width:auto" onclick="buscar()">Buscar</button></div><div id="lista" class="list"></div></div></div><script>var COMPASSO_TOKEN=(function(){try{var m=String(location.search||'').match(/[?&]sessao=([^&]*)/);return m?decodeURIComponent(m[1]):''}catch(e){return ''}})();var stream=null,rodando=false,detector=null,deviceId='PORT-'+Math.random().toString(36).slice(2,8).toUpperCase();device.textContent='Dispositivo: '+deviceId;
-/* SEM SESSÃO, A PORTARIA AVISA EM VEZ DE FALHAR A CADA LEITURA — 09/09/2026.
-   O token vem da URL. Se ele não chegar, todas as chamadas são recusadas e a
-   tela ficaria lendo QR e devolvendo erro genérico, uma pessoa por vez, na
-   fila. Melhor dizer na cara, antes de ler o primeiro. */
-if(!COMPASSO_TOKEN){res.className='result r-err';res.style.display='block';res.innerHTML='❌ Sem sessão — nenhuma leitura seria aceita.<div style="font-size:13px;margin-top:6px">Abra a portaria pelo SISGEP (entre e use o link do módulo Eventos). A URL precisa terminar com <b>&amp;sessao=…</b></div>';start.disabled=true;scannerMsg.textContent='Leitura desativada até a sessão chegar.';}
-/* O LEITOR NATIVO NÃO EXISTE EM TODO APARELHO. BarcodeDetector é do Chromium:
-   Chrome e Edge, tipicamente no Android. No iPhone (Safari) não existe, e a
-   mensagem abaixo é a única coisa que separa "aparelho errado" de "sistema
-   quebrado" na noite do evento. Descobrir isso em 19/12, na porta, é tarde. */
-else if(!('BarcodeDetector' in window)){scannerMsg.textContent='Este aparelho não tem leitor de QR nativo (BarcodeDetector). Use um Android com Chrome, ou a busca manual por nome, CPF ou número.';}function api(fn,args,cb){var r=google.script.run.withSuccessHandler(cb).withFailureHandler(function(e){mostrar(false,e.message||String(e))});r[fn].apply(r,(args||[]).concat([COMPASSO_TOKEN]))}function mostrar(ok,msg,obj){res.className='result '+(ok?'r-ok':'r-err');res.style.display='block';res.innerHTML=(ok?'✅ ':'❌ ')+esc(msg)+(obj&&obj.nome?'<div style="font-size:22px;margin-top:6px">'+esc(obj.nome)+'</div><div style="font-size:13px">'+esc(obj.numero||'')+' · '+esc(obj.categoria||'')+'</div>':'');if(navigator.vibrate)navigator.vibrate(ok?80:[120,80,120]);setTimeout(function(){res.style.display='none'},2500)}function esc(s){return String(s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}async function iniciar(){if(!('BarcodeDetector'in window)){scannerMsg.textContent='Este navegador não oferece leitura nativa. Use a busca manual ou um aparelho compatível.';return}detector=new BarcodeDetector({formats:['qr_code']});try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});video.srcObject=stream;await video.play();rodando=true;loop()}catch(e){mostrar(false,'Não foi possível abrir a câmera.');}}async function loop(){if(!rodando)return;try{var codes=await detector.detect(video);if(codes&&codes.length){rodando=false;var token=codes[0].rawValue||'';api('compasso_checkinValidarToken',[token,deviceId],function(r){mostrar(!!r.ok,r.mensagem||'',r);setTimeout(function(){rodando=true;loop()},900)});return}}catch(e){}requestAnimationFrame(loop)}function buscar(){var t=q.value.trim();if(t.length<2)return;api('compasso_checkinBuscarManual',[t],function(r){lista.innerHTML=(r||[]).map(function(x){return '<button class="btn secondary" onclick="manual(\''+x.ingressoId+'\')"><b>'+esc(x.nome)+'</b><br><span class="small">'+esc(x.numero)+' · '+esc(x.status)+' · '+esc(x.escola)+'</span></button>'}).join('')||'<div class="small" style="margin-top:8px">Nenhum ingresso encontrado.</div>'})}function manual(id){var motivo=prompt('Motivo do check-in manual:');if(!motivo)return;api('compasso_checkinManual',[id,deviceId,motivo],function(r){mostrar(!!r.ok,r.mensagem||'',r);buscar()})}window.addEventListener('beforeunload',function(){rodando=false;if(stream)stream.getTracks().forEach(function(t){t.stop()})});</script></body></html>
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+  <title>Portaria — Compasso da Vida 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --navy:#001f4d; --navy2:#002f6c; --blue:#1565C0; --gold:#C9A84C;
+      --ok:#0f8a5f; --alerta:#d97706; --erro:#dc2626;
+      --linha:#e2e8f0; --texto:#0f172a; --suave:#64748b;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--navy);color:var(--texto);
+      font-family:'Plus Jakarta Sans',system-ui,Arial,sans-serif;font-size:15px;
+      -webkit-text-size-adjust:100%}
+
+    .topo{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;
+      padding:16px 18px;position:sticky;top:0;z-index:5;
+      box-shadow:0 2px 12px rgba(0,0,0,.35)}
+    .topo b{font-size:16px;font-weight:800;display:block}
+    .topo .sub{font-size:11.5px;opacity:.72;margin-top:2px;
+      display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .pino{background:rgba(255,255,255,.14);border-radius:999px;padding:3px 9px;
+      font-weight:700;letter-spacing:.04em}
+
+    .wrap{padding:14px 14px 28px;max-width:560px;margin:0 auto}
+    .card{background:#fff;border-radius:16px;padding:15px;margin-bottom:12px;
+      box-shadow:0 6px 20px rgba(0,0,0,.22)}
+    .card h2{margin:0 0 3px;font-size:14.5px;font-weight:800}
+    .card p{margin:0;font-size:12.5px;color:var(--suave);line-height:1.45}
+
+    /* O RESULTADO É A TELA INTEIRA, de propósito. Quem confere ingresso na
+       porta olha de relance, com fila andando e pouca luz: o veredito precisa
+       ser legível a um braço de distância, sem leitura de texto. */
+    .res{border-radius:16px;padding:20px 18px;text-align:center;margin-bottom:12px;
+      display:none;border:2px solid transparent}
+    .res.on{display:block}
+    .res .veredito{font-size:22px;font-weight:800;line-height:1.15}
+    .res .pessoa{font-size:26px;font-weight:800;margin-top:8px;line-height:1.15}
+    .res .det{font-size:13px;font-weight:600;margin-top:5px;opacity:.85}
+    .r-ok{background:#d9f8e8;color:#0b5537;border-color:#6ee7b7}
+    .r-err{background:#fde2df;color:#8f1d16;border-color:#fca5a5}
+
+    video{width:100%;border-radius:12px;background:#000;max-height:340px;display:block}
+    .btn{width:100%;padding:15px;border:0;border-radius:12px;font-weight:800;
+      font-size:16px;cursor:pointer;font-family:inherit;margin-top:10px}
+    .btn.primary{background:linear-gradient(135deg,var(--navy),var(--blue));color:#fff}
+    .btn.primary:disabled{background:#cbd5e1;color:#64748b;cursor:not-allowed}
+    .btn.secondary{background:#eef4ff;color:var(--navy);border:1.5px solid #bfdbfe}
+
+    .linha{display:flex;gap:8px;margin-top:10px}
+    input{flex:1;min-width:0;padding:13px;border:1.5px solid var(--linha);border-radius:11px;
+      font-size:16px;font-family:inherit;color:var(--texto)}
+    input:focus{outline:2px solid var(--blue);outline-offset:-1px}
+    .linha .btn{width:auto;margin-top:0;padding:13px 16px;font-size:14px}
+
+    .achado{width:100%;text-align:left;margin-top:8px;padding:12px 14px;border-radius:11px;
+      border:1.5px solid var(--linha);background:#f8fafc;cursor:pointer;font-family:inherit}
+    .achado b{display:block;font-size:14px;color:var(--texto)}
+    .achado span{display:block;font-size:11.5px;color:var(--suave);margin-top:2px}
+
+    .aviso{border-radius:12px;padding:13px 15px;margin-bottom:12px;font-size:13.5px;
+      font-weight:700;line-height:1.45;text-align:center}
+    .a-err{background:#fde2df;color:#8f1d16;border:1px solid #fca5a5}
+    .a-alerta{background:#fffbeb;color:#92400e;border:1px solid #fde68a}
+    .nota{font-size:12px;color:var(--suave);margin-top:9px;line-height:1.45}
+  </style>
+</head>
+<body>
+  <div class="topo">
+    <b>Compasso 2026 — Portaria</b>
+    <div class="sub">
+      <span>Leitura de QR para entrada</span>
+      <span class="pino" id="dispositivo"></span>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div id="avisoTopo" class="aviso a-err" hidden></div>
+    <div id="res" class="res"></div>
+
+    <div class="card">
+      <video id="video" playsinline muted></video>
+      <button id="start" class="btn primary" onclick="iniciar()">Ler QR Code</button>
+      <div class="nota" id="scannerMsg">
+        Use a câmera traseira. A leitura reinicia sozinha após cada validação —
+        não precisa tocar em nada entre uma pessoa e outra.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Busca manual</h2>
+      <p>Para celular descarregado, QR danificado ou contingência.</p>
+      <div class="linha">
+        <input id="q" placeholder="Nome, CPF ou nº do ingresso" autocomplete="off">
+        <button class="btn secondary" onclick="buscar()">Buscar</button>
+      </div>
+      <div id="lista"></div>
+    </div>
+  </div>
+
+<script>
+/* ══ A PORTARIA ═══════════════════════════════════════════════════════════
+   O TOKEN VEM DO SERVIDOR, NÃO DA URL — 15/09/2026.
+
+   Esta tela lia a sessão de `location.search`, e ele abriu no celular e viu
+   "Sem sessão — nenhuma leitura seria aceita". Não era o link: dentro do
+   sandbox do Apps Script a página roda num iframe interno cujo endereço é
+   outro, sem parâmetro nenhum. `location.search` ali é sempre vazio.
+
+   Ou seja: link direto de painel com `&sessao=` NUNCA entregou token a
+   ninguém. Os outros painéis não quebraram porque, abertos por dentro do
+   portal, caem num token que o `index` injeta — a URL era decoração. Aqui
+   não havia esse plano B, e a portaria simplesmente não funcionava fora do
+   portal, que é o único lugar onde ela precisa funcionar.
+
+   Agora a rota monta a página como TEMPLATE e injeta o token já conferido. A
+   leitura da URL fica como segundo caminho, para quem abrir de outro jeito. */
+var TOKEN = (function(){
+  var doServidor = <?!= JSON.stringify(tokenSessao || '') ?>;
+  if (doServidor) return doServidor;
+  try {
+    var m = String(location.search || '').match(/[?&]sessao=([^&]*)/);
+    return m ? decodeURIComponent(m[1]) : '';
+  } catch (e) { return ''; }
+})();
+
+var stream = null, rodando = false, detector = null;
+var deviceId = 'PORT-' + Math.random().toString(36).slice(2,8).toUpperCase();
+document.getElementById('dispositivo').textContent = deviceId;
+
+function g(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+function avisoTopo(texto, classe){
+  var a = g('avisoTopo');
+  a.className = 'aviso ' + (classe || 'a-err');
+  a.innerHTML = texto;
+  a.hidden = !texto;
+}
+
+function api(fn, args, cb){
+  var r = google.script.run
+    .withSuccessHandler(cb)
+    .withFailureHandler(function(e){ mostrar(false, (e && e.message) || String(e)); });
+  r[fn].apply(r, (args||[]).concat([TOKEN]));
+}
+
+/* A RECUSA FICA MAIS TEMPO QUE A LIBERAÇÃO. Verde é um relance: a pessoa
+   passa. Vermelho tem de ser lido — quem está na porta precisa entender POR
+   QUE barrou para saber o que dizer a quem está na frente dele. */
+var TIMER_RES = null;
+function mostrar(ok, msg, obj){
+  var r = g('res');
+  r.className = 'res on ' + (ok ? 'r-ok' : 'r-err');
+  var h = '<div class="veredito">' + (ok ? '✅ ' : '❌ ') + esc(msg) + '</div>';
+  if (obj && obj.nome){
+    h += '<div class="pessoa">' + esc(obj.nome) + '</div>';
+    var det = [obj.numero, obj.categoria, obj.escola].filter(Boolean).map(esc).join(' · ');
+    if (det) h += '<div class="det">' + det + '</div>';
+  }
+  if (!ok && obj && obj.utilizadoEm)
+    h += '<div class="det">Entrou em ' + esc(obj.utilizadoEm) + '</div>';
+  r.innerHTML = h;
+
+  if (navigator.vibrate) navigator.vibrate(ok ? 80 : [120,80,120]);
+  if (TIMER_RES) clearTimeout(TIMER_RES);
+  TIMER_RES = setTimeout(function(){ r.classList.remove('on'); }, ok ? 2500 : 6000);
+}
+
+async function iniciar(){
+  if (!('BarcodeDetector' in window)){
+    g('scannerMsg').textContent =
+      'Este navegador não lê QR nativamente. Use a busca manual, ou abra esta ' +
+      'página no Chrome de um Android.';
+    return;
+  }
+  detector = new BarcodeDetector({ formats:['qr_code'] });
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode:{ ideal:'environment' } }, audio:false });
+    g('video').srcObject = stream;
+    await g('video').play();
+    rodando = true;
+    g('start').textContent = 'Lendo…';
+    g('start').disabled = true;
+    loop();
+  } catch(e){
+    mostrar(false, 'Não foi possível abrir a câmera.');
+  }
+}
+
+async function loop(){
+  if (!rodando) return;
+  try {
+    var codes = await detector.detect(g('video'));
+    if (codes && codes.length){
+      rodando = false;
+      var token = codes[0].rawValue || '';
+      api('compasso_checkinValidarToken', [token, deviceId], function(r){
+        mostrar(!!(r && r.ok), (r && r.mensagem) || '', r);
+        /* Só volta a ler depois de mostrar. Sem esta pausa a mesma etiqueta
+           seria lida três vezes no mesmo segundo, e a segunda leitura diria
+           "já utilizado" sobre a entrada que ela mesma acabou de registrar. */
+        setTimeout(function(){ rodando = true; loop(); }, 1200);
+      });
+      return;
+    }
+  } catch(e){}
+  requestAnimationFrame(loop);
+}
+
+function buscar(){
+  var t = g('q').value.trim();
+  if (t.length < 2) return;
+  api('compasso_checkinBuscarManual', [t], function(r){
+    g('lista').innerHTML = (r||[]).map(function(x){
+      return '<button class="achado" onclick="manual(\'' + x.ingressoId + '\')">' +
+             '<b>' + esc(x.nome) + '</b>' +
+             '<span>' + esc(x.numero) + ' · ' + esc(x.status) + ' · ' + esc(x.escola) + '</span>' +
+             '</button>';
+    }).join('') || '<div class="nota">Nenhum ingresso encontrado.</div>';
+  });
+}
+
+function manual(id){
+  var motivo = prompt('Motivo do check-in manual:');
+  if (!motivo) return;
+  api('compasso_checkinManual', [id, deviceId, motivo], function(r){
+    mostrar(!!(r && r.ok), (r && r.mensagem) || '', r);
+    buscar();
+  });
+}
+
+window.addEventListener('beforeunload', function(){
+  rodando = false;
+  if (stream) stream.getTracks().forEach(function(t){ t.stop(); });
+});
+
+/* ── O que impede a leitura, dito ANTES de alguém tentar ─────────────────
+   Descobrir na porta, com fila, que o aparelho não serve é tarde demais. */
+if (!TOKEN){
+  avisoTopo('<b>Sem sessão — nenhuma leitura seria aceita.</b><br>' +
+            'Abra a portaria pelo SISGEP: Eventos → Credenciamento → ' +
+            'Copiar link da portaria.');
+  g('start').disabled = true;
+  g('scannerMsg').textContent = 'Leitura desativada até a sessão chegar.';
+} else if (!('BarcodeDetector' in window)){
+  avisoTopo('Este aparelho não tem leitor de QR nativo. A busca manual por ' +
+            'nome, CPF ou número funciona normalmente — mas para ler QR use ' +
+            'o Chrome de um Android.', 'a-alerta');
+}
+</script>
+</body>
+</html>

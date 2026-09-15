@@ -858,13 +858,33 @@ function evEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){
    mandou tirar da Importação no mesmo dia. Aqui o link aparece no diálogo do
    sistema, num campo já selecionado: dá para copiar com Ctrl+C. Só informa,
    então não mostra Cancelar. */
-function evMostrarLink(url){
-  perguntar({ titulo:'Link público de inscrição',
-              texto:'O navegador não deixou copiar sozinho. O endereço já está selecionado abaixo — use Ctrl+C.',
+/* O LINK APARECE SEMPRE, E A COPIA E BONUS — 15/09/2026.
+   "Mas nao esta copiando o link da portaria."
+   Dentro do iframe do Apps Script o navegador costuma recusar a area de
+   transferencia, e pior: as vezes o writeText ESTOURA em vez de devolver
+   promessa recusada — entao nem o plano B rodava, e o botao nao fazia nada
+   visivel. Botao que nao faz nada e pior que botao que falha avisando.
+   Agora o endereco vai para a tela sempre, selecionado, e a copia automatica
+   e tentativa. Quem nao puder copiar, marca e usa Ctrl+C. */
+function evMostrarLink(url, titulo, texto){
+  perguntar({ titulo: titulo || 'Link público de inscrição',
+              texto: texto || 'O endereço está selecionado abaixo — use Ctrl+C se não tiver copiado sozinho.',
               campo:true, rotulo:'Endereço', ok:'Fechar',
               icone:'🔗', semCancelar:true }, function(){});
   var c=document.getElementById('dgCampo');
   if(c){ c.value=url; setTimeout(function(){ try{ c.select(); }catch(e){} },80); }
+}
+
+/* Tenta copiar sem nunca deixar a excecao derrubar o resto. Devolve nada: quem
+   chama ja mostrou o link, entao copiar ou nao copiar muda o conforto, nao o
+   resultado. */
+function evTentarCopiar(url, aoCopiar){
+  try {
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(function(){ if(aoCopiar) aoCopiar(); },
+                                             function(){});
+    }
+  } catch(e){}
 }
 function evInfoPreencher(e,persistido){
   EV_INFO_EVENTO_ID=String(e.eventoId||'');
@@ -932,10 +952,13 @@ window.evAvisoPortaria=function(){
   if(!token)return avisar('Sessão não encontrada. Entre novamente no SISGEP.','err');
   google.script.run.withSuccessHandler(function(base){
     var url=String(base||'')+'?painel=portaria&sessao='+encodeURIComponent(token);
-    var pronto=function(){avisar('Link da portaria copiado. Mande para o celular que vai ficar na entrada — ele abre a câmera para ler o QR.','ok')};
-    if(navigator.clipboard&&navigator.clipboard.writeText){
-      navigator.clipboard.writeText(url).then(pronto,function(){evMostrarLink(url)});
-    }else{evMostrarLink(url)}
+    /* O ENDERECO VAI PARA A TELA ANTES DE QUALQUER TENTATIVA DE COPIAR: e
+       assim que o botao para de depender de uma permissao que o iframe
+       costuma recusar. */
+    evMostrarLink(url, 'Link da portaria',
+      'Mande este endereço para o CELULAR que vai ficar na entrada — ele abre a câmera para ler o QR. ' +
+      'Precisa ser Android com Chrome; no iPhone a leitura nativa não existe e só a busca manual funciona.');
+    evTentarCopiar(url, function(){ avisar('Link da portaria copiado.','ok'); });
   }).withFailureHandler(function(e){
     avisar('Não foi possível montar o link da portaria: '+((e&&e.message)||e),'err');
   }).eventos_obterWebAppUrl(token);

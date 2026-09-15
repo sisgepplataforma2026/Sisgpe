@@ -186,8 +186,16 @@ const code = ler("Code.gs");
 ok(/p\.painel === "portaria"/.test(code),
    "o Code.gs serve a portaria por URL (?painel=portaria)",
    'antes só abria como diálogo dentro da planilha — não havia link para dar a quem fica na porta');
-ok(/createHtmlOutputFromFile\("EventosPortaria"\)/.test(code),
+/* Passou a ser TEMPLATE em 15/09: a rota injeta o token conferido, porque
+   dentro do sandbox do Apps Script `location.search` é vazio e a tela dizia
+   "sem sessão" no celular. O que se cobra aqui é que a rota sirva ESTE
+   arquivo — por qual porta do HtmlService é detalhe. */
+ok(/createTemplateFromFile\("EventosPortaria"\)/.test(code),
    "  e serve o arquivo do leitor de QR");
+ok(/tPortaria\.tokenSessao = sessaoPortaria\.token/.test(code),
+   "  com a sessão já conferida injetada na página",
+   "ler da URL nunca funcionou: no sandbox o iframe interno tem endereço " +
+   "próprio, sem parâmetro nenhum");
 
 const trechoPortaria = code.slice(code.indexOf('p.painel === "portaria"'));
 ok(trechoPortaria.indexOf("getSessaoUsuario") < trechoPortaria.indexOf("EventosPortaria"),
@@ -197,10 +205,10 @@ ok(trechoPortaria.indexOf("getSessaoUsuario") < trechoPortaria.indexOf("EventosP
 passo("o leitor avisa quando a sessão não chega");
 
 const portaria = ler("EventosPortaria.html");
-ok(/if\(!COMPASSO_TOKEN\)/.test(portaria),
+ok(/if \(!TOKEN\)/.test(portaria),
    "sem sessão, a tela avisa em vez de recusar leitura por leitura",
    "senão a fila anda e cada pessoa recebe um erro genérico, uma por vez");
-ok(/start\.disabled=true/.test(portaria),
+ok(/g\('start'\)\.disabled = true/.test(portaria),
    "  e desliga o botão de ler");
 
 passo("e avisa quando o aparelho não tem leitor nativo");

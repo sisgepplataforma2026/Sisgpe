@@ -181,7 +181,18 @@ function doGet(e) {
       var tokenPortaria = String(p.sessao || "").trim();
       var sessaoPortaria = getSessaoUsuario(tokenPortaria);
       if (!sessaoPortaria) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
-      return HtmlService.createHtmlOutputFromFile("EventosPortaria")
+      /* O TOKEN VAI INJETADO, NÃO LIDO DA URL — 15/09/2026.
+         Ele abriu a portaria no celular e leu "Sem sessão". Não era o link:
+         dentro do sandbox do Apps Script a página roda num iframe interno com
+         endereço próprio, e `location.search` ali é SEMPRE vazio. Nenhum link
+         de painel com `&sessao=` jamais entregou token a ninguém — os outros
+         painéis não quebraram porque, abertos por dentro do portal, caem no
+         token que o `index` injeta.
+         Aqui a sessão já foi conferida duas linhas acima; ela desce para a
+         página como template, e a leitura da URL fica só de reserva. */
+      var tPortaria = HtmlService.createTemplateFromFile("EventosPortaria");
+      tPortaria.tokenSessao = sessaoPortaria.token;
+      return tPortaria.evaluate()
         .setTitle("Portaria — Compasso da Vida")
         .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
@@ -199,7 +210,12 @@ function doGet(e) {
       var sessaoCred = getSessaoUsuario(tokenCred);
       if (!sessaoCred) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
       exigirModulo_(tokenCred, "eventos", false);
-      return HtmlService.createHtmlOutputFromFile("CompassoCredenciamento")
+      /* Token injetado, pelo mesmo motivo da portaria: location.search dentro
+         do sandbox é vazio. Esta tela nasceu hoje com o mesmo defeito, e só
+         não apareceu porque ninguém a abriu antes da portaria. */
+      var tCred = HtmlService.createTemplateFromFile("CompassoCredenciamento");
+      tCred.tokenSessao = sessaoCred.token;
+      return tCred.evaluate()
         .setTitle("Quem já entrou — Compasso da Vida 2026")
         .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)

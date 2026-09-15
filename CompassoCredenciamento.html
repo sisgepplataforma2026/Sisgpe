@@ -137,7 +137,13 @@
    isso estouraria a cota gratuita e pararia a portaria com fila na porta.
    Quem mexer aqui precisa manter essa conta. */
 
+/* O TOKEN VEM DO SERVIDOR. Dentro do sandbox do Apps Script esta página roda
+   num iframe interno com endereço próprio, e `location.search` ali é sempre
+   vazio — foi o que fez a portaria dizer "sem sessão" no celular dele. A
+   leitura da URL fica de reserva, para quem abrir por outro caminho. */
 var TOKEN = (function(){
+  var doServidor = <?!= JSON.stringify(tokenSessao || '') ?>;
+  if (doServidor) return doServidor;
   try { var m = String(location.search||'').match(/[?&]sessao=([^&]*)/);
         return m ? decodeURIComponent(m[1]) : ''; } catch(e){ return ''; }
 })();

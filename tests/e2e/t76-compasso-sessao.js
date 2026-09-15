@@ -237,11 +237,21 @@ ok(!/PLANILHA_ID\s*:/.test(emissao.slice(0, emissao.indexOf("function"))),
 /* ─── 5. as telas mandam o token ─── */
 passo("o que a tela envia junto");
 
-["EventosPortaria.html", "EventosValidacaoAdmin.html"].forEach(tela => {
+/* O TOKEN DEIXOU DE VIR DA URL NA PORTARIA — 15/09/2026, e o motivo derruba
+   uma premissa antiga deste arquivo: dentro do sandbox do Apps Script a página
+   roda num iframe interno com endereço próprio, e `location.search` ali é
+   SEMPRE vazio. Ler o token da URL nunca funcionou fora do portal — o que
+   salvava as outras telas era o token que o `index` injeta.
+   A portaria não tinha esse plano B, e por isso dizia "sem sessão" no celular.
+   Agora a rota injeta o token conferido. O que este teste cobra continua
+   idêntico: que exista UM dispatcher e que ele mande o token em toda chamada.
+   De onde o token vem é outro assunto — e quem guarda isso é o t175. */
+[["EventosPortaria.html", "TOKEN"],
+ ["EventosValidacaoAdmin.html", "COMPASSO_TOKEN"]].forEach(([tela, nome]) => {
   const html = ler(tela);
-  ok(/var COMPASSO_TOKEN=/.test(html),
-     tela + " lê o token da URL");
-  ok(/r\[fn\]\.apply\(r,\(args\|\|\[\]\)\.concat\(\[COMPASSO_TOKEN\]\)\)/.test(html),
+  ok(new RegExp("var " + nome + "\\s*=").test(html),
+     tela + " tem o token num lugar só");
+  ok(new RegExp("\\.concat\\(\\[" + nome + "\\]\\)").test(html),
      tela + " concatena o token em toda chamada",
      "é um dispatcher só — se ele não mandar, nenhuma chamada manda");
 });
