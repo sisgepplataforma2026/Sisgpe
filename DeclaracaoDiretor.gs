@@ -19,6 +19,16 @@
 // significaria alguém alterar sem querer a citação da lei num documento
 // assinado pelo presidente.
 //
+// SEM O CARGO DE CADA UM — decisão do usuário em 15/09/2026
+//
+// O texto dizia a função exata da pessoa ("conselheiro fiscal desta Entidade
+// Sindical"). Passa a dizer só "diretor desta Entidade Sindical", como no
+// modelo em papel. O que a declaração precisa afirmar é que existe mandato
+// sindical — o art. 543 não distingue cargo —, e o cargo exato envelhece:
+// numa remodelação de diretoria, o papel assinado passa a divergir da
+// composição. O cargo continua gravado na coluna CARGO, para o histórico, e
+// continua aparecendo na tela ao lado do nome.
+//
 // SEM HORÁRIO — decisão do usuário em 15/09/2026
 //
 // A primeira versão do desenho tinha horário inicial e final. Foram retirados
@@ -202,19 +212,19 @@ function declPeriodoValido_(p) {
 /**
  * O primeiro parágrafo da declaração — a única parte que varia.
  *
- * @param {{nome:string, cargo:string, dataLiberacao:*, periodo:string}} p
+ * @param {{nome:string, dataLiberacao:*, periodo:string}} p
  * @return {string}
  */
 function declMontarTexto_(p) {
   p = p || {};
   var nome = declTexto_(p.nome).toUpperCase();
-  var cargo = declTexto_(p.cargo).toLowerCase() || "diretor";
   var periodo = declPeriodoValido_(p.periodo) || "";
   var trecho = DECL_PERIODOS[periodo].trecho;
   var dia = declDataExtenso_(p.dataLiberacao);
 
+  /* "diretor", fixo — não o cargo da pessoa. Ver a nota do cabeçalho. */
   return "Declaramos, para os devidos fins e efeitos legais a que se destina, que " +
-    nome + ", " + cargo + " desta Entidade Sindical, no dia " + dia + trecho +
+    nome + ", diretor desta Entidade Sindical, no dia " + dia + trecho +
     ", estará à disposição do SindEducação/ES para o exercício de atividades " +
     "inerentes ao seu mandato sindical.";
 }
@@ -311,7 +321,6 @@ function declValidarPedido_(dados) {
     escola: escola,
     texto: declMontarTexto_({
       nome: diretor.nome,
-      cargo: diretor.cargo,
       dataLiberacao: dataLib,
       periodo: periodo
     })
@@ -400,6 +409,34 @@ function declPreviaDeclaracaoDiretor(dados, tokenSessao) {
     };
   } catch (e) {
     return { ok: false, mensagem: "Erro ao montar a prévia: " + e.message };
+  }
+}
+
+/**
+ * O documento montado, sem gravar nada e sem gerar PDF.
+ *
+ * Mesma função que produz o PDF (`declHtmlDeclaracao_`), para a prévia não
+ * poder divergir do que sai assinado — prévia montada por outro caminho é
+ * prévia que mente. O número sai como "PRÉVIA" porque número só se consome
+ * na emissão, dentro do lock.
+ */
+function declPreviaDocumento(dados, tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
+  try {
+    var v = declValidarPedido_(dados);
+    if (!v.ok) return v;
+    return {
+      ok: true,
+      html: declHtmlDeclaracao_({
+        numero: "PRÉVIA",
+        texto: v.texto,
+        dataEmissao: v.dataEmissao,
+        signatario: v.signatario,
+        diretor: v.diretor
+      })
+    };
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao montar o documento: " + e.message };
   }
 }
 

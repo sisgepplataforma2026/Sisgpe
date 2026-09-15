@@ -216,7 +216,42 @@ function clicar(el, oque) {
   b.ok(g.declHistoricoDeclaracoes({ busca: manual.numero }, TOKEN).itens[0].vinculoOrigem === "Escolhida manualmente",
     "a origem manual fica gravada na linha");
 
-  b.passo("8. O botão de conferir configuração responde pela tela");
+  b.passo("8. Resposta velha não sobrescreve a prévia nova");
+  /* Visto na tela em 15/09/2026: escola escolhida e a prévia dizendo
+     "Selecione a escola empregadora". Era a prévia ANTERIOR, disparada quando
+     ainda não havia escola, voltando depois da nova. Sumia ao próximo toque —
+     e é por sumir sozinho que enganava. */
+  /* A data ficou em branco no passo 4 (é o que o Reemitir faz). Sem ela a
+     prévia nem chega ao servidor, e o teste mediria outra coisa. */
+  mudar("#declDataLiberacao", amanha.toISOString().slice(0, 10));
+  tela.escolher("#declEscola", "");
+  win.DECL_ESTADO.escola = null;
+  const idxLento = tela.chamadas.length;
+  tela.atrasar("declPreviaDeclaracaoDiretor", idxLento, 500);
+  win.declPreviaAgora();                       /* prévia #1, sem escola, lenta */
+  mudar("#declEscola", "ESC-UVV");             /* prévia #2, com escola */
+  await tela.assentar(800);
+  b.ok(/Declaramos/.test($("declPrevia").textContent),
+    "o texto que fica é o da prévia mais nova",
+    $("declPrevia").textContent.replace(/\s+/g, " ").trim().slice(0, 70));
+  b.ok(!/Selecione a escola/.test($("declPrevia").textContent),
+    "a recusa que chegou atrasada foi descartada");
+
+  b.passo("9. Pré-visualizar mostra o documento inteiro, como em Ofícios");
+  clicar($("declBtnVer"), "pré-visualizar");
+  await tela.assentar(120);
+  b.ok($("declModalDocumento").classList.contains("aberto"), "o modal do documento abriu");
+  const doc1 = $("declDocumentoFrame").getAttribute("srcdoc") || $("declDocumentoFrame").srcdoc || "";
+  b.ok(/DECLARAÇÃO/.test(doc1) && /Art\. 543/.test(doc1), "traz o documento montado, com a citação da lei");
+  b.ok(/PRÉVIA/.test(doc1), "numerado como PRÉVIA — número só se consome na emissão");
+  b.ok(g.declHistoricoDeclaracoes({}, TOKEN).itens.every(i => i.numero !== "PRÉVIA"),
+    "e nada foi gravado por pré-visualizar");
+
+  b.passo("10. O texto não traz mais a função de cada dirigente");
+  b.ok(/diretor desta Entidade Sindical/.test(doc1), "diz apenas \"diretor desta Entidade Sindical\"");
+  b.ok(!/conselheiro|presidente desta|tesoureiro/i.test(doc1), "e não o cargo específico da pessoa");
+
+  b.passo("11. O botão de conferir configuração responde pela tela");
   clicar(doc.querySelector("[onclick='declConferirConfig()']"), "conferir configuração");
   await tela.assentar(80);
   b.ok($("declModalConfig").classList.contains("aberto"), "o modal de configuração abriu");

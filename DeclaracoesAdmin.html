@@ -109,9 +109,21 @@
       </div>
     </div>
 
-    <div class="declAcoes">
-      <button type="button" class="btn-outline" onclick="declLimpar()">Limpar</button>
-      <button type="button" class="btn-navy" id="declBtnEmitir" onclick="declEmitir(false)">Emitir declaração</button>
+    <div class="of-action-bar">
+      <div class="of-action-bar-info">
+        <div class="of-action-bar-title">🚀 Emitir declaração</div>
+        <div class="of-action-bar-sub">Revise os dados antes de gerar o documento</div>
+      </div>
+      <div class="of-action-bar-btns">
+        <button type="button" class="btn btn-on-dark" onclick="declLimpar()">Limpar</button>
+        <button type="button" class="btn btn-on-dark" id="declBtnVer" onclick="declVerDocumento()">👁 Pré-visualizar</button>
+        <button type="button" class="btn btn-gold" id="declBtnEmitir" onclick="declEmitir(false)">✅ Emitir declaração</button>
+      </div>
+    </div>
+
+    <div id="declAcoesDocumento" class="declAcoes declAcoesEsq" style="display:none;">
+      <a id="declLinkPdf" class="btn btn-outline" href="#" target="_blank" rel="noopener">📥 Baixar PDF</a>
+      <button type="button" class="btn btn-outline" onclick="declImprimirDocumento()">🖨 Imprimir</button>
     </div>
 
     <div class="of-card declCard" id="declEntrega" style="display:none;">
@@ -157,6 +169,30 @@
     </div>
   </section>
 
+</div>
+
+<!-- Modal — o documento como ele vai sair.
+
+     O conteúdo vem do MESMO montador que gera o PDF, dentro de um iframe:
+     assim o CSS do documento não vaza para a tela nem o da tela entra no
+     documento. -->
+<div class="of-modal-overlay" id="declModalDocumento">
+  <div class="of-modal" style="max-width:860px;">
+    <div class="of-modal-head">
+      <div>
+        <div class="of-modal-head-title">👁 Pré-visualização</div>
+        <div class="of-modal-head-sub">é exatamente o que vai sair no PDF — nada foi gravado</div>
+      </div>
+      <button type="button" class="of-modal-close" onclick="declFechar('declModalDocumento')">✕</button>
+    </div>
+    <div class="of-modal-body" style="padding:0;">
+      <iframe id="declDocumentoFrame" title="Pré-visualização da declaração" style="width:100%;height:62vh;border:0;background:#fff;"></iframe>
+    </div>
+    <div class="declModalRodape">
+      <button type="button" class="btn-outline" onclick="declImprimirPrevia()">🖨 Imprimir</button>
+      <button type="button" class="btn-navy" onclick="declFechar('declModalDocumento');declEmitir(false)">✅ Emitir declaração</button>
+    </div>
+  </div>
 </div>
 
 <!-- Modal — diagnóstico da configuração.
@@ -335,7 +371,7 @@
    script da SPA viram um escopo global só, e nome curto colide.
    ──────────────────────────────────────────────────────────────── */
 
-var DECL_ESTADO = { diretores: [], vinculos: [], escola: null, periodo: "", carregou: false, timerBusca: null, timerPrevia: null, timerEscola: null, entrega: null };
+var DECL_ESTADO = { diretores: [], vinculos: [], escola: null, periodo: "", carregou: false, timerBusca: null, timerPrevia: null, timerEscola: null, seqPrevia: 0, entrega: null };
 
 /* Onde cada tela guarda as caixas da entrega. Mesmo código, caixas diferentes. */
 var DECL_ESCOPOS = {
@@ -585,8 +621,23 @@ function declPrevia() {
   DECL_ESTADO.timerPrevia = setTimeout(declPreviaAgora, 250);
 }
 
+/**
+ * DESCARTE DE RESPOSTA VELHA.
+ *
+ * As chamadas são assíncronas e voltam fora de ordem. Trocar a escola dispara
+ * uma prévia nova, mas a anterior — feita quando ainda não havia escola —
+ * pode voltar DEPOIS e sobrescrever o texto certo pela recusa do servidor.
+ *
+ * Foi o que apareceu na tela em 15/09/2026: escola escolhida, prévia dizendo
+ * "Selecione a escola empregadora do dirigente". Sumia ao próximo toque, e é
+ * justamente por sumir sozinho que enganava. Num campo que promete ser
+ * "exatamente o que vai sair no PDF", mostrar coisa errada não é detalhe.
+ *
+ * Cada chamada leva um número; só a última manda no que aparece.
+ */
 function declPreviaAgora() {
   var d = declDados(false);
+  var meu = ++DECL_ESTADO.seqPrevia;
   var caixa = document.getElementById("declPrevia");
   var aviso = document.getElementById("declPreviaAviso");
 
@@ -598,6 +649,7 @@ function declPreviaAgora() {
 
   google.script.run
     .withSuccessHandler(function (r) {
+      if (meu !== DECL_ESTADO.seqPrevia) return;   /* chegou tarde: já há pedido mais novo */
       if (!r || !r.ok) {
         caixa.textContent = (r && r.mensagem) || "Não consegui montar a prévia.";
         aviso.style.display = "none";
@@ -617,7 +669,10 @@ function declPreviaAgora() {
       aviso.style.display = linhas.length ? "block" : "none";
       aviso.innerHTML = linhas.map(function (l) { return "⚠ " + declEsc(l); }).join("<br>");
     })
-    .withFailureHandler(function (e) { caixa.textContent = "Erro: " + e; })
+    .withFailureHandler(function (e) {
+      if (meu !== DECL_ESTADO.seqPrevia) return;
+      caixa.textContent = "Erro: " + e;
+    })
     .declPreviaDeclaracaoDiretor(d, declToken());
 }
 
@@ -640,7 +695,11 @@ function declEmitir(confirmado) {
       if (!r || !r.ok) { declMsg((r && r.mensagem) || "Não consegui emitir.", "erro"); return; }
 
       declMsg("Declaração " + r.numero + " emitida.", "sucesso");
-      if (r.url) window.open(r.url, "_blank");
+      if (r.url) {
+        document.getElementById("declLinkPdf").setAttribute("href", r.url);
+        document.getElementById("declAcoesDocumento").style.display = "flex";
+        window.open(r.url, "_blank");
+      }
       declRenderEntrega_("painel", r);
     })
     .withFailureHandler(function (e) {
@@ -776,10 +835,51 @@ function declLimpar() {
   document.getElementById("declEscolaResultados").innerHTML = "";
   document.getElementById("declEscolaOrigem").textContent = "vínculo em Associados · identidade em Escolas";
   document.getElementById("declEntrega").style.display = "none";
+  document.getElementById("declAcoesDocumento").style.display = "none";
+  document.getElementById("declLinkPdf").setAttribute("href", "#");
   DECL_ESTADO.vinculos = []; DECL_ESTADO.escola = null; DECL_ESTADO.entrega = null;
+  DECL_ESTADO.seqPrevia++;
   document.getElementById("declDataLiberacao").value = "";
   document.getElementById("declDataEmissao").value = new Date().toISOString().slice(0, 10);
   declEscolherPeriodo("");
+}
+
+/* ─── pré-visualização do documento, como em Ofícios ─── */
+function declVerDocumento() {
+  var d = declDados(false);
+  if (!d.diretorId || !d.escolaId || !d.dataLiberacao) {
+    return declMsg("Selecione o diretor, a escola e a data da liberação antes de pré-visualizar.", "alerta");
+  }
+  var btn = document.getElementById("declBtnVer");
+  btn.disabled = true;
+
+  google.script.run
+    .withSuccessHandler(function (r) {
+      btn.disabled = false;
+      if (!r || !r.ok) return declMsg((r && r.mensagem) || "Não consegui montar o documento.", "erro");
+      /* srcdoc por JavaScript, não por atributo no HTML: o documento tem aspas
+         e quebras de linha, e escapar isso à mão é como se perde caractere. */
+      document.getElementById("declDocumentoFrame").srcdoc = r.html;
+      declAbrir("declModalDocumento");
+    })
+    .withFailureHandler(function (e) { btn.disabled = false; declMsg("Erro: " + e, "erro"); })
+    .declPreviaDocumento(d, declToken());
+}
+
+function declImprimirPrevia() {
+  var frame = document.getElementById("declDocumentoFrame");
+  try {
+    frame.contentWindow.focus();
+    frame.contentWindow.print();
+  } catch (e) {
+    declMsg("Não consegui abrir a impressão daqui. Emita e imprima pelo PDF.", "alerta");
+  }
+}
+
+function declImprimirDocumento() {
+  var url = document.getElementById("declLinkPdf").getAttribute("href");
+  if (!url || url === "#") return declMsg("Emita a declaração primeiro.", "alerta");
+  window.open(url, "_blank");
 }
 
 /* ─── conferência da configuração ─── */
@@ -905,4 +1005,5 @@ window.declAba = declAba;
 window.declAbrirEntrega = declAbrirEntrega;
 window.declEscolherAchada = declEscolherAchada;
 window.declConferirConfig = declConferirConfig;
+window.declVerDocumento = declVerDocumento;
 </script>

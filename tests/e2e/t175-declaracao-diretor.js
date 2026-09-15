@@ -172,11 +172,31 @@ b.ok(/ENVIADO/.test(depois.emailStatus) && depois.emailsUsados === reaberta.esco
   "a linha guarda o status e o destinatário real", depois.emailStatus + " · " + depois.emailsUsados);
 b.ok(g.declEntregaDeclaracao("999/2099", TOKEN).ok === false, "número inexistente é recusado");
 
+b.fluxo("DECLARAÇÕES · O texto não nomeia o cargo de cada um");
+/* Decisão do usuário em 15/09/2026: o art. 543 não distingue cargo, e o cargo
+   exato envelhece — numa remodelação de diretoria o papel assinado passaria a
+   divergir da composição. */
+b.ok(/diretor desta Entidade Sindical/.test(emitida.texto), "o texto diz \"diretor\", fixo", emitida.texto.slice(0, 90));
+b.ok(!/conselheiro/i.test(emitida.texto), "e não o cargo da pessoa");
+b.ok(g.declHistoricoDeclaracoes({ busca: emitida.numero }, TOKEN).itens[0].cargo,
+  "mas o cargo continua GRAVADO, para o histórico",
+  g.declHistoricoDeclaracoes({ busca: emitida.numero }, TOKEN).itens[0].cargo);
+
+b.fluxo("DECLARAÇÕES · Pré-visualizar não grava nada");
+const antesDaPrevia = g.declHistoricoDeclaracoes({}, TOKEN).total;
+const doc = g.declPreviaDocumento(pedido, TOKEN);
+b.ok(doc.ok && /DECLARAÇÃO/.test(doc.html), "devolve o documento montado");
+b.ok(/PRÉVIA/.test(doc.html), "numerado como PRÉVIA");
+b.ok(g.declHistoricoDeclaracoes({}, TOKEN).total === antesDaPrevia, "e o histórico não cresceu");
+b.ok(g.declPreviaDocumento({ diretorId: dir.id, periodo: "" }, TOKEN).ok === false,
+  "pedido incompleto é recusado igual à emissão");
+
 b.fluxo("DECLARAÇÕES · Segurança");
 b.bloqueia(() => g.declContextoDiretor(dir.id, TOKEN_ESC), "usuário sem Documentos não consulta vínculo");
 b.bloqueia(() => g.declEmitirDeclaracaoDiretor(pedido, TOKEN_ESC), "usuário sem Documentos não emite");
 b.bloqueia(() => g.declDadosEmissao("token-falso"), "token inválido é recusado");
 b.bloqueia(() => g.declEntregaDeclaracao(emitida.numero, TOKEN_ESC), "usuário sem Documentos não reabre a entrega");
 b.bloqueia(() => g.declConferirConfiguracao(TOKEN_ESC), "usuário sem Documentos não confere a configuração");
+b.bloqueia(() => g.declPreviaDocumento(pedido, TOKEN_ESC), "usuário sem Documentos não pré-visualiza");
 b.naoTestavel("PDF, Drive, Gmail e WhatsApp reais", "dependem da homologação publicada");
 b.resumo();
