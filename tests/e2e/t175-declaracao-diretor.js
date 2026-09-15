@@ -182,6 +182,27 @@ b.ok(g.declHistoricoDeclaracoes({ busca: emitida.numero }, TOKEN).itens[0].cargo
   "mas o cargo continua GRAVADO, para o histórico",
   g.declHistoricoDeclaracoes({ busca: emitida.numero }, TOKEN).itens[0].cargo);
 
+b.fluxo("DECLARAÇÕES · Só entra no documento o que é imagem de verdade");
+/* Medido em 15/09/2026: o "logo" de carregarImagensRecibo_ é um PDF
+   (Logo.pdf, application/pdf). Montar <img src="data:application/pdf"> produz
+   documento assinado SEM logo e sem erro nenhum no log. */
+g.carregarImagensRecibo_ = () => ({
+  logoBase64: "JVBERi0xLjQK", logoMime: "application/pdf",
+  assBase64: "/9j/4AAQ", assMime: "image/jpeg"
+});
+const semLogoPdf = g.declImagens_();
+b.ok(semLogoPdf.logoBase64 !== "JVBERi0xLjQK", "PDF NÃO vira <img> no documento");
+b.ok(semLogoPdf.assBase64 === "/9j/4AAQ", "mas a assinatura JPG entra", semLogoPdf.assMime);
+const htmlSemLogo = g.declHtmlDeclaracao_({ numero: "1", texto: "x", dataEmissao: new Date(), signatario: { nome: "L", cargo: "Presidente" }, diretor: { nome: "W" } });
+b.ok(!/data:application\/pdf/.test(htmlSemLogo), "e o HTML não carrega data:application/pdf");
+b.ok(/<img[^>]+base64/.test(htmlSemLogo), "a assinatura está no HTML como imagem");
+
+g.carregarImagensRecibo_ = () => ({
+  logoBase64: "iVBORw0KGgo=", logoMime: "image/png",
+  assBase64: "/9j/4AAQ", assMime: "image/jpeg"
+});
+b.ok(g.declImagens_().logoBase64 === "iVBORw0KGgo=", "logo com mime de imagem é usado normalmente");
+
 b.fluxo("DECLARAÇÕES · Pré-visualizar não grava nada");
 const antesDaPrevia = g.declHistoricoDeclaracoes({}, TOKEN).total;
 const doc = g.declPreviaDocumento(pedido, TOKEN);

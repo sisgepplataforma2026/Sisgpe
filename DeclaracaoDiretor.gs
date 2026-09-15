@@ -967,15 +967,63 @@ function declGerarPdf_(p) {
  * justificado, citação do art. 543 recuada e menor, fecho, cidade/data e
  * assinatura.
  */
-function declHtmlDeclaracao_(p) {
-  p = p || {};
-  var sig = p.signatario || {};
-  var imgs = {};
+/**
+ * Logo e assinatura em base64, prontas para entrar no HTML.
+ *
+ * 🚨 O LOGO DO `carregarImagensRecibo_` É UM PDF. Medido em 15/09/2026 pelo
+ * metadado do Drive: o arquivo `1F1yUL…` é `Logo.pdf`, application/pdf, 80 KB.
+ * Aquela função devolve o blob com o contentType real, e quem monta o HTML
+ * escreve `<img src="data:application/pdf;base64,…">` — que NÃO renderiza em
+ * navegador nenhum nem no conversor do Google.
+ *
+ * O efeito é o pior tipo: o documento sai assinado, sem logo, e sem uma linha
+ * de erro em lugar nenhum. Ninguém olha o log de um PDF que "saiu".
+ *
+ * Por isso aqui: só entra como imagem o que TEM mime de imagem. O logo bom é
+ * o PNG que os Vouchers já usam (LOGO_VOUCHER_FILE_ID) — mesma arte, uma
+ * fonte só. Se nenhum servir, o cabeçalho cai no texto, que é feio mas
+ * honesto.
+ *
+ * Falha aqui nunca derruba a emissão: declaração sem logo ainda vale;
+ * emissão que explode porque o Drive piscou, não.
+ */
+function declImagens_() {
+  var out = { logoBase64: "", logoMime: "", assBase64: "", assMime: "" };
+
   try {
-    if (typeof carregarImagensRecibo_ === "function") imgs = carregarImagensRecibo_() || {};
+    if (typeof carregarImagensRecibo_ === "function") {
+      var imgs = carregarImagensRecibo_() || {};
+      out.assBase64 = imgs.assBase64 || "";
+      out.assMime = imgs.assMime || "image/jpeg";
+      if (/^image\//.test(String(imgs.logoMime || ""))) {
+        out.logoBase64 = imgs.logoBase64 || "";
+        out.logoMime = imgs.logoMime;
+      }
+    }
   } catch (e) {
     Logger.log("DeclaracaoDiretor: imagens institucionais indisponíveis — " + e.message);
   }
+
+  if (!out.logoBase64 && typeof LOGO_VOUCHER_FILE_ID !== "undefined") {
+    try {
+      var blob = DriveApp.getFileById(LOGO_VOUCHER_FILE_ID).getBlob();
+      var mime = blob.getContentType() || "";
+      if (/^image\//.test(mime)) {
+        out.logoBase64 = Utilities.base64Encode(blob.getBytes());
+        out.logoMime = mime;
+      }
+    } catch (eLogo) {
+      Logger.log("DeclaracaoDiretor: logo do Drive indisponível — " + eLogo.message);
+    }
+  }
+
+  return out;
+}
+
+function declHtmlDeclaracao_(p) {
+  p = p || {};
+  var sig = p.signatario || {};
+  var imgs = declImagens_();
 
   var logo = imgs.logoBase64
     ? '<img src="data:' + imgs.logoMime + ';base64,' + imgs.logoBase64 + '" style="max-height:90px;">'
