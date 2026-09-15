@@ -65,6 +65,50 @@ b.ok(zap.ok && /^https:\/\/wa\.me\/5527/.test(zap.url), "WhatsApp é apenas prep
 const zapOk = g.declConfirmarWhatsapp(emitida.numero, TOKEN);
 b.ok(zapOk.ok, "operador confirma a ciência depois");
 
+b.fluxo("DECLARAÇÕES · A lista serve para achar gente, não para ler hierarquia");
+const nomes = dados.diretores.map(d => d.nome);
+b.ok(nomes.join("|") === nomes.slice().sort((a, x) => a.localeCompare(x, "pt-BR")).join("|"),
+  "dirigentes vêm em ordem alfabética", nomes[0] + " … " + nomes[nomes.length - 1]);
+
+b.fluxo("DECLARAÇÕES · Data passada AVISA, não bloqueia");
+/* Decisão do usuário em 15/09/2026: regularizar liberação já ocorrida é caso
+   real; recusar empurraria a pessoa para fora do sistema. */
+const ontem = new Date(); ontem.setDate(ontem.getDate() - 1);
+const retro = { diretorId: dir.id, escolaId: "ESC-UVV", periodo: "", dataLiberacao: ontem.toISOString().slice(0, 10) };
+const previaRetro = g.declPreviaDeclaracaoDiretor(retro, TOKEN);
+b.ok(previaRetro.ok, "a prévia monta mesmo com data passada");
+b.ok((previaRetro.avisos || []).some(a => /já passou/i.test(a)), "mas avisa que a data já passou",
+  (previaRetro.avisos || [])[0]);
+b.ok(g.declEmitirDeclaracaoDiretor(retro, TOKEN).ok, "e a emissão sai assim mesmo");
+b.ok(!(g.declPreviaDeclaracaoDiretor(pedido, TOKEN).avisos || []).length,
+  "data futura não gera aviso nenhum");
+
+b.fluxo("DECLARAÇÕES · O número segue a DATA DE EMISSÃO");
+/* Documento datado de 2025 com número 00X/2026 é o que alguém vai conferir
+   daqui a dois anos — e não vai fechar. */
+const outroAno = g.declEmitirDeclaracaoDiretor({
+  diretorId: dir.id, escolaId: "ESC-UVV", periodo: "",
+  dataLiberacao: amanha.toISOString().slice(0, 10),
+  dataEmissao: "2025-11-20", confirmado: true
+}, TOKEN);
+b.ok(outroAno.ok && /\/2025$/.test(outroAno.numero), "emitida com data de 2025 numera em 2025", outroAno.numero);
+b.ok(/^001\//.test(outroAno.numero), "e começa a sequência daquele ano", outroAno.numero);
+b.ok((g.declPreviaDeclaracaoDiretor({
+  diretorId: dir.id, escolaId: "ESC-UVV", periodo: "",
+  dataLiberacao: amanha.toISOString().slice(0, 10), dataEmissao: "2025-11-20"
+}, TOKEN).avisos || []).some(a => /2025/.test(a)), "e a prévia avisa disso antes");
+
+b.fluxo("DECLARAÇÕES · Conferir configuração pela tela");
+/* O diagnóstico do servidor termina com "_", e o editor do Apps Script
+   esconde função assim — rodar exigia invólucro colado à mão. */
+const conf = g.declConferirConfiguracao(TOKEN);
+b.ok(conf.ok, "o endpoint responde");
+b.ok(conf.signatario.ok && /LEONIL/.test(conf.signatario.texto), "diz quem assina", conf.signatario.texto);
+b.ok(conf.dirigentes.ok && /\d+ dirigente/.test(conf.dirigentes.texto), "e quantos estão habilitados", conf.dirigentes.texto);
+b.ok(conf.pasta.ok === false && /SISGEP_PASTA_DECLARACOES/.test(conf.pasta.detalhe),
+  "e aponta a pasta que falta, dizendo a propriedade exata");
+b.ok(conf.pronto === false, "com pasta faltando, não se declara pronto");
+
 b.fluxo("DECLARAÇÕES · O mandato se confere contra o DIA DA LIBERAÇÃO");
 /* A checagem antiga perguntava se a gestão está de pé HOJE — outra pergunta.
    Uma liberação marcada para depois do término passava, e a declaração
@@ -133,5 +177,6 @@ b.bloqueia(() => g.declContextoDiretor(dir.id, TOKEN_ESC), "usuário sem Documen
 b.bloqueia(() => g.declEmitirDeclaracaoDiretor(pedido, TOKEN_ESC), "usuário sem Documentos não emite");
 b.bloqueia(() => g.declDadosEmissao("token-falso"), "token inválido é recusado");
 b.bloqueia(() => g.declEntregaDeclaracao(emitida.numero, TOKEN_ESC), "usuário sem Documentos não reabre a entrega");
+b.bloqueia(() => g.declConferirConfiguracao(TOKEN_ESC), "usuário sem Documentos não confere a configuração");
 b.naoTestavel("PDF, Drive, Gmail e WhatsApp reais", "dependem da homologação publicada");
 b.resumo();

@@ -52,6 +52,7 @@
             <div class="of-card-sub">Só o dia e o período variam — o texto jurídico é fixo</div>
           </div>
         </div>
+        <button type="button" class="declBtnMini" onclick="declConferirConfig()" title="Pasta do Drive, quem assina e quantos dirigentes estão habilitados">🔧 Conferir configuração</button>
       </div>
       <div class="of-card-body">
 
@@ -158,6 +159,27 @@
 
 </div>
 
+<!-- Modal — diagnóstico da configuração.
+
+     Existe porque o diagnóstico do servidor termina com sublinhado, e o
+     editor do Apps Script esconde função assim: para rodar era preciso colar
+     um invólucro à mão, que o deploy seguinte apagava. -->
+<div class="of-modal-overlay" id="declModalConfig">
+  <div class="of-modal" style="max-width:520px;">
+    <div class="of-modal-head">
+      <div>
+        <div class="of-modal-head-title">🔧 Configuração das Declarações</div>
+        <div class="of-modal-head-sub">só leitura — nada é alterado por aqui</div>
+      </div>
+      <button type="button" class="of-modal-close" onclick="declFechar('declModalConfig')">✕</button>
+    </div>
+    <div class="of-modal-body" id="declConfigCorpo"></div>
+    <div class="declModalRodape">
+      <button type="button" class="btn-navy" onclick="declFechar('declModalConfig')">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal — entrega de uma declaração já emitida -->
 <div class="of-modal-overlay" id="declModalEntrega">
   <div class="of-modal" style="max-width:560px;">
@@ -210,7 +232,11 @@
 .declCard { margin-bottom: 16px; }
 .declGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
 .declCampo { display: flex; flex-direction: column; gap: 6px; }
-.declCampoLargo { grid-column: 1 / -1; }
+/* O Período fica FORA da grade, logo abaixo dela. Sem esta margem ele cola
+   no texto de origem do campo Diretor, que quebra em duas linhas — foi o que
+   o usuário viu na tela em 15/09/2026. */
+.declCampoLargo { grid-column: 1 / -1; margin-top: 20px; }
+.declGrid + .declCampoLargo { margin-top: 22px; }
 .declCampo label { font-size: 11.5px; font-weight: 800; color: var(--g700, #334155); }
 .declCampo input, .declCampo select {
   height: 42px; border: 1.5px solid var(--g200, #e2e8f0); border-radius: 10px; padding: 0 12px;
@@ -276,6 +302,10 @@
 }
 .declImportLinha { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--g100, #f1f5f9); font-size: 12.5px; }
 .declImportLinha small { color: var(--g500, #64748b); }
+.declConfigLinha { display: flex; gap: 10px; align-items: flex-start; padding: 11px 0; border-bottom: 1px solid var(--g100, #f1f5f9); font-size: 12.5px; }
+.declConfigLinha:last-child { border-bottom: none; }
+.declConfigLinha b { display: block; color: var(--g900, #0f172a); }
+.declConfigLinha small { display: block; color: var(--g500, #64748b); margin-top: 2px; word-break: break-all; }
 .declBuscaEscola { margin-top: 8px; }
 .declBuscaEscola input {
   width: 100%; height: 38px; border: 1.5px solid var(--g200, #e2e8f0); border-radius: 10px;
@@ -357,10 +387,19 @@ function declInit() {
 }
 
 function declCarregarEmissao() {
+  /* A primeira carga leva alguns segundos, e a tela ficava idêntica a uma
+     tela quebrada: select vazio, nenhum período, nenhuma mensagem. Dizer
+     "Carregando" custa uma linha e evita o susto. */
+  var sel = document.getElementById("declDiretor");
+  sel.innerHTML = '<option value="">Carregando dirigentes…</option>';
+  sel.disabled = true;
+
   google.script.run
     .withSuccessHandler(function (r) {
       var aviso = document.getElementById("declAvisoSetup");
       if (!r || !r.ok) {
+        sel.disabled = false;
+        sel.innerHTML = '<option value="">— não carregou —</option>';
         aviso.style.display = "block";
         aviso.textContent = (r && r.mensagem) || "Não consegui carregar a tela.";
         return;
@@ -368,7 +407,7 @@ function declCarregarEmissao() {
 
       DECL_ESTADO.diretores = r.diretores || [];
 
-      var sel = document.getElementById("declDiretor");
+      sel.disabled = false;
       sel.innerHTML = '<option value="">— selecione —</option>' +
         DECL_ESTADO.diretores.map(function (d) {
           return '<option value="' + declEsc(d.id) + '">' + declEsc(d.nome) + ' — ' + declEsc(d.cargo) + '</option>';
@@ -393,7 +432,11 @@ function declCarregarEmissao() {
       aviso.style.display = problemas.length ? "block" : "none";
       aviso.innerHTML = problemas.map(declEsc).join("<br>");
     })
-    .withFailureHandler(function (e) { declMsg("Erro ao carregar: " + e, "erro"); })
+    .withFailureHandler(function (e) {
+      sel.disabled = false;
+      sel.innerHTML = '<option value="">— erro ao carregar —</option>';
+      declMsg("Erro ao carregar: " + e, "erro");
+    })
     .declDadosEmissao(declToken());
 }
 
@@ -565,12 +608,14 @@ function declPreviaAgora() {
         '<br><br><b>' + declEsc(r.signatario.nome) + '</b><br>' +
         declEsc(r.signatario.cargo) + ' – SindEducação/ES';
 
+      /* Duplicata e avisos (data passada, ano da numeração) aparecem juntos:
+         são todos "confira antes de emitir", e nenhum deles impede emitir. */
+      var linhas = (r.avisos || []).slice();
       if (r.duplicatas && r.duplicatas.length) {
-        aviso.style.display = "block";
-        aviso.textContent = "⚠ Já existe declaração para este diretor nesta data: nº " + r.duplicatas.join(", ") + ".";
-      } else {
-        aviso.style.display = "none";
+        linhas.unshift("Já existe declaração para este diretor nesta data: nº " + r.duplicatas.join(", ") + ".");
       }
+      aviso.style.display = linhas.length ? "block" : "none";
+      aviso.innerHTML = linhas.map(function (l) { return "⚠ " + declEsc(l); }).join("<br>");
     })
     .withFailureHandler(function (e) { caixa.textContent = "Erro: " + e; })
     .declPreviaDeclaracaoDiretor(d, declToken());
@@ -737,6 +782,35 @@ function declLimpar() {
   declEscolherPeriodo("");
 }
 
+/* ─── conferência da configuração ─── */
+function declConferirConfig() {
+  var corpo = document.getElementById("declConfigCorpo");
+  corpo.innerHTML = '<div class="declOrigem">Conferindo…</div>';
+  declAbrir("declModalConfig");
+
+  google.script.run
+    .withSuccessHandler(function (r) {
+      if (!r || !r.ok) {
+        corpo.innerHTML = '<div class="declAviso">' + declEsc((r && r.mensagem) || "Não consegui conferir.") + '</div>';
+        return;
+      }
+      function linha(rotulo, item) {
+        return '<div class="declConfigLinha"><span>' + (item.ok ? "✅" : "❌") + '</span>' +
+               '<span><b>' + declEsc(rotulo) + ': ' + declEsc(item.texto) + '</b>' +
+               '<small>' + declEsc(item.detalhe || "") + '</small></span></div>';
+      }
+      corpo.innerHTML =
+        (r.pronto ? '' : '<div class="declAviso">Falta configuração para emitir. Veja abaixo o que está com ❌.</div>') +
+        linha("Pasta do Drive", r.pasta) +
+        linha("Quem assina", r.signatario) +
+        linha("Dirigentes", r.dirigentes);
+    })
+    .withFailureHandler(function (e) {
+      corpo.innerHTML = '<div class="declAviso">Erro: ' + declEsc(e) + '</div>';
+    })
+    .declConferirConfiguracao(declToken());
+}
+
 /* ─── histórico ─── */
 function declHistoricoDebounce() {
   clearTimeout(DECL_ESTADO.timerBusca);
@@ -830,4 +904,5 @@ window.declInit = declInit;
 window.declAba = declAba;
 window.declAbrirEntrega = declAbrirEntrega;
 window.declEscolherAchada = declEscolherAchada;
+window.declConferirConfig = declConferirConfig;
 </script>

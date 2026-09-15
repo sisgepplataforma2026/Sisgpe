@@ -318,6 +318,30 @@ function declValidarPedido_(dados) {
   };
 }
 
+/**
+ * O que merece um alerta sem impedir a emissão.
+ *
+ * DATA PASSADA AVISA, NÃO BLOQUEIA — decisão do usuário em 15/09/2026, pelo
+ * mesmo motivo da duplicata: regularizar uma liberação que já aconteceu e
+ * ninguém documentou é caso real. Recusar obrigaria a resolver por fora do
+ * sistema, que é pior do que um documento com data antiga e registro.
+ *
+ * O que ele evita é o outro caso, muito mais comum: o engano de digitação
+ * que passaria despercebido.
+ */
+function declAvisos_(v) {
+  var avisos = [];
+  if (v.dataLiberacao < declHoje_()) {
+    avisos.push("A data da liberação (" + declDataBR_(v.dataLiberacao) + ") já passou. " +
+                "Confira se não foi engano de digitação — se for regularização, pode emitir.");
+  }
+  if (v.dataEmissao.getFullYear() !== new Date().getFullYear()) {
+    avisos.push("A data de emissão é de " + v.dataEmissao.getFullYear() +
+                ", então o número sairá na sequência daquele ano.");
+  }
+  return avisos;
+}
+
 /** Declarações já emitidas para o mesmo diretor no mesmo dia. */
 function declDuplicatas_(diretorId, dataLiberacao) {
   var alvo = declDataBR_(dataLiberacao);
@@ -337,9 +361,14 @@ function declDadosEmissao(tokenSessao) {
     var signatario = declSignatario_();
     return {
       ok: true,
+      /* EM ORDEM ALFABÉTICA — pedido do usuário em 15/09/2026, com a tela no
+         ar. A ordem de Governança é hierárquica (órgão, condição, ordem), que
+         é a certa para ler a composição e a errada para achar uma pessoa numa
+         lista de 26 nomes. Quem abre esta tela já sabe o nome de quem vai
+         liberar; o cargo continua ao lado para desempatar homônimo. */
       diretores: declDiretoresHabilitados_().map(function (d) {
         return { id: d.id, nome: d.nome, cargo: d.cargo, mandatoFim: d.mandatoFim };
-      }),
+      }).sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome), "pt-BR"); }),
       periodos: Object.keys(DECL_PERIODOS).map(function (k) {
         return { valor: k, rotulo: DECL_PERIODOS[k].rotulo };
       }),
@@ -363,6 +392,7 @@ function declPreviaDeclaracaoDiretor(dados, tokenSessao) {
     return {
       ok: true,
       texto: v.texto,
+      avisos: declAvisos_(v),
       cidadeData: DECL_CIDADE + ", " + declDataExtenso_(v.dataEmissao) + ".",
       signatario: { nome: v.signatario.nome, cargo: v.signatario.cargo },
       escola: v.escola,
@@ -405,7 +435,14 @@ function declEmitirDeclaracaoDiretor(dados, tokenSessao) {
       };
     }
 
-    var numero = declProximoNumero_(new Date().getFullYear());
+    /* O NÚMERO SEGUE A DATA DE EMISSÃO, não o relógio.
+     *
+     * A data de emissão é editável — é ela que sai escrita no documento. Com
+     * o número vindo do ano corrente, emitir com data de 2025 produzia
+     * "00X/2026" num papel datado de 2025. Quem for conferir daqui a dois
+     * anos vai olhar a data, não o dia em que alguém digitou. Decisão do
+     * usuário em 15/09/2026. */
+    var numero = declProximoNumero_(v.dataEmissao.getFullYear());
 
     var pdf = declGerarPdf_({
       numero: numero,
@@ -478,6 +515,80 @@ function declEmitirDeclaracaoDiretor(dados, tokenSessao) {
  * VÍNCULO, ESCOLA E ENTREGA
  * ========================================= */
 
+/* ════════════════════════════════════════════════════════════════════════
+ * MEMÓRIA DE EXECUÇÃO — por que estas três variáveis existem
+ *
+ * O usuário relatou em 15/09/2026, com a tela no ar: "está demorando buscar
+ * os empregadores". Estava, e dava para medir por leitura:
+ *
+ *   `declContatosEscola_` lia a aba Controle INTEIRA — todas as linhas, todas
+ *   as colunas — UMA VEZ PARA CADA ESCOLA candidata. Um dirigente com três
+ *   vínculos custava três varreduras completas da maior aba do sistema. E
+ *   `ofDest_historico_` era consultado de novo a cada e-mail repetido.
+ *
+ * O escopo global do Apps Script morre no fim de cada execução, então isto
+ * NÃO é cache entre chamadas — é memória de UMA chamada. Não há o que
+ * invalidar e não há risco de servir dado velho: a próxima execução começa
+ * com tudo vazio de novo.
+ * ════════════════════════════════════════════════════════════════════════ */
+
+var DECL_MEMO_CONTROLE = null;   /* índice escola normalizada -> e-mails      */
+var DECL_MEMO_ESCOLAS  = null;   /* cadastro de Escolas já lido                */
+var DECL_MEMO_HISTORICO = {};    /* e-mail -> falhas/confirmações dos Ofícios   */
+
+/** O cadastro de Escolas, lido uma vez por execução. */
+function declEscolas_() {
+  if (DECL_MEMO_ESCOLAS) return DECL_MEMO_ESCOLAS;
+  DECL_MEMO_ESCOLAS = (typeof listarEscolasCadastro_interno_ === "function")
+    ? (listarEscolasCadastro_interno_() || []) : [];
+  return DECL_MEMO_ESCOLAS;
+}
+
+/**
+ * A aba Controle virada do avesso: de "linhas" para "escola → e-mails".
+ *
+ * Uma varredura só, na primeira escola que precisar. Da segunda em diante é
+ * consulta em objeto.
+ */
+function declControleIndex_() {
+  if (DECL_MEMO_CONTROLE) return DECL_MEMO_CONTROLE;
+  DECL_MEMO_CONTROLE = {};
+  try {
+    var sh = declPlanilha_().getSheetByName(
+      (typeof PLANILHA_REGISTRO !== "undefined" && PLANILHA_REGISTRO) || "Controle");
+    if (!sh || sh.getLastRow() < 2) return DECL_MEMO_CONTROLE;
+
+    var hm = declCabecalho_(sh);
+    var cEscola = hm.ESCOLA || hm["ESCOLA (RAZÃO SOCIAL)"] || hm.UNIDADE;
+    var cEmails = hm.EMAILS_TODOS || hm["E-MAILS (TODOS)"] || hm.EMAIL || hm["E-MAIL"];
+    if (!cEscola || !cEmails) return DECL_MEMO_CONTROLE;
+
+    sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues().forEach(function (l) {
+      var chave = declNormalizar_(l[cEscola - 1]);
+      if (!chave) return;
+      if (!DECL_MEMO_CONTROLE[chave]) DECL_MEMO_CONTROLE[chave] = [];
+      DECL_MEMO_CONTROLE[chave].push(l[cEmails - 1]);
+    });
+  } catch (e) {
+    Logger.log("Declaração: leitura da Controle indisponível — " + e.message);
+  }
+  return DECL_MEMO_CONTROLE;
+}
+
+/** Histórico de entrega do e-mail, perguntado uma vez por execução. */
+function declHistoricoEmail_(email) {
+  if (Object.prototype.hasOwnProperty.call(DECL_MEMO_HISTORICO, email)) return DECL_MEMO_HISTORICO[email];
+  var h = { falhas: 0, confirmacoes: 0 };
+  try {
+    if (typeof ofDest_historico_ === "function") {
+      var r = ofDest_historico_(email) || {};
+      h = { falhas: r.falhas || 0, confirmacoes: r.confirmacoes || 0 };
+    }
+  } catch (e) {}
+  DECL_MEMO_HISTORICO[email] = h;
+  return h;
+}
+
 function declNormalizar_(v) {
   return String(v || "").toLowerCase().normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
@@ -487,7 +598,7 @@ function declContextoDiretor_interno_(diretor) {
   if (typeof assoc_todos_ !== "function") throw new Error("A base de Associados não está disponível.");
   var chave = declNormalizar_(diretor && diretor.nome);
   var associados = assoc_todos_().filter(function (a) { return declNormalizar_(a.nome) === chave; });
-  var escolas = (typeof listarEscolasCadastro_interno_ === "function") ? listarEscolasCadastro_interno_() : [];
+  var escolas = declEscolas_();
   var porId = {};
 
   associados.forEach(function (a) {
@@ -538,9 +649,8 @@ function declCelularDoDiretor_(diretor) {
 
 /** Uma escola do cadastro no mesmo formato de um vínculo, marcada como manual. */
 function declEscolaDoCadastro_(escolaId, diretor) {
-  if (typeof listarEscolasCadastro_interno_ !== "function") return null;
   escolaId = declTexto_(escolaId);
-  var achadas = (listarEscolasCadastro_interno_() || []).filter(function (e) {
+  var achadas = declEscolas_().filter(function (e) {
     return declTexto_(e.escolaId || e.EscolaID || e.linha) === escolaId;
   });
   if (!achadas.length) return null;
@@ -594,33 +704,21 @@ function declContatosEscola_(escola) {
       if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return;
       if (!mapa[email]) mapa[email] = { email: email, origens: [], falhas: 0, confirmacoes: 0 };
       if (mapa[email].origens.indexOf(origem) < 0) mapa[email].origens.push(origem);
-      if (typeof ofDest_historico_ === "function") {
-        var h = ofDest_historico_(email);
-        mapa[email].falhas = h.falhas || 0;
-        mapa[email].confirmacoes = h.confirmacoes || 0;
-      }
+      var h = declHistoricoEmail_(email);
+      mapa[email].falhas = h.falhas;
+      mapa[email].confirmacoes = h.confirmacoes;
     });
   }
   juntar(escola.Email || escola.email, "Escolas · principal");
   juntar(escola.EmailsTodos, "Escolas · todos");
   /* A Controle pode conter endereços usados depois da última atualização do
-     cadastro. Lemos em bloco e só aceitamos linhas da mesma escola. */
-  try {
-    var ss = declPlanilha_(), sh = ss.getSheetByName(PLANILHA_REGISTRO || "Controle");
-    if (sh && sh.getLastRow() > 1) {
-      var hm = declCabecalho_(sh);
-      var cEscola = hm.ESCOLA || hm["ESCOLA (RAZÃO SOCIAL)"] || hm.UNIDADE;
-      var cEmails = hm.EMAILS_TODOS || hm["E-MAILS (TODOS)"] || hm.EMAIL || hm["E-MAIL"];
-      var alvos = [escola.NomeEscola, escola.escola, escola.Fantasia, escola.CodigoInterno]
-        .map(declNormalizar_).filter(Boolean);
-      if (cEscola && cEmails && alvos.length) {
-        var linhas = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
-        linhas.forEach(function (l) {
-          if (alvos.indexOf(declNormalizar_(l[cEscola - 1])) >= 0) juntar(l[cEmails - 1], "Controle · histórico");
-        });
-      }
-    }
-  } catch (eControle) { Logger.log("Declaração: leitura da Controle indisponível — " + eControle.message); }
+     cadastro. O índice já está pronto — ver DECL_MEMO_CONTROLE. */
+  var indice = declControleIndex_();
+  [escola.NomeEscola, escola.escola, escola.Fantasia, escola.CodigoInterno]
+    .map(declNormalizar_).filter(Boolean)
+    .forEach(function (alvo) {
+      (indice[alvo] || []).forEach(function (emails) { juntar(emails, "Controle · histórico"); });
+    });
   /* Falhas e confirmações vêm da mesma memória usada pelos Ofícios; assim o
      conhecimento operacional não é duplicado. */
   return Object.keys(mapa).map(function (k) {
@@ -916,20 +1014,71 @@ function declAuditar_(dados) {
  * DIAGNÓSTICO — roda no editor do Apps Script, só lê.
  * ========================================= */
 
-function declDiagnosticoPasta_() {
-  var linhas = [];
+/**
+ * O estado da configuração, em dados — uma fonte só para a tela e o editor.
+ *
+ * Nasceu em 15/09/2026, quando o usuário foi rodar `declDiagnosticoPasta_()`
+ * no editor e ela não estava no seletor de funções: o Apps Script esconde
+ * toda função terminada em `_`. Ele precisou colar um invólucro à mão, que o
+ * deploy seguinte apagou. Diagnóstico que só roda com remendo não é
+ * diagnóstico — por isso agora ele tem porta pela tela.
+ */
+function declDiagnostico_interno_() {
+  var r = { pastaOk: false, pastaId: "", pastaNome: "", pastaErro: "", signatario: null, habilitados: 0 };
   try {
-    var id = getRecursoId_("DECLARACOES");
-    linhas.push("ID resolvido: " + id);
-    var pasta = DriveApp.getFolderById(id);
-    linhas.push("Pasta: " + pasta.getName() + " ✅ acessível");
+    r.pastaId = getRecursoId_("DECLARACOES");
+    r.pastaNome = DriveApp.getFolderById(r.pastaId).getName();
+    r.pastaOk = true;
   } catch (e) {
-    linhas.push("❌ " + e.message);
+    r.pastaErro = e.message;
+  }
+  try {
+    var s = declSignatario_();
+    if (s) r.signatario = { nome: s.nome, cargo: s.cargo };
+    r.habilitados = declDiretoresHabilitados_().length;
+  } catch (eGov) {
+    r.governancaErro = eGov.message;
+  }
+  return r;
+}
+
+/** Mesmo diagnóstico, pela tela. Só lê. */
+function declConferirConfiguracao(tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
+  try {
+    var d = declDiagnostico_interno_();
+    return {
+      ok: true,
+      pronto: d.pastaOk && !!d.signatario && d.habilitados > 0,
+      pasta: d.pastaOk
+        ? { ok: true, texto: d.pastaNome, detalhe: d.pastaId }
+        : { ok: false, texto: "Pasta não configurada neste ambiente",
+            detalhe: "Configure a Script Property SISGEP_PASTA_DECLARACOES com o ID da pasta do Drive. " + d.pastaErro },
+      signatario: d.signatario
+        ? { ok: true, texto: d.signatario.nome, detalhe: d.signatario.cargo + " — de Governança" }
+        : { ok: false, texto: "Nenhum Presidente vigente",
+            detalhe: "Corrija a composição em Governança: sem signatário a declaração não vale." },
+      dirigentes: { ok: d.habilitados > 0, texto: d.habilitados + " dirigente(s) habilitado(s)",
+                    detalhe: "mandato vigente na composição de Governança" }
+    };
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao conferir: " + e.message };
+  }
+}
+
+/** A mesma coisa no editor do Apps Script, para quem estiver com ele aberto. */
+function declDiagnosticoPasta_() {
+  var d = declDiagnostico_interno_();
+  var linhas = [];
+  if (d.pastaOk) {
+    linhas.push("ID resolvido: " + d.pastaId);
+    linhas.push("Pasta: " + d.pastaNome + " ✅ acessível");
+  } else {
+    linhas.push("❌ " + d.pastaErro);
     linhas.push("Configure a Script Property SISGEP_PASTA_DECLARACOES com o ID da pasta do Drive.");
   }
-  var s = declSignatario_();
-  linhas.push("Signatário: " + (s ? s.nome + " (" + s.cargo + ")" : "❌ ninguém marcado"));
-  linhas.push("Diretores habilitados: " + declDiretoresHabilitados_().length);
+  linhas.push("Signatário: " + (d.signatario ? d.signatario.nome + " (" + d.signatario.cargo + ")" : "❌ ninguém marcado"));
+  linhas.push("Diretores habilitados: " + d.habilitados);
   var texto = linhas.join("\n");
   Logger.log(texto);
   return texto;

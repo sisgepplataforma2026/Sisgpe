@@ -216,6 +216,15 @@ function clicar(el, oque) {
   b.ok(g.declHistoricoDeclaracoes({ busca: manual.numero }, TOKEN).itens[0].vinculoOrigem === "Escolhida manualmente",
     "a origem manual fica gravada na linha");
 
+  b.passo("8. O botão de conferir configuração responde pela tela");
+  clicar(doc.querySelector("[onclick='declConferirConfig()']"), "conferir configuração");
+  await tela.assentar(80);
+  b.ok($("declModalConfig").classList.contains("aberto"), "o modal de configuração abriu");
+  const linhas = $("declConfigCorpo").querySelectorAll(".declConfigLinha");
+  b.ok(linhas.length === 3, "diz pasta, quem assina e dirigentes", linhas.length + " linha(s)");
+  b.ok(/SISGEP_PASTA_DECLARACOES/.test($("declConfigCorpo").textContent),
+    "e nomeia a propriedade que falta, em vez de só dizer que falhou");
+
   b.naoTestavel("Aparência do modal e envio real de e-mail", "jsdom não aplica CSS; Gmail depende da homologação");
   b.resumo();
 })();
