@@ -126,17 +126,6 @@
       <button type="button" class="btn btn-outline" onclick="declImprimirDocumento()">🖨 Imprimir</button>
     </div>
 
-    <div class="of-card declCard" id="declEntrega" style="display:none;">
-      <div class="of-card-head"><div class="of-card-head-l"><div class="of-card-ico">📨</div><div><div class="of-card-title">Entrega da declaração</div><div class="of-card-sub" id="declEntregaResumo"></div></div></div></div>
-      <div class="of-card-body">
-        <div id="declContatos" class="declContatos"></div>
-        <div class="declAcoes declAcoesEsq" style="margin-top:14px;">
-          <button type="button" class="btn-navy" id="declBtnEmail" onclick="declEnviarEmail('painel')">Enviar para a escola</button>
-          <button type="button" class="btn-outline" onclick="declPrepararWhatsapp('painel')">Preparar WhatsApp do diretor</button>
-          <button type="button" class="btn-outline" id="declBtnConfirmarZap" onclick="declConfirmarWhatsapp('painel')" style="display:none;">Marcar WhatsApp como enviado</button>
-        </div>
-      </div>
-    </div>
   </section>
 
   <!-- ══════════════ EMITIDAS ══════════════ -->
@@ -227,8 +216,15 @@
       <button type="button" class="of-modal-close" onclick="declFecharEntrega()">✕</button>
     </div>
     <div class="of-modal-body">
+      <div class="declEntregaGrid">
+        <div><span>Nº da declaração</span><strong id="declEntregaNumero">—</strong></div>
+        <div><span>Diretor</span><strong id="declEntregaDiretor">—</strong></div>
+        <div class="declEntregaLargo"><span>Escola empregadora</span><strong id="declEntregaEscola">—</strong></div>
+      </div>
+      <div class="declEntregaRotulo">E-mails de destino</div>
       <div id="declEntregaModalContatos" class="declContatos"></div>
-      <div class="declOrigem" style="margin-top:10px;">e-mails conferidos no dia da emissão — o servidor só aceita estes</div>
+      <div class="declOrigem" style="margin-top:8px;">conferidos no dia da emissão — o servidor só aceita estes</div>
+      <div id="declEntregaAvisoHml" class="declAviso" style="display:none;margin-top:12px;"></div>
     </div>
     <div class="declModalRodape">
       <button type="button" class="btn-outline" onclick="declPrepararWhatsapp('modal')">Preparar WhatsApp</button>
@@ -338,6 +334,15 @@
 }
 .declImportLinha { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--g100, #f1f5f9); font-size: 12.5px; }
 .declImportLinha small { color: var(--g500, #64748b); }
+.declEntregaGrid { display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--g100,#f1f5f9);
+  border:1.5px solid var(--g200,#e2e8f0); border-radius:14px; overflow:hidden; margin-bottom:16px; }
+.declEntregaGrid > div { background:#fff; padding:13px 15px; }
+.declEntregaLargo { grid-column:1/-1; }
+.declEntregaGrid span { display:block; font-size:10px; font-weight:800; text-transform:uppercase;
+  letter-spacing:.09em; color:var(--g500,#64748b); margin-bottom:6px; }
+.declEntregaGrid strong { display:block; font-size:13px; font-weight:800; color:var(--g900,#0f172a); line-height:1.4; }
+.declEntregaRotulo { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.09em;
+  color:var(--g500,#64748b); margin-bottom:4px; }
 .declConfigLinha { display: flex; gap: 10px; align-items: flex-start; padding: 11px 0; border-bottom: 1px solid var(--g100, #f1f5f9); font-size: 12.5px; }
 .declConfigLinha:last-child { border-bottom: none; }
 .declConfigLinha b { display: block; color: var(--g900, #0f172a); }
@@ -373,10 +378,15 @@
 
 var DECL_ESTADO = { diretores: [], vinculos: [], escola: null, periodo: "", carregou: false, timerBusca: null, timerPrevia: null, timerEscola: null, seqPrevia: 0, entrega: null };
 
-/* Onde cada tela guarda as caixas da entrega. Mesmo código, caixas diferentes. */
+/* A ENTREGA VIVE NUM LUGAR SÓ: o modal.
+ *
+ * Havia dois — um cartão ao pé da tela de Emitir e este modal, com o mesmo
+ * conteúdo e o mesmo código atrás. O usuário pediu em 15/09/2026 que depois
+ * de emitir abrisse "um modal igual ao envio do ofício", e isso resolveu de
+ * quebra a duplicação que eu mesmo tinha criado horas antes: duas telas para
+ * a mesma tarefa envelhecem separadas. */
 var DECL_ESCOPOS = {
-  painel: { resumo: "declEntregaResumo",      contatos: "declContatos",             btnEmail: "declBtnEmail",      btnZap: "declBtnConfirmarZap" },
-  modal:  { resumo: "declEntregaModalResumo", contatos: "declEntregaModalContatos", btnEmail: "declBtnEmailModal", btnZap: "declBtnConfirmarZapModal" }
+  modal: { resumo: "declEntregaModalResumo", contatos: "declEntregaModalContatos", btnEmail: "declBtnEmailModal", btnZap: "declBtnConfirmarZapModal" }
 };
 
 function declToken() { return (typeof SISGEP_TOKEN_SESSAO !== "undefined") ? SISGEP_TOKEN_SESSAO : ""; }
@@ -455,7 +465,7 @@ function declCarregarEmissao() {
                '<input type="radio" name="declPeriodo" value="' + declEsc(p.valor) + '">' +
                '<span>' + declEsc(p.rotulo) + '</span></label>';
       }).join("");
-      declEscolherPeriodo("");
+      declEscolherPeriodo("INTEGRAL");
 
       var hojeIso = new Date().toISOString().slice(0, 10);
       document.getElementById("declDataEmissao").value = hojeIso;
@@ -700,7 +710,10 @@ function declEmitir(confirmado) {
         document.getElementById("declAcoesDocumento").style.display = "flex";
         window.open(r.url, "_blank");
       }
-      declRenderEntrega_("painel", r);
+      /* O modal abre sozinho, como no envio do ofício: emitiu, a próxima
+         coisa a fazer é entregar, e a tela leva a pessoa até lá. */
+      declRenderEntrega_("modal", r);
+      declAbrir("declModalEntrega");
     })
     .withFailureHandler(function (e) {
       btn.disabled = false;
@@ -726,10 +739,17 @@ function declRenderEntrega_(escopo, r) {
   var escola = r.escola || DECL_ESTADO.escola || {};
   var contatos = escola.contatos || [];
 
-  if (escopo === "painel") document.getElementById("declEntrega").style.display = "block";
+  document.getElementById(alvo.resumo).textContent = "Revise antes de enviar à escola";
+  document.getElementById("declEntregaNumero").textContent = r.numero || "—";
+  document.getElementById("declEntregaDiretor").textContent =
+    r.diretorNome || (DECL_ESTADO.diretores.filter(function (d) { return d.id === document.getElementById("declDiretor").value; })[0] || {}).nome || "—";
+  document.getElementById("declEntregaEscola").textContent = escola.nome || escola.fantasia || "—";
 
-  document.getElementById(alvo.resumo).textContent =
-    "Declaração " + r.numero + " · " + (escola.fantasia || escola.nome || "escola");
+  /* Em homologação o e-mail não vai para a escola. Dizer isso ANTES do
+     clique, não depois — é a diferença entre um teste e um susto. */
+  var hml = document.getElementById("declEntregaAvisoHml");
+  hml.style.display = "block";
+  hml.textContent = "O envio usa o remetente oficial do SISGEP. Em homologação a mensagem vai para a Secretaria, não para a escola.";
 
   document.getElementById(alvo.contatos).innerHTML = contatos.length ? contatos.map(function (c, i) {
     return '<label class="declContato"><input type="checkbox" data-decl-email="' + i + '"' + (c.marcado ? ' checked' : '') + '><span><b>' + declEsc(c.email) + '</b><small>' + declEsc((c.origens || []).join(" · ")) + (c.falhas ? ' · ' + c.falhas + ' falha(s)' : '') + '</small></span></label>';
@@ -834,14 +854,13 @@ function declLimpar() {
   document.getElementById("declEscolaTermo").value = "";
   document.getElementById("declEscolaResultados").innerHTML = "";
   document.getElementById("declEscolaOrigem").textContent = "vínculo em Associados · identidade em Escolas";
-  document.getElementById("declEntrega").style.display = "none";
   document.getElementById("declAcoesDocumento").style.display = "none";
   document.getElementById("declLinkPdf").setAttribute("href", "#");
   DECL_ESTADO.vinculos = []; DECL_ESTADO.escola = null; DECL_ESTADO.entrega = null;
   DECL_ESTADO.seqPrevia++;
   document.getElementById("declDataLiberacao").value = "";
   document.getElementById("declDataEmissao").value = new Date().toISOString().slice(0, 10);
-  declEscolherPeriodo("");
+  declEscolherPeriodo("INTEGRAL");
 }
 
 /* ─── pré-visualização do documento, como em Ofícios ─── */
@@ -994,7 +1013,6 @@ function declReemitir(diretorId, periodo, escolaId) {
 
   document.getElementById("declDataLiberacao").value = "";
   document.getElementById("declDataEmissao").value = new Date().toISOString().slice(0, 10);
-  document.getElementById("declEntrega").style.display = "none";
   declEscolherPeriodo(periodo || "");
   declCarregarVinculos(escolaId || "");
   declMsg("Dados repetidos. Informe a nova data da liberação.", "info");

@@ -103,6 +103,11 @@ function mudar(sel, valor, evento) {
   if (codigo) win.eval(codigo);
 }
 
+function declFecharModais() {
+  ["declModalEntrega", "declModalConfig", "declModalDocumento", "declModalDuplicata"]
+    .forEach(id => { const el = doc.getElementById(id); if (el) el.classList.remove("aberto"); });
+}
+
 function clicar(el, oque) {
   if (!el) throw new Error("botão não existe: " + oque);
   const codigo = el.getAttribute("onclick");
@@ -132,8 +137,14 @@ function clicar(el, oque) {
   await tela.assentar(60);
 
   b.ok($("declModalEntrega").classList.contains("aberto"), "o modal da entrega abriu");
-  b.ok(/001\/20/.test($("declEntregaModalResumo").textContent), "o modal diz qual declaração é",
-    $("declEntregaModalResumo").textContent);
+  /* O número saiu do subtítulo e ganhou campo próprio no cabeçalho de dados,
+     no padrão do modal de envio do ofício. */
+  b.ok(/001\/20/.test($("declEntregaNumero").textContent), "o modal diz qual declaração é",
+    $("declEntregaNumero").textContent);
+  b.ok(/UVV|Sociedade/.test($("declEntregaEscola").textContent), "e para qual escola vai",
+    $("declEntregaEscola").textContent);
+  b.ok($("declEntregaAvisoHml").style.display === "block",
+    "avisa sobre o destino ANTES do clique, não depois");
 
   const caixas = $("declEntregaModalContatos").querySelectorAll("[data-decl-email]");
   b.ok(caixas.length === 2, "os e-mails conferidos na emissão estão lá", caixas.length + " contato(s)");
@@ -259,6 +270,34 @@ function clicar(el, oque) {
   b.ok(linhas.length === 3, "diz pasta, quem assina e dirigentes", linhas.length + " linha(s)");
   b.ok(/SISGEP_PASTA_DECLARACOES/.test($("declConfigCorpo").textContent),
     "e nomeia a propriedade que falta, em vez de só dizer que falhou");
+
+  b.passo("12. Emitir pela tela abre o modal de entrega, como no envio do ofício");
+  /* Pedido do usuário em 15/09/2026: "após a emissão deve abrir um modal
+     igual ao envio do ofício". Emitiu, a próxima coisa é entregar — a tela
+     leva a pessoa até lá em vez de deixar a entrega escondida no rodapé. */
+  win.open = () => null;                       /* jsdom não abre aba nova */
+  declFecharModais();
+  mudar("#declDiretor", dirId);
+  await tela.assentar(150);
+  tela.escolher("#declEscola", "ESC-UVV");
+  mudar("#declDataLiberacao", amanha.toISOString().slice(0, 10));
+  await tela.assentar(350);
+
+  clicar($("declBtnEmitir"), "emitir");
+  await tela.assentar(200);
+  /* Segunda via no mesmo dia: a tela pede confirmação antes — é a trava de
+     duplicata funcionando, e o teste passa por ela como a pessoa passaria. */
+  if ($("declModalDuplicata").classList.contains("aberto")) {
+    clicar($("declModalDuplicata").querySelector(".btn-navy"), "confirmar segunda via");
+    await tela.assentar(250);
+  }
+
+  b.ok($("declModalEntrega").classList.contains("aberto"),
+    "o modal de entrega abriu sozinho depois de emitir");
+  b.ok(/\d{3}\/\d{4}/.test($("declEntregaNumero").textContent),
+    "já com o número da declaração recém-emitida", $("declEntregaNumero").textContent);
+  b.ok($("declEntregaModalContatos").querySelectorAll("[data-decl-email]").length > 0,
+    "e com os e-mails prontos para conferência");
 
   b.naoTestavel("Aparência do modal e envio real de e-mail", "jsdom não aplica CSS; Gmail depende da homologação");
   b.resumo();

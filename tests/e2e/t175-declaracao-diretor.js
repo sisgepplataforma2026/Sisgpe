@@ -239,7 +239,7 @@ b.ok(!/SISGEP/.test(doc.html) && !/Declaração nº/.test(doc.html),
   "sem rodapé de numeração, como no modelo em papel");
 b.ok(/DECLARAÇÃO/.test(doc.html) && /Por ser verdade firmamos a presente/.test(doc.html),
   "traz título e fecho do modelo");
-b.ok(/estará a serviço do SindEducação\/ES/.test(doc.html), "com a redação do modelo");
+b.ok(/estará a serviço do SindEducação-ES/.test(doc.html), "com a redação do modelo");
 b.ok(g.declHistoricoDeclaracoes({}, TOKEN).total === antesDaPrevia, "e o histórico não cresceu");
 b.ok(g.declPreviaDocumento({ diretorId: dir.id, periodo: "" }, TOKEN).ok === false,
   "pedido incompleto é recusado igual à emissão");
@@ -249,8 +249,12 @@ b.fluxo("DECLARAÇÕES · O documento sai no formato do modelo em papel");
 const marcilene = g.declListarDiretoria_interno_().filter(d => /MARCILENE/.test(d.nome))[0];
 const textoEla = g.declMontarTexto_({ nome: marcilene.nome, cargo: marcilene.cargo, dataLiberacao: "2026-09-17", periodo: "" });
 b.ok(/diretora desta Entidade Sindical/.test(textoEla), "cargo feminino vira \"diretora\"", marcilene.cargo);
-b.ok(/MARCILENE DA SILVA MAGESKE, diretora desta Entidade Sindical, no dia 17 de setembro de 2026, estará a serviço do SindEducação\/ES\./.test(textoEla),
-  "a redação bate com o modelo, palavra por palavra");
+/* Uma diferença DELIBERADA em relação ao papel: o modelo escreve
+   "SindEducação/ES" e a casa escreve "SindEducação-ES" — 385 ocorrências
+   contra 18, e a assinatura dos Recibos já usa o hífen. Decisão do usuário
+   em 15/09/2026. O resto é palavra por palavra. */
+b.ok(/MARCILENE DA SILVA MAGESKE, diretora desta Entidade Sindical, no dia 17 de setembro de 2026, estará a serviço do SindEducação-ES\./.test(textoEla),
+  "a redação bate com o modelo, com a entidade no padrão da casa");
 b.ok(/Nos termos do Artigo 543, da CLT, requeremos a liberação do empregado/.test(textoEla),
   "e o requerimento fica no MESMO parágrafo, como no papel");
 
@@ -264,7 +268,23 @@ b.ok(/text-decoration:underline/.test(docFormato), "o título sai sublinhado, co
 b.ok(/<b>WANDERSON NASCIMENTO CASTELO<\/b>/.test(docFormato), "o nome sai em negrito no corpo");
 b.ok(/Leonil Dias da Silva/.test(docFormato) && !/LEONIL DIAS DA SILVA<\/div>/.test(docFormato),
   "a assinatura sai em caixa normal, não em caixa alta");
-b.ok(/Presidente &ndash; <em>SindEducação<\/em>/.test(docFormato), "com o cargo e a entidade em itálico");
+b.ok(/Presidente &ndash; <em>SindEducação-ES<\/em>/.test(docFormato), "com o cargo e a entidade em itálico");
+
+b.fluxo("DECLARAÇÕES · Integral é o dia inteiro, e não se escreve");
+/* Palavras do usuário em 15/09/2026: "Integral significa que estará a serviço
+   do SindEducação-ES". Dizer "em período integral" era repetir. */
+const comIntegral = g.declMontarTexto_({ nome: "Fulano", cargo: "Presidente", dataLiberacao: "2026-09-17", periodo: "INTEGRAL" });
+b.ok(!/período integral/i.test(comIntegral), "Integral não acrescenta texto nenhum");
+b.ok(/no dia 17 de setembro de 2026, estará a serviço do SindEducação-ES\./.test(comIntegral),
+  "e a frase fica idêntica à do modelo em papel");
+b.ok(/no período matutino/.test(g.declMontarTexto_({ nome: "Fulano", cargo: "Presidente", dataLiberacao: "2026-09-17", periodo: "MATUTINO" })),
+  "os turnos continuam sendo escritos");
+const rotulos = g.declDadosEmissao(TOKEN).periodos;
+b.ok(rotulos.length === 4 && !rotulos.some(p => p.valor === ""),
+  "a tela oferece 4 períodos, sem a opção vazia que gerava texto igual ao Integral",
+  rotulos.map(p => p.rotulo).join(", "));
+b.ok(g.declMontarTexto_({ nome: "Fulano", cargo: "Presidente", dataLiberacao: "2026-09-17", periodo: "" }) === comIntegral,
+  "declaração antiga gravada com período vazio reimprime igual");
 
 b.fluxo("DECLARAÇÕES · Segurança");
 b.bloqueia(() => g.declContextoDiretor(dir.id, TOKEN_ESC), "usuário sem Documentos não consulta vínculo");

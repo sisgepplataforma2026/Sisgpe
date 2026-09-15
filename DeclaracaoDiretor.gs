@@ -69,13 +69,27 @@ var DECL_COLUNAS_EMISSAO = [
   "WHATSAPP_STATUS", "WHATSAPP_EM", "WHATSAPP_POR"
 ];
 
-/* Rótulos e trechos de texto por período. Chave vazia = sem período. */
+/**
+ * Rótulos e trechos de texto por período.
+ *
+ * INTEGRAL NÃO ACRESCENTA TEXTO — decisão do usuário em 15/09/2026, com as
+ * palavras dele: "Integral significa que estará a serviço do SindEducação-ES".
+ * Dia inteiro à disposição da entidade é o caso sem qualificação nenhuma, e é
+ * exatamente a frase do modelo em papel. Escrever "em período integral" era
+ * dizer duas vezes a mesma coisa.
+ *
+ * Por isso o INTEGRAL é o padrão da tela, e a chave vazia saiu da lista: as
+ * duas produziam texto idêntico, e oferecer duas opções que geram o mesmo
+ * documento é convidar a pessoa a escolher achando que muda alguma coisa. A
+ * chave vazia continua ACEITA para reimprimir declaração antiga gravada com
+ * ela — só não aparece mais para escolher.
+ */
 var DECL_PERIODOS = {
-  "":           { rotulo: "Não informar", trecho: "" },
-  "INTEGRAL":   { rotulo: "Integral",     trecho: ", em período integral" },
+  "INTEGRAL":   { rotulo: "Integral",     trecho: "" },
   "MATUTINO":   { rotulo: "Matutino",     trecho: ", no período matutino" },
   "VESPERTINO": { rotulo: "Vespertino",   trecho: ", no período vespertino" },
-  "NOTURNO":    { rotulo: "Noturno",      trecho: ", no período noturno" }
+  "NOTURNO":    { rotulo: "Noturno",      trecho: ", no período noturno" },
+  "":           { rotulo: "Integral",     trecho: "", legado: true }
 };
 
 /* Citação literal do art. 543, conferida contra o modelo em papel. */
@@ -87,6 +101,15 @@ var DECL_ART_543 =
   "atribuições sindicais. (Redação dada pelo Decreto-lei nº 229, 28.2.1967)";
 
 var DECL_CIDADE = "Vitória";
+
+/* O NOME DA ENTIDADE SE ESCREVE "SindEducação-ES" — conferido em 15/09/2026
+ * contra o projeto inteiro: 385 ocorrências com hífen contra 18 com barra, e
+ * a assinatura dos Recibos (Recibo.gs) já usa o hífen.
+ *
+ * O modelo em papel traz "SindEducação/ES" no corpo e "SindEducação" seco na
+ * assinatura; copiei os dois de lá e os dois estavam fora do padrão da casa.
+ * Fica escrito para não voltar atrás na próxima vez que alguém comparar o
+ * documento com o Word. */
 
 /* =========================================
  * PLANILHA
@@ -218,15 +241,15 @@ function declPeriodoValido_(p) {
 function declMontarTexto_(p) {
   p = p || {};
   var nome = declTexto_(p.nome).toUpperCase();
-  var periodo = declPeriodoValido_(p.periodo) || "";
-  var trecho = DECL_PERIODOS[periodo].trecho;
+  var periodo = declPeriodoValido_(p.periodo);
+  var trecho = DECL_PERIODOS[periodo === null ? "INTEGRAL" : periodo].trecho;
   var dia = declDataExtenso_(p.dataLiberacao);
 
   /* PARÁGRAFO ÚNICO, como no modelo em papel: a liberação e o requerimento
      do art. 543 ficam na mesma mancha de texto, não em dois blocos. */
   return "Declaramos para os devidos fins e efeitos legais a que se destina que " +
     nome + ", " + declTratamento_(p.cargo) + " desta Entidade Sindical, no dia " +
-    dia + trecho + ", estará a serviço do SindEducação/ES. Nos termos do Artigo 543, " +
+    dia + trecho + ", estará a serviço do SindEducação-ES. Nos termos do Artigo 543, " +
     "da CLT, requeremos a liberação do empregado para o pleno exercício de seu " +
     "mandato sindical, conforme lhe assegura a lei:";
 }
@@ -400,9 +423,9 @@ function declDadosEmissao(tokenSessao) {
       diretores: declDiretoresHabilitados_().map(function (d) {
         return { id: d.id, nome: d.nome, cargo: d.cargo, mandatoFim: d.mandatoFim };
       }).sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome), "pt-BR"); }),
-      periodos: Object.keys(DECL_PERIODOS).map(function (k) {
-        return { valor: k, rotulo: DECL_PERIODOS[k].rotulo };
-      }),
+      periodos: Object.keys(DECL_PERIODOS)
+        .filter(function (k) { return !DECL_PERIODOS[k].legado; })
+        .map(function (k) { return { valor: k, rotulo: DECL_PERIODOS[k].rotulo }; }),
       signatario: signatario ? { nome: signatario.nomeExibicao || signatario.nome, cargo: signatario.cargo } : null,
       gestao: (typeof GOV_MANDATO !== "undefined") ? GOV_MANDATO.gestao : "",
       hoje: declDataBR_(declHoje_())
@@ -1059,7 +1082,7 @@ function declHtmlDeclaracao_(p) {
     ? '<img class="cab" src="' + cabecalho + '">'
     : (imgs.logoBase64
         ? '<div class="cab-txt"><img src="data:' + imgs.logoMime + ';base64,' + imgs.logoBase64 + '" style="max-height:80px;"></div>'
-        : '<div class="cab-txt">SindEducação/ES</div>');
+        : '<div class="cab-txt">SindEducação-ES</div>');
 
   var assinaturaImg = imgs.assBase64
     ? '<img class="ass-img" src="data:' + imgs.assMime + ';base64,' + imgs.assBase64 + '">'
@@ -1112,7 +1135,7 @@ function declHtmlDeclaracao_(p) {
         '<div class="local">' + DECL_CIDADE + ', ' + declDataExtenso_(p.dataEmissao) + '.</div>' +
         '<div class="assin">' + assinaturaImg +
           '<div class="nome">' + declEscapar_(sig.nomeExibicao || sig.nome || "") + '</div>' +
-          '<div class="cargo">' + declEscapar_(sig.cargo || "Presidente") + ' &ndash; <em>SindEducação</em></div>' +
+          '<div class="cargo">' + declEscapar_(sig.cargo || "Presidente") + ' &ndash; <em>SindEducação-ES</em></div>' +
         '</div>' +
       '</div>' +
       (rodape ? '<div class="rodape"><img src="' + rodape + '"></div>' : '') +
