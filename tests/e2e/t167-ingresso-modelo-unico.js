@@ -273,6 +273,18 @@ ok(/scrollWidth/.test(tpl) && /clientWidth/.test(tpl),
    "o ajuste compara largura do conteúdo com a da caixa",
    "sem isso o número continua cortado por mais que a fonte caiba em altura");
 
+/* E MEDIR NAO BASTA: o campo precisa estar na lista que o ajuste percorre.
+   Eu ensinei a rotina a olhar a largura e deixei os dois numeros de fora —
+   a correcao existia e nao era aplicada a ninguem. Ele viu na tela seguinte:
+   "o numero do ingresso esta cortando tambem". */
+passo("e os números estão na lista que o ajuste percorre");
+const lista = (tpl.match(/var CAMPOS = \[([\s\S]*?)\];/) || ["", ""])[1];
+["main-name", "main-school", "main-category", "main-number",
+ "stub-name", "stub-school", "stub-category", "stub-number"].forEach(function (c) {
+  ok(lista.indexOf("'" + c + "'") > -1, "  " + c,
+     "campo fora da lista nasce sem ajuste nenhum");
+});
+
 passo("e o PDF passa o número pela mesma conta");
 ok(/compasso_fontePdfQueCabe_\(ing\.numero/.test(pdf),
    "o número da frente e o do canhoto encolhem se precisar",

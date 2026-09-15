@@ -120,8 +120,15 @@
        largura do ingresso, mudou o tamanho da letra, e o ajuste anterior
        deixou de valer. */
     (function(){
-      var CAMPOS = ['main-name','main-school','main-category',
-                    'stub-name','stub-school','stub-category'];
+      /* OS NUMEROS ENTRARAM EM 15/09/2026, e a falta deles era o defeito.
+         Eu tinha ensinado o ajuste a medir tambem a LARGURA — que e por onde
+         o numero transborda, porque e caixa de uma linha so — e o numero nao
+         estava nesta lista. A correcao existia e nao era aplicada a ninguem:
+         "o numero do ingresso esta cortando tambem".
+         Vale como aviso: quem acrescentar campo de texto ao bilhete precisa
+         acrescentar aqui, senao ele nasce sem ajuste nenhum. */
+      var CAMPOS = ['main-name','main-school','main-category','main-number',
+                    'stub-name','stub-school','stub-category','stub-number'];
 
       function caber(el){
         var base = parseFloat(el.dataset.base || '0');

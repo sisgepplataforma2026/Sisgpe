@@ -369,9 +369,9 @@
   <!-- ══ CREDENCIAMENTO ══ -->
   <div class="ev-conteudo" id="conteudo-credenciamento" hidden>
     <p class="ev-secao">Entrada do evento</p>
-    <div class="ev-nota">Abra a portaria <b>no celular que vai ficar na entrada</b>, não neste computador. Ela usa a câmera do aparelho para ler o QR.</div>
+    <div class="ev-nota">Abra a portaria <b>no celular que vai ficar na entrada</b>, não neste computador — ela usa a câmera do aparelho para ler o QR. Copie o link abaixo e mande para esse celular.</div>
     <div class="ev-acoes">
-      <div class="ev-acao"><div class="txt"><b>📱 Portaria — leitor de QR</b><span>Lê o QR do ingresso e libera a entrada. O mesmo QR lido duas vezes é recusado, dizendo quando e por quem a pessoa entrou.</span></div><button class="ev-btn primary" onclick="evAvisoPortaria()">Como abrir</button></div>
+      <div class="ev-acao"><div class="txt"><b>📱 Portaria — leitor de QR</b><span>Lê o QR do ingresso e libera a entrada. O mesmo QR lido duas vezes é recusado, dizendo quando e por quem a pessoa entrou.</span></div><button class="ev-btn primary" onclick="evAvisoPortaria()">🔗 Copiar link da portaria</button></div>
       <div class="ev-acao"><div class="txt"><b>🎟️ Check-in por número</b><span>Contingência para celular descarregado ou QR danificado: busca a pessoa pelo nome, CPF ou número do ingresso.</span></div><button class="ev-btn" onclick="evAbrirPainel('checkin')">Abrir →</button></div>
     </div>
   </div>
@@ -916,7 +916,29 @@ window.evAbrirEmissaoIngressos=function(){evAvisoEmissaoV1()};window.evAbrirChec
 var EV_LINK_COMPASSO='';
 function evMontarLinkCompasso(){if(EV_LINK_COMPASSO)return;var token=tokenSessao(),el=g('evLinkCompasso');if(!token){if(el)el.textContent='Sessão não encontrada. Entre novamente no SISGEP.';return}google.script.run.withSuccessHandler(function(base){EV_LINK_COMPASSO=String(base||'')+'?page=compasso-inscricao';if(el)el.textContent=EV_LINK_COMPASSO}).withFailureHandler(function(e){if(el)el.textContent='Não foi possível montar o link: '+((e&&e.message)||e)}).eventos_obterWebAppUrl(token)}
 window.evCopiarLinkCompasso=function(){if(!EV_LINK_COMPASSO)return avisar('O link ainda está carregando. Tente em instantes.','warn');var pronto=function(){avisar('Link de inscrição copiado.','ok')};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(EV_LINK_COMPASSO).then(pronto,function(){evMostrarLink(EV_LINK_COMPASSO)})}else{evMostrarLink(EV_LINK_COMPASSO)}};
-window.evAvisoPortaria=function(){avisar('A portaria abre pela planilha do SISGEP, no celular da entrada: menu 🎫 Eventos › Check-in. Ela ainda não tem endereço próprio no web app.','warn')};
+/* A PORTARIA TEM ENDERECO PROPRIO DESDE 09/09/2026 — e este aviso continuava
+   mandando a pessoa para a planilha, dizendo que ela "ainda nao tem endereco
+   proprio no web app". A rota `?painel=portaria` foi criada justamente porque
+   abrir a leitura de QR como caixa de dialogo dentro da planilha nao serve
+   para quem esta na porta com o celular na mao.
+   Mandar para a planilha nao era so inconveniente: era instrucao errada, e
+   quem seguisse ela na noite do evento perderia tempo procurando um menu que
+   nao resolve. Agora o botao entrega o link, que e o que se manda para o
+   celular da entrada pelo WhatsApp.
+   O token vai na URL porque e assim que todos os outros paineis fazem. */
+window.evAvisoPortaria=function(){
+  var token=tokenSessao();
+  if(!token)return avisar('Sessão não encontrada. Entre novamente no SISGEP.','err');
+  google.script.run.withSuccessHandler(function(base){
+    var url=String(base||'')+'?painel=portaria&sessao='+encodeURIComponent(token);
+    var pronto=function(){avisar('Link da portaria copiado. Mande para o celular que vai ficar na entrada — ele abre a câmera para ler o QR.','ok')};
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(pronto,function(){evMostrarLink(url)});
+    }else{evMostrarLink(url)}
+  }).withFailureHandler(function(e){
+    avisar('Não foi possível montar o link da portaria: '+((e&&e.message)||e),'err');
+  }).eventos_obterWebAppUrl(token);
+};
 window.evCopiarLinkInscricao=function(eventoId){var token=tokenSessao();if(!token)return avisar('Sessão não encontrada. Entre novamente no SISGEP.','err');var id=String(eventoId||'').trim();if(!id)return avisar('Abra o evento na lista para copiar o link da inscrição.','warn');google.script.run.withSuccessHandler(function(base){var url=String(base||'')+'?bingo-inscricao='+encodeURIComponent(id),pronto=function(){avisar('Link copiado: '+url,'ok')};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(pronto,function(){evMostrarLink(url)})}else{evMostrarLink(url)}}).withFailureHandler(function(e){avisar('Não foi possível montar o link: '+((e&&e.message)||e),'err')}).eventos_obterWebAppUrl(token)};
 
 function evIniciar(){evSubInterno(evSubSalvo());evRender()}
