@@ -328,9 +328,11 @@ function compasso_ingressoPdf_(ing, qrToken) {
     /* O numero e de UMA linha: o excesso vai para o lado, nao para baixo.
        A conta de caber ja resolve isso sozinha, porque ela mede quantos
        caracteres cabem na largura antes de contar linhas. */
-    campo('alta', 'left:65.3%;top:49.7%;width:12.8%;height:4.6%;color:#111827;font-size:' +
-              compasso_fontePdfQueCabe_(ing.numero, L*0.128, A*0.046, L*1.2/100).toFixed(1) + 'px' +
-              ';letter-spacing:.02em;display:flex;align-items:center;justify-content:center',
+    /* Mesmas medidas da tela: 12,2% e 1,05. A caixa anterior era mais larga
+       que o retangulo branco da arte, e o numero vazava para fora dele. */
+    campo('alta', 'left:65.6%;top:49.7%;width:12.2%;height:4.6%;color:#111827;font-size:' +
+              compasso_fontePdfQueCabe_(ing.numero, L*0.122, A*0.046, L*1.05/100).toFixed(1) + 'px' +
+              ';letter-spacing:.01em;display:flex;align-items:center;justify-content:center',
           ing.numero) +
     '<div class="qrBox"><img src="' + qr + '"></div>' +
 
