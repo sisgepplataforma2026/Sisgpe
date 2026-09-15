@@ -229,6 +229,41 @@ function compasso_qrPngDataUri_(texto) {
  * porcentagem sobre a arte e depende de viewport, o que não sobrevive à
  * conversão. Aqui o que importa é ser legível na portaria e no papel.
  */
+/**
+ * QUANTO A LETRA PRECISA ENCOLHER PARA O TEXTO CABER — no PDF.
+ *
+ * "Se for muito longo, diminui a fonte ou coloque em duas linhas" (15/09).
+ *
+ * Na TELA isso é medido depois de desenhado: o navegador compara a altura do
+ * conteúdo com a da caixa. Aqui não há navegador — o conversor recebe HTML
+ * pronto e não devolve medida nenhuma. Então a conta é ESTIMADA, e fica
+ * declarada como estimativa, não como medição.
+ *
+ * Arial bold em caixa alta ocupa por volta de 0,62em por caractere. Com isso
+ * dá para saber quantos cabem por linha e quantas linhas o texto ocupa. A
+ * estimativa erra para mais em nome cheio de I e L, e para menos em nome
+ * cheio de M e W — por isso as linhas arredondam para cima e o piso é o mesmo
+ * da tela: 55%. Abaixo disso o texto cabe e ninguém lê, e quem confere o
+ * ingresso na portaria lê no papel.
+ *
+ * As duas contas não precisam dar o mesmo número: precisam obedecer à mesma
+ * REGRA — encolher em vez de transbordar, e nunca abaixo do piso.
+ */
+function compasso_fontePdfQueCabe_(texto, larguraPx, alturaPx, fontePx) {
+  var t = String(texto == null ? '' : texto);
+  if (!t || !(larguraPx > 0) || !(alturaPx > 0)) return fontePx;
+  var piso = fontePx * 0.55;
+  var f = fontePx;
+  for (var i = 0; i < 12; i++) {
+    var porLinha = Math.max(1, Math.floor(larguraPx / (f * 0.62)));
+    var linhas = Math.ceil(t.length / porLinha);
+    if (linhas * f * 1.12 <= alturaPx) return f;
+    f = f * 0.95;
+    if (f <= piso) return piso;
+  }
+  return f;
+}
+
 function compasso_ingressoPdf_(ing, qrToken) {
   var qr = compasso_qrPngDataUri_(qrToken);
   var arte = compasso_ingressoArteDataUri_();
@@ -251,6 +286,21 @@ function compasso_ingressoPdf_(ing, qrToken) {
     return '<div class="f ' + classe + '" style="' + estilo + '">' + esc(texto) + '</div>';
   };
 
+  /* O MESMO MODELO NOS DOIS LUGARES. As caixas de texto do template da tela
+     têm ALTURA; aqui não tinham, e era por isso que o nome longo se comportava
+     diferente nos dois: na tela encolhia, no PDF escorria para fora da caixa e
+     entrava na de baixo. Agora a altura é a mesma (% da ALTURA do bilhete) e a
+     fonte encolhe pela mesma regra. */
+  var caixa = function (esquerdaPct, topoPct, largPct, altPct, fonteVw, cor, texto) {
+    var largPx  = L * largPct / 100;
+    var altPx   = A * altPct / 100;
+    var fontePx = L * fonteVw / 100;
+    var f = compasso_fontePdfQueCabe_(texto, largPx, altPx, fontePx);
+    return campo('', 'left:' + esquerdaPct + '%;top:' + topoPct + '%;width:' + largPct +
+                 '%;height:' + altPct + '%;font-size:' + f.toFixed(1) + 'px' +
+                 (cor ? ';color:' + cor : ''), texto);
+  };
+
   var html =
     '<html><head><meta charset="utf-8"><style>' +
     '@page{size:' + L + 'px ' + A + 'px;margin:0}' +
@@ -269,10 +319,9 @@ function compasso_ingressoPdf_(ing, qrToken) {
     (emissao_modoTeste_() ? '<div class="teste">HOMOLOGAÇÃO</div>' : '') +
 
     /* Frente do bilhete */
-    campo('', 'left:67.35%;top:25.7%;width:10.2%;font-size:' + px(1.05), ing.nome) +
-    campo('', 'left:67.35%;top:34.4%;width:10.4%;font-size:' + px(1),    ing.escola || '-') +
-    campo('', 'left:67.35%;top:43.4%;width:10.3%;font-size:' + px(1.05),
-          compasso_categoriaLabel_(ing.categoria)) +
+    caixa(67.35, 25.7, 10.2, 7.6, 1.05, '', ing.nome) +
+    caixa(67.35, 34.4, 10.4, 7.8, 1,    '', ing.escola || '-') +
+    caixa(67.35, 43.4, 10.3, 5.4, 1.05, '', compasso_categoriaLabel_(ing.categoria)) +
     campo('', 'left:65.3%;top:49.7%;width:12.8%;height:4.6%;color:#111827;font-size:' + px(1.2) +
               ';letter-spacing:.02em;display:flex;align-items:center;justify-content:center',
           ing.numero) +
@@ -281,11 +330,9 @@ function compasso_ingressoPdf_(ing, qrToken) {
     /* Canhoto */
     campo('', 'left:83.3%;top:30.5%;width:14.4%;height:4.8%;color:#b90f3d;font-size:' + px(1.1) +
               ';display:flex;align-items:center;justify-content:center', ing.numero) +
-    campo('', 'left:84.7%;top:46.7%;width:13.1%;color:#172033;font-size:' + px(1), ing.nome) +
-    campo('', 'left:84.7%;top:58.2%;width:13.1%;color:#172033;font-size:' + px(0.95),
-          ing.escola || '-') +
-    campo('', 'left:84.7%;top:69.1%;width:13.1%;color:#172033;font-size:' + px(1),
-          compasso_categoriaLabel_(ing.categoria)) +
+    caixa(84.7, 46.7, 13.1, 9.8, 1,    '#172033', ing.nome) +
+    caixa(84.7, 58.2, 13.1, 9.4, 0.95, '#172033', ing.escola || '-') +
+    caixa(84.7, 69.1, 13.1, 7.5, 1,    '#172033', compasso_categoriaLabel_(ing.categoria)) +
 
     '</div></body></html>';
 
