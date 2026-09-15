@@ -142,9 +142,9 @@ const CAMPOS_PDF = [
   ["main-name",     "67.35", "25.7", "10.2", "7.6"],
   ["main-school",   "67.35", "34.4", "10.4", "7.8"],
   ["main-category", "67.35", "43.4", "10.3", "5.4"],
-  ["stub-name",     "84.7",  "46.7", "13.1", "9.8"],
-  ["stub-school",   "84.7",  "58.2", "13.1", "9.4"],
-  ["stub-category", "84.7",  "69.1", "13.1", "7.5"]
+  ["stub-name",     "84.7",  "49.3", "13.1", "7.2"],
+  ["stub-school",   "84.7",  "60.9", "13.1", "6.8"],
+  ["stub-category", "84.7",  "71.8", "13.1", "6.2"]
 ];
 
 passo("cada campo ocupa a mesma posição e o mesmo tamanho nos dois");

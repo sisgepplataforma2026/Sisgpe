@@ -338,9 +338,9 @@ function compasso_ingressoPdf_(ing, qrToken) {
     campo('alta', 'left:83.3%;top:30.5%;width:14.4%;height:4.8%;color:#b90f3d;font-size:' +
               compasso_fontePdfQueCabe_(ing.numero, L*0.144, A*0.048, L*1.1/100).toFixed(1) + 'px' +
               ';display:flex;align-items:center;justify-content:center', ing.numero) +
-    caixa(84.7, 46.7, 13.1, 9.8, 1,    '#172033', compasso_nomeProprio_(ing.nome)) +
-    caixa(84.7, 58.2, 13.1, 9.4, 0.95, '#172033', compasso_nomeProprio_(ing.escola) || '-') +
-    caixa(84.7, 69.1, 13.1, 7.5, 1,    '#172033', compasso_categoriaLabel_(ing.categoria), 'alta') +
+    caixa(84.7, 49.3, 13.1, 7.2, 1,    '#172033', compasso_nomeProprio_(ing.nome)) +
+    caixa(84.7, 60.9, 13.1, 6.8, 0.95, '#172033', compasso_nomeProprio_(ing.escola) || '-') +
+    caixa(84.7, 71.8, 13.1, 6.2, 1,    '#172033', compasso_categoriaLabel_(ing.categoria), 'alta') +
 
     '</div></body></html>';
 

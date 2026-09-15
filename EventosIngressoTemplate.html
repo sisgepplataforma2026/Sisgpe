@@ -29,9 +29,9 @@
     .qrBox{position:absolute;left:65.4%;top:57.7%;width:12.4%;aspect-ratio:1/1;background:#fff;padding:.6%;display:flex;align-items:center;justify-content:center}
     .qrBox>div,.qrBox canvas,.qrBox img{width:100%!important;height:100%!important;display:block}
     .stub-number{left:83.3%;top:30.5%;width:14.4%;height:4.8%;display:flex;align-items:center;justify-content:center;color:#b90f3d;text-shadow:none;font-size:1.1vw;font-size:1.1cqw}
-    .stub-name{left:84.7%;top:46.7%;width:13.1%;height:9.8%;color:#172033;text-shadow:none;font-size:1vw;font-size:1cqw}
-    .stub-school{left:84.7%;top:58.2%;width:13.1%;height:9.4%;color:#172033;text-shadow:none;font-size:.95vw;font-size:.95cqw}
-    .stub-category{left:84.7%;top:69.1%;width:13.1%;height:7.5%;color:#172033;text-shadow:none;font-size:1vw;font-size:1cqw}
+    .stub-name{left:84.7%;top:49.3%;width:13.1%;height:7.2%;color:#172033;text-shadow:none;font-size:1vw;font-size:1cqw}
+    .stub-school{left:84.7%;top:60.9%;width:13.1%;height:6.8%;color:#172033;text-shadow:none;font-size:.95vw;font-size:.95cqw}
+    .stub-category{left:84.7%;top:71.8%;width:13.1%;height:6.2%;color:#172033;text-shadow:none;font-size:1vw;font-size:1cqw}
     /* NOME E ESCOLA SAEM DA CAIXA ALTA — 15/09/2026, a pedido dele.
        Caixa alta nao e so questao de gosto: ocupa mais largura, porque toda
        maiuscula e larga e nao sobra letra baixa para o olho apoiar. Era isso
@@ -40,6 +40,16 @@
        num lugar so, para a tela e o PDF nao divergirem. */
     .main-name,.main-school,.stub-name,.stub-school{text-transform:none}
     .teste{position:absolute;left:35%;top:4%;padding:7px 14px;background:#dc2626;color:#fff;border-radius:8px;font-size:1.1vw;font-size:1.1cqw;font-weight:900;letter-spacing:.12em;box-shadow:0 4px 14px #0008}
+    /* O CANHOTO ESTAVA ESCREVENDO POR CIMA DOS PROPRIOS ROTULOS — 15/09/2026.
+       "Tem que ajustar os dados do Canhoto." Na frente do bilhete o valor cai
+       ABAIXO do rotulo impresso na arte; no canhoto ele nascia na MESMA
+       altura, e o nome passava por cima de "NOME:", a escola por cima de
+       "ESCOLA:". Ficou escondido enquanto o nome saia em caixa alta e
+       cortado — so depois de a arte carregar e o texto caber e que deu para
+       ver o que estava embaixo.
+       Os tres desceram para a faixa entre o rotulo e a linha pontilhada, e a
+       altura encolheu junto para nao invadir a proxima. As mesmas medidas
+       valem no PDF (EventosEntrega.gs) — o t167 compara campo a campo. */
     .semarte{position:absolute;left:4%;top:4%;right:4%;padding:10px 14px;background:#dc2626;
       color:#fff;font-weight:800;font-size:13px;border-radius:9px;line-height:1.35;z-index:4}
     .printbar{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:5}.printbar button{border:0;border-radius:9px;padding:10px 14px;font-weight:800;cursor:pointer}.primary{background:#fff;color:#0b2f63}
