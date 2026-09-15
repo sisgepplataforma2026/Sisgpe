@@ -57,7 +57,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 | Nº | Item |
 |---|---|
-| 86 | Declaração de Diretor — módulo novo; PDF e pasta do Drive nunca rodaram no ar |
+| 86 | 🟡 NA HOMOLOGAÇÃO (146) — Declaração de Diretor; falta configurar a pasta e emitir uma |
 | 85 | 🔴 NA PRODUÇÃO (711) — anexar no reenvio, e a virada de lote que duplicava |
 | 84 | 🟡 NA PRODUÇÃO (710) — o laço reconciliar↔re-condenar; falta ver ele parar |
 | 83 | ✅ VERIFICADO NO AR — 517 a 520 saíram; devolver para a fila zera as tentativas |
@@ -130,7 +130,10 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
-### 86. Declaração de Diretor — entregue em 15/09/2026, nunca emitida no ar
+### 86. 🟡 NA HOMOLOGAÇÃO (versão 146) — Declaração de Diretor, nunca emitida
+
+**Publicado na homologação em 15/09/2026, versão 146** (run #133 do deploy).
+O código está no ar em homologação; nenhuma declaração foi emitida ainda.
 
 **O que foi entregue:** Documentos › Declarações, com três telas (Emitir,
 Emitidas, Diretoria), cadastro próprio da diretoria com mandato e signatário,
