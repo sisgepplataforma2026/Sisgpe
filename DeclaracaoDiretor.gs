@@ -53,7 +53,10 @@ var DECL_COLUNAS_EMISSAO = [
   "NUMERO", "DIRETOR_ID", "DIRETOR_NOME", "CARGO",
   "DATA_LIBERACAO", "PERIODO", "DATA_EMISSAO",
   "SIGNATARIO", "TEXTO", "PDF_ID", "PDF_URL",
-  "EMITIDO_POR", "EMITIDO_EM"
+  "EMITIDO_POR", "EMITIDO_EM", "GESTAO", "ORGAO", "CONDICAO",
+  "ESCOLA_ID", "ESCOLA_NOME", "ESCOLA_DOCUMENTO", "CONTATOS_ORIGEM",
+  "EMAILS_USADOS", "EMAIL_STATUS", "EMAIL_ENVIADO_EM", "EMAIL_ENVIADO_POR",
+  "WHATSAPP_STATUS", "WHATSAPP_EM", "WHATSAPP_POR"
 ];
 
 /* Rótulos e trechos de texto por período. Chave vazia = sem período. */
@@ -89,6 +92,14 @@ function declGarantirEmissoes_() {
       .setFontWeight("bold").setBackground("#002f6c").setFontColor("#ffffff");
     sh.setFrozenRows(1);
   }
+  var mapa = declCabecalho_(sh);
+  DECL_COLUNAS_EMISSAO.forEach(function (nome) {
+    if (!mapa[nome]) {
+      var col = sh.getLastColumn() + 1;
+      sh.getRange(1, col).setValue(nome);
+      mapa[nome] = col;
+    }
+  });
   return sh;
 }
 
@@ -117,7 +128,13 @@ function declEmissoes_interno_() {
       pdfId:         declTexto_(col(l, "PDF_ID")),
       pdfUrl:        declTexto_(col(l, "PDF_URL")),
       emitidoPor:    declTexto_(col(l, "EMITIDO_POR")),
-      emitidoEm:     declDataBR_(col(l, "EMITIDO_EM"))
+      emitidoEm:     declDataBR_(col(l, "EMITIDO_EM")),
+      gestao:        declTexto_(col(l, "GESTAO")),
+      escolaId:      declTexto_(col(l, "ESCOLA_ID")),
+      escolaNome:    declTexto_(col(l, "ESCOLA_NOME")),
+      emailsUsados:  declTexto_(col(l, "EMAILS_USADOS")),
+      emailStatus:   declTexto_(col(l, "EMAIL_STATUS")),
+      whatsappStatus: declTexto_(col(l, "WHATSAPP_STATUS"))
     };
   }).filter(function (d) { return !!d.numero; });
 }
@@ -228,6 +245,11 @@ function declValidarPedido_(dados) {
 
   var dataEmi = declSoData_(dados.dataEmissao) || declHoje_();
 
+  var contexto = declContextoDiretor_interno_(diretor);
+  var escolaId = declTexto_(dados.escolaId);
+  var escola = contexto.vinculos.filter(function (v) { return v.escolaId === escolaId; })[0];
+  if (!escola) return { ok: false, mensagem: "Selecione a escola empregadora do dirigente." };
+
   var signatario = declSignatario_();
   if (!signatario) {
     return {
@@ -243,6 +265,8 @@ function declValidarPedido_(dados) {
     dataLiberacao: dataLib,
     dataEmissao: dataEmi,
     periodo: periodo,
+    contexto: contexto,
+    escola: escola,
     texto: declMontarTexto_({
       nome: diretor.nome,
       cargo: diretor.cargo,
@@ -278,6 +302,7 @@ function declDadosEmissao(tokenSessao) {
         return { valor: k, rotulo: DECL_PERIODOS[k].rotulo };
       }),
       signatario: signatario ? { nome: signatario.nome, cargo: signatario.cargo } : null,
+      gestao: (typeof GOV_MANDATO !== "undefined") ? GOV_MANDATO.gestao : "",
       hoje: declDataBR_(declHoje_())
     };
   } catch (e) {
@@ -298,6 +323,7 @@ function declPreviaDeclaracaoDiretor(dados, tokenSessao) {
       texto: v.texto,
       cidadeData: DECL_CIDADE + ", " + declDataExtenso_(v.dataEmissao) + ".",
       signatario: { nome: v.signatario.nome, cargo: v.signatario.cargo },
+      escola: v.escola,
       duplicatas: dup.map(function (d) { return d.numero; })
     };
   } catch (e) {
@@ -365,7 +391,16 @@ function declEmitirDeclaracaoDiretor(dados, tokenSessao) {
       PDF_ID: pdf.id,
       PDF_URL: pdf.url,
       EMITIDO_POR: quem,
-      EMITIDO_EM: new Date()
+      EMITIDO_EM: new Date(),
+      GESTAO: v.diretor.gestao || "",
+      ORGAO: v.diretor.orgao || "",
+      CONDICAO: v.diretor.condicao || "",
+      ESCOLA_ID: v.escola.escolaId,
+      ESCOLA_NOME: v.escola.nome,
+      ESCOLA_DOCUMENTO: v.escola.documento || "",
+      CONTATOS_ORIGEM: JSON.stringify(v.escola.contatos || []),
+      EMAIL_STATUS: "AGUARDANDO_CONFERENCIA",
+      WHATSAPP_STATUS: "NAO_PREPARADO"
     };
     Object.keys(valores).forEach(function (k) {
       if (mapa[k]) sh.getRange(linha, mapa[k]).setValue(valores[k]);
@@ -385,6 +420,8 @@ function declEmitirDeclaracaoDiretor(dados, tokenSessao) {
       numero: numero,
       url: pdf.url,
       texto: v.texto,
+      escola: v.escola,
+      emailStatus: "AGUARDANDO_CONFERENCIA",
       mensagem: "Declaração " + numero + " emitida."
     };
   } catch (e) {
@@ -392,6 +429,171 @@ function declEmitirDeclaracaoDiretor(dados, tokenSessao) {
   } finally {
     try { lock.releaseLock(); } catch (eRel) {}
   }
+}
+
+/* =========================================
+ * VÍNCULO, ESCOLA E ENTREGA
+ * ========================================= */
+
+function declNormalizar_(v) {
+  return String(v || "").toLowerCase().normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
+}
+
+function declContextoDiretor_interno_(diretor) {
+  if (typeof assoc_todos_ !== "function") throw new Error("A base de Associados não está disponível.");
+  var chave = declNormalizar_(diretor && diretor.nome);
+  var associados = assoc_todos_().filter(function (a) { return declNormalizar_(a.nome) === chave; });
+  var escolas = (typeof listarEscolasCadastro_interno_ === "function") ? listarEscolasCadastro_interno_() : [];
+  var porId = {};
+
+  associados.forEach(function (a) {
+    var esc = declNormalizar_(a.escola);
+    if (!esc) return;
+    var candidatas = escolas.filter(function (e) {
+      return [e.NomeEscola, e.Fantasia, e.escola, e.CodigoInterno]
+        .some(function (n) { return declNormalizar_(n) === esc; });
+    });
+    candidatas.forEach(function (e) {
+      var id = declTexto_(e.escolaId || e.EscolaID || e.linha);
+      if (!id || porId[id]) return;
+      porId[id] = {
+        escolaId: id,
+        nome: declTexto_(e.NomeEscola || e.escola),
+        fantasia: declTexto_(e.Fantasia),
+        documento: declTexto_(e.CNPJ || e.cnpj),
+        vinculoOrigem: "Associados",
+        telefoneDiretor: declTexto_(a.celular),
+        contatos: declContatosEscola_(e)
+      };
+    });
+  });
+
+  return { diretorId: diretor.id, associadosEncontrados: associados.length, vinculos: Object.keys(porId).map(function (k) { return porId[k]; }) };
+}
+
+function declContatosEscola_(escola) {
+  var mapa = {};
+  function juntar(valor, origem) {
+    String(valor || "").split(/[;,\n]/).forEach(function (email) {
+      email = String(email || "").trim().toLowerCase();
+      if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return;
+      if (!mapa[email]) mapa[email] = { email: email, origens: [], falhas: 0, confirmacoes: 0 };
+      if (mapa[email].origens.indexOf(origem) < 0) mapa[email].origens.push(origem);
+      if (typeof ofDest_historico_ === "function") {
+        var h = ofDest_historico_(email);
+        mapa[email].falhas = h.falhas || 0;
+        mapa[email].confirmacoes = h.confirmacoes || 0;
+      }
+    });
+  }
+  juntar(escola.Email || escola.email, "Escolas · principal");
+  juntar(escola.EmailsTodos, "Escolas · todos");
+  /* A Controle pode conter endereços usados depois da última atualização do
+     cadastro. Lemos em bloco e só aceitamos linhas da mesma escola. */
+  try {
+    var ss = declPlanilha_(), sh = ss.getSheetByName(PLANILHA_REGISTRO || "Controle");
+    if (sh && sh.getLastRow() > 1) {
+      var hm = declCabecalho_(sh);
+      var cEscola = hm.ESCOLA || hm["ESCOLA (RAZÃO SOCIAL)"] || hm.UNIDADE;
+      var cEmails = hm.EMAILS_TODOS || hm["E-MAILS (TODOS)"] || hm.EMAIL || hm["E-MAIL"];
+      var alvos = [escola.NomeEscola, escola.escola, escola.Fantasia, escola.CodigoInterno]
+        .map(declNormalizar_).filter(Boolean);
+      if (cEscola && cEmails && alvos.length) {
+        var linhas = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+        linhas.forEach(function (l) {
+          if (alvos.indexOf(declNormalizar_(l[cEscola - 1])) >= 0) juntar(l[cEmails - 1], "Controle · histórico");
+        });
+      }
+    }
+  } catch (eControle) { Logger.log("Declaração: leitura da Controle indisponível — " + eControle.message); }
+  /* Falhas e confirmações vêm da mesma memória usada pelos Ofícios; assim o
+     conhecimento operacional não é duplicado. */
+  return Object.keys(mapa).map(function (k) {
+    var c = mapa[k]; c.marcado = c.falhas === 0; return c;
+  });
+}
+
+function declContextoDiretor(diretorId, tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
+  var diretor = declDiretorPorId_(diretorId);
+  if (!diretor || diretor.fonte !== "GOVERNANCA") return { ok: false, mensagem: "Dirigente vigente não encontrado em Governança." };
+  var r = declContextoDiretor_interno_(diretor); r.ok = true; return r;
+}
+
+function declAcharEmissao_(numero) {
+  var sh = declGarantirEmissoes_(), hm = declCabecalho_(sh);
+  if (sh.getLastRow() < 2) return null;
+  var dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+  for (var i = 0; i < dados.length; i++) if (declTexto_(dados[i][hm.NUMERO - 1]) === declTexto_(numero)) return { sh: sh, hm: hm, linha: i + 2, valores: dados[i] };
+  return null;
+}
+
+function declEnviarEmail(numero, emails, tokenSessao) {
+  var sessao = exigirModulo_(tokenSessao, "documentos", false);
+  var achado = declAcharEmissao_(numero);
+  if (!achado) return { ok: false, mensagem: "Declaração não encontrada." };
+  var validacao = validarListaEmails_(Array.isArray(emails) ? emails.join(";") : emails);
+  if (!validacao.ok || !validacao.emails.length) return { ok: false, mensagem: "Selecione ao menos um e-mail válido." };
+  var permitidos = [];
+  try {
+    permitidos = JSON.parse(declTexto_(achado.valores[achado.hm.CONTATOS_ORIGEM - 1]) || "[]")
+      .map(function (c) { return String(c.email || "").trim().toLowerCase(); });
+  } catch (eContatos) {}
+  var foraDaConferencia = validacao.emails.filter(function (e) { return permitidos.indexOf(String(e).toLowerCase()) < 0; });
+  if (foraDaConferencia.length) return { ok: false, mensagem: "Destinatário não pertence à conferência desta declaração." };
+
+  var ambiente = String(getAmbienteAtual() || "producao").toLowerCase();
+  var destinoReal = validacao.todos;
+  var destinoEnvio = ambiente === "homologacao" ? OFICIOS_HML_EMAIL_PADRAO_TESTE : destinoReal;
+  var pdfId = declTexto_(achado.valores[achado.hm.PDF_ID - 1]);
+  var nome = declTexto_(achado.valores[achado.hm.DIRETOR_NOME - 1]);
+  var escola = declTexto_(achado.valores[achado.hm.ESCOLA_NOME - 1]);
+  var assunto = "Declaração " + numero + " — " + nome;
+  var html = "<p>Prezados(as),</p><p>Segue, em anexo, a declaração de liberação sindical de <strong>" + declEscapar_(nome) + "</strong>.</p><p>Atenciosamente,<br>SindEducação-ES</p>";
+  if (ambiente === "homologacao") html = "<p><strong>HOMOLOGAÇÃO.</strong> Destinatário real: " + declEscapar_(destinoReal) + "</p>" + html;
+  try {
+    var op = montarOpcoesEmailSISGEP_(declQuem_(sessao), html, [DriveApp.getFileById(pdfId).getBlob()], assunto, destinoEnvio);
+    MailApp.sendEmail(op);
+    achado.sh.getRange(achado.linha, achado.hm.EMAILS_USADOS).setValue(destinoReal);
+    achado.sh.getRange(achado.linha, achado.hm.EMAIL_STATUS).setValue(ambiente === "homologacao" ? "TESTE_HML_ENVIADO" : "ENVIADO");
+    achado.sh.getRange(achado.linha, achado.hm.EMAIL_ENVIADO_EM).setValue(new Date());
+    achado.sh.getRange(achado.linha, achado.hm.EMAIL_ENVIADO_POR).setValue(declQuem_(sessao));
+    declAuditar_({ sessao: sessao, registroId: numero, acao: "DECLARACAO_EMAIL_ENVIADO", documento: escola, valorNovo: ambiente === "homologacao" ? "TESTE_HML" : "ENVIADO" });
+    return { ok: true, mensagem: ambiente === "homologacao" ? "Teste enviado à Secretaria. A escola real não recebeu." : "Declaração enviada à escola.", destinoReal: destinoReal, destinoUtilizado: destinoEnvio };
+  } catch (e) {
+    achado.sh.getRange(achado.linha, achado.hm.EMAIL_STATUS).setValue("ERRO");
+    return { ok: false, mensagem: "Falha no envio: " + e.message };
+  }
+}
+
+function declPrepararWhatsapp(numero, tokenSessao) {
+  var sessao = exigirModulo_(tokenSessao, "documentos", false), achado = declAcharEmissao_(numero);
+  if (!achado) return { ok: false, mensagem: "Declaração não encontrada." };
+  var diretor = declDiretorPorId_(declTexto_(achado.valores[achado.hm.DIRETOR_ID - 1]));
+  var ctx = declContextoDiretor_interno_(diretor), escolaId = declTexto_(achado.valores[achado.hm.ESCOLA_ID - 1]);
+  var vinculo = ctx.vinculos.filter(function (v) { return v.escolaId === escolaId; })[0];
+  var fone = String(vinculo && vinculo.telefoneDiretor || "").replace(/\D/g, "");
+  if (fone.length < 10) return { ok: false, mensagem: "O diretor não possui celular válido em Associados." };
+  if (fone.length <= 11) fone = "55" + fone;
+  var urlPdf = declTexto_(achado.valores[achado.hm.PDF_URL - 1]);
+  var msg = "Olá! A declaração " + numero + " foi emitida para ciência. PDF: " + urlPdf;
+  achado.sh.getRange(achado.linha, achado.hm.WHATSAPP_STATUS).setValue("PREPARADO");
+  achado.sh.getRange(achado.linha, achado.hm.WHATSAPP_EM).setValue(new Date());
+  achado.sh.getRange(achado.linha, achado.hm.WHATSAPP_POR).setValue(declQuem_(sessao));
+  return { ok: true, url: "https://wa.me/" + fone + "?text=" + encodeURIComponent(msg), mensagem: msg };
+}
+
+function declConfirmarWhatsapp(numero, tokenSessao) {
+  var sessao = exigirModulo_(tokenSessao, "documentos", false), achado = declAcharEmissao_(numero);
+  if (!achado) return { ok: false, mensagem: "Declaração não encontrada." };
+  var atual = declTexto_(achado.valores[achado.hm.WHATSAPP_STATUS - 1]);
+  if (atual !== "PREPARADO") return { ok: false, mensagem: "Prepare a mensagem antes de confirmar o envio." };
+  achado.sh.getRange(achado.linha, achado.hm.WHATSAPP_STATUS).setValue("ENVIADO_CONFIRMADO");
+  achado.sh.getRange(achado.linha, achado.hm.WHATSAPP_EM).setValue(new Date());
+  achado.sh.getRange(achado.linha, achado.hm.WHATSAPP_POR).setValue(declQuem_(sessao));
+  declAuditar_({ sessao: sessao, registroId: numero, acao: "DECLARACAO_WHATSAPP_CONFIRMADO" });
+  return { ok: true, mensagem: "Ciência por WhatsApp registrada." };
 }
 
 function declHistoricoDeclaracoes(filtros, tokenSessao) {

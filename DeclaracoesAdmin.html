@@ -28,7 +28,6 @@
   <div class="declTabs">
     <button type="button" class="declTab declTab-ativa" data-decl-aba="emitir"    onclick="declAba('emitir')">✍️ Emitir</button>
     <button type="button" class="declTab"               data-decl-aba="emitidas"  onclick="declAba('emitidas')">📚 Emitidas</button>
-    <button type="button" class="declTab"               data-decl-aba="diretoria" onclick="declAba('diretoria')">👥 Diretoria</button>
   </div>
 
   <!-- ══════════════ EMITIR ══════════════ -->
@@ -51,8 +50,14 @@
         <div class="declGrid">
           <div class="declCampo">
             <label for="declDiretor">Diretor</label>
-            <select id="declDiretor" onchange="declPrevia()"></select>
-            <small id="declDiretorOrigem" class="declOrigem">vindo do cadastro da Diretoria</small>
+            <select id="declDiretor" onchange="declCarregarVinculos()"></select>
+            <small id="declDiretorOrigem" class="declOrigem">composição e mandato vigentes em Governança</small>
+          </div>
+
+          <div class="declCampo">
+            <label for="declEscola">Escola empregadora</label>
+            <select id="declEscola" onchange="declSelecionarEscola()" disabled><option value="">— selecione o diretor —</option></select>
+            <small class="declOrigem">vínculo em Associados · identidade em Escolas</small>
           </div>
 
           <div class="declCampo">
@@ -95,6 +100,18 @@
       <button type="button" class="btn-outline" onclick="declLimpar()">Limpar</button>
       <button type="button" class="btn-navy" id="declBtnEmitir" onclick="declEmitir(false)">Emitir declaração</button>
     </div>
+
+    <div class="of-card declCard" id="declEntrega" style="display:none;">
+      <div class="of-card-head"><div class="of-card-head-l"><div class="of-card-ico">📨</div><div><div class="of-card-title">Entrega da declaração</div><div class="of-card-sub" id="declEntregaResumo"></div></div></div></div>
+      <div class="of-card-body">
+        <div id="declContatos" class="declContatos"></div>
+        <div class="declAcoes declAcoesEsq" style="margin-top:14px;">
+          <button type="button" class="btn-navy" id="declBtnEmail" onclick="declEnviarEmail()">Enviar para a escola</button>
+          <button type="button" class="btn-outline" onclick="declPrepararWhatsapp()">Preparar WhatsApp do diretor</button>
+          <button type="button" class="btn-outline" id="declBtnConfirmarZap" onclick="declConfirmarWhatsapp()" style="display:none;">Marcar WhatsApp como enviado</button>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- ══════════════ EMITIDAS ══════════════ -->
@@ -115,118 +132,18 @@
         <table class="declTabela">
           <thead>
             <tr>
-              <th>Nº</th><th>Diretor</th><th>Liberação</th><th>Período</th>
-              <th>Emitida</th><th>Por</th><th></th>
+              <th>Nº</th><th>Diretor</th><th>Escola</th><th>Liberação</th><th>Período</th>
+              <th>Emitida</th><th>Entrega</th><th>Por</th><th></th>
             </tr>
           </thead>
           <tbody id="declHistoricoCorpo">
-            <tr><td colspan="7" class="declVazio">Carregando…</td></tr>
+            <tr><td colspan="9" class="declVazio">Carregando…</td></tr>
           </tbody>
         </table>
       </div>
     </div>
   </section>
 
-  <!-- ══════════════ DIRETORIA ══════════════ -->
-  <section id="declPainelDiretoria" class="declPainel" style="display:none;">
-
-    <div class="declCards">
-      <div class="declMini"><small>Ativos</small><strong id="declMiniAtivos">—</strong></div>
-      <div class="declMini"><small>Inativos</small><strong id="declMiniInativos">—</strong></div>
-      <div class="declMini declMiniAlerta"><small>Mandato vencido</small><strong id="declMiniVencidos">—</strong></div>
-      <div class="declMini declMiniLargo"><small>Assina as declarações</small><strong id="declMiniSignatario">—</strong></div>
-    </div>
-
-    <div class="declAcoes declAcoesEsq">
-      <button type="button" class="btn-navy" onclick="declAbrirDiretor('')">+ Novo diretor</button>
-      <button type="button" class="btn-outline" onclick="declAbrirImportacao()">⇣ Importar de Verbas da Diretoria</button>
-    </div>
-
-    <div class="of-card declCard">
-      <div class="of-card-body declTabelaWrap">
-        <table class="declTabela">
-          <thead>
-            <tr><th>Nome</th><th>Cargo</th><th>Mandato</th><th>Assina</th><th>Situação</th><th></th></tr>
-          </thead>
-          <tbody id="declDiretoriaCorpo">
-            <tr><td colspan="6" class="declVazio">Carregando…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </section>
-</div>
-
-<!-- Modal — cadastro de diretor -->
-<div class="of-modal-overlay" id="declModalDiretor">
-  <div class="of-modal">
-    <div class="of-modal-head">
-      <div>
-        <div class="of-modal-head-title" id="declModalDiretorTitulo">Novo diretor</div>
-        <div class="of-modal-head-sub">Quem tem mandato e pode receber declaração</div>
-      </div>
-      <button type="button" class="of-modal-close" onclick="declFechar('declModalDiretor')">✕</button>
-    </div>
-    <div class="of-modal-body">
-      <input type="hidden" id="declFormId">
-      <div class="declGrid">
-        <div class="declCampo declCampoLargo">
-          <label for="declFormNome">Nome completo</label>
-          <input type="text" id="declFormNome" placeholder="Como deve sair na declaração">
-        </div>
-        <div class="declCampo">
-          <label for="declFormCargo">Cargo</label>
-          <input type="text" id="declFormCargo" placeholder="Diretor, Presidente…">
-        </div>
-        <div class="declCampo">
-          <label for="declFormCpf">CPF</label>
-          <input type="text" id="declFormCpf" placeholder="opcional">
-        </div>
-        <div class="declCampo">
-          <label for="declFormInicio">Início do mandato</label>
-          <input type="date" id="declFormInicio">
-        </div>
-        <div class="declCampo">
-          <label for="declFormFim">Fim do mandato</label>
-          <input type="date" id="declFormFim">
-        </div>
-        <div class="declCampo declCampoLargo">
-          <label for="declFormObs">Observação</label>
-          <input type="text" id="declFormObs" placeholder="opcional">
-        </div>
-      </div>
-      <label class="declCheck">
-        <input type="checkbox" id="declFormAssina">
-        <span>Assina as declarações como presidente <small>— só um diretor pode estar marcado</small></span>
-      </label>
-      <label class="declCheck">
-        <input type="checkbox" id="declFormAtivo" checked>
-        <span>Ativo</span>
-      </label>
-    </div>
-    <div class="declModalRodape">
-      <button type="button" class="btn-outline" onclick="declFechar('declModalDiretor')">Cancelar</button>
-      <button type="button" class="btn-navy" onclick="declSalvarDiretorTela()">Salvar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal — importação de Verbas da Diretoria -->
-<div class="of-modal-overlay" id="declModalImportar">
-  <div class="of-modal">
-    <div class="of-modal-head">
-      <div>
-        <div class="of-modal-head-title">Importar de Verbas da Diretoria</div>
-        <div class="of-modal-head-sub">Confira antes de gravar — o mandato precisa ser preenchido depois</div>
-      </div>
-      <button type="button" class="of-modal-close" onclick="declFechar('declModalImportar')">✕</button>
-    </div>
-    <div class="of-modal-body" id="declImportarCorpo">Carregando…</div>
-    <div class="declModalRodape">
-      <button type="button" class="btn-outline" onclick="declFechar('declModalImportar')">Cancelar</button>
-      <button type="button" class="btn-navy" onclick="declConfirmarImportacao()">Importar selecionados</button>
-    </div>
-  </div>
 </div>
 
 <!-- Modal — confirmação de segunda via -->
@@ -325,6 +242,8 @@
 }
 .declImportLinha { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--g100, #f1f5f9); font-size: 12.5px; }
 .declImportLinha small { color: var(--g500, #64748b); }
+.declContato { display:flex; gap:9px; align-items:flex-start; padding:9px 0; border-bottom:1px solid var(--g100,#f1f5f9); font-size:12px; }
+.declContato small { display:block; color:var(--g500,#64748b); margin-top:2px; }
 @media (max-width: 640px) {
   .declWrap { padding: 16px; }
   .declAcoes { flex-direction: column; }
@@ -338,7 +257,7 @@
    script da SPA viram um escopo global só, e nome curto colide.
    ──────────────────────────────────────────────────────────────── */
 
-var DECL_ESTADO = { diretores: [], periodo: "", carregou: false, timerBusca: null, timerPrevia: null, candidatos: [] };
+var DECL_ESTADO = { diretores: [], vinculos: [], escola: null, periodo: "", carregou: false, timerBusca: null, timerPrevia: null, ultima: null };
 
 function declToken() { return (typeof SISGEP_TOKEN_SESSAO !== "undefined") ? SISGEP_TOKEN_SESSAO : ""; }
 
@@ -364,7 +283,7 @@ function declAbrir(id) {
 
 /* ─── navegação entre as três telas ─── */
 function declAba(aba) {
-  var mapa = { emitir: "declPainelEmitir", emitidas: "declPainelEmitidas", diretoria: "declPainelDiretoria" };
+  var mapa = { emitir: "declPainelEmitir", emitidas: "declPainelEmitidas" };
   Object.keys(mapa).forEach(function (k) {
     var p = document.getElementById(mapa[k]);
     if (p) p.style.display = (k === aba) ? "block" : "none";
@@ -374,7 +293,6 @@ function declAba(aba) {
     tabs[i].classList.toggle("declTab-ativa", tabs[i].getAttribute("data-decl-aba") === aba);
   }
   if (aba === "emitidas") declHistorico();
-  if (aba === "diretoria") declCarregarDiretoria();
 }
 
 /* ─── carga inicial ─── */
@@ -416,8 +334,8 @@ function declCarregarEmissao() {
       /* Avisos de configuração que impedem emitir — ditos ANTES de a pessoa
          preencher tudo, não depois de clicar em Emitir. */
       var problemas = [];
-      if (!r.signatario) problemas.push("Nenhum diretor está marcado como signatário. Abra a aba Diretoria e marque quem assina.");
-      if (!DECL_ESTADO.diretores.length) problemas.push("Nenhum diretor com mandato vigente no cadastro. Abra a aba Diretoria.");
+      if (!r.signatario) problemas.push("Não foi encontrado Presidente vigente em Governança.");
+      if (!DECL_ESTADO.diretores.length) problemas.push("Não há dirigente com mandato vigente em Governança.");
       aviso.style.display = problemas.length ? "block" : "none";
       aviso.innerHTML = problemas.map(declEsc).join("<br>");
     })
@@ -437,12 +355,38 @@ function declEscolherPeriodo(valor) {
   declPrevia();
 }
 
+function declCarregarVinculos() {
+  var diretorId = document.getElementById("declDiretor").value;
+  var sel = document.getElementById("declEscola");
+  DECL_ESTADO.vinculos = []; DECL_ESTADO.escola = null;
+  sel.disabled = true; sel.innerHTML = '<option value="">Carregando…</option>';
+  if (!diretorId) { sel.innerHTML = '<option value="">— selecione o diretor —</option>'; declPrevia(); return; }
+  google.script.run.withSuccessHandler(function (r) {
+    if (!r || !r.ok) { sel.innerHTML = '<option value="">— vínculo não encontrado —</option>'; declMsg((r && r.mensagem) || "Não foi possível localizar o vínculo.", "alerta"); return; }
+    DECL_ESTADO.vinculos = r.vinculos || [];
+    sel.innerHTML = '<option value="">— selecione —</option>' + DECL_ESTADO.vinculos.map(function (v) {
+      return '<option value="' + declEsc(v.escolaId) + '">' + declEsc(v.fantasia || v.nome) + '</option>';
+    }).join("");
+    sel.disabled = !DECL_ESTADO.vinculos.length;
+    if (DECL_ESTADO.vinculos.length === 1) { sel.value = DECL_ESTADO.vinculos[0].escolaId; declSelecionarEscola(); }
+    else if (!DECL_ESTADO.vinculos.length) declMsg("Nenhuma escola do cadastro foi encontrada para este dirigente.", "alerta");
+  }).withFailureHandler(function (e) { sel.innerHTML = '<option value="">— erro —</option>'; declMsg("Erro: " + e, "erro"); })
+    .declContextoDiretor(diretorId, declToken());
+}
+
+function declSelecionarEscola() {
+  var id = document.getElementById("declEscola").value;
+  DECL_ESTADO.escola = (DECL_ESTADO.vinculos || []).filter(function (v) { return v.escolaId === id; })[0] || null;
+  declPrevia();
+}
+
 function declDados(confirmado) {
   return {
     diretorId: document.getElementById("declDiretor").value,
     dataLiberacao: document.getElementById("declDataLiberacao").value,
     dataEmissao: document.getElementById("declDataEmissao").value,
     periodo: DECL_ESTADO.periodo,
+    escolaId: document.getElementById("declEscola").value,
     confirmado: confirmado === true
   };
 }
@@ -458,8 +402,8 @@ function declPreviaAgora() {
   var caixa = document.getElementById("declPrevia");
   var aviso = document.getElementById("declPreviaAviso");
 
-  if (!d.diretorId || !d.dataLiberacao) {
-    caixa.textContent = "Selecione o diretor e a data para ver a prévia.";
+  if (!d.diretorId || !d.escolaId || !d.dataLiberacao) {
+    caixa.textContent = "Selecione o diretor, a escola empregadora e a data para ver a prévia.";
     aviso.style.display = "none";
     return;
   }
@@ -507,7 +451,8 @@ function declEmitir(confirmado) {
 
       declMsg("Declaração " + r.numero + " emitida.", "sucesso");
       if (r.url) window.open(r.url, "_blank");
-      declAba("emitidas");
+      DECL_ESTADO.ultima = r;
+      declMostrarEntrega(r);
     })
     .withFailureHandler(function (e) {
       btn.disabled = false;
@@ -517,8 +462,54 @@ function declEmitir(confirmado) {
     .declEmitirDeclaracaoDiretor(declDados(confirmado), declToken());
 }
 
+function declMostrarEntrega(r) {
+  var escola = r.escola || DECL_ESTADO.escola || {};
+  document.getElementById("declEntrega").style.display = "block";
+  document.getElementById("declEntregaResumo").textContent = "Declaração " + r.numero + " · " + (escola.fantasia || escola.nome || "escola");
+  var contatos = escola.contatos || [];
+  document.getElementById("declContatos").innerHTML = contatos.length ? contatos.map(function (c, i) {
+    return '<label class="declContato"><input type="checkbox" data-decl-email="' + i + '"' + (c.marcado ? ' checked' : '') + '><span><b>' + declEsc(c.email) + '</b><small>' + declEsc((c.origens || []).join(" · ")) + (c.falhas ? ' · ' + c.falhas + ' falha(s)' : '') + '</small></span></label>';
+  }).join("") : '<div class="declAviso">Nenhum e-mail válido encontrado. Atualize o cadastro da escola antes do envio.</div>';
+  document.getElementById("declBtnEmail").disabled = !contatos.length;
+}
+
+function declEmailsEscolhidos() {
+  var lista = [], caixas = document.querySelectorAll("[data-decl-email]");
+  for (var i = 0; i < caixas.length; i++) if (caixas[i].checked) lista.push(DECL_ESTADO.ultima.escola.contatos[Number(caixas[i].getAttribute("data-decl-email"))].email);
+  return lista;
+}
+
+function declEnviarEmail() {
+  if (!DECL_ESTADO.ultima) return;
+  var emails = declEmailsEscolhidos();
+  if (!emails.length) return declMsg("Escolha ao menos um e-mail.", "alerta");
+  google.script.run.withSuccessHandler(function (r) { declMsg(r.mensagem, r.ok ? "sucesso" : "erro"); })
+    .withFailureHandler(function (e) { declMsg("Erro: " + e, "erro"); })
+    .declEnviarEmail(DECL_ESTADO.ultima.numero, emails, declToken());
+}
+
+function declPrepararWhatsapp() {
+  if (!DECL_ESTADO.ultima) return;
+  google.script.run.withSuccessHandler(function (r) {
+    if (!r || !r.ok) return declMsg((r && r.mensagem) || "Não foi possível preparar.", "erro");
+    window.open(r.url, "_blank"); document.getElementById("declBtnConfirmarZap").style.display = "inline-flex";
+  }).withFailureHandler(function (e) { declMsg("Erro: " + e, "erro"); })
+    .declPrepararWhatsapp(DECL_ESTADO.ultima.numero, declToken());
+}
+
+function declConfirmarWhatsapp() {
+  if (!DECL_ESTADO.ultima) return;
+  google.script.run.withSuccessHandler(function (r) { declMsg(r.mensagem, r.ok ? "sucesso" : "erro"); if (r.ok) document.getElementById("declBtnConfirmarZap").style.display = "none"; })
+    .withFailureHandler(function (e) { declMsg("Erro: " + e, "erro"); })
+    .declConfirmarWhatsapp(DECL_ESTADO.ultima.numero, declToken());
+}
+
 function declLimpar() {
   document.getElementById("declDiretor").value = "";
+  document.getElementById("declEscola").innerHTML = '<option value="">— selecione o diretor —</option>';
+  document.getElementById("declEscola").disabled = true;
+  document.getElementById("declEntrega").style.display = "none";
+  DECL_ESTADO.vinculos = []; DECL_ESTADO.escola = null; DECL_ESTADO.ultima = null;
   document.getElementById("declDataLiberacao").value = "";
   document.getElementById("declDataEmissao").value = new Date().toISOString().slice(0, 10);
   declEscolherPeriodo("");
@@ -539,7 +530,7 @@ function declLimparFiltros() {
 
 function declHistorico() {
   var corpo = document.getElementById("declHistoricoCorpo");
-  corpo.innerHTML = '<tr><td colspan="7" class="declVazio">Carregando…</td></tr>';
+  corpo.innerHTML = '<tr><td colspan="9" class="declVazio">Carregando…</td></tr>';
 
   var filtros = {
     busca: document.getElementById("declBusca").value,
@@ -550,11 +541,11 @@ function declHistorico() {
   google.script.run
     .withSuccessHandler(function (r) {
       if (!r || !r.ok) {
-        corpo.innerHTML = '<tr><td colspan="7" class="declVazio">' + declEsc((r && r.mensagem) || "Erro ao listar.") + '</td></tr>';
+        corpo.innerHTML = '<tr><td colspan="9" class="declVazio">' + declEsc((r && r.mensagem) || "Erro ao listar.") + '</td></tr>';
         return;
       }
       if (!r.itens.length) {
-        corpo.innerHTML = '<tr><td colspan="7" class="declVazio">Nenhuma declaração emitida ainda.</td></tr>';
+        corpo.innerHTML = '<tr><td colspan="9" class="declVazio">Nenhuma declaração emitida ainda.</td></tr>';
         return;
       }
       corpo.innerHTML = r.itens.map(function (d) {
@@ -564,9 +555,11 @@ function declHistorico() {
         return '<tr>' +
           '<td><b>' + declEsc(d.numero) + '</b></td>' +
           '<td>' + declEsc(d.diretorNome) + '</td>' +
+          '<td>' + declEsc(d.escolaNome || "—") + '</td>' +
           '<td>' + declEsc(d.dataLiberacao) + '</td>' +
           '<td>' + declEsc(d.periodo ? d.periodoRotulo : "—") + '</td>' +
           '<td>' + declEsc(d.dataEmissao) + '</td>' +
+          '<td><span class="declPill ' + (d.emailStatus === "ENVIADO" || d.emailStatus === "TESTE_HML_ENVIADO" ? 'declPillOk' : 'declPillAlerta') + '">' + declEsc(d.emailStatus || "Aguardando") + '</span><br><small>' + declEsc(d.whatsappStatus || "WhatsApp não preparado") + '</small></td>' +
           '<td>' + declEsc(d.emitidoPor) + '</td>' +
           '<td style="white-space:nowrap;">' + link +
             ' <button type="button" class="declBtnMini" onclick="declReemitir(\'' + declEsc(d.diretorId) + '\',\'' + declEsc(d.periodo) + '\')">🔁 Reemitir</button>' +
@@ -575,7 +568,7 @@ function declHistorico() {
       }).join("");
     })
     .withFailureHandler(function (e) {
-      corpo.innerHTML = '<tr><td colspan="7" class="declVazio">Erro: ' + declEsc(e) + '</td></tr>';
+      corpo.innerHTML = '<tr><td colspan="9" class="declVazio">Erro: ' + declEsc(e) + '</td></tr>';
     })
     .declHistoricoDeclaracoes(filtros, declToken());
 }
@@ -588,169 +581,6 @@ function declReemitir(diretorId, periodo) {
   document.getElementById("declDataEmissao").value = new Date().toISOString().slice(0, 10);
   declEscolherPeriodo(periodo || "");
   declMsg("Dados repetidos. Informe a nova data da liberação.", "info");
-}
-
-/* ─── diretoria ─── */
-function declCarregarDiretoria() {
-  var corpo = document.getElementById("declDiretoriaCorpo");
-  corpo.innerHTML = '<tr><td colspan="6" class="declVazio">Carregando…</td></tr>';
-
-  google.script.run
-    .withSuccessHandler(function (r) {
-      if (!r || !r.ok) {
-        corpo.innerHTML = '<tr><td colspan="6" class="declVazio">' + declEsc((r && r.mensagem) || "Erro.") + '</td></tr>';
-        return;
-      }
-
-      document.getElementById("declMiniAtivos").textContent = r.resumo.ativos;
-      document.getElementById("declMiniInativos").textContent = r.resumo.inativos;
-      document.getElementById("declMiniVencidos").textContent = r.resumo.mandatoVencido;
-      document.getElementById("declMiniSignatario").textContent = r.signatario || "ninguém marcado";
-
-      if (!r.diretores.length) {
-        corpo.innerHTML = '<tr><td colspan="6" class="declVazio">Nenhum diretor cadastrado.</td></tr>';
-        return;
-      }
-
-      corpo.innerHTML = r.diretores.map(function (d) {
-        var mandato = (d.mandatoInicio || "—") + " a " + (d.mandatoFim || "—");
-        var situacao = !d.ativo
-          ? '<span class="declPill declPillOff">Inativo</span>'
-          : (d.mandatoVigente
-              ? '<span class="declPill declPillOk">Ativo</span>'
-              : '<span class="declPill declPillAlerta">Mandato vencido</span>');
-        return '<tr>' +
-          '<td><b>' + declEsc(d.nome) + '</b></td>' +
-          '<td>' + declEsc(d.cargo) + '</td>' +
-          '<td>' + declEsc(mandato) + '</td>' +
-          '<td>' + (d.assinaComoPresidente ? '✍️' : '') + '</td>' +
-          '<td>' + situacao + '</td>' +
-          '<td style="white-space:nowrap;">' +
-            '<button type="button" class="declBtnMini" onclick="declAbrirDiretor(\'' + declEsc(d.id) + '\')">✏ Editar</button>' +
-            '<button type="button" class="declBtnMini" onclick="declAlternar(\'' + declEsc(d.id) + '\',' + (!d.ativo) + ')">' +
-              (d.ativo ? 'Inativar' : 'Reativar') + '</button>' +
-          '</td>' +
-        '</tr>';
-      }).join("");
-
-      DECL_ESTADO.diretoria = r.diretores;
-    })
-    .withFailureHandler(function (e) {
-      corpo.innerHTML = '<tr><td colspan="6" class="declVazio">Erro: ' + declEsc(e) + '</td></tr>';
-    })
-    .declListarDiretoria(declToken());
-}
-
-function declIsoDeBr(br) {
-  var m = String(br || "").match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  return m ? (m[3] + "-" + m[2] + "-" + m[1]) : "";
-}
-
-function declAbrirDiretor(id) {
-  var d = null;
-  (DECL_ESTADO.diretoria || []).forEach(function (x) { if (x.id === id) d = x; });
-
-  document.getElementById("declModalDiretorTitulo").textContent = d ? "Editar diretor" : "Novo diretor";
-  document.getElementById("declFormId").value = d ? d.id : "";
-  document.getElementById("declFormNome").value = d ? d.nome : "";
-  document.getElementById("declFormCargo").value = d ? d.cargo : "";
-  document.getElementById("declFormCpf").value = d ? d.cpf : "";
-  document.getElementById("declFormInicio").value = d ? declIsoDeBr(d.mandatoInicio) : "";
-  document.getElementById("declFormFim").value = d ? declIsoDeBr(d.mandatoFim) : "";
-  document.getElementById("declFormObs").value = d ? d.observacao : "";
-  document.getElementById("declFormAssina").checked = d ? !!d.assinaComoPresidente : false;
-  document.getElementById("declFormAtivo").checked = d ? !!d.ativo : true;
-
-  declAbrir("declModalDiretor");
-}
-
-function declSalvarDiretorTela() {
-  var dados = {
-    id: document.getElementById("declFormId").value,
-    nome: document.getElementById("declFormNome").value,
-    cargo: document.getElementById("declFormCargo").value,
-    cpf: document.getElementById("declFormCpf").value,
-    mandatoInicio: document.getElementById("declFormInicio").value,
-    mandatoFim: document.getElementById("declFormFim").value,
-    observacao: document.getElementById("declFormObs").value,
-    assinaComoPresidente: document.getElementById("declFormAssina").checked,
-    ativo: document.getElementById("declFormAtivo").checked
-  };
-
-  google.script.run
-    .withSuccessHandler(function (r) {
-      if (!r || !r.ok) { declMsg((r && r.mensagem) || "Não consegui salvar.", "erro"); return; }
-      declMsg(r.mensagem, "sucesso");
-      declFechar("declModalDiretor");
-      declCarregarDiretoria();
-      declCarregarEmissao();
-    })
-    .withFailureHandler(function (e) { declMsg("Erro ao salvar: " + e, "erro"); })
-    .declSalvarDiretor(dados, declToken());
-}
-
-function declAlternar(id, ativar) {
-  google.script.run
-    .withSuccessHandler(function (r) {
-      declMsg((r && r.mensagem) || "Pronto.", (r && r.ok) ? "sucesso" : "erro");
-      declCarregarDiretoria();
-      declCarregarEmissao();
-    })
-    .withFailureHandler(function (e) { declMsg("Erro: " + e, "erro"); })
-    .declAlternarDiretor(id, ativar, declToken());
-}
-
-/* ─── importação de Verbas da Diretoria ─── */
-function declAbrirImportacao() {
-  var corpo = document.getElementById("declImportarCorpo");
-  corpo.innerHTML = "Carregando…";
-  declAbrir("declModalImportar");
-
-  google.script.run
-    .withSuccessHandler(function (r) {
-      if (!r || !r.ok) { corpo.textContent = (r && r.mensagem) || "Erro."; return; }
-      DECL_ESTADO.candidatos = r.candidatos || [];
-
-      if (!DECL_ESTADO.candidatos.length) {
-        corpo.textContent = "Nenhum diretor ativo no cadastro de gratificações.";
-        return;
-      }
-
-      corpo.innerHTML =
-        '<p style="font-size:12px;color:#64748b;margin:0 0 12px;">' +
-        'Vindo de Financeiro › Verbas da Diretoria. O mandato não existe lá — preencha depois de importar.</p>' +
-        DECL_ESTADO.candidatos.map(function (c, i) {
-          return '<label class="declImportLinha">' +
-            '<input type="checkbox" data-decl-cand="' + i + '"' +
-              (c.jaCadastrado ? ' disabled' : ' checked') + '>' +
-            '<span><b>' + declEsc(c.nome) + '</b> <small>· ' + declEsc(c.cargo) +
-              (c.jaCadastrado ? ' · já cadastrado' : '') + '</small></span>' +
-          '</label>';
-        }).join("");
-    })
-    .withFailureHandler(function (e) { corpo.textContent = "Erro: " + e; })
-    .declCandidatosDeVerbas(declToken());
-}
-
-function declConfirmarImportacao() {
-  var marcados = [];
-  var caixas = document.querySelectorAll("[data-decl-cand]");
-  for (var i = 0; i < caixas.length; i++) {
-    if (caixas[i].checked && !caixas[i].disabled) {
-      marcados.push(DECL_ESTADO.candidatos[Number(caixas[i].getAttribute("data-decl-cand"))]);
-    }
-  }
-  if (!marcados.length) { declMsg("Selecione ao menos um diretor.", "alerta"); return; }
-
-  google.script.run
-    .withSuccessHandler(function (r) {
-      declMsg((r && r.mensagem) || "Pronto.", (r && r.ok) ? "sucesso" : "erro");
-      declFechar("declModalImportar");
-      declCarregarDiretoria();
-      declCarregarEmissao();
-    })
-    .withFailureHandler(function (e) { declMsg("Erro ao importar: " + e, "erro"); })
-    .declImportarDeVerbas(marcados, declToken());
 }
 
 window.declInit = declInit;

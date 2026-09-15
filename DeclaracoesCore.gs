@@ -1,6 +1,6 @@
 // ============================================================================
 // ARQUIVO: DeclaracoesCore.gs
-// MÓDULO: Documentos › Declarações — cadastro da Diretoria e base comum
+// MÓDULO: Documentos › Declarações — integração com Governança e base comum
 // ============================================================================
 //
 // POR QUE ESTE ARQUIVO EXISTE
@@ -50,6 +50,9 @@
 // vez, e a trava está em `declSalvarDiretor`.
 // ============================================================================
 
+/* A aba DIRETORIA é legada. Continua disponível somente para preservar a
+ * resolução de documentos antigos; novas emissões usam GOV_COMPOSICAO e
+ * GOV_GESTOES como fonte institucional única. */
 var ABA_DIRETORIA = "DIRETORIA";
 
 var DECL_COLUNAS_DIRETORIA = [
@@ -176,7 +179,7 @@ function declQuem_(sessao) {
  * LEITURA DA DIRETORIA
  * ========================================= */
 
-function declListarDiretoria_interno_() {
+function declListarDiretoriaLegada_() {
   var sh = declGarantirDiretoria_();
   if (sh.getLastRow() < 2) return [];
 
@@ -214,6 +217,39 @@ function declListarDiretoria_interno_() {
   }).filter(function (d) { return !!d.id; });
 }
 
+/** Composição institucional vigente — fonte única das novas emissões. */
+function declListarDiretoria_interno_() {
+  if (typeof GOV_COMPOSICAO === "undefined" || typeof GOV_MANDATO === "undefined") {
+    throw new Error("O módulo Governança não está disponível.");
+  }
+
+  var hoje = declHoje_();
+  var inicio = declSoData_(GOV_MANDATO.posse);
+  var fim = declSoData_(GOV_MANDATO.termino);
+  var vigente = (!inicio || hoje >= inicio) && (!fim || hoje <= fim) && GOV_MANDATO.atual !== false;
+
+  return GOV_COMPOSICAO.map(function (p) {
+    var id = ["GOV", p.orgao, p.condicao, p.ordem].join("-");
+    return {
+      id: id,
+      nome: declTexto_(p.nome).toUpperCase(),
+      cpf: "",
+      cargo: declTexto_(p.cargo),
+      orgao: declTexto_(p.orgao),
+      condicao: declTexto_(p.condicao),
+      gestao: declTexto_(GOV_MANDATO.gestao),
+      mandatoInicio: declDataBR_(GOV_MANDATO.posse),
+      mandatoFim: declDataBR_(GOV_MANDATO.termino),
+      assinaComoPresidente: p.orgao === "DIRETORIA_EXECUTIVA" &&
+        p.condicao === "EFETIVO" && declChaveNome_(p.cargo) === "PRESIDENTE",
+      ativo: vigente,
+      observacao: "Fonte: Governança",
+      mandatoVigente: vigente,
+      fonte: "GOVERNANCA"
+    };
+  });
+}
+
 /** Quem pode receber declaração hoje: ativo E com mandato vigente. */
 function declDiretoresHabilitados_() {
   return declListarDiretoria_interno_().filter(function (d) {
@@ -228,7 +264,7 @@ function declDiretoresHabilitados_() {
  */
 function declSignatario_() {
   var marcados = declListarDiretoria_interno_().filter(function (d) {
-    return d.assinaComoPresidente && d.ativo;
+    return d.assinaComoPresidente && d.ativo && d.mandatoVigente;
   });
   return marcados.length ? marcados[0] : null;
 }
@@ -237,7 +273,11 @@ function declDiretorPorId_(id) {
   id = declTexto_(id);
   if (!id) return null;
   var achados = declListarDiretoria_interno_().filter(function (d) { return d.id === id; });
-  return achados.length ? achados[0] : null;
+  if (achados.length) return achados[0];
+  /* Compatibilidade: permite abrir/reemitir registros antigos sem recolocar a
+     aba legada como fonte das novas listas. */
+  var antigos = declListarDiretoriaLegada_().filter(function (d) { return d.id === id; });
+  return antigos.length ? antigos[0] : null;
 }
 
 /* =========================================
@@ -274,6 +314,7 @@ function declListarDiretoria(tokenSessao) {
  */
 function declSalvarDiretor(dados, tokenSessao) {
   var sessao = exigirModulo_(tokenSessao, "documentos", false);
+  return { ok: false, mensagem: "A Diretoria é mantida exclusivamente em Governança. Nenhuma alteração foi realizada." };
   var lock = LockService.getScriptLock();
   try {
     if (!lock.tryLock(15000)) {
@@ -370,6 +411,7 @@ function declSalvarDiretor(dados, tokenSessao) {
  */
 function declAlternarDiretor(id, ativo, tokenSessao) {
   var sessao = exigirModulo_(tokenSessao, "documentos", false);
+  return { ok: false, mensagem: "A situação do mandato é definida em Governança. Nenhuma alteração foi realizada." };
   try {
     id = declTexto_(id);
     if (!id) return { ok: false, mensagem: "Diretor não informado." };
@@ -425,6 +467,7 @@ function declAlternarDiretor(id, ativo, tokenSessao) {
 /** Só lê e devolve os candidatos. Não grava nada. */
 function declCandidatosDeVerbas(tokenSessao) {
   exigirModulo_(tokenSessao, "documentos", false);
+  return { ok: false, candidatos: [], mensagem: "Importação desativada: Verbas da Diretoria não é fonte de mandato." };
   try {
     if (typeof verbListarDiretores_interno_ !== "function") {
       return { ok: true, candidatos: [], mensagem: "O cadastro de gratificações da diretoria não está disponível neste projeto." };
@@ -466,6 +509,7 @@ function declChaveNome_(v) {
 /** Grava os confirmados. Repetido é PULADO, não duplicado. */
 function declImportarDeVerbas(selecionados, tokenSessao) {
   exigirModulo_(tokenSessao, "documentos", false);
+  return { ok: false, importados: 0, mensagem: "Importação desativada: a composição oficial vem de Governança." };
   try {
     selecionados = selecionados || [];
     if (!selecionados.length) return { ok: false, mensagem: "Nenhum diretor selecionado." };
