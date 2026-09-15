@@ -192,7 +192,14 @@
     .barra b{color:var(--navy)}
     #msg{position:fixed;right:16px;bottom:16px;max-width:400px;background:var(--navy);
          color:#fff;padding:13px 16px;border-radius:11px;font-size:13px;display:none;
-         box-shadow:0 8px 26px rgba(0,0,0,.25);white-space:pre-wrap;z-index:50}
+         box-shadow:0 8px 26px rgba(0,0,0,.25);white-space:pre-wrap;z-index:90}
+    /* 90, E NAO 50 — 15/09/2026. A gaveta e 61, o fundo dela 60, o dialogo 70.
+       Com 50 o aviso aparecia ATRAS de tudo isso: toda recusa entregue com a
+       gaveta aberta era engolida. O usuario clicava Excluir, o dialogo
+       fechava, a gaveta continuava, e "nao acontecia nada" — quando na verdade
+       o servidor tinha respondido, e respondido a coisa certa.
+       Nao era so o excluir: valia para cancelar, emitir, salvar dados, para
+       toda mensagem dada de dentro da gaveta. */
   
 /* `hidden` é `display:none` da folha do navegador, e QUALQUER `display` numa
    regra de classe ganha dele. Sem estas linhas o elemento continua à vista
@@ -1995,6 +2002,25 @@ function cancelarIngresso(){
    que tira o registro de circulação. */
 function excluirInscricao(){
   var x = inscricaoAberta(); if (!x) return;
+
+  /* O SERVIDOR JA RECUSAVA — E ESTAVA CERTO. Inscrição com ingresso emitido
+     não se exclui: o QR continuaria válido na portaria, e alguém entraria com
+     um ingresso de uma inscrição que não existe mais.
+     O que estava errado era a ORDEM. A tela pedia o motivo, mandava, e só
+     então ouvia "cancele o ingresso antes" — uma recusa que, por cima, vinha
+     invisível atrás da gaveta. Erro previsível se avisa ANTES de a pessoa
+     terminar de digitar (REGRA Nº 0.6), e já com o próximo passo na mão. */
+  if (x.ingressoId) {
+    return perguntar({
+      titulo: 'Cancele o ingresso antes de excluir',
+      texto: 'Esta inscrição tem o ingresso ' + (x.numeroIngresso || x.ingressoId) +
+             ' emitido. Excluir agora deixaria o QR valendo na portaria — ' +
+             'alguém entraria com o ingresso de uma inscrição que não existe ' +
+             'mais. Cancelar o ingresso devolve a vaga e libera a exclusão.',
+      ok: 'Cancelar o ingresso'
+    }, function(){ cancelarIngresso(); });
+  }
+
   perguntar({ titulo: 'Excluir a inscrição de ' + x.nome + '?',
               texto: 'Ela sai da lista e a vaga volta para as 2.000.',
               campo: true, rotulo: 'Motivo da exclusão',
