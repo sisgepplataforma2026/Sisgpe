@@ -57,6 +57,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 | Nº | Item |
 |---|---|
+| 86 | Declaração de Diretor — módulo novo; PDF e pasta do Drive nunca rodaram no ar |
 | 85 | 🔴 NA PRODUÇÃO (711) — anexar no reenvio, e a virada de lote que duplicava |
 | 84 | 🟡 NA PRODUÇÃO (710) — o laço reconciliar↔re-condenar; falta ver ele parar |
 | 83 | ✅ VERIFICADO NO AR — 517 a 520 saíram; devolver para a fila zera as tentativas |
@@ -128,6 +129,45 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
+
+### 86. Declaração de Diretor — entregue em 15/09/2026, nunca emitida no ar
+
+**O que foi entregue:** Documentos › Declarações, com três telas (Emitir,
+Emitidas, Diretoria), cadastro próprio da diretoria com mandato e signatário,
+modelo fixo com variáveis (dia e período, sem horário) e PDF.
+
+Arquivos: `DeclaracoesCore.gs`, `DeclaracaoDiretor.gs`, `DeclaracoesAdmin.html`,
+mais o encaixe no `index.html` e a chave `DECLARACOES` em `AmbienteRecursos.gs`.
+
+**O que JÁ está provado por execução** — `tests/e2e/t161-declaracao-diretor.js`,
+53 asserções, suíte inteira verde:
+
+| | |
+|---|---|
+| ✅ | cadastro da diretoria, validações e caixa alta do nome |
+| ✅ | só um signatário por vez, e não dá para inativar quem assina |
+| ✅ | mandato vencido fica fora da emissão, com o motivo à vista |
+| ✅ | o texto nas três formas (sem período / integral / turno), sem horário |
+| ✅ | numeração 001/AAAA sequencial por ano |
+| ✅ | duplicata avisa e não grava antes da confirmação |
+| ✅ | sem signatário não emite e não consome número |
+| ✅ | registro na planilha com o texto assinado, histórico e filtros |
+| ✅ | permissão (módulo Documentos) e token inválido |
+| ✅ | trilha de auditoria: Documentos › Declarações |
+| ✅ | importar de Verbas da Diretoria sem duplicar e sem mexer lá |
+
+**O QUE SEGUE "NÃO TESTADO" — é isto que você precisa rodar:**
+
+| | O que fazer |
+|---|---|
+| 🟡 **Configurar a pasta** | Criar a pasta das declarações no Drive e pôr o ID na Script Property `SISGEP_PASTA_DECLARACOES`. **Sem isso a emissão recusa** — de propósito, para a homologação não gravar no acervo de produção. Conferir com `declDiagnosticoPasta_()` no editor. |
+| 🟡 **O PDF** | Emitir uma declaração e comparar com o modelo em papel (DECLARAÇÃO 03.09.2026): logo, citação do art. 543, fecho, cidade/data e assinatura. O conversor de HTML do Apps Script não é reproduzível no emulador. |
+| 🟡 **A tela** | Abrir Documentos › Declarações: as três abas, a prévia atualizando, os modais de cadastro/importação/segunda via. |
+| 🟡 **O cadastro real** | Cadastrar a diretoria eleita com as datas de mandato, e marcar o presidente como signatário. |
+
+Item só sai daqui com você dizendo que rodou.
+
+---
 
 ### 85. 🔴 NA PRODUÇÃO (711) — ANEXAR NO REENVIO, E A VIRADA DE LOTE QUE DUPLICAVA
 
