@@ -25,7 +25,17 @@
     .main-name{left:67.35%;top:25.7%;width:10.2%;height:7.6%;font-size:1.05vw;font-size:1.05cqw}
     .main-school{left:67.35%;top:34.4%;width:10.4%;height:7.8%;font-size:1vw;font-size:1cqw}
     .main-category{left:67.35%;top:43.4%;width:10.3%;height:5.4%;font-size:1.05vw;font-size:1.05cqw}
-    .main-number{left:65.3%;top:49.7%;width:12.8%;height:4.6%;display:flex;align-items:center;justify-content:center;color:#111827;text-shadow:none;font-size:1.2vw;font-size:1.2cqw;letter-spacing:.02em}
+    /* O NÚMERO ENCOLHEU PARA CABER NA CAIXA BRANCA DA ARTE — 15/09/2026.
+       Ele mandou o print: "FCV-2026-00000", o último dígito comido. Eu já
+       tinha ensinado o ajuste a medir a largura e já tinha posto o número na
+       lista — e mesmo assim saía cortado.
+       O motivo é outro, e mais bobo: o texto CABIA na minha caixa. Ela é que
+       era mais larga que o retângulo branco desenhado na arte, então o número
+       vazava para fora do branco e o olho lia como corte. Medir mais não
+       resolveria nunca; o que estava errado era a medida.
+       12,2% é a largura do branco, e 1,05 deixa folga de um caractere para o
+       dia em que o número passar de seis dígitos. */
+    .main-number{left:65.6%;top:49.7%;width:12.2%;height:4.6%;display:flex;align-items:center;justify-content:center;color:#111827;text-shadow:none;font-size:1.05vw;font-size:1.05cqw;letter-spacing:.01em}
     .qrBox{position:absolute;left:65.4%;top:57.7%;width:12.4%;aspect-ratio:1/1;background:#fff;padding:.6%;display:flex;align-items:center;justify-content:center}
     .qrBox>div,.qrBox canvas,.qrBox img{width:100%!important;height:100%!important;display:block}
     .stub-number{left:83.3%;top:30.5%;width:14.4%;height:4.8%;display:flex;align-items:center;justify-content:center;color:#b90f3d;text-shadow:none;font-size:1.1vw;font-size:1.1cqw}
