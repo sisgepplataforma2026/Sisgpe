@@ -233,10 +233,38 @@ b.fluxo("DECLARAÇÕES · Pré-visualizar não grava nada");
 const antesDaPrevia = g.declHistoricoDeclaracoes({}, TOKEN).total;
 const doc = g.declPreviaDocumento(pedido, TOKEN);
 b.ok(doc.ok && /DECLARAÇÃO/.test(doc.html), "devolve o documento montado");
-b.ok(/PRÉVIA/.test(doc.html), "numerado como PRÉVIA");
+/* O modelo em papel não tem rodapé de numeração, e o documento também não —
+   o número vive na planilha e no nome do arquivo, não impresso na folha. */
+b.ok(!/SISGEP/.test(doc.html) && !/Declaração nº/.test(doc.html),
+  "sem rodapé de numeração, como no modelo em papel");
+b.ok(/DECLARAÇÃO/.test(doc.html) && /Por ser verdade firmamos a presente/.test(doc.html),
+  "traz título e fecho do modelo");
+b.ok(/estará a serviço do SindEducação\/ES/.test(doc.html), "com a redação do modelo");
 b.ok(g.declHistoricoDeclaracoes({}, TOKEN).total === antesDaPrevia, "e o histórico não cresceu");
 b.ok(g.declPreviaDocumento({ diretorId: dir.id, periodo: "" }, TOKEN).ok === false,
   "pedido incompleto é recusado igual à emissão");
+
+b.fluxo("DECLARAÇÕES · O documento sai no formato do modelo em papel");
+/* Modelo conferido em 15/09/2026: DECLARAÇÃO 17.09.2026, da Marcilene. */
+const marcilene = g.declListarDiretoria_interno_().filter(d => /MARCILENE/.test(d.nome))[0];
+const textoEla = g.declMontarTexto_({ nome: marcilene.nome, cargo: marcilene.cargo, dataLiberacao: "2026-09-17", periodo: "" });
+b.ok(/diretora desta Entidade Sindical/.test(textoEla), "cargo feminino vira \"diretora\"", marcilene.cargo);
+b.ok(/MARCILENE DA SILVA MAGESKE, diretora desta Entidade Sindical, no dia 17 de setembro de 2026, estará a serviço do SindEducação\/ES\./.test(textoEla),
+  "a redação bate com o modelo, palavra por palavra");
+b.ok(/Nos termos do Artigo 543, da CLT, requeremos a liberação do empregado/.test(textoEla),
+  "e o requerimento fica no MESMO parágrafo, como no papel");
+
+const leonil = g.declListarDiretoria_interno_().filter(d => /LEONIL/.test(d.nome))[0];
+b.ok(/ diretor desta Entidade/.test(g.declMontarTexto_({ nome: leonil.nome, cargo: leonil.cargo, dataLiberacao: "2026-09-17", periodo: "" })),
+  "cargo sem marca de gênero fica no masculino", leonil.cargo);
+
+const docFormato = g.declPreviaDocumento(pedido, TOKEN).html;
+b.ok(/class="dagua"/.test(docFormato), "a marca d'água entra na folha");
+b.ok(/text-decoration:underline/.test(docFormato), "o título sai sublinhado, como no modelo");
+b.ok(/<b>WANDERSON NASCIMENTO CASTELO<\/b>/.test(docFormato), "o nome sai em negrito no corpo");
+b.ok(/Leonil Dias da Silva/.test(docFormato) && !/LEONIL DIAS DA SILVA<\/div>/.test(docFormato),
+  "a assinatura sai em caixa normal, não em caixa alta");
+b.ok(/Presidente &ndash; <em>SindEducação<\/em>/.test(docFormato), "com o cargo e a entidade em itálico");
 
 b.fluxo("DECLARAÇÕES · Segurança");
 b.bloqueia(() => g.declContextoDiretor(dir.id, TOKEN_ESC), "usuário sem Documentos não consulta vínculo");

@@ -222,11 +222,32 @@ function declMontarTexto_(p) {
   var trecho = DECL_PERIODOS[periodo].trecho;
   var dia = declDataExtenso_(p.dataLiberacao);
 
-  /* "diretor", fixo — não o cargo da pessoa. Ver a nota do cabeçalho. */
-  return "Declaramos, para os devidos fins e efeitos legais a que se destina, que " +
-    nome + ", diretor desta Entidade Sindical, no dia " + dia + trecho +
-    ", estará à disposição do SindEducação/ES para o exercício de atividades " +
-    "inerentes ao seu mandato sindical.";
+  /* PARÁGRAFO ÚNICO, como no modelo em papel: a liberação e o requerimento
+     do art. 543 ficam na mesma mancha de texto, não em dois blocos. */
+  return "Declaramos para os devidos fins e efeitos legais a que se destina que " +
+    nome + ", " + declTratamento_(p.cargo) + " desta Entidade Sindical, no dia " +
+    dia + trecho + ", estará a serviço do SindEducação/ES. Nos termos do Artigo 543, " +
+    "da CLT, requeremos a liberação do empregado para o pleno exercício de seu " +
+    "mandato sindical, conforme lhe assegura a lei:";
+}
+
+/**
+ * "diretor" ou "diretora", conforme o cargo na composição.
+ *
+ * O modelo em papel conferido em 15/09/2026 traz "diretora desta Entidade
+ * Sindical" para a Marcilene, e o cargo dela em Governança é "Secretária de
+ * Organização…". É daí que sai o gênero: a composição já escreve
+ * Secretário/Secretária, Conselheiro/Conselheira.
+ *
+ * Cargo sem marca de gênero (Presidente, Suplente) cai no masculino, que é o
+ * que o documento em papel já fazia. Errar o gênero de alguém num documento
+ * assinado é desrespeito, não detalhe de estilo — se aparecer um caso que a
+ * regra não pega, o certo é marcar no cadastro, não adivinhar aqui.
+ */
+function declTratamento_(cargo) {
+  var primeira = declTexto_(cargo).split(/[\s,]+/)[0] || "";
+  return /^(secretária|diretora|conselheira|delegada|tesoureira|presidenta|vice-presidenta)$/i.test(primeira)
+    ? "diretora" : "diretor";
 }
 
 /* =========================================
@@ -321,6 +342,7 @@ function declValidarPedido_(dados) {
     escola: escola,
     texto: declMontarTexto_({
       nome: diretor.nome,
+      cargo: diretor.cargo,
       dataLiberacao: dataLib,
       periodo: periodo
     })
@@ -381,7 +403,7 @@ function declDadosEmissao(tokenSessao) {
       periodos: Object.keys(DECL_PERIODOS).map(function (k) {
         return { valor: k, rotulo: DECL_PERIODOS[k].rotulo };
       }),
-      signatario: signatario ? { nome: signatario.nome, cargo: signatario.cargo } : null,
+      signatario: signatario ? { nome: signatario.nomeExibicao || signatario.nome, cargo: signatario.cargo } : null,
       gestao: (typeof GOV_MANDATO !== "undefined") ? GOV_MANDATO.gestao : "",
       hoje: declDataBR_(declHoje_())
     };
@@ -403,7 +425,7 @@ function declPreviaDeclaracaoDiretor(dados, tokenSessao) {
       texto: v.texto,
       avisos: declAvisos_(v),
       cidadeData: DECL_CIDADE + ", " + declDataExtenso_(v.dataEmissao) + ".",
-      signatario: { nome: v.signatario.nome, cargo: v.signatario.cargo },
+      signatario: { nome: v.signatario.nomeExibicao || v.signatario.nome, cargo: v.signatario.cargo },
       escola: v.escola,
       duplicatas: dup.map(function (d) { return d.numero; })
     };
@@ -1017,41 +1039,84 @@ function declHtmlDeclaracao_(p) {
   var sig = p.signatario || {};
   var imgs = declImagens_();
 
-  var logo = imgs.logoBase64
-    ? '<img src="data:' + imgs.logoMime + ';base64,' + imgs.logoBase64 + '" style="max-height:90px;">'
-    : '<div style="font-size:18px;font-weight:bold;color:#001f4d;">SindEducação/ES</div>';
+  /* O PAPEL TIMBRADO É O MESMO DOS VOUCHERS — cabeçalho, rodapé e marca
+   * d'água saem de VoucherMarcaDagua.gs, já em data: e já provados em PDF
+   * emitido. Redesenhar aqui produziria uma segunda versão do papel do
+   * sindicato, que é justamente o que não pode existir.
+   *
+   * Se alguma peça faltar, o documento sai sem ela — declaração sem arte
+   * ainda vale; emissão que explode porque o Drive piscou, não. */
+  function peca(fn) {
+    try { return (typeof fn === "function") ? fn() : ""; }
+    catch (e) { Logger.log("DeclaracaoDiretor: peça do papel indisponível — " + e.message); return ""; }
+  }
+  var cabecalho = peca(typeof cabecalhoVoucher_ !== "undefined" ? cabecalhoVoucher_ : null);
+  var rodape    = peca(typeof rodapeVoucher_    !== "undefined" ? rodapeVoucher_    : null);
+  var marca     = peca(typeof marcaDaguaVoucher_ !== "undefined" ? marcaDaguaVoucher_ : null);
+
+  /* Sem a arte do cabeçalho, entra a logo sozinha; sem ela, o nome escrito. */
+  var topo = cabecalho
+    ? '<img class="cab" src="' + cabecalho + '">'
+    : (imgs.logoBase64
+        ? '<div class="cab-txt"><img src="data:' + imgs.logoMime + ';base64,' + imgs.logoBase64 + '" style="max-height:80px;"></div>'
+        : '<div class="cab-txt">SindEducação/ES</div>');
 
   var assinaturaImg = imgs.assBase64
-    ? '<img src="data:' + imgs.assMime + ';base64,' + imgs.assBase64 + '" style="max-height:70px;"><br>'
-    : '<div style="height:52px;"></div>';
+    ? '<img class="ass-img" src="data:' + imgs.assMime + ';base64,' + imgs.assBase64 + '">'
+    : '<div style="height:46px;"></div>';
+
+  /* O NOME SAI EM NEGRITO, como no modelo. O texto gravado continua sendo
+     texto puro — a ênfase é da apresentação, não do conteúdo. */
+  var corpo = declEscapar_(p.texto);
+  var nomeAlvo = declEscapar_(declTexto_(p.diretor && p.diretor.nome).toUpperCase());
+  if (nomeAlvo && corpo.indexOf(nomeAlvo) >= 0) {
+    corpo = corpo.replace(nomeAlvo, "<b>" + nomeAlvo + "</b>");
+  }
 
   return '' +
     '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
-    '@page { size: A4; margin: 2.5cm 2.5cm; }' +
-    'body { font-family: Arial, Helvetica, sans-serif; font-size: 12pt; color: #111; line-height: 1.6; }' +
-    '.cabecalho { text-align: center; margin-bottom: 26px; }' +
-    '.titulo { text-align: center; font-size: 15pt; font-weight: bold; letter-spacing: 2px; margin: 26px 0 34px; }' +
-    '.corpo { text-align: justify; margin-bottom: 18px; }' +
-    '.citacao { text-align: justify; font-size: 10.5pt; margin: 16px 0 16px 2.2cm; color: #222; }' +
-    '.fecho { margin-top: 26px; }' +
-    '.local { margin-top: 30px; }' +
-    '.assinatura { text-align: center; margin-top: 46px; }' +
-    '.assinatura .nome { font-weight: bold; }' +
-    '.rodape { margin-top: 40px; text-align: center; font-size: 8pt; color: #777; }' +
+    '@page { size: A4; margin: 0; }' +
+    'body { margin:0; font-family: Arial, Helvetica, sans-serif; color:#111; }' +
+    '.folha { position:relative; width:100%; min-height:292mm; }' +
+    /* O TIMBRADO NÃO SANGRA. No papel real o cabeçalho e o rodapé têm
+       margem branca em volta — medida no modelo de 17/09/2026: a arte ocupa
+       cerca de 87% da largura, centralizada. Sangrar até a borda é o que
+       denuncia documento feito às pressas. */
+    'img.cab { width:87%; display:block; margin:5mm auto 0; }' +
+    '.cab-txt { text-align:center; padding:14mm 0 4mm; font-size:16pt; font-weight:bold; color:#001f4d; }' +
+    /* A marca d'água fica na metade de baixo, à direita, ATRÁS do texto e
+       acima do rodapé — no modelo ela acompanha a citação e a assinatura.
+       Mais baixa que isto e o rodapé a corta. */
+    '.dagua { position:absolute; right:-2mm; bottom:62mm; width:136mm; opacity:.9; z-index:0; }' +
+    '.corpo { position:relative; z-index:1; padding:0 17mm; font-size:11.5pt; line-height:1.6; }' +
+    '.titulo { text-align:center; font-weight:bold; font-size:15pt; text-decoration:underline; margin:18mm 0 14mm; }' +
+    '.par { text-align:justify; }' +
+    '.citacao { text-align:justify; font-size:10pt; line-height:1.5; margin:10mm 0 10mm 26mm; }' +
+    '.fecho { margin-top:12mm; }' +
+    '.local { text-align:right; margin-top:6mm; }' +
+    '.assin { margin-top:14mm; }' +
+    '.ass-img { height:58px; width:auto; display:block; margin-left:6mm; }' +
+    '.assin .nome { font-weight:bold; margin-top:1mm; margin-left:6mm; }' +
+    '.assin .cargo { font-weight:bold; margin-top:3mm; margin-left:6mm; }' +
+    '.rodape { position:absolute; left:0; right:0; bottom:6mm; text-align:center; }' +
+    '.rodape img { width:87%; display:block; margin:0 auto; }' +
     '</style></head><body>' +
-    '<div class="cabecalho">' + logo + '</div>' +
-    '<div class="titulo">DECLARAÇÃO</div>' +
-    '<div class="corpo">' + declEscapar_(p.texto) + '</div>' +
-    '<div class="corpo">Nos termos do Artigo 543, da CLT, requeremos a liberação do empregado ' +
-      'para o pleno exercício de seu mandato sindical, conforme lhe assegura a lei:</div>' +
-    '<div class="citacao">' + declEscapar_(DECL_ART_543) + '</div>' +
-    '<div class="fecho">Por ser verdade firmamos a presente.</div>' +
-    '<div class="local">' + DECL_CIDADE + ', ' + declDataExtenso_(p.dataEmissao) + '.</div>' +
-    '<div class="assinatura">' + assinaturaImg +
-      '<div class="nome">' + declEscapar_(sig.nome || "") + '</div>' +
-      '<div>' + declEscapar_(sig.cargo || "Presidente") + ' – SindEducação/ES</div>' +
+    '<div class="folha">' +
+      topo +
+      (marca ? '<img class="dagua" src="' + marca + '">' : '') +
+      '<div class="corpo">' +
+        '<div class="titulo">DECLARAÇÃO</div>' +
+        '<div class="par">' + corpo + '</div>' +
+        '<div class="citacao">' + declEscapar_(DECL_ART_543) + '</div>' +
+        '<div class="fecho">Por ser verdade firmamos a presente.</div>' +
+        '<div class="local">' + DECL_CIDADE + ', ' + declDataExtenso_(p.dataEmissao) + '.</div>' +
+        '<div class="assin">' + assinaturaImg +
+          '<div class="nome">' + declEscapar_(sig.nomeExibicao || sig.nome || "") + '</div>' +
+          '<div class="cargo">' + declEscapar_(sig.cargo || "Presidente") + ' &ndash; <em>SindEducação</em></div>' +
+        '</div>' +
+      '</div>' +
+      (rodape ? '<div class="rodape"><img src="' + rodape + '"></div>' : '') +
     '</div>' +
-    '<div class="rodape">Declaração nº ' + declEscapar_(p.numero || "") + ' · SISGEP</div>' +
     '</body></html>';
 }
 

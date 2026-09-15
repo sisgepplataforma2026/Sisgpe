@@ -246,6 +246,9 @@ function declListarDiretoria_interno_() {
     return {
       id: id,
       nome: declTexto_(p.nome).toUpperCase(),
+      /* O corpo da declaração traz o nome em caixa alta; a assinatura, não.
+         O modelo em papel assina "Leonil Dias da Silva", não "LEONIL…". */
+      nomeExibicao: declTexto_(p.nome),
       cpf: "",
       cargo: declTexto_(p.cargo),
       orgao: declTexto_(p.orgao),

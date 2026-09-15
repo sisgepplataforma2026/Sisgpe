@@ -935,12 +935,15 @@ function gerarHtmlDocumentoVoucher_(dados) {
           /* E-mail e site conferidos com o usuário em 13/08/2026:
            * secretaria@sindeducacao.com e www.sindeducacao.com.
            *
-           * ATENÇÃO: a ARTE do rodapé (VOUCHER_RODAPE_B64_) ainda traz
-           * "contato@sindeducacao.com" e "sindeducacao.com" desenhados dentro
-           * do JPEG, e daqui não há como corrigir — imagem não se edita por
-           * código. Enquanto o caminho normal for a arte, é o endereço antigo
-           * que sai impresso. Para corrigir de verdade, é preciso uma nova
-           * imagem de rodapé. */
+           * A RESSALVA QUE ESTAVA AQUI VENCEU — corrigido em 15/09/2026.
+           * Este comentário dizia que a ARTE do rodapé ainda trazia
+           * "contato@sindeducacao.com" desenhado dentro do JPEG e que só uma
+           * imagem nova resolveria. A imagem JÁ FOI trocada: decodificando
+           * VOUCHER_RODAPE_B64_ hoje, lê-se "secretaria@sindeducacao.com".
+           *
+           * Fica o registro porque a nota velha enganava nos dois sentidos:
+           * mandava procurar um defeito que não existe mais e sugeria que o
+           * endereço impresso estivesse errado. */
           "<div class='rod-contatos'>" +
             "(27) 3222-2706<br>(27) 99735-8900<br>www.sindeducacao.com<br>" +
             "secretaria@sindeducacao.com<br>SindEducacaoES<br>sindeducacaoes" +

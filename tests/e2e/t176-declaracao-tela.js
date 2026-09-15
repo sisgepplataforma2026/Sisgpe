@@ -243,7 +243,7 @@ function clicar(el, oque) {
   b.ok($("declModalDocumento").classList.contains("aberto"), "o modal do documento abriu");
   const doc1 = $("declDocumentoFrame").getAttribute("srcdoc") || $("declDocumentoFrame").srcdoc || "";
   b.ok(/DECLARAÇÃO/.test(doc1) && /Art\. 543/.test(doc1), "traz o documento montado, com a citação da lei");
-  b.ok(/PRÉVIA/.test(doc1), "numerado como PRÉVIA — número só se consome na emissão");
+  b.ok(!/Declaração nº/.test(doc1), "sem rodapé de numeração, como no modelo em papel");
   b.ok(g.declHistoricoDeclaracoes({}, TOKEN).itens.every(i => i.numero !== "PRÉVIA"),
     "e nada foi gravado por pré-visualizar");
 
