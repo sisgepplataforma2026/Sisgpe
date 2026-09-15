@@ -247,6 +247,42 @@ ok(/Emitir ingresso/.test(msg),
    "apontando o caminho para terminar — sem isso a pessoa valida de novo achando que nada aconteceu");
 
 /* ══════════════════════════════════════════════════════════════════════ */
+fluxo("Ver mostra o ingresso; editar abre os dados — não o mesmo lugar");
+
+/* 15/09/2026. Ele clicou em "Ver" e caiu na seção de ANÁLISE da gaveta:
+   "quando clico em ver, não era para ser isso... isso deveria ser editar
+   dados". Dois botões que terminam no mesmo destino não são dois botões — e
+   um deles ainda por cima prometia o ingresso e entregava outra coisa. */
+passo("Ver pede o arquivo do ingresso daquela pessoa");
+t = montarTela();
+t.tela.LISTA = [pessoa({ status: "VALIDADA_ADMINISTRATIVAMENTE",
+                         ingressoId: "ING-1", numeroIngresso: "FCV-2026-000428" })];
+t.tela.acaoLinha(0, "ver");
+
+igual(t.chamadas.length, 1, "uma chamada ao servidor");
+igual(t.chamadas[0].fn, "compasso_ingressoArquivo",
+      "é o arquivo do ingresso, não a ficha da inscrição");
+igual(t.chamadas[0].args[0], "INS-1", "da inscrição certa");
+ok(/FCV-2026-000428/.test(t.els.mdTitulo.textContent),
+   "e o modal já abre com o número do ingresso no título",
+   t.els.mdTitulo.textContent);
+ok(t.els.mdFundo.classList.contains("on"), "o modal abre");
+
+passo("e editar abre a gaveta nos dados cadastrais, já desdobrados");
+t = montarTela();
+t.tela.LISTA = [pessoa()];
+t.tela.acaoLinha(0, "editar");
+ok(t.els.secDados.classList.contains("on"),
+   "a seção 'Dados cadastrais' vem aberta",
+   "cair na gaveta fechada obrigava a caçar a seção — era o defeito de origem");
+/* O sandbox só cria o elemento quando alguém o pede. Que `mdFundo` sequer
+   exista aqui significa que o caminho do modal não foi tocado — prova mais
+   forte do que ele estar fechado. */
+ok(t.els.mdFundo === undefined,
+   "e o modal do ingresso nem é aberto",
+   "editar dados não tem nada a ver com o ingresso");
+
+/* ══════════════════════════════════════════════════════════════════════ */
 fluxo("O que continua sem cobertura");
 
 naoTestavel("Os botões cabendo na coluna",

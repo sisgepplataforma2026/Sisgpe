@@ -1088,7 +1088,21 @@ function acaoLinha(i, qual){
   if (qual === 'emitir')  { abrirGaveta(i); return emitirGaveta(); }
   if (qual === 'cancelar'){ abrirGaveta(i); return cancelarIngresso(); }
   if (qual === 'excluir') { abrirGaveta(i); return excluirInscricao(); }
-  abrirGaveta(i);   /* ver e editar abrem a gaveta, que é onde se lê a ficha */
+
+  /* VER É VER O INGRESSO — 15/09/2026. Ele clicou em "Ver" e caiu na seção de
+     ANÁLISE da gaveta: "quando clico em ver, não era para ser isso". Estava
+     certo duas vezes. Primeiro porque o botão promete o ingresso e entregava
+     outra coisa. Segundo porque "Ver" e "Editar" terminavam no MESMO lugar —
+     dois botões diferentes com um destino só não são dois botões.
+     Agora Ver abre o modal do ingresso, que é onde mora o link que vai para o
+     WhatsApp, o download e a impressão. */
+  if (qual === 'ver')
+    return abrirModalIngresso(x.inscricaoId, x.numeroIngresso, x.nome);
+
+  /* E EDITAR ABRE OS DADOS CADASTRAIS, já desdobrados — era o que ele
+     esperava do lápis. Cair na gaveta fechada obrigava a achar a seção. */
+  abrirGaveta(i);
+  gvAbrirDobra('secDados');
 }
 
 /* ══ VALIDAR E EMITIR, DE UM CLIQUE ════════════════════════════════════════
