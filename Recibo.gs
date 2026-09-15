@@ -4214,10 +4214,31 @@ function carregarImagensRecibo_() {
   var logoBase64 = "", logoMime = "image/jpeg";
   var assBase64  = "", assMime  = "image/jpeg";
 
+  /* 🚨 O ARQUIVO DO LOGO É UM PDF — medido em 15/09/2026 pelo metadado do
+   * Drive: `1F1yUL…` é `Logo.pdf`, application/pdf, 80 KB.
+   *
+   * Isto NUNCA quebrou recibo nenhum, e vale dizer por quê: o logo viaja
+   * como parâmetro (Recibo.gs:526, Recibo.gs:2347, ReciboDiversos.gs:272)
+   * mas nenhum template o desenha — o único <img> dos recibos é o da
+   * assinatura. PDF que ninguém tenta exibir não faz mal.
+   *
+   * Onde fez mal foi em quem confiou no nome: as Declarações montaram
+   * `<img src="data:application/pdf;base64,…">`, que não renderiza em lugar
+   * nenhum, e o documento sairia assinado e sem logo, sem erro em log algum.
+   *
+   * Por isso o guarda abaixo: devolver "" é dizer "não tenho logo utilizável",
+   * que é a verdade, em vez de entregar um PDF rotulado como imagem para o
+   * próximo que chamar. Nenhum chamador de hoje muda de comportamento —
+   * nenhum deles usava este valor. */
   try {
     var lb = DriveApp.getFileById("1F1yULzB9yUJnjtD3VnRuZYRZuUK1cZ62").getBlob();
-    logoBase64 = Utilities.base64Encode(lb.getBytes());
-    logoMime   = lb.getContentType() || "image/jpeg";
+    var lm = lb.getContentType() || "";
+    if (/^image\//.test(lm)) {
+      logoBase64 = Utilities.base64Encode(lb.getBytes());
+      logoMime   = lm;
+    } else {
+      Logger.log("Logo: o arquivo cadastrado é " + lm + ", não imagem — devolvendo vazio.");
+    }
   } catch(e) { Logger.log("Logo: " + e.message); }
 
   try {

@@ -5,6 +5,9 @@ b.seedUsuarios(g);
 const TOKEN = b.logar(g, "wanderson");
 const TOKEN_ESC = b.logar(g, "joscimar");
 const ss = g.SpreadsheetApp.openById(g.PLANILHA_ID);
+/* Guardada ANTES de qualquer dublê: mais abaixo o teste troca esta função
+   para exercitar mimes, e aqui precisamos da de verdade. */
+const carregarImagensOriginal = g.carregarImagensRecibo_;
 
 function sheet(nome, cab) {
   const sh = ss.getSheetByName(nome) || ss.insertSheet(nome);
@@ -202,6 +205,15 @@ g.carregarImagensRecibo_ = () => ({
   assBase64: "/9j/4AAQ", assMime: "image/jpeg"
 });
 b.ok(g.declImagens_().logoBase64 === "iVBORw0KGgo=", "logo com mime de imagem é usado normalmente");
+
+b.fluxo("RECIBOS · A origem das imagens não entrega PDF como se fosse imagem");
+/* O guarda está em carregarImagensRecibo_ (Recibo.gs), a função que TODOS os
+   documentos usam. O arquivo de logo cadastrado é um PDF; devolvê-lo rotulado
+   como imagem foi o que levou as Declarações a montar um <img> quebrado. */
+const imgsReais = carregarImagensOriginal();
+b.ok(imgsReais.logoBase64 === "", "logo em PDF volta vazio, não rotulado como imagem",
+  "mime devolvido: " + imgsReais.logoMime);
+b.ok(typeof imgsReais.assBase64 === "string", "e a assinatura continua vindo normalmente");
 
 b.fluxo("DECLARAÇÕES · Pré-visualizar não grava nada");
 const antesDaPrevia = g.declHistoricoDeclaracoes({}, TOKEN).total;
