@@ -65,6 +65,50 @@ b.ok(zap.ok && /^https:\/\/wa\.me\/5527/.test(zap.url), "WhatsApp é apenas prep
 const zapOk = g.declConfirmarWhatsapp(emitida.numero, TOKEN);
 b.ok(zapOk.ok, "operador confirma a ciência depois");
 
+b.fluxo("DECLARAÇÕES · O mandato se confere contra o DIA DA LIBERAÇÃO");
+/* A checagem antiga perguntava se a gestão está de pé HOJE — outra pergunta.
+   Uma liberação marcada para depois do término passava, e a declaração
+   afirmaria algo que não seria verdade naquele dia. */
+const depoisDoMandato = new Date(g.declSoData_(g.GOV_MANDATO.termino).getTime() + 86400000);
+const foraDoMandato = g.declPreviaDeclaracaoDiretor({
+  diretorId: dir.id, escolaId: "ESC-UVV", periodo: "",
+  dataLiberacao: depoisDoMandato.toISOString().slice(0, 10)
+}, TOKEN);
+b.ok(!foraDoMandato.ok && /depois do término do mandato/i.test(foraDoMandato.mensagem),
+  "liberação depois do término é recusada", foraDoMandato.mensagem);
+const antesDaPosse = new Date(g.declSoData_(g.GOV_MANDATO.posse).getTime() - 86400000);
+const foraAntes = g.declPreviaDeclaracaoDiretor({
+  diretorId: dir.id, escolaId: "ESC-UVV", periodo: "",
+  dataLiberacao: antesDaPosse.toISOString().slice(0, 10)
+}, TOKEN);
+b.ok(!foraAntes.ok && /antes da posse/i.test(foraAntes.mensagem),
+  "liberação antes da posse é recusada", foraAntes.mensagem);
+b.ok(g.declPreviaDeclaracaoDiretor(pedido, TOKEN).ok,
+  "dentro do mandato segue passando");
+
+b.fluxo("DECLARAÇÕES · Dirigente sem vínculo escolhe a escola à mão");
+/* O vínculo liga Governança a Associados por nome idêntico. Quem não casa
+   ficava SEM NENHUMA escola e sem emitir — no Word sempre deu para fazer. */
+const semVinculo = dados.diretores.filter(d => !/WANDERSON/.test(d.nome))[0];
+const ctxVazio = g.declContextoDiretor(semVinculo.id, TOKEN);
+b.ok(ctxVazio.ok && ctxVazio.vinculos.length === 0, "de fato não tem vínculo em Associados", semVinculo.nome);
+const busca = g.declBuscarEscolas("UVV", semVinculo.id, TOKEN);
+b.ok(busca.ok && busca.escolas.length > 0, "a busca no cadastro acha a escola", busca.escolas.length + " resultado(s)");
+b.ok(busca.escolas[0].vinculoOrigem === "Escolhida manualmente", "e vem marcada como manual");
+b.ok(g.declBuscarEscolas("U", semVinculo.id, TOKEN).escolas.length === 0, "termo curto demais não busca");
+const manual = g.declEmitirDeclaracaoDiretor({
+  diretorId: semVinculo.id, escolaId: busca.escolas[0].escolaId,
+  dataLiberacao: amanha.toISOString().slice(0, 10), periodo: "MATUTINO"
+}, TOKEN);
+b.ok(manual.ok, "emite com a escola escolhida à mão", manual.numero);
+const linhaManual = g.declHistoricoDeclaracoes({ busca: manual.numero }, TOKEN).itens[0];
+b.ok(linhaManual.vinculoOrigem === "Escolhida manualmente",
+  "e a origem manual fica GRAVADA, não escondida", linhaManual.vinculoOrigem);
+b.ok(g.declEmitirDeclaracaoDiretor({
+  diretorId: semVinculo.id, escolaId: "ESC-QUE-NAO-EXISTE",
+  dataLiberacao: amanha.toISOString().slice(0, 10), periodo: ""
+}, TOKEN).ok === false, "escola inventada continua sendo recusada");
+
 b.fluxo("DECLARAÇÕES · Entrega reaberta depois de fechar a tela");
 /* O cenário real: emitiu, fechou a tela, e no dia seguinte precisa enviar.
    Até 15/09/2026 não havia caminho de volta — a declaração ficava presa em

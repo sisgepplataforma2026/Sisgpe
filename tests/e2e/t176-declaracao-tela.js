@@ -92,6 +92,17 @@ function $(id) { return doc.getElementById(id); }
  * navegador faz é avaliar o conteúdo do atributo no escopo da janela — é
  * isso que está abaixo. De quebra, prova que o atributo leva os argumentos
  * certos, que é metade do defeito do Reemitir. */
+/* Mesma história do clique, para campo: o andaime não compila onchange nem
+ * oninput de atributo. Sem isto, escolher no select não chama nada e o teste
+ * mede uma tela que ninguém tocou. */
+function mudar(sel, valor, evento) {
+  const el = doc.querySelector(sel);
+  if (!el) throw new Error("campo não existe: " + sel);
+  el.value = valor;
+  const codigo = el.getAttribute(evento || "onchange");
+  if (codigo) win.eval(codigo);
+}
+
 function clicar(el, oque) {
   if (!el) throw new Error("botão não existe: " + oque);
   const codigo = el.getAttribute("onclick");
@@ -169,6 +180,41 @@ function clicar(el, oque) {
     confirmado: true
   }, TOKEN);
   b.ok(segunda.ok, "os dados repetidos pela tela emitem sem retoque", segunda.numero);
+
+  b.passo("6. Dirigente sem vínculo: a busca manual abre sozinha");
+  /* Sem esta saída, quem não casa por nome em Associados não emitia de jeito
+     nenhum — nem com a escola cadastrada e à vista. */
+  const semVinculo = Array.from($("declDiretor").options)
+    .filter(o => o.value && !/WANDERSON/.test(o.textContent))[0];
+  mudar("#declDiretor", semVinculo.value);
+  await tela.assentar(120);
+
+  b.ok($("declEscolaBusca").style.display === "block", "a busca aparece sem ninguém pedir");
+  b.ok(/manual/i.test($("declEscolaOrigem").textContent), "e diz que a escolha será registrada como manual",
+    $("declEscolaOrigem").textContent.replace(/\s+/g, " ").trim());
+
+  mudar("#declEscolaTermo", "UVV", "oninput");
+  await tela.assentar(450);   /* 300ms de debounce + a ida ao backend */
+
+  const achadas = $("declEscolaResultados").querySelectorAll(".declBuscaItem");
+  b.ok(achadas.length > 0, "a busca no cadastro devolve a escola", achadas.length + " resultado(s)");
+
+  clicar(achadas[0], "escolher escola achada");
+  await tela.assentar(120);
+
+  b.ok($("declEscola").value === "ESC-UVV", "a escola escolhida entra no select", $("declEscola").value);
+  b.ok(/escolhida manualmente/i.test($("declEscola").selectedOptions[0].textContent),
+    "marcada como manual na própria opção");
+  b.ok($("declEscolaBusca").style.display === "none", "a busca se recolhe depois da escolha");
+
+  b.passo("7. E o que sai dali emite, com a origem gravada");
+  const manual = g.declEmitirDeclaracaoDiretor({
+    diretorId: $("declDiretor").value, escolaId: $("declEscola").value,
+    dataLiberacao: amanha.toISOString().slice(0, 10), periodo: "MATUTINO", confirmado: true
+  }, TOKEN);
+  b.ok(manual.ok, "emite com a escola escolhida à mão", manual.numero);
+  b.ok(g.declHistoricoDeclaracoes({ busca: manual.numero }, TOKEN).itens[0].vinculoOrigem === "Escolhida manualmente",
+    "a origem manual fica gravada na linha");
 
   b.naoTestavel("Aparência do modal e envio real de e-mail", "jsdom não aplica CSS; Gmail depende da homologação");
   b.resumo();

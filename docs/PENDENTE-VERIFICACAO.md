@@ -5609,3 +5609,24 @@ mandato conferido contra a data da liberação e não contra hoje; dirigente sem
 vínculo em Associados que não consegue emitir; as ~250 linhas inalcançáveis
 em `DeclaracoesCore.gs`; e as três varreduras completas dentro do lock de
 emissão.
+
+
+## 📜 DECLARAÇÕES — MANDATO NA DATA CERTA E ESCOLA À MÃO (15/09/2026)
+
+Itens 3 e 5 da avaliação. **Ainda NÃO publicado na homologação** — a versão no
+ar é a `8124913`, com a entrega reaberta e o Reemitir. Estes dois esperam a
+rodada de teste da publicação anterior terminar.
+
+5. 🔴 **Liberação fora do mandato é recusada.** Marcar uma data posterior ao
+   término da gestão: a tela tem de recusar dizendo a data e o dia do
+   término, não emitir. Idem para data anterior à posse. Dentro do mandato,
+   nada muda.
+6. 🔴 **Dirigente sem vínculo emite.** Escolher um dirigente que não esteja
+   na base de Associados: a busca de escola abre sozinha, o resultado entra
+   no select marcado "(escolhida manualmente)", e a emissão sai. Conferir
+   depois na aba `DECLARACOES_DIRETOR` que a coluna `VINCULO_ORIGEM` gravou
+   "Escolhida manualmente" — a origem não pode ficar invisível.
+7. 🟡 **WhatsApp de quem foi escolhido à mão.** O telefone passou a sair do
+   cadastro da PESSOA em Associados, não do vínculo com a escola. Para
+   dirigente que não está em Associados, a recusa honesta é "não possui
+   celular válido em Associados".

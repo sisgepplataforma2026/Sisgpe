@@ -54,7 +54,7 @@ var DECL_COLUNAS_EMISSAO = [
   "DATA_LIBERACAO", "PERIODO", "DATA_EMISSAO",
   "SIGNATARIO", "TEXTO", "PDF_ID", "PDF_URL",
   "EMITIDO_POR", "EMITIDO_EM", "GESTAO", "ORGAO", "CONDICAO",
-  "ESCOLA_ID", "ESCOLA_NOME", "ESCOLA_DOCUMENTO", "CONTATOS_ORIGEM",
+  "ESCOLA_ID", "ESCOLA_NOME", "ESCOLA_DOCUMENTO", "VINCULO_ORIGEM", "CONTATOS_ORIGEM",
   "EMAILS_USADOS", "EMAIL_STATUS", "EMAIL_ENVIADO_EM", "EMAIL_ENVIADO_POR",
   "WHATSAPP_STATUS", "WHATSAPP_EM", "WHATSAPP_POR"
 ];
@@ -132,6 +132,7 @@ function declEmissoes_interno_() {
       gestao:        declTexto_(col(l, "GESTAO")),
       escolaId:      declTexto_(col(l, "ESCOLA_ID")),
       escolaNome:    declTexto_(col(l, "ESCOLA_NOME")),
+      vinculoOrigem: declTexto_(col(l, "VINCULO_ORIGEM")),
       emailsUsados:  declTexto_(col(l, "EMAILS_USADOS")),
       emailStatus:   declTexto_(col(l, "EMAIL_STATUS")),
       whatsappStatus: declTexto_(col(l, "WHATSAPP_STATUS"))
@@ -240,6 +241,34 @@ function declValidarPedido_(dados) {
   var dataLib = declSoData_(dados.dataLiberacao);
   if (!dataLib) return { ok: false, mensagem: "Informe a data da liberação." };
 
+  /* O MANDATO SE CONFERE CONTRA O DIA DA LIBERAÇÃO, NÃO CONTRA HOJE.
+   *
+   * A checagem acima (`mandatoVigente`) pergunta se a gestão está de pé
+   * agora — e é dela que sai a lista de quem pode receber. Não é a mesma
+   * pergunta: uma liberação marcada para depois do término do mandato
+   * passava sem aviso, e a declaração afirmaria que a pessoa estará à
+   * disposição da entidade num dia em que já não é dirigente.
+   *
+   * É exatamente o erro que o módulo nasceu para impedir, e ele sobrevivia
+   * porque as duas datas nunca eram comparadas entre si. Corrigido em
+   * 15/09/2026. */
+  var mandatoInicio = declSoData_(diretor.mandatoInicio);
+  var mandatoFim    = declSoData_(diretor.mandatoFim);
+  if (mandatoInicio && dataLib < mandatoInicio) {
+    return {
+      ok: false,
+      mensagem: "A liberação está marcada para " + declDataBR_(dataLib) + ", antes da posse de " +
+                diretor.nome + " em " + diretor.mandatoInicio + "."
+    };
+  }
+  if (mandatoFim && dataLib > mandatoFim) {
+    return {
+      ok: false,
+      mensagem: "A liberação está marcada para " + declDataBR_(dataLib) + ", depois do término do mandato de " +
+                diretor.nome + " em " + diretor.mandatoFim + ". A declaração afirmaria algo que não será verdade naquele dia."
+    };
+  }
+
   var periodo = declPeriodoValido_(dados.periodo);
   if (periodo === null) return { ok: false, mensagem: "Período inválido." };
 
@@ -248,6 +277,19 @@ function declValidarPedido_(dados) {
   var contexto = declContextoDiretor_interno_(diretor);
   var escolaId = declTexto_(dados.escolaId);
   var escola = contexto.vinculos.filter(function (v) { return v.escolaId === escolaId; })[0];
+
+  /* ESCOLHA MANUAL — a saída para quem o vínculo não acha.
+   *
+   * O vínculo liga Governança a Associados por nome normalizado idêntico.
+   * Basta um nome abreviado, um sobrenome faltando ou um nome social para
+   * o dirigente ficar SEM NENHUMA escola — e, até 15/09/2026, sem nenhuma
+   * forma de emitir. No Word sempre deu para fazer; o sistema não podia ser
+   * o que passou a impedir.
+   *
+   * A escola escolhida à mão vale, e fica gravada dizendo que foi escolhida
+   * à mão (coluna VINCULO_ORIGEM). É a REGRA Nº 0.6 nos dois sentidos: o
+   * sistema sugere o que sabe, e não esconde o que não sabia. */
+  if (!escola && escolaId) escola = declEscolaDoCadastro_(escolaId, diretor);
   if (!escola) return { ok: false, mensagem: "Selecione a escola empregadora do dirigente." };
 
   var signatario = declSignatario_();
@@ -398,6 +440,7 @@ function declEmitirDeclaracaoDiretor(dados, tokenSessao) {
       ESCOLA_ID: v.escola.escolaId,
       ESCOLA_NOME: v.escola.nome,
       ESCOLA_DOCUMENTO: v.escola.documento || "",
+      VINCULO_ORIGEM: v.escola.vinculoOrigem || "",
       CONTATOS_ORIGEM: JSON.stringify(v.escola.contatos || []),
       EMAIL_STATUS: "AGUARDANDO_CONFERENCIA",
       WHATSAPP_STATUS: "NAO_PREPARADO"
@@ -470,6 +513,77 @@ function declContextoDiretor_interno_(diretor) {
   });
 
   return { diretorId: diretor.id, associadosEncontrados: associados.length, vinculos: Object.keys(porId).map(function (k) { return porId[k]; }) };
+}
+
+/**
+ * O celular do dirigente, achado em Associados pelo nome.
+ *
+ * Fora de `declContextoDiretor_interno_` de propósito: o telefone é da
+ * PESSOA, não do vínculo com a escola. Preso ao vínculo, o WhatsApp deixava
+ * de funcionar justamente para quem precisou escolher a escola à mão.
+ */
+function declCelularDoDiretor_(diretor) {
+  try {
+    if (typeof assoc_todos_ !== "function") return "";
+    var chave = declNormalizar_(diretor && diretor.nome);
+    var achados = assoc_todos_().filter(function (a) {
+      return declNormalizar_(a.nome) === chave && String(a.celular || "").replace(/\D/g, "").length >= 10;
+    });
+    return achados.length ? declTexto_(achados[0].celular) : "";
+  } catch (e) {
+    Logger.log("DeclaracaoDiretor: celular do dirigente indisponível — " + e.message);
+    return "";
+  }
+}
+
+/** Uma escola do cadastro no mesmo formato de um vínculo, marcada como manual. */
+function declEscolaDoCadastro_(escolaId, diretor) {
+  if (typeof listarEscolasCadastro_interno_ !== "function") return null;
+  escolaId = declTexto_(escolaId);
+  var achadas = (listarEscolasCadastro_interno_() || []).filter(function (e) {
+    return declTexto_(e.escolaId || e.EscolaID || e.linha) === escolaId;
+  });
+  if (!achadas.length) return null;
+  return declEscolaComoVinculo_(achadas[0], diretor, "Escolhida manualmente");
+}
+
+function declEscolaComoVinculo_(e, diretor, origem) {
+  return {
+    escolaId: declTexto_(e.escolaId || e.EscolaID || e.linha),
+    nome: declTexto_(e.NomeEscola || e.escola),
+    fantasia: declTexto_(e.Fantasia || e.fantasia),
+    documento: declTexto_(e.CNPJ || e.cnpj),
+    vinculoOrigem: origem,
+    telefoneDiretor: declCelularDoDiretor_(diretor),
+    contatos: declContatosEscola_(e)
+  };
+}
+
+/**
+ * Busca no cadastro de Escolas, para quando o vínculo não achou nada.
+ *
+ * Reaproveita `buscarEscolasPorTermo_interno_` (BuscaEscola.gs), que já
+ * pontua nome, fantasia, CNPJ, cidade e e-mail — reimplementar busca de
+ * escola aqui seria uma segunda regra de pesquisa se afastando da primeira.
+ */
+function declBuscarEscolas(termo, diretorId, tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
+  try {
+    if (typeof buscarEscolasPorTermo_interno_ !== "function") {
+      return { ok: false, escolas: [], mensagem: "A busca de escolas não está disponível neste projeto." };
+    }
+    termo = declTexto_(termo);
+    if (termo.length < 2) return { ok: true, escolas: [] };
+
+    var diretor = declDiretorPorId_(diretorId);
+    var achadas = (buscarEscolasPorTermo_interno_(termo) || []).slice(0, 12).map(function (e) {
+      return declEscolaComoVinculo_(e, diretor, "Escolhida manualmente");
+    }).filter(function (v) { return !!v.escolaId; });
+
+    return { ok: true, escolas: achadas };
+  } catch (e) {
+    return { ok: false, escolas: [], mensagem: "Erro na busca: " + e.message };
+  }
 }
 
 function declContatosEscola_(escola) {
@@ -567,6 +681,7 @@ function declEntregaDeclaracao(numero, tokenSessao) {
         escolaId: campo("ESCOLA_ID"),
         nome: campo("ESCOLA_NOME"),
         documento: campo("ESCOLA_DOCUMENTO"),
+        vinculoOrigem: campo("VINCULO_ORIGEM"),
         contatos: contatos
       },
       pdfUrl: campo("PDF_URL"),
@@ -621,9 +736,8 @@ function declPrepararWhatsapp(numero, tokenSessao) {
   var sessao = exigirModulo_(tokenSessao, "documentos", false), achado = declAcharEmissao_(numero);
   if (!achado) return { ok: false, mensagem: "Declaração não encontrada." };
   var diretor = declDiretorPorId_(declTexto_(achado.valores[achado.hm.DIRETOR_ID - 1]));
-  var ctx = declContextoDiretor_interno_(diretor), escolaId = declTexto_(achado.valores[achado.hm.ESCOLA_ID - 1]);
-  var vinculo = ctx.vinculos.filter(function (v) { return v.escolaId === escolaId; })[0];
-  var fone = String(vinculo && vinculo.telefoneDiretor || "").replace(/\D/g, "");
+  /* O telefone é da pessoa, não do vínculo — ver declCelularDoDiretor_. */
+  var fone = String(declCelularDoDiretor_(diretor) || "").replace(/\D/g, "");
   if (fone.length < 10) return { ok: false, mensagem: "O diretor não possui celular válido em Associados." };
   if (fone.length <= 11) fone = "55" + fone;
   var urlPdf = declTexto_(achado.valores[achado.hm.PDF_URL - 1]);
