@@ -78,35 +78,91 @@ var COMPASSO_TERMO_PADRAO = [
  * Colunas conforme a aba Associados: A nome fantasia (escola), B nome,
  * C CPF, D filiado, H cidade, J celular, L e-mail.
  */
-function compasso_buscarAssociado_(cpfLimpo) {
-  cpfLimpo = String(cpfLimpo || '').replace(/\D/g, '');
-  if (cpfLimpo.length !== 11) return { encontrado: false };
+/**
+ * A BASE DE ASSOCIADOS, LIDA UMA VEZ POR EXECUÇÃO — 15/09/2026.
+ *
+ * "Mas demora muito para importar?"
+ *
+ * Demorava, e a conta é constrangedora. Esta função lia a aba inteira de
+ * Associados — cerca de 8.000 linhas por 12 colunas, algo como 96 mil células
+ * — e varria tudo à procura de UM CPF. A cada chamada.
+ *
+ * A importação chama duas vezes por linha: uma para o selo de situação, outra
+ * dentro do caminho público de criação. Em 201 linhas isso dá 402 leituras da
+ * base inteira. Dezenove milhões de células lidas para encontrar 201 pessoas.
+ * O mesmo vale para o "Conferir contra a base" da tela de gestão, que faz uma
+ * por inscrição.
+ *
+ * Agora a base entra UMA vez e vira índice por CPF. A segunda chamada em
+ * diante é uma consulta em memória.
+ *
+ * POR QUE UMA VARIÁVEL GLOBAL É SEGURA AQUI: no Apps Script cada execução tem
+ * o seu próprio escopo global, criado do zero. O índice não atravessa de uma
+ * execução para outra, então não há risco de alguém ler dado velho na próxima
+ * inscrição — e dentro de uma execução a base não muda, porque quem a
+ * alteraria é outra execução.
+ *
+ * CPF REPETIDO NA PLANILHA: fica o PRIMEIRO, que é o que o laço original
+ * devolvia ao parar no primeiro achado. Não é detalhe — trocar para o último
+ * mudaria em silêncio de quem é o cadastro que o sistema enxerga.
+ */
+var COMPASSO_INDICE_ASSOCIADOS_ = null;
+
+function compasso_indiceAssociados_() {
+  if (COMPASSO_INDICE_ASSOCIADOS_) return COMPASSO_INDICE_ASSOCIADOS_;
+
+  var idx = { porCpf: {}, erro: '' };
   try {
     var ss = SpreadsheetApp.openById(getPlanilhaId());
     var sh = ss.getSheetByName(EMISSAO_CFG.ABA_ASSOCIADOS);
-    if (!sh || sh.getLastRow() < 2) return { encontrado: false };
-
-    var dados = sh.getRange(2, 1, sh.getLastRow() - 1, 12).getValues();
-    for (var i = 0; i < dados.length; i++) {
-      if (String(dados[i][2] || '').replace(/\D/g, '') !== cpfLimpo) continue;
-      return {
-        encontrado: true,
-        nome:     String(dados[i][1] || '').trim(),
-        escola:   String(dados[i][0] || '').trim(),
-        cidade:   String(dados[i][7] || '').trim(),
-        whatsapp: String(dados[i][9] || '').trim(),
-        email:    String(dados[i][11] || '').trim(),
-        /* S/N na coluna D. É o que decide o selo da tela de gestão. */
-        filiado:  String(dados[i][3] || 'N').trim().toUpperCase().charAt(0) === 'S'
-      };
+    if (sh && sh.getLastRow() >= 2) {
+      var dados = sh.getRange(2, 1, sh.getLastRow() - 1, 12).getValues();
+      for (var i = 0; i < dados.length; i++) {
+        var cpf = String(dados[i][2] || '').replace(/\D/g, '');
+        if (cpf.length !== 11) continue;
+        if (Object.prototype.hasOwnProperty.call(idx.porCpf, cpf)) continue;
+        idx.porCpf[cpf] = {
+          encontrado: true,
+          nome:     String(dados[i][1] || '').trim(),
+          escola:   String(dados[i][0] || '').trim(),
+          cidade:   String(dados[i][7] || '').trim(),
+          whatsapp: String(dados[i][9] || '').trim(),
+          email:    String(dados[i][11] || '').trim(),
+          /* S/N na coluna D. É o que decide o selo da tela de gestão. */
+          filiado:  String(dados[i][3] || 'N').trim().toUpperCase().charAt(0) === 'S'
+        };
+      }
     }
-    return { encontrado: false };
   } catch (e) {
     /* Falha de leitura NÃO pode virar "não encontrado" silencioso: a pessoa
        preencheria tudo à mão sem saber que o sistema quebrou, e a equipe veria
-       um ❌ que não é verdade. O erro sobe. */
-    return { encontrado: false, erro: e.message };
+       um ❌ que não é verdade. O erro viaja junto e sobe na resposta.
+       O índice com erro NÃO é memorizado: se a falha foi de rede ou de cota, a
+       próxima chamada tenta de novo em vez de repetir a mentira. */
+    return { porCpf: {}, erro: e.message };
   }
+
+  COMPASSO_INDICE_ASSOCIADOS_ = idx;
+  return idx;
+}
+
+function compasso_buscarAssociado_(cpfLimpo) {
+  cpfLimpo = String(cpfLimpo || '').replace(/\D/g, '');
+  if (cpfLimpo.length !== 11) return { encontrado: false };
+
+  var idx = compasso_indiceAssociados_();
+  if (idx.erro) return { encontrado: false, erro: idx.erro };
+
+  var achado = idx.porCpf[cpfLimpo];
+  if (!achado) return { encontrado: false };
+  /* Cópia, não a referência guardada: quem recebe às vezes completa campos
+     vazios com o que a pessoa digitou, e isso não pode contaminar o índice
+     para as próximas linhas da mesma importação. */
+  return {
+    encontrado: true, nome: achado.nome, escola: achado.escola,
+    cidade: achado.cidade, whatsapp: achado.whatsapp,
+    email: achado.email, filiado: achado.filiado
+  };
 }
 
 /**
