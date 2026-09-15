@@ -89,11 +89,12 @@
       </div>
 
       <button class="spN" data-mod="documentos" data-acordeao="docSubMenuSidebar" onclick="spAcordeao(this)">
-        <span class="spNI">📄</span><div><strong>Documentos</strong><small>Ofícios e Recibos</small></div>
+        <span class="spNI">📄</span><div><strong>Documentos</strong><small>Ofícios, Recibos e Declarações</small></div>
       </button>
       <div id="docSubMenuSidebar" class="docSubMenuSidebar" data-subs="documentos,relatorios" style="display:none;">
         <button type="button" class="docSubMenuBtn docSubMenuBtn-ativo" data-sub-mod="documentos:oficios" data-doc-sub="oficios" onclick="spIr('documentos',null,{sub:'oficios'})">📄 Ofícios</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="documentos:recibos" data-doc-sub="recibos" onclick="spIr('documentos',null,{sub:'recibos'})">🧾 Recibos</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="documentos:declaracoes" data-doc-sub="declaracoes" onclick="spIr('documentos',null,{sub:'declaracoes'})">📜 Declarações</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="documentos:historico" data-doc-sub="historico" onclick="spIr('documentos',null,{sub:'historico'})">📚 Histórico</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="relatorios" onclick="spIr('relatorios',null)">📊 Relatórios de Ofícios</button>
       </div>
@@ -433,6 +434,11 @@
                   <strong>Recibos</strong>
                   <small>Processos, recibos individuais, em lote e diversos</small>
                 </button>
+                <button type="button" class="docLandingCard" onclick="docMostrarSub('declaracoes')">
+                  <div class="docLandingIco">📜</div>
+                  <strong>Declarações</strong>
+                  <small>Declaração de diretor à disposição da entidade (art. 543 da CLT)</small>
+                </button>
               </div>
             </div>
           </div>
@@ -456,6 +462,9 @@
 <?!= include('Scripts_Recibos'); ?>
             <?!= include('Scripts_ReciboDiversos'); ?>
             <?!= include('Scripts_HistoricoRecibos'); ?>
+          </div>
+          <div id="docSubDeclaracoes" class="docSubPanel" style="display:none;">
+            <?!= include('DeclaracoesAdmin'); ?>
           </div>
 <!--
   CERTIDÕES — REMOVIDO A PEDIDO DO USUÁRIO em 19/08/2026.
@@ -1483,6 +1492,7 @@ var DOC_SUB_PAINEIS={
   inicio:"docSubInicio",
   oficios:"docSubOficios",
   recibos:"docSubRecibos",
+  declaracoes:"docSubDeclaracoes",
   historico:"docSubHistorico"
 };
 var BENEF_SUB_PAINEIS = {
@@ -1653,6 +1663,12 @@ window.docMostrarSub=function(sub){
     setTimeout(function(){
       callFn("initRecibosPanel") || callFn("carregarProcessosRecibo") || callFn("initRecibos");
     },80);
+  }
+
+  /* Declarações carrega sob demanda — a lista de diretores e o signatário só
+     são buscados quando alguém abre a tela, não na carga da SPA. */
+  if(sub==="declaracoes"){
+    setTimeout(function(){ callFn("declInit"); },80);
   }
 };
 function initFichasSindicais(opts){

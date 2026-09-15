@@ -89,6 +89,20 @@ var RECURSOS_AMBIENTE = {
     rotulo:      "Documentos anexados ao voucher/bolsa",
     producao:    "1PyMA0bm0FZuyYONlY4dNNo3pgJRiI63n",
     homologacao: "1sNj2mcvuS8Cl7nojHMmdlIFyVZProPDu"
+  },
+
+  /* NASCE SEM ID, E ISSO É PROPOSITAL (15/09/2026).
+     Declarações é o primeiro recurso criado DEPOIS desta tabela existir —
+     não há ID legado para copiar, e inventar um aqui significaria escolher
+     uma pasta em nome do sindicato. Sem ID, getRecursoId_ recusa a gravação
+     com a mensagem que diz o que configurar, e a homologação não tem por
+     onde cair no acervo de produção. Quem instalar cria a pasta no Drive e
+     informa o ID na Script Property SISGEP_PASTA_DECLARACOES, uma vez por
+     ambiente. Ver declPastaDestino_ em DeclaracaoDiretor.gs. */
+  DECLARACOES: {
+    rotulo:      "Declarações emitidas (pasta raiz, subpasta por ano)",
+    producao:    "",
+    homologacao: ""
   }
 };
 
