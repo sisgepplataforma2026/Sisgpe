@@ -271,6 +271,13 @@ function clicar(el, oque) {
   b.ok(/SISGEP_PASTA_DECLARACOES/.test($("declConfigCorpo").textContent),
     "e nomeia a propriedade que falta, em vez de só dizer que falhou");
 
+  b.passo("11b. A prévia da tela escreve a entidade como o PDF escreve");
+  /* A prévia mostrava "SindEducação/ES" enquanto o documento já saía com
+     hífen. Passou batido porque a varredura do padrão foi feita só nos .gs —
+     e é na tela que a pessoa confere antes de emitir. */
+  b.ok(/SindEducação-ES/.test($("declPrevia").textContent) || !/SindEducação/.test($("declPrevia").textContent),
+    "sem \"/ES\" na prévia", ($("declPrevia").textContent.match(/SindEducação[-\/]ES/) || ["(sem menção)"])[0]);
+
   b.passo("12. Emitir pela tela abre o modal de entrega, como no envio do ofício");
   /* Pedido do usuário em 15/09/2026: "após a emissão deve abrir um modal
      igual ao envio do ofício". Emitiu, a próxima coisa é entregar — a tela

@@ -924,7 +924,7 @@ function gerarHtmlDocumentoVoucher_(dados) {
     "<div class='assinatura'>" +
     (assinaturaImg ? "<img src='" + escHtmlVoucher_(assinaturaImg) + "'>" : "") +
     "<div class='pres'>" + escHtmlVoucher_(PRESIDENTE_VOUCHER) + "</div>" +
-    "<div class='cargo'>Presidente – <em>SindEducação/ES</em></div>" +
+    "<div class='cargo'>Presidente – <em>SindEducação-ES</em></div>" +
     "</div>" +
     "</div>" +
 

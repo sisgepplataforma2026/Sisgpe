@@ -435,7 +435,7 @@ function include(nomeArquivo) {
 function servirFichaSindicalizacao(p) {
   try {
     return HtmlService.createHtmlOutputFromFile("Fichasindicalizacao")
-      .setTitle("Ficha de Sindicalização — SindEducação/ES")
+      .setTitle("Ficha de Sindicalização — SindEducação-ES")
       .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .setSandboxMode(HtmlService.SandboxMode.IFRAME);
@@ -444,7 +444,7 @@ function servirFichaSindicalizacao(p) {
     return HtmlService.createHtmlOutput(
       "<div style='font-family:sans-serif;padding:40px;text-align:center;'>" +
       "<h2>Não foi possível abrir a ficha</h2>" +
-      "<p>Tente novamente em alguns instantes ou procure o SindEducação/ES.</p></div>")
+      "<p>Tente novamente em alguns instantes ou procure o SindEducação-ES.</p></div>")
       .setTitle("Ficha de Sindicalização");
   }
 }
