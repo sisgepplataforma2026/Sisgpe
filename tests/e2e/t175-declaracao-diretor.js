@@ -215,6 +215,20 @@ b.ok(imgsReais.logoBase64 === "", "logo em PDF volta vazio, não rotulado como i
   "mime devolvido: " + imgsReais.logoMime);
 b.ok(typeof imgsReais.assBase64 === "string", "e a assinatura continua vindo normalmente");
 
+/* E quando a arte dos Vouchers está disponível, ela é a reserva — uma fonte
+   só para todos os documentos, em vez de cada módulo cadastrar a sua. */
+const getOriginal = g.DriveApp.getFileById;
+/* O id vem do const de Voucher.gs. No Apps Script real todos os arquivos
+   compartilham o escopo global; aqui o const não vira propriedade de `g`, só
+   binding léxico do contexto — por isso o teste compara pelo valor. */
+g.DriveApp.getFileById = id => id === "1c-RHfb0W-wl_ZK1xlMjNRs9DS4ep2ov7"
+  ? { getBlob: () => ({ getContentType: () => "image/png", getBytes: () => [1, 2, 3] }) }
+  : getOriginal(id);
+const comReserva = carregarImagensOriginal();
+b.ok(comReserva.logoMime === "image/png" && !!comReserva.logoBase64,
+  "logo cai na arte dos Vouchers quando o cadastrado não serve", comReserva.logoMime);
+g.DriveApp.getFileById = getOriginal;
+
 b.fluxo("DECLARAÇÕES · Pré-visualizar não grava nada");
 const antesDaPrevia = g.declHistoricoDeclaracoes({}, TOKEN).total;
 const doc = g.declPreviaDocumento(pedido, TOKEN);

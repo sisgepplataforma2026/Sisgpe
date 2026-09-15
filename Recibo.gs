@@ -4237,9 +4237,30 @@ function carregarImagensRecibo_() {
       logoBase64 = Utilities.base64Encode(lb.getBytes());
       logoMime   = lm;
     } else {
-      Logger.log("Logo: o arquivo cadastrado é " + lm + ", não imagem — devolvendo vazio.");
+      Logger.log("Logo: o arquivo cadastrado é " + lm + ", não imagem — tentando a arte dos Vouchers.");
     }
   } catch(e) { Logger.log("Logo: " + e.message); }
+
+  /* FONTE ÚNICA DA ARTE, quando o logo cadastrado não serve.
+   *
+   * O PNG dos Vouchers (LOGO_VOUCHER_FILE_ID, Voucher.gs) é a mesma marca e
+   * é imagem de verdade. Buscar aqui — e não em cada documento — é o que
+   * impede o terceiro caminho de nascer: hoje já havia o PDF cadastrado e o
+   * PNG dos Vouchers, e cada módulo que precisasse de logo tenderia a
+   * cadastrar o seu.
+   *
+   * Continua sem derrubar nada: se este também falhar, sai "" e cada
+   * documento decide o que desenhar no lugar. */
+  if (!logoBase64 && typeof LOGO_VOUCHER_FILE_ID !== "undefined") {
+    try {
+      var lv = DriveApp.getFileById(LOGO_VOUCHER_FILE_ID).getBlob();
+      var lvm = lv.getContentType() || "";
+      if (/^image\//.test(lvm)) {
+        logoBase64 = Utilities.base64Encode(lv.getBytes());
+        logoMime   = lvm;
+      }
+    } catch(e) { Logger.log("Logo dos Vouchers: " + e.message); }
+  }
 
   try {
     var ab = DriveApp.getFileById("1hktAmOL6c9XjU8ckAyJ3Y4cn39ILpsoe").getBlob();

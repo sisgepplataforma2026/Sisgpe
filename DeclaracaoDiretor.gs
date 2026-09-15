@@ -1004,18 +1004,10 @@ function declImagens_() {
     Logger.log("DeclaracaoDiretor: imagens institucionais indisponíveis — " + e.message);
   }
 
-  if (!out.logoBase64 && typeof LOGO_VOUCHER_FILE_ID !== "undefined") {
-    try {
-      var blob = DriveApp.getFileById(LOGO_VOUCHER_FILE_ID).getBlob();
-      var mime = blob.getContentType() || "";
-      if (/^image\//.test(mime)) {
-        out.logoBase64 = Utilities.base64Encode(blob.getBytes());
-        out.logoMime = mime;
-      }
-    } catch (eLogo) {
-      Logger.log("DeclaracaoDiretor: logo do Drive indisponível — " + eLogo.message);
-    }
-  }
+  /* A busca da arte de reserva NÃO fica aqui: mora em
+   * `carregarImagensRecibo_`, para haver uma fonte só para todos os
+   * documentos. Este guarda de mime continua como cinto e suspensório — se
+   * aquela função mudar, a declaração não volta a montar <img> quebrado. */
 
   return out;
 }
