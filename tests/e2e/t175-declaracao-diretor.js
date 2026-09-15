@@ -286,6 +286,38 @@ b.ok(rotulos.length === 4 && !rotulos.some(p => p.valor === ""),
 b.ok(g.declMontarTexto_({ nome: "Fulano", cargo: "Presidente", dataLiberacao: "2026-09-17", periodo: "" }) === comIntegral,
   "declaração antiga gravada com período vazio reimprime igual");
 
+b.fluxo("DECLARAÇÕES · O arquivo no Drive é nominal e datado");
+/* "Declaração tem que ser salva nominal e com data" — usuário, 15/09/2026.
+   O nome antigo trazia só o primeiro nome e nenhuma data: obrigava a abrir
+   o arquivo para saber de quem era e de quando. */
+const nomeArq = g.declNomeArquivo_({
+  numero: "001/2026", diretor: { nome: "Marcilene da Silva Mageske" },
+  dataLiberacao: "2026-09-17", dataEmissao: "2026-09-15"
+});
+b.ok(nomeArq === "Declaração 001-2026 - MARCILENE DA SILVA MAGESKE - 17.09.2026",
+  "nome completo e data da liberação", nomeArq);
+b.ok(!/\//.test(nomeArq), "sem barra — o Drive recusaria o nome");
+b.ok(/17\.09\.2026/.test(nomeArq) && !/15\.09/.test(nomeArq),
+  "a data é a da LIBERAÇÃO, não a da emissão — é o dia que o documento afirma");
+b.ok(!/[\\:*?"<>|]/.test(g.declNomeArquivo_({
+  numero: "9/2026", diretor: { nome: 'Jose D\'Avila: de Sa/Junior' }, dataLiberacao: "2026-12-01"
+})), "caractere proibido em nome de arquivo é higienizado");
+
+/* O nome é decidido na emissão e chega ao Drive — prova por execução, com o
+   gerador de PDF trocado por um dublê que registra o que recebeu. */
+const capturado = [];
+const geradorReal = g.declGerarPdf_;
+g.declGerarPdf_ = p2 => { capturado.push(p2); return { id: "PDF-N", url: "https://drive/PDF-N" }; };
+g.declEmitirDeclaracaoDiretor({
+  diretorId: dir.id, escolaId: "ESC-UVV", periodo: "MATUTINO",
+  dataLiberacao: amanha.toISOString().slice(0, 10), confirmado: true
+}, TOKEN);
+g.declGerarPdf_ = geradorReal;
+b.ok(capturado.length === 1 && !!capturado[0].dataLiberacao,
+  "a emissão entrega a data da liberação ao gerador do arquivo");
+b.ok(/WANDERSON NASCIMENTO CASTELO/.test(g.declNomeArquivo_(capturado[0])),
+  "e o nome do arquivo sai nominal", g.declNomeArquivo_(capturado[0]));
+
 b.fluxo("DECLARAÇÕES · Segurança");
 b.bloqueia(() => g.declContextoDiretor(dir.id, TOKEN_ESC), "usuário sem Documentos não consulta vínculo");
 b.bloqueia(() => g.declEmitirDeclaracaoDiretor(pedido, TOKEN_ESC), "usuário sem Documentos não emite");

@@ -529,6 +529,7 @@ function declEmitirDeclaracaoDiretor(dados, tokenSessao) {
     var pdf = declGerarPdf_({
       numero: numero,
       texto: v.texto,
+      dataLiberacao: v.dataLiberacao,
       dataEmissao: v.dataEmissao,
       signatario: v.signatario,
       diretor: v.diretor
@@ -985,8 +986,7 @@ function declHistoricoDeclaracoes(filtros, tokenSessao) {
 function declGerarPdf_(p) {
   p = p || {};
   var html = declHtmlDeclaracao_(p);
-  var nome = "Declaracao_" + String(p.numero).replace("/", "-") + "_" +
-             declTexto_(p.diretor && p.diretor.nome).split(" ")[0];
+  var nome = declNomeArquivo_(p);
 
   var blob = HtmlService.createHtmlOutput(html)
     .getBlob()
@@ -1005,6 +1005,47 @@ function declGerarPdf_(p) {
   }
 
   return { id: arquivo.getId(), url: arquivo.getUrl() };
+}
+
+/**
+ * O NOME DO ARQUIVO NO DRIVE: nominal, com data, e achável.
+ *
+ * Pedido do usuário em 15/09/2026: "declaração tem que ser salva nominal e
+ * com data". O nome antigo era "Declaracao_001-2026_Wanderson" — só o
+ * primeiro nome e sem a data da liberação, o que obriga a abrir o arquivo
+ * para saber de quem é e de quando.
+ *
+ * O formato segue a convenção dos Ofícios (montarNomeArquivoOficio_,
+ * HelperOficios.gs): tipo, número, de quem, e a data. A data é a DA
+ * LIBERAÇÃO, não a da emissão — é o dia que o documento afirma, e é por ele
+ * que alguém procura. O modelo em papel que originou isto se chama
+ * "DECLARAÇÃO 17.09.2026", com a data da liberação.
+ *
+ *   Declaração 001-2026 - MARCILENE DA SILVA MAGESKE - 17.09.2026.pdf
+ *
+ * Caracteres que o Drive e o Windows recusam em nome de arquivo saem; o
+ * nome é limitado para não estourar em dirigente de nome longo.
+ */
+function declNomeArquivo_(p) {
+  p = p || {};
+
+  function limpar(v) {
+    return String(v || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim().toUpperCase();
+  }
+
+  var quem = limpar(p.diretor && p.diretor.nome);
+  if (quem.length > 70) quem = quem.slice(0, 70).trim();
+
+  var d = declParaData_(p.dataLiberacao) || declParaData_(p.dataEmissao);
+  var data = d
+    ? ("0" + d.getDate()).slice(-2) + "." + ("0" + (d.getMonth() + 1)).slice(-2) + "." + d.getFullYear()
+    : "";
+
+  var partes = ["Declaração " + String(p.numero || "").replace("/", "-")];
+  if (quem) partes.push(quem);
+  if (data) partes.push(data);
+  return partes.join(" - ");
 }
 
 /**
