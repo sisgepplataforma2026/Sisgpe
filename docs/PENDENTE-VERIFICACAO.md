@@ -5589,9 +5589,19 @@ do Reemitir reproduzido e depois pego pelo teste). O que **não** roda ali:
 
 1. 🔴 **Emitir uma declaração na homologação.** O PDF é a única parte do
    fluxo que o emulador não reproduz — precisa sair no Drive, na subpasta do
-   ano, com logo e assinatura. Antes disso, configurar a Script Property
-   `SISGEP_PASTA_DECLARACOES`; `declDiagnosticoPasta_()` responde em dois
-   segundos no editor se ela está de pé.
+   ano, com logo e assinatura.
+
+   ✅ **A pasta ficou pronta em 15/09/2026, 16h23.** `SISGEP - Declaracoes -
+   HOMOLOGACAO` (`1JlTnNi6yoLHKJo4xKZTh_L7WC5Ntt8Zk`), criada ao lado das
+   irmãs de Comprovantes, Recibos, Relatórios e Voucher, com a Script
+   Property `SISGEP_PASTA_DECLARACOES` apontando para ela. O diagnóstico
+   respondeu `✅ acessível`, signatário LEONIL DIAS DA SILVA e 26 dirigentes
+   habilitados. Falta só emitir: a subpasta do ano nasce na primeira emissão.
+
+   Nota para quem for rodar o diagnóstico: o editor do Apps Script não lista
+   função terminada em `_`, então `declDiagnosticoPasta_()` não aparece no
+   seletor. Ou se chama por um invólucro temporário, ou se usa o botão da
+   tela quando ele existir.
 2. 🔴 **Fechar a tela, reabrir e entregar pela lista.** É o cenário que a
    correção criou: em *Emitidas*, o botão `📨 Entregar` abre o modal com os
    e-mails conferidos no dia da emissão. Em homologação o envio vai para a
