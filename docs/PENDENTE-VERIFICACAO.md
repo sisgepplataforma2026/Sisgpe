@@ -5577,3 +5577,35 @@ erro e sem log. O executivo **nunca** carregou desde que foi escrito.
 contrário ("o status é o botão"). As duas decisões são dele; a segunda veio de
 ver a fila real funcionando. Fica anotada no `t89` para não ser reaberta como
 achado novo.
+
+---
+
+## 📜 DECLARAÇÕES — ENTREGA REABERTA E REEMITIR (15/09/2026)
+
+Correção dos itens 1, 2 e 6 da avaliação do submódulo, sobre o `4e36f7a`.
+Emissão, reabertura da entrega, envio e trava de destinatário rodam nos
+testes (`t175`, 24 asserções; `t176`, 20 asserções em DOM real, com o defeito
+do Reemitir reproduzido e depois pego pelo teste). O que **não** roda ali:
+
+1. 🔴 **Emitir uma declaração na homologação.** O PDF é a única parte do
+   fluxo que o emulador não reproduz — precisa sair no Drive, na subpasta do
+   ano, com logo e assinatura. Antes disso, configurar a Script Property
+   `SISGEP_PASTA_DECLARACOES`; `declDiagnosticoPasta_()` responde em dois
+   segundos no editor se ela está de pé.
+2. 🔴 **Fechar a tela, reabrir e entregar pela lista.** É o cenário que a
+   correção criou: em *Emitidas*, o botão `📨 Entregar` abre o modal com os
+   e-mails conferidos no dia da emissão. Em homologação o envio vai para a
+   Secretaria, não para a escola — a mensagem tem de dizer isso, e o status
+   na lista tem de virar `TESTE_HML_ENVIADO`.
+3. 🔴 **Reemitir com a escola de volta.** Clicar `🔁 Reemitir` numa linha: o
+   diretor, o período e a escola voltam preenchidos, só a data da liberação
+   fica em branco. Era aqui que a tela travava.
+4. 🟡 **WhatsApp preparado ontem, confirmado hoje.** Preparar o WhatsApp,
+   fechar a tela, reabrir a entrega pela lista — o botão "Marcar WhatsApp
+   como enviado" tem de reaparecer sozinho.
+
+**Segue em aberto, fora deste commit** (itens 3, 4, 5 e 7 da avaliação):
+mandato conferido contra a data da liberação e não contra hoje; dirigente sem
+vínculo em Associados que não consegue emitir; as ~250 linhas inalcançáveis
+em `DeclaracoesCore.gs`; e as três varreduras completas dentro do lock de
+emissão.

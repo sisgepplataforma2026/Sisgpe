@@ -3,10 +3,18 @@
   Backend: DeclaracoesCore.gs (cadastro da Diretoria) e DeclaracaoDiretor.gs
            (emissão, texto, PDF e histórico).
 
-  TRÊS TELAS POR ESTADO, não por assunto:
+  DUAS TELAS POR ESTADO, não por assunto:
      Emitir     — a declaração que ainda não existe
      Emitidas   — a que já foi assinada
-     Diretoria  — quem pode receber e quem assina
+
+  Não há tela de Diretoria: quem pode receber e quem assina vem da composição
+  vigente em Governança, e se corrige lá.
+
+  A ENTREGA (e-mail e WhatsApp) aparece em dois lugares com o mesmo código:
+  no cartão ao pé de Emitir, logo depois de emitir, e no modal aberto pela
+  lista de Emitidas. Daí os escopos em DECL_ESCOPOS — a declaração cuja
+  entrega está aberta é uma só, guardada em DECL_ESTADO.entrega, e as duas
+  telas apenas apontam para caixas diferentes.
 
   ⚠️ REGRA Nº 0 — nenhum scriptlet do Apps Script aparece aqui dentro de
   comentário, nem em forma citada. O include desta tela está no index.html.
@@ -106,9 +114,9 @@
       <div class="of-card-body">
         <div id="declContatos" class="declContatos"></div>
         <div class="declAcoes declAcoesEsq" style="margin-top:14px;">
-          <button type="button" class="btn-navy" id="declBtnEmail" onclick="declEnviarEmail()">Enviar para a escola</button>
-          <button type="button" class="btn-outline" onclick="declPrepararWhatsapp()">Preparar WhatsApp do diretor</button>
-          <button type="button" class="btn-outline" id="declBtnConfirmarZap" onclick="declConfirmarWhatsapp()" style="display:none;">Marcar WhatsApp como enviado</button>
+          <button type="button" class="btn-navy" id="declBtnEmail" onclick="declEnviarEmail('painel')">Enviar para a escola</button>
+          <button type="button" class="btn-outline" onclick="declPrepararWhatsapp('painel')">Preparar WhatsApp do diretor</button>
+          <button type="button" class="btn-outline" id="declBtnConfirmarZap" onclick="declConfirmarWhatsapp('painel')" style="display:none;">Marcar WhatsApp como enviado</button>
         </div>
       </div>
     </div>
@@ -144,6 +152,28 @@
     </div>
   </section>
 
+</div>
+
+<!-- Modal — entrega de uma declaração já emitida -->
+<div class="of-modal-overlay" id="declModalEntrega">
+  <div class="of-modal" style="max-width:560px;">
+    <div class="of-modal-head">
+      <div>
+        <div class="of-modal-head-title">📨 Entrega da declaração</div>
+        <div class="of-modal-head-sub" id="declEntregaModalResumo"></div>
+      </div>
+      <button type="button" class="of-modal-close" onclick="declFecharEntrega()">✕</button>
+    </div>
+    <div class="of-modal-body">
+      <div id="declEntregaModalContatos" class="declContatos"></div>
+      <div class="declOrigem" style="margin-top:10px;">e-mails conferidos no dia da emissão — o servidor só aceita estes</div>
+    </div>
+    <div class="declModalRodape">
+      <button type="button" class="btn-outline" onclick="declPrepararWhatsapp('modal')">Preparar WhatsApp</button>
+      <button type="button" class="btn-outline" id="declBtnConfirmarZapModal" onclick="declConfirmarWhatsapp('modal')" style="display:none;">Marcar WhatsApp como enviado</button>
+      <button type="button" class="btn-navy" id="declBtnEmailModal" onclick="declEnviarEmail('modal')">Enviar para a escola</button>
+    </div>
+  </div>
 </div>
 
 <!-- Modal — confirmação de segunda via -->
@@ -257,7 +287,13 @@
    script da SPA viram um escopo global só, e nome curto colide.
    ──────────────────────────────────────────────────────────────── */
 
-var DECL_ESTADO = { diretores: [], vinculos: [], escola: null, periodo: "", carregou: false, timerBusca: null, timerPrevia: null, ultima: null };
+var DECL_ESTADO = { diretores: [], vinculos: [], escola: null, periodo: "", carregou: false, timerBusca: null, timerPrevia: null, entrega: null };
+
+/* Onde cada tela guarda as caixas da entrega. Mesmo código, caixas diferentes. */
+var DECL_ESCOPOS = {
+  painel: { resumo: "declEntregaResumo",      contatos: "declContatos",             btnEmail: "declBtnEmail",      btnZap: "declBtnConfirmarZap" },
+  modal:  { resumo: "declEntregaModalResumo", contatos: "declEntregaModalContatos", btnEmail: "declBtnEmailModal", btnZap: "declBtnConfirmarZapModal" }
+};
 
 function declToken() { return (typeof SISGEP_TOKEN_SESSAO !== "undefined") ? SISGEP_TOKEN_SESSAO : ""; }
 
@@ -355,7 +391,14 @@ function declEscolherPeriodo(valor) {
   declPrevia();
 }
 
-function declCarregarVinculos() {
+/**
+ * Carrega as escolas do dirigente.
+ *
+ * `escolaPreferida` só é passada pelo Reemitir: a lista chega depois, de
+ * forma assíncrona, e é aqui dentro — não lá — que dá para reaplicar a
+ * escola da emissão anterior.
+ */
+function declCarregarVinculos(escolaPreferida) {
   var diretorId = document.getElementById("declDiretor").value;
   var sel = document.getElementById("declEscola");
   DECL_ESTADO.vinculos = []; DECL_ESTADO.escola = null;
@@ -368,8 +411,12 @@ function declCarregarVinculos() {
       return '<option value="' + declEsc(v.escolaId) + '">' + declEsc(v.fantasia || v.nome) + '</option>';
     }).join("");
     sel.disabled = !DECL_ESTADO.vinculos.length;
-    if (DECL_ESTADO.vinculos.length === 1) { sel.value = DECL_ESTADO.vinculos[0].escolaId; declSelecionarEscola(); }
+    var repetida = escolaPreferida && DECL_ESTADO.vinculos.filter(function (v) { return v.escolaId === escolaPreferida; }).length
+      ? escolaPreferida : "";
+    if (repetida) { sel.value = repetida; declSelecionarEscola(); }
+    else if (DECL_ESTADO.vinculos.length === 1) { sel.value = DECL_ESTADO.vinculos[0].escolaId; declSelecionarEscola(); }
     else if (!DECL_ESTADO.vinculos.length) declMsg("Nenhuma escola do cadastro foi encontrada para este dirigente.", "alerta");
+    else if (escolaPreferida) declMsg("A escola da declaração anterior não está mais entre os vínculos deste dirigente. Escolha a escola.", "alerta");
   }).withFailureHandler(function (e) { sel.innerHTML = '<option value="">— erro —</option>'; declMsg("Erro: " + e, "erro"); })
     .declContextoDiretor(diretorId, declToken());
 }
@@ -451,8 +498,7 @@ function declEmitir(confirmado) {
 
       declMsg("Declaração " + r.numero + " emitida.", "sucesso");
       if (r.url) window.open(r.url, "_blank");
-      DECL_ESTADO.ultima = r;
-      declMostrarEntrega(r);
+      declRenderEntrega_("painel", r);
     })
     .withFailureHandler(function (e) {
       btn.disabled = false;
@@ -462,46 +508,120 @@ function declEmitir(confirmado) {
     .declEmitirDeclaracaoDiretor(declDados(confirmado), declToken());
 }
 
-function declMostrarEntrega(r) {
+/**
+ * Desenha a entrega no escopo pedido e passa a ser ELA a entrega aberta.
+ *
+ * `r` tem o mesmo formato vindo das duas origens — do retorno de
+ * `declEmitirDeclaracaoDiretor` e de `declEntregaDeclaracao` — de propósito,
+ * para não existirem dois desenhos da mesma coisa se afastando com o tempo.
+ */
+function declRenderEntrega_(escopo, r) {
+  var alvo = DECL_ESCOPOS[escopo];
+  if (!alvo) return;
+
+  DECL_ESTADO.entrega = r;
+
   var escola = r.escola || DECL_ESTADO.escola || {};
-  document.getElementById("declEntrega").style.display = "block";
-  document.getElementById("declEntregaResumo").textContent = "Declaração " + r.numero + " · " + (escola.fantasia || escola.nome || "escola");
   var contatos = escola.contatos || [];
-  document.getElementById("declContatos").innerHTML = contatos.length ? contatos.map(function (c, i) {
+
+  if (escopo === "painel") document.getElementById("declEntrega").style.display = "block";
+
+  document.getElementById(alvo.resumo).textContent =
+    "Declaração " + r.numero + " · " + (escola.fantasia || escola.nome || "escola");
+
+  document.getElementById(alvo.contatos).innerHTML = contatos.length ? contatos.map(function (c, i) {
     return '<label class="declContato"><input type="checkbox" data-decl-email="' + i + '"' + (c.marcado ? ' checked' : '') + '><span><b>' + declEsc(c.email) + '</b><small>' + declEsc((c.origens || []).join(" · ")) + (c.falhas ? ' · ' + c.falhas + ' falha(s)' : '') + '</small></span></label>';
-  }).join("") : '<div class="declAviso">Nenhum e-mail válido encontrado. Atualize o cadastro da escola antes do envio.</div>';
-  document.getElementById("declBtnEmail").disabled = !contatos.length;
+  }).join("") : '<div class="declAviso">Nenhum e-mail válido encontrado nesta declaração. Atualize o cadastro da escola e emita novamente.</div>';
+
+  document.getElementById(alvo.btnEmail).disabled = !contatos.length;
+
+  /* O "marcar como enviado" reaparece para quem preparou o WhatsApp ontem e
+     só hoje voltou para confirmar. */
+  var zap = document.getElementById(alvo.btnZap);
+  if (zap) zap.style.display = (r.whatsappStatus === "PREPARADO") ? "inline-flex" : "none";
 }
 
-function declEmailsEscolhidos() {
-  var lista = [], caixas = document.querySelectorAll("[data-decl-email]");
-  for (var i = 0; i < caixas.length; i++) if (caixas[i].checked) lista.push(DECL_ESTADO.ultima.escola.contatos[Number(caixas[i].getAttribute("data-decl-email"))].email);
+/* ─── entrega reaberta pela lista de Emitidas ─── */
+function declAbrirEntrega(numero) {
+  document.getElementById("declEntregaModalResumo").textContent = "Carregando…";
+  document.getElementById("declEntregaModalContatos").innerHTML = "";
+  declAbrir("declModalEntrega");
+
+  google.script.run
+    .withSuccessHandler(function (r) {
+      if (!r || !r.ok) {
+        declFecharEntrega();
+        return declMsg((r && r.mensagem) || "Não consegui abrir a entrega.", "erro");
+      }
+      declRenderEntrega_("modal", r);
+    })
+    .withFailureHandler(function (e) { declFecharEntrega(); declMsg("Erro: " + e, "erro"); })
+    .declEntregaDeclaracao(numero, declToken());
+}
+
+function declFecharEntrega() {
+  declFechar("declModalEntrega");
+  DECL_ESTADO.entrega = null;
+}
+
+function declEmailsEscolhidos(escopo) {
+  var alvo = DECL_ESCOPOS[escopo], lista = [];
+  var contatos = ((DECL_ESTADO.entrega || {}).escola || {}).contatos || [];
+  var caixas = document.querySelectorAll("#" + alvo.contatos + " [data-decl-email]");
+  for (var i = 0; i < caixas.length; i++) {
+    if (!caixas[i].checked) continue;
+    var c = contatos[Number(caixas[i].getAttribute("data-decl-email"))];
+    if (c) lista.push(c.email);
+  }
   return lista;
 }
 
-function declEnviarEmail() {
-  if (!DECL_ESTADO.ultima) return;
-  var emails = declEmailsEscolhidos();
+function declEnviarEmail(escopo) {
+  if (!DECL_ESTADO.entrega) return;
+  var emails = declEmailsEscolhidos(escopo);
   if (!emails.length) return declMsg("Escolha ao menos um e-mail.", "alerta");
-  google.script.run.withSuccessHandler(function (r) { declMsg(r.mensagem, r.ok ? "sucesso" : "erro"); })
-    .withFailureHandler(function (e) { declMsg("Erro: " + e, "erro"); })
-    .declEnviarEmail(DECL_ESTADO.ultima.numero, emails, declToken());
+
+  var btn = document.getElementById(DECL_ESCOPOS[escopo].btnEmail);
+  btn.disabled = true;
+  google.script.run
+    .withSuccessHandler(function (r) {
+      btn.disabled = false;
+      declMsg(r.mensagem, r.ok ? "sucesso" : "erro");
+      if (!r.ok) return;
+      if (escopo === "modal") declFecharEntrega();
+      /* A lista mostra o status da entrega — sem isto ela continuaria
+         dizendo "Aguardando" para uma declaração que acabou de sair. */
+      if (document.getElementById("declPainelEmitidas").style.display !== "none") declHistorico();
+    })
+    .withFailureHandler(function (e) { btn.disabled = false; declMsg("Erro: " + e, "erro"); })
+    .declEnviarEmail(DECL_ESTADO.entrega.numero, emails, declToken());
 }
 
-function declPrepararWhatsapp() {
-  if (!DECL_ESTADO.ultima) return;
+function declPrepararWhatsapp(escopo) {
+  if (!DECL_ESTADO.entrega) return;
   google.script.run.withSuccessHandler(function (r) {
     if (!r || !r.ok) return declMsg((r && r.mensagem) || "Não foi possível preparar.", "erro");
-    window.open(r.url, "_blank"); document.getElementById("declBtnConfirmarZap").style.display = "inline-flex";
+    window.open(r.url, "_blank");
+    var zap = document.getElementById(DECL_ESCOPOS[escopo].btnZap);
+    if (zap) zap.style.display = "inline-flex";
   }).withFailureHandler(function (e) { declMsg("Erro: " + e, "erro"); })
-    .declPrepararWhatsapp(DECL_ESTADO.ultima.numero, declToken());
+    .declPrepararWhatsapp(DECL_ESTADO.entrega.numero, declToken());
 }
 
-function declConfirmarWhatsapp() {
-  if (!DECL_ESTADO.ultima) return;
-  google.script.run.withSuccessHandler(function (r) { declMsg(r.mensagem, r.ok ? "sucesso" : "erro"); if (r.ok) document.getElementById("declBtnConfirmarZap").style.display = "none"; })
+function declConfirmarWhatsapp(escopo) {
+  if (!DECL_ESTADO.entrega) return;
+  var numero = DECL_ESTADO.entrega.numero;
+  google.script.run
+    .withSuccessHandler(function (r) {
+      declMsg(r.mensagem, r.ok ? "sucesso" : "erro");
+      if (!r.ok) return;
+      var zap = document.getElementById(DECL_ESCOPOS[escopo].btnZap);
+      if (zap) zap.style.display = "none";
+      if (escopo === "modal") declFecharEntrega();
+      if (document.getElementById("declPainelEmitidas").style.display !== "none") declHistorico();
+    })
     .withFailureHandler(function (e) { declMsg("Erro: " + e, "erro"); })
-    .declConfirmarWhatsapp(DECL_ESTADO.ultima.numero, declToken());
+    .declConfirmarWhatsapp(numero, declToken());
 }
 
 function declLimpar() {
@@ -509,7 +629,7 @@ function declLimpar() {
   document.getElementById("declEscola").innerHTML = '<option value="">— selecione o diretor —</option>';
   document.getElementById("declEscola").disabled = true;
   document.getElementById("declEntrega").style.display = "none";
-  DECL_ESTADO.vinculos = []; DECL_ESTADO.escola = null; DECL_ESTADO.ultima = null;
+  DECL_ESTADO.vinculos = []; DECL_ESTADO.escola = null; DECL_ESTADO.entrega = null;
   document.getElementById("declDataLiberacao").value = "";
   document.getElementById("declDataEmissao").value = new Date().toISOString().slice(0, 10);
   declEscolherPeriodo("");
@@ -552,6 +672,7 @@ function declHistorico() {
         var link = d.pdfUrl
           ? '<a class="declLink" href="' + declEsc(d.pdfUrl) + '" target="_blank">⬇ PDF</a>'
           : '<span class="declPill declPillAlerta">sem PDF</span>';
+        var entregue = d.emailStatus === "ENVIADO" || d.emailStatus === "TESTE_HML_ENVIADO";
         return '<tr>' +
           '<td><b>' + declEsc(d.numero) + '</b></td>' +
           '<td>' + declEsc(d.diretorNome) + '</td>' +
@@ -562,7 +683,8 @@ function declHistorico() {
           '<td><span class="declPill ' + (d.emailStatus === "ENVIADO" || d.emailStatus === "TESTE_HML_ENVIADO" ? 'declPillOk' : 'declPillAlerta') + '">' + declEsc(d.emailStatus || "Aguardando") + '</span><br><small>' + declEsc(d.whatsappStatus || "WhatsApp não preparado") + '</small></td>' +
           '<td>' + declEsc(d.emitidoPor) + '</td>' +
           '<td style="white-space:nowrap;">' + link +
-            ' <button type="button" class="declBtnMini" onclick="declReemitir(\'' + declEsc(d.diretorId) + '\',\'' + declEsc(d.periodo) + '\')">🔁 Reemitir</button>' +
+            ' <button type="button" class="declBtnMini" title="' + (entregue ? 'Reenviar para a escola' : 'Enviar para a escola') + '" onclick="declAbrirEntrega(\'' + declEsc(d.numero) + '\')">📨 ' + (entregue ? 'Reenviar' : 'Entregar') + '</button>' +
+            ' <button type="button" class="declBtnMini" onclick="declReemitir(\'' + declEsc(d.diretorId) + '\',\'' + declEsc(d.periodo) + '\',\'' + declEsc(d.escolaId) + '\')">🔁 Reemitir</button>' +
           '</td>' +
         '</tr>';
       }).join("");
@@ -573,16 +695,36 @@ function declHistorico() {
     .declHistoricoDeclaracoes(filtros, declToken());
 }
 
-/* Repete tudo menos a data — que é justamente o que muda. */
-function declReemitir(diretorId, periodo) {
+/**
+ * Repete tudo menos a data — que é justamente o que muda.
+ *
+ * `declCarregarVinculos` PRECISA ser chamada à mão: atribuir `.value` por
+ * código não dispara o onchange do select, e sem ela a escola ficava
+ * desabilitada em "— selecione o diretor —". O botão prometia poupar a
+ * seleção e obrigava a refazê-la inteira. Corrigido em 15/09/2026.
+ */
+function declReemitir(diretorId, periodo, escolaId) {
   declAba("emitir");
-  document.getElementById("declDiretor").value = diretorId;
+
+  var sel = document.getElementById("declDiretor");
+  sel.value = diretorId;
+  /* Dirigente de gestão encerrada não está mais na lista, e o select fica em
+     branco em silêncio. Melhor dizer o motivo do que deixar a pessoa
+     tentando entender por que a tela não preencheu. */
+  if (sel.value !== diretorId) {
+    declMsg("Este dirigente não está na composição vigente em Governança — não é possível repetir a declaração dele.", "alerta");
+    return;
+  }
+
   document.getElementById("declDataLiberacao").value = "";
   document.getElementById("declDataEmissao").value = new Date().toISOString().slice(0, 10);
+  document.getElementById("declEntrega").style.display = "none";
   declEscolherPeriodo(periodo || "");
+  declCarregarVinculos(escolaId || "");
   declMsg("Dados repetidos. Informe a nova data da liberação.", "info");
 }
 
 window.declInit = declInit;
 window.declAba = declAba;
+window.declAbrirEntrega = declAbrirEntrega;
 </script>

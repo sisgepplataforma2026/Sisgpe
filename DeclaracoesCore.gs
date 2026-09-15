@@ -42,12 +42,25 @@
 // diretores de lá numa lista para conferência, e só grava o que a pessoa
 // confirmar. É importação única, não sincronização contínua.
 //
-// QUEM ASSINA
+// QUEM ASSINA — corrigido em 15/09/2026
 //
-// O signatário sai do próprio cadastro, do diretor marcado em
-// ASSINA_COMO_PRESIDENTE — não de constante no código. Troca de presidente é
-// marcação de caixa, não alteração de arquivo. Só um pode estar marcado por
-// vez, e a trava está em `declSalvarDiretor`.
+// O signatário é o PRESIDENTE EFETIVO da Diretoria Executiva na composição
+// vigente (`declListarDiretoria_interno_`, logo abaixo): sai de Governança,
+// não de constante no código e não mais de uma caixa marcada à mão.
+//
+// O texto anterior deste cabeçalho descrevia a marcação em
+// ASSINA_COMO_PRESIDENTE, que a integração com Governança desligou — e a
+// mensagem de erro da emissão ainda mandava a pessoa "abrir Declarações ›
+// Diretoria", aba que também deixou de existir. Duas indicações para um
+// lugar que não existe mais.
+//
+// Troca de presidente, hoje, é alteração da composição em Governança.
+//
+// ⚠️ CÓDIGO INALCANÇÁVEL ABAIXO. `declSalvarDiretor`, `declAlternarDiretor`,
+// `declCandidatosDeVerbas` e `declImportarDeVerbas` foram desligados com um
+// `return` no topo, mas o corpo antigo continua no arquivo — cerca de 250
+// linhas que parecem vivas e não rodam. A remoção fica para commit próprio,
+// separado de qualquer mudança de comportamento (REGRA Nº 1).
 // ============================================================================
 
 /* A aba DIRETORIA é legada. Continua disponível somente para preservar a

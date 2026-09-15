@@ -254,7 +254,7 @@ function declValidarPedido_(dados) {
   if (!signatario) {
     return {
       ok: false,
-      mensagem: "Nenhum diretor está marcado como signatário. Abra Declarações › Diretoria e marque quem assina as declarações."
+      mensagem: "Não há Presidente com mandato vigente na composição de Governança — e declaração sem assinatura não vale nada. Corrija a composição em Governança antes de emitir."
     };
   }
 
@@ -527,6 +527,56 @@ function declAcharEmissao_(numero) {
   var dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
   for (var i = 0; i < dados.length; i++) if (declTexto_(dados[i][hm.NUMERO - 1]) === declTexto_(numero)) return { sh: sh, hm: hm, linha: i + 2, valores: dados[i] };
   return null;
+}
+
+/**
+ * Reabre a entrega de uma declaração já emitida — só lê, não envia nada.
+ *
+ * OS CONTATOS SAEM DA LINHA, não de uma nova varredura de Associados e
+ * Escolas. É a conferência congelada no dia da emissão, que é exatamente o
+ * conjunto que `declEnviarEmail` aceita logo abaixo. Reconsultar o cadastro
+ * aqui traria endereços que ninguém conferiu para dentro de um documento
+ * assinado — e ainda faria a trava de destinatário divergir da tela.
+ *
+ * Existe porque, até 15/09/2026, a entrega só aparecia logo depois de emitir:
+ * fechar a tela deixava a declaração parada em AGUARDANDO_CONFERENCIA sem
+ * nenhum caminho de volta.
+ */
+function declEntregaDeclaracao(numero, tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
+  try {
+    var achado = declAcharEmissao_(numero);
+    if (!achado) return { ok: false, mensagem: "Declaração não encontrada." };
+
+    function campo(nome) {
+      return achado.hm[nome] ? declTexto_(achado.valores[achado.hm[nome] - 1]) : "";
+    }
+
+    var contatos = [];
+    try {
+      contatos = JSON.parse(campo("CONTATOS_ORIGEM") || "[]") || [];
+    } catch (eJson) {
+      contatos = [];
+    }
+
+    return {
+      ok: true,
+      numero: campo("NUMERO"),
+      diretorNome: campo("DIRETOR_NOME"),
+      escola: {
+        escolaId: campo("ESCOLA_ID"),
+        nome: campo("ESCOLA_NOME"),
+        documento: campo("ESCOLA_DOCUMENTO"),
+        contatos: contatos
+      },
+      pdfUrl: campo("PDF_URL"),
+      emailStatus: campo("EMAIL_STATUS"),
+      emailsUsados: campo("EMAILS_USADOS"),
+      whatsappStatus: campo("WHATSAPP_STATUS")
+    };
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao abrir a entrega: " + e.message };
+  }
 }
 
 function declEnviarEmail(numero, emails, tokenSessao) {

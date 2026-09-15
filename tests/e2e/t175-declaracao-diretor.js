@@ -65,9 +65,29 @@ b.ok(zap.ok && /^https:\/\/wa\.me\/5527/.test(zap.url), "WhatsApp é apenas prep
 const zapOk = g.declConfirmarWhatsapp(emitida.numero, TOKEN);
 b.ok(zapOk.ok, "operador confirma a ciência depois");
 
+b.fluxo("DECLARAÇÕES · Entrega reaberta depois de fechar a tela");
+/* O cenário real: emitiu, fechou a tela, e no dia seguinte precisa enviar.
+   Até 15/09/2026 não havia caminho de volta — a declaração ficava presa em
+   AGUARDANDO_CONFERENCIA para sempre. */
+const reaberta = g.declEntregaDeclaracao(emitida.numero, TOKEN);
+b.ok(reaberta.ok && reaberta.numero === emitida.numero, "abre a entrega só pelo número", reaberta.numero);
+b.ok(reaberta.escola.escolaId === "ESC-UVV" && reaberta.escola.contatos.length === 2,
+  "contatos vêm congelados da linha, não de nova varredura", reaberta.escola.contatos.map(c => c.email).join(", "));
+b.ok(reaberta.emailStatus === "AGUARDANDO_CONFERENCIA", "status da entrega vem junto", reaberta.emailStatus);
+const foraPelaReabertura = g.declEnviarEmail(emitida.numero, ["estranho@fora.br"], TOKEN);
+b.ok(!foraPelaReabertura.ok && /não pertence/i.test(foraPelaReabertura.mensagem),
+  "a trava de destinatário vale também por este caminho");
+const enviada = g.declEnviarEmail(emitida.numero, [reaberta.escola.contatos[0].email], TOKEN);
+b.ok(enviada.ok, "envia a declaração antiga", enviada.mensagem);
+const depois = g.declEntregaDeclaracao(emitida.numero, TOKEN);
+b.ok(/ENVIADO/.test(depois.emailStatus) && depois.emailsUsados === reaberta.escola.contatos[0].email,
+  "a linha guarda o status e o destinatário real", depois.emailStatus + " · " + depois.emailsUsados);
+b.ok(g.declEntregaDeclaracao("999/2099", TOKEN).ok === false, "número inexistente é recusado");
+
 b.fluxo("DECLARAÇÕES · Segurança");
 b.bloqueia(() => g.declContextoDiretor(dir.id, TOKEN_ESC), "usuário sem Documentos não consulta vínculo");
 b.bloqueia(() => g.declEmitirDeclaracaoDiretor(pedido, TOKEN_ESC), "usuário sem Documentos não emite");
 b.bloqueia(() => g.declDadosEmissao("token-falso"), "token inválido é recusado");
+b.bloqueia(() => g.declEntregaDeclaracao(emitida.numero, TOKEN_ESC), "usuário sem Documentos não reabre a entrega");
 b.naoTestavel("PDF, Drive, Gmail e WhatsApp reais", "dependem da homologação publicada");
 b.resumo();
