@@ -341,13 +341,25 @@ function doGet(e) {
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .setSandboxMode(HtmlService.SandboxMode.IFRAME);
   } catch (erro) {
-    Logger.log("Erro no doGet SISGEP: " + erro);
+    /* O RASTRO FICA NO LOG, NÃO NA TELA — 15/09/2026.
+       Esta página imprimia o stack trace inteiro. Enquanto o app abria só para
+       o dono, era diagnóstico conveniente. No momento em que ele passa a
+       atender a internet — e passa, porque é o que faz o link da inscrição e
+       do ingresso funcionar —, vira um mapa do sistema entregue a quem só
+       precisou provocar um erro: nome de arquivo, nome de função, linha.
+       Quem precisa do detalhe é quem tem o log de execução, e esse continua
+       recebendo tudo, com o mesmo código curto que aparece na tela — é ele
+       que liga o que a pessoa viu à linha exata no registro. */
+    var codigo = String(new Date().getTime()).slice(-6);
+    Logger.log("Erro no doGet SISGEP [" + codigo + "]: " +
+               (erro && erro.stack ? erro.stack : erro));
     return HtmlService.createHtmlOutput(
-      "<div style='font-family:sans-serif;padding:40px;background:#fff;color:#111;'>" +
-      "<h2 style='color:#c00;'>Erro ao abrir o SISGEP</h2>" +
-      "<pre style='white-space:pre-wrap;background:#f5f5f5;padding:16px;border-radius:8px;'>" +
-      (erro && erro.stack ? erro.stack : (erro && erro.message ? erro.message : String(erro))) +
-      "</pre></div>")
+      "<div style='font-family:sans-serif;max-width:520px;margin:60px auto;padding:28px;" +
+      "border-radius:14px;background:#fff5f5;border:1px solid #fecaca;color:#7f1d1d'>" +
+      "<h2 style='margin:0 0 10px'>Não foi possível abrir esta página</h2>" +
+      "<p style='margin:0 0 10px;line-height:1.5'>Tente novamente em alguns instantes. " +
+      "Se continuar, avise a secretaria do SindEducação-ES informando o código abaixo.</p>" +
+      "<p style='margin:0;font:700 15px monospace'>" + codigo + "</p></div>")
       .setTitle("Erro — SISGEP")
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
