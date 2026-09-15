@@ -368,7 +368,6 @@
          aqui o atalho para a lista inteira — é o mesmo gesto do Gmail, e sem
          ele "excluir todas" exigia trocar o tamanho da página antes. -->
     <button class="b" id="btSelTudo" hidden onclick="selecionarTudo()"></button>
-    <button class="b p" onclick="enviarLote()" id="btLoteEmail">📧 Enviar ingresso por e-mail</button>
     <button class="b perigo" onclick="excluirLote()" id="btLoteExcluir" hidden>🗑 Excluir selecionadas</button>
     <span id="capacidade" style="font-size:12px;color:var(--suave)"></span>
   </div>
@@ -491,7 +490,6 @@
         <button class="b"   onclick="mdAbrir()">📄 Abrir ingresso</button>
         <button class="b"   onclick="mdBaixar()">📥 Baixar PDF</button>
         <button class="b"   onclick="mdImprimir()">🖨 Imprimir</button>
-        <button class="b p" onclick="mdEmail()">📧 Enviar por e-mail</button>
         <button class="b g" onclick="mdWhats()">💬 WhatsApp</button>
         <button class="b"   onclick="mdEditar()">✏️ Editar dados</button>
       </div>
@@ -641,7 +639,6 @@
       <div class="gv-nota" id="ingSituacao" style="margin:0 0 10px"></div>
       <div class="gv-acoes">
         <button class="b p"  id="btEmitir"   onclick="emitirGaveta()">Emitir ingresso</button>
-        <button class="b g"  id="btEmail"    onclick="emailGaveta()">📧 Enviar por e-mail</button>
         <button class="b g"  id="btWhats"    onclick="whatsGaveta()">📱 Enviar por WhatsApp</button>
         <button class="b perigo" id="btCancelar" onclick="cancelarIngresso()">Cancelar ingresso</button>
       </div>
@@ -1012,7 +1009,25 @@ function linhaHtml(x, i){
         '<td><div class="acoes-cell">' + acoesDaLinha(x, i) + '</div></td></tr>';
 }
 
-/* ── AS AÇÕES, NA LINHA ───────────────────────────────────────────────────
+/* ── O E-MAIL SAIU DA TELA — 15/09/2026 ──────────────────────────────────
+   "Tira a opção por e-mail."
+
+   A entrega desta festa é pelo WhatsApp, e essa decisão é de 09/09. O envio
+   por e-mail já estava DESLIGADO no servidor (COMPASSO_EMAIL_INGRESSO), então
+   o que a tela oferecia era um botão que abria um aviso explicando por que o
+   botão não funcionava. Oferecer o que não se pode fazer é pior do que não
+   oferecer: gasta o clique e ensina a desconfiar do resto dos botões.
+
+   Saíram os BOTÕES, em quatro lugares: o modal do ingresso, a gaveta, a barra
+   de lote e a coluna de ações.
+
+   FICARAM as funções (porEmail, mdEmail, emailGaveta, enviarLote) e todo o
+   backend. Não é esquecimento: o e-mail volta a valer se alguém declarar
+   COMPASSO_EMAIL_INGRESSO = true, e aí é só devolver os botões. Apagar agora
+   obrigaria a reescrever a metade que já funciona — REGRA Nº 1: na dúvida,
+   fica, documentado.
+
+   ── AS AÇÕES, NA LINHA ───────────────────────────────────────────────────
    14/09/2026. O usuário mandou o print da tela de Despesas e disse, com todas
    as letras, o que queria: *"deveria ter um campo de ações. Quando o cara fez
    a inscrição, para eu emitir, eu reenviar, eu cancelar. Um do lado do outro.
@@ -1046,7 +1061,6 @@ function acoesDaLinha(x, i){
     var jaFoi = !!(((x.entrega || {}).canais) || []).length;
     bt('ac-green',    jaFoi ? '📲 Reenviar' : '📲 WhatsApp', 'whats',
        'Abre o WhatsApp com a mensagem pronta');
-    bt('ac-primary',  '✉️ E-mail',   'email',    'Envia o ingresso por e-mail');
     bt('',            '👁 Ver',      'ver',      'Abre a ficha com o ingresso emitido');
     bt('ac-reenviar', '🔁 Reemitir', 'reemitir', 'Gera o ingresso de novo — o anterior deixa de valer');
     bt('ac-red',      '✕ Cancelar',  'cancelar', 'Cancela o ingresso e devolve a vaga ao público');
@@ -1077,7 +1091,6 @@ function acoesDaLinha(x, i){
 function acaoLinha(i, qual){
   var x = LISTA[i]; if (!x) return;
   if (qual === 'whats')  return porWhats(i);
-  if (qual === 'email')  return porEmail(i);
   ABERTO = i;
   if (qual === 'validar')   return validarEEmitir(i);
   if (qual === 'reemitir')  { abrirGaveta(i); return gvAbrirDobra('secIngresso'); }
@@ -1177,7 +1190,6 @@ function atualizarBarra(){
      ingresso emitido em ao menos uma; excluir exige ser administrador. */
   var comIngresso = Object.keys(SEL).filter(function(i){
     return LISTA[i] && LISTA[i].ingressoId; }).length;
-  g('btLoteEmail').hidden   = !comIngresso;
   g('btLoteExcluir').hidden = !SOU_ADMIN;
 
   /* O atalho para a lista inteira só faz sentido quando a seleção parou na
@@ -1775,7 +1787,6 @@ function montarIngresso(x){
   var tem = !!x.ingressoId;
   var validada = x.status === 'VALIDADA_ADMINISTRATIVAMENTE';
   g('btEmitir').hidden   = tem || !validada;
-  g('btEmail').hidden    = !tem;
   g('btWhats').hidden    = !tem;
   g('btCancelar').hidden = !tem;
   g('ingSituacao').textContent = tem

@@ -169,8 +169,13 @@ const mI = acoesDe(pessoa({ status: "VALIDADA_ADMINISTRATIVAMENTE",
                             ingressoId: "ING-1",
                             numeroIngresso: "FCV-2026-000428" })).html;
 ok(/WhatsApp/.test(mI), "WhatsApp está na linha");
-ok(mI.indexOf("WhatsApp") < mI.indexOf("E-mail"),
-   "e vem ANTES do e-mail — a entrega é pelo zap, decisão dele em 09/09");
+/* O E-MAIL SAIU EM 15/09: "tira a opção por e-mail". Ele já estava desligado
+   no servidor, então o botão só servia para abrir um aviso explicando por que
+   o botão não funcionava. A entrega desta festa é pelo WhatsApp, decisão de
+   09/09, e agora a tela diz a mesma coisa que o servidor. */
+ok(!/E-mail/.test(mI), "e o e-mail não aparece mais",
+   "oferecer o que não se pode fazer gasta o clique e ensina a desconfiar " +
+   "do resto dos botões");
 ok(/Reemitir/.test(mI), "reemitir aparece — existia no backend e faltava na tela");
 ok(/Cancelar/.test(mI), "e cancelar, que devolve a vaga");
 ok(!/Validar e emitir/.test(mI), "e some o validar — a decisão já foi tomada");

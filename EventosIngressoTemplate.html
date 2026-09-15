@@ -32,6 +32,13 @@
     .stub-name{left:84.7%;top:46.7%;width:13.1%;height:9.8%;color:#172033;text-shadow:none;font-size:1vw;font-size:1cqw}
     .stub-school{left:84.7%;top:58.2%;width:13.1%;height:9.4%;color:#172033;text-shadow:none;font-size:.95vw;font-size:.95cqw}
     .stub-category{left:84.7%;top:69.1%;width:13.1%;height:7.5%;color:#172033;text-shadow:none;font-size:1vw;font-size:1cqw}
+    /* NOME E ESCOLA SAEM DA CAIXA ALTA — 15/09/2026, a pedido dele.
+       Caixa alta nao e so questao de gosto: ocupa mais largura, porque toda
+       maiuscula e larga e nao sobra letra baixa para o olho apoiar. Era isso
+       que empurrava o nome para a terceira linha e o fazia encostar na caixa
+       da escola. O texto ja chega pronto do servidor (compasso_nomeProprio_),
+       num lugar so, para a tela e o PDF nao divergirem. */
+    .main-name,.main-school,.stub-name,.stub-school{text-transform:none}
     .teste{position:absolute;left:35%;top:4%;padding:7px 14px;background:#dc2626;color:#fff;border-radius:8px;font-size:1.1vw;font-size:1.1cqw;font-weight:900;letter-spacing:.12em;box-shadow:0 4px 14px #0008}
     .semarte{position:absolute;left:4%;top:4%;right:4%;padding:10px 14px;background:#dc2626;
       color:#fff;font-weight:800;font-size:13px;border-radius:9px;line-height:1.35;z-index:4}
@@ -112,7 +119,15 @@
         var k = 1;
         el.style.fontSize = base + 'cqw';
         /* 10 passos de 5% chegam a 60%; o piso de 0.55 para antes disso. */
-        for (var i = 0; i < 10 && el.scrollHeight > el.clientHeight + 1; i++){
+        /* TAMBEM PELA LARGURA — 15/09/2026. O numero do ingresso saia
+           cortado no fim ("FCV-2026-00000"): e uma caixa de uma linha so, em
+           flex, entao o excesso nao vai para baixo, vai para o LADO, e
+           comparar so a altura nunca ia enxergar. Cortar o fim de um numero
+           de ingresso e pior do que letra pequena: na portaria confere-se
+           digito a digito. */
+        var passou = function(){ return el.scrollHeight > el.clientHeight + 1 ||
+                                        el.scrollWidth  > el.clientWidth  + 1; };
+        for (var i = 0; i < 10 && passou(); i++){
           k -= 0.05;
           if (k < 0.55) { k = 0.55; el.style.fontSize = (base*k) + 'cqw'; break; }
           el.style.fontSize = (base*k) + 'cqw';

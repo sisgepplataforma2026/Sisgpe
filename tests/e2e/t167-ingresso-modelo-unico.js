@@ -217,6 +217,68 @@ igual(g.compasso_fontePdfQueCabe_("X", 0, CAIXA_A, FONTE), FONTE,
       "caixa sem largura também — nenhuma divisão por zero");
 
 /* ══════════════════════════════════════════════════════════════════════ */
+fluxo("Nome de gente, escrito como nome de gente");
+
+/* 15/09/2026, depois de a arte finalmente aparecer: "pode ajustar o nome,
+   maiúscula somente na primeira letra, ajuste para ficar bom".
+   Não é só estética. MARCELHA ALINE PINTO GOMES em caixa alta ocupa mais
+   largura do que Marcelha Aline Pinto Gomes — toda maiúscula é larga e não
+   sobra letra baixa para o olho apoiar. Era a caixa alta que empurrava o nome
+   para a terceira linha e o fazia encostar na caixa da escola. */
+passo("o nome que ele mandou no print");
+igual(g.compasso_nomeProprio_("MARCELHA ALINE PINTO GOMES"),
+      "Marcelha Aline Pinto Gomes", "vira caixa mista");
+
+passo("partículas ficam minúsculas — é assim que se escreve em português");
+igual(g.compasso_nomeProprio_("MARIA DA SILVA DOS SANTOS"),
+      "Maria da Silva dos Santos",
+      "'Maria DA Silva' trocaria um erro por outro");
+igual(g.compasso_nomeProprio_("JOSE DE SOUZA E LIMA"), "Jose de Souza e Lima",
+      "inclusive o 'e' de ligação");
+
+passo("mas a partícula no COMEÇO do nome é nome, não partícula");
+igual(g.compasso_nomeProprio_("DA SILVA CONSULTORIA"), "Da Silva Consultoria",
+      "quem se chama Da Silva não vira 'da Silva'");
+
+passo("sigla curta continua sigla");
+igual(g.compasso_nomeProprio_("UVV - VILA VELHA"), "UVV - Vila Velha",
+      "UVV é UVV, não Uvv — escola tem muita sigla");
+
+passo("quem já veio bem escrito não se mexe");
+igual(g.compasso_nomeProprio_("Escola Municipal d'Ávila"),
+      "Escola Municipal d'Ávila",
+      "caixa mista que chegou assim foi digitada por alguém que sabia");
+
+passo("e nada quebra com o que vem vazio");
+igual(g.compasso_nomeProprio_(""), "", "vazio");
+igual(g.compasso_nomeProprio_(null), "", "nulo");
+
+passo("os dois geradores tiram a caixa alta dos mesmos campos");
+ok(/\.main-name,\.main-school,\.stub-name,\.stub-school\{text-transform:none\}/.test(css),
+   "na tela, nome e escola saem da caixa alta");
+ok(/'\.alta\{text-transform:uppercase\}'/.test(pdf),
+   "no PDF a caixa alta vira classe, aplicada só a categoria e número",
+   "antes era regra geral do campo — e pegava o nome junto");
+
+/* ══════════════════════════════════════════════════════════════════════ */
+fluxo("O número do ingresso não pode sair cortado");
+
+/* Ele mandou o print com "FCV-2026-00000" na frente do bilhete: o último
+   dígito cortado. A caixa do número é de UMA linha, em flex — o excesso não
+   desce, vai para o LADO. Comparar só a altura nunca enxergaria isso. Na
+   portaria se confere dígito a dígito: número cortado é pior que letra
+   pequena. */
+passo("a tela mede também a largura");
+ok(/scrollWidth/.test(tpl) && /clientWidth/.test(tpl),
+   "o ajuste compara largura do conteúdo com a da caixa",
+   "sem isso o número continua cortado por mais que a fonte caiba em altura");
+
+passo("e o PDF passa o número pela mesma conta");
+ok(/compasso_fontePdfQueCabe_\(ing\.numero/.test(pdf),
+   "o número da frente e o do canhoto encolhem se precisar",
+   "antes iam com tamanho fixo, e cortavam igual");
+
+/* ══════════════════════════════════════════════════════════════════════ */
 fluxo("O que continua sem cobertura");
 
 naoTestavel("Se o texto realmente cabe",

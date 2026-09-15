@@ -189,8 +189,8 @@ function compasso_paginaIngressoPublica_(token) {
   t.dados = {
     ingressoId: ing.ingressoId,
     numero: ing.numero || '',
-    nome: ing.nome || '',
-    escola: ing.escola || '',
+    nome: compasso_nomeProprio_(ing.nome),
+    escola: compasso_nomeProprio_(ing.escola),
     categoria: compasso_categoriaLabel_(ing.categoria),
     status: ing.status || '',
     email: '', whatsapp: '',   /* a página pública não repete contato */
@@ -291,12 +291,12 @@ function compasso_ingressoPdf_(ing, qrToken) {
      diferente nos dois: na tela encolhia, no PDF escorria para fora da caixa e
      entrava na de baixo. Agora a altura é a mesma (% da ALTURA do bilhete) e a
      fonte encolhe pela mesma regra. */
-  var caixa = function (esquerdaPct, topoPct, largPct, altPct, fonteVw, cor, texto) {
+  var caixa = function (esquerdaPct, topoPct, largPct, altPct, fonteVw, cor, texto, classe) {
     var largPx  = L * largPct / 100;
     var altPx   = A * altPct / 100;
     var fontePx = L * fonteVw / 100;
     var f = compasso_fontePdfQueCabe_(texto, largPx, altPx, fontePx);
-    return campo('', 'left:' + esquerdaPct + '%;top:' + topoPct + '%;width:' + largPct +
+    return campo(classe || '', 'left:' + esquerdaPct + '%;top:' + topoPct + '%;width:' + largPct +
                  '%;height:' + altPct + '%;font-size:' + f.toFixed(1) + 'px' +
                  (cor ? ';color:' + cor : ''), texto);
   };
@@ -308,7 +308,10 @@ function compasso_ingressoPdf_(ing, qrToken) {
     '.t{position:relative;width:' + L + 'px;height:' + A + 'px;overflow:hidden;background:#071a38}' +
     '.art{position:absolute;left:0;top:0;width:' + L + 'px;height:' + A + 'px}' +
     '.f{position:absolute;font-family:Arial,Helvetica,sans-serif;font-weight:bold;' +
-      'text-transform:uppercase;line-height:1.12;overflow:hidden;color:#fff}' +
+      'line-height:1.12;overflow:hidden;color:#fff}' +
+    /* Categoria e numero continuam em caixa alta; nome e escola nao — o texto
+       ja chega pronto de compasso_nomeProprio_, o mesmo que a tela usa. */
+    '.alta{text-transform:uppercase}' +
     '.qrBox{position:absolute;left:65.4%;top:57.7%;width:12.4%;height:' +
       (L * 0.124).toFixed(1) + 'px;background:#fff;padding:0.6%}' +
     '.qrBox img{width:100%;height:100%;display:block}' +
@@ -319,20 +322,25 @@ function compasso_ingressoPdf_(ing, qrToken) {
     (emissao_modoTeste_() ? '<div class="teste">HOMOLOGAÇÃO</div>' : '') +
 
     /* Frente do bilhete */
-    caixa(67.35, 25.7, 10.2, 7.6, 1.05, '', ing.nome) +
-    caixa(67.35, 34.4, 10.4, 7.8, 1,    '', ing.escola || '-') +
-    caixa(67.35, 43.4, 10.3, 5.4, 1.05, '', compasso_categoriaLabel_(ing.categoria)) +
-    campo('', 'left:65.3%;top:49.7%;width:12.8%;height:4.6%;color:#111827;font-size:' + px(1.2) +
+    caixa(67.35, 25.7, 10.2, 7.6, 1.05, '', compasso_nomeProprio_(ing.nome)) +
+    caixa(67.35, 34.4, 10.4, 7.8, 1,    '', compasso_nomeProprio_(ing.escola) || '-') +
+    caixa(67.35, 43.4, 10.3, 5.4, 1.05, '', compasso_categoriaLabel_(ing.categoria), 'alta') +
+    /* O numero e de UMA linha: o excesso vai para o lado, nao para baixo.
+       A conta de caber ja resolve isso sozinha, porque ela mede quantos
+       caracteres cabem na largura antes de contar linhas. */
+    campo('alta', 'left:65.3%;top:49.7%;width:12.8%;height:4.6%;color:#111827;font-size:' +
+              compasso_fontePdfQueCabe_(ing.numero, L*0.128, A*0.046, L*1.2/100).toFixed(1) + 'px' +
               ';letter-spacing:.02em;display:flex;align-items:center;justify-content:center',
           ing.numero) +
     '<div class="qrBox"><img src="' + qr + '"></div>' +
 
     /* Canhoto */
-    campo('', 'left:83.3%;top:30.5%;width:14.4%;height:4.8%;color:#b90f3d;font-size:' + px(1.1) +
+    campo('alta', 'left:83.3%;top:30.5%;width:14.4%;height:4.8%;color:#b90f3d;font-size:' +
+              compasso_fontePdfQueCabe_(ing.numero, L*0.144, A*0.048, L*1.1/100).toFixed(1) + 'px' +
               ';display:flex;align-items:center;justify-content:center', ing.numero) +
-    caixa(84.7, 46.7, 13.1, 9.8, 1,    '#172033', ing.nome) +
-    caixa(84.7, 58.2, 13.1, 9.4, 0.95, '#172033', ing.escola || '-') +
-    caixa(84.7, 69.1, 13.1, 7.5, 1,    '#172033', compasso_categoriaLabel_(ing.categoria)) +
+    caixa(84.7, 46.7, 13.1, 9.8, 1,    '#172033', compasso_nomeProprio_(ing.nome)) +
+    caixa(84.7, 58.2, 13.1, 9.4, 0.95, '#172033', compasso_nomeProprio_(ing.escola) || '-') +
+    caixa(84.7, 69.1, 13.1, 7.5, 1,    '#172033', compasso_categoriaLabel_(ing.categoria), 'alta') +
 
     '</div></body></html>';
 
