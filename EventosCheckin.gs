@@ -145,12 +145,32 @@ function compasso_checkin_interno_(token, dispositivoId) {
     if (!ing) return {ok:false,codigo:'NAO_ENCONTRADO',mensagem:'Ingresso não encontrado.'};
     if (ing.eventoId !== EMISSAO_CFG.EVENTO_ID)
       return {ok:false,codigo:'OUTRO_EVENTO',mensagem:'Ingresso de outro evento.'};
-    if (ing.status === 'CANCELADO')
+    if (ing.status === 'CANCELADO') {
+      compasso_registroAnotar_({tipo:'RECUSADO', codigo:'CANCELADO',
+        nome:ing.nome, numero:ing.numero, escola:ing.escola,
+        categoria:ing.categoria, por:compasso_emailUsuario_(),
+        dispositivo:String(dispositivoId||''), detalhe:'ingresso cancelado'});
       return {ok:false,codigo:'CANCELADO',mensagem:'Ingresso cancelado.'};
-    if (ing.status === 'UTILIZADO')
+    }
+    if (ing.status === 'UTILIZADO') {
+      /* A RECUSA MAIS IMPORTANTE DE TODAS. É ela que pega ingresso repassado,
+         e é sobre ela que alguém vai reclamar na porta. Sem registro, não há
+         o que consultar depois. */
+      compasso_registroAnotar_({tipo:'RECUSADO', codigo:'JA_UTILIZADO',
+        nome:ing.nome, numero:ing.numero, escola:ing.escola,
+        categoria:ing.categoria, por:compasso_emailUsuario_(),
+        dispositivo:String(dispositivoId||''),
+        detalhe:'já utilizado' + (ing.utilizadoEm ? ' em ' + ing.utilizadoEm : '')});
       return {ok:false,codigo:'JA_UTILIZADO',mensagem:'Ingresso já utilizado.', utilizadoEm:ing.utilizadoEm, utilizadoPor:ing.utilizadoPor};
-    if (ing.status !== 'EMITIDO')
+    }
+    if (ing.status !== 'EMITIDO') {
+      compasso_registroAnotar_({tipo:'RECUSADO', codigo:'STATUS_INVALIDO',
+        nome:ing.nome, numero:ing.numero, escola:ing.escola,
+        categoria:ing.categoria, por:compasso_emailUsuario_(),
+        dispositivo:String(dispositivoId||''),
+        detalhe:'situação ' + String(ing.status || '(vazia)')});
       return {ok:false,codigo:'STATUS_INVALIDO',mensagem:'Ingresso não está liberado para entrada.'};
+    }
 
     var agora = new Date();
     var operador = compasso_emailUsuario_();
@@ -173,6 +193,9 @@ function compasso_checkin_interno_(token, dispositivoId) {
       status: 'VALIDO'
     });
     compasso_auditar_('CHECKIN','ingresso',indice.ingressoId,{checkinId:checkinId,dispositivoId:dispositivoId||''});
+    compasso_registroAnotar_({tipo:'ENTROU', nome:ing.nome, numero:ing.numero,
+      escola:ing.escola, categoria:ing.categoria, por:operador,
+      dispositivo:String(dispositivoId||'')});
     return {ok:true,codigo:'LIBERADO',mensagem:'Entrada liberada.',nome:ing.nome,escola:ing.escola,categoria:ing.categoria,numero:ing.numero,checkinEm:agora};
   } finally { lock.releaseLock(); }
 }

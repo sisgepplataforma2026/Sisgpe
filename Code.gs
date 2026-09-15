@@ -187,6 +187,25 @@ function doGet(e) {
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
+    /* ── O REGISTRO DE ENTRADA, POR URL — 15/09/2026 ──────────────────────
+       "Preciso ver como vai ficar o registro do ingresso lido."
+       A portaria mostra a leitura por 2,5 segundos e esquece. Esta tela é a
+       memória: quem entrou, quando, por qual aparelho, e quem foi barrado e
+       por quê. Fica no computador da secretaria durante a festa, enquanto a
+       portaria fica no celular da porta — são duas pessoas e dois aparelhos,
+       por isso são dois endereços. */
+    if (p.painel === "credenciamento") {
+      var tokenCred = String(p.sessao || "").trim();
+      var sessaoCred = getSessaoUsuario(tokenCred);
+      if (!sessaoCred) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
+      exigirModulo_(tokenCred, "eventos", false);
+      return HtmlService.createHtmlOutputFromFile("CompassoCredenciamento")
+        .setTitle("Quem já entrou — Compasso da Vida 2026")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
+
     if (p.painel === "checkin") {
       var tokenCheckin = String(p.sessao || "").trim();
       var sessaoCheckin = getSessaoUsuario(tokenCheckin);

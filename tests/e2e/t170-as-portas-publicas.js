@@ -58,7 +58,7 @@ fluxo("As portas de dentro continuam trancadas");
    sessão e cai no Login sem ela. Se um painel novo nascer sem essa linha, ele
    nasce público — e este bloco reprova antes de isso ir ao ar. */
 passo("todo painel pede sessão antes de desenhar qualquer coisa");
-const PAINEIS = ["emissao", "portaria", "checkin", "compasso",
+const PAINEIS = ["emissao", "portaria", "checkin", "credenciamento", "compasso",
                  "compasso-importar", "bingo", "bingo-telao"];
 PAINEIS.forEach(function (nome) {
   const i = doGet.indexOf('p.painel === "' + nome + '"');
