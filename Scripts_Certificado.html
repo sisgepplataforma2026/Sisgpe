@@ -668,7 +668,7 @@
       </label>
 
       <div style="display:flex;justify-content:flex-end;margin-top:12px;">
-        <button type="button" class="cert-btn cert-btn-violet cert-btn-sm" id="certEnvBtnEmail">📧 Enviar por e-mail</button>
+        <button type="button" class="cert-btn cert-btn-violet cert-btn-sm" id="certEnvBtnEmail">📧 Enviar e-mail</button>
       </div>
 
       <div class="cert-section-title">WhatsApp</div>
@@ -683,7 +683,7 @@
                como se perde a confiança numa tela inteira. -->
           <div class="cert-env-dica">O SISGEP não envia WhatsApp — abre a conversa com a mensagem pronta, e você envia.</div>
         </div>
-        <button type="button" class="cert-btn cert-btn-success cert-btn-sm" id="certEnvBtnZap">💬 Abrir WhatsApp</button>
+        <button type="button" class="cert-btn cert-btn-success cert-btn-sm" id="certEnvBtnZap">💬 WhatsApp</button>
       </div>
 
       <div class="cert-section-title">Já enviado</div>
@@ -767,9 +767,26 @@
 
     <div class="cert-modal-foot">
       <span id="certDocAviso" style="margin-right:auto;font-size:11.5px;color:#64748b;"></span>
+      <!-- PADRÃO ÚNICO DE AÇÕES — 16/09/2026.
+
+           "Não pode cada módulo ter um padrão diferente" — você. As mesmas
+           quatro ações existiam nos três módulos com quatro vocabulários:
+           "Abrir documento" aqui, "Abrir / Baixar PDF" no ofício, "Baixar PDF"
+           na declaração; "Enviar por e-mail", "Enviar agora", "Enviar e-mail
+           agora"; "Abrir WhatsApp", "Preparar WhatsApp", "WhatsApp".
+
+           Agora é sempre, nesta ordem:
+             📄 Abrir / Baixar PDF   🖨 Imprimir   📧 Enviar e-mail   💬 WhatsApp
+
+           AQUI HAVIA DUAS AÇÕES COLADAS num botão só — "📧 E-mail / 📱
+           WhatsApp" — que abria o modal de entrega. Viraram dois botões: a
+           pessoa que procura "WhatsApp" acha "WhatsApp", não um rótulo
+           composto que ela precisa interpretar. Os dois levam ao mesmo modal
+           de entrega, onde cada envio é confirmado. -->
+      <button type="button" id="certDocBaixar"   class="cert-btn cert-btn-secondary" style="display:none;">📄 Abrir / Baixar PDF</button>
       <button type="button" id="certDocImprimir" class="cert-btn cert-btn-secondary">🖨 Imprimir</button>
-      <button type="button" id="certDocBaixar"   class="cert-btn cert-btn-secondary" style="display:none;">⬇ Baixar PDF</button>
-      <button type="button" id="certDocEnviar"   class="cert-btn cert-btn-secondary" style="display:none;">📧 E-mail / 📱 WhatsApp</button>
+      <button type="button" id="certDocEnviar"   class="cert-btn cert-btn-secondary" style="display:none;">📧 Enviar e-mail</button>
+      <button type="button" id="certDocZap"      class="cert-btn cert-btn-secondary" style="display:none;">💬 WhatsApp</button>
       <button type="button" id="certDocGerar"    class="cert-btn cert-btn-primary">🎓 Gerar certificado</button>
     </div>
   </div>
@@ -3162,6 +3179,7 @@ function certDocEstado(emitido){
   var g_ = g;
   if(g_('certDocBaixar')) g_('certDocBaixar').style.display = emitido ? '' : 'none';
   if(g_('certDocEnviar')) g_('certDocEnviar').style.display = emitido ? '' : 'none';
+  if(g_('certDocZap')) g_('certDocZap').style.display = emitido ? '' : 'none';
   /* O Gerar some depois de emitido: deixá-lo aceso convidaria ao segundo
      clique que não gera nada e parece que o sistema ignorou. */
   if(g_('certDocGerar'))  g_('certDocGerar').style.display  = emitido ? 'none' : '';
@@ -3398,6 +3416,7 @@ function initInterno(){
   if(g('certDocGerar'))    g('certDocGerar').addEventListener('click', certDocGerar);
   if(g('certDocBaixar'))   g('certDocBaixar').addEventListener('click', certDocBaixar);
   if(g('certDocEnviar'))   g('certDocEnviar').addEventListener('click', certDocEnviar);
+  if(g('certDocZap'))      g('certDocZap').addEventListener('click', certDocEnviar);
   ligarFecharPorClique(g('certDocOverlay'), certDocFechar);
 
   // ── seleção e exclusão (lixeira)
