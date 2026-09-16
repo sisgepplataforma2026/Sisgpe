@@ -1190,7 +1190,46 @@ window.modalSwitchTab = function(tab) {
   else { tD.style.cssText=inativoStyle; tP.style.cssText=ativoStyle; pD.style.display="none"; pP.style.display="block"; if(!_modalPreviewCarregado) _carregarPreviewEmail(); }
 };
 
+/* O PREVIEW VEM DO SERVIDOR — 15/09/2026.
+ *
+ * Os textos abaixo continuam aqui, mas como RESERVA. Antes eles eram a única
+ * fonte: o preview era redigido de novo no JavaScript, então existiam duas
+ * versões da mesma mensagem — mudar a cláusula da CCT no EmailOficios.gs e
+ * esquecer daqui fazia o preview mostrar o que o servidor não ia enviar.
+ *
+ * Agora a tela pede a `oficioPreviaEmail`, que devolve o retorno de
+ * `montarEmailHTML_` — a mesma função do envio. Se a chamada falhar, cai no
+ * desenho de reserva: num módulo que a secretaria usa todo dia, rede ruim
+ * não pode virar modal vazio. */
 function _carregarPreviewEmail() {
+  var container=document.getElementById("modalEmailPreviewContainer"); if(!container) return;
+  var p=_modalPayload||{};
+  container.innerHTML='<div style="text-align:center;padding:40px;color:var(--g400);font-size:13px;">Montando o e-mail…</div>';
+  try {
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||!r.ok||!r.html) return _previewEmailReserva();
+        container.innerHTML =
+          '<div style="font-family:Segoe UI,Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 4px 16px rgba(0,20,60,.1);">'+
+            '<div style="background:#fafcff;border-bottom:1px solid #e2e8f0;padding:10px 16px;font-size:11.5px;color:#475569;">'+
+              '<b>Assunto:</b> '+String(r.assunto||"").replace(/</g,"&lt;")+
+            '</div>'+
+            '<div style="padding:4px 0;">'+r.html+'</div>'+
+          '</div>'+
+          '<div style="padding:9px 16px;font-size:11px;color:var(--g400);text-align:center;">montado pela mesma função que o envio usa</div>';
+        _modalPreviewCarregado=true;
+      })
+      .withFailureHandler(function(){ _previewEmailReserva(); })
+      .oficioPreviaEmail({
+        numero: p.numero, tipo: p.tipo, quantidade: p.quantidade || 0,
+        textoPrincipal: p.textoPrincipal || ""
+      }, (typeof SISGEP_TOKEN_SESSAO!=="undefined"?SISGEP_TOKEN_SESSAO:""));
+  } catch(e) { _previewEmailReserva(); }
+}
+
+/* Desenho de reserva — o que existia antes, mantido para o caso de a
+   chamada ao servidor não voltar. */
+function _previewEmailReserva() {
   var container=document.getElementById("modalEmailPreviewContainer"); if(!container) return;
   var p=_modalPayload||{}, numero=p.numero||"???", tipo=p.tipo||"Ofício", escola=p.escola||"";
   var textos={"Filiação":"Encaminhamos, em anexo, o <strong>Ofício de Filiação nº "+numero+"</strong>.<br><br>Nos termos da <strong>Cláusula 56ª da CCT 2026/2027</strong>, solicitamos a realização dos descontos mensais de <strong>2%</strong> sobre o salário-base, a título de Mensalidade Sindical.<br><br>Solicitamos a <strong>confirmação do recebimento</strong> respondendo a este e-mail.","Desfiliação":"Encaminhamos, em anexo, o <strong>Ofício de Desfiliação nº "+numero+"</strong>.<br><br>Nos termos da <strong>Cláusula 56ª da CCT 2026/2027</strong>, solicitamos que sejam <strong>cessados imediatamente os descontos</strong> de 2% sobre os salários-base.<br><br>Solicitamos a <strong>confirmação do recebimento</strong> respondendo a este e-mail.","Taxa Negocial":"Encaminhamos, em anexo, o <strong>Ofício nº "+numero+"</strong> referente à <strong>Taxa Negocial</strong>, conforme <strong>Cláusula 57ª da CCT 2026/2027</strong>.<br><br>Solicitamos os descontos e repasse até o <strong>10º dia útil do mês subsequente</strong>.<br><br>Solicitamos a <strong>confirmação do recebimento</strong> respondendo a este e-mail.","Taxa Assistencial":"Encaminhamos, em anexo, o <strong>Ofício nº "+numero+"</strong> referente à <strong>Taxa Assistencial – Assistência Médica</strong>, conforme a <strong>Cláusula 58ª da CCT 2026/2027</strong>.<br><br>O repasse deverá ser realizado em <strong>duas parcelas de 2%</strong> sobre o salário-base bruto dos colaboradores técnico-administrativos.<br><br>Solicitamos a <strong>confirmação do recebimento</strong> respondendo a este e-mail.","Ofício Livre":"Encaminhamos, em anexo, o <strong>Ofício nº "+numero+"</strong> conforme descrito no documento.<br><br>Permanecemos à disposição para quaisquer esclarecimentos.<br><br>Solicitamos a <strong>confirmação do recebimento</strong> respondendo a este e-mail."};

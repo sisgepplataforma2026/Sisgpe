@@ -193,6 +193,49 @@ function enviarEmailOficio_(emailUsuario, htmlBody, anexos, assunto, destino, co
   return opcoes;
 }
 
+/**
+ * O E-MAIL QUE A TELA MOSTRA NO PREVIEW — o de verdade.
+ *
+ * POR QUE EXISTE (15/09/2026). O modal de envio do ofício monta o preview no
+ * JavaScript da tela, com os textos de Filiação, Desfiliação e das Taxas
+ * escritos DE NOVO em OficiosFormulario.html. São duas redações da mesma
+ * mensagem, e elas envelhecem separadas: mudar a cláusula da CCT aqui e
+ * esquecer lá faz o preview mostrar um texto que o servidor não vai enviar.
+ * Prévia que mente é pior do que prévia nenhuma — quem confere confia nela.
+ *
+ * Aqui a tela recebe o retorno de `montarEmailHTML_`, a MESMA função que o
+ * envio usa. Só lê e monta: não grava, não envia, não consome numeração.
+ *
+ * A tela mantém o desenho antigo como reserva. Se esta chamada falhar, o
+ * preview continua aparecendo com o texto embutido — num módulo que a
+ * secretaria usa todo dia, uma falha de rede não pode virar modal vazio.
+ */
+function oficioPreviaEmail(dados, tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
+  try {
+    dados = dados || {};
+    var numero = String(dados.numero || "").trim();
+    if (!numero) return { ok: false, mensagem: "Número do ofício não informado." };
+
+    var cfg = resolverConfigTipoOficio_(dados.tipo);
+
+    /* Mesmo tratamento do envio (Oficios.gs): o texto digitado no Ofício
+       Livre é escapado ANTES de entrar no e-mail; os textos padrão são
+       montados lá dentro e usam <strong> de propósito. */
+    var textoCustom = String(dados.textoPrincipal || "").trim();
+    if (textoCustom && typeof escapeHtml_ === "function") textoCustom = escapeHtml_(textoCustom);
+
+    return {
+      ok: true,
+      assunto: cfg.tituloEmail + " Nº " + numero,
+      html: montarEmailHTML_(cfg.tituloEmail, numero, cfg.assuntoTipo,
+                             Number(dados.quantidade || 0), textoCustom, dados.assinatura)
+    };
+  } catch (e) {
+    return { ok: false, mensagem: "Não consegui montar o preview: " + e.message };
+  }
+}
+
 /* A ASSINATURA E PARAMETRO — 14/09/2026.
 
    O rodape era fixo: Marcela / Administrativo & Secretaria / secretaria@. Na
