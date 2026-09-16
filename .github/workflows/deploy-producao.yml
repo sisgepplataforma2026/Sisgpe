@@ -32,13 +32,13 @@ concurrency:
 
 jobs:
   producao:
-    if: github.ref == 'refs/heads/promocao/hml-4c485ac-para-producao-2026-09-14'
+    if: github.ref == 'refs/heads/promocao/hml-862ea31-para-producao-2026-09-16'
     runs-on: ubuntu-latest
 
     env:
       PROD_SCRIPT_ID: "1BoKA6pOOT751zmxahnvSgT2CJDgMpUPMvZj-X0HjDx_tCHLnXOqxVVqa"
       PROD_DEPLOYMENT_ID: "AKfycbzgPBSSF3D2OimoEJ-qMfDNp_Dsmc95THSNdUvFgqoX7NXWcmn7ZDMzF9L-OyUbEMw_ew"
-      HML_APROVADA_SHA: "4c485acb05c1cc07a2f6412502a16cc7a62e62e1"
+      HML_APROVADA_SHA: "862ea3192f7a9049f3bc9bbc80f190b54d47fa10"
 
     steps:
       - name: Checkout da promocao
@@ -68,8 +68,8 @@ jobs:
           fi
           GS=$(find . -maxdepth 1 -type f -name '*.gs' | wc -l)
           HTML=$(find . -maxdepth 1 -type f -name '*.html' | wc -l)
-          test "$GS" -eq 178
-          test "$HTML" -eq 98
+          test "$GS" -eq 181
+          test "$HTML" -eq 100
           echo "codigo homologado confirmado: $GS .gs e $HTML .html"
 
       - name: Validar integridade dos arquivos
