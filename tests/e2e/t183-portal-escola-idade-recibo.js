@@ -169,8 +169,29 @@ b.ok(typeof win.portalNovaSolicitacao === "function",
 win.portalNovaSolicitacao();
 let visiveis = 0;
 secoes.forEach(function (el) { if (el.style.display !== "none") visiveis++; });
-b.igual(visiveis, secoes.length, "e ela devolve o formulário inteiro");
+/* TODAS MENOS UMA: a seção 3b (Dependentes) nasce escondida e tem de
+   continuar assim — ver o bloco logo abaixo. */
+b.igual(visiveis, secoes.length - 1, "e ela devolve o formulário");
 b.igual(campo("cpf").value, "", "com os campos limpos, prontos para o próximo pedido");
+
+/* A VOLTA NÃO PODE REVELAR O QUE ESTAVA ESCONDIDO.
+   A seção 3b (Dependentes) nasce com display:none e é casca vazia hoje — não
+   tem campo nenhum dentro. A primeira versão de portalSoRecibo devolvia '' a
+   TODAS as seções na volta, e fazia essa aparecer. Defeito que este bloco
+   criou; agora o estado anterior de cada seção é guardado. */
+b.igual(campo("secaoDependentes").style.display, "none",
+  "e a seção de Dependentes, que nascia escondida, continua escondida");
+
+/* Ida e volta duas vezes: se o guardado não fosse apagado na volta, a segunda
+   ida gravaria 'none' como "estado anterior" e tudo ficaria invisível. */
+win.portalSoRecibo(true);
+win.portalSoRecibo(false);
+b.igual(campo("secaoDependentes").style.display, "none",
+  "inclusive depois de esconder e mostrar duas vezes");
+let visiveis2 = 0;
+secoes.forEach(function (el) { if (el.style.display !== "none") visiveis2++; });
+b.igual(visiveis2, secoes.length - 1,
+  "e as outras seis voltam a aparecer — só a escondida fica escondida");
 
 b.naoTestavel("como isso APARECE no navegador",
   "jsdom não desenha nem aplica CSS — roteiro manual: abrir o link público, " +

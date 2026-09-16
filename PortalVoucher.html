@@ -849,7 +849,22 @@ function atualizarProgresso() {
     function portalSoRecibo(ligado) {
       var alvos = document.querySelectorAll('.secao, .acoes');
       for (var i = 0; i < alvos.length; i++) {
-        alvos[i].style.display = ligado ? 'none' : '';
+        var el = alvos[i];
+        if (ligado) {
+          /* GUARDA O QUE ESTAVA, em vez de devolver '' para todo mundo na
+             volta. Sem isto a seção 3b (Dependentes), que nasce escondida,
+             REAPARECERIA ao clicar em "Fazer nova solicitação" — e ela é
+             casca vazia hoje, sem nenhum campo dentro. Foi um defeito que
+             este próprio bloco criou, achado ao conferir o que faltava no
+             módulo. */
+          if (el.dataset.displayAntes === undefined) {
+            el.dataset.displayAntes = el.style.display || '';
+          }
+          el.style.display = 'none';
+        } else {
+          el.style.display = el.dataset.displayAntes || '';
+          delete el.dataset.displayAntes;
+        }
       }
     }
 
