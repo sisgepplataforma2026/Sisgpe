@@ -137,6 +137,33 @@ b.ok(confSemPasta.pronto === false, "e aí sim não se declara pronto");
 g.RECURSOS_AMBIENTE.DECLARACOES.producao = pastaGuardada.producao;
 g.RECURSOS_AMBIENTE.DECLARACOES.homologacao = pastaGuardada.homologacao;
 
+b.fluxo("DECLARAÇÕES · A escola da última vez volta sozinha");
+/* "E até mesmo salvar quando for feita a primeira vez?" — você, 16/09/2026.
+   Sem campo novo: a escola sai do histórico do próprio dirigente. */
+const ultima = g.declUltimaEscolaDoDiretor_(dir.id);
+b.ok(ultima && ultima.escolaId === "ESC-UVV",
+  "devolve a escola da declaração mais recente deste dirigente", ultima && ultima.escolaId);
+b.ok(!!ultima.numero && !!ultima.dataEmissao,
+  "com número e data, para a tela poder mostrar de onde veio",
+  ultima.numero + " · " + ultima.dataEmissao);
+b.ok(g.declUltimaEscolaDoDiretor_("NAO-EXISTE") === null,
+  "dirigente sem histórico não devolve palpite");
+b.ok(g.declContextoDiretor(dir.id, TOKEN).ultimaEscola.escolaId === "ESC-UVV",
+  "e o contexto da tela já traz isso junto");
+
+/* A MAIS RECENTE É POR DATA DE EMISSÃO, NÃO PELA ÚLTIMA LINHA DA ABA.
+   A data de emissão é editável: regularizar uma liberação antiga grava uma
+   linha NOVA com data VELHA, e ela não pode virar "a mais recente". */
+const antiga = g.declEmitirDeclaracaoDiretor({
+  diretorId: dir.id, escolaId: "ESC-B", periodo: "",
+  dataLiberacao: amanha.toISOString().slice(0, 10),
+  dataEmissao: "2025-03-10", confirmado: true
+}, TOKEN);
+b.ok(antiga.ok, "emite uma com data de emissão antiga, gravada por último", antiga.numero);
+b.ok(g.declUltimaEscolaDoDiretor_(dir.id).escolaId === "ESC-UVV",
+  "a linha mais NOVA da aba não vence a data mais RECENTE",
+  g.declUltimaEscolaDoDiretor_(dir.id).escolaId);
+
 b.fluxo("DECLARAÇÕES · Vínculo não encontrado diz QUAL é a causa");
 /* Em produção o dirigente apareceu sem vínculo e a tela disse apenas "não tem
    vínculo em Associados". São duas causas diferentes, com consertos em

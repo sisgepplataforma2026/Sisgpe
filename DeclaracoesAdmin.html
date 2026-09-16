@@ -711,16 +711,49 @@ function declCarregarVinculos(escolaPreferida) {
     }
     DECL_ESTADO.vinculos = r.vinculos || [];
 
-    /* O Reemitir manda a escola da declaração anterior; vínculo único é
-       preenchido sozinho. Nos dois casos dá para trocar no ✕. */
-    var repetida = escolaPreferida &&
-      DECL_ESTADO.vinculos.filter(function (v) { return v.escolaId === escolaPreferida; })[0];
-    if (repetida) {
-      DECL_ESTADO.achadas = DECL_ESTADO.vinculos;
-      declEscolaEscolher(DECL_ESTADO.vinculos.indexOf(repetida));
+    /* AS CANDIDATAS SÃO OS VÍNCULOS MAIS A DO HISTÓRICO.
+       Montadas juntas de propósito: encadear `else if` fez o caso novo
+       (última escola) passar na frente do aviso do Reemitir e engoli-lo.
+       Aqui a lista existe primeiro, e só depois se decide qual escolher. */
+    var ultima = r.ultimaEscola && r.ultimaEscola.escolaId ? r.ultimaEscola : null;
+    var candidatas = (DECL_ESTADO.vinculos || []).slice();
+    var jaTemUltima = ultima && candidatas.some(function (v) { return v.escolaId === ultima.escolaId; });
+    if (ultima && !jaTemUltima) {
+      /* SEM VÍNCULO, MAS JÁ EMITIU ANTES — 16/09/2026.
+         "E até mesmo salvar quando for feita a primeira vez?" Sim, e sem
+         campo novo: a escola sai do histórico deste dirigente. Sugere
+         SEMPRE, sem prazo de validade — "podemos ajustar manualmente quando
+         acontecer". Sugestão errada que aparece custa um clique; sugestão
+         ausente custa a digitação inteira, toda vez. */
+      candidatas.push({
+        escolaId: ultima.escolaId,
+        nome: ultima.nome,
+        fantasia: "",
+        documento: "",
+        vinculoOrigem: ultima.vinculoOrigem || "Escolhida manualmente",
+        contatos: [],
+        repetidaDe: { numero: ultima.numero, dataEmissao: ultima.dataEmissao }
+      });
+    }
+    DECL_ESTADO.achadas = candidatas;
+
+    function escolherPorId(id) {
+      for (var i = 0; i < candidatas.length; i++) {
+        if (candidatas[i].escolaId === id) { declEscolaEscolher(i); return true; }
+      }
+      return false;
+    }
+
+    /* O Reemitir manda a escola da declaração anterior e ela tem prioridade:
+       é o que a pessoa pediu explicitamente ao clicar em Reemitir. */
+    if (escolaPreferida) {
+      if (!escolherPorId(escolaPreferida)) {
+        declMsg("A escola da declaração anterior não está mais entre os vínculos deste dirigente. Escolha a escola.", "alerta");
+      }
     } else if (DECL_ESTADO.vinculos.length === 1) {
-      DECL_ESTADO.achadas = DECL_ESTADO.vinculos;
       declEscolaEscolher(0);
+    } else if (ultima) {
+      escolherPorId(ultima.escolaId);
     } else if (!DECL_ESTADO.vinculos.length) {
       /* DUAS CAUSAS, DUAS MENSAGENS — 16/09/2026.
 
@@ -740,8 +773,6 @@ function declCarregarVinculos(escolaPreferida) {
         declMsg("Este dirigente está em Associados mas sem escola preenchida. " +
                 "Digite o nome da escola para buscar no cadastro.", "alerta");
       }
-    } else if (escolaPreferida) {
-      declMsg("A escola da declaração anterior não está mais entre os vínculos deste dirigente. Escolha a escola.", "alerta");
     }
   }).withFailureHandler(function (e) {
     campo.disabled = false;
@@ -871,10 +902,20 @@ function declEscolaEscolher(indice) {
   document.getElementById("declEscolaCampo").value = e.fantasia || e.nome;
   document.getElementById("declEscolaLista").style.display = "none";
   document.getElementById("declEscolaLimpar").style.display = "block";
-  document.getElementById("declEscolaOrigem").innerHTML =
-    (e.vinculoOrigem && e.vinculoOrigem !== "Associados")
-      ? '<span class="declOrigemManual">escolhida manualmente — não veio do vínculo em Associados</span>'
-      : "vínculo em Associados · identidade em Escolas";
+  /* A ORIGEM SEMPRE À VISTA — REGRA Nº 0.6. Três procedências, três frases:
+     o cadastro, a mão da pessoa, e agora a última declaração deste dirigente.
+     A terceira é a que mais precisa aparecer: a fonte dela é "alguém digitou
+     isto uma vez", não o cadastro, e some se o dirigente trocar de escola. */
+  var origem = document.getElementById("declEscolaOrigem");
+  if (e.repetidaDe) {
+    origem.innerHTML = '<span class="declOrigemManual">repetida da declaração ' +
+      declEsc(e.repetidaDe.numero) + ', de ' + declEsc(e.repetidaDe.dataEmissao) +
+      ' — confira se ainda é a escola dele</span>';
+  } else if (e.vinculoOrigem && e.vinculoOrigem !== "Associados") {
+    origem.innerHTML = '<span class="declOrigemManual">escolhida manualmente — não veio do vínculo em Associados</span>';
+  } else {
+    origem.innerHTML = "vínculo em Associados · identidade em Escolas";
+  }
   declPrevia();
 }
 

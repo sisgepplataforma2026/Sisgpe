@@ -418,6 +418,65 @@ function declDuplicatas_(diretorId, dataLiberacao) {
   });
 }
 
+/**
+ * A ESCOLA QUE ESTE DIRIGENTE USOU DA ÚLTIMA VEZ.
+ *
+ * Pedido do usuário em 16/09/2026: "e até mesmo salvar quando for feita a
+ * primeira vez?". É a REGRA Nº 0.6 — se a pessoa já respondeu isso uma vez,
+ * o sistema não pergunta de novo do zero.
+ *
+ * NÃO CRIA CAMPO NOVO. A aba de emissões já grava ESCOLA_ID, ESCOLA_NOME e
+ * VINCULO_ORIGEM em cada declaração; "a escola dele" se LÊ do histórico. Uma
+ * coluna nova seria uma segunda verdade sobre o mesmo fato, e as duas
+ * envelheceriam separadas — o erro que este projeto já pagou com a prévia do
+ * e-mail do ofício.
+ *
+ * SUGERE SEMPRE, SEM PRAZO DE VALIDADE. Eu propus limitar a sugestão às
+ * declarações dos últimos 12 meses, para o dirigente que trocou de escola não
+ * receber a antiga. O usuário respondeu: "mas podemos ajustar manualmente
+ * quando acontecer?" — e tem razão. O campo é editável, a origem fica à
+ * vista, e sugestão errada que a pessoa vê e corrige custa um clique;
+ * sugestão ausente custa a digitação inteira, toda vez.
+ *
+ * Quem decide o que fazer com isto é a tela: aqui só se devolve o fato, com
+ * o número e a data da declaração de onde ele saiu, para a origem poder ser
+ * mostrada. Sugerir em silêncio é o que vira erro que ninguém percebe.
+ */
+function declUltimaEscolaDoDiretor_(diretorId) {
+  var id = declTexto_(diretorId);
+  if (!id) return null;
+
+  var minhas = declEmissoes_interno_().filter(function (e) {
+    return e.diretorId === id && declTexto_(e.escolaId);
+  });
+  if (!minhas.length) return null;
+
+  /* A MAIS RECENTE POR EMISSÃO, não a última linha da aba. A data de emissão
+     é editável: alguém regularizando uma liberação antiga grava uma linha
+     nova com data velha, e ela não pode virar "a mais recente". */
+  minhas.sort(function (a, b) {
+    /* `dataEmissao` chega como dd/mm/aaaa (declDataBR_) e o declParaData_
+       entende esse formato — conferido, não suposto. */
+    var da = declSoData_(a.dataEmissao);
+    var db = declSoData_(b.dataEmissao);
+    var diff = (db ? db.getTime() : 0) - (da ? da.getTime() : 0);
+    if (diff) return diff;
+    /* MESMA DATA DESEMPATA PELO NÚMERO. Sem isto a ordem entre duas
+       declarações do mesmo dia é a que a aba devolveu, e a sugestão muda
+       sozinha entre uma abertura e outra da tela. */
+    return declTexto_(b.numero).localeCompare(declTexto_(a.numero), "pt-BR", { numeric: true });
+  });
+
+  var u = minhas[0];
+  return {
+    escolaId: declTexto_(u.escolaId),
+    nome: declTexto_(u.escolaNome),
+    numero: declTexto_(u.numero),
+    dataEmissao: declTexto_(u.dataEmissao),
+    vinculoOrigem: declTexto_(u.vinculoOrigem)
+  };
+}
+
 /* =========================================
  * ENDPOINTS
  * ========================================= */
@@ -875,7 +934,10 @@ function declContextoDiretor(diretorId, tokenSessao) {
   exigirModulo_(tokenSessao, "documentos", false);
   var diretor = declDiretorPorId_(diretorId);
   if (!diretor || diretor.fonte !== "GOVERNANCA") return { ok: false, mensagem: "Dirigente vigente não encontrado em Governança." };
-  var r = declContextoDiretor_interno_(diretor); r.ok = true; return r;
+  var r = declContextoDiretor_interno_(diretor);
+  r.ultimaEscola = declUltimaEscolaDoDiretor_(diretorId);
+  r.ok = true;
+  return r;
 }
 
 function declAcharEmissao_(numero) {

@@ -384,6 +384,43 @@ function clicar(el, oque) {
   b.ok($("declErroEmissao").style.display === "none",
     "e o erro some quando a emissão volta a dar certo");
 
+  b.passo("14. Dirigente sem vínculo recebe a escola da última declaração");
+  /* "E até mesmo salvar quando for feita a primeira vez?" — você, 16/09/2026.
+
+     O dirigente já emitiu (passo 12), então existe histórico. Aqui o vínculo
+     em Associados é retirado de propósito: é o caso real de produção, em que
+     o nome de Governança não casa com o de Associados e o campo nascia
+     vazio, obrigando a digitar a escola toda vez. */
+  declFecharModais();
+  const vinculoOriginal = g.declContextoDiretor_interno_;
+  g.declContextoDiretor_interno_ = function (diretor, opcoes) {
+    const r = vinculoOriginal(diretor, opcoes);
+    r.vinculos = [];                 /* nenhum vínculo, como em produção */
+    r.associadosEncontrados = 0;
+    return r;
+  };
+  win.declEscolaLimpar();
+  mudar("#declDiretor", dirId);
+  await tela.assentar(250);
+
+  b.ok($("declEscolaCampo").value.length > 0,
+    "a escola vem preenchida sem a pessoa digitar", $("declEscolaCampo").value);
+  b.ok(/repetida da declaração/i.test($("declEscolaOrigem").textContent),
+    "e a tela diz DE ONDE veio, em vez de preencher em silêncio",
+    $("declEscolaOrigem").textContent.replace(/\s+/g, " ").trim().slice(0, 80));
+  b.ok(/confira/i.test($("declEscolaOrigem").textContent),
+    "pedindo conferência, porque a fonte é o histórico e não o cadastro");
+  b.ok(!!win.DECL_ESTADO.escola && !!win.DECL_ESTADO.escola.escolaId,
+    "e o estado da tela tem a escola, pronta para emitir",
+    win.DECL_ESTADO.escola && win.DECL_ESTADO.escola.escolaId);
+
+  /* CONTINUA EDITÁVEL — foi a condição que você pôs: "podemos ajustar
+     manualmente quando acontecer". Sugestão que não dá para trocar é imposição. */
+  win.declEscolaLimpar();
+  b.ok($("declEscolaCampo").value === "" && !win.DECL_ESTADO.escola,
+    "o ✕ desfaz a sugestão, para quando o dirigente tiver trocado de escola");
+  g.declContextoDiretor_interno_ = vinculoOriginal;
+
   b.naoTestavel("Aparência do modal e envio real de e-mail", "jsdom não aplica CSS; Gmail depende da homologação");
   b.resumo();
 })();
