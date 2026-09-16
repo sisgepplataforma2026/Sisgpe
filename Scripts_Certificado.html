@@ -252,6 +252,12 @@
 #certModalBox .cert-info-item, #certEnvioBox .cert-info-item, #certNovaBox .cert-info-item { display: flex; flex-direction: column; gap: 3px; }
 #certModalBox .cert-info-label, #certEnvioBox .cert-info-label, #certNovaBox .cert-info-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
 #certModalBox .cert-info-val, #certEnvioBox .cert-info-val, #certNovaBox .cert-info-val   { font-size: 13px; font-weight: 700; color: #1e293b; }
+.cert-linkpub { display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:16px; padding:14px 18px; background:#f0f9ff; border:1.5px solid #bae6fd; border-left:4px solid #0284c7; border-radius:14px; }
+.cert-linkpub-txt { flex:1; min-width:260px; }
+.cert-linkpub-txt b { display:block; font-size:13.5px; font-weight:800; color:#075985; }
+.cert-linkpub-txt span { display:block; font-size:11.5px; color:#0369a1; font-weight:600; line-height:1.5; margin-top:2px; }
+.cert-linkpub-url { display:block; margin-top:8px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11.5px; color:#0c4a6e; background:#fff; border:1px solid #bae6fd; border-radius:8px; padding:7px 10px; word-break:break-all; user-select:all; }
+.cert-linkpub-btns { display:flex; gap:8px; flex-wrap:wrap; }
 #certModalBox .cert-section-title, #certEnvioBox .cert-section-title, #certNovaBox .cert-section-title { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #94a3b8; border-bottom: 1px solid #f1f5f9; padding-bottom: 7px; margin-bottom: 12px; margin-top: 16px; }
 #certModalBox .cert-obs-area, #certEnvioBox .cert-obs-area, #certNovaBox .cert-obs-area { width: 100%; min-height: 80px; border-radius: 11px; border: 1.5px solid #cbd5e1; background: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; padding: 11px 13px; outline: none; resize: vertical; line-height: 1.55; color: #1e293b; transition: border-color .16s; }
 #certModalBox .cert-obs-area:focus, #certEnvioBox .cert-obs-area:focus, #certNovaBox .cert-obs-area:focus { border-color: #1565C0; box-shadow: 0 0 0 4px rgba(21,101,192,.09); }
@@ -279,6 +285,31 @@
         <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certBtnRecarregar">↻ Atualizar</button>
         <button type="button" class="cert-btn cert-btn-gold cert-btn-sm" id="certBtnExportarCsv">📤 Exportar CSV</button>
       </div>
+    </div>
+  </div>
+
+  <!-- LINK PÚBLICO — 16/09/2026, "deixa visível na página (mesmo modelo da
+       festa) para copiarmos".
+
+       Mesmo padrão do card de inscrição do Compasso em EventosAdmin.html: o
+       endereço à vista, num <code> selecionável, e um botão que copia. Ficar
+       decorando ou pedindo a URL a alguém é o que faz a secretaria mandar o
+       link errado.
+
+       A URL NÃO É ESCRITA AQUI. Vem de `beneficiosPrepararLinkInteresse`, que
+       resolve a publicação do ambiente — colar a URL de produção no HTML faria
+       a homologação distribuir o formulário de produção, que é o pior erro
+       possível numa tela que existe para divulgar endereço. -->
+  <div class="cert-linkpub" id="certLinkPubBox">
+    <div class="cert-linkpub-txt">
+      <b>🔗 Link público de solicitação</b>
+      <span>É este endereço que vai para o associado. Ele abre, digita o CPF, e o resto do formulário nasce preenchido — inclusive o envio do contracheque e do documento pessoal.</span>
+      <code class="cert-linkpub-url" id="certLinkPubUrl">carregando…</code>
+    </div>
+    <div class="cert-linkpub-btns">
+      <button type="button" class="cert-btn cert-btn-success cert-btn-sm" id="certBtnCopiarLink">📋 Copiar link</button>
+      <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certBtnCopiarMsg" title="A mensagem pronta, com o link e as condições — a mesma que o sistema usa no WhatsApp">💬 Copiar mensagem</button>
+      <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certBtnAbrirLink">↗ Abrir</button>
     </div>
   </div>
 
@@ -3207,6 +3238,58 @@ function carregarLista(){
     .listarSolicitacoesCertBolsa(certToken());
 }
 
+/* ── LINK PÚBLICO DE SOLICITAÇÃO ──────────────────────────────────────────
+   Mesmo desenho do card de inscrição da Festa (EventosAdmin.html:354).
+
+   A URL vem do SERVIDOR de propósito. `beneficiosPrepararLinkInteresse`
+   resolve o endereço de publicação do ambiente em que a tela está rodando —
+   escrever a URL no HTML faria a homologação distribuir o formulário de
+   PRODUÇÃO, e ninguém perceberia até um associado responder ao formulário
+   errado. */
+var _linkPub = { url:'', texto:'' };
+
+function certCarregarLinkPublico(){
+  var elUrl = g('certLinkPubUrl');
+  if(!elUrl) return;
+  var token = certToken();
+  if(!token){ elUrl.textContent = 'Sessão não encontrada. Entre novamente no SISGEP.'; return; }
+
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r || !r.ok){
+        elUrl.textContent = (r && r.mensagem) || 'Não foi possível montar o link.';
+        return;
+      }
+      _linkPub.url = String(r.url||'');
+      _linkPub.texto = String(r.texto||'');
+      elUrl.textContent = _linkPub.url;
+    })
+    .withFailureHandler(function(e){
+      elUrl.textContent = 'Não foi possível montar o link: ' + ((e&&e.message)||e);
+    })
+    .beneficiosPrepararLinkInteresse('voucher', {}, token);
+}
+
+/* Copiar com reserva: em iframe do Apps Script o clipboard falha por
+   permissão mais vezes do que se imagina, e falhar calado deixa a pessoa
+   colando o que estava antes na área de transferência. */
+function certCopiar(texto, aviso){
+  if(!texto) return msg('Ainda carregando. Tente em instantes.','warn');
+  var ok = function(){ msg(aviso,'ok'); };
+  var reserva = function(){
+    var ta = document.createElement('textarea');
+    ta.value = texto; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    var deu = false;
+    try { deu = document.execCommand('copy'); } catch(e) { deu = false; }
+    document.body.removeChild(ta);
+    if(deu) ok(); else msg('Não consegui copiar. Selecione o texto e use Ctrl+C.','warn');
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(texto).then(ok, reserva);
+  } else { reserva(); }
+}
+
 function exportarCsv(){
   if(!_filtrada.length){msg('Nenhum dado para exportar.','warn');return;}
   var headers=['Protocolo','Nome','CPF','E-mail','Escola','Modalidade','Curso','Beneficiário','Período','Status','Data'];
@@ -3279,6 +3362,13 @@ function initInterno(){
   if(g('certFiltroStatus'))    g('certFiltroStatus').addEventListener('change',aplicarFiltros);
   if(g('certFiltroModalidade'))g('certFiltroModalidade').addEventListener('change',aplicarFiltros);
   if(g('certBtnRecarregar'))   g('certBtnRecarregar').addEventListener('click',carregarLista);
+  if(g('certBtnCopiarLink'))   g('certBtnCopiarLink').addEventListener('click',function(){certCopiar(_linkPub.url,'Link copiado.');});
+  if(g('certBtnCopiarMsg'))    g('certBtnCopiarMsg').addEventListener('click',function(){certCopiar(_linkPub.texto,'Mensagem copiada, pronta para colar no WhatsApp.');});
+  if(g('certBtnAbrirLink'))    g('certBtnAbrirLink').addEventListener('click',function(){
+    if(!_linkPub.url) return msg('O link ainda está carregando.','warn');
+    window.open(_linkPub.url,'_blank');
+  });
+  certCarregarLinkPublico();
   if(g('certBtnExportarCsv'))  g('certBtnExportarCsv').addEventListener('click',exportarCsv);
   if(g('certModalClose'))      g('certModalClose').addEventListener('click',fecharModal);
   if(g('certModalCancelar'))   g('certModalCancelar').addEventListener('click',fecharModal);
