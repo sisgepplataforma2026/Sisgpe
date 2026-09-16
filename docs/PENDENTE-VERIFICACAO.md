@@ -5717,3 +5717,34 @@ e confirmar antes de considerar a rodada encerrada.
 replyTo da Secretaria, e ninguém soube". Se o alias já está configurado como
 você disse, os ofícios de produção devem estar saindo certos — mas isso se
 confirma abrindo um ofício real enviado e olhando o "De:", não deduzindo.
+
+### Rodada da tarde de 16/09/2026 — publicada nos DOIS ambientes
+
+Produção e homologação estão no commit `99b994a`. Nada abaixo foi executado
+no ar; a suíte prova o código, não o Google.
+
+| | O que conferir | Onde |
+|---|---|---|
+| 27 | 🔴 emissão funciona em produção — a pasta do Drive agora vem do código | na tela |
+| 28 | 🔴 escolher o diretor traz a escola da última declaração, preenchida | na tela |
+| 29 | 🔴 o rótulo diz "repetida da declaração X, de DD/MM — confira" | na tela |
+| 30 | 🔴 o ✕ desfaz a sugestão e deixa buscar outra | na tela |
+| 31 | 🟡 sem vínculo, a mensagem diz QUAL cadastro corrigir | na tela |
+| 32 | 🔴 o modal traz baixar, imprimir, e-mail e WhatsApp juntos | na tela |
+| 33 | 🔴 **imprimir realmente imprime** — jsdom não imprime, só prova a chamada | no papel |
+| 34 | 🔴 falha de emissão deixa a caixa vermelha visível, com o motivo | na tela |
+
+**O item 26 segue sendo o mais importante de todos e continua aberto desde a
+promoção da manhã: mandar UM ofício real em produção.** O caminho de envio do
+ofício foi movido para `enviarComoRascunhoSISGEP_` hoje, e é a única operação
+viva do sindicato. Cinco testes verdes não substituem um ofício enviado.
+
+### Dívida técnica anotada em 16/09/2026 — não é bug, é convite a erro
+
+As quatro âncoras da esteira de produção (branch, SHA, contagem de `.gs` e de
+`.html`) foram reescritas À MÃO três vezes só hoje, porque cada promoção vive
+no seu próprio branch e nada volta para a integração. Errar um dígito ali
+publica o código errado em produção com todas as travas dizendo que está
+certo. Proposta: virar entrada do `workflow_dispatch`, calculando as
+contagens em vez de conferi-las contra número fixo. Aguarda decisão do
+usuário.
