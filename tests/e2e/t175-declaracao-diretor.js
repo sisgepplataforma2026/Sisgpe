@@ -137,6 +137,35 @@ b.ok(confSemPasta.pronto === false, "e aí sim não se declara pronto");
 g.RECURSOS_AMBIENTE.DECLARACOES.producao = pastaGuardada.producao;
 g.RECURSOS_AMBIENTE.DECLARACOES.homologacao = pastaGuardada.homologacao;
 
+b.fluxo("DECLARAÇÕES · Vínculo não encontrado diz QUAL é a causa");
+/* Em produção o dirigente apareceu sem vínculo e a tela disse apenas "não tem
+   vínculo em Associados". São duas causas diferentes, com consertos em
+   cadastros diferentes, e a frase única manda procurar no lugar errado. */
+const semNada = g.declContextoDiretor(
+  dados.diretores.filter(d => !/WANDERSON/.test(d.nome))[0].id, TOKEN);
+b.ok(semNada.ok && typeof semNada.associadosEncontrados === "number",
+  "o contexto devolve quantos associados casaram pelo nome", semNada.associadosEncontrados);
+b.ok(typeof semNada.nomeProcurado === "string" && semNada.nomeProcurado.length > 0,
+  "e o nome que foi procurado, para a tela poder citá-lo", semNada.nomeProcurado);
+b.ok(Array.isArray(semNada.escolasSemCadastro), "e a lista de escolas sem cadastro");
+
+/* CAUSA 2: o dirigente ESTÁ em Associados, mas a escola dele não existe em
+   Escolas. Antes isto era indistinguível da causa 1. */
+sheet("Associados", g.SIND_ASS_COLUNAS).appendRow([
+  "COLEGIO QUE NAO EXISTE NO CADASTRO", "Wanderson Nascimento Castelo", "00000000000", "S",
+  "", "", "", "Serra", "", "(27) 99999-1234", "", "w@e.com", new Date(), "123", new Date(), "F-3"
+]);
+g.DECL_MEMO_ASSOCIADOS = null;
+g.DECL_MEMO_ESCOLAS = null;
+const comOrfa = g.declContextoDiretor(dir.id, TOKEN);
+b.ok(comOrfa.associadosEncontrados >= 3,
+  "o dirigente é achado em Associados", comOrfa.associadosEncontrados + " linha(s)");
+b.ok(comOrfa.escolasSemCadastro.some(e => /NAO EXISTE NO CADASTRO/i.test(e)),
+  "e a escola que não tem cadastro volta PELO NOME, não como lista vazia",
+  comOrfa.escolasSemCadastro.join(" | "));
+b.ok(comOrfa.vinculos.length === 2,
+  "sem atrapalhar os vínculos que casaram", comOrfa.vinculos.length + " vínculo(s)");
+
 b.fluxo("DECLARAÇÕES · O mandato se confere contra o DIA DA LIBERAÇÃO");
 /* A checagem antiga perguntava se a gestão está de pé HOJE — outra pergunta.
    Uma liberação marcada para depois do término passava, e a declaração

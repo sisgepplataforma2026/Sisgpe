@@ -716,6 +716,17 @@ function declContextoDiretor_interno_(diretor, opcoes) {
   var escolas = declEscolas_();
   var porId = {};
 
+  /* O QUE NÃO CASOU PRECISA VOLTAR COM NOME — 16/09/2026.
+
+     Antes daqui só saía "vinculos: []", e a tela dizia "este dirigente não
+     tem vínculo em Associados" para DOIS problemas diferentes: o nome do
+     dirigente não bater com a base, ou bater e o texto da escola dele não
+     existir no cadastro de Escolas. São causas distintas, com correções
+     distintas — e a mensagem única mandava a pessoa procurar no lugar errado.
+
+     Agora volta o que foi tentado, para a tela poder dizer qual é. */
+  var escolasSemCadastro = [];
+
   associados.forEach(function (a) {
     var esc = declNormalizar_(a.escola);
     if (!esc) return;
@@ -723,6 +734,10 @@ function declContextoDiretor_interno_(diretor, opcoes) {
       return [e.NomeEscola, e.Fantasia, e.escola, e.CodigoInterno]
         .some(function (n) { return declNormalizar_(n) === esc; });
     });
+    if (!candidatas.length) {
+      var bruto = declTexto_(a.escola);
+      if (bruto && escolasSemCadastro.indexOf(bruto) < 0) escolasSemCadastro.push(bruto);
+    }
     candidatas.forEach(function (e) {
       var id = declTexto_(e.escolaId || e.EscolaID || e.linha);
       if (!id || porId[id]) return;
@@ -738,7 +753,13 @@ function declContextoDiretor_interno_(diretor, opcoes) {
     });
   });
 
-  return { diretorId: diretor.id, associadosEncontrados: associados.length, vinculos: Object.keys(porId).map(function (k) { return porId[k]; }) };
+  return {
+    diretorId: diretor.id,
+    associadosEncontrados: associados.length,
+    nomeProcurado: declTexto_(diretor && diretor.nome),
+    escolasSemCadastro: escolasSemCadastro,
+    vinculos: Object.keys(porId).map(function (k) { return porId[k]; })
+  };
 }
 
 /**

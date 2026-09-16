@@ -722,7 +722,24 @@ function declCarregarVinculos(escolaPreferida) {
       DECL_ESTADO.achadas = DECL_ESTADO.vinculos;
       declEscolaEscolher(0);
     } else if (!DECL_ESTADO.vinculos.length) {
-      declMsg("Este dirigente não tem vínculo em Associados. Digite o nome da escola para buscar no cadastro.", "alerta");
+      /* DUAS CAUSAS, DUAS MENSAGENS — 16/09/2026.
+
+         A frase única mandava a pessoa procurar no lugar errado. Se o nome
+         não está em Associados, o conserto é no cadastro do dirigente; se
+         está mas a escola dele não existe em Escolas, o conserto é no
+         cadastro da escola. Dizer qual poupa a busca. */
+      if (!r.associadosEncontrados) {
+        declMsg("\"" + (r.nomeProcurado || "Este dirigente") + "\" não foi encontrado na base de " +
+                "Associados — o nome em Governança precisa bater com o de lá. " +
+                "Enquanto isso, digite a escola para buscar no cadastro.", "alerta");
+      } else if ((r.escolasSemCadastro || []).length) {
+        declMsg("Em Associados este dirigente consta em \"" + r.escolasSemCadastro.join("\", \"") +
+                "\", que não existe no cadastro de Escolas. " +
+                "Digite a escola para buscar, ou corrija o cadastro.", "alerta");
+      } else {
+        declMsg("Este dirigente está em Associados mas sem escola preenchida. " +
+                "Digite o nome da escola para buscar no cadastro.", "alerta");
+      }
     } else if (escolaPreferida) {
       declMsg("A escola da declaração anterior não está mais entre os vínculos deste dirigente. Escolha a escola.", "alerta");
     }
