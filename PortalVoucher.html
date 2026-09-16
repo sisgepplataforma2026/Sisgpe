@@ -137,12 +137,29 @@
 
     .wrap { position:relative; z-index:1; max-width:880px; margin:0 auto; animation:fadeUp .6s ease both; }
 
-    .portal-header { text-align:center; margin-bottom:36px; margin-top:40px; }
-    .portal-eyebrow { display:inline-flex; align-items:center; gap:8px; font-size:11px; font-weight:600; letter-spacing:.18em; text-transform:uppercase; color:var(--cyan); margin-bottom:14px; }
-    .portal-eyebrow::before, .portal-eyebrow::after { content:''; width:28px; height:1px; background:rgba(14,165,233,.4); }
-    .portal-title { font-family:'Plus Jakarta Sans',sans-serif; font-size:clamp(28px,5vw,42px); font-weight:700; line-height:1.1; margin-bottom:10px; }
-    .gold-bar { width:42px; height:2px; background:linear-gradient(90deg,var(--accent),var(--accent-lt),transparent); border-radius:2px; margin:0 auto 14px; }
-    .portal-sub { font-size:14px; font-weight:300; color:var(--muted); line-height:1.7; }
+    /* CABEÇALHO NO PADRÃO DO SISGEP — 16/09/2026.
+
+       "Esse layout não é padrão SISGEP" — o usuário, depois da troca de
+       paleta. Ele estava certo, e a paleta era só metade: o portal usava um
+       título centralizado solto sobre o fundo, enquanto TODO documento e toda
+       tela do sistema abrem com o bloco NAVY — o formulário da Festa
+       (`.topo`), o cabeçalho de módulo (`.of-modulo-header`), o e-mail do
+       ofício, o PDF do certificado. Trocar as cores sem trocar a forma deixa
+       a página parecida, não igual.
+
+       Agora é o mesmo bloco: gradiente navy→navy2, texto branco, filete
+       dourado, cantos de 16px. É o que a pessoa já viu no e-mail que a
+       trouxe até aqui. */
+    .portal-header { background:linear-gradient(135deg,var(--accent),var(--cyan)); color:#fff; border-radius:16px; padding:26px 24px; margin:28px 0 20px; }
+    .portal-eyebrow { display:inline-block; background:rgba(255,255,255,.16); border-radius:999px; padding:5px 14px; font-size:11.5px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:#fff; margin-bottom:12px; }
+    .portal-eyebrow::before, .portal-eyebrow::after { content:none; }
+    .portal-title { font-family:'Plus Jakarta Sans',sans-serif; font-size:clamp(24px,4.4vw,32px); font-weight:800; line-height:1.15; margin-bottom:10px; color:#fff; letter-spacing:-.01em; }
+    .gold-bar { width:56px; height:3px; background:linear-gradient(90deg,var(--accent-lt),#f0c843,var(--accent-lt)); border-radius:2px; margin:0 0 12px; }
+    .portal-sub { font-size:14.5px; font-weight:500; color:rgba(255,255,255,.88); line-height:1.6; }
+
+    /* O bloco navy já é escuro nos dois temas — no escuro ele ficaria igual
+       ao fundo, então ganha borda dourada para não sumir. */
+    [data-theme="dark"] .portal-header { border:1px solid rgba(201,168,76,.3); }
 
     .msg-box { border-radius:14px; font-size:14px; font-weight:500; line-height:1.6; margin-bottom:24px; overflow:hidden; }
     .msg-box:empty { display:none; }
@@ -338,7 +355,7 @@
     <a href="#" onclick="history.back();return false;" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--cyan);text-decoration:none;margin-bottom:18px;">‹ Voltar</a>
     <div class="portal-header">
       <div class="portal-eyebrow">SindEducação-ES · SISGEP</div>
-      <h1 class="portal-title">Portal de Solicitação<br>de Voucher</h1>
+      <h1 class="portal-title">Portal de Solicitação de Voucher</h1>
       <div class="gold-bar"></div>
       <p class="portal-sub">Cadastro, atualização e solicitação de voucher de bolsa</p>
     </div>
@@ -652,11 +669,32 @@ function atualizarProgresso() {
     'periodoReferencia'
   ];
 
+  /* OS DOIS ANEXOS SÃO OBRIGATÓRIOS E NÃO ENTRAVAM NA CONTA — 16/09/2026.
+     "Esse 100% preenchido não está sendo real" — o usuário, com o formulário
+     marcando 100% e os documentos ainda não enviados. Barra que diz "pronto"
+     antes de estar pronta é pior do que barra nenhuma: ela promete que o
+     botão vai funcionar, e ele não vai. */
+  var camposArquivo = ['contracheque', 'docPessoal'];
+
   var preenchidos = 0;
+  var total = 0;
+
+  /* CAMPO OCULTO NÃO CONTA, nem como preenchido nem como pendente. Vários
+     somem conforme a escolha — ordem do filho para o titular, dados de
+     dependente para quem pede para si mesmo —, e alguns são preenchidos por
+     baixo pelo próprio sistema. Contá-los inflava o percentual com respostas
+     que a pessoa nunca deu. */
+  function visivel(el) {
+    if (!el) return false;
+    var caixa = el.closest ? el.closest('.field') : null;
+    if (caixa && caixa.classList.contains('hidden')) return false;
+    return !!(el.offsetParent || el.getClientRects().length);
+  }
 
   camposObrigatorios.forEach(function(id) {
     var el = document.getElementById(id);
-    if (!el) return;
+    if (!el || !visivel(el)) return;
+    total++;
 
     var valor = String(el.value || '').trim();
 
@@ -673,7 +711,14 @@ function atualizarProgresso() {
     }
   });
 
-  var percentual = Math.round((preenchidos / camposObrigatorios.length) * 100);
+  camposArquivo.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el || !visivel(el)) return;
+    total++;
+    if (el.files && el.files.length) preenchidos++;
+  });
+
+  var percentual = total ? Math.round((preenchidos / total) * 100) : 0;
 
   document.getElementById('progressFill').style.width = percentual + '%';
   document.getElementById('progressText').textContent = percentual + '% preenchido';

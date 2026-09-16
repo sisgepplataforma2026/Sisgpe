@@ -123,6 +123,36 @@ b.passo("O parentesco não fica preso em TITULAR");
 b.ok(/String\(parentesco\.value \|\| ''\)\.toUpperCase\(\) === 'TITULAR'\)[\s\S]{0,60}parentesco\.value = '';/.test(portal),
   "ao sair de titular, o parentesco é limpo em vez de ficar com o valor velho");
 
+b.passo("O cabeçalho é o bloco navy do sistema, não um título solto");
+/* "Esse layout não é padrão SISGEP" — você, depois da troca de paleta, e com
+   razão: a cor era só metade. TODO documento e toda tela do sistema abrem com
+   o bloco navy — o `.topo` da Festa, o `.of-modulo-header`, o e-mail do
+   ofício, o PDF do certificado. Trocar as cores sem trocar a FORMA deixa a
+   página parecida, não igual. */
+b.ok(/\.topo\{background:linear-gradient\(135deg,var\(--navy\),var\(--navy2\)\)/.test(festa.replace(/\s+/g,"")),
+  "a Festa abre com bloco navy em gradiente — é a forma do padrão");
+b.ok(/\.portal-header \{ background:linear-gradient\(135deg,var\(--accent\),var\(--cyan\)\); color:#fff;/.test(portal),
+  "e o portal passou a abrir com o mesmo bloco");
+b.ok(/\.portal-header \{[^}]*border-radius:16px/.test(portal),
+  "com o mesmo raio de canto");
+b.ok(!/<br>de Voucher/.test(portal),
+  "e o título perdeu a quebra forçada, que estouraria na caixa mais estreita");
+
+b.passo("A barra de progresso conta o que é de verdade obrigatório");
+/* "Esse 100% preenchido não está sendo real" — você, com a barra cheia e os
+   documentos ainda não enviados. Barra que diz "pronto" antes de estar pronta
+   promete que o botão vai funcionar, e ele não vai. */
+b.ok(/var camposArquivo = \['contracheque', 'docPessoal'\];/.test(portal),
+  "os dois anexos obrigatórios entraram na conta");
+b.ok(/el\.files && el\.files\.length/.test(portal),
+  "e contam por arquivo escolhido, não por valor de texto");
+b.ok(/function visivel\(el\)/.test(portal),
+  "campo oculto deixou de contar");
+b.ok(/caixa\.classList\.contains\('hidden'\)/.test(portal),
+  "inclusive os que somem por escolha — ordem do filho, dados de dependente");
+b.ok(/var percentual = total \? Math\.round\(\(preenchidos \/ total\) \* 100\) : 0;/.test(portal),
+  "e o denominador é o que está VISÍVEL, não a lista fixa");
+
 b.naoTestavel("A aparência final no navegador",
   "nenhum teste daqui aplica folha de estilo; só a tela publicada responde");
 b.resumo();
