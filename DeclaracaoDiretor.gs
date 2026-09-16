@@ -806,8 +806,12 @@ function declBuscarEscolas(termo, diretorId, tokenSessao) {
     if (termo.length < 2) return { ok: true, escolas: [] };
 
     var diretor = declDiretorPorId_(diretorId);
+    /* SEM CONTATOS NA BUSCA. Uma lista de 12 resultados custava 12 leituras
+       da aba Controle e do histórico de cada e-mail — para uma lista em que a
+       pessoa só vai escolher UMA. Os contatos entram na emissão, que é onde
+       eles viram a trava de destinatário. */
     var achadas = (buscarEscolasPorTermo_interno_(termo) || []).slice(0, 12).map(function (e) {
-      return declEscolaComoVinculo_(e, diretor, "Escolhida manualmente");
+      return declEscolaComoVinculo_(e, diretor, "Escolhida manualmente", { semContatos: true });
     }).filter(function (v) { return !!v.escolaId; });
 
     return { ok: true, escolas: achadas };

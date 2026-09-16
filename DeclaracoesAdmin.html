@@ -68,13 +68,21 @@
           </div>
 
           <div class="declCampo">
-            <label for="declEscola">Escola empregadora</label>
-            <select id="declEscola" onchange="declSelecionarEscola()" disabled><option value="">— selecione o diretor —</option></select>
-            <small class="declOrigem" id="declEscolaOrigem">vínculo em Associados · identidade em Escolas</small>
-            <div id="declEscolaBusca" class="declBuscaEscola" style="display:none;">
-              <input type="text" id="declEscolaTermo" placeholder="🔎 nome, fantasia, CNPJ ou cidade" oninput="declBuscarEscolasDebounce()">
-              <div id="declEscolaResultados" class="declBuscaLista"></div>
+            <label for="declEscolaCampo">Escola empregadora</label>
+            <!-- UM CAMPO SÓ, com autocomplete — 15/09/2026.
+                 Antes era um select com os vínculos mais uma opção "buscar
+                 outra escola" que revelava uma caixa de busca. Duas etapas
+                 para uma tarefa, e as 679 escolas do cadastro escondidas
+                 atrás de uma escolha que ninguém adivinha. -->
+            <div class="declAuto">
+              <input type="text" id="declEscolaCampo" autocomplete="off"
+                     placeholder="🔎 nome, fantasia, CNPJ ou cidade"
+                     oninput="declEscolaDigitou()" onfocus="declEscolaAbrir()"
+                     onkeydown="declEscolaTecla(event)" disabled>
+              <button type="button" id="declEscolaLimpar" class="declAutoLimpar" onclick="declEscolaLimpar()" style="display:none;" title="Trocar de escola">✕</button>
+              <div id="declEscolaLista" class="declAutoLista" style="display:none;"></div>
             </div>
+            <small class="declOrigem" id="declEscolaOrigem">vínculo em Associados · identidade em Escolas</small>
           </div>
 
           <div class="declCampo">
@@ -289,15 +297,14 @@
       <div class="declOrigem" style="margin-top:6px;">
         conferidos no dia da emissão · e-mail incluído fica <b>registrado na declaração</b>, com quem incluiu
       </div>
-      <div id="declEntregaAvisoHml" class="declAviso" style="display:none;margin-top:12px;"></div>
-      <div class="declEntregaNota declEntregaNotaOk">
-        <span>✅</span>
-        <div><strong>Remetente</strong><br><span id="declEntregaRemetente">conta oficial do SISGEP</span></div>
-      </div>
-      <div class="declEntregaNota declEntregaNotaAviso">
-        <span>⚠️</span>
-        <div>Depois do envio, o status da declaração é atualizado sozinho na aba Emitidas.</div>
-      </div>
+      <!-- UMA CAIXA SÓ — 15/09/2026, "para que isso?".
+           Eram três, empilhadas: o aviso de homologação, "Remetente: conta
+           oficial do SISGEP" e "o status é atualizado sozinho". As duas
+           últimas não informam nada que mude a decisão de quem está com o
+           dedo no botão — remetente oficial é o único que existe, e o status
+           atualizar sozinho é o esperado. Ruído empurra para baixo o que
+           importa: a lista de para quem vai. -->
+      <div id="declEntregaAvisoHml" class="declEntregaNota declEntregaNotaAviso" style="display:none;"></div>
     </div>
 
     <div class="of-modal-body" id="declEntregaPainelPreview" style="display:none;padding:0;">
@@ -478,22 +485,45 @@
 .declConfigLinha:last-child { border-bottom: none; }
 .declConfigLinha b { display: block; color: var(--g900, #0f172a); }
 .declConfigLinha small { display: block; color: var(--g500, #64748b); margin-top: 2px; word-break: break-all; }
-.declBuscaEscola { margin-top: 8px; }
-.declBuscaEscola input {
-  width: 100%; height: 38px; border: 1.5px solid var(--g200, #e2e8f0); border-radius: 10px;
-  padding: 0 12px; font-size: 12.5px; font-family: inherit;
+.declAuto { position: relative; }
+.declAuto input {
+  width: 100%; height: 42px; border: 1.5px solid var(--g200, #e2e8f0); border-radius: 10px;
+  padding: 0 34px 0 12px; font-size: 13px; font-family: inherit; color: var(--g900, #0f172a); background: #fff;
 }
-.declBuscaLista { max-height: 180px; overflow-y: auto; margin-top: 6px; }
-.declBuscaItem {
-  display: block; width: 100%; text-align: left; border: 1.5px solid var(--g200, #e2e8f0);
-  background: #fff; border-radius: 10px; padding: 8px 10px; margin-bottom: 6px; cursor: pointer;
-  font-size: 12px; font-family: inherit; color: var(--g900, #0f172a);
+.declAuto input:focus { outline: none; border-color: var(--blue, #1565C0); }
+.declAuto input:disabled { background: var(--g50, #f8fafc); color: var(--g500, #64748b); }
+.declAutoLimpar {
+  position: absolute; right: 8px; top: 9px; width: 24px; height: 24px; border-radius: 6px;
+  border: none; background: var(--g100, #f1f5f9); color: var(--g500, #64748b); cursor: pointer;
+  font-size: 12px; font-weight: 800; line-height: 1;
 }
-.declBuscaItem:hover { border-color: var(--blue, #1565C0); }
-.declBuscaItem small { display: block; color: var(--g500, #64748b); margin-top: 2px; }
+.declAutoLista {
+  position: absolute; z-index: 30; left: 0; right: 0; top: 46px; background: #fff;
+  border: 1.5px solid var(--g200, #e2e8f0); border-radius: 12px; box-shadow: 0 16px 34px rgba(15,23,42,.14);
+  max-height: 260px; overflow-y: auto;
+}
+.declAutoGrupo {
+  padding: 8px 12px 4px; font-size: 10px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .09em; color: var(--g500, #64748b); background: var(--g50, #f8fafc);
+}
+.declAutoItem {
+  display: block; width: 100%; text-align: left; border: none; border-bottom: 1px solid var(--g100, #f1f5f9);
+  background: #fff; padding: 9px 12px; cursor: pointer; font-size: 12.5px; font-family: inherit;
+  color: var(--g900, #0f172a);
+}
+.declAutoItem:last-child { border-bottom: none; }
+.declAutoItem:hover, .declAutoItem.declAutoAtivo { background: var(--blue-lt, #eff6ff); }
+.declAutoItem small { display: block; color: var(--g500, #64748b); margin-top: 2px; }
+.declAutoVazio { padding: 14px 12px; font-size: 12px; color: var(--g500, #64748b); text-align: center; }
 .declOrigemManual { color: #d97706; font-weight: 700; }
 .declContato { display:flex; gap:9px; align-items:flex-start; padding:9px 0; border-bottom:1px solid var(--g100,#f1f5f9); font-size:12px; }
+/* COR EXPLÍCITA NO E-MAIL — 15/09/2026. O <b> não declarava cor e herdava a
+   de fora do modal: o endereço saía quase branco no branco, e a tela mostrava
+   só as origens. Num modal que existe para a pessoa CONFERIR para quem vai o
+   documento, o destinatário invisível é o defeito mais caro possível. */
+.declContato b { display:block; font-size:13px; font-weight:800; color:var(--g900,#0f172a); word-break:break-all; }
 .declContato small { display:block; color:var(--g500,#64748b); margin-top:2px; }
+.declContato input { margin-top:3px; flex-shrink:0; }
 @media (max-width: 640px) {
   .declWrap { padding: 16px; }
   .declAcoes { flex-direction: column; }
@@ -638,120 +668,198 @@ function declEscolherPeriodo(valor) {
  */
 function declCarregarVinculos(escolaPreferida) {
   var diretorId = document.getElementById("declDiretor").value;
-  var sel = document.getElementById("declEscola");
+  var campo = document.getElementById("declEscolaCampo");
   DECL_ESTADO.vinculos = []; DECL_ESTADO.escola = null;
-  sel.disabled = true; sel.innerHTML = '<option value="">Carregando…</option>';
-  if (!diretorId) { sel.innerHTML = '<option value="">— selecione o diretor —</option>'; declPrevia(); return; }
-  google.script.run.withSuccessHandler(function (r) {
-    if (!r || !r.ok) { sel.innerHTML = '<option value="">— vínculo não encontrado —</option>'; declMsg((r && r.mensagem) || "Não foi possível localizar o vínculo.", "alerta"); return; }
-    DECL_ESTADO.vinculos = r.vinculos || [];
-    declPintarEscolas_();
-    /* O select NUNCA mais fica desabilitado: mesmo sem vínculo nenhum,
-       resta a busca manual — que é a razão de ela existir. */
-    sel.disabled = false;
-    var repetida = escolaPreferida && DECL_ESTADO.vinculos.filter(function (v) { return v.escolaId === escolaPreferida; }).length
-      ? escolaPreferida : "";
-    if (repetida) { sel.value = repetida; declSelecionarEscola(); }
-    else if (DECL_ESTADO.vinculos.length === 1) { sel.value = DECL_ESTADO.vinculos[0].escolaId; declSelecionarEscola(); }
-    else if (!DECL_ESTADO.vinculos.length) {
-      /* Sem vínculo, a busca já abre: é o caminho, não a exceção escondida. */
-      sel.value = "__BUSCAR__";
-      declSelecionarEscola();
-      declMsg("Nenhum vínculo deste dirigente foi encontrado em Associados. Busque a escola empregadora pelo nome.", "alerta");
-    }
-    else if (escolaPreferida) declMsg("A escola da declaração anterior não está mais entre os vínculos deste dirigente. Escolha a escola.", "alerta");
-  }).withFailureHandler(function (e) { sel.innerHTML = '<option value="">— erro —</option>'; declMsg("Erro: " + e, "erro"); })
-    .declContextoDiretor(diretorId, declToken());
-}
+  campo.value = ""; campo.disabled = true; campo.placeholder = "Carregando vínculos…";
+  document.getElementById("declEscolaLimpar").style.display = "none";
+  document.getElementById("declEscolaLista").style.display = "none";
 
-/* Redesenha o select mantendo o que já estava escolhido. A opção de busca é
-   a última, e existe sempre — inclusive quando há vínculo, porque o vínculo
-   pode estar certo e ainda assim não ser a escola daquele dia. */
-function declPintarEscolas_() {
-  var sel = document.getElementById("declEscola");
-  var antes = sel.value;
-  sel.innerHTML = '<option value="">— selecione —</option>' +
-    (DECL_ESTADO.vinculos || []).map(function (v) {
-      var rotulo = declEsc(v.fantasia || v.nome);
-      if (v.vinculoOrigem && v.vinculoOrigem !== "Associados") rotulo += " (escolhida manualmente)";
-      return '<option value="' + declEsc(v.escolaId) + '">' + rotulo + '</option>';
-    }).join("") +
-    '<option value="__BUSCAR__">🔎 buscar outra escola no cadastro…</option>';
-  sel.value = antes;
-}
-
-function declSelecionarEscola() {
-  var id = document.getElementById("declEscola").value;
-  var busca = document.getElementById("declEscolaBusca");
-  var origem = document.getElementById("declEscolaOrigem");
-
-  if (id === "__BUSCAR__") {
-    busca.style.display = "block";
-    origem.innerHTML = 'busca no cadastro de Escolas — <span class="declOrigemManual">a escolha fica registrada como manual</span>';
-    DECL_ESTADO.escola = null;
-    document.getElementById("declEscolaTermo").focus();
+  if (!diretorId) {
+    campo.placeholder = "🔎 selecione o diretor primeiro";
     declPrevia();
     return;
   }
 
-  busca.style.display = "none";
-  DECL_ESTADO.escola = (DECL_ESTADO.vinculos || []).filter(function (v) { return v.escolaId === id; })[0] || null;
-  origem.innerHTML = (DECL_ESTADO.escola && DECL_ESTADO.escola.vinculoOrigem && DECL_ESTADO.escola.vinculoOrigem !== "Associados")
-    ? '<span class="declOrigemManual">escolhida manualmente — não veio do vínculo em Associados</span>'
-    : "vínculo em Associados · identidade em Escolas";
+  google.script.run.withSuccessHandler(function (r) {
+    campo.disabled = false;
+    campo.placeholder = "🔎 nome, fantasia, CNPJ ou cidade";
+    if (!r || !r.ok) {
+      declMsg((r && r.mensagem) || "Não foi possível localizar o vínculo.", "alerta");
+      return;
+    }
+    DECL_ESTADO.vinculos = r.vinculos || [];
+
+    /* O Reemitir manda a escola da declaração anterior; vínculo único é
+       preenchido sozinho. Nos dois casos dá para trocar no ✕. */
+    var repetida = escolaPreferida &&
+      DECL_ESTADO.vinculos.filter(function (v) { return v.escolaId === escolaPreferida; })[0];
+    if (repetida) {
+      DECL_ESTADO.achadas = DECL_ESTADO.vinculos;
+      declEscolaEscolher(DECL_ESTADO.vinculos.indexOf(repetida));
+    } else if (DECL_ESTADO.vinculos.length === 1) {
+      DECL_ESTADO.achadas = DECL_ESTADO.vinculos;
+      declEscolaEscolher(0);
+    } else if (!DECL_ESTADO.vinculos.length) {
+      declMsg("Este dirigente não tem vínculo em Associados. Digite o nome da escola para buscar no cadastro.", "alerta");
+    } else if (escolaPreferida) {
+      declMsg("A escola da declaração anterior não está mais entre os vínculos deste dirigente. Escolha a escola.", "alerta");
+    }
+  }).withFailureHandler(function (e) {
+    campo.disabled = false;
+    campo.placeholder = "🔎 nome, fantasia, CNPJ ou cidade";
+    declMsg("Erro: " + e, "erro");
+  }).declContextoDiretor(diretorId, declToken());
+}
+
+/* ════════════════════════════════════════════════════════════════════
+ * ESCOLA EMPREGADORA — UM CAMPO SÓ, COM AUTOCOMPLETE
+ *
+ * Pedido do usuário em 15/09/2026: "aqui deveria buscar todas as escolas e
+ * pelo autocomplete". Antes era um select com os vínculos do dirigente mais
+ * uma opção "buscar outra escola" que revelava uma segunda caixa — duas
+ * etapas para uma tarefa, e as 679 escolas do cadastro escondidas atrás de
+ * uma escolha que ninguém adivinha.
+ *
+ * Agora: ao focar, aparecem os VÍNCULOS (o que o sistema já sabe, REGRA
+ * Nº 0.6); ao digitar, busca no cadastro inteiro. A origem continua à vista,
+ * porque escolher fora do vínculo é uma decisão que fica registrada.
+ * ════════════════════════════════════════════════════════════════════ */
+
+function declEscolaAbrir() {
+  if (DECL_ESTADO.escola) return;            /* já escolhida: não reabre sozinho */
+  var termo = String(document.getElementById("declEscolaCampo").value || "").trim();
+  if (termo.length >= 2) return declEscolaDigitou();
+  declEscolaPintar(DECL_ESTADO.vinculos || [], [], "");
+}
+
+function declEscolaDigitou() {
+  DECL_ESTADO.escola = null;
   declPrevia();
-}
-
-/* ─── busca manual de escola ─── */
-function declBuscarEscolasDebounce() {
   clearTimeout(DECL_ESTADO.timerEscola);
-  DECL_ESTADO.timerEscola = setTimeout(declBuscarEscolasAgora, 300);
+  DECL_ESTADO.timerEscola = setTimeout(declEscolaBuscar, 320);
 }
 
-function declBuscarEscolasAgora() {
-  var termo = document.getElementById("declEscolaTermo").value;
-  var caixa = document.getElementById("declEscolaResultados");
-  if (String(termo || "").trim().length < 2) { caixa.innerHTML = ""; return; }
-  caixa.innerHTML = '<div class="declOrigem">Procurando…</div>';
+function declEscolaBuscar() {
+  var termo = String(document.getElementById("declEscolaCampo").value || "").trim();
+  var vinculos = (DECL_ESTADO.vinculos || []).filter(function (v) {
+    return declEscolaCasa(v, termo);
+  });
 
+  if (termo.length < 2) return declEscolaPintar(vinculos, [], "");
+
+  declEscolaPintar(vinculos, null, termo);   /* null = "procurando" */
   google.script.run
     .withSuccessHandler(function (r) {
-      if (!r || !r.ok) { caixa.innerHTML = '<div class="declOrigem">' + declEsc((r && r.mensagem) || "Erro na busca.") + '</div>'; return; }
-      if (!r.escolas.length) { caixa.innerHTML = '<div class="declOrigem">Nenhuma escola encontrada com esse termo.</div>'; return; }
-      DECL_ESTADO.achadas = r.escolas;
-      caixa.innerHTML = r.escolas.map(function (e, i) {
-        return '<button type="button" class="declBuscaItem" onclick="declEscolherAchada(' + i + ')"><b>' +
-          declEsc(e.fantasia || e.nome) + '</b><small>' + declEsc(e.nome) +
-          (e.documento ? ' · ' + declEsc(e.documento) : '') +
-          ' · ' + (e.contatos || []).length + ' e-mail(s)</small></button>';
-      }).join("");
+      /* Se a pessoa continuou digitando, esta resposta já é velha. */
+      var atual = String(document.getElementById("declEscolaCampo").value || "").trim();
+      if (atual !== termo) return;
+      var achadas = (r && r.ok ? r.escolas : []) || [];
+      var idsVinculo = vinculos.map(function (v) { return v.escolaId; });
+      declEscolaPintar(vinculos, achadas.filter(function (e) {
+        return idsVinculo.indexOf(e.escolaId) < 0;
+      }), termo);
     })
-    .withFailureHandler(function (e) { caixa.innerHTML = '<div class="declOrigem">Erro: ' + declEsc(e) + '</div>'; })
+    .withFailureHandler(function () { declEscolaPintar(vinculos, [], termo); })
     .declBuscarEscolas(termo, document.getElementById("declDiretor").value, declToken());
 }
 
-function declEscolherAchada(i) {
-  var e = (DECL_ESTADO.achadas || [])[i];
-  if (!e) return;
-  /* Entra na mesma lista dos vínculos — daí para a frente é uma escola como
-     qualquer outra, só que carregando a origem manual. */
-  if (!DECL_ESTADO.vinculos.filter(function (v) { return v.escolaId === e.escolaId; }).length) {
-    DECL_ESTADO.vinculos.push(e);
-  }
-  declPintarEscolas_();
-  document.getElementById("declEscola").value = e.escolaId;
-  document.getElementById("declEscolaResultados").innerHTML = "";
-  document.getElementById("declEscolaTermo").value = "";
-  declSelecionarEscola();
+function declEscolaCasa(v, termo) {
+  if (!termo) return true;
+  var alvo = ((v.nome || "") + " " + (v.fantasia || "") + " " + (v.documento || "")).toLowerCase();
+  return alvo.indexOf(termo.toLowerCase()) >= 0;
 }
 
+/** Monta a lista. `achadas === null` quer dizer que a busca está em voo. */
+function declEscolaPintar(vinculos, achadas, termo) {
+  var lista = document.getElementById("declEscolaLista");
+  DECL_ESTADO.achadas = (vinculos || []).concat(achadas || []);
+
+  var html = "";
+  if (vinculos && vinculos.length) {
+    html += '<div class="declAutoGrupo">Vínculo em Associados</div>' +
+            vinculos.map(function (v, i) { return declEscolaItem(v, i); }).join("");
+  }
+  if (achadas === null) {
+    html += '<div class="declAutoGrupo">Todas as escolas</div><div class="declAutoVazio">Procurando…</div>';
+  } else if (achadas && achadas.length) {
+    html += '<div class="declAutoGrupo">Todas as escolas</div>' +
+            achadas.map(function (e, i) { return declEscolaItem(e, (vinculos || []).length + i); }).join("");
+  } else if (termo && termo.length >= 2 && !(vinculos || []).length) {
+    html += '<div class="declAutoVazio">Nenhuma escola encontrada com “' + declEsc(termo) + '”.</div>';
+  } else if (!termo && !(vinculos || []).length) {
+    html += '<div class="declAutoVazio">Este dirigente não tem vínculo em Associados. Digite para buscar no cadastro.</div>';
+  }
+
+  lista.innerHTML = html;
+  lista.style.display = html ? "block" : "none";
+  DECL_ESTADO.escolaAtiva = -1;
+}
+
+function declEscolaItem(e, indice) {
+  var detalhe = [e.nome, e.documento].filter(Boolean).join(" · ");
+  return '<button type="button" class="declAutoItem" data-decl-esc="' + indice + '" onclick="declEscolaEscolher(' + indice + ')">' +
+           '<b>' + declEsc(e.fantasia || e.nome) + '</b>' +
+           (detalhe ? '<small>' + declEsc(detalhe) + '</small>' : '') +
+         '</button>';
+}
+
+/* Setas e Enter — quem digita nome de escola não quer tirar a mão do teclado. */
+function declEscolaTecla(ev) {
+  var itens = document.querySelectorAll("#declEscolaLista .declAutoItem");
+  if (!itens.length) return;
+  if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
+    ev.preventDefault();
+    var passo = ev.key === "ArrowDown" ? 1 : -1;
+    DECL_ESTADO.escolaAtiva = Math.max(0, Math.min(itens.length - 1, (DECL_ESTADO.escolaAtiva || 0) + passo));
+    for (var i = 0; i < itens.length; i++) itens[i].classList.toggle("declAutoAtivo", i === DECL_ESTADO.escolaAtiva);
+    itens[DECL_ESTADO.escolaAtiva].scrollIntoView({ block: "nearest" });
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    var alvo = itens[DECL_ESTADO.escolaAtiva >= 0 ? DECL_ESTADO.escolaAtiva : 0];
+    if (alvo) declEscolaEscolher(Number(alvo.getAttribute("data-decl-esc")));
+  } else if (ev.key === "Escape") {
+    document.getElementById("declEscolaLista").style.display = "none";
+  }
+}
+
+function declEscolaEscolher(indice) {
+  var e = (DECL_ESTADO.achadas || [])[indice];
+  if (!e) return;
+  DECL_ESTADO.escola = e;
+  if (!(DECL_ESTADO.vinculos || []).some(function (v) { return v.escolaId === e.escolaId; })) {
+    DECL_ESTADO.vinculos.push(e);
+  }
+  document.getElementById("declEscolaCampo").value = e.fantasia || e.nome;
+  document.getElementById("declEscolaLista").style.display = "none";
+  document.getElementById("declEscolaLimpar").style.display = "block";
+  document.getElementById("declEscolaOrigem").innerHTML =
+    (e.vinculoOrigem && e.vinculoOrigem !== "Associados")
+      ? '<span class="declOrigemManual">escolhida manualmente — não veio do vínculo em Associados</span>'
+      : "vínculo em Associados · identidade em Escolas";
+  declPrevia();
+}
+
+function declEscolaLimpar() {
+  DECL_ESTADO.escola = null;
+  var campo = document.getElementById("declEscolaCampo");
+  campo.value = "";
+  campo.disabled = false;
+  document.getElementById("declEscolaLimpar").style.display = "none";
+  document.getElementById("declEscolaOrigem").textContent = "vínculo em Associados · identidade em Escolas";
+  declEscolaPintar(DECL_ESTADO.vinculos || [], [], "");
+  campo.focus();
+  declPrevia();
+}
+
+/* O pedido que vai ao servidor. A escola sai do ESTADO, não de um campo de
+   texto: o que a pessoa digitou é busca, o que ela escolheu é escolha. */
 function declDados(confirmado) {
   return {
     diretorId: document.getElementById("declDiretor").value,
     dataLiberacao: document.getElementById("declDataLiberacao").value,
     dataEmissao: document.getElementById("declDataEmissao").value,
     periodo: DECL_ESTADO.periodo,
-    escolaId: document.getElementById("declEscola").value,
+    escolaId: (DECL_ESTADO.escola || {}).escolaId || "",
     confirmado: confirmado === true
   };
 }
@@ -782,12 +890,11 @@ function declPreviaAgora() {
   var caixa = document.getElementById("declPrevia");
   var aviso = document.getElementById("declPreviaAviso");
 
-  /* "__BUSCAR__" é a opção de busca manual, não uma escola. Mandá-la ao
-     servidor fazia a prévia responder "Selecione a escola empregadora" e,
-     segundos depois, o texto certo chegar por cima — o pisca-pisca que o
-     usuário fotografou em 15/09/2026. Pedido que não vai dar certo não sai
-     daqui. */
-  if (!d.diretorId || !d.escolaId || d.escolaId === "__BUSCAR__" || !d.dataLiberacao) {
+  /* Pedido que não vai dar certo não sai daqui — era o pisca-pisca que você
+     fotografou: o servidor respondia "Selecione a escola" e, segundos
+     depois, o texto certo chegava por cima. Com o autocomplete, escolaId só
+     existe depois de escolher de verdade. */
+  if (!d.diretorId || !d.escolaId || !d.dataLiberacao) {
     caixa.textContent = "Selecione o diretor, a escola empregadora e a data para ver a prévia.";
     aviso.style.display = "none";
     return;
@@ -888,9 +995,12 @@ function declRenderEntrega_(escopo, r) {
 
   /* Em homologação o e-mail não vai para a escola. Dizer isso ANTES do
      clique, não depois — é a diferença entre um teste e um susto. */
+  /* O aviso só aparece onde ele muda alguma coisa: em homologação, o e-mail
+     não vai para a escola. Em produção, mostrar isso seria mentir. */
   var hml = document.getElementById("declEntregaAvisoHml");
-  hml.style.display = "block";
-  hml.textContent = "O envio usa o remetente oficial do SISGEP. Em homologação a mensagem vai para a Secretaria, não para a escola.";
+  var emHml = /homologa/i.test(String(r.emailCorpo || "")) || /TESTE_HML/.test(String(r.emailStatus || ""));
+  hml.style.display = emHml ? "flex" : "none";
+  hml.innerHTML = '<span>⚠️</span><div>Você está em <b>homologação</b>: a mensagem vai para a Secretaria, não para a escola.</div>';
 
   document.getElementById(alvo.contatos).innerHTML = contatos.length ? contatos.map(function (c, i) {
     return '<label class="declContato"><input type="checkbox" data-decl-email="' + i + '"' + (c.marcado ? ' checked' : '') + '><span><b>' + declEsc(c.email) + '</b><small>' + declEsc((c.origens || []).join(" · ")) + (c.falhas ? ' · ' + c.falhas + ' falha(s)' : '') + '</small></span></label>';
@@ -1040,11 +1150,11 @@ function declConfirmarWhatsapp(escopo) {
 
 function declLimpar() {
   document.getElementById("declDiretor").value = "";
-  document.getElementById("declEscola").innerHTML = '<option value="">— selecione o diretor —</option>';
-  document.getElementById("declEscola").disabled = true;
-  document.getElementById("declEscolaBusca").style.display = "none";
-  document.getElementById("declEscolaTermo").value = "";
-  document.getElementById("declEscolaResultados").innerHTML = "";
+  var campoEsc = document.getElementById("declEscolaCampo");
+  campoEsc.value = ""; campoEsc.disabled = true;
+  campoEsc.placeholder = "🔎 selecione o diretor primeiro";
+  document.getElementById("declEscolaLimpar").style.display = "none";
+  document.getElementById("declEscolaLista").style.display = "none";
   document.getElementById("declEscolaOrigem").textContent = "vínculo em Associados · identidade em Escolas";
   document.getElementById("declAcoesDocumento").style.display = "none";
   document.getElementById("declLinkPdf").setAttribute("href", "#");
@@ -1292,7 +1402,11 @@ function declReemitir(diretorId, periodo, escolaId) {
 window.declInit = declInit;
 window.declAba = declAba;
 window.declAbrirEntrega = declAbrirEntrega;
-window.declEscolherAchada = declEscolherAchada;
+window.declEscolaAbrir = declEscolaAbrir;
+window.declEscolaDigitou = declEscolaDigitou;
+window.declEscolaTecla = declEscolaTecla;
+window.declEscolaEscolher = declEscolaEscolher;
+window.declEscolaLimpar = declEscolaLimpar;
 window.declConferirConfig = declConferirConfig;
 window.declEntregaAba = declEntregaAba;
 window.declIncluirContato = declIncluirContato;

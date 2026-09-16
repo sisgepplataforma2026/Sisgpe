@@ -143,8 +143,14 @@ function clicar(el, oque) {
     $("declEntregaNumero").textContent);
   b.ok(/UVV|Sociedade/.test($("declEntregaEscola").textContent), "e para qual escola vai",
     $("declEntregaEscola").textContent);
-  b.ok($("declEntregaAvisoHml").style.display === "block",
-    "avisa sobre o destino ANTES do clique, não depois");
+  /* O aviso de homologação só aparece onde muda alguma coisa — no emulador
+     o ambiente não é homologação, então ele fica escondido. O que precisa
+     estar sempre visível é a LISTA de destinatários, que é o que a pessoa
+     confere antes de clicar. */
+  const caixasEmail = $("declEntregaModalContatos").querySelectorAll("[data-decl-email]");
+  b.ok(caixasEmail.length > 0, "os destinatários aparecem antes do clique", caixasEmail.length + " e-mail(s)");
+  b.ok(/rh@uvv\.br/.test($("declEntregaModalContatos").textContent),
+    "e o endereço em si está no texto da tela, não só a origem");
 
   const caixas = $("declEntregaModalContatos").querySelectorAll("[data-decl-email]");
   b.ok(caixas.length === 2, "os e-mails conferidos na emissão estão lá", caixas.length + " contato(s)");
@@ -173,9 +179,11 @@ function clicar(el, oque) {
     "o período foi repetido");
   /* O CORAÇÃO DO DEFEITO: sem a chamada explícita a declCarregarVinculos, o
      select abaixo fica desabilitado e vazio, e a emissão é recusada. */
-  b.ok(!$("declEscola").disabled, "o select de escola ficou habilitado");
-  b.ok($("declEscola").value === "ESC-UVV", "a escola da declaração anterior voltou selecionada",
-    $("declEscola").value);
+  b.ok(!$("declEscolaCampo").disabled, "o campo de escola ficou habilitado");
+  b.ok((win.DECL_ESTADO.escola || {}).escolaId === "ESC-UVV",
+    "a escola da declaração anterior voltou preenchida", (win.DECL_ESTADO.escola || {}).nome);
+  b.ok(/UVV|Sociedade/.test($("declEscolaCampo").value),
+    "e o nome dela aparece no campo", $("declEscolaCampo").value);
   b.ok($("declDataLiberacao").value === "", "a data da liberação vem em branco — é o que muda");
 
   b.passo("5. E o que a tela monta agora é emitível de verdade");
@@ -185,7 +193,7 @@ function clicar(el, oque) {
     "a prévia espera só pela data");
   const segunda = g.declEmitirDeclaracaoDiretor({
     diretorId: $("declDiretor").value,
-    escolaId: $("declEscola").value,
+    escolaId: (win.DECL_ESTADO.escola || {}).escolaId,
     dataLiberacao: amanha.toISOString().slice(0, 10),
     periodo: "VESPERTINO",
     confirmado: true
@@ -200,27 +208,35 @@ function clicar(el, oque) {
   mudar("#declDiretor", semVinculo.value);
   await tela.assentar(120);
 
-  b.ok($("declEscolaBusca").style.display === "block", "a busca aparece sem ninguém pedir");
-  b.ok(/manual/i.test($("declEscolaOrigem").textContent), "e diz que a escolha será registrada como manual",
-    $("declEscolaOrigem").textContent.replace(/\s+/g, " ").trim());
+  b.ok(!$("declEscolaCampo").disabled, "o campo de escola aceita digitação direto");
+  /* Sem vínculo, o autocomplete não esconde nada atrás de uma opção que
+     ninguém adivinha: é digitar e buscar nas 679 do cadastro. A marca de
+     "escolhida manualmente" aparece DEPOIS de escolher — asserção mais
+     abaixo, onde ela de fato importa. */
+  win.declEscolaAbrir();
+  await tela.assentar(60);
+  b.ok(/vínculo em Associados/i.test($("declEscolaOrigem").textContent) ||
+       $("declEscolaLista").style.display !== "none",
+    "o campo abre sozinho, sem etapa escondida");
 
-  mudar("#declEscolaTermo", "UVV", "oninput");
+  mudar("#declEscolaCampo", "UVV", "oninput");
   await tela.assentar(450);   /* 300ms de debounce + a ida ao backend */
 
-  const achadas = $("declEscolaResultados").querySelectorAll(".declBuscaItem");
+  const achadas = $("declEscolaLista").querySelectorAll(".declAutoItem");
   b.ok(achadas.length > 0, "a busca no cadastro devolve a escola", achadas.length + " resultado(s)");
 
   clicar(achadas[0], "escolher escola achada");
   await tela.assentar(120);
 
-  b.ok($("declEscola").value === "ESC-UVV", "a escola escolhida entra no select", $("declEscola").value);
-  b.ok(/escolhida manualmente/i.test($("declEscola").selectedOptions[0].textContent),
-    "marcada como manual na própria opção");
-  b.ok($("declEscolaBusca").style.display === "none", "a busca se recolhe depois da escolha");
+  b.ok((win.DECL_ESTADO.escola || {}).escolaId === "ESC-UVV", "a escola escolhida entra no estado",
+    (win.DECL_ESTADO.escola || {}).escolaId);
+  b.ok(/manual/i.test($("declEscolaOrigem").textContent), "com a origem manual à vista",
+    $("declEscolaOrigem").textContent.replace(/\s+/g, " ").trim());
+  b.ok($("declEscolaLista").style.display === "none", "a lista se recolhe depois da escolha");
 
   b.passo("7. E o que sai dali emite, com a origem gravada");
   const manual = g.declEmitirDeclaracaoDiretor({
-    diretorId: $("declDiretor").value, escolaId: $("declEscola").value,
+    diretorId: $("declDiretor").value, escolaId: (win.DECL_ESTADO.escola || {}).escolaId,
     dataLiberacao: amanha.toISOString().slice(0, 10), periodo: "MATUTINO", confirmado: true
   }, TOKEN);
   b.ok(manual.ok, "emite com a escola escolhida à mão", manual.numero);
@@ -235,12 +251,12 @@ function clicar(el, oque) {
   /* A data ficou em branco no passo 4 (é o que o Reemitir faz). Sem ela a
      prévia nem chega ao servidor, e o teste mediria outra coisa. */
   mudar("#declDataLiberacao", amanha.toISOString().slice(0, 10));
-  tela.escolher("#declEscola", "");
   win.DECL_ESTADO.escola = null;
   const idxLento = tela.chamadas.length;
   tela.atrasar("declPreviaDeclaracaoDiretor", idxLento, 500);
   win.declPreviaAgora();                       /* prévia #1, sem escola, lenta */
-  mudar("#declEscola", "ESC-UVV");             /* prévia #2, com escola */
+  win.DECL_ESTADO.achadas = win.DECL_ESTADO.vinculos;
+  win.declEscolaEscolher(0);                   /* prévia #2, com escola */
   await tela.assentar(800);
   b.ok(/Declaramos/.test($("declPrevia").textContent),
     "o texto que fica é o da prévia mais nova",
@@ -286,7 +302,8 @@ function clicar(el, oque) {
   declFecharModais();
   mudar("#declDiretor", dirId);
   await tela.assentar(150);
-  tela.escolher("#declEscola", "ESC-UVV");
+  win.DECL_ESTADO.achadas = win.DECL_ESTADO.vinculos;
+  win.declEscolaEscolher(0);
   mudar("#declDataLiberacao", amanha.toISOString().slice(0, 10));
   await tela.assentar(350);
 
