@@ -381,14 +381,13 @@ function enviarEmailComplementacaoVoucher_(reg, protocolo, obs) {
       to: email,
       subject: "Complementação de documentos — " + protocolo + " · SindEducação-ES",
       htmlBody:
-        "<div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;'>" +
-        "<h2 style='color:#002f6c;'>Solicitação de complementação</h2>" +
-        "<p>Olá <strong>" + escHtmlVoucher_(reg.NOME_SOLICITANTE) + "</strong>,</p>" +
+        voucherEmailHtml_("Solicitação de complementação",
+        "<p>Olá, <strong>" + escHtmlVoucher_(reg.NOME_SOLICITANTE) + "</strong>,</p>" +
         "<p>Precisamos de complementação para dar continuidade à sua solicitação de bolsa.</p>" +
         "<p><strong>Protocolo:</strong> " + escHtmlVoucher_(protocolo) + "</p>" +
-        "<p><strong>Orientação:</strong> " + escHtmlVoucher_(obs) + "</p>" +
-        "<p>Atenciosamente,<br>SindEducação-ES</p>" +
-        "</div>"
+        "<div style='margin:14px 0;padding:12px 16px;background:#f8fafc;border-left:4px solid #001f4d;border-radius:8px;'>" +
+        escHtmlVoucher_(obs) + "</div>" +
+        "<p>Atenciosamente,<br><strong>Secretaria — SindEducação-ES</strong></p>")
     });
 
   } catch (e) {
@@ -405,16 +404,14 @@ function enviarEmailNaoAssociadoVoucher_(reg, protocolo) {
       to: email,
       subject: "Atendimento presencial necessário — " + protocolo + " · SindEducação-ES",
       htmlBody:
-        "<div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;'>" +
-        "<h2 style='color:#92400e;'>Atendimento presencial necessário</h2>" +
-        "<p>Olá <strong>" + escHtmlVoucher_(reg.NOME_SOLICITANTE) + "</strong>,</p>" +
+        voucherEmailHtml_("Atendimento presencial necessário",
+        "<p>Olá, <strong>" + escHtmlVoucher_(reg.NOME_SOLICITANTE) + "</strong>,</p>" +
         "<p>Seu cadastro foi identificado como <strong>não associado</strong>.</p>" +
         "<p>Para continuidade da solicitação, compareça à sede do SindEducação-ES em até <strong>15 dias úteis</strong>, levando este protocolo e a documentação necessária.</p>" +
         "<p><strong>Protocolo:</strong> " + escHtmlVoucher_(protocolo) + "</p>" +
         "<p><strong>Endereço:</strong> " + escHtmlVoucher_(ENDERECO_SIND_V) + "</p>" +
         "<p><strong>Telefone:</strong> " + escHtmlVoucher_(TELEFONE_SIND_V) + "</p>" +
-        "<p>Atenciosamente,<br>SindEducação-ES</p>" +
-        "</div>"
+        "<p>Atenciosamente,<br><strong>Secretaria — SindEducação-ES</strong></p>")
     });
 
   } catch (e) {
@@ -450,9 +447,8 @@ function enviarEmailAprovacaoVoucher_(reg, protocolo) {
       to: email,
       subject: "Bolsa aprovada — " + protocolo + " · SindEducação-ES",
       htmlBody:
-        "<div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;'>" +
-        "<h2 style='color:#166534;'>Bolsa aprovada</h2>" +
-        "<p>Olá <strong>" + escHtmlVoucher_(reg.NOME_SOLICITANTE) + "</strong>,</p>" +
+        voucherEmailHtml_("Bolsa aprovada",
+        "<p>Olá, <strong>" + escHtmlVoucher_(reg.NOME_SOLICITANTE) + "</strong>,</p>" +
         "<p>Sua solicitação de bolsa foi aprovada.</p>" +
         "<p><strong>Protocolo:</strong> " + escHtmlVoucher_(protocolo) + "</p>" +
         "<p><strong>Curso:</strong> " + escHtmlVoucher_(reg.CURSO) + "</p>" +
@@ -464,8 +460,7 @@ function enviarEmailAprovacaoVoucher_(reg, protocolo) {
             "e-mail.</p>"
           : "<p>O voucher será emitido e encaminhado após a geração do " +
             "documento oficial.</p>") +
-        "<p>Atenciosamente,<br>SindEducação-ES</p>" +
-        "</div>"
+        "<p>Atenciosamente,<br><strong>Secretaria — SindEducação-ES</strong></p>")
     });
 
   } catch (e) {

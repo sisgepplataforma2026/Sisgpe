@@ -622,13 +622,8 @@ function enviarEmailConfirmacaoSolicitacaoVoucher_(dados) {
       to: dados.email,
       subject: "Protocolo de Solicitação de Bolsa — SindEducação-ES · " + dados.protocolo,
       htmlBody:
-        "<div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;'>" +
-          "<div style='background:#002f6c;padding:24px;border-radius:12px 12px 0 0;text-align:center;'>" +
-            "<h1 style='color:#C9A84C;margin:0;font-size:22px;'>SindEducação-ES</h1>" +
-            "<p style='color:rgba(255,255,255,.7);margin:6px 0 0;font-size:13px;'>Solicitação de Bolsa de Estudo</p>" +
-          "</div>" +
-          "<div style='background:#fff;padding:28px;border:1px solid #e2e8f0;border-top:none;'>" +
-            "<p>Olá <strong>" + escHtmlVoucher_(dados.nome) + "</strong>,</p>" +
+        voucherEmailHtml_("Solicitação de Bolsa de Estudo",
+            "<p>Olá, <strong>" + escHtmlVoucher_(dados.nome) + "</strong>,</p>" +
             "<p>Sua solicitação foi registrada com sucesso.</p>" +
             "<div style='background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;margin:20px 0;text-align:center;'>" +
               "<p style='font-size:11px;color:#64748b;margin-bottom:4px;'>Número do Protocolo</p>" +
@@ -643,11 +638,7 @@ function enviarEmailConfirmacaoSolicitacaoVoucher_(dados) {
             "</table>" +
             aviso +
             "<p style='font-size:13px;color:#64748b;'>Prazo de análise: até <strong>15 dias úteis</strong>.</p>" +
-          "</div>" +
-          "<div style='background:#f8fafc;padding:14px;text-align:center;border-radius:0 0 12px 12px;border:1px solid #e2e8f0;border-top:none;'>" +
-            "<p style='font-size:11px;color:#94a3b8;'>SindEducação-ES · " + escHtmlVoucher_(SITE_SIND_V) + "</p>" +
-          "</div>" +
-        "</div>"
+            "<p>Atenciosamente,<br><strong>Secretaria — SindEducação-ES</strong></p>")
     });
 
   } catch(e) {
@@ -664,11 +655,7 @@ function enviarEmailInternoNovaSolicitacaoVoucher_(dados) {
       cc: "financeiro@sindeducacao.com",
       subject: "📋 Nova solicitação de bolsa — " + dados.protocolo,
       htmlBody:
-        "<div style='font-family:Arial,sans-serif;max-width:620px;'>" +
-          "<div style='background:#002f6c;padding:20px;border-radius:10px 10px 0 0;'>" +
-            "<h2 style='color:#C9A84C;margin:0;font-size:18px;'>Nova solicitação de bolsa</h2>" +
-          "</div>" +
-          "<div style='background:#fff;padding:22px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 10px 10px;'>" +
+        voucherEmailHtml_("Nova solicitação de bolsa",
             "<table style='width:100%;font-size:13px;border-collapse:collapse;'>" +
               "<tr><td style='color:#64748b;padding:5px 0;width:38%;'>Protocolo:</td><td style='font-weight:700;'>" + escHtmlVoucher_(dados.protocolo) + "</td></tr>" +
               "<tr><td style='color:#64748b;padding:5px 0;'>Solicitante:</td><td style='font-weight:700;'>" + escHtmlVoucher_(dados.nome) + "</td></tr>" +
@@ -682,9 +669,7 @@ function enviarEmailInternoNovaSolicitacaoVoucher_(dados) {
               "<tr><td style='color:#64748b;padding:5px 0;'>Funcionário novo:</td><td>" + escHtmlVoucher_(dados.funcionarioNovo) + "</td></tr>" +
               "<tr><td style='color:#64748b;padding:5px 0;'>Escola não cadastrada:</td><td>" + escHtmlVoucher_(dados.escolaNaoCadastrada) + "</td></tr>" +
               "<tr><td style='color:#64748b;padding:5px 0;'>Desconto calculado:</td><td style='font-weight:700;color:#059669;'>" + (dados.percentual || "—") + "%</td></tr>" +
-            "</table>" +
-          "</div>" +
-        "</div>"
+            "</table>")
     });
 
   } catch(e) {

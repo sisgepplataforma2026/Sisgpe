@@ -113,6 +113,34 @@ arquivos.forEach(function (arq) {
     arq + " não envia mais pelo MailApp");
 });
 
+/* ── 5. NENHUM E-MAIL DO MÓDULO MONTA CABEÇALHO PRÓPRIO ─────────────────── */
+/* Era o defeito 2: um e-mail em roxo, outro em azul chapado, cada um com o
+   seu <h2>. Agora todo corpo entra pela casca — ou pelo corpo do certificado,
+   que é documento formatado à parte. A varredura olha CADA chamada de envio. */
+b.passo("todo envio passa pela casca");
+arquivos.forEach(function (arq) {
+  const src = fs.readFileSync(path.join(RAIZ, arq), "utf8");
+  const re = /voucherEnviarMsg_\(/g;
+  let m;
+  while ((m = re.exec(src)) !== null) {
+    /* Pular as DUAS definições do próprio par de helpers: elas não montam
+       corpo nenhum, só repassam o que recebem. */
+    if (/(function|return)\s+voucherEnviarMsg_\($/.test(src.slice(0, m.index + 18))) continue;
+    /* A janela olha para TRÁS também: em VoucherEnvio o corpo é montado numa
+       variável `msg` algumas linhas antes da chamada. Só olhar para a frente
+       reprovaria um envio correto. */
+    const trecho = src.slice(Math.max(0, m.index - 900), m.index + 900);
+    b.ok(/voucherEmailHtml_\(|voucherCorpoEmail_\(/.test(trecho),
+      arq + ": o envio na posição " + m.index + " usa a casca do SISGEP");
+  }
+});
+/* E o <h2> colorido que cada um trazia não volta. */
+arquivos.forEach(function (arq) {
+  const src = fs.readFileSync(path.join(RAIZ, arq), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  b.ok(!/<h2 style='color:#(166534|92400e|002f6c)/.test(src),
+    arq + " não tem mais cabeçalho de cor própria");
+});
+
 b.naoTestavel("o e-mail chegando de fato na caixa do associado",
   "entrega depende do Gmail real e do alias verificado na conta executora — roteiro manual: aprovar uma bolsa em homologação e conferir o remetente na mensagem recebida");
 b.resumo();
