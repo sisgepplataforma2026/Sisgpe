@@ -22,6 +22,11 @@ on:
         required: false
         default: ""
         type: string
+      hml_sha:
+        description: "Opcional: commit homologado a promover. Vazio = topo de integracao/sisgep-homologacao. Seja qual for, tem que estar nesse branch."
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -30,15 +35,49 @@ concurrency:
   group: deploy-producao
   cancel-in-progress: false
 
+# ══════════════════════════════════════════════════════════════════════════
+# CADA AMBIENTE USA O SEU BRANCH — 16/09/2026
+#
+# "Nao pode ficar toda hora uma branch diferente; cada ambiente tem que usar a
+# sua" — o usuario, depois da quinta promocao do dia.
+#
+# COMO ERA: cada promocao criava um branch novo (`promocao/hml-XXXX-para-...`)
+# e exigia editar QUATRO valores neste arquivo a mao — o nome do branch no
+# `if`, o SHA homologado, e as contagens de .gs e de .html. Na quinta vez o
+# branch novo nasceu da linha principal, que nao carregava as ancoras da
+# promocao anterior: o arquivo apontava para um commit de DUAS rodadas atras.
+# Deu para ver a tempo, mas o modo de falhar era silencioso — a esteira
+# compararia com o commit errado dizendo que estava tudo certo.
+#
+# COMO E AGORA: dois branches fixos, um por ambiente.
+#
+#     integracao/sisgep-homologacao  ->  Homologacao
+#     producao/sisgep                ->  Producao
+#
+# Promover passou a ser empurrar o commit ja homologado para
+# `producao/sisgep` e disparar. Nenhum arquivo e editado, entao nao ha o que
+# errar de digitacao.
+#
+# A TROCA NAO AFROUXA A TRAVA, ELA APERTA. O SHA escrito a mao podia ser
+# qualquer coisa: nada conferia se aquele commit tinha mesmo passado pela
+# homologacao. Agora o workflow EXIGE que o commit esteja contido em
+# `integracao/sisgep-homologacao` — so vai para producao o que passou por la
+# de verdade. E as contagens saem do proprio commit homologado, em vez de um
+# numero fixo que envelhece a cada arquivo novo.
+#
+# Continua igual: a barreira de ref (um branch so, agora fixo), a confirmacao
+# digitada, o t46, a suite completa, o backup do estado anterior e a
+# conferencia da implantacao depois de publicar.
+# ══════════════════════════════════════════════════════════════════════════
 jobs:
   producao:
-    if: github.ref == 'refs/heads/promocao/hml-8f39d7a-para-producao-2026-09-16'
+    if: github.ref == 'refs/heads/producao/sisgep'
     runs-on: ubuntu-latest
 
     env:
       PROD_SCRIPT_ID: "1BoKA6pOOT751zmxahnvSgT2CJDgMpUPMvZj-X0HjDx_tCHLnXOqxVVqa"
       PROD_DEPLOYMENT_ID: "AKfycbzgPBSSF3D2OimoEJ-qMfDNp_Dsmc95THSNdUvFgqoX7NXWcmn7ZDMzF9L-OyUbEMw_ew"
-      HML_APROVADA_SHA: "8f39d7a04b5111fba138cc9d1540fab7db437168"
+      BRANCH_HOMOLOGACAO: "integracao/sisgep-homologacao"
 
     steps:
       - name: Checkout da promocao
@@ -56,21 +95,68 @@ jobs:
           npm install -g @google/clasp@3.3.0
           npm ci || npm install
 
-      - name: Confirmar que o codigo e o homologado
+      - name: Confirmar que o codigo passou pela homologacao
+        id: homologado
         shell: bash
         run: |
           set -euo pipefail
-          git cat-file -e "$HML_APROVADA_SHA^{commit}"
-          if ! git diff --quiet "$HML_APROVADA_SHA" HEAD -- \
-            ':(top,glob)*.gs' ':(top,glob)*.html' ':(top,glob)appsscript.json'; then
-            echo "::error::Os arquivos do Apps Script nao sao identicos ao commit homologado $HML_APROVADA_SHA."
+
+          git fetch --no-tags origin "$BRANCH_HOMOLOGACAO"
+          TOPO_HML=$(git rev-parse FETCH_HEAD)
+
+          # O commit homologado e o topo da homologacao, a nao ser que alguem
+          # informe outro explicitamente (para republicar uma versao anterior).
+          if [ -n "${HML_SHA_INFORMADO:-}" ]; then
+            git cat-file -e "${HML_SHA_INFORMADO}^{commit}"
+            HML=$(git rev-parse "${HML_SHA_INFORMADO}^{commit}")
+          else
+            HML="$TOPO_HML"
+          fi
+
+          # A TRAVA QUE NAO EXISTIA. Ate 16/09/2026 o SHA vinha escrito a mao
+          # neste arquivo e NADA conferia se aquele commit tinha passado pela
+          # homologacao — podia ser qualquer coisa. Agora ele precisa estar
+          # contido no branch de homologacao, senao nao vai para producao.
+          if ! git merge-base --is-ancestor "$HML" "$TOPO_HML"; then
+            echo "::error::O commit $HML nao esta em $BRANCH_HOMOLOGACAO. Publique em homologacao antes de promover."
             exit 1
           fi
+
+          # E o que esta aqui precisa ser, byte a byte, o que foi homologado.
+          if ! git diff --quiet "$HML" HEAD -- \
+            ':(top,glob)*.gs' ':(top,glob)*.html' ':(top,glob)appsscript.json'; then
+            echo "::error::Os arquivos do Apps Script neste ramo nao sao identicos ao commit homologado $HML."
+            exit 1
+          fi
+
+          # AS CONTAGENS SAEM DO PROPRIO COMMIT HOMOLOGADO, nao de um numero
+          # fixo que envelhece a cada arquivo criado. Comparar com o que esta
+          # no disco pega arquivo que apareceu ou sumiu sem passar pelo git.
+          GS_HML=$(git ls-tree --name-only "$HML" | grep -c '\.gs$' || true)
+          HTML_HML=$(git ls-tree --name-only "$HML" | grep -c '\.html$' || true)
           GS=$(find . -maxdepth 1 -type f -name '*.gs' | wc -l)
           HTML=$(find . -maxdepth 1 -type f -name '*.html' | wc -l)
-          test "$GS" -eq 181
-          test "$HTML" -eq 100
-          echo "codigo homologado confirmado: $GS .gs e $HTML .html"
+
+          # Projeto vazio nunca e resultado legitimo: seria `clasp push
+          # --force` apagando a Producao inteira.
+          if [ "$GS_HML" -lt 100 ] || [ "$HTML_HML" -lt 50 ]; then
+            echo "::error::Contagem implausivel no commit homologado ($GS_HML .gs, $HTML_HML .html). Nada foi publicado."
+            exit 1
+          fi
+          if [ "$GS" -ne "$GS_HML" ] || [ "$HTML" -ne "$HTML_HML" ]; then
+            echo "::error::O disco tem $GS .gs e $HTML .html, mas o commit homologado tem $GS_HML e $HTML_HML."
+            exit 1
+          fi
+
+          echo "hml=$HML" >> "$GITHUB_OUTPUT"
+          echo "codigo homologado confirmado: $HML — $GS .gs e $HTML .html"
+          {
+            echo "Commit homologado: \`$HML\`"
+            echo ""
+            echo "Conferido contra \`$BRANCH_HOMOLOGACAO\` ($GS .gs, $HTML .html)."
+          } >> "$GITHUB_STEP_SUMMARY"
+        env:
+          HML_SHA_INFORMADO: ${{ inputs.hml_sha }}
 
       - name: Validar integridade dos arquivos
         run: node tests/e2e/t46-arquivos-integros.js
@@ -290,7 +376,7 @@ jobs:
             echo
             echo "Nova versao: **$NOVA_VERSAO**"
             echo "Versao anterior para rollback: **${{ steps.antes.outputs.versao }}**"
-            echo "Commit homologado: \`$HML_APROVADA_SHA\`"
+            echo "Commit homologado: \`${{ steps.homologado.outputs.hml }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Limpar credenciais locais
