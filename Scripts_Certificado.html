@@ -53,12 +53,12 @@
 
 #secCertificadoAdmin .cert-content { padding: 0 32px 48px; }
 
-#secCertificadoAdmin .cert-cert_msg { border-radius: 12px; font-size: 13.5px; font-weight: 600; margin-bottom: 16px; line-height: 1.5; }
-#secCertificadoAdmin .cert-cert_msg:empty { display: none; }
-#secCertificadoAdmin .cert-cert_msg.ok   { background: var(--green-lt); border: 1px solid #6ee7b7; color: #065f46; padding: 12px 16px; }
-#secCertificadoAdmin .cert-cert_msg.erro { background: var(--red-lt);   border: 1px solid #fca5a5; color: #9f1239;  padding: 12px 16px; }
-#secCertificadoAdmin .cert-cert_msg.warn { background: var(--amber-lt); border: 1px solid #fcd34d; color: #92400e;  padding: 12px 16px; }
-#secCertificadoAdmin .cert-cert_msg.info { background: #eff6ff;         border: 1px solid #93c5fd; color: #1d4ed8;  padding: 12px 16px; }
+#secCertificadoAdmin .cert-msg { border-radius: 12px; font-size: 13.5px; font-weight: 600; margin-bottom: 16px; line-height: 1.5; }
+#secCertificadoAdmin .cert-msg:empty { display: none; }
+#secCertificadoAdmin .cert-msg.ok   { background: var(--green-lt); border: 1px solid #6ee7b7; color: #065f46; padding: 12px 16px; }
+#secCertificadoAdmin .cert-msg.erro { background: var(--red-lt);   border: 1px solid #fca5a5; color: #9f1239;  padding: 12px 16px; }
+#secCertificadoAdmin .cert-msg.warn { background: var(--amber-lt); border: 1px solid #fcd34d; color: #92400e;  padding: 12px 16px; }
+#secCertificadoAdmin .cert-msg.info { background: #eff6ff;         border: 1px solid #93c5fd; color: #1d4ed8;  padding: 12px 16px; }
 
 #secCertificadoAdmin .cert-card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,.055); box-shadow: 0 2px 12px rgba(0,20,60,.06); overflow: hidden; margin-bottom: 16px; }
 #secCertificadoAdmin .cert-card-head { padding: 16px 20px 13px; border-bottom: 1px solid var(--g100); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
@@ -252,12 +252,12 @@
 #certModalBox .cert-info-item, #certEnvioBox .cert-info-item, #certNovaBox .cert-info-item { display: flex; flex-direction: column; gap: 3px; }
 #certModalBox .cert-info-label, #certEnvioBox .cert-info-label, #certNovaBox .cert-info-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
 #certModalBox .cert-info-val, #certEnvioBox .cert-info-val, #certNovaBox .cert-info-val   { font-size: 13px; font-weight: 700; color: #1e293b; }
-.cert-linkpub { display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:16px; padding:14px 18px; background:#f0f9ff; border:1.5px solid #bae6fd; border-left:4px solid #0284c7; border-radius:14px; }
-.cert-linkpub-txt { flex:1; min-width:260px; }
-.cert-linkpub-txt b { display:block; font-size:13.5px; font-weight:800; color:#075985; }
-.cert-linkpub-txt span { display:block; font-size:11.5px; color:#0369a1; font-weight:600; line-height:1.5; margin-top:2px; }
-.cert-linkpub-url { display:block; margin-top:8px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11.5px; color:#0c4a6e; background:#fff; border:1px solid #bae6fd; border-radius:8px; padding:7px 10px; word-break:break-all; user-select:all; }
-.cert-linkpub-btns { display:flex; gap:8px; flex-wrap:wrap; }
+#secCertificadoAdmin .cert-linkpub { display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:16px; padding:14px 18px; background:#f0f9ff; border:1.5px solid #bae6fd; border-left:4px solid #0284c7; border-radius:14px; }
+#secCertificadoAdmin .cert-linkpub-txt { flex:1; min-width:260px; }
+#secCertificadoAdmin .cert-linkpub-txt b { display:block; font-size:13.5px; font-weight:800; color:#075985; }
+#secCertificadoAdmin .cert-linkpub-txt span { display:block; font-size:11.5px; color:#0369a1; font-weight:600; line-height:1.5; margin-top:2px; }
+#secCertificadoAdmin .cert-linkpub-url { display:block; margin-top:8px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11.5px; color:#0c4a6e; background:#fff; border:1px solid #bae6fd; border-radius:8px; padding:7px 10px; word-break:break-all; user-select:all; }
+#secCertificadoAdmin .cert-linkpub-btns { display:flex; gap:8px; flex-wrap:wrap; }
 #certModalBox .cert-section-title, #certEnvioBox .cert-section-title, #certNovaBox .cert-section-title { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #94a3b8; border-bottom: 1px solid #f1f5f9; padding-bottom: 7px; margin-bottom: 12px; margin-top: 16px; }
 #certModalBox .cert-obs-area, #certEnvioBox .cert-obs-area, #certNovaBox .cert-obs-area { width: 100%; min-height: 80px; border-radius: 11px; border: 1.5px solid #cbd5e1; background: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; padding: 11px 13px; outline: none; resize: vertical; line-height: 1.55; color: #1e293b; transition: border-color .16s; }
 #certModalBox .cert-obs-area:focus, #certEnvioBox .cert-obs-area:focus, #certNovaBox .cert-obs-area:focus { border-color: #1565C0; box-shadow: 0 0 0 4px rgba(21,101,192,.09); }
@@ -285,31 +285,6 @@
         <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certBtnRecarregar">↻ Atualizar</button>
         <button type="button" class="cert-btn cert-btn-gold cert-btn-sm" id="certBtnExportarCsv">📤 Exportar CSV</button>
       </div>
-    </div>
-  </div>
-
-  <!-- LINK PÚBLICO — 16/09/2026, "deixa visível na página (mesmo modelo da
-       festa) para copiarmos".
-
-       Mesmo padrão do card de inscrição do Compasso em EventosAdmin.html: o
-       endereço à vista, num <code> selecionável, e um botão que copia. Ficar
-       decorando ou pedindo a URL a alguém é o que faz a secretaria mandar o
-       link errado.
-
-       A URL NÃO É ESCRITA AQUI. Vem de `beneficiosPrepararLinkInteresse`, que
-       resolve a publicação do ambiente — colar a URL de produção no HTML faria
-       a homologação distribuir o formulário de produção, que é o pior erro
-       possível numa tela que existe para divulgar endereço. -->
-  <div class="cert-linkpub" id="certLinkPubBox">
-    <div class="cert-linkpub-txt">
-      <b>🔗 Link público de solicitação</b>
-      <span>É este endereço que vai para o associado. Ele abre, digita o CPF, e o resto do formulário nasce preenchido — inclusive o envio do contracheque e do documento pessoal.</span>
-      <code class="cert-linkpub-url" id="certLinkPubUrl">carregando…</code>
-    </div>
-    <div class="cert-linkpub-btns">
-      <button type="button" class="cert-btn cert-btn-success cert-btn-sm" id="certBtnCopiarLink">📋 Copiar link</button>
-      <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certBtnCopiarMsg" title="A mensagem pronta, com o link e as condições — a mesma que o sistema usa no WhatsApp">💬 Copiar mensagem</button>
-      <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certBtnAbrirLink">↗ Abrir</button>
     </div>
   </div>
 
@@ -349,7 +324,38 @@
   </div>
 
   <div class="cert-content">
-    <div class="cert-cert_msg" id="certMsgBox"></div>
+  <!-- FICA DEPOIS DAS MÉTRICAS, e não é preferência de leitura.
+       `.cert-metrics` tem `margin-top:-64px` para subir por cima da faixa azul
+       do cabeçalho. Com o card ANTES dela, as métricas eram puxadas para cima
+       e cortavam o link: dava para ver o título e nada do endereço.
+       Achado no ambiente publicado, não no código — nenhum teste daqui
+       enxerga sobreposição de CSS. -->
+  <!-- LINK PÚBLICO — 16/09/2026, "deixa visível na página (mesmo modelo da
+       festa) para copiarmos".
+
+       Mesmo padrão do card de inscrição do Compasso em EventosAdmin.html: o
+       endereço à vista, num <code> selecionável, e um botão que copia. Ficar
+       decorando ou pedindo a URL a alguém é o que faz a secretaria mandar o
+       link errado.
+
+       A URL NÃO É ESCRITA AQUI. Vem de `beneficiosPrepararLinkInteresse`, que
+       resolve a publicação do ambiente — colar a URL de produção no HTML faria
+       a homologação distribuir o formulário de produção, que é o pior erro
+       possível numa tela que existe para divulgar endereço. -->
+    <div class="cert-linkpub" id="certLinkPubBox">
+    <div class="cert-linkpub-txt">
+      <b>🔗 Link público de solicitação</b>
+      <span>É este endereço que vai para o associado. Ele abre, digita o CPF, e o resto do formulário nasce preenchido — inclusive o envio do contracheque e do documento pessoal.</span>
+      <code class="cert-linkpub-url" id="certLinkPubUrl">carregando…</code>
+    </div>
+    <div class="cert-linkpub-btns">
+      <button type="button" class="cert-btn cert-btn-success cert-btn-sm" id="certBtnCopiarLink">📋 Copiar link</button>
+      <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certBtnCopiarMsg" title="A mensagem pronta, com o link e as condições — a mesma que o sistema usa no WhatsApp">💬 Copiar mensagem</button>
+      <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certBtnAbrirLink">↗ Abrir</button>
+    </div>
+    </div>
+
+    <div class="cert-msg" id="certMsgBox"></div>
 
     <div class="cert-card">
       <div class="cert-card-head">
@@ -1055,10 +1061,10 @@ function cert_msg(texto, tipo){
     toast(limpo, tipo==='erro'?'erro':tipo==='warn'?'alerta':tipo==='ok'?'ok':'info', 7000);
   }
   var box = g('certMsgBox'); if(!box) return;
-  box.className = 'cert-cert_msg ' + (tipo||'info');
+  box.className = 'cert-msg ' + (tipo||'info');
   box.innerHTML = texto||'';
   if(texto) box.scrollIntoView({behavior:'smooth',block:'nearest'});
-  if(tipo==='ok') setTimeout(function(){ box.innerHTML=''; box.className='cert-cert_msg'; }, 14000);
+  if(tipo==='ok') setTimeout(function(){ box.innerHTML=''; box.className='cert-msg'; }, 14000);
 }
 function setBtnLoad(btn,texto){ if(!btn) return; btn.disabled=true; btn._orig=btn.innerHTML; btn.innerHTML='⏳ '+(texto||'Aguarde...'); }
 function cert_resetBtn(btn){ if(!btn) return; btn.disabled=false; if(btn._orig!==undefined) btn.innerHTML=btn._orig; }
