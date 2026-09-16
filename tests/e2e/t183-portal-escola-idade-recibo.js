@@ -228,6 +228,50 @@ b.igual(semTrava.length, 0,
   "nenhum campo de digitação do portal ficou sem autocomplete=off",
   semTrava.join(", ") || "todos protegidos");
 
+/* ── 5. O BOTÃO FECHAR ──────────────────────────────────────────────────── */
+/* Pedido seu em 16/09/2026, olhando a tela de recibo já funcionando. */
+b.passo("5. Fechar encerra sem enganar");
+
+b.ok(typeof win.portalEncerrar === "function", "a ação de fechar existe");
+
+/* O bloco anterior terminou pedindo uma nova solicitação, que tira o recibo
+   da tela. Repõe o cenário de quem acabou de salvar — senão a asserção sobre
+   o protocolo continuar à vista mediria o estado deixado por outro passo. */
+campo("protocoloBox").classList.add("visible");
+b.igual(campo("protocoloEncerrado").style.display, "none",
+  "o encerramento começa escondido");
+
+/* window.close() só funciona em aba que o próprio script abriu; esta veio de
+   um link, e o navegador recusa EM SILÊNCIO. Por isso o botão não pode
+   depender dele — tem que deixar a tela dizendo que acabou.
+
+   AQUI O ANDAIME PRECISA SEGURAR O close(), e a razão é boa de saber: jsdom
+   IMPLEMENTA window.close() e destrói o documento. A primeira versão deste
+   bloco estourou com "Cannot read properties of null" logo depois de chamar
+   portalEncerrar — não porque a tela estivesse errada, mas porque o DOM
+   inteiro tinha deixado de existir. Neutralizar o close reproduz o navegador
+   real, que é onde a recusa acontece. */
+let tentouFechar = false;
+win.close = function () { tentouFechar = true; };
+win.portalEncerrar();
+b.ok(tentouFechar, "o botão tenta fechar a aba de verdade, antes de desistir");
+b.igual(campo("protocoloEncerrado").style.display, "",
+  "depois de fechar, a tela diz que a solicitação foi concluída");
+b.igual(campo("protocoloAcoesBox").style.display, "none",
+  "e os botões saem — não há mais o que fazer aqui");
+
+/* O PROTOCOLO NÃO PODE SUMIR: quem fecha pode estar tirando um print. */
+b.ok(campo("protocoloBox").className.indexOf("visible") > -1,
+  "o recibo continua na tela, com o protocolo à vista");
+
+/* E A VOLTA DESFAZ O ENCERRAMENTO. Sem isto, quem fechasse e depois quisesse
+   um segundo pedido cairia num formulário com a despedida em cima. */
+win.portalNovaSolicitacao();
+b.igual(campo("protocoloEncerrado").style.display, "none",
+  "pedir outra solicitação desfaz o encerramento");
+b.igual(campo("protocoloAcoesBox").style.display, "",
+  "e devolve os botões do recibo para o próximo protocolo");
+
 b.naoTestavel("como isso APARECE no navegador",
   "jsdom não desenha nem aplica CSS — roteiro manual: abrir o link público, " +
   "salvar uma solicitação e conferir que só o card verde fica na tela");

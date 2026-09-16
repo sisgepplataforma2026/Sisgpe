@@ -5787,7 +5787,7 @@ nesta rodada.
 | 35 | 🔴 pedir Pós-Graduação **para você mesmo** não dá mais "idade incompatível" | portal |
 | 36 | 🔴 digitar parte do nome da escola filtra a lista de 679 | portal |
 | 37 | 🔴 escola que não existe no cadastro é aceita como texto digitado | portal |
-| 38 | 🔴 depois de salvar, **só o card verde** fica na tela — sem o formulário | portal |
+| 38 | ✅ depois de salvar, só o card verde fica na tela — **fechado 16/09/2026**, print conferido | portal |
 | 39 | 🔴 "Fazer nova solicitação" devolve o formulário limpo | portal |
 | 40 | 🔴 o campo "Ajustar %" aparece ao lado do desconto, em análise | painel |
 | 41 | 🔴 mudar o desconto pede confirmação mostrando o valor calculado | painel |
@@ -5803,3 +5803,17 @@ Declaração de Diretor. O teste prova que o código usa a porta certa; só uma
 mensagem recebida prova que o alias está verificado na conta executora.
 
 **O item 26 continua aberto** — mandar UM ofício real em produção.
+
+### Acrescentados na noite de 16/09/2026, depois dos prints do usuário
+
+| | O que conferir | Onde |
+|---|---|---|
+| 47 | 🔴 abrir a BOLSA-2026-495017 e ver **🪪 Confirmar cadastro** no modal | painel |
+| 48 | 🔴 confirmar o cadastro manda a solicitação para PENDENTE | painel |
+| 49 | 🔴 o campo CPF não oferece mais CPF de quem usou antes | janela anônima |
+| 50 | 🔴 **✕ Fechar** mostra "Solicitação concluída" e some com os botões | portal |
+
+**Sobre o 49, para ninguém contar com o que não existe:** `autocomplete="off"`
+vale para o que for digitado **daqui em diante**. O que o navegador já guardou
+antes da correção continua lá até alguém limpar os dados de navegação — no seu
+computador, os quatro CPFs do print vão continuar aparecendo.

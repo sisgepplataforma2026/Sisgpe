@@ -625,10 +625,20 @@
       <div id="protocoloTitulo" style="font-size:16px;font-weight:800;color:#065f46;margin-bottom:6px;">✅ Solicitação registrada</div>
       <div class="protocolo-num" id="protocoloNum">—</div>
       <div class="protocolo-sub" id="protocoloSub"></div>
-      <div class="protocolo-acoes">
+      <!-- O encerramento fica ESCONDIDO até alguém clicar em Fechar. -->
+      <div id="protocoloEncerrado" style="display:none;margin:4px 0 14px;padding:14px 16px;border-radius:10px;background:rgba(15,138,95,.08);border:1px solid rgba(15,138,95,.25);">
+        <div style="font-size:14.5px;font-weight:800;color:#0f8a5f;margin-bottom:4px;">✅ Solicitação concluída</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.6;">
+          Pode fechar esta aba. O protocolo acima fica registrado e você será
+          avisado por e-mail quando a análise terminar.
+        </div>
+      </div>
+
+      <div class="protocolo-acoes" id="protocoloAcoesBox">
         <button class="btn btn-secondary" onclick="copiarProtocolo()"><span>📋 Copiar</span></button>
         <button class="btn btn-secondary" onclick="imprimirProtocolo()"><span>🖨️ Imprimir</span></button>
         <button class="btn btn-secondary" onclick="portalNovaSolicitacao()"><span>➕ Fazer nova solicitação</span></button>
+        <button class="btn btn-secondary" onclick="portalEncerrar()"><span>✕ Fechar</span></button>
       </div>
       <div class="protocolo-countdown" id="protocoloCountdown" style="display:none;"></div>
     </div>
@@ -889,11 +899,38 @@ function atualizarProgresso() {
       }
     }
 
+    /* FECHAR — pedido do usuário em 16/09/2026, vendo a tela de recibo.
+     *
+     * `window.close()` só funciona em aba que o próprio script abriu, e esta
+     * foi aberta por um link. O navegador recusa em silêncio — e botão que
+     * não faz nada é pior do que botão nenhum. Então ele tenta fechar e, ao
+     * ver que a janela continua de pé, mostra o encerramento: a confirmação
+     * de que acabou, com o protocolo ainda à vista para quem não anotou.
+     *
+     * NÃO limpa o rascunho nem o protocolo da tela de propósito: a pessoa
+     * pode estar fechando justamente para tirar um print. */
+    function portalEncerrar() {
+      var acoes = document.getElementById('protocoloAcoesBox');
+      var fim = document.getElementById('protocoloEncerrado');
+      if (fim) fim.style.display = '';
+      if (acoes) acoes.style.display = 'none';
+
+      try { window.close(); } catch (e) {}
+      /* Se ainda estamos aqui, o navegador recusou — e a mensagem acima já
+         está na tela dizendo o que fazer. */
+    }
+
     /* A VOLTA. Sem isto, a única saída da tela de recibo seria recarregar a
      * página — e quem tem três dependentes faz três pedidos seguidos. */
     function portalNovaSolicitacao() {
       var box = document.getElementById('protocoloBox');
       if (box) box.classList.remove('visible');
+      /* Desfaz o encerramento: sem isto, quem fechasse e depois quisesse um
+         segundo pedido voltaria para um formulário com a despedida em cima. */
+      var fim = document.getElementById('protocoloEncerrado');
+      if (fim) fim.style.display = 'none';
+      var acoes = document.getElementById('protocoloAcoesBox');
+      if (acoes) acoes.style.display = '';
       portalSoRecibo(false);
       if (typeof limparFormulario === 'function') limparFormulario();
       window.scrollTo({ top: 0, behavior: 'smooth' });
