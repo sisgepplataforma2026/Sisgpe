@@ -910,9 +910,15 @@ function declEntregaDeclaracao(numero, tokenSessao) {
       /* O assunto e o corpo saem das mesmas funções do envio — a aba de
          preview mostra o e-mail de verdade, não uma segunda redação dele. */
       emailAssunto: declAssuntoEmail_(campo("NUMERO"), campo("DIRETOR_NOME")),
-      emailCorpo: declCorpoEmail_(campo("DIRETOR_NOME"),
-                                  String((typeof getAmbienteAtual === "function" ? getAmbienteAtual() : "producao") || "").toLowerCase(),
-                                  campo("EMAILS_USADOS") || "(os que você marcar)"),
+      emailCorpo: declCorpoEmail_({
+        numero:        campo("NUMERO"),
+        nome:          campo("DIRETOR_NOME"),
+        escola:        campo("ESCOLA_NOME"),
+        dataLiberacao: declDataBR_(achado.valores[achado.hm.DATA_LIBERACAO - 1]),
+        periodoRotulo: (DECL_PERIODOS[campo("PERIODO")] || DECL_PERIODOS[""]).rotulo,
+        ambiente:      String((typeof getAmbienteAtual === "function" ? getAmbienteAtual() : "producao") || "").toLowerCase(),
+        destinoReal:   campo("EMAILS_USADOS") || "(os que você marcar)"
+      }),
       emailStatus: campo("EMAIL_STATUS"),
       emailsUsados: campo("EMAILS_USADOS"),
       whatsappStatus: campo("WHATSAPP_STATUS")
@@ -932,17 +938,86 @@ function declAssuntoEmail_(numero, nome) {
  * O modal de envio do ofício monta a prévia no cliente, a partir de um texto
  * escrito de novo no JavaScript. Funciona, mas cria duas versões da mesma
  * mensagem, que envelhecem separadas — prévia que mente é pior do que prévia
- * nenhuma. Aqui a tela exibe exatamente a string que o MailApp vai receber.
+ * nenhuma. Aqui a tela exibe exatamente a string que o Gmail vai receber.
  */
-function declCorpoEmail_(nome, ambiente, destinoReal) {
+function declCorpoEmail_(p) {
+  p = p || {};
+  var ambiente = String(p.ambiente || "").toLowerCase();
+  var numero   = declEscapar_(p.numero || "");
+  var nome     = declEscapar_(p.nome || "");
+  var escola   = declEscapar_(p.escola || "");
+  var data     = declEscapar_(p.dataLiberacao || "");
+  var periodo  = declEscapar_(p.periodoRotulo || "Integral");
+  var saudacao = (typeof saudacaoHoraBR_ === "function") ? saudacaoHoraBR_() : "Olá";
+
+  function linhaQuadro(rotulo, valor) {
+    if (!valor) return "";
+    return "<tr>" +
+      "<td style='padding:7px 14px 7px 0;font-size:11px;font-weight:800;color:#64748b;" +
+      "text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;vertical-align:top;'>" +
+      rotulo + "</td>" +
+      "<td style='padding:7px 0;font-size:13.5px;font-weight:700;color:#0f172a;'>" + valor + "</td>" +
+      "</tr>";
+  }
+
   var html =
-    "<p>Prezados(as),</p>" +
-    "<p>Segue, em anexo, a declaração de liberação sindical de <strong>" +
-    declEscapar_(nome) + "</strong>.</p>" +
-    "<p>Atenciosamente,<br>SindEducação-ES</p>";
-  if (String(ambiente || "").toLowerCase() === "homologacao") {
-    html = "<p><strong>HOMOLOGAÇÃO.</strong> Destinatário real: " +
-           declEscapar_(destinoReal || "") + "</p>" + html;
+    "<div style='font-family:Segoe UI,Arial,sans-serif;max-width:680px;color:#0f172a;'>" +
+
+    /* Cabeçalho institucional — mesmo do ofício, com o número à direita. */
+    "<div style='background:linear-gradient(135deg,#001228 0%,#001f4d 55%,#003b82 100%);padding:22px 28px 20px;border-radius:8px 8px 0 0;'>" +
+    "<div style='display:flex;align-items:flex-start;justify-content:space-between;gap:20px;'>" +
+    "<div style='border-left:4px solid #C9A84C;padding-left:16px;'>" +
+    "<div style='font-size:21px;font-weight:900;color:#fff;'>SINDEDUCAÇÃO-ES</div>" +
+    "<div style='font-size:11px;color:rgba(255,255,255,.6);margin-top:5px;'>Sindicato dos Educadores Técnico-Administrativos<br>em Estabelecimentos de Ensino Particular no Estado do Espírito Santo</div>" +
+    "<div style='font-size:10.5px;font-weight:800;color:#C9A84C;margin-top:6px;'>CNPJ: 31.815.780/0001-51</div></div>" +
+    "<div style='text-align:right;'><div style='font-size:10px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px;'>Declaração Nº</div>" +
+    "<div style='font-size:26px;font-weight:900;color:#C9A84C;'>" + numero + "</div></div></div>" +
+    "<div style='height:1px;background:rgba(201,168,76,.25);margin:16px 0 14px;'></div>" +
+    "<div style='display:inline-flex;align-items:center;background:rgba(201,168,76,.15);border:1px solid rgba(201,168,76,.35);color:#C9A84C;font-size:11px;font-weight:800;padding:5px 14px;border-radius:999px;text-transform:uppercase;'>Liberação Sindical</div>" +
+    "</div>" +
+
+    "<div style='background:#fff;padding:28px 28px 24px;border:1px solid #e2e8f0;border-top:none;'>" +
+    "<p style='margin:0 0 18px 0;font-size:14px;color:#334155;'>" + saudacao + "! Tudo bem?</p>" +
+    "<div style='text-align:justify;line-height:1.7;font-size:13.5px;color:#1a2233;'>" +
+    "<p style='margin:0 0 14px 0;'>Encaminhamos, em anexo, a <strong>Declaração nº " + numero +
+    "</strong> de liberação sindical do(a) dirigente <strong>" + nome + "</strong>.</p>" +
+    "</div>" +
+
+    /* O QUADRO DE CONFERÊNCIA. Repete o que está no PDF de propósito: quem
+       recebe é o RH da escola, que lê no celular e precisa da data e do
+       período na mão para se organizar sem abrir anexo. */
+    "<table style='width:100%;border-collapse:collapse;margin:4px 0 18px;padding:0;background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #001f4d;border-radius:8px;'>" +
+    "<tbody style='display:table;width:100%;padding:6px 16px;'>" +
+    linhaQuadro("Dirigente", nome) +
+    linhaQuadro("Liberação", data) +
+    linhaQuadro("Período", periodo) +
+    linhaQuadro("Instituição", escola) +
+    "</tbody></table>" +
+
+    "<div style='text-align:justify;line-height:1.7;font-size:13.5px;color:#1a2233;'>" +
+    "<p style='margin:0;'>Nos termos do <strong>Artigo 543 da CLT</strong>, requeremos a liberação do(a) empregado(a) " +
+    "para o pleno exercício de seu mandato sindical, conforme lhe assegura a lei.</p></div>" +
+
+    "<div style='margin:20px 0 0;padding:14px 16px;background:#eff6ff;border:1px solid #bfdbfe;border-left:4px solid #2563eb;border-radius:8px;font-size:13px;font-weight:700;color:#1e3a8a;'>" +
+    "⚠️ Solicitamos, por gentileza, a confirmação do recebimento respondendo a este e-mail.</div></div>" +
+
+    /* Rodapé e assinatura: o padrão do ofício, por decisão sua em 16/09/2026
+       — "a assinatura é a Marcelha e deve continuar igual ao ofício". */
+    "<div style='background:linear-gradient(135deg,#001228 0%,#001f4d 60%,#002f6c 100%);border-radius:0 0 8px 8px;padding:22px 28px;text-align:center;'>" +
+    "<div style='height:3px;background:linear-gradient(90deg,#C9A84C,#f0c843,#C9A84C);margin-bottom:18px;'></div>" +
+    "<div style='font-size:16px;font-weight:900;color:#fff;'>MARCELHA ALINE PINTO GOMES</div>" +
+    "<div style='font-size:12px;color:#C9A84C;font-weight:700;margin-top:3px;'>Administrativo &amp; Secretaria — SindEducação-ES</div>" +
+    "<div style='margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.10);font-size:11px;color:rgba(255,255,255,.75);line-height:1.7;'>" +
+    "Av. Nossa Senhora dos Navegantes, 755 - Salas 707/708<br>" +
+    "Enseada do Suá - Vitória/ES - CEP 29.050-355<br>" +
+    "(27) 99735-8900 • secretaria@sindeducacao.com • www.sindeducacao.com.br" +
+    "</div>" +
+    "<div style='margin-top:12px;font-size:10px;color:rgba(255,255,255,.25);'>Documento gerado pelo SISGEP · SindEducação-ES</div>" +
+    "</div></div>";
+
+  if (ambiente === "homologacao") {
+    html = "<p style='font-family:Segoe UI,Arial,sans-serif;'><strong>HOMOLOGAÇÃO.</strong> Destinatário real: " +
+           declEscapar_(p.destinoReal || "") + "</p>" + html;
   }
   return html;
 }
@@ -1024,10 +1099,21 @@ function declEnviarEmail(numero, emails, tokenSessao) {
   var nome = declTexto_(achado.valores[achado.hm.DIRETOR_NOME - 1]);
   var escola = declTexto_(achado.valores[achado.hm.ESCOLA_NOME - 1]);
   var assunto = declAssuntoEmail_(numero, nome);
-  var html = declCorpoEmail_(nome, ambiente, destinoReal);
+  var html = declCorpoEmail_({
+    numero:        numero,
+    nome:          nome,
+    escola:        escola,
+    dataLiberacao: declDataBR_(achado.valores[achado.hm.DATA_LIBERACAO - 1]),
+    periodoRotulo: (DECL_PERIODOS[declTexto_(achado.valores[achado.hm.PERIODO - 1])] || DECL_PERIODOS[""]).rotulo,
+    ambiente:      ambiente,
+    destinoReal:   destinoReal
+  });
   try {
     var op = montarOpcoesEmailSISGEP_(declQuem_(sessao), html, [DriveApp.getFileById(pdfId).getBlob()], assunto, destinoEnvio);
-    MailApp.sendEmail(op);
+    /* GmailApp, e não MailApp: o MailApp IGNORA o `from` em silêncio, e por
+       isso a declaração saía da conta executora mesmo com o alias da
+       Secretaria configurado. Ver enviarComoRascunhoSISGEP_. */
+    enviarComoRascunhoSISGEP_(op, "Segue, em anexo, a declaração " + numero + ".");
     achado.sh.getRange(achado.linha, achado.hm.EMAILS_USADOS).setValue(destinoReal);
     achado.sh.getRange(achado.linha, achado.hm.EMAIL_STATUS).setValue(ambiente === "homologacao" ? "TESTE_HML_ENVIADO" : "ENVIADO");
     achado.sh.getRange(achado.linha, achado.hm.EMAIL_ENVIADO_EM).setValue(new Date());
@@ -1484,11 +1570,54 @@ function declConferirConfiguracao(tokenSessao) {
         : { ok: false, texto: "Nenhum Presidente vigente",
             detalhe: "Corrija a composição em Governança: sem signatário a declaração não vale." },
       dirigentes: { ok: d.habilitados > 0, texto: d.habilitados + " dirigente(s) habilitado(s)",
-                    detalhe: "mandato vigente na composição de Governança" }
+                    detalhe: "mandato vigente na composição de Governança" },
+      remetente: declConferirRemetente_()
     };
   } catch (e) {
     return { ok: false, mensagem: "Erro ao conferir: " + e.message };
   }
+}
+
+/**
+ * DE QUE CONTA O E-MAIL SAI — 16/09/2026.
+ *
+ * POR QUE PRECISOU EXISTIR. O e-mail da declaração saiu de
+ * `financeirosindeducacao@gmail.com` mesmo com `secretaria@sindeducacao.com`
+ * já configurada como alias no Gmail. A causa era o `MailApp` ignorando o
+ * `from` (ver enviarComoRascunhoSISGEP_), mas eu levei uma rodada inteira
+ * para separar isso de "o alias não existe" — porque não havia como
+ * PERGUNTAR ao ambiente, só deduzir.
+ *
+ * Agora o ambiente responde. Quem apertar "Conferir configuração" vê a conta
+ * executora, se a Secretaria está entre os aliases, e de qual endereço o
+ * próximo envio vai sair de fato. Sem isso, a próxima divergência volta a
+ * custar uma emissão de teste e um print.
+ */
+function declConferirRemetente_() {
+  var alvo = (typeof OFICIOS_EMAIL_INSTITUCIONAL === "string")
+    ? OFICIOS_EMAIL_INSTITUCIONAL : "secretaria@sindeducacao.com";
+  var executora = "", aliases = [];
+
+  try { executora = String(Session.getEffectiveUser().getEmail() || "").trim().toLowerCase(); } catch (e) {}
+  try {
+    aliases = GmailApp.getAliases().map(function (x) { return String(x || "").trim().toLowerCase(); });
+  } catch (e2) {
+    /* Sem escopo de Gmail a lista vem vazia; isso não é "não tem alias". */
+    return { ok: false, texto: "Não foi possível consultar os aliases",
+             detalhe: "Autorize o escopo do Gmail no projeto e confira de novo. Conta executora: " + (executora || "desconhecida") };
+  }
+
+  var podeUsar = executora === alvo || aliases.indexOf(alvo) !== -1;
+  if (podeUsar) {
+    return { ok: true, texto: "Sai de " + alvo,
+             detalhe: executora === alvo
+               ? "é a própria conta que executa o script"
+               : "alias verificado na conta " + executora };
+  }
+  return { ok: false, texto: "Vai sair de " + (executora || "conta executora"),
+           detalhe: alvo + " não é alias desta conta. Adicione em Gmail → Configurações → Contas → " +
+                    "\"Enviar e-mail como\", e confirme o e-mail de verificação. Enquanto isso, o " +
+                    "destinatário responde para a Secretaria pelo replyTo." };
 }
 
 /** A mesma coisa no editor do Apps Script, para quem estiver com ele aberto. */

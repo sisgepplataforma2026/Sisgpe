@@ -1222,9 +1222,14 @@ function declConferirConfig() {
       }
       corpo.innerHTML =
         (r.pronto ? '' : '<div class="declAviso">Falta configuração para emitir. Veja abaixo o que está com ❌.</div>') +
+        /* O remetente entra na lista mas NÃO entra no `pronto`: sem alias o
+           e-mail ainda sai, pela conta executora e com replyTo da Secretaria.
+           É um aviso, não uma trava — travar a emissão por causa disso seria
+           parar o trabalho por um detalhe de cabeçalho. */
         linha("Pasta do Drive", r.pasta) +
         linha("Quem assina", r.signatario) +
-        linha("Dirigentes", r.dirigentes);
+        linha("Dirigentes", r.dirigentes) +
+        (r.remetente ? linha("Remetente do e-mail", r.remetente) : '');
     })
     .withFailureHandler(function (e) {
       corpo.innerHTML = '<div class="declAviso">Erro: ' + declEsc(e) + '</div>';

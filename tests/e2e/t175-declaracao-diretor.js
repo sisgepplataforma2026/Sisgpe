@@ -1,6 +1,6 @@
 /** E2E — Declaração de Diretor integrada a Governança, Associados e Escolas. */
 const b = require("./base");
-const { g } = b.subir({});
+const { g, amb } = b.subir({});
 b.seedUsuarios(g);
 const TOKEN = b.logar(g, "wanderson");
 const TOKEN_ESC = b.logar(g, "joscimar");
@@ -393,6 +393,91 @@ const linhasDemais = [];
 for (let i = 2; i < 60; i++) linhasDemais.push(i);
 const recusa = g.lixeiraMoverVarias_(ss.getSheetByName(g.ABA_DECLARACOES_DIRETOR), linhasDemais, {});
 b.ok(recusa.ok === false && recusa.movidas === 0, "lote acima do teto é recusado INTEIRO", recusa.mensagem);
+
+b.fluxo("DECLARAÇÕES · De que conta o e-mail sai");
+/* A REGRESSÃO QUE ORIGINOU ESTE BLOCO — 16/09/2026.
+
+   A declaração saiu de `financeirosindeducacao@gmail.com` mesmo com
+   `secretaria@sindeducacao.com` já configurada como alias no Gmail. Causa: o
+   envio usava `MailApp.sendEmail(opcoes)`, e o MailApp IGNORA a opção `from`
+   em silêncio. O `montarOpcoesEmailSISGEP_` montava o remetente CERTO — o
+   emulador já sobe com o alias por padrão — e o serviço descartava.
+
+   Por que nenhum teste pegou: havia asserção sobre as OPÇÕES montadas
+   (t104, t138) e nenhuma sobre o que de fato SAIU pela declaração. Opção
+   montada não é e-mail enviado. Estas asserções olham o outbox. */
+
+const outboxAntes = amb.outbox.length;
+const comAlias = g.declEnviarEmail(emitida.numero, [novoEmail], TOKEN);
+b.ok(comAlias.ok, "com alias, envia", comAlias.mensagem);
+const saiu = amb.outbox[amb.outbox.length - 1];
+b.ok(saiu.via === "GmailApp", "sai pelo GmailApp, não pelo MailApp que ignora o from", saiu.via);
+b.ok(saiu.from === "secretaria@sindeducacao.com",
+  "e o remetente É a Secretaria — a asserção que faltava", String(saiu.from));
+b.ok(saiu.replyTo === "secretaria@sindeducacao.com", "com replyTo da Secretaria", String(saiu.replyTo));
+b.ok(saiu.name === "SindEducação-ES", "e o nome de exibição institucional", String(saiu.name));
+b.ok(amb.outbox.length === outboxAntes + 1, "um e-mail, não dois");
+b.ok(!(g.__rascunhosGmail || []).some(r => !r.apagado && r.dados.subject === saiu.subject) ||
+     amb.outbox.some(m => m.subject === saiu.subject),
+  "e não fica rascunho órfão na caixa");
+
+/* SEM alias o envio NÃO PODE PARAR. Ofício é operação viva e a declaração
+   segue a mesma regra: sai pela conta executora, com replyTo da Secretaria,
+   e quem responde continua caindo na secretaria. */
+const aliasesReais = g.GmailApp.getAliases;
+g.GmailApp.getAliases = () => [];
+const semAlias = g.declEnviarEmail(emitida.numero, [novoEmail], TOKEN);
+b.ok(semAlias.ok, "sem alias, o envio continua saindo — não vira trava", semAlias.mensagem);
+const saiu2 = amb.outbox[amb.outbox.length - 1];
+b.ok(!saiu2.from, "sem from forçado, que o Gmail recusaria", String(saiu2.from));
+b.ok(saiu2.replyTo === "secretaria@sindeducacao.com",
+  "mas a resposta ainda vai para a Secretaria", String(saiu2.replyTo));
+
+/* O DIAGNÓSTICO responde pelo ambiente, para a próxima divergência não custar
+   uma emissão de teste e um print. */
+const confRuim = g.declConferirConfiguracao(TOKEN);
+b.ok(confRuim.remetente && confRuim.remetente.ok === false,
+  "Conferir configuração acusa quando o alias não existe", confRuim.remetente && confRuim.remetente.texto);
+b.ok(/Enviar e-mail como/.test(confRuim.remetente.detalhe),
+  "dizendo ONDE resolver, não só que está errado");
+g.GmailApp.getAliases = aliasesReais;
+const confOk = g.declConferirConfiguracao(TOKEN);
+b.ok(confOk.remetente && confOk.remetente.ok && /secretaria@sindeducacao\.com/.test(confOk.remetente.texto),
+  "e confirma quando sai da Secretaria", confOk.remetente && confOk.remetente.texto);
+b.ok(confRuim.pronto === confOk.pronto,
+  "mas o remetente NÃO entra no `pronto`: é aviso, não trava de emissão");
+
+b.fluxo("DECLARAÇÕES · O corpo do e-mail");
+const corpo = g.declEntregaDeclaracao(emitida.numero, TOKEN).emailCorpo;
+b.ok(/SINDEDUCAÇÃO-ES/.test(corpo) && /31\.815\.780\/0001-51/.test(corpo),
+  "traz o cabeçalho institucional do ofício, com CNPJ");
+b.ok(/Declaração Nº/.test(corpo) && corpo.indexOf(emitida.numero) > -1,
+  "o número aparece na faixa");
+b.ok(/Liberação Sindical/.test(corpo), "com o badge do tipo");
+b.ok(/MARCELHA ALINE PINTO GOMES/.test(corpo),
+  "assinatura da Marcelha — sua decisão em 16/09/2026, igual ao ofício");
+b.ok(/Enseada do Suá/.test(corpo) && /\(27\) 99735-8900/.test(corpo),
+  "e o rodapé com endereço e telefone");
+b.ok(/Artigo 543 da CLT/.test(corpo), "cita o artigo que fundamenta a liberação");
+b.ok(/confirmação do recebimento/.test(corpo), "e pede confirmação, como o ofício");
+/* O quadro de conferência: quem recebe é o RH, que lê no celular. */
+b.ok(/Dirigente/.test(corpo) && /Liberação/.test(corpo) && /Período/.test(corpo) && /Instituição/.test(corpo),
+  "o quadro traz os quatro dados que o RH precisa sem abrir o anexo");
+b.ok(/Integral|Matutino|Vespertino|Noturno/.test(corpo), "com o período escrito por extenso");
+/* A prévia e o envio chamam a MESMA função por construção — declEntregaDeclaracao
+   e declEnviarEmail usam declCorpoEmail_. Não escrevo asserção para isso aqui:
+   a que eu tinha escrito terminava em `|| true` e não podia falhar, que é pior
+   do que não ter teste. O que dá para afirmar de verdade é o conteúdo, acima,
+   e o ambiente, abaixo. */
+b.ok(g.declCorpoEmail_({ numero: "1/2026", nome: "X", escola: "Y", dataLiberacao: "01/01/2026",
+                         periodoRotulo: "Integral", ambiente: "producao" }).indexOf("HOMOLOGAÇÃO") === -1,
+  "em produção não carrega o aviso de homologação");
+b.ok(g.declCorpoEmail_({ numero: "1/2026", nome: "X", escola: "Y", dataLiberacao: "01/01/2026",
+                         periodoRotulo: "Integral", ambiente: "homologacao",
+                         destinoReal: "rh@escola.br" }).indexOf("rh@escola.br") > -1,
+  "em homologação diz para quem iria de verdade");
+b.ok(g.declCorpoEmail_({ nome: '<img src=x onerror=alert(1)>' }).indexOf("<img src=x") === -1,
+  "e escapa o nome — o corpo é HTML montado à mão");
 
 b.fluxo("DECLARAÇÕES · Segurança");
 b.bloqueia(() => g.declContextoDiretor(dir.id, TOKEN_ESC), "usuário sem Documentos não consulta vínculo");

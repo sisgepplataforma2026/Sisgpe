@@ -166,6 +166,29 @@ function montarOpcoesEmailSISGEP_(emailUsuario, htmlBody, anexos, assunto, desti
    ══════════════════════════════════════════════════════════════════════════ */
 function enviarEmailOficio_(emailUsuario, htmlBody, anexos, assunto, destino, corpoTexto) {
   var opcoes = montarOpcoesEmailSISGEP_(emailUsuario, htmlBody, anexos, assunto, destino);
+  return enviarComoRascunhoSISGEP_(opcoes, corpoTexto || "Segue ofício em anexo.");
+}
+
+/**
+ * O ÚNICO caminho de envio do SISGEP — 16/09/2026.
+ *
+ * POR QUE VIROU FUNÇÃO PRÓPRIA. A Declaração de Diretor enviava com
+ * `MailApp.sendEmail(opcoes)`, e o `MailApp` IGNORA a opção `from` — em
+ * silêncio, sem erro nenhum. O `montarOpcoesEmailSISGEP_` montava
+ * `from: secretaria@sindeducacao.com` corretamente, e o MailApp jogava fora:
+ * a declaração saiu da conta executora MESMO com o alias já configurado no
+ * Gmail. Quem lesse só o código concluiria que estava certo — foi preciso
+ * abrir o e-mail recebido e olhar o "De:" para descobrir. Mesma lição do
+ * aviso de alias logo acima, pela segunda vez.
+ *
+ * Só o `GmailApp` respeita o `from`, e só quando o endereço é alias
+ * verificado da conta executora — ver validarRemetenteInstitucionalOficios_.
+ *
+ * FICA UMA IMPLEMENTAÇÃO para os dois módulos. Duas cópias do caminho de
+ * envio envelhecem separadas, que é exatamente o que tinha acontecido com a
+ * prévia do e-mail do ofício.
+ */
+function enviarComoRascunhoSISGEP_(opcoes, corpoTexto) {
   var opcoesGmail = {
     htmlBody:    opcoes.htmlBody,
     attachments: opcoes.attachments || [],
@@ -175,14 +198,14 @@ function enviarEmailOficio_(emailUsuario, htmlBody, anexos, assunto, destino, co
   if (opcoes.from) opcoesGmail.from = opcoes.from;
 
   var rascunho = GmailApp.createDraft(
-    opcoes.to, opcoes.subject, corpoTexto || "Segue ofício em anexo.", opcoesGmail);
+    opcoes.to, opcoes.subject, corpoTexto || "Segue documento em anexo.", opcoesGmail);
 
   var msg;
   try {
     msg = rascunho.send();
   } catch (eEnvio) {
     /* Sem isto, cada falha de envio deixaria um rascunho na caixa — que para
-       quem olha parece ofício pendente de mandar. */
+       quem olha parece documento pendente de mandar. */
     try { rascunho.deleteDraft(); } catch (eLimpeza) {}
     throw eEnvio;
   }

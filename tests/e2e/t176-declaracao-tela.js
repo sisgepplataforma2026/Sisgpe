@@ -283,9 +283,17 @@ function clicar(el, oque) {
   await tela.assentar(80);
   b.ok($("declModalConfig").classList.contains("aberto"), "o modal de configuração abriu");
   const linhas = $("declConfigCorpo").querySelectorAll(".declConfigLinha");
-  b.ok(linhas.length === 3, "diz pasta, quem assina e dirigentes", linhas.length + " linha(s)");
+  b.ok(linhas.length === 4, "diz pasta, quem assina, dirigentes e remetente", linhas.length + " linha(s)");
   b.ok(/SISGEP_PASTA_DECLARACOES/.test($("declConfigCorpo").textContent),
     "e nomeia a propriedade que falta, em vez de só dizer que falhou");
+  /* A linha de remetente entrou em 16/09/2026, depois de a declaração sair da
+     conta errada e eu levar uma rodada para separar "o alias não existe" de
+     "o MailApp ignora o from". Sem poder PERGUNTAR ao ambiente, a única saída
+     era emitir de teste e olhar o print. */
+  b.ok(/Remetente do e-mail/.test($("declConfigCorpo").textContent),
+    "e diz de que conta o e-mail vai sair");
+  b.ok(/secretaria@sindeducacao\.com/.test($("declConfigCorpo").textContent),
+    "nomeando o endereço institucional");
 
   b.passo("11b. A prévia da tela escreve a entidade como o PDF escreve");
   /* A prévia mostrava "SindEducação/ES" enquanto o documento já saía com

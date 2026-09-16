@@ -5688,3 +5688,32 @@ Publicado: `a68b61d`, run #147, 16/09 00:53.
 
 O item 19 importa: a reserva existe para rede ruim não esvaziar o modal, mas
 se ela disparar sempre, a correção não está valendo.
+
+### Remetente e corpo do e-mail — 16/09/2026
+
+Origem: o e-mail de teste da Declaração 002/2026 chegou saindo de
+`financeirosindeducacao@gmail.com`, e não da Secretaria. Causa provada: o
+envio usava `MailApp.sendEmail`, que **ignora a opção `from` em silêncio** —
+o remetente certo era montado e descartado. Agora usa o mesmo
+`GmailApp.createDraft().send()` do Ofício.
+
+| | O que conferir | Onde |
+|---|---|---|
+| 21 | 🔴 o "De:" da declaração é `secretaria@sindeducacao.com` | no e-mail recebido |
+| 22 | 🔴 **Conferir configuração** mostra a linha "Remetente do e-mail" com ✅ | na tela |
+| 23 | 🔴 o e-mail chega com cabeçalho navy, nº, badge e rodapé — igual ao ofício | no e-mail |
+| 24 | 🔴 o quadro traz dirigente, liberação, período e instituição | no e-mail |
+| 25 | 🟡 a aba **Preview do e-mail** mostra esse mesmo corpo antes de enviar | na tela |
+| 26 | 🔴 **ofício continua saindo normalmente** — o caminho de envio foi unificado | operação viva |
+
+**O item 26 é o de maior risco desta rodada.** `enviarEmailOficio_` passou a
+chamar `enviarComoRascunhoSISGEP_`, que é o mesmo código de antes movido para
+uma função própria. A suíte confirma (t104, t120, t138, t141, t161 verdes),
+mas o Ofício é a única operação viva do sindicato: vale mandar UM ofício real
+e confirmar antes de considerar a rodada encerrada.
+
+**O item 21 vale também para os Ofícios.** O `EmailOficios.gs:63` registra que
+"durante meses os ofícios saíram de `financeirosindeducacao@gmail.com` com
+replyTo da Secretaria, e ninguém soube". Se o alias já está configurado como
+você disse, os ofícios de produção devem estar saindo certos — mas isso se
+confirma abrindo um ofício real enviado e olhando o "De:", não deduzindo.
