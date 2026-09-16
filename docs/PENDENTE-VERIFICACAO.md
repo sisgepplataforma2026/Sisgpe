@@ -5640,3 +5640,51 @@ rodada de teste da publicação anterior terminar.
    cadastro da PESSOA em Associados, não do vínculo com a escola. Para
    dirigente que não está em Associados, a recusa honesta é "não possui
    celular válido em Associados".
+
+---
+
+## 📜 DECLARAÇÕES — A RODADA INTEIRA DE 15/09/2026
+
+Doze publicações em homologação num dia, todas verdes na suíte (6.280
+asserções) e **nenhuma vista num navegador ou num PDF real**. Esta seção
+existe para o usuário marcar item por item; nada sai daqui por dedução.
+
+Publicado: `a68b61d`, run #147, 16/09 00:53.
+
+### O que só uma emissão responde
+
+| | O que conferir | Onde |
+|---|---|---|
+| 1 | 🔴 PDF sai com timbrado, marca d'água e assinatura | no PDF |
+| 2 | 🔴 texto bate com o modelo DECLARAÇÃO 17.09.2026 | no PDF |
+| 3 | 🔴 "diretora" para cargo feminino, "diretor" para o resto | no PDF |
+| 4 | 🔴 `SindEducação-ES` no corpo e na assinatura | no PDF |
+| 5 | 🔴 Integral não escreve "em período integral" | no PDF |
+| 6 | 🔴 arquivo `Declaração 00X-2026 - NOME - DD.MM.AAAA.pdf` | no Drive |
+| 7 | 🔴 caiu na subpasta do ano | no Drive |
+
+### O que a tela responde
+
+| | O que conferir |
+|---|---|
+| 8 | 🔴 modal abre sozinho ao gerar, com Nº, diretor e escola |
+| 9 | 🔴 aba **Preview do e-mail** mostra o e-mail montado |
+| 10 | 🔴 **incluir outro e-mail** funciona e o envio passa a aceitá-lo |
+| 11 | 🔴 entrega reaberta pela lista de Emitidas |
+| 12 | 🔴 `🔁 Reemitir` traz diretor, período e escola |
+| 13 | 🔴 liberação fora do mandato é recusada |
+| 14 | 🔴 dirigente sem vínculo emite pela busca manual |
+| 15 | 🔴 WhatsApp preparado num dia, confirmado no outro |
+| 16 | 🟡 busca de empregadores ficou aceitável — **terceira correção** |
+| 17 | 🟡 largura e cabeçalho: sem duplicação, sem campos espremidos |
+
+### Ofícios — mudou hoje, e é operação viva
+
+| | O que conferir |
+|---|---|
+| 18 | 🔴 preview do e-mail no modal de envio aparece |
+| 19 | 🔴 se aparecer o texto ANTIGO, caiu na reserva — avisar |
+| 20 | 🟡 emissão de ofício segue normal após a troca de nomenclatura |
+
+O item 19 importa: a reserva existe para rede ruim não esvaziar o modal, mas
+se ela disparar sempre, a correção não está valendo.
