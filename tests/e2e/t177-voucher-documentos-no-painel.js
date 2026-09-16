@@ -57,9 +57,13 @@ const PAYLOAD = {
   situacaoSindicalDeclarada: "ASSOCIADO",
   tipoBeneficiario: "TITULAR",
   dataNascimentoBeneficiario: "1980-05-10",
-  modalidade: "GRADUACAO",
-  areaCurso: "EDUCACAO",
-  curso: "PEDAGOGIA",
+  /* PÓS-GRADUAÇÃO de propósito: é o caso real que o usuário emitiu em
+     produção (BOLSA-2026-817957, 70%). A primeira versão deste payload usava
+     GRADUACAO com areaCurso "EDUCACAO" — que NÃO é área reconhecida pela
+     convenção. A regra recusava, o percentual vinha vazio, e eu quase reportei
+     isso como defeito do sistema. Era dado de teste inválido. */
+  modalidade: "POS_GRADUACAO",
+  curso: "MBA - GESTAO DE PROJETOS",
   periodoReferencia: "2026/2",
   regime: "SEMESTRAL",
   email: "maria@teste.com",
@@ -150,6 +154,30 @@ b.ok(semDocs && !semDocs.erro, "a solicitação sem anexo é aceita", (semDocs &
 const linhaSem = shSol.getRange(shSol.getLastRow(), 1, 1, shSol.getLastColumn()).getValues()[0];
 b.ok(String(linhaSem[cabSol.indexOf("LINK_CONTRACHEQUE")] || "") === "",
   "e o campo fica VAZIO, não com link quebrado");
+
+b.passo("7. O percentual chega ao painel, e o modal o mostra");
+/* "Está definido, mas tem que conferir antes do envio" — você, 16/09/2026.
+
+   O percentual é calculado pela regra da convenção na SOLICITAÇÃO e gravado
+   em PERCENTUAL_APLICADO; a emissão lê o guardado e não recalcula. O modal de
+   aprovação é o último ponto em que um valor errado ainda pode ser barrado
+   por gente — e já houve um errado: certificado de Medicina com 70% onde o
+   correto era 50%, achado em 17/08/2026 conferindo um PDF real. */
+b.ok(String(minha.percentual || "").length > 0,
+  "a lista do painel devolve o percentual gravado", minha.percentual);
+b.ok(/^\d+$/.test(String(minha.percentual).replace("%", "").trim()),
+  "e ele é um número, não texto solto", minha.percentual);
+
+const fsP = require("fs");
+const painelHtml = fsP.readFileSync(require("path").join(__dirname, "..", "..", "Scripts_Certificado.html"), "utf8");
+b.ok(/id="cmi-percentual"/.test(painelHtml),
+  "o modal tem onde mostrar o percentual");
+b.ok(/id="cmi-pctOrigem"/.test(painelHtml),
+  "e onde mostrar a ORIGEM do número — REGRA Nº 0.6, sugerir sem esconder de onde veio");
+b.ok(/cert-pct-falta/.test(painelHtml),
+  "com estado próprio para solicitação SEM percentual, que não pode passar como '—'");
+b.ok(/s\.percentual/.test(painelHtml),
+  "e a renderização lê o campo que o servidor manda");
 
 b.naoTestavel("Os botões no navegador e o arquivo abrindo do Drive",
   "jsdom não renderiza o modal do painel; o Drive é dublê no emulador");

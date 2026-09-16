@@ -252,6 +252,14 @@
 #certModalBox .cert-info-item, #certEnvioBox .cert-info-item, #certNovaBox .cert-info-item { display: flex; flex-direction: column; gap: 3px; }
 #certModalBox .cert-info-label, #certEnvioBox .cert-info-label, #certNovaBox .cert-info-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
 #certModalBox .cert-info-val, #certEnvioBox .cert-info-val, #certNovaBox .cert-info-val   { font-size: 13px; font-weight: 700; color: #1e293b; }
+#secCertificadoAdmin .cert-pct { display:flex; align-items:center; gap:14px; margin:16px 0 4px; padding:14px 18px; background:#f0fdf4; border:1.5px solid #86efac; border-left:4px solid #0f8a5f; border-radius:12px; }
+#secCertificadoAdmin .cert-pct-num { font-size:30px; font-weight:900; color:#0f8a5f; line-height:1; flex-shrink:0; }
+#secCertificadoAdmin .cert-pct-txt b { display:block; font-size:13px; font-weight:800; color:#065f46; }
+#secCertificadoAdmin .cert-pct-txt small { display:block; font-size:11.5px; color:#047857; font-weight:600; line-height:1.5; margin-top:2px; }
+#secCertificadoAdmin .cert-pct.cert-pct-falta { background:#fef2f2; border-color:#fca5a5; border-left-color:#dc2626; }
+#secCertificadoAdmin .cert-pct.cert-pct-falta .cert-pct-num { color:#dc2626; }
+#secCertificadoAdmin .cert-pct.cert-pct-falta .cert-pct-txt b { color:#991b1b; }
+#secCertificadoAdmin .cert-pct.cert-pct-falta .cert-pct-txt small { color:#b91c1c; }
 #secCertificadoAdmin .cert-linkpub { display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:16px; padding:14px 18px; background:#f0f9ff; border:1.5px solid #bae6fd; border-left:4px solid #0284c7; border-radius:14px; }
 #secCertificadoAdmin .cert-linkpub-txt { flex:1; min-width:260px; }
 #secCertificadoAdmin .cert-linkpub-txt b { display:block; font-size:13.5px; font-weight:800; color:#075985; }
@@ -488,6 +496,29 @@
         <div class="cert-info-item"><span class="cert-info-label">Curso</span><span class="cert-info-val" id="cmi-curso">—</span></div>
         <div class="cert-info-item"><span class="cert-info-label">Período</span><span class="cert-info-val" id="cmi-periodo">—</span></div>
         <div class="cert-info-item"><span class="cert-info-label">Data Solicitação</span><span class="cert-info-val" id="cmi-data">—</span></div>
+      </div>
+
+      <!-- O PERCENTUAL PRECISA SER CONFERIDO ANTES DO ENVIO — 16/09/2026.
+
+           "Está definido, mas tem que conferir antes do envio" — o usuário.
+           Ele é calculado pela regra da convenção no momento da SOLICITAÇÃO
+           (calcularRegraVoucher_) e gravado em PERCENTUAL_APLICADO; a emissão
+           lê o que está guardado e não recalcula. Ou seja: é aqui, com o dedo
+           no Aprovar, o último ponto em que um valor errado ainda pode ser
+           barrado por gente.
+
+           E já houve um errado: um certificado de Medicina saiu com 70% onde
+           o correto era 50%, achado em 17/08/2026 conferindo um PDF real. O
+           valor chegava ao painel e simplesmente não era desenhado.
+
+           A ORIGEM VAI JUNTO — REGRA Nº 0.6. Número que o sistema calculou
+           sozinho e não explicou é o que vira erro que ninguém percebe. -->
+      <div class="cert-pct" id="cmi-pctBox">
+        <div class="cert-pct-num" id="cmi-percentual">—</div>
+        <div class="cert-pct-txt">
+          <b>Desconto que será concedido</b>
+          <small id="cmi-pctOrigem">calculado pela regra da convenção, na solicitação</small>
+        </div>
       </div>
 
       <div class="cert-section-title">📎 Documentos Anexados</div>
@@ -1470,6 +1501,28 @@ function cert_abrirModal(s){
      registro ANTERIOR deixou. */
   corrPeriodoSincronizar(s);
   set('cmi-data',        certData(s.data));
+
+  /* Sem percentual gravado a caixa avisa, em vez de mostrar "—" e deixar
+     passar: linha antiga ou cálculo que não rodou precisa ser vista ANTES da
+     aprovação, não descoberta no PDF. */
+  var pct = String(s.percentual || '').replace('%','').trim();
+  var elPct = g('cmi-percentual'), boxPct = g('cmi-pctBox'), origem = g('cmi-pctOrigem');
+  if (elPct && boxPct) {
+    if (pct) {
+      elPct.textContent = pct + '%';
+      boxPct.classList.remove('cert-pct-falta');
+      if (origem) origem.textContent =
+        'calculado pela regra da convenção · ' +
+        [(s.nivel||s.modalidade||''), (s.tipoBeneficiario||''),
+         (s.ordemFilho ? s.ordemFilho + 'º filho' : ''), (s.areaCurso||'')]
+          .filter(function(x){ return String(x||'').trim(); }).join(' · ');
+    } else {
+      elPct.textContent = '?';
+      boxPct.classList.add('cert-pct-falta');
+      if (origem) origem.textContent =
+        'esta solicitação está SEM percentual gravado — confira antes de aprovar';
+    }
+  }
   /* A etiqueta de renovação, colada no curso: é ali que ela responde a
      pergunta que se faz ao abrir o registro ("já teve antes?"). Só aparece
      quando o dado existe — ver o comentário na listagem. */
