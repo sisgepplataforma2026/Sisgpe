@@ -291,7 +291,7 @@ const basePai = Object.assign({}, PAYLOAD, { periodoReferencia: "2029/1" });
 delete basePai.modalidade; delete basePai.curso; delete basePai.docPessoal;
 
 const antesDeps = ss.getSheetByName("Voucher_Solicitacoes").getLastRow();
-const tres = g.salvarSolicitacoesDependentesVoucher(Object.assign({}, basePai, {
+const tres = g.salvarCadastroESolicitacaoVoucher(Object.assign({}, basePai, {
   dependentes: [dependente("ANA", 1, "2016-03-02"),
                 dependente("BRUNO", 2, "2014-07-19"),
                 dependente("CLARA", 3, "2012-11-30")]
@@ -325,14 +325,14 @@ b.ok(new Set(listaDeps.map(x => x.linkDocPessoal)).size === 3,
   "documentos DIFERENTES entre si — o mesmo link nas três seria o bug mais fácil de não notar");
 
 b.passo("O teto de três, e a ordem repetida");
-const quatro = g.salvarSolicitacoesDependentesVoucher(Object.assign({}, basePai, {
+const quatro = g.salvarCadastroESolicitacaoVoucher(Object.assign({}, basePai, {
   periodoReferencia: "2029/2",
   dependentes: [dependente("A", 1, "2016-01-01"), dependente("B", 2, "2015-01-01"),
                 dependente("C", 3, "2014-01-01"), dependente("D", 1, "2013-01-01")]
 }));
 b.ok(!quatro.ok && /até 3/i.test(quatro.mensagem), "quatro dependentes é recusado", quatro.mensagem);
 
-const repetida = g.salvarSolicitacoesDependentesVoucher(Object.assign({}, basePai, {
+const repetida = g.salvarCadastroESolicitacaoVoucher(Object.assign({}, basePai, {
   periodoReferencia: "2029/2",
   dependentes: [dependente("A", 1, "2016-01-01"), dependente("B", 1, "2015-01-01")]
 }));
@@ -343,7 +343,7 @@ b.passo("Quem está fora da regra é REGISTRADO, não recusado em silêncio");
 /* "Ele deve ter uma informação e a Marcelha verifica e responde pelo SISGEP"
    — você. Bloquear em silêncio faz o sindicato perder o registro de que a
    pessoa procurou. */
-const comVelho = g.salvarSolicitacoesDependentesVoucher(Object.assign({}, basePai, {
+const comVelho = g.salvarCadastroESolicitacaoVoucher(Object.assign({}, basePai, {
   periodoReferencia: "2030/1",
   dependentes: [dependente("JOVEM", 1, "2016-05-05"),
                 dependente("VELHO", 2, "1980-05-05")]

@@ -5,6 +5,24 @@
 
 function salvarCadastroESolicitacaoVoucher(payload) {
   try {
+    /* UMA PORTA SÓ PARA OS DOIS CASOS — 16/09/2026.
+     *
+     * O envio com vários dependentes começou como função global própria, e o
+     * t6-exposicao reprovou na hora: o teto de superfície pública subiria de
+     * 204 para 205, e o exposicao-teto.json diz que ele só DESCE.
+     *
+     * O teste estava certo e a saída era melhor do que subir o teto. Esta
+     * função já é a porta pública do portal; quando o payload traz
+     * `dependentes`, ela delega para o laço. Mesma porta, mesma validação de
+     * entrada, nenhuma superfície nova — e o portal continua chamando o que
+     * já chamava.
+     *
+     * Sem risco de recursão: o laço monta cada payload SEM a chave
+     * `dependentes`, então a chamada de volta cai no caminho de sempre. */
+    if (payload && Array.isArray(payload.dependentes) && payload.dependentes.length) {
+      return salvarSolicitacoesDependentesVoucher_(payload);
+    }
+
     validarPayloadPortalVoucher_(payload);
     setupVoucherModuleFase1();
 
@@ -336,7 +354,7 @@ var VOUCHER_MAX_DEPENDENTES_ = 3;
  * vai para a fila do presencial. Bloquear em silêncio faz o sindicato perder
  * o registro de que a pessoa procurou.
  */
-function salvarSolicitacoesDependentesVoucher(payload) {
+function salvarSolicitacoesDependentesVoucher_(payload) {
   try {
     if (!payload) throw new Error("Dados da solicitação não informados.");
 
@@ -426,7 +444,7 @@ function salvarSolicitacoesDependentesVoucher(payload) {
     };
 
   } catch (e) {
-    Logger.log("salvarSolicitacoesDependentesVoucher erro: " + e.message);
+    Logger.log("salvarSolicitacoesDependentesVoucher_ erro: " + e.message);
     return { ok: false, gravadas: 0, resultados: [], mensagem: e.message };
   }
 }

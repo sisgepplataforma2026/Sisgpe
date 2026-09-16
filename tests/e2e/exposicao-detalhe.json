@@ -1,6 +1,6 @@
 {
   "medidoEm": "2026-09-16",
-  "totalPublicas": 1009,
+  "totalPublicas": 1008,
   "protegidas": 721,
   "expostas": [
     {
@@ -975,11 +975,6 @@
     },
     {
       "nome": "salvarCadastroESolicitacaoVoucher",
-      "arquivo": "VoucherSolicitacao.gs",
-      "escreve": true
-    },
-    {
-      "nome": "salvarSolicitacoesDependentesVoucher",
       "arquivo": "VoucherSolicitacao.gs",
       "escreve": true
     },
