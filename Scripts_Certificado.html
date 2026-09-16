@@ -1718,19 +1718,47 @@ function cert_abrirModal(s){
     docsEl.innerHTML=dh;
   }
 
-  /* O botão de confirmar cadastro só existe para quem está nesse estado. */
-  var btnCad = g('certBtnConfirmarCadastro');
-  if(btnCad) btnCad.style.display = (st === 'AGUARDANDO_VALIDACAO_CADASTRAL') ? '' : 'none';
+  /* CADA ESTADO MOSTRA AS SUAS DECISÕES, e só elas.
+
+     Validação cadastral: confirmar que a pessoa é associada, pedir documento,
+     ou indeferir. APROVAR NÃO APARECE — aprovar antes de saber se a pessoa é
+     associada concederia benefício sem ninguém olhar a regra, que é
+     exatamente o que confirmarCadastroSolicitacaoVoucher recusa fazer.
+
+     Análise: complementação, indeferir, aprovar. Confirmar cadastro não
+     aparece porque já foi feito. */
 
   var podeEmitir=['APROVADO','EMITIDO'].includes(st);
-  var podeAcao  =['PENDENTE','ANALISE'].includes(st);
+  /* O BOTÃO DE CONFIRMAR CADASTRO NASCEU MORTO — achado por você em
+     16/09/2026, abrindo a solicitação BOLSA-2026-495017 e vendo só "Fechar".
+
+     Ele foi criado com `display:none` e uma linha que o acende quando o
+     status é AGUARDANDO_VALIDACAO_CADASTRAL. Só que ele mora DENTRO de
+     `certModalAcoes`, e o container inteiro era escondido quando o status não
+     era PENDENTE ou ANALISE. Acender uma luz dentro de um armário fechado: o
+     botão certo, com a regra certa, e ninguém nunca o viu.
+
+     É o mesmo erro que o comentário do próprio botão dizia estar evitando
+     ("botão que existe sempre e só funciona às vezes"). Eu escrevi a regra e
+     não conferi se o lugar onde ele mora obedecia a ela — e nenhum teste
+     pegava, porque todos olhavam o botão, não o pai dele.
+
+     Agora a fila de análise cadastral abre a barra de ações, e QUAIS botões
+     aparecem depende do estado. */
+  var validandoCadastro = (st === 'AGUARDANDO_VALIDACAO_CADASTRAL');
+  var emAnalise = ['PENDENTE','ANALISE'].includes(st);
+  var podeAcao  = emAnalise || validandoCadastro;
 
   /* O AJUSTE DE DESCONTO NASCE COM O VALOR CALCULADO, não em branco: campo
      vazio obrigaria a redigitar 100 só para confirmar o que já estava certo,
      e o que a pessoa redigita todo dia é onde o erro entra. Quem não mexe,
-     aprova com o cálculo da convenção. */
+     aprova com o cálculo da convenção.
+
+     Só na ANÁLISE, não na validação cadastral: ali ainda não se decidiu se a
+     pessoa é associada, e mexer no desconto de uma bolsa que pode nem existir
+     é convidar a mexer duas vezes. */
   var boxEdit = g('cmi-pctEditar'), inpPct = g('cmi-pctInput'), avisoPct = g('cmi-pctAviso');
-  if(boxEdit) boxEdit.style.display = podeAcao ? '' : 'none';
+  if(boxEdit) boxEdit.style.display = emAnalise ? '' : 'none';
   if(inpPct){
     inpPct.value = pct || '';
     inpPct.dataset.original = pct || '';
@@ -1742,6 +1770,15 @@ function cert_abrirModal(s){
   if(btnCom) btnCom.style.display = (st === 'BLOQUEADA_POR_REGRA') ? '' : 'none';
   if(g('certModalAcoesRegra')) g('certModalAcoesRegra').style.display =
     (st === 'BLOQUEADA_POR_REGRA') ? 'flex' : 'none';
+
+  /* DEPOIS das declarações de `validandoCadastro` e `emAnalise`, e isto não é
+     estilo. Este bloco ficou ACIMA delas na primeira escrita: `var` é içado,
+     então as duas existiam valendo `undefined`, e `undefined ? '' : 'none'`
+     dá 'none'. Os dois botões continuavam escondidos, agora por outro motivo.
+     Quem pegou foi t185 — o teste que olha o botão como a pessoa olha. */
+  var btnCad = g('certBtnConfirmarCadastro');
+  if(btnCad) btnCad.style.display = validandoCadastro ? '' : 'none';
+  if(g('certBtnAprovar')) g('certBtnAprovar').style.display = emAnalise ? '' : 'none';
 
   if(g('certModalAcoes'))      g('certModalAcoes').style.display      = podeAcao   ? 'flex' : 'none';
   if(g('certModalEmissaoArea'))g('certModalEmissaoArea').style.display = podeEmitir ? ''     : 'none';
@@ -2039,6 +2076,18 @@ function envPintarHistorico(envios){
 }
 
 window.certAbrirEnvio = envAbrir;
+
+/* ABRIR UMA SOLICITAÇÃO DE FORA DO ARQUIVO.
+ *
+ * Tudo aqui vive dentro de um IIFE, então nada é alcançável de fora a não ser
+ * o que sai explicitamente pelo window — é o mesmo motivo de `certAbrirEnvio`
+ * logo acima. Sem isto, nem o teste de tela nem a própria tela conseguem
+ * pedir "abra este registro": e é disso que depende o "Abrir a anterior" do
+ * aviso de duplicidade, que continua pendente.
+ *
+ * Descoberto ao escrever t185, que precisava abrir o modal em cada estado e
+ * não tinha por onde. */
+window.certAbrirSolicitacao = cert_abrirModal;
 
 function envQuando(v){
   if(!v) return '—';
