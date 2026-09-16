@@ -546,11 +546,31 @@
 
            A ORIGEM VAI JUNTO — REGRA Nº 0.6. Número que o sistema calculou
            sozinho e não explicou é o que vira erro que ninguém percebe. -->
+      <!-- O DESCONTO PODE SER CORRIGIDO ANTES DE APROVAR — 16/09/2026.
+           "Aqui eu tenho que ter uma opção de alterar o desconto caso esteja
+           errado" — o usuário, olhando este modal.
+
+           O número grande continua sendo o que a convenção calculou, e é ele
+           que vale se ninguém mexer. O campo ao lado só aparece enquanto a
+           solicitação está em análise: depois de aprovada, mudar o percentual
+           aqui não teria efeito nenhum, e campo que aceita digitação e não
+           faz nada é pior do que campo ausente. -->
       <div class="cert-pct" id="cmi-pctBox">
         <div class="cert-pct-num" id="cmi-percentual">—</div>
         <div class="cert-pct-txt">
           <b>Desconto que será concedido</b>
           <small id="cmi-pctOrigem">calculado pela regra da convenção, na solicitação</small>
+        </div>
+        <div id="cmi-pctEditar" style="display:none;margin-left:auto;text-align:right;">
+          <label for="cmi-pctInput" style="display:block;font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#64748b;margin-bottom:4px;">Ajustar</label>
+          <div style="display:flex;align-items:center;gap:5px;">
+            <input type="number" id="cmi-pctInput" min="1" max="100" step="1"
+                   style="width:78px;height:34px;border-radius:9px;border:1.5px solid #cbd5e1;padding:0 9px;
+                          font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;font-weight:800;
+                          text-align:center;outline:none;">
+            <span style="font-size:14px;font-weight:800;color:#64748b;">%</span>
+          </div>
+          <div id="cmi-pctAviso" style="display:none;font-size:10.5px;font-weight:700;color:#d97706;margin-top:4px;">alterado</div>
         </div>
       </div>
 
@@ -593,6 +613,20 @@
         <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certBtnComplementar">📄 Solicitar Complementação</button>
         <button type="button" class="cert-btn cert-btn-danger cert-btn-sm"   id="certBtnIndeferir">❌ Indeferir</button>
         <button type="button" class="cert-btn cert-btn-success cert-btn-sm"  id="certBtnAprovar">✅ Aprovar</button>
+      </div>
+
+      <!-- AÇÕES DE QUEM ESTÁ FORA DA REGRA — 16/09/2026.
+
+           Fileira SEPARADA, e não mais um botão na fileira de cima, porque as
+           duas aparecem em estados diferentes: a de cima em PENDENTE/ANALISE,
+           esta em BLOQUEADA_POR_REGRA. Uma solicitação nunca está nos dois.
+
+           Pedido do usuário: "ela só vai enviar um comunicado, vai ter um
+           botão em ações lá, [...] uma mensagem padrão, em que infelizmente
+           não é possível devido à idade dele". E o texto sai editável — "Pode
+           editar". -->
+      <div id="certModalAcoesRegra" style="display:none;gap:8px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid #f1f5f9;">
+        <button type="button" class="cert-btn cert-btn-primary cert-btn-sm" id="certBtnComunicar">📣 Comunicar fora da regra</button>
       </div>
 
       <!-- CORRIGIR O PERIODO QUE FALTOU.
@@ -756,6 +790,62 @@
      IESES" — e o cadastro tinha um campo só, o que impedia mandar a cópia
      do certificado para a faculdade certa.
      ══════════════════════════════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════════════════════════════
+     COMUNICADO DE "FORA DA REGRA"
+
+     O texto chega PRONTO do servidor (previewComunicadoRegraVoucher), com o
+     motivo medido do cadastro — idade do beneficiário, teto por associado —
+     e não redigido aqui no navegador. Duas razões: a regra mora no backend, e
+     texto montado em dois lugares é texto que um dia diverge.
+
+     A caixa "Indeferir junto" nasce MARCADA, com a razão escrita ao lado:
+     comunicar que "infelizmente não é possível" e deixar a solicitação na
+     fila faria a fila crescer com caso já resolvido. Mas quem decide é quem
+     está atendendo — por isso é caixa desmarcável, não efeito colateral.
+     ══════════════════════════════════════════════════════════════════════ -->
+<div id="certComunicadoOverlay" style="position:fixed;inset:0;background:rgba(15,23,42,.52);display:none;align-items:center;justify-content:center;padding:16px;z-index:10002;backdrop-filter:blur(3px);">
+  <div id="certComunicadoBox" style="width:min(640px,100%);background:#fff;border-radius:18px;box-shadow:0 30px 80px rgba(0,20,60,.28);overflow:hidden;max-height:90vh;display:flex;flex-direction:column;font-family:'Plus Jakarta Sans',sans-serif;">
+    <div class="cert-modal-head">
+      <div class="cert-modal-head-l">
+        <div class="cert-modal-ico">📣</div>
+        <div>
+          <div class="cert-modal-title">Comunicar ao associado</div>
+          <div class="cert-modal-sub" id="certComSub">—</div>
+        </div>
+      </div>
+      <button class="cert-modal-close" id="certComFechar">✕</button>
+    </div>
+
+    <div class="cert-modal-body">
+      <div id="certComMotivo" style="background:#fffbeb;border:1px solid #fcd34d;border-left:4px solid #d97706;border-radius:10px;padding:12px 15px;margin-bottom:14px;">
+        <div style="font-size:13.5px;font-weight:800;color:#92400e;" id="certComMotivoTxt">—</div>
+        <div style="font-size:11.5px;color:#a16207;margin-top:3px;" id="certComMotivoOrigem">—</div>
+      </div>
+
+      <div class="cert-info-grid" style="grid-template-columns:repeat(2,1fr);">
+        <div class="cert-info-item"><span class="cert-info-label">Para</span><span class="cert-info-val" id="certComEmail">—</span></div>
+        <div class="cert-info-item"><span class="cert-info-label">Assunto</span><span class="cert-info-val" id="certComAssunto">—</span></div>
+      </div>
+
+      <div class="cert-section-title" style="margin-top:14px;">✏️ Mensagem — edite antes de enviar</div>
+      <textarea class="cert-obs-area" id="certComTexto" rows="14" style="width:100%;box-sizing:border-box;resize:vertical;line-height:1.6;"></textarea>
+
+      <label style="display:flex;align-items:flex-start;gap:9px;margin-top:12px;cursor:pointer;">
+        <input type="checkbox" id="certComIndeferir" checked style="margin-top:2px;width:16px;height:16px;cursor:pointer;">
+        <span style="font-size:13px;color:#334155;line-height:1.5;">
+          <b>Indeferir a solicitação junto com o comunicado</b><br>
+          <span style="font-size:11.5px;color:#64748b;">Sem isto, ela continua na fila de análise depois de o associado já ter sido avisado. Um único e-mail é enviado — o comunicado.</span>
+        </span>
+      </label>
+    </div>
+
+    <div class="cert-modal-foot">
+      <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certComCancelar">Cancelar</button>
+      <button type="button" class="cert-btn cert-btn-primary cert-btn-sm" id="certComEnviar">📧 Enviar comunicado</button>
+    </div>
+  </div>
+</div>
+
 <div id="certExcluirOverlay" style="position:fixed;inset:0;background:rgba(15,23,42,.52);display:none;align-items:center;justify-content:center;padding:16px;z-index:10002;backdrop-filter:blur(3px);">
   <div id="certExcluirBox" style="width:min(560px,100%);background:#fff;border-radius:18px;box-shadow:0 30px 80px rgba(0,20,60,.28);overflow:hidden;max-height:90vh;display:flex;flex-direction:column;font-family:'Plus Jakarta Sans',sans-serif;">
     <div class="cert-modal-head">
@@ -1149,7 +1239,8 @@ function cert_msg(texto, tipo){
    * acima de tudo. O toast é o padrão de feedback do design system; usá-lo
    * aqui não é remendo, é voltar para o caminho certo. */
   var modalAberto = document.querySelector(
-    '#certModalOverlay.ativo, #certEnvioOverlay.ativo, #certNovaOverlay.ativo');
+    '#certModalOverlay.ativo, #certEnvioOverlay.ativo, #certNovaOverlay.ativo, ' +
+    '#certComunicadoOverlay.ativo');
   if(modalAberto && typeof toast === 'function' && texto){
     var limpo = String(texto).replace(/<[^>]*>/g,'');
     toast(limpo, tipo==='erro'?'erro':tipo==='warn'?'alerta':tipo==='ok'?'ok':'info', 7000);
@@ -1634,6 +1725,24 @@ function cert_abrirModal(s){
   var podeEmitir=['APROVADO','EMITIDO'].includes(st);
   var podeAcao  =['PENDENTE','ANALISE'].includes(st);
 
+  /* O AJUSTE DE DESCONTO NASCE COM O VALOR CALCULADO, não em branco: campo
+     vazio obrigaria a redigitar 100 só para confirmar o que já estava certo,
+     e o que a pessoa redigita todo dia é onde o erro entra. Quem não mexe,
+     aprova com o cálculo da convenção. */
+  var boxEdit = g('cmi-pctEditar'), inpPct = g('cmi-pctInput'), avisoPct = g('cmi-pctAviso');
+  if(boxEdit) boxEdit.style.display = podeAcao ? '' : 'none';
+  if(inpPct){
+    inpPct.value = pct || '';
+    inpPct.dataset.original = pct || '';
+  }
+  if(avisoPct) avisoPct.style.display = 'none';
+
+  /* O BOTÃO DE COMUNICADO SÓ EXISTE PARA QUEM ESTÁ FORA DA REGRA. */
+  var btnCom = g('certBtnComunicar');
+  if(btnCom) btnCom.style.display = (st === 'BLOQUEADA_POR_REGRA') ? '' : 'none';
+  if(g('certModalAcoesRegra')) g('certModalAcoesRegra').style.display =
+    (st === 'BLOQUEADA_POR_REGRA') ? 'flex' : 'none';
+
   if(g('certModalAcoes'))      g('certModalAcoes').style.display      = podeAcao   ? 'flex' : 'none';
   if(g('certModalEmissaoArea'))g('certModalEmissaoArea').style.display = podeEmitir ? ''     : 'none';
   if(g('certRgArea'))          g('certRgArea').style.display           = podeEmitir ? ''     : 'none';
@@ -1660,7 +1769,7 @@ function cert_fecharModal(){
 }
 
 // ── Ações
-function acao(funcaoGas,labelBtn,labelMsg){
+function acao(funcaoGas,labelBtn,labelMsg,extra){
   if(!_solAtual){cert_msg('Nenhuma solicitação selecionada.','warn');return;}
   var obs=g('certModalObs')?String(g('certModalObs').value||'').trim():'';
   var btn=g(labelBtn);
@@ -1696,7 +1805,87 @@ function acao(funcaoGas,labelBtn,labelMsg){
       }
     })
     .withFailureHandler(function(err){cert_resetBtn(btn);cert_msg('Erro: '+((err&&err.message)||''),'erro');})
-    [funcaoGas](_solAtual.protocolo, obs, certToken());
+    /* `extra` vai SEMPRE, inclusive undefined: no google.script.run o
+       número de argumentos não muda a resolução da função, e as ações que
+       não usam o quarto parâmetro simplesmente o ignoram. Passar
+       condicionalmente exigiria duas chamadas iguais lado a lado. */
+    [funcaoGas](_solAtual.protocolo, obs, certToken(), extra);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   COMUNICADO DE "FORA DA REGRA"
+
+   `_comAtual` guarda o que o backend devolveu no preparo — protocolo, motivo
+   medido e texto pronto. Nada é remontado no navegador: a regra que decide o
+   motivo mora no .gs, e texto montado nos dois lados é texto que um dia
+   diverge.
+   ══════════════════════════════════════════════════════════════════════ */
+var _comAtual = null;
+
+function comFechar(){
+  var o=g('certComunicadoOverlay');
+  if(o){o.style.display='none';o.classList.remove('ativo');}
+  _comAtual=null;
+}
+
+function comAbrir(){
+  if(!_solAtual){cert_msg('Nenhuma solicitação selecionada.','warn');return;}
+  var btn=g('certBtnComunicar');
+  setBtnLoad(btn,'Preparando...');
+
+  google.script.run
+    .withSuccessHandler(function(resp){
+      cert_resetBtn(btn);
+      if(!resp||!resp.ok){cert_msg((resp&&resp.mensagem)||'Não foi possível preparar o comunicado.','erro');return;}
+
+      _comAtual = resp;
+
+      if(g('certComSub'))          g('certComSub').textContent = resp.protocolo || '—';
+      if(g('certComEmail'))        g('certComEmail').textContent = resp.email || '(sem e-mail cadastrado)';
+      if(g('certComAssunto'))      g('certComAssunto').textContent = resp.assunto || '—';
+      if(g('certComMotivoTxt'))    g('certComMotivoTxt').textContent = (resp.motivo && resp.motivo.rotulo) || '—';
+      if(g('certComMotivoOrigem')) g('certComMotivoOrigem').textContent = (resp.motivo && resp.motivo.origem) || '';
+      if(g('certComTexto'))        g('certComTexto').value = resp.texto || '';
+      if(g('certComIndeferir'))    g('certComIndeferir').checked = true;
+
+      var o=g('certComunicadoOverlay');
+      if(o){o.style.display='flex';o.classList.add('ativo');}
+    })
+    .withFailureHandler(function(err){
+      cert_resetBtn(btn);
+      cert_msg('Erro ao preparar o comunicado: '+((err&&err.message)||''),'erro');
+    })
+    .previewComunicadoRegraVoucher(_solAtual.protocolo, certToken());
+}
+
+function comEnviar(){
+  if(!_comAtual){cert_msg('Abra o comunicado antes de enviar.','warn');return;}
+
+  var texto = g('certComTexto') ? String(g('certComTexto').value||'').trim() : '';
+  if(!texto){
+    cert_msg('O comunicado está vazio — escreva a mensagem antes de enviar.','warn');
+    if(g('certComTexto')) g('certComTexto').focus();
+    return;
+  }
+
+  var indeferir = g('certComIndeferir') ? !!g('certComIndeferir').checked : false;
+  var btn=g('certComEnviar');
+  setBtnLoad(btn,'Enviando...');
+
+  google.script.run
+    .withSuccessHandler(function(resp){
+      cert_resetBtn(btn);
+      if(!resp||!resp.ok){cert_msg((resp&&resp.mensagem)||'Erro ao enviar.','erro');return;}
+      cert_msg('✅ '+(resp.mensagem||'Comunicado enviado.'),'ok');
+      comFechar();
+      cert_fecharModal();
+      cert_carregarLista();
+    })
+    .withFailureHandler(function(err){
+      cert_resetBtn(btn);
+      cert_msg('Erro ao enviar o comunicado: '+((err&&err.message)||''),'erro');
+    })
+    .enviarComunicadoRegraVoucher(_comAtual.protocolo, texto, indeferir, certToken());
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -3542,11 +3731,48 @@ function initInterno(){
   });
 
   if(g('certBtnAprovar')) g('certBtnAprovar').addEventListener('click',function(){
+    var inp = g('cmi-pctInput');
+    var pct = inp ? String(inp.value||'').trim() : '';
+
+    /* CONFERE ANTES DE MANDAR. O backend recusa de qualquer jeito — esta
+       checagem existe para a pessoa ver o problema no campo que ela acabou de
+       digitar, e não numa mensagem de erro depois da viagem ao servidor. */
+    if(pct){
+      var n = Number(pct);
+      if(isNaN(n) || n <= 0 || n > 100){
+        cert_msg('O desconto precisa ser um número entre 1 e 100.','warn');
+        if(inp) inp.focus();
+        return;
+      }
+    }
+
+    /* MUDANÇA DE DESCONTO PEDE CONFIRMAÇÃO. É o único campo deste modal que
+       altera o VALOR do benefício, e um dedo errado aqui vira voucher emitido
+       com desconto que o sindicato não concedeu. */
+    var orig = (inp && inp.dataset.original) || '';
+    if(pct && orig && pct !== orig){
+      if(!confirm('O desconto calculado pela convenção era ' + orig + '%.\n\n' +
+                  'Aprovar com ' + pct + '%?')) return;
+    }
+
     acao(
       'aprovarSolicitacaoCertBolsaComEmail',
       'certBtnAprovar',
-      'Solicitação aprovada — e-mail enviado ao associado'
+      'Solicitação aprovada — e-mail enviado ao associado',
+      pct
     );
+  });
+
+  /* O aviso "alterado" acende enquanto se digita: é o que impede alguém de
+     mudar o número, se distrair e aprovar sem lembrar que mexeu. */
+  if(g('cmi-pctInput')) g('cmi-pctInput').addEventListener('input',function(){
+    var aviso = g('cmi-pctAviso');
+    if(!aviso) return;
+    var mudou = String(this.value||'').trim() !== String(this.dataset.original||'').trim();
+    aviso.style.display = mudou ? '' : 'none';
+    aviso.textContent = mudou
+      ? 'alterado — a convenção calculou ' + (this.dataset.original || '—') + '%'
+      : 'alterado';
   });
 
   if(g('certBtnGerarComprovante')){
@@ -3560,6 +3786,13 @@ function initInterno(){
       gerarDocumento('CERTIFICADO');
     });
   }
+
+  // ── modal do comunicado de fora da regra
+  if(g('certBtnComunicar')) g('certBtnComunicar').addEventListener('click', comAbrir);
+  if(g('certComFechar'))    g('certComFechar').addEventListener('click', comFechar);
+  if(g('certComCancelar'))  g('certComCancelar').addEventListener('click', comFechar);
+  if(g('certComEnviar'))    g('certComEnviar').addEventListener('click', comEnviar);
+  ligarFecharPorClique(g('certComunicadoOverlay'), comFechar);
 
   // ── modal de envio
   if(g('certEnvFechar'))     g('certEnvFechar').addEventListener('click', envFechar);

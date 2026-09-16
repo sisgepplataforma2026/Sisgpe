@@ -180,11 +180,47 @@ function marcarNaoAssociadoVoucher(protocolo, obs, tokenSessao) {
   }
 }
 
-function aprovarSolicitacaoVoucher(protocolo, obs, tokenSessao) {
+/**
+ * `percentual` é OPCIONAL e entrou em 16/09/2026.
+ *
+ * "Aqui eu tenho que ter uma opção de alterar o desconto caso esteja errado"
+ * — o usuário, olhando o modal de análise, onde o percentual calculado pela
+ * convenção aparecia como número fixo.
+ *
+ * O cálculo automático continua sendo o padrão: quem aprova sem mexer no
+ * campo aprova com o que a convenção mandou. Mas o cálculo depende de dados
+ * que a própria pessoa digitou no portal (modalidade, área do curso, ordem do
+ * filho), e um desses errado produz percentual errado — que hoje só seria
+ * descoberto depois do voucher emitido, com a escola já informada.
+ *
+ * Ajustar aqui NÃO É silencioso: quem muda deixa rastro no histórico, com o
+ * valor de antes e o de depois, e a observação registra a mudança.
+ * Sugerir com origem à vista, nunca impor em silêncio — REGRA Nº 0.6.
+ */
+function aprovarSolicitacaoVoucher(protocolo, obs, tokenSessao, percentual) {
   exigirModulo_(tokenSessao, "beneficios", false);
   try {
     const item = buscarSolicitacaoPorProtocolo_(protocolo);
     if (!item) return { ok: false, mensagem: "Solicitação não encontrada." };
+
+    /* O AJUSTE DO PERCENTUAL, CONFERIDO ANTES DE QUALQUER ESCRITA.
+     *
+     * Percentual fora de 1–100 não é ajuste, é dedo errado — e gravar 700%
+     * num voucher seria descoberto pela escola, não por nós. Zero também não
+     * passa: bolsa de 0% é indeferimento, e indeferir tem botão próprio, com
+     * justificativa e e-mail ao associado. */
+    var pctAntes = String(valorSeguroVoucher_(item.registro.PERCENTUAL_APLICADO) || "").replace("%", "").trim();
+    var pctNovo  = String(percentual === undefined || percentual === null ? "" : percentual).replace("%", "").trim();
+    var mudouPct = false;
+
+    if (pctNovo !== "") {
+      var n = Number(pctNovo);
+      if (isNaN(n) || n <= 0 || n > 100) {
+        return { ok: false, mensagem: "O desconto precisa ser um número entre 1 e 100." };
+      }
+      pctNovo = String(Math.round(n));
+      mudouPct = (pctNovo !== pctAntes);
+    }
 
     const situacaoSindical = String(item.registro.SITUACAO_SINDICAL || "").toUpperCase();
 
@@ -231,12 +267,15 @@ function aprovarSolicitacaoVoucher(protocolo, obs, tokenSessao) {
         "presencial: solicitação em papel, retirada na sede, sem envio por e-mail."
       : "Solicitação aprovada pela análise administrativa.");
 
-    atualizarStatusSolicitacao_(item, "APROVADO", observacao, {
+    const extras = {
       SITUACAO_SINDICAL: situacaoSindical || "ASSOCIADO",
       STATUS_VALIDACAO_SINDICAL: "VALIDADO",
       USUARIO_VALIDACAO: usuario,
       DATA_VALIDACAO: new Date()
-    });
+    };
+    if (mudouPct) extras.PERCENTUAL_APLICADO = pctNovo;
+
+    atualizarStatusSolicitacao_(item, "APROVADO", observacao, extras);
     atualizarStatusProtocolo_(protocolo, "APROVADO", usuario, observacao);
 
     registrarHistoricoVoucher_(
@@ -248,11 +287,33 @@ function aprovarSolicitacaoVoucher(protocolo, obs, tokenSessao) {
       protocolo
     );
 
+    /* O RASTRO DA MUDANÇA VAI PARA O HISTÓRICO, que é append-only — e não
+     * para OBSERVACOES, que a ação seguinte sobrescreve. Com o valor de
+     * antes: saber que mudou sem saber de quanto não serve para conferir. */
+    if (mudouPct) {
+      registrarHistoricoVoucher_(
+        item.registro.ID_SOLICITACAO,
+        item.registro.CPF_SOLICITANTE,
+        "PERCENTUAL_AJUSTADO",
+        usuario,
+        "Desconto alterado de " + (pctAntes || "vazio") + "% para " + pctNovo +
+          "% na aprovação, pela análise administrativa.",
+        protocolo
+      );
+      /* O e-mail de aprovação lê o percentual do registro em memória, que
+       * ainda traz o valor antigo — sem isto o associado receberia a
+       * aprovação anunciando o desconto que NÃO foi concedido. */
+      item.registro.PERCENTUAL_APLICADO = pctNovo;
+    }
+
     enviarEmailAprovacaoVoucher_(item.registro, protocolo);
 
     return {
       ok: true,
-      mensagem: "Solicitação aprovada com sucesso."
+      percentual: mudouPct ? pctNovo : pctAntes,
+      mensagem: mudouPct
+        ? "Solicitação aprovada com o desconto ajustado para " + pctNovo + "%."
+        : "Solicitação aprovada com sucesso."
     };
 
   } catch (e) {
@@ -572,8 +633,12 @@ function aprovarSolicitacaoCertBolsa(protocolo, obs, tokenSessao) {
   return aprovarSolicitacaoVoucher(protocolo, obs, tokenSessao);
 }
 
-function aprovarSolicitacaoCertBolsaComEmail(protocolo, obs, tokenSessao) {
-  return aprovarSolicitacaoVoucher(protocolo, obs, tokenSessao);
+function aprovarSolicitacaoCertBolsaComEmail(protocolo, obs, tokenSessao, percentual) {
+  /* O QUARTO ARGUMENTO PRECISA ATRAVESSAR. Este apelido é o que o painel
+   * chama de verdade — esquecer o repasse aqui faria o ajuste de desconto
+   * sumir no caminho, e a aprovação gravaria o percentual antigo sem que
+   * ninguém visse erro nenhum. */
+  return aprovarSolicitacaoVoucher(protocolo, obs, tokenSessao, percentual);
 }
 
 function indeferirSolicitacaoCertBolsa(protocolo, obs, tokenSessao) {
