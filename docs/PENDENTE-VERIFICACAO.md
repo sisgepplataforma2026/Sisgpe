@@ -5772,9 +5772,15 @@ usuário.
 
 ### Rodada da noite de 16/09/2026 — publicada em HOMOLOGAÇÃO
 
-Homologação está no commit `e65683a` (run #154, verde). **Produção NÃO recebeu
-esta rodada** — segue no `9af90d3`. Nada abaixo foi executado no ar; a suíte
-(186 arquivos, 6659 asserções) prova o código, não o Google.
+**Publicada nos DOIS ambientes** — homologação (run #155) e produção (run #74),
+ambas verdes, no commit `d44cb75`. A promoção saiu com você dizendo "tem que
+salvar em produção" e "confirmado", **sem que nada abaixo tivesse sido
+conferido no ar**. Fica registrado assim: a suíte (186 arquivos, 6662
+asserções) prova o código, não o Google.
+
+O risco era menor por dois motivos, e nenhum deles é "foi testado": Bolsas
+ainda não está em operação, e Ofícios — a única operação viva — não foi tocado
+nesta rodada.
 
 | | O que conferir | Onde |
 |---|---|---|
