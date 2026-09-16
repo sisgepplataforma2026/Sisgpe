@@ -1121,6 +1121,13 @@ function aplicarCadastroLocalizado(cadastro) {
         if (lblS) lblS.textContent = 'Salvar solicitação';
       }
 
+      /* Recomeça do zero: sem isto, um erro da tentativa anterior sobrevive a
+         uma busca que deu certo. */
+      ['cpf', 'dataNascimento'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.classList.remove('invalid');
+      });
+
       var cpfVal = document.getElementById('cpf').value.replace(/\D/g, '');
       var dataNasc = document.getElementById('dataNascimento').value;
       if (!cpfVal || cpfVal.length !== 11) { showMsg('❌ Informe um CPF válido.', 'erro'); document.getElementById('cpf').classList.add('invalid'); return; }
@@ -1570,6 +1577,34 @@ document.getElementById('escolaAtual').addEventListener('change', function() {
     document.getElementById('btnIdentificar').addEventListener('click', identificar);
     document.getElementById('btnSalvar').addEventListener('click', salvarTudo);
     document.getElementById('btnLimpar').addEventListener('click', function() { limparFormulario(true); });
+
+    /* O CAMPO LIMPA O PRÓPRIO ERRO — 16/09/2026.
+
+       Defeito visto pelo usuário no ambiente publicado: cadastro localizado,
+       data de nascimento preenchida, e o campo continuava com a borda
+       vermelha. A classe `invalid` era ADICIONADA quando o campo estava vazio
+       no clique, e só removida numa varredura que roda noutro momento — então
+       quem clicava com o campo vazio, preenchia e buscava de novo com sucesso
+       ficava olhando um erro que não existia mais.
+
+       Marca de erro que não sabe se apagar é pior do que marca nenhuma: ela
+       ensina a pessoa a desconfiar do vermelho, e aí o vermelho de verdade
+       também é ignorado.
+
+       Um listener só, por delegação: serve para os campos de hoje e para os
+       que forem acrescentados depois. */
+    document.addEventListener('input', function (ev) {
+      var el = ev.target;
+      if (el && el.classList && el.classList.contains('invalid') && String(el.value || '').trim()) {
+        el.classList.remove('invalid');
+      }
+    }, true);
+    document.addEventListener('change', function (ev) {
+      var el = ev.target;
+      if (el && el.classList && el.classList.contains('invalid') && String(el.value || '').trim()) {
+        el.classList.remove('invalid');
+      }
+    }, true);
 
     restaurarTema();
 

@@ -85,6 +85,26 @@ b.ok(/id="protocoloTitulo"/.test(portal),
 b.ok(/compareça à sede/i.test(portal),
   "o caminho presencial continua pedindo o protocolo em mãos");
 
+b.passo("A marca de erro sabe se apagar");
+/* DEFEITO VISTO NO AMBIENTE PUBLICADO, não aqui: cadastro localizado, data de
+   nascimento preenchida, e o campo seguia com borda vermelha. A classe
+   `invalid` era adicionada quando o campo estava vazio no clique e só removida
+   numa varredura que roda noutro momento.
+
+   Marca de erro que não sabe se apagar é pior do que marca nenhuma: ensina a
+   pessoa a desconfiar do vermelho, e aí o vermelho de verdade também passa
+   batido. */
+b.ok(/addEventListener\('input', function \(ev\)[\s\S]{0,240}classList\.remove\('invalid'\)/.test(portal),
+  "digitar num campo marcado limpa a marca");
+b.ok(/addEventListener\('change', function \(ev\)[\s\S]{0,240}classList\.remove\('invalid'\)/.test(portal),
+  "e escolher numa data ou select também — `input` não cobre todo tipo de campo");
+b.ok(/\['cpf', 'dataNascimento'\]\.forEach[\s\S]{0,160}classList\.remove\('invalid'\)/.test(portal),
+  "e a busca de cadastro recomeça do zero, sem herdar erro da tentativa anterior");
+/* Por delegação no document: vale para os campos de hoje e para os que
+   entrarem depois, sem ninguém lembrar de ligar um a um. */
+b.ok(/document\.addEventListener\('input'/.test(portal) && /document\.addEventListener\('change'/.test(portal),
+  "os dois são delegados no document — campo novo já nasce coberto");
+
 b.naoTestavel("A aparência final no navegador",
   "nenhum teste daqui aplica folha de estilo; só a tela publicada responde");
 b.resumo();
